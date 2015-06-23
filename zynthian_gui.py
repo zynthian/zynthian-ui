@@ -20,6 +20,7 @@ from tkinter import *
 #import threading
 #import queue
 from ctypes import *
+#import string
 
 #-------------------------------------------------------------------------------
 # Define some Constants and Parameters for the GUI
@@ -43,6 +44,13 @@ splash_image="./img/zynthian_gui_splash.gif"
 
 #bank_dir="/usr/share/zynaddsubfx/banks"
 bank_dir="./software/zynaddsubfx-instruments/banks"
+
+default_zcontrollers_config=(
+	('modulation',1,80),
+	('expression',11,80),
+	('filter Q',71,80),
+	('filter cutoff',74,80)
+);
 
 #-------------------------------------------------------------------------------
 # Define some MIDI Functions
@@ -120,9 +128,10 @@ class zynthian_controller:
         self.canvas.create_polygon((x1, y1, x2, y1, x2, y2), fill=lightcolor)
 
     def set_value(self, v):
-        self.value=v
-        self.label_value.config(text=str(self.value))
-        self.plot_triangle()
+        if (v!=self.value):
+            self.value=v
+            self.label_value.config(text=str(self.value))
+            self.plot_triangle()
 
 #-------------------------------------------------------------------------------
 # Zynthian Splash GUI Class
@@ -151,7 +160,7 @@ class zynthian_gui_list:
     width=162
     height=192
     
-    def __init__(self):
+    def __init__(self, image_bg=None):
         list_data=[]
         
         # Add Background Image inside a Canvas
@@ -162,15 +171,19 @@ class zynthian_gui_list:
             highlightthickness=0,
             relief='flat',
             bg = bgcolor)
-        self.canvas.create_image(0, 0, image = gui_bg, anchor = NW)
+        if (image_bg):
+            self.canvas.create_image(0, 0, image = image_bg, anchor = NW)
         self.canvas.pack(expand = YES, fill = BOTH)
 
         self.plot_frame();
 
         # Add ListBox
         self.listbox = Listbox( self.canvas,
+            #width=19,
+            #height=12,
             width=19,
-            height=12,
+            height=9,
+            font=("Helvetica",11),
             bd=0,
             highlightthickness=0,
             relief='flat',
@@ -260,7 +273,7 @@ class zynthian_gui_list:
 class zynthian_gui_bank(zynthian_gui_list):
 
     def __init__(self):
-        super().__init__()
+        super().__init__(gui_bg)
         self.fill_list()
     
     def get_list_data(self):
@@ -283,8 +296,8 @@ class zynthian_gui_bank(zynthian_gui_list):
 class zynthian_gui_instr(zynthian_gui_list):
 
     def __init__(self):
-        super().__init__()
-        # Add Bank Button
+        super().__init__(gui_bg)
+        # Add Bank Button  (top-left)
         self.button_bank = Button(self.canvas,
             width=8,
             height=1,
@@ -297,29 +310,68 @@ class zynthian_gui_instr(zynthian_gui_list):
             fg=textcolor,
             padx=1,
             pady=1,
+            #font=("Helvetica",14),
             text=' ',
             compound='center',
             command=self.click_but_bank)
         self.button_bank.config(image = button_bank_img, width=0, height=0)
         self.button_bank.place(x=0, y=0, anchor=NW)
+        
+        # Add Selected Bank Title (bottom-left)
+        self.bank_title = StringVar()
+        self.label_bank = Label(self.canvas,
+            font=("Helvetica",8),
+            textvariable=self.bank_title,
+            #wraplength=80,
+            justify=LEFT,
+            bg=bgcolor,
+            fg=lightcolor)
+        #self.label_bank.place(x=240, y=-2, anchor=NW) => top-right
+        self.label_bank.place(x=0, y=220, anchor=NW)
 
         # Controllers
+        self.zcontrollers_config=default_zcontrollers_config;
         self.zcontrollers=[]
-        self.zcontrollers.append(zynthian_controller(self.canvas,-1,24,'modulation',1,80))
-        self.zcontrollers.append(zynthian_controller(self.canvas,-1,121,'expression',11,80))
-        self.zcontrollers.append(zynthian_controller(self.canvas,243,24,'filter Q',71,80))
-        self.zcontrollers.append(zynthian_controller(self.canvas,243,121,'filter cutoff',74,80))
+        self.zcontrollers.append(zynthian_controller(self.canvas,-1,24,self.zcontrollers_config[0][0],self.zcontrollers_config[0][1],self.zcontrollers_config[0][2]))
+        self.zcontrollers.append(zynthian_controller(self.canvas,-1,121,self.zcontrollers_config[1][0],self.zcontrollers_config[1][1],self.zcontrollers_config[1][2]))
+        self.zcontrollers.append(zynthian_controller(self.canvas,243,24,self.zcontrollers_config[2][0],self.zcontrollers_config[2][1],self.zcontrollers_config[2][2]))
+        self.zcontrollers.append(zynthian_controller(self.canvas,243,121,self.zcontrollers_config[3][0],self.zcontrollers_config[3][1],self.zcontrollers_config[3][2]))
 
-        # Controllers Map
+        # Init Controllers Map
         self.zcontroller_map={}
         for zc in self.zcontrollers:
             self.zcontroller_map[zc.ctrl]=zc
 
-        # Start MIDI Monitoring
-        self.midi_read();
+        # Init Zyncoders (Rotary Encoders)
+        try:
+            global lib_rencoder
+            lib_rencoder=cdll.LoadLibrary("midi_rencoder/midi_rencoder.so")
+            if lib_rencoder.init_rencoder()>=0:
+                for i, zc in enumerate(self.zcontrollers):
+                    lib_rencoder.setup_zyncoder(i,zc.ctrl,zc.value)
+                    print("Init Zyncoder: %s" % str(i))
+            # Start Rencoder Monitoring
+            self.rencoder_read();
+        except Exception as e:
+            print("Can't init Zyncoders: %s" % str(e))
 
-        # Start Rencoder Monitoring
-        #self.rencoder_read();
+        # Start MIDI Monitoring
+        #self.midi_read();
+        
+    def set_controller_config(self, cfg):
+        for i in range(0,4):
+            self.set_controller(i,cfg[i][0],cfg[i][1],cfg[i][2]);
+
+    def set_controller(self, i, tit, ctrl, val):
+        del self.zcontroller_map[self.zcontrollers[i].ctrl]
+        self.zcontrollers[i].title=tit
+        self.zcontrollers[i].ctrl=ctrl
+        self.zcontrollers[i].set_value(val)
+        self.zcontroller_map[ctrl]=self.zcontrollers[i]
+        try:
+            lib_rencoder.setup_zyncoder(i,ctrl,val)
+        except:
+            pass
 
     def get_list_data(self, selected):
         self.list_data=[]
@@ -333,6 +385,7 @@ class zynthian_gui_instr(zynthian_gui_list):
                 self.list_data.append((f,prg,title))
 
     def fill_list(self, selected):
+        self.bank_title.set(str.replace(selected, '_', ' '))
         self.get_list_data(selected)
         self.listbox.delete(0, END)
         for item in self.list_data:
@@ -342,6 +395,7 @@ class zynthian_gui_instr(zynthian_gui_list):
         prg=self.list_data[index][1]
         print('Instrument Selected: ' + self.selected[2] + ' (' + str(prg) +')')
         set_midi_prg(prg)
+        self.set_controller_config(self.zcontrollers_config);
 
     def click_but_bank(self):
         self.hide()
@@ -353,33 +407,23 @@ class zynthian_gui_instr(zynthian_gui_list):
             if event[0] == alsaseq.SND_SEQ_EVENT_CONTROLLER: 
                 ctrl = event[7][4]
                 val = event[7][5]
-                #print ("MIDI CTRL: " + str(ctrl) + " => " + str(val))
+                print ("MIDI CTRL: " + str(ctrl) + " => " + str(val))
                 if ctrl in zyngui_instr.zcontroller_map.keys():
                     zyngui_instr.zcontroller_map[ctrl].set_value(val)
         top.after(100, self.midi_read)
 
     def rencoder_read(self):
-        for i in range(0,3):
+        for i in range(0,4):
             val=lib_rencoder.get_value_zyncoder(i)
-            zyngui_instr.zcontrollers[i].set_value(val)
+            self.zcontrollers[i].set_value(val)
+            #print ("RENCODER: " + str(i) + " => " + str(val))
         top.after(100, self.rencoder_read)
         
-#-------------------------------------------------------------------------------
-# Init Zyncoders (Rotary Encoders)
-#-------------------------------------------------------------------------------
-
-lib_rencoder=cdll.LoadLibrary("midi_rencoder/midi_rencoder.so")
-if lib_rencoder.init_seq_midi_rencoder()>0:
-    lib_rencoder.setup_zyncoder(0,0)
-    lib_rencoder.setup_zyncoder(1,0)
-    lib_rencoder.setup_zyncoder(2,0)
-    lib_rencoder.setup_zyncoder(3,0)
-
 #-------------------------------------------------------------------------------
 # ALSA MIDI client initialization
 #-------------------------------------------------------------------------------
 
-alsaseq.client( "ZynthianGUI", 1, 1, True )
+alsaseq.client( "Zynthian_gui", 1, 1, True )
 #alsaseq.connectto( 0, 130, 0 )
 alsaseq.start()
 
