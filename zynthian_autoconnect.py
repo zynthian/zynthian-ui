@@ -1,15 +1,16 @@
 #!/usr/bin/python
-#------------------------------------------------------------------------------
-# midi_autoconnect.py: Daemon-script that autoconnect midi devices.
-#                      It connects every input to every ouput.
-#------------------------------------------------------------------------------
-# Author: Jose Fernando Moyano Dominguez (ZauBeR) 
-# Email:  fernando@zauber.es
-# Web:    http://zauber.es
-# Date:   2015-02-22
-#------------------------------------------------------------------------------
-# This Software is free. Do whatever you want with it! ;-)
-#------------------------------------------------------------------------------
+# -*- coding: utf-8 -*-
+"""
+Zynthian Tools > midi_autoconnect.py
+
+Daemon-script that autoconnect midi devices.
+It connects every input to every ouput.
+
+author: José Fernandom Moyano (ZauBeR)
+email: fernando@zauber.es
+created: 2015-02-22
+modified:  2015-07-11
+"""
 
 from subprocess import check_output
 from re import findall
@@ -19,6 +20,12 @@ from time import sleep
 
 #Refresh time
 refresh_time = 2
+
+#Synth Engine List
+synth_engine_list = (
+	"ZynAddSubFX",
+	"FluidSynth"
+)
 
 #------------------------------------------------------------------------------
 
@@ -37,10 +44,10 @@ def midi_autoconnect():
 			if (int(ic[0])>0 and int(oc[0])>0 and int(ic[0])!=14 and int(oc[0])!=14 and ic[0]!=oc[0]):
 				command=""
 				if (ic[1]=='Zynthian_gui'):
-					if (oc[1]=='ZynAddSubFX'):
+					if (oc[1] in synth_engine_list):
 						command="aconnect "+ic[0]+":1 "+oc[0]
 				elif (ic[1]=='Zynthian_rencoder'):
-					if (oc[1]=='ZynAddSubFX'):
+					if (oc[1] in synth_engine_list):
 						command="aconnect "+ic[0]+" "+oc[0]
 				elif (ic[1]=='PCR'):
 					command="aconnect "+ic[0]+":1 "+oc[0]
