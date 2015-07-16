@@ -11,11 +11,6 @@ created: 2015-05-18
 modified:  2015-07-11
 """
 
-try:
-	import RPi.GPIO as GPIO
-except RuntimeError:
-	print("Error importing RPi.GPIO! This is probably because you need superuser privileges.")
-
 import alsaseq
 import alsamidi
 from tkinter import *
@@ -415,7 +410,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 	def set_controller_config(self, cfg):
 		for i in range(0,4):
 			self.set_controller(i,cfg[i][0],cfg[i][1],cfg[i][2]);
-			print("Init Zyncoder: %s" % str(i))
+			print("Setup Zyncoder: %s" % str(i))
 
 	def set_controller(self, i, tit, ctrl, val, max_val=127):
 		try:
@@ -477,8 +472,8 @@ class zynthian_gui:
 	def __init__(self):
 		self.zyngui_engine=zynthian_gui_engine()
 		self.lib_rencoder_init()
-		self.set_mode_engine_select()
 		self.gpio_switch_init()
+		self.set_mode_engine_select()
 		self.start_polling()
 
 	def set_mode_engine_select(self):
@@ -521,6 +516,42 @@ class zynthian_gui:
 			self.zyngui_bank=zynthian_gui_bank()
 			self.zyngui_instr=zynthian_gui_instr()
 
+	# Init Rotary Encoders C Library
+	def lib_rencoder_init(self):
+		try:
+			global lib_rencoder
+			lib_rencoder=cdll.LoadLibrary("midi_rencoder/midi_rencoder.so")
+			lib_rencoder.init_rencoder()
+		except Exception as e:
+			print("Can't init Zyncoders: %s" % str(e))
+
+	# Init GPIO Switches
+	def gpio_switch_init(self):
+		sw1_chan=3
+		sw2_chan=4
+		lib_rencoder.setup_gpio_switch(0,sw1_chan)
+		lib_rencoder.setup_gpio_switch(1,sw2_chan)
+
+	def gpio_switch1(self):
+		if lib_rencoder.get_gpio_switch(0):
+			print('Switch 1')
+			if self.mode==0:
+				self.zyngui_engine.click_listbox()
+			elif self.mode==1:
+				self.zyngui_bank.click_listbox()
+			elif self.mode==2:
+				self.zyngui_instr.click_listbox()
+			elif self.mode==3:
+				self.set_mode_instr_select()
+
+	def gpio_switch2(self):
+		if lib_rencoder.get_gpio_switch(1):
+			print('Switch 2')
+			if self.mode==1:
+				self.set_mode_engine_select()
+			elif self.mode>=2:
+				self.set_mode_bank_select()
+
 	def start_polling(self):
 		self.polling=True;
 		self.midi_read();
@@ -544,6 +575,8 @@ class zynthian_gui:
 			top.after(40, self.midi_read)
 
 	def rencoder_read(self):
+		self.gpio_switch1()
+		self.gpio_switch2()
 		if self.mode==0:
 			self.zyngui_engine.rencoder_read()
 		elif self.mode==1:
@@ -554,48 +587,6 @@ class zynthian_gui:
 			self.zyngui_instr.rencoder_read_control()
 		if self.polling:
 			top.after(40, self.rencoder_read)
-
-	# Init Rotary Encoders C Library
-	def lib_rencoder_init(self):
-		try:
-			global lib_rencoder
-			lib_rencoder=cdll.LoadLibrary("midi_rencoder/midi_rencoder.so")
-			lib_rencoder.init_rencoder()
-		except Exception as e:
-			print("Can't init Zyncoders: %s" % str(e))
-
-	def gpio_switch1(self,chan):
-		print('Switch 1')
-		if self.mode==0:
-			self.zyngui_engine.click_listbox()
-		elif self.mode==1:
-			self.zyngui_bank.click_listbox()
-		elif self.mode==2:
-			self.zyngui_instr.click_listbox()
-		elif self.mode==3:
-			self.set_mode_instr_select()
-
-	def gpio_switch2(self,chan):
-		print('Switch 2')
-		if self.mode==1:
-			self.set_mode_engine_select()
-		elif self.mode>=2:
-			self.set_mode_bank_select()
-
-	# Init GPIO Switches
-	def gpio_switch_init(self):
-		sw1_chan=15
-		sw2_chan=16
-
-		GPIO.setmode(GPIO.BOARD)
-
-		GPIO.setup(sw1_chan, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-		GPIO.add_event_detect(sw1_chan, GPIO.RISING, bouncetime=400)
-		GPIO.add_event_callback(sw1_chan, self.gpio_switch1)
-
-		GPIO.setup(sw2_chan, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-		GPIO.add_event_detect(sw2_chan, GPIO.RISING, bouncetime=400)
-		GPIO.add_event_callback(sw2_chan, self.gpio_switch2)
 
 #-------------------------------------------------------------------------------
 # Create Top Level Window with Fixed Size

@@ -85,14 +85,8 @@ class zynthian_synth_engine:
 
 	def chuser(self):
 		def result():
-			try:
-				print("CHUSER 1")
-				os.setgid(self.user_gid)
-				print("CHUSER 2")
-				os.setuid(self.user_uid)
-				print("CHUSER 3")
-			except:
-				print("POLLAS!")
+			os.setgid(self.user_gid)
+			os.setuid(self.user_uid)
 		return result
 
 	def start(self,start_queue=False):
@@ -199,7 +193,7 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 		print('Getting Instrument List for ' + self.bank_name)
 		for f in sorted(listdir(instr_dir)):
 			#print(f)
-			if (isfile(join(instr_dir,f)) and f[-4:]=='.xiz'):
+			if (isfile(join(instr_dir,f)) and f[-4:].lower()=='.xiz'):
 				prg=int(f[0:4])-1
 				bank_lsb=int(prg/128)
 				bank_msb=self.bank_index
@@ -216,7 +210,7 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 
 class zynthian_fluidsynth_engine(zynthian_synth_engine):
 	name="FluidSynth"
-	command=("fluidsynth", "-p", "FluidSynth", "-a", "alsa" ,"-g", "1")
+	command=("/usr/local/bin/fluidsynth", "-p", "FluidSynth", "-a", "alsa" ,"-g", "1")
 
 	bank_dir="./sf2"
 	bank_id=0
@@ -242,7 +236,7 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 		print('Getting Bank List for ' + self.name)
 		i=0
 		for f in sorted(listdir(self.bank_dir)):
-			if (isfile(join(self.bank_dir,f)) and f[-4:]=='.sf2'):
+			if (isfile(join(self.bank_dir,f)) and f[-4:].lower()=='.sf2'):
 				title=str.replace(f[:-4], '_', ' ')
 				self.bank_list.append((f,i,title))
 				i=i+1
