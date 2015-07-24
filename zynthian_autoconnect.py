@@ -65,6 +65,10 @@ def midi_autoconnect():
 
 #------------------------------------------------------------------------------
 
+#Load midi_snd_seq Driver
+#command="modprobe snd-seq-midi"
+#check_output(command, shell=True)
+
 #Main loop
 while True:
 	try:

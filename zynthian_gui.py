@@ -15,6 +15,7 @@ import alsaseq
 import alsamidi
 from tkinter import *
 from ctypes import *
+from datetime import datetime
 
 from zynthian_engine import *
 
@@ -165,8 +166,8 @@ class zynthian_splash:
 			highlightthickness=0,
 			relief='flat',
 			bg = bgcolor)
-		splash_img = PhotoImage(file = "./img/zynthian_gui_splash.gif")
-		self.canvas.create_image(0, 0, image = splash_img, anchor = NW)
+		self.splash_img = PhotoImage(file = "./img/zynthian_gui_splash.gif")
+		self.canvas.create_image(0, 0, image = self.splash_img, anchor = NW)
 		self.show(tms)
 
 	def hide(self):
@@ -182,13 +183,22 @@ class zynthian_splash:
 class zynthian_gui_list:
 	width=162
 	height=215
-
+	lb_width=19
+	lb_height=10
+	lb_x=width/2
+	wide=False
 	shown=False
 	index=0
 	list_data=[]
 
-	def __init__(self, image_bg=None):
+	def __init__(self, image_bg=None, wide=False):
 		list_data=[]
+
+		if wide:
+			self.wide=True
+			self.width=240
+			self.lb_width=29
+			self.lb_x=5
 
 		# Add Background Image inside a Canvas
 		self.canvas = Canvas(
@@ -205,8 +215,8 @@ class zynthian_gui_list:
 
 		# Add ListBox
 		self.listbox = Listbox(self.canvas,
-			width=19,
-			height=10,
+			width=self.lb_width,
+			height=self.lb_height,
 			font=("Helvetica",11),
 			bd=0,
 			highlightthickness=0,
@@ -216,7 +226,7 @@ class zynthian_gui_list:
 			selectbackground=lightcolor,
 			selectforeground=bgcolor,
 			selectmode=BROWSE)
-		self.listbox.place(relx=0.5, y=height-5, anchor=S)
+		self.listbox.place(x=self.lb_x, y=height-5, anchor=SW)
 		self.listbox.bind('<<ListboxSelect>>', lambda event :self.click_listbox())
 
 		# Add Select Path (top-left)
@@ -251,9 +261,13 @@ class zynthian_gui_list:
 			return False
 
 	def plot_frame(self):
-		rx=(width-self.width)/2
+		if self.wide:
+			rx=0
+			rx2=self.width
+		else:
+			rx=(width-self.width)/2
+			rx2=width-rx-1
 		ry=height-self.height
-		rx2=width-rx-1
 		ry2=height-1
 		self.canvas.create_polygon((rx, ry, rx2, ry, rx2, ry2, rx, ry2), outline=bordercolor, fill=bgcolor)
 
@@ -287,7 +301,67 @@ class zynthian_gui_list:
 	def select(self, index):
 		self.index=index
 		self.select_listbox(index)
-		
+
+
+#-------------------------------------------------------------------------------
+# Zynthian Admin GUI Class
+#-------------------------------------------------------------------------------
+class zynthian_admin(zynthian_gui_list):
+	zselector=None
+
+	def __init__(self):
+		super().__init__(gui_bg_logo,True)
+		self.label_title = Label(self.canvas,
+			text="Admin",
+			font=("Helvetica",13,"bold"),
+			justify=LEFT,
+			bg=bgcolor,
+			fg=lightcolor)
+		self.label_title.place(x=84,y=-2,anchor=NW)
+		self.fill_list()
+		self.zselector=zynthian_controller(2,self.canvas,243,25,"Action",0,0,len(self.list_data))
+    
+	def get_list_data(self):
+		self.list_data=(
+			(self.update_system,0,"Update Operating System"),
+			(self.update_software,0,"Update Zynthian Software"),
+			(self.update_zlibrary,0,"Update Zynthian Library"),
+			(self.update_ulibrary,0,"Update User Library"),
+			(self.open_reverse_ssh,0,"Open Reverse SSH")
+		)
+
+	def show(self):
+		super().show()
+		if self.zselector:
+			self.zselector.config("Action",0,self.get_cursel(),len(self.list_data))
+			#self.zselector.config("Action",0,0,len(self.list_data))
+
+	def select_action(self, i):
+		self.list_data[i][0]()
+
+	def rencoder_read(self):
+		_sel=self.zselector.value
+		self.zselector.read_rencoder()
+		sel=self.zselector.value
+		if (_sel!=sel):
+			print('Pre-select Admin Action ' + str(sel))
+			self.select_listbox(sel)
+
+	def update_system(self):
+		print("UPDATE SYSTEM")
+
+	def update_software(self):
+		print("UPDATE SOFTWARE")
+
+	def update_zlibrary(self):
+		print("UPDATE ZLIBRARY")
+
+	def update_ulibrary(self):
+		print("UPDATE ULIBRARY")
+
+	def open_reverse_ssh(self):
+		print("OPEN REVERSE SSH")
+
 #-------------------------------------------------------------------------------
 # Zynthian Engine Selection GUI Class
 #-------------------------------------------------------------------------------
@@ -297,7 +371,14 @@ class zynthian_gui_engine(zynthian_gui_list):
 	zyngine=None
 
 	def __init__(self):
-		super().__init__(gui_bg_logo)
+		super().__init__(gui_bg_logo,True)
+		self.label_title = Label(self.canvas,
+			text="Engine",
+			font=("Helvetica",13,"bold"),
+			justify=LEFT,
+			bg=bgcolor,
+			fg=lightcolor)
+		self.label_title.place(x=84,y=-2,anchor=NW)
 		self.fill_list()
 		self.zselector=zynthian_controller(2,self.canvas,243,25,"Engine",0,0,len(self.list_data))
 		#self.set_select_path()
@@ -311,8 +392,8 @@ class zynthian_gui_engine(zynthian_gui_list):
 	def show(self):
 		super().show()
 		if self.zselector:
-			#self.zselector.config("Engine",0,self.get_cursel(),len(self.list_data))
-			self.zselector.config("Engine",0,0,2)
+			self.zselector.config("Engine",0,self.get_cursel(),len(self.list_data))
+			#self.zselector.config("Engine",0,0,len(self.list_data))
 
 	def select_action(self, i):
 		zyngui.set_engine(self.list_data[i][2])
@@ -351,7 +432,7 @@ class zynthian_gui_bank(zynthian_gui_list):
 	zselector=None
 
 	def __init__(self):
-		super().__init__(gui_bg)
+		super().__init__(gui_bg, True)
 		self.fill_list()
 		self.zselector=zynthian_controller(2,self.canvas,243,25,"Bank",0,zyngui.zyngine.bank_index,len(self.list_data))
 		self.set_select_path()
@@ -465,20 +546,37 @@ class zynthian_gui:
 	mode=0
 	polling=False
 	zyngine=None
+	zyngui_splash=None
+	zyngui_admin=None
 	zyngui_engine=None
 	zyngui_bank=None
 	zyngui_instr=None
+	dtsw1=dtsw2=datetime.now()
 	
 	def __init__(self):
+		# GUI Objects Initialization
+		self.zyngui_splash=zynthian_splash(1000)
+		self.zyngui_admin=zynthian_admin()
 		self.zyngui_engine=zynthian_gui_engine()
+		# Control Initialization (Rotary and Switches)
 		self.lib_rencoder_init()
 		self.gpio_switch_init()
 		self.set_mode_engine_select()
 		self.start_polling()
 
+	def set_mode_admin(self):
+		self.mode=-1
+		self.zyngui_admin.show()
+		self.zyngui_engine.hide()
+		if self.zyngui_bank:
+			self.zyngui_bank.hide()
+		if self.zyngui_instr:
+			self.zyngui_instr.hide()
+
 	def set_mode_engine_select(self):
 		self.mode=0
 		self.zyngui_engine.show()
+		self.zyngui_admin.hide()
 		if self.zyngui_bank:
 			self.zyngui_bank.hide()
 		if self.zyngui_instr:
@@ -487,16 +585,16 @@ class zynthian_gui:
 	def set_mode_bank_select(self):
 		self.mode=1
 		self.zyngui_bank.show()
-		if self.zyngui_engine:
-			self.zyngui_engine.hide()
+		self.zyngui_admin.hide()
+		self.zyngui_engine.hide()
 		if self.zyngui_instr:
 			self.zyngui_instr.hide()
         
 	def set_mode_instr_select(self):
 		self.mode=2
 		self.zyngui_instr.show()
-		if self.zyngui_engine:
-			self.zyngui_engine.hide()
+		self.zyngui_admin.hide()
+		self.zyngui_engine.hide()
 		if self.zyngui_bank:
 			self.zyngui_bank.hide()
 		self.zyngui_instr.set_mode_select()
@@ -504,8 +602,8 @@ class zynthian_gui:
 	def set_mode_instr_control(self):
 		self.mode=3
 		self.zyngui_instr.show()
-		if self.zyngui_engine:
-			self.zyngui_engine.hide()
+		self.zyngui_admin.hide()
+		self.zyngui_engine.hide()
 		if self.zyngui_bank:
 			self.zyngui_bank.hide()
 		self.zyngui_instr.set_mode_control()
@@ -535,22 +633,39 @@ class zynthian_gui:
 	def gpio_switch1(self):
 		if lib_rencoder.get_gpio_switch(0):
 			print('Switch 1')
-			if self.mode==0:
-				self.zyngui_engine.click_listbox()
-			elif self.mode==1:
-				self.zyngui_bank.click_listbox()
-			elif self.mode==2:
-				self.zyngui_instr.click_listbox()
+			self.dtsw1=datetime.now()
+			if self.gpio_switch12():
+				return
 			elif self.mode==3:
 				self.set_mode_instr_select()
+			elif self.mode==2:
+				self.zyngui_instr.click_listbox()
+			elif self.mode==1:
+				self.zyngui_bank.click_listbox()
+			elif self.mode==0:
+				self.zyngui_engine.click_listbox()
+			elif self.mode==-1:
+				self.zyngui_admin.click_listbox()
 
 	def gpio_switch2(self):
 		if lib_rencoder.get_gpio_switch(1):
 			print('Switch 2')
-			if self.mode==1:
-				self.set_mode_engine_select()
+			self.dtsw2=datetime.now()
+			if self.gpio_switch12():
+				return
 			elif self.mode>=2:
 				self.set_mode_bank_select()
+			elif self.mode==1:
+				self.set_mode_engine_select()
+			elif self.mode==0:
+				pass
+			elif self.mode==-1:
+				self.set_mode_engine_select()
+
+	def gpio_switch12(self):
+		if abs((self.dtsw1-self.dtsw2).total_seconds())<0.5:
+			print('Switch 1+2')
+			self.set_mode_admin()
 
 	def start_polling(self):
 		self.polling=True;
@@ -575,16 +690,20 @@ class zynthian_gui:
 			top.after(40, self.midi_read)
 
 	def rencoder_read(self):
-		self.gpio_switch1()
-		self.gpio_switch2()
-		if self.mode==0:
-			self.zyngui_engine.rencoder_read()
-		elif self.mode==1:
-			self.zyngui_bank.rencoder_read()
+		if self.mode==3:
+			self.zyngui_instr.rencoder_read_control()
 		elif self.mode==2:
 			self.zyngui_instr.rencoder_read_select()
-		elif self.mode==3:
-			self.zyngui_instr.rencoder_read_control()
+		elif self.mode==1:
+			self.zyngui_bank.rencoder_read()
+		elif self.mode==0:
+			self.zyngui_engine.rencoder_read()
+		elif self.mode==-1:
+			self.zyngui_admin.rencoder_read()
+
+		self.gpio_switch1()
+		self.gpio_switch2()
+
 		if self.polling:
 			top.after(40, self.rencoder_read)
 
@@ -596,16 +715,16 @@ top = Tk()
 top.geometry(str(width)+'x'+str(height))
 top.maxsize(width,height)
 top.minsize(width,height)
+top.config(cursor="none")
 
 #-------------------------------------------------------------------------------
 # GUI & Synth Engine initialization
 #-------------------------------------------------------------------------------
 
-# Background Loading
+# Image Loading
 gui_bg_logo = PhotoImage(file = "./img/zynthian_bg_logo_left.gif")
 gui_bg = None
 
-splash=zynthian_splash(1000)
 zyngui=zynthian_gui()
 
 #-------------------------------------------------------------------------------
