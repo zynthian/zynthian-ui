@@ -11,11 +11,13 @@ created: 2015-05-18
 modified:  2015-07-11
 """
 
+import sys
 import alsaseq
 import alsamidi
 from tkinter import *
 from ctypes import *
 from datetime import datetime
+from subprocess import check_output
 
 from zynthian_engine import *
 
@@ -327,7 +329,8 @@ class zynthian_admin(zynthian_gui_list):
 			(self.update_software,0,"Update Zynthian Software"),
 			(self.update_zlibrary,0,"Update Zynthian Library"),
 			(self.update_ulibrary,0,"Update User Library"),
-			(self.open_reverse_ssh,0,"Open Reverse SSH")
+			(self.open_reverse_ssh,0,"Open Reverse SSH"),
+			(self.power_off,0,"Power Off")
 		)
 
 	def show(self):
@@ -361,6 +364,11 @@ class zynthian_admin(zynthian_gui_list):
 
 	def open_reverse_ssh(self):
 		print("OPEN REVERSE SSH")
+
+	def power_off(self):
+		print("POWER OFF")
+		check_output("systemctl poweroff", shell=True)
+		sys.exit()
 
 #-------------------------------------------------------------------------------
 # Zynthian Engine Selection GUI Class
@@ -559,8 +567,11 @@ class zynthian_gui:
 		self.zyngui_admin=zynthian_admin()
 		self.zyngui_engine=zynthian_gui_engine()
 		# Control Initialization (Rotary and Switches)
-		self.lib_rencoder_init()
-		self.gpio_switch_init()
+		try:
+			self.lib_rencoder_init()
+			self.gpio_switch_init()
+		except:
+			pass
 		self.set_mode_engine_select()
 		self.start_polling()
 
@@ -616,11 +627,12 @@ class zynthian_gui:
 
 	# Init Rotary Encoders C Library
 	def lib_rencoder_init(self):
+		global lib_rencoder
 		try:
-			global lib_rencoder
 			lib_rencoder=cdll.LoadLibrary("midi_rencoder/midi_rencoder.so")
 			lib_rencoder.init_rencoder()
 		except Exception as e:
+			lib_rencoder=None
 			print("Can't init Zyncoders: %s" % str(e))
 
 	# Init GPIO Switches
@@ -631,7 +643,13 @@ class zynthian_gui:
 		lib_rencoder.setup_gpio_switch(1,sw2_chan)
 
 	def gpio_switch1(self):
-		if lib_rencoder.get_gpio_switch(0):
+		dtus=lib_rencoder.get_gpio_switch_dtus(0)
+		if dtus>0:
+			#print("Switch 1 dtus="+str(dtus));
+			if dtus>3000000:
+				print('Long Switch 1')
+				self.zyngui_admin.power_off()
+				return
 			print('Switch 1')
 			self.dtsw1=datetime.now()
 			if self.gpio_switch12():
@@ -648,7 +666,12 @@ class zynthian_gui:
 				self.zyngui_admin.click_listbox()
 
 	def gpio_switch2(self):
-		if lib_rencoder.get_gpio_switch(1):
+		dtus=lib_rencoder.get_gpio_switch_dtus(1)
+		if dtus>0:
+			if dtus>3000000:
+				print('Long Switch 2')
+				self.set_mode_admin()
+				return
 			print('Switch 2')
 			self.dtsw2=datetime.now()
 			if self.gpio_switch12():
@@ -666,12 +689,14 @@ class zynthian_gui:
 		if abs((self.dtsw1-self.dtsw2).total_seconds())<0.5:
 			print('Switch 1+2')
 			self.set_mode_admin()
+			return True
 
 	def start_polling(self):
 		self.polling=True;
 		self.midi_read();
-		self.rencoder_read();
-        
+		if lib_rencoder:
+			self.rencoder_read();
+
 	def stop_polling(self):
 		self.polling=False;
 		

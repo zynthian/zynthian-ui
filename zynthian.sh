@@ -11,7 +11,8 @@ xset s noblank
 echo 508 > /sys/class/gpio/export
 
 # Turn On Display (Backlight)
-echo '1' > /sys/class/gpio/gpio508/value
+echo 'in' > /sys/class/gpio/gpio508/direction
+#echo '1' > /sys/class/gpio/gpio508/value
 
 # Start Autoconnector
 ./zynthian_autoconnect.py > /var/log/zynthian_autoconnect.log 2>&1 &
@@ -22,5 +23,4 @@ echo '1' > /sys/class/gpio/gpio508/value
 
 # Turn Off Display (Backlight)
 echo 'out' > /sys/class/gpio/gpio508/direction
-
 #echo '0' > /sys/class/gpio/gpio508/value
