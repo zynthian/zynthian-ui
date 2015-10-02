@@ -37,6 +37,8 @@ lightcolor="#f8cf2b"
 
 splash_image="./img/zynthian_gui_splash.gif"
 
+lib_rencoder=None
+
 #-------------------------------------------------------------------------------
 # Controller GUI Class
 #-------------------------------------------------------------------------------
@@ -46,9 +48,11 @@ class zynthian_controller:
 	trw=70
 	trh=13
 
+	frame=None
+	triangle=None
 	shown=False
 
-	def __init__(self, indx, cnv, x, y, tit, ctrl, val=0, max_val=127):
+	def __init__(self, indx, cnv, x, y, tit, chan, ctrl, val=0, max_val=127):
 		if (val>max_val):
 			val=max_val
 		self.canvas=cnv
@@ -56,6 +60,7 @@ class zynthian_controller:
 		self.y=y
 		self.title=tit
 		self.index=indx
+		self.chan=chan
 		self.ctrl=ctrl
 		self.value=val
 		self.max_value=max_val
@@ -93,12 +98,15 @@ class zynthian_controller:
 	def plot_frame(self):
 		x2=self.x+self.width
 		y2=self.y+self.height
-		self.canvas.create_polygon((self.x, self.y, x2, self.y, x2, y2, self.x, y2), outline=bordercolor, fill=bgcolor)
+		if self.frame:
+			self.canvas.coords(self.frame,(self.x, self.y, x2, self.y, x2, y2, self.x, y2))
+		else:
+			self.frame=self.canvas.create_polygon((self.x, self.y, x2, self.y, x2, y2, self.x, y2), outline=bordercolor, fill=bgcolor)
 
 	def erase_frame(self):
-		x2=self.x+self.width
-		y2=self.y+self.height
-		self.canvas.create_polygon((self.x, self.y, x2, self.y, x2, y2, self.x, y2), outline=bgcolor, fill=bgcolor)
+		if self.frame:
+			self.canvas.delete(self.frame)
+			self.frame=None
 
 	def plot_triangle(self):
 		if (self.value>self.max_value): self.value=self.max_value
@@ -107,15 +115,18 @@ class zynthian_controller:
 		y1=self.y+int(0.8*self.height)+self.trh
 		x2=x1+self.trw*self.value/self.max_value
 		y2=y1-self.trh*self.value/self.max_value
-		self.canvas.create_polygon((x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh-1), fill=bg2color)
-		self.canvas.create_polygon((x1, y1, x2, y1, x2, y2), fill=lightcolor)
+		if self.triangle:
+			self.canvas.coords(self.triangle_bg,(x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh))
+			self.canvas.coords(self.triangle,(x1, y1, x2, y1, x2, y2))
+		else:
+			self.triangle_bg=self.canvas.create_polygon((x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh), fill=bg2color)
+			self.triangle=self.canvas.create_polygon((x1, y1, x2, y1, x2, y2), fill=lightcolor)
 
 	def erase_triangle(self):
-		x1=self.x+2
-		y1=self.y+int(0.8*self.height)+self.trh
-		x2=x1+self.trw
-		y2=y1-self.trh-1
-		self.canvas.create_polygon((x1, y1, x2, y1, x2, y2), fill=bgcolor)
+		if self.triangle:
+			self.canvas.delete(self.triangle_bg)
+			self.canvas.delete(self.triangle)
+			self.triangle_bg=self.triangle=None
 
 	def config(self, tit, ctrl, val, max_val=127):
 		self.title=str(tit)
@@ -128,9 +139,9 @@ class zynthian_controller:
 	def setup_zyncoder(self):
 		try:
 			if self.ctrl==0:
-				lib_rencoder.setup_zyncoder(self.index,self.ctrl,4*self.value,4*(self.max_value-1))
+				lib_rencoder.setup_zyncoder(self.index,self.chan,self.ctrl,4*self.value,4*(self.max_value-1))
 			else:
-				lib_rencoder.setup_zyncoder(self.index,self.ctrl,self.value,self.max_value)
+				lib_rencoder.setup_zyncoder(self.index,self.chan,self.ctrl,self.value,self.max_value)
 		except:
 			pass
 
@@ -321,7 +332,7 @@ class zynthian_admin(zynthian_gui_list):
 			fg=lightcolor)
 		self.label_title.place(x=84,y=-2,anchor=NW)
 		self.fill_list()
-		self.zselector=zynthian_controller(2,self.canvas,243,25,"Action",0,0,len(self.list_data))
+		self.zselector=zynthian_controller(2,self.canvas,243,25,"Action",0,0,0,len(self.list_data))
     
 	def get_list_data(self):
 		self.list_data=(
@@ -367,7 +378,8 @@ class zynthian_admin(zynthian_gui_list):
 
 	def power_off(self):
 		print("POWER OFF")
-		check_output("systemctl poweroff", shell=True)
+		#check_output("systemctl poweroff", shell=True)
+		check_output("poweroff", shell=True)
 		sys.exit()
 
 #-------------------------------------------------------------------------------
@@ -388,7 +400,7 @@ class zynthian_gui_engine(zynthian_gui_list):
 			fg=lightcolor)
 		self.label_title.place(x=84,y=-2,anchor=NW)
 		self.fill_list()
-		self.zselector=zynthian_controller(2,self.canvas,243,25,"Engine",0,0,len(self.list_data))
+		self.zselector=zynthian_controller(2,self.canvas,243,25,"Engine",0,0,0,len(self.list_data))
 		#self.set_select_path()
     
 	def get_list_data(self):
@@ -442,7 +454,7 @@ class zynthian_gui_bank(zynthian_gui_list):
 	def __init__(self):
 		super().__init__(gui_bg, True)
 		self.fill_list()
-		self.zselector=zynthian_controller(2,self.canvas,243,25,"Bank",0,zyngui.zyngine.bank_index,len(self.list_data))
+		self.zselector=zynthian_controller(2,self.canvas,243,25,"Bank",0,0,zyngui.zyngine.get_bank_index(),len(self.list_data))
 		self.set_select_path()
     
 	def get_list_data(self):
@@ -451,7 +463,7 @@ class zynthian_gui_bank(zynthian_gui_list):
 	def show(self):
 		super().show()
 		if self.zselector:
-			self.zselector.config("Bank",0,zyngui.zyngine.bank_index,len(self.list_data))
+			self.zselector.config("Bank",0,zyngui.zyngine.get_bank_index(),len(self.list_data))
 
 	def select_action(self, i):
 		zyngui.zyngine.set_bank(i)
@@ -480,10 +492,10 @@ class zynthian_gui_instr(zynthian_gui_list):
 		# Controllers
 		self.zcontrollers_config=zyngui.zyngine.default_ctrl_config;
 		self.zcontrollers=(
-			zynthian_controller(0,self.canvas,-1,25,self.zcontrollers_config[0][0],self.zcontrollers_config[0][1],self.zcontrollers_config[0][2],self.zcontrollers_config[0][3]),
-			zynthian_controller(1,self.canvas,-1,133,self.zcontrollers_config[1][0],self.zcontrollers_config[1][1],self.zcontrollers_config[1][2],self.zcontrollers_config[1][3]),
-			zynthian_controller(2,self.canvas,243,25,self.zcontrollers_config[2][0],self.zcontrollers_config[2][1],self.zcontrollers_config[2][2],self.zcontrollers_config[2][3]),
-			zynthian_controller(3,self.canvas,243,133,self.zcontrollers_config[3][0],self.zcontrollers_config[3][1],self.zcontrollers_config[3][2],self.zcontrollers_config[3][3])
+			zynthian_controller(0,self.canvas,-1,25,self.zcontrollers_config[0][0],zyngui.zyngine.midi_channel,self.zcontrollers_config[0][1],self.zcontrollers_config[0][2],self.zcontrollers_config[0][3]),
+			zynthian_controller(1,self.canvas,-1,133,self.zcontrollers_config[1][0],zyngui.zyngine.midi_channel,self.zcontrollers_config[1][1],self.zcontrollers_config[1][2],self.zcontrollers_config[1][3]),
+			zynthian_controller(2,self.canvas,243,25,self.zcontrollers_config[2][0],zyngui.zyngine.midi_channel,self.zcontrollers_config[2][1],self.zcontrollers_config[2][2],self.zcontrollers_config[2][3]),
+			zynthian_controller(3,self.canvas,243,133,self.zcontrollers_config[3][0],zyngui.zyngine.midi_channel,self.zcontrollers_config[3][1],self.zcontrollers_config[3][2],self.zcontrollers_config[3][3])
 		)
 		# Init Controllers Map
 		self.zcontroller_map={}
@@ -514,7 +526,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 		self.list_data=zyngui.zyngine.instr_list
 
 	def set_mode_select(self):
-		self.set_controller(2, "Instrument", 0, zyngui.zyngine.instr_index, len(self.list_data))
+		self.set_controller(2, "Instrument", 0, zyngui.zyngine.get_instr_index(), len(self.list_data))
 		self.zcontrollers[0].hide()
 		self.zcontrollers[1].hide()
 		self.zcontrollers[3].hide()
@@ -528,7 +540,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 
 	def select_action(self, i):
 		zyngui.zyngine.set_instr(i)
-		self.zcontrollers_config=zyngui.zyngine.instr_ctrl_config;
+		self.zcontrollers_config=zyngui.zyngine.get_instr_ctrl_config();
 		zyngui.set_mode_instr_control()
 
 	def set_select_path(self):
@@ -563,7 +575,7 @@ class zynthian_gui:
 	
 	def __init__(self):
 		# GUI Objects Initialization
-		self.zyngui_splash=zynthian_splash(1000)
+		#self.zyngui_splash=zynthian_splash(1000)
 		self.zyngui_admin=zynthian_admin()
 		self.zyngui_engine=zynthian_gui_engine()
 		# Control Initialization (Rotary and Switches)
@@ -693,13 +705,14 @@ class zynthian_gui:
 
 	def start_polling(self):
 		self.polling=True;
+		self.poll_count=0;
 		self.midi_read();
 		if lib_rencoder:
 			self.rencoder_read();
 
 	def stop_polling(self):
 		self.polling=False;
-		
+
 	def midi_read(self):
 		while alsaseq.inputpending():
 			event = alsaseq.input()
@@ -731,6 +744,9 @@ class zynthian_gui:
 
 		if self.polling:
 			top.after(40, self.rencoder_read)
+			#self.poll_count=self.poll_count+1;
+			#if self.poll_count % 20 == 0:
+			#	print ("POLL "+str(self.poll_count));
 
 #-------------------------------------------------------------------------------
 # Create Top Level Window with Fixed Size

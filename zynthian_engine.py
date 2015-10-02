@@ -42,12 +42,17 @@ class zynthian_synth_engine:
 	user_uid=1000
 
 	bank_list=None
-	bank_index=0
-	bank_name=""
+	instr_list=None	
 
-	instr_list=None
-	instr_index=0
-	instr_name=""
+	midi_channel=0
+
+	bank_index=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+	bank_name=["","","","","","","","","","","","","","","",""]
+
+	instr_index=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+	instr_name=["","","","","","","","","","","","","","","",""]
+
+	instr_ctrl_config=[None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None]
 
 	default_ctrl_config=(
 		('modulation',1,0,127),
@@ -57,7 +62,6 @@ class zynthian_synth_engine:
 		('filter Q',71,64,127),
 		('filter cutoff',74,64,127)
 	)
-	instr_ctrl_config=None
 
 	def __init__(self):
 		self.start()
@@ -117,38 +121,51 @@ class zynthian_synth_engine:
 			self.proc.stdin.flush()
 			return self.proc_get_lines(tout)
 
+	def set_midi_chan(self, i):
+		self.midi_channel=i
+
+	def get_midi_chan(self):
+		return self.midi_channel
+
+	def get_bank_index(self):
+		return self.bank_index[self.midi_channel]
+
+	def get_instr_index(self):
+		return self.instr_index[self.midi_channel]
+
+	def get_instr_ctrl_config(self):
+		return self.instr_ctrl_config[self.midi_channel]
+
 	def load_bank_list(self):
-		self.bank_index=0
-		self.bank_name=""
-		self.instr_index=0
-		self.instr_name=""
+		self.bank_index[self.midi_channel]=0
+		self.bank_name[self.midi_channel]=""
+		self.instr_index[self.midi_channel]=0
+		self.instr_name[self.midi_channel]=""
 
 	def load_instr_list(self):
-		self.instr_index=0
-		self.instr_name=""
+		self.instr_index[self.midi_channel]=0
+		self.instr_name[self.midi_channel]=""
 
 	def load_instr_config(self):
-		self.instr_ctrl_config=self.default_ctrl_config
+		self.instr_ctrl_config[self.midi_channel]=self.default_ctrl_config
 
 	def set_bank(self, i):
-		self.bank_index=i
-		self.bank_name=self.bank_list[i][2]
-		print('Bank Selected: ' + self.bank_name + ' (' + str(i)+')')
+		self.bank_index[self.midi_channel]=i
+		self.bank_name[self.midi_channel]=self.bank_list[i][2]
+		print('Bank Selected: ' + self.bank_name[self.midi_channel] + ' (' + str(i)+')')
 		self.load_instr_list()
 
 	def set_instr(self, i):
-		self.instr_index=i
-		self.instr_name=self.instr_list[i][2]
-		print('Instrument Selected: ' + self.instr_name + ' (' + str(i)+')')
-		zynmidi.set_midi_bank_msb(self.instr_list[i][1][0])
-		zynmidi.set_midi_bank_lsb(self.instr_list[i][1][1])
-		zynmidi.set_midi_prg(self.instr_list[i][1][2])
+		self.instr_index[self.midi_channel]=i
+		self.instr_name[self.midi_channel]=self.instr_list[i][2]
+		print('Instrument Selected: ' + self.instr_name[self.midi_channel] + ' (' + str(i)+')')
+		zynmidi.set_midi_instr(self.midi_channel, self.instr_list[i][1][0], self.instr_list[i][1][1], self.instr_list[i][1][2])
 		self.load_instr_config()
 
 	def get_path(self):
-		path=self.bank_name
-		if self.instr_name:
-			path=path + ' / ' + self.instr_name
+		path=self.bank_name[self.midi_channel]
+		if self.instr_name[self.midi_channel]:
+			path=path + ' / ' + self.instr_name[self.midi_channel]
 		return path
 
 #-------------------------------------------------------------------------------
@@ -157,7 +174,7 @@ class zynthian_synth_engine:
 
 class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 	name="ZynAddSubFX"
-	command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U")
+	command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U", "-l", "zasfx_8ch.xmz")
 	
 	#bank_dir="/usr/share/zynaddsubfx/banks"
 	bank_dir="./software/zynaddsubfx-instruments/banks"
@@ -189,14 +206,14 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 	def load_instr_list(self):
 		super().load_instr_list()
 		self.instr_list=[]
-		instr_dir=join(self.bank_dir,self.bank_list[self.bank_index][0])
-		print('Getting Instrument List for ' + self.bank_name)
+		instr_dir=join(self.bank_dir,self.bank_list[self.bank_index[self.midi_channel]][0])
+		print('Getting Instrument List for ' + self.bank_name[self.midi_channel])
 		for f in sorted(listdir(instr_dir)):
 			#print(f)
 			if (isfile(join(instr_dir,f)) and f[-4:].lower()=='.xiz'):
 				prg=int(f[0:4])-1
 				bank_lsb=int(prg/128)
-				bank_msb=self.bank_index
+				bank_msb=self.bank_index[self.midi_channel]
 				prg=prg%128
 				title=str.replace(f[5:-4], '_', ' ')
 				self.instr_list.append((f,[bank_msb,bank_lsb,prg],title))
@@ -210,7 +227,8 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 
 class zynthian_fluidsynth_engine(zynthian_synth_engine):
 	name="FluidSynth"
-	command=("/usr/local/bin/fluidsynth", "-p", "FluidSynth", "-a", "alsa" ,"-g", "1")
+	#command=("/usr/local/bin/fluidsynth", "-p", "FluidSynth", "-a", "alsa" ,"-g", "1")
+	command=("/usr/bin/fluidsynth", "-p", "FluidSynth", "-a", "alsa" ,"-g", "1")
 
 	bank_dir="./sf2"
 	bank_id=0
@@ -244,7 +262,7 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 	def load_instr_list(self):
 		super().load_instr_list()
 		self.instr_list=[]
-		print('Getting Instrument List for ' + self.bank_name)
+		print('Getting Instrument List for ' + self.bank_name[self.midi_channel])
 		lines=self.proc_cmd("inst " + str(self.bank_id))
 		for f in lines:
 			try:
@@ -258,13 +276,13 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 				pass
 
 	def set_bank(self, i):
-		self.bank_index=i
-		self.bank_name=self.bank_list[i][2]
+		self.bank_index[self.midi_channel]=i
+		self.bank_name[self.midi_channel]=self.bank_list[i][2]
 		if self.bank_id>0:
 			self.proc_cmd("unload " + str(self.bank_id),2)
-		self.proc_cmd("load " + self.bank_dir + '/' + self.bank_list[i][0],10)
+		self.proc_cmd("load " + self.bank_dir + '/' + self.bank_list[i][0],20)
 		self.bank_id=self.bank_id+1
-		print('Bank Selected: ' + self.bank_name + ' (' + str(i)+')')
+		print('Bank Selected: ' + self.bank_name[self.midi_channel] + ' (' + str(i)+')')
 		self.load_instr_list()
 
 	def load_instr_config(self):

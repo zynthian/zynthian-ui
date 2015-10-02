@@ -49,9 +49,12 @@ def midi_autoconnect():
 				elif (ic[1]=='Zynthian_rencoder'):
 					if (oc[1] in synth_engine_list):
 						command="aconnect "+ic[0]+" "+oc[0]
+				elif (ic[1]=='ttymidi'):
+					if (oc[1] in synth_engine_list or oc[1]=='Zynthian_gui'):
+						command="aconnect "+ic[0]+" "+oc[0]
 				elif (ic[1]=='PCR'):
 					command="aconnect "+ic[0]+":1 "+oc[0]
-				else:
+				elif (oc[1]!="ttymidi"):
 					command="aconnect "+ic[0]+" "+oc[0]
 
 				if (command):
