@@ -33,16 +33,25 @@ class zynthian_midi:
 		self.bank_msb_selected[chan]=msb
 		self.set_midi_control(chan,0,msb)
 
+	def get_midi_bank_msb(self, chan):
+		return self.bank_msb_selected[chan]
+
 	def set_midi_bank_lsb(self, chan, lsb):
 		print("Set MIDI CH " + str(chan) + ", Bank LSB: " + str(lsb))
 		self.bank_lsb_selected[chan]=lsb
 		self.set_midi_control(chan,32,lsb)
+
+	def get_midi_bank_lsb(self, chan):
+		return self.bank_lsb_selected[chan]
 
 	def set_midi_prg(self, chan, prg):
 		print("Set MIDI CH " + str(chan) + ", Program: " + str(prg))
 		self.prg_selected[chan]=prg
 		event=alsamidi.pgmchangeevent(chan, prg)
 		alsaseq.output(event)
+
+	def get_midi_prg(self, chan):
+		return self.prg_selected[chan]
 
 	def set_midi_instr(self, chan, msb, lsb, prg):
 		print("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb) + ", Bank LSB: " + str(lsb) + ", Program: " + str(prg))
@@ -53,3 +62,6 @@ class zynthian_midi:
 		self.set_midi_control(chan,32,lsb)
 		event=alsamidi.pgmchangeevent(chan, prg)
 		alsaseq.output(event)
+
+	def get_midi_instr(self, chan):
+		return [self.bank_msb_selected[chan],self.bank_lsb_selected[chan],self.prg_selected[chan]]

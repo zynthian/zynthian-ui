@@ -128,10 +128,11 @@ class zynthian_controller:
 			self.canvas.delete(self.triangle)
 			self.triangle_bg=self.triangle=None
 
-	def config(self, tit, ctrl, val, max_val=127):
+	def config(self, tit, chan, ctrl, val, max_val=127):
 		self.title=str(tit)
 		self.label_title.config(text=self.title)
 		self.ctrl=ctrl
+		self.chan=chan
 		self.max_value=max_val
 		self.set_value(val)
 		self.setup_zyncoder()
@@ -265,7 +266,8 @@ class zynthian_gui_list:
 			self.shown=True
 			self.canvas.pack(expand = YES, fill = BOTH)
 			self.select_listbox(self.index)
-		
+			self.set_select_path()
+
 	def is_shown(self):
 		try:
 			self.canvas.pack_info()
@@ -315,6 +317,8 @@ class zynthian_gui_list:
 		self.index=index
 		self.select_listbox(index)
 
+	def set_select_path(self):
+		pass
 
 #-------------------------------------------------------------------------------
 # Zynthian Admin GUI Class
@@ -347,7 +351,7 @@ class zynthian_admin(zynthian_gui_list):
 	def show(self):
 		super().show()
 		if self.zselector:
-			self.zselector.config("Action",0,self.get_cursel(),len(self.list_data))
+			self.zselector.config("Action",0,0,self.get_cursel(),len(self.list_data))
 			#self.zselector.config("Action",0,0,len(self.list_data))
 
 	def select_action(self, i):
@@ -400,24 +404,24 @@ class zynthian_gui_engine(zynthian_gui_list):
 			fg=lightcolor)
 		self.label_title.place(x=84,y=-2,anchor=NW)
 		self.fill_list()
-		self.zselector=zynthian_controller(2,self.canvas,243,25,"Engine",0,0,0,len(self.list_data))
+		self.zselector=zynthian_controller(2,self.canvas,243,25,"Engine",0,0,1,len(self.list_data))
 		#self.set_select_path()
     
 	def get_list_data(self):
 		self.list_data=(
 			("ZynAddSubFX",0,"ZynAddSubFX"),
-			("FluidSynth",0,"FluidSynth")
+			("FluidSynth",1,"FluidSynth")
 		)
 
 	def show(self):
 		super().show()
 		if self.zselector:
-			self.zselector.config("Engine",0,self.get_cursel(),len(self.list_data))
+			self.zselector.config("Engine",0,0,self.get_cursel(),len(self.list_data))
 			#self.zselector.config("Engine",0,0,len(self.list_data))
 
 	def select_action(self, i):
 		zyngui.set_engine(self.list_data[i][2])
-		zyngui.set_mode_bank_select()
+		zyngui.set_mode_chan_select()
 		
 	def set_engine(self,name):
 		if self.zyngine:
@@ -442,7 +446,53 @@ class zynthian_gui_engine(zynthian_gui_list):
 			self.select_listbox(sel)
 
 	def set_select_path(self):
-		self.select_path.set("Zynthian")
+		pass
+		#self.select_path.set("Zynthian")
+
+#-------------------------------------------------------------------------------
+# Zynthian MIDI Channel Selection GUI Class
+#-------------------------------------------------------------------------------
+
+class zynthian_gui_chan(zynthian_gui_list):
+	zselector=None
+	max_chan=4
+
+	def __init__(self):
+		super().__init__(gui_bg, True)
+		self.fill_list()
+		self.index=zyngui.zyngine.get_midi_chan()
+		self.zselector=zynthian_controller(2,self.canvas,243,25,"Channel",0,0,self.index+1,len(self.list_data))
+		self.set_select_path()
+    
+	def get_list_data(self):
+		self.list_data=[]
+		for i in range(0,self.max_chan):
+			instr=zynmidi.get_midi_instr(i)
+			self.list_data.append((str(i+1),i,"Chan #"+str(i+1)+" -> Bank("+str(instr[0])+","+str(instr[1])+") Prog("+str(instr[2])+")"))
+
+	def show(self):
+		self.fill_list()
+		self.index=zyngui.zyngine.get_midi_chan()
+		super().show()
+		if self.zselector:
+			self.zselector.config("Channel",0,0,self.index,len(self.list_data))
+		self.select_listbox(self.index)
+
+	def select_action(self, i):
+		zyngui.zyngine.set_midi_chan(i)
+		zyngui.zyngui_bank.fill_list()
+		zyngui.set_mode_bank_select()
+
+	def rencoder_read(self):
+		_sel=self.zselector.value
+		self.zselector.read_rencoder()
+		sel=self.zselector.value
+		if (_sel!=sel):
+			print('Pre-select MIDI Chan ' + str(sel))
+			self.select_listbox(sel)
+
+	def set_select_path(self):
+		self.select_path.set(zyngui.zyngine.name)
 
 #-------------------------------------------------------------------------------
 # Zynthian Bank Selection GUI Class
@@ -454,16 +504,18 @@ class zynthian_gui_bank(zynthian_gui_list):
 	def __init__(self):
 		super().__init__(gui_bg, True)
 		self.fill_list()
-		self.zselector=zynthian_controller(2,self.canvas,243,25,"Bank",0,0,zyngui.zyngine.get_bank_index(),len(self.list_data))
+		self.index=zyngui.zyngine.get_bank_index()
+		self.zselector=zynthian_controller(2,self.canvas,243,25,"Bank",0,0,self.index+1,len(self.list_data))
 		self.set_select_path()
     
 	def get_list_data(self):
 		self.list_data=zyngui.zyngine.bank_list
 
 	def show(self):
+		self.index=zyngui.zyngine.get_bank_index()
 		super().show()
 		if self.zselector:
-			self.zselector.config("Bank",0,zyngui.zyngine.get_bank_index(),len(self.list_data))
+			self.zselector.config("Bank",0,0,self.index,len(self.list_data))
 
 	def select_action(self, i):
 		zyngui.zyngine.set_bank(i)
@@ -479,7 +531,7 @@ class zynthian_gui_bank(zynthian_gui_list):
 			self.select_listbox(sel)
 
 	def set_select_path(self):
-		self.select_path.set(zyngui.zyngine.name)
+		self.select_path.set(zyngui.zyngine.name + "#" + str(zyngui.zyngine.get_midi_chan()+1))
 
 #-------------------------------------------------------------------------------
 # Zynthian Instrument Selection GUI Class
@@ -492,10 +544,10 @@ class zynthian_gui_instr(zynthian_gui_list):
 		# Controllers
 		self.zcontrollers_config=zyngui.zyngine.default_ctrl_config;
 		self.zcontrollers=(
-			zynthian_controller(0,self.canvas,-1,25,self.zcontrollers_config[0][0],zyngui.zyngine.midi_channel,self.zcontrollers_config[0][1],self.zcontrollers_config[0][2],self.zcontrollers_config[0][3]),
-			zynthian_controller(1,self.canvas,-1,133,self.zcontrollers_config[1][0],zyngui.zyngine.midi_channel,self.zcontrollers_config[1][1],self.zcontrollers_config[1][2],self.zcontrollers_config[1][3]),
-			zynthian_controller(2,self.canvas,243,25,self.zcontrollers_config[2][0],zyngui.zyngine.midi_channel,self.zcontrollers_config[2][1],self.zcontrollers_config[2][2],self.zcontrollers_config[2][3]),
-			zynthian_controller(3,self.canvas,243,133,self.zcontrollers_config[3][0],zyngui.zyngine.midi_channel,self.zcontrollers_config[3][1],self.zcontrollers_config[3][2],self.zcontrollers_config[3][3])
+			zynthian_controller(0,self.canvas,-1,25,self.zcontrollers_config[0][0],zyngui.midi_chan,self.zcontrollers_config[0][1],self.zcontrollers_config[0][2],self.zcontrollers_config[0][3]),
+			zynthian_controller(1,self.canvas,-1,133,self.zcontrollers_config[1][0],zyngui.midi_chan,self.zcontrollers_config[1][1],self.zcontrollers_config[1][2],self.zcontrollers_config[1][3]),
+			zynthian_controller(2,self.canvas,243,25,self.zcontrollers_config[2][0],zyngui.midi_chan,self.zcontrollers_config[2][1],self.zcontrollers_config[2][2],self.zcontrollers_config[2][3]),
+			zynthian_controller(3,self.canvas,243,133,self.zcontrollers_config[3][0],zyngui.midi_chan,self.zcontrollers_config[3][1],self.zcontrollers_config[3][2],self.zcontrollers_config[3][3])
 		)
 		# Init Controllers Map
 		self.zcontroller_map={}
@@ -510,15 +562,15 @@ class zynthian_gui_instr(zynthian_gui_list):
 
 	def set_controller_config(self, cfg):
 		for i in range(0,4):
-			self.set_controller(i,cfg[i][0],cfg[i][1],cfg[i][2]);
+			self.set_controller(i,cfg[i][0],zyngui.midi_chan,cfg[i][1],cfg[i][2]);
 			print("Setup Zyncoder: %s" % str(i))
 
-	def set_controller(self, i, tit, ctrl, val, max_val=127):
+	def set_controller(self, i, tit, chan, ctrl, val, max_val=127):
 		try:
 			del self.zcontroller_map[self.zcontrollers[i].ctrl]
 		except:
 			pass
-		self.zcontrollers[i].config(tit,ctrl,val,max_val)
+		self.zcontrollers[i].config(tit,chan,ctrl,val,max_val)
 		self.zcontrollers[i].show()
 		self.zcontroller_map[ctrl]=self.zcontrollers[i]
 
@@ -526,11 +578,12 @@ class zynthian_gui_instr(zynthian_gui_list):
 		self.list_data=zyngui.zyngine.instr_list
 
 	def set_mode_select(self):
-		self.set_controller(2, "Instrument", 0, zyngui.zyngine.get_instr_index(), len(self.list_data))
+		self.set_controller(2, "Instrument",0,0,zyngui.zyngine.get_instr_index(),len(self.list_data))
 		self.zcontrollers[0].hide()
 		self.zcontrollers[1].hide()
 		self.zcontrollers[3].hide()
 		self.listbox.config(selectbackground=bg3color)
+		self.select(zyngui.zyngine.get_instr_index())
 		self.set_select_path()
 
 	def set_mode_control(self):
@@ -544,7 +597,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 		zyngui.set_mode_instr_control()
 
 	def set_select_path(self):
-		self.select_path.set(zyngui.zyngine.get_path())
+		self.select_path.set(zyngui.zyngine.name[0:3] + "#" + str(zyngui.zyngine.get_midi_chan()+1) + " > " + zyngui.zyngine.get_path())
 
 	def rencoder_read_select(self):
 		_sel=self.zcontrollers[2].value
@@ -569,9 +622,11 @@ class zynthian_gui:
 	zyngui_splash=None
 	zyngui_admin=None
 	zyngui_engine=None
+	zyngui_chan=None
 	zyngui_bank=None
 	zyngui_instr=None
 	dtsw1=dtsw2=datetime.now()
+	midi_chan=None
 	
 	def __init__(self):
 		# GUI Objects Initialization
@@ -591,6 +646,8 @@ class zynthian_gui:
 		self.mode=-1
 		self.zyngui_admin.show()
 		self.zyngui_engine.hide()
+		if self.zyngui_chan:
+			self.zyngui_chan.hide()
 		if self.zyngui_bank:
 			self.zyngui_bank.hide()
 		if self.zyngui_instr:
@@ -600,33 +657,52 @@ class zynthian_gui:
 		self.mode=0
 		self.zyngui_engine.show()
 		self.zyngui_admin.hide()
+		if self.zyngui_chan:
+			self.zyngui_chan.hide()
+		if self.zyngui_bank:
+			self.zyngui_bank.hide()
+		if self.zyngui_instr:
+			self.zyngui_instr.hide()
+
+	def set_mode_chan_select(self):
+		self.mode=1
+		self.zyngui_chan.show()
+		self.zyngui_admin.hide()
+		self.zyngui_engine.hide()
 		if self.zyngui_bank:
 			self.zyngui_bank.hide()
 		if self.zyngui_instr:
 			self.zyngui_instr.hide()
 
 	def set_mode_bank_select(self):
-		self.mode=1
+		self.mode=2
 		self.zyngui_bank.show()
 		self.zyngui_admin.hide()
 		self.zyngui_engine.hide()
+		if self.zyngui_chan:
+			self.zyngui_chan.hide()
+			self.midi_chan=self.zyngine.get_midi_chan()
 		if self.zyngui_instr:
 			self.zyngui_instr.hide()
         
 	def set_mode_instr_select(self):
-		self.mode=2
+		self.mode=3
 		self.zyngui_instr.show()
 		self.zyngui_admin.hide()
 		self.zyngui_engine.hide()
+		if self.zyngui_chan:
+			self.zyngui_chan.hide()
 		if self.zyngui_bank:
 			self.zyngui_bank.hide()
 		self.zyngui_instr.set_mode_select()
         
 	def set_mode_instr_control(self):
-		self.mode=3
+		self.mode=4
 		self.zyngui_instr.show()
 		self.zyngui_admin.hide()
 		self.zyngui_engine.hide()
+		if self.zyngui_chan:
+			self.zyngui_chan.hide()
 		if self.zyngui_bank:
 			self.zyngui_bank.hide()
 		self.zyngui_instr.set_mode_control()
@@ -634,6 +710,7 @@ class zynthian_gui:
 	def set_engine(self,name):
 		if self.zyngui_engine.set_engine(name):
 			self.zyngine=self.zyngui_engine.zyngine
+			self.zyngui_chan=zynthian_gui_chan()
 			self.zyngui_bank=zynthian_gui_bank()
 			self.zyngui_instr=zynthian_gui_instr()
 
@@ -649,8 +726,8 @@ class zynthian_gui:
 
 	# Init GPIO Switches
 	def gpio_switch_init(self):
-		sw1_chan=3
-		sw2_chan=4
+		sw1_chan=2
+		sw2_chan=23
 		lib_rencoder.setup_gpio_switch(0,sw1_chan)
 		lib_rencoder.setup_gpio_switch(1,sw2_chan)
 
@@ -666,12 +743,14 @@ class zynthian_gui:
 			self.dtsw1=datetime.now()
 			if self.gpio_switch12():
 				return
-			elif self.mode==3:
+			elif self.mode==4:
 				self.set_mode_instr_select()
-			elif self.mode==2:
+			elif self.mode==3:
 				self.zyngui_instr.click_listbox()
-			elif self.mode==1:
+			elif self.mode==2:
 				self.zyngui_bank.click_listbox()
+			elif self.mode==1:
+				self.zyngui_chan.click_listbox()
 			elif self.mode==0:
 				self.zyngui_engine.click_listbox()
 			elif self.mode==-1:
@@ -688,8 +767,10 @@ class zynthian_gui:
 			self.dtsw2=datetime.now()
 			if self.gpio_switch12():
 				return
-			elif self.mode>=2:
+			elif self.mode>=3:
 				self.set_mode_bank_select()
+			elif self.mode==2:
+				self.set_mode_chan_select()
 			elif self.mode==1:
 				self.set_mode_engine_select()
 			elif self.mode==0:
@@ -716,10 +797,11 @@ class zynthian_gui:
 	def midi_read(self):
 		while alsaseq.inputpending():
 			event = alsaseq.input()
-			if self.mode==3 and event[0] == alsaseq.SND_SEQ_EVENT_CONTROLLER: 
+			chan = event[7][0]
+			if self.mode==4 and event[0] == alsaseq.SND_SEQ_EVENT_CONTROLLER and chan==self.midi_chan: 
 				ctrl = event[7][4]
 				val = event[7][5]
-				print ("MIDI CTRL: " + str(ctrl) + " => " + str(val))
+				print ("MIDI CTRL " + str(ctrl) + ", CH" + str(chan) + " => " + str(val))
 				# Only read Modulation Wheel =>
 				#if ctrl==1:
 				if ctrl in self.zyngui_instr.zcontroller_map.keys():
@@ -728,12 +810,14 @@ class zynthian_gui:
 			top.after(40, self.midi_read)
 
 	def rencoder_read(self):
-		if self.mode==3:
+		if self.mode==4:
 			self.zyngui_instr.rencoder_read_control()
-		elif self.mode==2:
+		elif self.mode==3:
 			self.zyngui_instr.rencoder_read_select()
-		elif self.mode==1:
+		elif self.mode==2:
 			self.zyngui_bank.rencoder_read()
+		elif self.mode==1:
+			self.zyngui_chan.rencoder_read()
 		elif self.mode==0:
 			self.zyngui_engine.rencoder_read()
 		elif self.mode==-1:
