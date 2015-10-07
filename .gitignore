@@ -1,4 +1,5 @@
-software
-sd_images
-sf2
+*~
+.*~
+software/zynaddsubfx-*
+software/fluidsynth-*
 __pycache__
