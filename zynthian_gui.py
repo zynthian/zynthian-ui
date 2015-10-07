@@ -342,8 +342,8 @@ class zynthian_admin(zynthian_gui_list):
 		self.list_data=(
 			(self.update_system,0,"Update Operating System"),
 			(self.update_software,0,"Update Zynthian Software"),
-			(self.update_zlibrary,0,"Update Zynthian Library"),
-			(self.update_ulibrary,0,"Update User Library"),
+			(self.update_zynlib,0,"Update Zynthian Library"),
+			(self.update_userlib,0,"Update User Library"),
 			(self.open_reverse_ssh,0,"Open Reverse SSH"),
 			(self.power_off,0,"Power Off")
 		)
@@ -364,18 +364,25 @@ class zynthian_admin(zynthian_gui_list):
 		if (_sel!=sel):
 			print('Pre-select Admin Action ' + str(sel))
 			self.select_listbox(sel)
+			
+	def command(self,cmd):
+		print(cmd)
+		result=check_output(cmd, shell=True)
+		print(result)
 
 	def update_system(self):
 		print("UPDATE SYSTEM")
+		self.command("apt-get -y update; apt-get -y upgrade")
 
 	def update_software(self):
 		print("UPDATE SOFTWARE")
+		self.command("su pi -c 'git pull'")
 
-	def update_zlibrary(self):
-		print("UPDATE ZLIBRARY")
+	def update_zynlib(self):
+		print("UPDATE ZYN LIBRARY")
 
-	def update_ulibrary(self):
-		print("UPDATE ULIBRARY")
+	def update_userlib(self):
+		print("UPDATE USER LIBRARY")
 
 	def open_reverse_ssh(self):
 		print("OPEN REVERSE SSH")
