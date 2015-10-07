@@ -3,4 +3,4 @@ This is the Software used by the Zynthian box, the Open Synth Platform based in 
 
 The Zynthian Box updates from this repository.
 
-YOu can learn more about Zynthian Project in: http://zynthian.org
+You can learn more about Zynthian Project in http://zynthian.org
