@@ -38,6 +38,15 @@ lightcolor="#f8cf2b"
 splash_image="./img/zynthian_gui_splash.gif"
 
 lib_rencoder=None
+rencoder_pin_a=[25,26,4,0];
+rencoder_pin_b=[27,21,3,7];
+
+#-------------------------------------------------------------------------------
+# Swap pins if needed
+if False:
+	rencoder_pin_a,rencoder_pin_b=rencoder_pin_b,rencoder_pin_a
+#-------------------------------------------------------------------------------
+
 
 #-------------------------------------------------------------------------------
 # Controller GUI Class
@@ -53,7 +62,7 @@ class zynthian_controller:
 	shown=False
 
 	def __init__(self, indx, cnv, x, y, tit, chan, ctrl, val=0, max_val=127):
-		if (val>max_val):
+		if val>max_val:
 			val=max_val
 		self.canvas=cnv
 		self.x=x
@@ -64,7 +73,7 @@ class zynthian_controller:
 		self.ctrl=ctrl
 		self.value=val
 		self.max_value=max_val
-		self.setup_zyncoder()
+		self.setup_rencoder()
 		self.label_title = Label(self.canvas,
 			text=self.title,
 			wraplength=self.width-6,
@@ -135,24 +144,24 @@ class zynthian_controller:
 		self.chan=chan
 		self.max_value=max_val
 		self.set_value(val)
-		self.setup_zyncoder()
+		self.setup_rencoder()
 		
-	def setup_zyncoder(self):
+	def setup_rencoder(self):
 		try:
 			if self.ctrl==0:
-				lib_rencoder.setup_zyncoder(self.index,self.chan,self.ctrl,4*self.value,4*(self.max_value-1))
+				lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,self.ctrl,4*self.value,4*(self.max_value-1))
 			else:
-				lib_rencoder.setup_zyncoder(self.index,self.chan,self.ctrl,self.value,self.max_value)
+				lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,self.ctrl,self.value,self.max_value)
 		except:
 			pass
 
-	def set_value(self, v, set_zyncoder=False):
+	def set_value(self, v, set_rencoder=False):
 		if (v>self.max_value):
 			v=self.max_value
 		if (v!=self.value):
 			self.value=v
-			if self.shown and set_zyncoder:
-				lib_rencoder.set_value_zyncoder(self.index,v)
+			if self.shown and set_rencoder:
+				lib_rencoder.set_value_midi_rencoder(self.index,v)
 			if self.ctrl==0:
 				self.label_value.config(text=str(self.value+1))
 			else:
@@ -161,7 +170,7 @@ class zynthian_controller:
 					self.plot_triangle()
 
 	def read_rencoder(self):
-		val=lib_rencoder.get_value_zyncoder(self.index)
+		val=lib_rencoder.get_value_midi_rencoder(self.index)
 		if self.ctrl==0:
 			val=int(val/4)
 		self.set_value(val)
