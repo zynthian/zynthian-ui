@@ -18,6 +18,7 @@ from tkinter import *
 from ctypes import *
 from datetime import datetime
 from subprocess import check_output
+from threading  import Thread
 
 from zynthian_engine import *
 
@@ -201,6 +202,51 @@ class zynthian_splash:
 		top.after(tms, self.hide)
 
 #-------------------------------------------------------------------------------
+# Zynthian Info GUI Class
+#-------------------------------------------------------------------------------
+class zynthian_info:
+	shown=False
+
+	def __init__(self):
+		self.canvas = Canvas(
+			width = 70*width/100,
+			height = 70*height/100,
+			bd=1,
+			highlightthickness=0,
+			relief='flat',
+			bg = bgcolor)
+
+		self.text = StringVar()
+		self.label_text = Label(self.canvas,
+			font=("Helvetica",10,"normal"),
+			textvariable=self.text,
+			#wraplength=80,
+			justify=LEFT,
+			bg=bgcolor,
+			fg=lightcolor)
+		self.label_text.place(x=1, y=0, anchor=NW)
+
+	def clean(self):
+		self.text.set("")
+
+	def set(self, text):
+		self.text.set(text)
+
+	def add(self, text):
+		self.text.set(self.text.get()+text)
+
+	def hide(self):
+		if self.shown:
+			self.shown=False
+			self.canvas.pack_forget()
+
+	def show(self, text):
+		self.text.set(text)
+		if not self.shown:
+			self.shown=True
+			self.canvas.pack(expand = YES, fill = BOTH)
+
+#-------------------------------------------------------------------------------
 # Zynthian Listbox GUI Class
 #-------------------------------------------------------------------------------
 class zynthian_gui_list:
@@ -334,6 +380,8 @@ class zynthian_gui_list:
 #-------------------------------------------------------------------------------
 class zynthian_admin(zynthian_gui_list):
 	zselector=None
+	command=None
+	thread=None
 
 	def __init__(self):
 		super().__init__(gui_bg_logo,True)
@@ -374,27 +422,48 @@ class zynthian_admin(zynthian_gui_list):
 			print('Pre-select Admin Action ' + str(sel))
 			self.select_listbox(sel)
 			
-	def command(self,cmd):
-		print(cmd)
-		result=check_output(cmd, shell=True)
+	def execute_command(self):
+		print("Executing Command: "+self.command)
+		zyngui.add_info("\nExecuting: "+self.command)
+		result=check_output(self.command, shell=True).decode('utf-8','ignore')
+		#result="PimPamPum Bocadillo De Atún!"
 		print(result)
+		zyngui.add_info("\n"+str(result))
+		zyngui.hide_info_timer(3000)
+		self.command=None
+
+	def start_command(self,cmd):
+		if not self.command:
+			print("Starting Command: " + cmd)
+			self.command=cmd
+			self.thread=Thread(target=self.execute_command, args=())
+			self.thread.daemon = True # thread dies with the program
+			self.thread.start()
 
 	def update_system(self):
 		print("UPDATE SYSTEM")
-		self.command("apt-get -y update; apt-get -y upgrade")
+		zyngui.show_info("UPDATE SYSTEM")
+		self.start_command("apt-get -y update; apt-get -y upgrade")
 
 	def update_software(self):
 		print("UPDATE SOFTWARE")
-		self.command("su pi -c 'git pull'")
+		zyngui.show_info("UPDATE SOFTWARE")
+		self.start_command("su pi -c 'git pull'")
 
 	def update_zynlib(self):
 		print("UPDATE ZYN LIBRARY")
+		zyngui.show_info("UPDATE ZYN LIBRARY")
+		self.start_command("ls zynbanks")
 
 	def update_userlib(self):
 		print("UPDATE USER LIBRARY")
+		zyngui.show_info("UPDATE USER LIBRARY")
+		self.start_command("ls my_zynbanks")
 
 	def open_reverse_ssh(self):
 		print("OPEN REVERSE SSH")
+		zyngui.show_info("OPEN REVERSE SSH")
+		self.start_command("ifconfig")
 
 	def power_off(self):
 		print("POWER OFF")
@@ -636,6 +705,7 @@ class zynthian_gui:
 	polling=False
 	zyngine=None
 	zyngui_splash=None
+	zyngui_info=None
 	zyngui_admin=None
 	zyngui_engine=None
 	zyngui_chan=None
@@ -648,6 +718,7 @@ class zynthian_gui:
 		# GUI Objects Initialization
 		#self.zyngui_splash=zynthian_splash(1000)
 		self.zyngui_admin=zynthian_admin()
+		self.zyngui_info=zynthian_info()
 		self.zyngui_engine=zynthian_gui_engine()
 		# Control Initialization (Rotary and Switches)
 		try:
@@ -657,6 +728,22 @@ class zynthian_gui:
 			pass
 		self.set_mode_engine_select()
 		self.start_polling()
+
+	def show_info(self, text, tms=None):
+		self.zyngui_admin.hide()
+		self.zyngui_info.show(text)
+		if tms:
+			top.after(tms, self.hide_info)
+
+	def add_info(self, text):
+		self.zyngui_info.add(text)
+
+	def hide_info_timer(self, tms=3000):
+		top.after(tms, self.hide_info)
+
+	def hide_info(self):
+		self.zyngui_info.hide()
+		self.zyngui_admin.show()
 
 	def set_mode_admin(self):
 		self.mode=-1
