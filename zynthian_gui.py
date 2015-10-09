@@ -425,8 +425,10 @@ class zynthian_admin(zynthian_gui_list):
 	def execute_command(self):
 		print("Executing Command: "+self.command)
 		zyngui.add_info("\nExecuting: "+self.command)
-		result=check_output(self.command, shell=True).decode('utf-8','ignore')
-		#result="PimPamPum Bocadillo De Atún!"
+		try:
+			result=check_output(self.command, shell=True).decode('utf-8','ignore')
+		except Exception as e:
+			result="ERROR: "+str(e)
 		print(result)
 		zyngui.add_info("\n"+str(result))
 		zyngui.hide_info_timer(3000)
@@ -730,8 +732,15 @@ class zynthian_gui:
 		self.start_polling()
 
 	def show_info(self, text, tms=None):
-		self.zyngui_admin.hide()
 		self.zyngui_info.show(text)
+		self.zyngui_admin.hide()
+		self.zyngui_engine.hide()
+		if self.zyngui_chan:
+			self.zyngui_chan.hide()
+		if self.zyngui_bank:
+			self.zyngui_bank.hide()
+		if self.zyngui_instr:
+			self.zyngui_instr.hide()
 		if tms:
 			top.after(tms, self.hide_info)
 
@@ -743,11 +752,12 @@ class zynthian_gui:
 
 	def hide_info(self):
 		self.zyngui_info.hide()
-		self.zyngui_admin.show()
+		self.restore_mode()
 
 	def set_mode_admin(self):
 		self.mode=-1
 		self.zyngui_admin.show()
+		self.zyngui_info.hide()
 		self.zyngui_engine.hide()
 		if self.zyngui_chan:
 			self.zyngui_chan.hide()
@@ -759,6 +769,7 @@ class zynthian_gui:
 	def set_mode_engine_select(self):
 		self.mode=0
 		self.zyngui_engine.show()
+		self.zyngui_info.hide()
 		self.zyngui_admin.hide()
 		if self.zyngui_chan:
 			self.zyngui_chan.hide()
@@ -770,6 +781,7 @@ class zynthian_gui:
 	def set_mode_chan_select(self):
 		self.mode=1
 		self.zyngui_chan.show()
+		self.zyngui_info.hide()
 		self.zyngui_admin.hide()
 		self.zyngui_engine.hide()
 		if self.zyngui_bank:
@@ -780,6 +792,7 @@ class zynthian_gui:
 	def set_mode_bank_select(self):
 		self.mode=2
 		self.zyngui_bank.show()
+		self.zyngui_info.hide()
 		self.zyngui_admin.hide()
 		self.zyngui_engine.hide()
 		if self.zyngui_chan:
@@ -791,6 +804,7 @@ class zynthian_gui:
 	def set_mode_instr_select(self):
 		self.mode=3
 		self.zyngui_instr.show()
+		self.zyngui_info.hide()
 		self.zyngui_admin.hide()
 		self.zyngui_engine.hide()
 		if self.zyngui_chan:
@@ -802,6 +816,7 @@ class zynthian_gui:
 	def set_mode_instr_control(self):
 		self.mode=4
 		self.zyngui_instr.show()
+		self.zyngui_info.hide()
 		self.zyngui_admin.hide()
 		self.zyngui_engine.hide()
 		if self.zyngui_chan:
@@ -809,6 +824,20 @@ class zynthian_gui:
 		if self.zyngui_bank:
 			self.zyngui_bank.hide()
 		self.zyngui_instr.set_mode_control()
+
+	def restore_mode(self):
+		if self.mode==-1:
+			self.set_mode_admin()
+		elif self.mode==0:
+			self.set_mode_engine_select()
+		elif self.mode==1:
+			self.set_mode_chan_select()
+		elif self.mode==2:
+			self.set_mode_bank_select()
+		elif self.mode==3:
+			self.set_mode_instr_select()
+		elif self.mode==4:
+			self.set_mode_instr_control()
 
 	def set_engine(self,name):
 		if self.zyngui_engine.set_engine(name):
