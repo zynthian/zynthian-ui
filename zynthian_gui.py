@@ -665,10 +665,11 @@ class zynthian_gui_instr(zynthian_gui_list):
 		self.list_data=zyngui.zyngine.instr_list
 
 	def set_mode_select(self):
-		self.set_controller(2, "Instrument",0,0,zyngui.zyngine.get_instr_index(),len(self.list_data))
 		self.zcontrollers[0].hide()
 		self.zcontrollers[1].hide()
+		self.zcontrollers[2].hide()
 		self.zcontrollers[3].hide()
+		self.set_controller(2, "Instrument",0,0,zyngui.zyngine.get_instr_index(),len(self.list_data))
 		self.listbox.config(selectbackground=bg3color)
 		self.select(zyngui.zyngine.get_instr_index())
 		self.set_select_path()
