@@ -43,8 +43,14 @@ rencoder_pin_a=[25,26,4,0];
 rencoder_pin_b=[27,21,3,7];
 
 #-------------------------------------------------------------------------------
+# Get Zynthian Hardware Version
+#-------------------------------------------------------------------------------
+with open("../zynthian_hw_version.txt","r") as fh:
+	hw_version=fh.read()
+
+#-------------------------------------------------------------------------------
 # Swap pins if needed
-if False:
+if hw_version=="PROTOTYPE-1":
 	rencoder_pin_a,rencoder_pin_b=rencoder_pin_b,rencoder_pin_a
 #-------------------------------------------------------------------------------
 
