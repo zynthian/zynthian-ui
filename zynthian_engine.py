@@ -14,6 +14,7 @@ modified:  2015-07-11
 import sys
 from os import listdir, setgid, setuid
 from os.path import isfile, isdir, join
+from string import Template
 from subprocess import Popen, PIPE, STDOUT
 from threading  import Thread
 from queue import Queue, Empty
@@ -26,6 +27,13 @@ from zynthian_midi import *
 
 global zynmidi
 zynmidi=zynthian_midi("Zynthian_gui")
+
+#-------------------------------------------------------------------------------
+# OSC Interface Initialization
+#-------------------------------------------------------------------------------
+
+global zyngine_osc_port
+zyngine_osc_port=6699
 
 #-------------------------------------------------------------------------------
 # Synth Engine Base Class
@@ -55,8 +63,9 @@ class zynthian_synth_engine:
 	instr_ctrl_config=[None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None]
 
 	default_ctrl_config=(
+		('volume',7,96,127),
+		#('expression',11,127,127),
 		('modulation',1,0,127),
-		('expression',11,127,127),
 		#('reverb',91,64,127),
 		#('chorus',93,64,127),
 		('filter Q',71,64,127),
@@ -179,22 +188,27 @@ class zynthian_synth_engine:
 class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 	name="ZynAddSubFX"
 	#command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U")
-	command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U", "-l", "zynconf/zasfx_4ch.xmz")
+	command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U","-P",str(zyngine_osc_port), "-l", "zynconf/zasfx_4ch.xmz")
 
 	#bank_dir="/usr/share/zynaddsubfx/banks"
 	bank_dir="./software/zynaddsubfx-instruments/banks"
 
 	default_ctrl_config=(
+		('volume',Template('/part$part/Pvolume'),96,127),
+		#('volume',7,96,127),
 		('modulation',1,0,127),
-		('expression',11,127,127),
-		#('resonance freq',77,64,127),
-		#('resonance bw',78,64,127),
-		#('bandwidth',75,64,127),
-		#('modulation amplitude',76,127,127),
-		#('reverb',91,64,127),
-		#('chorus',93,64,127),
 		('filter Q',71,64,127),
 		('filter cutoff',74,64,127)
+		#('modulation',1,0,127),
+		#('expression',11,127,127),
+		#('filter Q',71,64,127),
+		#('filter cutoff',74,64,127),
+		#('bandwidth',75,64,127),
+		#('modulation amplitude',76,127,127),
+		#('resonance freq',77,64,127),
+		#('resonance bw',78,64,127),
+		#('reverb',91,64,127),
+		#('chorus',93,64,127),
 	)
 
 	def load_bank_list(self):
@@ -237,8 +251,9 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 	bank_id=0
 
 	default_ctrl_config=(
+		('volume',7,96,127),
+		#('expression',11,127,127),
 		('modulation',1,0,127),
-		('expression',11,127,127),
 		('reverb',91,64,127),
 		('chorus',93,2,127)
 	)

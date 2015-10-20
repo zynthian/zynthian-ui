@@ -14,9 +14,11 @@ modified:  2015-07-11
 import sys
 import alsaseq
 import alsamidi
+import liblo
 from tkinter import *
 from ctypes import *
 from datetime import datetime
+from string import Template
 from subprocess import check_output
 from threading  import Thread
 
@@ -39,8 +41,8 @@ lightcolor="#f8cf2b"
 splash_image="./img/zynthian_gui_splash.gif"
 
 lib_rencoder=None
-rencoder_pin_a=[25,26,4,0];
-rencoder_pin_b=[27,21,3,7];
+rencoder_pin_a=[25,26,4,0]
+rencoder_pin_b=[27,21,3,7]
 
 #-------------------------------------------------------------------------------
 # Get Zynthian Hardware Version
@@ -77,8 +79,12 @@ class zynthian_controller:
 		self.title=tit
 		self.index=indx
 		self.chan=chan
-		self.ctrl=ctrl
+		if isinstance(ctrl, Template):
+			self.ctrl=ctrl.substitute(part=chan)
+		else:
+			self.ctrl=ctrl
 		self.value=val
+		self.init_value=None
 		self.max_value=max_val
 		self.setup_rencoder()
 		self.label_title = Label(self.canvas,
@@ -98,7 +104,7 @@ class zynthian_controller:
 		if not self.shown:
 			self.shown=True
 			self.plot_frame()
-			if (self.ctrl>0):
+			if self.ctrl!=0:
 				self.plot_triangle()
 			self.label_title.place(x=self.x+3, y=self.y+4, anchor=NW)
 			self.label_value.place(x=self.x+int(0.3*self.width), y=self.y+int(0.5*self.height), anchor=NW)
@@ -125,8 +131,8 @@ class zynthian_controller:
 			self.frame=None
 
 	def plot_triangle(self):
-		if (self.value>self.max_value): self.value=self.max_value
-		elif (self.value<0): self.value=0
+		if self.value>self.max_value: self.value=self.max_value
+		elif self.value<0: self.value=0
 		x1=self.x+2
 		y1=self.y+int(0.8*self.height)+self.trh
 		x2=x1+self.trw*self.value/self.max_value
@@ -147,19 +153,29 @@ class zynthian_controller:
 	def config(self, tit, chan, ctrl, val, max_val=127):
 		self.title=str(tit)
 		self.label_title.config(text=self.title)
-		self.ctrl=ctrl
 		self.chan=chan
+		if isinstance(ctrl, Template):
+			self.ctrl=ctrl.substitute(part=chan)
+		else:
+			self.ctrl=ctrl
 		self.max_value=max_val
 		self.set_value(val)
 		self.setup_rencoder()
 		
 	def setup_rencoder(self):
+		print("SETUP RENCODER "+str(self.index)+": "+str(self.ctrl))
+		self.init_value=None
 		try:
-			if self.ctrl==0:
-				lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,self.ctrl,4*self.value,4*(self.max_value-1))
-			else:
-				lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,self.ctrl,self.value,self.max_value)
-		except:
+			if isinstance(self.ctrl, str):
+				if zyngui.osc_target:
+					liblo.send(zyngui.osc_target, self.ctrl)
+				lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,0,c_char_p(self.ctrl.encode('UTF-8')),self.value,self.max_value)
+			elif self.ctrl==0:
+				lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,self.ctrl,None,4*self.value,4*(self.max_value-1))
+			elif self.ctrl>0:
+				lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,self.ctrl,None,self.value,self.max_value)
+		except Exception as err:
+			#print(err)
 			pass
 
 	def set_value(self, v, set_rencoder=False):
@@ -175,6 +191,11 @@ class zynthian_controller:
 				self.label_value.config(text=str(self.value))
 				if self.shown:
 					self.plot_triangle()
+
+	def set_init_value(self, v):
+		if self.init_value is None:
+			self.init_value=v
+			self.set_value(v,True)
 
 	def read_rencoder(self):
 		val=lib_rencoder.get_value_midi_rencoder(self.index)
@@ -286,7 +307,7 @@ class zynthian_gui_list:
 		if (image_bg):
 			self.canvas.create_image(0, 0, image = image_bg, anchor = NW)
 
-		self.plot_frame();
+		self.plot_frame()
 
 		# Add ListBox
 		self.listbox = Listbox(self.canvas,
@@ -425,7 +446,7 @@ class zynthian_admin(zynthian_gui_list):
 		self.zselector.read_rencoder()
 		sel=self.zselector.value
 		if (_sel!=sel):
-			print('Pre-select Admin Action ' + str(sel))
+			#print('Pre-select Admin Action ' + str(sel))
 			self.select_listbox(sel)
 			
 	def execute_command(self):
@@ -535,7 +556,7 @@ class zynthian_gui_engine(zynthian_gui_list):
 		self.zselector.read_rencoder()
 		sel=self.zselector.value
 		if (_sel!=sel):
-			print('Pre-select Engine ' + str(sel))
+			#print('Pre-select Engine ' + str(sel))
 			self.select_listbox(sel)
 
 	def set_select_path(self):
@@ -581,7 +602,7 @@ class zynthian_gui_chan(zynthian_gui_list):
 		self.zselector.read_rencoder()
 		sel=self.zselector.value
 		if (_sel!=sel):
-			print('Pre-select MIDI Chan ' + str(sel))
+			#print('Pre-select MIDI Chan ' + str(sel))
 			self.select_listbox(sel)
 
 	def set_select_path(self):
@@ -620,7 +641,7 @@ class zynthian_gui_bank(zynthian_gui_list):
 		self.zselector.read_rencoder()
 		sel=self.zselector.value
 		if (_sel!=sel):
-			print('Pre-select Bank ' + str(sel))
+			#print('Pre-select Bank ' + str(sel))
 			self.select_listbox(sel)
 
 	def set_select_path(self):
@@ -635,7 +656,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 	def __init__(self):
 		super().__init__(gui_bg)
 		# Controllers
-		self.zcontrollers_config=zyngui.zyngine.default_ctrl_config;
+		self.zcontrollers_config=zyngui.zyngine.default_ctrl_config
 		self.zcontrollers=(
 			zynthian_controller(0,self.canvas,-1,25,self.zcontrollers_config[0][0],zyngui.midi_chan,self.zcontrollers_config[0][1],self.zcontrollers_config[0][2],self.zcontrollers_config[0][3]),
 			zynthian_controller(1,self.canvas,-1,133,self.zcontrollers_config[1][0],zyngui.midi_chan,self.zcontrollers_config[1][1],self.zcontrollers_config[1][2],self.zcontrollers_config[1][3]),
@@ -655,8 +676,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 
 	def set_controller_config(self, cfg):
 		for i in range(0,4):
-			self.set_controller(i,cfg[i][0],zyngui.midi_chan,cfg[i][1],cfg[i][2]);
-			print("Setup Zyncoder: %s" % str(i))
+			self.set_controller(i,cfg[i][0],zyngui.midi_chan,cfg[i][1],cfg[i][2])
 
 	def set_controller(self, i, tit, chan, ctrl, val, max_val=127):
 		try:
@@ -665,7 +685,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 			pass
 		self.zcontrollers[i].config(tit,chan,ctrl,val,max_val)
 		self.zcontrollers[i].show()
-		self.zcontroller_map[ctrl]=self.zcontrollers[i]
+		self.zcontroller_map[self.zcontrollers[i].ctrl]=self.zcontrollers[i]
 
 	def get_list_data(self):
 		self.list_data=zyngui.zyngine.instr_list
@@ -687,8 +707,11 @@ class zynthian_gui_instr(zynthian_gui_list):
 
 	def select_action(self, i):
 		zyngui.zyngine.set_instr(i)
-		self.zcontrollers_config=zyngui.zyngine.get_instr_ctrl_config();
-		zyngui.set_mode_instr_control()
+		self.zcontrollers_config=zyngui.zyngine.get_instr_ctrl_config()
+		#zyngui.set_mode_instr_control()
+		if zyngui.osc_target:
+			liblo.send(zyngui.osc_target, "/volume")
+			zyngui.osc_server.recv()
 
 	def set_select_path(self):
 		self.select_path.set(zyngui.zyngine.name[0:3] + "#" + str(zyngui.zyngine.get_midi_chan()+1) + " > " + zyngui.zyngine.get_path())
@@ -698,7 +721,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 		self.zcontrollers[2].read_rencoder()
 		sel=self.zcontrollers[2].value
 		if (_sel!=sel):
-			print('Pre-select Instrument ' + str(sel))
+			#print('Pre-select Instrument ' + str(sel))
 			self.select_listbox(sel)
 
 	def rencoder_read_control(self):
@@ -713,6 +736,8 @@ class zynthian_gui:
 	mode=0
 	polling=False
 	zyngine=None
+	osc_target=None
+	osc_server=None
 	zyngui_splash=None
 	zyngui_info=None
 	zyngui_admin=None
@@ -721,7 +746,7 @@ class zynthian_gui:
 	zyngui_bank=None
 	zyngui_instr=None
 	dtsw1=dtsw2=datetime.now()
-	midi_chan=None
+	midi_chan=0
 	
 	def __init__(self):
 		# GUI Objects Initialization
@@ -731,6 +756,7 @@ class zynthian_gui:
 		self.zyngui_engine=zynthian_gui_engine()
 		# Control Initialization (Rotary and Switches)
 		try:
+			self.osc_init()
 			self.lib_rencoder_init()
 			self.gpio_switch_init()
 		except:
@@ -856,9 +882,11 @@ class zynthian_gui:
 	# Init Rotary Encoders C Library
 	def lib_rencoder_init(self):
 		global lib_rencoder
+		global zyngine_osc_port
 		try:
 			lib_rencoder=cdll.LoadLibrary("midi_rencoder/midi_rencoder.so")
-			lib_rencoder.init_rencoder()
+			lib_rencoder.init_rencoder(zyngine_osc_port)
+			#lib_rencoder.init_rencoder(0)
 		except Exception as e:
 			lib_rencoder=None
 			print("Can't init Zyncoders: %s" % str(e))
@@ -870,15 +898,29 @@ class zynthian_gui:
 		lib_rencoder.setup_gpio_switch(0,sw1_chan)
 		lib_rencoder.setup_gpio_switch(1,sw2_chan)
 
+	def osc_init(self):
+		global zyngine_osc_port
+		try:
+			self.osc_target = liblo.Address(zyngine_osc_port)
+			self.osc_server = liblo.Server()
+			#self.osc_server.add_method(None, None, self.cb_osc_all)
+			self.osc_server.add_method("/volume", 'i', self.cb_osc_load_instr)
+			self.osc_server.add_method(None, 'i', self.cb_osc_ctrl)
+			#print("OSC server running in port " % (str(self.osc_server.get_port())))
+			liblo.send(self.osc_target, "/echo")
+			print("OSC Server running");
+		except liblo.AddressError as err:
+			print("ERROR: OSC Server can't be initialized (%s). Running without OSC feedback." % (str(err)))
+
 	def gpio_switch1(self):
 		dtus=lib_rencoder.get_gpio_switch_dtus(0)
 		if dtus>0:
-			#print("Switch 1 dtus="+str(dtus));
-			if dtus>3000000:
-				print('Long Switch 1')
+			#print("Switch 1 dtus="+str(dtus))
+			if dtus>2000000:
+				#print('Long Switch 1')
 				self.zyngui_admin.power_off()
 				return
-			print('Switch 1')
+			#print('Switch 1')
 			self.dtsw1=datetime.now()
 			if self.gpio_switch12():
 				return
@@ -898,11 +940,11 @@ class zynthian_gui:
 	def gpio_switch2(self):
 		dtus=lib_rencoder.get_gpio_switch_dtus(1)
 		if dtus>0:
-			if dtus>3000000:
-				print('Long Switch 2')
+			if dtus>2000000:
+				#print('Long Switch 2')
 				self.set_mode_admin()
 				return
-			print('Switch 2')
+			#print('Switch 2')
 			self.dtsw2=datetime.now()
 			if self.gpio_switch12():
 				return
@@ -919,19 +961,21 @@ class zynthian_gui:
 
 	def gpio_switch12(self):
 		if abs((self.dtsw1-self.dtsw2).total_seconds())<0.5:
-			print('Switch 1+2')
+			#print('Switch 1+2')
 			self.set_mode_admin()
 			return True
 
 	def start_polling(self):
-		self.polling=True;
-		self.poll_count=0;
-		self.midi_read();
+		self.polling=True
+		self.poll_count=0
+		self.midi_read()
 		if lib_rencoder:
-			self.rencoder_read();
+			self.rencoder_read()
+		if self.osc_server:
+			self.osc_read()
 
 	def stop_polling(self):
-		self.polling=False;
+		self.polling=False
 
 	def midi_read(self):
 		while alsaseq.inputpending():
@@ -967,9 +1011,28 @@ class zynthian_gui:
 
 		if self.polling:
 			top.after(40, self.rencoder_read)
-			#self.poll_count=self.poll_count+1;
+			#self.poll_count=self.poll_count+1
 			#if self.poll_count % 20 == 0:
-			#	print ("POLL "+str(self.poll_count));
+			#	print ("POLL "+str(self.poll_count))
+
+	def osc_read(self):
+		while self.osc_server.recv(0):
+			pass
+		if self.polling:
+			top.after(40, self.osc_read)
+
+	def cb_osc_load_instr(self, path, args):
+		self.set_mode_instr_control()
+
+	def cb_osc_ctrl(self, path, args):
+		print ("OSC CTRL: " + path + " => "+str(args[0]))
+		if path in self.zyngui_instr.zcontroller_map.keys():
+			self.zyngui_instr.zcontroller_map[path].set_init_value(args[0])
+
+	def cb_osc_all(self, path, args, types, src):
+		print("OSC MESSAGE '%s' from '%s'" % (path, src.url))
+		for a, t in zip(args, types):
+			print("argument of type '%s': %s" % (t, a))
 
 #-------------------------------------------------------------------------------
 # Create Top Level Window with Fixed Size

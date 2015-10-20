@@ -16,9 +16,9 @@ import alsamidi
 
 class zynthian_midi:
 
-	bank_msb_selected=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-	bank_lsb_selected=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-	prg_selected=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+	bank_msb_selected=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+	bank_lsb_selected=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+	prg_selected=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 
 	def __init__(self, client_name="Zynthian_gui"):
 		alsaseq.client(client_name,1,1,True)
