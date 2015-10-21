@@ -196,13 +196,14 @@ class zynthian_controller:
 		if self.init_value is None:
 			self.init_value=v
 			self.set_value(v,True)
+			print("RENCODER INIT VALUE "+str(self.index)+": "+str(v))
 
 	def read_rencoder(self):
 		val=lib_rencoder.get_value_midi_rencoder(self.index)
 		if self.ctrl==0:
 			val=int(val/4)
 		self.set_value(val)
-		#print ("RENCODER: " + str(self.index) + " => " + str(val))
+		#print ("RENCODER VALUE: " + str(self.index) + " => " + str(val))
 
 #-------------------------------------------------------------------------------
 # Zynthian Splash GUI Class
@@ -708,10 +709,11 @@ class zynthian_gui_instr(zynthian_gui_list):
 	def select_action(self, i):
 		zyngui.zyngine.set_instr(i)
 		self.zcontrollers_config=zyngui.zyngine.get_instr_ctrl_config()
-		#zyngui.set_mode_instr_control()
-		if zyngui.osc_target:
+		if isinstance(zyngui.zyngine,zynthian_zynaddsubfx_engine) and zyngui.osc_target:
 			liblo.send(zyngui.osc_target, "/volume")
 			zyngui.osc_server.recv()
+		else:
+			zyngui.set_mode_instr_control()
 
 	def set_select_path(self):
 		self.select_path.set(zyngui.zyngine.name[0:3] + "#" + str(zyngui.zyngine.get_midi_chan()+1) + " > " + zyngui.zyngine.get_path())
