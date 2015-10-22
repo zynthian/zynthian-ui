@@ -12,7 +12,7 @@ modified:  2015-07-11
 """
 
 import sys
-from os import listdir, setgid, setuid
+import os
 from os.path import isfile, isdir, join
 from string import Template
 from subprocess import Popen, PIPE, STDOUT
@@ -41,7 +41,8 @@ zyngine_osc_port=6699
 
 class zynthian_synth_engine:
 	name=""
-	command=""
+	command=None
+	command_env=None
 	proc=None
 	thread=None
 	queue=None
@@ -105,7 +106,7 @@ class zynthian_synth_engine:
 	def start(self,start_queue=False):
 		if not self.proc:
 			print("Starting Engine " + self.name)
-			self.proc=Popen(self.command,shell=False,bufsize=1,universal_newlines=True,stdin=PIPE,stdout=PIPE,stderr=STDOUT)
+			self.proc=Popen(self.command,shell=False,bufsize=1,universal_newlines=True,stdin=PIPE,stdout=PIPE,stderr=STDOUT,env=self.command_env)
 			#,preexec_fn=self.chuser()
 			if start_queue:
 				self.queue=Queue()
@@ -187,8 +188,6 @@ class zynthian_synth_engine:
 
 class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 	name="ZynAddSubFX"
-	#command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U")
-	command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U","-P",str(zyngine_osc_port), "-l", "zynconf/zasfx_4ch.xmz")
 
 	#bank_dir="/usr/share/zynaddsubfx/banks"
 	bank_dir="./software/zynaddsubfx-instruments/banks"
@@ -211,11 +210,21 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 		#('chorus',93,64,127),
 	)
 
+	def __init__(self):
+		if os.environ.get('ZYNTHIANX'):
+			self.command_env=os.environ.copy()
+			self.command_env['DISPLAY']="localhost:10.0"
+			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-P", str(zyngine_osc_port), "-l", "zynconf/zasfx_4ch.xmz")
+		else:
+			#self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U")
+			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U", "-P", str(zyngine_osc_port), "-l", "zynconf/zasfx_4ch.xmz")
+		super().__init__()
+		
 	def load_bank_list(self):
 		self.bank_list=[]
 		print('Getting Bank List for ' + self.name)
 		i=0
-		for f in sorted(listdir(self.bank_dir)):
+		for f in sorted(os.listdir(self.bank_dir)):
 			if isdir(join(self.bank_dir,f)):
 				title=str.replace(f, '_', ' ')
 				self.bank_list.append((f,i,title))
@@ -225,7 +234,7 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 		self.instr_list=[]
 		instr_dir=join(self.bank_dir,self.bank_list[self.bank_index[self.midi_chan]][0])
 		print('Getting Instrument List for ' + self.bank_name[self.midi_chan])
-		for f in sorted(listdir(instr_dir)):
+		for f in sorted(os.listdir(instr_dir)):
 			#print(f)
 			if (isfile(join(instr_dir,f)) and f[-4:].lower()=='.xiz'):
 				prg=int(f[0:4])-1
@@ -270,7 +279,7 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 		self.bank_list=[]
 		print('Getting Bank List for ' + self.name)
 		i=0
-		for f in sorted(listdir(self.bank_dir)):
+		for f in sorted(os.listdir(self.bank_dir)):
 			if (isfile(join(self.bank_dir,f)) and f[-4:].lower()=='.sf2'):
 				title=str.replace(f[:-4], '_', ' ')
 				self.bank_list.append((f,i,title))

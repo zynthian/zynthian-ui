@@ -675,6 +675,10 @@ class zynthian_gui_instr(zynthian_gui_list):
 			for zc in self.zcontrollers:
 				zc.hide()
 
+	def get_controller_list(self):
+		liblo.send(zyngui.osc_target, "/path-search","/part"+str(zyngui.midi_chan)+"/","")
+		print("GET CONTROLLER LIST: "+str(zyngui.midi_chan))
+
 	def set_controller_config(self, cfg):
 		for i in range(0,4):
 			self.set_controller(i,cfg[i][0],zyngui.midi_chan,cfg[i][1],cfg[i][2])
@@ -710,6 +714,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 		zyngui.zyngine.set_instr(i)
 		self.zcontrollers_config=zyngui.zyngine.get_instr_ctrl_config()
 		if isinstance(zyngui.zyngine,zynthian_zynaddsubfx_engine) and zyngui.osc_target:
+			self.get_controller_list()
 			liblo.send(zyngui.osc_target, "/volume")
 			zyngui.osc_server.recv()
 		else:
@@ -907,6 +912,7 @@ class zynthian_gui:
 			self.osc_server = liblo.Server()
 			#self.osc_server.add_method(None, None, self.cb_osc_all)
 			self.osc_server.add_method("/volume", 'i', self.cb_osc_load_instr)
+			self.osc_server.add_method("/paths", None, self.cb_osc_paths)
 			self.osc_server.add_method(None, 'i', self.cb_osc_ctrl)
 			#print("OSC server running in port " % (str(self.osc_server.get_port())))
 			liblo.send(self.osc_target, "/echo")
@@ -1026,8 +1032,19 @@ class zynthian_gui:
 	def cb_osc_load_instr(self, path, args):
 		self.set_mode_instr_control()
 
+	def cb_osc_paths(self, path, args, types, src):
+		print("PATHS: ")
+		for a, t in zip(args, types):
+			#print("%s (%s)" % (a,t))
+			if t!='b':
+				liblo.send(self.osc_target, "/path-search","/part"+str(self.midi_chan)+"/"+a,"")
+				print("%s (%s)" % (a, t))
+
+	def cb_osc_bank_view(self, path, args):
+		pass
+
 	def cb_osc_ctrl(self, path, args):
-		print ("OSC CTRL: " + path + " => "+str(args[0]))
+		#print ("OSC CTRL: " + path + " => "+str(args[0]))
 		if path in self.zyngui_instr.zcontroller_map.keys():
 			self.zyngui_instr.zcontroller_map[path].set_init_value(args[0])
 
