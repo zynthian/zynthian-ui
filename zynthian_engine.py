@@ -170,11 +170,13 @@ class zynthian_synth_engine:
 		print('Bank Selected: ' + self.bank_name[self.midi_chan] + ' (' + str(i)+')')
 
 	def set_instr(self, i):
+		last_instr_index=self.instr_index[self.midi_chan]
 		self.instr_index[self.midi_chan]=i
 		self.instr_name[self.midi_chan]=self.instr_list[i][2]
 		print('Instrument Selected: ' + self.instr_name[self.midi_chan] + ' (' + str(i)+')')
-		zynmidi.set_midi_instr(self.midi_chan, self.instr_list[i][1][0], self.instr_list[i][1][1], self.instr_list[i][1][2])
-		self.load_instr_config()
+		if last_instr_index!=i:
+			zynmidi.set_midi_instr(self.midi_chan, self.instr_list[i][1][0], self.instr_list[i][1][1], self.instr_list[i][1][2])
+			self.load_instr_config()
 
 	def get_path(self):
 		path=self.bank_name[self.midi_chan]
