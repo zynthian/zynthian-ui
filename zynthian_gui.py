@@ -374,7 +374,12 @@ class zynthian_gui_list:
 
 	def fill_list(self):
 		self.get_list_data()
+		self._fill_list()
+
+	def _fill_list(self):
 		self.listbox.delete(0, END)
+		if not self.list_data:
+			self.list_data=[]
 		for item in self.list_data:
 			self.listbox.insert(END, item[2])
 		self.select(0)
@@ -653,6 +658,53 @@ class zynthian_gui_bank(zynthian_gui_list):
 #-------------------------------------------------------------------------------
 
 class zynthian_gui_instr(zynthian_gui_list):
+	zselector=None
+
+	def __init__(self):
+		super().__init__(gui_bg, True)
+		self.fill_list()
+		self.index=zyngui.zyngine.get_instr_index()
+		self.zselector=zynthian_controller(2,self.canvas,243,25,"Intrument",0,0,self.index+1,len(self.list_data))
+		self.set_select_path()
+      
+	def get_list_data(self):
+		self.list_data=zyngui.zyngine.instr_list
+
+	def show(self):
+		self.index=zyngui.zyngine.get_instr_index()
+		super().show()
+		if self.zselector:
+			self.zselector.config("Instr",0,0,self.index,len(self.list_data))
+
+	def select_action(self, i):
+		zyngui.zyngine.set_instr(i)
+		#Send OSC message to get feedback on instrument loaded
+		if isinstance(zyngui.zyngine,zynthian_zynaddsubfx_engine) and zyngui.osc_target:
+			liblo.send(zyngui.osc_target, "/volume")
+			zyngui.osc_server.recv()
+			zyngui.zyngui_control.list_data=[]
+			zyngui.zyngui_control._fill_list()
+		else:
+			zyngui.zyngui_control.fill_list()
+		zyngui.set_mode_instr_control()
+
+	def rencoder_read(self):
+		_sel=self.zselector.value
+		self.zselector.read_rencoder()
+		sel=self.zselector.value
+		if (_sel!=sel):
+			#print('Pre-select Bank ' + str(sel))
+			self.select_listbox(sel)
+
+	def set_select_path(self):
+		self.select_path.set(zyngui.zyngine.name[0:3] + "#" + str(zyngui.zyngine.get_midi_chan()+1) + " > " + zyngui.zyngine.get_path())
+
+
+#-------------------------------------------------------------------------------
+# Zynthian Instrument Controller GUI Class
+#-------------------------------------------------------------------------------
+
+class zynthian_gui_control(zynthian_gui_list):
 
 	def __init__(self):
 		super().__init__(gui_bg)
@@ -668,16 +720,16 @@ class zynthian_gui_instr(zynthian_gui_list):
 		self.zcontroller_map={}
 		for zc in self.zcontrollers:
 			self.zcontroller_map[zc.ctrl]=zc
-        
+
+	def show(self):
+		self.zcontrollers_config=zyngui.zyngine.get_instr_ctrl_config()
+		super().show()
+
 	def hide(self):
 		if self.shown:
 			super().hide()
 			for zc in self.zcontrollers:
 				zc.hide()
-
-	def get_controller_list(self):
-		liblo.send(zyngui.osc_target, "/path-search","/part"+str(zyngui.midi_chan)+"/","")
-		print("GET CONTROLLER LIST: "+str(zyngui.midi_chan))
 
 	def set_controller_config(self, cfg):
 		for i in range(0,4):
@@ -693,47 +745,43 @@ class zynthian_gui_instr(zynthian_gui_list):
 		self.zcontroller_map[self.zcontrollers[i].ctrl]=self.zcontrollers[i]
 
 	def get_list_data(self):
-		self.list_data=zyngui.zyngine.instr_list
+		if not isinstance(zyngui.zyngine,zynthian_zynaddsubfx_engine):
+			self.list_data=zyngui.zyngine.control_list
 
 	def set_mode_select(self):
-		self.zcontrollers[0].hide()
-		self.zcontrollers[1].hide()
-		self.zcontrollers[2].hide()
-		self.zcontrollers[3].hide()
-		self.set_controller(2, "Instrument",0,0,zyngui.zyngine.get_instr_index(),len(self.list_data))
-		self.listbox.config(selectbackground=bg3color)
-		self.select(zyngui.zyngine.get_instr_index())
+		for i in range(0,4):
+			self.zcontrollers[i].hide()
+		#self.index=1
+		self.set_controller(2, "Parameter",0,0,self.index,len(self.list_data))
+		self.listbox.config(selectbackground=lightcolor)
+		self.select(self.index)
 		self.set_select_path()
 
 	def set_mode_control(self):
 		self.set_controller_config(self.zcontrollers_config)
-		self.listbox.config(selectbackground=lightcolor)
+		self.listbox.config(selectbackground=bg3color)
 		self.set_select_path()
 
 	def select_action(self, i):
-		zyngui.zyngine.set_instr(i)
-		self.zcontrollers_config=zyngui.zyngine.get_instr_ctrl_config()
-		if isinstance(zyngui.zyngine,zynthian_zynaddsubfx_engine) and zyngui.osc_target:
-			self.get_controller_list()
-			liblo.send(zyngui.osc_target, "/volume")
-			zyngui.osc_server.recv()
-		else:
-			zyngui.set_mode_instr_control()
-
-	def set_select_path(self):
-		self.select_path.set(zyngui.zyngine.name[0:3] + "#" + str(zyngui.zyngine.get_midi_chan()+1) + " > " + zyngui.zyngine.get_path())
+		print("SELECT PARAMETER: "+str(i))
+		zyngui.set_mode_instr_control()
 
 	def rencoder_read_select(self):
 		_sel=self.zcontrollers[2].value
 		self.zcontrollers[2].read_rencoder()
 		sel=self.zcontrollers[2].value
 		if (_sel!=sel):
-			#print('Pre-select Instrument ' + str(sel))
+			#print('Pre-select Parameter ' + str(sel))
 			self.select_listbox(sel)
 
 	def rencoder_read_control(self):
 		for zc in self.zcontrollers:
+			#print('Read Control ' + str(zc.title))
 			zc.read_rencoder()
+
+	def set_select_path(self):
+		self.select_path.set(zyngui.zyngine.name[0:3] + "#" + str(zyngui.zyngine.get_midi_chan()+1) + " > " + zyngui.zyngine.get_path())
+
 
 #-------------------------------------------------------------------------------
 # Zynthian Main GUI Class
@@ -752,6 +800,7 @@ class zynthian_gui:
 	zyngui_chan=None
 	zyngui_bank=None
 	zyngui_instr=None
+	zyngui_control=None
 	dtsw1=dtsw2=datetime.now()
 	midi_chan=0
 	
@@ -805,6 +854,8 @@ class zynthian_gui:
 			self.zyngui_bank.hide()
 		if self.zyngui_instr:
 			self.zyngui_instr.hide()
+		if self.zyngui_control:
+			self.zyngui_control.hide()
 
 	def set_mode_engine_select(self):
 		self.mode=0
@@ -817,6 +868,8 @@ class zynthian_gui:
 			self.zyngui_bank.hide()
 		if self.zyngui_instr:
 			self.zyngui_instr.hide()
+		if self.zyngui_control:
+			self.zyngui_control.hide()
 
 	def set_mode_chan_select(self):
 		self.mode=1
@@ -828,6 +881,8 @@ class zynthian_gui:
 			self.zyngui_bank.hide()
 		if self.zyngui_instr:
 			self.zyngui_instr.hide()
+		if self.zyngui_control:
+			self.zyngui_control.hide()
 
 	def set_mode_bank_select(self):
 		self.mode=2
@@ -840,6 +895,8 @@ class zynthian_gui:
 			self.midi_chan=self.zyngine.get_midi_chan()
 		if self.zyngui_instr:
 			self.zyngui_instr.hide()
+		if self.zyngui_control:
+			self.zyngui_control.hide()
         
 	def set_mode_instr_select(self):
 		self.mode=3
@@ -851,11 +908,12 @@ class zynthian_gui:
 			self.zyngui_chan.hide()
 		if self.zyngui_bank:
 			self.zyngui_bank.hide()
-		self.zyngui_instr.set_mode_select()
+		if self.zyngui_control:
+			self.zyngui_control.hide()
         
 	def set_mode_instr_control(self):
 		self.mode=4
-		self.zyngui_instr.show()
+		self.zyngui_control.show()
 		self.zyngui_info.hide()
 		self.zyngui_admin.hide()
 		self.zyngui_engine.hide()
@@ -863,7 +921,23 @@ class zynthian_gui:
 			self.zyngui_chan.hide()
 		if self.zyngui_bank:
 			self.zyngui_bank.hide()
-		self.zyngui_instr.set_mode_control()
+		if self.zyngui_instr:
+			self.zyngui_instr.hide()
+		self.zyngui_control.set_mode_control()
+
+	def set_mode_control_select(self):
+		self.mode=5
+		self.zyngui_control.show()
+		self.zyngui_info.hide()
+		self.zyngui_admin.hide()
+		self.zyngui_engine.hide()
+		if self.zyngui_chan:
+			self.zyngui_chan.hide()
+		if self.zyngui_bank:
+			self.zyngui_bank.hide()
+		if self.zyngui_instr:
+			self.zyngui_instr.hide()
+		self.zyngui_control.set_mode_select()
 
 	def restore_mode(self):
 		if self.mode==-1:
@@ -878,6 +952,8 @@ class zynthian_gui:
 			self.set_mode_instr_select()
 		elif self.mode==4:
 			self.set_mode_instr_control()
+		elif self.mode==5:
+			self.set_mode_control_select()
 
 	def set_engine(self,name):
 		if self.zyngui_engine.set_engine(name):
@@ -885,6 +961,7 @@ class zynthian_gui:
 			self.zyngui_chan=zynthian_gui_chan()
 			self.zyngui_bank=zynthian_gui_bank()
 			self.zyngui_instr=zynthian_gui_instr()
+			self.zyngui_control=zynthian_gui_control()
 
 	# Init Rotary Encoders C Library
 	def lib_rencoder_init(self):
@@ -932,8 +1009,10 @@ class zynthian_gui:
 			self.dtsw1=datetime.now()
 			if self.gpio_switch12():
 				return
+			elif self.mode==5:
+				self.zyngui_control.click_listbox()
 			elif self.mode==4:
-				self.set_mode_instr_select()
+				self.set_mode_control_select()
 			elif self.mode==3:
 				self.zyngui_instr.click_listbox()
 			elif self.mode==2:
@@ -956,7 +1035,9 @@ class zynthian_gui:
 			self.dtsw2=datetime.now()
 			if self.gpio_switch12():
 				return
-			elif self.mode>=3:
+			elif self.mode>=4:
+				self.set_mode_instr_select()
+			elif self.mode==3:
 				self.set_mode_bank_select()
 			elif self.mode==2:
 				self.set_mode_chan_select()
@@ -995,16 +1076,18 @@ class zynthian_gui:
 				print ("MIDI CTRL " + str(ctrl) + ", CH" + str(chan) + " => " + str(val))
 				# Only read Modulation Wheel =>
 				#if ctrl==1:
-				if ctrl in self.zyngui_instr.zcontroller_map.keys():
-					self.zyngui_instr.zcontroller_map[ctrl].set_value(val,True)
+				if ctrl in self.zyngui_control.zcontroller_map.keys():
+					self.zyngui_control.zcontroller_map[ctrl].set_value(val,True)
 		if self.polling:
 			top.after(40, self.midi_read)
 
 	def rencoder_read(self):
-		if self.mode==4:
-			self.zyngui_instr.rencoder_read_control()
+		if self.mode==5:
+			self.zyngui_control.rencoder_read_select()
+		elif self.mode==4:
+			self.zyngui_control.rencoder_read_control()
 		elif self.mode==3:
-			self.zyngui_instr.rencoder_read_select()
+			self.zyngui_instr.rencoder_read()
 		elif self.mode==2:
 			self.zyngui_bank.rencoder_read()
 		elif self.mode==1:
@@ -1030,23 +1113,28 @@ class zynthian_gui:
 			top.after(40, self.osc_read)
 
 	def cb_osc_load_instr(self, path, args):
-		self.set_mode_instr_control()
+		#Request Param Tree
+		self.zyngui_control.list_data=[]
+		liblo.send(zyngui.osc_target, "/path-search","/part"+str(zyngui.midi_chan)+"/","")
+		print("GET CONTROLLER LIST: "+str(zyngui.midi_chan))
 
 	def cb_osc_paths(self, path, args, types, src):
-		print("PATHS: ")
 		for a, t in zip(args, types):
 			#print("%s (%s)" % (a,t))
 			if t!='b':
 				liblo.send(self.osc_target, "/path-search","/part"+str(self.midi_chan)+"/"+a,"")
-				print("%s (%s)" % (a, t))
+				#print("%s (%s)" % (a, t))
+				if self.zyngui_control:
+					self.zyngui_control.list_data.append((a,a,a))
+		self.zyngui_control.fill_list()
 
 	def cb_osc_bank_view(self, path, args):
 		pass
 
 	def cb_osc_ctrl(self, path, args):
 		#print ("OSC CTRL: " + path + " => "+str(args[0]))
-		if path in self.zyngui_instr.zcontroller_map.keys():
-			self.zyngui_instr.zcontroller_map[path].set_init_value(args[0])
+		if path in self.zyngui_control.zcontroller_map.keys():
+			self.zyngui_control.zcontroller_map[path].set_init_value(args[0])
 
 	def cb_osc_all(self, path, args, types, src):
 		print("OSC MESSAGE '%s' from '%s'" % (path, src.url))

@@ -269,6 +269,13 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 		('chorus',93,2,127)
 	)
 
+	control_list=(
+		('parametro 1','0','/part0/p1'),
+		('parametro 2','1','/part0/p2'),
+		('parametro 3','2','/part0/p3'),
+		('parametro 4','3','/part0/p4')
+	)
+
 	def __init__(self):
 		self.start(True)
 		self.load_bank_list()
