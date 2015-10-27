@@ -51,7 +51,8 @@ class zynthian_synth_engine:
 	user_uid=1000
 
 	bank_list=None
-	instr_list=None	
+	instr_list=None
+	control_list=None
 
 	midi_chan=0
 
@@ -215,7 +216,7 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 	def __init__(self):
 		if os.environ.get('ZYNTHIANX'):
 			self.command_env=os.environ.copy()
-			self.command_env['DISPLAY']="localhost:10.0"
+			self.command_env['DISPLAY']=os.environ.get('ZYNTHIANX')
 			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-P", str(zyngine_osc_port), "-l", "zynconf/zasfx_4ch.xmz")
 		else:
 			#self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U")
@@ -270,10 +271,14 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 	)
 
 	control_list=(
-		('parametro 1','0','/part0/p1'),
-		('parametro 2','1','/part0/p2'),
-		('parametro 3','2','/part0/p3'),
-		('parametro 4','3','/part0/p4')
+		('parametro 1','0','/parameter 1'),
+		('parametro 2','1','/parameter 2'),
+		('parametro 3','2','/parameter 3'),
+		('parametro 4','3','/parameter 4'),
+		('parametro 5','4','/parameter 5'),
+		('parametro 6','5','/parameter 6'),
+		('parametro 7','6','/parameter 7'),
+		('parametro 8','7','/parameter 8')
 	)
 
 	def __init__(self):
