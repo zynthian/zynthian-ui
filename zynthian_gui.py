@@ -549,7 +549,6 @@ class zynthian_gui_engine(zynthian_gui_list):
 				return False
 			else:
 				self.zyngine.stop()
-
 		if name=="ZynAddSubFX":
 			self.zyngine=zynthian_zynaddsubfx_engine()
 		elif name=="FluidSynth":
@@ -705,6 +704,8 @@ class zynthian_gui_instr(zynthian_gui_list):
 #-------------------------------------------------------------------------------
 
 class zynthian_gui_control(zynthian_gui_list):
+	mode=None
+	osc_path=None
 
 	def __init__(self):
 		super().__init__(gui_bg)
@@ -733,7 +734,10 @@ class zynthian_gui_control(zynthian_gui_list):
 
 	def set_controller_config(self, cfg):
 		for i in range(0,4):
-			self.set_controller(i,cfg[i][0],zyngui.midi_chan,cfg[i][1],cfg[i][2])
+			try:
+				self.set_controller(i,cfg[i][0],zyngui.midi_chan,cfg[i][1],cfg[i][2])
+			except:
+				pass
 
 	def set_controller(self, i, tit, chan, ctrl, val, max_val=127):
 		try:
@@ -748,7 +752,13 @@ class zynthian_gui_control(zynthian_gui_list):
 		if not isinstance(zyngui.zyngine,zynthian_zynaddsubfx_engine):
 			self.list_data=zyngui.zyngine.control_list
 
+	def _fill_list(self):
+		super()._fill_list()
+		if self.mode=='select':
+			self.set_controller(2, "Parameter",0,0,self.index,len(self.list_data))
+
 	def set_mode_select(self):
+		self.mode='select'
 		for i in range(0,4):
 			self.zcontrollers[i].hide()
 		#self.index=1
@@ -758,13 +768,38 @@ class zynthian_gui_control(zynthian_gui_list):
 		self.set_select_path()
 
 	def set_mode_control(self):
+		self.mode='control'
 		self.set_controller_config(self.zcontrollers_config)
 		self.listbox.config(selectbackground=bg3color)
 		self.set_select_path()
 
+	def get_osc_paths(self, path=''):
+		self.list_data=[]
+		if path=='root':
+			self.osc_path="/part"+str(zyngui.midi_chan)+"/"
+		else:
+			self.osc_path=self.osc_path+path
+		liblo.send(zyngui.osc_target, "/path-search",self.osc_path,"")
+		print("OSC /path-search "+self.osc_path)
+
 	def select_action(self, i):
-		print("SELECT PARAMETER: "+str(i))
-		zyngui.set_mode_instr_control()
+		path=self.list_data[i][0]
+		tnode=self.list_data[i][1]
+		title=self.list_data[i][2]
+		print("SELECT PARAMETER: %s (%s)" % (title,tnode))
+		if tnode=='dir':
+			self.get_osc_paths(path)
+		elif tnode=='ctrl':
+			parts=self.osc_path.split('/')
+			if len(parts)>1:
+				title=parts[-2]+" "+title
+			self.zcontrollers_config[2]=(title[:-2],self.osc_path+path,64,127)
+			liblo.send(zyngui.osc_target, self.osc_path+path)
+			zyngui.set_mode_instr_control()
+		elif tnode=='bool':
+			#TODO: Toogle the value!!
+			liblo.send(zyngui.osc_target, self.osc_path+path,True)
+			zyngui.set_mode_instr_control()
 
 	def rencoder_read_select(self):
 		_sel=self.zcontrollers[2].value
@@ -1035,7 +1070,9 @@ class zynthian_gui:
 			self.dtsw2=datetime.now()
 			if self.gpio_switch12():
 				return
-			elif self.mode>=4:
+			elif self.mode==5:
+				self.set_mode_instr_control()
+			elif self.mode==4:
 				self.set_mode_instr_select()
 			elif self.mode==3:
 				self.set_mode_bank_select()
@@ -1113,20 +1150,58 @@ class zynthian_gui:
 			top.after(40, self.osc_read)
 
 	def cb_osc_load_instr(self, path, args):
-		#Request Param Tree
-		self.zyngui_control.list_data=[]
-		liblo.send(zyngui.osc_target, "/path-search","/part"+str(zyngui.midi_chan)+"/","")
-		print("GET CONTROLLER LIST: "+str(zyngui.midi_chan))
+		self.zyngui_control.get_osc_paths('root')
 
 	def cb_osc_paths(self, path, args, types, src):
+		if not self.zyngui_control:
+			return
 		for a, t in zip(args, types):
-			#print("%s (%s)" % (a,t))
-			if t!='b':
-				liblo.send(self.osc_target, "/path-search","/part"+str(self.midi_chan)+"/"+a,"")
-				#print("%s (%s)" % (a, t))
-				if self.zyngui_control:
-					self.zyngui_control.list_data.append((a,a,a))
-		self.zyngui_control.fill_list()
+			if not a or t=='b':
+				continue
+			print("=> %s (%s)" % (a,t))
+			a=str(a)
+			postfix=prefix=firstchar=lastchar=''
+			if a[-1:]=='/':
+				tnode='dir'
+				postfix=lastchar='/'
+				a=a[:-1]
+			elif a[-1:]==':':
+				tnode='cmd'
+				postfix=':'
+				a=a[:-1]
+				continue
+			elif a[0]=='P':
+				tnode='par'
+				firstchar='P'
+				a=a[1:]
+			else:
+				continue
+			parts=a.split('::')
+			if len(parts)>1:
+				a=parts[0]
+				pargs=parts[1]
+				if tnode=='par':
+					if pargs=='i':
+						tnode='ctrl'
+						postfix=':i'
+					elif pargs=='T:F':
+						tnode='bool'
+						postfix=':b'
+					else:
+						continue
+			parts=a.split('#',1)
+			if len(parts)>1:
+				n=int(parts[1])
+				if n>0:
+					for i in range(0,n):
+						title=prefix+parts[0]+str(i)+postfix
+						path=firstchar+parts[0]+str(i)+lastchar
+						self.zyngui_control.list_data.append((path,tnode,title))
+			else:
+				title=prefix+a+postfix
+				path=firstchar+a+lastchar
+				self.zyngui_control.list_data.append((path,tnode,title))
+		self.zyngui_control._fill_list()
 
 	def cb_osc_bank_view(self, path, args):
 		pass

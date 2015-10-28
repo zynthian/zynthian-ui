@@ -13,6 +13,7 @@ modified:  2015-07-11
 
 import sys
 import os
+import copy
 from os.path import isfile, isdir, join
 from string import Template
 from subprocess import Popen, PIPE, STDOUT
@@ -64,7 +65,7 @@ class zynthian_synth_engine:
 
 	instr_ctrl_config=[None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None]
 
-	default_ctrl_config=(
+	default_ctrl_config=[
 		('volume',7,96,127),
 		#('expression',11,127,127),
 		('modulation',1,0,127),
@@ -72,7 +73,7 @@ class zynthian_synth_engine:
 		#('chorus',93,64,127),
 		('filter Q',71,64,127),
 		('filter cutoff',74,64,127)
-	)
+	]
 
 	def __init__(self):
 		self.start()
@@ -159,7 +160,7 @@ class zynthian_synth_engine:
 		self.instr_list=[]
 
 	def load_instr_config(self):
-		self.instr_ctrl_config[self.midi_chan]=self.default_ctrl_config
+		self.instr_ctrl_config[self.midi_chan]=copy.copy(self.default_ctrl_config)
 
 	def set_bank(self, i):
 		last_bank_index=self.bank_index[self.midi_chan]
@@ -195,7 +196,7 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 	#bank_dir="/usr/share/zynaddsubfx/banks"
 	bank_dir="./software/zynaddsubfx-instruments/banks"
 
-	default_ctrl_config=(
+	default_ctrl_config=[
 		('volume',Template('/part$part/Pvolume'),96,127),
 		#('volume',7,96,127),
 		('modulation',1,0,127),
@@ -211,7 +212,7 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 		#('resonance bw',78,64,127),
 		#('reverb',91,64,127),
 		#('chorus',93,64,127),
-	)
+	]
 
 	def __init__(self):
 		if os.environ.get('ZYNTHIANX'):
@@ -262,15 +263,15 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 	bank_dir="./sf2"
 	bank_id=0
 
-	default_ctrl_config=(
+	default_ctrl_config=[
 		('volume',7,96,127),
 		#('expression',11,127,127),
 		('modulation',1,0,127),
 		('reverb',91,64,127),
 		('chorus',93,2,127)
-	)
+	]
 
-	control_list=(
+	control_list=[
 		('parametro 1','0','/parameter 1'),
 		('parametro 2','1','/parameter 2'),
 		('parametro 3','2','/parameter 3'),
@@ -279,7 +280,7 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 		('parametro 6','5','/parameter 6'),
 		('parametro 7','6','/parameter 7'),
 		('parametro 8','7','/parameter 8')
-	)
+	]
 
 	def __init__(self):
 		self.start(True)
