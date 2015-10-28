@@ -16,6 +16,7 @@ import alsaseq
 import alsamidi
 import liblo
 from tkinter import *
+from tkinter import font as tkFont
 from ctypes import *
 from datetime import datetime
 from string import Template
@@ -89,6 +90,7 @@ class zynthian_controller:
 		self.setup_rencoder()
 		self.label_title = Label(self.canvas,
 			text=self.title,
+			font=("Helvetica",11),
 			wraplength=self.width-6,
 			justify=LEFT,
 			bg=bgcolor,
@@ -150,9 +152,31 @@ class zynthian_controller:
 			self.canvas.delete(self.triangle)
 			self.triangle_bg=self.triangle=None
 
-	def config(self, tit, chan, ctrl, val, max_val=127):
+	def set_label(self, tit):
 		self.title=str(tit)
-		self.label_title.config(text=self.title)
+		#maxlen=max([len(w) for w in self.title.split()])
+		rfont=tkFont.Font(family="Helvetica",size=10)
+		maxlen=max([rfont.measure(w) for w in self.title.split()])
+		if maxlen<40:
+			maxlen=rfont.measure(self.title)
+		#font_size=12-int((maxlen-58)/6)
+		if maxlen>86:
+			font_size=7
+		elif maxlen>79:
+			font_size=8
+		elif maxlen>72:
+			font_size=9
+		elif maxlen>65:
+			font_size=10
+		elif maxlen>58:
+			font_size=11
+		else:
+			font_size=12
+		#self.title=self.title+" > "+str(font_size)
+		self.label_title.config(text=self.title,font=("Helvetica",font_size))
+
+	def config(self, tit, chan, ctrl, val, max_val=127):
+		self.set_label(tit)
 		self.chan=chan
 		if isinstance(ctrl, Template):
 			self.ctrl=ctrl.substitute(part=chan)
