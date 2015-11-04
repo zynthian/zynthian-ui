@@ -67,9 +67,11 @@ class zynthian_controller:
 	trw=70
 	trh=13
 
+	shown=False
 	frame=None
 	triangle=None
-	shown=False
+	arc=None
+	value_text=None
 
 	def __init__(self, indx, cnv, x, y, tit, chan, ctrl, val=0, max_val=127):
 		if val>max_val:
@@ -95,29 +97,21 @@ class zynthian_controller:
 			justify=LEFT,
 			bg=bgcolor,
 			fg=lightcolor)
-		self.label_value = Label(self.canvas,
-			text=str(self.value),
-			font=("Helvetica",15),
-			bg=bgcolor,
-			fg=lightcolor)
 		self.show()
 
 	def show(self):
 		if not self.shown:
 			self.shown=True
 			self.plot_frame()
-			if self.ctrl!=0:
-				self.plot_triangle()
+			self.plot_value_arc()
 			self.label_title.place(x=self.x+3, y=self.y+4, anchor=NW)
-			self.label_value.place(x=self.x+int(0.3*self.width), y=self.y+int(0.5*self.height), anchor=NW)
 
 	def hide(self):
 		if self.shown:
 			self.shown=False
 			self.erase_frame()
-			self.erase_triangle()
+			self.erase_value_arc()
 			self.label_title.place_forget()
-			self.label_value.place_forget()
 
 	def plot_frame(self):
 		x2=self.x+self.width
@@ -132,27 +126,78 @@ class zynthian_controller:
 			self.canvas.delete(self.frame)
 			self.frame=None
 
-	def plot_triangle(self):
+	def plot_value_triangle(self):
 		if self.value>self.max_value: self.value=self.max_value
 		elif self.value<0: self.value=0
 		x1=self.x+2
 		y1=self.y+int(0.8*self.height)+self.trh
-		x2=x1+self.trw*self.value/self.max_value
-		y2=y1-self.trh*self.value/self.max_value
-		if self.triangle:
-			self.canvas.coords(self.triangle_bg,(x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh))
-			self.canvas.coords(self.triangle,(x1, y1, x2, y1, x2, y2))
+		if self.max_value>0:
+			x2=x1+self.trw*self.value/self.max_value
+			y2=y1-self.trh*self.value/self.max_value
 		else:
+			x2=x1
+			xy=y1
+		if self.triangle:
+				#self.canvas.coords(self.triangle_bg,(x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh))
+				self.canvas.coords(self.triangle,(x1, y1, x2, y1, x2, y2))
+		elif self.ctrl!=0:
 			self.triangle_bg=self.canvas.create_polygon((x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh), fill=bg2color)
 			self.triangle=self.canvas.create_polygon((x1, y1, x2, y1, x2, y2), fill=lightcolor)
+		if self.ctrl==0:
+			value=self.value+1
+		else:
+			value=self.value
+		if self.value_text:
+			self.canvas.itemconfig(self.value_text, text=str(value))
+		else:
+			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-trh-8, width=trw, justify=CENTER, fill=lightcolor, font=("Helvetica",14), text=str(value))
 
-	def erase_triangle(self):
+	def erase_value_triangle(self):
 		if self.triangle:
 			self.canvas.delete(self.triangle_bg)
 			self.canvas.delete(self.triangle)
 			self.triangle_bg=self.triangle=None
+		if self.value_text:
+			self.canvas.delete(self.value_text)
+			self.value_text=None
 
-	def set_label(self, tit):
+	def plot_value_arc(self):
+		if self.value>self.max_value: self.value=self.max_value
+		elif self.value<0: self.value=0
+		thickness=15
+		degmax=300
+		deg0=90+degmax/2
+		if self.max_value>0:
+			degd=-degmax*self.value/self.max_value
+		else:
+			degd=0
+		if (not self.arc and self.ctrl!=0) or not self.value_text:
+			x1=self.x+0.2*self.trw
+			y1=self.y+self.height-int(0.7*self.trw)-6
+			x2=x1+0.7*self.trw
+			y2=self.y+self.height-6
+		if self.arc:
+			self.canvas.itemconfig(self.arc, extent=degd)
+		elif self.ctrl!=0:
+			self.arc=self.canvas.create_arc(x1, y1, x2, y2, style=ARC, outline=bg2color, width=thickness, start=deg0, extent=degd)
+		if self.ctrl==0:
+			value=self.value+1
+		else:
+			value=self.value
+		if self.value_text:
+			self.canvas.itemconfig(self.value_text, text=str(value))
+		else:
+			self.value_text=self.canvas.create_text(x1+(x2-x1)/2-1, y1-(y1-y2)/2, width=x2-x1, justify=CENTER, fill=lightcolor, font=("Helvetica",14), text=str(value))
+
+	def erase_value_arc(self):
+		if self.arc:
+			self.canvas.delete(self.arc)
+			self.arc=None
+		if self.value_text:
+			self.canvas.delete(self.value_text)
+			self.value_text=None
+
+	def set_title(self, tit):
 		self.title=str(tit)
 		#maxlen=max([len(w) for w in self.title.split()])
 		rfont=tkFont.Font(family="Helvetica",size=10)
@@ -176,7 +221,7 @@ class zynthian_controller:
 		self.label_title.config(text=self.title,font=("Helvetica",font_size))
 
 	def config(self, tit, chan, ctrl, val, max_val=127):
-		self.set_label(tit)
+		self.set_title(tit)
 		self.chan=chan
 		if isinstance(ctrl, Template):
 			self.ctrl=ctrl.substitute(part=chan)
@@ -207,14 +252,10 @@ class zynthian_controller:
 			v=self.max_value
 		if (v!=self.value):
 			self.value=v
-			if self.shown and set_rencoder:
-				lib_rencoder.set_value_midi_rencoder(self.index,v)
-			if self.ctrl==0:
-				self.label_value.config(text=str(self.value+1))
-			else:
-				self.label_value.config(text=str(self.value))
-				if self.shown:
-					self.plot_triangle()
+			if self.shown:
+				if set_rencoder:
+					lib_rencoder.set_value_midi_rencoder(self.index,v)
+				self.plot_value_arc()
 
 	def set_init_value(self, v):
 		if self.init_value is None:
