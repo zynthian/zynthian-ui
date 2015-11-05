@@ -97,20 +97,22 @@ class zynthian_controller:
 			justify=LEFT,
 			bg=bgcolor,
 			fg=lightcolor)
+		self.plot_value=self.plot_value_arc
+		self.erase_value=self.erase_value_arc
 		self.show()
 
 	def show(self):
 		if not self.shown:
 			self.shown=True
 			self.plot_frame()
-			self.plot_value_arc()
+			self.plot_value()
 			self.label_title.place(x=self.x+3, y=self.y+4, anchor=NW)
 
 	def hide(self):
 		if self.shown:
 			self.shown=False
 			self.erase_frame()
-			self.erase_value_arc()
+			self.erase_value()
 			self.label_title.place_forget()
 
 	def plot_frame(self):
@@ -150,7 +152,7 @@ class zynthian_controller:
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=str(value))
 		else:
-			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-trh-8, width=trw, justify=CENTER, fill=lightcolor, font=("Helvetica",14), text=str(value))
+			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh-8, width=self.trw, justify=CENTER, fill=lightcolor, font=("Helvetica",14), text=str(value))
 
 	def erase_value_triangle(self):
 		if self.triangle:
@@ -164,7 +166,7 @@ class zynthian_controller:
 	def plot_value_arc(self):
 		if self.value>self.max_value: self.value=self.max_value
 		elif self.value<0: self.value=0
-		thickness=15
+		thickness=12
 		degmax=300
 		deg0=90+degmax/2
 		if self.max_value>0:
@@ -255,7 +257,7 @@ class zynthian_controller:
 			if self.shown:
 				if set_rencoder:
 					lib_rencoder.set_value_midi_rencoder(self.index,v)
-				self.plot_value_arc()
+				self.plot_value()
 
 	def set_init_value(self, v):
 		if self.init_value is None:
