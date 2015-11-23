@@ -157,6 +157,27 @@ class zynthian_synth_engine:
 		self.instr_index[self.midi_chan]=0
 		self.instr_name[self.midi_chan]=""
 
+	def load_bank_filelist(self,dpath,fext):
+		i=0
+		fext='.'+fext
+		self.bank_list=[]
+		print('Getting Bank List for ' + self.name)
+		for f in sorted(os.listdir(dpath)):
+			if (isfile(join(dpath,f)) and f[-4:].lower()==fext):
+				title=str.replace(f[:-4], '_', ' ')
+				self.bank_list.append((f,i,title))
+				i=i+1
+
+	def load_bank_dirlist(self,dpath):
+		i=0
+		self.bank_list=[]
+		print('Getting Bank List for ' + self.name)
+		for f in sorted(os.listdir(dpath)):
+			if isdir(join(dpath,f)):
+				title=str.replace(f, '_', ' ')
+				self.bank_list.append((f,i,title))
+				i=i+1
+
 	def load_bank_list(self):
 		self.bank_list=[]
 
@@ -200,7 +221,7 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 	osc_paths_data=[]
 
 	#bank_dir="/usr/share/zynaddsubfx/banks"
-	bank_dir="./zynbanks"
+	bank_dir="./data/zynbanks"
 
 	map_list=(
 		([
@@ -235,14 +256,7 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 		super().__init__(parent)
 
 	def load_bank_list(self):
-		self.bank_list=[]
-		print('Getting Bank List for ' + self.name)
-		i=0
-		for f in sorted(os.listdir(self.bank_dir)):
-			if isdir(join(self.bank_dir,f)):
-				title=str.replace(f, '_', ' ')
-				self.bank_list.append((f,i,title))
-				i=i+1
+		self.load_bank_dirlist(self.bank_dir)
 
 	def load_instr_list(self):
 		self.instr_list=[]
@@ -317,8 +331,9 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 	name="FluidSynth"
 	#command=("/usr/local/bin/fluidsynth", "-p", "FluidSynth", "-a", "alsa" ,"-g", "1")
 	command=("/usr/bin/fluidsynth", "-p", "FluidSynth", "-a", "alsa" ,"-g", "1")
+	#synth.midi-bank-select => mma
 
-	bank_dir="./sf2"
+	soundfont_dir="./data/soundfonts"
 	bank_id=0
 
 	map_list=(
@@ -348,14 +363,7 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 		super().stop()
 
 	def load_bank_list(self):
-		self.bank_list=[]
-		print('Getting Bank List for ' + self.name)
-		i=0
-		for f in sorted(os.listdir(self.bank_dir)):
-			if (isfile(join(self.bank_dir,f)) and f[-4:].lower()=='.sf2'):
-				title=str.replace(f[:-4], '_', ' ')
-				self.bank_list.append((f,i,title))
-				i=i+1
+		self.load_bank_filelist(self.soundfont_dir,"sf2")
 
 	def load_instr_list(self):
 		self.instr_list=[]
@@ -377,7 +385,7 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 		self.bank_name[self.midi_chan]=self.bank_list[i][2]
 		if self.bank_id>0:
 			self.proc_cmd("unload " + str(self.bank_id),2)
-		self.proc_cmd("load " + self.bank_dir + '/' + self.bank_list[i][0],20)
+		self.proc_cmd("load " + self.soundfont_dir + '/' + self.bank_list[i][0],20)
 		self.bank_id=self.bank_id+1
 		print('Bank Selected: ' + self.bank_name[self.midi_chan] + ' (' + str(i)+')')
 		self.load_instr_list()
@@ -393,7 +401,7 @@ class zynthian_setbfree_engine(zynthian_synth_engine):
 	name="setBfree"
 	command=("/usr/local/bin/setBfree", "midi.driver=alsa")
 
-	program_config_fpath="/usr/local/share/setBfree/pgm/default.pgm"
+	pgm_dir="./data/setbfree"
 
 	map_list=(
 		([
@@ -416,12 +424,12 @@ class zynthian_setbfree_engine(zynthian_synth_engine):
 		super().__init__(parent)
 
 	def load_bank_list(self):
-		self.bank_list=[]
-		self.bank_list.append(("",0,"Default Programs"))
+		self.load_bank_filelist(self.pgm_dir,"pgm")
 
 	def load_instr_list(self):
 		self.instr_list=[]
-		with open(self.program_config_fpath) as f:
+		pgm_fpath=self.pgm_dir+'/'+self.bank_name[self.midi_chan]
+		with open(pgm_fpath) as f:
 			lines = f.readlines()
 			ptrn=re.compile("^([\d]+)\s\{\s?name\=\"([^\"]+)\"")
 			i=0
@@ -433,5 +441,65 @@ class zynthian_setbfree_engine(zynthian_synth_engine):
 						i=i+1
 					except:
 						pass
+
+#-------------------------------------------------------------------------------
+# Linuxsampler Engine Class
+#-------------------------------------------------------------------------------
+
+class zynthian_linuxsampler_engine(zynthian_synth_engine):
+	name="LinuxSampler"
+	port=6688
+	command=("/usr/bin/linuxsampler","--lscp-port",str(port))
+
+	lscp_dir="data/lscp"
+
+	map_list=(
+		([
+			('volume',7,96,127),
+			#('expression',11,127,127),
+			('modulation',1,0,127),
+			('reverb',91,64,127),
+			('chorus',93,2,127)
+		],0,'main'),
+		([
+			('expression',11,127,127),
+			('modulation',1,0,127),
+			('reverb',91,64,127),
+			('chorus',93,2,127)
+		],0,'extra')
+	)
+	default_ctrl_config=map_list[0][0]
+
+	def __init__(self,parent=None):
+		super().__init__(parent)
+
+	def load_bank_list(self):
+		self.load_bank_filelist(self.lscp_dir,"lscp")
+
+	def load_instr_list(self):
+		self.instr_list=[]
+		pgm_fpath=self.pgm_dir+'/'+self.bank_name[self.midi_chan]
+		with open(pgm_fpath) as f:
+			lines = f.readlines()
+			ptrn=re.compile("^([\d]+)\s\{\s?name\=\"([^\"]+)\"")
+			i=0
+			for line in lines:
+				m=ptrn.match(line)
+				if m:
+					try:
+						self.instr_list.append((i,[0,0,int(m.group(1))],m.group(2)))
+						i=i+1
+					except:
+						pass
+
+	def set_bank(self, i):
+		super().set_bank(self,i)
+		#Send LSCP script
+		pgm_fpath=self.pgm_dir+'/'+self.bank_name[self.midi_chan]
+		with open(pgm_fpath) as f:
+			lines = f.readlines()
+			for line in lines:
+				print("LSCP: "+line)
+
 
 #-------------------------------------------------------------------------------

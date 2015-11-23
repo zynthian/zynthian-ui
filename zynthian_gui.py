@@ -601,7 +601,8 @@ class zynthian_gui_engine(zynthian_gui_list):
 		self.list_data=(
 			("ZynAddSubFX",0,"ZynAddSubFX - Synthesizer"),
 			("FluidSynth",1,"FluidSynth - Sampler"),
-			("setBfree",1,"setBfree - Hammond B3")
+			("setBfree",1,"setBfree - Hammond B3"),
+			("LinuxSampler",1,"LinuxSampler - Sampler")
 		)
 
 	def show(self):
@@ -626,6 +627,8 @@ class zynthian_gui_engine(zynthian_gui_list):
 			self.zyngine=zynthian_fluidsynth_engine(zyngui)
 		elif name=="setBfree":
 			self.zyngine=zynthian_setbfree_engine(zyngui)
+		elif name=="LinuxSampler":
+			self.zyngine=zynthian_linuxsampler_engine(zyngui)
 		return True
 
 	def rencoder_read(self):
