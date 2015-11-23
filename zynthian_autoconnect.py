@@ -24,7 +24,9 @@ refresh_time = 2
 #Synth Engine List
 synth_engine_list = (
 	"ZynAddSubFX",
-	"FluidSynth"
+	"FluidSynth",
+	"LinuxSampler",
+	"setBfree"
 )
 
 #------------------------------------------------------------------------------

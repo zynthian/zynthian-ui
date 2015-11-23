@@ -13,6 +13,7 @@ modified:  2015-07-11
 
 import sys
 import os
+import re
 import copy
 from os.path import isfile, isdir, join
 from string import Template
@@ -42,6 +43,8 @@ zyngine_osc_port=6699
 
 class zynthian_synth_engine:
 	name=""
+	parent=None
+
 	command=None
 	command_env=None
 	proc=None
@@ -75,7 +78,8 @@ class zynthian_synth_engine:
 		('filter cutoff',74,64,127)
 	]
 
-	def __init__(self):
+	def __init__(self,parent=None):
+		self.parent=parent
 		self.start()
 		self.load_bank_list()
 
@@ -168,6 +172,7 @@ class zynthian_synth_engine:
 		self.bank_name[self.midi_chan]=self.bank_list[i][2]
 		self.load_instr_list()
 		if last_bank_index!=i:
+			zynmidi.set_midi_bank_msb(self.midi_chan, i)
 			self.reset_instr()
 		print('Bank Selected: ' + self.bank_name[self.midi_chan] + ' (' + str(i)+')')
 
@@ -192,38 +197,43 @@ class zynthian_synth_engine:
 
 class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 	name="ZynAddSubFX"
+	osc_paths_data=[]
 
 	#bank_dir="/usr/share/zynaddsubfx/banks"
-	bank_dir="./software/zynaddsubfx-instruments/banks"
+	bank_dir="./zynbanks"
 
-	default_ctrl_config=[
-		('volume',Template('/part$part/Pvolume'),96,127),
-		#('volume',7,96,127),
-		('modulation',1,0,127),
-		('filter Q',71,64,127),
-		('filter cutoff',74,64,127)
-		#('modulation',1,0,127),
-		#('expression',11,127,127),
-		#('filter Q',71,64,127),
-		#('filter cutoff',74,64,127),
-		#('bandwidth',75,64,127),
-		#('modulation amplitude',76,127,127),
-		#('resonance freq',77,64,127),
-		#('resonance bw',78,64,127),
-		#('reverb',91,64,127),
-		#('chorus',93,64,127),
-	]
+	map_list=(
+		([
+			('volume',Template('/part$part/Pvolume'),96,127),
+			#('volume',7,96,127),
+			('modulation',1,0,127),
+			('filter Q',71,64,127),
+			('filter cutoff',74,64,127)
+		],0,'main'),
+		([
+			('expression',11,127,127),
+			('modulation',1,0,127),
+			('reverb',91,64,127),
+			('chorus',93,2,127)
+		],0,'extra'),
+		([
+			('bandwidth',75,64,127),
+			('modulation amplitude',76,127,127),
+			('resonance frequency',77,64,127),
+			('resonance bandwidth',78,64,127)
+		],0,'resonance')
+	)
+	default_ctrl_config=map_list[0][0]
 
-	def __init__(self):
+	def __init__(self,parent=None):
 		if os.environ.get('ZYNTHIANX'):
 			self.command_env=os.environ.copy()
 			self.command_env['DISPLAY']=os.environ.get('ZYNTHIANX')
 			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-P", str(zyngine_osc_port), "-l", "zynconf/zasfx_4ch.xmz")
 		else:
-			#self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U")
 			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U", "-P", str(zyngine_osc_port), "-l", "zynconf/zasfx_4ch.xmz")
-		super().__init__()
-		
+		super().__init__(parent)
+
 	def load_bank_list(self):
 		self.bank_list=[]
 		print('Getting Bank List for ' + self.name)
@@ -251,6 +261,54 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 	def load_instr_config(self):
 		super().load_instr_config()
 
+	def cb_osc_paths(self, path, args, types, src):
+		for a, t in zip(args, types):
+			if not a or t=='b':
+				continue
+			print("=> %s (%s)" % (a,t))
+			a=str(a)
+			postfix=prefix=firstchar=lastchar=''
+			if a[-1:]=='/':
+				tnode='dir'
+				postfix=lastchar='/'
+				a=a[:-1]
+			elif a[-1:]==':':
+				tnode='cmd'
+				postfix=':'
+				a=a[:-1]
+				continue
+			elif a[0]=='P':
+				tnode='par'
+				firstchar='P'
+				a=a[1:]
+			else:
+				continue
+			parts=a.split('::')
+			if len(parts)>1:
+				a=parts[0]
+				pargs=parts[1]
+				if tnode=='par':
+					if pargs=='i':
+						tnode='ctrl'
+						postfix=':i'
+					elif pargs=='T:F':
+						tnode='bool'
+						postfix=':b'
+					else:
+						continue
+			parts=a.split('#',1)
+			if len(parts)>1:
+				n=int(parts[1])
+				if n>0:
+					for i in range(0,n):
+						title=prefix+parts[0]+str(i)+postfix
+						path=firstchar+parts[0]+str(i)+lastchar
+						self.osc_paths.append((path,tnode,title))
+			else:
+				title=prefix+a+postfix
+				path=firstchar+a+lastchar
+				self.osc_paths_data.append((path,tnode,title))
+
 #-------------------------------------------------------------------------------
 # FluidSynth Engine Class
 #-------------------------------------------------------------------------------
@@ -263,26 +321,25 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 	bank_dir="./sf2"
 	bank_id=0
 
-	default_ctrl_config=[
-		('volume',7,96,127),
-		#('expression',11,127,127),
-		('modulation',1,0,127),
-		('reverb',91,64,127),
-		('chorus',93,2,127)
-	]
+	map_list=(
+		([
+			('volume',7,96,127),
+			#('expression',11,127,127),
+			('modulation',1,0,127),
+			('reverb',91,64,127),
+			('chorus',93,2,127)
+		],0,'main'),
+		([
+			('expression',11,127,127),
+			('modulation',1,0,127),
+			('reverb',91,64,127),
+			('chorus',93,2,127)
+		],0,'extra')
+	)
+	default_ctrl_config=map_list[0][0]
 
-	control_list=[
-		('parametro 1','0','/parameter 1'),
-		('parametro 2','1','/parameter 2'),
-		('parametro 3','2','/parameter 3'),
-		('parametro 4','3','/parameter 4'),
-		('parametro 5','4','/parameter 5'),
-		('parametro 6','5','/parameter 6'),
-		('parametro 7','6','/parameter 7'),
-		('parametro 8','7','/parameter 8')
-	]
-
-	def __init__(self):
+	def __init__(self,parent=None):
+		self.parent=parent
 		self.start(True)
 		self.load_bank_list()
 
@@ -327,5 +384,54 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 
 	def load_instr_config(self):
 		super().load_instr_config()
+
+#-------------------------------------------------------------------------------
+# setBfree Engine Class
+#-------------------------------------------------------------------------------
+
+class zynthian_setbfree_engine(zynthian_synth_engine):
+	name="setBfree"
+	command=("/usr/local/bin/setBfree", "midi.driver=alsa")
+
+	program_config_fpath="/usr/local/share/setBfree/pgm/default.pgm"
+
+	map_list=(
+		([
+			('volume',7,96,127),
+			#('expression',11,127,127),
+			('modulation',1,0,127),
+			('reverb',91,64,127),
+			('chorus',93,2,127)
+		],0,'main'),
+		([
+			('expression',11,127,127),
+			('modulation',1,0,127),
+			('reverb',91,64,127),
+			('chorus',93,2,127)
+		],0,'extra')
+	)
+	default_ctrl_config=map_list[0][0]
+
+	def __init__(self,parent=None):
+		super().__init__(parent)
+
+	def load_bank_list(self):
+		self.bank_list=[]
+		self.bank_list.append(("",0,"Default Programs"))
+
+	def load_instr_list(self):
+		self.instr_list=[]
+		with open(self.program_config_fpath) as f:
+			lines = f.readlines()
+			ptrn=re.compile("^([\d]+)\s\{\s?name\=\"([^\"]+)\"")
+			i=0
+			for line in lines:
+				m=ptrn.match(line)
+				if m:
+					try:
+						self.instr_list.append((i,[0,0,int(m.group(1))],m.group(2)))
+						i=i+1
+					except:
+						pass
 
 #-------------------------------------------------------------------------------
