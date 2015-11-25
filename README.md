@@ -1,9 +1,7 @@
 # zynthian
 
-[Zynthian] (http://zynthian.org) is an Open Synth Platform based  Raspberry Pi, Linux (Raspbian) and some Open Software Synthesizers.
+[Zynthian] (http://zynthian.org) is an Open Synth Platform based  Raspberry Pi, Linux (Raspbian) and some Open Software Synthesizers. It is a multi-engine platform and at the present time can run the next Synth Engines:
 ![Image of Zynthian Box Design](http://zynthian.org/img/github/zynthian-case-render-01.jpg)
-
- It is a multi-engine platform and at the present time can run the next Synth Engines:
 
 + [ZynAddSubFX] (https://sourceforge.net/projects/zynaddsubfx/) (Advanced Synthesizer)
 + [FluidSynth] (http://www.fluidsynth.org/) (Sampler engine)
