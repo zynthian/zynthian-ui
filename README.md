@@ -2,8 +2,7 @@
 
 [Zynthian] (http://zynthian.org) is an Open Synth Platform based  Raspberry Pi, Linux (Raspbian) and some Open Software Synthesizers.
 
-
-![Image of Zynthian Box Design](http://blog.zynthian.org/wp-content/uploads/2015/11/zynthian_box_retroblack_trans2.png)
+![Image of Zynthian Box Design](http://zynthian.org/img/github/zynthian-case-render-01.jpg)
 
  It is a multi-engine platform and at the present time can run the next Synth Engines:
 
@@ -12,7 +11,7 @@
 + [setBfree] (https://github.com/pantherb/setBfree) (Hammond B3 emulation)
 + [Linuxsampler] (https://www.linuxsampler.org/) (Advanced Sampler engine)
 
-![Image of Zynthian Software Architecture](http://blog.zynthian.org/wp-content/uploads/2015/11/zynthian_software_amidi_scheme.png)
+![Image of Zynthian Software Architecture](http://zynthian.org/img/github/zynthian-prototype2-01.jpg)
 
 The [Zynthian Distribution] (http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/) includes a good amount of sound libraries and presets, but can be extended by the user.
 
@@ -24,9 +23,9 @@ A [Zynthian Box] (http://blog.zynthian.org/index.php/2015/11/22/building-a-zynth
 + Zynthian Controller Modules
 + etc.
 
-![Image of Zynthian Hardware Architecture](http://blog.zynthian.org/wp-content/uploads/2015/11/zynthian_hardware_scheme.png)
+![Image of Zynthian Hardware Architecture](http://zynthian.org/img/github/zynthian_hardware_scheme.png)
 
-![Image of a Zynthian Box](http://blog.zynthian.org/wp-content/uploads/2015/11/IMG-20151008-WA0008.jpg)
+![Image of a Zynthian Box](http://zynthian.org/img/github/zynthian_software_amidi_scheme.png)
 
 This repository contains the specific software used by a Zynthian Box. It includes the "User Interface software" and some "setup scripts".
 
