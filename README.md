@@ -1,6 +1,6 @@
 # zynthian
 
-![Image of Zynthian Box Design](http://blog.zynthian.org/wp-content/uploads/2015/11/zynthian_box_retroblack_trans2.png =50%)
+![Image of Zynthian Box Design](http://blog.zynthian.org/wp-content/uploads/2015/11/zynthian_box_retroblack_trans2.png =300px)
 
 [Zynthian] (http://zynthian.org) is an Open Synth Platform based  Raspberry Pi, Linux (Raspbian) and some Open Software Synthesizers. It is a multi-engine platform and at the present time can run the next Synth Engines:
 
