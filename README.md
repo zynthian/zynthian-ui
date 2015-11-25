@@ -11,7 +11,7 @@
 + [setBfree] (https://github.com/pantherb/setBfree) (Hammond B3 emulation)
 + [Linuxsampler] (https://www.linuxsampler.org/) (Advanced Sampler engine)
 
-![Image of Zynthian Software Architecture](http://zynthian.org/img/github/zynthian-prototype2-01.jpg)
+![Image of Zynthian Software Architecture](http://zynthian.org/img/github/zynthian_software_amidi_scheme.png)
 
 The [Zynthian Distribution] (http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/) includes a good amount of sound libraries and presets, but can be extended by the user.
 
@@ -25,7 +25,7 @@ A [Zynthian Box] (http://blog.zynthian.org/index.php/2015/11/22/building-a-zynth
 
 ![Image of Zynthian Hardware Architecture](http://zynthian.org/img/github/zynthian_hardware_scheme.png)
 
-![Image of a Zynthian Box](http://zynthian.org/img/github/zynthian_software_amidi_scheme.png)
+![Image of a Zynthian Box](http://zynthian.org/img/github/zynthian-prototype2-01.jpg)
 
 This repository contains the specific software used by a Zynthian Box. It includes the "User Interface software" and some "setup scripts".
 
