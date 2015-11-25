@@ -2,10 +2,10 @@
 
 Zynthian is an Open Synth Platform based  Raspberry Pi, Linux (Raspbian) and some Open Software Synthesizers. It is a multi-engine platform and at the present time can run the next Synth Engines:
 
-+ ZynAddSubFX (https://sourceforge.net/projects/zynaddsubfx/) (Advanced Synthesizer)
-+ FluidSynth (http://www.fluidsynth.org/) (Sampler engine)
-+ setBfree (https://github.com/pantherb/setBfree) (Hammond B3 emulation)
-+ Linuxsampler (https://www.linuxsampler.org/) (Advanced Sampler engine)
++ [ZynAddSubFX] (https://sourceforge.net/projects/zynaddsubfx/) (Advanced Synthesizer)
++ [FluidSynth] (http://www.fluidsynth.org/) (Sampler engine)
++ [setBfree] (https://github.com/pantherb/setBfree) (Hammond B3 emulation)
++ [Linuxsampler] (https://www.linuxsampler.org/) (Advanced Sampler engine)
 
 It includes a good amount of sound libraries and presets, but can be extended by the user.
 
