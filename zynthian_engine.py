@@ -15,6 +15,7 @@ import sys
 import os
 import re
 import copy
+import socket
 from os.path import isfile, isdir, join
 from string import Template
 from subprocess import Popen, PIPE, STDOUT
@@ -160,11 +161,12 @@ class zynthian_synth_engine:
 	def load_bank_filelist(self,dpath,fext):
 		i=0
 		fext='.'+fext
+		xlen=len(fext)
 		self.bank_list=[]
 		print('Getting Bank List for ' + self.name)
 		for f in sorted(os.listdir(dpath)):
-			if (isfile(join(dpath,f)) and f[-4:].lower()==fext):
-				title=str.replace(f[:-4], '_', ' ')
+			if (isfile(join(dpath,f)) and f[-xlen:].lower()==fext):
+				title=str.replace(f[:-xlen], '_', ' ')
 				self.bank_list.append((f,i,title))
 				i=i+1
 
@@ -218,8 +220,8 @@ class zynthian_synth_engine:
 
 class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 	name="ZynAddSubFX"
+	command=None
 	osc_paths_data=[]
-
 	#bank_dir="/usr/share/zynaddsubfx/banks"
 	bank_dir="./data/zynbanks"
 
@@ -332,7 +334,6 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 	#command=("/usr/local/bin/fluidsynth", "-p", "FluidSynth", "-a", "alsa" ,"-g", "1")
 	command=("/usr/bin/fluidsynth", "-p", "FluidSynth", "-a", "alsa" ,"-g", "1")
 	#synth.midi-bank-select => mma
-
 	soundfont_dir="./data/soundfonts"
 	bank_id=0
 
@@ -399,24 +400,43 @@ class zynthian_fluidsynth_engine(zynthian_synth_engine):
 
 class zynthian_setbfree_engine(zynthian_synth_engine):
 	name="setBfree"
-	command=("/usr/local/bin/setBfree", "midi.driver=alsa")
-
 	pgm_dir="./data/setbfree"
+	command=("/usr/local/bin/setBfree", "midi.driver=alsa", "-p", pgm_dir+"/all.pgm")
 
 	map_list=(
 		([
-			('volume',7,96,127),
-			#('expression',11,127,127),
-			('modulation',1,0,127),
-			('reverb',91,64,127),
-			('chorus',93,2,127)
+			('swellpedal',1,96,127),
+#			('swellpedal 2',11,96,127),
+			('percussion on/off',80,1,1),
+			('rotary speed',91,0,2),
+#			('rotary speed toggle',64,0,3)
+			('vibrato on/off',92,1,4)
 		],0,'main'),
 		([
-			('expression',11,127,127),
-			('modulation',1,0,127),
-			('reverb',91,64,127),
-			('chorus',93,2,127)
-		],0,'extra')
+			('16',70,8,8),
+			('5 1/3',71,8,8),
+			('8',72,8,8),
+			('4',73,8,8)
+		],0,'drawbars low'),
+		([
+			('2 2/3',74,8,8),
+			('2',75,8,8),
+			('1 3/5',76,8,8),
+			('1 1/3',77,8,8)
+		],0,'drawbars hi'),
+		([
+			('drawbar 1',78,8,8),
+			('percussion on/off',80,1,1),
+			('percussion decay',81,1,1),
+			('percussion harmonic',82,1,1)
+		],0,'percussion'),
+		([
+			('vibrato routing',92,1,4),
+			('vibrato selector',83,5,5),
+			('overdrive character',93,1,6),
+			('overdrive inputgain',21,1,127)
+			#('overdrive outputgain',22,1,127)
+		],0,'vibrato & overdrive')
 	)
 	default_ctrl_config=map_list[0][0]
 
@@ -428,17 +448,21 @@ class zynthian_setbfree_engine(zynthian_synth_engine):
 
 	def load_instr_list(self):
 		self.instr_list=[]
-		pgm_fpath=self.pgm_dir+'/'+self.bank_name[self.midi_chan]
+
+		pgm_fpath=self.pgm_dir+'/'+self.bank_list[self.get_bank_index()][0]
 		with open(pgm_fpath) as f:
 			lines = f.readlines()
-			ptrn=re.compile("^([\d]+)\s\{\s?name\=\"([^\"]+)\"")
+			ptrn=re.compile("^([\d]+)[\s]*\{[\s]*name\=\"([^\"]+)\"")
 			i=0
 			for line in lines:
 				m=ptrn.match(line)
 				if m:
 					try:
-						self.instr_list.append((i,[0,0,int(m.group(1))],m.group(2)))
-						i=i+1
+						prg=int(m.group(1))-1
+						title=m.group(2)
+						if prg>=0:
+							self.instr_list.append((i,[0,0,prg],title))
+							i=i+1
 					except:
 						pass
 
@@ -449,9 +473,9 @@ class zynthian_setbfree_engine(zynthian_synth_engine):
 class zynthian_linuxsampler_engine(zynthian_synth_engine):
 	name="LinuxSampler"
 	port=6688
+	sock=None
 	command=("/usr/bin/linuxsampler","--lscp-port",str(port))
-
-	lscp_dir="data/lscp"
+	lscp_dir="./data/lscp"
 
 	map_list=(
 		([
@@ -473,33 +497,46 @@ class zynthian_linuxsampler_engine(zynthian_synth_engine):
 	def __init__(self,parent=None):
 		super().__init__(parent)
 
+	def lscp_connect(self):
+		if not self.sock:
+			self.sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+			self.sock.connect(("127.0.0.1",self.port))
+		return self.sock
+   
+	def lscp_send(self,data):
+		if self.lscp_connect():
+			self.sock.send(data.encode()) 
+
 	def load_bank_list(self):
 		self.load_bank_filelist(self.lscp_dir,"lscp")
 
 	def load_instr_list(self):
 		self.instr_list=[]
-		pgm_fpath=self.pgm_dir+'/'+self.bank_name[self.midi_chan]
-		with open(pgm_fpath) as f:
+		lscp_fpath=self.lscp_dir+'/'+self.bank_list[self.get_bank_index()][0]
+		with open(lscp_fpath) as f:
 			lines = f.readlines()
-			ptrn=re.compile("^([\d]+)\s\{\s?name\=\"([^\"]+)\"")
+			ptrn=re.compile("^MAP MIDI_INSTRUMENT")
 			i=0
 			for line in lines:
 				m=ptrn.match(line)
 				if m:
 					try:
-						self.instr_list.append((i,[0,0,int(m.group(1))],m.group(2)))
+						parts=line.split();
+						title=str.replace(parts[11][1:-1], '_', ' ')
+						self.instr_list.append((i,[0,int(parts[4]),int(parts[5])],title))
 						i=i+1
 					except:
 						pass
 
 	def set_bank(self, i):
-		super().set_bank(self,i)
+		super().set_bank(i)
 		#Send LSCP script
-		pgm_fpath=self.pgm_dir+'/'+self.bank_name[self.midi_chan]
-		with open(pgm_fpath) as f:
+		lscp_fpath=self.lscp_dir+'/'+self.bank_list[self.get_bank_index()][0]
+		with open(lscp_fpath) as f:
 			lines = f.readlines()
 			for line in lines:
-				print("LSCP: "+line)
+				self.lscp_send(line)
+				#print("LSCP: "+line)
 
 
 #-------------------------------------------------------------------------------

@@ -789,6 +789,7 @@ class zynthian_gui_control(zynthian_gui_list):
 		# Controllers
 		self.zcontrollers_config=zyngui.zyngine.default_ctrl_config
 		self.zcontrollers=(
+			#indx, cnv, x, y, tit, chan, ctrl, val=0, max_val=127
 			zynthian_controller(0,self.canvas,-1,25,self.zcontrollers_config[0][0],zyngui.midi_chan,self.zcontrollers_config[0][1],self.zcontrollers_config[0][2],self.zcontrollers_config[0][3]),
 			zynthian_controller(1,self.canvas,-1,133,self.zcontrollers_config[1][0],zyngui.midi_chan,self.zcontrollers_config[1][1],self.zcontrollers_config[1][2],self.zcontrollers_config[1][3]),
 			zynthian_controller(2,self.canvas,243,25,self.zcontrollers_config[2][0],zyngui.midi_chan,self.zcontrollers_config[2][1],self.zcontrollers_config[2][2],self.zcontrollers_config[2][3]),
@@ -812,7 +813,8 @@ class zynthian_gui_control(zynthian_gui_list):
 	def set_controller_config(self, cfg):
 		for i in range(0,4):
 			try:
-				self.set_controller(i,cfg[i][0],zyngui.midi_chan,cfg[i][1],cfg[i][2])
+				#indx, tit, chan, ctrl, val, max_val=127
+				self.set_controller(i,cfg[i][0],zyngui.midi_chan,cfg[i][1],cfg[i][2]) #,cfg[i][3]
 			except:
 				pass
 
@@ -821,6 +823,7 @@ class zynthian_gui_control(zynthian_gui_list):
 			del self.zcontroller_map[self.zcontrollers[i].ctrl]
 		except:
 			pass
+		#tit, chan, ctrl, val, max_val=127
 		self.zcontrollers[i].config(tit,chan,ctrl,val,max_val)
 		self.zcontrollers[i].show()
 		self.zcontroller_map[self.zcontrollers[i].ctrl]=self.zcontrollers[i]
@@ -1083,7 +1086,7 @@ class zynthian_gui:
 				i=self.screens_sequence.index(self.active_screen)-1
 				if i<0:
 					i=1
-				print("BACK TO SCREEN "+str(i)+" => "+self.screens_sequence[i])
+				#print("BACK TO SCREEN "+str(i)+" => "+self.screens_sequence[i])
 				self.show_screen(self.screens_sequence[i])
 
 	def gpio_switch12(self):
