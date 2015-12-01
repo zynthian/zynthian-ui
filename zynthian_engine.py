@@ -405,34 +405,34 @@ class zynthian_setbfree_engine(zynthian_synth_engine):
 
 	map_list=(
 		([
-			('swellpedal',1,96,127),
+			('volume',1,96,127),
 #			('swellpedal 2',11,96,127),
-			('percussion on/off',80,1,1),
-			('rotary speed',91,0,2),
+			('percussion on/off',80,'off','off|on'),
+			('rotary speed',91,'off','off|chr|trm|chr'),
 #			('rotary speed toggle',64,0,3)
-			('vibrato on/off',92,1,4)
+			('vibrato on/off',92,'off','off|on')
 		],0,'main'),
 		([
-			('16',70,8,8),
-			('5 1/3',71,8,8),
-			('8',72,8,8),
-			('4',73,8,8)
+			('16',70,'8','0|1|2|3|4|5|6|7|8'),
+			('5 1/3',71,'8','0|1|2|3|4|5|6|7|8'),
+			('8',72,'8','0|1|2|3|4|5|6|7|8'),
+			('4',73,'8','0|1|2|3|4|5|6|7|8')
 		],0,'drawbars low'),
 		([
-			('2 2/3',74,8,8),
-			('2',75,8,8),
-			('1 3/5',76,8,8),
-			('1 1/3',77,8,8)
+			('2 2/3',74,'8','0|1|2|3|4|5|6|7|8'),
+			('2',75,'8','0|1|2|3|4|5|6|7|8'),
+			('1 3/5',76,'8','0|1|2|3|4|5|6|7|8'),
+			('1 1/3',77,'8','0|1|2|3|4|5|6|7|8')
 		],0,'drawbars hi'),
 		([
-			('drawbar 1',78,8,8),
-			('percussion on/off',80,1,1),
-			('percussion decay',81,1,1),
-			('percussion harmonic',82,1,1)
+			('drawbar 1',78,'8','0|1|2|3|4|5|6|7|8'),
+			('percussion on/off',80,'off','off|on'),
+			('percussion decay',81,'slow','slow|fast'),
+			('percussion harmonic',82,'3rd','2nd|3rd')
 		],0,'percussion'),
 		([
-			('vibrato routing',92,1,4),
-			('vibrato selector',83,5,5),
+			('vibrato routing',92,'off','off|on'),
+			('vibrato selector',83,'c3','v1|v2|v3|c1|c2|c3'),
 			('overdrive character',93,1,6),
 			('overdrive inputgain',21,1,127)
 			#('overdrive outputgain',22,1,127)

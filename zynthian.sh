@@ -27,3 +27,5 @@ xset s noblank
 # Turn Off Display (Backlight)
 echo 'out' > /sys/class/gpio/gpio508/direction
 #echo '0' > /sys/class/gpio/gpio508/value
+
+poweroff

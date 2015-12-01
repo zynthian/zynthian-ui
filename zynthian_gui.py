@@ -67,38 +67,31 @@ class zynthian_controller:
 	trw=70
 	trh=13
 
+	ctrl=None
+	midi_ctrl=None
+	osc_path=None
+	values=None
+	n_values=127
+	max_value=127
+	mult=1
+	val0=0
+	value=0
+
 	shown=False
 	frame=None
 	triangle=None
 	arc=None
 	value_text=None
+	label_title=None
 
 	def __init__(self, indx, cnv, x, y, tit, chan, ctrl, val=0, max_val=127):
-		if val>max_val:
-			val=max_val
+		self.index=indx
 		self.canvas=cnv
 		self.x=x
 		self.y=y
-		self.title=tit
-		self.index=indx
-		self.chan=chan
-		if isinstance(ctrl, Template):
-			self.ctrl=ctrl.substitute(part=chan)
-		else:
-			self.ctrl=ctrl
-		self.value=val
-		self.init_value=None
-		self.max_value=max_val
-		self.setup_rencoder()
-		self.label_title = Label(self.canvas,
-			text=self.title,
-			font=("Helvetica",11),
-			wraplength=self.width-6,
-			justify=LEFT,
-			bg=bgcolor,
-			fg=lightcolor)
 		self.plot_value=self.plot_value_arc
 		self.erase_value=self.erase_value_arc
+		self.config(tit,chan,ctrl,val,max_val)
 		self.show()
 
 	def show(self):
@@ -131,24 +124,32 @@ class zynthian_controller:
 	def plot_value_triangle(self):
 		if self.value>self.max_value: self.value=self.max_value
 		elif self.value<0: self.value=0
+		if self.values:
+			try:
+				i=int(self.n_values*self.value/(self.max_value+self.step))
+				#print("PLOT TRI: "+str(self.value)+", "+str(i))
+				plot_value=i*(self.max_value+self.step)/self.n_values
+				value=self.values[i]
+			except:
+				plot_value=self.value
+				value="ERR"
+		else:
+			plot_value=self.value
+			value=self.value+self.val0
 		x1=self.x+2
 		y1=self.y+int(0.8*self.height)+self.trh
 		if self.max_value>0:
-			x2=x1+self.trw*self.value/self.max_value
-			y2=y1-self.trh*self.value/self.max_value
+			x2=x1+self.trw*plot_value/self.max_value
+			y2=y1-self.trh*plot_value/self.max_value
 		else:
 			x2=x1
 			xy=y1
 		if self.triangle:
 				#self.canvas.coords(self.triangle_bg,(x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh))
 				self.canvas.coords(self.triangle,(x1, y1, x2, y1, x2, y2))
-		elif self.ctrl!=0:
+		elif self.midi_ctrl!=0:
 			self.triangle_bg=self.canvas.create_polygon((x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh), fill=bg2color)
 			self.triangle=self.canvas.create_polygon((x1, y1, x2, y1, x2, y2), fill=lightcolor)
-		if self.ctrl==0:
-			value=self.value+1
-		else:
-			value=self.value
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=str(value))
 		else:
@@ -166,26 +167,34 @@ class zynthian_controller:
 	def plot_value_arc(self):
 		if self.value>self.max_value: self.value=self.max_value
 		elif self.value<0: self.value=0
+		if self.values:
+			try:
+				i=int(self.n_values*self.value/(self.max_value+self.step))
+				plot_value=i*(self.max_value+self.step)/self.n_values
+				print("PLOT ARC: "+str(self.value)+", "+str(i)+", "+str(plot_value))
+				value=self.values[i]
+			except:
+				plot_value=self.value
+				value="ERR"
+		else:
+			plot_value=self.value
+			value=self.value+self.val0
 		thickness=12
 		degmax=300
 		deg0=90+degmax/2
 		if self.max_value>0:
-			degd=-degmax*self.value/self.max_value
+			degd=-degmax*plot_value/self.max_value
 		else:
 			degd=0
-		if (not self.arc and self.ctrl!=0) or not self.value_text:
+		if (not self.arc and self.midi_ctrl!=0) or not self.value_text:
 			x1=self.x+0.2*self.trw
 			y1=self.y+self.height-int(0.7*self.trw)-6
 			x2=x1+0.7*self.trw
 			y2=self.y+self.height-6
 		if self.arc:
 			self.canvas.itemconfig(self.arc, extent=degd)
-		elif self.ctrl!=0:
+		elif self.midi_ctrl!=0:
 			self.arc=self.canvas.create_arc(x1, y1, x2, y2, style=ARC, outline=bg2color, width=thickness, start=deg0, extent=degd)
-		if self.ctrl==0:
-			value=self.value+1
-		else:
-			value=self.value
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=str(value))
 		else:
@@ -220,31 +229,64 @@ class zynthian_controller:
 		else:
 			font_size=12
 		#self.title=self.title+" > "+str(font_size)
-		self.label_title.config(text=self.title,font=("Helvetica",font_size))
+		if not self.label_title:
+			self.label_title = Label(self.canvas,
+				text=self.title,
+				font=("Helvetica",font_size),
+				wraplength=self.width-6,
+				justify=LEFT,
+				bg=bgcolor,
+				fg=lightcolor)
+		else:
+			self.label_title.config(text=self.title,font=("Helvetica",font_size))
 
 	def config(self, tit, chan, ctrl, val, max_val=127):
+		#print("CONFIG CONTROLLER "+str(self.index)+" => "+tit)
 		self.set_title(tit)
 		self.chan=chan
+		self.ctrl=ctrl
+		self.step=1
+		self.mult=1
+		self.val0=0
 		if isinstance(ctrl, Template):
-			self.ctrl=ctrl.substitute(part=chan)
+			self.midi_ctrl=None
+			self.osc_path=ctrl.substitute(part=chan)
 		else:
-			self.ctrl=ctrl
-		self.max_value=max_val
+			self.midi_ctrl=ctrl
+			self.osc_path=None
+		if isinstance(max_val,str):
+			self.values=max_val.split('|')
+		elif isinstance(max_val,list):
+			self.values=max_val
+		elif max_val>0:
+			self.values=None
+			self.max_value=self.n_values=max_val
+		if self.values:
+			#print("VALUES: "+str(self.values))
+			self.n_values=len(self.values)
+			self.step=max(1,int(16/self.n_values));
+			self.max_value=128-self.step;
+			val=self.values.index(val)*128/self.n_values
+		if self.midi_ctrl==0:
+			self.mult=4
+			self.val0=1
+		if val>self.max_value:
+			val=self.max_val
 		self.set_value(val)
 		self.setup_rencoder()
 		
 	def setup_rencoder(self):
-		print("SETUP RENCODER "+str(self.index)+": "+str(self.ctrl))
 		self.init_value=None
 		try:
-			if isinstance(self.ctrl, str):
+			if self.osc_path:
+				print("SETUP RENCODER "+str(self.index)+": "+self.osc_path)
+				osc_path_char=c_char_p(self.osc_path.encode('UTF-8'))
 				if zyngui.osc_target:
-					liblo.send(zyngui.osc_target, self.ctrl)
-				lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,0,c_char_p(self.ctrl.encode('UTF-8')),self.value,self.max_value)
-			elif self.ctrl==0:
-				lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,self.ctrl,None,4*self.value,4*(self.max_value-1))
-			elif self.ctrl>0:
-				lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,self.ctrl,None,self.value,self.max_value)
+					liblo.send(zyngui.osc_target, self.osc_path)
+			else:
+				print("SETUP RENCODER "+str(self.index)+": "+str(self.midi_ctrl))
+				osc_path_char=None
+			lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,self.midi_ctrl,osc_path_char,self.mult*self.value,self.mult*(self.max_value-self.val0),self.step)
 		except Exception as err:
 			#print(err)
 			pass
@@ -267,8 +309,7 @@ class zynthian_controller:
 
 	def read_rencoder(self):
 		val=lib_rencoder.get_value_midi_rencoder(self.index)
-		if self.ctrl==0:
-			val=int(val/4)
+		val=int(val/self.mult)
 		self.set_value(val)
 		#print ("RENCODER VALUE: " + str(self.index) + " => " + str(val))
 
@@ -572,8 +613,6 @@ class zynthian_admin(zynthian_gui_list):
 
 	def power_off(self):
 		print("POWER OFF")
-		#check_output("systemctl poweroff", shell=True)
-		check_output("poweroff", shell=True)
 		sys.exit()
 
 #-------------------------------------------------------------------------------
@@ -814,7 +853,7 @@ class zynthian_gui_control(zynthian_gui_list):
 		for i in range(0,4):
 			try:
 				#indx, tit, chan, ctrl, val, max_val=127
-				self.set_controller(i,cfg[i][0],zyngui.midi_chan,cfg[i][1],cfg[i][2]) #,cfg[i][3]
+				self.set_controller(i,cfg[i][0],zyngui.midi_chan,cfg[i][1],cfg[i][2],cfg[i][3])
 			except:
 				pass
 
