@@ -32,12 +32,35 @@ from zynthian_engine import *
 width=320
 height=240
 
+# Original Colors
 bgcolor="#002255"
 bg2color="#2c5aa0"
 bg3color="#5f7aa2"
 bordercolor="#0064fa"
 textcolor="#0064fa"
 lightcolor="#f8cf2b"
+
+# New Colors Inspired in ZynAddSubFX new GUI => https://github.com/fundamental/zyn-ui-two
+color_bg="#232c36"
+color_tx="#becfe4"
+color_panel_bg="#3a424d"
+#color_panel_bd="#3a424d"
+color_panel_bd=color_bg
+color_panel_tx="#becfe4"
+color_header_bg="#333a42"
+color_header_tx="#a9b8c4"
+color_ctrl_bg_off="#434f59"
+color_ctrl_bg_on="#00828c" #007272
+color_ctrl_tx="#00cff7"
+color_ctrl_tx2="#00cca5"
+color_btn_bg="#505e6c"
+color_btn_tx="#becfe4"
+
+#bg2color=bgcolor_ctrl_off
+#bg3color=bgcolor_ctrl_on
+#bordercolor=bgcolor
+#textcolor=color_panel_txt
+#lightcolor=color_ctrl_txt
 
 splash_image="./img/zynthian_gui_splash.gif"
 
@@ -73,12 +96,14 @@ class zynthian_controller:
 	values=None
 	n_values=127
 	max_value=127
+	step=1
 	mult=1
 	val0=0
 	value=0
 
 	shown=False
 	frame=None
+	rectangle=None
 	triangle=None
 	arc=None
 	value_text=None
@@ -89,8 +114,8 @@ class zynthian_controller:
 		self.canvas=cnv
 		self.x=x
 		self.y=y
-		self.plot_value=self.plot_value_arc
-		self.erase_value=self.erase_value_arc
+		self.plot_value=self.plot_value_rectangle
+		self.erase_value=self.erase_value_rectangle
 		self.config(tit,chan,ctrl,val,max_val)
 		self.show()
 
@@ -114,12 +139,55 @@ class zynthian_controller:
 		if self.frame:
 			self.canvas.coords(self.frame,(self.x, self.y, x2, self.y, x2, y2, self.x, y2))
 		else:
-			self.frame=self.canvas.create_polygon((self.x, self.y, x2, self.y, x2, y2, self.x, y2), outline=bordercolor, fill=bgcolor)
+			self.frame=self.canvas.create_polygon((self.x, self.y, x2, self.y, x2, y2, self.x, y2), outline=color_panel_bd, fill=color_panel_bg)
 
 	def erase_frame(self):
 		if self.frame:
 			self.canvas.delete(self.frame)
 			self.frame=None
+
+	def plot_value_rectangle(self):
+		if self.value>self.max_value: self.value=self.max_value
+		elif self.value<0: self.value=0
+		if self.values:
+			try:
+				i=int(self.n_values*self.value/(self.max_value+self.step))
+				#print("PLOT RECT: "+str(self.value)+", "+str(i))
+				plot_value=i*(self.max_value+self.step)/self.n_values
+				value=self.values[i]
+			except:
+				plot_value=self.value
+				value="ERR"
+		else:
+			plot_value=self.value
+			value=self.val0+self.value
+		x1=self.x+6
+		y1=self.y+self.height-5
+		lx=self.trw-4
+		ly=2*self.trh
+		y2=y1-ly
+		if self.max_value>0:
+			x2=x1+lx*plot_value/self.max_value
+		else:
+			x2=x1
+		if self.rectangle:
+				self.canvas.coords(self.rectangle,(x1, y1, x2, y2))
+		elif self.midi_ctrl!=0:
+			self.rectangle_bg=self.canvas.create_rectangle((x1, y1, x1+lx, y2), fill=color_ctrl_bg_off, width=0)
+			self.rectangle=self.canvas.create_rectangle((x1, y1, x2, y2), fill=color_ctrl_bg_on, width=0)
+		if self.value_text:
+			self.canvas.itemconfig(self.value_text, text=str(value))
+		else:
+			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(value))
+
+	def erase_value_rectangle(self):
+		if self.rectangle:
+			self.canvas.delete(self.rectangle_bg)
+			self.canvas.delete(self.rectangle)
+			self.rectangle_bg=self.rectangle=None
+		if self.value_text:
+			self.canvas.delete(self.value_text)
+			self.value_text=None
 
 	def plot_value_triangle(self):
 		if self.value>self.max_value: self.value=self.max_value
@@ -143,17 +211,17 @@ class zynthian_controller:
 			y2=y1-self.trh*plot_value/self.max_value
 		else:
 			x2=x1
-			xy=y1
+			y2=y1
 		if self.triangle:
 				#self.canvas.coords(self.triangle_bg,(x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh))
 				self.canvas.coords(self.triangle,(x1, y1, x2, y1, x2, y2))
 		elif self.midi_ctrl!=0:
-			self.triangle_bg=self.canvas.create_polygon((x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh), fill=bg2color)
-			self.triangle=self.canvas.create_polygon((x1, y1, x2, y1, x2, y2), fill=lightcolor)
+			self.triangle_bg=self.canvas.create_polygon((x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh), fill=color_ctrl_bg_off)
+			self.triangle=self.canvas.create_polygon((x1, y1, x2, y1, x2, y2), fill=color_ctrl_bg_on)
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=str(value))
 		else:
-			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh-8, width=self.trw, justify=CENTER, fill=lightcolor, font=("Helvetica",14), text=str(value))
+			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh-8, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(value))
 
 	def erase_value_triangle(self):
 		if self.triangle:
@@ -171,7 +239,7 @@ class zynthian_controller:
 			try:
 				i=int(self.n_values*self.value/(self.max_value+self.step))
 				plot_value=i*(self.max_value+self.step)/self.n_values
-				print("PLOT ARC: "+str(self.value)+", "+str(i)+", "+str(plot_value))
+				#print("PLOT ARC: "+str(self.value)+", "+str(i)+", "+str(plot_value))
 				value=self.values[i]
 			except:
 				plot_value=self.value
@@ -194,11 +262,11 @@ class zynthian_controller:
 		if self.arc:
 			self.canvas.itemconfig(self.arc, extent=degd)
 		elif self.midi_ctrl!=0:
-			self.arc=self.canvas.create_arc(x1, y1, x2, y2, style=ARC, outline=bg2color, width=thickness, start=deg0, extent=degd)
+			self.arc=self.canvas.create_arc(x1, y1, x2, y2, style=ARC, outline=color_ctrl_bg_on, width=thickness, start=deg0, extent=degd)
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=str(value))
 		else:
-			self.value_text=self.canvas.create_text(x1+(x2-x1)/2-1, y1-(y1-y2)/2, width=x2-x1, justify=CENTER, fill=lightcolor, font=("Helvetica",14), text=str(value))
+			self.value_text=self.canvas.create_text(x1+(x2-x1)/2-1, y1-(y1-y2)/2, width=x2-x1, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(value))
 
 	def erase_value_arc(self):
 		if self.arc:
@@ -235,19 +303,19 @@ class zynthian_controller:
 				font=("Helvetica",font_size),
 				wraplength=self.width-6,
 				justify=LEFT,
-				bg=bgcolor,
-				fg=lightcolor)
+				bg=color_panel_bg,
+				fg=color_panel_tx)
 		else:
 			self.label_title.config(text=self.title,font=("Helvetica",font_size))
 
 	def config(self, tit, chan, ctrl, val, max_val=127):
 		#print("CONFIG CONTROLLER "+str(self.index)+" => "+tit)
-		self.set_title(tit)
 		self.chan=chan
 		self.ctrl=ctrl
 		self.step=1
 		self.mult=1
 		self.val0=0
+		self.set_title(tit)
 		if isinstance(ctrl, Template):
 			self.midi_ctrl=None
 			self.osc_path=ctrl.substitute(part=chan)
@@ -262,16 +330,24 @@ class zynthian_controller:
 			self.values=None
 			self.max_value=self.n_values=max_val
 		if self.values:
-			#print("VALUES: "+str(self.values))
 			self.n_values=len(self.values)
 			self.step=max(1,int(16/self.n_values));
 			self.max_value=128-self.step;
-			val=self.values.index(val)*128/self.n_values
+			val=int(self.values.index(val)*128/self.n_values)
 		if self.midi_ctrl==0:
 			self.mult=4
 			self.val0=1
 		if val>self.max_value:
-			val=self.max_val
+			val=self.max_value
+
+		print("values: "+str(self.values))
+		print("n_values: "+str(self.n_values))
+		print("max_value: "+str(self.max_value))
+		print("step: "+str(self.step))
+		print("mult: "+str(self.mult))
+		print("val0: "+str(self.val0))
+		print("value: "+str(val))
+
 		self.set_value(val)
 		self.setup_rencoder()
 		
@@ -288,7 +364,7 @@ class zynthian_controller:
 				osc_path_char=None
 			lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,self.midi_ctrl,osc_path_char,self.mult*self.value,self.mult*(self.max_value-self.val0),self.step)
 		except Exception as err:
-			#print(err)
+			print(err)
 			pass
 
 	def set_value(self, v, set_rencoder=False):
@@ -325,7 +401,7 @@ class zynthian_splash:
 			bd=0,
 			highlightthickness=0,
 			relief='flat',
-			bg = bgcolor)
+			bg = color_bg)
 		self.splash_img = PhotoImage(file = "./img/zynthian_gui_splash.gif")
 		self.canvas.create_image(0, 0, image = self.splash_img, anchor = NW)
 		self.show(tms)
@@ -350,7 +426,7 @@ class zynthian_info:
 			bd=1,
 			highlightthickness=0,
 			relief='flat',
-			bg = bgcolor)
+			bg = color_bg)
 
 		self.text = StringVar()
 		self.label_text = Label(self.canvas,
@@ -358,8 +434,8 @@ class zynthian_info:
 			textvariable=self.text,
 			#wraplength=80,
 			justify=LEFT,
-			bg=bgcolor,
-			fg=lightcolor)
+			bg=color_bg,
+			fg=color_tx)
 		self.label_text.place(x=1, y=0, anchor=NW)
 
 	def clean(self):
@@ -386,11 +462,11 @@ class zynthian_info:
 # Zynthian Listbox GUI Class
 #-------------------------------------------------------------------------------
 class zynthian_gui_list:
-	width=162
-	height=215
-	lb_width=19
+	width=160
+	height=224
+	lb_width=18
 	lb_height=10
-	lb_x=width/2
+	lb_x=width/2+1
 	wide=False
 	shown=False
 	index=0
@@ -401,37 +477,39 @@ class zynthian_gui_list:
 
 		if wide:
 			self.wide=True
-			self.width=240
-			self.lb_width=29
-			self.lb_x=5
+			self.width=236
+			self.lb_width=28
+			self.lb_x=0
 
-		# Add Background Image inside a Canvas
+		# Create Canvas
 		self.canvas = Canvas(
 			width = width,
 			height = height,
 			bd=0,
 			highlightthickness=0,
 			relief='flat',
-			bg = bgcolor)
+			bg = color_bg)
+
+		# Add Background Image inside a Canvas
 		if (image_bg):
 			self.canvas.create_image(0, 0, image = image_bg, anchor = NW)
 
-		self.plot_frame()
+		#self.plot_frame()
 
 		# Add ListBox
 		self.listbox = Listbox(self.canvas,
 			width=self.lb_width,
 			height=self.lb_height,
 			font=("Helvetica",11),
-			bd=0,
+			bd=7,
 			highlightthickness=0,
 			relief='flat',
-			bg=bgcolor,
-			fg=textcolor,
-			selectbackground=lightcolor,
-			selectforeground=bgcolor,
+			bg=color_panel_bg,
+			fg=color_panel_tx,
+			selectbackground=color_ctrl_bg_on,
+			selectforeground=color_ctrl_tx,
 			selectmode=BROWSE)
-		self.listbox.place(x=self.lb_x, y=height-5, anchor=SW)
+		self.listbox.place(x=self.lb_x, y=height, anchor=SW)
 		self.listbox.bind('<<ListboxSelect>>', lambda event :self.click_listbox())
 
 		# Add Select Path (top-left)
@@ -441,8 +519,8 @@ class zynthian_gui_list:
 			textvariable=self.select_path,
 			#wraplength=80,
 			justify=LEFT,
-			bg=bgcolor,
-			fg=lightcolor)
+			bg=color_bg,
+			fg=color_tx)
 		self.label_select_path.place(x=1, y=0, anchor=NW)
 		
 		self.show()
@@ -475,7 +553,7 @@ class zynthian_gui_list:
 			rx2=width-rx-1
 		ry=height-self.height
 		ry2=height-1
-		self.canvas.create_polygon((rx, ry, rx2, ry, rx2, ry2, rx, ry2), outline=bordercolor, fill=bgcolor)
+		self.canvas.create_polygon((rx, ry, rx2, ry, rx2, ry2, rx, ry2), outline=color_panel_bd, fill=color_panel_bg)
 
 	def get_list_data(self):
 		self.list_data=[]
@@ -533,9 +611,10 @@ class zynthian_admin(zynthian_gui_list):
 			text="Admin",
 			font=("Helvetica",13,"bold"),
 			justify=LEFT,
-			bg=bgcolor,
-			fg=lightcolor)
-		self.label_title.place(x=84,y=-2,anchor=NW)
+			bg=color_bg,
+			fg=color_tx)
+		#self.label_title.place(x=84,y=-2,anchor=NW)
+		self.label_title.place(x=4,y=-2,anchor=NW)
 		self.fill_list()
 		self.zselector=zynthian_controller(2,self.canvas,243,25,"Action",0,0,0,len(self.list_data))
     
@@ -629,9 +708,10 @@ class zynthian_gui_engine(zynthian_gui_list):
 			text="Engine",
 			font=("Helvetica",13,"bold"),
 			justify=LEFT,
-			bg=bgcolor,
-			fg=lightcolor)
-		self.label_title.place(x=84,y=-2,anchor=NW)
+			bg=color_bg,
+			fg=color_tx)
+		#self.label_title.place(x=84,y=-2,anchor=NW)
+		self.label_title.place(x=4,y=-2,anchor=NW)
 		self.fill_list()
 		self.zselector=zynthian_controller(2,self.canvas,243,25,"Engine",0,0,1,len(self.list_data))
 		#self.set_select_path()
@@ -640,7 +720,7 @@ class zynthian_gui_engine(zynthian_gui_list):
 		self.list_data=(
 			("ZynAddSubFX",0,"ZynAddSubFX - Synthesizer"),
 			("FluidSynth",1,"FluidSynth - Sampler"),
-			("setBfree",1,"setBfree - Hammond B3"),
+			("setBfree",1,"setBfree - Hammond Emulator"),
 			("LinuxSampler",1,"LinuxSampler - Sampler")
 		)
 
@@ -688,7 +768,7 @@ class zynthian_gui_engine(zynthian_gui_list):
 
 class zynthian_gui_chan(zynthian_gui_list):
 	zselector=None
-	max_chan=4
+	max_chan=8
 
 	def __init__(self):
 		super().__init__(gui_bg, True)
@@ -787,7 +867,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 		self.index=zyngui.zyngine.get_instr_index()
 		super().show()
 		if self.zselector:
-			self.zselector.config("Instr",0,0,self.index,len(self.list_data))
+			self.zselector.config("Instrument",0,0,self.index,len(self.list_data))
 
 	def select_action(self, i):
 		zyngui.zyngine.set_instr(i)
@@ -881,14 +961,15 @@ class zynthian_gui_control(zynthian_gui_list):
 			self.zcontrollers[i].hide()
 		#self.index=1
 		self.set_controller(2, "Map",0,0,self.index,len(self.list_data))
-		self.listbox.config(selectbackground=lightcolor)
+		self.listbox.config(selectbackground=color_ctrl_bg_on)
 		self.select(self.index)
 		self.set_select_path()
 
 	def set_mode_control(self):
 		self.mode='control'
+		self.zcontrollers[2].hide()
 		self.set_controller_config(self.zcontrollers_config)
-		self.listbox.config(selectbackground=bg3color)
+		self.listbox.config(selectbackground=color_ctrl_bg_off)
 		self.set_select_path()
 
 	def select_action(self, i):
@@ -1211,7 +1292,8 @@ top.config(cursor="none")
 #-------------------------------------------------------------------------------
 
 # Image Loading
-gui_bg_logo = PhotoImage(file = "./img/zynthian_bg_logo_left.gif")
+#gui_bg_logo = PhotoImage(file = "./img/zynthian_bg_logo_left.gif")
+gui_bg_logo = None
 gui_bg = None
 
 zyngui=zynthian_gui()

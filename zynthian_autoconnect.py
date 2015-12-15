@@ -12,9 +12,11 @@ created: 2015-02-22
 modified:  2015-07-11
 """
 
-from subprocess import check_output
+import os
+import sys
 from re import findall
 from time import sleep
+from subprocess import check_output
 
 #------------------------------------------------------------------------------
 
@@ -43,23 +45,24 @@ def midi_autoconnect():
 	#Connect every input to every output
 	for ic in input_clients:
 		for oc in output_clients:
-			if (int(ic[0])>0 and int(oc[0])>0 and int(ic[0])!=14 and int(oc[0])!=14 and ic[0]!=oc[0]):
+			if int(ic[0])>0 and int(oc[0])>0 and int(ic[0])!=14 and int(oc[0])!=14 and ic[0]!=oc[0]:
 				command=""
-				if (ic[1]=='Zynthian_gui'):
-					if (oc[1] in synth_engine_list):
+				if ic[1]=='Zynthian_gui':
+					if oc[1] in synth_engine_list:
 						command="aconnect "+ic[0]+":1 "+oc[0]
-				elif (ic[1]=='Zynthian_rencoder'):
-					if (oc[1] in synth_engine_list):
+				elif ic[1]=='Zynthian_rencoder':
+					if oc[1] in synth_engine_list:
 						command="aconnect "+ic[0]+" "+oc[0]
-				elif (ic[1]=='ttymidi'):
-					if (oc[1] in synth_engine_list or oc[1]=='Zynthian_gui'):
+				elif ic[1]=='ttymidi':
+					if oc[1] in synth_engine_list or oc[1]=='Zynthian_gui':
 						command="aconnect "+ic[0]+" "+oc[0]
-				elif (ic[1]=='PCR'):
-					command="aconnect "+ic[0]+":1 "+oc[0]
-				elif (oc[1]!="ttymidi"):
-					command="aconnect "+ic[0]+" "+oc[0]
-
-				if (command):
+				elif ic[1]=='PCR':
+					if oc[1] in synth_engine_list:
+						command="aconnect "+ic[0]+":1 "+oc[0]
+				elif oc[1]!="ttymidi":
+					if (not zynthian_seq and oc[1] in synth_engine_list) or oc[1]=='Zynthian_gui':
+						command="aconnect "+ic[0]+" "+oc[0]
+				if command:
 					try:
 						print "Connecting " + ic[0] + " to " + oc[0] + " => " + command
 						check_output(command, shell=True)
@@ -69,6 +72,12 @@ def midi_autoconnect():
 	return
 
 #------------------------------------------------------------------------------
+
+#Sequencer Config?
+if os.environ.get('ZYNTHIAN_SEQ') or (len(sys.argv)>1 and sys.argv[1]=='seq'):
+	zynthian_seq=True
+else:
+	zynthian_seq=False
 
 #Load midi_snd_seq Driver
 #command="modprobe snd-seq-midi"

@@ -156,7 +156,7 @@ class zynthian_synth_engine:
 
 	def reset_instr(self):
 		self.instr_index[self.midi_chan]=0
-		self.instr_name[self.midi_chan]=""
+		self.instr_name[self.midi_chan]=None
 
 	def load_bank_filelist(self,dpath,fext):
 		i=0
@@ -201,10 +201,11 @@ class zynthian_synth_engine:
 
 	def set_instr(self, i):
 		last_instr_index=self.instr_index[self.midi_chan]
+		last_instr_name=self.instr_name[self.midi_chan]
 		self.instr_index[self.midi_chan]=i
 		self.instr_name[self.midi_chan]=self.instr_list[i][2]
 		print('Instrument Selected: ' + self.instr_name[self.midi_chan] + ' (' + str(i)+')')
-		if last_instr_index!=i:
+		if last_instr_index!=i or not last_instr_name:
 			zynmidi.set_midi_instr(self.midi_chan, self.instr_list[i][1][0], self.instr_list[i][1][1], self.instr_list[i][1][2])
 			self.load_instr_config()
 
@@ -252,9 +253,9 @@ class zynthian_zynaddsubfx_engine(zynthian_synth_engine):
 		if os.environ.get('ZYNTHIANX'):
 			self.command_env=os.environ.copy()
 			self.command_env['DISPLAY']=os.environ.get('ZYNTHIANX')
-			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-P", str(zyngine_osc_port), "-l", "zynconf/zasfx_4ch.xmz")
+			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-P", str(zyngine_osc_port), "-l", "zynconf/zasfx_8ch.xmz")
 		else:
-			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U", "-P", str(zyngine_osc_port), "-l", "zynconf/zasfx_4ch.xmz")
+			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", "alsa", "-I", "alsa", "-U", "-P", str(zyngine_osc_port), "-l", "zynconf/zasfx_8ch.xmz")
 		super().__init__(parent)
 
 	def load_bank_list(self):
@@ -423,17 +424,19 @@ class zynthian_setbfree_engine(zynthian_synth_engine):
 			('2',75,'8','0|1|2|3|4|5|6|7|8'),
 			('1 3/5',76,'8','0|1|2|3|4|5|6|7|8'),
 			('1 1/3',77,'8','0|1|2|3|4|5|6|7|8')
+			#('1',78,'8','0|1|2|3|4|5|6|7|8')
 		],0,'drawbars hi'),
 		([
 			('drawbar 1',78,'8','0|1|2|3|4|5|6|7|8'),
 			('percussion on/off',80,'off','off|on'),
+			#('percussion.volume',xx,90,127),
 			('percussion decay',81,'slow','slow|fast'),
 			('percussion harmonic',82,'3rd','2nd|3rd')
 		],0,'percussion'),
 		([
 			('vibrato routing',92,'off','off|on'),
 			('vibrato selector',83,'c3','v1|v2|v3|c1|c2|c3'),
-			('overdrive character',93,1,6),
+			('overdrive character',93,1,127),
 			('overdrive inputgain',21,1,127)
 			#('overdrive outputgain',22,1,127)
 		],0,'vibrato & overdrive')
