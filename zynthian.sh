@@ -71,8 +71,8 @@ status=$?
 if test $status -eq 0
 then
 	splash_zynthian
-	poweroff
 	screentouch_off
+	poweroff
 else
 	splash_zynthian_error
 fi
