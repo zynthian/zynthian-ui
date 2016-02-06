@@ -32,6 +32,9 @@ from zynthian_engine import *
 width=320
 height=240
 
+#Initial Screen
+splash_image="./img/zynthian_gui_splash.gif"
+
 # Original Colors
 bgcolor="#002255"
 bg2color="#2c5aa0"
@@ -62,11 +65,15 @@ color_btn_tx="#becfe4"
 #textcolor=color_panel_txt
 #lightcolor=color_ctrl_txt
 
-splash_image="./img/zynthian_gui_splash.gif"
+#Controller positions
+ctrl_pos=[
+	[-1,25],
+	[-1,133],
+	[243,25],
+	[243,133]
+]
 
 lib_rencoder=None
-rencoder_pin_a=[25,26,4,0]
-rencoder_pin_b=[27,21,3,7]
 
 #-------------------------------------------------------------------------------
 # Get Zynthian Hardware Version
@@ -75,9 +82,29 @@ with open("../zynthian_hw_version.txt","r") as fh:
 	hw_version=fh.read()
 
 #-------------------------------------------------------------------------------
-# Swap pins if needed
+# GPIO pin assignment (wiringPi)
 if hw_version=="PROTOTYPE-1":
-	rencoder_pin_a,rencoder_pin_b=rencoder_pin_b,rencoder_pin_a
+	rencoder_pin_a=[27,21,3,7]
+	rencoder_pin_b=[25,26,4,0]
+	gpio_switch_pin=[2,23]
+	select_ctrl=2
+elif hw_version=="PROTOTYPE-2":
+	rencoder_pin_a=[25,26,4,0]
+	rencoder_pin_b=[27,21,3,7]
+	gpio_switch_pin=[2,23]
+	select_ctrl=2
+elif hw_version=="PROTOTYPE-3":
+	rencoder_pin_a=[27,21,3,7]
+	rencoder_pin_b=[25,26,4,0]
+	gpio_switch_pin=[2,23]
+	#gpio_switch_pin=[106,107]
+	select_ctrl=3
+else:
+	rencoder_pin_a=[27,21,3,7]
+	rencoder_pin_b=[25,26,4,0]
+	gpio_switch_pin=[2,23]
+	select_ctrl=2
+
 #-------------------------------------------------------------------------------
 
 
@@ -109,11 +136,11 @@ class zynthian_controller:
 	value_text=None
 	label_title=None
 
-	def __init__(self, indx, cnv, x, y, tit, chan, ctrl, val=0, max_val=127):
+	def __init__(self, indx, cnv, tit, chan, ctrl, val=0, max_val=127):
 		self.index=indx
 		self.canvas=cnv
-		self.x=x
-		self.y=y
+		self.x=ctrl_pos[indx][0]
+		self.y=ctrl_pos[indx][1]
 		self.plot_value=self.plot_value_rectangle
 		self.erase_value=self.erase_value_rectangle
 		self.config(tit,chan,ctrl,val,max_val)
@@ -479,7 +506,10 @@ class zynthian_gui_list:
 			self.wide=True
 			self.width=236
 			self.lb_width=28
-			self.lb_x=0
+			if select_ctrl>1:
+				self.lb_x=0
+			else:
+				self.lb_x=317-self.width
 
 		# Create Canvas
 		self.canvas = Canvas(
@@ -546,8 +576,12 @@ class zynthian_gui_list:
 
 	def plot_frame(self):
 		if self.wide:
-			rx=0
-			rx2=self.width
+			if select_ctrl>1:
+				rx=0
+				rx2=self.width
+			else:
+				rx=320-self.width
+				rx2=320
 		else:
 			rx=(width-self.width)/2
 			rx2=width-rx-1
@@ -616,7 +650,7 @@ class zynthian_admin(zynthian_gui_list):
 		#self.label_title.place(x=84,y=-2,anchor=NW)
 		self.label_title.place(x=4,y=-2,anchor=NW)
 		self.fill_list()
-		self.zselector=zynthian_controller(2,self.canvas,243,25,"Action",0,0,0,len(self.list_data))
+		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Action",0,0,0,len(self.list_data))
     
 	def get_list_data(self):
 		self.list_data=(
@@ -668,7 +702,7 @@ class zynthian_admin(zynthian_gui_list):
 	def update_system(self):
 		print("UPDATE SYSTEM")
 		zyngui.show_info("UPDATE SYSTEM")
-		self.start_command("apt-get -y update; apt-get -y upgrade")
+		#self.start_command("apt-get -y update; apt-get -y upgrade")
 
 	def update_software(self):
 		print("UPDATE SOFTWARE")
@@ -713,7 +747,7 @@ class zynthian_gui_engine(zynthian_gui_list):
 		#self.label_title.place(x=84,y=-2,anchor=NW)
 		self.label_title.place(x=4,y=-2,anchor=NW)
 		self.fill_list()
-		self.zselector=zynthian_controller(2,self.canvas,243,25,"Engine",0,0,1,len(self.list_data))
+		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Engine",0,0,1,len(self.list_data))
 		#self.set_select_path()
     
 	def get_list_data(self):
@@ -774,7 +808,7 @@ class zynthian_gui_chan(zynthian_gui_list):
 		super().__init__(gui_bg, True)
 		self.fill_list()
 		self.index=zyngui.zyngine.get_midi_chan()
-		self.zselector=zynthian_controller(2,self.canvas,243,25,"Channel",0,0,self.index+1,len(self.list_data))
+		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Channel",0,0,self.index+1,len(self.list_data))
 		self.set_select_path()
     
 	def get_list_data(self):
@@ -818,7 +852,7 @@ class zynthian_gui_bank(zynthian_gui_list):
 		super().__init__(gui_bg, True)
 		self.fill_list()
 		self.index=zyngui.zyngine.get_bank_index()
-		self.zselector=zynthian_controller(2,self.canvas,243,25,"Bank",0,0,self.index+1,len(self.list_data))
+		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Bank",0,0,self.index+1,len(self.list_data))
 		self.set_select_path()
     
 	def get_list_data(self):
@@ -857,7 +891,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 		super().__init__(gui_bg, True)
 		self.fill_list()
 		self.index=zyngui.zyngine.get_instr_index()
-		self.zselector=zynthian_controller(2,self.canvas,243,25,"Intrument",0,0,self.index+1,len(self.list_data))
+		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Intrument",0,0,self.index+1,len(self.list_data))
 		self.set_select_path()
       
 	def get_list_data(self):
@@ -909,10 +943,10 @@ class zynthian_gui_control(zynthian_gui_list):
 		self.zcontrollers_config=zyngui.zyngine.default_ctrl_config
 		self.zcontrollers=(
 			#indx, cnv, x, y, tit, chan, ctrl, val=0, max_val=127
-			zynthian_controller(0,self.canvas,-1,25,self.zcontrollers_config[0][0],zyngui.midi_chan,self.zcontrollers_config[0][1],self.zcontrollers_config[0][2],self.zcontrollers_config[0][3]),
-			zynthian_controller(1,self.canvas,-1,133,self.zcontrollers_config[1][0],zyngui.midi_chan,self.zcontrollers_config[1][1],self.zcontrollers_config[1][2],self.zcontrollers_config[1][3]),
-			zynthian_controller(2,self.canvas,243,25,self.zcontrollers_config[2][0],zyngui.midi_chan,self.zcontrollers_config[2][1],self.zcontrollers_config[2][2],self.zcontrollers_config[2][3]),
-			zynthian_controller(3,self.canvas,243,133,self.zcontrollers_config[3][0],zyngui.midi_chan,self.zcontrollers_config[3][1],self.zcontrollers_config[3][2],self.zcontrollers_config[3][3])
+			zynthian_controller(0,self.canvas,self.zcontrollers_config[0][0],zyngui.midi_chan,self.zcontrollers_config[0][1],self.zcontrollers_config[0][2],self.zcontrollers_config[0][3]),
+			zynthian_controller(1,self.canvas,self.zcontrollers_config[1][0],zyngui.midi_chan,self.zcontrollers_config[1][1],self.zcontrollers_config[1][2],self.zcontrollers_config[1][3]),
+			zynthian_controller(2,self.canvas,self.zcontrollers_config[2][0],zyngui.midi_chan,self.zcontrollers_config[2][1],self.zcontrollers_config[2][2],self.zcontrollers_config[2][3]),
+			zynthian_controller(3,self.canvas,self.zcontrollers_config[3][0],zyngui.midi_chan,self.zcontrollers_config[3][1],self.zcontrollers_config[3][2],self.zcontrollers_config[3][3])
 		)
 		# Init Controllers Map
 		self.zcontroller_map={}
@@ -953,21 +987,21 @@ class zynthian_gui_control(zynthian_gui_list):
 	def _fill_list(self):
 		super()._fill_list()
 		if self.mode=='select':
-			self.set_controller(2, "Map",0,0,self.index,len(self.list_data))
+			self.set_controller(select_ctrl,"Map",0,0,self.index,len(self.list_data))
 
 	def set_mode_select(self):
 		self.mode='select'
 		for i in range(0,4):
 			self.zcontrollers[i].hide()
 		#self.index=1
-		self.set_controller(2, "Map",0,0,self.index,len(self.list_data))
+		self.set_controller(select_ctrl,"Map",0,0,self.index,len(self.list_data))
 		self.listbox.config(selectbackground=color_ctrl_bg_on)
 		self.select(self.index)
 		self.set_select_path()
 
 	def set_mode_control(self):
 		self.mode='control'
-		self.zcontrollers[2].hide()
+		self.zcontrollers[select_ctrl].hide()
 		self.set_controller_config(self.zcontrollers_config)
 		self.listbox.config(selectbackground=color_ctrl_bg_off)
 		self.set_select_path()
@@ -988,9 +1022,9 @@ class zynthian_gui_control(zynthian_gui_list):
 				#print('Read Control ' + str(zc.title))
 				zc.read_rencoder()
 		elif self.mode=='select':
-			_sel=self.zcontrollers[2].value
-			self.zcontrollers[2].read_rencoder()
-			sel=self.zcontrollers[2].value
+			_sel=self.zcontrollers[select_ctrl].value
+			self.zcontrollers[select_ctrl].read_rencoder()
+			sel=self.zcontrollers[select_ctrl].value
 			if (_sel!=sel):
 				#print('Pre-select Parameter ' + str(sel))
 				self.select_listbox(sel)
@@ -1011,7 +1045,7 @@ class zynthian_gui_osc_browser(zynthian_gui_list):
 		super().__init__(gui_bg, True)
 		self.fill_list()
 		self.index=1
-		self.zselector=zynthian_controller(2,self.canvas,243,25,"Path",0,0,self.index+1,len(self.list_data))
+		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Path",0,0,self.index+1,len(self.list_data))
 		self.set_select_path()
 
 	def get_list_data(self):
@@ -1155,10 +1189,8 @@ class zynthian_gui:
 
 	# Init GPIO Switches
 	def gpio_switch_init(self):
-		sw1_chan=2
-		sw2_chan=23
-		lib_rencoder.setup_gpio_switch(0,sw1_chan)
-		lib_rencoder.setup_gpio_switch(1,sw2_chan)
+		lib_rencoder.setup_gpio_switch(0,gpio_switch_pin[0])
+		lib_rencoder.setup_gpio_switch(1,gpio_switch_pin[1])
 
 	def osc_init(self):
 		global zyngine_osc_port
@@ -1180,10 +1212,10 @@ class zynthian_gui:
 		if dtus>0:
 			#print("Switch 1 dtus="+str(dtus))
 			if dtus>2000000:
-				#print('Long Switch 1')
+				print('Looooooooooooooooooong Switch 1')
 				self.screens['admin'].power_off()
 				return
-			#print('Switch 1')
+			print('Switch 1')
 			self.dtsw1=datetime.now()
 			if self.gpio_switch12():
 				return
@@ -1194,10 +1226,10 @@ class zynthian_gui:
 		dtus=lib_rencoder.get_gpio_switch_dtus(1)
 		if dtus>0:
 			if dtus>2000000:
-				#print('Long Switch 2')
+				print('Looooooooooooooooooong Switch 2')
 				self.show_screen('admin')
 				return
-			#print('Switch 2')
+			print('Switch 2')
 			self.dtsw2=datetime.now()
 			if self.gpio_switch12():
 				return
@@ -1211,7 +1243,7 @@ class zynthian_gui:
 
 	def gpio_switch12(self):
 		if abs((self.dtsw1-self.dtsw2).total_seconds())<0.5:
-			#print('Switch 1+2')
+			print('Switch 1+2')
 			self.show_screen('admin')
 			return True
 
