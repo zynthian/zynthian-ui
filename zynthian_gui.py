@@ -12,12 +12,14 @@ modified:  2015-07-11
 """
 
 import sys
+import signal
 import alsaseq
 import alsamidi
 import liblo
 from tkinter import *
 from tkinter import font as tkFont
 from ctypes import *
+from time import sleep
 from datetime import datetime
 from string import Template
 from subprocess import check_output
@@ -78,31 +80,40 @@ lib_rencoder=None
 #-------------------------------------------------------------------------------
 # Get Zynthian Hardware Version
 #-------------------------------------------------------------------------------
-with open("../zynthian_hw_version.txt","r") as fh:
-	hw_version=fh.read()
+try:
+	with open("../zynthian_hw_version.txt","r") as fh:
+		hw_version=fh.read()
+		print("HW version "+str(hw_version))
+except:
+	hw_version="PROTOTYPE-3"
+	print("No HW version file. Default to PROTOTYPE-3.")
 
 #-------------------------------------------------------------------------------
 # GPIO pin assignment (wiringPi)
 if hw_version=="PROTOTYPE-1":
 	rencoder_pin_a=[27,21,3,7]
 	rencoder_pin_b=[25,26,4,0]
-	gpio_switch_pin=[2,23]
+	gpio_switch_pin=[23,None,2,None]
 	select_ctrl=2
 elif hw_version=="PROTOTYPE-2":
 	rencoder_pin_a=[25,26,4,0]
 	rencoder_pin_b=[27,21,3,7]
-	gpio_switch_pin=[2,23]
+	gpio_switch_pin=[23,None,2,None]
 	select_ctrl=2
 elif hw_version=="PROTOTYPE-3":
 	rencoder_pin_a=[27,21,3,7]
 	rencoder_pin_b=[25,26,4,0]
-	gpio_switch_pin=[2,23]
-	#gpio_switch_pin=[106,107]
+	gpio_switch_pin=[107,23,106,2]
+	select_ctrl=3
+elif hw_version=="PROTOTYPE-EMU":
+	rencoder_pin_a=[4,5,6,7]
+	rencoder_pin_b=[8,9,10,11]
+	gpio_switch_pin=[0,1,2,3]
 	select_ctrl=3
 else:
 	rencoder_pin_a=[27,21,3,7]
 	rencoder_pin_b=[25,26,4,0]
-	gpio_switch_pin=[2,23]
+	gpio_switch_pin=[23,None,2,None]
 	select_ctrl=2
 
 #-------------------------------------------------------------------------------
@@ -621,7 +632,7 @@ class zynthian_gui_list:
 		index=self.get_cursel()
 		self.select_action(index)
 
-	def switch1(self):
+	def switch_select(self):
 		self.click_listbox()
 
 	def select(self, index):
@@ -813,9 +824,10 @@ class zynthian_gui_chan(zynthian_gui_list):
     
 	def get_list_data(self):
 		self.list_data=[]
-		for i in range(0,self.max_chan):
-			instr=zynmidi.get_midi_instr(i)
-			self.list_data.append((str(i+1),i,"Chan #"+str(i+1)+" -> Bank("+str(instr[0])+","+str(instr[1])+") Prog("+str(instr[2])+")"))
+		for i in range(self.max_chan):
+			self.list_data.append((str(i+1),i,str(i+1)+">"+zyngui.zyngine.get_path(i)))
+			#instr=zynmidi.get_midi_instr(i)
+			#self.list_data.append((str(i+1),i,"Chan #"+str(i+1)+" -> Bank("+str(instr[0])+","+str(instr[1])+") Prog("+str(instr[2])+")"))
 
 	def show(self):
 		self.fill_list()
@@ -829,6 +841,13 @@ class zynthian_gui_chan(zynthian_gui_list):
 		zyngui.zyngine.set_midi_chan(i)
 		zyngui.screens['bank'].fill_list()
 		zyngui.show_screen('bank')
+
+	def next(self):
+		if zyngui.zyngine.next_chan():
+			self.index=zyngui.zyngine.get_midi_chan()
+			self.select_listbox(self.index)
+			return True
+		return False
 
 	def rencoder_read(self):
 		_sel=self.zselector.value
@@ -1010,7 +1029,15 @@ class zynthian_gui_control(zynthian_gui_list):
 		self.zcontrollers_config=self.list_data[i][0]
 		self.set_mode_control()
 
-	def switch1(self):
+	def next(self):
+		self.index+=1
+		if self.index>=len(self.list_data):
+			self.index=0
+		self.select(self.index)
+		self.click_listbox()
+		return True
+
+	def switch_select(self):
 		if self.mode=='control':
 			self.set_mode_select()
 		elif self.mode=='select':
@@ -1112,8 +1139,8 @@ class zynthian_gui:
 	active_screen=None
 	screens_sequence=("admin","engine","chan","bank","instr","control")
 
+	dtsw={}
 	polling=False
-	dtsw1=dtsw2=datetime.now()
 	osc_target=None
 	osc_server=None
 
@@ -1127,9 +1154,9 @@ class zynthian_gui:
 		try:
 			self.osc_init()
 			self.lib_rencoder_init()
-			self.gpio_switch_init()
-		except:
-			pass
+			self.gpio_switches_init()
+		except Exception as e:
+			print("ERROR initializing GUI: %s" % str(e))
 		self.show_screen('engine')
 		self.start_polling()
 
@@ -1180,17 +1207,21 @@ class zynthian_gui:
 		global lib_rencoder
 		global zyngine_osc_port
 		try:
-			lib_rencoder=cdll.LoadLibrary("midi_rencoder/midi_rencoder.so")
+			lib_rencoder=cdll.LoadLibrary("zyncoder/build/libzyncoder.so")
 			lib_rencoder.init_rencoder(zyngine_osc_port)
 			#lib_rencoder.init_rencoder(0)
 		except Exception as e:
 			lib_rencoder=None
-			print("Can't init Zyncoders: %s" % str(e))
+			print("Can't init rencoders: %s" % str(e))
 
 	# Init GPIO Switches
-	def gpio_switch_init(self):
-		lib_rencoder.setup_gpio_switch(0,gpio_switch_pin[0])
-		lib_rencoder.setup_gpio_switch(1,gpio_switch_pin[1])
+	def gpio_switches_init(self):
+		ts=datetime.now()
+		print("SWITCHES INIT!")
+		for i,pin in enumerate(gpio_switch_pin):
+			self.dtsw[i]=ts
+			lib_rencoder.setup_gpio_switch(i,pin)
+			print("SETUP GPIO SWITCH "+str(i)+" => "+str(pin))
 
 	def osc_init(self):
 		global zyngine_osc_port
@@ -1207,45 +1238,93 @@ class zynthian_gui:
 		except liblo.AddressError as err:
 			print("ERROR: OSC Server can't be initialized (%s). Running without OSC feedback." % (str(err)))
 
-	def gpio_switch1(self):
-		dtus=lib_rencoder.get_gpio_switch_dtus(0)
-		if dtus>0:
-			#print("Switch 1 dtus="+str(dtus))
-			if dtus>2000000:
-				print('Looooooooooooooooooong Switch 1')
-				self.screens['admin'].power_off()
-				return
-			print('Switch 1')
-			self.dtsw1=datetime.now()
-			if self.gpio_switch12():
-				return
-			else:
-				self.screens[self.active_screen].switch1()
+	def gpio_switches(self):
+		for i in range(len(gpio_switch_pin)):
+			dtus=lib_rencoder.get_gpio_switch_dtus(i)
+			if dtus>0:
+				#print("Switch "+str(i)+" dtus="+str(dtus))
+				if dtus>300000:
+					if dtus>2000000:
+						print('Looooooooong Switch '+str(i))
+						self.gpio_switch_long(i)
+						return
+					if self.gpio_switch_double(i):
+						return
+					print('Bold Switch '+str(i))
+					self.gpio_switch_bold(i)
+					return
+				print('Short Switch '+str(i))
+				self.gpio_switch_short(i)
 
-	def gpio_switch2(self):
-		dtus=lib_rencoder.get_gpio_switch_dtus(1)
-		if dtus>0:
-			if dtus>2000000:
-				print('Looooooooooooooooooong Switch 2')
-				self.show_screen('admin')
-				return
-			print('Switch 2')
-			self.dtsw2=datetime.now()
-			if self.gpio_switch12():
-				return
-			else:
-				#self.screens[self.active_screen].switch2()
-				i=self.screens_sequence.index(self.active_screen)-1
-				if i<0:
-					i=1
-				#print("BACK TO SCREEN "+str(i)+" => "+self.screens_sequence[i])
-				self.show_screen(self.screens_sequence[i])
-
-	def gpio_switch12(self):
-		if abs((self.dtsw1-self.dtsw2).total_seconds())<0.5:
-			print('Switch 1+2')
+	def gpio_switch_long(self,i):
+		if i==0:
 			self.show_screen('admin')
-			return True
+		elif i==1:
+			self.show_screen('engine')
+		elif i==2:
+			pass
+		elif i==3:
+			self.screens['admin'].power_off()
+
+	def gpio_switch_bold(self,i):
+		if i==0:
+			if self.screens['chan']:
+				self.show_screen('chan')
+			else:
+				self.show_screen('engine')
+		elif i==1:
+			self.show_screen("engine")
+		elif i==2:
+			pass
+		elif i==3:
+			if self.active_screen=='chan':
+				self.screens[self.active_screen].switch_select()
+				print("PATH="+self.zyngine.get_path())
+				if self.zyngine.get_instr_index():
+					self.screens['control'].set_mode_control()
+					self.show_screen('control')
+			else:
+				self.screens[self.active_screen].switch_select()
+
+	def gpio_switch_short(self,i):
+		if i==0:
+			if self.active_screen=='control':
+				if self.screens['chan'].next():
+					print("Next Chan")
+					self.screens['control'].hide()
+					self.screens['control'].set_mode_control()
+					self.show_screen('control')
+				else:
+					self.gpio_switch_bold(i)
+			else:
+				self.gpio_switch_bold(i)
+		elif i==1:
+			#self.screens[self.active_screen].switch2()
+			j=self.screens_sequence.index(self.active_screen)-1
+			if j<0:
+				j=1
+			#print("BACK TO SCREEN "+str(j)+" => "+self.screens_sequence[j])
+			self.show_screen(self.screens_sequence[j])
+		elif i==2:
+			pass
+		elif i==3:
+			if self.active_screen=='control' and self.screens['control'].mode=='control':
+				self.screens['control'].next()
+				print("Next Control Screen")
+			else:
+				self.gpio_switch_bold(i)
+
+	def gpio_switch_double(self,i):
+		self.dtsw[i]=datetime.now()
+		for j in range(4):
+			if j==1:
+				continue
+			if abs((self.dtsw[i]-self.dtsw[j]).total_seconds())<0.3:
+				dswstr=str(i)+'+'+str(j)
+				print('Double Switch '+dswstr)
+				if dswstr=='1+2':
+					self.show_screen('admin')
+					return True
 
 	def start_polling(self):
 		self.polling=True
@@ -1266,7 +1345,7 @@ class zynthian_gui:
 			if event[0]==alsaseq.SND_SEQ_EVENT_CONTROLLER and chan==self.midi_chan and self.active_screen=='control': 
 				ctrl = event[7][4]
 				val = event[7][5]
-				print ("MIDI CTRL " + str(ctrl) + ", CH" + str(chan) + " => " + str(val))
+				#print ("MIDI CTRL " + str(ctrl) + ", CH" + str(chan) + " => " + str(val))
 				if ctrl in self.screens['control'].zcontroller_map.keys():
 					self.screens['control'].zcontroller_map[ctrl].set_value(val,True)
 		if self.polling:
@@ -1274,8 +1353,7 @@ class zynthian_gui:
 
 	def rencoder_read(self):
 		self.screens[self.active_screen].rencoder_read()
-		self.gpio_switch1()
-		self.gpio_switch2()
+		self.gpio_switches()
 		if self.polling:
 			top.after(40, self.rencoder_read)
 
@@ -1317,7 +1395,8 @@ top = Tk()
 top.geometry(str(width)+'x'+str(height))
 top.maxsize(width,height)
 top.minsize(width,height)
-top.config(cursor="none")
+if hw_version!="PROTOTYPE-EMU":
+	top.config(cursor="none")
 
 #-------------------------------------------------------------------------------
 # GUI & Synth Engine initialization
@@ -1331,7 +1410,39 @@ gui_bg = None
 zyngui=zynthian_gui()
 
 #-------------------------------------------------------------------------------
-# Main Loop
+# Reparent Top Window using GTK XEmbed protocol features
+#-------------------------------------------------------------------------------
+
+def flushflush():
+	for i in range(1000):
+		print("FLUSHFLUSHFLUSHFLUSHFLUSHFLUSHFLUSH")
+	top.after(200, flushflush)
+
+if hw_version=="PROTOTYPE-EMU":
+	top_xid=top.winfo_id()
+	print("Zynthian GUI XID: "+str(top_xid))
+	if len(sys.argv)>1:
+		parent_xid=int(sys.argv[1])
+		print("Parent XID: "+str(parent_xid))
+		top.geometry('-10000-10000')
+		top.overrideredirect(True)
+		top.wm_withdraw()
+		flushflush()
+		top.after(1000, top.wm_deiconify)
+
+#-------------------------------------------------------------------------------
+# Catch SIGTERM
+#-------------------------------------------------------------------------------
+
+def sigterm_handler(_signo, _stack_frame):
+	print("Catch SIGTERM ...")
+	zyngui.zyngine.stop()
+	top.destroy()
+
+signal.signal(signal.SIGTERM, sigterm_handler)
+
+#-------------------------------------------------------------------------------
+# TKinter Main Loop
 #-------------------------------------------------------------------------------
 
 top.mainloop()

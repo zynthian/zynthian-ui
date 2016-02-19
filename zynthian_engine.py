@@ -142,6 +142,24 @@ class zynthian_synth_engine:
 		print('MIDI Chan Selected: ' + str(i))
 		self.midi_chan=i
 
+	def next_chan(self):
+		#self.set_midi_chan(self.midi_chan+1)
+		#return True
+		count=0
+		nchan=len(self.bank_index)
+		i=self.midi_chan
+		while count<nchan:
+			i+=1
+			if i>=nchan:
+				i=0
+			if self.instr_name[i]:
+				break
+		if self.midi_chan!=i:
+			self.set_midi_chan(i)
+			return True
+		else:
+			return False
+
 	def get_midi_chan(self):
 		return self.midi_chan
 
@@ -209,10 +227,12 @@ class zynthian_synth_engine:
 			zynmidi.set_midi_instr(self.midi_chan, self.instr_list[i][1][0], self.instr_list[i][1][1], self.instr_list[i][1][2])
 			self.load_instr_config()
 
-	def get_path(self):
-		path=self.bank_name[self.midi_chan]
-		if self.instr_name[self.midi_chan]:
-			path=path + ' / ' + self.instr_name[self.midi_chan]
+	def get_path(self, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		path=self.bank_name[chan]
+		if self.instr_name[chan]:
+			path=path + ' / ' + self.instr_name[chan]
 		return path
 
 #-------------------------------------------------------------------------------
