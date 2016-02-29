@@ -1,15 +1,28 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-"""
-Zynthian GUI: zynthian_gui.py
-
-Main file and GUI classes for Zynthian GUI
-
-author: José Fernandom Moyano (ZauBeR)
-email: fernando@zauber.es
-created: 2015-05-18
-modified:  2015-07-11
-"""
+#********************************************************************
+# ZYNTHIAN PROJECT: Zynthian GUI
+# 
+# Classes and Main Program for Zynthian GUI, the official User 
+# Interface of Zynthian Box.
+# 
+# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+#
+#********************************************************************
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# For a full copy of the GNU General Public License see the doc/GPL.txt file.
+# 
+#********************************************************************
 
 import sys
 import signal
@@ -25,7 +38,8 @@ from string import Template
 from subprocess import check_output
 from threading  import Thread
 
-from zynthian_engine import *
+from zyngine import *
+from zyngine.zynthian_engine import osc_port as zyngine_osc_port
 
 #-------------------------------------------------------------------------------
 # Define some Constants and Parameters for the GUI
@@ -764,9 +778,9 @@ class zynthian_gui_engine(zynthian_gui_list):
 	def get_list_data(self):
 		self.list_data=(
 			("ZynAddSubFX",0,"ZynAddSubFX - Synthesizer"),
-			("FluidSynth",1,"FluidSynth - Sampler"),
-			("setBfree",1,"setBfree - Hammond Emulator"),
-			("LinuxSampler",1,"LinuxSampler - Sampler")
+			("LinuxSampler",1,"LinuxSampler - Sampler"),
+			("setBfree",2,"setBfree - Hammond Emulator"),
+			("FluidSynth",3,"FluidSynth - Sampler")
 		)
 
 	def show(self):
@@ -786,13 +800,15 @@ class zynthian_gui_engine(zynthian_gui_list):
 			else:
 				self.zyngine.stop()
 		if name=="ZynAddSubFX":
-			self.zyngine=zynthian_zynaddsubfx_engine(zyngui)
-		elif name=="FluidSynth":
-			self.zyngine=zynthian_fluidsynth_engine(zyngui)
+			self.zyngine=zynthian_engine_zynaddsubfx(zyngui)
 		elif name=="setBfree":
-			self.zyngine=zynthian_setbfree_engine(zyngui)
+			self.zyngine=zynthian_engine_setbfree(zyngui)
 		elif name=="LinuxSampler":
-			self.zyngine=zynthian_linuxsampler_engine(zyngui)
+			self.zyngine=zynthian_engine_linuxsampler(zyngui)
+		elif name=="FluidSynth":
+			self.zyngine=zynthian_engine_fluidsynth(zyngui)
+		else:
+			return False
 		return True
 
 	def rencoder_read(self):
@@ -897,7 +913,7 @@ class zynthian_gui_bank(zynthian_gui_list):
 			self.select_listbox(sel)
 
 	def set_select_path(self):
-		self.select_path.set(zyngui.zyngine.name + "#" + str(zyngui.zyngine.get_midi_chan()+1))
+		self.select_path.set(zyngui.zyngine.nickname + "#" + str(zyngui.zyngine.get_midi_chan()+1))
 
 #-------------------------------------------------------------------------------
 # Zynthian Instrument Selection GUI Class
@@ -925,7 +941,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 	def select_action(self, i):
 		zyngui.zyngine.set_instr(i)
 		#Send OSC message to get feedback on instrument loaded
-		if isinstance(zyngui.zyngine,zynthian_zynaddsubfx_engine):
+		if isinstance(zyngui.zyngine,zynthian_engine_zynaddsubfx):
 			try:
 				liblo.send(zyngui.osc_target, "/volume")
 				zyngui.osc_server.recv()
@@ -946,7 +962,7 @@ class zynthian_gui_instr(zynthian_gui_list):
 			self.select_listbox(sel)
 
 	def set_select_path(self):
-		self.select_path.set(zyngui.zyngine.name[0:3] + "#" + str(zyngui.zyngine.get_midi_chan()+1) + " > " + zyngui.zyngine.get_path())
+		self.select_path.set(zyngui.zyngine.get_fullpath())
 
 
 #-------------------------------------------------------------------------------
@@ -1057,7 +1073,7 @@ class zynthian_gui_control(zynthian_gui_list):
 				self.select_listbox(sel)
 
 	def set_select_path(self):
-		self.select_path.set(zyngui.zyngine.name[0:3] + "#" + str(zyngui.zyngine.get_midi_chan()+1) + " > " + zyngui.zyngine.get_path())
+		self.select_path.set(zyngui.zyngine.get_fullpath())
 
 
 #-------------------------------------------------------------------------------
@@ -1124,7 +1140,7 @@ class zynthian_gui_osc_browser(zynthian_gui_list):
 			self.select_listbox(sel)
 
 	def set_select_path(self):
-		self.select_path.set(zyngui.zyngine.name[0:3] + "#" + str(zyngui.zyngine.get_midi_chan()+1) + " > " + zyngui.zyngine.get_path())
+		self.select_path.set(zyngui.zyngine.get_fullpath())
 
 
 #-------------------------------------------------------------------------------
@@ -1145,18 +1161,19 @@ class zynthian_gui:
 	osc_server=None
 
 	def __init__(self):
-		# GUI Objects Initialization
-		#self.screens['splash']=zynthian_splash(1000)
-		self.screens['admin']=zynthian_admin()
-		self.screens['info']=zynthian_info()
-		self.screens['engine']=zynthian_gui_engine()
-		# Control Initialization (Rotary and Switches)
+		# Controls Initialization (Rotary and Switches)
 		try:
 			self.osc_init()
 			self.lib_rencoder_init()
 			self.gpio_switches_init()
 		except Exception as e:
 			print("ERROR initializing GUI: %s" % str(e))
+		# GUI Objects Initialization
+		#self.screens['splash']=zynthian_splash(1000)
+		self.screens['admin']=zynthian_admin()
+		self.screens['info']=zynthian_info()
+		self.screens['engine']=zynthian_gui_engine()
+		# Show first screen and start polling
 		self.show_screen('engine')
 		self.start_polling()
 
@@ -1205,7 +1222,6 @@ class zynthian_gui:
 	# Init Rotary Encoders C Library
 	def lib_rencoder_init(self):
 		global lib_rencoder
-		global zyngine_osc_port
 		try:
 			lib_rencoder=cdll.LoadLibrary("zyncoder/build/libzyncoder.so")
 			lib_rencoder.init_rencoder(zyngine_osc_port)
@@ -1224,7 +1240,6 @@ class zynthian_gui:
 			print("SETUP GPIO SWITCH "+str(i)+" => "+str(pin))
 
 	def osc_init(self):
-		global zyngine_osc_port
 		try:
 			self.osc_target = liblo.Address(zyngine_osc_port)
 			self.osc_server = liblo.Server()
@@ -1268,7 +1283,7 @@ class zynthian_gui:
 
 	def gpio_switch_bold(self,i):
 		if i==0:
-			if self.screens['chan']:
+			if self.screens['chan'] and self.active_screen!='chan':
 				self.show_screen('chan')
 			else:
 				self.show_screen('engine')
@@ -1279,7 +1294,7 @@ class zynthian_gui:
 		elif i==3:
 			if self.active_screen=='chan':
 				self.screens[self.active_screen].switch_select()
-				print("PATH="+self.zyngine.get_path())
+				print("PATH="+self.zyngine.get_fullpath())
 				if self.zyngine.get_instr_index():
 					self.screens['control'].set_mode_control()
 					self.show_screen('control')
@@ -1369,7 +1384,7 @@ class zynthian_gui:
 		self.show_screen('control')
 
 	def cb_osc_paths(self, path, args, types, src):
-		if isinstance(zyngui.zyngine,zynthian_zynaddsubfx_engine):
+		if isinstance(zyngui.zyngine,zynthian_engine_zynaddsubfx):
 			zyngui.zyngine.cb_osc_paths(path, args, types, src)
 			self.screens['control'].list_data=zyngui.zyngine.osc_paths_data
 			self.screens['control']._fill_list()
