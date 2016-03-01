@@ -23,6 +23,7 @@
 #******************************************************************************
 
 import os
+from time import sleep
 from string import Template
 from os.path import isfile, join
 from zyngine.zynthian_engine import *
@@ -53,7 +54,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			('modulation',1,0,127),
 			('reverb',91,64,127),
 			('chorus',93,2,127)
-		],0,'extra'),
+		],0,'effects'),
 		([
 			('bandwidth',75,64,127),
 			('modulation amplitude',76,127,127),
@@ -67,10 +68,18 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		if os.environ.get('ZYNTHIANX'):
 			self.command_env=os.environ.copy()
 			self.command_env['DISPLAY']=os.environ.get('ZYNTHIANX')
-			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", audio_driver, "-I", midi_driver, "-P", str(osc_port), "-l", self.conf_dir+"/zasfx_8ch.xmz", "-a")
+			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_8ch.xmz", "-a")
 		else:
-			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", audio_driver, "-I", midi_driver, "-U", "-P", str(osc_port), "-l", self.conf_dir+"/zasfx_8ch.xmz", "-a")
+			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-U", "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_8ch.xmz", "-a")
 		super().__init__(parent)
+		self._osc_init()
+
+	def osc_init(self):
+			#self.osc_server.add_method(None, None, self.cb_osc_all)
+			self.osc_server.add_method("/volume", 'i', self.parent.cb_osc_load_instr)
+			self.osc_server.add_method("/paths", None, self.parent.cb_osc_paths)
+			self.osc_server.add_method(None, 'i', self.parent.cb_osc_ctrl)
+			#liblo.send(self.osc_target, "/echo")
 
 	def load_bank_list(self):
 		self.load_bank_dirlist(self.bank_dir)

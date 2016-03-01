@@ -31,6 +31,7 @@ from zyngine.zynthian_engine import *
 class zynthian_engine_fluidsynth(zynthian_engine):
 	name="FluidSynth"
 	nickname="FS"
+
 	command=None
 	#synth.midi-bank-select => mma
 	soundfont_dir="./data/soundfonts/sf2"
@@ -54,12 +55,12 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	default_ctrl_config=map_list[0][0]
 
 	def __init__(self,parent=None):
-		if midi_driver=='alsa':
+		if self.midi_driver=='alsa':
 			mdriver="alsa_seq";
 		else:
-			mdriver=midi_driver
-		#self.command=("/usr/local/bin/fluidsynth", "-p", "fluidsynth", "-a", audio_driver, "-m", mdriver ,"-g", "1")
-		self.command=("/usr/bin/fluidsynth", "-p", "fluidsynth", "-a", audio_driver, "-m", mdriver ,"-g", "1", "-j")
+			mdriver=self.midi_driver
+		#self.command=("/usr/local/bin/fluidsynth", "-p", "fluidsynth", "-a", self.audio_driver, "-m", mdriver ,"-g", "1")
+		self.command=("/usr/bin/fluidsynth", "-p", "fluidsynth", "-a", self.audio_driver, "-m", mdriver ,"-g", "1", "-j")
 
 		self.parent=parent
 		self.clean()

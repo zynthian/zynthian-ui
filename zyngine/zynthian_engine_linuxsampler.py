@@ -2,7 +2,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_linuxsampler)
 # 
-# zynthian_engine implementarion for Linux Sampler
+# zynthian_engine implementation for Linux Sampler
 # 
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
@@ -36,8 +36,10 @@ from zyngine.zynthian_engine import *
 class zynthian_engine_linuxsampler(zynthian_engine):
 	name="LinuxSampler"
 	nickname="LS"
+
 	port=6688
 	sock=None
+
 	command=("/usr/bin/linuxsampler","--lscp-port",str(port))
 	lscp_dir="./data/lscp"
 	bank_dir=os.getcwd()+"/data/soundfonts/sfz"
@@ -55,13 +57,13 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			('modulation',1,0,127),
 			('reverb',91,64,127),
 			('chorus',93,2,127)
-		],0,'extra')
+		],0,'effects')
 	)
 	default_ctrl_config=map_list[0][0]
 
 	def __init__(self,parent=None):
 		super().__init__(parent)
-		self.lscp_send_pattern("init_"+audio_driver)
+		self.lscp_send_pattern("init_"+self.audio_driver)
 
 	def lscp_connect(self):
 		if not self.sock:

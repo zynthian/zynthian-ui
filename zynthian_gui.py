@@ -780,7 +780,8 @@ class zynthian_gui_engine(zynthian_gui_list):
 			("ZynAddSubFX",0,"ZynAddSubFX - Synthesizer"),
 			("LinuxSampler",1,"LinuxSampler - Sampler"),
 			("setBfree",2,"setBfree - Hammond Emulator"),
-			("FluidSynth",3,"FluidSynth - Sampler")
+			("Carla",3,"Carla - Plugin Host"),
+			("FluidSynth",4,"FluidSynth - Sampler")
 		)
 
 	def show(self):
@@ -805,6 +806,8 @@ class zynthian_gui_engine(zynthian_gui_list):
 			self.zyngine=zynthian_engine_setbfree(zyngui)
 		elif name=="LinuxSampler":
 			self.zyngine=zynthian_engine_linuxsampler(zyngui)
+		elif name=="Carla":
+			self.zyngine=zynthian_engine_carla(zyngui)
 		elif name=="FluidSynth":
 			self.zyngine=zynthian_engine_fluidsynth(zyngui)
 		else:
@@ -943,8 +946,8 @@ class zynthian_gui_instr(zynthian_gui_list):
 		#Send OSC message to get feedback on instrument loaded
 		if isinstance(zyngui.zyngine,zynthian_engine_zynaddsubfx):
 			try:
-				liblo.send(zyngui.osc_target, "/volume")
-				zyngui.osc_server.recv()
+				liblo.send(zyngui.zyngine.osc_target, "/volume")
+				zyngui.zyngine.osc_server.recv()
 			except:
 				zyngui.show_screen('control')
 			zyngui.screens['control'].fill_list()
@@ -1163,7 +1166,6 @@ class zynthian_gui:
 	def __init__(self):
 		# Controls Initialization (Rotary and Switches)
 		try:
-			self.osc_init()
 			self.lib_rencoder_init()
 			self.gpio_switches_init()
 		except Exception as e:
@@ -1238,20 +1240,6 @@ class zynthian_gui:
 			self.dtsw[i]=ts
 			lib_rencoder.setup_gpio_switch(i,pin)
 			print("SETUP GPIO SWITCH "+str(i)+" => "+str(pin))
-
-	def osc_init(self):
-		try:
-			self.osc_target = liblo.Address(zyngine_osc_port)
-			self.osc_server = liblo.Server()
-			#self.osc_server.add_method(None, None, self.cb_osc_all)
-			self.osc_server.add_method("/volume", 'i', self.cb_osc_load_instr)
-			self.osc_server.add_method("/paths", None, self.cb_osc_paths)
-			self.osc_server.add_method(None, 'i', self.cb_osc_ctrl)
-			#print("OSC server running in port " % (str(self.osc_server.get_port())))
-			#liblo.send(self.osc_target, "/echo")
-			print("OSC Server running");
-		except liblo.AddressError as err:
-			print("ERROR: OSC Server can't be initialized (%s). Running without OSC feedback." % (str(err)))
 
 	def gpio_switches(self):
 		for i in range(len(gpio_switch_pin)):
@@ -1344,11 +1332,10 @@ class zynthian_gui:
 	def start_polling(self):
 		self.polling=True
 		self.poll_count=0
-		self.midi_read()
 		if lib_rencoder:
 			self.rencoder_read()
-		if self.osc_server:
-			self.osc_read()
+		self.midi_read()
+		self.osc_read()
 
 	def stop_polling(self):
 		self.polling=False
@@ -1373,8 +1360,9 @@ class zynthian_gui:
 			top.after(40, self.rencoder_read)
 
 	def osc_read(self):
-		while self.osc_server.recv(0):
-			pass
+		if self.zyngine and self.zyngine.osc_server:
+			while self.zyngine.osc_server.recv(0):
+				pass
 		if self.polling:
 			top.after(40, self.osc_read)
 
@@ -1396,11 +1384,6 @@ class zynthian_gui:
 		#print ("OSC CTRL: " + path + " => "+str(args[0]))
 		if path in self.screens['control'].zcontroller_map.keys():
 			self.screens['control'].zcontroller_map[path].set_init_value(args[0])
-
-	def cb_osc_all(self, path, args, types, src):
-		print("OSC MESSAGE '%s' from '%s'" % (path, src.url))
-		for a, t in zip(args, types):
-			print("argument of type '%s': %s" % (t, a))
 
 #-------------------------------------------------------------------------------
 # Create Top Level Window with Fixed Size

@@ -25,6 +25,7 @@
 #import sys
 import os
 import copy
+import liblo
 from os.path import isfile, isdir, join
 from subprocess import Popen, PIPE, STDOUT
 from threading  import Thread
@@ -39,12 +40,10 @@ from zyngine.zynthian_midi import *
 zynmidi=zynthian_midi("Zynthian_gui")
 
 #------------------------------------------------------------------------------
-# OSC Interface Initialization
+# OSC Port for Synth Engines
 #------------------------------------------------------------------------------
 
-osc_port=6697
-audio_driver="jack"
-midi_driver="jack"
+osc_port=6693
 
 #------------------------------------------------------------------------------
 # Synth Engine Base Class
@@ -55,6 +54,9 @@ class zynthian_engine:
 	nickname=""
 	parent=None
 
+	audio_driver="jack"
+	midi_driver="jack"
+
 	command=None
 	command_env=None
 	proc=None
@@ -63,6 +65,11 @@ class zynthian_engine:
 
 	user_gid=1000
 	user_uid=1000
+
+	osc_target=None
+	osc_target_port=osc_port
+	osc_server=None
+	osc_server_port=None
 
 	bank_list=None
 	instr_list=None
@@ -156,6 +163,26 @@ class zynthian_engine:
 			self.proc.stdin.write(cmd + "\n")
 			self.proc.stdin.flush()
 			return self.proc_get_lines(tout)
+
+	def _osc_init(self):
+		try:
+			self.osc_target=liblo.Address(self.osc_target_port)
+			print("OSC target in port %s" % str(self.osc_target_port))
+			self.osc_server=liblo.Server()
+			self.osc_server_port=self.osc_server.get_port()
+			print("OSC server running in port %s" % str(self.osc_server_port))
+			#print("OSC Server running");
+			self.osc_init()
+		except liblo.AddressError as err:
+			print("ERROR: OSC Server can't be initialized (%s). Running without OSC feedback." % (str(err)))
+
+	def osc_init(self):
+			self.osc_server.add_method(None, None, self.cb_osc_all)
+
+	def cb_osc_all(self, path, args, types, src):
+		print("OSC MESSAGE '%s' from '%s'" % (path, src.url))
+		for a, t in zip(args, types):
+			print("argument of type '%s': %s" % (t, a))
 
 	def set_midi_chan(self, i):
 		print('MIDI Chan Selected: ' + str(i))

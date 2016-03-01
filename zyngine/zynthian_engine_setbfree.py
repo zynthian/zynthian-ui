@@ -2,7 +2,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_setbfree)
 # 
-# zynthian_engine implementarion for setBfree Hammond Emulator
+# zynthian_engine implementation for setBfree Hammond Emulator
 # 
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
@@ -32,9 +32,9 @@ from zyngine.zynthian_engine import *
 class zynthian_engine_setbfree(zynthian_engine):
 	name="setBfree"
 	nickname="BF"
-	base_dir="./data/setbfree/"
-	command=("/usr/local/bin/setBfree", "midi.driver="+midi_driver, "-p", base_dir+"/pgm/all.pgm", "-c", base_dir+"/cfg/zynthian.cfg")
 
+	base_dir="./data/setbfree/"
+	
 	map_list=(
 		([
 			('volume',1,96,127),
@@ -74,6 +74,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	default_ctrl_config=map_list[0][0]
 
 	def __init__(self,parent=None):
+		self.command=("/usr/local/bin/setBfree", "midi.driver="+self.midi_driver, "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
 		super().__init__(parent)
 
 	def load_bank_list(self):
