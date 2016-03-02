@@ -34,9 +34,8 @@ class zynthian_engine_carla(zynthian_engine):
 	name="Carla"
 	nickname="CP"
 	patch_dir="./data/carla/"
-	patch_name="dexed_simple_pb"
-	#command=("/usr/local/bin/carla-patchbay", "-n", patch_dir+"/"+patch_name+".carxp")
-	command=("/usr/local/bin/carla-patchbay", patch_dir+"/"+patch_name+".carxp")
+	patch_name="dexed_simple_pb.carxp"
+	command=None
 
 	map_list=(
 		([
@@ -56,10 +55,9 @@ class zynthian_engine_carla(zynthian_engine):
 	default_ctrl_config=map_list[0][0]
 
 	def __init__(self,parent=None):
-		os.environ['CARLA_OSC_UDP_PORT']=str(self.osc_target_port)
-		super().__init__(parent)
-		sleep(2)
-		self._osc_init()
+		self.parent=parent
+		self.clean()
+		self.load_bank_list()
 
 	def osc_init(self):
 		self.osc_server.add_method("/set_peaks", None, self.cb_set_peaks)
@@ -90,6 +88,19 @@ class zynthian_engine_carla(zynthian_engine):
 		self.load_bank_filelist(self.patch_dir,"carxp")
 
 	def load_instr_list(self):
+		os.environ['CARLA_OSC_UDP_PORT']=str(self.osc_target_port)
+		self.patch_name=self.bank_list[self.get_bank_index()][0]
+		if os.environ.get('ZYNTHIANX'):
+			self.command=("/usr/local/bin/carla-patchbay", self.patch_dir+"/"+self.patch_name)
+		else:
+			self.command=("/usr/local/bin/carla-patchbay", "-n", self.patch_dir+"/"+self.patch_name)
+		print("Running Command: "+ str(self.command))
+		self.stop()
+		sleep(1)
+		self.start()
+		sleep(2)
+		self._osc_init()
+
 		try:
 			liblo.send(self.osc_target, "/")
 			self.osc_server.recv()
