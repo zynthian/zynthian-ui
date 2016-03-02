@@ -91,6 +91,8 @@ class zynthian_engine_carla(zynthian_engine):
 		os.environ['CARLA_OSC_UDP_PORT']=str(self.osc_target_port)
 		self.patch_name=self.bank_list[self.get_bank_index()][0]
 		if os.environ.get('ZYNTHIANX'):
+			self.command_env=os.environ.copy()
+			self.command_env['DISPLAY']=os.environ.get('ZYNTHIANX')
 			self.command=("/usr/local/bin/carla-patchbay", self.patch_dir+"/"+self.patch_name)
 		else:
 			self.command=("/usr/local/bin/carla-patchbay", "-n", self.patch_dir+"/"+self.patch_name)

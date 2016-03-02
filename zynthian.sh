@@ -41,10 +41,34 @@ function splash_zynthian_error() {
 	fi  
 }
 
+function jack_audio_start() {
+	# Start jack-audio server
+	/usr/bin/jackd -dalsa -dhw:0 -r48000 -p128 -n1 &
+}
+
+function jack_audio_stop() {
+	# Stop jack-audio server
+	killall a2jmidid
+}
+
+function a2j_midi_start() {
+	# Start alsa2jack midi router
+	/usr/bin/a2jmidid --export-hw &
+}
+
+function a2j_midi_stop() {
+	# Stop alsa2jack midi router
+	killall a2jmidid
+}
+
 function autoconnector_start() {
 	# Start Autoconnector
-	./zynthian_autoconnect.py > /var/log/zynthian_autoconnect.log 2>&1 &
+	./zynthian_autoconnect_jack.py > /var/log/zynthian_autoconnect.log 2>&1 &
 	#2>&1 &
+}
+
+function autoconnector_stop() {
+	killall zynthian_autoconnect_jack.py
 }
 
 function ttymidi_start() {
@@ -52,17 +76,27 @@ function ttymidi_start() {
 	./software/ttymidi/ttymidi -s /dev/ttyAMA0 -b 38400 &
 }
 
+function ttymidi_stop() {
+	killall ttymidi
+}
+
 #------------------------------------------------------------------------------
 # Main Program
 #------------------------------------------------------------------------------
 
-cd $ZYNTHIAN_DIR
+cd $ZYNTHIAN_DIR/zynthian-ui
+
+jack_audio_start
 
 screentouch_on
 screensaver_off
 
 autoconnector_start
 ttymidi_start
+
+sleep 1
+
+a2j_midi_start
 
 # Start Zynthian GUI & Synth Engine
 ./zynthian_gui.py
@@ -71,6 +105,10 @@ status=$?
 if test $status -eq 0
 then
 	splash_zynthian
+	a2j_midi_stop
+	jack_audio_stop
+	ttymidi_stop
+	autoconnector_stop
 	screentouch_off
 	poweroff
 else

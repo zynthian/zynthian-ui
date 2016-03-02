@@ -166,8 +166,8 @@ class zynthian_controller:
 		self.canvas=cnv
 		self.x=ctrl_pos[indx][0]
 		self.y=ctrl_pos[indx][1]
-		self.plot_value=self.plot_value_rectangle
-		self.erase_value=self.erase_value_rectangle
+		self.plot_value=self.plot_value_arc
+		self.erase_value=self.erase_value_arc
 		self.config(tit,chan,ctrl,val,max_val)
 		self.show()
 
