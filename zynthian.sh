@@ -43,7 +43,7 @@ function splash_zynthian_error() {
 
 function jack_audio_start() {
 	# Start jack-audio server
-	/usr/bin/jackd -dalsa -dhw:0 -r48000 -p128 -n1 &
+	/usr/bin/jackd -dalsa -dhw:0 -r48000 -p128 -n2 &
 }
 
 function jack_audio_stop() {
@@ -94,7 +94,7 @@ screensaver_off
 autoconnector_start
 ttymidi_start
 
-sleep 1
+sleep 2
 
 a2j_midi_start
 
