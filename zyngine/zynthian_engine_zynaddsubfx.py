@@ -68,9 +68,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		if os.environ.get('ZYNTHIANX'):
 			self.command_env=os.environ.copy()
 			self.command_env['DISPLAY']=os.environ.get('ZYNTHIANX')
-			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_8ch.xmz", "-a")
+			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_8ch.xmz", "-a")
 		else:
-			self.command=("./software/zynaddsubfx/build/src/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-U", "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_8ch.xmz", "-a")
+			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-U", "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_8ch.xmz", "-a")
 		super().__init__(parent)
 		self._osc_init()
 
