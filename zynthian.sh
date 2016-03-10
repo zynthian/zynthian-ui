@@ -65,7 +65,7 @@ function splash_zynthian_error() {
 
 function jack_audio_start() {
 	# Start jack-audio server
-	/usr/bin/jackd -dalsa -dhw:0 -r48000 -p128 -n2 &
+	/usr/bin/jackd -P70 -p16 -t2000 -s -dalsa -dhw:0 -r44100 -p256 -n2
 }
 
 function jack_audio_stop() {
@@ -75,7 +75,10 @@ function jack_audio_stop() {
 
 function a2j_midi_start() {
 	# Start alsa2jack midi router
-	/usr/bin/a2jmidid --export-hw &
+	while [ 1 ]; do 
+		/usr/bin/a2jmidid --export-hw
+		sleep 1
+	done
 }
 
 function a2j_midi_stop() {
@@ -85,7 +88,7 @@ function a2j_midi_stop() {
 
 function autoconnector_start() {
 	# Start Autoconnector
-	./zynthian_autoconnect_jack.py > /var/log/zynthian_autoconnect.log 2>&1 &
+	./zynthian_autoconnect_jack.py > /var/log/zynthian_autoconnect.log 2>&1
 	#2>&1 &
 }
 
@@ -95,7 +98,7 @@ function autoconnector_stop() {
 
 function ttymidi_start() {
 	# Start ttymidi (MIDI UART interface)
-	./software/ttymidi/ttymidi -s /dev/ttyAMA0 -b 38400 &
+	./software/ttymidi/ttymidi -s /dev/ttyAMA0 -b 38400
 }
 
 function ttymidi_stop() {
@@ -108,17 +111,13 @@ function ttymidi_stop() {
 
 cd $ZYNTHIAN_DIR/zynthian-ui
 
-jack_audio_start
-
 screentouch_on
 screensaver_off
 
-autoconnector_start
-ttymidi_start
-
-sleep 2
-
-a2j_midi_start
+jack_audio_start &
+ttymidi_start &
+a2j_midi_start &
+autoconnector_start &
 
 # Start Zynthian GUI & Synth Engine
 ./zynthian_gui.py

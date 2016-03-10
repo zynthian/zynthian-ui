@@ -98,7 +98,7 @@ class zynthian_engine_carla(zynthian_engine):
 			self.command=("/usr/local/bin/carla-patchbay", "-n", self.patch_dir+"/"+self.patch_name)
 		print("Running Command: "+ str(self.command))
 		self.stop()
-		sleep(1)
+		#sleep(1)
 		self.start()
 		sleep(2)
 		self._osc_init()
