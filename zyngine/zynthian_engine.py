@@ -31,14 +31,6 @@ from subprocess import Popen, PIPE, STDOUT
 from threading  import Thread
 from queue import Queue, Empty
 
-from zyngine.zynthian_midi import *
-
-#------------------------------------------------------------------------------
-# MIDI Interface Initialization
-#------------------------------------------------------------------------------
-
-zynmidi=zynthian_midi("Zynthian_gui")
-
 #------------------------------------------------------------------------------
 # OSC Port for Synth Engines
 #------------------------------------------------------------------------------
@@ -270,7 +262,7 @@ class zynthian_engine:
 		self.bank_name[self.midi_chan]=self.bank_list[i][2]
 		self.load_instr_list()
 		if last_bank_index!=i:
-			zynmidi.set_midi_bank_msb(self.midi_chan, i)
+			self.parent.zynmidi.set_midi_bank_msb(self.midi_chan, i)
 			self.reset_instr()
 		print('Bank Selected: ' + self.bank_name[self.midi_chan] + ' (' + str(i)+')')
 
@@ -281,7 +273,7 @@ class zynthian_engine:
 		self.instr_name[self.midi_chan]=self.instr_list[i][2]
 		print('Instrument Selected: ' + self.instr_name[self.midi_chan] + ' (' + str(i)+')')
 		if last_instr_index!=i or not last_instr_name:
-			zynmidi.set_midi_instr(self.midi_chan, self.instr_list[i][1][0], self.instr_list[i][1][1], self.instr_list[i][1][2])
+			self.parent.zynmidi.set_midi_instr(self.midi_chan, self.instr_list[i][1][0], self.instr_list[i][1][1], self.instr_list[i][1][2])
 			self.load_instr_config()
 
 	def get_path(self, chan=None):

@@ -39,9 +39,7 @@ engine_list = [
 	"fluidsynth",
 	"LinuxSampler",
 	"setBfree",
-	"Carla",
-	"MIDI Channel Filter",
-	"MIDI Join"
+	"Carla"
 ]
 
 #Input Black List
@@ -58,7 +56,7 @@ def jack_connect(odev,idev):
 		pass
 
 def midi_autoconnect():
-	print("Autoconnecting Jack ...")
+	print("Autoconnecting Jack Midi ...")
 
 	#Get Physical MIDI-devices ...
 	hw_out=jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
@@ -95,29 +93,42 @@ def midi_autoconnect():
 
 	#print("Engine Devices: " + str(engines))
 
-	#Get Zynthian GUI devices
-	zyngui_out=jclient.get_ports("Zynthian_gui", is_output=True, is_midi=True)
-	zyngui_in=jclient.get_ports("Zynthian_gui", is_input=True, is_midi=True)
-
 	#Get Zynthian Controller device
-	zyncoder_out=jclient.get_ports("Zynthian_rencoder", is_output=True, is_midi=True)
+	zyncoder_out=jclient.get_ports("Zyncoder", is_output=True, is_midi=True)
+	zyncoder_in=jclient.get_ports("Zyncoder", is_input=True, is_midi=True)
 
-	#Connect Physical devices to Synth Engines and Zynthian GUI
+	#Connect Physical devices to Synth Engines and Zyncoder
 	for hw in hw_out:
 		#print("Connecting HW "+str(hw))
-		if len(zyngui_in)>0:
-			jack_connect(hw,zyngui_in[0])
+		if len(zyncoder_in)>0:
+			jack_connect(hw,zyncoder_in[0])
 		if not zynthian_seq:
 			for engine in engines:
 				#print("Connecting HW "+str(hw)+" => "+str(engine))
 				jack_connect(hw,engine)
 
-	#Connect Zynthian_gui and Zynthian_rencoder to engines
-	for engine in engines:
-		if len(zyngui_out)>0:
-			jack_connect(zyngui_out[0],engine)
-		if len(zyncoder_out)>0:
+	#Connect Zyncoder to engines
+	if len(zyncoder_out)>0:
+		for engine in engines:
 			jack_connect(zyncoder_out[0],engine)
+
+def audio_autoconnect():
+	print("Autoconnecting Jack Audio ...")
+
+	#Get System Output ...
+	sys_out=jclient.get_ports(is_audio=True, is_terminal=True)
+	if len(sys_out)==0:
+		return
+
+	#Connect Synth Engines to System Output
+	for engine in engine_list:
+		devs=jclient.get_ports(engine, is_output=True, is_audio=True, is_physical=False)
+		if devs:
+			try:
+				jack_connect(devs[0],sys_out[0])
+				jack_connect(devs[1],sys_out[1])
+			except:
+				print("Failed audio connection")
 
 #------------------------------------------------------------------------------
 
@@ -133,6 +144,7 @@ jclient=jack.Client("Zynthian_autoconnect")
 while True:
 	try:
 		midi_autoconnect()
+		audio_autoconnect()
 	except Exception as err:
 		print("ERROR Autoconnecting: "+str(err))
 		pass

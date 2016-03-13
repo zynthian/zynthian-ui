@@ -78,7 +78,7 @@ class zynthian_engine_carla(zynthian_engine):
 
 	def cb_osc_all(self, path, args, types, src):
 		parts=path.split("/")
-		if parts[1]=="set_peaks" or parts[1]=="set_parameter_value" or parts[1]=="set_default_value":
+		if parts[1] in ("set_peaks","set_parameter_value","set_default_value","note_on","note_off"):
 			return
 		print("OSC MESSAGE '%s' from '%s'" % (path, src.url))
 		for a, t in zip(args, types):
@@ -86,6 +86,11 @@ class zynthian_engine_carla(zynthian_engine):
 
 	def load_bank_list(self):
 		self.load_bank_filelist(self.patch_dir,"carxp")
+
+	def proc_enqueue_output(self):
+		for line in self.proc.stdout:
+			self.queue.put(line)
+			print(line)
 
 	def load_instr_list(self):
 		os.environ['CARLA_OSC_UDP_PORT']=str(self.osc_target_port)
@@ -99,20 +104,20 @@ class zynthian_engine_carla(zynthian_engine):
 		print("Running Command: "+ str(self.command))
 		self.stop()
 		#sleep(1)
-		self.start()
+		self.start(True)
 		sleep(2)
 		self._osc_init()
 
-		try:
-			liblo.send(self.osc_target, "/")
-			self.osc_server.recv()
-		except:
-			zyngui.show_screen('control')
-		#zyngui.screens['control'].fill_list()
+		#try:
+		#	liblo.send(self.osc_target, "/")
+		#	self.osc_server.recv()
+		#except:
+		#	zyngui.show_screen('control')
+		##zyngui.screens['control'].fill_list()
 		
 		self.instr_list=[]
 		for i in range(32):
-			f="MIDI PRG"+str(i)
+			f="program "+str(i)
 			bank_msb=0
 			bank_lsb=0
 			prg=i

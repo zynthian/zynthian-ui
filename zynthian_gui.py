@@ -27,7 +27,6 @@
 import sys
 import signal
 import alsaseq
-import alsamidi
 import liblo
 from tkinter import *
 from tkinter import font as tkFont
@@ -40,6 +39,12 @@ from threading  import Thread
 
 from zyngine import *
 from zyngine.zynthian_engine import osc_port as zyngine_osc_port
+
+from zyncoder import *
+from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
+
+from zyngine.zynthian_midi import *
+from zyngine.zynthian_zcmidi import *
 
 #-------------------------------------------------------------------------------
 # Define some Constants and Parameters for the GUI
@@ -81,15 +86,15 @@ color_btn_tx="#becfe4"
 #textcolor=color_panel_txt
 #lightcolor=color_ctrl_txt
 
-#Controller positions
+#-------------------------------------------------------------------------------
+# Controller positions
+#-------------------------------------------------------------------------------
 ctrl_pos=[
 	[-1,25],
 	[-1,133],
 	[243,25],
 	[243,133]
 ]
-
-lib_rencoder=None
 
 #-------------------------------------------------------------------------------
 # Get Zynthian Hardware Version
@@ -104,34 +109,33 @@ except:
 
 #-------------------------------------------------------------------------------
 # GPIO pin assignment (wiringPi)
-if hw_version=="PROTOTYPE-1":
-	rencoder_pin_a=[27,21,3,7]
-	rencoder_pin_b=[25,26,4,0]
-	gpio_switch_pin=[23,None,2,None]
-	select_ctrl=2
-elif hw_version=="PROTOTYPE-2":
-	rencoder_pin_a=[25,26,4,0]
-	rencoder_pin_b=[27,21,3,7]
-	gpio_switch_pin=[23,None,2,None]
-	select_ctrl=2
-elif hw_version=="PROTOTYPE-3":
-	rencoder_pin_a=[27,21,3,7]
-	rencoder_pin_b=[25,26,4,0]
-	gpio_switch_pin=[107,23,106,2]
-	select_ctrl=3
-elif hw_version=="PROTOTYPE-EMU":
-	rencoder_pin_a=[4,5,6,7]
-	rencoder_pin_b=[8,9,10,11]
-	gpio_switch_pin=[0,1,2,3]
-	select_ctrl=3
-else:
-	rencoder_pin_a=[27,21,3,7]
-	rencoder_pin_b=[25,26,4,0]
-	gpio_switch_pin=[23,None,2,None]
-	select_ctrl=2
-
 #-------------------------------------------------------------------------------
 
+if hw_version=="PROTOTYPE-1":
+	zyncoder_pin_a=[27,21,3,7]
+	zyncoder_pin_b=[25,26,4,0]
+	zynswitch_pin=[23,None,2,None]
+	select_ctrl=2
+elif hw_version=="PROTOTYPE-2":
+	zyncoder_pin_a=[25,26,4,0]
+	zyncoder_pin_b=[27,21,3,7]
+	zynswitch_pin=[23,None,2,None]
+	select_ctrl=2
+elif hw_version=="PROTOTYPE-3":
+	zyncoder_pin_a=[27,21,3,7]
+	zyncoder_pin_b=[25,26,4,0]
+	zynswitch_pin=[107,23,106,2]
+	select_ctrl=3
+elif hw_version=="PROTOTYPE-EMU":
+	zyncoder_pin_a=[4,5,6,7]
+	zyncoder_pin_b=[8,9,10,11]
+	zynswitch_pin=[0,1,2,3]
+	select_ctrl=3
+else:
+	zyncoder_pin_a=[27,21,3,7]
+	zyncoder_pin_b=[25,26,4,0]
+	zynswitch_pin=[23,None,2,None]
+	select_ctrl=2
 
 #-------------------------------------------------------------------------------
 # Controller GUI Class
@@ -401,9 +405,9 @@ class zynthian_controller:
 		print("value: "+str(val))
 
 		self.set_value(val)
-		self.setup_rencoder()
+		self.setup_zyncoder()
 		
-	def setup_rencoder(self):
+	def setup_zyncoder(self):
 		self.init_value=None
 		try:
 			if self.osc_path:
@@ -414,19 +418,19 @@ class zynthian_controller:
 			else:
 				print("SETUP RENCODER "+str(self.index)+": "+str(self.midi_ctrl))
 				osc_path_char=None
-			lib_rencoder.setup_midi_rencoder(self.index,rencoder_pin_a[self.index],rencoder_pin_b[self.index],self.chan,self.midi_ctrl,osc_path_char,self.mult*self.value,self.mult*(self.max_value-self.val0),self.step)
+			lib_zyncoder.setup_zyncoder(self.index,zyncoder_pin_a[self.index],zyncoder_pin_b[self.index],self.chan,self.midi_ctrl,osc_path_char,self.mult*self.value,self.mult*(self.max_value-self.val0),self.step)
 		except Exception as err:
 			print(err)
 			pass
 
-	def set_value(self, v, set_rencoder=False):
+	def set_value(self, v, set_zyncoder=False):
 		if (v>self.max_value):
 			v=self.max_value
 		if (v!=self.value):
 			self.value=v
 			if self.shown:
-				if set_rencoder:
-					lib_rencoder.set_value_midi_rencoder(self.index,v)
+				if set_zyncoder:
+					lib_zyncoder.set_value_zyncoder(self.index,v)
 				self.plot_value()
 
 	def set_init_value(self, v):
@@ -435,8 +439,8 @@ class zynthian_controller:
 			self.set_value(v,True)
 			print("RENCODER INIT VALUE "+str(self.index)+": "+str(v))
 
-	def read_rencoder(self):
-		val=lib_rencoder.get_value_midi_rencoder(self.index)
+	def read_zyncoder(self):
+		val=lib_zyncoder.get_value_zyncoder(self.index)
 		val=int(val/self.mult)
 		self.set_value(val)
 		#print ("RENCODER VALUE: " + str(self.index) + " => " + str(val))
@@ -696,9 +700,9 @@ class zynthian_admin(zynthian_gui_list):
 	def select_action(self, i):
 		self.list_data[i][0]()
 
-	def rencoder_read(self):
+	def zyncoder_read(self):
 		_sel=self.zselector.value
-		self.zselector.read_rencoder()
+		self.zselector.read_zyncoder()
 		sel=self.zselector.value
 		if (_sel!=sel):
 			#print('Pre-select Admin Action ' + str(sel))
@@ -814,9 +818,9 @@ class zynthian_gui_engine(zynthian_gui_list):
 			return False
 		return True
 
-	def rencoder_read(self):
+	def zyncoder_read(self):
 		_sel=self.zselector.value
-		self.zselector.read_rencoder()
+		self.zselector.read_zyncoder()
 		sel=self.zselector.value
 		if (_sel!=sel):
 			#print('Pre-select Engine ' + str(sel))
@@ -868,9 +872,9 @@ class zynthian_gui_chan(zynthian_gui_list):
 			return True
 		return False
 
-	def rencoder_read(self):
+	def zyncoder_read(self):
 		_sel=self.zselector.value
-		self.zselector.read_rencoder()
+		self.zselector.read_zyncoder()
 		sel=self.zselector.value
 		if (_sel!=sel):
 			#print('Pre-select MIDI Chan ' + str(sel))
@@ -907,9 +911,9 @@ class zynthian_gui_bank(zynthian_gui_list):
 		zyngui.screens['instr'].fill_list()
 		zyngui.show_screen('instr')
 
-	def rencoder_read(self):
+	def zyncoder_read(self):
 		_sel=self.zselector.value
-		self.zselector.read_rencoder()
+		self.zselector.read_zyncoder()
 		sel=self.zselector.value
 		if (_sel!=sel):
 			#print('Pre-select Bank ' + str(sel))
@@ -956,9 +960,9 @@ class zynthian_gui_instr(zynthian_gui_list):
 			zyngui.screens['control'].set_mode_control()
 			zyngui.show_screen('control')
 
-	def rencoder_read(self):
+	def zyncoder_read(self):
 		_sel=self.zselector.value
-		self.zselector.read_rencoder()
+		self.zselector.read_zyncoder()
 		sel=self.zselector.value
 		if (_sel!=sel):
 			#print('Pre-select Bank ' + str(sel))
@@ -1062,14 +1066,14 @@ class zynthian_gui_control(zynthian_gui_list):
 		elif self.mode=='select':
 			self.click_listbox()
 
-	def rencoder_read(self):
+	def zyncoder_read(self):
 		if self.mode=='control':
 			for zc in self.zcontrollers:
 				#print('Read Control ' + str(zc.title))
-				zc.read_rencoder()
+				zc.read_zyncoder()
 		elif self.mode=='select':
 			_sel=self.zcontrollers[select_ctrl].value
-			self.zcontrollers[select_ctrl].read_rencoder()
+			self.zcontrollers[select_ctrl].read_zyncoder()
 			sel=self.zcontrollers[select_ctrl].value
 			if (_sel!=sel):
 				#print('Pre-select Parameter ' + str(sel))
@@ -1134,9 +1138,9 @@ class zynthian_gui_osc_browser(zynthian_gui_list):
 			liblo.send(zyngui.osc_target, self.osc_path+path,True)
 			zyngui.show_screen('control')
 
-	def rencoder_read(self):
+	def zyncoder_read(self):
 		_sel=self.zselector.value
-		self.zselector.read_rencoder()
+		self.zselector.read_zyncoder()
 		sel=self.zselector.value
 		if (_sel!=sel):
 			#print('Pre-select Bank ' + str(sel))
@@ -1153,6 +1157,8 @@ class zynthian_gui_osc_browser(zynthian_gui_list):
 class zynthian_gui:
 	midi_chan=0
 
+	amidi=None
+	zynmidi=None
 	zyngine=None
 	screens={}
 	active_screen=None
@@ -1166,8 +1172,12 @@ class zynthian_gui:
 	def __init__(self):
 		# Controls Initialization (Rotary and Switches)
 		try:
-			self.lib_rencoder_init()
-			self.gpio_switches_init()
+			global lib_zyncoder
+			lib_zyncoder_init(zyngine_osc_port)
+			lib_zyncoder=zyncoder.get_lib_zyncoder()
+			#self.amidi=zynthian_midi("Zynthian_gui")
+			self.zynmidi=zynthian_zcmidi()
+			self.zynswitches_init()
 		except Exception as e:
 			print("ERROR initializing GUI: %s" % str(e))
 		# GUI Objects Initialization
@@ -1221,45 +1231,34 @@ class zynthian_gui:
 			self.screens['instr']=zynthian_gui_instr()
 			self.screens['control']=zynthian_gui_control()
 
-	# Init Rotary Encoders C Library
-	def lib_rencoder_init(self):
-		global lib_rencoder
-		try:
-			lib_rencoder=cdll.LoadLibrary("zyncoder/build/libzyncoder.so")
-			lib_rencoder.init_rencoder(zyngine_osc_port)
-			#lib_rencoder.init_rencoder(0)
-		except Exception as e:
-			lib_rencoder=None
-			print("Can't init rencoders: %s" % str(e))
-
 	# Init GPIO Switches
-	def gpio_switches_init(self):
+	def zynswitches_init(self):
 		ts=datetime.now()
 		print("SWITCHES INIT!")
-		for i,pin in enumerate(gpio_switch_pin):
+		for i,pin in enumerate(zynswitch_pin):
 			self.dtsw[i]=ts
-			lib_rencoder.setup_gpio_switch(i,pin)
+			lib_zyncoder.setup_zynswitch(i,pin)
 			print("SETUP GPIO SWITCH "+str(i)+" => "+str(pin))
 
-	def gpio_switches(self):
-		for i in range(len(gpio_switch_pin)):
-			dtus=lib_rencoder.get_gpio_switch_dtus(i)
+	def zynswitches(self):
+		for i in range(len(zynswitch_pin)):
+			dtus=lib_zyncoder.get_zynswitch_dtus(i)
 			if dtus>0:
 				#print("Switch "+str(i)+" dtus="+str(dtus))
 				if dtus>300000:
 					if dtus>2000000:
 						print('Looooooooong Switch '+str(i))
-						self.gpio_switch_long(i)
+						self.zynswitch_long(i)
 						return
-					if self.gpio_switch_double(i):
+					if self.zynswitch_double(i):
 						return
 					print('Bold Switch '+str(i))
-					self.gpio_switch_bold(i)
+					self.zynswitch_bold(i)
 					return
 				print('Short Switch '+str(i))
-				self.gpio_switch_short(i)
+				self.zynswitch_short(i)
 
-	def gpio_switch_long(self,i):
+	def zynswitch_long(self,i):
 		if i==0:
 			self.show_screen('admin')
 		elif i==1:
@@ -1269,7 +1268,7 @@ class zynthian_gui:
 		elif i==3:
 			self.screens['admin'].power_off()
 
-	def gpio_switch_bold(self,i):
+	def zynswitch_bold(self,i):
 		if i==0:
 			if self.screens['chan'] and self.active_screen!='chan':
 				self.show_screen('chan')
@@ -1289,7 +1288,7 @@ class zynthian_gui:
 			else:
 				self.screens[self.active_screen].switch_select()
 
-	def gpio_switch_short(self,i):
+	def zynswitch_short(self,i):
 		if i==0:
 			if self.active_screen=='control':
 				if self.screens['chan'].next():
@@ -1298,9 +1297,9 @@ class zynthian_gui:
 					self.screens['control'].set_mode_control()
 					self.show_screen('control')
 				else:
-					self.gpio_switch_bold(i)
+					self.zynswitch_bold(i)
 			else:
-				self.gpio_switch_bold(i)
+				self.zynswitch_bold(i)
 		elif i==1:
 			#self.screens[self.active_screen].switch2()
 			j=self.screens_sequence.index(self.active_screen)-1
@@ -1315,9 +1314,9 @@ class zynthian_gui:
 				self.screens['control'].next()
 				print("Next Control Screen")
 			else:
-				self.gpio_switch_bold(i)
+				self.zynswitch_bold(i)
 
-	def gpio_switch_double(self,i):
+	def zynswitch_double(self,i):
 		self.dtsw[i]=datetime.now()
 		for j in range(4):
 			if j==1:
@@ -1332,9 +1331,10 @@ class zynthian_gui:
 	def start_polling(self):
 		self.polling=True
 		self.poll_count=0
-		if lib_rencoder:
-			self.rencoder_read()
-		self.midi_read()
+		if lib_zyncoder:
+			self.zyncoder_read()
+		if self.amidi:
+			self.midi_read()
 		self.osc_read()
 
 	def stop_polling(self):
@@ -1353,11 +1353,11 @@ class zynthian_gui:
 		if self.polling:
 			top.after(40, self.midi_read)
 
-	def rencoder_read(self):
-		self.screens[self.active_screen].rencoder_read()
-		self.gpio_switches()
+	def zyncoder_read(self):
+		self.screens[self.active_screen].zyncoder_read()
+		self.zynswitches()
 		if self.polling:
-			top.after(40, self.rencoder_read)
+			top.after(40, self.zyncoder_read)
 
 	def osc_read(self):
 		if self.zyngine and self.zyngine.osc_server:
