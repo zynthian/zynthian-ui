@@ -665,7 +665,7 @@ class zynthian_gui_list:
 #-------------------------------------------------------------------------------
 class zynthian_admin(zynthian_gui_list):
 	zselector=None
-	command=None
+	commands=None
 	thread=None
 
 	def __init__(self):
@@ -683,10 +683,9 @@ class zynthian_admin(zynthian_gui_list):
     
 	def get_list_data(self):
 		self.list_data=(
-			(self.update_system,0,"Update Operating System"),
 			(self.update_software,0,"Update Zynthian Software"),
-			(self.update_zynlib,0,"Update Zynthian Library"),
-			(self.update_userlib,0,"Update User Library"),
+			(self.update_library,0,"Update Zynthian Library"),
+			(self.update_system,0,"Update Operating System"),
 			(self.open_reverse_ssh,0,"Open Reverse SSH"),
 			(self.power_off,0,"Power Off")
 		)
@@ -708,45 +707,41 @@ class zynthian_admin(zynthian_gui_list):
 			#print('Pre-select Admin Action ' + str(sel))
 			self.select_listbox(sel)
 			
-	def execute_command(self):
-		print("Executing Command: "+self.command)
-		zyngui.add_info("\nExecuting: "+self.command)
-		try:
-			result=check_output(self.command, shell=True).decode('utf-8','ignore')
-		except Exception as e:
-			result="ERROR: "+str(e)
-		print(result)
-		zyngui.add_info("\n"+str(result))
+	def execute_commands(self):
+		for cmd in self.commands:
+			print("Executing Command: "+cmd)
+			zyngui.add_info("\nExecuting: "+cmd)
+			try:
+				result=check_output(cmd, shell=True).decode('utf-8','ignore')
+			except Exception as e:
+				result="ERROR: "+str(e)
+			print(result)
+			zyngui.add_info("\n"+str(result))
 		zyngui.hide_info_timer(3000)
-		self.command=None
+		self.commands=None
 
-	def start_command(self,cmd):
-		if not self.command:
-			print("Starting Command: " + cmd)
-			self.command=cmd
-			self.thread=Thread(target=self.execute_command, args=())
+	def start_command(self,cmds):
+		if not self.commands:
+			print("Starting Command Sequence ...")
+			self.commands=cmds
+			self.thread=Thread(target=self.execute_commands, args=())
 			self.thread.daemon = True # thread dies with the program
 			self.thread.start()
-
-	def update_system(self):
-		print("UPDATE SYSTEM")
-		zyngui.show_info("UPDATE SYSTEM")
-		#self.start_command("apt-get -y update; apt-get -y upgrade")
 
 	def update_software(self):
 		print("UPDATE SOFTWARE")
 		zyngui.show_info("UPDATE SOFTWARE")
-		self.start_command("su pi -c 'git pull'")
+		self.start_command(["./sys-scripts/update_zynthian.sh"])
 
-	def update_zynlib(self):
-		print("UPDATE ZYN LIBRARY")
-		zyngui.show_info("UPDATE ZYN LIBRARY")
-		self.start_command("ls zynbanks")
+	def update_library(self):
+		print("UPDATE LIBRARY")
+		zyngui.show_info("UPDATE LIBRARY")
+		self.start_command(["./sys-scripts/update_zynthian_data.sh"])
 
-	def update_userlib(self):
-		print("UPDATE USER LIBRARY")
-		zyngui.show_info("UPDATE USER LIBRARY")
-		self.start_command("ls my_zynbanks")
+	def update_system(self):
+		print("UPDATE SYSTEM")
+		zyngui.show_info("UPDATE SYSTEM")
+		self.start_command(["./sys-scripts/update_system.sh"])
 
 	def open_reverse_ssh(self):
 		print("OPEN REVERSE SSH")
