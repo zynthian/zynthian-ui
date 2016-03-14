@@ -87,7 +87,7 @@ class zynthian_engine:
 		('filter cutoff',74,64,127)
 	]
 
-	def __init__(self,parent=None):
+	def __init__(self, parent=None):
 		self.parent=parent
 		self.clean()
 		self.start()
@@ -109,7 +109,7 @@ class zynthian_engine:
 		for line in self.proc.stdout:
 			self.queue.put(line)
 
-	def proc_get_lines(self,tout=0.1,limit=2):
+	def proc_get_lines(self, tout=0.1, limit=2):
 		n=0
 		lines=[]
 		while True:
@@ -128,10 +128,10 @@ class zynthian_engine:
 			os.setuid(self.user_uid)
 		return result
 
-	def start(self,start_queue=False):
+	def start(self, start_queue=False, shell=False):
 		if not self.proc:
 			print("Starting Engine " + self.name)
-			self.proc=Popen(self.command,shell=False,bufsize=1,universal_newlines=True,stdin=PIPE,stdout=PIPE,stderr=STDOUT,env=self.command_env)
+			self.proc=Popen(self.command,shell=shell,bufsize=1,universal_newlines=True,stdin=PIPE,stdout=PIPE,stderr=STDOUT,env=self.command_env)
 			#,preexec_fn=self.chuser()
 			if start_queue:
 				self.queue=Queue()
@@ -143,12 +143,12 @@ class zynthian_engine:
 	def stop(self):
 		if self.proc:
 			print("Stoping Engine " + self.name)
-			self.proc.stdout.close()
-			self.proc.stdin.close()
+			#self.proc.stdout.close()
+			#self.proc.stdin.close()
 			self.proc.kill()
 			self.proc=None
 
-	def proc_cmd(self,cmd,tout=0.1):
+	def proc_cmd(self, cmd, tout=0.1):
 		if self.proc:
 			print("PROC_CMD: "+cmd)
 			#self.proc.stdin.write(bytes(cmd + "\n", 'UTF-8'))
@@ -214,7 +214,7 @@ class zynthian_engine:
 		self.instr_index[self.midi_chan]=0
 		self.instr_name[self.midi_chan]=None
 
-	def load_bank_filelist(self,dpath,fext):
+	def load_bank_filelist(self, dpath, fext):
 		i=0
 		fext='.'+fext
 		xlen=len(fext)

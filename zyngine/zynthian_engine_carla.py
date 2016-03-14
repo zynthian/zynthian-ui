@@ -39,18 +39,18 @@ class zynthian_engine_carla(zynthian_engine):
 
 	map_list=(
 		([
-			('volume',7,96,127),
-			#('expression',11,127,127),
-			('modulation',1,0,127),
-			('filter Q',71,64,127),
-			('filter cutoff',74,64,127)
+			('volume',11,96,127),
+			#('expression',7,127,127),
+			('feedback',91,0,127),
+			('resonance',71,64,127),
+			('cutoff',74,64,127)
 		],0,'main'),
 		([
-			('expression',11,127,127),
-			('modulation',1,0,127),
-			('reverb',91,64,127),
-			('chorus',93,2,127)
-		],0,'effects')
+			('speed',72,127,127),
+			('delay',73,0,127),
+			('AM depth',1,64,127),
+			('PM depth',12,2,127)
+		],0,'LFO')
 	)
 	default_ctrl_config=map_list[0][0]
 
@@ -87,7 +87,7 @@ class zynthian_engine_carla(zynthian_engine):
 	def load_bank_list(self):
 		self.load_bank_filelist(self.patch_dir,"carxp")
 
-	def proc_enqueue_output(self):
+	def _proc_enqueue_output(self):
 		for line in self.proc.stdout:
 			self.queue.put(line)
 			print(line)
@@ -104,7 +104,7 @@ class zynthian_engine_carla(zynthian_engine):
 		print("Running Command: "+ str(self.command))
 		self.stop()
 		#sleep(1)
-		self.start(True)
+		self.start(False)
 		sleep(2)
 		self._osc_init()
 
