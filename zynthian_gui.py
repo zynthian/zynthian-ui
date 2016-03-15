@@ -150,13 +150,16 @@ class zynthian_controller:
 	midi_ctrl=None
 	osc_path=None
 	values=None
+	ticks=None
 	n_values=127
 	max_value=127
+	inverted=False
 	step=1
 	mult=1
 	val0=0
 	value=0
 	value_plot=0
+	scale_plot=1
 	value_print=""
 
 	shown=False
@@ -209,11 +212,24 @@ class zynthian_controller:
 		elif self.value<0: self.value=0
 		if self.values:
 			try:
-				i=int(self.n_values*self.value/(self.max_value+self.step))
-				self.value_plot=i*(self.max_value)/(self.n_values-1)
-				#print("PLOT VALUE: "+str(self.value)+"/"+str(self.max_value)+", "+str(i)+"/"+str(self.n_values)+", "+str(self.value_plot))
+				if self.ticks:
+					if self.inverted:
+						for i in reversed(range(self.n_values)):
+							if self.value<self.ticks[i]:
+								break
+						self.value_plot=self.scale_plot*(self.max_value+self.step-self.ticks[i])
+					else:
+						for i in range(self.n_values):
+							if self.value<=self.ticks[i]:
+								break
+						self.value_plot=self.scale_plot*self.ticks[i]
+				else:
+					i=int(self.n_values*self.value/(self.max_value+self.step))
+					self.value_plot=self.scale_plot*i
+				print("PLOT VALUE: "+str(self.value)+"/"+str(self.max_value)+", "+str(i)+"/"+str(self.n_values)+", "+str(self.value_plot))
 				self.value_print=self.values[i]
-			except:
+			except Exception as err:
+				print(err)
 				self.value_plot=self.value
 				self.value_print="ERR"
 		else:
@@ -347,9 +363,11 @@ class zynthian_controller:
 		#print("CONFIG CONTROLLER "+str(self.index)+" => "+tit)
 		self.chan=chan
 		self.ctrl=ctrl
+		self.inverted=False
 		self.step=1
 		self.mult=1
 		self.val0=0
+		self.ticks=None
 		self.set_title(tit)
 		if isinstance(ctrl, Template):
 			self.midi_ctrl=None
@@ -360,7 +378,13 @@ class zynthian_controller:
 		if isinstance(max_val,str):
 			self.values=max_val.split('|')
 		elif isinstance(max_val,list):
-			self.values=max_val
+			if isinstance(max_val[0],list):
+				self.values=max_val[0]
+				self.ticks=max_val[1]
+				if self.ticks[0]>self.ticks[1]:
+					self.inverted=True
+			else:
+				self.values=max_val
 		elif max_val>0:
 			self.values=None
 			self.max_value=self.n_values=max_val
@@ -374,8 +398,14 @@ class zynthian_controller:
 			self.val0=1
 		if val>self.max_value:
 			val=self.max_value
+		if self.ticks:
+			self.scale_plot=self.max_value/abs(self.ticks[0]-self.ticks[self.n_values-1])
+		else:
+			self.scale_plot=self.max_value/(self.n_values-1)
 
 		print("values: "+str(self.values))
+		print("ticks: "+str(self.ticks))
+		print("inverted: "+str(self.inverted))
 		print("n_values: "+str(self.n_values))
 		print("max_value: "+str(self.max_value))
 		print("step: "+str(self.step))
@@ -397,7 +427,14 @@ class zynthian_controller:
 			else:
 				print("SETUP RENCODER "+str(self.index)+": "+str(self.midi_ctrl))
 				osc_path_char=None
-			lib_zyncoder.setup_zyncoder(self.index,zyncoder_pin_a[self.index],zyncoder_pin_b[self.index],self.chan,self.midi_ctrl,osc_path_char,self.mult*self.value,self.mult*(self.max_value-self.val0),self.step)
+
+			if self.inverted:
+				pin_a=zyncoder_pin_b[self.index]
+				pin_b=zyncoder_pin_a[self.index]
+			else:
+				pin_a=zyncoder_pin_a[self.index]
+				pin_b=zyncoder_pin_b[self.index]
+			lib_zyncoder.setup_zyncoder(self.index,pin_a,pin_b,self.chan,self.midi_ctrl,osc_path_char,self.mult*self.value,self.mult*(self.max_value-self.val0),self.step)
 		except Exception as err:
 			print(err)
 			pass
