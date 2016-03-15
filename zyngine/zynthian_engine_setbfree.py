@@ -33,6 +33,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 	name="setBfree"
 	nickname="BF"
 
+	#drawbar_values=[['8','7','6','5','4','3','2','1','0'], [8,24,40,56,72,88,104,120,128]]
+	drawbar_values=[['0','1','2','3','4','5','6','7','8'], [128,120,104,88,72,56,40,24,8]]
 	base_dir="./data/setbfree/"
 	
 	map_list=(
@@ -45,20 +47,20 @@ class zynthian_engine_setbfree(zynthian_engine):
 			('vibrato on/off',92,'off','off|on')
 		],0,'main'),
 		([
-			('16',70,'8','0|1|2|3|4|5|6|7|8'),
-			('5 1/3',71,'8','0|1|2|3|4|5|6|7|8'),
-			('8',72,'8','0|1|2|3|4|5|6|7|8'),
-			('4',73,'8','0|1|2|3|4|5|6|7|8')
+			('16',70,'8',drawbar_values),
+			('5 1/3',71,'8',drawbar_values),
+			('8',72,'8',drawbar_values),
+			('4',73,'8',drawbar_values)
 		],0,'drawbars low'),
 		([
-			('2 2/3',74,'8','0|1|2|3|4|5|6|7|8'),
-			('2',75,'8','0|1|2|3|4|5|6|7|8'),
-			('1 3/5',76,'8','0|1|2|3|4|5|6|7|8'),
-			('1 1/3',77,'8','0|1|2|3|4|5|6|7|8')
-			#('1',78,'8','0|1|2|3|4|5|6|7|8')
+			('2 2/3',74,'8',drawbar_values),
+			('2',75,'8',drawbar_values),
+			('1 3/5',76,'8',drawbar_values),
+			('1 1/3',77,'8',drawbar_values)
+			#('1',78,'8',drawbar_values)
 		],0,'drawbars hi'),
 		([
-			('drawbar 1',78,'8','0|1|2|3|4|5|6|7|8'),
+			('drawbar 1',78,'8',drawbar_values),
 			('vibrato selector',83,'c3','v1|v2|v3|c1|c2|c3'),
 			#('percussion.volume',xx,90,127),
 			('percussion decay',81,'slow','slow|fast'),
