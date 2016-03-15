@@ -156,6 +156,8 @@ class zynthian_controller:
 	mult=1
 	val0=0
 	value=0
+	value_plot=0
+	value_print=""
 
 	shown=False
 	frame=None
@@ -202,28 +204,31 @@ class zynthian_controller:
 			self.canvas.delete(self.frame)
 			self.frame=None
 
-	def plot_value_rectangle(self):
+	def calculate_plot_values(self):
 		if self.value>self.max_value: self.value=self.max_value
 		elif self.value<0: self.value=0
 		if self.values:
 			try:
 				i=int(self.n_values*self.value/(self.max_value+self.step))
-				#print("PLOT RECT: "+str(self.value)+", "+str(i))
-				plot_value=i*(self.max_value+self.step)/self.n_values
-				value=self.values[i]
+				self.value_plot=i*(self.max_value)/(self.n_values-1)
+				#print("PLOT VALUE: "+str(self.value)+"/"+str(self.max_value)+", "+str(i)+"/"+str(self.n_values)+", "+str(self.value_plot))
+				self.value_print=self.values[i]
 			except:
-				plot_value=self.value
-				value="ERR"
+				self.value_plot=self.value
+				self.value_print="ERR"
 		else:
-			plot_value=self.value
-			value=self.val0+self.value
+			self.value_plot=self.value
+			self.value_print=self.val0+self.value
+
+	def plot_value_rectangle(self):
+		self.calculate_plot_values()
 		x1=self.x+6
 		y1=self.y+self.height-5
 		lx=self.trw-4
 		ly=2*self.trh
 		y2=y1-ly
 		if self.max_value>0:
-			x2=x1+lx*plot_value/self.max_value
+			x2=x1+lx*self.value_plot/self.max_value
 		else:
 			x2=x1
 		if self.rectangle:
@@ -232,9 +237,9 @@ class zynthian_controller:
 			self.rectangle_bg=self.canvas.create_rectangle((x1, y1, x1+lx, y2), fill=color_ctrl_bg_off, width=0)
 			self.rectangle=self.canvas.create_rectangle((x1, y1, x2, y2), fill=color_ctrl_bg_on, width=0)
 		if self.value_text:
-			self.canvas.itemconfig(self.value_text, text=str(value))
+			self.canvas.itemconfig(self.value_text, text=str(self.value_print))
 		else:
-			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(value))
+			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(self.value_print))
 
 	def erase_value_rectangle(self):
 		if self.rectangle:
@@ -246,25 +251,12 @@ class zynthian_controller:
 			self.value_text=None
 
 	def plot_value_triangle(self):
-		if self.value>self.max_value: self.value=self.max_value
-		elif self.value<0: self.value=0
-		if self.values:
-			try:
-				i=int(self.n_values*self.value/(self.max_value+self.step))
-				#print("PLOT TRI: "+str(self.value)+", "+str(i))
-				plot_value=i*(self.max_value+self.step)/self.n_values
-				value=self.values[i]
-			except:
-				plot_value=self.value
-				value="ERR"
-		else:
-			plot_value=self.value
-			value=self.value+self.val0
+		self.calculate_plot_values()
 		x1=self.x+2
 		y1=self.y+int(0.8*self.height)+self.trh
 		if self.max_value>0:
-			x2=x1+self.trw*plot_value/self.max_value
-			y2=y1-self.trh*plot_value/self.max_value
+			x2=x1+self.trw*self.value_plot/self.max_value
+			y2=y1-self.trh*self.value_plot/self.max_value
 		else:
 			x2=x1
 			y2=y1
@@ -275,9 +267,9 @@ class zynthian_controller:
 			self.triangle_bg=self.canvas.create_polygon((x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh), fill=color_ctrl_bg_off)
 			self.triangle=self.canvas.create_polygon((x1, y1, x2, y1, x2, y2), fill=color_ctrl_bg_on)
 		if self.value_text:
-			self.canvas.itemconfig(self.value_text, text=str(value))
+			self.canvas.itemconfig(self.value_text, text=str(self.value_print))
 		else:
-			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh-8, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(value))
+			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh-8, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(self.value_print))
 
 	def erase_value_triangle(self):
 		if self.triangle:
@@ -289,25 +281,12 @@ class zynthian_controller:
 			self.value_text=None
 
 	def plot_value_arc(self):
-		if self.value>self.max_value: self.value=self.max_value
-		elif self.value<0: self.value=0
-		if self.values:
-			try:
-				i=int(self.n_values*self.value/(self.max_value+self.step))
-				plot_value=i*(self.max_value+self.step)/self.n_values
-				#print("PLOT ARC: "+str(self.value)+", "+str(i)+", "+str(plot_value))
-				value=self.values[i]
-			except:
-				plot_value=self.value
-				value="ERR"
-		else:
-			plot_value=self.value
-			value=self.value+self.val0
+		self.calculate_plot_values()
 		thickness=12
 		degmax=300
 		deg0=90+degmax/2
 		if self.max_value>0:
-			degd=-degmax*plot_value/self.max_value
+			degd=-degmax*self.value_plot/self.max_value
 		else:
 			degd=0
 		if (not self.arc and self.midi_ctrl!=0) or not self.value_text:
@@ -320,9 +299,9 @@ class zynthian_controller:
 		elif self.midi_ctrl!=0:
 			self.arc=self.canvas.create_arc(x1, y1, x2, y2, style=ARC, outline=color_ctrl_bg_on, width=thickness, start=deg0, extent=degd)
 		if self.value_text:
-			self.canvas.itemconfig(self.value_text, text=str(value))
+			self.canvas.itemconfig(self.value_text, text=str(self.value_print))
 		else:
-			self.value_text=self.canvas.create_text(x1+(x2-x1)/2-1, y1-(y1-y2)/2, width=x2-x1, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(value))
+			self.value_text=self.canvas.create_text(x1+(x2-x1)/2-1, y1-(y1-y2)/2, width=x2-x1, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(self.value_print))
 
 	def erase_value_arc(self):
 		if self.arc:
@@ -348,10 +327,10 @@ class zynthian_controller:
 			font_size=9
 		elif maxlen>65:
 			font_size=10
-		elif maxlen>58:
-			font_size=11
+		#elif maxlen>58:
+		#	font_size=11
 		else:
-			font_size=12
+			font_size=11
 		#self.title=self.title+" > "+str(font_size)
 		if not self.label_title:
 			self.label_title = Label(self.canvas,
@@ -389,7 +368,7 @@ class zynthian_controller:
 			self.n_values=len(self.values)
 			self.step=max(1,int(16/self.n_values));
 			self.max_value=128-self.step;
-			val=int(self.values.index(val)*128/self.n_values)
+			val=int(self.values.index(val)*self.max_value/(self.n_values-1))
 		if self.midi_ctrl==0:
 			self.mult=4
 			self.val0=1
