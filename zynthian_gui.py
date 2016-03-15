@@ -226,7 +226,11 @@ class zynthian_controller:
 				else:
 					i=int(self.n_values*self.value/(self.max_value+self.step))
 					self.value_plot=self.scale_plot*i
+<<<<<<< HEAD
 				#print("PLOT VALUE: "+str(self.value)+"/"+str(self.max_value)+", "+str(i)+"/"+str(self.n_values)+", "+str(self.value_plot))
+=======
+				print("PLOT VALUE: "+str(self.value)+"/"+str(self.max_value)+", "+str(i)+"/"+str(self.n_values)+", "+str(self.value_plot))
+>>>>>>> 4267acfc8b36fc5b342a253dfb8c6fe305dce0ed
 				self.value_print=self.values[i]
 			except Exception as err:
 				print(err)
