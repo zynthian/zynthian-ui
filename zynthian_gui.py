@@ -54,7 +54,7 @@ width=320
 height=240
 
 #Initial Screen
-splash_image="./img/zynthian_gui_splash.gif"
+splash_image="./img/zynthian_logo_boot.gif"
 
 # Original Colors
 bgcolor="#002255"
