@@ -51,6 +51,12 @@ function screensaver_off() {
 	xset s noblank
 }
 
+function scaling_governor_performance() {
+	for cpu in /sys/devices/system/cpu/cpu[0-9]*; do 
+		echo -n performance | tee $cpu/cpufreq/scaling_governor
+	done
+}
+
 function splash_zynthian() {
 	if [ -c /dev/fb1 ]; then
 		cat ./img/fb1_zynthian.raw > /dev/fb1
@@ -113,6 +119,7 @@ cd $ZYNTHIAN_DIR/zynthian-ui
 
 screentouch_on
 screensaver_off
+scaling_governor_performance
 
 jack_audio_start &
 ttymidi_start &
