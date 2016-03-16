@@ -747,12 +747,12 @@ class zynthian_admin(zynthian_gui_list):
 	def update_software(self):
 		print("UPDATE SOFTWARE")
 		zyngui.show_info("UPDATE SOFTWARE")
-		self.start_command(["./sys-scripts/update_zynthian.sh"])
+		self.start_command(["su pi -c ./sys-scripts/update_zynthian.sh"])
 
 	def update_library(self):
 		print("UPDATE LIBRARY")
 		zyngui.show_info("UPDATE LIBRARY")
-		self.start_command(["./sys-scripts/update_zynthian_data.sh"])
+		self.start_command(["su pi -c ./sys-scripts/update_zynthian_data.sh"])
 
 	def update_system(self):
 		print("UPDATE SYSTEM")
