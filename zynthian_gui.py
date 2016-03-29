@@ -1281,7 +1281,7 @@ class zynthian_gui:
 
 	def zynswitch_bold(self,i):
 		if i==0:
-			if self.screens['chan'] and self.active_screen!='chan':
+			if 'chan' in self.screens and self.active_screen!='chan':
 				self.show_screen('chan')
 			else:
 				self.show_screen('engine')
