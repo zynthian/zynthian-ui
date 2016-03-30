@@ -63,11 +63,18 @@ def midi_autoconnect():
 	if len(hw_out)==0:
 		hw_out=[]
 	#Add ttymidi device ...
-	tty_out=jclient.get_ports("ttymidi",is_output=True, is_physical=False, is_midi=True)
+	tty_out=jclient.get_ports("ttymidi", is_output=True, is_physical=False, is_midi=True)
 	try:
 		hw_out.append(tty_out[0])
 	except:
 		pass
+	#Add aubio device ...
+	if zynthian_aubio:
+		aubio_out=jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
+		try:
+			hw_out.append(aubio_out[0])
+		except:
+			pass
 
 	#print("Physical Devices: " + str(hw_out))
 
@@ -115,6 +122,16 @@ def midi_autoconnect():
 def audio_autoconnect():
 	print("Autoconnecting Jack Audio ...")
 
+	if zynthian_aubio:
+		#Get Alsa Input ...
+		alsa_rec=jclient.get_ports("alsa_in", is_output=True, is_audio=True)
+		aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
+		if len(alsa_rec)>0 and len(aubio_in)>0:
+			try:
+				jack_connect(alsa_rec[0],aubio_in[0])
+			except:
+				print("Failed capture audio connection")
+
 	#Get System Output ...
 	sys_out=jclient.get_ports(is_audio=True, is_terminal=True)
 	if len(sys_out)==0:
@@ -128,7 +145,7 @@ def audio_autoconnect():
 				jack_connect(devs[0],sys_out[0])
 				jack_connect(devs[1],sys_out[1])
 			except:
-				print("Failed audio connection")
+				print("Failed output audio connection")
 
 #------------------------------------------------------------------------------
 
@@ -137,6 +154,13 @@ if os.environ.get('ZYNTHIAN_SEQ') or (len(sys.argv)>1 and sys.argv[1]=='seq'):
 	zynthian_seq=True
 else:
 	zynthian_seq=False
+
+#Aubio Config?
+if os.environ.get('ZYNTHIAN_AUBIO') or (len(sys.argv)>1 and sys.argv[1]=='aubio'):
+	zynthian_aubio=True
+else:
+	zynthian_aubio=False
+
 
 jclient=jack.Client("Zynthian_autoconnect")
 

@@ -92,6 +92,32 @@ function a2j_midi_stop() {
 	killall a2jmidid
 }
 
+function alsa_in_start() {
+	# Start alsa_in audio input
+	while [ 1 ]; do 
+		/usr/bin/alsa_in -d hw:2
+		sleep 1
+	done
+}
+
+function alsa_in_stop() {
+	# Stop alsa_in audio input
+	killall alsa_in
+}
+
+function aubionotes_start() {
+	# Start aubionotes (audio => MIDI)
+	while [ 1 ]; do 
+		/usr/bin/aubionotes -O complex -t 0.5 -s -88  -p yinfft -a
+		sleep 1
+	done
+}
+
+function aubionotes_stop() {
+	# Stop aubionotes (audio => MIDI)
+	killall aubionotes
+}
+
 function autoconnector_start() {
 	# Start Autoconnector
 	./zynthian_autoconnect_jack.py > /var/log/zynthian_autoconnect.log 2>&1
@@ -123,6 +149,10 @@ scaling_governor_performance
 
 jack_audio_start &
 ttymidi_start &
+if [ -n $ZYNTHIAN_AUBIO ]; then
+	alsa_in_start &
+	aubionotes_start &
+fi
 a2j_midi_start &
 autoconnector_start &
 
@@ -130,13 +160,16 @@ autoconnector_start &
 ./zynthian_gui.py
 status=$?
 
-if test $status -eq 0
-then
+if test $status -eq 0; then
 	splash_zynthian
-	a2j_midi_stop
-	jack_audio_stop
-	ttymidi_stop
 	autoconnector_stop
+	a2j_midi_stop
+	if [ -n $ZYNTHIAN_AUBIO ]; then
+		aubionotes_stop
+		alsa_in_stop
+	fi
+	ttymidi_stop
+	jack_audio_stop
 	screentouch_off
 	poweroff
 else
