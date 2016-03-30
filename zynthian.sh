@@ -108,7 +108,7 @@ function alsa_in_stop() {
 function aubionotes_start() {
 	# Start aubionotes (audio => MIDI)
 	while [ 1 ]; do 
-		/usr/bin/aubionotes -O complex -t 0.5 -s -88  -p yinfft -a
+		/usr/bin/aubionotes -O complex -t 0.5 -s -88  -p yinfft -l 0.5
 		sleep 1
 	done
 }
