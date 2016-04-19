@@ -76,7 +76,7 @@ function jack_audio_start() {
 
 function jack_audio_stop() {
 	# Stop jack-audio server
-	killall a2jmidid
+	killall jackd
 }
 
 function a2j_midi_start() {
@@ -137,6 +137,18 @@ function ttymidi_stop() {
 	killall ttymidi
 }
 
+function zynthian_stop() {
+	splash_zynthian
+	autoconnector_stop
+	a2j_midi_stop
+	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
+		aubionotes_stop
+		alsa_in_stop
+	fi
+	ttymidi_stop
+	jack_audio_stop
+}
+
 #------------------------------------------------------------------------------
 # Main Program
 #------------------------------------------------------------------------------
@@ -149,7 +161,7 @@ scaling_governor_performance
 
 jack_audio_start &
 ttymidi_start &
-if [ -n $ZYNTHIAN_AUBIO ]; then
+if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 	alsa_in_start &
 	aubionotes_start &
 fi
@@ -161,17 +173,11 @@ autoconnector_start &
 status=$?
 
 if test $status -eq 0; then
-	splash_zynthian
-	autoconnector_stop
-	a2j_midi_stop
-	if [ -n $ZYNTHIAN_AUBIO ]; then
-		aubionotes_stop
-		alsa_in_stop
-	fi
-	ttymidi_stop
-	jack_audio_stop
+	zynthian_stop
 	screentouch_off
 	poweroff
+elif test $status -eq 101; then
+	zynthian_stop
 else
 	splash_zynthian_error
 fi

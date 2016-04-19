@@ -703,6 +703,7 @@ class zynthian_admin(zynthian_gui_list):
 			(self.update_library,0,"Update Zynthian Library"),
 			(self.update_system,0,"Update Operating System"),
 			(self.open_reverse_ssh,0,"Open Reverse SSH"),
+			(self.stop_zynthian,0,"Console"),
 			(self.power_off,0,"Power Off")
 		)
 
@@ -762,11 +763,15 @@ class zynthian_admin(zynthian_gui_list):
 	def open_reverse_ssh(self):
 		print("OPEN REVERSE SSH")
 		zyngui.show_info("OPEN REVERSE SSH")
-		self.start_command("ifconfig")
+		self.start_command(["ifconfig"])
+
+	def stop_zynthian(self):
+		print("STOP ZYNTHIAN")
+		sys.exit(101)
 
 	def power_off(self):
 		print("POWER OFF")
-		sys.exit()
+		sys.exit(0)
 
 #-------------------------------------------------------------------------------
 # Zynthian Engine Selection GUI Class
@@ -847,7 +852,7 @@ class zynthian_gui_engine(zynthian_gui_list):
 
 class zynthian_gui_chan(zynthian_gui_list):
 	zselector=None
-	max_chan=8
+	max_chan=10
 
 	def __init__(self):
 		super().__init__(gui_bg, True)
