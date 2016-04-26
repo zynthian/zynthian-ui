@@ -111,27 +111,32 @@ except:
 # GPIO pin assignment (wiringPi)
 #-------------------------------------------------------------------------------
 
-if hw_version=="PROTOTYPE-1":
+if hw_version=="PROTOTYPE-1":		# First Prototype => Generic Plastic Case
 	zyncoder_pin_a=[27,21,3,7]
 	zyncoder_pin_b=[25,26,4,0]
 	zynswitch_pin=[23,None,2,None]
 	select_ctrl=2
-elif hw_version=="PROTOTYPE-2":
+elif hw_version=="PROTOTYPE-2":		# No GPIO Expander (only 2 switches)
 	zyncoder_pin_a=[25,26,4,0]
 	zyncoder_pin_b=[27,21,3,7]
 	zynswitch_pin=[23,None,2,None]
 	select_ctrl=2
-elif hw_version=="PROTOTYPE-3":
+elif hw_version=="PROTOTYPE-3":		# Controller RBPi connector downside
 	zyncoder_pin_a=[27,21,3,7]
 	zyncoder_pin_b=[25,26,4,0]
 	zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
-elif hw_version=="PROTOTYPE-EMU":
+elif hw_version=="PROTOTYPE-4":		# Controller RBPi connector upside
+	zyncoder_pin_a=[25,26,4,0]
+	zyncoder_pin_b=[27,21,3,7]
+	zynswitch_pin=[107,23,106,2]
+	select_ctrl=2
+elif hw_version=="PROTOTYPE-EMU":	# Desktop Development & Emulation
 	zyncoder_pin_a=[4,5,6,7]
 	zyncoder_pin_b=[8,9,10,11]
 	zynswitch_pin=[0,1,2,3]
 	select_ctrl=3
-else:
+else:								# Default to PROTOTYPE-3
 	zyncoder_pin_a=[27,21,3,7]
 	zyncoder_pin_b=[25,26,4,0]
 	zynswitch_pin=[23,None,2,None]
