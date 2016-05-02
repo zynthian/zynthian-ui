@@ -104,8 +104,8 @@ try:
 		hw_version=fh.read()
 		print("HW version "+str(hw_version))
 except:
-	hw_version="PROTOTYPE-3"
-	print("No HW version file. Default to PROTOTYPE-3.")
+	hw_version="PROTOTYPE-4"
+	print("No HW version file. Default to PROTOTYPE-4.")
 
 #-------------------------------------------------------------------------------
 # GPIO pin assignment (wiringPi)
@@ -126,20 +126,20 @@ elif hw_version=="PROTOTYPE-3":		# Controller RBPi connector downside
 	zyncoder_pin_b=[25,26,4,0]
 	zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
-elif hw_version=="PROTOTYPE-4":		# Controller RBPi connector upside
-	zyncoder_pin_a=[25,26,4,0]
-	zyncoder_pin_b=[27,21,3,7]
+elif hw_version=="PROTOTYPE-4":		# Controller RBPi connector downside
+	zyncoder_pin_a=[26,25,0,4]
+	zyncoder_pin_b=[21,27,7,3]
 	zynswitch_pin=[107,23,106,2]
-	select_ctrl=2
+	select_ctrl=3
 elif hw_version=="PROTOTYPE-EMU":	# Desktop Development & Emulation
 	zyncoder_pin_a=[4,5,6,7]
 	zyncoder_pin_b=[8,9,10,11]
 	zynswitch_pin=[0,1,2,3]
 	select_ctrl=3
 else:								# Default to PROTOTYPE-3
-	zyncoder_pin_a=[27,21,3,7]
-	zyncoder_pin_b=[25,26,4,0]
-	zynswitch_pin=[23,None,2,None]
+	zyncoder_pin_a=[26,25,0,4]
+	zyncoder_pin_b=[21,27,7,3]
+	zynswitch_pin=[107,23,106,2]
 	select_ctrl=2
 
 #-------------------------------------------------------------------------------
