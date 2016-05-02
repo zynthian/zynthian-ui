@@ -1340,14 +1340,14 @@ class zynthian_gui:
 	def zynswitch_double(self,i):
 		self.dtsw[i]=datetime.now()
 		for j in range(4):
-			if j==1:
+			if j==i:
 				continue
 			if abs((self.dtsw[i]-self.dtsw[j]).total_seconds())<0.3:
 				dswstr=str(i)+'+'+str(j)
 				print('Double Switch '+dswstr)
-				if dswstr=='1+2':
+				if dswstr=='1+3' or dswstr=='3+1':
 					self.show_screen('admin')
-					return True
+				return True
 
 	def start_polling(self):
 		self.polling=True
