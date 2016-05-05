@@ -892,6 +892,7 @@ class zynthian_gui_chan(zynthian_gui_list):
 	def select_action(self, i):
 		zyngui.zyngine.set_midi_chan(i)
 		zyngui.screens['bank'].fill_list()
+		zyngui.screens['instr'].fill_list()
 		# If there is only one bank, jump to instrument selection
 		if len(zyngui.screens['bank'].list_data)==1:
 			zyngui.screens['bank'].select_action(0)
@@ -900,6 +901,8 @@ class zynthian_gui_chan(zynthian_gui_list):
 
 	def next(self):
 		if zyngui.zyngine.next_chan():
+			zyngui.screens['bank'].fill_list()
+			zyngui.screens['instr'].fill_list()
 			self.index=zyngui.zyngine.get_midi_chan()
 			self.select_listbox(self.index)
 			return True
@@ -1062,14 +1065,14 @@ class zynthian_gui_control(zynthian_gui_list):
 	def _fill_list(self):
 		super()._fill_list()
 		if self.mode=='select':
-			self.set_controller(select_ctrl,"Map",0,0,self.index,len(self.list_data))
+			self.set_controller(select_ctrl,"Controllers",0,0,self.index,len(self.list_data))
 
 	def set_mode_select(self):
 		self.mode='select'
 		for i in range(0,4):
 			self.zcontrollers[i].hide()
 		#self.index=1
-		self.set_controller(select_ctrl,"Map",0,0,self.index,len(self.list_data))
+		self.set_controller(select_ctrl,"Controllers",0,0,self.index,len(self.list_data))
 		self.listbox.config(selectbackground=color_ctrl_bg_on)
 		self.select(self.index)
 		self.set_select_path()
@@ -1313,7 +1316,7 @@ class zynthian_gui:
 			pass
 		elif i==3:
 			if self.active_screen=='chan':
-				self.screens[self.active_screen].switch_select()
+				self.screens['chan'].switch_select()
 				print("PATH="+self.zyngine.get_fullpath())
 				if self.zyngine.get_instr_index():
 					self.screens['control'].set_mode_control()
