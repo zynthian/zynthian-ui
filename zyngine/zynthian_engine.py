@@ -180,6 +180,7 @@ class zynthian_engine:
 	def set_midi_chan(self, i):
 		print('MIDI Chan Selected: ' + str(i))
 		self.midi_chan=i
+		self.load_bank_list()
 
 	def next_chan(self):
 		#self.set_midi_chan(self.midi_chan+1)

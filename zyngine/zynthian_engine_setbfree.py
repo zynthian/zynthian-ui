@@ -82,11 +82,26 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.command=("/usr/local/bin/setBfree", "midi.driver="+self.midi_driver, "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
 		super().__init__(parent)
 
+	def get_chan_name(self,chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		try:
+			return self.chan_names[chan]
+		except:
+			return None
+
+	def get_bank_dir(self,chan=None):
+		bank_dir=self.base_dir+"/pgm-banks"
+		chan_name=self.get_chan_name()
+		if chan_name:
+			bank_dir=bank_dir+'/'+chan_name
+		return bank_dir
+
 	def load_bank_list(self):
-		self.load_bank_filelist(self.base_dir+"/pgm-banks","pgm")
+		self.load_bank_filelist(self.get_bank_dir(),"pgm")
 
 	def load_instr_list(self):
-		pgm_fpath=self.base_dir+'/pgm-banks/'+self.bank_list[self.get_bank_index()][0]
+		pgm_fpath=self.get_bank_dir()+'/'+self.bank_list[self.get_bank_index()][0]
 		self.instr_list=self.load_pgm_list(pgm_fpath)
 
 	def load_pgm_list(self,fpath):
@@ -108,14 +123,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 						pass
 			return pgm_list
 
-	def get_path(self, chan=None):
-		spath=super().get_path(chan)
-		try:
-			path=self.chan_names[chan]
-			if spath:
-				path=path+'/'+spath
-		except:
-			path=spath
-		return path
+	def get_path(self,chan=None):
+		path=super().get_path(chan)
+		chan_name=self.get_chan_name(chan)
+		if chan_name:
+			return chan_name+'/'+path
+		else:
+			return path
 
 #******************************************************************************

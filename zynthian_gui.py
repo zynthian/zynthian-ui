@@ -892,7 +892,11 @@ class zynthian_gui_chan(zynthian_gui_list):
 	def select_action(self, i):
 		zyngui.zyngine.set_midi_chan(i)
 		zyngui.screens['bank'].fill_list()
-		zyngui.show_screen('bank')
+		# If there is only one bank, jump to instrument selection
+		if len(zyngui.screens['bank'].list_data)==1:
+			zyngui.screens['bank'].select_action(0)
+		else:
+			zyngui.show_screen('bank')
 
 	def next(self):
 		if zyngui.zyngine.next_chan():
@@ -1336,8 +1340,12 @@ class zynthian_gui:
 				j=self.screens_sequence.index(self.active_screen)-1
 				if j<0:
 					j=1
-				#print("BACK TO SCREEN "+str(j)+" => "+self.screens_sequence[j])
-				self.show_screen(self.screens_sequence[j])
+				screen_back=self.screens_sequence[j]
+				# If there is only one bank, jump to channel selection
+				if screen_back=='bank' and len(self.screens['bank'].list_data)==1:
+					screen_back='chan'
+				#print("BACK TO SCREEN "+str(j)+" => "+screen_back)
+				self.show_screen(screen_back)
 		elif i==2:
 			pass
 		elif i==3:
