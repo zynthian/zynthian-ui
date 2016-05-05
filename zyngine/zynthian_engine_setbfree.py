@@ -36,6 +36,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 	#drawbar_values=[['8','7','6','5','4','3','2','1','0'], [8,24,40,56,72,88,104,120,128]]
 	drawbar_values=[['0','1','2','3','4','5','6','7','8'], [128,120,104,88,72,56,40,24,8]]
 	base_dir="./data/setbfree/"
+
+	chan_names=("upper","lower","pedals")
 	
 	map_list=(
 		([
@@ -76,6 +78,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	default_ctrl_config=map_list[0][0]
 
 	def __init__(self,parent=None):
+		self.max_chan=3
 		self.command=("/usr/local/bin/setBfree", "midi.driver="+self.midi_driver, "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
 		super().__init__(parent)
 
@@ -104,5 +107,15 @@ class zynthian_engine_setbfree(zynthian_engine):
 					except:
 						pass
 			return pgm_list
+
+	def get_path(self, chan=None):
+		spath=super().get_path(chan)
+		try:
+			path=self.chan_names[chan]
+			if spath:
+				path=path+'/'+spath
+		except:
+			path=spath
+		return path
 
 #******************************************************************************

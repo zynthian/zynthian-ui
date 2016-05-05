@@ -176,6 +176,10 @@ if test $status -eq 0; then
 	zynthian_stop
 	screentouch_off
 	poweroff
+elif test $status -eq 100; then
+	zynthian_stop
+	screentouch_off
+	reboot
 elif test $status -eq 101; then
 	zynthian_stop
 else

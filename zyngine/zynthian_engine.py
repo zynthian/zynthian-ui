@@ -68,6 +68,7 @@ class zynthian_engine:
 	control_list=None
 
 	midi_chan=0
+	max_chan=10
 
 	bank_index=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 	bank_name=["","","","","","","","","","","","","","","",""]
@@ -281,7 +282,7 @@ class zynthian_engine:
 			chan=self.midi_chan
 		path=self.bank_name[chan]
 		if self.instr_name[chan]:
-			path=path + ' / ' + self.instr_name[chan]
+			path=path + '/' + self.instr_name[chan]
 		return path
 
 	def get_fullpath(self, chan=None):

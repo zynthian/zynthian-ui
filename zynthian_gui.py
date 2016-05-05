@@ -405,8 +405,10 @@ class zynthian_controller:
 			val=self.max_value
 		if self.ticks:
 			self.scale_plot=self.max_value/abs(self.ticks[0]-self.ticks[self.n_values-1])
-		else:
+		elif self.n_values>1:
 			self.scale_plot=self.max_value/(self.n_values-1)
+		else:
+			self.scale_plot=self.max_value
 
 		#print("values: "+str(self.values))
 		#print("ticks: "+str(self.ticks))
@@ -707,8 +709,9 @@ class zynthian_admin(zynthian_gui_list):
 			(self.update_software,0,"Update Zynthian Software"),
 			(self.update_library,0,"Update Zynthian Library"),
 			(self.update_system,0,"Update Operating System"),
-			(self.open_reverse_ssh,0,"Open Reverse SSH"),
-			(self.stop_zynthian,0,"Console"),
+			(self.connect_to_pc,0,"Connect to PC"),
+			(self.exit_to_console,0,"Exit to Console"),
+			(self.reboot,0,"Reboot"),
 			(self.power_off,0,"Power Off")
 		)
 
@@ -765,14 +768,18 @@ class zynthian_admin(zynthian_gui_list):
 		zyngui.show_info("UPDATE SYSTEM")
 		self.start_command(["./sys-scripts/update_system.sh"])
 
-	def open_reverse_ssh(self):
-		print("OPEN REVERSE SSH")
+	def connect_to_pc(self):
+		print("CONNECT TO PC")
 		zyngui.show_info("OPEN REVERSE SSH")
 		self.start_command(["ifconfig"])
 
-	def stop_zynthian(self):
-		print("STOP ZYNTHIAN")
+	def exit_to_console(self):
+		print("EXIT TO CONSOLE")
 		sys.exit(101)
+
+	def reboot(self):
+		print("REBOOT")
+		sys.exit(100)
 
 	def power_off(self):
 		print("POWER OFF")
@@ -859,8 +866,9 @@ class zynthian_gui_chan(zynthian_gui_list):
 	zselector=None
 	max_chan=10
 
-	def __init__(self):
+	def __init__(self, max_chan=10):
 		super().__init__(gui_bg, True)
+		self.max_chan=max_chan
 		self.fill_list()
 		self.index=zyngui.zyngine.get_midi_chan()
 		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Channel",0,0,self.index+1,len(self.list_data))
@@ -1247,7 +1255,7 @@ class zynthian_gui:
 	def set_engine(self,name):
 		if self.screens['engine'].set_engine(name):
 			self.zyngine=self.screens['engine'].zyngine
-			self.screens['chan']=zynthian_gui_chan()
+			self.screens['chan']=zynthian_gui_chan(self.zyngine.max_chan)
 			self.screens['bank']=zynthian_gui_bank()
 			self.screens['instr']=zynthian_gui_instr()
 			self.screens['control']=zynthian_gui_control()
@@ -1281,9 +1289,9 @@ class zynthian_gui:
 
 	def zynswitch_long(self,i):
 		if i==0:
-			self.show_screen('admin')
+			pass
 		elif i==1:
-			self.show_screen('engine')
+			self.show_screen('admin')
 		elif i==2:
 			pass
 		elif i==3:
@@ -1322,12 +1330,14 @@ class zynthian_gui:
 			else:
 				self.zynswitch_bold(i)
 		elif i==1:
-			#self.screens[self.active_screen].switch2()
-			j=self.screens_sequence.index(self.active_screen)-1
-			if j<0:
-				j=1
-			#print("BACK TO SCREEN "+str(j)+" => "+self.screens_sequence[j])
-			self.show_screen(self.screens_sequence[j])
+			if self.active_screen=='control' and self.screens['control'].mode=='select':
+				self.screens['control'].set_mode_control()
+			else:
+				j=self.screens_sequence.index(self.active_screen)-1
+				if j<0:
+					j=1
+				#print("BACK TO SCREEN "+str(j)+" => "+self.screens_sequence[j])
+				self.show_screen(self.screens_sequence[j])
 		elif i==2:
 			pass
 		elif i==3:
