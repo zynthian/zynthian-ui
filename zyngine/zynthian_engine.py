@@ -184,13 +184,12 @@ class zynthian_engine:
 		self.set_bank(self.get_bank_index())
 
 	def next_chan(self):
-		#self.set_midi_chan(self.midi_chan+1)
-		#return True
 		count=0
 		nchan=len(self.bank_index)
 		i=self.midi_chan
 		while count<nchan:
 			i+=1
+			count+=1
 			if i>=nchan:
 				i=0
 			if self.instr_name[i]:

@@ -1018,13 +1018,14 @@ class zynthian_gui_control(zynthian_gui_list):
 	def __init__(self):
 		super().__init__(gui_bg)
 		# Controllers
+		midi_chan=zyngui.get_midi_chan()
 		self.zcontrollers_config=zyngui.zyngine.default_ctrl_config
 		self.zcontrollers=(
 			#indx, cnv, x, y, tit, chan, ctrl, val=0, max_val=127
-			zynthian_controller(0,self.canvas,self.zcontrollers_config[0][0],zyngui.midi_chan,self.zcontrollers_config[0][1],self.zcontrollers_config[0][2],self.zcontrollers_config[0][3]),
-			zynthian_controller(1,self.canvas,self.zcontrollers_config[1][0],zyngui.midi_chan,self.zcontrollers_config[1][1],self.zcontrollers_config[1][2],self.zcontrollers_config[1][3]),
-			zynthian_controller(2,self.canvas,self.zcontrollers_config[2][0],zyngui.midi_chan,self.zcontrollers_config[2][1],self.zcontrollers_config[2][2],self.zcontrollers_config[2][3]),
-			zynthian_controller(3,self.canvas,self.zcontrollers_config[3][0],zyngui.midi_chan,self.zcontrollers_config[3][1],self.zcontrollers_config[3][2],self.zcontrollers_config[3][3])
+			zynthian_controller(0,self.canvas,self.zcontrollers_config[0][0],midi_chan,self.zcontrollers_config[0][1],self.zcontrollers_config[0][2],self.zcontrollers_config[0][3]),
+			zynthian_controller(1,self.canvas,self.zcontrollers_config[1][0],midi_chan,self.zcontrollers_config[1][1],self.zcontrollers_config[1][2],self.zcontrollers_config[1][3]),
+			zynthian_controller(2,self.canvas,self.zcontrollers_config[2][0],midi_chan,self.zcontrollers_config[2][1],self.zcontrollers_config[2][2],self.zcontrollers_config[2][3]),
+			zynthian_controller(3,self.canvas,self.zcontrollers_config[3][0],midi_chan,self.zcontrollers_config[3][1],self.zcontrollers_config[3][2],self.zcontrollers_config[3][3])
 		)
 		# Init Controllers Map
 		self.zcontroller_map={}
@@ -1042,10 +1043,11 @@ class zynthian_gui_control(zynthian_gui_list):
 				zc.hide()
 
 	def set_controller_config(self, cfg):
+		midi_chan=zyngui.get_midi_chan()
 		for i in range(0,4):
 			try:
 				#indx, tit, chan, ctrl, val, max_val=127
-				self.set_controller(i,cfg[i][0],zyngui.midi_chan,cfg[i][1],cfg[i][2],cfg[i][3])
+				self.set_controller(i,cfg[i][0],midi_chan,cfg[i][1],cfg[i][2],cfg[i][3])
 			except:
 				pass
 
@@ -1149,7 +1151,7 @@ class zynthian_gui_osc_browser(zynthian_gui_list):
 	def get_osc_paths(self, path=''):
 		self.list_data=[]
 		if path=='root':
-			self.osc_path="/part"+str(zyngui.midi_chan)+"/"
+			self.osc_path="/part"+str(zyngui.get_midi_chan())+"/"
 		else:
 			self.osc_path=self.osc_path+path
 		liblo.send(zyngui.osc_target, "/path-search",self.osc_path,"")
@@ -1225,6 +1227,12 @@ class zynthian_gui:
 		self.show_screen('engine')
 		self.start_polling()
 
+	def get_midi_chan(self):
+		if self.zyngine:
+			return self.zyngine.get_midi_chan()
+		else:
+			return None;
+
 	def hide_screens(self,exclude=None):
 		if not exclude:
 			exclude=self.active_screen
@@ -1240,8 +1248,6 @@ class zynthian_gui:
 		if screen:
 			self.active_screen=screen
 		self.show_active_screen()
-		if self.zyngine:
-			self.midi_chan=self.zyngine.get_midi_chan()
 
 	def show_info(self, text, tms=None):
 		self.screens['info'].show(text)
@@ -1330,6 +1336,7 @@ class zynthian_gui:
 				if self.screens['chan'].next():
 					print("Next Chan")
 					self.screens['control'].hide()
+					self.screens['control'].fill_list()
 					self.screens['control'].set_mode_control()
 					self.show_screen('control')
 				else:
@@ -1386,7 +1393,7 @@ class zynthian_gui:
 		while alsaseq.inputpending():
 			event = alsaseq.input()
 			chan = event[7][0]
-			if event[0]==alsaseq.SND_SEQ_EVENT_CONTROLLER and chan==self.midi_chan and self.active_screen=='control': 
+			if event[0]==alsaseq.SND_SEQ_EVENT_CONTROLLER and chan==self.get_midi_chan() and self.active_screen=='control': 
 				ctrl = event[7][4]
 				val = event[7][5]
 				#print ("MIDI CTRL " + str(ctrl) + ", CH" + str(chan) + " => " + str(val))
