@@ -33,7 +33,7 @@ from zyngine.zynthian_engine import *
 class zynthian_engine_carla(zynthian_engine):
 	name="Carla"
 	nickname="CP"
-	patch_dir="./data/carla/"
+	patch_dir="./data/carla"
 	patch_name="dexed_simple_pb.carxp"
 	command=None
 
