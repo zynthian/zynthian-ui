@@ -1,7 +1,5 @@
 # zynthian
 
-[![Join the chat at https://gitter.im/zynthian/zynthian-ui](https://badges.gitter.im/zynthian/zynthian-ui.svg)](https://gitter.im/zynthian/zynthian-ui?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
 [Zynthian] (http://zynthian.org) is an Open Synth Platform based in Raspberry Pi, Linux (Raspbian) and some Open Software Synthesizers.
 
 ![Image of Zynthian Box Design](http://zynthian.org/img/github/zynthian-case-render-01.jpg)
@@ -34,3 +32,5 @@ This repository contains the specific software used by a Zynthian Box. It includ
 A standard Zynthian Box get updated from this repository by default, but can be configured to get updated from other repositories.
 
 You can learn more about the Zynthian Project reading [the blog] (http://blog.zynthian.org) or visiting [the website] (http://zynthian.org).
+
+[![Join the chat at https://gitter.im/zynthian/zynthian-ui](https://badges.gitter.im/zynthian/zynthian-ui.svg)](https://gitter.im/zynthian/zynthian-ui?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
