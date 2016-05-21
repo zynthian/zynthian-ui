@@ -72,6 +72,7 @@ function splash_zynthian_error() {
 function jack_audio_start() {
 	# Start jack-audio server
 	/usr/bin/jackd -P70 -p16 -t2000 -s -dalsa -dhw:0 -r44100 -p256 -n2
+	#/usr/bin/jackd -P70 -p16 -t2000 -s -dalsa -dhw:0 -r44100 -p256 -n2 -Xseq
 }
 
 function jack_audio_stop() {

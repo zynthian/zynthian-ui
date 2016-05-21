@@ -709,6 +709,7 @@ class zynthian_admin(zynthian_gui_list):
 			(self.update_software,0,"Update Zynthian Software"),
 			(self.update_library,0,"Update Zynthian Library"),
 			(self.update_system,0,"Update Operating System"),
+			(self.connect_to_pc,0,"Network Info"),
 			(self.connect_to_pc,0,"Connect to PC"),
 			(self.exit_to_console,0,"Exit to Console"),
 			(self.reboot,0,"Reboot"),
@@ -768,10 +769,15 @@ class zynthian_admin(zynthian_gui_list):
 		zyngui.show_info("UPDATE SYSTEM")
 		self.start_command(["./sys-scripts/update_system.sh"])
 
+	def network_info(self):
+		print("NETWORK INFO")
+		zyngui.show_info("NETWORK INFO:")
+		self.start_command(["ifconfig wlan0"])
+
 	def connect_to_pc(self):
 		print("CONNECT TO PC")
-		zyngui.show_info("OPEN REVERSE SSH")
-		self.start_command(["ifconfig"])
+		zyngui.show_info("CONNECT TO PC:")
+		self.start_command(["ifconfig wlan0"])
 
 	def exit_to_console(self):
 		print("EXIT TO CONSOLE")
