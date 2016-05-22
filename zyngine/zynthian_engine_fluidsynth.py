@@ -32,9 +32,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	name="FluidSynth"
 	nickname="FS"
 
-	command=None
 	soundfont_dir="./data/soundfonts/sf2"
-	bank_id=0
+	soundfont_count=0
+	soundfont_index={}
 
 	map_list=(
 		([
@@ -74,9 +74,11 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.load_bank_filelist(self.soundfont_dir,"sf2")
 
 	def load_instr_list(self):
-		self.instr_list=[]    
+		self.instr_list=[]
+		bi=self.bank_index[self.midi_chan]
+		sfi=self.soundfont_index[self.bank_list[bi][0]]
 		print('Getting Instrument List for ' + self.bank_name[self.midi_chan])
-		lines=self.proc_cmd("inst " + str(self.bank_id))
+		lines=self.proc_cmd("inst " + str(sfi))
 		for f in lines:
 			try:
 				prg=int(f[4:7])
@@ -91,12 +93,10 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def set_bank(self, i):
 		self.bank_index[self.midi_chan]=i
 		self.bank_name[self.midi_chan]=self.bank_list[i][2]
-		if self.bank_id>0:
-			self.proc_cmd("unload " + str(self.bank_id),2)
-		self.proc_cmd("load " + self.soundfont_dir + '/' + self.bank_list[i][0],20)
-		self.bank_id=self.bank_id+1
+		self.load_soundfont(self.bank_list[i][0])
 		print('Bank Selected: ' + self.bank_name[self.midi_chan] + ' (' + str(i)+')')
 		self.load_instr_list()
+		self.unload_unused_soundfonts()
 
 	def set_instr(self, i):
 		last_instr_index=self.instr_index[self.midi_chan]
@@ -106,14 +106,36 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		print('Instrument Selected: ' + self.instr_name[self.midi_chan] + ' (' + str(i)+')')
 		if last_instr_index!=i or not last_instr_name:
 			#self.parent.zynmidi.set_midi_instr(self.midi_chan, self.instr_list[i][1][0], self.instr_list[i][1][1], self.instr_list[i][1][2])
-			self.set_fluidsynth_instr(self.instr_list[i])
+			self.set_soundfont_instr(self.instr_list[i])
 			self.load_instr_config()
 
-	def set_fluidsynth_instr(self, instr):
-		bank=instr[1][0]+instr[1][1]*128
-		prg=instr[1][2]
-		print("Set INSTR CH " + str(self.midi_chan) + ", SoundFont: " + str(self.bank_id) + ", Bank: " + str(bank) + ", Program: " + str(prg))
-		self.proc_cmd("select "+str(self.midi_chan)+' '+str(self.bank_id)+' '+str(bank)+' '+str(prg))
+	def set_soundfont_instr(self, instr):
+		bi=self.bank_index[self.midi_chan]
+		sfi=self.soundfont_index[self.bank_list[bi][0]]
+		midi_bank=instr[1][0]+instr[1][1]*128
+		midi_prg=instr[1][2]
+		print("Set INSTR CH " + str(self.midi_chan) + ", SoundFont: " + str(sfi) + ", Bank: " + str(midi_bank) + ", Program: " + str(midi_prg))
+		self.proc_cmd("select "+str(self.midi_chan)+' '+str(sfi)+' '+str(midi_bank)+' '+str(midi_prg))
+
+	def load_soundfont(self, sf):
+		if sf not in self.soundfont_index:
+			self.soundfont_count=self.soundfont_count+1
+			print("Load SoundFont " + sf + " => " + str(self.soundfont_count))
+			self.proc_cmd("load " + self.soundfont_dir + '/' + sf, 20)
+			self.soundfont_index[sf]=self.soundfont_count
+
+	def unload_unused_soundfonts(self):
+		#Make a copy of soundfont index and remove used soundfonts
+		sf_unload=copy.copy(self.soundfont_index)
+		for i in self.bank_index:
+			if self.bank_name[i] and self.bank_list[i][0] in sf_unload:
+				del sf_unload[self.bank_list[i][0]]
+				#print("Removed from unload list => "+self.bank_list[i][0]+"("+str(sf_unload[self.bank_list[i][0]])+")")
+		#Then, remove the remaining ;-)
+		for sf,sfi in sf_unload.items():
+			print("Unload SoundFont "+ str(sfi))
+			self.proc_cmd("unload " + str(sfi),2)
+			del self.soundfont_index[sf]
 
 	def load_instr_config(self):
 		super().load_instr_config()
