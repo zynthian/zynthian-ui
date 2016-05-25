@@ -217,26 +217,38 @@ class zynthian_engine:
 		self.instr_name[self.midi_chan]=None
 
 	def load_bank_filelist(self, dpath, fext):
-		i=0
+		print('Getting Bank List for ' + self.name)
+		self.bank_list=[]
+		if isinstance(dpath, str): dpath=[('_', dpath)]
 		fext='.'+fext
 		xlen=len(fext)
-		self.bank_list=[]
-		print('Getting Bank List for ' + self.name)
-		for f in sorted(os.listdir(dpath)):
-			if (isfile(join(dpath,f)) and f[-xlen:].lower()==fext):
-				title=str.replace(f[:-xlen], '_', ' ')
-				self.bank_list.append((f,i,title))
-				i=i+1
+		i=0
+		for dpd in dpath:
+			dp=dpd[1]
+			dn=dpd[0]
+			for f in sorted(os.listdir(dp)):
+				if (isfile(join(dp,f)) and f[-xlen:].lower()==fext):
+					title=str.replace(f[:-xlen], '_', ' ')
+					if dn!='_': title=dn+'/'+title
+					print("bank_filelist => "+title)
+					self.bank_list.append((dp+'/'+f,i,title,dn))
+					i=i+1
 
 	def load_bank_dirlist(self,dpath):
-		i=0
-		self.bank_list=[]
 		print('Getting Bank List for ' + self.name)
-		for f in sorted(os.listdir(dpath)):
-			if isdir(join(dpath,f)):
-				title=str.replace(f, '_', ' ')
-				self.bank_list.append((f,i,title))
-				i=i+1
+		self.bank_list=[]
+		if isinstance(dpath, str): dpath=[('_', dpath)]
+		i=0
+		for dpd in dpath:
+			dp=dpd[1]
+			dn=dpd[0]
+			for f in sorted(os.listdir(dp)):
+				if isdir(join(dp,f)):
+					title=str.replace(f, '_', ' ')
+					if dn!='_': title=dn+'/'+title
+					print("bank_dirlist => "+title)
+					self.bank_list.append((dp+'/'+f,i,title,dn))
+					i=i+1
 
 	def load_bank_cmdlist(self,cmd):
 		i=0
@@ -259,24 +271,26 @@ class zynthian_engine:
 		self.instr_ctrl_config[self.midi_chan]=copy.copy(self.default_ctrl_config)
 
 	def set_bank(self, i):
-		last_bank_index=self.bank_index[self.midi_chan]
-		self.bank_index[self.midi_chan]=i
-		self.bank_name[self.midi_chan]=self.bank_list[i][2]
-		self.load_instr_list()
-		if last_bank_index!=i:
-			self.parent.zynmidi.set_midi_bank_msb(self.midi_chan, i)
-			self.reset_instr()
-		print('Bank Selected: ' + self.bank_name[self.midi_chan] + ' (' + str(i)+')')
+		if self.bank_list[i]:
+			last_bank_index=self.bank_index[self.midi_chan]
+			self.bank_index[self.midi_chan]=i
+			self.bank_name[self.midi_chan]=self.bank_list[i][2]
+			self.load_instr_list()
+			if last_bank_index!=i:
+				self.parent.zynmidi.set_midi_bank_msb(self.midi_chan, i)
+				self.reset_instr()
+			print('Bank Selected: ' + self.bank_name[self.midi_chan] + ' (' + str(i)+')')
 
 	def set_instr(self, i):
-		last_instr_index=self.instr_index[self.midi_chan]
-		last_instr_name=self.instr_name[self.midi_chan]
-		self.instr_index[self.midi_chan]=i
-		self.instr_name[self.midi_chan]=self.instr_list[i][2]
-		print('Instrument Selected: ' + self.instr_name[self.midi_chan] + ' (' + str(i)+')')
-		if last_instr_index!=i or not last_instr_name:
-			self.parent.zynmidi.set_midi_instr(self.midi_chan, self.instr_list[i][1][0], self.instr_list[i][1][1], self.instr_list[i][1][2])
-			self.load_instr_config()
+		if self.instr_list[i]:
+			last_instr_index=self.instr_index[self.midi_chan]
+			last_instr_name=self.instr_name[self.midi_chan]
+			self.instr_index[self.midi_chan]=i
+			self.instr_name[self.midi_chan]=self.instr_list[i][2]
+			print('Instrument Selected: ' + self.instr_name[self.midi_chan] + ' (' + str(i)+')')
+			if last_instr_index!=i or not last_instr_name:
+				self.parent.zynmidi.set_midi_instr(self.midi_chan, self.instr_list[i][1][0], self.instr_list[i][1][1], self.instr_list[i][1][2])
+				self.load_instr_config()
 
 	def get_path(self, chan=None):
 		if chan is None:

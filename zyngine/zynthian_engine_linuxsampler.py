@@ -26,6 +26,7 @@ import os
 import re
 import socket
 from time import sleep
+from os.path import isfile, isdir
 from subprocess import check_output
 from zyngine.zynthian_engine import *
 
@@ -42,7 +43,12 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	command=("/usr/bin/linuxsampler","--lscp-port",str(port))
 	lscp_dir="./data/lscp"
-	bank_dir=os.getcwd()+"/data/soundfonts/sfz"
+	bank_dirs=[
+		('SFZ', os.getcwd()+"/data/soundfonts/sfz"),
+		('GIG', os.getcwd()+"/data/soundfonts/gig"),
+		('MySFZ', os.getcwd()+"/my-data/soundfonts/sfz"),
+		('MyGIG', os.getcwd()+"/my-data/soundfonts/gig")
+	]
 
 	map_list=(
 		([
@@ -97,11 +103,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			self.lscp_send(lscp)
 
 	def load_bank_list(self):
-		self.load_bank_dirlist(self.bank_dir)
+		self.load_bank_dirlist(self.bank_dirs)
 
 	def load_instr_lscpmap(self,fpath):
 		self.instr_list=[]
-		#fpath=self.bank_dir+'/'+self.bank_list[self.get_bank_index()][0]
+		#fpath=self.bank_dirs[0]+'/'+self.bank_list[self.get_bank_index()][0]
 		with open(fpath) as f:
 			lines = f.readlines()
 			ptrn=re.compile("^MAP MIDI_INSTRUMENT")
@@ -118,17 +124,26 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 						pass
 
 	def load_instr_list(self):
-		i=0
-		instr_dpath=self.bank_dir+'/'+self.bank_list[self.get_bank_index()][0]
-		cmd="find '"+instr_dpath+"' -maxdepth 2 -type f -name '*.sfz'"
-		self.instr_list=[]
 		print('Getting Instr List for ' + self.name)
-		output=check_output(cmd, shell=True)
-		lines=output.decode('utf8').split('\n')
-		for f in lines:
-			title=f[len(instr_dpath)+1:-4].replace('_', ' ')
-			self.instr_list.append((i,[0,0,0],title,f))
-			i=i+1
+		i=0
+		self.instr_list=[]
+		instr_dpath=self.bank_list[self.get_bank_index()][0]
+		print("Finding in "+instr_dpath)
+		if os.path.isdir(instr_dpath):
+			print("Finding in "+instr_dpath)
+			cmd="find '"+instr_dpath+"' -maxdepth 2 -type f -name '*.sfz'"
+			output=check_output(cmd, shell=True).decode('utf8')
+			cmd="find '"+instr_dpath+"' -maxdepth 2 -type f -name '*.gig'"
+			output=output+"\n"+check_output(cmd, shell=True).decode('utf8')
+			lines=output.split('\n')
+			for f in lines:
+				if f:
+					filename, filext = os.path.splitext(f)
+					title=filename[len(instr_dpath)+1:].replace('_', ' ')
+					engine=filext[1:].lower()
+					print("instr_list => " + f)
+					self.instr_list.append((i,[0,0,0],title,f,engine))
+					i=i+1
 
 	def _set_bank(self, i):
 		super().set_bank(i)
@@ -141,13 +156,14 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				#print("LSCP: "+line)
 
 	def set_instr(self, i):
-		last_instr_index=self.instr_index[self.midi_chan]
-		last_instr_name=self.instr_name[self.midi_chan]
-		self.instr_index[self.midi_chan]=i
-		self.instr_name[self.midi_chan]=self.instr_list[i][2]
-		print('Instrument Selected: ' + self.instr_name[self.midi_chan] + ' (' + str(i)+') => '+self.instr_list[i][3])
-		if last_instr_index!=i or not last_instr_name:
-			self.lscp_send_pattern("channel",{'chan': str(self.midi_chan), 'engine': 'sfz', 'fpath': self.instr_list[i][3]})
-			self.load_instr_config()
+		if self.instr_list[i]:
+			last_instr_index=self.instr_index[self.midi_chan]
+			last_instr_name=self.instr_name[self.midi_chan]
+			self.instr_index[self.midi_chan]=i
+			self.instr_name[self.midi_chan]=self.instr_list[i][2]
+			print('Instrument Selected: ' + self.instr_name[self.midi_chan] + ' (' + str(i)+') => '+self.instr_list[i][3])
+			if last_instr_index!=i or not last_instr_name:
+				self.lscp_send_pattern("channel",{'chan': str(self.midi_chan), 'engine': self.instr_list[i][4], 'fpath': self.instr_list[i][3]})
+				self.load_instr_config()
 
 #******************************************************************************

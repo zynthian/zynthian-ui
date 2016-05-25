@@ -37,9 +37,12 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	nickname="ZY"
 	command=None
 	osc_paths_data=[]
-	#bank_dir="/usr/share/zynaddsubfx/banks"
-	bank_dir="./data/zynbanks"
+
 	conf_dir="./data/zynconf"
+	bank_dirs=[
+		('MY', os.getcwd()+"/my-data/zynbanks"),
+		('_', os.getcwd()+"/data/zynbanks")
+	]
 
 	map_list=(
 		([
@@ -82,11 +85,11 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			#liblo.send(self.osc_target, "/echo")
 
 	def load_bank_list(self):
-		self.load_bank_dirlist(self.bank_dir)
+		self.load_bank_dirlist(self.bank_dirs)
 
 	def load_instr_list(self):
 		self.instr_list=[]
-		instr_dir=join(self.bank_dir,self.bank_list[self.bank_index[self.midi_chan]][0])
+		instr_dir=self.bank_list[self.bank_index[self.midi_chan]][0]
 		print('Getting Instrument List for ' + self.bank_name[self.midi_chan])
 		for f in sorted(os.listdir(instr_dir)):
 			#print(f)

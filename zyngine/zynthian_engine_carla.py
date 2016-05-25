@@ -33,9 +33,12 @@ from zyngine.zynthian_engine import *
 class zynthian_engine_carla(zynthian_engine):
 	name="Carla"
 	nickname="CP"
-	patch_dir="./data/carla"
+
 	patch_name="dexed_simple_pb.carxp"
-	command=None
+	patch_dirs=[
+		('_', os.getcwd()+"/data/carla"),
+		('MY', os.getcwd()+"/my-data/carla")
+	]
 
 	map_list=(
 		([
@@ -85,7 +88,7 @@ class zynthian_engine_carla(zynthian_engine):
 			print("argument of type '%s': %s" % (t, a))
 
 	def load_bank_list(self):
-		self.load_bank_filelist(self.patch_dir,"carxp")
+		self.load_bank_filelist(self.patch_dirs,"carxp")
 
 	def _proc_enqueue_output(self):
 		for line in self.proc.stdout:
@@ -98,9 +101,9 @@ class zynthian_engine_carla(zynthian_engine):
 		if os.environ.get('ZYNTHIANX'):
 			self.command_env=os.environ.copy()
 			self.command_env['DISPLAY']=os.environ.get('ZYNTHIANX')
-			self.command=("/usr/local/bin/carla-patchbay", self.patch_dir+"/"+self.patch_name)
+			self.command=("/usr/local/bin/carla-patchbay", self.patch_name)
 		else:
-			self.command=("/usr/local/bin/carla-patchbay", "-n", self.patch_dir+"/"+self.patch_name)
+			self.command=("/usr/local/bin/carla-patchbay", "-n", self.patch_name)
 		print("Running Command: "+ str(self.command))
 		self.stop()
 		#sleep(1)
