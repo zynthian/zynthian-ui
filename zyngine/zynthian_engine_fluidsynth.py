@@ -127,10 +127,10 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def unload_unused_soundfonts(self):
 		#Make a copy of soundfont index and remove used soundfonts
 		sf_unload=copy.copy(self.soundfont_index)
-		for i in self.bank_index:
-			if self.bank_name[i] and self.bank_list[i][0] in sf_unload:
+		for c,i in enumerate(self.bank_index):
+			if self.bank_name[c] and self.bank_list[i][0] in sf_unload:
+				#print("Skip "+self.bank_list[i][0]+"("+str(sf_unload[self.bank_list[i][0]])+")")
 				del sf_unload[self.bank_list[i][0]]
-				#print("Removed from unload list => "+self.bank_list[i][0]+"("+str(sf_unload[self.bank_list[i][0]])+")")
 		#Then, remove the remaining ;-)
 		for sf,sfi in sf_unload.items():
 			print("Unload SoundFont "+ str(sfi))
