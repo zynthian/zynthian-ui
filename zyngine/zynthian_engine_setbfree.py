@@ -101,7 +101,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.load_bank_filelist(self.get_bank_dir(),"pgm")
 
 	def load_instr_list(self):
-		pgm_fpath=self.get_bank_dir()+'/'+self.bank_list[self.get_bank_index()][0]
+		pgm_fpath=self.bank_list[self.get_bank_index()][0]
 		self.instr_list=self.load_pgm_list(pgm_fpath)
 
 	def load_pgm_list(self,fpath):
