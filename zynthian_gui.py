@@ -951,7 +951,11 @@ class zynthian_gui_bank(zynthian_gui_list):
 	def select_action(self, i):
 		zyngui.zyngine.set_bank(i)
 		zyngui.screens['instr'].fill_list()
-		zyngui.show_screen('instr')
+		# If there is only one instrument, jump to instrument control
+		if len(zyngui.screens['instr'].list_data)==1:
+			zyngui.screens['instr'].select_action(0)
+		else:
+			zyngui.show_screen('instr')
 
 	def zyncoder_read(self):
 		_sel=self.zselector.value
@@ -1357,6 +1361,9 @@ class zynthian_gui:
 				if j<0:
 					j=1
 				screen_back=self.screens_sequence[j]
+				# If there is only one program, jump to bank selection
+				if screen_back=='instr' and len(self.screens['instr'].list_data)==1:
+					screen_back='bank'
 				# If there is only one bank, jump to channel selection
 				if screen_back=='bank' and len(self.screens['bank'].list_data)==1:
 					screen_back='chan'

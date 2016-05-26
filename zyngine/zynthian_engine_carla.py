@@ -23,6 +23,7 @@
 #******************************************************************************
 
 import os
+import re
 from time import sleep
 from zyngine.zynthian_engine import *
 
@@ -117,15 +118,18 @@ class zynthian_engine_carla(zynthian_engine):
 		#except:
 		#	zyngui.show_screen('control')
 		##zyngui.screens['control'].fill_list()
-		
+
 		self.instr_list=[]
-		for i in range(32):
-			f="program "+str(i)
-			bank_msb=0
-			bank_lsb=0
-			prg=i
-			title=f
-			self.instr_list.append((f,[bank_msb,bank_lsb,prg],title))
+		if re.search("(dexed|noize_mak3r)", self.patch_name, re.I):
+			for i in range(32):
+				f="program "+str(i)
+				bank_msb=0
+				bank_lsb=0
+				prg=i
+				title=f
+				self.instr_list.append((f,[bank_msb,bank_lsb,prg],title))
+		else:
+			self.instr_list.append((None,[0,0,0],'None'))
 
 
 #******************************************************************************
