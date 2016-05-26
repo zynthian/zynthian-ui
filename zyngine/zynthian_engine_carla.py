@@ -129,7 +129,7 @@ class zynthian_engine_carla(zynthian_engine):
 				title=f
 				self.instr_list.append((f,[bank_msb,bank_lsb,prg],title))
 		else:
-			self.instr_list.append((None,[0,0,0],'None'))
+			self.instr_list.append((None,[0,0,0],''))
 
 
 #******************************************************************************
