@@ -116,11 +116,11 @@ if hw_version=="PROTOTYPE-1":		# First Prototype => Generic Plastic Case
 	zyncoder_pin_b=[25,26,4,0]
 	zynswitch_pin=[23,None,2,None]
 	select_ctrl=2
-elif hw_version=="PROTOTYPE-2":		# No GPIO Expander (only 2 switches)
-	zyncoder_pin_a=[25,26,4,0]
-	zyncoder_pin_b=[27,21,3,7]
-	zynswitch_pin=[23,None,2,None]
-	select_ctrl=2
+elif hw_version=="PROTOTYPE-2":		# Controller RBPi connector downside, controller 1 reversed
+	zyncoder_pin_a=[27,21,4,0]
+	zyncoder_pin_b=[25,26,3,7]
+	zynswitch_pin=[23,107,2,106]
+	select_ctrl=3
 elif hw_version=="PROTOTYPE-3":		# Controller RBPi connector downside
 	zyncoder_pin_a=[27,21,3,7]
 	zyncoder_pin_b=[25,26,4,0]
