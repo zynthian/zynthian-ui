@@ -131,7 +131,7 @@ function autoconnector_stop() {
 
 function ttymidi_start() {
 	# Start ttymidi (MIDI UART interface)
-	./software/ttymidi/ttymidi -s /dev/ttyAMA0 -b 38400
+	/usr/local/bin/ttymidi -s /dev/ttyAMA0 -b 38400
 }
 
 function ttymidi_stop() {
