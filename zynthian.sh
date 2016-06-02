@@ -131,7 +131,10 @@ function autoconnector_stop() {
 
 function ttymidi_start() {
 	# Start ttymidi (MIDI UART interface)
-	/usr/local/bin/ttymidi -s /dev/ttyAMA0 -b 38400
+	while [ 1 ]; do 
+		/usr/local/bin/ttymidi -s /dev/ttyAMA0 -b 38400
+		sleep 1
+	done
 }
 
 function ttymidi_stop() {
@@ -141,11 +144,11 @@ function ttymidi_stop() {
 function zynthian_stop() {
 	splash_zynthian
 	autoconnector_stop
-	a2j_midi_stop
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 		aubionotes_stop
 		alsa_in_stop
 	fi
+	a2j_midi_stop
 	ttymidi_stop
 	jack_audio_stop
 }
@@ -162,11 +165,11 @@ scaling_governor_performance
 
 jack_audio_start &
 ttymidi_start &
+a2j_midi_start &
 if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 	alsa_in_start &
 	aubionotes_start &
 fi
-a2j_midi_start &
 autoconnector_start &
 
 # Start Zynthian GUI & Synth Engine
