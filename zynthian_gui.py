@@ -24,7 +24,9 @@
 # 
 #********************************************************************
 
+import os
 import sys
+import copy
 import signal
 import alsaseq
 import liblo
@@ -36,6 +38,7 @@ from datetime import datetime
 from string import Template
 from subprocess import check_output
 from threading  import Thread
+from os.path import isfile, isdir, join
 
 from zyngine import *
 from zyngine.zynthian_engine import osc_port as zyngine_osc_port
@@ -165,7 +168,7 @@ class zynthian_controller:
 	value=0
 	value_plot=0
 	scale_plot=1
-	value_print=""
+	value_print=None
 
 	shown=False
 	frame=None
@@ -186,6 +189,7 @@ class zynthian_controller:
 		self.show()
 
 	def show(self):
+		#print("SHOW CONTROLLER "+str(self.ctrl)+" => "+str(self.shown))
 		if not self.shown:
 			self.shown=True
 			self.plot_frame()
@@ -220,7 +224,7 @@ class zynthian_controller:
 				if self.ticks:
 					if self.inverted:
 						for i in reversed(range(self.n_values)):
-							if self.value<self.ticks[i]:
+							if self.value<=self.ticks[i]:
 								break
 						self.value_plot=self.scale_plot*(self.max_value+self.step-self.ticks[i])
 					else:
@@ -232,14 +236,16 @@ class zynthian_controller:
 					i=int(self.n_values*self.value/(self.max_value+self.step))
 					self.value_plot=self.scale_plot*i
 				self.value_print=self.values[i]
-				#print("PLOT VALUE: "+str(self.value)+"/"+str(self.max_value)+", "+str(i)+"/"+str(self.n_values)+", "+str(self.value_plot))
 			except Exception as err:
-				print(err)
+				print("ERROR: zynthian_controller.calculte_plot_values()" % err)
 				self.value_plot=self.value
 				self.value_print="ERR"
 		else:
 			self.value_plot=self.value
 			self.value_print=self.val0+self.value
+		#print("VALUE: %s" % self.value)
+		#print("VALUE PLOT: %s" % self.value_plot)
+		#print("VALUE PRINT: %s" % self.value_print)
 
 	def plot_value_rectangle(self):
 		self.calculate_plot_values()
@@ -374,9 +380,10 @@ class zynthian_controller:
 		self.val0=0
 		self.ticks=None
 		self.set_title(tit)
-		if isinstance(ctrl, Template):
+		if isinstance(ctrl, str):
+			ctrl=Template(ctrl)
 			self.midi_ctrl=None
-			self.osc_path=ctrl.substitute(part=chan)
+			self.osc_path=ctrl.substitute(ch=chan)
 		else:
 			self.midi_ctrl=ctrl
 			self.osc_path=None
@@ -397,7 +404,10 @@ class zynthian_controller:
 			self.n_values=len(self.values)
 			self.step=max(1,int(16/self.n_values));
 			self.max_value=128-self.step;
-			val=int(self.values.index(val)*self.max_value/(self.n_values-1))
+			try:
+				val=self.ticks[self.values.index(val)]
+			except:
+				val=int(self.values.index(val)*self.max_value/(self.n_values-1))
 		if self.midi_ctrl==0:
 			self.mult=4
 			self.val0=1
@@ -427,12 +437,12 @@ class zynthian_controller:
 		self.init_value=None
 		try:
 			if self.osc_path:
-				print("SETUP RENCODER "+str(self.index)+": "+self.osc_path)
+				#print("Setup zyncoder "+str(self.index)+": "+self.osc_path)
 				osc_path_char=c_char_p(self.osc_path.encode('UTF-8'))
 				if zyngui.osc_target:
 					liblo.send(zyngui.osc_target, self.osc_path)
 			else:
-				print("SETUP RENCODER "+str(self.index)+": "+str(self.midi_ctrl))
+				#print("Setup zyncoder "+str(self.index)+": "+str(self.midi_ctrl))
 				osc_path_char=None
 
 			if self.inverted:
@@ -443,8 +453,7 @@ class zynthian_controller:
 				pin_b=zyncoder_pin_b[self.index]
 			lib_zyncoder.setup_zyncoder(self.index,pin_a,pin_b,self.chan,self.midi_ctrl,osc_path_char,self.mult*self.value,self.mult*(self.max_value-self.val0),self.step)
 		except Exception as err:
-			print(err)
-			pass
+			print("ERROR: zynthian_controller.setup_zyncoder()" % err)
 
 	def set_value(self, v, set_zyncoder=False):
 		if (v>self.max_value):
@@ -469,78 +478,9 @@ class zynthian_controller:
 		#print ("RENCODER VALUE: " + str(self.index) + " => " + str(val))
 
 #-------------------------------------------------------------------------------
-# Zynthian Splash GUI Class
+# Zynthian Listbox Selector GUI Class
 #-------------------------------------------------------------------------------
-class zynthian_splash:
-	def __init__(self, tms=1000):
-		# Add Background Image inside a Canvas
-		self.canvas = Canvas(
-			width = width,
-			height = height,
-			bd=0,
-			highlightthickness=0,
-			relief='flat',
-			bg = color_bg)
-		self.splash_img = PhotoImage(file = "./img/zynthian_gui_splash.gif")
-		self.canvas.create_image(0, 0, image = self.splash_img, anchor = NW)
-		self.show(tms)
-
-	def hide(self):
-		self.canvas.pack_forget()
-
-	def show(self, tms=2000):
-		self.canvas.pack(expand = YES, fill = BOTH)
-		top.after(tms, self.hide)
-
-#-------------------------------------------------------------------------------
-# Zynthian Info GUI Class
-#-------------------------------------------------------------------------------
-class zynthian_info:
-	shown=False
-
-	def __init__(self):
-		self.canvas = Canvas(
-			width = 70*width/100,
-			height = 70*height/100,
-			bd=1,
-			highlightthickness=0,
-			relief='flat',
-			bg = color_bg)
-
-		self.text = StringVar()
-		self.label_text = Label(self.canvas,
-			font=("Helvetica",10,"normal"),
-			textvariable=self.text,
-			#wraplength=80,
-			justify=LEFT,
-			bg=color_bg,
-			fg=color_tx)
-		self.label_text.place(x=1, y=0, anchor=NW)
-
-	def clean(self):
-		self.text.set("")
-
-	def set(self, text):
-		self.text.set(text)
-
-	def add(self, text):
-		self.text.set(self.text.get()+text)
-
-	def hide(self):
-		if self.shown:
-			self.shown=False
-			self.canvas.pack_forget()
-
-	def show(self, text):
-		self.text.set(text)
-		if not self.shown:
-			self.shown=True
-			self.canvas.pack(expand = YES, fill = BOTH)
-
-#-------------------------------------------------------------------------------
-# Zynthian Listbox GUI Class
-#-------------------------------------------------------------------------------
-class zynthian_gui_list:
+class zynthian_selector:
 	width=160
 	height=224
 	lb_width=18
@@ -550,9 +490,11 @@ class zynthian_gui_list:
 	shown=False
 	index=0
 	list_data=[]
+	selector_caption=None
+	zselector=None
 
-	def __init__(self, image_bg=None, wide=False):
-		list_data=[]
+	def __init__(self, selcap='Select', wide=False, image_bg=None):
+		self.shown=False
 
 		if wide:
 			self.wide=True
@@ -562,6 +504,8 @@ class zynthian_gui_list:
 				self.lb_x=0
 			else:
 				self.lb_x=317-self.width
+		else:
+			self.wide=False
 
 		# Create Canvas
 		self.canvas = Canvas(
@@ -604,8 +548,15 @@ class zynthian_gui_list:
 			bg=color_bg,
 			fg=color_tx)
 		self.label_select_path.place(x=1, y=0, anchor=NW)
-		
-		self.show()
+
+		# Selector Controller Caption
+		self.selector_caption=selcap
+
+		# Fill Listbox
+		self.fill_list()
+
+		# Update Title
+		self.set_select_path()
 
 	def hide(self):
 		if self.shown:
@@ -616,8 +567,9 @@ class zynthian_gui_list:
 		if not self.shown:
 			self.shown=True
 			self.canvas.pack(expand = YES, fill = BOTH)
-			self.select_listbox(self.index)
-			self.set_select_path()
+		self.select_listbox(self.index)
+		self.set_selector()
+		self.set_select_path()
 
 	def is_shown(self):
 		try:
@@ -641,98 +593,170 @@ class zynthian_gui_list:
 		ry2=height-1
 		self.canvas.create_polygon((rx, ry, rx2, ry, rx2, ry2, rx, ry2), outline=color_panel_bd, fill=color_panel_bg)
 
-	def get_list_data(self):
-		self.list_data=[]
-
-	def fill_list(self):
-		self.get_list_data()
-		self._fill_list()
-
-	def _fill_list(self):
+	def fill_listbox(self):
 		self.listbox.delete(0, END)
 		if not self.list_data:
 			self.list_data=[]
 		for item in self.list_data:
 			self.listbox.insert(END, item[2])
-		self.select(0)
+
+	def set_selector(self):
+		if self.zselector:
+			self.zselector.config(self.selector_caption,0,0,self.index,len(self.list_data))
+			self.zselector.show()
+		else:
+			self.zselector=zynthian_controller(select_ctrl,self.canvas,self.selector_caption,0,0,self.index,len(self.list_data))
+
+	def fill_list(self):
+		self.fill_listbox()
+		self.select(self.index)
+		#self.set_selector()
 
 	def get_cursel(self):
 		cursel=self.listbox.curselection()
 		if (len(cursel)>0):
-			self.index=int(cursel[0])
+			index=int(cursel[0])
 		else:
-			self.index=0
-		return self.index
-
-	def select_listbox(self,index):
-		self.listbox.selection_clear(0,END)
-		self.listbox.selection_set(index)
-		self.listbox.see(index)
-
-	def click_listbox(self):
-		index=self.get_cursel()
-		self.select_action(index)
-
-	def switch_select(self):
-		self.click_listbox()
-
-	def select(self, index):
-		self.index=index
-		self.select_listbox(index)
-
-	def set_select_path(self):
-		pass
-
-#-------------------------------------------------------------------------------
-# Zynthian Admin GUI Class
-#-------------------------------------------------------------------------------
-class zynthian_admin(zynthian_gui_list):
-	zselector=None
-	commands=None
-	thread=None
-
-	def __init__(self):
-		super().__init__(gui_bg_logo,True)
-		self.label_title = Label(self.canvas,
-			text="Admin",
-			font=("Helvetica",13,"bold"),
-			justify=LEFT,
-			bg=color_bg,
-			fg=color_tx)
-		#self.label_title.place(x=84,y=-2,anchor=NW)
-		self.label_title.place(x=4,y=-2,anchor=NW)
-		self.fill_list()
-		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Action",0,0,0,len(self.list_data))
-    
-	def get_list_data(self):
-		self.list_data=(
-			(self.update_software,0,"Update Zynthian Software"),
-			(self.update_library,0,"Update Zynthian Library"),
-			(self.update_system,0,"Update Operating System"),
-			(self.connect_to_pc,0,"Network Info"),
-			(self.connect_to_pc,0,"Connect to PC"),
-			(self.exit_to_console,0,"Exit to Console"),
-			(self.reboot,0,"Reboot"),
-			(self.power_off,0,"Power Off")
-		)
-
-	def show(self):
-		super().show()
-		if self.zselector:
-			self.zselector.config("Action",0,0,self.get_cursel(),len(self.list_data))
-			#self.zselector.config("Action",0,0,len(self.list_data))
-
-	def select_action(self, i):
-		self.list_data[i][0]()
+			index=0
+		return index
 
 	def zyncoder_read(self):
 		_sel=self.zselector.value
 		self.zselector.read_zyncoder()
 		sel=self.zselector.value
 		if (_sel!=sel):
-			#print('Pre-select Admin Action ' + str(sel))
 			self.select_listbox(sel)
-			
+
+	def select_listbox(self,index):
+		self.index=index
+		self.listbox.selection_clear(0,END)
+		self.listbox.selection_set(index)
+		self.listbox.see(index)
+
+	def click_listbox(self):
+		self.index=self.get_cursel()
+		self.select_action(self.index)
+
+	def switch_select(self):
+		self.click_listbox()
+
+	def select(self, index=None):
+		if index==None: index=self.index
+		self.select_listbox(index)
+
+	def select_action(self, index):
+		pass
+
+	def set_select_path(self):
+		pass
+
+#-------------------------------------------------------------------------------
+# Zynthian Splash GUI Class
+#-------------------------------------------------------------------------------
+class zynthian_splash:
+	shown=False
+
+	def __init__(self, tms=1000):
+		self.shown=False
+		# Add Background Image inside a Canvas
+		self.canvas = Canvas(
+			width = width,
+			height = height,
+			bd=0,
+			highlightthickness=0,
+			relief='flat',
+			bg = color_bg)
+		self.splash_img = PhotoImage(file = "./img/zynthian_gui_splash.gif")
+		self.canvas.create_image(0, 0, image = self.splash_img, anchor = NW)
+		self.show(tms)
+
+	def hide(self):
+		self.shown=False
+		self.canvas.pack_forget()
+
+	def show(self, tms=2000):
+		self.shown=True
+		self.canvas.pack(expand = YES, fill = BOTH)
+		top.after(tms, self.hide)
+
+#-------------------------------------------------------------------------------
+# Zynthian Info GUI Class
+#-------------------------------------------------------------------------------
+class zynthian_info:
+	shown=False
+
+	def __init__(self):
+		self.shown=False
+		self.canvas = Canvas(
+			width = 70*width/100,
+			height = 70*height/100,
+			bd=1,
+			highlightthickness=0,
+			relief='flat',
+			bg = color_bg)
+
+		self.text = StringVar()
+		self.label_text = Label(self.canvas,
+			font=("Helvetica",10,"normal"),
+			textvariable=self.text,
+			#wraplength=80,
+			justify=LEFT,
+			bg=color_bg,
+			fg=color_tx)
+		self.label_text.place(x=1, y=0, anchor=NW)
+
+	def clean(self):
+		self.text.set("")
+
+	def set(self, text):
+		self.text.set(text)
+
+	def add(self, text):
+		self.text.set(self.text.get()+text)
+
+	def hide(self):
+		if self.shown:
+			self.shown=False
+			self.canvas.pack_forget()
+
+	def show(self, text):
+		self.text.set(text)
+		if not self.shown:
+			self.shown=True
+			self.canvas.pack(expand = YES, fill = BOTH)
+
+#-------------------------------------------------------------------------------
+# Zynthian Admin GUI Class
+#-------------------------------------------------------------------------------
+class zynthian_admin(zynthian_selector):
+	commands=None
+	thread=None
+
+	def __init__(self):
+		super().__init__('Action', True, gui_bg_logo)
+		self.commands=None
+		self.thread=None
+    
+	def fill_list(self):
+		if not self.list_data:
+			self.list_data=(
+				(self.update_software,0,"Update Zynthian Software"),
+				(self.update_library,0,"Update Zynthian Library"),
+				(self.update_system,0,"Update Operating System"),
+				(self.connect_to_pc,0,"Network Info"),
+				(self.connect_to_pc,0,"Connect to PC"),
+				(self.exit_to_console,0,"Exit to Console"),
+				(self.reboot,0,"Reboot"),
+				(self.power_off,0,"Power Off")
+			)
+			super().fill_list()
+
+	def select_action(self, i):
+		self.list_data[i][0]()
+
+	def set_select_path(self):
+		self.select_path.set("Admin")
+
 	def execute_commands(self):
 		for cmd in self.commands:
 			print("Executing Command: "+cmd)
@@ -795,112 +819,187 @@ class zynthian_admin(zynthian_gui_list):
 # Zynthian Engine Selection GUI Class
 #-------------------------------------------------------------------------------
 
-class zynthian_gui_engine(zynthian_gui_list):
-	zselector=None
+class zynthian_gui_engine(zynthian_selector):
 	zyngine=None
 
-	def __init__(self):
-		super().__init__(gui_bg_logo,True)
-		self.label_title = Label(self.canvas,
-			text="Engine",
-			font=("Helvetica",13,"bold"),
-			justify=LEFT,
-			bg=color_bg,
-			fg=color_tx)
-		#self.label_title.place(x=84,y=-2,anchor=NW)
-		self.label_title.place(x=4,y=-2,anchor=NW)
-		self.fill_list()
-		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Engine",0,0,1,len(self.list_data))
-		#self.set_select_path()
-    
-	def get_list_data(self):
-		self.list_data=(
-			("ZynAddSubFX",0,"ZynAddSubFX - Synthesizer"),
-			("LinuxSampler",1,"LinuxSampler - Sampler"),
-			("setBfree",2,"setBfree - Hammond Emulator"),
-			("Carla",3,"Carla - Plugin Host"),
-			("FluidSynth",4,"FluidSynth - Sampler")
-		)
+	engine_info={
+		"ZY": ("ZynAddSubFX","ZynAddSubFX - Synthesizer"),
+		"FS": ("FluidSynth","FluidSynth - Sampler"),
+		"LS": ("LinuxSampler","LinuxSampler - Sampler"),
+		"BF": ("setBfree","setBfree - Hammond Emulator"),
+		"CP": ("Carla","Carla - Plugin Host")
+	}
+	engine_order=["ZY","LS","FS","BF","CP"]
 
-	def show(self):
-		super().show()
-		if self.zselector:
-			self.zselector.config("Engine",0,0,self.get_cursel(),len(self.list_data))
-			#self.zselector.config("Engine",0,0,len(self.list_data))
+	def __init__(self):
+		super().__init__('Engine', True, gui_bg_logo)
+		self.zyngine=None
+    
+	def fill_list(self):
+		if not self.list_data:
+			self.list_data=[]
+			i=0
+			for en in self.engine_order:
+				ei=self.engine_info[en]
+				self.list_data.append((ei[0],i,ei[1],en))
+				i=i+1
+			super().fill_list()
 
 	def select_action(self, i):
 		zyngui.set_engine(self.list_data[i][0])
 		zyngui.show_screen('chan')
-		
+
+	def set_select_path(self):
+		self.select_path.set("Engine")
+
 	def set_engine(self,name):
 		if self.zyngine:
 			if self.zyngine.name==name:
 				return False
 			else:
 				self.zyngine.stop()
-		if name=="ZynAddSubFX":
+		if name=="ZynAddSubFX" or name=="ZY":
 			self.zyngine=zynthian_engine_zynaddsubfx(zyngui)
-		elif name=="setBfree":
+		elif name=="setBfree" or name=="BF":
 			self.zyngine=zynthian_engine_setbfree(zyngui)
-		elif name=="LinuxSampler":
+		elif name=="LinuxSampler" or name=="LS":
 			self.zyngine=zynthian_engine_linuxsampler(zyngui)
-		elif name=="Carla":
+		elif name=="Carla" or name=="CP":
 			self.zyngine=zynthian_engine_carla(zyngui)
-		elif name=="FluidSynth":
+		elif name=="FluidSynth" or name=="FS":
 			self.zyngine=zynthian_engine_fluidsynth(zyngui)
 		else:
 			return False
 		return True
 
-	def zyncoder_read(self):
-		_sel=self.zselector.value
-		self.zselector.read_zyncoder()
-		sel=self.zselector.value
-		if (_sel!=sel):
-			#print('Pre-select Engine ' + str(sel))
-			self.select_listbox(sel)
+#-------------------------------------------------------------------------------
+# Zynthian Load/Save Snapshot GUI Class
+#-------------------------------------------------------------------------------
+
+class zynthian_gui_snapshot(zynthian_selector):
+	snapshot_dir=os.getcwd()+"/my-data/snapshots"
+	action="LOAD"
+	engine=""
+
+	def __init__(self):
+		super().__init__('Snapshot', True, gui_bg)
+		self.action="LOAD"
+		self.engine=""
+        
+	def fill_list(self):
+		self.list_data=[("NEW",0,"New",self.engine)]
+		if self.engine: prefix=self.engine+"-"
+		else: prefix=None
+		i=0
+		for f in sorted(os.listdir(self.snapshot_dir)):
+			if isfile(join(self.snapshot_dir,f)) and f[-4:].lower()=='.zss' and ((prefix and f[0:len(prefix)]==prefix) or not prefix):
+				title=str.replace(f[:-4], '_', ' ')
+				engine=f[0:2]
+				#print("snapshot list => %s (%s)" % (title,engine))
+				self.list_data.append((join(self.snapshot_dir,f),i,title,engine))
+				i=i+1
+		super().fill_list()
+
+	def show(self):
+		if self.action=="SAVE":
+			if zyngui.zyngine:
+				self.engine=zyngui.zyngine.nickname
+			else:
+				self.action="LOAD"
+				self.engine=""
+		self.fill_list()
+		super().show()
+		
+	def load(self, engine=""):
+		self.action="LOAD"
+		self.engine=engine
+		self.show()
+
+	def save(self):
+		self.action="SAVE"
+		self.show()
+		
+	def get_new_fpath(self, engine):
+		n=0;
+		for i in range(-1,-len(self.list_data),-1):
+			try:
+				if self.list_data[i][3]==engine:
+					n=int(self.list_data[i][2][3:])
+					break
+			except:
+				pass
+		fname=engine + '-' + '{0:03d}'.format(n+1) + '.zss'
+		fpath=join(self.snapshot_dir,fname)
+		return fpath
+
+	def select_action(self, i):
+		fpath=self.list_data[i][0]
+		engine=self.list_data[i][3]
+		if self.action=="LOAD":
+			if fpath=='NEW':
+				if zyngui.zyngine and zyngui.zyngine.nickname==engine:
+					zyngui.zyngine.clean()
+					zyngui.show_screen('chan')
+				else:
+					zyngui.show_screen('engine')
+			else:
+				if not zyngui.zyngine or zyngui.zyngine.nickname!=engine:
+					zyngui.set_engine(engine)
+					sleep(3)
+				zyngui.zyngine.load_snapshot(fpath)
+				if zyngui.active_screen in ['admin', 'engine']:
+					zyngui.show_screen('chan')
+				else:
+					zyngui.show_active_screen()
+		elif self.action=="SAVE":
+			if fpath=='NEW':
+				fpath=self.get_new_fpath(engine)
+			zyngui.zyngine.save_snapshot(fpath)
+			zyngui.show_active_screen()
+
+	def next(self):
+		if self.action=="SAVE": self.action="LOAD"
+		elif self.action=="LOAD": self.action="SAVE"
+		self.show()
 
 	def set_select_path(self):
-		pass
-		#self.select_path.set("Zynthian")
+		title=self.action.lower().title()
+		if self.engine:
+			try:
+				title=title + " " + zyngui.screens['engine'].engine_info[self.engine][0]
+			except:
+				pass
+		self.select_path.set(title)
 
 #-------------------------------------------------------------------------------
 # Zynthian MIDI Channel Selection GUI Class
 #-------------------------------------------------------------------------------
 
-class zynthian_gui_chan(zynthian_gui_list):
-	zselector=None
+class zynthian_gui_chan(zynthian_selector):
 	max_chan=10
 
 	def __init__(self, max_chan=10):
-		super().__init__(gui_bg, True)
 		self.max_chan=max_chan
-		self.fill_list()
-		self.index=zyngui.zyngine.get_midi_chan()
-		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Channel",0,0,self.index+1,len(self.list_data))
-		self.set_select_path()
+		super().__init__('Channel', True, gui_bg)
     
-	def get_list_data(self):
+	def fill_list(self):
 		self.list_data=[]
 		for i in range(self.max_chan):
 			self.list_data.append((str(i+1),i,str(i+1)+">"+zyngui.zyngine.get_path(i)))
 			#instr=zynmidi.get_midi_instr(i)
 			#self.list_data.append((str(i+1),i,"Chan #"+str(i+1)+" -> Bank("+str(instr[0])+","+str(instr[1])+") Prog("+str(instr[2])+")"))
+		super().fill_list()
 
 	def show(self):
-		self.fill_list()
 		self.index=zyngui.zyngine.get_midi_chan()
+		self.fill_list()
 		super().show()
-		if self.zselector:
-			self.zselector.config("Channel",0,0,self.index,len(self.list_data))
-		self.select_listbox(self.index)
 
 	def select_action(self, i):
 		zyngui.zyngine.set_midi_chan(i)
-		zyngui.screens['bank'].fill_list()
-		zyngui.screens['instr'].fill_list()
 		# If there is only one bank, jump to instrument selection
-		if len(zyngui.screens['bank'].list_data)==1:
+		if len(zyngui.zyngine.bank_list)==1:
+			zyngui.screens['bank'].fill_list()
 			zyngui.screens['bank'].select_action(0)
 		else:
 			zyngui.show_screen('bank')
@@ -909,18 +1008,11 @@ class zynthian_gui_chan(zynthian_gui_list):
 		if zyngui.zyngine.next_chan():
 			zyngui.screens['bank'].fill_list()
 			zyngui.screens['instr'].fill_list()
+			zyngui.screens['control'].fill_list()
 			self.index=zyngui.zyngine.get_midi_chan()
 			self.select_listbox(self.index)
 			return True
 		return False
-
-	def zyncoder_read(self):
-		_sel=self.zselector.value
-		self.zselector.read_zyncoder()
-		sel=self.zselector.value
-		if (_sel!=sel):
-			#print('Pre-select MIDI Chan ' + str(sel))
-			self.select_listbox(sel)
 
 	def set_select_path(self):
 		self.select_path.set(zyngui.zyngine.name)
@@ -929,41 +1021,29 @@ class zynthian_gui_chan(zynthian_gui_list):
 # Zynthian Bank Selection GUI Class
 #-------------------------------------------------------------------------------
 
-class zynthian_gui_bank(zynthian_gui_list):
-	zselector=None
+class zynthian_gui_bank(zynthian_selector):
 
 	def __init__(self):
-		super().__init__(gui_bg, True)
-		self.fill_list()
-		self.index=zyngui.zyngine.get_bank_index()
-		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Bank",0,0,self.index+1,len(self.list_data))
-		self.set_select_path()
+		super().__init__('Bank', True, gui_bg)
     
-	def get_list_data(self):
-		self.list_data=zyngui.zyngine.bank_list
+	def fill_list(self):
+		if self.list_data!=zyngui.zyngine.bank_list:
+			self.list_data=zyngui.zyngine.bank_list
+			super().fill_list()
 
 	def show(self):
 		self.index=zyngui.zyngine.get_bank_index()
+		self.fill_list()
 		super().show()
-		if self.zselector:
-			self.zselector.config("Bank",0,0,self.index,len(self.list_data))
 
 	def select_action(self, i):
 		zyngui.zyngine.set_bank(i)
-		zyngui.screens['instr'].fill_list()
 		# If there is only one instrument, jump to instrument control
-		if len(zyngui.screens['instr'].list_data)==1:
+		if len(zyngui.zyngine.instr_list)==1:
+			zyngui.screens['instr'].fill_list()
 			zyngui.screens['instr'].select_action(0)
 		else:
 			zyngui.show_screen('instr')
-
-	def zyncoder_read(self):
-		_sel=self.zselector.value
-		self.zselector.read_zyncoder()
-		sel=self.zselector.value
-		if (_sel!=sel):
-			#print('Pre-select Bank ' + str(sel))
-			self.select_listbox(sel)
 
 	def set_select_path(self):
 		self.select_path.set(zyngui.zyngine.nickname + "#" + str(zyngui.zyngine.get_midi_chan()+1))
@@ -972,132 +1052,102 @@ class zynthian_gui_bank(zynthian_gui_list):
 # Zynthian Instrument Selection GUI Class
 #-------------------------------------------------------------------------------
 
-class zynthian_gui_instr(zynthian_gui_list):
-	zselector=None
+class zynthian_gui_instr(zynthian_selector):
 
 	def __init__(self):
-		super().__init__(gui_bg, True)
-		self.fill_list()
-		self.index=zyngui.zyngine.get_instr_index()
-		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Intrument",0,0,self.index+1,len(self.list_data))
-		self.set_select_path()
+		super().__init__('Instrument', True, gui_bg)
       
-	def get_list_data(self):
-		self.list_data=zyngui.zyngine.instr_list
+	def fill_list(self):
+		if self.list_data!=zyngui.zyngine.instr_list:
+			self.list_data=zyngui.zyngine.instr_list
+			super().fill_list()
 
 	def show(self):
 		self.index=zyngui.zyngine.get_instr_index()
+		self.fill_list()
 		super().show()
-		if self.zselector:
-			self.zselector.config("Instrument",0,0,self.index,len(self.list_data))
 
 	def select_action(self, i):
 		zyngui.zyngine.set_instr(i)
-		#Send OSC message to get feedback on instrument loaded
-		if isinstance(zyngui.zyngine,zynthian_engine_zynaddsubfx):
-			try:
-				liblo.send(zyngui.zyngine.osc_target, "/volume")
-				zyngui.zyngine.osc_server.recv()
-			except:
-				zyngui.show_screen('control')
-			zyngui.screens['control'].fill_list()
-		else:
-			zyngui.screens['control'].fill_list()
-			zyngui.screens['control'].set_mode_control()
-			zyngui.show_screen('control')
-
-	def zyncoder_read(self):
-		_sel=self.zselector.value
-		self.zselector.read_zyncoder()
-		sel=self.zselector.value
-		if (_sel!=sel):
-			#print('Pre-select Bank ' + str(sel))
-			self.select_listbox(sel)
+		zyngui.screens['control'].fill_list()
+		zyngui.show_screen('control')
 
 	def set_select_path(self):
 		self.select_path.set(zyngui.zyngine.get_fullpath())
-
 
 #-------------------------------------------------------------------------------
 # Zynthian Instrument Controller GUI Class
 #-------------------------------------------------------------------------------
 
-class zynthian_gui_control(zynthian_gui_list):
+class zynthian_gui_control(zynthian_selector):
 	mode=None
+	zcontrollers_config=None
+	zcontroller_map={}
+	zcontrollers=[]
 
 	def __init__(self):
-		super().__init__(gui_bg)
-		# Controllers
-		midi_chan=zyngui.get_midi_chan()
-		self.zcontrollers_config=zyngui.zyngine.default_ctrl_config
-		self.zcontrollers=(
-			#indx, cnv, x, y, tit, chan, ctrl, val=0, max_val=127
-			zynthian_controller(0,self.canvas,self.zcontrollers_config[0][0],midi_chan,self.zcontrollers_config[0][1],self.zcontrollers_config[0][2],self.zcontrollers_config[0][3]),
-			zynthian_controller(1,self.canvas,self.zcontrollers_config[1][0],midi_chan,self.zcontrollers_config[1][1],self.zcontrollers_config[1][2],self.zcontrollers_config[1][3]),
-			zynthian_controller(2,self.canvas,self.zcontrollers_config[2][0],midi_chan,self.zcontrollers_config[2][1],self.zcontrollers_config[2][2],self.zcontrollers_config[2][3]),
-			zynthian_controller(3,self.canvas,self.zcontrollers_config[3][0],midi_chan,self.zcontrollers_config[3][1],self.zcontrollers_config[3][2],self.zcontrollers_config[3][3])
-		)
-		# Init Controllers Map
+		super().__init__('Controllers',False,gui_bg)
+		self.mode=None
+		self.zcontrollers_config=None
 		self.zcontroller_map={}
-		for zc in self.zcontrollers:
-			self.zcontroller_map[zc.ctrl]=zc
+		self.zcontrollers=[]
 
 	def show(self):
-		self.zcontrollers_config=zyngui.zyngine.get_instr_ctrl_config()
+		self.fill_list()
+		self.click_listbox()
 		super().show()
 
 	def hide(self):
 		if self.shown:
 			super().hide()
-			for zc in self.zcontrollers:
-				zc.hide()
+			for zc in self.zcontrollers: zc.hide()
+			if self.zselector: self.zselector.hide()
 
-	def set_controller_config(self, cfg):
-		midi_chan=zyngui.get_midi_chan()
+	def fill_list(self):
+		if self.list_data!=zyngui.zyngine.get_ctrl_list():
+			self.list_data=zyngui.zyngine.get_ctrl_list()
+			super().fill_list()
+
+	def set_selector(self):
+		if self.mode=='select': super().set_selector()
+
+	def set_controller_config(self):
+		#self.zcontrollers_config=self.list_data[self.index][0]
+		self.zcontrollers_config=zyngui.zyngine.get_ctrl_config(self.index)
+		midi_chan=zyngui.zyngine.get_midi_chan()
 		for i in range(0,4):
 			try:
+				cfg=self.zcontrollers_config[i]
 				#indx, tit, chan, ctrl, val, max_val=127
-				self.set_controller(i,cfg[i][0],midi_chan,cfg[i][1],cfg[i][2],cfg[i][3])
-			except:
-				pass
+				self.set_controller(i,cfg[0],midi_chan,cfg[1],cfg[2],cfg[3])
+			except Exception as e:
+				print("ERROR: set_controller_config(%s) => %s" % (i,e))
 
 	def set_controller(self, i, tit, chan, ctrl, val, max_val=127):
 		try:
-			del self.zcontroller_map[self.zcontrollers[i].ctrl]
+			self.zcontrollers[i].config(tit,chan,ctrl,val,max_val)
+			self.zcontrollers[i].show()
 		except:
-			pass
-		#tit, chan, ctrl, val, max_val=127
-		self.zcontrollers[i].config(tit,chan,ctrl,val,max_val)
-		self.zcontrollers[i].show()
-		self.zcontroller_map[self.zcontrollers[i].ctrl]=self.zcontrollers[i]
-
-	def get_list_data(self):
-		self.list_data=zyngui.zyngine.map_list
-
-	def _fill_list(self):
-		super()._fill_list()
-		if self.mode=='select':
-			self.set_controller(select_ctrl,"Controllers",0,0,self.index,len(self.list_data))
+			self.zcontrollers.append(zynthian_controller(i,self.canvas,tit,chan,ctrl,val,max_val))
+		self.zcontroller_map[ctrl]=self.zcontrollers[i]
 
 	def set_mode_select(self):
 		self.mode='select'
 		for i in range(0,4):
 			self.zcontrollers[i].hide()
-		#self.index=1
-		self.set_controller(select_ctrl,"Controllers",0,0,self.index,len(self.list_data))
+		self.set_selector()
 		self.listbox.config(selectbackground=color_ctrl_bg_on)
 		self.select(self.index)
 		self.set_select_path()
 
 	def set_mode_control(self):
 		self.mode='control'
-		self.zcontrollers[select_ctrl].hide()
-		self.set_controller_config(self.zcontrollers_config)
+		if self.zselector: self.zselector.hide()
+		self.set_controller_config()
 		self.listbox.config(selectbackground=color_ctrl_bg_off)
 		self.set_select_path()
 
 	def select_action(self, i):
-		self.zcontrollers_config=self.list_data[i][0]
 		self.set_mode_control()
 
 	def next(self):
@@ -1116,13 +1166,14 @@ class zynthian_gui_control(zynthian_gui_list):
 
 	def zyncoder_read(self):
 		if self.mode=='control':
-			for zc in self.zcontrollers:
-				#print('Read Control ' + str(zc.title))
-				zc.read_zyncoder()
+			for i in range(0,4):
+				#print('Read Control ' + str(self.zcontrollers[i].title))
+				self.zcontrollers[i].read_zyncoder()
+				self.zcontrollers_config[i][2]=self.zcontrollers[i].value_print
 		elif self.mode=='select':
-			_sel=self.zcontrollers[select_ctrl].value
-			self.zcontrollers[select_ctrl].read_zyncoder()
-			sel=self.zcontrollers[select_ctrl].value
+			_sel=self.zselector.value
+			self.zselector.read_zyncoder()
+			sel=self.zselector.value
 			if (_sel!=sel):
 				#print('Pre-select Parameter ' + str(sel))
 				self.select_listbox(sel)
@@ -1135,15 +1186,17 @@ class zynthian_gui_control(zynthian_gui_list):
 # Zynthian OSC Browser GUI Class
 #-------------------------------------------------------------------------------
 
-class zynthian_gui_osc_browser(zynthian_gui_list):
+class zynthian_gui_osc_browser(zynthian_selector):
 	mode=None
 	osc_path=None
 
 	def __init__(self):
 		super().__init__(gui_bg, True)
+		self.mode=None
+		self.osc_path=None
 		self.fill_list()
 		self.index=1
-		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Path",0,0,self.index+1,len(self.list_data))
+		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Path",0,0,self.index,len(self.list_data))
 		self.set_select_path()
 
 	def get_list_data(self):
@@ -1161,7 +1214,7 @@ class zynthian_gui_osc_browser(zynthian_gui_list):
 	def get_osc_paths(self, path=''):
 		self.list_data=[]
 		if path=='root':
-			self.osc_path="/part"+str(zyngui.get_midi_chan())+"/"
+			self.osc_path="/part"+str(zyngui.zyngine.get_midi_chan())+"/"
 		else:
 			self.osc_path=self.osc_path+path
 		liblo.send(zyngui.osc_target, "/path-search",self.osc_path,"")
@@ -1203,13 +1256,12 @@ class zynthian_gui_osc_browser(zynthian_gui_list):
 #-------------------------------------------------------------------------------
 
 class zynthian_gui:
-	midi_chan=0
-
 	amidi=None
 	zynmidi=None
 	zyngine=None
 	screens={}
 	active_screen=None
+	modal_screen=None
 	screens_sequence=("admin","engine","chan","bank","instr","control")
 
 	dtsw={}
@@ -1227,21 +1279,17 @@ class zynthian_gui:
 			self.zynmidi=zynthian_zcmidi()
 			self.zynswitches_init()
 		except Exception as e:
-			print("ERROR initializing GUI: %s" % str(e))
+			print("ERROR initializing GUI: %s" % e)
 		# GUI Objects Initialization
 		#self.screens['splash']=zynthian_splash(1000)
 		self.screens['admin']=zynthian_admin()
 		self.screens['info']=zynthian_info()
 		self.screens['engine']=zynthian_gui_engine()
+		self.screens['snapshot']=zynthian_gui_snapshot()
 		# Show first screen and start polling
 		self.show_screen('engine')
+		self.load_snapshot()
 		self.start_polling()
-
-	def get_midi_chan(self):
-		if self.zyngine:
-			return self.zyngine.get_midi_chan()
-		else:
-			return None;
 
 	def hide_screens(self,exclude=None):
 		if not exclude:
@@ -1253,6 +1301,12 @@ class zynthian_gui:
 	def show_active_screen(self):
 		self.screens[self.active_screen].show()
 		self.hide_screens()
+		self.modal_screen=None
+
+	def refresh_screen(self):
+		if self.active_screen=='instr' and len(self.zyngine.instr_list)==1:
+			self.active_screen='control'
+		self.show_active_screen()
 
 	def show_screen(self,screen=None):
 		if screen:
@@ -1260,6 +1314,7 @@ class zynthian_gui:
 		self.show_active_screen()
 
 	def show_info(self, text, tms=None):
+		self.modal_screen='info'
 		self.screens['info'].show(text)
 		self.hide_screens(exclude='info')
 		if tms:
@@ -1274,6 +1329,16 @@ class zynthian_gui:
 	def hide_info(self):
 		self.screens['info'].hide()
 		self.show_screen()
+
+	def load_snapshot(self, engine=""):
+		self.modal_screen='snapshot'
+		self.screens['snapshot'].load(engine)
+		self.hide_screens(exclude='snapshot')
+
+	def save_snapshot(self):
+		self.modal_screen='snapshot'
+		self.screens['snapshot'].save()
+		self.hide_screens(exclude='snapshot')
        
 	def set_engine(self,name):
 		if self.screens['engine'].set_engine(name):
@@ -1329,13 +1394,12 @@ class zynthian_gui:
 		elif i==1:
 			self.show_screen("engine")
 		elif i==2:
-			pass
+			self.load_snapshot()
 		elif i==3:
 			if self.active_screen=='chan':
-				self.screens['chan'].switch_select()
+				self.screens[self.active_screen].switch_select()
 				print("PATH="+self.zyngine.get_fullpath())
-				if self.zyngine.get_instr_index():
-					self.screens['control'].set_mode_control()
+				if self.zyngine.get_instr_name():
 					self.show_screen('control')
 			else:
 				self.screens[self.active_screen].switch_select()
@@ -1347,7 +1411,6 @@ class zynthian_gui:
 					print("Next Chan")
 					self.screens['control'].hide()
 					self.screens['control'].fill_list()
-					self.screens['control'].set_mode_control()
 					self.show_screen('control')
 				else:
 					self.zynswitch_bold(i)
@@ -1357,22 +1420,32 @@ class zynthian_gui:
 			if self.active_screen=='control' and self.screens['control'].mode=='select':
 				self.screens['control'].set_mode_control()
 			else:
-				j=self.screens_sequence.index(self.active_screen)-1
-				if j<0:
-					j=1
-				screen_back=self.screens_sequence[j]
+				if not self.modal_screen:
+					j=self.screens_sequence.index(self.active_screen)-1
+					if j<0: j=1
+					screen_back=self.screens_sequence[j]
+				else:
+					screen_back=self.active_screen
 				# If there is only one program, jump to bank selection
-				if screen_back=='instr' and len(self.screens['instr'].list_data)==1:
+				if screen_back=='instr' and len(self.zyngine.instr_list)==1:
 					screen_back='bank'
 				# If there is only one bank, jump to channel selection
-				if screen_back=='bank' and len(self.screens['bank'].list_data)==1:
+				if screen_back=='bank' and len(self.zyngine.bank_list)==1:
 					screen_back='chan'
 				#print("BACK TO SCREEN "+str(j)+" => "+screen_back)
 				self.show_screen(screen_back)
 		elif i==2:
-			pass
+			if self.modal_screen!='snapshot':
+				if self.active_screen=='admin' or self.active_screen=='engine':
+					self.load_snapshot()
+				else:
+					self.load_snapshot(self.zyngine.nickname)
+			else:
+				self.screens['snapshot'].next()
 		elif i==3:
-			if self.active_screen=='control' and self.screens['control'].mode=='control':
+			if self.modal_screen:
+				self.screens[self.modal_screen].switch_select()
+			elif self.active_screen=='control' and self.screens['control'].mode=='control':
 				self.screens['control'].next()
 				print("Next Control Screen")
 			else:
@@ -1397,47 +1470,67 @@ class zynthian_gui:
 			self.zyncoder_read()
 		if self.amidi:
 			self.midi_read()
-		self.osc_read()
+		self.zyngine_refresh()
+		#self.osc_read()
 
 	def stop_polling(self):
 		self.polling=False
 
+	def after(self, msec, func):
+		top.after(msec, func)
+
 	def midi_read(self):
-		while alsaseq.inputpending():
-			event = alsaseq.input()
-			chan = event[7][0]
-			if event[0]==alsaseq.SND_SEQ_EVENT_CONTROLLER and chan==self.get_midi_chan() and self.active_screen=='control': 
-				ctrl = event[7][4]
-				val = event[7][5]
-				#print ("MIDI CTRL " + str(ctrl) + ", CH" + str(chan) + " => " + str(val))
-				if ctrl in self.screens['control'].zcontroller_map.keys():
-					self.screens['control'].zcontroller_map[ctrl].set_value(val,True)
+		try:
+			while alsaseq.inputpending():
+				event = alsaseq.input()
+				chan = event[7][0]
+				if event[0]==alsaseq.SND_SEQ_EVENT_CONTROLLER and chan==self.zyngine.get_midi_chan() and self.active_screen=='control': 
+					ctrl = event[7][4]
+					val = event[7][5]
+					#print ("MIDI CTRL " + str(ctrl) + ", CH" + str(chan) + " => " + str(val))
+					if ctrl in self.screens['control'].zcontroller_map.keys():
+						self.screens['control'].zcontroller_map[ctrl].set_value(val,True)
+		except Exception as err:
+			print("ERROR: zynthian_gui.midi_read() => %s" % err)
 		if self.polling:
 			top.after(40, self.midi_read)
 
 	def zyncoder_read(self):
-		self.screens[self.active_screen].zyncoder_read()
-		self.zynswitches()
+		try:
+			if self.modal_screen:
+				self.screens[self.modal_screen].zyncoder_read()
+			else:
+				self.screens[self.active_screen].zyncoder_read()
+			self.zynswitches()
+		except Exception as err:
+			print("ERROR: zynthian_gui.zyncoder_read() => %s" % err)
 		if self.polling:
 			top.after(40, self.zyncoder_read)
 
 	def osc_read(self):
-		if self.zyngine and self.zyngine.osc_server:
-			while self.zyngine.osc_server.recv(0):
-				pass
+		try:
+			if self.zyngine and self.zyngine.osc_server:
+				while self.zyngine.osc_server.recv(0):
+					pass
+		except Exception as err:
+			print("ERROR: zynthian_gui.osc_read() => %s" % err)
 		if self.polling:
 			top.after(40, self.osc_read)
 
-	def cb_osc_load_instr(self, path, args):
-		#self.screens['osc_browser'].get_osc_paths('root')
-		self.screens['control'].set_mode_control()
-		self.show_screen('control')
+	def zyngine_refresh(self):
+		try:
+			if self.zyngine:
+				self.zyngine.refresh()
+		except Exception as err:
+			print("ERROR: zynthian_gui.zyngine_refresh() => %s" % err)
+		if self.polling:
+			top.after(100, self.zyngine_refresh)
 
 	def cb_osc_paths(self, path, args, types, src):
 		if isinstance(zyngui.zyngine,zynthian_engine_zynaddsubfx):
 			zyngui.zyngine.cb_osc_paths(path, args, types, src)
 			self.screens['control'].list_data=zyngui.zyngine.osc_paths_data
-			self.screens['control']._fill_list()
+			self.screens['control'].fill_list()
 
 	def cb_osc_bank_view(self, path, args):
 		pass

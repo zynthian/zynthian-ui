@@ -50,22 +50,20 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		('MyGIG', os.getcwd()+"/my-data/soundfonts/gig")
 	]
 
-	map_list=(
-		([
-			('volume',7,96,127),
-			#('expression',11,127,127),
-			('modulation',1,0,127),
-			('reverb',91,64,127),
-			('chorus',93,2,127)
-		],0,'main'),
-		([
-			('expression',11,127,127),
-			('modulation',1,0,127),
-			('reverb',91,64,127),
-			('chorus',93,2,127)
-		],0,'effects')
-	)
-	default_ctrl_config=map_list[0][0]
+	ctrl_list=[
+		[[
+			['volume',7,96,127],
+			['modulation',1,0,127],
+			['pan',10,12,127],
+			['expression',11,64,127]
+		],0,'main'],
+		[[
+			['volume',7,96,127],
+			['modulation',1,0,127],
+			['reverb',91,64,127],
+			['chorus',93,0,127]
+		],0,'effects']
+	]
 
 	def __init__(self,parent=None):
 		super().__init__(parent)
@@ -75,30 +73,33 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		if not self.sock:
 			self.sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 			i=0
-			while i<5:
+			while i<20:
 				try:
 					self.sock.connect(("127.0.0.1",self.port))
 					break
 				except:
-					sleep(1)
+					sleep(0.25)
 					i+=1
 		return self.sock
    
 	def lscp_send(self,data):
 		if self.lscp_connect():
 			self.sock.send(data.encode()) 
+		else:
+			print("ERROR connecting with LinuxSampler Server")
 
 	def lscp_send_pattern(self, pattern, pdict=None):
 		fpath=self.lscp_dir+'/'+pattern+'.lscp'
 		with open(fpath) as f:
 			lscp=f.read()
-			try:
-				for k, v in pdict.items():
-					#print("REPLACING PATTERN: #"+k+"# => "+v)
-					lscp=lscp.replace('#'+k+'#',v)
-			except Exception as err:
-				print("ERROR replacing lscp pattern:"+str(err))
-				pass
+			if pdict:
+				try:
+					for k, v in pdict.items():
+						#print("REPLACING PATTERN: #"+k+"# => "+v)
+						lscp=lscp.replace('#'+k+'#',v)
+				except Exception as err:
+					print("ERROR replacing lscp pattern:"+str(err))
+					pass
 			#print("LSCP =>\n"+lscp)
 			self.lscp_send(lscp)
 
@@ -145,7 +146,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 					self.instr_list.append((i,[0,0,0],title,f,engine))
 					i=i+1
 
-	def _set_bank(self, i):
+	def xset_bank(self, i):
 		super().set_bank(i)
 		#Send LSCP script
 		lscp_fpath=self.lscp_dir+'/'+self.bank_list[self.get_bank_index()][0]
@@ -155,15 +156,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				self.lscp_send(line)
 				#print("LSCP: "+line)
 
-	def set_instr(self, i):
-		if self.instr_list[i]:
-			last_instr_index=self.instr_index[self.midi_chan]
-			last_instr_name=self.instr_name[self.midi_chan]
-			self.instr_index[self.midi_chan]=i
-			self.instr_name[self.midi_chan]=self.instr_list[i][2]
-			print('Instrument Selected: ' + self.instr_name[self.midi_chan] + ' (' + str(i)+') => '+self.instr_list[i][3])
-			if last_instr_index!=i or not last_instr_name:
-				self.lscp_send_pattern("channel",{'chan': str(self.midi_chan), 'engine': self.instr_list[i][4], 'fpath': self.instr_list[i][3]})
-				self.load_instr_config()
+	def _set_instr(self, instr, chan=None):
+		if chan is None: chan=self.midi_chan
+		self.lscp_send_pattern("channel",{'chan': str(chan), 'engine': instr[4], 'fpath': instr[3]})
 
 #******************************************************************************

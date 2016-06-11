@@ -39,35 +39,36 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		('MY', os.getcwd()+"/my-data/soundfonts/sf2")
 	]
 
-	map_list=(
-		([
-			('volume',7,96,127),
-			#('expression',11,127,127),
-			('modulation',1,0,127),
-			('reverb',91,64,127),
-			('chorus',93,2,127)
-		],0,'main'),
-		([
-			('expression',11,127,127),
-			('modulation',1,0,127),
-			('reverb',91,64,127),
-			('chorus',93,2,127)
-		],0,'extra')
-	)
-	default_ctrl_config=map_list[0][0]
+	ctrl_list=[
+		[[
+			['volume',7,96,127],
+			['modulation',1,0,127],
+			['pan',10,12,127],
+			['expression',11,64,127]
+		],0,'main'],
+		[[
+			['volume',7,96,127],
+			['modulation',1,0,127],
+			['reverb',91,64,127],
+			['chorus',93,0,127]
+		],0,'effects']
+	]
 
 	def __init__(self,parent=None):
 		if self.midi_driver=='alsa':
 			mdriver="alsa_seq";
 		else:
 			mdriver=self.midi_driver
-		#self.command=("/usr/local/bin/fluidsynth", "-p", "fluidsynth", "-a", self.audio_driver, "-m", mdriver ,"-g", "1")
 		self.command=("/usr/bin/fluidsynth", "-p", "fluidsynth", "-a", self.audio_driver, "-m", mdriver ,"-g", "1", "-j", "synth.midi-bank-select", "mma")
-
 		self.parent=parent
 		self.clean()
 		self.start(True)
 		self.load_bank_list()
+
+	def clean(self):
+		super().clean()
+		self.soundfont_count=0
+		self.soundfont_index={}
 
 	def stop(self):
 		self.proc_cmd("quit",2)
@@ -93,34 +94,23 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			except:
 				pass
 
-	def set_bank(self, i):
-		if self.bank_list[i]:
-			self.bank_index[self.midi_chan]=i
-			self.bank_name[self.midi_chan]=self.bank_list[i][2]
-			self.load_soundfont(self.bank_list[i][0])
-			print('Bank Selected: ' + self.bank_name[self.midi_chan] + ' (' + str(i)+')')
-			self.load_instr_list()
+	def _set_bank(self, bank, chan=None):
+		if self.load_soundfont(bank[0]):
 			self.unload_unused_soundfonts()
+			self.set_all_instr()
 
-	def set_instr(self, i):
-		if self.instr_list[i]:
-			last_instr_index=self.instr_index[self.midi_chan]
-			last_instr_name=self.instr_name[self.midi_chan]
-			self.instr_index[self.midi_chan]=i
-			self.instr_name[self.midi_chan]=self.instr_list[i][2]
-			print('Instrument Selected: ' + self.instr_name[self.midi_chan] + ' (' + str(i)+')')
-			if last_instr_index!=i or not last_instr_name:
-				#self.parent.zynmidi.set_midi_instr(self.midi_chan, self.instr_list[i][1][0], self.instr_list[i][1][1], self.instr_list[i][1][2])
-				self.set_soundfont_instr(self.instr_list[i])
-				self.load_instr_config()
-
-	def set_soundfont_instr(self, instr):
-		bi=self.bank_index[self.midi_chan]
-		sfi=self.soundfont_index[self.bank_list[bi][0]]
-		midi_bank=instr[1][0]+instr[1][1]*128
-		midi_prg=instr[1][2]
-		print("Set INSTR CH " + str(self.midi_chan) + ", SoundFont: " + str(sfi) + ", Bank: " + str(midi_bank) + ", Program: " + str(midi_prg))
-		self.proc_cmd("select "+str(self.midi_chan)+' '+str(sfi)+' '+str(midi_bank)+' '+str(midi_prg))
+	def _set_instr(self, instr, chan=None):
+		if chan is None: chan=self.midi_chan
+		bi=self.bank_index[chan]
+		sf=self.bank_list[bi][0]
+		if sf in self.soundfont_index:
+			sfi=self.soundfont_index[sf]
+			midi_bank=instr[1][0]+instr[1][1]*128
+			midi_prg=instr[1][2]
+			print("Set INSTR CH " + str(chan) + ", SoundFont: " + str(sfi) + ", Bank: " + str(midi_bank) + ", Program: " + str(midi_prg))
+			self.proc_cmd("select "+str(chan)+' '+str(sfi)+' '+str(midi_bank)+' '+str(midi_prg))
+		else:
+			print("WARNING: Can't set Instrument before loading SoundFont")
 
 	def load_soundfont(self, sf):
 		if sf not in self.soundfont_index:
@@ -128,6 +118,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			print("Load SoundFont " + sf + " => " + str(self.soundfont_count))
 			self.proc_cmd("load " + sf, 20)
 			self.soundfont_index[sf]=self.soundfont_count
+			return True
 
 	def unload_unused_soundfonts(self):
 		#Make a copy of soundfont index and remove used soundfonts

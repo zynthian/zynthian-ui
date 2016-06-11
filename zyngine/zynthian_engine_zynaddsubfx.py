@@ -44,44 +44,41 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		('_', os.getcwd()+"/data/zynbanks")
 	]
 
-	map_list=(
-		([
-			('volume',Template('/part$part/Pvolume'),96,127),
-			#('volume',7,96,127),
-			('modulation',1,0,127),
-			('filter Q',71,64,127),
-			('filter cutoff',74,64,127)
-		],0,'main'),
-		([
-			('expression',11,127,127),
-			('modulation',1,0,127),
-			('reverb',91,64,127),
-			('chorus',93,2,127)
-		],0,'effects'),
-		([
-			('bandwidth',75,64,127),
-			('modulation amplitude',76,127,127),
-			('resonance frequency',77,64,127),
-			('resonance bandwidth',78,64,127)
-		],0,'resonance')
-	)
-	default_ctrl_config=map_list[0][0]
+	ctrl_list=[
+		[[
+			['volume','/part$ch/Pvolume',96,127],
+			#['volume',7,96,127],
+			['modulation',1,0,127],
+			['filter Q',71,64,127],
+			['filter cutoff',74,64,127]
+		],0,'main'],
+		[[
+			['expression',11,127,127],
+			['modulation',1,0,127],
+			['reverb',91,64,127],
+			['chorus',93,2,127]
+		],0,'effects'],
+		[[
+			['bandwidth',75,64,127],
+			['modulation amplitude',76,127,127],
+			['resonance frequency',77,64,127],
+			['resonance bandwidth',78,64,127]
+		],0,'resonance']
+	]
 
 	def __init__(self,parent=None):
-		if os.environ.get('ZYNTHIANX'):
-			self.command_env=os.environ.copy()
-			self.command_env['DISPLAY']=os.environ.get('ZYNTHIANX')
+		if self.config_remote_display():
 			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_10ch.xmz", "-a")
 		else:
 			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-U", "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_10ch.xmz", "-a")
 		super().__init__(parent)
-		self._osc_init()
+		self.osc_init()
 
-	def osc_init(self):
-			#self.osc_server.add_method(None, None, self.cb_osc_all)
-			self.osc_server.add_method("/volume", 'i', self.parent.cb_osc_load_instr)
+	def osc_add_methods(self):
+			self.osc_server.add_method("/volume", 'i', self.cb_osc_load_instr)
 			self.osc_server.add_method("/paths", None, self.parent.cb_osc_paths)
 			self.osc_server.add_method(None, 'i', self.parent.cb_osc_ctrl)
+			#super().osc_add_methods()
 			#liblo.send(self.osc_target, "/echo")
 
 	def load_bank_list(self):
@@ -101,8 +98,17 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				title=str.replace(f[5:-4], '_', ' ')
 				self.instr_list.append((f,[bank_msb,bank_lsb,prg],title))
 
-	def load_instr_config(self):
-		super().load_instr_config()
+	def _set_instr(self, instr, chan=None):
+		self.loading=True
+		super()._set_instr(instr,chan)
+		liblo.send(self.osc_target, "/volume")
+		i=0
+		while self.loading and i<100: 
+			sleep(0.1)
+			i=i+1
+
+	def cb_osc_load_instr(self, path, args):
+		self.loading=False
 
 	def cb_osc_paths(self, path, args, types, src):
 		for a, t in zip(args, types):
