@@ -1,0 +1,18 @@
+diff --git a/source/backend/engine/CarlaEngineOsc.cpp b/source/backend/engine/CarlaEngineOsc.cpp
+index 777cf95..ae897f9 100644
+--- a/source/backend/engine/CarlaEngineOsc.cpp
++++ b/source/backend/engine/CarlaEngineOsc.cpp
+@@ -347,8 +347,11 @@ int CarlaEngineOsc::handleMsgRegister(const bool isTCP, const int argc, const lo
+     carla_debug("CarlaEngineOsc::handleMsgRegister() - OSC backend registered to %s", url);
+ 
+     {
+-        const char* host = lo_address_get_hostname(source);
+-        const char* port = lo_address_get_port(source);
++        lo_address addr=lo_address_new_from_url(url);
++        const char* host = lo_address_get_hostname(addr);
++        const char* port = lo_address_get_port(addr);
++        //const char* host = lo_address_get_hostname(source);
++        //const char* port = lo_address_get_port(source);
+ 
+         fControlData.source = lo_address_new_with_proto(isTCP ? LO_TCP : LO_UDP, host, port);
+         fControlData.path   = carla_strdup_free(lo_url_get_path(url));

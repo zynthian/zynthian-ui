@@ -1,0 +1,31 @@
+diff --git a/source/backend/engine/CarlaEngineJack.cpp b/source/backend/engine/CarlaEngineJack.cpp
+index 8f39427..c7f137a 100644
+--- a/source/backend/engine/CarlaEngineJack.cpp
++++ b/source/backend/engine/CarlaEngineJack.cpp
+@@ -1596,7 +1596,8 @@ protected:
+             float* const audioOut1 = (float*)jackbridge_port_get_buffer(fRackPorts[kRackPortAudioOut1], nframes);
+             float* const audioOut2 = (float*)jackbridge_port_get_buffer(fRackPorts[kRackPortAudioOut2], nframes);
+             void* const  eventIn   = jackbridge_port_get_buffer(fRackPorts[kRackPortEventIn],  nframes);
+-            void* const  eventOut  = jackbridge_port_get_buffer(fRackPorts[kRackPortEventOut], nframes);
++            void* const eventOut   = NULL;
++            //void* const  eventOut  = jackbridge_port_get_buffer(fRackPorts[kRackPortEventOut], nframes);
+ 
+ #if 1
+             // assert buffers
+@@ -1605,7 +1606,7 @@ protected:
+             CARLA_SAFE_ASSERT(audioOut1 != nullptr);
+             CARLA_SAFE_ASSERT(audioOut2 != nullptr);
+             CARLA_SAFE_ASSERT(eventIn != nullptr);
+-            CARLA_SAFE_ASSERT(eventOut != nullptr);
++            //CARLA_SAFE_ASSERT(eventOut != nullptr);
+ #endif
+ 
+             // create audio buffers
+@@ -1645,6 +1646,7 @@ protected:
+                 pData->graph.process(pData, inBuf, outBuf, nframes);
+ 
+             // output control
++            if (0)
+             {
+                 jackbridge_midi_clear_buffer(eventOut);
+ 
