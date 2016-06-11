@@ -679,6 +679,9 @@ class zynthian_splash:
 		self.canvas.pack(expand = YES, fill = BOTH)
 		top.after(tms, self.hide)
 
+	def zyncoder_read(self):
+		pass
+
 #-------------------------------------------------------------------------------
 # Zynthian Info GUI Class
 #-------------------------------------------------------------------------------
@@ -725,6 +728,9 @@ class zynthian_info:
 			self.shown=True
 			self.canvas.pack(expand = YES, fill = BOTH)
 
+	def zyncoder_read(self):
+		pass
+
 #-------------------------------------------------------------------------------
 # Zynthian Admin GUI Class
 #-------------------------------------------------------------------------------
@@ -742,9 +748,10 @@ class zynthian_admin(zynthian_selector):
 			self.list_data=(
 				(self.update_software,0,"Update Zynthian Software"),
 				(self.update_library,0,"Update Zynthian Library"),
-				(self.update_system,0,"Update Operating System"),
-				(self.connect_to_pc,0,"Network Info"),
-				(self.connect_to_pc,0,"Connect to PC"),
+				#(self.update_system,0,"Update Operating System"),
+				(self.network_info,0,"Network Info"),
+				#(self.connect_to_pc,0,"Connect to PC"),
+				(self.restart_gui,0,"Restart GUI"),
 				(self.exit_to_console,0,"Exit to Console"),
 				(self.reboot,0,"Reboot"),
 				(self.power_off,0,"Power Off")
@@ -802,6 +809,10 @@ class zynthian_admin(zynthian_selector):
 		print("CONNECT TO PC")
 		zyngui.show_info("CONNECT TO PC:")
 		self.start_command(["ifconfig wlan0"])
+
+	def restart_gui(self):
+		print("RESTART GUI")
+		sys.exit(102)
 
 	def exit_to_console(self):
 		print("EXIT TO CONSOLE")

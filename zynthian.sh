@@ -142,7 +142,6 @@ function ttymidi_stop() {
 }
 
 function zynthian_stop() {
-	splash_zynthian
 	autoconnector_stop
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 		aubionotes_stop
@@ -172,22 +171,41 @@ if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 fi
 autoconnector_start &
 
-# Start Zynthian GUI & Synth Engine
-./zynthian_gui.py
-status=$?
+while true; do
+	# Start Zynthian GUI & Synth Engine
+	./zynthian_gui.py
+	status=$?
 
-if test $status -eq 0; then
-	zynthian_stop
-	screentouch_off
-	poweroff
-elif test $status -eq 100; then
-	zynthian_stop
-	screentouch_off
-	reboot
-elif test $status -eq 101; then
-	zynthian_stop
-else
-	splash_zynthian_error
-fi
+	# Proccess output status
+	case $status in
+		0)
+			splash_zynthian
+			zynthian_stop
+			screentouch_off
+			poweroff
+			break
+		;;
+		100)
+			splash_zynthian
+			zynthian_stop
+			screentouch_off
+			reboot
+			break
+		;;
+		101)
+			splash_zynthian
+			zynthian_stop
+			break
+		;;
+		102)
+			splash_zynthian
+			sleep 1
+		;;
+		*)
+			splash_zynthian_error
+			sleep 3
+		;;
+	esac  
+done
 
 #------------------------------------------------------------------------------
