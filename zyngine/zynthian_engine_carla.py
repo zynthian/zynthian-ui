@@ -25,7 +25,7 @@
 import os
 import re
 import socket
-from time import sleep
+from time import sleep, time
 from zyngine.zynthian_engine import *
 
 #------------------------------------------------------------------------------
@@ -44,8 +44,12 @@ class zynthian_engine_carla(zynthian_engine):
 
 	plugin_info={}
 	touched=False
+	refreshed_ts=None
 
 	def __init__(self,parent=None):
+		self.plugin_info={}
+		self.touched=False
+		self.refreshed_ts=None
 		self.parent=parent
 		self.clean()
 		self.load_bank_list()
@@ -235,6 +239,7 @@ class zynthian_engine_carla(zynthian_engine):
 	def refresh(self):
 		if self.touched:
 			self.touched=False
+			self.refreshed_ts=time()
 			#generate program list
 			self.generate_instr_list()
 			print("PROGRAM LIST ...\n"+str(self.instr_list))
@@ -243,6 +248,12 @@ class zynthian_engine_carla(zynthian_engine):
 			print("CONTROLLER LIST ...\n"+str(self.ctrl_list))
 			#refresh screen
 			self.parent.refresh_screen()
+		elif self.refreshed_ts and (time()-self.refreshed_ts)>0.5:
+			self.refreshed_ts=None
+			if self.loading:
+				print("AFTER REFRESH POST LOADING  ...")
+				self.stop_loading()
+				self.load_snapshot_post()
 
 	def load_bank_list(self):
 		self.load_bank_filelist(self.patch_dirs,"carxp")
@@ -250,13 +261,15 @@ class zynthian_engine_carla(zynthian_engine):
 	def load_instr_list(self):
 		new_patch=self.bank_list[self.get_bank_index()][0]
 		if new_patch!=self.patch_name:
-			self.instr_list=[]
-			self.ctrl_list=self.default_ctrl_list
 			self.load_patch(new_patch)
 
 	#TODO: Revise this!!!
 	def load_ctrl_config(self):
 		self.ctrl_config[self.midi_chan]=self.ctrl_list
+
+	def set_all_instr(self):
+		self.load_instr_list()
+		super().set_all_instr()
 
 	def load_patch(self, patch):
 		#Set OSC PORT connection variables
@@ -270,14 +283,16 @@ class zynthian_engine_carla(zynthian_engine):
 			self.command=("/usr/local/bin/carla-patchbay", "-n", self.patch_name)
 		#Stop Previous Carla Instance
 		self.osc_end()
-		self.stop()
-		sleep(1)
+		self.stop(1)
 		#Reset plugin info
 		self.plugin_info={}
 		self.touched=False
+		self.instr_list=[]
+		self.ctrl_list=self.default_ctrl_list
 		#Run Carla Instance
 		print("Running Command: "+ str(self.command))
 		self.start(True)
 		self.osc_init(liblo.TCP)
+		self.start_loading()
 
 #******************************************************************************

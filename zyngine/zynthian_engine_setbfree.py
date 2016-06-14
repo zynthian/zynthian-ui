@@ -117,6 +117,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 					pass
 
 	def load_pgm_list(self,fpath):
+		self.start_loading()
+		pgm_list=None
 		try:
 			with open(fpath) as f:
 				pgm_list=[]
@@ -159,9 +161,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 					except:
 						#print("Ignored line: %s" % line)
 						pass
-				return pgm_list
-		except:
-			print("ERROR: Can't open file %s" % fpath)
+		except Exception as err:
+			pgm_list=None
+			print("ERROR: Getting program info from %s => %s" % (fpath,err))
+		self.stop_loading()
+		return pgm_list
+
 
 	def get_path(self,chan=None):
 		path=super().get_path(chan)

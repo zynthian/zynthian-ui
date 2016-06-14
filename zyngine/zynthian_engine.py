@@ -27,6 +27,7 @@ import os
 import copy
 import signal
 import liblo
+from time import sleep,time
 from os.path import isfile, isdir, join
 from subprocess import call, Popen, PIPE, STDOUT
 from threading  import Thread
@@ -55,8 +56,9 @@ class zynthian_engine:
 	command=None
 	command_env=None
 	proc=None
-	thread=None
+
 	queue=None
+	thread_queue=None
 
 	user_gid=1000
 	user_uid=1000
@@ -70,8 +72,10 @@ class zynthian_engine:
 	bank_list=[]
 	instr_list=[]
 
-	midi_chan=0
 	max_chan=10
+	midi_chan=0
+
+	loading=0
 
 	bank_index=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 	bank_name=["","","","","","","","","","","","","","","",""]
@@ -111,6 +115,7 @@ class zynthian_engine:
 
 	def clean(self):
 		self.midi_chan=0
+		self.loading=False
 		for i in range(16):
 			self.bank_index[i]=0
 			self.bank_name[i]=""
@@ -119,6 +124,16 @@ class zynthian_engine:
 			self.instr_name[i]=""
 			self.instr_set[i]=None
 			self.ctrl_config[i]=None
+
+	def start_loading(self):
+		self.loading=self.loading+1
+		if self.loading<1: self.loading=1
+		self.parent.start_loading()
+
+	def stop_loading(self):
+		self.loading=self.loading-1
+		if self.loading<0: self.loading=0
+		self.parent.stop_loading()
 
 	def config_remote_display(self):
 		fvars={}
@@ -148,11 +163,8 @@ class zynthian_engine:
 			for line in self.proc.stdout:
 				self.queue.put(line)
 				#print(line)
-			#for line in self.proc.stderr:
-				#self.queue.put(line)
-				#print(line)
 		except:
-			pass
+			print("Finished queue thread")
 
 	def proc_get_lines(self, tout=0.1, limit=2):
 		n=0
@@ -161,8 +173,7 @@ class zynthian_engine:
 			try:
 				lines.append(self.queue.get(timeout=tout))
 				n=n+1
-				if (n==limit):
-					tout=0.1
+				if (n==limit): tout=0.1
 			except Empty:
 				break
 		return lines
@@ -176,35 +187,60 @@ class zynthian_engine:
 	def start(self, start_queue=False, shell=False):
 		if not self.proc:
 			print("Starting Engine " + self.name)
-			self.proc=Popen(self.command,shell=shell,bufsize=1,universal_newlines=True,stdin=PIPE,stdout=PIPE,stderr=STDOUT,env=self.command_env)
-			#, preexec_fn=os.setsid
-			#, preexec_fn=self.chuser()
-			if start_queue:
-				self.queue=Queue()
-				self.thread=Thread(target=self.proc_enqueue_output, args=())
-				self.thread.daemon = True # thread dies with the program
-				self.thread.start()
-				self.proc_get_lines(2)
+			try:
+				self.start_loading()
+				self.proc=Popen(self.command,shell=shell,bufsize=1,universal_newlines=True,
+					stdin=PIPE,stdout=PIPE,stderr=STDOUT,env=self.command_env)
+					#, preexec_fn=os.setsid
+					#, preexec_fn=self.chuser()
+				if start_queue:
+					self.queue=Queue()
+					self.thread_queue=Thread(target=self.proc_enqueue_output, args=())
+					self.thread_queue.daemon = True # thread dies with the program
+					self.thread_queue.start()
+					self.proc_get_lines(2)
+			except Exception as err:
+				print("ERROR: Can't start engine %s => %s" % (self.name,err))
+			self.stop_loading()
 
-	def stop(self):
+	def stop(self, wait=0.2):
 		if self.proc:
-			print("Stoping Engine " + self.name)
-			#self.proc.stdout.close()
-			#self.proc.stdin.close()
-			#os.killpg(os.getpgid(self.proc.pid), signal.SIGTERM)
-			self.proc.terminate()
-			#self.proc.kill()
+			self.start_loading()
+			try:
+				print("Stoping Engine " + self.name)
+				pid=self.proc.pid
+				#self.proc.stdout.close()
+				#self.proc.stdin.close()
+				#os.killpg(os.getpgid(pid), signal.SIGTERM)
+				self.proc.terminate()
+				if wait>0: sleep(wait)
+				try:
+					self.proc.kill()
+					os.killpg(pid, signal.SIGKILL)
+				except:
+					pass
+			except Exception as err:
+				print("ERROR: Can't stop engine %s => %s" % (self.name,err))
 			self.proc=None
+			self.stop_loading()
 
 	def proc_cmd(self, cmd, tout=0.1):
 		if self.proc:
-			#print("PROC_CMD: "+cmd)
-			#self.proc.stdin.write(bytes(cmd + "\n", 'UTF-8'))
-			self.proc.stdin.write(cmd + "\n")
-			self.proc.stdin.flush()
-			return self.proc_get_lines(tout)
+			self.start_loading()
+			try:
+				#print("PROC_CMD: "+cmd)
+				#self.proc.stdin.write(bytes(cmd + "\n", 'UTF-8'))
+				self.proc.stdin.write(cmd + "\n")
+				self.proc.stdin.flush()
+				out=self.proc_get_lines(tout)
+			except Exception as err:
+				out=""
+				print("ERROR: Can't exec engine command %s => %s" % (cmd,err))
+			self.stop_loading()
+			return out
 
 	def osc_init(self, proto=liblo.UDP):
+		self.start_loading()
 		try:
 			self.osc_target=liblo.Address('localhost',self.osc_target_port,proto)
 			print("OSC target in port %s" % str(self.osc_target_port))
@@ -216,13 +252,17 @@ class zynthian_engine:
 			self.osc_server.start()
 		except liblo.AddressError as err:
 			print("ERROR: OSC Server can't be initialized (%s). Running without OSC feedback." % err)
+		self.stop_loading()
 
 	def osc_end(self):
 		if self.osc_server:
+			self.start_loading()
 			try:
-				self.osc_server.stop()
+				#self.osc_server.stop()
+				print("OSC server stopped")
 			except Exception as err:
 				print("ERROR: Can't stop OSC server => %s" % err)
+			self.stop_loading()
 
 	def osc_add_methods(self):
 		self.osc_server.add_method(None, None, self.cb_osc_all)
@@ -291,6 +331,7 @@ class zynthian_engine:
 
 	def load_bank_filelist(self, dpath, fext):
 		print('Getting Bank List for ' + self.name)
+		self.start_loading()
 		self.bank_list=[]
 		if isinstance(dpath, str): dpath=[('_', dpath)]
 		fext='.'+fext
@@ -306,9 +347,11 @@ class zynthian_engine:
 					#print("bank_filelist => "+title)
 					self.bank_list.append((join(dp,f),i,title,dn))
 					i=i+1
+		self.stop_loading()
 
 	def load_bank_dirlist(self,dpath):
 		print('Getting Bank List for ' + self.name)
+		self.start_loading()
 		self.bank_list=[]
 		if isinstance(dpath, str): dpath=[('_', dpath)]
 		i=0
@@ -322,17 +365,20 @@ class zynthian_engine:
 					#print("bank_dirlist => "+title)
 					self.bank_list.append((join(dp,f),i,title,dn))
 					i=i+1
+		self.stop_loading()
 
 	def load_bank_cmdlist(self,cmd):
-		i=0
-		self.bank_list=[]
 		print('Getting Bank List for ' + self.name)
+		self.start_loading()
+		self.bank_list=[]
+		i=0
 		output=check_output(cmd, shell=True)
 		lines=output.decode('utf8').split('\n')
 		for f in lines:
 			title=str.replace(f, '_', ' ')
 			self.bank_list.append((f,i,title))
 			i=i+1
+		self.stop_loading()
 
 	def load_bank_list(self):
 		self.bank_list=[]
@@ -491,15 +537,24 @@ class zynthian_engine:
 			self.instr_name=status['instr_name']
 			self.instr_set=status['instr_set']
 			self.ctrl_config=status['ctrl_config']
-			self.set_all_bank()
-			self.set_all_instr()
-			self.set_all_ctrl()
-			self.parent.refresh_screen()
+			return self.load_snapshot_post()
 		except UserWarning as e:
 			print("ERROR: %s" % e)
+			return False
 		except Exception as e:
 			print("ERROR: Invalid snapshot format. %s" % e)
 			return False
-		return True
+
+	def load_snapshot_post(self):
+		try:
+			self.set_all_bank()
+			self.set_all_instr()
+			sleep(0.2)
+			self.set_all_ctrl()
+			self.parent.refresh_screen()
+			return True
+		except Exception as e:
+			print("ERROR: " % e)
+			return False
 
 #******************************************************************************

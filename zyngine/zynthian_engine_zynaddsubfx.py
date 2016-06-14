@@ -99,7 +99,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				self.instr_list.append((f,[bank_msb,bank_lsb,prg],title))
 
 	def _set_instr(self, instr, chan=None):
-		self.loading=True
+		self.start_loading()
 		super()._set_instr(instr,chan)
 		liblo.send(self.osc_target, "/volume")
 		i=0
@@ -108,7 +108,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			i=i+1
 
 	def cb_osc_load_instr(self, path, args):
-		self.loading=False
+		self.stop_loading()
 
 	def cb_osc_paths(self, path, args, types, src):
 		for a, t in zip(args, types):

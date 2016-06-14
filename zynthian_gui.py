@@ -59,35 +59,19 @@ height=240
 #Initial Screen
 splash_image="./img/zynthian_logo_boot.gif"
 
-# Original Colors
-bgcolor="#002255"
-bg2color="#2c5aa0"
-bg3color="#5f7aa2"
-bordercolor="#0064fa"
-textcolor="#0064fa"
-lightcolor="#f8cf2b"
-
-# New Colors Inspired in ZynAddSubFX new GUI => https://github.com/fundamental/zyn-ui-two
-color_bg="#232c36"
-color_tx="#becfe4"
+# Color Scheme
+color_bg="#000000"
+color_tx="#ffffff"
+color_on="#ff0000"
 color_panel_bg="#3a424d"
-#color_panel_bd="#3a424d"
 color_panel_bd=color_bg
-color_panel_tx="#becfe4"
-color_header_bg="#333a42"
-color_header_tx="#a9b8c4"
-color_ctrl_bg_off="#434f59"
-color_ctrl_bg_on="#00828c" #007272
-color_ctrl_tx="#00cff7"
-color_ctrl_tx2="#00cca5"
-color_btn_bg="#505e6c"
-color_btn_tx="#becfe4"
-
-#bg2color=bgcolor_ctrl_off
-#bg3color=bgcolor_ctrl_on
-#bordercolor=bgcolor
-#textcolor=color_panel_txt
-#lightcolor=color_ctrl_txt
+color_panel_tx=color_tx
+color_header_bg=color_bg
+color_header_tx=color_tx
+color_ctrl_bg_off="#5a626d"
+color_ctrl_bg_on=color_on
+color_ctrl_tx=color_tx
+color_ctrl_tx_off="#e0e0e0"
 
 #-------------------------------------------------------------------------------
 # Controller positions
@@ -487,11 +471,16 @@ class zynthian_selector:
 	lb_height=10
 	lb_x=width/2+1
 	wide=False
+
 	shown=False
 	index=0
 	list_data=[]
 	selector_caption=None
 	zselector=None
+	
+	loading_imgs=[]
+	loading_index=0
+	loading_item=None
 
 	def __init__(self, selcap='Select', wide=False, image_bg=None):
 		self.shown=False
@@ -545,9 +534,15 @@ class zynthian_selector:
 			textvariable=self.select_path,
 			#wraplength=80,
 			justify=LEFT,
-			bg=color_bg,
-			fg=color_tx)
+			bg=color_header_bg,
+			fg=color_header_tx)
 		self.label_select_path.place(x=1, y=0, anchor=NW)
+
+		# Init Loading Image Animation
+		self.loading_imgs=[]
+		for i in range(13):
+			self.loading_imgs.append(PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
+		self.loading_item=self.canvas.create_image(width-7, 28, image = self.loading_imgs[0], anchor=NE)
 
 		# Selector Controller Caption
 		self.selector_caption=selcap
@@ -577,6 +572,23 @@ class zynthian_selector:
 			return True
 		except:
 			return False
+
+	def refresh_loading(self):
+		if self.shown:
+			try:
+				if zyngui.loading:
+					self.loading_index=self.loading_index+1
+					if self.loading_index>13: self.loading_index=0
+					self.canvas.itemconfig(self.loading_item, image=self.loading_imgs[self.loading_index])
+				else:
+					self.reset_loading()
+			except:
+				self.reset_loading()
+
+	def reset_loading(self, force=False):
+		if self.loading_index>0 or force:
+			self.loading_index=0
+			self.canvas.itemconfig(self.loading_item, image=self.loading_imgs[0])
 
 	def plot_frame(self):
 		if self.wide:
@@ -653,7 +665,7 @@ class zynthian_selector:
 #-------------------------------------------------------------------------------
 # Zynthian Splash GUI Class
 #-------------------------------------------------------------------------------
-class zynthian_splash:
+class zynthian_gui_splash:
 	shown=False
 
 	def __init__(self, tms=1000):
@@ -685,7 +697,7 @@ class zynthian_splash:
 #-------------------------------------------------------------------------------
 # Zynthian Info GUI Class
 #-------------------------------------------------------------------------------
-class zynthian_info:
+class zynthian_gui_info:
 	shown=False
 
 	def __init__(self):
@@ -734,7 +746,7 @@ class zynthian_info:
 #-------------------------------------------------------------------------------
 # Zynthian Admin GUI Class
 #-------------------------------------------------------------------------------
-class zynthian_admin(zynthian_selector):
+class zynthian_gui_admin(zynthian_selector):
 	commands=None
 	thread=None
 
@@ -774,12 +786,14 @@ class zynthian_admin(zynthian_selector):
 				result="ERROR: "+str(e)
 			print(result)
 			zyngui.add_info("\n"+str(result))
-		zyngui.hide_info_timer(3000)
 		self.commands=None
+		zyngui.hide_info_timer(3000)
+		zyngui.stop_loading()
 
 	def start_command(self,cmds):
 		if not self.commands:
 			print("Starting Command Sequence ...")
+			zyngui.start_loading()
 			self.commands=cmds
 			self.thread=Thread(target=self.execute_commands, args=())
 			self.thread.daemon = True # thread dies with the program
@@ -863,7 +877,7 @@ class zynthian_gui_engine(zynthian_selector):
 	def set_select_path(self):
 		self.select_path.set("Engine")
 
-	def set_engine(self,name):
+	def set_engine(self,name,wait=0):
 		if self.zyngine:
 			if self.zyngine.name==name:
 				return False
@@ -881,6 +895,7 @@ class zynthian_gui_engine(zynthian_selector):
 			self.zyngine=zynthian_engine_fluidsynth(zyngui)
 		else:
 			return False
+		if wait>0: sleep(wait)
 		return True
 
 #-------------------------------------------------------------------------------
@@ -955,13 +970,11 @@ class zynthian_gui_snapshot(zynthian_selector):
 					zyngui.show_screen('engine')
 			else:
 				if not zyngui.zyngine or zyngui.zyngine.nickname!=engine:
-					zyngui.set_engine(engine)
-					sleep(3)
+					zyngui.set_engine(engine,3)
 				zyngui.zyngine.load_snapshot(fpath)
-				if zyngui.active_screen in ['admin', 'engine']:
-					zyngui.show_screen('chan')
-				else:
-					zyngui.show_active_screen()
+				#if zyngui.active_screen in ['admin', 'engine']: zyngui.show_screen('chan')
+				#else: zyngui.show_active_screen()
+				zyngui.show_screen('control')
 		elif self.action=="SAVE":
 			if fpath=='NEW':
 				fpath=self.get_new_fpath(engine)
@@ -1147,7 +1160,7 @@ class zynthian_gui_control(zynthian_selector):
 		for i in range(0,4):
 			self.zcontrollers[i].hide()
 		self.set_selector()
-		self.listbox.config(selectbackground=color_ctrl_bg_on)
+		self.listbox.config(selectbackground=color_ctrl_bg_on, selectforeground=color_ctrl_tx, fg=color_ctrl_tx)
 		self.select(self.index)
 		self.set_select_path()
 
@@ -1155,7 +1168,7 @@ class zynthian_gui_control(zynthian_selector):
 		self.mode='control'
 		if self.zselector: self.zselector.hide()
 		self.set_controller_config()
-		self.listbox.config(selectbackground=color_ctrl_bg_off)
+		self.listbox.config(selectbackground=color_ctrl_bg_off, selectforeground=color_ctrl_tx, fg=color_ctrl_tx_off)
 		self.set_select_path()
 
 	def select_action(self, i):
@@ -1280,6 +1293,10 @@ class zynthian_gui:
 	osc_target=None
 	osc_server=None
 
+	loading=0
+	loading_thread=None
+	zyncoder_thread=None
+
 	def __init__(self):
 		# Controls Initialization (Rotary and Switches)
 		try:
@@ -1292,15 +1309,17 @@ class zynthian_gui:
 		except Exception as e:
 			print("ERROR initializing GUI: %s" % e)
 		# GUI Objects Initialization
-		#self.screens['splash']=zynthian_splash(1000)
-		self.screens['admin']=zynthian_admin()
-		self.screens['info']=zynthian_info()
+		#self.screens['splash']=zynthian_gui_splash(1000)
+		self.screens['admin']=zynthian_gui_admin()
+		self.screens['info']=zynthian_gui_info()
 		self.screens['engine']=zynthian_gui_engine()
 		self.screens['snapshot']=zynthian_gui_snapshot()
 		# Show first screen and start polling
 		self.show_screen('engine')
 		self.load_snapshot()
 		self.start_polling()
+		self.start_loading_thread()
+		self.start_zyncoder_thread()
 
 	def hide_screens(self,exclude=None):
 		if not exclude:
@@ -1351,13 +1370,15 @@ class zynthian_gui:
 		self.screens['snapshot'].save()
 		self.hide_screens(exclude='snapshot')
        
-	def set_engine(self,name):
-		if self.screens['engine'].set_engine(name):
+	def set_engine(self,name,wait=0):
+		self.start_loading()
+		if self.screens['engine'].set_engine(name,wait):
 			self.zyngine=self.screens['engine'].zyngine
 			self.screens['chan']=zynthian_gui_chan(self.zyngine.max_chan)
 			self.screens['bank']=zynthian_gui_bank()
 			self.screens['instr']=zynthian_gui_instr()
 			self.screens['control']=zynthian_gui_control()
+		self.stop_loading()
 
 	# Init GPIO Switches
 	def zynswitches_init(self):
@@ -1474,21 +1495,49 @@ class zynthian_gui:
 					self.show_screen('admin')
 				return True
 
+	def start_zyncoder_thread(self):
+		if lib_zyncoder:
+			self.zyncoder_thread=Thread(target=self.zyncoder_read, args=())
+			self.zyncoder_thread.daemon = True # thread dies with the program
+			self.zyncoder_thread.start()
+
+	def start_loading_thread(self):
+		self.loading_thread=Thread(target=self.loading_refresh, args=())
+		self.loading_thread.daemon = True # thread dies with the program
+		self.loading_thread.start()
+
+	def start_loading(self):
+		self.loading=self.loading+1
+		if self.loading<1: self.loading=1
+
+	def stop_loading(self):
+		self.loading=self.loading-1
+		if self.loading<0: self.loading=0
+
 	def start_polling(self):
 		self.polling=True
-		self.poll_count=0
-		if lib_zyncoder:
-			self.zyncoder_read()
 		if self.amidi:
 			self.midi_read()
 		self.zyngine_refresh()
-		#self.osc_read()
 
 	def stop_polling(self):
 		self.polling=False
 
 	def after(self, msec, func):
 		top.after(msec, func)
+
+	def zyncoder_read(self):
+		while True:
+			if not self.loading:
+				try:
+					if self.modal_screen:
+						self.screens[self.modal_screen].zyncoder_read()
+					else:
+						self.screens[self.active_screen].zyncoder_read()
+					self.zynswitches()
+				except Exception as err:
+					print("ERROR: zynthian_gui.zyncoder_read() => %s" % err)
+			sleep(0.04)
 
 	def midi_read(self):
 		try:
@@ -1506,28 +1555,6 @@ class zynthian_gui:
 		if self.polling:
 			top.after(40, self.midi_read)
 
-	def zyncoder_read(self):
-		try:
-			if self.modal_screen:
-				self.screens[self.modal_screen].zyncoder_read()
-			else:
-				self.screens[self.active_screen].zyncoder_read()
-			self.zynswitches()
-		except Exception as err:
-			print("ERROR: zynthian_gui.zyncoder_read() => %s" % err)
-		if self.polling:
-			top.after(40, self.zyncoder_read)
-
-	def osc_read(self):
-		try:
-			if self.zyngine and self.zyngine.osc_server:
-				while self.zyngine.osc_server.recv(0):
-					pass
-		except Exception as err:
-			print("ERROR: zynthian_gui.osc_read() => %s" % err)
-		if self.polling:
-			top.after(40, self.osc_read)
-
 	def zyngine_refresh(self):
 		try:
 			if self.zyngine:
@@ -1535,7 +1562,18 @@ class zynthian_gui:
 		except Exception as err:
 			print("ERROR: zynthian_gui.zyngine_refresh() => %s" % err)
 		if self.polling:
-			top.after(100, self.zyngine_refresh)
+			top.after(160, self.zyngine_refresh)
+
+	def loading_refresh(self):
+		while True:
+			try:
+				if self.modal_screen:
+					self.screens[self.modal_screen].refresh_loading()
+				else:
+					self.screens[self.active_screen].refresh_loading()
+			except Exception as err:
+				print("ERROR: zynthian_gui.loading_refresh() => %s" % err)
+			sleep(0.1)
 
 	def cb_osc_paths(self, path, args, types, src):
 		if isinstance(zyngui.zyngine,zynthian_engine_zynaddsubfx):

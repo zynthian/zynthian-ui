@@ -89,6 +89,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			print("ERROR connecting with LinuxSampler Server")
 
 	def lscp_send_pattern(self, pattern, pdict=None):
+		self.start_loading()
 		fpath=self.lscp_dir+'/'+pattern+'.lscp'
 		with open(fpath) as f:
 			lscp=f.read()
@@ -102,6 +103,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 					pass
 			#print("LSCP =>\n"+lscp)
 			self.lscp_send(lscp)
+		self.stop_loading()
 
 	def load_bank_list(self):
 		self.load_bank_dirlist(self.bank_dirs)
@@ -126,12 +128,13 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def load_instr_list(self):
 		print('Getting Instr List for ' + self.name)
+		self.start_loading()
 		i=0
 		self.instr_list=[]
 		instr_dpath=self.bank_list[self.get_bank_index()][0]
-		print("Finding in "+instr_dpath)
+		#print("Finding in "+instr_dpath)
 		if os.path.isdir(instr_dpath):
-			print("Finding in "+instr_dpath)
+			#print("Finding in "+instr_dpath)
 			cmd="find '"+instr_dpath+"' -maxdepth 2 -type f -name '*.sfz'"
 			output=check_output(cmd, shell=True).decode('utf8')
 			cmd="find '"+instr_dpath+"' -maxdepth 2 -type f -name '*.gig'"
@@ -142,19 +145,22 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 					filename, filext = os.path.splitext(f)
 					title=filename[len(instr_dpath)+1:].replace('_', ' ')
 					engine=filext[1:].lower()
-					print("instr_list => " + f)
+					#print("instr_list => " + f)
 					self.instr_list.append((i,[0,0,0],title,f,engine))
 					i=i+1
+		self.stop_loading()
 
 	def xset_bank(self, i):
 		super().set_bank(i)
 		#Send LSCP script
+		self.start_loading()
 		lscp_fpath=self.lscp_dir+'/'+self.bank_list[self.get_bank_index()][0]
 		with open(lscp_fpath) as f:
 			lines = f.readlines()
 			for line in lines:
 				self.lscp_send(line)
 				#print("LSCP: "+line)
+		self.stop_loading()
 
 	def _set_instr(self, instr, chan=None):
 		if chan is None: chan=self.midi_chan
