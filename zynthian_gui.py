@@ -783,6 +783,7 @@ class zynthian_gui_admin(zynthian_selector):
 		self.select_path.set("Admin")
 
 	def execute_commands(self):
+		zyngui.start_loading()
 		for cmd in self.commands:
 			print("Executing Command: "+cmd)
 			zyngui.add_info("\nExecuting: "+cmd)
@@ -799,7 +800,6 @@ class zynthian_gui_admin(zynthian_selector):
 	def start_command(self,cmds):
 		if not self.commands:
 			print("Starting Command Sequence ...")
-			zyngui.start_loading()
 			self.commands=cmds
 			self.thread=Thread(target=self.execute_commands, args=())
 			self.thread.daemon = True # thread dies with the program
@@ -832,19 +832,19 @@ class zynthian_gui_admin(zynthian_selector):
 
 	def restart_gui(self):
 		print("RESTART GUI")
-		sys.exit(102)
+		zyngui.exit(102)
 
 	def exit_to_console(self):
 		print("EXIT TO CONSOLE")
-		sys.exit(101)
+		zyngui.exit(101)
 
 	def reboot(self):
 		print("REBOOT")
-		sys.exit(100)
+		zyngui.exit(100)
 
 	def power_off(self):
 		print("POWER OFF")
-		sys.exit(0)
+		zyngui.exit(0)
 
 #-------------------------------------------------------------------------------
 # Zynthian Engine Selection GUI Class
@@ -1302,6 +1302,8 @@ class zynthian_gui:
 	loading=0
 	loading_thread=None
 	zyncoder_thread=None
+	exit_flag=False
+	exit_code=0
 
 	def __init__(self):
 		# Controls Initialization (Rotary and Switches)
@@ -1385,6 +1387,10 @@ class zynthian_gui:
 			self.screens['instr']=zynthian_gui_instr()
 			self.screens['control']=zynthian_gui_control()
 		self.stop_loading()
+
+	# -------------------------------------------------------------------
+	# Switches
+	# -------------------------------------------------------------------
 
 	# Init GPIO Switches
 	def zynswitches_init(self):
@@ -1501,11 +1507,28 @@ class zynthian_gui:
 					self.show_screen('admin')
 				return True
 
+	# -------------------------------------------------------------------
+	# Threads
+	# -------------------------------------------------------------------
+
 	def start_zyncoder_thread(self):
 		if lib_zyncoder:
 			self.zyncoder_thread=Thread(target=self.zyncoder_read, args=())
 			self.zyncoder_thread.daemon = True # thread dies with the program
 			self.zyncoder_thread.start()
+
+	def zyncoder_read(self):
+		while not self.exit_flag:
+			if not self.loading:
+				try:
+					if self.modal_screen:
+						self.screens[self.modal_screen].zyncoder_read()
+					else:
+						self.screens[self.active_screen].zyncoder_read()
+					self.zynswitches()
+				except Exception as err:
+					print("ERROR: zynthian_gui.zyncoder_read() => %s" % err)
+			sleep(0.04)
 
 	def start_loading_thread(self):
 		self.loading_thread=Thread(target=self.loading_refresh, args=())
@@ -1520,6 +1543,25 @@ class zynthian_gui:
 		self.loading=self.loading-1
 		if self.loading<0: self.loading=0
 
+	def loading_refresh(self):
+		while not self.exit_flag:
+			try:
+				if self.modal_screen:
+					self.screens[self.modal_screen].refresh_loading()
+				else:
+					self.screens[self.active_screen].refresh_loading()
+			except Exception as err:
+				print("ERROR: zynthian_gui.loading_refresh() => %s" % err)
+			sleep(0.1)
+
+	def exit(self, code=0):
+		self.exit_flag=True
+		self.exit_code=code
+
+	# -------------------------------------------------------------------
+	# Polling
+	# -------------------------------------------------------------------
+	
 	def start_polling(self):
 		self.polling=True
 		if self.amidi:
@@ -1531,19 +1573,6 @@ class zynthian_gui:
 
 	def after(self, msec, func):
 		top.after(msec, func)
-
-	def zyncoder_read(self):
-		while True:
-			if not self.loading:
-				try:
-					if self.modal_screen:
-						self.screens[self.modal_screen].zyncoder_read()
-					else:
-						self.screens[self.active_screen].zyncoder_read()
-					self.zynswitches()
-				except Exception as err:
-					print("ERROR: zynthian_gui.zyncoder_read() => %s" % err)
-			sleep(0.04)
 
 	def midi_read(self):
 		try:
@@ -1563,6 +1592,8 @@ class zynthian_gui:
 
 	def zyngine_refresh(self):
 		try:
+			if self.exit_flag:
+				sys.exit(self.exit_code)
 			if self.zyngine:
 				self.zyngine.refresh()
 		except Exception as err:
@@ -1570,16 +1601,9 @@ class zynthian_gui:
 		if self.polling:
 			top.after(160, self.zyngine_refresh)
 
-	def loading_refresh(self):
-		while True:
-			try:
-				if self.modal_screen:
-					self.screens[self.modal_screen].refresh_loading()
-				else:
-					self.screens[self.active_screen].refresh_loading()
-			except Exception as err:
-				print("ERROR: zynthian_gui.loading_refresh() => %s" % err)
-			sleep(0.1)
+	# -------------------------------------------------------------------
+	# OSC callbacks
+	# -------------------------------------------------------------------
 
 	def cb_osc_paths(self, path, args, types, src):
 		if isinstance(zyngui.zyngine,zynthian_engine_zynaddsubfx):
