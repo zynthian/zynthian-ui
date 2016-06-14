@@ -694,6 +694,9 @@ class zynthian_gui_splash:
 	def zyncoder_read(self):
 		pass
 
+	def refresh_loading(self):
+		pass
+
 #-------------------------------------------------------------------------------
 # Zynthian Info GUI Class
 #-------------------------------------------------------------------------------
@@ -741,6 +744,9 @@ class zynthian_gui_info:
 			self.canvas.pack(expand = YES, fill = BOTH)
 
 	def zyncoder_read(self):
+		pass
+
+	def refresh_loading(self):
 		pass
 
 #-------------------------------------------------------------------------------
