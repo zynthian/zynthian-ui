@@ -88,7 +88,7 @@ ctrl_pos=[
 #-------------------------------------------------------------------------------
 try:
 	with open("../zynthian_hw_version.txt","r") as fh:
-		hw_version=fh.read()
+		hw_version=fh.readline().strip()
 		print("HW version "+str(hw_version))
 except:
 	hw_version="PROTOTYPE-4"
@@ -113,6 +113,11 @@ elif hw_version=="PROTOTYPE-3":		# Controller RBPi connector upside
 	zyncoder_pin_b=[25,26,4,0]
 	zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
+elif hw_version=="PROTOTYPE-3H":	# Controller RBPi connector downside (Holger's way)
+	zyncoder_pin_a=[27,21,3,7]
+	zyncoder_pin_b=[25,26,4,0]
+	zynswitch_pin=[107,23,106,2]
+	select_ctrl=2
 elif hw_version=="PROTOTYPE-4":		# Controller RBPi connector upside
 	zyncoder_pin_a=[26,25,0,4]
 	zyncoder_pin_b=[21,27,7,3]
