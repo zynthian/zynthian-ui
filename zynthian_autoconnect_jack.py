@@ -76,13 +76,14 @@ def midi_autoconnect():
 		except:
 			pass
 
-	#print("Physical Devices: " + str(hw_out))
-
 	#Remove HW Black-listed
-	for hw in hw_out:
-		for i,v in enumerate(hw_black_list):
+	for i,hw in enumerate(hw_out):
+		for v in hw_black_list:
+			#print("Element %s => %s " % (i,v) )
 			if v in str(hw):
 				hw_out.pop(i)
+
+	#print("Physical Devices: " + str(hw_out))
 
 	#Get Synth Engines
 	engines=[]
@@ -165,10 +166,13 @@ else:
 jclient=jack.Client("Zynthian_autoconnect")
 
 #Main loop
+i=1
 while True:
 	try:
+		print("Try %d" % i)
 		midi_autoconnect()
 		audio_autoconnect()
+		i=i+1
 	except Exception as err:
 		print("ERROR Autoconnecting: "+str(err))
 		pass

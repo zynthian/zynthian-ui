@@ -226,7 +226,7 @@ class zynthian_controller:
 					self.value_plot=self.scale_plot*i
 				self.value_print=self.values[i]
 			except Exception as err:
-				print("ERROR: zynthian_controller.calculte_plot_values()" % err)
+				print("ERROR: zynthian_controller.calculate_plot_values()" + err)
 				self.value_plot=self.value
 				self.value_print="ERR"
 		else:

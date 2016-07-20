@@ -121,8 +121,8 @@ function aubionotes_stop() {
 
 function autoconnector_start() {
 	# Start Autoconnector
-	./zynthian_autoconnect_jack.py > /var/log/zynthian_autoconnect.log 2>&1
-	#2>&1 &
+	./zynthian_autoconnect_jack.py > /dev/null 2>&1
+	#./zynthian_autoconnect_jack.py > /var/log/zynthian_autoconnect.log 2>&1
 }
 
 function autoconnector_stop() {
