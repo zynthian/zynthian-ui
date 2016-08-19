@@ -123,12 +123,17 @@ elif hw_version=="PROTOTYPE-4":		# Controller RBPi connector upside
 	zyncoder_pin_b=[21,27,7,3]
 	zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
+elif hw_version=="PROTOTYPE-KEES":	# Kees layout, for display Waveshare 3.2
+	zyncoder_pin_a=[27,21,4,5]
+	zyncoder_pin_b=[25,26,31,7]
+	zynswitch_pin=[23,107,6,106]
+	select_ctrl=3
 elif hw_version=="PROTOTYPE-EMU":	# Desktop Development & Emulation
 	zyncoder_pin_a=[4,5,6,7]
 	zyncoder_pin_b=[8,9,10,11]
 	zynswitch_pin=[0,1,2,3]
 	select_ctrl=3
-else:								# Default to PROTOTYPE-3
+else:					# Default to PROTOTYPE-3
 	zyncoder_pin_a=[26,25,0,4]
 	zyncoder_pin_b=[21,27,7,3]
 	zynswitch_pin=[107,23,106,2]
