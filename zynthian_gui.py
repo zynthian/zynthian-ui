@@ -454,9 +454,12 @@ class zynthian_controller:
 			v=self.max_value
 		if (v!=self.value):
 			self.value=v
+			#print("RENCODER VALUE: " + str(self.index) + " => " + str(v))
 			if self.shown:
 				if set_zyncoder:
-					lib_zyncoder.set_value_zyncoder(self.index,v)
+					if self.mult>1: v=self.mult*v
+					if v>0: v=v-1
+					lib_zyncoder.set_value_zyncoder(self.index,c_uint(v))
 				self.plot_value()
 
 	def set_init_value(self, v):
@@ -467,9 +470,10 @@ class zynthian_controller:
 
 	def read_zyncoder(self):
 		val=lib_zyncoder.get_value_zyncoder(self.index)
-		val=int(val/self.mult)
+		#print("RENCODER RAW VALUE: " + str(self.index) + " => " + str(val))
+		if self.mult>1:
+			val=int((val+1)/self.mult)
 		self.set_value(val)
-		#print ("RENCODER VALUE: " + str(self.index) + " => " + str(val))
 
 #-------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
