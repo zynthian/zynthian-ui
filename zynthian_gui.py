@@ -394,7 +394,6 @@ class zynthian_controller:
 		elif max_val>0:
 			self.values=None
 			self.max_value=self.n_values=max_val
-			if max_val>=96: self.step=0
 		if self.values:
 			self.n_values=len(self.values)
 			self.step=max(1,int(16/self.n_values));
@@ -406,6 +405,8 @@ class zynthian_controller:
 		if self.midi_ctrl==0:
 			self.mult=4
 			self.val0=1
+		elif max_val>=96:
+			self.step=0
 		if val>self.max_value:
 			val=self.max_value
 		if self.ticks:
