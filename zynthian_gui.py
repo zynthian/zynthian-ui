@@ -405,7 +405,7 @@ class zynthian_controller:
 		if self.midi_ctrl==0:
 			self.mult=4
 			self.val0=1
-		elif max_val>=96:
+		elif self.n_values>=96:
 			self.step=0
 		if val>self.max_value:
 			val=self.max_value
@@ -1167,7 +1167,7 @@ class zynthian_gui_control(zynthian_selector):
 				#indx, tit, chan, ctrl, val, max_val=127
 				self.set_controller(i,cfg[0],midi_chan,cfg[1],cfg[2],cfg[3])
 			except Exception as e:
-				print("ERROR: set_controller_config(%s) => %s" % (i,e))
+				print("ERROR: set_controller_config(%d) => %s" % (i,e))
 
 	def set_controller(self, i, tit, chan, ctrl, val, max_val=127):
 		try:
