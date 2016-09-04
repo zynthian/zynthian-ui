@@ -549,6 +549,7 @@ class zynthian_engine:
 		try:
 			self.set_all_bank()
 			self.set_all_instr()
+			self.load_instr_list()
 			sleep(0.2)
 			self.set_all_ctrl()
 			self.parent.refresh_screen()
