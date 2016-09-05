@@ -346,7 +346,7 @@ class zynthian_controller:
 			font_size=8
 		elif maxlen>72:
 			font_size=9
-		elif maxlen>65:
+		elif maxlen>64:
 			font_size=10
 		#elif maxlen>58:
 		#	font_size=11
@@ -1581,7 +1581,9 @@ class zynthian_gui:
 	def start_polling(self):
 		self.polling=True
 		if self.amidi:
-			self.midi_read()
+			self.amidi_read()
+		else:
+			self.zynmidi_read()
 		self.zyngine_refresh()
 
 	def stop_polling(self):
@@ -1590,21 +1592,48 @@ class zynthian_gui:
 	def after(self, msec, func):
 		top.after(msec, func)
 
-	def midi_read(self):
+	def zynmidi_read(self):
+		try:
+			while True:
+				ev=lib_zyncoder.read_zynmidi()
+				if ev==0: break
+				evtype = (ev & 0xF0)>>4
+				chan = ev & 0x0F
+				if evtype==0xC:
+					pgm = (ev & 0xF00)>>8
+					print ("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan))
+					self.zyngine.set_instr(pgm,chan,False)
+					if chan==self.zyngine.get_midi_chan():
+						self.show_screen('control')
+		except Exception as err:
+			print("ERROR: zynthian_gui.zynmidi_read() => %s" % err)
+		if self.polling:
+			top.after(40, self.zynmidi_read)
+
+	def amidi_read(self):
 		try:
 			while alsaseq.inputpending():
 				event = alsaseq.input()
 				chan = event[7][0]
-				if event[0]==alsaseq.SND_SEQ_EVENT_CONTROLLER and chan==self.zyngine.get_midi_chan() and self.active_screen=='control': 
-					ctrl = event[7][4]
+				print ("MIDI EVENT " + str(event[0]))
+				if event[0]==alsaseq.SND_SEQ_EVENT_CONTROLLER:
+					if chan==self.zyngine.get_midi_chan() and self.active_screen=='control': 
+						ctrl = event[7][4]
+						val = event[7][5]
+						#print ("MIDI CTRL " + str(ctrl) + ", CH" + str(chan) + " => " + str(val))
+						if ctrl in self.screens['control'].zcontroller_map.keys():
+							self.screens['control'].zcontroller_map[ctrl].set_value(val,True)
+				elif event[0]==alsaseq.SND_SEQ_EVENT_PGMCHANGE:
+					pgm = event[7][4]
 					val = event[7][5]
-					#print ("MIDI CTRL " + str(ctrl) + ", CH" + str(chan) + " => " + str(val))
-					if ctrl in self.screens['control'].zcontroller_map.keys():
-						self.screens['control'].zcontroller_map[ctrl].set_value(val,True)
+					print ("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan) + " => " + str(val))
+					self.zyngine.set_instr(pgm,chan,False)
+					if chan==self.zyngine.get_midi_chan():
+						self.show_screen('control')
 		except Exception as err:
-			print("ERROR: zynthian_gui.midi_read() => %s" % err)
+			print("ERROR: zynthian_gui.amidi_read() => %s" % err)
 		if self.polling:
-			top.after(40, self.midi_read)
+			top.after(40, self.amidi_read)
 
 	def zyngine_refresh(self):
 		try:

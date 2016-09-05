@@ -48,7 +48,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		],0,'main'],
 		[[
 			['volume',7,96,127],
-			['modulation',1,0,127],
+			['sustain on/off',64,'off','off|on'],
 			['reverb',91,64,127],
 			['chorus',93,0,127]
 		],0,'effects']

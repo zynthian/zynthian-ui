@@ -46,21 +46,27 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	ctrl_list=[
 		[[
-			['volume','/part$ch/Pvolume',96,127],
-			#['volume',7,96,127],
-			['modulation',1,0,127],
+			#['volume','/part$ch/Pvolume',96,127],
+			['volume',7,96,127],
+			['pan',10,64,127],
 			['filter Q',71,64,127],
 			['filter cutoff',74,64,127]
 		],0,'main'],
 		[[
-			['expression',11,127,127],
-			['modulation',1,0,127],
-			['reverb',91,64,127],
-			['chorus',93,2,127]
-		],0,'effects'],
+			['volume',7,96,127],
+			['sustain on/off',64,'off','off|on'],
+			['portamento on/off',65,'off','off|on'],
+			['portamento',5,64,127]
+		],0,'portamento'],
 		[[
+			['volume',7,96,127],
+			['pan',10,64,127],
+			['modulation',1,0,127],
+			['modulation amplitude',76,127,127]
+		],0,'modulation'],
+		[[
+			['volume',7,96,127],
 			['bandwidth',75,64,127],
-			['modulation amplitude',76,127,127],
 			['resonance frequency',77,64,127],
 			['resonance bandwidth',78,64,127]
 		],0,'resonance']

@@ -323,9 +323,11 @@ class zynthian_engine:
 		except:
 			return self.ctrl_list[0][0]
 
-	def reset_instr(self):
-		self.instr_index[self.midi_chan]=0
-		self.instr_name[self.midi_chan]=None
+	def reset_instr(self, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		self.instr_index[chan]=0
+		self.instr_name[chan]=None
 
 	def refresh(self):
 		pass
@@ -387,29 +389,35 @@ class zynthian_engine:
 	def load_instr_list(self):
 		self.instr_list=[]
 
-	def load_ctrl_config(self):
-		self.ctrl_config[self.midi_chan]=copy.deepcopy(self.ctrl_list)
+	def load_ctrl_config(self, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		self.ctrl_config[chan]=copy.deepcopy(self.ctrl_list)
 		#Setup OSC paths
-		for ctrlcfg in self.ctrl_config[self.midi_chan]:
+		for ctrlcfg in self.ctrl_config[chan]:
 			for ctrl in ctrlcfg[0]:
 				if isinstance(ctrl[1],str):
 					tpl=Template(ctrl[1])
-					ctrl[1]=tpl.substitute(ch=self.midi_chan)
+					ctrl[1]=tpl.substitute(ch=chan)
 
-	def set_bank(self, i):
+	def set_bank(self, i, chan=None):
+		if chan is None:
+			chan=self.midi_chan
 		if self.bank_list[i]:
-			last_bank_index=self.bank_index[self.midi_chan]
-			self.bank_index[self.midi_chan]=i
-			self.bank_name[self.midi_chan]=self.bank_list[i][2]
-			self.bank_set[self.midi_chan]=copy.deepcopy(self.bank_list[i])
-			print('Bank Selected: ' + self.bank_name[self.midi_chan] + ' (' + str(i)+')')
-			self._set_bank(self.bank_list[i], self.midi_chan)
-			self.load_instr_list()
+			last_bank_index=self.bank_index[chan]
+			self.bank_index[chan]=i
+			self.bank_name[chan]=self.bank_list[i][2]
+			self.bank_set[chan]=copy.deepcopy(self.bank_list[i])
+			print('Bank Selected: ' + self.bank_name[chan] + ' (' + str(i)+')')
+			self._set_bank(self.bank_list[i], chan)
+			if chan==self.midi_chan:
+				self.load_instr_list()
 			if last_bank_index!=i:
-				self.reset_instr()
+				self.reset_instr(chan)
 
 	def _set_bank(self, bank, chan=None):
-		if chan is None: chan=self.midi_chan
+		if chan is None:
+			chan=self.midi_chan
 		self.parent.zynmidi.set_midi_bank_msb(chan, bank[1])
 
 	def set_all_bank(self):
@@ -417,21 +425,25 @@ class zynthian_engine:
 			if self.bank_set[ch]:
 				self._set_bank(self.bank_set[ch],ch)
 
-	def set_instr(self, i):
+	def set_instr(self, i, chan=None, set_midi=True):
+		if chan is None:
+			chan=self.midi_chan
 		if self.instr_list[i]:
-			last_instr_index=self.instr_index[self.midi_chan]
-			last_instr_name=self.instr_name[self.midi_chan]
-			self.instr_index[self.midi_chan]=i
-			self.instr_name[self.midi_chan]=self.instr_list[i][2]
-			self.instr_set[self.midi_chan]=copy.deepcopy(self.instr_list[i])
-			print('Instrument Selected: ' + self.instr_name[self.midi_chan] + ' (' + str(i)+')')
+			last_instr_index=self.instr_index[chan]
+			last_instr_name=self.instr_name[chan]
+			self.instr_index[chan]=i
+			self.instr_name[chan]=self.instr_list[i][2]
+			self.instr_set[chan]=copy.deepcopy(self.instr_list[i])
+			print('Instrument Selected: ' + self.instr_name[chan] + ' (' + str(i)+')')
 			#=> '+self.instr_list[i][3]
-			self._set_instr(self.instr_list[i],self.midi_chan)
+			if set_midi:
+				self._set_instr(self.instr_list[i],chan)
 			if last_instr_index!=i or not last_instr_name:
-				self.load_ctrl_config()
+				self.load_ctrl_config(chan)
 
 	def _set_instr(self, instr, chan=None):
-		if chan is None: chan=self.midi_chan
+		if chan is None:
+			chan=self.midi_chan
 		self.parent.zynmidi.set_midi_instr(chan, instr[1][0], instr[1][1], instr[1][2])
 
 	def set_all_instr(self):
