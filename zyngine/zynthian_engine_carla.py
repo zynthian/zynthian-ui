@@ -244,7 +244,10 @@ class zynthian_engine_carla(zynthian_engine):
 			self.generate_instr_list()
 			print("PROGRAM LIST ...\n"+str(self.instr_list))
 			#generate controller list
-			self.generate_ctrl_list()
+			if not self.snapshot_fpath:
+				self.generate_ctrl_list()
+			else:
+				self.ctrl_list=self.ctrl_config[self.midi_chan]
 			print("CONTROLLER LIST ...\n"+str(self.ctrl_list))
 			#refresh screen
 			self.parent.refresh_screen()

@@ -76,6 +76,7 @@ class zynthian_engine:
 	midi_chan=0
 
 	loading=0
+	snapshot_fpath=None
 
 	bank_index=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 	bank_name=["","","","","","","","","","","","","","","",""]
@@ -514,6 +515,7 @@ class zynthian_engine:
 		except:
 			print("ERROR: Can't save snapshot '%s'" % fpath)
 			return False
+		self.snapshot_fpath=fpath
 		return True
 
 	def load_snapshot(self, fpath):
@@ -537,6 +539,7 @@ class zynthian_engine:
 			self.instr_name=status['instr_name']
 			self.instr_set=status['instr_set']
 			self.ctrl_config=status['ctrl_config']
+			self.snapshot_fpath=fpath
 			return self.load_snapshot_post()
 		except UserWarning as e:
 			print("ERROR: %s" % e)
