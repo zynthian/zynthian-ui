@@ -458,7 +458,7 @@ class zynthian_engine:
 				for ctrlcfg in self.ctrl_config[ch]:
 					for ctrl in ctrlcfg[0]:
 						if isinstance(ctrl[1],str):
-							liblo.send(self.osc_target,ctrl[1],ctrl[2])
+							liblo.send(self.osc_target,ctrl[1],self.get_ctrl_osc_val(ctrl[2],ctrl[3]))
 						elif ctrl[1]>0:
 							self.parent.zynmidi.set_midi_control(ch,ctrl[1],self.get_ctrl_midi_val(ctrl[2],ctrl[3]))
 
@@ -485,6 +485,12 @@ class zynthian_engine:
 				val=int(values.index(val)*max_value/(n_values-1))
 		if val>max_value:
 			val=max_value
+		return val
+
+	def get_ctrl_osc_val(self, val, maxval):
+		if maxval=='off|on':
+			if val=='on': return True
+			elif val=='off': return False
 		return val
 
 	def get_path(self, chan=None):

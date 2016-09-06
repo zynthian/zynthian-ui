@@ -54,6 +54,12 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		],0,'main'],
 		[[
 			['volume',7,96,127],
+			['drum on/off','/part$ch/Pdrummode','off','off|on'],
+			['legato on/off','/part$ch/Plegatomode','off','off|on'],
+			['poly on/off','/part$ch/Ppolymode','on','off|on']
+		],0,'mode'],
+		[[
+			['volume',7,96,127],
 			['sustain on/off',64,'off','off|on'],
 			['portamento on/off',65,'off','off|on'],
 			['portamento',5,64,127]
