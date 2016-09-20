@@ -856,6 +856,7 @@ class zynthian_gui_admin(zynthian_selector):
 	def start_mod_ui(self):
 		print("START MOD-UI")
 		zyngui.show_info("START MOD-UI:")
+		zyngui.set_engine(None)
 		self.start_command(["sudo systemctl start mod-host && sudo systemctl start mod-ui"])
 
 	def stop_mod_ui(self):
@@ -936,6 +937,7 @@ class zynthian_gui_engine(zynthian_selector):
 		elif name=="MODHost" or name=="MH":
 			self.zyngine=zynthian_engine_modhost(zyngui)
 		else:
+			self.zyngine=None
 			return False
 		if wait>0: sleep(wait)
 		return True
@@ -1422,6 +1424,12 @@ class zynthian_gui:
 			self.screens['bank']=zynthian_gui_bank()
 			self.screens['instr']=zynthian_gui_instr()
 			self.screens['control']=zynthian_gui_control()
+		else:
+			self.zyngine=None
+			del self.screens['chan']
+			del self.screens['bank']
+			del self.screens['instr']
+			del self.screens['control']
 		self.stop_loading()
 
 	# -------------------------------------------------------------------
