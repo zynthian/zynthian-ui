@@ -1426,10 +1426,12 @@ class zynthian_gui:
 			self.screens['control']=zynthian_gui_control()
 		else:
 			self.zyngine=None
-			del self.screens['chan']
-			del self.screens['bank']
-			del self.screens['instr']
-			del self.screens['control']
+			try:
+				del self.screens['chan']
+				del self.screens['bank']
+				del self.screens['instr']
+				del self.screens['control']
+			except: pass
 		self.stop_loading()
 
 	# -------------------------------------------------------------------
