@@ -123,6 +123,11 @@ elif hw_version=="PROTOTYPE-4":		# Controller RBPi connector upside
 	zyncoder_pin_b=[21,27,7,3]
 	zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
+elif hw_version=="PROTOTYPE-4B":		# Controller RBPi connector downside
+	zyncoder_pin_a=[25,26,4,0]
+	zyncoder_pin_b=[27,21,3,7]
+	zynswitch_pin=[23,107,2,106]
+	select_ctrl=3
 elif hw_version=="PROTOTYPE-KEES":	# Kees layout, for display Waveshare 3.2
 	zyncoder_pin_a=[27,21,4,5]
 	zyncoder_pin_b=[25,26,31,7]
@@ -785,6 +790,8 @@ class zynthian_gui_admin(zynthian_selector):
 				#(self.update_system,0,"Update Operating System"),
 				(self.network_info,0,"Network Info"),
 				#(self.connect_to_pc,0,"Connect to PC"),
+				(self.start_mod_ui,0,"Start MOD-UI"),
+				(self.stop_mod_ui,0,"Stop MOD-UI"),
 				(self.restart_gui,0,"Restart GUI"),
 				(self.exit_to_console,0,"Exit to Console"),
 				(self.reboot,0,"Reboot"),
@@ -846,6 +853,16 @@ class zynthian_gui_admin(zynthian_selector):
 		zyngui.show_info("CONNECT TO PC:")
 		self.start_command(["ifconfig wlan0"])
 
+	def start_mod_ui(self):
+		print("START MOD-UI")
+		zyngui.show_info("START MOD-UI:")
+		self.start_command(["sudo systemctl start mod-host && sudo systemctl start mod-ui"])
+
+	def stop_mod_ui(self):
+		print("STOP MOD-UI")
+		zyngui.show_info("STOP MOD-UI:")
+		self.start_command(["sudo systemctl stop mod-host && sudo systemctl stop mod-ui"])
+
 	def restart_gui(self):
 		print("RESTART GUI")
 		zyngui.exit(102)
@@ -874,9 +891,10 @@ class zynthian_gui_engine(zynthian_selector):
 		"FS": ("FluidSynth","FluidSynth - Sampler"),
 		"LS": ("LinuxSampler","LinuxSampler - Sampler"),
 		"BF": ("setBfree","setBfree - Hammond Emulator"),
-		"CP": ("Carla","Carla - Plugin Host")
+		"CP": ("Carla","Carla - Plugin Host"),
+		"MH": ("MODHost","MODHost - Plugin Host")
 	}
-	engine_order=["ZY","LS","FS","BF","CP"]
+	engine_order=["ZY","LS","FS","BF","CP","MH"]
 
 	def __init__(self):
 		super().__init__('Engine', True, gui_bg_logo)
@@ -907,14 +925,16 @@ class zynthian_gui_engine(zynthian_selector):
 				self.zyngine.stop()
 		if name=="ZynAddSubFX" or name=="ZY":
 			self.zyngine=zynthian_engine_zynaddsubfx(zyngui)
-		elif name=="setBfree" or name=="BF":
-			self.zyngine=zynthian_engine_setbfree(zyngui)
 		elif name=="LinuxSampler" or name=="LS":
 			self.zyngine=zynthian_engine_linuxsampler(zyngui)
-		elif name=="Carla" or name=="CP":
-			self.zyngine=zynthian_engine_carla(zyngui)
 		elif name=="FluidSynth" or name=="FS":
 			self.zyngine=zynthian_engine_fluidsynth(zyngui)
+		elif name=="setBfree" or name=="BF":
+			self.zyngine=zynthian_engine_setbfree(zyngui)
+		elif name=="Carla" or name=="CP":
+			self.zyngine=zynthian_engine_carla(zyngui)
+		elif name=="MODHost" or name=="MH":
+			self.zyngine=zynthian_engine_modhost(zyngui)
 		else:
 			return False
 		if wait>0: sleep(wait)

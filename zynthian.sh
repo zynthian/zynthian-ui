@@ -71,8 +71,9 @@ function splash_zynthian_error() {
 
 function jack_audio_start() {
 	# Start jack-audio server
-	/usr/bin/jackd -P70 -p16 -t2000 -s -dalsa -dhw:0 -r44100 -p256 -n2
-	#/usr/bin/jackd -P70 -p16 -t2000 -s -dalsa -dhw:0 -r44100 -p256 -n2 -Xseq
+	#/usr/bin/jackd -P 70 -t 2000 -s -d alsa -d hw:0 -r 44100 -p 256 -n 2
+	#/usr/bin/jackd -P 70 -t 2000 -s -d alsa -d hw:0 -r 44100 -p 256 -n 2 -X seq
+	/usr/bin/jackd -P 70 -t 2000 -s -d alsa -d hw:0 -r 44100 -p 256 -n 2 -X raw
 }
 
 function jack_audio_stop() {
@@ -164,7 +165,7 @@ scaling_governor_performance
 
 jack_audio_start &
 ttymidi_start &
-a2j_midi_start &
+#a2j_midi_start &
 if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 	alsa_in_start &
 	aubionotes_start &
