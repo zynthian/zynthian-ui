@@ -1,4 +1,4 @@
-# Zynthian
+# Zynthian User Interface
 
 [Zynthian] (http://zynthian.org) is an Open Synth Platform based in Raspberry Pi, Linux (Raspbian) and some Open Software Synthesizers.
 
