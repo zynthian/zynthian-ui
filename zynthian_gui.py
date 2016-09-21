@@ -784,17 +784,16 @@ class zynthian_gui_admin(zynthian_selector):
     
 	def fill_list(self):
 		self.list_data=[]
-		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
-		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
-		#self.list_data.append((self.update_system,0,"Update Operating System"))
-		self.list_data.append((self.network_info,0,"Network Info"))
-		#self.list_data.append((self.connect_to_pc,0,"Connect to PC")),
 		if self.is_service_active("mod-ui"):
 			self.list_data.append((self.stop_mod_ui,0,"Stop MOD-UI"))
 		else:
 			self.list_data.append((self.start_mod_ui,0,"Start MOD-UI"))
+		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
+		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
+		#self.list_data.append((self.update_system,0,"Update Operating System"))
+		#self.list_data.append((self.network_info,0,"Network Info"))
 		self.list_data.append((self.restart_gui,0,"Restart GUI"))
-		self.list_data.append((self.exit_to_console,0,"Exit to Console"))
+		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
 		self.list_data.append((self.reboot,0,"Reboot"))
 		self.list_data.append((self.power_off,0,"Power Off"))
 		super().fill_list()
@@ -857,11 +856,6 @@ class zynthian_gui_admin(zynthian_selector):
 	def network_info(self):
 		print("NETWORK INFO")
 		zyngui.show_info("NETWORK INFO:")
-		self.start_command(["ifconfig wlan0"])
-
-	def connect_to_pc(self):
-		print("CONNECT TO PC")
-		zyngui.show_info("CONNECT TO PC:")
 		self.start_command(["ifconfig wlan0"])
 
 	def start_mod_ui(self):
