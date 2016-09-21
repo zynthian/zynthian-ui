@@ -783,27 +783,37 @@ class zynthian_gui_admin(zynthian_selector):
 		self.thread=None
     
 	def fill_list(self):
-		if not self.list_data:
-			self.list_data=(
-				(self.update_software,0,"Update Zynthian Software"),
-				(self.update_library,0,"Update Zynthian Library"),
-				#(self.update_system,0,"Update Operating System"),
-				(self.network_info,0,"Network Info"),
-				#(self.connect_to_pc,0,"Connect to PC"),
-				(self.start_mod_ui,0,"Start MOD-UI"),
-				(self.stop_mod_ui,0,"Stop MOD-UI"),
-				(self.restart_gui,0,"Restart GUI"),
-				(self.exit_to_console,0,"Exit to Console"),
-				(self.reboot,0,"Reboot"),
-				(self.power_off,0,"Power Off")
-			)
-			super().fill_list()
+		self.list_data=[]
+		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
+		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
+		#self.list_data.append((self.update_system,0,"Update Operating System"))
+		self.list_data.append((self.network_info,0,"Network Info"))
+		#self.list_data.append((self.connect_to_pc,0,"Connect to PC")),
+		if self.is_service_active("mod-ui"):
+			self.list_data.append((self.stop_mod_ui,0,"Stop MOD-UI"))
+		else:
+			self.list_data.append((self.start_mod_ui,0,"Start MOD-UI"))
+		self.list_data.append((self.restart_gui,0,"Restart GUI"))
+		self.list_data.append((self.exit_to_console,0,"Exit to Console"))
+		self.list_data.append((self.reboot,0,"Reboot"))
+		self.list_data.append((self.power_off,0,"Power Off"))
+		super().fill_list()
 
 	def select_action(self, i):
 		self.list_data[i][0]()
 
 	def set_select_path(self):
 		self.select_path.set("Admin")
+
+	def is_service_active(self, service):
+		cmd="systemctl is-active "+str(service)
+		try:
+			result=check_output(cmd, shell=True).decode('utf-8','ignore')
+		except Exception as e:
+			result="ERROR: "+str(e)
+		#print("Is service "+str(service)+" active? => "+str(result))
+		if result.strip()=='active': return True
+		else: return False
 
 	def execute_commands(self):
 		zyngui.start_loading()
@@ -819,6 +829,7 @@ class zynthian_gui_admin(zynthian_selector):
 		self.commands=None
 		zyngui.hide_info_timer(3000)
 		zyngui.stop_loading()
+		self.fill_list()
 
 	def start_command(self,cmds):
 		if not self.commands:
@@ -854,15 +865,17 @@ class zynthian_gui_admin(zynthian_selector):
 		self.start_command(["ifconfig wlan0"])
 
 	def start_mod_ui(self):
-		print("START MOD-UI")
-		zyngui.show_info("START MOD-UI:")
-		zyngui.set_engine(None)
-		self.start_command(["sudo systemctl start mod-host && sudo systemctl start mod-ui"])
+		if not self.is_service_active("mod-ui"):
+			print("START MOD-UI")
+			zyngui.show_info("START MOD-UI:")
+			zyngui.set_engine(None)
+			self.start_command(["sudo systemctl start mod-host && sudo systemctl start mod-ui"])
 
 	def stop_mod_ui(self):
-		print("STOP MOD-UI")
-		zyngui.show_info("STOP MOD-UI:")
-		self.start_command(["sudo systemctl stop mod-host && sudo systemctl stop mod-ui"])
+		if self.is_service_active("mod-ui"):
+			print("STOP MOD-UI")
+			zyngui.show_info("STOP MOD-UI:")
+			self.start_command(["sudo systemctl stop mod-host && sudo systemctl stop mod-ui"])
 
 	def restart_gui(self):
 		print("RESTART GUI")
@@ -919,6 +932,8 @@ class zynthian_gui_engine(zynthian_selector):
 		self.select_path.set("Engine")
 
 	def set_engine(self,name,wait=0):
+		if name:
+			zyngui.screens['admin'].stop_mod_ui()
 		if self.zyngine:
 			if self.zyngine.name==name:
 				return False

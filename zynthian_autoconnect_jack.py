@@ -39,7 +39,8 @@ engine_list = [
 	"fluidsynth",
 	"LinuxSampler",
 	"setBfree",
-	"Carla"
+	"Carla",
+	"mod-host"
 ]
 
 #Input Black List
