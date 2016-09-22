@@ -930,7 +930,7 @@ class zynthian_gui_engine(zynthian_selector):
 			zyngui.screens['admin'].stop_mod_ui()
 		if self.zyngine:
 			if self.zyngine.name==name:
-				return False
+				return True
 			else:
 				self.zyngine.stop()
 		if name=="ZynAddSubFX" or name=="ZY":
