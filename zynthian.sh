@@ -165,7 +165,7 @@ scaling_governor_performance
 
 jack_audio_start &
 ttymidi_start &
-#a2j_midi_start &
+a2j_midi_start &
 if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 	alsa_in_start &
 	aubionotes_start &
