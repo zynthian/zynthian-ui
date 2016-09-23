@@ -123,6 +123,11 @@ elif hw_version=="PROTOTYPE-4":		# Controller RBPi connector upside
 	zyncoder_pin_b=[21,27,7,3]
 	zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
+elif hw_version=="PROTOTYPE-4B":		# Controller RBPi connector downside
+	zyncoder_pin_a=[25,26,4,0]
+	zyncoder_pin_b=[27,21,3,7]
+	zynswitch_pin=[23,107,2,106]
+	select_ctrl=3
 elif hw_version=="PROTOTYPE-KEES":	# Kees layout, for display Waveshare 3.2
 	zyncoder_pin_a=[27,21,4,5]
 	zyncoder_pin_b=[25,26,31,7]
@@ -778,25 +783,36 @@ class zynthian_gui_admin(zynthian_selector):
 		self.thread=None
     
 	def fill_list(self):
-		if not self.list_data:
-			self.list_data=(
-				(self.update_software,0,"Update Zynthian Software"),
-				(self.update_library,0,"Update Zynthian Library"),
-				#(self.update_system,0,"Update Operating System"),
-				(self.network_info,0,"Network Info"),
-				#(self.connect_to_pc,0,"Connect to PC"),
-				(self.restart_gui,0,"Restart GUI"),
-				(self.exit_to_console,0,"Exit to Console"),
-				(self.reboot,0,"Reboot"),
-				(self.power_off,0,"Power Off")
-			)
-			super().fill_list()
+		self.list_data=[]
+		if self.is_service_active("mod-ui"):
+			self.list_data.append((self.stop_mod_ui,0,"Stop MOD-UI"))
+		else:
+			self.list_data.append((self.start_mod_ui,0,"Start MOD-UI"))
+		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
+		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
+		#self.list_data.append((self.update_system,0,"Update Operating System"))
+		#self.list_data.append((self.network_info,0,"Network Info"))
+		self.list_data.append((self.restart_gui,0,"Restart GUI"))
+		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
+		self.list_data.append((self.reboot,0,"Reboot"))
+		self.list_data.append((self.power_off,0,"Power Off"))
+		super().fill_list()
 
 	def select_action(self, i):
 		self.list_data[i][0]()
 
 	def set_select_path(self):
 		self.select_path.set("Admin")
+
+	def is_service_active(self, service):
+		cmd="systemctl is-active "+str(service)
+		try:
+			result=check_output(cmd, shell=True).decode('utf-8','ignore')
+		except Exception as e:
+			result="ERROR: "+str(e)
+		#print("Is service "+str(service)+" active? => "+str(result))
+		if result.strip()=='active': return True
+		else: return False
 
 	def execute_commands(self):
 		zyngui.start_loading()
@@ -812,6 +828,7 @@ class zynthian_gui_admin(zynthian_selector):
 		self.commands=None
 		zyngui.hide_info_timer(3000)
 		zyngui.stop_loading()
+		self.fill_list()
 
 	def start_command(self,cmds):
 		if not self.commands:
@@ -841,10 +858,18 @@ class zynthian_gui_admin(zynthian_selector):
 		zyngui.show_info("NETWORK INFO:")
 		self.start_command(["ifconfig wlan0"])
 
-	def connect_to_pc(self):
-		print("CONNECT TO PC")
-		zyngui.show_info("CONNECT TO PC:")
-		self.start_command(["ifconfig wlan0"])
+	def start_mod_ui(self):
+		if not self.is_service_active("mod-ui"):
+			print("START MOD-UI")
+			zyngui.show_info("START MOD-UI:")
+			zyngui.set_engine(None)
+			self.start_command(["sudo systemctl start mod-host && sudo systemctl start mod-ui"])
+
+	def stop_mod_ui(self):
+		if self.is_service_active("mod-ui"):
+			print("STOP MOD-UI")
+			zyngui.show_info("STOP MOD-UI:")
+			self.start_command(["sudo systemctl stop mod-host && sudo systemctl stop mod-ui"])
 
 	def restart_gui(self):
 		print("RESTART GUI")
@@ -874,9 +899,10 @@ class zynthian_gui_engine(zynthian_selector):
 		"FS": ("FluidSynth","FluidSynth - Sampler"),
 		"LS": ("LinuxSampler","LinuxSampler - Sampler"),
 		"BF": ("setBfree","setBfree - Hammond Emulator"),
-		"CP": ("Carla","Carla - Plugin Host")
+		"CP": ("Carla","Carla - Plugin Host"),
+		"MH": ("MODHost","MODHost - Plugin Host")
 	}
-	engine_order=["ZY","LS","FS","BF","CP"]
+	engine_order=["ZY","LS","FS","BF","CP","MH"]
 
 	def __init__(self):
 		super().__init__('Engine', True, gui_bg_logo)
@@ -900,22 +926,27 @@ class zynthian_gui_engine(zynthian_selector):
 		self.select_path.set("Engine")
 
 	def set_engine(self,name,wait=0):
+		if name:
+			zyngui.screens['admin'].stop_mod_ui()
 		if self.zyngine:
 			if self.zyngine.name==name:
-				return False
+				return True
 			else:
 				self.zyngine.stop()
 		if name=="ZynAddSubFX" or name=="ZY":
 			self.zyngine=zynthian_engine_zynaddsubfx(zyngui)
-		elif name=="setBfree" or name=="BF":
-			self.zyngine=zynthian_engine_setbfree(zyngui)
 		elif name=="LinuxSampler" or name=="LS":
 			self.zyngine=zynthian_engine_linuxsampler(zyngui)
-		elif name=="Carla" or name=="CP":
-			self.zyngine=zynthian_engine_carla(zyngui)
 		elif name=="FluidSynth" or name=="FS":
 			self.zyngine=zynthian_engine_fluidsynth(zyngui)
+		elif name=="setBfree" or name=="BF":
+			self.zyngine=zynthian_engine_setbfree(zyngui)
+		elif name=="Carla" or name=="CP":
+			self.zyngine=zynthian_engine_carla(zyngui)
+		elif name=="MODHost" or name=="MH":
+			self.zyngine=zynthian_engine_modhost(zyngui)
 		else:
+			self.zyngine=None
 			return False
 		if wait>0: sleep(wait)
 		return True
@@ -1402,6 +1433,14 @@ class zynthian_gui:
 			self.screens['bank']=zynthian_gui_bank()
 			self.screens['instr']=zynthian_gui_instr()
 			self.screens['control']=zynthian_gui_control()
+		else:
+			self.zyngine=None
+			try:
+				del self.screens['chan']
+				del self.screens['bank']
+				del self.screens['instr']
+				del self.screens['control']
+			except: pass
 		self.stop_loading()
 
 	# -------------------------------------------------------------------

@@ -363,7 +363,8 @@ class zynthian_engine:
 			dn=dpd[0]
 			for f in sorted(os.listdir(dp)):
 				if isdir(join(dp,f)):
-					title=str.replace(f, '_', ' ')
+					title,ext=os.path.splitext(f)
+					title=str.replace(title, '_', ' ')
 					if dn!='_': title=dn+'/'+title
 					#print("bank_dirlist => "+title)
 					self.bank_list.append((join(dp,f),i,title,dn))
