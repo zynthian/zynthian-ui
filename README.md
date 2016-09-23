@@ -1,4 +1,4 @@
-# zynthian
+# Zynthian User Interface
 
 [Zynthian] (http://zynthian.org) is an Open Synth Platform based in Raspberry Pi, Linux (Raspbian) and some Open Software Synthesizers.
 
@@ -10,6 +10,8 @@ Zynthian is a multi-engine platform and at the present time can run the next Syn
 + [FluidSynth] (http://www.fluidsynth.org/) (Sampler engine)
 + [setBfree] (https://github.com/pantherb/setBfree) (Hammond B3 emulation)
 + [Linuxsampler] (https://www.linuxsampler.org/) (Advanced Sampler engine)
++ [Carla] (http://kxstudio.linuxaudio.org/Applications:Carla) (Plugin Host)
++ [MOD-HOST + MOD-UI] (https://github.com/moddevices) (Plugin Host & Web GUI by [ModDevices] (http://moddevices.com))
 
 ![Image of Zynthian Software Architecture](http://zynthian.org/img/github/zynthian_software_amidi_scheme.png)
 
@@ -17,11 +19,12 @@ The [Zynthian Distribution] (http://blog.zynthian.org/index.php/2015/11/22/build
 
 A [Zynthian Box] (http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/) is a hardware device that complains the [Zynthian Hardware Specificacion] (http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/):
 
-+ Raspberry Pi 2
-+ HifiBerry DAC+
-+ PiTFT compatible screen
-+ Zynthian Controller Modules
-+ etc.
++ Raspberry Pi 2/3
++ HifiBerry DAC+ or other soundcard compatible with RBPi
++ PiTFT touchscreen or other screen compatible with RBPi
++ 4 rotary encoders + switches (zynthian controller modules)
++ GPIO expander (MCP23008) => you need it becasue the RBPi GPIOs are not enough
++ MIDI-IN using RBPi UART (optional)
 
 ![Image of Zynthian Hardware Architecture](http://zynthian.org/img/github/zynthian_hardware_scheme.png)
 
@@ -31,6 +34,4 @@ This repository contains the specific software used by a Zynthian Box. It includ
 
 A standard Zynthian Box get updated from this repository by default, but can be configured to get updated from other repositories.
 
-You can learn more about the Zynthian Project reading [the blog] (http://blog.zynthian.org) or visiting [the website] (http://zynthian.org).
-
-[![Join the chat at https://gitter.im/zynthian/zynthian-ui](https://badges.gitter.im/zynthian/zynthian-ui.svg)](https://gitter.im/zynthian/zynthian-ui?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+You can learn more about the Zynthian Project reading [the blog] (http://blog.zynthian.org) or visiting [the website] (http://zynthian.org). Also, you can join the conversation in [the forum] (https://discourse.zynthian.org).
