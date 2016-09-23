@@ -35,7 +35,8 @@ class zynthian_engine_modhost(zynthian_engine):
 	name="MODHost"
 	nickname="MH"
 	command=("/usr/local/bin/mod-host", "-i")
-	command_pb2mh="/home/pi/zynthian/zynthian-ui/pedalboard2modhost"
+	command_pb2mh="/home/pi/zynthian/zynthian-ui/zyngine/pedalboard2modhost"
+	lv2_path="/home/pi/.lv2:/home/pi/zynthian/zynthian-plugins/mod-lv2"
 
 	bank_dirs=[
 		#('MY', os.getcwd()+"/my-data/mod-pedalboards"),
@@ -58,7 +59,7 @@ class zynthian_engine_modhost(zynthian_engine):
 	]
 
 	def __init__(self,parent=None):
-		os.environ['LV2_PATH']="/home/pi/.lv2:/home/pi/zynthian/zynthian-plugins/mod-lv2"
+		os.environ['LV2_PATH']=self.lv2_path
 		self.parent=parent
 		self.clean()
 		self.start(True)
