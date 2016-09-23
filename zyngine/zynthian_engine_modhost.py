@@ -35,7 +35,7 @@ class zynthian_engine_modhost(zynthian_engine):
 	name="MODHost"
 	nickname="MH"
 	command=("/usr/local/bin/mod-host", "-i")
-	command_pb2mh="/home/pi/bin/pedalboard2modhost"
+	command_pb2mh="/home/pi/zynthian/zynthian-ui/pedalboard2modhost"
 
 	bank_dirs=[
 		#('MY', os.getcwd()+"/my-data/mod-pedalboards"),

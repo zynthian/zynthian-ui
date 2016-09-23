@@ -1,0 +1,172 @@
+#!/usr/bin/perl
+
+#use Data::Dumper;
+
+$plugin_counter=0;
+
+open(TTL,"<$ARGV[0]") || die("Cannot open $ARGV[0]\n");
+while($ttl=<TTL>)
+{
+	chop($ttl);
+
+	#print "DEBUG: $ttl\n";
+
+	if($ttl=~/^\s*$/)
+	{
+		undef($item);
+		undef($tail);
+		undef($head);
+		undef($plugin_uri);
+		undef($midi_binding);
+		undef($midi_channel);
+		undef($midi_controller);
+		next;
+	}
+
+	# item: cable
+	if($ttl=~/^\s*_:b(\d+)\s*$/)
+	{
+		$item="cable$1";
+	}
+	# item: plugin and param
+	elsif($ttl=~/^\<(.+)\>\s*$/)
+	{
+		$item=$1;
+	}
+
+	# cable
+	if($item=~/^cable(\d+)$/)
+	{
+		if($ttl=~/^\s*ingen:tail\s*\<(.+)\>/)
+		{
+			$tail=$1;
+			$tail=~s/^serial_midi_in/ttymidi\/MIDI_in/;
+			$tail=~s/^serial_midi_out/ttymidi\/MIDI_out/;
+			$tail=~s/^(midi_capture_.+)/system\/\1/;
+			$tail=~s/^(midi_playback_.+)/system\/\1/;
+			$tail=~s/^(playback.+)/system\/\1/;
+			$tail=~s/^(capture.+)/system\/\1/;
+		}
+		elsif($ttl=~/^\s*ingen:head\s*\<(.+)\>/)
+		{
+			$head=$1;
+			$head=~s/^serial_midi_in/ttymidi\/MIDI_in/;
+			$head=~s/^serial_midi_out/ttymidi\/MIDI_out/;
+			$head=~s/^(midi_capture_.+)/system\/\1/;
+			$head=~s/^(midi_playback_.+)/system\/\1/;
+			$head=~s/^(playback.+)/system\/\1/;
+			$head=~s/^(capture.+)/system\/\1/;
+		}
+
+		if($tail && $head)
+		{
+			next if(($tail=~/^system\/capture/ && $head=~/^system\/playback/) || ($tail=~/^system\/playback/ && $head=~/^system\/capture/));
+
+			push(@cable,"$head:$tail");
+		}
+	}
+	# plugin, param or midi-param
+	elsif($item=~/\//)
+	{
+		# param
+		if($ttl=~/^\s*ingen:value\s+(\-?[0-9\.]+)/)
+		{
+			$value=$1;
+			($plugin_name,$plugin_param)=split("\/",$item);
+			$number=get_plugin_number($plugin_name);
+			if($plugin_param=~/:bypass/)
+			{
+				push(@param,"bypass $number $value");
+			}
+			else
+			{
+				push(@param,"param_set $number $plugin_param $value");
+			}
+		}
+		# midi-param
+		elsif($ttl=~/^\s*midi:binding \[/)
+		{
+			($plugin_name,$plugin_param)=split("\/",$item);
+			$midi_binding=$plugin_param;
+		}
+		elsif($ttl=~/^\s*midi:channel\s+(\d+)/)
+		{
+			$midi_channel=int($1);
+		}
+		elsif($ttl=~/^\s*midi:controllerNumber\s+(\d+)/)
+		{
+			$midi_controller=int($1);
+		}
+
+		if(defined($midi_binding) && defined($midi_channel) && defined($midi_controller))
+		{
+			push(@midi_param,"$number/$midi_binding/$midi_channel/$midi_controller");
+			undef($midi_binding);
+			undef($midi_channel);
+			undef($midi_controller);
+		}
+	}
+	elsif($item ne "")
+	{
+		# plugin
+		if($ttl=~/^\s*lv2:prototype\s+\<(.+)\>/)
+		{
+			$plugin_uri=$1;
+			push(@plugin,"add $plugin_uri $plugin_counter");
+			push(@plugins,"$item");
+			$plugin_counter++;
+		}
+	}
+}
+close(TTL);
+
+foreach (@plugin)
+{
+	print $_."\n";
+}
+foreach (@param)
+{
+	print $_."\n";
+}
+foreach (@midi_param)
+{
+	($number,$midi_binding,$midi_channel,$midi_controller)=split("/",$_);
+	print "midi_map ".$number." ".$midi_binding." ".$midi_channel." ".$midi_controller."\n";
+}
+foreach (@cable)
+{
+	($head,$tail)=split(":",$_);
+	($pname1,$pport1)=split("/",$head);
+	($pname2,$pport2)=split("/",$tail);
+	$pnumber1=get_plugin_number($pname1);
+	$pnumber2=get_plugin_number($pname2);
+
+	if($pnumber1>=0)
+	{
+		$pname1="effect_".$pnumber1;
+	}
+	if($pnumber2>=0)
+	{
+		$pname2="effect_".$pnumber2;
+	}
+
+	print "connect $pname1:$pport1 $pname2:$pport2\n";
+}
+
+exit(0);
+
+sub get_plugin_number
+{
+	my($plugin_name)=@_;
+	my($i)=0;
+
+	foreach (@plugins)
+	{
+		if($_ eq $plugin_name)
+		{
+			return($i);
+		}
+		$i++;
+	}
+	return(-1);
+}
