@@ -221,6 +221,8 @@ class zynthian_engine_carla(zynthian_engine):
 				except Exception as err:
 					#print("EXCEPTION REGENERATING CONTROLLER LIST: "+str(param)+" => "+str(err))
 					pass
+			if len(param_set)>=1:
+				self.ctrl_list.append([param_set,0,self.plugin_info[i]['name']+'#'+str(c)])
 		if len(self.ctrl_list)==0:
 			print("LOADING CONTROLLER DEFAULTS")
 			self.ctrl_list=self.default_ctrl_list

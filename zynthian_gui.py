@@ -1194,9 +1194,13 @@ class zynthian_gui_control(zynthian_selector):
 		midi_chan=zyngui.zyngine.get_midi_chan()
 		for i in range(0,4):
 			try:
-				cfg=self.zcontrollers_config[i]
-				#indx, tit, chan, ctrl, val, max_val=127
-				self.set_controller(i,cfg[0],midi_chan,cfg[1],cfg[2],cfg[3])
+				if i<len(self.zcontrollers_config):
+					cfg=self.zcontrollers_config[i]
+					#indx, tit, chan, ctrl, val, max_val=127
+					self.set_controller(i,cfg[0],midi_chan,cfg[1],cfg[2],cfg[3])
+				elif i<len(self.zcontrollers):
+					self.zcontrollers[i].hide()
+					pass
 			except Exception as e:
 				print("ERROR: set_controller_config(%d) => %s" % (i,e))
 
@@ -1243,10 +1247,10 @@ class zynthian_gui_control(zynthian_selector):
 
 	def zyncoder_read(self):
 		if self.mode=='control':
-			for i in range(0,4):
+			for i, cfg in enumerate(self.zcontrollers_config):
 				#print('Read Control ' + str(self.zcontrollers[i].title))
 				self.zcontrollers[i].read_zyncoder()
-				self.zcontrollers_config[i][2]=self.zcontrollers[i].value_print
+				cfg[2]=self.zcontrollers[i].value_print
 		elif self.mode=='select':
 			_sel=self.zselector.value
 			self.zselector.read_zyncoder()

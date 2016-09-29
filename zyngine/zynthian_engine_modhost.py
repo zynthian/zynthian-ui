@@ -34,9 +34,12 @@ from zyngine.zynthian_engine import *
 class zynthian_engine_modhost(zynthian_engine):
 	name="MODHost"
 	nickname="MH"
+
 	command=("/usr/local/bin/mod-host", "-i")
 	command_pb2mh="/home/pi/zynthian/zynthian-ui/zyngine/pedalboard2modhost"
 	lv2_path="/home/pi/.lv2:/home/pi/zynthian/zynthian-plugins/mod-lv2"
+
+	plugin_info={}
 
 	bank_dirs=[
 		#('MY', os.getcwd()+"/my-data/mod-pedalboards"),
@@ -98,13 +101,81 @@ class zynthian_engine_modhost(zynthian_engine):
 	def mh_commands(self, ttl_fpath):
 		cmds=check_output((self.command_pb2mh,ttl_fpath), shell=False).decode('utf8')
 		res=self.proc_cmd(cmds,2)
+		self.plugin_info={}
+		midi_cc=1
+		cmds=""
 		for r in res:
 			print(r.strip())
-			#Try to detect MIDI Input plugins
-			m=re.match(r'connect\s+([^\s])\s+ttymidi\:MIDI_in',r)
+			#Catch plugin names and IDs
+			m=re.search(r'add\s+([^\s]+)\s+([\d]+)',r)
+			if m and m.group(1) and m.group(2):
+				plugin_id=m.group(2)
+				plugin_uri=m.group(1)
+				plugin_name=plugin_uri.split('/')[-1]
+				self.plugin_info[plugin_id]={}
+				self.plugin_info[plugin_id]['name']=plugin_name
+				self.plugin_info[plugin_id]['parameter_list']=[]
+				continue
+			#Try to detect MIDI Input plugins and connect it to capture_1 => must be improved!
+			m=re.search(r'connect\s+([^\s]+)\s+ttymidi\:MIDI_in',r)
 			if m and m.group(1):
-				cmd="connect "+m.group(1)+" midi_system:capture_1"
-				res=self.proc_cmd(cmd,0.1)
-				print(str(res))
+				cmds=cmds+"connect "+m.group(1)+" system:midi_capture_1\n"
+				continue
+			#Set controller mapping => overwrite midi learning from UI (to fix!!)
+			m=re.search(r'param_set\s+([\d]+)\s+([^\s]+)\s+(\-?[\.\d]+)',r)
+			if m and m.group(1) and m.group(2) and m.group(3):
+				plugin_id=m.group(1)
+				param_name=m.group(2)
+				param_value=m.group(3)
+				plugin_name=self.plugin_info[plugin_id]['name']
+				print("SETTING MIDI CC "+str(midi_cc)+" => "+plugin_name+"->"+param_name)
+				#Add parameter to plugin_info
+				param={
+					'name': param_name,
+					'value': param_value,
+					'min': 0,
+					'max': 0,
+					'midi_cc': midi_cc
+				}
+				self.plugin_info[plugin_id]['parameter_list'].append(param)
+				#Build midi_map command for mod-host
+				cmds=cmds+"midi_map "+plugin_id+" "+param_name+" "+str(self.midi_chan)+" "+str(midi_cc)+"\n"
+				#Next MIDI CC
+				midi_cc=midi_cc+1
+				continue
+		#Send mod-host post-commands
+		res=self.proc_cmd(cmds,1)
+		for r in res:
+			print(r.strip())
+		#Generate controller config lists
+		self.generate_ctrl_list()
+
+	def generate_ctrl_list(self):
+		self.ctrl_list=[]
+		for i in self.plugin_info:
+			c=1
+			param_set=[]
+			for param in self.plugin_info[i]['parameter_list']:
+				try:
+					#print("CTRL LIST PLUGIN %s PARAM %s" % (i,param))
+					if param['midi_cc']>0:
+						r=param['max']-param['min']
+						if r!=0: midi_val=int(127*(param['value']-param['min'])/r)
+						else: midi_val=0;
+						param_set.append([param['name'], param['midi_cc'], midi_val, 127])
+						if len(param_set)>=4:
+							self.ctrl_list.append([param_set,0,self.plugin_info[i]['name']+'#'+str(c)])
+							param_set=[]
+							c=c+1
+				except Exception as err:
+					#print("EXCEPTION REGENERATING CONTROLLER LIST: "+str(param)+" => "+str(err))
+					pass
+			if len(param_set)>=1:
+				self.ctrl_list.append([param_set,0,self.plugin_info[i]['name']+'#'+str(c)])
+		if len(self.ctrl_list)==0:
+			print("LOADING CONTROLLER DEFAULTS")
+			self.ctrl_list=self.default_ctrl_list
+		self.load_ctrl_config()
+
 
 #******************************************************************************
