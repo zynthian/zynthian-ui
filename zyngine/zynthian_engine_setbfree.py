@@ -36,6 +36,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	drawbar_values=[['0','1','2','3','4','5','6','7','8'], [128,120,104,88,72,56,40,24,8]]
 	base_dir="./data/setbfree/"
 
+	max_chan=3
 	chan_names=("upper","lower","pedals")
 
 	ctrl_list=[
@@ -76,7 +77,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 	]
 
 	def __init__(self,parent=None):
-		self.max_chan=3
 		self.command=("/usr/local/bin/setBfree", "midi.driver="+self.midi_driver, "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
 		super().__init__(parent)
 

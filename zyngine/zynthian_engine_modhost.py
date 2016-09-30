@@ -34,6 +34,7 @@ from zyngine.zynthian_engine import *
 class zynthian_engine_modhost(zynthian_engine):
 	name="MODHost"
 	nickname="MH"
+	max_chan=1
 
 	command=("/usr/local/bin/mod-host", "-i")
 	command_pb2mh="/home/pi/zynthian/zynthian-ui/zyngine/pedalboard2modhost"
@@ -65,7 +66,7 @@ class zynthian_engine_modhost(zynthian_engine):
 		os.environ['LV2_PATH']=self.lv2_path
 		self.parent=parent
 		self.clean()
-		self.start(True)
+		#self.start(True)
 		self.load_bank_list()
 		#self.osc_init()
 
@@ -113,7 +114,7 @@ class zynthian_engine_modhost(zynthian_engine):
 				plugin_uri=m.group(1)
 				plugin_name=plugin_uri.split('/')[-1]
 				self.plugin_info[plugin_id]={}
-				self.plugin_info[plugin_id]['name']=plugin_name
+				self.plugin_info[plugin_id]['name']=plugin_name.replace('_', ' ')
 				self.plugin_info[plugin_id]['parameter_list']=[]
 				continue
 			#Try to detect MIDI Input plugins and connect it to capture_1 => must be improved!
@@ -125,7 +126,7 @@ class zynthian_engine_modhost(zynthian_engine):
 			m=re.search(r'param_set\s+([\d]+)\s+([^\s]+)\s+(\-?[\.\d]+)',r)
 			if m and m.group(1) and m.group(2) and m.group(3):
 				plugin_id=m.group(1)
-				param_name=m.group(2)
+				param_name=m.group(2).replace('_', ' ')
 				param_value=m.group(3)
 				plugin_name=self.plugin_info[plugin_id]['name']
 				print("SETTING MIDI CC "+str(midi_cc)+" => "+plugin_name+"->"+param_name)
@@ -148,7 +149,10 @@ class zynthian_engine_modhost(zynthian_engine):
 		for r in res:
 			print(r.strip())
 		#Generate controller config lists
-		self.generate_ctrl_list()
+		if not self.snapshot_fpath:
+			self.generate_ctrl_list()
+		#Reload Parameter Values
+		#self.load_snapshot_post()
 
 	def generate_ctrl_list(self):
 		self.ctrl_list=[]

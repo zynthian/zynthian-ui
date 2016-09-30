@@ -35,6 +35,7 @@ from zyngine.zynthian_engine import *
 class zynthian_engine_carla(zynthian_engine):
 	name="Carla"
 	nickname="CP"
+	max_chan=1
 
 	patch_name=""
 	patch_dirs=[
@@ -121,7 +122,7 @@ class zynthian_engine_carla(zynthian_engine):
 		self.osc_connected=True
 		try:
 			self.plugin_info[args[0]]={
-				'name': args[1],
+				'name': args[1].replace('_', ' '),
 				'program_count': 0,
 				'program_list': {},
 				'parameter_count': 0,
@@ -167,7 +168,7 @@ class zynthian_engine_carla(zynthian_engine):
 	def cb_set_parameter_data(self, path, args):
 		#print("PARAMETER DATA FOR PLUGIN %s => %s (%s)" % (args[0],args[1],args[4]))
 		try:
-			self.plugin_info[args[0]]['parameter_list'][args[1]]['name']=args[4]
+			self.plugin_info[args[0]]['parameter_list'][args[1]]['name']=args[4].replace('_', ' ')
 		except:
 			pass
 
