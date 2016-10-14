@@ -118,12 +118,12 @@ elif hw_version=="PROTOTYPE-3H":	# Controller RBPi connector downside (Holger's 
 	zyncoder_pin_b=[26,25,0,4]
 	zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
-elif hw_version=="PROTOTYPE-4":		# Controller RBPi connector upside
+elif hw_version=="PROTOTYPE-4":		# Controller RBPi connector upside / Controller Singles
 	zyncoder_pin_a=[26,25,0,4]
 	zyncoder_pin_b=[21,27,7,3]
 	zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
-elif hw_version=="PROTOTYPE-4B":		# Controller RBPi connector downside
+elif hw_version=="PROTOTYPE-4B":		# Controller RBPi connector downside / Controller Singles Inverted
 	zyncoder_pin_a=[25,26,4,0]
 	zyncoder_pin_b=[27,21,3,7]
 	zynswitch_pin=[23,107,2,106]
