@@ -270,8 +270,10 @@ class zynthian_engine_carla(zynthian_engine):
 			self.load_patch(new_patch)
 
 	#TODO: Revise this!!!
-	def load_ctrl_config(self):
-		self.ctrl_config[self.midi_chan]=self.ctrl_list
+	def load_ctrl_config(self, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		self.ctrl_config[chan]=self.ctrl_list
 
 	def set_all_instr(self):
 		self.load_instr_list()

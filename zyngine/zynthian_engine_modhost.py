@@ -96,12 +96,16 @@ class zynthian_engine_modhost(zynthian_engine):
 		instr_dpath=self.bank_list[self.get_bank_index()][0]
 		instr_ttl=os.path.basename(instr_dpath)
 		instr_ttl,ext=os.path.splitext(instr_ttl)
-		self.mh_commands(instr_dpath+"/"+instr_ttl+".ttl")
+		try:
+			self.mh_commands(instr_dpath+"/"+instr_ttl+".ttl")
+		except Exception as err:
+			print("ERROR: loading pedalboard into MOD-HOST => "+str(err))
 		self.stop_loading()
 
 	def mh_commands(self, ttl_fpath):
-		cmds=check_output((self.command_pb2mh,ttl_fpath), shell=False).decode('utf8')
-		res=self.proc_cmd(cmds,2)
+		pbcmds=check_output((self.command_pb2mh,ttl_fpath), shell=False).decode('utf8')
+		res=self.proc_cmd(pbcmds,2)
+		res=pbcmds.split("\n")
 		self.plugin_info={}
 		midi_cc=1
 		cmds=""
@@ -113,8 +117,12 @@ class zynthian_engine_modhost(zynthian_engine):
 				plugin_id=m.group(2)
 				plugin_uri=m.group(1)
 				plugin_name=plugin_uri.split('/')[-1]
+				parts=plugin_name.split('#')
+				if len(parts)>1:
+					plugin_name=parts[1]
+				print("SETTING PLUGIN "+plugin_id+": "+plugin_name)
 				self.plugin_info[plugin_id]={}
-				self.plugin_info[plugin_id]['name']=plugin_name.replace('_', ' ')
+				self.plugin_info[plugin_id]['name']=plugin_name.replace('_', ' ').strip()
 				self.plugin_info[plugin_id]['parameter_list']=[]
 				continue
 			#Try to detect MIDI Input plugins and connect it to capture_1 => must be improved!
@@ -123,26 +131,37 @@ class zynthian_engine_modhost(zynthian_engine):
 				cmds=cmds+"connect "+m.group(1)+" system:midi_capture_1\n"
 				continue
 			#Set controller mapping => overwrite midi learning from UI (to fix!!)
-			m=re.search(r'param_set\s+([\d]+)\s+([^\s]+)\s+(\-?[\.\d]+)',r)
-			if m and m.group(1) and m.group(2) and m.group(3):
+			plugin_id=None
+			m=re.search(r'param_set\s+([\d]+)\s+(\:?[^\s]+)\s+(\-?[\.\d]+)',r)
+			if m and m.group(1) and m.group(2):
 				plugin_id=m.group(1)
-				param_name=m.group(2).replace('_', ' ')
+				param_name=m.group(2)
 				param_value=m.group(3)
-				plugin_name=self.plugin_info[plugin_id]['name']
-				print("SETTING MIDI CC "+str(midi_cc)+" => "+plugin_name+"->"+param_name)
-				#Add parameter to plugin_info
-				param={
-					'name': param_name,
-					'value': param_value,
-					'min': 0,
-					'max': 0,
-					'midi_cc': midi_cc
-				}
-				self.plugin_info[plugin_id]['parameter_list'].append(param)
-				#Build midi_map command for mod-host
-				cmds=cmds+"midi_map "+plugin_id+" "+param_name+" "+str(self.midi_chan)+" "+str(midi_cc)+"\n"
-				#Next MIDI CC
-				midi_cc=midi_cc+1
+			else:
+				m=re.search(r'bypass\s+([\d]+)\s+(\-?[\.\d]+)',r)
+				if m and m.group(1):
+					plugin_id=m.group(1)
+					param_name=':bypass'
+					param_value=m.group(2)
+			if plugin_id:
+				try:
+					plugin_name=self.plugin_info[plugin_id]['name']
+					print("SETTING MIDI CC "+str(midi_cc)+" => "+plugin_name+"->"+param_name)
+					#Add parameter to plugin_info
+					param={
+						'name': param_name.replace('_', ' '),
+						'value': float(param_value),
+						'min': 0,
+						'max': 127,
+						'midi_cc': midi_cc
+					}
+					self.plugin_info[plugin_id]['parameter_list'].append(param)
+					#Build midi_map command for mod-host
+					cmds=cmds+"midi_map "+plugin_id+" "+param_name+" "+str(self.midi_chan)+" "+str(midi_cc)+"\n"
+					#Next MIDI CC
+					midi_cc=midi_cc+1
+				except Exception as err:
+					print("ERROR: setting parameter => "+str(err))
 				continue
 		#Send mod-host post-commands
 		res=self.proc_cmd(cmds,1)
@@ -163,11 +182,17 @@ class zynthian_engine_modhost(zynthian_engine):
 				try:
 					#print("CTRL LIST PLUGIN %s PARAM %s" % (i,param))
 					if param['midi_cc']>0:
-						r=param['max']-param['min']
-						if r!=0: midi_val=int(127*(param['value']-param['min'])/r)
-						else: midi_val=0;
-						param_set.append([param['name'], param['midi_cc'], midi_val, 127])
+						if param['name'][0:1]==':':
+							if param['value']>63: val='on'
+							else: val='off'
+							param_set.append([param['name'][1:], param['midi_cc'], val, 'off|on'])
+						else:
+							r=param['max']-param['min']
+							if r!=0: midi_val=int(127*(param['value']-param['min'])/r)
+							else: midi_val=0;
+							param_set.append([param['name'], param['midi_cc'], midi_val, 127])
 						if len(param_set)>=4:
+							#print("ADDING CONTROLLER SCREEN #"+str(c))
 							self.ctrl_list.append([param_set,0,self.plugin_info[i]['name']+'#'+str(c)])
 							param_set=[]
 							c=c+1
@@ -175,6 +200,7 @@ class zynthian_engine_modhost(zynthian_engine):
 					#print("EXCEPTION REGENERATING CONTROLLER LIST: "+str(param)+" => "+str(err))
 					pass
 			if len(param_set)>=1:
+				#print("ADDING CONTROLLER SCREEN #"+str(c))
 				self.ctrl_list.append([param_set,0,self.plugin_info[i]['name']+'#'+str(c)])
 		if len(self.ctrl_list)==0:
 			print("LOADING CONTROLLER DEFAULTS")

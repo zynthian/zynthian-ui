@@ -102,8 +102,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 		pgm_fpath=self.bank_list[self.get_bank_index()][0]
 		self.instr_list=self.load_pgm_list(pgm_fpath)
 
-	def load_ctrl_config(self):
-		super().load_ctrl_config()
+	def load_ctrl_config(self, chan=None):
+		super().load_ctrl_config(chan)
 		#Set preset params into ctrl_config
 		for ctrlcfg in self.ctrl_config[self.midi_chan]:
 			for ctrl in ctrlcfg[0]:
