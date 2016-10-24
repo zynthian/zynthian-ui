@@ -36,7 +36,7 @@ from ctypes import *
 from time import sleep
 from datetime import datetime
 from string import Template
-from subprocess import check_output
+from subprocess import check_output, Popen, PIPE
 from threading  import Thread
 from os.path import isfile, isdir, join
 
@@ -776,6 +776,7 @@ class zynthian_gui_info:
 class zynthian_gui_admin(zynthian_selector):
 	commands=None
 	thread=None
+	child_pid=None
 
 	def __init__(self):
 		super().__init__('Action', True, gui_bg_logo)
@@ -791,7 +792,8 @@ class zynthian_gui_admin(zynthian_selector):
 		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
 		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
-		#self.list_data.append((self.network_info,0,"Network Info"))
+		self.list_data.append((self.network_info,0,"Network Info"))
+		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.restart_gui,0,"Restart GUI"))
 		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
 		self.list_data.append((self.reboot,0,"Reboot"))
@@ -838,6 +840,44 @@ class zynthian_gui_admin(zynthian_selector):
 			self.thread.daemon = True # thread dies with the program
 			self.thread.start()
 
+	def killable_execute_commands(self):
+		#zyngui.start_loading()
+		for cmd in self.commands:
+			print("Executing Command: "+cmd)
+			zyngui.add_info("\nExecuting: "+cmd)
+			try:
+				proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
+				self.child_pid=proc.pid
+				zyngui.add_info("\nPID: "+str(self.child_pid))
+				(output, error)=proc.communicate()
+				self.child_pid=None
+				if error:
+					result="ERROR: "+str(error)
+				else:
+					result=output
+			except Exception as e:
+				result="ERROR: "+str(e)
+			print(result)
+			zyngui.add_info("\n"+str(result))
+		self.commands=None
+		zyngui.hide_info_timer(3000)
+		#zyngui.stop_loading()
+		self.fill_list()
+
+	def killable_start_command(self,cmds):
+		if not self.commands:
+			print("Starting Command Sequence ...")
+			self.commands=cmds
+			self.thread=Thread(target=self.killable_execute_commands, args=())
+			self.thread.daemon = True # thread dies with the program
+			self.thread.start()
+
+	def kill_command(self):
+		if self.child_pid:
+			print("Killing process "+str(self.child_pid))
+			os.kill(self.child_pid, signal.SIGTERM)
+			self.child_pid=None
+
 	def update_software(self):
 		print("UPDATE SOFTWARE")
 		zyngui.show_info("UPDATE SOFTWARE")
@@ -856,7 +896,7 @@ class zynthian_gui_admin(zynthian_selector):
 	def network_info(self):
 		print("NETWORK INFO")
 		zyngui.show_info("NETWORK INFO:")
-		self.start_command(["ifconfig wlan0"])
+		self.start_command(["ifconfig | awk '/inet addr/{print substr($2,6)}'"])
 
 	def start_mod_ui(self):
 		if not self.is_service_active("mod-ui"):
@@ -870,6 +910,11 @@ class zynthian_gui_admin(zynthian_selector):
 			print("STOP MOD-UI")
 			zyngui.show_info("STOP MOD-UI:")
 			self.start_command(["sudo systemctl stop mod-host && sudo systemctl stop mod-ui"])
+
+	def test_audio(self):
+		print("TESTING AUDIO")
+		zyngui.show_info("TEST AUDIO")
+		self.killable_start_command(["sudo mpg123 ./data/audio/test.mp3"])
 
 	def restart_gui(self):
 		print("RESTART GUI")
@@ -1528,6 +1573,8 @@ class zynthian_gui:
 					if j<0: j=1
 					screen_back=self.screens_sequence[j]
 				else:
+					if self.modal_screen=='info':
+						self.screens['admin'].kill_command()
 					screen_back=self.active_screen
 				# If there is only one program, jump to bank selection
 				if screen_back=='instr' and len(self.zyngine.instr_list)==1:

@@ -45,7 +45,7 @@ engine_list = [
 
 #Input Black List
 hw_black_list = [
-	"Midi Through"
+	#"Midi Through"
 ]
 
 #------------------------------------------------------------------------------
