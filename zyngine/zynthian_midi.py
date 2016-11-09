@@ -40,7 +40,7 @@ class zynthian_midi:
 		#alsaseq.connectto(0,130,0)
 		alsaseq.start()
 
-	def set_midi_control(self, chan,ctrl,val):
+	def set_midi_control(self, chan, ctrl, val):
 		alsaseq.output((alsaseq.SND_SEQ_EVENT_CONTROLLER, 1, 0, 0, (0, 0), (0, 0), (0, 0), (0, 0, 0, 0, ctrl, val)))
 
 	def set_midi_bank_msb(self, chan, msb):

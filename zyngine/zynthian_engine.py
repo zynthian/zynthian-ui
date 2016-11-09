@@ -111,7 +111,7 @@ class zynthian_engine:
 		self.load_bank_list()
 
 	def __del__(self):
-		self.stop()
+		#self.stop()
 		self.clean()
 
 	def clean(self):
@@ -125,6 +125,9 @@ class zynthian_engine:
 			self.instr_name[i]=""
 			self.instr_set[i]=None
 			self.ctrl_config[i]=None
+
+	def reset(self):
+		self.clean()
 
 	def start_loading(self):
 		self.loading=self.loading+1
@@ -277,7 +280,7 @@ class zynthian_engine:
 		print('MIDI Chan Selected: ' + str(i))
 		self.midi_chan=i
 		self.load_bank_list()
-		self.set_bank(self.get_bank_index())
+		#self.set_bank(self.get_bank_index())
 
 	def next_chan(self):
 		count=0
@@ -321,7 +324,7 @@ class zynthian_engine:
 		try:
 			return self.ctrl_config[self.midi_chan][i][0]
 		except:
-			return self.ctrl_list[0][0]
+			return None
 
 	def reset_instr(self, chan=None):
 		if chan is None:
@@ -394,12 +397,9 @@ class zynthian_engine:
 		if chan is None:
 			chan=self.midi_chan
 		self.ctrl_config[chan]=copy.deepcopy(self.ctrl_list)
-		#Setup OSC paths
-		for ctrlcfg in self.ctrl_config[chan]:
-			for ctrl in ctrlcfg[0]:
-				if isinstance(ctrl[1],str):
-					tpl=Template(ctrl[1])
-					ctrl[1]=tpl.substitute(ch=chan)
+
+	def set_ctrl_value(self, ctrl, val):
+		ctrl[2]=val
 
 	def set_bank(self, i, chan=None):
 		if chan is None:
@@ -579,5 +579,9 @@ class zynthian_engine:
 		except Exception as e:
 			print("ERROR: " % e)
 			return False
+
+	def all_sounds_off(self):
+		for chan in range(16):
+			self.parent.zynmidi.set_midi_control(chan, 120, 0)
 
 #******************************************************************************

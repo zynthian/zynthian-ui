@@ -110,6 +110,17 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				title=str.replace(f[5:-4], '_', ' ')
 				self.instr_list.append((f,[bank_msb,bank_lsb,prg],title))
 
+	def load_ctrl_config(self, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		self.ctrl_config[chan]=copy.deepcopy(self.ctrl_list)
+		#Setup OSC paths
+		for ctrlcfg in self.ctrl_config[chan]:
+			for ctrl in ctrlcfg[0]:
+				if isinstance(ctrl[1],str):
+					tpl=Template(ctrl[1])
+					ctrl[1]=tpl.substitute(ch=chan)
+
 	def _set_instr(self, instr, chan=None):
 		self.start_loading()
 		super()._set_instr(instr,chan)

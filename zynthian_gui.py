@@ -26,7 +26,6 @@
 
 import os
 import sys
-import copy
 import signal
 import alsaseq
 import liblo
@@ -468,6 +467,7 @@ class zynthian_controller:
 					if v>0: v=v-1
 					lib_zyncoder.set_value_zyncoder(self.index,c_uint(v))
 				self.plot_value()
+			return True
 
 	def set_init_value(self, v):
 		if self.init_value is None:
@@ -480,7 +480,7 @@ class zynthian_controller:
 		#print("RENCODER RAW VALUE: " + str(self.index) + " => " + str(val))
 		if self.mult>1:
 			val=int((val+1)/self.mult)
-		self.set_value(val)
+		return self.set_value(val)
 
 #-------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
@@ -777,6 +777,7 @@ class zynthian_gui_admin(zynthian_selector):
 	commands=None
 	thread=None
 	child_pid=None
+	last_action=None
 
 	def __init__(self):
 		super().__init__('Action', True, gui_bg_logo)
@@ -785,15 +786,12 @@ class zynthian_gui_admin(zynthian_selector):
     
 	def fill_list(self):
 		self.list_data=[]
-		if self.is_service_active("mod-ui"):
-			self.list_data.append((self.stop_mod_ui,0,"Stop MOD-UI"))
-		else:
-			self.list_data.append((self.start_mod_ui,0,"Start MOD-UI"))
 		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
 		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
 		self.list_data.append((self.network_info,0,"Network Info"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
+		self.list_data.append((self.test_midi,0,"Test MIDI"))
 		self.list_data.append((self.restart_gui,0,"Restart GUI"))
 		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
 		self.list_data.append((self.reboot,0,"Reboot"))
@@ -801,7 +799,8 @@ class zynthian_gui_admin(zynthian_selector):
 		super().fill_list()
 
 	def select_action(self, i):
-		self.list_data[i][0]()
+		self.last_action=self.list_data[i][0]
+		self.last_action()
 
 	def set_select_path(self):
 		self.select_path.set("Admin")
@@ -877,6 +876,8 @@ class zynthian_gui_admin(zynthian_selector):
 			print("Killing process "+str(self.child_pid))
 			os.kill(self.child_pid, signal.SIGTERM)
 			self.child_pid=None
+			if self.last_action==self.test_midi:
+				zyngui.zyngine.all_sounds_off()
 
 	def update_software(self):
 		print("UPDATE SOFTWARE")
@@ -898,23 +899,15 @@ class zynthian_gui_admin(zynthian_selector):
 		zyngui.show_info("NETWORK INFO:")
 		self.start_command(["ifconfig | awk '/inet addr/{print substr($2,6)}'"])
 
-	def start_mod_ui(self):
-		if not self.is_service_active("mod-ui"):
-			print("START MOD-UI")
-			zyngui.show_info("START MOD-UI:")
-			zyngui.set_engine(None)
-			self.start_command(["sudo systemctl start mod-host && sudo systemctl start mod-ui"])
-
-	def stop_mod_ui(self):
-		if self.is_service_active("mod-ui"):
-			print("STOP MOD-UI")
-			zyngui.show_info("STOP MOD-UI:")
-			self.start_command(["sudo systemctl stop mod-host && sudo systemctl stop mod-ui"])
-
 	def test_audio(self):
 		print("TESTING AUDIO")
 		zyngui.show_info("TEST AUDIO")
-		self.killable_start_command(["sudo mpg123 ./data/audio/test.mp3"])
+		self.killable_start_command(["mpg123 ./data/audio/test.mp3"])
+
+	def test_midi(self):
+		print("TESTING MIDI")
+		zyngui.show_info("TEST MIDI")
+		self.killable_start_command(["aplaymidi -p 14 ./data/mid/test.mid"])
 
 	def restart_gui(self):
 		print("RESTART GUI")
@@ -944,10 +937,11 @@ class zynthian_gui_engine(zynthian_selector):
 		"FS": ("FluidSynth","FluidSynth - Sampler"),
 		"LS": ("LinuxSampler","LinuxSampler - Sampler"),
 		"BF": ("setBfree","setBfree - Hammond Emulator"),
-		"CP": ("Carla","Carla - Plugin Host"),
-		"MH": ("MODHost","MODHost - Plugin Host")
+		#"CP": ("Carla","Carla - Plugin Host"),
+		#"MH": ("MODHost","MODHost - Plugin Host"),
+		"MD": ("MOD-UI","MOD-UI - Plugin Host")
 	}
-	engine_order=["ZY","LS","FS","BF","CP","MH"]
+	engine_order=["ZY","LS","FS","BF","MD"]
 
 	def __init__(self):
 		super().__init__('Engine', True, gui_bg_logo)
@@ -965,14 +959,16 @@ class zynthian_gui_engine(zynthian_selector):
 
 	def select_action(self, i):
 		zyngui.set_engine(self.list_data[i][0])
-		zyngui.show_screen('chan')
+		if zyngui.zyngine.max_chan<=1:
+			zyngui.screens['chan'].fill_list()
+			zyngui.screens['chan'].select_action(0)
+		else:
+			zyngui.show_screen('chan')
 
 	def set_select_path(self):
 		self.select_path.set("Engine")
 
-	def set_engine(self,name,wait=0):
-		if name:
-			zyngui.screens['admin'].stop_mod_ui()
+	def set_engine(self, name, wait=0):
 		if self.zyngine:
 			if self.zyngine.name==name:
 				return True
@@ -990,6 +986,8 @@ class zynthian_gui_engine(zynthian_selector):
 			self.zyngine=zynthian_engine_carla(zyngui)
 		elif name=="MODHost" or name=="MH":
 			self.zyngine=zynthian_engine_modhost(zyngui)
+		elif name=="MOD-UI" or name=="MD":
+			self.zyngine=zynthian_engine_modui(zyngui)
 		else:
 			self.zyngine=None
 			return False
@@ -1120,7 +1118,7 @@ class zynthian_gui_chan(zynthian_selector):
 	def select_action(self, i):
 		zyngui.zyngine.set_midi_chan(i)
 		# If there is only one bank, jump to instrument selection
-		if len(zyngui.zyngine.bank_list)==1:
+		if len(zyngui.zyngine.bank_list)<=1:
 			zyngui.screens['bank'].fill_list()
 			zyngui.screens['bank'].select_action(0)
 		else:
@@ -1161,7 +1159,7 @@ class zynthian_gui_bank(zynthian_selector):
 	def select_action(self, i):
 		zyngui.zyngine.set_bank(i)
 		# If there is only one instrument, jump to instrument control
-		if len(zyngui.zyngine.instr_list)==1:
+		if len(zyngui.zyngine.instr_list)<=1:
 			zyngui.screens['instr'].fill_list()
 			zyngui.screens['instr'].select_action(0)
 		else:
@@ -1239,15 +1237,15 @@ class zynthian_gui_control(zynthian_selector):
 		midi_chan=zyngui.zyngine.get_midi_chan()
 		for i in range(0,4):
 			try:
-				if i<len(self.zcontrollers_config):
+				if self.zcontrollers_config and i<len(self.zcontrollers_config):
 					cfg=self.zcontrollers_config[i]
 					#indx, tit, chan, ctrl, val, max_val=127
 					self.set_controller(i,cfg[0],midi_chan,cfg[1],cfg[2],cfg[3])
 				elif i<len(self.zcontrollers):
 					self.zcontrollers[i].hide()
-					pass
 			except Exception as e:
 				print("ERROR: set_controller_config(%d) => %s" % (i,e))
+				self.zcontrollers[i].hide()
 
 	def set_controller(self, i, tit, chan, ctrl, val, max_val=127):
 		try:
@@ -1291,11 +1289,11 @@ class zynthian_gui_control(zynthian_selector):
 			self.click_listbox()
 
 	def zyncoder_read(self):
-		if self.mode=='control':
-			for i, cfg in enumerate(self.zcontrollers_config):
+		if self.mode=='control' and self.zcontrollers_config:
+			for i, ctrl in enumerate(self.zcontrollers_config):
 				#print('Read Control ' + str(self.zcontrollers[i].title))
-				self.zcontrollers[i].read_zyncoder()
-				cfg[2]=self.zcontrollers[i].value_print
+				if self.zcontrollers[i].read_zyncoder():
+					zyngui.zyngine.set_ctrl_value(ctrl,self.zcontrollers[i].value_print)
 		elif self.mode=='select':
 			_sel=self.zselector.value
 			self.zselector.read_zyncoder()
@@ -1438,7 +1436,7 @@ class zynthian_gui:
 		self.modal_screen=None
 
 	def refresh_screen(self):
-		if self.active_screen=='instr' and len(self.zyngine.instr_list)==1:
+		if self.active_screen=='instr' and len(self.zyngine.instr_list)<=1:
 			self.active_screen='control'
 		self.show_active_screen()
 
@@ -1577,10 +1575,10 @@ class zynthian_gui:
 						self.screens['admin'].kill_command()
 					screen_back=self.active_screen
 				# If there is only one program, jump to bank selection
-				if screen_back=='instr' and len(self.zyngine.instr_list)==1:
+				if screen_back=='instr' and len(self.zyngine.instr_list)<=1:
 					screen_back='bank'
 				# If there is only one bank, jump to channel selection
-				if screen_back=='bank' and len(self.zyngine.bank_list)==1:
+				if screen_back=='bank' and len(self.zyngine.bank_list)<=1:
 					screen_back='chan'
 				#print("BACK TO SCREEN "+str(j)+" => "+screen_back)
 				self.show_screen(screen_back)
@@ -1693,7 +1691,7 @@ class zynthian_gui:
 					pgm = (ev & 0xF00)>>8
 					print ("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan))
 					self.zyngine.set_instr(pgm,chan,False)
-					if chan==self.zyngine.get_midi_chan():
+					if not self.modal_screen and chan==self.zyngine.get_midi_chan():
 						self.show_screen('control')
 		except Exception as err:
 			print("ERROR: zynthian_gui.zynmidi_read() => %s" % err)
@@ -1718,7 +1716,7 @@ class zynthian_gui:
 					val = event[7][5]
 					print ("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan) + " => " + str(val))
 					self.zyngine.set_instr(pgm,chan,False)
-					if chan==self.zyngine.get_midi_chan():
+					if not self.modal_screen and chan==self.zyngine.get_midi_chan():
 						self.show_screen('control')
 		except Exception as err:
 			print("ERROR: zynthian_gui.amidi_read() => %s" % err)
@@ -1729,7 +1727,7 @@ class zynthian_gui:
 		try:
 			if self.exit_flag:
 				sys.exit(self.exit_code)
-			if self.zyngine:
+			if self.zyngine and not self.loading:
 				self.zyngine.refresh()
 		except Exception as err:
 			print("ERROR: zynthian_gui.zyngine_refresh() => %s" % err)
