@@ -1302,6 +1302,13 @@ class zynthian_gui_control(zynthian_selector):
 				#print('Pre-select Parameter ' + str(sel))
 				self.select_listbox(sel)
 
+	def refresh_controller_value(self, ctrl):
+		if self.mode=='control' and self.zcontrollers_config:
+			for i, ctrl_i in enumerate(self.zcontrollers_config):
+				if ctrl==ctrl_i:
+					self.zcontrollers[i].set_value(ctrl[2],True)
+					zyngui.zynread_wait_flag=True
+
 	def set_select_path(self):
 		self.select_path.set(zyngui.zyngine.get_fullpath())
 
@@ -1396,6 +1403,7 @@ class zynthian_gui:
 	loading=0
 	loading_thread=None
 	zyncoder_thread=None
+	zynread_wait_flag=False
 	exit_flag=False
 	exit_code=0
 
@@ -1633,6 +1641,9 @@ class zynthian_gui:
 				except Exception as err:
 					print("ERROR: zynthian_gui.zyncoder_read() => %s" % err)
 			sleep(0.04)
+			if self.zynread_wait_flag:
+				sleep(0.3)
+				self.zynread_wait_flag=False
 
 	def start_loading_thread(self):
 		self.loading_thread=Thread(target=self.loading_refresh, args=())

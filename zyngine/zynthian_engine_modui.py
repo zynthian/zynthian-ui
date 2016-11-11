@@ -387,7 +387,7 @@ class zynthian_engine_modui(zynthian_engine):
 				pranges=ctrl[4]
 				val=pranges['minimum']+val*(pranges['maximum']-pranges['minimum'])/127
 			self.websocket.send("param_set "+ctrl[1]+" "+str("%.6f" % val))
-			#print("param_set "+ctrl[1]+" "+str("%.6f" % val))
+			print("WS << param_set "+ctrl[1]+" "+str("%.6f" % val))
 
 	def set_param_cb(self, pgraph, symbol, val):
 		try:
@@ -402,7 +402,9 @@ class zynthian_engine_modui(zynthian_engine):
 				except:
 					if symbol==':bypass': val=int(val)
 					ctrl[2]=list(ctrl[4].keys())[list(ctrl[4].values()).index(val)] #TODO optimize??
-				#TODO Refresh control in screen when needed!!
+				#Refresh control in screen when needed!!
+				if self.parent.active_screen=='control' and self.parent.screens['control'].mode=='control':
+					self.parent.screens['control'].refresh_controller_value(ctrl)
 		except Exception as err:
 			print("PARAMETER NOT FOUND: "+pgraph+"/"+symbol+" => "+str(err))
 
