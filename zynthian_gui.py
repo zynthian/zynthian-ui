@@ -167,6 +167,7 @@ class zynthian_controller:
 	value_plot=0
 	scale_plot=1
 	value_print=None
+	value_font_size=14
 
 	shown=False
 	frame=None
@@ -264,7 +265,7 @@ class zynthian_controller:
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=str(self.value_print))
 		else:
-			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(self.value_print))
+			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",self.value_font_size), text=str(self.value_print))
 
 	def erase_value_rectangle(self):
 		if self.rectangle:
@@ -294,7 +295,7 @@ class zynthian_controller:
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=str(self.value_print))
 		else:
-			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh-8, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(self.value_print))
+			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh-8, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",self.value_font_size), text=str(self.value_print))
 
 	def erase_value_triangle(self):
 		if self.triangle:
@@ -326,7 +327,7 @@ class zynthian_controller:
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=str(self.value_print))
 		else:
-			self.value_text=self.canvas.create_text(x1+(x2-x1)/2-1, y1-(y1-y2)/2, width=x2-x1, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",14), text=str(self.value_print))
+			self.value_text=self.canvas.create_text(x1+(x2-x1)/2-1, y1-(y1-y2)/2, width=x2-x1, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",self.value_font_size), text=str(self.value_print))
 
 	def erase_value_arc(self):
 		if self.arc:
@@ -367,6 +368,33 @@ class zynthian_controller:
 				fg=color_panel_tx)
 		else:
 			self.label_title.config(text=self.title,font=("Helvetica",font_size))
+
+	def calculate_value_font_size(self):
+		if self.values:
+			rfont=tkFont.Font(family="Helvetica",size=10)
+			maxlen=max([rfont.measure(w) for w in self.values])
+			print("LONGEST VALUE: %s" % maxlen)
+			if maxlen>100:
+				self.value_font_size=7
+			elif maxlen>85:
+				self.value_font_size=8
+			elif maxlen>70:
+				self.value_font_size=9
+			elif maxlen>55:
+				self.value_font_size=10
+			elif maxlen>40:
+				self.value_font_size=11
+			elif maxlen>30:
+				self.value_font_size=12
+			elif maxlen>20:
+				self.value_font_size=13
+			else:
+				self.value_font_size=14
+		else:
+			self.value_font_size=14
+		#Update font config in text object
+		if self.value_text:
+			self.canvas.itemconfig(self.value_text, font=("Helvetica",self.value_font_size))
 
 	def config(self, tit, chan, ctrl, val, max_val=127):
 		#print("CONFIG CONTROLLER "+str(self.index)+" => "+tit)
@@ -430,6 +458,7 @@ class zynthian_controller:
 		#print("val0: "+str(self.val0))
 		#print("value: "+str(val))
 
+		self.calculate_value_font_size()
 		self.set_value(val)
 		self.setup_zyncoder()
 		
@@ -1066,7 +1095,7 @@ class zynthian_gui_snapshot(zynthian_selector):
 					zyngui.show_screen('engine')
 			else:
 				if not zyngui.zyngine or zyngui.zyngine.nickname!=engine:
-					zyngui.set_engine(engine,3)
+					zyngui.set_engine(engine,2)
 				zyngui.zyngine.load_snapshot(fpath)
 				#if zyngui.active_screen in ['admin', 'engine']: zyngui.show_screen('chan')
 				#else: zyngui.show_active_screen()
@@ -1261,6 +1290,7 @@ class zynthian_gui_control(zynthian_selector):
 			self.zcontrollers[i].hide()
 		self.set_selector()
 		self.listbox.config(selectbackground=color_ctrl_bg_on, selectforeground=color_ctrl_tx, fg=color_ctrl_tx)
+		#self.listbox.config(selectbackground=color_ctrl_bg_off, selectforeground=color_ctrl_tx, fg=color_ctrl_tx_off)
 		self.select(self.index)
 		self.set_select_path()
 
@@ -1268,7 +1298,7 @@ class zynthian_gui_control(zynthian_selector):
 		self.mode='control'
 		if self.zselector: self.zselector.hide()
 		self.set_controller_config()
-		self.listbox.config(selectbackground=color_ctrl_bg_off, selectforeground=color_ctrl_tx, fg=color_ctrl_tx_off)
+		self.listbox.config(selectbackground=color_ctrl_bg_on, selectforeground=color_ctrl_tx, fg=color_ctrl_tx)
 		self.set_select_path()
 
 	def select_action(self, i):

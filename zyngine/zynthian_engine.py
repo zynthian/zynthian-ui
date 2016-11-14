@@ -452,8 +452,8 @@ class zynthian_engine:
 			if self.instr_set[ch]:
 				self._set_instr(self.instr_set[ch],ch)
 
+	#Send Controller Values to Synth
 	def set_all_ctrl(self):
-		#Send CC Values to Synth
 		for ch in range(16):
 			if self.ctrl_config[ch]:
 				for ctrlcfg in self.ctrl_config[ch]:
@@ -577,7 +577,7 @@ class zynthian_engine:
 			self.parent.refresh_screen()
 			return True
 		except Exception as e:
-			print("ERROR: " % e)
+			print("ERROR: %s" % e)
 			return False
 
 	def all_sounds_off(self):

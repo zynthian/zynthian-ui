@@ -38,7 +38,7 @@ from zyngine.zynthian_engine import *
 
 class zynthian_engine_modui(zynthian_engine):
 	name="MOD-UI"
-	nickname="MOD"
+	nickname="MD"
 	max_chan=1
 
 	base_api_url='http://localhost:8888'
@@ -250,17 +250,29 @@ class zynthian_engine_modui(zynthian_engine):
 			#Add parameters to dictionary
 			for param in pinfo['ports']['control']['input']:
 				try:
-					if param['ranges']:
-						pranges=param['ranges']
-						r=pranges['maximum']-pranges['minimum']
-						if r!=0: val=int(127*(pranges['default']-pranges['minimum'])/r)
-						else: val=0
+					if param['ranges'] and len(param['ranges'])>2:
+						if param['scalePoints'] and len(param['scalePoints'])>0:
+							ppoints={}
+							spoints=[]
+							fpoints=[]
+							for p in param['scalePoints']:
+								if p['valid']:
+									ppoints[p['label']]=p['value']
+									spoints.append(p['label'])
+									fpoints.append(p['value'])
+							val=fpoints.index(param['ranges']['default'])
+							if not val: val=fpoints[0]
+							param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], val, '|'.join(spoints), ppoints]
+						else:
+							pranges=param['ranges']
+							r=pranges['maximum']-pranges['minimum']
+							if r!=0: val=int(127*(pranges['default']-pranges['minimum'])/r)
+							else: val=0
+							param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], val, 127, pranges]
 					else:
-						pranges=None
-						val=0
-					param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], val, 127, pranges]
+						param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], 0, 127, None]
 					self.ctrl_dict[pgraph][param['symbol']]=param['ctrl']
-				except:
+				except Exception as err:
 					print("ERROR REGENERATING CONTROLLER DICT: "+pgraph+" => "+str(err))
 			#Add bypass control
 			self.ctrl_dict[pgraph][':bypass']=['enabled', pgraph+'/:bypass', 'on', 'off|on', {'off':1,'on':0}]
@@ -407,5 +419,13 @@ class zynthian_engine_modui(zynthian_engine):
 					self.parent.screens['control'].refresh_controller_value(ctrl)
 		except Exception as err:
 			print("PARAMETER NOT FOUND: "+pgraph+"/"+symbol+" => "+str(err))
+
+	#Send All Controller Values to Synth
+	def set_all_ctrl(self):
+		for ch in range(16):
+			if self.ctrl_config[ch]:
+				for ctrlcfg in self.ctrl_config[ch]:
+					for ctrl in ctrlcfg[0]:
+						self.set_ctrl_value(ctrl, ctrl[2])
 
 #******************************************************************************
