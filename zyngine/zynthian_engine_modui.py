@@ -250,7 +250,9 @@ class zynthian_engine_modui(zynthian_engine):
 			#Add parameters to dictionary
 			for param in pinfo['ports']['control']['input']:
 				try:
-					if param['ranges'] and len(param['ranges'])>2:
+					#If there is range info (should be!!) ...
+					if param['valid'] and param['ranges'] and len(param['ranges'])>2:
+						#If there is Scale Points info ...
 						if param['scalePoints'] and len(param['scalePoints'])>0:
 							ppoints={}
 							spoints=[]
@@ -263,12 +265,25 @@ class zynthian_engine_modui(zynthian_engine):
 							val=fpoints.index(param['ranges']['default'])
 							if not val: val=fpoints[0]
 							param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], val, '|'.join(spoints), ppoints]
+						#If it's a normal controller ...
 						else:
 							pranges=param['ranges']
 							r=pranges['maximum']-pranges['minimum']
-							if r!=0: val=int(127*(pranges['default']-pranges['minimum'])/r)
-							else: val=0
-							param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], val, 127, pranges]
+							if param['properties'] and 'integer' in param['properties'] and r<128:
+								if r==1:
+									if pranges['default']==0: val='off'
+									else: val='on'
+									param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], val, 'off|on', {'off':0,'on':1}]
+								else:
+									pranges['mult']=1
+									val=pranges['mult']*(pranges['default']-pranges['minimum'])
+									param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], val, r, pranges]
+							else:
+								if r>0: pranges['mult']=127/r
+								else: pranges['mult']=1
+								val=pranges['mult']*(pranges['default']-pranges['minimum'])
+								param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], val, 127, pranges]
+					#If there is no range info (should be!!) => Default MIDI CC controller with 0-127 range
 					else:
 						param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], 0, 127, None]
 					self.ctrl_dict[pgraph][param['symbol']]=param['ctrl']
@@ -397,7 +412,7 @@ class zynthian_engine_modui(zynthian_engine):
 			if isinstance(val,str): val=ctrl[4][val]
 			else:
 				pranges=ctrl[4]
-				val=pranges['minimum']+val*(pranges['maximum']-pranges['minimum'])/127
+				val=pranges['minimum']+val/pranges['mult']
 			self.websocket.send("param_set "+ctrl[1]+" "+str("%.6f" % val))
 			print("WS << param_set "+ctrl[1]+" "+str("%.6f" % val))
 
@@ -408,9 +423,7 @@ class zynthian_engine_modui(zynthian_engine):
 				try:
 					val=float(val)
 					pranges=ctrl[4]
-					r=pranges['maximum']-pranges['minimum']
-					if r!=0: ctrl[2]=int(127*(val-pranges['minimum'])/r)
-					else: ctrl[2]=0
+					ctrl[2]=int(pranges['mult']*(val-pranges['minimum']))
 				except:
 					if symbol==':bypass': val=int(val)
 					ctrl[2]=list(ctrl[4].keys())[list(ctrl[4].values()).index(val)] #TODO optimize??

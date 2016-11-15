@@ -236,7 +236,7 @@ class zynthian_controller:
 					self.value_plot=self.scale_plot*i
 				self.value_print=self.values[i]
 			except Exception as err:
-				print("ERROR: zynthian_controller.calculate_plot_values()" + err)
+				print("ERROR: zynthian_controller.calculate_plot_values() => %s" % (err))
 				self.value_plot=self.value
 				self.value_print="ERR"
 		else:
@@ -372,8 +372,10 @@ class zynthian_controller:
 	def calculate_value_font_size(self):
 		if self.values:
 			rfont=tkFont.Font(family="Helvetica",size=10)
-			maxlen=max([rfont.measure(w) for w in self.values])
-			print("LONGEST VALUE: %s" % maxlen)
+			maxlen=len(max(self.values, key=len))
+			if maxlen>4:
+				maxlen=max([rfont.measure(w) for w in self.values])
+			#print("LONGEST VALUE: %d" % maxlen)
 			if maxlen>100:
 				self.value_font_size=7
 			elif maxlen>85:
@@ -406,6 +408,8 @@ class zynthian_controller:
 		self.val0=0
 		self.ticks=None
 		self.set_title(tit)
+
+		#Type of Controller: OSC/MD, MIDI
 		if isinstance(ctrl, str):
 			ctrl=Template(ctrl)
 			self.midi_ctrl=None
@@ -413,19 +417,28 @@ class zynthian_controller:
 		else:
 			self.midi_ctrl=ctrl
 			self.osc_path=None
+
+		#Controller "Range" is specified in max_val. There are different formats:
+		# + String => labels separated by "|"
 		if isinstance(max_val,str):
 			self.values=max_val.split('|')
+		# + List ...
 		elif isinstance(max_val,list):
+			# + List of Lists => list of values, list of labels
 			if isinstance(max_val[0],list):
 				self.values=max_val[0]
 				self.ticks=max_val[1]
 				if self.ticks[0]>self.ticks[1]:
 					self.inverted=True
+			# + Simple List => list of values
 			else:
 				self.values=max_val
+		# + Scalar (integer)
 		elif max_val>0:
 			self.values=None
 			self.max_value=self.n_values=max_val
+
+		#Calculate some controller parameters
 		if self.values:
 			self.n_values=len(self.values)
 			self.step=max(1,int(16/self.n_values));
@@ -434,13 +447,22 @@ class zynthian_controller:
 				val=self.ticks[self.values.index(val)]
 			except:
 				val=int(self.values.index(val)*self.max_value/(self.n_values-1))
+		elif not self.midi_ctrl:
+			self.mult=max(1,int(128/self.n_values));
+
+		#If "List Selection Controller" => step one option by rotary tick
 		if self.midi_ctrl==0:
 			self.mult=4
 			self.val0=1
+		#If many "ticks" => use adaptative step size based on rotary speed
 		elif self.n_values>=96:
 			self.step=0
+
+		#Check value limits
 		if val>self.max_value:
 			val=self.max_value
+
+		#Calculate scale parameter for plotting
 		if self.ticks:
 			self.scale_plot=self.max_value/abs(self.ticks[0]-self.ticks[self.n_values-1])
 		elif self.n_values>1:
@@ -480,9 +502,9 @@ class zynthian_controller:
 			else:
 				pin_a=zyncoder_pin_a[self.index]
 				pin_b=zyncoder_pin_b[self.index]
-			lib_zyncoder.setup_zyncoder(self.index,pin_a,pin_b,self.chan,self.midi_ctrl,osc_path_char,self.mult*self.value,self.mult*(self.max_value-self.val0),self.step)
+			lib_zyncoder.setup_zyncoder(self.index,pin_a,pin_b,self.chan,self.midi_ctrl,osc_path_char,int(self.mult*self.value),int(self.mult*(self.max_value-self.val0)),self.step)
 		except Exception as err:
-			print("ERROR: zynthian_controller.setup_zyncoder()" % err)
+			print("ERROR: zynthian_controller.setup_zyncoder() => %s" % (err))
 
 	def set_value(self, v, set_zyncoder=False):
 		if (v>self.max_value):
