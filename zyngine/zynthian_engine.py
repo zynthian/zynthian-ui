@@ -77,6 +77,7 @@ class zynthian_engine:
 
 	loading=0
 	snapshot_fpath=None
+	loading_snapshot=False
 
 	bank_index=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 	bank_name=["","","","","","","","","","","","","","","",""]
@@ -116,15 +117,15 @@ class zynthian_engine:
 
 	def clean(self):
 		self.midi_chan=0
-		self.loading=False
-		for i in range(16):
-			self.bank_index[i]=0
-			self.bank_name[i]=""
-			self.bank_set[i]=None
-			self.instr_index[i]=0
-			self.instr_name[i]=""
-			self.instr_set[i]=None
-			self.ctrl_config[i]=None
+		if not self.loading_snapshot:
+			for i in range(16):
+				self.bank_index[i]=0
+				self.bank_name[i]=""
+				self.bank_set[i]=None
+				self.instr_index[i]=0
+				self.instr_name[i]=""
+				self.instr_set[i]=None
+				self.ctrl_config[i]=None
 
 	def reset(self):
 		self.clean()
@@ -537,7 +538,8 @@ class zynthian_engine:
 		self.snapshot_fpath=fpath
 		return True
 
-	def load_snapshot(self, fpath):
+	def _load_snapshot(self, fpath):
+		self.loading_snapshot=True
 		try:
 			with open(fpath,"r") as fh:
 				json=fh.read()
@@ -559,13 +561,16 @@ class zynthian_engine:
 			self.instr_set=status['instr_set']
 			self.ctrl_config=status['ctrl_config']
 			self.snapshot_fpath=fpath
-			return self.load_snapshot_post()
 		except UserWarning as e:
 			print("ERROR: %s" % e)
 			return False
 		except Exception as e:
 			print("ERROR: Invalid snapshot format. %s" % e)
 			return False
+
+	def load_snapshot(self, fpath):
+		self._load_snapshot(fpath)
+		return self.load_snapshot_post()
 
 	def load_snapshot_post(self):
 		try:
@@ -575,6 +580,7 @@ class zynthian_engine:
 			sleep(0.2)
 			self.set_all_ctrl()
 			self.parent.refresh_screen()
+			self.loading_snapshot=False
 			return True
 		except Exception as e:
 			print("ERROR: %s" % e)

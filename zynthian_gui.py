@@ -339,25 +339,34 @@ class zynthian_controller:
 
 	def set_title(self, tit):
 		self.title=str(tit)
-		#maxlen=max([len(w) for w in self.title.split()])
-		rfont=tkFont.Font(family="Helvetica",size=10)
-		maxlen=max([rfont.measure(w) for w in self.title.split()])
-		if maxlen<40:
-			maxlen=rfont.measure(self.title)
-		#font_size=12-int((maxlen-58)/6)
-		if maxlen>86:
-			font_size=7
-		elif maxlen>79:
-			font_size=8
-		elif maxlen>72:
-			font_size=9
-		elif maxlen>64:
-			font_size=10
-		#elif maxlen>58:
-		#	font_size=11
-		else:
-			font_size=11
-		#self.title=self.title+" > "+str(font_size)
+
+		#Calculate the font size ...
+		max_fs=11
+		words=self.title.split()
+		n_words=len(words)
+		maxnumchar=max([len(w) for w in words])
+		rfont=tkFont.Font(family="Helvetica",size=max_fs)
+		maxlen=rfont.measure(self.title)
+		l=790
+		if maxlen<88 and maxnumchar<11:
+			font_size=int(l/maxlen)
+		elif n_words==1:
+			font_size=2*int(l/maxlen)
+		elif n_words==2:
+			maxlen=max([rfont.measure(w) for w in words])
+			font_size=int(l/maxlen)
+		elif n_words==3:
+			maxlen=max([rfont.measure(w) for w in [words[0]+' '+words[1], words[1]+' '+words[2]]])
+			maxlen=rfont.measure(words[0]+' '+words[1])
+			font_size=int(l/maxlen)
+			max_fs=max_fs-1
+		elif n_words>=4:
+			maxlen=max([rfont.measure(w) for w in [words[0]+' '+words[1], words[2]+' '+words[3]]])
+			font_size=int(l/maxlen)
+			max_fs=max_fs-1
+		font_size=min(max_fs,max(7,font_size))
+		#print("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,font_size))
+		#Set title label
 		if not self.label_title:
 			self.label_title = Label(self.canvas,
 				text=self.title,

@@ -23,7 +23,6 @@
 #******************************************************************************
 
 import os
-import re
 import copy
 import requests
 import websocket
@@ -82,12 +81,12 @@ class zynthian_engine_modui(zynthian_engine):
 		self.plugin_info={}
 		self.touched=True
 		self.midi_chan=0
-		self.loading=False
-		for i in range(16):
-			self.instr_index[i]=0
-			self.instr_name[i]=""
-			self.instr_set[i]=None
-			self.ctrl_config[i]=None
+		if not self.loading_snapshot:
+			for i in range(16):
+				self.instr_index[i]=0
+				self.instr_name[i]=""
+				self.instr_set[i]=None
+				self.ctrl_config[i]=None
 
 	def start(self):
 		self.start_loading()
@@ -113,7 +112,7 @@ class zynthian_engine_modui(zynthian_engine):
 			self.load_instr_list()
 			#generate controller list
 			self.generate_ctrl_list()
-			print("CONTROLLER LIST ...\n"+str(self.ctrl_list))
+			#print("CONTROLLER LIST ...\n"+str(self.ctrl_list))
 			#when loading a patch => change to control screen
 			if self.parent.active_screen in ['chan','bank'] and len(self.ctrl_list):
 				self.parent.show_screen('control')
@@ -204,6 +203,8 @@ class zynthian_engine_modui(zynthian_engine):
 				elif command == "loading_end":
 					print("LOADING END")
 					self.graph_autoconnect_midi_input()
+					if self.loading_snapshot:
+						self.load_snapshot_post()
 
 				elif command == "stop":
 					return
@@ -440,5 +441,21 @@ class zynthian_engine_modui(zynthian_engine):
 				for ctrlcfg in self.ctrl_config[ch]:
 					for ctrl in ctrlcfg[0]:
 						self.set_ctrl_value(ctrl, ctrl[2])
+
+	def load_snapshot(self, fpath):
+		self._load_snapshot(fpath)
+		self.set_all_bank()
+		return True
+
+	def load_snapshot_post(self):
+		try:
+			#self.set_all_instr()
+			self.set_all_ctrl()
+			self.parent.refresh_screen()
+			self.loading_snapshot=False
+			return True
+		except Exception as e:
+			print("ERROR: %s" % e)
+			return False
 
 #******************************************************************************
