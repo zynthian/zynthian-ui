@@ -24,6 +24,7 @@
 
 import os
 import copy
+import logging
 import requests
 import websocket
 from time import sleep
@@ -91,7 +92,7 @@ class zynthian_engine_modui(zynthian_engine):
 	def start(self):
 		self.start_loading()
 		if not self.is_service_active():
-			print("START MOD-HOST & MOD-UI services...")
+			logging.info("START MOD-HOST & MOD-UI services...")
 			check_output(("systemctl start mod-host && systemctl start mod-ui"),shell=True)
 		self.start_websocket()
 		self.stop_loading()
@@ -100,7 +101,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self.start_loading()
 		#self.stop_websocket()
 		if self.is_service_active():
-			print("STOP MOD-HOST & MOD-UI services...")
+			logging.info("STOP MOD-HOST & MOD-UI services...")
 			check_output(("systemctl stop mod-host && systemctl stop mod-ui"),shell=True)
 		self.stop_loading()
 
@@ -112,7 +113,7 @@ class zynthian_engine_modui(zynthian_engine):
 			self.load_instr_list()
 			#generate controller list
 			self.generate_ctrl_list()
-			#print("CONTROLLER LIST ...\n"+str(self.ctrl_list))
+			#logging.debug("CONTROLLER LIST ...\n"+str(self.ctrl_list))
 			#when loading a patch => change to control screen
 			if self.parent.active_screen in ['chan','bank'] and len(self.ctrl_list):
 				self.parent.show_screen('control')
@@ -131,7 +132,7 @@ class zynthian_engine_modui(zynthian_engine):
 		else: return False
 
 	def start_websocket(self):
-		print("Connecting to MOD-UI websocket...")
+		logging.info("Connecting to MOD-UI websocket...")
 		i=0
 		while i<100:
 			try:
@@ -149,7 +150,7 @@ class zynthian_engine_modui(zynthian_engine):
 			return False 
 
 	def stop_websocket(self):
-		print("Closing MOD-UI websocket...")
+		logging.info("Closing MOD-UI websocket...")
 		if self.websocket:
 			self.websocket.close()
 
@@ -158,14 +159,14 @@ class zynthian_engine_modui(zynthian_engine):
 		while True:
 			try:
 				received =  self.websocket.recv()
-				print("WS >> %s" % received)
+				logging.debug("WS >> %s" % received)
 				args = received.split() 
 				command = args[0]
 
 				if command == "ping":
 					self.enable_midi_devices()
 					self.websocket.send("pong")
-					print("WS << pong")
+					logging.debug("WS << pong")
 
 				elif command == "add_hw_port":
 					if args[3]=='1': pdir="output"
@@ -174,15 +175,15 @@ class zynthian_engine_modui(zynthian_engine):
 
 				elif command == "add":
 					if args[2][0:4] == "http":
-						print("ADD PLUGIN: "+args[1]+" => "+args[2])
+						logging.info("ADD PLUGIN: "+args[1]+" => "+args[2])
 						self.add_plugin_cb(args[1],args[2])
 
 				elif command == "remove":
 					if args[1] == ":all":
-						print("REMOVE ALL PLUGINS")
+						logging.info("REMOVE ALL PLUGINS")
 						self.reset()
 					elif args[1]:
-						print("REMOVE PLUGIN: "+args[1])
+						logging.info("REMOVE PLUGIN: "+args[1])
 						self.remove_plugin_cb(args[1])
 
 				elif command == "connect":
@@ -198,13 +199,17 @@ class zynthian_engine_modui(zynthian_engine):
 					pass
 
 				elif command == "loading_start":
-						print("LOADING START")
+						logging.info("LOADING START")
 
 				elif command == "loading_end":
-					print("LOADING END")
+					logging.info("LOADING END")
 					self.graph_autoconnect_midi_input()
 					if self.loading_snapshot:
 						self.load_snapshot_post()
+
+				elif command == "bundlepath":
+					logging.info("BUNDLEPATH %s" % args[1])
+					self.bundlepath_cb(args[1])
 
 				elif command == "stop":
 					return
@@ -218,22 +223,32 @@ class zynthian_engine_modui(zynthian_engine):
 				else:
 					return
 			except Exception as e:
-				print("ERROR: task_websocket() => %s (%s)" % (e,type(e)))
+				logging.error("task_websocket() => %s (%s)" % (e,type(e)))
 				sleep(1)
 
 	def api_get_request(self, path, data=None, json=None):
 		res=requests.get(self.base_api_url + path, data=data, json=json)
 		if res.status_code != 200:
-			print("MOD-UI API GET REQUEST ERROR: "+str(res.status_code) + " => " +self.base_api_url + path)
+			logging.error("GET call to MOD-UI API: "+str(res.status_code) + " => " +self.base_api_url + path)
 		else:
 			return res.json()
 
 	def api_post_request(self, path, data=None, json=None):
 		res=requests.post(self.base_api_url + path, data=data, json=json)
 		if res.status_code != 200:
-			print("MOD-UI API POST REQUEST ERROR: "+str(res.status_code) + " => " +self.base_api_url + path)
+			logging.error("POST call to MOD-UI API: "+str(res.status_code) + " => " +self.base_api_url + path)
 		else:
 			return res.json()
+
+	def bundlepath_cb(self, bpath):
+		bdirname=bpath.split('/')[-1]
+		for i in range(len(self.bank_list)):
+			#print("BUNDLE PATH SEARCH => %s <=> %s" % (self.bank_list[i][0].split('/')[-1], bdirname))
+			if self.bank_list[i][0].split('/')[-1]==bdirname:
+				self.bank_index[self.midi_chan]=i
+				self.bank_name[self.midi_chan]=self.bank_list[i][2]
+				self.bank_set[self.midi_chan]=copy.deepcopy(self.bank_list[i])
+				logging.info('Bank Selected: ' + self.bank_name[self.midi_chan] + ' (' + str(i)+')')
 
 	def add_hw_port_cb(self, ptype, pdir, pgraph, pname, pnum):
 		if ptype not in self.hw_ports:
@@ -289,7 +304,7 @@ class zynthian_engine_modui(zynthian_engine):
 						param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], 0, 127, None]
 					self.ctrl_dict[pgraph][param['symbol']]=param['ctrl']
 				except Exception as err:
-					print("ERROR REGENERATING CONTROLLER DICT: "+pgraph+" => "+str(err))
+					logging.error("Configuring Controllers: "+pgraph+" => "+str(err))
 			#Add bypass control
 			self.ctrl_dict[pgraph][':bypass']=['enabled', pgraph+'/:bypass', 'on', 'off|on', {'off':1,'on':0}]
 			pinfo['ports']['control']['input'].insert(0,{'symbol':':bypass', 'ctrl':self.ctrl_dict[pgraph][':bypass']})
@@ -335,7 +350,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def enable_midi_devices(self):
 		res=self.api_get_request("/jack/get_midi_devices")
-		#print("API /jack/get_midi_devices => "+str(res))
+		#logging.debug("API /jack/get_midi_devices => "+str(res))
 		if 'devList' in res:
 			data=[]
 			for dev in res['devList']: 
@@ -354,13 +369,13 @@ class zynthian_engine_modui(zynthian_engine):
 				#title=self.plugin_info[pgraph]['name']+':'+prs['label']
 				title=prs['label']
 				self.instr_list.append((prs['uri'],[0,0,0],title,pgraph))
-				print("ADD PRESET "+title)
+				logging.debug("Add Preset "+title)
 
 	def load_bundle(self, path):
 		self.graph_reset()
 		res = self.api_post_request("/pedalboard/load_bundle/",data={'bundlepath':path})
 		if not res or not res['ok']:
-			print("ERROR: loading bundle "+path)
+			logging.error("Loading Bundle "+path)
 		else:
 			return res['name']
 
@@ -389,21 +404,21 @@ class zynthian_engine_modui(zynthian_engine):
 			ctrl_set=[]
 			for param in self.plugin_info[pgraph]['ports']['control']['input']:
 				try:
-					#print("CTRL LIST PLUGIN %s PARAM %s" % (pgraph,ctrl))
+					#logging.debug("CTRL LIST PLUGIN %s PARAM %s" % (pgraph,ctrl))
 					ctrl_set.append(param['ctrl'])
 					if len(ctrl_set)>=4:
-						#print("ADDING CONTROLLER SCREEN #"+str(c))
+						#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
 						self.ctrl_list.append([ctrl_set,0,self.plugin_info[pgraph]['name']+'#'+str(c)])
 						ctrl_set=[]
 						c=c+1
 				except Exception as err:
-					print("ERROR REGENERATING CONTROLLER LIST: "+pgraph+" => "+str(err))
+					logging.error("Generating Controller Screens: "+pgraph+" => "+str(err))
 					pass
 			if len(ctrl_set)>=1:
-				#print("ADDING CONTROLLER SCREEN #"+str(c))
+				#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
 				self.ctrl_list.append([ctrl_set,0,self.plugin_info[pgraph]['name']+'#'+str(c)])
 		if len(self.ctrl_list)==0:
-			print("LOADING CONTROLLER DEFAULTS")
+			logging.info("Loading Controller Defaults")
 			self.ctrl_list=self.default_ctrl_list
 		self.load_ctrl_config()
 
@@ -415,7 +430,7 @@ class zynthian_engine_modui(zynthian_engine):
 				pranges=ctrl[4]
 				val=pranges['minimum']+val/pranges['mult']
 			self.websocket.send("param_set "+ctrl[1]+" "+str("%.6f" % val))
-			print("WS << param_set "+ctrl[1]+" "+str("%.6f" % val))
+			logging.debug("WS << param_set "+ctrl[1]+" "+str("%.6f" % val))
 
 	def set_param_cb(self, pgraph, symbol, val):
 		try:
@@ -432,7 +447,7 @@ class zynthian_engine_modui(zynthian_engine):
 				if self.parent.active_screen=='control' and self.parent.screens['control'].mode=='control':
 					self.parent.screens['control'].refresh_controller_value(ctrl)
 		except Exception as err:
-			print("PARAMETER NOT FOUND: "+pgraph+"/"+symbol+" => "+str(err))
+			logging.error("Parameter Not Found: "+pgraph+"/"+symbol+" => "+str(err))
 
 	#Send All Controller Values to Synth
 	def set_all_ctrl(self):
@@ -455,7 +470,7 @@ class zynthian_engine_modui(zynthian_engine):
 			self.loading_snapshot=False
 			return True
 		except Exception as e:
-			print("ERROR: %s" % e)
+			logging.error("%s" % e)
 			return False
 
 #******************************************************************************

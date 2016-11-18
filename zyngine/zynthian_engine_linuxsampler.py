@@ -25,6 +25,7 @@
 import os
 import re
 import socket
+import logging
 from time import sleep
 from os.path import isfile, isdir
 from subprocess import check_output
@@ -86,7 +87,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		if self.lscp_connect():
 			self.sock.send(data.encode()) 
 		else:
-			print("ERROR connecting with LinuxSampler Server")
+			logging.info("Connecting with LinuxSampler Server")
 
 	def lscp_send_pattern(self, pattern, pdict=None):
 		self.start_loading()
@@ -99,9 +100,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 						#print("REPLACING PATTERN: #"+k+"# => "+v)
 						lscp=lscp.replace('#'+k+'#',v)
 				except Exception as err:
-					print("ERROR replacing lscp pattern:"+str(err))
-					pass
-			#print("LSCP =>\n"+lscp)
+					logging.error("Replacing lscp pattern: "+str(err))
+			#logging.debug("LSCP =>\n"+lscp)
 			self.lscp_send(lscp)
 		self.stop_loading()
 
@@ -127,7 +127,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 						pass
 
 	def load_instr_list(self):
-		print('Getting Instr List for ' + self.name)
+		logging.info('Getting Instr List for ' + self.name)
 		self.start_loading()
 		i=0
 		self.instr_list=[]

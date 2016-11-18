@@ -24,6 +24,7 @@
 
 import os
 import re
+import logging
 from subprocess import check_output
 from zyngine.zynthian_engine import *
 
@@ -99,7 +100,7 @@ class zynthian_engine_modhost(zynthian_engine):
 		try:
 			self.mh_commands(instr_dpath+"/"+instr_ttl+".ttl")
 		except Exception as err:
-			print("ERROR: loading pedalboard into MOD-HOST => "+str(err))
+			logging.error("Loading pedalboard into MOD-HOST => "+str(err))
 		self.stop_loading()
 
 	def mh_commands(self, ttl_fpath):
@@ -110,7 +111,7 @@ class zynthian_engine_modhost(zynthian_engine):
 		midi_cc=1
 		cmds=""
 		for r in res:
-			print(r.strip())
+			logging.debug(r.strip())
 			#Catch plugin names and IDs
 			m=re.search(r'add\s+([^\s]+)\s+([\d]+)',r)
 			if m and m.group(1) and m.group(2):
@@ -120,7 +121,7 @@ class zynthian_engine_modhost(zynthian_engine):
 				parts=plugin_name.split('#')
 				if len(parts)>1:
 					plugin_name=parts[1]
-				print("SETTING PLUGIN "+plugin_id+": "+plugin_name)
+				logging.debug("SETTING PLUGIN "+plugin_id+": "+plugin_name)
 				self.plugin_info[plugin_id]={}
 				self.plugin_info[plugin_id]['name']=plugin_name.replace('_', ' ').strip()
 				self.plugin_info[plugin_id]['parameter_list']=[]
@@ -146,7 +147,7 @@ class zynthian_engine_modhost(zynthian_engine):
 			if plugin_id:
 				try:
 					plugin_name=self.plugin_info[plugin_id]['name']
-					print("SETTING MIDI CC "+str(midi_cc)+" => "+plugin_name+"->"+param_name)
+					logging.debug("SETTING MIDI CC "+str(midi_cc)+" => "+plugin_name+"->"+param_name)
 					#Add parameter to plugin_info
 					param={
 						'name': param_name.replace('_', ' '),
@@ -161,7 +162,7 @@ class zynthian_engine_modhost(zynthian_engine):
 					#Next MIDI CC
 					midi_cc=midi_cc+1
 				except Exception as err:
-					print("ERROR: setting parameter => "+str(err))
+					logging.error("Setting Parameter => "+str(err))
 				continue
 		#Send mod-host post-commands
 		res=self.proc_cmd(cmds,1)
@@ -203,7 +204,7 @@ class zynthian_engine_modhost(zynthian_engine):
 				#print("ADDING CONTROLLER SCREEN #"+str(c))
 				self.ctrl_list.append([param_set,0,self.plugin_info[i]['name']+'#'+str(c)])
 		if len(self.ctrl_list)==0:
-			print("LOADING CONTROLLER DEFAULTS")
+			logging.info("LOADING CONTROLLER DEFAULTS")
 			self.ctrl_list=self.default_ctrl_list
 		self.load_ctrl_config()
 

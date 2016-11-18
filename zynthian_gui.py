@@ -28,6 +28,7 @@ import os
 import sys
 import signal
 import alsaseq
+import logging
 import liblo
 from ctypes import *
 from tkinter import *
@@ -48,6 +49,16 @@ from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 
 from zyngine.zynthian_midi import *
 from zyngine.zynthian_zcmidi import *
+
+#-------------------------------------------------------------------------------
+# Configure logging
+#-------------------------------------------------------------------------------
+
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
+#Reduce log level for other modules
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 #-------------------------------------------------------------------------------
 # Define some Constants and Parameters for the GUI
@@ -89,10 +100,10 @@ ctrl_pos=[
 try:
 	with open("../zynthian_hw_version.txt","r") as fh:
 		hw_version=fh.readline().strip()
-		print("HW version "+str(hw_version))
+		logging.info("HW version "+str(hw_version))
 except:
 	hw_version="PROTOTYPE-4"
-	print("No HW version file. Default to PROTOTYPE-4.")
+	logging.error("No HW version file. Default to PROTOTYPE-4.")
 
 #-------------------------------------------------------------------------------
 # GPIO pin assignment (wiringPi)
@@ -237,7 +248,7 @@ class zynthian_controller:
 					self.value_plot=self.scale_plot*i
 				self.value_print=self.values[i]
 			except Exception as err:
-				print("ERROR: zynthian_controller.calculate_plot_values() => %s" % (err))
+				logging.error("zynthian_controller.calculate_plot_values() => %s" % (err))
 				self.value_plot=self.value
 				self.value_print="ERR"
 		else:
@@ -514,7 +525,7 @@ class zynthian_controller:
 				pin_b=zyncoder_pin_b[self.index]
 			lib_zyncoder.setup_zyncoder(self.index,pin_a,pin_b,self.chan,self.midi_ctrl,osc_path_char,int(self.mult*self.value),int(self.mult*(self.max_value-self.val0)),self.step)
 		except Exception as err:
-			print("ERROR: zynthian_controller.setup_zyncoder() => %s" % (err))
+			logging.error("zynthian_controller.setup_zyncoder() => %s" % (err))
 
 	def set_value(self, v, set_zyncoder=False):
 		if (v>self.max_value):
@@ -534,7 +545,7 @@ class zynthian_controller:
 		if self.init_value is None:
 			self.init_value=v
 			self.set_value(v,True)
-			print("RENCODER INIT VALUE "+str(self.index)+": "+str(v))
+			logging.debug("RENCODER INIT VALUE "+str(self.index)+": "+str(v))
 
 	def read_zyncoder(self):
 		val=lib_zyncoder.get_value_zyncoder(self.index)
@@ -879,13 +890,13 @@ class zynthian_gui_admin(zynthian_selector):
 	def execute_commands(self):
 		zyngui.start_loading()
 		for cmd in self.commands:
-			print("Executing Command: "+cmd)
+			logging.info("Executing Command: "+cmd)
 			zyngui.add_info("\nExecuting: "+cmd)
 			try:
 				result=check_output(cmd, shell=True).decode('utf-8','ignore')
 			except Exception as e:
 				result="ERROR: "+str(e)
-			print(result)
+			logging.info(result)
 			zyngui.add_info("\n"+str(result))
 		self.commands=None
 		zyngui.hide_info_timer(3000)
@@ -894,7 +905,7 @@ class zynthian_gui_admin(zynthian_selector):
 
 	def start_command(self,cmds):
 		if not self.commands:
-			print("Starting Command Sequence ...")
+			logging.info("Starting Command Sequence ...")
 			self.commands=cmds
 			self.thread=Thread(target=self.execute_commands, args=())
 			self.thread.daemon = True # thread dies with the program
@@ -903,7 +914,7 @@ class zynthian_gui_admin(zynthian_selector):
 	def killable_execute_commands(self):
 		#zyngui.start_loading()
 		for cmd in self.commands:
-			print("Executing Command: "+cmd)
+			logging.info("Executing Command: "+cmd)
 			zyngui.add_info("\nExecuting: "+cmd)
 			try:
 				proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
@@ -917,7 +928,7 @@ class zynthian_gui_admin(zynthian_selector):
 					result=output
 			except Exception as e:
 				result="ERROR: "+str(e)
-			print(result)
+			logging.info(result)
 			zyngui.add_info("\n"+str(result))
 		self.commands=None
 		zyngui.hide_info_timer(3000)
@@ -926,7 +937,7 @@ class zynthian_gui_admin(zynthian_selector):
 
 	def killable_start_command(self,cmds):
 		if not self.commands:
-			print("Starting Command Sequence ...")
+			logging.info("Starting Command Sequence ...")
 			self.commands=cmds
 			self.thread=Thread(target=self.killable_execute_commands, args=())
 			self.thread.daemon = True # thread dies with the program
@@ -934,56 +945,56 @@ class zynthian_gui_admin(zynthian_selector):
 
 	def kill_command(self):
 		if self.child_pid:
-			print("Killing process "+str(self.child_pid))
+			logging.info("Killing process "+str(self.child_pid))
 			os.kill(self.child_pid, signal.SIGTERM)
 			self.child_pid=None
 			if self.last_action==self.test_midi:
 				zyngui.zyngine.all_sounds_off()
 
 	def update_software(self):
-		print("UPDATE SOFTWARE")
+		logging.info("UPDATE SOFTWARE")
 		zyngui.show_info("UPDATE SOFTWARE")
 		self.start_command(["su pi -c ./sys-scripts/update_zynthian.sh"])
 
 	def update_library(self):
-		print("UPDATE LIBRARY")
+		logging.info("UPDATE LIBRARY")
 		zyngui.show_info("UPDATE LIBRARY")
 		self.start_command(["su pi -c ./sys-scripts/update_zynthian_data.sh"])
 
 	def update_system(self):
-		print("UPDATE SYSTEM")
+		logging.info("UPDATE SYSTEM")
 		zyngui.show_info("UPDATE SYSTEM")
 		self.start_command(["./sys-scripts/update_system.sh"])
 
 	def network_info(self):
-		print("NETWORK INFO")
+		logging.info("NETWORK INFO")
 		zyngui.show_info("NETWORK INFO:")
 		self.start_command(["ifconfig | awk '/inet addr/{print substr($2,6)}'"])
 
 	def test_audio(self):
-		print("TESTING AUDIO")
+		logging.info("TESTING AUDIO")
 		zyngui.show_info("TEST AUDIO")
 		self.killable_start_command(["mpg123 ./data/audio/test.mp3"])
 
 	def test_midi(self):
-		print("TESTING MIDI")
+		logging.info("TESTING MIDI")
 		zyngui.show_info("TEST MIDI")
 		self.killable_start_command(["aplaymidi -p 14 ./data/mid/test.mid"])
 
 	def restart_gui(self):
-		print("RESTART GUI")
+		logging.info("RESTART GUI")
 		zyngui.exit(102)
 
 	def exit_to_console(self):
-		print("EXIT TO CONSOLE")
+		logging.info("EXIT TO CONSOLE")
 		zyngui.exit(101)
 
 	def reboot(self):
-		print("REBOOT")
+		logging.info("REBOOT")
 		zyngui.exit(100)
 
 	def power_off(self):
-		print("POWER OFF")
+		logging.info("POWER OFF")
 		zyngui.exit(0)
 
 #-------------------------------------------------------------------------------
@@ -1122,15 +1133,15 @@ class zynthian_gui_snapshot(zynthian_selector):
 			with open(fpath,"r") as fh:
 				json=fh.read()
 		except:
-			print("ERROR: Can't load snapshot '%s'" % fpath)
+			logging.error("Can't load snapshot '%s'" % fpath)
 			return False
 		#Get snapshot's engine
 		status=JSONDecoder().decode(json)
 		engine=status['engine_nick']
 		if not engine:
-			print("ERROR: Not engine specified in snapshot => %s" % (fpath))
+			logging.error("Not engine specified in snapshot => %s" % (fpath))
 			return False
-		print("Snapshot engine => %s" % (engine))
+		logging.debug("Snapshot engine => %s" % (engine))
 		#Start engine if needed
 		if not zyngui.zyngine or zyngui.zyngine.nickname!=engine:
 			zyngui.set_engine(engine,2)
@@ -1330,7 +1341,7 @@ class zynthian_gui_control(zynthian_selector):
 				elif i<len(self.zcontrollers):
 					self.zcontrollers[i].hide()
 			except Exception as e:
-				print("ERROR: set_controller_config(%d) => %s" % (i,e))
+				logging.error("set_controller_config(%d) => %s" % (i,e))
 				self.zcontrollers[i].hide()
 
 	def set_controller(self, i, tit, chan, ctrl, val, max_val=127):
@@ -1436,13 +1447,13 @@ class zynthian_gui_osc_browser(zynthian_selector):
 		else:
 			self.osc_path=self.osc_path+path
 		liblo.send(zyngui.osc_target, "/path-search",self.osc_path,"")
-		print("OSC /path-search "+self.osc_path)
+		logging.debug("OSC /path-search "+self.osc_path)
 
 	def select_action(self, i):
 		path=self.list_data[i][0]
 		tnode=self.list_data[i][1]
 		title=self.list_data[i][2]
-		print("SELECT PARAMETER: %s (%s)" % (title,tnode))
+		logging.info("SELECT PARAMETER: %s (%s)" % (title,tnode))
 		if tnode=='dir':
 			self.get_osc_paths(path)
 		elif tnode=='ctrl':
@@ -1504,7 +1515,7 @@ class zynthian_gui:
 			self.zynmidi=zynthian_zcmidi()
 			self.zynswitches_init()
 		except Exception as e:
-			print("ERROR initializing GUI: %s" % e)
+			logging.error("ERROR initializing GUI: %s" % e)
 		# Create initial GUI Screens
 		#self.screens['splash']=zynthian_gui_splash(1000)
 		self.screens['admin']=zynthian_gui_admin()
@@ -1597,11 +1608,11 @@ class zynthian_gui:
 	# Init GPIO Switches
 	def zynswitches_init(self):
 		ts=datetime.now()
-		print("SWITCHES INIT!")
+		logging.info("SWITCHES INIT!")
 		for i,pin in enumerate(zynswitch_pin):
 			self.dtsw[i]=ts
 			lib_zyncoder.setup_zynswitch(i,pin)
-			print("SETUP GPIO SWITCH "+str(i)+" => "+str(pin))
+			logging.info("SETUP GPIO SWITCH "+str(i)+" => "+str(pin))
 
 	def zynswitches(self):
 		for i in range(len(zynswitch_pin)):
@@ -1610,15 +1621,15 @@ class zynthian_gui:
 				#print("Switch "+str(i)+" dtus="+str(dtus))
 				if dtus>300000:
 					if dtus>2000000:
-						print('Looooooooong Switch '+str(i))
+						logging.info('Looooooooong Switch '+str(i))
 						self.zynswitch_long(i)
 						return
 					if self.zynswitch_double(i):
 						return
-					print('Bold Switch '+str(i))
+					logging.info('Bold Switch '+str(i))
 					self.zynswitch_bold(i)
 					return
-				print('Short Switch '+str(i))
+				logging.info('Short Switch '+str(i))
 				self.zynswitch_short(i)
 
 	def zynswitch_long(self,i):
@@ -1644,7 +1655,7 @@ class zynthian_gui:
 		elif i==3:
 			if self.active_screen=='chan':
 				self.screens[self.active_screen].switch_select()
-				print("PATH="+self.zyngine.get_fullpath())
+				logging.debug("PATH="+self.zyngine.get_fullpath()) #TODO REMOVE THIS LINE???
 				if self.zyngine.get_instr_name():
 					self.show_screen('control')
 			else:
@@ -1654,7 +1665,7 @@ class zynthian_gui:
 		if i==0:
 			if self.active_screen=='control':
 				if self.screens['chan'].next():
-					print("Next Chan")
+					logging.info("Next Chan")
 					self.screens['control'].hide()
 					self.screens['control'].fill_list()
 					self.show_screen('control')
@@ -1695,7 +1706,7 @@ class zynthian_gui:
 				self.screens[self.modal_screen].switch_select()
 			elif self.active_screen=='control' and self.screens['control'].mode=='control':
 				self.screens['control'].next()
-				print("Next Control Screen")
+				logging.info("Next Control Screen")
 			else:
 				self.zynswitch_bold(i)
 
@@ -1706,7 +1717,7 @@ class zynthian_gui:
 				continue
 			if abs((self.dtsw[i]-self.dtsw[j]).total_seconds())<0.3:
 				dswstr=str(i)+'+'+str(j)
-				print('Double Switch '+dswstr)
+				logging.info('Double Switch '+dswstr)
 				if dswstr=='1+3' or dswstr=='3+1':
 					self.show_screen('admin')
 				return True
@@ -1731,7 +1742,7 @@ class zynthian_gui:
 						self.screens[self.active_screen].zyncoder_read()
 					self.zynswitches()
 				except Exception as err:
-					print("ERROR: zynthian_gui.zyncoder_read() => %s" % err)
+					logging.warning("zynthian_gui.zyncoder_read() => %s" % err)
 			sleep(0.04)
 			if self.zynread_wait_flag:
 				sleep(0.3)
@@ -1758,7 +1769,7 @@ class zynthian_gui:
 				else:
 					self.screens[self.active_screen].refresh_loading()
 			except Exception as err:
-				print("ERROR: zynthian_gui.loading_refresh() => %s" % err)
+				logging.error("zynthian_gui.loading_refresh() => %s" % err)
 			sleep(0.1)
 
 	def exit(self, code=0):
@@ -1792,12 +1803,12 @@ class zynthian_gui:
 				chan = ev & 0x0F
 				if evtype==0xC:
 					pgm = (ev & 0xF00)>>8
-					print ("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan))
+					logging.info("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan))
 					self.zyngine.set_instr(pgm,chan,False)
 					if not self.modal_screen and chan==self.zyngine.get_midi_chan():
 						self.show_screen('control')
 		except Exception as err:
-			print("ERROR: zynthian_gui.zynmidi_read() => %s" % err)
+			logging.error("zynthian_gui.zynmidi_read() => %s" % err)
 		if self.polling:
 			top.after(40, self.zynmidi_read)
 
@@ -1806,7 +1817,7 @@ class zynthian_gui:
 			while alsaseq.inputpending():
 				event = alsaseq.input()
 				chan = event[7][0]
-				print ("MIDI EVENT " + str(event[0]))
+				logging.debug("MIDI EVENT " + str(event[0]))
 				if event[0]==alsaseq.SND_SEQ_EVENT_CONTROLLER:
 					if chan==self.zyngine.get_midi_chan() and self.active_screen=='control': 
 						ctrl = event[7][4]
@@ -1817,12 +1828,12 @@ class zynthian_gui:
 				elif event[0]==alsaseq.SND_SEQ_EVENT_PGMCHANGE:
 					pgm = event[7][4]
 					val = event[7][5]
-					print ("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan) + " => " + str(val))
+					logging.info("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan) + " => " + str(val))
 					self.zyngine.set_instr(pgm,chan,False)
 					if not self.modal_screen and chan==self.zyngine.get_midi_chan():
 						self.show_screen('control')
 		except Exception as err:
-			print("ERROR: zynthian_gui.amidi_read() => %s" % err)
+			logging.error("zynthian_gui.amidi_read() => %s" % err)
 		if self.polling:
 			top.after(40, self.amidi_read)
 
@@ -1833,7 +1844,7 @@ class zynthian_gui:
 			if self.zyngine and not self.loading:
 				self.zyngine.refresh()
 		except Exception as err:
-			print("ERROR: zynthian_gui.zyngine_refresh() => %s" % err)
+			logging.error("zynthian_gui.zyngine_refresh() => %s" % err)
 		if self.polling:
 			top.after(160, self.zyngine_refresh)
 
@@ -1904,7 +1915,7 @@ if hw_version=="PROTOTYPE-EMU":
 #-------------------------------------------------------------------------------
 
 def sigterm_handler(_signo, _stack_frame):
-	print("Catch SIGTERM ...")
+	logging.info("Catch SIGTERM ...")
 	zyngui.zyngine.stop()
 	top.destroy()
 

@@ -27,6 +27,7 @@ import os
 import copy
 import signal
 import liblo
+import logging
 from time import sleep,time
 from os.path import isfile, isdir, join
 from subprocess import call, Popen, PIPE, STDOUT
@@ -155,7 +156,7 @@ class zynthian_engine:
 						fvars['DISPLAY']=fvars['REMOTE_IP']+":0"
 			except:
 				fvars['DISPLAY']=""
-		print("REMOTE DISPLAY: %s" % fvars['DISPLAY'])
+		logging.info("REMOTE DISPLAY: %s" % fvars['DISPLAY'])
 		if fvars['DISPLAY']:
 			self.command_env=os.environ.copy()
 			for f,v in fvars.items():
@@ -169,7 +170,7 @@ class zynthian_engine:
 				self.queue.put(line)
 				#print(line)
 		except:
-			print("Finished queue thread")
+			logging.info("Finished queue thread")
 
 	def proc_get_lines(self, tout=0.1, limit=2):
 		n=0
@@ -191,7 +192,7 @@ class zynthian_engine:
 
 	def start(self, start_queue=False, shell=False):
 		if not self.proc:
-			print("Starting Engine " + self.name)
+			logging.info("Starting Engine " + self.name)
 			try:
 				self.start_loading()
 				self.proc=Popen(self.command,shell=shell,bufsize=1,universal_newlines=True,
@@ -205,14 +206,14 @@ class zynthian_engine:
 					self.thread_queue.start()
 					self.proc_get_lines(2)
 			except Exception as err:
-				print("ERROR: Can't start engine %s => %s" % (self.name,err))
+				logging.error("Can't start engine %s => %s" % (self.name,err))
 			self.stop_loading()
 
 	def stop(self, wait=0.2):
 		if self.proc:
 			self.start_loading()
 			try:
-				print("Stoping Engine " + self.name)
+				logging.info("Stoping Engine " + self.name)
 				pid=self.proc.pid
 				#self.proc.stdout.close()
 				#self.proc.stdin.close()
@@ -225,7 +226,7 @@ class zynthian_engine:
 				except:
 					pass
 			except Exception as err:
-				print("ERROR: Can't stop engine %s => %s" % (self.name,err))
+				logging.error("Can't stop engine %s => %s" % (self.name,err))
 			self.proc=None
 			self.stop_loading()
 
@@ -240,7 +241,7 @@ class zynthian_engine:
 				out=self.proc_get_lines(tout)
 			except Exception as err:
 				out=""
-				print("ERROR: Can't exec engine command %s => %s" % (cmd,err))
+				logging.error("Can't exec engine command %s => %s" % (cmd,err))
 			self.stop_loading()
 			return out
 
@@ -248,15 +249,15 @@ class zynthian_engine:
 		self.start_loading()
 		try:
 			self.osc_target=liblo.Address('localhost',self.osc_target_port,proto)
-			print("OSC target in port %s" % str(self.osc_target_port))
+			logging.info("OSC target in port %s" % str(self.osc_target_port))
 			self.osc_server=liblo.ServerThread(None,proto)
 			self.osc_server_port=self.osc_server.get_port()
 			self.osc_server_url=liblo.Address('localhost',self.osc_server_port,proto).get_url()
-			print("OSC server running in port %s" % str(self.osc_server_port))
+			logging.info("OSC server running in port %s" % str(self.osc_server_port))
 			self.osc_add_methods()
 			self.osc_server.start()
 		except liblo.AddressError as err:
-			print("ERROR: OSC Server can't be initialized (%s). Running without OSC feedback." % err)
+			logging.error("OSC Server can't be initialized (%s). Running without OSC feedback." % err)
 		self.stop_loading()
 
 	def osc_end(self):
@@ -264,21 +265,21 @@ class zynthian_engine:
 			self.start_loading()
 			try:
 				#self.osc_server.stop()
-				print("OSC server stopped")
+				logging.info("OSC server stopped")
 			except Exception as err:
-				print("ERROR: Can't stop OSC server => %s" % err)
+				logging.error("Can't stop OSC server => %s" % err)
 			self.stop_loading()
 
 	def osc_add_methods(self):
 		self.osc_server.add_method(None, None, self.cb_osc_all)
 
 	def cb_osc_all(self, path, args, types, src):
-		print("OSC MESSAGE '%s' from '%s'" % (path, src.url))
+		logging.info("OSC MESSAGE '%s' from '%s'" % (path, src.url))
 		for a, t in zip(args, types):
-			print("argument of type '%s': %s" % (t, a))
+			logging.debug("argument of type '%s': %s" % (t, a))
 
 	def set_midi_chan(self, i):
-		print('MIDI Chan Selected: ' + str(i))
+		logging.info('MIDI Chan Selected: ' + str(i))
 		self.midi_chan=i
 		self.load_bank_list()
 		#self.set_bank(self.get_bank_index())
@@ -337,7 +338,7 @@ class zynthian_engine:
 		pass
 
 	def load_bank_filelist(self, dpath, fext):
-		print('Getting Bank List for ' + self.name)
+		logging.info('Getting Bank List for ' + self.name)
 		self.start_loading()
 		self.bank_list=[]
 		if isinstance(dpath, str): dpath=[('_', dpath)]
@@ -357,7 +358,7 @@ class zynthian_engine:
 		self.stop_loading()
 
 	def load_bank_dirlist(self,dpath):
-		print('Getting Bank List for ' + self.name)
+		logging.info('Getting Bank List for ' + self.name)
 		self.start_loading()
 		self.bank_list=[]
 		if isinstance(dpath, str): dpath=[('_', dpath)]
@@ -376,7 +377,7 @@ class zynthian_engine:
 		self.stop_loading()
 
 	def load_bank_cmdlist(self,cmd):
-		print('Getting Bank List for ' + self.name)
+		logging.info('Getting Bank List for ' + self.name)
 		self.start_loading()
 		self.bank_list=[]
 		i=0
@@ -410,7 +411,7 @@ class zynthian_engine:
 			self.bank_index[chan]=i
 			self.bank_name[chan]=self.bank_list[i][2]
 			self.bank_set[chan]=copy.deepcopy(self.bank_list[i])
-			print('Bank Selected: ' + self.bank_name[chan] + ' (' + str(i)+')')
+			logging.info('Bank Selected: ' + self.bank_name[chan] + ' (' + str(i)+')')
 			self._set_bank(self.bank_list[i], chan)
 			if chan==self.midi_chan:
 				self.load_instr_list()
@@ -436,7 +437,7 @@ class zynthian_engine:
 			self.instr_index[chan]=i
 			self.instr_name[chan]=self.instr_list[i][2]
 			self.instr_set[chan]=copy.deepcopy(self.instr_list[i])
-			print('Instrument Selected: ' + self.instr_name[chan] + ' (' + str(i)+')')
+			logging.info('Instrument Selected: ' + self.instr_name[chan] + ' (' + str(i)+')')
 			#=> '+self.instr_list[i][3]
 			if set_midi:
 				self._set_instr(self.instr_list[i],chan)
@@ -524,16 +525,16 @@ class zynthian_engine:
 		}
 		try:
 			json=JSONEncoder().encode(status)
-			print("Saving snapshot %s => \n%s" % (fpath,json))
+			logging.info("Saving snapshot %s => \n%s" % (fpath,json))
 		except:
-			print("ERROR: Can't generate snapshot")
+			logging.error("Can't generate snapshot")
 			return False
 
 		try:
 			with open(fpath,"w") as fh:
 				fh.write(json)
 		except:
-			print("ERROR: Can't save snapshot '%s'" % fpath)
+			logging.error("Can't save snapshot '%s'" % fpath)
 			return False
 		self.snapshot_fpath=fpath
 		return True
@@ -543,9 +544,9 @@ class zynthian_engine:
 		try:
 			with open(fpath,"r") as fh:
 				json=fh.read()
-				print("Loading snapshot %s => \n%s" % (fpath,json))
+				logging.info("Loading snapshot %s => \n%s" % (fpath,json))
 		except:
-			print("ERROR: Can't load snapshot '%s'" % fpath)
+			logging.error("Can't load snapshot '%s'" % fpath)
 			return False
 		try:
 			status=JSONDecoder().decode(json)
@@ -562,10 +563,10 @@ class zynthian_engine:
 			self.ctrl_config=status['ctrl_config']
 			self.snapshot_fpath=fpath
 		except UserWarning as e:
-			print("ERROR: %s" % e)
+			logging.error("%s" % e)
 			return False
 		except Exception as e:
-			print("ERROR: Invalid snapshot format. %s" % e)
+			logging.error("Invalid snapshot format. %s" % e)
 			return False
 
 	def load_snapshot(self, fpath):
@@ -583,7 +584,7 @@ class zynthian_engine:
 			self.loading_snapshot=False
 			return True
 		except Exception as e:
-			print("ERROR: %s" % e)
+			logging.error("%s" % e)
 			return False
 
 	def all_sounds_off(self):

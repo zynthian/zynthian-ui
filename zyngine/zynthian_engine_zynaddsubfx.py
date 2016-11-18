@@ -23,6 +23,7 @@
 #******************************************************************************
 
 import os
+import logging
 from time import sleep
 from string import Template
 from os.path import isfile, join
@@ -99,7 +100,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	def load_instr_list(self):
 		self.instr_list=[]
 		instr_dir=self.bank_list[self.bank_index[self.midi_chan]][0]
-		print('Getting Instrument List for ' + self.bank_name[self.midi_chan])
+		logging.info('Getting Instrument List for ' + self.bank_name[self.midi_chan])
 		for f in sorted(os.listdir(instr_dir)):
 			#print(f)
 			if (isfile(join(instr_dir,f)) and f[-4:].lower()=='.xiz'):

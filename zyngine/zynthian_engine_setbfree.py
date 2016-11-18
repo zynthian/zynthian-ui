@@ -23,6 +23,7 @@
 #******************************************************************************
 
 import re
+import logging
 from zyngine.zynthian_engine import *
 
 #------------------------------------------------------------------------------
@@ -163,7 +164,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 						pass
 		except Exception as err:
 			pgm_list=None
-			print("ERROR: Getting program info from %s => %s" % (fpath,err))
+			logging.error("Getting program info from %s => %s" % (fpath,err))
 		self.stop_loading()
 		return pgm_list
 

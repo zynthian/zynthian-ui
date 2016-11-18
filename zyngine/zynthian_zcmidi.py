@@ -22,6 +22,7 @@
 # 
 #******************************************************************************
 
+import logging
 from zyncoder import *
 
 #------------------------------------------------------------------------------
@@ -41,7 +42,7 @@ class zynthian_zcmidi:
 		self.lib_zyncoder.zynmidi_set_control(chan, ctrl, val)
 
 	def set_midi_bank_msb(self, chan, msb):
-		print("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb))
+		logging.debug("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb))
 		self.bank_msb_selected[chan]=msb
 		self.set_midi_control(chan,0,msb)
 
@@ -49,7 +50,7 @@ class zynthian_zcmidi:
 		return self.bank_msb_selected[chan]
 
 	def set_midi_bank_lsb(self, chan, lsb):
-		print("Set MIDI CH " + str(chan) + ", Bank LSB: " + str(lsb))
+		logging.debug("Set MIDI CH " + str(chan) + ", Bank LSB: " + str(lsb))
 		self.bank_lsb_selected[chan]=lsb
 		self.set_midi_control(chan,32,lsb)
 
@@ -57,7 +58,7 @@ class zynthian_zcmidi:
 		return self.bank_lsb_selected[chan]
 
 	def set_midi_prg(self, chan, prg):
-		print("Set MIDI CH " + str(chan) + ", Program: " + str(prg))
+		logging.debug("Set MIDI CH " + str(chan) + ", Program: " + str(prg))
 		self.prg_selected[chan]=prg
 		self.lib_zyncoder.zynmidi_set_program(chan, prg)
 
@@ -65,7 +66,7 @@ class zynthian_zcmidi:
 		return self.prg_selected[chan]
 
 	def set_midi_instr(self, chan, msb, lsb, prg):
-		print("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb) + ", Bank LSB: " + str(lsb) + ", Program: " + str(prg))
+		logging.debug("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb) + ", Bank LSB: " + str(lsb) + ", Program: " + str(prg))
 		self.bank_msb_selected[chan]=msb
 		self.bank_lsb_selected[chan]=lsb
 		self.prg_selected[chan]=prg
