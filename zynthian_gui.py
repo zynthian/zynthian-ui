@@ -29,15 +29,16 @@ import sys
 import signal
 import alsaseq
 import liblo
+from ctypes import *
 from tkinter import *
 from tkinter import font as tkFont
-from ctypes import *
 from time import sleep
-from datetime import datetime
 from string import Template
-from subprocess import check_output, Popen, PIPE
+from json import JSONDecoder
+from datetime import datetime
 from threading  import Thread
 from os.path import isfile, isdir, join
+from subprocess import check_output, Popen, PIPE
 
 from zyngine import *
 from zyngine.zynthian_engine import osc_port as zyngine_osc_port
@@ -1114,6 +1115,31 @@ class zynthian_gui_snapshot(zynthian_selector):
 		fpath=join(self.snapshot_dir,fname)
 		return fpath
 
+	def load_snapshot(self, fname):
+		#Read snapshot file
+		try:
+			fpath=join(self.snapshot_dir,fname)
+			with open(fpath,"r") as fh:
+				json=fh.read()
+		except:
+			print("ERROR: Can't load snapshot '%s'" % fpath)
+			return False
+		#Get snapshot's engine
+		status=JSONDecoder().decode(json)
+		engine=status['engine_nick']
+		if not engine:
+			print("ERROR: Not engine specified in snapshot => %s" % (fpath))
+			return False
+		print("Snapshot engine => %s" % (engine))
+		#Start engine if needed
+		if not zyngui.zyngine or zyngui.zyngine.nickname!=engine:
+			zyngui.set_engine(engine,2)
+		#Load snapshot in engine
+		zyngui.zyngine.load_snapshot(fpath)
+		#Show control screen
+		zyngui.show_screen('control')
+		return True
+
 	def select_action(self, i):
 		fpath=self.list_data[i][0]
 		engine=self.list_data[i][3]
@@ -1469,7 +1495,7 @@ class zynthian_gui:
 	exit_code=0
 
 	def __init__(self):
-		# Controls Initialization (Rotary and Switches)
+		# Initialize Controllers (Rotary and Switches), MIDI and OSC
 		try:
 			global lib_zyncoder
 			lib_zyncoder_init(zyngine_osc_port)
@@ -1479,18 +1505,23 @@ class zynthian_gui:
 			self.zynswitches_init()
 		except Exception as e:
 			print("ERROR initializing GUI: %s" % e)
-		# GUI Objects Initialization
+		# Create initial GUI Screens
 		#self.screens['splash']=zynthian_gui_splash(1000)
 		self.screens['admin']=zynthian_gui_admin()
 		self.screens['info']=zynthian_gui_info()
 		self.screens['engine']=zynthian_gui_engine()
 		self.screens['snapshot']=zynthian_gui_snapshot()
-		# Show first screen and start polling
+
+	def start(self):
+		# Show initial screen => Engine selection
 		self.show_screen('engine')
-		self.load_snapshot()
+		# Start polling threads
 		self.start_polling()
 		self.start_loading_thread()
 		self.start_zyncoder_thread()
+		# Try to load "default snapshot" or show "load snapshot" popup
+		if not self.screens['snapshot'].load_snapshot('default.zss'):
+			self.load_snapshot()
 
 	def hide_screens(self,exclude=None):
 		if not exclude:
@@ -1845,6 +1876,7 @@ gui_bg_logo = None
 gui_bg = None
 
 zyngui=zynthian_gui()
+zyngui.start()
 
 #-------------------------------------------------------------------------------
 # Reparent Top Window using GTK XEmbed protocol features
