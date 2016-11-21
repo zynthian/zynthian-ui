@@ -56,7 +56,6 @@ class zynthian_engine_modui(zynthian_engine):
 	default_ctrl_list=[]
 	ctrl_list=[]
 	ctrl_dict={}
-	ctrl_sorted=[]
 	touched=False
 	refreshed_ts=None
 
@@ -70,7 +69,6 @@ class zynthian_engine_modui(zynthian_engine):
 	def clean(self):
 		self.graph={}
 		self.ctrl_dict={}
-		self.ctrl_sorted=[]
 		self.plugin_info={}
 		self.touched=True
 		super().clean()
@@ -78,7 +76,6 @@ class zynthian_engine_modui(zynthian_engine):
 	def reset(self):
 		self.graph={}
 		self.ctrl_dict={}
-		self.ctrl_sorted=[]
 		self.plugin_info={}
 		self.touched=True
 		self.midi_chan=0
@@ -176,7 +173,7 @@ class zynthian_engine_modui(zynthian_engine):
 				elif command == "add":
 					if args[2][0:4] == "http":
 						logging.info("ADD PLUGIN: "+args[1]+" => "+args[2])
-						self.add_plugin_cb(args[1],args[2])
+						self.add_plugin_cb(args[1],args[2],args[3],args[4])
 
 				elif command == "remove":
 					if args[1] == ":all":
@@ -259,7 +256,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self.graph_autoconnect_midi_input()
 		#print("ADD_HW_PORT => "+pgraph+", "+ptype+", "+pdir)
 
-	def add_plugin_cb(self, pgraph, puri):
+	def add_plugin_cb(self, pgraph, puri, posx, posy):
 		pinfo=self.api_get_request("/effect/get",data={'uri':puri})
 		if pinfo:
 			self.ctrl_dict[pgraph]={}
@@ -306,8 +303,12 @@ class zynthian_engine_modui(zynthian_engine):
 				except Exception as err:
 					logging.error("Configuring Controllers: "+pgraph+" => "+str(err))
 			#Add bypass control
-			self.ctrl_dict[pgraph][':bypass']=['enabled', pgraph+'/:bypass', 'on', 'off|on', {'off':1,'on':0}]
-			pinfo['ports']['control']['input'].insert(0,{'symbol':':bypass', 'ctrl':self.ctrl_dict[pgraph][':bypass']})
+			ctrl=['enabled', pgraph+'/:bypass', 'on', 'off|on', {'off':1,'on':0}]
+			self.ctrl_dict[pgraph][':bypass']=ctrl
+			pinfo['ports']['control']['input'].insert(0,{'symbol':':bypass', 'ctrl':ctrl})
+			#Add position info
+			pinfo['posx']=int(round(float(posx)))
+			pinfo['posy']=int(round(float(posy)))
 			#Add to info array
 			self.plugin_info[pgraph]=pinfo
 			self.touched=True
@@ -399,7 +400,8 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def generate_ctrl_list(self):
 		self.ctrl_list=[]
-		for pgraph in self.plugin_info:
+		for pgraph in sorted(self.plugin_info, key=lambda k: self.plugin_info[k]['posx']):
+			#logging.debug("PLUGIN %s => X=%s" % (pgraph,self.plugin_info[pgraph]['posx']))
 			c=1
 			ctrl_set=[]
 			for param in self.plugin_info[pgraph]['ports']['control']['input']:
