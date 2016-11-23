@@ -147,7 +147,7 @@ class zynthian_engine:
 			fvars['DISPLAY']=os.environ.get('ZYNTHIANX')
 		else:
 			try:
-				with open("/home/pi/.remote_display_env","r") as fh:
+				with open("/root/.remote_display_env","r") as fh:
 					lines = fh.readlines()
 					for line in lines:
 						parts=line.strip().split('=')
@@ -161,14 +161,14 @@ class zynthian_engine:
 			self.command_env=os.environ.copy()
 			for f,v in fvars.items():
 				self.command_env[f]=v
-			call(['xauth', 'merge', '/home/pi/.Xauthority'], env=self.command_env)
+			call(['xauth', 'merge', '/root/.Xauthority'], env=self.command_env)
 			return True
 
 	def proc_enqueue_output(self):
 		try:
 			for line in self.proc.stdout:
 				self.queue.put(line)
-				#print(line)
+				#logging.debug("Proc Out: %s" % line)
 		except:
 			logging.info("Finished queue thread")
 
@@ -177,9 +177,9 @@ class zynthian_engine:
 		lines=[]
 		while True:
 			try:
-				lines.append(self.queue.get(timeout=tout))
+				lines.append(self.queue.get(True,tout))
 				n=n+1
-				if (n==limit): tout=0.1
+				if n==limit: tout=0.1
 			except Empty:
 				break
 		return lines

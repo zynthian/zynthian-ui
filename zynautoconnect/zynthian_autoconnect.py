@@ -1,9 +1,8 @@
-#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #********************************************************************
-# ZYNTHIAN PROJECT: Zynthian Autoconnector for Jack Audio
+# ZYNTHIAN PROJECT: Zynthian Autoconnector
 # 
-# Autoconnect Jack-MIDI devices
+# Autoconnect Jack clients
 # 
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
@@ -26,12 +25,20 @@
 import sys
 import os
 import jack
+import logging
 from time import sleep
+from threading  import Thread
 
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# Configure logging
+#-------------------------------------------------------------------------------
 
-#Refresh time
-refresh_time = 2
+logger=logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)
+
+#-------------------------------------------------------------------------------
+# Define some Constants and Global Variables
+#-------------------------------------------------------------------------------
 
 #Synth Engine List
 engine_list = [
@@ -48,16 +55,21 @@ hw_black_list = [
 	#"Midi Through"
 ]
 
+refresh_time=2
+jclient=None
+thread=None
+exit_flag=False
+
+#Aubio Config?
+if os.environ.get('ZYNTHIAN_AUBIO') or (len(sys.argv)>1 and sys.argv[1]=='aubio'):
+	zynthian_aubio=True
+else:
+	zynthian_aubio=False
+
 #------------------------------------------------------------------------------
 
-def jack_connect(odev,idev):
-	try:
-		jclient.connect(odev,idev)
-	except:
-		pass
-
 def midi_autoconnect():
-	print("Autoconnecting Jack Midi ...")
+	logger.info("Autoconnecting Midi ...")
 
 	#Get Physical MIDI-devices ...
 	hw_out=jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
@@ -80,11 +92,11 @@ def midi_autoconnect():
 	#Remove HW Black-listed
 	for i,hw in enumerate(hw_out):
 		for v in hw_black_list:
-			#print("Element %s => %s " % (i,v) )
+			#logger.debug("Element %s => %s " % (i,v) )
 			if v in str(hw):
 				hw_out.pop(i)
 
-	#print("Physical Devices: " + str(hw_out))
+	#logger.debug("Physical Devices: " + str(hw_out))
 
 	#Get Synth Engines
 	engines=[]
@@ -94,13 +106,13 @@ def midi_autoconnect():
 			dev=devs[0]
 			if dev.shortname=='osc':
 				dev=devs[1]
-			#print("Engine "+str(dev)+" found")
+			#logger.debug("Engine "+str(dev)+" found")
 			engines.append(dev)
 		except:
-			#print("Engine "+str(devs[0])+" is not present")
+			#logger.warning("Engine "+str(devs[0])+" is not present")
 			pass
 
-	#print("Engine Devices: " + str(engines))
+	#logger.debug("Engine Devices: " + str(engines))
 
 	#Get Zynthian Controller device
 	zyncoder_out=jclient.get_ports("Zyncoder", is_output=True, is_midi=True)
@@ -108,21 +120,29 @@ def midi_autoconnect():
 
 	#Connect Physical devices to Synth Engines and Zyncoder
 	for hw in hw_out:
-		#print("Connecting HW "+str(hw))
 		if len(zyncoder_in)>0:
-			jack_connect(hw,zyncoder_in[0])
-		if not zynthian_seq:
+			#logger.debug("Connecting HW "+str(hw)+" => "+str(zyncoder_in[0]))
+			try:
+				jclient.connect(hw,zyncoder_in[0])
+			except:
+				logger.warning("Failed input device midi connection: %s => %s" % (str(hw),str(zyncoder_in[0])))
 			for engine in engines:
-				#print("Connecting HW "+str(hw)+" => "+str(engine))
-				jack_connect(hw,engine)
+				#logger.debug("Connecting HW "+str(hw)+" => "+str(engine))
+				try:
+					jclient.connect(hw,engine)
+				except:
+					logger.warning("Failed input device midi connection: %s => %s" % (str(hw),str(engine)))
 
 	#Connect Zyncoder to engines
 	if len(zyncoder_out)>0:
 		for engine in engines:
-			jack_connect(zyncoder_out[0],engine)
+			try:
+				jclient.connect(zyncoder_out[0],engine)
+			except:
+				logger.warning("Failed zyncoder midi connection: %s => %s" % (str(zyncoder_out[0]),str(engine)))
 
 def audio_autoconnect():
-	print("Autoconnecting Jack Audio ...")
+	logger.info("Autoconnecting Audio ...")
 
 	if zynthian_aubio:
 		#Get Alsa Input ...
@@ -130,9 +150,9 @@ def audio_autoconnect():
 		aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
 		if len(alsa_rec)>0 and len(aubio_in)>0:
 			try:
-				jack_connect(alsa_rec[0],aubio_in[0])
+				jclient.connect(alsa_rec[0],aubio_in[0])
 			except:
-				print("Failed capture audio connection")
+				logger.warning("Failed alsa audio input connection:  %s => %s" % (str(alsa_rec[0]),str(aubio_in[0])))
 
 	#Get System Output ...
 	sys_out=jclient.get_ports(is_audio=True, is_terminal=True)
@@ -144,39 +164,37 @@ def audio_autoconnect():
 		devs=jclient.get_ports(engine, is_output=True, is_audio=True, is_physical=False)
 		if devs:
 			try:
-				jack_connect(devs[0],sys_out[0])
-				jack_connect(devs[1],sys_out[1])
+				jclient.connect(devs[0],sys_out[0])
+				jclient.connect(devs[1],sys_out[1])
 			except:
-				print("Failed output audio connection")
+				logger.warning("Failed system output audio connection: %s" % (str(devs[0])))
 
-#------------------------------------------------------------------------------
+def autoconnect():
+	midi_autoconnect()
+	audio_autoconnect()
 
-#Sequencer Config?
-if os.environ.get('ZYNTHIAN_SEQ') or (len(sys.argv)>1 and sys.argv[1]=='seq'):
-	zynthian_seq=True
-else:
-	zynthian_seq=False
+def autoconnect_thread():
+	while not exit_flag:
+		try:
+			autoconnect()
+		except Exception as err:
+			logger.error("ERROR Autoconnecting: "+str(err))
+		sleep(refresh_time)
 
-#Aubio Config?
-if os.environ.get('ZYNTHIAN_AUBIO') or (len(sys.argv)>1 and sys.argv[1]=='aubio'):
-	zynthian_aubio=True
-else:
-	zynthian_aubio=False
-
-
-jclient=jack.Client("Zynthian_autoconnect")
-
-#Main loop
-i=1
-while True:
+def start(rt=2):
+	global refresh_time, exit_flag, jclient, thread
+	refresh_time=rt
+	exit_flag=False
 	try:
-		print("Try %d" % i)
-		midi_autoconnect()
-		audio_autoconnect()
-		i=i+1
-	except Exception as err:
-		print("ERROR Autoconnecting: "+str(err))
-		pass
-	sleep(refresh_time)
+		jclient=jack.Client("Zynthian_autoconnect")
+	except Exception as e:
+		logger.error("Failed to connect with Jack Server: %s" % (str(e)))
+	thread=Thread(target=autoconnect_thread, args=())
+	thread.daemon = True # thread dies with the program
+	thread.start()
+
+def stop(self):
+	global exit_flag
+	exit_flag=True
 
 #------------------------------------------------------------------------------

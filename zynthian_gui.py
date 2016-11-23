@@ -50,12 +50,13 @@ from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine.zynthian_midi import *
 from zyngine.zynthian_zcmidi import *
 
+import zynautoconnect
+
 #-------------------------------------------------------------------------------
 # Configure logging
 #-------------------------------------------------------------------------------
 
-logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 #Reduce log level for other modules
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -1583,10 +1584,11 @@ class zynthian_gui:
 		self.screens['snapshot'].save()
 		self.hide_screens(exclude='snapshot')
        
-	def set_engine(self,name,wait=0):
+	def set_engine(self, name, wait=0):
 		self.start_loading()
 		if self.screens['engine'].set_engine(name,wait):
 			self.zyngine=self.screens['engine'].zyngine
+			zynautoconnect.autoconnect()
 			self.screens['chan']=zynthian_gui_chan(self.zyngine.max_chan)
 			self.screens['bank']=zynthian_gui_bank()
 			self.screens['instr']=zynthian_gui_instr()
@@ -1886,6 +1888,7 @@ if hw_version!="PROTOTYPE-EMU":
 gui_bg_logo = None
 gui_bg = None
 
+zynautoconnect.start()
 zyngui=zynthian_gui()
 zyngui.start()
 

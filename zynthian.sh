@@ -22,7 +22,8 @@
 # 
 #******************************************************************************
 
-ZYNTHIAN_DIR="/home/pi/zynthian"
+export ZYNTHIAN_DIR="/zynthian"
+export FRAMEBUFFER="/dev/fb1"
 
 #------------------------------------------------------------------------------
 # Some Functions
@@ -58,14 +59,14 @@ function scaling_governor_performance() {
 }
 
 function splash_zynthian() {
-	if [ -c /dev/fb1 ]; then
-		cat ./img/fb1_zynthian.raw > /dev/fb1
+	if [ -c $FRAMEBUFFER ]; then
+		cat ./img/fb1_zynthian.raw > $FRAMEBUFFER
 	fi  
 }
 
 function splash_zynthian_error() {
-	if [ -c /dev/fb1 ]; then
-		cat ./img/fb1_zynthian_error.raw > /dev/fb1
+	if [ -c $FRAMEBUFFER ]; then
+		cat ./img/fb1_zynthian_error.raw > $FRAMEBUFFER
 	fi  
 }
 
@@ -120,16 +121,6 @@ function aubionotes_stop() {
 	killall aubionotes
 }
 
-function autoconnector_start() {
-	# Start Autoconnector
-	./zynthian_autoconnect_jack.py > /dev/null 2>&1
-	#./zynthian_autoconnect_jack.py > /var/log/zynthian_autoconnect.log 2>&1
-}
-
-function autoconnector_stop() {
-	killall zynthian_autoconnect_jack.py
-}
-
 function ttymidi_start() {
 	# Start ttymidi (MIDI UART interface)
 	while [ 1 ]; do 
@@ -143,7 +134,6 @@ function ttymidi_stop() {
 }
 
 function zynthian_stop() {
-	autoconnector_stop
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 		aubionotes_stop
 		alsa_in_stop
@@ -170,7 +160,6 @@ if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 	alsa_in_start &
 	aubionotes_start &
 fi
-autoconnector_start &
 
 while true; do
 	# Start Zynthian GUI & Synth Engine

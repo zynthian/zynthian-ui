@@ -60,7 +60,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			mdriver="alsa_seq";
 		else:
 			mdriver=self.midi_driver
-		self.command=("/usr/bin/fluidsynth", "-p", "fluidsynth", "-a", self.audio_driver, "-m", mdriver ,"-g", "1", "-j", "synth.midi-bank-select", "mma")
+		self.command=("/usr/bin/fluidsynth", "-p", "fluidsynth", "-a", self.audio_driver, "-m", mdriver ,"-g", "1", "-j", "-o", "synth.midi-bank-select=mma")
 		self.parent=parent
 		self.clean()
 		self.start(True)

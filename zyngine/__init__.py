@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 __all__ = [
 	"zynthian_midi",
+	"zynthian_zcmidi",
 	"zynthian_engine",
 	"zynthian_engine_zynaddsubfx",
 	"zynthian_engine_linuxsampler",
@@ -18,4 +19,6 @@ from zyngine.zynthian_engine_setbfree import *
 #from zyngine.zynthian_engine_carla import *
 #from zyngine.zynthian_engine_modhost import *
 from zyngine.zynthian_engine_modui import *
+from zyngine.zynthian_midi import *
+from zyngine.zynthian_zcmidi import *
 
