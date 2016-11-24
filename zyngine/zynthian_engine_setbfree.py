@@ -46,7 +46,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 #			['swellpedal 2',11,96,127],
 			['percussion on/off',80,'off','off|on','perc'],
 			['rotary speed',91,'off','off|chr|trm|chr','rotaryspeed'],
-#			['rotary speed toggle',64,0,3]
+#			['rotary speed',91,64,127],
+#			['rotary speed toggle',64,0,127]
 			['vibrato on/off',92,'off','off|on','vibratoupper']
 		],0,'main'],
 		[[

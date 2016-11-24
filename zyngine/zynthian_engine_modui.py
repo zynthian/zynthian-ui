@@ -47,7 +47,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 	bank_dirs=[
 		#('MY', os.getcwd()+"/my-data/mod-pedalboards"),
-		('_', os.getcwd()+"/data/mod-pedalboards")
+		('_', os.getcwd()+"/my-data/mod-pedalboards")
 	]
 
 	hw_ports={}
