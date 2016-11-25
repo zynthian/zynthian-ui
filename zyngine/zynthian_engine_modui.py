@@ -400,25 +400,27 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def generate_ctrl_list(self):
 		self.ctrl_list=[]
-		for pgraph in sorted(self.plugin_info, key=lambda k: self.plugin_info[k]['posx']):
-			#logging.debug("PLUGIN %s => X=%s" % (pgraph,self.plugin_info[pgraph]['posx']))
-			c=1
-			ctrl_set=[]
-			for param in self.plugin_info[pgraph]['ports']['control']['input']:
-				try:
-					#logging.debug("CTRL LIST PLUGIN %s PARAM %s" % (pgraph,ctrl))
-					ctrl_set.append(param['ctrl'])
-					if len(ctrl_set)>=4:
-						#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-						self.ctrl_list.append([ctrl_set,0,self.plugin_info[pgraph]['name']+'#'+str(c)])
-						ctrl_set=[]
-						c=c+1
-				except Exception as err:
-					logging.error("Generating Controller Screens: "+pgraph+" => "+str(err))
-					pass
-			if len(ctrl_set)>=1:
-				#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-				self.ctrl_list.append([ctrl_set,0,self.plugin_info[pgraph]['name']+'#'+str(c)])
+		try:
+			for pgraph in sorted(self.plugin_info, key=lambda k: self.plugin_info[k]['posx']):
+				#logging.debug("PLUGIN %s => X=%s" % (pgraph,self.plugin_info[pgraph]['posx']))
+				c=1
+				ctrl_set=[]
+				for param in self.plugin_info[pgraph]['ports']['control']['input']:
+					try:
+						#logging.debug("CTRL LIST PLUGIN %s PARAM %s" % (pgraph,ctrl))
+						ctrl_set.append(param['ctrl'])
+						if len(ctrl_set)>=4:
+							#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+							self.ctrl_list.append([ctrl_set,0,self.plugin_info[pgraph]['name']+'#'+str(c)])
+							ctrl_set=[]
+							c=c+1
+					except Exception as err:
+						logging.error("Generating Controller Screens: "+pgraph+" => "+str(err))
+				if len(ctrl_set)>=1:
+					#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+					self.ctrl_list.append([ctrl_set,0,self.plugin_info[pgraph]['name']+'#'+str(c)])
+		except Exception as err:
+			logging.error("Generating Controller List: %s"+str(err))
 		if len(self.ctrl_list)==0:
 			logging.info("Loading Controller Defaults")
 			self.ctrl_list=self.default_ctrl_list
