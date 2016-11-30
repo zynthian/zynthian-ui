@@ -1245,9 +1245,9 @@ class zynthian_gui_bank(zynthian_selector):
 		super().__init__('Bank', True, gui_bg)
     
 	def fill_list(self):
-		if self.list_data!=zyngui.zyngine.bank_list:
-			self.list_data=zyngui.zyngine.bank_list
-			super().fill_list()
+		zyngui.zyngine.load_bank_list()
+		self.list_data=zyngui.zyngine.bank_list
+		super().fill_list()
 
 	def show(self):
 		self.index=zyngui.zyngine.get_bank_index()
@@ -1276,9 +1276,9 @@ class zynthian_gui_instr(zynthian_selector):
 		super().__init__('Instrument', True, gui_bg)
       
 	def fill_list(self):
-		if self.list_data!=zyngui.zyngine.instr_list:
-			self.list_data=zyngui.zyngine.instr_list
-			super().fill_list()
+		zyngui.zyngine.load_instr_list()
+		self.list_data=zyngui.zyngine.instr_list
+		super().fill_list()
 
 	def show(self):
 		self.index=zyngui.zyngine.get_instr_index()
