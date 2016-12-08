@@ -106,6 +106,7 @@ color_ctrl_tx_off="#e0e0e0"
 font_family="Audiowide"
 font_topbar=(font_family,11)
 font_listbox=(font_family,10)
+font_ctrl_title_maxsize=11
 
 #-------------------------------------------------------------------------------
 # Get Zynthian Hardware Version
@@ -380,19 +381,18 @@ class zynthian_controller:
 
 	def set_title(self, tit):
 		self.title=str(tit)
-
 		#Calculate the font size ...
-		max_fs=11
+		max_fs=font_ctrl_title_maxsize
 		words=self.title.split()
 		n_words=len(words)
 		maxnumchar=max([len(w) for w in words])
 		rfont=tkFont.Font(family=font_family,size=max_fs)
 		maxlen=rfont.measure(self.title)
 		l=790
-		if maxlen<88 and maxnumchar<11:
+		if maxlen<ctrl_width and maxnumchar<11:
 			font_size=int(l/maxlen)
 		elif n_words==1:
-			font_size=2*int(l/maxlen)
+			font_size=int(l/maxlen) # *2
 		elif n_words==2:
 			maxlen=max([rfont.measure(w) for w in words])
 			font_size=int(l/maxlen)
@@ -406,7 +406,7 @@ class zynthian_controller:
 			font_size=int(l/maxlen)
 			max_fs=max_fs-1
 		font_size=min(max_fs,max(7,font_size))
-		#print("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,font_size))
+		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,font_size))
 		#Set title label
 		if not self.label_title:
 			self.label_title = tkinter.Label(self.canvas,

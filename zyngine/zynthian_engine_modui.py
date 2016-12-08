@@ -289,12 +289,12 @@ class zynthian_engine_modui(zynthian_engine):
 									param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], val, 'off|on', {'off':0,'on':1}]
 								else:
 									pranges['mult']=1
-									val=pranges['mult']*(pranges['default']-pranges['minimum'])
+									val=int(pranges['mult']*(pranges['default']-pranges['minimum']))
 									param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], val, r, pranges]
 							else:
 								if r>0: pranges['mult']=127/r
 								else: pranges['mult']=1
-								val=pranges['mult']*(pranges['default']-pranges['minimum'])
+								val=int(pranges['mult']*(pranges['default']-pranges['minimum']))
 								param['ctrl']=[param['shortName'], pgraph+'/'+param['symbol'], val, 127, pranges]
 					#If there is no range info (should be!!) => Default MIDI CC controller with 0-127 range
 					else:
