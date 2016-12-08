@@ -30,14 +30,14 @@ import signal
 import alsaseq
 import logging
 import liblo
+import tkinter
 from ctypes import *
-from tkinter import *
-from tkinter import font as tkFont
 from time import sleep
 from string import Template
 from json import JSONDecoder
 from datetime import datetime
 from threading  import Thread
+from tkinter import font as tkFont
 from os.path import isfile, isdir, join
 from subprocess import check_output, Popen, PIPE
 
@@ -56,7 +56,10 @@ import zynautoconnect
 # Configure logging
 #-------------------------------------------------------------------------------
 
+raise_exceptions=False
+
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+#logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 
 #Reduce log level for other modules
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -65,11 +68,21 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 # Define some Constants and Parameters for the GUI
 #-------------------------------------------------------------------------------
 
+# Screen Size
 width=320
 height=240
-
-#Initial Screen
-splash_image="./img/zynthian_logo_boot.gif"
+# Topbar Height
+topbar_height=24
+# Controller Size
+ctrl_width=int(width/4)
+ctrl_height=int((height-topbar_height)/2)
+# Controller Positions
+ctrl_pos=[
+	(1,0,"nw"),
+	(2,0,"sw"),
+	(1,2,"ne"),
+	(2,2,"se")
+]
 
 # Color Scheme
 color_bg="#000000"
@@ -85,15 +98,14 @@ color_ctrl_bg_on=color_on
 color_ctrl_tx=color_tx
 color_ctrl_tx_off="#e0e0e0"
 
-#-------------------------------------------------------------------------------
-# Controller positions
-#-------------------------------------------------------------------------------
-ctrl_pos=[
-	[-1,25],
-	[-1,133],
-	[243,25],
-	[243,133]
-]
+# Font
+#font_family="Helvetica"
+#font_family="Economica" => pequeña
+#font_family="Orbitron" => muy guapa pero no es monospace
+#font_family="Abel" # => Bastante Interesante: Strait
+font_family="Audiowide"
+font_topbar=(font_family,11)
+font_listbox=(font_family,10)
 
 #-------------------------------------------------------------------------------
 # Get Zynthian Hardware Version
@@ -110,47 +122,56 @@ except:
 # GPIO pin assignment (wiringPi)
 #-------------------------------------------------------------------------------
 
-if hw_version=="PROTOTYPE-1":		# First Prototype => Generic Plastic Case
+# First Prototype => Generic Plastic Case
+if hw_version=="PROTOTYPE-1":
 	zyncoder_pin_a=[27,21,3,7]
 	zyncoder_pin_b=[25,26,4,0]
 	zynswitch_pin=[23,None,2,None]
 	select_ctrl=2
-elif hw_version=="PROTOTYPE-2":		# Controller RBPi connector downside, controller 1 reversed
+# Controller RBPi connector downside, controller 1 reversed
+elif hw_version=="PROTOTYPE-2":
 	zyncoder_pin_a=[27,21,4,0]
 	zyncoder_pin_b=[25,26,3,7]
 	zynswitch_pin=[23,107,2,106]
 	select_ctrl=3
-elif hw_version=="PROTOTYPE-3":		# Controller RBPi connector upside
+# Controller RBPi connector upside
+elif hw_version=="PROTOTYPE-3":
 	zyncoder_pin_a=[27,21,3,7]
 	zyncoder_pin_b=[25,26,4,0]
 	zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
-elif hw_version=="PROTOTYPE-3H":	# Controller RBPi connector downside (Holger's way)
+# Controller RBPi connector downside (Holger's way)
+elif hw_version=="PROTOTYPE-3H":
 	zyncoder_pin_a=[21,27,7,3]
 	zyncoder_pin_b=[26,25,0,4]
 	zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
-elif hw_version=="PROTOTYPE-4":		# Controller RBPi connector upside / Controller Singles
+# Controller RBPi connector upside / Controller Singles
+elif hw_version=="PROTOTYPE-4":
 	zyncoder_pin_a=[26,25,0,4]
 	zyncoder_pin_b=[21,27,7,3]
 	zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
-elif hw_version=="PROTOTYPE-4B":		# Controller RBPi connector downside / Controller Singles Inverted
+# Controller RBPi connector downside / Controller Singles Inverted
+elif hw_version=="PROTOTYPE-4B":
 	zyncoder_pin_a=[25,26,4,0]
 	zyncoder_pin_b=[27,21,3,7]
 	zynswitch_pin=[23,107,2,106]
 	select_ctrl=3
-elif hw_version=="PROTOTYPE-KEES":	# Kees layout, for display Waveshare 3.2
+# Kees layout, for display Waveshare 3.2
+elif hw_version=="PROTOTYPE-KEES":
 	zyncoder_pin_a=[27,21,4,5]
 	zyncoder_pin_b=[25,26,31,7]
 	zynswitch_pin=[23,107,6,106]
 	select_ctrl=3
-elif hw_version=="PROTOTYPE-EMU":	# Desktop Development & Emulation
+# Desktop Development & Emulation
+elif hw_version=="PROTOTYPE-EMU":
 	zyncoder_pin_a=[4,5,6,7]
 	zyncoder_pin_b=[8,9,10,11]
 	zynswitch_pin=[0,1,2,3]
 	select_ctrl=3
-else:					# Default to PROTOTYPE-3
+# Default to PROTOTYPE-3
+else:
 	zyncoder_pin_a=[26,25,0,4]
 	zyncoder_pin_b=[21,27,7,3]
 	zynswitch_pin=[107,23,106,2]
@@ -160,9 +181,9 @@ else:					# Default to PROTOTYPE-3
 # Controller GUI Class
 #-------------------------------------------------------------------------------
 class zynthian_controller:
-	width=77
-	height=106
-	trw=70
+	width=ctrl_width
+	height=ctrl_height
+	trw=ctrl_width-6
 	trh=13
 
 	ctrl=None
@@ -190,43 +211,38 @@ class zynthian_controller:
 	value_text=None
 	label_title=None
 
-	def __init__(self, indx, cnv, tit, chan, ctrl, val=0, max_val=127):
+	def __init__(self, indx, frm, tit, chan, ctrl, val=0, max_val=127):
 		self.index=indx
-		self.canvas=cnv
-		self.x=ctrl_pos[indx][0]
-		self.y=ctrl_pos[indx][1]
+		self.main_frame=frm
+		self.row=ctrl_pos[indx][0]
+		self.col=ctrl_pos[indx][1]
+		self.sticky=ctrl_pos[indx][2]
 		self.plot_value=self.plot_value_arc
 		self.erase_value=self.erase_value_arc
+		# Create Canvas
+		self.canvas= tkinter.Canvas(self.main_frame,
+			width=self.width,
+			height=self.height-1,
+			bd=0,
+			highlightthickness=0,
+			relief='flat',
+			bg = color_panel_bg)
+		# Setup Controller and Zyncoder
 		self.config(tit,chan,ctrl,val,max_val)
+		# Show Controller
 		self.show()
 
 	def show(self):
 		#print("SHOW CONTROLLER "+str(self.ctrl)+" => "+str(self.shown))
 		if not self.shown:
 			self.shown=True
-			self.plot_frame()
+			self.canvas.grid(row=self.row,column=self.col,sticky=self.sticky)
 			self.plot_value()
-			self.label_title.place(x=self.x+3, y=self.y+4, anchor=NW)
 
 	def hide(self):
 		if self.shown:
 			self.shown=False
-			self.erase_frame()
-			self.erase_value()
-			self.label_title.place_forget()
-
-	def plot_frame(self):
-		x2=self.x+self.width
-		y2=self.y+self.height
-		if self.frame:
-			self.canvas.coords(self.frame,(self.x, self.y, x2, self.y, x2, y2, self.x, y2))
-		else:
-			self.frame=self.canvas.create_polygon((self.x, self.y, x2, self.y, x2, y2, self.x, y2), outline=color_panel_bd, fill=color_panel_bg)
-
-	def erase_frame(self):
-		if self.frame:
-			self.canvas.delete(self.frame)
-			self.frame=None
+			self.canvas.grid_forget()
 
 	def calculate_plot_values(self):
 		if self.value>self.max_value: self.value=self.max_value
@@ -261,8 +277,8 @@ class zynthian_controller:
 
 	def plot_value_rectangle(self):
 		self.calculate_plot_values()
-		x1=self.x+6
-		y1=self.y+self.height-5
+		x1=6
+		y1=self.height-5
 		lx=self.trw-4
 		ly=2*self.trh
 		y2=y1-ly
@@ -278,7 +294,7 @@ class zynthian_controller:
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=str(self.value_print))
 		else:
-			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",self.value_font_size), text=str(self.value_print))
+			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=(font_family,self.value_font_size), text=str(self.value_print))
 
 	def erase_value_rectangle(self):
 		if self.rectangle:
@@ -291,8 +307,8 @@ class zynthian_controller:
 
 	def plot_value_triangle(self):
 		self.calculate_plot_values()
-		x1=self.x+2
-		y1=self.y+int(0.8*self.height)+self.trh
+		x1=2
+		y1=int(0.8*self.height)+self.trh
 		if self.max_value>0:
 			x2=x1+self.trw*self.value_plot/self.max_value
 			y2=y1-self.trh*self.value_plot/self.max_value
@@ -308,7 +324,7 @@ class zynthian_controller:
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=str(self.value_print))
 		else:
-			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh-8, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",self.value_font_size), text=str(self.value_print))
+			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh-8, width=self.trw, justify=CENTER, fill=color_ctrl_tx, font=(font_family,self.value_font_size), text=str(self.value_print))
 
 	def erase_value_triangle(self):
 		if self.triangle:
@@ -329,23 +345,35 @@ class zynthian_controller:
 		else:
 			degd=0
 		if (not self.arc and self.midi_ctrl!=0) or not self.value_text:
-			x1=self.x+0.2*self.trw
-			y1=self.y+self.height-int(0.7*self.trw)-6
+			x1=0.2*self.trw
+			y1=self.height-int(0.7*self.trw)-6
 			x2=x1+0.7*self.trw
-			y2=self.y+self.height-6
+			y2=self.height-6
 		if self.arc:
 			self.canvas.itemconfig(self.arc, extent=degd)
 		elif self.midi_ctrl!=0:
-			self.arc=self.canvas.create_arc(x1, y1, x2, y2, style=ARC, outline=color_ctrl_bg_on, width=thickness, start=deg0, extent=degd)
+			self.arc=self.canvas.create_arc(x1, y1, x2, y2, style=tkinter.ARC, outline=color_ctrl_bg_on, width=thickness, start=deg0, extent=degd)
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=str(self.value_print))
 		else:
-			self.value_text=self.canvas.create_text(x1+(x2-x1)/2-1, y1-(y1-y2)/2, width=x2-x1, justify=CENTER, fill=color_ctrl_tx, font=("Helvetica",self.value_font_size), text=str(self.value_print))
+			self.value_text=self.canvas.create_text(x1+(x2-x1)/2-1, y1-(y1-y2)/2, width=x2-x1, justify=tkinter.CENTER, fill=color_ctrl_tx, font=(font_family,self.value_font_size), text=str(self.value_print))
 
 	def erase_value_arc(self):
 		if self.arc:
 			self.canvas.delete(self.arc)
 			self.arc=None
+		x2=self.width
+		y2=self.height
+		if self.frame:
+			self.canvas.coords(self.frame,(self.x, self.y, x2, self.y, x2, y2, self.x, y2))
+		else:
+			self.frame=self.canvas.create_polygon((self.x, self.y, x2, self.y, x2, y2, self.x, y2), outline=color_panel_bd, fill=color_panel_bg)
+
+	def erase_frame(self):
+		if self.frame:
+			self.canvas.delete(self.frame)
+			self.frame=None
+
 		if self.value_text:
 			self.canvas.delete(self.value_text)
 			self.value_text=None
@@ -358,7 +386,7 @@ class zynthian_controller:
 		words=self.title.split()
 		n_words=len(words)
 		maxnumchar=max([len(w) for w in words])
-		rfont=tkFont.Font(family="Helvetica",size=max_fs)
+		rfont=tkFont.Font(family=font_family,size=max_fs)
 		maxlen=rfont.measure(self.title)
 		l=790
 		if maxlen<88 and maxnumchar<11:
@@ -381,19 +409,20 @@ class zynthian_controller:
 		#print("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,font_size))
 		#Set title label
 		if not self.label_title:
-			self.label_title = Label(self.canvas,
+			self.label_title = tkinter.Label(self.canvas,
 				text=self.title,
-				font=("Helvetica",font_size),
+				font=(font_family,font_size),
 				wraplength=self.width-6,
-				justify=LEFT,
+				justify=tkinter.LEFT,
 				bg=color_panel_bg,
 				fg=color_panel_tx)
+			self.label_title.place(x=3, y=4, anchor=tkinter.NW)
 		else:
-			self.label_title.config(text=self.title,font=("Helvetica",font_size))
+			self.label_title.config(text=self.title,font=(font_family,font_size))
 
 	def calculate_value_font_size(self):
 		if self.values:
-			rfont=tkFont.Font(family="Helvetica",size=10)
+			rfont=tkFont.Font(family=font_family,size=10)
 			maxlen=len(max(self.values, key=len))
 			if maxlen>4:
 				maxlen=max([rfont.measure(w) for w in self.values])
@@ -418,7 +447,7 @@ class zynthian_controller:
 			self.value_font_size=14
 		#Update font config in text object
 		if self.value_text:
-			self.canvas.itemconfig(self.value_text, font=("Helvetica",self.value_font_size))
+			self.canvas.itemconfig(self.value_text, font=(font_family,self.value_font_size))
 
 	def config(self, tit, chan, ctrl, val, max_val=127):
 		#print("CONFIG CONTROLLER "+str(self.index)+" => "+tit)
@@ -559,13 +588,11 @@ class zynthian_controller:
 # Zynthian Listbox Selector GUI Class
 #-------------------------------------------------------------------------------
 class zynthian_selector:
-	width=160
-	height=224
-	lb_width=18
-	lb_height=10
-	lb_x=width/2+1
-	wide=False
+	# Listbox Size
+	lb_width=width-2*ctrl_width
+	lb_height=height-topbar_height
 
+	wide=False
 	shown=False
 	index=0
 	list_data=[]
@@ -576,40 +603,62 @@ class zynthian_selector:
 	loading_index=0
 	loading_item=None
 
-	def __init__(self, selcap='Select', wide=False, image_bg=None):
+	def __init__(self, selcap='Select', wide=False):
 		self.shown=False
-
-		if wide:
-			self.wide=True
-			self.width=236
-			self.lb_width=28
-			if select_ctrl>1:
-				self.lb_x=0
-			else:
-				self.lb_x=317-self.width
+		self.wide=wide
+			
+		if self.wide:
+			self.lb_width=width-ctrl_width
 		else:
-			self.wide=False
+			self.lb_width=width-2*ctrl_width
 
-		# Create Canvas
-		self.canvas = Canvas(
-			width = width,
-			height = height,
-			bd=0,
-			highlightthickness=0,
-			relief='flat',
-			bg = color_bg)
+		# Main Frame
+		self.main_frame = tkinter.Frame(top,
+			width=width,
+			height=height,
+			bg=color_bg)
 
-		# Add Background Image inside a Canvas
-		if (image_bg):
-			self.canvas.create_image(0, 0, image = image_bg, anchor = NW)
+		# Topbar's frame
+		self.tb_frame = tkinter.Frame(self.main_frame, 
+			width=width,
+			height=topbar_height,
+			bg=color_bg)
+		self.tb_frame.grid(row=0, column=0, columnspan=3)
+		self.tb_frame.grid_propagate(False)
 
-		#self.plot_frame()
+		# Topbar's Select Path
+		self.select_path = tkinter.StringVar()
+		self.label_select_path = tkinter.Label(self.tb_frame,
+			font=font_topbar,
+			textvariable=self.select_path,
+			#wraplength=80,
+			justify=tkinter.LEFT,
+			bg=color_header_bg,
+			fg=color_header_tx)
+		self.label_select_path.grid(sticky="wns")
 
-		# Add ListBox
-		self.listbox = Listbox(self.canvas,
+		# ListBox's frame
+		self.lb_frame = tkinter.Frame(self.main_frame,
 			width=self.lb_width,
 			height=self.lb_height,
-			font=("Helvetica",11),
+			bg=color_bg)
+		if self.wide:
+			if select_ctrl>1:
+				self.lb_frame.grid(row=1, column=0, rowspan=2, columnspan=2, padx=(0,2), sticky="w")
+			else:
+				self.lb_frame.grid(row=1, column=1, rowspan=2, columnspan=2, padx=(2,0), sticky="e")
+		else:
+			if select_ctrl>1:
+				self.lb_frame.grid(row=1, column=1, rowspan=2, padx=(2,2), sticky="w")
+			else:
+				self.lb_frame.grid(row=1, column=1, rowspan=2, padx=(2,2), sticky="e")
+		#self.lb_frame.columnconfigure(0, weight=10)
+		self.lb_frame.rowconfigure(0, weight=10)
+		self.lb_frame.grid_propagate(False)
+
+		# ListBox
+		self.listbox = tkinter.Listbox(self.lb_frame,
+			font=font_listbox,
 			bd=7,
 			highlightthickness=0,
 			relief='flat',
@@ -617,52 +666,49 @@ class zynthian_selector:
 			fg=color_panel_tx,
 			selectbackground=color_ctrl_bg_on,
 			selectforeground=color_ctrl_tx,
-			selectmode=BROWSE)
-		self.listbox.place(x=self.lb_x, y=height, anchor=SW)
+			selectmode=tkinter.BROWSE)
+		self.listbox.grid(sticky="wens")
 		self.listbox.bind('<<ListboxSelect>>', lambda event :self.click_listbox())
 
-		# Add Select Path (top-left)
-		self.select_path = StringVar()
-		self.label_select_path = Label(self.canvas,
-			font=("Helvetica",12,"bold"),
-			textvariable=self.select_path,
-			#wraplength=80,
-			justify=LEFT,
-			bg=color_header_bg,
-			fg=color_header_tx)
-		self.label_select_path.place(x=1, y=0, anchor=NW)
+		# Canvas for loading image animation
+		self.loading_canvas = tkinter.Canvas(self.main_frame,
+			width=ctrl_width,
+			height=ctrl_height-1,
+			bd=0,
+			highlightthickness=0,
+			relief='flat',
+			bg = color_bg)
+		self.loading_canvas.grid(row=1,column=2,sticky="ne")
 
-		# Init Loading Image Animation
+		# Loading Image Animation
 		self.loading_imgs=[]
 		for i in range(13):
-			self.loading_imgs.append(PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
-		self.loading_item=self.canvas.create_image(width-7, 28, image = self.loading_imgs[0], anchor=NE)
+			self.loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
+		self.loading_item=self.loading_canvas.create_image(4, 4, image = self.loading_imgs[0], anchor=tkinter.NW)
 
 		# Selector Controller Caption
 		self.selector_caption=selcap
 
-		# Fill Listbox
-		self.fill_list()
-
 		# Update Title
+		self.set_select_path()
+
+	def show(self):
+		if not self.shown:
+			self.shown=True
+			self.main_frame.grid()
+		self.fill_list()
+		self.select_listbox(self.index)
+		self.set_selector()
 		self.set_select_path()
 
 	def hide(self):
 		if self.shown:
 			self.shown=False
-			self.canvas.pack_forget()
-
-	def show(self):
-		if not self.shown:
-			self.shown=True
-			self.canvas.pack(expand = YES, fill = BOTH)
-		self.select_listbox(self.index)
-		self.set_selector()
-		self.set_select_path()
+			self.main_frame.grid_forget()
 
 	def is_shown(self):
 		try:
-			self.canvas.pack_info()
+			self.main_frame.grid_info()
 			return True
 		except:
 			return False
@@ -673,7 +719,7 @@ class zynthian_selector:
 				if zyngui.loading:
 					self.loading_index=self.loading_index+1
 					if self.loading_index>13: self.loading_index=0
-					self.canvas.itemconfig(self.loading_item, image=self.loading_imgs[self.loading_index])
+					self.loading_canvas.itemconfig(self.loading_item, image=self.loading_imgs[self.loading_index])
 				else:
 					self.reset_loading()
 			except:
@@ -682,36 +728,21 @@ class zynthian_selector:
 	def reset_loading(self, force=False):
 		if self.loading_index>0 or force:
 			self.loading_index=0
-			self.canvas.itemconfig(self.loading_item, image=self.loading_imgs[0])
-
-	def plot_frame(self):
-		if self.wide:
-			if select_ctrl>1:
-				rx=0
-				rx2=self.width
-			else:
-				rx=320-self.width
-				rx2=320
-		else:
-			rx=(width-self.width)/2
-			rx2=width-rx-1
-		ry=height-self.height
-		ry2=height-1
-		self.canvas.create_polygon((rx, ry, rx2, ry, rx2, ry2, rx, ry2), outline=color_panel_bd, fill=color_panel_bg)
+			self.loading_canvas.itemconfig(self.loading_item, image=self.loading_imgs[0])
 
 	def fill_listbox(self):
-		self.listbox.delete(0, END)
+		self.listbox.delete(0, tkinter.END)
 		if not self.list_data:
 			self.list_data=[]
 		for item in self.list_data:
-			self.listbox.insert(END, item[2])
+			self.listbox.insert(tkinter.END, item[2])
 
 	def set_selector(self):
 		if self.zselector:
 			self.zselector.config(self.selector_caption,0,0,self.index,len(self.list_data))
 			self.zselector.show()
 		else:
-			self.zselector=zynthian_controller(select_ctrl,self.canvas,self.selector_caption,0,0,self.index,len(self.list_data))
+			self.zselector=zynthian_controller(select_ctrl,self.main_frame,self.selector_caption,0,0,self.index,len(self.list_data))
 
 	def fill_list(self):
 		self.fill_listbox()
@@ -735,7 +766,7 @@ class zynthian_selector:
 
 	def select_listbox(self,index):
 		self.index=index
-		self.listbox.selection_clear(0,END)
+		self.listbox.selection_clear(0,tkinter.END)
 		self.listbox.selection_set(index)
 		self.listbox.see(index)
 
@@ -757,41 +788,6 @@ class zynthian_selector:
 		pass
 
 #-------------------------------------------------------------------------------
-# Zynthian Splash GUI Class
-#-------------------------------------------------------------------------------
-class zynthian_gui_splash:
-	shown=False
-
-	def __init__(self, tms=1000):
-		self.shown=False
-		# Add Background Image inside a Canvas
-		self.canvas = Canvas(
-			width = width,
-			height = height,
-			bd=0,
-			highlightthickness=0,
-			relief='flat',
-			bg = color_bg)
-		self.splash_img = PhotoImage(file = "./img/zynthian_gui_splash.gif")
-		self.canvas.create_image(0, 0, image = self.splash_img, anchor = NW)
-		self.show(tms)
-
-	def hide(self):
-		self.shown=False
-		self.canvas.pack_forget()
-
-	def show(self, tms=2000):
-		self.shown=True
-		self.canvas.pack(expand = YES, fill = BOTH)
-		top.after(tms, self.hide)
-
-	def zyncoder_read(self):
-		pass
-
-	def refresh_loading(self):
-		pass
-
-#-------------------------------------------------------------------------------
 # Zynthian Info GUI Class
 #-------------------------------------------------------------------------------
 class zynthian_gui_info:
@@ -799,23 +795,23 @@ class zynthian_gui_info:
 
 	def __init__(self):
 		self.shown=False
-		self.canvas = Canvas(
-			width = 70*width/100,
-			height = 70*height/100,
+		self.canvas = tkinter.Canvas(top,
+			width = width,
+			height = height,
 			bd=1,
 			highlightthickness=0,
 			relief='flat',
 			bg = color_bg)
 
-		self.text = StringVar()
-		self.label_text = Label(self.canvas,
-			font=("Helvetica",10,"normal"),
+		self.text = tkinter.StringVar()
+		self.label_text = tkinter.Label(self.canvas,
+			font=(font_family,10,"normal"),
 			textvariable=self.text,
 			#wraplength=80,
-			justify=LEFT,
+			justify=tkinter.LEFT,
 			bg=color_bg,
 			fg=color_tx)
-		self.label_text.place(x=1, y=0, anchor=NW)
+		self.label_text.place(x=1, y=0, anchor=tkinter.NW)
 
 	def clean(self):
 		self.text.set("")
@@ -829,13 +825,13 @@ class zynthian_gui_info:
 	def hide(self):
 		if self.shown:
 			self.shown=False
-			self.canvas.pack_forget()
+			self.canvas.grid_forget()
 
 	def show(self, text):
 		self.text.set(text)
 		if not self.shown:
 			self.shown=True
-			self.canvas.pack(expand = YES, fill = BOTH)
+			self.canvas.grid()
 
 	def zyncoder_read(self):
 		pass
@@ -853,23 +849,24 @@ class zynthian_gui_admin(zynthian_selector):
 	last_action=None
 
 	def __init__(self):
-		super().__init__('Action', True, gui_bg_logo)
+		super().__init__('Action', True)
 		self.commands=None
 		self.thread=None
     
 	def fill_list(self):
-		self.list_data=[]
-		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
-		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
-		#self.list_data.append((self.update_system,0,"Update Operating System"))
-		self.list_data.append((self.network_info,0,"Network Info"))
-		self.list_data.append((self.test_audio,0,"Test Audio"))
-		self.list_data.append((self.test_midi,0,"Test MIDI"))
-		self.list_data.append((self.restart_gui,0,"Restart GUI"))
-		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
-		self.list_data.append((self.reboot,0,"Reboot"))
-		self.list_data.append((self.power_off,0,"Power Off"))
-		super().fill_list()
+		if not self.list_data:
+			self.list_data=[]
+			self.list_data.append((self.update_software,0,"Update Zynthian Software"))
+			self.list_data.append((self.update_library,0,"Update Zynthian Library"))
+			#self.list_data.append((self.update_system,0,"Update Operating System"))
+			self.list_data.append((self.network_info,0,"Network Info"))
+			self.list_data.append((self.test_audio,0,"Test Audio"))
+			self.list_data.append((self.test_midi,0,"Test MIDI"))
+			self.list_data.append((self.restart_gui,0,"Restart GUI"))
+			#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
+			self.list_data.append((self.reboot,0,"Reboot"))
+			self.list_data.append((self.power_off,0,"Power Off"))
+			super().fill_list()
 
 	def select_action(self, i):
 		self.last_action=self.list_data[i][0]
@@ -892,13 +889,13 @@ class zynthian_gui_admin(zynthian_selector):
 		zyngui.start_loading()
 		for cmd in self.commands:
 			logging.info("Executing Command: "+cmd)
-			zyngui.add_info("\nExecuting: "+cmd)
+			zyngui.add_info("\nExecuting:\n"+cmd)
 			try:
 				result=check_output(cmd, shell=True).decode('utf-8','ignore')
 			except Exception as e:
 				result="ERROR: "+str(e)
 			logging.info(result)
-			zyngui.add_info("\n"+str(result))
+			zyngui.add_info("\nResult:\n"+str(result))
 		self.commands=None
 		zyngui.hide_info_timer(3000)
 		zyngui.stop_loading()
@@ -1017,7 +1014,7 @@ class zynthian_gui_engine(zynthian_selector):
 	engine_order=["ZY","LS","FS","BF","MD"]
 
 	def __init__(self):
-		super().__init__('Engine', True, gui_bg_logo)
+		super().__init__('Engine', True)
 		self.zyngine=None
     
 	def fill_list(self):
@@ -1077,7 +1074,7 @@ class zynthian_gui_snapshot(zynthian_selector):
 	engine=""
 
 	def __init__(self):
-		super().__init__('Snapshot', True, gui_bg)
+		super().__init__('Snapshot', True)
 		self.action="LOAD"
 		self.engine=""
         
@@ -1102,7 +1099,6 @@ class zynthian_gui_snapshot(zynthian_selector):
 			else:
 				self.action="LOAD"
 				self.engine=""
-		self.fill_list()
 		super().show()
 		
 	def load(self, engine=""):
@@ -1198,7 +1194,7 @@ class zynthian_gui_chan(zynthian_selector):
 
 	def __init__(self, max_chan=10):
 		self.max_chan=max_chan
-		super().__init__('Channel', True, gui_bg)
+		super().__init__('Channel', True)
     
 	def fill_list(self):
 		self.list_data=[]
@@ -1210,7 +1206,6 @@ class zynthian_gui_chan(zynthian_selector):
 
 	def show(self):
 		self.index=zyngui.zyngine.get_midi_chan()
-		self.fill_list()
 		super().show()
 
 	def select_action(self, i):
@@ -1242,7 +1237,7 @@ class zynthian_gui_chan(zynthian_selector):
 class zynthian_gui_bank(zynthian_selector):
 
 	def __init__(self):
-		super().__init__('Bank', True, gui_bg)
+		super().__init__('Bank', True)
     
 	def fill_list(self):
 		zyngui.zyngine.load_bank_list()
@@ -1251,7 +1246,6 @@ class zynthian_gui_bank(zynthian_selector):
 
 	def show(self):
 		self.index=zyngui.zyngine.get_bank_index()
-		self.fill_list()
 		super().show()
 
 	def select_action(self, i):
@@ -1273,7 +1267,7 @@ class zynthian_gui_bank(zynthian_selector):
 class zynthian_gui_instr(zynthian_selector):
 
 	def __init__(self):
-		super().__init__('Instrument', True, gui_bg)
+		super().__init__('Instrument', True)
       
 	def fill_list(self):
 		zyngui.zyngine.load_instr_list()
@@ -1282,7 +1276,6 @@ class zynthian_gui_instr(zynthian_selector):
 
 	def show(self):
 		self.index=zyngui.zyngine.get_instr_index()
-		self.fill_list()
 		super().show()
 
 	def select_action(self, i):
@@ -1304,16 +1297,23 @@ class zynthian_gui_control(zynthian_selector):
 	zcontrollers=[]
 
 	def __init__(self):
-		super().__init__('Controllers',False,gui_bg)
+		super().__init__('Controllers',False)
 		self.mode=None
 		self.zcontrollers_config=None
 		self.zcontroller_map={}
 		self.zcontrollers=[]
+		# Create "pusher" canvas => used in mode "select"
+		self.pusher= tkinter.Frame(self.main_frame,
+			width=ctrl_width,
+			height=ctrl_height-1,
+			bd=0,
+			highlightthickness=0,
+			relief='flat',
+			bg = color_bg)
 
 	def show(self):
-		self.fill_list()
-		self.click_listbox()
 		super().show()
+		self.click_listbox()
 
 	def hide(self):
 		if self.shown:
@@ -1350,13 +1350,17 @@ class zynthian_gui_control(zynthian_selector):
 			self.zcontrollers[i].config(tit,chan,ctrl,val,max_val)
 			self.zcontrollers[i].show()
 		except:
-			self.zcontrollers.append(zynthian_controller(i,self.canvas,tit,chan,ctrl,val,max_val))
+			self.zcontrollers.append(zynthian_controller(i,self.main_frame,tit,chan,ctrl,val,max_val))
 		self.zcontroller_map[ctrl]=self.zcontrollers[i]
 
 	def set_mode_select(self):
 		self.mode='select'
 		for i in range(0,4):
 			self.zcontrollers[i].hide()
+		if select_ctrl>1:
+			self.pusher.grid(row=2,column=0)
+		else:
+			self.pusher.grid(row=2,column=2)
 		self.set_selector()
 		self.listbox.config(selectbackground=color_ctrl_bg_on, selectforeground=color_ctrl_tx, fg=color_ctrl_tx)
 		#self.listbox.config(selectbackground=color_ctrl_bg_off, selectforeground=color_ctrl_tx, fg=color_ctrl_tx_off)
@@ -1366,6 +1370,7 @@ class zynthian_gui_control(zynthian_selector):
 	def set_mode_control(self):
 		self.mode='control'
 		if self.zselector: self.zselector.hide()
+		self.pusher.grid_forget();
 		self.set_controller_config()
 		self.listbox.config(selectbackground=color_ctrl_bg_on, selectforeground=color_ctrl_tx, fg=color_ctrl_tx)
 		self.set_select_path()
@@ -1421,10 +1426,9 @@ class zynthian_gui_osc_browser(zynthian_selector):
 	osc_path=None
 
 	def __init__(self):
-		super().__init__(gui_bg, True)
+		super().__init__("OSC Browser", True)
 		self.mode=None
 		self.osc_path=None
-		self.fill_list()
 		self.index=1
 		self.zselector=zynthian_controller(select_ctrl,self.canvas,"Path",0,0,self.index,len(self.list_data))
 		self.set_select_path()
@@ -1518,7 +1522,6 @@ class zynthian_gui:
 		except Exception as e:
 			logging.error("ERROR initializing GUI: %s" % e)
 		# Create initial GUI Screens
-		#self.screens['splash']=zynthian_gui_splash(1000)
 		self.screens['admin']=zynthian_gui_admin()
 		self.screens['info']=zynthian_gui_info()
 		self.screens['engine']=zynthian_gui_engine()
@@ -1744,7 +1747,10 @@ class zynthian_gui:
 						self.screens[self.active_screen].zyncoder_read()
 					self.zynswitches()
 				except Exception as err:
-					logging.warning("zynthian_gui.zyncoder_read() => %s" % err)
+					if raise_exceptions:
+						raise err
+					else:
+						logging.warning("zynthian_gui.zyncoder_read() => %s" % err)
 			sleep(0.04)
 			if self.zynread_wait_flag:
 				sleep(0.3)
@@ -1872,7 +1878,7 @@ class zynthian_gui:
 # Create Top Level Window with Fixed Size
 #-------------------------------------------------------------------------------
 
-top = Tk()
+top = tkinter.Tk()
 top.geometry(str(width)+'x'+str(height))
 top.maxsize(width,height)
 top.minsize(width,height)
@@ -1882,11 +1888,6 @@ if hw_version!="PROTOTYPE-EMU":
 #-------------------------------------------------------------------------------
 # GUI & Synth Engine initialization
 #-------------------------------------------------------------------------------
-
-# Image Loading
-#gui_bg_logo = PhotoImage(file = "./img/zynthian_bg_logo_left.gif")
-gui_bg_logo = None
-gui_bg = None
 
 zynautoconnect.start()
 zyngui=zynthian_gui()

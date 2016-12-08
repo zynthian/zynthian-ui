@@ -29,7 +29,7 @@ import logging
 from time import sleep
 from os.path import isfile, isdir
 from subprocess import check_output
-from zyngine.zynthian_engine import *
+from . import zynthian_engine
 
 #------------------------------------------------------------------------------
 # Linuxsampler Engine Class
@@ -55,7 +55,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		[[
 			['volume',7,96,127],
 			['modulation',1,0,127],
-			['pan',10,12,127],
+			['pan',10,64,127],
 			['expression',11,64,127]
 		],0,'main'],
 		[[

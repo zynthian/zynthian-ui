@@ -23,11 +23,13 @@
 #******************************************************************************
 
 import os
+import copy
 import logging
+import liblo
 from time import sleep
 from string import Template
 from os.path import isfile, join
-from zyngine.zynthian_engine import *
+from . import zynthian_engine
 
 #------------------------------------------------------------------------------
 # ZynAddSubFX Engine Class

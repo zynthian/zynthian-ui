@@ -28,7 +28,7 @@ import copy
 import signal
 import liblo
 import logging
-from time import sleep,time
+from time import sleep
 from os.path import isfile, isdir, join
 from subprocess import call, Popen, PIPE, STDOUT
 from threading  import Thread
@@ -110,7 +110,6 @@ class zynthian_engine:
 		self.parent=parent
 		self.clean()
 		self.start()
-		self.load_bank_list()
 
 	def __del__(self):
 		#self.stop()
@@ -234,14 +233,15 @@ class zynthian_engine:
 		if self.proc:
 			self.start_loading()
 			try:
-				#print("PROC_CMD: "+cmd)
+				#logging.debug("proc command: "+cmd)
 				#self.proc.stdin.write(bytes(cmd + "\n", 'UTF-8'))
 				self.proc.stdin.write(cmd + "\n")
 				self.proc.stdin.flush()
 				out=self.proc_get_lines(tout)
+				#logging.debug("proc output:\n%s" % (out))
 			except Exception as err:
 				out=""
-				logging.error("Can't exec engine command %s => %s" % (cmd,err))
+				logging.error("Can't exec engine command: %s => %s" % (cmd,err))
 			self.stop_loading()
 			return out
 
@@ -281,7 +281,7 @@ class zynthian_engine:
 	def set_midi_chan(self, i):
 		logging.info('MIDI Chan Selected: ' + str(i))
 		self.midi_chan=i
-		self.load_bank_list()
+		#self.load_bank_list()
 		#self.set_bank(self.get_bank_index())
 
 	def next_chan(self):
@@ -414,7 +414,8 @@ class zynthian_engine:
 			logging.info('Bank Selected: ' + self.bank_name[chan] + ' (' + str(i)+')')
 			self._set_bank(self.bank_list[i], chan)
 			if chan==self.midi_chan:
-				self.load_instr_list()
+				pass
+				#self.load_instr_list()
 			if last_bank_index!=i:
 				self.reset_instr(chan)
 
@@ -424,6 +425,7 @@ class zynthian_engine:
 		self.parent.zynmidi.set_midi_bank_msb(chan, bank[1])
 
 	def set_all_bank(self):
+		#logging.debug("set_all_bank()")
 		for ch in range(16):
 			if self.bank_set[ch]:
 				self._set_bank(self.bank_set[ch],ch)
@@ -447,15 +449,17 @@ class zynthian_engine:
 	def _set_instr(self, instr, chan=None):
 		if chan is None:
 			chan=self.midi_chan
-		self.parent.zynmidi.set_midi_instr(chan, instr[1][0], instr[1][1], instr[1][2])
+			self.parent.zynmidi.set_midi_instr(chan, instr[1][0], instr[1][1], instr[1][2])
 
 	def set_all_instr(self):
+		#logging.debug("set_all_instr()")
 		for ch in range(16):
 			if self.instr_set[ch]:
 				self._set_instr(self.instr_set[ch],ch)
 
 	#Send Controller Values to Synth
 	def set_all_ctrl(self):
+		#logging.debug("set_all_ctrl()")
 		for ch in range(16):
 			if self.ctrl_config[ch]:
 				for ctrlcfg in self.ctrl_config[ch]:

@@ -26,7 +26,7 @@ import os
 import re
 import logging
 from subprocess import check_output
-from zyngine.zynthian_engine import *
+from . import zynthian_engine
 
 #------------------------------------------------------------------------------
 # ZynAddSubFX Engine Class
@@ -68,7 +68,6 @@ class zynthian_engine_modhost(zynthian_engine):
 		self.parent=parent
 		self.clean()
 		#self.start(True)
-		self.load_bank_list()
 		#self.osc_init()
 
 	def stop(self):

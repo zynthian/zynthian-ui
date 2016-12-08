@@ -27,10 +27,10 @@ import copy
 import logging
 import requests
 import websocket
-from time import sleep
+from time import sleep,time
 from subprocess import check_output
 from threading  import Thread
-from zyngine.zynthian_engine import *
+from . import zynthian_engine
 
 #------------------------------------------------------------------------------
 # ZynAddSubFX Engine Class
@@ -62,8 +62,8 @@ class zynthian_engine_modui(zynthian_engine):
 	def __init__(self,parent=None):
 		self.parent=parent
 		self.clean()
-		self.load_bank_list()
 		self.start()
+		self.load_bank_list()
 		#self.osc_init()
 
 	def clean(self):

@@ -27,7 +27,7 @@ import re
 import socket
 import logging
 from time import sleep, time
-from zyngine.zynthian_engine import *
+from . import zynthian_engine
 
 #------------------------------------------------------------------------------
 # carla-patchbay Engine Class
@@ -54,7 +54,6 @@ class zynthian_engine_carla(zynthian_engine):
 		self.refreshed_ts=None
 		self.parent=parent
 		self.clean()
-		self.load_bank_list()
 
 	def osc_init(self, proto):
 		super().osc_init(proto)

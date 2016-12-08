@@ -22,8 +22,10 @@
 # 
 #******************************************************************************
 
+import os
+import copy
 import logging
-from zyngine.zynthian_engine import *
+from . import zynthian_engine
 
 #------------------------------------------------------------------------------
 # FluidSynth Engine Class
@@ -44,7 +46,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		[[
 			['volume',7,96,127],
 			['modulation',1,0,127],
-			['pan',10,12,127],
+			['pan',10,64,127],
 			['expression',11,64,127]
 		],0,'main'],
 		[[
@@ -64,7 +66,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.parent=parent
 		self.clean()
 		self.start(True)
-		self.load_bank_list()
 
 	def clean(self):
 		super().clean()
@@ -79,10 +80,10 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.load_bank_filelist(self.soundfont_dirs,"sf2")
 
 	def load_instr_list(self):
+		logging.info('Getting Instrument List for ' + self.bank_name[self.midi_chan])
 		self.instr_list=[]
 		bi=self.bank_index[self.midi_chan]
 		sfi=self.soundfont_index[self.bank_list[bi][0]]
-		logging.info('Getting Instrument List for ' + self.bank_name[self.midi_chan])
 		lines=self.proc_cmd("inst " + str(sfi))
 		for f in lines:
 			try:

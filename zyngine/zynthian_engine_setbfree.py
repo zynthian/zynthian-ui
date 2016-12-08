@@ -24,7 +24,7 @@
 
 import re
 import logging
-from zyngine.zynthian_engine import *
+from . import zynthian_engine
 
 #------------------------------------------------------------------------------
 # setBfree Engine Class
