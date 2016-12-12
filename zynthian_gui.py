@@ -117,19 +117,15 @@ if not font_topbar: font_topbar=(font_family,11)
 if not font_listbox: font_listbox=(font_family,10)
 if not font_ctrl_title_maxsize: font_ctrl_title_maxsize=11
 
-#-------------------------------------------------------------------------------
-# Get Zynthian Hardware Version
-#-------------------------------------------------------------------------------
-try:
-	with open("../zynthian_hw_version.txt","r") as fh:
-		hw_version=fh.readline().strip()
-		logging.info("HW version "+str(hw_version))
-except:
+# Wiring layout
+if hw_version:
+	logging.info("HW version "+str(hw_version))
+else:
 	hw_version="PROTOTYPE-4"
 	logging.error("No HW version file. Default to PROTOTYPE-4.")
 
 #-------------------------------------------------------------------------------
-# GPIO pin assignment (wiringPi)
+# Wiring layout => GPIO pin assignment (wiringPi numbering)
 #-------------------------------------------------------------------------------
 
 # First Prototype => Generic Plastic Case
