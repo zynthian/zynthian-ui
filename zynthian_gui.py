@@ -52,16 +52,22 @@ from zyngine.zynthian_zcmidi import *
 
 import zynautoconnect
 
+try:
+	from zynthian_gui_config import *
+except:
+	print("Config file 'zynthian_gui_config.py' not found. Using defaults.")
+
 #-------------------------------------------------------------------------------
 # Configure logging
 #-------------------------------------------------------------------------------
 
-raise_exceptions=False
+if raise_exceptions not in globals(): raise_exceptions=False
+if log_level not in globals(): log_level=logging.WARNING
 
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-#logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
+# Set root logging level
+logging.basicConfig(stream=sys.stderr, level=log_level)
 
-#Reduce log level for other modules
+# Reduce log level for other modules
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 #-------------------------------------------------------------------------------
@@ -69,13 +75,16 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 #-------------------------------------------------------------------------------
 
 # Screen Size
-width=320
-height=240
+if not width: width=320
+if not height: height=240
+
 # Topbar Height
-topbar_height=24
+if not topbar_height: topbar_height=24
+
 # Controller Size
 ctrl_width=int(width/4)
 ctrl_height=int((height-topbar_height)/2)
+
 # Controller Positions
 ctrl_pos=[
 	(1,0,"nw"),
@@ -85,10 +94,10 @@ ctrl_pos=[
 ]
 
 # Color Scheme
-color_bg="#000000"
-color_tx="#ffffff"
-color_on="#ff0000"
-color_panel_bg="#3a424d"
+if not color_bg: color_bg="#000000"
+if not color_tx: color_tx="#ffffff"
+if not color_on: color_on="#ff0000"
+if not color_panel_bg: color_panel_bg="#3a424d"
 color_panel_bd=color_bg
 color_panel_tx=color_tx
 color_header_bg=color_bg
@@ -98,15 +107,15 @@ color_ctrl_bg_on=color_on
 color_ctrl_tx=color_tx
 color_ctrl_tx_off="#e0e0e0"
 
-# Font
-#font_family="Helvetica"
-#font_family="Economica" => pequeña
-#font_family="Orbitron" => muy guapa pero no es monospace
-#font_family="Abel" # => Bastante Interesante: Strait
-font_family="Audiowide"
-font_topbar=(font_family,11)
-font_listbox=(font_family,10)
-font_ctrl_title_maxsize=11
+# Fonts
+#font_family="Helvetica" #=> the original ;-)
+#font_family="Economica" #=> small
+#font_family="Orbitron" #=> Nice, but too strange
+#font_family="Abel" #=> Quite interesting, also "Strait"
+if not font_family: font_family="Audiowide"
+if not font_topbar: font_topbar=(font_family,11)
+if not font_listbox: font_listbox=(font_family,10)
+if not font_ctrl_title_maxsize: font_ctrl_title_maxsize=11
 
 #-------------------------------------------------------------------------------
 # Get Zynthian Hardware Version
