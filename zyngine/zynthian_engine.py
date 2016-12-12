@@ -449,7 +449,7 @@ class zynthian_engine:
 	def _set_instr(self, instr, chan=None):
 		if chan is None:
 			chan=self.midi_chan
-			self.parent.zynmidi.set_midi_instr(chan, instr[1][0], instr[1][1], instr[1][2])
+		self.parent.zynmidi.set_midi_instr(chan, instr[1][0], instr[1][1], instr[1][2])
 
 	def set_all_instr(self):
 		#logging.debug("set_all_instr()")
