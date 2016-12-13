@@ -61,8 +61,15 @@ except:
 # Configure logging
 #-------------------------------------------------------------------------------
 
-if raise_exceptions not in globals(): raise_exceptions=False
-if log_level not in globals(): log_level=logging.WARNING
+if os.environ.get('ZYNTHIAN_LOG_LEVEL'):
+	log_level=int(os.environ.get('ZYNTHIAN_LOG_LEVEL'))
+elif log_level not in globals():
+	log_level=logging.WARNING
+
+if os.environ.get('ZYNTHIAN_RAISE_EXCEPTIONS'):
+	raise_exceptions=int(os.environ.get('ZYNTHIAN_RAISE_EXCEPTIONS'))
+elif raise_exceptions not in globals():
+	raise_exceptions=False
 
 # Set root logging level
 logging.basicConfig(stream=sys.stderr, level=log_level)

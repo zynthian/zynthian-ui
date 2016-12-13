@@ -89,7 +89,7 @@ class zynthian_engine_modui(zynthian_engine):
 	def start(self):
 		self.start_loading()
 		if not self.is_service_active():
-			logging.info("START MOD-HOST & MOD-UI services...")
+			logging.info("STARTING MOD-HOST & MOD-UI services...")
 			check_output(("systemctl start mod-host && systemctl start mod-ui"),shell=True)
 		self.start_websocket()
 		self.stop_loading()
@@ -98,7 +98,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self.start_loading()
 		#self.stop_websocket()
 		if self.is_service_active():
-			logging.info("STOP MOD-HOST & MOD-UI services...")
+			logging.info("STOPPING MOD-HOST & MOD-UI services...")
 			check_output(("systemctl stop mod-host && systemctl stop mod-ui"),shell=True)
 		self.stop_loading()
 

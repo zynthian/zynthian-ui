@@ -22,6 +22,8 @@
 # 
 #******************************************************************************
 
+#export ZYNTHIAN_LOG_LEVEL=10			# 10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL
+#export ZYNTHIAN_RAISE_EXCEPTIONS=0
 export ZYNTHIAN_DIR="/zynthian"
 export FRAMEBUFFER="/dev/fb1"
 
@@ -52,12 +54,6 @@ function screensaver_off() {
 	xset s noblank
 }
 
-function scaling_governor_performance() {
-	for cpu in /sys/devices/system/cpu/cpu[0-9]*; do 
-		echo -n performance | tee $cpu/cpufreq/scaling_governor
-	done
-}
-
 function splash_zynthian() {
 	if [ -c $FRAMEBUFFER ]; then
 		cat ./img/fb1_zynthian.raw > $FRAMEBUFFER
@@ -68,18 +64,6 @@ function splash_zynthian_error() {
 	if [ -c $FRAMEBUFFER ]; then
 		cat ./img/fb1_zynthian_error.raw > $FRAMEBUFFER
 	fi  
-}
-
-function jack_audio_start() {
-	# Start jack-audio server
-	#/usr/bin/jackd -P 70 -t 2000 -s -d alsa -d hw:0 -r 44100 -p 256 -n 2
-	#/usr/bin/jackd -P 70 -t 2000 -s -d alsa -d hw:0 -r 44100 -p 256 -n 2 -X seq
-	/usr/bin/jackd -P 70 -t 2000 -s -d alsa -d hw:0 -r 44100 -p 256 -n 2 -X raw
-}
-
-function jack_audio_stop() {
-	# Stop jack-audio server
-	killall jackd
 }
 
 function a2j_midi_start() {
@@ -121,26 +105,12 @@ function aubionotes_stop() {
 	killall aubionotes
 }
 
-function ttymidi_start() {
-	# Start ttymidi (MIDI UART interface)
-	while [ 1 ]; do 
-		/usr/local/bin/ttymidi -s /dev/ttyAMA0 -b 38400
-		sleep 1
-	done
-}
-
-function ttymidi_stop() {
-	killall ttymidi
-}
-
 function zynthian_stop() {
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 		aubionotes_stop
 		alsa_in_stop
 	fi
 	a2j_midi_stop
-	ttymidi_stop
-	jack_audio_stop
 }
 
 #------------------------------------------------------------------------------
@@ -151,10 +121,7 @@ cd $ZYNTHIAN_DIR/zynthian-ui
 
 screentouch_on
 screensaver_off
-scaling_governor_performance
 
-jack_audio_start &
-ttymidi_start &
 a2j_midi_start &
 if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 	alsa_in_start &
