@@ -31,18 +31,14 @@ export FRAMEBUFFER="/dev/fb1"
 # Some Functions
 #------------------------------------------------------------------------------
 
-function screentouch_on() {
-	# Export GPIO for Backlight Control (old version of PiTFT driver uses GPIO#252)
-	echo 508 > /sys/class/gpio/export
-	# Turn On Display (Backlight)
-	echo 'in' > /sys/class/gpio/gpio508/direction
-	#echo '1' > /sys/class/gpio/gpio508/value
+function backlight_on() {
+	# Turn On Display Backlight
+	echo 0 > /sys/class/backlight/soc:backlight/bl_power
 }
 
-function screentouch_off() {
-	# Turn Off Display (Backlight)
-	echo 'out' > /sys/class/gpio/gpio508/direction
-	#echo '0' > /sys/class/gpio/gpio508/value
+function backlight_off() {
+	# Turn Off Display Backlight
+	echo 1 > /sys/class/backlight/soc:backlight/bl_power
 }
 
 function screensaver_off() {
@@ -105,12 +101,20 @@ function aubionotes_stop() {
 	killall aubionotes
 }
 
+function zynthian_start() {
+	#a2j_midi_start &
+	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
+		alsa_in_start &
+		aubionotes_start &
+	fi
+}
+
 function zynthian_stop() {
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 		aubionotes_stop
 		alsa_in_stop
 	fi
-	a2j_midi_stop
+	#a2j_midi_stop
 }
 
 #------------------------------------------------------------------------------
@@ -119,14 +123,8 @@ function zynthian_stop() {
 
 cd $ZYNTHIAN_DIR/zynthian-ui
 
-screentouch_on
 screensaver_off
-
-a2j_midi_start &
-if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
-	alsa_in_start &
-	aubionotes_start &
-fi
+zynthian_start
 
 while true; do
 	# Start Zynthian GUI & Synth Engine
@@ -138,20 +136,19 @@ while true; do
 		0)
 			splash_zynthian
 			zynthian_stop
-			screentouch_off
 			poweroff
 			break
 		;;
 		100)
 			splash_zynthian
 			zynthian_stop
-			screentouch_off
 			reboot
 			break
 		;;
 		101)
 			splash_zynthian
 			zynthian_stop
+			backlight_off
 			break
 		;;
 		102)
