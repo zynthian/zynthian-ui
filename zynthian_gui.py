@@ -622,7 +622,7 @@ class zynthian_selector:
 		if self.wide:
 			self.lb_width=width-ctrl_width
 		else:
-			self.lb_width=width-2*ctrl_width
+			self.lb_width=width-2*ctrl_width-2
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(top,
@@ -964,12 +964,12 @@ class zynthian_gui_admin(zynthian_selector):
 	def update_software(self):
 		logging.info("UPDATE SOFTWARE")
 		zyngui.show_info("UPDATE SOFTWARE")
-		self.start_command(["su pi -c ./sys-scripts/update_zynthian.sh"])
+		self.start_command(["./sys-scripts/update_zynthian.sh"])
 
 	def update_library(self):
 		logging.info("UPDATE LIBRARY")
 		zyngui.show_info("UPDATE LIBRARY")
-		self.start_command(["su pi -c ./sys-scripts/update_zynthian_data.sh"])
+		self.start_command(["./sys-scripts/update_zynthian_data.sh"])
 
 	def update_system(self):
 		logging.info("UPDATE SYSTEM")
@@ -1625,7 +1625,7 @@ class zynthian_gui:
 	# Init GPIO Switches
 	def zynswitches_init(self):
 		ts=datetime.now()
-		logging.info("SWITCHES INIT!")
+		logging.info("SWITCHES INIT...")
 		for i,pin in enumerate(zynswitch_pin):
 			self.dtsw[i]=ts
 			lib_zyncoder.setup_zynswitch(i,pin)
