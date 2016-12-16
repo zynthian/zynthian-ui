@@ -964,17 +964,17 @@ class zynthian_gui_admin(zynthian_selector):
 	def update_software(self):
 		logging.info("UPDATE SOFTWARE")
 		zyngui.show_info("UPDATE SOFTWARE")
-		self.start_command(["./sys-scripts/update_zynthian.sh"])
+		self.start_command(["cd ./sys-scripts;./update_zynthian.sh"])
 
 	def update_library(self):
 		logging.info("UPDATE LIBRARY")
 		zyngui.show_info("UPDATE LIBRARY")
-		self.start_command(["./sys-scripts/update_zynthian_data.sh"])
+		self.start_command(["cd ./sys-scripts;./update_zynthian_data.sh"])
 
 	def update_system(self):
 		logging.info("UPDATE SYSTEM")
 		zyngui.show_info("UPDATE SYSTEM")
-		self.start_command(["./sys-scripts/update_system.sh"])
+		self.start_command(["cd ./sys-scripts;./update_system.sh"])
 
 	def network_info(self):
 		logging.info("NETWORK INFO")
