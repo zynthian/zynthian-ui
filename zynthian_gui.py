@@ -1222,12 +1222,14 @@ class zynthian_gui_chan(zynthian_selector):
 
 	def select_action(self, i):
 		zyngui.zyngine.set_midi_chan(i)
-		# If there is only one bank, jump to instrument selection
-		if len(zyngui.zyngine.bank_list)<=1:
-			zyngui.screens['bank'].fill_list()
-			zyngui.screens['bank'].select_action(0)
+		# If there is an instrument selection for the active channel ...
+		if zyngui.zyngine.get_instr_name():
+			zyngui.show_screen('control')
 		else:
 			zyngui.show_screen('bank')
+			# If there is only one bank, jump to instrument selection
+			if len(zyngui.zyngine.bank_list)==1:
+				zyngui.screens['bank'].select_action(0)
 
 	def next(self):
 		if zyngui.zyngine.next_chan():
@@ -1262,12 +1264,10 @@ class zynthian_gui_bank(zynthian_selector):
 
 	def select_action(self, i):
 		zyngui.zyngine.set_bank(i)
+		zyngui.show_screen('instr')
 		# If there is only one instrument, jump to instrument control
-		if len(zyngui.zyngine.instr_list)<=1:
-			zyngui.screens['instr'].fill_list()
+		if len(zyngui.zyngine.instr_list)==1:
 			zyngui.screens['instr'].select_action(0)
-		else:
-			zyngui.show_screen('instr')
 
 	def set_select_path(self):
 		self.select_path.set(zyngui.zyngine.nickname + "#" + str(zyngui.zyngine.get_midi_chan()+1))
@@ -1292,7 +1292,6 @@ class zynthian_gui_instr(zynthian_selector):
 
 	def select_action(self, i):
 		zyngui.zyngine.set_instr(i)
-		zyngui.screens['control'].fill_list()
 		zyngui.show_screen('control')
 
 	def set_select_path(self):
@@ -1641,6 +1640,7 @@ class zynthian_gui:
 						logging.info('Looooooooong Switch '+str(i))
 						self.zynswitch_long(i)
 						return
+					# Double switches must be bold!!! => by now ...
 					if self.zynswitch_double(i):
 						return
 					logging.info('Bold Switch '+str(i))
@@ -1670,45 +1670,43 @@ class zynthian_gui:
 		elif i==2:
 			self.load_snapshot()
 		elif i==3:
-			if self.active_screen=='chan':
-				self.screens[self.active_screen].switch_select()
-				logging.debug("PATH="+self.zyngine.get_fullpath()) #TODO REMOVE THIS LINE???
-				if self.zyngine.get_instr_name():
-					self.show_screen('control')
-			else:
-				self.screens[self.active_screen].switch_select()
+			self.screens[self.active_screen].switch_select()
 
 	def zynswitch_short(self,i):
 		if i==0:
 			if self.active_screen=='control':
 				if self.screens['chan'].next():
 					logging.info("Next Chan")
-					self.screens['control'].hide()
-					self.screens['control'].fill_list()
 					self.show_screen('control')
 				else:
 					self.zynswitch_bold(i)
 			else:
 				self.zynswitch_bold(i)
 		elif i==1:
+			# If in controller map selection, back to instrument control
 			if self.active_screen=='control' and self.screens['control'].mode=='select':
 				self.screens['control'].set_mode_control()
 			else:
-				if not self.modal_screen:
-					j=self.screens_sequence.index(self.active_screen)-1
-					if j<0: j=1
-					screen_back=self.screens_sequence[j]
-				else:
+				# If modal screen, back to active screen
+				if self.modal_screen:
 					if self.modal_screen=='info':
 						self.screens['admin'].kill_command()
 					screen_back=self.active_screen
-				# If there is only one program, jump to bank selection
+				# Else, go back to screen-1
+				else:
+					j=self.screens_sequence.index(self.active_screen)-1
+					if j<0: j=1
+					screen_back=self.screens_sequence[j]
+				# If there is only one instrument, go back to bank selection
 				if screen_back=='instr' and len(self.zyngine.instr_list)<=1:
 					screen_back='bank'
-				# If there is only one bank, jump to channel selection
+				# If there is only one bank, go back to channel selection
 				if screen_back=='bank' and len(self.zyngine.bank_list)<=1:
 					screen_back='chan'
-				#print("BACK TO SCREEN "+str(j)+" => "+screen_back)
+				# If there is only one chan, go back to engine selection
+				if screen_back=='chan' and len(self.zyngine.max_chan)<=1:
+					screen_back='engine'
+				#logging.debug("BACK TO SCREEN "+str(j)+" => "+screen_back)
 				self.show_screen(screen_back)
 		elif i==2:
 			if self.modal_screen!='snapshot':
@@ -1727,11 +1725,11 @@ class zynthian_gui:
 			else:
 				self.zynswitch_bold(i)
 
+	# TODO => revise this!!!
 	def zynswitch_double(self,i):
 		self.dtsw[i]=datetime.now()
 		for j in range(4):
-			if j==i:
-				continue
+			if j==i: continue
 			if abs((self.dtsw[i]-self.dtsw[j]).total_seconds())<0.3:
 				dswstr=str(i)+'+'+str(j)
 				logging.info('Double Switch '+dswstr)
