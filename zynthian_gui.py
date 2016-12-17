@@ -1704,7 +1704,7 @@ class zynthian_gui:
 				if screen_back=='bank' and len(self.zyngine.bank_list)<=1:
 					screen_back='chan'
 				# If there is only one chan, go back to engine selection
-				if screen_back=='chan' and len(self.zyngine.max_chan)<=1:
+				if screen_back=='chan' and self.zyngine.max_chan<=1:
 					screen_back='engine'
 				#logging.debug("BACK TO SCREEN "+str(j)+" => "+screen_back)
 				self.show_screen(screen_back)
