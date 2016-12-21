@@ -580,6 +580,7 @@ class zynthian_engine:
 	def load_snapshot_post(self):
 		try:
 			self.set_all_bank()
+			self.load_bank_list()
 			self.set_all_instr()
 			self.load_instr_list()
 			sleep(0.2)

@@ -1091,12 +1091,15 @@ class zynthian_gui_snapshot(zynthian_selector):
 		self.engine=""
         
 	def fill_list(self):
-		self.list_data=[("NEW",0,"New",self.engine)]
 		if self.engine: prefix=self.engine+"-"
 		else: prefix=None
-		i=0
+		self.list_data=[("NEW",0,"New",self.engine)]
+		i=1
+		if self.action=="SAVE" or (not self.engine and isfile(join(self.snapshot_dir,"default.zss"))):
+			self.list_data.append((join(self.snapshot_dir,"default.zss"),i,"Default",self.engine))
+			i=i+1
 		for f in sorted(os.listdir(self.snapshot_dir)):
-			if isfile(join(self.snapshot_dir,f)) and f[-4:].lower()=='.zss' and ((prefix and f[0:len(prefix)]==prefix) or not prefix):
+			if isfile(join(self.snapshot_dir,f)) and f[-4:].lower()=='.zss' and f!="default.zss" and ((prefix and f[0:len(prefix)]==prefix) or not prefix):
 				title=str.replace(f[:-4], '_', ' ')
 				engine=f[0:2]
 				#print("snapshot list => %s (%s)" % (title,engine))
@@ -1135,30 +1138,34 @@ class zynthian_gui_snapshot(zynthian_selector):
 		fpath=join(self.snapshot_dir,fname)
 		return fpath
 
-	def load_snapshot(self, fname):
-		#Read snapshot file
+	def get_snapshot_engine(self, fpath):
 		try:
-			fpath=join(self.snapshot_dir,fname)
 			with open(fpath,"r") as fh:
 				json=fh.read()
 		except:
 			logging.error("Can't load snapshot '%s'" % fpath)
 			return False
-		#Get snapshot's engine
-		status=JSONDecoder().decode(json)
-		engine=status['engine_nick']
-		if not engine:
-			logging.error("Not engine specified in snapshot => %s" % (fpath))
+		try:
+			status=JSONDecoder().decode(json)
+			engine=status['engine_nick']
+			logging.debug("Snapshot engine => %s" % (engine))
+			return engine
+		except:
+			logging.error("Invalid snapshot format => %s" % (fpath))
 			return False
-		logging.debug("Snapshot engine => %s" % (engine))
-		#Start engine if needed
-		if not zyngui.zyngine or zyngui.zyngine.nickname!=engine:
-			zyngui.set_engine(engine,2)
-		#Load snapshot in engine
-		zyngui.zyngine.load_snapshot(fpath)
-		#Show control screen
-		zyngui.show_screen('control')
-		return True
+
+	def load_snapshot(self, fname):
+		fpath=join(self.snapshot_dir,fname)
+		engine=self.get_snapshot_engine(fpath)
+		if engine:
+			#Start engine if needed
+			if not zyngui.zyngine or zyngui.zyngine.nickname!=engine:
+				zyngui.set_engine(engine,2)
+			#Load snapshot in engine
+			zyngui.zyngine.load_snapshot(fpath)
+			#Show control screen
+			zyngui.show_screen('control')
+			return True
 
 	def select_action(self, i):
 		fpath=self.list_data[i][0]
@@ -1171,6 +1178,7 @@ class zynthian_gui_snapshot(zynthian_selector):
 				else:
 					zyngui.show_screen('engine')
 			else:
+				engine=self.get_snapshot_engine(fpath)
 				if not zyngui.zyngine or zyngui.zyngine.nickname!=engine:
 					zyngui.set_engine(engine,2)
 				zyngui.zyngine.load_snapshot(fpath)
