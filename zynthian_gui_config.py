@@ -35,9 +35,9 @@ raise_exceptions=False
 # Wiring layout
 hw_version="PROTOTYPE-4"
 
-# Screen Size
-width=320
-height=240
+# Screen Size => Autodetect if None
+width=None
+height=None
 
 # Topbar Height
 topbar_height=24

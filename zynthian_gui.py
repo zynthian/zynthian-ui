@@ -78,12 +78,27 @@ logging.basicConfig(stream=sys.stderr, level=log_level)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 #-------------------------------------------------------------------------------
-# Define some Constants and Parameters for the GUI
+# Create Top Level Window with Fixed Size
 #-------------------------------------------------------------------------------
 
+top = tkinter.Tk()
 # Screen Size
-if not width: width=320
-if not height: height=240
+try:
+	if not width: width = top.winfo_screenwidth()
+	if not height: height = top.winfo_screenheight()
+except:
+	width = 320
+	height = 240
+# Adjust Root Window Geometry
+top.geometry(str(width)+'x'+str(height))
+top.maxsize(width,height)
+top.minsize(width,height)
+if hw_version!="PROTOTYPE-EMU":
+	top.config(cursor="none")
+
+#-------------------------------------------------------------------------------
+# Define some Constants and Parameters for the GUI
+#-------------------------------------------------------------------------------
 
 # Topbar Height
 if not topbar_height: topbar_height=24
@@ -1894,16 +1909,6 @@ class zynthian_gui:
 		if path in self.screens['control'].zcontroller_map.keys():
 			self.screens['control'].zcontroller_map[path].set_init_value(args[0])
 
-#-------------------------------------------------------------------------------
-# Create Top Level Window with Fixed Size
-#-------------------------------------------------------------------------------
-
-top = tkinter.Tk()
-top.geometry(str(width)+'x'+str(height))
-top.maxsize(width,height)
-top.minsize(width,height)
-if hw_version!="PROTOTYPE-EMU":
-	top.config(cursor="none")
 
 #-------------------------------------------------------------------------------
 # GUI & Synth Engine initialization
