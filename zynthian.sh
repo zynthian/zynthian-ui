@@ -62,19 +62,6 @@ function splash_zynthian_error() {
 	fi  
 }
 
-function a2j_midi_start() {
-	# Start alsa2jack midi router
-	while [ 1 ]; do 
-		/usr/bin/a2jmidid --export-hw
-		sleep 1
-	done
-}
-
-function a2j_midi_stop() {
-	# Stop alsa2jack midi router
-	killall a2jmidid
-}
-
 function alsa_in_start() {
 	# Start alsa_in audio input
 	while [ 1 ]; do 
@@ -102,7 +89,6 @@ function aubionotes_stop() {
 }
 
 function zynthian_start() {
-	#a2j_midi_start &
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 		alsa_in_start &
 		aubionotes_start &
@@ -114,7 +100,6 @@ function zynthian_stop() {
 		aubionotes_stop
 		alsa_in_stop
 	fi
-	#a2j_midi_stop
 }
 
 #------------------------------------------------------------------------------

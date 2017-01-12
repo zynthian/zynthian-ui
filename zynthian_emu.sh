@@ -22,41 +22,11 @@
 # 
 #******************************************************************************
 
-ZYNTHIAN_DIR="/home/pi/zynthian"
+ZYNTHIAN_DIR="/zynthian"
 
 #------------------------------------------------------------------------------
 # Some Functions
 #------------------------------------------------------------------------------
-
-function scaling_governor_performance() {
-	for cpu in /sys/devices/system/cpu/cpu[0-9]*; do 
-		echo -n performance | tee $cpu/cpufreq/scaling_governor
-	done
-}
-
-function jack_audio_start() {
-	# Start jack-audio server
-	/usr/bin/jackd -P70 -p16 -t2000 -s -dalsa -dhw:0 -r44100 -p256 -n2
-	#/usr/bin/jackd -P70 -p16 -t2000 -s -dalsa -dhw:0 -r44100 -p256 -n2 -Xseq
-}
-
-function jack_audio_stop() {
-	# Stop jack-audio server
-	killall jackd
-}
-
-function a2j_midi_start() {
-	# Start alsa2jack midi router
-	while [ 1 ]; do 
-		/usr/bin/a2jmidid --export-hw
-		sleep 1
-	done
-}
-
-function a2j_midi_stop() {
-	# Stop alsa2jack midi router
-	killall a2jmidid
-}
 
 function alsa_in_start() {
 	# Start alsa_in audio input
@@ -84,37 +54,18 @@ function aubionotes_stop() {
 	killall aubionotes
 }
 
-function autoconnector_start() {
-	# Start Autoconnector
-	./zynthian_autoconnect_jack.py > /dev/null 2>&1
-	#./zynthian_autoconnect_jack.py > /var/log/zynthian_autoconnect.log 2>&1
-}
-
-function autoconnector_stop() {
-	killall zynthian_autoconnect_jack.py
-}
-
-function ttymidi_start() {
-	# Start ttymidi (MIDI UART interface)
-	while [ 1 ]; do 
-		/usr/local/bin/ttymidi -s /dev/ttyAMA0 -b 38400
-		sleep 1
-	done
-}
-
-function ttymidi_stop() {
-	killall ttymidi
+function zynthian_start() {
+	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
+		alsa_in_start &
+		aubionotes_start &
+	fi
 }
 
 function zynthian_stop() {
-	autoconnector_stop
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 		aubionotes_stop
 		alsa_in_stop
 	fi
-	a2j_midi_stop
-	ttymidi_stop
-	jack_audio_stop
 }
 
 #------------------------------------------------------------------------------
@@ -123,18 +74,7 @@ function zynthian_stop() {
 
 cd $ZYNTHIAN_DIR/zynthian-ui
 
-sudo xauth merge /home/pi/.Xauthority
-
-scaling_governor_performance
-
-jack_audio_start &
-ttymidi_start &
-a2j_midi_start &
-if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
-	alsa_in_start &
-	aubionotes_start &
-fi
-autoconnector_start &
+zynthian_start
 
 while true; do
 	# Start Zynthian GUI & Synth Engine
@@ -146,10 +86,12 @@ while true; do
 	case $status in
 		0)
 			zynthian_stop
+			#poweroff
 			break
 		;;
 		100)
 			zynthian_stop
+			#reboot
 			break
 		;;
 		101)
