@@ -1212,9 +1212,9 @@ class zynthian_gui_snapshot(zynthian_selector):
 #-------------------------------------------------------------------------------
 
 class zynthian_gui_chan(zynthian_selector):
-	max_chan=10
+	max_chan=16
 
-	def __init__(self, max_chan=10):
+	def __init__(self, max_chan=16):
 		self.max_chan=max_chan
 		super().__init__('Channel', True)
     

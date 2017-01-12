@@ -83,9 +83,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def __init__(self,parent=None):
 		if self.config_remote_display():
-			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_10ch.xmz", "-a")
+			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_16ch.xmz", "-a")
 		else:
-			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-U", "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_10ch.xmz", "-a")
+			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-U", "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_16ch.xmz", "-a")
 		super().__init__(parent)
 		self.osc_init()
 
