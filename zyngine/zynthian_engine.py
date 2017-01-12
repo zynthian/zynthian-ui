@@ -73,7 +73,7 @@ class zynthian_engine:
 	bank_list=[]
 	instr_list=[]
 
-	max_chan=10
+	max_chan=16
 	midi_chan=0
 
 	loading=0
