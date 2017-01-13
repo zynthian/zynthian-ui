@@ -64,8 +64,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		[[
 			['volume',7,96,127],
 			['sustain on/off',64,'off','off|on'],
-			#['portamento on/off',65,'off','off|on'],
-			['portamento on/off','/part$ch/ctl/portamento.receive','off','off|on'],
+			['portamento on/off',65,'off','off|on'],
+			#['portamento on/off','/part$ch/ctl/portamento.receive','off','off|on'],
 			['portamento time','/part$ch/ctl/portamento.time',64,127]
 		],0,'portamento'],
 		[[
