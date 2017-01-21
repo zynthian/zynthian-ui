@@ -151,16 +151,16 @@ class zynthian_engine:
 					for line in lines:
 						parts=line.strip().split('=')
 						if len(parts)>=2 and parts[1]: fvars[parts[0]]=parts[1]
-					if 'DISPLAY' not in fvars or not fvars['DISPLAY']:
-						fvars['DISPLAY']=fvars['REMOTE_IP']+":0"
 			except:
 				fvars['DISPLAY']=""
-		logging.info("REMOTE DISPLAY: %s" % fvars['DISPLAY'])
-		if fvars['DISPLAY']:
+		if 'DISPLAY' not in fvars or not fvars['DISPLAY']:
+			logging.info("NO REMOTE DISPLAY")
+			return False
+		else:
+			logging.info("REMOTE DISPLAY: %s" % fvars['DISPLAY'])
 			self.command_env=os.environ.copy()
 			for f,v in fvars.items():
 				self.command_env[f]=v
-			call(['xauth', 'merge', '/root/.Xauthority'], env=self.command_env)
 			return True
 
 	def proc_enqueue_output(self):
