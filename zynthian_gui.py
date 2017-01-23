@@ -1572,7 +1572,7 @@ class zynthian_gui:
 		self.start_zyncoder_thread()
 		# Try to load "default snapshot" or show "load snapshot" popup
 		if not self.screens['snapshot'].load_snapshot('default.zss'):
-			self.load_snapshot()
+			self.load_snapshot("",autoclose=True)
 
 	def hide_screens(self,exclude=None):
 		if not exclude:
@@ -1613,10 +1613,13 @@ class zynthian_gui:
 		self.screens['info'].hide()
 		self.show_screen()
 
-	def load_snapshot(self, engine=""):
+	def load_snapshot(self, engine="", autoclose=False):
 		self.modal_screen='snapshot'
 		self.screens['snapshot'].load(engine)
-		self.hide_screens(exclude='snapshot')
+		if not autoclose or len(self.screens['snapshot'].list_data)>1:
+			self.hide_screens(exclude='snapshot')
+		else:
+			self.show_screen('engine')
 
 	def save_snapshot(self):
 		self.modal_screen='snapshot'
