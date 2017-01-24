@@ -426,8 +426,9 @@ class zynthian_engine_modui(zynthian_engine):
 			self.ctrl_list=self.default_ctrl_list
 		self.load_ctrl_config()
 
-	def set_ctrl_value(self, ctrl, val):
-		ctrl[2]=val
+	def set_ctrl_value(self, ctrl, val=None):
+		if val is not None:
+			ctrl[2]=val
 		if isinstance(ctrl[1],str) and len(ctrl[4])>=2:
 			if isinstance(val,str): val=ctrl[4][val]
 			else:
@@ -435,6 +436,9 @@ class zynthian_engine_modui(zynthian_engine):
 				val=pranges['minimum']+val/pranges['mult']
 			self.websocket.send("param_set "+ctrl[1]+" "+str("%.6f" % val))
 			logging.debug("WS << param_set "+ctrl[1]+" "+str("%.6f" % val))
+
+	def send_ctrl_value(self, ctrl, val=None):
+		self.set_ctrl_value(ctrl,val)
 
 	def set_param_cb(self, pgraph, symbol, val):
 		try:

@@ -400,9 +400,6 @@ class zynthian_engine:
 			chan=self.midi_chan
 		self.ctrl_config[chan]=copy.deepcopy(self.ctrl_list)
 
-	def set_ctrl_value(self, ctrl, val):
-		ctrl[2]=val
-
 	def set_bank(self, i, chan=None):
 		if chan is None:
 			chan=self.midi_chan
@@ -456,6 +453,18 @@ class zynthian_engine:
 		for ch in range(16):
 			if self.instr_set[ch]:
 				self._set_instr(self.instr_set[ch],ch)
+
+	def set_ctrl_value(self, ctrl, val):
+		ctrl[2]=val
+
+	def send_ctrl_value(self, ctrl, val=None):
+		if val is not None:
+			ctrl[2]=val
+		if isinstance(ctrl[1],str):
+			liblo.send(self.osc_target,ctrl[1],self.get_ctrl_osc_val(ctrl[2],ctrl[3]))
+		elif ctrl[1]>0:
+			#TODO => Get midi_chan for this control!!
+			self.parent.zynmidi.set_midi_control(self.midi_chan,ctrl[1],self.get_ctrl_midi_val(ctrl[2],ctrl[3]))
 
 	#Send Controller Values to Synth
 	def set_all_ctrl(self):

@@ -1442,16 +1442,121 @@ class zynthian_gui_control(zynthian_selector):
 				#print('Pre-select Parameter ' + str(sel))
 				self.select_listbox(sel)
 
-	def refresh_controller_value(self, ctrl):
+	def refresh_controller_value(self, ctrl, val=None):
 		if self.mode=='control' and self.zcontrollers_config:
-			for i, ctrl_i in enumerate(self.zcontrollers_config):
-				if ctrl==ctrl_i:
-					self.zcontrollers[i].set_value(ctrl[2],True)
-					zyngui.zynread_wait_flag=True
+			if isinstance(ctrl,int):
+				i=ctrl
+				zyngui.zyngine.send_ctrl_value(self.zcontrollers_config[i],val)
+				self.zcontrollers[i].set_value(val,True)
+				zyngui.zynread_wait_flag=True
+			else:
+				for i, ctrl_i in enumerate(self.zcontrollers_config):
+					if ctrl==ctrl_i:
+						zyngui.zyngine.send_ctrl_value(ctrl,val)
+						self.zcontrollers[i].set_value(val,True)
+						zyngui.zynread_wait_flag=True
+
+	def get_controller_value(self, ctrl):
+		if self.mode=='control' and self.zcontrollers_config:
+			if isinstance(ctrl,int):
+				return self.zcontrollers_config[ctrl][2]
+			else:
+				for i, ctrl_i in enumerate(self.zcontrollers_config):
+					if ctrl==ctrl_i:
+						return ctrl[2]
 
 	def set_select_path(self):
 		self.select_path.set(zyngui.zyngine.get_fullpath())
 
+#-------------------------------------------------------------------------------
+# Zynthian X-Y Controller GUI Class
+#-------------------------------------------------------------------------------
+
+class zynthian_gui_control_xy():
+	canvas=None
+	hline=None
+	vline=None
+
+	shown=False
+
+	x=width/2
+	xvalue_min=0
+	xvalue_max=127
+	xvalue=64
+	xctrl=None
+
+	y=height/2
+	yvalue_min=0
+	yvalue_max=127
+	yvalue=64
+	yctrl=None
+
+	def __init__(self):
+		# Create Main Canvas
+		self.canvas= tkinter.Canvas(top,
+			width=width,
+			height=height,
+			bd=0,
+			highlightthickness=0,
+			relief='flat',
+			bg=color_bg)
+		# Setup Canvas Callback
+		self.canvas.bind("<B1-Motion>", self.cb_canvas)
+		# Create Cursor
+		self.hline=self.canvas.create_line(0,self.y,width,self.y,fill="#ff0000")
+		self.vline=self.canvas.create_line(self.x,0,self.x,width,fill="#ff0000")
+		# Show
+		self.show()
+
+	def show(self):
+		if not self.shown:
+			self.shown=True
+			self.canvas.grid()
+			self.refresh()
+
+	def hide(self):
+		if self.shown:
+			self.shown=False
+			self.canvas.grid_forget()
+
+	def set_ranges(self, xv_min, xv_max, yv_min, yv_max):
+		self.xvalue_min=xv_min
+		self.xvalue_max=xv_max
+		self.yvalue_min=yv_min
+		self.yvalue_max=yv_max
+
+	def set_controllers(self, xctrl, yctrl):
+		self.xctrl=xctrl
+		self.yctrl=yctrl
+		self.get_controller_values()
+
+	def get_controller_values(self):
+		self.xvalue=zyngui.screens['control'].get_controller_value(self.xctrl)
+		self.yvalue=zyngui.screens['control'].get_controller_value(self.yctrl)
+		self.x=int(self.xvalue*width/self.xvalue_max)
+		self.y=int(self.yvalue*height/self.yvalue_max)
+		self.canvas.coords(self.hline,0,self.y,width,self.y)
+		self.canvas.coords(self.vline,self.x,0,self.x,width)
+
+	def refresh(self):
+		self.xvalue=int(self.x*self.xvalue_max/width)
+		self.yvalue=int(self.y*self.yvalue_max/height)
+		self.canvas.coords(self.hline,0,self.y,width,self.y)
+		self.canvas.coords(self.vline,self.x,0,self.x,width)
+		zyngui.screens['control'].refresh_controller_value(self.xctrl, self.xvalue)
+		zyngui.screens['control'].refresh_controller_value(self.yctrl, self.yvalue)
+
+	def cb_canvas(self, event):
+		logging.debug("XY controller => %s, %s" % (event.x, event.y))
+		self.x=event.x
+		self.y=event.y
+		self.refresh()
+
+	def zyncoder_read(self):
+		pass
+
+	def refresh_loading(self):
+		pass
 
 #-------------------------------------------------------------------------------
 # Zynthian OSC Browser GUI Class
@@ -1625,7 +1730,13 @@ class zynthian_gui:
 		self.modal_screen='snapshot'
 		self.screens['snapshot'].save()
 		self.hide_screens(exclude='snapshot')
-       
+
+	def show_control_xy(self, xctrl, yctrl):
+		self.modal_screen='control_xy'
+		self.screens['control_xy'].set_controllers(xctrl, yctrl)
+		self.screens['control_xy'].show()
+		self.hide_screens(exclude='control_xy')
+
 	def set_engine(self, name, wait=0):
 		self.start_loading()
 		if self.screens['engine'].set_engine(name,wait):
@@ -1635,6 +1746,7 @@ class zynthian_gui:
 			self.screens['bank']=zynthian_gui_bank()
 			self.screens['instr']=zynthian_gui_instr()
 			self.screens['control']=zynthian_gui_control()
+			self.screens['control_xy']=zynthian_gui_control_xy()
 		else:
 			self.zyngine=None
 			try:
@@ -1642,6 +1754,7 @@ class zynthian_gui:
 				del self.screens['bank']
 				del self.screens['instr']
 				del self.screens['control']
+				del self.screens['control_xy']
 			except: pass
 		self.stop_loading()
 
@@ -1761,8 +1874,7 @@ class zynthian_gui:
 			if abs((self.dtsw[i]-self.dtsw[j]).total_seconds())<0.3:
 				dswstr=str(i)+'+'+str(j)
 				logging.info('Double Switch '+dswstr)
-				if dswstr=='1+3' or dswstr=='3+1':
-					self.show_screen('admin')
+				self.show_control_xy(i,j)
 				return True
 
 	# -------------------------------------------------------------------
