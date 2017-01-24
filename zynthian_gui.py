@@ -1476,48 +1476,63 @@ class zynthian_gui_control_xy():
 	canvas=None
 	hline=None
 	vline=None
-
+	xctrl=None
+	yctrl=None
 	shown=False
 
-	x=width/2
-	xvalue_min=0
-	xvalue_max=127
-	xvalue=64
-	xctrl=None
-
-	y=height/2
-	yvalue_min=0
-	yvalue_max=127
-	yvalue=64
-	yctrl=None
-
 	def __init__(self):
-		# Create Main Canvas
-		self.canvas= tkinter.Canvas(top,
+		# Init X vars
+		self.padx=24
+		self.width=width-2*self.padx
+		self.x=self.width/2
+		self.xvalue_min=0
+		self.xvalue_max=127
+		self.xvalue=64
+
+		# Init X vars
+		self.pady=18
+		self.height=height-2*self.pady
+		self.y=self.height/2
+		self.yvalue_min=0
+		self.yvalue_max=127
+		self.yvalue=64
+
+		# Main Frame
+		self.main_frame = tkinter.Frame(top,
 			width=width,
 			height=height,
-			bd=0,
+			bg=color_panel_bg)
+
+		# Create Canvas
+		self.canvas= tkinter.Canvas(self.main_frame,
+			width=self.width,
+			height=self.height,
+			#bd=0,
 			highlightthickness=0,
 			relief='flat',
 			bg=color_bg)
+		self.canvas.grid(padx=(self.padx,self.padx),pady=(self.pady,self.pady))
+
 		# Setup Canvas Callback
 		self.canvas.bind("<B1-Motion>", self.cb_canvas)
+
 		# Create Cursor
-		self.hline=self.canvas.create_line(0,self.y,width,self.y,fill="#ff0000")
-		self.vline=self.canvas.create_line(self.x,0,self.x,width,fill="#ff0000")
+		self.hline=self.canvas.create_line(0,self.y,width,self.y,fill=color_on)
+		self.vline=self.canvas.create_line(self.x,0,self.x,width,fill=color_on)
+
 		# Show
 		self.show()
 
 	def show(self):
 		if not self.shown:
 			self.shown=True
-			self.canvas.grid()
+			self.main_frame.grid()
 			self.refresh()
 
 	def hide(self):
 		if self.shown:
 			self.shown=False
-			self.canvas.grid_forget()
+			self.main_frame.grid_forget()
 
 	def set_ranges(self, xv_min, xv_max, yv_min, yv_max):
 		self.xvalue_min=xv_min
