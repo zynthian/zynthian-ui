@@ -248,13 +248,17 @@ class zynthian_controller:
 		self.plot_value=self.plot_value_arc
 		self.erase_value=self.erase_value_arc
 		# Create Canvas
-		self.canvas= tkinter.Canvas(self.main_frame,
+		self.canvas=tkinter.Canvas(self.main_frame,
 			width=self.width,
 			height=self.height-1,
 			bd=0,
 			highlightthickness=0,
 			relief='flat',
 			bg = color_panel_bg)
+		# Bind canvas events
+		self.canvas.bind("<Button-1>",self.cb_canvas_push)
+		self.canvas.bind("<ButtonRelease-1>",self.cb_canvas_release)
+		self.canvas.bind("<B1-Motion>",self.cb_canvas_motion)
 		# Setup Controller and Zyncoder
 		self.config(tit,chan,ctrl,val,max_val)
 		# Show Controller
@@ -587,6 +591,8 @@ class zynthian_controller:
 	def set_value(self, v, set_zyncoder=False):
 		if (v>self.max_value):
 			v=self.max_value
+		elif v<0:
+			v=0
 		if (v!=self.value):
 			self.value=v
 			#print("RENCODER VALUE: " + str(self.index) + " => " + str(v))
@@ -610,6 +616,24 @@ class zynthian_controller:
 		if self.mult>1:
 			val=int((val+1)/self.mult)
 		return self.set_value(val)
+
+	def cb_canvas_push(self,event):
+		self.canvas_push_ts=datetime.now()
+		self.canvas_motion_y0=event.y
+		logging.debug("CONTROL %d PUSH => %s" % (self.index, self.canvas_push_ts))
+
+	def cb_canvas_release(self,event):
+		dts=(datetime.now()-self.canvas_push_ts).total_seconds()
+		logging.debug("CONTROL %d RELEASE => %s" % (self.index, dts))
+
+	def cb_canvas_motion(self,event):
+		dts=(datetime.now()-self.canvas_push_ts).total_seconds()
+		if dts>0.1:
+			dy=self.canvas_motion_y0-event.y
+			if dy!=0:
+				self.set_value(self.value+dy, True)
+				self.canvas_motion_y0=event.y
+				logging.debug("CONTROL %d MOTION => %d" % (self.index, event.y))
 
 #-------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
@@ -1451,15 +1475,15 @@ class zynthian_gui_control(zynthian_selector):
 		if self.mode=='control' and self.zcontrollers_config:
 			if isinstance(ctrl,int):
 				i=ctrl
-				zyngui.zyngine.send_ctrl_value(self.zcontrollers_config[i],val)
-				self.zcontrollers[i].set_value(val,True)
-				zyngui.zynread_wait_flag=True
+				if val is not None: 
+					zyngui.zyngine.set_ctrl_value(self.zcontrollers_config[i],val)
+				self.zcontrollers[i].set_value(self.zcontrollers_config[i][2],True)
 			else:
 				for i, ctrl_i in enumerate(self.zcontrollers_config):
 					if ctrl==ctrl_i:
-						zyngui.zyngine.send_ctrl_value(ctrl,val)
-						self.zcontrollers[i].set_value(val,True)
-						zyngui.zynread_wait_flag=True
+						if val is not None: 
+							zyngui.zyngine.set_ctrl_value(ctrl,val)
+						self.zcontrollers[i].set_value(ctrl[2],True)
 
 	def get_controller_value(self, ctrl):
 		if self.mode=='control' and self.zcontrollers_config:
@@ -1551,12 +1575,16 @@ class zynthian_gui_control_xy():
 		self.get_controller_values()
 
 	def get_controller_values(self):
-		self.xvalue=zyngui.screens['control'].get_controller_value(self.xctrl)
-		self.yvalue=zyngui.screens['control'].get_controller_value(self.yctrl)
-		self.x=int(self.xvalue*width/self.xvalue_max)
-		self.y=int(self.yvalue*height/self.yvalue_max)
-		self.canvas.coords(self.hline,0,self.y,width,self.y)
-		self.canvas.coords(self.vline,self.x,0,self.x,width)
+		xv=zyngui.screens['control'].get_controller_value(self.xctrl)
+		if xv!=self.xvalue:
+			self.xvalue=xv
+			self.x=int(self.xvalue*width/self.xvalue_max)
+			self.canvas.coords(self.vline,self.x,0,self.x,width)
+		yv=zyngui.screens['control'].get_controller_value(self.yctrl)
+		if yv!=self.yvalue:
+			self.yvalue=yv
+			self.y=int(self.yvalue*height/self.yvalue_max)
+			self.canvas.coords(self.hline,0,self.y,width,self.y)
 
 	def refresh(self):
 		self.xvalue=int(self.x*self.xvalue_max/width)
@@ -1573,7 +1601,8 @@ class zynthian_gui_control_xy():
 		self.refresh()
 
 	def zyncoder_read(self):
-		pass
+		zyngui.screens['control'].zyncoder_read()
+		self.get_controller_values()
 
 	def refresh_loading(self):
 		pass
@@ -1757,6 +1786,7 @@ class zynthian_gui:
 		self.screens['control_xy'].show()
 		self.hide_screens(exclude='control_xy')
 		self.active_screen='control'
+		self.screens['control'].set_mode_control()
 		logging.debug("SHOW CONTROL-XY => %d, %d" % (xctrl, yctrl))
 
 	def set_engine(self, name, wait=0):
