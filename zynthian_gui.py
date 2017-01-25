@@ -663,6 +663,8 @@ class zynthian_selector:
 			bg=color_header_bg,
 			fg=color_header_tx)
 		self.label_select_path.grid(sticky="wns")
+		# Setup Topbar's Callback
+		self.label_select_path.bind("<Button-1>", self.cb_topbar)
 
 		# ListBox's frame
 		self.lb_frame = tkinter.Frame(self.main_frame,
@@ -813,6 +815,9 @@ class zynthian_selector:
 
 	def set_select_path(self):
 		pass
+
+	def cb_topbar(self,event):
+		zyngui.zynswitch_short(1)
 
 #-------------------------------------------------------------------------------
 # Zynthian Info GUI Class
