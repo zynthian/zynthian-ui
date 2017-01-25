@@ -1756,6 +1756,8 @@ class zynthian_gui:
 		self.screens['control_xy'].set_controllers(xctrl, yctrl)
 		self.screens['control_xy'].show()
 		self.hide_screens(exclude='control_xy')
+		self.active_screen='control'
+		logging.debug("SHOW CONTROL-XY => %d, %d" % (xctrl, yctrl))
 
 	def set_engine(self, name, wait=0):
 		self.start_loading()
@@ -1853,6 +1855,7 @@ class zynthian_gui:
 					if self.modal_screen=='info':
 						self.screens['admin'].kill_command()
 					screen_back=self.active_screen
+					logging.debug("CLOSE MODAL => " + self.modal_screen)
 				# Else, go back to screen-1
 				else:
 					j=self.screens_sequence.index(self.active_screen)-1
@@ -1867,7 +1870,7 @@ class zynthian_gui:
 				# If there is only one chan, go back to engine selection
 				if screen_back=='chan' and self.zyngine.max_chan<=1:
 					screen_back='engine'
-				#logging.debug("BACK TO SCREEN "+str(j)+" => "+screen_back)
+				logging.debug("BACK TO SCREEN => "+screen_back)
 				self.show_screen(screen_back)
 		elif i==2:
 			if self.modal_screen!='snapshot':
@@ -1886,7 +1889,6 @@ class zynthian_gui:
 			else:
 				self.zynswitch_bold(i)
 
-	# TODO => revise this!!!
 	def zynswitch_double(self,i):
 		self.dtsw[i]=datetime.now()
 		for j in range(4):
