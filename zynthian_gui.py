@@ -1476,7 +1476,8 @@ class zynthian_gui_control(zynthian_selector):
 		if self.mode=='control' and self.zcontrollers_config:
 			for i, ctrl in enumerate(self.zcontrollers_config):
 				#print('Read Control ' + str(self.zcontrollers[i].title))
-				if self.zcontrollers[i].read_zyncoder():
+				self.zcontrollers[i].read_zyncoder()
+				if self.zcontrollers[i].value_print!=ctrl[2]:
 					zyngui.zyngine.set_ctrl_value(ctrl,self.zcontrollers[i].value_print)
 		elif self.mode=='select':
 			_sel=self.zselector.value
