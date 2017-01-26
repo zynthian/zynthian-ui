@@ -599,7 +599,6 @@ class zynthian_controller:
 			if self.shown:
 				if set_zyncoder:
 					if self.mult>1: v=self.mult*v
-					if v>0: v=v-1
 					lib_zyncoder.set_value_zyncoder(self.index,c_uint(v))
 				self.plot_value()
 			return True
@@ -620,11 +619,21 @@ class zynthian_controller:
 	def cb_canvas_push(self,event):
 		self.canvas_push_ts=datetime.now()
 		self.canvas_motion_y0=event.y
+		self.canvas_motion_dy=0
+		self.canvas_motion_count=0
 		logging.debug("CONTROL %d PUSH => %s" % (self.index, self.canvas_push_ts))
 
 	def cb_canvas_release(self,event):
 		dts=(datetime.now()-self.canvas_push_ts).total_seconds()
-		logging.debug("CONTROL %d RELEASE => %s" % (self.index, dts))
+		motion_rate=self.canvas_motion_count/dts
+		if motion_rate<10:
+			if dts<0.3:
+				zyngui.zynswitch_defered('S',self.index)
+			elif dts>=0.3 and dts<2:
+				zyngui.zynswitch_defered('B',self.index)
+			elif dts>=2:
+				zyngui.zynswitch_defered('L',self.index)
+		logging.debug("CONTROL %d RELEASE => %s, %s" % (self.index, dts, motion_rate))
 
 	def cb_canvas_motion(self,event):
 		dts=(datetime.now()-self.canvas_push_ts).total_seconds()
@@ -633,7 +642,10 @@ class zynthian_controller:
 			if dy!=0:
 				self.set_value(self.value+dy, True)
 				self.canvas_motion_y0=event.y
-				logging.debug("CONTROL %d MOTION => %d" % (self.index, event.y))
+				if self.canvas_motion_dy+dy!=0:
+					self.canvas_motion_count=self.canvas_motion_count+1
+				self.canvas_motion_dy=dy
+				logging.debug("CONTROL %d MOTION => %d, %d: %d" % (self.index, event.y, dy, self.value+dy))
 
 #-------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
@@ -721,7 +733,7 @@ class zynthian_selector:
 			selectforeground=color_ctrl_tx,
 			selectmode=tkinter.BROWSE)
 		self.listbox.grid(sticky="wens")
-		self.listbox.bind('<<ListboxSelect>>', lambda event :self.click_listbox())
+		self.listbox.bind('<<ListboxSelect>>', lambda event :self.cb_listbox())
 
 		# Canvas for loading image animation
 		self.loading_canvas = tkinter.Canvas(self.main_frame,
@@ -840,8 +852,11 @@ class zynthian_selector:
 	def set_select_path(self):
 		pass
 
+	def cb_listbox(self):
+		zyngui.zynswitch_defered('S',3)
+
 	def cb_topbar(self,event):
-		zyngui.zynswitch_short(1)
+		zyngui.zynswitch_defered('S',1)
 
 #-------------------------------------------------------------------------------
 # Zynthian Info GUI Class
@@ -1587,8 +1602,8 @@ class zynthian_gui_control_xy():
 			self.canvas.coords(self.hline,0,self.y,width,self.y)
 
 	def refresh(self):
-		self.xvalue=int(self.x*self.xvalue_max/width)
-		self.yvalue=int(self.y*self.yvalue_max/height)
+		self.xvalue=int(self.x*self.xvalue_max/self.width)
+		self.yvalue=int(self.y*self.yvalue_max/self.height)
 		self.canvas.coords(self.hline,0,self.y,width,self.y)
 		self.canvas.coords(self.vline,self.x,0,self.x,width)
 		zyngui.screens['control'].refresh_controller_value(self.xctrl, self.xvalue)
@@ -1697,6 +1712,7 @@ class zynthian_gui:
 	loading_thread=None
 	zyncoder_thread=None
 	zynread_wait_flag=False
+	zynswitch_defered_event=None
 	exit_flag=False
 	exit_code=0
 
@@ -1930,6 +1946,23 @@ class zynthian_gui:
 				return True
 
 	# -------------------------------------------------------------------
+	# Switch Defered Event
+	# -------------------------------------------------------------------
+
+	def zynswitch_defered(self, t, i):
+		self.zynswitch_defered_event=(t,i)
+
+	def zynswitch_defered_exec(self):
+		if self.zynswitch_defered_event is not None:
+			if self.zynswitch_defered_event[0]=='S':
+				self.zynswitch_short(self.zynswitch_defered_event[1])
+			elif self.zynswitch_defered_event[0]=='B':
+				self.zynswitch_bold(self.zynswitch_defered_event[1])
+			elif self.zynswitch_defered_event[0]=='L':
+				self.zynswitch_long(self.zynswitch_defered_event[1])
+			self.zynswitch_defered_event=None
+
+	# -------------------------------------------------------------------
 	# Threads
 	# -------------------------------------------------------------------
 
@@ -1947,6 +1980,7 @@ class zynthian_gui:
 						self.screens[self.modal_screen].zyncoder_read()
 					else:
 						self.screens[self.active_screen].zyncoder_read()
+					self.zynswitch_defered_exec()
 					self.zynswitches()
 				except Exception as err:
 					if raise_exceptions:
