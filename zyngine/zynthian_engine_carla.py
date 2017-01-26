@@ -25,8 +25,9 @@
 import os
 import re
 import socket
+import logging
 from time import sleep, time
-from zyngine.zynthian_engine import *
+from . import zynthian_engine
 
 #------------------------------------------------------------------------------
 # carla-patchbay Engine Class
@@ -35,6 +36,7 @@ from zyngine.zynthian_engine import *
 class zynthian_engine_carla(zynthian_engine):
 	name="Carla"
 	nickname="CP"
+	max_chan=1
 
 	patch_name=""
 	patch_dirs=[
@@ -52,7 +54,6 @@ class zynthian_engine_carla(zynthian_engine):
 		self.refreshed_ts=None
 		self.parent=parent
 		self.clean()
-		self.load_bank_list()
 
 	def osc_init(self, proto):
 		super().osc_init(proto)
@@ -93,9 +94,9 @@ class zynthian_engine_carla(zynthian_engine):
 		try:
 			liblo.send(self.osc_target, "/register",self.osc_server_url)
 			self.osc_registered=True
-			print("OSC registered")
+			logging.info("OSC registered")
 		except Exception as e:
-			print("ERROR engine_carla::osc_register: %s" % str(e))
+			logging.error("engine_carla::osc_register: %s" % str(e))
 			self.parent.after(200,self.osc_register_tcp)
 
 	def osc_register_udp(self):
@@ -104,13 +105,13 @@ class zynthian_engine_carla(zynthian_engine):
 		try:
 			liblo.send(self.osc_target, "/register",self.osc_server_url)
 		except Exception as e:
-			print("ERROR engine_carla::osc_register: %s" % str(e))
+			logging.error("engine_carla::osc_register: %s" % str(e))
 		if not self.osc_registered:
 			self.parent.after(200,self.osc_register_udp)
 
 	def cb_osc_all(self, path, args, types, src):
 		self.osc_registered=True
-		print("OSC %s => %s : %s" % (path, len(args), types))
+		logging.debug("OSC %s => %s : %s" % (path, len(args), types))
 		#super().cb_osc_all(path, args, types, src)
 
 	def cb_set_peaks(self):
@@ -121,7 +122,7 @@ class zynthian_engine_carla(zynthian_engine):
 		self.osc_connected=True
 		try:
 			self.plugin_info[args[0]]={
-				'name': args[1],
+				'name': args[1].replace('_', ' '),
 				'program_count': 0,
 				'program_list': {},
 				'parameter_count': 0,
@@ -167,7 +168,7 @@ class zynthian_engine_carla(zynthian_engine):
 	def cb_set_parameter_data(self, path, args):
 		#print("PARAMETER DATA FOR PLUGIN %s => %s (%s)" % (args[0],args[1],args[4]))
 		try:
-			self.plugin_info[args[0]]['parameter_list'][args[1]]['name']=args[4]
+			self.plugin_info[args[0]]['parameter_list'][args[1]]['name']=args[4].replace('_', ' ')
 		except:
 			pass
 
@@ -219,10 +220,12 @@ class zynthian_engine_carla(zynthian_engine):
 							param_set=[]
 							c=c+1
 				except Exception as err:
-					#print("EXCEPTION REGENERATING CONTROLLER LIST: "+str(param)+" => "+str(err))
+					#logging.error("EXCEPTION REGENERATING CONTROLLER LIST: "+str(param)+" => "+str(err))
 					pass
+			if len(param_set)>=1:
+				self.ctrl_list.append([param_set,0,self.plugin_info[i]['name']+'#'+str(c)])
 		if len(self.ctrl_list)==0:
-			print("LOADING CONTROLLER DEFAULTS")
+			logging.info("LOADING CONTROLLER DEFAULTS")
 			self.ctrl_list=self.default_ctrl_list
 		self.load_ctrl_config()
 
@@ -242,19 +245,19 @@ class zynthian_engine_carla(zynthian_engine):
 			self.refreshed_ts=time()
 			#generate program list
 			self.generate_instr_list()
-			print("PROGRAM LIST ...\n"+str(self.instr_list))
+			logging.debug("PROGRAM LIST ...\n"+str(self.instr_list))
 			#generate controller list
 			if not self.snapshot_fpath:
 				self.generate_ctrl_list()
 			else:
 				self.ctrl_list=self.ctrl_config[self.midi_chan]
-			print("CONTROLLER LIST ...\n"+str(self.ctrl_list))
+			logging.debug("CONTROLLER LIST ...\n"+str(self.ctrl_list))
 			#refresh screen
 			self.parent.refresh_screen()
 		elif self.refreshed_ts and (time()-self.refreshed_ts)>0.5:
 			self.refreshed_ts=None
 			if self.loading:
-				print("AFTER REFRESH POST LOADING  ...")
+				logging.debug("AFTER REFRESH POST LOADING  ...")
 				self.stop_loading()
 				self.load_snapshot_post()
 
@@ -267,8 +270,10 @@ class zynthian_engine_carla(zynthian_engine):
 			self.load_patch(new_patch)
 
 	#TODO: Revise this!!!
-	def load_ctrl_config(self):
-		self.ctrl_config[self.midi_chan]=self.ctrl_list
+	def load_ctrl_config(self, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		self.ctrl_config[chan]=self.ctrl_list
 
 	def set_all_instr(self):
 		self.load_instr_list()
@@ -293,7 +298,7 @@ class zynthian_engine_carla(zynthian_engine):
 		self.instr_list=[]
 		self.ctrl_list=self.default_ctrl_list
 		#Run Carla Instance
-		print("Running Command: "+ str(self.command))
+		logging.info("Running Command: "+ str(self.command))
 		self.start(True)
 		self.osc_init(liblo.TCP)
 		self.start_loading()

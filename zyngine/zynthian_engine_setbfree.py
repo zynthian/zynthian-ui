@@ -23,7 +23,8 @@
 #******************************************************************************
 
 import re
-from zyngine.zynthian_engine import *
+import logging
+from . import zynthian_engine
 
 #------------------------------------------------------------------------------
 # setBfree Engine Class
@@ -36,6 +37,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	drawbar_values=[['0','1','2','3','4','5','6','7','8'], [128,120,104,88,72,56,40,24,8]]
 	base_dir="./data/setbfree/"
 
+	max_chan=3
 	chan_names=("upper","lower","pedals")
 
 	ctrl_list=[
@@ -44,7 +46,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 #			['swellpedal 2',11,96,127],
 			['percussion on/off',80,'off','off|on','perc'],
 			['rotary speed',91,'off','off|chr|trm|chr','rotaryspeed'],
-#			['rotary speed toggle',64,0,3]
+#			['rotary speed',91,64,127],
+#			['rotary speed toggle',64,0,127]
 			['vibrato on/off',92,'off','off|on','vibratoupper']
 		],0,'main'],
 		[[
@@ -76,7 +79,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 	]
 
 	def __init__(self,parent=None):
-		self.max_chan=3
 		self.command=("/usr/local/bin/setBfree", "midi.driver="+self.midi_driver, "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
 		super().__init__(parent)
 
@@ -102,8 +104,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 		pgm_fpath=self.bank_list[self.get_bank_index()][0]
 		self.instr_list=self.load_pgm_list(pgm_fpath)
 
-	def load_ctrl_config(self):
-		super().load_ctrl_config()
+	def load_ctrl_config(self, chan=None):
+		super().load_ctrl_config(chan)
 		#Set preset params into ctrl_config
 		for ctrlcfg in self.ctrl_config[self.midi_chan]:
 			for ctrl in ctrlcfg[0]:
@@ -163,7 +165,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 						pass
 		except Exception as err:
 			pgm_list=None
-			print("ERROR: Getting program info from %s => %s" % (fpath,err))
+			logging.error("Getting program info from %s => %s" % (fpath,err))
 		self.stop_loading()
 		return pgm_list
 

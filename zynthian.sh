@@ -22,24 +22,23 @@
 # 
 #******************************************************************************
 
-ZYNTHIAN_DIR="/home/pi/zynthian"
+#export ZYNTHIAN_LOG_LEVEL=10			# 10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL
+#export ZYNTHIAN_RAISE_EXCEPTIONS=0
+export ZYNTHIAN_DIR="/zynthian"
+export FRAMEBUFFER="/dev/fb1"
 
 #------------------------------------------------------------------------------
 # Some Functions
 #------------------------------------------------------------------------------
 
-function screentouch_on() {
-	# Export GPIO for Backlight Control (old version of PiTFT driver uses GPIO#252)
-	echo 508 > /sys/class/gpio/export
-	# Turn On Display (Backlight)
-	echo 'in' > /sys/class/gpio/gpio508/direction
-	#echo '1' > /sys/class/gpio/gpio508/value
+function backlight_on() {
+	# Turn On Display Backlight
+	echo 0 > /sys/class/backlight/soc:backlight/bl_power
 }
 
-function screentouch_off() {
-	# Turn Off Display (Backlight)
-	echo 'out' > /sys/class/gpio/gpio508/direction
-	#echo '0' > /sys/class/gpio/gpio508/value
+function backlight_off() {
+	# Turn Off Display Backlight
+	echo 1 > /sys/class/backlight/soc:backlight/bl_power
 }
 
 function screensaver_off() {
@@ -51,46 +50,16 @@ function screensaver_off() {
 	xset s noblank
 }
 
-function scaling_governor_performance() {
-	for cpu in /sys/devices/system/cpu/cpu[0-9]*; do 
-		echo -n performance | tee $cpu/cpufreq/scaling_governor
-	done
-}
-
 function splash_zynthian() {
-	if [ -c /dev/fb1 ]; then
-		cat ./img/fb1_zynthian.raw > /dev/fb1
+	if [ -c $FRAMEBUFFER ]; then
+		cat ./img/fb1_zynthian.raw > $FRAMEBUFFER
 	fi  
 }
 
 function splash_zynthian_error() {
-	if [ -c /dev/fb1 ]; then
-		cat ./img/fb1_zynthian_error.raw > /dev/fb1
+	if [ -c $FRAMEBUFFER ]; then
+		cat ./img/fb1_zynthian_error.raw > $FRAMEBUFFER
 	fi  
-}
-
-function jack_audio_start() {
-	# Start jack-audio server
-	/usr/bin/jackd -P70 -p16 -t2000 -s -dalsa -dhw:0 -r44100 -p256 -n2
-	#/usr/bin/jackd -P70 -p16 -t2000 -s -dalsa -dhw:0 -r44100 -p256 -n2 -Xseq
-}
-
-function jack_audio_stop() {
-	# Stop jack-audio server
-	killall jackd
-}
-
-function a2j_midi_start() {
-	# Start alsa2jack midi router
-	while [ 1 ]; do 
-		/usr/bin/a2jmidid --export-hw
-		sleep 1
-	done
-}
-
-function a2j_midi_stop() {
-	# Stop alsa2jack midi router
-	killall a2jmidid
 }
 
 function alsa_in_start() {
@@ -119,37 +88,18 @@ function aubionotes_stop() {
 	killall aubionotes
 }
 
-function autoconnector_start() {
-	# Start Autoconnector
-	./zynthian_autoconnect_jack.py > /dev/null 2>&1
-	#./zynthian_autoconnect_jack.py > /var/log/zynthian_autoconnect.log 2>&1
-}
-
-function autoconnector_stop() {
-	killall zynthian_autoconnect_jack.py
-}
-
-function ttymidi_start() {
-	# Start ttymidi (MIDI UART interface)
-	while [ 1 ]; do 
-		/usr/local/bin/ttymidi -s /dev/ttyAMA0 -b 38400
-		sleep 1
-	done
-}
-
-function ttymidi_stop() {
-	killall ttymidi
+function zynthian_start() {
+	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
+		alsa_in_start &
+		aubionotes_start &
+	fi
 }
 
 function zynthian_stop() {
-	autoconnector_stop
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 		aubionotes_stop
 		alsa_in_stop
 	fi
-	a2j_midi_stop
-	ttymidi_stop
-	jack_audio_stop
 }
 
 #------------------------------------------------------------------------------
@@ -158,18 +108,8 @@ function zynthian_stop() {
 
 cd $ZYNTHIAN_DIR/zynthian-ui
 
-screentouch_on
 screensaver_off
-scaling_governor_performance
-
-jack_audio_start &
-ttymidi_start &
-a2j_midi_start &
-if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
-	alsa_in_start &
-	aubionotes_start &
-fi
-autoconnector_start &
+zynthian_start
 
 while true; do
 	# Start Zynthian GUI & Synth Engine
@@ -181,20 +121,19 @@ while true; do
 		0)
 			splash_zynthian
 			zynthian_stop
-			screentouch_off
 			poweroff
 			break
 		;;
 		100)
 			splash_zynthian
 			zynthian_stop
-			screentouch_off
 			reboot
 			break
 		;;
 		101)
 			splash_zynthian
 			zynthian_stop
+			backlight_off
 			break
 		;;
 		102)

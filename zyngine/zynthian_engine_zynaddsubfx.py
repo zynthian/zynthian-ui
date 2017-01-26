@@ -23,10 +23,13 @@
 #******************************************************************************
 
 import os
+import copy
+import logging
+import liblo
 from time import sleep
 from string import Template
 from os.path import isfile, join
-from zyngine.zynthian_engine import *
+from . import zynthian_engine
 
 #------------------------------------------------------------------------------
 # ZynAddSubFX Engine Class
@@ -62,7 +65,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			['volume',7,96,127],
 			['sustain on/off',64,'off','off|on'],
 			['portamento on/off',65,'off','off|on'],
-			['portamento',5,64,127]
+			['portamento time',5,64,127]
+			#['portamento on/off','/part$ch/ctl/portamento.receive','off','off|on'],
+			#['portamento time','/part$ch/ctl/portamento.time',64,127]
 		],0,'portamento'],
 		[[
 			['volume',7,96,127],
@@ -80,9 +85,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def __init__(self,parent=None):
 		if self.config_remote_display():
-			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_10ch.xmz", "-a")
+			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_16ch.xmz", "-a")
 		else:
-			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-U", "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_10ch.xmz", "-a")
+			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-U", "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_16ch.xmz", "-a")
 		super().__init__(parent)
 		self.osc_init()
 
@@ -99,7 +104,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	def load_instr_list(self):
 		self.instr_list=[]
 		instr_dir=self.bank_list[self.bank_index[self.midi_chan]][0]
-		print('Getting Instrument List for ' + self.bank_name[self.midi_chan])
+		logging.info('Getting Instrument List for ' + self.bank_name[self.midi_chan])
 		for f in sorted(os.listdir(instr_dir)):
 			#print(f)
 			if (isfile(join(instr_dir,f)) and f[-4:].lower()=='.xiz'):
@@ -109,6 +114,17 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				prg=prg%128
 				title=str.replace(f[5:-4], '_', ' ')
 				self.instr_list.append((f,[bank_msb,bank_lsb,prg],title))
+
+	def load_ctrl_config(self, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		self.ctrl_config[chan]=copy.deepcopy(self.ctrl_list)
+		#Setup OSC paths
+		for ctrlcfg in self.ctrl_config[chan]:
+			for ctrl in ctrlcfg[0]:
+				if isinstance(ctrl[1],str):
+					tpl=Template(ctrl[1])
+					ctrl[1]=tpl.substitute(ch=chan)
 
 	def _set_instr(self, instr, chan=None):
 		self.start_loading()

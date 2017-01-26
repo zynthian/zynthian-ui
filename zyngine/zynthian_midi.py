@@ -24,6 +24,7 @@
 
 import alsaseq
 import alsamidi
+import logging
 
 #------------------------------------------------------------------------------
 # MIDI Class
@@ -40,11 +41,11 @@ class zynthian_midi:
 		#alsaseq.connectto(0,130,0)
 		alsaseq.start()
 
-	def set_midi_control(self, chan,ctrl,val):
+	def set_midi_control(self, chan, ctrl, val):
 		alsaseq.output((alsaseq.SND_SEQ_EVENT_CONTROLLER, 1, 0, 0, (0, 0), (0, 0), (0, 0), (0, 0, 0, 0, ctrl, val)))
 
 	def set_midi_bank_msb(self, chan, msb):
-		print("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb))
+		logging.debug("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb))
 		self.bank_msb_selected[chan]=msb
 		self.set_midi_control(chan,0,msb)
 
@@ -52,7 +53,7 @@ class zynthian_midi:
 		return self.bank_msb_selected[chan]
 
 	def set_midi_bank_lsb(self, chan, lsb):
-		print("Set MIDI CH " + str(chan) + ", Bank LSB: " + str(lsb))
+		logging.info("Set MIDI CH " + str(chan) + ", Bank LSB: " + str(lsb))
 		self.bank_lsb_selected[chan]=lsb
 		self.set_midi_control(chan,32,lsb)
 
@@ -60,7 +61,7 @@ class zynthian_midi:
 		return self.bank_lsb_selected[chan]
 
 	def set_midi_prg(self, chan, prg):
-		print("Set MIDI CH " + str(chan) + ", Program: " + str(prg))
+		logging.info("Set MIDI CH " + str(chan) + ", Program: " + str(prg))
 		self.prg_selected[chan]=prg
 		event=alsamidi.pgmchangeevent(chan, prg)
 		alsaseq.output(event)
@@ -69,7 +70,7 @@ class zynthian_midi:
 		return self.prg_selected[chan]
 
 	def set_midi_instr(self, chan, msb, lsb, prg):
-		print("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb) + ", Bank LSB: " + str(lsb) + ", Program: " + str(prg))
+		logging.info("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb) + ", Bank LSB: " + str(lsb) + ", Program: " + str(prg))
 		self.bank_msb_selected[chan]=msb
 		self.bank_lsb_selected[chan]=lsb
 		self.prg_selected[chan]=prg
