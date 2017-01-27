@@ -621,7 +621,7 @@ class zynthian_controller:
 		self.canvas_motion_y0=event.y
 		self.canvas_motion_dy=0
 		self.canvas_motion_count=0
-		logging.debug("CONTROL %d PUSH => %s" % (self.index, self.canvas_push_ts))
+		#logging.debug("CONTROL %d PUSH => %s" % (self.index, self.canvas_push_ts))
 
 	def cb_canvas_release(self,event):
 		dts=(datetime.now()-self.canvas_push_ts).total_seconds()
@@ -633,7 +633,7 @@ class zynthian_controller:
 				zyngui.zynswitch_defered('B',self.index)
 			elif dts>=2:
 				zyngui.zynswitch_defered('L',self.index)
-		logging.debug("CONTROL %d RELEASE => %s, %s" % (self.index, dts, motion_rate))
+		#logging.debug("CONTROL %d RELEASE => %s, %s" % (self.index, dts, motion_rate))
 
 	def cb_canvas_motion(self,event):
 		dts=(datetime.now()-self.canvas_push_ts).total_seconds()
@@ -645,7 +645,7 @@ class zynthian_controller:
 				if self.canvas_motion_dy+dy!=0:
 					self.canvas_motion_count=self.canvas_motion_count+1
 				self.canvas_motion_dy=dy
-				logging.debug("CONTROL %d MOTION => %d, %d: %d" % (self.index, event.y, dy, self.value+dy))
+				#logging.debug("CONTROL %d MOTION => %d, %d: %d" % (self.index, event.y, dy, self.value+dy))
 
 #-------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
@@ -733,7 +733,10 @@ class zynthian_selector:
 			selectforeground=color_ctrl_tx,
 			selectmode=tkinter.BROWSE)
 		self.listbox.grid(sticky="wens")
-		self.listbox.bind('<<ListboxSelect>>', lambda event :self.cb_listbox())
+		# Bind listbox events
+		self.listbox.bind("<Button-1>",self.cb_listbox_push)
+		self.listbox.bind("<ButtonRelease-1>",self.cb_listbox_release)
+		self.listbox.bind("<B1-Motion>",self.cb_listbox_motion)
 
 		# Canvas for loading image animation
 		self.loading_canvas = tkinter.Canvas(self.main_frame,
@@ -828,10 +831,11 @@ class zynthian_selector:
 			self.select_listbox(self.zselector.value)
 
 	def select_listbox(self,index):
-		self.index=index
 		self.listbox.selection_clear(0,tkinter.END)
 		self.listbox.selection_set(index)
-		self.listbox.see(index)
+		if index>self.index: self.listbox.see(index+1)
+		else: self.listbox.see(index-1)
+		self.index=index
 
 	def click_listbox(self):
 		self.index=self.get_cursel()
@@ -850,11 +854,24 @@ class zynthian_selector:
 	def set_select_path(self):
 		pass
 
-	def cb_listbox(self):
-		zyngui.zynswitch_defered('S',3)
-
 	def cb_topbar(self,event):
 		zyngui.zynswitch_defered('S',1)
+
+	def cb_listbox_push(self,event):
+		self.listbox_push_ts=datetime.now()
+		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
+
+	def cb_listbox_release(self,event):
+		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
+		if dts<0.3:
+			zyngui.zynswitch_defered('S',3)
+		#logging.debug("LISTBOX RELEASE => %s" % dts)
+
+	def cb_listbox_motion(self,event):
+		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
+		if dts>0.1:
+			self.zselector.set_value(self.get_cursel(), True)
+			#logging.debug("LISTBOX MOTION => %d" % self.index)
 
 #-------------------------------------------------------------------------------
 # Zynthian Info GUI Class
@@ -1604,7 +1621,7 @@ class zynthian_gui_control_xy():
 		zyngui.screens['control'].refresh_controller_value(self.yctrl, self.yvalue)
 
 	def cb_canvas(self, event):
-		logging.debug("XY controller => %s, %s" % (event.x, event.y))
+		#logging.debug("XY controller => %s, %s" % (event.x, event.y))
 		self.x=event.x
 		self.y=event.y
 		self.refresh()
