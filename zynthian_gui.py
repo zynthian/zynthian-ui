@@ -823,11 +823,9 @@ class zynthian_selector:
 		return index
 
 	def zyncoder_read(self):
-		_sel=self.zselector.value
 		self.zselector.read_zyncoder()
-		sel=self.zselector.value
-		if (_sel!=sel):
-			self.select_listbox(sel)
+		if (self.index!=self.zselector.value):
+			self.select_listbox(self.zselector.value)
 
 	def select_listbox(self,index):
 		self.index=index
@@ -1480,12 +1478,7 @@ class zynthian_gui_control(zynthian_selector):
 				if self.zcontrollers[i].value_print!=ctrl[2]:
 					zyngui.zyngine.set_ctrl_value(ctrl,self.zcontrollers[i].value_print)
 		elif self.mode=='select':
-			_sel=self.zselector.value
-			self.zselector.read_zyncoder()
-			sel=self.zselector.value
-			if (_sel!=sel):
-				#print('Pre-select Parameter ' + str(sel))
-				self.select_listbox(sel)
+			super().zyncoder_read()
 
 	def refresh_controller_value(self, ctrl, val=None):
 		if self.mode=='control' and self.zcontrollers_config:
@@ -1678,14 +1671,6 @@ class zynthian_gui_osc_browser(zynthian_selector):
 			#TODO: Toogle the value!!
 			liblo.send(zyngui.osc_target, self.osc_path+path,True)
 			zyngui.show_screen('control')
-
-	def zyncoder_read(self):
-		_sel=self.zselector.value
-		self.zselector.read_zyncoder()
-		sel=self.zselector.value
-		if (_sel!=sel):
-			#print('Pre-select Bank ' + str(sel))
-			self.select_listbox(sel)
 
 	def set_select_path(self):
 		self.select_path.set(zyngui.zyngine.get_fullpath())
