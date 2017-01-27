@@ -834,7 +834,8 @@ class zynthian_selector:
 		self.listbox.selection_clear(0,tkinter.END)
 		self.listbox.selection_set(index)
 		if index>self.index: self.listbox.see(index+1)
-		else: self.listbox.see(index-1)
+		elif index<self.index: self.listbox.see(index-1)
+		else: self.listbox.see(index)
 		self.index=index
 
 	def click_listbox(self):
@@ -871,7 +872,7 @@ class zynthian_selector:
 		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 		if dts>0.1:
 			self.zselector.set_value(self.get_cursel(), True)
-			#logging.debug("LISTBOX MOTION => %d" % self.index)
+				#logging.debug("LISTBOX MOTION => %d" % self.index)
 
 #-------------------------------------------------------------------------------
 # Zynthian Info GUI Class
@@ -1522,6 +1523,27 @@ class zynthian_gui_control(zynthian_selector):
 
 	def set_select_path(self):
 		self.select_path.set(zyngui.zyngine.get_fullpath())
+
+	def cb_listbox_release(self,event):
+		if self.mode=='select':
+			super().cb_listbox_release(event)
+		else:
+			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
+			if dts<0.3:
+				self.click_listbox()
+			#logging.debug("LISTBOX RELEASE => %s" % dts)
+
+	def cb_listbox_motion(self,event):
+		if self.mode=='select':
+			super().cb_listbox_motion(event)
+		else:
+			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
+			if dts>0.1:
+				index=self.get_cursel()
+				if index!=self.index:
+					self.select_listbox(self.get_cursel())
+					#logging.debug("LISTBOX MOTION => %d" % self.index)
+					sleep(0.04)
 
 #-------------------------------------------------------------------------------
 # Zynthian X-Y Controller GUI Class
