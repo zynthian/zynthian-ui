@@ -455,7 +455,7 @@ class zynthian_controller:
 		if self.values:
 			rfont=tkFont.Font(family=font_family,size=10)
 			maxlen=len(max(self.values, key=len))
-			if maxlen>4:
+			if maxlen>3:
 				maxlen=max([rfont.measure(w) for w in self.values])
 			#print("LONGEST VALUE: %d" % maxlen)
 			if maxlen>100:
@@ -489,6 +489,7 @@ class zynthian_controller:
 		self.mult=1
 		self.val0=0
 		self.ticks=None
+		self.value=-1
 		self.set_title(tit)
 
 		#Type of Controller: OSC/MD, MIDI
@@ -540,10 +541,6 @@ class zynthian_controller:
 		elif self.n_values>=96:
 			self.step=0
 
-		#Check value limits
-		if val>self.max_value:
-			val=self.max_value
-
 		#Calculate scale parameter for plotting
 		if self.ticks:
 			self.scale_plot=self.max_value/abs(self.ticks[0]-self.ticks[self.n_values-1])
@@ -589,11 +586,11 @@ class zynthian_controller:
 			logging.error("zynthian_controller.setup_zyncoder() => %s" % (err))
 
 	def set_value(self, v, set_zyncoder=False):
-		if (v>self.max_value):
+		if v>self.max_value:
 			v=self.max_value
 		elif v<0:
 			v=0
-		if (v!=self.value):
+		if v!=self.value:
 			self.value=v
 			#print("RENCODER VALUE: " + str(self.index) + " => " + str(v))
 			if self.shown:
@@ -1390,14 +1387,14 @@ class zynthian_gui_control(zynthian_selector):
 	mode=None
 	zcontrollers_config=None
 	zcontroller_map={}
-	zcontrollers=[]
+	zcontrollers=[None,None,None,None]
 
 	def __init__(self):
 		super().__init__('Controllers',False)
 		self.mode=None
 		self.zcontrollers_config=None
 		self.zcontroller_map={}
-		self.zcontrollers=[]
+		self.zcontrollers=[None,None,None,None]
 		# Create "pusher" canvas => used in mode "select"
 		self.pusher= tkinter.Frame(self.main_frame,
 			width=ctrl_width,
@@ -1434,19 +1431,23 @@ class zynthian_gui_control(zynthian_selector):
 				if self.zcontrollers_config and i<len(self.zcontrollers_config):
 					cfg=self.zcontrollers_config[i]
 					#indx, tit, chan, ctrl, val, max_val=127
+					#logging.debug("CONFIG => %s" % cfg)
 					self.set_controller(i,cfg[0],midi_chan,cfg[1],cfg[2],cfg[3])
 				elif i<len(self.zcontrollers):
 					self.zcontrollers[i].hide()
 			except Exception as e:
-				logging.error("set_controller_config(%d) => %s" % (i,e))
-				self.zcontrollers[i].hide()
+				if raise_exceptions:
+					raise e
+				else:
+					logging.error("set_controller_config(%d) => %s" % (i,e))
+					self.zcontrollers[i].hide()
 
 	def set_controller(self, i, tit, chan, ctrl, val, max_val=127):
-		try:
+		if self.zcontrollers[i] is None:
+			self.zcontrollers[i]=zynthian_controller(i,self.main_frame,tit,chan,ctrl,val,max_val)
+		else:
 			self.zcontrollers[i].config(tit,chan,ctrl,val,max_val)
-			self.zcontrollers[i].show()
-		except:
-			self.zcontrollers.append(zynthian_controller(i,self.main_frame,tit,chan,ctrl,val,max_val))
+			self.zcontrollers[i].show()	
 		self.zcontroller_map[ctrl]=self.zcontrollers[i]
 
 	def set_mode_select(self):
