@@ -26,6 +26,7 @@
 
 import os
 import sys
+import copy
 import signal
 import alsaseq
 import logging
@@ -489,7 +490,7 @@ class zynthian_controller:
 		self.mult=1
 		self.val0=0
 		self.ticks=None
-		self.value=-1
+		self.value=None
 		self.set_title(tit)
 
 		#Type of Controller: OSC/MD, MIDI
@@ -590,7 +591,7 @@ class zynthian_controller:
 			v=self.max_value
 		elif v<0:
 			v=0
-		if v!=self.value:
+		if self.value is None or self.value!=v:
 			self.value=v
 			#print("RENCODER VALUE: " + str(self.index) + " => " + str(v))
 			if self.shown:
@@ -616,7 +617,9 @@ class zynthian_controller:
 	def cb_canvas_push(self,event):
 		self.canvas_push_ts=datetime.now()
 		self.canvas_motion_y0=event.y
+		self.canvas_motion_x0=event.x
 		self.canvas_motion_dy=0
+		self.canvas_motion_dx=0
 		self.canvas_motion_count=0
 		#logging.debug("CONTROL %d PUSH => %s" % (self.index, self.canvas_push_ts))
 
@@ -630,6 +633,10 @@ class zynthian_controller:
 				zyngui.zynswitch_defered('B',self.index)
 			elif dts>=2:
 				zyngui.zynswitch_defered('L',self.index)
+		elif self.canvas_motion_dx>20:
+			zyngui.zynswitch_defered('X',self.index)
+		elif self.canvas_motion_dx<-20:
+			zyngui.zynswitch_defered('Y',self.index)
 		#logging.debug("CONTROL %d RELEASE => %s, %s" % (self.index, dts, motion_rate))
 
 	def cb_canvas_motion(self,event):
@@ -642,7 +649,13 @@ class zynthian_controller:
 				if self.canvas_motion_dy+dy!=0:
 					self.canvas_motion_count=self.canvas_motion_count+1
 				self.canvas_motion_dy=dy
-				#logging.debug("CONTROL %d MOTION => %d, %d: %d" % (self.index, event.y, dy, self.value+dy))
+				#logging.debug("CONTROL %d MOTION Y => %d, %d: %d" % (self.index, event.y, dy, self.value+dy))
+			dx=event.x-self.canvas_motion_x0
+			if dx!=0:
+				if abs(self.canvas_motion_dx-dx)>0:
+					self.canvas_motion_count=self.canvas_motion_count+1
+				self.canvas_motion_dx=dx
+				#logging.debug("CONTROL %d MOTION X => %d, %d" % (self.index, event.x, dx))
 
 #-------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
@@ -1525,6 +1538,14 @@ class zynthian_gui_control(zynthian_selector):
 	def set_select_path(self):
 		self.select_path.set(zyngui.zyngine.get_fullpath())
 
+	def midi_learn(self, i):
+		if self.mode=='control' and self.zcontrollers_config:
+			zyngui.zyngine.midi_learn(self.zcontrollers_config[i])
+
+	def midi_unlearn(self, i):
+		if self.mode=='control' and self.zcontrollers_config:
+			zyngui.zyngine.midi_unlearn(self.zcontrollers_config[i])
+
 	def cb_listbox_release(self,event):
 		if self.mode=='select':
 			super().cb_listbox_release(event)
@@ -1971,6 +1992,16 @@ class zynthian_gui:
 				self.show_control_xy(i,j)
 				return True
 
+	def zynswitch_X(self,i):
+		logging.info('X Switch %d' % i)
+		if self.active_screen=='control' and self.screens['control'].mode=='control':
+			self.screens['control'].midi_learn(i)
+
+	def zynswitch_Y(self,i):
+		logging.info('Y Switch %d' % i)
+		if self.active_screen=='control' and self.screens['control'].mode=='control':
+			self.screens['control'].midi_unlearn(i)
+
 	# -------------------------------------------------------------------
 	# Switch Defered Event
 	# -------------------------------------------------------------------
@@ -1980,13 +2011,20 @@ class zynthian_gui:
 
 	def zynswitch_defered_exec(self):
 		if self.zynswitch_defered_event is not None:
-			if self.zynswitch_defered_event[0]=='S':
-				self.zynswitch_short(self.zynswitch_defered_event[1])
-			elif self.zynswitch_defered_event[0]=='B':
-				self.zynswitch_bold(self.zynswitch_defered_event[1])
-			elif self.zynswitch_defered_event[0]=='L':
-				self.zynswitch_long(self.zynswitch_defered_event[1])
+			#Copy event and clean variable
+			event=copy.deepcopy(self.zynswitch_defered_event)
 			self.zynswitch_defered_event=None
+			#Process event
+			if event[0]=='S':
+				self.zynswitch_short(event[1])
+			elif event[0]=='B':
+				self.zynswitch_bold(event[1])
+			elif event[0]=='L':
+				self.zynswitch_long([1])
+			elif event[0]=='X':
+				self.zynswitch_X(event[1])
+			elif event[0]=='Y':
+				self.zynswitch_Y(event[1])
 
 	# -------------------------------------------------------------------
 	# Threads

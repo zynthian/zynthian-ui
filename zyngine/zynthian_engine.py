@@ -466,6 +466,12 @@ class zynthian_engine:
 			#TODO => Get midi_chan for this control!!
 			self.parent.zynmidi.set_midi_control(self.midi_chan,ctrl[1],self.get_ctrl_midi_val(ctrl[2],ctrl[3]))
 
+	def midi_learn(self, ctrl):
+		logging.info("MIDI Learn: %s => not implemented" % ctrl[1])
+
+	def midi_unlearn(self, ctrl):
+		logging.info("MIDI Unlearn: %s => not implemented" % ctrl[1])
+
 	#Send Controller Values to Synth
 	def set_all_ctrl(self):
 		#logging.debug("set_all_ctrl()")

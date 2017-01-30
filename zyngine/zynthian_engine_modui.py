@@ -440,6 +440,39 @@ class zynthian_engine_modui(zynthian_engine):
 	def send_ctrl_value(self, ctrl, val=None):
 		self.set_ctrl_value(ctrl,val)
 
+	def get_parameter_address_data(self, ctrl, uri):
+		if isinstance(ctrl[3],str):
+			steps=len(ctrl[4])
+			minimum=0
+			maximum=steps-1
+			try:
+				value=ctrl[4][ctrl[2]]
+			except:
+				value=0
+		else:
+			steps=127
+			minimum=ctrl[4]['minimum']
+			maximum=ctrl[4]['maximum']
+			value=ctrl[2]
+		data={
+			"uri": uri,
+			"label": ctrl[0],
+			"minimum": str(minimum),
+			"maximum": str(maximum),
+			"value": str(value),
+			"steps": str(steps)
+		}
+		logging.debug("Parameter Address Data => %s" % str(data))
+		return data
+
+	def midi_learn(self, ctrl):
+		logging.info("MIDI Learn: %s" % ctrl[1])
+		res = self.api_post_request("/effect/parameter/address/"+ctrl[1],json=self.get_parameter_address_data(ctrl,"/midi-learn"))
+
+	def midi_unlearn(self, ctrl):
+		logging.info("MIDI Unlearn: %s" % ctrl[1])
+		res = self.api_post_request("/effect/parameter/address/"+ctrl[1],json=self.get_parameter_address_data(ctrl,"null"))
+
 	def set_param_cb(self, pgraph, symbol, val):
 		try:
 			ctrl=self.ctrl_dict[pgraph][symbol]
