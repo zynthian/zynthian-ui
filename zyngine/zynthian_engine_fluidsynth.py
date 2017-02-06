@@ -118,7 +118,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		if sf not in self.soundfont_index:
 			self.soundfont_count=self.soundfont_count+1
 			logging.info("Load SoundFont " + sf + " => " + str(self.soundfont_count))
-			self.proc_cmd("load " + sf, 20)
+			self.proc_cmd("load \"" + sf + "\"", 20)
 			self.soundfont_index[sf]=self.soundfont_count
 			return True
 
