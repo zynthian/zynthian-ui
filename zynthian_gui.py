@@ -42,12 +42,10 @@ from tkinter import font as tkFont
 from os.path import isfile, isdir, join
 from subprocess import check_output, Popen, PIPE
 
-from zyngine import *
-from zyngine.zynthian_engine import osc_port as zyngine_osc_port
-
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 
+from zyngine import *
 from zyngine.zynthian_midi import *
 from zyngine.zynthian_zcmidi import *
 
@@ -2173,6 +2171,14 @@ class zynthian_gui:
 		#print ("OSC CTRL: " + path + " => "+str(args[0]))
 		if path in self.screens['control'].zcontroller_map.keys():
 			self.screens['control'].zcontroller_map[path].set_init_value(args[0])
+
+	# -------------------------------------------------------------------
+	# All Sounds Off => PANIC!
+	# -------------------------------------------------------------------
+
+	def all_sounds_off(self):
+		for chan in range(16):
+			self.zynmidi.set_midi_control(chan, 120, 0)
 
 
 #-------------------------------------------------------------------------------

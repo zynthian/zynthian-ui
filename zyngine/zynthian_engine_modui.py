@@ -193,7 +193,7 @@ class zynthian_engine_modui(zynthian_engine):
 					self.set_param_cb(args[1],args[2],args[3])
 
 				elif command == "midi_map":
-					pass
+					self.midi_map_cb(args[1])
 
 				elif command == "loading_start":
 						logging.info("LOADING START")
@@ -472,6 +472,13 @@ class zynthian_engine_modui(zynthian_engine):
 	def midi_unlearn(self, ctrl):
 		logging.info("MIDI Unlearn: %s" % ctrl[1])
 		res = self.api_post_request("/effect/parameter/address/"+ctrl[1],json=self.get_parameter_address_data(ctrl,"null"))
+		if res:
+			#TODO: 
+			pass
+
+	def midi_map_cb(self, cc):
+		logging.info("MIDI Map: %d" % cc)
+		#TODO: 
 
 	def set_param_cb(self, pgraph, symbol, val):
 		try:

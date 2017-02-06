@@ -60,13 +60,12 @@ class zynthian_engine:
 	osc_server_port=None
 	osc_server_url=None
 
+	bank_list=[]
+	instr_list=[]
+
 	loading=0
 	snapshot_fpath=None
 	loading_snapshot=False
-
-	# ---------------------------------------------------------------------------
-	# Default Controllers & Screens
-	# ---------------------------------------------------------------------------
 
 	# Standard MIDI Controllers
 	midi_ctrls=[
@@ -88,10 +87,6 @@ class zynthian_engine:
 		['effects',['volume','modulation','reverb','chorus']]
 	]
 
-	# ---------------------------------------------------------------------------
-	# Initialization
-	# ---------------------------------------------------------------------------
-
 	def __init__(self, zyngui=None):
 		self.zyngui=zyngui
 		self.reset()
@@ -103,6 +98,16 @@ class zynthian_engine:
 
 	def reset(self):
 		pass
+
+	def start_loading(self):
+		self.loading=self.loading+1
+		if self.loading<1: self.loading=1
+		self.zyngui.start_loading()
+
+	def stop_loading(self):
+		self.loading=self.loading-1
+		if self.loading<0: self.loading=0
+		self.zyngui.stop_loading()
 
 	def config_remote_display(self):
 		fvars={}
@@ -126,27 +131,6 @@ class zynthian_engine:
 			for f,v in fvars.items():
 				self.command_env[f]=v
 			return True
-
-	# ---------------------------------------------------------------------------
-	# Loading GUI signalization & refreshing
-	# ---------------------------------------------------------------------------
-
-	def start_loading(self):
-		self.loading=self.loading+1
-		if self.loading<1: self.loading=1
-		self.zyngui.start_loading()
-
-	def stop_loading(self):
-		self.loading=self.loading-1
-		if self.loading<0: self.loading=0
-		self.zyngui.stop_loading()
-
-	def refresh(self):
-		pass
-
-	# ---------------------------------------------------------------------------
-	# Subproccess Management & IPC
-	# ---------------------------------------------------------------------------
 
 	def proc_enqueue_output(self):
 		try:
@@ -224,10 +208,6 @@ class zynthian_engine:
 			self.stop_loading()
 			return out
 
-	# ---------------------------------------------------------------------------
-	# OSC Management
-	# ---------------------------------------------------------------------------
-
 	def osc_init(self, proto=liblo.UDP):
 		self.start_loading()
 		try:
@@ -261,91 +241,43 @@ class zynthian_engine:
 		for a, t in zip(args, types):
 			logging.debug("argument of type '%s': %s" % (t, a))
 
-	# ---------------------------------------------------------------------------
-	# Generating list from different sources
-	# ---------------------------------------------------------------------------
+	def set_midi_chan(self, i):
+		logging.info('MIDI Chan Selected: ' + str(i))
+		self.midi_chan=i
+		#self.load_bank_list()
+		#self.set_bank(self.get_bank_index())
 
-	def get_filelist(self, dpath, fext):
-		self.start_loading()
-		res=[]
-		if isinstance(dpath, str): dpath=[('_', dpath)]
-		fext='.'+fext
-		xlen=len(fext)
-		i=0
-		for dpd in dpath:
-			dp=dpd[1]
-			dn=dpd[0]
-			for f in sorted(os.listdir(dp)):
-				if (isfile(join(dp,f)) and f[-xlen:].lower()==fext):
-					title=str.replace(f[:-xlen], '_', ' ')
-					if dn!='_': title=dn+'/'+title
-					#print("filelist => "+title)
-					res.append((join(dp,f),i,title,dn))
-					i=i+1
-		self.stop_loading()
-		return res
+	def next_chan(self):
+		count=0
+		nchan=len(self.bank_index)
+		i=self.midi_chan
+		while count<nchan:
+			i+=1
+			count+=1
+			if i>=nchan:
+				i=0
+			if self.instr_name[i]:
+				break
+		if self.midi_chan!=i:
+			self.set_midi_chan(i)
+			return True
+		else:
+			return False
 
-	def get_dirlist(self, dpath):
-		self.start_loading()
-		res=[]
-		if isinstance(dpath, str): dpath=[('_', dpath)]
-		i=0
-		for dpd in dpath:
-			dp=dpd[1]
-			dn=dpd[0]
-			for f in sorted(os.listdir(dp)):
-				if isdir(join(dp,f)):
-					title,ext=os.path.splitext(f)
-					title=str.replace(title, '_', ' ')
-					if dn!='_': title=dn+'/'+title
-					#print("dirlist => "+title)
-					res.append((join(dp,f),i,title,dn))
-					i=i+1
-		self.stop_loading()
-		return res
+	def get_midi_chan(self):
+		return self.midi_chan
 
-	def load_cmdlist(self,cmd):
-		self.start_loading()
-		res=[]
-		i=0
-		output=check_output(cmd, shell=True)
-		lines=output.decode('utf8').split('\n')
-		for f in lines:
-			title=str.replace(f, '_', ' ')
-			res.append((f,i,title))
-			i=i+1
-		self.stop_loading()
-		return res
+	def get_bank_index(self):
+		return self.bank_index[self.midi_chan]
 
-	# ---------------------------------------------------------------------------
-	# Patch Management
-	# ---------------------------------------------------------------------------
+	def get_bank_name(self):
+		return self.bank_name[self.midi_chan]
 
-	#TODO
+	def get_instr_index(self):
+		return self.instr_index[self.midi_chan]
 
-	# ---------------------------------------------------------------------------
-	# Bank Management
-	# ---------------------------------------------------------------------------
-
-	def get_bank_list(self):
-		logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
-
-	def set_bank(self, chan, bank):
-		self.zyngui.zynmidi.set_midi_bank_msb(chan, bank[1])
-
-	# ---------------------------------------------------------------------------
-	# Preset Management
-	# ---------------------------------------------------------------------------
-
-	def load_preset_list(self):
-		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name)
-
-	def set_preset(self, chan, preset):
-		self.zyngui.zynmidi.set_midi_preset(chan, preset[1][0], preset[1][1], preset[1][2])
-
-	# ---------------------------------------------------------------------------
-	# Controllers Management
-	# ---------------------------------------------------------------------------
+	def get_instr_name(self):
+		return self.instr_name[self.midi_chan]
 
 	def get_ctrl_list(self):
 		try:
@@ -359,16 +291,152 @@ class zynthian_engine:
 		except:
 			return None
 
+	def reset_instr(self, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		self.instr_index[chan]=0
+		self.instr_name[chan]=None
+
+	def refresh(self):
+		pass
+
+	def load_bank_filelist(self, dpath, fext):
+		logging.info('Getting Bank List for ' + self.name)
+		self.start_loading()
+		self.bank_list=[]
+		if isinstance(dpath, str): dpath=[('_', dpath)]
+		fext='.'+fext
+		xlen=len(fext)
+		i=0
+		for dpd in dpath:
+			dp=dpd[1]
+			dn=dpd[0]
+			for f in sorted(os.listdir(dp)):
+				if (isfile(join(dp,f)) and f[-xlen:].lower()==fext):
+					title=str.replace(f[:-xlen], '_', ' ')
+					if dn!='_': title=dn+'/'+title
+					#print("bank_filelist => "+title)
+					self.bank_list.append((join(dp,f),i,title,dn))
+					i=i+1
+		self.stop_loading()
+
+	def load_bank_dirlist(self,dpath):
+		logging.info('Getting Bank List for ' + self.name)
+		self.start_loading()
+		self.bank_list=[]
+		if isinstance(dpath, str): dpath=[('_', dpath)]
+		i=0
+		for dpd in dpath:
+			dp=dpd[1]
+			dn=dpd[0]
+			for f in sorted(os.listdir(dp)):
+				if isdir(join(dp,f)):
+					title,ext=os.path.splitext(f)
+					title=str.replace(title, '_', ' ')
+					if dn!='_': title=dn+'/'+title
+					#print("bank_dirlist => "+title)
+					self.bank_list.append((join(dp,f),i,title,dn))
+					i=i+1
+		self.stop_loading()
+
+	def load_bank_cmdlist(self,cmd):
+		logging.info('Getting Bank List for ' + self.name)
+		self.start_loading()
+		self.bank_list=[]
+		i=0
+		output=check_output(cmd, shell=True)
+		lines=output.decode('utf8').split('\n')
+		for f in lines:
+			title=str.replace(f, '_', ' ')
+			self.bank_list.append((f,i,title))
+			i=i+1
+		self.stop_loading()
+
+	def load_bank_list(self):
+		self.bank_list=[]
+
+	def load_instr_list(self):
+		self.instr_list=[]
+
 	def load_ctrl_config(self, chan=None):
 		if chan is None:
 			chan=self.midi_chan
 		self.ctrl_config[chan]=copy.deepcopy(self.ctrl_list)
 
+	def set_bank(self, i, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		if self.bank_list[i]:
+			last_bank_index=self.bank_index[chan]
+			self.bank_index[chan]=i
+			self.bank_name[chan]=self.bank_list[i][2]
+			self.bank_set[chan]=copy.deepcopy(self.bank_list[i])
+			logging.info('Bank Selected: ' + self.bank_name[chan] + ' (' + str(i)+')')
+			self._set_bank(self.bank_list[i], chan)
+			if chan==self.midi_chan:
+				pass
+				#self.load_instr_list()
+			if last_bank_index!=i:
+				self.reset_instr(chan)
+
+	def _set_bank(self, bank, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		self.zyngui.zynmidi.set_midi_bank_msb(chan, bank[1])
+
+	def set_all_bank(self):
+		#logging.debug("set_all_bank()")
+		for ch in range(16):
+			if self.bank_set[ch]:
+				self._set_bank(self.bank_set[ch],ch)
+
+	def set_instr(self, i, chan=None, set_midi=True):
+		if chan is None:
+			chan=self.midi_chan
+		if self.instr_list[i]:
+			last_instr_index=self.instr_index[chan]
+			last_instr_name=self.instr_name[chan]
+			self.instr_index[chan]=i
+			self.instr_name[chan]=self.instr_list[i][2]
+			self.instr_set[chan]=copy.deepcopy(self.instr_list[i])
+			logging.info('Instrument Selected: ' + self.instr_name[chan] + ' (' + str(i)+')')
+			#=> '+self.instr_list[i][3]
+			if set_midi:
+				self._set_instr(self.instr_list[i],chan)
+			if last_instr_index!=i or not last_instr_name:
+				self.load_ctrl_config(chan)
+
+	def _set_instr(self, instr, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		self.zyngui.zynmidi.set_midi_instr(chan, instr[1][0], instr[1][1], instr[1][2])
+
+	def set_all_instr(self):
+		#logging.debug("set_all_instr()")
+		for ch in range(16):
+			if self.instr_set[ch]:
+				self._set_instr(self.instr_set[ch],ch)
+
 	def set_ctrl_value(self, ctrl, val):
-		pass
+		ctrl[2]=val
+
+	def send_ctrl_value(self, ctrl, val=None):
+		if val is not None:
+			ctrl[2]=val
+		if isinstance(ctrl[1],str):
+			liblo.send(self.osc_target,ctrl[1],self.get_ctrl_osc_val(ctrl[2],ctrl[3]))
+		elif ctrl[1]>0:
+			#TODO => Get midi_chan for this control!!
+			self.zyngui.zynmidi.set_midi_control(self.midi_chan,ctrl[1],self.get_ctrl_midi_val(ctrl[2],ctrl[3]))
+
+	def midi_learn(self, ctrl):
+		logging.info("MIDI Learn: %s => not implemented" % ctrl[1])
+
+	def midi_unlearn(self, ctrl):
+		logging.info("MIDI Unlearn: %s => not implemented" % ctrl[1])
 
 	#Send Controller Values to Synth
-	def set_all_ctrls(self):
+	def set_all_ctrl(self):
 		#logging.debug("set_all_ctrl()")
 		for ch in range(16):
 			if self.ctrl_config[ch]:
@@ -379,5 +447,131 @@ class zynthian_engine:
 						elif ctrl[1]>0:
 							self.zyngui.zynmidi.set_midi_control(ch,ctrl[1],self.get_ctrl_midi_val(ctrl[2],ctrl[3]))
 
+	def get_ctrl_midi_val(self, val, maxval):
+		if isinstance(val,int):
+			return val
+		if isinstance(maxval,str):
+			values=maxval.split('|')
+		elif isinstance(maxval,list):
+			if isinstance(maxval[0],list): 
+				values=maxval[0]
+				ticks=maxval[1]
+			else: values=maxval
+		elif max_val>0:
+			values=None
+			max_value=n_values=maxval
+		if values:
+			n_values=len(values)
+			step=max(1,int(16/n_values));
+			max_value=128-step;
+			try:
+				val=ticks[values.index(val)]
+			except:
+				val=int(values.index(val)*max_value/(n_values-1))
+		if val>max_value:
+			val=max_value
+		return val
+
+	def get_ctrl_osc_val(self, val, maxval):
+		if maxval=='off|on':
+			if val=='on': return True
+			elif val=='off': return False
+		return val
+
+	def get_path(self, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		path=self.bank_name[chan]
+		if self.instr_name[chan]:
+			path=path + '/' + self.instr_name[chan]
+		return path
+
+	def get_fullpath(self, chan=None):
+		if chan is None:
+			chan=self.midi_chan
+		return self.nickname + "#" + str(chan+1) + " > " + self.get_path(chan)
+
+	def save_snapshot(self, fpath):
+		status={
+			'engine': self.name,
+			'engine_nick': self.nickname,
+			'midi_chan': self.midi_chan,
+			'max_chan': self.max_chan,
+			'bank_index': self.bank_index,
+			'bank_name': self.bank_name,
+			'bank_set': self.bank_set,
+			'instr_index': self.instr_index,
+			'instr_name': self.instr_name,
+			'instr_set': self.instr_set,
+			'ctrl_config': self.ctrl_config
+		}
+		try:
+			json=JSONEncoder().encode(status)
+			logging.info("Saving snapshot %s => \n%s" % (fpath,json))
+		except:
+			logging.error("Can't generate snapshot")
+			return False
+
+		try:
+			with open(fpath,"w") as fh:
+				fh.write(json)
+		except:
+			logging.error("Can't save snapshot '%s'" % fpath)
+			return False
+		self.snapshot_fpath=fpath
+		return True
+
+	def _load_snapshot(self, fpath):
+		self.loading_snapshot=True
+		try:
+			with open(fpath,"r") as fh:
+				json=fh.read()
+				logging.info("Loading snapshot %s => \n%s" % (fpath,json))
+		except:
+			logging.error("Can't load snapshot '%s'" % fpath)
+			return False
+		try:
+			status=JSONDecoder().decode(json)
+			if self.name!=status['engine'] or self.nickname!=status['engine_nick']:
+				raise UserWarning("Incorrect Engine " + status['engine'])
+			self.midi_chan=status['midi_chan']
+			self.max_chan=status['max_chan']
+			self.bank_index=status['bank_index']
+			self.bank_name=status['bank_name']
+			self.bank_set=status['bank_set']
+			self.instr_index=status['instr_index']
+			self.instr_name=status['instr_name']
+			self.instr_set=status['instr_set']
+			self.ctrl_config=status['ctrl_config']
+			self.snapshot_fpath=fpath
+		except UserWarning as e:
+			logging.error("%s" % e)
+			return False
+		except Exception as e:
+			logging.error("Invalid snapshot format. %s" % e)
+			return False
+
+	def load_snapshot(self, fpath):
+		self._load_snapshot(fpath)
+		return self.load_snapshot_post()
+
+	def load_snapshot_post(self):
+		try:
+			self.set_all_bank()
+			self.load_bank_list()
+			self.set_all_instr()
+			self.load_instr_list()
+			sleep(0.2)
+			self.set_all_ctrl()
+			self.zyngui.refresh_screen()
+			self.loading_snapshot=False
+			return True
+		except Exception as e:
+			logging.error("%s" % e)
+			return False
+
+	def all_sounds_off(self):
+		for chan in range(16):
+			self.zyngui.zynmidi.set_midi_control(chan, 120, 0)
 
 #******************************************************************************

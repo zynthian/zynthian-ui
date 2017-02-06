@@ -38,7 +38,7 @@ from . import zynthian_engine
 class zynthian_engine_zynaddsubfx(zynthian_engine):
 	name="ZynAddSubFX"
 	nickname="ZY"
-	command=None
+
 	osc_paths_data=[]
 
 	conf_dir="./data/zynconf"
@@ -83,20 +83,21 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		],0,'resonance']
 	]
 
-	def __init__(self,parent=None):
+	#----------------------------------------------------------------------------
+	# Initialization
+	#----------------------------------------------------------------------------
+
+	def __init__(self, zyngui=None):
 		if self.config_remote_display():
-			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_16ch.xmz", "-a")
+			self.command=("/usr/local/bin/zynaddsubfx", "-O", "jack", "-I", "jack", "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_16ch.xmz", "-a")
 		else:
-			self.command=("/usr/local/bin/zynaddsubfx", "-O", self.audio_driver, "-I", self.midi_driver, "-U", "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_16ch.xmz", "-a")
-		super().__init__(parent)
+			self.command=("/usr/local/bin/zynaddsubfx", "-O", "jack", "-I", "jack", "-U", "-P", str(self.osc_target_port), "-l", self.conf_dir+"/zasfx_16ch.xmz", "-a")
+		super().__init__(zyngui)
 		self.osc_init()
 
-	def osc_add_methods(self):
-			self.osc_server.add_method("/volume", 'i', self.cb_osc_load_instr)
-			self.osc_server.add_method("/paths", None, self.parent.cb_osc_paths)
-			self.osc_server.add_method(None, 'i', self.parent.cb_osc_ctrl)
-			#super().osc_add_methods()
-			#liblo.send(self.osc_target, "/echo")
+	#----------------------------------------------------------------------------
+	# Bank & Preset Managament
+	#----------------------------------------------------------------------------
 
 	def load_bank_list(self):
 		self.load_bank_dirlist(self.bank_dirs)
@@ -115,6 +116,19 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				title=str.replace(f[5:-4], '_', ' ')
 				self.instr_list.append((f,[bank_msb,bank_lsb,prg],title))
 
+	def _set_instr(self, instr, chan=None):
+		self.start_loading()
+		super()._set_instr(instr,chan)
+		liblo.send(self.osc_target, "/volume")
+		i=0
+		while self.loading and i<100: 
+			sleep(0.1)
+			i=i+1
+
+	#----------------------------------------------------------------------------
+	# Controllers Managament
+	#----------------------------------------------------------------------------
+
 	def load_ctrl_config(self, chan=None):
 		if chan is None:
 			chan=self.midi_chan
@@ -126,14 +140,16 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 					tpl=Template(ctrl[1])
 					ctrl[1]=tpl.substitute(ch=chan)
 
-	def _set_instr(self, instr, chan=None):
-		self.start_loading()
-		super()._set_instr(instr,chan)
-		liblo.send(self.osc_target, "/volume")
-		i=0
-		while self.loading and i<100: 
-			sleep(0.1)
-			i=i+1
+	#----------------------------------------------------------------------------
+	# OSC Managament
+	#----------------------------------------------------------------------------
+
+	def osc_add_methods(self):
+			self.osc_server.add_method("/volume", 'i', self.cb_osc_load_instr)
+			self.osc_server.add_method("/paths", None, self.parent.cb_osc_paths)
+			self.osc_server.add_method(None, 'i', self.parent.cb_osc_ctrl)
+			#super().osc_add_methods()
+			#liblo.send(self.osc_target, "/echo")
 
 	def cb_osc_load_instr(self, path, args):
 		self.stop_loading()

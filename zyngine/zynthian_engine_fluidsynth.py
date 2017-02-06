@@ -26,6 +26,7 @@ import os
 import copy
 import logging
 from . import zynthian_engine
+from . import zynthian_controller
 
 #------------------------------------------------------------------------------
 # FluidSynth Engine Class
@@ -42,33 +43,20 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		('MY', os.getcwd()+"/my-data/soundfonts/sf2")
 	]
 
-	ctrl_list=[
-		[[
-			['volume',7,96,127],
-			['modulation',1,0,127],
-			['pan',10,64,127],
-			['expression',11,64,127]
-		],0,'main'],
-		[[
-			['volume',7,96,127],
-			['sustain on/off',64,'off','off|on'],
-			['reverb',91,64,127],
-			['chorus',93,0,127]
-		],0,'effects']
+	# Controller Screens Keys
+	ctrl_screens_keys=[
+		['main',['volume','expression','pan','sustain']],
+		['effects',['volume','modulation','reverb','chorus']]
 	]
 
 	def __init__(self,parent=None):
-		if self.midi_driver=='alsa':
-			mdriver="alsa_seq";
-		else:
-			mdriver=self.midi_driver
-		self.command=("/usr/bin/fluidsynth", "-p", "fluidsynth", "-a", self.audio_driver, "-m", mdriver ,"-g", "1", "-j", "-o", "synth.midi-bank-select=mma")
-		self.parent=parent
-		self.clean()
+		self.zyngui=zyngui
+		self.command=("/usr/bin/fluidsynth", "-p", "fluidsynth", "-a", "jack", "-m", "jack" ,"-g", "1", "-j", "-o", "synth.midi-bank-select=mma")
+		self.reset()
 		self.start(True)
 
-	def clean(self):
-		super().clean()
+	def reset(self):
+		super().reset()
 		self.soundfont_count=0
 		self.soundfont_index={}
 
