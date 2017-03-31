@@ -2083,7 +2083,7 @@ class zynthian_gui:
 		if not autoclose or len(self.screens['snapshot'].list_data)>1:
 			self.hide_screens(exclude='snapshot')
 		else:
-			self.show_screen('engine')
+			self.show_screen('layer')
 
 	def save_snapshot(self):
 		self.modal_screen='snapshot'
@@ -2164,8 +2164,8 @@ class zynthian_gui:
 		self.start_loading()
 		if i==0 and self.active_screen!='layer':
 			self.show_screen('layer')
-		elif i==1 and self.active_screen!='engine':
-			self.show_screen("engine")
+		elif i==1 and self.active_screen!='bank':
+			self.show_screen('bank')
 		elif i==2:
 			self.load_snapshot()
 		elif i==3:
@@ -2209,18 +2209,12 @@ class zynthian_gui:
 					screen_back='bank'
 				# If there is only one bank, go back to layer selection
 				if screen_back=='bank' and len(self.curlayer.bank_list)<=1:
-					screen_back='midich'
-				# If there is only one midich, go back to engine selection
-				if screen_back=='midich' and self.curlayer.midi_chan is None:
-					screen_back='engine'
+					screen_back='layer'
 				logging.debug("BACK TO SCREEN => "+screen_back)
 				self.show_screen(screen_back)
 		elif i==2:
 			if self.modal_screen!='snapshot':
-				if self.active_screen=='admin' or self.active_screen=='engine':
-					self.load_snapshot()
-				else:
-					self.load_snapshot(self.curlayer.engine.nickname)
+				self.load_snapshot()
 			else:
 				self.screens['snapshot'].next()
 		elif i==3:
