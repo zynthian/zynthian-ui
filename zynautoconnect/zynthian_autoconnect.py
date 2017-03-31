@@ -45,9 +45,8 @@ engine_list = [
 	"zynaddsubfx",
 	"fluidsynth",
 	"LinuxSampler",
-	"setBfree",
-	"Carla",
-	"mod-host"
+	"setBfree"
+	#"mod-host"
 ]
 
 #Input Black List

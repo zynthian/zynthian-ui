@@ -23,26 +23,9 @@
 #******************************************************************************
 
 import logging
+from string import Template
 
 class zynthian_controller:
-	engine=None
-	symbol=None
-	name=None
-	short_name=None
-
-	value=None
-	value_default=None
-	value_min=None
-	value_max=None
-	value_mult=None
-	spoints_labels=None
-	spoints_values=None
-
-	midi_chan=None
-	midi_cc=None
-	osc_port=None
-	osc_path=None
-	graph_path=None
 
 	def __init__(self, engine, symbol, name=None, options=None):
 		self.engine=engine
@@ -50,49 +33,89 @@ class zynthian_controller:
 		if name:
 			self.name=self.short_name=name
 		else:
-			self.name=symbol
-		if options:
-			self.set_options(options)
-		if self.value_type is None:
-			self.value_type='integer'
-
-	def set_options(self, options):
-		if short_name in options:
-			self.short_name=short_name
-		if value in options:
-			self.value=options['value']
-		if value_type in options:
-			self.value_type=options['value_type']
-		if value_default in options:
-			self.value_default=options['value_default']
-		if value_min in options:
-			self.value_min=options['value_min']
-		if value_max in options:
-			self.value_max=options['value_max']
-		if value_mult in options:
-			self.value_mult=options['value_mult']
-		if spoints_labels in options:
-			self.spoints_labels=options['spoint_labels']
-		if spoints_values in options:
-			self.spoints_values=options['spoint_values']
-		if midi_chan in options:
-			self.midi_chan=options['midi_chan']
-		if midi_cc in options:
-			self.midi_cc=options['midi_cc']
-		if osc_port in options:
-			self.osc_port=options['osc_port']
-		if osc_path in options:
-			self.osc_path=options['osc_path']
-		if graph_path in options:
-			self.graph_path=options['graph_path']
-
-	def set_midi_controller(self, chan, cc, val):
-		self.midi_chan=chan
-		self.midi_cc=cc
-		self.value=self.value_default=val
+			self.name=self.short_name=symbol
+		self.value=0
+		self.value_default=0
 		self.value_min=0
 		self.value_max=127
 		self.value_mult=1
+		self.labels=None
+		self.values=None
+		self.ticks=None
+		self.value2label=None
+		self.label2value=None
+
+		self.midi_chan=None
+		self.midi_cc=None
+		self.osc_port=None
+		self.osc_path=None
+		self.graph_path=None
+
+		if options:
+			self.set_options(options)
+
+	def set_options(self, options):
+		if 'short_name' in options:
+			self.short_name=short_name
+		if 'value' in options:
+			self.value=options['value']
+		if 'value_default' in options:
+			self.value_default=options['value_default']
+		if 'value_min' in options:
+			self.value_min=options['value_min']
+		if 'value_max' in options:
+			self.value_max=options['value_max']
+		if 'value_mult' in options:
+			self.value_mult=options['value_mult']
+		if 'labels' in options:
+			self.labels=options['labels']
+		if 'values' in options:
+			self.values=options['values']
+		if 'ticks' in options:
+			self.ticks=options['ticks']
+		if 'midi_chan' in options:
+			self.midi_chan=options['midi_chan']
+		if 'midi_cc' in options:
+			self.midi_cc=options['midi_cc']
+		if 'osc_port' in options:
+			self.osc_port=options['osc_port']
+		if 'osc_path' in options:
+			self.osc_path=options['osc_path']
+		if 'graph_path' in options:
+			self.graph_path=options['graph_path']
+		#Generate dictionaries for fast conversion labels<=>values
+		if self.values and self.labels:
+			self.value2label={}
+			self.label2value={}
+			for i in range(len(self.labels)):
+				self.label2value[str(self.labels[i])]=self.values[i]
+				self.value2label[str(self.values[i])]=self.labels[i]
+
+	def setup_controller(self, chan, cc, val, maxval=127):
+		self.midi_chan=chan
+		self.value=self.value_default=val
+		self.value_min=0
+		self.value_mult=1
+		# OSC Path / MIDI CC
+		if isinstance(cc,str):
+			tpl=Template(cc)
+			self.osc_path=tpl.substitute(ch=self.midi_chan)
+		else:
+			self.midi_cc=cc
+		# Numeric / Selector
+		if isinstance(maxval,int):
+			self.value_max=maxval
+		elif isinstance(maxval,str):
+			self.labels=maxval.split('|')
+			self.value_max=len(self.labels)-1
+		elif isinstance(maxval,list):
+			if isinstance(maxval[0],list):
+				self.labels=maxval[0]
+				self.ticks=maxval[1]
+				self.value_max=self.ticks[-1]
+			else:
+				self.labels=maxval
+				self.value_max=len(maxval)-1
 
 	def get_ctrl_array(self):
 		tit=self.short_name
@@ -107,62 +130,90 @@ class zynthian_controller:
 		elif self.graph_path:
 			ctrl=self.graph_path
 		val=self.value
-		if self.spoints_labels:
-			max_val='|'.join(spoints)
-		else:
-			r=self.value_max-self.value_min
-			if self.value_type=='interger' and r<128:
-				max_val=r
+		if self.labels:
+			if self.ticks:
+				minval=[self.labels, self.ticks]
+				maxval=None
 			else:
-				max_val=127
-		return [tit,chan,ctrl,val,max_val]
+				minval=self.labels
+				maxval=None
+		else:
+			minval=self.value_min
+			maxval=self.value_max
+		return [tit,chan,ctrl,val,minval,maxval]
+
+	def get_value(self):
+		return self.value
 
 	def set_value(self, val, force_sending=False):
-		# Validate value?? => Not by now ...
+		#TODO Validate Value: Range!
 		self.value=val
 		# Send value ...
-		self.engine.set_ctrl_value(self, val)
-		if force_sending:
-			if self.osc_path:
-				liblo.send(self.engine.osc_target,self.osc_path,self.get_ctrl_osc_val(ctrl[2],ctrl[3]))
-			elif self.midi_cc:
-				self.zyngui.zynmidi.set_midi_control(self.midi_chan,ctrl[1],self.get_ctrl_midi_val(ctrl[2],ctrl[3]))
+		if self.engine:
+			self.engine.send_controller_value(self)
+			if force_sending:
+				if self.osc_path:
+					liblo.send(self.engine.osc_target,self.osc_path,self.get_ctrl_osc_val())
+				elif self.midi_cc:
+					self.zyngui.zynmidi.set_midi_control(self.midi_chan,self.midi_cc,self.get_ctrl_midi_val())
+
+	def get_value2label(self, val):
+		if self.value2label:
+			try:
+				return self.value2label[str(val)]
+			except:
+				return None
+		else:
+			return val
+
+	def get_label2value(self, val=None):
+		if val==None:
+			val=self.value
+		if self.label2value:
+			try:
+				return self.label2value[str(val)]
+			except:
+				return None
+		else:
+			return val
 
 	def get_ctrl_midi_val(self):
 		if isinstance(self.value,int):
 			return self.value
-		#CONTINUAR AKI!!
-		if isinstance(maxval,str):
-			values=maxval.split('|')
-		elif isinstance(maxval,list):
-			if isinstance(maxval[0],list): 
-				values=maxval[0]
-				ticks=maxval[1]
-			else: values=maxval
-		elif max_val>0:
-			values=None
-			max_value=n_values=maxval
-		if values:
-			n_values=len(values)
-			step=max(1,int(16/n_values));
-			max_value=128-step;
-			try:
-				val=ticks[values.index(val)]
-			except:
-				val=int(values.index(val)*max_value/(n_values-1))
-		if val>max_value:
-			val=max_value
+		try:
+			if self.labels:
+				n_values=len(self.labels)
+				step=max(1,int(16/n_values));
+				max_value=128-step;
+				if self.ticks:
+					val=int(self.ticks[self.values.index(self.value)])
+				else:
+					val=int(self.labels.index(self.value)*max_value/(n_values-1))
+			else:
+				val=int(127*(self.value-self.value_min)/(self.value_max-self.value_min))
+		except:
+			val=0
 		return val
 
-	def get_ctrl_osc_val(self, val, maxval):
-		if maxval=='off|on':
-			if val=='on': return True
-			elif val=='off': return False
-		return val
+	def get_ctrl_osc_val(self):
+		if len(self.labels)==2:
+			if self.value=='on': return True
+			elif self.value=='off': return False
+		return self.value
 
 	def midi_learn(self):
-		logging.info("MIDI Learn: %s => NOT IMPLEMENTED!" % self.symbol)
+		if self.engine:
+			try:
+				self.engine.midi_learn(self)
+			except:
+				logging.info("MIDI Learn: %s => NOT IMPLEMENTED!" % self.symbol)
 
 	def midi_unlearn(self):
-		logging.info("MIDI Unlearn: %s => NOT IMPLEMENTED!" % self.symbol)
+		if self.engine:
+			try:
+				self.engine.midi_unlearn(self)
+			except:
+				logging.info("MIDI Unlearn: %s => NOT IMPLEMENTED!" % self.symbol)
 
+
+#******************************************************************************

@@ -34,6 +34,7 @@ from subprocess import call, Popen, PIPE, STDOUT
 from threading  import Thread
 from queue import Queue, Empty
 from string import Template
+from collections import OrderedDict
 from json import JSONEncoder, JSONDecoder
 
 from . import zynthian_controller
@@ -43,37 +44,18 @@ from . import zynthian_controller
 #------------------------------------------------------------------------------
 
 class zynthian_engine:
-	zyngui=None
-	name=""
-	nickname=""
-
-	command=None
-	command_env=None
-	proc=None
-
-	queue=None
-	thread_queue=None
-
-	osc_target=None
-	osc_target_port=6693
-	osc_server=None
-	osc_server_port=None
-	osc_server_url=None
-
-	loading=0
-	snapshot_fpath=None
-	loading_snapshot=False
 
 	# ---------------------------------------------------------------------------
 	# Default Controllers & Screens
 	# ---------------------------------------------------------------------------
 
 	# Standard MIDI Controllers
-	midi_ctrls=[
+	_ctrls=[
 		['volume',7,96],
 		['modulation',1,0],
 		['pan',10,64],
 		['expression',11,127],
+		['FX send',12,0],
 		['sustain',64,'off',['off','on']],
 		['resonance',71,64],
 		['cutoff',74,64],
@@ -81,8 +63,8 @@ class zynthian_engine:
 		['chorus',93,2]
 	]
 
-	# Controller Screens Keys
-	ctrl_screens_keys=[
+	# Controller Screens
+	_ctrl_screens=[
 		#['main',['volume','modulation','cutoff','resonance']],
 		['main',['volume','expression','pan','sustain']],
 		['effects',['volume','modulation','reverb','chorus']]
@@ -94,15 +76,35 @@ class zynthian_engine:
 
 	def __init__(self, zyngui=None):
 		self.zyngui=zyngui
-		self.reset()
-		self.start()
+
+		self.name=""
+		self.nickname=""
+
+		self.loading=0
+
+		#IPC variables
+		self.command=None
+		self.command_env=None
+		self.proc=None
+		self.queue=None
+		self.thread_queue=None
+
+		self.osc_target=None
+		self.osc_target_port=6693
+		self.osc_server=None
+		self.osc_server_port=None
+		self.osc_server_url=None
 
 	def __del__(self):
-		#self.stop()
-		self.reset()
+		self.stop()
 
 	def reset(self):
-		pass
+		#Reset Vars
+		self.loading=0
+		self.snapshot_fpath=None
+		self.loading_snapshot=False
+		self.layers=[]
+		#TODO: OSC, IPC, ...
 
 	def config_remote_display(self):
 		fvars={}
@@ -134,15 +136,27 @@ class zynthian_engine:
 	def start_loading(self):
 		self.loading=self.loading+1
 		if self.loading<1: self.loading=1
-		self.zyngui.start_loading()
+		if self.zyngui:
+			self.zyngui.start_loading()
 
 	def stop_loading(self):
 		self.loading=self.loading-1
 		if self.loading<0: self.loading=0
-		self.zyngui.stop_loading()
+		if self.zyngui:
+			self.zyngui.stop_loading()
 
-	def refresh(self):
-		pass
+	def reset_loading(self):
+		self.loading=0
+		if self.zyngui:
+			self.zyngui.stop_loading()
+
+	# ---------------------------------------------------------------------------
+	# Refresh Management
+	# ---------------------------------------------------------------------------
+
+	def refresh_all(self, refresh=True):
+		for layer in self.layers:
+			layer.refresh_flag=refresh
 
 	# ---------------------------------------------------------------------------
 	# Subproccess Management & IPC
@@ -212,12 +226,12 @@ class zynthian_engine:
 		if self.proc:
 			self.start_loading()
 			try:
-				#logging.debug("proc command: "+cmd)
+				logging.debug("proc command: "+cmd)
 				#self.proc.stdin.write(bytes(cmd + "\n", 'UTF-8'))
 				self.proc.stdin.write(cmd + "\n")
 				self.proc.stdin.flush()
 				out=self.proc_get_lines(tout)
-				#logging.debug("proc output:\n%s" % (out))
+				logging.debug("proc output:\n%s" % (out))
 			except Exception as err:
 				out=""
 				logging.error("Can't exec engine command: %s => %s" % (cmd,err))
@@ -304,7 +318,7 @@ class zynthian_engine:
 		self.stop_loading()
 		return res
 
-	def load_cmdlist(self,cmd):
+	def get_cmdlist(self,cmd):
 		self.start_loading()
 		res=[]
 		i=0
@@ -318,66 +332,76 @@ class zynthian_engine:
 		return res
 
 	# ---------------------------------------------------------------------------
-	# Patch Management
+	# Layer Management
 	# ---------------------------------------------------------------------------
 
-	#TODO
+	def add_layer(self, layer):
+		self.layers.append(layer)
+
+	def del_layer(self, layer):
+		self.layers.remove(layer)
+
+	def del_all_layers(self):
+		for layer in self.layers:
+			self.del_layer(layer)
+
+	# ---------------------------------------------------------------------------
+	# MIDI Channel Management
+	# ---------------------------------------------------------------------------
+
+	def set_midi_chan(self, layer):
+		pass
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-	def get_bank_list(self):
+	def get_bank_list(self, layer=None):
 		logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
 
-	def set_bank(self, chan, bank):
-		self.zyngui.zynmidi.set_midi_bank_msb(chan, bank[1])
+	def set_bank(self, layer, bank):
+		self.zyngui.zynmidi.set_midi_bank_msb(layer.get_midi_chan(), bank[1])
 
 	# ---------------------------------------------------------------------------
 	# Preset Management
 	# ---------------------------------------------------------------------------
 
-	def load_preset_list(self):
+	def get_preset_list(self, bank):
 		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name)
 
-	def set_preset(self, chan, preset):
-		self.zyngui.zynmidi.set_midi_preset(chan, preset[1][0], preset[1][1], preset[1][2])
+	def set_preset(self, layer, preset):
+		self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
 
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
 
-	def get_ctrl_list(self):
-		try:
-			return self.ctrl_config[self.midi_chan]
-		except:
-			return self.ctrl_list
+	# Get zynthian controllers dictionary:
+	# + Default implementation uses a static controller definition array
+	def get_controllers_dict(self, layer):
+		midich=layer.get_midi_chan()
+		zctrls=OrderedDict()
+		for ctrl in self._ctrls:
+			if len(ctrl)>4:
+				zctrl=zynthian_controller(self,ctrl[4],ctrl[0])
+				zctrl.setup_controller(midich,ctrl[1],ctrl[2],ctrl[3])
+			elif len(ctrl)>3:
+				zctrl=zynthian_controller(self,ctrl[0])
+				zctrl.setup_controller(midich,ctrl[1],ctrl[2],ctrl[3])
+			else:
+				zctrl=zynthian_controller(self,ctrl[0])
+				zctrl.setup_controller(midich,ctrl[1],ctrl[2])
+			zctrls[ctrl[0]]=zctrl
+		return zctrls
 
-	def get_ctrl_config(self, i):
-		try:
-			return self.ctrl_config[self.midi_chan][i][0]
-		except:
-			return None
-
-	def load_ctrl_config(self, chan=None):
-		if chan is None:
-			chan=self.midi_chan
-		self.ctrl_config[chan]=copy.deepcopy(self.ctrl_list)
-
-	def set_ctrl_value(self, ctrl, val):
+	def send_controller_value(self, zctrl):
 		pass
 
-	#Send Controller Values to Synth
-	def set_all_ctrls(self):
-		#logging.debug("set_all_ctrl()")
-		for ch in range(16):
-			if self.ctrl_config[ch]:
-				for ctrlcfg in self.ctrl_config[ch]:
-					for ctrl in ctrlcfg[0]:
-						if isinstance(ctrl[1],str):
-							liblo.send(self.osc_target,ctrl[1],self.get_ctrl_osc_val(ctrl[2],ctrl[3]))
-						elif ctrl[1]>0:
-							self.zyngui.zynmidi.set_midi_control(ch,ctrl[1],self.get_ctrl_midi_val(ctrl[2],ctrl[3]))
+	# ---------------------------------------------------------------------------
+	# Layer "Path" String
+	# ---------------------------------------------------------------------------
 
+	def get_path(self, layer):
+		return self.nickname
 
 #******************************************************************************

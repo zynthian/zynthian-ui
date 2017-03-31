@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
-# ZYNTHIAN PROJECT: Zynthian Channel (zynthian_channel)
+# ZYNTHIAN PROJECT: Zynthian Layer (zynthian_layer)
 # 
-# zynthian channel
+# zynthian layer
 # 
 # Copyright (C) 2015-2017 Fernando Moyano <jofemodo@zynthian.org>
 #
@@ -23,31 +23,10 @@
 #******************************************************************************
 
 import logging
+import copy
 from collections import OrderedDict
 
-class zynthian_channel:
-	zyngui=None
-	engine=None
-
-	midi_chan=None
-
-	patch_list=[]
-	patch_index=None
-	patch_name=None
-	patch_info=None
-
-	bank_list=[]
-	bank_index=None
-	bank_name=None
-	bank_info=None
-
-	preset_list=[]
-	preset_index=None
-	preset_name=None
-	preset_info=None
-
-	zctrl_list=None
-	zctrl_screens=None
+class zynthian_layer:
 
 	# ---------------------------------------------------------------------------
 	# Initialization
@@ -57,18 +36,55 @@ class zynthian_channel:
 		self.zyngui=zyngui
 		self.engine=engine
 		self.midi_chan=midi_chan
-		self.init_controllers()
-		self.init_controller_screens()
+
+		self.bank_list=[]
+		self.bank_index=0
+		self.bank_name=None
+		self.bank_info=None
+
+		self.preset_list=[]
+		self.preset_index=0
+		self.preset_name=None
+		self.preset_info=None
+
+		self.controllers_dict=None
+		self.ctrl_screens_dict=None
+		self.ctrl_screen_active=None
+
+		self.refresh_flag=False
+
+		self.engine.add_layer(self)
+		self.refresh_controllers()
+	
+	def refresh(self):
+		if self.refresh_flag:
+			self.refresh_flag=False
+			self.refresh_controllers()
+			self.zyngui.screens['preset'].fill_list()
+			self.zyngui.refresh_screen()
+
+	def reset(self):
+		self.refresh_flag=False
+		self.engine.del_layer(self)
 
 	# ---------------------------------------------------------------------------
-	# Patch Management
+	# MIDI chan Management
 	# ---------------------------------------------------------------------------
 
-	#TODO!
+	def set_midi_chan(self, midi_chan):
+		self.midi_chan=midi_chan
+		self.engine.set_midi_chan(self)
+
+	def get_midi_chan(self):
+		return self.midi_chan
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
+
+	def load_bank_list(self):
+		self.bank_list=self.engine.get_bank_list(self)
+		logging.debug("BANK LIST => \n%s" % str(self.bank_list))
 
 	def reset_bank(self):
 		bank_i=None
@@ -76,7 +92,7 @@ class zynthian_channel:
 		bank_info=None
 
 	def set_bank(self, i, set_engine=True):
-		if i in self.bank_list:
+		if i < len(self.bank_list):
 			last_bank_index=self.bank_index
 			last_bank_name=self.bank_name
 			self.bank_index=i
@@ -84,21 +100,32 @@ class zynthian_channel:
 			self.bank_info=copy.deepcopy(self.bank_list[i])
 			logging.info("Bank Selected: %s (%d)" % (self.bank_name,i))
 			if set_engine:
-				self.engine.set_bank(self.midi_chan, self.bank_info)
+				self.engine.set_bank(self, self.bank_info)
 			if last_bank_index!=i or not last_bank_name:
 				self.reset_preset()
+
+	def get_bank_name(self):
+		return self.preset_name
+
+	def get_bank_index(self):
+		return self.bank_index
 
 	# ---------------------------------------------------------------------------
 	# Presest Management
 	# ---------------------------------------------------------------------------
 
+	def load_preset_list(self):
+		if self.bank_info:
+			self.preset_list=self.engine.get_preset_list(self.bank_info)
+			logging.debug("PRESET LIST => \n%s" % str(self.preset_list))
+
 	def reset_preset(self):
-		preset_i=None
-		preset_name=None
-		preset_info=None
+		self.preset_i=None
+		self.preset_name=None
+		self.preset_info=None
 
 	def set_preset(self, i, set_engine=True):
-		if i in self.preset_list:
+		if i < len(self.preset_list):
 			last_preset_index=self.preset_index
 			last_preset_name=self.preset_name
 			self.preset_index=i
@@ -107,47 +134,82 @@ class zynthian_channel:
 			logging.info("Instrument Selected: %s (%d)" % (self.preset_name,i))
 			#=> '+self.preset_list[i][3]
 			if set_engine:
-				self.engine.set_engine(self.midi_chan, self.preset_info)
+				self.engine.set_preset(self, self.preset_info)
 			if last_preset_index!=i or not last_preset_name:
-				self.load_ctrl_config()
+				#TODO => Review this!!
+				#self.load_ctrl_config()
+				pass
+
+	def get_preset_name(self):
+		return self.preset_name
+
+	def get_preset_index(self):
+		return self.preset_index
 
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
 
+	def refresh_controllers(self):
+		self.init_controllers()
+		self.init_ctrl_screens()
+
 	def init_controllers(self):
-		self.init_midi_controllers()
+		self.controllers_dict=self.engine.get_controllers_dict(self)
 
-	# Create zynthian controllers list from midi controllers list
-	def init_midi_controllers(self):
-		self.zctrl_list=OrderedDict()
-		for ctrl in self.midi_ctrls:
-			zctrl=zynthian_controller(ctrl[0])
-			if 3 not in ctrl:
-				ctrl3=127
-			else
-				ctrl3=ctrl[3]
-			zctrl.set_midi_controller(self.midi_chan,ctrl[1],ctrl[2],ctrl[3])
-			self.zctrl_list[ctrl[0]]=zctrl
-		
 	# Create controller screens from zynthian controller keys
-	def init_controller_screens(self):
-		self.zctrl_screens=OrderedDict()
-		for cscr in self.ctrl_screens_keys:
-			self.add_controller_screen_from_keys(cscr)
+	def init_ctrl_screens(self):
+		self.ctrl_screens_dict=OrderedDict()
+		for cscr in self.engine._ctrl_screens:
+			self.ctrl_screens_dict[cscr[0]]=self.build_ctrl_screen(cscr[1])
+		#Set active the first screen
+		try:
+			self.ctrl_screen_active=next(iter(self.ctrl_screens_dict))
+		except:
+			self.ctrl_screen_active=None
 
-	def add_controller_screen(self, name, zctrls):
-		self.zctrl_screens[name]=zctrls
+	def get_ctrl_screens(self):
+		return self.ctrl_screens_dict
 
-	def add_controller_screen_from keys(self, name, zctrl_keys):
-		# Build array of zynthian_controllers from keys
+	def get_active_screen(self):
+		try:
+			return self.ctrl_screens_dict[self.ctrl_screen_active]
+		except:
+			return None
+
+	def get_active_screen_index(self):
+		try:
+			return list(self.ctrl_screens_dict.keys()).index(self.ctrl_screen_active)
+		except:
+			return -1
+
+	def set_active_screen(self, key):
+		if key in self.ctrl_screens_dict:
+			self.ctrl_screen_active=key
+		else:
+			logging.warning("Screen Key is not valid")
+
+	def set_active_screen_index(self, i):
+		if i>=0 and i < len(self.ctrl_screens_dict):
+			self.ctrl_screen_active=list(self.ctrl_screens_dict.items())[i][0]
+		else:
+			logging.warning("Screen Index is not valid")
+
+	# Build array of zynthian_controllers from list of keys
+	def build_ctrl_screen(self, ctrl_keys):
 		zctrls=[]
-		for k in zctrl_keys:
+		for k in ctrl_keys:
 			try:
-				zctrls.append(self.zctrl_list[k])
+				zctrls.append(self.controllers_dict[k])
 			except:
 				logging.error("Controller %s is not defined" % k)
-		self.zctrl_screens[name]=zctrls
+		return zctrls
+
+	def midi_learn(self, zctrl):
+		zctrl.midi_learn()
+
+	def midi_unlearn(self, zctrl):
+		zctrl.midi_unlearn()
 
 	# ---------------------------------------------------------------------------
 	# SnapShot Management
@@ -169,14 +231,13 @@ class zynthian_channel:
 			'engine': self.name,
 			'engine_nick': self.nickname,
 			'midi_chan': self.midi_chan,
-			'max_chan': self.max_chan,
 			'bank_index': self.bank_index,
 			'bank_name': self.bank_name,
-			'bank_set': self.bank_set,
+			'bank_info': self.bank_set,
 			'preset_index': self.preset_index,
 			'preset_name': self.preset_name,
-			'preset_set': self.preset_set,
-			'ctrl_config': self.ctrl_config
+			'preset_info': self.preset_set,
+			'controllers_dict': self.controllers_dict
 		}
 		try:
 			json=JSONEncoder().encode(status)
@@ -208,14 +269,13 @@ class zynthian_channel:
 			if self.name!=status['engine'] or self.nickname!=status['engine_nick']:
 				raise UserWarning("Incorrect Engine " + status['engine'])
 			self.midi_chan=status['midi_chan']
-			self.max_chan=status['max_chan']
 			self.bank_index=status['bank_index']
 			self.bank_name=status['bank_name']
-			self.bank_set=status['bank_set']
+			self.bank_info=status['bank_info']
 			self.preset_index=status['preset_index']
 			self.preset_name=status['preset_name']
-			self.preset_set=status['preset_set']
-			self.ctrl_config=status['ctrl_config']
+			self.preset_info=status['preset_info']
+			self.controllers_dict=status['controllers_dict']
 			self.snapshot_fpath=fpath
 		except UserWarning as e:
 			logging.error("%s" % e)
@@ -250,8 +310,26 @@ class zynthian_channel:
 	def get_path(self):
 		path=self.bank_name
 		if self.preset_name:
-			path=path + '/' + self.preset_name
+			path=path + "/" + self.preset_name
+		return path
+
+	def get_basepath(self):
+		path=self.engine.get_path(self)
+		if self.midi_chan is not None:
+			path=path + "#" + str(self.midi_chan+1)
+		return path
+
+	def get_bankpath(self):
+		path=self.get_basepath()
+		if self.bank_name:
+			path=path + " > " + self.bank_name
 		return path
 
 	def get_fullpath(self):
-		return self.engine.nickname + "#" + str(self.midi_chan) + " > " + self.get_path()
+		path=self.get_bankpath()
+		if self.preset_name:
+			path=path + "/" + self.preset_name
+		return path
+
+
+#******************************************************************************

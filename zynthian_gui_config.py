@@ -30,14 +30,14 @@ import logging
 # Log level and debuging
 log_level=logging.DEBUG
 #log_level=logging.WARNING
-raise_exceptions=False
+raise_exceptions=True
 
 # Wiring layout
-hw_version="PROTOTYPE-4"
+hw_version="DUMMIES"
 
 # Screen Size => Autodetect if None
-width=None
-height=None
+width=320
+height=240
 
 # Topbar Height
 topbar_height=24

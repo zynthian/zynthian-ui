@@ -65,7 +65,7 @@ class zynthian_zcmidi:
 	def get_midi_prg(self, chan):
 		return self.prg_selected[chan]
 
-	def set_midi_instr(self, chan, msb, lsb, prg):
+	def set_midi_preset(self, chan, msb, lsb, prg):
 		logging.debug("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb) + ", Bank LSB: " + str(lsb) + ", Program: " + str(prg))
 		self.bank_msb_selected[chan]=msb
 		self.bank_lsb_selected[chan]=lsb
@@ -74,5 +74,5 @@ class zynthian_zcmidi:
 		self.set_midi_control(chan,32,lsb)
 		self.lib_zyncoder.zynmidi_set_program(chan, prg)
 
-	def get_midi_instr(self, chan):
+	def get_midi_preset(self, chan):
 		return [self.bank_msb_selected[chan],self.bank_lsb_selected[chan],self.prg_selected[chan]]
