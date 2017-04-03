@@ -28,12 +28,12 @@ import logging
 #********************************************************************
 
 # Log level and debuging
-log_level=logging.DEBUG
-#log_level=logging.WARNING
-raise_exceptions=True
+#log_level=logging.DEBUG
+log_level=logging.WARNING
+raise_exceptions=False
 
 # Wiring layout
-hw_version="DUMMIES"
+hw_version="PROTOTYPE-4"
 
 # Screen Size => Autodetect if None
 width=320
