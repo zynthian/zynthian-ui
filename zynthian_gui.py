@@ -35,11 +35,11 @@ import tkinter
 from ctypes import *
 from time import sleep
 from string import Template
-from json import JSONDecoder
 from datetime import datetime
 from threading  import Thread, Lock
 from tkinter import font as tkFont
 from os.path import isfile, isdir, join
+from json import JSONEncoder, JSONDecoder
 from subprocess import check_output, Popen, PIPE
 
 from zyncoder import *
@@ -1201,7 +1201,7 @@ class zynthian_gui_snapshot(zynthian_selector):
 		super().fill_list()
 
 	def show(self):
-		if not zyngui.curlayer and self.action=="SAVE":
+		if not zyngui.curlayer:
 			self.action=="LOAD"
 		super().show()
 		
@@ -1222,33 +1222,6 @@ class zynthian_gui_snapshot(zynthian_selector):
 		fpath=join(self.snapshot_dir,fname)
 		return fpath
 
-	def get_snapshot_engine(self, fpath):
-		try:
-			with open(fpath,"r") as fh:
-				json=fh.read()
-		except:
-			logging.error("Can't load snapshot '%s'" % fpath)
-			return False
-		try:
-			status=JSONDecoder().decode(json)
-			engine=status['engine_nick']
-			logging.debug("Snapshot engine => %s" % (engine))
-			return engine
-		except:
-			logging.error("Invalid snapshot format => %s" % (fpath))
-			return False
-
-	def load_snapshot(self, fname):
-		fpath=join(self.snapshot_dir,fname)
-		engine=self.get_snapshot_engine(fpath)
-		if engine:
-			#Start engine if needed
-			if not zyngui.curlayer:
-				zyngui.screens['layer'].load_snapshot(fpath)
-			#Show control screen
-			zyngui.show_screen('control')
-			return True
-
 	def select_action(self, i):
 		fpath=self.list_data[i][0]
 		if self.action=="LOAD":
@@ -1257,7 +1230,7 @@ class zynthian_gui_snapshot(zynthian_selector):
 				zyngui.show_screen('layer')
 			else:
 				zyngui.screens['layer'].load_snapshot(fpath)
-				zyngui.show_screen('control')
+				#zyngui.show_screen('control')
 		elif self.action=="SAVE":
 			if fpath=='NEW':
 				fpath=self.get_new_fpath()
@@ -1286,9 +1259,8 @@ class zynthian_gui_layer(zynthian_selector):
 		super().__init__('Layer', True)
 
 	def reset(self):
-		while len(self.layers)>0:
-			self.remove_layer(0)
-		#self.layers=[]
+		self.remove_all_layers()
+		self.layers=[]
 		self.curlayer=None
 		self.index=0
 		self.fill_list()
@@ -1355,7 +1327,7 @@ class zynthian_gui_layer(zynthian_selector):
 				self.index=len(self.layers)-1
 				self.select_action(self.index)
 
-	def remove_layer(self, i):
+	def remove_layer(self, i, cleanup_unused_engines=True):
 		if i>=0 and i<len(self.layers):
 			self.layers[i].reset()
 			del self.layers[i]
@@ -1369,27 +1341,76 @@ class zynthian_gui_layer(zynthian_selector):
 				self.curlayer=self.layers[self.index-1]
 			self.fill_list()
 			self.set_selector()
+			if cleanup_unused_engines:
+				zyngui.screens['engine'].clean_unused_engines()
+
+	def remove_all_layers(self, cleanup_unused_engines=True):
+		while len(self.layers)>0:
+			self.remove_layer(0, False)
+		if cleanup_unused_engines:
 			zyngui.screens['engine'].clean_unused_engines()
 
 	#def refresh(self):
 	#	self.curlayer.refresh()
 
-	def set_preset(self, midich, preset_index, set_engine=True):
+	def set_midi_chan_preset(self, midich, preset_index):
 		for layer in self.layers:
 			mch=layer.get_midi_chan()
 			if mch is None or mch==midich:
-				layer.set_preset(preset_index, set_engine)
-
-	def load_snapshot(fpath):
-		#TODO
-		pass
-
-	def save_snapshot(fpath):
-		#TODO
-		pass
+				#TODO => Pass PROGRAM CHANGE to Linuxsampler, MOD-UI, etc.
+				layer.set_preset(preset_index,True)
 
 	def set_select_path(self):
 		self.select_path.set("Layer List")
+
+	#-------------------------------------------------------------------------------
+	# Snapshot Save & Load
+	#-------------------------------------------------------------------------------
+
+	def save_snapshot(self, fpath):
+		try:
+			snapshot={
+				'index':self.index,
+				'layers':[]
+			}
+			for layer in self.layers:
+				snapshot['layers'].append(layer.get_snapshot())
+			json=JSONEncoder().encode(snapshot)
+			logging.info("Saving snapshot %s => \n%s" % (fpath,json))
+		except Exception as e:
+			logging.error("Can't generate snapshot: %s" %e)
+			return False
+		try:
+			with open(fpath,"w") as fh:
+				fh.write(json)
+		except Exception as e:
+			logging.error("Can't save snapshot '%s': %s" % (fpath,e))
+			return False
+		return True
+
+	def load_snapshot(self, fpath):
+		try:
+			with open(fpath,"r") as fh:
+				json=fh.read()
+				logging.info("Loading snapshot %s => \n%s" % (fpath,json))
+		except Exception as e:
+			logging.error("Can't load snapshot '%s': %s" % (fpath,e))
+			return False
+		try:
+			snapshot=JSONDecoder().decode(json)
+			self.remove_all_layers(False)
+			for lss in snapshot['layers']:
+				engine=zyngui.screens['engine'].start_engine(lss['engine_nick'],1)
+				self.layers.append(zynthian_layer(engine,lss['midi_chan'],zyngui))
+				self.layers[-1].restore_snapshot(lss)
+			self.fill_list()
+			self.index=snapshot['index']
+			self.select_action(self.index)
+			zyngui.screens['engine'].clean_unused_engines()
+		except Exception as e:
+			logging.error("Invalid snapshot format: %s" % e)
+			return False
+		return True
 
 #-------------------------------------------------------------------------------
 # Zynthian Layer Options GUI Class
@@ -2030,8 +2051,11 @@ class zynthian_gui:
 		self.start_loading_thread()
 		self.start_zyncoder_thread()
 		# Try to load "default snapshot" or show "load snapshot" popup
-		if not self.screens['snapshot'].load_snapshot('default.zss'):
+		if not self.screens['layer'].load_snapshot('default.zss'):
 			self.load_snapshot(autoclose=True)
+
+	def stop(self):
+		self.screens['layer'].reset()
 
 	def hide_screens(self,exclude=None):
 		if not exclude:
@@ -2167,7 +2191,7 @@ class zynthian_gui:
 		elif i==1 and self.active_screen!='bank':
 			self.show_screen('bank')
 		elif i==2:
-			self.load_snapshot()
+			self.save_snapshot()
 		elif i==3:
 			if self.active_screen=='layer':
 				self.show_modal('layer_options')
@@ -2364,7 +2388,7 @@ class zynthian_gui:
 				if evtype==0xC:
 					pgm = (ev & 0xF00)>>8
 					logging.info("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan))
-					self.screens['layer'].set_preset(chan, pgm, False)
+					self.screens['layer'].set_midi_chan_preset(chan, pgm)
 					if not self.modal_screen and chan==self.curlayer.get_midi_chan():
 						self.show_screen('control')
 		except Exception as err:
@@ -2389,7 +2413,7 @@ class zynthian_gui:
 					pgm = event[7][4]
 					val = event[7][5]
 					logging.info("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan) + " => " + str(val))
-					self.screens['layer'].set_preset(chan, pgm, False)
+					self.screens['layer'].set_midi_chan_preset(chan, pgm)
 					if not self.modal_screen and chan==self.curlayer.get_midi_chan():
 						self.show_screen('control')
 		except Exception as err:
@@ -2400,8 +2424,9 @@ class zynthian_gui:
 	def zyngine_refresh(self):
 		try:
 			if self.exit_flag:
+				self.stop()
 				sys.exit(self.exit_code)
-			if self.curlayer and not self.loading:
+			elif self.curlayer and not self.loading:
 				self.curlayer.refresh()
 		except Exception as err:
 			if raise_exceptions:
@@ -2473,7 +2498,7 @@ if hw_version=="PROTOTYPE-EMU":
 
 def sigterm_handler(_signo, _stack_frame):
 	logging.info("Catch SIGTERM ...")
-	zyngui.zyngine.stop()
+	zyngui.stop()
 	top.destroy()
 
 signal.signal(signal.SIGTERM, sigterm_handler)
@@ -2483,5 +2508,6 @@ signal.signal(signal.SIGTERM, sigterm_handler)
 #-------------------------------------------------------------------------------
 
 top.mainloop()
+#zyngui.stop()
 
 #-------------------------------------------------------------------------------

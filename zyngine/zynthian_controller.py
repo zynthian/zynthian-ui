@@ -23,6 +23,7 @@
 #******************************************************************************
 
 import logging
+import liblo
 from string import Template
 
 class zynthian_controller:
@@ -150,12 +151,20 @@ class zynthian_controller:
 		self.value=val
 		# Send value ...
 		if self.engine:
-			self.engine.send_controller_value(self)
-			if force_sending:
-				if self.osc_path:
-					liblo.send(self.engine.osc_target,self.osc_path,self.get_ctrl_osc_val())
-				elif self.midi_cc:
-					self.zyngui.zynmidi.set_midi_control(self.midi_chan,self.midi_cc,self.get_ctrl_midi_val())
+			try:
+				self.engine.send_controller_value(self)
+			except:
+				if force_sending:
+					try:
+						if self.osc_path:
+							sval=self.get_ctrl_osc_val()
+							liblo.send(self.engine.osc_target,self.osc_path,sval)
+						elif self.midi_cc>0:
+							sval=self.get_ctrl_midi_val()
+							self.engine.zyngui.zynmidi.set_midi_control(self.midi_chan,self.midi_cc,sval)
+						logging.debug("Sending controller '%s' value => %s (%s)" % (self.symbol,val,sval))
+					except:
+						logging.warning("Can't send controller '%s' value" % self.symbol)
 
 	def get_value2label(self, val):
 		if self.value2label:
@@ -178,10 +187,8 @@ class zynthian_controller:
 			return val
 
 	def get_ctrl_midi_val(self):
-		if isinstance(self.value,int):
-			return self.value
 		try:
-			if self.labels:
+			if isinstance(self.labels,list):
 				n_values=len(self.labels)
 				step=max(1,int(16/n_values));
 				max_value=128-step;
@@ -196,7 +203,7 @@ class zynthian_controller:
 		return val
 
 	def get_ctrl_osc_val(self):
-		if len(self.labels)==2:
+		if self.labels and len(self.labels)==2:
 			if self.value=='on': return True
 			elif self.value=='off': return False
 		return self.value

@@ -35,7 +35,6 @@ from threading  import Thread
 from queue import Queue, Empty
 from string import Template
 from collections import OrderedDict
-from json import JSONEncoder, JSONDecoder
 
 from . import zynthian_controller
 
@@ -395,7 +394,7 @@ class zynthian_engine:
 		return zctrls
 
 	def send_controller_value(self, zctrl):
-		pass
+		raise Exception("NOT DEFINED")
 
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String

@@ -24,6 +24,7 @@
 
 import logging
 import copy
+from time import sleep
 from collections import OrderedDict
 
 class zynthian_layer:
@@ -104,6 +105,13 @@ class zynthian_layer:
 			if last_bank_index!=i or not last_bank_name:
 				self.reset_preset()
 
+	#TODO Optimize search!!
+	def set_bank_by_name(self, name, set_engine=True):
+		for i in range(len(self.bank_list)):
+			if name==self.bank_list[i][2]:
+				self.set_bank(i,set_engine)
+				break
+
 	def get_bank_name(self):
 		return self.preset_name
 
@@ -139,6 +147,13 @@ class zynthian_layer:
 				#TODO => Review this!!
 				#self.load_ctrl_config()
 				pass
+
+	#TODO Optimize search!!
+	def set_preset_by_name(self, name, set_engine=True):
+		for i in range(len(self.preset_list)):
+			if name==self.preset_list[i][2]:
+				self.set_preset(i,set_engine)
+				break
 
 	def get_preset_name(self):
 		return self.preset_name
@@ -212,96 +227,45 @@ class zynthian_layer:
 		zctrl.midi_unlearn()
 
 	# ---------------------------------------------------------------------------
-	# SnapShot Management
+	# Snapshot Management
 	# ---------------------------------------------------------------------------
 
-	def set_all_banks(self):
-		for ch in range(16):
-			if self.bank_set[ch]:
-				self.set_bank(self.bank_set[ch],ch)
-
-	def set_all_presets(self):
-		#logging.debug("set_all_preset()")
-		for ch in range(16):
-			if self.preset_set[ch]:
-				self.set_preset(self.preset_set[ch],ch)
-
-	def save_snapshot(self, fpath):
-		status={
-			'engine': self.name,
-			'engine_nick': self.nickname,
+	def get_snapshot(self):
+		snapshot={
+			'engine_name': self.engine.name,
+			'engine_nick': self.engine.nickname,
 			'midi_chan': self.midi_chan,
 			'bank_index': self.bank_index,
 			'bank_name': self.bank_name,
-			'bank_info': self.bank_set,
+			'bank_info': self.bank_info,
 			'preset_index': self.preset_index,
 			'preset_name': self.preset_name,
-			'preset_info': self.preset_set,
-			'controllers_dict': self.controllers_dict
+			'preset_info': self.preset_info,
+			'controllers_dict': {},
+			'ctrl_screen_active': self.ctrl_screen_active
 		}
-		try:
-			json=JSONEncoder().encode(status)
-			logging.info("Saving snapshot %s => \n%s" % (fpath,json))
-		except:
-			logging.error("Can't generate snapshot")
-			return False
+		for k in self.controllers_dict:
+			snapshot['controllers_dict'][k]=self.controllers_dict[k].value
+		return snapshot
 
-		try:
-			with open(fpath,"w") as fh:
-				fh.write(json)
-		except:
-			logging.error("Can't save snapshot '%s'" % fpath)
-			return False
-		self.snapshot_fpath=fpath
-		return True
+	def restore_snapshot(self, snapshot):
+		#Constructor, including engine and midi_chan info is called before
+		#self.set_midi_chan(snapshot['midi_chan'])
+		self.load_bank_list()
+		self.set_bank_by_name(snapshot['bank_name'])
+		#Wait for bank loading, zcontrols generation
+		self.load_preset_list()
+		self.set_preset_by_name(snapshot['preset_name'])
+		#Wait for preset loading
+		if self.refresh_flag:
+			self.refresh_flag=False
+			self.refresh_controllers()
+		else:
+			sleep(0.5)
+		self.ctrl_screen_active=snapshot['ctrl_screen_active']
+		for k in snapshot['controllers_dict']:
+			self.controllers_dict[k].set_value(snapshot['controllers_dict'][k],True)
 
-	def _load_snapshot(self, fpath):
-		self.loading_snapshot=True
-		try:
-			with open(fpath,"r") as fh:
-				json=fh.read()
-				logging.info("Loading snapshot %s => \n%s" % (fpath,json))
-		except:
-			logging.error("Can't load snapshot '%s'" % fpath)
-			return False
-		try:
-			status=JSONDecoder().decode(json)
-			if self.name!=status['engine'] or self.nickname!=status['engine_nick']:
-				raise UserWarning("Incorrect Engine " + status['engine'])
-			self.midi_chan=status['midi_chan']
-			self.bank_index=status['bank_index']
-			self.bank_name=status['bank_name']
-			self.bank_info=status['bank_info']
-			self.preset_index=status['preset_index']
-			self.preset_name=status['preset_name']
-			self.preset_info=status['preset_info']
-			self.controllers_dict=status['controllers_dict']
-			self.snapshot_fpath=fpath
-		except UserWarning as e:
-			logging.error("%s" % e)
-			return False
-		except Exception as e:
-			logging.error("Invalid snapshot format. %s" % e)
-			return False
-
-	def load_snapshot(self, fpath):
-		self._load_snapshot(fpath)
-		return self.load_snapshot_post()
-
-	def load_snapshot_post(self):
-		try:
-			self.set_all_bank()
-			self.load_bank_list()
-			self.set_all_preset()
-			self.load_preset_list()
-			sleep(0.2)
-			self.set_all_ctrl()
-			self.zyngui.refresh_screen()
-			self.loading_snapshot=False
-			return True
-		except Exception as e:
-			logging.error("%s" % e)
-			return False
 
 	# ---------------------------------------------------------------------------
 	# Channel "Path" String

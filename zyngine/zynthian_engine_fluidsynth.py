@@ -159,14 +159,15 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			logging.info("Load SoundFont => %s (%d)" % (sf,self.soundfont_count))
 			self.proc_cmd("load \"%s\"" % sf, 20)
 			self.soundfont_index[sf]=self.soundfont_count
-			return self.soundfont_count	# ---------------------------------------------------------------------------
+			return self.soundfont_count
+
+	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
 	def set_midi_channel(self, layer):
 		if layer.part_i is not None:
 			liblo.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
-
 
 	def unload_unused_soundfonts(self):
 		#Make a copy of soundfont index and remove used soundfonts

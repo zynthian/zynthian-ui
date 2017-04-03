@@ -257,8 +257,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				j=1
 				for i,ctrl_info in enumerate(fx_info['controls']):
 					desc=ctrl_info['DESCRIPTION'].strip()
-					parts=desc.split('[')
-					ctrl_symbol=ctrl_name=parts[0]
+					parts=desc.split(' [')
+					ctrl_symbol=fx_name+'/'+parts[0]
+					ctrl_name=parts[0]
 					if len(parts)>1:
 						sparts=parts[1].split(']')
 						unit=sparts[0]
@@ -304,7 +305,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 						'value_default': int(value),
 						'value_min': int(range_min),
 						'value_max': int(range_max),
-						'graph_path': str(layer)+'/'+fx_name+'/'+str(i)
+						'graph_path': str(fx_info['id'])+'/'+str(i)
 					}
 					zctrls[ctrl_symbol]=zynthian_controller(self,ctrl_symbol,ctrl_name,ctrl_options)
 					scrctrls.append(ctrl_symbol)
@@ -318,11 +319,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	def send_controller_value(self, zctrl):
 		if zctrl.graph_path:
 			parts=zctrl.graph_path.split('/')
-			layer=parts[0]
-			fx_name=parts[1]
-			fx_ctrl_i=parts[2]
-			instance=layer.ls_chan_info['fx_instances'][fx_name]['id']
-			self.lscp_send_single("SET EFFECT_INSTANCE_INPUT_CONTROL VALUE %s %s %s" % (instance,fx_ctrl_i,zctrl.value))
+			fx_id=parts[0]
+			fx_ctrl_i=parts[1]
+			self.lscp_send_single("SET EFFECT_INSTANCE_INPUT_CONTROL VALUE %s %s %s" % (fx_id,fx_ctrl_i,zctrl.value))
 
 	# ---------------------------------------------------------------------------
 	# Specific functions
@@ -414,8 +413,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			self.lscp_send_single("REMOVE SEND_EFFECT_CHAIN %d %d" % (self.ls_audio_device_id,layer.ls_chan_info['fx_chain_id']))
 			self.lscp_send_single("REMOVE CHANNEL %d" % layer.ls_chan_info['chan_id'])
 			for name,fx_instance in list(layer.ls_chan_info['fx_instances'].items()):
-				self.lscp_send_single("DESTROY EFFECT_INSTANCE %d" % fx_instance['id'])
-				#TODO Solve problem "ERR:0:effect still in use"
+				try:
+					self.lscp_send_single("DESTROY EFFECT_INSTANCE %d" % fx_instance['id'])
+				except:
+					pass
+					#TODO Solve problem "ERR:0:effect still in use"
 			layer.ls_chan_info=None
 
 
