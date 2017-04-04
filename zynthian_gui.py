@@ -191,6 +191,12 @@ elif hw_version=="PROTOTYPE-KEES":
 	zyncoder_pin_b=[25,26,31,7]
 	zynswitch_pin=[23,107,6,106]
 	select_ctrl=3
+# Controller RBPi connector upside / Controller Singles / Switches throw GPIO expander
+elif hw_version=="PROTOTYPE-5":
+	zyncoder_pin_a=[26,25,0,4]
+	zyncoder_pin_b=[21,27,7,3]
+	zynswitch_pin=[107,105,106,104]
+	select_ctrl=3
 # Desktop Development & Emulation
 elif hw_version=="PROTOTYPE-EMU":
 	zyncoder_pin_a=[4,5,6,7]
