@@ -73,7 +73,6 @@ class zynthian_engine_modui(zynthian_engine):
 		if not self.is_service_active():
 			logging.info("STARTING MOD-HOST & MOD-UI services...")
 			check_output(("systemctl start mod-host && systemctl start mod-ui"),shell=True)
-		self.start_websocket()
 		self.stop_loading()
 
 	def stop(self):
@@ -96,6 +95,11 @@ class zynthian_engine_modui(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
+
+	def add_layer(self, layer):
+		super().add_layer(layer)
+		if not self.websocket:
+			self.start_websocket()
 
 	def del_layer(self, layer):
 		super().del_layer(layer)
@@ -298,7 +302,7 @@ class zynthian_engine_modui(zynthian_engine):
 			bdirname=bpath.split('/')[-1]
 			#Find bundle_path in bank list ...
 			for i in range(len(layer.bank_list)):
-				#print("BUNDLE PATH SEARCH => %s <=> %s" % (bank_list[i][0].split('/')[-1], bdirname))
+				#logging.debug("BUNDLE PATH SEARCH => %s <=> %s" % (bank_list[i][0].split('/')[-1], bdirname))
 				if layer.bank_list[i][0].split('/')[-1]==bdirname:
 					bank_index=i
 					bank_name=layer.bank_list[i][2]
