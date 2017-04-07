@@ -80,6 +80,7 @@ class zynthian_engine:
 		self.nickname=""
 
 		self.loading=0
+		self.layers=[]
 
 		#IPC variables
 		self.command=None
@@ -100,9 +101,7 @@ class zynthian_engine:
 	def reset(self):
 		#Reset Vars
 		self.loading=0
-		self.snapshot_fpath=None
 		self.loading_snapshot=False
-		self.layers=[]
 		#TODO: OSC, IPC, ...
 
 	def config_remote_display(self):

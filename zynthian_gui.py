@@ -553,6 +553,9 @@ class zynthian_gui_controller:
 		#List of values (value selector)
 		if isinstance(zctrl.labels,list):
 			self.values=zctrl.labels
+			self.n_values=len(self.values)
+			self.step=max(1,int(16/self.n_values))
+			self.max_value=128-self.step;
 			if isinstance(zctrl.ticks,list):
 				self.ticks=zctrl.ticks
 				try:
@@ -560,13 +563,13 @@ class zynthian_gui_controller:
 						self.inverted=True
 				except:
 					logging.error("Ticks list is too short")
-			self.n_values=len(self.values)
-			self.step=max(1,int(16/self.n_values))
-			self.max_value=128-self.step;
 			try:
 				val=self.ticks[self.values.index(zctrl.value)]
 			except:
-				val=int(self.values.index(zctrl.value)*self.max_value/(self.n_values-1))
+				try:
+					val=int(self.values.index(zctrl.value)*self.max_value/(self.n_values-1))
+				except:
+					val=self.max_value
 		#Numeric value
 		else:
 			#"List Selection Controller" => step 1 element by rotary tick
@@ -1700,7 +1703,7 @@ class zynthian_gui_control(zynthian_selector):
 						logging.error("Controller %s (%d) => %s" % (ctrl.short_name,i,e))
 						self.zgui_controllers[i].hide()
 			#Hide rest of GUI controllers
-			for i in range(i+1,len(self.zgui_controllers)):
+			for i in range(i,len(self.zgui_controllers)):
 				self.zgui_controllers[i].hide()
 		#Hide All GUI controllers
 		else:

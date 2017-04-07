@@ -334,7 +334,7 @@ class zynthian_engine_modui(zynthian_engine):
 					#If there is range info (should be!!) ...
 					if param['valid'] and param['ranges'] and len(param['ranges'])>2:
 						#If there is Scale Points info ...
-						if param['scalePoints'] and len(param['scalePoints'])>0:
+						if param['scalePoints'] and len(param['scalePoints'])>1:
 							labels=[]
 							values=[]
 							for p in param['scalePoints']:
