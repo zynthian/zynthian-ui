@@ -1041,19 +1041,30 @@ class zynthian_gui_admin(zynthian_selector):
 		super().__init__('Action', True)
     
 	def fill_list(self):
-		if not self.list_data:
-			self.list_data=[]
-			self.list_data.append((self.update_software,0,"Update Zynthian Software"))
-			self.list_data.append((self.update_library,0,"Update Zynthian Library"))
-			#self.list_data.append((self.update_system,0,"Update Operating System"))
-			self.list_data.append((self.network_info,0,"Network Info"))
-			self.list_data.append((self.test_audio,0,"Test Audio"))
-			self.list_data.append((self.test_midi,0,"Test MIDI"))
-			self.list_data.append((self.restart_gui,0,"Restart GUI"))
-			#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
-			self.list_data.append((self.reboot,0,"Reboot"))
-			self.list_data.append((self.power_off,0,"Power Off"))
-			super().fill_list()
+		self.list_data=[]
+		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
+		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
+		#self.list_data.append((self.update_system,0,"Update Operating System"))
+		self.list_data.append((self.network_info,0,"Network Info"))
+		self.list_data.append((self.test_audio,0,"Test Audio"))
+		self.list_data.append((self.test_midi,0,"Test MIDI"))
+		if self.is_service_active("wpa_supplicant"):
+			self.list_data.append((self.stop_wifi,0,"Stop WIFI"))
+		else:
+			self.list_data.append((self.start_wifi,0,"Start WIFI"))
+		if self.is_service_active("touchosc2midi"):
+			self.list_data.append((self.stop_touchosc2midi,0,"Stop TouchOSC bridge"))
+		else:
+			self.list_data.append((self.start_touchosc2midi,0,"Start TouchOSC bridge"))
+		if self.is_service_active("aubionotes"):
+			self.list_data.append((self.stop_aubionotes,0,"Stop Audio->MIDI"))
+		else:
+			self.list_data.append((self.start_aubionotes,0,"Start Audio->MIDI"))
+		self.list_data.append((self.restart_gui,0,"Restart GUI"))
+		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
+		self.list_data.append((self.reboot,0,"Reboot"))
+		self.list_data.append((self.power_off,0,"Power Off"))
+		super().fill_list()
 
 	def select_action(self, i):
 		self.last_action=self.list_data[i][0]
@@ -1116,7 +1127,7 @@ class zynthian_gui_admin(zynthian_selector):
 			logging.info(result)
 			zyngui.add_info("\n"+str(result))
 		self.commands=None
-		zyngui.hide_info_timer(3000)
+		zyngui.hide_info_timer(5000)
 		#zyngui.stop_loading()
 		self.fill_list()
 
@@ -1167,6 +1178,38 @@ class zynthian_gui_admin(zynthian_selector):
 		zyngui.show_info("TEST MIDI")
 		check_output("systemctl start a2jmidid", shell=True)
 		self.killable_start_command(["aplaymidi -p 14 ./data/mid/test.mid"])
+
+	def start_wifi(self):
+		logging.info("STARTING WIFI")
+		check_output("systemctl start wpa_supplicant", shell=True)
+		check_output("ifup wlan1", shell=True)
+		self.fill_list()
+
+	def stop_wifi(self):
+		logging.info("STOPPING WIFI")
+		check_output("systemctl stop wpa_supplicant", shell=True)
+		check_output("ifdown wlan1", shell=True)
+		self.fill_list()
+
+	def start_touchosc2midi(self):
+		logging.info("STARTING touchosc2midi")
+		check_output("systemctl start touchosc2midi", shell=True)
+		self.fill_list()
+
+	def stop_touchosc2midi(self):
+		logging.info("STOPPING touchosc2midi")
+		check_output("systemctl stop touchosc2midi", shell=True)
+		self.fill_list()
+
+	def start_aubionotes(self):
+		logging.info("STARTING aubionotes")
+		check_output("systemctl start aubionotes", shell=True)
+		self.fill_list()
+
+	def stop_aubionotes(self):
+		logging.info("STOPPING aubionotes")
+		check_output("systemctl stop aubionotes", shell=True)
+		self.fill_list()
 
 	def restart_gui(self):
 		logging.info("RESTART GUI")
