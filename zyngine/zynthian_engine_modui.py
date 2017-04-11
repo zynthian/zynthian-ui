@@ -58,12 +58,12 @@ class zynthian_engine_modui(zynthian_engine):
 			('_', os.getcwd()+"/my-data/mod-pedalboards")
 		]
 
+		self.hw_ports={}
 		self.reset()
 		self.start()
 
 	def reset(self):
 		super().reset()
-		self.hw_ports={}
 		self.graph={}
 		self.plugin_info=OrderedDict()
 		self.plugin_zctrls=OrderedDict()
@@ -260,8 +260,6 @@ class zynthian_engine_modui(zynthian_engine):
 				elif command == "loading_end":
 					logging.info("LOADING END")
 					self.graph_autoconnect_midi_input()
-					if self.loading_snapshot:
-						self.load_snapshot_post()
 
 				elif command == "bundlepath":
 					logging.info("BUNDLEPATH %s" % args[1])
@@ -518,24 +516,5 @@ class zynthian_engine_modui(zynthian_engine):
 		except Exception as err:
 			logging.error("Parameter Not Found: "+pgraph+"/"+symbol+" => "+str(err))
 
-	#----------------------------------------------------------------------------
-	# Snapshot Managament
-	#----------------------------------------------------------------------------
-
-	def load_snapshot(self, fpath):
-		self._load_snapshot(fpath)
-		self.set_all_bank()
-		return True
-
-	def load_snapshot_post(self):
-		try:
-			#self.set_all_instr()
-			self.set_all_ctrl()
-			self.zyngui.refresh_screen()
-			self.loading_snapshot=False
-			return True
-		except Exception as e:
-			logging.error("%s" % e)
-			return False
 
 #******************************************************************************

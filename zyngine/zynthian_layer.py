@@ -139,7 +139,7 @@ class zynthian_layer:
 			self.preset_index=i
 			self.preset_name=self.preset_list[i][2]
 			self.preset_info=copy.deepcopy(self.preset_list[i])
-			logging.info("Instrument Selected: %s (%d)" % (self.preset_name,i))
+			logging.info("Preset Selected: %s (%d)" % (self.preset_name,i))
 			#=> '+self.preset_list[i][3]
 			if set_engine:
 				self.engine.set_preset(self, self.preset_info)
