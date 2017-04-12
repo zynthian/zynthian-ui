@@ -1213,13 +1213,13 @@ class zynthian_gui_admin(zynthian_selector):
 	def start_wifi(self):
 		logging.info("STARTING WIFI")
 		check_output("systemctl start wpa_supplicant", shell=True)
-		check_output("ifup wlan1", shell=True)
+		check_output("ifup wlan0", shell=True)
 		self.fill_list()
 
 	def stop_wifi(self):
 		logging.info("STOPPING WIFI")
 		check_output("systemctl stop wpa_supplicant", shell=True)
-		check_output("ifdown wlan1", shell=True)
+		check_output("ifdown wlan0", shell=True)
 		self.fill_list()
 
 	def start_touchosc2midi(self):
