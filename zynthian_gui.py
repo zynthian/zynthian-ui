@@ -1108,7 +1108,7 @@ class zynthian_gui_admin(zynthian_selector):
 			logging.info(result)
 			zyngui.add_info("\nResult:\n%s" % result)
 		self.commands=None
-		zyngui.hide_info_timer(3000)
+		zyngui.hide_info_timer(5000)
 		zyngui.stop_loading()
 		self.fill_list()
 
