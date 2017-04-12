@@ -1048,6 +1048,10 @@ class zynthian_gui_admin(zynthian_selector):
 		self.list_data.append((self.network_info,0,"Network Info"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
+		if self.is_process_running("jack_capture"):
+			self.list_data.append((self.stop_recording,0,"Stop Recording"))
+		else:
+			self.list_data.append((self.start_recording,0,"Start Recording"))
 		if self.is_service_active("wpa_supplicant"):
 			self.list_data.append((self.stop_wifi,0,"Stop WIFI"))
 		else:
@@ -1073,12 +1077,21 @@ class zynthian_gui_admin(zynthian_selector):
 	def set_select_path(self):
 		self.select_path.set("Admin")
 
+	def is_process_running(self, procname):
+		cmd="ps -e | grep %s" % procname
+		try:
+			result=check_output(cmd, shell=True).decode('utf-8','ignore')
+			if len(result)>3: return True
+			else: return False
+		except Exception as e:
+			return False
+
 	def is_service_active(self, service):
-		cmd="systemctl is-active "+str(service)
+		cmd="systemctl is-active %s" % service
 		try:
 			result=check_output(cmd, shell=True).decode('utf-8','ignore')
 		except Exception as e:
-			result="ERROR: "+str(e)
+			result="ERROR: %s" % e
 		#print("Is service "+str(service)+" active? => "+str(result))
 		if result.strip()=='active': return True
 		else: return False
@@ -1086,14 +1099,14 @@ class zynthian_gui_admin(zynthian_selector):
 	def execute_commands(self):
 		zyngui.start_loading()
 		for cmd in self.commands:
-			logging.info("Executing Command: "+cmd)
-			zyngui.add_info("\nExecuting:\n"+cmd)
+			logging.info("Executing Command: %s" % cmd)
+			zyngui.add_info("\nExecuting:\n%s" % cmd)
 			try:
 				result=check_output(cmd, shell=True).decode('utf-8','ignore')
 			except Exception as e:
-				result="ERROR: "+str(e)
+				result="ERROR: %s" % e
 			logging.info(result)
-			zyngui.add_info("\nResult:\n"+str(result))
+			zyngui.add_info("\nResult:\n%s" % result)
 		self.commands=None
 		zyngui.hide_info_timer(3000)
 		zyngui.stop_loading()
@@ -1110,22 +1123,22 @@ class zynthian_gui_admin(zynthian_selector):
 	def killable_execute_commands(self):
 		#zyngui.start_loading()
 		for cmd in self.commands:
-			logging.info("Executing Command: "+cmd)
-			zyngui.add_info("\nExecuting: "+cmd)
+			logging.info("Executing Command: %s" % cmd)
+			zyngui.add_info("\nExecuting: %s" % cmd)
 			try:
 				proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
 				self.child_pid=proc.pid
-				zyngui.add_info("\nPID: "+str(self.child_pid))
+				zyngui.add_info("\nPID: %s" % self.child_pid)
 				(output, error)=proc.communicate()
 				self.child_pid=None
 				if error:
-					result="ERROR: "+str(error)
+					result="ERROR: %s" % error
 				else:
 					result=output
 			except Exception as e:
-				result="ERROR: "+str(e)
+				result="ERROR: %s" % e
 			logging.info(result)
-			zyngui.add_info("\n"+str(result))
+			zyngui.add_info("\n %s" % result)
 		self.commands=None
 		zyngui.hide_info_timer(5000)
 		#zyngui.stop_loading()
@@ -1141,7 +1154,7 @@ class zynthian_gui_admin(zynthian_selector):
 
 	def kill_command(self):
 		if self.child_pid:
-			logging.info("Killing process "+str(self.child_pid))
+			logging.info("Killing process %s" % self.child_pid)
 			os.kill(self.child_pid, signal.SIGTERM)
 			self.child_pid=None
 			if self.last_action==self.test_midi:
@@ -1178,6 +1191,24 @@ class zynthian_gui_admin(zynthian_selector):
 		zyngui.show_info("TEST MIDI")
 		check_output("systemctl start a2jmidid", shell=True)
 		self.killable_start_command(["aplaymidi -p 14 ./data/mid/test.mid"])
+
+	def start_recording(self):
+		logging.info("RECORDING STARTED...")
+		try:
+			cmd=os.environ.get('ZYNTHIAN_SYS_DIR')+"/sbin/jack_capture.sh --zui"
+			rec_proc=Popen(cmd,shell=True)
+			sleep(0.5)
+			check_output("echo play | jack_transport", shell=True)
+		except Exception as e:
+			logging.error("ERROR STARTING RECORDING!")
+		self.fill_list()
+
+	def stop_recording(self):
+		logging.info("STOPPING RECORDING...")
+		check_output("echo stop | jack_transport", shell=True)
+		while self.is_process_running("jack_capture"):
+			sleep(1)
+		self.fill_list()
 
 	def start_wifi(self):
 		logging.info("STARTING WIFI")
