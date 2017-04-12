@@ -1196,11 +1196,14 @@ class zynthian_gui_admin(zynthian_selector):
 		logging.info("RECORDING STARTED...")
 		try:
 			cmd=os.environ.get('ZYNTHIAN_SYS_DIR')+"/sbin/jack_capture.sh --zui"
-			rec_proc=Popen(cmd,shell=True)
+			#logging.info("COMMAND: %s" % cmd)
+			rec_proc=Popen(cmd,shell=True,env=os.environ)
 			sleep(0.5)
 			check_output("echo play | jack_transport", shell=True)
 		except Exception as e:
-			logging.error("ERROR STARTING RECORDING!")
+			logging.error("ERROR STARTING RECORDING: %s" % e)
+			zyngui.show_info("ERROR STARTING RECORDING:\n %s" % e)
+			zyngui.hide_info_timer(5000)
 		self.fill_list()
 
 	def stop_recording(self):
