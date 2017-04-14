@@ -1056,14 +1056,16 @@ class zynthian_gui_admin(zynthian_selector):
 			self.list_data.append((self.stop_wifi,0,"Stop WIFI"))
 		else:
 			self.list_data.append((self.start_wifi,0,"Start WIFI"))
-		if self.is_service_active("touchosc2midi"):
-			self.list_data.append((self.stop_touchosc2midi,0,"Stop TouchOSC bridge"))
-		else:
-			self.list_data.append((self.start_touchosc2midi,0,"Start TouchOSC bridge"))
-		if self.is_service_active("aubionotes"):
-			self.list_data.append((self.stop_aubionotes,0,"Stop Audio->MIDI"))
-		else:
-			self.list_data.append((self.start_aubionotes,0,"Start Audio->MIDI"))
+		if os.environ.get('ZYNTHIAN_TOUCHOSC'):
+			if self.is_service_active("touchosc2midi"):
+				self.list_data.append((self.stop_touchosc2midi,0,"Stop TouchOSC bridge"))
+			else:
+				self.list_data.append((self.start_touchosc2midi,0,"Start TouchOSC bridge"))
+		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
+			if self.is_service_active("aubionotes"):
+				self.list_data.append((self.stop_aubionotes,0,"Stop Audio->MIDI"))
+			else:
+				self.list_data.append((self.start_aubionotes,0,"Start Audio->MIDI"))
 		self.list_data.append((self.restart_gui,0,"Restart GUI"))
 		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
 		self.list_data.append((self.reboot,0,"Reboot"))

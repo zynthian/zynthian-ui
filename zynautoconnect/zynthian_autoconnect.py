@@ -60,10 +60,10 @@ thread=None
 exit_flag=False
 
 #Aubio Config?
-if os.environ.get('ZYNTHIAN_AUBIO'):
-	zynthian_aubio=True
+if os.environ.get('ZYNTHIAN_AUBIONOTES'):
+	zynthian_aubionotes=True
 else:
-	zynthian_aubio=False
+	zynthian_aubionotes=False
 
 
 #TouchOSC Config?
@@ -88,7 +88,7 @@ def midi_autoconnect():
 	except:
 		pass
 	#Add aubio device ...
-	if zynthian_aubio:
+	if zynthian_aubionotes:
 		aubio_out=jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
 			hw_out.append(aubio_out[0])
@@ -173,7 +173,7 @@ def audio_autoconnect():
 				except:
 					logger.warning("Failed system output audio connection: %s" % (str(devs[0])))
 
-	if zynthian_aubio:
+	if zynthian_aubionotes:
 		#Get System Capture and Aubio Input ports ...
 		sys_input=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
 		aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
