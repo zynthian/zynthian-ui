@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#********************************************************************
+#******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Classes and Main Program for Zynthian GUI, the official User 
@@ -8,7 +8,7 @@
 # 
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
-#********************************************************************
+#******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#********************************************************************
+#******************************************************************************
 
 import os
 import sys
@@ -42,34 +42,16 @@ from os.path import isfile, isdir, join
 from json import JSONEncoder, JSONDecoder
 from subprocess import check_output, Popen, PIPE
 
+# Zynthian specific modules
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
-
 from zyngine import *
-#from zyngine.zynthian_controller import *
-#from zyngine.zynthian_zcmidi import *
-#from zyngine.zynthian_midi import *
-
 import zynautoconnect
+from zynthian_gui_config import *
 
-try:
-	from zynthian_gui_config import *
-except:
-	print("Config file 'zynthian_gui_config.py' not found. Using defaults.")
-
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Configure logging
-#-------------------------------------------------------------------------------
-
-if os.environ.get('ZYNTHIAN_LOG_LEVEL'):
-	log_level=int(os.environ.get('ZYNTHIAN_LOG_LEVEL'))
-elif log_level not in globals():
-	log_level=logging.DEBUG
-
-if os.environ.get('ZYNTHIAN_RAISE_EXCEPTIONS'):
-	raise_exceptions=int(os.environ.get('ZYNTHIAN_RAISE_EXCEPTIONS'))
-elif raise_exceptions not in globals():
-	raise_exceptions=True
+#------------------------------------------------------------------------------
 
 # Set root logging level
 logging.basicConfig(stream=sys.stderr, level=log_level)
@@ -77,161 +59,50 @@ logging.basicConfig(stream=sys.stderr, level=log_level)
 # Reduce log level for other modules
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
-#-------------------------------------------------------------------------------
-# Create Top Level Window with Fixed Size
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+# Create Top Level window with fixed size
+#------------------------------------------------------------------------------
 
 top = tkinter.Tk()
-# Screen Size
+
+# Try to autodetect screen size if not configured
 try:
-	if not width: width = top.winfo_screenwidth()
-	if not height: height = top.winfo_screenheight()
+	if not display_width:
+		display_width = top.winfo_screenwidth()
+		ctrl_width=int(display_width/4)
+	if not display_height:
+		display_height = top.winfo_screenheight()
+		topbar_height=int(display_height/10)
+		ctrl_height=int((display_height-topbar_height)/2)
 except:
-	width = 320
-	height = 240
+	logging.warning("Can't get screen size. Using default 320x240!")
+	display_width = 320
+	display_height = 240
+	topbar_height=int(display_height/10)
+	ctrl_width=int(display_width/4)
+	ctrl_height=int((display_height-topbar_height)/2)
+
 # Adjust Root Window Geometry
-top.geometry(str(width)+'x'+str(height))
-top.maxsize(width,height)
-top.minsize(width,height)
-if hw_version and hw_version!="PROTOTYPE-EMU" and hw_version!="DUMMIES":
+top.geometry(str(display_width)+'x'+str(display_height))
+top.maxsize(display_width,display_height)
+top.minsize(display_width,display_height)
+
+# Disable cursor for real Zynthian Boxes
+if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES":
 	top.config(cursor="none")
 
-#-------------------------------------------------------------------------------
-# Define some Constants and Parameters for the GUI
-#-------------------------------------------------------------------------------
-
-# Topbar Height
-if not topbar_height: topbar_height=24
-
-# Controller Size
-ctrl_width=int(width/4)
-ctrl_height=int((height-topbar_height)/2)
-
-# Controller Positions
-ctrl_pos=[
-	(1,0,"nw"),
-	(2,0,"sw"),
-	(1,2,"ne"),
-	(2,2,"se")
-]
-
-# Color Scheme
-if not color_bg: color_bg="#000000"
-if not color_tx: color_tx="#ffffff"
-if not color_on: color_on="#ff0000"
-if not color_panel_bg: color_panel_bg="#3a424d"
-color_panel_bd=color_bg
-color_panel_tx=color_tx
-color_header_bg=color_bg
-color_header_tx=color_tx
-color_ctrl_bg_off="#5a626d"
-color_ctrl_bg_on=color_on
-color_ctrl_tx=color_tx
-color_ctrl_tx_off="#e0e0e0"
-
-# Fonts
-#font_family="Helvetica" #=> the original ;-)
-#font_family="Economica" #=> small
-#font_family="Orbitron" #=> Nice, but too strange
-#font_family="Abel" #=> Quite interesting, also "Strait"
-if not font_family: font_family="Audiowide"
-if not font_topbar: font_topbar=(font_family,11)
-if not font_listbox: font_listbox=(font_family,10)
-if not font_ctrl_title_maxsize: font_ctrl_title_maxsize=11
-
-# Wiring layout
-if hw_version:
-	logging.info("HW version "+str(hw_version))
-else:
-	logging.info("No HW version file. Only touch interface available.")
-
-#-------------------------------------------------------------------------------
-# Wiring layout => GPIO pin assignment (wiringPi numbering)
-#-------------------------------------------------------------------------------
-
-# First Prototype => Generic Plastic Case
-if hw_version=="PROTOTYPE-1":
-	zyncoder_pin_a=[27,21,3,7]
-	zyncoder_pin_b=[25,26,4,0]
-	zynswitch_pin=[23,None,2,None]
-	select_ctrl=2
-# Controller RBPi connector downside, controller 1 reversed
-elif hw_version=="PROTOTYPE-2":
-	zyncoder_pin_a=[27,21,4,0]
-	zyncoder_pin_b=[25,26,3,7]
-	zynswitch_pin=[23,107,2,106]
-	select_ctrl=3
-# Controller RBPi connector upside
-elif hw_version=="PROTOTYPE-3":
-	zyncoder_pin_a=[27,21,3,7]
-	zyncoder_pin_b=[25,26,4,0]
-	zynswitch_pin=[107,23,106,2]
-	select_ctrl=3
-# Controller RBPi connector downside (Holger's way)
-elif hw_version=="PROTOTYPE-3H":
-	zyncoder_pin_a=[21,27,7,3]
-	zyncoder_pin_b=[26,25,0,4]
-	zynswitch_pin=[107,23,106,2]
-	select_ctrl=3
-# Controller RBPi connector upside / Controller Singles
-elif hw_version=="PROTOTYPE-4":
-	zyncoder_pin_a=[26,25,0,4]
-	zyncoder_pin_b=[21,27,7,3]
-	zynswitch_pin=[107,23,106,2]
-	select_ctrl=3
-# Controller RBPi connector downside / Controller Singles Inverted
-elif hw_version=="PROTOTYPE-4B":
-	zyncoder_pin_a=[25,26,4,0]
-	zyncoder_pin_b=[27,21,3,7]
-	zynswitch_pin=[23,107,2,106]
-	select_ctrl=3
-# Kees layout, for display Waveshare 3.2
-elif hw_version=="PROTOTYPE-KEES":
-	zyncoder_pin_a=[27,21,4,5]
-	zyncoder_pin_b=[25,26,31,7]
-	zynswitch_pin=[23,107,6,106]
-	select_ctrl=3
-# Controller RBPi connector upside / Controller Singles / Switches throw GPIO expander
-elif hw_version=="PROTOTYPE-5":
-	zyncoder_pin_a=[26,25,0,4]
-	zyncoder_pin_b=[21,27,7,3]
-	zynswitch_pin=[107,105,106,104]
-	select_ctrl=3
-# Desktop Development & Emulation
-elif hw_version=="PROTOTYPE-EMU":
-	zyncoder_pin_a=[4,5,6,7]
-	zyncoder_pin_b=[8,9,10,11]
-	zynswitch_pin=[0,1,2,3]
-	select_ctrl=3
-# No HW Controllers => Dummy Controllers
-elif hw_version=="DUMMIES":
-	zyncoder_pin_a=[0,0,0,0]
-	zyncoder_pin_b=[0,0,0,0]
-	zynswitch_pin=[0,0,0,0]
-	select_ctrl=3
-# No HW Controllers
-elif hw_version==None:
-	zyncoder_pin_a=None
-	zyncoder_pin_b=None
-	zynswitch_pin=None
-	select_ctrl=3
-# Default to PROTOTYPE-3
-else:
-	zyncoder_pin_a=[26,25,0,4]
-	zyncoder_pin_b=[21,27,7,3]
-	zynswitch_pin=[107,23,106,2]
-	select_ctrl=3
-
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Controller GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+
 class zynthian_gui_controller:
-	width=ctrl_width
-	height=ctrl_height
-	trw=ctrl_width-6
-	trh=13
 
 	def __init__(self, indx, frm, zctrl):
+		self.width=ctrl_width
+		self.height=ctrl_height
+		self.trw=ctrl_width-6
+		self.trh=13
+
 		self.zctrl=None
 		self.values=None
 		self.ticks=None
@@ -656,7 +527,7 @@ class zynthian_gui_controller:
 				#logging.debug("Setup zyncoder %d => %s" % (self.index,self.zctrl.midi_cc))
 				midi_cc=self.zctrl.midi_cc
 				osc_path_char=None
-			if hw_version and lib_zyncoder:
+			if lib_zyncoder:
 				if self.inverted:
 					pin_a=zyncoder_pin_b[self.index]
 					pin_b=zyncoder_pin_a[self.index]
@@ -676,7 +547,7 @@ class zynthian_gui_controller:
 			self.value=v
 			#logging.debug("CONTROL %d VALUE => %s" % (self.index,v))
 			if self.shown:
-				if set_zyncoder and hw_version and lib_zyncoder:
+				if set_zyncoder and lib_zyncoder:
 					if self.mult>1: v=self.mult*v
 					lib_zyncoder.set_value_zyncoder(self.index,c_uint(int(v)))
 				self.plot_value()
@@ -689,7 +560,7 @@ class zynthian_gui_controller:
 			logging.debug("INIT VALUE %s => %s" % (self.index,v))
 
 	def read_zyncoder(self):
-		if hw_version and lib_zyncoder:
+		if lib_zyncoder:
 			val=lib_zyncoder.get_value_zyncoder(self.index)
 			#logging.debug("ZYNCODER %d RAW VALUE => %s" % (self.index,val))
 		else:
@@ -744,43 +615,35 @@ class zynthian_gui_controller:
 					self.canvas_motion_count=self.canvas_motion_count+1
 				self.canvas_motion_dx=dx
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
-#-------------------------------------------------------------------------------
-class zynthian_selector:
-	# Listbox Size
-	lb_width=width-2*ctrl_width
-	lb_height=height-topbar_height
+#------------------------------------------------------------------------------
 
-	wide=False
-	shown=False
-	index=0
-	list_data=[]
-	selector_caption=None
-	zselector=None
-	
-	loading_imgs=[]
-	loading_index=0
-	loading_item=None
+class zynthian_selector:
 
 	def __init__(self, selcap='Select', wide=False):
+		self.index=0
+		self.list_data=[]
 		self.shown=False
-		self.wide=wide
-			
+		self.zselector=None
+
+		# Listbox Size
+		self.lb_height=display_height-topbar_height
+		self.wide=wide	
 		if self.wide:
-			self.lb_width=width-ctrl_width
+			self.lb_width=display_width-ctrl_width
 		else:
-			self.lb_width=width-2*ctrl_width-2
+			self.lb_width=display_width-2*ctrl_width-2
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(top,
-			width=width,
-			height=height,
+			width=display_width,
+			height=display_height,
 			bg=color_bg)
 
 		# Topbar's frame
 		self.tb_frame = tkinter.Frame(self.main_frame, 
-			width=width,
+			width=display_width,
 			height=topbar_height,
 			bg=color_bg)
 		self.tb_frame.grid(row=0, column=0, columnspan=3)
@@ -846,6 +709,8 @@ class zynthian_selector:
 		self.loading_canvas.grid(row=1,column=2,sticky="ne")
 
 		# Loading Image Animation
+		self.loading_index=0
+		self.loading_item=None
 		self.loading_imgs=[]
 		for i in range(13):
 			self.loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
@@ -977,16 +842,17 @@ class zynthian_selector:
 			#logging.debug("LISTBOX MOTION => %d" % self.index)
 			self.zselector.set_value(self.get_cursel(), True)
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Zynthian Info GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+
 class zynthian_gui_info:
 
 	def __init__(self):
 		self.shown=False
 		self.canvas = tkinter.Canvas(top,
-			width = width,
-			height = height,
+			width = display_width,
+			height = display_height,
 			bd=1,
 			highlightthickness=0,
 			relief='flat',
@@ -1263,9 +1129,9 @@ class zynthian_gui_admin(zynthian_selector):
 		logging.info("POWER OFF")
 		zyngui.exit(0)
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Zynthian Load/Save Snapshot GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 class zynthian_gui_snapshot(zynthian_selector):
 	snapshot_dir=os.getcwd()+"/my-data/snapshots"
@@ -1334,9 +1200,9 @@ class zynthian_gui_snapshot(zynthian_selector):
 		title=self.action.lower().title()
 		self.select_path.set(title)
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Zynthian Layer Selection GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 class zynthian_gui_layer(zynthian_selector):
 
@@ -1451,9 +1317,9 @@ class zynthian_gui_layer(zynthian_selector):
 	def set_select_path(self):
 		self.select_path.set("Layer List")
 
-	#-------------------------------------------------------------------------------
+	#----------------------------------------------------------------------------
 	# Snapshot Save & Load
-	#-------------------------------------------------------------------------------
+	#----------------------------------------------------------------------------
 
 	def save_snapshot(self, fpath):
 		try:
@@ -1500,9 +1366,9 @@ class zynthian_gui_layer(zynthian_selector):
 			return False
 		return True
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Zynthian Layer Options GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 class zynthian_gui_layer_options(zynthian_selector):
 
@@ -1538,9 +1404,9 @@ class zynthian_gui_layer_options(zynthian_selector):
 		zyngui.screens['layer'].remove_layer(self.layer_index)
 		zyngui.show_screen('layer')
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Zynthian Engine Selection GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 class zynthian_gui_engine(zynthian_selector):
 
@@ -1617,9 +1483,9 @@ class zynthian_gui_engine(zynthian_selector):
 	def set_select_path(self):
 		self.select_path.set("Engine")
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Zynthian MIDI Channel Selection GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 class zynthian_gui_midich(zynthian_selector):
 
@@ -1651,9 +1517,9 @@ class zynthian_gui_midich(zynthian_selector):
 	def set_select_path(self):
 		self.select_path.set("MIDI Channel")
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Zynthian Bank Selection GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 class zynthian_gui_bank(zynthian_selector):
 
@@ -1707,9 +1573,9 @@ class zynthian_gui_preset(zynthian_selector):
 		if zyngui.curlayer:
 			self.select_path.set(zyngui.curlayer.get_fullpath())
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Zynthian Instrument Controller GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 class zynthian_gui_control(zynthian_selector):
 	mode=None
@@ -1917,9 +1783,9 @@ class zynthian_gui_control(zynthian_selector):
 		if zyngui.curlayer:
 			self.select_path.set(zyngui.curlayer.get_fullpath())
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Zynthian X-Y Controller GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 class zynthian_gui_control_xy():
 	canvas=None
@@ -1930,7 +1796,7 @@ class zynthian_gui_control_xy():
 	def __init__(self):
 		# Init X vars
 		self.padx=24
-		self.width=width-2*self.padx
+		self.width=display_width-2*self.padx
 		self.x=self.width/2
 		self.xgui_controller=None
 		self.xvalue_max=127
@@ -1938,7 +1804,7 @@ class zynthian_gui_control_xy():
 
 		# Init X vars
 		self.pady=18
-		self.height=height-2*self.pady
+		self.height=display_height-2*self.pady
 		self.y=self.height/2
 		self.ygui_controller=None
 		self.yvalue_max=127
@@ -1946,8 +1812,8 @@ class zynthian_gui_control_xy():
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(top,
-			width=width,
-			height=height,
+			width=display_width,
+			height=display_height,
 			bg=color_panel_bg)
 
 		# Create Canvas
@@ -1964,8 +1830,8 @@ class zynthian_gui_control_xy():
 		self.canvas.bind("<B1-Motion>", self.cb_canvas)
 
 		# Create Cursor
-		self.hline=self.canvas.create_line(0,self.y,width,self.y,fill=color_on)
-		self.vline=self.canvas.create_line(self.x,0,self.x,width,fill=color_on)
+		self.hline=self.canvas.create_line(0,self.y,display_width,self.y,fill=color_on)
+		self.vline=self.canvas.create_line(self.x,0,self.x,display_width,fill=color_on)
 
 		# Show
 		self.show()
@@ -1992,19 +1858,19 @@ class zynthian_gui_control_xy():
 		xv=self.xgui_controller.value
 		if xv!=self.xvalue:
 			self.xvalue=xv
-			self.x=int(self.xvalue*width/self.xvalue_max)
-			self.canvas.coords(self.vline,self.x,0,self.x,width)
+			self.x=int(self.xvalue*display_width/self.xvalue_max)
+			self.canvas.coords(self.vline,self.x,0,self.x,self.height)
 		yv=self.ygui_controller.value
 		if yv!=self.yvalue:
 			self.yvalue=yv
-			self.y=int(self.yvalue*height/self.yvalue_max)
-			self.canvas.coords(self.hline,0,self.y,width,self.y)
+			self.y=int(self.yvalue*display_height/self.yvalue_max)
+			self.canvas.coords(self.hline,0,self.y,self.width,self.y)
 
 	def refresh(self):
 		self.xvalue=int(self.x*self.xvalue_max/self.width)
 		self.yvalue=int(self.y*self.yvalue_max/self.height)
-		self.canvas.coords(self.hline,0,self.y,width,self.y)
-		self.canvas.coords(self.vline,self.x,0,self.x,width)
+		self.canvas.coords(self.hline,0,self.y,self.width,self.y)
+		self.canvas.coords(self.vline,self.x,0,self.x,self.height)
 		if self.xgui_controller is not None:
 			self.xgui_controller.set_value(self.xvalue,True)
 		if self.ygui_controller is not None:
@@ -2023,9 +1889,9 @@ class zynthian_gui_control_xy():
 	def refresh_loading(self):
 		pass
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Zynthian OSC Browser GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 class zynthian_gui_osc_browser(zynthian_selector):
 	mode=None
@@ -2233,7 +2099,7 @@ class zynthian_gui:
 
 	# Init GPIO Switches
 	def zynswitches_init(self):
-		if hw_version and lib_zyncoder:
+		if lib_zyncoder:
 			ts=datetime.now()
 			logging.info("SWITCHES INIT...")
 			for i,pin in enumerate(zynswitch_pin):
@@ -2242,7 +2108,7 @@ class zynthian_gui:
 				logging.info("SETUP GPIO SWITCH "+str(i)+" => "+str(pin))
 
 	def zynswitches(self):
-		if hw_version and lib_zyncoder:
+		if lib_zyncoder:
 			for i in range(len(zynswitch_pin)):
 				dtus=lib_zyncoder.get_zynswitch_dtus(i)
 				if dtus>0:
@@ -2361,9 +2227,9 @@ class zynthian_gui:
 		if self.active_screen=='control' and self.screens['control'].mode=='control':
 			self.screens['control'].midi_unlearn(i)
 
-	# -------------------------------------------------------------------
+	#------------------------------------------------------------------
 	# Switch Defered Event
-	# -------------------------------------------------------------------
+	#------------------------------------------------------------------
 
 	def zynswitch_defered(self, t, i):
 		self.zynswitch_defered_event=(t,i)
@@ -2385,9 +2251,9 @@ class zynthian_gui:
 			elif event[0]=='Y':
 				self.zynswitch_Y(event[1])
 
-	# -------------------------------------------------------------------
+	#------------------------------------------------------------------
 	# Threads
-	# -------------------------------------------------------------------
+	#------------------------------------------------------------------
 
 	def start_zyncoder_thread(self):
 		if lib_zyncoder:
@@ -2448,9 +2314,9 @@ class zynthian_gui:
 		self.exit_flag=True
 		self.exit_code=code
 
-	# -------------------------------------------------------------------
+	#------------------------------------------------------------------
 	# Polling
-	# -------------------------------------------------------------------
+	#------------------------------------------------------------------
 	
 	def start_polling(self):
 		self.polling=True
@@ -2524,9 +2390,9 @@ class zynthian_gui:
 		if self.polling:
 			top.after(160, self.zyngine_refresh)
 
-	# -------------------------------------------------------------------
+	#------------------------------------------------------------------
 	# OSC callbacks
-	# -------------------------------------------------------------------
+	#------------------------------------------------------------------
 
 	def cb_osc_paths(self, path, args, types, src):
 		if isinstance(zyngui.zyngine,zynthian_engine_zynaddsubfx):
@@ -2542,33 +2408,33 @@ class zynthian_gui:
 		if path in self.screens['control'].zgui_controllers_map.keys():
 			self.screens['control'].zgui_controllers_map[path].set_init_value(args[0])
 
-	# -------------------------------------------------------------------
+	#------------------------------------------------------------------
 	# All Sounds Off => PANIC!
-	# -------------------------------------------------------------------
+	#------------------------------------------------------------------
 
 	def all_sounds_off(self):
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 120, 0)
 
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # GUI & Synth Engine initialization
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 zynautoconnect.start()
 zyngui=zynthian_gui()
 zyngui.start()
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Reparent Top Window using GTK XEmbed protocol features
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 def flushflush():
 	for i in range(1000):
 		print("FLUSHFLUSHFLUSHFLUSHFLUSHFLUSHFLUSH")
 	top.after(200, flushflush)
 
-if hw_version=="PROTOTYPE-EMU":
+if wiring_layout=="EMULATOR":
 	top_xid=top.winfo_id()
 	print("Zynthian GUI XID: "+str(top_xid))
 	if len(sys.argv)>1:
@@ -2580,9 +2446,9 @@ if hw_version=="PROTOTYPE-EMU":
 		flushflush()
 		top.after(1000, top.wm_deiconify)
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Catch SIGTERM
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 def sigterm_handler(_signo, _stack_frame):
 	logging.info("Catch SIGTERM ...")
@@ -2591,11 +2457,11 @@ def sigterm_handler(_signo, _stack_frame):
 
 signal.signal(signal.SIGTERM, sigterm_handler)
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # TKinter Main Loop
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 top.mainloop()
 #zyngui.stop()
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
