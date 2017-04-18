@@ -59,19 +59,19 @@ else:
 	logging.info("No Wiring Layout configured. Only touch interface is available.")
 
 if os.environ.get('ZYNTHIAN_WIRING_ENCODER_A'):
-	wiring_encoder_a=os.environ.get('ZYNTHIAN_WIRING_ENCODER_A').split(',')
+	zyncoder_pin_a=list(map(int, os.environ.get('ZYNTHIAN_WIRING_ENCODER_A').split(',')))
 else:
-	wiring_encoder_a=[26,25,0,4]
+	zyncoder_pin_a=None
 
 if os.environ.get('ZYNTHIAN_WIRING_ENCODER_B'):
-	wiring_encoder_b=os.environ.get('ZYNTHIAN_WIRING_ENCODER_B').split(',')
+	zyncoder_pin_b=list(map(int, os.environ.get('ZYNTHIAN_WIRING_ENCODER_B').split(',')))
 else:
-	wiring_encoder_b=[21,27,7,3]
+	zyncoder_pin_b=None
 
 if os.environ.get('ZYNTHIAN_WIRING_SWITCHES'):
-	wiring_encoder_switches=os.environ.get('ZYNTHIAN_WIRING_SWITCHES').split(',')
+	zynswitch_pin=list(map(int, os.environ.get('ZYNTHIAN_WIRING_SWITCHES').split(',')))
 else:
-	wiring_encoder_switches=[107,23,106,2]
+	zynswitch_pin=None
 
 #------------------------------------------------------------------------------
 # Zyncoder GPIO pin assignment (wiringPi numbering)
@@ -79,74 +79,71 @@ else:
 
 # First Prototype => Generic Plastic Case
 if wiring_layout=="PROTOTYPE-1":
-	zyncoder_pin_a=[27,21,3,7]
-	zyncoder_pin_b=[25,26,4,0]
-	zynswitch_pin=[23,None,2,None]
+	if not zyncoder_pin_a: zyncoder_pin_a=[27,21,3,7]
+	if not zyncoder_pin_b: zyncoder_pin_b=[25,26,4,0]
+	if not zynswitch_pin: zynswitch_pin=[23,None,2,None]
 	select_ctrl=2
 # Controller RBPi connector downside, controller 1 reversed
 elif wiring_layout=="PROTOTYPE-2":
-	zyncoder_pin_a=[27,21,4,0]
-	zyncoder_pin_b=[25,26,3,7]
-	zynswitch_pin=[23,107,2,106]
+	if not zyncoder_pin_a: zyncoder_pin_a=[27,21,4,0]
+	if not zyncoder_pin_b: zyncoder_pin_b=[25,26,3,7]
+	if not zynswitch_pin: zynswitch_pin=[23,107,2,106]
 	select_ctrl=3
 # Controller RBPi connector upside
 elif wiring_layout=="PROTOTYPE-3":
-	zyncoder_pin_a=[27,21,3,7]
-	zyncoder_pin_b=[25,26,4,0]
-	zynswitch_pin=[107,23,106,2]
+	if not zyncoder_pin_a: zyncoder_pin_a=[27,21,3,7]
+	if not zyncoder_pin_b: zyncoder_pin_b=[25,26,4,0]
+	if not zynswitch_pin: zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
 # Controller RBPi connector downside (Holger's way)
 elif wiring_layout=="PROTOTYPE-3H":
-	zyncoder_pin_a=[21,27,7,3]
-	zyncoder_pin_b=[26,25,0,4]
-	zynswitch_pin=[107,23,106,2]
+	if not zyncoder_pin_a: zyncoder_pin_a=[21,27,7,3]
+	if not zyncoder_pin_b: zyncoder_pin_b=[26,25,0,4]
+	if not zynswitch_pin: zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
 # Controller RBPi connector upside / Controller Singles
 elif wiring_layout=="PROTOTYPE-4":
-	zyncoder_pin_a=[26,25,0,4]
-	zyncoder_pin_b=[21,27,7,3]
-	zynswitch_pin=[107,23,106,2]
+	if not zyncoder_pin_a: zyncoder_pin_a=[26,25,0,4]
+	if not zyncoder_pin_b: zyncoder_pin_b=[21,27,7,3]
+	if not zynswitch_pin: zynswitch_pin=[107,23,106,2]
 	select_ctrl=3
 # Controller RBPi connector downside / Controller Singles Inverted
 elif wiring_layout=="PROTOTYPE-4B":
-	zyncoder_pin_a=[25,26,4,0]
-	zyncoder_pin_b=[27,21,3,7]
-	zynswitch_pin=[23,107,2,106]
+	if not zyncoder_pin_a: zyncoder_pin_a=[25,26,4,0]
+	if not zyncoder_pin_b: zyncoder_pin_b=[27,21,3,7]
+	if not zynswitch_pin: zynswitch_pin=[23,107,2,106]
 	select_ctrl=3
 # Kees layout, for display Waveshare 3.2
 elif wiring_layout=="PROTOTYPE-KEES":
-	zyncoder_pin_a=[27,21,4,5]
-	zyncoder_pin_b=[25,26,31,7]
-	zynswitch_pin=[23,107,6,106]
+	if not zyncoder_pin_a: zyncoder_pin_a=[27,21,4,5]
+	if not zyncoder_pin_b: zyncoder_pin_b=[25,26,31,7]
+	if not zynswitch_pin: zynswitch_pin=[23,107,6,106]
 	select_ctrl=3
 # Controller RBPi connector upside / Controller Singles / Switches throw GPIO expander
 elif wiring_layout=="PROTOTYPE-5":
-	zyncoder_pin_a=[26,25,0,4]
-	zyncoder_pin_b=[21,27,7,3]
-	zynswitch_pin=[107,105,106,104]
+	if not zyncoder_pin_a: zyncoder_pin_a=[26,25,0,4]
+	if not zyncoder_pin_b: zyncoder_pin_b=[21,27,7,3]
+	if not zynswitch_pin: zynswitch_pin=[107,105,106,104]
 	select_ctrl=3
 # Desktop Development & Emulation
 elif wiring_layout=="EMULATOR":
-	zyncoder_pin_a=[4,5,6,7]
-	zyncoder_pin_b=[8,9,10,11]
-	zynswitch_pin=[0,1,2,3]
+	if not zyncoder_pin_a: zyncoder_pin_a=[4,5,6,7]
+	if not zyncoder_pin_b: zyncoder_pin_b=[8,9,10,11]
+	if not zynswitch_pin: zynswitch_pin=[0,1,2,3]
 	select_ctrl=3
 # No HW Controllers => Dummy Controllers
 elif wiring_layout=="DUMMIES":
-	zyncoder_pin_a=[0,0,0,0]
-	zyncoder_pin_b=[0,0,0,0]
-	zynswitch_pin=[0,0,0,0]
+	if not zyncoder_pin_a: zyncoder_pin_a=[0,0,0,0]
+	if not zyncoder_pin_b: zyncoder_pin_b=[0,0,0,0]
+	if not zynswitch_pin: zynswitch_pin=[0,0,0,0]
 	select_ctrl=3
 elif wiring_layout=="CUSTOM":
-	zyncoder_pin_a=wiring_encoder_a
-	zyncoder_pin_b=wiring_encoder_b
-	zynswitch_pin=wiring_switches
 	select_ctrl=3
 # Default to DUMMIES
 else:
-	zyncoder_pin_a=[0,0,0,0]
-	zyncoder_pin_b=[0,0,0,0]
-	zynswitch_pin=[0,0,0,0]
+	if not zyncoder_pin_a: zyncoder_pin_a=[0,0,0,0]
+	if not zyncoder_pin_b: zyncoder_pin_b=[0,0,0,0]
+	if not zynswitch_pin: zynswitch_pin=[0,0,0,0]
 	select_ctrl=3
 
 #------------------------------------------------------------------------------
