@@ -38,6 +38,7 @@ from string import Template
 from datetime import datetime
 from threading  import Thread, Lock
 from tkinter import font as tkFont
+from PIL import Image, ImageTk
 from os.path import isfile, isdir, join
 from json import JSONEncoder, JSONDecoder
 from subprocess import check_output, Popen, PIPE
@@ -90,6 +91,29 @@ top.minsize(display_width,display_height)
 # Disable cursor for real Zynthian Boxes
 if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES":
 	top.config(cursor="none")
+
+# Fonts
+font_listbox=(font_family,int(1.0*font_size))
+font_topbar=(font_family,int(1.1*font_size))
+
+# Loading Logo Animation
+loading_imgs=[]
+pil_frame = Image.open("./img/zynthian_gui_loading.gif")
+fw, fh = pil_frame.size
+fw2=ctrl_width-8
+fh2=int(fh*fw2/fw)
+nframes = 0
+while pil_frame:
+	pil_frame2 = pil_frame.resize((fw2, fh2), Image.ANTIALIAS)
+	# convert PIL image object to Tkinter PhotoImage object
+	loading_imgs.append(ImageTk.PhotoImage(pil_frame2))
+	nframes += 1
+	try:
+		pil_frame.seek(nframes)
+	except EOFError:
+		break;
+#for i in range(13):
+#	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
 
 #------------------------------------------------------------------------------
 # Controller GUI Class
@@ -304,7 +328,7 @@ class zynthian_gui_controller:
 				width=16, 
 				justify=tkinter.CENTER, 
 				fill=color_ctrl_tx,
-				font=(font_family,7),
+				font=(font_family,int(0.7*font_size)),
 				text=str(self.zctrl.midi_cc))
 		else:
 			self.canvas.itemconfig(self.midi_icon, text=str(self.zctrl.midi_cc))
@@ -322,7 +346,7 @@ class zynthian_gui_controller:
 	def set_title(self, tit):
 		self.title=str(tit)
 		#Calculate the font size ...
-		max_fs=font_ctrl_title_maxsize
+		max_fs=int(1.1*font_size)
 		words=self.title.split()
 		n_words=len(words)
 		maxnumchar=max([len(w) for w in words])
@@ -330,75 +354,77 @@ class zynthian_gui_controller:
 		maxlen=rfont.measure(self.title)
 		l=790
 		if maxlen<ctrl_width and maxnumchar<11:
-			font_size=int(l/maxlen)
+			fs=int(l/maxlen)
 		elif n_words==1:
-			font_size=int(l/maxlen) # *2
+			fs=int(l/maxlen) # *2
 		elif n_words==2:
 			maxlen=max([rfont.measure(w) for w in words])
-			font_size=int(l/maxlen)
+			fs=int(l/maxlen)
 		elif n_words==3:
 			maxlen=max([rfont.measure(w) for w in [words[0]+' '+words[1], words[1]+' '+words[2]]])
 			maxlen=rfont.measure(words[0]+' '+words[1])
-			font_size=int(l/maxlen)
+			fs=int(l/maxlen)
 			max_fs=max_fs-1
 		elif n_words>=4:
 			maxlen=max([rfont.measure(w) for w in [words[0]+' '+words[1], words[2]+' '+words[3]]])
-			font_size=int(l/maxlen)
+			fs=int(l/maxlen)
 			max_fs=max_fs-1
-		font_size=min(max_fs,max(7,font_size))
-		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,font_size))
+		fs=min(max_fs,max(7,fs))
+		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,fs))
 		#Set title label
 		if not self.label_title:
 			self.label_title = tkinter.Label(self.canvas,
 				text=self.title,
-				font=(font_family,font_size),
+				font=(font_family,fs),
 				wraplength=self.width-6,
 				justify=tkinter.LEFT,
 				bg=color_panel_bg,
 				fg=color_panel_tx)
 			self.label_title.place(x=3, y=4, anchor=tkinter.NW)
 		else:
-			self.label_title.config(text=self.title,font=(font_family,font_size))
+			self.label_title.config(text=self.title,font=(font_family,fs))
 
 	def calculate_value_font_size(self):
 		if self.values:
-			rfont=tkFont.Font(family=font_family,size=10)
 			maxlen=len(max(self.values, key=len))
 			if maxlen>3:
+				rfont=tkFont.Font(family=font_family,size=font_size)
 				maxlen=max([rfont.measure(w) for w in self.values])
 			#print("LONGEST VALUE: %d" % maxlen)
 			if maxlen>100:
-				self.value_font_size=7
+				font_scale=0.7
 			elif maxlen>85:
-				self.value_font_size=8
+				font_scale=0.8
 			elif maxlen>70:
-				self.value_font_size=9
+				font_scale=0.9
 			elif maxlen>55:
-				self.value_font_size=10
+				font_scale=1.0
 			elif maxlen>40:
-				self.value_font_size=11
+				font_scale=1.1
 			elif maxlen>30:
-				self.value_font_size=12
+				font_scale=1.2
 			elif maxlen>20:
-				self.value_font_size=13
+				font_scale=1.3
 			else:
-				self.value_font_size=14
+				font_scale=1.4
 		else:
 			if self.format_print:
 				maxlen=max(len(self.format_print.format(self.zctrl.value_min)),len(self.format_print.format(self.zctrl.value_max)))
 			else:
 				maxlen=max(len(str(self.zctrl.value_min)),len(str(self.zctrl.value_max)))
 			if maxlen>5:
-				self.value_font_size=8
+				font_scale=0.8
 			elif maxlen>4:
-				self.value_font_size=9
+				font_scale=0.9
 			elif maxlen>3:
-				self.value_font_size=10
+				font_scale=1.1
 			else:
 				if self.zctrl.value_min>=0 and self.zctrl.value_max<200:
-					self.value_font_size=14
+					font_scale=1.4
 				else:
-					self.value_font_size=13
+					font_scale=1.3
+		#Calculate value font size
+		self.value_font_size=int(font_scale*font_size)
 		#Update font config in text object
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, font=(font_family,self.value_font_size))
@@ -708,13 +734,9 @@ class zynthian_selector:
 			bg = color_bg)
 		self.loading_canvas.grid(row=1,column=2,sticky="ne")
 
-		# Loading Image Animation
+		# Setup Loading Logo Animation
 		self.loading_index=0
-		self.loading_item=None
-		self.loading_imgs=[]
-		for i in range(13):
-			self.loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
-		self.loading_item=self.loading_canvas.create_image(4, 4, image = self.loading_imgs[0], anchor=tkinter.NW)
+		self.loading_item=self.loading_canvas.create_image(3, 3, image = loading_imgs[0], anchor=tkinter.NW)
 
 		# Selector Controller Caption
 		self.selector_caption=selcap
@@ -748,8 +770,8 @@ class zynthian_selector:
 			try:
 				if zyngui.loading:
 					self.loading_index=self.loading_index+1
-					if self.loading_index>13: self.loading_index=0
-					self.loading_canvas.itemconfig(self.loading_item, image=self.loading_imgs[self.loading_index])
+					if self.loading_index>len(loading_imgs)+1: self.loading_index=0
+					self.loading_canvas.itemconfig(self.loading_item, image=loading_imgs[self.loading_index])
 				else:
 					self.reset_loading()
 			except:
@@ -758,7 +780,7 @@ class zynthian_selector:
 	def reset_loading(self, force=False):
 		if self.loading_index>0 or force:
 			self.loading_index=0
-			self.loading_canvas.itemconfig(self.loading_item, image=self.loading_imgs[0])
+			self.loading_canvas.itemconfig(self.loading_item, image=loading_imgs[0])
 
 	def fill_listbox(self):
 		self.listbox.delete(0, tkinter.END)
@@ -908,20 +930,15 @@ class zynthian_gui_admin(zynthian_selector):
     
 	def fill_list(self):
 		self.list_data=[]
-		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
-		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
-		#self.list_data.append((self.update_system,0,"Update Operating System"))
 		self.list_data.append((self.network_info,0,"Network Info"))
-		self.list_data.append((self.test_audio,0,"Test Audio"))
-		self.list_data.append((self.test_midi,0,"Test MIDI"))
-		if self.is_process_running("jack_capture"):
-			self.list_data.append((self.stop_recording,0,"Stop Recording"))
-		else:
-			self.list_data.append((self.start_recording,0,"Start Recording"))
 		if self.is_service_active("wpa_supplicant"):
 			self.list_data.append((self.stop_wifi,0,"Stop WIFI"))
 		else:
 			self.list_data.append((self.start_wifi,0,"Start WIFI"))
+		if self.is_process_running("jack_capture"):
+			self.list_data.append((self.stop_recording,0,"Stop Audio Recording"))
+		else:
+			self.list_data.append((self.start_recording,0,"Start Audio Recording"))
 		if os.environ.get('ZYNTHIAN_TOUCHOSC'):
 			if self.is_service_active("touchosc2midi"):
 				self.list_data.append((self.stop_touchosc2midi,0,"Stop TouchOSC bridge"))
@@ -929,9 +946,14 @@ class zynthian_gui_admin(zynthian_selector):
 				self.list_data.append((self.start_touchosc2midi,0,"Start TouchOSC bridge"))
 		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
 			if self.is_service_active("aubionotes"):
-				self.list_data.append((self.stop_aubionotes,0,"Stop Audio->MIDI"))
+				self.list_data.append((self.stop_aubionotes,0,"Stop Audio -> MIDI"))
 			else:
-				self.list_data.append((self.start_aubionotes,0,"Start Audio->MIDI"))
+				self.list_data.append((self.start_aubionotes,0,"Start Audio -> MIDI"))
+		self.list_data.append((self.test_audio,0,"Test Audio"))
+		self.list_data.append((self.test_midi,0,"Test MIDI"))
+		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
+		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
+		#self.list_data.append((self.update_system,0,"Update Operating System"))
 		self.list_data.append((self.restart_gui,0,"Restart GUI"))
 		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
 		self.list_data.append((self.reboot,0,"Reboot"))
@@ -1027,7 +1049,7 @@ class zynthian_gui_admin(zynthian_selector):
 			self.child_pid=None
 			if self.last_action==self.test_midi:
 				check_output("systemctl stop a2jmidid", shell=True)
-				zyngui.zyngine.all_sounds_off()
+				zyngui.all_sounds_off()
 
 	def update_software(self):
 		logging.info("UPDATE SOFTWARE")

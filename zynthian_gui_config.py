@@ -219,19 +219,9 @@ else:
 	#font_family="Orbitron" #=> Nice, but too strange
 	#font_family="Abel" #=> Quite interesting, also "Strait"
 
-if os.environ.get('ZYNTHIAN_UI_FONT_TOPBAR_SIZE'):
-	font_topbar=(font_family,int(os.environ.get('ZYNTHIAN_UI_FONT_TOPBAR_SIZE')))
+if os.environ.get('ZYNTHIAN_UI_FONT_SIZE'):
+	font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE'))
 else:
-	font_topbar=(font_family,11)
-
-if os.environ.get('ZYNTHIAN_UI_FONT_LISTBOX_SIZE'):
-	font_listbox=(font_family,int(os.environ.get('ZYNTHIAN_UI_FONT_LISTBOX_SIZE')))
-else:
-	font_listbox=(font_family,10)
-
-if os.environ.get('ZYNTHIAN_UI_FONT_CTRL_TITLE_MAXSIZE'):
-	font_ctrl_title_maxsize=int(os.environ.get('ZYNTHIAN_UI_FONT_CTRL_TITLE_MAXSIZE'))
-else:
-	font_ctrl_title_maxsize=11
+	font_size=10
 
 #------------------------------------------------------------------------------
