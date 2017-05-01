@@ -39,6 +39,7 @@ from datetime import datetime
 from threading  import Thread, Lock
 from tkinter import font as tkFont
 from PIL import Image, ImageTk
+from collections import OrderedDict
 from os.path import isfile, isdir, join
 from json import JSONEncoder, JSONDecoder
 from subprocess import check_output, Popen, PIPE
@@ -1432,14 +1433,13 @@ class zynthian_gui_layer_options(zynthian_selector):
 
 class zynthian_gui_engine(zynthian_selector):
 
-	engine_info={
-		"ZY": ("ZynAddSubFX","ZynAddSubFX - Synthesizer"),
-		"FS": ("FluidSynth","FluidSynth - Sampler"),
-		"LS": ("LinuxSampler","LinuxSampler - Sampler"),
-		"BF": ("setBfree","setBfree - Hammond Emulator"),
-		"MD": ("MOD-UI","MOD-UI - Plugin Host")
-	}
-	engine_order=["ZY","LS","FS","BF","MD"]
+	engine_info=OrderedDict([
+		["ZY", ("ZynAddSubFX","ZynAddSubFX - Synthesizer")],
+		["FS", ("FluidSynth","FluidSynth - Sampler")],
+		["LS", ("LinuxSampler","LinuxSampler - Sampler")],
+		["BF", ("setBfree","setBfree - Hammond Emulator")],
+		["MD", ("MOD-UI","MOD-UI - Plugin Host")]
+	])
 
 	def __init__(self):
 		self.zyngines={}
@@ -1447,16 +1447,15 @@ class zynthian_gui_engine(zynthian_selector):
     
 	def fill_list(self):
 		self.index=0
-		if not self.list_data:
-			self.list_data=[]
-			i=0
-			for en in self.engine_order:
+		self.list_data=[]
+		i=0
+		for en in self.engine_info:
+			if en not in ["BF", "MD"] or en not in self.zyngines:
 				ei=self.engine_info[en]
 				self.list_data.append((en,i,ei[1],ei[0]))
 				i=i+1
-			super().fill_list()
-		else:
-			self.select(self.index)
+		super().fill_list()
+		self.select(self.index)
 
 	def select_action(self, i):
 		try:
