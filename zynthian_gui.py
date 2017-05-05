@@ -352,25 +352,18 @@ class zynthian_gui_controller:
 		n_words=len(words)
 		maxnumchar=max([len(w) for w in words])
 		rfont=tkFont.Font(family=font_family,size=max_fs)
-		maxlen=rfont.measure(self.title)
-		l=790
-		if maxlen<ctrl_width and maxnumchar<11:
-			fs=int(l/maxlen)
-		elif n_words==1:
-			fs=int(l/maxlen) # *2
+		if n_words==1:
+			maxlen=rfont.measure(self.title)
 		elif n_words==2:
 			maxlen=max([rfont.measure(w) for w in words])
-			fs=int(l/maxlen)
 		elif n_words==3:
 			maxlen=max([rfont.measure(w) for w in [words[0]+' '+words[1], words[1]+' '+words[2]]])
-			maxlen=rfont.measure(words[0]+' '+words[1])
-			fs=int(l/maxlen)
 			max_fs=max_fs-1
 		elif n_words>=4:
 			maxlen=max([rfont.measure(w) for w in [words[0]+' '+words[1], words[2]+' '+words[3]]])
-			fs=int(l/maxlen)
 			max_fs=max_fs-1
-		fs=min(max_fs,max(7,fs))
+		fs=int((ctrl_width-6)*max_fs/maxlen)
+		fs=min(max_fs,max(int(0.7*font_size),fs))
 		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,fs))
 		#Set title label
 		if not self.label_title:
