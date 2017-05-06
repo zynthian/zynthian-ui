@@ -2408,12 +2408,6 @@ class zynthian_gui:
 	# OSC callbacks
 	#------------------------------------------------------------------
 
-	def cb_osc_paths(self, path, args, types, src):
-		if isinstance(zyngui.zyngine,zynthian_engine_zynaddsubfx):
-			zyngui.zyngine.cb_osc_paths(path, args, types, src)
-			self.screens['control'].list_data=zyngui.zyngine.osc_paths_data
-			self.screens['control'].fill_list()
-
 	def cb_osc_bank_view(self, path, args):
 		pass
 
