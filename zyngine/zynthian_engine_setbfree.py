@@ -31,92 +31,127 @@ from . import zynthian_engine
 #------------------------------------------------------------------------------
 
 class zynthian_engine_setbfree(zynthian_engine):
-	name="setBfree"
-	nickname="BF"
+
+	# ---------------------------------------------------------------------------
+	# Controllers & Screens
+	# ---------------------------------------------------------------------------
 
 	drawbar_values=[['0','1','2','3','4','5','6','7','8'], [128,120,104,88,72,56,40,24,8]]
-	base_dir="./data/setbfree/"
 
-	max_chan=3
-	chan_names=("upper","lower","pedals")
-
-	ctrl_list=[
-		[[
-			['volume',1,96,127],
-#			['swellpedal 2',11,96,127],
-			['percussion on/off',80,'off','off|on','perc'],
-			['rotary speed',91,'off','off|chr|trm|chr','rotaryspeed'],
-#			['rotary speed',91,64,127],
-#			['rotary speed toggle',64,0,127]
-			['vibrato on/off',92,'off','off|on','vibratoupper']
-		],0,'main'],
-		[[
-			['16',70,'8',drawbar_values,'drawbar_1'],
-			['5 1/3',71,'8',drawbar_values,'drawbar_2'],
-			['8',72,'8',drawbar_values,'drawbar_3'],
-			['4',73,'8',drawbar_values,'drawbar_4']
-		],0,'drawbars low'],
-		[[
-			['2 2/3',74,'8',drawbar_values,'drawbar_5'],
-			['2',75,'8',drawbar_values,'drawbar_6'],
-			['1 3/5',76,'8',drawbar_values,'drawbar_7'],
-			['1 1/3',77,'8',drawbar_values,'drawbar_8']
-			#['1',78,'8',drawbar_values,'drawbar_9']
-		],0,'drawbars hi'],
-		[[
-			['drawbar 1',78,'8',drawbar_values,'drawbar_9'],
-			['vibrato selector',83,'c3','v1|v2|v3|c1|c2|c3','vibrato'],
-			#['percussion.volume',xx,90,127,'percvol'],
-			['percussion decay',81,'slow','slow|fast','percspeed'],
-			['percussion harmonic',82,'3rd','2nd|3rd','percharm']
-		],0,'percussion & vibrato'],
-		[[
-			['overdrive on/off',23,'off','off|on','overdrive'],
-			['overdrive character',93,64,127,'overdrive_char'],
-			['overdrive inputgain',21,64,127,'overdrive_igain'],
-			['overdrive outputgain',22,64,127,'overdrive_ogain']
-		],0,'overdrive']
+	# MIDI Controllers
+	_ctrls=[
+		['volume',1,96],
+#		['swellpedal 2',11,96],
+		['percussion on/off',80,'off','off|on','perc'],
+		['rotary speed',91,'off','off|chr|trm|chr','rotaryspeed'],
+#		['rotary speed',91,64],
+#		['rotary speed toggle',64,0],
+		['vibrato on/off',92,'off','off|on','vibratoupper'],
+		['16',70,'8',drawbar_values,'drawbar_1'],
+		['5 1/3',71,'8',drawbar_values,'drawbar_2'],
+		['8',72,'8',drawbar_values,'drawbar_3'],
+		['4',73,'0',drawbar_values,'drawbar_4'],
+		['2 2/3',74,'0',drawbar_values,'drawbar_5'],
+		['2',75,'0',drawbar_values,'drawbar_6'],
+		['1 3/5',76,'0',drawbar_values,'drawbar_7'],
+		['1 1/3',77,'0',drawbar_values,'drawbar_8'],
+		#['1',78,'8',drawbar_values,'drawbar_9'],
+		['drawbar 1',78,'0',drawbar_values,'drawbar_9'],
+		['vibrato selector',83,'c3','v1|v2|v3|c1|c2|c3','vibrato'],
+		#['percussion.volume',xx,90,127,'percvol'],
+		['percussion decay',81,'slow','slow|fast','percspeed'],
+		['percussion harmonic',82,'3rd','2nd|3rd','percharm'],
+		['overdrive on/off',23,'off','off|on','overdrive'],
+		['overdrive character',93,64,127,'overdrive_char'],
+		['overdrive inputgain',21,64,127,'overdrive_igain'],
+		['overdrive outputgain',22,64,127,'overdrive_ogain']
 	]
 
-	def __init__(self,parent=None):
-		self.command=("/usr/local/bin/setBfree", "midi.driver="+self.midi_driver, "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
-		super().__init__(parent)
+	# Controller Screens
+	_ctrl_screens=[
+		['main',['volume','percussion on/off','rotary speed','vibrato on/off']],
+		['drawbars low',['16','5 1/3','8','4']],
+		['drawbars hi',['2 2/3','2','1 3/5','1 1/3']],
+		['percussion & vibrato',['drawbar 1','vibrato selector','percussion decay','percussion harmonic']],
+		['overdrive',['overdrive on/off','overdrive character','overdrive inputgain','overdrive outputgain']]
+	]
 
-	def get_chan_name(self,chan=None):
-		if chan is None:
-			chan=self.midi_chan
+	#----------------------------------------------------------------------------
+	# Initialization
+	#----------------------------------------------------------------------------
+
+	def __init__(self, zyngui=None):
+		super().__init__(zyngui)
+		self.name="setBfree"
+		self.nickname="BF"
+		
+		self.base_dir="./data/setbfree/"
+		self.chan_names=("upper","lower","pedals")
+
+		if self.config_remote_display():
+			self.command=("/usr/local/bin/setBfree", "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
+		else:
+			self.command=("/usr/local/bin/setBfree", "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
+
+		self.start()
+		self.reset()
+
+	#----------------------------------------------------------------------------
+	# Bank Managament
+	#----------------------------------------------------------------------------
+
+	def get_bank_list(self, layer=None):
+		return self.get_filelist(self.get_bank_dir(layer),"pgm")
+
+	#----------------------------------------------------------------------------
+	# Preset Managament
+	#----------------------------------------------------------------------------
+
+	def set_preset(self, layer, preset):
+		super().set_preset(layer,preset)
+		#Set layer's refresh flag
+		layer.refresh_flag=True
+
+	def get_preset_list(self, bank):
+		return self.load_pgm_list(bank[0])
+
+	#----------------------------------------------------------------------------
+	# Controller Managament
+	#----------------------------------------------------------------------------
+
+	def get_controllers_dict(self, layer):
+		zctrls=super().get_controllers_dict(layer)
+		#Preset param's values into controllers
+		for zcname in zctrls:
+			try:
+				zctrl=zctrls[zcname]
+				zctrl.value=layer.preset_info[3][zctrl.symbol]
+				#logging.debug("%s => %s (%s)" % (zctrl.name,zctrl.symbol,zctrl.value))
+				if zctrl.symbol=='rotaryspeed':
+					if zctrl.value=='tremolo': zctrl.value='trm'
+					elif zctrl.value=='chorale': zctrl.value='chr'
+					else: zctrl.value='off'
+			except:
+				#logging.debug("No preset value for control %s" % zctrl.name)
+				pass
+		return zctrls
+
+	#----------------------------------------------------------------------------
+	# Specific functionality
+	#----------------------------------------------------------------------------
+
+	def get_chan_name(self, chan):
 		try:
 			return self.chan_names[chan]
 		except:
 			return None
 
-	def get_bank_dir(self,chan=None):
+	def get_bank_dir(self, layer):
 		bank_dir=self.base_dir+"/pgm-banks"
-		chan_name=self.get_chan_name()
+		chan_name=self.get_chan_name(layer.get_midi_chan())
 		if chan_name:
 			bank_dir=bank_dir+'/'+chan_name
 		return bank_dir
-
-	def load_bank_list(self):
-		self.load_bank_filelist(self.get_bank_dir(),"pgm")
-
-	def load_instr_list(self):
-		pgm_fpath=self.bank_list[self.get_bank_index()][0]
-		self.instr_list=self.load_pgm_list(pgm_fpath)
-
-	def load_ctrl_config(self, chan=None):
-		super().load_ctrl_config(chan)
-		#Set preset params into ctrl_config
-		for ctrlcfg in self.ctrl_config[self.midi_chan]:
-			for ctrl in ctrlcfg[0]:
-				try:
-					ctrl[2]=self.instr_set[self.midi_chan][3][ctrl[4]]
-					if ctrl[4]=='rotaryspeed':
-						if ctrl[2]=='tremolo': ctrl[2]='trm'
-						elif ctrl[2]=='chorale': ctrl[2]='chr'
-						else: ctrl[2]='off'
-				except:
-					pass
 
 	def load_pgm_list(self,fpath):
 		self.start_loading()
@@ -169,13 +204,15 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.stop_loading()
 		return pgm_list
 
+	# ---------------------------------------------------------------------------
+	# Layer "Path" String
+	# ---------------------------------------------------------------------------
 
-	def get_path(self,chan=None):
-		path=super().get_path(chan)
-		chan_name=self.get_chan_name(chan)
+	def get_path(self, layer):
+		path=self.nickname
+		chan_name=self.get_chan_name(layer.get_midi_chan())
 		if chan_name:
-			return chan_name+'/'+path
-		else:
-			return path
+			path=path+'/'+chan_name
+		return path
 
 #******************************************************************************

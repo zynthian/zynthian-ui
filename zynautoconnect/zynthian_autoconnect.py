@@ -45,9 +45,8 @@ engine_list = [
 	"zynaddsubfx",
 	"fluidsynth",
 	"LinuxSampler",
-	"setBfree",
-	"Carla",
-	"mod-host"
+	"setBfree"
+	#"mod-host"
 ]
 
 #Input Black List
@@ -61,10 +60,17 @@ thread=None
 exit_flag=False
 
 #Aubio Config?
-if os.environ.get('ZYNTHIAN_AUBIO') or (len(sys.argv)>1 and sys.argv[1]=='aubio'):
-	zynthian_aubio=True
+if os.environ.get('ZYNTHIAN_AUBIONOTES'):
+	zynthian_aubionotes=True
 else:
-	zynthian_aubio=False
+	zynthian_aubionotes=False
+
+
+#TouchOSC Config?
+if os.environ.get('ZYNTHIAN_TOUCHOSC'):
+	zynthian_touchosc=True
+else:
+	zynthian_touchosc=False
 
 #------------------------------------------------------------------------------
 
@@ -82,12 +88,20 @@ def midi_autoconnect():
 	except:
 		pass
 	#Add aubio device ...
-	if zynthian_aubio:
+	if zynthian_aubionotes:
 		aubio_out=jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
 			hw_out.append(aubio_out[0])
 		except:
 			pass
+	#Add TouchOSC devices ...
+	if zynthian_touchosc:
+		rtmidi_out=jclient.get_ports("RtMidiOut Client", is_output=True, is_physical=False, is_midi=True)
+		for port in rtmidi_out:
+			try:
+				hw_out.append(port)
+			except:
+				pass                    
 
 	#Remove HW Black-listed
 	for i,hw in enumerate(hw_out):
@@ -144,30 +158,32 @@ def midi_autoconnect():
 def audio_autoconnect():
 	logger.info("Autoconnecting Audio ...")
 
-	if zynthian_aubio:
-		#Get Alsa Input ...
-		alsa_rec=jclient.get_ports("alsa_in", is_output=True, is_audio=True)
-		aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
-		if len(alsa_rec)>0 and len(aubio_in)>0:
-			try:
-				jclient.connect(alsa_rec[0],aubio_in[0])
-			except:
-				logger.warning("Failed alsa audio input connection:  %s => %s" % (str(alsa_rec[0]),str(aubio_in[0])))
-
 	#Get System Output ...
-	sys_out=jclient.get_ports(is_audio=True, is_terminal=True)
-	if len(sys_out)==0:
-		return
+	#sys_out=jclient.get_ports(is_audio=True, is_terminal=True)
+	sys_out=jclient.get_ports(is_input=True, is_audio=True, is_physical=True)
 
 	#Connect Synth Engines to System Output
-	for engine in engine_list:
-		devs=jclient.get_ports(engine, is_output=True, is_audio=True, is_physical=False)
-		if devs:
+	if len(sys_out)>0:
+		for engine in engine_list:
+			devs=jclient.get_ports(engine, is_output=True, is_audio=True, is_physical=False)
+			if devs:
+				try:
+					jclient.connect(devs[0],sys_out[0])
+					jclient.connect(devs[1],sys_out[1])
+				except:
+					logger.warning("Failed system output audio connection: %s" % (str(devs[0])))
+
+	if zynthian_aubionotes:
+		#Get System Capture and Aubio Input ports ...
+		sys_input=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
+		aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
+		#Connect System Capture to Aubio ports
+		if len(sys_input)>0 and len(aubio_in)>0:
 			try:
-				jclient.connect(devs[0],sys_out[0])
-				jclient.connect(devs[1],sys_out[1])
+				jclient.connect(sys_input[0],aubio_in[0])
+				jclient.connect(sys_input[1],aubio_in[0])
 			except:
-				logger.warning("Failed system output audio connection: %s" % (str(devs[0])))
+				logger.warning("Failed alsa audio input connection:  %s => %s" % (str(system_input[0]),str(aubio_in[0])))
 
 def autoconnect():
 	midi_autoconnect()

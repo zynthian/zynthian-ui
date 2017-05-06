@@ -22,10 +22,10 @@
 # 
 #******************************************************************************
 
+source "/zynthian/zynthian-sys/scripts/zynthian_envars.sh"
+
 #export ZYNTHIAN_LOG_LEVEL=10			# 10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL
 #export ZYNTHIAN_RAISE_EXCEPTIONS=0
-export ZYNTHIAN_DIR="/zynthian"
-export FRAMEBUFFER="/dev/fb1"
 
 #------------------------------------------------------------------------------
 # Some Functions
@@ -62,46 +62,6 @@ function splash_zynthian_error() {
 	fi  
 }
 
-function alsa_in_start() {
-	# Start alsa_in audio input
-	while [ 1 ]; do 
-		/usr/bin/alsa_in -d hw:2
-		sleep 1
-	done
-}
-
-function alsa_in_stop() {
-	# Stop alsa_in audio input
-	killall alsa_in
-}
-
-function aubionotes_start() {
-	# Start aubionotes (audio => MIDI)
-	while [ 1 ]; do 
-		/usr/bin/aubionotes -O complex -t 0.5 -s -88  -p yinfft -l 0.5
-		sleep 1
-	done
-}
-
-function aubionotes_stop() {
-	# Stop aubionotes (audio => MIDI)
-	killall aubionotes
-}
-
-function zynthian_start() {
-	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
-		alsa_in_start &
-		aubionotes_start &
-	fi
-}
-
-function zynthian_stop() {
-	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
-		aubionotes_stop
-		alsa_in_stop
-	fi
-}
-
 #------------------------------------------------------------------------------
 # Main Program
 #------------------------------------------------------------------------------
@@ -109,7 +69,6 @@ function zynthian_stop() {
 cd $ZYNTHIAN_DIR/zynthian-ui
 
 screensaver_off
-zynthian_start
 
 while true; do
 	# Start Zynthian GUI & Synth Engine
@@ -120,19 +79,16 @@ while true; do
 	case $status in
 		0)
 			splash_zynthian
-			zynthian_stop
 			poweroff
 			break
 		;;
 		100)
 			splash_zynthian
-			zynthian_stop
 			reboot
 			break
 		;;
 		101)
 			splash_zynthian
-			zynthian_stop
 			backlight_off
 			break
 		;;
