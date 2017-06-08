@@ -126,7 +126,7 @@ class zynthian_gui_controller:
 		self.width=ctrl_width
 		self.height=ctrl_height
 		self.trw=ctrl_width-6
-		self.trh=13
+		self.trh=int(0.1*ctrl_height)
 
 		self.zctrl=None
 		self.values=None
@@ -293,7 +293,7 @@ class zynthian_gui_controller:
 
 	def plot_value_arc(self):
 		self.calculate_plot_values()
-		thickness=12
+		thickness=1.1*font_size
 		degmax=300
 		deg0=90+degmax/2
 		if self.max_value>0:
@@ -326,7 +326,7 @@ class zynthian_gui_controller:
 			self.midi_icon = self.canvas.create_text(
 				self.width/2, 
 				self.height-8, 
-				width=16, 
+				width=int(2*0.7*font_size), 
 				justify=tkinter.CENTER, 
 				fill=color_ctrl_tx,
 				font=(font_family,int(0.7*font_size)),
