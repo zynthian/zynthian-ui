@@ -52,7 +52,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		super().__init__(zyngui)
 		self.name="FluidSynth"
 		self.nickname="FS"
-		self.command=("/usr/bin/fluidsynth", "-p", "fluidsynth", "-a", "jack", "-m", "jack" ,"-g", "1", "-j", "-o", "synth.midi-bank-select", "mma", "synth.cpu-cores", "3")
+		self.command=("/usr/bin/fluidsynth", "-p", "fluidsynth", "-a", "jack", "-m", "jack" ,"-g", "1", "-j", "-o", "synth.midi-bank-select=mma", "-o", "synth.cpu-cores=3", "-o", "synth.polyphony=64")
 
 		self.soundfont_dirs=[
 			('_', os.getcwd()+"/data/soundfonts/sf2"),
@@ -113,7 +113,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		logging.info("Getting Preset List for %s" % bank[2])
 		preset_list=[]
 		sfi=self.soundfont_index[bank[0]]
-		lines=self.proc_cmd("inst %d" % sfi)
+		lines=self.proc_cmd("inst %d" % sfi, 10)
 		for f in lines:
 			try:
 				prg=int(f[4:7])
@@ -188,6 +188,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			midich=layer.get_midi_chan()
 			self.proc_cmd("router_begin note\nrouter_chan %d %d 0 %d\nrouter_end" % (midich,midich,layer.part_i))
 			self.proc_cmd("router_begin cc\nrouter_chan %d %d 0 %d\nrouter_end" % (midich,midich,layer.part_i))
+			self.proc_cmd("router_begin pbend\nrouter_chan %d %d 0 %d\nrouter_end" % (midich,midich,layer.part_i))
+			self.proc_cmd("router_begin prog\nrouter_chan %d %d 0 %d\nrouter_end" % (midich,midich,layer.part_i))
 
 	def set_all_midi_routes(self):
 		self.clear_midi_routes()
