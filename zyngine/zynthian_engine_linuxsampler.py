@@ -127,7 +127,10 @@ class zynthian_engine_linuxsampler(zynthian_engine):
    
 	def lscp_send(self,data):
 		command=command+"\r\n"
-		self.sock.send(data.encode())
+		try:
+			self.sock.send(data.encode())
+		except Exception as err:
+			logging.error("FAILED lscp_send: %s" % err)
 
 	def lscp_get_result_index(self, result):
 		parts=result.split('[')
@@ -139,8 +142,13 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		self.start_loading()
 		logging.debug("LSCP SEND => %s" % command)
 		command=command+"\r\n"
-		self.sock.send(command.encode())
-		line=self.sock.recv(4096)
+		try:
+			self.sock.send(command.encode())
+			line=self.sock.recv(4096)
+		except Exception as err:
+			logging.error("FAILED lscp_send_single: %s" % err)
+			self.stop_loading()
+			return None
 		line=line.decode()
 		logging.debug("LSCP RECEIVE => %s" % line)
 		if line[0:2]=="OK":
@@ -160,8 +168,13 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		self.start_loading()
 		logging.debug("LSCP SEND => %s" % command)
 		command=command+"\r\n"
-		self.sock.send(command.encode())
-		result=self.sock.recv(4096)
+		try:
+			self.sock.send(command.encode())
+			result=self.sock.recv(4096)
+		except Exception as err:
+			logging.error("FAILED lscp_send_multi: %s" % err)
+			self.stop_loading()
+			return None
 		lines=result.decode().split("\r\n")
 		result=OrderedDict()
 		for line in lines:
