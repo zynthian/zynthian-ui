@@ -42,11 +42,10 @@ class zynthian_engine_setbfree(zynthian_engine):
 	_ctrls=[
 		['volume',1,96],
 #		['swellpedal 2',11,96],
-		['percussion on/off',80,'off','off|on','perc'],
 		['rotary speed',91,'off','off|chr|trm|chr','rotaryspeed'],
+		['rotary select',65,'off/off','off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
 #		['rotary speed',91,64],
-#		['rotary speed toggle',64,0],
-		['vibrato on/off',92,'off','off|on','vibratoupper'],
+#		['rotary toggle',64,0],
 		['16',70,'8',drawbar_values,'drawbar_1'],
 		['5 1/3',71,'8',drawbar_values,'drawbar_2'],
 		['8',72,'8',drawbar_values,'drawbar_3'],
@@ -57,7 +56,10 @@ class zynthian_engine_setbfree(zynthian_engine):
 		['1 1/3',77,'0',drawbar_values,'drawbar_8'],
 		#['1',78,'8',drawbar_values,'drawbar_9'],
 		['drawbar 1',78,'0',drawbar_values,'drawbar_9'],
+		['reverb mix',99,4],
+		['vibrato on/off',92,'off','off|on','vibratoupper'],
 		['vibrato selector',83,'c3','v1|v2|v3|c1|c2|c3','vibrato'],
+		['percussion on/off',80,'off','off|on','perc'],
 		#['percussion.volume',xx,90,127,'percvol'],
 		['percussion decay',81,'slow','slow|fast','percspeed'],
 		['percussion harmonic',82,'3rd','2nd|3rd','percharm'],
@@ -69,10 +71,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	# Controller Screens
 	_ctrl_screens=[
-		['main',['volume','percussion on/off','rotary speed','vibrato on/off']],
+		['main',['volume','percussion on/off','rotary speed','rotary select']],
+#		['main',['volume','rotary toggle','rotary speed','rotary select']],
 		['drawbars low',['16','5 1/3','8','4']],
 		['drawbars hi',['2 2/3','2','1 3/5','1 1/3']],
-		['percussion & vibrato',['drawbar 1','vibrato selector','percussion decay','percussion harmonic']],
+		['reverb & vibrato',['drawbar 1','reverb mix','vibrato on/off','vibrato selector']],
+		['percussion',['percussion on/off','percussion decay','percussion harmonic']],
 		['overdrive',['overdrive on/off','overdrive character','overdrive inputgain','overdrive outputgain']]
 	]
 

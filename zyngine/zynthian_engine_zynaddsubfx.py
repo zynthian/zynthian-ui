@@ -200,7 +200,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def osc_add_methods(self):
 			self.osc_server.add_method("/volume", 'i', self.cb_osc_load_preset)
-			self.osc_server.add_method("/paths", None, self.zyngui.cb_osc_paths)
+			#self.osc_server.add_method("/paths", None, self.cb_osc_paths)
 			self.osc_server.add_method(None, 'i', self.zyngui.cb_osc_ctrl)
 			#super().osc_add_methods()
 			#liblo.send(self.osc_target, "/echo")
@@ -213,6 +213,11 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def cb_osc_paths(self, path, args, types, src):
+		self.get_cb_osc_paths(path, args, types, src)
+		self.zyngui.screens['control'].list_data=self.osc_paths_data
+		self.zyngui.screens['control'].fill_list()
+
+	def get_cb_osc_paths(self, path, args, types, src):
 		for a, t in zip(args, types):
 			if not a or t=='b':
 				continue
