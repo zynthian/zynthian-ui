@@ -152,17 +152,17 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def lscp_send_single(self, command):
 		self.start_loading()
-		logging.debug("LSCP SEND => %s" % command)
+		#logging.debug("LSCP SEND => %s" % command)
 		command=command+"\r\n"
 		try:
 			self.sock.send(command.encode())
 			line=self.sock.recv(4096)
 		except Exception as err:
-			logging.error("FAILED lscp_send_single: %s" % err)
+			logging.error("FAILED lscp_send_single(%s): %s" % (command,err))
 			self.stop_loading()
 			return None
 		line=line.decode()
-		logging.debug("LSCP RECEIVE => %s" % line)
+		#logging.debug("LSCP RECEIVE => %s" % line)
 		if line[0:2]=="OK":
 			result=self.lscp_get_result_index(line)
 		elif line[0:3]=="ERR":
@@ -178,19 +178,19 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def lscp_send_multi(self, command):
 		self.start_loading()
-		logging.debug("LSCP SEND => %s" % command)
+		#logging.debug("LSCP SEND => %s" % command)
 		command=command+"\r\n"
 		try:
 			self.sock.send(command.encode())
 			result=self.sock.recv(4096)
 		except Exception as err:
-			logging.error("FAILED lscp_send_multi: %s" % err)
+			logging.error("FAILED lscp_send_multi(%s): %s" % (command,err))
 			self.stop_loading()
 			return None
 		lines=result.decode().split("\r\n")
 		result=OrderedDict()
 		for line in lines:
-			logging.debug("LSCP RECEIVE => %s" % line)
+			#logging.debug("LSCP RECEIVE => %s" % line)
 			if line[0:2]=="OK":
 				result=self.lscp_get_result_index(line)
 			elif line[0:3]=="ERR":
@@ -352,6 +352,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			parts=zctrl.graph_path.split('/')
 			fx_id=parts[0]
 			fx_ctrl_i=parts[1]
+			logging.debug("LSCP: Sending controller %s => %s" % (zctrl.name,zctrl.value))
 			self.lscp_send_single("SET EFFECT_INSTANCE_INPUT_CONTROL VALUE %s %s %s" % (fx_id,fx_ctrl_i,zctrl.value))
 		else:
 			super.send_controller_value(zctrl)
@@ -457,32 +458,38 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			
 			# Load instument
 			try:
+				self.sock.settimeout(5)
 				self.lscp_send_single("LOAD INSTRUMENT '%s' 0 %d" % (fpath,ls_chan_id))
 			except zyngine_lscp_error as err:
 				logging.error(err)
 			except zyngine_lscp_warning as warn:
 				logging.warning(warn)
+			self.sock.settimeout(1)
 
 	def ls_unset_channel(self, layer):
 		if layer.ls_chan_info:
+			chan_id=layer.ls_chan_info['chan_id']
+			fx_send_id=layer.ls_chan_info['fx_send_id']
+			fx_chain_id=layer.ls_chan_info['fx_chain_id']
+			self.lscp_send_single("RESET CHANNEL %d" % chan_id)
 			# Remove sampler channel
 			if self.lscp_v1_6_supported:
-				self.lscp_send_single("REMOVE CHANNEL MIDI_INPUT %d" % layer.ls_chan_info['chan_id'])
-			if layer.ls_chan_info['fx_send_id']:
-				self.lscp_send_single("REMOVE FX_SEND EFFECT %d %d" % (layer.ls_chan_info['chan_id'],layer.ls_chan_info['fx_send_id']))
-			self.lscp_send_single("REMOVE CHANNEL %d" % layer.ls_chan_info['chan_id'])
+				self.lscp_send_single("REMOVE CHANNEL MIDI_INPUT %d" % chan_id)
+			if fx_send_id:
+				self.lscp_send_single("REMOVE FX_SEND EFFECT %d %d" % (chan_id,fx_send_id))
+			self.lscp_send_single("REMOVE CHANNEL %d" % chan_id)
 
 			# Remove FX instances from FX chain
 			fx_len=len(layer.ls_chan_info['fx_instances'])
 			for i in range(fx_len):
 				try:
-					self.lscp_send_single("REMOVE SEND_EFFECT_CHAIN EFFECT %d %d %d" % (self.ls_audio_device_id,layer.ls_chan_info['fx_chain_id'],fx_len-i-1))
+					self.lscp_send_single("REMOVE SEND_EFFECT_CHAIN EFFECT %d %d %d" % (self.ls_audio_device_id,fx_chain_id,fx_len-i-1))
 				except:
 					pass
 
 			# Remove FX chain
 			try:
-				self.lscp_send_single("REMOVE SEND_EFFECT_CHAIN %d %d" % (self.ls_audio_device_id,layer.ls_chan_info['fx_chain_id']))
+				self.lscp_send_single("REMOVE SEND_EFFECT_CHAIN %d %d" % (self.ls_audio_device_id,fx_chain_id))
 			except:
 				pass
 
@@ -492,7 +499,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 					self.lscp_send_single("DESTROY EFFECT_INSTANCE %d" % fx_instance['id'])
 				except:
 					pass
-					#TODO Solve problem "ERR:0:effect still in use"
 			layer.ls_chan_info=None
 
 #******************************************************************************
