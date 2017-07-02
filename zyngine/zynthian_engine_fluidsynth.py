@@ -79,12 +79,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def add_layer(self, layer):
 		super().add_layer(layer)
-		layer.part_i=self.get_free_parts()[0]
-		logging.debug("ADD LAYER => PART %s" % layer.part_i)
+		layer.part_i=None
+		self.setup_router(layer)
 
 	def del_layer(self, layer):
 		super().del_layer(layer)
-		self.set_all_midi_routes()
+		if layer.part_i is not None:
+			self.set_all_midi_routes()
 		self.unload_unused_soundfonts()
 
 	# ---------------------------------------------------------------------------
@@ -92,7 +93,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, layer):
-		self.set_all_midi_routes()
+		self.setup_router(layer)
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
@@ -136,7 +137,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				midi_prg=preset[1][2]
 				logging.debug("Set Preset => Layer: %d, SoundFont: %d, Bank: %d, Program: %d" % (layer.part_i,sfi,midi_bank,midi_prg))
 				self.proc_cmd("select %d %d %d %d" % (layer.part_i,sfi,midi_bank,midi_prg))
-				self.set_all_midi_routes()
 			else:
 				logging.warning("Can't set Instrument before loading SoundFont")
 
@@ -169,6 +169,19 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		if layer.part_i is not None:
 			liblo.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
 
+	def setup_router(self, layer):
+		if layer.part_i is not None:
+			# Clear and recreate all routes if the routes for this layer were set already
+			self.set_all_midi_routes()
+		else:
+			# No need to clear routes if there is the only layer to add
+			try:
+				layer.part_i=self.get_free_parts()[0]
+				logging.debug("ADD LAYER => PART %s" % layer.part_i)
+			except:
+				logging.error("ADD LAYER => NO FREE PARTS!")
+			self.set_layer_midi_routes(layer)
+
 	def unload_unused_soundfonts(self):
 		#Make a copy of soundfont index and remove used soundfonts
 		sf_unload=copy.copy(self.soundfont_index)
@@ -186,10 +199,20 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def set_layer_midi_routes(self, layer):
 		if layer.part_i is not None:
 			midich=layer.get_midi_chan()
-			self.proc_cmd("router_begin note\nrouter_chan %d %d 0 %d\nrouter_end" % (midich,midich,layer.part_i))
-			self.proc_cmd("router_begin cc\nrouter_chan %d %d 0 %d\nrouter_end" % (midich,midich,layer.part_i))
-			self.proc_cmd("router_begin pbend\nrouter_chan %d %d 0 %d\nrouter_end" % (midich,midich,layer.part_i))
-			self.proc_cmd("router_begin prog\nrouter_chan %d %d 0 %d\nrouter_end" % (midich,midich,layer.part_i))
+			self.proc_cmd(
+				"router_begin note\n"
+				"router_chan {0} {0} 0 {1}\n"
+				"router_end\n"
+				"router_begin cc\n"
+				"router_chan {0} {0} 0 {1}\n"
+				"router_end\n"
+				"router_begin pbend\n"
+				"router_chan {0} {0} 0 {1}\n"
+				"router_end\n"
+				"router_begin prog\n"
+				"router_chan {0} {0} 0 {1}\n"
+				"router_end".format(midich, layer.part_i)
+			)
 
 	def set_all_midi_routes(self):
 		self.clear_midi_routes()
