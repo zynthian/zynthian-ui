@@ -53,13 +53,13 @@ function screensaver_off() {
 
 function splash_zynthian() {
 	if [ -c $FRAMEBUFFER ]; then
-		cat ./img/fb1_zynthian.raw > $FRAMEBUFFER
+		cat ./img/fb_zynthian_boot.raw > $FRAMEBUFFER
 	fi  
 }
 
 function splash_zynthian_error() {
 	if [ -c $FRAMEBUFFER ]; then
-		cat ./img/fb1_zynthian_error.raw > $FRAMEBUFFER
+		cat ./img/fb_zynthian_error.raw > $FRAMEBUFFER
 	fi  
 }
 
