@@ -25,6 +25,7 @@
 
 import sys
 import logging
+from time import sleep
 from collections import OrderedDict
 
 # Zynthian specific modules
