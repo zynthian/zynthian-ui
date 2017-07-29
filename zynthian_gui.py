@@ -68,7 +68,6 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 #-------------------------------------------------------------------------------
 
 class zynthian_gui:
-	amidi=None
 	zynmidi=None
 	screens={}
 	active_screen=None
@@ -96,7 +95,6 @@ class zynthian_gui:
 			zyngine_osc_port=6693
 			lib_zyncoder_init(zyngine_osc_port)
 			lib_zyncoder=zyncoder.get_lib_zyncoder()
-			#self.amidi=zynthian_midi("Zynthian_gui")
 			self.zynmidi=zynthian_zcmidi()
 			self.zynswitches_init()
 		except Exception as e:
@@ -437,10 +435,7 @@ class zynthian_gui:
 	
 	def start_polling(self):
 		self.polling=True
-		if self.amidi:
-			self.amidi_read()
-		else:
-			self.zynmidi_read()
+		self.zynmidi_read()
 		self.zyngine_refresh()
 
 	def stop_polling(self):
@@ -466,31 +461,6 @@ class zynthian_gui:
 			logging.error("zynthian_gui.zynmidi_read() => %s" % err)
 		if self.polling:
 			zynthian_gui_config.top.after(40, self.zynmidi_read)
-
-	def amidi_read(self):
-		try:
-			while alsaseq.inputpending():
-				event = alsaseq.input()
-				chan = event[7][0]
-				logging.debug("MIDI EVENT " + str(event[0]))
-				if event[0]==alsaseq.SND_SEQ_EVENT_CONTROLLER:
-					if chan==self.curlayer.get_midi_chan() and self.active_screen=='control': 
-						ctrl = event[7][4]
-						val = event[7][5]
-						#print ("MIDI CTRL " + str(ctrl) + ", CH" + str(chan) + " => " + str(val))
-						if ctrl in self.screens['control'].zgui_controllers_map.keys():
-							self.screens['control'].zgui_controllers_map[ctrl].set_value(val,True)
-				elif event[0]==alsaseq.SND_SEQ_EVENT_PGMCHANGE:
-					pgm = event[7][4]
-					val = event[7][5]
-					logging.info("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan) + " => " + str(val))
-					self.screens['layer'].set_midi_chan_preset(chan, pgm)
-					if not self.modal_screen and chan==self.curlayer.get_midi_chan():
-						self.show_screen('control')
-		except Exception as err:
-			logging.error("zynthian_gui.amidi_read() => %s" % err)
-		if self.polling:
-			zynthian_gui_config.top.after(40, self.amidi_read)
 
 	def zyngine_refresh(self):
 		try:
