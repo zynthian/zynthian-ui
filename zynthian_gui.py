@@ -23,6 +23,7 @@
 # 
 #******************************************************************************
 
+import os
 import sys
 import copy
 import signal
@@ -120,7 +121,8 @@ class zynthian_gui:
 		self.start_loading_thread()
 		self.start_zyncoder_thread()
 		# Try to load "default snapshot" or show "load snapshot" popup
-		if not self.screens['layer'].load_snapshot('default.zss'):
+		default_snapshot_fpath=os.getcwd()+"/my-data/snapshots/default.zss"
+		if not self.screens['layer'].load_snapshot(default_snapshot_fpath):
 			self.load_snapshot(autoclose=True)
 
 	def stop(self):
