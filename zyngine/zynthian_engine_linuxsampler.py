@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_linuxsampler)
 # 
@@ -83,8 +83,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 		self.sock=None
 		self.port=6688
-		self.command=("/usr/bin/linuxsampler", "--lscp-port", str(self.port))
-		os.environ["LADSPA_PATH"]="/usr/lib64/ladspa"
+		self.command=("linuxsampler", "--lscp-port", str(self.port))
+		#os.environ["LADSPA_PATH"]="/usr/lib/ladspa"
 
 		self.ls_chans={}
 		self.ls_effects=OrderedDict(self._ladspa_plugins)
@@ -96,9 +96,10 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			('MySFZ', os.getcwd()+"/my-data/soundfonts/sfz"),
 			('MyGIG', os.getcwd()+"/my-data/soundfonts/gig")
 		]
-
+		self.lscp_v1_6_supported=False
 		self.start()
 		self.lscp_connect()
+		self.lscp_get_version()
 		self.reset()
 
 	def reset(self):
@@ -124,7 +125,17 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				sleep(0.25)
 				i+=1
 		return self.sock
-   
+
+	def lscp_get_version(self):
+		sv_info=self.lscp_send_multi("GET SERVER INFO")
+		if 'PROTOCOL_VERSION' in sv_info:
+			match=re.match(r"(?P<major>\d+)\.(?P<minor>\d+).*",sv_info['PROTOCOL_VERSION'])
+			if match:
+				version_major=int(match['major'])
+				version_minor=int(match['minor'])
+				if version_major>1 or (version_major==1 and version_major>=6):
+					self.lscp_v1_6_supported=True
+
 	def lscp_send(self,data):
 		command=command+"\r\n"
 		try:
@@ -201,7 +212,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def add_layer(self, layer):
 		super().add_layer(layer)
-		layer.ls_chan_info=None
+		self.ls_set_channel(layer)
+		self.set_midi_chan(layer)
+		layer.refresh_flag=True
 
 	def del_layer(self, layer):
 		super().del_layer(layer)
@@ -212,8 +225,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, layer):
-		ls_chan_id=layer.ls_chan_info['chan_id']
-		if ls_chan_id is not None:
+		if layer.ls_chan_info:
+			ls_chan_id=layer.ls_chan_info['chan_id']
 			self.lscp_send_single("SET CHANNEL MIDI_INPUT_CHANNEL %d %d" % (ls_chan_id,layer.get_midi_chan()))
 
 	# ---------------------------------------------------------------------------
@@ -257,7 +270,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		return preset_list
 
 	def set_preset(self, layer, preset):
-		self.ls_set_channel(layer, preset[4], preset[3])
+		self.ls_set_preset(layer, preset[4], preset[3])
 
 	# ---------------------------------------------------------------------------
 	# Controllers Management
@@ -367,20 +380,24 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		# Global volume level
 		self.lscp_send_single("SET VOLUME 0.45")
 
-	def ls_set_channel(self, layer, ls_engine, fpath):
-		self.ls_unset_channel(layer)
-		midi_chan=layer.get_midi_chan()
+	def ls_set_channel(self, layer):
+		# Adding new channel
 		ls_chan_id=self.lscp_send_single("ADD CHANNEL")
 		if ls_chan_id>=0:
 			self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_DEVICE %d %d" % (ls_chan_id,self.ls_audio_device_id))
-			self.lscp_send_single("SET CHANNEL MIDI_INPUT_DEVICE %d %d" % (ls_chan_id,self.ls_midi_device_id))
-			self.lscp_send_single("SET CHANNEL MIDI_INPUT_PORT %d %d" % (ls_chan_id,0))
-			self.lscp_send_single("SET CHANNEL MIDI_INPUT_CHANNEL %d %d" % (ls_chan_id,midi_chan))
-			self.lscp_send_single("LOAD ENGINE %s %d" % (ls_engine, ls_chan_id))
-			self.lscp_send_single("LOAD INSTRUMENT NON_MODAL '%s' 0 %d" % (fpath,ls_chan_id))
-			self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_CHANNEL %d 0 0" % ls_chan_id)
-			self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_CHANNEL %d 1 1" % ls_chan_id)
-			self.lscp_send_single("SET CHANNEL VOLUME %d 1" % ls_chan_id)
+			# Use "ADD CHANNEL MIDI_INPUT"
+			if self.lscp_v1_6_supported:
+				self.lscp_send_single("ADD CHANNEL MIDI_INPUT %d %d 0" % (ls_chan_id,self.ls_midi_device_id))
+			else:
+				self.lscp_send_single("SET CHANNEL MIDI_INPUT_DEVICE %d %d" % (ls_chan_id,self.ls_midi_device_id))
+				self.lscp_send_single("SET CHANNEL MIDI_INPUT_PORT %d %d" % (ls_chan_id,0))
+
+			#self.lscp_send_single("SET CHANNEL MIDI_INPUT_CHANNEL %d %d" % (ls_chan_id,layer.get_midi_chan()))
+
+			#TODO: need?
+			#self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_CHANNEL %d 0 0" % ls_chan_id)
+			#self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_CHANNEL %d 1 1" % ls_chan_id)
+			#self.lscp_send_single("SET CHANNEL VOLUME %d 1" % ls_chan_id)
 			#self.lscp_send_single("SET CHANNEL MIDI_INSTRUMENT_MAP %d 0" % ls_chan_id)
 			
 			#Setup Effect Chain
@@ -407,30 +424,68 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				except zyngine_lscp_warning as warn:
 					logging.warning(warn)
 
-			fx_send_id=self.lscp_send_single("CREATE FX_SEND %d %d" % (ls_chan_id, 12))
-			if len(fx_instances)>0:
-				try:
-					self.lscp_send_single("SET FX_SEND EFFECT %d %d %d %d" % (ls_chan_id,fx_send_id,fx_chain_id,0))
-				except zyngine_lscp_error as err:
-					logging.error(err)
-				except zyngine_lscp_warning as warn:
-					logging.warning(warn)
-
 			#Save chan info in layer
 			layer.ls_chan_info={
 				'chan_id': ls_chan_id,
 				'fx_chain_id': fx_chain_id,
-				'fx_send_id': fx_send_id,
-				'fx_instances': fx_instances
+				'fx_instances': fx_instances,
+				'fx_send_id': None,
+				'ls_engine': None
 			}
-			#Set refresh flag
-			layer.refresh_flag=True
+
+	def ls_set_preset(self, layer, ls_engine, fpath):
+		if layer.ls_chan_info:
+			ls_chan_id=layer.ls_chan_info['chan_id']
+
+			# Load engine and create FX Send if needed
+			if ls_engine!=layer.ls_chan_info['ls_engine']:
+				try:
+					self.lscp_send_single("LOAD ENGINE %s %d" % (ls_engine,ls_chan_id))
+					# Save engine to layer
+					layer.ls_chan_info['ls_engine']=ls_engine
+					# Recreate FX send after engine change
+					if len(layer.ls_chan_info['fx_instances'])>0:
+						fx_send_id=self.lscp_send_single("CREATE FX_SEND %d %d" % (ls_chan_id,12))
+						self.lscp_send_single("SET FX_SEND EFFECT %d %d %d %d" % (ls_chan_id,fx_send_id,layer.ls_chan_info['fx_chain_id'],0))
+						# Save FX send to layer
+						layer.ls_chan_info['fx_send_id']=fx_send_id
+				except zyngine_lscp_error as err:
+					logging.error(err)
+				except zyngine_lscp_warning as warn:
+					logging.warning(warn)
+			
+			# Load instument
+			try:
+				self.lscp_send_single("LOAD INSTRUMENT '%s' 0 %d" % (fpath,ls_chan_id))
+			except zyngine_lscp_error as err:
+				logging.error(err)
+			except zyngine_lscp_warning as warn:
+				logging.warning(warn)
 
 	def ls_unset_channel(self, layer):
 		if layer.ls_chan_info:
-			self.lscp_send_single("REMOVE FX_SEND EFFECT %d %d" % (layer.ls_chan_info['chan_id'],layer.ls_chan_info['fx_send_id']))
-			self.lscp_send_single("REMOVE SEND_EFFECT_CHAIN %d %d" % (self.ls_audio_device_id,layer.ls_chan_info['fx_chain_id']))
+			# Remove sampler channel
+			if self.lscp_v1_6_supported:
+				self.lscp_send_single("REMOVE CHANNEL MIDI_INPUT %d" % layer.ls_chan_info['chan_id'])
+			if layer.ls_chan_info['fx_send_id']:
+				self.lscp_send_single("REMOVE FX_SEND EFFECT %d %d" % (layer.ls_chan_info['chan_id'],layer.ls_chan_info['fx_send_id']))
 			self.lscp_send_single("REMOVE CHANNEL %d" % layer.ls_chan_info['chan_id'])
+
+			# Remove FX instances from FX chain
+			fx_len=len(layer.ls_chan_info['fx_instances'])
+			for i in range(fx_len):
+				try:
+					self.lscp_send_single("REMOVE SEND_EFFECT_CHAIN EFFECT %d %d %d" % (self.ls_audio_device_id,layer.ls_chan_info['fx_chain_id'],fx_len-i-1))
+				except:
+					pass
+
+			# Remove FX chain
+			try:
+				self.lscp_send_single("REMOVE SEND_EFFECT_CHAIN %d %d" % (self.ls_audio_device_id,layer.ls_chan_info['fx_chain_id']))
+			except:
+				pass
+
+			# Destroy FX instances
 			for name,fx_instance in list(layer.ls_chan_info['fx_instances'].items()):
 				try:
 					self.lscp_send_single("DESTROY EFFECT_INSTANCE %d" % fx_instance['id'])
@@ -438,6 +493,5 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 					pass
 					#TODO Solve problem "ERR:0:effect still in use"
 			layer.ls_chan_info=None
-
 
 #******************************************************************************
