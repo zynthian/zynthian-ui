@@ -321,11 +321,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 						'graph_path': str(fx_info['id'])+'/'+str(i)
 					}
 					zctrls[ctrl_symbol]=zynthian_controller(self,ctrl_symbol,ctrl_name,ctrl_options)
-					scrctrls.append(ctrl_symbol)
 					if len(scrctrls)==4:
 						self._ctrl_screens.append([fx_name+':'+str(j),scrctrls])
 						scrctrls=[]
 						j=j+1
+					scrctrls.append(ctrl_symbol)
 				self._ctrl_screens.append([fx_name+':'+str(j),scrctrls])
 		return zctrls
 
