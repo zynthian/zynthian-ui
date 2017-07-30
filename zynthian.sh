@@ -23,6 +23,7 @@
 #******************************************************************************
 
 source "/zynthian/zynthian-sys/scripts/zynthian_envars.sh"
+source "/etc/X11/zynthian"
 
 #export ZYNTHIAN_LOG_LEVEL=10			# 10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL
 #export ZYNTHIAN_RAISE_EXCEPTIONS=0
@@ -52,13 +53,13 @@ function screensaver_off() {
 
 function splash_zynthian() {
 	if [ -c $FRAMEBUFFER ]; then
-		cat ./img/fb1_zynthian.raw > $FRAMEBUFFER
+		cat ./img/fb_zynthian_boot.raw > $FRAMEBUFFER
 	fi  
 }
 
 function splash_zynthian_error() {
 	if [ -c $FRAMEBUFFER ]; then
-		cat ./img/fb1_zynthian_error.raw > $FRAMEBUFFER
+		cat ./img/fb_zynthian_error.raw > $FRAMEBUFFER
 	fi  
 }
 

@@ -26,6 +26,8 @@
 import os
 import sys
 import logging
+import tkinter
+from PIL import Image, ImageTk
 
 #******************************************************************************
 
@@ -146,6 +148,11 @@ else:
 	if not zynswitch_pin: zynswitch_pin=[0,0,0,0]
 	select_ctrl=3
 
+# Print Wiring Layout
+logging.debug("ZYNCODER A: %s" % zyncoder_pin_a)
+logging.debug("ZYNCODER B: %s" % zyncoder_pin_b)
+logging.debug("SWITCHES layout: %s" % zynswitch_pin)
+
 #------------------------------------------------------------------------------
 # UI Geometric Parameters
 #------------------------------------------------------------------------------
@@ -223,5 +230,71 @@ if os.environ.get('ZYNTHIAN_UI_FONT_SIZE'):
 	font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE'))
 else:
 	font_size=10
+
+#------------------------------------------------------------------------------
+# Create & Configure Top Level window 
+#------------------------------------------------------------------------------
+
+top = tkinter.Tk()
+
+# Try to autodetect screen size if not configured
+try:
+	if not display_width:
+		display_width = top.winfo_screenwidth()
+		ctrl_width=int(display_width/4)
+	if not display_height:
+		display_height = top.winfo_screenheight()
+		topbar_height=int(display_height/10)
+		ctrl_height=int((display_height-topbar_height)/2)
+except:
+	logging.warning("Can't get screen size. Using default 320x240!")
+	display_width = 320
+	display_height = 240
+	topbar_height=int(display_height/10)
+	ctrl_width=int(display_width/4)
+	ctrl_height=int((display_height-topbar_height)/2)
+
+# Adjust Root Window Geometry
+top.geometry(str(display_width)+'x'+str(display_height))
+top.maxsize(display_width,display_height)
+top.minsize(display_width,display_height)
+
+# Disable cursor for real Zynthian Boxes
+if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES":
+	top.config(cursor="none")
+
+#------------------------------------------------------------------------------
+# Global Variables
+#------------------------------------------------------------------------------
+
+# Fonts
+font_listbox=(font_family,int(1.0*font_size))
+font_topbar=(font_family,int(1.1*font_size))
+
+# Loading Logo Animation
+loading_imgs=[]
+pil_frame = Image.open("./img/zynthian_gui_loading.gif")
+fw, fh = pil_frame.size
+fw2=ctrl_width-8
+fh2=int(fh*fw2/fw)
+nframes = 0
+while pil_frame:
+	pil_frame2 = pil_frame.resize((fw2, fh2), Image.ANTIALIAS)
+	# convert PIL image object to Tkinter PhotoImage object
+	loading_imgs.append(ImageTk.PhotoImage(pil_frame2))
+	nframes += 1
+	try:
+		pil_frame.seek(nframes)
+	except EOFError:
+		break;
+#for i in range(13):
+#	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
+
+
+#------------------------------------------------------------------------------
+# Zynthian GUI variable
+#------------------------------------------------------------------------------
+
+zyngui=None
 
 #------------------------------------------------------------------------------
