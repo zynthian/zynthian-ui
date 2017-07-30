@@ -128,7 +128,7 @@ class zynthian_gui_controller:
 						for i in reversed(range(self.n_values)):
 							if self.value<=self.ticks[i]:
 								break
-						value_plot=self.scale_plot*(self.max_value+self.step-self.ticks[i])
+						valplot=self.scale_plot*(self.max_value+self.step-self.ticks[i])
 					else:
 						for i in range(self.n_values-1):
 							if self.value<=self.ticks[i+1]:
