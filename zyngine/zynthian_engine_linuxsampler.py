@@ -230,6 +230,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# Preset Management
 	# ---------------------------------------------------------------------------
 
+	_exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
+
 	def get_preset_list(self, bank):
 		self.start_loading()
 		logging.info("Getting Preset List for %s" % bank[2])
@@ -244,11 +246,13 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			lines=output.split('\n')
 			for f in lines:
 				if f:
-					filename, filext = os.path.splitext(f)
-					title=filename[len(preset_dpath)+1:].replace('_', ' ')
-					engine=filext[1:].lower()
-					preset_list.append((i,[0,0,0],title,f,engine))
-					i=i+1
+					filehead,filetail=os.path.split(f)
+					if not self._exclude_sfz.fullmatch(filetail):
+						filename,filext=os.path.splitext(f)
+						title=filename[len(preset_dpath)+1:].replace('_', ' ')
+						engine=filext[1:].lower()
+						preset_list.append((i,[0,0,0],title,f,engine))
+						i=i+1
 		self.stop_loading()
 		return preset_list
 
