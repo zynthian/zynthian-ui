@@ -60,16 +60,17 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	_ladspa_plugins=[
+		('tap_chorusflanger', { 'lib': '/usr/lib/ladspa/tap_chorusflanger.so', 'id': None }),
 		#('mod_delay', { 'lib': '/usr/lib/ladspa/mod_delay_1419.so', 'id': None }) => BAD
 		#('revdelay', { 'lib': '/usr/lib/ladspa/revdelay_1605.so', 'id': None }), => BAD
 		#('vocoder', { 'lib': '/usr/lib/ladspa/vocoder.so', 'id': None }),
 		#('g2reverb', { 'lib': '/usr/lib/ladspa/g2reverb.so', 'id': None }),
-		('tap_reverb', { 'lib': '/usr/lib/ladspa/tap_reverb.so', 'id': None }),
 		#('tap_vibrato', { 'lib': '/usr/lib/ladspa/tap_vibrato.so', 'id': None }), => BAD 
 		#('tap_tremolo', { 'lib': '/usr/lib/ladspa/tap_tremolo.so', 'id': None }), => BAD
 		#('caps', { 'lib': '/usr/lib/ladspa/caps.so', 'id': None }), => BAD
 		#('rubberband', { 'lib': '/usr/lib/ladspa/ladspa-rubberband.so', 'id': None }), => BAD
-		('tap_chorusflanger', { 'lib': '/usr/lib/ladspa/tap_chorusflanger.so', 'id': None })
+		('tap_reverb', { 'lib': '/usr/lib/ladspa/tap_reverb.so', 'id': None }),
+		#('tap_echo', { 'lib': '/usr/lib/ladspa/tap_echo.so', 'id': None })
 	]
 
 	# ---------------------------------------------------------------------------
