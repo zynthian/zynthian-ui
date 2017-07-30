@@ -339,6 +339,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			fx_id=parts[0]
 			fx_ctrl_i=parts[1]
 			self.lscp_send_single("SET EFFECT_INSTANCE_INPUT_CONTROL VALUE %s %s %s" % (fx_id,fx_ctrl_i,zctrl.value))
+		else:
+			super.send_controller_value(zctrl)
 
 	# ---------------------------------------------------------------------------
 	# Specific functions
