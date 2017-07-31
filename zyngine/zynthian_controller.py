@@ -118,6 +118,9 @@ class zynthian_controller:
 				self.labels=maxval
 				self.value_max=len(maxval)-1
 
+	def set_midi_chan(self, chan):
+		self.midi_chan=chan
+
 	def get_ctrl_array(self):
 		tit=self.short_name
 		if self.midi_chan:
