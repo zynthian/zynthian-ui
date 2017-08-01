@@ -134,7 +134,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			if match:
 				version_major=int(match['major'])
 				version_minor=int(match['minor'])
-				if version_major>1 or (version_major==1 and version_major>=6):
+				if version_major>1 or (version_major==1 and version_minor>=6):
 					self.lscp_v1_6_supported=True
 
 	def lscp_send(self,data):
