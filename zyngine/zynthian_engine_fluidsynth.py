@@ -158,6 +158,12 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			self.soundfont_count=self.soundfont_count+1
 			logging.info("Load SoundFont => %s (%d)" % (sf,self.soundfont_count))
 			self.proc_cmd("load \"%s\"" % sf, 20)
+			
+			# Reselect presets for all layers to prevent instrument change
+			for layer in self.layers:
+				if layer.preset_info:
+					self.set_preset(layer, layer.preset_info)
+
 			self.soundfont_index[sf]=self.soundfont_count
 			return self.soundfont_count
 
