@@ -83,7 +83,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 		self.sock=None
 		self.port=6688
-		self.command=("/usr/bin/linuxsampler", "--lscp-port", str(self.port))
+		self.command=("linuxsampler", "--lscp-port", str(self.port))
 		os.environ["LADSPA_PATH"]="/usr/lib64/ladspa"
 
 		self.ls_chans={}
