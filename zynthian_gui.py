@@ -160,13 +160,13 @@ class zynthian_gui:
 		self.screens['info'].show(text)
 		self.hide_screens(exclude='info')
 		if tms:
-			top.after(tms, self.hide_info)
+			zynthian_gui_config.top.after(tms, self.hide_info)
 
 	def add_info(self, text):
 		self.screens['info'].add(text)
 
 	def hide_info_timer(self, tms=3000):
-		top.after(tms, self.hide_info)
+		zynthian_gui_config.top.after(tms, self.hide_info)
 
 	def hide_info(self):
 		self.screens['info'].hide()
@@ -444,7 +444,7 @@ class zynthian_gui:
 		self.polling=False
 
 	def after(self, msec, func):
-		top.after(msec, func)
+		zynthian_gui_config.top.after(msec, func)
 
 	def zynmidi_read(self):
 		try:
