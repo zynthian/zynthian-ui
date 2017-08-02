@@ -198,7 +198,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.layers[-1].restore_snapshot(lss)
 			self.fill_list()
 			self.index=snapshot['index']
-			self.select_action(self.index)
+			if self.list_data[self.index][0] in ('NEW','RESET'):
+				self.index=0
+				zynthian_gui_config.zyngui.show_screen('layer')
+			else:
+				self.select_action(self.index)
 			zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
 		except Exception as e:
 			logging.error("Invalid snapshot format: %s" % e)

@@ -75,6 +75,8 @@ class zynthian_layer:
 	def set_midi_chan(self, midi_chan):
 		self.midi_chan=midi_chan
 		self.engine.set_midi_chan(self)
+		for zctrl in self.controllers_dict.values():
+			zctrl.set_midi_chan(midi_chan)
 
 	def get_midi_chan(self):
 		return self.midi_chan
