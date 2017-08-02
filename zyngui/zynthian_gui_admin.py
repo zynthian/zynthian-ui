@@ -27,6 +27,7 @@ import os
 import sys
 import logging
 from time import sleep
+from threading  import Thread
 from subprocess import check_output, Popen, PIPE
 
 # Zynthian specific modules
