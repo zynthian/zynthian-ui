@@ -213,6 +213,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def add_layer(self, layer):
 		super().add_layer(layer)
+		layer.ls_chan_info=None
 		self.ls_set_channel(layer)
 		self.set_midi_chan(layer)
 		layer.refresh_flag=True
