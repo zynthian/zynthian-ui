@@ -112,12 +112,12 @@ class zynthian_gui_control_xy():
 		xv=self.xgui_controller.value
 		if xv!=self.xvalue:
 			self.xvalue=xv
-			self.x=int(self.xvalue*display_width/self.xvalue_max)
+			self.x=int(self.xvalue*zynthian_gui_config.display_width/self.xvalue_max)
 			self.canvas.coords(self.vline,self.x,0,self.x,self.height)
 		yv=self.ygui_controller.value
 		if yv!=self.yvalue:
 			self.yvalue=yv
-			self.y=int(self.yvalue*display_height/self.yvalue_max)
+			self.y=int(self.yvalue*zynthian_gui_config.display_height/self.yvalue_max)
 			self.canvas.coords(self.hline,0,self.y,self.width,self.y)
 
 	def refresh(self):
