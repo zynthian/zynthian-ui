@@ -299,6 +299,9 @@ class zynthian_gui:
 					j=self.screens_sequence.index(self.active_screen)-1
 					if j<0: j=1
 					screen_back=self.screens_sequence[j]
+					if self.active_screen=='preset' and self.curlayer.preload_index is not None:
+						self.screens[self.active_screen].back_action()
+						screen_back='control'
 				# If there is only one preset, go back to bank selection
 				if screen_back=='preset' and len(self.curlayer.preset_list)<=1:
 					screen_back='bank'
@@ -453,12 +456,21 @@ class zynthian_gui:
 				if ev==0: break
 				evtype = (ev & 0xF0)>>4
 				chan = ev & 0x0F
-				if evtype==0xC:
+				if chan==zynthian_gui_config.master_midi_channel:
+					if  evtype==0xC:
+						pgm = (ev & 0xF00)>>8
+						logging.info("MASTER MIDI PROGRAM CHANGE %s" % pgm)
+						#TODO => MASTER MIDI PROGRAM CHANGE AND OTHERS!
+				elif evtype==0xC:
 					pgm = (ev & 0xF00)>>8
-					logging.info("MIDI PROGRAM CHANGE " + str(pgm) + ", CH" + str(chan))
+					logging.info("MIDI PROGRAM CHANGE %s, CH%s" % (pgm,chan))
 					self.screens['layer'].set_midi_chan_preset(chan, pgm)
 					if not self.modal_screen and chan==self.curlayer.get_midi_chan():
 						self.show_screen('control')
+				elif evtype==0x9:
+					#Pre-load preset, reloading old one on back event
+					if self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
+						self.screens[self.active_screen].preselect_action()
 		except Exception as err:
 			logging.error("zynthian_gui.zynmidi_read() => %s" % err)
 		if self.polling:

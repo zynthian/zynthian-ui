@@ -232,6 +232,46 @@ else:
 	font_size=10
 
 #------------------------------------------------------------------------------
+# Master MIDI Parameters
+#------------------------------------------------------------------------------
+
+if os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANNEL'):
+	master_midi_channel=os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANNEL')
+else:
+	master_midi_channel=16
+
+if os.environ.get('ZYNTHIAN_MIDI_FINE_TUNNING'):
+	master_midi_fine_tunning=os.environ.get('ZYNTHIAN_MIDI_FINE_TUNNING')
+else:
+	master_midi_fine_tunning=440
+
+if os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANGE_TYPE'):
+	master_midi_change_type=os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANGE_TYPE')
+else:
+	master_midi_change_type="Roland"
+
+if os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_UP'):
+	master_midi_program_change_up=os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_UP')
+else:
+	master_midi_program_change_up="PC 127"
+
+if os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_DOWN'):
+	master_midi_program_change_down=os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_DOWN')
+else:
+	master_midi_program_change_down="PC 00"
+
+if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_UP'):
+	master_midi_bank_change_up=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_UP')
+else:
+	master_midi_bank_change_up="CC 000 127"
+
+if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN'):
+	master_midi_program_change_down=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN')
+else:
+	master_midi_bank_change_down="CC 000 000"
+
+
+#------------------------------------------------------------------------------
 # Create & Configure Top Level window 
 #------------------------------------------------------------------------------
 

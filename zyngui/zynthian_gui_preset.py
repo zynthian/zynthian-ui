@@ -59,6 +59,12 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		zynthian_gui_config.zyngui.curlayer.set_preset(i)
 		zynthian_gui_config.zyngui.show_screen('control')
 
+	def preselect_action(self):
+		zynthian_gui_config.zyngui.curlayer.preload_preset(self.index)
+
+	def back_action(self):
+		zynthian_gui_config.zyngui.curlayer.restore_preset()
+
 	def set_select_path(self):
 		if zynthian_gui_config.zyngui.curlayer:
 			self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_fullpath())

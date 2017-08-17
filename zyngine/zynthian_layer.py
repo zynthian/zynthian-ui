@@ -47,6 +47,7 @@ class zynthian_layer:
 		self.preset_index=0
 		self.preset_name=None
 		self.preset_info=None
+		self.preload_index=None
 
 		self.controllers_dict=None
 		self.ctrl_screens_dict=None
@@ -138,6 +139,7 @@ class zynthian_layer:
 		if i < len(self.preset_list):
 			last_preset_index=self.preset_index
 			last_preset_name=self.preset_name
+			self.preload_index=None
 			self.preset_index=i
 			self.preset_name=self.preset_list[i][2]
 			self.preset_info=copy.deepcopy(self.preset_list[i])
@@ -156,6 +158,19 @@ class zynthian_layer:
 			if name==self.preset_list[i][2]:
 				self.set_preset(i,set_engine)
 				break
+
+	def preload_preset(self, i):
+		if i < len(self.preset_list) and self.preload_index!=i:
+			self.preload_index=i
+			preset_name=self.preset_list[i][2]
+			logging.info("Preset Preloaded: %s (%d)" % (preset_name,i))
+			self.engine.set_preset(self, self.preset_list[i])
+
+	def restore_preset(self):
+		if self.preload_index is not None:
+			self.preload_index=None
+			logging.info("Restore Preset: %s (%d)" % (self.preset_name,self.preset_index))
+			self.engine.set_preset(self, self.preset_info)
 
 	def get_preset_name(self):
 		return self.preset_name
