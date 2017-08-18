@@ -259,6 +259,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if zynthian_gui_config.zyngui.curlayer:
-			self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_fullpath())
+			self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_presetpath())
 
 #------------------------------------------------------------------------------

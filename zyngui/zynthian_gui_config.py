@@ -270,6 +270,14 @@ if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN'):
 else:
 	master_midi_bank_change_down="CC 000 000"
 
+#------------------------------------------------------------------------------
+# UI special features
+#------------------------------------------------------------------------------
+
+if os.environ.get('ZYNTHIAN_PRESET_PRELOAD_NOTEON'):
+	preset_preload_noteon=os.environ.get('ZYNTHIAN_PRESET_PRELOAD_NOTEON')
+else:
+	preset_preload_noteon=True
 
 #------------------------------------------------------------------------------
 # Create & Configure Top Level window 

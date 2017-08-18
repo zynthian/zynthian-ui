@@ -62,7 +62,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.list_data=[]
 		#Add list of layers
 		for i,layer in enumerate(self.layers):
-			self.list_data.append((str(i+1),i,layer.get_fullpath()))
+			self.list_data.append((str(i+1),i,layer.get_presetpath()))
 		#Add "New Layer" and "Clean" entry
 		self.list_data.append(('NEW',len(self.list_data),"New Layer"))
 		self.list_data.append(('RESET',len(self.list_data),"Remove All"))

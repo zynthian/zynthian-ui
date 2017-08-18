@@ -47,7 +47,11 @@ class zynthian_layer:
 		self.preset_index=0
 		self.preset_name=None
 		self.preset_info=None
+		self.preset_bank_info=None
+
 		self.preload_index=None
+		self.preload_name=None
+		self.preload_info=None
 
 		self.controllers_dict=None
 		self.ctrl_screens_dict=None
@@ -105,15 +109,18 @@ class zynthian_layer:
 			logging.info("Bank Selected: %s (%d)" % (self.bank_name,i))
 			if set_engine:
 				self.engine.set_bank(self, self.bank_info)
-			if last_bank_index!=i or not last_bank_name:
-				self.reset_preset()
+			#if last_bank_index!=i or not last_bank_name:
+			#	self.reset_preset()
+			return True
+		return False
 
 	#TODO Optimize search!!
 	def set_bank_by_name(self, name, set_engine=True):
 		for i in range(len(self.bank_list)):
 			if name==self.bank_list[i][2]:
 				self.set_bank(i,set_engine)
-				break
+				return True
+		return False
 
 	def get_bank_name(self):
 		return self.preset_name
@@ -139,10 +146,13 @@ class zynthian_layer:
 		if i < len(self.preset_list):
 			last_preset_index=self.preset_index
 			last_preset_name=self.preset_name
-			self.preload_index=None
 			self.preset_index=i
 			self.preset_name=self.preset_list[i][2]
 			self.preset_info=copy.deepcopy(self.preset_list[i])
+			self.preset_bank_info=self.bank_info
+			self.preload_index=i
+			self.preload_name=self.preset_name
+			self.preload_info=self.preset_info
 			logging.info("Preset Selected: %s (%d)" % (self.preset_name,i))
 			#=> '+self.preset_list[i][3]
 			if set_engine:
@@ -151,26 +161,36 @@ class zynthian_layer:
 				#TODO => Review this!!
 				#self.load_ctrl_config()
 				pass
+			return True
+		return False
 
 	#TODO Optimize search!!
 	def set_preset_by_name(self, name, set_engine=True):
 		for i in range(len(self.preset_list)):
 			if name==self.preset_list[i][2]:
 				self.set_preset(i,set_engine)
-				break
+				return True
+		return False
 
 	def preload_preset(self, i):
-		if i < len(self.preset_list) and self.preload_index!=i:
+		if i < len(self.preset_list) and not self.engine.cmp_presets(self.preload_info,self.preset_list[i]):
 			self.preload_index=i
-			preset_name=self.preset_list[i][2]
-			logging.info("Preset Preloaded: %s (%d)" % (preset_name,i))
-			self.engine.set_preset(self, self.preset_list[i])
+			self.preload_name=self.preset_list[i][2]
+			self.preload_info=copy.deepcopy(self.preset_list[i])
+			logging.info("Preset Preloaded: %s (%d)" % (self.preload_name,i))
+			self.engine.set_preset(self, self.preload_info)
+			return True
+		return False
 
 	def restore_preset(self):
-		if self.preload_index is not None:
-			self.preload_index=None
+		if self.preset_index is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
+			self.preload_index=self.preset_index
+			self.preload_name=self.preset_name
+			self.preload_info=self.preset_info
 			logging.info("Restore Preset: %s (%d)" % (self.preset_name,self.preset_index))
 			self.engine.set_preset(self, self.preset_info)
+			return True
+		return False
 
 	def get_preset_name(self):
 		return self.preset_name
@@ -306,8 +326,14 @@ class zynthian_layer:
 			path=path + " > " + self.bank_name
 		return path
 
-	def get_fullpath(self):
-		path=self.get_bankpath()
+	def get_preset_bankpath(self):
+		path=self.get_basepath()
+		if self.preset_bank_info:
+			path=path + " > " + self.preset_bank_info[2]
+		return path
+
+	def get_presetpath(self):
+		path=self.get_preset_bankpath()
 		if self.preset_name:
 			path=path + "/" + self.preset_name
 		return path
