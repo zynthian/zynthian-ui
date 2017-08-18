@@ -274,6 +274,12 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	def set_preset(self, layer, preset):
 		self.ls_set_preset(layer, preset[4], preset[3])
 
+	def cmp_presets(self, preset1, preset2):
+		if preset1[3]==preset2[3] and preset1[4]==preset2[4]:
+			return True
+		else:
+			return False
+
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------

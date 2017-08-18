@@ -211,6 +211,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.stop_loading()
 		return pgm_list
 
+	def cmp_presets(self, preset1, preset2):
+		if preset1[1][2]==preset2[1][2]:
+			return True
+		else:
+			return False
+
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------

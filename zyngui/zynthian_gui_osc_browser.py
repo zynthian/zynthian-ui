@@ -92,7 +92,7 @@ class zynthian_gui_osc_browser(zynthian_gui_selector):
 			zyngui.show_screen('control')
 
 	def set_select_path(self):
-		self.select_path.set(zyngui.zyngine.get_fullpath())
+		self.select_path.set(zyngui.zyngine.get_presetpath())
 
 
 #-------------------------------------------------------------------------------

@@ -139,28 +139,32 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		preset_dir=bank[0]
 		logging.info("Getting Preset List for %s" % bank[2])
 		for f in sorted(os.listdir(preset_dir)):
-			#print(f)
-			if (isfile(join(preset_dir,f)) and f[-4:].lower()=='.xiz'):
+			preset_fpath=join(preset_dir,f)
+			if (isfile(preset_fpath) and f[-4:].lower()=='.xiz'):
 				prg=int(f[0:4])-1
 				bank_lsb=int(prg/128)
 				bank_msb=bank[1]
 				prg=prg%128
 				title=str.replace(f[5:-4], '_', ' ')
-				preset_list.append((f,[bank_msb,bank_lsb,prg],title))
+				preset_list.append((preset_fpath,[bank_msb,bank_lsb,prg],title))
 		return preset_list
 
 	def set_preset(self, layer, preset):
 		self.start_loading()
 		self.enable_part(layer)
-		preset_dir=layer.bank_info[0]
-		fpath=join(preset_dir,preset[0])
-		liblo.send(self.osc_target, "/load-part",layer.part_i,fpath)
-		#logging.debug("OSC => /load-part %s, %s" % (layer.part_i,fpath))
+		liblo.send(self.osc_target, "/load-part",layer.part_i,preset[0])
+		#logging.debug("OSC => /load-part %s, %s" % (layer.part_i,preset[0]))
 		liblo.send(self.osc_target, "/volume")
 		i=0
 		while self.loading and i<100: 
 			sleep(0.1)
 			i=i+1
+
+	def cmp_presets(self, preset1, preset2):
+		if preset1[0]==preset2[0]:
+			return True
+		else:
+			return False
 
 	# ---------------------------------------------------------------------------
 	# Specific functions
