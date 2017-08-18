@@ -173,7 +173,7 @@ class zynthian_layer:
 		return False
 
 	def preload_preset(self, i):
-		if i < len(self.preset_list) and not self.engine.cmp_presets(self.preload_info,self.preset_list[i]):
+		if i < len(self.preset_list) and (self.preload_info==None or not self.engine.cmp_presets(self.preload_info,self.preset_list[i])):
 			self.preload_index=i
 			self.preload_name=self.preset_list[i][2]
 			self.preload_info=copy.deepcopy(self.preset_list[i])

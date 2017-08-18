@@ -263,7 +263,10 @@ class zynthian_gui:
 		elif i==1:
 			if self.active_screen=='preset':
 				self.screens['preset'].back_action()
-				self.show_screen('control')
+				if self.curlayer.preset_info is not None:
+					self.show_screen('control')
+				else:
+					self.show_screen('bank')
 			elif self.active_screen!='bank':
 				self.show_screen('bank')
 		elif i==2:
@@ -470,7 +473,7 @@ class zynthian_gui:
 					if not self.modal_screen and chan==self.curlayer.get_midi_chan():
 						self.show_screen('control')
 				elif evtype==0x9:
-					#Pre-load preset
+					#Preload preset
 					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
 						self.screens[self.active_screen].preselect_action()
 		except Exception as err:
