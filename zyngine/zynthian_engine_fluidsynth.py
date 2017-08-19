@@ -122,23 +122,20 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				bank_lsb=int(bank_msb/128)
 				bank_msb=bank_msb%128
 				title=str.replace(f[8:-1], '_', ' ')
-				preset_list.append((f,[bank_msb,bank_lsb,prg],title))
+				preset_list.append((f,[bank_msb,bank_lsb,prg],title,sfi))
 			except:
 				pass
 		return preset_list
 
 	def set_preset(self, layer, preset):
-		bi=layer.bank_info
-		if bi:
-			sf=bi[0]
-			if sf and sf in self.soundfont_index:
-				sfi=self.soundfont_index[sf]
-				midi_bank=preset[1][0]+preset[1][1]*128
-				midi_prg=preset[1][2]
-				logging.debug("Set Preset => Layer: %d, SoundFont: %d, Bank: %d, Program: %d" % (layer.part_i,sfi,midi_bank,midi_prg))
-				self.proc_cmd("select %d %d %d %d" % (layer.part_i,sfi,midi_bank,midi_prg))
-			else:
-				logging.warning("Can't set Instrument before loading SoundFont")
+		sfi=preset[3]
+		if sfi in self.soundfont_index:
+			midi_bank=preset[1][0]+preset[1][1]*128
+			midi_prg=preset[1][2]
+			logging.debug("Set Preset => Layer: %d, SoundFont: %d, Bank: %d, Program: %d" % (layer.part_i,sfi,midi_bank,midi_prg))
+			self.proc_cmd("select %d %d %d %d" % (layer.part_i,sfi,midi_bank,midi_prg))
+		else:
+			logging.warning("SoundFont %s is not loaded" % sfi)
 
 	# ---------------------------------------------------------------------------
 	# Specific functions

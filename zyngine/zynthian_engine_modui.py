@@ -147,6 +147,12 @@ class zynthian_engine_modui(zynthian_engine):
 	def load_preset(self, plugin, preset):
 		res = self.api_get_request("/effect/preset/load/"+plugin,data={'uri':preset})
 
+	def cmp_presets(self, preset1, preset2):
+		if preset1[3]==preset2[3]:
+			return True
+		else:
+			return False
+
 	#----------------------------------------------------------------------------
 	# Controllers Managament
 	#----------------------------------------------------------------------------
