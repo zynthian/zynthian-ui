@@ -143,4 +143,7 @@ class zynthian_gui_control_xy():
 	def refresh_loading(self):
 		pass
 
+	def switch_select(self):
+		pass
+
 #------------------------------------------------------------------------------
