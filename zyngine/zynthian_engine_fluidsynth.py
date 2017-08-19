@@ -129,13 +129,19 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def set_preset(self, layer, preset):
 		sfi=preset[3]
-		if sfi in self.soundfont_index:
+		if sfi in self.soundfont_index.values():
 			midi_bank=preset[1][0]+preset[1][1]*128
 			midi_prg=preset[1][2]
 			logging.debug("Set Preset => Layer: %d, SoundFont: %d, Bank: %d, Program: %d" % (layer.part_i,sfi,midi_bank,midi_prg))
 			self.proc_cmd("select %d %d %d %d" % (layer.part_i,sfi,midi_bank,midi_prg))
 		else:
 			logging.warning("SoundFont %s is not loaded" % sfi)
+
+	def cmp_presets(self, preset1, preset2):
+		if preset1[3]==preset2[3] and preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
+			return True
+		else:
+			return False
 
 	# ---------------------------------------------------------------------------
 	# Specific functions

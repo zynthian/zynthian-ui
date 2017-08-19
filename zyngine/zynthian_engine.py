@@ -371,7 +371,7 @@ class zynthian_engine:
 		self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
 
 	def cmp_presets(self, preset1, preset2):
-		if self.preset1[1][0]==preset2[1][0] and self.preset1[1][1]==preset2[1][1] and self.preset1[1][2]==preset2[1][2]:
+		if preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
 			return True
 		else:
 			return False

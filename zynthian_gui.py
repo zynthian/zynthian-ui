@@ -262,8 +262,8 @@ class zynthian_gui:
 				self.show_screen('layer')
 		elif i==1:
 			if self.active_screen=='preset':
-				self.screens['preset'].back_action()
 				if self.curlayer.preset_info is not None:
+					self.screens['preset'].back_action()
 					self.show_screen('control')
 				else:
 					self.show_screen('bank')
