@@ -96,6 +96,7 @@ class zynthian_gui:
 			zyngine_osc_port=6693
 			lib_zyncoder_init(zyngine_osc_port)
 			lib_zyncoder=zyncoder.get_lib_zyncoder()
+			lib_zyncoder.set_midi_filter_tuning_freq(zynthian_gui_config.master_midi_fine_tuning)
 			self.zynmidi=zynthian_zcmidi()
 			self.zynswitches_init()
 		except Exception as e:
