@@ -243,7 +243,7 @@ else:
 if os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING'):
 	master_midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING'))
 else:
-	master_midi_fine_tuning=492
+	master_midi_fine_tuning=440
 
 if os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANGE_TYPE'):
 	master_midi_change_type=os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANGE_TYPE')
