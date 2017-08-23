@@ -3,7 +3,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian GUI Layer Options Class
+# Zynthian GUI Transpose Selector Class
 # 
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
@@ -27,6 +27,7 @@ import sys
 import logging
 
 # Zynthian specific modules
+from zyncoder import *
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
@@ -38,47 +39,35 @@ from . import zynthian_gui_selector
 logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 
 #------------------------------------------------------------------------------
-# Zynthian Layer Options GUI Class
+# Zynthian Transpose Selection GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_layer_options(zynthian_gui_selector):
+class zynthian_gui_transpose(zynthian_gui_selector):
 
 	def __init__(self):
-		super().__init__('Option', True)
-		self.layer_index=None
+		super().__init__('Transpose', True)
 
 	def fill_list(self):
 		self.list_data=[]
-		eng=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index].engine.nickname
-		if eng in ['ZY','LS','FS']:
-			self.list_data.append((self.midi_chan,0,"MIDI Chan"))
-		if eng in ['ZY','LS','FS','BF']:
-			self.list_data.append((self.transpose,0,"Transpose"))
-		self.list_data.append((self.remove_layer,0,"Remove Layer"))
+		for i in range(0,121):
+			offset=i-60
+			self.list_data.append((str(i),offset,str(offset)))
 		super().fill_list()
 
 	def show(self):
-		self.layer_index=zynthian_gui_config.zyngui.screens['layer'].get_cursel()
-		self.index=0
+		offset=zyncoder.lib_zyncoder.get_midi_filter_transpose(self.get_layer_chan())
+		self.index=60+offset
 		super().show()
 
 	def select_action(self, i):
-		self.list_data[i][0]()
-
-	def set_select_path(self):
-		self.select_path.set("Layer Options")
-
-	def midi_chan(self):
-		zynthian_gui_config.zyngui.screens['midich'].set_mode("SET")
-		zynthian_gui_config.zyngui.screens['midich'].index=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index].midi_chan
-		zynthian_gui_config.zyngui.show_modal('midich')
-
-	def transpose(self):
-		zynthian_gui_config.zyngui.show_modal('transpose')
-
-	def remove_layer(self):
-		zynthian_gui_config.zyngui.screens['layer'].remove_layer(self.layer_index)
+		zyncoder.lib_zyncoder.set_midi_filter_transpose(self.get_layer_chan(),self.list_data[i][1])
 		zynthian_gui_config.zyngui.show_screen('layer')
 
+	def set_select_path(self):
+		self.select_path.set("Transpose")
+
+	def get_layer_chan(self):
+		layer_index=zynthian_gui_config.zyngui.screens['layer_options'].layer_index
+		return zynthian_gui_config.zyngui.screens['layer'].layers[layer_index].get_midi_chan()
 
 #------------------------------------------------------------------------------

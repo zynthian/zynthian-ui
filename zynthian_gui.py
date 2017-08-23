@@ -48,6 +48,7 @@ from zyngui.zynthian_gui_layer import zynthian_gui_layer
 from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midich import zynthian_gui_midich
+from zyngui.zynthian_gui_transpose import zynthian_gui_transpose
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
@@ -111,6 +112,7 @@ class zynthian_gui:
 		self.screens['layer_options']=zynthian_gui_layer_options()
 		self.screens['engine']=zynthian_gui_engine()
 		self.screens['midich']=zynthian_gui_midich()
+		self.screens['transpose']=zynthian_gui_transpose()
 		self.screens['bank']=zynthian_gui_bank()
 		self.screens['preset']=zynthian_gui_preset()
 		self.screens['control']=zynthian_gui_control()

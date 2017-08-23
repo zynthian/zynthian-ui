@@ -140,12 +140,16 @@ def midi_autoconnect():
 				jclient.connect(hw,zyncoder_in[0])
 			except:
 				logger.warning("Failed input device midi connection: %s => %s" % (str(hw),str(zyncoder_in[0])))
+
+			# This is not needed anymore because zyncoder forward all the MIDI messages
+			'''
 			for engine in engines:
 				#logger.debug("Connecting HW "+str(hw)+" => "+str(engine))
 				try:
 					jclient.connect(hw,engine)
 				except:
 					logger.warning("Failed input device midi connection: %s => %s" % (str(hw),str(engine)))
+			'''
 
 	#Connect Zyncoder to engines
 	if len(zyncoder_out)>0:
