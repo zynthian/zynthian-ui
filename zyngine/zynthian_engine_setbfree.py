@@ -44,7 +44,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 #		['swellpedal 2',11,96],
 #		['rotary speed',91,64,127,'rotaryspeed'],
 		['rotary speed',91,'off','slow|off|fast','rotaryspeed'],
-#		['rotary speed',91,'off',[['fast','off','slow'],[0,43,86]],'rotaryspeed'],
+#		['rotary speed',91,'off',[['slow','off','fast'],[0,43,86]],'rotaryspeed'],
 #		['rotary select',65,0,127],
 #		['rotary select',65,'off/off','off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
 		['rotary select',65,'off/off',[['off/off','slow/off','fast/off','off/slow','slow/slow','fast/slow','off/fast','slow/fast','fast/fast'],[0,15,30,45,60,75,90,105,120]]],
@@ -147,8 +147,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 				zctrl.value=layer.preset_info[3][zctrl.symbol]
 				#logging.debug("%s => %s (%s)" % (zctrl.name,zctrl.symbol,zctrl.value))
 				if zctrl.symbol=='rotaryspeed':
-					if zctrl.value=='tremolo': zctrl.value='trm'
-					elif zctrl.value=='chorale': zctrl.value='chr'
+					if zctrl.value=='tremolo': zctrl.value='fast'
+					elif zctrl.value=='chorale': zctrl.value='slow'
 					else: zctrl.value='off'
 			except:
 				#logging.debug("No preset value for control %s" % zctrl.name)
