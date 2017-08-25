@@ -52,7 +52,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		super().fill_list()
 
 	def show(self):
-		#self.index=zynthian_gui_config.zyngui.curlayer.get_preset_index()
+		self.index=zynthian_gui_config.zyngui.curlayer.get_preset_index()
 		super().show()
 
 	def select_action(self, i):
