@@ -123,14 +123,14 @@ class zynthian_gui:
 		self.screens['control_xy']=zynthian_gui_control_xy()
 		# Show initial screen => Channel list
 		self.show_screen('layer')
-		# Start polling threads
-		self.start_polling()
-		self.start_loading_thread()
-		self.start_zyncoder_thread()
 		# Try to load "default snapshot" or show "load snapshot" popup
 		default_snapshot_fpath=os.getcwd()+"/my-data/snapshots/default.zss"
 		if not self.screens['layer'].load_snapshot(default_snapshot_fpath):
 			self.load_snapshot(autoclose=True)
+		# Start polling threads
+		self.start_polling()
+		self.start_loading_thread()
+		self.start_zyncoder_thread()
 
 	def stop(self):
 		self.screens['layer'].reset()
