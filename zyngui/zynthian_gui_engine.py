@@ -69,7 +69,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.list_data.append((en,i,ei[1],ei[0]))
 				i=i+1
 		super().fill_list()
-		self.select(self.index)
 
 	def select_action(self, i):
 		try:

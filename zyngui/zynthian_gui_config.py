@@ -277,7 +277,7 @@ else:
 if os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING'):
 	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING'))
 else:
-	midi_fine_tuning=440.0
+	midi_fine_tuning=440
 
 #------------------------------------------------------------------------------
 # Create & Configure Top Level window 

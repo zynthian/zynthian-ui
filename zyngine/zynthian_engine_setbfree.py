@@ -125,13 +125,14 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Preset Managament
 	#----------------------------------------------------------------------------
 
-	def set_preset(self, layer, preset):
-		super().set_preset(layer,preset)
-		#Set layer's refresh flag
-		layer.refresh_flag=True
-
 	def get_preset_list(self, bank):
 		return self.load_pgm_list(bank[0])
+
+	def set_preset(self, layer, preset, preload=False):
+		super().set_preset(layer,preset)
+		#Set layer's refresh flag
+		if not preload:
+			layer.refresh_flag=True
 
 	#----------------------------------------------------------------------------
 	# Controller Managament

@@ -150,7 +150,6 @@ class zynthian_gui_selector:
 			self.shown=True
 			self.main_frame.grid()
 		self.fill_list()
-		self.select()
 		self.set_selector()
 		self.set_select_path()
 
@@ -201,7 +200,7 @@ class zynthian_gui_selector:
 
 	def fill_list(self):
 		self.fill_listbox()
-		self.select(self.index)
+		self.select()
 		#self.set_selector()
 
 	def get_cursel(self):
@@ -237,7 +236,7 @@ class zynthian_gui_selector:
 		self.click_listbox()
 
 	def select(self, index=None):
-		if index==None: index=self.index
+		if index is None: index=self.index
 		self.select_listbox(index)
 
 	def select_action(self, index):

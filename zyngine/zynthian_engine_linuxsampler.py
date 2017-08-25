@@ -271,7 +271,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		self.stop_loading()
 		return preset_list
 
-	def set_preset(self, layer, preset):
+	def set_preset(self, layer, preset, preload=False):
 		self.ls_set_preset(layer, preset[4], preset[3])
 
 	def cmp_presets(self, preset1, preset2):

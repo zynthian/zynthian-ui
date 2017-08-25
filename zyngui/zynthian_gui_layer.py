@@ -106,9 +106,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if eng.nickname=='MD':
 			self.add_layer_midich(None)
 		elif eng.nickname=='BF':
-			self.add_layer_midich(0)
+			self.add_layer_midich(0,False)
 			self.add_layer_midich(1,False)
 			self.add_layer_midich(2,False)
+			self.index=len(self.layers)-3
+			self.select_action(self.index)
 		else:
 			zynthian_gui_config.zyngui.screens['midich'].set_mode("ADD")
 			zynthian_gui_config.zyngui.show_modal('midich')

@@ -127,7 +127,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				pass
 		return preset_list
 
-	def set_preset(self, layer, preset):
+	def set_preset(self, layer, preset, preload=False):
 		sfi=preset[3]
 		if sfi in self.soundfont_index.values():
 			midi_bank=preset[1][0]+preset[1][1]*128

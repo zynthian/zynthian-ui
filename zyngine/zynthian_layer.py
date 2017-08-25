@@ -66,7 +66,9 @@ class zynthian_layer:
 		if self.refresh_flag:
 			self.refresh_flag=False
 			self.refresh_controllers()
-			self.zyngui.screens['preset'].fill_list()
+			#TODO: Improve this Dirty Hack!!
+			if self.engine.nickname=='MD':
+				self.zyngui.screens['preset'].fill_list()
 			self.zyngui.refresh_screen()
 
 	def reset(self):
@@ -178,7 +180,7 @@ class zynthian_layer:
 			self.preload_name=self.preset_list[i][2]
 			self.preload_info=copy.deepcopy(self.preset_list[i])
 			logging.info("Preset Preloaded: %s (%d)" % (self.preload_name,i))
-			self.engine.set_preset(self, self.preload_info)
+			self.engine.set_preset(self, self.preload_info,True)
 			return True
 		return False
 

@@ -99,7 +99,7 @@ class zynthian_gui:
 			lib_zyncoder_init(zyngine_osc_port)
 			lib_zyncoder=zyncoder.get_lib_zyncoder()
 			#Set Global Tuning
-			self.tuning_freq=zynthian_gui_config.midi_fine_tuning
+			self.tuning_freq=int(zynthian_gui_config.midi_fine_tuning)
 			lib_zyncoder.set_midi_filter_tuning_freq(self.tuning_freq)
 			#Init MIDI and Switches
 			self.zynmidi=zynthian_zcmidi()
