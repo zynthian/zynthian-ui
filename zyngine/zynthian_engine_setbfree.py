@@ -94,6 +94,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 		
 		self.base_dir="./data/setbfree/"
 		self.chan_names=("upper","lower","pedals")
+		
+		self.generate_config_file()
 
 		if self.config_remote_display():
 			self.command=("/usr/local/bin/setBfree", "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
@@ -102,6 +104,15 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		self.start()
 		self.reset()
+
+	def generate_config_file(self):
+		cfg_tpl_fpath=self.base_dir+"/cfg/zynthian.cfg.tpl"
+		cfg_fpath=self.base_dir+"/cfg/zynthian.cfg"
+		with open(cfg_tpl_fpath, 'r') as cfg_tpl_file:
+			cfg_data=cfg_tpl_file.read()
+			cfg_data=cfg_data.replace('#OSC.TUNING#', str(self.zyngui.tuning_freq))
+			with open(cfg_fpath, 'w') as cfg_file:
+				cfg_file.write(cfg_data)
 
 	#----------------------------------------------------------------------------
 	# Bank Managament

@@ -240,11 +240,6 @@ if os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANNEL'):
 else:
 	master_midi_channel=16
 
-if os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING'):
-	master_midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING'))
-else:
-	master_midi_fine_tuning=440
-
 if os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANGE_TYPE'):
 	master_midi_change_type=os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANGE_TYPE')
 else:
@@ -278,6 +273,11 @@ if os.environ.get('ZYNTHIAN_PRESET_PRELOAD_NOTEON'):
 	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_PRESET_PRELOAD_NOTEON'))
 else:
 	preset_preload_noteon=1
+
+if os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING'):
+	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING'))
+else:
+	midi_fine_tuning=440.0
 
 #------------------------------------------------------------------------------
 # Create & Configure Top Level window 

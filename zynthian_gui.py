@@ -94,10 +94,14 @@ class zynthian_gui:
 		# Initialize Controllers (Rotary and Switches), MIDI and OSC
 		try:
 			global lib_zyncoder
+			#Init Zyncoder Library
 			zyngine_osc_port=6693
 			lib_zyncoder_init(zyngine_osc_port)
 			lib_zyncoder=zyncoder.get_lib_zyncoder()
-			lib_zyncoder.set_midi_filter_tuning_freq(zynthian_gui_config.master_midi_fine_tuning)
+			#Set Global Tuning
+			self.tuning_freq=zynthian_gui_config.midi_fine_tuning
+			lib_zyncoder.set_midi_filter_tuning_freq(self.tuning_freq)
+			#Init MIDI and Switches
 			self.zynmidi=zynthian_zcmidi()
 			self.zynswitches_init()
 		except Exception as e:
