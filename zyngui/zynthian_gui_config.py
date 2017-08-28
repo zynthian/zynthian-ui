@@ -274,7 +274,7 @@ else:
 	master_midi_bank_change_up="B#207F"
 
 if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN'):
-	master_midi_program_change_down=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN')
+	master_midi_bank_change_down=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN')
 else:
 	master_midi_bank_change_down="B#2000"
 
