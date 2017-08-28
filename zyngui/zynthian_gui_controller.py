@@ -299,7 +299,7 @@ class zynthian_gui_controller:
 	def set_title(self, tit):
 		self.title=str(tit)
 		#Calculate the font size ...
-		max_fs=int(1.1*zynthian_gui_config.font_size)
+		max_fs=int(1.0*zynthian_gui_config.font_size)
 		words=self.title.split()
 		n_words=len(words)
 		maxnumchar=max([len(w) for w in words])
