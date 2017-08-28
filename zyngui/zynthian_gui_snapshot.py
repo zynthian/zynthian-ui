@@ -57,15 +57,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def get_snapshot_fpath(self,f):
 		return join(self.base_dir,self.bank_dir,f);
 
-	def get_next_name(self):
+	def get_next_name(self, nz=3):
 		n=max(map(lambda item: int(item[2].split('-')[0]) if item[2].split('-')[0].isdigit() else 0, self.list_data))
-		return '{0:03d}'.format(n+1)
+		fmt="{0:0%dd}" % nz
+		return fmt.format(n+1)
 
 	def get_new_snapshot(self):
-		return self.get_next_name() + '.zss'
+		return self.get_next_name(3) + '.zss'
 
 	def get_new_bankdir(self):
-		return self.get_next_name()
+		return self.get_next_name(5)
 
 	def load_bank_list(self):
 		self.midi_banks={}
