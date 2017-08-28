@@ -389,29 +389,83 @@ class zynthian_gui:
 
 	def start_zyncoder_thread(self):
 		if lib_zyncoder:
-			self.zyncoder_thread=Thread(target=self.zyncoder_read, args=())
+			self.zyncoder_thread=Thread(target=self.zyncoder_thread_task, args=())
 			self.zyncoder_thread.daemon = True # thread dies with the program
 			self.zyncoder_thread.start()
 
-	def zyncoder_read(self):
+	def zyncoder_thread_task(self):
 		while not self.exit_flag:
-			if not self.loading: #TODO Es necesario???
-				try:
-					if self.modal_screen:
-						self.screens[self.modal_screen].zyncoder_read()
-					else:
-						self.screens[self.active_screen].zyncoder_read()
-					self.zynswitch_defered_exec()
-					self.zynswitches()
-				except Exception as err:
-					if zynthian_gui_config.raise_exceptions:
-						raise err
-					else:
-						logging.warning("zynthian_gui.zyncoder_read() => %s" % err)
+			self.zyncoder_read()
+			self.zynmidi_read()
 			sleep(0.04)
 			if self.zynread_wait_flag:
 				sleep(0.3)
 				self.zynread_wait_flag=False
+
+	def zyncoder_read(self):
+		if not self.loading: #TODO Es necesario???
+			try:
+				if self.modal_screen:
+					self.screens[self.modal_screen].zyncoder_read()
+				else:
+					self.screens[self.active_screen].zyncoder_read()
+				self.zynswitch_defered_exec()
+				self.zynswitches()
+			except Exception as err:
+				if zynthian_gui_config.raise_exceptions:
+					raise err
+				else:
+					logging.warning("zynthian_gui.zyncoder_read() => %s" % err)
+
+	def zynmidi_read(self):
+		try:
+			while lib_zyncoder:
+				ev=lib_zyncoder.read_zynmidi()
+				if ev==0: break
+				evtype = (ev & 0xF00000)>>20
+				chan = (ev & 0x0F0000)>>16
+
+				#Master MIDI Channel ...
+				if chan==zynthian_gui_config.master_midi_channel:
+					logging.info("MASTER MIDI MESSAGE: %s" % hex(ev))
+					if ev==zynthian_gui_config.master_midi_program_change_up:
+						logging.debug("PROGRAM CHANGE UP!")
+						self.screens['snapshot'].midi_program_change_up()
+					elif ev==zynthian_gui_config.master_midi_program_change_down:
+						logging.debug("PROGRAM CHANGE DOWN!")
+						self.screens['snapshot'].midi_program_change_down()
+					if ev==zynthian_gui_config.master_midi_bank_change_up:
+						logging.debug("BANK CHANGE UP!")
+						self.screens['snapshot'].midi_bank_change_up()
+					elif ev==zynthian_gui_config.master_midi_bank_change_down:
+						logging.debug("BANK CHANGE DOWN!")
+						self.screens['snapshot'].midi_bank_change_down()
+					elif evtype==0xC:
+						pgm = ((ev & 0x7F00)>>8) - zynthian_gui_config.master_midi_program_base
+						logging.debug("PROGRAM CHANGE %d" % pgm)
+						self.screens['snapshot'].midi_program_change(pgm)
+					elif evtype==0xB:
+						ccnum=(ev & 0x7F00)>>8
+						if ccnum==zynthian_gui_config.master_midi_bank_change_ccnum:
+							bnk = (ev & 0x7F) - zynthian_gui_config.master_midi_bank_base
+							logging.debug("BANK CHANGE %d" % bnk)
+							self.screens['snapshot'].midi_bank_change(bnk)
+
+				#Program Change ...
+				elif evtype==0xC:
+					pgm = (ev & 0x7F00)>>8
+					logging.info("MIDI PROGRAM CHANGE %s, CH%s" % (pgm,chan))
+					self.screens['layer'].set_midi_chan_preset(chan, pgm)
+					if not self.modal_screen and chan==self.curlayer.get_midi_chan():
+						self.show_screen('control')
+
+				#Note-On ...
+				elif evtype==0x9:
+					#Preload preset (note-on)
+					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
+						self.screens[self.active_screen].preselect_action()
+		except Exception as err:
+			logging.error("zynthian_gui.zynmidi_read() => %s" % err)
 
 	def start_loading_thread(self):
 		self.loading_thread=Thread(target=self.loading_refresh, args=())
@@ -452,7 +506,6 @@ class zynthian_gui:
 	
 	def start_polling(self):
 		self.polling=True
-		self.zynmidi_read()
 		self.zyngine_refresh()
 
 	def stop_polling(self):
@@ -460,33 +513,6 @@ class zynthian_gui:
 
 	def after(self, msec, func):
 		zynthian_gui_config.top.after(msec, func)
-
-	def zynmidi_read(self):
-		try:
-			while lib_zyncoder:
-				ev=lib_zyncoder.read_zynmidi()
-				if ev==0: break
-				evtype = (ev & 0xF0)>>4
-				chan = ev & 0x0F
-				if chan==zynthian_gui_config.master_midi_channel:
-					if  evtype==0xC:
-						pgm = (ev & 0xF00)>>8
-						logging.info("MASTER MIDI PROGRAM CHANGE %s" % pgm)
-						#TODO => MASTER MIDI PROGRAM CHANGE AND OTHERS!
-				elif evtype==0xC:
-					pgm = (ev & 0xF00)>>8
-					logging.info("MIDI PROGRAM CHANGE %s, CH%s" % (pgm,chan))
-					self.screens['layer'].set_midi_chan_preset(chan, pgm)
-					if not self.modal_screen and chan==self.curlayer.get_midi_chan():
-						self.show_screen('control')
-				elif evtype==0x9:
-					#Preload preset
-					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
-						self.screens[self.active_screen].preselect_action()
-		except Exception as err:
-			logging.error("zynthian_gui.zynmidi_read() => %s" % err)
-		if self.polling:
-			zynthian_gui_config.top.after(40, self.zynmidi_read)
 
 	def zyngine_refresh(self):
 		try:

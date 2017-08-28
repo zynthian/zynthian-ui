@@ -50,6 +50,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.layers=[]
 		self.curlayer=None
 		self.add_layer_eng=None
+		self.last_snapshot_fpath=None
 		super().__init__('Layer', True)
 
 	def reset(self):
@@ -188,6 +189,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			with open(fpath,"w") as fh:
 				fh.write(json)
+			self.last_snapshot_fpath=fpath
 		except Exception as e:
 			logging.error("Can't save snapshot '%s': %s" % (fpath,e))
 			return False
@@ -198,6 +200,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			with open(fpath,"r") as fh:
 				json=fh.read()
 				logging.info("Loading snapshot %s => \n%s" % (fpath,json))
+			self.last_snapshot_fpath=fpath
 		except Exception as e:
 			logging.error("Can't load snapshot '%s': %s" % (fpath,e))
 			return False

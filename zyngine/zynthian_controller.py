@@ -56,8 +56,12 @@ class zynthian_controller:
 			self.set_options(options)
 
 	def set_options(self, options):
+		if 'symbol' in options:
+			self.symbol=options['symbol']
+		if 'name' in options:
+			self.name=options['name']
 		if 'short_name' in options:
-			self.short_name=short_name
+			self.short_name=options['short_name']
 		if 'value' in options:
 			self.value=options['value']
 		if 'value_default' in options:

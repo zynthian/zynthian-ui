@@ -248,22 +248,53 @@ else:
 if os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_UP'):
 	master_midi_program_change_up=os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_UP')
 else:
-	master_midi_program_change_up="PC 127"
+	master_midi_program_change_up="C#7F"
 
 if os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_DOWN'):
 	master_midi_program_change_down=os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_DOWN')
 else:
-	master_midi_program_change_down="PC 00"
+	master_midi_program_change_down="C#00"
+
+if master_midi_program_change_down=="C#00":
+	master_midi_program_base=1
+else:
+	master_midi_program_base=0
+
+if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_CCNUM'):
+	master_midi_bank_change_ccnum=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_CCNUM')
+else:
+	#Use LSB Bank by default
+	master_midi_bank_change_ccnum=0x20 
+	#Use MSB Bank by default
+	#master_midi_bank_change_ccnum=0x00
 
 if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_UP'):
 	master_midi_bank_change_up=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_UP')
 else:
-	master_midi_bank_change_up="CC 000 127"
+	master_midi_bank_change_up="B#207F"
 
 if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN'):
 	master_midi_program_change_down=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN')
 else:
-	master_midi_bank_change_down="CC 000 000"
+	master_midi_bank_change_down="B#2000"
+
+master_midi_bank_change_down_ccnum=int(master_midi_bank_change_down[2:4],16)
+if master_midi_bank_change_down_ccnum==master_midi_bank_change_ccnum:
+	master_midi_bank_base=1
+else:
+	master_midi_bank_base=0
+
+#MIDI channels: 0-15
+if master_midi_channel>16:
+	master_midi_channel=16
+master_midi_channel=master_midi_channel-1
+mmc_hex=hex(master_midi_channel)[2]
+
+#Calculate MIDI Sequences and convert to Integer
+master_midi_program_change_up=int('{:<06}'.format(master_midi_program_change_up.replace('#',mmc_hex)),16)
+master_midi_program_change_down=int('{:<06}'.format(master_midi_program_change_down.replace('#',mmc_hex)),16)
+master_midi_bank_change_up=int('{:<06}'.format(master_midi_bank_change_up.replace('#',mmc_hex)),16)
+master_midi_bank_change_down=int('{:<06}'.format(master_midi_bank_change_down.replace('#',mmc_hex)),16)
 
 #------------------------------------------------------------------------------
 # UI special features

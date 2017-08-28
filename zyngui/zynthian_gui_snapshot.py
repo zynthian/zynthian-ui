@@ -26,7 +26,7 @@
 import os
 import sys
 import logging
-from os.path import isfile, isdir, join
+from os.path import isfile, isdir, join, basename
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -44,24 +44,79 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 #------------------------------------------------------------------------------
 
 class zynthian_gui_snapshot(zynthian_gui_selector):
-	snapshot_dir=os.getcwd()+"/my-data/snapshots"
 
 	def __init__(self):
+		self.base_dir=os.getcwd()+"/my-data/snapshots"
+		self.default_snapshot_fpath=join(self.base_dir,"default.zss")
+		self.bank_dir=None
 		self.action="LOAD"
-		super().__init__('Snapshot', True)
-        
-	def fill_list(self):
-		self.list_data=[("NEW",0,"New")]
-		i=1
-		if self.action=="SAVE" or isfile(join(self.snapshot_dir,"default.zss")):
-			self.list_data.append((join(self.snapshot_dir,"default.zss"),i,"Default"))
+		self.midi_banks={}
+		self.midi_programs={}
+		super().__init__('Bank', True)
+
+	def get_snapshot_fpath(self,f):
+		return join(self.base_dir,self.bank_dir,f);
+
+	def get_next_name(self):
+		n=max(map(lambda item: int(item[2].split('-')[0]) if item[2].split('-')[0].isdigit() else 0, self.list_data))
+		return '{0:03d}'.format(n+1)
+
+	def get_new_snapshot(self):
+		return self.get_next_name() + '.zss'
+
+	def get_new_bankdir(self):
+		return self.get_next_name()
+
+	def load_bank_list(self):
+		self.midi_banks={}
+		self.list_data=[]
+		i=0
+		if self.action=="SAVE" or isfile(self.default_snapshot_fpath):
+			self.list_data.append((self.default_snapshot_fpath,i,"Default Snapshot"))
 			i=i+1
-		for f in sorted(os.listdir(self.snapshot_dir)):
-			if isfile(join(self.snapshot_dir,f)) and f[-4:].lower()=='.zss' and f!="default.zss":
-				title=str.replace(f[:-4], '_', ' ')
-				#print("snapshot list => %s" % title)
-				self.list_data.append((join(self.snapshot_dir,f),i,title))
+		if self.action=="SAVE":
+			self.list_data.append(("NEW_BANK",1,"New Bank"))
+			i=i+1
+		for f in sorted(os.listdir(self.base_dir)):
+			dpath=join(self.base_dir,f)
+			if isdir(dpath):
+				self.list_data.append((dpath,i,f))
+				try:
+					bn=self.get_midi_number(f)
+					self.midi_banks[str(bn)]=i
+					logging.debug("Snapshot Bank '%s' => MIDI bank %d." % (f,bn))
+				except:
+					logging.warning("Snapshot Bank '%s' don't have a MIDI bank number." % f)
 				i=i+1
+
+	def load_snapshot_list(self):
+		self.midi_programs={}
+		self.list_data=[(self.base_dir,0,"..")]
+		i=1
+		if self.action=="SAVE":
+			self.list_data.append(("NEW_SNAPSHOT",1,"New Snapshot"))
+			i=i+1
+		for f in sorted(os.listdir(join(self.base_dir,self.bank_dir))):
+			fpath=self.get_snapshot_fpath(f)
+			if isfile(fpath) and f[-4:].lower()=='.zss':
+				#title=str.replace(f[:-4], '_', ' ')
+				title=f[:-4]
+				self.list_data.append((fpath,i,title))
+				try:
+					pn=self.get_midi_number(title)
+					self.midi_programs[str(pn)]=i
+					logging.debug("Snapshot '%s' => MIDI program %d." % (title,pn))
+				except:
+					logging.warning("Snapshot '%s' don't have a MIDI program number." % title)
+				i=i+1
+
+	def fill_list(self):
+		if self.bank_dir is None:
+			self.selector_caption='Bank'
+			self.load_bank_list()
+		else:
+			self.selector_caption='Snapshot'
+			self.load_snapshot_list()
 		super().fill_list()
 
 	def show(self):
@@ -77,26 +132,94 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.action="SAVE"
 		self.show()
 		
-	def get_new_fpath(self):
-		n=max(map(lambda item: int(item[2]) if item[2].isdigit() else 0, self.list_data))
-		fname='{0:04d}'.format(n+1) + '.zss'
-		fpath=join(self.snapshot_dir,fname)
-		return fpath
-
 	def select_action(self, i):
 		fpath=self.list_data[i][0]
-		if self.action=="LOAD":
-			if fpath=='NEW':
+		if fpath=='NEW_BANK':
+			self.bank_dir=self.get_new_bankdir()
+			os.mkdir(join(self.base_dir,self.bank_dir))
+			self.show()
+		elif isdir(fpath):
+			if fpath==self.base_dir:
+				self.bank_dir=None
+				self.index=i
+			else:
+				self.bank_dir=self.list_data[i][2]
+			self.show()
+		elif self.action=="LOAD":
+			if fpath=='NEW_SNAPSHOT':
 				zynthian_gui_config.zyngui.screens['layer'].reset()
 				zynthian_gui_config.zyngui.show_screen('layer')
 			else:
 				zynthian_gui_config.zyngui.screens['layer'].load_snapshot(fpath)
 				#zynthian_gui_config.zyngui.show_screen('control')
 		elif self.action=="SAVE":
-			if fpath=='NEW':
-				fpath=self.get_new_fpath()
+			if fpath=='NEW_SNAPSHOT':
+				fpath=self.get_snapshot_fpath(self.get_new_snapshot())
 			zynthian_gui_config.zyngui.screens['layer'].save_snapshot(fpath)
 			zynthian_gui_config.zyngui.show_active_screen()
+
+	def get_midi_number(self, f):
+		return int(f.split('-')[0])-1
+
+	def midi_bank_change(self, bn):
+		#Get bank list if needed
+		if self.bank_dir is not None:
+			self.bank_dir=None
+			self.fill_list()
+		#Load bank dir
+		bn=str(bn)
+		if bn in self.midi_banks:
+			self.bank_dir=self.list_data[self.midi_banks[bn]][2]
+			logging.debug("Snapshot Bank Change %s: %s" % (bn,self.bank_dir))
+			self.show()
+			return True
+		else:
+			return False
+
+	def midi_bank_change_offset(self,offset):
+		old_bank_dir=self.bank_dir
+		if self.bank_dir is not None:
+			bn=self.get_midi_number(self.bank_dir)+offset
+		else:
+			bn=0
+		if not self.midi_bank_change(bn):
+			self.bank_dir=old_bank_dir
+			self.show()
+
+	def midi_bank_change_up(self):
+		self.midi_bank_change_offset(1)
+		
+	def midi_bank_change_down(self):
+		self.midi_bank_change_offset(-1)
+
+	def midi_program_change(self, pn):
+		#If no bank selected, default to first bank
+		if self.bank_dir is None:
+			self.bank_dir=self.list_data[0][2]
+			self.fill_list()
+		#Load snapshot
+		pn=str(pn)
+		if pn in self.midi_programs:
+			fpath=self.list_data[self.midi_programs[pn]][0]
+			logging.debug("Snapshot Program Change %s: %s" % (pn,fpath))
+			zynthian_gui_config.zyngui.screens['layer'].load_snapshot(fpath)
+			return True
+		else:
+			return False
+
+	def midi_program_change_offset(self,offset):
+		try:
+			f=basename(zynthian_gui_config.zyngui.screens['layer'].last_snapshot_fpath)
+			pn=self.get_midi_number(f)+offset
+		except:
+			pn=0
+		self.midi_program_change(pn)
+
+	def midi_program_change_up(self):
+		self.midi_program_change_offset(1)
+		
+	def midi_program_change_down(self):
+		self.midi_program_change_offset(-1)
 
 	def next(self):
 		if self.action=="SAVE": self.action="LOAD"
@@ -104,7 +227,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.show()
 
 	def set_select_path(self):
-		title=self.action.lower().title()
+		title=(self.action.lower()+" snapshot").title()
+		if self.bank_dir:
+			title=title+": "+self.bank_dir
 		self.select_path.set(title)
 
 #------------------------------------------------------------------------------
