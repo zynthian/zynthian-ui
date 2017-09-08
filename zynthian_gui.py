@@ -30,6 +30,7 @@ import signal
 import alsaseq
 import logging
 from time import sleep
+from os.path import isfile
 from datetime import datetime
 from threading  import Thread
 
@@ -101,6 +102,9 @@ class zynthian_gui:
 			#Set Global Tuning
 			self.tuning_freq=int(zynthian_gui_config.midi_fine_tuning)
 			lib_zyncoder.set_midi_filter_tuning_freq(self.tuning_freq)
+			#Set MIDI Master Channel
+			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel);
+			lib_zyncoder.zynmidi_send_master_ccontrol_change(0x7,0xFF);
 			#Init MIDI and Switches
 			self.zynmidi=zynthian_zcmidi()
 			self.zynswitches_init()
@@ -125,7 +129,7 @@ class zynthian_gui:
 		self.show_screen('layer')
 		# Try to load "default snapshot" or show "load snapshot" popup
 		default_snapshot_fpath=os.getcwd()+"/my-data/snapshots/default.zss"
-		if not self.screens['layer'].load_snapshot(default_snapshot_fpath):
+		if not isfile(default_snapshot_fpath) or not self.screens['layer'].load_snapshot(default_snapshot_fpath):
 			self.load_snapshot(autoclose=True)
 		# Start polling threads
 		self.start_polling()

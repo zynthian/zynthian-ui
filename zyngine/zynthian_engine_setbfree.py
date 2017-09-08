@@ -79,7 +79,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		['drawbars low',['16','5 1/3','8','4']],
 		['drawbars hi',['2 2/3','2','1 3/5','1 1/3']],
 		['reverb & vibrato',['drawbar 1','reverb mix','vibrato on/off','vibrato selector']],
-		['percussion',['percussion on/off','percussion decay','percussion harmonic']],
+		['percussion',['volume','percussion on/off','percussion decay','percussion harmonic']],
 		['overdrive',['overdrive on/off','overdrive character','overdrive inputgain','overdrive outputgain']]
 	]
 
