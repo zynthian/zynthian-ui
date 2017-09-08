@@ -22,9 +22,15 @@
 # 
 #******************************************************************************
 
-#source "$ZYNTHIAN_SYS_DIR/scripts/zynthian_envars.sh"
-source "$ZYNTHIAN_CONFIG_DIR/zynthian_envars.sh"
-source "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh"
+if [ -d "$ZYNTHIAN_CONFIG_DIR" ]; then
+	source "$ZYNTHIAN_CONFIG_DIR/zynthian_envars.sh"
+else
+	source "$ZYNTHIAN_SYS_DIR/scripts/zynthian_envars.sh"
+fi
+
+if [ -f "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh" ]; then
+	source "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh"
+fi
 
 #export ZYNTHIAN_LOG_LEVEL=10			# 10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL
 #export ZYNTHIAN_RAISE_EXCEPTIONS=0
@@ -54,13 +60,13 @@ function screensaver_off() {
 
 function splash_zynthian() {
 	if [ -c $FRAMEBUFFER ]; then
-		cat ./img/fb_zynthian_boot.raw > $FRAMEBUFFER
+		cat $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.raw > $FRAMEBUFFER
 	fi  
 }
 
 function splash_zynthian_error() {
 	if [ -c $FRAMEBUFFER ]; then
-		cat ./img/fb_zynthian_error.raw > $FRAMEBUFFER
+		cat $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.raw > $FRAMEBUFFER
 	fi  
 }
 
@@ -68,7 +74,7 @@ function splash_zynthian_error() {
 # Main Program
 #------------------------------------------------------------------------------
 
-cd $ZYNTHIAN_DIR/zynthian-ui
+cd $ZYNTHIAN_UI_DIR
 
 screensaver_off
 
