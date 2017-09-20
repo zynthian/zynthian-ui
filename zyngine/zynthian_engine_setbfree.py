@@ -92,7 +92,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.name="setBfree"
 		self.nickname="BF"
 		
-		self.base_dir="./data/setbfree/"
+		self.base_dir="./data/setbfree"
 		self.chan_names=("upper","lower","pedals")
 		
 		self.generate_config_file()
