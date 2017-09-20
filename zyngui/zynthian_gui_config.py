@@ -232,6 +232,15 @@ else:
 	font_size=10
 
 #------------------------------------------------------------------------------
+# UI Cursor
+#------------------------------------------------------------------------------
+
+if os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR'):
+	force_enable_cursor=os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR')
+else:
+	force_enable_cursor=False
+
+#------------------------------------------------------------------------------
 # Master MIDI Parameters
 #------------------------------------------------------------------------------
 
@@ -339,7 +348,7 @@ top.maxsize(display_width,display_height)
 top.minsize(display_width,display_height)
 
 # Disable cursor for real Zynthian Boxes
-if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES":
+if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES" and not force_enable_cursor:
 	top.config(cursor="none")
 
 #------------------------------------------------------------------------------
