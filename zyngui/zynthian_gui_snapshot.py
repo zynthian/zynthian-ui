@@ -50,6 +50,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.default_snapshot_fpath=join(self.base_dir,"default.zss")
 		self.bank_dir=None
 		self.action="LOAD"
+		self.index_offset=0
 		self.midi_banks={}
 		self.midi_programs={}
 		super().__init__('Bank', True)
@@ -68,6 +69,12 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def get_new_bankdir(self):
 		return self.get_next_name(5)
 
+	def change_index_offset(self, i):
+		self.index=self.index-self.index_offset+i
+		self.index_offset=i
+		if self.index<0:
+			self.index=0
+
 	def load_bank_list(self):
 		self.midi_banks={}
 		self.list_data=[]
@@ -78,6 +85,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if self.action=="SAVE":
 			self.list_data.append(("NEW_BANK",1,"New Bank"))
 			i=i+1
+		self.change_index_offset(i)
 		for f in sorted(os.listdir(self.base_dir)):
 			dpath=join(self.base_dir,f)
 			if isdir(dpath):
@@ -97,6 +105,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if self.action=="SAVE":
 			self.list_data.append(("NEW_SNAPSHOT",1,"New Snapshot"))
 			i=i+1
+		self.change_index_offset(i)
 		for f in sorted(os.listdir(join(self.base_dir,self.bank_dir))):
 			fpath=self.get_snapshot_fpath(f)
 			if isfile(fpath) and f[-4:].lower()=='.zss':
