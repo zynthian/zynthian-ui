@@ -47,7 +47,7 @@ class zynthian_layer:
 		self.preset_index=0
 		self.preset_name=None
 		self.preset_info=None
-		self.preset_bank_info=None
+		self.preset_bank_index=None
 
 		self.preload_index=None
 		self.preload_name=None
@@ -66,7 +66,9 @@ class zynthian_layer:
 		if self.refresh_flag:
 			self.refresh_flag=False
 			self.refresh_controllers()
-			self.zyngui.screens['preset'].fill_list()
+			#TODO: Improve this Dirty Hack!!
+			if self.engine.nickname=='MD':
+				self.zyngui.screens['preset'].fill_list()
 			self.zyngui.refresh_screen()
 
 	def reset(self):
@@ -149,7 +151,7 @@ class zynthian_layer:
 			self.preset_index=i
 			self.preset_name=self.preset_list[i][2]
 			self.preset_info=copy.deepcopy(self.preset_list[i])
-			self.preset_bank_info=self.bank_info
+			self.preset_bank_index=self.bank_index
 			self.preload_index=i
 			self.preload_name=self.preset_name
 			self.preload_info=self.preset_info
@@ -178,12 +180,14 @@ class zynthian_layer:
 			self.preload_name=self.preset_list[i][2]
 			self.preload_info=copy.deepcopy(self.preset_list[i])
 			logging.info("Preset Preloaded: %s (%d)" % (self.preload_name,i))
-			self.engine.set_preset(self, self.preload_info)
+			self.engine.set_preset(self, self.preload_info,True)
 			return True
 		return False
 
 	def restore_preset(self):
 		if self.preset_index is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
+			if self.bank_index!=self.preset_bank_index:
+				self.set_bank(self.preset_bank_index,False)
 			self.preload_index=self.preset_index
 			self.preload_name=self.preset_name
 			self.preload_info=self.preset_info
@@ -326,14 +330,8 @@ class zynthian_layer:
 			path=path + " > " + self.bank_name
 		return path
 
-	def get_preset_bankpath(self):
-		path=self.get_basepath()
-		if self.preset_bank_info:
-			path=path + " > " + self.preset_bank_info[2]
-		return path
-
 	def get_presetpath(self):
-		path=self.get_preset_bankpath()
+		path=self.get_bankpath()
 		if self.preset_name:
 			path=path + "/" + self.preset_name
 		return path

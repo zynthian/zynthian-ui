@@ -43,8 +43,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 		['volume',1,96],
 #		['swellpedal 2',11,96],
 #		['rotary speed',91,64,127,'rotaryspeed'],
-		['rotary speed',91,'off','off|chr|trm|chr','rotaryspeed'],
-#		['rotary speed',91,'off',[['off','chr','trm','chr'],[0,31,63,95]],'rotaryspeed'],
+		['rotary speed',91,'off','slow|off|fast','rotaryspeed'],
+#		['rotary speed',91,'off',[['slow','off','fast'],[0,43,86]],'rotaryspeed'],
 #		['rotary select',65,0,127],
 #		['rotary select',65,'off/off','off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
 		['rotary select',65,'off/off',[['off/off','slow/off','fast/off','off/slow','slow/slow','fast/slow','off/fast','slow/fast','fast/fast'],[0,15,30,45,60,75,90,105,120]]],
@@ -79,7 +79,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		['drawbars low',['16','5 1/3','8','4']],
 		['drawbars hi',['2 2/3','2','1 3/5','1 1/3']],
 		['reverb & vibrato',['drawbar 1','reverb mix','vibrato on/off','vibrato selector']],
-		['percussion',['percussion on/off','percussion decay','percussion harmonic']],
+		['percussion',['volume','percussion on/off','percussion decay','percussion harmonic']],
 		['overdrive',['overdrive on/off','overdrive character','overdrive inputgain','overdrive outputgain']]
 	]
 
@@ -92,8 +92,10 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.name="setBfree"
 		self.nickname="BF"
 		
-		self.base_dir="./data/setbfree/"
+		self.base_dir="./data/setbfree"
 		self.chan_names=("upper","lower","pedals")
+		
+		self.generate_config_file()
 
 		if self.config_remote_display():
 			self.command=("/usr/local/bin/setBfree", "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
@@ -102,6 +104,15 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		self.start()
 		self.reset()
+
+	def generate_config_file(self):
+		cfg_tpl_fpath=self.base_dir+"/cfg/zynthian.cfg.tpl"
+		cfg_fpath=self.base_dir+"/cfg/zynthian.cfg"
+		with open(cfg_tpl_fpath, 'r') as cfg_tpl_file:
+			cfg_data=cfg_tpl_file.read()
+			cfg_data=cfg_data.replace('#OSC.TUNING#', str(self.zyngui.tuning_freq))
+			with open(cfg_fpath, 'w') as cfg_file:
+				cfg_file.write(cfg_data)
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
@@ -114,13 +125,14 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Preset Managament
 	#----------------------------------------------------------------------------
 
-	def set_preset(self, layer, preset):
-		super().set_preset(layer,preset)
-		#Set layer's refresh flag
-		layer.refresh_flag=True
-
 	def get_preset_list(self, bank):
 		return self.load_pgm_list(bank[0])
+
+	def set_preset(self, layer, preset, preload=False):
+		super().set_preset(layer,preset)
+		#Set layer's refresh flag
+		if not preload:
+			layer.refresh_flag=True
 
 	#----------------------------------------------------------------------------
 	# Controller Managament
@@ -135,8 +147,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 				zctrl.value=layer.preset_info[3][zctrl.symbol]
 				#logging.debug("%s => %s (%s)" % (zctrl.name,zctrl.symbol,zctrl.value))
 				if zctrl.symbol=='rotaryspeed':
-					if zctrl.value=='tremolo': zctrl.value='trm'
-					elif zctrl.value=='chorale': zctrl.value='chr'
+					if zctrl.value=='tremolo': zctrl.value='fast'
+					elif zctrl.value=='chorale': zctrl.value='slow'
 					else: zctrl.value='off'
 			except:
 				#logging.debug("No preset value for control %s" % zctrl.name)

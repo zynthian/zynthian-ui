@@ -28,6 +28,7 @@ import logging
 from json import JSONEncoder, JSONDecoder
 
 # Zynthian specific modules
+from zyncoder import *
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 from zyngine import zynthian_layer
@@ -49,6 +50,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.layers=[]
 		self.curlayer=None
 		self.add_layer_eng=None
+		self.last_snapshot_fpath=None
 		super().__init__('Layer', True)
 
 	def reset(self):
@@ -105,9 +107,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if eng.nickname=='MD':
 			self.add_layer_midich(None)
 		elif eng.nickname=='BF':
-			self.add_layer_midich(0)
+			self.add_layer_midich(0,False)
 			self.add_layer_midich(1,False)
 			self.add_layer_midich(2,False)
+			self.index=len(self.layers)-3
+			self.select_action(self.index)
 		else:
 			zynthian_gui_config.zyngui.screens['midich'].set_mode("ADD")
 			zynthian_gui_config.zyngui.show_modal('midich')
@@ -164,10 +168,19 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			snapshot={
 				'index':self.index,
-				'layers':[]
+				'layers':[],
+				'transpose':[]
+				#'cc_map':[],
 			}
+			#Layers info
 			for layer in self.layers:
 				snapshot['layers'].append(layer.get_snapshot())
+			#Transpose info
+			for i in range(0,16):
+				snapshot['transpose'].append(zyncoder.lib_zyncoder.get_midi_filter_transpose(i))
+			#CC-Map info
+			#TODO
+			#JSON Encode
 			json=JSONEncoder().encode(snapshot)
 			logging.info("Saving snapshot %s => \n%s" % (fpath,json))
 		except Exception as e:
@@ -176,6 +189,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			with open(fpath,"w") as fh:
 				fh.write(json)
+			self.last_snapshot_fpath=fpath
 		except Exception as e:
 			logging.error("Can't save snapshot '%s': %s" % (fpath,e))
 			return False
@@ -186,24 +200,34 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			with open(fpath,"r") as fh:
 				json=fh.read()
 				logging.info("Loading snapshot %s => \n%s" % (fpath,json))
+			self.last_snapshot_fpath=fpath
 		except Exception as e:
 			logging.error("Can't load snapshot '%s': %s" % (fpath,e))
 			return False
 		try:
 			snapshot=JSONDecoder().decode(json)
+			#Clean all layers
 			self.remove_all_layers(False)
+			#Set Layers
 			for lss in snapshot['layers']:
 				engine=zynthian_gui_config.zyngui.screens['engine'].start_engine(lss['engine_nick'],1)
 				self.layers.append(zynthian_layer(engine,lss['midi_chan'],zynthian_gui_config.zyngui))
 				self.layers[-1].restore_snapshot(lss)
 			self.fill_list()
 			self.index=snapshot['index']
+			zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
+			#Set Transpose
+			if 'transpose' in snapshot:
+				for i in range(0,16):
+					zyncoder.lib_zyncoder.set_midi_filter_transpose(i,snapshot['transpose'][i])
+			#Set CC-Map
+			#TODO
+			#Post action
 			if self.list_data[self.index][0] in ('NEW','RESET'):
 				self.index=0
 				zynthian_gui_config.zyngui.show_screen('layer')
 			else:
 				self.select_action(self.index)
-			zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
 		except Exception as e:
 			logging.error("Invalid snapshot format: %s" % e)
 			return False

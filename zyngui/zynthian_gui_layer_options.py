@@ -52,6 +52,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		eng=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index].engine.nickname
 		if eng in ['ZY','LS','FS']:
 			self.list_data.append((self.midi_chan,0,"MIDI Chan"))
+		if eng in ['ZY','LS','FS','BF']:
+			self.list_data.append((self.transpose,0,"Transpose"))
 		self.list_data.append((self.remove_layer,0,"Remove Layer"))
 		super().fill_list()
 
@@ -71,8 +73,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		zynthian_gui_config.zyngui.screens['midich'].index=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index].midi_chan
 		zynthian_gui_config.zyngui.show_modal('midich')
 
+	def transpose(self):
+		zynthian_gui_config.zyngui.show_modal('transpose')
+
 	def remove_layer(self):
 		zynthian_gui_config.zyngui.screens['layer'].remove_layer(self.layer_index)
 		zynthian_gui_config.zyngui.show_screen('layer')
+
 
 #------------------------------------------------------------------------------

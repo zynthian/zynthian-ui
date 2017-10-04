@@ -3,7 +3,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian GUI Preset Selector Class
+# Zynthian GUI Transpose Selector Class
 # 
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
@@ -27,6 +27,7 @@ import sys
 import logging
 
 # Zynthian specific modules
+from zyncoder import *
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
@@ -37,36 +38,36 @@ from . import zynthian_gui_selector
 # Set root logging level
 logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 
-#-------------------------------------------------------------------------------
-# Zynthian Preset/Instrument Selection GUI Class
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+# Zynthian Transpose Selection GUI Class
+#------------------------------------------------------------------------------
 
-class zynthian_gui_preset(zynthian_gui_selector):
+class zynthian_gui_transpose(zynthian_gui_selector):
 
 	def __init__(self):
-		super().__init__('Preset', True)
-      
+		super().__init__('Transpose', True)
+
 	def fill_list(self):
-		zynthian_gui_config.zyngui.curlayer.load_preset_list()
-		self.list_data=zynthian_gui_config.zyngui.curlayer.preset_list
+		self.list_data=[]
+		for i in range(0,121):
+			offset=i-60
+			self.list_data.append((str(i),offset,str(offset)))
 		super().fill_list()
 
 	def show(self):
-		self.index=zynthian_gui_config.zyngui.curlayer.get_preset_index()
+		offset=zyncoder.lib_zyncoder.get_midi_filter_transpose(self.get_layer_chan())
+		self.index=60+offset
 		super().show()
 
 	def select_action(self, i):
-		zynthian_gui_config.zyngui.curlayer.set_preset(i)
-		zynthian_gui_config.zyngui.show_screen('control')
-
-	def preselect_action(self):
-		return zynthian_gui_config.zyngui.curlayer.preload_preset(self.index)
-
-	def back_action(self):
-		return zynthian_gui_config.zyngui.curlayer.restore_preset()
+		zyncoder.lib_zyncoder.set_midi_filter_transpose(self.get_layer_chan(),self.list_data[i][1])
+		zynthian_gui_config.zyngui.show_screen('layer')
 
 	def set_select_path(self):
-		if zynthian_gui_config.zyngui.curlayer:
-			self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_bankpath())
+		self.select_path.set("Transpose")
+
+	def get_layer_chan(self):
+		layer_index=zynthian_gui_config.zyngui.screens['layer_options'].layer_index
+		return zynthian_gui_config.zyngui.screens['layer'].layers[layer_index].get_midi_chan()
 
 #------------------------------------------------------------------------------

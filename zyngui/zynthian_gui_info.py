@@ -89,4 +89,8 @@ class zynthian_gui_info:
 	def refresh_loading(self):
 		pass
 
+	def switch_select(self):
+		pass
+
+
 #-------------------------------------------------------------------------------

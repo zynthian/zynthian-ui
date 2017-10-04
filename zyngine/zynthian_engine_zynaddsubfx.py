@@ -149,7 +149,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				preset_list.append((preset_fpath,[bank_msb,bank_lsb,prg],title))
 		return preset_list
 
-	def set_preset(self, layer, preset):
+	def set_preset(self, layer, preset, preload=False):
 		self.start_loading()
 		self.enable_part(layer)
 		liblo.send(self.osc_target, "/load-part",layer.part_i,preset[0])

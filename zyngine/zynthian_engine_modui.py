@@ -139,7 +139,7 @@ class zynthian_engine_modui(zynthian_engine):
 				logging.debug("Add Preset "+title)
 		return preset_list
 
-	def set_preset(self, layer, preset):
+	def set_preset(self, layer, preset, preload=False):
 		self.start_loading()
 		self.load_preset(preset[3],preset[0])
 		self.stop_loading()
