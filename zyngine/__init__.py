@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 __all__ = [
-	#"zynthian_midi",
 	"zynthian_zcmidi",
+	"zynthian_midi_filter",
 	"zynthian_controller",
 	"zynthian_layer",
 	"zynthian_engine",
@@ -13,6 +13,7 @@ __all__ = [
 ]
 #from zyngine.zynthian_midi import *
 from zyngine.zynthian_zcmidi import *
+from zyngine.zynthian_midi_filter import *
 from zyngine.zynthian_controller import *
 from zyngine.zynthian_layer import *
 from zyngine.zynthian_engine import *

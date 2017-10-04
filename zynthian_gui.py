@@ -39,6 +39,7 @@ import zynautoconnect
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine import zynthian_zcmidi
+from zyngine import zynthian_midi_filter
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -103,8 +104,10 @@ class zynthian_gui:
 			self.tuning_freq=int(zynthian_gui_config.midi_fine_tuning)
 			lib_zyncoder.set_midi_filter_tuning_freq(self.tuning_freq)
 			#Set MIDI Master Channel
-			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel);
-			lib_zyncoder.zynmidi_send_master_ccontrol_change(0x7,0xFF);
+			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
+			lib_zyncoder.zynmidi_send_master_ccontrol_change(0x7,0xFF)
+			#Setup MIDI filter rules
+			zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
 			#Init MIDI and Switches
 			self.zynmidi=zynthian_zcmidi()
 			self.zynswitches_init()

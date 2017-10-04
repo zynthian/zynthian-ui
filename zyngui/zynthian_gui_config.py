@@ -319,6 +319,11 @@ if os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING'):
 else:
 	midi_fine_tuning=440
 
+if os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES'):
+	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES')
+else:
+	midi_filter_rules=""
+
 #------------------------------------------------------------------------------
 # Create & Configure Top Level window 
 #------------------------------------------------------------------------------
