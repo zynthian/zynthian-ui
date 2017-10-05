@@ -44,8 +44,11 @@
 # 
 #******************************************************************************
 
+import os
 import sys
 import logging
+
+sys.path.append(os.environ.get('ZYNTHIAN_UI_DIR'))
 
 # Zynthian specific modules
 from zyncoder import *
