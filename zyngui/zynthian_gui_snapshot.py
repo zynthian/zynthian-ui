@@ -143,7 +143,11 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.show()
 		
 	def select_action(self, i):
-		fpath=self.list_data[i][0]
+		try:
+			fpath=self.list_data[i][0]
+		except:
+			logging.warning("List is empty")
+			return
 		if fpath=='NEW_BANK':
 			self.bank_dir=self.get_new_bankdir()
 			os.mkdir(join(self.base_dir,self.bank_dir))
