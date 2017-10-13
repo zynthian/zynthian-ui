@@ -140,6 +140,11 @@ class MidiFilterRule:
 		self.parse_rule(rule, set_rules)
 
 	def parse_rule(self, rule, set_rules=True):
+		# Check that the rule has only 1 line
+		parts=rule.split("\n")
+		if len(parts)>1:
+			raise MidiFilterException("Invalid rule format. Multi-line rules are not allowed.")
+
 		# Parse rule type: IGNORE | MAP | CLEAN
 		parts=rule.split(" ")
 		self.rule_type=parts[0]

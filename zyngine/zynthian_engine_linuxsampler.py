@@ -137,7 +137,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				if version_major>1 or (version_major==1 and version_minor>=6):
 					self.lscp_v1_6_supported=True
 
-	def lscp_send(self,data):
+	def lscp_send(self, data):
 		command=command+"\r\n"
 		try:
 			self.sock.send(data.encode())
@@ -229,7 +229,12 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	def set_midi_chan(self, layer):
 		if layer.ls_chan_info:
 			ls_chan_id=layer.ls_chan_info['chan_id']
-			self.lscp_send_single("SET CHANNEL MIDI_INPUT_CHANNEL %d %d" % (ls_chan_id,layer.get_midi_chan()))
+			try:
+				self.lscp_send_single("SET CHANNEL MIDI_INPUT_CHANNEL %d %d" % (ls_chan_id,layer.get_midi_chan()))
+			except zyngine_lscp_error as err:
+				logging.error(err)
+			except zyngine_lscp_warning as warn:
+				logging.warning(warn)
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
@@ -360,7 +365,12 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			fx_id=parts[0]
 			fx_ctrl_i=parts[1]
 			logging.debug("LSCP: Sending controller %s => %s" % (zctrl.name,zctrl.value))
-			self.lscp_send_single("SET EFFECT_INSTANCE_INPUT_CONTROL VALUE %s %s %s" % (fx_id,fx_ctrl_i,zctrl.value))
+			try:
+				self.lscp_send_single("SET EFFECT_INSTANCE_INPUT_CONTROL VALUE %s %s %s" % (fx_id,fx_ctrl_i,zctrl.value))
+			except zyngine_lscp_error as err:
+				logging.error(err)
+			except zyngine_lscp_warning as warn:
+				logging.warning(warn)
 		else:
 			super().send_controller_value(zctrl)
 
@@ -369,46 +379,58 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def ls_init(self):
-		# Reset
-		self.lscp_send_single("RESET")
+		try:
+			# Reset
+			self.lscp_send_single("RESET")
 
-		# Config Audio JACK Device 0
-		self.ls_audio_device_id=self.lscp_send_single("CREATE AUDIO_OUTPUT_DEVICE JACK ACTIVE='true' CHANNELS='2' NAME='LinuxSampler' SAMPLERATE='44100'")
-		self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 0 NAME='Channel 1'" % self.ls_audio_device_id)
-		self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 1 NAME='Channel 2'" % self.ls_audio_device_id)
-		self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 0 JACK_BINDINGS='system:playback_1'" % self.ls_audio_device_id)
-		self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 1 JACK_BINDINGS='system:playback_2'" % self.ls_audio_device_id)
-		#self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 0 IS_MIX_CHANNEL='false'" % self.ls_audio_device_id)
-		#self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 1 IS_MIX_CHANNEL='false'" % self.ls_audio_device_id)
+			# Config Audio JACK Device 0
+			self.ls_audio_device_id=self.lscp_send_single("CREATE AUDIO_OUTPUT_DEVICE JACK ACTIVE='true' CHANNELS='2' NAME='LinuxSampler' SAMPLERATE='44100'")
+			self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 0 NAME='Channel 1'" % self.ls_audio_device_id)
+			self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 1 NAME='Channel 2'" % self.ls_audio_device_id)
+			self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 0 JACK_BINDINGS='system:playback_1'" % self.ls_audio_device_id)
+			self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 1 JACK_BINDINGS='system:playback_2'" % self.ls_audio_device_id)
+			#self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 0 IS_MIX_CHANNEL='false'" % self.ls_audio_device_id)
+			#self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 1 IS_MIX_CHANNEL='false'" % self.ls_audio_device_id)
 
-		# Config MIDI JACK Device 1
-		self.ls_midi_device_id=self.lscp_send_single("CREATE MIDI_INPUT_DEVICE JACK ACTIVE='true' NAME='LinuxSampler' PORTS='1'")
-		#self.lscp_send_single("SET MIDI_INPUT_PORT_PARAMETER %s 0 JACK_BINDINGS=''" % self.ls_midi_device_id)
-		#self.lscp_send_single("SET MIDI_INPUT_PORT_PARAMETER %s 0 NAME='midi_in_0'" % self.ls_midi_device_id)
+			# Config MIDI JACK Device 1
+			self.ls_midi_device_id=self.lscp_send_single("CREATE MIDI_INPUT_DEVICE JACK ACTIVE='true' NAME='LinuxSampler' PORTS='1'")
+			#self.lscp_send_single("SET MIDI_INPUT_PORT_PARAMETER %s 0 JACK_BINDINGS=''" % self.ls_midi_device_id)
+			#self.lscp_send_single("SET MIDI_INPUT_PORT_PARAMETER %s 0 NAME='midi_in_0'" % self.ls_midi_device_id)
 
-		# Global volume level
-		self.lscp_send_single("SET VOLUME 0.45")
+			# Global volume level
+			self.lscp_send_single("SET VOLUME 0.45")
+
+		except zyngine_lscp_error as err:
+			logging.error(err)
+		except zyngine_lscp_warning as warn:
+			logging.warning(warn)
+
 
 	def ls_set_channel(self, layer):
 		# Adding new channel
 		ls_chan_id=self.lscp_send_single("ADD CHANNEL")
 		if ls_chan_id>=0:
-			self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_DEVICE %d %d" % (ls_chan_id,self.ls_audio_device_id))
-			# Use "ADD CHANNEL MIDI_INPUT"
-			if self.lscp_v1_6_supported:
-				self.lscp_send_single("ADD CHANNEL MIDI_INPUT %d %d 0" % (ls_chan_id,self.ls_midi_device_id))
-			else:
-				self.lscp_send_single("SET CHANNEL MIDI_INPUT_DEVICE %d %d" % (ls_chan_id,self.ls_midi_device_id))
-				self.lscp_send_single("SET CHANNEL MIDI_INPUT_PORT %d %d" % (ls_chan_id,0))
+			try:
+				self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_DEVICE %d %d" % (ls_chan_id,self.ls_audio_device_id))
+				# Use "ADD CHANNEL MIDI_INPUT"
+				if self.lscp_v1_6_supported:
+					self.lscp_send_single("ADD CHANNEL MIDI_INPUT %d %d 0" % (ls_chan_id,self.ls_midi_device_id))
+				else:
+					self.lscp_send_single("SET CHANNEL MIDI_INPUT_DEVICE %d %d" % (ls_chan_id,self.ls_midi_device_id))
+					self.lscp_send_single("SET CHANNEL MIDI_INPUT_PORT %d %d" % (ls_chan_id,0))
 
-			#self.lscp_send_single("SET CHANNEL MIDI_INPUT_CHANNEL %d %d" % (ls_chan_id,layer.get_midi_chan()))
+				#self.lscp_send_single("SET CHANNEL MIDI_INPUT_CHANNEL %d %d" % (ls_chan_id,layer.get_midi_chan()))
+				#TODO: need?
+				#self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_CHANNEL %d 0 0" % ls_chan_id)
+				#self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_CHANNEL %d 1 1" % ls_chan_id)
+				#self.lscp_send_single("SET CHANNEL VOLUME %d 1" % ls_chan_id)
+				#self.lscp_send_single("SET CHANNEL MIDI_INSTRUMENT_MAP %d 0" % ls_chan_id)
 
-			#TODO: need?
-			#self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_CHANNEL %d 0 0" % ls_chan_id)
-			#self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_CHANNEL %d 1 1" % ls_chan_id)
-			#self.lscp_send_single("SET CHANNEL VOLUME %d 1" % ls_chan_id)
-			#self.lscp_send_single("SET CHANNEL MIDI_INSTRUMENT_MAP %d 0" % ls_chan_id)
-			
+			except zyngine_lscp_error as err:
+				logging.error(err)
+			except zyngine_lscp_warning as warn:
+				logging.warning(warn)
+
 			#Setup Effect Chain
 			fx_chain_id=self.lscp_send_single("ADD SEND_EFFECT_CHAIN %d" % self.ls_audio_device_id)
 			fx_instances={}
@@ -465,7 +487,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			
 			# Load instument
 			try:
-				self.sock.settimeout(5)
+				self.sock.settimeout(10)
 				self.lscp_send_single("LOAD INSTRUMENT '%s' 0 %d" % (fpath,ls_chan_id))
 			except zyngine_lscp_error as err:
 				logging.error(err)
@@ -478,13 +500,18 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			chan_id=layer.ls_chan_info['chan_id']
 			fx_send_id=layer.ls_chan_info['fx_send_id']
 			fx_chain_id=layer.ls_chan_info['fx_chain_id']
-			self.lscp_send_single("RESET CHANNEL %d" % chan_id)
-			# Remove sampler channel
-			if self.lscp_v1_6_supported:
-				self.lscp_send_single("REMOVE CHANNEL MIDI_INPUT %d" % chan_id)
-			if fx_send_id:
-				self.lscp_send_single("REMOVE FX_SEND EFFECT %d %d" % (chan_id,fx_send_id))
-			self.lscp_send_single("REMOVE CHANNEL %d" % chan_id)
+			try:
+				self.lscp_send_single("RESET CHANNEL %d" % chan_id)
+				# Remove sampler channel
+				if self.lscp_v1_6_supported:
+					self.lscp_send_single("REMOVE CHANNEL MIDI_INPUT %d" % chan_id)
+				if fx_send_id:
+					self.lscp_send_single("REMOVE FX_SEND EFFECT %d %d" % (chan_id,fx_send_id))
+				self.lscp_send_single("REMOVE CHANNEL %d" % chan_id)
+			except zyngine_lscp_error as err:
+				logging.error(err)
+			except zyngine_lscp_warning as warn:
+				logging.warning(warn)
 
 			# Remove FX instances from FX chain
 			fx_len=len(layer.ls_chan_info['fx_instances'])
