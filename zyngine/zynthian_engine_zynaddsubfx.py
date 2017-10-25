@@ -67,6 +67,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	_ctrl_screens=[
 		['main',['volume','pan','cutoff','resonance']],
 		['mode',['volume','drum on/off','legato on/off','poly on/off']],
+		#['mode',['volume','gain','legato on/off','poly on/off']],
 		['portamento',['volume','sustain on/off','portamento on/off','portamento time']],
 		['modulation',['volume','expression','modulation','modulation amplitude']],
 		['resonance',['volume','bandwidth','resonance frequency','resonance bandwidth']]
@@ -137,15 +138,20 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	def get_preset_list(self, bank):
 		preset_list=[]
 		preset_dir=bank[0]
+		index=0
 		logging.info("Getting Preset List for %s" % bank[2])
 		for f in sorted(os.listdir(preset_dir)):
 			preset_fpath=join(preset_dir,f)
 			if (isfile(preset_fpath) and f[-4:].lower()=='.xiz'):
-				prg=int(f[0:4])-1
-				bank_lsb=int(prg/128)
+				try:
+					index=int(f[0:4])-1
+					title=str.replace(f[5:-4], '_', ' ')
+				except:
+					index+=1
+					title=str.replace(f[0:-4], '_', ' ')
+				bank_lsb=int(index/128)
 				bank_msb=bank[1]
-				prg=prg%128
-				title=str.replace(f[5:-4], '_', ' ')
+				prg=index%128
 				preset_list.append((preset_fpath,[bank_msb,bank_lsb,prg],title))
 		return preset_list
 

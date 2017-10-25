@@ -321,6 +321,7 @@ else:
 
 if os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES'):
 	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES')
+	midi_filter_rules=midi_filter_rules.replace("\\n","\n")
 else:
 	midi_filter_rules=""
 
