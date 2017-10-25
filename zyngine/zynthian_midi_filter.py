@@ -78,7 +78,7 @@ class MidiFilterArgs:
 		"CC": 0xB
 	}
 
-	def __init__(self, args):
+	def __init__(self, args, args0=None):
 		self.ch_list=None
 		self.ev_type=None
 		self.ev_list=None
@@ -92,7 +92,10 @@ class MidiFilterArgs:
 			res.append(self.parse_arg(arg))
 
 		if n_args==1:
-			self.ch_list=range(0,16)
+			if args0 is None:
+				self.ch_list=range(0,16)
+			else:
+				self.ch_list=args0.ch_list
 			self.ev_type=res[0][0]
 			self.ev_list=res[0][1]
 		elif n_args==2:
@@ -158,7 +161,7 @@ class MidiFilterRule:
 			if parts[3]=="=>":
 				# Parse arguments
 				self.args.append(MidiFilterArgs(parts[1:3]))
-				self.args.append(MidiFilterArgs(parts[4:6]))
+				self.args.append(MidiFilterArgs(parts[4:6],self.args[0]))
 				# Check consistency of rule lists
 				if len(self.args[0].ch_list)!=len(self.args[1].ch_list):
 					raise MidiFilterException("MAP rule channel lists can't be matched")
@@ -265,6 +268,8 @@ class TestMidiFilterRule(unittest.TestCase):
 
 	def test_map_rules(self):
 		#Good rules
+		mfr=MidiFilterRule("MAP CH#1 CC#5 => CC#7", False)
+		self.assertTrue(mfr.set_rules()==1)
 		mfr=MidiFilterRule("MAP CH#3 CC#5 => CH#4 CC#7", False)
 		self.assertTrue(mfr.set_rules()==1)
 		mfr=MidiFilterRule("MAP CH#0 CC#71 => CH#1 PB")
