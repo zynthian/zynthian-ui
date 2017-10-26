@@ -81,10 +81,10 @@ def midi_autoconnect():
 	hw_out=jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
 	if len(hw_out)==0:
 		hw_out=[]
-	#Add ttymidi device ...
-	tty_out=jclient.get_ports("ttymidi", is_output=True, is_physical=False, is_midi=True)
+	#Add MIDI-IN (ttymidi) device ...
+	ttymidi_out=jclient.get_ports("ttymidi", is_output=True, is_physical=False, is_midi=True)
 	try:
-		hw_out.append(tty_out[0])
+		hw_out.append(ttymidi_out[0])
 	except:
 		pass
 	#Add aubio device ...
@@ -158,6 +158,14 @@ def midi_autoconnect():
 				jclient.connect(zyncoder_out[0],engine)
 			except:
 				logger.warning("Failed zyncoder midi connection: %s => %s" % (str(zyncoder_out[0]),str(engine)))
+
+	#Connect Zyncoder to MIDI-OUT (ttymidi)
+	ttymidi_in=jclient.get_ports("ttymidi", is_input=True, is_physical=False, is_midi=True)
+	try:
+		jclient.connect(zyncoder_out[0],ttymidi_in[0])
+	except:
+		logger.warning("Failed zyncoder midi connection: %s => %s" % (str(zyncoder_out[0]),str(ttymidi_in[0])))
+
 
 def audio_autoconnect():
 	logger.info("Autoconnecting Audio ...")
