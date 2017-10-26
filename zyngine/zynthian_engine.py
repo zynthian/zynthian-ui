@@ -386,15 +386,27 @@ class zynthian_engine:
 		midich=layer.get_midi_chan()
 		zctrls=OrderedDict()
 		for ctrl in self._ctrls:
+			#OSC control => replace variables
+			if isinstance(ctrl[1],str):
+				tpl=Template(ctrl[1])
+				cc=tpl.safe_substitute(ch=midich)
+				try:
+					cc=tpl.safe_substitute(i=layer.part_i)
+				except:
+					pass
+				logging.debug('CONTROLLER %s OSC PATH => %s' % (ctrl[0],cc))
+			else:
+				cc=ctrl[1]
+			#Build controller depending on array length ...
 			if len(ctrl)>4:
 				zctrl=zynthian_controller(self,ctrl[4],ctrl[0])
-				zctrl.setup_controller(midich,ctrl[1],ctrl[2],ctrl[3])
+				zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
 			elif len(ctrl)>3:
 				zctrl=zynthian_controller(self,ctrl[0])
-				zctrl.setup_controller(midich,ctrl[1],ctrl[2],ctrl[3])
+				zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
 			else:
 				zctrl=zynthian_controller(self,ctrl[0])
-				zctrl.setup_controller(midich,ctrl[1],ctrl[2])
+				zctrl.setup_controller(midich,cc,ctrl[2])
 			zctrls[ctrl[0]]=zctrl
 		return zctrls
 

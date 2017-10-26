@@ -42,15 +42,15 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	# MIDI Controllers
 	_ctrls=[
-		['volume','/part$ch/Pvolume',96],
+		['volume','/part$i/Pvolume',96],
 		#['volume',7,96],
 		['pan',10,64],
 		['expression',11,127],
 		['cutoff',74,64],
 		['resonance',71,64],
-		['drum on/off','/part$ch/Pdrummode','off','off|on'],
-		['legato on/off','/part$ch/Plegatomode','off','off|on'],
-		['poly on/off','/part$ch/Ppolymode','on','off|on'],
+		['drum on/off','/part$i/Pdrummode','off','off|on'],
+		['legato on/off','/part$i/Plegatomode','off','off|on'],
+		['poly on/off','/part$i/Ppolymode','on','off|on'],
 		['sustain on/off',64,'off','off|on'],
 		['portamento on/off',65,'off','off|on'],
 		['portamento time',5,64],

@@ -24,7 +24,6 @@
 
 import logging
 import liblo
-from string import Template
 
 class zynthian_controller:
 
@@ -103,8 +102,7 @@ class zynthian_controller:
 		self.value_mult=1
 		# OSC Path / MIDI CC
 		if isinstance(cc,str):
-			tpl=Template(cc)
-			self.osc_path=tpl.substitute(ch=self.midi_chan)
+			self.osc_path=cc
 		else:
 			self.midi_cc=cc
 		# Numeric / Selector
