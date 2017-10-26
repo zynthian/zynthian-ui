@@ -159,12 +159,12 @@ def midi_autoconnect():
 			except:
 				logger.warning("Failed zyncoder midi connection: %s => %s" % (str(zyncoder_out[0]),str(engine)))
 
-	#Connect Zyncoder to MIDI-OUT (ttymidi)
-	ttymidi_in=jclient.get_ports("ttymidi", is_input=True, is_physical=False, is_midi=True)
-	try:
-		jclient.connect(zyncoder_out[0],ttymidi_in[0])
-	except:
-		logger.warning("Failed zyncoder midi connection: %s => %s" % (str(zyncoder_out[0]),str(ttymidi_in[0])))
+		#Connect Zyncoder to MIDI-OUT (ttymidi)
+		ttymidi_in=jclient.get_ports("ttymidi", is_input=True, is_physical=False, is_midi=True)
+		try:
+			jclient.connect(zyncoder_out[0],ttymidi_in[0])
+		except:
+			logger.warning("Failed zyncoder midi connection: %s => %s" % (str(zyncoder_out[0]),str(ttymidi_in[0])))
 
 
 def audio_autoconnect():
