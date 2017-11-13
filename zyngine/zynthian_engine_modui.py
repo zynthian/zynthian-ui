@@ -301,23 +301,22 @@ class zynthian_engine_modui(zynthian_engine):
 			return res.json()
 
 	def bundlepath_cb(self, bpath):
-		if self.zyngui.active_screen in ['layer','bank']:
-			bdirname=bpath.split('/')[-1]
-			if bdirname!='default.pedalboard':
-				#Find bundle_path in bank list ...
-				layer=self.layers[0]
-				for i in range(len(layer.bank_list)):
-					#logging.debug("BUNDLE PATH SEARCH => %s <=> %s" % (bank_list[i][0].split('/')[-1], bdirname))
-					if layer.bank_list[i][0].split('/')[-1]==bdirname:
-						bank_index=i
-						bank_name=layer.bank_list[i][2]
-						#Set Bank in GUI, layer and engine without reloading the bundle
-						logging.info('Bank Selected from Bundlepath: ' + bank_name + ' (' + str(i)+')')
-						self.zyngui.screens['bank'].select(i)
-						layer.set_bank(i,False)
-						#Show preset screen
-						self.zyngui.show_screen('preset')
-						break
+		bdirname=bpath.split('/')[-1]
+		if bdirname!='default.pedalboard':
+			#Find bundle_path in bank list ...
+			layer=self.layers[0]
+			for i in range(len(layer.bank_list)):
+				#logging.debug("BUNDLE PATH SEARCH => %s <=> %s" % (layer.bank_list[i][0].split('/')[-1], bdirname))
+				if layer.bank_list[i][0].split('/')[-1]==bdirname:
+					bank_index=i
+					bank_name=layer.bank_list[i][2]
+					#Set Bank in GUI, layer and engine without reloading the bundle
+					logging.info('Bank Selected from Bundlepath: ' + bank_name + ' (' + str(i)+')')
+					self.zyngui.screens['bank'].select(i)
+					layer.set_bank(i,False)
+					#Show preset screen
+					self.zyngui.show_screen('preset')
+					break
 
 	def add_hw_port_cb(self, ptype, pdir, pgraph, pname, pnum):
 		if ptype not in self.hw_ports:

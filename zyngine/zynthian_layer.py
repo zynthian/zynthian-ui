@@ -97,9 +97,9 @@ class zynthian_layer:
 		logging.debug("BANK LIST => \n%s" % str(self.bank_list))
 
 	def reset_bank(self):
-		bank_i=None
-		bank_name=None
-		bank_info=None
+		self.bank_index=0
+		self.bank_name=None
+		self.bank_info=None
 
 	def set_bank(self, i, set_engine=True):
 		if i < len(self.bank_list):
@@ -111,8 +111,8 @@ class zynthian_layer:
 			logging.info("Bank Selected: %s (%d)" % (self.bank_name,i))
 			if set_engine:
 				self.engine.set_bank(self, self.bank_info)
-			#if last_bank_index!=i or not last_bank_name:
-			#	self.reset_preset()
+			if last_bank_index!=i or not last_bank_name:
+				self.reset_preset()
 			return True
 		return False
 
@@ -140,7 +140,8 @@ class zynthian_layer:
 			logging.debug("PRESET LIST => \n%s" % str(self.preset_list))
 
 	def reset_preset(self):
-		self.preset_i=None
+		logging.debug("PRESET RESET!")
+		self.preset_index=0
 		self.preset_name=None
 		self.preset_info=None
 
