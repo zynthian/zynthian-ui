@@ -296,9 +296,11 @@ class zynthian_layer:
 		self.load_bank_list()
 		self.set_bank_by_name(snapshot['bank_name'])
 		#Wait for bank loading, zcontrols generation
+		self.wait_stop_loading()
 		self.load_preset_list()
 		self.set_preset_by_name(snapshot['preset_name'])
 		#Wait for preset loading
+		#self.wait_stop_loading()
 		if self.refresh_flag:
 			self.refresh_flag=False
 			self.refresh_controllers()
@@ -308,6 +310,10 @@ class zynthian_layer:
 		for k in snapshot['controllers_dict']:
 			self.controllers_dict[k].set_value(snapshot['controllers_dict'][k],True)
 
+	def wait_stop_loading(self):
+		while self.engine.loading>0:
+			logging.debug("WAITING FOR STOP LOADING ...")
+			sleep(0.1)
 
 	# ---------------------------------------------------------------------------
 	# Channel "Path" String

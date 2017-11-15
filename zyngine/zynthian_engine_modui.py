@@ -262,10 +262,12 @@ class zynthian_engine_modui(zynthian_engine):
 
 				elif command == "loading_start":
 						logging.info("LOADING START")
+						self.start_loading()
 
 				elif command == "loading_end":
 					logging.info("LOADING END")
 					self.graph_autoconnect_midi_input()
+					self.stop_loading()
 
 				elif command == "bundlepath":
 					logging.info("BUNDLEPATH %s" % args[1])
@@ -287,14 +289,18 @@ class zynthian_engine_modui(zynthian_engine):
 				sleep(1)
 
 	def api_get_request(self, path, data=None, json=None):
+		self.start_loading()
 		res=requests.get(self.base_api_url + path, data=data, json=json)
+		self.stop_loading()
 		if res.status_code != 200:
 			logging.error("GET call to MOD-UI API: "+str(res.status_code) + " => " +self.base_api_url + path)
 		else:
 			return res.json()
 
 	def api_post_request(self, path, data=None, json=None):
+		self.start_loading()
 		res=requests.post(self.base_api_url + path, data=data, json=json)
+		self.stop_loading()
 		if res.status_code != 200:
 			logging.error("POST call to MOD-UI API: "+str(res.status_code) + " => " +self.base_api_url + path)
 		else:
@@ -328,6 +334,7 @@ class zynthian_engine_modui(zynthian_engine):
 		logging.debug("ADD_HW_PORT => "+pgraph+", "+ptype+", "+pdir)
 
 	def add_plugin_cb(self, pgraph, puri, posx, posy):
+		self.start_loading()
 		pinfo=self.api_get_request("/effect/get",data={'uri':puri})
 		if pinfo:
 			self.plugin_zctrls[pgraph]={}
@@ -414,8 +421,10 @@ class zynthian_engine_modui(zynthian_engine):
 			self.plugin_info[pgraph]=pinfo
 			#Set Refresh
 			self.refresh_all()
+			self.stop_loading()
 
 	def remove_plugin_cb(self, pgraph):
+		self.start_loading()
 		if pgraph in self.graph:
 			del self.graph[pgraph]
 		if pgraph in self.plugin_zctrls:
@@ -424,6 +433,7 @@ class zynthian_engine_modui(zynthian_engine):
 			del self.plugin_info[pgraph]
 		#Set Refresh
 		self.refresh_all()
+		self.stop_loading()
 
 	def graph_connect_cb(self, src, dest):
 		if src not in self.graph:
