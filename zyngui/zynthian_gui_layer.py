@@ -23,6 +23,7 @@
 # 
 #******************************************************************************
 
+import os
 import sys
 import logging
 from json import JSONEncoder, JSONDecoder
@@ -189,6 +190,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			with open(fpath,"w") as fh:
 				fh.write(json)
+				fh.flush()
+				os.fsync(fh.fileno())
 			self.last_snapshot_fpath=fpath
 		except Exception as e:
 			logging.error("Can't save snapshot '%s': %s" % (fpath,e))
