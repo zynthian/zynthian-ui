@@ -162,21 +162,25 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def load_soundfont(self, sf):
 		if sf not in self.soundfont_index:
 			logging.info("Loading SoundFont '%s' ..." % sf)
+			# Send command to FluidSynth
 			lines=self.proc_cmd("load \"%s\"" % sf, 20)
+			# Parse ouput ...
 			sfi=None
+			cre=re.compile(r"loaded SoundFont has ID (\d+)")
 			for line in lines:
-				res=re.match(r"loaded SoundFont has ID (\d+)",line)
+				res=cre.match(line)
 				if res:
 					sfi=int(res.group(1))
+			# If soundfont was loaded succesfully ...
 			if sfi is not None:
 				logging.info("Loaded SoundFont '%s' => %d" % (sf,sfi))
-				# Reselect presets for all layers to prevent instrument change
+				# Re-select presets for all layers to prevent instrument change
 				for layer in self.layers:
 					if layer.preset_info:
 						self.set_preset(layer, layer.preset_info)
-				# Insert in soundfont index dictionary
+				# Insert ID in soundfont_index dictionary
 				self.soundfont_index[sf]=sfi
-				# Return loaded font ID
+				# Return soundfont ID
 				return sfi
 			else:
 				logging.warning("SoundFont '%s' can't be loaded" % sf)
