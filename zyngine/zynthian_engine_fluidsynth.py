@@ -23,6 +23,7 @@
 #******************************************************************************
 
 import os
+import re
 import copy
 import logging
 from . import zynthian_engine
@@ -64,7 +65,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def reset(self):
 		super().reset()
-		self.soundfont_count=0
 		self.soundfont_index={}
 		self.clear_midi_routes()
 		self.unload_unused_soundfonts()
@@ -113,18 +113,21 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def get_preset_list(self, bank):
 		logging.info("Getting Preset List for %s" % bank[2])
 		preset_list=[]
-		sfi=self.soundfont_index[bank[0]]
-		lines=self.proc_cmd("inst %d" % sfi, 10)
-		for f in lines:
-			try:
-				prg=int(f[4:7])
-				bank_msb=int(f[0:3])
-				bank_lsb=int(bank_msb/128)
-				bank_msb=bank_msb%128
-				title=str.replace(f[8:-1], '_', ' ')
-				preset_list.append((f,[bank_msb,bank_lsb,prg],title,sfi))
-			except:
-				pass
+		if bank[0] in self.soundfont_index:
+			sfi=self.soundfont_index[bank[0]]
+			lines=self.proc_cmd("inst %d" % sfi, 10)
+			for f in lines:
+				try:
+					prg=int(f[4:7])
+					bank_msb=int(f[0:3])
+					bank_lsb=int(bank_msb/128)
+					bank_msb=bank_msb%128
+					title=str.replace(f[8:-1], '_', ' ')
+					preset_list.append((f,[bank_msb,bank_lsb,prg],title,sfi))
+				except:
+					pass
+		else:
+			logging.warning("Bank %s is not loaded" % bank[2])
 		return preset_list
 
 	def set_preset(self, layer, preset, preload=False):
@@ -158,25 +161,26 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def load_soundfont(self, sf):
 		if sf not in self.soundfont_index:
-			self.soundfont_count=self.soundfont_count+1
-			logging.info("Load SoundFont => %s (%d)" % (sf,self.soundfont_count))
-			self.proc_cmd("load \"%s\"" % sf, 20)
-			
-			# Reselect presets for all layers to prevent instrument change
-			for layer in self.layers:
-				if layer.preset_info:
-					self.set_preset(layer, layer.preset_info)
-
-			self.soundfont_index[sf]=self.soundfont_count
-			return self.soundfont_count
-
-	# ---------------------------------------------------------------------------
-	# MIDI Channel Management
-	# ---------------------------------------------------------------------------
-
-	def set_midi_channel(self, layer):
-		if layer.part_i is not None:
-			liblo.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
+			logging.info("Loading SoundFont '%s' ..." % sf)
+			lines=self.proc_cmd("load \"%s\"" % sf, 20)
+			sfi=None
+			for line in lines:
+				res=re.match(r"loaded SoundFont has ID (\d+)",line)
+				if res:
+					sfi=int(res.group(1))
+			if sfi is not None:
+				logging.info("Loaded SoundFont '%s' => %d" % (sf,sfi))
+				# Reselect presets for all layers to prevent instrument change
+				for layer in self.layers:
+					if layer.preset_info:
+						self.set_preset(layer, layer.preset_info)
+				# Insert in soundfont index dictionary
+				self.soundfont_index[sf]=sfi
+				# Return loaded font ID
+				return sfi
+			else:
+				logging.warning("SoundFont '%s' can't be loaded" % sf)
+				return False
 
 	def setup_router(self, layer):
 		if layer.part_i is not None:
