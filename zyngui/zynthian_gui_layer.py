@@ -23,6 +23,7 @@
 # 
 #******************************************************************************
 
+import os
 import sys
 import logging
 from json import JSONEncoder, JSONDecoder
@@ -189,6 +190,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			with open(fpath,"w") as fh:
 				fh.write(json)
+				fh.flush()
+				os.fsync(fh.fileno())
 			self.last_snapshot_fpath=fpath
 		except Exception as e:
 			logging.error("Can't save snapshot '%s': %s" % (fpath,e))
@@ -208,13 +211,22 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			snapshot=JSONDecoder().decode(json)
 			#Clean all layers
 			self.remove_all_layers(False)
-			#Set Layers
+			#Create layers
 			for lss in snapshot['layers']:
 				engine=zynthian_gui_config.zyngui.screens['engine'].start_engine(lss['engine_nick'],1)
 				self.layers.append(zynthian_layer(engine,lss['midi_chan'],zynthian_gui_config.zyngui))
-				self.layers[-1].restore_snapshot(lss)
-			self.fill_list()
+			#Set active layer
 			self.index=snapshot['index']
+			self.curlayer=self.layers[self.index]
+			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
+			#Load layers
+			i=0
+			for lss in snapshot['layers']:
+				self.layers[i].restore_snapshot(lss)
+				i+=1
+			#Fill layer list
+			self.fill_list()
+			#Remove unused engines
 			zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
 			#Set Transpose
 			if 'transpose' in snapshot:

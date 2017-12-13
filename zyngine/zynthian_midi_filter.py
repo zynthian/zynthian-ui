@@ -223,7 +223,15 @@ class MidiFilterScript:
 		elif not isinstance(script,list) and not isinstance(script,tuple):
 			raise MidiFilterException("Script must be a String or a List of Strings")
 		for rule in script:
-			self.rules[rule]=MidiFilterRule(rule, set_rules)
+			rule=rule.strip()
+			if len(rule)>0:
+				# Ignore commented rules
+				if rule[0:2]=='//':
+					continue
+				if len(rule)>9:
+					self.rules[rule]=MidiFilterRule(rule, set_rules)
+				else:
+					raise MidiFilterException("Script Rule is too short to be valid")
 
 	#Selectively remove only the rules set by the script
 	def clean(self):
