@@ -142,7 +142,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		logging.info("Getting Preset List for %s" % bank[2])
 		for f in sorted(os.listdir(preset_dir)):
 			preset_fpath=join(preset_dir,f)
-			if (isfile(preset_fpath) and f[-4:].lower()=='.xiz'):
+			ext=f[-3:].lower()
+			if (isfile(preset_fpath) and (ext=='xiz' or ext=='xmz' or ext=='xsz' or ext=='xlz')):
 				try:
 					index=int(f[0:4])-1
 					title=str.replace(f[5:-4], '_', ' ')
@@ -152,14 +153,25 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				bank_lsb=int(index/128)
 				bank_msb=bank[1]
 				prg=index%128
-				preset_list.append((preset_fpath,[bank_msb,bank_lsb,prg],title))
+				preset_list.append((preset_fpath,[bank_msb,bank_lsb,prg],title,ext))
 		return preset_list
 
 	def set_preset(self, layer, preset, preload=False):
 		self.start_loading()
-		self.enable_part(layer)
-		liblo.send(self.osc_target, "/load-part",layer.part_i,preset[0])
-		#logging.debug("OSC => /load-part %s, %s" % (layer.part_i,preset[0]))
+		if preset[3]=='xiz':
+			self.enable_part(layer)
+			liblo.send(self.osc_target, "/load-part",layer.part_i,preset[0])
+			#logging.debug("OSC => /load-part %s, %s" % (layer.part_i,preset[0]))
+		elif preset[3]=='xmz':
+			self.enable_part(layer)
+			liblo.send(self.osc_target, "/load_xmz",preset[0])
+			logging.debug("OSC => /load_xmz %s" % preset[0])
+		elif preset[3]=='xsz':
+			liblo.send(self.osc_target, "/load_xsz",preset[0])
+			logging.debug("OSC => /load_xsz %s" % preset[0])
+		elif preset[3]=='xlz':
+			liblo.send(self.osc_target, "/load_xlz",preset[0])
+			logging.debug("OSC => /load_xlz %s" % preset[0])
 		liblo.send(self.osc_target, "/volume")
 		i=0
 		while self.loading and i<100: 
