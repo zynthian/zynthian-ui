@@ -25,6 +25,7 @@
 import sys
 import os
 import jack
+import copy
 import logging
 from time import sleep
 from threading  import Thread
@@ -53,6 +54,9 @@ engine_list = [
 hw_black_list = [
 	#"Midi Through"
 ]
+
+#List of monitored engines
+monitored_engines = []
 
 refresh_time=2
 jclient=None
@@ -107,7 +111,7 @@ def midi_autoconnect():
 	for i,hw in enumerate(hw_out):
 		for v in hw_black_list:
 			#logger.debug("Element %s => %s " % (i,v) )
-			if v in str(hw):
+			if v==str(hw.name.split(':')[0]):
 				hw_out.pop(i)
 
 	#logger.debug("Physical Devices: " + str(hw_out))
@@ -139,7 +143,7 @@ def midi_autoconnect():
 			try:
 				jclient.connect(hw,zyncoder_in[0])
 			except:
-				logger.warning("Failed input device midi connection: %s => %s" % (str(hw),str(zyncoder_in[0])))
+				pass
 
 			# This is not needed anymore because zyncoder forward all the MIDI messages
 			'''
@@ -148,7 +152,7 @@ def midi_autoconnect():
 				try:
 					jclient.connect(hw,engine)
 				except:
-					logger.warning("Failed input device midi connection: %s => %s" % (str(hw),str(engine)))
+					pass
 			'''
 
 	#Connect Zyncoder to engines
@@ -157,14 +161,14 @@ def midi_autoconnect():
 			try:
 				jclient.connect(zyncoder_out[0],engine)
 			except:
-				logger.warning("Failed zyncoder midi connection: %s => %s" % (str(zyncoder_out[0]),str(engine)))
+				pass
 
 		#Connect Zyncoder to MIDI-OUT (ttymidi)
 		ttymidi_in=jclient.get_ports("ttymidi", is_input=True, is_physical=False, is_midi=True)
 		try:
 			jclient.connect(zyncoder_out[0],ttymidi_in[0])
 		except:
-			logger.warning("Failed zyncoder midi connection: %s => %s" % (str(zyncoder_out[0]),str(ttymidi_in[0])))
+			pass
 
 
 def audio_autoconnect():
@@ -174,16 +178,48 @@ def audio_autoconnect():
 	#sys_out=jclient.get_ports(is_audio=True, is_terminal=True)
 	sys_out=jclient.get_ports(is_input=True, is_audio=True, is_physical=True)
 
-	#Connect Synth Engines to System Output
+	#Get Monitor Output & Input ...
+	mon_out=jclient.get_ports("mod-monitor", is_input=True, is_audio=True)
+	mon_in=jclient.get_ports("mod-monitor", is_output=True, is_audio=True)
+
 	if len(sys_out)>0:
+		#Disconnect Monitor from System Output
+		if len(mon_out)>0:
+			try:
+				jclient.disconnect(mon_in[0],sys_out[0])
+				jclient.disconnect(mon_in[1],sys_out[1])
+			except:
+				pass
+
+		#Connect Synth Engines to System Output
 		for engine in engine_list:
 			devs=jclient.get_ports(engine, is_output=True, is_audio=True, is_physical=False)
 			if devs:
-				try:
-					jclient.connect(devs[0],sys_out[0])
-					jclient.connect(devs[1],sys_out[1])
-				except:
-					logger.warning("Failed system output audio connection: %s" % (str(devs[0])))
+				dev_name=str(devs[0].name).split(':')[0]
+				#logger.error("Autoconnecting Engine => %s" % dev_name)
+				if len(mon_out)>0 and dev_name.lower() in monitored_engines:
+					try:
+						jclient.connect(devs[0],mon_out[0])
+						jclient.connect(devs[1],mon_out[1])
+					except:
+						pass
+					try:
+						jclient.disconnect(devs[0],sys_out[0])
+						jclient.disconnect(devs[1],sys_out[1])
+					except:
+						pass
+				else:
+					try:
+						jclient.connect(devs[0],sys_out[0])
+						jclient.connect(devs[1],sys_out[1])
+					except:
+						pass
+					if len(mon_out)>0:
+						try:
+							jclient.disconnect(devs[0],mon_out[0])
+							jclient.disconnect(devs[1],mon_out[1])
+						except:
+							pass
 
 	if zynthian_aubionotes:
 		#Get System Capture and Aubio Input ports ...
@@ -195,7 +231,7 @@ def audio_autoconnect():
 				jclient.connect(sys_input[0],aubio_in[0])
 				jclient.connect(sys_input[1],aubio_in[0])
 			except:
-				logger.warning("Failed alsa audio input connection:  %s => %s" % (str(system_input[0]),str(aubio_in[0])))
+				pass
 
 def autoconnect():
 	midi_autoconnect()
@@ -221,8 +257,35 @@ def start(rt=2):
 	thread.daemon = True # thread dies with the program
 	thread.start()
 
-def stop(self):
+def stop():
 	global exit_flag
 	exit_flag=True
+
+# Monitored Engines Stuff
+
+def reset_monitored_engines():
+	monitored_engines.clear()
+
+def set_monitored_engines(engines):
+	monitored_engines.clear()
+	for eng in engines:
+		monitored_engines.append(eng.lower())
+
+def set_monitored_engine(engine):
+	engine=engine.lower()
+	if engine not in monitored_engines:
+		monitored_engines.append(engine)
+
+def unset_monitored_engine(engine):
+	engine=engine.lower()
+	if engine in monitored_engines:
+		monitored_engines.remove(engine)
+
+def is_monitored_engine(engine):
+	engine=engine.lower()
+	if engine in monitored_engines:
+		return True
+	else:
+		return False
 
 #------------------------------------------------------------------------------

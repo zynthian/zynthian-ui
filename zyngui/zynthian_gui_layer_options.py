@@ -27,6 +27,7 @@ import sys
 import logging
 
 # Zynthian specific modules
+import zynautoconnect
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
@@ -49,11 +50,16 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data=[]
-		eng=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index].engine.nickname
+		engine=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index].engine
+		eng=engine.nickname
 		if eng in ['ZY','LS','FS']:
 			self.list_data.append((self.midi_chan,0,"MIDI Chan"))
 		if eng in ['ZY','LS','FS','BF']:
 			self.list_data.append((self.transpose,0,"Transpose"))
+			if zynautoconnect.is_monitored_engine(engine.name):
+				self.list_data.append((self.monitor,0,"Audio => OUT"))
+			else:
+				self.list_data.append((self.monitor,0,"Audio => MOD-UI"))
 		self.list_data.append((self.remove_layer,0,"Remove Layer"))
 		super().fill_list()
 
@@ -75,6 +81,14 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def transpose(self):
 		zynthian_gui_config.zyngui.show_modal('transpose')
+
+	def monitor(self):
+		engine=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index].engine
+		if zynautoconnect.is_monitored_engine(engine.name):
+			zynautoconnect.unset_monitored_engine(engine.name)
+		else:
+			zynautoconnect.set_monitored_engine(engine.name)
+		zynthian_gui_config.zyngui.show_screen('layer')
 
 	def remove_layer(self):
 		zynthian_gui_config.zyngui.screens['layer'].remove_layer(self.layer_index)
