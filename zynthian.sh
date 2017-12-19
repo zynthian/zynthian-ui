@@ -28,6 +28,12 @@ else
 	source "$ZYNTHIAN_SYS_DIR/scripts/zynthian_envars.sh"
 fi
 
+if [ ! -z "$ZYNTHIAN_SCRIPT_MIDI_PROFILE" ]; then
+	source "$ZYNTHIAN_SCRIPT_MIDI_PROFILE"
+else
+	source "$ZYNTHIAN_DATA_DIR/midi-profiles/default.sh"
+fi
+
 if [ -f "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh" ]; then
 	source "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh"
 fi

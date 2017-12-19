@@ -241,26 +241,26 @@ else:
 	force_enable_cursor=False
 
 #------------------------------------------------------------------------------
-# Master MIDI Parameters
+# MIDI Configuration
 #------------------------------------------------------------------------------
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANNEL'):
-	master_midi_channel=int(os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANNEL'))
+if os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL'):
+	master_midi_channel=int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL'))
 else:
 	master_midi_channel=16
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANGE_TYPE'):
-	master_midi_change_type=os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANGE_TYPE')
+if os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANGE_TYPE'):
+	master_midi_change_type=os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANGE_TYPE')
 else:
 	master_midi_change_type="Roland"
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_UP'):
-	master_midi_program_change_up=os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_UP')
+if os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_UP'):
+	master_midi_program_change_up=os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_UP')
 else:
 	master_midi_program_change_up="C#7F"
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_DOWN'):
-	master_midi_program_change_down=os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_DOWN')
+if os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_DOWN'):
+	master_midi_program_change_down=os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_DOWN')
 else:
 	master_midi_program_change_down="C#00"
 
@@ -269,21 +269,21 @@ if master_midi_program_change_down=="C#00":
 else:
 	master_midi_program_base=0
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_CCNUM'):
-	master_midi_bank_change_ccnum=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_CCNUM')
+if os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM'):
+	master_midi_bank_change_ccnum=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM')
 else:
 	#Use LSB Bank by default
 	master_midi_bank_change_ccnum=0x20 
 	#Use MSB Bank by default
 	#master_midi_bank_change_ccnum=0x00
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_UP'):
-	master_midi_bank_change_up=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_UP')
+if os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_UP'):
+	master_midi_bank_change_up=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_UP')
 else:
 	master_midi_bank_change_up="B#207F"
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN'):
-	master_midi_bank_change_down=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN')
+if os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_DOWN'):
+	master_midi_bank_change_down=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_DOWN')
 else:
 	master_midi_bank_change_down="B#2000"
 
@@ -305,12 +305,9 @@ master_midi_program_change_down=int('{:<06}'.format(master_midi_program_change_d
 master_midi_bank_change_up=int('{:<06}'.format(master_midi_bank_change_up.replace('#',mmc_hex)),16)
 master_midi_bank_change_down=int('{:<06}'.format(master_midi_bank_change_down.replace('#',mmc_hex)),16)
 
-#------------------------------------------------------------------------------
-# UI special features
-#------------------------------------------------------------------------------
 
-if os.environ.get('ZYNTHIAN_PRESET_PRELOAD_NOTEON'):
-	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_PRESET_PRELOAD_NOTEON'))
+if os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON'):
+	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON'))
 else:
 	preset_preload_noteon=1
 
