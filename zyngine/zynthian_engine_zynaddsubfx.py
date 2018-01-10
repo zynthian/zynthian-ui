@@ -42,35 +42,49 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	# MIDI Controllers
 	_ctrls=[
-		['volume','/part$i/Pvolume',96],
-		#['volume',7,96],
-		['pan',10,64],
+		#['volume','/part$i/Pvolume',96],
+		['volume',7,96],
+		['panning',10,64],
 		['expression',11,127],
-		['cutoff',74,64],
-		['resonance',71,64],
+		['filter cutoff',74,64],
+		['filter Q',71,64],
+		['panning depth','/part$i/ctl/panning.depth',64],
+		['filter.cutoff depth','/part$i/ctl/filtercutoff.depth',64],
+		['filter.Q depth','/part$i/ctl/filterq.depth',64],
 		['drum on/off','/part$i/Pdrummode','off','off|on'],
 		['legato on/off','/part$i/Plegatomode','off','off|on'],
 		['poly on/off','/part$i/Ppolymode','on','off|on'],
 		['sustain on/off',64,'off','off|on'],
 		['portamento on/off',65,'off','off|on'],
-		['portamento time',5,64],
-		#['portamento on/off','/part$ch/ctl/portamento.receive','off','off|on'],
-		#['portamento time','/part$ch/ctl/portamento.time',64]
+		#['portamento receive','/part$i/ctl/portamento.receive','off','off|on'],
+		['portamento time','/part$i/ctl/portamento.time',64],
+		['portamento up/down','/part$i/ctl/portamento.updowntimestretch',64],
 		['modulation',1,0],
 		['modulation amplitude',76,127],
+		['modulation depth','/part$i/ctl/modwheel.depth',64],
+		['modulation exp','/part$i/ctl/modwheel.exponential','off','off|on'],
 		['bandwidth',75,64],
-		['resonance frequency',77,64],
-		['resonance bandwidth',78,64]
+		['bandwidth depth','/part$i/ctl/bandwidth.depth',64],
+		['bandwidth exp','/part$i/ctl/modwheel.exponential','off','off|on'],
+		['resonance center',77,64],
+		['resonance bandwidth',78,64],
+		['res.center depth','/part$i/ctl/resonancecenter.depth',64],
+		['res.bw depth','/part$i/ctl/resonancebandwidth.depth',64],
+		['velocity sens.','/part$i/Pvelsns',64],
+		['velocity offs.','/part$i/Pveloffs',64]
 	]
 
 	# Controller Screens
 	_ctrl_screens=[
-		['main',['volume','pan','cutoff','resonance']],
-		['mode',['volume','drum on/off','legato on/off','poly on/off']],
-		#['mode',['volume','gain','legato on/off','poly on/off']],
-		['portamento',['volume','sustain on/off','portamento on/off','portamento time']],
-		['modulation',['volume','expression','modulation','modulation amplitude']],
-		['resonance',['volume','bandwidth','resonance frequency','resonance bandwidth']]
+		['main',['volume','panning','filter cutoff','filter Q']],
+		['mode',['volume','sustain on/off','legato on/off','poly on/off']],
+		#['mode',['volume','drum on/off','legato on/off','poly on/off']],
+		['portamento',['volume','portamento on/off','portamento time','portamento up/down']],
+		['modulation',['modulation','modulation amplitude','modulation depth','modulation exp']],
+		['resonance',['resonance center','res.center depth','resonance bandwidth','res.bw depth']],
+		['bandwidth',['volume','bandwidth','bandwidth depth','bandwidth exp']],
+		['velocity',['volume','expression','velocity sens.','velocity offs.']],
+		['depth',['volume','panning depth','filter.cutoff depth','filter.Q depth']]
 	]
 
 	#----------------------------------------------------------------------------
