@@ -194,17 +194,22 @@ class zynthian_controller:
 	def get_ctrl_midi_val(self):
 		try:
 			if isinstance(self.labels,list):
-				n_values=len(self.labels)
-				step=max(1,int(16/n_values));
-				max_value=128-step;
 				if self.ticks:
-					val=int(self.ticks[self.values.index(self.value)])
+					vi=self.labels.index(self.value)
+					val=int(self.ticks[vi])
+					if val>=128:
+						val=127
+					#logging.debug("LABEL INDEX => %s" % vi)
 				else:
+					n_values=len(self.labels)
+					step=max(1,int(16/n_values));
+					max_value=128-step;
 					val=int(self.labels.index(self.value)*max_value/(n_values-1))
 			else:
 				val=int(127*(self.value-self.value_min)/(self.value_max-self.value_min))
-		except:
+		except Exception as e:
 			val=0
+			logging.debug("EXCEPTION => %s" % e)
 		return val
 
 	def get_ctrl_osc_val(self):
