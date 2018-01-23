@@ -22,21 +22,6 @@
 # 
 #******************************************************************************
 
-if [ -d "$ZYNTHIAN_CONFIG_DIR" ]; then
-	source "$ZYNTHIAN_CONFIG_DIR/zynthian_envars.sh"
-else
-	source "$ZYNTHIAN_SYS_DIR/scripts/zynthian_envars.sh"
-fi
-
-if [ ! -z "$ZYNTHIAN_SCRIPT_MIDI_PROFILE" ]; then
-	source "$ZYNTHIAN_SCRIPT_MIDI_PROFILE"
-else
-	source "$ZYNTHIAN_DATA_DIR/midi-profiles/default.sh"
-fi
-
-if [ -f "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh" ]; then
-	source "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh"
-fi
 
 #export ZYNTHIAN_LOG_LEVEL=10			# 10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL
 #export ZYNTHIAN_RAISE_EXCEPTIONS=0
@@ -44,6 +29,24 @@ fi
 #------------------------------------------------------------------------------
 # Some Functions
 #------------------------------------------------------------------------------
+
+function load_config_env() {
+	if [ -d "$ZYNTHIAN_CONFIG_DIR" ]; then
+		source "$ZYNTHIAN_CONFIG_DIR/zynthian_envars.sh"
+	else
+		source "$ZYNTHIAN_SYS_DIR/scripts/zynthian_envars.sh"
+	fi
+
+	if [ ! -z "$ZYNTHIAN_SCRIPT_MIDI_PROFILE" ]; then
+		source "$ZYNTHIAN_SCRIPT_MIDI_PROFILE"
+	else
+		source "$ZYNTHIAN_DATA_DIR/midi-profiles/default.sh"
+	fi
+
+	if [ -f "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh" ]; then
+		source "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh"
+	fi
+}
 
 function backlight_on() {
 	# Turn On Display Backlight
@@ -85,6 +88,9 @@ cd $ZYNTHIAN_UI_DIR
 screensaver_off
 
 while true; do
+	#Load Config Environment
+	load_config_env
+	
 	# Start Zynthian GUI & Synth Engine
 	./zynthian_gui.py
 	status=$?

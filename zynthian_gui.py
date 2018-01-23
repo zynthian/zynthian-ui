@@ -35,6 +35,7 @@ from datetime import datetime
 from threading  import Thread
 
 # Zynthian specific modules
+import zynconf
 import zynautoconnect
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
@@ -55,6 +56,7 @@ from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
+from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
 #------------------------------------------------------------------------------
@@ -100,19 +102,35 @@ class zynthian_gui:
 			zyngine_osc_port=6693
 			lib_zyncoder_init(zyngine_osc_port)
 			lib_zyncoder=zyncoder.get_lib_zyncoder()
-			#Set Global Tuning
-			self.tuning_freq=int(zynthian_gui_config.midi_fine_tuning)
-			lib_zyncoder.set_midi_filter_tuning_freq(self.tuning_freq)
-			#Set MIDI Master Channel
-			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
-			lib_zyncoder.zynmidi_send_master_ccontrol_change(0x7,0xFF)
-			#Setup MIDI filter rules
-			zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
-			#Init MIDI and Switches
+			#Init MIDI subsystem
+			self.init_midi()
 			self.zynmidi=zynthian_zcmidi()
+			#Set Master Volume to Max.
+			lib_zyncoder.zynmidi_send_master_ccontrol_change(0x7,0xFF)
+			#Init MIDI and Switches
 			self.zynswitches_init()
 		except Exception as e:
 			logging.error("ERROR initializing GUI: %s" % e)
+
+	def init_midi(self):
+		try:
+			global lib_zyncoder
+			#Set Global Tuning
+			lib_zyncoder.set_midi_filter_tuning_freq(int(zynthian_gui_config.midi_fine_tuning))
+			#Set MIDI Master Channel
+			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
+			#Setup MIDI filter rules
+			zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
+		except Exception as e:
+			logging.error("ERROR initializing MIDI : %s" % e)
+
+	def reload_midi_config(self):
+		zynconf.load_config()
+		midi_profile_fpath=os.environ.get("ZYNTHIAN_SCRIPT_MIDI_PROFILE")
+		if midi_profile_fpath:
+			zynconf.load_config(True,midi_profile_fpath)
+			zynthian_gui_config.set_midi_config()
+			self.init_midi()
 
 	def start(self):
 		# Create initial GUI Screens
@@ -128,6 +146,7 @@ class zynthian_gui:
 		self.screens['preset']=zynthian_gui_preset()
 		self.screens['control']=zynthian_gui_control()
 		self.screens['control_xy']=zynthian_gui_control_xy()
+		self.screens['midi_profile']=zynthian_gui_midi_profile()
 		# Show initial screen => Channel list
 		self.show_screen('layer')
 		# Try to load "default snapshot" or show "load snapshot" popup

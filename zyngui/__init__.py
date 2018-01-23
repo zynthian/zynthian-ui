@@ -14,7 +14,8 @@ __all__ = [
 	"zynthian_gui_bank",
 	"zynthian_gui_preset",
 	"zynthian_gui_control",
-	"zynthian_gui_control_xy"
+	"zynthian_gui_control_xy",
+	"zynthian_gui_midi_profile",
 #	"zynthian_gui_osc_browser"
 ]
 
@@ -33,4 +34,5 @@ from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
+from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 #from zyngui.zynthian_gui_osc_browser import zynthian_gui_osc_browser

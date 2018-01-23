@@ -30,6 +30,9 @@ import logging
 from time import sleep
 from threading  import Thread
 
+# Zynthian specific modules
+from zyngui import zynthian_gui_config
+
 #-------------------------------------------------------------------------------
 # Configure logging
 #-------------------------------------------------------------------------------
@@ -78,10 +81,19 @@ else:
 
 #------------------------------------------------------------------------------
 
+def get_port_alias_id(midi_port):
+	try:
+		alias_id='_'.join(midi_port.aliases[0].split('-')[5:])
+	except:
+		alias_id=midi_port.shortname
+	return alias_id
+
+#------------------------------------------------------------------------------
+
 def midi_autoconnect():
 	logger.info("Autoconnecting Midi ...")
 
-	#Get Physical MIDI-devices ...
+	#Get Physical MIDI-IN devices ...
 	hw_out=jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
 	if len(hw_out)==0:
 		hw_out=[]
@@ -106,13 +118,6 @@ def midi_autoconnect():
 				hw_out.append(port)
 			except:
 				pass                    
-
-	#Remove HW Black-listed
-	for i,hw in enumerate(hw_out):
-		for v in hw_black_list:
-			#logger.debug("Element %s => %s " % (i,v) )
-			if v==str(hw.name.split(':')[0]):
-				hw_out.pop(i)
 
 	#logger.debug("Physical Devices: " + str(hw_out))
 
@@ -139,21 +144,25 @@ def midi_autoconnect():
 	#Connect Physical devices to Synth Engines and Zyncoder
 	for hw in hw_out:
 		if len(zyncoder_in)>0:
-			#logger.debug("Connecting HW "+str(hw)+" => "+str(zyncoder_in[0]))
+			#logger.debug("Connecting MIDI Input %s => %s" % (hw,zyncoder_in[0])
 			try:
-				jclient.connect(hw,zyncoder_in[0])
+				#Disconnect Black-listed & Disabled Ports
+				if str(hw.name.split(':')[0]) in hw_black_list or get_port_alias_id(hw) in zynthian_gui_config.disabled_midi_in_ports:
+					jclient.disconnect(hw,zyncoder_in[0])
+				else:
+					jclient.connect(hw,zyncoder_in[0])
 			except:
 				pass
 
-			# This is not needed anymore because zyncoder forward all the MIDI messages
-			'''
-			for engine in engines:
-				#logger.debug("Connecting HW "+str(hw)+" => "+str(engine))
-				try:
-					jclient.connect(hw,engine)
-				except:
-					pass
-			'''
+		# This is not needed anymore because zyncoder forward all the MIDI messages
+		'''
+		for engine in engines:
+			#logger.debug("Connecting HW "+str(hw)+" => "+str(engine))
+			try:
+				jclient.connect(hw,engine)
+			except:
+				pass
+		'''
 
 	#Connect Zyncoder to engines
 	if len(zyncoder_out)>0:
@@ -163,12 +172,28 @@ def midi_autoconnect():
 			except:
 				pass
 
-		#Connect Zyncoder to MIDI-OUT (ttymidi)
+
+		#Get Physical MIDI-IN devices ...
+		hw_in=jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
+		if len(hw_in)==0:
+			hw_in=[]
+
+		#Add MIDI-OUT (ttymidi) device ...
 		ttymidi_in=jclient.get_ports("ttymidi", is_input=True, is_physical=False, is_midi=True)
 		try:
-			jclient.connect(zyncoder_out[0],ttymidi_in[0])
+			hw_in.append(ttymidi_in[0])
 		except:
 			pass
+
+		#Connect Zyncoder to enabled MIDI-OUT ports
+		for hw in hw_in:
+			try:
+				if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_out_ports:
+					jclient.connect(zyncoder_out[0],hw)
+				else:
+					jclient.disconnect(zyncoder_out[0],hw)
+			except:
+				pass
 
 
 def audio_autoconnect():
