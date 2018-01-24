@@ -25,7 +25,6 @@
 import re
 import logging
 
-from zyngui import zynthian_gui_config
 from . import zynthian_engine
 
 #------------------------------------------------------------------------------
@@ -112,7 +111,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		cfg_fpath=self.base_dir+"/cfg/zynthian.cfg"
 		with open(cfg_tpl_fpath, 'r') as cfg_tpl_file:
 			cfg_data=cfg_tpl_file.read()
-			cfg_data=cfg_data.replace('#OSC.TUNING#', str(int(zynthian_gui_config.midi_fine_tuning)))
+			cfg_data=cfg_data.replace('#OSC.TUNING#', str(self.zyngui.fine_tuning_freq))
 			with open(cfg_fpath, 'w') as cfg_file:
 				cfg_file.write(cfg_data)
 

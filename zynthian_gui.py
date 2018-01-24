@@ -116,7 +116,8 @@ class zynthian_gui:
 		try:
 			global lib_zyncoder
 			#Set Global Tuning
-			lib_zyncoder.set_midi_filter_tuning_freq(int(zynthian_gui_config.midi_fine_tuning))
+			self.fine_tuning_freq=int(zynthian_gui_config.midi_fine_tuning)
+			lib_zyncoder.set_midi_filter_tuning_freq(self.fine_tuning_freq)
 			#Set MIDI Master Channel
 			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
 			#Setup MIDI filter rules
