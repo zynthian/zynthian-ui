@@ -54,12 +54,13 @@ class zynthian_engine:
 		['modulation',1,0],
 		['pan',10,64],
 		['expression',11,127],
-		['FX send',12,0],
 		['sustain',64,'off',['off','on']],
 		['resonance',71,64],
 		['cutoff',74,64],
 		['reverb',91,64],
-		['chorus',93,2]
+		['chorus',93,2],
+		['portamento on/off',65,'off','off|on'],
+		['portamento time',5,64]
 	]
 
 	# Controller Screens

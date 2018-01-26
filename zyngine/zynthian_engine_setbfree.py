@@ -37,7 +37,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
-	drawbar_values=[['0','1','2','3','4','5','6','7','8'], [128,120,104,88,72,56,40,24,8]]
+	drawbar_values=[['0','1','2','3','4','5','6','7','8'], [128,119,103,87,71,55,39,23,7]]
 
 	# MIDI Controllers
 	_ctrls=[
@@ -50,6 +50,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 #		['rotary select',65,'off/off','off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
 		['rotary select',65,'off/off',[['off/off','slow/off','fast/off','off/slow','slow/slow','fast/slow','off/fast','slow/fast','fast/fast'],[0,15,30,45,60,75,90,105,120]]],
 #		['rotary toggle',64,0],
+#		['16',70,0,127,'drawbar_1'],
 		['16',70,'8',drawbar_values,'drawbar_1'],
 		['5 1/3',71,'8',drawbar_values,'drawbar_2'],
 		['8',72,'8',drawbar_values,'drawbar_3'],
