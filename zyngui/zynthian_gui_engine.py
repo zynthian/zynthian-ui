@@ -53,6 +53,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		["LS", ("LinuxSampler","LinuxSampler - Sampler")],
 		["BF", ("setBfree","setBfree - Hammond Emulator")],
 		["MD", ("MOD-UI","MOD-UI - Plugin Host")]
+		["PT", ("Pianoteq6","Pianoteq6 Piano Emulator")]
 	])
 
 	def __init__(self):
@@ -64,7 +65,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.list_data=[]
 		i=0
 		for en in self.engine_info:
-			if en not in ["BF", "MD"] or en not in self.zyngines:
+			if en not in ["BF", "MD", "PT"] or en not in self.zyngines:
 				ei=self.engine_info[en]
 				self.list_data.append((en,i,ei[1],ei[0]))
 				i=i+1
