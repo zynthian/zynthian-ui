@@ -9,7 +9,7 @@ __all__ = [
 	"zynthian_engine_linuxsampler",
 	"zynthian_engine_fluidsynth",
 	"zynthian_engine_setbfree",
-	"zynthian_engine_modui"
+	"zynthian_engine_modui",
 	"zynthian_engine_pianoteq"
 ]
 #from zyngine.zynthian_midi import *

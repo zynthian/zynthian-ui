@@ -99,7 +99,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
         # MIDI Channel Management
         # ---------------------------------------------------------------------------
 
-        def set_midi_chan(self, layer):
+	def set_midi_chan(self, layer):
 		self.stop()
 		self.command=self.main_command+("--midi-channel",)+(layer.get_midi_chan(),)
 		self.start()
