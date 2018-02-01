@@ -89,6 +89,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.zyngines[eng]=zynthian_engine_setbfree(zynthian_gui_config.zyngui)
 			elif eng=="MD":
 				self.zyngines[eng]=zynthian_engine_modui(zynthian_gui_config.zyngui)
+			elif eng=="PT":
+				self.zyngines[eng]=zynthian_engine_pianoteq(zynthian_gui_config.zyngui)
 			else:
 				return None
 			if wait>0:
