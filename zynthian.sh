@@ -40,7 +40,7 @@ function load_config_env() {
 	if [ ! -z "$ZYNTHIAN_SCRIPT_MIDI_PROFILE" ]; then
 		source "$ZYNTHIAN_SCRIPT_MIDI_PROFILE"
 	else
-		source "$ZYNTHIAN_DATA_DIR/midi-profiles/default.sh"
+		source "$ZYNTHIAN_MY_DATA_DIR/midi-profiles/default.sh"
 	fi
 
 	if [ -f "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh" ]; then
