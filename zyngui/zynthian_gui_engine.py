@@ -52,7 +52,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		["FS", ("FluidSynth","FluidSynth - Sampler")],
 		["LS", ("LinuxSampler","LinuxSampler - Sampler")],
 		["BF", ("setBfree","setBfree - Hammond Emulator")],
-		["MD", ("MOD-UI","MOD-UI - Plugin Host")]
+		["MD", ("MOD-UI","MOD-UI - Plugin Host")],
 		["PT", ("Pianoteq6","Pianoteq6 Piano Emulator")]
 	])
 
