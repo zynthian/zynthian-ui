@@ -87,18 +87,15 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		        ('C. Bechstein',34,'C. Bechstein','_'),
 		]
 
+	def start(self):
+		logging.debug("START ENGINE %s" % self.name)	
+		super().start()
+
         # ---------------------------------------------------------------------------
         # Layer Management
         # ---------------------------------------------------------------------------
 
 	def add_layer(self, layer):
-		if(layer.get_preset_name()==None):
-			preset_name="Steinway B Home"
-		else:
-			preset_name=layer.get_preset_name()
-
-		self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+(preset_name,)
-		self.start()
 		super().add_layer(layer)
 
         # ---------------------------------------------------------------------------
@@ -108,7 +105,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	def set_midi_chan(self, layer):
 		self.stop()
 		self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)
-		self.start()
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
@@ -140,6 +136,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		return(presets)
 
 	def set_preset(self, layer, preset, preload=False):
-		super().set_preset(layer,preset)
+		self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+("\""+preset[0]+"\"",)
+		self.stop()
+		self.start()
 
 #******************************************************************************
