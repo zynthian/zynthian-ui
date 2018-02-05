@@ -41,7 +41,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	# MIDI Controllers
 	_ctrls=[
-		['volume',1,96],
+		['volume',7,96],
 #		['swellpedal 2',11,96],
 #		['rotary speed',91,64,127,'rotaryspeed'],
 		['rotary speed',91,'off','slow|off|fast','rotaryspeed'],
