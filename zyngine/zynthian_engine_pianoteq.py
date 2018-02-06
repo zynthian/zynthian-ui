@@ -2,7 +2,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_pianoteq)
 # 
-# zynthian_engine implementation for Pianoteq Stage
+# zynthian_engine implementation for Pianoteq6-Stage-Demo
 # 
 # Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
 # 			  Holger Wirtz <holger@zynthian.org>
@@ -44,7 +44,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
-		self.name="Pianoteq6"
+		self.name="Pianoteq6-Stage-Demo"
 		self.nickname="PT"
 		
 		self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", "--headless")
@@ -86,10 +86,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		        ('J. Frenzel',33,'J. Frenzel','_'),
 		        ('C. Bechstein',34,'C. Bechstein','_'),
 		]
-
-	def start(self):
-		logging.debug("START ENGINE %s" % self.name)	
-		super().start()
 
         # ---------------------------------------------------------------------------
         # Layer Management
@@ -138,6 +134,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	def set_preset(self, layer, preset, preload=False):
 		self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+("\""+preset[0]+"\"",)
 		self.stop()
-		self.start()
+		self.start(True)
 
 #******************************************************************************
