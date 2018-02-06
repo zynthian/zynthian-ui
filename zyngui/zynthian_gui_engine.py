@@ -53,7 +53,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		["LS", ("LinuxSampler","LinuxSampler - Sampler")],
 		["BF", ("setBfree","setBfree - Hammond Emulator")],
 		["MD", ("MOD-UI","MOD-UI - Plugin Host")],
-		["PT", ("Pianoteq6","Pianoteq6 Piano Emulator")]
+		["PT", ("Pianoteq6-Stage-Demo","Pianoteq6-Demo Piano Emulator")]
 	])
 
 	def __init__(self):
