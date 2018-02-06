@@ -91,9 +91,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
         # Layer Management
         # ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
-		super().add_layer(layer)
-
         # ---------------------------------------------------------------------------
         # MIDI Channel Management
         # ---------------------------------------------------------------------------
@@ -114,8 +111,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		bank=bank[2]
 		self.start_loading()
+		bank=bank[2]
 		logging.info('Getting Preset List for %s [%s]' % (self.name,bank))
 		presets=[]
 		pianoteq=subprocess.Popen(self.main_command+("--list-presets",),stdout=subprocess.PIPE)
