@@ -229,6 +229,7 @@ def set_midi_config():
 	master_midi_channel=int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
 
 	master_midi_change_type=os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANGE_TYPE',"Roland")
+
 	master_midi_program_change_up=os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_UP',"C#7F")
 	master_midi_program_change_down=os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_DOWN',"C#00")
 
@@ -245,10 +246,13 @@ def set_midi_config():
 	master_midi_bank_change_up=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_UP',"B#207F")
 	master_midi_bank_change_down=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_DOWN',"B#2000")
 
-	master_midi_bank_change_down_ccnum=int(master_midi_bank_change_down[2:4],16)
-	if master_midi_bank_change_down_ccnum==master_midi_bank_change_ccnum:
-		master_midi_bank_base=1
-	else:
+	try:
+		master_midi_bank_change_down_ccnum=int(master_midi_bank_change_down[2:4],16)
+		if master_midi_bank_change_down_ccnum==master_midi_bank_change_ccnum:
+			master_midi_bank_base=1
+		else:
+			master_midi_bank_base=0
+	except:
 		master_midi_bank_base=0
 
 	#MIDI channels: 0-15
