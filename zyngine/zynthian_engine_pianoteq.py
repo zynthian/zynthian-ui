@@ -26,6 +26,8 @@
 import re
 import logging
 import subprocess
+import time
+import logging
 from . import zynthian_engine
 
 #------------------------------------------------------------------------------
@@ -87,6 +89,15 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		        ('C. Bechstein',34,'C. Bechstein','_'),
 		]
 
+	def start(self, start_queue=False, shell=False):
+		self.start_loading()
+		logging.debug("Starting"+str(self.command))
+		super().start(start_queue,shell)
+		logging.debug("Start sleeping...")
+		time.sleep(5)
+		logging.debug("Stop sleeping...")
+		self.stop_loading()
+
         # ---------------------------------------------------------------------------
         # Layer Management
         # ---------------------------------------------------------------------------
@@ -129,8 +140,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		return(presets)
 
 	def set_preset(self, layer, preset, preload=False):
-		self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+("\""+preset[0]+"\"",)
+		#self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+("\""+preset[0]+"\"",)
+		self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+(preset[0],)
 		self.stop()
-		self.start(True)
+		self.start(True,False)
 
 #******************************************************************************
