@@ -48,9 +48,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		super().__init__(zyngui)
 		self.name="Pianoteq6-Stage-Demo"
 		self.nickname="PT"
-		
-		self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", "--headless")
-		self.command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", "--headless","--midi-channel","all")
+
+		if(self.config_remote_display()):
+			self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE")
+			self.command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", "--midi-channel","all")
+		else:
+			self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", "--headless")
+			self.command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", "--headless","--midi-channel","all")
 		self.bank=[
 			('Steinway D',0,'Steinway D','_'),
 		        ('Steinway B',1,'Steinway B','_'),
