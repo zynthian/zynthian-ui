@@ -47,7 +47,7 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 class zynthian_gui_midi_profile(zynthian_gui_selector):
 
 	def __init__(self):
-		self.midi_profiles_dir=os.environ.get("ZYNTHIAN_MY_DATA_DIR")+"/midi-profiles"
+		self.midi_profiles_dir=os.getcwd() + "/my-data/midi-profiles"
 		super().__init__('Profile', True)
 
 	def get_profile_fpath(self,f):
