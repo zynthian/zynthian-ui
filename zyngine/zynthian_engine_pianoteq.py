@@ -39,6 +39,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
+	_ctrls=[
+		['volume',7,96],
+		['sustain on/off',64,'off','off|on']
+	]
+
+	_ctrl_screens=[
+		['main',['volume','sustain on/off']]
+	]
 
 	#----------------------------------------------------------------------------
 	# Initialization
@@ -50,8 +58,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.nickname="PT"
 
 		if(self.config_remote_display()):
-			self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE")
-			self.command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", "--midi-channel","all")
+			self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE",)
+			self.command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE","--midi-channel","all")
 		else:
 			self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", "--headless")
 			self.command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", "--headless","--midi-channel","all")
