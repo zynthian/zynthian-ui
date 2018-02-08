@@ -75,6 +75,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				self.list_data.append((self.stop_aubionotes,0,"Stop Audio -> MIDI"))
 			else:
 				self.list_data.append((self.start_aubionotes,0,"Start Audio -> MIDI"))
+		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
 		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
@@ -260,6 +261,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("STOPPING aubionotes")
 		check_output("systemctl stop aubionotes", shell=True)
 		self.fill_list()
+
+	def midi_profile(self):
+		logging.info("MIDI PROFILE")
+		zynthian_gui_config.zyngui.show_modal("midi_profile")
 
 	def restart_gui(self):
 		logging.info("RESTART GUI")

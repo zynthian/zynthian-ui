@@ -124,6 +124,8 @@ class zynthian_gui_selector:
 		self.listbox.bind("<Button-1>",self.cb_listbox_push)
 		self.listbox.bind("<ButtonRelease-1>",self.cb_listbox_release)
 		self.listbox.bind("<B1-Motion>",self.cb_listbox_motion)
+		self.listbox.bind("<Button-4>",self.cb_listbox_wheel)
+		self.listbox.bind("<Button-5>",self.cb_listbox_wheel)
 
 		# Canvas for loading image animation
 		self.loading_canvas = tkinter.Canvas(self.main_frame,
@@ -255,13 +257,22 @@ class zynthian_gui_selector:
 	def cb_listbox_release(self,event):
 		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 		#logging.debug("LISTBOX RELEASE => %s" % dts)
-		if dts<0.3:
+		if dts < 0.3:
 			zynthian_gui_config.zyngui.zynswitch_defered('S',3)
 
 	def cb_listbox_motion(self,event):
 		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
-		if dts>0.1:
+		if dts > 0.1:
 			#logging.debug("LISTBOX MOTION => %d" % self.index)
 			self.zselector.set_value(self.get_cursel(), True)
+
+	def cb_listbox_wheel(self,event):
+		index = self.index
+		if (event.num == 5 or event.delta == -120) and self.index>0:
+			index -= 1
+		if (event.num == 4 or event.delta == 120) and self.index < (len(self.list_data)-1):
+			index += 1
+		if index!=self.index:
+			self.zselector.set_value(index, True)
 
 #------------------------------------------------------------------------------

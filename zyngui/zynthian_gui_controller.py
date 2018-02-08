@@ -100,6 +100,8 @@ class zynthian_gui_controller:
 		self.canvas.bind("<Button-1>",self.cb_canvas_push)
 		self.canvas.bind("<ButtonRelease-1>",self.cb_canvas_release)
 		self.canvas.bind("<B1-Motion>",self.cb_canvas_motion)
+		self.canvas.bind("<Button-4>",self.cb_canvas_wheel)
+		self.canvas.bind("<Button-5>",self.cb_canvas_wheel)
 		# Setup Controller and Zyncoder
 		self.config(zctrl)
 		# Show Controller
@@ -586,5 +588,11 @@ class zynthian_gui_controller:
 				if abs(self.canvas_motion_dx-dx)>0:
 					self.canvas_motion_count=self.canvas_motion_count+1
 				self.canvas_motion_dx=dx
+
+	def cb_canvas_wheel(self,event):
+		if event.num == 5 or event.delta == -120:
+			self.set_value(self.value - 1, True)
+		if event.num == 4 or event.delta == 120:
+			self.set_value(self.value + 1, True)
 
 #------------------------------------------------------------------------------

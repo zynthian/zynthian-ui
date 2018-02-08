@@ -29,6 +29,7 @@ import logging
 from json import JSONEncoder, JSONDecoder
 
 # Zynthian specific modules
+import zynautoconnect
 from zyncoder import *
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
@@ -170,7 +171,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			snapshot={
 				'index':self.index,
 				'layers':[],
-				'transpose':[]
+				'transpose':[],
+				'monitored_engines':zynautoconnect.monitored_engines
 				#'cc_map':[],
 			}
 			#Layers info
@@ -234,6 +236,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					zyncoder.lib_zyncoder.set_midi_filter_transpose(i,snapshot['transpose'][i])
 			#Set CC-Map
 			#TODO
+			#Set Monitored Engines
+			if 'monitored_engines' in snapshot:
+				zynautoconnect.set_monitored_engines(snapshot['monitored_engines'])
+			else:
+				zynautoconnect.reset_monitored_engines()
 			#Post action
 			if self.list_data[self.index][0] in ('NEW','RESET'):
 				self.index=0

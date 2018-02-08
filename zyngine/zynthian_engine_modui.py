@@ -500,6 +500,10 @@ class zynthian_engine_modui(zynthian_engine):
 		logging.debug("Parameter Address Data => %s" % str(data))
 		return data
 
+	#----------------------------------------------------------------------------
+	# MIDI learning
+	#----------------------------------------------------------------------------
+
 	def midi_learn(self, zctrl):
 		logging.info("MIDI Learn: %s" % zctrl.graph_path)
 		res = self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=self.get_parameter_address_data(zctrl,"/midi-learn"))

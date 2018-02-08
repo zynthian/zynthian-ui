@@ -24,10 +24,14 @@
 #******************************************************************************
 
 import os
+import re
 import sys
 import logging
 import tkinter
 from PIL import Image, ImageTk
+
+# Zynthian specific modules
+import zynconf
 
 #******************************************************************************
 
@@ -35,16 +39,10 @@ from PIL import Image, ImageTk
 # Log level and debuging
 #------------------------------------------------------------------------------
 
-if os.environ.get('ZYNTHIAN_LOG_LEVEL'):
-	log_level=int(os.environ.get('ZYNTHIAN_LOG_LEVEL'))
-else:
-	log_level=logging.WARNING
-	#log_level=logging.DEBUG
+log_level=int(os.environ.get('ZYNTHIAN_LOG_LEVEL',logging.WARNING))
+#log_level=logging.DEBUG
 
-if os.environ.get('ZYNTHIAN_RAISE_EXCEPTIONS'):
-	raise_exceptions=int(os.environ.get('ZYNTHIAN_RAISE_EXCEPTIONS'))
-else:
-	raise_exceptions=False
+raise_exceptions=int(os.environ.get('ZYNTHIAN_RAISE_EXCEPTIONS',False))
 
 # Set root logging level
 logging.basicConfig(stream=sys.stderr, level=log_level)
@@ -53,12 +51,11 @@ logging.basicConfig(stream=sys.stderr, level=log_level)
 # Wiring layout
 #------------------------------------------------------------------------------
 
-if os.environ.get('ZYNTHIAN_WIRING_LAYOUT'):
-	wiring_layout=os.environ.get('ZYNTHIAN_WIRING_LAYOUT')
-	logging.info("Wiring Layout %s" % wiring_layout)
-else:
-	wiring_layout="DUMMIES"
+wiring_layout=os.environ.get('ZYNTHIAN_WIRING_LAYOUT',"DUMMIES")
+if wiring_layout=="DUMMIES":
 	logging.info("No Wiring Layout configured. Only touch interface is available.")
+else:
+	logging.info("Wiring Layout %s" % wiring_layout)
 
 if os.environ.get('ZYNTHIAN_WIRING_ENCODER_A'):
 	zyncoder_pin_a=list(map(int, os.environ.get('ZYNTHIAN_WIRING_ENCODER_A').split(',')))
@@ -183,25 +180,10 @@ ctrl_pos=[
 # UI Color Parameters
 #------------------------------------------------------------------------------
 
-if os.environ.get('ZYNTHIAN_UI_COLOR_BG'):
-	color_bg=os.environ.get('ZYNTHIAN_UI_COLOR_BG')
-else:
-	color_bg="#000000"
-
-if os.environ.get('ZYNTHIAN_UI_COLOR_TX'):
-	color_tx=os.environ.get('ZYNTHIAN_UI_COLOR_TX')
-else:
-	color_tx="#ffffff"
-
-if os.environ.get('ZYNTHIAN_UI_COLOR_ON'):
-	color_on=os.environ.get('ZYNTHIAN_UI_COLOR_ON')
-else:
-	color_on="#ff0000"
-
-if os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG'):
-	color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG')
-else:
-	color_panel_bg="#3a424d"
+color_bg=os.environ.get('ZYNTHIAN_UI_COLOR_BG',"#000000")
+color_tx=os.environ.get('ZYNTHIAN_UI_COLOR_TX',"#ffffff")
+color_on=os.environ.get('ZYNTHIAN_UI_COLOR_ON',"#ff0000")
+color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG',"#3a424d")
 
 # Color Scheme
 color_panel_bd=color_bg
@@ -217,113 +199,87 @@ color_ctrl_tx_off="#e0e0e0"
 # UI Font Parameters
 #------------------------------------------------------------------------------
 
-if os.environ.get('ZYNTHIAN_UI_FONT_FAMILY'):
-	font_family=os.environ.get('ZYNTHIAN_UI_FONT_FAMILY')
-else:
-	font_family="Audiowide"
-	#font_family="Helvetica" #=> the original ;-)
-	#font_family="Economica" #=> small
-	#font_family="Orbitron" #=> Nice, but too strange
-	#font_family="Abel" #=> Quite interesting, also "Strait"
+font_family=os.environ.get('ZYNTHIAN_UI_FONT_FAMILY',"Audiowide")
+#font_family="Helvetica" #=> the original ;-)
+#font_family="Economica" #=> small
+#font_family="Orbitron" #=> Nice, but too strange
+#font_family="Abel" #=> Quite interesting, also "Strait"
 
-if os.environ.get('ZYNTHIAN_UI_FONT_SIZE'):
-	font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE'))
-else:
-	font_size=10
+font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',10))
 
 #------------------------------------------------------------------------------
 # UI Cursor
 #------------------------------------------------------------------------------
 
-if os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR'):
-	force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR'))
-else:
-	force_enable_cursor=False
+force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 
 #------------------------------------------------------------------------------
-# Master MIDI Parameters
+# MIDI Configuration
 #------------------------------------------------------------------------------
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANNEL'):
-	master_midi_channel=int(os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANNEL'))
-else:
-	master_midi_channel=16
+def set_midi_config():
+	global master_midi_channel, master_midi_change_type
+	global master_midi_program_change_up, master_midi_program_change_down
+	global master_midi_program_base, master_midi_bank_change_ccnum
+	global master_midi_bank_change_up, master_midi_bank_change_down
+	global master_midi_bank_change_down_ccnum, master_midi_bank_base
+	global preset_preload_noteon, midi_fine_tuning, midi_filter_rules
+	global disabled_midi_in_ports, enabled_midi_out_ports
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANGE_TYPE'):
-	master_midi_change_type=os.environ.get('ZYNTHIAN_MASTER_MIDI_CHANGE_TYPE')
-else:
-	master_midi_change_type="Roland"
+	master_midi_channel=int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_UP'):
-	master_midi_program_change_up=os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_UP')
-else:
-	master_midi_program_change_up="C#7F"
+	master_midi_change_type=os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANGE_TYPE',"Roland")
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_DOWN'):
-	master_midi_program_change_down=os.environ.get('ZYNTHIAN_MASTER_MIDI_PROGRAM_CHANGE_DOWN')
-else:
-	master_midi_program_change_down="C#00"
+	master_midi_program_change_up=os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_UP',"C#7F")
+	master_midi_program_change_down=os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_DOWN',"C#00")
 
-if master_midi_program_change_down=="C#00":
-	master_midi_program_base=1
-else:
-	master_midi_program_base=0
+	if master_midi_program_change_down=="C#00":
+		master_midi_program_base=1
+	else:
+		master_midi_program_base=0
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_CCNUM'):
-	master_midi_bank_change_ccnum=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_CCNUM')
-else:
 	#Use LSB Bank by default
-	master_midi_bank_change_ccnum=0x20 
+	master_midi_bank_change_ccnum=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM',0x20)
 	#Use MSB Bank by default
-	#master_midi_bank_change_ccnum=0x00
+	#master_midi_bank_change_ccnum=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM',0x00)
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_UP'):
-	master_midi_bank_change_up=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_UP')
-else:
-	master_midi_bank_change_up="B#207F"
+	master_midi_bank_change_up=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_UP',"B#207F")
+	master_midi_bank_change_down=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_DOWN',"B#2000")
 
-if os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN'):
-	master_midi_bank_change_down=os.environ.get('ZYNTHIAN_MASTER_MIDI_BANK_CHANGE_DOWN')
-else:
-	master_midi_bank_change_down="B#2000"
+	try:
+		master_midi_bank_change_down_ccnum=int(master_midi_bank_change_down[2:4],16)
+		if master_midi_bank_change_down_ccnum==master_midi_bank_change_ccnum:
+			master_midi_bank_base=1
+		else:
+			master_midi_bank_base=0
+	except:
+		master_midi_bank_base=0
 
-master_midi_bank_change_down_ccnum=int(master_midi_bank_change_down[2:4],16)
-if master_midi_bank_change_down_ccnum==master_midi_bank_change_ccnum:
-	master_midi_bank_base=1
-else:
-	master_midi_bank_base=0
+	#MIDI channels: 0-15
+	if master_midi_channel>16:
+		master_midi_channel=16
+	master_midi_channel=master_midi_channel-1
+	mmc_hex=hex(master_midi_channel)[2]
 
-#MIDI channels: 0-15
-if master_midi_channel>16:
-	master_midi_channel=16
-master_midi_channel=master_midi_channel-1
-mmc_hex=hex(master_midi_channel)[2]
+	#Calculate MIDI Sequences and convert to Integer
+	master_midi_program_change_up=int('{:<06}'.format(master_midi_program_change_up.replace('#',mmc_hex)),16)
+	master_midi_program_change_down=int('{:<06}'.format(master_midi_program_change_down.replace('#',mmc_hex)),16)
+	master_midi_bank_change_up=int('{:<06}'.format(master_midi_bank_change_up.replace('#',mmc_hex)),16)
+	master_midi_bank_change_down=int('{:<06}'.format(master_midi_bank_change_down.replace('#',mmc_hex)),16)
 
-#Calculate MIDI Sequences and convert to Integer
-master_midi_program_change_up=int('{:<06}'.format(master_midi_program_change_up.replace('#',mmc_hex)),16)
-master_midi_program_change_down=int('{:<06}'.format(master_midi_program_change_down.replace('#',mmc_hex)),16)
-master_midi_bank_change_up=int('{:<06}'.format(master_midi_bank_change_up.replace('#',mmc_hex)),16)
-master_midi_bank_change_down=int('{:<06}'.format(master_midi_bank_change_down.replace('#',mmc_hex)),16)
+	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON',1))
+	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440))
 
-#------------------------------------------------------------------------------
-# UI special features
-#------------------------------------------------------------------------------
-
-if os.environ.get('ZYNTHIAN_PRESET_PRELOAD_NOTEON'):
-	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_PRESET_PRELOAD_NOTEON'))
-else:
-	preset_preload_noteon=1
-
-if os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING'):
-	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING'))
-else:
-	midi_fine_tuning=440
-
-if os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES'):
-	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES')
+	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES',"")
 	midi_filter_rules=midi_filter_rules.replace("\\n","\n")
-else:
-	midi_filter_rules=""
+
+	midi_ports=os.environ.get('ZYNTHIAN_MIDI_PORTS',"DISABLED_IN=\nENABLED_OUT=MIDI_out")
+	midi_ports=midi_ports.replace("\\n","\n")
+	disabled_midi_in_ports=zynconf.get_disabled_midi_in_ports(midi_ports)
+	enabled_midi_out_ports=zynconf.get_enabled_midi_out_ports(midi_ports)
+
+#Set MIDI config variables
+set_midi_config()
 
 #------------------------------------------------------------------------------
 # Create & Configure Top Level window 
@@ -385,7 +341,6 @@ while pil_frame:
 		break;
 #for i in range(13):
 #	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
-
 
 #------------------------------------------------------------------------------
 # Zynthian GUI variable

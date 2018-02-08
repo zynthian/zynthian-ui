@@ -304,8 +304,7 @@ class zynthian_layer:
 		if self.refresh_flag:
 			self.refresh_flag=False
 			self.refresh_controllers()
-		else:
-			sleep(0.5)
+		sleep(0.3)
 		self.ctrl_screen_active=snapshot['ctrl_screen_active']
 		for k in snapshot['controllers_dict']:
 			self.controllers_dict[k].set_value(snapshot['controllers_dict'][k],True)

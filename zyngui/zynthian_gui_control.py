@@ -257,6 +257,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 					zynthian_gui_config.zyngui.stop_loading()
 					sleep(0.04)
 
+	def cb_listbox_wheel(self,event):
+		index = self.index
+		if (event.num == 5 or event.delta == -120) and self.index>0:
+			index -= 1
+		if (event.num == 4 or event.delta == 120) and self.index < (len(self.list_data)-1):
+			index += 1
+		if index!=self.index:
+			zynthian_gui_config.zyngui.start_loading()
+			self.select_listbox(index)
+			zynthian_gui_config.zyngui.stop_loading()
+
 	def set_select_path(self):
 		if zynthian_gui_config.zyngui.curlayer:
 			self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_presetpath())

@@ -108,6 +108,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def clean_unused_engines(self):
 		for eng in list(self.zyngines.keys()):
 			if len(self.zyngines[eng].layers)==0:
+				zynautoconnect.unset_monitored_engine(self.zyngines[eng].name)
 				self.zyngines[eng].stop()
 				self.zyngines.pop(eng, None)
 
