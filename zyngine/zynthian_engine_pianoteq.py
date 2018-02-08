@@ -29,6 +29,7 @@ import subprocess
 import time
 import logging
 from . import zynthian_engine
+from collections import defaultdict
 
 #------------------------------------------------------------------------------
 # Piantoteq Engine Class
@@ -100,6 +101,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		        ('J. Frenzel',33,'J. Frenzel','_'),
 		        ('C. Bechstein',34,'C. Bechstein','_'),
 		]
+		self.presets=defaultdict(list)
 
 	def start(self, start_queue=False, shell=False):
 		self.start_loading()
@@ -134,22 +136,25 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		self.start_loading()
 		bank=bank[2]
-		logging.info('Getting Preset List for %s [%s]' % (self.name,bank))
-		presets=[]
-		pianoteq=subprocess.Popen(self.main_command+("--list-presets",),stdout=subprocess.PIPE)
-		for line in pianoteq.stdout:
-			l=line.rstrip().decode("utf-8")
-			if(bank==l[0:len(bank)]):
-				preset_name=l[len(bank):].strip()
-				preset_name=re.sub('^- ','',preset_name)
-				preset_printable_name=preset_name
-				if(preset_name==""):
-					preset_printable_name="<Default>"
-				presets.append((l,None,preset_printable_name,None))
-		self.stop_loading()
-		return(presets)
+		if(self.presets[bank]):
+			logging.info('Getting cached Preset List for %s [%s]' % (self.name,bank))
+			return(self.presets[bank])
+		else:
+			self.start_loading()
+			logging.info('Getting Preset List for %s [%s]' % (self.name,bank))
+			pianoteq=subprocess.Popen(self.main_command+("--list-presets",),stdout=subprocess.PIPE)
+			for line in pianoteq.stdout:
+				l=line.rstrip().decode("utf-8")
+				if(bank==l[0:len(bank)]):
+					preset_name=l[len(bank):].strip()
+					preset_name=re.sub('^- ','',preset_name)
+					preset_printable_name=preset_name
+					if(preset_name==""):
+						preset_printable_name="<Default>"
+					self.presets[bank].append((l,None,preset_printable_name,None))
+			self.stop_loading()
+			return(self.presets[bank])
 
 	def set_preset(self, layer, preset, preload=False):
 		#self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+("\""+preset[0]+"\"",)
