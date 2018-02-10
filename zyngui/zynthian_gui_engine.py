@@ -30,6 +30,7 @@ from collections import OrderedDict
 
 # Zynthian specific modules
 import zynautoconnect
+import os
 from zyngine import *
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
@@ -47,14 +48,24 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 
 class zynthian_gui_engine(zynthian_gui_selector):
 
-	engine_info=OrderedDict([
-		["ZY", ("ZynAddSubFX","ZynAddSubFX - Synthesizer")],
-		["FS", ("FluidSynth","FluidSynth - Sampler")],
-		["LS", ("LinuxSampler","LinuxSampler - Sampler")],
-		["BF", ("setBfree","setBfree - Hammond Emulator")],
-		["MD", ("MOD-UI","MOD-UI - Plugin Host")],
-		["PT", ("Pianoteq6","Pianoteq6-Stage-Demo Piano Emulator")]
-	])
+	# Bad hack for checking if there is an installed Pianoteq-Demo or Pianoteq (licensed) (holger@zynthian.org)
+	if(os.path.isfile("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE") and os.access("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", os.X_OK)):
+		engine_info=OrderedDict([
+			["ZY", ("ZynAddSubFX","ZynAddSubFX - Synthesizer")],
+			["FS", ("FluidSynth","FluidSynth - Sampler")],
+			["LS", ("LinuxSampler","LinuxSampler - Sampler")],
+			["BF", ("setBfree","setBfree - Hammond Emulator")],
+			["MD", ("MOD-UI","MOD-UI - Plugin Host")],
+			["PT", ("Pianoteq6","Pianoteq6-Stage-Demo Piano Emulator")]
+		])
+	else:
+		engine_info=OrderedDict([
+			["ZY", ("ZynAddSubFX","ZynAddSubFX - Synthesizer")],
+			["FS", ("FluidSynth","FluidSynth - Sampler")],
+			["LS", ("LinuxSampler","LinuxSampler - Sampler")],
+			["BF", ("setBfree","setBfree - Hammond Emulator")],
+			["MD", ("MOD-UI","MOD-UI - Plugin Host")]
+		])
 
 	def __init__(self):
 		self.zyngines={}
