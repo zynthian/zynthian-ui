@@ -42,11 +42,22 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	_ctrls=[
 		['volume',7,96],
+		['mute',19,'off','off|on'],
+		['rev on/off',30,'off','off|on'],
+		['rev duration',31,0],
+		['rev mix',32,0],
+		['rev room',33,0],
+		['rev p/d',34,0],
+		['rev e/r',35,64],
+		['rev tone',36,64],
 		['sustain on/off',64,'off','off|on']
 	]
 
 	_ctrl_screens=[
-		['main',['volume','sustain on/off']]
+		['main',['volume','sustain on/off']],
+		['reverb1',['volume','rev on/off','rev duration','rev mix']],
+		['reverb2',['volume','rev room','rev p/d','rev e/r']],
+		['reverb3',['volume','rev tone']]
 	]
 
 	#----------------------------------------------------------------------------
@@ -57,13 +68,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		super().__init__(zyngui)
 		self.name="Pianoteq6-Stage-Demo"
 		self.nickname="PT"
+		self.preset=""
 
 		if(self.config_remote_display()):
-			self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE",)
-			self.command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE","--midi-channel","all")
+			self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE","--midimapping","Zynthian")
 		else:
-			self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", "--headless")
-			self.command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE", "--headless","--midi-channel","all")
+			self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE","--headless","--midimapping","Zynthian")
+		self.command=self.main_command
 		self.bank=[
 			('Steinway D',0,'Steinway D','_'),
 		        ('Steinway B',1,'Steinway B','_'),
@@ -102,15 +113,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		        ('C. Bechstein',34,'C. Bechstein','_'),
 		]
 		self.presets=defaultdict(list)
+		self.zyngui.start_loading_thread()
 
 	def start(self, start_queue=False, shell=False):
-		self.start_loading()
 		logging.debug("Starting"+str(self.command))
 		super().start(start_queue,shell)
 		logging.debug("Start sleeping...")
-		time.sleep(5)
+		time.sleep(4)
 		logging.debug("Stop sleeping...")
-		self.stop_loading()
 
         # ---------------------------------------------------------------------------
         # Layer Management
@@ -141,7 +151,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			logging.info('Getting cached Preset List for %s [%s]' % (self.name,bank))
 			return(self.presets[bank])
 		else:
-			self.start_loading()
 			logging.info('Getting Preset List for %s [%s]' % (self.name,bank))
 			pianoteq=subprocess.Popen(self.main_command+("--list-presets",),stdout=subprocess.PIPE)
 			for line in pianoteq.stdout:
@@ -153,13 +162,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 					if(preset_name==""):
 						preset_printable_name="<Default>"
 					self.presets[bank].append((l,None,preset_printable_name,None))
-			self.stop_loading()
 			return(self.presets[bank])
 
 	def set_preset(self, layer, preset, preload=False):
-		#self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+("\""+preset[0]+"\"",)
-		self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+(preset[0],)
-		self.stop()
-		self.start(True,False)
+		if(preset[0]!=self.preset):
+			self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+(preset[0],)
+			self.preset=preset[0]
+			self.stop()
+			self.start(True,False)
 
 #******************************************************************************
