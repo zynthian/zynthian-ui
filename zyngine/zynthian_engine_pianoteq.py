@@ -28,6 +28,8 @@ import logging
 import subprocess
 import time
 import logging
+import os
+import shutil
 from . import zynthian_engine
 from collections import defaultdict
 
@@ -71,9 +73,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.preset=""
 
 		if(self.config_remote_display()):
-			self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE","--midimapping","Zynthian")
+			self.main_command=("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE","--midimapping","Zynthian")
 		else:
-			self.main_command=("/zynthian/zynthian-sw/pianoteq/Pianoteq 6 STAGE","--headless","--midimapping","Zynthian")
+			self.main_command=("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE","--headless","--midimapping","Zynthian")
 		self.command=self.main_command
 		self.bank=[
 			('Steinway D',0,'Steinway D','_'),
@@ -113,7 +115,15 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		        ('C. Bechstein',34,'C. Bechstein','_'),
 		]
 		self.presets=defaultdict(list)
-		self.zyngui.start_loading_thread()
+		if(not os.path.isfile("/root/.config/Modartt/Pianoteq60 STAGE.prefs")):
+			logging.debug("Pianoteq configuration does not exist. Creating one.")
+			self.ensure_dir("/root/.config/Modartt/")
+			shutil.copy("/zynthian/zynthian-ui/data/pianoteq6/Pianoteq60 STAGE.prefs","/root/.config/Modartt/")
+		
+		if(not os.path.isfile("/root/.local/share/Modartt/Pianoteq/MidiMappings/Zynthian.ptm")):
+			logging.debug("Pianoteq MIDI-mapping does not exist. Creating one.")
+			self.ensure_dir("/root/.local/share/Modartt/Pianoteq/MidiMappings/")
+			shutil.copy("/zynthian/zynthian-ui/data/pianoteq6/Zynthian.ptm","/root/.local/share/Modartt/Pianoteq/MidiMappings/")
 
 	def start(self, start_queue=False, shell=False):
 		logging.debug("Starting"+str(self.command))
@@ -170,5 +180,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			self.preset=preset[0]
 			self.stop()
 			self.start(True,False)
+
+	#----------------------------------------------------------------------------
+	# Special
+	#----------------------------------------------------------------------------
+	def ensure_dir(self,file_path):
+		directory=os.path.dirname(file_path)
+		if(not os.path.exists(directory)):
+			os.makedirs(directory)
 
 #******************************************************************************
