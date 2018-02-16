@@ -2,7 +2,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_pianoteq)
 # 
-# zynthian_engine implementation for Pianoteq6-Stage-Demo
+# zynthian_engine implementation for Pianoteq6-Stage
 # 
 # Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
 # 			  Holger Wirtz <holger@zynthian.org>
@@ -68,7 +68,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
-		self.name="Pianoteq6-Stage-Demo"
+		self.name="Pianoteq6-Stage"
 		self.nickname="PT"
 		self.preset=""
 
@@ -113,6 +113,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		        ('I. Pleyel',32,'I. Pleyel','_'),
 		        ('J. Frenzel',33,'J. Frenzel','_'),
 		        ('C. Bechstein',34,'C. Bechstein','_'),
+		        ('D. Schoffstoss',35,'D. Schoffstoss','_'),
+		        ('C. Graf',36,'C. Graf','_'),
+		        ('Erard',37,'Erard','_'),
+		        ('Pleyel',38,'Pleyel','_'),
+		        ('CP-80',39,'CP-80','_'),
+		        ('Church Bells',40,'Church Bells','_'),
+		        ('Bell-the-fly',41,'Bell-the-fly','_'),
+		        ('Tubular Bells',42,'Tubular Bells','_')
 		]
 		self.presets=defaultdict(list)
 		if(not os.path.isfile("/root/.config/Modartt/Pianoteq60 STAGE.prefs")):
@@ -172,6 +180,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 					if(preset_name==""):
 						preset_printable_name="<Default>"
 					self.presets[bank].append((l,None,preset_printable_name,None))
+					#logging.info("Found Pianoteq bank: [%s]" % bank)
+				#else:
+					#logging.warning("Unknown Pianoteq bank: [%s]" % l)
 			return(self.presets[bank])
 
 	def set_preset(self, layer, preset, preload=False):
