@@ -79,7 +79,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
 		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
-		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
+		#self.list_data.append((self.update_library,0,"Update Zynthian Library"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
 		self.list_data.append((self.restart_gui,0,"Restart GUI"))
 		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
