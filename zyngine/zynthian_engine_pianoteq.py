@@ -134,19 +134,21 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			shutil.copy("/zynthian/zynthian-ui/data/pianoteq6/Zynthian.ptm","/root/.local/share/Modartt/Pianoteq/MidiMappings/")
 
 	def start(self, start_queue=False, shell=False):
+		self.start_loading()
 		logging.debug("Starting"+str(self.command))
 		super().start(start_queue,shell)
 		logging.debug("Start sleeping...")
 		time.sleep(4)
 		logging.debug("Stop sleeping...")
+		self.stop_loading()
 
-        # ---------------------------------------------------------------------------
-        # Layer Management
-        # ---------------------------------------------------------------------------
+	# ---------------------------------------------------------------------------
+	# Layer Management
+	# ---------------------------------------------------------------------------
 
-        # ---------------------------------------------------------------------------
-        # MIDI Channel Management
-        # ---------------------------------------------------------------------------
+	# ---------------------------------------------------------------------------
+	# MIDI Channel Management
+	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, layer):
 		self.stop()
@@ -169,6 +171,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			logging.info('Getting cached Preset List for %s [%s]' % (self.name,bank))
 			return(self.presets[bank])
 		else:
+			self.start_loading()
 			logging.info('Getting Preset List for %s [%s]' % (self.name,bank))
 			pianoteq=subprocess.Popen(self.main_command+("--list-presets",),stdout=subprocess.PIPE)
 			for line in pianoteq.stdout:
@@ -183,14 +186,17 @@ class zynthian_engine_pianoteq(zynthian_engine):
 					#logging.info("Found Pianoteq bank: [%s]" % bank)
 				#else:
 					#logging.warning("Unknown Pianoteq bank: [%s]" % l)
+			self.stop_loading()
 			return(self.presets[bank])
 
 	def set_preset(self, layer, preset, preload=False):
 		if(preset[0]!=self.preset):
+			self.start_loading()
 			self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+(preset[0],)
 			self.preset=preset[0]
 			self.stop()
 			self.start(True,False)
+			self.stop_loading()
 
 	#----------------------------------------------------------------------------
 	# Special
