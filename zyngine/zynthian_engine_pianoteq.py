@@ -121,6 +121,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		        ('Church Bells',40,'Church Bells','_'),
 		        ('Bell-the-fly',41,'Bell-the-fly','_'),
 		        ('Tubular Bells',42,'Tubular Bells','_')
+		        ('CP-80',43,'CP-80','_'),
 		]
 		self.presets=defaultdict(list)
 		if(not os.path.isfile("/root/.config/Modartt/Pianoteq60 STAGE.prefs")):
