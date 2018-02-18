@@ -23,15 +23,17 @@
 # 
 #******************************************************************************
 
+import os
 import re
 import logging
-import subprocess
 import time
-import logging
-import os
 import shutil
-from . import zynthian_engine
+import subprocess
 from collections import defaultdict
+from json import JSONEncoder, JSONDecoder
+
+from . import zynthian_engine
+
 
 #------------------------------------------------------------------------------
 # Piantoteq Engine Class
@@ -122,16 +124,24 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		        ('Bell-the-fly',41,'Bell-the-fly','_'),
 		        ('Tubular Bells',42,'Tubular Bells','_')
 		]
+
 		self.presets=defaultdict(list)
-		if(not os.path.isfile("/root/.config/Modartt/Pianoteq60 STAGE.prefs")):
+		self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
+		if os.path.isfile(self.presets_cache_fpath):
+			self.load_presets_cache()
+		else:
+			self.ensure_dir(self.presets_cache_fpath)
+
+		if not os.path.isfile("/root/.config/Modartt/Pianoteq60 STAGE.prefs"):
 			logging.debug("Pianoteq configuration does not exist. Creating one.")
 			self.ensure_dir("/root/.config/Modartt/")
-			shutil.copy("/zynthian/zynthian-ui/data/pianoteq6/Pianoteq60 STAGE.prefs","/root/.config/Modartt/")
+			shutil.copy(os.getcwd() + "/data/pianoteq6/Pianoteq60 STAGE.prefs", "/root/.config/Modartt/")
 		
-		if(not os.path.isfile("/root/.local/share/Modartt/Pianoteq/MidiMappings/Zynthian.ptm")):
+		if not os.path.isfile("/root/.local/share/Modartt/Pianoteq/MidiMappings/Zynthian.ptm"):
 			logging.debug("Pianoteq MIDI-mapping does not exist. Creating one.")
 			self.ensure_dir("/root/.local/share/Modartt/Pianoteq/MidiMappings/")
-			shutil.copy("/zynthian/zynthian-ui/data/pianoteq6/Zynthian.ptm","/root/.local/share/Modartt/Pianoteq/MidiMappings/")
+			shutil.copy(os.getcwd() + "/data/pianoteq6/Zynthian.ptm","/root/.local/share/Modartt/Pianoteq/MidiMappings/")
+
 
 	def start(self, start_queue=False, shell=False):
 		self.start_loading()
@@ -159,24 +169,60 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_bank_list(self, layer=None):
-		return(self.bank)
+		return self.bank
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
 
+	def save_presets_cache(self):
+		#Encode JSON
+		try:
+			json=JSONEncoder().encode(self.presets)
+			logging.info("Saving presets cache '%s' => \n%s" % (self.presets_cache_fpath,json))
+		except Exception as e:
+			logging.error("Can't generate JSON while saving presets cache: %s" %e)
+			return False
+		#Write to file
+		try: 
+			with open(self.presets_cache_fpath,"w") as fh:
+				fh.write(json)
+				fh.flush()
+				os.fsync(fh.fileno())
+		except Exception as e:
+			logging.error("Can't save presets cache '%s': %s" % (self.presets_cache_fpath,e))
+			return False
+		return True
+
+	def load_presets_cache(self):
+		#Load from file
+		try:
+			with open(self.presets_cache_fpath,"r") as fh:
+				json=fh.read()
+				logging.info("Loading presets cache %s => \n%s" % (self.presets_cache_fpath,json))
+		except Exception as e:
+			logging.error("Can't load presets cache '%s': %s" % (self.presets_cache_fpath,e))
+			return False
+		#Decode JSON
+		try:
+			self.presets=JSONDecoder().decode(json)
+		except Exception as e:
+			logging.error("Can't decode JSON while loading presets cache: %s" % e)
+			return False
+		return True
+
 	def get_preset_list(self, bank):
 		bank=bank[2]
-		if(self.presets[bank]):
+		if self.presets[bank]:
 			logging.info('Getting cached Preset List for %s [%s]' % (self.name,bank))
-			return(self.presets[bank])
+			return self.presets[bank]
 		else:
 			self.start_loading()
 			logging.info('Getting Preset List for %s [%s]' % (self.name,bank))
 			pianoteq=subprocess.Popen(self.main_command+("--list-presets",),stdout=subprocess.PIPE)
 			for line in pianoteq.stdout:
 				l=line.rstrip().decode("utf-8")
-				if(bank==l[0:len(bank)]):
+				if bank==l[0:len(bank)]:
 					preset_name=l[len(bank):].strip()
 					preset_name=re.sub('^- ','',preset_name)
 					preset_printable_name=preset_name
@@ -186,11 +232,12 @@ class zynthian_engine_pianoteq(zynthian_engine):
 					#logging.info("Found Pianoteq bank: [%s]" % bank)
 				#else:
 					#logging.warning("Unknown Pianoteq bank: [%s]" % l)
+			self.save_presets_cache()
 			self.stop_loading()
-			return(self.presets[bank])
+			return self.presets[bank]
 
 	def set_preset(self, layer, preset, preload=False):
-		if(preset[0]!=self.preset):
+		if preset[0]!=self.preset:
 			self.start_loading()
 			self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+(preset[0],)
 			self.preset=preset[0]
@@ -198,12 +245,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			self.start(True,False)
 			self.stop_loading()
 
-	#----------------------------------------------------------------------------
+	#--------------------------------------------------------------------------
 	# Special
-	#----------------------------------------------------------------------------
-	def ensure_dir(self,file_path):
+	#--------------------------------------------------------------------------
+
+	def ensure_dir(self, file_path):
 		directory=os.path.dirname(file_path)
-		if(not os.path.exists(directory)):
+		if not os.path.exists(directory):
 			os.makedirs(directory)
 
 #******************************************************************************
