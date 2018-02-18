@@ -61,15 +61,15 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.stop_wifi,0,"Stop WIFI"))
 		else:
 			self.list_data.append((self.start_wifi,0,"Start WIFI"))
-		if self.is_process_running("jack_capture"):
-			self.list_data.append((self.stop_recording,0,"Stop Audio Recording"))
-		else:
-			self.list_data.append((self.start_recording,0,"Start Audio Recording"))
 		if os.environ.get('ZYNTHIAN_TOUCHOSC'):
 			if self.is_service_active("touchosc2midi"):
 				self.list_data.append((self.stop_touchosc2midi,0,"Stop TouchOSC"))
 			else:
 				self.list_data.append((self.start_touchosc2midi,0,"Start TouchOSC"))
+		if self.is_process_running("jack_capture"):
+			self.list_data.append((self.stop_recording,0,"Stop Audio Recording"))
+		else:
+			self.list_data.append((self.start_recording,0,"Start Audio Recording"))
 		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
 			if self.is_service_active("aubionotes"):
 				self.list_data.append((self.stop_aubionotes,0,"Stop Audio -> MIDI"))
