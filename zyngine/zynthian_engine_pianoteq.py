@@ -29,6 +29,7 @@ import logging
 import time
 import shutil
 import subprocess
+from os.path import isfile,isdir,join
 from collections import defaultdict
 from json import JSONEncoder, JSONDecoder
 
@@ -79,58 +80,61 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		else:
 			self.main_command=("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE","--headless","--midimapping","Zynthian")
 		self.command=self.main_command
-		self.bank=[
+		
+		self.bank_list=[
 			('Steinway D',0,'Steinway D','_'),
-		        ('Steinway B',1,'Steinway B','_'),
-		        ('Grotrian',2,'Grotrian','_'),
-		        ('Bluethner',3,'Bluethner','_'),
-		        ('YC5',4,'YC5','_'),
-		        ('K2',5,'K2','_'),
-		        ('U4',6,'U4','_'),
-		        ('MKI',7,'MKI','_'),
-		        ('MKII',8,'MKII','_'),
-		        ('W1',9,'W1','_'),
-		        ('Clavinet D6',10,'Clavinet D6','_'),
-		        ('Pianet N',11,'Pianet N','_'),
-		        ('Pianet T',12,'Pianet T','_'),
-		        ('Electra',13,'Electra','_'),
-		        ('Vibraphone V-B',14,'Vibraphone V-B','_'),
-		        ('Vibraphone V-M',15,'Vibraphone V-M','_'),
-		        ('Celesta',16,'Celesta','_'),
-		        ('Glockenspiel',17,'Glockenspiel','_'),
-		        ('Toy Piano',18,'Toy Piano','_'),
-		        ('Marimba',19,'Marimba','_'),
-		        ('Xylophone',20,'Xylophone','_'),
-		        ('Steel Drum',21,'Steel Drum','_'),
-		        ('Spacedrum',22,'Spacedrum','_'),
-		        ('Hand Pan',23,'Hand Pan','_'),
-		        ('Tank Drum',24,'Tank Drum','_'),
-		        ('H. Ruckers II Harpsichord',25,'H. Ruckers II Harpsichord','_'),
-		        ('Concert Harp',26,'Concert Harp','_'),
-		        ('J. Dohnal',27,'J. Dohnal','_'),
-		        ('I. Besendorfer',28,'I. Besendorfer','_'),
-		        ('S. Erard',29,'S. Erard','_'),
-		        ('J.B. Streicher',30,'J.B. Streicher','_'),
-		        ('J. Broadwood',31,'J. Broadwood','_'),
-		        ('I. Pleyel',32,'I. Pleyel','_'),
-		        ('J. Frenzel',33,'J. Frenzel','_'),
-		        ('C. Bechstein',34,'C. Bechstein','_'),
-		        ('D. Schoffstoss',35,'D. Schoffstoss','_'),
-		        ('C. Graf',36,'C. Graf','_'),
-		        ('Erard',37,'Erard','_'),
-		        ('Pleyel',38,'Pleyel','_'),
-		        ('CP-80',39,'CP-80','_'),
-		        ('Church Bells',40,'Church Bells','_'),
-		        ('Bell-the-fly',41,'Bell-the-fly','_'),
-		        ('Tubular Bells',42,'Tubular Bells','_')
+			('Steinway B',1,'Steinway B','_'),
+			('Grotrian',2,'Grotrian','_'),
+			('Bluethner',3,'Bluethner','_'),
+			('YC5',4,'YC5','_'),
+			('K2',5,'K2','_'),
+			('U4',6,'U4','_'),
+			('MKI',7,'MKI','_'),
+			('MKII',8,'MKII','_'),
+			('W1',9,'W1','_'),
+			('Clavinet D6',10,'Clavinet D6','_'),
+			('Pianet N',11,'Pianet N','_'),
+			('Pianet T',12,'Pianet T','_'),
+			('Electra',13,'Electra','_'),
+			('Vibraphone V-B',14,'Vibraphone V-B','_'),
+			('Vibraphone V-M',15,'Vibraphone V-M','_'),
+			('Celesta',16,'Celesta','_'),
+			('Glockenspiel',17,'Glockenspiel','_'),
+			('Toy Piano',18,'Toy Piano','_'),
+			('Marimba',19,'Marimba','_'),
+			('Xylophone',20,'Xylophone','_'),
+			('Steel Drum',21,'Steel Drum','_'),
+			('Spacedrum',22,'Spacedrum','_'),
+			('Hand Pan',23,'Hand Pan','_'),
+			('Tank Drum',24,'Tank Drum','_'),
+			('H. Ruckers II Harpsichord',25,'H. Ruckers II Harpsichord','_'),
+			('Concert Harp',26,'Concert Harp','_'),
+			('J. Dohnal',27,'J. Dohnal','_'),
+			('I. Besendorfer',28,'I. Besendorfer','_'),
+			('S. Erard',29,'S. Erard','_'),
+			('J.B. Streicher',30,'J.B. Streicher','_'),
+			('J. Broadwood',31,'J. Broadwood','_'),
+			('I. Pleyel',32,'I. Pleyel','_'),
+			('J. Frenzel',33,'J. Frenzel','_'),
+			('C. Bechstein',34,'C. Bechstein','_'),
+			('D. Schoffstoss',35,'D. Schoffstoss','_'),
+			('C. Graf',36,'C. Graf','_'),
+			('Erard',37,'Erard','_'),
+			('Pleyel',38,'Pleyel','_'),
+			('CP-80',39,'CP-80','_'),
+			('Church Bells',40,'Church Bells','_'),
+			('Bell-the-fly',41,'Bell-the-fly','_'),
+			('Tubular Bells',42,'Tubular Bells','_')
 		]
+
+		self.user_presets_path="/root/.local/share/Modartt/Pianoteq/Presets/My Presets"
 
 		self.presets=defaultdict(list)
 		self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
 		if os.path.isfile(self.presets_cache_fpath):
 			self.load_presets_cache()
 		else:
-			self.ensure_dir(self.presets_cache_fpath)
+			self.save_presets_cache()
 
 		if not os.path.isfile("/root/.config/Modartt/Pianoteq60 STAGE.prefs"):
 			logging.debug("Pianoteq configuration does not exist. Creating one.")
@@ -169,13 +173,30 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_bank_list(self, layer=None):
-		return self.bank
+		return self.bank_list
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
 
 	def save_presets_cache(self):
+		logging.info("Caching Internal Presets ...")
+		#Get internal presets from Pianoteq ...
+		try:
+			pianoteq=subprocess.Popen(self.main_command+("--list-presets",),stdout=subprocess.PIPE)
+			for line in pianoteq.stdout:
+				l=line.rstrip().decode("utf-8")
+				for b in self.bank_list:
+					if b[0]==l[0:len(b[0])]:
+						preset_name=l[len(b[0]):].strip()
+						preset_name=re.sub('^- ','',preset_name)
+						preset_title=preset_name
+						if preset_name=="":
+							preset_title="<Default>"
+						self.presets[b[0]].append((l,None,preset_title,None))
+		except Exception as e:
+			logging.error("Can't get internal presets: %s" %e)
+			return False
 		#Encode JSON
 		try:
 			json=JSONEncoder().encode(self.presets)
@@ -184,6 +205,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			logging.error("Can't generate JSON while saving presets cache: %s" %e)
 			return False
 		#Write to file
+		self.ensure_dir(self.presets_cache_fpath)
 		try: 
 			with open(self.presets_cache_fpath,"w") as fh:
 				fh.write(json)
@@ -212,29 +234,26 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		return True
 
 	def get_preset_list(self, bank):
+		self.start_loading()
 		bank=bank[2]
-		if self.presets[bank]:
-			logging.info('Getting cached Preset List for %s [%s]' % (self.name,bank))
-			return self.presets[bank]
+		#Get internal presets
+		if bank in self.presets:
+			logging.info("Getting Cached Internal Preset List for %s [%s]" % (self.name,bank))
+			internal_presets=self.presets[bank]
 		else:
-			self.start_loading()
-			logging.info('Getting Preset List for %s [%s]' % (self.name,bank))
-			pianoteq=subprocess.Popen(self.main_command+("--list-presets",),stdout=subprocess.PIPE)
-			for line in pianoteq.stdout:
-				l=line.rstrip().decode("utf-8")
-				if bank==l[0:len(bank)]:
-					preset_name=l[len(bank):].strip()
-					preset_name=re.sub('^- ','',preset_name)
-					preset_printable_name=preset_name
-					if(preset_name==""):
-						preset_printable_name="<Default>"
-					self.presets[bank].append((l,None,preset_printable_name,None))
-					#logging.info("Found Pianoteq bank: [%s]" % bank)
-				#else:
-					#logging.warning("Unknown Pianoteq bank: [%s]" % l)
-			self.save_presets_cache()
-			self.stop_loading()
-			return self.presets[bank]
+			logging.error("Can't get Cached Internal Preset List for %s [%s]" % (self.name,bank))
+			internal_presets=[]
+		#Get user presets
+		user_presets=[]
+		for f in sorted(os.listdir(self.user_presets_path)):
+			if (isfile(join(self.user_presets_path,f)) and f[-4:].lower()==".fxp"):
+				if bank==f[0:len(bank)]:
+					preset_path="My Presets/" + f[:-4]
+					preset_title="MY/" + str.replace(f[len(bank):-4], '_', ' ').strip()
+					user_presets.append((preset_path,None,preset_title,None))
+		#Return the combined list
+		self.stop_loading()
+		return user_presets + internal_presets
 
 	def set_preset(self, layer, preset, preload=False):
 		if preset[0]!=self.preset:
