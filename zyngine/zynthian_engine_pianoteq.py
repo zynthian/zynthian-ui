@@ -128,6 +128,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		]
 
 		self.user_presets_path="/root/.local/share/Modartt/Pianoteq/Presets/My Presets"
+		self.ensure_dir(self.user_presets_path)
 
 		self.presets=defaultdict(list)
 		self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
