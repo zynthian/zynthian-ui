@@ -49,7 +49,8 @@ engine_list = [
 	"zynaddsubfx",
 	"fluidsynth",
 	"LinuxSampler",
-	"setBfree"
+	"setBfree",
+	"Pianoteq60"
 	#"mod-host"
 ]
 
@@ -124,6 +125,7 @@ def midi_autoconnect():
 	#Get Synth Engines
 	engines=[]
 	for engine in engine_list:
+		#logger.debug("engine: "+engine)
 		devs=jclient.get_ports(engine, is_input=True, is_midi=True, is_physical=False)
 		try:
 			dev=devs[0]
@@ -222,6 +224,7 @@ def audio_autoconnect():
 			if devs:
 				dev_name=str(devs[0].name).split(':')[0]
 				#logger.error("Autoconnecting Engine => %s" % dev_name)
+				#logger.info("Autoconnecting Engine => %s" % dev_name)
 				if len(mon_out)>0 and dev_name.lower() in monitored_engines:
 					try:
 						jclient.connect(devs[0],mon_out[0])
