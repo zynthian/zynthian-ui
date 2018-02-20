@@ -52,6 +52,7 @@ class zynthian_gui_info:
 			highlightthickness=0,
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
+		self.canvas.bind("<Button-1>",self.cb_canvas_push)
 
 		self.text = tkinter.StringVar()
 		self.label_text = tkinter.Label(self.canvas,
@@ -92,5 +93,7 @@ class zynthian_gui_info:
 	def switch_select(self):
 		pass
 
+	def cb_canvas_push(self,event):
+		zynthian_gui_config.zyngui.zynswitch_defered('S',1)
 
 #-------------------------------------------------------------------------------
