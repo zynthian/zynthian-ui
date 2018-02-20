@@ -187,14 +187,16 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			pianoteq=subprocess.Popen(self.main_command+("--list-presets",),stdout=subprocess.PIPE)
 			for line in pianoteq.stdout:
 				l=line.rstrip().decode("utf-8")
-				for b in self.bank_list:
-					if b[0]==l[0:len(b[0])]:
-						preset_name=l[len(b[0]):].strip()
+				for bank in self.bank_list:
+					b=bank[0] + " "
+					if b==l[0:len(b)]:
+						#logging.debug("'%s' == '%s'" % (b,l[0:len(b)]))
+						preset_name=l[len(b):].strip()
 						preset_name=re.sub('^- ','',preset_name)
 						preset_title=preset_name
 						if preset_name=="":
 							preset_title="<Default>"
-						self.presets[b[0]].append((l,None,preset_title,None))
+						self.presets[bank[0]].append((l,None,preset_title,None))
 		except Exception as e:
 			logging.error("Can't get internal presets: %s" %e)
 			return False
@@ -245,6 +247,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			logging.error("Can't get Cached Internal Preset List for %s [%s]" % (self.name,bank))
 			internal_presets=[]
 		#Get user presets
+		bank+=" "
 		user_presets=[]
 		for f in sorted(os.listdir(self.user_presets_path)):
 			if (isfile(join(self.user_presets_path,f)) and f[-4:].lower()==".fxp"):
