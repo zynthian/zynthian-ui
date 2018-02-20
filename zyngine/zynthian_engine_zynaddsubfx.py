@@ -238,12 +238,55 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	def osc_add_methods(self):
 			self.osc_server.add_method("/volume", 'i', self.cb_osc_load_preset)
 			#self.osc_server.add_method("/paths", None, self.cb_osc_paths)
+			self.osc_server.add_method("/automate/active-slot", 'i', self.cb_osc_automate_active_slot)
+			for i in range(0,16):
+				self.osc_server.add_method("/automate/slot%d/param0/path" % i, 's', self.cb_osc_automate_slot_path)
+				self.osc_server.add_method("/automate/slot%d/learning" % i, 'i', self.cb_osc_automate_slot_learning)
+				self.osc_server.add_method("/automate/slot%d/midi-cc" % i, 'i', self.cb_osc_automate_slot_midi_cc)
 			self.osc_server.add_method(None, 'i', self.zyngui.cb_osc_ctrl)
 			#super().osc_add_methods()
 			#liblo.send(self.osc_target, "/echo")
 
 	def cb_osc_load_preset(self, path, args):
 		self.stop_loading()
+
+	#----------------------------------------------------------------------------
+	# MIDI learning
+	#----------------------------------------------------------------------------
+
+	def midi_learn(self, zctrl):
+		if zctrl.osc_path:
+			logging.info("MIDI Learn: %s" % zctrl.osc_path)
+			liblo.send(self.osc_target, "/automate/learn-binding-new-slot", zctrl.osc_path)
+			liblo.send(self.osc_target, "/automate/active-slot")
+
+	def midi_unlearn(self, zctrl):
+		logging.info("MIDI Unlearn: %s" % zctrl.osc_path)
+		res=None
+		if res:
+			zctrl.midi_cc=None
+			#Refresh GUI Controller in screen when needed ...
+			if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
+				try:
+					self.zyngui.screens['control'].get_zgui_controller(zctrl).set_midi_icon()
+				except:
+					pass
+
+	def cb_osc_automate_active_slot(self, path, args, types, src):
+		self.slot_i=args[0]
+		logging.info("AUTOMATE ACTIVE-SLOT: %s" % self.slot_i)
+		liblo.send(self.osc_target, "/automate/slot%s/learning" % self.slot_i)
+		liblo.send(self.osc_target, "/automate/slot%s/param0/path" % self.slot_i)
+
+	def cb_osc_automate_slot_path(self, path, args, types, src):
+		logging.info("AUTOMATE SLOT PATH: %s => %s" % (path, args[0]))
+
+	def cb_osc_automate_slot_learning(self, path, args, types, src):
+		logging.info("AUTOMATE SLOT LEARNING: %s => %s" % (path, args[0]))
+		liblo.send(self.osc_target, "/automate/slot%s/midi-cc" % self.slot_i)
+
+	def cb_osc_automate_slot_midi_cc(self, path, args, types, src):
+		logging.info("AUTOMATE SLOT MIDI-CC: %s => %s" % (path, args[0]))
 
 	# ---------------------------------------------------------------------------
 	# Deprecated functions
