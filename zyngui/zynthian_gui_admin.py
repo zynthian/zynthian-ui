@@ -196,7 +196,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def network_info(self):
 		logging.info("NETWORK INFO")
 		zynthian_gui_config.zyngui.show_info("NETWORK INFO:")
-		self.start_command(["hostname  -I | cut -f1 -d' '"])
+		self.start_command(["hostname -I | cut -f1 -d' '"])
 
 	def test_audio(self):
 		logging.info("TESTING AUDIO")
