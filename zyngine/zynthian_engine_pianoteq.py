@@ -187,6 +187,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			pianoteq=subprocess.Popen(self.main_command+("--list-presets",),stdout=subprocess.PIPE)
 			for line in pianoteq.stdout:
 				l=line.rstrip().decode("utf-8")
+				#logging.debug("%s" % l)
 				for bank in self.bank_list:
 					b=bank[0] + " "
 					if b==l[0:len(b)]:
