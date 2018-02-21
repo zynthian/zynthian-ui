@@ -61,15 +61,15 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.stop_wifi,0,"Stop WIFI"))
 		else:
 			self.list_data.append((self.start_wifi,0,"Start WIFI"))
+		if os.environ.get('ZYNTHIAN_TOUCHOSC'):
+			if self.is_service_active("touchosc2midi"):
+				self.list_data.append((self.stop_touchosc2midi,0,"Stop TouchOSC"))
+			else:
+				self.list_data.append((self.start_touchosc2midi,0,"Start TouchOSC"))
 		if self.is_process_running("jack_capture"):
 			self.list_data.append((self.stop_recording,0,"Stop Audio Recording"))
 		else:
 			self.list_data.append((self.start_recording,0,"Start Audio Recording"))
-		if os.environ.get('ZYNTHIAN_TOUCHOSC'):
-			if self.is_service_active("touchosc2midi"):
-				self.list_data.append((self.stop_touchosc2midi,0,"Stop TouchOSC bridge"))
-			else:
-				self.list_data.append((self.start_touchosc2midi,0,"Start TouchOSC bridge"))
 		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
 			if self.is_service_active("aubionotes"):
 				self.list_data.append((self.stop_aubionotes,0,"Stop Audio -> MIDI"))
@@ -78,10 +78,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
-		self.list_data.append((self.update_software,0,"Update Zynthian Software"))
-		self.list_data.append((self.update_library,0,"Update Zynthian Library"))
+		self.list_data.append((self.update_software,0,"Update Software"))
+		#self.list_data.append((self.update_library,0,"Update Zynthian Library"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
-		self.list_data.append((self.restart_gui,0,"Restart GUI"))
+		self.list_data.append((self.restart_gui,0,"Restart UI"))
 		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
 		self.list_data.append((self.reboot,0,"Reboot"))
 		self.list_data.append((self.power_off,0,"Power Off"))
@@ -196,7 +196,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def network_info(self):
 		logging.info("NETWORK INFO")
 		zynthian_gui_config.zyngui.show_info("NETWORK INFO:")
-		self.start_command(["hostname  -I | cut -f1 -d' '"])
+		self.start_command(["hostname -I | cut -f1 -d' '"])
 
 	def test_audio(self):
 		logging.info("TESTING AUDIO")
