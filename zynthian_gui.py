@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Main Class and Program for Zynthian GUI
-# 
+#
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import os
@@ -57,6 +57,7 @@ from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
+from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
 #------------------------------------------------------------------------------
@@ -152,6 +153,7 @@ class zynthian_gui:
 		self.screens['control']=zynthian_gui_control()
 		self.screens['control_xy']=zynthian_gui_control_xy()
 		self.screens['midi_profile']=zynthian_gui_midi_profile()
+		self.screens['confirm']=zynthian_gui_confirm()
 		# Show initial screen => Channel list
 		self.show_screen('layer')
 		# Try to load "default snapshot" or show "load snapshot" popup
@@ -219,9 +221,11 @@ class zynthian_gui:
 			self.show_screen('layer')
 
 	def save_snapshot(self):
-		self.modal_screen='snapshot'
-		self.screens['snapshot'].save()
-		self.hide_screens(exclude='snapshot')
+		self.show_screen('confirm')
+
+		#self.modal_screen='snapshot'
+		#self.screens['snapshot'].save()
+		#self.hide_screens(exclude='snapshot')
 
 	def show_control_xy(self, xctrl, yctrl):
 		self.modal_screen='control_xy'
@@ -315,7 +319,7 @@ class zynthian_gui:
 			else:
 				self.screens[self.active_screen].switch_select()
 		self.stop_loading()
-		
+
 	def zynswitch_short(self,i):
 		logging.info('Short Switch '+str(i))
 		self.start_loading()
@@ -551,7 +555,7 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 	# Polling
 	#------------------------------------------------------------------
-	
+
 	def start_polling(self):
 		self.polling=True
 		self.zyngine_refresh()
