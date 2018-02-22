@@ -50,9 +50,22 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
+	# LS Hardcoded MIDI Controllers
+	_ctrls=[
+		['portamento time',5,64],
+		['volume',7,96],
+		['pan',10,64],
+		['FX send',12,0],
+		['sustain',64,'off',['off','on']],
+		['portamento on/off',65,'off','off|on'],
+		['sostenuto',66,64],
+		['poly on/off',127,'off','off|on']
+	]
+
 	# Controller Screens
 	_ctrl_screens=[
 		['main',['volume','FX send','pan','sustain']]
+		#['portamento',['poly on/off','sostenuto','portamento on/off','portamento time']]
 	]
 
 	# ---------------------------------------------------------------------------

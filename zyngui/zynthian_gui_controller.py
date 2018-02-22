@@ -512,7 +512,7 @@ class zynthian_gui_controller:
 		except Exception as err:
 			logging.error("%s" % err)
 
-	def set_value(self, v, set_zyncoder=False):
+	def set_value(self, v, set_zyncoder=False, send_zyncoder=True):
 		if v>self.max_value:
 			v=self.max_value
 		elif v<0:
@@ -523,7 +523,7 @@ class zynthian_gui_controller:
 			if self.shown:
 				if set_zyncoder and zyncoder.lib_zyncoder:
 					if self.mult>1: v=self.mult*v
-					zyncoder.lib_zyncoder.set_value_zyncoder(self.index,ctypes.c_uint(int(v)))
+					zyncoder.lib_zyncoder.set_value_zyncoder(self.index,ctypes.c_uint(int(v)),int(send_zyncoder))
 				self.plot_value()
 			return True
 

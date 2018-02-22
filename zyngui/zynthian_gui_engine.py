@@ -30,6 +30,7 @@ from collections import OrderedDict
 
 # Zynthian specific modules
 import zynautoconnect
+import os
 from zyngine import *
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
@@ -46,7 +47,6 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 #------------------------------------------------------------------------------
 
 class zynthian_gui_engine(zynthian_gui_selector):
-
 	engine_info=OrderedDict([
 		["ZY", ("ZynAddSubFX","ZynAddSubFX - Synthesizer")],
 		["FS", ("FluidSynth","FluidSynth - Sampler")],
@@ -54,6 +54,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		["BF", ("setBfree","setBfree - Hammond Emulator")],
 		["MD", ("MOD-UI","MOD-UI - Plugin Host")]
 	])
+	if(os.path.isfile("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE") and os.access("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE", os.X_OK)):
+		engine_info['PT']=("Pianoteq6","Pianoteq6-Stage")
 
 	def __init__(self):
 		self.zyngines={}
@@ -64,7 +66,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.list_data=[]
 		i=0
 		for en in self.engine_info:
-			if en not in ["BF", "MD"] or en not in self.zyngines:
+			if en not in ["BF", "MD", "PT"] or en not in self.zyngines:
 				ei=self.engine_info[en]
 				self.list_data.append((en,i,ei[1],ei[0]))
 				i=i+1
@@ -88,6 +90,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.zyngines[eng]=zynthian_engine_setbfree(zynthian_gui_config.zyngui)
 			elif eng=="MD":
 				self.zyngines[eng]=zynthian_engine_modui(zynthian_gui_config.zyngui)
+			elif eng=="PT":
+				self.zyngines[eng]=zynthian_engine_pianoteq(zynthian_gui_config.zyngui)
 			else:
 				return None
 			if wait>0:
