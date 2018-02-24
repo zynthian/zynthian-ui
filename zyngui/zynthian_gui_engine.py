@@ -55,7 +55,11 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		["MD", ("MOD-UI","MOD-UI - Plugin Host")]
 	])
 	if(os.path.isfile("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE") and os.access("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE", os.X_OK)):
-		engine_info['PT']=("Pianoteq6","Pianoteq6-Stage")
+		with open("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE", 'rb') as ptbin:
+			if(b'builtin_presets_ep_demo.dat' in ptbin.read()):
+				engine_info['PT']=("Pianoteq6-Demo","Pianoteq6-Stage-Demo")
+			else:
+				engine_info['PT']=("Pianoteq6","Pianoteq6-Stage")
 
 	def __init__(self):
 		self.zyngines={}
