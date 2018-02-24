@@ -51,6 +51,9 @@ class zynthian_controller:
 		self.osc_path=None
 		self.graph_path=None
 
+		self.midi_learn_chan=None
+		self.midi_learn_cc=None
+
 		if options:
 			self.set_options(options)
 

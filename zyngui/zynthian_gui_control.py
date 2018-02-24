@@ -226,11 +226,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def midi_learn(self, i):
 		if self.mode=='control':
-			zynthian_gui_config.zyngui.curlayer.midi_learn(self.zgui_controllers[i].zctrl)
+			self.zgui_controllers[i].zctrl.midi_learn()
 
 	def midi_unlearn(self, i):
 		if self.mode=='control':
-			zynthian_gui_config.zyngui.curlayer.midi_unlearn(self.zgui_controllers[i].zctrl)
+			self.zgui_controllers[i].zctrl.midi_unlearn()
 
 	def cb_listbox_release(self,event):
 		if self.mode=='select':

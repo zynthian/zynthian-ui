@@ -72,8 +72,13 @@ class zynthian_layer:
 			self.zyngui.refresh_screen()
 
 	def reset(self):
-		self.refresh_flag=False
+		# MIDI-unlearn all controllers
+		for k,zctrl in self.controllers_dict.items():
+			zctrl.midi_unlearn()
+		# Delete layer from engine
 		self.engine.del_layer(self)
+		# Clear refresh flag
+		self.refresh_flag=False
 
 	# ---------------------------------------------------------------------------
 	# MIDI chan Management
@@ -261,12 +266,6 @@ class zynthian_layer:
 			except:
 				logging.error("Controller %s is not defined" % k)
 		return zctrls
-
-	def midi_learn(self, zctrl):
-		zctrl.midi_learn()
-
-	def midi_unlearn(self, zctrl):
-		zctrl.midi_unlearn()
 
 	# ---------------------------------------------------------------------------
 	# Snapshot Management
