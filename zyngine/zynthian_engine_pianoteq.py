@@ -30,8 +30,9 @@ import time
 import logging
 import os
 import shutil
-from . import zynthian_engine
+from xml.etree import ElementTree as ET
 from collections import defaultdict
+from . import zynthian_engine
 
 #------------------------------------------------------------------------------
 # Piantoteq Engine Class
@@ -42,6 +43,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
+	PIANOTEQ_SW_DIR = r'/zynthian/zynthian-sw/pianoteq6'
+	PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
+	PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
+	PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + '/.config/Modartt/Pianoteq60 STAGE.prefs'
+
 	_ctrls=[
 		['volume',7,96],
 		['mute',19,'off','off|on'],
@@ -73,9 +79,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.preset=""
 
 		if(self.config_remote_display()):
-			self.main_command=("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE","--midimapping","Zynthian")
+			self.main_command=(self.PIANOTEQ_SW_DIR+"/Pianoteq 6 STAGE","--midimapping","Zynthian")
 		else:
-			self.main_command=("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE","--headless","--midimapping","Zynthian")
+			self.main_command=(self.PIANOTEQ_SW_DIR+"/Pianoteq 6 STAGE","--headless","--midimapping","Zynthian")
 		self.command=self.main_command
 		self.bank=[
 			('Steinway D',0,'Steinway D','_'),
@@ -136,6 +142,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	def start(self, start_queue=False, shell=False):
 		logging.debug("Starting"+str(self.command))
+		self.fix_config_for_jack()
 		super().start(start_queue,shell)
 		logging.debug("Start sleeping...")
 		time.sleep(4)
@@ -200,5 +207,23 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		directory=os.path.dirname(file_path)
 		if(not os.path.exists(directory)):
 			os.makedirs(directory)
+
+	def fix_config_for_jack(self):
+		if(os.path.isfile(self.PIANOTEQ_CONFIG_FILE)):
+			root = ET.parse(self.PIANOTEQ_CONFIG_FILE)
+			try:
+				for devicesetup in root.iter('DEVICESETUP'):
+					devicesetup.set('deviceType','JACK')
+					devicesetup.set('audioOutputDeviceName','Auto-connect ON')
+					devicesetup.set('audioInputDeviceName','Auto-connect ON')
+					devicesetup.set('audioDeviceRate','44100')
+					devicesetup.set('forceStereo','0')
+
+				root.write(self.PIANOTEQ_CONFIG_FILE)
+
+			except Exception as e:
+				logging.error("Installing devicesetup failed: %s" % format(e))
+				return format(e)
+
 
 #******************************************************************************
