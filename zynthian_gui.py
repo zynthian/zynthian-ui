@@ -58,6 +58,7 @@ from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
+
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
 #------------------------------------------------------------------------------
@@ -221,11 +222,14 @@ class zynthian_gui:
 			self.show_screen('layer')
 
 	def save_snapshot(self):
-		self.show_screen('confirm')
+		self.modal_screen='confirm'
+		self.screens['confirm'].show('Do you really want to save the snapshot?', self.save_confirmed_snapshot)
+		self.hide_screens(exclude='confirm')
 
-		#self.modal_screen='snapshot'
-		#self.screens['snapshot'].save()
-		#self.hide_screens(exclude='snapshot')
+	def save_confirmed_snapshot(self):
+		self.modal_screen='snapshot'
+		self.screens['snapshot'].save()
+		self.hide_screens(exclude='snapshot')
 
 	def show_control_xy(self, xctrl, yctrl):
 		self.modal_screen='control_xy'
@@ -419,7 +423,7 @@ class zynthian_gui:
 			elif event[0]=='B':
 				self.zynswitch_bold(event[1])
 			elif event[0]=='L':
-				self.zynswitch_long([1])
+				self.zynswitch_long(event[1])
 			elif event[0]=='X':
 				self.zynswitch_X(event[1])
 			elif event[0]=='Y':
