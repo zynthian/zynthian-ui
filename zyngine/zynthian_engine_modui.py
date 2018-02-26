@@ -515,7 +515,7 @@ class zynthian_engine_modui(zynthian_engine):
 	def midi_map_cb(self, pgraph, symbol, chan, cc):
 		logging.info("MIDI Map: %s %s => %s, %s" % (pgraph,symbol,chan,cc))
 		try:
-			self.plugin_zctrls[pgraph][symbol].cb_midi_learn(chan,cc)
+			self.plugin_zctrls[pgraph][symbol].cb_midi_learn(int(chan),int(cc))
 		except Exception as err:
 			logging.error("Parameter Not Found: "+pgraph+"/"+symbol+" => "+str(err))
 
