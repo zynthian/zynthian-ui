@@ -74,27 +74,29 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 #-------------------------------------------------------------------------------
 
 class zynthian_gui:
-	zynmidi=None
-	screens={}
-	active_screen=None
-	modal_screen=None
+
 	screens_sequence=("admin","layer","bank","preset","control")
-	curlayer=None
-
-	dtsw={}
-	polling=False
-	osc_target=None
-	osc_server=None
-
-	loading=0
-	loading_thread=None
-	zyncoder_thread=None
-	zynread_wait_flag=False
-	zynswitch_defered_event=None
-	exit_flag=False
-	exit_code=0
 
 	def __init__(self):
+		self.zynmidi=None
+		self.screens={}
+		self.active_screen=None
+		self.modal_screen=None
+		self.curlayer=None
+
+		self.dtsw={}
+		self.polling=False
+		self.osc_target=None
+		self.osc_server=None
+
+		self.loading=0
+		self.loading_thread=None
+		self.zyncoder_thread=None
+		self.zynread_wait_flag=False
+		self.zynswitch_defered_event=None
+		self.exit_flag=False
+		self.exit_code=0
+
 		# Initialize Controllers (Rotary and Switches), MIDI and OSC
 		try:
 			global lib_zyncoder
