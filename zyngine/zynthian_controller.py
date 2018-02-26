@@ -24,6 +24,11 @@
 
 import logging
 import liblo
+import ctypes
+
+# Zynthian specific modules
+from zyncoder import *
+
 
 class zynthian_controller:
 
@@ -221,19 +226,74 @@ class zynthian_controller:
 			elif self.value=='off': return False
 		return self.value
 
+	#--------------------------------------------------------------------------
+	# MIDI Learning
+	#--------------------------------------------------------------------------
+
 	def midi_learn(self):
 		if self.engine:
+			logging.info("MIDI learn: %s" % self.symbol)
+			
+			# If already learned, unlearn
+			if self.midi_learn_cc:
+				self.midi_unlearn()
+
+			if self.midi_cc:
+				self.engine.zyngui.midi_learn(self)
+			else:
+				try:
+					self.engine.midi_learn(self)
+				except:
+					logging.error("MIDI Learn NOT IMPLEMENTED!")
+
+
+	def cb_midi_learn(self, chan, cc):
+		if self.engine:
+			logging.info("MIDI-CC bond '%s' => %d, %d" % (self.symbol,chan,cc))
+			self.midi_learn_chan=int(chan)
+			self.midi_learn_cc=int(cc)
+
+			#Create MIDI router map
+			if self.midi_cc:
+				try:
+					zyncoder.lib_zyncoder.set_midi_filter_cc_map(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc), ctypes.c_ubyte(self.midi_chan), ctypes.c_ubyte(self.midi_cc))
+					logging.info("Set MIDI filter CC map: (%s, %s) => (%s, %s)" % (self.midi_learn_chan, self.midi_learn_cc, self.midi_chan, self.midi_cc))
+				except Exception as e:
+					logging.error("Can't set MIDI filter CC map: (%s, %s) => (%s, %s) => %s" % (self.midi_learn_chan, self.midi_learn_cc, self.midi_chan, self.midi_cc, e))
+
+			#Refresh GUI Controller ...
 			try:
-				self.engine.midi_learn(self)
+				self.engine.zyngui.screens['control'].get_zgui_controller(self).set_midi_bind()
 			except:
-				logging.info("MIDI Learn: %s => NOT IMPLEMENTED!" % self.symbol)
+				pass
+
 
 	def midi_unlearn(self):
 		if self.engine:
-			try:
-				self.engine.midi_unlearn(self)
-			except:
-				logging.info("MIDI Unlearn: %s => NOT IMPLEMENTED!" % self.symbol)
+			logging.info("MIDI Unlearn: %s" % self.symbol)
+			unlearned=False
+			if self.midi_cc:
+				try:
+					zyncoder.lib_zyncoder.del_midi_filter_cc_map(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc))
+					logging.info("Deleted MIDI filter CC map: %s, %s" % (self.midi_learn_chan, self.midi_learn_cc))
+					unlearned=True
+				except:
+					logging.error("Can't delete MIDI filter CC map: %s, %s" % (self.midi_learn_chan, self.midi_learn_cc))
+			else:
+				try:
+					if self.engine.midi_unlearn(self):
+						unlearned=True
+				except:
+					logging.error("MIDI Unlearn => NOT IMPLEMENTED!")
+
+			if unlearned:
+				self.midi_learn_chan=None
+				self.midi_learn_cc=None
+				#Refresh GUI Controller ...
+				try:
+					self.engine.zyngui.screens['control'].get_zgui_controller(self).set_midi_bind()
+				except:
+					pass
 
 
 #******************************************************************************

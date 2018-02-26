@@ -97,6 +97,8 @@ class zynthian_gui:
 		self.exit_flag=False
 		self.exit_code=0
 
+		self.midi_learn_zctrl=None
+
 		# Initialize Controllers (Rotary and Switches), MIDI and OSC
 		try:
 			global lib_zyncoder
@@ -493,6 +495,12 @@ class zynthian_gui:
 					#Preload preset (note-on)
 					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
 						self.screens[self.active_screen].preselect_action()
+
+				#MIDI learn ...
+				elif self.midi_learn_zctrl and evtype==0xB:
+					ccnum=(ev & 0x7F00)>>8
+					self.cb_midi_learn(chan,ccnum)
+
 		except Exception as err:
 			logging.error("zynthian_gui.zynmidi_read() => %s" % err)
 
@@ -578,6 +586,16 @@ class zynthian_gui:
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 120, 0)
 
+	#------------------------------------------------------------------
+	# MIDI learning
+	#------------------------------------------------------------------
+
+	def midi_learn(self, zctrl):
+		self.midi_learn_zctrl=zctrl
+
+	def cb_midi_learn(self, chan, cc):
+		self.midi_learn_zctrl.cb_midi_learn(chan,cc)
+		self.midi_learn_zctrl=None
 
 #------------------------------------------------------------------------------
 # GUI & Synth Engine initialization
