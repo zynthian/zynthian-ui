@@ -91,7 +91,7 @@ def load_midi_config(set_env=True, fpath=None):
 	if not fpath:
 		fpath=os.environ.get("ZYNTHIAN_SCRIPT_MIDI_PROFILE",
 			os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/midi-profiles/default.sh")
-	return self.load_config(set_env, fpath)
+	return load_config(set_env, fpath)
 
 
 def save_config(config, update_sys=False):
