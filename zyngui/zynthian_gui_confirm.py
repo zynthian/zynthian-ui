@@ -41,10 +41,11 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 # Zynthian Info GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_info:
+class zynthian_gui_confirm():
 
 	def __init__(self):
 		self.shown=False
+
 		self.canvas = tkinter.Canvas(zynthian_gui_config.top,
 			width = zynthian_gui_config.display_width,
 			height = zynthian_gui_config.display_height,
@@ -63,6 +64,30 @@ class zynthian_gui_info:
 			bg=zynthian_gui_config.color_bg,
 			fg=zynthian_gui_config.color_tx)
 		self.label_text.place(x=1, y=0, anchor=tkinter.NW)
+		self.yes_text = tkinter.StringVar()
+		self.yes_text.set('Yes')
+		self.yes_text_label=tkinter.Label(self.canvas,
+                        font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size*3,"normal"),
+                        textvariable=self.yes_text,
+                        #wraplength=80,
+                        justify=tkinter.RIGHT,
+                        bg=zynthian_gui_config.color_ctrl_bg_off,
+                        fg=zynthian_gui_config.color_tx)
+
+		self.yes_text_label.place(x=zynthian_gui_config.display_width, y=zynthian_gui_config.display_height, anchor=tkinter.SE)
+
+		self.no_text = tkinter.StringVar()
+		self.no_text.set('No')
+		self.no_text_label=tkinter.Label(self.canvas,
+                        font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size*3,"normal"),
+                        textvariable=self.no_text,
+                        #wraplength=80,
+                        justify=tkinter.LEFT,
+                        bg=zynthian_gui_config.color_ctrl_bg_off,
+                        fg=zynthian_gui_config.color_tx)
+
+		self.no_text_label.place(x=0, y=zynthian_gui_config.display_height, anchor=tkinter.SW)
+
 
 	def clean(self):
 		self.text.set("")
@@ -78,8 +103,9 @@ class zynthian_gui_info:
 			self.shown=False
 			self.canvas.grid_forget()
 
-	def show(self, text):
+	def show(self, text, switch_select_callback):
 		self.text.set(text)
+		self.switch_select_callback = switch_select_callback
 		if not self.shown:
 			self.shown=True
 			self.canvas.grid()
@@ -91,7 +117,8 @@ class zynthian_gui_info:
 		pass
 
 	def switch_select(self):
-		pass
+		logging.info("confirm.switch_select_callback")
+		self.switch_select_callback()
 
 	def cb_canvas_push(self,event):
 		zynthian_gui_config.zyngui.zynswitch_defered('S',1)
