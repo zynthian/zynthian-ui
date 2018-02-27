@@ -287,12 +287,25 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if(os.path.isfile(self.PIANOTEQ_CONFIG_FILE)):
 			root = ET.parse(self.PIANOTEQ_CONFIG_FILE)
 			try:
-				for devicesetup in root.iter('DEVICESETUP'):
+				if(root.find('DEVICESETUP')):
+					logging.debug("Fixing devicesetup node")
+					for devicesetup in root.iter('DEVICESETUP'):
+						devicesetup.set('deviceType','JACK')
+						devicesetup.set('audioOutputDeviceName','Auto-connect ON')
+						devicesetup.set('audioInputDeviceName','Auto-connect ON')
+						devicesetup.set('audioDeviceRate','44100')
+						devicesetup.set('forceStereo','0')
+				else:
+					logging.debug("Creating new devicesetup node")
+					value = ET.Element('VALUE')
+					value.set('name','audio-setup')
+					devicesetup = ET.SubElement(value,'DEVICESETUP')
 					devicesetup.set('deviceType','JACK')
 					devicesetup.set('audioOutputDeviceName','Auto-connect ON')
 					devicesetup.set('audioInputDeviceName','Auto-connect ON')
 					devicesetup.set('audioDeviceRate','44100')
 					devicesetup.set('forceStereo','0')
+					root.getroot().append(value)
 
 				root.write(self.PIANOTEQ_CONFIG_FILE)
 
