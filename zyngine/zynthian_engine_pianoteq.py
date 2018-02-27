@@ -135,7 +135,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.ensure_dir(self.user_presets_path)
 
 		self.presets=defaultdict(list)
-		self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
+		#self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
+		self.presets_cache_fpath="/tmp/presets_cache.json"
 		if os.path.isfile(self.presets_cache_fpath):
 			self.load_presets_cache()
 		else:
