@@ -275,22 +275,52 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				self.osc_server.del_method(zctrl.osc_path, 'i')
 				logging.info("Automate Slot %d Cleared => %s" % (zctrl.slot_i, zctrl.osc_path))
 				zctrl.slot_i = None
-				sleep(0.2)
 				return True
 			except Exception as e:
 				logging.warning("Can't Clear Automate Slot %s => %s" % (zctrl.osc_path,e))
 
+	def set_midi_learn(self, zctrl):
+		try:
+			if zctrl.osc_path and zctrl.slot_i is not None and zctrl.midi_learn_chan is not None and zctrl.midi_learn_cc is not None:
+				logging.info("Set Automate Slot %d: %s => %d, %d" % (zctrl.slot_i, zctrl.osc_path, zctrl.midi_learn_chan, zctrl.midi_learn_cc))
+				# Reset current MIDI-learning slot
+				self.current_slot_zctrl=None
+				# Add zctrl to slots dictionary
+				self.slot_zctrls[zctrl.osc_path] = zctrl
+				# Setup CB method for param change
+				self.osc_server.add_method(zctrl.osc_path, 'i', self.cb_osc_param_change)
+				# Send OSC automate sequence ...
+				#return
+				#liblo.send(self.osc_target, "/automate/active-slot", zctrl.slot_i)
+				zcc = (zctrl.midi_learn_chan * 128) + zctrl.midi_learn_cc
+				liblo.send(self.osc_target, "/automate/slot%d/active" % zctrl.slot_i, True)
+				liblo.send(self.osc_target, "/automate/slot%d/name" % zctrl.slot_i, zctrl.symbol)
+				logging.debug("OSC send => /automate/slot%d/name '%s'" % (zctrl.slot_i, zctrl.symbol))
+				liblo.send(self.osc_target, "/automate/slot%d/midi-cc" % zctrl.slot_i, zcc)
+				logging.debug("OSC send => /automate/slot%d/midi-cc %d" % (zctrl.slot_i, zcc))
+				liblo.send(self.osc_target, "/automate/slot%d/param0/active" % zctrl.slot_i, True)
+				liblo.send(self.osc_target, "/automate/slot%d/param0/used" % zctrl.slot_i, True)
+				liblo.send(self.osc_target, "/automate/slot%d/param0/path" % zctrl.slot_i, zctrl.osc_path)
+		except Exception as e:
+			logging.error("Can't set slot automation for %s => %s" % (zctrl.osc_path, e))
+
+	def reset_midi_learn(self):
+		logging.info("Reset MIDI-learn ...")
+		liblo.send(self.osc_target, "/automate/clear", "*")
+		self.current_slot_zctrl=None
+		self.slot_zctrls={}
+
 	def cb_osc_automate_active_slot(self, path, args, types, src):
-		slot_i=args[0]
-		logging.debug("Automate active-slot: %s" % slot_i)
-		# Add extra info to zctrl
-		self.current_slot_zctrl.slot_i = int(slot_i)
-		# Add zctrl to slots dictionary
-		self.slot_zctrls[self.current_slot_zctrl.osc_path] = self.current_slot_zctrl
-		# Send twice for get it working when re-learning ...
-		liblo.send(self.osc_target, "/automate/slot%d/clear" % slot_i)
-		sleep(0.2)
-		liblo.send(self.osc_target, "/automate/learn-binding-new-slot", self.current_slot_zctrl.osc_path)
+		if self.current_slot_zctrl:
+			slot_i=args[0]
+			logging.debug("Automate active-slot: %s" % slot_i)
+			# Add extra info to zctrl
+			self.current_slot_zctrl.slot_i = int(slot_i)
+			# Add zctrl to slots dictionary
+			self.slot_zctrls[self.current_slot_zctrl.osc_path] = self.current_slot_zctrl
+			# Send twice for get it working when re-learning ...
+			liblo.send(self.osc_target, "/automate/slot%d/clear" % slot_i)
+			liblo.send(self.osc_target, "/automate/learn-binding-new-slot", self.current_slot_zctrl.osc_path)
 
 	def cb_osc_param_change(self, path, args):
 		if path in self.slot_zctrls:
@@ -304,10 +334,10 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				liblo.send(self.osc_target, "/automate/slot%d/midi-cc" % zctrl.slot_i)
 
 	def cb_osc_automate_slot_midi_cc(self, path, args, types, src):
-		# Test if a valid MIDI-CC number is returned
-		if args[0]>=0:
-			# Parse slot from path and set zctrl midi_cc
+		# Test if there is a current MIDI-learning zctrl and a valid MIDI-CC number is returned
+		if self.current_slot_zctrl and args[0]>=0:
 			try:
+				# Parse slot from path and set zctrl midi_cc
 				m=re.match("\/automate\/slot(\d+)\/midi-cc",path)
 				slot_i=int(m.group(1))
 				chan= int(int(args[0]) / 128)
@@ -315,6 +345,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				logging.debug("Automate Slot %d MIDI-CC: %s => %s" % (slot_i, path, cc))
 				if self.current_slot_zctrl.slot_i==slot_i:
 					self.current_slot_zctrl.cb_midi_learn(chan,cc)
+					self.current_slot_zctrl=None
 			except Exception as e:
 				logging.error("Can't match zctrl slot for the returned MIDI-CC! => %s" % e)
 

@@ -286,7 +286,7 @@ class zynthian_layer:
 			'ctrl_screen_active': self.ctrl_screen_active
 		}
 		for k in self.controllers_dict:
-			snapshot['controllers_dict'][k]=self.controllers_dict[k].value
+			snapshot['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
 		return snapshot
 
 	def restore_snapshot(self, snapshot):
@@ -306,7 +306,7 @@ class zynthian_layer:
 		sleep(0.3)
 		self.ctrl_screen_active=snapshot['ctrl_screen_active']
 		for k in snapshot['controllers_dict']:
-			self.controllers_dict[k].set_value(snapshot['controllers_dict'][k],True)
+			self.controllers_dict[k].restore_snapshot(snapshot['controllers_dict'][k])
 
 	def wait_stop_loading(self):
 		while self.engine.loading>0:

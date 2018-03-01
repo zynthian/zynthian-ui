@@ -173,7 +173,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				'layers':[],
 				'transpose':[],
 				'monitored_engines':zynautoconnect.monitored_engines
-				#'cc_map':[],
 			}
 			#Layers info
 			for layer in self.layers:
@@ -181,8 +180,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			#Transpose info
 			for i in range(0,16):
 				snapshot['transpose'].append(zyncoder.lib_zyncoder.get_midi_filter_transpose(i))
-			#CC-Map info
-			#TODO
 			#JSON Encode
 			json=JSONEncoder().encode(snapshot)
 			logging.info("Saving snapshot %s => \n%s" % (fpath,json))
