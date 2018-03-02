@@ -285,22 +285,11 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				logging.info("Set Automate Slot %d: %s => %d, %d" % (zctrl.slot_i, zctrl.osc_path, zctrl.midi_learn_chan, zctrl.midi_learn_cc))
 				# Reset current MIDI-learning slot
 				self.current_slot_zctrl=None
-				# Add zctrl to slots dictionary
-				self.slot_zctrls[zctrl.osc_path] = zctrl
-				# Setup CB method for param change
-				self.osc_server.add_method(zctrl.osc_path, 'i', self.cb_osc_param_change)
-				# Send OSC automate sequence ...
-				#return
-				#liblo.send(self.osc_target, "/automate/active-slot", zctrl.slot_i)
-				zcc = (zctrl.midi_learn_chan * 128) + zctrl.midi_learn_cc
-				liblo.send(self.osc_target, "/automate/slot%d/active" % zctrl.slot_i, True)
-				liblo.send(self.osc_target, "/automate/slot%d/name" % zctrl.slot_i, zctrl.symbol)
-				logging.debug("OSC send => /automate/slot%d/name '%s'" % (zctrl.slot_i, zctrl.symbol))
-				liblo.send(self.osc_target, "/automate/slot%d/midi-cc" % zctrl.slot_i, zcc)
-				logging.debug("OSC send => /automate/slot%d/midi-cc %d" % (zctrl.slot_i, zcc))
-				liblo.send(self.osc_target, "/automate/slot%d/param0/active" % zctrl.slot_i, True)
-				liblo.send(self.osc_target, "/automate/slot%d/param0/used" % zctrl.slot_i, True)
-				liblo.send(self.osc_target, "/automate/slot%d/param0/path" % zctrl.slot_i, zctrl.osc_path)
+				# Call midi_learn
+				self.midi_learn(zctrl)
+				# Wait for setting automation
+				while self.current_slot_zctrl:
+					sleep(0.01)
 		except Exception as e:
 			logging.error("Can't set slot automation for %s => %s" % (zctrl.osc_path, e))
 
@@ -318,9 +307,26 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			self.current_slot_zctrl.slot_i = int(slot_i)
 			# Add zctrl to slots dictionary
 			self.slot_zctrls[self.current_slot_zctrl.osc_path] = self.current_slot_zctrl
-			# Send twice for get it working when re-learning ...
-			liblo.send(self.osc_target, "/automate/slot%d/clear" % slot_i)
-			liblo.send(self.osc_target, "/automate/learn-binding-new-slot", self.current_slot_zctrl.osc_path)
+			# set_midi_learn
+			if self.current_slot_zctrl.midi_learn_cc is not None:
+				zcc = (self.current_slot_zctrl.midi_learn_chan * 128) + self.current_slot_zctrl.midi_learn_cc
+				liblo.send(self.osc_target, "/automate/slot%d/learning" % slot_i, 0)
+				liblo.send(self.osc_target, "/automate/slot%d/active" % slot_i, True)
+				#sleep(0.05)
+				liblo.send(self.osc_target, "/automate/slot%d/name" % slot_i, self.current_slot_zctrl.symbol)
+				#logging.debug("OSC send => /automate/slot%d/name '%s'" % (slot_i, self.current_slot_zctrl.symbol))
+				liblo.send(self.osc_target, "/automate/slot%d/midi-cc" % slot_i, zcc)
+				#logging.debug("OSC send => /automate/slot%d/midi-cc %d" % (slot_i, zcc))
+				liblo.send(self.osc_target, "/automate/slot%d/param0/active" % slot_i, True)
+				liblo.send(self.osc_target, "/automate/slot%d/param0/used" % slot_i, True)
+				liblo.send(self.osc_target, "/automate/slot%d/param0/path" % slot_i, self.current_slot_zctrl.osc_path)
+				logging.debug("Automate Slot %d SET: %s => %d" % (slot_i, self.current_slot_zctrl.osc_path, zcc))
+				self.current_slot_zctrl=None
+			# midi_learn
+			else:
+				# Send twice for get it working when re-learning ...
+				liblo.send(self.osc_target, "/automate/slot%d/clear" % slot_i)
+				liblo.send(self.osc_target, "/automate/learn-binding-new-slot", self.current_slot_zctrl.osc_path)
 
 	def cb_osc_param_change(self, path, args):
 		if path in self.slot_zctrls:
@@ -342,7 +348,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				slot_i=int(m.group(1))
 				chan= int(int(args[0]) / 128)
 				cc = int(args[0]) % 128
-				logging.debug("Automate Slot %d MIDI-CC: %s => %s" % (slot_i, path, cc))
+				logging.debug("Automate Slot %d MIDI-CC: %s => %s" % (slot_i, path, args[0]))
 				if self.current_slot_zctrl.slot_i==slot_i:
 					self.current_slot_zctrl.cb_midi_learn(chan,cc)
 					self.current_slot_zctrl=None
