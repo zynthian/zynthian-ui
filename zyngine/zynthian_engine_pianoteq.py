@@ -39,6 +39,19 @@ from . import zynthian_engine
 # Piantoteq Engine Class
 #------------------------------------------------------------------------------
 
+def check_pianoteq_version():
+	r=()
+	version_pattern=re.compile("^.+ version ([0-9]).([0-9]).*",re.IGNORECASE)
+	pianoteq=subprocess.Popen(["/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE","--version"],stdout=subprocess.PIPE)
+	for line in pianoteq.stdout:
+		l=line.rstrip().decode("utf-8")
+		m=version_pattern.match(l)
+		if(m):
+			r=(m.group(1),)
+			r=r+(m.group(2),)
+			break
+	return(r)
+
 class zynthian_engine_pianoteq(zynthian_engine):
 
 	# ---------------------------------------------------------------------------
@@ -47,7 +60,10 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	PIANOTEQ_SW_DIR = r'/zynthian/zynthian-sw/pianoteq6'
 	PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
 	PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
-	PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + '/.config/Modartt/Pianoteq60 STAGE.prefs'
+	pt_version=check_pianoteq_version()
+	PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + '/.config/Modartt/Pianoteq6'+pt_version[1]+' STAGE.prefs'
+	PIANOTEQ_INTERNAL_SR=11025
+	PIANOTEQ_VOICES=24
 
 	_ctrls=[
 		['volume',7,96],
@@ -288,6 +304,12 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if(os.path.isfile(self.PIANOTEQ_CONFIG_FILE)):
 			root = ET.parse(self.PIANOTEQ_CONFIG_FILE)
 			try:
+				for xml_value in root.iter("VALUE"):
+					if(xml_value.attrib['name']=='engine_rate'):
+						xml_value.set('val',str(self.PIANOTEQ_INTERNAL_SR))
+					if(xml_value.attrib['name']=='voices'):
+						xml_value.set('val',str(self.PIANOTEQ_VOICES))
+
 				if(root.find('DEVICESETUP')):
 					logging.debug("Fixing devicesetup node")
 					for devicesetup in root.iter('DEVICESETUP'):
@@ -313,6 +335,5 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			except Exception as e:
 				logging.error("Installing devicesetup failed: %s" % format(e))
 				return format(e)
-
 
 #******************************************************************************
