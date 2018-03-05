@@ -62,8 +62,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
 	pt_version=check_pianoteq_version()
 	PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + '/.config/Modartt/Pianoteq6'+pt_version[1]+' STAGE.prefs'
-	PIANOTEQ_INTERNAL_SR=11025
-	PIANOTEQ_VOICES=24
+	if(int(pt_version[1])==0):
+		PIANOTEQ_INTERNAL_SR=22050
+		PIANOTEQ_VOICES=32
+	else:
+		#PIANOTEQ_INTERNAL_SR=11025
+		PIANOTEQ_INTERNAL_SR=22050
+		PIANOTEQ_VOICES=24
 
 	_ctrls=[
 		['volume',7,96],
