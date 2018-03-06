@@ -39,17 +39,18 @@ from . import zynthian_engine
 # Piantoteq Engine Class
 #------------------------------------------------------------------------------
 
-def check_pianoteq_version():
+def check_pianoteq_version(pt_binary):
 	r=()
 	version_pattern=re.compile("^.+ version ([0-9]).([0-9]).*",re.IGNORECASE)
-	pianoteq=subprocess.Popen(["/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE","--version"],stdout=subprocess.PIPE)
-	for line in pianoteq.stdout:
-		l=line.rstrip().decode("utf-8")
-		m=version_pattern.match(l)
-		if(m):
-			r=(m.group(1),)
-			r=r+(m.group(2),)
-			break
+	if(os.path.isfile(pt_binary) and os.access(pt_binary, os.X_OK)):
+		pianoteq=subprocess.Popen([pt_binary,"--version"],stdout=subprocess.PIPE)
+		for line in pianoteq.stdout:
+			l=line.rstrip().decode("utf-8")
+			m=version_pattern.match(l)
+			if(m):
+				r=(m.group(1),)
+				r=r+(m.group(2),)
+				break
 	return(r)
 
 class zynthian_engine_pianoteq(zynthian_engine):
@@ -57,18 +58,20 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
+
 	PIANOTEQ_SW_DIR = r'/zynthian/zynthian-sw/pianoteq6'
 	PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
 	PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
-	pt_version=check_pianoteq_version()
-	PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + '/.config/Modartt/Pianoteq6'+pt_version[1]+' STAGE.prefs'
-	if(int(pt_version[1])==0):
-		PIANOTEQ_INTERNAL_SR=22050
-		PIANOTEQ_VOICES=32
-	else:
-		#PIANOTEQ_INTERNAL_SR=11025
-		PIANOTEQ_INTERNAL_SR=22050
-		PIANOTEQ_VOICES=24
+	pt_version=check_pianoteq_version(PIANOTEQ_SW_DIR+"/Pianoteq 6 STAGE")
+	if(pt_version!=()):
+		PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + '/.config/Modartt/Pianoteq6'+pt_version[1]+' STAGE.prefs'
+		if(int(pt_version[1])==0):
+			PIANOTEQ_INTERNAL_SR=22050
+			PIANOTEQ_VOICES=32
+		else:
+			#PIANOTEQ_INTERNAL_SR=11025
+			PIANOTEQ_INTERNAL_SR=22050
+			PIANOTEQ_VOICES=24
 
 	_ctrls=[
 		['volume',7,96],
