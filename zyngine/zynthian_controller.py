@@ -291,7 +291,7 @@ class zynthian_controller:
 			# If standard MIDI-CC controller, delete MIDI router map
 			if self.midi_cc:
 				try:
-					zyncoder.lib_zyncoder.del_midi_filter_cc_map(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc))
+					zyncoder.lib_zyncoder.del_midi_filter_cc_swap(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc))
 					logging.info("Deleted MIDI filter CC map: %s, %s" % (self.midi_learn_chan, self.midi_learn_cc))
 					unlearned=True
 				except:
@@ -312,7 +312,8 @@ class zynthian_controller:
 				self.midi_learn_cc=None
 				# Refresh GUI Controller
 				try:
-					self.engine.zyngui.screens['control'].get_zgui_controller(self).set_midi_bind()
+					#self.engine.zyngui.screens['control'].get_zgui_controller(self).set_midi_bind()
+					self.engine.zyngui.screens['control'].refresh_midi_bind()
 				except:
 					pass
 
@@ -338,7 +339,7 @@ class zynthian_controller:
 			# If standard MIDI-CC controller, create MIDI router map
 			if self.midi_cc:
 				try:
-					zyncoder.lib_zyncoder.set_midi_filter_cc_map(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc), ctypes.c_ubyte(self.midi_chan), ctypes.c_ubyte(self.midi_cc))
+					zyncoder.lib_zyncoder.set_midi_filter_cc_swap(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc), ctypes.c_ubyte(self.midi_chan), ctypes.c_ubyte(self.midi_cc))
 					logging.info("Set MIDI filter CC map: (%s, %s) => (%s, %s)" % (self.midi_learn_chan, self.midi_learn_cc, self.midi_chan, self.midi_cc))
 				except Exception as e:
 					logging.error("Can't set MIDI filter CC map: (%s, %s) => (%s, %s) => %s" % (self.midi_learn_chan, self.midi_learn_cc, self.midi_chan, self.midi_cc, e))
@@ -347,7 +348,8 @@ class zynthian_controller:
 
 			# Refresh GUI Controller ...
 			try:
-				self.engine.zyngui.screens['control'].get_zgui_controller(self).set_midi_bind()
+				#self.engine.zyngui.screens['control'].get_zgui_controller(self).set_midi_bind()
+				self.engine.zyngui.screens['control'].refresh_midi_bind()
 			except:
 				pass
 

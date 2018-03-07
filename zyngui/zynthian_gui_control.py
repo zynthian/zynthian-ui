@@ -203,6 +203,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def get_zgui_controller_by_index(self, i):
 		return self.zgui_controllers[i]
 
+	def refresh_midi_bind(self):
+		for zgui_controller in self.zgui_controllers:
+			zgui_controller.set_midi_bind()
+
 	def set_controller_value(self, zctrl, val=None):
 		if val is not None:
 			zctrl.set_value(val)

@@ -293,10 +293,12 @@ class zynthian_gui_controller:
 			self.canvas.itemconfig(self.midi_bind, text="")
 
 	def set_midi_bind(self):
-		if self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
-			self.plot_midi_bind(self.zctrl.midi_learn_cc)
-		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
-			self.plot_midi_bind(self.zctrl.midi_cc)
+		if self.zctrl.midi_cc and self.zctrl.midi_cc>0:
+			midi_cc=zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
+			self.plot_midi_bind(midi_cc)
+		elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
+			midi_cc=zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_learn_chan, self.zctrl.midi_learn_cc)
+			self.plot_midi_bind(midi_cc)
 		else:
 			self.erase_midi_bind()
 
