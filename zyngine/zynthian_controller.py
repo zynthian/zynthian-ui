@@ -284,6 +284,7 @@ class zynthian_controller:
 
 
 	def midi_unlearn(self):
+		#Unlearn only if there is a working engine and something to unlearn ...
 		if self.engine and self.midi_learn_chan is not None and self.midi_learn_cc is not None:
 			logging.info("MIDI Unlearn: %s" % self.symbol)
 			unlearned=False
@@ -291,11 +292,13 @@ class zynthian_controller:
 			# If standard MIDI-CC controller, delete MIDI router map
 			if self.midi_cc:
 				try:
-					zyncoder.lib_zyncoder.del_midi_filter_cc_swap(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc))
-					logging.info("Deleted MIDI filter CC map: %s, %s" % (self.midi_learn_chan, self.midi_learn_cc))
-					unlearned=True
+					if zyncoder.lib_zyncoder.del_midi_filter_cc_swap(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc)):
+						logging.info("Deleted MIDI filter CC map: %s, %s" % (self.midi_learn_chan, self.midi_learn_cc))
+						unlearned=True
+					else:
+						logging.error("Can't delete MIDI filter CC swap map: Call returned 0")
 				except:
-					logging.error("Can't delete MIDI filter CC map: %s, %s" % (self.midi_learn_chan, self.midi_learn_cc))
+					logging.error("Can't delete MIDI filter CC swap map: %s, %s" % (self.midi_learn_chan, self.midi_learn_cc))
 
 			# Else delegate to engine's MIDI-learning implementation
 			else:
@@ -312,10 +315,17 @@ class zynthian_controller:
 				self.midi_learn_cc=None
 				# Refresh GUI Controller
 				try:
-					#self.engine.zyngui.screens['control'].get_zgui_controller(self).set_midi_bind()
 					self.engine.zyngui.screens['control'].refresh_midi_bind()
 				except:
 					pass
+				# MIDI Unlearning success
+				return True
+			# Else unlearning failure
+			else:
+				return False
+
+		#If	not engine or nothing to unlearn, return success
+		return True
 
 
 	def set_midi_learn(self, chan, cc):
@@ -331,27 +341,40 @@ class zynthian_controller:
 
 
 	def cb_midi_learn(self, chan, cc):
+		#Learn only if there is a working engine ...
 		if self.engine:
 			logging.info("MIDI-CC bond '%s' => %d, %d" % (self.symbol,chan,cc))
-			self.midi_learn_chan=int(chan)
-			self.midi_learn_cc=int(cc)
 
 			# If standard MIDI-CC controller, create MIDI router map
 			if self.midi_cc:
 				try:
-					zyncoder.lib_zyncoder.set_midi_filter_cc_swap(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc), ctypes.c_ubyte(self.midi_chan), ctypes.c_ubyte(self.midi_cc))
-					logging.info("Set MIDI filter CC map: (%s, %s) => (%s, %s)" % (self.midi_learn_chan, self.midi_learn_cc, self.midi_chan, self.midi_cc))
+					if zyncoder.lib_zyncoder.set_midi_filter_cc_swap(ctypes.c_ubyte(chan), ctypes.c_ubyte(cc), ctypes.c_ubyte(self.midi_chan), ctypes.c_ubyte(self.midi_cc)):
+						logging.info("Set MIDI filter CC map: (%s, %s) => (%s, %s)" % (chan, cc, self.midi_chan, self.midi_cc))
+						self.midi_learn_chan=int(chan)
+						self.midi_learn_cc=int(cc)
+						self.engine.zyngui.midi_learn_zctrl=None
+					else:
+						logging.error("Can't set MIDI filter CC swap map: call returned 0")
+						return False
 				except Exception as e:
-					logging.error("Can't set MIDI filter CC map: (%s, %s) => (%s, %s) => %s" % (self.midi_learn_chan, self.midi_learn_cc, self.midi_chan, self.midi_cc, e))
-
-			# Else do nothing => This function should be called from engine's MIDI-learning CB method
+					logging.error("Can't set MIDI filter CC swap map: (%s, %s) => (%s, %s) => %s" % (self.midi_learn_chan, self.midi_learn_cc, self.midi_chan, self.midi_cc, e))
+					return False
+					# Else setup values only => This function should be called from engine's MIDI-learning CB method
+			else:
+				self.midi_learn_chan=int(chan)
+				self.midi_learn_cc=int(cc)
 
 			# Refresh GUI Controller ...
 			try:
-				#self.engine.zyngui.screens['control'].get_zgui_controller(self).set_midi_bind()
 				self.engine.zyngui.screens['control'].refresh_midi_bind()
 			except:
 				pass
+
+			# MIDI learning success
+			return True
+
+		#If	not engine, return success
+		return True
 
 
 #******************************************************************************

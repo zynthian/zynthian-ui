@@ -275,25 +275,27 @@ class zynthian_gui_controller:
 		x2=self.width
 		y2=self.height
 
-	def plot_midi_bind(self, midi_cc):
+	def plot_midi_bind(self, midi_cc, color=zynthian_gui_config.color_ctrl_tx):
 		if not self.midi_bind:
 			self.midi_bind = self.canvas.create_text(
 				self.width/2, 
 				self.height-8, 
 				width=int(2*0.7*zynthian_gui_config.font_size), 
 				justify=tkinter.CENTER, 
-				fill=zynthian_gui_config.color_ctrl_tx,
+				fill=color,
 				font=(zynthian_gui_config.font_family,int(0.7*zynthian_gui_config.font_size)),
 				text=str(midi_cc))
 		else:
-			self.canvas.itemconfig(self.midi_bind, text=str(midi_cc))
+			self.canvas.itemconfig(self.midi_bind, text=str(midi_cc), fill=color)
 
 	def erase_midi_bind(self):
 		if self.midi_bind:
 			self.canvas.itemconfig(self.midi_bind, text="")
 
 	def set_midi_bind(self):
-		if self.zctrl.midi_cc and self.zctrl.midi_cc>0:
+		if zynthian_gui_config.zyngui.midi_learn_zctrl and self.zctrl==zynthian_gui_config.zyngui.midi_learn_zctrl:
+			self.plot_midi_bind("??","#00ff00")
+		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
 			midi_cc=zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
 			self.plot_midi_bind(midi_cc)
 		elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:

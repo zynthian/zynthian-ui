@@ -592,10 +592,10 @@ class zynthian_gui:
 
 	def midi_learn(self, zctrl):
 		self.midi_learn_zctrl=zctrl
+		self.screens['control'].refresh_midi_bind()
 
 	def cb_midi_learn(self, chan, cc):
 		self.midi_learn_zctrl.cb_midi_learn(chan,cc)
-		self.midi_learn_zctrl=None
 
 #------------------------------------------------------------------------------
 # GUI & Synth Engine initialization
