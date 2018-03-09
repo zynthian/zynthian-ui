@@ -496,10 +496,10 @@ class zynthian_gui:
 					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
 						self.screens[self.active_screen].preselect_action()
 
-				#MIDI learn ...
-				elif self.midi_learn_zctrl and evtype==0xB:
+				# MIDI learn => If controller is CC-mapped, use MIDI-router learning
+				elif self.midi_learn_zctrl and self.midi_learn_zctrl.midi_cc and evtype==0xB:
 					ccnum=(ev & 0x7F00)>>8
-					self.cb_midi_learn(chan,ccnum)
+					self.midi_learn_zctrl.cb_midi_learn(chan,ccnum)
 
 		except Exception as err:
 			logging.error("zynthian_gui.zynmidi_read() => %s" % err)
@@ -590,12 +590,13 @@ class zynthian_gui:
 	# MIDI learning
 	#------------------------------------------------------------------
 
-	def midi_learn(self, zctrl):
+	def set_midi_learn(self, zctrl):
 		self.midi_learn_zctrl=zctrl
 		self.screens['control'].refresh_midi_bind()
 
-	def cb_midi_learn(self, chan, cc):
-		self.midi_learn_zctrl.cb_midi_learn(chan,cc)
+	def unset_midi_learn(self):
+		self.midi_learn_zctrl=None
+		self.screens['control'].refresh_midi_bind()
 
 #------------------------------------------------------------------------------
 # GUI & Synth Engine initialization
