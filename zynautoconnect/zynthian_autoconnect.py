@@ -50,7 +50,8 @@ engine_list = [
 	"fluidsynth",
 	"LinuxSampler",
 	"setBfree",
-	"Pianoteq60"
+	"Pianoteq60",
+	"Pianoteq61"
 	#"mod-host"
 ]
 
