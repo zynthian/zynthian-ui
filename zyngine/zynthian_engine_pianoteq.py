@@ -155,7 +155,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			('Tubular Bells',42,'Tubular Bells','_')
 		]
 
-		self.user_presets_path=PIANOTEQ_MY_PRESETS_DIR
+		self.user_presets_path=self.PIANOTEQ_MY_PRESETS_DIR
 		if not os.path.exists(self.user_presets_path):
 			os.makedirs(self.user_presets_path)
 
