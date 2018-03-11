@@ -157,7 +157,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 		self.user_presets_path=PIANOTEQ_MY_PRESETS_DIR
 		if not os.path.exists(self.user_presets_path):
-			os.makedirs(self.user_presets_path))
+			os.makedirs(self.user_presets_path)
 
 		self.presets=defaultdict(list)
 		#self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
