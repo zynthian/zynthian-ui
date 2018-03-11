@@ -40,18 +40,18 @@ from . import zynthian_engine
 #------------------------------------------------------------------------------
 
 def check_pianoteq_version(pt_binary):
-	r=()
-	version_pattern=re.compile("^.+ version ([0-9]).([0-9]).*",re.IGNORECASE)
-	if(os.path.isfile(pt_binary) and os.access(pt_binary, os.X_OK)):
-		pianoteq=subprocess.Popen([pt_binary,"--version"],stdout=subprocess.PIPE)
+	r = ()
+	version_pattern = re.compile("^.+ version ([0-9]).([0-9]).*", re.IGNORECASE)
+	if os.path.isfile(pt_binary) and os.access(pt_binary, os.X_OK):
+		pianoteq = subprocess.Popen([pt_binary,"--version"], stdout=subprocess.PIPE)
 		for line in pianoteq.stdout:
-			l=line.rstrip().decode("utf-8")
-			m=version_pattern.match(l)
-			if(m):
-				r=(m.group(1),)
-				r=r+(m.group(2),)
+			l = line.rstrip().decode("utf-8")
+			m = version_pattern.match(l)
+			if m:
+				r = (m.group(1),)
+				r += (m.group(2),)
 				break
-	return(r)
+	return r
 
 class zynthian_engine_pianoteq(zynthian_engine):
 
@@ -155,8 +155,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			('Tubular Bells',42,'Tubular Bells','_')
 		]
 
-		self.user_presets_path="/root/.local/share/Modartt/Pianoteq/Presets/My Presets"
-		self.ensure_dir(self.user_presets_path)
+		self.user_presets_path=PIANOTEQ_MY_PRESETS_DIR
+		if not os.path.exists(self.user_presets_path):
+			os.makedirs(self.user_presets_path))
 
 		self.presets=defaultdict(list)
 		#self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
