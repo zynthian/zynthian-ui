@@ -36,14 +36,20 @@ from json import JSONEncoder, JSONDecoder
 from . import zynthian_engine
 
 #------------------------------------------------------------------------------
-# Piantoteq Engine Class
+# Pianoteq module helper functions
 #------------------------------------------------------------------------------
 
-def check_pianoteq_version(pt_binary):
+def check_pianoteq_binary():
+	if os.path.isfile(PIANOTEQ_BINARY) and os.access(PIANOTEQ_BINARY, os.X_OK):
+		return True
+	else:
+		return False
+
+def check_pianoteq_version():
 	r = ()
-	version_pattern = re.compile("^.+ version ([0-9]).([0-9]).*", re.IGNORECASE)
-	if os.path.isfile(pt_binary) and os.access(pt_binary, os.X_OK):
-		pianoteq = subprocess.Popen([pt_binary,"--version"], stdout=subprocess.PIPE)
+	if check_pianoteq_binary():
+		version_pattern = re.compile("^.+ version ([0-9]).([0-9]).*", re.IGNORECASE)
+		pianoteq = subprocess.Popen([PIANOTEQ_BINARY,"--version"], stdout=subprocess.PIPE)
 		for line in pianoteq.stdout:
 			l = line.rstrip().decode("utf-8")
 			m = version_pattern.match(l)
@@ -53,25 +59,52 @@ def check_pianoteq_version(pt_binary):
 				break
 	return r
 
+def check_pianoteq_trial():
+	if check_pianoteq_binary():
+		trial_pattern=re.compile(".+ trial .+",re.IGNORECASE)
+		pianoteq=subprocess.Popen([PIANOTEQ_BINARY,"--version"],stdout=subprocess.PIPE)
+		for line in pianoteq.stdout:
+			l=line.rstrip().decode("utf-8")
+			m=trial_pattern.match(l)
+			if m:
+				return True
+	return False
+
+
+#------------------------------------------------------------------------------
+# Pianoteq module constants & parameter configuration/initialization
+#------------------------------------------------------------------------------
+
+PIANOTEQ_SW_DIR = "/zynthian/zynthian-sw/pianoteq6"
+PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/Pianoteq 6 STAGE"
+PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
+PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
+
+#PIANOTEQ_VERSION=check_pianoteq_version()
+PIANOTEQ_VERSION=(6, 0, 3)
+#PIANOTEQ_TRIAL=check_pianoteq_trial()
+PIANOTEQ_TRIAL=False
+
+PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + "/.config/Modartt/Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
+if PIANOTEQ_VERSION[1]==0:
+	PIANOTEQ_INTERNAL_SR=22050
+	PIANOTEQ_VOICES=32
+else:
+	#PIANOTEQ_INTERNAL_SR=11025
+	PIANOTEQ_INTERNAL_SR=22050
+	PIANOTEQ_VOICES=24
+
+
+#------------------------------------------------------------------------------
+# Piantoteq Engine Class
+#------------------------------------------------------------------------------
+
 class zynthian_engine_pianoteq(zynthian_engine):
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
-	PIANOTEQ_SW_DIR = r'/zynthian/zynthian-sw/pianoteq6'
-	PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
-	PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
-	pt_version=check_pianoteq_version(PIANOTEQ_SW_DIR+"/Pianoteq 6 STAGE")
-	if(pt_version!=()):
-		PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + '/.config/Modartt/Pianoteq6'+pt_version[1]+' STAGE.prefs'
-		if(int(pt_version[1])==0):
-			PIANOTEQ_INTERNAL_SR=22050
-			PIANOTEQ_VOICES=32
-		else:
-			#PIANOTEQ_INTERNAL_SR=11025
-			PIANOTEQ_INTERNAL_SR=22050
-			PIANOTEQ_VOICES=24
 
 	_ctrls=[
 		['volume',7,96],
@@ -104,9 +137,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.preset=""
 
 		if(self.config_remote_display()):
-			self.main_command=(self.PIANOTEQ_SW_DIR+"/Pianoteq 6 STAGE","--midimapping","Zynthian")
+			self.main_command=(PIANOTEQ_BINARY,"--midimapping","Zynthian")
 		else:
-			self.main_command=(self.PIANOTEQ_SW_DIR+"/Pianoteq 6 STAGE","--headless","--midimapping","Zynthian")
+			self.main_command=(PIANOTEQ_BINARY,"--headless","--midimapping","Zynthian")
 		self.command=self.main_command
 		
 		self.bank_list=[
@@ -155,7 +188,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			('Tubular Bells',42,'Tubular Bells','_')
 		]
 
-		self.user_presets_path=self.PIANOTEQ_MY_PRESETS_DIR
+		self.user_presets_path=PIANOTEQ_MY_PRESETS_DIR
 		if not os.path.exists(self.user_presets_path):
 			os.makedirs(self.user_presets_path)
 
@@ -310,14 +343,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			os.makedirs(directory)
 
 	def fix_config_for_jack(self):
-		if(os.path.isfile(self.PIANOTEQ_CONFIG_FILE)):
-			root = ET.parse(self.PIANOTEQ_CONFIG_FILE)
+		if os.path.isfile(PIANOTEQ_CONFIG_FILE):
+			root = ET.parse(PIANOTEQ_CONFIG_FILE)
 			try:
 				for xml_value in root.iter("VALUE"):
 					if(xml_value.attrib['name']=='engine_rate'):
-						xml_value.set('val',str(self.PIANOTEQ_INTERNAL_SR))
+						xml_value.set('val',str(PIANOTEQ_INTERNAL_SR))
 					if(xml_value.attrib['name']=='voices'):
-						xml_value.set('val',str(self.PIANOTEQ_VOICES))
+						xml_value.set('val',str(PIANOTEQ_VOICES))
 
 				if(root.find('DEVICESETUP')):
 					logging.debug("Fixing devicesetup node")
@@ -339,7 +372,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 					devicesetup.set('forceStereo','0')
 					root.getroot().append(value)
 
-				root.write(self.PIANOTEQ_CONFIG_FILE)
+				root.write(PIANOTEQ_CONFIG_FILE)
 
 			except Exception as e:
 				logging.error("Installing devicesetup failed: %s" % format(e))
