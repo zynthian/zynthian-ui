@@ -29,10 +29,11 @@ import logging
 import time
 import shutil
 import subprocess
-from xml.etree import ElementTree as ET
-from os.path import isfile,isdir,join
 from collections import defaultdict
+from os.path import isfile,isdir,join
+from xml.etree import ElementTree as ET
 from json import JSONEncoder, JSONDecoder
+
 from . import zynthian_engine
 
 #------------------------------------------------------------------------------
@@ -102,9 +103,59 @@ else:
 class zynthian_engine_pianoteq(zynthian_engine):
 
 	# ---------------------------------------------------------------------------
-	# Controllers & Screens
+	# Banks
 	# ---------------------------------------------------------------------------
 
+	bank_list=[
+		('Steinway D',0,'Steinway D','_'),
+		('Steinway B',1,'Steinway B','_'),
+		('Grotrian',2,'Grotrian','_'),
+		('Bluethner',3,'Bluethner','_'),
+		('YC5',4,'YC5','_'),
+		('K2',5,'K2','_'),
+		('U4',6,'U4','_'),
+		('MKI',7,'MKI','_'),
+		('MKII',8,'MKII','_'),
+		('W1',9,'W1','_'),
+		('Clavinet D6',10,'Clavinet D6','_'),
+		('Pianet N',11,'Pianet N','_'),
+		('Pianet T',12,'Pianet T','_'),
+		('Electra',13,'Electra','_'),
+		('Vibraphone V-B',14,'Vibraphone V-B','_'),
+		('Vibraphone V-M',15,'Vibraphone V-M','_'),
+		('Celesta',16,'Celesta','_'),
+		('Glockenspiel',17,'Glockenspiel','_'),
+		('Toy Piano',18,'Toy Piano','_'),
+		('Marimba',19,'Marimba','_'),
+		('Xylophone',20,'Xylophone','_'),
+		('Steel Drum',21,'Steel Drum','_'),
+		('Spacedrum',22,'Spacedrum','_'),
+		('Hand Pan',23,'Hand Pan','_'),
+		('Tank Drum',24,'Tank Drum','_'),
+		('H. Ruckers II Harpsichord',25,'H. Ruckers II Harpsichord','_'),
+		('Concert Harp',26,'Concert Harp','_'),
+		('J. Dohnal',27,'J. Dohnal','_'),
+		('I. Besendorfer',28,'I. Besendorfer','_'),
+		('S. Erard',29,'S. Erard','_'),
+		('J.B. Streicher',30,'J.B. Streicher','_'),
+		('J. Broadwood',31,'J. Broadwood','_'),
+		('I. Pleyel',32,'I. Pleyel','_'),
+		('J. Frenzel',33,'J. Frenzel','_'),
+		('C. Bechstein',34,'C. Bechstein','_'),
+		('D. Schoffstoss',35,'D. Schoffstoss','_'),
+		('C. Graf',36,'C. Graf','_'),
+		('Erard',37,'Erard','_'),
+		('Pleyel',38,'Pleyel','_'),
+		('CP-80',39,'CP-80','_'),
+		('Church Bells',40,'Church Bells','_'),
+		('Bell-the-fly',41,'Bell-the-fly','_'),
+		('Tubular Bells',42,'Tubular Bells','_')
+	]
+
+
+	# ---------------------------------------------------------------------------
+	# Controllers & Screens
+	# ---------------------------------------------------------------------------
 
 	_ctrls=[
 		['volume',7,96],
@@ -141,52 +192,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		else:
 			self.main_command=(PIANOTEQ_BINARY,"--headless","--midimapping","Zynthian")
 		self.command=self.main_command
-		
-		self.bank_list=[
-			('Steinway D',0,'Steinway D','_'),
-			('Steinway B',1,'Steinway B','_'),
-			('Grotrian',2,'Grotrian','_'),
-			('Bluethner',3,'Bluethner','_'),
-			('YC5',4,'YC5','_'),
-			('K2',5,'K2','_'),
-			('U4',6,'U4','_'),
-			('MKI',7,'MKI','_'),
-			('MKII',8,'MKII','_'),
-			('W1',9,'W1','_'),
-			('Clavinet D6',10,'Clavinet D6','_'),
-			('Pianet N',11,'Pianet N','_'),
-			('Pianet T',12,'Pianet T','_'),
-			('Electra',13,'Electra','_'),
-			('Vibraphone V-B',14,'Vibraphone V-B','_'),
-			('Vibraphone V-M',15,'Vibraphone V-M','_'),
-			('Celesta',16,'Celesta','_'),
-			('Glockenspiel',17,'Glockenspiel','_'),
-			('Toy Piano',18,'Toy Piano','_'),
-			('Marimba',19,'Marimba','_'),
-			('Xylophone',20,'Xylophone','_'),
-			('Steel Drum',21,'Steel Drum','_'),
-			('Spacedrum',22,'Spacedrum','_'),
-			('Hand Pan',23,'Hand Pan','_'),
-			('Tank Drum',24,'Tank Drum','_'),
-			('H. Ruckers II Harpsichord',25,'H. Ruckers II Harpsichord','_'),
-			('Concert Harp',26,'Concert Harp','_'),
-			('J. Dohnal',27,'J. Dohnal','_'),
-			('I. Besendorfer',28,'I. Besendorfer','_'),
-			('S. Erard',29,'S. Erard','_'),
-			('J.B. Streicher',30,'J.B. Streicher','_'),
-			('J. Broadwood',31,'J. Broadwood','_'),
-			('I. Pleyel',32,'I. Pleyel','_'),
-			('J. Frenzel',33,'J. Frenzel','_'),
-			('C. Bechstein',34,'C. Bechstein','_'),
-			('D. Schoffstoss',35,'D. Schoffstoss','_'),
-			('C. Graf',36,'C. Graf','_'),
-			('Erard',37,'Erard','_'),
-			('Pleyel',38,'Pleyel','_'),
-			('CP-80',39,'CP-80','_'),
-			('Church Bells',40,'Church Bells','_'),
-			('Bell-the-fly',41,'Bell-the-fly','_'),
-			('Tubular Bells',42,'Tubular Bells','_')
-		]
 
 		self.user_presets_path=PIANOTEQ_MY_PRESETS_DIR
 		if not os.path.exists(self.user_presets_path):
