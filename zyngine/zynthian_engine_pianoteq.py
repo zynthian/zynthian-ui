@@ -205,10 +205,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		else:
 			self.save_presets_cache()
 
-		if not os.path.isfile("/root/.config/Modartt/Pianoteq60 STAGE.prefs"):
+		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
 			logging.debug("Pianoteq configuration does not exist. Creating one.")
 			self.ensure_dir("/root/.config/Modartt/")
-			shutil.copy(os.getcwd() + "/data/pianoteq6/Pianoteq60 STAGE.prefs", "/root/.config/Modartt/")
+			pt_config_file = "Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
+			shutil.copy(os.getcwd() + "/data/pianoteq6/"+pt_config_file, "/root/.config/Modartt/")
 		
 		if not os.path.isfile("/root/.local/share/Modartt/Pianoteq/MidiMappings/Zynthian.ptm"):
 			logging.debug("Pianoteq MIDI-mapping does not exist. Creating one.")
