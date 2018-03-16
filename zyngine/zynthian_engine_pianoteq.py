@@ -188,9 +188,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.preset=""
 
 		if(self.config_remote_display()):
-			self.main_command=(PIANOTEQ_BINARY,"--midimapping","Zynthian")
+			self.main_command=(PIANOTEQ_BINARY,"--multicore","max","--midimapping","Zynthian")
 		else:
-			self.main_command=(PIANOTEQ_BINARY,"--headless","--midimapping","Zynthian")
+			self.main_command=(PIANOTEQ_BINARY,"--multicore","max","--headless","--midimapping","Zynthian")
 		self.command=self.main_command
 
 		self.user_presets_path=PIANOTEQ_MY_PRESETS_DIR
