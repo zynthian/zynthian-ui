@@ -481,6 +481,10 @@ class zynthian_gui:
 							bnk = (ev & 0x7F) - zynthian_gui_config.master_midi_bank_base
 							logging.debug("BANK CHANGE %d" % bnk)
 							self.screens['snapshot'].midi_bank_change(bnk)
+						elif ccnum==120:
+							self.all_sounds_off()
+						elif ccnum==123:
+							self.all_sounds_off_123()
 
 				#Program Change ...
 				elif evtype==0xC:
@@ -585,6 +589,10 @@ class zynthian_gui:
 	def all_sounds_off(self):
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 120, 0)
+
+	def all_sounds_off_123(self):
+		for chan in range(16):
+			self.zynmidi.set_midi_control(chan, 123, 0)
 
 	#------------------------------------------------------------------
 	# MIDI learning
