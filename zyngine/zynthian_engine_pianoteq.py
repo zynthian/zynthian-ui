@@ -57,7 +57,6 @@ def check_pianoteq_version():
 			if m:
 				r = (m.group(1),)
 				r += (m.group(2),)
-				break
 	return r
 
 def check_pianoteq_trial():
@@ -81,8 +80,8 @@ PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/Pianoteq 6 STAGE"
 PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
 PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
 
-#PIANOTEQ_VERSION=check_pianoteq_version()
-PIANOTEQ_VERSION=(6, 0, 3)
+PIANOTEQ_VERSION=check_pianoteq_version()
+#PIANOTEQ_VERSION=(6, 0, 3)
 #PIANOTEQ_TRIAL=check_pianoteq_trial()
 PIANOTEQ_TRIAL=False
 
@@ -90,11 +89,11 @@ PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + "/.config/Modartt/Pianoteq{}{}
 if PIANOTEQ_VERSION[1]==0:
 	PIANOTEQ_INTERNAL_SR=22050
 	PIANOTEQ_VOICES=32
+	PIANOTEQ_MULTICORE=1
 else:
-	#PIANOTEQ_INTERNAL_SR=11025
 	PIANOTEQ_INTERNAL_SR=22050
-	PIANOTEQ_VOICES=24
-
+	PIANOTEQ_VOICES=32
+	PIANOTEQ_MULTICORE=2
 
 #------------------------------------------------------------------------------
 # Piantoteq Engine Class
@@ -363,6 +362,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 						xml_value.set('val',str(PIANOTEQ_INTERNAL_SR))
 					if(xml_value.attrib['name']=='voices'):
 						xml_value.set('val',str(PIANOTEQ_VOICES))
+					if(xml_value.attrib['name']=='multicore'):
+						xml_value.set('val',str(PIANOTEQ_MULTICORE))
 
 				if(root.find('DEVICESETUP')):
 					logging.debug("Fixing devicesetup node")
