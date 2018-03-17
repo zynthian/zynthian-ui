@@ -29,11 +29,71 @@ import logging
 import time
 import shutil
 import subprocess
-from xml.etree import ElementTree as ET
-from os.path import isfile,isdir,join
 from collections import defaultdict
+from os.path import isfile,isdir,join
+from xml.etree import ElementTree as ET
 from json import JSONEncoder, JSONDecoder
+
 from . import zynthian_engine
+
+#------------------------------------------------------------------------------
+# Pianoteq module helper functions
+#------------------------------------------------------------------------------
+
+def check_pianoteq_binary():
+	if os.path.isfile(PIANOTEQ_BINARY) and os.access(PIANOTEQ_BINARY, os.X_OK):
+		return True
+	else:
+		return False
+
+def check_pianoteq_version():
+	r = ()
+	if check_pianoteq_binary():
+		version_pattern = re.compile("^.+ version ([0-9]).([0-9]).*", re.IGNORECASE)
+		pianoteq = subprocess.Popen([PIANOTEQ_BINARY,"--version"], stdout=subprocess.PIPE)
+		for line in pianoteq.stdout:
+			l = line.rstrip().decode("utf-8")
+			m = version_pattern.match(l)
+			if m:
+				r = (m.group(1),)
+				r += (m.group(2),)
+	return r
+
+def check_pianoteq_trial():
+	if check_pianoteq_binary():
+		trial_pattern=re.compile(".+ trial .+",re.IGNORECASE)
+		pianoteq=subprocess.Popen([PIANOTEQ_BINARY,"--version"],stdout=subprocess.PIPE)
+		for line in pianoteq.stdout:
+			l=line.rstrip().decode("utf-8")
+			m=trial_pattern.match(l)
+			if m:
+				return True
+	return False
+
+
+#------------------------------------------------------------------------------
+# Pianoteq module constants & parameter configuration/initialization
+#------------------------------------------------------------------------------
+
+PIANOTEQ_SW_DIR = "/zynthian/zynthian-sw/pianoteq6"
+PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/Pianoteq 6 STAGE"
+PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
+PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
+
+PIANOTEQ_VERSION=check_pianoteq_version()
+#PIANOTEQ_VERSION=(6, 0, 3)
+#PIANOTEQ_TRIAL=check_pianoteq_trial()
+PIANOTEQ_TRIAL=False
+
+PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + "/.config/Modartt/Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
+if PIANOTEQ_VERSION[1]==0:
+	PIANOTEQ_INTERNAL_SR=22050
+	PIANOTEQ_VOICES=32
+	PIANOTEQ_MULTICORE=1
+else:
+	PIANOTEQ_INTERNAL_SR=22050
+	PIANOTEQ_VOICES=32
+	PIANOTEQ_MULTICORE=2
 
 #------------------------------------------------------------------------------
 # Piantoteq Engine Class
@@ -42,12 +102,59 @@ from . import zynthian_engine
 class zynthian_engine_pianoteq(zynthian_engine):
 
 	# ---------------------------------------------------------------------------
+	# Banks
+	# ---------------------------------------------------------------------------
+
+	bank_list=[
+		('Steinway D',0,'Steinway D','_'),
+		('Steinway B',1,'Steinway B','_'),
+		('Grotrian',2,'Grotrian','_'),
+		('Bluethner',3,'Bluethner','_'),
+		('YC5',4,'YC5','_'),
+		('K2',5,'K2','_'),
+		('U4',6,'U4','_'),
+		('MKI',7,'MKI','_'),
+		('MKII',8,'MKII','_'),
+		('W1',9,'W1','_'),
+		('Clavinet D6',10,'Clavinet D6','_'),
+		('Pianet N',11,'Pianet N','_'),
+		('Pianet T',12,'Pianet T','_'),
+		('Electra',13,'Electra','_'),
+		('Vibraphone V-B',14,'Vibraphone V-B','_'),
+		('Vibraphone V-M',15,'Vibraphone V-M','_'),
+		('Celesta',16,'Celesta','_'),
+		('Glockenspiel',17,'Glockenspiel','_'),
+		('Toy Piano',18,'Toy Piano','_'),
+		('Marimba',19,'Marimba','_'),
+		('Xylophone',20,'Xylophone','_'),
+		('Steel Drum',21,'Steel Drum','_'),
+		('Spacedrum',22,'Spacedrum','_'),
+		('Hand Pan',23,'Hand Pan','_'),
+		('Tank Drum',24,'Tank Drum','_'),
+		('H. Ruckers II Harpsichord',25,'H. Ruckers II Harpsichord','_'),
+		('Concert Harp',26,'Concert Harp','_'),
+		('J. Dohnal',27,'J. Dohnal','_'),
+		('I. Besendorfer',28,'I. Besendorfer','_'),
+		('S. Erard',29,'S. Erard','_'),
+		('J.B. Streicher',30,'J.B. Streicher','_'),
+		('J. Broadwood',31,'J. Broadwood','_'),
+		('I. Pleyel',32,'I. Pleyel','_'),
+		('J. Frenzel',33,'J. Frenzel','_'),
+		('C. Bechstein',34,'C. Bechstein','_'),
+		('D. Schoffstoss',35,'D. Schoffstoss','_'),
+		('C. Graf',36,'C. Graf','_'),
+		('Erard',37,'Erard','_'),
+		('Pleyel',38,'Pleyel','_'),
+		('CP-80',39,'CP-80','_'),
+		('Church Bells',40,'Church Bells','_'),
+		('Bell-the-fly',41,'Bell-the-fly','_'),
+		('Tubular Bells',42,'Tubular Bells','_')
+	]
+
+
+	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
-	PIANOTEQ_SW_DIR = r'/zynthian/zynthian-sw/pianoteq6'
-	PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
-	PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
-	PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + '/.config/Modartt/Pianoteq60 STAGE.prefs'
 
 	_ctrls=[
 		['volume',7,96],
@@ -80,71 +187,34 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.preset=""
 
 		if(self.config_remote_display()):
-			self.main_command=(self.PIANOTEQ_SW_DIR+"/Pianoteq 6 STAGE","--midimapping","Zynthian")
+			if(PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0):
+				self.main_command=(PIANOTEQ_BINARY,"--midimapping","Zynthian")
+			else:
+				self.main_command=(PIANOTEQ_BINARY,"--multicore","max","--midimapping","Zynthian")
 		else:
-			self.main_command=(self.PIANOTEQ_SW_DIR+"/Pianoteq 6 STAGE","--headless","--midimapping","Zynthian")
+			if(PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0):
+				self.main_command=(PIANOTEQ_BINARY,"--headless","--midimapping","Zynthian")
+			else:
+				self.main_command=(PIANOTEQ_BINARY,"--multicore","max","--headless","--midimapping","Zynthian")
 		self.command=self.main_command
-		
-		self.bank_list=[
-			('Steinway D',0,'Steinway D','_'),
-			('Steinway B',1,'Steinway B','_'),
-			('Grotrian',2,'Grotrian','_'),
-			('Bluethner',3,'Bluethner','_'),
-			('YC5',4,'YC5','_'),
-			('K2',5,'K2','_'),
-			('U4',6,'U4','_'),
-			('MKI',7,'MKI','_'),
-			('MKII',8,'MKII','_'),
-			('W1',9,'W1','_'),
-			('Clavinet D6',10,'Clavinet D6','_'),
-			('Pianet N',11,'Pianet N','_'),
-			('Pianet T',12,'Pianet T','_'),
-			('Electra',13,'Electra','_'),
-			('Vibraphone V-B',14,'Vibraphone V-B','_'),
-			('Vibraphone V-M',15,'Vibraphone V-M','_'),
-			('Celesta',16,'Celesta','_'),
-			('Glockenspiel',17,'Glockenspiel','_'),
-			('Toy Piano',18,'Toy Piano','_'),
-			('Marimba',19,'Marimba','_'),
-			('Xylophone',20,'Xylophone','_'),
-			('Steel Drum',21,'Steel Drum','_'),
-			('Spacedrum',22,'Spacedrum','_'),
-			('Hand Pan',23,'Hand Pan','_'),
-			('Tank Drum',24,'Tank Drum','_'),
-			('H. Ruckers II Harpsichord',25,'H. Ruckers II Harpsichord','_'),
-			('Concert Harp',26,'Concert Harp','_'),
-			('J. Dohnal',27,'J. Dohnal','_'),
-			('I. Besendorfer',28,'I. Besendorfer','_'),
-			('S. Erard',29,'S. Erard','_'),
-			('J.B. Streicher',30,'J.B. Streicher','_'),
-			('J. Broadwood',31,'J. Broadwood','_'),
-			('I. Pleyel',32,'I. Pleyel','_'),
-			('J. Frenzel',33,'J. Frenzel','_'),
-			('C. Bechstein',34,'C. Bechstein','_'),
-			('D. Schoffstoss',35,'D. Schoffstoss','_'),
-			('C. Graf',36,'C. Graf','_'),
-			('Erard',37,'Erard','_'),
-			('Pleyel',38,'Pleyel','_'),
-			('CP-80',39,'CP-80','_'),
-			('Church Bells',40,'Church Bells','_'),
-			('Bell-the-fly',41,'Bell-the-fly','_'),
-			('Tubular Bells',42,'Tubular Bells','_')
-		]
 
-		self.user_presets_path="/root/.local/share/Modartt/Pianoteq/Presets/My Presets"
-		self.ensure_dir(self.user_presets_path)
+		self.user_presets_path=PIANOTEQ_MY_PRESETS_DIR
+		if not os.path.exists(self.user_presets_path):
+			os.makedirs(self.user_presets_path)
 
 		self.presets=defaultdict(list)
-		self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
+		#self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
+		self.presets_cache_fpath="/tmp/presets_cache.json"
 		if os.path.isfile(self.presets_cache_fpath):
 			self.load_presets_cache()
 		else:
 			self.save_presets_cache()
 
-		if not os.path.isfile("/root/.config/Modartt/Pianoteq60 STAGE.prefs"):
+		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
 			logging.debug("Pianoteq configuration does not exist. Creating one.")
 			self.ensure_dir("/root/.config/Modartt/")
-			shutil.copy(os.getcwd() + "/data/pianoteq6/Pianoteq60 STAGE.prefs", "/root/.config/Modartt/")
+			pt_config_file = "Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
+			shutil.copy(os.getcwd() + "/data/pianoteq6/"+pt_config_file, "/root/.config/Modartt/")
 		
 		if not os.path.isfile("/root/.local/share/Modartt/Pianoteq/MidiMappings/Zynthian.ptm"):
 			logging.debug("Pianoteq MIDI-mapping does not exist. Creating one.")
@@ -284,21 +354,41 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			os.makedirs(directory)
 
 	def fix_config_for_jack(self):
-		if(os.path.isfile(self.PIANOTEQ_CONFIG_FILE)):
-			root = ET.parse(self.PIANOTEQ_CONFIG_FILE)
+		if os.path.isfile(PIANOTEQ_CONFIG_FILE):
+			root = ET.parse(PIANOTEQ_CONFIG_FILE)
 			try:
-				for devicesetup in root.iter('DEVICESETUP'):
+				for xml_value in root.iter("VALUE"):
+					if(xml_value.attrib['name']=='engine_rate'):
+						xml_value.set('val',str(PIANOTEQ_INTERNAL_SR))
+					if(xml_value.attrib['name']=='voices'):
+						xml_value.set('val',str(PIANOTEQ_VOICES))
+					if(xml_value.attrib['name']=='multicore'):
+						xml_value.set('val',str(PIANOTEQ_MULTICORE))
+
+				if(root.find('DEVICESETUP')):
+					logging.debug("Fixing devicesetup node")
+					for devicesetup in root.iter('DEVICESETUP'):
+						devicesetup.set('deviceType','JACK')
+						devicesetup.set('audioOutputDeviceName','Auto-connect ON')
+						devicesetup.set('audioInputDeviceName','Auto-connect ON')
+						devicesetup.set('audioDeviceRate','44100')
+						devicesetup.set('forceStereo','0')
+				else:
+					logging.debug("Creating new devicesetup node")
+					value = ET.Element('VALUE')
+					value.set('name','audio-setup')
+					devicesetup = ET.SubElement(value,'DEVICESETUP')
 					devicesetup.set('deviceType','JACK')
 					devicesetup.set('audioOutputDeviceName','Auto-connect ON')
 					devicesetup.set('audioInputDeviceName','Auto-connect ON')
 					devicesetup.set('audioDeviceRate','44100')
 					devicesetup.set('forceStereo','0')
+					root.getroot().append(value)
 
-				root.write(self.PIANOTEQ_CONFIG_FILE)
+				root.write(PIANOTEQ_CONFIG_FILE)
 
 			except Exception as e:
 				logging.error("Installing devicesetup failed: %s" % format(e))
 				return format(e)
-
 
 #******************************************************************************

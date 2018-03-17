@@ -79,7 +79,7 @@ class zynthian_gui_controller:
 		self.arc=None
 		self.value_text=None
 		self.label_title=None
-		self.midi_icon=None
+		self.midi_bind=None
 
 		self.index=indx
 		self.main_frame=frm
@@ -275,28 +275,34 @@ class zynthian_gui_controller:
 		x2=self.width
 		y2=self.height
 
-	def plot_midi_icon(self):
-		if not self.midi_icon:
-			self.midi_icon = self.canvas.create_text(
+	def plot_midi_bind(self, midi_cc, color=zynthian_gui_config.color_ctrl_tx):
+		if not self.midi_bind:
+			self.midi_bind = self.canvas.create_text(
 				self.width/2, 
 				self.height-8, 
 				width=int(2*0.7*zynthian_gui_config.font_size), 
 				justify=tkinter.CENTER, 
-				fill=zynthian_gui_config.color_ctrl_tx,
+				fill=color,
 				font=(zynthian_gui_config.font_family,int(0.7*zynthian_gui_config.font_size)),
-				text=str(self.zctrl.midi_cc))
+				text=str(midi_cc))
 		else:
-			self.canvas.itemconfig(self.midi_icon, text=str(self.zctrl.midi_cc))
+			self.canvas.itemconfig(self.midi_bind, text=str(midi_cc), fill=color)
 
-	def erase_midi_icon(self):
-		if self.midi_icon:
-			self.canvas.itemconfig(self.midi_icon, text="")
+	def erase_midi_bind(self):
+		if self.midi_bind:
+			self.canvas.itemconfig(self.midi_bind, text="")
 
-	def set_midi_icon(self):
-		if self.zctrl.midi_cc and self.zctrl.midi_cc>0:
-			self.plot_midi_icon()
+	def set_midi_bind(self):
+		if zynthian_gui_config.zyngui.midi_learn_zctrl and self.zctrl==zynthian_gui_config.zyngui.midi_learn_zctrl:
+			self.plot_midi_bind("??","#00ff00")
+		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
+			midi_cc=zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
+			self.plot_midi_bind(midi_cc)
+		elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
+			midi_cc=zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_learn_chan, self.zctrl.midi_learn_cc)
+			self.plot_midi_bind(midi_cc)
 		else:
-			self.erase_midi_icon()
+			self.erase_midi_bind()
 
 	def set_title(self, tit):
 		self.title=str(tit)
@@ -391,7 +397,7 @@ class zynthian_gui_controller:
 		self.scale_value=1
 		self.format_print=None
 		self.set_title(zctrl.short_name)
-		self.set_midi_icon()
+		self.set_midi_bind()
 
 		logging.debug("ZCTRL '%s': %s (%s -> %s), %s, %s" % (zctrl.short_name,zctrl.value,zctrl.value_min,zctrl.value_max,zctrl.labels,zctrl.ticks))
 

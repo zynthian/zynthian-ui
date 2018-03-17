@@ -484,6 +484,36 @@ class zynthian_engine_modui(zynthian_engine):
 			logging.error("Parameter Not Found: "+pgraph+"/"+symbol+" => "+str(err))
 			#TODO: catch different types of exception
 
+	#----------------------------------------------------------------------------
+	# MIDI learning
+	#----------------------------------------------------------------------------
+
+	def midi_learn(self, zctrl):
+		logging.info("Learning '%s' ..." % zctrl.graph_path)
+		res = self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=self.get_parameter_address_data(zctrl,"/midi-learn"))
+
+
+	def midi_unlearn(self, zctrl):
+		logging.info("Unlearning '%s' ..." % zctrl.graph_path)
+		return self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=self.get_parameter_address_data(zctrl,"null"))
+
+
+	def set_midi_learn(self, zctrl):
+		if zctrl.graph_path and zctrl.midi_learn_chan is not None and zctrl.midi_learn_cc is not None:
+			logging.info("Set MIDI map '%s' => %d, %d" % (zctrl.graph_path, zctrl.midi_learn_chan, zctrl.midi_learn_cc))
+			uri="/midi-custom_Ch.{}_CC#{}".format(zctrl.midi_learn_chan+1, zctrl.midi_learn_cc)
+			res = self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=self.get_parameter_address_data(zctrl,uri))
+			#logging.debug("result => %s" % res)
+
+
+	def midi_map_cb(self, pgraph, symbol, chan, cc):
+		logging.info("MIDI Map: %s %s => %s, %s" % (pgraph,symbol,chan,cc))
+		try:
+			self.plugin_zctrls[pgraph][symbol].cb_midi_learn(int(chan),int(cc))
+		except Exception as err:
+			logging.error("Parameter Not Found: "+pgraph+"/"+symbol+" => "+str(err))
+
+
 	def get_parameter_address_data(self, zctrl, uri):
 		if isinstance(zctrl.labels,list):
 			steps=len(zctrl.labels)
@@ -499,41 +529,6 @@ class zynthian_engine_modui(zynthian_engine):
 		}
 		logging.debug("Parameter Address Data => %s" % str(data))
 		return data
-
-	#----------------------------------------------------------------------------
-	# MIDI learning
-	#----------------------------------------------------------------------------
-
-	def midi_learn(self, zctrl):
-		logging.info("MIDI Learn: %s" % zctrl.graph_path)
-		res = self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=self.get_parameter_address_data(zctrl,"/midi-learn"))
-
-	def midi_unlearn(self, zctrl):
-		logging.info("MIDI Unlearn: %s" % zctrl.graph_path)
-		res = self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=self.get_parameter_address_data(zctrl,"null"))
-		if res:
-			zctrl.midi_cc=None
-			#Refresh GUI Controller in screen when needed ...
-			if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
-				try:
-					self.zyngui.screens['control'].get_zgui_controller(zctrl).set_midi_icon()
-				except:
-					pass
-
-	def midi_map_cb(self, pgraph, symbol, chan, cc):
-		logging.info("MIDI Map: %s %s => %s, %s" % (pgraph,symbol,chan,cc))
-		try:
-			zctrl=self.plugin_zctrls[pgraph][symbol]
-			#zctrl.midi_chan=int(chan)
-			zctrl.midi_cc=int(cc)
-			#Refresh GUI Controller in screen when needed ...
-			if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
-				try:
-					self.zyngui.screens['control'].get_zgui_controller(zctrl).set_midi_icon()
-				except:
-					pass
-		except Exception as err:
-			logging.error("Parameter Not Found: "+pgraph+"/"+symbol+" => "+str(err))
 
 
 #******************************************************************************

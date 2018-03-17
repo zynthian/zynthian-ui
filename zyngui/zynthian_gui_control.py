@@ -203,6 +203,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def get_zgui_controller_by_index(self, i):
 		return self.zgui_controllers[i]
 
+	def refresh_midi_bind(self):
+		for zgui_controller in self.zgui_controllers:
+			zgui_controller.set_midi_bind()
+
 	def set_controller_value(self, zctrl, val=None):
 		if val is not None:
 			zctrl.set_value(val)
@@ -226,11 +230,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def midi_learn(self, i):
 		if self.mode=='control':
-			zynthian_gui_config.zyngui.curlayer.midi_learn(self.zgui_controllers[i].zctrl)
+			self.zgui_controllers[i].zctrl.midi_learn()
 
 	def midi_unlearn(self, i):
 		if self.mode=='control':
-			zynthian_gui_config.zyngui.curlayer.midi_unlearn(self.zgui_controllers[i].zctrl)
+			self.zgui_controllers[i].zctrl.midi_unlearn()
 
 	def cb_listbox_release(self,event):
 		if self.mode=='select':

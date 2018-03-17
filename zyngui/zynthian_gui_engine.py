@@ -25,6 +25,8 @@
 
 import sys
 import logging
+import re
+import subprocess
 from time import sleep
 from collections import OrderedDict
 
@@ -32,6 +34,7 @@ from collections import OrderedDict
 import zynautoconnect
 import os
 from zyngine import *
+from zyngine.zynthian_engine_pianoteq import *
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
@@ -54,12 +57,11 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		["BF", ("setBfree","setBfree - Hammond Emulator")],
 		["MD", ("MOD-UI","MOD-UI - Plugin Host")]
 	])
-	if(os.path.isfile("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE") and os.access("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE", os.X_OK)):
-		with open("/zynthian/zynthian-sw/pianoteq6/Pianoteq 6 STAGE", 'rb') as ptbin:
-			if(b'builtin_presets_ep_demo.dat' in ptbin.read()):
-				engine_info['PT']=("Pianoteq6-Demo","Pianoteq6-Stage-Demo")
-			else:
-				engine_info['PT']=("Pianoteq6","Pianoteq6-Stage")
+	if check_pianoteq_binary():
+		if PIANOTEQ_TRIAL:
+			engine_info['PT']=("Pianoteq6-Demo","Pianoteq6-Stage-Demo")
+		else:
+			engine_info['PT']=("Pianoteq6","Pianoteq6-Stage")
 
 	def __init__(self):
 		self.zyngines={}

@@ -72,8 +72,13 @@ class zynthian_layer:
 			self.zyngui.refresh_screen()
 
 	def reset(self):
-		self.refresh_flag=False
+		# MIDI-unlearn all controllers
+		for k,zctrl in self.controllers_dict.items():
+			zctrl.midi_unlearn()
+		# Delete layer from engine
 		self.engine.del_layer(self)
+		# Clear refresh flag
+		self.refresh_flag=False
 
 	# ---------------------------------------------------------------------------
 	# MIDI chan Management
@@ -262,12 +267,6 @@ class zynthian_layer:
 				logging.error("Controller %s is not defined" % k)
 		return zctrls
 
-	def midi_learn(self, zctrl):
-		zctrl.midi_learn()
-
-	def midi_unlearn(self, zctrl):
-		zctrl.midi_unlearn()
-
 	# ---------------------------------------------------------------------------
 	# Snapshot Management
 	# ---------------------------------------------------------------------------
@@ -287,7 +286,7 @@ class zynthian_layer:
 			'ctrl_screen_active': self.ctrl_screen_active
 		}
 		for k in self.controllers_dict:
-			snapshot['controllers_dict'][k]=self.controllers_dict[k].value
+			snapshot['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
 		return snapshot
 
 	def restore_snapshot(self, snapshot):
@@ -307,7 +306,7 @@ class zynthian_layer:
 		sleep(0.3)
 		self.ctrl_screen_active=snapshot['ctrl_screen_active']
 		for k in snapshot['controllers_dict']:
-			self.controllers_dict[k].set_value(snapshot['controllers_dict'][k],True)
+			self.controllers_dict[k].restore_snapshot(snapshot['controllers_dict'][k])
 
 	def wait_stop_loading(self):
 		while self.engine.loading>0:

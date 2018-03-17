@@ -97,6 +97,8 @@ class zynthian_gui:
 		self.exit_flag=False
 		self.exit_code=0
 
+		self.midi_learn_zctrl=None
+
 		# Initialize Controllers (Rotary and Switches), MIDI and OSC
 		try:
 			global lib_zyncoder
@@ -479,6 +481,10 @@ class zynthian_gui:
 							bnk = (ev & 0x7F) - zynthian_gui_config.master_midi_bank_base
 							logging.debug("BANK CHANGE %d" % bnk)
 							self.screens['snapshot'].midi_bank_change(bnk)
+						elif ccnum==120:
+							self.all_sounds_off()
+						elif ccnum==123:
+							self.all_sounds_off_123()
 
 				#Program Change ...
 				elif evtype==0xC:
@@ -493,6 +499,12 @@ class zynthian_gui:
 					#Preload preset (note-on)
 					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
 						self.screens[self.active_screen].preselect_action()
+
+				# MIDI learn => If controller is CC-mapped, use MIDI-router learning
+				elif self.midi_learn_zctrl and self.midi_learn_zctrl.midi_cc and evtype==0xB:
+					ccnum=(ev & 0x7F00)>>8
+					self.midi_learn_zctrl.cb_midi_learn(chan,ccnum)
+
 		except Exception as err:
 			logging.error("zynthian_gui.zynmidi_read() => %s" % err)
 
@@ -578,6 +590,21 @@ class zynthian_gui:
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 120, 0)
 
+	def all_sounds_off_123(self):
+		for chan in range(16):
+			self.zynmidi.set_midi_control(chan, 123, 0)
+
+	#------------------------------------------------------------------
+	# MIDI learning
+	#------------------------------------------------------------------
+
+	def set_midi_learn(self, zctrl):
+		self.midi_learn_zctrl=zctrl
+		self.screens['control'].refresh_midi_bind()
+
+	def unset_midi_learn(self):
+		self.midi_learn_zctrl=None
+		self.screens['control'].refresh_midi_bind()
 
 #------------------------------------------------------------------------------
 # GUI & Synth Engine initialization
