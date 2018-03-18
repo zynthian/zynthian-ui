@@ -80,10 +80,8 @@ PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/Pianoteq 6 STAGE"
 PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
 PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
 
-#PIANOTEQ_VERSION=check_pianoteq_version()
-PIANOTEQ_VERSION=(6, 0, 3)
-#PIANOTEQ_TRIAL=check_pianoteq_trial()
-PIANOTEQ_TRIAL=False
+PIANOTEQ_VERSION=list(map(int, os.environ.get('PIANOTEQ_VERSION',"6.0.3").split(".")))
+PIANOTEQ_TRIAL=int(os.environ.get('PIANOTEQ_TRIAL',"1"))
 
 if PIANOTEQ_VERSION:
 	PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + "/.config/Modartt/Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
