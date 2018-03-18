@@ -80,8 +80,8 @@ PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/Pianoteq 6 STAGE"
 PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
 PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
 
-PIANOTEQ_VERSION=check_pianoteq_version()
-#PIANOTEQ_VERSION=(6, 0, 3)
+#PIANOTEQ_VERSION=check_pianoteq_version()
+PIANOTEQ_VERSION=(6, 0, 3)
 #PIANOTEQ_TRIAL=check_pianoteq_trial()
 PIANOTEQ_TRIAL=False
 
@@ -187,13 +187,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.nickname="PT"
 		self.preset=""
 
-		if(self.config_remote_display()):
-			if(PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0):
+		if self.config_remote_display():
+			if PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0:
 				self.main_command=(PIANOTEQ_BINARY,"--midimapping","Zynthian")
 			else:
 				self.main_command=(PIANOTEQ_BINARY,"--multicore","max","--midimapping","Zynthian")
 		else:
-			if(PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0):
+			if PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0:
 				self.main_command=(PIANOTEQ_BINARY,"--headless","--midimapping","Zynthian")
 			else:
 				self.main_command=(PIANOTEQ_BINARY,"--multicore","max","--headless","--midimapping","Zynthian")
