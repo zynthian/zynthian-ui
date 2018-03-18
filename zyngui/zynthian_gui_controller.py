@@ -119,6 +119,12 @@ class zynthian_gui_controller:
 			self.shown=False
 			self.canvas.grid_forget()
 
+	def set_bg_hl(self, bgcolor):
+		self.canvas.config(bg=bgcolor)
+
+	def reset_bg(self):
+		self.canvas.config(bg=zynthian_gui_config.color_panel_bg)
+
 	def calculate_plot_values(self):
 		if self.value>self.max_value: self.value=self.max_value
 		elif self.value<0: self.value=0

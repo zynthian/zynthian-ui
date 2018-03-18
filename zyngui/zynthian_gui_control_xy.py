@@ -102,10 +102,20 @@ class zynthian_gui_control_xy():
 			self.main_frame.grid_forget()
 
 	def set_controllers(self, xctrl, yctrl):
-		self.xgui_controller=zynthian_gui_config.zyngui.screens['control'].get_zgui_controller_by_index(xctrl)
-		self.ygui_controller=zynthian_gui_config.zyngui.screens['control'].get_zgui_controller_by_index(yctrl)
+		self.xgui_controller=xctrl
+		self.ygui_controller=yctrl
 		self.xvalue_max=self.xgui_controller.max_value
 		self.yvalue_max=self.ygui_controller.max_value
+		self.get_controller_values()
+
+	def set_x_controller(self, xctrl):
+		self.xgui_controller=xctrl
+		self.xvalue_max=self.xgui_controller.max_value
+		self.get_controller_values()
+
+	def set_y_controller(self, yctrl):
+		self.ygui_controller=yctrl
+		self.yvalue_max=self.xgui_controller.max_value
 		self.get_controller_values()
 
 	def get_controller_values(self):

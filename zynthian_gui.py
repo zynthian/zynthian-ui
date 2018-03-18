@@ -376,7 +376,8 @@ class zynthian_gui:
 				self.start_loading()
 				dswstr=str(i)+'+'+str(j)
 				logging.info('Double Switch '+dswstr)
-				self.show_control_xy(i,j)
+				#self.show_control_xy(i,j)
+				self.screens['control'].set_mode_xyselect(i,j):
 				self.stop_loading()
 				return True
 

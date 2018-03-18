@@ -59,6 +59,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 	zgui_controllers=[]
 	zgui_controllers_map={}
 
+	# xyselect mode vars
+	xgui_controller=None
+	ygui_controller=None
+	xyselect_axis='X'
+
 	def __init__(self):
 		super().__init__('Controllers',False)
 		# Create Lock object to avoid concurrence problems
@@ -71,6 +76,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 			highlightthickness=0,
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
+		#Add mouse event to main_frame for detecting XY control activation in mode xyselect
+		self.main_frame.bind("<B1-Motion>",self.cb_main_frame_motion)
 
 	def show(self):
 		super().show()
@@ -165,6 +172,28 @@ class zynthian_gui_control(zynthian_gui_selector):
 			fg=zynthian_gui_config.color_ctrl_tx)
 		self.set_select_path()
 
+	def set_mode_xyselect(self, xctrl_i, yctrl_i):
+		self.mode='xyselect'
+		self.xyselect_axis='X'
+		self.set_xgui_controller(xctrl_i)
+		self.set_ygui_controller(yctrl_i)
+
+	def set_xgui_controller(self, xctrl_i):
+		try:
+			self.xgui_controller.reset_bg()
+		except:
+			pass
+		self.xgui_controller=self.zgui_controllers[xctrl_i]
+		self.xgui_controller.set_bg_hl("#90F090")
+
+	def set_ygui_controller(self, yctrl_i):
+		try:
+			self.ygui_controller.reset_bg()
+		except:
+			pass
+		self.xgui_controller=self.zgui_controllers[yctrl_i]
+		self.ygui_controller.set_bg_hl("#90F090")
+
 	def select_action(self, i):
 		self.set_mode_control()
 
@@ -186,10 +215,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 		#Get Mutex Lock
 		self.lock.acquire()
 		#Read Controller
-		if self.mode=='control' and self.zcontrollers:
+		if (self.mode=='control' or self.mode=='xyselect') and self.zcontrollers:
 			for i, ctrl in enumerate(self.zcontrollers):
 				#print('Read Control ' + str(self.zgui_controllers[i].title))
-				self.zgui_controllers[i].read_zyncoder()
+				if self.zgui_controllers[i].read_zyncoder() and self.mode=='xyselect':
+					if self.xyselect_axis=='X':
+						self.set_xgui_controller(i)
+						self.xyselect_axis='Y'
+					elif self.xyselect_axis=='Y':
+						self.set_ygui_controller(i)
+						self.xyselect_axis='X'
 		elif self.mode=='select':
 			super().zyncoder_read()
 		#Release Mutex Lock
@@ -236,7 +271,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.mode=='control':
 			self.zgui_controllers[i].zctrl.midi_unlearn()
 
-	def cb_listbox_release(self,event):
+	def cb_listbox_release(self, event):
 		if self.mode=='select':
 			super().cb_listbox_release(event)
 		else:
@@ -247,7 +282,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.click_listbox()
 				zynthian_gui_config.zyngui.stop_loading()
 
-	def cb_listbox_motion(self,event):
+	def cb_listbox_motion(self, event):
 		if self.mode=='select':
 			super().cb_listbox_motion(event)
 		else:
@@ -261,7 +296,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					zynthian_gui_config.zyngui.stop_loading()
 					sleep(0.04)
 
-	def cb_listbox_wheel(self,event):
+	def cb_listbox_wheel(self, event):
 		index = self.index
 		if (event.num == 5 or event.delta == -120) and self.index>0:
 			index -= 1
@@ -271,6 +306,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 			zynthian_gui_config.zyngui.start_loading()
 			self.select_listbox(index)
 			zynthian_gui_config.zyngui.stop_loading()
+
+	def cb_main_frame_motion(self, event):
+		zynthian_gui_config.zyngui.show_control_xy(self.xgui_controller, self.ygui_controller)
 
 	def set_select_path(self):
 		if zynthian_gui_config.zyngui.curlayer:
