@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_pianoteq)
-# 
+#
 # zynthian_engine implementation for Pianoteq6-Stage
-# 
+#
 # Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
 # 			  Holger Wirtz <holger@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import os
@@ -85,15 +85,16 @@ PIANOTEQ_VERSION=check_pianoteq_version()
 #PIANOTEQ_TRIAL=check_pianoteq_trial()
 PIANOTEQ_TRIAL=False
 
-PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + "/.config/Modartt/Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
-if PIANOTEQ_VERSION[1]==0:
-	PIANOTEQ_INTERNAL_SR=22050
-	PIANOTEQ_VOICES=32
-	PIANOTEQ_MULTICORE=1
-else:
-	PIANOTEQ_INTERNAL_SR=22050
-	PIANOTEQ_VOICES=32
-	PIANOTEQ_MULTICORE=2
+if PIANOTEQ_VERSION:
+	PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + "/.config/Modartt/Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
+	if PIANOTEQ_VERSION[1]==0:
+		PIANOTEQ_INTERNAL_SR=22050
+		PIANOTEQ_VOICES=32
+		PIANOTEQ_MULTICORE=1
+	else:
+		PIANOTEQ_INTERNAL_SR=22050
+		PIANOTEQ_VOICES=32
+		PIANOTEQ_MULTICORE=2
 
 #------------------------------------------------------------------------------
 # Piantoteq Engine Class
@@ -215,7 +216,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			self.ensure_dir("/root/.config/Modartt/")
 			pt_config_file = "Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
 			shutil.copy(os.getcwd() + "/data/pianoteq6/"+pt_config_file, "/root/.config/Modartt/")
-		
+
 		if not os.path.isfile("/root/.local/share/Modartt/Pianoteq/MidiMappings/Zynthian.ptm"):
 			logging.debug("Pianoteq MIDI-mapping does not exist. Creating one.")
 			self.ensure_dir("/root/.local/share/Modartt/Pianoteq/MidiMappings/")
@@ -285,7 +286,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			return False
 		#Write to file
 		self.ensure_dir(self.presets_cache_fpath)
-		try: 
+		try:
 			with open(self.presets_cache_fpath,"w") as fh:
 				fh.write(json)
 				fh.flush()
