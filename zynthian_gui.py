@@ -591,7 +591,7 @@ class zynthian_gui:
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 120, 0)
 
-	def all_sounds_off_123(self):
+	def all_notes_off(self):
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 123, 0)
 
