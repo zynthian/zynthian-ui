@@ -131,8 +131,8 @@ class zynthian_gui_control_xy():
 			self.canvas.coords(self.hline,0,self.y,self.width,self.y)
 
 	def refresh(self):
-		self.xvalue=int(self.x*self.xvalue_max/self.width)
-		self.yvalue=int(self.y*self.yvalue_max/self.height)
+		self.xvalue=self.x*self.xvalue_max/self.width
+		self.yvalue=self.y*self.yvalue_max/self.height
 		self.canvas.coords(self.hline,0,self.y,self.width,self.y)
 		self.canvas.coords(self.vline,self.x,0,self.x,self.height)
 		if self.x_zctrl is not None:
