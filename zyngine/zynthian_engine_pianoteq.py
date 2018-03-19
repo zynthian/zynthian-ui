@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_pianoteq)
-# 
+#
 # zynthian_engine implementation for Pianoteq6-Stage
-# 
+#
 # Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
 # 			  Holger Wirtz <holger@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import os
@@ -46,55 +46,28 @@ def check_pianoteq_binary():
 	else:
 		return False
 
-def check_pianoteq_version():
-	r = ()
-	if check_pianoteq_binary():
-		version_pattern = re.compile("^.+ version ([0-9]).([0-9]).*", re.IGNORECASE)
-		pianoteq = subprocess.Popen([PIANOTEQ_BINARY,"--version"], stdout=subprocess.PIPE)
-		for line in pianoteq.stdout:
-			l = line.rstrip().decode("utf-8")
-			m = version_pattern.match(l)
-			if m:
-				r = (m.group(1),)
-				r += (m.group(2),)
-				break
-	return r
-
-def check_pianoteq_trial():
-	if check_pianoteq_binary():
-		trial_pattern=re.compile(".+ trial .+",re.IGNORECASE)
-		pianoteq=subprocess.Popen([PIANOTEQ_BINARY,"--version"],stdout=subprocess.PIPE)
-		for line in pianoteq.stdout:
-			l=line.rstrip().decode("utf-8")
-			m=trial_pattern.match(l)
-			if m:
-				return True
-	return False
-
-
 #------------------------------------------------------------------------------
 # Pianoteq module constants & parameter configuration/initialization
 #------------------------------------------------------------------------------
 
-PIANOTEQ_SW_DIR = "/zynthian/zynthian-sw/pianoteq6"
+PIANOTEQ_SW_DIR = os.environ.get('ZYNTHIAN_SW_DIR',"/zynthian/zynthian-sw") + "/pianoteq6"
 PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/Pianoteq 6 STAGE"
 PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
 PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
 
-#PIANOTEQ_VERSION=check_pianoteq_version()
-PIANOTEQ_VERSION=(6, 0, 3)
-#PIANOTEQ_TRIAL=check_pianoteq_trial()
-PIANOTEQ_TRIAL=False
+PIANOTEQ_VERSION=list(map(int, os.environ.get('PIANOTEQ_VERSION',"6.0.3").split(".")))
+PIANOTEQ_TRIAL=int(os.environ.get('PIANOTEQ_TRIAL',"1"))
 
-PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + "/.config/Modartt/Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
-if PIANOTEQ_VERSION[1]==0:
-	PIANOTEQ_INTERNAL_SR=22050
-	PIANOTEQ_VOICES=32
-else:
-	#PIANOTEQ_INTERNAL_SR=11025
-	PIANOTEQ_INTERNAL_SR=22050
-	PIANOTEQ_VOICES=24
-
+if PIANOTEQ_VERSION:
+	PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + "/.config/Modartt/Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
+	if PIANOTEQ_VERSION[1]==0:
+		PIANOTEQ_INTERNAL_SR=22050
+		PIANOTEQ_VOICES=32
+		PIANOTEQ_MULTICORE=1
+	else:
+		PIANOTEQ_INTERNAL_SR=22050
+		PIANOTEQ_VOICES=32
+		PIANOTEQ_MULTICORE=2
 
 #------------------------------------------------------------------------------
 # Piantoteq Engine Class
@@ -187,13 +160,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.nickname="PT"
 		self.preset=""
 
-		if(self.config_remote_display()):
-			if(PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0):
+		if self.config_remote_display():
+			if PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0:
 				self.main_command=(PIANOTEQ_BINARY,"--midimapping","Zynthian")
 			else:
 				self.main_command=(PIANOTEQ_BINARY,"--multicore","max","--midimapping","Zynthian")
 		else:
-			if(PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0):
+			if PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0:
 				self.main_command=(PIANOTEQ_BINARY,"--headless","--midimapping","Zynthian")
 			else:
 				self.main_command=(PIANOTEQ_BINARY,"--multicore","max","--headless","--midimapping","Zynthian")
@@ -216,7 +189,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			self.ensure_dir("/root/.config/Modartt/")
 			pt_config_file = "Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
 			shutil.copy(os.getcwd() + "/data/pianoteq6/"+pt_config_file, "/root/.config/Modartt/")
-		
+
 		if not os.path.isfile("/root/.local/share/Modartt/Pianoteq/MidiMappings/Zynthian.ptm"):
 			logging.debug("Pianoteq MIDI-mapping does not exist. Creating one.")
 			self.ensure_dir("/root/.local/share/Modartt/Pianoteq/MidiMappings/")
@@ -286,7 +259,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			return False
 		#Write to file
 		self.ensure_dir(self.presets_cache_fpath)
-		try: 
+		try:
 			with open(self.presets_cache_fpath,"w") as fh:
 				fh.write(json)
 				fh.flush()
@@ -363,6 +336,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 						xml_value.set('val',str(PIANOTEQ_INTERNAL_SR))
 					if(xml_value.attrib['name']=='voices'):
 						xml_value.set('val',str(PIANOTEQ_VOICES))
+					if(xml_value.attrib['name']=='multicore'):
+						xml_value.set('val',str(PIANOTEQ_MULTICORE))
 
 				if(root.find('DEVICESETUP')):
 					logging.debug("Fixing devicesetup node")
