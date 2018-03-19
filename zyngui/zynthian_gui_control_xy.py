@@ -52,7 +52,7 @@ class zynthian_gui_control_xy():
 		self.padx=24
 		self.width=zynthian_gui_config.display_width-2*self.padx
 		self.x=self.width/2
-		self.xgui_controller=None
+		self.x_zctrl=None
 		self.xvalue_max=127
 		self.xvalue=64
 
@@ -60,7 +60,7 @@ class zynthian_gui_control_xy():
 		self.pady=18
 		self.height=zynthian_gui_config.display_height-2*self.pady
 		self.y=self.height/2
-		self.ygui_controller=None
+		self.y_zctrl=None
 		self.yvalue_max=127
 		self.yvalue=64
 
@@ -101,30 +101,30 @@ class zynthian_gui_control_xy():
 			self.shown=False
 			self.main_frame.grid_forget()
 
-	def set_controllers(self, xctrl, yctrl):
-		self.xgui_controller=xctrl
-		self.ygui_controller=yctrl
-		self.xvalue_max=self.xgui_controller.max_value
-		self.yvalue_max=self.ygui_controller.max_value
+	def set_controllers(self, x_zctrl, y_zctrl):
+		self.x_zctrl=x_zctrl
+		self.y_zctrl=y_zctrl
+		self.xvalue_max=self.x_zctrl.value_max
+		self.yvalue_max=self.y_zctrl.value_max
 		self.get_controller_values()
 
-	def set_x_controller(self, xctrl):
-		self.xgui_controller=xctrl
-		self.xvalue_max=self.xgui_controller.max_value
+	def set_x_controller(self, x_zctrl):
+		self.x_zctrl=x_zctrl
+		self.xvalue_max=self.x_zctrl.value_max
 		self.get_controller_values()
 
-	def set_y_controller(self, yctrl):
-		self.ygui_controller=yctrl
-		self.yvalue_max=self.xgui_controller.max_value
+	def set_y_controller(self, y_zctrl):
+		self.y_zctrl=y_zctrl
+		self.yvalue_max=self.y_zctrl.value_max
 		self.get_controller_values()
 
 	def get_controller_values(self):
-		xv=self.xgui_controller.value
+		xv=self.x_zctrl.value
 		if xv!=self.xvalue:
 			self.xvalue=xv
 			self.x=int(self.xvalue*zynthian_gui_config.display_width/self.xvalue_max)
 			self.canvas.coords(self.vline,self.x,0,self.x,self.height)
-		yv=self.ygui_controller.value
+		yv=self.y_zctrl.value
 		if yv!=self.yvalue:
 			self.yvalue=yv
 			self.y=int(self.yvalue*zynthian_gui_config.display_height/self.yvalue_max)
@@ -135,10 +135,10 @@ class zynthian_gui_control_xy():
 		self.yvalue=int(self.y*self.yvalue_max/self.height)
 		self.canvas.coords(self.hline,0,self.y,self.width,self.y)
 		self.canvas.coords(self.vline,self.x,0,self.x,self.height)
-		if self.xgui_controller is not None:
-			self.xgui_controller.set_value(self.xvalue,True)
-		if self.ygui_controller is not None:
-			self.ygui_controller.set_value(self.yvalue,True)
+		if self.x_zctrl is not None:
+			self.x_zctrl.set_value(self.xvalue,True)
+		if self.y_zctrl is not None:
+			self.y_zctrl.set_value(self.yvalue,True)
 
 	def cb_canvas(self, event):
 		#logging.debug("XY controller => %s, %s" % (event.x, event.y))

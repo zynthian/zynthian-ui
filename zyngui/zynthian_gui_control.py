@@ -60,9 +60,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 	zgui_controllers_map={}
 
 	# xyselect mode vars
-	xgui_controller=None
-	ygui_controller=None
+	xyselect_mode=False
 	xyselect_axis='X'
+	x_zctrl=None
+	y_zctrl=None
 
 	def __init__(self):
 		super().__init__('Controllers',False)
@@ -76,8 +77,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 			highlightthickness=0,
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
-		#Add mouse event to main_frame for detecting XY control activation in mode xyselect
-		self.main_frame.bind("<B1-Motion>",self.cb_main_frame_motion)
 
 	def show(self):
 		super().show()
@@ -133,6 +132,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 		else:
 			for zgui_controller in self.zgui_controllers:
 				zgui_controller.hide()
+		#Set/Restore XY controllers highlight
+		self.set_xyselect_controllers()
 		#Release Mutex Lock
 		self.lock.release()
 
@@ -143,6 +144,14 @@ class zynthian_gui_control(zynthian_gui_selector):
 		else:
 			self.zgui_controllers.append(zynthian_gui_controller(i,self.main_frame,ctrl))
 		self.zgui_controllers_map[ctrl]=self.zgui_controllers[i]
+
+	def set_xyselect_controllers(self):
+		for i in range(0,4):
+			zctrl=self.zgui_controllers[i].zctrl
+			if self.xyselect_mode and (zctrl.symbol==self.x_zctrl.symbol or zctrl.symbol==self.y_zctrl.symbol):
+				self.zgui_controllers[i].set_hl()
+			else:
+				self.zgui_controllers[i].unset_hl()
 
 	def set_mode_select(self):
 		self.mode='select'
@@ -172,27 +181,34 @@ class zynthian_gui_control(zynthian_gui_selector):
 			fg=zynthian_gui_config.color_ctrl_tx)
 		self.set_select_path()
 
-	def set_mode_xyselect(self, xctrl_i, yctrl_i):
-		self.mode='xyselect'
+	def set_xyselect_mode(self, xctrl_i, yctrl_i):
+		self.xyselect_mode=True
 		self.xyselect_axis='X'
-		self.set_xgui_controller(xctrl_i)
-		self.set_ygui_controller(yctrl_i)
+		self.x_zctrl=self.zgui_controllers[xctrl_i].zctrl
+		self.y_zctrl=self.zgui_controllers[yctrl_i].zctrl
+		#Set XY controllers highlight
+		self.set_xyselect_controllers()
+		
+	def unset_xyselect_mode(self):
+		self.xyselect_mode=False
+		#Set XY controllers highlight
+		self.set_xyselect_controllers()
 
-	def set_xgui_controller(self, xctrl_i):
-		try:
-			self.xgui_controller.reset_bg()
-		except:
-			pass
-		self.xgui_controller=self.zgui_controllers[xctrl_i]
-		self.xgui_controller.set_bg_hl("#90F090")
+	def set_xyselect_x(self, xctrl_i):
+		zctrl=self.zgui_controllers[xctrl_i].zctrl
+		if self.x_zctrl!=zctrl and self.y_zctrl!=zctrl:
+			self.x_zctrl=zctrl
+			#Set XY controllers highlight
+			self.set_xyselect_controllers()
+			return True
 
-	def set_ygui_controller(self, yctrl_i):
-		try:
-			self.ygui_controller.reset_bg()
-		except:
-			pass
-		self.xgui_controller=self.zgui_controllers[yctrl_i]
-		self.ygui_controller.set_bg_hl("#90F090")
+	def set_xyselect_y(self, yctrl_i):
+		zctrl=self.zgui_controllers[yctrl_i].zctrl
+		if self.y_zctrl!=zctrl and self.x_zctrl!=zctrl:
+			self.y_zctrl=zctrl
+			#Set XY controllers highlight
+			self.set_xyselect_controllers()
+			return True
 
 	def select_action(self, i):
 		self.set_mode_control()
@@ -218,12 +234,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if (self.mode=='control' or self.mode=='xyselect') and self.zcontrollers:
 			for i, ctrl in enumerate(self.zcontrollers):
 				#print('Read Control ' + str(self.zgui_controllers[i].title))
-				if self.zgui_controllers[i].read_zyncoder() and self.mode=='xyselect':
-					if self.xyselect_axis=='X':
-						self.set_xgui_controller(i)
+				if self.zgui_controllers[i].read_zyncoder() and self.xyselect_mode:
+					if self.xyselect_axis=='X' and self.set_xyselect_x(i):
 						self.xyselect_axis='Y'
-					elif self.xyselect_axis=='Y':
-						self.set_ygui_controller(i)
+					elif self.xyselect_axis=='Y' and self.set_xyselect_y(i):
 						self.xyselect_axis='X'
 		elif self.mode=='select':
 			super().zyncoder_read()
@@ -271,7 +285,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.mode=='control':
 			self.zgui_controllers[i].zctrl.midi_unlearn()
 
+	def cb_listbox_push(self,event):
+		if self.xyselect_mode:
+			logging.debug("XY-Controller Mode ...")
+			zynthian_gui_config.zyngui.show_control_xy(self.x_zctrl, self.y_zctrl)
+		else:
+			super().cb_listbox_push(event)
+
 	def cb_listbox_release(self, event):
+		if self.xyselect_mode:
+			return
 		if self.mode=='select':
 			super().cb_listbox_release(event)
 		else:
@@ -306,9 +329,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 			zynthian_gui_config.zyngui.start_loading()
 			self.select_listbox(index)
 			zynthian_gui_config.zyngui.stop_loading()
-
-	def cb_main_frame_motion(self, event):
-		zynthian_gui_config.zyngui.show_control_xy(self.xgui_controller, self.ygui_controller)
 
 	def set_select_path(self):
 		if zynthian_gui_config.zyngui.curlayer:

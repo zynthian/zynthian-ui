@@ -70,8 +70,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		#Add fixed entries
 		self.list_data.append(('NEW',len(self.list_data),"New Layer"))
 		self.list_data.append(('RESET',len(self.list_data),"Remove All"))
-		self.list_data.append(('ALL_NOTES_OFF',len(self.list_data),"All Notes Off (PANIC!)"))
-		self.list_data.append(('ALL_SOUNDS_OFF',len(self.list_data),"All Sounds Off (PANIC!!!!)"))
+		self.list_data.append(('ALL_NOTES_OFF',len(self.list_data),"All Notes Off: PANIC!"))
+		self.list_data.append(('ALL_SOUNDS_OFF',len(self.list_data),"All Sounds Off: PANIC!!!"))
 		super().fill_list()
 
 	def select_action(self, i):
@@ -81,9 +81,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		elif self.list_data[self.index][0]=='RESET':
 			self.reset()
 		elif self.list_data[self.index][0]=='ALL_NOTES_OFF':
-			zynthian_config.zyngui.all_notes_off()
+			zynthian_gui_config.zyngui.all_notes_off()
 		elif self.list_data[self.index][0]=='ALL_SOUNDS_OFF':
-			zynthian_config.zyngui.all_sounds_off()
+			zynthian_gui_config.zyngui.all_sounds_off()
 		else:
 			self.curlayer=self.layers[self.index]
 			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)

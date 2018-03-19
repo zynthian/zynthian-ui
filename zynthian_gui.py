@@ -340,6 +340,11 @@ class zynthian_gui:
 						self.screens['admin'].kill_command()
 					screen_back=self.active_screen
 					logging.debug("CLOSE MODAL => " + self.modal_screen)
+				# If control xyselect mode active
+				elif self.active_screen=='control' and self.screens['control'].xyselect_mode:
+					screen_back='control'
+					self.screens['control'].unset_xyselect_mode()
+					logging.debug("DISABLE XYSELECT MODE")
 				# Else, go back to screen-1
 				else:
 					j=self.screens_sequence.index(self.active_screen)-1
@@ -361,7 +366,7 @@ class zynthian_gui:
 		elif i==3:
 			if self.modal_screen:
 				self.screens[self.modal_screen].switch_select()
-			elif self.active_screen=='control' and self.screens['control'].mode=='control':
+			elif self.active_screen=='control' and self.screens['control'].mode in ('control','xyselect'):
 				self.screens['control'].next()
 				logging.info("Next Control Screen")
 			else:
@@ -377,7 +382,8 @@ class zynthian_gui:
 				dswstr=str(i)+'+'+str(j)
 				logging.info('Double Switch '+dswstr)
 				#self.show_control_xy(i,j)
-				self.screens['control'].set_mode_xyselect(i,j):
+				self.show_screen('control')
+				self.screens['control'].set_xyselect_mode(i,j)
 				self.stop_loading()
 				return True
 
