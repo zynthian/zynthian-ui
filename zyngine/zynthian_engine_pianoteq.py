@@ -46,36 +46,11 @@ def check_pianoteq_binary():
 	else:
 		return False
 
-def check_pianoteq_version():
-	r = ()
-	if check_pianoteq_binary():
-		version_pattern = re.compile("^.+ version ([0-9]).([0-9]).*", re.IGNORECASE)
-		pianoteq = subprocess.Popen([PIANOTEQ_BINARY,"--version"], stdout=subprocess.PIPE)
-		for line in pianoteq.stdout:
-			l = line.rstrip().decode("utf-8")
-			m = version_pattern.match(l)
-			if m:
-				r = (m.group(1),)
-				r += (m.group(2),)
-	return r
-
-def check_pianoteq_trial():
-	if check_pianoteq_binary():
-		trial_pattern=re.compile(".+ trial .+",re.IGNORECASE)
-		pianoteq=subprocess.Popen([PIANOTEQ_BINARY,"--version"],stdout=subprocess.PIPE)
-		for line in pianoteq.stdout:
-			l=line.rstrip().decode("utf-8")
-			m=trial_pattern.match(l)
-			if m:
-				return True
-	return False
-
-
 #------------------------------------------------------------------------------
 # Pianoteq module constants & parameter configuration/initialization
 #------------------------------------------------------------------------------
 
-PIANOTEQ_SW_DIR = "/zynthian/zynthian-sw/pianoteq6"
+PIANOTEQ_SW_DIR = os.environ.get('ZYNTHIAN_SW_DIR',"/zynthian/zynthian-sw") + "/pianoteq6"
 PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/Pianoteq 6 STAGE"
 PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
 PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
