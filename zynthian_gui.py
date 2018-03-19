@@ -230,7 +230,7 @@ class zynthian_gui:
 		self.hide_screens(exclude='control_xy')
 		self.active_screen='control'
 		self.screens['control'].set_mode_control()
-		logging.debug("SHOW CONTROL-XY => %d, %d" % (xctrl, yctrl))
+		logging.debug("SHOW CONTROL-XY => %s, %s" % (xctrl.symbol, yctrl.symbol))
 
 	def set_curlayer(self, layer):
 		self.start_loading()

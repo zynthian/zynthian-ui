@@ -148,7 +148,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def set_xyselect_controllers(self):
 		for i in range(0,4):
 			zctrl=self.zgui_controllers[i].zctrl
-			if self.xyselect_mode and (zctrl.symbol==self.x_zctrl.symbol or zctrl.symbol==self.y_zctrl.symbol):
+			#if self.xyselect_mode and (zctrl.symbol==self.x_zctrl.symbol or zctrl.symbol==self.y_zctrl.symbol):
+			if self.xyselect_mode and (zctrl==self.x_zctrl or zctrl==self.y_zctrl):
 				self.zgui_controllers[i].set_hl()
 			else:
 				self.zgui_controllers[i].unset_hl()
@@ -231,7 +232,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		#Get Mutex Lock
 		self.lock.acquire()
 		#Read Controller
-		if (self.mode=='control' or self.mode=='xyselect') and self.zcontrollers:
+		if self.mode=='control' and self.zcontrollers:
 			for i, ctrl in enumerate(self.zcontrollers):
 				#print('Read Control ' + str(self.zgui_controllers[i].title))
 				if self.zgui_controllers[i].read_zyncoder() and self.xyselect_mode:
@@ -306,6 +307,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 				zynthian_gui_config.zyngui.stop_loading()
 
 	def cb_listbox_motion(self, event):
+		if self.xyselect_mode:
+			return
 		if self.mode=='select':
 			super().cb_listbox_motion(event)
 		else:
