@@ -61,7 +61,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	# xyselect mode vars
 	xyselect_mode=False
-	xyselect_axis='X'
 	x_zctrl=None
 	y_zctrl=None
 
@@ -187,7 +186,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_xyselect_mode(self, xctrl_i, yctrl_i):
 		self.xyselect_mode=True
-		self.xyselect_axis='X'
+		self.xyselect_zread_axis='X'
+		self.xyselect_zread_counter=0
+		self.xyselect_zread_last_zctrl=None
 		self.x_zctrl=self.zgui_controllers[xctrl_i].zctrl
 		self.y_zctrl=self.zgui_controllers[yctrl_i].zctrl
 		#Set XY controllers highlight
@@ -236,17 +237,31 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.lock.acquire()
 		#Read Controller
 		if self.mode=='control' and self.zcontrollers:
-			for i, ctrl in enumerate(self.zcontrollers):
+			for i, zctrl in enumerate(self.zcontrollers):
 				#print('Read Control ' + str(self.zgui_controllers[i].title))
 				if self.zgui_controllers[i].read_zyncoder() and self.xyselect_mode:
-					if self.xyselect_axis=='X' and self.set_xyselect_x(i):
-						self.xyselect_axis='Y'
-					elif self.xyselect_axis=='Y' and self.set_xyselect_y(i):
-						self.xyselect_axis='X'
+					self.zyncoder_read_xyselect(zctrl, i)
 		elif self.mode=='select':
 			super().zyncoder_read()
 		#Release Mutex Lock
 		self.lock.release()
+
+	def zyncoder_read_xyselect(self, zctrl, i):
+		#Detect a serie of changes in the same controller
+		if zctrl==self.xyselect_zread_last_zctrl:
+			self.xyselect_zread_counter+=1
+		else:
+			self.xyselect_zread_last_zctrl=zctrl
+			self.xyselect_zread_counter=0
+
+		#If the change counter is major of ...
+		if self.xyselect_zread_counter>5:
+			if self.xyselect_zread_axis=='X' and self.set_xyselect_x(i):
+				self.xyselect_zread_axis='Y'
+				self.xyselect_zread_counter=0
+			elif self.xyselect_zread_axis=='Y' and self.set_xyselect_y(i):
+				self.xyselect_zread_axis='X'
+				self.xyselect_zread_counter=0
 
 	def get_zgui_controller(self, zctrl):
 		for zgui_controller in self.zgui_controllers:
