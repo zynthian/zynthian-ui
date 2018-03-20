@@ -145,16 +145,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.zgui_controllers_map[ctrl]=self.zgui_controllers[i]
 
 	def set_xyselect_controllers(self):
-		for i in range(0,4):
-			zctrl=self.zgui_controllers[i].zctrl
-			if self.xyselect_mode:
-				try:
+		for i in range(0,len(self.zgui_controllers)):
+			try:
+				if self.xyselect_mode:
+					zctrl=self.zgui_controllers[i].zctrl
 					if zctrl==self.x_zctrl or zctrl==self.y_zctrl:
 						self.zgui_controllers[i].set_hl()
 						continue
-				except:
-					pass
-			self.zgui_controllers[i].unset_hl()
+				self.zgui_controllers[i].unset_hl()
+			except:
+				pass
 
 	def set_mode_select(self):
 		self.mode='select'
