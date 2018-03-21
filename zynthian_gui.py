@@ -296,7 +296,9 @@ class zynthian_gui:
 		logging.info('Bold Switch '+str(i))
 		self.start_loading()
 		if i==0:
-			if self.active_screen!='layer':
+			if self.active_screen=='layer':
+				self.all_sounds_off()
+			else:
 				self.show_screen('layer')
 		elif i==1:
 			if self.active_screen=='preset':
@@ -327,6 +329,8 @@ class zynthian_gui:
 					self.show_screen('control')
 				else:
 					self.show_screen('layer')
+			elif self.active_screen=='layer':
+				self.all_notes_off()
 			else:
 				self.zynswitch_bold(i)
 		elif i==1:
@@ -594,10 +598,12 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def all_sounds_off(self):
+		logging.debug("All Sounds Off!")
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 120, 0)
 
 	def all_notes_off(self):
+		logging.debug("All Notes Off!")
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 123, 0)
 
