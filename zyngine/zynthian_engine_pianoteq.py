@@ -46,6 +46,25 @@ def check_pianoteq_binary():
 	else:
 		return False
 
+def get_pianoteq_binary_info():
+	if check_pianoteq_binary():
+		# Get version and trial info from pianoteq binary
+		version_pattern = re.compile(" version ([0-9]+\.[0-9]+\.[0-9]+)", re.IGNORECASE)
+		trial_pattern = re.compile(" trial ",re.IGNORECASE)
+		pianoteq=subprocess.Popen([PIANOTEQ_BINARY,"--version"],stdout=subprocess.PIPE)
+		for line in pianoteq.stdout:
+			l=line.rstrip().decode("utf-8")
+			m = version_pattern.match(l)
+			if m:
+				res={}
+				res['version'] = m.group(1)
+				m=trial_pattern.match(l)
+				if m:
+					res['trial'] = 1
+				else:
+					res['trial'] = 0
+				return res
+
 #------------------------------------------------------------------------------
 # Pianoteq module constants & parameter configuration/initialization
 #------------------------------------------------------------------------------
