@@ -54,7 +54,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		eng=engine.nickname
 		if eng in ['ZY','LS','FS']:
 			self.list_data.append((self.midi_chan,0,"MIDI Chan"))
-		if eng in ['ZY','LS','FS','BF']:
+		if eng in ['ZY','LS','FS','BF','PT']:
 			self.list_data.append((self.transpose,0,"Transpose"))
 			if zynautoconnect.is_monitored_engine(engine.name):
 				self.list_data.append((self.monitor,0,"Audio => OUT"))

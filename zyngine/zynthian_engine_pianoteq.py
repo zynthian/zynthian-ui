@@ -127,6 +127,7 @@ except:
 	PIANOTEQ_VERSION=(6,0,3)
 
 PIANOTEQ_TRIAL=int(os.environ.get('PIANOTEQ_TRIAL',"1"))
+PIANOTEQ_NAME="Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1])
 
 if PIANOTEQ_VERSION:
 	PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + "/.config/Modartt/Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
@@ -226,7 +227,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	def __init__(self, zyngui=None, update_presets_cache=False):
 		super().__init__(zyngui)
-		self.name="Pianoteq6-Stage"
+		self.name=PIANOTEQ_NAME
 		self.nickname="PT"
 		self.preset=""
 

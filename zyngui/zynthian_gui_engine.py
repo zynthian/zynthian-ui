@@ -59,9 +59,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	if check_pianoteq_binary():
 		if PIANOTEQ_TRIAL:
-			engine_info['PT']=("Pianoteq6-Demo","Pianoteq6 Stage - Demo")
+			engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq Stage - Demo")
 		else:
-			engine_info['PT']=("Pianoteq6","Pianoteq6 Stage")
+			engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq Stage")
 
 	engine_info['MD']=("MOD-UI","MOD-UI - Plugin Host")
 
