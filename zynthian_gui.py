@@ -415,7 +415,7 @@ class zynthian_gui:
 			elif event[0]=='B':
 				self.zynswitch_bold(event[1])
 			elif event[0]=='L':
-				self.zynswitch_long([1])
+				self.zynswitch_long(event[1])
 			elif event[0]=='X':
 				self.zynswitch_X(event[1])
 			elif event[0]=='Y':
