@@ -55,13 +55,15 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		["FS", ("FluidSynth","FluidSynth - Sampler")],
 		["LS", ("LinuxSampler","LinuxSampler - Sampler")],
 		["BF", ("setBfree","setBfree - Hammond Emulator")],
-		["MD", ("MOD-UI","MOD-UI - Plugin Host")]
 	])
+
 	if check_pianoteq_binary():
 		if PIANOTEQ_TRIAL:
-			engine_info['PT']=("Pianoteq6-Demo","Pianoteq6-Stage-Demo")
+			engine_info['PT']=("Pianoteq6-Demo","Pianoteq6 Stage - Demo")
 		else:
-			engine_info['PT']=("Pianoteq6","Pianoteq6-Stage")
+			engine_info['PT']=("Pianoteq6","Pianoteq6 Stage")
+
+	engine_info['MD']=("MOD-UI","MOD-UI - Plugin Host")
 
 	def __init__(self):
 		self.zyngines={}
