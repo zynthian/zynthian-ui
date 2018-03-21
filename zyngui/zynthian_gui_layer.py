@@ -139,6 +139,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if len(self.layers)==0:
 				self.index=0
 				self.curlayer=None
+				zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
 			elif self.index>(len(self.layers)-1):
 				self.index=len(self.layers)-1
 				self.curlayer=self.layers[self.index]
