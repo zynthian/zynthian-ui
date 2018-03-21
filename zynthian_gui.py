@@ -298,6 +298,7 @@ class zynthian_gui:
 		if i==0:
 			if self.active_screen=='layer':
 				self.all_sounds_off()
+				self.show_screen('control')
 			else:
 				self.show_screen('layer')
 		elif i==1:
@@ -331,6 +332,7 @@ class zynthian_gui:
 					self.show_screen('layer')
 			elif self.active_screen=='layer':
 				self.all_notes_off()
+				self.show_screen('control')
 			else:
 				self.zynswitch_bold(i)
 		elif i==1:
