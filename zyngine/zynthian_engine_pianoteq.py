@@ -54,11 +54,11 @@ def get_pianoteq_binary_info():
 		pianoteq=subprocess.Popen([PIANOTEQ_BINARY,"--version"],stdout=subprocess.PIPE)
 		for line in pianoteq.stdout:
 			l=line.rstrip().decode("utf-8")
-			m = version_pattern.match(l)
+			m = version_pattern.search(l)
 			if m:
 				res={}
 				res['version'] = m.group(1)
-				m=trial_pattern.match(l)
+				m=trial_pattern.search(l)
 				if m:
 					res['trial'] = 1
 				else:
