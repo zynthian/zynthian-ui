@@ -59,8 +59,8 @@ def get_pianoteq_binary_info():
 		res=None
 		version_pattern = re.compile(" version ([0-9]+\.[0-9]+\.[0-9]+)", re.IGNORECASE)
 		trial_pattern = re.compile(" trial ",re.IGNORECASE)
-		pianoteq=subprocess.Popen([PIANOTEQ_BINARY,"--version"],stdout=subprocess.PIPE)
-		for line in pianoteq.stdout:
+		proc=subprocess.Popen([PIANOTEQ_BINARY,"--version"],stdout=subprocess.PIPE)
+		for line in proc.stdout:
 			l=line.rstrip().decode("utf-8")
 			m = version_pattern.search(l)
 			if m:
