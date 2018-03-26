@@ -289,7 +289,7 @@ class zynthian_engine:
 			dp=dpd[1]
 			dn=dpd[0]
 			for f in sorted(os.listdir(dp)):
-				if (isfile(join(dp,f)) and f[-xlen:].lower()==fext):
+				if not f.startswith('.') and isfile(join(dp,f)) and f[-xlen:].lower()==fext:
 					title=str.replace(f[:-xlen], '_', ' ')
 					if dn!='_': title=dn+'/'+title
 					#print("filelist => "+title)
@@ -307,7 +307,7 @@ class zynthian_engine:
 			dp=dpd[1]
 			dn=dpd[0]
 			for f in sorted(os.listdir(dp)):
-				if isdir(join(dp,f)):
+				if not f.startswith('.') and isdir(join(dp,f)):
 					title,ext=os.path.splitext(f)
 					title=str.replace(title, '_', ' ')
 					if dn!='_': title=dn+'/'+title
