@@ -41,34 +41,42 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	# MIDI Controllers
 	_ctrls=[
-		['volume',7,96],
+		['volume',7,96,127],
 #		['swellpedal 2',11,96],
-#		['rotary speed',91,64,127,'rotaryspeed'],
-		['rotary speed',91,'off','slow|off|fast','rotaryspeed'],
-#		['rotary speed',91,'off',[['slow','off','fast'],[0,43,86]],'rotaryspeed'],
-#		['rotary select',65,0,127],
-#		['rotary select',65,'off/off','off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
-		['rotary select',65,'off/off',[['off/off','slow/off','fast/off','off/slow','slow/slow','fast/slow','off/fast','slow/fast','fast/fast'],[0,15,30,45,60,75,90,105,120]]],
-#		['rotary toggle',64,0],
-#		['16',70,0,127,'drawbar_1'],
-		['16',70,'8',drawbar_values,'drawbar_1'],
-		['5 1/3',71,'8',drawbar_values,'drawbar_2'],
-		['8',72,'8',drawbar_values,'drawbar_3'],
-		['4',73,'0',drawbar_values,'drawbar_4'],
-		['2 2/3',74,'0',drawbar_values,'drawbar_5'],
-		['2',75,'0',drawbar_values,'drawbar_6'],
-		['1 3/5',76,'0',drawbar_values,'drawbar_7'],
-		['1 1/3',77,'0',drawbar_values,'drawbar_8'],
-		#['1',78,'8',drawbar_values,'drawbar_9'],
-		['drawbar 1',78,'0',drawbar_values,'drawbar_9'],
-		['reverb mix',99,4],
-		['vibrato on/off',92,'off','off|on','vibratoupper'],
-		['vibrato selector',83,'c3','v1|v2|v3|c1|c2|c3','vibrato'],
-		['percussion on/off',80,'off','off|on','perc'],
-		#['percussion.volume',xx,90,127,'percvol'],
-		['percussion decay',81,'slow','slow|fast','percspeed'],
-		['percussion harmonic',82,'3rd','2nd|3rd','percharm'],
-		['overdrive on/off',23,'off','off|on','overdrive'],
+		['reverb',91,4,127,'reverbmix'],
+		['convol. mix',94,64,127],
+
+		['rotary toggle',64,'off','off|on'],
+#		['rotary speed',1,64,127,'rotaryspeed'],
+		['rotary speed',1,'off','slow|off|fast','rotaryspeed'],
+#		['rotary speed',1,'off',[['slow','off','fast'],[0,43,86]],'rotaryspeed'],
+#		['rotary select',67,0,127],
+#		['rotary select',67,'off/off','off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
+		['rotary select',67,'off/off',[['off/off','slow/off','fast/off','off/slow','slow/slow','fast/slow','off/fast','slow/fast','fast/fast'],[0,15,30,45,60,75,90,105,120]]],
+
+		['DB 16',70,'8',drawbar_values,'drawbar_1'],
+		['DB 5 1/3',71,'8',drawbar_values,'drawbar_2'],
+		['DB 8',72,'8',drawbar_values,'drawbar_3'],
+		['DB 4',73,'0',drawbar_values,'drawbar_4'],
+		['DB 2 2/3',74,'0',drawbar_values,'drawbar_5'],
+		['DB 2',75,'0',drawbar_values,'drawbar_6'],
+		['DB 1 3/5',76,'0',drawbar_values,'drawbar_7'],
+		['DB 1 1/3',77,'0',drawbar_values,'drawbar_8'],
+		['DB 1',78,'0',drawbar_values,'drawbar_9'],
+
+		['vibrato upper',31,'off','off|on','vibratoupper'],
+		['vibrato lower',30,'off','off|on','vibratolower'],
+		['vibrato routing',95,'off','off|lower|upper|both',],
+		#['vibrato selector',92,'c3','v1|v2|v3|c1|c2|c3','vibrato'],
+		['vibrato selector',92,'c3',[['v1','v2','v3','c1','c2','c3'],[0,23,46,69,92,115]]],
+
+		#['percussion',66,'off','off|on','perc'],
+		['percussion',80,'off','off|on','perc'],
+		['percussion volume',81,'soft','soft|hard','percvol'],
+		['percussion decay',82,'slow','slow|fast','percspeed'],
+		['percussion harmonic',83,'3rd','2nd|3rd','percharm'],
+
+		['overdrive',65,'off','off|on','overdrive'],
 		['overdrive character',93,64,127,'overdrive_char'],
 		['overdrive inputgain',21,64,127,'overdrive_igain'],
 		['overdrive outputgain',22,64,127,'overdrive_ogain']
@@ -76,13 +84,14 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	# Controller Screens
 	_ctrl_screens=[
-		['main',['volume','percussion on/off','rotary speed','rotary select']],
-#		['main',['volume','rotary toggle','rotary speed','rotary select']],
-		['drawbars low',['16','5 1/3','8','4']],
-		['drawbars hi',['2 2/3','2','1 3/5','1 1/3']],
-		['reverb & vibrato',['drawbar 1','reverb mix','vibrato on/off','vibrato selector']],
-		['percussion',['volume','percussion on/off','percussion decay','percussion harmonic']],
-		['overdrive',['overdrive on/off','overdrive character','overdrive inputgain','overdrive outputgain']]
+		['main',['volume','percussion','rotary speed','reverb']],
+		['drawbars low',['volume','DB 16','DB 5 1/3','DB 8']],
+		['drawbars medium',['volume','DB 4','DB 2 2/3','DB 2']],
+		['drawbars high',['volume','DB 1 3/5','DB 1 1/3','DB 1']],
+		['rotary',['rotary toggle','rotary select','rotary speed','convol. mix']],
+		['vibrato',['vibrato upper','vibrato lower','vibrato routing','vibrato selector']],
+		['percussion',['percussion','percussion decay','percussion harmonic','percussion volume']],
+		['overdrive',['overdrive','overdrive character','overdrive inputgain','overdrive outputgain']]
 	]
 
 	#----------------------------------------------------------------------------
