@@ -95,17 +95,23 @@ def get_port_alias_id(midi_port):
 def midi_autoconnect():
 	logger.info("Autoconnecting Midi ...")
 
-	#Get Physical MIDI-IN devices ...
+	#Get Physical MIDI-IN (MIDI-USB) devices ...
 	hw_out=jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
 	if len(hw_out)==0:
 		hw_out=[]
-	#Add MIDI-IN (ttymidi) device ...
+	#Add Physical MIDI-IN (ttymidi) device ...
 	ttymidi_out=jclient.get_ports("ttymidi", is_output=True, is_physical=False, is_midi=True)
 	try:
 		hw_out.append(ttymidi_out[0])
 	except:
 		pass
-	#Add aubio device ...
+	#Add Network MIDI-IN (qmidinet) device ...
+	qmidinet_out=jclient.get_ports("QmidiNet", is_output=True, is_physical=False, is_midi=True)
+	try:
+		hw_out.append(qmidinet_out[0])
+	except:
+		pass
+	#Add Aubio device ...
 	if zynthian_aubionotes:
 		aubio_out=jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
@@ -175,16 +181,22 @@ def midi_autoconnect():
 			except:
 				pass
 
-
-		#Get Physical MIDI-IN devices ...
+		#Get Physical MIDI-OUT (MIDI-USB) devices ...
 		hw_in=jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
 		if len(hw_in)==0:
 			hw_in=[]
 
-		#Add MIDI-OUT (ttymidi) device ...
+		#Add Physical MIDI-OUT (ttymidi) device ...
 		ttymidi_in=jclient.get_ports("ttymidi", is_input=True, is_physical=False, is_midi=True)
 		try:
 			hw_in.append(ttymidi_in[0])
+		except:
+			pass
+
+		#Add Network MIDI-OUT (qmidinet) device ...
+		qmidinet_in=jclient.get_ports("QmidiNet", is_input=True, is_physical=False, is_midi=True)
+		try:
+			hw_in.append(qmidinet_in[0])
 		except:
 			pass
 
