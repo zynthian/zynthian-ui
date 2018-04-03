@@ -87,7 +87,7 @@ def get_port_alias_id(midi_port):
 	try:
 		alias_id='_'.join(midi_port.aliases[0].split('-')[5:])
 	except:
-		alias_id=midi_port.shortname
+		alias_id=midi_port.name
 	return alias_id
 
 #------------------------------------------------------------------------------
