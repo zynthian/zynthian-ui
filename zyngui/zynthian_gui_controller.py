@@ -145,11 +145,11 @@ class zynthian_gui_controller:
 						valplot=self.scale_plot*(self.max_value+self.step-self.ticks[i])
 					else:
 						for i in range(self.n_values-1):
-							if self.value<=self.ticks[i+1]:
+							if self.value<self.ticks[i+1]:
 								valplot=self.scale_plot*self.ticks[i]
 								break
-						if valplot is None:
-							i=i+1
+						if valplot==None:
+							i+=1
 							valplot=self.scale_plot*self.ticks[i]
 				else:
 					i=int(self.n_values*self.value/(self.max_value+self.step))

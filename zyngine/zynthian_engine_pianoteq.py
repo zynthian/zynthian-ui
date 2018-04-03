@@ -40,11 +40,78 @@ from . import zynthian_engine
 # Pianoteq module helper functions
 #------------------------------------------------------------------------------
 
+def ensure_dir(file_path):
+	directory=os.path.dirname(file_path)
+	if not os.path.exists(directory):
+		os.makedirs(directory)
+
+
 def check_pianoteq_binary():
 	if os.path.isfile(PIANOTEQ_BINARY) and os.access(PIANOTEQ_BINARY, os.X_OK):
 		return True
 	else:
 		return False
+
+
+def get_pianoteq_binary_info():
+	if check_pianoteq_binary():
+		# Get version and trial info from pianoteq binary
+		res=None
+		version_pattern = re.compile(" version ([0-9]+\.[0-9]+\.[0-9]+)", re.IGNORECASE)
+		trial_pattern = re.compile(" trial ",re.IGNORECASE)
+		proc=subprocess.Popen([PIANOTEQ_BINARY,"--version"],stdout=subprocess.PIPE)
+		for line in proc.stdout:
+			l=line.rstrip().decode("utf-8")
+			m = version_pattern.search(l)
+			if m:
+				res={}
+				res['version'] = m.group(1)
+				m=trial_pattern.search(l)
+				if m:
+					res['trial'] = 1
+				else:
+					res['trial'] = 0
+		return res
+
+
+def fix_pianoteq_config():
+	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
+		root = ET.parse(PIANOTEQ_CONFIG_FILE)
+		try:
+			for xml_value in root.iter("VALUE"):
+				if(xml_value.attrib['name']=='engine_rate'):
+					xml_value.set('val',str(PIANOTEQ_INTERNAL_SR))
+				if(xml_value.attrib['name']=='voices'):
+					xml_value.set('val',str(PIANOTEQ_VOICES))
+				if(xml_value.attrib['name']=='multicore'):
+					xml_value.set('val',str(PIANOTEQ_MULTICORE))
+
+			if(root.find('DEVICESETUP')):
+				logging.debug("Fixing devicesetup node")
+				for devicesetup in root.iter('DEVICESETUP'):
+					devicesetup.set('deviceType','JACK')
+					devicesetup.set('audioOutputDeviceName','Auto-connect ON')
+					devicesetup.set('audioInputDeviceName','Auto-connect ON')
+					devicesetup.set('audioDeviceRate','44100')
+					devicesetup.set('forceStereo','0')
+			else:
+				logging.debug("Creating new devicesetup node")
+				value = ET.Element('VALUE')
+				value.set('name','audio-setup')
+				devicesetup = ET.SubElement(value,'DEVICESETUP')
+				devicesetup.set('deviceType','JACK')
+				devicesetup.set('audioOutputDeviceName','Auto-connect ON')
+				devicesetup.set('audioInputDeviceName','Auto-connect ON')
+				devicesetup.set('audioDeviceRate','44100')
+				devicesetup.set('forceStereo','0')
+				root.getroot().append(value)
+
+			root.write(PIANOTEQ_CONFIG_FILE)
+
+		except Exception as e:
+			logging.error("Installing devicesetup failed: %s" % format(e))
+			return format(e)
+
 
 #------------------------------------------------------------------------------
 # Pianoteq module constants & parameter configuration/initialization
@@ -55,8 +122,13 @@ PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/Pianoteq 6 STAGE"
 PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
 PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
 
-PIANOTEQ_VERSION=list(map(int, os.environ.get('PIANOTEQ_VERSION',"6.0.3").split(".")))
+try:
+	PIANOTEQ_VERSION=list(map(int, os.environ.get('PIANOTEQ_VERSION',"6.0.3").split(".")))
+except:
+	PIANOTEQ_VERSION=(6,0,3)
+
 PIANOTEQ_TRIAL=int(os.environ.get('PIANOTEQ_TRIAL',"1"))
+PIANOTEQ_NAME="Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1])
 
 if PIANOTEQ_VERSION:
 	PIANOTEQ_CONFIG_FILE = os.path.expanduser("~")  + "/.config/Modartt/Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
@@ -154,9 +226,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
+	def __init__(self, zyngui=None, update_presets_cache=False):
 		super().__init__(zyngui)
-		self.name="Pianoteq6-Stage"
+		self.name=PIANOTEQ_NAME
 		self.nickname="PT"
 		self.preset=""
 
@@ -177,29 +249,30 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			os.makedirs(self.user_presets_path)
 
 		self.presets=defaultdict(list)
-		#self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
-		self.presets_cache_fpath="/tmp/presets_cache.json"
-		if os.path.isfile(self.presets_cache_fpath):
+		self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
+		#self.presets_cache_fpath="/tmp/presets_cache.json"
+		if os.path.isfile(self.presets_cache_fpath) and not update_presets_cache:
 			self.load_presets_cache()
 		else:
 			self.save_presets_cache()
 
 		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
 			logging.debug("Pianoteq configuration does not exist. Creating one.")
-			self.ensure_dir("/root/.config/Modartt/")
+			ensure_dir("/root/.config/Modartt/")
 			pt_config_file = "Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
 			shutil.copy(os.getcwd() + "/data/pianoteq6/"+pt_config_file, "/root/.config/Modartt/")
 
 		if not os.path.isfile("/root/.local/share/Modartt/Pianoteq/MidiMappings/Zynthian.ptm"):
 			logging.debug("Pianoteq MIDI-mapping does not exist. Creating one.")
-			self.ensure_dir("/root/.local/share/Modartt/Pianoteq/MidiMappings/")
+			ensure_dir("/root/.local/share/Modartt/Pianoteq/MidiMappings/")
 			shutil.copy(os.getcwd() + "/data/pianoteq6/Zynthian.ptm","/root/.local/share/Modartt/Pianoteq/MidiMappings/")
+
+		fix_pianoteq_config()
 
 
 	def start(self, start_queue=False, shell=False):
 		self.start_loading()
 		logging.debug("Starting"+str(self.command))
-		self.fix_config_for_jack()
 		super().start(start_queue,shell)
 		logging.debug("Start sleeping...")
 		time.sleep(4)
@@ -233,7 +306,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		logging.info("Caching Internal Presets ...")
 		#Get internal presets from Pianoteq ...
 		try:
-			pianoteq=subprocess.Popen(self.main_command+("--list-presets",),stdout=subprocess.PIPE)
+			pianoteq=subprocess.Popen([PIANOTEQ_BINARY, "--list-presets"],stdout=subprocess.PIPE)
 			for line in pianoteq.stdout:
 				l=line.rstrip().decode("utf-8")
 				#logging.debug("%s" % l)
@@ -258,7 +331,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			logging.error("Can't generate JSON while saving presets cache: %s" %e)
 			return False
 		#Write to file
-		self.ensure_dir(self.presets_cache_fpath)
+		ensure_dir(self.presets_cache_fpath)
 		try:
 			with open(self.presets_cache_fpath,"w") as fh:
 				fh.write(json)
@@ -268,6 +341,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			logging.error("Can't save presets cache '%s': %s" % (self.presets_cache_fpath,e))
 			return False
 		return True
+
 
 	def load_presets_cache(self):
 		#Load from file
@@ -285,6 +359,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			logging.error("Can't decode JSON while loading presets cache: %s" % e)
 			return False
 		return True
+
 
 	def get_preset_list(self, bank):
 		self.start_loading()
@@ -309,6 +384,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.stop_loading()
 		return user_presets + internal_presets
 
+
 	def set_preset(self, layer, preset, preload=False):
 		if preset[0]!=self.preset:
 			self.start_loading()
@@ -322,47 +398,5 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Special
 	#--------------------------------------------------------------------------
 
-	def ensure_dir(self, file_path):
-		directory=os.path.dirname(file_path)
-		if not os.path.exists(directory):
-			os.makedirs(directory)
-
-	def fix_config_for_jack(self):
-		if os.path.isfile(PIANOTEQ_CONFIG_FILE):
-			root = ET.parse(PIANOTEQ_CONFIG_FILE)
-			try:
-				for xml_value in root.iter("VALUE"):
-					if(xml_value.attrib['name']=='engine_rate'):
-						xml_value.set('val',str(PIANOTEQ_INTERNAL_SR))
-					if(xml_value.attrib['name']=='voices'):
-						xml_value.set('val',str(PIANOTEQ_VOICES))
-					if(xml_value.attrib['name']=='multicore'):
-						xml_value.set('val',str(PIANOTEQ_MULTICORE))
-
-				if(root.find('DEVICESETUP')):
-					logging.debug("Fixing devicesetup node")
-					for devicesetup in root.iter('DEVICESETUP'):
-						devicesetup.set('deviceType','JACK')
-						devicesetup.set('audioOutputDeviceName','Auto-connect ON')
-						devicesetup.set('audioInputDeviceName','Auto-connect ON')
-						devicesetup.set('audioDeviceRate','44100')
-						devicesetup.set('forceStereo','0')
-				else:
-					logging.debug("Creating new devicesetup node")
-					value = ET.Element('VALUE')
-					value.set('name','audio-setup')
-					devicesetup = ET.SubElement(value,'DEVICESETUP')
-					devicesetup.set('deviceType','JACK')
-					devicesetup.set('audioOutputDeviceName','Auto-connect ON')
-					devicesetup.set('audioInputDeviceName','Auto-connect ON')
-					devicesetup.set('audioDeviceRate','44100')
-					devicesetup.set('forceStereo','0')
-					root.getroot().append(value)
-
-				root.write(PIANOTEQ_CONFIG_FILE)
-
-			except Exception as e:
-				logging.error("Installing devicesetup failed: %s" % format(e))
-				return format(e)
 
 #******************************************************************************

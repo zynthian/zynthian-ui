@@ -118,12 +118,12 @@ class zynthian_controller:
 			self.value_max=maxval
 		elif isinstance(maxval,str):
 			self.labels=maxval.split('|')
-			self.value_max=len(self.labels)-1
+			#self.value_max=len(self.labels)-1
 		elif isinstance(maxval,list):
 			if isinstance(maxval[0],list):
 				self.labels=maxval[0]
 				self.ticks=maxval[1]
-				self.value_max=self.ticks[-1]
+				#self.value_max=self.ticks[-1]
 			else:
 				self.labels=maxval
 				self.value_max=len(maxval)-1

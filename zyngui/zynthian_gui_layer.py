@@ -146,6 +146,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.curlayer=self.layers[self.index-1]
 			self.fill_list()
 			self.set_selector()
+			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
 			if cleanup_unused_engines:
 				zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
 

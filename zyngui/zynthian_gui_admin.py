@@ -53,28 +53,39 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.child_pid=None
 		self.last_action=None
 		super().__init__('Action', True)
+		self.default_qmidinet()
     
 	def fill_list(self):
 		self.list_data=[]
 		self.list_data.append((self.network_info,0,"Network Info"))
+
 		if self.is_service_active("wpa_supplicant"):
 			self.list_data.append((self.stop_wifi,0,"Stop WIFI"))
 		else:
 			self.list_data.append((self.start_wifi,0,"Start WIFI"))
+
+		if self.is_service_active("qmidinet"):
+			self.list_data.append((self.stop_qmidinet,0,"Stop QMidiNet"))
+		else:
+			self.list_data.append((self.start_qmidinet,0,"Start QMidiNet"))
+
 		if os.environ.get('ZYNTHIAN_TOUCHOSC'):
 			if self.is_service_active("touchosc2midi"):
 				self.list_data.append((self.stop_touchosc2midi,0,"Stop TouchOSC"))
 			else:
 				self.list_data.append((self.start_touchosc2midi,0,"Start TouchOSC"))
+
 		if self.is_process_running("jack_capture"):
 			self.list_data.append((self.stop_recording,0,"Stop Audio Recording"))
 		else:
 			self.list_data.append((self.start_recording,0,"Start Audio Recording"))
+
 		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
 			if self.is_service_active("aubionotes"):
 				self.list_data.append((self.stop_aubionotes,0,"Stop Audio -> MIDI"))
 			else:
 				self.list_data.append((self.start_aubionotes,0,"Start Audio -> MIDI"))
+
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
@@ -241,6 +252,23 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		check_output("systemctl stop wpa_supplicant", shell=True)
 		check_output("ifdown wlan0", shell=True)
 		self.fill_list()
+
+	def start_qmidinet(self):
+		logging.info("STARTING QMIDINET")
+		check_output("systemctl start qmidinet", shell=True)
+		self.fill_list()
+
+	def stop_qmidinet(self):
+		logging.info("STOPPING QMIDINET")
+		check_output("systemctl stop qmidinet", shell=True)
+		self.fill_list()
+
+	#Start/Stop QMidiNet depending on configuration
+	def default_qmidinet(self):
+		if os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED',False):
+			self.start_qmidinet()
+		else:
+			self.stop_qmidinet()
 
 	def start_touchosc2midi(self):
 		logging.info("STARTING touchosc2midi")
