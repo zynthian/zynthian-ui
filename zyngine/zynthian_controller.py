@@ -182,9 +182,16 @@ class zynthian_controller:
 	def get_value2label(self, val):
 		if self.value2label:
 			try:
+				#for v in self.value2label:
+				#	if float(v)>=val: break
+				#return self.value2label[v]
 				return self.value2label[str(val)]
 			except:
-				return None
+				try:
+					return self.value2label[str(int(val))]
+				except Exception as e:
+					logging.error("Controller label-value can't be calculated! => %s" % e)
+					return self.value
 		else:
 			return val
 

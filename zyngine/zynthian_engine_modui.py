@@ -360,7 +360,9 @@ class zynthian_engine_modui(zynthian_engine):
 								'graph_path': ctrl_graph,
 								'value': val,
 								'labels': labels,
-								'values': values
+								'values': values,
+								'value_min': 0,
+								'value_max': len(values)-1
 							})
 						#If it's a normal controller ...
 						else:
@@ -374,23 +376,25 @@ class zynthian_engine_modui(zynthian_engine):
 										'graph_path': ctrl_graph,
 										'value': val,
 										'labels': ['off','on'],
-										'values': [0,1]
+										'values': [0,1],
+										'value_min': 0,
+										'value_max': 1
 									})
 								else:
 									param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
 										'graph_path': ctrl_graph,
 										'value': int(pranges['default']),
 										'value_default': int(pranges['default']),
-										'value_max': int(pranges['maximum']),
-										'value_min': int(pranges['minimum'])
+										'value_min': int(pranges['minimum']),
+										'value_max': int(pranges['maximum'])
 									})
 							else:
 								param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
 									'graph_path': ctrl_graph,
 									'value': pranges['default'],
 									'value_default': pranges['default'],
-									'value_max': pranges['maximum'],
-									'value_min': pranges['minimum']
+									'value_min': pranges['minimum'],
+									'value_max': pranges['maximum']
 								})
 					#If there is no range info (should be!!) => Default MIDI CC controller with 0-127 range
 					else:
@@ -398,8 +402,8 @@ class zynthian_engine_modui(zynthian_engine):
 							'graph_path': ctrl_graph,
 							'value': 0,
 							'value_default': 0,
-							'value_max': 0,
-							'value_min': 127
+							'value_min': 0,
+							'value_max': 127
 						})
 					#Add ZController to plugin_zctrl dictionary
 					self.plugin_zctrls[pgraph][param['symbol']]=param['ctrl']
@@ -410,7 +414,9 @@ class zynthian_engine_modui(zynthian_engine):
 				'graph_path': pgraph+'/:bypass',
 				'value': 'on',
 				'labels': ['off','on'],
-				'values': [1,0]
+				'values': [1,0],
+				'value_min': 0,
+				'value_max': 1
 			})
 			self.plugin_zctrls[pgraph][':bypass']=bypass_zctrl
 			pinfo['ports']['control']['input'].insert(0,{'symbol':':bypass', 'ctrl':bypass_zctrl})
@@ -524,9 +530,12 @@ class zynthian_engine_modui(zynthian_engine):
 			"label": zctrl.short_name,
 			"minimum": str(zctrl.value_min),
 			"maximum": str(zctrl.value_max),
-			"value": str(zctrl.value),
+			"value": str(zctrl.get_label2value()),
 			"steps": str(steps)
 		}
+		#{"uri":"/midi-learn","label":"Record","minimum":"0","maximum":"1","value":0,"steps":"1"}
+		#{"uri":"/midi-learn","label":"SooperLooper","minimum":0,"maximum":1,"value":0}
+		#{"uri":"/midi-learn","label":"Reset","minimum":"0","maximum":"1","value":0,"steps":"1"}
 		logging.debug("Parameter Address Data => %s" % str(data))
 		return data
 
