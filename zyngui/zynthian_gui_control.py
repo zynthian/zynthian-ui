@@ -158,7 +158,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_mode_select(self):
 		self.mode='select'
-		for i in range(0,4):
+		for i in range(0,len(self.zgui_controllers)):
 			self.zgui_controllers[i].hide()
 		if zynthian_gui_config.select_ctrl>1:
 			self.pusher.grid(row=2,column=0)
