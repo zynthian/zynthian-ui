@@ -290,10 +290,10 @@ class zynthian_gui_controller:
 	def plot_midi_bind(self, midi_cc, color=zynthian_gui_config.color_ctrl_tx):
 		if not self.midi_bind:
 			self.midi_bind = self.canvas.create_text(
-				self.width/2, 
-				self.height-8, 
-				width=int(2*0.7*zynthian_gui_config.font_size), 
-				justify=tkinter.CENTER, 
+				self.width/2,
+				self.height-8,
+				width=int(2*0.8*zynthian_gui_config.font_size),
+				justify=tkinter.CENTER,
 				fill=color,
 				font=(zynthian_gui_config.font_family,int(0.7*zynthian_gui_config.font_size)),
 				text=str(midi_cc))

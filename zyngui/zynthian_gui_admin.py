@@ -265,7 +265,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	#Start/Stop QMidiNet depending on configuration
 	def default_qmidinet(self):
-		if os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED',False):
+		if int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED',0)):
 			self.start_qmidinet()
 		else:
 			self.stop_qmidinet()
