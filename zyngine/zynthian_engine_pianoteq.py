@@ -298,6 +298,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	def get_bank_list(self, layer=None):
 		return self.bank_list
 
+	def set_bank(self, layer, bank):
+		pass
+
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------

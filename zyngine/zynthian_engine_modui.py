@@ -176,12 +176,12 @@ class zynthian_engine_modui(zynthian_engine):
 							ctrl_set=[]
 							c=c+1
 					except Exception as err:
-						logging.error("Generating Controller Screens: "+pgraph+" => "+str(err))
+						logging.error("Generating Controller Screens: %s => %s" % (pgraph, err))
 				if len(ctrl_set)>=1:
 					#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
 					self._ctrl_screens.append([self.plugin_info[pgraph]['name']+'#'+str(c),ctrl_set])
 		except Exception as err:
-			logging.error("Generating Controller List: %s"+str(err))
+			logging.error("Generating Controller List: %s" % err)
 		return zctrls
 
 	def send_controller_value(self, zctrl):

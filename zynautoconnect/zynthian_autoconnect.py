@@ -51,7 +51,8 @@ engine_list = [
 	"LinuxSampler",
 	"setBfree",
 	"Pianoteq60",
-	"Pianoteq61"
+	"Pianoteq61",
+	"Pure Data"
 	#"mod-host"
 ]
 
