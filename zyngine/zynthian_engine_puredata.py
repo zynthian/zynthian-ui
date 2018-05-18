@@ -47,17 +47,13 @@ class zynthian_engine_puredata(zynthian_engine):
 
 	_ctrls=[
 		['volume',7,96],
-		['ctrl 1',1,0],
+		['modulation',1,0],
 		['ctrl 2',2,0],
-		['ctrl 3',3,0],
-		['ctrl 4',4,0],
-		['ctrl 5',5,0],
-		['ctrl 6',6,0]
+		['ctrl 3',3,0]
 	]
 
 	_ctrl_screens=[
-		['main',['volume','ctrl 1','ctrl 2','ctrl 3']],
-		['controllers',['volume','ctrl 4','ctrl 5','ctrl 6']]
+		['main',['volume','modulation','ctrl 2','ctrl 3']]
 	]
 
 	#----------------------------------------------------------------------------
@@ -76,9 +72,9 @@ class zynthian_engine_puredata(zynthian_engine):
 		]
 
 		if self.config_remote_display():
-			self.base_command=("/usr/bin/pd", "-jack", "-rt", "-alsamidi", "-mididev", "1")
+			self.base_command=("/usr/bin/pd", "-jack", "-rt", "-alsamidi", "-mididev", "1", "-send", ";pd dsp 1")
 		else:
-			self.base_command=("/usr/bin/pd", "-nogui", "-jack", "-rt", "-alsamidi", "-mididev", "1")
+			self.base_command=("/usr/bin/pd", "-nogui", "-jack", "-rt", "-alsamidi", "-mididev", "1", "-send", ";pd dsp 1")
 
 		self.reset()
 
@@ -133,11 +129,11 @@ class zynthian_engine_puredata(zynthian_engine):
 
 	def get_preset_filepath(self, preset):
 		if self.preset_config:
-			preset_fpath=self.preset_config['main_file']
+			preset_fpath = preset[0] + "/" + self.preset_config['main_file']
 			if isfile(preset_fpath):
 				return preset_fpath
 
-		preset_fpath = preset[0]+"/main.pd"
+		preset_fpath = preset[0] + "/main.pd"
 		if isfile(preset_fpath):
 			return preset_fpath
 		
@@ -154,18 +150,22 @@ class zynthian_engine_puredata(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, layer):
+		try:
+			ctrl_items=self.preset_config['midi_controllers'].items()
+		except:
+			return super().get_controllers_dict(layer)
+		c=1
+		ctrl_set=[]
 		zctrls=OrderedDict()
 		self._ctrl_screens=[]
 		logging.debug("Generating Controller Config ...")
 		try:
-			c=1
-			ctrl_set=[]
-			for name, num in self.preset_config['midi_controllers'].items():
+			for name, num in ctrl_items:
 				try:
 					title=str.replace(name, '_', ' ')
 					logging.debug("CTRL %s: %s" % (num, name))
 					zctrls[name]=zynthian_controller(self,name,title,{
-						'midi_chan': 1,
+						'midi_chan': 0,
 						'midi_cc': int(num),
 						'value': 0,
 						'value_default': 0,
