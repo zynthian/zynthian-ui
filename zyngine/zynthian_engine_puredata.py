@@ -27,7 +27,7 @@ import re
 import logging
 import time
 import subprocess
-import yaml
+import oyaml as yaml
 from collections import OrderedDict
 from os.path import isfile,isdir,join
 from json import JSONEncoder, JSONDecoder
@@ -160,18 +160,16 @@ class zynthian_engine_puredata(zynthian_engine):
 		self._ctrl_screens=[]
 		logging.debug("Generating Controller Config ...")
 		try:
-			for name, num in ctrl_items:
+			for name, options in ctrl_items:
 				try:
+					if isinstance(options,int):
+						options={ 'midi_cc': options }
+					if 'midi_chan' not in options:
+						options['midi_chan']=0
+					midi_cc=options['midi_cc']
+					logging.debug("CTRL %s: %s" % (midi_cc, name))
 					title=str.replace(name, '_', ' ')
-					logging.debug("CTRL %s: %s" % (num, name))
-					zctrls[name]=zynthian_controller(self,name,title,{
-						'midi_chan': 0,
-						'midi_cc': int(num),
-						'value': 0,
-						'value_default': 0,
-						'value_min': 0,
-						'value_max': 127
-					})
+					zctrls[name]=zynthian_controller(self,name,title,options)
 					ctrl_set.append(name)
 					if len(ctrl_set)>=4:
 						logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
