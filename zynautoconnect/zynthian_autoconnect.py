@@ -52,8 +52,8 @@ engine_list = [
 	"setBfree",
 	"Pianoteq60",
 	"Pianoteq61",
-	"Pure Data"
-	#"mod-host"
+	"Pure Data",
+	"mod-host"
 ]
 
 #Input Black List

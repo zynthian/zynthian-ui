@@ -312,6 +312,8 @@ class zynthian_gui_controller:
 			self.plot_midi_bind(midi_cc)
 		elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
 			midi_cc=zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_learn_chan, self.zctrl.midi_learn_cc)
+			if not midi_cc:
+				midi_cc=self.zctrl.midi_learn_cc
 			self.plot_midi_bind(midi_cc)
 		else:
 			self.erase_midi_bind()
