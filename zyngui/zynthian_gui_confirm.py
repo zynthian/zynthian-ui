@@ -6,6 +6,7 @@
 # Zynthian GUI Confirm Class
 # 
 # Copyright (C) 2018 Markus Heidt <markus@heidt-tech.com>
+#                    Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
