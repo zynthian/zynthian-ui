@@ -196,6 +196,11 @@ class zynthian_gui:
 		self.screens[screen].show()
 		self.hide_screens(exclude=screen)
 
+	def show_confirm(self, text, callback=None, cb_params=None):
+		self.modal_screen='confirm'
+		self.screens['confirm'].show(text, callback, cb_params)
+		self.hide_screens(exclude='confirm')
+
 	def show_info(self, text, tms=None):
 		self.modal_screen='info'
 		self.screens['info'].show(text)
@@ -222,11 +227,6 @@ class zynthian_gui:
 			self.show_screen('layer')
 
 	def save_snapshot(self):
-		self.modal_screen='confirm'
-		self.screens['confirm'].show('Do you really want to save the snapshot?', self.save_confirmed_snapshot)
-		self.hide_screens(exclude='confirm')
-
-	def save_confirmed_snapshot(self):
 		self.modal_screen='snapshot'
 		self.screens['snapshot'].save()
 		self.hide_screens(exclude='snapshot')

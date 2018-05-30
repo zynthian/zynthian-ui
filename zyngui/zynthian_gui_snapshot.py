@@ -141,10 +141,11 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def save(self):
 		self.action="SAVE"
 		self.show()
-		
+
 	def select_action(self, i):
 		try:
 			fpath=self.list_data[i][0]
+			fname=self.list_data[i][2]
 		except:
 			logging.warning("List is empty")
 			return
@@ -169,8 +170,13 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		elif self.action=="SAVE":
 			if fpath=='NEW_SNAPSHOT':
 				fpath=self.get_snapshot_fpath(self.get_new_snapshot())
-			zynthian_gui_config.zyngui.screens['layer'].save_snapshot(fpath)
-			zynthian_gui_config.zyngui.show_active_screen()
+				zynthian_gui_config.zyngui.screens['layer'].save_snapshot(fpath)
+				zynthian_gui_config.zyngui.show_active_screen()
+			else:
+				zynthian_gui_config.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % fname, self.cb_confirm_save_snapshot,[fpath])
+
+	def cb_confirm_save_snapshot(self, params):
+		zynthian_gui_config.zyngui.screens['layer'].save_snapshot(params[0])
 
 	def get_midi_number(self, f):
 		return int(f.split('-')[0])-1
