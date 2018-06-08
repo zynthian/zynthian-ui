@@ -26,6 +26,8 @@
 import os
 import sys
 import signal
+import socket
+import psutil
 import logging
 from time import sleep
 from threading  import Thread
@@ -59,7 +61,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data=[]
 		self.list_data.append((self.network_info,0,"Network Info"))
 
-		if self.is_service_active("wpa_supplicant"):
+		if self.is_wifi_active():
 			self.list_data.append((self.stop_wifi,0,"Stop WIFI"))
 		else:
 			self.list_data.append((self.start_wifi,0,"Start WIFI"))
@@ -123,6 +125,30 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		#print("Is service "+str(service)+" active? => "+str(result))
 		if result.strip()=='active': return True
 		else: return False
+
+	def get_netinfo(self, exclude_down=True):
+		netinfo={}
+		for ifc, snics in psutil.net_if_addrs().items():
+			if ifc=="lo":
+				continue
+			for snic in snics:
+				if snic.family == socket.AF_INET:
+					netinfo[ifc]=snic
+			if ifc not in netinfo:
+				c=0
+				for snic in snics:
+					if snic.family == socket.AF_INET6:
+						c+=1
+				if c>=2:
+					netinfo[ifc]=snic
+			if ifc not in netinfo and not exclude_down:
+				netinfo[ifc]=None
+		return netinfo
+
+	def is_wifi_active(self):
+		for ifc in self.get_netinfo():
+			if ifc.startswith("wlan"):
+				return True
 
 	def execute_commands(self):
 		zynthian_gui_config.zyngui.start_loading()
@@ -206,51 +232,38 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def network_info(self):
 		logging.info("NETWORK INFO")
-		zynthian_gui_config.zyngui.show_info("NETWORK INFO:")
-		self.start_command(["hostname -I | cut -f1 -d' '"])
-
-	def test_audio(self):
-		logging.info("TESTING AUDIO")
-		zynthian_gui_config.zyngui.show_info("TEST AUDIO")
-		self.killable_start_command(["mpg123 ./data/audio/test.mp3"])
-
-	def test_midi(self):
-		logging.info("TESTING MIDI")
-		zynthian_gui_config.zyngui.show_info("TEST MIDI")
-		check_output("systemctl start a2jmidid", shell=True)
-		self.killable_start_command(["aplaymidi -p 14 ./data/mid/test.mid"])
-
-	def start_recording(self):
-		logging.info("RECORDING STARTED...")
-		try:
-			cmd=os.environ.get('ZYNTHIAN_SYS_DIR')+"/sbin/jack_capture.sh --zui"
-			#logging.info("COMMAND: %s" % cmd)
-			rec_proc=Popen(cmd,shell=True,env=os.environ)
-			sleep(0.5)
-			check_output("echo play | jack_transport", shell=True)
-		except Exception as e:
-			logging.error("ERROR STARTING RECORDING: %s" % e)
-			zynthian_gui_config.zyngui.show_info("ERROR STARTING RECORDING:\n %s" % e)
-			zynthian_gui_config.zyngui.hide_info_timer(5000)
-		self.fill_list()
-
-	def stop_recording(self):
-		logging.info("STOPPING RECORDING...")
-		check_output("echo stop | jack_transport", shell=True)
-		while self.is_process_running("jack_capture"):
-			sleep(1)
-		self.fill_list()
+		info="NETWORK INFO:\n\n"
+		for ifc, snic in self.get_netinfo().items():
+			if snic.family==socket.AF_INET and snic.address:
+				info+=" {} => {}\n".format(ifc,snic.address)
+			else:
+				info+=" {} => {}\n".format(ifc,"connecting ...")
+		zynthian_gui_config.zyngui.show_info(info)
+		zynthian_gui_config.zyngui.hide_info_timer(5000)
+		zynthian_gui_config.zyngui.stop_loading()
 
 	def start_wifi(self):
 		logging.info("STARTING WIFI")
-		check_output("systemctl start wpa_supplicant", shell=True)
-		check_output("ifup wlan0", shell=True)
+		for ifc in self.get_netinfo(False):
+			if ifc.startswith("wlan"):
+				logging.info("Starting %s ..." % ifc)
+				try:
+					check_output("ifconfig {} up".format(ifc), shell=True)
+				except Exception as e:
+					logging.error(e)
+		sleep(2)
 		self.fill_list()
 
 	def stop_wifi(self):
 		logging.info("STOPPING WIFI")
-		check_output("systemctl stop wpa_supplicant", shell=True)
-		check_output("ifdown wlan0", shell=True)
+		for ifc in self.get_netinfo():
+			if ifc.startswith("wlan"):
+				logging.info("Stopping %s ..." % ifc)
+				try:
+					check_output("ifconfig {} down".format(ifc), shell=True)
+				except Exception as e:
+					logging.error(e)
+		sleep(1)
 		self.fill_list()
 
 	def start_qmidinet(self):
@@ -280,6 +293,27 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		check_output("systemctl stop touchosc2midi", shell=True)
 		self.fill_list()
 
+	def start_recording(self):
+		logging.info("RECORDING STARTED...")
+		try:
+			cmd=os.environ.get('ZYNTHIAN_SYS_DIR')+"/sbin/jack_capture.sh --zui"
+			#logging.info("COMMAND: %s" % cmd)
+			rec_proc=Popen(cmd,shell=True,env=os.environ)
+			sleep(0.5)
+			check_output("echo play | jack_transport", shell=True)
+		except Exception as e:
+			logging.error("ERROR STARTING RECORDING: %s" % e)
+			zynthian_gui_config.zyngui.show_info("ERROR STARTING RECORDING:\n %s" % e)
+			zynthian_gui_config.zyngui.hide_info_timer(5000)
+		self.fill_list()
+
+	def stop_recording(self):
+		logging.info("STOPPING RECORDING...")
+		check_output("echo stop | jack_transport", shell=True)
+		while self.is_process_running("jack_capture"):
+			sleep(1)
+		self.fill_list()
+
 	def start_aubionotes(self):
 		logging.info("STARTING aubionotes")
 		check_output("systemctl start aubionotes", shell=True)
@@ -293,6 +327,17 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def midi_profile(self):
 		logging.info("MIDI PROFILE")
 		zynthian_gui_config.zyngui.show_modal("midi_profile")
+
+	def test_audio(self):
+		logging.info("TESTING AUDIO")
+		zynthian_gui_config.zyngui.show_info("TEST AUDIO")
+		self.killable_start_command(["mpg123 ./data/audio/test.mp3"])
+
+	def test_midi(self):
+		logging.info("TESTING MIDI")
+		zynthian_gui_config.zyngui.show_info("TEST MIDI")
+		check_output("systemctl start a2jmidid", shell=True)
+		self.killable_start_command(["aplaymidi -p 14 ./data/mid/test.mid"])
 
 	def restart_gui(self):
 		logging.info("RESTART GUI")
