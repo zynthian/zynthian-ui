@@ -154,13 +154,21 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		zynthian_gui_config.zyngui.start_loading()
 		for cmd in self.commands:
 			logging.info("Executing Command: %s" % cmd)
-			zynthian_gui_config.zyngui.add_info("\nExecuting:\n%s" % cmd)
+			zynthian_gui_config.zyngui.add_info("Executing: %s\n" % cmd)
 			try:
-				result=check_output(cmd, shell=True).decode('utf-8','ignore')
+				#result=check_output(cmd, shell=True).decode('utf-8','ignore')
+				self.proc=Popen(cmd,shell=True,bufsize=-1,universal_newlines=True,stdout=PIPE,stderr=PIPE)
+				zynthian_gui_config.zyngui.add_info("Result:\n")
+				#if self.proc.poll():
+				for line in self.proc.stdout:
+					logging.info(line.rstrip())
+					zynthian_gui_config.zyngui.add_info(line)
+				zynthian_gui_config.zyngui.add_info("\n")
 			except Exception as e:
-				result="ERROR: %s" % e
-			logging.info(result)
-			zynthian_gui_config.zyngui.add_info("\nResult:\n%s" % result)
+				logging.error(e)
+				zynthian_gui_config.zyngui.add_info("ERROR: %s\n" % e)
+
+		zynthian_gui_config.zyngui.add_info("\n\n\n\n\n\n\n\n\n\n")
 		self.commands=None
 		zynthian_gui_config.zyngui.hide_info_timer(5000)
 		zynthian_gui_config.zyngui.stop_loading()
@@ -218,17 +226,17 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def update_software(self):
 		logging.info("UPDATE SOFTWARE")
 		zynthian_gui_config.zyngui.show_info("UPDATE SOFTWARE")
-		self.start_command(["cd ./sys-scripts;./update_zynthian.sh"])
+		self.start_command(["./sys-scripts/update_zynthian.sh"])
 
 	def update_library(self):
 		logging.info("UPDATE LIBRARY")
 		zynthian_gui_config.zyngui.show_info("UPDATE LIBRARY")
-		self.start_command(["cd ./sys-scripts;./update_zynthian_data.sh"])
+		self.start_command(["./sys-scripts/update_zynthian_data.sh"])
 
 	def update_system(self):
 		logging.info("UPDATE SYSTEM")
 		zynthian_gui_config.zyngui.show_info("UPDATE SYSTEM")
-		self.start_command(["cd ./sys-scripts;./update_system.sh"])
+		self.start_command(["./sys-scripts/update_system.sh"])
 
 	def network_info(self):
 		logging.info("NETWORK INFO")

@@ -45,44 +45,47 @@ class zynthian_gui_info:
 
 	def __init__(self):
 		self.shown=False
-		self.canvas = tkinter.Canvas(zynthian_gui_config.top,
+
+		# Main Frame
+		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
 			width = zynthian_gui_config.display_width,
 			height = zynthian_gui_config.display_height,
-			bd=1,
-			highlightthickness=0,
-			relief='flat',
 			bg = zynthian_gui_config.color_bg)
-		self.canvas.bind("<Button-1>",self.cb_canvas_push)
 
-		self.text = tkinter.StringVar()
-		self.label_text = tkinter.Label(self.canvas,
+		#Textarea
+		self.textarea = tkinter.Text(self.main_frame,
 			font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size,"normal"),
-			textvariable=self.text,
 			#wraplength=80,
-			justify=tkinter.LEFT,
+			#justify=tkinter.LEFT,
+			bd=0,
+			highlightthickness=0,
+			relief=tkinter.FLAT,
 			bg=zynthian_gui_config.color_bg,
 			fg=zynthian_gui_config.color_tx)
-		self.label_text.place(x=1, y=0, anchor=tkinter.NW)
+		self.textarea.bind("<Button-1>", self.cb_push)
+		self.textarea.pack(fill="both", expand=True)
 
 	def clean(self):
-		self.text.set("")
-
-	def set(self, text):
-		self.text.set(text)
+		self.textarea.delete(1.0,tkinter.END)
 
 	def add(self, text):
-		self.text.set(self.text.get()+text)
+		self.textarea.insert(tkinter.END,text)
+		self.textarea.see(tkinter.END)
+
+	def set(self, text):
+		self.add(text+"\n")
 
 	def hide(self):
 		if self.shown:
 			self.shown=False
-			self.canvas.grid_forget()
+			self.main_frame.grid_forget()
 
 	def show(self, text):
-		self.text.set(text)
+		self.clean()
+		self.set(text)
 		if not self.shown:
 			self.shown=True
-			self.canvas.grid()
+			self.main_frame.grid()
 
 	def zyncoder_read(self):
 		pass
@@ -93,7 +96,7 @@ class zynthian_gui_info:
 	def switch_select(self):
 		pass
 
-	def cb_canvas_push(self,event):
+	def cb_push(self,event):
 		zynthian_gui_config.zyngui.zynswitch_defered('S',1)
 
 #-------------------------------------------------------------------------------
