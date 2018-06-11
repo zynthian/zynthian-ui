@@ -251,7 +251,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 					check_output("ifconfig {} up".format(ifc), shell=True)
 				except Exception as e:
 					logging.error(e)
-		sleep(2)
+		sleep(3)
 		self.fill_list()
 
 	def stop_wifi(self):
