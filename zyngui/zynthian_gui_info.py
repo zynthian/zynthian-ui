@@ -54,26 +54,35 @@ class zynthian_gui_info:
 
 		#Textarea
 		self.textarea = tkinter.Text(self.main_frame,
+			height = int(zynthian_gui_config.display_height/(zynthian_gui_config.font_size+8)),
 			font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size,"normal"),
 			#wraplength=80,
 			#justify=tkinter.LEFT,
 			bd=0,
 			highlightthickness=0,
 			relief=tkinter.FLAT,
+			cursor="none",
 			bg=zynthian_gui_config.color_bg,
 			fg=zynthian_gui_config.color_tx)
 		self.textarea.bind("<Button-1>", self.cb_push)
-		self.textarea.pack(fill="both", expand=True)
+		#self.textarea.pack(fill="both", expand=True)
+		self.textarea.place(x=0,y=0)
+
+		self.textarea.tag_config("ERROR", foreground="#C00000")
+		self.textarea.tag_config("WARNING", foreground="#FF9000")
+		self.textarea.tag_config("SUCCESS", foreground="#009000")
+		self.textarea.tag_config("EMPHASIS", foreground="#0000C0")
 
 	def clean(self):
 		self.textarea.delete(1.0,tkinter.END)
 
-	def add(self, text):
-		self.textarea.insert(tkinter.END,text)
+	def add(self, text, tags=None):
+		self.textarea.insert(tkinter.END,text,tags)
 		self.textarea.see(tkinter.END)
 
-	def set(self, text):
-		self.add(text+"\n")
+	def set(self, text, tags=None):
+		self.clean()
+		self.add(text+"\n",tags)
 
 	def hide(self):
 		if self.shown:
@@ -81,7 +90,6 @@ class zynthian_gui_info:
 			self.main_frame.grid_forget()
 
 	def show(self, text):
-		self.clean()
 		self.set(text)
 		if not self.shown:
 			self.shown=True

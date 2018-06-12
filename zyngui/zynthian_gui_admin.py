@@ -24,6 +24,7 @@
 #******************************************************************************
 
 import os
+import re
 import sys
 import signal
 import socket
@@ -152,24 +153,39 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def execute_commands(self):
 		zynthian_gui_config.zyngui.start_loading()
+		
+		error_counter=0
 		for cmd in self.commands:
 			logging.info("Executing Command: %s" % cmd)
-			zynthian_gui_config.zyngui.add_info("Executing: %s\n" % cmd)
+			zynthian_gui_config.zyngui.add_info("EXECUTING:\n","EMPHASIS")
+			zynthian_gui_config.zyngui.add_info("{}\n".format(cmd))
 			try:
-				#result=check_output(cmd, shell=True).decode('utf-8','ignore')
 				self.proc=Popen(cmd,shell=True,bufsize=-1,universal_newlines=True,stdout=PIPE,stderr=PIPE)
-				zynthian_gui_config.zyngui.add_info("Result:\n")
-				#if self.proc.poll():
+				zynthian_gui_config.zyngui.add_info("RESULT:\n","EMPHASIS")
 				for line in self.proc.stdout:
+					if re.search("ERROR", line, re.IGNORECASE):
+						error_counter+=1
+						tag="ERROR"
+					elif re.search("Already", line, re.IGNORECASE):
+						tag="SUCCESS"
+					else:
+						tag=None
 					logging.info(line.rstrip())
-					zynthian_gui_config.zyngui.add_info(line)
+					zynthian_gui_config.zyngui.add_info(line,tag)
 				zynthian_gui_config.zyngui.add_info("\n")
 			except Exception as e:
 				logging.error(e)
-				zynthian_gui_config.zyngui.add_info("ERROR: %s\n" % e)
+				zynthian_gui_config.zyngui.add_info("ERROR: %s\n" % e, "ERROR")
 
-		zynthian_gui_config.zyngui.add_info("\n\n\n\n\n\n\n\n\n\n")
+		if error_counter>0:
+			logging.info("COMPLETED WITH {} ERRORS!".format(error_counter))
+			zynthian_gui_config.zyngui.add_info("COMPLETED WITH {} ERRORS!".format(error_counter), "WARNING")
+		else:
+			logging.info("COMPLETED OK!")
+			zynthian_gui_config.zyngui.add_info("COMPLETED OK!", "SUCCESS")
+
 		self.commands=None
+		zynthian_gui_config.zyngui.add_info("\n\n")
 		zynthian_gui_config.zyngui.hide_info_timer(5000)
 		zynthian_gui_config.zyngui.stop_loading()
 		self.fill_list()
@@ -186,7 +202,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		#zynthian_gui_config.zyngui.start_loading()
 		for cmd in self.commands:
 			logging.info("Executing Command: %s" % cmd)
-			zynthian_gui_config.zyngui.add_info("\nExecuting: %s" % cmd)
+			zynthian_gui_config.zyngui.add_info("EXECUTING:\n","EMPHASIS")
+			zynthian_gui_config.zyngui.add_info("{}\n".format(cmd))
 			try:
 				proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
 				self.child_pid=proc.pid
@@ -195,12 +212,16 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				self.child_pid=None
 				if error:
 					result="ERROR: %s" % error
+					logging.error(result)
+					zynthian_gui_config.zyngui.add_info(result,"ERROR")
 				else:
-					result=output
+					logging.info(output)
+					zynthian_gui_config.zyngui.add_info(output)
 			except Exception as e:
 				result="ERROR: %s" % e
-			logging.info(result)
-			zynthian_gui_config.zyngui.add_info("\n %s" % result)
+				logging.error(result)
+				zynthian_gui_config.zyngui.add_info(result,"ERROR")
+
 		self.commands=None
 		zynthian_gui_config.zyngui.hide_info_timer(5000)
 		#zynthian_gui_config.zyngui.stop_loading()
@@ -240,13 +261,12 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def network_info(self):
 		logging.info("NETWORK INFO")
-		info="NETWORK INFO:\n\n"
+		zynthian_gui_config.zyngui.show_info("NETWORK INFO\n")
 		for ifc, snic in self.get_netinfo().items():
 			if snic.family==socket.AF_INET and snic.address:
-				info+=" {} => {}\n".format(ifc,snic.address)
+				zynthian_gui_config.zyngui.add_info(" {} => {}\n".format(ifc,snic.address),"SUCCESS")
 			else:
-				info+=" {} => {}\n".format(ifc,"connecting ...")
-		zynthian_gui_config.zyngui.show_info(info)
+				zynthian_gui_config.zyngui.add_info(" {} => {}\n".format(ifc,"connecting..."),"WARNING")
 		zynthian_gui_config.zyngui.hide_info_timer(5000)
 		zynthian_gui_config.zyngui.stop_loading()
 

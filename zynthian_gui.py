@@ -208,8 +208,8 @@ class zynthian_gui:
 		if tms:
 			zynthian_gui_config.top.after(tms, self.hide_info)
 
-	def add_info(self, text):
-		self.screens['info'].add(text)
+	def add_info(self, text, tags=None):
+		self.screens['info'].add(text,tags)
 
 	def hide_info_timer(self, tms=3000):
 		zynthian_gui_config.top.after(tms, self.hide_info)
