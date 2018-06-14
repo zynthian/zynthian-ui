@@ -160,7 +160,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			zynthian_gui_config.zyngui.add_info("EXECUTING:\n","EMPHASIS")
 			zynthian_gui_config.zyngui.add_info("{}\n".format(cmd))
 			try:
-				self.proc=Popen(cmd,shell=True,bufsize=-1,universal_newlines=True,stdout=PIPE,stderr=PIPE)
+				self.proc=Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE, universal_newlines=True)
 				zynthian_gui_config.zyngui.add_info("RESULT:\n","EMPHASIS")
 				for line in self.proc.stdout:
 					if re.search("ERROR", line, re.IGNORECASE):

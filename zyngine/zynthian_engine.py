@@ -91,7 +91,7 @@ class zynthian_engine:
 		self.thread_queue=None
 
 		self.osc_target=None
-		self.osc_target_port=6693
+		self.osc_target_port=None
 		self.osc_server=None
 		self.osc_server_port=None
 		self.osc_server_url=None
@@ -186,8 +186,8 @@ class zynthian_engine:
 			logging.info("Starting Engine " + self.name)
 			try:
 				self.start_loading()
-				self.proc=Popen(self.command,shell=shell,bufsize=1,universal_newlines=True,
-					stdin=PIPE,stdout=PIPE,stderr=STDOUT,env=self.command_env)
+				self.proc=Popen(self.command, shell=shell, stdin=PIPE, stdout=PIPE, stderr=STDOUT, universal_newlines=True, env=self.command_env)
+					#, bufsize=1
 					#, preexec_fn=os.setsid
 					#, preexec_fn=self.chuser()
 				if start_queue:
@@ -241,8 +241,10 @@ class zynthian_engine:
 	# OSC Management
 	# ---------------------------------------------------------------------------
 
-	def osc_init(self, proto=liblo.UDP):
+	def osc_init(self, target_port=None, proto=liblo.UDP):
 		self.start_loading()
+		if target_port:
+			self.osc_target_port=target_port
 		try:
 			self.osc_target=liblo.Address('localhost',self.osc_target_port,proto)
 			logging.info("OSC target in port %s" % str(self.osc_target_port))
@@ -386,18 +388,28 @@ class zynthian_engine:
 	def get_controllers_dict(self, layer):
 		midich=layer.get_midi_chan()
 		zctrls=OrderedDict()
+
 		for ctrl in self._ctrls:
-			#OSC control => replace variables
+			options={}
+
+			#OSC control =>
 			if isinstance(ctrl[1],str):
+				#replace variables ...
 				tpl=Template(ctrl[1])
 				cc=tpl.safe_substitute(ch=midich)
 				try:
 					cc=tpl.safe_substitute(i=layer.part_i)
 				except:
 					pass
+				#set osc_port option ...
+				if self.osc_target_port>0:
+					options['osc_port']=self.osc_target_port
+				#debug message
 				logging.debug('CONTROLLER %s OSC PATH => %s' % (ctrl[0],cc))
+			#MIDI Control =>
 			else:
 				cc=ctrl[1]
+
 			#Build controller depending on array length ...
 			if len(ctrl)>4:
 				zctrl=zynthian_controller(self,ctrl[4],ctrl[0])
@@ -408,6 +420,11 @@ class zynthian_engine:
 			else:
 				zctrl=zynthian_controller(self,ctrl[0])
 				zctrl.setup_controller(midich,cc,ctrl[2])
+
+			#Set controller extra options
+			if len(options)>0:
+				zctrl.set_options(options)
+
 			zctrls[ctrl[0]]=zctrl
 		return zctrls
 

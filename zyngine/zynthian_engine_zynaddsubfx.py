@@ -97,6 +97,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		self.name="ZynAddSubFX"
 		self.nickname="ZY"
 
+		self.osc_target_port=6693
+	
 		if self.config_remote_display():
 			self.command=("/usr/local/bin/zynaddsubfx", "-O", "jack", "-I", "jack", "-P", str(self.osc_target_port), "-a")
 		else:

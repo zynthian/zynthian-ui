@@ -88,8 +88,6 @@ class zynthian_gui:
 
 		self.dtsw={}
 		self.polling=False
-		self.osc_target=None
-		self.osc_server=None
 
 		self.loading=0
 		self.loading_thread=None
@@ -105,8 +103,7 @@ class zynthian_gui:
 		try:
 			global lib_zyncoder
 			#Init Zyncoder Library
-			zyngine_osc_port=6693
-			lib_zyncoder_init(zyngine_osc_port)
+			lib_zyncoder_init()
 			lib_zyncoder=zyncoder.get_lib_zyncoder()
 			#Init MIDI subsystem
 			self.init_midi()
