@@ -106,6 +106,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def get_num_layers(self):
 		return len(self.layers)
 
+	def get_layer_selected(self):
+		i=self.get_cursel()
+		if i<len(self.layers):
+			return i
+		else:
+			return None
+
 	def add_layer(self):
 		self.add_layer_eng=None
 		zynthian_gui_config.zyngui.show_modal('engine')

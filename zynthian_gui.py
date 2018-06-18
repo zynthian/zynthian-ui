@@ -325,7 +325,7 @@ class zynthian_gui:
 		elif i==2:
 			self.save_snapshot()
 		elif i==3:
-			if self.active_screen=='layer':
+			if self.active_screen=='layer' and self.screens['layer'].get_layer_selected() is not None:
 				self.show_modal('layer_options')
 			else:
 				self.screens[self.active_screen].switch_select()
