@@ -64,9 +64,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		super().fill_list()
 
 	def show(self):
-		self.layer_index=zynthian_gui_config.zyngui.screens['layer'].get_cursel()
 		self.index=0
-		super().show()
+		self.layer_index=zynthian_gui_config.zyngui.screens['layer'].get_layer_selected()
+		if self.layer_index is not None:
+			super().show()
+		else:
+			zynthian_gui_config.zyngui.show_active_screen()
 
 	def select_action(self, i):
 		self.list_data[i][0]()
