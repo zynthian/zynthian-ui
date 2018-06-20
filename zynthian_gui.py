@@ -155,7 +155,7 @@ class zynthian_gui:
 		# Show initial screen => Channel list
 		self.show_screen('layer')
 		# Try to load "default snapshot" or show "load snapshot" popup
-		default_snapshot_fpath=os.getcwd()+"/my-data/snapshots/default.zss"
+		default_snapshot_fpath=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots/default.zss"
 		if not isfile(default_snapshot_fpath) or not self.screens['layer'].load_snapshot(default_snapshot_fpath):
 			self.load_snapshot(autoclose=True)
 		# Start polling threads

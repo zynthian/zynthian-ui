@@ -56,8 +56,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.command=("/usr/local/bin/fluidsynth", "-p", "fluidsynth", "-a", "jack", "-m", "jack" ,"-g", "1", "-j", "-o", "synth.midi-bank-select=mma", "-o", "synth.cpu-cores=3", "-o", "synth.polyphony=64")
 
 		self.soundfont_dirs=[
-			('_', os.getcwd()+"/data/soundfonts/sf2"),
-			('MY', os.getcwd()+"/my-data/soundfonts/sf2")
+			('_', self.data_dir + "/soundfonts/sf2"),
+			('MY', self.my_data_dir + "/soundfonts/sf2")
 		]
 
 		self.start(True)

@@ -50,6 +50,9 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 #-------------------------------------------------------------------------------
 class zynthian_gui_admin(zynthian_gui_selector):
 
+	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
+	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
+
 	def __init__(self):
 		self.commands=None
 		self.thread=None
@@ -247,17 +250,17 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def update_software(self):
 		logging.info("UPDATE SOFTWARE")
 		zynthian_gui_config.zyngui.show_info("UPDATE SOFTWARE")
-		self.start_command(["./sys-scripts/update_zynthian.sh"])
+		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
 
 	def update_library(self):
 		logging.info("UPDATE LIBRARY")
 		zynthian_gui_config.zyngui.show_info("UPDATE LIBRARY")
-		self.start_command(["./sys-scripts/update_zynthian_data.sh"])
+		self.start_command([self.sys_dir + "/scripts/update_zynthian_data.sh"])
 
 	def update_system(self):
 		logging.info("UPDATE SYSTEM")
 		zynthian_gui_config.zyngui.show_info("UPDATE SYSTEM")
-		self.start_command(["./sys-scripts/update_system.sh"])
+		self.start_command([self.sys_dir + "/scripts/update_system.sh"])
 
 	def network_info(self):
 		logging.info("NETWORK INFO")
@@ -324,7 +327,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def start_recording(self):
 		logging.info("RECORDING STARTED...")
 		try:
-			cmd=os.environ.get('ZYNTHIAN_SYS_DIR')+"/sbin/jack_capture.sh --zui"
+			cmd=self.sys_dir +"/sbin/jack_capture.sh --zui"
 			#logging.info("COMMAND: %s" % cmd)
 			rec_proc=Popen(cmd,shell=True,env=os.environ)
 			sleep(0.5)
@@ -359,13 +362,13 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def test_audio(self):
 		logging.info("TESTING AUDIO")
 		zynthian_gui_config.zyngui.show_info("TEST AUDIO")
-		self.killable_start_command(["mpg123 ./data/audio/test.mp3"])
+		self.killable_start_command(["mpg123 {}/audio/test.mp3".format(self.data_dir)])
 
 	def test_midi(self):
 		logging.info("TESTING MIDI")
 		zynthian_gui_config.zyngui.show_info("TEST MIDI")
 		check_output("systemctl start a2jmidid", shell=True)
-		self.killable_start_command(["aplaymidi -p 14 ./data/mid/test.mid"])
+		self.killable_start_command(["aplaymidi -p 14 {}/mid/test.mid".format(self.data_dir)])
 
 	def restart_gui(self):
 		logging.info("RESTART GUI")

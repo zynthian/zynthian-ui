@@ -45,6 +45,13 @@ from . import zynthian_controller
 class zynthian_engine:
 
 	# ---------------------------------------------------------------------------
+	# Data dirs 
+	# ---------------------------------------------------------------------------
+
+	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
+	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
+
+	# ---------------------------------------------------------------------------
 	# Default Controllers & Screens
 	# ---------------------------------------------------------------------------
 
