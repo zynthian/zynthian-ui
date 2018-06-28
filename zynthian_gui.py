@@ -110,6 +110,9 @@ class zynthian_gui:
 			self.zynmidi=zynthian_zcmidi()
 			#Set Master Volume to Max.
 			lib_zyncoder.zynmidi_send_master_ccontrol_change(0x7,0xFF)
+			#Test Clone
+			lib_zyncoder.set_midi_filter_clone(0,1,1);
+			lib_zyncoder.set_midi_filter_clone(0,2,1);
 			#Init MIDI and Switches
 			self.zynswitches_init()
 		except Exception as e:
