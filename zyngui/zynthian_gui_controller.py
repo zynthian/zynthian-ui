@@ -121,7 +121,7 @@ class zynthian_gui_controller:
 
 	def set_hl(self):
 		try:
-			self.canvas.itemconfig(self.arc, outline="#009000")
+			self.canvas.itemconfig(self.arc, outline=zynthian_gui_config.color_hl)
 		except:
 			pass
 

@@ -182,7 +182,10 @@ ctrl_pos=[
 
 color_bg=os.environ.get('ZYNTHIAN_UI_COLOR_BG',"#000000")
 color_tx=os.environ.get('ZYNTHIAN_UI_COLOR_TX',"#ffffff")
+color_tx_off=os.environ.get('ZYNTHIAN_UI_COLOR_TX_OFF',"#e0e0e0")
 color_on=os.environ.get('ZYNTHIAN_UI_COLOR_ON',"#ff0000")
+color_off=os.environ.get('ZYNTHIAN_UI_COLOR_OFF',"#5a626d")
+color_hl=os.environ.get('ZYNTHIAN_UI_COLOR_HL',"#00D000")
 color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG',"#3a424d")
 
 # Color Scheme
@@ -190,10 +193,10 @@ color_panel_bd=color_bg
 color_panel_tx=color_tx
 color_header_bg=color_bg
 color_header_tx=color_tx
-color_ctrl_bg_off="#5a626d"
+color_ctrl_bg_off=color_off
 color_ctrl_bg_on=color_on
 color_ctrl_tx=color_tx
-color_ctrl_tx_off="#e0e0e0"
+color_ctrl_tx_off=color_tx_off
 
 #------------------------------------------------------------------------------
 # UI Font Parameters

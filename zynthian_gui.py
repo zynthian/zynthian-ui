@@ -50,7 +50,7 @@ from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_layer import zynthian_gui_layer
 from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
-from zyngui.zynthian_gui_midich import zynthian_gui_midich
+from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_transpose import zynthian_gui_transpose
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
@@ -110,9 +110,6 @@ class zynthian_gui:
 			self.zynmidi=zynthian_zcmidi()
 			#Set Master Volume to Max.
 			lib_zyncoder.zynmidi_send_master_ccontrol_change(0x7,0xFF)
-			#Test Clone
-			lib_zyncoder.set_midi_filter_clone(0,1,1);
-			lib_zyncoder.set_midi_filter_clone(0,2,1);
 			#Init MIDI and Switches
 			self.zynswitches_init()
 		except Exception as e:
@@ -147,7 +144,7 @@ class zynthian_gui:
 		self.screens['layer']=zynthian_gui_layer()
 		self.screens['layer_options']=zynthian_gui_layer_options()
 		self.screens['engine']=zynthian_gui_engine()
-		self.screens['midich']=zynthian_gui_midich()
+		self.screens['midi_chan']=zynthian_gui_midi_chan()
 		self.screens['transpose']=zynthian_gui_transpose()
 		self.screens['bank']=zynthian_gui_bank()
 		self.screens['preset']=zynthian_gui_preset()
