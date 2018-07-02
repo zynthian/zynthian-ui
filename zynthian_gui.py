@@ -478,6 +478,9 @@ class zynthian_gui:
 				if ev==0: break
 				evtype = (ev & 0xF00000)>>20
 				chan = (ev & 0x0F0000)>>16
+				
+				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
+				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
 				#Master MIDI Channel ...
 				if chan==zynthian_gui_config.master_midi_channel:
