@@ -58,6 +58,7 @@ def get_pianoteq_binary_info():
 		# Get version and trial info from pianoteq binary
 		res=None
 		version_pattern = re.compile(" version ([0-9]+\.[0-9]+\.[0-9]+)", re.IGNORECASE)
+		stage_pattern = re.compile(" stage ", re.IGNORECASE)
 		trial_pattern = re.compile(" trial ",re.IGNORECASE)
 		proc=subprocess.Popen([PIANOTEQ_BINARY,"--version"],stdout=subprocess.PIPE)
 		for line in proc.stdout:
@@ -66,6 +67,11 @@ def get_pianoteq_binary_info():
 			if m:
 				res={}
 				res['version'] = m.group(1)
+				m = stage_pattern.search(l)
+				if m:
+					res['stage'] = 1
+				else:
+					res['stage'] = 0
 				m=trial_pattern.search(l)
 				if m:
 					res['trial'] = 1
@@ -128,6 +134,7 @@ except:
 	PIANOTEQ_VERSION=(6,0,3)
 
 PIANOTEQ_TRIAL=int(os.environ.get('PIANOTEQ_TRIAL',"1"))
+PIANOTEQ_STAGE=int(os.environ.get('PIANOTEQ_STAGE',"1"))
 PIANOTEQ_NAME="Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1])
 
 if PIANOTEQ_VERSION:
