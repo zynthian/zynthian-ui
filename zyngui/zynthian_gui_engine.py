@@ -57,7 +57,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		["BF", ("setBfree","setBfree - Hammond Emulator")],
 	])
 
-	if check_pianoteq_binary():
+	if get_pianoteq_binary_info():
 		if PIANOTEQ_TRIAL:
 			engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq Stage - Demo")
 		else:
