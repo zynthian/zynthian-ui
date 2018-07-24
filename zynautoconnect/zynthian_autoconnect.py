@@ -52,6 +52,7 @@ engine_list = [
 	"setBfree",
 	"Pianoteq60",
 	"Pianoteq61",
+	"Pianoteq62",
 	"Pure Data",
 	"mod-host"
 ]
