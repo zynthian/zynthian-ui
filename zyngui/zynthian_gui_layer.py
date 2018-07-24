@@ -56,6 +56,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		super().__init__('Layer', True)
 
 	def reset(self):
+		self.reset_clone()
+		self.reset_transpose()
 		self.remove_all_layers()
 		self.layers=[]
 		self.curlayer=None
@@ -69,7 +71,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.list_data.append((str(i+1),i,layer.get_presetpath()))
 		#Add fixed entries
 		self.list_data.append(('NEW',len(self.list_data),"New Layer"))
-		self.list_data.append(('RESET',len(self.list_data),"Remove All"))
+		self.list_data.append(('RESET',len(self.list_data),"Reset All"))
 		self.list_data.append(('ALL_NOTES_OFF',len(self.list_data),"All Notes Off: PANIC!"))
 		self.list_data.append(('ALL_SOUNDS_OFF',len(self.list_data),"All Sounds Off: PANIC!!!"))
 		super().fill_list()
@@ -128,8 +130,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.index=len(self.layers)-3
 			self.select_action(self.index)
 		else:
-			zynthian_gui_config.zyngui.screens['midich'].set_mode("ADD")
-			zynthian_gui_config.zyngui.show_modal('midich')
+			zynthian_gui_config.zyngui.screens['midi_chan'].set_mode("ADD")
+			zynthian_gui_config.zyngui.show_modal('midi_chan')
 
 	def add_layer_midich(self, midich, select=True):
 		if self.add_layer_eng:
@@ -173,6 +175,24 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				#TODO => Pass PROGRAM CHANGE to Linuxsampler, MOD-UI, etc.
 				layer.set_preset(preset_index,True)
 
+	def set_clone(self, clone_status):
+		for i in range(0,16):
+			for j in range(0,16):
+				zyncoder.lib_zyncoder.set_midi_filter_clone(i,j,clone_status[i][j])
+
+	def reset_clone(self):
+		for i in range(0,16):
+			for j in range(0,16):
+				zyncoder.lib_zyncoder.set_midi_filter_clone(i,j,0)
+
+	def set_transpose(self, transpose_status):
+		for i in range(0,16):
+			zyncoder.lib_zyncoder.set_midi_filter_transpose(i,transpose_status[i])
+
+	def reset_transpose(self):
+		for i in range(0,16):
+			zyncoder.lib_zyncoder.set_midi_filter_transpose(i,0)
+
 	def set_select_path(self):
 		self.select_path.set("Layer List")
 
@@ -185,12 +205,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			snapshot={
 				'index':self.index,
 				'layers':[],
+				'clone':[],
 				'transpose':[],
 				'monitored_engines':zynautoconnect.monitored_engines
 			}
 			#Layers info
 			for layer in self.layers:
 				snapshot['layers'].append(layer.get_snapshot())
+			#Clone info
+			for i in range(0,16):
+				snapshot['clone'].append([])
+				for j in range(0,16):
+					snapshot['clone'][i].append(zyncoder.lib_zyncoder.get_midi_filter_clone(i,j))
 			#Transpose info
 			for i in range(0,16):
 				snapshot['transpose'].append(zyncoder.lib_zyncoder.get_midi_filter_transpose(i))
@@ -241,10 +267,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.fill_list()
 			#Remove unused engines
 			zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
+			#Set Clone
+			if 'clone' in snapshot:
+				self.set_clone(snapshot['clone'])
+			else:
+				self.reset_clone()
 			#Set Transpose
 			if 'transpose' in snapshot:
-				for i in range(0,16):
-					zyncoder.lib_zyncoder.set_midi_filter_transpose(i,snapshot['transpose'][i])
+				self.set_transpose(snapshot['transpose'])
+			else:
+				self.reset_transpose()
 			#Set CC-Map
 			#TODO
 			#Set Monitored Engines

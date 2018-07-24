@@ -103,12 +103,12 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		self.ls_chans={}
 		self.ls_effects=OrderedDict(self._ladspa_plugins)
 
-		self.lscp_dir="./data/lscp"
+		self.lscp_dir = self.data_dir + "/lscp"
 		self.bank_dirs=[
-			('SFZ', os.getcwd()+"/data/soundfonts/sfz"),
-			('GIG', os.getcwd()+"/data/soundfonts/gig"),
-			('MySFZ', os.getcwd()+"/my-data/soundfonts/sfz"),
-			('MyGIG', os.getcwd()+"/my-data/soundfonts/gig")
+			('SFZ', self.data_dir + "/soundfonts/sfz"),
+			('GIG', self.data_dir + "/soundfonts/gig"),
+			('MySFZ', self.my_data_dir + "/soundfonts/sfz"),
+			('MyGIG', self.my_data_dir + "/soundfonts/gig")
 		]
 		self.lscp_v1_6_supported=False
 		self.start()

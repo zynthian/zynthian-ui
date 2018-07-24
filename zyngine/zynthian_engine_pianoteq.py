@@ -248,8 +248,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if not os.path.exists(self.user_presets_path):
 			os.makedirs(self.user_presets_path)
 
-		self.presets=defaultdict(list)
-		self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
+		self.presets = defaultdict(list)
+		self.presets_cache_fpath = self.my_data_dir + '/pianoteq6/presets_cache.json'
 		#self.presets_cache_fpath="/tmp/presets_cache.json"
 		if os.path.isfile(self.presets_cache_fpath) and not update_presets_cache:
 			self.load_presets_cache()
@@ -260,12 +260,12 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			logging.debug("Pianoteq configuration does not exist. Creating one.")
 			ensure_dir("/root/.config/Modartt/")
 			pt_config_file = "Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
-			shutil.copy(os.getcwd() + "/data/pianoteq6/"+pt_config_file, "/root/.config/Modartt/")
+			shutil.copy(self.data_dir + "/pianoteq6/" + pt_config_file, "/root/.config/Modartt/")
 
 		if not os.path.isfile("/root/.local/share/Modartt/Pianoteq/MidiMappings/Zynthian.ptm"):
 			logging.debug("Pianoteq MIDI-mapping does not exist. Creating one.")
 			ensure_dir("/root/.local/share/Modartt/Pianoteq/MidiMappings/")
-			shutil.copy(os.getcwd() + "/data/pianoteq6/Zynthian.ptm","/root/.local/share/Modartt/Pianoteq/MidiMappings/")
+			shutil.copy(self.data_dir + "/pianoteq6/Zynthian.ptm", "/root/.local/share/Modartt/Pianoteq/MidiMappings/")
 
 		fix_pianoteq_config()
 

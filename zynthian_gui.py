@@ -50,7 +50,7 @@ from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_layer import zynthian_gui_layer
 from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
-from zyngui.zynthian_gui_midich import zynthian_gui_midich
+from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_transpose import zynthian_gui_transpose
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
@@ -88,8 +88,6 @@ class zynthian_gui:
 
 		self.dtsw={}
 		self.polling=False
-		self.osc_target=None
-		self.osc_server=None
 
 		self.loading=0
 		self.loading_thread=None
@@ -105,8 +103,7 @@ class zynthian_gui:
 		try:
 			global lib_zyncoder
 			#Init Zyncoder Library
-			zyngine_osc_port=6693
-			lib_zyncoder_init(zyngine_osc_port)
+			lib_zyncoder_init()
 			lib_zyncoder=zyncoder.get_lib_zyncoder()
 			#Init MIDI subsystem
 			self.init_midi()
@@ -147,7 +144,7 @@ class zynthian_gui:
 		self.screens['layer']=zynthian_gui_layer()
 		self.screens['layer_options']=zynthian_gui_layer_options()
 		self.screens['engine']=zynthian_gui_engine()
-		self.screens['midich']=zynthian_gui_midich()
+		self.screens['midi_chan']=zynthian_gui_midi_chan()
 		self.screens['transpose']=zynthian_gui_transpose()
 		self.screens['bank']=zynthian_gui_bank()
 		self.screens['preset']=zynthian_gui_preset()
@@ -158,7 +155,7 @@ class zynthian_gui:
 		# Show initial screen => Channel list
 		self.show_screen('layer')
 		# Try to load "default snapshot" or show "load snapshot" popup
-		default_snapshot_fpath=os.getcwd()+"/my-data/snapshots/default.zss"
+		default_snapshot_fpath=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots/default.zss"
 		if not isfile(default_snapshot_fpath) or not self.screens['layer'].load_snapshot(default_snapshot_fpath):
 			self.load_snapshot(autoclose=True)
 		# Start polling threads
@@ -481,6 +478,9 @@ class zynthian_gui:
 				if ev==0: break
 				evtype = (ev & 0xF00000)>>20
 				chan = (ev & 0x0F0000)>>16
+				
+				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
+				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
 				#Master MIDI Channel ...
 				if chan==zynthian_gui_config.master_midi_channel:

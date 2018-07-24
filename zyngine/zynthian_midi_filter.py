@@ -11,7 +11,9 @@
 #
 # Valid event types: 
 # -------------------------------------
-#  PG => Program Change
+#  NOTEON => Note-On
+#  NOTEOFF => Note-Off
+#  PC#?? => Program Change (??=program number)
 #  KP => Key Press (after-touch)
 #  CP => Channel Press (after-touch)
 #  PB => Pitch Bending
@@ -69,13 +71,17 @@ class MidiFilterException(Exception):
 
 class MidiFilterArgs:
 
-	EVENT_TYPES=("PG","KP","CP","PB","CC")
+	EVENT_TYPES=("PC","KP","CP","PB","CC")
 	EVENT_TYPE_CODES={
-		"PG": 0xC,
-		"KP": 0xA,
-		"CP": 0xD,
-		"PB": 0xE,
-		"CC": 0xB
+		# Channel 3-bytes-messages
+		"NON": 0x9,		# Note-On
+		"NOFF": 0x8, 	# Note-Off
+		"KP": 0xA,		# Key Press
+		"CC": 0xB,		# Control Change
+		"PB": 0xE,		# Pitch Bending
+		# Channel 2-bytes-messages
+		"PC": 0xC,		# Program Change
+		"CP": 0xD			# Channel Press
 	}
 
 	def __init__(self, args, args0=None):
@@ -113,7 +119,7 @@ class MidiFilterArgs:
 		arg_type=parts[0]
 
 		n_parts=len(parts)
-		if n_parts>2 or (arg_type not in ("CH","CC") and n_parts>1) :
+		if n_parts>2 or (arg_type not in ("CH","CC","PC") and n_parts>1) :
 			raise MidiFilterException("Invalid argument format (%s)" % arg)
 
 		if n_parts==2:
@@ -297,5 +303,5 @@ class TestMidiFilterRule(unittest.TestCase):
 			MidiFilterRule("MAP CH#2,3:8 CC#7,8 => CH#4:11 CC#2,5", False)
 
 if __name__ == '__main__':
-	zyncoder.lib_zyncoder_init(6666)
+	zyncoder.lib_zyncoder_init()
 	unittest.main()
