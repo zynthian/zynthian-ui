@@ -162,7 +162,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		('Steinway D',0,'Steinway D','_'),
 		('Steinway B',1,'Steinway B','_'),
 		('Steingraeber',2,'Steingraeber','_'),
-		('Grotrian',3'Grotrian','_'),
+		('Grotrian',3,'Grotrian','_'),
 		('Bluethner',4,'Bluethner','_'),
 		('YC5',5,'YC5','_'),
 		('K2',6,'K2','_'),
