@@ -244,6 +244,14 @@ class zynthian_gui:
 			self.screens['bank'].fill_list()
 			self.screens['preset'].fill_list()
 			self.screens['control'].fill_list()
+			#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
+			if zynthian_gui_config.midi_single_active_channel:
+				active_chan=self.curlayer.get_midi_chan()
+				if active_chan is not None:
+					cur_active_chan=lib_zyncoder.get_midi_active_chan()
+					if cur_active_chan!=active_chan:
+						self.all_notes_off_chan(cur_active_chan)
+						lib_zyncoder.set_midi_active_chan(active_chan);
 			self.stop_loading()
 		else:
 			self.curlayer=None
@@ -613,14 +621,22 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def all_sounds_off(self):
-		logging.debug("All Sounds Off!")
+		logging.info("All Sounds Off!")
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 120, 0)
 
 	def all_notes_off(self):
-		logging.debug("All Notes Off!")
+		logging.info("All Notes Off!")
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 123, 0)
+
+	def all_sounds_off_chan(self, chan):
+		logging.info("All Sounds Off for channel {}!".format(chan))
+		self.zynmidi.set_midi_control(chan, 120, 0)
+
+	def all_notes_off_chan(self, chan):
+		logging.info("All Notes Off for channel {}!".format(chan))
+		self.zynmidi.set_midi_control(chan, 123, 0)
 
 	#------------------------------------------------------------------
 	# MIDI learning
