@@ -11,8 +11,8 @@
 #
 # Valid event types: 
 # -------------------------------------
-#  NOTEON => Note-On
-#  NOTEOFF => Note-Off
+#  NON => Note-On
+#  NOFF => Note-Off
 #  PC#?? => Program Change (??=program number)
 #  KP => Key Press (after-touch)
 #  CP => Channel Press (after-touch)
@@ -71,7 +71,8 @@ class MidiFilterException(Exception):
 
 class MidiFilterArgs:
 
-	EVENT_TYPES=("PC","KP","CP","PB","CC")
+	EVENT_TYPES=("NON","NOFF","KP","CC","PB","PC","CP")
+	SINGLE_ARG_TYPES=("PB","CP")
 	EVENT_TYPE_CODES={
 		# Channel 3-bytes-messages
 		"NON": 0x9,		# Note-On
@@ -81,7 +82,7 @@ class MidiFilterArgs:
 		"PB": 0xE,		# Pitch Bending
 		# Channel 2-bytes-messages
 		"PC": 0xC,		# Program Change
-		"CP": 0xD			# Channel Press
+		"CP": 0xD		# Channel Press
 	}
 
 	def __init__(self, args, args0=None):
@@ -119,7 +120,7 @@ class MidiFilterArgs:
 		arg_type=parts[0]
 
 		n_parts=len(parts)
-		if n_parts>2 or (arg_type not in ("CH","CC","PC") and n_parts>1) :
+		if n_parts>2 or (arg_type in self.SINGLE_ARG_TYPES and n_parts>1) :
 			raise MidiFilterException("Invalid argument format (%s)" % arg)
 
 		if n_parts==2:
@@ -160,6 +161,8 @@ class MidiFilterRule:
 
 		# IGNORE rule ...
 		if self.rule_type=="IGNORE" or self.rule_type=="CLEAN":
+			if len(parts)>3:
+				raise MidiFilterException("Invalid rule format. Too many parts.")
 			# Parse arguments
 			self.args.append(MidiFilterArgs(parts[1:3]))
 		# MAP rule ...
