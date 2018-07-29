@@ -499,7 +499,7 @@ class zynthian_gui:
 					elif ev==zynthian_gui_config.master_midi_program_change_down:
 						logging.debug("PROGRAM CHANGE DOWN!")
 						self.screens['snapshot'].midi_program_change_down()
-					if ev==zynthian_gui_config.master_midi_bank_change_up:
+					elif ev==zynthian_gui_config.master_midi_bank_change_up:
 						logging.debug("BANK CHANGE UP!")
 						self.screens['snapshot'].midi_bank_change_up()
 					elif ev==zynthian_gui_config.master_midi_bank_change_down:
