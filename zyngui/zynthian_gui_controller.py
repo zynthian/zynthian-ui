@@ -507,14 +507,14 @@ class zynthian_gui_controller:
 	def setup_zyncoder(self):
 		self.init_value=None
 		try:
-			if self.zctrl.osc_path:
+			if isinstance(self.zctrl.osc_path,str):
 				#logging.debug("Setup zyncoder %d => %s" % (self.index,self.zctrl.osc_path))
 				midi_cc=None
 				zyn_osc_path="{}:{}".format(self.zctrl.osc_port,self.zctrl.osc_path)
 				osc_path_char=ctypes.c_char_p(zyn_osc_path.encode('UTF-8'))
 				#if zctrl.engine.osc_target:
 				#	liblo.send(zctrl.engine.osc_target, self.zctrl.osc_path)
-			elif self.zctrl.graph_path:
+			elif isinstance(self.zctrl.graph_path,str):
 				#logging.debug("Setup zyncoder %d => %s" % (self.index,self.zctrl.graph_path))
 				midi_cc=None
 				osc_path_char=None

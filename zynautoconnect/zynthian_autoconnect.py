@@ -55,7 +55,8 @@ engine_list = [
 	"Pianoteq61",
 	"Pianoteq62",
 	"Pure Data",
-	"mod-host"
+	"mod-host",
+	"aeolus"
 ]
 
 #List of monitored engines

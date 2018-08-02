@@ -30,7 +30,6 @@ import subprocess
 import oyaml as yaml
 from collections import OrderedDict
 from os.path import isfile,isdir,join
-from json import JSONEncoder, JSONDecoder
 
 from . import zynthian_engine
 from . import zynthian_controller
