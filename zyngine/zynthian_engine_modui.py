@@ -54,8 +54,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self.websocket=None
 
 		self.bank_dirs=[
-			#('MY', os.getcwd()+"/my-data/mod-pedalboards"),
-			('_', os.getcwd()+"/my-data/mod-pedalboards")
+			('_', self.my_data_dir + "/mod-pedalboards")
 		]
 
 		self.hw_ports={}

@@ -100,11 +100,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
-		self.name="setBfree"
-		self.nickname="BF"
+		self.name = "setBfree"
+		self.nickname = "BF"
 		
-		self.base_dir="./data/setbfree"
-		self.chan_names=("upper","lower","pedals")
+		self.base_dir = self.data_dir + "/setbfree"
+		self.chan_names = ("upper","lower","pedals")
 		
 		self.generate_config_file()
 

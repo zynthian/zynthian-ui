@@ -47,19 +47,22 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def __init__(self):
 		super().__init__('Option', True)
 		self.layer_index=None
+		self.layer=None
 
 	def fill_list(self):
 		self.list_data=[]
-		engine=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index].engine
-		eng=engine.nickname
-		if eng in ['ZY','LS','FS']:
-			self.list_data.append((self.midi_chan,0,"MIDI Chan"))
+		self.layer=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index]
+		eng=self.layer.engine.nickname
 		if eng in ['ZY','LS','FS','BF','PT','PD']:
-			self.list_data.append((self.transpose,0,"Transpose"))
-			if zynautoconnect.is_monitored_engine(engine.name):
+			if self.layer.midi_chan>=0:
+				self.list_data.append((self.clone,0,"Clone"))
+				self.list_data.append((self.transpose,0,"Transpose"))
+			if zynautoconnect.is_monitored_engine(self.layer.engine.name):
 				self.list_data.append((self.monitor,0,"Audio => OUT"))
 			else:
 				self.list_data.append((self.monitor,0,"Audio => MOD-UI"))
+		if eng in ['ZY','LS','FS']:
+			self.list_data.append((self.midi_chan,0,"MIDI Chan"))
 		self.list_data.append((self.remove_layer,0,"Remove Layer"))
 		super().fill_list()
 
@@ -78,9 +81,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.select_path.set("Layer Options")
 
 	def midi_chan(self):
-		zynthian_gui_config.zyngui.screens['midich'].set_mode("SET")
-		zynthian_gui_config.zyngui.screens['midich'].index=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index].midi_chan
-		zynthian_gui_config.zyngui.show_modal('midich')
+		zynthian_gui_config.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan)
+		zynthian_gui_config.zyngui.show_modal('midi_chan')
+
+	def clone(self):
+		zynthian_gui_config.zyngui.screens['midi_chan'].set_mode("CLONE", self.layer.midi_chan)
+		zynthian_gui_config.zyngui.show_modal('midi_chan')
 
 	def transpose(self):
 		zynthian_gui_config.zyngui.show_modal('transpose')

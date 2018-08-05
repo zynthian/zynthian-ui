@@ -46,7 +46,7 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def __init__(self):
-		self.base_dir=os.getcwd()+"/my-data/snapshots"
+		self.base_dir=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots"
 		self.default_snapshot_fpath=join(self.base_dir,"default.zss")
 		self.bank_dir=None
 		self.action="LOAD"

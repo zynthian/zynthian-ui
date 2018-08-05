@@ -58,6 +58,7 @@ def get_pianoteq_binary_info():
 		# Get version and trial info from pianoteq binary
 		res=None
 		version_pattern = re.compile(" version ([0-9]+\.[0-9]+\.[0-9]+)", re.IGNORECASE)
+		stage_pattern = re.compile(" stage ", re.IGNORECASE)
 		trial_pattern = re.compile(" trial ",re.IGNORECASE)
 		proc=subprocess.Popen([PIANOTEQ_BINARY,"--version"],stdout=subprocess.PIPE)
 		for line in proc.stdout:
@@ -66,6 +67,11 @@ def get_pianoteq_binary_info():
 			if m:
 				res={}
 				res['version'] = m.group(1)
+				m = stage_pattern.search(l)
+				if m:
+					res['stage'] = 1
+				else:
+					res['stage'] = 0
 				m=trial_pattern.search(l)
 				if m:
 					res['trial'] = 1
@@ -128,6 +134,7 @@ except:
 	PIANOTEQ_VERSION=(6,0,3)
 
 PIANOTEQ_TRIAL=int(os.environ.get('PIANOTEQ_TRIAL',"1"))
+PIANOTEQ_STAGE=int(os.environ.get('PIANOTEQ_STAGE',"1"))
 PIANOTEQ_NAME="Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1])
 
 if PIANOTEQ_VERSION:
@@ -154,47 +161,48 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	bank_list=[
 		('Steinway D',0,'Steinway D','_'),
 		('Steinway B',1,'Steinway B','_'),
-		('Grotrian',2,'Grotrian','_'),
-		('Bluethner',3,'Bluethner','_'),
-		('YC5',4,'YC5','_'),
-		('K2',5,'K2','_'),
-		('U4',6,'U4','_'),
-		('MKI',7,'MKI','_'),
-		('MKII',8,'MKII','_'),
-		('W1',9,'W1','_'),
-		('Clavinet D6',10,'Clavinet D6','_'),
-		('Pianet N',11,'Pianet N','_'),
-		('Pianet T',12,'Pianet T','_'),
-		('Electra',13,'Electra','_'),
-		('Vibraphone V-B',14,'Vibraphone V-B','_'),
-		('Vibraphone V-M',15,'Vibraphone V-M','_'),
-		('Celesta',16,'Celesta','_'),
-		('Glockenspiel',17,'Glockenspiel','_'),
-		('Toy Piano',18,'Toy Piano','_'),
-		('Marimba',19,'Marimba','_'),
-		('Xylophone',20,'Xylophone','_'),
-		('Steel Drum',21,'Steel Drum','_'),
-		('Spacedrum',22,'Spacedrum','_'),
-		('Hand Pan',23,'Hand Pan','_'),
-		('Tank Drum',24,'Tank Drum','_'),
-		('H. Ruckers II Harpsichord',25,'H. Ruckers II Harpsichord','_'),
-		('Concert Harp',26,'Concert Harp','_'),
-		('J. Dohnal',27,'J. Dohnal','_'),
-		('I. Besendorfer',28,'I. Besendorfer','_'),
-		('S. Erard',29,'S. Erard','_'),
-		('J.B. Streicher',30,'J.B. Streicher','_'),
-		('J. Broadwood',31,'J. Broadwood','_'),
-		('I. Pleyel',32,'I. Pleyel','_'),
-		('J. Frenzel',33,'J. Frenzel','_'),
-		('C. Bechstein',34,'C. Bechstein','_'),
-		('D. Schoffstoss',35,'D. Schoffstoss','_'),
-		('C. Graf',36,'C. Graf','_'),
-		('Erard',37,'Erard','_'),
-		('Pleyel',38,'Pleyel','_'),
-		('CP-80',39,'CP-80','_'),
-		('Church Bells',40,'Church Bells','_'),
-		('Bell-the-fly',41,'Bell-the-fly','_'),
-		('Tubular Bells',42,'Tubular Bells','_')
+		('Steingraeber',2,'Steingraeber','_'),
+		('Grotrian',3,'Grotrian','_'),
+		('Bluethner',4,'Bluethner','_'),
+		('YC5',5,'YC5','_'),
+		('K2',6,'K2','_'),
+		('U4',7,'U4','_'),
+		('MKI',8,'MKI','_'),
+		('MKII',9,'MKII','_'),
+		('W1',10,'W1','_'),
+		('Clavinet D6',11,'Clavinet D6','_'),
+		('Pianet N',12,'Pianet N','_'),
+		('Pianet T',13,'Pianet T','_'),
+		('Electra',14,'Electra','_'),
+		('Vibraphone V-B',15,'Vibraphone V-B','_'),
+		('Vibraphone V-M',16,'Vibraphone V-M','_'),
+		('Celesta',17,'Celesta','_'),
+		('Glockenspiel',18,'Glockenspiel','_'),
+		('Toy Piano',19,'Toy Piano','_'),
+		('Marimba',20,'Marimba','_'),
+		('Xylophone',21,'Xylophone','_'),
+		('Steel Drum',22,'Steel Drum','_'),
+		('Spacedrum',23,'Spacedrum','_'),
+		('Hand Pan',24,'Hand Pan','_'),
+		('Tank Drum',25,'Tank Drum','_'),
+		('H. Ruckers II Harpsichord',26,'H. Ruckers II Harpsichord','_'),
+		('Concert Harp',27,'Concert Harp','_'),
+		('J. Dohnal',28,'J. Dohnal','_'),
+		('I. Besendorfer',29,'I. Besendorfer','_'),
+		('S. Erard',30,'S. Erard','_'),
+		('J.B. Streicher',31,'J.B. Streicher','_'),
+		('J. Broadwood',32,'J. Broadwood','_'),
+		('I. Pleyel',33,'I. Pleyel','_'),
+		('J. Frenzel',34,'J. Frenzel','_'),
+		('C. Bechstein',35,'C. Bechstein','_'),
+		('D. Schoffstoss',36,'D. Schoffstoss','_'),
+		('C. Graf',37,'C. Graf','_'),
+		('Erard',38,'Erard','_'),
+		('Pleyel',39,'Pleyel','_'),
+		('CP-80',40,'CP-80','_'),
+		('Church Bells',41,'Church Bells','_'),
+		('Bell-the-fly',42,'Bell-the-fly','_'),
+		('Tubular Bells',43,'Tubular Bells','_')
 	]
 
 
@@ -248,8 +256,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if not os.path.exists(self.user_presets_path):
 			os.makedirs(self.user_presets_path)
 
-		self.presets=defaultdict(list)
-		self.presets_cache_fpath=os.getcwd() + "/my-data/pianoteq6/presets_cache.json"
+		self.presets = defaultdict(list)
+		self.presets_cache_fpath = self.my_data_dir + '/pianoteq6/presets_cache.json'
 		#self.presets_cache_fpath="/tmp/presets_cache.json"
 		if os.path.isfile(self.presets_cache_fpath) and not update_presets_cache:
 			self.load_presets_cache()
@@ -260,12 +268,12 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			logging.debug("Pianoteq configuration does not exist. Creating one.")
 			ensure_dir("/root/.config/Modartt/")
 			pt_config_file = "Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
-			shutil.copy(os.getcwd() + "/data/pianoteq6/"+pt_config_file, "/root/.config/Modartt/")
+			shutil.copy(self.data_dir + "/pianoteq6/" + pt_config_file, "/root/.config/Modartt/")
 
 		if not os.path.isfile("/root/.local/share/Modartt/Pianoteq/MidiMappings/Zynthian.ptm"):
 			logging.debug("Pianoteq MIDI-mapping does not exist. Creating one.")
 			ensure_dir("/root/.local/share/Modartt/Pianoteq/MidiMappings/")
-			shutil.copy(os.getcwd() + "/data/pianoteq6/Zynthian.ptm","/root/.local/share/Modartt/Pianoteq/MidiMappings/")
+			shutil.copy(self.data_dir + "/pianoteq6/Zynthian.ptm", "/root/.local/share/Modartt/Pianoteq/MidiMappings/")
 
 		fix_pianoteq_config()
 

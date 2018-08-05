@@ -216,7 +216,7 @@ class zynthian_gui_selector:
 	def zyncoder_read(self):
 		if self.zselector:
 			self.zselector.read_zyncoder()
-			if (self.index!=self.zselector.value):
+			if self.index!=self.zselector.value:
 				self.select_listbox(self.zselector.value)
 
 	def select_listbox(self,index):
@@ -240,6 +240,8 @@ class zynthian_gui_selector:
 	def select(self, index=None):
 		if index is None: index=self.index
 		self.select_listbox(index)
+		if self.zselector and self.zselector.value!=self.index:
+			self.zselector.set_value(self.index, True)
 
 	def select_action(self, index):
 		pass

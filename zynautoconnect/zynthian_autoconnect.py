@@ -29,6 +29,7 @@ import copy
 import logging
 from time import sleep
 from threading  import Thread
+from collections import OrderedDict
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -52,13 +53,9 @@ engine_list = [
 	"setBfree",
 	"Pianoteq60",
 	"Pianoteq61",
+	"Pianoteq62",
 	"Pure Data",
 	"mod-host"
-]
-
-#Input Black List
-hw_black_list = [
-	#"Midi Through"
 ]
 
 #List of monitored engines
@@ -96,24 +93,30 @@ def get_port_alias_id(midi_port):
 def midi_autoconnect():
 	logger.info("Autoconnecting Midi ...")
 
-	#Get Physical MIDI-IN devices ...
+	#------------------------------------
+	# Get Input/Output MIDI Ports: 
+	#  - outputs are inputs for jack
+	#  - inputs are outputs for jack
+	#------------------------------------
+
+	#Get Physical MIDI input ports ...
 	hw_out=jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
 	if len(hw_out)==0:
 		hw_out=[]
-	#Add Network MIDI-IN (qmidinet) device ...
-	qmidinet_out=jclient.get_ports("QmidiNet", is_output=True, is_physical=False, is_midi=True)
-	try:
-		hw_out.append(qmidinet_out[0])
-	except:
-		pass
-	#Add Aubio device ...
+
+	#Get Physical MIDI output ports ...
+	hw_in=jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
+	if len(hw_in)==0:
+		hw_in=[]
+
+	#Add Aubio MIDI input port ...
 	if zynthian_aubionotes:
 		aubio_out=jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
 			hw_out.append(aubio_out[0])
 		except:
 			pass
-	#Add TouchOSC devices ...
+	#Add TouchOSC input ports ...
 	if zynthian_touchosc:
 		rtmidi_out=jclient.get_ports("RtMidiOut Client", is_output=True, is_physical=False, is_midi=True)
 		for port in rtmidi_out:
@@ -122,71 +125,87 @@ def midi_autoconnect():
 			except:
 				pass                    
 
-	#logger.debug("Physical Devices: " + str(hw_out))
+	#logger.debug("Input Device Ports: {}".format(hw_out))
+	#logger.debug("Output Device Ports: {}".format(hw_in))
 
-	#Get Synth Engines
-	engines=[]
-	for engine in engine_list:
+	#Get Network (qmidinet) MIDI input/output ports ...
+	qmidinet_out=jclient.get_ports("QmidiNet", is_output=True, is_physical=False, is_midi=True)
+	qmidinet_in=jclient.get_ports("QmidiNet", is_input=True, is_physical=False, is_midi=True)
+
+	#logger.debug("QMidiNet Input Port: {}".format(qmidinet_out))
+	#logger.debug("QMidiNet Output Port: {}".format(qmidinet_in))
+
+	#Get Synth Engines MIDI output ports
+	engines_in=[]
+	for engine_name in engine_list:
 		#logger.debug("engine: "+engine)
-		devs=jclient.get_ports(engine, is_input=True, is_midi=True, is_physical=False)
+		ports=jclient.get_ports(engine_name, is_input=True, is_midi=True, is_physical=False)
 		try:
-			dev=devs[0]
-			if dev.shortname=='osc':
-				dev=devs[1]
-			#logger.debug("Engine "+str(dev)+" found")
-			engines.append(dev)
+			port=ports[0]
+			if port.shortname=='osc':
+				port=ports[1]
+			#logger.debug("Engine {}:{} found".format(engine_name,port.short_name))
+			engines_in.append(port)
 		except:
-			#logger.warning("Engine "+str(devs[0])+" is not present")
+			#logger.warning("Engine {} is not present".format(engine_name))
 			pass
 
-	#logger.debug("Engine Devices: " + str(engines))
+	#logger.debug("Synth Engine Ports: {}".format(engines_in))
 
-	#Get Zynthian Controller device
-	zyncoder_out=jclient.get_ports("Zyncoder", is_output=True, is_midi=True)
-	zyncoder_in=jclient.get_ports("Zyncoder", is_input=True, is_midi=True)
+	#Get Zynthian Midi Router MIDI ports
+	zmr_out=OrderedDict()
+	for p in jclient.get_ports("ZynMidiRouter", is_output=True, is_midi=True):
+		zmr_out[p.shortname]=p
+	zmr_in=OrderedDict()
+	for p in jclient.get_ports("ZynMidiRouter", is_input=True, is_midi=True):
+		zmr_in[p.shortname]=p
 
-	#Connect Physical devices to Synth Engines and Zyncoder
+	#logger.debug("ZynMidiRouter Input Ports: {}".format(zmr_out))
+	#logger.debug("ZynMidiRouter Output Ports: {}".format(zmr_in))
+
+	#------------------------------------
+	# Auto-Connect MIDI Ports
+	#------------------------------------
+
+	#Connect "Not Disabled" Input Device Ports to ZynMidiRouter:main_in
 	for hw in hw_out:
-		if len(zyncoder_in)>0:
-			#logger.debug("Connecting MIDI Input %s => %s" % (hw,zyncoder_in[0])
-			try:
-				#Disconnect Black-listed & Disabled Ports
-				if str(hw.name.split(':')[0]) in hw_black_list or get_port_alias_id(hw) in zynthian_gui_config.disabled_midi_in_ports:
-					jclient.disconnect(hw,zyncoder_in[0])
-				else:
-					jclient.connect(hw,zyncoder_in[0])
-			except:
-				pass
-
-	#Connect Zyncoder to engines
-	if len(zyncoder_out)>0:
-		for engine in engines:
-			try:
-				jclient.connect(zyncoder_out[0],engine)
-			except:
-				pass
-
-		#Get Physical MIDI-OUT devices ...
-		hw_in=jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
-		if len(hw_in)==0:
-			hw_in=[]
-
-		#Add Network MIDI-OUT (qmidinet) device ...
-		qmidinet_in=jclient.get_ports("QmidiNet", is_input=True, is_physical=False, is_midi=True)
+		#logger.debug("Connecting MIDI Input {} => {}".format(hw,zmr_in['main_in'])
 		try:
-			hw_in.append(qmidinet_in[0])
+			if get_port_alias_id(hw) in zynthian_gui_config.disabled_midi_in_ports:
+				jclient.disconnect(hw,zmr_in['main_in'])
+			else:
+				jclient.connect(hw,zmr_in['main_in'])
 		except:
 			pass
 
-		#Connect Zyncoder to enabled MIDI-OUT ports
-		for hw in hw_in:
-			try:
-				if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_out_ports:
-					jclient.connect(zyncoder_out[0],hw)
-				else:
-					jclient.disconnect(zyncoder_out[0],hw)
-			except:
-				pass
+	#Connect QMidiNet Input Port to ZynMidiRouter:net_in
+	try:
+		jclient.connect(qmidinet_out[0],zmr_in['net_in'])
+	except:
+		pass
+
+	#Connect ZynMidiRouter:main_out to engines
+	for eip in engines_in:
+		try:
+			jclient.connect(zmr_out['main_out'],eip)
+		except:
+			pass
+
+	#Connect ZynMidiRouter:main_out to enabled MIDI-OUT ports
+	for hw in hw_in:
+		try:
+			if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_out_ports:
+				jclient.connect(zmr_out['main_out'],hw)
+			else:
+				jclient.disconnect(zmr_out['main_out'],hw)
+		except:
+			pass
+
+	#Connect ZynMidiRouter:net_out to QMidiNet Output Port
+	try:
+		jclient.connect(zmr_out['net_out'],qmidinet_in[0])
+	except:
+		pass
 
 
 def audio_autoconnect():
@@ -214,8 +233,8 @@ def audio_autoconnect():
 			devs=jclient.get_ports(engine, is_output=True, is_audio=True, is_physical=False)
 			if devs:
 				dev_name=str(devs[0].name).split(':')[0]
-				#logger.error("Autoconnecting Engine => %s" % dev_name)
-				#logger.info("Autoconnecting Engine => %s" % dev_name)
+				#logger.error("Autoconnecting Engine => {}".format(dev_name))
+				#logger.info("Autoconnecting Engine => {}".format(dev_name))
 				if len(mon_out)>0 and dev_name.lower() in monitored_engines:
 					try:
 						jclient.connect(devs[0],mon_out[0])
@@ -261,7 +280,7 @@ def autoconnect_thread():
 		try:
 			autoconnect()
 		except Exception as err:
-			logger.error("ERROR Autoconnecting: "+str(err))
+			logger.error("ERROR Autoconnecting: {}".format(err))
 		sleep(refresh_time)
 
 def start(rt=2):
@@ -271,7 +290,7 @@ def start(rt=2):
 	try:
 		jclient=jack.Client("Zynthian_autoconnect")
 	except Exception as e:
-		logger.error("Failed to connect with Jack Server: %s" % (str(e)))
+		logger.error("Failed to connect with Jack Server: {}".format(e))
 	thread=Thread(target=autoconnect_thread, args=())
 	thread.daemon = True # thread dies with the program
 	thread.start()

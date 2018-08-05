@@ -50,7 +50,7 @@ from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_layer import zynthian_gui_layer
 from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
-from zyngui.zynthian_gui_midich import zynthian_gui_midich
+from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_transpose import zynthian_gui_transpose
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
@@ -88,8 +88,6 @@ class zynthian_gui:
 
 		self.dtsw={}
 		self.polling=False
-		self.osc_target=None
-		self.osc_server=None
 
 		self.loading=0
 		self.loading_thread=None
@@ -105,8 +103,7 @@ class zynthian_gui:
 		try:
 			global lib_zyncoder
 			#Init Zyncoder Library
-			zyngine_osc_port=6693
-			lib_zyncoder_init(zyngine_osc_port)
+			lib_zyncoder_init()
 			lib_zyncoder=zyncoder.get_lib_zyncoder()
 			#Init MIDI subsystem
 			self.init_midi()
@@ -147,7 +144,7 @@ class zynthian_gui:
 		self.screens['layer']=zynthian_gui_layer()
 		self.screens['layer_options']=zynthian_gui_layer_options()
 		self.screens['engine']=zynthian_gui_engine()
-		self.screens['midich']=zynthian_gui_midich()
+		self.screens['midi_chan']=zynthian_gui_midi_chan()
 		self.screens['transpose']=zynthian_gui_transpose()
 		self.screens['bank']=zynthian_gui_bank()
 		self.screens['preset']=zynthian_gui_preset()
@@ -158,7 +155,7 @@ class zynthian_gui:
 		# Show initial screen => Channel list
 		self.show_screen('layer')
 		# Try to load "default snapshot" or show "load snapshot" popup
-		default_snapshot_fpath=os.getcwd()+"/my-data/snapshots/default.zss"
+		default_snapshot_fpath=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots/default.zss"
 		if not isfile(default_snapshot_fpath) or not self.screens['layer'].load_snapshot(default_snapshot_fpath):
 			self.load_snapshot(autoclose=True)
 		# Start polling threads
@@ -247,6 +244,14 @@ class zynthian_gui:
 			self.screens['bank'].fill_list()
 			self.screens['preset'].fill_list()
 			self.screens['control'].fill_list()
+			#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
+			if zynthian_gui_config.midi_single_active_channel:
+				active_chan=self.curlayer.get_midi_chan()
+				if active_chan is not None:
+					cur_active_chan=lib_zyncoder.get_midi_active_chan()
+					if cur_active_chan!=active_chan:
+						self.all_notes_off_chan(cur_active_chan)
+						lib_zyncoder.set_midi_active_chan(active_chan);
 			self.stop_loading()
 		else:
 			self.curlayer=None
@@ -481,6 +486,9 @@ class zynthian_gui:
 				if ev==0: break
 				evtype = (ev & 0xF00000)>>20
 				chan = (ev & 0x0F0000)>>16
+				
+				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
+				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
 				#Master MIDI Channel ...
 				if chan==zynthian_gui_config.master_midi_channel:
@@ -491,7 +499,7 @@ class zynthian_gui:
 					elif ev==zynthian_gui_config.master_midi_program_change_down:
 						logging.debug("PROGRAM CHANGE DOWN!")
 						self.screens['snapshot'].midi_program_change_down()
-					if ev==zynthian_gui_config.master_midi_bank_change_up:
+					elif ev==zynthian_gui_config.master_midi_bank_change_up:
 						logging.debug("BANK CHANGE UP!")
 						self.screens['snapshot'].midi_bank_change_up()
 					elif ev==zynthian_gui_config.master_midi_bank_change_down:
@@ -517,7 +525,7 @@ class zynthian_gui:
 					pgm = (ev & 0x7F00)>>8
 					logging.info("MIDI PROGRAM CHANGE %s, CH%s" % (pgm,chan))
 					self.screens['layer'].set_midi_chan_preset(chan, pgm)
-					if not self.modal_screen and chan==self.curlayer.get_midi_chan():
+					if not self.modal_screen and self.curlayer and chan==self.curlayer.get_midi_chan():
 						self.show_screen('control')
 
 				#Note-On ...
@@ -613,14 +621,22 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def all_sounds_off(self):
-		logging.debug("All Sounds Off!")
+		logging.info("All Sounds Off!")
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 120, 0)
 
 	def all_notes_off(self):
-		logging.debug("All Notes Off!")
+		logging.info("All Notes Off!")
 		for chan in range(16):
 			self.zynmidi.set_midi_control(chan, 123, 0)
+
+	def all_sounds_off_chan(self, chan):
+		logging.info("All Sounds Off for channel {}!".format(chan))
+		self.zynmidi.set_midi_control(chan, 120, 0)
+
+	def all_notes_off_chan(self, chan):
+		logging.info("All Notes Off for channel {}!".format(chan))
+		self.zynmidi.set_midi_control(chan, 123, 0)
 
 	#------------------------------------------------------------------
 	# MIDI learning

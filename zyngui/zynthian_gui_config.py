@@ -182,7 +182,10 @@ ctrl_pos=[
 
 color_bg=os.environ.get('ZYNTHIAN_UI_COLOR_BG',"#000000")
 color_tx=os.environ.get('ZYNTHIAN_UI_COLOR_TX',"#ffffff")
+color_tx_off=os.environ.get('ZYNTHIAN_UI_COLOR_TX_OFF',"#e0e0e0")
 color_on=os.environ.get('ZYNTHIAN_UI_COLOR_ON',"#ff0000")
+color_off=os.environ.get('ZYNTHIAN_UI_COLOR_OFF',"#5a626d")
+color_hl=os.environ.get('ZYNTHIAN_UI_COLOR_HL',"#00D000")
 color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG',"#3a424d")
 
 # Color Scheme
@@ -190,10 +193,10 @@ color_panel_bd=color_bg
 color_panel_tx=color_tx
 color_header_bg=color_bg
 color_header_tx=color_tx
-color_ctrl_bg_off="#5a626d"
+color_ctrl_bg_off=color_off
 color_ctrl_bg_on=color_on
 color_ctrl_tx=color_tx
-color_ctrl_tx_off="#e0e0e0"
+color_ctrl_tx_off=color_tx_off
 
 #------------------------------------------------------------------------------
 # UI Font Parameters
@@ -223,8 +226,8 @@ def set_midi_config():
 	global master_midi_program_base, master_midi_bank_change_ccnum
 	global master_midi_bank_change_up, master_midi_bank_change_down
 	global master_midi_bank_change_down_ccnum, master_midi_bank_base
-	global preset_preload_noteon, midi_fine_tuning, midi_filter_rules
-	global disabled_midi_in_ports, enabled_midi_out_ports
+	global preset_preload_noteon, midi_single_active_channel, midi_fine_tuning
+	global midi_filter_rules, disabled_midi_in_ports, enabled_midi_out_ports
 
 	master_midi_channel=int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
 
@@ -268,6 +271,7 @@ def set_midi_config():
 	master_midi_bank_change_down=int('{:<06}'.format(master_midi_bank_change_down.replace('#',mmc_hex)),16)
 
 	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON',1))
+	midi_single_active_channel=int(os.environ.get('ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL',0))
 	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440))
 
 	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES',"")

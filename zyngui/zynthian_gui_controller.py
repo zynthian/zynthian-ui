@@ -121,7 +121,7 @@ class zynthian_gui_controller:
 
 	def set_hl(self):
 		try:
-			self.canvas.itemconfig(self.arc, outline="#009000")
+			self.canvas.itemconfig(self.arc, outline=zynthian_gui_config.color_hl)
 		except:
 			pass
 
@@ -510,9 +510,10 @@ class zynthian_gui_controller:
 			if self.zctrl.osc_path:
 				#logging.debug("Setup zyncoder %d => %s" % (self.index,self.zctrl.osc_path))
 				midi_cc=None
-				osc_path_char=ctypes.c_char_p(self.zctrl.osc_path.encode('UTF-8'))
-				if zynthian_gui_config.zyngui.osc_target:
-					liblo.send(zynthian_gui_config.zyngui.osc_target, self.zctrl.osc_path)
+				zyn_osc_path="{}:{}".format(self.zctrl.osc_port,self.zctrl.osc_path)
+				osc_path_char=ctypes.c_char_p(zyn_osc_path.encode('UTF-8'))
+				#if zctrl.engine.osc_target:
+				#	liblo.send(zctrl.engine.osc_target, self.zctrl.osc_path)
 			elif self.zctrl.graph_path:
 				#logging.debug("Setup zyncoder %d => %s" % (self.index,self.zctrl.graph_path))
 				midi_cc=None
