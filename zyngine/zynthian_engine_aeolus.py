@@ -26,6 +26,8 @@ import os
 import re
 import logging
 import time
+import copy
+import struct
 import subprocess
 from collections import OrderedDict
 from os.path import isfile,isdir,join
@@ -44,9 +46,43 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	instrument=[{
-		"name": "Manual I",
-		"num": 2,
+		"name": "Manual III",
 		"chan": 0,
+		"buttons": [
+			'Principal 8',
+			'Gemshorn 8',
+			'Quinta-dena 8',
+			'Suabile 8',
+			'Rohrflöte 4',
+			'Dulzflöte 4',
+			'Quintflöte 2 2/3',
+			'Super-octave 2',
+			'Sifflet 1',
+			'Cymbel VI',
+			'Oboe',
+			'Tremulant'
+		]
+	},{
+		"name": "Manual II",
+		"chan": 1,
+		"buttons": [
+			'Rohrflöte 8',
+			'Harmonic Flute 4',
+			'Flauto Dolce 4',
+			'Nasard 2 2/3',
+			'Ottavina 2',
+			'Tertia 1 3/5',
+			'Sesqui-altera',
+			'Septime',
+			'None',
+			'Krumhorn',
+			'Melodia',
+			'Tremulant',
+			'II+III'
+		]
+	},{
+		"name": "Manual I",
+		"chan": 2,
 		"buttons": [
 			'Principal 8',
 			'Principal 4',
@@ -66,45 +102,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 			'I+III'
 		]
 	},{
-		"name": "Manual II",
-		"num": 1,
-		"chan": 1,
-		"buttons": [
-			'Rohrflöte 8',
-			'Harmonic Flute 4',
-			'Flauto Dolce 4',
-			'Nasard 2 2/3',
-			'Ottavina 2',
-			'Tertia 1 3/5',
-			'Sesqui-altera',
-			'Septime',
-			'None',
-			'Krumhorn',
-			'Melodia',
-			'Tremulant',
-			'II+III'
-		]
-	},{
-		"name": "Manual III",
-		"num": 0,
-		"chan": 2,
-		"buttons": [
-			'Principal 8',
-			'Gemshorn 8',
-			'Quinta-dena 8',
-			'Suabile 8',
-			'Rohrflöte 4',
-			'Dulzflöte 4',
-			'Quintflöte 2 2/3',
-			'Super-octave 2',
-			'Sifflet 1',
-			'Cymbel VI',
-			'Oboe',
-			'Tremulant'
-		]
-	},{
 		"name": "Pedals",
-		"num": 3,
 		"chan": 3,
 		"buttons": [
 			'Subbass 16',
@@ -126,6 +124,13 @@ class zynthian_engine_aeolus(zynthian_engine):
 		]
 	}]
 
+	common_ctrls=[
+		['Swell',7,64],
+		['TFreq',12,42],
+		['TMod',13,64],
+		['Sustain',64,"off","off|on"]
+	]
+
 	_ctrls=[]
 	_ctrl_screens=[]
 
@@ -141,13 +146,16 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.n_banks=32
 		self.n_presets=32
 		self.stop_cc_num=98
-		self.ctrl_cc_num_start=12
+		self.ctrl_cc_num_start=14
+		self.presets_fpath="/root/.aeolus-presets"
+		self.presets_data={}
 
 		if self.config_remote_display():
 			self.command=("/usr/bin/aeolus")
 		else:
 			self.command=("/usr/bin/aeolus", "-t")
 
+		self.read_presets_file()
 		self.generate_ctrl_list()
 		self.start()
 		self.reset()
@@ -175,9 +183,13 @@ class zynthian_engine_aeolus(zynthian_engine):
 	def get_bank_list(self, layer=None):
 		self.start_loading()
 		res=[]
-		for i in range(self.n_banks):
-			title="Bank {0:02d}".format(i+1)
-			res.append((title,i,title))
+		i=-1
+		#for i in range(self.n_banks):
+		for gc in self.presets_data['group_config']:
+			if gc['bank']>i:
+				i=gc['bank']
+				title="Bank {0:02d}".format(i+1)
+				res.append((title,i,title))
 		self.stop_loading()
 		return res
 
@@ -191,14 +203,25 @@ class zynthian_engine_aeolus(zynthian_engine):
 	def get_preset_list(self, bank):
 		self.start_loading()
 		res=[]
-		for i in range(self.n_presets):
-			title="Preset {0:02d}".format(i+1)
-			res.append((title,[0,bank[1],i],title))
+		i=-1
+		#for i in range(self.n_presets):
+		for gc in self.presets_data['group_config']:
+			if gc['preset']>i and gc['bank']==bank[1]:
+				i=gc['preset']
+				title="Preset {0:02d}".format(i+1)
+				res.append((title,[0,bank[1],i],title,gc['gconf']))
 		self.stop_loading()
 		return res
 
 	def set_preset(self, layer, preset, preload=False):
 		self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
+		for ig, gc in enumerate(preset[3]):
+			for ic, ctrl in enumerate(self.instrument[ig]['ctrls']):
+				if (gc >> ic) & 1:
+					ctrl[2]='on'
+				else:
+					ctrl[2]='off'
+		self.refresh_all()
 
 
 	#----------------------------------------------------------------------------
@@ -211,24 +234,25 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def midi_control_change(self, zctrl, val):
 		try:
-			if isinstance(val,int):
-				if val>=64:
-					val="on"
+			if isinstance(zctrl.graph_path,list):
+				if isinstance(val,int):
+					if val>=64:
+						val="on"
+					else:
+						val="off"
+					if val!=zctrl.get_label2value():
+						zctrl.set_value(val)
+					else:
+						return
+				if val=="on":
+					mm="10"
 				else:
-					val="off"
-				if val!=zctrl.get_label2value():
-					zctrl.set_value(val)
-				else:
-					return
-			if val=="on":
-				mm="10"
-			else:
-				mm="01"
-			v1="01{0}0{1:03b}".format(mm,zctrl.graph_path[0])
-			v2="000{0:05b}".format(zctrl.graph_path[1])
-			self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v1,2))
-			self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v2,2))
-			logging.debug("Aeolus Stop => mm={}, group={}, button={})".format(mm,zctrl.graph_path[0],zctrl.graph_path[1]))
+					mm="01"
+				v1="01{0}0{1:03b}".format(mm,zctrl.graph_path[0])
+				v2="000{0:05b}".format(zctrl.graph_path[1])
+				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v1,2))
+				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v2,2))
+				logging.debug("Aeolus Stop => mm={}, group={}, button={})".format(mm,zctrl.graph_path[0],zctrl.graph_path[1]))
 		except Exception as e:
 			logging.debug(e)
 
@@ -241,9 +265,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 			#Generate _ctrls list
 			i=0
 			self.instrument[ig]['ctrls']=[]
+			#self.instrument[ig]['ctrls']=copy.deepcopy(self.common_ctrls)
 			for ctrl_name in group['buttons']:
 				cc_num=self.ctrl_cc_num_start+n
-				self.instrument[ig]['ctrls'].append([ctrl_name,cc_num,'off','off|on',[group['num'],i]])
+				self.instrument[ig]['ctrls'].append([ctrl_name,cc_num,'off','off|on',[ig,i]])
 				i+=1
 				n+=1
 		
@@ -281,6 +306,67 @@ class zynthian_engine_aeolus(zynthian_engine):
 		for group in self.instrument:
 			if group['chan']==chan:
 				return group['name']
+
+
+	def read_presets_file(self):
+
+		with open(self.presets_fpath, mode='rb') as file:
+			data = file.read()
+
+		pos=0
+		header=struct.unpack("6sbHHHH", data[pos:16])
+		#logging.debug(header)
+		pos+=16
+		if header[0].decode('ASCII')!="PRESET":
+			logging.error("FORMAT => Bad Header")
+
+		n_groups=header[5]
+		if n_groups!=len(self.instrument):
+			logging.error("Number of groups ({}) doesn't fit with engine's configuration ({}) !".format(n_groups,len(self.instrument)))
+
+		chan_config=[]
+		for group in range(8):
+			chan_config.append([])
+			for chan in range(16):
+				res=struct.unpack("H", data[pos:pos+2])
+				pos+=2
+				chan_config[group].append(res[0])
+				logging.debug("CHAN CONFIG (GROUP {0}, CHAN {1} => {2:b}".format(group,chan,res[0]))
+
+		group_config=[]
+		try:
+			while True:
+				res=struct.unpack("BBBB", data[pos:pos+4])
+				pos+=4
+				if res[0]>=self.n_banks:
+					logging.error("FORMAT => Bank index ({}>={})".format(res[0],self.n_banks))
+					return
+				if res[1]>=self.n_presets:
+					logging.error("FORMAT => Preset index ({}>={})".format(res[1],self.n_presets))
+					return
+				logging.debug("BANK {}, PRESET {} =>".format(res[0],res[1]))
+				gconf=[]
+				for group in range(n_groups):
+					gc=struct.unpack("I", data[pos:pos+4])
+					pos+=4
+					gconf.append(gc[0])
+					logging.debug("GROUP CONFIG {0} => {1:b}".format(group,gc[0]))
+
+				group_config.append({
+					'bank': res[0],
+					'preset': res[1],
+					'gconf':gconf
+				})
+				
+		except:
+			pass
+
+		self.presets_data = {
+			'n_groups' : n_groups,
+			'chan_config' : chan_config,
+			'group_config': group_config
+		}
+
 
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String
