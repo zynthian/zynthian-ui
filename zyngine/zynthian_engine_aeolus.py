@@ -195,6 +195,12 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def set_bank(self, layer, bank):
 		self.zyngui.zynmidi.set_midi_bank_lsb(layer.get_midi_chan(), bank[1])
+		#Change Bank for all Layers
+		for l in self.layers:
+			if l!=layer:
+				l.bank_index=layer.bank_index
+				l.bank_name=layer.bank_name
+				l.bank_info=copy.deepcopy(layer.bank_info)
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
@@ -215,6 +221,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def set_preset(self, layer, preset, preload=False):
 		self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
+		#Update Controller Values
 		for ig, gc in enumerate(preset[3]):
 			for ic, ctrl in enumerate(self.instrument[ig]['ctrls']):
 				if (gc >> ic) & 1:
@@ -222,6 +229,16 @@ class zynthian_engine_aeolus(zynthian_engine):
 				else:
 					ctrl[2]='off'
 		self.refresh_all()
+		#Change Preset for all Layers
+		for l in self.layers:
+			if l!=layer:
+				l.preset_index=layer.preset_index
+				l.preset_name=layer.preset_name
+				l.preset_info=copy.deepcopy(layer.preset_info)
+				l.preset_bank_index=l.bank_index
+				l.preload_index=l.preset_index
+				l.preload_name=l.preset_name
+				l.preload_info=l.preset_info
 
 
 	#----------------------------------------------------------------------------
