@@ -29,6 +29,7 @@ import time
 import copy
 import struct
 import subprocess
+from time import sleep
 from collections import OrderedDict
 from os.path import isfile,isdir,join
 
@@ -158,6 +159,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.read_presets_file()
 		self.generate_ctrl_list()
 		self.start()
+		sleep(2)
 		self.reset()
 
 	# ---------------------------------------------------------------------------
