@@ -57,6 +57,7 @@ from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
+from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
@@ -151,6 +152,7 @@ class zynthian_gui:
 		self.screens['control']=zynthian_gui_control()
 		self.screens['control_xy']=zynthian_gui_control_xy()
 		self.screens['midi_profile']=zynthian_gui_midi_profile()
+		self.screens['audio_recorder']=zynthian_gui_audio_recorder()
 		self.screens['confirm']=zynthian_gui_confirm()
 		# Show initial screen => Channel list
 		self.show_screen('layer')
