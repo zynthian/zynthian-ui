@@ -126,7 +126,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		try:
 			cmd=self.sys_dir +"/sbin/jack_capture.sh --zui"
 			#logging.info("COMMAND: %s" % cmd)
-			self.rec_proc=Popen(cmd.split(" "))
+			self.rec_proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
 			sleep(0.5)
 			check_output("echo play | jack_transport", shell=True)
 		except Exception as e:
@@ -139,9 +139,10 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def stop_audio_record(self):
 		logging.info("STOPPING AUDIO RECORD ...")
 		check_output("echo stop | jack_transport", shell=True)
+		self.rec_proc.communicate()
 		while self.is_process_running("jack_capture"):
 			sleep(1)
-		self.fill_list()
+		self.show()
 
 
 	def start_audio_play(self, fpath):
@@ -163,25 +164,12 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 	def stop_audio_play(self):
 		logging.info("STOP AUDIO PLAY ...")
-		if self.play_proc and self.play_proc.pid:
+		try:
 			self.play_proc.stdin.write("quit\n")
 			self.play_proc.stdin.flush()
+		except:
+			pass
 		self.current_audio_record=None
-		self.fill_list()
-
-
-	def xstop_audio_play(self):
-		logging.info("STOP AUDIO PLAY ...")
-		if self.play_proc and self.play_proc.pid:
-			pid=self.play_proc.pid
-			self.play_proc.terminate()
-			sleep(0.2)
-			try:
-				self.play_proc.kill()
-				os.killpg(pid, signal.SIGKILL)
-			except:
-				pass
-			self.current_audio_record=None
 		self.fill_list()
 
 
