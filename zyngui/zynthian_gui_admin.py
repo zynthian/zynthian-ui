@@ -261,6 +261,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def network_info(self):
 		logging.info("NETWORK INFO")
 		zynthian_gui_config.zyngui.show_info("NETWORK INFO\n")
+		zynthian_gui_config.zyngui.add_info(" Link-Local Name => {}.local\n".format(os.uname().nodename),"SUCCESS")
 		for ifc, snic in self.get_netinfo().items():
 			if snic.family==socket.AF_INET and snic.address:
 				zynthian_gui_config.zyngui.add_info(" {} => {}\n".format(ifc,snic.address),"SUCCESS")
