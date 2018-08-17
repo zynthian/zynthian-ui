@@ -344,13 +344,16 @@ class zynthian_engine_aeolus(zynthian_engine):
 			logging.error("Number of groups ({}) doesn't fit with engine's configuration ({}) !".format(n_groups,len(self.instrument)))
 
 		chan_config=[]
-		for group in range(8):
+		for num in range(8):
 			chan_config.append([])
-			for chan in range(16):
+			for group in range(16):
 				res=struct.unpack("H", data[pos:pos+2])
 				pos+=2
-				chan_config[group].append(res[0])
-				logging.debug("CHAN CONFIG (GROUP {0}, CHAN {1} => {2:b}".format(group,chan,res[0]))
+				chan_config[num].append(res[0])
+				logging.debug("CHAN CONFIG (NUM {0}, GROUP {1} => {2:b}".format(num,group,res[0]))
+
+		for i,group in enumerate(self.instrument):
+			group['chan'] = chan_config[0][i] & 0xF;
 
 		group_config=[]
 		try:
