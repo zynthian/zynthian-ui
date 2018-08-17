@@ -48,7 +48,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	instrument=[{
 		"name": "Manual III",
-		"chan": 0,
+		"chan": 2,
 		"buttons": [
 			'Principal 8',
 			'Gemshorn 8',
@@ -83,7 +83,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		]
 	},{
 		"name": "Manual I",
-		"chan": 2,
+		"chan": 0,
 		"buttons": [
 			'Principal 8',
 			'Principal 4',
