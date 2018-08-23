@@ -52,8 +52,8 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 class zynthian_gui_engine(zynthian_gui_selector):
 	engine_info=OrderedDict([
 		["ZY", ("ZynAddSubFX","ZynAddSubFX - Synthesizer")],
-		["FS", ("FluidSynth","FluidSynth - Sampler")],
-		["LS", ("LinuxSampler","LinuxSampler - Sampler")],
+		["FS", ("FluidSynth","FluidSynth - SF2 Player")],
+		["LS", ("LinuxSampler","LinuxSampler - SFZ/GIG Player")],
 		["BF", ("setBfree","setBfree - Hammond Emulator")],
 	])
 
@@ -62,6 +62,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	engine_info['MD']=("MOD-UI","MOD-UI - Plugin Host")
 	engine_info['PD']=("PureData","PureData - Visual Programming")
+	engine_info['AE']=("Aeolus","Aeolus - Pipe Organ Emulator")
 
 	def __init__(self):
 		self.zyngines={}
@@ -72,7 +73,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.list_data=[]
 		i=0
 		for en in self.engine_info:
-			if en not in ["BF", "MD", "PT", "PD"] or en not in self.zyngines:
+			if en not in ["BF", "MD", "PT", "PD", "AE"] or en not in self.zyngines:
 				ei=self.engine_info[en]
 				self.list_data.append((en,i,ei[1],ei[0]))
 				i=i+1
@@ -100,6 +101,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.zyngines[eng]=zynthian_engine_pianoteq(zynthian_gui_config.zyngui)
 			elif eng=="PD":
 				self.zyngines[eng]=zynthian_engine_puredata(zynthian_gui_config.zyngui)
+			elif eng=="AE":
+				self.zyngines[eng]=zynthian_engine_aeolus(zynthian_gui_config.zyngui)
 			else:
 				return None
 			if wait>0:

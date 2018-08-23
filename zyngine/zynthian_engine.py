@@ -378,7 +378,10 @@ class zynthian_engine:
 		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name)
 
 	def set_preset(self, layer, preset, preload=False):
-		self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
+		if isinstance(preset[1],int):
+			self.zyngui.zynmidi.set_midi_prg(layer.get_midi_chan(), preset[1])
+		else:
+			self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
 
 	def cmp_presets(self, preset1, preset2):
 		if preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
@@ -419,7 +422,11 @@ class zynthian_engine:
 
 			#Build controller depending on array length ...
 			if len(ctrl)>4:
-				zctrl=zynthian_controller(self,ctrl[4],ctrl[0])
+				if isinstance(ctrl[4],str):
+					zctrl=zynthian_controller(self,ctrl[4],ctrl[0])
+				else:
+					zctrl=zynthian_controller(self,ctrl[0])
+					zctrl.graph_path=ctrl[4]
 				zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
 			elif len(ctrl)>3:
 				zctrl=zynthian_controller(self,ctrl[0])

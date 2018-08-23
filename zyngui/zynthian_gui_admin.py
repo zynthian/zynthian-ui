@@ -81,17 +81,13 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.start_touchosc2midi,0,"Start TouchOSC"))
 
-		if self.is_process_running("jack_capture"):
-			self.list_data.append((self.stop_recording,0,"Stop Audio Recording"))
-		else:
-			self.list_data.append((self.start_recording,0,"Start Audio Recording"))
-
 		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
 			if self.is_service_active("aubionotes"):
 				self.list_data.append((self.stop_aubionotes,0,"Stop Audio -> MIDI"))
 			else:
 				self.list_data.append((self.start_aubionotes,0,"Start Audio -> MIDI"))
 
+		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
@@ -265,6 +261,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def network_info(self):
 		logging.info("NETWORK INFO")
 		zynthian_gui_config.zyngui.show_info("NETWORK INFO\n")
+		zynthian_gui_config.zyngui.add_info(" Link-Local Name => {}.local\n".format(os.uname().nodename),"SUCCESS")
 		for ifc, snic in self.get_netinfo().items():
 			if snic.family==socket.AF_INET and snic.address:
 				zynthian_gui_config.zyngui.add_info(" {} => {}\n".format(ifc,snic.address),"SUCCESS")
@@ -324,27 +321,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		check_output("systemctl stop touchosc2midi", shell=True)
 		self.fill_list()
 
-	def start_recording(self):
-		logging.info("RECORDING STARTED...")
-		try:
-			cmd=self.sys_dir +"/sbin/jack_capture.sh --zui"
-			#logging.info("COMMAND: %s" % cmd)
-			rec_proc=Popen(cmd,shell=True,env=os.environ)
-			sleep(0.5)
-			check_output("echo play | jack_transport", shell=True)
-		except Exception as e:
-			logging.error("ERROR STARTING RECORDING: %s" % e)
-			zynthian_gui_config.zyngui.show_info("ERROR STARTING RECORDING:\n %s" % e)
-			zynthian_gui_config.zyngui.hide_info_timer(5000)
-		self.fill_list()
-
-	def stop_recording(self):
-		logging.info("STOPPING RECORDING...")
-		check_output("echo stop | jack_transport", shell=True)
-		while self.is_process_running("jack_capture"):
-			sleep(1)
-		self.fill_list()
-
 	def start_aubionotes(self):
 		logging.info("STARTING aubionotes")
 		check_output("systemctl start aubionotes", shell=True)
@@ -355,8 +331,12 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		check_output("systemctl stop aubionotes", shell=True)
 		self.fill_list()
 
+	def audio_recorder(self):
+		logging.info("Audio Recorder")
+		zynthian_gui_config.zyngui.show_modal("audio_recorder")
+
 	def midi_profile(self):
-		logging.info("MIDI PROFILE")
+		logging.info("MIDI Profile")
 		zynthian_gui_config.zyngui.show_modal("midi_profile")
 
 	def test_audio(self):

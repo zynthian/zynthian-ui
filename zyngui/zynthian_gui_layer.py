@@ -129,6 +129,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.add_layer_midich(2,False)
 			self.index=len(self.layers)-3
 			self.select_action(self.index)
+		elif eng.nickname=='AE':
+			self.add_layer_midich(0,False)
+			self.add_layer_midich(1,False)
+			self.add_layer_midich(2,False)
+			self.add_layer_midich(3,False)
+			self.index=len(self.layers)-4
+			self.select_action(self.index)
 		else:
 			zynthian_gui_config.zyngui.screens['midi_chan'].set_mode("ADD")
 			zynthian_gui_config.zyngui.show_modal('midi_chan')
@@ -195,6 +202,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def set_select_path(self):
 		self.select_path.set("Layer List")
+
+
+	#----------------------------------------------------------------------------
+	# MIDI CC processing
+	#----------------------------------------------------------------------------
+
+	def midi_control_change(self, chan, ccnum, ccval):
+		for layer in self.layers:
+			layer.midi_control_change(chan, ccnum, ccval)
 
 	#----------------------------------------------------------------------------
 	# Snapshot Save & Load

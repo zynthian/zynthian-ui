@@ -57,6 +57,7 @@ from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
+from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
@@ -151,6 +152,7 @@ class zynthian_gui:
 		self.screens['control']=zynthian_gui_control()
 		self.screens['control_xy']=zynthian_gui_control_xy()
 		self.screens['midi_profile']=zynthian_gui_midi_profile()
+		self.screens['audio_recorder']=zynthian_gui_audio_recorder()
 		self.screens['confirm']=zynthian_gui_confirm()
 		# Show initial screen => Channel list
 		self.show_screen('layer')
@@ -534,10 +536,17 @@ class zynthian_gui:
 					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
 						self.screens[self.active_screen].preselect_action()
 
-				# MIDI learn => If controller is CC-mapped, use MIDI-router learning
-				elif self.midi_learn_zctrl and self.midi_learn_zctrl.midi_cc and evtype==0xB:
-					ccnum=(ev & 0x7F00)>>8
-					self.midi_learn_zctrl.cb_midi_learn(chan,ccnum)
+				#Control Change ...
+				elif evtype==0xB:
+					# MIDI learn => If controller is CC-mapped, use MIDI-router learning
+					if self.midi_learn_zctrl and self.midi_learn_zctrl.midi_cc:
+						ccnum=(ev & 0x7F00)>>8
+						self.midi_learn_zctrl.cb_midi_learn(chan,ccnum)
+					# Try layer's zctrls
+					else:
+						ccnum=(ev & 0x7F00)>>8
+						ccval=(ev & 0x007F)
+						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
 
 		except Exception as err:
 			logging.error("zynthian_gui.zynmidi_read() => %s" % err)
@@ -644,10 +653,12 @@ class zynthian_gui:
 
 	def set_midi_learn(self, zctrl):
 		self.midi_learn_zctrl=zctrl
+		lib_zyncoder.set_midi_learning_mode(1)
 		self.screens['control'].refresh_midi_bind()
 
 	def unset_midi_learn(self):
 		self.midi_learn_zctrl=None
+		lib_zyncoder.set_midi_learning_mode(0)
 		self.screens['control'].refresh_midi_bind()
 
 #------------------------------------------------------------------------------

@@ -53,7 +53,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.list_data=[]
 		self.layer=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index]
 		eng=self.layer.engine.nickname
-		if eng in ['ZY','LS','FS','BF','PT','PD']:
+		if eng in ['ZY','LS','FS','BF','PT','PD','AE']:
 			if self.layer.midi_chan>=0:
 				self.list_data.append((self.clone,0,"Clone"))
 				self.list_data.append((self.transpose,0,"Transpose"))

@@ -56,6 +56,7 @@ class zynthian_layer:
 		self.controllers_dict=None
 		self.ctrl_screens_dict=None
 		self.ctrl_screen_active=None
+		self.listen_midi_cc=False
 
 		self.refresh_flag=False
 
@@ -266,6 +267,19 @@ class zynthian_layer:
 			except:
 				logging.error("Controller %s is not defined" % k)
 		return zctrls
+
+	#----------------------------------------------------------------------------
+	# MIDI CC processing
+	#----------------------------------------------------------------------------
+
+	def midi_control_change(self, chan, ccnum, ccval):
+		if self.engine and self.listen_midi_cc and chan==self.midi_chan:
+			for k in self.controllers_dict:
+				if self.controllers_dict[k].midi_cc==ccnum:
+					try:
+						self.engine.midi_control_change(self.controllers_dict[k], ccval)
+					except:
+						pass
 
 	# ---------------------------------------------------------------------------
 	# Snapshot Management
