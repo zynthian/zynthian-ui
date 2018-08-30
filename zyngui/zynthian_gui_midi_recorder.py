@@ -3,7 +3,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian GUI Audio Recorder Class
+# Zynthian GUI MIDI Recorder Class
 # 
 # Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
 #
@@ -26,6 +26,7 @@
 import os
 import sys
 import logging
+import signal
 from time import sleep
 from os.path import isfile, isdir, join, basename
 from subprocess import check_output, Popen, PIPE
@@ -43,19 +44,22 @@ from . import zynthian_gui_selector
 logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 
 #------------------------------------------------------------------------------
-# Zynthian Audio Recorder GUI Class
+# Zynthian MIDI Recorder GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_audio_recorder(zynthian_gui_selector):
+class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	
 	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
+
+	jack_record_port = "ZynMidiRouter:main_out"
+	jack_play_port = "ZynMidiRouter:seq_in"
 
 	def __init__(self):
 		self.capture_dir=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
 		self.current_record=None
 		self.rec_proc=None
 		self.play_proc=None
-		super().__init__('Audio Recorder', True)
+		super().__init__('MIDI Recorder', True)
 
 
 	def is_process_running(self, procname):
@@ -75,16 +79,16 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def fill_list(self):
 		self.index=0
 		self.list_data=[]
-		if self.is_process_running("jack_capture"):
+		if self.rec_proc and self.rec_proc.poll() is None:
 			self.list_data.append(("STOP_RECORDING",0,"Stop Recording"))
-		elif self.current_record:
+		elif self.play_proc and self.play_proc.poll() is None:
 			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
 		else:
 			self.list_data.append(("START_RECORDING",0,"Start Recording"))
 		i=1
 		for f in sorted(os.listdir(self.capture_dir)):
 			fpath=self.get_record_fpath(f)
-			if isfile(fpath) and f[-4:].lower()=='.wav':
+			if isfile(fpath) and f[-4:].lower()=='.mid':
 				#title=str.replace(f[:-3], '_', ' ')
 				title=f[:-4]
 				self.list_data.append((fpath,i,title))
@@ -99,6 +103,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 	# Highlight command and current record played, if any ...
 	def highlight(self):
+		if not self.play_proc or self.play_proc.poll() is not None:
+			self.current_record=None
 		for i, row in enumerate(self.list_data):
 			if row[0]==self.current_record:
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_hl})
@@ -121,51 +127,50 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 
 	def start_recording(self):
-		logging.info("STARTING NEW AUDIO RECORD ...")
+		logging.info("STARTING NEW MIDI RECORD ...")
 		try:
-			cmd=self.sys_dir +"/sbin/jack_capture.sh --zui"
+			cmd=self.sys_dir +"/sbin/jack-smf-recorder.sh --port {}".format(self.jack_record_port)
 			#logging.info("COMMAND: %s" % cmd)
-			self.rec_proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
+			self.rec_proc=Popen(cmd.split(" "), shell=True, preexec_fn=os.setpgrp)
 			sleep(0.5)
-			check_output("echo play | jack_transport", shell=True)
 		except Exception as e:
-			logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
-			zynthian_gui_config.zyngui.show_info("ERROR STARTING AUDIO RECORD:\n %s" % e)
+			logging.error("ERROR STARTING MIDI RECORD: %s" % e)
+			zynthian_gui_config.zyngui.show_info("ERROR STARTING MIDI RECORD:\n %s" % e)
 			zynthian_gui_config.zyngui.hide_info_timer(5000)
 		self.fill_list()
 
 
 	def stop_recording(self):
-		logging.info("STOPPING AUDIO RECORD ...")
-		check_output("echo stop | jack_transport", shell=True)
-		self.rec_proc.communicate()
-		while self.is_process_running("jack_capture"):
+		logging.info("STOPPING MIDI RECORD ...")
+		self.rec_proc.terminate()
+		os.killpg(os.getpgid(self.rec_proc.pid), signal.SIGINT)
+		while self.rec_proc.poll() is None:
 			sleep(1)
 		self.show()
 
 
 	def start_playing(self, fpath):
-		if self.current_record:
+		if self.play_proc and self.play_proc.poll() is None:
 			self.stop_playing()
-		logging.info("STARTING AUDIO PLAY '{}' ...".format(fpath))
+		logging.info("STARTING MIDI PLAY '{}' ...".format(fpath))
 		try:
-			cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -ao jack {}".format(fpath)
+			cmd="/usr/local/bin/jack-smf-player -t -s -a {} {}".format(self.jack_play_port, fpath)
 			logging.info("COMMAND: %s" % cmd)
-			self.play_proc=Popen(cmd.split(" "), stdin=PIPE, universal_newlines=True)
+			self.play_proc=Popen(cmd.split(" "))
 			sleep(0.5)
 			self.current_record=fpath
 		except Exception as e:
-			logging.error("ERROR STARTING AUDIO PLAY: %s" % e)
-			zynthian_gui_config.zyngui.show_info("ERROR STARTING AUDIO PLAY:\n %s" % e)
+			logging.error("ERROR STARTING MIDI PLAY: %s" % e)
+			zynthian_gui_config.zyngui.show_info("ERROR STARTING MIDI PLAY:\n %s" % e)
 			zynthian_gui_config.zyngui.hide_info_timer(5000)
 		self.fill_list()
 
 
 	def stop_playing(self):
-		logging.info("STOPPING AUDIO PLAY ...")
+		logging.info("STOPPING MIDI PLAY ...")
 		try:
-			self.play_proc.stdin.write("quit\n")
-			self.play_proc.stdin.flush()
+			self.play_proc.terminate()
+			sleep(0.5)
 		except:
 			pass
 		self.current_record=None
@@ -173,6 +178,6 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set("Audio Recorder")
+		self.select_path.set("MIDI Recorder")
 
 #------------------------------------------------------------------------------
