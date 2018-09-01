@@ -88,6 +88,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				self.list_data.append((self.start_aubionotes,0,"Start Audio -> MIDI"))
 
 		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
+		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
@@ -334,6 +335,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def audio_recorder(self):
 		logging.info("Audio Recorder")
 		zynthian_gui_config.zyngui.show_modal("audio_recorder")
+
+	def midi_recorder(self):
+		logging.info("MIDI Recorder")
+		zynthian_gui_config.zyngui.show_modal("midi_recorder")
 
 	def midi_profile(self):
 		logging.info("MIDI Profile")
