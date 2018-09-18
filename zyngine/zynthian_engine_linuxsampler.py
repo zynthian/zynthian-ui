@@ -92,19 +92,20 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
-		self.name="LinuxSampler"
-		self.nickname="LS"
+		self.name = "LinuxSampler"
+		self.nickname = "LS"
+		self.jackname = "LinuxSampler"
 
-		self.sock=None
-		self.port=6688
-		self.command=("linuxsampler", "--lscp-port", str(self.port))
+		self.sock = None
+		self.port = 6688
+		self.command = ("linuxsampler", "--lscp-port", str(self.port))
 		#os.environ["LADSPA_PATH"]="/usr/lib/ladspa"
 
-		self.ls_chans={}
-		self.ls_effects=OrderedDict(self._ladspa_plugins)
+		self.ls_chans = {}
+		self.ls_effects = OrderedDict(self._ladspa_plugins)
 
 		self.lscp_dir = self.data_dir + "/lscp"
-		self.bank_dirs=[
+		self.bank_dirs = [
 			('SFZ', self.data_dir + "/soundfonts/sfz"),
 			('GIG', self.data_dir + "/soundfonts/gig"),
 			('MySFZ', self.my_data_dir + "/soundfonts/sfz"),

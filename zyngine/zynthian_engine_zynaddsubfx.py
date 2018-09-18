@@ -94,25 +94,26 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
-		self.name="ZynAddSubFX"
-		self.nickname="ZY"
+		self.name = "ZynAddSubFX"
+		self.nickname = "ZY"
+		self.jackname = "zynaddsubfx"
 
-		self.osc_target_port=6693
+		self.osc_target_port = 6693
 	
 		if self.config_remote_display():
-			self.command=("/usr/local/bin/zynaddsubfx", "-O", "jack", "-I", "jack", "-P", str(self.osc_target_port), "-a")
+			self.command = ("/usr/local/bin/zynaddsubfx", "-O", "jack", "-I", "jack", "-P", str(self.osc_target_port), "-a")
 		else:
-			self.command=("/usr/local/bin/zynaddsubfx", "-O", "jack", "-I", "jack", "-P", str(self.osc_target_port), "-a", "-U")
+			self.command = ("/usr/local/bin/zynaddsubfx", "-O", "jack", "-I", "jack", "-P", str(self.osc_target_port), "-a", "-U")
 
-		self.conf_dir=self.data_dir + "/zynconf"
-		self.bank_dirs=[
+		self.conf_dir = self.data_dir + "/zynconf"
+		self.bank_dirs = [
 			('MY', self.my_data_dir + "/zynbanks"),
 			('_', self.data_dir + "/zynbanks")
 		]
-		self.osc_paths_data=[]
+		self.osc_paths_data = []
 
-		self.current_slot_zctrl=None
-		self.slot_zctrls={}
+		self.current_slot_zctrl = None
+		self.slot_zctrls = {}
 
 		self.start()
 		self.osc_init()

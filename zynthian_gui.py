@@ -667,9 +667,9 @@ class zynthian_gui:
 # GUI & Synth Engine initialization
 #------------------------------------------------------------------------------
 
-zynautoconnect.start()
 zynthian_gui_config.zyngui=zyngui=zynthian_gui()
 zyngui.start()
+zynautoconnect.start()
 
 #------------------------------------------------------------------------------
 # Reparent Top Window using GTK XEmbed protocol features

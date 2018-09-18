@@ -52,16 +52,17 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 		self.layer=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index]
-		eng=self.layer.engine.nickname
-		if eng in ['ZY','LS','FS','BF','PT','PD','AE']:
-			if self.layer.midi_chan>=0:
-				self.list_data.append((self.clone,0,"Clone"))
-				self.list_data.append((self.transpose,0,"Transpose"))
-			if zynautoconnect.is_monitored_engine(self.layer.engine.name):
-				self.list_data.append((self.monitor,0,"Audio => OUT"))
+		eng_options=self.layer.engine.get_options()
+		if eng_options['clone'] and self.layer.midi_chan>=0:
+			self.list_data.append((self.clone,0,"Clone"))
+		if eng_options['transpose']:
+			self.list_data.append((self.transpose,0,"Transpose"))
+		if eng_options['audio_route']:
+			if self.layer.engine.audio_out=="mon":
+				self.list_data.append((self.toggle_monitor,0,"Audio => OUT"))
 			else:
-				self.list_data.append((self.monitor,0,"Audio => MOD-UI"))
-		if eng in ['ZY','LS','FS']:
+				self.list_data.append((self.toggle_monitor,0,"Audio => MOD-UI"))
+		if eng_options['midi_chan']:
 			self.list_data.append((self.midi_chan,0,"MIDI Chan"))
 		self.list_data.append((self.remove_layer,0,"Remove Layer"))
 		super().fill_list()
@@ -91,12 +92,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def transpose(self):
 		zynthian_gui_config.zyngui.show_modal('transpose')
 
-	def monitor(self):
+	def toggle_monitor(self):
 		engine=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index].engine
-		if zynautoconnect.is_monitored_engine(engine.name):
-			zynautoconnect.unset_monitored_engine(engine.name)
+		if engine.audio_out=="mon":
+			engine.audio_out="sys"
 		else:
-			zynautoconnect.set_monitored_engine(engine.name)
+			engine.audio_out="mon"
 		zynthian_gui_config.zyngui.show_screen('layer')
 
 	def remove_layer(self):

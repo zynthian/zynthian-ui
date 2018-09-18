@@ -236,9 +236,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	def __init__(self, zyngui=None, update_presets_cache=False):
 		super().__init__(zyngui)
-		self.name=PIANOTEQ_NAME
-		self.nickname="PT"
-		self.preset=""
+		self.name = PIANOTEQ_NAME
+		self.nickname = "PT"
+		self.jackname = PIANOTEQ_NAME
+
+		self.options['midi_chan']=False
+
+		self.preset = ""
 
 		if self.config_remote_display():
 			if PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0:
@@ -404,6 +408,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			self.stop()
 			self.start(True,False)
 			self.stop_loading()
+
+	def cmp_presets(self, preset1, preset2):
+		return True
 
 	#--------------------------------------------------------------------------
 	# Special

@@ -141,20 +141,23 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
-		self.name="Aeolus"
-		self.nickname="AE"
+		self.name = "Aeolus"
+		self.nickname = "AE"
+		self.jackname = "aeolus"
 
-		self.n_banks=32
-		self.n_presets=32
-		self.stop_cc_num=98
-		self.ctrl_cc_num_start=14
-		self.presets_fpath="/root/.aeolus-presets"
-		self.presets_data={}
+		self.options['midi_chan']=False
+
+		self.n_banks = 32
+		self.n_presets = 32
+		self.stop_cc_num = 98
+		self.ctrl_cc_num_start = 14
+		self.presets_fpath = "/root/.aeolus-presets"
+		self.presets_data = {}
 
 		if self.config_remote_display():
-			self.command=("/usr/bin/aeolus")
+			self.command = ("/usr/bin/aeolus")
 		else:
-			self.command=("/usr/bin/aeolus", "-t")
+			self.command = ("/usr/bin/aeolus", "-t")
 
 		self.read_presets_file()
 		self.generate_ctrl_list()

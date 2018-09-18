@@ -35,6 +35,7 @@ import zynautoconnect
 import os
 from zyngine import *
 from zyngine.zynthian_engine_pianoteq import *
+from zyngine.zynthian_engine_jalv import *
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
@@ -55,14 +56,17 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		["FS", ("FluidSynth","FluidSynth - SF2 Player")],
 		["LS", ("LinuxSampler","LinuxSampler - SFZ/GIG Player")],
 		["BF", ("setBfree","setBfree - Hammond Emulator")],
+		["AE", ("Aeolus","Aeolus - Pipe Organ Emulator")]
 	])
 
 	if check_pianoteq_binary():
 		engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq %d.%d%s%s" % (PIANOTEQ_VERSION[0], PIANOTEQ_VERSION[1], " Stage" if PIANOTEQ_STAGE else "", " - Demo" if PIANOTEQ_TRIAL else ""))
 
-	engine_info['MD']=("MOD-UI","MOD-UI - Plugin Host")
+	for jalv_plugin in get_jalv_plugins():
+		engine_info['JV:{}'.format(jalv_plugin[0])]=(jalv_plugin[0], "{} - Plugin LV2".format(jalv_plugin[0]),jalv_plugin[1])
+
 	engine_info['PD']=("PureData","PureData - Visual Programming")
-	engine_info['AE']=("Aeolus","Aeolus - Pipe Organ Emulator")
+	engine_info['MD']=("MOD-UI","MOD-UI - Plugin Host")
 
 	def __init__(self):
 		self.zyngines={}
@@ -103,11 +107,14 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.zyngines[eng]=zynthian_engine_puredata(zynthian_gui_config.zyngui)
 			elif eng=="AE":
 				self.zyngines[eng]=zynthian_engine_aeolus(zynthian_gui_config.zyngui)
+			elif eng[0:3]=="JV:":
+				plugin_url=self.engine_info[eng][2]
+				eng="JV:{}".format(len(self.zyngines))
+				self.zyngines[eng]=zynthian_engine_jalv(plugin_url,zynthian_gui_config.zyngui)
 			else:
 				return None
 			if wait>0:
 				sleep(wait)
-			zynautoconnect.autoconnect()
 		else:
 			pass
 			#TODO => Check Engine Name and Status
@@ -123,7 +130,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def clean_unused_engines(self):
 		for eng in list(self.zyngines.keys()):
 			if len(self.zyngines[eng].layers)==0:
-				zynautoconnect.unset_monitored_engine(self.zyngines[eng].name)
 				self.zyngines[eng].stop()
 				self.zyngines.pop(eng, None)
 

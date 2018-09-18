@@ -51,9 +51,11 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
-		self.name="FluidSynth"
-		self.nickname="FS"
-		self.command=("/usr/local/bin/fluidsynth", "-p", "fluidsynth", "-a", "jack", "-m", "jack" ,"-g", "1", "-j", "-o", "synth.midi-bank-select=mma", "-o", "synth.cpu-cores=3", "-o", "synth.polyphony=64")
+		self.name = "FluidSynth"
+		self.nickname = "FS"
+		self.jackname = "fluidsynth"
+
+		self.command = ("/usr/local/bin/fluidsynth", "-p", "fluidsynth", "-a", "jack", "-m", "jack" ,"-g", "1", "-j", "-o", "synth.midi-bank-select=mma", "-o", "synth.cpu-cores=3", "-o", "synth.polyphony=64")
 
 		self.soundfont_dirs=[
 			('_', self.data_dir + "/soundfonts/sf2"),

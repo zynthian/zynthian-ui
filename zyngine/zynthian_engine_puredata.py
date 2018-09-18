@@ -61,12 +61,16 @@ class zynthian_engine_puredata(zynthian_engine):
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
-		self.name="PureData"
-		self.nickname="PD"
-		self.preset=""
-		self.preset_config=None
+		self.name = "PureData"
+		self.nickname = "PD"
+		self.jackname = "Pure Data"
 
-		self.bank_dirs=[
+		self.options['midi_chan']=False
+
+		self.preset = ""
+		self.preset_config = None
+
+		self.bank_dirs = [
 			('_', self.my_data_dir + "/presets/puredata")
 		]
 
@@ -143,6 +147,8 @@ class zynthian_engine_puredata(zynthian_engine):
 		preset_fpath = join(preset[0],os.listdir(preset[0])[0])
 		return preset_fpath
 
+	def cmp_presets(self, preset1, preset2):
+		return True
 
 	#----------------------------------------------------------------------------
 	# Controllers Managament

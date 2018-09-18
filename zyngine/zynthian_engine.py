@@ -84,8 +84,9 @@ class zynthian_engine:
 	def __init__(self, zyngui=None):
 		self.zyngui=zyngui
 
-		self.name=""
-		self.nickname=""
+		self.name = ""
+		self.nickname = ""
+		self.jackname = ""
 
 		self.loading=0
 		self.layers=[]
@@ -102,6 +103,14 @@ class zynthian_engine:
 		self.osc_server=None
 		self.osc_server_port=None
 		self.osc_server_url=None
+
+		self.audio_out = "sys"
+		self.options= {
+			'clone': True,
+			'transpose': True,
+			'audio_route': True,
+			'midi_chan': True
+		}
 
 	def __del__(self):
 		self.stop()
@@ -191,8 +200,8 @@ class zynthian_engine:
 	def start(self, start_queue=False, shell=False):
 		if not self.proc:
 			logging.info("Starting Engine " + self.name)
+			self.start_loading()
 			try:
-				self.start_loading()
 				self.proc=Popen(self.command, shell=shell, stdin=PIPE, stdout=PIPE, stderr=STDOUT, universal_newlines=True, env=self.command_env)
 					#, bufsize=1
 					#, preexec_fn=os.setsid
@@ -360,6 +369,15 @@ class zynthian_engine:
 	def set_midi_chan(self, layer):
 		pass
 
+	def get_active_midi_channels(self):
+		chans=[]
+		for layer in self.layers:
+			if layer.midi_chan is None:
+				return None
+			elif layer.midi_chan>=0 and layer.midi_chan<=15:
+				chans.append(layer.midi_chan)
+		return chans
+
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
@@ -375,7 +393,7 @@ class zynthian_engine:
 	# ---------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name)
+		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name),'PD'
 
 	def set_preset(self, layer, preset, preload=False):
 		if isinstance(preset[1],int):
@@ -451,5 +469,15 @@ class zynthian_engine:
 
 	def get_path(self, layer):
 		return self.nickname
+
+	# ---------------------------------------------------------------------------
+	# Options
+	# ---------------------------------------------------------------------------
+
+	def set_audio_out(self, jackname):
+		self.audio_out=jackname
+
+	def get_options(self):
+		return self.options
 
 #******************************************************************************

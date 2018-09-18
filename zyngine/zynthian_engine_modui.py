@@ -46,18 +46,28 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
-		self.name="MOD-UI"
-		self.nickname="MD"
+		self.name = "MOD-UI"
+		self.nickname = "MD"
+		self.jackname = "mod-host"
 
-		self.base_api_url='http://localhost:8888'
-		self.websocket_url='ws://localhost:8888/websocket'
-		self.websocket=None
+		self.audio_out = None
+		self.options= {
+			'clone': False,
+			'transpose': False,
+			'audio_route': False,
+			'midi_chan': False
+		}
 
-		self.bank_dirs=[
+		self.base_api_url = 'http://localhost:8888'
+		self.websocket_url = 'ws://localhost:8888/websocket'
+		self.websocket = None
+		self.ws_thread = None
+
+		self.bank_dirs = [
 			('_', self.my_data_dir + "/mod-pedalboards")
 		]
+		self.hw_ports = {}
 
-		self.hw_ports={}
 		self.reset()
 		self.start()
 
@@ -69,7 +79,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def start(self):
 		self.start_loading()
-		if not self.is_service_active():
+		if not self.is_service_active("mod-ui"):
 			logging.info("STARTING MOD-HOST & MOD-UI services...")
 			check_output(("systemctl start mod-host && systemctl start mod-ui"),shell=True)
 		self.stop_loading()
@@ -77,7 +87,7 @@ class zynthian_engine_modui(zynthian_engine):
 	def stop(self):
 		self.start_loading()
 		#self.stop_websocket()
-		if self.is_service_active():
+		if self.is_service_active("mod-ui"):
 			logging.info("STOPPING MOD-HOST & MOD-UI services...")
 			check_output(("systemctl stop mod-host && systemctl stop mod-ui"),shell=True)
 		self.stop_loading()
@@ -97,7 +107,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def add_layer(self, layer):
 		super().add_layer(layer)
-		if not self.websocket:
+		if not self.ws_thread:
 			self.start_websocket()
 
 	def del_layer(self, layer):
@@ -184,9 +194,8 @@ class zynthian_engine_modui(zynthian_engine):
 		return zctrls
 
 	def send_controller_value(self, zctrl):
-		val=float(zctrl.get_label2value())
-		self.websocket.send("param_set %s %.6f" % (zctrl.graph_path, val))
-		logging.debug("WS << param_set %s %.6f" % (zctrl.graph_path, val))
+		self.websocket.send("param_set %s %.6f" % (zctrl.graph_path, zctrl.value))
+		logging.debug("WS << param_set %s %.6f" % (zctrl.graph_path, zctrl.value))
 
 	#----------------------------------------------------------------------------
 	# Websocket & MOD-UI API Management
@@ -216,6 +225,7 @@ class zynthian_engine_modui(zynthian_engine):
 			self.websocket.close()
 
 	def task_websocket(self):
+		error_counter=0
 		self.enable_midi_devices()
 		while True:
 			try:
@@ -273,15 +283,29 @@ class zynthian_engine_modui(zynthian_engine):
 					self.bundlepath_cb(args[1])
 
 				elif command == "stop":
-					return
+					logging.error("Restarting MOD services ...")
+					self.stop()
+					self.start()
 
 			except websocket._exceptions.WebSocketConnectionClosedException:
 				if self.is_service_active("mod-ui"):
 					try:
+						logging.error("Connection Closed. Retrying to connect ...")
 						self.websocket = websocket.create_connection(self.websocket_url)
+						error_counter=0
 					except:
-						sleep(0.1)
+						if error_counter>100:
+							logging.error("Re-connection failed. Restarting MOD services ...")
+							self.stop()
+							self.start()
+							self.set_bank(self.layers[0],self.layers[0].bank_info)
+							error_counter=0
+						else:
+							error_counter+=1
+							sleep(0.1)
 				else:
+					logging.error("Connection Closed & MOD-UI stopped. Finishing...")
+					self.ws_thread=None
 					return
 			except Exception as e:
 				logging.error("task_websocket() => %s (%s)" % (e,type(e)))
@@ -352,14 +376,14 @@ class zynthian_engine_modui(zynthian_engine):
 									labels.append(p['label'])
 									values.append(p['value'])
 							try:
-								val=labels[ticks.index(param['ranges']['default'])]
+								val=param['ranges']['default']
 							except:
-								val=labels[0]
+								val=values[0]
 							param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
 								'graph_path': ctrl_graph,
 								'value': val,
 								'labels': labels,
-								'values': values,
+								'ticks': values,
 								'value_min': 0,
 								'value_max': len(values)-1
 							})
@@ -369,13 +393,12 @@ class zynthian_engine_modui(zynthian_engine):
 							r=pranges['maximum']-pranges['minimum']
 							if param['properties'] and 'integer' in param['properties']:
 								if r==1:
-									if pranges['default']==0: val='off'
-									else: val='on'
+									val=pranges['default']
 									param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
 										'graph_path': ctrl_graph,
 										'value': val,
 										'labels': ['off','on'],
-										'values': [0,1],
+										'ticks': [0,1],
 										'value_min': 0,
 										'value_max': 1
 									})
@@ -411,7 +434,7 @@ class zynthian_engine_modui(zynthian_engine):
 			#Add bypass Zcontroller
 			bypass_zctrl=zynthian_controller(self,'enabled','enabled',{
 				'graph_path': pgraph+'/:bypass',
-				'value': 'on',
+				'value': 0,
 				'labels': ['off','on'],
 				'values': [1,0],
 				'value_min': 0,
@@ -481,7 +504,7 @@ class zynthian_engine_modui(zynthian_engine):
 	def set_param_cb(self, pgraph, symbol, val):
 		try:
 			zctrl=self.plugin_zctrls[pgraph][symbol]
-			zctrl.value=zctrl.get_value2label(float(val))
+			zctrl.value=float(val)
 			#Refresh GUI controller in screen when needed ...
 			if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
 				self.zyngui.screens['control'].set_controller_value(zctrl)
@@ -529,7 +552,7 @@ class zynthian_engine_modui(zynthian_engine):
 			"label": zctrl.short_name,
 			"minimum": str(zctrl.value_min),
 			"maximum": str(zctrl.value_max),
-			"value": str(zctrl.get_label2value()),
+			"value": str(zctrl.value),
 			"steps": str(steps)
 		}
 		#{"uri":"/midi-learn","label":"Record","minimum":"0","maximum":"1","value":0,"steps":"1"}

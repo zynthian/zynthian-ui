@@ -102,7 +102,10 @@ class zynthian_engine_setbfree(zynthian_engine):
 		super().__init__(zyngui)
 		self.name = "setBfree"
 		self.nickname = "BF"
-		
+		self.jackname = "setBfree"
+
+		self.options['midi_chan']=False
+
 		self.base_dir = self.data_dir + "/setbfree"
 		self.chan_names = ("upper","lower","pedals")
 		
@@ -155,12 +158,13 @@ class zynthian_engine_setbfree(zynthian_engine):
 		for zcname in zctrls:
 			try:
 				zctrl=zctrls[zcname]
-				zctrl.value=layer.preset_info[3][zctrl.symbol]
-				#logging.debug("%s => %s (%s)" % (zctrl.name,zctrl.symbol,zctrl.value))
+				v=layer.preset_info[3][zctrl.symbol]
 				if zctrl.symbol=='rotaryspeed':
-					if zctrl.value=='tremolo': zctrl.value='fast'
-					elif zctrl.value=='chorale': zctrl.value='slow'
-					else: zctrl.value='off'
+					if v=='tremolo': v='fast'
+					elif v=='chorale': v='slow'
+					else: v='off'
+				zctrl.set_value(v)
+				#logging.debug("%s => %s (%s)" % (zctrl.name,zctrl.symbol,zctrl.value))
 			except:
 				#logging.debug("No preset value for control %s" % zctrl.name)
 				pass

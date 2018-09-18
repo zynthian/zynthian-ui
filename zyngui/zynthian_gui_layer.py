@@ -144,6 +144,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if self.add_layer_eng:
 			self.layers.append(zynthian_layer(self.add_layer_eng,midich,zynthian_gui_config.zyngui))
 			self.fill_list()
+			zynautoconnect.autoconnect()
 			if select:
 				self.index=len(self.layers)-1
 				self.select_action(self.index)
@@ -223,7 +224,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				'layers':[],
 				'clone':[],
 				'transpose':[],
-				'monitored_engines':zynautoconnect.monitored_engines
+				'monitored_engines': self.get_monitored_engines()
 			}
 			#Layers info
 			for layer in self.layers:
@@ -297,9 +298,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			#TODO
 			#Set Monitored Engines
 			if 'monitored_engines' in snapshot:
-				zynautoconnect.set_monitored_engines(snapshot['monitored_engines'])
+				self.set_monitored_engines(snapshot['monitored_engines'])
 			else:
-				zynautoconnect.reset_monitored_engines()
+				self.reset_monitored_engines()
 			#Post action
 			if self.list_data[self.index][0] in ('NEW','RESET'):
 				self.index=0
@@ -310,5 +311,26 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			logging.error("Invalid snapshot format: %s" % e)
 			return False
 		return True
+
+	#----------------------------------------------------------------------------
+	# Monitored engines
+	#----------------------------------------------------------------------------
+
+	def get_monitored_engines(self):
+		mongines=[]
+		for k, zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.items():
+			if zyngine.audio_out=="mon":
+				mongines.append(k.lower())
+
+	def set_monitored_engines(self, mongines):
+		for k, zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.items():
+			if k.lower() in mongines:
+				zyngine.audio_out=="mon"
+			else:
+				zyngine.audio_out=="sys"
+
+	def reset_monitored_engines(self):
+		self.set_monitored_engines([])
+
 
 #------------------------------------------------------------------------------
