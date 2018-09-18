@@ -251,7 +251,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def send_controller_value(self, zctrl):
-		self.midi_control_change(zctrl, zctrl.get_label2value())
+		self.midi_control_change(zctrl, zctrl.get_value())
 
 
 	def midi_control_change(self, zctrl, val):
@@ -262,7 +262,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 						val="on"
 					else:
 						val="off"
-					if val!=zctrl.get_label2value():
+					if val!=zctrl.get_value2label():
 						zctrl.set_value(val)
 					else:
 						return

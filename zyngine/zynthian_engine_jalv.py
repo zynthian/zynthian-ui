@@ -34,28 +34,31 @@ from . import zynthian_engine
 from . import zynthian_controller
 
 
-#------------------------------------------------------------------------------
-# Jalv Plugin List: Hardcoded by now #TODO Get from LV2_PATH
-#------------------------------------------------------------------------------
 
 def get_jalv_plugins():
-	return [
-		("Dexed", "https://github.com/dcoredump/dexed.lv2"),
-		("Helm", "http://tytel.org/helm"),
-		("MDA EPiano", "http://moddevices.com/plugins/mda/EPiano"),
-		("MDA Piano", "http://moddevices.com/plugins/mda/Piano"),
-		("MDA JX10", "http://moddevices.com/plugins/mda/JX10"),
-		("MDA DX10", "http://moddevices.com/plugins/mda/DX10"),
-		("OBXD", " https://obxd.wordpress.com"),
-		("SynthV1", "http://synthv1.sourceforge.net/lv2"),
-		("TAL NoizeMak3r", "http://kunz.corrupt.ch/products/tal-noisemaker")
-	]
+	return zynthian_engine_jalv.plugins_dict
 
 #------------------------------------------------------------------------------
 # Jalv Engine Class
 #------------------------------------------------------------------------------
 
 class zynthian_engine_jalv(zynthian_engine):
+
+	#------------------------------------------------------------------------------
+	# Plugin List: Hardcoded by now #TODO Get from LV2_PATH
+	#------------------------------------------------------------------------------
+
+	plugins_dict=OrderedDict([
+		("Dexed", "https://github.com/dcoredump/dexed.lv2"),
+		("Helm", "http://tytel.org/helm"),
+		("MDA ePiano", "http://moddevices.com/plugins/mda/EPiano"),
+		("MDA Piano", "http://moddevices.com/plugins/mda/Piano"),
+		("MDA JX10", "http://moddevices.com/plugins/mda/JX10"),
+		("MDA DX10", "http://moddevices.com/plugins/mda/DX10"),
+		("OBXD", " https://obxd.wordpress.com"),
+		("SynthV1", "http://synthv1.sourceforge.net/lv2"),
+		("TAL NoizeMak3r", "http://kunz.corrupt.ch/products/tal-noisemaker")
+	])
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
@@ -68,12 +71,12 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, plugin_url, zyngui=None):
+	def __init__(self, plugin_name, zyngui=None):
 		super().__init__(zyngui)
-		self.name = "Jalv"
-		self.nickname = "JV"
+		self.name = "Jalv/" + plugin_name
+		self.nickname = "JV/" + plugin_name
 
-		self.plugin_url = plugin_url
+		self.plugin_url = self.plugins_dict[plugin_name]
 
 		if self.config_remote_display():
 			self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))		#TODO => It's possible to run plugins UI?
@@ -117,6 +120,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			try:
 				self.start_loading()
 				self.proc=pexpect.spawn(self.command)
+				self.proc.delaybeforesend = None
 				output=self.proc_get_output()
 				self.stop_loading()
 				return output
@@ -139,7 +143,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	def proc_cmd(self, cmd):
 		if self.proc:
 			try:
-				logging.debug("proc command: "+cmd)
+				#logging.debug("proc command: "+cmd)
 				self.proc.sendline(cmd)
 				out=self.proc_get_output()
 				logging.debug("proc output:\n%s" % (out))
@@ -202,7 +206,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			try:
 				parts=line.split(" = ")
 				if len(parts)==2:
-					self.zctrl_dict[parts[0]].value=float(parts[1])
+					self.zctrl_dict[parts[0]]._set_value(float(parts[1]))
 			except Exception as e:
 				logging.error(e)
 
@@ -263,7 +267,9 @@ class zynthian_engine_jalv(zynthian_engine):
 									'labels': ['off','on'],
 									'ticks': [0,1],
 									'value_min': 0,
-									'value_max': 1
+									'value_max': 1,
+									'is_toggle': True,
+									'is_integer': True
 								})
 							else:
 								zctrls[symbol]=zynthian_controller(self,symbol,info['label'],{
@@ -271,7 +277,8 @@ class zynthian_engine_jalv(zynthian_engine):
 									'value': int(info['value']),
 									'value_default': int(info['default']),
 									'value_min': int(info['min']),
-									'value_max': int(info['max'])
+									'value_max': int(info['max']),
+									'is_integer': True
 								})
 						else:
 								zctrls[symbol]=zynthian_controller(self,symbol,info['label'],{
@@ -279,7 +286,7 @@ class zynthian_engine_jalv(zynthian_engine):
 									'value': info['value'],
 									'value_default': info['default'],
 									'value_min': info['min'],
-									'value_max': info['max']
+									'value_max': info['max'],
 								})
 
 				#If there is no range info (should be!!) => Default MIDI CC controller with 0-127 range

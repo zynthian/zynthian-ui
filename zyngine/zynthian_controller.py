@@ -46,7 +46,8 @@ class zynthian_controller:
 		self.value_range=127
 		self.labels=None
 		self.ticks=None
-		self.label2value=None
+		self.is_toggle=False
+		self.is_integer=False
 
 		self.midi_chan=None
 		self.midi_cc=None
@@ -56,6 +57,9 @@ class zynthian_controller:
 
 		self.midi_learn_chan=None
 		self.midi_learn_cc=None
+
+		self.label2value=None
+		self.value2label=None
 
 		if options:
 			self.set_options(options)
@@ -79,6 +83,10 @@ class zynthian_controller:
 			self.labels=options['labels']
 		if 'ticks' in options:
 			self.ticks=options['ticks']
+		if 'is_toggle' in options:
+			self.is_toggle=options['is_toggle']
+		if 'is_integer' in options:
+			self.is_integer=options['is_integer']
 		if 'midi_chan' in options:
 			self.midi_chan=options['midi_chan']
 		if 'midi_cc' in options:
@@ -99,11 +107,15 @@ class zynthian_controller:
 			self.value_max=self.ticks[-1]
 			#Generate dictionary for fast conversion labels=>values
 			self.label2value={}
+			self.value2label={}
 			for i in range(len(self.labels)):
 				self.label2value[str(self.labels[i])]=self.ticks[i]
+				self.value2label[str(self.ticks[i])]=self.labels[i]
 		#Common configuration
 		self.value_range=self.value_max-self.value_min
-
+		self._set_value(self.value)
+		if self.value_default is None:
+			self.value_default=self.value
 
 	def setup_controller(self, chan, cc, val, maxval=127):
 		self.midi_chan=chan
@@ -116,24 +128,20 @@ class zynthian_controller:
 
 		self.value_min=0
 		self.value_max=127
+		self.value=val
 		# Numeric
 		if isinstance(maxval,int):
 			self.value_max=maxval
-			self._configure()
-			self.value=self.value_default=val
 		# Selector
 		elif isinstance(maxval,str):
 			self.labels=maxval.split('|')
-			self._configure()
-			self.value=self.value_default=self.get_label2value(val)
 		elif isinstance(maxval,list):
 			if isinstance(maxval[0],list):
 				self.labels=maxval[0]
 				self.ticks=maxval[1]
 			else:
 				self.labels=maxval
-			self._configure()
-			self.value=self.value_default=self.get_label2value(val)
+		self._configure()
 
 	def set_midi_chan(self, chan):
 		self.midi_chan=chan
@@ -168,16 +176,34 @@ class zynthian_controller:
 	def get_value(self):
 		return self.value
 
-	def set_value(self, val, force_sending=False):
+	def _set_value(self, val, force_sending=False):
 		if isinstance(val, str):
 			self.value=self.get_label2value(val)
-		else:
-			if val>self.value_max:
-				self.value=self.value_max
-			elif val<self.value_min:
+			return
+
+		elif self.is_toggle:
+			if val==self.value_min:
 				self.value=self.value_min
 			else:
-				self.value=val
+				self.value=self.value_max
+			return
+
+		elif self.ticks:
+			#TODO Do something here?
+			pass
+
+		elif self.is_integer:
+			val=int(val)
+
+		if val>self.value_max:
+			self.value=self.value_max
+		elif val<self.value_min:
+			self.value=self.value_min
+		else:
+			self.value=val
+
+	def set_value(self, val, force_sending=False):
+		self._set_value(val)
 
 		# Send value ...
 		if self.engine:

@@ -62,8 +62,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	if check_pianoteq_binary():
 		engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq %d.%d%s%s" % (PIANOTEQ_VERSION[0], PIANOTEQ_VERSION[1], " Stage" if PIANOTEQ_STAGE else "", " - Demo" if PIANOTEQ_TRIAL else ""))
 
-	for jalv_plugin in get_jalv_plugins():
-		engine_info['JV:{}'.format(jalv_plugin[0])]=(jalv_plugin[0], "{} - Plugin LV2".format(jalv_plugin[0]),jalv_plugin[1])
+	for plugin_name in get_jalv_plugins():
+		engine_info['JV/{}'.format(plugin_name)]=(plugin_name, "{} - Plugin LV2".format(plugin_name))
 
 	engine_info['PD']=("PureData","PureData - Visual Programming")
 	engine_info['MD']=("MOD-UI","MOD-UI - Plugin Host")
@@ -107,10 +107,10 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.zyngines[eng]=zynthian_engine_puredata(zynthian_gui_config.zyngui)
 			elif eng=="AE":
 				self.zyngines[eng]=zynthian_engine_aeolus(zynthian_gui_config.zyngui)
-			elif eng[0:3]=="JV:":
-				plugin_url=self.engine_info[eng][2]
-				eng="JV:{}".format(len(self.zyngines))
-				self.zyngines[eng]=zynthian_engine_jalv(plugin_url,zynthian_gui_config.zyngui)
+			elif eng[0:3]=="JV/":
+				plugin_name=self.engine_info[eng][0]
+				eng="JV/{}".format(len(self.zyngines))
+				self.zyngines[eng]=zynthian_engine_jalv(plugin_name,zynthian_gui_config.zyngui)
 			else:
 				return None
 			if wait>0:

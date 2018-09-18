@@ -321,6 +321,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for k, zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.items():
 			if zyngine.audio_out=="mon":
 				mongines.append(k.lower())
+		return mongines
 
 	def set_monitored_engines(self, mongines):
 		for k, zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.items():

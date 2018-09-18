@@ -400,7 +400,9 @@ class zynthian_engine_modui(zynthian_engine):
 										'labels': ['off','on'],
 										'ticks': [0,1],
 										'value_min': 0,
-										'value_max': 1
+										'value_max': 1,
+										'is_toggle': True,
+										'is_integer': True
 									})
 								else:
 									param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
@@ -408,7 +410,8 @@ class zynthian_engine_modui(zynthian_engine):
 										'value': int(pranges['default']),
 										'value_default': int(pranges['default']),
 										'value_min': int(pranges['minimum']),
-										'value_max': int(pranges['maximum'])
+										'value_max': int(pranges['maximum']),
+										'is_integer': True
 									})
 							else:
 								param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
@@ -425,7 +428,8 @@ class zynthian_engine_modui(zynthian_engine):
 							'value': 0,
 							'value_default': 0,
 							'value_min': 0,
-							'value_max': 127
+							'value_max': 127,
+							'is_integer': True
 						})
 					#Add ZController to plugin_zctrl dictionary
 					self.plugin_zctrls[pgraph][param['symbol']]=param['ctrl']
@@ -438,7 +442,9 @@ class zynthian_engine_modui(zynthian_engine):
 				'labels': ['off','on'],
 				'values': [1,0],
 				'value_min': 0,
-				'value_max': 1
+				'value_max': 1,
+				'is_toggle': True,
+				'is_integer': True
 			})
 			self.plugin_zctrls[pgraph][':bypass']=bypass_zctrl
 			pinfo['ports']['control']['input'].insert(0,{'symbol':':bypass', 'ctrl':bypass_zctrl})

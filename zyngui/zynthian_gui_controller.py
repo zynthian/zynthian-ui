@@ -418,21 +418,26 @@ class zynthian_gui_controller:
 		if isinstance(zctrl.labels,list):
 			self.labels=zctrl.labels
 			self.n_values=len(self.labels)
-			self.step=max(1,int(16/self.n_values))
-			self.max_value=128-self.step;
 			val=zctrl.value
 			if isinstance(zctrl.ticks,list):
 				self.ticks=zctrl.ticks
-				self.mult=max(1,int(8*(self.n_values-1)/abs(zctrl.value_range)))
 				if self.ticks[0]>self.ticks[-1]:
 					self.inverted=True
+				if isinstance(zctrl.midi_cc, int) and zctrl.midi_cc>0:
+					self.max_value=128-self.step
+					self.step=max(1,int(16/self.n_values))
+				else:
+					self.max_value=zctrl.value_max
+					self.mult=max(4,int(32/self.n_values))
+			else:
+				self.max_value=128-self.step;
+				self.step=max(1,int(16/self.n_values))
 
 		#Numeric value
 		else:
 			#"List Selection Controller" => step 1 element by rotary tick
 			if zctrl.midi_cc==0:
 				self.max_value=self.n_values=zctrl.value_max
-				self.scale_value=1
 				self.mult=4
 				self.val0=1
 				val=zctrl.value
@@ -441,7 +446,6 @@ class zynthian_gui_controller:
 				#Integer < 127
 				if isinstance(r,int) and r<=127:
 					self.max_value=self.n_values=r
-					self.scale_value=1
 					self.mult=max(1,int(128/self.n_values))
 					val=zctrl.value-zctrl.value_min
 				#Integer > 127 || Float
@@ -459,7 +463,7 @@ class zynthian_gui_controller:
 
 		#Calculate scale parameter for plotting
 		if self.ticks:
-			self.scale_plot=self.max_value/abs(self.ticks[0]-self.ticks[self.n_values-1])
+			self.scale_plot=self.max_value/abs(self.ticks[0]-self.ticks[-1])
 		elif self.n_values>1:
 			self.scale_plot=self.max_value/(self.n_values-1)
 		else:
@@ -475,7 +479,7 @@ class zynthian_gui_controller:
 		#logging.debug("n_values: "+str(self.n_values))
 		#logging.debug("max_value: "+str(self.max_value))
 		#logging.debug("step: "+str(self.step))
-		logging.debug("mult: "+str(self.mult))
+		#logging.debug("mult: "+str(self.mult))
 		#logging.debug("val0: "+str(self.val0))
 		#logging.debug("value: "+str(self.value))
 
