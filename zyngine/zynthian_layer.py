@@ -273,14 +273,21 @@ class zynthian_layer:
 	#----------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, ccval):
-		if self.engine and self.listen_midi_cc and chan==self.midi_chan:
-			for k in self.controllers_dict:
-				if self.controllers_dict[k].midi_cc==ccnum:
-					try:
-						self.engine.midi_control_change(self.controllers_dict[k], ccval)
-					except:
-						pass
+		if self.engine:
+			if self.listen_midi_cc and chan==self.midi_chan:
+				for k in self.controllers_dict:
+					if self.controllers_dict[k].midi_cc==ccnum:
+						try:
+							self.engine.midi_control_change(self.controllers_dict[k], ccval)
+						except:
+							pass
 
+			elif not self.listen_midi_cc:
+				try:
+					self.engine.midi_control_change(chan, ccnum, ccval)
+				except:
+					pass
+				
 	# ---------------------------------------------------------------------------
 	# Snapshot Management
 	# ---------------------------------------------------------------------------

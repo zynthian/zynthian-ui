@@ -419,4 +419,15 @@ class zynthian_controller:
 		return True
 
 
+	def midi_control_change(self, val):
+		value=self.value_min+val*self.value_range/127
+		self.set_value(value)
+		#Refresh GUI controller in screen when needed ...
+		try:
+			if self.engine.zyngui.active_screen=='control' and self.engine.zyngui.screens['control'].mode=='control':
+				self.engine.zyngui.screens['control'].set_controller_value(self)
+		except Exception as e:
+			logging.debug(e)
+
+
 #******************************************************************************

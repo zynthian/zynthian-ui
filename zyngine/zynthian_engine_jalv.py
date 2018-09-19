@@ -83,6 +83,10 @@ class zynthian_engine_jalv(zynthian_engine):
 		else:
 			self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))
 
+		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
+		self.learned_zctrls = {}
+		self.current_learning_zctrl = None
+
 		output = self.start()
 
 		#Get Plugin & Jack names from Jalv starting text ...
@@ -333,6 +337,63 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def send_controller_value(self, zctrl):
 		self.proc_cmd("\set_control %d, %.6f" % (zctrl.graph_path, zctrl.value))
+
+	#----------------------------------------------------------------------------
+	# MIDI learning
+	#----------------------------------------------------------------------------
+
+	def midi_learn(self, zctrl):
+		if zctrl.graph_path:
+			# Set current learning zctrl
+			logging.info("Learning '{}' ({}) ...".format(zctrl.symbol,zctrl.graph_path))
+			self.current_learning_zctrl = zctrl
+
+
+	def midi_unlearn(self, zctrl):
+		if zctrl.graph_path in self.learned_zctrls:
+			logging.info("Unlearning '{}' ...".format(zctrl.symbol))
+			try:
+				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
+				del self.learned_zctrls[zctrl.graph_path]
+				return True
+			except Exception as e:
+				logging.warning("Can't Unlearn => {}".format(e))
+
+
+	def set_midi_learn(self, zctrl):
+		try:
+			if zctrl.graph_path and zctrl.midi_learn_chan is not None and zctrl.midi_learn_cc is not None:
+				logging.info("Learned '%s' => %d, %d" % (zctrl.symbol, zctrl.midi_learn_chan, zctrl.midi_learn_cc))
+				# Clean current binding if any ...
+				try:
+					self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc].midi_unlearn()
+				except:
+					pass
+				# Add midi learning info
+				self.learned_zctrls[zctrl.graph_path] = zctrl
+				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = zctrl
+				# Clean current learning zctrl
+				self.current_learning_zctrl = None
+		except Exception as e:
+			logging.error("Can't set slot automation for %s => %s" % (zctrl.osc_path, e))
+
+
+	def reset_midi_learn(self):
+		logging.info("Reset MIDI-learn ...")
+		self.current_learning_zctrl = None
+		self.learned_zctrls = {}
+		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
+
+
+	def midi_control_change(self, chan, ccnum, val):
+		if self.current_learning_zctrl:
+			self.current_learning_zctrl.set_midi_learn(chan, ccnum)
+		else:
+			try:
+				self.learned_cc[chan][ccnum].midi_control_change(val)
+			except:
+				pass
+
 
 
 	#--------------------------------------------------------------------------
