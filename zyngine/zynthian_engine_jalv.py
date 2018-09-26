@@ -24,11 +24,12 @@
 
 import os
 import re
+import json
 import logging
 import pexpect
 from time import sleep
+from os.path import isfile
 from collections import OrderedDict
-from json import JSONDecoder
 
 from . import zynthian_engine
 from . import zynthian_controller
@@ -36,6 +37,9 @@ from . import zynthian_controller
 
 
 def get_jalv_plugins():
+	if isfile(zynthian_engine_jalv.JALV_LV2_CONFIG_FILE):
+		with open(zynthian_engine_jalv.JALV_LV2_CONFIG_FILE,'r') as f:
+			zynthian_engine_jalv.plugins_dict=json.load(f, object_pairs_hook=OrderedDict)
 	return zynthian_engine_jalv.plugins_dict
 
 #------------------------------------------------------------------------------
@@ -45,10 +49,12 @@ def get_jalv_plugins():
 class zynthian_engine_jalv(zynthian_engine):
 
 	#------------------------------------------------------------------------------
-	# Plugin List: Hardcoded by now #TODO Get from LV2_PATH
+	# Plugin List
 	#------------------------------------------------------------------------------
 
-	plugins_dict=OrderedDict([
+	JALV_LV2_CONFIG_FILE = "{}/jalv_plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR','/zynthian/config'))
+
+	plugins_dict = OrderedDict([
 		("Dexed", "https://github.com/dcoredump/dexed.lv2"),
 		("Helm", "http://tytel.org/helm"),
 		("MDA ePiano", "http://moddevices.com/plugins/mda/EPiano"),
@@ -57,12 +63,51 @@ class zynthian_engine_jalv(zynthian_engine):
 		("MDA DX10", "http://moddevices.com/plugins/mda/DX10"),
 		("OBXD", " https://obxd.wordpress.com"),
 		("SynthV1", "http://synthv1.sourceforge.net/lv2"),
-		("TAL NoizeMak3r", "http://kunz.corrupt.ch/products/tal-noisemaker")
+		("Noize Mak3r", "http://kunz.corrupt.ch/products/tal-noisemaker")
 	])
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
+
+	plugin_ctrl_info = {
+		"Dexed": {
+		},
+		"Helm": {
+		},
+		"MDA DX10": {
+			"ctrls": [
+				['volume',7,96],
+				['mod-wheel',1,0],
+				['sustain on/off',64,'off','off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
+		},
+		"MDA JX10": {
+		},
+		"MDA ePiano": {
+			"ctrls": [
+				['volume',7,96],
+				['mod-wheel',1,0],
+				['sustain on/off',64,'off','off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
+		},
+		"MDA Piano": {
+			"ctrls": [
+				['volume',7,96],
+				['mod-wheel',1,0],
+				['sustain on/off',64,'off','off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
+		},
+		"Noize Mak3r": {
+		},
+		"Obxd": {
+		},
+		"synthv1": {
+		}
+	}
 
 	_ctrls=None
 	_ctrl_screens=None
@@ -76,22 +121,22 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.name = "Jalv/" + plugin_name
 		self.nickname = "JV/" + plugin_name
 
+		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]
 
 		if self.config_remote_display():
-			self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))		#TODO => It's possible to run plugins UI?
+			self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))		#TODO => Is possible to run plugins UI?
 		else:
 			self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))
 
-		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
+		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
 		self.current_learning_zctrl = None
 
 		output = self.start()
 
-		#Get Plugin & Jack names from Jalv starting text ...
+		# Get Plugin & Jack names from Jalv starting text ...
 		self.jackname = None
-		self.plugin_name = None
 		if output:
 			for line in output.split("\n"):
 				if line[0:15]=="JACK Real Name:":
@@ -102,9 +147,18 @@ class zynthian_engine_jalv(zynthian_engine):
 					self.plugin_name = line[11:].strip()
 					logging.debug("Plugin Name => {}".format(self.plugin_name))
 
-		self.zctrl_dict = self.get_zctrl_dict()
-		self.generate_ctrl_screens(self.zctrl_dict)
+		# Set static MIDI Controllers from hardcoded plugin info
+		try:
+			self._ctrls = self.plugin_ctrl_info[self.plugin_name]['ctrls']
+			self._ctrl_screens = self.plugin_ctrl_info[self.plugin_name]['ctrl_screens']
+		except:
+			logging.info("No defined MIDI controllers for '{}'.")
 
+		# Generate LV2-Plugin Controllers
+		self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
+		self.generate_ctrl_screens(self.lv2_zctrl_dict)
+
+		# Get preset list from plugin host
 		self.preset_list = self._get_preset_list()
 
 		self.reset()
@@ -210,7 +264,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			try:
 				parts=line.split(" = ")
 				if len(parts)==2:
-					self.zctrl_dict[parts[0]]._set_value(float(parts[1]))
+					self.lv2_zctrl_dict[parts[0]]._set_value(float(parts[1]))
 			except Exception as e:
 				logging.error(e)
 
@@ -226,7 +280,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Controllers Managament
 	#----------------------------------------------------------------------------
 
-	def get_zctrl_dict(self):
+	def get_lv2_controllers_dict(self):
 		self.start_loading()
 		logging.info("Getting Controller List from LV2 Plugin ...")
 		output=self.proc_cmd("\info_controls")
@@ -235,7 +289,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			parts=line.split(" => ")
 			if len(parts)==2:
 				symbol=parts[0]
-				info=JSONDecoder().decode(parts[1])
+				info=json.JSONDecoder().decode(parts[1])
 
 				try:
 					#If there is points info ...
@@ -308,7 +362,6 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def generate_ctrl_screens(self, zctrl_dict=None):
-		self._ctrl_screens=[]
 		if zctrl_dict is None:
 			zctrl_dict=self.zctrl_dict
 
@@ -332,7 +385,11 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def get_controllers_dict(self, layer):
-		return self.zctrl_dict
+		# Get plugin static controllers
+		zctrls=super().get_controllers_dict(layer)
+		# Add plugin native controllers
+		zctrls.update(self.lv2_zctrl_dict)
+		return zctrls
 
 
 	def send_controller_value(self, zctrl):
@@ -375,7 +432,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				# Clean current learning zctrl
 				self.current_learning_zctrl = None
 		except Exception as e:
-			logging.error("Can't set slot automation for %s => %s" % (zctrl.osc_path, e))
+			logging.error("Can't learn %s => %s" % (zctrl.graph_path, e))
 
 
 	def reset_midi_learn(self):

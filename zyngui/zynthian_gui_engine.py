@@ -51,28 +51,32 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 #------------------------------------------------------------------------------
 
 class zynthian_gui_engine(zynthian_gui_selector):
-	engine_info=OrderedDict([
-		["ZY", ("ZynAddSubFX","ZynAddSubFX - Synthesizer")],
-		["FS", ("FluidSynth","FluidSynth - SF2 Player")],
-		["LS", ("LinuxSampler","LinuxSampler - SFZ/GIG Player")],
-		["BF", ("setBfree","setBfree - Hammond Emulator")],
-		["AE", ("Aeolus","Aeolus - Pipe Organ Emulator")]
-	])
-
-	if check_pianoteq_binary():
-		engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq %d.%d%s%s" % (PIANOTEQ_VERSION[0], PIANOTEQ_VERSION[1], " Stage" if PIANOTEQ_STAGE else "", " - Demo" if PIANOTEQ_TRIAL else ""))
-
-	for plugin_name in get_jalv_plugins():
-		engine_info['JV/{}'.format(plugin_name)]=(plugin_name, "{} - Plugin LV2".format(plugin_name))
-
-	engine_info['PD']=("PureData","PureData - Visual Programming")
-	engine_info['MD']=("MOD-UI","MOD-UI - Plugin Host")
 
 	def __init__(self):
 		self.zyngines={}
 		super().__init__('Engine', True)
-    
+
+	def init_engine_info(self):
+		self.engine_info=OrderedDict([
+			["ZY", ("ZynAddSubFX","ZynAddSubFX - Synthesizer")],
+			["FS", ("FluidSynth","FluidSynth - SF2 Player")],
+			["LS", ("LinuxSampler","LinuxSampler - SFZ/GIG Player")],
+			["BF", ("setBfree","setBfree - Hammond Emulator")],
+			["AE", ("Aeolus","Aeolus - Pipe Organ Emulator")]
+		])
+
+		if check_pianoteq_binary():
+			self.engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq %d.%d%s%s" % (PIANOTEQ_VERSION[0], PIANOTEQ_VERSION[1], " Stage" if PIANOTEQ_STAGE else "", " - Demo" if PIANOTEQ_TRIAL else ""))
+
+		for plugin_name in get_jalv_plugins():
+			self.engine_info['JV/{}'.format(plugin_name)]=(plugin_name, "{} - Plugin LV2".format(plugin_name))
+
+		self.engine_info['PD']=("PureData","PureData - Visual Programming")
+		self.engine_info['MD']=("MOD-UI","MOD-UI - Plugin Host")
+
+
 	def fill_list(self):
+		self.init_engine_info()
 		self.index=0
 		self.list_data=[]
 		i=0
