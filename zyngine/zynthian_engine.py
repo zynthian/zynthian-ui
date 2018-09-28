@@ -417,47 +417,48 @@ class zynthian_engine:
 		midich=layer.get_midi_chan()
 		zctrls=OrderedDict()
 
-		for ctrl in self._ctrls:
-			options={}
+		if self._ctrls is not None:
+			for ctrl in self._ctrls:
+				options={}
 
-			#OSC control =>
-			if isinstance(ctrl[1],str):
-				#replace variables ...
-				tpl=Template(ctrl[1])
-				cc=tpl.safe_substitute(ch=midich)
-				try:
-					cc=tpl.safe_substitute(i=layer.part_i)
-				except:
-					pass
-				#set osc_port option ...
-				if self.osc_target_port>0:
-					options['osc_port']=self.osc_target_port
-				#debug message
-				logging.debug('CONTROLLER %s OSC PATH => %s' % (ctrl[0],cc))
-			#MIDI Control =>
-			else:
-				cc=ctrl[1]
+				#OSC control =>
+				if isinstance(ctrl[1],str):
+					#replace variables ...
+					tpl=Template(ctrl[1])
+					cc=tpl.safe_substitute(ch=midich)
+					try:
+						cc=tpl.safe_substitute(i=layer.part_i)
+					except:
+						pass
+					#set osc_port option ...
+					if self.osc_target_port>0:
+						options['osc_port']=self.osc_target_port
+					#debug message
+					logging.debug('CONTROLLER %s OSC PATH => %s' % (ctrl[0],cc))
+				#MIDI Control =>
+				else:
+					cc=ctrl[1]
 
-			#Build controller depending on array length ...
-			if len(ctrl)>4:
-				if isinstance(ctrl[4],str):
-					zctrl=zynthian_controller(self,ctrl[4],ctrl[0])
+				#Build controller depending on array length ...
+				if len(ctrl)>4:
+					if isinstance(ctrl[4],str):
+						zctrl=zynthian_controller(self,ctrl[4],ctrl[0])
+					else:
+						zctrl=zynthian_controller(self,ctrl[0])
+						zctrl.graph_path=ctrl[4]
+					zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
+				elif len(ctrl)>3:
+					zctrl=zynthian_controller(self,ctrl[0])
+					zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
 				else:
 					zctrl=zynthian_controller(self,ctrl[0])
-					zctrl.graph_path=ctrl[4]
-				zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
-			elif len(ctrl)>3:
-				zctrl=zynthian_controller(self,ctrl[0])
-				zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
-			else:
-				zctrl=zynthian_controller(self,ctrl[0])
-				zctrl.setup_controller(midich,cc,ctrl[2])
+					zctrl.setup_controller(midich,cc,ctrl[2])
 
-			#Set controller extra options
-			if len(options)>0:
-				zctrl.set_options(options)
+				#Set controller extra options
+				if len(options)>0:
+					zctrl.set_options(options)
 
-			zctrls[ctrl[0]]=zctrl
+				zctrls[ctrl[0]]=zctrl
 		return zctrls
 
 	def send_controller_value(self, zctrl):
