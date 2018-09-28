@@ -326,7 +326,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				l=line.rstrip().decode("utf-8")
 				#logging.debug("%s" % l)
 				for bank in self.bank_list:
-				for bank in self.bank_list:
 					b=bank[0]
 					if b==l:
 						self.presets[bank[0]].append((l,None,'<default>',None))
