@@ -80,6 +80,16 @@ def get_pianoteq_binary_info():
 		return res
 
 
+def get_pianoteq_subl():
+	subl=[]
+	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
+		root = ET.parse(PIANOTEQ_CONFIG_FILE)
+		for xml_value in root.iter("VALUE"):
+			if(xml_value.attrib['name']=='subl'):
+				subl=xml_value.attrib['val'].split(';')
+	return subl
+
+
 def fix_pianoteq_config():
 	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
 		root = ET.parse(PIANOTEQ_CONFIG_FILE)
@@ -159,51 +169,80 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	bank_list=[
-		('Steinway D',0,'Steinway D','_'),
-		('Steinway B',1,'Steinway B','_'),
-		('Steingraeber',2,'Steingraeber','_'),
-		('Grotrian',3,'Grotrian','_'),
-		('Bluethner',4,'Bluethner','_'),
-		('YC5',5,'YC5','_'),
-		('K2',6,'K2','_'),
-		('U4',7,'U4','_'),
-		('MKI',8,'MKI','_'),
-		('MKII',9,'MKII','_'),
-		('W1',10,'W1','_'),
-		('Clavinet D6',11,'Clavinet D6','_'),
-		('Pianet N',12,'Pianet N','_'),
-		('Pianet T',13,'Pianet T','_'),
-		('Electra',14,'Electra','_'),
-		('Vibraphone V-B',15,'Vibraphone V-B','_'),
-		('Vibraphone V-M',16,'Vibraphone V-M','_'),
-		('Celesta',17,'Celesta','_'),
-		('Glockenspiel',18,'Glockenspiel','_'),
-		('Toy Piano',19,'Toy Piano','_'),
-		('Marimba',20,'Marimba','_'),
-		('Xylophone',21,'Xylophone','_'),
-		('Steel Drum',22,'Steel Drum','_'),
-		('Spacedrum',23,'Spacedrum','_'),
-		('Hand Pan',24,'Hand Pan','_'),
-		('Tank Drum',25,'Tank Drum','_'),
-		('H. Ruckers II Harpsichord',26,'H. Ruckers II Harpsichord','_'),
-		('Concert Harp',27,'Concert Harp','_'),
-		('J. Dohnal',28,'J. Dohnal','_'),
-		('I. Besendorfer',29,'I. Besendorfer','_'),
-		('S. Erard',30,'S. Erard','_'),
-		('J.B. Streicher',31,'J.B. Streicher','_'),
-		('J. Broadwood',32,'J. Broadwood','_'),
-		('I. Pleyel',33,'I. Pleyel','_'),
-		('J. Frenzel',34,'J. Frenzel','_'),
-		('C. Bechstein',35,'C. Bechstein','_'),
-		('D. Schoffstoss',36,'D. Schoffstoss','_'),
-		('C. Graf',37,'C. Graf','_'),
-		('Erard',38,'Erard','_'),
-		('Pleyel',39,'Pleyel','_'),
-		('CP-80',40,'CP-80','_'),
-		('Church Bells',41,'Church Bells','_'),
-		('Bell-the-fly',42,'Bell-the-fly','_'),
-		('Tubular Bells',43,'Tubular Bells','_')
+		('Steinway D',0,'Steinway D','_',''),
+		('Steinway B',1,'Steinway B','_',''),
+		('Steingraeber',2,'Steingraeber','_',''),
+		('Grotrian',3,'Grotrian','_','Grotrian:A'),
+		('Bluethner',4,'Bluethner','_',''),
+		('YC5',5,'YC5','_',''),
+		('K2',6,'K2','_',''),
+		('U4',7,'U4','_',''),
+		('MKI',8,'MKI','_','Electric:A'),
+		('MKII',9,'MKII','_','Electric:A'),
+		('W1',10,'W1','_','Electric:A'),
+		('Clavinet D6',11,'Clavinet D6','_','Clavinet:A'),
+		('Pianet N',12,'Pianet N','_','Clavinet:A'),
+		('Pianet T',13,'Pianet T','_','Clavinet:A'),
+		('Electra',14,'Electra','_','Clavinet:A'),
+		('Vibraphone V-B',15,'Vibraphone V-B','_',''),
+		('Vibraphone V-M',16,'Vibraphone V-M','_',''),
+		('Celesta',17,'Celesta','_',''),
+		('Glockenspiel',18,'Glockenspiel','_',''),
+		('Toy Piano',19,'Toy Piano','_',''),
+		('Marimba',20,'Marimba','_',''),
+		('Xylophone',21,'Xylophone','_',''),
+		('Steel Drum',22,'Steel Drum','_',''),
+		('Spacedrum',23,'Spacedrum','_',''),
+		('Hand Pan',24,'Hand Pan','_',''),
+		('Tank Drum',25,'Tank Drum','_',''),
+		('H. Ruckers II Harpsichord',26,'H. Ruckers II Harpsichord','_',''),
+		('Concert Harp',27,'Concert Harp','_',''),
+		('J. Dohnal',28,'J. Dohnal','_',''),
+		('I. Besendorfer',29,'I. Besendorfer','_',''),
+		('S. Erard',30,'S. Erard','_',''),
+		('J.B. Streicher',31,'J.B. Streicher','_',''),
+		('J. Broadwood',32,'J. Broadwood','_',''),
+		('I. Pleyel',33,'I. Pleyel','_',''),
+		('J. Frenzel',34,'J. Frenzel','_',''),
+		('C. Bechstein',35,'C. Bechstein','_',''),
+		('Cimbalom',36,'Cimbalom','_','KIViR'),
+		('Neupert Clavichord',37,'Neupert Clavichord','_','KIViR'),
+		('F.E. Blanchet Harpsichord',38,'F.E. Blanchet Harpsichord','_','KIViR'),
+		('C. Grimaldi Harpsichord',39,'C. Grimaldi Harpsichord','_','KIViR'),
+		('J. Schantz',40,'J. Schantz','_','KIViR'),
+		('J.E. Schmidt',41,'J.E. Schmidt','_','KIViR'),
+		('A. Walter',42,'A. Walter','_','KIViR'),
+		('D. Schoffstoss',43,'D. Schoffstoss','_','KIViR'),
+		('C. Graf',44,'C. Graf','_','KIViR'),
+		('Erard',45,'Erard','_','KIViR'),
+		('Pleyel',46,'Pleyel','_','KIViR'),
+		('CP-80',47,'CP-80','_','KIViR'),
+		('Church Bells',48,'Church Bells','_','bells'),
+		('Tubular Bells',49,'Tubular Bells','_','bells')
 	]
+
+	free_instruments=[
+		'bells',
+		'KIViR'
+	]
+
+	spacer=[
+		('',0,'-- Other Instruments (DEMO) --')
+	]
+
+	subl = get_pianoteq_subl()
+	if subl:
+		free_banks=[]
+		licenced_banks=[]
+		unlicenced_banks=[]
+		for bank in bank_list:
+			if bank[4] in subl:
+				licenced_banks.append(bank)
+			elif bank[4] in free_instruments:
+				free_banks.append(bank)
+			else:
+				unlicenced_banks.append(bank)
+		bank_list = licenced_banks + free_banks + spacer + unlicenced_banks
 
 
 	# ---------------------------------------------------------------------------
