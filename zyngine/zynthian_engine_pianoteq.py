@@ -326,14 +326,15 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				l=line.rstrip().decode("utf-8")
 				#logging.debug("%s" % l)
 				for bank in self.bank_list:
-					b=bank[0] + " "
-					if b==l[0:len(b)]:
+				for bank in self.bank_list:
+					b=bank[0]
+					if b==l:
+						self.presets[bank[0]].append((l,None,'<default>',None))
+					elif b+' '==l[0:len(b)+1]:
 						#logging.debug("'%s' == '%s'" % (b,l[0:len(b)]))
 						preset_name=l[len(b):].strip()
 						preset_name=re.sub('^- ','',preset_name)
 						preset_title=preset_name
-						if preset_name=="":
-							preset_title="<Default>"
 						self.presets[bank[0]].append((l,None,preset_title,None))
 		except Exception as e:
 			logging.error("Can't get internal presets: %s" %e)
