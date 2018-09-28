@@ -365,6 +365,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		if zctrl_dict is None:
 			zctrl_dict=self.zctrl_dict
 
+		if self._ctrl_screens is None:
+			self._ctrl_screens=[]
+
 		c=1
 		ctrl_set=[]
 		for symbol, zctrl in zctrl_dict.items():
