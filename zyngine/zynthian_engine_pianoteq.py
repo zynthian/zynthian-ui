@@ -174,13 +174,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	bank_list=[
 		('Steinway D',1,'Steinway D','_','D4:A'),
-		('Steinway B',2,'Steinway B','_',''),
-		('Steingraeber',3,'Steingraeber','_',''),
+		('Steinway B',2,'Steinway B','_','Modelb:A'),
+		('Steingraeber',3,'Steingraeber','_','Steingraeber:A'),
 		('Grotrian',4,'Grotrian','_','Grotrian:A'),
-		('Bluethner',5,'Bluethner','_',''),
-		('YC5',6,'YC5','_',''),
-		('K2',7,'K2','_',''),
-		('U4',8,'U4','_',''),
+		('Bluethner',5,'Bluethner','_','Bluethner:A'),
+		('YC5',6,'YC5','_','Rock:A'),
+		('K2',7,'K2','_','K2:A'),
+		('U4',8,'U4','_','U4:A'),
 		('MKI',9,'MKI','_','Electric:A'),
 		('MKII',10,'MKII','_','Electric:A'),
 		('W1',11,'W1','_','Electric:A'),
@@ -188,27 +188,27 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		('Pianet N',13,'Pianet N','_','Clavinet:A'),
 		('Pianet T',14,'Pianet T','_','Clavinet:A'),
 		('Electra',15,'Electra','_','Clavinet:A'),
-		('Vibraphone V-B',16,'Vibraphone V-B','_',''),
-		('Vibraphone V-M',17,'Vibraphone V-M','_',''),
-		('Celesta',18,'Celesta','_',''),
-		('Glockenspiel',19,'Glockenspiel','_',''),
-		('Toy Piano',20,'Toy Piano','_',''),
-		('Marimba',21,'Marimba','_',''),
-		('Xylophone',22,'Xylophone','_',''),
-		('Steel Drum',23,'Steel Drum','_',''),
-		('Spacedrum',24,'Spacedrum','_',''),
-		('Hand Pan',25,'Hand Pan','_',''),
-		('Tank Drum',26,'Tank Drum','_',''),
-		('H. Ruckers II Harpsichord',27,'H. Ruckers II Harpsichord','_',''),
-		('Concert Harp',28,'Concert Harp','_',''),
-		('J. Dohnal',29,'J. Dohnal','_',''),
-		('I. Besendorfer',30,'I. Besendorfer','_',''),
-		('S. Erard',31,'S. Erard','_',''),
-		('J.B. Streicher',32,'J.B. Streicher','_',''),
-		('J. Broadwood',33,'J. Broadwood','_',''),
-		('I. Pleyel',34,'I. Pleyel','_',''),
-		('J. Frenzel',35,'J. Frenzel','_',''),
-		('C. Bechstein',36,'C. Bechstein','_',''),
+		('Vibraphone V-B',16,'Vibraphone V-B','_','Vibes:A'),
+		('Vibraphone V-M',17,'Vibraphone V-M','_','Vibes:A'),
+		('Celesta',18,'Celesta','_','Celeste:A'),
+		('Glockenspiel',19,'Glockenspiel','_','Celeste:A'),
+		('Toy Piano',20,'Toy Piano','_','Celeste:A'),
+		('Marimba',21,'Marimba','_','Xylo:A'),
+		('Xylophone',22,'Xylophone','_','Xylo:A'),
+		('Steel Drum',23,'Steel Drum','_','Steel:A'),
+		('Spacedrum',24,'Spacedrum','_','Steel:A'),
+		('Hand Pan',25,'Hand Pan','_','Steel:A'),
+		('Tank Drum',26,'Tank Drum','_','Steel:A'),
+		('H. Ruckers II Harpsichord',27,'H. Ruckers II Harpsichord','_','Harpsichord:A'),
+		('Concert Harp',28,'Concert Harp','_','Harp:A'),
+		('J. Dohnal',29,'J. Dohnal','_','Kremsegg1:A'),
+		('I. Besendorfer',30,'I. Besendorfer','_','Kremsegg1:A'),
+		('S. Erard',31,'S. Erard','_','Kremsegg1:A'),
+		('J.B. Streicher',32,'J.B. Streicher','_','Kremsegg1:A'),
+		('J. Broadwood',33,'J. Broadwood','_','Kremsegg2:A'),
+		('I. Pleyel',34,'I. Pleyel','_','Kremsegg2:A'),
+		('J. Frenzel',35,'J. Frenzel','_','Kremsegg2:A'),
+		('C. Bechstein',36,'C. Bechstein','_','Kremsegg2:A'),
 		('Cimbalom',37,'Cimbalom','_','KIViR'),
 		('Neupert Clavichord',38,'Neupert Clavichord','_','KIViR'),
 		('F.E. Blanchet Harpsichord',39,'F.E. Blanchet Harpsichord','_','KIViR'),
@@ -243,9 +243,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		licenced_banks=[]
 		unlicenced_banks=[]
 		for bank in bank_list:
-			if bank[4] in subl:
+			if bank[4].upper() in map(str.upper, subl):
 				licenced_banks.append(bank)
-			elif bank[4] in free_instruments:
+			elif bank[4].upper() in map(str.upper, free_instruments):
 				free_banks.append(bank)
 			else:
 				unlicenced_banks.append(bank)
