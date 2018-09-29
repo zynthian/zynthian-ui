@@ -169,7 +169,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	bank_list_v6_3=[
-		('Ant Petrof',0,'Ant Petrof','_','Antpetrof:A')
+		('Ant. Petrof',0,'Ant. Petrof','_','Antpetrof:A')
 	]
 
 	bank_list=[
