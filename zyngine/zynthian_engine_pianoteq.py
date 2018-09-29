@@ -79,6 +79,14 @@ def get_pianoteq_binary_info():
 					res['trial'] = 0
 		return res
 
+def get_pianoteq_subl():
+	subl=[]
+	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
+		root = ET.parse(PIANOTEQ_CONFIG_FILE)
+		for xml_value in root.iter("VALUE"):
+			if(xml_value.attrib['name']=='subl'):
+				subl=xml_value.attrib['val'].split(';')
+	return subl
 
 def get_pianoteq_subl():
 	subl=[]
@@ -168,58 +176,61 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Banks
 	# ---------------------------------------------------------------------------
 
+	bank_list_v6_3=[
+		('Ant Petrof',0,'Ant Petrof','_','Antpetrof:A')
+	]
+
 	bank_list=[
-		('Ant Petrof',0,'Ant Petrof','_','Antpetrof:A'),
-		('Steinway D',0,'Steinway D','_','D4:A'),
-		('Steinway B',1,'Steinway B','_',''),
-		('Steingraeber',2,'Steingraeber','_',''),
-		('Grotrian',3,'Grotrian','_','Grotrian:A'),
-		('Bluethner',4,'Bluethner','_',''),
-		('YC5',5,'YC5','_',''),
-		('K2',6,'K2','_',''),
-		('U4',7,'U4','_',''),
-		('MKI',8,'MKI','_','Electric:A'),
-		('MKII',9,'MKII','_','Electric:A'),
-		('W1',10,'W1','_','Electric:A'),
-		('Clavinet D6',11,'Clavinet D6','_','Clavinet:A'),
-		('Pianet N',12,'Pianet N','_','Clavinet:A'),
-		('Pianet T',13,'Pianet T','_','Clavinet:A'),
-		('Electra',14,'Electra','_','Clavinet:A'),
-		('Vibraphone V-B',15,'Vibraphone V-B','_',''),
-		('Vibraphone V-M',16,'Vibraphone V-M','_',''),
-		('Celesta',17,'Celesta','_',''),
-		('Glockenspiel',18,'Glockenspiel','_',''),
-		('Toy Piano',19,'Toy Piano','_',''),
-		('Marimba',20,'Marimba','_',''),
-		('Xylophone',21,'Xylophone','_',''),
-		('Steel Drum',22,'Steel Drum','_',''),
-		('Spacedrum',23,'Spacedrum','_',''),
-		('Hand Pan',24,'Hand Pan','_',''),
-		('Tank Drum',25,'Tank Drum','_',''),
-		('H. Ruckers II Harpsichord',26,'H. Ruckers II Harpsichord','_',''),
-		('Concert Harp',27,'Concert Harp','_',''),
-		('J. Dohnal',28,'J. Dohnal','_',''),
-		('I. Besendorfer',29,'I. Besendorfer','_',''),
-		('S. Erard',30,'S. Erard','_',''),
-		('J.B. Streicher',31,'J.B. Streicher','_',''),
-		('J. Broadwood',32,'J. Broadwood','_',''),
-		('I. Pleyel',33,'I. Pleyel','_',''),
-		('J. Frenzel',34,'J. Frenzel','_',''),
-		('C. Bechstein',35,'C. Bechstein','_',''),
-		('Cimbalom',36,'Cimbalom','_','KIViR'),
-		('Neupert Clavichord',37,'Neupert Clavichord','_','KIViR'),
-		('F.E. Blanchet Harpsichord',38,'F.E. Blanchet Harpsichord','_','KIViR'),
-		('C. Grimaldi Harpsichord',39,'C. Grimaldi Harpsichord','_','KIViR'),
-		('J. Schantz',40,'J. Schantz','_','KIViR'),
-		('J.E. Schmidt',41,'J.E. Schmidt','_','KIViR'),
-		('A. Walter',42,'A. Walter','_','KIViR'),
-		('D. Schoffstoss',43,'D. Schoffstoss','_','KIViR'),
-		('C. Graf',44,'C. Graf','_','KIViR'),
-		('Erard',45,'Erard','_','KIViR'),
-		('Pleyel',46,'Pleyel','_','KIViR'),
-		('CP-80',47,'CP-80','_','KIViR'),
-		('Church Bells',48,'Church Bells','_','bells'),
-		('Tubular Bells',49,'Tubular Bells','_','bells')
+		('Steinway D',1,'Steinway D','_','D4:A'),
+		('Steinway B',2,'Steinway B','_',''),
+		('Steingraeber',3,'Steingraeber','_',''),
+		('Grotrian',4,'Grotrian','_','Grotrian:A'),
+		('Bluethner',5,'Bluethner','_',''),
+		('YC5',6,'YC5','_',''),
+		('K2',7,'K2','_',''),
+		('U4',8,'U4','_',''),
+		('MKI',9,'MKI','_','Electric:A'),
+		('MKII',10,'MKII','_','Electric:A'),
+		('W1',11,'W1','_','Electric:A'),
+		('Clavinet D6',12,'Clavinet D6','_','Clavinet:A'),
+		('Pianet N',13,'Pianet N','_','Clavinet:A'),
+		('Pianet T',14,'Pianet T','_','Clavinet:A'),
+		('Electra',15,'Electra','_','Clavinet:A'),
+		('Vibraphone V-B',16,'Vibraphone V-B','_',''),
+		('Vibraphone V-M',17,'Vibraphone V-M','_',''),
+		('Celesta',18,'Celesta','_',''),
+		('Glockenspiel',19,'Glockenspiel','_',''),
+		('Toy Piano',20,'Toy Piano','_',''),
+		('Marimba',21,'Marimba','_',''),
+		('Xylophone',22,'Xylophone','_',''),
+		('Steel Drum',23,'Steel Drum','_',''),
+		('Spacedrum',24,'Spacedrum','_',''),
+		('Hand Pan',25,'Hand Pan','_',''),
+		('Tank Drum',26,'Tank Drum','_',''),
+		('H. Ruckers II Harpsichord',27,'H. Ruckers II Harpsichord','_',''),
+		('Concert Harp',28,'Concert Harp','_',''),
+		('J. Dohnal',29,'J. Dohnal','_',''),
+		('I. Besendorfer',30,'I. Besendorfer','_',''),
+		('S. Erard',31,'S. Erard','_',''),
+		('J.B. Streicher',32,'J.B. Streicher','_',''),
+		('J. Broadwood',33,'J. Broadwood','_',''),
+		('I. Pleyel',34,'I. Pleyel','_',''),
+		('J. Frenzel',35,'J. Frenzel','_',''),
+		('C. Bechstein',36,'C. Bechstein','_',''),
+		('Cimbalom',37,'Cimbalom','_','KIViR'),
+		('Neupert Clavichord',38,'Neupert Clavichord','_','KIViR'),
+		('F.E. Blanchet Harpsichord',39,'F.E. Blanchet Harpsichord','_','KIViR'),
+		('C. Grimaldi Harpsichord',40,'C. Grimaldi Harpsichord','_','KIViR'),
+		('J. Schantz',41,'J. Schantz','_','KIViR'),
+		('J.E. Schmidt',42,'J.E. Schmidt','_','KIViR'),
+		('A. Walter',43,'A. Walter','_','KIViR'),
+		('D. Schoffstoss',44,'D. Schoffstoss','_','KIViR'),
+		('C. Graf',45,'C. Graf','_','KIViR'),
+		('Erard',46,'Erard','_','KIViR'),
+		('Pleyel',47,'Pleyel','_','KIViR'),
+		('CP-80',48,'CP-80','_','KIViR'),
+		('Church Bells',49,'Church Bells','_','bells'),
+		('Tubular Bells',50,'Tubular Bells','_','bells')
 	]
 
 	free_instruments=[
@@ -230,6 +241,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	spacer=[
 		('',0,'-- Other Instruments (DEMO) --')
 	]
+
+	if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:
+		bank_list = bank_list_v6_3 + bank_list
 
 	subl = get_pianoteq_subl()
 	if subl:
@@ -320,6 +334,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			shutil.copy(self.data_dir + "/pianoteq6/Zynthian.ptm", "/root/.local/share/Modartt/Pianoteq/MidiMappings/")
 
 		fix_pianoteq_config()
+
 
 
 	def start(self, start_queue=False, shell=False):
