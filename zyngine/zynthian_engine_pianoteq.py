@@ -169,7 +169,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	bank_list=[
-		('Steinway D',0,'Steinway D','_',''),
+		('Steinway D',0,'Steinway D','_','D4:A'),
 		('Steinway B',1,'Steinway B','_',''),
 		('Steingraeber',2,'Steingraeber','_',''),
 		('Grotrian',3,'Grotrian','_','Grotrian:A'),
