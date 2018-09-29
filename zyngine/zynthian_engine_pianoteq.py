@@ -79,14 +79,6 @@ def get_pianoteq_binary_info():
 					res['trial'] = 0
 		return res
 
-def get_pianoteq_subl():
-	subl=[]
-	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
-		root = ET.parse(PIANOTEQ_CONFIG_FILE)
-		for xml_value in root.iter("VALUE"):
-			if(xml_value.attrib['name']=='subl'):
-				subl=xml_value.attrib['val'].split(';')
-	return subl
 
 def get_pianoteq_subl():
 	subl=[]
