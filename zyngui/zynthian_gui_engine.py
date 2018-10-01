@@ -54,6 +54,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def __init__(self):
 		self.zyngines={}
+		self.init_engine_info()
 		super().__init__('Engine', True)
 
 	def init_engine_info(self):
