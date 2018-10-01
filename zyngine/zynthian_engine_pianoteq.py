@@ -80,6 +80,16 @@ def get_pianoteq_binary_info():
 		return res
 
 
+def get_pianoteq_subl():
+	subl=[]
+	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
+		root = ET.parse(PIANOTEQ_CONFIG_FILE)
+		for xml_value in root.iter("VALUE"):
+			if(xml_value.attrib['name']=='subl'):
+				subl=xml_value.attrib['val'].split(';')
+	return subl
+
+
 def fix_pianoteq_config():
 	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
 		root = ET.parse(PIANOTEQ_CONFIG_FILE)
@@ -158,52 +168,88 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Banks
 	# ---------------------------------------------------------------------------
 
-	bank_list=[
-		('Steinway D',0,'Steinway D','_'),
-		('Steinway B',1,'Steinway B','_'),
-		('Steingraeber',2,'Steingraeber','_'),
-		('Grotrian',3,'Grotrian','_'),
-		('Bluethner',4,'Bluethner','_'),
-		('YC5',5,'YC5','_'),
-		('K2',6,'K2','_'),
-		('U4',7,'U4','_'),
-		('MKI',8,'MKI','_'),
-		('MKII',9,'MKII','_'),
-		('W1',10,'W1','_'),
-		('Clavinet D6',11,'Clavinet D6','_'),
-		('Pianet N',12,'Pianet N','_'),
-		('Pianet T',13,'Pianet T','_'),
-		('Electra',14,'Electra','_'),
-		('Vibraphone V-B',15,'Vibraphone V-B','_'),
-		('Vibraphone V-M',16,'Vibraphone V-M','_'),
-		('Celesta',17,'Celesta','_'),
-		('Glockenspiel',18,'Glockenspiel','_'),
-		('Toy Piano',19,'Toy Piano','_'),
-		('Marimba',20,'Marimba','_'),
-		('Xylophone',21,'Xylophone','_'),
-		('Steel Drum',22,'Steel Drum','_'),
-		('Spacedrum',23,'Spacedrum','_'),
-		('Hand Pan',24,'Hand Pan','_'),
-		('Tank Drum',25,'Tank Drum','_'),
-		('H. Ruckers II Harpsichord',26,'H. Ruckers II Harpsichord','_'),
-		('Concert Harp',27,'Concert Harp','_'),
-		('J. Dohnal',28,'J. Dohnal','_'),
-		('I. Besendorfer',29,'I. Besendorfer','_'),
-		('S. Erard',30,'S. Erard','_'),
-		('J.B. Streicher',31,'J.B. Streicher','_'),
-		('J. Broadwood',32,'J. Broadwood','_'),
-		('I. Pleyel',33,'I. Pleyel','_'),
-		('J. Frenzel',34,'J. Frenzel','_'),
-		('C. Bechstein',35,'C. Bechstein','_'),
-		('D. Schoffstoss',36,'D. Schoffstoss','_'),
-		('C. Graf',37,'C. Graf','_'),
-		('Erard',38,'Erard','_'),
-		('Pleyel',39,'Pleyel','_'),
-		('CP-80',40,'CP-80','_'),
-		('Church Bells',41,'Church Bells','_'),
-		('Bell-the-fly',42,'Bell-the-fly','_'),
-		('Tubular Bells',43,'Tubular Bells','_')
+	bank_list_v6_3=[
+		('Ant. Petrof',0,'Ant. Petrof','_','Antpetrof:A')
 	]
+
+	bank_list=[
+		('Steinway D',1,'Steinway D','_','D4:A'),
+		('Steinway B',2,'Steinway B','_','Modelb:A'),
+		('Steingraeber',3,'Steingraeber','_','Steingraeber:A'),
+		('Grotrian',4,'Grotrian','_','Grotrian:A'),
+		('Bluethner',5,'Bluethner','_','Bluethner:A'),
+		('YC5',6,'YC5','_','Rock:A'),
+		('K2',7,'K2','_','K2:A'),
+		('U4',8,'U4','_','U4:A'),
+		('MKI',9,'MKI','_','Electric:A'),
+		('MKII',10,'MKII','_','Electric:A'),
+		('W1',11,'W1','_','Electric:A'),
+		('Clavinet D6',12,'Clavinet D6','_','Clavinet:A'),
+		('Pianet N',13,'Pianet N','_','Clavinet:A'),
+		('Pianet T',14,'Pianet T','_','Clavinet:A'),
+		('Electra',15,'Electra','_','Clavinet:A'),
+		('Vibraphone V-B',16,'Vibraphone V-B','_','Vibes:A'),
+		('Vibraphone V-M',17,'Vibraphone V-M','_','Vibes:A'),
+		('Celesta',18,'Celesta','_','Celeste:A'),
+		('Glockenspiel',19,'Glockenspiel','_','Celeste:A'),
+		('Toy Piano',20,'Toy Piano','_','Celeste:A'),
+		('Marimba',21,'Marimba','_','Xylo:A'),
+		('Xylophone',22,'Xylophone','_','Xylo:A'),
+		('Steel Drum',23,'Steel Drum','_','Steel:A'),
+		('Spacedrum',24,'Spacedrum','_','Steel:A'),
+		('Hand Pan',25,'Hand Pan','_','Steel:A'),
+		('Tank Drum',26,'Tank Drum','_','Steel:A'),
+		('H. Ruckers II Harpsichord',27,'H. Ruckers II Harpsichord','_','Harpsichord:A'),
+		('Concert Harp',28,'Concert Harp','_','Harp:A'),
+		('J. Dohnal',29,'J. Dohnal','_','Kremsegg1:A'),
+		('I. Besendorfer',30,'I. Besendorfer','_','Kremsegg1:A'),
+		('S. Erard',31,'S. Erard','_','Kremsegg1:A'),
+		('J.B. Streicher',32,'J.B. Streicher','_','Kremsegg1:A'),
+		('J. Broadwood',33,'J. Broadwood','_','Kremsegg2:A'),
+		('I. Pleyel',34,'I. Pleyel','_','Kremsegg2:A'),
+		('J. Frenzel',35,'J. Frenzel','_','Kremsegg2:A'),
+		('C. Bechstein',36,'C. Bechstein','_','Kremsegg2:A'),
+		('Cimbalom',37,'Cimbalom','_','KIViR'),
+		('Neupert Clavichord',38,'Neupert Clavichord','_','KIViR'),
+		('F.E. Blanchet Harpsichord',39,'F.E. Blanchet Harpsichord','_','KIViR'),
+		('C. Grimaldi Harpsichord',40,'C. Grimaldi Harpsichord','_','KIViR'),
+		('J. Schantz',41,'J. Schantz','_','KIViR'),
+		('J.E. Schmidt',42,'J.E. Schmidt','_','KIViR'),
+		('A. Walter',43,'A. Walter','_','KIViR'),
+		('D. Schoffstoss',44,'D. Schoffstoss','_','KIViR'),
+		('C. Graf',45,'C. Graf','_','KIViR'),
+		('Erard',46,'Erard','_','KIViR'),
+		('Pleyel',47,'Pleyel','_','KIViR'),
+		('CP-80',48,'CP-80','_','KIViR'),
+		('Church Bells',49,'Church Bells','_','bells'),
+		('Tubular Bells',50,'Tubular Bells','_','bells')
+	]
+
+	free_instruments=[
+		'bells',
+		'KIViR'
+	]
+
+	spacer=[
+		('',0,'-- Other Instruments (DEMO) --')
+	]
+
+	if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:
+		bank_list = bank_list_v6_3 + bank_list
+
+	subl = get_pianoteq_subl()
+	if subl:
+		free_banks=[]
+		licenced_banks=[]
+		unlicenced_banks=[]
+		for bank in bank_list:
+			if bank[4].upper() in map(str.upper, subl):
+				licenced_banks.append(bank)
+			elif bank[4].upper() in map(str.upper, free_instruments):
+				free_banks.append(bank)
+			else:
+				unlicenced_banks.append(bank)
+		bank_list = licenced_banks + free_banks + spacer + unlicenced_banks
 
 
 	# ---------------------------------------------------------------------------
@@ -282,6 +328,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		fix_pianoteq_config()
 
 
+
 	def start(self, start_queue=False, shell=False):
 		self.start_loading()
 		logging.debug("Starting"+str(self.command))
@@ -326,14 +373,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				l=line.rstrip().decode("utf-8")
 				#logging.debug("%s" % l)
 				for bank in self.bank_list:
-					b=bank[0] + " "
-					if b==l[0:len(b)]:
+					b=bank[0]
+					if b==l:
+						self.presets[bank[0]].append((l,None,'<default>',None))
+					elif b+' '==l[0:len(b)+1]:
 						#logging.debug("'%s' == '%s'" % (b,l[0:len(b)]))
 						preset_name=l[len(b):].strip()
 						preset_name=re.sub('^- ','',preset_name)
 						preset_title=preset_name
-						if preset_name=="":
-							preset_title="<Default>"
 						self.presets[bank[0]].append((l,None,preset_title,None))
 		except Exception as e:
 			logging.error("Can't get internal presets: %s" %e)
