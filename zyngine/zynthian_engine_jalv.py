@@ -178,7 +178,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			try:
 				self.start_loading()
 				self.proc=pexpect.spawn(self.command)
-				self.proc.delaybeforesend = None
+				self.proc.delaybeforesend = 0
 				output=self.proc_get_output()
 				self.stop_loading()
 				return output
