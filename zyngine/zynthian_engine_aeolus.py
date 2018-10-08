@@ -335,62 +335,62 @@ class zynthian_engine_aeolus(zynthian_engine):
 		with open(self.presets_fpath, mode='rb') as file:
 			data = file.read()
 
-		pos=0
-		header=struct.unpack("6sbHHHH", data[pos:16])
-		#logging.debug(header)
-		pos+=16
-		if header[0].decode('ASCII')!="PRESET":
-			logging.error("FORMAT => Bad Header")
+			pos=0
+			header=struct.unpack("6sbHHHH", data[pos:16])
+			#logging.debug(header)
+			pos+=16
+			if header[0].decode('ASCII')!="PRESET":
+				logging.error("FORMAT => Bad Header")
 
-		n_groups=header[5]
-		if n_groups!=len(self.instrument):
-			logging.error("Number of groups ({}) doesn't fit with engine's configuration ({}) !".format(n_groups,len(self.instrument)))
+			n_groups=header[5]
+			if n_groups!=len(self.instrument):
+				logging.error("Number of groups ({}) doesn't fit with engine's configuration ({}) !".format(n_groups,len(self.instrument)))
 
-		chan_config=[]
-		for num in range(8):
-			chan_config.append([])
-			for group in range(16):
-				res=struct.unpack("H", data[pos:pos+2])
-				pos+=2
-				chan_config[num].append(res[0])
-				logging.debug("CHAN CONFIG (NUM {0}, GROUP {1} => {2:b}".format(num,group,res[0]))
+			chan_config=[]
+			for num in range(8):
+				chan_config.append([])
+				for group in range(16):
+					res=struct.unpack("H", data[pos:pos+2])
+					pos+=2
+					chan_config[num].append(res[0])
+					logging.debug("CHAN CONFIG (NUM {0}, GROUP {1} => {2:b}".format(num,group,res[0]))
 
-		for i,group in enumerate(self.instrument):
-			group['chan'] = chan_config[0][i] & 0xF;
+			for i,group in enumerate(self.instrument):
+				group['chan'] = chan_config[0][i] & 0xF;
 
-		group_config=[]
-		try:
-			while True:
-				res=struct.unpack("BBBB", data[pos:pos+4])
-				pos+=4
-				if res[0]>=self.n_banks:
-					logging.error("FORMAT => Bank index ({}>={})".format(res[0],self.n_banks))
-					return
-				if res[1]>=self.n_presets:
-					logging.error("FORMAT => Preset index ({}>={})".format(res[1],self.n_presets))
-					return
-				logging.debug("BANK {}, PRESET {} =>".format(res[0],res[1]))
-				gconf=[]
-				for group in range(n_groups):
-					gc=struct.unpack("I", data[pos:pos+4])
+			group_config=[]
+			try:
+				while True:
+					res=struct.unpack("BBBB", data[pos:pos+4])
 					pos+=4
-					gconf.append(gc[0])
-					logging.debug("GROUP CONFIG {0} => {1:b}".format(group,gc[0]))
+					if res[0]>=self.n_banks:
+						logging.error("FORMAT => Bank index ({}>={})".format(res[0],self.n_banks))
+						return
+					if res[1]>=self.n_presets:
+						logging.error("FORMAT => Preset index ({}>={})".format(res[1],self.n_presets))
+						return
+					logging.debug("BANK {}, PRESET {} =>".format(res[0],res[1]))
+					gconf=[]
+					for group in range(n_groups):
+						gc=struct.unpack("I", data[pos:pos+4])
+						pos+=4
+						gconf.append(gc[0])
+						logging.debug("GROUP CONFIG {0} => {1:b}".format(group,gc[0]))
 
-				group_config.append({
-					'bank': res[0],
-					'preset': res[1],
-					'gconf':gconf
-				})
-				
-		except:
-			pass
+					group_config.append({
+						'bank': res[0],
+						'preset': res[1],
+						'gconf':gconf
+					})
+					
+			except:
+				pass
 
-		self.presets_data = {
-			'n_groups' : n_groups,
-			'chan_config' : chan_config,
-			'group_config': group_config
-		}
+			self.presets_data = {
+				'n_groups' : n_groups,
+				'chan_config' : chan_config,
+				'group_config': group_config
+			}
 
 
 	# ---------------------------------------------------------------------------

@@ -224,7 +224,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				'layers':[],
 				'clone':[],
 				'transpose':[],
-				'monitored_engines': self.get_monitored_engines()
+				'audio_routing': self.get_audio_routing()
 			}
 			#Layers info
 			for layer in self.layers:
@@ -253,6 +253,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			logging.error("Can't save snapshot '%s': %s" % (fpath,e))
 			return False
 		return True
+
 
 	def load_snapshot(self, fpath):
 		try:
@@ -296,11 +297,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.reset_transpose()
 			#Set CC-Map
 			#TODO
-			#Set Monitored Engines
-			if 'monitored_engines' in snapshot:
-				self.set_monitored_engines(snapshot['monitored_engines'])
+			#Set Audio Routing
+			if 'audio_routing' in snapshot:
+				self.set_audio_routing(snapshot['audio_routing'])
 			else:
-				self.reset_monitored_engines()
+				self.reset_audio_routing()
 			#Post action
 			if self.list_data[self.index][0] in ('NEW','RESET'):
 				self.index=0
@@ -313,25 +314,24 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return True
 
 	#----------------------------------------------------------------------------
-	# Monitored engines
+	# Audio Routing
 	#----------------------------------------------------------------------------
 
-	def get_monitored_engines(self):
-		mongines=[]
+	def get_audio_routing(self):
+		res={}
 		for k, zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.items():
-			if zyngine.audio_out=="mon":
-				mongines.append(k.lower())
-		return mongines
+			res[k]=zyngine.audio_out
+		return res
 
-	def set_monitored_engines(self, mongines):
+	def set_audio_routing(self, audio_routing=None):
 		for k, zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.items():
-			if k.lower() in mongines:
-				zyngine.audio_out="mon"
-			else:
-				zyngine.audio_out="sys"
+			try:
+				zyngine.audio_out=audio_routing[k]
+			except:
+				zyngine.audio_out=["system"]
 
-	def reset_monitored_engines(self):
-		self.set_monitored_engines([])
+	def reset_audio_routing(self):
+		self.set_audio_routing()
 
 
 #------------------------------------------------------------------------------

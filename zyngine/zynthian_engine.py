@@ -104,7 +104,7 @@ class zynthian_engine:
 		self.osc_server_port=None
 		self.osc_server_url=None
 
-		self.audio_out = "sys"
+		self.audio_out = ["system"]
 		self.options= {
 			'clone': True,
 			'transpose': True,
@@ -475,8 +475,28 @@ class zynthian_engine:
 	# Options
 	# ---------------------------------------------------------------------------
 
-	def set_audio_out(self, jackname):
-		self.audio_out=jackname
+	def add_audio_out(self, jackname):
+		if jackname not in self.audio_out:
+			self.audio_out.append(jackname)
+
+
+	def del_audio_out(self, jackname):
+		try:
+			self.audio_out.remove(jackname)
+		except:
+			pass
+
+
+	def toggle_audio_out(self, jackname):
+		if jackname not in self.audio_out:
+			self.audio_out.append(jackname)
+		else:
+			self.audio_out.remove(jackname)
+
+
+	def reset_audio_out(self):
+		self.audio_out=["system"]
+
 
 	def get_options(self):
 		return self.options

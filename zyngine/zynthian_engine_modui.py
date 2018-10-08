@@ -50,7 +50,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self.nickname = "MD"
 		self.jackname = "mod-host"
 
-		self.audio_out = None
+		self.audio_out = []
 		self.options= {
 			'clone': False,
 			'transpose': False,
@@ -436,11 +436,11 @@ class zynthian_engine_modui(zynthian_engine):
 				except Exception as err:
 					logging.error("Configuring Controllers: "+pgraph+" => "+str(err))
 			#Add bypass Zcontroller
-			bypass_zctrl=zynthian_controller(self,'enabled','enabled',{
+			bypass_zctrl=zynthian_controller(self,'bypass','bypass',{
 				'graph_path': pgraph+'/:bypass',
 				'value': 0,
 				'labels': ['off','on'],
-				'values': [1,0],
+				'values': [0,1],
 				'value_min': 0,
 				'value_max': 1,
 				'is_toggle': True,

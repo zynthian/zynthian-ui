@@ -466,8 +466,6 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def get_path(self, layer):
 		path=self.nickname
-		if self.plugin_name:
-			path=path+'/'+self.plugin_name
 		return path
 
 

@@ -52,6 +52,7 @@ from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_transpose import zynthian_gui_transpose
+from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
@@ -148,6 +149,7 @@ class zynthian_gui:
 		self.screens['engine']=zynthian_gui_engine()
 		self.screens['midi_chan']=zynthian_gui_midi_chan()
 		self.screens['transpose']=zynthian_gui_transpose()
+		self.screens['audio_out']=zynthian_gui_audio_out()
 		self.screens['bank']=zynthian_gui_bank()
 		self.screens['preset']=zynthian_gui_preset()
 		self.screens['control']=zynthian_gui_control()
@@ -528,7 +530,7 @@ class zynthian_gui:
 				elif evtype==0xC:
 					pgm = (ev & 0x7F00)>>8
 					logging.info("MIDI PROGRAM CHANGE %s, CH%s" % (pgm,chan))
-					self.screens['layer'].set_midi_chan_preset(chan, pgm)
+					#self.screens['layer'].set_midi_chan_preset(chan, pgm)
 					if not self.modal_screen and self.curlayer and chan==self.curlayer.get_midi_chan():
 						self.show_screen('control')
 
