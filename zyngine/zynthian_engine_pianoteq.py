@@ -28,6 +28,7 @@ import re
 import logging
 import time
 import shutil
+import struct
 import subprocess
 from collections import defaultdict
 from os.path import isfile,isdir,join
@@ -137,6 +138,7 @@ PIANOTEQ_SW_DIR = os.environ.get('ZYNTHIAN_SW_DIR',"/zynthian/zynthian-sw") + "/
 PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/Pianoteq 6 STAGE"
 PIANOTEQ_ADDON_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Addons'
 PIANOTEQ_MY_PRESETS_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq/Presets/My Presets'
+PIANOTEQ_MIDIMAPPINGS_DIR = os.path.expanduser("~") + '/.local/share/Modartt/Pianoteq/MidiMappings'
 
 try:
 	PIANOTEQ_VERSION=list(map(int, os.environ.get('PIANOTEQ_VERSION',"6.0.3").split(".")))
@@ -237,6 +239,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:
 		bank_list = bank_list_v6_3 + bank_list
 
+	# Separate Licensed from Free and Demo
 	subl = get_pianoteq_subl()
 	if subl:
 		free_banks=[]
@@ -258,19 +261,20 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	_ctrls=[
 		['volume',7,96],
-		['mute',19,'off','off|on'],
+		['dynamic',85,64],
+		['mute on/off',19,'off','off|on'],
+		['sustain on/off',64,'off','off|on'],
 		['rev on/off',30,'off','off|on'],
 		['rev duration',31,0],
 		['rev mix',32,0],
 		['rev room',33,0],
 		['rev p/d',34,0],
 		['rev e/r',35,64],
-		['rev tone',36,64],
-		['sustain on/off',64,'off','off|on']
+		['rev tone',36,64]
 	]
 
 	_ctrl_screens=[
-		['main',['volume','sustain on/off']],
+		['main',['volume','sustain on/off','dynamic','mute on/off']],
 		['reverb1',['volume','rev on/off','rev duration','rev mix']],
 		['reverb2',['volume','rev room','rev p/d','rev e/r']],
 		['reverb3',['volume','rev tone']]
@@ -289,18 +293,18 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.options['midi_chan']=False
 
 		self.preset = ""
+		self.midimapping = "ZynthianControllers"
 
 		if self.config_remote_display():
 			if PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0:
-				self.main_command=(PIANOTEQ_BINARY,"--midimapping","Zynthian")
+				self.base_command=(PIANOTEQ_BINARY,)
 			else:
-				self.main_command=(PIANOTEQ_BINARY,"--multicore","max","--midimapping","Zynthian")
+				self.base_command=(PIANOTEQ_BINARY, "--multicore", "max",)
 		else:
 			if PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0:
-				self.main_command=(PIANOTEQ_BINARY,"--headless","--midimapping","Zynthian")
+				self.base_command=(PIANOTEQ_BINARY, "--headless",)
 			else:
-				self.main_command=(PIANOTEQ_BINARY,"--multicore","max","--headless","--midimapping","Zynthian")
-		self.command=self.main_command
+				self.base_command=(PIANOTEQ_BINARY, "--multicore", "max", "--headless",)
 
 		self.user_presets_path=PIANOTEQ_MY_PRESETS_DIR
 		if not os.path.exists(self.user_presets_path):
@@ -314,19 +318,16 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		else:
 			self.save_presets_cache()
 
+		self.get_user_presets()
+		self.generate_presets_midimapping()
+
 		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
 			logging.debug("Pianoteq configuration does not exist. Creating one.")
 			ensure_dir("/root/.config/Modartt/")
 			pt_config_file = "Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1]) + ' STAGE.prefs'
 			shutil.copy(self.data_dir + "/pianoteq6/" + pt_config_file, "/root/.config/Modartt/")
 
-		if not os.path.isfile("/root/.local/share/Modartt/Pianoteq/MidiMappings/Zynthian.ptm"):
-			logging.debug("Pianoteq MIDI-mapping does not exist. Creating one.")
-			ensure_dir("/root/.local/share/Modartt/Pianoteq/MidiMappings/")
-			shutil.copy(self.data_dir + "/pianoteq6/Zynthian.ptm", "/root/.local/share/Modartt/Pianoteq/MidiMappings/")
-
 		fix_pianoteq_config()
-
 
 
 	def start(self, start_queue=False, shell=False):
@@ -348,7 +349,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	def set_midi_chan(self, layer):
 		self.stop()
-		self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)
+		self.command = self.base_command + ("--midi-channel", str(layer.get_midi_chan()+1),)
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
@@ -375,13 +376,12 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				for bank in self.bank_list:
 					b=bank[0]
 					if b==l:
-						self.presets[bank[0]].append((l,None,'<default>',None))
+						self.presets[b].append((l,None,'<default>',None))
 					elif b+' '==l[0:len(b)+1]:
 						#logging.debug("'%s' == '%s'" % (b,l[0:len(b)]))
-						preset_name=l[len(b):].strip()
-						preset_name=re.sub('^- ','',preset_name)
-						preset_title=preset_name
-						self.presets[bank[0]].append((l,None,preset_title,None))
+						preset_title=l[len(b):].strip()
+						preset_title=re.sub('^- ','',preset_title)
+						self.presets[b].append((l,None,preset_title,None))
 		except Exception as e:
 			logging.error("Can't get internal presets: %s" %e)
 			return False
@@ -423,38 +423,57 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		return True
 
 
+	# Get user presets
+	def get_user_presets(self):
+		user_presets_flist=sorted(os.listdir(self.user_presets_path))
+		for bank in self.bank_list:
+			if bank[0]:
+				user_presets = []
+				bank_name = bank[0]
+				bank_prefix = bank_name + " "
+				logging.debug("Getting User presets for %s [%s]" % (self.name,bank_name))
+				for f in user_presets_flist:
+					if (isfile(join(self.user_presets_path,f)) and f[-4:].lower()==".fxp"):
+						if bank_prefix==f[0:len(bank_prefix)]:
+							preset_path="My Presets/" + f[:-4]
+							preset_title="MY/" + str.replace(f[len(bank_prefix):-4], '_', ' ').strip()
+							user_presets.append((preset_path,None,preset_title,None))
+				#Add internal presets
+				try:
+					self.presets[bank_name] = user_presets + self.presets[bank_name]
+				except:
+					self.presets[bank_name] = user_presets
+
 	def get_preset_list(self, bank):
 		self.start_loading()
-		bank=bank[2]
-		#Get internal presets
-		if bank in self.presets:
-			logging.info("Getting Cached Internal Preset List for %s [%s]" % (self.name,bank))
-			internal_presets=self.presets[bank]
+		bank_name = bank[0]
+		if bank_name in self.presets:
+			logging.info("Getting Preset List for %s [%s]" % (self.name,bank_name))
+			res = self.presets[bank_name]
 		else:
-			logging.error("Can't get Cached Internal Preset List for %s [%s]" % (self.name,bank))
-			internal_presets=[]
-		#Get user presets
-		bank+=" "
-		user_presets=[]
-		for f in sorted(os.listdir(self.user_presets_path)):
-			if (isfile(join(self.user_presets_path,f)) and f[-4:].lower()==".fxp"):
-				if bank==f[0:len(bank)]:
-					preset_path="My Presets/" + f[:-4]
-					preset_title="MY/" + str.replace(f[len(bank):-4], '_', ' ').strip()
-					user_presets.append((preset_path,None,preset_title,None))
-		#Return the combined list
+			logging.error("Can't get Preset List for %s [%s]" % (self.name,bank_name))
+			res = []
 		self.stop_loading()
-		return user_presets + internal_presets
+		return res
 
 
 	def set_preset(self, layer, preset, preload=False):
-		if preset[0]!=self.preset:
-			self.start_loading()
-			self.command=self.main_command+("--midi-channel",)+(str(layer.get_midi_chan()+1),)+("--preset",)+(preset[0],)
-			self.preset=preset[0]
-			self.stop()
-			self.start(True,False)
-			self.stop_loading()
+		mm = "Zynthian-{}".format(preset[3])
+		if mm == self.midimapping:
+			super().set_preset(layer,preset,preload)
+			self.preset = preset[0]
+		else:
+			self.midimapping=mm
+			if preset[0]!=self.preset:
+				self.start_loading()
+				self.preset=preset[0]
+				self.command = self.base_command + ("--midi-channel", str(layer.get_midi_chan()+1),)
+				self.command += ("--preset", preset[0],)
+				self.command += ("--midimapping", self.midimapping,)
+				self.stop()
+				self.start(True,False)
+				self.stop_loading()
+
 
 	def cmp_presets(self, preset1, preset2):
 		return True
@@ -462,6 +481,65 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#--------------------------------------------------------------------------
 	# Special
 	#--------------------------------------------------------------------------
+
+	def generate_presets_midimapping(self):
+		# Copy default "static" MIDI Mappings if doesn't exist
+		if not os.path.isfile(PIANOTEQ_MIDIMAPPINGS_DIR + "/ZynthianControllers.ptm"):
+			logging.debug("Pianoteq Base MIDI-Mapping does not exist. Creating ...")
+			ensure_dir(PIANOTEQ_MIDIMAPPINGS_DIR)
+			shutil.copy(self.data_dir + "/pianoteq6/Zynthian.ptm", PIANOTEQ_MIDIMAPPINGS_DIR + "/ZynthianControllers.ptm")
+
+		# Generate "Program Change" for Presets as MIDI-Mapping registers using Pianoteq binary format
+		mmn = 0
+		data = []
+		for bank in self.bank_list:
+			if bank[0] in self.presets:
+				for prs in self.presets[bank[0]]:
+					try:
+						#logging.debug("Generating Pianoteq MIDI-Mapping for {}".format(prs[0]))
+						midi_event_str = bytes("Program Change " + str(len(data)+1),"utf8")
+						action_str = bytes("{LoadPreset|28||" + prs[0] + "|0}","utf8")
+						row = b'\x01\x00\x00\x00'
+						row += struct.pack("<I",len(midi_event_str)) + midi_event_str
+						row += struct.pack("<I",len(action_str)) + action_str
+						prs[1]=len(data)
+						prs[3]=mmn
+						data.append(row)
+						if len(data)>127:
+							self.create_midimapping_file(mmn, data)
+							mmn += 1
+							data = []
+					except Exception as e:
+						logging.error(e)
+
+		if len(data)>0:
+			self.create_midimapping_file(mmn, data)
+
+
+	def create_midimapping_file(self, mmn, data):
+		# Create a new file copying from "static" Controllers Mappging and adding the "generated" Presets Mappgings
+		fpath=PIANOTEQ_MIDIMAPPINGS_DIR + "/Zynthian-{}.ptm".format(mmn)
+		logging.debug("Generating Pianoteq MIDI-Mapping: {}".format(fpath))
+		shutil.copy(PIANOTEQ_MIDIMAPPINGS_DIR + "/ZynthianControllers.ptm", fpath )
+		with open(fpath, mode='a+b') as file:
+			for row in data:
+				file.write(row)
+
+		# Update Header: file size & register counter
+		with open(fpath, mode='r+b') as file:
+			# Read Header
+			file.seek(0)
+			header = bytearray(file.read(28))
+			# Remaining file size in bytes: (filesize - 8)
+			fsize = os.path.getsize(fpath) - 8
+			struct.pack_into("<I",header,4,fsize)
+			# Register Counter (Num. of Mappings)
+			res=struct.unpack_from("<I",header,24)
+			counter = res[0] + len(data)
+			struct.pack_into("<I",header,24,counter)
+			# Write Updated Header
+			file.seek(0)
+			file.write(header)
 
 
 #******************************************************************************
