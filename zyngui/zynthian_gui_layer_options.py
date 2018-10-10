@@ -52,7 +52,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.list_data=[]
 		self.layer=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index]
 		eng_options=self.layer.engine.get_options()
-		if eng_options['clone'] and self.layer.midi_chan>=0:
+		if eng_options['clone'] and self.layer.midi_chan is not None:
 			self.list_data.append((self.clone,0,"Clone"))
 		if eng_options['transpose']:
 			self.list_data.append((self.transpose,0,"Transpose"))

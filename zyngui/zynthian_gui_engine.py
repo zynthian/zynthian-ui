@@ -53,27 +53,40 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 class zynthian_gui_engine(zynthian_gui_selector):
 
 	def __init__(self):
-		self.zyngines={}
+		self.zyngines = {}
+		self.engine_type = "MIDI Synth"
 		self.init_engine_info()
 		super().__init__('Engine', True)
 
+
+	def set_engine_type(self, etype):
+		self.engine_type=etype
+
+
 	def init_engine_info(self):
-		self.engine_info=OrderedDict([
-			["ZY", ("ZynAddSubFX","ZynAddSubFX - Synthesizer")],
-			["FS", ("FluidSynth","FluidSynth - SF2 Player")],
-			["LS", ("LinuxSampler","LinuxSampler - SFZ/GIG Player")],
-			["BF", ("setBfree","setBfree - Hammond Emulator")],
-			["AE", ("Aeolus","Aeolus - Pipe Organ Emulator")]
-		])
 
-		if check_pianoteq_binary():
-			self.engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq %d.%d%s%s" % (PIANOTEQ_VERSION[0], PIANOTEQ_VERSION[1], " Stage" if PIANOTEQ_STAGE else "", " - Demo" if PIANOTEQ_TRIAL else ""))
+		if self.engine_type=="MIDI Synth" or self.engine_type is None:
+			self.engine_info=OrderedDict([
+				["ZY", ("ZynAddSubFX","ZynAddSubFX - Synthesizer")],
+				["FS", ("FluidSynth","FluidSynth - SF2 Player")],
+				["LS", ("LinuxSampler","LinuxSampler - SFZ/GIG Player")],
+				["BF", ("setBfree","setBfree - Hammond Emulator")],
+				["AE", ("Aeolus","Aeolus - Pipe Organ Emulator")]
+			])
 
-		for plugin_name in get_jalv_plugins():
-			self.engine_info['JV/{}'.format(plugin_name)]=(plugin_name, "{} - Plugin LV2".format(plugin_name))
+			if check_pianoteq_binary():
+				self.engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq %d.%d%s%s" % (PIANOTEQ_VERSION[0], PIANOTEQ_VERSION[1], " Stage" if PIANOTEQ_STAGE else "", " - Demo" if PIANOTEQ_TRIAL else ""))
 
-		self.engine_info['PD']=("PureData","PureData - Visual Programming")
-		self.engine_info['MD']=("MOD-UI","MOD-UI - Plugin Host")
+		else:
+			self.engine_info=OrderedDict([])
+
+		for plugin_name, plugin_info in get_jalv_plugins().items():
+			if plugin_info['TYPE']==self.engine_type or self.engine_type is None:
+				self.engine_info['JV/{}'.format(plugin_name)]=(plugin_name, "{} - Plugin LV2".format(plugin_name))
+
+		if self.engine_type=="Special" or self.engine_type is None:
+			self.engine_info['PD']=("PureData","PureData - Visual Programming")
+			self.engine_info['MD']=("MOD-UI","MOD-UI - Plugin Host")
 
 
 	def fill_list(self):

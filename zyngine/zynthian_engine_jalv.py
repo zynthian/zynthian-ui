@@ -55,15 +55,15 @@ class zynthian_engine_jalv(zynthian_engine):
 	JALV_LV2_CONFIG_FILE = "{}/jalv_plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR','/zynthian/config'))
 
 	plugins_dict = OrderedDict([
-		("Dexed", "https://github.com/dcoredump/dexed.lv2"),
-		("Helm", "http://tytel.org/helm"),
-		("MDA ePiano", "http://moddevices.com/plugins/mda/EPiano"),
-		("MDA Piano", "http://moddevices.com/plugins/mda/Piano"),
-		("MDA JX10", "http://moddevices.com/plugins/mda/JX10"),
-		("MDA DX10", "http://moddevices.com/plugins/mda/DX10"),
-		("OBXD", " https://obxd.wordpress.com"),
-		("SynthV1", "http://synthv1.sourceforge.net/lv2"),
-		("Noize Mak3r", "http://kunz.corrupt.ch/products/tal-noisemaker")
+		("Dexed", {'TYPE': "MIDI Synth",'URL': "https://github.com/dcoredump/dexed.lv2"}),
+		("Helm", {'TYPE': "MIDI Synth",'URL': "http://tytel.org/helm"}),
+		("MDA ePiano", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/EPiano"}),
+		("MDA Piano", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/Piano"}),
+		("MDA JX10", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/JX10"}),
+		("MDA DX10", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/DX10"}),
+		("OBXD", {'TYPE': "MIDI Synth",'URL': "https://obxd.wordpress.com"}),
+		("SynthV1", {'TYPE': "MIDI Synth",'URL': "http://synthv1.sourceforge.net/lv2"}),
+		("Noize Mak3r", {'TYPE': "MIDI Synth",'URL': "http://kunz.corrupt.ch/products/tal-noisemaker"})
 	])
 
 	# ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.nickname = "JV/" + plugin_name
 
 		self.plugin_name = plugin_name
-		self.plugin_url = self.plugins_dict[plugin_name]
+		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
 		if self.config_remote_display():
 			self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))		#TODO => Is possible to run plugins UI?

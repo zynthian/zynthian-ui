@@ -70,16 +70,22 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for i,layer in enumerate(self.layers):
 			self.list_data.append((str(i+1),i,layer.get_presetpath()))
 		#Add fixed entries
-		self.list_data.append(('NEW',len(self.list_data),"New Layer"))
-		self.list_data.append(('RESET',len(self.list_data),"Reset All"))
-		self.list_data.append(('ALL_NOTES_OFF',len(self.list_data),"All Notes Off: PANIC!"))
-		self.list_data.append(('ALL_SOUNDS_OFF',len(self.list_data),"All Sounds Off: PANIC!!!"))
+		self.list_data.append(('NEW_SYNTH',len(self.list_data),"NEW Synth Layer"))
+		self.list_data.append(('NEW_EFFECT',len(self.list_data),"NEW Effect Layer"))
+		self.list_data.append(('NEW_SPECIAL',len(self.list_data),"NEW Special Layer"))
+		self.list_data.append(('RESET',len(self.list_data),"REMOVE ALL"))
+		self.list_data.append(('ALL_NOTES_OFF',len(self.list_data),"PANIC! All Notes Off"))
+		self.list_data.append(('ALL_SOUNDS_OFF',len(self.list_data),"PANIC!!! All Sounds Off"))
 		super().fill_list()
 
 	def select_action(self, i):
 		self.index=i
-		if self.list_data[self.index][0]=='NEW':
-			self.add_layer()
+		if self.list_data[self.index][0]=='NEW_SYNTH':
+			self.add_layer("MIDI Synth")
+		elif self.list_data[self.index][0]=='NEW_EFFECT':
+			self.add_layer("Audio Effect")
+		elif self.list_data[self.index][0]=='NEW_SPECIAL':
+			self.add_layer("Special")
 		elif self.list_data[self.index][0]=='RESET':
 			self.reset()
 		elif self.list_data[self.index][0]=='ALL_NOTES_OFF':
@@ -115,8 +121,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		else:
 			return None
 
-	def add_layer(self):
+	def add_layer(self, etype):
 		self.add_layer_eng=None
+		zynthian_gui_config.zyngui.screens['engine'].set_engine_type(etype)
 		zynthian_gui_config.zyngui.show_modal('engine')
 
 	def add_layer_engine(self, eng):
