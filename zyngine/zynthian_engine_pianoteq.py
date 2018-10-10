@@ -335,7 +335,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		logging.debug("Starting"+str(self.command))
 		super().start(start_queue,shell)
 		logging.debug("Start sleeping...")
-		time.sleep(4)
+		time.sleep(5)
 		logging.debug("Stop sleeping...")
 		self.stop_loading()
 
@@ -462,6 +462,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if mm == self.midimapping:
 			super().set_preset(layer,preset,preload)
 			self.preset = preset[0]
+			time.sleep(1)
 		else:
 			self.midimapping=mm
 			if preset[0]!=self.preset:
