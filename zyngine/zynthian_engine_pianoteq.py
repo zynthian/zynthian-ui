@@ -243,16 +243,16 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	subl = get_pianoteq_subl()
 	if subl:
 		free_banks=[]
-		licenced_banks=[]
-		unlicenced_banks=[]
+		licensed_banks=[]
+		unlicensed_banks=[]
 		for bank in bank_list:
 			if bank[4].upper() in map(str.upper, subl):
-				licenced_banks.append(bank)
+				licensed_banks.append(bank)
 			elif bank[4].upper() in map(str.upper, free_instruments):
 				free_banks.append(bank)
 			else:
-				unlicenced_banks.append(bank)
-		bank_list = licenced_banks + free_banks + spacer + unlicenced_banks
+				unlicensed_banks.append(bank)
+		bank_list = licensed_banks + free_banks + spacer + unlicensed_banks
 
 
 	# ---------------------------------------------------------------------------
@@ -319,6 +319,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			self.save_presets_cache()
 
 		self.get_user_presets()
+		self.purge_banks()
 		self.generate_presets_midimapping()
 
 		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
@@ -372,16 +373,19 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			pianoteq=subprocess.Popen([PIANOTEQ_BINARY, "--list-presets"],stdout=subprocess.PIPE)
 			for line in pianoteq.stdout:
 				l=line.rstrip().decode("utf-8")
-				#logging.debug("%s" % l)
+				logging.debug("PRESET => {}".format(l))
 				for bank in self.bank_list:
-					b=bank[0]
-					if b==l:
-						self.presets[b].append((l,None,'<default>',None))
-					elif b+' '==l[0:len(b)+1]:
-						#logging.debug("'%s' == '%s'" % (b,l[0:len(b)]))
-						preset_title=l[len(b):].strip()
-						preset_title=re.sub('^- ','',preset_title)
-						self.presets[b].append((l,None,preset_title,None))
+					try:
+						b=bank[0]
+						if b==l:
+							self.presets[b].append([l,None,'<default>',None])
+						elif b+' '==l[0:len(b)+1]:
+							#logging.debug("'%s' == '%s'" % (b,l[0:len(b)]))
+							preset_title=l[len(b):].strip()
+							preset_title=re.sub('^- ','',preset_title)
+							self.presets[b].append([l,None,preset_title,None])
+					except:
+						pass
 		except Exception as e:
 			logging.error("Can't get internal presets: %s" %e)
 			return False
@@ -443,6 +447,16 @@ class zynthian_engine_pianoteq(zynthian_engine):
 					self.presets[bank_name] = user_presets + self.presets[bank_name]
 				except:
 					self.presets[bank_name] = user_presets
+
+
+	# Remove banks without presets
+	def purge_banks(self):
+		purged_bank_list=[]
+		for bank in self.bank_list:
+			if not bank[0] or (bank[0] and len(self.presets[bank[0]])>0):
+				purged_bank_list.append(bank)
+		self.bank_list=purged_bank_list
+
 
 	def get_preset_list(self, bank):
 		self.start_loading()
