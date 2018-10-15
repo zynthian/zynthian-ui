@@ -84,6 +84,11 @@ class zynthian_engine_jalv(zynthian_engine):
 			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
 		},
 		"MDA JX10": {
+			"ctrls": [
+				['volume',7,96],
+				['mod-wheel',1,0],
+			],
+			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel']]]
 		},
 		"MDA ePiano": {
 			"ctrls": [
