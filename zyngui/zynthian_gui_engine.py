@@ -75,7 +75,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			])
 
 			if check_pianoteq_binary():
-				self.engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq %d.%d%s%s" % (PIANOTEQ_VERSION[0], PIANOTEQ_VERSION[1], " Stage" if PIANOTEQ_STAGE else "", " - Demo" if PIANOTEQ_TRIAL else ""))
+				self.engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq {}.{} {}{}".format(PIANOTEQ_VERSION[0], PIANOTEQ_VERSION[1], PIANOTEQ_PRODUCT, " (Demo)" if PIANOTEQ_TRIAL else ""))
 
 		else:
 			self.engine_info=OrderedDict([])
