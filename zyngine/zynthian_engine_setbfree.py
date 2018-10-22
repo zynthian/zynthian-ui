@@ -66,7 +66,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		['vibrato upper',31,'off','off|on','vibratoupper'],
 		['vibrato lower',30,'off','off|on','vibratolower'],
-		['vibrato routing',95,'off','off|lower|upper|both',],
+		['vibrato routing',95,'off','off|lower|upper|both','vibratorouting'],
 		#['vibrato selector',92,'c3','v1|v2|v3|c1|c2|c3','vibrato'],
 		['vibrato selector',92,'c3',[['v1','v2','v3','c1','c2','c3'],[0,23,46,69,92,115]]],
 
@@ -84,14 +84,15 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	# Controller Screens
 	_ctrl_screens=[
-		['main',['volume','percussion','rotary speed','reverb']],
+		['main',['volume','percussion','rotary speed','vibrato routing']],
 		['drawbars low',['volume','DB 16','DB 5 1/3','DB 8']],
 		['drawbars medium',['volume','DB 4','DB 2 2/3','DB 2']],
 		['drawbars high',['volume','DB 1 3/5','DB 1 1/3','DB 1']],
 		['rotary',['rotary toggle','rotary select','rotary speed','convol. mix']],
 		['vibrato',['vibrato upper','vibrato lower','vibrato routing','vibrato selector']],
 		['percussion',['percussion','percussion decay','percussion harmonic','percussion volume']],
-		['overdrive',['overdrive','overdrive character','overdrive inputgain','overdrive outputgain']]
+		['overdrive',['overdrive','overdrive character','overdrive inputgain','overdrive outputgain']],
+		['reverb',['volume','convol. mix','reverb']],
 	]
 
 	#----------------------------------------------------------------------------
@@ -219,7 +220,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 							title=params['name']
 							del params['name']
 							#Complete program params ...
-							if 'vibrato' in params: params['vibratoupper']='on'
+							#if 'vibrato' in params:
+							#	params['vibratoupper']='on'
+							#	params['vibratorouting']='upper'
 							if 'drawbars' in params:
 								j=1
 								for v in params['drawbars']:
