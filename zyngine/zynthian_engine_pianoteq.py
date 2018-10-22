@@ -258,7 +258,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	]
 
 	spacer_demo_bank=[
-		(None,0,'=== DEMO Instruments ===')
+		(None,0,'---- DEMO Instruments ----')
 	]
 
 	if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:

@@ -250,17 +250,22 @@ class zynthian_gui:
 			self.screens['bank'].fill_list()
 			self.screens['preset'].fill_list()
 			self.screens['control'].fill_list()
-			#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
-			if zynthian_gui_config.midi_single_active_channel:
-				active_chan=self.curlayer.get_midi_chan()
-				if active_chan is not None:
-					cur_active_chan=lib_zyncoder.get_midi_active_chan()
-					if cur_active_chan!=active_chan:
-						self.all_notes_off_chan(cur_active_chan)
-						lib_zyncoder.set_midi_active_chan(active_chan);
+			self.set_active_channel()
 			self.stop_loading()
 		else:
 			self.curlayer=None
+
+	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
+	def set_active_channel(self):
+		if zynthian_gui_config.midi_single_active_channel:
+			active_chan=self.curlayer.get_midi_chan()
+			if active_chan is not None:
+				cur_active_chan=lib_zyncoder.get_midi_active_chan()
+				if cur_active_chan!=active_chan:
+					self.all_notes_off_chan(cur_active_chan)
+					lib_zyncoder.set_midi_active_chan(active_chan)
+		else:
+			lib_zyncoder.set_midi_active_chan(-1)
 
 	def get_curlayer_wait(self):
 		#Try until layer is ready
