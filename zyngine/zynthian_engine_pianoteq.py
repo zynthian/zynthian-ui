@@ -140,7 +140,7 @@ def get_pianoteq_subl():
 	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
 		root = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
 		for xml_value in root.iter("VALUE"):
-			if(xml_value.attrib['name']=='subl'):
+			if xml_value.attrib['name']=='subl':
 				subl=xml_value.attrib['val'].split(';')
 	return subl
 
@@ -261,26 +261,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		(None,0,'---- DEMO Instruments ----')
 	]
 
-	if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:
-		bank_list = bank_list_v6_3 + bank_list
-
-	if not PIANOTEQ_TRIAL:
-		# Separate Licensed from Free and Demo
-		subl = get_pianoteq_subl()
-		if subl:
-			free_banks=[]
-			licensed_banks=[]
-			unlicensed_banks=[]
-			for bank in bank_list:
-				if bank[4].upper() in map(str.upper, subl):
-					licensed_banks.append(bank)
-				elif bank[4].upper() in map(str.upper, free_instruments):
-					free_banks.append(bank)
-				else:
-					unlicensed_banks.append(bank)
-			bank_list = licensed_banks + free_banks + spacer_demo_bank + unlicensed_banks
-
-
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
@@ -332,6 +312,20 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			else:
 				self.base_command=(PIANOTEQ_BINARY, "--multicore", "max", "--headless",)
 
+		# Create & fix Pianoteq config
+		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
+			logging.debug("Pianoteq configuration does not exist. Creating one...")
+			ensure_dir(PIANOTEQ_CONFIG_DIR + "/")
+			if os.path.isfile(self.data_dir + "/pianoteq6/" + PIANOTEQ_CONFIG_FILENAME):
+				shutil.copy(self.data_dir + "/pianoteq6/" + PIANOTEQ_CONFIG_FILENAME, PIANOTEQ_CONFIG_DIR)
+			else:
+				shutil.copy(self.data_dir + "/pianoteq6/Pianoteq6.prefs", PIANOTEQ_CONFIG_FILE)
+
+		fix_pianoteq_config()
+
+		# Prepare bank list
+		self.prepare_banks()
+
 		# Create "My Presets" directory if not already exist
 		self.user_presets_path=PIANOTEQ_MY_PRESETS_DIR
 		if not os.path.exists(self.user_presets_path):
@@ -348,16 +342,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.get_user_presets()
 		self.purge_banks()
 		self.generate_presets_midimapping()
-
-		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
-			logging.debug("Pianoteq configuration does not exist. Creating one...")
-			ensure_dir(PIANOTEQ_CONFIG_DIR + "/")
-			if os.path.isfile(self.data_dir + "/pianoteq6/" + PIANOTEQ_CONFIG_FILENAME):
-				shutil.copy(self.data_dir + "/pianoteq6/" + PIANOTEQ_CONFIG_FILENAME, PIANOTEQ_CONFIG_DIR)
-			else:
-				shutil.copy(self.data_dir + "/pianoteq6/Pianoteq60 STAGE.prefs", PIANOTEQ_CONFIG_FILE)
-
-		fix_pianoteq_config()
 
 
 	def start(self, start_queue=False, shell=False):
@@ -388,8 +372,31 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	def get_bank_list(self, layer=None):
 		return self.bank_list
 
+
 	def set_bank(self, layer, bank):
 		pass
+
+
+	def prepare_banks(self):
+		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:
+			self.bank_list = self.bank_list_v6_3 + self.bank_list
+
+		if not PIANOTEQ_TRIAL:
+			# Separate Licensed from Free and Demo
+			subl = get_pianoteq_subl()
+			if subl:
+				free_banks=[]
+				licensed_banks=[]
+				unlicensed_banks=[]
+				for bank in self.bank_list:
+					if bank[4].upper() in map(str.upper, subl):
+						licensed_banks.append(bank)
+					elif bank[4].upper() in map(str.upper, self.free_instruments):
+						free_banks.append(bank)
+					else:
+						unlicensed_banks.append(bank)
+				self.bank_list = licensed_banks + free_banks + self.spacer_demo_bank + unlicensed_banks
+
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
