@@ -257,11 +257,11 @@ class zynthian_gui:
 
 	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
 	def set_active_channel(self):
-		if zynthian_gui_config.midi_single_active_channel:
+		if self.curlayer and zynthian_gui_config.midi_single_active_channel:
 			active_chan=self.curlayer.get_midi_chan()
 			if active_chan is not None:
 				cur_active_chan=lib_zyncoder.get_midi_active_chan()
-				if cur_active_chan!=active_chan:
+				if cur_active_chan and cur_active_chan!=active_chan:
 					self.all_notes_off_chan(cur_active_chan)
 					lib_zyncoder.set_midi_active_chan(active_chan)
 		else:

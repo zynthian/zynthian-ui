@@ -268,6 +268,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			logging.info("Single Channel Mode ON")
 			zynthian_gui_config.midi_single_active_channel=True
 		zynthian_gui_config.zyngui.set_active_channel()
+		sleep(0.5)
+		self.fill_list()
 
 	def audio_recorder(self):
 		logging.info("Audio Recorder")
