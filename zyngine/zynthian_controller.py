@@ -103,8 +103,12 @@ class zynthian_controller:
 		#Configure Selector Controller
 		if self.ticks and self.labels:
 			#Calculate min, max and range
-			self.value_min=self.ticks[0]
-			self.value_max=self.ticks[-1]
+			if self.ticks[0]<=self.ticks[-1]:
+				self.value_min=self.ticks[0]
+				self.value_max=self.ticks[-1]
+			else:
+				self.value_min=self.ticks[-1]
+				self.value_max=self.ticks[0]
 			#Generate dictionary for fast conversion labels=>values
 			self.label2value={}
 			self.value2label={}
