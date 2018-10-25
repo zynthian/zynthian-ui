@@ -261,7 +261,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def set_preset(self, layer, preset, preload=False):
 		self.start_loading()
-		
+
 		output=self.proc_cmd("\set_preset {}".format(preset[0]))
 
 		#Parse new controller values

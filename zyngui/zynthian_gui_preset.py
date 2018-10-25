@@ -56,9 +56,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		super().show()
 
 	def select_action(self, i):
-		if self.list_data[i][0] is not None:
-			zynthian_gui_config.zyngui.curlayer.set_preset(i)
-			zynthian_gui_config.zyngui.show_screen('control')
+		zynthian_gui_config.zyngui.curlayer.set_preset(i)
+		zynthian_gui_config.zyngui.show_screen('control')
 
 	def preselect_action(self):
 		return zynthian_gui_config.zyngui.curlayer.preload_preset(self.index)

@@ -101,7 +101,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			else:
 				zynthian_gui_config.zyngui.show_screen('bank')
 				# If there is only one bank, jump to preset selection
-				if len(self.curlayer.bank_list)==1:
+				if len(self.curlayer.bank_list)<=1:
 					zynthian_gui_config.zyngui.screens['bank'].select_action(0)
 
 	def next(self):
