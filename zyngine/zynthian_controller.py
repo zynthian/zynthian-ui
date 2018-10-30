@@ -42,6 +42,7 @@ class zynthian_controller:
 		self.value=0
 		self.value_default=0
 		self.value_min=0
+		self.value_mid=64
 		self.value_max=127
 		self.value_range=127
 		self.labels=None
@@ -117,6 +118,7 @@ class zynthian_controller:
 				self.value2label[str(self.ticks[i])]=self.labels[i]
 		#Common configuration
 		self.value_range=self.value_max-self.value_min
+		self.value_mid=self.value_min+self.value_range/2
 		self._set_value(self.value)
 		if self.value_default is None:
 			self.value_default=self.value
@@ -186,7 +188,7 @@ class zynthian_controller:
 			return
 
 		elif self.is_toggle:
-			if val==self.value_min:
+			if val<self.value_mid:
 				self.value=self.value_min
 			else:
 				self.value=self.value_max
