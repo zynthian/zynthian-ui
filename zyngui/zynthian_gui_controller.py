@@ -486,7 +486,7 @@ class zynthian_gui_controller:
 	def zctrl_sync(self):
 		#List of values (value selector)
 		if self.labels:
-			val=zctrl.get_label2value(zctrl.get_value2label())
+			val=self.zctrl.get_label2value(self.zctrl.get_value2label())
 		#Numeric value
 		else:
 			#"List Selection Controller" => step 1 element by rotary tick

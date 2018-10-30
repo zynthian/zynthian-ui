@@ -226,7 +226,9 @@ class zynthian_controller:
 					except:
 						logging.warning("Can't send controller '%s' value" % self.symbol)
 
-	def get_value2label(self, val):
+	def get_value2label(self, val=None):
+		if val is None:
+			val=self.value
 		try:
 			if self.ticks:
 				if self.ticks[0]>self.ticks[-1]:
@@ -240,7 +242,7 @@ class zynthian_controller:
 							return self.labels[i]
 						return self.labels[i+1]
 			elif self.labels:
-				i=int((self.value-self.value_min)*(len(self.labels)-1)/self.value_range)
+				i=int((val-self.value_min)*(len(self.labels)-1)/self.value_range)
 				return self.labels[i]
 			else:
 				return val
