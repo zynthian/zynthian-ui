@@ -90,7 +90,7 @@ def ensure_dir(file_path):
 def check_pianoteq_binary():
 	if not os.path.isfile(PIANOTEQ_BINARY):
 		try:
-			os.symlink(PIANOTEQ_SW_DIR + "/arm/Pianoteq 6 STAGE", PIANOTEQ_BINARY)
+			os.symlink(PIANOTEQ_SW_DIR + "/Pianoteq 6 STAGE", PIANOTEQ_BINARY)
 		except:
 			return False
 
