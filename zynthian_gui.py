@@ -334,14 +334,19 @@ class zynthian_gui:
 			else:
 				self.show_screen('layer')
 		elif i==1:
-			if self.active_screen=='preset':
-				if self.curlayer.preset_info is not None:
-					self.screens['preset'].back_action()
-					self.show_screen('control')
-				else:
+			if self.curlayer is not None:
+				if self.active_screen=='preset':
+					if self.curlayer.preset_info is not None:
+						self.screens['preset'].back_action()
+						self.show_screen('control')
+					else:
+						self.show_screen('bank')
+				elif self.active_screen!='bank':
 					self.show_screen('bank')
-			elif self.active_screen!='bank':
-				self.show_screen('bank')
+				else:
+					self.show_screen('admin')
+			else:
+				self.show_screen('admin')
 		elif i==2:
 			self.save_snapshot()
 		elif i==3:
