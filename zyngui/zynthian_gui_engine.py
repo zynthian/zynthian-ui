@@ -50,7 +50,40 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 # Zynthian Engine Selection GUI Class
 #------------------------------------------------------------------------------
 
+def initializator(cls):
+	cls.init_engine_info()
+	return cls
+
+@initializator
 class zynthian_gui_engine(zynthian_gui_selector):
+
+	single_layer_engines = ["BF", "MD", "PT", "PD", "AE"]
+
+	@classmethod
+	def init_engine_info(cls):
+
+		cls.engine_info=OrderedDict([
+			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth")],
+			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth")],
+			["LS", ("LinuxSampler", "LinuxSampler - SFZ/GIG Player", "MIDI Synth")],
+			["BF", ("setBfree", "setBfree - Hammond Emulator", "MIDI Synth")],
+			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth")]
+		])
+
+		if check_pianoteq_binary():
+			pianoteq_title="Pianoteq {}.{} {}{}".format(
+				PIANOTEQ_VERSION[0],
+				PIANOTEQ_VERSION[1],
+				PIANOTEQ_PRODUCT,
+				" (Demo)" if PIANOTEQ_TRIAL else "")
+			cls.engine_info['PT']=(PIANOTEQ_NAME, pianoteq_title, "MIDI Synth")
+
+		for plugin_name, plugin_info in get_jalv_plugins().items():
+			cls.engine_info['JV/{}'.format(plugin_name)]=(plugin_name, "{} - Plugin LV2".format(plugin_name), plugin_info['TYPE'])
+
+		cls.engine_info['PD']=("PureData", "PureData - Visual Programming", "Special")
+		cls.engine_info['MD']=("MOD-UI", "MOD-UI - Plugin Host", "Special")
+
 
 	def __init__(self):
 		self.zyngines = {}
@@ -63,39 +96,13 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.engine_type=etype
 
 
-	def init_engine_info(self):
-
-		if self.engine_type=="MIDI Synth" or self.engine_type is None:
-			self.engine_info=OrderedDict([
-				["ZY", ("ZynAddSubFX","ZynAddSubFX - Synthesizer")],
-				["FS", ("FluidSynth","FluidSynth - SF2 Player")],
-				["LS", ("LinuxSampler","LinuxSampler - SFZ/GIG Player")],
-				["BF", ("setBfree","setBfree - Hammond Emulator")],
-				["AE", ("Aeolus","Aeolus - Pipe Organ Emulator")]
-			])
-
-			if check_pianoteq_binary():
-				self.engine_info['PT']=(PIANOTEQ_NAME,"Pianoteq {}.{} {}{}".format(PIANOTEQ_VERSION[0], PIANOTEQ_VERSION[1], PIANOTEQ_PRODUCT, " (Demo)" if PIANOTEQ_TRIAL else ""))
-
-		else:
-			self.engine_info=OrderedDict([])
-
-		for plugin_name, plugin_info in get_jalv_plugins().items():
-			if plugin_info['TYPE']==self.engine_type or self.engine_type is None:
-				self.engine_info['JV/{}'.format(plugin_name)]=(plugin_name, "{} - Plugin LV2".format(plugin_name))
-
-		if self.engine_type=="Special" or self.engine_type is None:
-			self.engine_info['PD']=("PureData","PureData - Visual Programming")
-			self.engine_info['MD']=("MOD-UI","MOD-UI - Plugin Host")
-
-
 	def fill_list(self):
 		self.init_engine_info()
 		self.index=0
 		self.list_data=[]
 		i=0
-		for en in self.engine_info:
-			if en not in ["BF", "MD", "PT", "PD", "AE"] or en not in self.zyngines:
+		for en, info in self.engine_info.items():
+			if (info[2]==self.engine_type or self.engine_type is None) and (en not in self.single_layer_engines or en not in self.zyngines):
 				ei=self.engine_info[en]
 				self.list_data.append((en,i,ei[1],ei[0]))
 				i=i+1
