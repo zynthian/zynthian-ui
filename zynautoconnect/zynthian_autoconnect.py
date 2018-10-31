@@ -235,32 +235,27 @@ def audio_autoconnect():
 	except:
 		pass
 
-	#Connect Synth Engines to the assigned outputs
+	#Connect Synth Engines to assigned outputs
 	for k, zyngine in zyngine_list.items():
 		ports=jclient.get_ports(zyngine.jackname, is_output=True, is_audio=True, is_physical=False)
 		if ports:
 			if len(ports)==1:
 				ports.append(ports[0])
+
 			#logger.debug("Autoconnecting Engine {} ...".format(zyngine.jackname))
 			
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:
-				if ao in zyngine.audio_out:
-					try:
+				try:
+					if ao in zyngine.audio_out:
+						#logger.debug("Connecting to {} ...".format(ao))
 						jclient.connect(ports[0],input_ports[ao][0])
 						jclient.connect(ports[1],input_ports[ao][1])
-					except:
-						try:
-							jclient.connect(ports[0],input_ports['system'][0])
-							jclient.connect(ports[1],input_ports['system'][1])
-						except:
-							pass
-				else:
-					try:
+					else:
 						jclient.disconnect(ports[0],input_ports[ao][0])
 						jclient.disconnect(ports[1],input_ports[ao][1])
-					except:
-						pass
+				except:
+					pass
 
 	if zynthian_aubionotes:
 		#Get System Capture and Aubio Input ports ...

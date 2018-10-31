@@ -294,9 +294,9 @@ class zynthian_engine_jalv(zynthian_engine):
 			parts=line.split(" => ")
 			if len(parts)==2:
 				symbol=parts[0]
-				info=json.JSONDecoder().decode(parts[1])
-
 				try:
+					info=json.JSONDecoder().decode(parts[1])
+
 					#If there is points info ...
 					if len(info['points'])>1:
 						labels=[]
@@ -352,15 +352,9 @@ class zynthian_engine_jalv(zynthian_engine):
 									'value_max': info['max'],
 								})
 
-				#If there is no range info (should be!!) => Default MIDI CC controller with 0-127 range
-				except:
-					zctrls[symbol]=zynthian_controller(self,symbol,info['label'],{
-						'graph_path': info['index'],
-						'value': 0,
-						'value_default': 0,
-						'value_min': 0,
-						'value_max': 127
-					})
+				#If control info is not OK
+				except Exception as e:
+					logging.error(e)
 
 		self.stop_loading()
 		return zctrls
