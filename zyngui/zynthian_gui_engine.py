@@ -170,7 +170,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def get_fxchain_end(self, exclude=[]):
 		for eng in reversed(self.zyngines):
-			logging.debug("LOOKING FOR FXCHAIN END: {}".format(eng))
 			if eng in exclude:
 				continue
 			if 'system' in self.zyngines[eng].audio_out:
