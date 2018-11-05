@@ -84,6 +84,7 @@ class zynthian_engine:
 	def __init__(self, zyngui=None):
 		self.zyngui=zyngui
 
+		self.type = "MIDI Synth"
 		self.name = ""
 		self.nickname = ""
 		self.jackname = ""

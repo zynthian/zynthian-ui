@@ -46,6 +46,8 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
+
+		self.type = "Special"
 		self.name = "MOD-UI"
 		self.nickname = "MD"
 		self.jackname = "mod-host"

@@ -61,6 +61,8 @@ class zynthian_engine_puredata(zynthian_engine):
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
+
+		self.type = "Special"
 		self.name = "PureData"
 		self.nickname = "PD"
 		self.jackname = "Pure Data"
