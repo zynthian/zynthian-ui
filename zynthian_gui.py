@@ -656,7 +656,9 @@ class zynthian_gui:
 	def all_notes_off(self):
 		logging.info("All Notes Off!")
 		for chan in range(16):
-			self.zynmidi.set_midi_control(chan, 123, 0)
+			#self.zynmidi.set_midi_control(chan, 123, 0)
+			for n in range(128):
+				self.zynmidi.note_off(chan,n)
 
 	def all_sounds_off_chan(self, chan):
 		logging.info("All Sounds Off for channel {}!".format(chan))
@@ -664,7 +666,9 @@ class zynthian_gui:
 
 	def all_notes_off_chan(self, chan):
 		logging.info("All Notes Off for channel {}!".format(chan))
-		self.zynmidi.set_midi_control(chan, 123, 0)
+		#self.zynmidi.set_midi_control(chan, 123, 0)
+		for n in range(128):
+			self.zynmidi.note_off(chan,n)
 
 	#------------------------------------------------------------------
 	# MIDI learning
