@@ -58,10 +58,11 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 		self.list_data=[]
 
 		for k in zynautoconnect.get_audio_input_ports().keys():
-			if k in self.zyngine.audio_out:
-				self.list_data.append((k,k,"-> " + k))
-			else:
-				self.list_data.append((k,k,k))
+			if k != self.zyngine.jackname:
+				if k in self.zyngine.audio_out:
+					self.list_data.append((k,k,"-> " + k))
+				else:
+					self.list_data.append((k,k,k))
 
 		super().fill_list()
 
