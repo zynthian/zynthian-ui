@@ -545,7 +545,7 @@ class zynthian_gui:
 				elif evtype==0xC:
 					pgm = (ev & 0x7F00)>>8
 					logging.info("MIDI PROGRAM CHANGE %s, CH%s" % (pgm,chan))
-					#self.screens['layer'].set_midi_chan_preset(chan, pgm)
+					self.screens['layer'].set_midi_chan_preset(chan, pgm)
 					if not self.modal_screen and self.curlayer and chan==self.curlayer.get_midi_chan():
 						self.show_screen('control')
 

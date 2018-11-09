@@ -196,7 +196,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for layer in self.layers:
 			mch=layer.get_midi_chan()
 			if mch is None or mch==midich:
-				#TODO => Pass PROGRAM CHANGE to Linuxsampler, MOD-UI, etc.
 				layer.set_preset(preset_index,True)
 
 	def set_clone(self, clone_status):
