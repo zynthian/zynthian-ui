@@ -247,7 +247,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				if res and zynthian_gui_config.zyngui.midi_learn_mode:
 					logging.debug("MIDI-learn ZController {}".format(i))
 					zynthian_gui_config.zyngui.midi_learn_mode = False
-					zynthian_gui_config.zyngui.set_midi_learn(zctrl)
+					self.midi_learn(i)
 
 				if res and self.xyselect_mode:
 					self.zyncoder_read_xyselect(zctrl, i)
