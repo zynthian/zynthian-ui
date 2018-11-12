@@ -55,14 +55,17 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.nickname = "FS"
 		self.jackname = "fluidsynth"
 
-		self.command = ("/usr/local/bin/fluidsynth", "-p", "fluidsynth", "-a", "jack", "-m", "jack" ,"-g", "1", "-j", "-o", "synth.midi-bank-select=mma", "-o", "synth.cpu-cores=3", "-o", "synth.polyphony=64")
+		fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64"
+		self.command = "/usr/local/bin/fluidsynth -p fluidsynth -a jack -m jack -g 1 -j {}".format(fs_options)
+
+		self.command_prompt = "\n> "
 
 		self.soundfont_dirs=[
 			('_', self.data_dir + "/soundfonts/sf2"),
 			('MY', self.my_data_dir + "/soundfonts/sf2")
 		]
 
-		self.start(True)
+		self.start()
 		self.reset()
 
 	def reset(self):
@@ -71,9 +74,18 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.clear_midi_routes()
 		self.unload_unused_soundfonts()
 
+	# ---------------------------------------------------------------------------
+	# Subproccess Management & IPC
+	# ---------------------------------------------------------------------------
+
+
 	def stop(self):
-		self.proc_cmd("quit",2)
-		super().stop()
+		try:
+			self.proc.sendline("quit")
+			self.proc.expect("\ncheers!")
+		except:
+			super().stop()
+
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
@@ -113,12 +125,12 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		logging.info("Getting Preset List for %s" % bank[2])
+		logging.info("Getting Preset List for {}".format(bank[2]))
 		preset_list=[]
 		if bank[0] in self.soundfont_index:
 			sfi=self.soundfont_index[bank[0]]
-			lines=self.proc_cmd("inst %d" % sfi, 10)
-			for f in lines:
+			output=self.proc_cmd("inst {}".format(sfi))
+			for f in output.split("\n"):
 				try:
 					prg=int(f[4:7])
 					bank_msb=int(f[0:3])
@@ -129,7 +141,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				except:
 					pass
 		else:
-			logging.warning("Bank %s is not loaded" % bank[2])
+			logging.warning("Bank {} is not loaded".format(bank[2]))
 		return preset_list
 
 	def set_preset(self, layer, preset, preload=False):
@@ -137,10 +149,10 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		if sfi in self.soundfont_index.values():
 			midi_bank=preset[1][0]+preset[1][1]*128
 			midi_prg=preset[1][2]
-			logging.debug("Set Preset => Layer: %d, SoundFont: %d, Bank: %d, Program: %d" % (layer.part_i,sfi,midi_bank,midi_prg))
-			self.proc_cmd("select %d %d %d %d" % (layer.part_i,sfi,midi_bank,midi_prg))
+			logging.debug("Set Preset => Layer: {}, SoundFont: {}, Bank: {}, Program: {}".format(layer.part_i, sfi, midi_bank, midi_prg))
+			self.proc_cmd("select {} {} {} {}".format(layer.part_i, sfi, midi_bank, midi_prg))
 		else:
-			logging.warning("SoundFont %s is not loaded" % sfi)
+			logging.warning("SoundFont {} is not loaded".format(sfi))
 
 	def cmp_presets(self, preset1, preset2):
 		if preset1[3]==preset2[3] and preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
@@ -153,7 +165,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_free_parts(self):
-		free_parts=list(range(0,16))
+		free_parts = list(range(0,16))
 		for layer in self.layers:
 			try:
 				free_parts.remove(layer.part_i)
@@ -163,19 +175,19 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def load_soundfont(self, sf):
 		if sf not in self.soundfont_index:
-			logging.info("Loading SoundFont '%s' ..." % sf)
+			logging.info("Loading SoundFont '{}' ...".format(sf))
 			# Send command to FluidSynth
-			lines=self.proc_cmd("load \"%s\"" % sf, 20)
+			output=self.proc_cmd("load \"{}\"".format(sf))
 			# Parse ouput ...
 			sfi=None
 			cre=re.compile(r"loaded SoundFont has ID (\d+)")
-			for line in lines:
+			for line in output.split("\n"):
 				res=cre.match(line)
 				if res:
 					sfi=int(res.group(1))
 			# If soundfont was loaded succesfully ...
 			if sfi is not None:
-				logging.info("Loaded SoundFont '%s' => %d" % (sf,sfi))
+				logging.info("Loaded SoundFont '{}' => {}".format(sf,sfi))
 				# Re-select presets for all layers to prevent instrument change
 				for layer in self.layers:
 					if layer.preset_info:
@@ -185,7 +197,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				# Return soundfont ID
 				return sfi
 			else:
-				logging.warning("SoundFont '%s' can't be loaded" % sf)
+				logging.warning("SoundFont '{}' can't be loaded".format(sf))
 				return False
 
 	def setup_router(self, layer):
@@ -196,7 +208,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			# No need to clear routes if there is the only layer to add
 			try:
 				layer.part_i=self.get_free_parts()[0]
-				logging.debug("ADD LAYER => PART %s" % layer.part_i)
+				logging.debug("ADD LAYER => PART {}".format(layer.part_i))
 			except:
 				logging.error("ADD LAYER => NO FREE PARTS!")
 			self.set_layer_midi_routes(layer)
@@ -212,27 +224,26 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 					del sf_unload[bi[0]]
 		#Then, remove the remaining ;-)
 		for sf,sfi in sf_unload.items():
-			logging.info("Unload SoundFont => %d" % sfi)
-			self.proc_cmd("unload %d" % sfi,2)
+			logging.info("Unload SoundFont => {}".format(sfi))
+			self.proc_cmd("unload {}".format(sfi))
 			del self.soundfont_index[sf]
 
 	def set_layer_midi_routes(self, layer):
 		if layer.part_i is not None:
-			midich=layer.get_midi_chan()
-			self.proc_cmd(
-				"router_begin note\n"
-				"router_chan {0} {0} 0 {1}\n"
-				"router_end\n"
-				"router_begin cc\n"
-				"router_chan {0} {0} 0 {1}\n"
-				"router_end\n"
-				"router_begin pbend\n"
-				"router_chan {0} {0} 0 {1}\n"
-				"router_end\n"
-				"router_begin prog\n"
-				"router_chan {0} {0} 0 {1}\n"
-				"router_end".format(midich, layer.part_i)
-			)
+			midich = layer.get_midi_chan()
+			router_chan_cmd = "router_chan {0} {0} 0 {1}".format(midich, layer.part_i)
+			self.proc_cmd("router_begin note")
+			self.proc_cmd(router_chan_cmd)
+			self.proc_cmd("router_end")
+			self.proc_cmd("router_begin cc")
+			self.proc_cmd(router_chan_cmd)
+			self.proc_cmd("router_end")
+			self.proc_cmd("router_begin pbend")
+			self.proc_cmd(router_chan_cmd)
+			self.proc_cmd("router_end")
+			self.proc_cmd("router_begin prog")
+			self.proc_cmd(router_chan_cmd)
+			self.proc_cmd("router_end")
 
 	def set_all_midi_routes(self):
 		self.clear_midi_routes()

@@ -115,7 +115,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		except Exception as e:
 			logging.error("Can't add layer %s => %s" % (self.list_data[i][2],e))
 
-	def start_engine(self, eng, wait=0):
+	def start_engine(self, eng):
 		if eng not in self.zyngines:
 			info=self.engine_info[eng]
 			if eng=="ZY":
@@ -143,9 +143,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			# Try to connect effects ...
 			if len(self.zyngines)>1 and info[2]=="Audio Effect":
 				self.add_to_fxchain(eng)
-
-			if wait>0:
-				sleep(wait)
 
 		self.zyngine_counter+=1
 		return self.zyngines[eng]

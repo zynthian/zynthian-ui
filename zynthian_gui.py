@@ -260,8 +260,8 @@ class zynthian_gui:
 		if self.curlayer and zynthian_gui_config.midi_single_active_channel:
 			active_chan=self.curlayer.get_midi_chan()
 			if active_chan is not None:
-				if self.curlayer.engine.type=="MIDI Synth":
-					cur_active_chan=lib_zyncoder.get_midi_active_chan()
+				cur_active_chan=lib_zyncoder.get_midi_active_chan()
+				if self.curlayer.engine.type=="MIDI Synth" or cur_active_chan<0:
 					if cur_active_chan!=active_chan:
 						logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan,active_chan))
 						if cur_active_chan>=0:

@@ -311,16 +311,18 @@ class zynthian_layer:
 		return snapshot
 
 	def restore_snapshot(self, snapshot):
-		#Constructor, including engine and midi_chan info is called before
-		#self.set_midi_chan(snapshot['midi_chan'])
+		#Constructor, including engine and midi_chan info, is called before
+		#Load bank list and set bank
 		self.load_bank_list()
 		self.set_bank_by_name(snapshot['bank_name'])
 		#Wait for bank loading, zcontrols generation
 		self.wait_stop_loading()
+		#Load preset list and set preset
 		self.load_preset_list()
 		self.set_preset_by_name(snapshot['preset_name'])
 		#Wait for preset loading
-		#self.wait_stop_loading()
+		self.wait_stop_loading()
+		#Set controller values
 		if self.refresh_flag:
 			self.refresh_flag=False
 			self.refresh_controllers()

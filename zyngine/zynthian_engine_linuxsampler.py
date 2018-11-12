@@ -24,12 +24,13 @@
 
 import os
 import re
-import socket
 import logging
+import socket
 from time import sleep
 from os.path import isfile, isdir
 from subprocess import check_output
 from collections import OrderedDict
+
 from . import zynthian_engine
 from . import zynthian_controller
 
@@ -98,8 +99,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 		self.sock = None
 		self.port = 6688
-		self.command = ("linuxsampler", "--lscp-port", str(self.port))
+		self.command = "linuxsampler --lscp-port {}".format(self.port)
 		#os.environ["LADSPA_PATH"]="/usr/lib/ladspa"
+		self.command_prompt = "\nLinuxSampler initialization completed."
 
 		self.ls_chans = {}
 		self.ls_effects = OrderedDict(self._ladspa_plugins)

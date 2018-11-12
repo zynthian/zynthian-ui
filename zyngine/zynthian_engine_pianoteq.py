@@ -305,15 +305,19 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.midimapping = "ZynthianControllers"
 
 		if self.config_remote_display():
+			self.proc_start_sleep = 5
+			self.command_prompt = None
 			if PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0:
-				self.base_command=(PIANOTEQ_BINARY,)
+				self.base_command = PIANOTEQ_BINARY
 			else:
-				self.base_command=(PIANOTEQ_BINARY, "--multicore", "max",)
+				self.base_command = PIANOTEQ_BINARY + " --multicore max"
 		else:
+			self.command_prompt = "\nCurrent preset:"
 			if PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0:
-				self.base_command=(PIANOTEQ_BINARY, "--headless",)
+				self.base_command = PIANOTEQ_BINARY + " --headless"
 			else:
-				self.base_command=(PIANOTEQ_BINARY, "--multicore", "max", "--headless",)
+				self.base_command = PIANOTEQ_BINARY + " --headless --multicore max"
+
 
 		# Create & fix Pianoteq config
 		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
@@ -346,15 +350,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.purge_banks()
 		self.generate_presets_midimapping()
 
-
-	def start(self, start_queue=False, shell=False):
-		self.start_loading()
-		logging.debug("Starting"+str(self.command))
-		super().start(start_queue,shell)
-		logging.debug("Start sleeping...")
-		time.sleep(5)
-		logging.debug("Stop sleeping...")
-		self.stop_loading()
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
@@ -521,11 +516,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			if preset[0]!=self.preset:
 				self.start_loading()
 				self.preset=preset[0]
-				self.command = self.base_command + ("--midi-channel", str(layer.get_midi_chan()+1),)
-				self.command += ("--preset", preset[0],)
-				self.command += ("--midimapping", self.midimapping,)
+				self.command = self.base_command + " --midi-channel {}".format(layer.get_midi_chan()+1)
+				self.command += " --midimapping \"{}\"".format(self.midimapping)
+				self.command += " --preset \"{}\"".format(preset[0])
 				self.stop()
-				self.start(True,False)
+				self.start()
 				self.stop_loading()
 
 

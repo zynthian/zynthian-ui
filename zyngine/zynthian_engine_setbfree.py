@@ -24,6 +24,7 @@
 
 import re
 import logging
+import pexpect
 
 from . import zynthian_engine
 
@@ -112,13 +113,19 @@ class zynthian_engine_setbfree(zynthian_engine):
 		
 		self.generate_config_file()
 
+		#Process command ...
+		preset_fpath = self.base_dir + "/pgm/all.pgm"
+		config_fpath = self.base_dir + "/cfg/zynthian.cfg"
 		if self.config_remote_display():
-			self.command=("/usr/local/bin/setBfree", "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
+			self.command = "/usr/local/bin/setBfree -p \"{}\" -c \"{}\"".format(preset_fpath, config_fpath)
 		else:
-			self.command=("/usr/local/bin/setBfree", "-p", self.base_dir+"/pgm/all.pgm", "-c", self.base_dir+"/cfg/zynthian.cfg")
+			self.command = "/usr/local/bin/setBfree -p \"{}\" -c \"{}\"".format(preset_fpath, config_fpath)
+
+		self.command_prompt = "\nAll systems go."
 
 		self.start()
 		self.reset()
+
 
 	def generate_config_file(self):
 		cfg_tpl_fpath=self.base_dir+"/cfg/zynthian.cfg.tpl"
@@ -128,6 +135,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			cfg_data=cfg_data.replace('#OSC.TUNING#', str(self.zyngui.fine_tuning_freq))
 			with open(cfg_fpath, 'w') as cfg_file:
 				cfg_file.write(cfg_data)
+
 
 	#----------------------------------------------------------------------------
 	# Bank Managament

@@ -23,11 +23,8 @@
 #******************************************************************************
 
 import os
-import re
 import json
 import logging
-import pexpect
-from time import sleep
 from os.path import isfile
 from collections import OrderedDict
 
@@ -136,6 +133,8 @@ class zynthian_engine_jalv(zynthian_engine):
 		else:
 			self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))
 
+		self.command_prompt = "\n> "
+
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
 		self.current_learning_zctrl = None
@@ -159,7 +158,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			self._ctrls = self.plugin_ctrl_info[self.plugin_name]['ctrls']
 			self._ctrl_screens = self.plugin_ctrl_info[self.plugin_name]['ctrl_screens']
 		except:
-			logging.info("No defined MIDI controllers for '{}'.")
+			logging.info("No defined MIDI controllers for '{}'.".format(self.plugin_name))
 
 		# Generate LV2-Plugin Controllers
 		self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
@@ -169,53 +168,6 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.preset_list = self._get_preset_list()
 
 		self.reset()
-
-
-	# ---------------------------------------------------------------------------
-	# Subproccess Management & IPC
-	# ---------------------------------------------------------------------------
-
-	def proc_get_output(self):
-		self.proc.expect('\n> ')
-		return self.proc.before.decode()
-
-	def start(self):
-		if not self.proc:
-			logging.info("Starting Engine " + self.name)
-			try:
-				self.start_loading()
-				self.proc=pexpect.spawn(self.command)
-				self.proc.delaybeforesend = 0
-				output=self.proc_get_output()
-				self.stop_loading()
-				return output
-			except Exception as err:
-				logging.error("Can't start engine %s => %s" % (self.name,err))
-
-	def stop(self, wait=0.2):
-		if self.proc:
-			self.start_loading()
-			try:
-				logging.info("Stoping Engine " + self.name)
-				self.proc.terminate()
-				if wait>0: sleep(wait)
-				self.proc.terminate(True)
-			except Exception as err:
-				logging.error("Can't stop engine %s => %s" % (self.name,err))
-			self.proc=None
-			self.stop_loading()
-
-	def proc_cmd(self, cmd):
-		if self.proc:
-			try:
-				#logging.debug("proc command: "+cmd)
-				self.proc.sendline(cmd)
-				out=self.proc_get_output()
-				logging.debug("proc output:\n%s" % (out))
-			except Exception as err:
-				out=""
-				logging.error("Can't exec engine command: %s => %s" % (cmd,err))
-			return out
 
 
 	# ---------------------------------------------------------------------------

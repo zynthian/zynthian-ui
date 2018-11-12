@@ -285,7 +285,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.remove_all_layers(False)
 			#Create layers
 			for lss in snapshot['layers']:
-				engine=zynthian_gui_config.zyngui.screens['engine'].start_engine(lss['engine_nick'],1)
+				engine=zynthian_gui_config.zyngui.screens['engine'].start_engine(lss['engine_nick'])
 				self.layers.append(zynthian_layer(engine,lss['midi_chan'],zynthian_gui_config.zyngui))
 			#Set active layer
 			self.index=snapshot['index']
@@ -334,14 +334,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def get_audio_routing(self):
 		res={}
-		for k, zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.items():
-			res[k]=zyngine.audio_out
+		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
+			res[zyngine.jackname]=zyngine.audio_out
 		return res
 
 	def set_audio_routing(self, audio_routing=None):
-		for k, zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.items():
+		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
 			try:
-				zyngine.audio_out=audio_routing[k]
+				zyngine.audio_out=audio_routing[zyngine.jackname]
 			except:
 				zyngine.audio_out=["system"]
 

@@ -22,16 +22,10 @@
 #
 #******************************************************************************
 
-import os
-import re
 import logging
-import time
 import copy
 import struct
-import subprocess
-from time import sleep
 from collections import OrderedDict
-from os.path import isfile,isdir,join
 
 from . import zynthian_engine
 from . import zynthian_controller
@@ -155,14 +149,16 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.presets_data = {}
 
 		if self.config_remote_display():
-			self.command = ("/usr/bin/aeolus")
+			self.proc_start_sleep = 3
+			self.command_prompt = None
+			self.command = "/usr/bin/aeolus"
 		else:
-			self.command = ("/usr/bin/aeolus", "-t")
+			self.command_prompt = "\nAeolus>"
+			self.command = "/usr/bin/aeolus -t"
 
 		self.read_presets_file()
 		self.generate_ctrl_list()
 		self.start()
-		sleep(2)
 		self.reset()
 
 	# ---------------------------------------------------------------------------

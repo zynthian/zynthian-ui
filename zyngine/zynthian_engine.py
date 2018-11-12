@@ -25,14 +25,11 @@
 #import sys
 import os
 import copy
-import signal
 import liblo
 import logging
+import pexpect
 from time import sleep
 from os.path import isfile, isdir, join
-from subprocess import call, Popen, PIPE, STDOUT
-from threading  import Thread
-from queue import Queue, Empty
 from string import Template
 from collections import OrderedDict
 
@@ -89,24 +86,25 @@ class zynthian_engine:
 		self.nickname = ""
 		self.jackname = ""
 
-		self.loading=0
-		self.layers=[]
+		self.loading = 0
+		self.layers = []
 
 		#IPC variables
-		self.command=None
-		self.command_env=None
-		self.proc=None
-		self.queue=None
-		self.thread_queue=None
+		self.proc = None
+		self.proc_timeout = 20
+		self.proc_start_sleep = None
+		self.command = None
+		self.command_env = None
+		self.command_prompt = None
 
-		self.osc_target=None
-		self.osc_target_port=None
-		self.osc_server=None
-		self.osc_server_port=None
-		self.osc_server_url=None
+		self.osc_target = None
+		self.osc_target_port = None
+		self.osc_server = None
+		self.osc_server_port = None
+		self.osc_server_url = None
 
 		self.audio_out = ["system"]
-		self.options= {
+		self.options = {
 			'clone': True,
 			'transpose': True,
 			'audio_route': True,
@@ -146,7 +144,7 @@ class zynthian_engine:
 			return True
 
 	# ---------------------------------------------------------------------------
-	# Loading GUI signalization & refreshing
+	# Loading GUI signalization
 	# ---------------------------------------------------------------------------
 
 	def start_loading(self):
@@ -178,81 +176,66 @@ class zynthian_engine:
 	# Subproccess Management & IPC
 	# ---------------------------------------------------------------------------
 
-	def proc_enqueue_output(self):
-		try:
-			for line in self.proc.stdout:
-				self.queue.put(line)
-				#logging.debug("Proc Out: %s" % line)
-		except:
-			logging.info("Finished queue thread")
 
-	def proc_get_lines(self, tout=0.1, limit=2):
-		n=0
-		lines=[]
-		while True:
-			try:
-				lines.append(self.queue.get(True,tout))
-				n=n+1
-				if n==limit: tout=0.1
-			except Empty:
-				break
-		return lines
-
-	def start(self, start_queue=False, shell=False):
+	def start(self):
 		if not self.proc:
 			logging.info("Starting Engine " + self.name)
-			self.start_loading()
 			try:
-				self.proc=Popen(self.command, shell=shell, stdin=PIPE, stdout=PIPE, stderr=STDOUT, universal_newlines=True, env=self.command_env)
-					#, bufsize=1
-					#, preexec_fn=os.setsid
-					#, preexec_fn=self.chuser()
-				if start_queue:
-					self.queue=Queue()
-					self.thread_queue=Thread(target=self.proc_enqueue_output, args=())
-					self.thread_queue.daemon = True # thread dies with the program
-					self.thread_queue.start()
-					self.proc_get_lines(2)
+				self.start_loading()
+
+				if self.command_env:
+					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
+				else:
+					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout)
+
+				self.proc.delaybeforesend = 0
+
+				output = self.proc_get_output()
+
+				if self.proc_start_sleep:
+					sleep(self.proc_start_sleep)
+
+				self.stop_loading()
+				return output
+
 			except Exception as err:
-				logging.error("Can't start engine %s => %s" % (self.name,err))
-			self.stop_loading()
+				logging.error("Can't start engine {} => {}".format(self.name, err))
+
 
 	def stop(self, wait=0.2):
 		if self.proc:
 			self.start_loading()
 			try:
 				logging.info("Stoping Engine " + self.name)
-				pid=self.proc.pid
-				#self.proc.stdout.close()
-				#self.proc.stdin.close()
-				#os.killpg(os.getpgid(pid), signal.SIGTERM)
 				self.proc.terminate()
 				if wait>0: sleep(wait)
-				try:
-					self.proc.kill()
-					os.killpg(pid, signal.SIGKILL)
-				except:
-					pass
+				self.proc.terminate(True)
 			except Exception as err:
-				logging.error("Can't stop engine %s => %s" % (self.name,err))
+				logging.error("Can't stop engine {} => {}".format(self.name, err))
 			self.proc=None
 			self.stop_loading()
 
-	def proc_cmd(self, cmd, tout=0.1):
+
+	def proc_get_output(self):
+		if self.command_prompt:
+			self.proc.expect(self.command_prompt)
+			return self.proc.before.decode()
+		else:
+			return None
+
+
+	def proc_cmd(self, cmd):
 		if self.proc:
-			self.start_loading()
 			try:
-				logging.debug("proc command: "+cmd)
-				#self.proc.stdin.write(bytes(cmd + "\n", 'UTF-8'))
-				self.proc.stdin.write(cmd + "\n")
-				self.proc.stdin.flush()
-				out=self.proc_get_lines(tout)
-				logging.debug("proc output:\n%s" % (out))
+				#logging.debug("proc command: "+cmd)
+				self.proc.sendline(cmd)
+				out=self.proc_get_output()
+				logging.debug("proc output:\n{}".format(out))
 			except Exception as err:
 				out=""
-				logging.error("Can't exec engine command: %s => %s" % (cmd,err))
-			self.stop_loading()
+				logging.error("Can't exec engine command: {} => {}".format(cmd, err))
 			return out
+
 
 	# ---------------------------------------------------------------------------
 	# OSC Management
