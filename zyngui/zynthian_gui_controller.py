@@ -304,7 +304,9 @@ class zynthian_gui_controller:
 			self.canvas.itemconfig(self.midi_bind, text="")
 
 	def set_midi_bind(self):
-		if zynthian_gui_config.zyngui.midi_learn_zctrl and self.zctrl==zynthian_gui_config.zyngui.midi_learn_zctrl:
+		if zynthian_gui_config.zyngui.midi_learn_mode:
+			self.plot_midi_bind("??","#00ff00")
+		elif zynthian_gui_config.zyngui.midi_learn_zctrl and self.zctrl==zynthian_gui_config.zyngui.midi_learn_zctrl:
 			self.plot_midi_bind("??","#00ff00")
 		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
 			midi_cc=zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
@@ -547,15 +549,19 @@ class zynthian_gui_controller:
 			self.set_value(v,True)
 			logging.debug("INIT VALUE %s => %s" % (self.index,v))
 
+
 	def read_zyncoder(self):
 		if zyncoder.lib_zyncoder:
 			val=zyncoder.lib_zyncoder.get_value_zyncoder(self.index)
 			#logging.debug("ZYNCODER %d RAW VALUE => %s" % (self.index,val))
 		else:
 			val=self.value*self.mult-self.val0
+
 		if self.mult>1:
 			val=int((val+1)/self.mult)
+
 		return self.set_value(val)
+
 
 	def cb_canvas_push(self,event):
 		self.canvas_push_ts=datetime.now()

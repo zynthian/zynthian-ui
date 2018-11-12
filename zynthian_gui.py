@@ -83,24 +83,25 @@ class zynthian_gui:
 	screens_sequence=("admin","layer","bank","preset","control")
 
 	def __init__(self):
-		self.zynmidi=None
-		self.screens={}
-		self.active_screen=None
-		self.modal_screen=None
-		self.curlayer=None
+		self.zynmidi = None
+		self.screens = {}
+		self.active_screen = None
+		self.modal_screen = None
+		self.curlayer = None
 
-		self.dtsw={}
-		self.polling=False
+		self.dtsw = {}
+		self.polling = False
 
-		self.loading=0
-		self.loading_thread=None
-		self.zyncoder_thread=None
-		self.zynread_wait_flag=False
-		self.zynswitch_defered_event=None
-		self.exit_flag=False
-		self.exit_code=0
+		self.loading = 0
+		self.loading_thread = None
+		self.zyncoder_thread = None
+		self.zynread_wait_flag = False
+		self.zynswitch_defered_event = None
+		self.exit_flag = False
+		self.exit_code = 0
 
-		self.midi_learn_zctrl=None
+		self.midi_learn_mode = False
+		self.midi_learn_zctrl = None
 
 		# Initialize Controllers (Rotary and Switches), MIDI and OSC
 		try:
@@ -349,7 +350,11 @@ class zynthian_gui:
 			else:
 				self.show_screen('admin')
 		elif i==2:
-			self.save_snapshot()
+			if self.active_screen=='control' and self.screens['control'].mode=='control':
+				self.midi_learn_mode = True
+				self.screens['control'].refresh_midi_bind()
+			else:
+				self.save_snapshot()
 		elif i==3:
 			if self.active_screen=='layer' and self.screens['layer'].get_layer_selected() is not None:
 				self.show_modal('layer_options')

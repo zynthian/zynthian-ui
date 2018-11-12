@@ -214,7 +214,7 @@ font_family=os.environ.get('ZYNTHIAN_UI_FONT_FAMILY',"Audiowide")
 #font_family="Orbitron" #=> Nice, but too strange
 #font_family="Abel" #=> Quite interesting, also "Strait"
 
-font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',10))
+font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 
 #------------------------------------------------------------------------------
 # UI Cursor
@@ -301,18 +301,22 @@ top = tkinter.Tk()
 try:
 	if not display_width:
 		display_width = top.winfo_screenwidth()
-		ctrl_width=int(display_width/4)
+		ctrl_width = int(display_width/4)
 	if not display_height:
 		display_height = top.winfo_screenheight()
-		topbar_height=int(display_height/10)
-		ctrl_height=int((display_height-topbar_height)/2)
+		topbar_height = int(display_height/10)
+		ctrl_height = int((display_height-topbar_height)/2)
 except:
 	logging.warning("Can't get screen size. Using default 320x240!")
 	display_width = 320
 	display_height = 240
-	topbar_height=int(display_height/10)
-	ctrl_width=int(display_width/4)
-	ctrl_height=int((display_height-topbar_height)/2)
+	topbar_height = int(display_height/10)
+	ctrl_width = int(display_width/4)
+	ctrl_height = int((display_height-topbar_height)/2)
+
+# Adjust font size, if not defined
+if not font_size:
+	font_size = int(display_width/32)
 
 # Adjust Root Window Geometry
 top.geometry(str(display_width)+'x'+str(display_height))
