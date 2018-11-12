@@ -321,13 +321,21 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def start_qmidinet(self):
 		logging.info("STARTING QMIDINET")
-		check_output("systemctl start qmidinet", shell=True)
+		try:
+			check_output("systemctl start qmidinet", shell=True)
+		except Exception as e:
+			logging.error(e)
 		self.fill_list()
+
 
 	def stop_qmidinet(self):
 		logging.info("STOPPING QMIDINET")
-		check_output("systemctl stop qmidinet", shell=True)
+		try:
+			check_output("systemctl stop qmidinet", shell=True)
+		except Exception as e:
+			logging.error(e)
 		self.fill_list()
+
 
 	#Start/Stop QMidiNet depending on configuration
 	def default_qmidinet(self):
@@ -335,6 +343,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.start_qmidinet()
 		else:
 			self.stop_qmidinet()
+
 
 	def start_touchosc2midi(self):
 		logging.info("STARTING touchosc2midi")
