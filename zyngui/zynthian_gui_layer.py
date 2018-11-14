@@ -198,6 +198,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if mch is None or mch==midich:
 				layer.set_preset(preset_index,True)
 
+	def set_midi_chan_zs3(self, midich, zs3_index):
+		for layer in self.layers:
+			mch=layer.get_midi_chan()
+			if mch is None or mch==midich:
+				layer.load_zs3(zs3_index)
+
 	def set_clone(self, clone_status):
 		for i in range(0,16):
 			for j in range(0,16):
