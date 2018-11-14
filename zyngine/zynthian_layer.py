@@ -34,31 +34,33 @@ class zynthian_layer:
 	# ---------------------------------------------------------------------------
 
 	def __init__(self, engine, midi_chan, zyngui=None):
-		self.zyngui=zyngui
-		self.engine=engine
-		self.midi_chan=midi_chan
+		self.zyngui = zyngui
+		self.engine = engine
+		self.midi_chan = midi_chan
 
-		self.bank_list=[]
-		self.bank_index=0
-		self.bank_name=None
-		self.bank_info=None
+		self.bank_list = []
+		self.bank_index = 0
+		self.bank_name = None
+		self.bank_info = None
 
-		self.preset_list=[]
-		self.preset_index=0
-		self.preset_name=None
-		self.preset_info=None
-		self.preset_bank_index=None
+		self.preset_list = []
+		self.preset_index = 0
+		self.preset_name = None
+		self.preset_info = None
+		self.preset_bank_index = None
 
-		self.preload_index=None
-		self.preload_name=None
-		self.preload_info=None
+		self.preload_index = None
+		self.preload_name = None
+		self.preload_info = None
 
-		self.controllers_dict=None
-		self.ctrl_screens_dict=None
-		self.ctrl_screen_active=None
-		self.listen_midi_cc=False
+		self.controllers_dict = None
+		self.ctrl_screens_dict = None
+		self.ctrl_screen_active = None
+		self.listen_midi_cc = False
 
-		self.refresh_flag=False
+		self.refresh_flag = False
+
+		self.reset_zs3()
 
 		self.engine.add_layer(self)
 		self.refresh_controllers()
@@ -292,6 +294,7 @@ class zynthian_layer:
 	# Snapshot Management
 	# ---------------------------------------------------------------------------
 
+
 	def get_snapshot(self):
 		snapshot={
 			'engine_name': self.engine.name,
@@ -309,6 +312,7 @@ class zynthian_layer:
 		for k in self.controllers_dict:
 			snapshot['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
 		return snapshot
+
 
 	def restore_snapshot(self, snapshot):
 		#Constructor, including engine and midi_chan info, is called before
@@ -331,10 +335,74 @@ class zynthian_layer:
 		for k in snapshot['controllers_dict']:
 			self.controllers_dict[k].restore_snapshot(snapshot['controllers_dict'][k])
 
+
 	def wait_stop_loading(self):
 		while self.engine.loading>0:
 			logging.debug("WAITING FOR STOP LOADING ...")
 			sleep(0.1)
+
+
+	# ---------------------------------------------------------------------------
+	# ZS3 Management (Zynthian SubSnapShots)
+	# ---------------------------------------------------------------------------
+
+
+	def reset_zs3(self):
+		self.zs3_list = [None]*16
+
+
+	def clean_zs3(self, i):
+		self.zs3_list[i] = None
+
+
+	def save_zs3(self, i):
+		try:
+			zs3 = {
+				'bank_index': self.bank_index,
+				'bank_name': self.bank_name,
+				'bank_info': self.bank_info,
+				'preset_index': self.preset_index,
+				'preset_name': self.preset_name,
+				'preset_info': self.preset_info,
+				'controllers_dict': {}
+			}
+
+			for k in self.controllers_dict:
+				zs3['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
+
+			self.zs3_list[i] = zs3
+
+		except Exception as e:
+			logging.error(e)
+
+
+	def restore_zs3(self, i):
+		zs3 = self.zs3_list[i]
+
+		if zs3:
+			#Load bank list and set bank
+			self.load_bank_list()
+			self.set_bank_by_name(zs3['bank_name'])
+
+			#Wait for bank loading, zcontrols generation
+			self.wait_stop_loading()
+
+			#Load preset list and set preset
+			self.load_preset_list()
+			self.set_preset_by_name(zs3['preset_name'])
+
+			#Wait for preset loading
+			self.wait_stop_loading()
+
+			#Set controller values
+			if self.refresh_flag:
+				self.refresh_flag=False
+				self.refresh_controllers()
+
+			sleep(0.3)
+			for k in zs3['controllers_dict']:
+				self.controllers_dict[k].restore_snapshot(zs3['controllers_dict'][k])
+
 
 	# ---------------------------------------------------------------------------
 	# Channel "Path" String

@@ -49,10 +49,10 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 class zynthian_gui_layer(zynthian_gui_selector):
 
 	def __init__(self):
-		self.layers=[]
-		self.curlayer=None
-		self.add_layer_eng=None
-		self.last_snapshot_fpath=None
+		self.layers = []
+		self.curlayer = None
+		self.add_layer_eng = None
+		self.last_snapshot_fpath = None
 		super().__init__('Layer', True)
 
 	def reset(self):

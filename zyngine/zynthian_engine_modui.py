@@ -603,9 +603,11 @@ class zynthian_engine_modui(zynthian_engine):
 
 		self.ws_preset_loaded = True
 
+
 	#----------------------------------------------------------------------------
 	# MIDI learning
 	#----------------------------------------------------------------------------
+
 
 	def midi_learn(self, zctrl):
 		logging.info("Learning '%s' ..." % zctrl.graph_path)
