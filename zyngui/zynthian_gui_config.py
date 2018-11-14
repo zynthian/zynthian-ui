@@ -192,6 +192,7 @@ color_tx_off=os.environ.get('ZYNTHIAN_UI_COLOR_TX_OFF',"#e0e0e0")
 color_on=os.environ.get('ZYNTHIAN_UI_COLOR_ON',"#ff0000")
 color_off=os.environ.get('ZYNTHIAN_UI_COLOR_OFF',"#5a626d")
 color_hl=os.environ.get('ZYNTHIAN_UI_COLOR_HL',"#00D000")
+color_ml=os.environ.get('ZYNTHIAN_UI_COLOR_ML',"#F0F000")
 color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG',"#3a424d")
 
 # Color Scheme
@@ -232,7 +233,8 @@ def set_midi_config():
 	global master_midi_program_base, master_midi_bank_change_ccnum
 	global master_midi_bank_change_up, master_midi_bank_change_down
 	global master_midi_bank_change_down_ccnum, master_midi_bank_base
-	global preset_preload_noteon, midi_single_active_channel, midi_fine_tuning
+	global preset_preload_noteon, midi_single_active_channel
+	global midi_prog_change_zs3, midi_fine_tuning
 	global midi_filter_rules, disabled_midi_in_ports, enabled_midi_out_ports
 
 	master_midi_channel=int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))

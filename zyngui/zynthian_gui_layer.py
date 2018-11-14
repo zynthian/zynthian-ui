@@ -192,18 +192,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	#def refresh(self):
 	#	self.curlayer.refresh()
 
-	def set_midi_chan_preset(self, midich, preset_index):
-		for layer in self.layers:
-			mch=layer.get_midi_chan()
-			if mch is None or mch==midich:
-				layer.set_preset(preset_index,True)
-
-	def set_midi_chan_zs3(self, midich, zs3_index):
-		for layer in self.layers:
-			mch=layer.get_midi_chan()
-			if mch is None or mch==midich:
-				layer.load_zs3(zs3_index)
-
 	def set_clone(self, clone_status):
 		for i in range(0,16):
 			for j in range(0,16):
@@ -227,8 +215,41 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	#----------------------------------------------------------------------------
-	# MIDI CC processing
+	# MIDI Control (ZS3 & CC)
 	#----------------------------------------------------------------------------
+
+	def set_midi_chan_preset(self, midich, preset_index):
+		for layer in self.layers:
+			mch=layer.get_midi_chan()
+			if mch is None or mch==midich:
+				layer.set_preset(preset_index,True)
+
+
+	def set_midi_chan_zs3(self, midich, zs3_index):
+		for layer in self.layers:
+			if zynthian_gui_config.midi_single_active_channel:
+				mch = None
+			else:
+				mch=layer.get_midi_chan()
+
+			if mch is None or mch==midich:
+				if layer.restore_zs3(zs3_index):
+					zynthian_gui_config.zyngui.set_curlayer(layer)
+					zynthian_gui_config.zyngui.show_screen('control')
+
+
+	def save_midi_chan_zs3(self, midich, zs3_index):
+		for layer in self.layers:
+			if zynthian_gui_config.midi_single_active_channel:
+				mch = None
+			else:
+				mch=layer.get_midi_chan()
+
+			if mch is None or mch==midich:
+				self.curlayer.save_zs3(zs3_index)
+			else:
+				self.curlayer.delete_zs3(zs3_index)
+
 
 	def midi_control_change(self, chan, ccnum, ccval):
 		for layer in self.layers:

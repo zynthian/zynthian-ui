@@ -305,9 +305,9 @@ class zynthian_gui_controller:
 
 	def set_midi_bind(self):
 		if zynthian_gui_config.zyngui.midi_learn_mode:
-			self.plot_midi_bind("??","#ffff00")
+			self.plot_midi_bind("??",zynthian_gui_config.color_ml)
 		elif zynthian_gui_config.zyngui.midi_learn_zctrl and self.zctrl==zynthian_gui_config.zyngui.midi_learn_zctrl:
-			self.plot_midi_bind("??","#00ff00")
+			self.plot_midi_bind("??",zynthian_gui_config.color_hl)
 		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
 			midi_cc=zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
 			self.plot_midi_bind(midi_cc)

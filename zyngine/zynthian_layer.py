@@ -351,7 +351,7 @@ class zynthian_layer:
 		self.zs3_list = [None]*16
 
 
-	def clean_zs3(self, i):
+	def delete_zs3(self, i):
 		self.zs3_list[i] = None
 
 
@@ -402,6 +402,11 @@ class zynthian_layer:
 			sleep(0.3)
 			for k in zs3['controllers_dict']:
 				self.controllers_dict[k].restore_snapshot(zs3['controllers_dict'][k])
+
+			return True
+
+		else:
+			return False
 
 
 	# ---------------------------------------------------------------------------
