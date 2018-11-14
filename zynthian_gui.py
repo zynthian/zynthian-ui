@@ -60,6 +60,7 @@ from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
+from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
@@ -158,6 +159,7 @@ class zynthian_gui:
 		self.screens['midi_profile']=zynthian_gui_midi_profile()
 		self.screens['audio_recorder']=zynthian_gui_audio_recorder()
 		self.screens['midi_recorder']=zynthian_gui_midi_recorder()
+		self.screens['zs3_learn']=zynthian_gui_zs3_learn()
 		self.screens['confirm']=zynthian_gui_confirm()
 		# Show initial screen => Channel list
 		self.show_screen('layer')
@@ -409,7 +411,12 @@ class zynthian_gui:
 				logging.debug("BACK TO SCREEN => "+screen_back)
 				self.show_screen(screen_back)
 		elif i==2:
-			if self.modal_screen!='snapshot':
+			if self.midi_learn_mode:
+				if self.modal_screen=='zs3_learn':
+					self.show_screen('control')
+				else:
+					self.show_modal('zs3_learn')
+			elif self.modal_screen!='snapshot':
 				self.load_snapshot()
 			else:
 				self.screens['snapshot'].next()
@@ -550,9 +557,20 @@ class zynthian_gui:
 				elif evtype==0xC:
 					pgm = (ev & 0x7F00)>>8
 					logging.info("MIDI PROGRAM CHANGE %s, CH%s" % (pgm,chan))
-					self.screens['layer'].set_midi_chan_preset(chan, pgm)
-					if not self.modal_screen and self.curlayer and chan==self.curlayer.get_midi_chan():
+
+					# SubSnapShot (ZS3) MIDI learn ...
+					if self.midi_learn_mode and self.modal_screen=='zs3_learn':
+						self.curlayer.save_zs3(pgm)
+						self.midi_learn_mode=False
 						self.show_screen('control')
+					else:
+						if zynthian_gui_config.midi_prog_change_zs3:
+							self.screens['layer'].set_midi_chan_zs3(chan, pgm)
+						else:
+							self.screens['layer'].set_midi_chan_preset(chan, pgm)
+
+						if not self.modal_screen and self.curlayer and chan==self.curlayer.get_midi_chan():
+							self.show_screen('control')
 
 				#Note-On ...
 				elif evtype==0x9:
