@@ -335,7 +335,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			else:
 				self.base_command = PIANOTEQ_BINARY + " --multicore max"
 		else:
-			self.command_prompt = "\nCurrent preset:"
+			self.command_prompt = "Current preset:"
 			if PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]==0:
 				self.base_command = PIANOTEQ_BINARY + " --headless"
 			else:
