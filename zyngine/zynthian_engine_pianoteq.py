@@ -150,26 +150,35 @@ def get_pianoteq_subl():
 
 def fix_pianoteq_config():
 	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
-		root = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
+		tree = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
+		root= tree.getroot()
 		try:
+			audio_setup_node =  None
+			midi_setup_node = None
 			for xml_value in root.iter("VALUE"):
-				if(xml_value.attrib['name']=='engine_rate'):
+				if xml_value.attrib['name']=='engine_rate':
 					xml_value.set('val',str(PIANOTEQ_CONFIG_INTERNAL_SR))
-				if(xml_value.attrib['name']=='voices'):
+				elif xml_value.attrib['name']=='voices':
 					xml_value.set('val',str(PIANOTEQ_CONFIG_VOICES))
-				if(xml_value.attrib['name']=='multicore'):
+				elif xml_value.attrib['name']=='multicore':
 					xml_value.set('val',str(PIANOTEQ_CONFIG_MULTICORE))
+				elif xml_value.attrib['name']=='midiArchiveEnabled':
+					xml_value.set('val','0')
+				elif xml_value.attrib['name']=='audio-setup':
+					audio_setup_node = xml_value
+				elif xml_value.attrib['name']=='midi-setup':
+					midi_setup_node = xml_value
 
-			if(root.find('DEVICESETUP')):
-				logging.debug("Fixing devicesetup node")
-				for devicesetup in root.iter('DEVICESETUP'):
+			if audio_setup_node:
+				logging.debug("Fixing Audio Setup")
+				for devicesetup in audio_setup_node.iter('DEVICESETUP'):
 					devicesetup.set('deviceType','JACK')
 					devicesetup.set('audioOutputDeviceName','Auto-connect ON')
 					devicesetup.set('audioInputDeviceName','Auto-connect ON')
 					devicesetup.set('audioDeviceRate','44100')
 					devicesetup.set('forceStereo','0')
 			else:
-				logging.debug("Creating new devicesetup node")
+				logging.debug("Creating new Audio Setup")
 				value = ElementTree.Element('VALUE')
 				value.set('name','audio-setup')
 				devicesetup = ElementTree.SubElement(value,'DEVICESETUP')
@@ -178,12 +187,24 @@ def fix_pianoteq_config():
 				devicesetup.set('audioInputDeviceName','Auto-connect ON')
 				devicesetup.set('audioDeviceRate','44100')
 				devicesetup.set('forceStereo','0')
-				root.getroot().append(value)
+				root.append(value)
 
-			root.write(PIANOTEQ_CONFIG_FILE)
+			if midi_setup_node:
+				logging.debug("Fixing MIDI Setup ")
+				for midisetup in midi_setup_node.iter('midi-setup'):
+					midisetup.set('listen-all','0')
+			else:
+				logging.debug("Creating new MIDI Setup")
+				value = ElementTree.Element('VALUE')
+				value.set('name','midi-setup')
+				midisetup = ElementTree.SubElement(value,'midi-setup')
+				midisetup.set('listen-all','0')
+				root.append(value)
+
+			tree.write(PIANOTEQ_CONFIG_FILE)
 
 		except Exception as e:
-			logging.error("Installing devicesetup failed: %s" % format(e))
+			logging.error("Fixing Pianoteq config failed: {}".format(e))
 			return format(e)
 
 
@@ -272,7 +293,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		['volume',7,96],
 		['dynamic',85,64],
 		['mute on/off',19,'off','off|on'],
-		['sustain on/off',64,'off','off|on'],
+		['sustain',64,'off',[['off','1/4','1/2','3/4','full'],[0,25,51,76,102]]],
+		#['sustain on/off',64,'off','off|on'],
+		#['sustain',64,0],
 		['rev on/off',30,'off','off|on'],
 		['rev duration',31,0],
 		['rev mix',32,0],
@@ -283,7 +306,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	]
 
 	_ctrl_screens=[
-		['main',['volume','sustain on/off','dynamic','mute on/off']],
+		['main',['volume','sustain','dynamic','mute on/off']],
 		['reverb1',['volume','rev on/off','rev duration','rev mix']],
 		['reverb2',['volume','rev room','rev p/d','rev e/r']],
 		['reverb3',['volume','rev tone']]
@@ -506,14 +529,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		mm = "Zynthian-{}".format(preset[3])
-		if mm == self.midimapping:
-			super().set_preset(layer,preset,preload)
-			self.preset = preset[0]
-			time.sleep(1)
-		else:
-			self.midimapping=mm
-			if preset[0]!=self.preset:
+		if preset[0]!=self.preset:
+			mm = "Zynthian-{}".format(preset[3])
+			if mm == self.midimapping:
+				super().set_preset(layer,preset,preload)
+				self.preset = preset[0]
+				time.sleep(1)
+			else:
+				self.midimapping=mm
 				self.start_loading()
 				self.preset=preset[0]
 				self.command = self.base_command + " --midi-channel {}".format(layer.get_midi_chan()+1)
