@@ -247,7 +247,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def send_controller_value(self, zctrl):
-		self.midi_control_change(zctrl, zctrl.get_value())
+		self.midi_control_change(zctrl, int(zctrl.get_value()))
 
 
 	def midi_control_change(self, zctrl, val):
@@ -270,7 +270,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 				v2="000{0:05b}".format(zctrl.graph_path[1])
 				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v1,2))
 				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v2,2))
-				logging.debug("Aeolus Stop => mm={}, group={}, button={})".format(mm,zctrl.graph_path[0],zctrl.graph_path[1]))
+				logging.debug("Aeolus Stop ({}) => mm={}, group={}, button={})".format(val,mm,zctrl.graph_path[0],zctrl.graph_path[1]))
 		except Exception as e:
 			logging.debug(e)
 
