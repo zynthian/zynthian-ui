@@ -117,9 +117,8 @@ class zynthian_layer:
 			self.bank_name=self.bank_list[i][2]
 			self.bank_info=copy.deepcopy(self.bank_list[i])
 			logging.info("Bank Selected: %s (%d)" % (self.bank_name,i))
-			if set_engine:
+			if set_engine and (last_bank_index!=i or not last_bank_name):
 				self.engine.set_bank(self, self.bank_info)
-			if last_bank_index!=i or not last_bank_name:
 				self.reset_preset()
 			return True
 		return False
@@ -166,12 +165,12 @@ class zynthian_layer:
 			self.preload_info=self.preset_info
 			logging.info("Preset Selected: %s (%d)" % (self.preset_name,i))
 			#=> '+self.preset_list[i][3]
-			if set_engine:
+	
+			if set_engine and (last_preset_index!=i or not last_preset_name):
 				self.engine.set_preset(self, self.preset_info)
-			if last_preset_index!=i or not last_preset_name:
 				#TODO => Review this!!
 				#self.load_ctrl_config()
-				pass
+
 			return True
 		return False
 
@@ -307,6 +306,7 @@ class zynthian_layer:
 			'preset_name': self.preset_name,
 			'preset_info': self.preset_info,
 			'controllers_dict': {},
+			'zs3_list': self.zs3_list,
 			'ctrl_screen_active': self.ctrl_screen_active
 		}
 		for k in self.controllers_dict:
@@ -316,20 +316,27 @@ class zynthian_layer:
 
 	def restore_snapshot(self, snapshot):
 		#Constructor, including engine and midi_chan info, is called before
+
 		#Load bank list and set bank
 		self.load_bank_list()
 		self.set_bank_by_name(snapshot['bank_name'])
-		#Wait for bank loading, zcontrols generation
 		self.wait_stop_loading()
+	
 		#Load preset list and set preset
 		self.load_preset_list()
 		self.set_preset_by_name(snapshot['preset_name'])
-		#Wait for preset loading
 		self.wait_stop_loading()
-		#Set controller values
+
+		#Refresh controller config
 		if self.refresh_flag:
 			self.refresh_flag=False
 			self.refresh_controllers()
+
+		#Set zs3 list
+		if 'zs3_list' in snapshot:
+			self.zs3_list = snapshot['zs3_list']
+
+		#Set controller values
 		sleep(0.3)
 		self.ctrl_screen_active=snapshot['ctrl_screen_active']
 		for k in snapshot['controllers_dict']:
@@ -383,22 +390,19 @@ class zynthian_layer:
 			#Load bank list and set bank
 			self.load_bank_list()
 			self.set_bank_by_name(zs3['bank_name'])
-
-			#Wait for bank loading, zcontrols generation
 			self.wait_stop_loading()
 
 			#Load preset list and set preset
 			self.load_preset_list()
 			self.set_preset_by_name(zs3['preset_name'])
-
-			#Wait for preset loading
 			self.wait_stop_loading()
 
-			#Set controller values
+			#Refresh controller config
 			if self.refresh_flag:
 				self.refresh_flag=False
 				self.refresh_controllers()
 
+			#Set controller values
 			sleep(0.3)
 			for k in zs3['controllers_dict']:
 				self.controllers_dict[k].restore_snapshot(zs3['controllers_dict'][k])

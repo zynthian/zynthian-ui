@@ -382,6 +382,7 @@ class zynthian_gui:
 				self.midi_learn_mode = True
 				self.midi_learn_zctrl = None
 				self.screens['control'].refresh_midi_bind()
+				self.show_modal('zs3_learn')
 			else:
 				self.save_snapshot()
 		elif i==3:
@@ -595,19 +596,21 @@ class zynthian_gui:
 						elif ccnum==120:
 							self.all_sounds_off()
 						elif ccnum==123:
-							self.all_sounds_off_123()
+							self.all_notes_off()
 
 				#Program Change ...
 				elif evtype==0xC:
 					pgm = (ev & 0x7F00)>>8
-					logging.info("MIDI PROGRAM CHANGE %s, CH%s" % (pgm,chan))
-
+					logging.info("MIDI PROGRAM CHANGE: CH{} => {}".format(chan,pgm))
+	
 					# SubSnapShot (ZS3) MIDI learn ...
 					if self.midi_learn_mode and self.modal_screen=='zs3_learn':
 						self.screens['layer'].save_midi_chan_zs3(chan, pgm)
 						self.midi_learn_mode = False
 						self.midi_learn_zctrl = None
 						self.show_screen('control')
+
+					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
 						if zynthian_gui_config.midi_prog_change_zs3:
 							self.screens['layer'].set_midi_chan_zs3(chan, pgm)
@@ -625,14 +628,14 @@ class zynthian_gui:
 
 				#Control Change ...
 				elif evtype==0xB:
+					ccnum=(ev & 0x7F00)>>8
+					ccval=(ev & 0x007F)
+					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
 					# MIDI learn => If controller is CC-mapped, use MIDI-router learning
 					if self.midi_learn_zctrl and self.midi_learn_zctrl.midi_cc:
-						ccnum=(ev & 0x7F00)>>8
 						self.midi_learn_zctrl.cb_midi_learn(chan,ccnum)
 					# Try layer's zctrls
 					else:
-						ccnum=(ev & 0x7F00)>>8
-						ccval=(ev & 0x007F)
 						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
 
 		except Exception as err:
