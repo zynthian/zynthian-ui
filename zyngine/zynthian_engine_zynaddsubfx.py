@@ -47,7 +47,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		['panning',10,64],
 		['expression',11,127],
 		['filter cutoff',74,64],
-		['filter Q',71,64],
+		['filter resonance',71,64],
 		['panning depth','/part$i/ctl/panning.depth',64],
 		['filter.cutoff depth','/part$i/ctl/filtercutoff.depth',64],
 		['filter.Q depth','/part$i/ctl/filterq.depth',64],
@@ -77,7 +77,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	# Controller Screens
 	_ctrl_screens=[
-		['main',['volume','panning','filter cutoff','filter Q']],
+		['main',['volume','panning','filter cutoff','filter resonance']],
 		['mode',['volume','sustain on/off','legato on/off','poly on/off']],
 		#['mode',['volume','drum on/off','legato on/off','poly on/off']],
 		['portamento',['portamento on/off','portamento time','portamento up/down','portamento thresh']],
