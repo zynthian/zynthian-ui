@@ -34,6 +34,51 @@ from . import zynthian_engine
 
 class zynthian_engine_setbfree(zynthian_engine):
 
+
+	# ---------------------------------------------------------------------------
+	# Banks
+	# ---------------------------------------------------------------------------
+
+
+	bank_manuals_list = [
+		['Upper', 0, 'Upper', '_', [False, False, None]],
+		['Lower + Upper', 1, 'Lower + Upper', '_', [True, False, None]],
+		['Pedals + Upper', 2, 'Pedals + Upper', '_', [False, True, None]],
+		['Pedals + Lower + Upper', 3, 'Pedals + Lower + Upper', '_', [True, True, None]],
+		['Split: Lower + Upper', 4, 'Split Lower + Upper', '_', [True, False, 57]],
+		['Split: Pedals + Upper', 5, 'Split Pedals + Upper', '_', [False, True, 59]],
+		['Split: Pedals + Lower + Upper', 6, 'Split Pedals + Lower + Upper', '_', [True, True, 58]]
+	]
+
+
+	bank_twmodels_list = [
+		['Sin', 0, 'Sine', '_'],
+		['Sqr', 1, 'Square', '_'],
+		['Tri', 2, 'Triangle', '_']
+	]
+
+
+	tonewheel_config = { 
+		"Sin": "",
+
+		"Sqr": """
+			osc.harmonic.1=1.0
+			osc.harmonic.3=0.333333333333
+			osc.harmonic.5=0.2
+			osc.harmonic.7=0.142857142857
+			osc.harmonic.9=0.111111111111
+			osc.harmonic.11=0.090909090909""",
+
+		"Tri": """
+			osc.harmonic.1=1.0
+			osc.harmonic.3=0.111111111111
+			osc.harmonic.5=0.04
+			osc.harmonic.7=0.02040816326530612
+			osc.harmonic.9=0.012345679012345678
+			osc.harmonic.11=0.008264462809917356"""
+	}
+
+
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
@@ -100,6 +145,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
+
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
 		self.name = "setBfree"
@@ -109,9 +155,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.options['midi_chan']=False
 
 		self.base_dir = self.data_dir + "/setbfree"
-		self.chan_names = ("upper","lower","pedals")
-		
-		self.generate_config_file()
+
+		self.manuals_config = None
+		self.tonewheel_model = None
 
 		#Process command ...
 		preset_fpath = self.base_dir + "/pgm/all.pgm"
@@ -123,33 +169,106 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		self.command_prompt = "\nAll systems go."
 
-		self.start()
 		self.reset()
 
 
 	def generate_config_file(self):
-		cfg_tpl_fpath=self.base_dir+"/cfg/zynthian.cfg.tpl"
-		cfg_fpath=self.base_dir+"/cfg/zynthian.cfg"
+		cfg_tpl_fpath = self.base_dir+"/cfg/zynthian.cfg.tpl"
+		cfg_fpath = self.base_dir+"/cfg/zynthian.cfg"
 		with open(cfg_tpl_fpath, 'r') as cfg_tpl_file:
-			cfg_data=cfg_tpl_file.read()
-			cfg_data=cfg_data.replace('#OSC.TUNING#', str(self.zyngui.fine_tuning_freq))
+			cfg_data = cfg_tpl_file.read()
+			cfg_data = cfg_data.replace('#OSC.TUNING#', str(self.zyngui.fine_tuning_freq))
+			cfg_data = cfg_data.replace('#MIDI.UPPER.CHANNEL#', str(self.layers[0].midi_chan))
+			cfg_data = cfg_data.replace('#MIDI.LOWER.CHANNEL#', str((self.layers[0].midi_chan+1)%16))
+			cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str((self.layers[0].midi_chan+2)%16))
+			cfg_data = cfg_data.replace('#TONEWHEEL.CONFIG#', self.tonewheel_config[self.tonewheel_model])
 			with open(cfg_fpath, 'w') as cfg_file:
 				cfg_file.write(cfg_data)
+
+
+	# ---------------------------------------------------------------------------
+	# MIDI Channel Management
+	# ---------------------------------------------------------------------------
+
+
+	def set_midi_chan(self, layer):
+		pass
 
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
-		return self.get_filelist(self.get_bank_dir(layer),"pgm")
+
+	def get_bank_list(self, layer):
+		if not self.manuals_config:
+			return self.bank_manuals_list
+		elif not self.tonewheel_model:
+			return self.bank_twmodels_list
+		else:
+			if layer.bank_name == "Upper":
+				return [[self.base_dir + "/pgm-banks/upper/most_popular.pgm",0, "Upper", "_"]]
+			elif layer.bank_name == "Lower":
+				return [[self.base_dir + "/pgm-banks/lower/lower_voices.pgm",0, "Lower", "_"]]
+			elif layer.bank_name == "Pedals":
+				return [[self.base_dir + "/pgm-banks/pedals/pedals.pgm",0, "Pedals", "_"]]
+
+		#return self.get_filelist(self.get_bank_dir(layer),"pgm")
+
+
+	def set_bank(self, layer, bank):
+		if not self.manuals_config:
+			self.manuals_config = bank
+			self.layers[0].load_bank_list()
+			self.layers[0].reset_bank()
+			return False
+
+		elif not self.tonewheel_model:
+			self.start_loading()
+			self.tonewheel_model = bank[0]
+
+			self.generate_config_file()
+			self.stop()
+			self.start()
+
+			midi_chan = layer.get_midi_chan()
+			midi_prog = self.manuals_config[4][2]
+
+			if midi_prog and isinstance(midi_prog,int):
+				self.zyngui.zynmidi.set_midi_prg(midi_chan, midi_prog)
+
+			self.layers[0].bank_name = "Upper"
+			self.layers[0].load_bank_list()
+			self.layers[0].set_bank(0)
+
+			if self.manuals_config[4][0]:
+				self.zyngui.screens['layer'].add_layer_midich((midi_chan + 1) % 16, False)
+				self.layers[1].bank_name = "Lower"
+				self.layers[1].load_bank_list()
+				self.layers[1].set_bank(0)
+
+			if self.manuals_config[4][1]:
+				self.zyngui.screens['layer'].add_layer_midich((midi_chan + 2) % 16, False)
+				i=len(self.layers)-1
+				self.layers[i].bank_name = "Pedals"
+				self.layers[i].load_bank_list()
+				self.layers[i].set_bank(0)
+
+			#self.zyngui.screens['layer'].fill_list()
+
+			self.stop_loading()
+			return True
+
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
 
+
 	def get_preset_list(self, bank):
+		logging.debug("Preset List for Bank {}".format(bank[0]))
 		return self.load_pgm_list(bank[0])
+
 
 	def set_preset(self, layer, preset, preload=False):
 		super().set_preset(layer,preset)
@@ -157,9 +276,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 		if not preload:
 			layer.refresh_flag=True
 
+
 	#----------------------------------------------------------------------------
 	# Controller Managament
 	#----------------------------------------------------------------------------
+
 
 	def get_controllers_dict(self, layer):
 		zctrls=super().get_controllers_dict(layer)
@@ -179,9 +300,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 				pass
 		return zctrls
 
+
 	#----------------------------------------------------------------------------
 	# Specific functionality
 	#----------------------------------------------------------------------------
+
 
 	def get_chan_name(self, chan):
 		try:
@@ -189,12 +312,14 @@ class zynthian_engine_setbfree(zynthian_engine):
 		except:
 			return None
 
+
 	def get_bank_dir(self, layer):
 		bank_dir=self.base_dir+"/pgm-banks"
 		chan_name=self.get_chan_name(layer.get_midi_chan())
 		if chan_name:
 			bank_dir=bank_dir+'/'+chan_name
 		return bank_dir
+
 
 	def load_pgm_list(self,fpath):
 		self.start_loading()
@@ -249,21 +374,26 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.stop_loading()
 		return pgm_list
 
+
 	def cmp_presets(self, preset1, preset2):
 		if preset1[1][2]==preset2[1][2]:
 			return True
 		else:
 			return False
 
+
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
 
 	def get_path(self, layer):
-		path=self.nickname
-		chan_name=self.get_chan_name(layer.get_midi_chan())
-		if chan_name:
-			path=path+'/'+chan_name
+		path = self.nickname
+		if not self.manuals_config:
+			path += "/Manuals"
+		elif not self.tonewheel_model:
+			path += "/Tonewheel"
+		else:
+			path += "/" + self.tonewheel_model
 		return path
 
 #******************************************************************************

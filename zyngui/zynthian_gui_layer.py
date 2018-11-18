@@ -139,12 +139,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.add_layer_eng=eng
 		if eng.nickname=='MD' or eng.nickname=='PD':
 			self.add_layer_midich(None)
-		elif eng.nickname=='BF':
-			self.add_layer_midich(0,False)
-			self.add_layer_midich(1,False)
-			self.add_layer_midich(2,False)
-			self.index=len(self.layers)-3
-			self.select_action(self.index)
 		elif eng.nickname=='AE':
 			self.add_layer_midich(0,False)
 			self.add_layer_midich(1,False)

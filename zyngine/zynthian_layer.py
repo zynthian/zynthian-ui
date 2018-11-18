@@ -100,14 +100,17 @@ class zynthian_layer:
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
+
 	def load_bank_list(self):
 		self.bank_list=self.engine.get_bank_list(self)
 		logging.debug("BANK LIST => \n%s" % str(self.bank_list))
+
 
 	def reset_bank(self):
 		self.bank_index=0
 		self.bank_name=None
 		self.bank_info=None
+
 
 	def set_bank(self, i, set_engine=True):
 		if i < len(self.bank_list):
@@ -118,39 +121,45 @@ class zynthian_layer:
 			self.bank_info=copy.deepcopy(self.bank_list[i])
 			logging.info("Bank Selected: %s (%d)" % (self.bank_name,i))
 			if set_engine and (last_bank_index!=i or not last_bank_name):
-				self.engine.set_bank(self, self.bank_info)
 				self.reset_preset()
+				return self.engine.set_bank(self, self.bank_info)
 			return True
 		return False
+
 
 	#TODO Optimize search!!
 	def set_bank_by_name(self, name, set_engine=True):
 		for i in range(len(self.bank_list)):
 			if name==self.bank_list[i][2]:
-				self.set_bank(i,set_engine)
-				return True
+				return self.set_bank(i,set_engine)
 		return False
+
 
 	def get_bank_name(self):
 		return self.preset_name
 
+
 	def get_bank_index(self):
 		return self.bank_index
+
 
 	# ---------------------------------------------------------------------------
 	# Presest Management
 	# ---------------------------------------------------------------------------
+
 
 	def load_preset_list(self):
 		if self.bank_info:
 			self.preset_list=self.engine.get_preset_list(self.bank_info)
 			logging.debug("PRESET LIST => \n%s" % str(self.preset_list))
 
+
 	def reset_preset(self):
 		logging.debug("PRESET RESET!")
 		self.preset_index=0
 		self.preset_name=None
 		self.preset_info=None
+
 
 	def set_preset(self, i, set_engine=True):
 		if i < len(self.preset_list):
@@ -167,12 +176,13 @@ class zynthian_layer:
 			#=> '+self.preset_list[i][3]
 	
 			if set_engine and (last_preset_index!=i or not last_preset_name):
-				self.engine.set_preset(self, self.preset_info)
 				#TODO => Review this!!
 				#self.load_ctrl_config()
+				return self.engine.set_preset(self, self.preset_info)
 
 			return True
 		return False
+
 
 	#TODO Optimize search!!
 	def set_preset_by_name(self, name, set_engine=True):
@@ -181,6 +191,7 @@ class zynthian_layer:
 				self.set_preset(i,set_engine)
 				return True
 		return False
+
 
 	def preload_preset(self, i):
 		if i < len(self.preset_list) and (self.preload_info==None or not self.engine.cmp_presets(self.preload_info,self.preset_list[i])):
@@ -191,6 +202,7 @@ class zynthian_layer:
 			self.engine.set_preset(self, self.preload_info,True)
 			return True
 		return False
+
 
 	def restore_preset(self):
 		if self.preset_index is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
@@ -204,11 +216,14 @@ class zynthian_layer:
 			return True
 		return False
 
+
 	def get_preset_name(self):
 		return self.preset_name
 
+
 	def get_preset_index(self):
 		return self.preset_index
+
 
 	# ---------------------------------------------------------------------------
 	# Controllers Management

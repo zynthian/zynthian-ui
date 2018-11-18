@@ -57,11 +57,13 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		super().show()
 
 	def select_action(self, i):
-		zynthian_gui_config.zyngui.curlayer.set_bank(i)
-		zynthian_gui_config.zyngui.show_screen('preset')
-		# If there is only one preset, jump to instrument control
-		if len(zynthian_gui_config.zyngui.curlayer.preset_list)<=1:
-			zynthian_gui_config.zyngui.screens['preset'].select_action(0)
+		if zynthian_gui_config.zyngui.curlayer.set_bank(i):
+			zynthian_gui_config.zyngui.show_screen('preset')
+			# If there is only one preset, jump to instrument control
+			if len(zynthian_gui_config.zyngui.curlayer.preset_list)<=1:
+				zynthian_gui_config.zyngui.screens['preset'].select_action(0)
+		else:
+			self.show()
 
 	def set_select_path(self):
 		if zynthian_gui_config.zyngui.curlayer:
