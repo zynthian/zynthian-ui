@@ -497,7 +497,7 @@ class zynthian_gui_controller:
 			else:
 				val=(self.zctrl.value-self.zctrl.value_min)/self.scale_value
 		#Set value & Update zyncoder
-		self.set_value(val,True)
+		self.set_value(val, True, False)
 
 	def setup_zyncoder(self):
 		self.init_value=None

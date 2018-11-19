@@ -123,18 +123,19 @@ def midi_autoconnect():
 	#logger.debug("QMidiNet Input Port: {}".format(qmidinet_out))
 	#logger.debug("QMidiNet Output Port: {}".format(qmidinet_in))
 
-	#Get Synth Engines MIDI output ports
+	#Get Synth Engines MIDI input ports
 	engines_in=[]
 	for k, zyngine in zyngine_list.items():
 		#logger.debug("zyngine: {}".format(zyngine.jackname))
 		ports=jclient.get_ports(zyngine.jackname, is_input=True, is_midi=True, is_physical=False)
 		try:
 			port=ports[0]
+
 			#Dirty hack for zynaddsubfx: #TODO => Improve it!!!
 			if port.shortname=='osc':
 				port=ports[1]
-			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
 
+			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
 			#List of tuples => [port, active_channels]
 			engines_in.append([port, zyngine.get_active_midi_channels()])
 		except:
@@ -142,6 +143,22 @@ def midi_autoconnect():
 			pass
 
 	#logger.debug("Synth Engine Ports: {}".format(engines_in))
+
+	#Get Synth Engines MIDI output ports
+	engines_out=[]
+	for k, zyngine in zyngine_list.items():
+		#logger.debug("zyngine: {}".format(zyngine.jackname))
+		ports=jclient.get_ports(zyngine.jackname, is_output=True, is_midi=True, is_physical=False)
+		try:
+			port=ports[0]
+			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
+			#List of tuples => [port, active_channels]
+			engines_out.append([port, zyngine.get_active_midi_channels()])
+		except:
+			#logger.warning("Engine {} is not present".format(zyngine.jackname))
+			pass
+
+	#logger.debug("Synth Engine Ports: {}".format(engines_out))
 
 	#Get Zynthian Midi Router MIDI ports
 	zmr_out=OrderedDict()
@@ -172,6 +189,13 @@ def midi_autoconnect():
 	#Connect QMidiNet Input Port to ZynMidiRouter:net_in
 	try:
 		jclient.connect(qmidinet_out[0],zmr_in['net_in'])
+	except:
+		pass
+
+	#Connect Control feedback to ZynMidiRouter:ctrl_in
+	try:
+		for eop in engines_out:
+			jclient.connect(eop[0],zmr_in['ctrl_in'])
 	except:
 		pass
 

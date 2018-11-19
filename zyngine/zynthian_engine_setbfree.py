@@ -178,12 +178,27 @@ class zynthian_engine_setbfree(zynthian_engine):
 		with open(cfg_tpl_fpath, 'r') as cfg_tpl_file:
 			cfg_data = cfg_tpl_file.read()
 			cfg_data = cfg_data.replace('#OSC.TUNING#', str(self.zyngui.fine_tuning_freq))
-			cfg_data = cfg_data.replace('#MIDI.UPPER.CHANNEL#', str(self.layers[0].midi_chan))
-			cfg_data = cfg_data.replace('#MIDI.LOWER.CHANNEL#', str((self.layers[0].midi_chan+1)%16))
-			cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str((self.layers[0].midi_chan+2)%16))
+			cfg_data = cfg_data.replace('#MIDI.UPPER.CHANNEL#', str(1 + self.layers[0].midi_chan))
+			cfg_data = cfg_data.replace('#MIDI.LOWER.CHANNEL#', str(1 + (self.layers[0].midi_chan + 1) % 16))
+			cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str(1 + (self.layers[0].midi_chan + 2) % 16))
 			cfg_data = cfg_data.replace('#TONEWHEEL.CONFIG#', self.tonewheel_config[self.tonewheel_model])
 			with open(cfg_fpath, 'w') as cfg_file:
 				cfg_file.write(cfg_data)
+
+
+	# ---------------------------------------------------------------------------
+	# Layer Management
+	# ---------------------------------------------------------------------------
+
+
+	def add_layer(self, layer):
+		super().add_layer(layer)
+		layer.listen_midi_cc=True
+
+
+	def del_layer(self, layer):
+		super().del_layer(layer)
+		layer.listen_midi_cc=False
 
 
 	# ---------------------------------------------------------------------------
@@ -235,7 +250,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 			midi_prog = self.manuals_config[4][2]
 
 			if midi_prog and isinstance(midi_prog,int):
-				self.zyngui.zynmidi.set_midi_prg(midi_chan, midi_prog)
+				logging.debug("Loading manuals configuration program: {}".format(midi_prog-1))
+				self.zyngui.zynmidi.set_midi_prg(midi_chan, midi_prog-1)
 
 			self.layers[0].bank_name = "Upper"
 			self.layers[0].load_bank_list()
@@ -272,33 +288,48 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	def set_preset(self, layer, preset, preload=False):
 		super().set_preset(layer,preset)
-		#Set layer's refresh flag
-		if not preload:
-			layer.refresh_flag=True
+		self.update_controller_values(layer)
 
 
 	#----------------------------------------------------------------------------
 	# Controller Managament
 	#----------------------------------------------------------------------------
 
-
-	def get_controllers_dict(self, layer):
-		zctrls=super().get_controllers_dict(layer)
-		#Preset param's values into controllers
-		for zcname in zctrls:
+	def update_controller_values(self, layer):
+		#Get values from preset params and set them into controllers
+		for zcsymbol, v in layer.preset_info[3].items():
 			try:
-				zctrl=zctrls[zcname]
-				v=layer.preset_info[3][zctrl.symbol]
+				zctrl=zctrls[zcsymbol]
+
 				if zctrl.symbol=='rotaryspeed':
 					if v=='tremolo': v='fast'
 					elif v=='chorale': v='slow'
 					else: v='off'
+
 				zctrl.set_value(v)
 				#logging.debug("%s => %s (%s)" % (zctrl.name,zctrl.symbol,zctrl.value))
+
+				#Refresh GUI controller in screen when needed ...
+				if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
+					self.zyngui.screens['control'].set_controller_value(zctrl)
+
 			except:
 				#logging.debug("No preset value for control %s" % zctrl.name)
 				pass
-		return zctrls
+
+
+	def midi_control_change(self, zctrl, val):
+		try:
+			if val!=zctrl.get_value():
+				zctrl.set_value(val)
+				logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
+
+				#Refresh GUI controller in screen when needed ...
+				if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
+					self.zyngui.screens['control'].set_controller_value(zctrl)
+
+		except Exception as e:
+			logging.debug(e)
 
 
 	#----------------------------------------------------------------------------

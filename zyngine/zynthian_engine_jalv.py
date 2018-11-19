@@ -398,6 +398,11 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
 
 
+	#----------------------------------------------------------------------------
+	# MIDI CC processing
+	#----------------------------------------------------------------------------
+
+
 	def midi_control_change(self, chan, ccnum, val):
 		if self.current_learning_zctrl:
 			self.current_learning_zctrl.set_midi_learn(chan, ccnum)
