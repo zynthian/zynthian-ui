@@ -23,6 +23,7 @@
 # 
 #******************************************************************************
 
+
 import os
 import sys
 import logging
@@ -35,18 +36,23 @@ from . import zynthian_gui_config
 from . import zynthian_gui_selector
 from zyngine import zynthian_layer
 
+
 #------------------------------------------------------------------------------
 # Configure logging
 #------------------------------------------------------------------------------
 
+
 # Set root logging level
 logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
+
 
 #------------------------------------------------------------------------------
 # Zynthian Layer Selection GUI Class
 #------------------------------------------------------------------------------
 
+
 class zynthian_gui_layer(zynthian_gui_selector):
+
 
 	def __init__(self):
 		self.layers = []
@@ -54,6 +60,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.add_layer_eng = None
 		self.last_snapshot_fpath = None
 		super().__init__('Layer', True)
+
 
 	def reset(self):
 		self.reset_clone()
@@ -63,6 +70,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.curlayer=None
 		self.index=0
 		self.fill_list()
+
 
 	def fill_list(self):
 		self.list_data=[]
@@ -113,6 +121,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				if len(self.curlayer.bank_list)<=1:
 					zynthian_gui_config.zyngui.screens['bank'].select_action(0)
 
+
 	def next(self):
 		self.index=self.index+1;
 		if self.index>=len(self.layers):
@@ -120,8 +129,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.select_listbox(self.index)
 		self.select_action(self.index)
 
+
 	def get_num_layers(self):
 		return len(self.layers)
+
 
 	def get_layer_selected(self):
 		i=self.get_cursel()
@@ -130,10 +141,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		else:
 			return None
 
+
 	def add_layer(self, etype):
 		self.add_layer_eng=None
 		zynthian_gui_config.zyngui.screens['engine'].set_engine_type(etype)
 		zynthian_gui_config.zyngui.show_modal('engine')
+
 
 	def add_layer_engine(self, eng):
 		self.add_layer_eng=eng
@@ -150,6 +163,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			zynthian_gui_config.zyngui.screens['midi_chan'].set_mode("ADD")
 			zynthian_gui_config.zyngui.show_modal('midi_chan')
 
+
 	def add_layer_midich(self, midich, select=True):
 		if self.add_layer_eng:
 			self.layers.append(zynthian_layer(self.add_layer_eng,midich,zynthian_gui_config.zyngui))
@@ -158,6 +172,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if select:
 				self.index=len(self.layers)-1
 				self.select_action(self.index)
+
 
 	def remove_layer(self, i, cleanup_unused_engines=True):
 		if i>=0 and i<len(self.layers):
@@ -177,32 +192,39 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if cleanup_unused_engines:
 				zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
 
+
 	def remove_all_layers(self, cleanup_unused_engines=True):
 		while len(self.layers)>0:
 			self.remove_layer(0, False)
 		if cleanup_unused_engines:
 			zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
 
+
 	#def refresh(self):
 	#	self.curlayer.refresh()
+
 
 	def set_clone(self, clone_status):
 		for i in range(0,16):
 			for j in range(0,16):
 				zyncoder.lib_zyncoder.set_midi_filter_clone(i,j,clone_status[i][j])
 
+
 	def reset_clone(self):
 		for i in range(0,16):
 			for j in range(0,16):
 				zyncoder.lib_zyncoder.set_midi_filter_clone(i,j,0)
 
+
 	def set_transpose(self, transpose_status):
 		for i in range(0,16):
 			zyncoder.lib_zyncoder.set_midi_filter_transpose(i,transpose_status[i])
 
+
 	def reset_transpose(self):
 		for i in range(0,16):
 			zyncoder.lib_zyncoder.set_midi_filter_transpose(i,0)
+
 
 	def set_select_path(self):
 		self.select_path.set("Layer List")
@@ -221,37 +243,41 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def set_midi_chan_zs3(self, midich, zs3_index):
 		for layer in self.layers:
-			if zynthian_gui_config.midi_single_active_channel:
-				mch = None
-			else:
-				mch=layer.get_midi_chan()
-
-			if mch is None or mch==midich:
+			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
 				if layer.restore_zs3(zs3_index):
-					zynthian_gui_config.zyngui.set_curlayer(layer)
-					zynthian_gui_config.zyngui.show_screen('control')
+					try:
+						self.select_action(self.layers.index(layer))
+					except Exception as e:
+						logging.error("Can't select layer => {}".format(e))
 
 
 	def save_midi_chan_zs3(self, midich, zs3_index):
 		for layer in self.layers:
-			if zynthian_gui_config.midi_single_active_channel:
-				mch = None
-			else:
-				mch=layer.get_midi_chan()
+			mch=layer.get_midi_chan()
 
 			if mch is None or mch==midich:
-				self.curlayer.save_zs3(zs3_index)
-			else:
-				self.curlayer.delete_zs3(zs3_index)
+				layer.save_zs3(zs3_index)
+			elif zynthian_gui_config.midi_single_active_channel:
+				layer.delete_zs3(zs3_index)
+
+
+	def get_midi_chan_zs3_status(self, midich, zs3_index):
+		for layer in self.layers:
+			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
+				if layer.get_zs3(zs3_index):
+					return True
+		return False
 
 
 	def midi_control_change(self, chan, ccnum, ccval):
 		for layer in self.layers:
 			layer.midi_control_change(chan, ccnum, ccval)
 
+
 	#----------------------------------------------------------------------------
 	# Snapshot Save & Load
 	#----------------------------------------------------------------------------
+
 
 	def save_snapshot(self, fpath):
 		try:
@@ -349,9 +375,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			return False
 		return True
 
+
 	#----------------------------------------------------------------------------
 	# Audio Routing
 	#----------------------------------------------------------------------------
+
 
 	def get_audio_routing(self):
 		res={}
@@ -359,12 +387,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			res[zyngine.jackname]=zyngine.audio_out
 		return res
 
+
 	def set_audio_routing(self, audio_routing=None):
 		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
 			try:
 				zyngine.audio_out=audio_routing[zyngine.jackname]
 			except:
 				zyngine.audio_out=["system"]
+
 
 	def reset_audio_routing(self):
 		self.set_audio_routing()

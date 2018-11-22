@@ -241,6 +241,7 @@ class zynthian_engine:
 	# OSC Management
 	# ---------------------------------------------------------------------------
 
+
 	def osc_init(self, target_port=None, proto=liblo.UDP):
 		self.start_loading()
 		if target_port:
@@ -258,6 +259,7 @@ class zynthian_engine:
 			logging.error("OSC Server can't be initialized (%s). Running without OSC feedback." % err)
 		self.stop_loading()
 
+
 	def osc_end(self):
 		if self.osc_server:
 			self.start_loading()
@@ -268,17 +270,21 @@ class zynthian_engine:
 				logging.error("Can't stop OSC server => %s" % err)
 			self.stop_loading()
 
+
 	def osc_add_methods(self):
 		self.osc_server.add_method(None, None, self.cb_osc_all)
+
 
 	def cb_osc_all(self, path, args, types, src):
 		logging.info("OSC MESSAGE '%s' from '%s'" % (path, src.url))
 		for a, t in zip(args, types):
 			logging.debug("argument of type '%s': %s" % (t, a))
 
+
 	# ---------------------------------------------------------------------------
 	# Generating list from different sources
 	# ---------------------------------------------------------------------------
+
 
 	def get_filelist(self, dpath, fext):
 		self.start_loading()
@@ -300,6 +306,7 @@ class zynthian_engine:
 		self.stop_loading()
 		return res
 
+
 	def get_dirlist(self, dpath):
 		self.start_loading()
 		res=[]
@@ -319,6 +326,7 @@ class zynthian_engine:
 		self.stop_loading()
 		return res
 
+
 	def get_cmdlist(self,cmd):
 		self.start_loading()
 		res=[]
@@ -332,26 +340,33 @@ class zynthian_engine:
 		self.stop_loading()
 		return res
 
+
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
 
+
 	def add_layer(self, layer):
 		self.layers.append(layer)
 
+
 	def del_layer(self, layer):
 		self.layers.remove(layer)
+
 
 	def del_all_layers(self):
 		for layer in self.layers:
 			self.del_layer(layer)
 
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
+
 	def set_midi_chan(self, layer):
 		pass
+
 
 	def get_active_midi_channels(self):
 		chans=[]
@@ -362,28 +377,37 @@ class zynthian_engine:
 				chans.append(layer.midi_chan)
 		return chans
 
+
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
+
 	def get_bank_list(self, layer=None):
 		logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
 
+
 	def set_bank(self, layer, bank):
 		self.zyngui.zynmidi.set_midi_bank_msb(layer.get_midi_chan(), bank[1])
+		return True
+
 
 	# ---------------------------------------------------------------------------
 	# Preset Management
 	# ---------------------------------------------------------------------------
 
+
 	def get_preset_list(self, bank):
 		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name),'PD'
+
 
 	def set_preset(self, layer, preset, preload=False):
 		if isinstance(preset[1],int):
 			self.zyngui.zynmidi.set_midi_prg(layer.get_midi_chan(), preset[1])
 		else:
 			self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
+		return True
+
 
 	def cmp_presets(self, preset1, preset2):
 		if preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
@@ -391,9 +415,11 @@ class zynthian_engine:
 		else:
 			return False
 
+
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
+
 
 	# Get zynthian controllers dictionary:
 	# + Default implementation uses a static controller definition array
@@ -445,19 +471,24 @@ class zynthian_engine:
 				zctrls[ctrl[0]]=zctrl
 		return zctrls
 
+
 	def send_controller_value(self, zctrl):
 		raise Exception("NOT DEFINED")
+
 
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
 
+
 	def get_path(self, layer):
 		return self.nickname
+
 
 	# ---------------------------------------------------------------------------
 	# Options
 	# ---------------------------------------------------------------------------
+
 
 	def add_audio_out(self, jackname):
 		if jackname not in self.audio_out:
@@ -484,5 +515,6 @@ class zynthian_engine:
 
 	def get_options(self):
 		return self.options
+
 
 #******************************************************************************

@@ -33,6 +33,7 @@ class zynthian_layer:
 	# Initialization
 	# ---------------------------------------------------------------------------
 
+
 	def __init__(self, engine, midi_chan, zyngui=None):
 		self.zyngui = zyngui
 		self.engine = engine
@@ -64,7 +65,8 @@ class zynthian_layer:
 
 		self.engine.add_layer(self)
 		self.refresh_controllers()
-	
+
+
 	def refresh(self):
 		if self.refresh_flag:
 			self.refresh_flag=False
@@ -73,6 +75,7 @@ class zynthian_layer:
 			if self.engine.nickname=='MD':
 				self.zyngui.screens['preset'].fill_list()
 			self.zyngui.refresh_screen()
+
 
 	def reset(self):
 		# MIDI-unlearn all controllers
@@ -83,9 +86,11 @@ class zynthian_layer:
 		# Clear refresh flag
 		self.refresh_flag=False
 
+
 	# ---------------------------------------------------------------------------
 	# MIDI chan Management
 	# ---------------------------------------------------------------------------
+
 
 	def set_midi_chan(self, midi_chan):
 		self.midi_chan=midi_chan
@@ -93,8 +98,10 @@ class zynthian_layer:
 		for zctrl in self.controllers_dict.values():
 			zctrl.set_midi_chan(midi_chan)
 
+
 	def get_midi_chan(self):
 		return self.midi_chan
+
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
@@ -120,9 +127,11 @@ class zynthian_layer:
 			self.bank_name=self.bank_list[i][2]
 			self.bank_info=copy.deepcopy(self.bank_list[i])
 			logging.info("Bank Selected: %s (%d)" % (self.bank_name,i))
+
 			if set_engine and (last_bank_index!=i or not last_bank_name):
 				self.reset_preset()
 				return self.engine.set_bank(self, self.bank_info)
+
 			return True
 		return False
 
@@ -188,8 +197,7 @@ class zynthian_layer:
 	def set_preset_by_name(self, name, set_engine=True):
 		for i in range(len(self.preset_list)):
 			if name==self.preset_list[i][2]:
-				self.set_preset(i,set_engine)
-				return True
+				return self.set_preset(i,set_engine)
 		return False
 
 
@@ -229,12 +237,15 @@ class zynthian_layer:
 	# Controllers Management
 	# ---------------------------------------------------------------------------
 
+
 	def refresh_controllers(self):
 		self.init_controllers()
 		self.init_ctrl_screens()
 
+
 	def init_controllers(self):
 		self.controllers_dict=self.engine.get_controllers_dict(self)
+
 
 	# Create controller screens from zynthian controller keys
 	def init_ctrl_screens(self):
@@ -247,8 +258,10 @@ class zynthian_layer:
 		except:
 			self.ctrl_screen_active=None
 
+
 	def get_ctrl_screens(self):
 		return self.ctrl_screens_dict
+
 
 	def get_active_screen(self):
 		try:
@@ -256,11 +269,13 @@ class zynthian_layer:
 		except:
 			return None
 
+
 	def get_active_screen_index(self):
 		try:
 			return list(self.ctrl_screens_dict.keys()).index(self.ctrl_screen_active)
 		except:
 			return -1
+
 
 	def set_active_screen(self, key):
 		if key in self.ctrl_screens_dict:
@@ -268,11 +283,13 @@ class zynthian_layer:
 		else:
 			logging.warning("Screen Key is not valid")
 
+
 	def set_active_screen_index(self, i):
 		if i>=0 and i < len(self.ctrl_screens_dict):
 			self.ctrl_screen_active=list(self.ctrl_screens_dict.items())[i][0]
 		else:
 			logging.warning("Screen Index is not valid")
+
 
 	# Build array of zynthian_controllers from list of keys
 	def build_ctrl_screen(self, ctrl_keys):
@@ -284,9 +301,11 @@ class zynthian_layer:
 				logging.error("Controller %s is not defined" % k)
 		return zctrls
 
+
 	#----------------------------------------------------------------------------
 	# MIDI CC processing
 	#----------------------------------------------------------------------------
+
 
 	def midi_control_change(self, chan, ccnum, ccval):
 		if self.engine:
@@ -303,7 +322,8 @@ class zynthian_layer:
 					self.engine.midi_control_change(chan, ccnum, ccval)
 				except:
 					pass
-				
+
+
 	# ---------------------------------------------------------------------------
 	# Snapshot Management
 	# ---------------------------------------------------------------------------
@@ -370,11 +390,15 @@ class zynthian_layer:
 
 
 	def reset_zs3(self):
-		self.zs3_list = [None]*16
+		self.zs3_list = [None]*128
 
 
 	def delete_zs3(self, i):
 		self.zs3_list[i] = None
+
+
+	def get_zs3(self, i):
+		return self.zs3_list[i]
 
 
 	def save_zs3(self, i):
@@ -432,11 +456,13 @@ class zynthian_layer:
 	# Channel "Path" String
 	# ---------------------------------------------------------------------------
 
+
 	def get_path(self):
 		path=self.bank_name
 		if self.preset_name:
 			path=path + "/" + self.preset_name
 		return path
+
 
 	def get_basepath(self):
 		path=self.engine.get_path(self)
@@ -444,11 +470,13 @@ class zynthian_layer:
 			path=path + "#" + str(self.midi_chan+1)
 		return path
 
+
 	def get_bankpath(self):
 		path=self.get_basepath()
 		if self.bank_name:
 			path=path + " > " + self.bank_name
 		return path
+
 
 	def get_presetpath(self):
 		path=self.get_bankpath()

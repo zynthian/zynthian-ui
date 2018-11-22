@@ -114,9 +114,11 @@ class zynthian_engine_jalv(zynthian_engine):
 	_ctrls=None
 	_ctrl_screens=None
 
+
 	#----------------------------------------------------------------------------
 	# Initialization
 	#----------------------------------------------------------------------------
+
 
 	def __init__(self, plugin_name, zyngui=None):
 		super().__init__(zyngui)
@@ -174,24 +176,29 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Layer Management
 	# ---------------------------------------------------------------------------
 
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
+
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
+
 	def get_bank_list(self, layer=None):
 		return [("", None, "", None)]
 
+
 	def set_bank(self, layer, bank):
-		pass
+		return True
 
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
+
 
 	def _get_preset_list(self):
 		self.start_loading()
@@ -210,12 +217,12 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.stop_loading()
 		return preset_list
 
+
 	def get_preset_list(self, bank):
 		return self.preset_list
 
-	def set_preset(self, layer, preset, preload=False):
-		self.start_loading()
 
+	def set_preset(self, layer, preset, preload=False):
 		output=self.proc_cmd("\set_preset {}".format(preset[0]))
 
 		#Parse new controller values
@@ -226,8 +233,10 @@ class zynthian_engine_jalv(zynthian_engine):
 					self.lv2_zctrl_dict[parts[0]]._set_value(float(parts[1]))
 			except Exception as e:
 				logging.error(e)
+				return False
 
-		self.stop_loading()
+		return True
+
 
 	def cmp_presets(self, preset1, preset2):
 		if preset1[0]==preset2[0]:
@@ -235,9 +244,11 @@ class zynthian_engine_jalv(zynthian_engine):
 		else:
 			return False
 
+
 	#----------------------------------------------------------------------------
 	# Controllers Managament
 	#----------------------------------------------------------------------------
+
 
 	def get_lv2_controllers_dict(self):
 		self.start_loading()
@@ -351,9 +362,11 @@ class zynthian_engine_jalv(zynthian_engine):
 	def send_controller_value(self, zctrl):
 		self.proc_cmd("\set_control %d, %.6f" % (zctrl.graph_path, zctrl.value))
 
+
 	#----------------------------------------------------------------------------
 	# MIDI learning
 	#----------------------------------------------------------------------------
+
 
 	def midi_learn(self, zctrl):
 		if zctrl.graph_path:
@@ -418,9 +431,11 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Special
 	#--------------------------------------------------------------------------
 
+
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
+
 
 	def get_path(self, layer):
 		path=self.nickname

@@ -87,9 +87,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		#('tap_echo', { 'lib': '/usr/lib/ladspa/tap_echo.so', 'id': None })
 	]
 
+
 	# ---------------------------------------------------------------------------
 	# Initialization
 	# ---------------------------------------------------------------------------
+
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
@@ -119,14 +121,17 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		self.lscp_get_version()
 		self.reset()
 
+
 	def reset(self):
 		super().reset()
 		self.ls_chans={}
 		self.ls_init()
 
+
 	# ---------------------------------------------------------------------------
 	# Subproccess Management & IPC
 	# ---------------------------------------------------------------------------
+
 
 	def lscp_connect(self):
 		logging.info("Connecting with LinuxSampler Server...")
@@ -143,6 +148,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				i+=1
 		return self.sock
 
+
 	def lscp_get_version(self):
 		sv_info=self.lscp_send_multi("GET SERVER INFO")
 		if 'PROTOCOL_VERSION' in sv_info:
@@ -153,6 +159,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				if version_major>1 or (version_major==1 and version_minor>=6):
 					self.lscp_v1_6_supported=True
 
+
 	def lscp_send(self, data):
 		command=command+"\r\n"
 		try:
@@ -160,11 +167,13 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		except Exception as err:
 			logging.error("FAILED lscp_send: %s" % err)
 
+
 	def lscp_get_result_index(self, result):
 		parts=result.split('[')
 		if len(parts)>1:
 			parts=parts[1].split(']')
 			return int(parts[0])
+
 
 	def lscp_send_single(self, command):
 		self.start_loading()
@@ -191,6 +200,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			raise zyngine_lscp_warning("%s (%s)" % (parts[1],parts[0]))
 		self.stop_loading()
 		return result
+
 
 	def lscp_send_multi(self, command):
 		self.start_loading()
@@ -223,9 +233,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		self.stop_loading()
 		return result
 
+
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
+
 
 	def add_layer(self, layer):
 		super().add_layer(layer)
@@ -234,13 +246,16 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		self.set_midi_chan(layer)
 		layer.refresh_flag=True
 
+
 	def del_layer(self, layer):
 		super().del_layer(layer)
 		self.ls_unset_channel(layer)
 
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
+
 
 	def set_midi_chan(self, layer):
 		if layer.ls_chan_info:
@@ -252,21 +267,27 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			except zyngine_lscp_warning as warn:
 				logging.warning(warn)
 
+
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
+
 	def get_bank_list(self, layer=None):
 		return self.get_dirlist(self.bank_dirs)
 
+
 	def set_bank(self, layer, bank):
-		pass
+		return True
+
 
 	# ---------------------------------------------------------------------------
 	# Preset Management
 	# ---------------------------------------------------------------------------
 
+
 	_exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
+
 
 	def get_preset_list(self, bank):
 		self.start_loading()
@@ -292,8 +313,10 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		self.stop_loading()
 		return preset_list
 
+
 	def set_preset(self, layer, preset, preload=False):
-		self.ls_set_preset(layer, preset[4], preset[3])
+		return self.ls_set_preset(layer, preset[4], preset[3])
+
 
 	def cmp_presets(self, preset1, preset2):
 		if preset1[3]==preset2[3] and preset1[4]==preset2[4]:
@@ -301,9 +324,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		else:
 			return False
 
+
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
+
 
 	# Get zynthian controllers dictionary:
 	def get_controllers_dict(self, layer):
@@ -375,6 +400,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				self._ctrl_screens.append([fx_name+':'+str(j),scrctrls])
 		return zctrls
 
+
 	def send_controller_value(self, zctrl):
 		if zctrl.graph_path:
 			parts=zctrl.graph_path.split('/')
@@ -390,9 +416,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		else:
 			super().send_controller_value(zctrl)
 
+
 	# ---------------------------------------------------------------------------
 	# Specific functions
 	# ---------------------------------------------------------------------------
+
 
 	def ls_init(self):
 		try:
@@ -480,7 +508,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				'ls_engine': None
 			}
 
+
 	def ls_set_preset(self, layer, ls_engine, fpath):
+		res=False
 		if layer.ls_chan_info:
 			ls_chan_id=layer.ls_chan_info['chan_id']
 
@@ -505,11 +535,17 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			try:
 				self.sock.settimeout(10)
 				self.lscp_send_single("LOAD INSTRUMENT '%s' 0 %d" % (fpath,ls_chan_id))
+				res=True
 			except zyngine_lscp_error as err:
 				logging.error(err)
 			except zyngine_lscp_warning as warn:
+				res=True
 				logging.warning(warn)
+
 			self.sock.settimeout(1)
+
+		return res
+
 
 	def ls_unset_channel(self, layer):
 		if layer.ls_chan_info:
@@ -550,5 +586,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				except:
 					pass
 			layer.ls_chan_info=None
+
 
 #******************************************************************************

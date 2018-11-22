@@ -287,8 +287,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		super().set_preset(layer,preset)
-		self.update_controller_values(layer)
+		if super().set_preset(layer,preset):
+			self.update_controller_values(layer)
+			return True
+		else:
+			return False
 
 
 	#----------------------------------------------------------------------------

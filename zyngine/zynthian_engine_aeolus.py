@@ -129,9 +129,11 @@ class zynthian_engine_aeolus(zynthian_engine):
 	_ctrls=[]
 	_ctrl_screens=[]
 
+
 	#----------------------------------------------------------------------------
 	# Initialization
 	#----------------------------------------------------------------------------
+
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
@@ -161,25 +163,31 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.start()
 		self.reset()
 
+
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
+
 
 	def add_layer(self, layer):
 		super().add_layer(layer)
 		layer.listen_midi_cc=True
 
+
 	def del_layer(self, layer):
 		super().del_layer(layer)
 		layer.listen_midi_cc=False
+
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
+
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
+
 
 	def get_bank_list(self, layer=None):
 		self.start_loading()
@@ -194,6 +202,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.stop_loading()
 		return res
 
+
 	def set_bank(self, layer, bank):
 		self.zyngui.zynmidi.set_midi_bank_lsb(layer.get_midi_chan(), bank[1])
 		#Change Bank for all Layers
@@ -202,10 +211,13 @@ class zynthian_engine_aeolus(zynthian_engine):
 				l.bank_index=layer.bank_index
 				l.bank_name=layer.bank_name
 				l.bank_info=copy.deepcopy(layer.bank_info)
+		return True
+
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
+
 
 	def get_preset_list(self, bank):
 		self.start_loading()
@@ -219,6 +231,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 				res.append((title,[0,bank[1],i],title,gc['gconf']))
 		self.stop_loading()
 		return res
+
 
 	def set_preset(self, layer, preset, preload=False):
 		self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
@@ -240,11 +253,13 @@ class zynthian_engine_aeolus(zynthian_engine):
 				l.preload_index=l.preset_index
 				l.preload_name=l.preset_name
 				l.preload_info=l.preset_info
+		return True
 
 
 	#----------------------------------------------------------------------------
 	# Controllers Managament
 	#----------------------------------------------------------------------------
+
 
 	def send_controller_value(self, zctrl):
 		self.midi_control_change(zctrl, int(zctrl.get_value()))
@@ -276,7 +291,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 
 	def generate_ctrl_list(self):
-
 		#Generate ctrl list for each group in instrument
 		n=0
 		for ig, group in enumerate(self.instrument):
@@ -305,7 +319,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 
 	def get_controllers_dict(self, layer):
-
 		#Find ctrl list for layer's group
 		for group in self.instrument:
 			if group['chan']==layer.midi_chan:
@@ -319,6 +332,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 	#--------------------------------------------------------------------------
 	# Special
 	#--------------------------------------------------------------------------
+
 
 	def get_chan_name(self, chan):
 		for group in self.instrument:
@@ -392,6 +406,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
+
 
 	def get_path(self, layer):
 		path=self.nickname

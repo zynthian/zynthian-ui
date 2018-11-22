@@ -99,7 +99,7 @@ class zynthian_engine_puredata(zynthian_engine):
 
 
 	def set_bank(self, layer, bank):
-		pass
+		return True
 
 
 	#----------------------------------------------------------------------------
@@ -112,15 +112,13 @@ class zynthian_engine_puredata(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		if preset[0] != self.preset:
-			self.start_loading()
-			self.load_preset_config(preset)
-			self.command=self.base_command+ " " + self.get_preset_filepath(preset)
-			self.preset=preset[0]
-			self.stop()
-			self.start()
-			self.refresh_all()
-			self.stop_loading()
+		self.load_preset_config(preset)
+		self.command=self.base_command+ " " + self.get_preset_filepath(preset)
+		self.preset=preset[0]
+		self.stop()
+		self.start()
+		self.refresh_all()
+		return True
 
 
 	def load_preset_config(self, preset):

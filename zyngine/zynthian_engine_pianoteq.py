@@ -395,7 +395,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def set_bank(self, layer, bank):
-		pass
+		return True
 
 
 	def prepare_banks(self):
@@ -422,6 +422,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
+
 
 	def save_presets_cache(self):
 		logging.info("Caching Internal Presets ...")
@@ -529,30 +530,30 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		if preset[0]!=self.preset:
-			mm = "Zynthian-{}".format(preset[3])
-			if mm == self.midimapping:
-				super().set_preset(layer,preset,preload)
-				self.preset = preset[0]
-				time.sleep(1)
-			else:
-				self.midimapping=mm
-				self.start_loading()
-				self.preset=preset[0]
-				self.command = self.base_command + " --midi-channel {}".format(layer.get_midi_chan()+1)
-				self.command += " --midimapping \"{}\"".format(self.midimapping)
-				self.command += " --preset \"{}\"".format(preset[0])
-				self.stop()
-				self.start()
-				self.stop_loading()
+		mm = "Zynthian-{}".format(preset[3])
+		if mm == self.midimapping:
+			super().set_preset(layer,preset,preload)
+			self.preset = preset[0]
+			time.sleep(1)
+		else:
+			self.midimapping=mm
+			self.preset=preset[0]
+			self.command = self.base_command + " --midi-channel {}".format(layer.get_midi_chan()+1)
+			self.command += " --midimapping \"{}\"".format(self.midimapping)
+			self.command += " --preset \"{}\"".format(preset[0])
+			self.stop()
+			self.start()
+		return True
 
 
 	def cmp_presets(self, preset1, preset2):
 		return True
 
+
 	#--------------------------------------------------------------------------
 	# Special
 	#--------------------------------------------------------------------------
+
 
 	def generate_presets_midimapping(self):
 		# Copy default "static" MIDI Mappings if doesn't exist

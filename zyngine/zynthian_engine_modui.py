@@ -137,9 +137,8 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def set_bank(self, layer, bank):
-		self.start_loading()
 		self.load_bundle(bank[0])
-		self.stop_loading()
+		return True
 
 
 	def load_bundle(self, path):
@@ -191,9 +190,8 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		self.start_loading()
 		self.load_preset(preset[3],preset[0])
-		self.stop_loading()
+		return True
 
 
 	def load_preset(self, plugin, preset):
