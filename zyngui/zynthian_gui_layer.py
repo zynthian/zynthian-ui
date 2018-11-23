@@ -204,6 +204,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	#	self.curlayer.refresh()
 
 
+	#----------------------------------------------------------------------------
+	# Clone & Transpose
+	#----------------------------------------------------------------------------
+
+
 	def set_clone(self, clone_status):
 		for i in range(0,16):
 			for j in range(0,16):
@@ -224,10 +229,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def reset_transpose(self):
 		for i in range(0,16):
 			zyncoder.lib_zyncoder.set_midi_filter_transpose(i,0)
-
-
-	def set_select_path(self):
-		self.select_path.set("Layer List")
 
 
 	#----------------------------------------------------------------------------
@@ -275,6 +276,47 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	#----------------------------------------------------------------------------
+	# Audio Routing
+	#----------------------------------------------------------------------------
+
+
+	def get_audio_routing(self):
+		res={}
+		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
+			res[zyngine.jackname]=zyngine.audio_out
+		return res
+
+
+	def set_audio_routing(self, audio_routing=None):
+		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
+			try:
+				zyngine.audio_out=audio_routing[zyngine.jackname]
+			except:
+				zyngine.audio_out=["system"]
+
+
+	def reset_audio_routing(self):
+		self.set_audio_routing()
+
+
+	# ---------------------------------------------------------------------------
+	# Extended Config
+	# ---------------------------------------------------------------------------
+
+
+	def get_extended_config(self):
+		xconfigs={}
+		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
+			xconfigs[zyngine.jackname]=zyngine.get_extended_config()
+		return xconfigs
+
+
+	def set_extended_config(self, xconfigs):
+		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
+			zyngine.set_extended_config(xconfigs[zyngine.jackname])
+
+
+	#----------------------------------------------------------------------------
 	# Snapshot Save & Load
 	#----------------------------------------------------------------------------
 
@@ -286,7 +328,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				'layers':[],
 				'clone':[],
 				'transpose':[],
-				'audio_routing': self.get_audio_routing()
+				'audio_routing': self.get_audio_routing(),
+				'extended_config': self.get_extended_config()
 			}
 			#Layers info
 			for layer in self.layers:
@@ -330,14 +373,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			snapshot=JSONDecoder().decode(json)
 			#Clean all layers
 			self.remove_all_layers(False)
-			#Create layers
+			#Start engines
 			for lss in snapshot['layers']:
 				engine=zynthian_gui_config.zyngui.screens['engine'].start_engine(lss['engine_nick'])
 				self.layers.append(zynthian_layer(engine,lss['midi_chan'],zynthian_gui_config.zyngui))
-			#Set active layer
-			self.index=snapshot['index']
-			self.curlayer=self.layers[self.index]
-			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
+			#Remove unused engines
+			zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
+			#Set extended config
+			if 'extended_config' in snapshot:
+				self.set_extended_config(snapshot['extended_config'])
 			#Load layers
 			i=0
 			for lss in snapshot['layers']:
@@ -345,8 +389,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				i+=1
 			#Fill layer list
 			self.fill_list()
-			#Remove unused engines
-			zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
+			#Set active layer
+			self.index=snapshot['index']
+			self.curlayer=self.layers[self.index]
+			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
 			#Set Clone
 			if 'clone' in snapshot:
 				self.set_clone(snapshot['clone'])
@@ -376,28 +422,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return True
 
 
-	#----------------------------------------------------------------------------
-	# Audio Routing
-	#----------------------------------------------------------------------------
-
-
-	def get_audio_routing(self):
-		res={}
-		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
-			res[zyngine.jackname]=zyngine.audio_out
-		return res
-
-
-	def set_audio_routing(self, audio_routing=None):
-		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
-			try:
-				zyngine.audio_out=audio_routing[zyngine.jackname]
-			except:
-				zyngine.audio_out=["system"]
-
-
-	def reset_audio_routing(self):
-		self.set_audio_routing()
+	def set_select_path(self):
+		self.select_path.set("Layer List")
 
 
 #------------------------------------------------------------------------------

@@ -239,9 +239,10 @@ class zynthian_engine_setbfree(zynthian_engine):
 			return False
 
 		elif not self.tonewheel_model:
-			self.start_loading()
 			self.tonewheel_model = bank[0]
 
+		if not self.proc:
+			logging.debug("STARTING SETBFREE!!")
 			self.generate_config_file()
 			self.stop()
 			self.start()
@@ -272,7 +273,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 			#self.zyngui.screens['layer'].fill_list()
 
-			self.stop_loading()
 			return True
 
 
@@ -414,6 +414,28 @@ class zynthian_engine_setbfree(zynthian_engine):
 			return True
 		else:
 			return False
+
+
+	# ---------------------------------------------------------------------------
+	# Extended Config
+	# ---------------------------------------------------------------------------
+
+
+	def get_extended_config(self):
+		xconfig = { 
+			'manuals_config': self.manuals_config,
+			'tonewheel_model': self.tonewheel_model
+		}
+		return xconfig
+
+
+	def set_extended_config(self, xconfig):
+		try:
+			self.manuals_config = xconfig['manuals_config']
+			self.tonewheel_model = xconfig['tonewheel_model']
+
+		except Exception as e:
+			logging.error("Can't setup extended config => {}".format(e))
 
 
 	# ---------------------------------------------------------------------------

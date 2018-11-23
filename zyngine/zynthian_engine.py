@@ -486,7 +486,7 @@ class zynthian_engine:
 
 
 	# ---------------------------------------------------------------------------
-	# Options
+	# Audio Routing
 	# ---------------------------------------------------------------------------
 
 
@@ -513,8 +513,21 @@ class zynthian_engine:
 		self.audio_out=["system"]
 
 
+	# ---------------------------------------------------------------------------
+	# Options and Extended Config
+	# ---------------------------------------------------------------------------
+
+
 	def get_options(self):
 		return self.options
+
+
+	def get_extended_config(self):
+		return None
+
+
+	def set_extended_config(self, xconfig):
+		pass
 
 
 #******************************************************************************
