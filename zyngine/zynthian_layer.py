@@ -178,13 +178,19 @@ class zynthian_layer:
 			self.preset_name=self.preset_list[i][2]
 			self.preset_info=copy.deepcopy(self.preset_list[i])
 			self.preset_bank_index=self.bank_index
-			self.preload_index=i
-			self.preload_name=self.preset_name
-			self.preload_info=self.preset_info
+			
+			if self.preload_info and not self.engine.cmp_presets(self.preload_info,self.preset_info):
+				force_set_engine=True
+				self.preload_index=i
+				self.preload_name=self.preset_name
+				self.preload_info=self.preset_info
+			else:
+				force_set_engine=False
+
 			logging.info("Preset Selected: %s (%d)" % (self.preset_name,i))
 			#=> '+self.preset_list[i][3]
 	
-			if set_engine and (last_preset_index!=i or not last_preset_name):
+			if force_set_engine or (set_engine and (last_preset_index!=i or not last_preset_name)):
 				#TODO => Review this!!
 				#self.load_ctrl_config()
 				return self.engine.set_preset(self, self.preset_info)
