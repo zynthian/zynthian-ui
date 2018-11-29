@@ -296,20 +296,20 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		['sustain',64,'off',[['off','1/4','1/2','3/4','full'],[0,25,51,76,102]]],
 		#['sustain on/off',64,'off','off|on'],
 		#['sustain',64,0],
-		['rev on/off',30,'off','off|on'],
-		['rev duration',31,0],
-		['rev mix',32,0],
-		['rev room',33,0],
-		['rev p/d',34,0],
-		['rev e/r',35,64],
-		['rev tone',36,64]
+		#['rev on/off',30,'off','off|on'],
+		#['rev duration',31,0],
+		#['rev mix',32,0],
+		#['rev room',33,0],
+		#['rev p/d',34,0],
+		#['rev e/r',35,64],
+		#['rev tone',36,64]
 	]
 
 	_ctrl_screens=[
-		['main',['volume','sustain','dynamic','mute on/off']],
-		['reverb1',['volume','rev on/off','rev duration','rev mix']],
-		['reverb2',['volume','rev room','rev p/d','rev e/r']],
-		['reverb3',['volume','rev tone']]
+		['main',['volume','sustain','dynamic','mute on/off']]
+		#['reverb1',['volume','rev on/off','rev duration','rev mix']],
+		#['reverb2',['volume','rev room','rev p/d','rev e/r']],
+		#['reverb3',['volume','rev tone']]
 	]
 
 	#----------------------------------------------------------------------------
@@ -547,8 +547,10 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def cmp_presets(self, preset1, preset2):
-		return True
-
+		if preset1[0]==preset2[0] and preset1[2]==preset2[2]:
+			return True
+		else:
+			return False
 
 	#--------------------------------------------------------------------------
 	# Special
