@@ -246,11 +246,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.generate_config_file()
 			self.stop()
 			self.start()
+			self.zyngui.zynautoconnect()
 
 			midi_chan = layer.get_midi_chan()
 			midi_prog = self.manuals_config[4][2]
 
-			if midi_prog and isinstance(midi_prog,int):
+			if midi_prog and isinstance(midi_prog, int):
 				logging.debug("Loading manuals configuration program: {}".format(midi_prog-1))
 				self.zyngui.zynmidi.set_midi_prg(midi_chan, midi_prog-1)
 
@@ -288,7 +289,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	def set_preset(self, layer, preset, preload=False):
 		if super().set_preset(layer,preset):
-			self.update_controller_values(layer)
+			self.update_controller_values(preset)
 			return True
 		else:
 			return False
@@ -298,9 +299,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Controller Managament
 	#----------------------------------------------------------------------------
 
-	def update_controller_values(self, layer):
+	def update_controller_values(self, preset):
 		#Get values from preset params and set them into controllers
-		for zcsymbol, v in layer.preset_info[3].items():
+		for zcsymbol, v in preset[3].items():
 			try:
 				zctrl=zctrls[zcsymbol]
 
@@ -325,7 +326,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		try:
 			if val!=zctrl.get_value():
 				zctrl.set_value(val)
-				logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
+				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
 
 				#Refresh GUI controller in screen when needed ...
 				if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
