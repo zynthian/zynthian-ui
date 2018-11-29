@@ -30,7 +30,6 @@ import logging
 from json import JSONEncoder, JSONDecoder
 
 # Zynthian specific modules
-import zynautoconnect
 from zyncoder import *
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
@@ -168,7 +167,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if self.add_layer_eng:
 			self.layers.append(zynthian_layer(self.add_layer_eng,midich,zynthian_gui_config.zyngui))
 			self.fill_list()
-			zynautoconnect.autoconnect()
+			zynthian_gui_config.zyngui.zynautoconnect()
 			if select:
 				self.index=len(self.layers)-1
 				self.select_action(self.index)
