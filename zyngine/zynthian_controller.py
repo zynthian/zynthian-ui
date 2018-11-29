@@ -39,6 +39,7 @@ class zynthian_controller:
 			self.name=self.short_name=name
 		else:
 			self.name=self.short_name=symbol
+
 		self.value=0
 		self.value_default=0
 		self.value_min=0
@@ -48,7 +49,7 @@ class zynthian_controller:
 		self.labels=None
 		self.ticks=None
 		self.is_toggle=False
-		self.is_integer=False
+		self.is_integer=True
 
 		self.midi_chan=None
 		self.midi_cc=None
@@ -64,6 +65,7 @@ class zynthian_controller:
 
 		if options:
 			self.set_options(options)
+
 
 	def set_options(self, options):
 		if 'symbol' in options:
@@ -100,28 +102,49 @@ class zynthian_controller:
 			self.graph_path=options['graph_path']
 		self._configure()
 
+
 	def _configure(self):
 		#Configure Selector Controller
-		if self.ticks and self.labels:
-			#Calculate min, max and range
-			if self.ticks[0]<=self.ticks[-1]:
-				self.value_min=self.ticks[0]
-				self.value_max=self.ticks[-1]
+		if self.labels:
+
+			if self.ticks:
+				#Calculate min, max and range
+				if self.ticks[0]<=self.ticks[-1]:
+					self.value_min=self.ticks[0]
+					self.value_max=self.ticks[-1]
+				else:
+					self.value_min=self.ticks[-1]
+					self.value_max=self.ticks[0]
+
 			else:
-				self.value_min=self.ticks[-1]
-				self.value_max=self.ticks[0]
+				n=len(self.labels)
+				self.ticks=[]
+				if self.is_integer:
+					for i in range(n):
+						self.ticks.append(self.value_min+int(i*(self.value_max+1)/n))
+				else:
+					for i in range(n):
+						self.ticks.append(self.value_min+i*self.value_max/n)
+
 			#Generate dictionary for fast conversion labels=>values
 			self.label2value={}
 			self.value2label={}
 			for i in range(len(self.labels)):
 				self.label2value[str(self.labels[i])]=self.ticks[i]
 				self.value2label[str(self.ticks[i])]=self.labels[i]
+
 		#Common configuration
 		self.value_range=self.value_max-self.value_min
-		self.value_mid=self.value_min+self.value_range/2
+
+		if self.is_integer:
+			self.value_mid=self.value_min+int(self.value_range/2)
+		else:
+			self.value_mid=self.value_min+self.value_range/2
+
 		self._set_value(self.value)
 		if self.value_default is None:
 			self.value_default=self.value
+
 
 	def setup_controller(self, chan, cc, val, maxval=127):
 		self.midi_chan=chan
@@ -135,6 +158,8 @@ class zynthian_controller:
 		self.value_min=0
 		self.value_max=127
 		self.value=val
+		self.is_toggle=False
+		self.is_integer=True
 		# Numeric
 		if isinstance(maxval,int):
 			self.value_max=maxval
@@ -149,8 +174,10 @@ class zynthian_controller:
 				self.labels=maxval
 		self._configure()
 
+
 	def set_midi_chan(self, chan):
 		self.midi_chan=chan
+
 
 	def get_ctrl_array(self):
 		tit=self.short_name
@@ -179,8 +206,10 @@ class zynthian_controller:
 			maxval=self.value_max
 		return [tit,chan,ctrl,val,minval,maxval]
 
+
 	def get_value(self):
 		return self.value
+
 
 	def _set_value(self, val, force_sending=False):
 		if isinstance(val, str):
@@ -188,10 +217,13 @@ class zynthian_controller:
 			return
 
 		elif self.is_toggle:
-			if val<self.value_mid:
-				self.value=self.value_min
+			if val==self.value_min or val==self.value_max:
+				self.value=val
 			else:
-				self.value=self.value_max
+				if val<self.value_mid:
+					self.value=self.value_min
+				else:
+					self.value=self.value_max
 			return
 
 		elif self.ticks:
@@ -207,6 +239,7 @@ class zynthian_controller:
 			self.value=self.value_min
 		else:
 			self.value=val
+
 
 	def set_value(self, val, force_sending=False):
 		self._set_value(val)
@@ -228,6 +261,7 @@ class zynthian_controller:
 					except:
 						logging.warning("Can't send controller '%s' value" % self.symbol)
 
+
 	def get_value2label(self, val=None):
 		if val is None:
 			val=self.value
@@ -237,19 +271,22 @@ class zynthian_controller:
 					for i in reversed(range(len(self.labels))):
 						if val<=self.ticks[i]:
 							return self.labels[i]
-						return self.labels[0]
+					return self.labels[0]
 				else:
 					for i in range(len(self.labels)-1):
+						#logging.debug("V2L testing range {} => {} in {}-{}".format(i,val,self.ticks[i],self.ticks[i+1]))
 						if val<self.ticks[i+1]:
 							return self.labels[i]
-						return self.labels[i+1]
+					return self.labels[i+1]
 			elif self.labels:
-				i=int((val-self.value_min)*(len(self.labels)-1)/self.value_range)
+				i=min(int((val-self.value_min)*len(self.labels)/self.value_range), len(self.labels)-1)
+				#logging.debug("V2L => {} has index {}".format(val,i))
 				return self.labels[i]
 			else:
 				return val
 		except Exception as e:
 			logging.error(e)
+
 
 	def get_label2value(self, label):
 		try:
@@ -258,19 +295,25 @@ class zynthian_controller:
 			elif self.labels:
 				i=self.labels.index(label)
 				if i>=0:
-					return self.value_min+i*self.value_range/(len(self.labels)-1)
+					#logging.debug("L2V => {} has index {}".format(label,i))
+					if self.is_integer and self.value_range==127:
+						return self.value_min+i*128/len(self.labels)
+					else:
+						return self.value_min+i*self.value_range/len(self.labels)
 			else:
 				logging.error("No labels defined")
 		except Exception as e:
 			logging.error(e)
 
+
 	def get_ctrl_midi_val(self):
 		try:
-			val=int(127*(self.value-self.value_min)/(self.value_max-self.value_min))
+			val=min(127, int(127*(self.value-self.value_min)/self.value_range))
 		except Exception as e:
 			logging.error(e)
 			val=0
 		return val
+
 
 	def get_ctrl_osc_val(self):
 		if self.labels and len(self.labels)==2:
@@ -278,9 +321,11 @@ class zynthian_controller:
 			elif self.value=='off': return False
 		return self.value
 
+
 	#--------------------------------------------------------------------------
 	# Snapshots
 	#--------------------------------------------------------------------------
+
 
 	def get_snapshot(self):
 		snapshot = {
@@ -299,6 +344,7 @@ class zynthian_controller:
 
 		return snapshot
 
+
 	def restore_snapshot(self, snapshot):
 		if isinstance(snapshot, dict):
 			self.set_value(snapshot['value'], True)
@@ -311,9 +357,11 @@ class zynthian_controller:
 		else:
 			self.set_value(snapshot,True)
 
+
 	#--------------------------------------------------------------------------
 	# MIDI Learning
 	#--------------------------------------------------------------------------
+
 
 	def midi_learn(self):
 		# Learn only if there is a working engine ...

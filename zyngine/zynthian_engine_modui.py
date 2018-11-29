@@ -429,6 +429,12 @@ class zynthian_engine_modui(zynthian_engine):
 					ctrl_graph=pgraph+'/'+param['symbol']
 					#If there is range info (should be!!) ...
 					if param['valid'] and param['ranges'] and len(param['ranges'])>2:
+
+						if param['properties'] and 'integer' in param['properties']:
+							is_integer=True
+						else:
+							is_integer=False
+
 						#If there is Scale Points info ...
 						if param['scalePoints'] and len(param['scalePoints'])>1:
 							labels=[]
@@ -441,19 +447,23 @@ class zynthian_engine_modui(zynthian_engine):
 								val=param['ranges']['default']
 							except:
 								val=values[0]
+
 							param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
 								'graph_path': ctrl_graph,
 								'value': val,
 								'labels': labels,
 								'ticks': values,
 								'value_min': 0,
-								'value_max': len(values)-1
+								'value_max': len(values)-1,
+								'is_toggle': False,
+								'is_integer': is_integer
 							})
+
 						#If it's a normal controller ...
 						else:
 							pranges=param['ranges']
 							r=pranges['maximum']-pranges['minimum']
-							if param['properties'] and 'integer' in param['properties']:
+							if is_integer:
 								if r==1:
 									val=pranges['default']
 									param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
@@ -473,6 +483,7 @@ class zynthian_engine_modui(zynthian_engine):
 										'value_default': int(pranges['default']),
 										'value_min': int(pranges['minimum']),
 										'value_max': int(pranges['maximum']),
+										'is_toggle': False,
 										'is_integer': True
 									})
 							else:
@@ -481,8 +492,11 @@ class zynthian_engine_modui(zynthian_engine):
 									'value': pranges['default'],
 									'value_default': pranges['default'],
 									'value_min': pranges['minimum'],
-									'value_max': pranges['maximum']
+									'value_max': pranges['maximum'],
+									'is_toggle': False,
+									'is_integer': False
 								})
+
 					#If there is no range info (should be!!) => Default MIDI CC controller with 0-127 range
 					else:
 						param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
@@ -491,12 +505,15 @@ class zynthian_engine_modui(zynthian_engine):
 							'value_default': 0,
 							'value_min': 0,
 							'value_max': 127,
+							'is_toggle': False,
 							'is_integer': True
 						})
+
 					#Add ZController to plugin_zctrl dictionary
 					self.plugin_zctrls[pgraph][param['symbol']]=param['ctrl']
 				except Exception as err:
 					logging.error("Configuring Controllers: "+pgraph+" => "+str(err))
+
 			#Add bypass Zcontroller
 			bypass_zctrl=zynthian_controller(self,'bypass','bypass',{
 				'graph_path': pgraph+'/:bypass',
@@ -508,6 +525,7 @@ class zynthian_engine_modui(zynthian_engine):
 				'is_toggle': True,
 				'is_integer': True
 			})
+
 			self.plugin_zctrls[pgraph][':bypass']=bypass_zctrl
 			pinfo['ports']['control']['input'].insert(0,{'symbol':':bypass', 'ctrl':bypass_zctrl})
 			#Add position info

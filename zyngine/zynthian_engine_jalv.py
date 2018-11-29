@@ -279,7 +279,9 @@ class zynthian_engine_jalv(zynthian_engine):
 							'labels': labels,
 							'ticks': values,
 							'value_min': values[0],
-							'value_max': values[-1]
+							'value_max': values[-1],
+							'is_toggle': info['is_toggle'],
+							'is_integer': info['is_integer']
 						})
 
 					#If it's a normal controller ...
@@ -306,6 +308,7 @@ class zynthian_engine_jalv(zynthian_engine):
 									'value_default': int(info['default']),
 									'value_min': int(info['min']),
 									'value_max': int(info['max']),
+									'is_toggle': False,
 									'is_integer': True
 								})
 						else:
@@ -315,6 +318,8 @@ class zynthian_engine_jalv(zynthian_engine):
 									'value_default': info['default'],
 									'value_min': info['min'],
 									'value_max': info['max'],
+									'is_toggle': False,
+									'is_integer': False
 								})
 
 				#If control info is not OK

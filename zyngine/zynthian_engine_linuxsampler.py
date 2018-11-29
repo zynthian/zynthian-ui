@@ -385,11 +385,13 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 						else:
 							range_max=127
 					ctrl_options={
+						'graph_path': str(fx_info['id'])+'/'+str(i),
 						'value': int(value),
 						'value_default': int(value),
 						'value_min': int(range_min),
 						'value_max': int(range_max),
-						'graph_path': str(fx_info['id'])+'/'+str(i)
+						'is_toggle': False,
+						'is_integer': True
 					}
 					zctrls[ctrl_symbol]=zynthian_controller(self,ctrl_symbol,ctrl_name,ctrl_options)
 					if len(scrctrls)==4:

@@ -488,6 +488,7 @@ class zynthian_gui_controller:
 	def zctrl_sync(self):
 		#List of values (value selector)
 		if self.labels:
+			#logging.debug("ZCTRL SYNC LABEL => {}".format(self.zctrl.get_value2label()))
 			val=self.zctrl.get_label2value(self.zctrl.get_value2label())
 		#Numeric value
 		else:
@@ -498,6 +499,7 @@ class zynthian_gui_controller:
 				val=(self.zctrl.value-self.zctrl.value_min)/self.scale_value
 		#Set value & Update zyncoder
 		self.set_value(val, True, False)
+		#logging.debug("ZCTRL SYNC {} => {}".format(self.title, val))
 
 	def setup_zyncoder(self):
 		self.init_value=None
