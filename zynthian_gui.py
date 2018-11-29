@@ -624,7 +624,9 @@ class zynthian_gui:
 				elif evtype==0x9:
 					#Preload preset (note-on)
 					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
-						self.screens[self.active_screen].preselect_action()
+						self.start_loading()
+						self.screens['preset'].preselect_action()
+						self.stop_loading()
 
 				#Control Change ...
 				elif evtype==0xB:
@@ -774,6 +776,15 @@ class zynthian_gui:
 		self.midi_learn_zctrl=None
 		lib_zyncoder.set_midi_learning_mode(0)
 		self.screens['control'].refresh_midi_bind()
+
+
+	#------------------------------------------------------------------
+	# Autoconnect
+	#------------------------------------------------------------------
+
+
+	def zynautoconnect(self):
+		zynautoconnect.autoconnect()
 
 
 #------------------------------------------------------------------------------
