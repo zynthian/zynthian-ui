@@ -269,6 +269,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return False
 
 
+	def get_midi_chan_zs3_used_indexes(self, midich):
+		res=[]
+		for i in range(128):
+			if self.get_midi_chan_zs3_status(midich,i):
+				res.append(i)
+		return res
+
+
 	def midi_control_change(self, chan, ccnum, ccval):
 		for layer in self.layers:
 			layer.midi_control_change(chan, ccnum, ccval)

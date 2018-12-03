@@ -107,6 +107,7 @@ class zynthian_gui_controller:
 		# Show Controller
 		self.show()
 
+
 	def show(self):
 		#print("SHOW CONTROLLER "+str(self.ctrl)+" => "+str(self.shown))
 		if not self.shown:
@@ -114,10 +115,12 @@ class zynthian_gui_controller:
 			self.canvas.grid(row=self.row,column=self.col,sticky=self.sticky)
 			self.plot_value()
 
+
 	def hide(self):
 		if self.shown:
 			self.shown=False
 			self.canvas.grid_forget()
+
 
 	def set_hl(self):
 		try:
@@ -125,11 +128,13 @@ class zynthian_gui_controller:
 		except:
 			pass
 
+
 	def unset_hl(self):
 		try:
 			self.canvas.itemconfig(self.arc, outline=zynthian_gui_config.color_ctrl_bg_on)
 		except:
 			pass
+
 
 	def calculate_plot_values(self):
 		if self.value>self.max_value: self.value=self.max_value
@@ -179,6 +184,7 @@ class zynthian_gui_controller:
 		#print("VALUE PLOT: %s" % self.value_plot)
 		#print("VALUE PRINT: %s" % self.value_print)
 
+
 	def plot_value_rectangle(self):
 		self.calculate_plot_values()
 		x1=6
@@ -204,6 +210,7 @@ class zynthian_gui_controller:
 				font=(zynthian_gui_config.font_family,self.value_font_size),
 				text=self.value_print)
 
+
 	def erase_value_rectangle(self):
 		if self.rectangle:
 			self.canvas.delete(self.rectangle_bg)
@@ -212,6 +219,7 @@ class zynthian_gui_controller:
 		if self.value_text:
 			self.canvas.delete(self.value_text)
 			self.value_text=None
+
 
 	def plot_value_triangle(self):
 		self.calculate_plot_values()
@@ -238,6 +246,7 @@ class zynthian_gui_controller:
 				font=(zynthian_gui_config.font_family,self.value_font_size),
 				text=self.value_print)
 
+
 	def erase_value_triangle(self):
 		if self.triangle:
 			self.canvas.delete(self.triangle_bg)
@@ -246,6 +255,7 @@ class zynthian_gui_controller:
 		if self.value_text:
 			self.canvas.delete(self.value_text)
 			self.value_text=None
+
 
 	def plot_value_arc(self):
 		self.calculate_plot_values()
@@ -279,12 +289,14 @@ class zynthian_gui_controller:
 				font=(zynthian_gui_config.font_family,self.value_font_size),
 				text=self.value_print)
 
+
 	def erase_value_arc(self):
 		if self.arc:
 			self.canvas.delete(self.arc)
 			self.arc=None
 		x2=self.width
 		y2=self.height
+
 
 	def plot_midi_bind(self, midi_cc, color=zynthian_gui_config.color_ctrl_tx):
 		if not self.midi_bind:
@@ -299,12 +311,16 @@ class zynthian_gui_controller:
 		else:
 			self.canvas.itemconfig(self.midi_bind, text=str(midi_cc), fill=color)
 
+
 	def erase_midi_bind(self):
 		if self.midi_bind:
 			self.canvas.itemconfig(self.midi_bind, text="")
 
+
 	def set_midi_bind(self):
-		if zynthian_gui_config.zyngui.midi_learn_mode:
+		if self.zctrl.midi_cc==0:
+			self.erase_midi_bind()
+		elif zynthian_gui_config.zyngui.midi_learn_mode:
 			self.plot_midi_bind("??",zynthian_gui_config.color_ml)
 		elif zynthian_gui_config.zyngui.midi_learn_zctrl and self.zctrl==zynthian_gui_config.zyngui.midi_learn_zctrl:
 			self.plot_midi_bind("??",zynthian_gui_config.color_hl)
@@ -318,6 +334,7 @@ class zynthian_gui_controller:
 			self.plot_midi_bind(midi_cc)
 		else:
 			self.erase_midi_bind()
+
 
 	def set_title(self, tit):
 		self.title=str(tit)

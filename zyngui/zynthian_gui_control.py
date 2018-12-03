@@ -366,6 +366,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if zynthian_gui_config.zyngui.curlayer:
-			self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_presetpath())
+			if self.mode=='control' and zynthian_gui_config.zyngui.midi_learn_mode:
+				self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_basepath() + " /CTRL MIDI-Learn")
+			else:
+				self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_presetpath())
 
 #------------------------------------------------------------------------------

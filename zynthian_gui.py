@@ -255,6 +255,19 @@ class zynthian_gui:
 		self.hide_screens(exclude='snapshot')
 
 
+	def enter_midi_learn(self):
+		self.midi_learn_mode = True
+		self.midi_learn_zctrl = None
+		self.screens['control'].refresh_midi_bind()
+		self.show_modal('zs3_learn')
+
+
+	def exit_midi_learn(self):
+		self.midi_learn_mode = False
+		self.midi_learn_zctrl = None
+		self.show_screen('control')
+
+
 	def show_control_xy(self, xctrl, yctrl):
 		self.modal_screen='control_xy'
 		self.screens['control_xy'].set_controllers(xctrl, yctrl)
@@ -356,6 +369,7 @@ class zynthian_gui:
 	def zynswitch_bold(self,i):
 		logging.info('Bold Switch '+str(i))
 		self.start_loading()
+
 		if i==0:
 			if self.active_screen=='layer':
 				self.all_sounds_off()
@@ -363,6 +377,7 @@ class zynthian_gui:
 					self.show_screen('control')
 			else:
 				self.show_screen('layer')
+
 		elif i==1:
 			if self.curlayer is not None:
 				if self.active_screen=='preset':
@@ -377,14 +392,15 @@ class zynthian_gui:
 					self.show_screen('admin')
 			else:
 				self.show_screen('admin')
+
 		elif i==2:
-			if self.active_screen=='control' and self.screens['control'].mode=='control':
-				self.midi_learn_mode = True
-				self.midi_learn_zctrl = None
-				self.screens['control'].refresh_midi_bind()
-				self.show_modal('zs3_learn')
+			if self.modal_screen=='snapshot':
+				self.screens['snapshot'].next()
+			elif self.active_screen=='control' and self.screens['control'].mode=='control':
+				self.load_snapshot()
 			else:
 				self.save_snapshot()
+
 		elif i==3:
 			if self.active_screen=='layer' and self.screens['layer'].get_layer_selected() is not None:
 				self.show_modal('layer_options')
@@ -396,6 +412,7 @@ class zynthian_gui:
 	def zynswitch_short(self,i):
 		logging.info('Short Switch '+str(i))
 		self.start_loading()
+
 		if i==0:
 			if self.active_screen=='control':
 				if self.screens['layer'].get_num_layers()>1:
@@ -410,12 +427,11 @@ class zynthian_gui:
 					self.show_screen('control')
 			else:
 				self.zynswitch_bold(i)
+
 		elif i==1:
 			# If in MIDI-learn mode, back to instrument control
 			if self.midi_learn_mode or self.midi_learn_zctrl:
-				self.midi_learn_mode = False
-				self.midi_learn_zctrl = None
-				self.show_screen('control')
+				self.exit_midi_learn()
 			# If in controller map selection, back to instrument control
 			elif self.active_screen=='control' and self.screens['control'].mode=='select':
 				self.screens['control'].set_mode_control()
@@ -444,16 +460,21 @@ class zynthian_gui:
 					screen_back='layer'
 				logging.debug("BACK TO SCREEN => "+screen_back)
 				self.show_screen(screen_back)
+
 		elif i==2:
-			if self.midi_learn_mode or self.midi_learn_zctrl:
-				if self.modal_screen=='zs3_learn':
-					self.show_screen('control')
-				else:
-					self.show_modal('zs3_learn')
-			elif self.modal_screen!='snapshot':
-				self.load_snapshot()
-			else:
+			if self.modal_screen=='snapshot':
 				self.screens['snapshot'].next()
+			elif self.active_screen=='control' and self.screens['control'].mode=='control':
+				if self.midi_learn_mode or self.midi_learn_zctrl:
+					if self.modal_screen=='zs3_learn':
+						self.show_screen('control')
+					else:
+						self.show_modal('zs3_learn')
+				else:
+					self.enter_midi_learn()
+			else:
+				self.load_snapshot()
+
 		elif i==3:
 			if self.modal_screen:
 				self.screens[self.modal_screen].switch_select()

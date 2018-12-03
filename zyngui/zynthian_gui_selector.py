@@ -138,6 +138,8 @@ class zynthian_gui_selector:
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
 		self.loading_canvas.grid(row=1,column=2,sticky="ne")
+		self.loading_canvas.bind("<Button-1>",self.cb_loading_push)
+		self.loading_canvas.bind("<ButtonRelease-1>",self.cb_loading_release)
 
 		# Setup Loading Logo Animation
 		self.loading_index=0
@@ -278,5 +280,19 @@ class zynthian_gui_selector:
 			index += 1
 		if index!=self.index:
 			self.zselector.set_value(index, True)
+
+	def cb_loading_push(self,event):
+		self.loading_push_ts=datetime.now()
+		#logging.debug("LOADING PUSH => %s" % self.canvas_push_ts)
+
+	def cb_loading_release(self,event):
+		dts=(datetime.now()-self.loading_push_ts).total_seconds()
+		logging.debug("LOADING RELEASE => %s" % dts)
+		if dts<0.3:
+			zynthian_gui_config.zyngui.zynswitch_defered('S',2)
+		elif dts>=0.3 and dts<2:
+			zynthian_gui_config.zyngui.zynswitch_defered('B',2)
+		elif dts>=2:
+			zynthian_gui_config.zyngui.zynswitch_defered('L',2)
 
 #------------------------------------------------------------------------------
