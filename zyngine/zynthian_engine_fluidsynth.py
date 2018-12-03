@@ -165,10 +165,14 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 
 	def cmp_presets(self, preset1, preset2):
-		if preset1[3]==preset2[3] and preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
-			return True
-		else:
+		try:
+			if preset1[3]==preset2[3] and preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
+				return True
+			else:
+				return False
+		except:
 			return False
+
 
 	# ---------------------------------------------------------------------------
 	# Specific functions

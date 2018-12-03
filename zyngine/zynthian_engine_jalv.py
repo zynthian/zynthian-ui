@@ -239,9 +239,12 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def cmp_presets(self, preset1, preset2):
-		if preset1[0]==preset2[0]:
-			return True
-		else:
+		try:
+			if preset1[0]==preset2[0]:
+				return True
+			else:
+				return False
+		except:
 			return False
 
 

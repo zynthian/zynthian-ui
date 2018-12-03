@@ -204,11 +204,13 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def cmp_presets(self, preset1, preset2):
-		if preset1[3]==preset2[3]:
-			return True
-		else:
+		try:
+			if preset1[3]==preset2[3]:
+				return True
+			else:
+				return False
+		except:
 			return False
-
 
 	#----------------------------------------------------------------------------
 	# Controllers Managament

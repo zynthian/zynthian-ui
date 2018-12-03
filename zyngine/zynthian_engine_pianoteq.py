@@ -547,10 +547,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def cmp_presets(self, preset1, preset2):
-		if preset1[0]==preset2[0] and preset1[2]==preset2[2]:
-			return True
-		else:
+		try:
+			if preset1[0]==preset2[0] and preset1[2]==preset2[2]:
+				return True
+			else:
+				return False
+		except:
 			return False
+
 
 	#--------------------------------------------------------------------------
 	# Special

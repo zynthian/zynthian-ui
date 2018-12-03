@@ -411,9 +411,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 
 	def cmp_presets(self, preset1, preset2):
-		if preset1[1][2]==preset2[1][2]:
-			return True
-		else:
+		try:
+			if preset1[1][2]==preset2[1][2]:
+				return True
+			else:
+				return False
+		except:
 			return False
 
 
