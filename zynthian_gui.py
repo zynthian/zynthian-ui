@@ -627,9 +627,7 @@ class zynthian_gui:
 					# SubSnapShot (ZS3) MIDI learn ...
 					if self.midi_learn_mode and self.modal_screen=='zs3_learn':
 						self.screens['layer'].save_midi_chan_zs3(chan, pgm)
-						self.midi_learn_mode = False
-						self.midi_learn_zctrl = None
-						self.show_screen('control')
+						self.exit_midi_learn()
 
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
@@ -657,6 +655,7 @@ class zynthian_gui:
 					# MIDI learn => If controller is CC-mapped, use MIDI-router learning
 					if self.midi_learn_zctrl and self.midi_learn_zctrl.midi_cc:
 						self.midi_learn_zctrl.cb_midi_learn(chan,ccnum)
+						self.show_screen('control')
 					# Try layer's zctrls
 					else:
 						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
