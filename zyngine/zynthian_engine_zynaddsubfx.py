@@ -43,7 +43,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# MIDI Controllers
 	_ctrls=[
 		#['volume','/part$i/Pvolume',96],
-		['volume',7,96],
+		['volume',7,120],
 		['panning',10,64],
 		['expression',11,127],
 		['filter cutoff',74,64],
