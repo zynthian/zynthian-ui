@@ -59,7 +59,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 		for k in zynautoconnect.get_audio_input_ports().keys():
 			if k != self.layer.get_jackname():
-				if k in self.layer.audio_out:
+				if k in self.layer.get_audio_out():
 					self.list_data.append((k,k,"-> " + k))
 				else:
 					self.list_data.append((k,k,k))

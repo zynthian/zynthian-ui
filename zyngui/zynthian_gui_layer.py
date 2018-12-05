@@ -165,9 +165,17 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def add_layer_midich(self, midich, select=True):
 		if self.add_layer_eng:
-			self.layers.append(zynthian_layer(self.add_layer_eng,midich,zynthian_gui_config.zyngui))
-			self.fill_list()
+			layer=zynthian_layer(self.add_layer_eng, midich,zynthian_gui_config.zyngui)
+
+			# Try to connect effects ...
+			if len(self.layers)>0 and layer.engine.type=="Audio Effect":
+				self.add_to_fxchain(layer)
+
+			self.layers.append(layer)
 			zynthian_gui_config.zyngui.zynautoconnect()
+
+			self.fill_list()
+
 			if select:
 				self.index=len(self.layers)-1
 				self.select_action(self.index)
@@ -175,8 +183,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def remove_layer(self, i, cleanup_unused_engines=True):
 		if i>=0 and i<len(self.layers):
+			self.drop_from_fxchain(self.layers[i])
+			zynthian_gui_config.zyngui.zynautoconnect()
+
+			zynthian_gui_config.zyngui.zynautoconnect_acquire_lock()
 			self.layers[i].reset()
 			del self.layers[i]
+			zynthian_gui_config.zyngui.zynautoconnect_release_lock()
+
 			if len(self.layers)==0:
 				self.index=0
 				self.curlayer=None
@@ -185,6 +199,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.curlayer=self.layers[self.index]
 			else:
 				self.curlayer=self.layers[self.index-1]
+
 			self.fill_list()
 			self.set_selector()
 			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
@@ -311,27 +326,33 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	# ---------------------------------------------------------------------------
 
 
-	def get_fxchain_end(self, layer=[]):
+	def get_fxchain_ends(self, layer):
+		ends=[]
 		for uslayer in reversed(self.layers):
-			if layer.get_jackname() in exclude:
-				continue
-			if 'system' in layer.get_audio_out() and layer.get_midi_chan()==uslayer.get_midi_chan():
-				return layer
+			if uslayer.get_jackname()!=layer.get_jackname():
+				if layer.get_midi_chan()==uslayer.get_midi_chan() and 'system' in layer.get_audio_out():
+					ends.append(uslayer)
+
+		return ends
 
 
 	def get_fxchain_upstream(self, layer):
+		ups=[]
 		for uslayer in self.layers:
 			if layer.get_jackname() in uslayer.get_audio_out():
-				return layer
+				ups.append(uslayer)
+
+		return ups
 
 
 	def add_to_fxchain(self, layer):
 		try:
-			fxchain_end=self.get_fxchain_end([layer.get_jackname()])
-			if fxchain_end:
-				logging.debug("Adding to FX-chain {} => {}".format(fxchain_end.get_jackname(), layer.get_jackname()))
-				fxchain_end.add_audio_out(layer.get_jackname())
-				fxchain_end.del_audio_out("system")
+			ends=self.get_fxchain_ends(layer)
+			if len(ends)>0:
+				for end in ends:
+					logging.debug("Adding to FX-chain {} => {}".format(end.get_jackname(), layer.get_jackname()))
+					end.add_audio_out(layer.get_jackname())
+					end.del_audio_out("system")
 			else:
 				logging.warning("Can't find the FX chain end ({})".format(layer.get_jackname()))
 
@@ -341,12 +362,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def drop_from_fxchain(self, layer):
 		try:
-			fxchain_upstream=self.get_fxchain_upstream(layer)
-			if fxchain_upstream:
-				logging.debug("Dropping from FX-chain {} => {}".format(fxchain_upstream.get_jackname(), layer.get_jackname()))
-				fxchain_upstream.del_audio_out(layer.get_jackname())
-				for ao in layer.get_audio_out():
-					fxchain_upstream.add_audio_out(ao)
+			ups=self.get_fxchain_upstream(layer)
+			if len(ups)>0:
+				for up in ups:
+					logging.debug("Dropping from FX-chain {} => {}".format(up.get_jackname(), layer.get_jackname()))
+					up.del_audio_out(layer.get_jackname())
+					for ao in layer.get_audio_out():
+						up.add_audio_out(ao)
 
 		except Exception as e:
 			logging.error("Error unchaining effect ({})".format(e))

@@ -293,20 +293,22 @@ class zynthian_gui:
 
 	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
 	def set_active_channel(self):
+		active_chan=-1
+
 		if self.curlayer and zynthian_gui_config.midi_single_active_channel:
 			active_chan=self.curlayer.get_midi_chan()
 			if active_chan is not None:
 				cur_active_chan=lib_zyncoder.get_midi_active_chan()
-				if self.curlayer.engine.type=="MIDI Synth" or cur_active_chan<0:
-					if cur_active_chan!=active_chan:
-						logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan,active_chan))
-						if cur_active_chan>=0:
-							self.all_notes_off_chan(cur_active_chan)
-						lib_zyncoder.set_midi_active_chan(active_chan)
+				if cur_active_chan==active_chan:
+					return
+				else:
+					logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan,active_chan))
+					if cur_active_chan>=0:
+						self.all_notes_off_chan(cur_active_chan)
 			else:
-				lib_zyncoder.set_midi_active_chan(-1)
-		else:
-			lib_zyncoder.set_midi_active_chan(-1)
+				active_chan=-1
+
+		lib_zyncoder.set_midi_active_chan(active_chan)
 
 
 	def get_curlayer_wait(self):
@@ -805,6 +807,16 @@ class zynthian_gui:
 
 	def zynautoconnect(self):
 		zynautoconnect.autoconnect()
+
+
+	def zynautoconnect_acquire_lock(self):
+		#Get Mutex Lock
+		zynautoconnect.acquire_lock()
+
+
+	def zynautoconnect_release_lock(self):
+		#Release Mutex Lock
+		zynautoconnect.release_lock()
 
 
 #------------------------------------------------------------------------------

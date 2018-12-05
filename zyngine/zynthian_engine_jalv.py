@@ -120,10 +120,10 @@ class zynthian_engine_jalv(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 
-	def __init__(self, plugin_name, zyngui=None):
+	def __init__(self, plugin_name, plugin_type, zyngui=None):
 		super().__init__(zyngui)
 
-		self.type = self.plugins_dict[plugin_name]['TYPE']
+		self.type = plugin_type
 		self.name = "Jalv/" + plugin_name
 		self.nickname = "JV/" + plugin_name
 

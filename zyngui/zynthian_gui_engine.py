@@ -136,13 +136,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.zyngines[eng]=zynthian_engine_aeolus(zynthian_gui_config.zyngui)
 			elif eng[0:3]=="JV/":
 				eng="JV/{}".format(self.zyngine_counter)
-				self.zyngines[eng]=zynthian_engine_jalv(info[0],zynthian_gui_config.zyngui)
+				self.zyngines[eng]=zynthian_engine_jalv(info[0], info[2], zynthian_gui_config.zyngui)
 			else:
 				return None
-
-			# Try to connect effects ...
-			if len(self.zyngines)>1 and info[2]=="Audio Effect":
-				self.add_to_fxchain(eng)
 
 		self.zyngine_counter+=1
 		return self.zyngines[eng]
@@ -150,7 +146,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def stop_engine(self, eng, wait=0):
 		if eng in self.zyngines:
-			self.drop_from_fxchain(eng)
 			self.zyngines[eng].stop()
 			del self.zyngines[eng]
 			if wait>0:
@@ -160,57 +155,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def clean_unused_engines(self):
 		for eng in self.zyngines:
 			if len(self.zyngines[eng].layers)==0:
-				self.drop_from_fxchain(eng)
 				self.zyngines[eng].stop()
 				del self.zyngines[eng]
-
-
-	def get_fxchain_end(self, exclude=[]):
-		for eng in reversed(self.zyngines):
-			if eng in exclude:
-				continue
-			if 'system' in self.zyngines[eng].audio_out:
-				return self.zyngines[eng]
-
-
-	def get_fxchain_upstream(self, zyngine):
-		for eng in self.zyngines:
-			if zyngine.jackname in self.zyngines[eng].audio_out:
-				return self.zyngines[eng]
-
-
-	def add_to_fxchain(self, eng):
-		try:
-			#fxchain_end=list(self.zyngines.values())[-2]
-			fxchain_end=self.get_fxchain_end([eng])
-			if fxchain_end:
-				logging.debug("Adding to FX-chain {} => {}".format(fxchain_end.nickname, self.zyngines[eng].nickname))
-				fxchain_end.add_audio_out(self.zyngines[eng].jackname)
-				fxchain_end.del_audio_out("system")
-			else:
-				logging.warning("Can't find the FX chain end ({})".format(eng))
-
-		except Exception as e:
-			logging.error("Error chaining effect ({})".format(e))
-
-
-	def drop_from_fxchain(self, eng):
-		try:
-			fxchain_upstream=self.get_fxchain_upstream(self.zyngines[eng])
-			if fxchain_upstream:
-				logging.debug("Dropping from FX-chain {} => {}".format(fxchain_upstream.nickname, self.zyngines[eng].nickname))
-				fxchain_upstream.del_audio_out(self.zyngines[eng].jackname)
-				for ao in self.zyngines[eng].audio_out:
-					fxchain_upstream.add_audio_out(ao)
-
-		except Exception as e:
-			logging.error("Error unchaining effect ({})".format(e))
-
-
-	def get_engine_by_jackname(self, jackname):
-		for zyngine in self.zyngines:
-			if zyngine.jackname==jackname:
-				return zyngine
 
 
 	def get_engine_info(self, eng):

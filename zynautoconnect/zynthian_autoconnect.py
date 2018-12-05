@@ -28,7 +28,7 @@ import jack
 import copy
 import logging
 from time import sleep
-from threading  import Thread
+from threading  import Thread, Lock
 from collections import OrderedDict
 
 # Zynthian specific modules
@@ -45,9 +45,6 @@ logger.setLevel(logging.ERROR)
 #-------------------------------------------------------------------------------
 # Define some Constants and Global Variables
 #-------------------------------------------------------------------------------
-
-#Active Synth Engine List
-zyngine_list = []
 
 refresh_time=2
 jclient=None
@@ -123,7 +120,10 @@ def midi_autoconnect():
 	#logger.debug("QMidiNet Input Port: {}".format(qmidinet_out))
 	#logger.debug("QMidiNet Output Port: {}".format(qmidinet_in))
 
-	#Get Synth Engines MIDI input ports
+	#Get Engines list from UI
+	zyngine_list=zynthian_gui_config.zyngui.screens["engine"].zyngines
+
+	#Get Engines MIDI input ports
 	engines_in=[]
 	for k, zyngine in zyngine_list.items():
 		#logger.debug("zyngine: {}".format(zyngine.jackname))
@@ -259,6 +259,9 @@ def audio_autoconnect():
 	except:
 		pass
 
+	#Get layers list from UI
+	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
+
 	#Connect Synth Engines to assigned outputs
 	for i, layer in enumerate(layers_list):
 		ports=jclient.get_ports(layer.get_jackname(), is_output=True, is_audio=True, is_physical=False)
@@ -313,12 +316,16 @@ def get_audio_input_ports():
 
 
 def autoconnect():
-	global zyngine_list
-	global layers_list
-	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
-	zyngine_list=zynthian_gui_config.zyngui.screens["engine"].zyngines
+	#Get Mutex Lock 
+	acquire_lock()
+
+	#Autoconnect
 	midi_autoconnect()
 	audio_autoconnect()
+
+	#Release Mutex Lock
+	release_lock()
+
 
 def autoconnect_thread():
 	while not exit_flag:
@@ -328,20 +335,37 @@ def autoconnect_thread():
 			logger.error(err)
 		sleep(refresh_time)
 
+
+def acquire_lock():
+	lock.acquire()
+
+
+def release_lock():
+	lock.release()
+
+
 def start(rt=2):
-	global refresh_time, exit_flag, jclient, thread
+	global refresh_time, exit_flag, jclient, thread, lock
 	refresh_time=rt
 	exit_flag=False
+
 	try:
 		jclient=jack.Client("Zynthian_autoconnect")
 	except Exception as e:
 		logger.error("Failed to connect with Jack Server: {}".format(e))
+
+	# Create Lock object (Mutex) to avoid concurrence problems
+	lock=Lock();
+
+	# Start Autoconnect Thread
 	thread=Thread(target=autoconnect_thread, args=())
 	thread.daemon = True # thread dies with the program
 	thread.start()
 
+
 def stop():
 	global exit_flag
 	exit_flag=True
+
 
 #------------------------------------------------------------------------------

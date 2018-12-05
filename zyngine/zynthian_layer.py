@@ -39,7 +39,7 @@ class zynthian_layer:
 		self.engine = engine
 		self.midi_chan = midi_chan
 
-		self.jackname = engine.jackname
+		self.jackname = None
 		self.audio_out = ["system"]
 
 		self.bank_list = []
