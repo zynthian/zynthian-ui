@@ -103,7 +103,6 @@ class zynthian_engine:
 		self.osc_server_port = None
 		self.osc_server_url = None
 
-		self.audio_out = ["system"]
 		self.options = {
 			'clone': True,
 			'transpose': True,
@@ -348,10 +347,12 @@ class zynthian_engine:
 
 	def add_layer(self, layer):
 		self.layers.append(layer)
+		layer.jackname = self.jackname
 
 
 	def del_layer(self, layer):
 		self.layers.remove(layer)
+		layer.jackname = None
 
 
 	def del_all_layers(self):
@@ -483,34 +484,6 @@ class zynthian_engine:
 
 	def get_path(self, layer):
 		return self.nickname
-
-
-	# ---------------------------------------------------------------------------
-	# Audio Routing
-	# ---------------------------------------------------------------------------
-
-
-	def add_audio_out(self, jackname):
-		if jackname not in self.audio_out:
-			self.audio_out.append(jackname)
-
-
-	def del_audio_out(self, jackname):
-		try:
-			self.audio_out.remove(jackname)
-		except:
-			pass
-
-
-	def toggle_audio_out(self, jackname):
-		if jackname not in self.audio_out:
-			self.audio_out.append(jackname)
-		else:
-			self.audio_out.remove(jackname)
-
-
-	def reset_audio_out(self):
-		self.audio_out=["system"]
 
 
 	# ---------------------------------------------------------------------------

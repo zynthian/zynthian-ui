@@ -46,20 +46,20 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 class zynthian_gui_audio_out(zynthian_gui_selector):
 
 	def __init__(self):
-		self.zyngine=None
+		self.layer=None
 		super().__init__('Audio Out', True)
 
 
-	def set_engine(self, zyngine):
-		self.zyngine=zyngine
+	def set_layer(self, layer):
+		self.layer = layer
 
 
 	def fill_list(self):
-		self.list_data=[]
+		self.list_data = []
 
 		for k in zynautoconnect.get_audio_input_ports().keys():
-			if k != self.zyngine.jackname:
-				if k in self.zyngine.audio_out:
+			if k != self.layer.get_jackname():
+				if k in self.layer.audio_out:
 					self.list_data.append((k,k,"-> " + k))
 				else:
 					self.list_data.append((k,k,k))
@@ -85,13 +85,13 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 
 	def select_action(self, i):
-		self.zyngine.toggle_audio_out(self.list_data[i][1])
+		self.layer.toggle_audio_out(self.list_data[i][1])
 		self.fill_list()
 
 
 	def set_select_path(self):
-		if self.zyngine:
-			self.select_path.set("Audio from {} to ...".format(self.zyngine.jackname))
+		if self.layer and self.layer.get_jackname():
+			self.select_path.set("Audio from {} to ...".format(self.layer.get_jackname()))
 		else:
 			self.select_path.set("Audio Routing ...")
 

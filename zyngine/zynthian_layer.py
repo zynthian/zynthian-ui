@@ -39,6 +39,9 @@ class zynthian_layer:
 		self.engine = engine
 		self.midi_chan = midi_chan
 
+		self.jackname = engine.jackname
+		self.audio_out = ["system"]
+
 		self.bank_list = []
 		self.bank_index = 0
 		self.bank_name = None
@@ -184,15 +187,18 @@ class zynthian_layer:
 
 			if self.preload_info:
 				if not self.engine.cmp_presets(self.preload_info,self.preset_info):
-					set_engine_needed=True
-					self.preload_index=i
-					self.preload_name=self.preset_name
-					self.preload_info=self.preset_info
+					set_engine_needed = True
+					self.preload_index = i
+					self.preload_name = self.preset_name
+					self.preload_info = self.preset_info
 				else:
-					set_engine_needed=False
+					set_engine_needed = False
 
 			elif last_preset_index!=i or not last_preset_name:
-				set_engine_needed=True
+				set_engine_needed = True
+
+			else:
+				set_engine_needed = False
 
 			if set_engine and set_engine_needed:
 				#TODO => Review this!!
@@ -462,6 +468,46 @@ class zynthian_layer:
 
 		else:
 			return False
+
+
+	# ---------------------------------------------------------------------------
+	# Audio Routing:
+	# ---------------------------------------------------------------------------
+
+
+	def get_jackname(self):
+		return self.jackname
+		
+
+	def get_audio_out(self):
+		return self.audio_out
+
+
+	def set_audio_out(self, ao):
+		self.audio_out=ao
+
+
+	def add_audio_out(self, jackname):
+		if jackname not in self.audio_out:
+			self.audio_out.append(jackname)
+
+
+	def del_audio_out(self, jackname):
+		try:
+			self.audio_out.remove(jackname)
+		except:
+			pass
+
+
+	def toggle_audio_out(self, jackname):
+		if jackname not in self.audio_out:
+			self.audio_out.append(jackname)
+		else:
+			self.audio_out.remove(jackname)
+
+
+	def reset_audio_out(self):
+		self.audio_out=["system"]
 
 
 	# ---------------------------------------------------------------------------

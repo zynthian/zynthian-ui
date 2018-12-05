@@ -260,18 +260,18 @@ def audio_autoconnect():
 		pass
 
 	#Connect Synth Engines to assigned outputs
-	for k, zyngine in zyngine_list.items():
-		ports=jclient.get_ports(zyngine.jackname, is_output=True, is_audio=True, is_physical=False)
+	for i, layer in enumerate(layers_list):
+		ports=jclient.get_ports(layer.get_jackname(), is_output=True, is_audio=True, is_physical=False)
 		if ports:
 			if len(ports)==1:
 				ports.append(ports[0])
 
-			#logger.debug("Autoconnecting Engine {} ...".format(zyngine.jackname))
+			#logger.debug("Autoconnecting Engine {} ...".format(layer.get_jackname()))
 			
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:
 				try:
-					if ao in zyngine.audio_out:
+					if ao in layer.get_audio_out():
 						#logger.debug("Connecting to {} ...".format(ao))
 						jclient.connect(ports[0],input_ports[ao][0])
 						jclient.connect(ports[1],input_ports[ao][1])
@@ -314,6 +314,8 @@ def get_audio_input_ports():
 
 def autoconnect():
 	global zyngine_list
+	global layers_list
+	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 	zyngine_list=zynthian_gui_config.zyngui.screens["engine"].zyngines
 	midi_autoconnect()
 	audio_autoconnect()

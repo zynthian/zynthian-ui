@@ -289,21 +289,67 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def get_audio_routing(self):
 		res={}
-		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
-			res[zyngine.jackname]=zyngine.audio_out
+		for i, layer in enumerate(self.layers):
+			res[layer.get_jackname()]=layer.get_audio_out()
 		return res
 
 
 	def set_audio_routing(self, audio_routing=None):
-		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
+		for i, layer in enumerate(self.layers):
 			try:
-				zyngine.audio_out=audio_routing[zyngine.jackname]
+				layer.set_audio_out(audio_routing[layer.get_jackname()])
 			except:
-				zyngine.audio_out=["system"]
+				layer.set_audio_out(["system"])
 
 
 	def reset_audio_routing(self):
 		self.set_audio_routing()
+
+
+	# ---------------------------------------------------------------------------
+	# FX-Chain
+	# ---------------------------------------------------------------------------
+
+
+	def get_fxchain_end(self, layer=[]):
+		for uslayer in reversed(self.layers):
+			if layer.get_jackname() in exclude:
+				continue
+			if 'system' in layer.get_audio_out() and layer.get_midi_chan()==uslayer.get_midi_chan():
+				return layer
+
+
+	def get_fxchain_upstream(self, layer):
+		for uslayer in self.layers:
+			if layer.get_jackname() in uslayer.get_audio_out():
+				return layer
+
+
+	def add_to_fxchain(self, layer):
+		try:
+			fxchain_end=self.get_fxchain_end([layer.get_jackname()])
+			if fxchain_end:
+				logging.debug("Adding to FX-chain {} => {}".format(fxchain_end.get_jackname(), layer.get_jackname()))
+				fxchain_end.add_audio_out(layer.get_jackname())
+				fxchain_end.del_audio_out("system")
+			else:
+				logging.warning("Can't find the FX chain end ({})".format(layer.get_jackname()))
+
+		except Exception as e:
+			logging.error("Error chaining effect ({})".format(e))
+
+
+	def drop_from_fxchain(self, layer):
+		try:
+			fxchain_upstream=self.get_fxchain_upstream(layer)
+			if fxchain_upstream:
+				logging.debug("Dropping from FX-chain {} => {}".format(fxchain_upstream.get_jackname(), layer.get_jackname()))
+				fxchain_upstream.del_audio_out(layer.get_jackname())
+				for ao in layer.get_audio_out():
+					fxchain_upstream.add_audio_out(ao)
+
+		except Exception as e:
+			logging.error("Error unchaining effect ({})".format(e))
 
 
 	# ---------------------------------------------------------------------------
@@ -314,13 +360,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def get_extended_config(self):
 		xconfigs={}
 		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
-			xconfigs[zyngine.jackname]=zyngine.get_extended_config()
+			xconfigs[zyngine.nickname]=zyngine.get_extended_config()
 		return xconfigs
 
 
 	def set_extended_config(self, xconfigs):
 		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
-			zyngine.set_extended_config(xconfigs[zyngine.jackname])
+			zyngine.set_extended_config(xconfigs[zyngine.nickname])
 
 
 	#----------------------------------------------------------------------------
