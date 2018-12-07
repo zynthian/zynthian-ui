@@ -257,11 +257,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def set_midi_chan_zs3(self, midich, zs3_index):
+		selected = False
 		for layer in self.layers:
 			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
-				if layer.restore_zs3(zs3_index):
+				if layer.restore_zs3(zs3_index) and not selected:
 					try:
 						self.select_action(self.layers.index(layer))
+						selected = True
 					except Exception as e:
 						logging.error("Can't select layer => {}".format(e))
 
