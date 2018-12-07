@@ -428,6 +428,7 @@ class zynthian_layer:
 				'preset_index': self.preset_index,
 				'preset_name': self.preset_name,
 				'preset_info': self.preset_info,
+				'ctrl_screen_active': self.ctrl_screen_active,
 				'controllers_dict': {}
 			}
 
@@ -461,6 +462,8 @@ class zynthian_layer:
 
 			#Set controller values
 			sleep(0.3)
+			if 'ctrl_screen_active' in zs3:
+				self.ctrl_screen_active=zs3['ctrl_screen_active']
 			for k in zs3['controllers_dict']:
 				self.controllers_dict[k].restore_snapshot(zs3['controllers_dict'][k])
 
