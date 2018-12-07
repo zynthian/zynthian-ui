@@ -90,8 +90,8 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		if self.layer and self.layer.get_jackname():
-			self.select_path.set("Audio from {} to ...".format(self.layer.get_jackname()))
+		if self.layer and self.layer.get_basepath():
+			self.select_path.set("Audio from {} to ...".format(self.layer.get_basepath()))
 		else:
 			self.select_path.set("Audio Routing ...")
 
