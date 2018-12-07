@@ -223,7 +223,7 @@ class zynthian_layer:
 			self.preload_name=self.preset_list[i][2]
 			self.preload_info=copy.deepcopy(self.preset_list[i])
 			logging.info("Preset Preloaded: %s (%d)" % (self.preload_name,i))
-			self.engine.set_preset(self, self.preload_info,True)
+			self.engine.set_preset(self,self.preload_info,True)
 			return True
 		return False
 
@@ -236,7 +236,7 @@ class zynthian_layer:
 			self.preload_name=self.preset_name
 			self.preload_info=self.preset_info
 			logging.info("Restore Preset: %s (%d)" % (self.preset_name,self.preset_index))
-			self.engine.set_preset(self, self.preset_info)
+			self.engine.set_preset(self,self.preset_info)
 			return True
 		return False
 
@@ -318,6 +318,13 @@ class zynthian_layer:
 		return zctrls
 
 
+	def send_ctrl_midi_cc(self):
+		for k, zctrl in self.controllers_dict.items():
+			if zctrl.midi_cc:
+				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
+				logging.debug("Sending MIDI CC{}={} for {}".format(zctrl.midi_cc, zctrl.value, k))
+
+
 	#----------------------------------------------------------------------------
 	# MIDI CC processing
 	#----------------------------------------------------------------------------
@@ -326,10 +333,10 @@ class zynthian_layer:
 	def midi_control_change(self, chan, ccnum, ccval):
 		if self.engine:
 			if self.listen_midi_cc and chan==self.midi_chan:
-				for k in self.controllers_dict:
-					if self.controllers_dict[k].midi_cc==ccnum:
+				for k, zctrl in self.controllers_dict.items():
+					if zctrl.midi_cc==ccnum:
 						try:
-							self.engine.midi_control_change(self.controllers_dict[k], ccval)
+							self.engine.midi_control_change(zctrl, ccval)
 						except:
 							pass
 

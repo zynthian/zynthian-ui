@@ -158,6 +158,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			midi_prg=preset[1][2]
 			logging.debug("Set Preset => Layer: {}, SoundFont: {}, Bank: {}, Program: {}".format(layer.part_i, sfi, midi_bank, midi_prg))
 			self.proc_cmd("select {} {} {} {}".format(layer.part_i, sfi, midi_bank, midi_prg))
+			layer.send_ctrl_midi_cc()
 			return True
 		else:
 			logging.warning("SoundFont {} is not loaded".format(sfi))

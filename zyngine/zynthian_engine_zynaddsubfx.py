@@ -45,7 +45,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		#['volume','/part$i/Pvolume',96],
 		['volume',7,115],
 		['panning',10,64],
-		['expression',11,127],
+		#['expression',11,127],
 		['filter cutoff',74,64],
 		['filter resonance',71,64],
 		['panning depth','/part$i/ctl/panning.depth',64],
@@ -78,13 +78,12 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# Controller Screens
 	_ctrl_screens=[
 		['main',['volume','panning','filter cutoff','filter resonance']],
-		['mode',['volume','sustain on/off','legato on/off','poly on/off']],
-		#['mode',['volume','drum on/off','legato on/off','poly on/off']],
+		['mode',['drum on/off','sustain on/off','legato on/off','poly on/off']],
 		['portamento',['portamento on/off','portamento time','portamento up/down','portamento thresh']],
 		['modulation',['modulation','modulation amplitude','modulation depth','modulation exp']],
 		['resonance',['resonance center','res.center depth','resonance bandwidth','res.bw depth']],
 		['bandwidth',['volume','bandwidth','bandwidth depth','bandwidth exp']],
-		['velocity',['volume','expression','velocity sens.','velocity offs.']],
+		['velocity',['volume','panning','velocity sens.','velocity offs.']],
 		['depth',['volume','panning depth','filter.cutoff depth','filter.Q depth']]
 	]
 
@@ -214,6 +213,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		while self.loading and i<100: 
 			sleep(0.1)
 			i=i+1
+		layer.send_ctrl_midi_cc()
 		return True
 
 
