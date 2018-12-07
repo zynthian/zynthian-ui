@@ -89,8 +89,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		zynthian_gui_config.zyngui.show_modal('transpose')
 
 	def audio_routing(self):
-		zyngine=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index].engine
-		zynthian_gui_config.zyngui.screens['audio_out'].set_engine(zyngine)
+		layer=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index]
+		zynthian_gui_config.zyngui.screens['audio_out'].set_layer(layer)
 		zynthian_gui_config.zyngui.show_modal('audio_out')
 
 	def remove_layer(self):
