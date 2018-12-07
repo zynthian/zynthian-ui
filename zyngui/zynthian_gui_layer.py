@@ -330,7 +330,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		ends=[]
 		for uslayer in reversed(self.layers):
 			if uslayer.get_jackname()!=layer.get_jackname():
-				if layer.get_midi_chan()==uslayer.get_midi_chan() and 'system' in layer.get_audio_out():
+				if layer.get_midi_chan()==uslayer.get_midi_chan() and 'system' in uslayer.get_audio_out():
 					ends.append(uslayer)
 
 		return ends
