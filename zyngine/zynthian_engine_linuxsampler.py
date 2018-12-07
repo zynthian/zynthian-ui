@@ -323,7 +323,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	def ls_init(self):
 		try:
 			# Reset
-			self.lscp_send_single("RESET")layer.part_i
+			self.lscp_send_single("RESET")
 
 			# Config Audio JACK Device 0
 			self.ls_audio_device_id=self.lscp_send_single("CREATE AUDIO_OUTPUT_DEVICE JACK ACTIVE='true' CHANNELS='16' NAME='{}'".format(self.jackname))
