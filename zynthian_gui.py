@@ -336,8 +336,8 @@ class zynthian_gui:
 				logging.info("SETUP GPIO SWITCH "+str(i)+" => "+str(pin))
 
 			logging.info("SWITCHES MIDI INIT...")
-			#TODO: TEST AND SOLVE!
-			#lib_zyncoder.setup_zynswitch_midi(1,0,64)
+			#Configure 5th zynswitch as Sustain Pedal CC 
+			lib_zyncoder.setup_zynswitch_midi(4,0,64)
 
 
 	def zynswitches(self):
