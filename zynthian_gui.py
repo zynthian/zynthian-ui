@@ -309,6 +309,7 @@ class zynthian_gui:
 				active_chan=-1
 
 		lib_zyncoder.set_midi_active_chan(active_chan)
+		self.zynswitches_midi_setup(active_chan)
 
 
 	def get_curlayer_wait(self):
@@ -335,9 +336,14 @@ class zynthian_gui:
 				lib_zyncoder.setup_zynswitch(i,pin)
 				logging.info("SETUP GPIO SWITCH "+str(i)+" => "+str(pin))
 
-			logging.info("SWITCHES MIDI INIT...")
-			#Configure 5th zynswitch as Sustain Pedal CC 
-			lib_zyncoder.setup_zynswitch_midi(4,0,64)
+
+	def zynswitches_midi_setup(self, midi_chan):
+		#logging.info("SWITCHES MIDI SETUP...")
+		#Configure 5th zynswitch as Sustain Pedal CC
+		lib_zyncoder.setup_zynswitch_midi(4,midi_chan,64)
+		#Configure 6th and 7th zynswitches as PANIC CCs
+		lib_zyncoder.setup_zynswitch_midi(4,midi_chan,120)
+		lib_zyncoder.setup_zynswitch_midi(4,midi_chan,123)
 
 
 	def zynswitches(self):
