@@ -74,7 +74,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 		#Add list of layers
-		for i,layer in enumerate(self.layers):
+		for i,layer in enumerate(self.get_fxchain_roots()):
 			self.list_data.append((str(i+1),i,layer.get_presetpath()))
 		#Add fixed entries
 		if len(self.layers)>0:
@@ -328,11 +328,42 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	# ---------------------------------------------------------------------------
 
 
+	def get_fxchain_roots(self):
+		roots = []
+		for layer in self.layers:
+			if layer.engine.type=="MIDI Synth":
+				roots.append(layer)
+
+		return roots
+
+
+	def get_fxchain_layers(self, layer=None):
+		if layer is None:
+			layer=self.curlayer
+
+		fxchain_layers = [layer]
+		self._get_fxchain_layers(fxchain_layers)
+
+		return fxchain_layers
+
+
+	def _get_fxchain_layers(self, fxchain_layers):
+		if len(fxchain_layers)==0:
+			fxchain_layers.append(self.curlayer)
+		for layer in self.layers:
+			last_layer = fxchain_layers[-1]
+			if layer not in fxchain_layers and layer.get_midi_chan() == last_layer.get_midi_chan():
+				if layer.get_jackname() in last_layer.get_audio_out():
+					fxchain_layers.append(layer)
+					self.get_fxchain_layers(fxchain_layers)
+					return
+
+
 	def get_fxchain_ends(self, layer):
 		ends=[]
 		for uslayer in reversed(self.layers):
-			if uslayer.get_jackname()!=layer.get_jackname():
-				if layer.get_midi_chan()==uslayer.get_midi_chan() and 'system' in uslayer.get_audio_out():
+			if layer.get_midi_chan()==uslayer.get_midi_chan():
+				if uslayer.get_jackname()!=layer.get_jackname() and 'system' in uslayer.get_audio_out():
 					ends.append(uslayer)
 
 		return ends

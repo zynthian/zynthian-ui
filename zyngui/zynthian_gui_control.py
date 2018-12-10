@@ -64,6 +64,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	x_zctrl=None
 	y_zctrl=None
 
+
 	def __init__(self):
 		super().__init__('Controllers',False)
 		# Create Lock object to avoid concurrence problems
@@ -77,9 +78,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
 
+
 	def show(self):
 		super().show()
 		self.click_listbox()
+
 
 	def hide(self):
 		if self.shown:
@@ -87,20 +90,31 @@ class zynthian_gui_control(zynthian_gui_selector):
 			for zc in self.zgui_controllers: zc.hide()
 			if self.zselector: self.zselector.hide()
 
+
 	def fill_list(self):
-		self.list_data=[]
-		i=0
-		for cscr in zynthian_gui_config.zyngui.curlayer.get_ctrl_screens():
-			self.list_data.append((cscr,i,cscr))
-			i=i+1
-		self.index=zynthian_gui_config.zyngui.curlayer.get_active_screen_index()
+		self.list_data = []
+		i = 0
+		self.layers = zynthian_gui_config.zyngui.screens['layer'].get_fxchain_layers()
+		for layer in self.layers:
+			for cscr in layer.get_ctrl_screens():
+				self.list_data.append((cscr,i,cscr))
+				i = i+1
+		#self.index = zynthian_gui_config.zyngui.curlayer.get_active_screen_index()
+		self.index = 0
 		super().fill_list()
+
 
 	def set_selector(self):
 		if self.mode=='select': super().set_selector()
 
-	#def get_controllers(self):
-	#	return 
+
+	def get_ctrl_screen(self, i):
+		n=0
+		for layer in self.layers:
+			for ctrl_screen in layer.get_ctrl_screens():
+				pass	#TODO AKI ME KEDE IMPLEMENTANDO LAS CONTROL_SCREENS + FX_CHAIN
+		return
+
 
 	def set_controller_screen(self):
 		#Get Mutex Lock 
