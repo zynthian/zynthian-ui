@@ -330,20 +330,19 @@ class zynthian_gui:
 	def zynswitches_init(self):
 		if lib_zyncoder:
 			ts=datetime.now()
-			logging.info("SWITCHES INIT...")
+			logging.info("ZYNSWITCHES INIT...")
 			for i,pin in enumerate(zynthian_gui_config.zynswitch_pin):
 				self.dtsw[i]=ts
 				lib_zyncoder.setup_zynswitch(i,pin)
-				logging.info("SETUP GPIO SWITCH "+str(i)+" => "+str(pin))
+				logging.info("SETUP ZYNSWITCH {} => pin {}".format(i, pin))
 
 
 	def zynswitches_midi_setup(self, midi_chan):
-		#logging.info("SWITCHES MIDI SETUP...")
-		#Configure 5th zynswitch as Sustain Pedal CC
-		lib_zyncoder.setup_zynswitch_midi(4,midi_chan,64)
-		#Configure 6th and 7th zynswitches as PANIC CCs
-		lib_zyncoder.setup_zynswitch_midi(4,midi_chan,120)
-		lib_zyncoder.setup_zynswitch_midi(4,midi_chan,123)
+		logging.info("SWITCHES MIDI SETUP...")
+
+		#Configure 8th zynswitch as Sustain Pedal CC
+		lib_zyncoder.setup_zynswitch_midi(7, midi_chan, 64)
+		logging.info("SETUP MIDI ZYNSWITCH {} => CH#{}, CC#{} (Sustain Pedal)".format(7, midi_chan, 64))
 
 
 	def zynswitches(self):
@@ -367,14 +366,33 @@ class zynthian_gui:
 	def zynswitch_long(self,i):
 		logging.info('Looooooooong Switch '+str(i))
 		self.start_loading()
+
+		# Standard 4 ZynSwitches
 		if i==0:
 			pass
+
 		elif i==1:
 			self.show_screen('admin')
+
 		elif i==2:
 			pass
+
 		elif i==3:
 			self.screens['admin'].power_off()
+
+		# Extra ZynSwitches (AllInOne)
+		elif i==4:
+			self.all_sounds_off()
+
+		elif i==5:
+			pass
+
+		elif i==6:
+			pass
+
+		elif i==7:
+			pass
+
 		self.stop_loading()
 
 
@@ -382,6 +400,7 @@ class zynthian_gui:
 		logging.info('Bold Switch '+str(i))
 		self.start_loading()
 
+		# Standard 4 ZynSwitches
 		if i==0:
 			if self.active_screen=='layer':
 				self.all_sounds_off()
@@ -418,6 +437,20 @@ class zynthian_gui:
 				self.show_modal('layer_options')
 			else:
 				self.screens[self.active_screen].switch_select()
+
+		# Extra ZynSwitches (AllInOne)
+		elif i==4:
+			self.all_sounds_off()
+
+		elif i==5:
+			pass
+
+		elif i==6:
+			pass
+
+		elif i==7:
+			pass
+
 		self.stop_loading()
 
 
@@ -425,6 +458,7 @@ class zynthian_gui:
 		logging.info('Short Switch '+str(i))
 		self.start_loading()
 
+		# Standard 4 ZynSwitches
 		if i==0:
 			if self.active_screen=='control':
 				if self.screens['layer'].get_num_layers()>1:
@@ -495,6 +529,20 @@ class zynthian_gui:
 				logging.info("Next Control Screen")
 			else:
 				self.screens[self.active_screen].switch_select()
+
+		# Extra ZynSwitches (AllInOne)
+		elif i==4:
+			self.all_notes_off()
+
+		elif i==5:
+			pass
+
+		elif i==6:
+			pass
+
+		elif i==7:
+			pass
+
 		self.stop_loading()
 
 
