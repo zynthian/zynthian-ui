@@ -334,7 +334,7 @@ class zynthian_gui:
 			for i,pin in enumerate(zynthian_gui_config.zynswitch_pin):
 				self.dtsw[i]=ts
 				lib_zyncoder.setup_zynswitch(i,pin)
-				logging.info("SETUP ZYNSWITCH {} => pin {}".format(i, pin))
+				logging.info("SETUP ZYNSWITCH {} => wpGPIO {}".format(i, pin))
 
 
 	def zynswitches_midi_setup(self, midi_chan):
