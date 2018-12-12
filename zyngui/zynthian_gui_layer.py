@@ -115,7 +115,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		elif self.list_data[self.index][0]=='ALL_SOUNDS_OFF':
 			zynthian_gui_config.zyngui.all_sounds_off()
 		else:
-			self.curlayer=self.layers[self.index]
+			self.curlayer=self.root_layers[self.index]
 			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
 			# If there is an preset selection for the active layer ...
 			if self.curlayer.get_preset_name():
@@ -344,6 +344,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			for layer in self.layers:
 				if layer.midi_chan==chan:
 					roots.append(layer)
+					break
 
 		return roots
 
@@ -363,9 +364,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_fxchain_root(self, layer):
-		layers=self.get_fxchain_layers(layer)
-		if layers:
-			return layers[0]
+		for l in self.layers:
+			if l.midi_chan==layer.midi_chan:
+				return l
 
 
 	def get_fxchain_ends(self, layer):
