@@ -129,6 +129,12 @@ elif wiring_layout=="MCP23017_ENCODERS":
 	if not zyncoder_pin_b: zyncoder_pin_b=[101,104,109,112]
 	if not zynswitch_pin: zynswitch_pin=[100,103,108,111]
 	select_ctrl=3
+elif wiring_layout=="MCP23017_EXTRA":
+	if not zyncoder_pin_a: zyncoder_pin_a=[102,105,110,113]
+	if not zyncoder_pin_b: zyncoder_pin_b=[101,104,109,112]
+	if not zynswitch_pin: zynswitch_pin=[100,103,108,111,106,107,114,115]
+	select_ctrl=3
+
 # Desktop Development & Emulation
 elif wiring_layout=="EMULATOR":
 	if not zyncoder_pin_a: zyncoder_pin_a=[4,5,6,7]
