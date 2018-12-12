@@ -55,6 +55,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def __init__(self):
 		self.layers = []
+		self.root_layers = []
 		self.curlayer = None
 		self.add_layer_eng = None
 		self.last_snapshot_fpath = None
@@ -73,12 +74,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data=[]
-		#Add list of layers
-		for i,layer in enumerate(self.get_fxchain_roots()):
+
+		#Add list of root layers
+		self.root_layers=self.get_fxchain_roots()
+		for i,layer in enumerate(self.root_layers):
 			self.list_data.append((str(i+1),i,layer.get_presetpath()))
+
 		#Add fixed entries
-		if len(self.layers)>0:
+		if len(self.root_layers)>0:
 			self.list_data.append((None,len(self.list_data),"--------------------------"))
+
 		self.list_data.append(('NEW_SYNTH',len(self.list_data),"NEW Synth Layer"))
 		self.list_data.append(('NEW_EFFECT',len(self.list_data),"NEW Effect Layer"))
 		self.list_data.append(('NEW_GENERATOR',len(self.list_data),"NEW Generator Layer"))
@@ -87,6 +92,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.list_data.append((None,len(self.list_data),"--------------------------"))
 		self.list_data.append(('ALL_NOTES_OFF',len(self.list_data),"PANIC! All Notes Off"))
 		self.list_data.append(('ALL_SOUNDS_OFF',len(self.list_data),"PANIC!!! All Sounds Off"))
+
 		super().fill_list()
 
 
@@ -123,19 +129,19 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def next(self):
 		self.index=self.index+1;
-		if self.index>=len(self.layers):
+		if self.index>=len(self.root_layers):
 			self.index=0
 		self.select_listbox(self.index)
 		self.select_action(self.index)
 
 
 	def get_num_layers(self):
-		return len(self.layers)
+		return len(self.root_layers)
 
 
 	def get_layer_selected(self):
 		i=self.get_cursel()
-		if i<len(self.layers):
+		if i<len(self.root_layers):
 			return i
 		else:
 			return None
@@ -174,11 +180,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.layers.append(layer)
 			zynthian_gui_config.zyngui.zynautoconnect()
 
-			self.fill_list()
-
 			if select:
-				self.index=len(self.layers)-1
-				self.select_action(self.index)
+				self.fill_list()
+				root_layer = self.get_fxchain_root(layer)
+				try:
+					self.index = self.root_layers.index(root_layer)
+					self.select_action(self.index)
+				except Exception as e:
+					logging.error(e)
+					zynthian_gui_config.zyngui.show_screen('layer')
 
 
 	def remove_layer(self, i, cleanup_unused_engines=True):
@@ -330,33 +340,32 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def get_fxchain_roots(self):
 		roots = []
-		for layer in self.layers:
-			if layer.engine.type=="MIDI Synth":
-				roots.append(layer)
+		for chan in range(16):
+			for layer in self.layers:
+				if layer.midi_chan==chan:
+					roots.append(layer)
 
 		return roots
 
 
-	def get_fxchain_layers(self, layer=None):
-		if layer is None:
-			layer=self.curlayer
+	def get_fxchain_layers(self, root_layer=None):
+		if root_layer is None:
+			root_layer = self.curlayer
 
-		fxchain_layers = [layer]
-		self._get_fxchain_layers(fxchain_layers)
-
-		return fxchain_layers
-
-
-	def _get_fxchain_layers(self, fxchain_layers):
-		if len(fxchain_layers)==0:
-			fxchain_layers.append(self.curlayer)
-		for layer in self.layers:
-			last_layer = fxchain_layers[-1]
-			if layer not in fxchain_layers and layer.get_midi_chan() == last_layer.get_midi_chan():
-				if layer.get_jackname() in last_layer.get_audio_out():
+		if root_layer is not None:
+			fxchain_layers = [root_layer]
+			for layer in self.layers:
+				if layer not in fxchain_layers and layer.get_midi_chan() == root_layer.get_midi_chan():
 					fxchain_layers.append(layer)
-					self.get_fxchain_layers(fxchain_layers)
-					return
+			return fxchain_layers
+		else:
+			return None
+
+
+	def get_fxchain_root(self, layer):
+		layers=self.get_fxchain_layers(layer)
+		if layers:
+			return layers[0]
 
 
 	def get_fxchain_ends(self, layer):

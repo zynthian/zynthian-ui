@@ -59,9 +59,9 @@ class zynthian_layer:
 
 		self.controllers_dict = None
 		self.ctrl_screens_dict = None
-		self.ctrl_screen_active = None
-		self.listen_midi_cc = False
+		self.active_screen_index = -1
 
+		self.listen_midi_cc = False
 		self.refresh_flag = False
 
 		self.reset_zs3()
@@ -265,46 +265,35 @@ class zynthian_layer:
 
 	# Create controller screens from zynthian controller keys
 	def init_ctrl_screens(self):
+		#Build control screens ...
 		self.ctrl_screens_dict=OrderedDict()
 		for cscr in self.engine._ctrl_screens:
 			self.ctrl_screens_dict[cscr[0]]=self.build_ctrl_screen(cscr[1])
+			
 		#Set active the first screen
-		try:
-			self.ctrl_screen_active=next(iter(self.ctrl_screens_dict))
-		except:
-			self.ctrl_screen_active=None
+		if len(self.ctrl_screens_dict)>0:
+			self.active_screen_index=0
+		else:
+			self.active_screen_index=-1
 
 
 	def get_ctrl_screens(self):
 		return self.ctrl_screens_dict
 
 
-	def get_active_screen(self):
+	def get_ctrl_screen(self, key):
 		try:
-			return self.ctrl_screens_dict[self.ctrl_screen_active]
+			return self.ctrl_screens_dict[key]
 		except:
 			return None
 
 
 	def get_active_screen_index(self):
-		try:
-			return list(self.ctrl_screens_dict.keys()).index(self.ctrl_screen_active)
-		except:
-			return -1
-
-
-	def set_active_screen(self, key):
-		if key in self.ctrl_screens_dict:
-			self.ctrl_screen_active=key
-		else:
-			logging.warning("Screen Key is not valid")
+		return self.active_screen_index
 
 
 	def set_active_screen_index(self, i):
-		if i>=0 and i < len(self.ctrl_screens_dict):
-			self.ctrl_screen_active=list(self.ctrl_screens_dict.items())[i][0]
-		else:
-			logging.warning("Screen Index is not valid")
+		self.active_screen_index = i
 
 
 	# Build array of zynthian_controllers from list of keys
@@ -333,6 +322,7 @@ class zynthian_layer:
 	def midi_control_change(self, chan, ccnum, ccval):
 		if self.engine:
 			if self.listen_midi_cc and chan==self.midi_chan:
+				#TODO => Optimize!!
 				for k, zctrl in self.controllers_dict.items():
 					if zctrl.midi_cc==ccnum:
 						try:
@@ -365,7 +355,7 @@ class zynthian_layer:
 			'preset_info': self.preset_info,
 			'controllers_dict': {},
 			'zs3_list': self.zs3_list,
-			'ctrl_screen_active': self.ctrl_screen_active
+			'active_screen_index': self.active_screen_index
 		}
 		for k in self.controllers_dict:
 			snapshot['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
@@ -396,9 +386,12 @@ class zynthian_layer:
 		if 'zs3_list' in snapshot:
 			self.zs3_list = snapshot['zs3_list']
 
+		#Set active screen
+		if 'active_screen_index' in snapshot:
+			self.active_screen_index=snapshot['active_screen_index']
+
 		#Set controller values
 		sleep(0.3)
-		self.ctrl_screen_active=snapshot['ctrl_screen_active']
 		for k in snapshot['controllers_dict']:
 			self.controllers_dict[k].restore_snapshot(snapshot['controllers_dict'][k])
 
