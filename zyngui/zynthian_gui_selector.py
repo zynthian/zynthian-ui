@@ -151,6 +151,7 @@ class zynthian_gui_selector:
 		# Update Title
 		self.set_select_path()
 
+
 	def show(self):
 		if not self.shown:
 			self.shown=True
@@ -159,10 +160,12 @@ class zynthian_gui_selector:
 		self.set_selector()
 		self.set_select_path()
 
+
 	def hide(self):
 		if self.shown:
 			self.shown=False
 			self.main_frame.grid_forget()
+
 
 	def is_shown(self):
 		try:
@@ -170,6 +173,7 @@ class zynthian_gui_selector:
 			return True
 		except:
 			return False
+
 
 	def refresh_loading(self):
 		if self.shown:
@@ -183,10 +187,12 @@ class zynthian_gui_selector:
 			except:
 				self.reset_loading()
 
+
 	def reset_loading(self, force=False):
 		if self.loading_index>0 or force:
 			self.loading_index=0
 			self.loading_canvas.itemconfig(self.loading_item, image=zynthian_gui_config.loading_imgs[0])
+
 
 	def fill_listbox(self):
 		self.listbox.delete(0, tkinter.END)
@@ -194,6 +200,7 @@ class zynthian_gui_selector:
 			self.list_data=[]
 		for item in self.list_data:
 			self.listbox.insert(tkinter.END, item[2])
+
 
 	def set_selector(self):
 		if self.zselector:
@@ -204,10 +211,12 @@ class zynthian_gui_selector:
 			self.zselector_ctrl=zynthian_controller(None,self.selector_caption,self.selector_caption,{ 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
 			self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.main_frame,self.zselector_ctrl)
 
+
 	def fill_list(self):
 		self.fill_listbox()
 		self.select()
 		#self.set_selector()
+
 
 	def get_cursel(self):
 		cursel=self.listbox.curselection()
@@ -217,11 +226,13 @@ class zynthian_gui_selector:
 			index=0
 		return index
 
+
 	def zyncoder_read(self):
 		if self.zselector:
 			self.zselector.read_zyncoder()
 			if self.index!=self.zselector.value:
 				self.select_listbox(self.zselector.value)
+
 
 	def select_listbox(self,index):
 		self.listbox.selection_clear(0,tkinter.END)
@@ -231,6 +242,7 @@ class zynthian_gui_selector:
 		else: self.listbox.see(index)
 		self.index=index
 
+
 	def click_listbox(self, index=None):
 		if index is not None:
 			self.select_listbox(index)
@@ -238,8 +250,10 @@ class zynthian_gui_selector:
 			self.index=self.get_cursel()
 		self.select_action(self.index)
 
+
 	def switch_select(self):
 		self.click_listbox()
+
 
 	def select(self, index=None):
 		if index is None: index=self.index
@@ -247,18 +261,23 @@ class zynthian_gui_selector:
 		if self.zselector and self.zselector.value!=self.index:
 			self.zselector.set_value(self.index, True)
 
+
 	def select_action(self, index):
 		pass
+
 
 	def set_select_path(self):
 		pass
 
+
 	def cb_topbar(self,event):
 		zynthian_gui_config.zyngui.zynswitch_defered('S',1)
+
 
 	def cb_listbox_push(self,event):
 		self.listbox_push_ts=datetime.now()
 		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
+
 
 	def cb_listbox_release(self,event):
 		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
@@ -266,11 +285,13 @@ class zynthian_gui_selector:
 		if dts < 0.3:
 			zynthian_gui_config.zyngui.zynswitch_defered('S',3)
 
+
 	def cb_listbox_motion(self,event):
 		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 		if dts > 0.1:
 			#logging.debug("LISTBOX MOTION => %d" % self.index)
 			self.zselector.set_value(self.get_cursel(), True)
+
 
 	def cb_listbox_wheel(self,event):
 		index = self.index
@@ -281,9 +302,11 @@ class zynthian_gui_selector:
 		if index!=self.index:
 			self.zselector.set_value(index, True)
 
+
 	def cb_loading_push(self,event):
 		self.loading_push_ts=datetime.now()
 		#logging.debug("LOADING PUSH => %s" % self.canvas_push_ts)
+
 
 	def cb_loading_release(self,event):
 		dts=(datetime.now()-self.loading_push_ts).total_seconds()
@@ -294,5 +317,6 @@ class zynthian_gui_selector:
 			zynthian_gui_config.zyngui.zynswitch_defered('B',2)
 		elif dts>=2:
 			zynthian_gui_config.zyngui.zynswitch_defered('L',2)
+
 
 #------------------------------------------------------------------------------
