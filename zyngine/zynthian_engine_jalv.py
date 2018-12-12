@@ -139,7 +139,6 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
-		self.current_learning_zctrl = None
 
 		output = self.start()
 
@@ -347,8 +346,8 @@ class zynthian_engine_jalv(zynthian_engine):
 				#logging.debug("CTRL {}".format(symbol))
 				ctrl_set.append(symbol)
 				if len(ctrl_set)>=4:
-					#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-					self._ctrl_screens.append(['Controllers#'+str(c),ctrl_set])
+					#logging.debug("ADDING CONTROLLER SCREEN {}#{}".format(self.plugin_name,c))
+					self._ctrl_screens.append(["{}#{}".format(self.plugin_name,c),ctrl_set])
 					ctrl_set=[]
 					c=c+1
 			except Exception as err:
@@ -356,7 +355,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		if len(ctrl_set)>=1:
 			#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-			self._ctrl_screens.append(['Controllers#'+str(c),ctrl_set])
+			self._ctrl_screens.append(["{}#{}".format(self.plugin_name,c),ctrl_set])
 
 
 	def get_controllers_dict(self, layer):
@@ -378,9 +377,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def midi_learn(self, zctrl):
 		if zctrl.graph_path:
-			# Set current learning zctrl
 			logging.info("Learning '{}' ({}) ...".format(zctrl.symbol,zctrl.graph_path))
-			self.current_learning_zctrl = zctrl
 
 
 	def midi_unlearn(self, zctrl):
@@ -406,17 +403,25 @@ class zynthian_engine_jalv(zynthian_engine):
 				# Add midi learning info
 				self.learned_zctrls[zctrl.graph_path] = zctrl
 				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = zctrl
-				# Clean current learning zctrl
-				self.current_learning_zctrl = None
 		except Exception as e:
 			logging.error("Can't learn %s => %s" % (zctrl.graph_path, e))
 
 
 	def reset_midi_learn(self):
 		logging.info("Reset MIDI-learn ...")
-		self.current_learning_zctrl = None
 		self.learned_zctrls = {}
 		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
+
+
+	def cb_midi_learn(self, zctrl, chan, cc):
+		try:
+			zctrl.midi_learn_chan = chan
+			zctrl.midi_learn_cc = cc
+			self.set_midi_learn(zctrl)
+		except Exception as e:
+			zctrl.midi_learn_chan = None
+			zctrl.midi_learn_cc = None
+			logging.error(e)
 
 
 	#----------------------------------------------------------------------------
@@ -425,13 +430,10 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def midi_control_change(self, chan, ccnum, val):
-		if self.current_learning_zctrl:
-			self.current_learning_zctrl.set_midi_learn(chan, ccnum)
-		else:
-			try:
-				self.learned_cc[chan][ccnum].midi_control_change(val)
-			except:
-				pass
+		try:
+			self.learned_cc[chan][ccnum].midi_control_change(val)
+		except:
+			pass
 
 
 

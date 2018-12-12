@@ -39,15 +39,18 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
+
 	# Controller Screens
 	_ctrl_screens=[
 		['main',['volume','expression','pan','sustain']],
 		['effects',['volume','modulation','reverb','chorus']]
 	]
 
+
 	# ---------------------------------------------------------------------------
 	# Initialization
 	# ---------------------------------------------------------------------------
+
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
@@ -67,6 +70,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 		self.start()
 		self.reset()
+
 
 	def reset(self):
 		super().reset()
@@ -91,10 +95,12 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Layer Management
 	# ---------------------------------------------------------------------------
 
+
 	def add_layer(self, layer):
 		super().add_layer(layer)
 		layer.part_i=None
 		self.setup_router(layer)
+
 
 	def del_layer(self, layer):
 		super().del_layer(layer)
@@ -102,12 +108,15 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			self.set_all_midi_routes()
 		self.unload_unused_soundfonts()
 
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
+
 	def set_midi_chan(self, layer):
 		self.setup_router(layer)
+
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
@@ -124,6 +133,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			return True
 		else:
 			return False
+
 
 	# ---------------------------------------------------------------------------
 	# Bank Management

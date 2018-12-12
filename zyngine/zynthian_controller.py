@@ -376,8 +376,8 @@ class zynthian_controller:
 			if not self.midi_cc:
 				try:
 					self.engine.midi_learn(self)
-				except:
-					logging.error("MIDI Learn NOT IMPLEMENTED!")
+				except Exception as e:
+					logging.error(e)
 
 			# Call GUI method
 			self.engine.zyngui.set_midi_learn(self)
@@ -405,15 +405,14 @@ class zynthian_controller:
 				try:
 					if self.engine.midi_unlearn(self):
 						unlearned=True
-				except:
-					logging.error("MIDI Unlearn => NOT IMPLEMENTED!")
+				except Exception as e:
+					logging.error(e)
 
 			# If success unlearning ...
 			if unlearned:
-
 				# Clear variables
-				self.midi_learn_chan=None
-				self.midi_learn_cc=None
+				self.midi_learn_chan = None
+				self.midi_learn_cc = None
 
 				# Call GUI method
 				try:
@@ -440,15 +439,13 @@ class zynthian_controller:
 			if not self.midi_cc:
 				try:
 					self.engine.set_midi_learn(self)
-				except:
-					logging.error("Set MIDI learn => NOT IMPLEMENTED!")
+				except Exception as e:
+					logging.error(e)
 
 
 	def cb_midi_learn(self, chan, cc):
 		# Learn only if there is a working engine ...
 		if self.engine:
-			logging.info("MIDI-CC bond '%s' => %d, %d" % (self.symbol,chan,cc))
-
 			# If standard MIDI-CC controller, create MIDI router map
 			if self.midi_cc:
 				try:
@@ -461,18 +458,31 @@ class zynthian_controller:
 					logging.error("Can't set MIDI filter CC swap map: (%s, %s) => (%s, %s) => %s" % (self.midi_learn_chan, self.midi_learn_cc, self.midi_chan, self.midi_cc, e))
 					return False
 
-			# MIDI learning success
-			self.midi_learn_chan=chan
-			self.midi_learn_cc=cc
+			else:
+				try :
+					self.engine.cb_midi_learn(self, chan, cc)
+				except Exception as e:
+					return False
 
-			# Call GUI method ...
-			try:
-				self.engine.zyngui.unset_midi_learn()
-			except:
-				pass
+		#MIDI Learning success!
+		self._cb_midi_learn(chan, cc)
 
 		#If	not engine or MIDI learning success, return True
 		return True
+
+
+	def _cb_midi_learn(self, chan, cc):
+		logging.info("MIDI-CC bond '{}' => {}, {}".format(self.symbol, chan, cc))
+
+		self.midi_learn_chan = chan
+		self.midi_learn_cc = cc
+
+		self.engine.zyngui.unset_midi_learn()
+
+
+	#----------------------------------------------------------------------------
+	# MIDI CC processing
+	#----------------------------------------------------------------------------
 
 
 	def midi_control_change(self, val):

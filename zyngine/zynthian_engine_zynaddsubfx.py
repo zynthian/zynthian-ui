@@ -391,7 +391,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				cc = int(args[0]) % 128
 				logging.debug("Automate Slot %d MIDI-CC: %s => %s" % (slot_i, path, args[0]))
 				if self.current_slot_zctrl.slot_i==slot_i:
-					self.current_slot_zctrl.cb_midi_learn(chan,cc)
+					self.current_slot_zctrl._cb_midi_learn(chan,cc)
 					self.current_slot_zctrl=None
 			except Exception as e:
 				logging.error("Can't match zctrl slot for the returned MIDI-CC! => %s" % e)

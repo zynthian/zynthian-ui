@@ -255,16 +255,17 @@ class zynthian_gui:
 		self.hide_screens(exclude='snapshot')
 
 
-	def enter_midi_learn(self):
+	def enter_midi_learn_mode(self):
 		self.midi_learn_mode = True
 		self.midi_learn_zctrl = None
 		self.screens['control'].refresh_midi_bind()
 		self.show_modal('zs3_learn')
 
 
-	def exit_midi_learn(self):
+	def exit_midi_learn_mode(self):
 		self.midi_learn_mode = False
 		self.midi_learn_zctrl = None
+		lib_zyncoder.set_midi_learning_mode(0)
 		self.show_screen('control')
 
 
@@ -477,7 +478,7 @@ class zynthian_gui:
 		elif i==1:
 			# If in MIDI-learn mode, back to instrument control
 			if self.midi_learn_mode or self.midi_learn_zctrl:
-				self.exit_midi_learn()
+				self.exit_midi_learn_mode()
 			# If in controller map selection, back to instrument control
 			elif self.active_screen=='control' and self.screens['control'].mode=='select':
 				self.screens['control'].set_mode_control()
@@ -517,7 +518,7 @@ class zynthian_gui:
 					else:
 						self.show_modal('zs3_learn')
 				else:
-					self.enter_midi_learn()
+					self.enter_midi_learn_mode()
 			else:
 				self.load_snapshot()
 
@@ -687,7 +688,7 @@ class zynthian_gui:
 					# SubSnapShot (ZS3) MIDI learn ...
 					if self.midi_learn_mode and self.modal_screen=='zs3_learn':
 						self.screens['layer'].save_midi_chan_zs3(chan, pgm)
-						self.exit_midi_learn()
+						self.exit_midi_learn_mode()
 
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
@@ -712,10 +713,9 @@ class zynthian_gui:
 					ccnum=(ev & 0x7F00)>>8
 					ccval=(ev & 0x007F)
 					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
-					# MIDI learn => If controller is CC-mapped, use MIDI-router learning
-					if self.midi_learn_zctrl and self.midi_learn_zctrl.midi_cc:
-						self.midi_learn_zctrl.cb_midi_learn(chan,ccnum)
-						self.show_screen('control')
+					# If MIDI learn pending ...
+					if self.midi_learn_zctrl:
+						self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
 					# Try layer's zctrls
 					else:
 						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
@@ -847,15 +847,14 @@ class zynthian_gui:
 
 
 	def set_midi_learn(self, zctrl):
-		self.midi_learn_zctrl=zctrl
+		self.midi_learn_zctrl = zctrl
 		lib_zyncoder.set_midi_learning_mode(1)
 		self.screens['control'].refresh_midi_bind()
+		self.screens['control'].set_select_path()
 
 
 	def unset_midi_learn(self):
-		self.midi_learn_zctrl=None
-		lib_zyncoder.set_midi_learning_mode(0)
-		self.screens['control'].refresh_midi_bind()
+		self.exit_midi_learn_mode()
 
 
 	#------------------------------------------------------------------
