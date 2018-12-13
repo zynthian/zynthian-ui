@@ -43,10 +43,12 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 
 class zynthian_gui_layer_options(zynthian_gui_selector):
 
+
 	def __init__(self):
 		super().__init__('Option', True)
 		self.layer_index=None
 		self.layer=None
+
 
 	def fill_list(self):
 		self.list_data=[]
@@ -63,6 +65,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.list_data.append((self.remove_layer,0,"Remove Layer"))
 		super().fill_list()
 
+
 	def show(self):
 		self.index=0
 		self.layer_index=zynthian_gui_config.zyngui.screens['layer'].get_layer_selected()
@@ -71,30 +74,37 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		else:
 			zynthian_gui_config.zyngui.show_active_screen()
 
+
 	def select_action(self, i):
 		self.list_data[i][0]()
 
+
 	def set_select_path(self):
 		self.select_path.set("Layer Options")
+
 
 	def midi_chan(self):
 		zynthian_gui_config.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan)
 		zynthian_gui_config.zyngui.show_modal('midi_chan')
 
+
 	def clone(self):
 		zynthian_gui_config.zyngui.screens['midi_chan'].set_mode("CLONE", self.layer.midi_chan)
 		zynthian_gui_config.zyngui.show_modal('midi_chan')
 
+
 	def transpose(self):
 		zynthian_gui_config.zyngui.show_modal('transpose')
+
 
 	def audio_routing(self):
 		layer=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index]
 		zynthian_gui_config.zyngui.screens['audio_out'].set_layer(layer)
 		zynthian_gui_config.zyngui.show_modal('audio_out')
 
+
 	def remove_layer(self):
-		zynthian_gui_config.zyngui.screens['layer'].remove_layer(self.layer_index)
+		zynthian_gui_config.zyngui.screens['layer'].remove_root_layer(self.layer_index)
 		zynthian_gui_config.zyngui.show_screen('layer')
 
 

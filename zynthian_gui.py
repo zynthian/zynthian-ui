@@ -91,7 +91,7 @@ class zynthian_gui:
 		self.modal_screen = None
 		self.curlayer = None
 
-		self.dtsw = {}
+		self.dtsw = []
 		self.polling = False
 
 		self.loading = 0
@@ -333,7 +333,7 @@ class zynthian_gui:
 			ts=datetime.now()
 			logging.info("ZYNSWITCHES INIT...")
 			for i,pin in enumerate(zynthian_gui_config.zynswitch_pin):
-				self.dtsw[i]=ts
+				self.dtsw.append(ts)
 				lib_zyncoder.setup_zynswitch(i,pin)
 				logging.info("SETUP ZYNSWITCH {} => wpGPIO {}".format(i, pin))
 
@@ -462,7 +462,7 @@ class zynthian_gui:
 		# Standard 4 ZynSwitches
 		if i==0:
 			if self.active_screen=='control':
-				if self.screens['layer'].get_num_layers()>1:
+				if self.screens['layer'].get_num_root_layers()>1:
 					logging.info("Next layer")
 					self.screens['layer'].next()
 					self.show_screen('control')

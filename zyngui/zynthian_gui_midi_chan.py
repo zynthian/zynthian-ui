@@ -98,8 +98,9 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		if self.mode=='ADD':
 			zynthian_gui_config.zyngui.screens['layer'].add_layer_midich(self.list_data[i][1])
 		elif self.mode=='SET':
-			layer_index=zynthian_gui_config.zyngui.screens['layer_options'].layer_index
-			zynthian_gui_config.zyngui.screens['layer'].layers[layer_index].set_midi_chan(self.list_data[i][1])
+			root_layer=zynthian_gui_config.zyngui.screens['layer_options'].layer
+			for layer in zynthian_gui_config.zyngui.screens['layer'].get_fxchain_layers(root_layer):
+				layer.set_midi_chan(self.list_data[i][1])
 			zynthian_gui_config.zyngui.show_screen('layer')
 		elif self.mode=='CLONE':
 			if self.list_data[i][1]!=self.midi_chan:

@@ -136,6 +136,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_num_layers(self):
+		return len(self.layers)
+
+
+	def get_num_root_layers(self):
 		return len(self.root_layers)
 
 
@@ -217,9 +221,17 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
 
 
+	def remove_root_layer(self, i, cleanup_unused_engines=True):
+		if i>=0 and i<len(self.root_layers):
+			for layer in reversed(self.get_fxchain_layers(self.root_layers[i])):
+				self.remove_layer(self.layers.index(layer), False)
+			if cleanup_unused_engines:
+				zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
+
+
 	def remove_all_layers(self, cleanup_unused_engines=True):
 		while len(self.layers)>0:
-			self.remove_layer(0, False)
+			self.remove_layer(len(self.layers)-1, False)
 		if cleanup_unused_engines:
 			zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
 
