@@ -93,8 +93,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
-		i = 0
 		self.layers = zynthian_gui_config.zyngui.screens['layer'].get_fxchain_layers()
+		i = 0
 		for layer in self.layers:
 			j = 0
 			for cscr in layer.get_ctrl_screens():
@@ -345,7 +345,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def midi_learn(self, i):
 		if self.mode=='control':
-			self.zgui_controllers[i].zctrl.midi_learn()
+			self.zgui_controllers[i].zctrl.init_midi_learn()
 
 
 	def midi_unlearn(self, i):

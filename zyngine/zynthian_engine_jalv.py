@@ -374,7 +374,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 
-	def midi_learn(self, zctrl):
+	def init_midi_learn(self, zctrl):
 		if zctrl.graph_path:
 			logging.info("Learning '{}' ({}) ...".format(zctrl.symbol,zctrl.graph_path))
 
@@ -385,25 +385,24 @@ class zynthian_engine_jalv(zynthian_engine):
 			try:
 				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
 				del self.learned_zctrls[zctrl.graph_path]
-				return True
+				return zctrl._unset_midi_learn()
 			except Exception as e:
-				logging.warning("Can't Unlearn => {}".format(e))
+				logging.warning("Can't unlearn => {}".format(e))
 
 
-	def set_midi_learn(self, zctrl):
+	def set_midi_learn(self, zctrl ,chan, cc):
 		try:
-			if zctrl.graph_path and zctrl.midi_learn_chan is not None and zctrl.midi_learn_cc is not None:
-				logging.info("Learned '%s' => %d, %d" % (zctrl.symbol, zctrl.midi_learn_chan, zctrl.midi_learn_cc))
-				# Clean current binding if any ...
-				try:
-					self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc].midi_unlearn()
-				except:
-					pass
-				# Add midi learning info
-				self.learned_zctrls[zctrl.graph_path] = zctrl
-				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = zctrl
+			# Clean current binding if any ...
+			try:
+				self.learned_cc[chan][cc].midi_unlearn()
+			except:
+				pass
+			# Add midi learning info
+			self.learned_zctrls[zctrl.graph_path] = zctrl
+			self.learned_cc[chan][cc] = zctrl
+			return zctrl._set_midi_learn(chan, cc)
 		except Exception as e:
-			logging.error("Can't learn %s => %s" % (zctrl.graph_path, e))
+			logging.error("Can't learn {} => {}".format(zctrl.symbol, e))
 
 
 	def reset_midi_learn(self):
@@ -413,14 +412,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def cb_midi_learn(self, zctrl, chan, cc):
-		try:
-			zctrl.midi_learn_chan = chan
-			zctrl.midi_learn_cc = cc
-			self.set_midi_learn(zctrl)
-		except Exception as e:
-			zctrl.midi_learn_chan = None
-			zctrl.midi_learn_cc = None
-			logging.error(e)
+		return self.set_midi_learn(zctrl, chan, cc)
 
 
 	#----------------------------------------------------------------------------

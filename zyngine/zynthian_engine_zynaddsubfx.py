@@ -289,7 +289,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 
-	def midi_learn(self, zctrl):
+	def init_midi_learn(self, zctrl):
 		if zctrl.osc_path:
 			# Set current learning-slot zctrl
 			logging.info("Learning '%s' ..." % zctrl.osc_path)
@@ -311,24 +311,26 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				self.osc_server.del_method(zctrl.osc_path, 'i')
 				logging.info("Automate Slot %d Cleared => %s" % (zctrl.slot_i, zctrl.osc_path))
 				zctrl.slot_i = None
-				return True
+				return zctrl._unset_midi_learn()
 			except Exception as e:
 				logging.warning("Can't Clear Automate Slot %s => %s" % (zctrl.osc_path,e))
 
 
-	def set_midi_learn(self, zctrl):
+	def set_midi_learn(self, zctrl, chan, cc):
 		try:
-			if zctrl.osc_path and zctrl.slot_i is not None and zctrl.midi_learn_chan is not None and zctrl.midi_learn_cc is not None:
-				logging.info("Set Automate Slot %d: %s => %d, %d" % (zctrl.slot_i, zctrl.osc_path, zctrl.midi_learn_chan, zctrl.midi_learn_cc))
+			if zctrl.osc_path and zctrl.slot_i is not None and chan is not None and cc is not None:
+				logging.info("Set Automate Slot %d: %s => %d, %d" % (zctrl.slot_i, zctrl.osc_path, chan, cc))
 				# Reset current MIDI-learning slot
 				self.current_slot_zctrl=None
-				# Call midi_learn
-				self.midi_learn(zctrl)
-				# Wait for setting automation
-				while self.current_slot_zctrl:
-					sleep(0.01)
+				if zctrl._set_midi_learn(chan, cc):
+					self.init_midi_learn(zctrl)
+					# Wait for setting automation
+					while self.current_slot_zctrl:
+						sleep(0.01)
+						return True
 		except Exception as e:
 			logging.error("Can't set slot automation for %s => %s" % (zctrl.osc_path, e))
+			return zctrl._unset_midi_learn()
 
 
 	def reset_midi_learn(self):

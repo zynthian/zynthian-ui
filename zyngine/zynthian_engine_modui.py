@@ -627,22 +627,34 @@ class zynthian_engine_modui(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 
-	def midi_learn(self, zctrl):
+	def init_midi_learn(self, zctrl):
 		logging.info("Learning '%s' ..." % zctrl.graph_path)
 		res = self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=self.get_parameter_address_data(zctrl,"/midi-learn"))
 
 
 	def midi_unlearn(self, zctrl):
 		logging.info("Unlearning '%s' ..." % zctrl.graph_path)
-		return self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=self.get_parameter_address_data(zctrl,"null"))
+		try:
+			pad=self.get_parameter_address_data(zctrl,"null")
+			if self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=pad):
+				return zctrl._unset_midi_learn()
+
+		except Exception as e:
+			logging.warning("Can't unlearn => {}".format(e))
 
 
-	def set_midi_learn(self, zctrl):
-		if zctrl.graph_path and zctrl.midi_learn_chan is not None and zctrl.midi_learn_cc is not None:
-			logging.info("Set MIDI map '%s' => %d, %d" % (zctrl.graph_path, zctrl.midi_learn_chan, zctrl.midi_learn_cc))
-			uri="/midi-custom_Ch.{}_CC#{}".format(zctrl.midi_learn_chan+1, zctrl.midi_learn_cc)
-			res = self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=self.get_parameter_address_data(zctrl,uri))
-			#logging.debug("result => %s" % res)
+
+	def set_midi_learn(self, zctrl, chan, cc):
+		try:
+			if zctrl.graph_path and chan is not None and cc is not None:
+				logging.info("Set MIDI map '{}' => {}, {}" % (zctrl.graph_path, chan, cc))
+				uri="/midi-custom_Ch.{}_CC#{}".format(chan+1, cc)
+				pad=self.get_parameter_address_data(zctrl,uri)
+				if self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=pad):
+					return zctrl._set_midi_learn(chan, cc)
+
+		except Exception as e:
+				logging.warning("Can't learn => {}".format(e))
 
 
 	def midi_map_cb(self, pgraph, symbol, chan, cc):
