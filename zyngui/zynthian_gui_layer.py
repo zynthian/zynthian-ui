@@ -100,20 +100,29 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.index=i
 		if self.list_data[self.index][0] is None:
 			pass
+
 		elif self.list_data[self.index][0]=='NEW_SYNTH':
 			self.add_layer("MIDI Synth")
+
 		elif self.list_data[self.index][0]=='NEW_EFFECT':
 			self.add_layer("Audio Effect")
+
 		elif self.list_data[self.index][0]=='NEW_GENERATOR':
 			self.add_layer("Audio Generator")
+
 		elif self.list_data[self.index][0]=='NEW_SPECIAL':
 			self.add_layer("Special")
+
 		elif self.list_data[self.index][0]=='RESET':
 			self.reset()
+			zynthian_gui_config.zyngui.show_screen('layer')
+
 		elif self.list_data[self.index][0]=='ALL_NOTES_OFF':
 			zynthian_gui_config.zyngui.all_notes_off()
+
 		elif self.list_data[self.index][0]=='ALL_SOUNDS_OFF':
 			zynthian_gui_config.zyngui.all_sounds_off()
+
 		else:
 			self.curlayer=self.root_layers[self.index]
 			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
@@ -358,6 +367,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					roots.append(layer)
 					break
 
+		for layer in self.layers:
+			if layer.midi_chan==None and layer.engine.type=="Special":
+				roots.append(layer)
+
 		return roots
 
 
@@ -547,8 +560,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			else:
 				self.select_action(self.index)
 		except Exception as e:
-			logging.error("Invalid snapshot format: %s" % e)
-			return False
+			if zynthian_gui_config.raise_exceptions:
+				raise e
+			else:
+				logging.error("Invalid snapshot format: %s" % e)
+				return False
 		return True
 
 
