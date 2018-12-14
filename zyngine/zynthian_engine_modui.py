@@ -232,14 +232,14 @@ class zynthian_engine_modui(zynthian_engine):
 						zctrls[param['ctrl'].graph_path]=param['ctrl']
 						ctrl_set.append(param['ctrl'].graph_path)
 						if len(ctrl_set)>=4:
-							logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+							#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
 							self._ctrl_screens.append([self.plugin_info[pgraph]['name']+'#'+str(c),ctrl_set])
 							ctrl_set=[]
 							c=c+1
 					except Exception as err:
 						logging.error("Generating Controller Screens: %s => %s" % (pgraph, err))
 				if len(ctrl_set)>=1:
-					logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+					#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
 					self._ctrl_screens.append([self.plugin_info[pgraph]['name']+'#'+str(c),ctrl_set])
 		except Exception as err:
 			logging.error("Generating Controller List: %s" % err)
