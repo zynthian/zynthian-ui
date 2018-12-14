@@ -52,7 +52,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data=[]
-		self.layer=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index]
+		self.layer=zynthian_gui_config.zyngui.screens['layer'].root_layers[self.layer_index]
 		eng_options=self.layer.engine.get_options()
 		if eng_options['clone'] and self.layer.midi_chan is not None:
 			self.list_data.append((self.clone,0,"Clone"))
@@ -98,8 +98,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def audio_routing(self):
-		layer=zynthian_gui_config.zyngui.screens['layer'].layers[self.layer_index]
-		zynthian_gui_config.zyngui.screens['audio_out'].set_layer(layer)
+		zynthian_gui_config.zyngui.screens['audio_out'].set_layer(self.layer)
 		zynthian_gui_config.zyngui.show_modal('audio_out')
 
 
