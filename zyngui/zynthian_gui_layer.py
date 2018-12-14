@@ -75,15 +75,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 
-		#Add list of root layers
+		# Add list of root layers
 		self.root_layers=self.get_fxchain_roots()
 		for i,layer in enumerate(self.root_layers):
 			self.list_data.append((str(i+1),i,layer.get_presetpath()))
 
-		#Add fixed entries
+		# Add separator
 		if len(self.root_layers)>0:
 			self.list_data.append((None,len(self.list_data),"--------------------------"))
 
+		# Add fixed entries
 		self.list_data.append(('NEW_SYNTH',len(self.list_data),"NEW Synth Layer"))
 		self.list_data.append(('NEW_EFFECT',len(self.list_data),"NEW Effect Layer"))
 		self.list_data.append(('NEW_GENERATOR',len(self.list_data),"NEW Generator Layer"))
@@ -97,34 +98,35 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def select_action(self, i):
-		self.index=i
-		if self.list_data[self.index][0] is None:
+		self.index = i
+
+		if self.list_data[i][0] is None:
 			pass
 
-		elif self.list_data[self.index][0]=='NEW_SYNTH':
+		elif self.list_data[i][0]=='NEW_SYNTH':
 			self.add_layer("MIDI Synth")
 
-		elif self.list_data[self.index][0]=='NEW_EFFECT':
+		elif self.list_data[i][0]=='NEW_EFFECT':
 			self.add_layer("Audio Effect")
 
-		elif self.list_data[self.index][0]=='NEW_GENERATOR':
+		elif self.list_data[i][0]=='NEW_GENERATOR':
 			self.add_layer("Audio Generator")
 
-		elif self.list_data[self.index][0]=='NEW_SPECIAL':
+		elif self.list_data[i][0]=='NEW_SPECIAL':
 			self.add_layer("Special")
 
-		elif self.list_data[self.index][0]=='RESET':
+		elif self.list_data[i][0]=='RESET':
 			self.reset()
 			zynthian_gui_config.zyngui.show_screen('layer')
 
-		elif self.list_data[self.index][0]=='ALL_NOTES_OFF':
+		elif self.list_data[i][0]=='ALL_NOTES_OFF':
 			zynthian_gui_config.zyngui.all_notes_off()
 
-		elif self.list_data[self.index][0]=='ALL_SOUNDS_OFF':
+		elif self.list_data[i][0]=='ALL_SOUNDS_OFF':
 			zynthian_gui_config.zyngui.all_sounds_off()
 
 		else:
-			self.curlayer=self.root_layers[self.index]
+			self.curlayer = self.root_layers[self.index]
 			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
 			# If there is an preset selection for the active layer ...
 			if self.curlayer.get_preset_name():
@@ -137,9 +139,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def next(self):
-		self.index=self.index+1;
+		self.index = self.index+1;
+
 		if self.index>=len(self.root_layers):
-			self.index=0
+			self.index = 0
+
 		self.select_listbox(self.index)
 		self.select_action(self.index)
 
