@@ -519,30 +519,30 @@ class zynthian_layer:
 
 
 	def get_path(self):
-		path=self.bank_name
+		path = self.bank_name
 		if self.preset_name:
-			path=path + "/" + self.preset_name
+			path = path + "/" + self.preset_name
 		return path
 
 
 	def get_basepath(self):
-		path=self.engine.get_path(self)
+		path = self.engine.get_path(self)
 		if self.midi_chan is not None:
-			path=path + "#" + str(self.midi_chan+1)
+			path = "{} > {}".format(self.midi_chan+1, path)
 		return path
 
 
 	def get_bankpath(self):
-		path=self.get_basepath()
+		path = self.get_basepath()
 		if self.bank_name:
-			path=path + " > " + self.bank_name
+			path += " > " + self.bank_name
 		return path
 
 
 	def get_presetpath(self):
-		path=self.get_bankpath()
+		path = self.get_bankpath()
 		if self.preset_name:
-			path=path + "/" + self.preset_name
+			path += "/" + self.preset_name
 		return path
 
 
