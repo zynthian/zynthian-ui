@@ -382,6 +382,8 @@ class zynthian_gui:
 
 		# Extra ZynSwitches (AllInOne)
 		elif i==4:
+			self.all_notes_off()
+			sleep(0.1)
 			self.all_sounds_off()
 
 		elif i==5:
