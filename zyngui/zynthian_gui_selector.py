@@ -284,6 +284,8 @@ class zynthian_gui_selector:
 		#logging.debug("LISTBOX RELEASE => %s" % dts)
 		if dts < 0.3:
 			zynthian_gui_config.zyngui.zynswitch_defered('S',3)
+		elif dts>=0.3 and dts<2:
+			zynthian_gui_config.zyngui.zynswitch_defered('B',3)
 
 
 	def cb_listbox_motion(self,event):
