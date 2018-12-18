@@ -86,7 +86,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			#self.list_data.append((self.layer_presets, None, "Presets"))
 
 			if eng_options['clone'] and self.layer.midi_chan is not None:
-				self.list_data.append((self.layer_clone, None, "Clone"))
+				self.list_data.append((self.layer_clone, None, "Clone MIDI to ..."))
 
 			if eng_options['transpose']:
 				self.list_data.append((self.layer_transpose, None, "Transpose"))
@@ -95,7 +95,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				self.list_data.append((self.layer_audio_routing, None, "Audio Routing"))
 
 			if eng_options['midi_chan']:
-				self.list_data.append((self.layer_midi_chan, None, "MIDI Chan"))
+				self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
 
 			self.list_data.append((self.layer_remove, None, "Remove Layer"))
 
