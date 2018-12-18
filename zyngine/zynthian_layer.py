@@ -488,9 +488,9 @@ class zynthian_layer:
 
 	def set_audio_out(self, ao):
 		self.audio_out=ao
-		logging.debug("Setting connections:")
-		for jn in ao:
-			logging.debug("  {} => {}".format(self.engine.jackname, jn))
+		#logging.debug("Setting connections:")
+		#for jn in ao:
+		#	logging.debug("  {} => {}".format(self.engine.jackname, jn))
 
 
 	def add_audio_out(self, jackname):
