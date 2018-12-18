@@ -50,6 +50,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def reset(self):
+		self.index = 0
 		self.layer_index = None
 		self.layer = None
 		self.sublayers = None
@@ -119,13 +120,14 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def show(self):
-		self.index = 0
-
 		if self.layer_index is None:
 			self.layer_index = self.zyngui.screens['layer'].get_layer_selected()
 
 		if self.layer_index is not None:
 			super().show()
+			if self.index>=len(self.list_data):
+				self.index = len(self.list_data)-1
+
 		else:
 			self.zyngui.show_active_screen()
 
@@ -144,11 +146,15 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def sublayer_action(self, sublayer, t='S'):
+		self.index = 0
 		self.sublayer = sublayer
 		self.sublayer_index = self.zyngui.screens['layer'].layers.index(sublayer)
 
 		if t=='S':
-			self.fx_presets()
+			if len(self.sublayer.preset_list):
+				self.fx_presets()
+			else:
+				self.show()
 
 		elif t=='B':
 			self.show()
@@ -156,9 +162,24 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def back_action(self):
 		if self.sublayer:
+			sl = self.sublayer
 			self.reset()
 			self.show()
+
+			# Recover cursor position
+			if len(self.sublayers)>0:
+				self.index = len(self.list_data) - len(self.sublayers)
+				try:
+					self.index += self.sublayers.index(sl)
+				except:
+					pass
+
+			else:
+				self.index = len(self.list_data) - 1
+
+			self.select()
 			return ''
+
 		else:
 			return None
 
@@ -227,8 +248,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def fx_move_upchain(self):
 		ups = self.zyngui.screens['layer'].get_fxchain_upstream(self.sublayer)
 		self.zyngui.screens['layer'].swap_fxchain(ups[0], self.sublayer)
-		self.reset()
-		self.show()
+		self.back_action()
 
 
 	def can_move_downchain(self):
@@ -240,14 +260,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def fx_move_downchain(self):
 		downs = self.zyngui.screens['layer'].get_fxchain_downstream(self.sublayer)
 		self.zyngui.screens['layer'].swap_fxchain(self.sublayer, downs[0])
-		self.reset()
-		self.show()
+		self.back_action()
 
 
 	def fx_remove(self):
 		self.zyngui.screens['layer'].remove_layer(self.sublayer_index)
-		self.reset()
-		self.show()
+		self.back_action()
 
 
 	def set_select_path(self):
