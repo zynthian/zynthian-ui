@@ -106,7 +106,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
 
 
-	def select_action(self, i):
+	def select_action(self, i, t='S'):
 		fpath=self.list_data[i][0]
 		if fpath=="START_RECORDING":
 			self.start_recording()
@@ -117,7 +117,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		else:
 			self.start_playing(fpath)
 
-		#zynthian_gui_config.zyngui.show_active_screen()
+		#self.zyngui.show_active_screen()
 
 
 	def start_recording(self):
@@ -130,8 +130,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			check_output("echo play | jack_transport", shell=True)
 		except Exception as e:
 			logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
-			zynthian_gui_config.zyngui.show_info("ERROR STARTING AUDIO RECORD:\n %s" % e)
-			zynthian_gui_config.zyngui.hide_info_timer(5000)
+			self.zyngui.show_info("ERROR STARTING AUDIO RECORD:\n %s" % e)
+			self.zyngui.hide_info_timer(5000)
 		self.fill_list()
 
 
@@ -156,8 +156,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.current_record=fpath
 		except Exception as e:
 			logging.error("ERROR STARTING AUDIO PLAY: %s" % e)
-			zynthian_gui_config.zyngui.show_info("ERROR STARTING AUDIO PLAY:\n %s" % e)
-			zynthian_gui_config.zyngui.hide_info_timer(5000)
+			self.zyngui.show_info("ERROR STARTING AUDIO PLAY:\n %s" % e)
+			self.zyngui.hide_info_timer(5000)
 		self.fill_list()
 
 

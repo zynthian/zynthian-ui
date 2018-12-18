@@ -88,12 +88,18 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def __init__(self):
 		self.zyngine_counter = 0
 		self.zyngines = OrderedDict()
-		self.engine_type = "MIDI Synth"
+		self.set_engine_type("MIDI Synth")
 		super().__init__('Engine', True)
 
 
 	def set_engine_type(self, etype):
-		self.engine_type=etype
+		self.engine_type = etype
+		self.midi_chan = None
+
+
+	def set_fxchain_mode(self, midi_chan):
+		self.engine_type = "Audio Effect"
+		self.midi_chan = midi_chan
 
 
 	def fill_list(self):
@@ -109,11 +115,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		super().fill_list()
 
 
-	def select_action(self, i):
+	def select_action(self, i, t='S'):
 		try:
-			zynthian_gui_config.zyngui.screens['layer'].add_layer_engine(self.start_engine(self.list_data[i][0]))
+			self.zyngui.screens['layer'].add_layer_engine(self.start_engine(self.list_data[i][0]), self.midi_chan)
 		except Exception as e:
 			logging.error("Can't add layer %s => %s" % (self.list_data[i][2],e))
+
 
 	def start_engine(self, eng):
 		if eng not in self.zyngines:

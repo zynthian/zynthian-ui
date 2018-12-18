@@ -53,108 +53,201 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.layer_index = None
 		self.layer = None
 		self.sublayers = None
+		self.sublayer_index = None
+		self.sublayer = None
 
 
 	def fill_list(self):
 		self.list_data = []
-		
-		if not self.layer:
-			root_layer_options = True
-			self.layer = zynthian_gui_config.zyngui.screens['layer'].root_layers[self.layer_index]
-			# Add fxchain layers
-			self.sublayers = zynthian_gui_config.zyngui.screens['layer'].get_fxchain_layers(self.layer)
-			if self.sublayers:
-				self.sublayers.remove(self.layer)
-				for sl in self.sublayers:
-					self.list_data.append((self.sublayer_options, len(self.list_data), sl.get_basepath()))
 
-				# Add separator
-				if len(self.sublayers)>0:
-					self.list_data.append((None,len(self.list_data),"--------------------------"))
+		# Effect Layer Options
+		if self.sublayer:
+			if len(self.sublayer.preset_list)>1:
+				self.list_data.append((self.fx_presets, None, "Effect Presets"))
 
+			if self.can_move_upchain():
+				self.list_data.append((self.fx_move_upchain, None, "Move Upchain"))
+
+			if self.can_move_downchain():
+				self.list_data.append((self.fx_move_downchain, None, "Move Downchain"))
+
+			self.list_data.append((self.fx_remove, None, "Remove Effect"))
+
+		# Root Layer Options
 		else:
-			root_layer_options = False
+			self.layer = self.zyngui.screens['layer'].root_layers[self.layer_index]
+			self.sublayers = self.zyngui.screens['layer'].get_fxchain_layers(self.layer)
+			self.sublayers.remove(self.layer)
 
-		# Add layer options
-
-		if root_layer_options:
+			# Add root layer options
 			eng_options = self.layer.engine.get_options()
 
+			#self.list_data.append((self.layer_presets, None, "Presets"))
+
 			if eng_options['clone'] and self.layer.midi_chan is not None:
-				self.list_data.append((self.clone, len(self.list_data), "Clone"))
+				self.list_data.append((self.layer_clone, None, "Clone"))
 
 			if eng_options['transpose']:
-				self.list_data.append((self.transpose, len(self.list_data), "Transpose"))
+				self.list_data.append((self.layer_transpose, None, "Transpose"))
 
 			if eng_options['audio_route']:
-				self.list_data.append((self.audio_routing, len(self.list_data), "Audio Routing"))
+				self.list_data.append((self.layer_audio_routing, None, "Audio Routing"))
 
 			if eng_options['midi_chan']:
-				self.list_data.append((self.midi_chan, len(self.list_data), "MIDI Chan"))
+				self.list_data.append((self.layer_midi_chan, None, "MIDI Chan"))
 
-		self.list_data.append((self.remove_layer, len(self.list_data), "Remove Layer"))
+			self.list_data.append((self.layer_remove, None, "Remove Layer"))
+
+			# Add separator
+			self.list_data.append((None,None,"-----------------------------"))
+
+			# Add FX-chain options
+			if self.layer.midi_chan is not None:
+				self.list_data.append((self.fxchain_add, None, "Add Effect"))
+
+			if len(self.sublayers)>0:
+				self.list_data.append((self.fxchain_reset, None, "Remove All Effects"))
+
+				# Add separator
+				self.list_data.append((None,None,"-----------------------------"))
+
+				# Add effect layers
+				for sl in self.sublayers:
+					self.list_data.append((self.sublayer_action, sl, sl.engine.get_path(sl)))
+
 		super().fill_list()
 
 
 	def show(self):
 		self.index = 0
-		self.layer_index = zynthian_gui_config.zyngui.screens['layer'].get_layer_selected()
+
+		if self.layer_index is None:
+			self.layer_index = self.zyngui.screens['layer'].get_layer_selected()
 
 		if self.layer_index is not None:
 			super().show()
 		else:
-			zynthian_gui_config.zyngui.show_active_screen()
+			self.zyngui.show_active_screen()
 
 
-	def select_action(self, i):
+	def select_action(self, i, t='S'):
 		self.index = i
 
 		if self.list_data[i][0] is None:
 			pass
 
-		else:
+		elif self.list_data[i][1] is None:
 			self.list_data[i][0]()
 
-
-	def sublayer_options(self):
-		self.layer = self.sublayers[self.index]
-		self.layer_index = zynthian_gui_config.zyngui.screens['layer'].layers.index(self.layer)
-		self.show()
-
-
-	def midi_chan(self):
-		zynthian_gui_config.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan)
-		zynthian_gui_config.zyngui.show_modal('midi_chan')
-
-
-	def clone(self):
-		zynthian_gui_config.zyngui.screens['midi_chan'].set_mode("CLONE", self.layer.midi_chan)
-		zynthian_gui_config.zyngui.show_modal('midi_chan')
-
-
-	def transpose(self):
-		zynthian_gui_config.zyngui.show_modal('transpose')
-
-
-	def audio_routing(self):
-		zynthian_gui_config.zyngui.screens['audio_out'].set_layer(self.layer)
-		zynthian_gui_config.zyngui.show_modal('audio_out')
-
-
-	def remove_layer(self):
-		if self.layer in zynthian_gui_config.zyngui.screens['layer'].root_layers:
-			zynthian_gui_config.zyngui.screens['layer'].remove_root_layer(self.layer_index)
-			zynthian_gui_config.zyngui.show_screen('layer')
 		else:
-			zynthian_gui_config.zyngui.screens['layer'].remove_layer(self.layer_index)
-			self.reset()
+			self.list_data[i][0](self.list_data[i][1], t)
+
+
+	def sublayer_action(self, sublayer, t='S'):
+		self.sublayer = sublayer
+		self.sublayer_index = self.zyngui.screens['layer'].layers.index(sublayer)
+
+		if t=='S':
+			self.fx_presets()
+
+		elif t=='B':
 			self.show()
 
 
+	def layer_presets(self):
+		self.zyngui.set_curlayer(self.layer)
+		self.zyngui.show_screen('bank')
+		# If there is only one bank, jump to preset selection
+		if len(self.layer.bank_list)<=1:
+			self.zyngui.screens['bank'].select_action(0)
+
+
+	def layer_midi_chan(self):
+		self.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan)
+		self.zyngui.show_modal('midi_chan')
+
+
+	def layer_clone(self):
+		self.zyngui.screens['midi_chan'].set_mode("CLONE", self.layer.midi_chan)
+		self.zyngui.show_modal('midi_chan')
+
+
+	def layer_transpose(self):
+		self.zyngui.show_modal('transpose')
+
+
+	def layer_audio_routing(self):
+		self.zyngui.screens['audio_out'].set_layer(self.layer)
+		self.zyngui.show_modal('audio_out')
+
+
+	def layer_remove(self):
+		self.zyngui.screens['layer'].remove_root_layer(self.layer_index)
+		self.zyngui.show_screen('layer')
+
+
+	def fxchain_add(self):
+		midi_chan=self.layer.midi_chan
+		self.zyngui.screens['layer'].add_fxchain_layer(midi_chan)
+
+
+	def fxchain_reset(self):
+		# Remove all sublayers
+		for sl in self.sublayers:
+			i = self.zyngui.screens['layer'].layers.index(sl)
+			self.zyngui.screens['layer'].remove_layer(i)
+
+		self.reset()
+		self.show()
+
+
+	def fx_presets(self):
+		self.zyngui.set_curlayer(self.sublayer)
+		self.zyngui.show_screen('bank')
+		# If there is only one bank, jump to preset selection
+		if len(self.layer.bank_list)<=1:
+			self.zyngui.screens['bank'].select_action(0)
+
+
+	def can_move_upchain(self):
+		ups = self.zyngui.screens['layer'].get_fxchain_upstream(self.sublayer)
+		if len(ups)>0 and self.layer not in ups:
+			return True
+
+
+	def fx_move_upchain(self):
+		ups = self.zyngui.screens['layer'].get_fxchain_upstream(self.sublayer)
+		self.zyngui.screens['layer'].swap_fxchain(ups[0], self.sublayer)
+		self.reset()
+		self.show()
+
+
+	def can_move_downchain(self):
+		downs = self.zyngui.screens['layer'].get_fxchain_downstream(self.sublayer)
+		if len(downs)>0 and self.layer not in downs:
+			return True
+
+
+	def fx_move_downchain(self):
+		downs = self.zyngui.screens['layer'].get_fxchain_downstream(self.sublayer)
+		self.zyngui.screens['layer'].swap_fxchain(self.sublayer, downs[0])
+		self.reset()
+		self.show()
+
+
+	def fx_remove(self):
+		self.zyngui.screens['layer'].remove_layer(self.sublayer_index)
+		self.reset()
+		self.show()
+
+
 	def set_select_path(self):
-		if self.layer:
-			self.select_path.set("{} > Layer Options".format(self.layer.get_basepath()))
+		if self.sublayer:
+			self.select_path.set("{} > Options".format(self.sublayer.get_basepath()))
+		elif self.layer:
+			self.select_path.set("{} > Options".format(self.layer.get_basepath()))
 		else:
 			self.select_path.set("Layer Options")
+
 
 #------------------------------------------------------------------------------

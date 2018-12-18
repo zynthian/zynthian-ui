@@ -49,10 +49,11 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 class zynthian_gui_selector:
 
 	def __init__(self, selcap='Select', wide=False):
-		self.index=0
-		self.list_data=[]
-		self.shown=False
-		self.zselector=None
+		self.index = 0
+		self.list_data = []
+		self.shown = False
+		self.zselector = None
+		self.zyngui = zynthian_gui_config.zyngui
 
 		# Listbox Size
 		self.lb_height=zynthian_gui_config.display_height-zynthian_gui_config.topbar_height
@@ -178,7 +179,7 @@ class zynthian_gui_selector:
 	def refresh_loading(self):
 		if self.shown:
 			try:
-				if zynthian_gui_config.zyngui.loading:
+				if self.zyngui.loading:
 					self.loading_index=self.loading_index+1
 					if self.loading_index>len(zynthian_gui_config.loading_imgs)+1: self.loading_index=0
 					self.loading_canvas.itemconfig(self.loading_item, image=zynthian_gui_config.loading_imgs[self.loading_index])
@@ -243,16 +244,17 @@ class zynthian_gui_selector:
 		self.index=index
 
 
-	def click_listbox(self, index=None):
+	def click_listbox(self, index=None, t='S'):
 		if index is not None:
 			self.select_listbox(index)
 		else:
 			self.index=self.get_cursel()
-		self.select_action(self.index)
+
+		self.select_action(self.index, t)
 
 
-	def switch_select(self):
-		self.click_listbox()
+	def switch_select(self, t='S'):
+		self.click_listbox(None, t)
 
 
 	def select(self, index=None):
@@ -262,7 +264,7 @@ class zynthian_gui_selector:
 			self.zselector.set_value(self.index, True)
 
 
-	def select_action(self, index):
+	def select_action(self, index, t='S'):
 		pass
 
 
@@ -271,7 +273,7 @@ class zynthian_gui_selector:
 
 
 	def cb_topbar(self,event):
-		zynthian_gui_config.zyngui.zynswitch_defered('S',1)
+		self.zyngui.zynswitch_defered('S',1)
 
 
 	def cb_listbox_push(self,event):
@@ -283,9 +285,9 @@ class zynthian_gui_selector:
 		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 		#logging.debug("LISTBOX RELEASE => %s" % dts)
 		if dts < 0.3:
-			zynthian_gui_config.zyngui.zynswitch_defered('S',3)
+			self.zyngui.zynswitch_defered('S',3)
 		elif dts>=0.3 and dts<2:
-			zynthian_gui_config.zyngui.zynswitch_defered('B',3)
+			self.zyngui.zynswitch_defered('B',3)
 
 
 	def cb_listbox_motion(self,event):
@@ -314,11 +316,11 @@ class zynthian_gui_selector:
 		dts=(datetime.now()-self.loading_push_ts).total_seconds()
 		logging.debug("LOADING RELEASE => %s" % dts)
 		if dts<0.3:
-			zynthian_gui_config.zyngui.zynswitch_defered('S',2)
+			self.zyngui.zynswitch_defered('S',2)
 		elif dts>=0.3 and dts<2:
-			zynthian_gui_config.zyngui.zynswitch_defered('B',2)
+			self.zyngui.zynswitch_defered('B',2)
 		elif dts>=2:
-			zynthian_gui_config.zyngui.zynswitch_defered('L',2)
+			self.zyngui.zynswitch_defered('L',2)
 
 
 #------------------------------------------------------------------------------

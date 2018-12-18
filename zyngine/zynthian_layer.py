@@ -488,21 +488,35 @@ class zynthian_layer:
 
 	def set_audio_out(self, ao):
 		self.audio_out=ao
+		logging.debug("Setting connections:")
+		for jn in ao:
+			logging.debug("  {} => {}".format(self.engine.jackname, jn))
 
 
 	def add_audio_out(self, jackname):
+		if isinstance(jackname, zynthian_layer):
+			jackname=jackname.jackname
+
 		if jackname not in self.audio_out:
 			self.audio_out.append(jackname)
+			logging.debug("Connecting {} => {}".format(self.engine.jackname, jackname))
 
 
 	def del_audio_out(self, jackname):
+		if isinstance(jackname, zynthian_layer):
+			jackname=jackname.jackname
+
 		try:
 			self.audio_out.remove(jackname)
+			logging.debug("Disconnecting {} => {}".format(self.engine.jackname, jackname))
 		except:
 			pass
 
 
 	def toggle_audio_out(self, jackname):
+		if isinstance(jackname, zynthian_layer):
+			jackname=jackname.jackname
+
 		if jackname not in self.audio_out:
 			self.audio_out.append(jackname)
 		else:
@@ -528,7 +542,7 @@ class zynthian_layer:
 	def get_basepath(self):
 		path = self.engine.get_path(self)
 		if self.midi_chan is not None:
-			path = "{} > {}".format(self.midi_chan+1, path)
+			path = "{}#{}".format(self.midi_chan+1, path)
 		return path
 
 

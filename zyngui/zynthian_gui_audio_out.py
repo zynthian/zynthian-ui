@@ -59,10 +59,15 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 		for k in zynautoconnect.get_audio_input_ports().keys():
 			if k != self.layer.get_jackname():
+				try:
+					title = self.zyngui.screens['layer'].get_layer_by_jackname(k).get_basepath()
+				except:
+					title = k
+
 				if k in self.layer.get_audio_out():
-					self.list_data.append((k,k,"-> " + k))
+					self.list_data.append((k, k, "-> " + title))
 				else:
-					self.list_data.append((k,k,k))
+					self.list_data.append((k, k, title))
 
 		super().fill_list()
 
@@ -84,7 +89,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 		return last
 
 
-	def select_action(self, i):
+	def select_action(self, i, t='S'):
 		self.layer.toggle_audio_out(self.list_data[i][1])
 		self.fill_list()
 

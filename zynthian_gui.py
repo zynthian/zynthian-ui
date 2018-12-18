@@ -436,11 +436,10 @@ class zynthian_gui:
 				self.save_snapshot()
 
 		elif i==3:
-			if self.active_screen=='layer' and self.screens['layer'].get_layer_selected() is not None:
-				self.screens['layer_options'].reset()
-				self.show_modal('layer_options')
+			if self.modal_screen:
+				self.screens[self.modal_screen].switch_select('B')
 			else:
-				self.screens[self.active_screen].switch_select()
+				self.screens[self.active_screen].switch_select('B')
 
 		# Extra ZynSwitches (AllInOne)
 		elif i==4:
@@ -527,12 +526,9 @@ class zynthian_gui:
 
 		elif i==3:
 			if self.modal_screen:
-				self.screens[self.modal_screen].switch_select()
-			elif self.active_screen=='control' and self.screens['control'].mode in ('control','xyselect'):
-				self.screens['control'].next()
-				logging.info("Next Control Screen")
+				self.screens[self.modal_screen].switch_select('S')
 			else:
-				self.screens[self.active_screen].switch_select()
+				self.screens[self.active_screen].switch_select('S')
 
 		# Extra ZynSwitches (AllInOne)
 		elif i==4:

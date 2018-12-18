@@ -24,7 +24,6 @@
 #******************************************************************************
 
 import sys
-import copy
 import logging
 import tkinter
 from time import sleep
@@ -93,7 +92,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
-		self.layers = zynthian_gui_config.zyngui.screens['layer'].get_fxchain_layers()
+		self.layers = self.zyngui.screens['layer'].get_fxchain_layers()
 		i = 0
 		for layer in self.layers:
 			j = 0
@@ -101,7 +100,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.list_data.append((cscr,i,cscr,layer,j))
 				i += 1
 				j += 1
-		self.index = zynthian_gui_config.zyngui.curlayer.get_active_screen_index()
+		self.index = self.zyngui.curlayer.get_active_screen_index()
 		super().fill_list()
 
 
@@ -120,7 +119,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			screen_layer=screen_info[3]
 
 			#Get controllers for the current screen
-			zynthian_gui_config.zyngui.curlayer.set_active_screen_index(self.index)
+			self.zyngui.curlayer.set_active_screen_index(self.index)
 			self.zcontrollers=screen_layer.get_ctrl_screen(screen_title)
 			
 			#Setup GUI Controllers
@@ -241,7 +240,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return True
 
 
-	def select_action(self, i):
+	def select_action(self, i, t='S'):
 		self.set_mode_control()
 
 
@@ -254,11 +253,21 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return True
 
 
-	def switch_select(self):
-		if self.mode=='control':
-			self.set_mode_select()
-		elif self.mode=='select':
-			self.click_listbox()
+	def switch_select(self, t='S'):
+		if t=='S':
+			if self.mode in ('control','xyselect'):
+				self.next()
+				logging.info("Next Control Screen")
+			elif self.mode=='select':
+				self.click_listbox()
+
+		elif t=='B':
+			#if self.mode=='control':
+			if self.mode in ('control','xyselect'):
+				self.set_mode_select()
+			elif self.mode=='select':
+				self.click_listbox()
+
 
 
 	def zyncoder_read(self):
@@ -272,9 +281,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 				res=self.zgui_controllers[i].read_zyncoder()
 				
-				if res and zynthian_gui_config.zyngui.midi_learn_mode:
+				if res and self.zyngui.midi_learn_mode:
 					logging.debug("MIDI-learn ZController {}".format(i))
-					zynthian_gui_config.zyngui.midi_learn_mode = False
+					self.zyngui.midi_learn_mode = False
 					self.midi_learn(i)
 
 				if res and self.xyselect_mode:
@@ -357,7 +366,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def cb_listbox_push(self,event):
 		if self.xyselect_mode:
 			logging.debug("XY-Controller Mode ...")
-			zynthian_gui_config.zyngui.show_control_xy(self.x_zctrl, self.y_zctrl)
+			self.zyngui.show_control_xy(self.x_zctrl, self.y_zctrl)
 		else:
 			super().cb_listbox_push(event)
 
@@ -371,9 +380,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
 			if dts<0.3:
-				zynthian_gui_config.zyngui.start_loading()
+				self.zyngui.start_loading()
 				self.click_listbox()
-				zynthian_gui_config.zyngui.stop_loading()
+				self.zyngui.stop_loading()
 
 
 	def cb_listbox_motion(self, event):
@@ -387,9 +396,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 				index=self.get_cursel()
 				if index!=self.index:
 					#logging.debug("LISTBOX MOTION => %d" % self.index)
-					zynthian_gui_config.zyngui.start_loading()
+					self.zyngui.start_loading()
 					self.select_listbox(self.get_cursel())
-					zynthian_gui_config.zyngui.stop_loading()
+					self.zyngui.stop_loading()
 					sleep(0.04)
 
 
@@ -400,17 +409,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if (event.num == 4 or event.delta == 120) and self.index < (len(self.list_data)-1):
 			index += 1
 		if index!=self.index:
-			zynthian_gui_config.zyngui.start_loading()
+			self.zyngui.start_loading()
 			self.select_listbox(index)
-			zynthian_gui_config.zyngui.stop_loading()
+			self.zyngui.stop_loading()
 
 
 	def set_select_path(self):
-		if zynthian_gui_config.zyngui.curlayer:
-			if self.mode=='control' and zynthian_gui_config.zyngui.midi_learn_mode:
-				self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_basepath() + " /CTRL MIDI-Learn")
+		if self.zyngui.curlayer:
+			if self.mode=='control' and self.zyngui.midi_learn_mode:
+				self.select_path.set(self.zyngui.curlayer.get_basepath() + " /CTRL MIDI-Learn")
 			else:
-				self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_presetpath())
+				self.select_path.set(self.zyngui.curlayer.get_presetpath())
 
 
 #------------------------------------------------------------------------------

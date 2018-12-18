@@ -42,12 +42,14 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 #------------------------------------------------------------------------------
 
 class zynthian_gui_control_xy():
-	canvas=None
-	hline=None
-	vline=None
-	shown=False
 
 	def __init__(self):
+		self.canvas = None
+		self.hline = None
+		self.vline = None
+		self.shown = False
+		self.zyngui = zynthian_gui_config.zyngui
+
 		# Init X vars
 		self.padx=24
 		self.width=zynthian_gui_config.display_width-2*self.padx
@@ -90,16 +92,19 @@ class zynthian_gui_control_xy():
 		# Show
 		self.show()
 
+
 	def show(self):
 		if not self.shown:
 			self.shown=True
 			self.main_frame.grid()
 			self.refresh()
 
+
 	def hide(self):
 		if self.shown:
 			self.shown=False
 			self.main_frame.grid_forget()
+
 
 	def set_controllers(self, x_zctrl, y_zctrl):
 		self.x_zctrl=x_zctrl
@@ -108,15 +113,18 @@ class zynthian_gui_control_xy():
 		self.yvalue_max=self.y_zctrl.value_max
 		self.get_controller_values()
 
+
 	def set_x_controller(self, x_zctrl):
 		self.x_zctrl=x_zctrl
 		self.xvalue_max=self.x_zctrl.value_max
 		self.get_controller_values()
 
+
 	def set_y_controller(self, y_zctrl):
 		self.y_zctrl=y_zctrl
 		self.yvalue_max=self.y_zctrl.value_max
 		self.get_controller_values()
+
 
 	def get_controller_values(self):
 		xv=self.x_zctrl.value
@@ -130,6 +138,7 @@ class zynthian_gui_control_xy():
 			self.y=int(self.yvalue*zynthian_gui_config.display_height/self.yvalue_max)
 			self.canvas.coords(self.hline,0,self.y,self.width,self.y)
 
+
 	def refresh(self):
 		self.xvalue=self.x*self.xvalue_max/self.width
 		self.yvalue=self.y*self.yvalue_max/self.height
@@ -140,20 +149,25 @@ class zynthian_gui_control_xy():
 		if self.y_zctrl is not None:
 			self.y_zctrl.set_value(self.yvalue,True)
 
+
 	def cb_canvas(self, event):
 		#logging.debug("XY controller => %s, %s" % (event.x, event.y))
 		self.x=event.x
 		self.y=event.y
 		self.refresh()
 
+
 	def zyncoder_read(self):
-		zynthian_gui_config.zyngui.screens['control'].zyncoder_read()
+		self.zyngui.screens['control'].zyncoder_read()
 		self.get_controller_values()
+
 
 	def refresh_loading(self):
 		pass
 
-	def switch_select(self):
+
+	def switch_select(self, t='S'):
 		pass
+
 
 #------------------------------------------------------------------------------

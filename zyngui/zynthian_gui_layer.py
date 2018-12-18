@@ -97,7 +97,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		super().fill_list()
 
 
-	def select_action(self, i):
+	def switch_select(self, t='S'):
+		self.click_listbox(None, t)
+
+
+	def select_action(self, i, t='S'):
 		self.index = i
 
 		if self.list_data[i][0] is None:
@@ -117,25 +121,39 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		elif self.list_data[i][0]=='RESET':
 			self.reset()
-			zynthian_gui_config.zyngui.show_screen('layer')
+			self.zyngui.show_screen('layer')
 
 		elif self.list_data[i][0]=='ALL_NOTES_OFF':
-			zynthian_gui_config.zyngui.all_notes_off()
+			self.zyngui.all_notes_off()
 
 		elif self.list_data[i][0]=='ALL_SOUNDS_OFF':
-			zynthian_gui_config.zyngui.all_sounds_off()
+			self.zyngui.all_sounds_off()
 
 		else:
-			self.curlayer = self.root_layers[self.index]
-			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
-			# If there is an preset selection for the active layer ...
-			if self.curlayer.get_preset_name():
-				zynthian_gui_config.zyngui.show_screen('control')
-			else:
-				zynthian_gui_config.zyngui.show_screen('bank')
-				# If there is only one bank, jump to preset selection
-				if len(self.curlayer.bank_list)<=1:
-					zynthian_gui_config.zyngui.screens['bank'].select_action(0)
+			if t=='S':
+				self.layer_control()
+
+			elif t=='B':
+				self.layer_options()
+
+
+	def layer_control(self):
+		self.curlayer = self.root_layers[self.index]
+		self.zyngui.set_curlayer(self.curlayer)
+		# If there is an preset selection for the active layer ...
+		if self.curlayer.get_preset_name():
+			self.zyngui.show_screen('control')
+		else:
+			self.zyngui.show_screen('bank')
+			# If there is only one bank, jump to preset selection
+			if len(self.curlayer.bank_list)<=1:
+				self.zyngui.screens['bank'].select_action(0)
+
+
+	def layer_options(self):
+		if self.get_layer_selected() is not None:
+			self.zyngui.screens['layer_options'].reset()
+			self.zyngui.show_modal('layer_options')
 
 
 	def next(self):
@@ -145,7 +163,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.index = 0
 
 		self.select_listbox(self.index)
-		self.select_action(self.index)
+		self.layer_control()
 
 
 	def get_num_layers(self):
@@ -166,14 +184,22 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def add_layer(self, etype):
 		self.add_layer_eng=None
-		zynthian_gui_config.zyngui.screens['engine'].set_engine_type(etype)
-		zynthian_gui_config.zyngui.show_modal('engine')
+		self.zyngui.screens['engine'].set_engine_type(etype)
+		self.zyngui.show_modal('engine')
 
 
-	def add_layer_engine(self, eng):
+	def add_fxchain_layer(self, midi_chan):
+		self.add_layer_eng=None
+		self.zyngui.screens['engine'].set_fxchain_mode(midi_chan)
+		self.zyngui.show_modal('engine')
+
+
+	def add_layer_engine(self, eng, midi_chan=None):
 		self.add_layer_eng=eng
+
 		if eng.nickname=='MD' or eng.nickname=='PD':
 			self.add_layer_midich(None)
+
 		elif eng.nickname=='AE':
 			self.add_layer_midich(0,False)
 			self.add_layer_midich(1,False)
@@ -181,9 +207,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.add_layer_midich(3,False)
 			self.index=len(self.layers)-4
 			self.select_action(self.index)
+
+		elif midi_chan is None:
+			self.zyngui.screens['midi_chan'].set_mode("ADD")
+			self.zyngui.show_modal('midi_chan')
+
 		else:
-			zynthian_gui_config.zyngui.screens['midi_chan'].set_mode("ADD")
-			zynthian_gui_config.zyngui.show_modal('midi_chan')
+			self.add_layer_midich(midi_chan)
 
 
 	def add_layer_midich(self, midich, select=True):
@@ -195,7 +225,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.add_to_fxchain(layer)
 
 			self.layers.append(layer)
-			zynthian_gui_config.zyngui.zynautoconnect()
+			self.zyngui.zynautoconnect()
 
 			if select:
 				self.fill_list()
@@ -205,33 +235,33 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.select_action(self.index)
 				except Exception as e:
 					logging.error(e)
-					zynthian_gui_config.zyngui.show_screen('layer')
+					self.zyngui.show_screen('layer')
 
 
 	def remove_layer(self, i, cleanup_unused_engines=True):
 		if i>=0 and i<len(self.layers):
+			logging.debug("Removing layer {} => {} ...".format(i, self.layers[i].get_basepath()))
+			
 			self.drop_from_fxchain(self.layers[i])
-			zynthian_gui_config.zyngui.zynautoconnect()
+			self.zyngui.zynautoconnect()
 
-			zynthian_gui_config.zyngui.zynautoconnect_acquire_lock()
+			self.zyngui.zynautoconnect_acquire_lock()
 			self.layers[i].reset()
 			del self.layers[i]
-			zynthian_gui_config.zyngui.zynautoconnect_release_lock()
+			self.zyngui.zynautoconnect_release_lock()
 
-			if len(self.layers)==0:
+			if self.curlayer not in self.root_layers:
 				self.index=0
-				self.curlayer=None
-			elif self.index>(len(self.layers)-1):
-				self.index=len(self.layers)-1
-				self.curlayer=self.layers[self.index]
-			else:
-				self.curlayer=self.layers[self.index-1]
+				try:
+					self.curlayer=self.root_layers[self.index]
+				except:
+					self.curlayer=None
 
 			self.fill_list()
 			self.set_selector()
-			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
+			self.zyngui.set_curlayer(self.curlayer)
 			if cleanup_unused_engines:
-				zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
+				self.zyngui.screens['engine'].clean_unused_engines()
 
 
 	def remove_root_layer(self, i, cleanup_unused_engines=True):
@@ -239,14 +269,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			for layer in reversed(self.get_fxchain_layers(self.root_layers[i])):
 				self.remove_layer(self.layers.index(layer), False)
 			if cleanup_unused_engines:
-				zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
+				self.zyngui.screens['engine'].clean_unused_engines()
 
 
 	def remove_all_layers(self, cleanup_unused_engines=True):
 		while len(self.layers)>0:
 			self.remove_layer(len(self.layers)-1, False)
 		if cleanup_unused_engines:
-			zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
+			self.zyngui.screens['engine'].clean_unused_engines()
 
 
 	#def refresh(self):
@@ -358,6 +388,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.set_audio_routing()
 
 
+	def get_layer_by_jackname(self, jackname):
+		for layer in self.layers:
+			if layer.jackname==jackname:
+				return layer
+
+
 	# ---------------------------------------------------------------------------
 	# FX-Chain
 	# ---------------------------------------------------------------------------
@@ -417,6 +453,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return ups
 
 
+	def get_fxchain_downstream(self, layer):
+		downs=[]
+		for uslayer in self.layers:
+			if uslayer.get_jackname() in layer.get_audio_out():
+				downs.append(uslayer)
+
+		return downs
+
+
 	def add_to_fxchain(self, layer):
 		try:
 			ends=self.get_fxchain_ends(layer)
@@ -446,6 +491,39 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			logging.error("Error unchaining effect ({})".format(e))
 
 
+	def swap_fxchain(self, layer1, layer2):
+		ups1 = self.get_fxchain_upstream(layer1)
+		ups2 = self.get_fxchain_upstream(layer2)
+
+		self.zyngui.zynautoconnect_acquire_lock()
+
+		# Move inputs from layer1 to layer2
+		for l in ups1:
+			l.add_audio_out(layer2.get_jackname())
+			l.del_audio_out(layer1.get_jackname())
+
+		# Move inputs from layer2 to layer1
+		for l in ups2:
+			l.add_audio_out(layer1.get_jackname())
+			l.del_audio_out(layer2.get_jackname())
+
+		# Swap outputs from layer1 & layer2
+		ao1 = layer1.audio_out
+		ao2 = layer2.audio_out
+		layer1.set_audio_out(ao2)
+		layer2.set_audio_out(ao1)
+
+		self.zyngui.zynautoconnect_release_lock()
+
+		# Swap position in layer list
+		for i,layer in enumerate(self.layers):
+			if layer==layer1:
+				self.layers[i] = layer2
+
+			elif layer==layer2:
+				self.layers[i] = layer1
+
+
 	# ---------------------------------------------------------------------------
 	# Extended Config
 	# ---------------------------------------------------------------------------
@@ -453,13 +531,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def get_extended_config(self):
 		xconfigs={}
-		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
+		for zyngine in self.zyngui.screens['engine'].zyngines.values():
 			xconfigs[zyngine.nickname]=zyngine.get_extended_config()
 		return xconfigs
 
 
 	def set_extended_config(self, xconfigs):
-		for zyngine in zynthian_gui_config.zyngui.screens['engine'].zyngines.values():
+		for zyngine in self.zyngui.screens['engine'].zyngines.values():
 			zyngine.set_extended_config(xconfigs[zyngine.nickname])
 
 
@@ -522,10 +600,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.remove_all_layers(False)
 			#Start engines
 			for lss in snapshot['layers']:
-				engine=zynthian_gui_config.zyngui.screens['engine'].start_engine(lss['engine_nick'])
+				engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
 				self.layers.append(zynthian_layer(engine,lss['midi_chan'],zynthian_gui_config.zyngui))
 			#Remove unused engines
-			zynthian_gui_config.zyngui.screens['engine'].clean_unused_engines()
+			self.zyngui.screens['engine'].clean_unused_engines()
 			#Set extended config
 			if 'extended_config' in snapshot:
 				self.set_extended_config(snapshot['extended_config'])
@@ -539,7 +617,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			#Set active layer
 			self.index=snapshot['index']
 			self.curlayer=self.layers[self.index]
-			zynthian_gui_config.zyngui.set_curlayer(self.curlayer)
+			self.zyngui.set_curlayer(self.curlayer)
 			#Set Clone
 			if 'clone' in snapshot:
 				self.set_clone(snapshot['clone'])
@@ -560,7 +638,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			#Post action
 			if self.list_data[self.index][0] in ('NEW','RESET'):
 				self.index=0
-				zynthian_gui_config.zyngui.show_screen('layer')
+				self.zyngui.show_screen('layer')
 			else:
 				self.select_action(self.index)
 		except Exception as e:

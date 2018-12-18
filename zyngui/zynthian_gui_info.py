@@ -45,6 +45,7 @@ class zynthian_gui_info:
 
 	def __init__(self):
 		self.shown=False
+		self.zyngui=zynthian_gui_config.zyngui
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
@@ -105,6 +106,6 @@ class zynthian_gui_info:
 		pass
 
 	def cb_push(self,event):
-		zynthian_gui_config.zyngui.zynswitch_defered('S',1)
+		self.zyngui.zynswitch_defered('S',1)
 
 #-------------------------------------------------------------------------------
