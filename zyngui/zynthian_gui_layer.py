@@ -82,7 +82,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		# Add separator
 		if len(self.root_layers)>0:
-			self.list_data.append((None,len(self.list_data),"--------------------------"))
+			self.list_data.append((None,len(self.list_data),"-----------------------------"))
 
 		# Add fixed entries
 		self.list_data.append(('NEW_SYNTH',len(self.list_data),"NEW Synth Layer"))
@@ -90,7 +90,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.list_data.append(('NEW_GENERATOR',len(self.list_data),"NEW Generator Layer"))
 		self.list_data.append(('NEW_SPECIAL',len(self.list_data),"NEW Special Layer"))
 		self.list_data.append(('RESET',len(self.list_data),"REMOVE ALL"))
-		self.list_data.append((None,len(self.list_data),"--------------------------"))
+		self.list_data.append((None,len(self.list_data),"-----------------------------"))
 		self.list_data.append(('ALL_NOTES_OFF',len(self.list_data),"PANIC! All Notes Off"))
 		self.list_data.append(('ALL_SOUNDS_OFF',len(self.list_data),"PANIC!!! All Sounds Off"))
 

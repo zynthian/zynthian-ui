@@ -65,7 +65,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 		#Add "Waiting for Program Change" message
 		if len(self.list_data)>0:
-			self.list_data.append((None,len(self.list_data),"--------------------------"))
+			self.list_data.append((None,len(self.list_data),"-----------------------------"))
 		self.list_data.append(('None',len(self.list_data),"Waiting for Program Change ..."))
 
 		super().fill_list()
