@@ -64,7 +64,12 @@ class zynthian_gui_transpose(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		zyncoder.lib_zyncoder.set_midi_filter_transpose(self.get_layer_chan(),self.list_data[i][1])
-		self.zyngui.show_screen('layer')
+		self.zyngui.show_modal('layer_options')
+
+
+	def back_action(self):
+		self.zyngui.show_modal('layer_options')
+		return ''
 
 
 	def set_select_path(self):

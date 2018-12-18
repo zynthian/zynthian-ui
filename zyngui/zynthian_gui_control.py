@@ -244,6 +244,27 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.set_mode_control()
 
 
+	def back_action(self):
+		# If in controller map selection, back to instrument control
+		if self.mode=='select':
+			self.set_mode_control()
+			return ''
+
+		# If control xyselect mode active, disable xyselect mode
+		elif self.xyselect_mode:
+			logging.debug("DISABLE XYSELECT MODE")
+			self.unset_xyselect_mode()
+			return 'control'
+
+		# If in MIDI-learn mode, back to instrument control
+		elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
+			self.zyngui.exit_midi_learn_mode()
+			return ''
+
+		else:
+			return None
+
+
 	def next(self):
 		self.index+=1
 		if self.index>=len(self.list_data):

@@ -154,6 +154,15 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.show()
 
 
+	def back_action(self):
+		if self.sublayer:
+			self.reset()
+			self.show()
+			return ''
+		else:
+			return None
+
+
 	def layer_presets(self):
 		self.zyngui.set_curlayer(self.layer)
 		self.zyngui.show_screen('bank')

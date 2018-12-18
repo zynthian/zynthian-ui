@@ -99,6 +99,11 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 			self.zyngui.exit_midi_learn()
 
 
+	def back_action(self):
+		self.zyngui.exit_midi_learn_mode()
+		return ''
+
+
 	def set_select_path(self):
 		if self.zyngui.curlayer:
 			self.select_path.set(self.zyngui.curlayer.get_basepath() + " /PROG MIDI-Learn")

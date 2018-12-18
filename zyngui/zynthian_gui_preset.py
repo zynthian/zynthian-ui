@@ -67,7 +67,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		return self.zyngui.curlayer.preload_preset(self.index)
 
 
-	def back_action(self):
+	def restore_preset(self):
 		return self.zyngui.curlayer.restore_preset()
 
 

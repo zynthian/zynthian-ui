@@ -101,11 +101,14 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		if self.mode=='ADD':
 			self.zyngui.screens['layer'].add_layer_midich(self.list_data[i][1])
+
 		elif self.mode=='SET':
 			root_layer=self.zyngui.screens['layer_options'].layer
 			for layer in self.zyngui.screens['layer'].get_fxchain_layers(root_layer):
 				layer.set_midi_chan(self.list_data[i][1])
-			self.zyngui.show_screen('layer')
+
+			self.zyngui.show_modal('layer_options')
+
 		elif self.mode=='CLONE':
 			if self.list_data[i][1]!=self.midi_chan:
 				if zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, self.list_data[i][1]):
@@ -114,6 +117,14 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 				else:
 					zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, self.list_data[i][1], 1)
 					self.fill_list()
+
+
+	def back_action(self):
+		if self.mode=='SET' or self.mode=='CLONE':
+			self.zyngui.show_modal('layer_options')
+			return ''
+		else:
+			return None
 
 
 	def set_select_path(self):

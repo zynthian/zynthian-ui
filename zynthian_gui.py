@@ -414,10 +414,28 @@ class zynthian_gui:
 				self.show_screen('layer')
 
 		elif i==1:
+			# If modal screen ...
+			if self.modal_screen:
+				logging.debug("CLOSE MODAL => " + self.modal_screen)
+
+				# Try to call modal back_action method:
+				try:
+					screen_back = self.screens[self.modal_screen].back_action()
+				except:
+					pass
+
+				# Back to active screen by default ...
+				if screen_back is None:
+					screen_back = self.active_screen
+
+				logging.debug("BACK TO SCREEN => {}".format(screen_back))
+				self.show_screen(screen_back)
+
+			# If curlayer is set ...
 			if self.curlayer is not None:
 				if self.active_screen=='preset':
 					if self.curlayer.preset_info is not None:
-						self.screens['preset'].back_action()
+						self.screens['preset'].restore_preset()
 						self.show_screen('control')
 					else:
 						self.show_screen('bank')
@@ -425,6 +443,8 @@ class zynthian_gui:
 					self.show_screen('bank')
 				else:
 					self.show_screen('admin')
+
+			# Else, go to admin screen
 			else:
 				self.show_screen('admin')
 
@@ -479,36 +499,43 @@ class zynthian_gui:
 				self.zynswitch_bold(i)
 
 		elif i==1:
-			# If in MIDI-learn mode, back to instrument control
-			if self.midi_learn_mode or self.midi_learn_zctrl:
-				self.exit_midi_learn_mode()
-			# If in controller map selection, back to instrument control
-			elif self.active_screen=='control' and self.screens['control'].mode=='select':
-				self.screens['control'].set_mode_control()
+			screen_back = None
+			# If modal screen ...
+			if self.modal_screen:
+				logging.debug("CLOSE MODAL => " + self.modal_screen)
+
+				# Try to call modal back_action method:
+				try:
+					screen_back = self.screens[self.modal_screen].back_action()
+				except:
+					pass
+
+				# Back to active screen by default ...
+				if screen_back is None:
+					screen_back = self.active_screen
+
 			else:
-				# If modal screen, back to active screen
-				if self.modal_screen:
-					if self.modal_screen=='info':
-						self.screens['admin'].kill_command()
-					screen_back=self.active_screen
-					logging.debug("CLOSE MODAL => " + self.modal_screen)
-				# If control xyselect mode active
-				elif self.active_screen=='control' and self.screens['control'].xyselect_mode:
-					screen_back='control'
-					self.screens['control'].unset_xyselect_mode()
-					logging.debug("DISABLE XYSELECT MODE")
-				# Else, go back to screen-1
-				else:
+				try:
+					screen_back = self.screens[self.active_screen].back_action()
+				except:
+					pass
+
+				# Back to screen-1 by default ...
+				if screen_back is None:
 					j=self.screens_sequence.index(self.active_screen)-1
 					if j<0: j=1
 					screen_back=self.screens_sequence[j]
-				# If there is only one preset, go back to bank selection
-				if screen_back=='preset' and len(self.curlayer.preset_list)<=1:
-					screen_back='bank'
-				# If there is only one bank, go back to layer selection
-				if screen_back=='bank' and len(self.curlayer.bank_list)<=1:
-					screen_back='layer'
-				logging.debug("BACK TO SCREEN => "+screen_back)
+
+			# If there is only one preset, go back to bank selection
+			if screen_back=='preset' and len(self.curlayer.preset_list)<=1:
+				screen_back='bank'
+
+			# If there is only one bank, go back to layer selection
+			if screen_back=='bank' and len(self.curlayer.bank_list)<=1:
+				screen_back='layer'
+
+			if screen_back:
+				logging.debug("BACK TO SCREEN => {}".format(screen_back))
 				self.show_screen(screen_back)
 
 		elif i==2:
