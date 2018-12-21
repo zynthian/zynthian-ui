@@ -46,13 +46,14 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def __init__(self):
-		self.base_dir=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots"
-		self.default_snapshot_fpath=join(self.base_dir,"default.zss")
-		self.bank_dir=None
-		self.action="LOAD"
-		self.index_offset=0
-		self.midi_banks={}
-		self.midi_programs={}
+		self.base_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots"
+		self.default_snapshot_fpath = join(self.base_dir,"default.zss")
+		self.bank_dir = None
+		self.bankless_mode = False
+		self.action = "LOAD"
+		self.index_offset = 0
+		self.midi_banks = {}
+		self.midi_programs = {}
 		super().__init__('Bank', True)
 
 
@@ -81,6 +82,26 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.index=0
 
 
+	def check_bankless_mode(self):
+		banks = [ d for d in os.listdir(self.base_dir) if os.path.isdir(os.path.join(self.base_dir, d)) ]
+		n_banks = len(banks)
+
+		# If no banks, create the first one and choose it.
+		if n_banks == 0:
+			self.bank_dir = "00001"
+			os.makedirs(self.base_dir + "/" + self.bank_dir)
+			self.bankless_mode = True
+
+		# If only one bank, choose it.
+		elif n_banks == 1:
+			self.bank_dir = banks[0]
+			self.bankless_mode = True
+
+		# If more than 1, multibank mode
+		else:
+			self.bankless_mode = False
+
+
 	def load_bank_list(self):
 		self.midi_banks={}
 		self.list_data=[]
@@ -107,11 +128,18 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def load_snapshot_list(self):
 		self.midi_programs={}
-		self.list_data=[(self.base_dir,0,"..")]
-		i=1
+
+		i = 0
+		self.list_data = []
+
+		if not self.bankless_mode:
+			self.list_data.append((self.base_dir,0,".."))
+			i += 1
+
 		if self.action=="SAVE":
 			self.list_data.append(("NEW_SNAPSHOT",1,"New Snapshot"))
-			i=i+1
+			i += 1
+
 		self.change_index_offset(i)
 		for f in sorted(os.listdir(join(self.base_dir,self.bank_dir))):
 			fpath=self.get_snapshot_fpath(f)
@@ -125,10 +153,12 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 					logging.debug("Snapshot '%s' => MIDI program %d." % (title,pn))
 				except:
 					logging.warning("Snapshot '%s' don't have a MIDI program number." % title)
-				i=i+1
+				i += 1
 
 
 	def fill_list(self):
+		self.check_bankless_mode()
+
 		if self.bank_dir is None:
 			self.selector_caption='Bank'
 			self.load_bank_list()
@@ -272,7 +302,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def set_select_path(self):
 		title=(self.action.lower()+" snapshot").title()
-		if self.bank_dir:
+		if not self.bankless_mode and self.bank_dir:
 			title=title+": "+self.bank_dir
 		self.select_path.set(title)
 
