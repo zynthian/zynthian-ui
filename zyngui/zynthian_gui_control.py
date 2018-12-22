@@ -232,19 +232,32 @@ class zynthian_gui_control(zynthian_gui_selector):
 		elif self.mode=='select':
 			self.click_listbox()
 
+
 	def zyncoder_read(self):
 		#Get Mutex Lock
 		self.lock.acquire()
+
 		#Read Controller
 		if self.mode=='control' and self.zcontrollers:
 			for i, zctrl in enumerate(self.zcontrollers):
 				#print('Read Control ' + str(self.zgui_controllers[i].title))
-				if self.zgui_controllers[i].read_zyncoder() and self.xyselect_mode:
+
+				res=self.zgui_controllers[i].read_zyncoder()
+				
+				if res and zynthian_gui_config.zyngui.midi_learn_mode:
+					logging.debug("MIDI-learn ZController {}".format(i))
+					zynthian_gui_config.zyngui.midi_learn_mode = False
+					self.midi_learn(i)
+
+				if res and self.xyselect_mode:
 					self.zyncoder_read_xyselect(zctrl, i)
+
 		elif self.mode=='select':
 			super().zyncoder_read()
+
 		#Release Mutex Lock
 		self.lock.release()
+
 
 	def zyncoder_read_xyselect(self, zctrl, i):
 		#Detect a serie of changes in the same controller
@@ -353,6 +366,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if zynthian_gui_config.zyngui.curlayer:
-			self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_presetpath())
+			if self.mode=='control' and zynthian_gui_config.zyngui.midi_learn_mode:
+				self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_basepath() + " /CTRL MIDI-Learn")
+			else:
+				self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_presetpath())
 
 #------------------------------------------------------------------------------

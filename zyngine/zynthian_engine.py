@@ -25,14 +25,11 @@
 #import sys
 import os
 import copy
-import signal
 import liblo
 import logging
+import pexpect
 from time import sleep
 from os.path import isfile, isdir, join
-from subprocess import call, Popen, PIPE, STDOUT
-from threading  import Thread
-from queue import Queue, Empty
 from string import Template
 from collections import OrderedDict
 
@@ -84,24 +81,34 @@ class zynthian_engine:
 	def __init__(self, zyngui=None):
 		self.zyngui=zyngui
 
-		self.name=""
-		self.nickname=""
+		self.type = "MIDI Synth"
+		self.name = ""
+		self.nickname = ""
+		self.jackname = ""
 
-		self.loading=0
-		self.layers=[]
+		self.loading = 0
+		self.layers = []
 
 		#IPC variables
-		self.command=None
-		self.command_env=None
-		self.proc=None
-		self.queue=None
-		self.thread_queue=None
+		self.proc = None
+		self.proc_timeout = 20
+		self.proc_start_sleep = None
+		self.command = None
+		self.command_env = None
+		self.command_prompt = None
 
-		self.osc_target=None
-		self.osc_target_port=None
-		self.osc_server=None
-		self.osc_server_port=None
-		self.osc_server_url=None
+		self.osc_target = None
+		self.osc_target_port = None
+		self.osc_server = None
+		self.osc_server_port = None
+		self.osc_server_url = None
+
+		self.options = {
+			'clone': True,
+			'transpose': True,
+			'audio_route': True,
+			'midi_chan': True
+		}
 
 	def __del__(self):
 		self.stop()
@@ -136,7 +143,7 @@ class zynthian_engine:
 			return True
 
 	# ---------------------------------------------------------------------------
-	# Loading GUI signalization & refreshing
+	# Loading GUI signalization
 	# ---------------------------------------------------------------------------
 
 	def start_loading(self):
@@ -168,85 +175,71 @@ class zynthian_engine:
 	# Subproccess Management & IPC
 	# ---------------------------------------------------------------------------
 
-	def proc_enqueue_output(self):
-		try:
-			for line in self.proc.stdout:
-				self.queue.put(line)
-				#logging.debug("Proc Out: %s" % line)
-		except:
-			logging.info("Finished queue thread")
 
-	def proc_get_lines(self, tout=0.1, limit=2):
-		n=0
-		lines=[]
-		while True:
-			try:
-				lines.append(self.queue.get(True,tout))
-				n=n+1
-				if n==limit: tout=0.1
-			except Empty:
-				break
-		return lines
-
-	def start(self, start_queue=False, shell=False):
+	def start(self):
 		if not self.proc:
 			logging.info("Starting Engine " + self.name)
 			try:
 				self.start_loading()
-				self.proc=Popen(self.command, shell=shell, stdin=PIPE, stdout=PIPE, stderr=STDOUT, universal_newlines=True, env=self.command_env)
-					#, bufsize=1
-					#, preexec_fn=os.setsid
-					#, preexec_fn=self.chuser()
-				if start_queue:
-					self.queue=Queue()
-					self.thread_queue=Thread(target=self.proc_enqueue_output, args=())
-					self.thread_queue.daemon = True # thread dies with the program
-					self.thread_queue.start()
-					self.proc_get_lines(2)
+
+				if self.command_env:
+					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
+				else:
+					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout)
+
+				self.proc.delaybeforesend = 0
+
+				output = self.proc_get_output()
+
+				if self.proc_start_sleep:
+					sleep(self.proc_start_sleep)
+
+				self.stop_loading()
+				return output
+
 			except Exception as err:
-				logging.error("Can't start engine %s => %s" % (self.name,err))
-			self.stop_loading()
+				logging.error("Can't start engine {} => {}".format(self.name, err))
+
 
 	def stop(self, wait=0.2):
 		if self.proc:
 			self.start_loading()
 			try:
 				logging.info("Stoping Engine " + self.name)
-				pid=self.proc.pid
-				#self.proc.stdout.close()
-				#self.proc.stdin.close()
-				#os.killpg(os.getpgid(pid), signal.SIGTERM)
 				self.proc.terminate()
 				if wait>0: sleep(wait)
-				try:
-					self.proc.kill()
-					os.killpg(pid, signal.SIGKILL)
-				except:
-					pass
+				self.proc.terminate(True)
 			except Exception as err:
-				logging.error("Can't stop engine %s => %s" % (self.name,err))
+				logging.error("Can't stop engine {} => {}".format(self.name, err))
 			self.proc=None
 			self.stop_loading()
 
-	def proc_cmd(self, cmd, tout=0.1):
+
+	def proc_get_output(self):
+		if self.command_prompt:
+			self.proc.expect(self.command_prompt)
+			return self.proc.before.decode()
+		else:
+			return None
+
+
+	def proc_cmd(self, cmd):
 		if self.proc:
-			self.start_loading()
 			try:
-				logging.debug("proc command: "+cmd)
-				#self.proc.stdin.write(bytes(cmd + "\n", 'UTF-8'))
-				self.proc.stdin.write(cmd + "\n")
-				self.proc.stdin.flush()
-				out=self.proc_get_lines(tout)
-				logging.debug("proc output:\n%s" % (out))
+				#logging.debug("proc command: "+cmd)
+				self.proc.sendline(cmd)
+				out=self.proc_get_output()
+				logging.debug("proc output:\n{}".format(out))
 			except Exception as err:
 				out=""
-				logging.error("Can't exec engine command: %s => %s" % (cmd,err))
-			self.stop_loading()
+				logging.error("Can't exec engine command: {} => {}".format(cmd, err))
 			return out
+
 
 	# ---------------------------------------------------------------------------
 	# OSC Management
 	# ---------------------------------------------------------------------------
+
 
 	def osc_init(self, target_port=None, proto=liblo.UDP):
 		self.start_loading()
@@ -265,6 +258,7 @@ class zynthian_engine:
 			logging.error("OSC Server can't be initialized (%s). Running without OSC feedback." % err)
 		self.stop_loading()
 
+
 	def osc_end(self):
 		if self.osc_server:
 			self.start_loading()
@@ -275,17 +269,21 @@ class zynthian_engine:
 				logging.error("Can't stop OSC server => %s" % err)
 			self.stop_loading()
 
+
 	def osc_add_methods(self):
 		self.osc_server.add_method(None, None, self.cb_osc_all)
+
 
 	def cb_osc_all(self, path, args, types, src):
 		logging.info("OSC MESSAGE '%s' from '%s'" % (path, src.url))
 		for a, t in zip(args, types):
 			logging.debug("argument of type '%s': %s" % (t, a))
 
+
 	# ---------------------------------------------------------------------------
 	# Generating list from different sources
 	# ---------------------------------------------------------------------------
+
 
 	def get_filelist(self, dpath, fext):
 		self.start_loading()
@@ -307,6 +305,7 @@ class zynthian_engine:
 		self.stop_loading()
 		return res
 
+
 	def get_dirlist(self, dpath):
 		self.start_loading()
 		res=[]
@@ -326,6 +325,7 @@ class zynthian_engine:
 		self.stop_loading()
 		return res
 
+
 	def get_cmdlist(self,cmd):
 		self.start_loading()
 		res=[]
@@ -339,49 +339,76 @@ class zynthian_engine:
 		self.stop_loading()
 		return res
 
+
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
 
+
 	def add_layer(self, layer):
 		self.layers.append(layer)
+		layer.jackname = self.jackname
+
 
 	def del_layer(self, layer):
 		self.layers.remove(layer)
+		layer.jackname = None
+
 
 	def del_all_layers(self):
 		for layer in self.layers:
 			self.del_layer(layer)
 
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
+
 	def set_midi_chan(self, layer):
 		pass
+
+
+	def get_active_midi_channels(self):
+		chans=[]
+		for layer in self.layers:
+			if layer.midi_chan is None:
+				return None
+			elif layer.midi_chan>=0 and layer.midi_chan<=15:
+				chans.append(layer.midi_chan)
+		return chans
+
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
+
 	def get_bank_list(self, layer=None):
 		logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
 
+
 	def set_bank(self, layer, bank):
 		self.zyngui.zynmidi.set_midi_bank_msb(layer.get_midi_chan(), bank[1])
+		return True
+
 
 	# ---------------------------------------------------------------------------
 	# Preset Management
 	# ---------------------------------------------------------------------------
 
+
 	def get_preset_list(self, bank):
-		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name)
+		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name),'PD'
+
 
 	def set_preset(self, layer, preset, preload=False):
 		if isinstance(preset[1],int):
 			self.zyngui.zynmidi.set_midi_prg(layer.get_midi_chan(), preset[1])
 		else:
 			self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
+		return True
+
 
 	def cmp_presets(self, preset1, preset2):
 		if preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
@@ -389,9 +416,11 @@ class zynthian_engine:
 		else:
 			return False
 
+
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
+
 
 	# Get zynthian controllers dictionary:
 	# + Default implementation uses a static controller definition array
@@ -399,57 +428,79 @@ class zynthian_engine:
 		midich=layer.get_midi_chan()
 		zctrls=OrderedDict()
 
-		for ctrl in self._ctrls:
-			options={}
+		if self._ctrls is not None:
+			for ctrl in self._ctrls:
+				options={}
 
-			#OSC control =>
-			if isinstance(ctrl[1],str):
-				#replace variables ...
-				tpl=Template(ctrl[1])
-				cc=tpl.safe_substitute(ch=midich)
-				try:
-					cc=tpl.safe_substitute(i=layer.part_i)
-				except:
-					pass
-				#set osc_port option ...
-				if self.osc_target_port>0:
-					options['osc_port']=self.osc_target_port
-				#debug message
-				logging.debug('CONTROLLER %s OSC PATH => %s' % (ctrl[0],cc))
-			#MIDI Control =>
-			else:
-				cc=ctrl[1]
+				#OSC control =>
+				if isinstance(ctrl[1],str):
+					#replace variables ...
+					tpl=Template(ctrl[1])
+					cc=tpl.safe_substitute(ch=midich)
+					try:
+						cc=tpl.safe_substitute(i=layer.part_i)
+					except:
+						pass
+					#set osc_port option ...
+					if self.osc_target_port>0:
+						options['osc_port']=self.osc_target_port
+					#debug message
+					logging.debug('CONTROLLER %s OSC PATH => %s' % (ctrl[0],cc))
+				#MIDI Control =>
+				else:
+					cc=ctrl[1]
 
-			#Build controller depending on array length ...
-			if len(ctrl)>4:
-				if isinstance(ctrl[4],str):
-					zctrl=zynthian_controller(self,ctrl[4],ctrl[0])
+				#Build controller depending on array length ...
+				if len(ctrl)>4:
+					if isinstance(ctrl[4],str):
+						zctrl=zynthian_controller(self,ctrl[4],ctrl[0])
+					else:
+						zctrl=zynthian_controller(self,ctrl[0])
+						zctrl.graph_path=ctrl[4]
+					zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
+				elif len(ctrl)>3:
+					zctrl=zynthian_controller(self,ctrl[0])
+					zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
 				else:
 					zctrl=zynthian_controller(self,ctrl[0])
-					zctrl.graph_path=ctrl[4]
-				zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
-			elif len(ctrl)>3:
-				zctrl=zynthian_controller(self,ctrl[0])
-				zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
-			else:
-				zctrl=zynthian_controller(self,ctrl[0])
-				zctrl.setup_controller(midich,cc,ctrl[2])
+					zctrl.setup_controller(midich,cc,ctrl[2])
 
-			#Set controller extra options
-			if len(options)>0:
-				zctrl.set_options(options)
+				#Set controller extra options
+				if len(options)>0:
+					zctrl.set_options(options)
 
-			zctrls[ctrl[0]]=zctrl
+				zctrls[ctrl[0]]=zctrl
 		return zctrls
+
 
 	def send_controller_value(self, zctrl):
 		raise Exception("NOT DEFINED")
+
 
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
 
+
 	def get_path(self, layer):
 		return self.nickname
+
+
+	# ---------------------------------------------------------------------------
+	# Options and Extended Config
+	# ---------------------------------------------------------------------------
+
+
+	def get_options(self):
+		return self.options
+
+
+	def get_extended_config(self):
+		return None
+
+
+	def set_extended_config(self, xconfig):
+		pass
+
 
 #******************************************************************************

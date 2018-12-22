@@ -124,6 +124,17 @@ elif wiring_layout=="PROTOTYPE-5":
 	if not zyncoder_pin_b: zyncoder_pin_b=[21,27,7,3]
 	if not zynswitch_pin: zynswitch_pin=[107,105,106,104]
 	select_ctrl=3
+elif wiring_layout=="MCP23017_ENCODERS":
+	if not zyncoder_pin_a: zyncoder_pin_a=[102,105,110,113]
+	if not zyncoder_pin_b: zyncoder_pin_b=[101,104,109,112]
+	if not zynswitch_pin: zynswitch_pin=[100,103,108,111]
+	select_ctrl=3
+elif wiring_layout=="MCP23017_EXTRA":
+	if not zyncoder_pin_a: zyncoder_pin_a=[102,105,110,113]
+	if not zyncoder_pin_b: zyncoder_pin_b=[101,104,109,112]
+	if not zynswitch_pin: zynswitch_pin=[100,103,108,111,106,107,114,115]
+	select_ctrl=3
+
 # Desktop Development & Emulation
 elif wiring_layout=="EMULATOR":
 	if not zyncoder_pin_a: zyncoder_pin_a=[4,5,6,7]
@@ -136,6 +147,7 @@ elif wiring_layout=="DUMMIES":
 	if not zyncoder_pin_b: zyncoder_pin_b=[0,0,0,0]
 	if not zynswitch_pin: zynswitch_pin=[0,0,0,0]
 	select_ctrl=3
+# Custom Config => blank
 elif wiring_layout=="CUSTOM":
 	select_ctrl=3
 # Default to DUMMIES
@@ -186,6 +198,7 @@ color_tx_off=os.environ.get('ZYNTHIAN_UI_COLOR_TX_OFF',"#e0e0e0")
 color_on=os.environ.get('ZYNTHIAN_UI_COLOR_ON',"#ff0000")
 color_off=os.environ.get('ZYNTHIAN_UI_COLOR_OFF',"#5a626d")
 color_hl=os.environ.get('ZYNTHIAN_UI_COLOR_HL',"#00D000")
+color_ml=os.environ.get('ZYNTHIAN_UI_COLOR_ML',"#F0F000")
 color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG',"#3a424d")
 
 # Color Scheme
@@ -208,7 +221,7 @@ font_family=os.environ.get('ZYNTHIAN_UI_FONT_FAMILY',"Audiowide")
 #font_family="Orbitron" #=> Nice, but too strange
 #font_family="Abel" #=> Quite interesting, also "Strait"
 
-font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',10))
+font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 
 #------------------------------------------------------------------------------
 # UI Cursor
@@ -226,7 +239,8 @@ def set_midi_config():
 	global master_midi_program_base, master_midi_bank_change_ccnum
 	global master_midi_bank_change_up, master_midi_bank_change_down
 	global master_midi_bank_change_down_ccnum, master_midi_bank_base
-	global preset_preload_noteon, midi_single_active_channel, midi_fine_tuning
+	global preset_preload_noteon, midi_single_active_channel
+	global midi_prog_change_zs3, midi_fine_tuning
 	global midi_filter_rules, disabled_midi_in_ports, enabled_midi_out_ports
 
 	master_midi_channel=int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
@@ -270,8 +284,9 @@ def set_midi_config():
 	master_midi_bank_change_up=int('{:<06}'.format(master_midi_bank_change_up.replace('#',mmc_hex)),16)
 	master_midi_bank_change_down=int('{:<06}'.format(master_midi_bank_change_down.replace('#',mmc_hex)),16)
 
-	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON',1))
 	midi_single_active_channel=int(os.environ.get('ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL',0))
+	midi_prog_change_zs3=int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3',1))
+	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON',1))
 	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440))
 
 	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES',"")
@@ -295,18 +310,22 @@ top = tkinter.Tk()
 try:
 	if not display_width:
 		display_width = top.winfo_screenwidth()
-		ctrl_width=int(display_width/4)
+		ctrl_width = int(display_width/4)
 	if not display_height:
 		display_height = top.winfo_screenheight()
-		topbar_height=int(display_height/10)
-		ctrl_height=int((display_height-topbar_height)/2)
+		topbar_height = int(display_height/10)
+		ctrl_height = int((display_height-topbar_height)/2)
 except:
 	logging.warning("Can't get screen size. Using default 320x240!")
 	display_width = 320
 	display_height = 240
-	topbar_height=int(display_height/10)
-	ctrl_width=int(display_width/4)
-	ctrl_height=int((display_height-topbar_height)/2)
+	topbar_height = int(display_height/10)
+	ctrl_width = int(display_width/4)
+	ctrl_height = int((display_height-topbar_height)/2)
+
+# Adjust font size, if not defined
+if not font_size:
+	font_size = int(display_width/32)
 
 # Adjust Root Window Geometry
 top.geometry(str(display_width)+'x'+str(display_height))

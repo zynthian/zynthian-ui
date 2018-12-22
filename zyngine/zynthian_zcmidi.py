@@ -76,3 +76,9 @@ class zynthian_zcmidi:
 
 	def get_midi_preset(self, chan):
 		return [self.bank_msb_selected[chan],self.bank_lsb_selected[chan],self.prg_selected[chan]]
+
+	def note_on(self, chan, note, vel):
+		self.lib_zyncoder.zynmidi_send_note_on(chan, note, vel)
+
+	def note_off(self, chan, note):
+		self.lib_zyncoder.zynmidi_send_note_on(chan, note, 0)

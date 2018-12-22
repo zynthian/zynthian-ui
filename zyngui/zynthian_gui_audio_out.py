@@ -3,9 +3,9 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian GUI Bank Selector Class
+# Zynthian GUI Audio-out Selector Class
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -24,9 +24,11 @@
 #******************************************************************************
 
 import sys
+import tkinter
 import logging
 
 # Zynthian specific modules
+import zynautoconnect
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
@@ -38,41 +40,59 @@ from . import zynthian_gui_selector
 logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 
 #------------------------------------------------------------------------------
-# Zynthian Bank Selection GUI Class
+# Zynthian MIDI Channel Selection GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_bank(zynthian_gui_selector):
-
+class zynthian_gui_audio_out(zynthian_gui_selector):
 
 	def __init__(self):
-		super().__init__('Bank', True)
+		self.layer=None
+		super().__init__('Audio Out', True)
 
-    
+
+	def set_layer(self, layer):
+		self.layer = layer
+
+
 	def fill_list(self):
-		zynthian_gui_config.zyngui.curlayer.load_bank_list()
-		self.list_data=zynthian_gui_config.zyngui.curlayer.bank_list
+		self.list_data = []
+
+		for k in zynautoconnect.get_audio_input_ports().keys():
+			if k != self.layer.get_jackname():
+				if k in self.layer.get_audio_out():
+					self.list_data.append((k,k,"-> " + k))
+				else:
+					self.list_data.append((k,k,k))
+
 		super().fill_list()
 
 
-	def show(self):
-		self.index=zynthian_gui_config.zyngui.curlayer.get_bank_index()
-		logging.debug("BANK INDEX => %s" % self.index)
-		super().show()
+	def fill_listbox(self):
+		super().fill_listbox()
+		self.index=self.highlight()
+
+
+	# Highlight current engine assigned outputs ...
+	def highlight(self):
+		last=0
+		for i in range(len(self.list_data)):
+			if self.list_data[i][2][:2]=='->':
+				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_hl})
+				last=i
+			else:
+				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
+		return last
 
 
 	def select_action(self, i):
-		if zynthian_gui_config.zyngui.curlayer.set_bank(i):
-			zynthian_gui_config.zyngui.show_screen('preset')
-			# If there is only one preset, jump to instrument control
-			if len(zynthian_gui_config.zyngui.curlayer.preset_list)<=1:
-				zynthian_gui_config.zyngui.screens['preset'].select_action(0)
-		else:
-			self.show()
+		self.layer.toggle_audio_out(self.list_data[i][1])
+		self.fill_list()
 
 
 	def set_select_path(self):
-		if zynthian_gui_config.zyngui.curlayer:
-			self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_basepath())
+		if self.layer and self.layer.get_basepath():
+			self.select_path.set("Audio from {} to ...".format(self.layer.get_basepath()))
+		else:
+			self.select_path.set("Audio Routing ...")
 
-
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------

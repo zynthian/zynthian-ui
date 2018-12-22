@@ -28,7 +28,7 @@ import jack
 import copy
 import logging
 from time import sleep
-from threading  import Thread
+from threading  import Thread, Lock
 from collections import OrderedDict
 
 # Zynthian specific modules
@@ -40,27 +40,11 @@ from zyngui import zynthian_gui_config
 
 logger=logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
+#logger.setLevel(logging.DEBUG)
 
 #-------------------------------------------------------------------------------
 # Define some Constants and Global Variables
 #-------------------------------------------------------------------------------
-
-#Synth Engine List
-engine_list = [
-	"zynaddsubfx",
-	"fluidsynth",
-	"LinuxSampler",
-	"setBfree",
-	"Pianoteq60",
-	"Pianoteq61",
-	"Pianoteq62",
-	"Pure Data",
-	"mod-host",
-	"aeolus"
-]
-
-#List of monitored engines
-monitored_engines = []
 
 refresh_time=2
 jclient=None
@@ -136,22 +120,45 @@ def midi_autoconnect():
 	#logger.debug("QMidiNet Input Port: {}".format(qmidinet_out))
 	#logger.debug("QMidiNet Output Port: {}".format(qmidinet_in))
 
-	#Get Synth Engines MIDI output ports
+	#Get Engines list from UI
+	zyngine_list=zynthian_gui_config.zyngui.screens["engine"].zyngines
+
+	#Get Engines MIDI input ports
 	engines_in=[]
-	for engine_name in engine_list:
-		#logger.debug("engine: "+engine)
-		ports=jclient.get_ports(engine_name, is_input=True, is_midi=True, is_physical=False)
+	for k, zyngine in zyngine_list.items():
+		#logger.debug("zyngine: {}".format(zyngine.jackname))
+		ports=jclient.get_ports(zyngine.jackname, is_input=True, is_midi=True, is_physical=False)
 		try:
 			port=ports[0]
+
+			#Dirty hack for zynaddsubfx: #TODO => Improve it!!!
 			if port.shortname=='osc':
 				port=ports[1]
-			#logger.debug("Engine {}:{} found".format(engine_name,port.short_name))
-			engines_in.append(port)
+
+			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
+			#List of tuples => [port, active_channels]
+			engines_in.append([port, zyngine.get_active_midi_channels()])
 		except:
-			#logger.warning("Engine {} is not present".format(engine_name))
+			#logger.warning("Engine {} is not present".format(zyngine.jackname))
 			pass
 
 	#logger.debug("Synth Engine Ports: {}".format(engines_in))
+
+	#Get Synth Engines MIDI output ports
+	engines_out=[]
+	for k, zyngine in zyngine_list.items():
+		#logger.debug("zyngine: {}".format(zyngine.jackname))
+		ports=jclient.get_ports(zyngine.jackname, is_output=True, is_midi=True, is_physical=False)
+		try:
+			port=ports[0]
+			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
+			#List of tuples => [port, active_channels]
+			engines_out.append([port, zyngine.get_active_midi_channels()])
+		except:
+			#logger.warning("Engine {} is not present".format(zyngine.jackname))
+			pass
+
+	#logger.debug("Synth Engine Ports: {}".format(engines_out))
 
 	#Get Zynthian Midi Router MIDI ports
 	zmr_out=OrderedDict()
@@ -185,12 +192,41 @@ def midi_autoconnect():
 	except:
 		pass
 
-	#Connect ZynMidiRouter:main_out to engines
+	#Connect Control feedback to ZynMidiRouter:ctrl_in
+	try:
+		for eop in engines_out:
+			jclient.connect(eop[0],zmr_in['ctrl_in'])
+	except:
+		pass
+
+	#Connect ZynMidiRouter to engines
 	for eip in engines_in:
-		try:
-			jclient.connect(zmr_out['main_out'],eip)
-		except:
-			pass
+		if eip[1] is None:
+			try:
+				jclient.connect(zmr_out['main_out'],eip[0])
+			except:
+				pass
+			for ch in range(0,16):
+				try:
+					jclient.disconnect(zmr_out['ch{}_out'.format(ch)],eip[0])
+				except:
+					pass
+		else:
+			try:
+				jclient.disconnect(zmr_out['main_out'],eip[0])
+			except:
+				pass
+			for ch in range(0,16):
+				if ch in eip[1]:
+					try:
+						jclient.connect(zmr_out['ch{}_out'.format(ch)],eip[0])
+					except:
+						pass
+				else:
+					try:
+						jclient.disconnect(zmr_out['ch{}_out'.format(ch)],eip[0])
+					except:
+						pass
 
 	#Connect ZynMidiRouter:main_out to enabled MIDI-OUT ports
 	for hw in hw_in:
@@ -212,53 +248,41 @@ def midi_autoconnect():
 def audio_autoconnect():
 	logger.info("Autoconnecting Audio ...")
 
-	#Get System Output ...
-	#sys_out=jclient.get_ports(is_audio=True, is_terminal=True)
-	sys_out=jclient.get_ports(is_input=True, is_audio=True, is_physical=True)
+	#Get Audio Input Ports
+	input_ports=get_audio_input_ports()
 
-	#Get Monitor Output & Input ...
-	mon_out=jclient.get_ports("mod-monitor", is_input=True, is_audio=True)
+	#Disconnect Monitor from System Output
 	mon_in=jclient.get_ports("mod-monitor", is_output=True, is_audio=True)
+	try:
+		jclient.disconnect(mon_in[0],input_ports['system'][0])
+		jclient.disconnect(mon_in[1],input_ports['system'][1])
+	except:
+		pass
 
-	if len(sys_out)>0:
-		#Disconnect Monitor from System Output
-		if len(mon_out)>0:
-			try:
-				jclient.disconnect(mon_in[0],sys_out[0])
-				jclient.disconnect(mon_in[1],sys_out[1])
-			except:
-				pass
+	#Get layers list from UI
+	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 
-		#Connect Synth Engines to System Output
-		for engine in engine_list:
-			devs=jclient.get_ports(engine, is_output=True, is_audio=True, is_physical=False)
-			if devs:
-				dev_name=str(devs[0].name).split(':')[0]
-				#logger.error("Autoconnecting Engine => {}".format(dev_name))
-				#logger.info("Autoconnecting Engine => {}".format(dev_name))
-				if len(mon_out)>0 and dev_name.lower() in monitored_engines:
-					try:
-						jclient.connect(devs[0],mon_out[0])
-						jclient.connect(devs[1],mon_out[1])
-					except:
-						pass
-					try:
-						jclient.disconnect(devs[0],sys_out[0])
-						jclient.disconnect(devs[1],sys_out[1])
-					except:
-						pass
-				else:
-					try:
-						jclient.connect(devs[0],sys_out[0])
-						jclient.connect(devs[1],sys_out[1])
-					except:
-						pass
-					if len(mon_out)>0:
-						try:
-							jclient.disconnect(devs[0],mon_out[0])
-							jclient.disconnect(devs[1],mon_out[1])
-						except:
-							pass
+	#Connect Synth Engines to assigned outputs
+	for i, layer in enumerate(layers_list):
+		ports=jclient.get_ports(layer.get_jackname(), is_output=True, is_audio=True, is_physical=False)
+		if ports:
+			if len(ports)==1:
+				ports.append(ports[0])
+
+			#logger.debug("Autoconnecting Engine {} ...".format(layer.get_jackname()))
+			
+			#Connect to assigned ports and disconnect from the rest ...
+			for ao in input_ports:
+				try:
+					if ao in layer.get_audio_out():
+						#logger.debug("Connecting to {} ...".format(ao))
+						jclient.connect(ports[0],input_ports[ao][0])
+						jclient.connect(ports[1],input_ports[ao][1])
+					else:
+						jclient.disconnect(ports[0],input_ports[ao][0])
+						jclient.disconnect(ports[1],input_ports[ao][1])
+				except:
+					pass
 
 	if zynthian_aubionotes:
 		#Get System Capture and Aubio Input ports ...
@@ -272,59 +296,76 @@ def audio_autoconnect():
 			except:
 				pass
 
+
+def get_audio_input_ports():
+	res=OrderedDict()
+	try:
+		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
+			parts=aip.name.split(':')
+			client_name=parts[0]
+			if client_name[:7]=="effect_":
+				continue
+			if client_name not in res:
+				res[client_name]=[aip]
+				#logger.debug("AUDIO INPUT PORT: {}".format(client_name))
+			else:
+				res[client_name].append(aip)
+	except:
+		pass
+	return res
+
+
 def autoconnect():
+	#Get Mutex Lock 
+	acquire_lock()
+
+	#Autoconnect
 	midi_autoconnect()
 	audio_autoconnect()
+
+	#Release Mutex Lock
+	release_lock()
+
 
 def autoconnect_thread():
 	while not exit_flag:
 		try:
 			autoconnect()
 		except Exception as err:
-			logger.error("ERROR Autoconnecting: {}".format(err))
+			logger.error(err)
 		sleep(refresh_time)
 
+
+def acquire_lock():
+	lock.acquire()
+
+
+def release_lock():
+	lock.release()
+
+
 def start(rt=2):
-	global refresh_time, exit_flag, jclient, thread
+	global refresh_time, exit_flag, jclient, thread, lock
 	refresh_time=rt
 	exit_flag=False
+
 	try:
 		jclient=jack.Client("Zynthian_autoconnect")
 	except Exception as e:
 		logger.error("Failed to connect with Jack Server: {}".format(e))
+
+	# Create Lock object (Mutex) to avoid concurrence problems
+	lock=Lock();
+
+	# Start Autoconnect Thread
 	thread=Thread(target=autoconnect_thread, args=())
 	thread.daemon = True # thread dies with the program
 	thread.start()
+
 
 def stop():
 	global exit_flag
 	exit_flag=True
 
-# Monitored Engines Stuff
-
-def reset_monitored_engines():
-	monitored_engines.clear()
-
-def set_monitored_engines(engines):
-	monitored_engines.clear()
-	for eng in engines:
-		monitored_engines.append(eng.lower())
-
-def set_monitored_engine(engine):
-	engine=engine.lower()
-	if engine not in monitored_engines:
-		monitored_engines.append(engine)
-
-def unset_monitored_engine(engine):
-	engine=engine.lower()
-	if engine in monitored_engines:
-		monitored_engines.remove(engine)
-
-def is_monitored_engine(engine):
-	engine=engine.lower()
-	if engine in monitored_engines:
-		return True
-	else:
-		return False
 
 #------------------------------------------------------------------------------

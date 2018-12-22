@@ -13,6 +13,7 @@ __all__ = [
 	"zynthian_engine_pianoteq",
 	"zynthian_engine_puredata",
 	"zynthian_engine_aeolus",
+	"zynthian_engine_jalv",
 ]
 #from zyngine.zynthian_midi import *
 from zyngine.zynthian_zcmidi import *
@@ -28,3 +29,4 @@ from zyngine.zynthian_engine_modui import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_puredata import *
 from zyngine.zynthian_engine_aeolus import *
+from zyngine.zynthian_engine_jalv import *

@@ -63,6 +63,20 @@ class zynthian_gui_admin(zynthian_gui_selector):
     
 	def fill_list(self):
 		self.list_data=[]
+
+		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
+		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
+
+		self.list_data.append((self.do_nothing,0,"--------------------------"))
+
+		if zynthian_gui_config.midi_single_active_channel:
+			self.list_data.append((self.toggle_single_channel,0,"Single Channel OFF"))
+		else:
+			self.list_data.append((self.toggle_single_channel,0,"Single Channel ON"))
+
+		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
+
+		self.list_data.append((self.do_nothing,0,"--------------------------"))
 		self.list_data.append((self.network_info,0,"Network Info"))
 
 		if self.is_wifi_active():
@@ -87,11 +101,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.start_aubionotes,0,"Start Audio -> MIDI"))
 
-		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
-		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
-		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
+		self.list_data.append((self.do_nothing,0,"--------------------------"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
+		self.list_data.append((self.do_nothing,0,"--------------------------"))
 		self.list_data.append((self.update_software,0,"Update Software"))
 		#self.list_data.append((self.update_library,0,"Update Zynthian Library"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
@@ -244,20 +257,31 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				check_output("systemctl stop a2jmidid", shell=True)
 				zynthian_gui_config.zyngui.all_sounds_off()
 
-	def update_software(self):
-		logging.info("UPDATE SOFTWARE")
-		zynthian_gui_config.zyngui.show_info("UPDATE SOFTWARE")
-		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
+	def do_nothing(self):
+		pass
 
-	def update_library(self):
-		logging.info("UPDATE LIBRARY")
-		zynthian_gui_config.zyngui.show_info("UPDATE LIBRARY")
-		self.start_command([self.sys_dir + "/scripts/update_zynthian_data.sh"])
+	def toggle_single_channel(self):
+		if zynthian_gui_config.midi_single_active_channel:
+			logging.info("Single Channel Mode OFF")
+			zynthian_gui_config.midi_single_active_channel=False
+		else:
+			logging.info("Single Channel Mode ON")
+			zynthian_gui_config.midi_single_active_channel=True
+		zynthian_gui_config.zyngui.set_active_channel()
+		sleep(0.5)
+		self.fill_list()
 
-	def update_system(self):
-		logging.info("UPDATE SYSTEM")
-		zynthian_gui_config.zyngui.show_info("UPDATE SYSTEM")
-		self.start_command([self.sys_dir + "/scripts/update_system.sh"])
+	def audio_recorder(self):
+		logging.info("Audio Recorder")
+		zynthian_gui_config.zyngui.show_modal("audio_recorder")
+
+	def midi_recorder(self):
+		logging.info("MIDI Recorder")
+		zynthian_gui_config.zyngui.show_modal("midi_recorder")
+
+	def midi_profile(self):
+		logging.info("MIDI Profile")
+		zynthian_gui_config.zyngui.show_modal("midi_profile")
 
 	def network_info(self):
 		logging.info("NETWORK INFO")
@@ -297,13 +321,21 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def start_qmidinet(self):
 		logging.info("STARTING QMIDINET")
-		check_output("systemctl start qmidinet", shell=True)
+		try:
+			check_output("systemctl start qmidinet", shell=True)
+		except Exception as e:
+			logging.error(e)
 		self.fill_list()
+
 
 	def stop_qmidinet(self):
 		logging.info("STOPPING QMIDINET")
-		check_output("systemctl stop qmidinet", shell=True)
+		try:
+			check_output("systemctl stop qmidinet", shell=True)
+		except Exception as e:
+			logging.error(e)
 		self.fill_list()
+
 
 	#Start/Stop QMidiNet depending on configuration
 	def default_qmidinet(self):
@@ -311,6 +343,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.start_qmidinet()
 		else:
 			self.stop_qmidinet()
+
 
 	def start_touchosc2midi(self):
 		logging.info("STARTING touchosc2midi")
@@ -332,18 +365,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		check_output("systemctl stop aubionotes", shell=True)
 		self.fill_list()
 
-	def audio_recorder(self):
-		logging.info("Audio Recorder")
-		zynthian_gui_config.zyngui.show_modal("audio_recorder")
-
-	def midi_recorder(self):
-		logging.info("MIDI Recorder")
-		zynthian_gui_config.zyngui.show_modal("midi_recorder")
-
-	def midi_profile(self):
-		logging.info("MIDI Profile")
-		zynthian_gui_config.zyngui.show_modal("midi_profile")
-
 	def test_audio(self):
 		logging.info("TESTING AUDIO")
 		zynthian_gui_config.zyngui.show_info("TEST AUDIO")
@@ -354,6 +375,21 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		zynthian_gui_config.zyngui.show_info("TEST MIDI")
 		check_output("systemctl start a2jmidid", shell=True)
 		self.killable_start_command(["aplaymidi -p 14 {}/mid/test.mid".format(self.data_dir)])
+
+	def update_software(self):
+		logging.info("UPDATE SOFTWARE")
+		zynthian_gui_config.zyngui.show_info("UPDATE SOFTWARE")
+		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
+
+	def update_library(self):
+		logging.info("UPDATE LIBRARY")
+		zynthian_gui_config.zyngui.show_info("UPDATE LIBRARY")
+		self.start_command([self.sys_dir + "/scripts/update_zynthian_data.sh"])
+
+	def update_system(self):
+		logging.info("UPDATE SYSTEM")
+		zynthian_gui_config.zyngui.show_info("UPDATE SYSTEM")
+		self.start_command([self.sys_dir + "/scripts/update_system.sh"])
 
 	def restart_gui(self):
 		logging.info("RESTART GUI")
@@ -372,7 +408,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def power_off(self):
 		zynthian_gui_config.zyngui.show_confirm("Do you really want to power off?", self.power_off_confirmed, [0])
-
 
 	def power_off_confirmed(self, params):
 		logging.info("POWER OFF")
