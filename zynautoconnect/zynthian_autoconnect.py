@@ -290,7 +290,7 @@ def audio_autoconnect():
 	if len(system_capture)>0:
 
 		#Connect system capture to effect root layers ...
-		root_layers=zynthian_gui_config.zyngui.screens["layer"].get_root_layers()
+		root_layers=zynthian_gui_config.zyngui.screens["layer"].get_fxchain_roots()
 		for rl in root_layers:
 			#Get Root Layer Input ports ...
 			rl_in=jclient.get_ports(rl.jackname, is_input=True, is_audio=True)
