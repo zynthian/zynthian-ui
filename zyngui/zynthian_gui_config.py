@@ -230,6 +230,12 @@ font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 
 #------------------------------------------------------------------------------
+# UI Options
+#------------------------------------------------------------------------------
+
+restore_last_state=int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE',False))
+
+#------------------------------------------------------------------------------
 # MIDI Configuration
 #------------------------------------------------------------------------------
 

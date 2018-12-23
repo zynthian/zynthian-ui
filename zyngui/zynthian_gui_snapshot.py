@@ -222,6 +222,17 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.zyngui.screens['layer'].save_snapshot(params[0])
 
 
+	def save_default_snapshot(self):
+		self.zyngui.screens['layer'].save_snapshot(self.default_snapshot_fpath)
+
+
+	def delete_default_snapshot(self):
+		try:
+			os.remove(self.default_snapshot_fpath)
+		except:
+			pass
+
+
 	def get_midi_number(self, f):
 		return int(f.split('-')[0])-1
 

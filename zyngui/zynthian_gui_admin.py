@@ -445,6 +445,12 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def power_off_confirmed(self, params):
 		logging.info("POWER OFF")
+
+		if zynthian_gui_config.restore_last_state:
+			self.zyngui.screens['snapshot'].save_default_snapshot()
+		else:
+			self.zyngui.screens['snapshot'].delete_default_snapshot()
+
 		self.zyngui.exit(params[0])
 
 
