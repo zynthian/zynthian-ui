@@ -407,6 +407,7 @@ class zynthian_gui:
 		# Standard 4 ZynSwitches
 		if i==0:
 			if self.active_screen=='layer':
+				self.all_notes_off()
 				self.all_sounds_off()
 				if self.curlayer is not None:
 					self.show_screen('control')
@@ -491,12 +492,13 @@ class zynthian_gui:
 					self.show_screen('control')
 				else:
 					self.show_screen('layer')
+
 			elif self.active_screen=='layer':
-				self.all_notes_off()
-				if self.curlayer is not None:
-					self.show_screen('control')
+				self.screens['layer'].toggle_show_all_layers()
+				self.show_screen('layer')
+
 			else:
-				self.zynswitch_bold(i)
+				self.show_screen('layer')
 
 		elif i==1:
 			screen_back = None

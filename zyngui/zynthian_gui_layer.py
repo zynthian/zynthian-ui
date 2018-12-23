@@ -57,6 +57,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.layers = []
 		self.root_layers = []
 		self.curlayer = None
+		self.show_all_layers = False
 		self.add_layer_eng = None
 		self.last_snapshot_fpath = None
 		super().__init__('Layer', True)
@@ -68,15 +69,27 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.remove_all_layers()
 		self.layers=[]
 		self.curlayer=None
+		self.show_all_layers = False
 		self.index=0
 		self.fill_list()
+
+
+	def toggle_show_all_layers(self):
+		if self.show_all_layers:
+			self.show_all_layers = False
+		else:
+			self.show_all_layers = True
 
 
 	def fill_list(self):
 		self.list_data=[]
 
 		# Add list of root layers
-		self.root_layers=self.get_fxchain_roots()
+		if self.show_all_layers:
+			self.root_layers=self.layers
+		else:
+			self.root_layers=self.get_fxchain_roots()
+
 		for i,layer in enumerate(self.root_layers):
 			self.list_data.append((str(i+1),i,layer.get_presetpath()))
 
@@ -95,10 +108,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.list_data.append(('ALL_SOUNDS_OFF',len(self.list_data),"PANIC!!! All Sounds Off"))
 
 		super().fill_list()
-
-
-	def switch_select(self, t='S'):
-		self.click_listbox(None, t)
 
 
 	def select_action(self, i, t='S'):
@@ -651,7 +660,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set("Layer List")
+		if self.show_all_layers:
+			self.select_path.set("Detailed Layer List")
+		else:
+			self.select_path.set("Layer List")
 
 
 #------------------------------------------------------------------------------
