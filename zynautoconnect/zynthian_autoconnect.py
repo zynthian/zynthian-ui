@@ -248,7 +248,7 @@ def midi_autoconnect():
 def audio_autoconnect():
 	logger.info("Autoconnecting Audio ...")
 
-	#Get Audio Input Ports
+	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
 	input_ports=get_audio_input_ports()
 
 	#Disconnect Monitor from System Output
@@ -284,17 +284,35 @@ def audio_autoconnect():
 				except:
 					pass
 
-	if zynthian_aubionotes:
-		#Get System Capture and Aubio Input ports ...
-		sys_input=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
-		aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
-		#Connect System Capture to Aubio ports
-		if len(sys_input)>0 and len(aubio_in)>0:
-			try:
-				jclient.connect(sys_input[0],aubio_in[0])
-				jclient.connect(sys_input[1],aubio_in[0])
-			except:
-				pass
+
+	#Get System Capture ports => jack output ports!!
+	system_capture=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
+	if len(system_capture)>0:
+
+		#Connect system capture to effect root layers ...
+		root_layers=zynthian_gui_config.zyngui.screens["layer"].get_root_layers()
+		for rl in root_layers:
+			#Get Root Layer Input ports ...
+			rl_in=jclient.get_ports(rl.jackname, is_input=True, is_audio=True)
+			#Connect System Capture to Root Layer ports
+			if len(rl_in)>0:
+				try:
+					jclient.connect(system_capture[0],rl_in[0])
+					jclient.connect(system_capture[1],rl_in[0])
+				except:
+					pass
+
+
+		if zynthian_aubionotes:
+			#Get Aubio Input ports ...
+			aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
+			#Connect System Capture to Aubio ports
+			if len(aubio_in)>0:
+				try:
+					jclient.connect(system_capture[0],aubio_in[0])
+					jclient.connect(system_capture[1],aubio_in[0])
+				except:
+					pass
 
 
 def get_audio_input_ports():
