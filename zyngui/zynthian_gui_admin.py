@@ -72,9 +72,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.do_nothing,0,"-----------------------------"))
 
 		if zynthian_gui_config.midi_single_active_channel:
-			self.list_data.append((self.toggle_single_channel,0,"Single Channel OFF"))
+			self.list_data.append((self.toggle_single_channel,0,"Disable Single Channel Mode"))
 		else:
-			self.list_data.append((self.toggle_single_channel,0,"Single Channel ON"))
+			self.list_data.append((self.toggle_single_channel,0,"Enable Single Channel Mode"))
 
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
