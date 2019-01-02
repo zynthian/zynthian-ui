@@ -547,7 +547,7 @@ class zynthian_gui:
 				if self.midi_learn_mode or self.midi_learn_zctrl:
 					if self.modal_screen=='zs3_learn':
 						self.show_screen('control')
-					else:
+					elif zynthian_gui_config.midi_prog_change_zs3:
 						self.show_modal('zs3_learn')
 				else:
 					self.enter_midi_learn_mode()
