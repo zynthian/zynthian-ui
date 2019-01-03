@@ -65,28 +65,25 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 					title = k
 
 				if k in self.layer.get_audio_out():
-					self.list_data.append((k, k, "-> " + title))
+					self.list_data.append((k, k, "[x] " + title))
 				else:
-					self.list_data.append((k, k, title))
+					self.list_data.append((k, k, "[  ] " + title))
 
 		super().fill_list()
 
 
 	def fill_listbox(self):
 		super().fill_listbox()
-		self.index=self.highlight()
+		#self.highlight()
 
 
 	# Highlight current engine assigned outputs ...
 	def highlight(self):
-		last=0
 		for i in range(len(self.list_data)):
-			if self.list_data[i][2][:2]=='->':
+			if self.list_data[i][2][:2]=='[x':
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_hl})
-				last=i
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
-		return last
 
 
 	def select_action(self, i, t='S'):
@@ -101,7 +98,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.layer and self.layer.get_basepath():
-			self.select_path.set("Audio from {} to ...".format(self.layer.get_basepath()))
+			self.select_path.set("Send Audio from {} to ...".format(self.layer.get_basepath()))
 		else:
 			self.select_path.set("Audio Routing ...")
 

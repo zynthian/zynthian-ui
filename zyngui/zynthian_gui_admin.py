@@ -72,9 +72,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.do_nothing,0,"-----------------------------"))
 
 		if zynthian_gui_config.midi_single_active_channel:
-			self.list_data.append((self.toggle_single_channel,0,"Disable Single Channel Mode"))
+			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
 		else:
-			self.list_data.append((self.toggle_single_channel,0,"Enable Single Channel Mode"))
+			self.list_data.append((self.toggle_single_channel,0,"[  ] Single Channel Mode"))
 
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
@@ -82,26 +82,26 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.network_info,0,"Network Info"))
 
 		if self.is_wifi_active():
-			self.list_data.append((self.stop_wifi,0,"Stop WIFI"))
+			self.list_data.append((self.stop_wifi,0,"[x] WIFI"))
 		else:
-			self.list_data.append((self.start_wifi,0,"Start WIFI"))
+			self.list_data.append((self.start_wifi,0,"[  ] WIFI"))
 
 		if self.is_service_active("qmidinet"):
-			self.list_data.append((self.stop_qmidinet,0,"Stop QMidiNet"))
+			self.list_data.append((self.stop_qmidinet,0,"[x] QMidiNet"))
 		else:
-			self.list_data.append((self.start_qmidinet,0,"Start QMidiNet"))
+			self.list_data.append((self.start_qmidinet,0,"[  ] QMidiNet"))
 
 		if os.environ.get('ZYNTHIAN_TOUCHOSC'):
 			if self.is_service_active("touchosc2midi"):
-				self.list_data.append((self.stop_touchosc2midi,0,"Stop TouchOSC"))
+				self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC"))
 			else:
-				self.list_data.append((self.start_touchosc2midi,0,"Start TouchOSC"))
+				self.list_data.append((self.start_touchosc2midi,0,"[  ] TouchOSC"))
 
 		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
 			if self.is_service_active("aubionotes"):
-				self.list_data.append((self.stop_aubionotes,0,"Stop Audio -> MIDI"))
+				self.list_data.append((self.stop_aubionotes,0,"[x] Audio->MIDI"))
 			else:
-				self.list_data.append((self.start_aubionotes,0,"Start Audio -> MIDI"))
+				self.list_data.append((self.start_aubionotes,0,"[  ] Audio->MIDI"))
 
 		self.list_data.append((self.do_nothing,0,"-----------------------------"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
