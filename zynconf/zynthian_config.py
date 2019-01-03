@@ -26,6 +26,7 @@ import os
 import re
 import sys
 import logging
+from shutil import copyfile
 from subprocess import check_output
 
 #-------------------------------------------------------------------------------
@@ -45,6 +46,18 @@ def get_config_fpath():
 		fpath=os.environ.get('ZYNTHIAN_SYS_DIR')+"/scripts/zynthian_envars.sh"
 	elif not os.path.isfile(fpath):
 		fpath="./zynthian_envars.sh"
+	return fpath
+
+
+def get_midi_config_fpath(fpath=None):
+	if not fpath:
+		fpath=os.environ.get("ZYNTHIAN_SCRIPT_MIDI_PROFILE",
+			os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/midi-profiles/default.sh")
+	if not os.path.isfile(fpath):
+		#Try to copy from default template
+		default_src= "%s/config/default_midi_profile.sh" % os.getenv('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
+		copyfile(default_src, fpath)
+
 	return fpath
 
 
@@ -88,10 +101,7 @@ def load_config(set_env=True, fpath=None):
 
 
 def load_midi_config(set_env=True, fpath=None):
-	if not fpath:
-		fpath=os.environ.get("ZYNTHIAN_SCRIPT_MIDI_PROFILE",
-			os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/midi-profiles/default.sh")
-	return load_config(set_env, fpath)
+	return load_config(set_env, get_midi_config_fpath(fpath))
 
 
 def save_config(config, update_sys=False):
