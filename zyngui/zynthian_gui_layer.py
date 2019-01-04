@@ -324,10 +324,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	#----------------------------------------------------------------------------
 
 	def set_midi_chan_preset(self, midich, preset_index):
+		selected = False
 		for layer in self.layers:
 			mch=layer.get_midi_chan()
 			if mch is None or mch==midich:
-				layer.set_preset(preset_index,True)
+				if layer.set_preset(preset_index,True) and not selected:
+					try:
+						self.select_action(self.root_layers.index(layer))
+						selected = True
+					except Exception as e:
+						logging.error("Can't select layer => {}".format(e))
 
 
 	def set_midi_chan_zs3(self, midich, zs3_index):
@@ -336,7 +342,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
 				if layer.restore_zs3(zs3_index) and not selected:
 					try:
-						self.select_action(self.layers.index(layer))
+						self.select_action(self.root_layers.index(layer))
 						selected = True
 					except Exception as e:
 						logging.error("Can't select layer => {}".format(e))

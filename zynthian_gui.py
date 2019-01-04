@@ -165,12 +165,18 @@ class zynthian_gui:
 		self.screens['midi_recorder']=zynthian_gui_midi_recorder()
 		self.screens['zs3_learn']=zynthian_gui_zs3_learn()
 		self.screens['confirm']=zynthian_gui_confirm()
+
 		# Show initial screen => Channel list
 		self.show_screen('layer')
+
+		# Init Auto-connector
+		zynautoconnect.start()
+
 		# Try to load "default snapshot" or show "load snapshot" popup
 		default_snapshot_fpath=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots/default.zss"
 		if not isfile(default_snapshot_fpath) or not self.screens['layer'].load_snapshot(default_snapshot_fpath):
 			self.load_snapshot(autoclose=True)
+
 		# Start polling threads
 		self.start_polling()
 		self.start_loading_thread()
@@ -716,6 +722,7 @@ class zynthian_gui:
 	
 					# SubSnapShot (ZS3) MIDI learn ...
 					if self.midi_learn_mode and self.modal_screen=='zs3_learn':
+						logging.info("ZS3 Saved: CH{} => {}".format(chan,pgm))
 						self.screens['layer'].save_midi_chan_zs3(chan, pgm)
 						self.exit_midi_learn_mode()
 
@@ -726,8 +733,8 @@ class zynthian_gui:
 						else:
 							self.screens['layer'].set_midi_chan_preset(chan, pgm)
 
-						if not self.modal_screen and self.curlayer and chan==self.curlayer.get_midi_chan():
-							self.show_screen('control')
+						#if not self.modal_screen and self.curlayer and chan==self.curlayer.get_midi_chan():
+						#	self.show_screen('control')
 
 				#Note-On ...
 				elif evtype==0x9:
@@ -920,7 +927,6 @@ class zynthian_gui:
 
 zynthian_gui_config.zyngui=zyngui=zynthian_gui()
 zyngui.start()
-zynautoconnect.start()
 
 
 #------------------------------------------------------------------------------
