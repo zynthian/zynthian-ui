@@ -45,30 +45,33 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 
 class zynthian_gui_midi_chan(zynthian_gui_selector):
 
-	def __init__(self, max_chan=16):
-		self.mode='ADD'
-		self.max_chan=max_chan
+	def __init__(self):
+		self.set_mode('ADD')
 		super().__init__('Channel', True)
 
-	def set_mode(self, mode, midich=None):
-		self.mode=mode
+	def set_mode(self, mode, chan=None, chan_list=None):
+		self.mode = mode
+
+		if chan_list:
+			self.chan_list = chan_list
+		else:
+			self.chan_list = range(16)
+
 		if self.mode=='ADD':
-			self.listbox.config(selectmode='browse')
+			pass
 		elif self.mode=='SET':
-			self.listbox.config(selectmode='browse')
-			self.index=midich
+			self.index=chan
 		elif self.mode=='CLONE':
-			self.listbox.config(selectmode='browse')
-			self.midi_chan=midich
+			self.midi_chan=chan
 
 
 	def fill_list(self):
 		self.list_data=[]
 		if self.mode=='ADD' or self.mode=='SET':
-			for i in range(self.max_chan):
+			for i in self.chan_list:
 				self.list_data.append((str(i+1),i,"MIDI CH#"+str(i+1)))
 		elif self.mode=='CLONE':
-			for i in range(self.max_chan):
+			for i in self.chan_list:
 				if i==self.midi_chan:
 					continue
 				elif zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, i):

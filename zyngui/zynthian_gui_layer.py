@@ -191,6 +191,19 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			return None
 
 
+	def get_free_midi_chans(self):
+		free_chans = list(range(16))
+
+		for rl in self.root_layers:
+			try:
+				free_chans.remove(rl.midi_chan)
+			except:
+				pass
+
+		#logging.debug("FREE MIDI CHANNELS: {}".format(free_chans))
+		return free_chans
+
+
 	def add_layer(self, etype):
 		self.add_layer_eng=None
 		self.zyngui.screens['engine'].set_engine_type(etype)
@@ -218,7 +231,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.select_action(self.index)
 
 		elif midi_chan is None:
-			self.zyngui.screens['midi_chan'].set_mode("ADD")
+			self.zyngui.screens['midi_chan'].set_mode("ADD", 0, self.get_free_midi_chans())
 			self.zyngui.show_modal('midi_chan')
 
 		else:
