@@ -244,31 +244,22 @@ class zynthian_controller:
 	def set_value(self, val, force_sending=False):
 		self._set_value(val)
 
+		# Send value ...
 		if self.engine:
-			mval=self.get_ctrl_midi_val()
 			try:
-				# Send value using engine method...
 				self.engine.send_controller_value(self)
 			except:
 				if force_sending:
 					try:
-						# Send value using OSC/MIDI ...
 						if self.osc_path:
-							liblo.send(self.engine.osc_target,self.osc_path,self.get_ctrl_osc_val())
-						elif self.midi_cc:
-							self.engine.zyngui.zynmidi.set_midi_control(self.midi_chan,self.midi_cc,mval)
-
-						logging.debug("Sending controller '{}' value => {} ({})".format(self.symbol,val,mval))
-
-					except Exception as e:
-						logging.warning("Can't send controller '{}' value => {}".format(self.symbol,e))
-
-			if force_sending:
-				# Send feedback => TODO Implement properly!!!!
-				if self.midi_learn_cc:
-					self.engine.zyngui.zynmidi.set_midi_control(self.midi_learn_chan,self.midi_learn_cc,mval)
-				#elif self.midi_cc:
-				#	self.engine.zyngui.zynmidi.set_midi_control(self.midi_chan,self.midi_cc,mval)
+							sval=self.get_ctrl_osc_val()
+							liblo.send(self.engine.osc_target,self.osc_path,sval)
+						elif self.midi_cc>0:
+							sval=self.get_ctrl_midi_val()
+							self.engine.zyngui.zynmidi.set_midi_control(self.midi_chan,self.midi_cc,sval)
+						logging.debug("Sending controller '%s' value => %s (%s)" % (self.symbol,val,sval))
+					except:
+						logging.warning("Can't send controller '%s' value" % self.symbol)
 
 
 	def get_value2label(self, val=None):

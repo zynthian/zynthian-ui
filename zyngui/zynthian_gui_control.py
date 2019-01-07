@@ -129,7 +129,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				i=0
 				for ctrl in self.zcontrollers:
 					try:
-						#logging.debug("CONTROLLER ARRAY {} => {} ({})".format(i, ctrl.symbol, ctrl.short_name))
+						#logging.debug("CONTROLLER ARRAY %d => %s" % (i,ctrl.name))
 						self.set_zcontroller(i,ctrl)
 						i=i+1
 					except Exception as e:
@@ -161,7 +161,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 		else:
 			self.zgui_controllers.append(zynthian_gui_controller(i,self.main_frame,ctrl))
 		self.zgui_controllers_map[ctrl]=self.zgui_controllers[i]
-
 
 	def set_xyselect_controllers(self):
 		for i in range(0,len(self.zgui_controllers)):

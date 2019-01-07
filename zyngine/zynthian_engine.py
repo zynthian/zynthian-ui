@@ -469,7 +469,7 @@ class zynthian_engine:
 				if len(options)>0:
 					zctrl.set_options(options)
 
-				zctrls[zctrl.symbol]=zctrl
+				zctrls[ctrl[0]]=zctrl
 		return zctrls
 
 
