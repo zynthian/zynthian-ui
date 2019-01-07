@@ -160,7 +160,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 
 	def clean_unused_engines(self):
-		for eng in self.zyngines:
+		for eng in list(self.zyngines.keys()):
 			if len(self.zyngines[eng].layers)==0:
 				self.zyngines[eng].stop()
 				del self.zyngines[eng]
