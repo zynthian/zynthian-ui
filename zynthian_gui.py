@@ -850,7 +850,7 @@ class zynthian_gui:
 
 
 	#------------------------------------------------------------------
-	# All Sounds Off => PANIC!
+	# All Notes/Sounds Off => PANIC!
 	#------------------------------------------------------------------
 
 
@@ -873,9 +873,9 @@ class zynthian_gui:
 
 	def all_notes_off_chan(self, chan):
 		logging.info("All Notes Off for channel {}!".format(chan))
-		#self.zynmidi.set_midi_control(chan, 123, 0)
-		for n in range(128):
-			self.zynmidi.note_off(chan,n)
+		self.zynmidi.set_midi_control(chan, 123, 0)
+		#for n in range(128):
+		#	self.zynmidi.note_off(chan,n)
 
 
 	#------------------------------------------------------------------
