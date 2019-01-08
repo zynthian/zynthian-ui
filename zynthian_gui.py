@@ -346,11 +346,12 @@ class zynthian_gui:
 
 
 	def zynswitches_midi_setup(self, midi_chan):
-		logging.info("SWITCHES MIDI SETUP...")
+		if midi_chan>0:
+			logging.info("SWITCHES MIDI SETUP...")
 
-		#Configure 8th zynswitch as Sustain Pedal CC
-		lib_zyncoder.setup_zynswitch_midi(7, midi_chan, 64)
-		logging.info("SETUP MIDI ZYNSWITCH {} => CH#{}, CC#{} (Sustain Pedal)".format(7, midi_chan, 64))
+			#Configure 8th zynswitch as Sustain Pedal CC
+			lib_zyncoder.setup_zynswitch_midi(7, midi_chan, 64)
+			logging.info("SETUP MIDI ZYNSWITCH {} => CH#{}, CC#{} (Sustain Pedal)".format(7, midi_chan, 64))
 
 
 	def zynswitches(self):
