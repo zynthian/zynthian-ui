@@ -211,7 +211,7 @@ class zynthian_controller:
 		return self.value
 
 
-	def _set_value(self, val, force_sending=False):
+	def _set_value(self, val):
 		if isinstance(val, str):
 			self.value=self.get_label2value(val)
 			return
@@ -256,7 +256,7 @@ class zynthian_controller:
 						if self.osc_path:
 							liblo.send(self.engine.osc_target,self.osc_path,self.get_ctrl_osc_val())
 						elif self.midi_cc:
-							self.engine.zyngui.zynmidi.set_midi_control(self.midi_chan,self.midi_cc,mval)
+							zyncoder.lib_zyncoder.zynmidi_send_ccontrol_change(self.midi_chan,self.midi_cc,mval)
 
 						logging.debug("Sending controller '{}' value => {} ({})".format(self.symbol,val,mval))
 
@@ -264,11 +264,15 @@ class zynthian_controller:
 						logging.warning("Can't send controller '{}' value => {}".format(self.symbol,e))
 
 			if force_sending:
-				# Send feedback => TODO Implement properly!!!!
-				if self.midi_learn_cc:
-					self.engine.zyngui.zynmidi.set_midi_control(self.midi_learn_chan,self.midi_learn_cc,mval)
-				#elif self.midi_cc:
-				#	self.engine.zyngui.zynmidi.set_midi_control(self.midi_chan,self.midi_cc,mval)
+				try:
+					# Send feedback to MIDI controllers
+					if self.midi_learn_cc:
+						zyncoder.lib_zyncoder.ctrlfb_send_ccontrol_change(self.midi_learn_chan,self.midi_learn_cc,mval)
+					elif self.midi_cc:
+						zyncoder.lib_zyncoder.ctrlfb_send_ccontrol_change(self.midi_chan,self.midi_cc,mval)
+
+				except Exception as e:
+					logging.warning("Can't send controller feedback '{}' value => {}".format(self.symbol,e))
 
 
 	def get_value2label(self, val=None):
@@ -311,6 +315,7 @@ class zynthian_controller:
 						return self.value_min+i*self.value_range/len(self.labels)
 			else:
 				logging.error("No labels defined")
+
 		except Exception as e:
 			logging.error(e)
 
