@@ -138,7 +138,7 @@ class zynthian_gui:
 
 	def reload_midi_config(self):
 		zynconf.load_config()
-		midi_profile_fpath=os.environ.get("ZYNTHIAN_SCRIPT_MIDI_PROFILE")
+		midi_profile_fpath=zynconf.get_midi_config_fpath()
 		if midi_profile_fpath:
 			zynconf.load_config(True,midi_profile_fpath)
 			zynthian_gui_config.set_midi_config()

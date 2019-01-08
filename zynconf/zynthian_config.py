@@ -28,6 +28,7 @@ import sys
 import logging
 from shutil import copyfile
 from subprocess import check_output
+from collections import OrderedDict
 
 #-------------------------------------------------------------------------------
 # Configure logging
@@ -100,21 +101,18 @@ def load_config(set_env=True, fpath=None):
 	return config
 
 
-def load_midi_config(set_env=True, fpath=None):
-	return load_config(set_env, get_midi_config_fpath(fpath))
-
-
-def save_config(config, update_sys=False):
-	fpath=get_config_fpath()
+def save_config(config, update_sys=False, fpath=None):
+	if not fpath:
+		fpath = get_config_fpath()
 
 	# Get config file content
 	with open(fpath) as f:
 		lines = f.readlines()
 
 	# Find and replace lines to update
-	updated=[]
-	add_row=1
-	pattern=re.compile("^export ([^\s]*?)=")
+	updated = []
+	add_row = 0
+	pattern = re.compile("^export ([^\s]*?)=")
 	for i,line in enumerate(lines):
 		res=pattern.match(line)
 		if res:
@@ -125,9 +123,13 @@ def save_config(config, update_sys=False):
 				os.environ[varname]=value
 				lines[i]="export %s=\"%s\"\n" % (varname,value)
 				updated.append(varname)
-				logging.info(lines[i])
-		if line[0:17]=="# Directory Paths":
-			add_row=i-1
+				logging.debug(lines[i])
+
+		if line.startswith("# Directory Paths"):
+			add_row = i-1
+
+	if add_row==0:
+		add_row = len(lines) + 1
 
 	# Add the rest
 	vars_to_add=set(config.keys())-set(updated)
@@ -157,6 +159,10 @@ def save_config(config, update_sys=False):
 #-------------------------------------------------------------------------------
 
 
+def load_midi_config(set_env=True, fpath=None):
+	return load_config(set_env, get_midi_config_fpath(fpath))
+
+
 def get_disabled_midi_in_ports(midi_ports):
 	#Parse DISABLED_IN ports
 	disabled_in_re = re.compile("^DISABLED_IN=(.*)$",re.MULTILINE)
@@ -181,6 +187,24 @@ def get_enabled_midi_out_ports(midi_ports):
 		enabled_midi_out_ports=["ttymidi:MIDI_out"]
 		logging.warning("Using default ENABLED MIDI OUT ports")
 	return enabled_midi_out_ports
+
+
+def update_midi_profile(params, fpath=None):
+	if not fpath:
+		fpath=get_midi_config_fpath()
+
+	midi_params = OrderedDict()
+	for k, v in params.items():
+		if k.startswith('ZYNTHIAN_MIDI'):
+			if isinstance(v, list):
+				midi_params[k] = v[0]
+			else:
+				midi_params[k] = v
+
+	save_config(midi_params, False, fpath)
+
+	for k in midi_params:
+		del params[k]
 
 
 #------------------------------------------------------------------------------

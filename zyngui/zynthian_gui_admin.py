@@ -35,6 +35,7 @@ from threading  import Thread
 from subprocess import check_output, Popen, PIPE
 
 # Zynthian specific modules
+import zynconf
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
@@ -282,6 +283,12 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			logging.info("Single Channel Mode ON")
 			zynthian_gui_config.midi_single_active_channel=True
+
+		# Update MIDI profile
+		zynconf.update_midi_profile({ 
+			"ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL": str(int(zynthian_gui_config.midi_single_active_channel))
+		})
+
 		self.zyngui.set_active_channel()
 		sleep(0.5)
 		self.fill_list()
