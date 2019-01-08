@@ -344,12 +344,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 				zcsymbol=self._param2zcsymbol[param]
 			except Exception as e:
 				logging.debug("No controller for param {}".format(param))
-				#pass
+				continue
 
 			try:
 				zctrl=layer.controllers_dict[zcsymbol]
 
-				if zctrl.symbol=='rotaryspeed':
+				if zctrl.symbol=='rotary speed':
 					if v=='tremolo': v='fast'
 					elif v=='chorale': v='slow'
 					else: v='off'
@@ -363,7 +363,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 			except Exception as e:
 				logging.debug("Can't update controller '{}' => {}".format(zcsymbol,e))
-				#pass
 
 
 	def midi_control_change(self, zctrl, val):
