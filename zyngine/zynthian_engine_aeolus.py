@@ -318,19 +318,22 @@ class zynthian_engine_aeolus(zynthian_engine):
 						val="on"
 					else:
 						val="off"
+
 					if val!=zctrl.get_value2label():
 						zctrl.set_value(val)
-					else:
-						return
+	
 				if val=="on":
 					mm="10"
 				else:
 					mm="01"
+
 				v1="01{0}0{1:03b}".format(mm,zctrl.graph_path[0])
 				v2="000{0:05b}".format(zctrl.graph_path[1])
 				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v1,2))
 				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v2,2))
-				logging.debug("Aeolus Stop ({}) => mm={}, group={}, button={})".format(val,mm,zctrl.graph_path[0],zctrl.graph_path[1]))
+
+				#logging.debug("Aeolus Stop ({}) => mm={}, group={}, button={})".format(val,mm,zctrl.graph_path[0],zctrl.graph_path[1]))
+
 		except Exception as e:
 			logging.debug(e)
 
