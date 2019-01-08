@@ -227,8 +227,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.add_layer_midich(1,False)
 			self.add_layer_midich(2,False)
 			self.add_layer_midich(3,False)
+
+			self.fill_list()
 			self.index=len(self.layers)-4
-			self.select_action(self.index)
+			self.layer_control()
 
 		elif midi_chan is None:
 			self.zyngui.screens['midi_chan'].set_mode("ADD", 0, self.get_free_midi_chans())
@@ -254,7 +256,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				root_layer = self.get_fxchain_root(layer)
 				try:
 					self.index = self.root_layers.index(root_layer)
-					self.select_action(self.index)
+					self.layer_control()
 				except Exception as e:
 					logging.error(e)
 					self.zyngui.show_screen('layer')
