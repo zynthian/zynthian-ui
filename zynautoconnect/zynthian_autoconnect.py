@@ -192,7 +192,7 @@ def midi_autoconnect():
 	except:
 		pass
 
-	#Connect Control feedback to ZynMidiRouter:ctrl_in
+	#Connect Engine's Controller-FeedBack to ZynMidiRouter:ctrl_in
 	try:
 		for eop in engines_out:
 			jclient.connect(eop[0],zmr_in['ctrl_in'])
@@ -243,6 +243,16 @@ def midi_autoconnect():
 		jclient.connect(zmr_out['net_out'],qmidinet_in[0])
 	except:
 		pass
+
+	#Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
+	for hw in hw_in:
+		try:
+			if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_fb_ports:
+				jclient.connect(zmr_out['ctrl_out'],hw)
+			else:
+				jclient.disconnect(zmr_out['ctrl_out'],hw)
+		except:
+			pass
 
 
 def audio_autoconnect():

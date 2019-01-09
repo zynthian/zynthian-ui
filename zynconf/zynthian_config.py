@@ -189,6 +189,19 @@ def get_enabled_midi_out_ports(midi_ports):
 	return enabled_midi_out_ports
 
 
+def get_enabled_midi_fb_ports(midi_ports):
+	#Parse ENABLED_FeedBack ports
+	enabled_fb_re = re.compile("^ENABLED_FB=(.*)$",re.MULTILINE)
+	m=enabled_fb_re.search(midi_ports)
+	if m:
+		enabled_midi_fb_ports=m.group(1).split(",")
+		logging.debug("ENABLED_MIDI_FB = %s" % enabled_midi_fb_ports)
+	else:
+		enabled_midi_fb_ports=[]
+		logging.warning("Using default ENABLED MIDI FB ports")
+	return enabled_midi_fb_ports
+
+
 def update_midi_profile(params, fpath=None):
 	if not fpath:
 		fpath=get_midi_config_fpath()
