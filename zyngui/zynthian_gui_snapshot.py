@@ -48,6 +48,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def __init__(self):
 		self.base_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots"
 		self.default_snapshot_fpath = join(self.base_dir,"default.zss")
+		self.last_state_snapshot_fpath = join(self.base_dir,"last_state.zss")
 		self.bank_dir = None
 		self.bankless_mode = False
 		self.action = "LOAD"
@@ -105,14 +106,22 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def load_bank_list(self):
 		self.midi_banks={}
 		self.list_data=[]
+
 		i=0
 		if self.action=="SAVE" or isfile(self.default_snapshot_fpath):
-			self.list_data.append((self.default_snapshot_fpath,i,"Default Snapshot"))
+			self.list_data.append((self.default_snapshot_fpath,i,"Default"))
 			i=i+1
+
+		if self.action=="LOAD" and isfile(self.last_state_snapshot_fpath):
+			self.list_data.append((self.last_state_snapshot_fpath,i,"Last State"))
+			i += 1
+
 		if self.action=="SAVE":
 			self.list_data.append(("NEW_BANK",1,"New Bank"))
 			i=i+1
+
 		self.change_index_offset(i)
+
 		for f in sorted(os.listdir(self.base_dir)):
 			dpath=join(self.base_dir,f)
 			if isdir(dpath):
@@ -128,19 +137,28 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def load_snapshot_list(self):
 		self.midi_programs={}
-
-		i = 0
 		self.list_data = []
 
+		i = 0
 		if not self.bankless_mode:
 			self.list_data.append((self.base_dir,0,".."))
 			i += 1
+
+		else:
+			if self.action=="SAVE" or isfile(self.default_snapshot_fpath):
+				self.list_data.append((self.default_snapshot_fpath,i,"Default"))
+				i += 1
+
+			if self.action=="LOAD" and isfile(self.last_state_snapshot_fpath):
+				self.list_data.append((self.last_state_snapshot_fpath,i,"Last State"))
+				i += 1
 
 		if self.action=="SAVE":
 			self.list_data.append(("NEW_SNAPSHOT",1,"New Snapshot"))
 			i += 1
 
 		self.change_index_offset(i)
+
 		for f in sorted(os.listdir(join(self.base_dir,self.bank_dir))):
 			fpath=self.get_snapshot_fpath(f)
 			if isfile(fpath) and f[-4:].lower()=='.zss':
@@ -170,8 +188,13 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def show(self):
 		if not self.zyngui.curlayer:
-			self.action=="LOAD"
+			self.action="LOAD"
+
 		super().show()
+
+		if len(self.list_data)==0 and self.action=="LOAD":
+			self.action="SAVE"
+			super().show()
 
 
 	def load(self):
@@ -215,7 +238,11 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				self.zyngui.screens['layer'].save_snapshot(fpath)
 				self.zyngui.show_active_screen()
 			else:
-				self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % fname, self.cb_confirm_save_snapshot,[fpath])
+				if isfile(fpath):
+					self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % fname, self.cb_confirm_save_snapshot,[fpath])
+				else:
+					self.zyngui.screens['layer'].save_snapshot(fpath)
+					self.zyngui.show_active_screen()
 
 
 	def cb_confirm_save_snapshot(self, params):
@@ -226,9 +253,13 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.zyngui.screens['layer'].save_snapshot(self.default_snapshot_fpath)
 
 
-	def delete_default_snapshot(self):
+	def save_last_state_snapshot(self):
+		self.zyngui.screens['layer'].save_snapshot(self.last_state_snapshot_fpath)
+
+
+	def delete_last_state_snapshot(self):
 		try:
-			os.remove(self.default_snapshot_fpath)
+			os.remove(self.last_state_snapshot_fpath)
 		except:
 			pass
 

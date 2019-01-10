@@ -461,9 +461,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def last_state_action(self):
 		if zynthian_gui_config.restore_last_state:
-			self.zyngui.screens['snapshot'].save_default_snapshot()
+			self.zyngui.screens['snapshot'].save_last_state_snapshot()
 		else:
-			self.zyngui.screens['snapshot'].delete_default_snapshot()
+			self.zyngui.screens['snapshot'].delete_last_state_snapshot()
 
 
 #------------------------------------------------------------------------------

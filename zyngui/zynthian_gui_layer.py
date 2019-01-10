@@ -104,8 +104,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.list_data.append(('NEW_SPECIAL',len(self.list_data),"NEW Special Layer"))
 		self.list_data.append(('RESET',len(self.list_data),"REMOVE ALL"))
 		self.list_data.append((None,len(self.list_data),"-----------------------------"))
-		self.list_data.append(('ALL_NOTES_OFF',len(self.list_data),"PANIC! All Notes Off"))
-		self.list_data.append(('ALL_SOUNDS_OFF',len(self.list_data),"PANIC!!! All Sounds Off"))
+		self.list_data.append(('ALL_NOTES_SOUNDS_OFF',len(self.list_data),"PANIC! All Notes/Sounds Off"))
 
 		super().fill_list()
 
@@ -132,10 +131,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.reset()
 			self.zyngui.show_screen('layer')
 
-		elif self.list_data[i][0]=='ALL_NOTES_OFF':
+		elif self.list_data[i][0]=='ALL_NOTES_SOUNDS_OFF':
 			self.zyngui.all_notes_off()
-
-		elif self.list_data[i][0]=='ALL_SOUNDS_OFF':
 			self.zyngui.all_sounds_off()
 
 		else:

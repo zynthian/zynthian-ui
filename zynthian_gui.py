@@ -172,9 +172,22 @@ class zynthian_gui:
 		# Init Auto-connector
 		zynautoconnect.start()
 
-		# Try to load "default snapshot" or show "load snapshot" popup
-		default_snapshot_fpath=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots/default.zss"
-		if not isfile(default_snapshot_fpath) or not self.screens['layer'].load_snapshot(default_snapshot_fpath):
+		# Load an initial snapshot?
+		snapshot_loaded=False
+		if zynthian_gui_config.restore_last_state:
+			# Try to load "last_state" snapshot ...
+			last_state_snapshot_fpath=self.screens['snapshot'].last_state_snapshot_fpath
+			if isfile(last_state_snapshot_fpath):
+				snapshot_loaded=self.screens['layer'].load_snapshot(last_state_snapshot_fpath)
+
+		if not snapshot_loaded:
+			# Try to load "default" snapshot ...
+			default_snapshot_fpath=self.screens['snapshot'].default_snapshot_fpath
+			if isfile(default_snapshot_fpath):
+				snapshot_loaded=self.screens['layer'].load_snapshot(default_snapshot_fpath)
+
+		if not snapshot_loaded:
+			# Show "load snapshot" popup. Autoclose if no snapshots available ...
 			self.load_snapshot(autoclose=True)
 
 		# Start polling threads
@@ -196,6 +209,8 @@ class zynthian_gui:
 
 
 	def show_active_screen(self):
+		if not self.active_screen:
+			self.active_screen = "layer"
 		self.screens[self.active_screen].show()
 		self.hide_screens()
 		self.modal_screen=None
@@ -249,7 +264,7 @@ class zynthian_gui:
 	def load_snapshot(self, autoclose=False):
 		self.modal_screen='snapshot'
 		self.screens['snapshot'].load()
-		if not autoclose or len(self.screens['snapshot'].list_data)>1:
+		if not autoclose or (self.screens['snapshot'].action=="LOAD" and len(self.screens['snapshot'].list_data)>1):
 			self.hide_screens(exclude='snapshot')
 		else:
 			self.show_screen('layer')
@@ -392,8 +407,9 @@ class zynthian_gui:
 		# Extra ZynSwitches (AllInOne)
 		elif i==4:
 			self.all_notes_off()
-			sleep(0.1)
 			self.all_sounds_off()
+			sleep(0.1)
+			self.raw_all_notes_off()
 
 		elif i==5:
 			pass
@@ -472,6 +488,7 @@ class zynthian_gui:
 
 		# Extra ZynSwitches (AllInOne)
 		elif i==4:
+			self.all_notes_off()
 			self.all_sounds_off()
 
 		elif i==5:
@@ -866,6 +883,12 @@ class zynthian_gui:
 			lib_zyncoder.zynmidi_send_ccontrol_change(chan, 123, 0)
 
 
+	def raw_all_notes_off(self):
+		logging.info("Raw All Notes Off!")
+		for chan in range(16):
+			self.raw_all_notes_off_chan(chan)
+
+
 	def all_sounds_off_chan(self, chan):
 		logging.info("All Sounds Off for channel {}!".format(chan))
 		lib_zyncoder.zynmidi_send_ccontrol_change(chan, 120, 0)
@@ -874,8 +897,12 @@ class zynthian_gui:
 	def all_notes_off_chan(self, chan):
 		logging.info("All Notes Off for channel {}!".format(chan))
 		lib_zyncoder.zynmidi_send_ccontrol_change(chan, 123, 0)
-		#for n in range(128):
-		#	lib_zyncoder.zynmidi_send_note_off(chan,n,0)
+
+
+	def raw_all_notes_off_chan(self, chan):
+		logging.info("Raw All Notes Off for channel {}!".format(chan))
+		for n in range(128):
+			lib_zyncoder.zynmidi_send_note_off(chan,n,0)
 
 
 	#------------------------------------------------------------------
