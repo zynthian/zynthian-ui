@@ -184,6 +184,14 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 
+	@classmethod
+	def get_needed_channels(cls):
+		chans = []
+		for manual in cls.instrument:
+			chans.append(manual['chan'])
+		return chans
+
+
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------

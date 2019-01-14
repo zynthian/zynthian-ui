@@ -58,16 +58,17 @@ def initializator(cls):
 class zynthian_gui_engine(zynthian_gui_selector):
 
 	single_layer_engines = ["BF", "MD", "PT", "PD", "AE"]
+	check_channels_engines = ["AE"]
 
 	@classmethod
 	def init_engine_info(cls):
 
 		cls.engine_info=OrderedDict([
-			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth")],
-			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth")],
-			["LS", ("LinuxSampler", "LinuxSampler - SFZ/GIG Player", "MIDI Synth")],
-			["BF", ("setBfree", "setBfree - Hammond Emulator", "MIDI Synth")],
-			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth")]
+			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", zynthian_engine_zynaddsubfx)],
+			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", zynthian_engine_fluidsynth)],
+			["LS", ("LinuxSampler", "LinuxSampler - SFZ/GIG Player", "MIDI Synth", zynthian_engine_linuxsampler)],
+			["BF", ("setBfree", "setBfree - Hammond Emulator", "MIDI Synth", zynthian_engine_setbfree)],
+			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", zynthian_engine_aeolus)]
 		])
 
 		if check_pianoteq_binary():
@@ -76,13 +77,13 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				PIANOTEQ_VERSION[1],
 				PIANOTEQ_PRODUCT,
 				" (Demo)" if PIANOTEQ_TRIAL else "")
-			cls.engine_info['PT']=(PIANOTEQ_NAME, pianoteq_title, "MIDI Synth")
+			cls.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title, "MIDI Synth")
 
 		for plugin_name, plugin_info in get_jalv_plugins().items():
-			cls.engine_info['JV/{}'.format(plugin_name)]=(plugin_name, "{} - Plugin LV2".format(plugin_name), plugin_info['TYPE'])
+			cls.engine_info['JV/{}'.format(plugin_name)] = (plugin_name, "{} - Plugin LV2".format(plugin_name), plugin_info['TYPE'], zynthian_engine_jalv)
 
-		cls.engine_info['PD']=("PureData", "PureData - Visual Programming", "Special")
-		cls.engine_info['MD']=("MOD-UI", "MOD-UI - Plugin Host", "Special")
+		cls.engine_info['PD'] = ("PureData", "PureData - Visual Programming", "Special", zynthian_engine_puredata)
+		cls.engine_info['MD'] = ("MOD-UI", "MOD-UI - Plugin Host", "Special", zynthian_engine_modui)
 
 
 	def __init__(self):
@@ -108,10 +109,18 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.list_data=[]
 		i=0
 		for en, info in self.engine_info.items():
-			if (info[2]==self.engine_type or self.engine_type is None) and (en not in self.single_layer_engines or en not in self.zyngines):
+			if ((info[2]==self.engine_type or self.engine_type is None) and
+				(en not in self.single_layer_engines or en not in self.zyngines)):
+
+				# For some engines, check if needed channels are free ...
+				if (en in self.check_channels_engines and
+					not all(chan in self.zyngui.screens['layer'].get_free_midi_chans() for chan in info[3].get_needed_channels())):
+						continue
+
 				ei=self.engine_info[en]
 				self.list_data.append((en,i,ei[1],ei[0]))
 				i=i+1
+
 		super().fill_list()
 
 
@@ -125,27 +134,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def start_engine(self, eng):
 		if eng not in self.zyngines:
 			info=self.engine_info[eng]
-			if eng=="ZY":
-				self.zyngines[eng]=zynthian_engine_zynaddsubfx(zynthian_gui_config.zyngui)
-			elif eng=="LS":
-				self.zyngines[eng]=zynthian_engine_linuxsampler(zynthian_gui_config.zyngui)
-			elif eng=="FS":
-				self.zyngines[eng]=zynthian_engine_fluidsynth(zynthian_gui_config.zyngui)
-			elif eng=="BF":
-				self.zyngines[eng]=zynthian_engine_setbfree(zynthian_gui_config.zyngui)
-			elif eng=="MD":
-				self.zyngines[eng]=zynthian_engine_modui(zynthian_gui_config.zyngui)
-			elif eng=="PT":
-				self.zyngines[eng]=zynthian_engine_pianoteq(zynthian_gui_config.zyngui)
-			elif eng=="PD":
-				self.zyngines[eng]=zynthian_engine_puredata(zynthian_gui_config.zyngui)
-			elif eng=="AE":
-				self.zyngines[eng]=zynthian_engine_aeolus(zynthian_gui_config.zyngui)
-			elif eng[0:3]=="JV/":
+			zynthian_engine_class=info[3]
+			if eng[0:3]=="JV/":
 				eng="JV/{}".format(self.zyngine_counter)
-				self.zyngines[eng]=zynthian_engine_jalv(info[0], info[2], zynthian_gui_config.zyngui)
+				self.zyngines[eng]=zynthian_engine_class(info[0], info[2], self.zyngui)
 			else:
-				return None
+				self.zyngines[eng]=zynthian_engine_class(self.zyngui)
 
 		self.zyngine_counter+=1
 		return self.zyngines[eng]

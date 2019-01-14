@@ -200,7 +200,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.reset()
 
 
-	def generate_config_file(self):
+	def generate_config_file(self, midi_chans):
 		# Get user's config
 		my_cfg_fpath= self.my_data_dir + "/setbfree/cfg/zynthian.cfg"
 		try:
@@ -215,9 +215,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		with open(cfg_tpl_fpath, 'r') as cfg_tpl_file:
 			cfg_data = cfg_tpl_file.read()
 			cfg_data = cfg_data.replace('#OSC.TUNING#', str(self.zyngui.fine_tuning_freq))
-			cfg_data = cfg_data.replace('#MIDI.UPPER.CHANNEL#', str(1 + self.layers[0].midi_chan))
-			cfg_data = cfg_data.replace('#MIDI.LOWER.CHANNEL#', str(1 + (self.layers[0].midi_chan + 1) % 16))
-			cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str(1 + (self.layers[0].midi_chan + 2) % 16))
+			cfg_data = cfg_data.replace('#MIDI.UPPER.CHANNEL#', str(1 + midi_chans[0]))
+			cfg_data = cfg_data.replace('#MIDI.LOWER.CHANNEL#', str(1 + midi_chans[1]))
+			cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str(1 + midi_chans[2]))
 			cfg_data = cfg_data.replace('#TONEWHEEL.CONFIG#', self.tonewheel_config[self.tonewheel_model])
 			cfg_data += "\n" + my_cfg_data
 			with open(cfg_fpath, 'w') as cfg_file:
@@ -280,40 +280,56 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.tonewheel_model = bank[0]
 
 		if not self.proc:
-			logging.debug("STARTING SETBFREE!!")
-			self.generate_config_file()
-			self.stop()
-			self.start()
-			self.zyngui.zynautoconnect()
+			midi_chans = [self.layers[0].get_midi_chan(), 15, 15]
+			free_chans = self.zyngui.screens['layer'].get_free_midi_chans()
 
-			midi_chan = layer.get_midi_chan()
-			midi_prog = self.manuals_config[4][2]
-
-			if midi_prog and isinstance(midi_prog, int):
-				logging.debug("Loading manuals configuration program: {}".format(midi_prog-1))
-				self.zyngui.zynmidi.set_midi_prg(midi_chan, midi_prog-1)
-
+			logging.info("Upper Layer in chan {}".format(midi_chans[0]))
 			self.layers[0].bank_name = "Upper"
 			self.layers[0].load_bank_list()
 			self.layers[0].set_bank(0)
 
+			# Extra layers
 			if self.manuals_config[4][0]:
-				self.zyngui.screens['layer'].add_layer_midich((midi_chan + 1) % 16, False)
-				self.layers[1].bank_name = "Lower"
-				self.layers[1].load_bank_list()
-				self.layers[1].set_bank(0)
+				try:
+					# Adding Lower Manual Layer
+					midi_chans[1] = free_chans.pop(0)
+					logging.info("Lower Manual Layer in chan {}".format(midi_chans[1]))
+					self.zyngui.screens['layer'].add_layer_midich(midi_chans[1], False)
+					self.layers[1].bank_name = "Lower"
+					self.layers[1].load_bank_list()
+					self.layers[1].set_bank(0)
+
+				except Exception as e:
+					logging.error("Lower Manual Layer can't be added! => {}".format(e))
 
 			if self.manuals_config[4][1]:
-				self.zyngui.screens['layer'].add_layer_midich((midi_chan + 2) % 16, False)
-				i=len(self.layers)-1
-				self.layers[i].bank_name = "Pedals"
-				self.layers[i].load_bank_list()
-				self.layers[i].set_bank(0)
+				try:
+					# Adding Pedal Layer
+					midi_chans[2] = free_chans.pop(0)
+					logging.info("Pedal Layer in chan {}".format(midi_chans[2]))
+					self.zyngui.screens['layer'].add_layer_midich(midi_chans[2], False)
+					i=len(self.layers)-1
+					self.layers[i].bank_name = "Pedals"
+					self.layers[i].load_bank_list()
+					self.layers[i].set_bank(0)
+
+				except Exception as e:
+					logging.error("Pedal Layer can't be added! => {}".format(e))
+
+			# Start engine
+			logging.debug("STARTING SETBFREE!!")
+			self.generate_config_file(midi_chans)
+			self.start()
+			self.zyngui.zynautoconnect()
+
+			midi_prog = self.manuals_config[4][2]
+			if midi_prog and isinstance(midi_prog, int):
+				logging.debug("Loading manuals configuration program: {}".format(midi_prog-1))
+				self.zyngui.zynmidi.set_midi_prg(midi_chans[0], midi_prog-1)
 
 			#self.zyngui.screens['layer'].fill_list()
 
 			return True
-
 
 	#----------------------------------------------------------------------------
 	# Preset Managament

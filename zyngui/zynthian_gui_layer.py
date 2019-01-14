@@ -26,6 +26,7 @@
 
 import os
 import sys
+import copy
 import logging
 from json import JSONEncoder, JSONDecoder
 
@@ -287,8 +288,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def remove_root_layer(self, i, cleanup_unused_engines=True):
 		if i>=0 and i<len(self.root_layers):
-			for layer in reversed(self.get_fxchain_layers(self.root_layers[i])):
-				self.remove_layer(self.layers.index(layer), False)
+			# For some engines (Aeolus, setBfree), delete all layers on the same engine
+			if self.root_layers[i].engine.nickname in ['BF', 'AE']:
+				root_layers_to_delete = copy.copy(self.root_layers[i].engine.layers)
+			else:
+				root_layers_to_delete = [self.root_layers[i]]
+
+			# Remove root layer and fxchain
+			for root_layer in root_layers_to_delete:
+				for layer in reversed(self.get_fxchain_layers(root_layer)):
+					self.remove_layer(self.layers.index(layer), False)
+			
+			# Clean unused engines
 			if cleanup_unused_engines:
 				self.zyngui.screens['engine'].clean_unused_engines()
 
