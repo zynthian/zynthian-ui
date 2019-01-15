@@ -438,6 +438,7 @@ class zynthian_gui:
 				self.show_screen('layer')
 
 		elif i==1:
+			screen_back = None
 			# If modal screen ...
 			if self.modal_screen:
 				logging.debug("CLOSE MODAL => " + self.modal_screen)
