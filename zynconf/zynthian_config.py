@@ -105,30 +105,34 @@ def save_config(config, update_sys=False, fpath=None):
 	if not fpath:
 		fpath = get_config_fpath()
 
-	# Get config file content
-	with open(fpath) as f:
-		lines = f.readlines()
-
-	# Find and replace lines to update
 	updated = []
+	lines = []
 	add_row = 0
-	pattern = re.compile("^export ([^\s]*?)=")
-	for i,line in enumerate(lines):
-		res=pattern.match(line)
-		if res:
-			varname=res.group(1)
-			if varname in config:
-				value=config[varname].replace("\n", "\\n")
-				value=value.replace("\r", "")
-				os.environ[varname]=value
-				lines[i]="export %s=\"%s\"\n" % (varname,value)
-				updated.append(varname)
-				logging.debug(lines[i])
 
-		if line.startswith("# Directory Paths"):
-			add_row = i-1
 
-	if add_row==0:
+	# Get config file content
+	if os.path.isfile(fpath):
+		with open(fpath) as f:
+			lines = f.readlines()
+
+		# Find and replace lines to update
+		pattern = re.compile("^export ([^\s]*?)=")
+		for i,line in enumerate(lines):
+			res=pattern.match(line)
+			if res:
+				varname=res.group(1)
+				if varname in config:
+					value=config[varname].replace("\n", "\\n")
+					value=value.replace("\r", "")
+					os.environ[varname]=value
+					lines[i]="export %s=\"%s\"\n" % (varname,value)
+					updated.append(varname)
+					logging.debug(lines[i])
+
+			if line.startswith("# Directory Paths"):
+				add_row = i-1
+
+	if add_row==0 and len(lines)>0:
 		add_row = len(lines) + 1
 
 	# Add the rest
