@@ -61,7 +61,6 @@ def get_midi_config_fpath(fpath=None):
 
 	return fpath
 
-
 def load_config(set_env=True, fpath=None):
 	if not fpath:
 		fpath=get_config_fpath()
@@ -105,34 +104,30 @@ def save_config(config, update_sys=False, fpath=None):
 	if not fpath:
 		fpath = get_config_fpath()
 
-	updated = []
-	lines = []
-	add_row = 0
-
-
 	# Get config file content
-	if os.path.isfile(fpath):
-		with open(fpath) as f:
-			lines = f.readlines()
+	with open(fpath) as f:
+		lines = f.readlines()
 
-		# Find and replace lines to update
-		pattern = re.compile("^export ([^\s]*?)=")
-		for i,line in enumerate(lines):
-			res=pattern.match(line)
-			if res:
-				varname=res.group(1)
-				if varname in config:
-					value=config[varname].replace("\n", "\\n")
-					value=value.replace("\r", "")
-					os.environ[varname]=value
-					lines[i]="export %s=\"%s\"\n" % (varname,value)
-					updated.append(varname)
-					logging.debug(lines[i])
+	# Find and replace lines to update
+	updated = []
+	add_row = 0
+	pattern = re.compile("^export ([^\s]*?)=")
+	for i,line in enumerate(lines):
+		res=pattern.match(line)
+		if res:
+			varname=res.group(1)
+			if varname in config:
+				value=config[varname].replace("\n", "\\n")
+				value=value.replace("\r", "")
+				os.environ[varname]=value
+				lines[i]="export %s=\"%s\"\n" % (varname,value)
+				updated.append(varname)
+				logging.debug(lines[i])
 
-			if line.startswith("# Directory Paths"):
-				add_row = i-1
+		if line.startswith("# Directory Paths"):
+			add_row = i-1
 
-	if add_row==0 and len(lines)>0:
+	if add_row==0:
 		add_row = len(lines) + 1
 
 	# Add the rest
@@ -225,3 +220,4 @@ def update_midi_profile(params, fpath=None):
 
 
 #------------------------------------------------------------------------------
+
