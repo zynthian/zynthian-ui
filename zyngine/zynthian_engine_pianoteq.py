@@ -499,7 +499,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 						if bank_prefix==f[0:len(bank_prefix)]:
 							preset_path="My Presets/" + f[:-4]
 							preset_title="MY/" + str.replace(f[len(bank_prefix):-4], '_', ' ').strip()
-							user_presets.append((preset_path,None,preset_title,None))
+							user_presets.append([preset_path,None,preset_title,None])
 				#Add internal presets
 				try:
 					self.presets[bank_name] = user_presets + self.presets[bank_name]
