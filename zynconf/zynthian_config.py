@@ -61,7 +61,6 @@ def get_midi_config_fpath(fpath=None):
 
 	return fpath
 
-
 def load_config(set_env=True, fpath=None):
 	if not fpath:
 		fpath=get_config_fpath()
@@ -129,7 +128,7 @@ def save_config(config, update_sys=False, fpath=None):
 			add_row = i-1
 
 	if add_row==0:
-		add_row = len(lines) + 1
+		add_row = len(lines)
 
 	# Add the rest
 	vars_to_add=set(config.keys())-set(updated)
@@ -221,3 +220,4 @@ def update_midi_profile(params, fpath=None):
 
 
 #------------------------------------------------------------------------------
+
