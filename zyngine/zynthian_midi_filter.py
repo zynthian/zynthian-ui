@@ -85,50 +85,54 @@ class MidiFilterArgs:
 		"CP": 0xD		# Channel Press
 	}
 
-	def __init__(self, args, args0=None):
-		self.ch_list=None
-		self.ev_type=None
-		self.ev_list=None
 
-		n_args=len(args)
+	def __init__(self, args, args0=None):
+		self.ch_list = None
+		self.ev_type = None
+		self.ev_list = None
+
+		n_args = len(args)
 		if n_args>2:
 			raise MidiFilterException("Too many arguments (%s)" % n_args)
 
-		res=[]
+		res = []
 		for arg in args:
 			res.append(self.parse_arg(arg))
 
 		if n_args==1:
 			if args0 is None:
-				self.ch_list=range(0,16)
+				self.ch_list = range(0,16)
 			else:
-				self.ch_list=args0.ch_list
-			self.ev_type=res[0][0]
-			self.ev_list=res[0][1]
+				self.ch_list = args0.ch_list
+			self.ev_type = res[0][0]
+			self.ev_list = res[0][1]
+
 		elif n_args==2:
 			if res[0][0]!="CH":
 				raise MidiFilterException("Expected Channel")
-			self.ch_list=res[0][1]
-			self.ev_type=res[1][0]
-			self.ev_list=res[1][1]
+			self.ch_list = res[0][1]
+			self.ev_type = res[1][0]
+			self.ev_list = res[1][1]
 
 		if self.ev_type not in self.EVENT_TYPES:
 			raise MidiFilterException("Invalid Event Type (%s)" % self.ev_type)
 
+
 	def parse_arg(self, arg):
-		parts=arg.split("#")
-		arg_type=parts[0]
+		parts = arg.split("#")
+		arg_type = parts[0]
 
 		n_parts=len(parts)
-		if n_parts>2 or (arg_type in self.SINGLE_ARG_TYPES and n_parts>1) :
+		if n_parts>2 or (arg_type in self.SINGLE_ARG_TYPES and n_parts>1) or (arg_type=="CH" and n_parts==1):
 			raise MidiFilterException("Invalid argument format (%s)" % arg)
 
 		if n_parts==2:
-			values=[]
-			ranges=parts[1].split(",")
+			values = []
+			ranges = parts[1].split(",")
+
 			for r in ranges:
-				rparts=r.split(":")
-				n_rparts=len(rparts)
+				rparts = r.split(":")
+				n_rparts = len(rparts)
 				if n_rparts==1:
 					values.append(int(r))
 				elif n_rparts==2:
@@ -136,6 +140,10 @@ class MidiFilterArgs:
 						values.append(i)
 				elif n_rparts>2:
 					raise MidiFilterException("Invalid range format (%s)" % r)
+
+		elif arg_type not in (self.SINGLE_ARG_TYPES):
+			values = range(0,128)
+
 		else:
 			values=[0]
 
@@ -149,6 +157,7 @@ class MidiFilterRule:
 		self.args=[]
 		self.parse_rule(rule, set_rules)
 
+
 	def parse_rule(self, rule, set_rules=True):
 		# Check that the rule has only 1 line
 		parts=rule.split("\n")
@@ -156,7 +165,7 @@ class MidiFilterRule:
 			raise MidiFilterException("Invalid rule format. Multi-line rules are not allowed.")
 
 		# Parse rule type: IGNORE | MAP | CLEAN
-		parts=rule.split(" ")
+		parts=rule.split()
 		self.rule_type=parts[0]
 
 		# IGNORE rule ...
@@ -184,6 +193,7 @@ class MidiFilterRule:
 		if set_rules:
 			self.set_rules()
 
+
 	def set_rules(self, set_rules=True):
 		n_rules=0
 		if self.rule_type=="IGNORE" or self.rule_type=="CLEAN":
@@ -208,6 +218,7 @@ class MidiFilterRule:
 						zyncoder.lib_zyncoder.set_midi_filter_event_map(ev1_type, ch1, ev1_num, ev2_type, ch2, ev2_num)
 		return n_rules
 
+
 	def del_rules(self, del_rules=True):
 		n_rules=0
 		for ch in self.args[0].ch_list:
@@ -219,11 +230,13 @@ class MidiFilterRule:
 					zyncoder.lib_zyncoder.del_midi_filter_event_map(ev_type, ch, ev_num)
 		return n_rules
 
+
 class MidiFilterScript:
 
 	def __init__(self, script=None, set_rules=True):
 		if script:
 			self.parse_script(script, set_rules)
+
 
 	def parse_script(self, script, set_rules=True):
 		self.rules={}
@@ -237,18 +250,21 @@ class MidiFilterScript:
 				# Ignore commented rules
 				if rule[0:2]=='//':
 					continue
-				if len(rule)>9:
+				if len(rule)>8:
 					self.rules[rule]=MidiFilterRule(rule, set_rules)
 				else:
 					raise MidiFilterException("Script Rule is too short to be valid")
+
 
 	#Selectively remove only the rules set by the script
 	def clean(self):
 		for rule in self.rules:
 			self.rules[rule].del_rules()
-		
+
+
 	def clean_all(self):
 		zyncoder.lib_zyncoder.reset_midi_filter_event_map()
+
 
 #------------------------------------------------------------------------------
 # UnitTest
@@ -262,6 +278,7 @@ class TestMidiFilterRule(unittest.TestCase):
 		#Bad rules
 		with self.assertRaises(MidiFilterException):
 			MidiFilterRule("ABSURDE CH#1,2,3:8 PB#7,8", False)
+
 
 	def test_ignore_rules(self):
 		#Good rules
@@ -282,6 +299,7 @@ class TestMidiFilterRule(unittest.TestCase):
 			MidiFilterRule("IGNORE CH#1,2,3:8 PB#7,8", False)
 		with self.assertRaises(MidiFilterException):
 			MidiFilterRule("IGNORE CH#1,2,3:8 KP#1:3", False)
+
 
 	def test_map_rules(self):
 		#Good rules
@@ -304,6 +322,7 @@ class TestMidiFilterRule(unittest.TestCase):
 			MidiFilterRule("MAP CH#1,2,3:8 PB#7,8 => CH#4:11 CC#2,5", False)
 		with self.assertRaises(MidiFilterException):
 			MidiFilterRule("MAP CH#2,3:8 CC#7,8 => CH#4:11 CC#2,5", False)
+
 
 if __name__ == '__main__':
 	zyncoder.lib_zyncoder_init()
