@@ -176,16 +176,17 @@ class MidiFilterRule:
 			self.args.append(MidiFilterArgs(parts[1:3]))
 		# MAP rule ...
 		elif self.rule_type=="MAP":
-			if parts[3]=="=>":
+			try:
+				arrow_i = parts.index("=>")
 				# Parse arguments
-				self.args.append(MidiFilterArgs(parts[1:3]))
-				self.args.append(MidiFilterArgs(parts[4:6],self.args[0]))
+				self.args.append(MidiFilterArgs(parts[1:arrow_i]))
+				self.args.append(MidiFilterArgs(parts[arrow_i+1:],self.args[0]))
 				# Check consistency of rule lists
 				if len(self.args[0].ch_list)!=len(self.args[1].ch_list):
 					raise MidiFilterException("MAP rule channel lists can't be matched")
 				if len(self.args[1].ev_list)!=len(self.args[1].ev_list):
 					raise MidiFilterException("MAP rule event lists can't be matched")
-			else:
+			except:
 				raise MidiFilterException("Invalid MAP rule format (%s)" % rule)
 		else:
 			raise MidiFilterException("Invalid RULE type (%s)" % self.rule_type)
