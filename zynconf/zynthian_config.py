@@ -38,6 +38,27 @@ logger=logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
 
 #-------------------------------------------------------------------------------
+# UI Definitions
+#-------------------------------------------------------------------------------
+
+CustomSwitchActionType = [
+	"NONE",
+	"UI_ACTION",
+	"MIDI_CC"
+];
+
+
+CustomUiAction = [
+	"NONE",
+	"POWER_OFF",
+	"REBOOT",
+	"RESTART_UI",
+	"ALL_NOTES_OFF",
+	"ALL_SOUNDS_OFF",
+	"ALL_OFF"
+];
+
+#-------------------------------------------------------------------------------
 # Config related functions
 #-------------------------------------------------------------------------------
 

@@ -440,23 +440,23 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def reboot(self):
-		self.zyngui.show_confirm("Do you really want to reboot?", self.reboot_confirmed, [100])
+		self.zyngui.show_confirm("Do you really want to reboot?", self.reboot_confirmed)
 
 
-	def reboot_confirmed(self, params):
+	def reboot_confirmed(self, params=None):
 		logging.info("REBOOT")
 		self.last_state_action()
-		self.zyngui.exit(params[0])
+		self.zyngui.exit(100)
 
 
 	def power_off(self):
-		self.zyngui.show_confirm("Do you really want to power off?", self.power_off_confirmed, [0])
+		self.zyngui.show_confirm("Do you really want to power off?", self.power_off_confirmed)
 
 
-	def power_off_confirmed(self, params):
+	def power_off_confirmed(self, params=None):
 		logging.info("POWER OFF")
 		self.last_state_action()
-		self.zyngui.exit(params[0])
+		self.zyngui.exit(0)
 
 
 	def last_state_action(self):

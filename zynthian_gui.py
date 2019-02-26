@@ -318,9 +318,11 @@ class zynthian_gui:
 	def set_active_channel(self):
 		active_chan=-1
 
-		if self.curlayer and zynthian_gui_config.midi_single_active_channel:
-			active_chan=self.curlayer.get_midi_chan()
-			if active_chan is not None:
+		if self.curlayer:
+			active_chan = self.curlayer.get_midi_chan()
+			if active_chan is None:
+				active_chan = -1
+			elif zynthian_gui_config.midi_single_active_channel:
 				cur_active_chan=lib_zyncoder.get_midi_active_chan()
 				if cur_active_chan==active_chan:
 					return
@@ -328,8 +330,6 @@ class zynthian_gui:
 					logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan,active_chan))
 					if cur_active_chan>=0:
 						self.all_notes_off_chan(cur_active_chan)
-			else:
-				active_chan=-1
 
 		lib_zyncoder.set_midi_active_chan(active_chan)
 		self.zynswitches_midi_setup(active_chan)
@@ -342,6 +342,42 @@ class zynthian_gui:
 				return self.curlayer
 			else:
 				sleep(0.1)
+
+
+	# -------------------------------------------------------------------
+	# Custom UI Actions
+	# -------------------------------------------------------------------
+
+	def custom_ui_action(self, cuia):
+		if cuia == "POWER_OFF":
+			self.screens['admin'].power_off_confirmed()
+
+		elif cuia == "REBOOT":
+			self.screens['admin'].reboot_confirmed()
+
+		elif cuia == "RESTART_UI":
+			self.screens['admin'].restart_gui()
+
+		elif cuia == "ALL_NOTES_OFF":
+			self.all_notes_off()
+			
+		elif cuia == "ALL_SOUNDS_OFF":
+			self.all_notes_off()
+			self.all_sounds_off()
+
+		elif cuia == "ALL_OFF":
+			self.all_notes_off()
+			self.all_sounds_off()
+			sleep(0.1)
+			self.raw_all_notes_off()
+
+
+	def custom_switch_ui_action(self, i, t):
+		try:
+			cuia = zynthian_gui_config.custom_switch_ui_actions[i][t]
+			self.custom_ui_action(cuia)
+		except Exception as e:
+			logging.warning(e)
 
 
 	# -------------------------------------------------------------------
@@ -364,9 +400,12 @@ class zynthian_gui:
 		if midi_chan>0:
 			logging.info("SWITCHES MIDI SETUP...")
 
-			#Configure 8th zynswitch as Sustain Pedal CC
-			lib_zyncoder.setup_zynswitch_midi(7, midi_chan, 64)
-			logging.info("SETUP MIDI ZYNSWITCH {} => CH#{}, CC#{} (Sustain Pedal)".format(7, midi_chan, 64))
+			for i in range(0, zynthian_gui_config.n_custom_switches):
+				swi = 4 + i
+				cc_num = zynthian_gui_config.custom_switch_midi_cc[i]
+				if cc_num is not None:
+					lib_zyncoder.setup_zynswitch_midi(swi, midi_chan, cc_num)
+					logging.info("SETUP MIDI ZYNSWITCH {} => CH#{}, CC#{}".format(swi, midi_chan, cc_num))
 
 
 	def zynswitches(self):
@@ -404,21 +443,18 @@ class zynthian_gui:
 		elif i==3:
 			self.screens['admin'].power_off()
 
-		# Extra ZynSwitches (AllInOne)
+		# Custom ZynSwitches
 		elif i==4:
-			self.all_notes_off()
-			self.all_sounds_off()
-			sleep(0.1)
-			self.raw_all_notes_off()
+			self.custom_switch_ui_action(0, "L")
 
 		elif i==5:
-			pass
+			self.custom_switch_ui_action(1, "L")
 
 		elif i==6:
-			pass
+			self.custom_switch_ui_action(2, "L")
 
 		elif i==7:
-			pass
+			self.custom_switch_ui_action(3, "L")
 
 		self.stop_loading()
 
@@ -487,19 +523,18 @@ class zynthian_gui:
 			else:
 				self.screens[self.active_screen].switch_select('B')
 
-		# Extra ZynSwitches (AllInOne)
+		# Custom ZynSwitches
 		elif i==4:
-			self.all_notes_off()
-			self.all_sounds_off()
+			self.custom_switch_ui_action(0, "B")
 
 		elif i==5:
-			pass
+			self.custom_switch_ui_action(1, "B")
 
 		elif i==6:
-			pass
+			self.custom_switch_ui_action(2, "B")
 
 		elif i==7:
-			pass
+			self.custom_switch_ui_action(3, "B")
 
 		self.stop_loading()
 
@@ -585,18 +620,18 @@ class zynthian_gui:
 			else:
 				self.screens[self.active_screen].switch_select('S')
 
-		# Extra ZynSwitches (AllInOne)
+		# Custom ZynSwitches
 		elif i==4:
-			self.all_notes_off()
+			self.custom_switch_ui_action(0, "S")
 
 		elif i==5:
-			pass
+			self.custom_switch_ui_action(1, "S")
 
 		elif i==6:
-			pass
+			self.custom_switch_ui_action(2, "S")
 
 		elif i==7:
-			pass
+			self.custom_switch_ui_action(3, "S")
 
 		self.stop_loading()
 

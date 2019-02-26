@@ -73,7 +73,7 @@ else:
 	zynswitch_pin=None
 
 #------------------------------------------------------------------------------
-# Zyncoder GPIO pin assignment (wiringPi numbering)
+# Encoder & Switches GPIO pin assignment (wiringPi numbering)
 #------------------------------------------------------------------------------
 
 # First Prototype => Generic Plastic Case
@@ -161,6 +161,33 @@ else:
 logging.debug("ZYNCODER A: %s" % zyncoder_pin_a)
 logging.debug("ZYNCODER B: %s" % zyncoder_pin_b)
 logging.debug("SWITCHES layout: %s" % zynswitch_pin)
+
+
+#------------------------------------------------------------------------------
+# Custom Switches Action Configuration
+#------------------------------------------------------------------------------
+
+n_custom_switches = 4
+
+custom_switch_ui_actions = []
+custom_switch_midi_cc = []
+
+for i in range(0, n_custom_switches):
+	cuias = {}
+	cc_num = None
+
+	root_varname = "ZYNTHIAN_WIRING_CUSTOM_SWITCH_{0:0>2}".format(i+1)
+	if os.environ.get(root_varname) == "UI_ACTION":
+		cuias['S'] = os.environ.get(root_varname + "__UI_SHORT")
+		cuias['B'] = os.environ.get(root_varname + "__UI_BOLD")
+		cuias['L'] = os.environ.get(root_varname + "__UI_LONG")
+
+	elif os.environ.get(root_varname) == "MIDI_CC":
+		cc_num = os.environ.get(root_varname + "__CC_NUM")
+
+	custom_switch_ui_actions.append(cuias)
+	custom_switch_midi_cc.append(cc_num)
+
 
 #------------------------------------------------------------------------------
 # UI Geometric Parameters
