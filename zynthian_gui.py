@@ -26,8 +26,9 @@
 import os
 import sys
 import copy
+import liblo
 import signal
-import alsaseq
+#import alsaseq
 import logging
 from time import sleep
 from os.path import isfile
@@ -118,8 +119,15 @@ class zynthian_gui:
 			lib_zyncoder.zynmidi_send_master_ccontrol_change(0x7,0xFF)
 			#Init MIDI and Switches
 			self.zynswitches_init()
+			#Init OSC
+			self.osc_init()
 		except Exception as e:
 			logging.error("ERROR initializing GUI: %s" % e)
+
+
+	# ---------------------------------------------------------------------------
+	# MIDI Router Init & Config
+	# ---------------------------------------------------------------------------
 
 
 	def init_midi(self):
@@ -143,6 +151,51 @@ class zynthian_gui:
 			zynconf.load_config(True,midi_profile_fpath)
 			zynthian_gui_config.set_midi_config()
 			self.init_midi()
+
+
+	# ---------------------------------------------------------------------------
+	# OSC Management
+	# ---------------------------------------------------------------------------
+
+
+	def osc_init(self, port=1370, proto=liblo.UDP):
+		try:
+			self.osc_server=liblo.Server(None,proto)
+			self.osc_server_port=self.osc_server.get_port()
+			self.osc_server_url=liblo.Address('localhost',self.osc_server_port,proto).get_url()
+			logging.info("ZYNTHIAN GUI OSC server running in port {}".format(self.osc_server_port))
+			#self.osc_server.start()
+		except liblo.AddressError as err:
+			logging.error("ZYNTHIAN GUI OSC Server can't be initialized: {}".format(err))
+
+
+	def osc_end(self):
+		if self.osc_server:
+			try:
+				#self.osc_server.stop()
+				logging.info("ZYNTHIAN GUI OSC server stopped")
+			except Exception as err:
+				logging.error("Can't stop ZYNTHIAN GUI OSC server => %s" % err)
+			self.stop_loading()
+
+
+	def osc_receive(self):
+		while self.osc_server.recv(0):
+			pass
+
+
+	#@liblo.make_method("RELOAD_MIDI_CONFIG", None)
+	@liblo.make_method(None, None)
+	def cb_osc_all(self, path, args, types, src):
+		logging.info("OSC MESSAGE '%s' from '%s'" % (path, src.url))
+		self.callable_ui_action(path, args)
+		#for a, t in zip(args, types):
+		#	logging.debug("argument of type '%s': %s" % (t, a))
+
+
+	# ---------------------------------------------------------------------------
+	# GUI Core Management
+	# ---------------------------------------------------------------------------
 
 
 	def start(self):
@@ -198,6 +251,7 @@ class zynthian_gui:
 
 	def stop(self):
 		self.screens['layer'].reset()
+		self.osc_end()
 
 
 	def hide_screens(self,exclude=None):
@@ -316,23 +370,25 @@ class zynthian_gui:
 
 	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
 	def set_active_channel(self):
-		active_chan=-1
+		curlayer_chan = -1
+		active_chan = -1
 
 		if self.curlayer:
-			active_chan = self.curlayer.get_midi_chan()
-			if active_chan is None:
-				active_chan = -1
+			curlayer_chan = self.curlayer.get_midi_chan()
+			if curlayer_chan is None:
+				curlayer_chan = -1
 			elif zynthian_gui_config.midi_single_active_channel:
-				cur_active_chan=lib_zyncoder.get_midi_active_chan()
+				active_chan = curlayer_chan 
+				cur_active_chan = lib_zyncoder.get_midi_active_chan()
 				if cur_active_chan==active_chan:
 					return
 				else:
-					logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan,active_chan))
+					logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan, active_chan))
 					if cur_active_chan>=0:
 						self.all_notes_off_chan(cur_active_chan)
 
 		lib_zyncoder.set_midi_active_chan(active_chan)
-		self.zynswitches_midi_setup(active_chan)
+		self.zynswitches_midi_setup(curlayer_chan)
 
 
 	def get_curlayer_wait(self):
@@ -345,10 +401,10 @@ class zynthian_gui:
 
 
 	# -------------------------------------------------------------------
-	# Custom UI Actions
+	# Callable UI Actions
 	# -------------------------------------------------------------------
 
-	def custom_ui_action(self, cuia):
+	def callable_ui_action(self, cuia, params=None):
 		if cuia == "POWER_OFF":
 			self.screens['admin'].power_off_confirmed()
 
@@ -357,6 +413,9 @@ class zynthian_gui:
 
 		elif cuia == "RESTART_UI":
 			self.screens['admin'].restart_gui()
+
+		elif cuia == "RELOAD_MIDI_CONFIG":
+			self.reload_midi_config()
 
 		elif cuia == "ALL_NOTES_OFF":
 			self.all_notes_off()
@@ -375,7 +434,7 @@ class zynthian_gui:
 	def custom_switch_ui_action(self, i, t):
 		try:
 			cuia = zynthian_gui_config.custom_switch_ui_actions[i][t]
-			self.custom_ui_action(cuia)
+			self.callable_ui_action(cuia)
 		except Exception as e:
 			logging.warning(e)
 
@@ -706,6 +765,7 @@ class zynthian_gui:
 		while not self.exit_flag:
 			self.zyncoder_read()
 			self.zynmidi_read()
+			self.osc_receive()
 			sleep(0.04)
 			if self.zynread_wait_flag:
 				sleep(0.3)
@@ -888,7 +948,7 @@ class zynthian_gui:
 
 
 	#------------------------------------------------------------------
-	# OSC callbacks
+	# OSC callbacks => No concurrency!! 
 	#------------------------------------------------------------------
 
 
