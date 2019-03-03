@@ -318,7 +318,7 @@ class zynthian_gui:
 	def set_active_channel(self):
 		active_chan=-1
 
-		if self.curlayer:
+		if self.curlayer and zynthian_gui_config.midi_single_active_channel:
 			active_chan = self.curlayer.get_midi_chan()
 			if active_chan is None:
 				active_chan = -1
