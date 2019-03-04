@@ -160,22 +160,23 @@ class zynthian_gui:
 
 	def osc_init(self, port=1370, proto=liblo.UDP):
 		try:
-			self.osc_server=liblo.Server(None,proto)
+			self.osc_server=liblo.Server(port,proto)
 			self.osc_server_port=self.osc_server.get_port()
 			self.osc_server_url=liblo.Address('localhost',self.osc_server_port,proto).get_url()
-			logging.info("ZYNTHIAN GUI OSC server running in port {}".format(self.osc_server_port))
+			logging.info("ZYNTHIAN-UI OSC server running in port {}".format(self.osc_server_port))
+			self.osc_server.add_method(None, None, self.osc_cb_all)
 			#self.osc_server.start()
 		except liblo.AddressError as err:
-			logging.error("ZYNTHIAN GUI OSC Server can't be initialized: {}".format(err))
+			logging.error("ZYNTHIAN-UI OSC Server can't be initialized: {}".format(err))
 
 
 	def osc_end(self):
 		if self.osc_server:
 			try:
 				#self.osc_server.stop()
-				logging.info("ZYNTHIAN GUI OSC server stopped")
+				logging.info("ZYNTHIAN-UI OSC server stopped")
 			except Exception as err:
-				logging.error("Can't stop ZYNTHIAN GUI OSC server => %s" % err)
+				logging.error("Can't stop ZYNTHIAN-UI OSC server => %s" % err)
 			self.stop_loading()
 
 
@@ -185,8 +186,8 @@ class zynthian_gui:
 
 
 	#@liblo.make_method("RELOAD_MIDI_CONFIG", None)
-	@liblo.make_method(None, None)
-	def cb_osc_all(self, path, args, types, src):
+	#@liblo.make_method(None, None)
+	def osc_cb_all(self, path, args, types, src):
 		logging.info("OSC MESSAGE '%s' from '%s'" % (path, src.url))
 		self.callable_ui_action(path, args)
 		#for a, t in zip(args, types):
@@ -948,7 +949,7 @@ class zynthian_gui:
 
 
 	#------------------------------------------------------------------
-	# OSC callbacks => No concurrency!! 
+	# Engine OSC callbacks => No concurrency!! 
 	#------------------------------------------------------------------
 
 
