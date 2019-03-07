@@ -75,7 +75,10 @@ function splash_zynthian() {
 
 function splash_zynthian_error() {
 	if [ -c $FRAMEBUFFER ]; then
-		cat $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.raw > $FRAMEBUFFER
+		#cat $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.raw > $FRAMEBUFFER
+		zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
+		convert -pointsize 14 -fill black -draw "text 110,225 \"IP: $zynthian_ip\"" $ZYNTHIAN_UI_DIR/img/zynthian_logo_error.png $ZYNTHIAN_CONFIG_DIR/img/zynthian_logo_error_ip.png
+		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/zynthian_logo_error_ip.png
 	fi  
 }
 
