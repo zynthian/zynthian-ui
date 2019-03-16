@@ -127,7 +127,13 @@ def midi_autoconnect():
 	engines_in=[]
 	for k, zyngine in zyngine_list.items():
 		#logger.debug("zyngine: {}".format(zyngine.jackname))
-		ports=jclient.get_ports(zyngine.jackname, is_input=True, is_midi=True, is_physical=False)
+		port_name = zyngine.jackname
+
+		#Dirty hack for having MIDI working with PureData: #TODO => Improve it!!
+		if port_name=="pure_data_0":
+			port_name = "Pure Data"
+
+		ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
 		try:
 			port=ports[0]
 
