@@ -26,6 +26,7 @@
 import sys
 import logging
 import tkinter
+import psutil
 from datetime import datetime
 from tkinter import font as tkFont
 from PIL import Image, ImageTk
@@ -55,6 +56,10 @@ class zynthian_gui_selector:
 		self.zselector = None
 		self.zyngui = zynthian_gui_config.zyngui
 
+		self.status_rect=None
+		self.status_h=max(2,zynthian_gui_config.topbar_height/4)
+		self.status_l=zynthian_gui_config.topbar_height-2
+
 		# Listbox Size
 		self.lb_height=zynthian_gui_config.display_height-zynthian_gui_config.topbar_height
 		self.wide=wide
@@ -82,15 +87,27 @@ class zynthian_gui_selector:
 		# Topbar's Select Path
 		self.select_path = tkinter.StringVar()
 		self.label_select_path = tkinter.Label(self.tb_frame,
+			wraplength=zynthian_gui_config.display_width-self.status_l,
 			font=zynthian_gui_config.font_topbar,
 			textvariable=self.select_path,
 			#wraplength=80,
 			justify=tkinter.LEFT,
 			bg=zynthian_gui_config.color_header_bg,
 			fg=zynthian_gui_config.color_header_tx)
-		self.label_select_path.grid(sticky="wns")
+		self.label_select_path.grid(row=0, column=0, sticky="wns")
+		self.tb_frame.grid_columnconfigure(0, minsize=zynthian_gui_config.display_width-self.status_l)
 		# Setup Topbar's Callback
 		self.label_select_path.bind("<Button-1>", self.cb_topbar)
+
+		# Canvas for displaying status: CPU, ...
+		self.status_canvas = tkinter.Canvas(self.tb_frame,
+			width=self.status_l,
+			height=self.status_h,
+			bd=0,
+			highlightthickness=0,
+			relief='flat',
+			bg = zynthian_gui_config.color_bg)
+		self.status_canvas.grid(row=0, column=1, sticky="ens")
 
 		# ListBox's frame
 		self.lb_frame = tkinter.Frame(self.main_frame,
@@ -174,6 +191,23 @@ class zynthian_gui_selector:
 			return True
 		except:
 			return False
+
+
+	def refresh_status(self):
+		if self.shown:
+			cpu_pc = max(psutil.cpu_percent(None, True))
+			l = int(cpu_pc*self.status_l/100)
+			cr = int(cpu_pc*255/100)
+			cg = 255-cr
+			color = "#%02x%02x%02x" % (cr,cg,0)
+			try:
+				if self.status_rect:
+					self.status_canvas.coords(self.status_rect,(0, 0, l, self.status_h))
+					self.status_canvas.itemconfig(self.status_rect, fill=color)
+				else:
+					self.status_rect=self.status_canvas.create_rectangle((0, 0, l, self.status_h), fill=color, width=0)
+			except Exception as e:
+				logging.error(e)
 
 
 	def refresh_loading(self):

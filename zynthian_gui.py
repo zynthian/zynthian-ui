@@ -934,9 +934,16 @@ class zynthian_gui:
 
 	def zyngine_refresh(self):
 		try:
+			# Status refresh
+			if self.modal_screen:
+				self.screens[self.modal_screen].refresh_status()
+			else:
+				self.screens[self.active_screen].refresh_status()
+			# Capture exit event and finish
 			if self.exit_flag:
 				self.stop()
 				sys.exit(self.exit_code)
+			# Refresh Current Layer
 			elif self.curlayer and not self.loading:
 				self.curlayer.refresh()
 		except Exception as err:
