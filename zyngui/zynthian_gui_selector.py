@@ -26,7 +26,6 @@
 import sys
 import logging
 import tkinter
-import psutil
 from datetime import datetime
 from tkinter import font as tkFont
 from PIL import Image, ImageTk
@@ -56,9 +55,13 @@ class zynthian_gui_selector:
 		self.zselector = None
 		self.zyngui = zynthian_gui_config.zyngui
 
-		self.status_rect=None
-		self.status_h=max(2,zynthian_gui_config.topbar_height/4)
-		self.status_l=zynthian_gui_config.topbar_height-2
+		self.status_rect = None
+		self.status_flags = None
+		self.status_midi = None
+		self.status_h = zynthian_gui_config.topbar_height
+		self.status_l = zynthian_gui_config.topbar_height
+		self.status_rh = max(2,zynthian_gui_config.topbar_height/4)
+		self.status_fs = int(zynthian_gui_config.topbar_height/3)
 
 		# Listbox Size
 		self.lb_height=zynthian_gui_config.display_height-zynthian_gui_config.topbar_height
@@ -193,21 +196,60 @@ class zynthian_gui_selector:
 			return False
 
 
-	def refresh_status(self):
+	def refresh_status(self, status={}):
 		if self.shown:
-			cpu_pc = max(psutil.cpu_percent(None, True))
-			l = int(cpu_pc*self.status_l/100)
-			cr = int(cpu_pc*255/100)
+			# Display CPU-load bar
+			l = int(status['cpu_load']*self.status_l/100)
+			cr = int(status['cpu_load']*255/100)
 			cg = 255-cr
 			color = "#%02x%02x%02x" % (cr,cg,0)
 			try:
 				if self.status_rect:
-					self.status_canvas.coords(self.status_rect,(0, 0, l, self.status_h))
+					self.status_canvas.coords(self.status_rect,(0, 0, l, self.status_rh))
 					self.status_canvas.itemconfig(self.status_rect, fill=color)
 				else:
-					self.status_rect=self.status_canvas.create_rectangle((0, 0, l, self.status_h), fill=color, width=0)
+					self.status_rect=self.status_canvas.create_rectangle((0, 0, l, self.status_rh), fill=color, width=0)
 			except Exception as e:
 				logging.error(e)
+
+			# Display flags
+			if 'xrun' in status:
+				flags="X"
+			elif 'undervoltage' in status:
+				flags="V";
+			elif ('throttled' in status) or ('freqcap' in status):
+				flags="T"
+			else:
+				flags=""
+			if not self.status_flags:
+				self.status_flags = self.status_canvas.create_text(
+					int(self.status_fs*0.4),
+					int(self.status_h*0.6),
+					width=int(self.status_fs*1.2),
+					justify=tkinter.RIGHT,
+					fill=zynthian_gui_config.color_on,
+					font=(zynthian_gui_config.font_family,self.status_fs),
+					text=flags)
+			else:
+				self.status_canvas.itemconfig(self.status_flags, text=flags)
+
+			# Display MIDI flag
+			flags=""
+			if 'midi' in status:
+				flags="M";
+			else:
+				flags=""
+			if not self.status_midi:
+				self.status_midi = self.status_canvas.create_text(
+					int(self.status_l-self.status_fs*1.2),
+					int(self.status_h*0.6),
+					width=int(self.status_fs*1.2),
+					justify=tkinter.RIGHT,
+					fill=zynthian_gui_config.color_hl,
+					font=(zynthian_gui_config.font_family,self.status_fs),
+					text=flags)
+			else:
+				self.status_canvas.itemconfig(self.status_midi, text=flags)
 
 
 	def refresh_loading(self):

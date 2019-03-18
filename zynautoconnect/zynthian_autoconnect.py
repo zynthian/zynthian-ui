@@ -385,6 +385,8 @@ def start(rt=2):
 
 	try:
 		jclient=jack.Client("Zynthian_autoconnect")
+		jclient.set_xrun_callback(cb_jack_xrun)
+		jclient.activate()
 	except Exception as e:
 		logger.error("Failed to connect with Jack Server: {}".format(e))
 
@@ -400,6 +402,15 @@ def start(rt=2):
 def stop():
 	global exit_flag
 	exit_flag=True
+
+
+def cb_jack_xrun(delayed_usecs: float):
+	logging.error("Jack XRUN!")
+	zynthian_gui_config.zyngui.status_info['xrun'] = True
+
+
+def get_jack_cpu_load():
+	return jclient.cpu_load()
 
 
 #------------------------------------------------------------------------------

@@ -28,12 +28,14 @@ import sys
 import copy
 import liblo
 import signal
+#import psutil
 #import alsaseq
 import logging
 from time import sleep
 from os.path import isfile
 from datetime import datetime
 from threading  import Thread
+from subprocess import check_output
 
 # Zynthian specific modules
 import zynconf
@@ -105,6 +107,8 @@ class zynthian_gui:
 
 		self.midi_learn_mode = False
 		self.midi_learn_zctrl = None
+
+		self.status_info = {}
 
 		# Initialize Controllers (Rotary and Switches), MIDI and OSC
 		try:
@@ -794,6 +798,8 @@ class zynthian_gui:
 			while lib_zyncoder:
 				ev=lib_zyncoder.read_zynmidi()
 				if ev==0: break
+
+				self.status_info['midi'] = True
 				evtype = (ev & 0xF00000)>>20
 				chan = (ev & 0x0F0000)>>16
 				
@@ -934,11 +940,36 @@ class zynthian_gui:
 
 	def zyngine_refresh(self):
 		try:
-			# Status refresh
-			if self.modal_screen:
-				self.screens[self.modal_screen].refresh_status()
-			else:
-				self.screens[self.active_screen].refresh_status()
+			# Get CPU Load
+			#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
+			self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
+
+			# Get Status Flags
+			try:
+				res=check_output("vcgencmd get_throttled", shell=True).decode('utf-8','ignore')
+				thr=int(res[12:],16)
+				if thr & 0x1:
+					self.status_info['undervoltage']=True
+				if thr & 0x2:
+					self.status_info['freqcap']=True
+				if thr & 0x4:
+					self.status_info['throttled']=True
+
+			except Exception as e:
+				logging.error(e)
+
+			# Refresh On-Screen Status
+			try:
+				if self.modal_screen:
+					self.screens[self.modal_screen].refresh_status(self.status_info)
+				else:
+					self.screens[self.active_screen].refresh_status(self.status_info)
+			except ValueError:
+				pass
+
+			# Clean status_flags
+			self.status_info = {}
+
 			# Capture exit event and finish
 			if self.exit_flag:
 				self.stop()
