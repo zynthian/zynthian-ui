@@ -940,35 +940,7 @@ class zynthian_gui:
 
 	def zyngine_refresh(self):
 		try:
-			# Get CPU Load
-			#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
-			self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
-
-			# Get Status Flags
-			try:
-				res=check_output("vcgencmd get_throttled", shell=True).decode('utf-8','ignore')
-				thr=int(res[12:],16)
-				if thr & 0x1:
-					self.status_info['undervoltage']=True
-				if thr & 0x2:
-					self.status_info['freqcap']=True
-				if thr & 0x4:
-					self.status_info['throttled']=True
-
-			except Exception as e:
-				logging.error(e)
-
-			# Refresh On-Screen Status
-			try:
-				if self.modal_screen:
-					self.screens[self.modal_screen].refresh_status(self.status_info)
-				else:
-					self.screens[self.active_screen].refresh_status(self.status_info)
-			except ValueError:
-				pass
-
-			# Clean status_flags
-			self.status_info = {}
+			self.refresh_status()
 
 			# Capture exit event and finish
 			if self.exit_flag:
@@ -977,13 +949,47 @@ class zynthian_gui:
 			# Refresh Current Layer
 			elif self.curlayer and not self.loading:
 				self.curlayer.refresh()
+
 		except Exception as err:
 			if zynthian_gui_config.raise_exceptions:
 				raise err
 			else:
 				logging.error("zynthian_gui.zyngine_refresh() => %s" % err)
+
 		if self.polling:
 			zynthian_gui_config.top.after(160, self.zyngine_refresh)
+
+
+	def refresh_status(self):
+		# Get CPU Load
+		#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
+		self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
+
+		# Get Status Flags
+		try:
+			res=check_output("vcgencmd get_throttled", shell=True).decode('utf-8','ignore')
+			thr=int(res[12:],16)
+			if thr & 0x1:
+				self.status_info['undervoltage']=True
+			if thr & 0x2:
+				self.status_info['freqcap']=True
+			if thr & 0x4:
+				self.status_info['throttled']=True
+
+		except Exception as e:
+			logging.error(e)
+
+		# Refresh On-Screen Status
+		try:
+			if self.modal_screen:
+				self.screens[self.modal_screen].refresh_status(self.status_info)
+			else:
+				self.screens[self.active_screen].refresh_status(self.status_info)
+		except ValueError:
+			pass
+
+		# Clean status_info
+		self.status_info = {}
 
 
 	#------------------------------------------------------------------

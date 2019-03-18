@@ -93,7 +93,7 @@ screensaver_off
 while true; do
 	#Load Config Environment
 	load_config_env
-	
+
 	# Start Zynthian GUI & Synth Engine
 	./zynthian_gui.py
 	status=$?
