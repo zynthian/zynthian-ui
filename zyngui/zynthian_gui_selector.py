@@ -213,11 +213,11 @@ class zynthian_gui_selector:
 				logging.error(e)
 
 			# Display flags
-			if 'xrun' in status:
+			if 'xrun' in status and status['xrun']:
 				flags="X"
-			elif 'undervoltage' in status:
+			elif 'undervoltage' in status and status['undervoltage']:
 				flags="V";
-			elif ('throttled' in status) or ('freqcap' in status):
+			elif 'overtemp' in status and status['overtemp']:
 				flags="T"
 			else:
 				flags=""
@@ -235,7 +235,7 @@ class zynthian_gui_selector:
 
 			# Display MIDI flag
 			flags=""
-			if 'midi' in status:
+			if 'midi' in status and status['midi']:
 				flags="M";
 			else:
 				flags=""
