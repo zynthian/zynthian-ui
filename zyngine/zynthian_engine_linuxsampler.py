@@ -117,10 +117,16 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		self.sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 		self.sock.setblocking(0)
 		self.sock.settimeout(1)
+
+		if self.remote_host:
+			ls_host = self.remote_host
+		else:
+			ls_host = "localhost"
+
 		i=0
 		while i<20:
 			try:
-				self.sock.connect(("127.0.0.1",self.port))
+				self.sock.connect((ls_host,self.port))
 				break
 			except:
 				sleep(0.25)

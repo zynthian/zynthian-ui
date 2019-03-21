@@ -28,6 +28,7 @@ import copy
 import liblo
 import logging
 import pexpect
+from pexpect import pxssh
 from time import sleep
 from os.path import isfile, isdir, join
 from string import Template
@@ -97,6 +98,9 @@ class zynthian_engine:
 		self.command_env = None
 		self.command_prompt = None
 
+		#self.remote_host = "motxina.local"
+		self.remote_host= None
+
 		self.osc_target = None
 		self.osc_target_port = None
 		self.osc_server = None
@@ -125,11 +129,12 @@ class zynthian_engine:
 			fvars['DISPLAY']=os.environ.get('ZYNTHIANX')
 		else:
 			try:
-				with open("/root/.remote_display_env","r") as fh:
-					lines = fh.readlines()
-					for line in lines:
-						parts=line.strip().split('=')
-						if len(parts)>=2 and parts[1]: fvars[parts[0]]=parts[1]
+				if not self.remote_host:
+					with open("/root/.remote_display_env","r") as fh:
+						lines = fh.readlines()
+						for line in lines:
+							parts=line.strip().split('=')
+							if len(parts)>=2 and parts[1]: fvars[parts[0]]=parts[1]
 			except:
 				fvars['DISPLAY']=""
 		if 'DISPLAY' not in fvars or not fvars['DISPLAY']:
@@ -182,10 +187,20 @@ class zynthian_engine:
 			try:
 				self.start_loading()
 
-				if self.command_env:
-					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
+				if self.remote_host:
+					if self.command_env:
+						self.proc = pxssh.pxssh(timeout=self.proc_timeout, env=self.command_env)
+					else:
+						self.proc = pxssh.pxssh(timeout=self.proc_timeout)
+
+					self.proc.login(self.remote_host,"txino","ag0la0cha")
+					self.proc.sendline(self.command)
+
 				else:
-					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout)
+					if self.command_env:
+						self.proc = pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
+					else:
+						self.proc = pexpect.spawn(self.command, timeout=self.proc_timeout)
 
 				self.proc.delaybeforesend = 0
 
@@ -206,6 +221,9 @@ class zynthian_engine:
 			self.start_loading()
 			try:
 				logging.info("Stoping Engine " + self.name)
+				if self.remote_host:
+					self.proc.send('\003')
+					self.proc.logout()
 				self.proc.terminate()
 				if wait>0: sleep(wait)
 				self.proc.terminate(True)
@@ -243,10 +261,17 @@ class zynthian_engine:
 
 	def osc_init(self, target_port=None, proto=liblo.UDP):
 		self.start_loading()
+
+		if self.remote_host:
+			osc_host = self.remote_host
+		else:
+			osc_host = "localhost"
+
 		if target_port:
 			self.osc_target_port=target_port
+
 		try:
-			self.osc_target=liblo.Address('localhost',self.osc_target_port,proto)
+			self.osc_target=liblo.Address(osc_host,self.osc_target_port,proto)
 			logging.info("OSC target in port %s" % str(self.osc_target_port))
 			self.osc_server=liblo.ServerThread(None,proto)
 			self.osc_server_port=self.osc_server.get_port()
@@ -254,8 +279,10 @@ class zynthian_engine:
 			logging.info("OSC server running in port %s" % str(self.osc_server_port))
 			self.osc_add_methods()
 			self.osc_server.start()
+
 		except liblo.AddressError as err:
 			logging.error("OSC Server can't be initialized (%s). Running without OSC feedback." % err)
+
 		self.stop_loading()
 
 
