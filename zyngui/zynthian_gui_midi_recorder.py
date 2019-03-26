@@ -76,15 +76,27 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		return join(self.capture_dir,f);
 
 
+	def get_status(self):
+		if self.rec_proc and self.rec_proc.poll() is None:
+			return "REC"
+		elif self.play_proc and self.play_proc.poll() is None:
+			return "PLAY"
+		else:
+			return None
+
+
 	def fill_list(self):
 		self.index=0
 		self.list_data=[]
-		if self.rec_proc and self.rec_proc.poll() is None:
+		
+		status=self.get_status()
+		if status=="REC":
 			self.list_data.append(("STOP_RECORDING",0,"Stop Recording"))
-		elif self.play_proc and self.play_proc.poll() is None:
+		elif status=="REC":
 			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
 		else:
 			self.list_data.append(("START_RECORDING",0,"Start Recording"))
+
 		i=1
 		for f in sorted(os.listdir(self.capture_dir)):
 			fpath=self.get_record_fpath(f)
@@ -93,6 +105,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				title=f[:-4]
 				self.list_data.append((fpath,i,title))
 				i+=1
+
 		super().fill_list()
 
 

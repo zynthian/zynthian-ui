@@ -213,25 +213,43 @@ class zynthian_gui_selector:
 				logging.error(e)
 
 			# Display flags
+			color = zynthian_gui_config.color_on
 			if 'xrun' in status and status['xrun']:
-				flags="X"
+				flags = "X"
 			elif 'undervoltage' in status and status['undervoltage']:
-				flags="V";
+				flags = "V";
 			elif 'overtemp' in status and status['overtemp']:
-				flags="T"
+				flags = "T"
+			elif 'audio_recorder' in status:
+				if status['audio_recorder']=='REC':
+					flags = "R"
+				elif status['audio_recorder']=='PLAY':
+					flags = ">"
+					color = zynthian_gui_config.color_hl
+				else:
+					flags = ""
+			elif 'midi_recorder' in status:
+				if status['midi_recorder']=='REC':
+					flags = "R"
+				elif status['midi_recorder']=='PLAY':
+					flags = ">"
+					color = zynthian_gui_config.color_hl
+				else:
+					flags = ""
 			else:
-				flags=""
+				flags = ""
+
 			if not self.status_flags:
 				self.status_flags = self.status_canvas.create_text(
 					int(self.status_fs*0.4),
 					int(self.status_h*0.6),
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
-					fill=zynthian_gui_config.color_on,
+					fill=color,
 					font=(zynthian_gui_config.font_family,self.status_fs),
 					text=flags)
 			else:
-				self.status_canvas.itemconfig(self.status_flags, text=flags)
+				self.status_canvas.itemconfig(self.status_flags, text=flags, fill=color)
 
 			# Display MIDI flag
 			flags=""

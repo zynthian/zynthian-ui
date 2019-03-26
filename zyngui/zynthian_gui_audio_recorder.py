@@ -72,15 +72,27 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		return join(self.capture_dir,f);
 
 
+	def get_status(self):
+		if self.is_process_running("jack_capture"):
+			return "REC"
+		elif self.current_record:
+			return "PLAY"
+		else:
+			return None
+
+
 	def fill_list(self):
 		self.index=0
 		self.list_data=[]
-		if self.is_process_running("jack_capture"):
+
+		status=self.get_status()
+		if status=="REC":
 			self.list_data.append(("STOP_RECORDING",0,"Stop Recording"))
-		elif self.current_record:
+		elif status=="PLAY":
 			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
 		else:
 			self.list_data.append(("START_RECORDING",0,"Start Recording"))
+
 		i=1
 		for f in sorted(os.listdir(self.capture_dir)):
 			fpath=self.get_record_fpath(f)
@@ -89,6 +101,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 				title=f[:-4]
 				self.list_data.append((fpath,i,title))
 				i+=1
+
 		super().fill_list()
 
 
@@ -149,7 +162,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.stop_playing()
 		logging.info("STARTING AUDIO PLAY '{}' ...".format(fpath))
 		try:
-			cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -ao jack {}".format(fpath)
+			cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -loop 0 -ao jack {}".format(fpath)
 			logging.info("COMMAND: %s" % cmd)
 			self.play_proc=Popen(cmd.split(" "), stdin=PIPE, universal_newlines=True)
 			sleep(0.5)
