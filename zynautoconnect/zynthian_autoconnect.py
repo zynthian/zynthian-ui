@@ -127,7 +127,13 @@ def midi_autoconnect():
 	engines_in=[]
 	for k, zyngine in zyngine_list.items():
 		#logger.debug("zyngine: {}".format(zyngine.jackname))
-		ports=jclient.get_ports(zyngine.jackname, is_input=True, is_midi=True, is_physical=False)
+		port_name = zyngine.jackname
+
+		#Dirty hack for having MIDI working with PureData: #TODO => Improve it!!
+		if port_name=="pure_data_0":
+			port_name = "Pure Data"
+
+		ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
 		try:
 			port=ports[0]
 
@@ -192,7 +198,7 @@ def midi_autoconnect():
 	except:
 		pass
 
-	#Connect Control feedback to ZynMidiRouter:ctrl_in
+	#Connect Engine's Controller-FeedBack to ZynMidiRouter:ctrl_in
 	try:
 		for eop in engines_out:
 			jclient.connect(eop[0],zmr_in['ctrl_in'])
@@ -244,11 +250,21 @@ def midi_autoconnect():
 	except:
 		pass
 
+	#Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
+	for hw in hw_in:
+		try:
+			if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_fb_ports:
+				jclient.connect(zmr_out['ctrl_out'],hw)
+			else:
+				jclient.disconnect(zmr_out['ctrl_out'],hw)
+		except:
+			pass
+
 
 def audio_autoconnect():
 	logger.info("Autoconnecting Audio ...")
 
-	#Get Audio Input Ports
+	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
 	input_ports=get_audio_input_ports()
 
 	#Disconnect Monitor from System Output
@@ -284,17 +300,35 @@ def audio_autoconnect():
 				except:
 					pass
 
-	if zynthian_aubionotes:
-		#Get System Capture and Aubio Input ports ...
-		sys_input=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
-		aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
-		#Connect System Capture to Aubio ports
-		if len(sys_input)>0 and len(aubio_in)>0:
-			try:
-				jclient.connect(sys_input[0],aubio_in[0])
-				jclient.connect(sys_input[1],aubio_in[0])
-			except:
-				pass
+
+	#Get System Capture ports => jack output ports!!
+	system_capture=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
+	if len(system_capture)>0:
+
+		#Connect system capture to effect root layers ...
+		root_layers=zynthian_gui_config.zyngui.screens["layer"].get_fxchain_roots()
+		for rl in root_layers:
+			#Get Root Layer Input ports ...
+			rl_in=jclient.get_ports(rl.jackname, is_input=True, is_audio=True)
+			#Connect System Capture to Root Layer ports
+			if len(rl_in)>0:
+				try:
+					jclient.connect(system_capture[0],rl_in[0])
+					jclient.connect(system_capture[1],rl_in[0])
+				except:
+					pass
+
+
+		if zynthian_aubionotes:
+			#Get Aubio Input ports ...
+			aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
+			#Connect System Capture to Aubio ports
+			if len(aubio_in)>0:
+				try:
+					jclient.connect(system_capture[0],aubio_in[0])
+					jclient.connect(system_capture[1],aubio_in[0])
+				except:
+					pass
 
 
 def get_audio_input_ports():
@@ -351,6 +385,8 @@ def start(rt=2):
 
 	try:
 		jclient=jack.Client("Zynthian_autoconnect")
+		jclient.set_xrun_callback(cb_jack_xrun)
+		jclient.activate()
 	except Exception as e:
 		logger.error("Failed to connect with Jack Server: {}".format(e))
 
@@ -366,6 +402,15 @@ def start(rt=2):
 def stop():
 	global exit_flag
 	exit_flag=True
+
+
+def cb_jack_xrun(delayed_usecs: float):
+	logging.error("Jack XRUN!")
+	zynthian_gui_config.zyngui.status_info['xrun'] = True
+
+
+def get_jack_cpu_load():
+	return jclient.cpu_load()
 
 
 #------------------------------------------------------------------------------

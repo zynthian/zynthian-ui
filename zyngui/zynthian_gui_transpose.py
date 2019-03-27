@@ -47,6 +47,7 @@ class zynthian_gui_transpose(zynthian_gui_selector):
 	def __init__(self):
 		super().__init__('Transpose', True)
 
+
 	def fill_list(self):
 		self.list_data=[]
 		for i in range(0,121):
@@ -54,20 +55,30 @@ class zynthian_gui_transpose(zynthian_gui_selector):
 			self.list_data.append((str(i),offset,str(offset)))
 		super().fill_list()
 
+
 	def show(self):
 		offset=zyncoder.lib_zyncoder.get_midi_filter_transpose(self.get_layer_chan())
 		self.index=60+offset
 		super().show()
 
-	def select_action(self, i):
+
+	def select_action(self, i, t='S'):
 		zyncoder.lib_zyncoder.set_midi_filter_transpose(self.get_layer_chan(),self.list_data[i][1])
-		zynthian_gui_config.zyngui.show_screen('layer')
+		self.zyngui.show_modal('layer_options')
+
+
+	def back_action(self):
+		self.zyngui.show_modal('layer_options')
+		return ''
+
 
 	def set_select_path(self):
 		self.select_path.set("Transpose")
 
+
 	def get_layer_chan(self):
-		layer_index=zynthian_gui_config.zyngui.screens['layer_options'].layer_index
-		return zynthian_gui_config.zyngui.screens['layer'].layers[layer_index].get_midi_chan()
+		layer_index=self.zyngui.screens['layer_options'].layer_index
+		return self.zyngui.screens['layer'].layers[layer_index].get_midi_chan()
+
 
 #------------------------------------------------------------------------------

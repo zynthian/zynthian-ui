@@ -57,6 +57,7 @@ class zynthian_gui_controller:
 		self.trw=zynthian_gui_config.ctrl_width-6
 		self.trh=int(0.1*zynthian_gui_config.ctrl_height)
 
+		self.zyngui=zynthian_gui_config.zyngui
 		self.zctrl=None
 		self.labels=None
 		self.ticks=None
@@ -320,9 +321,9 @@ class zynthian_gui_controller:
 	def set_midi_bind(self):
 		if self.zctrl.midi_cc==0:
 			self.erase_midi_bind()
-		elif zynthian_gui_config.zyngui.midi_learn_mode:
+		elif self.zyngui.midi_learn_mode:
 			self.plot_midi_bind("??",zynthian_gui_config.color_ml)
-		elif zynthian_gui_config.zyngui.midi_learn_zctrl and self.zctrl==zynthian_gui_config.zyngui.midi_learn_zctrl:
+		elif self.zyngui.midi_learn_zctrl and self.zctrl==self.zyngui.midi_learn_zctrl:
 			self.plot_midi_bind("??",zynthian_gui_config.color_hl)
 		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
 			midi_cc=zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
@@ -597,15 +598,15 @@ class zynthian_gui_controller:
 		logging.debug("CONTROL %d RELEASE => %s, %s" % (self.index, dts, motion_rate))
 		if motion_rate<10:
 			if dts<0.3:
-				zynthian_gui_config.zyngui.zynswitch_defered('S',self.index)
+				self.zyngui.zynswitch_defered('S',self.index)
 			elif dts>=0.3 and dts<2:
-				zynthian_gui_config.zyngui.zynswitch_defered('B',self.index)
+				self.zyngui.zynswitch_defered('B',self.index)
 			elif dts>=2:
-				zynthian_gui_config.zyngui.zynswitch_defered('L',self.index)
+				self.zyngui.zynswitch_defered('L',self.index)
 		elif self.canvas_motion_dx>20:
-			zynthian_gui_config.zyngui.zynswitch_defered('X',self.index)
+			self.zyngui.zynswitch_defered('X',self.index)
 		elif self.canvas_motion_dx<-20:
-			zynthian_gui_config.zyngui.zynswitch_defered('Y',self.index)
+			self.zyngui.zynswitch_defered('Y',self.index)
 
 	def cb_canvas_motion(self,event):
 		dts=(datetime.now()-self.canvas_push_ts).total_seconds()

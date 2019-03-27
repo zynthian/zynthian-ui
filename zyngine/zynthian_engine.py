@@ -469,12 +469,46 @@ class zynthian_engine:
 				if len(options)>0:
 					zctrl.set_options(options)
 
-				zctrls[ctrl[0]]=zctrl
+				zctrls[zctrl.symbol]=zctrl
 		return zctrls
 
 
 	def send_controller_value(self, zctrl):
-		raise Exception("NOT DEFINED")
+		raise Exception("NOT IMPLEMENTED!")
+
+
+	# ---------------------------------------------------------------------------
+	# MIDI Learn
+	# ---------------------------------------------------------------------------
+
+
+	def midi_learn(self, zctrl):
+		raise Exception("NOT IMPLEMENTED!")
+
+
+	def midi_unlearn(self, zctrl):
+		raise Exception("NOT IMPLEMENTED!")
+
+
+	def set_midi_learn(self, zctrl):
+		raise Exception("NOT IMPLEMENTED!")
+
+
+	def reset_midi_learn(self):
+		raise Exception("NOT IMPLEMENTED!")
+
+
+	#----------------------------------------------------------------------------
+	# MIDI CC processing
+	#----------------------------------------------------------------------------
+
+
+	#def midi_control_change(self, chan, ccnum, val):
+	#	raise Exception("NOT IMPLEMENTED!")
+
+
+	#def midi_control_change(self, zctrl, val):
+	#	raise Exception("NOT IMPLEMENTED!")
 
 
 	# ---------------------------------------------------------------------------

@@ -49,30 +49,30 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
     
 	def fill_list(self):
-		zynthian_gui_config.zyngui.curlayer.load_bank_list()
-		self.list_data=zynthian_gui_config.zyngui.curlayer.bank_list
+		self.zyngui.curlayer.load_bank_list()
+		self.list_data=self.zyngui.curlayer.bank_list
 		super().fill_list()
 
 
 	def show(self):
-		self.index=zynthian_gui_config.zyngui.curlayer.get_bank_index()
+		self.index=self.zyngui.curlayer.get_bank_index()
 		logging.debug("BANK INDEX => %s" % self.index)
 		super().show()
 
 
-	def select_action(self, i):
-		if zynthian_gui_config.zyngui.curlayer.set_bank(i):
-			zynthian_gui_config.zyngui.show_screen('preset')
+	def select_action(self, i, t='S'):
+		if self.zyngui.curlayer.set_bank(i):
+			self.zyngui.show_screen('preset')
 			# If there is only one preset, jump to instrument control
-			if len(zynthian_gui_config.zyngui.curlayer.preset_list)<=1:
-				zynthian_gui_config.zyngui.screens['preset'].select_action(0)
+			if len(self.zyngui.curlayer.preset_list)<=1:
+				self.zyngui.screens['preset'].select_action(0)
 		else:
 			self.show()
 
 
 	def set_select_path(self):
-		if zynthian_gui_config.zyngui.curlayer:
-			self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_basepath())
+		if self.zyngui.curlayer:
+			self.select_path.set(self.zyngui.curlayer.get_basepath())
 
 
 #-------------------------------------------------------------------------------

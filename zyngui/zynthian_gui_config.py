@@ -73,7 +73,7 @@ else:
 	zynswitch_pin=None
 
 #------------------------------------------------------------------------------
-# Zyncoder GPIO pin assignment (wiringPi numbering)
+# Encoder & Switches GPIO pin assignment (wiringPi numbering)
 #------------------------------------------------------------------------------
 
 # First Prototype => Generic Plastic Case
@@ -162,6 +162,33 @@ logging.debug("ZYNCODER A: %s" % zyncoder_pin_a)
 logging.debug("ZYNCODER B: %s" % zyncoder_pin_b)
 logging.debug("SWITCHES layout: %s" % zynswitch_pin)
 
+
+#------------------------------------------------------------------------------
+# Custom Switches Action Configuration
+#------------------------------------------------------------------------------
+
+n_custom_switches = 4
+
+custom_switch_ui_actions = []
+custom_switch_midi_cc = []
+
+for i in range(0, n_custom_switches):
+	cuias = {}
+	cc_num = None
+
+	root_varname = "ZYNTHIAN_WIRING_CUSTOM_SWITCH_{0:0>2}".format(i+1)
+	if os.environ.get(root_varname) == "UI_ACTION":
+		cuias['S'] = os.environ.get(root_varname + "__UI_SHORT")
+		cuias['B'] = os.environ.get(root_varname + "__UI_BOLD")
+		cuias['L'] = os.environ.get(root_varname + "__UI_LONG")
+
+	elif os.environ.get(root_varname) == "MIDI_CC":
+		cc_num = os.environ.get(root_varname + "__CC_NUM")
+
+	custom_switch_ui_actions.append(cuias)
+	custom_switch_midi_cc.append(cc_num)
+
+
 #------------------------------------------------------------------------------
 # UI Geometric Parameters
 #------------------------------------------------------------------------------
@@ -230,6 +257,12 @@ font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 
 #------------------------------------------------------------------------------
+# UI Options
+#------------------------------------------------------------------------------
+
+restore_last_state=int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE',False))
+
+#------------------------------------------------------------------------------
 # MIDI Configuration
 #------------------------------------------------------------------------------
 
@@ -240,8 +273,8 @@ def set_midi_config():
 	global master_midi_bank_change_up, master_midi_bank_change_down
 	global master_midi_bank_change_down_ccnum, master_midi_bank_base
 	global preset_preload_noteon, midi_single_active_channel
-	global midi_prog_change_zs3, midi_fine_tuning
-	global midi_filter_rules, disabled_midi_in_ports, enabled_midi_out_ports
+	global midi_prog_change_zs3, midi_fine_tuning, midi_filter_rules
+	global disabled_midi_in_ports, enabled_midi_out_ports, enabled_midi_fb_ports
 
 	master_midi_channel=int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
 
@@ -292,10 +325,11 @@ def set_midi_config():
 	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES',"")
 	midi_filter_rules=midi_filter_rules.replace("\\n","\n")
 
-	midi_ports=os.environ.get('ZYNTHIAN_MIDI_PORTS',"DISABLED_IN=\nENABLED_OUT=MIDI_out")
+	midi_ports=os.environ.get('ZYNTHIAN_MIDI_PORTS',"DISABLED_IN=\nENABLED_OUT=ttymidi:MIDI_out\nENABLED_FB=")
 	midi_ports=midi_ports.replace("\\n","\n")
 	disabled_midi_in_ports=zynconf.get_disabled_midi_in_ports(midi_ports)
 	enabled_midi_out_ports=zynconf.get_enabled_midi_out_ports(midi_ports)
+	enabled_midi_fb_ports=zynconf.get_enabled_midi_fb_ports(midi_ports)
 
 #Set MIDI config variables
 set_midi_config()

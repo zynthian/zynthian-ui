@@ -45,75 +45,95 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 
 class zynthian_gui_midi_chan(zynthian_gui_selector):
 
-	def __init__(self, max_chan=16):
-		self.mode='ADD'
-		self.max_chan=max_chan
+	def __init__(self):
+		self.set_mode('ADD')
 		super().__init__('Channel', True)
 
-	def set_mode(self, mode, midich=None):
-		self.mode=mode
+	def set_mode(self, mode, chan=None, chan_list=None):
+		self.mode = mode
+
+		if chan_list:
+			self.chan_list = chan_list
+		else:
+			self.chan_list = range(16)
+
 		if self.mode=='ADD':
-			self.listbox.config(selectmode='browse')
+			pass
 		elif self.mode=='SET':
-			self.listbox.config(selectmode='browse')
-			self.index=midich
+			self.index=chan
 		elif self.mode=='CLONE':
-			self.listbox.config(selectmode='browse')
-			self.midi_chan=midich
+			self.midi_chan=chan
+
 
 	def fill_list(self):
 		self.list_data=[]
 		if self.mode=='ADD' or self.mode=='SET':
-			for i in range(self.max_chan):
+			for i in self.chan_list:
 				self.list_data.append((str(i+1),i,"MIDI CH#"+str(i+1)))
 		elif self.mode=='CLONE':
-			for i in range(self.max_chan):
+			for i in self.chan_list:
 				if i==self.midi_chan:
-					self.list_data.append((str(i+1),i,"MIDI CH#"+str(i+1)+" ->"))
+					continue
 				elif zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, i):
-					self.list_data.append((str(i+1),i,"-> MIDI CH#"+str(i+1)))
+					self.list_data.append((str(i+1),i,"[x] Channel {}".format(i+1)))
 				else:
-					self.list_data.append((str(i+1),i,"MIDI CH#"+str(i+1)))
+					self.list_data.append((str(i+1),i,"[  ] Channel {}".format(i+1)))
 		super().fill_list()
+
 
 	def fill_listbox(self):
 		super().fill_listbox()
-		if self.mode=='CLONE':
-			self.index=self.highlight_cloned()
+		#if self.mode=='CLONE':
+		#	self.highlight_cloned()
+
 
 	# Highlight current channels to which is cloned to ...
 	def highlight_cloned(self):
-		last=0
-		for i in range(self.max_chan):
-			if self.list_data[i][2][-2:]=='->':
-				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_hl})
-			elif self.list_data[i][2][:2]=='->':
+		i=0
+		for item in self.list_data:
+			if item[2][:2]=='[x':
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_hl})
-				last=i
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
-		return last
 
-	def select_action(self, i):
+			i += 1
+
+
+	def select_action(self, i, t='S'):
+		selchan=self.list_data[i][1]
+
 		if self.mode=='ADD':
-			zynthian_gui_config.zyngui.screens['layer'].add_layer_midich(self.list_data[i][1])
+			self.zyngui.screens['layer'].add_layer_midich(selchan)
+
 		elif self.mode=='SET':
-			layer_index=zynthian_gui_config.zyngui.screens['layer_options'].layer_index
-			zynthian_gui_config.zyngui.screens['layer'].layers[layer_index].set_midi_chan(self.list_data[i][1])
-			zynthian_gui_config.zyngui.show_screen('layer')
+			root_layer=self.zyngui.screens['layer_options'].layer
+			for layer in self.zyngui.screens['layer'].get_fxchain_layers(root_layer):
+				layer.set_midi_chan(selchan)
+
+			self.zyngui.show_modal('layer_options')
+
 		elif self.mode=='CLONE':
-			if self.list_data[i][1]!=self.midi_chan:
-				if zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, self.list_data[i][1]):
-					zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, self.list_data[i][1], 0)
+			if selchan!=self.midi_chan:
+				if zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, selchan):
+					zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, selchan, 0)
 					self.fill_list()
 				else:
-					zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, self.list_data[i][1], 1)
+					zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, selchan, 1)
 					self.fill_list()
+
+
+	def back_action(self):
+		if self.mode=='SET' or self.mode=='CLONE':
+			self.zyngui.show_modal('layer_options')
+			return ''
+		else:
+			return None
+
 
 	def set_select_path(self):
 		if self.mode=='ADD' or self.mode=='SET':
 			self.select_path.set("MIDI Channel")
 		elif self.mode=='CLONE':
-			self.select_path.set("MIDI Channel {} Clone to ...".format(self.midi_chan+1))
+			self.select_path.set("Clone MIDI Channel {} to ...".format(self.midi_chan+1))
 
 #------------------------------------------------------------------------------

@@ -184,6 +184,14 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 
+	@classmethod
+	def get_needed_channels(cls):
+		chans = []
+		for manual in cls.instrument:
+			chans.append(manual['chan'])
+		return chans
+
+
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
@@ -261,35 +269,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 
-	def send_controller_value(self, zctrl):
-		self.midi_control_change(zctrl, int(zctrl.get_value()))
-
-
-	def midi_control_change(self, zctrl, val):
-		try:
-			if isinstance(zctrl.graph_path,list):
-				if isinstance(val,int):
-					if val>=64:
-						val="on"
-					else:
-						val="off"
-					if val!=zctrl.get_value2label():
-						zctrl.set_value(val)
-					else:
-						return
-				if val=="on":
-					mm="10"
-				else:
-					mm="01"
-				v1="01{0}0{1:03b}".format(mm,zctrl.graph_path[0])
-				v2="000{0:05b}".format(zctrl.graph_path[1])
-				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v1,2))
-				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v2,2))
-				logging.debug("Aeolus Stop ({}) => mm={}, group={}, button={})".format(val,mm,zctrl.graph_path[0],zctrl.graph_path[1]))
-		except Exception as e:
-			logging.debug(e)
-
-
 	def generate_ctrl_list(self):
 		#Generate ctrl list for each group in instrument
 		n=0
@@ -327,6 +306,44 @@ class zynthian_engine_aeolus(zynthian_engine):
 				return super().get_controllers_dict(layer)
 
 		return OrderedDict()
+
+
+
+	def send_controller_value(self, zctrl):
+		self.midi_control_change(zctrl, int(zctrl.get_value()))
+
+
+	#----------------------------------------------------------------------------
+	# MIDI CC processing
+	#----------------------------------------------------------------------------
+
+
+	def midi_control_change(self, zctrl, val):
+		try:
+			if isinstance(zctrl.graph_path,list):
+				if isinstance(val,int):
+					if val>=64:
+						val="on"
+					else:
+						val="off"
+
+					if val!=zctrl.get_value2label():
+						zctrl.set_value(val)
+	
+				if val=="on":
+					mm="10"
+				else:
+					mm="01"
+
+				v1="01{0}0{1:03b}".format(mm,zctrl.graph_path[0])
+				v2="000{0:05b}".format(zctrl.graph_path[1])
+				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v1,2))
+				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v2,2))
+
+				#logging.debug("Aeolus Stop ({}) => mm={}, group={}, button={})".format(val,mm,zctrl.graph_path[0],zctrl.graph_path[1]))
+
+		except Exception as e:
+			logging.debug(e)
 
 
 	#--------------------------------------------------------------------------

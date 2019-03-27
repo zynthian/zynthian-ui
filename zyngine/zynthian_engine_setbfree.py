@@ -83,53 +83,53 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
-	drawbar_values=[['0','1','2','3','4','5','6','7','8'], [128,119,103,87,71,55,39,23,7]]
+	drawbar_values = [ ['0','1','2','3','4','5','6','7','8'], [128,119,103,87,71,55,39,23,7] ]
 
 	# MIDI Controllers
-	_ctrls=[
+	_ctrls = [
 		['volume',7,96,127],
 #		['swellpedal 2',11,96],
-		['reverb',91,4,127,'reverbmix'],
+		['reverb',91,4,127],
 		['convol. mix',94,64,127],
 
 		['rotary toggle',64,'off','off|on'],
-#		['rotary speed',1,64,127,'rotaryspeed'],
-		['rotary speed',1,'off','slow|off|fast','rotaryspeed'],
-#		['rotary speed',1,'off',[['slow','off','fast'],[0,43,86]],'rotaryspeed'],
+#		['rotary speed',1,64,127],
+		['rotary speed',1,'off','slow|off|fast'],
+#		['rotary speed',1,'off',[['slow','off','fast'],[0,43,86]]],
 #		['rotary select',67,0,127],
 #		['rotary select',67,'off/off','off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
 		['rotary select',67,'off/off',[['off/off','slow/off','fast/off','off/slow','slow/slow','fast/slow','off/fast','slow/fast','fast/fast'],[0,15,30,45,60,75,90,105,120]]],
 
-		['DB 16',70,'8',drawbar_values,'drawbar_1'],
-		['DB 5 1/3',71,'8',drawbar_values,'drawbar_2'],
-		['DB 8',72,'8',drawbar_values,'drawbar_3'],
-		['DB 4',73,'0',drawbar_values,'drawbar_4'],
-		['DB 2 2/3',74,'0',drawbar_values,'drawbar_5'],
-		['DB 2',75,'0',drawbar_values,'drawbar_6'],
-		['DB 1 3/5',76,'0',drawbar_values,'drawbar_7'],
-		['DB 1 1/3',77,'0',drawbar_values,'drawbar_8'],
-		['DB 1',78,'0',drawbar_values,'drawbar_9'],
+		['DB 16',70,'8',drawbar_values],
+		['DB 5 1/3',71,'8',drawbar_values],
+		['DB 8',72,'8',drawbar_values],
+		['DB 4',73,'0',drawbar_values],
+		['DB 2 2/3',74,'0',drawbar_values],
+		['DB 2',75,'0',drawbar_values],
+		['DB 1 3/5',76,'0',drawbar_values],
+		['DB 1 1/3',77,'0',drawbar_values],
+		['DB 1',78,'0',drawbar_values],
 
-		['vibrato upper',31,'off','off|on','vibratoupper'],
-		['vibrato lower',30,'off','off|on','vibratolower'],
-		['vibrato routing',95,'off','off|lower|upper|both','vibratorouting'],
-		#['vibrato selector',92,'c3','v1|v2|v3|c1|c2|c3','vibrato'],
+		['vibrato upper',31,'off','off|on'],
+		['vibrato lower',30,'off','off|on'],
+		['vibrato routing',95,'off','off|lower|upper|both'],
+		#['vibrato selector',92,'c3','v1|v2|v3|c1|c2|c3'],
 		['vibrato selector',92,'c3',[['v1','v2','v3','c1','c2','c3'],[0,23,46,69,92,115]]],
 
-		#['percussion',66,'off','off|on','perc'],
-		['percussion',80,'off','off|on','perc'],
-		['percussion volume',81,'soft','soft|hard','percvol'],
-		['percussion decay',82,'slow','slow|fast','percspeed'],
-		['percussion harmonic',83,'3rd','2nd|3rd','percharm'],
+		#['percussion',66,'off','off|on'],
+		['percussion',80,'off','off|on'],
+		['percussion volume',81,'soft','soft|hard'],
+		['percussion decay',82,'slow','slow|fast'],
+		['percussion harmonic',83,'3rd','2nd|3rd'],
 
-		['overdrive',65,'off','off|on','overdrive'],
-		['overdrive character',93,64,127,'overdrive_char'],
-		['overdrive inputgain',21,64,127,'overdrive_igain'],
-		['overdrive outputgain',22,64,127,'overdrive_ogain']
+		['overdrive',65,'off','off|on'],
+		['overdrive character',93,64,127],
+		['overdrive inputgain',21,64,127],
+		['overdrive outputgain',22,64,127]
 	]
 
 	# Controller Screens
-	_ctrl_screens=[
+	_ctrl_screens = [
 		['main',['volume','percussion','rotary speed','vibrato routing']],
 		['drawbars low',['volume','DB 16','DB 5 1/3','DB 8']],
 		['drawbars medium',['volume','DB 4','DB 2 2/3','DB 2']],
@@ -140,6 +140,34 @@ class zynthian_engine_setbfree(zynthian_engine):
 		['overdrive',['overdrive','overdrive character','overdrive inputgain','overdrive outputgain']],
 		['reverb',['volume','convol. mix','reverb']],
 	]
+
+	# setBfree preset params => controllers
+	_param2zcsymbol = {
+		'reverbmix': 'reverb',
+		'rotaryspeed': 'rotary speed',
+		'drawbar_1': 'DB 16',
+		'drawbar_2': 'DB 5 1/3',
+		'drawbar_3': 'DB 8',
+		'drawbar_4': 'DB 4',
+		'drawbar_5': 'DB 2 2/3',
+		'drawbar_6': 'DB 2',
+		'drawbar_7': 'DB 1 3/5',
+		'drawbar_8': 'DB 1 1/3',
+		'drawbar_9': 'DB 1',
+		'vibratoupper': 'vibrato upper',
+		'vibratolower': 'vibrato lower',
+		'vibratorouting': 'vibrato routing',
+		'vibrato': 'vibrato selector',
+		'perc': 'percussion',
+		'percvol': 'percussion volume',
+		'percspeed': 'percussion decay',
+		'percharm': 'percussion harmonic',
+		'overdrive': 'overdrive',
+		'overdrive_char': 'overdrive character',
+		'overdrive_igain': 'overdrive inputgain',
+		'overdrive_ogain': 'overdrive outputgain'
+	}
+
 
 	#----------------------------------------------------------------------------
 	# Initialization
@@ -172,7 +200,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.reset()
 
 
-	def generate_config_file(self):
+	def generate_config_file(self, midi_chans):
 		# Get user's config
 		my_cfg_fpath= self.my_data_dir + "/setbfree/cfg/zynthian.cfg"
 		try:
@@ -187,9 +215,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		with open(cfg_tpl_fpath, 'r') as cfg_tpl_file:
 			cfg_data = cfg_tpl_file.read()
 			cfg_data = cfg_data.replace('#OSC.TUNING#', str(self.zyngui.fine_tuning_freq))
-			cfg_data = cfg_data.replace('#MIDI.UPPER.CHANNEL#', str(1 + self.layers[0].midi_chan))
-			cfg_data = cfg_data.replace('#MIDI.LOWER.CHANNEL#', str(1 + (self.layers[0].midi_chan + 1) % 16))
-			cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str(1 + (self.layers[0].midi_chan + 2) % 16))
+			cfg_data = cfg_data.replace('#MIDI.UPPER.CHANNEL#', str(1 + midi_chans[0]))
+			cfg_data = cfg_data.replace('#MIDI.LOWER.CHANNEL#', str(1 + midi_chans[1]))
+			cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str(1 + midi_chans[2]))
 			cfg_data = cfg_data.replace('#TONEWHEEL.CONFIG#', self.tonewheel_config[self.tonewheel_model])
 			cfg_data += "\n" + my_cfg_data
 			with open(cfg_fpath, 'w') as cfg_file:
@@ -252,40 +280,56 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.tonewheel_model = bank[0]
 
 		if not self.proc:
-			logging.debug("STARTING SETBFREE!!")
-			self.generate_config_file()
-			self.stop()
-			self.start()
-			self.zyngui.zynautoconnect()
+			midi_chans = [self.layers[0].get_midi_chan(), 15, 15]
+			free_chans = self.zyngui.screens['layer'].get_free_midi_chans()
 
-			midi_chan = layer.get_midi_chan()
-			midi_prog = self.manuals_config[4][2]
-
-			if midi_prog and isinstance(midi_prog, int):
-				logging.debug("Loading manuals configuration program: {}".format(midi_prog-1))
-				self.zyngui.zynmidi.set_midi_prg(midi_chan, midi_prog-1)
-
+			logging.info("Upper Layer in chan {}".format(midi_chans[0]))
 			self.layers[0].bank_name = "Upper"
 			self.layers[0].load_bank_list()
 			self.layers[0].set_bank(0)
 
+			# Extra layers
 			if self.manuals_config[4][0]:
-				self.zyngui.screens['layer'].add_layer_midich((midi_chan + 1) % 16, False)
-				self.layers[1].bank_name = "Lower"
-				self.layers[1].load_bank_list()
-				self.layers[1].set_bank(0)
+				try:
+					# Adding Lower Manual Layer
+					midi_chans[1] = free_chans.pop(0)
+					logging.info("Lower Manual Layer in chan {}".format(midi_chans[1]))
+					self.zyngui.screens['layer'].add_layer_midich(midi_chans[1], False)
+					self.layers[1].bank_name = "Lower"
+					self.layers[1].load_bank_list()
+					self.layers[1].set_bank(0)
+
+				except Exception as e:
+					logging.error("Lower Manual Layer can't be added! => {}".format(e))
 
 			if self.manuals_config[4][1]:
-				self.zyngui.screens['layer'].add_layer_midich((midi_chan + 2) % 16, False)
-				i=len(self.layers)-1
-				self.layers[i].bank_name = "Pedals"
-				self.layers[i].load_bank_list()
-				self.layers[i].set_bank(0)
+				try:
+					# Adding Pedal Layer
+					midi_chans[2] = free_chans.pop(0)
+					logging.info("Pedal Layer in chan {}".format(midi_chans[2]))
+					self.zyngui.screens['layer'].add_layer_midich(midi_chans[2], False)
+					i=len(self.layers)-1
+					self.layers[i].bank_name = "Pedals"
+					self.layers[i].load_bank_list()
+					self.layers[i].set_bank(0)
+
+				except Exception as e:
+					logging.error("Pedal Layer can't be added! => {}".format(e))
+
+			# Start engine
+			logging.debug("STARTING SETBFREE!!")
+			self.generate_config_file(midi_chans)
+			self.start()
+			self.zyngui.zynautoconnect()
+
+			midi_prog = self.manuals_config[4][2]
+			if midi_prog and isinstance(midi_prog, int):
+				logging.debug("Loading manuals configuration program: {}".format(midi_prog-1))
+				self.zyngui.zynmidi.set_midi_prg(midi_chans[0], midi_prog-1)
 
 			#self.zyngui.screens['layer'].fill_list()
 
 			return True
-
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
@@ -294,12 +338,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	def get_preset_list(self, bank):
 		logging.debug("Preset List for Bank {}".format(bank[0]))
-		return self.load_pgm_list(bank[0])
+		return self.load_program_list(bank[0])
 
 
 	def set_preset(self, layer, preset, preload=False):
 		if super().set_preset(layer,preset):
-			self.update_controller_values(preset)
+			self.update_controller_values(layer, preset)
 			return True
 		else:
 			return False
@@ -309,27 +353,32 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Controller Managament
 	#----------------------------------------------------------------------------
 
-	def update_controller_values(self, preset):
+	def update_controller_values(self, layer, preset):
 		#Get values from preset params and set them into controllers
-		for zcsymbol, v in preset[3].items():
+		for param, v in preset[3].items():
 			try:
-				zctrl=zctrls[zcsymbol]
+				zcsymbol=self._param2zcsymbol[param]
+			except Exception as e:
+				logging.debug("No controller for param {}".format(param))
+				continue
 
-				if zctrl.symbol=='rotaryspeed':
+			try:
+				zctrl=layer.controllers_dict[zcsymbol]
+
+				if zctrl.symbol=='rotary speed':
 					if v=='tremolo': v='fast'
 					elif v=='chorale': v='slow'
 					else: v='off'
 
-				zctrl.set_value(v)
-				#logging.debug("%s => %s (%s)" % (zctrl.name,zctrl.symbol,zctrl.value))
+				#logging.debug("Updating controller '{}' ({}) => {}".format(zctrl.symbol,zctrl.name,zctrl.value))
+				zctrl.set_value(v, True)
 
 				#Refresh GUI controller in screen when needed ...
 				if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 
-			except:
-				#logging.debug("No preset value for control %s" % zctrl.name)
-				pass
+			except Exception as e:
+				logging.debug("Can't update controller '{}' => {}".format(zcsymbol,e))
 
 
 	def midi_control_change(self, zctrl, val):
@@ -366,7 +415,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		return bank_dir
 
 
-	def load_pgm_list(self,fpath):
+	def load_program_list(self,fpath):
 		self.start_loading()
 		pgm_list=None
 		try:
@@ -380,8 +429,10 @@ class zynthian_engine_setbfree(zynthian_engine):
 					#Test with first pattern
 					m=ptrn1.match(line)
 					if not m: continue
+
 					#Get line parts...
 					fragments=ptrn2.split(line)
+
 					params={}
 					try:
 						#Get program MIDI number
@@ -394,28 +445,36 @@ class zynthian_engine_setbfree(zynthian_engine):
 									params[parts[0].lower()]=parts[1].strip("\"\'")
 								except:
 									pass
+
 							#Extract program name
 							title=params['name']
 							del params['name']
+
 							#Complete program params ...
 							#if 'vibrato' in params:
 							#	params['vibratoupper']='on'
 							#	params['vibratorouting']='upper'
+
+							#Extract drawbars values
 							if 'drawbars' in params:
 								j=1
 								for v in params['drawbars']:
 									if v in ['0','1','2','3','4','5','6','7','8']:
 										params['drawbar_'+str(j)]=v
 										j=j+1
+								del params['drawbars']
+
 							#Add program to list
 							pgm_list.append((i,[0,0,prg],title,params))
 							i=i+1
 					except:
 						#print("Ignored line: %s" % line)
 						pass
+
 		except Exception as err:
 			pgm_list=None
 			logging.error("Getting program info from %s => %s" % (fpath,err))
+
 		self.stop_loading()
 		return pgm_list
 

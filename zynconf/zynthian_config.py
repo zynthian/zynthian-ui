@@ -26,7 +26,9 @@ import os
 import re
 import sys
 import logging
+from shutil import copyfile
 from subprocess import check_output
+from collections import OrderedDict
 
 #-------------------------------------------------------------------------------
 # Configure logging
@@ -34,6 +36,27 @@ from subprocess import check_output
 
 logger=logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
+
+#-------------------------------------------------------------------------------
+# UI Definitions
+#-------------------------------------------------------------------------------
+
+CustomSwitchActionType = [
+	"NONE",
+	"UI_ACTION",
+	"MIDI_CC"
+];
+
+
+CustomUiAction = [
+	"NONE",
+	"POWER_OFF",
+	"REBOOT",
+	"RESTART_UI",
+	"ALL_NOTES_OFF",
+	"ALL_SOUNDS_OFF",
+	"ALL_OFF"
+];
 
 #-------------------------------------------------------------------------------
 # Config related functions
@@ -47,6 +70,17 @@ def get_config_fpath():
 		fpath="./zynthian_envars.sh"
 	return fpath
 
+
+def get_midi_config_fpath(fpath=None):
+	if not fpath:
+		fpath=os.environ.get("ZYNTHIAN_SCRIPT_MIDI_PROFILE",
+			os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/midi-profiles/default.sh")
+	if not os.path.isfile(fpath):
+		#Try to copy from default template
+		default_src= "%s/config/default_midi_profile.sh" % os.getenv('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
+		copyfile(default_src, fpath)
+
+	return fpath
 
 def load_config(set_env=True, fpath=None):
 	if not fpath:
@@ -87,24 +121,18 @@ def load_config(set_env=True, fpath=None):
 	return config
 
 
-def load_midi_config(set_env=True, fpath=None):
+def save_config(config, update_sys=False, fpath=None):
 	if not fpath:
-		fpath=os.environ.get("ZYNTHIAN_SCRIPT_MIDI_PROFILE",
-			os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/midi-profiles/default.sh")
-	return load_config(set_env, fpath)
-
-
-def save_config(config, update_sys=False):
-	fpath=get_config_fpath()
+		fpath = get_config_fpath()
 
 	# Get config file content
 	with open(fpath) as f:
 		lines = f.readlines()
 
 	# Find and replace lines to update
-	updated=[]
-	add_row=1
-	pattern=re.compile("^export ([^\s]*?)=")
+	updated = []
+	add_row = 0
+	pattern = re.compile("^export ([^\s]*?)=")
 	for i,line in enumerate(lines):
 		res=pattern.match(line)
 		if res:
@@ -115,9 +143,13 @@ def save_config(config, update_sys=False):
 				os.environ[varname]=value
 				lines[i]="export %s=\"%s\"\n" % (varname,value)
 				updated.append(varname)
-				logging.info(lines[i])
-		if line[0:17]=="# Directory Paths":
-			add_row=i-1
+				logging.debug(lines[i])
+
+		if line.startswith("# Directory Paths"):
+			add_row = i-1
+
+	if add_row==0:
+		add_row = len(lines)
 
 	# Add the rest
 	vars_to_add=set(config.keys())-set(updated)
@@ -147,6 +179,10 @@ def save_config(config, update_sys=False):
 #-------------------------------------------------------------------------------
 
 
+def load_midi_config(set_env=True, fpath=None):
+	return load_config(set_env, get_midi_config_fpath(fpath))
+
+
 def get_disabled_midi_in_ports(midi_ports):
 	#Parse DISABLED_IN ports
 	disabled_in_re = re.compile("^DISABLED_IN=(.*)$",re.MULTILINE)
@@ -173,4 +209,36 @@ def get_enabled_midi_out_ports(midi_ports):
 	return enabled_midi_out_ports
 
 
+def get_enabled_midi_fb_ports(midi_ports):
+	#Parse ENABLED_FeedBack ports
+	enabled_fb_re = re.compile("^ENABLED_FB=(.*)$",re.MULTILINE)
+	m=enabled_fb_re.search(midi_ports)
+	if m:
+		enabled_midi_fb_ports=m.group(1).split(",")
+		logging.debug("ENABLED_MIDI_FB = %s" % enabled_midi_fb_ports)
+	else:
+		enabled_midi_fb_ports=[]
+		logging.warning("Using default ENABLED MIDI FB ports")
+	return enabled_midi_fb_ports
+
+
+def update_midi_profile(params, fpath=None):
+	if not fpath:
+		fpath=get_midi_config_fpath()
+
+	midi_params = OrderedDict()
+	for k, v in params.items():
+		if k.startswith('ZYNTHIAN_MIDI'):
+			if isinstance(v, list):
+				midi_params[k] = v[0]
+			else:
+				midi_params[k] = v
+
+	save_config(midi_params, False, fpath)
+
+	for k in midi_params:
+		del params[k]
+
+
 #------------------------------------------------------------------------------
+

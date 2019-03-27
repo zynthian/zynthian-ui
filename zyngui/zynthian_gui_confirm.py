@@ -48,6 +48,7 @@ class zynthian_gui_confirm():
 		self.shown = False
 		self.callback = None
 		self.callback_params = None
+		self.zyngui = zynthian_gui_config.zyngui
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
@@ -91,10 +92,12 @@ class zynthian_gui_confirm():
 		self.no_text_label.bind("<Button-1>",self.cb_no_push)
 		self.no_text_label.place(x=0, y=zynthian_gui_config.display_height, anchor=tkinter.SW)
 
+
 	def hide(self):
 		if self.shown:
 			self.shown=False
 			self.main_frame.grid_forget()
+
 
 	def show(self, text, callback=None, cb_params=None):
 		self.text.set(text)
@@ -104,24 +107,30 @@ class zynthian_gui_confirm():
 			self.shown=True
 			self.main_frame.grid()
 
+
 	def zyncoder_read(self):
 		pass
+
 
 	def refresh_loading(self):
 		pass
 
-	def switch_select(self):
+
+	def switch_select(self, t='S'):
 		logging.info("callback %s" % self.callback_params)
 		try:
 			self.callback(self.callback_params)
 		except:
 			pass
-		zynthian_gui_config.zyngui.show_active_screen()
+		self.zyngui.show_active_screen()
+
 
 	def cb_yes_push(self, event):
-		zynthian_gui_config.zyngui.zynswitch_defered('S',3)
+		self.zyngui.zynswitch_defered('S',3)
+
 
 	def cb_no_push(self, event):
-		zynthian_gui_config.zyngui.zynswitch_defered('S',1)
+		self.zyngui.zynswitch_defered('S',1)
+
 
 #-------------------------------------------------------------------------------

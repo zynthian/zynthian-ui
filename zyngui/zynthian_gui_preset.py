@@ -46,27 +46,33 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def __init__(self):
 		super().__init__('Preset', True)
       
+      
 	def fill_list(self):
-		zynthian_gui_config.zyngui.curlayer.load_preset_list()
-		self.list_data=zynthian_gui_config.zyngui.curlayer.preset_list
+		self.zyngui.curlayer.load_preset_list()
+		self.list_data=self.zyngui.curlayer.preset_list
 		super().fill_list()
 
+
 	def show(self):
-		self.index=zynthian_gui_config.zyngui.curlayer.get_preset_index()
+		self.index=self.zyngui.curlayer.get_preset_index()
 		super().show()
 
-	def select_action(self, i):
-		zynthian_gui_config.zyngui.curlayer.set_preset(i)
-		zynthian_gui_config.zyngui.show_screen('control')
+
+	def select_action(self, i, t='S'):
+		self.zyngui.curlayer.set_preset(i)
+		self.zyngui.show_screen('control')
+
 
 	def preselect_action(self):
-		return zynthian_gui_config.zyngui.curlayer.preload_preset(self.index)
+		return self.zyngui.curlayer.preload_preset(self.index)
 
-	def back_action(self):
-		return zynthian_gui_config.zyngui.curlayer.restore_preset()
+
+	def restore_preset(self):
+		return self.zyngui.curlayer.restore_preset()
+
 
 	def set_select_path(self):
-		if zynthian_gui_config.zyngui.curlayer:
-			self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_bankpath())
+		if self.zyngui.curlayer:
+			self.select_path.set(self.zyngui.curlayer.get_bankpath())
 
 #------------------------------------------------------------------------------

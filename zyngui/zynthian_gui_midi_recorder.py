@@ -76,15 +76,27 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		return join(self.capture_dir,f);
 
 
+	def get_status(self):
+		if self.rec_proc and self.rec_proc.poll() is None:
+			return "REC"
+		elif self.play_proc and self.play_proc.poll() is None:
+			return "PLAY"
+		else:
+			return None
+
+
 	def fill_list(self):
 		self.index=0
 		self.list_data=[]
-		if self.rec_proc and self.rec_proc.poll() is None:
+		
+		status=self.get_status()
+		if status=="REC":
 			self.list_data.append(("STOP_RECORDING",0,"Stop Recording"))
-		elif self.play_proc and self.play_proc.poll() is None:
+		elif status=="REC":
 			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
 		else:
 			self.list_data.append(("START_RECORDING",0,"Start Recording"))
+
 		i=1
 		for f in sorted(os.listdir(self.capture_dir)):
 			fpath=self.get_record_fpath(f)
@@ -93,6 +105,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				title=f[:-4]
 				self.list_data.append((fpath,i,title))
 				i+=1
+
 		super().fill_list()
 
 
@@ -112,7 +125,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
 
 
-	def select_action(self, i):
+	def select_action(self, i, t='S'):
 		fpath=self.list_data[i][0]
 		if fpath=="START_RECORDING":
 			self.start_recording()
@@ -123,7 +136,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		else:
 			self.start_playing(fpath)
 
-		#zynthian_gui_config.zyngui.show_active_screen()
+		#self.zyngui.show_active_screen()
 
 
 	def start_recording(self):
@@ -135,8 +148,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			sleep(0.5)
 		except Exception as e:
 			logging.error("ERROR STARTING MIDI RECORD: %s" % e)
-			zynthian_gui_config.zyngui.show_info("ERROR STARTING MIDI RECORD:\n %s" % e)
-			zynthian_gui_config.zyngui.hide_info_timer(5000)
+			self.zyngui.show_info("ERROR STARTING MIDI RECORD:\n %s" % e)
+			self.zyngui.hide_info_timer(5000)
 		self.fill_list()
 
 
@@ -161,8 +174,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.current_record=fpath
 		except Exception as e:
 			logging.error("ERROR STARTING MIDI PLAY: %s" % e)
-			zynthian_gui_config.zyngui.show_info("ERROR STARTING MIDI PLAY:\n %s" % e)
-			zynthian_gui_config.zyngui.hide_info_timer(5000)
+			self.zyngui.show_info("ERROR STARTING MIDI PLAY:\n %s" % e)
+			self.zyngui.hide_info_timer(5000)
 		self.fill_list()
 
 

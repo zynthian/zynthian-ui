@@ -63,7 +63,7 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.type = "Special"
 		self.name = "PureData"
 		self.nickname = "PD"
-		self.jackname = "Pure Data"
+		self.jackname = "pure_data_0"
 
 		self.options['midi_chan']=False
 

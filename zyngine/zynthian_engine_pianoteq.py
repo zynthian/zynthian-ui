@@ -219,70 +219,74 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Banks
 	# ---------------------------------------------------------------------------
 
+	bank_list_v6_4 = [
+		('BechsteinDG', 0, 'BechsteinDG', '_', 'BechsteinDG:A')
+	]
+
 	bank_list_v6_3=[
-		('Ant. Petrof',0,'Ant. Petrof','_','Antpetrof:A')
+		('Ant. Petrof', 0, 'Ant. Petrof', '_', 'Antpetrof:A')
 	]
 
 	bank_list=[
-		('Steinway D',1,'Steinway D','_','D4:A'),
-		('Steinway B',2,'Steinway B','_','Modelb:A'),
-		('Steingraeber',3,'Steingraeber','_','Steingraeber:A'),
-		('Grotrian',4,'Grotrian','_','Grotrian:A'),
-		('Bluethner',5,'Bluethner','_','Bluethner:A'),
-		('YC5',6,'YC5','_','Rock:A'),
-		('K2',7,'K2','_','K2:A'),
-		('U4',8,'U4','_','U4:A'),
-		('MKI',9,'MKI','_','Electric:A'),
-		('MKII',10,'MKII','_','Electric:A'),
-		('W1',11,'W1','_','Electric:A'),
-		('Clavinet D6',12,'Clavinet D6','_','Clavinet:A'),
-		('Pianet N',13,'Pianet N','_','Clavinet:A'),
-		('Pianet T',14,'Pianet T','_','Clavinet:A'),
-		('Electra',15,'Electra','_','Clavinet:A'),
-		('Vibraphone V-B',16,'Vibraphone V-B','_','Vibes:A'),
-		('Vibraphone V-M',17,'Vibraphone V-M','_','Vibes:A'),
-		('Celesta',18,'Celesta','_','Celeste:A'),
-		('Glockenspiel',19,'Glockenspiel','_','Celeste:A'),
-		('Toy Piano',20,'Toy Piano','_','Celeste:A'),
-		('Marimba',21,'Marimba','_','Xylo:A'),
-		('Xylophone',22,'Xylophone','_','Xylo:A'),
-		('Steel Drum',23,'Steel Drum','_','Steel:A'),
-		('Spacedrum',24,'Spacedrum','_','Steel:A'),
-		('Hand Pan',25,'Hand Pan','_','Steel:A'),
-		('Tank Drum',26,'Tank Drum','_','Steel:A'),
-		('H. Ruckers II Harpsichord',27,'H. Ruckers II Harpsichord','_','Harpsichord:A'),
-		('Concert Harp',28,'Concert Harp','_','Harp:A'),
-		('J. Dohnal',29,'J. Dohnal','_','Kremsegg1:A'),
-		('I. Besendorfer',30,'I. Besendorfer','_','Kremsegg1:A'),
-		('S. Erard',31,'S. Erard','_','Kremsegg1:A'),
-		('J.B. Streicher',32,'J.B. Streicher','_','Kremsegg1:A'),
-		('J. Broadwood',33,'J. Broadwood','_','Kremsegg2:A'),
-		('I. Pleyel',34,'I. Pleyel','_','Kremsegg2:A'),
-		('J. Frenzel',35,'J. Frenzel','_','Kremsegg2:A'),
-		('C. Bechstein',36,'C. Bechstein','_','Kremsegg2:A'),
-		('Cimbalom',37,'Cimbalom','_','KIViR'),
-		('Neupert Clavichord',38,'Neupert Clavichord','_','KIViR'),
-		('F.E. Blanchet Harpsichord',39,'F.E. Blanchet Harpsichord','_','KIViR'),
-		('C. Grimaldi Harpsichord',40,'C. Grimaldi Harpsichord','_','KIViR'),
-		('J. Schantz',41,'J. Schantz','_','KIViR'),
-		('J.E. Schmidt',42,'J.E. Schmidt','_','KIViR'),
-		('A. Walter',43,'A. Walter','_','KIViR'),
-		('D. Schoffstoss',44,'D. Schoffstoss','_','KIViR'),
-		('C. Graf',45,'C. Graf','_','KIViR'),
-		('Erard',46,'Erard','_','KIViR'),
-		('Pleyel',47,'Pleyel','_','KIViR'),
-		('CP-80',48,'CP-80','_','KIViR'),
-		('Church Bells',49,'Church Bells','_','bells'),
-		('Tubular Bells',50,'Tubular Bells','_','bells')
+		('Steinway D', 1, 'Steinway D', '_', 'D4:A'),
+		('Steinway B', 2, 'Steinway B', '_', 'Modelb:A'),
+		('Steingraeber', 3, 'Steingraeber', '_', 'Steingraeber:A'),
+		('Grotrian', 4, 'Grotrian', '_', 'Grotrian:A'),
+		('Bluethner', 5, 'Bluethner', '_', 'Bluethner:A'),
+		('YC5', 6, 'YC5', '_', 'Rock:A'),
+		('K2', 7, 'K2', '_', 'K2:A'),
+		('U4', 8, 'U4', '_', 'U4:A'),
+		('MKI', 9, 'MKI', '_', 'Electric:A'),
+		('MKII', 10, 'MKII', '_', 'Electric:A'),
+		('W1', 11, 'W1', '_', 'Electric:A'),
+		('Clavinet D6', 12, 'Clavinet D6', '_', 'Clavinet:A'),
+		('Pianet N', 13, 'Pianet N', '_', 'Clavinet:A'),
+		('Pianet T', 14, 'Pianet T', '_', 'Clavinet:A'),
+		('Electra', 15, 'Electra', '_', 'Clavinet:A'),
+		('Vibraphone V-B', 16, 'Vibraphone V-B', '_', 'Vibes:A'),
+		('Vibraphone V-M', 17, 'Vibraphone V-M', '_', 'Vibes:A'),
+		('Celesta', 18, 'Celesta', '_', 'Celeste:A'),
+		('Glockenspiel', 19, 'Glockenspiel', '_', 'Celeste:A'),
+		('Toy Piano', 20, 'Toy Piano', '_', 'Celeste:A'),
+		('Marimba', 21, 'Marimba', '_', 'Xylo:A'),
+		('Xylophone', 22, 'Xylophone', '_', 'Xylo:A'),
+		('Steel Drum', 23, 'Steel Drum', '_', 'Steel:A'),
+		('Spacedrum', 24, 'Spacedrum', '_', 'Steel:A'),
+		('Hand Pan', 25, 'Hand Pan', '_', 'Steel:A'),
+		('Tank Drum', 26, 'Tank Drum', '_', 'Steel:A'),
+		('H. Ruckers II Harpsichord', 27, 'H. Ruckers II Harpsichord', '_', 'Harpsichord:A'),
+		('Concert Harp', 28, 'Concert Harp', '_', 'Harp:A'),
+		('J. Dohnal', 29, 'J. Dohnal', '_', 'Kremsegg1:A'),
+		('I. Besendorfer', 30, 'I. Besendorfer', '_', 'Kremsegg1:A'),
+		('S. Erard', 31, 'S. Erard', '_', 'Kremsegg1:A'),
+		('J.B. Streicher', 32 , 'J.B. Streicher', '_', 'Kremsegg1:A'),
+		('J. Broadwood', 33, 'J. Broadwood', '_', 'Kremsegg2:A'),
+		('I. Pleyel', 34, 'I. Pleyel', '_', 'Kremsegg2:A'),
+		('J. Frenzel', 35, 'J. Frenzel', '_', 'Kremsegg2:A'),
+		('C. Bechstein', 36, 'C. Bechstein', '_', 'Kremsegg2:A'),
+		('Cimbalom', 37, 'Cimbalom', '_', 'KIViR'),
+		('Neupert Clavichord', 38, 'Neupert Clavichord', '_', 'KIViR'),
+		('F.E. Blanchet Harpsichord', 39, 'F.E. Blanchet Harpsichord', '_', 'KIViR'),
+		('C. Grimaldi Harpsichord', 40, 'C. Grimaldi Harpsichord', '_', 'KIViR'),
+		('J. Schantz', 41, 'J. Schantz', '_', 'KIViR'),
+		('J.E. Schmidt', 42, 'J.E. Schmidt', '_', 'KIViR'),
+		('A. Walter', 43, 'A. Walter', '_', 'KIViR'),
+		('D. Schoffstoss', 44, 'D. Schoffstoss', '_', 'KIViR'),
+		('C. Graf', 45, 'C. Graf', '_', 'KIViR'),
+		('Erard', 46, 'Erard', '_', 'KIViR'),
+		('Pleyel', 47, 'Pleyel', '_', 'KIViR'),
+		('CP-80', 48, 'CP-80', '_', 'KIViR'),
+		('Church Bells', 49, 'Church Bells', '_', 'bells'),
+		('Tubular Bells', 50, 'Tubular Bells', '_', 'bells')
 	]
 
-	free_instruments=[
+	free_instruments = [
 		'bells',
 		'KIViR'
 	]
 
-	spacer_demo_bank=[
-		(None,0,'---- DEMO Instruments ----')
+	spacer_demo_bank = [
+		(None, 0, '---- DEMO Instruments ----')
 	]
 
 	# ---------------------------------------------------------------------------
@@ -399,16 +403,21 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def prepare_banks(self):
+
+
 		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:
 			self.bank_list = self.bank_list_v6_3 + self.bank_list
+
+		if PIANOTEQ_VERSION[0] >= 6 and PIANOTEQ_VERSION[1] >= 4:
+			self.bank_list = self.bank_list_v6_4 + self.bank_list
 
 		if not PIANOTEQ_TRIAL:
 			# Separate Licensed from Free and Demo
 			subl = get_pianoteq_subl()
 			if subl:
-				free_banks=[]
-				licensed_banks=[]
-				unlicensed_banks=[]
+				free_banks = []
+				licensed_banks = []
+				unlicensed_banks = []
 				for bank in self.bank_list:
 					if bank[4].upper() in map(str.upper, subl):
 						licensed_banks.append(bank)
@@ -499,7 +508,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 						if bank_prefix==f[0:len(bank_prefix)]:
 							preset_path="My Presets/" + f[:-4]
 							preset_title="MY/" + str.replace(f[len(bank_prefix):-4], '_', ' ').strip()
-							user_presets.append((preset_path,None,preset_title,None))
+							user_presets.append([preset_path,None,preset_title,None])
 				#Add internal presets
 				try:
 					self.presets[bank_name] = user_presets + self.presets[bank_name]
@@ -509,6 +518,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	# Remove banks without presets
 	def purge_banks(self):
+		logging.debug("purge_banks started")
 		purged_bank_list=[]
 		for bank in self.bank_list:
 			if not bank[0] or (bank[0] and len(self.presets[bank[0]])>0):
@@ -583,8 +593,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 						row = b'\x01\x00\x00\x00'
 						row += struct.pack("<I",len(midi_event_str)) + midi_event_str
 						row += struct.pack("<I",len(action_str)) + action_str
-						prs[1]=len(data)
-						prs[3]=mmn
+						prs[1] = len(data)
+						prs[3] = mmn
 						data.append(row)
 						if len(data)>127:
 							self.create_midimapping_file(mmn, data)
@@ -623,4 +633,5 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			file.write(header)
 
 
+#******************************************************************************
 #******************************************************************************

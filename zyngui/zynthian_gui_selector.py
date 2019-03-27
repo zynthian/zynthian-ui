@@ -49,10 +49,19 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 class zynthian_gui_selector:
 
 	def __init__(self, selcap='Select', wide=False):
-		self.index=0
-		self.list_data=[]
-		self.shown=False
-		self.zselector=None
+		self.index = 0
+		self.list_data = []
+		self.shown = False
+		self.zselector = None
+		self.zyngui = zynthian_gui_config.zyngui
+
+		self.status_rect = None
+		self.status_flags = None
+		self.status_midi = None
+		self.status_h = zynthian_gui_config.topbar_height
+		self.status_l = zynthian_gui_config.topbar_height
+		self.status_rh = max(2,zynthian_gui_config.topbar_height/4)
+		self.status_fs = int(zynthian_gui_config.topbar_height/3)
 
 		# Listbox Size
 		self.lb_height=zynthian_gui_config.display_height-zynthian_gui_config.topbar_height
@@ -81,15 +90,27 @@ class zynthian_gui_selector:
 		# Topbar's Select Path
 		self.select_path = tkinter.StringVar()
 		self.label_select_path = tkinter.Label(self.tb_frame,
+			wraplength=zynthian_gui_config.display_width-self.status_l,
 			font=zynthian_gui_config.font_topbar,
 			textvariable=self.select_path,
 			#wraplength=80,
 			justify=tkinter.LEFT,
 			bg=zynthian_gui_config.color_header_bg,
 			fg=zynthian_gui_config.color_header_tx)
-		self.label_select_path.grid(sticky="wns")
+		self.label_select_path.grid(row=0, column=0, sticky="wns")
+		self.tb_frame.grid_columnconfigure(0, minsize=zynthian_gui_config.display_width-self.status_l)
 		# Setup Topbar's Callback
 		self.label_select_path.bind("<Button-1>", self.cb_topbar)
+
+		# Canvas for displaying status: CPU, ...
+		self.status_canvas = tkinter.Canvas(self.tb_frame,
+			width=self.status_l,
+			height=self.status_h,
+			bd=0,
+			highlightthickness=0,
+			relief='flat',
+			bg = zynthian_gui_config.color_bg)
+		self.status_canvas.grid(row=0, column=1, sticky="ens")
 
 		# ListBox's frame
 		self.lb_frame = tkinter.Frame(self.main_frame,
@@ -151,6 +172,7 @@ class zynthian_gui_selector:
 		# Update Title
 		self.set_select_path()
 
+
 	def show(self):
 		if not self.shown:
 			self.shown=True
@@ -159,10 +181,12 @@ class zynthian_gui_selector:
 		self.set_selector()
 		self.set_select_path()
 
+
 	def hide(self):
 		if self.shown:
 			self.shown=False
 			self.main_frame.grid_forget()
+
 
 	def is_shown(self):
 		try:
@@ -171,10 +195,85 @@ class zynthian_gui_selector:
 		except:
 			return False
 
+
+	def refresh_status(self, status={}):
+		if self.shown:
+			# Display CPU-load bar
+			l = int(status['cpu_load']*self.status_l/100)
+			cr = int(status['cpu_load']*255/100)
+			cg = 255-cr
+			color = "#%02x%02x%02x" % (cr,cg,0)
+			try:
+				if self.status_rect:
+					self.status_canvas.coords(self.status_rect,(0, 0, l, self.status_rh))
+					self.status_canvas.itemconfig(self.status_rect, fill=color)
+				else:
+					self.status_rect=self.status_canvas.create_rectangle((0, 0, l, self.status_rh), fill=color, width=0)
+			except Exception as e:
+				logging.error(e)
+
+			# Display flags
+			color = zynthian_gui_config.color_on
+			if 'xrun' in status and status['xrun']:
+				flags = "X"
+			elif 'undervoltage' in status and status['undervoltage']:
+				flags = "V";
+			elif 'overtemp' in status and status['overtemp']:
+				flags = "T"
+			elif 'audio_recorder' in status:
+				if status['audio_recorder']=='REC':
+					flags = "R"
+				elif status['audio_recorder']=='PLAY':
+					flags = ">"
+					color = zynthian_gui_config.color_hl
+				else:
+					flags = ""
+			elif 'midi_recorder' in status:
+				if status['midi_recorder']=='REC':
+					flags = "R"
+				elif status['midi_recorder']=='PLAY':
+					flags = ">"
+					color = zynthian_gui_config.color_hl
+				else:
+					flags = ""
+			else:
+				flags = ""
+
+			if not self.status_flags:
+				self.status_flags = self.status_canvas.create_text(
+					int(self.status_fs*0.4),
+					int(self.status_h*0.6),
+					width=int(self.status_fs*1.2),
+					justify=tkinter.RIGHT,
+					fill=color,
+					font=(zynthian_gui_config.font_family,self.status_fs),
+					text=flags)
+			else:
+				self.status_canvas.itemconfig(self.status_flags, text=flags, fill=color)
+
+			# Display MIDI flag
+			flags=""
+			if 'midi' in status and status['midi']:
+				flags="M";
+			else:
+				flags=""
+			if not self.status_midi:
+				self.status_midi = self.status_canvas.create_text(
+					int(self.status_l-self.status_fs*1.2),
+					int(self.status_h*0.6),
+					width=int(self.status_fs*1.2),
+					justify=tkinter.RIGHT,
+					fill=zynthian_gui_config.color_hl,
+					font=(zynthian_gui_config.font_family,self.status_fs),
+					text=flags)
+			else:
+				self.status_canvas.itemconfig(self.status_midi, text=flags)
+
+
 	def refresh_loading(self):
 		if self.shown:
 			try:
-				if zynthian_gui_config.zyngui.loading:
+				if self.zyngui.loading:
 					self.loading_index=self.loading_index+1
 					if self.loading_index>len(zynthian_gui_config.loading_imgs)+1: self.loading_index=0
 					self.loading_canvas.itemconfig(self.loading_item, image=zynthian_gui_config.loading_imgs[self.loading_index])
@@ -183,10 +282,12 @@ class zynthian_gui_selector:
 			except:
 				self.reset_loading()
 
+
 	def reset_loading(self, force=False):
 		if self.loading_index>0 or force:
 			self.loading_index=0
 			self.loading_canvas.itemconfig(self.loading_item, image=zynthian_gui_config.loading_imgs[0])
+
 
 	def fill_listbox(self):
 		self.listbox.delete(0, tkinter.END)
@@ -194,6 +295,7 @@ class zynthian_gui_selector:
 			self.list_data=[]
 		for item in self.list_data:
 			self.listbox.insert(tkinter.END, item[2])
+
 
 	def set_selector(self):
 		if self.zselector:
@@ -204,10 +306,12 @@ class zynthian_gui_selector:
 			self.zselector_ctrl=zynthian_controller(None,self.selector_caption,self.selector_caption,{ 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
 			self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.main_frame,self.zselector_ctrl)
 
+
 	def fill_list(self):
 		self.fill_listbox()
 		self.select()
 		#self.set_selector()
+
 
 	def get_cursel(self):
 		cursel=self.listbox.curselection()
@@ -217,11 +321,13 @@ class zynthian_gui_selector:
 			index=0
 		return index
 
+
 	def zyncoder_read(self):
 		if self.zselector:
 			self.zselector.read_zyncoder()
 			if self.index!=self.zselector.value:
 				self.select_listbox(self.zselector.value)
+
 
 	def select_listbox(self,index):
 		self.listbox.selection_clear(0,tkinter.END)
@@ -231,15 +337,19 @@ class zynthian_gui_selector:
 		else: self.listbox.see(index)
 		self.index=index
 
-	def click_listbox(self, index=None):
+
+	def click_listbox(self, index=None, t='S'):
 		if index is not None:
 			self.select_listbox(index)
 		else:
 			self.index=self.get_cursel()
-		self.select_action(self.index)
 
-	def switch_select(self):
-		self.click_listbox()
+		self.select_action(self.index, t)
+
+
+	def switch_select(self, t='S'):
+		self.click_listbox(None, t)
+
 
 	def select(self, index=None):
 		if index is None: index=self.index
@@ -247,30 +357,39 @@ class zynthian_gui_selector:
 		if self.zselector and self.zselector.value!=self.index:
 			self.zselector.set_value(self.index, True)
 
-	def select_action(self, index):
+
+	def select_action(self, index, t='S'):
 		pass
+
 
 	def set_select_path(self):
 		pass
 
+
 	def cb_topbar(self,event):
-		zynthian_gui_config.zyngui.zynswitch_defered('S',1)
+		self.zyngui.zynswitch_defered('S',1)
+
 
 	def cb_listbox_push(self,event):
 		self.listbox_push_ts=datetime.now()
 		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
 
+
 	def cb_listbox_release(self,event):
 		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 		#logging.debug("LISTBOX RELEASE => %s" % dts)
 		if dts < 0.3:
-			zynthian_gui_config.zyngui.zynswitch_defered('S',3)
+			self.zyngui.zynswitch_defered('S',3)
+		elif dts>=0.3 and dts<2:
+			self.zyngui.zynswitch_defered('B',3)
+
 
 	def cb_listbox_motion(self,event):
 		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 		if dts > 0.1:
 			#logging.debug("LISTBOX MOTION => %d" % self.index)
 			self.zselector.set_value(self.get_cursel(), True)
+
 
 	def cb_listbox_wheel(self,event):
 		index = self.index
@@ -281,18 +400,21 @@ class zynthian_gui_selector:
 		if index!=self.index:
 			self.zselector.set_value(index, True)
 
+
 	def cb_loading_push(self,event):
 		self.loading_push_ts=datetime.now()
 		#logging.debug("LOADING PUSH => %s" % self.canvas_push_ts)
+
 
 	def cb_loading_release(self,event):
 		dts=(datetime.now()-self.loading_push_ts).total_seconds()
 		logging.debug("LOADING RELEASE => %s" % dts)
 		if dts<0.3:
-			zynthian_gui_config.zyngui.zynswitch_defered('S',2)
+			self.zyngui.zynswitch_defered('S',2)
 		elif dts>=0.3 and dts<2:
-			zynthian_gui_config.zyngui.zynswitch_defered('B',2)
+			self.zyngui.zynswitch_defered('B',2)
 		elif dts>=2:
-			zynthian_gui_config.zyngui.zynswitch_defered('L',2)
+			self.zyngui.zynswitch_defered('L',2)
+
 
 #------------------------------------------------------------------------------

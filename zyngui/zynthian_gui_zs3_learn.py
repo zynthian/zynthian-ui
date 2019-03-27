@@ -56,8 +56,8 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		self.list_data=[]
 
 		#Add list of programs
-		midich=zynthian_gui_config.zyngui.curlayer.get_midi_chan()
-		zs3_indexes=zynthian_gui_config.zyngui.screens['layer'].get_midi_chan_zs3_used_indexes(midich)
+		midich=self.zyngui.curlayer.get_midi_chan()
+		zs3_indexes=self.zyngui.screens['layer'].get_midi_chan_zs3_used_indexes(midich)
 		self.num_programs=len(zs3_indexes)
 		for i, zs3_index in enumerate(zs3_indexes):
 			zs3_title="Program {}".format(zs3_index)
@@ -65,7 +65,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 		#Add "Waiting for Program Change" message
 		if len(self.list_data)>0:
-			self.list_data.append((None,len(self.list_data),"--------------------------"))
+			self.list_data.append((None,len(self.list_data),"-----------------------------"))
 		self.list_data.append(('None',len(self.list_data),"Waiting for Program Change ..."))
 
 		super().fill_list()
@@ -90,18 +90,23 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 			self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.main_frame,self.zselector_ctrl)
 
 
-	def select_action(self, i):
+	def select_action(self, i, t='S'):
 		self.index=i
 		preset_index=self.list_data[self.index][0]
 		if isinstance(preset_index, int):
-			midich=zynthian_gui_config.zyngui.curlayer.get_midi_chan()
-			zynthian_gui_config.zyngui.screens['layer'].set_midi_chan_zs3(midich, preset_index)
-			zynthian_gui_config.zyngui.exit_midi_learn()
+			midich=self.zyngui.curlayer.get_midi_chan()
+			self.zyngui.screens['layer'].set_midi_chan_zs3(midich, preset_index)
+			self.zyngui.exit_midi_learn()
+
+
+	def back_action(self):
+		self.zyngui.exit_midi_learn_mode()
+		return ''
 
 
 	def set_select_path(self):
-		if zynthian_gui_config.zyngui.curlayer:
-			self.select_path.set(zynthian_gui_config.zyngui.curlayer.get_basepath() + " /PROG MIDI-Learn")
+		if self.zyngui.curlayer:
+			self.select_path.set(self.zyngui.curlayer.get_basepath() + " /PROG MIDI-Learn")
 		else:
 			self.select_path.set("PROG MIDI-Learn")
 

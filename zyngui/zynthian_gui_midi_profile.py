@@ -50,8 +50,10 @@ class zynthian_gui_midi_profile(zynthian_gui_selector):
 		self.midi_profiles_dir=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/midi-profiles"
 		super().__init__('Profile', True)
 
+
 	def get_profile_fpath(self,f):
 		return join(self.midi_profiles_dir,f);
+
 
 	def fill_list(self):
 		self.current_profile=os.environ.get("ZYNTHIAN_SCRIPT_MIDI_PROFILE",self.midi_profiles_dir + "/default.sh")
@@ -71,7 +73,8 @@ class zynthian_gui_midi_profile(zynthian_gui_selector):
 	def show(self):
 		super().show()
 
-	def select_action(self, i):
+
+	def select_action(self, i, t='S'):
 		profile_fpath=self.list_data[i][0]
 		if profile_fpath==self.current_profile:
 			logging.info("MIDI PROFILE '%s' IS THE CURRENT PROFILE", profile_fpath)
@@ -80,8 +83,9 @@ class zynthian_gui_midi_profile(zynthian_gui_selector):
 			zynconf.save_config({ 
 				"ZYNTHIAN_SCRIPT_MIDI_PROFILE": self.list_data[i][0]
 			})
-			zynthian_gui_config.zyngui.reload_midi_config()
-		zynthian_gui_config.zyngui.show_active_screen()
+			self.zyngui.reload_midi_config()
+		self.zyngui.show_active_screen()
+
 
 	def set_select_path(self):
 		self.select_path.set("MIDI Profile")

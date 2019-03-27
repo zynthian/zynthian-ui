@@ -45,6 +45,7 @@ class zynthian_gui_info:
 
 	def __init__(self):
 		self.shown=False
+		self.zyngui=zynthian_gui_config.zyngui
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
@@ -73,21 +74,26 @@ class zynthian_gui_info:
 		self.textarea.tag_config("SUCCESS", foreground="#009000")
 		self.textarea.tag_config("EMPHASIS", foreground="#0000C0")
 
+
 	def clean(self):
 		self.textarea.delete(1.0,tkinter.END)
+
 
 	def add(self, text, tags=None):
 		self.textarea.insert(tkinter.END,text,tags)
 		self.textarea.see(tkinter.END)
 
+
 	def set(self, text, tags=None):
 		self.clean()
 		self.add(text+"\n",tags)
+
 
 	def hide(self):
 		if self.shown:
 			self.shown=False
 			self.main_frame.grid_forget()
+
 
 	def show(self, text):
 		self.set(text)
@@ -95,16 +101,26 @@ class zynthian_gui_info:
 			self.shown=True
 			self.main_frame.grid()
 
+
 	def zyncoder_read(self):
 		pass
+
 
 	def refresh_loading(self):
 		pass
 
-	def switch_select(self):
+
+	def switch_select(self, t='S'):
 		pass
 
+
+	def back_action(self):
+		self.zyngui.screens['admin'].kill_command()
+		return self.zyngui.active_screen
+
+
 	def cb_push(self,event):
-		zynthian_gui_config.zyngui.zynswitch_defered('S',1)
+		self.zyngui.zynswitch_defered('S',1)
+
 
 #-------------------------------------------------------------------------------
