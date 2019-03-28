@@ -242,7 +242,9 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
+		#Send Program Change
 		self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
+
 		#Update Controller Values
 		for ig, gc in enumerate(preset[3]):
 			for ic, ctrl in enumerate(self.instrument[ig]['ctrls']):
@@ -251,6 +253,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 				else:
 					ctrl[2]='off'
 		self.refresh_all()
+
 		#Change Preset for all Layers
 		for l in self.layers:
 			if l!=layer:
@@ -261,6 +264,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 				l.preload_index=l.preset_index
 				l.preload_name=l.preset_name
 				l.preload_info=l.preset_info
+
 		return True
 
 
