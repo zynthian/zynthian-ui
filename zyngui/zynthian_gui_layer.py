@@ -192,7 +192,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def get_free_midi_chans(self):
 		free_chans = list(range(16))
 
-		for rl in self.root_layers:
+		for rl in self.layers:
 			try:
 				free_chans.remove(rl.midi_chan)
 			except:
