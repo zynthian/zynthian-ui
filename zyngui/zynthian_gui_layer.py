@@ -634,58 +634,81 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			return False
 		try:
 			snapshot=JSONDecoder().decode(json)
+
 			#Clean all layers
 			self.remove_all_layers(False)
+
 			#Start engines
 			for lss in snapshot['layers']:
 				engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
 				self.layers.append(zynthian_layer(engine,lss['midi_chan'],zynthian_gui_config.zyngui))
+
 			#Remove unused engines
 			self.zyngui.screens['engine'].clean_unused_engines()
+
+			#Autoconnect
+			self.zyngui.zynautoconnect()
+
 			#Set extended config
 			if 'extended_config' in snapshot:
 				self.set_extended_config(snapshot['extended_config'])
-			#Load layers
+
+			# Restore layer state, step 1 => Restore Bank & Preset Status
 			i=0
 			for lss in snapshot['layers']:
-				self.layers[i].restore_snapshot(lss)
+				self.layers[i].restore_snapshot_1(lss)
 				i+=1
+
+			# Restore layer state, step 2 => Restore Controllers Status
+			i=0
+			for lss in snapshot['layers']:
+				self.layers[i].restore_snapshot_2(lss)
+				i+=1
+
 			#Fill layer list
 			self.fill_list()
+
 			#Set active layer
 			self.index=snapshot['index']
 			if self.index in self.layers:
 				self.curlayer=self.layers[self.index]
 				self.zyngui.set_curlayer(self.curlayer)
+
 			#Set Clone
 			if 'clone' in snapshot:
 				self.set_clone(snapshot['clone'])
 			else:
 				self.reset_clone()
+
 			#Set Transpose
 			if 'transpose' in snapshot:
 				self.set_transpose(snapshot['transpose'])
 			else:
 				self.reset_transpose()
+
 			#Set CC-Map
 			#TODO
+
 			#Set Audio Routing
 			if 'audio_routing' in snapshot:
 				self.set_audio_routing(snapshot['audio_routing'])
 			else:
 				self.reset_audio_routing()
+
 			#Post action
 			if self.list_data[self.index][0] in ('NEW','RESET'):
 				self.index=0
 				self.zyngui.show_screen('layer')
 			else:
 				self.select_action(self.index)
+
 		except Exception as e:
 			if zynthian_gui_config.raise_exceptions:
 				raise e
 			else:
 				logging.error("Invalid snapshot format: %s" % e)
 				return False
+
 		return True
 
 

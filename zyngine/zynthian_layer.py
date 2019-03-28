@@ -362,7 +362,7 @@ class zynthian_layer:
 		return snapshot
 
 
-	def restore_snapshot(self, snapshot):
+	def restore_snapshot_1(self, snapshot):
 		#Constructor, including engine and midi_chan info, is called before
 
 		#Load bank list and set bank
@@ -374,7 +374,7 @@ class zynthian_layer:
 	
 		#Load preset list and set preset
 		self.load_preset_list()
-		preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
+		self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
 		self.wait_stop_loading()
 
 		#Refresh controller config
@@ -390,9 +390,12 @@ class zynthian_layer:
 		if 'active_screen_index' in snapshot:
 			self.active_screen_index=snapshot['active_screen_index']
 
+
+	def restore_snapshot_2(self, snapshot):
+
 		# Wait a little bit if a preset has been loaded 
-		if preset_loaded:
-			sleep(0.5)
+		if self.preset_loaded:
+			sleep(0.2)
 
 		#Set controller values
 		for k in snapshot['controllers_dict']:
