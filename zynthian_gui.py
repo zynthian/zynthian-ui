@@ -109,6 +109,7 @@ class zynthian_gui:
 		self.midi_learn_zctrl = None
 
 		self.status_info = {}
+		self.status_counter = 0
 
 		# Initialize Controllers (Rotary and Switches), MIDI and OSC
 		try:
@@ -928,6 +929,7 @@ class zynthian_gui:
 	def start_polling(self):
 		self.polling=True
 		self.zyngine_refresh()
+		self.refresh_status()
 
 
 	def stop_polling(self):
@@ -940,8 +942,6 @@ class zynthian_gui:
 
 	def zyngine_refresh(self):
 		try:
-			self.refresh_status()
-
 			# Capture exit event and finish
 			if self.exit_flag:
 				self.stop()
@@ -950,46 +950,71 @@ class zynthian_gui:
 			elif self.curlayer and not self.loading:
 				self.curlayer.refresh()
 
-		except Exception as err:
+		except Exception as e:
 			if zynthian_gui_config.raise_exceptions:
-				raise err
+				raise e
 			else:
-				logging.error("zynthian_gui.zyngine_refresh() => %s" % err)
+				logging.error(e)
 
+		# Poll
 		if self.polling:
 			zynthian_gui_config.top.after(160, self.zyngine_refresh)
 
 
 	def refresh_status(self):
-		# Get CPU Load
-		#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
-		self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
-
-		# Get Status Flags
 		try:
-			res=check_output("vcgencmd get_throttled", shell=True).decode('utf-8','ignore')
-			thr=int(res[12:],16)
-			if thr & 0x1:
-				self.status_info['undervoltage']=True
-			if thr & 0x2:
-				self.status_info['freqcap']=True
-			if thr & 0x4:
-				self.status_info['throttled']=True
+			# Get CPU Load
+			#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
+			self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
+
+			# Get Status Flags (once each 5 refreshes)
+			if self.status_counter>5:
+				self.status_counter = 0
+				try:
+					# Get ARM flags
+					res = check_output(("vcgencmd", "get_throttled")).decode('utf-8','ignore')
+					thr = int(res[12:],16)
+					if thr & 0x1:
+						self.status_info['undervoltage'] = True
+					else:
+						self.status_info['undervoltage'] = False
+					if thr & (0x4 | 0x2):
+						self.status_info['overtemp'] = True
+					else:
+						self.status_info['overtemp'] = False
+
+					# Get Recorder Status
+					self.status_info['audio_recorder'] = self.screens['audio_recorder'].get_status()
+					self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
+
+				except Exception as e:
+					logging.error(e)
+
+			else:
+				self.status_counter += 1
+
+			# Refresh On-Screen Status
+			try:
+				if self.modal_screen:
+					self.screens[self.modal_screen].refresh_status(self.status_info)
+				else:
+					self.screens[self.active_screen].refresh_status(self.status_info)
+			except ValueError:
+				pass
+
+			# Clean some status_info
+			self.status_info['xrun'] = False
+			self.status_info['midi'] = False
 
 		except Exception as e:
-			logging.error(e)
-
-		# Refresh On-Screen Status
-		try:
-			if self.modal_screen:
-				self.screens[self.modal_screen].refresh_status(self.status_info)
+			if zynthian_gui_config.raise_exceptions:
+				raise err
 			else:
-				self.screens[self.active_screen].refresh_status(self.status_info)
-		except ValueError:
-			pass
+				logging.error(e)
 
-		# Clean status_info
-		self.status_info = {}
+		# Poll
+		if self.polling:
+			zynthian_gui_config.top.after(200, self.refresh_status)
 
 
 	#------------------------------------------------------------------

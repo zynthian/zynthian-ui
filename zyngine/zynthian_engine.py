@@ -98,9 +98,9 @@ class zynthian_engine:
 		self.command_env = None
 		self.command_prompt = None
 
-		#self.remote_host = "motxina.local"
-		self.remote_host = None
 		self.remote_host_i = 0
+		self.remote_host= None
+		#self.remote_host = "zynslave.local"
 
 		self.osc_target = None
 		self.osc_target_port = None
@@ -194,7 +194,7 @@ class zynthian_engine:
 					else:
 						self.proc = pxssh.pxssh(timeout=self.proc_timeout)
 
-					self.proc.login(self.remote_host,"txino","ag0la0cha")
+					self.proc.login(self.remote_host,"root","raspberry")
 					self.proc.sendline(self.command)
 
 				else:

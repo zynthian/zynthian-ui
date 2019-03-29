@@ -41,13 +41,13 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 
 	bank_manuals_list = [
-		['Upper', 0, 'Upper', '_', [False, False, None]],
-		['Lower + Upper', 1, 'Lower + Upper', '_', [True, False, None]],
-		['Pedals + Upper', 2, 'Pedals + Upper', '_', [False, True, None]],
-		['Pedals + Lower + Upper', 3, 'Pedals + Lower + Upper', '_', [True, True, None]],
-		['Split: Lower + Upper', 4, 'Split Lower + Upper', '_', [True, False, 57]],
-		['Split: Pedals + Upper', 5, 'Split Pedals + Upper', '_', [False, True, 59]],
-		['Split: Pedals + Lower + Upper', 6, 'Split Pedals + Lower + Upper', '_', [True, True, 58]]
+		['Upper', 0, 'Upper', '_', [False, False, 59]],
+		['Lower + Upper', 1, 'Lower + Upper', '_', [True, False, 59]],
+		['Pedals + Upper', 2, 'Pedals + Upper', '_', [False, True, 59]],
+		['Pedals + Lower + Upper', 3, 'Pedals + Lower + Upper', '_', [True, True, 59]],
+		['Split: Lower + Upper', 4, 'Split Lower + Upper', '_', [True, False, 56]],
+		['Split: Pedals + Upper', 5, 'Split Pedals + Upper', '_', [False, True, 58]],
+		['Split: Pedals + Lower + Upper', 6, 'Split Pedals + Lower + Upper', '_', [True, True, 57]]
 	]
 
 
@@ -324,8 +324,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 			midi_prog = self.manuals_config[4][2]
 			if midi_prog and isinstance(midi_prog, int):
-				logging.debug("Loading manuals configuration program: {}".format(midi_prog-1))
-				self.zyngui.zynmidi.set_midi_prg(midi_chans[0], midi_prog-1)
+				logging.debug("Loading manuals configuration program: {}".format(midi_prog))
+				self.zyngui.zynmidi.set_midi_prg(midi_chans[0], midi_prog)
 
 			#self.zyngui.screens['layer'].fill_list()
 
