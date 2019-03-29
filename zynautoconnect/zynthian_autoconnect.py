@@ -128,25 +128,41 @@ def midi_autoconnect():
 	for k, zyngine in zyngine_list.items():
 		#logger.debug("zyngine: {}".format(zyngine.jackname))
 		port_name = zyngine.jackname
+		
+		if zyngine.remote_host:
+			#TODO: Optimize this!! => Avoid redundant queries!
+			# Get & Store jack port in zyngine??
+			ports = jclient.get_ports(zyngine.remote_host, is_input=True, is_midi=True, is_physical=False)
+			try:
+				if zyngine.remote_host_i is None:
+					#TODO: Get and assign a free engine-port in the remote host, if available
+					zyngine.remote_host_i = 0
+				port=ports[zyngine.remote_host_i]
 
-		#Dirty hack for having MIDI working with PureData: #TODO => Improve it!!
-		if port_name=="pure_data_0":
-			port_name = "Pure Data"
+				#logger.debug("Engine {}:{} found".format(zyngine.remote_host,port.short_name))
+				#List of tuples => [port, active_channels]
+				engines_in.append([port, zyngine.get_active_midi_channels()])
 
-		ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
-		try:
-			port=ports[0]
 
-			#Dirty hack for zynaddsubfx: #TODO => Improve it!!!
-			if port.shortname=='osc':
-				port=ports[1]
+		else:
+			#Dirty hack for having MIDI working with PureData: #TODO => Improve it!!
+			if port_name=="pure_data_0":
+				port_name = "Pure Data"
 
-			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
-			#List of tuples => [port, active_channels]
-			engines_in.append([port, zyngine.get_active_midi_channels()])
-		except:
-			#logger.warning("Engine {} is not present".format(zyngine.jackname))
-			pass
+			ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
+			try:
+				port=ports[0]
+
+				#Dirty hack for zynaddsubfx: #TODO => Improve it!!!
+				if port.shortname=='osc':
+					port=ports[1]
+
+				#logger.debug("Engine {}:{} found".format(port_name,port.short_name))
+				#List of tuples => [port, active_channels]
+				engines_in.append([port, zyngine.get_active_midi_channels()])
+			except:
+				#logger.warning("Engine {} is not present".format(port_name))
+				pass
 
 	#logger.debug("Synth Engine Ports: {}".format(engines_in))
 
@@ -154,14 +170,20 @@ def midi_autoconnect():
 	engines_out=[]
 	for k, zyngine in zyngine_list.items():
 		#logger.debug("zyngine: {}".format(zyngine.jackname))
-		ports=jclient.get_ports(zyngine.jackname, is_output=True, is_midi=True, is_physical=False)
+		port_name = zyngine.jackname
+
+		#Dirty hack for having MIDI working with PureData: #TODO => Improve it!!
+		if port_name=="pure_data_0":
+			port_name = "Pure Data"
+
+		ports=jclient.get_ports(port_name, is_output=True, is_midi=True, is_physical=False)
 		try:
 			port=ports[0]
-			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
+			#logger.debug("Engine {}:{} found".format(port_name,port.short_name))
 			#List of tuples => [port, active_channels]
 			engines_out.append([port, zyngine.get_active_midi_channels()])
 		except:
-			#logger.warning("Engine {} is not present".format(zyngine.jackname))
+			#logger.warning("Engine {} is not present".format(port_name))
 			pass
 
 	#logger.debug("Synth Engine Ports: {}".format(engines_out))
@@ -207,6 +229,9 @@ def midi_autoconnect():
 
 	#Connect ZynMidiRouter to engines
 	for eip in engines_in:
+		# eip[1] => active channels
+		
+		# Connect main_out to special engines (all channels actives)
 		if eip[1] is None:
 			try:
 				jclient.connect(zmr_out['main_out'],eip[0])
@@ -217,6 +242,7 @@ def midi_autoconnect():
 					jclient.disconnect(zmr_out['ch{}_out'.format(ch)],eip[0])
 				except:
 					pass
+		# Connect engines to active channels
 		else:
 			try:
 				jclient.disconnect(zmr_out['main_out'],eip[0])
@@ -282,6 +308,8 @@ def audio_autoconnect():
 	for i, layer in enumerate(layers_list):
 		ports=jclient.get_ports(layer.get_jackname(), is_output=True, is_audio=True, is_physical=False)
 		if ports:
+			# TODO: Implement per-channel audio-output routing in multichannel engines!! 
+
 			if len(ports)==1:
 				ports.append(ports[0])
 

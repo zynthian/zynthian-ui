@@ -99,7 +99,8 @@ class zynthian_engine:
 		self.command_prompt = None
 
 		#self.remote_host = "motxina.local"
-		self.remote_host= None
+		self.remote_host = None
+		self.remote_host_i = 0
 
 		self.osc_target = None
 		self.osc_target_port = None
