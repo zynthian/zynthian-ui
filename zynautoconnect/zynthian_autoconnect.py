@@ -143,6 +143,9 @@ def midi_autoconnect():
 				#List of tuples => [port, active_channels]
 				engines_in.append([port, zyngine.get_active_midi_channels()])
 
+			except:
+				#logger.warning("Engine {} is not present".format(port_name))
+				pass
 
 		else:
 			#Dirty hack for having MIDI working with PureData: #TODO => Improve it!!
@@ -160,6 +163,7 @@ def midi_autoconnect():
 				#logger.debug("Engine {}:{} found".format(port_name,port.short_name))
 				#List of tuples => [port, active_channels]
 				engines_in.append([port, zyngine.get_active_midi_channels()])
+
 			except:
 				#logger.warning("Engine {} is not present".format(port_name))
 				pass
@@ -260,13 +264,13 @@ def midi_autoconnect():
 					except:
 						pass
 
-	#Connect ZynMidiRouter:main_out to enabled MIDI-OUT ports
+	#Connect ZynMidiRouter:midi_out to enabled MIDI-OUT ports
 	for hw in hw_in:
 		try:
 			if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_out_ports:
-				jclient.connect(zmr_out['main_out'],hw)
+				jclient.connect(zmr_out['midi_out'],hw)
 			else:
-				jclient.disconnect(zmr_out['main_out'],hw)
+				jclient.disconnect(zmr_out['midi_out'],hw)
 		except:
 			pass
 
