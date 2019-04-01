@@ -238,9 +238,9 @@ def midi_autoconnect():
 	for hw in hw_in:
 		try:
 			if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_out_ports:
-				jclient.connect(zmr_out['main_out'],hw)
+				jclient.connect(zmr_out['midi_out'],hw)
 			else:
-				jclient.disconnect(zmr_out['main_out'],hw)
+				jclient.disconnect(zmr_out['midi_out'],hw)
 		except:
 			pass
 
