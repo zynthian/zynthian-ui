@@ -96,7 +96,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		if isinstance(preset_index, int):
 			midich=self.zyngui.curlayer.get_midi_chan()
 			self.zyngui.screens['layer'].set_midi_chan_zs3(midich, preset_index)
-			self.zyngui.exit_midi_learn()
+			self.zyngui.exit_midi_learn_mode()
 
 
 	def back_action(self):
