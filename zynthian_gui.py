@@ -999,7 +999,7 @@ class zynthian_gui:
 					self.screens[self.modal_screen].refresh_status(self.status_info)
 				else:
 					self.screens[self.active_screen].refresh_status(self.status_info)
-			except ValueError:
+			except AttributeError:
 				pass
 
 			# Clean some status_info
