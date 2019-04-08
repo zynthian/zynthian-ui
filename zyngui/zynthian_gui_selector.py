@@ -62,6 +62,13 @@ class zynthian_gui_selector:
 		self.status_l = zynthian_gui_config.topbar_height
 		self.status_rh = max(2,zynthian_gui_config.topbar_height/4)
 		self.status_fs = int(zynthian_gui_config.topbar_height/3)
+		self.status_lpad = self.status_fs
+
+		self.path_canvas_width=zynthian_gui_config.display_width-self.status_l-self.status_lpad
+		self.select_path_font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=zynthian_gui_config.font_topbar[1])
+		self.select_path_width=0
+		self.select_path_offset=0
+		self.select_path_dir=2
 
 		# Listbox Size
 		self.lb_height=zynthian_gui_config.display_height-zynthian_gui_config.topbar_height
@@ -87,20 +94,28 @@ class zynthian_gui_selector:
 		# Setup Topbar's Callback
 		self.tb_frame.bind("<Button-1>", self.cb_topbar)
 
+		# Topbar's Path Canvas
+		self.path_canvas = tkinter.Canvas(self.tb_frame,
+			width=self.path_canvas_width,
+			height=zynthian_gui_config.topbar_height,
+			bd=0,
+			highlightthickness=0,
+			relief='flat',
+			bg = zynthian_gui_config.color_bg)
+		self.path_canvas.grid(row=0, column=0, sticky="wns")
+		# Setup Topbar's Callback
+		self.path_canvas.bind("<Button-1>", self.cb_topbar)
+
 		# Topbar's Select Path
 		self.select_path = tkinter.StringVar()
-		self.label_select_path = tkinter.Label(self.tb_frame,
-			wraplength=zynthian_gui_config.display_width-self.status_l,
+		self.select_path.trace("w", self.cb_select_path)
+		self.label_select_path = tkinter.Label(self.path_canvas,
 			font=zynthian_gui_config.font_topbar,
 			textvariable=self.select_path,
-			#wraplength=80,
 			justify=tkinter.LEFT,
 			bg=zynthian_gui_config.color_header_bg,
 			fg=zynthian_gui_config.color_header_tx)
-		self.label_select_path.grid(row=0, column=0, sticky="wns")
-		self.tb_frame.grid_columnconfigure(0, minsize=zynthian_gui_config.display_width-self.status_l)
-		# Setup Topbar's Callback
-		self.label_select_path.bind("<Button-1>", self.cb_topbar)
+		self.label_select_path.place(x=0, y=0)
 
 		# Canvas for displaying status: CPU, ...
 		self.status_canvas = tkinter.Canvas(self.tb_frame,
@@ -110,7 +125,10 @@ class zynthian_gui_selector:
 			highlightthickness=0,
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
-		self.status_canvas.grid(row=0, column=1, sticky="ens")
+		self.status_canvas.grid(row=0, column=1, sticky="ens", padx=(self.status_lpad,0))
+
+		# Configure Topbar's Frame column widths
+		self.tb_frame.grid_columnconfigure(0, minsize=self.path_canvas_width)
 
 		# ListBox's frame
 		self.lb_frame = tkinter.Frame(self.main_frame,
@@ -171,6 +189,7 @@ class zynthian_gui_selector:
 
 		# Update Title
 		self.set_select_path()
+		self.cb_scroll_select_path()
 
 
 	def show(self):
@@ -416,5 +435,43 @@ class zynthian_gui_selector:
 		elif dts>=2:
 			self.zyngui.zynswitch_defered('L',2)
 
+
+	def cb_select_path(self, *args):
+		self.select_path_width=self.select_path_font.measure(self.select_path.get())
+		self.select_path_offset = 0;
+		self.select_path_dir = 2
+		self.dscroll_select_path()
+
+
+	def cb_scroll_select_path(self):
+		if self.shown:
+			if self.dscroll_select_path():
+				zynthian_gui_config.top.after(1000, self.cb_scroll_select_path)
+				return
+
+		zynthian_gui_config.top.after(100, self.cb_scroll_select_path)
+
+
+	def dscroll_select_path(self):
+
+		if self.select_path_width>self.path_canvas_width:
+			#Scroll label
+			self.select_path_offset += self.select_path_dir
+			self.label_select_path.place(x=-self.select_path_offset, y=0)
+
+			#Change direction ...
+			if self.select_path_offset > (self.select_path_width-self.path_canvas_width):
+				self.select_path_dir = -2
+				return True
+			elif self.select_path_offset<=0:
+				self.select_path_dir = 2
+				return True
+
+		elif self.select_path_offset!=0:
+			self.select_path_offset = 0;
+			self.select_path_dir = 2
+			self.label_select_path.place(x=0, y=0)
+
+		return False
 
 #------------------------------------------------------------------------------
