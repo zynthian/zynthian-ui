@@ -440,8 +440,7 @@ class zynthian_gui_selector:
 		self.select_path_width=self.select_path_font.measure(self.select_path.get())
 		self.select_path_offset = 0;
 		self.select_path_dir = 2
-		self.dscroll_select_path()
-
+		self.label_select_path.place(x=0, y=0)
 
 	def cb_scroll_select_path(self):
 		if self.shown:
