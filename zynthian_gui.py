@@ -550,29 +550,43 @@ class zynthian_gui:
 				except:
 					pass
 
-				# Back to active screen by default ...
-				if screen_back is None:
-					screen_back = self.active_screen
-
-				logging.debug("BACK TO SCREEN => {}".format(screen_back))
-				self.show_screen(screen_back)
-
 			# If curlayer is set ...
-			if self.curlayer is not None:
-				if self.active_screen=='preset':
+			elif self.curlayer is not None:
+				if self.active_screen=='control':
+					if len(self.curlayer.bank_list)>1:
+						screen_back = 'bank'
+					else:
+						screen_back = 'layer'
+
+				elif self.active_screen=='preset':
 					if self.curlayer.preset_info is not None:
 						self.screens['preset'].restore_preset()
-						self.show_screen('control')
+						screen_back = 'control'
+					elif len(self.curlayer.bank_list)>1:
+						screen_back = 'bank'
 					else:
-						self.show_screen('bank')
-				elif self.active_screen!='bank':
-					self.show_screen('bank')
-				else:
-					self.show_screen('admin')
+						screen_back = 'layer'
+
+				elif self.active_screen=='bank':
+					screen_back = 'admin'
+
+				elif self.active_screen=='layer':
+					screen_back = 'control'
+
+				elif self.active_screen=='admin':
+					screen_back = 'control'
 
 			# Else, go to admin screen
 			else:
-				self.show_screen('admin')
+				screen_back = 'admin'
+
+			# Back to active screen by default ...
+			if screen_back is None:
+				screen_back = self.active_screen
+
+			logging.debug("BACK TO SCREEN => {}".format(screen_back))
+			self.show_screen(screen_back)
+
 
 		elif i==2:
 			if self.modal_screen=='snapshot':
@@ -999,7 +1013,7 @@ class zynthian_gui:
 					self.screens[self.modal_screen].refresh_status(self.status_info)
 				else:
 					self.screens[self.active_screen].refresh_status(self.status_info)
-			except ValueError:
+			except AttributeError:
 				pass
 
 			# Clean some status_info

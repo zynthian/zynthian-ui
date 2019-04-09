@@ -60,7 +60,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		("MDA DX10", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/DX10"}),
 		("OBXD", {'TYPE': "MIDI Synth",'URL': "https://obxd.wordpress.com"}),
 		("SynthV1", {'TYPE': "MIDI Synth",'URL': "http://synthv1.sourceforge.net/lv2"}),
-		("Noize Mak3r", {'TYPE': "MIDI Synth",'URL': "http://kunz.corrupt.ch/products/tal-noisemaker"})
+		("Noize Mak3r", {'TYPE': "MIDI Synth",'URL': "http://kunz.corrupt.ch/products/tal-noisemaker"}),
+		("Triceratops", {'TYPE': "MIDI Synth",'URL': "http://nickbailey.co.nr/triceratops"}),
+		("Raffo MiniMoog", {'TYPE': "MIDI Synth",'URL': "http://example.org/raffo"})
 	])
 
 	# ---------------------------------------------------------------------------
@@ -426,21 +428,6 @@ class zynthian_engine_jalv(zynthian_engine):
 		except:
 			pass
 
-
-
-	#--------------------------------------------------------------------------
-	# Special
-	#--------------------------------------------------------------------------
-
-
-	# ---------------------------------------------------------------------------
-	# Layer "Path" String
-	# ---------------------------------------------------------------------------
-
-
-	def get_path(self, layer):
-		path=self.nickname
-		return path
 
 
 #******************************************************************************

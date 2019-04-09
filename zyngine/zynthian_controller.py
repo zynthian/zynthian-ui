@@ -107,16 +107,8 @@ class zynthian_controller:
 		#Configure Selector Controller
 		if self.labels:
 
-			if self.ticks:
-				#Calculate min, max and range
-				if self.ticks[0]<=self.ticks[-1]:
-					self.value_min=self.ticks[0]
-					self.value_max=self.ticks[-1]
-				else:
-					self.value_min=self.ticks[-1]
-					self.value_max=self.ticks[0]
-
-			else:
+			if not self.ticks:
+				#Generate ticks ...
 				n=len(self.labels)
 				self.ticks=[]
 				if self.is_integer:
@@ -125,6 +117,14 @@ class zynthian_controller:
 				else:
 					for i in range(n):
 						self.ticks.append(self.value_min+i*self.value_max/n)
+
+			#Calculate min, max
+			if self.ticks[0]<=self.ticks[-1]:
+				self.value_min=self.ticks[0]
+				self.value_max=self.ticks[-1]
+			else:
+				self.value_min=self.ticks[-1]
+				self.value_max=self.ticks[0]
 
 			#Generate dictionary for fast conversion labels=>values
 			self.label2value={}
@@ -160,6 +160,7 @@ class zynthian_controller:
 		self.value=val
 		self.is_toggle=False
 		self.is_integer=True
+
 		# Numeric
 		if isinstance(maxval,int):
 			self.value_max=maxval
@@ -172,6 +173,7 @@ class zynthian_controller:
 				self.ticks=maxval[1]
 			else:
 				self.labels=maxval
+
 		self._configure()
 
 
