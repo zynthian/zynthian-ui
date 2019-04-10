@@ -337,7 +337,7 @@ def get_audio_input_ports():
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
 			parts=aip.name.split(':')
 			client_name=parts[0]
-			if client_name[:7]=="effect_":
+			if client_name[:7]=="effect_" or client_name=="jack_capture":
 				continue
 			if client_name not in res:
 				res[client_name]=[aip]
