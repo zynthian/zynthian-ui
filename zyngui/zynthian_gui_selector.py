@@ -379,6 +379,14 @@ class zynthian_gui_selector:
 			self.zselector.set_value(self.index, True)
 
 
+	def select_up(self, n=1):
+		self.select(self.index+n)
+
+
+	def select_down(self, n=1):
+		self.select(self.index-n)
+
+
 	def select_action(self, index, t='S'):
 		pass
 
