@@ -108,6 +108,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		if status=="PLAY" or status=="PLAY+REC":
 			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
 
+		self.list_data.append((None,0,"-----------------------------"))
+
 		i=1
 		# Files on SD-Card
 		for f in sorted(os.listdir(self.capture_dir_sdc)):
@@ -137,7 +139,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	# Highlight command and current record played, if any ...
 	def highlight(self):
 		for i, row in enumerate(self.list_data):
-			if row[0]==self.current_record:
+			if row[0] is not None and row[0]==self.current_record:
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_hl})
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
@@ -152,7 +154,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.stop_playing()
 		elif fpath=="STOP_RECORDING":
 			self.stop_recording()
-		else:
+		elif fpath:
 			if t=='S':
 				self.start_playing(fpath)
 			else:
@@ -182,7 +184,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
 			self.zyngui.show_info("ERROR STARTING AUDIO RECORD:\n %s" % e)
 			self.zyngui.hide_info_timer(5000)
-		self.fill_list()
+		self.update_list()
 
 
 	def stop_recording(self):
@@ -191,7 +193,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		self.rec_proc.communicate()
 		while self.is_process_running("jack_capture"):
 			sleep(1)
-		self.show()
+		self.update_list()
 
 
 	def start_playing(self, fpath):
@@ -208,7 +210,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			logging.error("ERROR STARTING AUDIO PLAY: %s" % e)
 			self.zyngui.show_info("ERROR STARTING AUDIO PLAY:\n %s" % e)
 			self.zyngui.hide_info_timer(5000)
-		self.fill_list()
+		self.update_list()
 
 
 	def stop_playing(self):
@@ -219,7 +221,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		except:
 			pass
 		self.current_record=None
-		self.fill_list()
+		self.update_list()
 
 
 	def set_select_path(self):
