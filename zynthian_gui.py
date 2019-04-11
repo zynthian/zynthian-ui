@@ -96,22 +96,22 @@ class zynthian_gui:
 		"11": "ALL_SOUNDS_OFF",
 		"12": "ALL_OFF",
 
-		"50": "SELECT",
-		"51": "SELECT_UP", 
-		"52": "SELECT_DOWN",
+		"51": "SELECT",
+		"52": "SELECT_DOWN", 
+		"53": "SELECT_UP",
 
+		"64": "SWITCH_BACK_SHORT",
+		"63": "SWITCH_BACK_BOLD",
+		"62": "SWITCH_BACK_LONG",
+		"65": "SWITCH_SELECT_SHORT",
+		"66": "SWITCH_SELECT_BOLD",
+		"67": "SWITCH_SELECT_LONG",
 		"60": "SWITCH_LAYER_SHORT",
 		"61": "SWITCH_LAYER_BOLD",
-		"62": "SWITCH_LAYER_LONG",
-		"63": "SWITCH_SNAPSHOT_SHORT",
-		"64": "SWITCH_SNAPSHOT_BOLD",
-		"65": "SWITCH_SNAPSHOT_LONG",
-		"66": "SWITCH_BACK_SHORT",
-		"67": "SWITCH_BACK_BOLD",
-		"68": "SWITCH_BACK_LONG",
-		"69": "SWITCH_SELECT_SHORT",
-		"70": "SWITCH_SELECT_BOLD",
-		"71": "SWITCH_SELECT_LONG"
+		"59": "SWITCH_LAYER_LONG",
+		"71": "SWITCH_SNAPSHOT_SHORT",
+		"72": "SWITCH_SNAPSHOT_BOLD",
+		"73": "SWITCH_SNAPSHOT_LONG"
 	}
 
 	def __init__(self):
@@ -497,22 +497,22 @@ class zynthian_gui:
 		elif cuia == "SWITCH_LAYER_LONG":
 			self.zynswitch_long(0)
 
-		elif cuia == "SWITCH_SNAPSHOT_SHORT":
+		elif cuia == "SWITCH_BACK_SHORT":
 			self.zynswitch_short(1)
 
-		elif cuia == "SWITCH_SNAPSHOT_BOLD":
+		elif cuia == "SWITCH_BACK_BOLD":
 			self.zynswitch_bold(1)
 
-		elif cuia == "SWITCH_SNAPSHOT_LONG":
+		elif cuia == "SWITCH_BACK_LONG":
 			self.zynswitch_long(1)
 
-		elif cuia == "SWITCH_BACK_SHORT":
+		elif cuia == "SWITCH_SNAPSHOT_SHORT":
 			self.zynswitch_short(2)
 
-		elif cuia == "SWITCH_BACK_BOLD":
+		elif cuia == "SWITCH_SNAPSHOT_BOLD":
 			self.zynswitch_bold(2)
 
-		elif cuia == "SWITCH_BACK_LONG":
+		elif cuia == "SWITCH_SNAPSHOT_LONG":
 			self.zynswitch_long(2)
 
 		elif cuia == "SWITCH_SELECT_SHORT":
