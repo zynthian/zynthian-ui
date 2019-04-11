@@ -84,8 +84,35 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 class zynthian_gui:
 
-	screens_sequence=("admin","layer","bank","preset","control")
+	screens_sequence = ("admin","layer","bank","preset","control")
 
+	note2cuia = {
+		"0": "POWER_OFF",
+		"1": "REBOOT",
+		"2": "RESTART_UI",
+		"3": "RELOAD_MIDI_CONFIG",
+
+		"10": "ALL_NOTES_OFF",
+		"11": "ALL_SOUNDS_OFF",
+		"12": "ALL_OFF",
+
+		"50": "SELECT",
+		"51": "SELECT_UP", 
+		"52": "SELECT_DOWN",
+
+		"60": "SWITCH_LAYER_SHORT",
+		"61": "SWITCH_LAYER_BOLD",
+		"62": "SWITCH_LAYER_LONG",
+		"63": "SWITCH_SNAPSHOT_SHORT",
+		"64": "SWITCH_SNAPSHOT_BOLD",
+		"65": "SWITCH_SNAPSHOT_LONG",
+		"66": "SWITCH_BACK_SHORT",
+		"67": "SWITCH_BACK_BOLD",
+		"68": "SWITCH_BACK_LONG",
+		"69": "SWITCH_SELECT_SHORT",
+		"70": "SWITCH_SELECT_BOLD",
+		"71": "SWITCH_SELECT_LONG"
+	}
 
 	def __init__(self):
 		self.zynmidi = None
@@ -294,6 +321,13 @@ class zynthian_gui:
 		self.hide_screens(exclude=screen)
 
 
+	def get_current_screen(self):
+		if self.modal_screen:
+			return self.screens[self.modal_screen]
+		else:
+			return self.screens[self.active_screen]
+
+
 	def show_confirm(self, text, callback=None, cb_params=None):
 		self.modal_screen='confirm'
 		self.screens['confirm'].show(text, callback, cb_params)
@@ -435,6 +469,60 @@ class zynthian_gui:
 			self.all_sounds_off()
 			sleep(0.1)
 			self.raw_all_notes_off()
+
+		elif cuia == "SELECT":
+			try:
+				self.get_current_screen().select(params[0])
+			except:
+				pass
+
+		elif cuia == "SELECT_UP":
+			try:
+				self.get_current_screen().select_up()
+			except:
+				pass
+
+		elif cuia == "SELECT_DOWN":
+			try:
+				self.get_current_screen().select_down()
+			except:
+				pass
+
+		elif cuia == "SWITCH_LAYER_SHORT":
+			self.zynswitch_short(0)
+
+		elif cuia == "SWITCH_LAYER_BOLD":
+			self.zynswitch_bold(0)
+
+		elif cuia == "SWITCH_LAYER_LONG":
+			self.zynswitch_long(0)
+
+		elif cuia == "SWITCH_SNAPSHOT_SHORT":
+			self.zynswitch_short(1)
+
+		elif cuia == "SWITCH_SNAPSHOT_BOLD":
+			self.zynswitch_bold(1)
+
+		elif cuia == "SWITCH_SNAPSHOT_LONG":
+			self.zynswitch_long(1)
+
+		elif cuia == "SWITCH_BACK_SHORT":
+			self.zynswitch_short(2)
+
+		elif cuia == "SWITCH_BACK_BOLD":
+			self.zynswitch_bold(2)
+
+		elif cuia == "SWITCH_BACK_LONG":
+			self.zynswitch_long(2)
+
+		elif cuia == "SWITCH_SELECT_SHORT":
+			self.zynswitch_short(3)
+
+		elif cuia == "SWITCH_SELECT_BOLD":
+			self.zynswitch_bold(3)
+
+		elif cuia == "SWITCH_SELECT_LONG":
+			self.zynswitch_long(3)
 
 
 	def custom_switch_ui_action(self, i, t):
@@ -823,6 +911,7 @@ class zynthian_gui:
 
 				#Master MIDI Channel ...
 				if chan==zynthian_gui_config.master_midi_channel:
+					#Webconf configured messages for Snapshot Control ...
 					logging.info("MASTER MIDI MESSAGE: %s" % hex(ev))
 					if ev==zynthian_gui_config.master_midi_program_change_up:
 						logging.debug("PROGRAM CHANGE UP!")
@@ -836,10 +925,12 @@ class zynthian_gui:
 					elif ev==zynthian_gui_config.master_midi_bank_change_down:
 						logging.debug("BANK CHANGE DOWN!")
 						self.screens['snapshot'].midi_bank_change_down()
+					#Program Change => Snapshot Load
 					elif evtype==0xC:
 						pgm = ((ev & 0x7F00)>>8) - zynthian_gui_config.master_midi_program_base
 						logging.debug("PROGRAM CHANGE %d" % pgm)
 						self.screens['snapshot'].midi_program_change(pgm)
+					#Control Change ...
 					elif evtype==0xB:
 						ccnum=(ev & 0x7F00)>>8
 						if ccnum==zynthian_gui_config.master_midi_bank_change_ccnum:
@@ -850,6 +941,12 @@ class zynthian_gui:
 							self.all_sounds_off()
 						elif ccnum==123:
 							self.all_notes_off()
+					#Note-on => CUIA
+					elif evtype==0x9:
+						note = str((ev & 0x7F00)>>8)
+						vel = (ev & 0x007F)
+						if note in self.note2cuia:
+							self.callable_ui_action(self.note2cuia[note], [vel])
 
 				#Program Change ...
 				elif evtype==0xC:
