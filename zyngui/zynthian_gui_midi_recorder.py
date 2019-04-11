@@ -141,7 +141,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		fpath=self.list_data[i][0]
+		fpath = self.list_data[i][0]
+
 		if fpath=="START_RECORDING":
 			self.start_recording()
 		elif fpath=="STOP_PLAYING":
@@ -149,9 +150,21 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		elif fpath=="STOP_RECORDING":
 			self.stop_recording()
 		else:
-			self.start_playing(fpath)
+			if t=='S':
+				self.start_playing(fpath)
+			else:
+				self.zyngui.show_confirm("Do you really want to delete '{}'?".format(self.list_data[i][2]), self.delete_confirmed, fpath)
 
-		#self.zyngui.show_active_screen()
+
+	def delete_confirmed(self, fpath):
+		logging.info("DELETE MIDI RECORDING: {}".format(fpath))
+		
+		try:
+			os.remove(fpath)
+		except Exception as e:
+			logging.error(e)
+
+		self.zyngui.show_modal("midi_recorder")
 
 
 	def start_recording(self):

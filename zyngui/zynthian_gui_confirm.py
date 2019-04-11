@@ -118,11 +118,14 @@ class zynthian_gui_confirm():
 
 	def switch_select(self, t='S'):
 		logging.info("callback %s" % self.callback_params)
+		
 		try:
 			self.callback(self.callback_params)
 		except:
 			pass
-		self.zyngui.show_active_screen()
+
+		if self.zyngui.modal_screen=="confirm":
+			self.zyngui.show_active_screen()
 
 
 	def cb_yes_push(self, event):
