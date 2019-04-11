@@ -51,25 +51,24 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
 
 	def __init__(self):
-		self.capture_dir=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
-		self.current_record=None
-		self.rec_proc=None
-		self.play_proc=None
+		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
+		self.capture_dir_usb = "/media/usb0"
+		self.current_record = None
+		self.rec_proc = None
+		self.play_proc = None
 		super().__init__('Audio Recorder', True)
 
 
 	def is_process_running(self, procname):
-		cmd="ps -e | grep %s" % procname
+		cmd = "ps -e | grep %s" % procname
+
 		try:
-			result=check_output(cmd, shell=True).decode('utf-8','ignore')
+			result = check_output(cmd, shell=True).decode('utf-8','ignore')
 			if len(result)>3: return True
 			else: return False
+
 		except Exception as e:
 			return False
-
-
-	def get_record_fpath(self,f):
-		return join(self.capture_dir,f);
 
 
 	def get_status(self):
@@ -81,24 +80,49 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			return None
 
 
+	def get_status(self):
+		status=None
+
+		if self.is_process_running("jack_capture"):
+			status="REC"
+
+		if self.current_record:
+			if status=="REC":
+				status="PLAY+REC"
+			else:
+				status="PLAY"
+
+		return status
+
+
 	def fill_list(self):
 		self.index=0
 		self.list_data=[]
 
 		status=self.get_status()
-		if status=="REC":
+		if status=="REC" or status=="PLAY+REC":
 			self.list_data.append(("STOP_RECORDING",0,"Stop Recording"))
-		elif status=="PLAY":
-			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
 		else:
 			self.list_data.append(("START_RECORDING",0,"Start Recording"))
 
+		if status=="PLAY" or status=="PLAY+REC":
+			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
+
 		i=1
-		for f in sorted(os.listdir(self.capture_dir)):
-			fpath=self.get_record_fpath(f)
+		# Files on SD-Card
+		for f in sorted(os.listdir(self.capture_dir_sdc)):
+			fpath=join(self.capture_dir_sdc,f)
 			if isfile(fpath) and f[-4:].lower()=='.wav':
 				#title=str.replace(f[:-3], '_', ' ')
-				title=f[:-4]
+				title="SDC: {}".format(f[:-4])
+				self.list_data.append((fpath,i,title))
+				i+=1
+		# Files on USB-Pendrive
+		for f in sorted(os.listdir(self.capture_dir_usb)):
+			fpath=join(self.capture_dir_usb,f)
+			if isfile(fpath) and f[-4:].lower()=='.wav':
+				#title=str.replace(f[:-3], '_', ' ')
+				title="USB: {}".format(f[:-4])
 				self.list_data.append((fpath,i,title))
 				i+=1
 
