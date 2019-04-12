@@ -243,7 +243,7 @@ class zynthian_gui_selector:
 			else:
 				if 'audio_recorder' in status:
 					if status['audio_recorder']=='REC':
-						flags = "\U0000f192"
+						flags = "\U0000f111"
 						color = zynthian_gui_config.color_status_record
 					elif status['audio_recorder']=='PLAY':
 						flags = "\U0000f04b"
@@ -253,7 +253,7 @@ class zynthian_gui_selector:
 						color = zynthian_gui_config.color_status_record
 				if not flags and 'midi_recorder' in status:
 					if status['midi_recorder']=='REC':
-						flags = "\U0000f192"
+						flags = "\U0000f111"
 						color = zynthian_gui_config.color_status_record
 					elif status['midi_recorder']=='PLAY':
 						flags = "\U0000f04b"
