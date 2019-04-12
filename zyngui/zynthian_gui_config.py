@@ -232,6 +232,10 @@ color_off=os.environ.get('ZYNTHIAN_UI_COLOR_OFF',"#5a626d")
 color_hl=os.environ.get('ZYNTHIAN_UI_COLOR_HL',"#00D000")
 color_ml=os.environ.get('ZYNTHIAN_UI_COLOR_ML',"#F0F000")
 color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG',"#3a424d")
+color_status_midi=os.environ.get('ZYNTHIAN_UI_COLOR_STATUS_MIDI',"#0000e0")
+color_status_play=os.environ.get('ZYNTHIAN_UI_COLOR_STATUS_PLAY',"#00b000")
+color_status_record=os.environ.get('ZYNTHIAN_UI_COLOR_STATUS_RECORD',"#b00000")
+color_status_error=os.environ.get('ZYNTHIAN_UI_COLOR_STATUS_ERROR',"#ff0000")
 
 # Color Scheme
 color_panel_bd=color_bg
@@ -384,6 +388,7 @@ else:
 # Fonts
 font_listbox=(font_family,int(1.0*font_size))
 font_topbar=(font_family,int(1.1*font_size))
+font_status=("FontAwesome",int(1.1*font_size))
 
 # Loading Logo Animation
 loading_imgs=[]
