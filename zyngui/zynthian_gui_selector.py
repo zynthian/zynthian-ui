@@ -232,6 +232,7 @@ class zynthian_gui_selector:
 				logging.error(e)
 
 			# Display flags
+			flags = ""
 			color = zynthian_gui_config.color_on
 			if 'xrun' in status and status['xrun']:
 				flags = "X"
@@ -239,24 +240,25 @@ class zynthian_gui_selector:
 				flags = "V";
 			elif 'overtemp' in status and status['overtemp']:
 				flags = "T"
-			elif 'audio_recorder' in status:
-				if status['audio_recorder']=='REC':
-					flags = "R"
-				elif status['audio_recorder']=='PLAY':
-					flags = ">"
-					color = zynthian_gui_config.color_hl
-				else:
-					flags = ""
-			elif 'midi_recorder' in status:
-				if status['midi_recorder']=='REC':
-					flags = "R"
-				elif status['midi_recorder']=='PLAY':
-					flags = ">"
-					color = zynthian_gui_config.color_hl
-				else:
-					flags = ""
 			else:
-				flags = ""
+				if 'audio_recorder' in status:
+					if status['audio_recorder']=='REC':
+						flags = "R"
+					elif status['audio_recorder']=='PLAY':
+						flags = ">"
+						color = zynthian_gui_config.color_hl
+					elif status['audio_recorder']=='PLAY+REC':
+						flags = ">"
+						color = zynthian_gui_config.color_on
+				if not flags and 'midi_recorder' in status:
+					if status['midi_recorder']=='REC':
+						flags = "R"
+					elif status['midi_recorder']=='PLAY':
+						flags = ">"
+						color = zynthian_gui_config.color_hl
+					elif status['midi_recorder']=='PLAY+REC':
+						flags = ">"
+						color = zynthian_gui_config.color_on
 
 			if not self.status_flags:
 				self.status_flags = self.status_canvas.create_text(
@@ -332,6 +334,11 @@ class zynthian_gui_selector:
 		#self.set_selector()
 
 
+	def update_list(self):	
+		self.fill_list()
+		self.set_selector()
+
+
 	def get_cursel(self):
 		cursel=self.listbox.curselection()
 		if (len(cursel)>0):
@@ -375,6 +382,14 @@ class zynthian_gui_selector:
 		self.select_listbox(index)
 		if self.zselector and self.zselector.value!=self.index:
 			self.zselector.set_value(self.index, True)
+
+
+	def select_up(self, n=1):
+		self.select(self.index+n)
+
+
+	def select_down(self, n=1):
+		self.select(self.index-n)
 
 
 	def select_action(self, index, t='S'):
