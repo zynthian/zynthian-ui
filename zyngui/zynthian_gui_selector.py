@@ -334,6 +334,11 @@ class zynthian_gui_selector:
 		#self.set_selector()
 
 
+	def update_list(self):	
+		self.fill_list()
+		self.set_selector()
+
+
 	def get_cursel(self):
 		cursel=self.listbox.curselection()
 		if (len(cursel)>0):

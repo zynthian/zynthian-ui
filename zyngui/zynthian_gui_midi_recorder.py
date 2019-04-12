@@ -103,6 +103,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if status=="PLAY" or status=="PLAY+REC":
 			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
 
+		self.list_data.append((None,0,"-----------------------------"))
+
 		i = 1
 		# Files in SD-Card
 		for f in sorted(os.listdir(self.capture_dir_sdc)):
@@ -134,7 +136,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if not self.play_proc or self.play_proc.poll() is not None:
 			self.current_record=None
 		for i, row in enumerate(self.list_data):
-			if row[0]==self.current_record:
+			if row[0] is not None and row[0]==self.current_record:
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_hl})
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
@@ -149,7 +151,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.stop_playing()
 		elif fpath=="STOP_RECORDING":
 			self.stop_recording()
-		else:
+		elif fpath:
 			if t=='S':
 				self.start_playing(fpath)
 			else:
@@ -178,7 +180,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			logging.error("ERROR STARTING MIDI RECORD: %s" % e)
 			self.zyngui.show_info("ERROR STARTING MIDI RECORD:\n %s" % e)
 			self.zyngui.hide_info_timer(5000)
-		self.fill_list()
+		self.update_list()
 
 
 	def stop_recording(self):
@@ -186,8 +188,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.rec_proc.terminate()
 		os.killpg(os.getpgid(self.rec_proc.pid), signal.SIGINT)
 		while self.rec_proc.poll() is None:
-			sleep(1)
-		self.show()
+			sleep(0.5)
+		self.update_list()
 
 
 	def start_playing(self, fpath):
@@ -204,7 +206,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			logging.error("ERROR STARTING MIDI PLAY: %s" % e)
 			self.zyngui.show_info("ERROR STARTING MIDI PLAY:\n %s" % e)
 			self.zyngui.hide_info_timer(5000)
-		self.fill_list()
+		self.update_list()
 
 
 	def stop_playing(self):
@@ -216,7 +218,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		except:
 			pass
 		self.current_record=None
-		self.fill_list()
+		self.update_list()
 
 
 	def set_select_path(self):
