@@ -233,41 +233,43 @@ class zynthian_gui_selector:
 
 			# Display flags
 			flags = ""
-			color = zynthian_gui_config.color_on
+			color = zynthian_gui_config.color_status_error
 			if 'xrun' in status and status['xrun']:
-				flags = "X"
+				flags = "\U0000f071"
 			elif 'undervoltage' in status and status['undervoltage']:
-				flags = "V";
+				flags = "\U0000f0e7";
 			elif 'overtemp' in status and status['overtemp']:
-				flags = "T"
+				flags = "\U0000f2c7"
 			else:
 				if 'audio_recorder' in status:
 					if status['audio_recorder']=='REC':
-						flags = "R"
+						flags = "\U0000f111"
+						color = zynthian_gui_config.color_status_record
 					elif status['audio_recorder']=='PLAY':
-						flags = ">"
-						color = zynthian_gui_config.color_hl
+						flags = "\U0000f04b"
+						color = zynthian_gui_config.color_status_play
 					elif status['audio_recorder']=='PLAY+REC':
-						flags = ">"
-						color = zynthian_gui_config.color_on
+						flags = "\U0000f144"
+						color = zynthian_gui_config.color_status_record
 				if not flags and 'midi_recorder' in status:
 					if status['midi_recorder']=='REC':
-						flags = "R"
+						flags = "\U0000f111"
+						color = zynthian_gui_config.color_status_record
 					elif status['midi_recorder']=='PLAY':
-						flags = ">"
-						color = zynthian_gui_config.color_hl
+						flags = "\U0000f04b"
+						color = zynthian_gui_config.color_status_play
 					elif status['midi_recorder']=='PLAY+REC':
-						flags = ">"
-						color = zynthian_gui_config.color_on
+						flags = "\U0000f144"
+						color = zynthian_gui_config.color_status_record
 
 			if not self.status_flags:
 				self.status_flags = self.status_canvas.create_text(
-					int(self.status_fs*0.4),
+					int(self.status_fs),
 					int(self.status_h*0.6),
-					width=int(self.status_fs*1.2),
+					width=int(self.status_fs),
 					justify=tkinter.RIGHT,
 					fill=color,
-					font=(zynthian_gui_config.font_family,self.status_fs),
+					font=(zynthian_gui_config.font_status,self.status_fs),
 					text=flags)
 			else:
 				self.status_canvas.itemconfig(self.status_flags, text=flags, fill=color)
@@ -275,17 +277,17 @@ class zynthian_gui_selector:
 			# Display MIDI flag
 			flags=""
 			if 'midi' in status and status['midi']:
-				flags="M";
+				flags="\U0000f35a";
 			else:
 				flags=""
 			if not self.status_midi:
 				self.status_midi = self.status_canvas.create_text(
-					int(self.status_l-self.status_fs*1.2),
+					int(self.status_l-self.status_fs*0.7),
 					int(self.status_h*0.6),
-					width=int(self.status_fs*1.2),
+					width=int(self.status_fs),
 					justify=tkinter.RIGHT,
-					fill=zynthian_gui_config.color_hl,
-					font=(zynthian_gui_config.font_family,self.status_fs),
+					fill=zynthian_gui_config.color_status_midi,
+					font=(zynthian_gui_config.font_status,self.status_fs),
 					text=flags)
 			else:
 				self.status_canvas.itemconfig(self.status_midi, text=flags)
