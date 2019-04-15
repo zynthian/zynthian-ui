@@ -235,29 +235,29 @@ class zynthian_gui_selector:
 			flags = ""
 			color = zynthian_gui_config.color_on
 			if 'xrun' in status and status['xrun']:
-				flags = "X"
+				flags = "\uf00d"
 			elif 'undervoltage' in status and status['undervoltage']:
-				flags = "V";
+				flags = "\uf0e7"
 			elif 'overtemp' in status and status['overtemp']:
-				flags = "T"
+				flags = "\uf769"
 			else:
 				if 'audio_recorder' in status:
 					if status['audio_recorder']=='REC':
-						flags = "R"
+						flags = "\uf111"
 					elif status['audio_recorder']=='PLAY':
-						flags = ">"
+						flags = "\uf04b"
 						color = zynthian_gui_config.color_hl
 					elif status['audio_recorder']=='PLAY+REC':
-						flags = ">"
+						flags = "\uf144"
 						color = zynthian_gui_config.color_on
 				if not flags and 'midi_recorder' in status:
 					if status['midi_recorder']=='REC':
-						flags = "R"
+						flags = "\uf111"
 					elif status['midi_recorder']=='PLAY':
-						flags = ">"
+						flags = "\uf04b"
 						color = zynthian_gui_config.color_hl
 					elif status['midi_recorder']=='PLAY+REC':
-						flags = ">"
+						flags = "\uf144"
 						color = zynthian_gui_config.color_on
 
 			if not self.status_flags:
@@ -267,7 +267,7 @@ class zynthian_gui_selector:
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
 					fill=color,
-					font=(zynthian_gui_config.font_family,self.status_fs),
+					font=("FontAwesome",self.status_fs),
 					text=flags)
 			else:
 				self.status_canvas.itemconfig(self.status_flags, text=flags, fill=color)
@@ -275,7 +275,8 @@ class zynthian_gui_selector:
 			# Display MIDI flag
 			flags=""
 			if 'midi' in status and status['midi']:
-				flags="M";
+				flags = '\uf001'
+				
 			else:
 				flags=""
 			if not self.status_midi:
@@ -285,7 +286,7 @@ class zynthian_gui_selector:
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
 					fill=zynthian_gui_config.color_hl,
-					font=(zynthian_gui_config.font_family,self.status_fs),
+					font=("FontAwesome",self.status_fs),
 					text=flags)
 			else:
 				self.status_canvas.itemconfig(self.status_midi, text=flags)

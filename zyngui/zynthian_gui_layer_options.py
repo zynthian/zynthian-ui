@@ -83,6 +83,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			root_layer = self.zyngui.screens['layer'].get_fxchain_root(self.layer)
 			if root_layer!=self.layer:
 				self.sublayer = self.layer
+				self.sublayer_index = self.zyngui.screens['layer'].layers.index(self.sublayer)
 				self.layer = root_layer
 				self.detailed_list = True
 				self.fill_list()
@@ -259,7 +260,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def fx_move_upchain(self):
 		ups = self.zyngui.screens['layer'].get_fxchain_upstream(self.sublayer)
 		self.zyngui.screens['layer'].swap_fxchain(ups[0], self.sublayer)
-		self.back_action()
+		
+		if self.detailed_list:
+			self.zyngui.show_screen('layer')
+		else:
+			self.back_action()
 
 
 	def can_move_downchain(self):
@@ -271,12 +276,20 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def fx_move_downchain(self):
 		downs = self.zyngui.screens['layer'].get_fxchain_downstream(self.sublayer)
 		self.zyngui.screens['layer'].swap_fxchain(self.sublayer, downs[0])
-		self.back_action()
+
+		if self.detailed_list:
+			self.zyngui.show_screen('layer')
+		else:
+			self.back_action()
 
 
 	def fx_remove(self):
 		self.zyngui.screens['layer'].remove_layer(self.sublayer_index)
-		self.back_action()
+
+		if self.detailed_list:
+			self.zyngui.show_screen('layer')
+		else:
+			self.back_action()
 
 
 	def set_select_path(self):
