@@ -56,10 +56,11 @@ class zynthian_gui_selector:
 		self.zyngui = zynthian_gui_config.zyngui
 
 		self.status_rect = None
-		self.status_flags = None
+		self.status_error = None
+		self.status_recplay = None
 		self.status_midi = None
 		self.status_h = zynthian_gui_config.topbar_height
-		self.status_l = int(1.2*zynthian_gui_config.topbar_height)
+		self.status_l = int(1.8*zynthian_gui_config.topbar_height)
 		self.status_rh = max(2,self.status_h/4)
 		self.status_fs = int(self.status_h/3)
 		self.status_lpad = self.status_fs
@@ -231,7 +232,7 @@ class zynthian_gui_selector:
 			except Exception as e:
 				logging.error(e)
 
-			# Display flags
+			# Display error flags
 			flags = ""
 			color = zynthian_gui_config.color_status_error
 			if 'xrun' in status and status['xrun']:
@@ -240,31 +241,11 @@ class zynthian_gui_selector:
 			elif 'undervoltage' in status and status['undervoltage']:
 				flags = "\uf0e7"
 			elif 'overtemp' in status and status['overtemp']:
-				flags = "\uf2c7"
-			else:
-				if 'audio_recorder' in status:
-					if status['audio_recorder']=='REC':
-						flags = "\uf111"
-						color = zynthian_gui_config.color_status_record
-					elif status['audio_recorder']=='PLAY':
-						flags = "\uf04b"
-						color = zynthian_gui_config.color_status_play
-					elif status['audio_recorder']=='PLAY+REC':
-						flags = "\uf144"
-						color = zynthian_gui_config.color_status_record
-				if not flags and 'midi_recorder' in status:
-					if status['midi_recorder']=='REC':
-						flags = "\uf111"
-						color = zynthian_gui_config.color_status_record
-					elif status['midi_recorder']=='PLAY':
-						flags = "\uf04b"
-						color = zynthian_gui_config.color_status_play
-					elif status['midi_recorder']=='PLAY+REC':
-						flags = "\uf144"
-						color = zynthian_gui_config.color_status_record
+				#flags = "\uf2c7"
+				flags = "\uf769"
 
-			if not self.status_flags:
-				self.status_flags = self.status_canvas.create_text(
+			if not self.status_error:
+				self.status_error = self.status_canvas.create_text(
 					int(self.status_fs*0.7),
 					int(self.status_h*0.6),
 					width=int(self.status_fs*1.2),
@@ -273,23 +254,62 @@ class zynthian_gui_selector:
 					font=("FontAwesome",self.status_fs),
 					text=flags)
 			else:
-				self.status_canvas.itemconfig(self.status_flags, text=flags, fill=color)
+				self.status_canvas.itemconfig(self.status_error, text=flags, fill=color)
+
+			# Display Rec/Play flags
+			flags = ""
+			color = zynthian_gui_config.color_bg
+			if 'audio_recorder' in status:
+				if status['audio_recorder']=='REC':
+					flags = "\uf111"
+					color = zynthian_gui_config.color_status_record
+				elif status['audio_recorder']=='PLAY':
+					flags = "\uf04b"
+					color = zynthian_gui_config.color_status_play
+				elif status['audio_recorder']=='PLAY+REC':
+					flags = "\uf144"
+					color = zynthian_gui_config.color_status_record
+			if not flags and 'midi_recorder' in status:
+				if status['midi_recorder']=='REC':
+					flags = "\uf111"
+					color = zynthian_gui_config.color_status_record
+				elif status['midi_recorder']=='PLAY':
+					flags = "\uf04b"
+					color = zynthian_gui_config.color_status_play
+				elif status['midi_recorder']=='PLAY+REC':
+					flags = "\uf144"
+					color = zynthian_gui_config.color_status_record
+
+			if not self.status_recplay:
+				self.status_recplay = self.status_canvas.create_text(
+					int(self.status_fs*2.7),
+					int(self.status_h*0.6),
+					width=int(self.status_fs*1.2),
+					justify=tkinter.RIGHT,
+					fill=color,
+					font=("FontAwesome",self.status_fs),
+					text=flags)
+			else:
+				self.status_canvas.itemconfig(self.status_recplay, text=flags, fill=color)
 
 			# Display MIDI flag
 			flags=""
 			if 'midi' in status and status['midi']:
-				#flags="\uf001";
 				flags="M";
+				#flags="\uf001";
+				#flags="\uf548";
 			else:
 				flags=""
 			if not self.status_midi:
+				mfs=int(self.status_fs*1.2)
 				self.status_midi = self.status_canvas.create_text(
-					int(self.status_l-self.status_fs),
+					int(self.status_l-mfs),
 					int(self.status_h*0.6),
-					width=int(self.status_fs*1.2),
+					width=int(mfs*1.2),
 					justify=tkinter.RIGHT,
 					fill=zynthian_gui_config.color_status_midi,
-					font=(zynthian_gui_config.font_family,self.status_fs),
+					font=(zynthian_gui_config.font_family, mfs),
+					#font=("FontAwesome",self.status_fs),
 					text=flags)
 			else:
 				self.status_canvas.itemconfig(self.status_midi, text=flags)
