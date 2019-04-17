@@ -70,7 +70,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
 
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 
 		if zynthian_gui_config.midi_single_active_channel:
 			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
@@ -79,7 +79,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.network_info,0,"Network Info"))
 
 		if self.is_wifi_active():
@@ -104,10 +104,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.start_aubionotes,0,"[  ] Audio->MIDI"))
 
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.update_software,0,"Update Software"))
 		#self.list_data.append((self.update_library,0,"Update Zynthian Library"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
@@ -119,8 +119,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		self.last_action=self.list_data[i][0]
-		self.last_action()
+		if self.list_data[i][0]:
+			self.last_action=self.list_data[i][0]
+			self.last_action()
 
 
 	def set_select_path(self):
@@ -270,10 +271,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			if self.last_action==self.test_midi:
 				check_output("systemctl stop a2jmidid", shell=True)
 				self.zyngui.all_sounds_off()
-
-
-	def do_nothing(self):
-		pass
 
 
 	def toggle_single_channel(self):

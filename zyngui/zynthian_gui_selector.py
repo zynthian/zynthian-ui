@@ -318,7 +318,7 @@ class zynthian_gui_selector:
 		self.listbox.delete(0, tkinter.END)
 		if not self.list_data:
 			self.list_data=[]
-		for item in self.list_data:
+		for i, item in enumerate(self.list_data):
 			self.listbox.insert(tkinter.END, item[2])
 
 
@@ -360,12 +360,15 @@ class zynthian_gui_selector:
 
 
 	def select_listbox(self,index):
-		self.listbox.selection_clear(0,tkinter.END)
-		self.listbox.selection_set(index)
-		if index>self.index: self.listbox.see(index+1)
-		elif index<self.index: self.listbox.see(index-1)
-		else: self.listbox.see(index)
-		self.index=index
+		if index < len(self.list_data) and self.list_data[index][0]:
+			self.listbox.selection_clear(0,tkinter.END)
+			self.listbox.selection_set(index)
+			if index>self.index: self.listbox.see(index+1)
+			elif index<self.index: self.listbox.see(index-1)
+			else: self.listbox.see(index)
+			self.index=index
+		else:
+			logging.error("Index out of range: {}".format(index))
 
 
 	def click_listbox(self, index=None, t='S'):
