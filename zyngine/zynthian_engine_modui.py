@@ -591,7 +591,8 @@ class zynthian_engine_modui(zynthian_engine):
 		if 'devList' in res:
 			data=[]
 			for dev in res['devList']: 
-				if dev not in res['devsInUse']: data.append(dev)
+				#if dev not in res['devsInUse']: 
+				data.append(dev)
 			if len(data)>0:
 				self.api_post_request("/jack/set_midi_devices",json=data)
 				#print("API /jack/set_midi_devices => "+str(data))

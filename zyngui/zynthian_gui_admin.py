@@ -70,7 +70,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
 
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 
 		if zynthian_gui_config.midi_single_active_channel:
 			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
@@ -79,7 +79,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.network_info,0,"Network Info"))
 
 		if self.is_wifi_active():
@@ -104,10 +104,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.start_aubionotes,0,"[  ] Audio->MIDI"))
 
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.update_software,0,"Update Software"))
 		#self.list_data.append((self.update_library,0,"Update Zynthian Library"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
@@ -119,8 +119,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		self.last_action=self.list_data[i][0]
-		self.last_action()
+		if self.list_data[i][0]:
+			self.last_action=self.list_data[i][0]
+			self.last_action()
 
 
 	def set_select_path(self):
@@ -272,10 +273,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				self.zyngui.all_sounds_off()
 
 
-	def do_nothing(self):
-		pass
-
-
 	def toggle_single_channel(self):
 		if zynthian_gui_config.midi_single_active_channel:
 			logging.info("Single Channel Mode OFF")
@@ -329,9 +326,32 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				logging.info("Starting %s ..." % ifc)
 				try:
 					check_output("ifconfig {} up".format(ifc), shell=True)
+					pass
 				except Exception as e:
 					logging.error(e)
-		sleep(3)
+
+		sleep(2)
+
+		counter=0
+		success=False
+		while True:
+			counter += 1
+			for ifc, snic in self.get_netinfo().items():
+				#logging.debug("{} => {}, {}".format(ifc,snic.family,snic.address))
+				if ifc.startswith("wlan") and snic.family==socket.AF_INET and snic.address:
+					success=True
+					break
+
+			if success:
+				break
+			elif counter>10:
+				self.zyngui.show_info("STARTING WIFI ERROR\n")
+				self.zyngui.add_info("Can't start WIFI network!","WARNING")
+				self.zyngui.hide_info_timer(2000)
+				break
+
+			sleep(1)
+
 		self.fill_list()
 
 
@@ -344,7 +364,27 @@ class zynthian_gui_admin(zynthian_gui_selector):
 					check_output("ifconfig {} down".format(ifc), shell=True)
 				except Exception as e:
 					logging.error(e)
-		sleep(1)
+
+		counter = 0
+		success = False
+		while not success:
+			counter += 1
+			success = True
+			for ifc in self.get_netinfo():
+				#logging.debug("{} is UP".format(ifc))
+				if ifc.startswith("wlan"):
+					success = False
+					break
+
+			if not success:
+				if counter>5:
+					self.zyngui.show_info("STOPPING WIFI ERROR\n")
+					self.zyngui.add_info("Can't stop WIFI network!","WARNING")
+					self.zyngui.hide_info_timer(2000)
+					break
+
+				sleep(1)
+
 		self.fill_list()
 
 

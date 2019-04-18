@@ -624,6 +624,9 @@ class zynthian_gui:
 				if self.curlayer is not None:
 					self.show_screen('control')
 			else:
+				if self.active_screen=='preset':
+					self.screens['preset'].restore_preset()
+
 				self.show_screen('layer')
 
 		elif i==1:
@@ -725,6 +728,9 @@ class zynthian_gui:
 				self.show_screen('layer')
 
 			else:
+				if self.active_screen=='preset':
+					self.screens['preset'].restore_preset()
+
 				self.show_screen('layer')
 
 		elif i==1:
