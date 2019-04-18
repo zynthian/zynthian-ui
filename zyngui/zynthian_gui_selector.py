@@ -376,32 +376,28 @@ class zynthian_gui_selector:
 		if self.zselector:
 			self.zselector.read_zyncoder()
 			if self.index!=self.zselector.value:
-				self.select_listbox(self.zselector.value)
+				self.select(self.zselector.value)
 
 
 	def select_listbox(self,index):
-		if index < len(self.list_data) and self.list_data[index][0]:
-			self.listbox.selection_clear(0,tkinter.END)
-			self.listbox.selection_set(index)
-			if index>self.index: self.listbox.see(index+1)
-			elif index<self.index: self.listbox.see(index-1)
-			else: self.listbox.see(index)
-			self.index=index
-		else:
-			logging.error("Index out of range: {}".format(index))
-
-
-	def click_listbox(self, index=None, t='S'):
-		if index is not None:
-			self.select_listbox(index)
-		else:
-			self.index=self.get_cursel()
-
-		self.select_action(self.index, t)
-
-
-	def switch_select(self, t='S'):
-		self.click_listbox(None, t)
+		n = len(self.list_data)
+		if index>=0 and index<n:
+			# Skip separator items ...
+			if self.list_data[index][0] is None:
+				if self.index<index:
+					self.select_listbox(index+1)
+				elif self.index>index:
+					self.select_listbox(index-1)
+			else:
+				# Set selection
+				self.listbox.selection_clear(0,tkinter.END)
+				self.listbox.selection_set(index)
+				# Set window
+				if index>self.index: self.listbox.see(index+1)
+				elif index<self.index: self.listbox.see(index-1)
+				else: self.listbox.see(index)
+				# Set index value
+				self.index=index
 
 
 	def select(self, index=None):
@@ -417,6 +413,19 @@ class zynthian_gui_selector:
 
 	def select_down(self, n=1):
 		self.select(self.index-n)
+
+
+	def click_listbox(self, index=None, t='S'):
+		if index is not None:
+			self.select(index)
+		else:
+			self.index=self.get_cursel()
+
+		self.select_action(self.index, t)
+
+
+	def switch_select(self, t='S'):
+		self.click_listbox(None, t)
 
 
 	def select_action(self, index, t='S'):
