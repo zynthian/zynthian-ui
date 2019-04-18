@@ -493,6 +493,7 @@ class zynthian_gui_selector:
 		self.select_path_dir = 2
 		self.label_select_path.place(x=0, y=0)
 
+
 	def cb_scroll_select_path(self):
 		if self.shown:
 			if self.dscroll_select_path():
