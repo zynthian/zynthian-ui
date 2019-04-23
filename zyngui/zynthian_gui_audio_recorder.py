@@ -26,6 +26,7 @@
 import os
 import sys
 import logging
+import threading
 from time import sleep
 from os.path import isfile, isdir, join, basename
 from subprocess import check_output, Popen, PIPE
@@ -108,6 +109,11 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		if status=="PLAY" or status=="PLAY+REC":
 			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
 
+		if zynthian_gui_config.audio_play_loop:
+			self.list_data.append(("LOOP",0,"[x] Loop Play"))
+		else:
+			self.list_data.append(("LOOP",0,"[ ] Loop Play"))
+
 		self.list_data.append((None,0,"-----------------------------"))
 
 		i=1
@@ -154,6 +160,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.stop_playing()
 		elif fpath=="STOP_RECORDING":
 			self.stop_recording()
+		elif fpath=="LOOP":
+			self.toggle_loop()
 		elif fpath:
 			if t=='S':
 				self.start_playing(fpath)
@@ -201,9 +209,18 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.stop_playing()
 		logging.info("STARTING AUDIO PLAY '{}' ...".format(fpath))
 		try:
-			cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -loop 0 -ao jack {}".format(fpath)
+			if zynthian_gui_config.audio_play_loop:
+				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -loop 0 -ao jack {}".format(fpath)
+			else:
+				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -ao jack {}".format(fpath)
 			logging.info("COMMAND: %s" % cmd)
-			self.play_proc=Popen(cmd.split(" "), stdin=PIPE, universal_newlines=True)
+			def runInThread(onExit, pargs):
+				self.play_proc = Popen(pargs, stdin=PIPE, universal_newlines=True)
+				self.play_proc.wait()
+				self.stop_playing()
+				return
+			thread = threading.Thread(target=runInThread, args=(self.stop_playing, cmd.split(" ")), daemon=True)
+			thread.start()
 			sleep(0.5)
 			self.current_record=fpath
 		except Exception as e:
@@ -218,11 +235,22 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		try:
 			self.play_proc.stdin.write("quit\n")
 			self.play_proc.stdin.flush()
+			sleep(0.5)
+			self.play_proc.terminate()
 		except:
 			pass
 		self.current_record=None
 		self.update_list()
 
+	def toggle_loop(self):
+		if zynthian_gui_config.audio_play_loop:
+			logging.info("Audio play loop OFF")
+			zynthian_gui_config.audio_play_loop=False
+		else:
+			logging.info("Audio play loop ON")
+			zynthian_gui_config.audio_play_loop=True
+		zynconf.save_config({"ZYNTHIAN_AUDIO_PLAY_LOOP": str(int(zynthian_gui_config.audio_play_loop))})
+		self.update_list()
 
 	def set_select_path(self):
 		self.select_path.set("Audio Recorder")
