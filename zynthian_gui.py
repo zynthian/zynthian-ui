@@ -40,6 +40,8 @@ from subprocess import check_output
 # Zynthian specific modules
 import zynconf
 import zynautoconnect
+from jackpeak import *
+from jackpeak.jackpeak import lib_jackpeak, lib_jackpeak_init
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine import zynthian_zcmidi
@@ -142,6 +144,13 @@ class zynthian_gui:
 
 		self.status_info = {}
 		self.status_counter = 0
+		
+		# Initialize peak audio monitor
+		try:
+			global lib_jackpeak
+			lib_jackpeak = lib_jackpeak_init()
+		except Exception as e:
+			logging.error("ERROR initializing jackpeak: %s" % e)
 
 		# Initialize Controllers (Rotary and Switches), MIDI and OSC
 		try:
@@ -1104,6 +1113,9 @@ class zynthian_gui:
 			# Get CPU Load
 			#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
 			self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
+			
+			# Get audio peak level
+			self.status_info['peak'] = lib_peak.getPeak(2)
 
 			# Get Status Flags (once each 5 refreshes)
 			if self.status_counter>5:

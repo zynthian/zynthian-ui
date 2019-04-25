@@ -56,6 +56,7 @@ class zynthian_gui_selector:
 		self.zyngui = zynthian_gui_config.zyngui
 
 		self.status_rect = None
+		self.status_peak = None
 		self.status_error = None
 		self.status_recplay = None
 		self.status_midi = None
@@ -231,7 +232,25 @@ class zynthian_gui_selector:
 					self.status_rect=self.status_canvas.create_rectangle((0, 0, l, self.status_rh), fill=color, width=0)
 			except Exception as e:
 				logging.error(e)
-
+			
+			# Display audio peak (lazy copy of CPU-load bar - needs to be improved)
+			# Position at right most 2 pixels of lower half of status window, size 2 pixels wide, half status window high
+			l = int(status['peak']*self.status_l/100)
+			if(int(status['peak']) > 95)
+				color = "#FF0000"
+			elif(int(status['peak']) > 80)
+				color = "#FFFF00"
+			elif(int(status['peak']) > 10)
+				color = "#00FF00"
+			else
+				color = "#000000"
+			try:
+				if self.status_peak:
+					self.status_canvas.coords(self.status_rect,(self.status_l-2, self.status_rh, self.status_l, self.status_h))
+					self.status_canvas.itemconfig(self.status_rect, fill=color)
+				else:
+					self.status_rect=self.status_canvas.create_rectangle((self.status_l-2, self.status_rh, self.status_l, self.status_h), fill=color, width=0)
+			
 			# Display error flags
 			flags = ""
 			color = zynthian_gui_config.color_status_error
