@@ -199,6 +199,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			sleep(0.5)
 		self.update_list()
 	
+
 	def start_playing(self, fpath):
 		if self.play_proc and self.play_proc.poll() is None:
 			self.stop_playing()
@@ -236,6 +237,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.current_record=None
 		self.update_list()
 
+
 	def toggle_loop(self):
 		if zynthian_gui_config.midi_play_loop:
 			logging.info("MIDI play loop OFF")
@@ -245,6 +247,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			zynthian_gui_config.midi_play_loop=True
 		zynconf.save_config({"ZYNTHIAN_MIDI_PLAY_LOOP": str(int(zynthian_gui_config.midi_play_loop))})
 		self.update_list()
+
 
 	def set_select_path(self):
 		self.select_path.set("MIDI Recorder")
