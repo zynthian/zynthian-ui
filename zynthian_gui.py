@@ -36,6 +36,7 @@ from os.path import isfile
 from datetime import datetime
 from threading  import Thread
 from subprocess import check_output
+from ctypes import c_float
 
 # Zynthian specific modules
 import zynconf
@@ -1115,7 +1116,8 @@ class zynthian_gui:
 			self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
 			
 			# Get audio peak level
-			self.status_info['peak'] = lib_peak.getPeak(2)
+			self.status_info['peakA'] = lib_jackpeak.getPeak(0, c_float(0.2), True)
+			self.status_info['peakB'] = lib_jackpeak.getPeak(1, c_float(0.2), True)
 
 			# Get Status Flags (once each 5 refreshes)
 			if self.status_counter>5:
