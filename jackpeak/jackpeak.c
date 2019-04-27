@@ -98,26 +98,26 @@ float getPeakRaw(unsigned int channel) {
 }
 
 float getPeak(unsigned int channel, float damping, unsigned int db) {
-	float fPeak = 0;
-	if(damping > 1)
-		damping = 1; // ensure signal does not increase (1 = no decay)
-	if(channel <= CHANNEL_ALL) {
-		fPeak = getPeakRaw(channel);
-		if(fPeak <= g_fDamped[channel] - damping)
-			fPeak -= damping;
-		if(fPeak < 0.0f)
-			fPeak = 0.0f;
-		g_fDamped[channel] = fPeak;
-	}
-	if(db) {
-		if(fPeak == 0)
-			fPeak = -200;
-		else
-			fPeak = 20 * log10f(fPeak);
-		if(fPeak < -200)
-			fPeak = -200;
-	}
-	return fPeak;
+        float fPeak = 0;
+        if(damping > 1)
+                damping = 1; // ensure signal does not increase (1 = no decay)
+        if(channel <= CHANNEL_ALL) {
+                fPeak = getPeakRaw(channel);
+                if(fPeak < g_fDamped[channel] * damping)
+                        fPeak = g_fDamped[channel] * damping;
+                if(fPeak < 0.0f)
+                        fPeak = 0.0f;
+                g_fDamped[channel] = fPeak;
+        }
+        if(db) {
+                if(fPeak == 0)
+                        fPeak = -200;
+                else
+                        fPeak = 20 * log10f(fPeak);
+                if(fPeak < -200)
+                        fPeak = -200;
+        }
+        return fPeak;
 }
 
 void connect(const char* source, unsigned int input) {
