@@ -347,12 +347,6 @@ def set_midi_config():
 set_midi_config()
 
 #------------------------------------------------------------------------------
-# Player configuration
-#------------------------------------------------------------------------------
-midi_play_loop=int(os.environ.get('ZYNTHIAN_MIDI_PLAY_LOOP',0))
-audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
-
-#------------------------------------------------------------------------------
 # Create & Configure Top Level window 
 #------------------------------------------------------------------------------
 
