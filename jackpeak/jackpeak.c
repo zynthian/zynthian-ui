@@ -123,41 +123,23 @@ float getPeakRaw(unsigned int channel) {
 	return fPeak;
 }
 
-float getPeak(unsigned int channel, unsigned int db) {
-        float fPeak = 0;
-        if(channel <= CHANNEL_ALL) {
-                fPeak = getPeakRaw(channel);
-                if(fPeak < g_fDamped[channel] * g_fDampingFactor)
-                        fPeak = g_fDamped[channel] * g_fDampingFactor;
-                if(fPeak < 0.0f)
-                        fPeak = 0.0f;
-                g_fDamped[channel] = fPeak;
-        }
-        if(db) {
-                if(fPeak == 0)
-                        fPeak = -200;
-                else
-                        fPeak = 20 * log10f(fPeak);
-                if(fPeak < -200)
-                        fPeak = -200;
-        }
-        return fPeak;
+float getPeak(unsigned int channel) {
+    float fPeak = 0;
+    if(channel <= CHANNEL_ALL) {
+        fPeak = getPeakRaw(channel);
+        if(fPeak < g_fDamped[channel] * g_fDampingFactor)
+            fPeak = g_fDamped[channel] * g_fDampingFactor;
+        if(fPeak < 0.0f)
+            fPeak = 0.0f;
+        g_fDamped[channel] = fPeak;
+    }
+    return convertToDBFS(fPeak);
 }
 
-float getHold(unsigned int channel, unsigned int db) {
-    float fHold = 0;
-    if(channel <= CHANNEL_ALL) {
-        fHold = g_fHold[channel];
-        if(db) {
-            if(fHold == 0)
-                    fHold = -200;
-            else
-                    fHold = 20 * log10f(fHold);
-            if(fHold < -200)
-                    fHold = -200;
-        }
-    }
-    return fHold;
+float getHold(unsigned int channel) {
+    if(channel > CHANNEL_ALL)
+        return -200;
+    return(convertToDBFS(g_fHold[channel]));
 }
 
 void connect(const char* source, unsigned int input) {
@@ -242,4 +224,13 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		}
 	}
 	return 0;
+}
+
+static float convertToDBFS(float raw) {
+    if(raw <= 0)
+        return -200;
+    float fValue = 20 * log10f(raw);
+    if(fValue < -200)
+        fValue = -200;
+    return fValue;
 }

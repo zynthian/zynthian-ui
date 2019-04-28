@@ -59,9 +59,11 @@ class zynthian_gui_selector:
 		self.status_peak_lA = None
 		self.status_peak_lB = None
 		self.status_peak_mA = None
+		self.status_hold_A = None
 		self.status_peak_mB = None
 		self.status_peak_hA = None
 		self.status_peak_hB = None
+		self.status_hold_B = None
 		self.status_error = None
 		self.status_recplay = None
 		self.status_midi = None
@@ -252,6 +254,10 @@ class zynthian_gui_selector:
 				llB = min(signal, peakHigh) * self.status_l
 				lmB = min(signal, peakOver) * self.status_l
 				lhB = min(signal, 1) * self.status_l
+				signal = max(0, 1 + status['holdA'] / 50)
+				lholdA = min(signal, 1) * self.status_l
+				signal = max(0, 1 + status['holdB'] / 50)
+				lholdB = min(signal, 1) * self.status_l
 				try:
 					# Channel A (left)
 					if self.status_peak_lA:
@@ -275,6 +281,18 @@ class zynthian_gui_selector:
 							self.status_canvas.itemconfig(self.status_peak_hA, state="hidden")
 					else:
 						self.status_peak_hA=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C00000", width=0, state='hidden')
+					if self.status_hold_A:
+						self.status_canvas.coords(self.status_hold_A,(lholdA, 0, lholdA, self.status_rh/2 - 1))
+						if lholdA >= scale_lh:
+							self.status_canvas.itemconfig(self.status_hold_A, state="normal", fill="#FF0000")
+						elif lholdA >= scale_lm:
+							self.status_canvas.itemconfig(self.status_hold_A, state="normal", fill="#FFFF00")
+						elif lholdA > 0:
+							self.status_canvas.itemconfig(self.status_hold_A, state="normal", fill="#00FF00")
+						else:
+							self.status_canvas.itemconfig(self.status_hold_A, state="hidden")
+					else:
+						self.status_hold_A=self.status_canvas.create_rectangle((0, 0, 0, 0), width=0, state='hidden')
 					# Channel B (right)
 					if self.status_peak_lB:
 						self.status_canvas.coords(self.status_peak_lB,(0, self.status_rh/2, llB, self.status_rh))
@@ -297,6 +315,18 @@ class zynthian_gui_selector:
 							self.status_canvas.itemconfig(self.status_peak_hB, state="hidden")
 					else:
 						self.status_peak_hB=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C00000", width=0, state='hidden')
+					if self.status_hold_B:
+						self.status_canvas.coords(self.status_hold_B,(lholdB, self.status_rh/2, lholdB, self.status_rh))
+						if lholdB >= scale_lh:
+							self.status_canvas.itemconfig(self.status_hold_B, state="normal", fill="#FF0000")
+						elif lholdB >= scale_lm:
+							self.status_canvas.itemconfig(self.status_hold_B, state="normal", fill="#FFFF00")
+						elif lholdB > 0:
+							self.status_canvas.itemconfig(self.status_hold_B, state="normal", fill="#00FF00")
+						else:
+							self.status_canvas.itemconfig(self.status_hold_B, state="hidden")
+					else:
+						self.status_hold_B=self.status_canvas.create_rectangle((0, 0, 0, 0), width=0, state='hidden')
 				except Exception as e:
 					logging.error("%s" % e)
 				

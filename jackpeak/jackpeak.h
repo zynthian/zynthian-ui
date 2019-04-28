@@ -63,19 +63,17 @@ void setHoldCount(unsigned int count);
 */
 float getPeakRaw(unsigned int channel);
 
-/** @brief  Get damped peak value since last request
+/** @brief  Get damped peak value in dBFS since last request
 *   @param  channel Audio channel to read
-*   @param  db True to convert value to dB
 *	@retval float Peak or decaying value since last read [0..1 | 0..-200]
 */
-float getPeak(unsigned int channel, unsigned int db);
+float getPeak(unsigned int channel);
 
-/** @brief  Get peak hold value
+/** @brief  Get peak hold value in dBFS
 *   @param  channel Audio channel hold to read
-*   @param  db True to convert value to dB
 *   @retval float Highest value in past _count_ calls to getPeak()
 */
-float getHold(unsigned int channel, unsigned int db);
+float getHold(unsigned int channel);
 
 /**	@brief	Connect a Jack source
 *	@param	source Jack source name
@@ -99,3 +97,9 @@ void disconnectAll(unsigned int input);
 	@param	pArgs Pointer to arguments
 */
 static int onJackProcess(jack_nframes_t nframes, void *arg);
+
+/** @brief  Convert raw level (0..1) to dBFS (0..-200)
+*   @param  raw Raw level [0..1]
+*   @retval float dBFS level
+*/
+static float convertToDBFS(float raw);
