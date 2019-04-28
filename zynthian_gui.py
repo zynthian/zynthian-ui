@@ -145,6 +145,8 @@ class zynthian_gui:
 		try:
 			global lib_jackpeak
 			lib_jackpeak = lib_jackpeak_init()
+			lib_jackpeak.setDecay(c_float(0.2))
+			lib_jackpeak.setHoldCount(10)
 		except Exception as e:
 			logging.error("ERROR initializing jackpeak: %s" % e)
 
@@ -1095,8 +1097,8 @@ class zynthian_gui:
 			self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
 			
 			# Get audio peak level
-			self.status_info['peakA'] = lib_jackpeak.getPeak(0, c_float(0.2), True)
-			self.status_info['peakB'] = lib_jackpeak.getPeak(1, c_float(0.2), True)
+			self.status_info['peakA'] = lib_jackpeak.getPeak(0, True)
+			self.status_info['peakB'] = lib_jackpeak.getPeak(1, True)
 
 			# Get Status Flags (once each 5 refreshes)
 			if self.status_counter>5:

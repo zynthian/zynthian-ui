@@ -44,6 +44,19 @@ int initJackpeak();
 */
 void endJackpeak();
 
+/** @brief  Set decay rate
+*   @param  factor Factor by which meter level decreases each read [0..1]
+*   @note   Example: Set factor to 0.1 to decrease level (0.1 x level) each time getPeak() is called.
+*   @note   Factor of 1 will keep level same. Factor higher than 1 will be taken as factor = 1.
+*/
+void setDecay(float factor);
+
+/** @brief  Set the peak hold indication count
+*   @param  count Quantity of reads that the peak hold value will persist
+*   @note   The peak hold value is the highest sample value in past _count_ calls to getPeak().
+*/
+void setHoldCount(unsigned int count);
+
 /** @brief  Get raw peak value since last request
 *   @param  channel Audio channel to read
 *	@retval	float Peak value since last read [0..1]
@@ -52,11 +65,17 @@ float getPeakRaw(unsigned int channel);
 
 /** @brief  Get damped peak value since last request
 *   @param  channel Audio channel to read
-*   @param  damping Maximum raw value to decay with each call to getPeak
 *   @param  db True to convert value to dB
 *	@retval float Peak or decaying value since last read [0..1 | 0..-200]
 */
-float getPeak(unsigned int channel, float damping, unsigned int db);
+float getPeak(unsigned int channel, unsigned int db);
+
+/** @brief  Get peak hold value
+*   @param  channel Audio channel hold to read
+*   @param  db True to convert value to dB
+*   @retval float Highest value in past _count_ calls to getPeak()
+*/
+float getHold(unsigned int channel, unsigned int db);
 
 /**	@brief	Connect a Jack source
 *	@param	source Jack source name

@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 #********************************************************************
 # ZYNTHIAN PROJECT: Jackpeak Python Wrapper
-# 
+#
 # A Python wrapper for jackpeak library
-# 
+#
 # Copyright (C) 2019 Brian Walton <brian@riban.co.uk>
 #
 #********************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #********************************************************************
 
 from ctypes import *
@@ -39,6 +39,7 @@ def lib_jackpeak_init():
 		lib_jackpeak.initJackpeak()
 		lib_jackpeak.getPeak.restype = c_float
 		lib_jackpeak.getPeakRaw.restype = c_float
+		lib_jackpeak.getHold.restype = c_float
 	except Exception as e:
 		lib_jackpeak=None
 		print("Can't init jackpeak library: %s" % str(e))

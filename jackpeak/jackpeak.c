@@ -23,7 +23,7 @@
  *
  * ******************************************************************
  */
- 
+
 #include <stdio.h> //provides printf
 #include <stdlib.h> //provides exit
 #include <math.h> //provides fabs
@@ -36,6 +36,10 @@ jack_port_t * g_pInputPort[2];
 jack_client_t *g_pJackClient = NULL;
 float g_fPeak[2] = {0.0f, 0.0f};
 float g_fDamped[3] = {0.0f, 0.0f, 0.0f};
+float g_fHold[3] = {0.0f, 0.0f, 0.0f};
+float g_fDampingFactor = 0.1f;
+unsigned int g_nHoldMax = 10;
+unsigned int g_nHoldCount[3] = {0, 0, 0};
 
 int initJackpeak() {
 	// Register with Jack server
@@ -52,11 +56,11 @@ int initJackpeak() {
 	#endif
 
 	// Create input ports
-	if (!(g_pInputPort[0] = jack_port_register(g_pJackClient, "Input A", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0))) {
+	if (!(g_pInputPort[0] = jack_port_register(g_pJackClient, "input_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0))) {
 		fprintf(stderr, "libjackpeak cannot register input port A\n");
 		exit(1);
 	}
-	if (!(g_pInputPort[1] = jack_port_register(g_pJackClient, "Input B", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0))) {
+	if (!(g_pInputPort[1] = jack_port_register(g_pJackClient, "input_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0))) {
 		fprintf(stderr, "libjackpeak cannot register input port B\n");
 		exit(1);
 	}
@@ -82,6 +86,18 @@ void endJackpeak() {
 	jack_client_close(g_pJackClient);
 }
 
+void setDecay(float factor) {
+    if(factor > 1)
+        factor = 1;
+    else if(factor < 0)
+        factor = 0;
+    g_fDampingFactor = factor;
+}
+
+void setHoldCount(unsigned int count) {
+    g_nHoldMax = count;
+}
+
 float getPeakRaw(unsigned int channel) {
 	float fPeak = 0;
 	if (channel < CHANNEL_ALL) {
@@ -94,17 +110,25 @@ float getPeakRaw(unsigned int channel) {
 			fPeak = g_fPeak[CHANNEL_B];
 		g_fPeak[CHANNEL_B] = 0;
 	}
+	if(channel <= CHANNEL_ALL) {
+        if(g_fHold[channel] < fPeak) {
+            g_fHold[channel] = fPeak;
+            g_nHoldCount[channel] = g_nHoldMax;
+        }
+        else if(g_nHoldCount[channel] )
+            --g_nHoldCount[channel];
+        else
+            g_fHold[channel] = fPeak;
+	}
 	return fPeak;
 }
 
-float getPeak(unsigned int channel, float damping, unsigned int db) {
+float getPeak(unsigned int channel, unsigned int db) {
         float fPeak = 0;
-        if(damping > 1)
-                damping = 1; // ensure signal does not increase (1 = no decay)
         if(channel <= CHANNEL_ALL) {
                 fPeak = getPeakRaw(channel);
-                if(fPeak < g_fDamped[channel] * damping)
-                        fPeak = g_fDamped[channel] * damping;
+                if(fPeak < g_fDamped[channel] * g_fDampingFactor)
+                        fPeak = g_fDamped[channel] * g_fDampingFactor;
                 if(fPeak < 0.0f)
                         fPeak = 0.0f;
                 g_fDamped[channel] = fPeak;
@@ -118,6 +142,22 @@ float getPeak(unsigned int channel, float damping, unsigned int db) {
                         fPeak = -200;
         }
         return fPeak;
+}
+
+float getHold(unsigned int channel, unsigned int db) {
+    float fHold = 0;
+    if(channel <= CHANNEL_ALL) {
+        fHold = g_fHold[channel];
+        if(db) {
+            if(fHold == 0)
+                    fHold = -200;
+            else
+                    fHold = 20 * log10f(fHold);
+            if(fHold < -200)
+                    fHold = -200;
+        }
+    }
+    return fHold;
 }
 
 void connect(const char* source, unsigned int input) {
@@ -162,7 +202,7 @@ void disconnect(const char* source, unsigned int input) {
 			fprintf(stderr,"Disconnecting '%s' from '%s'...\n", jack_port_name(pPort), jack_port_name(g_pInputPort[j]));
 			#endif
 			if (jack_disconnect(g_pJackClient, jack_port_name(pPort), jack_port_name(g_pInputPort[j]))) {
-				fprintf(stderr, "Cannot connect port '%s' to '%s'\n", jack_port_name(pPort), jack_port_name(g_pInputPort[j]));
+				fprintf(stderr, "Cannot disconnect port '%s' to '%s'\n", jack_port_name(pPort), jack_port_name(g_pInputPort[j]));
 			}
 		}
 	}
