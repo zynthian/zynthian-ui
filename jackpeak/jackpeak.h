@@ -75,23 +75,6 @@ float getPeak(unsigned int channel);
 */
 float getHold(unsigned int channel);
 
-/**	@brief	Connect a Jack source
-*	@param	source Jack source name
-*	@param	Input [CHANNEL_A | CHANNEL_B | CHANNEL_ALL]
-*/
-void connect(const char* source, unsigned int input);
-
-/**	@brief	Disconnect a Jack source
-*	@param	source Jack source name
-*	@param	input [CHANNEL_A | CHANNEL_B | CHANNEL_ALL]
-*/
-void disconnect(const char* source, unsigned int input);
-
-/**	@brief	Disconnect all Jack sources
-*	@param	input [CHANNEL_A | CHANNEL_B | CHANNEL_ALL]
-*/
-void disconnectAll(unsigned int input);
-
 /**	@brief	Callback to handle jack process
 	@param	nFrames Quantity of frames available
 	@param	pArgs Pointer to arguments

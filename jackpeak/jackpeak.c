@@ -82,7 +82,6 @@ int initJackpeak() {
 }
 
 void endJackpeak() {
-	disconnectAll(CHANNEL_ALL);
 	jack_client_close(g_pJackClient);
 }
 
@@ -140,69 +139,6 @@ float getHold(unsigned int channel) {
     if(channel > CHANNEL_ALL)
         return -200;
     return(convertToDBFS(g_fHold[channel]));
-}
-
-void connect(const char* source, unsigned int input) {
-	if(input > 2) {
-		fprintf(stderr, "Invalid input %d\n", input);
-		return;
-	}
-	jack_port_t *pPort = jack_port_by_name(g_pJackClient, source);
-	if (pPort == NULL) {
-		fprintf(stderr, "Can't find source port '%s'\n", source);
-		return;
-	}
-
-	int j;
-	for(j = 0; j < 2; ++j) {
-		if(input == j || input == CHANNEL_ALL) {
-			#ifdef DEBUG
-			fprintf(stderr,"Connecting '%s' to '%s'...\n", jack_port_name(pPort), jack_port_name(g_pInputPort[j]));
-			#endif
-			if (jack_connect(g_pJackClient, jack_port_name(pPort), jack_port_name(g_pInputPort[j]))) {
-				fprintf(stderr, "Cannot connect port '%s' to '%s'\n", jack_port_name(pPort), jack_port_name(g_pInputPort[j]));
-			}
-		}
-	}
-}
-
-void disconnect(const char* source, unsigned int input) {
-	if(input > 2) {
-		fprintf(stderr, "Invalid input %d\n", input);
-		return;
-	}
-	jack_port_t *pPort = jack_port_by_name(g_pJackClient, source);
-	if (pPort == NULL) {
-		fprintf(stderr, "Can't find source port '%s'\n", source);
-		return;
-	}
-
-	int j;
-	for(j = 0; j < 2; ++j) {
-		if(input == j || input == CHANNEL_ALL) {
-			#ifdef DEBUG
-			fprintf(stderr,"Disconnecting '%s' from '%s'...\n", jack_port_name(pPort), jack_port_name(g_pInputPort[j]));
-			#endif
-			if (jack_disconnect(g_pJackClient, jack_port_name(pPort), jack_port_name(g_pInputPort[j]))) {
-				fprintf(stderr, "Cannot disconnect port '%s' to '%s'\n", jack_port_name(pPort), jack_port_name(g_pInputPort[j]));
-			}
-		}
-	}
-}
-
-void disconnectAll(unsigned int input) {
-	const char **ppPorts;
-	unsigned int i, j;
-	for(j = 0; j < 2; ++j) {
-		if(input == j || input == CHANNEL_ALL) {
-			if (g_pInputPort[j] != NULL ) {
-				ppPorts = jack_port_get_all_connections(g_pJackClient, g_pInputPort[j]);
-				for (i=0; ppPorts && ppPorts[i]; i++) {
-					jack_disconnect(g_pJackClient, ppPorts[i], jack_port_name(g_pInputPort[j]));
-				}
-			}
-		}
-	}
 }
 
 static int onJackProcess(jack_nframes_t nFrames, void *pArgs)

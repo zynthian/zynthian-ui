@@ -275,6 +275,9 @@ def audio_autoconnect():
 	except:
 		pass
 
+	#Get vumeter ports
+	vumeter_out=jclient.get_ports("jackpeak", is_input=True, is_audio=True)
+
 	#Get layers list from UI
 	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 
@@ -294,9 +297,15 @@ def audio_autoconnect():
 						#logger.debug("Connecting to {} ...".format(ao))
 						jclient.connect(ports[0],input_ports[ao][0])
 						jclient.connect(ports[1],input_ports[ao][1])
+						if ao=="system":
+							jclient.connect(ports[0],vumeter_out[0])
+							jclient.connect(ports[1],vumeter_out[1])
 					else:
 						jclient.disconnect(ports[0],input_ports[ao][0])
 						jclient.disconnect(ports[1],input_ports[ao][1])
+						if ao=="system":
+							jclient.disconnect(ports[0],vumeter_out[0])
+							jclient.disconnect(ports[1],vumeter_out[1])
 				except:
 					pass
 
@@ -337,7 +346,7 @@ def get_audio_input_ports():
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
 			parts=aip.name.split(':')
 			client_name=parts[0]
-			if client_name[:7]=="effect_" or client_name=="jack_capture":
+			if client_name[:7]=="effect_" or client_name=="jack_capture" or client_name=="jackpeak":
 				continue
 			if client_name not in res:
 				res[client_name]=[aip]
