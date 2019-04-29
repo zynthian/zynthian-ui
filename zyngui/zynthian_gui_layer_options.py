@@ -205,7 +205,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def layer_midi_chan(self):
-		self.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan)
+		self.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan, self.zyngui.screens['layer'].get_free_midi_chans())
 		self.zyngui.show_modal('midi_chan')
 
 
