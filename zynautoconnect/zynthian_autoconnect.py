@@ -292,23 +292,34 @@ def audio_autoconnect():
 			
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:
-				try:
-					if ao in layer.get_audio_out():
+				if ao in layer.get_audio_out():
+					try:
 						#logger.debug("Connecting to {} ...".format(ao))
 						jclient.connect(ports[0],input_ports[ao][0])
 						jclient.connect(ports[1],input_ports[ao][1])
-						if ao=="system":
+					except:
+						pass
+
+					if ao=="system":
+						try:
 							jclient.connect(ports[0],vumeter_out[0])
 							jclient.connect(ports[1],vumeter_out[1])
-					else:
+						except:
+							pass
+
+				else:
+					try:
 						jclient.disconnect(ports[0],input_ports[ao][0])
 						jclient.disconnect(ports[1],input_ports[ao][1])
-						if ao=="system":
+					except:
+						pass
+
+					if ao=="system":
+						try:
 							jclient.disconnect(ports[0],vumeter_out[0])
 							jclient.disconnect(ports[1],vumeter_out[1])
-				except:
-					pass
-
+						except:
+							pass
 
 	#Get System Capture ports => jack output ports!!
 	system_capture=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
