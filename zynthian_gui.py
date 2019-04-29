@@ -96,6 +96,11 @@ class zynthian_gui:
 		"11": "ALL_SOUNDS_OFF",
 		"12": "ALL_OFF",
 
+		"20": "START_AUDIO_RECORD",
+		"21": "STOP_AUDIO_RECORD",
+		"22": "START_MIDI_RECORD",
+		"23": "STOP_MIDI_RECORD",
+
 		"51": "SELECT",
 		"52": "SELECT_DOWN", 
 		"53": "SELECT_UP",
@@ -469,6 +474,22 @@ class zynthian_gui:
 			self.all_sounds_off()
 			sleep(0.1)
 			self.raw_all_notes_off()
+			
+		elif cuia == "START_AUDIO_RECORD":
+			if len(params) > 0 and params[0] > 0:
+				self.screens['audio_recorder'].start_recording()
+				
+		elif cuia == "STOP_AUDIO_RECORD":
+			if len(params) > 0 and params[0] > 0:
+				self.screens['audio_recorder'].stop_recording()
+				
+		elif cuia == "START_MIDI_RECORD":
+			if len(params) > 0 and params[0] > 0:
+				self.screens['midi_recorder'].start_recording()
+				
+		elif cuia == "STOP_MIDI_RECORD":
+			if len(params) > 0 and params[0] > 0:
+				self.screens['midi_recorder'].stop_recording()
 
 		elif cuia == "SELECT":
 			try:
@@ -1186,7 +1207,7 @@ class zynthian_gui:
 		for n in range(128):
 			lib_zyncoder.zynmidi_send_note_off(chan,n,0)
 
-
+		
 	#------------------------------------------------------------------
 	# MIDI learning
 	#------------------------------------------------------------------
