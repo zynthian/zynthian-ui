@@ -27,6 +27,7 @@ import os
 import sys
 import logging
 import signal
+import threading
 from time import sleep
 from os.path import isfile, isdir, join, basename
 from subprocess import check_output, Popen, PIPE
@@ -102,6 +103,11 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		if status=="PLAY" or status=="PLAY+REC":
 			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
+			
+		if zynthian_gui_config.midi_play_loop:
+			self.list_data.append(("LOOP",0,"[x] Loop Play"))
+		else:
+			self.list_data.append(("LOOP",0,"[ ] Loop Play"))
 
 		self.list_data.append((None,0,"-----------------------------"))
 
@@ -151,6 +157,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.stop_playing()
 		elif fpath=="STOP_RECORDING":
 			self.stop_recording()
+		elif fpath=="LOOP":
+			self.toggle_loop()
 		elif fpath:
 			if t=='S':
 				self.start_playing(fpath)
@@ -190,16 +198,25 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		while self.rec_proc.poll() is None:
 			sleep(0.5)
 		self.update_list()
-
+	
 
 	def start_playing(self, fpath):
 		if self.play_proc and self.play_proc.poll() is None:
 			self.stop_playing()
 		logging.info("STARTING MIDI PLAY '{}' ...".format(fpath))
 		try:
-			cmd="/usr/local/bin/jack-smf-player -s -t -l -a {} {}".format(self.jack_play_port, fpath)
+			if zynthian_gui_config.midi_play_loop:
+				cmd="/usr/local/bin/jack-smf-player -s -t -l -a {} {}".format(self.jack_play_port, fpath)
+			else:
+				cmd="/usr/local/bin/jack-smf-player -s -t -a {} {}".format(self.jack_play_port, fpath)
 			logging.info("COMMAND: %s" % cmd)
-			self.play_proc=Popen(cmd.split(" "))
+			def runInThread(onExit, pargs):
+				self.play_proc = Popen(pargs)
+				self.play_proc.wait()
+				self.stop_playing()
+				return
+			thread = threading.Thread(target=runInThread, args=(self.stop_playing, cmd.split(" ")), daemon=True)
+			thread.start()
 			sleep(0.5)
 			self.current_record=fpath
 		except Exception as e:
@@ -218,6 +235,17 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		except:
 			pass
 		self.current_record=None
+		self.update_list()
+
+
+	def toggle_loop(self):
+		if zynthian_gui_config.midi_play_loop:
+			logging.info("MIDI play loop OFF")
+			zynthian_gui_config.midi_play_loop=False
+		else:
+			logging.info("MIDI play loop ON")
+			zynthian_gui_config.midi_play_loop=True
+		zynconf.save_config({"ZYNTHIAN_MIDI_PLAY_LOOP": str(int(zynthian_gui_config.midi_play_loop))})
 		self.update_list()
 
 
