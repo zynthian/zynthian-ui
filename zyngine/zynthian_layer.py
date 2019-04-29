@@ -40,7 +40,7 @@ class zynthian_layer:
 		self.midi_chan = midi_chan
 
 		self.jackname = None
-		self.audio_out = ["system"]
+		self.audio_out = ["system", "jackpeak"]
 
 		self.bank_list = []
 		self.bank_index = 0
@@ -532,7 +532,7 @@ class zynthian_layer:
 
 
 	def reset_audio_out(self):
-		self.audio_out=["system"]
+		self.audio_out=["system", "jackpeak"]
 
 
 	# ---------------------------------------------------------------------------

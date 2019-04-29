@@ -272,6 +272,7 @@ force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 #------------------------------------------------------------------------------
 
 restore_last_state=int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE',False))
+show_cpu=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU',False))
 
 #------------------------------------------------------------------------------
 # MIDI Configuration
