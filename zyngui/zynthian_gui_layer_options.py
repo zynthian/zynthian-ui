@@ -79,13 +79,13 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		else:
 			self.layer = self.zyngui.screens['layer'].root_layers[self.layer_index]
 
-			#Change to sublayer if not root layer selected (detailed list!)
+			#Change to sublayer mode if not root layer selected => Detailed List!
 			root_layer = self.zyngui.screens['layer'].get_fxchain_root(self.layer)
 			if root_layer!=self.layer:
+				self.detailed_list = True
 				self.sublayer = self.layer
 				self.sublayer_index = self.zyngui.screens['layer'].layers.index(self.sublayer)
 				self.layer = root_layer
-				self.detailed_list = True
 				self.fill_list()
 				return
 			
@@ -133,7 +133,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def show(self):
 		if self.layer_index is None:
-			self.layer_index = self.zyngui.screens['layer'].get_layer_selected()
+			self.layer_index = self.zyngui.screens['layer'].index
 
 		if self.layer_index is not None:
 			super().show()
