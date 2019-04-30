@@ -275,8 +275,8 @@ def audio_autoconnect():
 	except:
 		pass
 
-	#Get vumeter ports
-	vumeter_out=jclient.get_ports("jackpeak", is_input=True, is_audio=True)
+	#Get dpmeter ports
+	dpmeter_out=jclient.get_ports("jackpeak", is_input=True, is_audio=True)
 
 	#Get layers list from UI
 	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
@@ -302,8 +302,8 @@ def audio_autoconnect():
 
 					if ao=="system":
 						try:
-							jclient.connect(ports[0],vumeter_out[0])
-							jclient.connect(ports[1],vumeter_out[1])
+							jclient.connect(ports[0],dpmeter_out[0])
+							jclient.connect(ports[1],dpmeter_out[1])
 						except:
 							pass
 
@@ -316,8 +316,8 @@ def audio_autoconnect():
 
 					if ao=="system":
 						try:
-							jclient.disconnect(ports[0],vumeter_out[0])
-							jclient.disconnect(ports[1],vumeter_out[1])
+							jclient.disconnect(ports[0],dpmeter_out[0])
+							jclient.disconnect(ports[1],dpmeter_out[1])
 						except:
 							pass
 
