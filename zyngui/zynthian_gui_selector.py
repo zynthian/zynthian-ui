@@ -241,22 +241,25 @@ class zynthian_gui_selector:
 				except Exception as e:
 					logging.error(e)
 			else:
-				# Display audio peak (status bar range: -50dbFs..0dbFs - 1% of status bar represents 0.5dB)
-				peakHigh = 0.80 # -10dBfs
-				peakOver = 0.94 # -3dBfs
+				# Display audio peak
+				range = 30 # Lowest meter reading in -dBFS
+				peakHighdB = 10 # Start of yellow zone in -dBFS
+				peakOverdB = 3  # Start of red zone in -dBFS
+				peakHigh = 1 - peakHighdB / range
+				peakOver = 1 - peakOverdB / range
 				scale_lm = peakHigh * self.status_l
 				scale_lh = peakOver * self.status_l
-				signal = max(0, 1 + status['peakA'] / 50)
+				signal = max(0, 1 + status['peakA'] / range)
 				llA = min(signal, peakHigh) * self.status_l
 				lmA = min(signal, peakOver) * self.status_l
 				lhA = min(signal, 1) * self.status_l
-				signal = max(0, 1 + status['peakB'] / 50)
+				signal = max(0, 1 + status['peakB'] / range)
 				llB = min(signal, peakHigh) * self.status_l
 				lmB = min(signal, peakOver) * self.status_l
 				lhB = min(signal, 1) * self.status_l
-				signal = max(0, 1 + status['holdA'] / 50)
+				signal = max(0, 1 + status['holdA'] / range)
 				lholdA = min(signal, 1) * self.status_l
-				signal = max(0, 1 + status['holdB'] / 50)
+				signal = max(0, 1 + status['holdB'] / range)
 				lholdB = min(signal, 1) * self.status_l
 				try:
 					# Channel A (left)
