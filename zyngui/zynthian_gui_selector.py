@@ -380,7 +380,7 @@ class zynthian_gui_selector:
 
 			if not self.status_recplay:
 				self.status_recplay = self.status_canvas.create_text(
-					int(self.status_fs*2.7),
+					int(self.status_fs*2.6),
 					int(self.status_h*0.6),
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
@@ -393,16 +393,16 @@ class zynthian_gui_selector:
 			# Display MIDI flag
 			flags=""
 			if 'midi' in status and status['midi']:
-				flags="M";
+				flags="m";
 				#flags="\uf001";
 				#flags="\uf548";
 			else:
 				flags=""
 			if not self.status_midi:
-				mfs=int(self.status_fs*1.2)
+				mfs=int(self.status_fs*1.3)
 				self.status_midi = self.status_canvas.create_text(
 					int(self.status_l-mfs),
-					int(self.status_h*0.6),
+					int(self.status_h*0.55),
 					width=int(mfs*1.2),
 					justify=tkinter.RIGHT,
 					fill=zynthian_gui_config.color_status_midi,
