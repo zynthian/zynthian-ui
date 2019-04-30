@@ -1,3 +1,8 @@
 *~
 .*~
 __pycache__
+jackpeak/CMakeCache.txt
+jackpeak/CMakeFiles/
+jackpeak/Makefile
+jackpeak/cmake_install.cmake
+jackpeak/libjackpeak.so
