@@ -226,7 +226,7 @@ class zynthian_gui_selector:
 
 	def refresh_status(self, status={}):
 		if self.shown:
-			if zynthian_gui_config.show_cpu:
+			if zynthian_gui_config.show_cpu_status:
 				# Display CPU-load bar
 				l = int(status['cpu_load']*self.status_l/100)
 				cr = int(status['cpu_load']*255/100)

@@ -145,15 +145,16 @@ class zynthian_gui:
 
 		self.status_info = {}
 		self.status_counter = 0
-		
-		# Initialize peak audio monitor
-		try:
-			global lib_jackpeak
-			lib_jackpeak = lib_jackpeak_init()
-			lib_jackpeak.setDecay(c_float(0.2))
-			lib_jackpeak.setHoldCount(10)
-		except Exception as e:
-			logging.error("ERROR initializing jackpeak: %s" % e)
+
+		# Initialize peakmeter audio monitor if needed
+		if not zynthian_gui_config.show_cpu_status:
+			try:
+				global lib_jackpeak
+				lib_jackpeak = lib_jackpeak_init()
+				lib_jackpeak.setDecay(c_float(0.2))
+				lib_jackpeak.setHoldCount(10)
+			except Exception as e:
+				logging.error("ERROR initializing jackpeak: %s" % e)
 
 		# Initialize Controllers (Rotary and Switches), MIDI and OSC
 		try:
@@ -1113,15 +1114,17 @@ class zynthian_gui:
 
 	def refresh_status(self):
 		try:
-			# Get CPU Load
-			#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
-			self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
-			
-			# Get audio peak level
-			self.status_info['peakA'] = lib_jackpeak.getPeak(0)
-			self.status_info['peakB'] = lib_jackpeak.getPeak(1)
-			self.status_info['holdA'] = lib_jackpeak.getHold(0)
-			self.status_info['holdB'] = lib_jackpeak.getHold(1)
+
+			if zynthian_gui_config.show_cpu_status:
+				# Get CPU Load
+				#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
+				self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
+			else:
+				# Get audio peak level
+				self.status_info['peakA'] = lib_jackpeak.getPeak(0)
+				self.status_info['peakB'] = lib_jackpeak.getPeak(1)
+				self.status_info['holdA'] = lib_jackpeak.getHold(0)
+				self.status_info['holdB'] = lib_jackpeak.getHold(1)
 
 			# Get Status Flags (once each 5 refreshes)
 			if self.status_counter>5:
