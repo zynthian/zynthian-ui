@@ -349,6 +349,16 @@ class zynthian_engine_setbfree(zynthian_engine):
 			return False
 
 
+	def cmp_presets(self, preset1, preset2):
+		try:
+			if preset1[1][2]==preset2[1][2]:
+				return True
+			else:
+				return False
+		except:
+			return False
+
+
 	#----------------------------------------------------------------------------
 	# Controller Managament
 	#----------------------------------------------------------------------------
@@ -479,16 +489,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		return pgm_list
 
 
-	def cmp_presets(self, preset1, preset2):
-		try:
-			if preset1[1][2]==preset2[1][2]:
-				return True
-			else:
-				return False
-		except:
-			return False
-
-
 	# ---------------------------------------------------------------------------
 	# Extended Config
 	# ---------------------------------------------------------------------------
@@ -515,6 +515,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
 
+
 	def get_path(self, layer):
 		path = self.nickname
 		if not self.manuals_config:
@@ -524,5 +525,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		else:
 			path += "/" + self.tonewheel_model
 		return path
+
 
 #******************************************************************************
