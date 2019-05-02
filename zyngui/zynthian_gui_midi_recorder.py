@@ -107,7 +107,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if zynthian_gui_config.midi_play_loop:
 			self.list_data.append(("LOOP",0,"[x] Loop Play"))
 		else:
-			self.list_data.append(("LOOP",0,"[ ] Loop Play"))
+			self.list_data.append(("LOOP",0,"[  ] Loop Play"))
 
 		self.list_data.append((None,0,"-----------------------------"))
 

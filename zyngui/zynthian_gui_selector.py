@@ -55,25 +55,38 @@ class zynthian_gui_selector:
 		self.zselector = None
 		self.zyngui = zynthian_gui_config.zyngui
 
-		self.status_rect = None
+		#Status Area Canvas Objects
+		self.status_cpubar = None
 		self.status_peak_lA = None
-		self.status_peak_lB = None
 		self.status_peak_mA = None
-		self.status_hold_A = None
-		self.status_peak_mB = None
 		self.status_peak_hA = None
+		self.status_hold_A = None
+		self.status_peak_lB = None
+		self.status_peak_mB = None
 		self.status_peak_hB = None
 		self.status_hold_B = None
 		self.status_error = None
 		self.status_recplay = None
 		self.status_midi = None
+
+		#Status Area Parameters
 		self.status_h = zynthian_gui_config.topbar_height
 		self.status_l = int(1.8*zynthian_gui_config.topbar_height)
-		self.status_rh = max(2,self.status_h/4)
+		self.status_rh = max(2,int(self.status_h/4))
 		self.status_fs = int(self.status_h/3)
 		self.status_lpad = self.status_fs
 
-		self.path_canvas_width=zynthian_gui_config.display_width-self.status_l-self.status_lpad
+		#Digital Peak Meter (DPM) parameters
+		self.dpm_rangedB = 30 # Lowest meter reading in -dBFS
+		self.dpm_highdB = 10 # Start of yellow zone in -dBFS
+		self.dpm_overdB = 3  # Start of red zone in -dBFS
+		self.dpm_high = 1 - self.dpm_highdB / self.dpm_rangedB
+		self.dpm_over = 1 - self.dpm_overdB / self.dpm_rangedB
+		self.dpm_scale_lm = int(self.dpm_high * self.status_l)
+		self.dpm_scale_lh = int(self.dpm_over * self.status_l)
+
+		#Title Area parameters
+		self.path_canvas_width=zynthian_gui_config.display_width-self.status_l-self.status_lpad-2
 		self.select_path_font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=zynthian_gui_config.font_topbar[1])
 		self.select_path_width=0
 		self.select_path_offset=0
@@ -128,7 +141,7 @@ class zynthian_gui_selector:
 
 		# Canvas for displaying status: CPU, ...
 		self.status_canvas = tkinter.Canvas(self.tb_frame,
-			width=self.status_l,
+			width=self.status_l+2,
 			height=self.status_h,
 			bd=0,
 			highlightthickness=0,
@@ -233,62 +246,58 @@ class zynthian_gui_selector:
 				cg = 255-cr
 				color = "#%02x%02x%02x" % (cr,cg,0)
 				try:
-					if self.status_rect:
-						self.status_canvas.coords(self.status_rect,(0, 0, l, self.status_rh))
-						self.status_canvas.itemconfig(self.status_rect, fill=color)
+					if self.status_cpubar:
+						self.status_canvas.coords(self.status_cpubar,(0, 0, l, self.status_rh))
+						self.status_canvas.itemconfig(self.status_cpubar, fill=color)
 					else:
-						self.status_rect=self.status_canvas.create_rectangle((0, 0, l, self.status_rh), fill=color, width=0)
+						self.status_cpubar=self.status_canvas.create_rectangle((0, 0, l, self.status_rh), fill=color, width=0)
 				except Exception as e:
 					logging.error(e)
 			else:
 				# Display audio peak
-				range = 30 # Lowest meter reading in -dBFS
-				peakHighdB = 10 # Start of yellow zone in -dBFS
-				peakOverdB = 3  # Start of red zone in -dBFS
-				peakHigh = 1 - peakHighdB / range
-				peakOver = 1 - peakOverdB / range
-				scale_lm = peakHigh * self.status_l
-				scale_lh = peakOver * self.status_l
-				signal = max(0, 1 + status['peakA'] / range)
-				llA = min(signal, peakHigh) * self.status_l
-				lmA = min(signal, peakOver) * self.status_l
-				lhA = min(signal, 1) * self.status_l
-				signal = max(0, 1 + status['peakB'] / range)
-				llB = min(signal, peakHigh) * self.status_l
-				lmB = min(signal, peakOver) * self.status_l
-				lhB = min(signal, 1) * self.status_l
-				signal = max(0, 1 + status['holdA'] / range)
-				lholdA = min(signal, 1) * self.status_l
-				signal = max(0, 1 + status['holdB'] / range)
-				lholdB = min(signal, 1) * self.status_l
+				signal = max(0, 1 + status['peakA'] / self.dpm_rangedB)
+				llA = int(min(signal, self.dpm_high) * self.status_l)
+				lmA = int(min(signal, self.dpm_over) * self.status_l)
+				lhA = int(min(signal, 1) * self.status_l)
+				signal = max(0, 1 + status['peakB'] / self.dpm_rangedB)
+				llB = int(min(signal, self.dpm_high) * self.status_l)
+				lmB = int(min(signal, self.dpm_over) * self.status_l)
+				lhB = int(min(signal, 1) * self.status_l)
+				signal = max(0, 1 + status['holdA'] / self.dpm_rangedB)
+				lholdA = int(min(signal, 1) * self.status_l)
+				signal = max(0, 1 + status['holdB'] / self.dpm_rangedB)
+				lholdB = int(min(signal, 1) * self.status_l)
 				try:
 					# Channel A (left)
 					if self.status_peak_lA:
-						self.status_canvas.coords(self.status_peak_lA,(0, 0, llA, self.status_rh/2 - 1))
+						self.status_canvas.coords(self.status_peak_lA,(0, 0, llA, self.status_rh/2))
 						self.status_canvas.itemconfig(self.status_peak_lA, state='normal')
 					else:
 						self.status_peak_lA=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#00C000", width=0, state='hidden')
+
 					if self.status_peak_mA:
-						if lmA >= scale_lm:
-							self.status_canvas.coords(self.status_peak_mA,(scale_lm, 0, lmA, self.status_rh/2 - 1))
+						if lmA >= self.dpm_scale_lm:
+							self.status_canvas.coords(self.status_peak_mA,(self.dpm_scale_lm, 0, lmA, self.status_rh/2))
 							self.status_canvas.itemconfig(self.status_peak_mA, state="normal")
 						else:
 							self.status_canvas.itemconfig(self.status_peak_mA, state="hidden")
 					else:
-						self.status_peak_mA=self.status_canvas.create_rectangle((scale_lm, 0, 0, 0), fill="#C0C000", width=0, state='hidden')
+						self.status_peak_mA=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C0C000", width=0, state='hidden')
+
 					if self.status_peak_hA:
-						if lhA >= scale_lh:
-							self.status_canvas.coords(self.status_peak_hA,(scale_lh, 0, lhA, self.status_rh/2 - 1))
+						if lhA >= self.dpm_scale_lh:
+							self.status_canvas.coords(self.status_peak_hA,(self.dpm_scale_lh, 0, lhA, self.status_rh/2))
 							self.status_canvas.itemconfig(self.status_peak_hA, state="normal")
 						else:
 							self.status_canvas.itemconfig(self.status_peak_hA, state="hidden")
 					else:
 						self.status_peak_hA=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C00000", width=0, state='hidden')
+
 					if self.status_hold_A:
-						self.status_canvas.coords(self.status_hold_A,(lholdA, 0, lholdA, self.status_rh/2 - 1))
-						if lholdA >= scale_lh:
+						self.status_canvas.coords(self.status_hold_A,(lholdA, 0, lholdA, self.status_rh/2))
+						if lholdA >= self.dpm_scale_lh:
 							self.status_canvas.itemconfig(self.status_hold_A, state="normal", fill="#FF0000")
-						elif lholdA >= scale_lm:
+						elif lholdA >= self.dpm_scale_lm:
 							self.status_canvas.itemconfig(self.status_hold_A, state="normal", fill="#FFFF00")
 						elif lholdA > 0:
 							self.status_canvas.itemconfig(self.status_hold_A, state="normal", fill="#00FF00")
@@ -296,33 +305,37 @@ class zynthian_gui_selector:
 							self.status_canvas.itemconfig(self.status_hold_A, state="hidden")
 					else:
 						self.status_hold_A=self.status_canvas.create_rectangle((0, 0, 0, 0), width=0, state='hidden')
+
 					# Channel B (right)
 					if self.status_peak_lB:
-						self.status_canvas.coords(self.status_peak_lB,(0, self.status_rh/2, llB, self.status_rh))
+						self.status_canvas.coords(self.status_peak_lB,(0, self.status_rh/2 + 1, llB, self.status_rh + 1))
 						self.status_canvas.itemconfig(self.status_peak_lB, state='normal')
 					else:
 						self.status_peak_lB=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#00C000", width=0, state='hidden')
+
 					if self.status_peak_mB:
-						if lmB >= scale_lm:
-							self.status_canvas.coords(self.status_peak_mB,(scale_lm, self.status_rh/2, lmB, self.status_rh))
+						if lmB >= self.dpm_scale_lm:
+							self.status_canvas.coords(self.status_peak_mB,(self.dpm_scale_lm, self.status_rh/2 + 1, lmB, self.status_rh + 1))
 							self.status_canvas.itemconfig(self.status_peak_mB, state="normal")
 						else:
 							self.status_canvas.itemconfig(self.status_peak_mB, state="hidden")
 					else:
 						self.status_peak_mB=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C0C000", width=0, state='hidden')
+
 					if self.status_peak_hB:
-						if lhB >= scale_lh:
-							self.status_canvas.coords(self.status_peak_hB,(scale_lh, self.status_rh/2, lhB, self.status_rh))
+						if lhB >= self.dpm_scale_lh:
+							self.status_canvas.coords(self.status_peak_hB,(self.dpm_scale_lh, self.status_rh/2 + 1, lhB, self.status_rh + 1))
 							self.status_canvas.itemconfig(self.status_peak_hB, state="normal")
 						else:
 							self.status_canvas.itemconfig(self.status_peak_hB, state="hidden")
 					else:
 						self.status_peak_hB=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C00000", width=0, state='hidden')
+
 					if self.status_hold_B:
-						self.status_canvas.coords(self.status_hold_B,(lholdB, self.status_rh/2, lholdB, self.status_rh))
-						if lholdB >= scale_lh:
+						self.status_canvas.coords(self.status_hold_B,(lholdB, self.status_rh/2 + 1, lholdB, self.status_rh + 1))
+						if lholdB >= self.dpm_scale_lh:
 							self.status_canvas.itemconfig(self.status_hold_B, state="normal", fill="#FF0000")
-						elif lholdB >= scale_lm:
+						elif lholdB >= self.dpm_scale_lm:
 							self.status_canvas.itemconfig(self.status_hold_B, state="normal", fill="#FFFF00")
 						elif lholdB > 0:
 							self.status_canvas.itemconfig(self.status_hold_B, state="normal", fill="#00FF00")
@@ -330,9 +343,13 @@ class zynthian_gui_selector:
 							self.status_canvas.itemconfig(self.status_hold_B, state="hidden")
 					else:
 						self.status_hold_B=self.status_canvas.create_rectangle((0, 0, 0, 0), width=0, state='hidden')
+
 				except Exception as e:
 					logging.error("%s" % e)
-				
+
+			#status['xrun']=True
+			#status['audio_recorder']='PLAY'
+
 			# Display error flags
 			flags = ""
 			color = zynthian_gui_config.color_status_error
@@ -383,7 +400,7 @@ class zynthian_gui_selector:
 
 			if not self.status_recplay:
 				self.status_recplay = self.status_canvas.create_text(
-					int(self.status_fs*2.7),
+					int(self.status_fs*2.6),
 					int(self.status_h*0.6),
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
@@ -396,16 +413,16 @@ class zynthian_gui_selector:
 			# Display MIDI flag
 			flags=""
 			if 'midi' in status and status['midi']:
-				flags="M";
+				flags="m";
 				#flags="\uf001";
 				#flags="\uf548";
 			else:
 				flags=""
 			if not self.status_midi:
-				mfs=int(self.status_fs*1.2)
+				mfs=int(self.status_fs*1.3)
 				self.status_midi = self.status_canvas.create_text(
-					int(self.status_l-mfs),
-					int(self.status_h*0.6),
+					int(self.status_l-mfs+1),
+					int(self.status_h*0.55),
 					width=int(mfs*1.2),
 					justify=tkinter.RIGHT,
 					fill=zynthian_gui_config.color_status_midi,

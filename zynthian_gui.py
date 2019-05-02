@@ -1129,10 +1129,10 @@ class zynthian_gui:
 			# Get Status Flags (once each 5 refreshes)
 			if self.status_counter>5:
 				self.status_counter = 0
-				try:
-					self.status_info['undervoltage'] = False
-					self.status_info['overtemp'] = False
 
+				self.status_info['undervoltage'] = False
+				self.status_info['overtemp'] = False
+				try:
 					# Get ARM flags
 					res = check_output(("vcgencmd", "get_throttled")).decode('utf-8','ignore')
 					thr = int(res[12:],16)
@@ -1141,6 +1141,10 @@ class zynthian_gui:
 					elif thr & (0x4 | 0x2):
 						self.status_info['overtemp'] = True
 
+				except Exception as e:
+					logging.error(e)
+
+				try:
 					# Get Recorder Status
 					self.status_info['audio_recorder'] = self.screens['audio_recorder'].get_status()
 					self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
