@@ -105,6 +105,7 @@ class zynthian_gui_selector:
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.display_height,
 			bg=zynthian_gui_config.color_bg)
+		self.main_frame.bind("<Key>", self.cb_keybinding)
 
 		# Topbar's frame
 		self.tb_frame = tkinter.Frame(self.main_frame, 
@@ -189,6 +190,7 @@ class zynthian_gui_selector:
 		self.listbox.bind("<B1-Motion>",self.cb_listbox_motion)
 		self.listbox.bind("<Button-4>",self.cb_listbox_wheel)
 		self.listbox.bind("<Button-5>",self.cb_listbox_wheel)
+		self.listbox.bind("<Key>", self.cb_keybinding)
 
 		# Canvas for loading image animation
 		self.loading_canvas = tkinter.Canvas(self.main_frame,
@@ -221,6 +223,7 @@ class zynthian_gui_selector:
 		self.fill_list()
 		self.set_selector()
 		self.set_select_path()
+		self.main_frame.focus()
 
 
 	def hide(self):
@@ -642,5 +645,52 @@ class zynthian_gui_selector:
 			self.label_select_path.place(x=0, y=0)
 
 		return False
+
+		
+	def cb_keybinding(self,event):
+		switchSuffix = "SHORT"
+		if event.state == 1: # Shift modifier
+			switchSuffix = "BOLD"
+			if event.keycode == 65: # Space
+				self.zyngui.callable_ui_action("ALL_SOUNDS_OFF")
+				return
+			elif event.keysym == "Insert":
+				self.zyngui.callable_ui_action("REBOOT")
+				return
+		elif event.state == 4: # Ctrl modifier
+			switchSuffix = "LONG"
+			if event.keycode == 65: # Space
+				self.zyngui.callable_ui_action("ALL_OFF")
+				return
+			elif event.keysym == "Insert":
+				self.zyngui.callable_ui_action("POWER_OFF")
+				return
+			elif event.keysym == "m":
+				self.zyngui.callable_ui_action("RELOAD_MIDI_CONFIG")
+				return
+		if event.keysym == "Return":
+			self.zyngui.callable_ui_action("SWITCH_SELECT_" + switchSuffix)
+		elif event.keysym == "BackSpace" or event.keysym == "Escape":
+			self.zyngui.callable_ui_action("SWITCH_BACK_" + switchSuffix)
+		elif event.keysym == "l" or event.keysym == "L":
+			self.zyngui.callable_ui_action("SWITCH_LAYER_" + switchSuffix)
+		elif event.keysym == "s" or event.keysym == "S":
+			self.zyngui.callable_ui_action("SWITCH_SNAPSHOT_" + switchSuffix)
+		elif event.keysym == "Up":
+			self.zyngui.callable_ui_action("SELECT_DOWN")
+		elif event.keysym == "Down":
+			self.zyngui.callable_ui_action("SELECT_UP")
+		elif event.keysym == "r":
+			self.zyngui.callable_ui_action("START_AUDIO_RECORD", [1])
+		elif event.keysym == "R":
+			self.zyngui.callable_ui_action("STOP_AUDIO_RECORD", [1])
+		elif event.keysym == "m":
+			self.zyngui.callable_ui_action("START_MIDI_RECORD", [1])
+		elif event.keysym == "M":
+			self.zyngui.callable_ui_action("STOP_MIDI_RECORD", [1])
+		elif event.keycode == 65: # Space
+			self.zyngui.callable_ui_action("ALL_NOTES_OFF")
+		elif event.keysym == "Insert":
+			self.zyngui.callable_ui_action("RESTART_UI")
 
 #------------------------------------------------------------------------------
