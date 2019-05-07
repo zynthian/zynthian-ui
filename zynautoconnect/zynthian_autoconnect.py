@@ -278,6 +278,14 @@ def audio_autoconnect():
 	#Get dpmeter ports
 	dpmeter_out=jclient.get_ports("jackpeak", is_input=True, is_audio=True)
 
+	#Connect mplayer to DPMeter
+	mplayer_in=jclient.get_ports("MPlayer", is_output=True, is_audio=True)
+	try:
+		jclient.connect(mplayer_in[0],dpmeter_out[0])
+		jclient.connect(mplayer_in[1],dpmeter_out[1])
+	except:
+		pass
+
 	#Get layers list from UI
 	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 
