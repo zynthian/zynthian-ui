@@ -306,11 +306,7 @@ class zynthian_gui:
 	def stop(self):
 		self.screens['layer'].reset()
 		self.stop_polling()
-
 		self.osc_end()
-
-		if lib_jackpeak:
-			lib_jackpeak.endJackpeak()
 
 
 	def hide_screens(self,exclude=None):
