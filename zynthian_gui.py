@@ -140,6 +140,7 @@ class zynthian_gui:
 		self.exit_flag = False
 		self.exit_code = 0
 
+		self.midi_filter_script = None;
 		self.midi_learn_mode = False
 		self.midi_learn_zctrl = None
 
@@ -184,12 +185,15 @@ class zynthian_gui:
 		try:
 			global lib_zyncoder
 			#Set Global Tuning
-			self.fine_tuning_freq=int(zynthian_gui_config.midi_fine_tuning)
+			self.fine_tuning_freq = int(zynthian_gui_config.midi_fine_tuning)
 			lib_zyncoder.set_midi_filter_tuning_freq(self.fine_tuning_freq)
 			#Set MIDI Master Channel
 			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
 			#Setup MIDI filter rules
-			zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
+			if self.midi_filter_script:
+				self.midi_filter_script.clean()
+			self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
+
 		except Exception as e:
 			logging.error("ERROR initializing MIDI : %s" % e)
 
@@ -227,7 +231,6 @@ class zynthian_gui:
 				logging.info("ZYNTHIAN-UI OSC server stopped")
 			except Exception as err:
 				logging.error("Can't stop ZYNTHIAN-UI OSC server => %s" % err)
-			self.stop_loading()
 
 
 	def osc_receive(self):
@@ -302,7 +305,12 @@ class zynthian_gui:
 
 	def stop(self):
 		self.screens['layer'].reset()
+		self.stop_polling()
+
 		self.osc_end()
+
+		if lib_jackpeak:
+			lib_jackpeak.endJackpeak()
 
 
 	def hide_screens(self,exclude=None):
@@ -1113,8 +1121,10 @@ class zynthian_gui:
 
 
 	def refresh_status(self):
-		try:
+		if self.exit_flag:
+			return
 
+		try:
 			if zynthian_gui_config.show_cpu_status:
 				# Get CPU Load
 				#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))

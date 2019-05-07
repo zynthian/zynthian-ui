@@ -235,6 +235,7 @@ class MidiFilterRule:
 class MidiFilterScript:
 
 	def __init__(self, script=None, set_rules=True):
+		self.rules={}
 		if script:
 			self.parse_script(script, set_rules)
 
