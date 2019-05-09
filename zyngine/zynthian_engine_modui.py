@@ -618,15 +618,16 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def enable_midi_devices(self):
 		res=self.api_get_request("/jack/get_midi_devices")
-		#logging.debug("API /jack/get_midi_devices => "+str(res))
+		#logging.debug("API /jack/get_midi_devices => {}".format(res))
 		if 'devList' in res:
 			data=[]
 			for dev in res['devList']: 
 				#if dev not in res['devsInUse']: 
 				data.append(dev)
 			if len(data)>0:
-				self.api_post_request("/jack/set_midi_devices",json=data)
-				#print("API /jack/set_midi_devices => "+str(data))
+				res = self.api_post_request("/jack/set_midi_devices",json=data)
+				#logging.debug("API /jack/set_midi_devices => {}".format(data))
+				#logging.debug("RES => {}".format(res))
 
 
 	def set_param_cb(self, pgraph, symbol, val):
