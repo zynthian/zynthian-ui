@@ -648,7 +648,7 @@ class zynthian_gui_selector:
 
 		
 	def cb_keybinding(self,event):
-		logging.info("Key press %d %s" % event.keycode, event.keysym)
+		logging.info("Key press %d %s" % (event.keycode, event.keysym))
 		switchSuffix = "SHORT"
 		if event.state == 1: # Shift modifier
 			switchSuffix = "BOLD"
