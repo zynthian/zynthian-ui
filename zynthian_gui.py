@@ -497,19 +497,19 @@ class zynthian_gui:
 			self.raw_all_notes_off()
 			
 		elif cuia == "START_AUDIO_RECORD":
-			if len(params) > 0 and params[0] > 0:
+			if len(params) == 0 or params[0] != 0:
 				self.screens['audio_recorder'].start_recording()
-				
+
 		elif cuia == "STOP_AUDIO_RECORD":
-			if len(params) > 0 and params[0] > 0:
+			if len(params) == 0 or params[0] != 0:
 				self.screens['audio_recorder'].stop_recording()
-				
+
 		elif cuia == "START_MIDI_RECORD":
-			if len(params) > 0 and params[0] > 0:
+			if len(params) == 0 or params[0] != 0:
 				self.screens['midi_recorder'].start_recording()
-				
+
 		elif cuia == "STOP_MIDI_RECORD":
-			if len(params) > 0 and params[0] > 0:
+			if len(params) == 0 or params[0] != 0:
 				self.screens['midi_recorder'].stop_recording()
 
 		elif cuia == "SELECT":

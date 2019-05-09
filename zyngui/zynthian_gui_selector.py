@@ -648,6 +648,7 @@ class zynthian_gui_selector:
 
 		
 	def cb_keybinding(self,event):
+		logging.info("Key press %d %s" % event.keycode, event.keysym)
 		switchSuffix = "SHORT"
 		if event.state == 1: # Shift modifier
 			switchSuffix = "BOLD"
@@ -681,16 +682,18 @@ class zynthian_gui_selector:
 		elif event.keysym == "Down":
 			self.zyngui.callable_ui_action("SELECT_UP")
 		elif event.keysym == "r":
-			self.zyngui.callable_ui_action("START_AUDIO_RECORD", [1])
+			self.zyngui.callable_ui_action("START_AUDIO_RECORD")
 		elif event.keysym == "R":
-			self.zyngui.callable_ui_action("STOP_AUDIO_RECORD", [1])
+			self.zyngui.callable_ui_action("STOP_AUDIO_RECORD")
 		elif event.keysym == "m":
-			self.zyngui.callable_ui_action("START_MIDI_RECORD", [1])
+			self.zyngui.callable_ui_action("START_MIDI_RECORD")
 		elif event.keysym == "M":
-			self.zyngui.callable_ui_action("STOP_MIDI_RECORD", [1])
+			self.zyngui.callable_ui_action("STOP_MIDI_RECORD")
 		elif event.keycode == 65: # Space
 			self.zyngui.callable_ui_action("ALL_NOTES_OFF")
 		elif event.keysym == "Insert":
 			self.zyngui.callable_ui_action("RESTART_UI")
+		elif event.keysym == "Tab":
+			return("break") # Ignore TAB key (for now) to avoid confusing widget focus change
 
 #------------------------------------------------------------------------------
