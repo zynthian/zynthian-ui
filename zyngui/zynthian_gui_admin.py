@@ -77,6 +77,21 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_single_channel,0,"[  ] Single Channel Mode"))
 
+		if zynthian_gui_config.midi_prog_change_zs3:
+			self.list_data.append((self.toggle_prog_change_zs3,0,"[x] Program Change ZS3"))
+		else:
+			self.list_data.append((self.toggle_prog_change_zs3,0,"[  ] Program Change ZS3"))
+
+		if zynthian_gui_config.preset_preload_noteon:
+			self.list_data.append((self.toggle_preset_preload_noteon,0,"[x] Preset Preload"))
+		else:
+			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
+
+		if self.is_service_active("qmidinet"):
+			self.list_data.append((self.stop_qmidinet,0,"[x] MIDI Network"))
+		else:
+			self.list_data.append((self.start_qmidinet,0,"[  ] MIDI Network"))
+
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
 		self.list_data.append((None,0,"-----------------------------"))
@@ -86,11 +101,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.stop_wifi,0,"[x] WIFI"))
 		else:
 			self.list_data.append((self.start_wifi,0,"[  ] WIFI"))
-
-		if self.is_service_active("qmidinet"):
-			self.list_data.append((self.stop_qmidinet,0,"[x] QMidiNet"))
-		else:
-			self.list_data.append((self.start_qmidinet,0,"[  ] QMidiNet"))
 
 		if os.environ.get('ZYNTHIAN_TOUCHOSC'):
 			if self.is_service_active("touchosc2midi"):
@@ -272,6 +282,23 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				check_output("systemctl stop a2jmidid", shell=True)
 				self.zyngui.all_sounds_off()
 
+#------------------------------------------------------------------------------
+# AUDIO/MIDI RECORDER/PLAYER
+#------------------------------------------------------------------------------
+
+	def audio_recorder(self):
+		logging.info("Audio Recorder")
+		self.zyngui.show_modal("audio_recorder")
+
+
+	def midi_recorder(self):
+		logging.info("MIDI Recorder")
+		self.zyngui.show_modal("midi_recorder")
+
+
+#------------------------------------------------------------------------------
+# MIDI OPTIONS
+#------------------------------------------------------------------------------
 
 	def toggle_single_channel(self):
 		if zynthian_gui_config.midi_single_active_channel:
@@ -291,20 +318,91 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.fill_list()
 
 
-	def audio_recorder(self):
-		logging.info("Audio Recorder")
-		self.zyngui.show_modal("audio_recorder")
+	def toggle_prog_change_zs3(self):
+		if zynthian_gui_config.midi_prog_change_zs3:
+			logging.info("ZS3 Program Change OFF")
+			zynthian_gui_config.midi_prog_change_zs3=False
+		else:
+			logging.info("ZS3 Program Change ON")
+			zynthian_gui_config.midi_prog_change_zs3=True
+
+		# Save config
+		zynconf.update_midi_profile({ 
+			"ZYNTHIAN_MIDI_PROG_CHANGE_ZS3": str(int(zynthian_gui_config.midi_prog_change_zs3))
+		})
+
+		self.fill_list()
 
 
-	def midi_recorder(self):
-		logging.info("MIDI Recorder")
-		self.zyngui.show_modal("midi_recorder")
+	def toggle_preset_preload_noteon(self):
+		if zynthian_gui_config.preset_preload_noteon:
+			logging.info("Preset Preload OFF")
+			zynthian_gui_config.preset_preload_noteon=False
+		else:
+			logging.info("Preset Preload ON")
+			zynthian_gui_config.preset_preload_noteon=True
+
+		# Save config
+		zynconf.update_midi_profile({ 
+			"ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON": str(int(zynthian_gui_config.preset_preload_noteon))
+		})
+
+		self.fill_list()
+
+
+	def start_qmidinet(self, save_config=True):
+		logging.info("STARTING QMIDINET")
+
+		try:
+			check_output("systemctl start qmidinet", shell=True)
+			zynthian_gui_config.midi_network_enabled = 1
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
+				})
+
+		except Exception as e:
+			logging.error(e)
+
+
+		self.fill_list()
+
+
+	def stop_qmidinet(self, save_config=True):
+		logging.info("STOPPING QMIDINET")
+
+		try:
+			check_output("systemctl stop qmidinet", shell=True)
+			zynthian_gui_config.midi_network_enabled = 0
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
+				})
+
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	#Start/Stop QMidiNet depending on configuration
+	def default_qmidinet(self):
+		if zynthian_gui_config.midi_network_enabled:
+			self.start_qmidinet(False)
+		else:
+			self.stop_qmidinet(False)
 
 
 	def midi_profile(self):
 		logging.info("MIDI Profile")
 		self.zyngui.show_modal("midi_profile")
 
+
+#------------------------------------------------------------------------------
+# NETWORK FEATURES
+#------------------------------------------------------------------------------
 
 	def network_info(self):
 		logging.info("NETWORK INFO")
@@ -386,32 +484,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				sleep(1)
 
 		self.fill_list()
-
-
-	def start_qmidinet(self):
-		logging.info("STARTING QMIDINET")
-		try:
-			check_output("systemctl start qmidinet", shell=True)
-		except Exception as e:
-			logging.error(e)
-		self.fill_list()
-
-
-	def stop_qmidinet(self):
-		logging.info("STOPPING QMIDINET")
-		try:
-			check_output("systemctl stop qmidinet", shell=True)
-		except Exception as e:
-			logging.error(e)
-		self.fill_list()
-
-
-	#Start/Stop QMidiNet depending on configuration
-	def default_qmidinet(self):
-		if int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED',0)):
-			self.start_qmidinet()
-		else:
-			self.stop_qmidinet()
 
 
 	def start_touchosc2midi(self):
