@@ -167,7 +167,7 @@ class zynthian_gui_selector:
 				self.lb_frame.grid(row=1, column=1, rowspan=2, padx=(2,2), sticky="w")
 			else:
 				self.lb_frame.grid(row=1, column=1, rowspan=2, padx=(2,2), sticky="e")
-		#self.lb_frame.columnconfigure(0, weight=10)
+		self.lb_frame.columnconfigure(0, weight=10)
 		self.lb_frame.rowconfigure(0, weight=10)
 		self.lb_frame.grid_propagate(False)
 
