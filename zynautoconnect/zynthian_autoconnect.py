@@ -76,7 +76,7 @@ def get_port_alias_id(midi_port):
 #------------------------------------------------------------------------------
 
 def midi_autoconnect():
-	logger.info("Autoconnecting Midi ...")
+	logger.info("ZynAutoConnect: MIDI ...")
 
 	#------------------------------------
 	# Get Input/Output MIDI Ports: 
@@ -262,7 +262,7 @@ def midi_autoconnect():
 
 
 def audio_autoconnect():
-	logger.info("Autoconnecting Audio ...")
+	logger.info("ZynAutoConnect: Audio ...")
 
 	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
 	input_ports=get_audio_input_ports()
@@ -394,7 +394,7 @@ def autoconnect_thread():
 		try:
 			autoconnect()
 		except Exception as err:
-			logger.error(err)
+			logger.error("ZynAutoConnect ERROR: {}".format(err))
 		sleep(refresh_time)
 
 
@@ -416,7 +416,7 @@ def start(rt=2):
 		jclient.set_xrun_callback(cb_jack_xrun)
 		jclient.activate()
 	except Exception as e:
-		logger.error("Failed to connect with Jack Server: {}".format(e))
+		logger.error("ZynAutoConnect ERROR: Can't connect with Jack Audio Server ({})".format(e))
 
 	# Create Lock object (Mutex) to avoid concurrence problems
 	lock=Lock();
@@ -433,7 +433,7 @@ def stop():
 
 
 def cb_jack_xrun(delayed_usecs: float):
-	logging.error("Jack XRUN!")
+	logging.error("Jack Audio XRUN!")
 	zynthian_gui_config.zyngui.status_info['xrun'] = True
 
 
