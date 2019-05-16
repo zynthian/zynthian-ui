@@ -60,20 +60,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		super().__init__('Audio Recorder', True)
 
 
-	def is_process_running(self, procname):
-		cmd = "ps -e | grep %s" % procname
-
-		try:
-			result = check_output(cmd, shell=True).decode('utf-8','ignore')
-			if len(result)>3: return True
-			else: return False
-
-		except Exception as e:
-			return False
-
-
 	def get_status(self):
-		if self.is_process_running("jack_capture"):
+		if zynconf.is_process_running("jack_capture"):
 			return "REC"
 		elif self.current_record:
 			return "PLAY"
@@ -84,7 +72,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def get_status(self):
 		status=None
 
-		if self.is_process_running("jack_capture"):
+		if zynconf.is_process_running("jack_capture"):
 			status="REC"
 
 		if self.current_record:
@@ -199,7 +187,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		logging.info("STOPPING AUDIO RECORD ...")
 		check_output("echo stop | jack_transport", shell=True)
 		self.rec_proc.communicate()
-		while self.is_process_running("jack_capture"):
+		while zynconf.is_process_running("jack_capture"):
 			sleep(1)
 		self.update_list()
 

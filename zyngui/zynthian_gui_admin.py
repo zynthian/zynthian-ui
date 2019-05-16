@@ -27,8 +27,6 @@ import os
 import re
 import sys
 import signal
-import socket
-import psutil
 import logging
 from time import sleep
 from threading  import Thread
@@ -87,7 +85,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
 
-		if self.is_service_active("qmidinet"):
+		if zynconf.is_service_active("qmidinet"):
 			self.list_data.append((self.stop_qmidinet,0,"[x] MIDI Network"))
 		else:
 			self.list_data.append((self.start_qmidinet,0,"[  ] MIDI Network"))
@@ -97,19 +95,23 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.network_info,0,"Network Info"))
 
-		if self.is_wifi_active():
-			self.list_data.append((self.stop_wifi,0,"[x] WIFI"))
+		if zynconf.is_wifi_active():
+			if zynconf.is_service_active("hostapd"):
+				self.list_data.append((self.stop_wifi,0,"[x] WIFI Hotspot"))
+			else:
+				self.list_data.append((self.stop_wifi,0,"[x] WIFI"))
 		else:
 			self.list_data.append((self.start_wifi,0,"[  ] WIFI"))
+			self.list_data.append((self.start_wifi_hotspot,0,"[  ] WIFI Hotspot"))
 
 		if os.environ.get('ZYNTHIAN_TOUCHOSC'):
-			if self.is_service_active("touchosc2midi"):
+			if zynconf.is_service_active("touchosc2midi"):
 				self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC"))
 			else:
 				self.list_data.append((self.start_touchosc2midi,0,"[  ] TouchOSC"))
 
 		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
-			if self.is_service_active("aubionotes"):
+			if zynconf.is_service_active("aubionotes"):
 				self.list_data.append((self.stop_aubionotes,0,"[x] Audio->MIDI"))
 			else:
 				self.list_data.append((self.start_aubionotes,0,"[  ] Audio->MIDI"))
@@ -136,53 +138,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def set_select_path(self):
 		self.select_path.set("Admin")
-
-
-	def is_process_running(self, procname):
-		cmd="ps -e | grep %s" % procname
-		try:
-			result=check_output(cmd, shell=True).decode('utf-8','ignore')
-			if len(result)>3: return True
-			else: return False
-		except Exception as e:
-			return False
-
-
-	def is_service_active(self, service):
-		cmd="systemctl is-active %s" % service
-		try:
-			result=check_output(cmd, shell=True).decode('utf-8','ignore')
-		except Exception as e:
-			result="ERROR: %s" % e
-		#print("Is service "+str(service)+" active? => "+str(result))
-		if result.strip()=='active': return True
-		else: return False
-
-
-	def get_netinfo(self, exclude_down=True):
-		netinfo={}
-		for ifc, snics in psutil.net_if_addrs().items():
-			if ifc=="lo":
-				continue
-			for snic in snics:
-				if snic.family == socket.AF_INET:
-					netinfo[ifc]=snic
-			if ifc not in netinfo:
-				c=0
-				for snic in snics:
-					if snic.family == socket.AF_INET6:
-						c+=1
-				if c>=2:
-					netinfo[ifc]=snic
-			if ifc not in netinfo and not exclude_down:
-				netinfo[ifc]=None
-		return netinfo
-
-
-	def is_wifi_active(self):
-		for ifc in self.get_netinfo():
-			if ifc.startswith("wlan"):
-				return True
 
 
 	def execute_commands(self):
@@ -405,83 +360,39 @@ class zynthian_gui_admin(zynthian_gui_selector):
 #------------------------------------------------------------------------------
 
 	def network_info(self):
-		logging.info("NETWORK INFO")
 		self.zyngui.show_info("NETWORK INFO\n")
-		self.zyngui.add_info(" Link-Local Name => {}.local\n".format(os.uname().nodename),"SUCCESS")
-		for ifc, snic in self.get_netinfo().items():
-			if snic.family==socket.AF_INET and snic.address:
-				self.zyngui.add_info(" {} => {}\n".format(ifc,snic.address),"SUCCESS")
-			else:
-				self.zyngui.add_info(" {} => {}\n".format(ifc,"connecting..."),"WARNING")
+
+		res = zynconf.network_info()
+		for k, v in res.items():
+			self.zyngui.add_info(" {} => {}\n".format(k,v[0]),v[1])
+
 		self.zyngui.hide_info_timer(5000)
 		self.zyngui.stop_loading()
 
 
 	def start_wifi(self):
-		logging.info("STARTING WIFI")
-		for ifc in self.get_netinfo(False):
-			if ifc.startswith("wlan"):
-				logging.info("Starting %s ..." % ifc)
-				try:
-					check_output("ifconfig {} up".format(ifc), shell=True)
-					pass
-				except Exception as e:
-					logging.error(e)
+		if not zynconf.start_wifi():
+			self.zyngui.show_info("STARTING WIFI ERROR\n")
+			self.zyngui.add_info("Can't start WIFI network!","WARNING")
+			self.zyngui.hide_info_timer(2000)
 
-		sleep(2)
+		self.fill_list()
 
-		counter=0
-		success=False
-		while True:
-			counter += 1
-			for ifc, snic in self.get_netinfo().items():
-				#logging.debug("{} => {}, {}".format(ifc,snic.family,snic.address))
-				if ifc.startswith("wlan") and snic.family==socket.AF_INET and snic.address:
-					success=True
-					break
 
-			if success:
-				break
-			elif counter>10:
-				self.zyngui.show_info("STARTING WIFI ERROR\n")
-				self.zyngui.add_info("Can't start WIFI network!","WARNING")
-				self.zyngui.hide_info_timer(2000)
-				break
-
-			sleep(1)
+	def start_wifi_hotspot(self):
+		if not zynconf.start_wifi_hotspot():
+			self.zyngui.show_info("STARTING WIFI HOTSPOT ERROR\n")
+			self.zyngui.add_info("Can't start WIFI Hotspot!","WARNING")
+			self.zyngui.hide_info_timer(2000)
 
 		self.fill_list()
 
 
 	def stop_wifi(self):
-		logging.info("STOPPING WIFI")
-		for ifc in self.get_netinfo():
-			if ifc.startswith("wlan"):
-				logging.info("Stopping %s ..." % ifc)
-				try:
-					check_output("ifconfig {} down".format(ifc), shell=True)
-				except Exception as e:
-					logging.error(e)
-
-		counter = 0
-		success = False
-		while not success:
-			counter += 1
-			success = True
-			for ifc in self.get_netinfo():
-				#logging.debug("{} is UP".format(ifc))
-				if ifc.startswith("wlan"):
-					success = False
-					break
-
-			if not success:
-				if counter>5:
-					self.zyngui.show_info("STOPPING WIFI ERROR\n")
-					self.zyngui.add_info("Can't stop WIFI network!","WARNING")
-					self.zyngui.hide_info_timer(2000)
-					break
-
-				sleep(1)
+		if not zynconf.stop_wifi():
+			self.zyngui.show_info("STOPPING WIFI ERROR\n")
+			self.zyngui.add_info("Can't stop WIFI network!","WARNING")
+			self.zyngui.hide_info_timer(2000)
 
 		self.fill_list()
 

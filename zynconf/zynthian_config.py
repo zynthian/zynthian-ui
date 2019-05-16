@@ -25,7 +25,10 @@
 import os
 import re
 import sys
+import socket
+import psutil
 import logging
+from time import sleep
 from shutil import copyfile
 from subprocess import check_output
 from collections import OrderedDict
@@ -57,6 +60,12 @@ CustomUiAction = [
 	"ALL_SOUNDS_OFF",
 	"ALL_OFF"
 ];
+
+#-------------------------------------------------------------------------------
+# Global variables
+#-------------------------------------------------------------------------------
+
+sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
 
 #-------------------------------------------------------------------------------
 # Config related functions
@@ -238,6 +247,164 @@ def update_midi_profile(params, fpath=None):
 
 	for k in midi_params:
 		del params[k]
+
+
+#-------------------------------------------------------------------------------
+# Network Config related functions
+#-------------------------------------------------------------------------------
+
+
+def get_netinfo(exclude_down=True):
+	netinfo={}
+	for ifc, snics in psutil.net_if_addrs().items():
+		if ifc=="lo":
+			continue
+		for snic in snics:
+			if snic.family == socket.AF_INET:
+				netinfo[ifc]=snic
+		if ifc not in netinfo:
+			c=0
+			for snic in snics:
+				if snic.family == socket.AF_INET6:
+					c+=1
+			if c>=2:
+				netinfo[ifc]=snic
+		if ifc not in netinfo and not exclude_down:
+			netinfo[ifc]=None
+	return netinfo
+
+
+def is_wifi_active():
+	for ifc in get_netinfo():
+		if ifc.startswith("wlan"):
+			return True
+
+
+def network_info():
+	logging.info("NETWORK INFO")
+
+	res = OrderedDict()
+	res["Link-Local Name"] = ["{}.local".format(os.uname().nodename),"SUCCESS"]
+	for ifc, snic in get_netinfo().items():
+		if snic.family==socket.AF_INET and snic.address:
+			res[ifc] = [str(snic.address),"SUCCESS"]
+		else:
+			res[ifc] = ["connecting...","WARNING"]
+
+	return res
+
+
+def start_wifi():
+	logging.info("STARTING WIFI")
+
+	check_output(sys_dir + "/sbin/set_wifi.sh on", shell=True)
+	sleep(2)
+
+	counter=0
+	success=False
+	while True:
+		counter += 1
+		for ifc, snic in get_netinfo().items():
+			#logging.debug("{} => {}, {}".format(ifc,snic.family,snic.address))
+			if ifc.startswith("wlan") and snic.family==socket.AF_INET and snic.address:
+				success=True
+				break
+
+		if success:
+			save_config({ 
+					"ZYNTHIAN_WIFI_MODE": 'on'
+			})
+			return True
+
+		elif counter>20:
+			return False
+
+		sleep(1)
+
+
+def start_wifi_hotspot():
+	logging.info("STARTING WIFI HOTSPOT")
+
+	check_output(sys_dir + "/sbin/set_wifi.sh hotspot", shell=True)
+	sleep(2)
+
+	counter=0
+	success=False
+	while True:
+		counter += 1
+		for ifc, snic in get_netinfo().items():
+			#logging.debug("{} => {}, {}".format(ifc,snic.family,snic.address))
+			if ifc.startswith("wlan") and snic.family==socket.AF_INET and snic.address:
+				success=True
+				break
+
+		if success:
+			save_config({ 
+					"ZYNTHIAN_WIFI_MODE": 'hotspot'
+			})
+			return True
+
+		elif counter>20:
+			return False
+
+		sleep(1)
+
+
+def stop_wifi():
+	logging.info("STOPPING WIFI")
+
+	check_output(sys_dir + "/sbin/set_wifi.sh off", shell=True)
+
+	counter = 0
+	success = False
+	while not success:
+		counter += 1
+		success = True
+		for ifc in get_netinfo():
+			#logging.debug("{} is UP".format(ifc))
+			if ifc.startswith("wlan"):
+				success = False
+				break
+
+		if success:
+			save_config({ 
+					"ZYNTHIAN_WIFI_MODE": 'off'
+			})
+			return True
+
+		elif counter>10:
+			return False
+
+		sleep(1)
+
+
+#-------------------------------------------------------------------------------
+# Utility functions
+#-------------------------------------------------------------------------------
+
+def is_process_running(procname):
+	cmd="ps -e | grep %s" % procname
+	try:
+		result=check_output(cmd, shell=True).decode('utf-8','ignore')
+		if len(result)>3:
+			return True
+		else:
+			return False
+	except Exception as e:
+		return False
+
+
+def is_service_active(service):
+	cmd="systemctl is-active %s" % service
+	try:
+		result=check_output(cmd, shell=True).decode('utf-8','ignore')
+	except Exception as e:
+		result="ERROR: %s" % e
+	#loggin.debug("Is service "+str(service)+" active? => "+str(result))
+	if result.strip()=='active':
+		return True
+	else:
+		return False
 
 
 #------------------------------------------------------------------------------

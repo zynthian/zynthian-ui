@@ -64,18 +64,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		super().__init__('MIDI Recorder', True)
 
 
-	def is_process_running(self, procname):
-		cmd = "ps -e | grep %s" % procname
-
-		try:
-			result = check_output(cmd, shell=True).decode('utf-8','ignore')
-			if len(result)>3: return True
-			else: return False
-
-		except Exception as e:
-			return False
-
-
 	def get_status(self):
 		status = None
 
