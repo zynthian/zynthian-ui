@@ -378,6 +378,16 @@ def stop_wifi():
 		sleep(1)
 
 
+def get_current_wifi_mode():
+	if is_wifi_active():
+		if is_service_active("hostapd"):
+			return "hotspot"
+		else:
+			return "on"
+
+	return "off"
+
+
 #-------------------------------------------------------------------------------
 # Utility functions
 #-------------------------------------------------------------------------------
