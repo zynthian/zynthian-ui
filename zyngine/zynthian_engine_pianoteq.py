@@ -60,6 +60,11 @@ PIANOTEQ_PRODUCT=os.environ.get('PIANOTEQ_PRODUCT',"STAGE")
 PIANOTEQ_TRIAL=int(os.environ.get('PIANOTEQ_TRIAL',"1"))
 PIANOTEQ_NAME="Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1])
 
+if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=5):
+	PIANOTEQ_JACK_PORT_NAME="Pianoteq"
+else:
+	PIANOTEQ_JACK_PORT_NAME=PIANOTEQ_NAME
+
 if PIANOTEQ_PRODUCT=="STANDARD":
 	PIANOTEQ_CONFIG_FILENAME = "{}.prefs".format(PIANOTEQ_NAME)
 else:
@@ -324,7 +329,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		super().__init__(zyngui)
 		self.name = PIANOTEQ_NAME
 		self.nickname = "PT"
-		self.jackname = PIANOTEQ_NAME
+		self.jackname = PIANOTEQ_JACK_PORT_NAME
 
 		self.options['midi_chan']=False
 
@@ -403,8 +408,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def prepare_banks(self):
-
-
 		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:
 			self.bank_list = self.bank_list_v6_3 + self.bank_list
 
