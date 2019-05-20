@@ -378,6 +378,16 @@ def stop_wifi():
 		sleep(1)
 
 
+def wifi_up():
+	logging.info("WIFI UP")
+	check_output(sys_dir + "/sbin/set_wifi.sh up", shell=True)
+
+
+def wifi_down():
+	logging.info("WIFI DOWN")
+	check_output(sys_dir + "/sbin/set_wifi.sh down", shell=True)
+
+
 def get_current_wifi_mode():
 	if is_wifi_active():
 		if is_service_active("hostapd"):
