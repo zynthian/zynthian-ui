@@ -101,7 +101,6 @@ class zynthian_engine_puredata(zynthian_engine):
 	def set_bank(self, layer, bank):
 		return True
 
-
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
@@ -127,7 +126,7 @@ class zynthian_engine_puredata(zynthian_engine):
 			with open(config_fpath,"r") as fh:
 				yml = fh.read()
 				logging.info("Loading preset config file %s => \n%s" % (config_fpath,yml))
-				self.preset_config = yaml.load(yml)
+				self.preset_config = yaml.load(yml, Loader=yaml.SafeLoader)
 				return True
 		except Exception as e:
 			logging.error("Can't load preset config file '%s': %s" % (config_fpath,e))
