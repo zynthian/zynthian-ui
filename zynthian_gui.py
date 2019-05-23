@@ -242,7 +242,13 @@ class zynthian_gui:
 	#@liblo.make_method(None, None)
 	def osc_cb_all(self, path, args, types, src):
 		logging.info("OSC MESSAGE '%s' from '%s'" % (path, src.url))
-		self.callable_ui_action(path, args)
+
+		parts = path.split("/", 2)
+		if parts[0]=="" and parts[1].upper()=="CUIA":
+			self.callable_ui_action(parts[2].upper(), args)
+		else:
+			logging.warning("Not supported OSC call '{}'".format(path))
+
 		#for a, t in zip(args, types):
 		#	logging.debug("argument of type '%s': %s" % (t, a))
 
