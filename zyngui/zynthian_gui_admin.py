@@ -451,7 +451,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def restart_gui(self):
-		logging.info("RESTART GUI")
+		logging.info("RESTART ZYNTHIAN-UI")
 		self.last_state_action()
 		self.zyngui.exit(102)
 

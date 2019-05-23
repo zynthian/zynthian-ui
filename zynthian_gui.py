@@ -173,7 +173,7 @@ class zynthian_gui:
 			#Init OSC
 			self.osc_init()
 		except Exception as e:
-			logging.error("ERROR initializing GUI: %s" % e)
+			logging.error("ERROR initializing ZYNTHIAN-UI: %s" % e)
 
 
 	# ---------------------------------------------------------------------------
@@ -259,6 +259,8 @@ class zynthian_gui:
 
 
 	def start(self):
+		logging.info("STARTING ZYNTHIAN-UI ...")
+
 		# Create initial GUI Screens
 		self.screens['admin']=zynthian_gui_admin()
 		self.screens['info']=zynthian_gui_info()
@@ -310,6 +312,7 @@ class zynthian_gui:
 
 
 	def stop(self):
+		logging.info("STOPPING ZYNTHIAN-UI ...")
 		self.screens['layer'].reset()
 		self.stop_polling()
 		self.osc_end()
@@ -1077,6 +1080,17 @@ class zynthian_gui:
 			sleep(0.1)
 
 
+	def wait_threads_end(self, n=20):
+		logging.debug("Awaiting threads to end ...")
+
+		while (self.loading_thread.is_alive() or self.zyncoder_thread.is_alive()) and n>0:
+			sleep(0.1)
+			n -= 1
+
+		if n<=0:
+			logging.error("Reached maximum count while waiting threads to end!")
+
+
 	def exit(self, code=0):
 		self.exit_flag=True
 		self.exit_code=code
@@ -1106,7 +1120,11 @@ class zynthian_gui:
 			# Capture exit event and finish
 			if self.exit_flag:
 				self.stop()
-				sys.exit(self.exit_code)
+				self.wait_threads_end()
+				logging.info("EXITING ZYNTHIAN-UI ...")
+				zynthian_gui_config.top.quit()
+				logging.debug("HERE COULD BE DRAGONS!!")
+				return
 			# Refresh Current Layer
 			elif self.curlayer and not self.loading:
 				self.curlayer.refresh()
@@ -1341,7 +1359,7 @@ signal.signal(signal.SIGTERM, sigterm_handler)
 
 
 zynthian_gui_config.top.mainloop()
-#zyngui.stop()
+sys.exit(zyngui.exit_code)
 
 
 #------------------------------------------------------------------------------
