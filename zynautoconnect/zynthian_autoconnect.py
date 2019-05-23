@@ -428,8 +428,13 @@ def start(rt=2):
 
 
 def stop():
-	global exit_flag
+	global exit_flag, thread
 	exit_flag=True
+
+
+def is_running():
+	global thread
+	return thread.is_alive()
 
 
 def cb_jack_xrun(delayed_usecs: float):

@@ -31,6 +31,7 @@ import signal
 #import psutil
 #import alsaseq
 import logging
+import threading
 from time import sleep
 from os.path import isfile
 from datetime import datetime
@@ -157,7 +158,7 @@ class zynthian_gui:
 			except Exception as e:
 				logging.error("ERROR initializing jackpeak: %s" % e)
 
-		# Initialize Controllers (Rotary and Switches), MIDI and OSC
+		# Initialize Controllers (Rotary & Switches) & MIDI-router
 		try:
 			global lib_zyncoder
 			#Init Zyncoder Library
@@ -170,10 +171,8 @@ class zynthian_gui:
 			lib_zyncoder.zynmidi_send_master_ccontrol_change(0x7,0xFF)
 			#Init MIDI and Switches
 			self.zynswitches_init()
-			#Init OSC
-			self.osc_init()
 		except Exception as e:
-			logging.error("ERROR initializing ZYNTHIAN-UI: %s" % e)
+			logging.error("ERROR initializing Controllers & MIDI-router: %s" % e)
 
 
 	# ---------------------------------------------------------------------------
@@ -220,8 +219,9 @@ class zynthian_gui:
 			logging.info("ZYNTHIAN-UI OSC server running in port {}".format(self.osc_server_port))
 			self.osc_server.add_method(None, None, self.osc_cb_all)
 			#self.osc_server.start()
-		except liblo.AddressError as err:
-			logging.error("ZYNTHIAN-UI OSC Server can't be initialized: {}".format(err))
+		#except liblo.AddressError as err:
+		except Exception as err:
+			logging.error("ZYNTHIAN-UI OSC Server can't be started: {}".format(err))
 
 
 	def osc_end(self):
@@ -259,8 +259,6 @@ class zynthian_gui:
 
 
 	def start(self):
-		logging.info("STARTING ZYNTHIAN-UI ...")
-
 		# Create initial GUI Screens
 		self.screens['admin']=zynthian_gui_admin()
 		self.screens['info']=zynthian_gui_info()
@@ -286,6 +284,9 @@ class zynthian_gui:
 
 		# Init Auto-connector
 		zynautoconnect.start()
+
+		# Initialize OSC
+		self.osc_init()
 
 		# Load an initial snapshot?
 		snapshot_loaded=False
@@ -313,9 +314,10 @@ class zynthian_gui:
 
 	def stop(self):
 		logging.info("STOPPING ZYNTHIAN-UI ...")
-		self.screens['layer'].reset()
 		self.stop_polling()
 		self.osc_end()
+		zynautoconnect.stop()
+		self.screens['layer'].reset()
 
 
 	def hide_screens(self,exclude=None):
@@ -589,7 +591,7 @@ class zynthian_gui:
 	def zynswitches_init(self):
 		if lib_zyncoder:
 			ts=datetime.now()
-			logging.info("ZYNSWITCHES INIT...")
+			logging.info("SWITCHES INIT...")
 			for i,pin in enumerate(zynthian_gui_config.zynswitch_pin):
 				self.dtsw.append(ts)
 				lib_zyncoder.setup_zynswitch(i,pin)
@@ -598,14 +600,14 @@ class zynthian_gui:
 
 	def zynswitches_midi_setup(self, midi_chan):
 		if midi_chan>0:
-			logging.info("SWITCHES MIDI SETUP...")
+			logging.info("MIDI SWITCHES SETUP...")
 
 			for i in range(0, zynthian_gui_config.n_custom_switches):
 				swi = 4 + i
 				cc_num = zynthian_gui_config.custom_switch_midi_cc[i]
 				if cc_num is not None:
 					lib_zyncoder.setup_zynswitch_midi(swi, midi_chan, cc_num)
-					logging.info("SETUP MIDI ZYNSWITCH {} => CH#{}, CC#{}".format(swi, midi_chan, cc_num))
+					logging.info("MIDI ZYNSWITCH {} => CH#{}, CC#{}".format(swi, midi_chan, cc_num))
 
 
 	def zynswitches(self):
@@ -1083,12 +1085,17 @@ class zynthian_gui:
 	def wait_threads_end(self, n=20):
 		logging.debug("Awaiting threads to end ...")
 
-		while (self.loading_thread.is_alive() or self.zyncoder_thread.is_alive()) and n>0:
+		while (self.loading_thread.is_alive() or self.zyncoder_thread.is_alive() or zynautoconnect.is_running()) and n>0:
 			sleep(0.1)
 			n -= 1
 
 		if n<=0:
-			logging.error("Reached maximum count while waiting threads to end!")
+			logging.error("Reached maximum count while awaiting threads to end!")
+			return False
+		else:
+			logging.debug("Remaining {} active threads...".format(threading.active_count()))
+			sleep(0.5)
+			return True
 
 
 	def exit(self, code=0):
@@ -1310,7 +1317,7 @@ class zynthian_gui:
 # GUI & Synth Engine initialization
 #------------------------------------------------------------------------------
 
-
+logging.info("STARTING ZYNTHIAN-UI ...")
 zynthian_gui_config.zyngui=zyngui=zynthian_gui()
 zyngui.start()
 
@@ -1359,6 +1366,8 @@ signal.signal(signal.SIGTERM, sigterm_handler)
 
 
 zynthian_gui_config.top.mainloop()
+
+logging.info("\n\n")
 sys.exit(zyngui.exit_code)
 
 

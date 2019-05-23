@@ -47,6 +47,8 @@ raise_exceptions=int(os.environ.get('ZYNTHIAN_RAISE_EXCEPTIONS',False))
 # Set root logging level
 logging.basicConfig(stream=sys.stderr, level=log_level)
 
+logging.info("ZYNTHIAN-UI CONFIG ...")
+
 #------------------------------------------------------------------------------
 # Wiring layout
 #------------------------------------------------------------------------------
