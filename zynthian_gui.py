@@ -105,8 +105,8 @@ class zynthian_gui:
 		"23": "STOP_MIDI_RECORD",
 
 		"51": "SELECT",
-		"52": "SELECT_DOWN", 
-		"53": "SELECT_UP",
+		"52": "SELECT_UP",
+		"53": "SELECT_DOWN", 
 
 		"64": "SWITCH_BACK_SHORT",
 		"63": "SWITCH_BACK_BOLD",

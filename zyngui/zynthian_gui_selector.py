@@ -526,11 +526,11 @@ class zynthian_gui_selector:
 
 
 	def select_up(self, n=1):
-		self.select(self.index+n)
+		self.select(self.index-n)
 
 
 	def select_down(self, n=1):
-		self.select(self.index-n)
+		self.select(self.index+n)
 
 
 	def click_listbox(self, index=None, t='S'):
