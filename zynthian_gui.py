@@ -1130,7 +1130,6 @@ class zynthian_gui:
 				self.wait_threads_end()
 				logging.info("EXITING ZYNTHIAN-UI ...")
 				zynthian_gui_config.top.quit()
-				logging.debug("HERE COULD BE DRAGONS!!")
 				return
 			# Refresh Current Layer
 			elif self.curlayer and not self.loading:
@@ -1367,8 +1366,7 @@ signal.signal(signal.SIGTERM, sigterm_handler)
 
 zynthian_gui_config.top.mainloop()
 
-logging.info("\n\n")
-sys.exit(zyngui.exit_code)
-
+logging.info("Exit with code {} ...\n\n".format(zyngui.exit_code))
+exit(zyngui.exit_code)
 
 #------------------------------------------------------------------------------
