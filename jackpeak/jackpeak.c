@@ -83,7 +83,8 @@ int initJackpeak() {
 }
 
 void endJackpeak() {
-	jack_client_close(g_pJackClient);
+	if (g_pJackClient)
+		jack_client_close(g_pJackClient);
 }
 
 void setDecay(float factor) {
