@@ -31,15 +31,19 @@ import signal
 #import psutil
 #import alsaseq
 import logging
+import threading
 from time import sleep
 from os.path import isfile
 from datetime import datetime
 from threading  import Thread
 from subprocess import check_output
+from ctypes import c_float
 
 # Zynthian specific modules
 import zynconf
 import zynautoconnect
+from jackpeak import *
+from jackpeak.jackpeak import lib_jackpeak, lib_jackpeak_init
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine import zynthian_zcmidi
@@ -96,9 +100,14 @@ class zynthian_gui:
 		"11": "ALL_SOUNDS_OFF",
 		"12": "ALL_OFF",
 
+		"20": "START_AUDIO_RECORD",
+		"21": "STOP_AUDIO_RECORD",
+		"22": "START_MIDI_RECORD",
+		"23": "STOP_MIDI_RECORD",
+
 		"51": "SELECT",
-		"52": "SELECT_DOWN", 
-		"53": "SELECT_UP",
+		"52": "SELECT_UP",
+		"53": "SELECT_DOWN", 
 
 		"64": "SWITCH_BACK_SHORT",
 		"63": "SWITCH_BACK_BOLD",
@@ -132,13 +141,24 @@ class zynthian_gui:
 		self.exit_flag = False
 		self.exit_code = 0
 
+		self.midi_filter_script = None;
 		self.midi_learn_mode = False
 		self.midi_learn_zctrl = None
 
 		self.status_info = {}
 		self.status_counter = 0
 
-		# Initialize Controllers (Rotary and Switches), MIDI and OSC
+		# Initialize peakmeter audio monitor if needed
+		if not zynthian_gui_config.show_cpu_status:
+			try:
+				global lib_jackpeak
+				lib_jackpeak = lib_jackpeak_init()
+				lib_jackpeak.setDecay(c_float(0.2))
+				lib_jackpeak.setHoldCount(10)
+			except Exception as e:
+				logging.error("ERROR initializing jackpeak: %s" % e)
+
+		# Initialize Controllers (Rotary & Switches) & MIDI-router
 		try:
 			global lib_zyncoder
 			#Init Zyncoder Library
@@ -151,10 +171,8 @@ class zynthian_gui:
 			lib_zyncoder.zynmidi_send_master_ccontrol_change(0x7,0xFF)
 			#Init MIDI and Switches
 			self.zynswitches_init()
-			#Init OSC
-			self.osc_init()
 		except Exception as e:
-			logging.error("ERROR initializing GUI: %s" % e)
+			logging.error("ERROR initializing Controllers & MIDI-router: %s" % e)
 
 
 	# ---------------------------------------------------------------------------
@@ -166,12 +184,15 @@ class zynthian_gui:
 		try:
 			global lib_zyncoder
 			#Set Global Tuning
-			self.fine_tuning_freq=int(zynthian_gui_config.midi_fine_tuning)
+			self.fine_tuning_freq = int(zynthian_gui_config.midi_fine_tuning)
 			lib_zyncoder.set_midi_filter_tuning_freq(self.fine_tuning_freq)
 			#Set MIDI Master Channel
 			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
 			#Setup MIDI filter rules
-			zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
+			if self.midi_filter_script:
+				self.midi_filter_script.clean()
+			self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
+
 		except Exception as e:
 			logging.error("ERROR initializing MIDI : %s" % e)
 
@@ -198,8 +219,9 @@ class zynthian_gui:
 			logging.info("ZYNTHIAN-UI OSC server running in port {}".format(self.osc_server_port))
 			self.osc_server.add_method(None, None, self.osc_cb_all)
 			#self.osc_server.start()
-		except liblo.AddressError as err:
-			logging.error("ZYNTHIAN-UI OSC Server can't be initialized: {}".format(err))
+		#except liblo.AddressError as err:
+		except Exception as err:
+			logging.error("ZYNTHIAN-UI OSC Server can't be started: {}".format(err))
 
 
 	def osc_end(self):
@@ -209,7 +231,6 @@ class zynthian_gui:
 				logging.info("ZYNTHIAN-UI OSC server stopped")
 			except Exception as err:
 				logging.error("Can't stop ZYNTHIAN-UI OSC server => %s" % err)
-			self.stop_loading()
 
 
 	def osc_receive(self):
@@ -221,7 +242,13 @@ class zynthian_gui:
 	#@liblo.make_method(None, None)
 	def osc_cb_all(self, path, args, types, src):
 		logging.info("OSC MESSAGE '%s' from '%s'" % (path, src.url))
-		self.callable_ui_action(path, args)
+
+		parts = path.split("/", 2)
+		if parts[0]=="" and parts[1].upper()=="CUIA":
+			self.callable_ui_action(parts[2].upper(), args)
+		else:
+			logging.warning("Not supported OSC call '{}'".format(path))
+
 		#for a, t in zip(args, types):
 		#	logging.debug("argument of type '%s': %s" % (t, a))
 
@@ -258,6 +285,9 @@ class zynthian_gui:
 		# Init Auto-connector
 		zynautoconnect.start()
 
+		# Initialize OSC
+		self.osc_init()
+
 		# Load an initial snapshot?
 		snapshot_loaded=False
 		if zynthian_gui_config.restore_last_state:
@@ -283,8 +313,11 @@ class zynthian_gui:
 
 
 	def stop(self):
-		self.screens['layer'].reset()
+		logging.info("STOPPING ZYNTHIAN-UI ...")
+		self.stop_polling()
 		self.osc_end()
+		zynautoconnect.stop()
+		self.screens['layer'].reset()
 
 
 	def hide_screens(self,exclude=None):
@@ -469,6 +502,22 @@ class zynthian_gui:
 			self.all_sounds_off()
 			sleep(0.1)
 			self.raw_all_notes_off()
+			
+		elif cuia == "START_AUDIO_RECORD":
+			if len(params) > 0 and params[0] > 0:
+				self.screens['audio_recorder'].start_recording()
+				
+		elif cuia == "STOP_AUDIO_RECORD":
+			if len(params) > 0 and params[0] > 0:
+				self.screens['audio_recorder'].stop_recording()
+				
+		elif cuia == "START_MIDI_RECORD":
+			if len(params) > 0 and params[0] > 0:
+				self.screens['midi_recorder'].start_recording()
+				
+		elif cuia == "STOP_MIDI_RECORD":
+			if len(params) > 0 and params[0] > 0:
+				self.screens['midi_recorder'].stop_recording()
 
 		elif cuia == "SELECT":
 			try:
@@ -542,7 +591,7 @@ class zynthian_gui:
 	def zynswitches_init(self):
 		if lib_zyncoder:
 			ts=datetime.now()
-			logging.info("ZYNSWITCHES INIT...")
+			logging.info("SWITCHES INIT...")
 			for i,pin in enumerate(zynthian_gui_config.zynswitch_pin):
 				self.dtsw.append(ts)
 				lib_zyncoder.setup_zynswitch(i,pin)
@@ -551,14 +600,14 @@ class zynthian_gui:
 
 	def zynswitches_midi_setup(self, midi_chan):
 		if midi_chan>0:
-			logging.info("SWITCHES MIDI SETUP...")
+			logging.info("MIDI SWITCHES SETUP...")
 
 			for i in range(0, zynthian_gui_config.n_custom_switches):
 				swi = 4 + i
 				cc_num = zynthian_gui_config.custom_switch_midi_cc[i]
 				if cc_num is not None:
 					lib_zyncoder.setup_zynswitch_midi(swi, midi_chan, cc_num)
-					logging.info("SETUP MIDI ZYNSWITCH {} => CH#{}, CC#{}".format(swi, midi_chan, cc_num))
+					logging.info("MIDI ZYNSWITCH {} => CH#{}, CC#{}".format(swi, midi_chan, cc_num))
 
 
 	def zynswitches(self):
@@ -624,6 +673,9 @@ class zynthian_gui:
 				if self.curlayer is not None:
 					self.show_screen('control')
 			else:
+				if self.active_screen=='preset':
+					self.screens['preset'].restore_preset()
+
 				self.show_screen('layer')
 
 		elif i==1:
@@ -725,6 +777,9 @@ class zynthian_gui:
 				self.show_screen('layer')
 
 			else:
+				if self.active_screen=='preset':
+					self.screens['preset'].restore_preset()
+
 				self.show_screen('layer')
 
 		elif i==1:
@@ -1027,6 +1082,22 @@ class zynthian_gui:
 			sleep(0.1)
 
 
+	def wait_threads_end(self, n=20):
+		logging.debug("Awaiting threads to end ...")
+
+		while (self.loading_thread.is_alive() or self.zyncoder_thread.is_alive() or zynautoconnect.is_running()) and n>0:
+			sleep(0.1)
+			n -= 1
+
+		if n<=0:
+			logging.error("Reached maximum count while awaiting threads to end!")
+			return False
+		else:
+			logging.debug("Remaining {} active threads...".format(threading.active_count()))
+			sleep(0.5)
+			return True
+
+
 	def exit(self, code=0):
 		self.exit_flag=True
 		self.exit_code=code
@@ -1056,7 +1127,10 @@ class zynthian_gui:
 			# Capture exit event and finish
 			if self.exit_flag:
 				self.stop()
-				sys.exit(self.exit_code)
+				self.wait_threads_end()
+				logging.info("EXITING ZYNTHIAN-UI ...")
+				zynthian_gui_config.top.quit()
+				return
 			# Refresh Current Layer
 			elif self.curlayer and not self.loading:
 				self.curlayer.refresh()
@@ -1073,18 +1147,28 @@ class zynthian_gui:
 
 
 	def refresh_status(self):
+		if self.exit_flag:
+			return
+
 		try:
-			# Get CPU Load
-			#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
-			self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
+			if zynthian_gui_config.show_cpu_status:
+				# Get CPU Load
+				#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
+				self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
+			else:
+				# Get audio peak level
+				self.status_info['peakA'] = lib_jackpeak.getPeak(0)
+				self.status_info['peakB'] = lib_jackpeak.getPeak(1)
+				self.status_info['holdA'] = lib_jackpeak.getHold(0)
+				self.status_info['holdB'] = lib_jackpeak.getHold(1)
 
 			# Get Status Flags (once each 5 refreshes)
 			if self.status_counter>5:
 				self.status_counter = 0
-				try:
-					self.status_info['undervoltage'] = False
-					self.status_info['overtemp'] = False
 
+				self.status_info['undervoltage'] = False
+				self.status_info['overtemp'] = False
+				try:
 					# Get ARM flags
 					res = check_output(("vcgencmd", "get_throttled")).decode('utf-8','ignore')
 					thr = int(res[12:],16)
@@ -1093,6 +1177,10 @@ class zynthian_gui:
 					elif thr & (0x4 | 0x2):
 						self.status_info['overtemp'] = True
 
+				except Exception as e:
+					logging.error(e)
+
+				try:
 					# Get Recorder Status
 					self.status_info['audio_recorder'] = self.screens['audio_recorder'].get_status()
 					self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
@@ -1180,7 +1268,7 @@ class zynthian_gui:
 		for n in range(128):
 			lib_zyncoder.zynmidi_send_note_off(chan,n,0)
 
-
+		
 	#------------------------------------------------------------------
 	# MIDI learning
 	#------------------------------------------------------------------
@@ -1228,7 +1316,7 @@ class zynthian_gui:
 # GUI & Synth Engine initialization
 #------------------------------------------------------------------------------
 
-
+logging.info("STARTING ZYNTHIAN-UI ...")
 zynthian_gui_config.zyngui=zyngui=zynthian_gui()
 zyngui.start()
 
@@ -1277,7 +1365,8 @@ signal.signal(signal.SIGTERM, sigterm_handler)
 
 
 zynthian_gui_config.top.mainloop()
-#zyngui.stop()
 
+logging.info("Exit with code {} ...\n\n".format(zyngui.exit_code))
+exit(zyngui.exit_code)
 
 #------------------------------------------------------------------------------

@@ -79,12 +79,13 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		else:
 			self.layer = self.zyngui.screens['layer'].root_layers[self.layer_index]
 
-			#Change to sublayer if not root layer selected (detailed list!)
+			#Change to sublayer mode if not root layer selected => Detailed List!
 			root_layer = self.zyngui.screens['layer'].get_fxchain_root(self.layer)
 			if root_layer!=self.layer:
-				self.sublayer = self.layer
-				self.layer = root_layer
 				self.detailed_list = True
+				self.sublayer = self.layer
+				self.sublayer_index = self.zyngui.screens['layer'].layers.index(self.sublayer)
+				self.layer = root_layer
 				self.fill_list()
 				return
 			
@@ -132,7 +133,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def show(self):
 		if self.layer_index is None:
-			self.layer_index = self.zyngui.screens['layer'].get_layer_selected()
+			self.layer_index = self.zyngui.screens['layer'].index
 
 		if self.layer_index is not None:
 			super().show()
@@ -204,7 +205,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def layer_midi_chan(self):
-		self.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan)
+		self.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan, self.zyngui.screens['layer'].get_free_midi_chans())
 		self.zyngui.show_modal('midi_chan')
 
 
@@ -259,7 +260,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def fx_move_upchain(self):
 		ups = self.zyngui.screens['layer'].get_fxchain_upstream(self.sublayer)
 		self.zyngui.screens['layer'].swap_fxchain(ups[0], self.sublayer)
-		self.back_action()
+		
+		if self.detailed_list:
+			self.zyngui.show_screen('layer')
+		else:
+			self.back_action()
 
 
 	def can_move_downchain(self):
@@ -271,12 +276,20 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def fx_move_downchain(self):
 		downs = self.zyngui.screens['layer'].get_fxchain_downstream(self.sublayer)
 		self.zyngui.screens['layer'].swap_fxchain(self.sublayer, downs[0])
-		self.back_action()
+
+		if self.detailed_list:
+			self.zyngui.show_screen('layer')
+		else:
+			self.back_action()
 
 
 	def fx_remove(self):
 		self.zyngui.screens['layer'].remove_layer(self.sublayer_index)
-		self.back_action()
+
+		if self.detailed_list:
+			self.zyngui.show_screen('layer')
+		else:
+			self.back_action()
 
 
 	def set_select_path(self):

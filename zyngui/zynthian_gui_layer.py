@@ -265,6 +265,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			logging.debug("Removing layer {} => {} ...".format(i, self.layers[i].get_basepath()))
 			
 			self.drop_from_fxchain(self.layers[i])
+			self.layers[i].mute_audio_out()
 			self.zyngui.zynautoconnect()
 
 			self.zyngui.zynautoconnect_acquire_lock()

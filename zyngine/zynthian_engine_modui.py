@@ -67,6 +67,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self.websocket = None
 		self.ws_thread = None
 		self.ws_preset_loaded = False
+		self.ws_bundle_loaded = False
 
 		self.bank_dirs = [
 			('_', self.my_data_dir + "/mod-pedalboards")
@@ -82,6 +83,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self.graph = {}
 		self.plugin_info = OrderedDict()
 		self.plugin_zctrls = OrderedDict()
+		self.pedelpresets = OrderedDict()
 
 
 	def start(self):
@@ -144,11 +146,16 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def load_bundle(self, path):
 		self.graph_reset()
+		self.ws_bundle_loaded = False
 		res = self.api_post_request("/pedalboard/load_bundle/",data={'bundlepath':path})
 		if not res or not res['ok']:
 			logging.error("Loading Bundle "+path)
 		else:
 			return res['name']
+		i=0
+		while not self.ws_bundle_loaded and i<101: 
+			sleep(0.1)
+			i=i+2
 
 
 	#----------------------------------------------------------------------------
@@ -166,36 +173,46 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def get_preset_list(self, bank):
+		presets = self.api_get_request('/pedalpreset/list')
+		if not presets:
+			self.api_post_request('/pedalpreset/enable')
+			presets = self.api_get_request('/pedalpreset/list')
+
+		self.pedelpresets.clear()
+		for pid in sorted(presets):
+			title = presets[pid]
+			preset_entry = (pid, [0,0,0], title, '')
+			self.pedelpresets[pid] = preset_entry
+			logging.debug("Add pedalboard preset " + title)
+
 		npwp=self.get_num_of_plugins_with_presets()
 
-		preset_list = []
+		preset_list = list(self.pedelpresets.values())
+		preset_list.append((None,[0,0,0],"-----------------------------", ''))
 		for pgraph in self.plugin_info:
 			preset_dict = OrderedDict()
 
 			for prs in self.plugin_info[pgraph]['presets']:
-				
-				#if npwp>1:
-				#	title = self.plugin_info[pgraph]['name'] + '/' + prs['label']
-				#else:
-				#	title = prs['label']
-
-				title = prs['label']
+				title = self.plugin_info[pgraph]['name'] + '/' + prs['label']
 
 				preset_dict[prs['uri']] = len(preset_list)
 				preset_list.append((prs['uri'], [0,0,0], title, pgraph))
-				logging.debug("Add Preset " + title)
+				logging.debug("Add effect preset " + title)
 
-			self.plugin_info[pgraph]['presets_dict'] = preset_dict
+				self.plugin_info[pgraph]['presets_dict'] = preset_dict
 
 		return preset_list
 
 
 	def set_preset(self, layer, preset, preload=False):
-		self.load_preset(preset[3],preset[0])
+		if preset[3]:
+			self.load_effect_preset(preset[3],preset[0])
+		else:
+			self.load_pedalboard_preset(preset[0])
 		return True
 
 
-	def load_preset(self, plugin, preset):
+	def load_effect_preset(self, plugin, preset):
 		self.ws_preset_loaded = False
 		res = self.api_get_request("/effect/preset/load/"+plugin, data={'uri':preset})
 		i=0
@@ -204,14 +221,24 @@ class zynthian_engine_modui(zynthian_engine):
 			i=i+1
 
 
+	def load_pedalboard_preset(self, preset):
+		self.ws_preset_loaded = False
+		res = self.api_get_request("/pedalpreset/load", data={'id':preset})
+		i=0
+		while not self.ws_preset_loaded and i<100: 
+			sleep(0.1)
+			i=i+1
+
+
 	def cmp_presets(self, preset1, preset2):
 		try:
-			if preset1[3]==preset2[3]:
+			if preset1[3]==preset2[3] and preset1[0]==preset2[0]:
 				return True
 			else:
 				return False
 		except:
 			return False
+
 
 	#----------------------------------------------------------------------------
 	# Controllers Managament
@@ -323,6 +350,9 @@ class zynthian_engine_modui(zynthian_engine):
 				elif command == "preset":
 					self.preset_cb(args[1],args[2])
 
+				elif command == "pedal_preset":
+					self.pedal_preset_cb(args[1])
+
 				elif command == "param_set":
 					self.set_param_cb(args[1],args[2],args[3])
 
@@ -330,13 +360,14 @@ class zynthian_engine_modui(zynthian_engine):
 					self.midi_map_cb(args[1],args[2],args[3],args[4])
 
 				elif command == "loading_start":
-						logging.info("LOADING START")
-						self.start_loading()
+					logging.info("LOADING START")
+					self.start_loading()
 
 				elif command == "loading_end":
 					logging.info("LOADING END")
 					self.graph_autoconnect_midi_input()
 					self.stop_loading()
+					self.ws_bundle_loaded = True
 
 				elif command == "bundlepath":
 					logging.info("BUNDLEPATH %s" % args[1])
@@ -587,14 +618,16 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def enable_midi_devices(self):
 		res=self.api_get_request("/jack/get_midi_devices")
-		#logging.debug("API /jack/get_midi_devices => "+str(res))
+		#logging.debug("API /jack/get_midi_devices => {}".format(res))
 		if 'devList' in res:
 			data=[]
 			for dev in res['devList']: 
-				if dev not in res['devsInUse']: data.append(dev)
+				#if dev not in res['devsInUse']: 
+				data.append(dev)
 			if len(data)>0:
-				self.api_post_request("/jack/set_midi_devices",json=data)
-				#print("API /jack/set_midi_devices => "+str(data))
+				res = self.api_post_request("/jack/set_midi_devices",json=data)
+				#logging.debug("API /jack/set_midi_devices => {}".format(data))
+				#logging.debug("RES => {}".format(res))
 
 
 	def set_param_cb(self, pgraph, symbol, val):
@@ -616,9 +649,21 @@ class zynthian_engine_modui(zynthian_engine):
 			i=self.plugin_info[pgraph]['presets_dict'][uri]
 			self.layers[0].set_preset(i, False)
 			self.zyngui.screens['control'].set_select_path()
-
 		except Exception as e:
 			logging.error("Preset Not Found: {}/{} => {}".format(pgraph, uri, e))
+		self.ws_preset_loaded = True
+
+
+	def pedal_preset_cb(self, preset):
+		try:
+			preset_entry = self.pedelpresets[preset]
+			preset_entries = list(self.pedelpresets.values())
+			i = preset_entries.index(preset_entry)
+			self.layers[0].set_preset(i, False)
+			self.zyngui.screens['control'].set_select_path()
+
+		except Exception as e:
+			logging.error("Preset Not Found: {}".format(preset))
 
 		self.ws_preset_loaded = True
 

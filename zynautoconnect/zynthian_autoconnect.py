@@ -76,7 +76,7 @@ def get_port_alias_id(midi_port):
 #------------------------------------------------------------------------------
 
 def midi_autoconnect():
-	logger.info("Autoconnecting Midi ...")
+	logger.info("ZynAutoConnect: MIDI ...")
 
 	#------------------------------------
 	# Get Input/Output MIDI Ports: 
@@ -262,7 +262,7 @@ def midi_autoconnect():
 
 
 def audio_autoconnect():
-	logger.info("Autoconnecting Audio ...")
+	logger.info("ZynAutoConnect: Audio ...")
 
 	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
 	input_ports=get_audio_input_ports()
@@ -272,6 +272,17 @@ def audio_autoconnect():
 	try:
 		jclient.disconnect(mon_in[0],input_ports['system'][0])
 		jclient.disconnect(mon_in[1],input_ports['system'][1])
+	except:
+		pass
+
+	#Get dpmeter ports
+	dpmeter_out=jclient.get_ports("jackpeak", is_input=True, is_audio=True)
+
+	#Connect mplayer to DPMeter
+	mplayer_in=jclient.get_ports("MPlayer", is_output=True, is_audio=True)
+	try:
+		jclient.connect(mplayer_in[0],dpmeter_out[0])
+		jclient.connect(mplayer_in[1],dpmeter_out[1])
 	except:
 		pass
 
@@ -289,17 +300,34 @@ def audio_autoconnect():
 			
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:
-				try:
-					if ao in layer.get_audio_out():
+				if ao in layer.get_audio_out():
+					try:
 						#logger.debug("Connecting to {} ...".format(ao))
 						jclient.connect(ports[0],input_ports[ao][0])
 						jclient.connect(ports[1],input_ports[ao][1])
-					else:
+					except:
+						pass
+
+					if ao=="system":
+						try:
+							jclient.connect(ports[0],dpmeter_out[0])
+							jclient.connect(ports[1],dpmeter_out[1])
+						except:
+							pass
+
+				else:
+					try:
 						jclient.disconnect(ports[0],input_ports[ao][0])
 						jclient.disconnect(ports[1],input_ports[ao][1])
-				except:
-					pass
+					except:
+						pass
 
+					if ao=="system":
+						try:
+							jclient.disconnect(ports[0],dpmeter_out[0])
+							jclient.disconnect(ports[1],dpmeter_out[1])
+						except:
+							pass
 
 	#Get System Capture ports => jack output ports!!
 	system_capture=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
@@ -337,7 +365,7 @@ def get_audio_input_ports():
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
 			parts=aip.name.split(':')
 			client_name=parts[0]
-			if client_name[:7]=="effect_" or client_name=="jack_capture":
+			if client_name[:7]=="effect_" or client_name=="jack_capture" or client_name=="jackpeak":
 				continue
 			if client_name not in res:
 				res[client_name]=[aip]
@@ -366,7 +394,7 @@ def autoconnect_thread():
 		try:
 			autoconnect()
 		except Exception as err:
-			logger.error(err)
+			logger.error("ZynAutoConnect ERROR: {}".format(err))
 		sleep(refresh_time)
 
 
@@ -388,7 +416,7 @@ def start(rt=2):
 		jclient.set_xrun_callback(cb_jack_xrun)
 		jclient.activate()
 	except Exception as e:
-		logger.error("Failed to connect with Jack Server: {}".format(e))
+		logger.error("ZynAutoConnect ERROR: Can't connect with Jack Audio Server ({})".format(e))
 
 	# Create Lock object (Mutex) to avoid concurrence problems
 	lock=Lock();
@@ -400,12 +428,17 @@ def start(rt=2):
 
 
 def stop():
-	global exit_flag
+	global exit_flag, thread
 	exit_flag=True
 
 
+def is_running():
+	global thread
+	return thread.is_alive()
+
+
 def cb_jack_xrun(delayed_usecs: float):
-	logging.error("Jack XRUN!")
+	logging.error("Jack Audio XRUN!")
 	zynthian_gui_config.zyngui.status_info['xrun'] = True
 
 

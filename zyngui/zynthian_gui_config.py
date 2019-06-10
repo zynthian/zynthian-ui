@@ -47,6 +47,8 @@ raise_exceptions=int(os.environ.get('ZYNTHIAN_RAISE_EXCEPTIONS',False))
 # Set root logging level
 logging.basicConfig(stream=sys.stderr, level=log_level)
 
+logging.info("ZYNTHIAN-UI CONFIG ...")
+
 #------------------------------------------------------------------------------
 # Wiring layout
 #------------------------------------------------------------------------------
@@ -272,21 +274,41 @@ force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 #------------------------------------------------------------------------------
 
 restore_last_state=int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE',False))
+show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
 
 #------------------------------------------------------------------------------
 # MIDI Configuration
 #------------------------------------------------------------------------------
 
 def set_midi_config():
+	global preset_preload_noteon, midi_single_active_channel, midi_network_enabled
+	global midi_prog_change_zs3, midi_fine_tuning, midi_filter_rules
 	global master_midi_channel, master_midi_change_type
 	global master_midi_program_change_up, master_midi_program_change_down
 	global master_midi_program_base, master_midi_bank_change_ccnum
 	global master_midi_bank_change_up, master_midi_bank_change_down
 	global master_midi_bank_change_down_ccnum, master_midi_bank_base
-	global preset_preload_noteon, midi_single_active_channel
-	global midi_prog_change_zs3, midi_fine_tuning, midi_filter_rules
 	global disabled_midi_in_ports, enabled_midi_out_ports, enabled_midi_fb_ports
 
+	# MIDI options
+	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440))
+	midi_single_active_channel=int(os.environ.get('ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL',0))
+	midi_prog_change_zs3=int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3',1))
+	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON',1))
+	midi_network_enabled=int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED',0))
+
+	# Filter Rules
+	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES',"")
+	midi_filter_rules=midi_filter_rules.replace("\\n","\n")
+
+	# MIDI Ports
+	midi_ports=os.environ.get('ZYNTHIAN_MIDI_PORTS',"DISABLED_IN=\nENABLED_OUT=ttymidi:MIDI_out\nENABLED_FB=")
+	midi_ports=midi_ports.replace("\\n","\n")
+	disabled_midi_in_ports=zynconf.get_disabled_midi_in_ports(midi_ports)
+	enabled_midi_out_ports=zynconf.get_enabled_midi_out_ports(midi_ports)
+	enabled_midi_fb_ports=zynconf.get_enabled_midi_fb_ports(midi_ports)
+
+	# Master Channel Features
 	master_midi_channel=int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
 
 	master_midi_change_type=os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANGE_TYPE',"Roland")
@@ -328,22 +350,15 @@ def set_midi_config():
 	master_midi_bank_change_up=int('{:<06}'.format(master_midi_bank_change_up.replace('#',mmc_hex)),16)
 	master_midi_bank_change_down=int('{:<06}'.format(master_midi_bank_change_down.replace('#',mmc_hex)),16)
 
-	midi_single_active_channel=int(os.environ.get('ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL',0))
-	midi_prog_change_zs3=int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3',1))
-	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON',1))
-	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440))
-
-	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES',"")
-	midi_filter_rules=midi_filter_rules.replace("\\n","\n")
-
-	midi_ports=os.environ.get('ZYNTHIAN_MIDI_PORTS',"DISABLED_IN=\nENABLED_OUT=ttymidi:MIDI_out\nENABLED_FB=")
-	midi_ports=midi_ports.replace("\\n","\n")
-	disabled_midi_in_ports=zynconf.get_disabled_midi_in_ports(midi_ports)
-	enabled_midi_out_ports=zynconf.get_enabled_midi_out_ports(midi_ports)
-	enabled_midi_fb_ports=zynconf.get_enabled_midi_fb_ports(midi_ports)
 
 #Set MIDI config variables
 set_midi_config()
+
+#------------------------------------------------------------------------------
+# Player configuration
+#------------------------------------------------------------------------------
+midi_play_loop=int(os.environ.get('ZYNTHIAN_MIDI_PLAY_LOOP',0))
+audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
 
 #------------------------------------------------------------------------------
 # Create & Configure Top Level window 

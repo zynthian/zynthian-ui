@@ -27,8 +27,6 @@ import os
 import re
 import sys
 import signal
-import socket
-import psutil
 import logging
 from time import sleep
 from threading  import Thread
@@ -70,44 +68,58 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
 
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 
 		if zynthian_gui_config.midi_single_active_channel:
 			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
 		else:
 			self.list_data.append((self.toggle_single_channel,0,"[  ] Single Channel Mode"))
 
+		if zynthian_gui_config.midi_prog_change_zs3:
+			self.list_data.append((self.toggle_prog_change_zs3,0,"[x] Program Change ZS3"))
+		else:
+			self.list_data.append((self.toggle_prog_change_zs3,0,"[  ] Program Change ZS3"))
+
+		if zynthian_gui_config.preset_preload_noteon:
+			self.list_data.append((self.toggle_preset_preload_noteon,0,"[x] Preset Preload"))
+		else:
+			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
+
+		if zynconf.is_service_active("qmidinet"):
+			self.list_data.append((self.stop_qmidinet,0,"[x] MIDI Network"))
+		else:
+			self.list_data.append((self.start_qmidinet,0,"[  ] MIDI Network"))
+
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.network_info,0,"Network Info"))
 
-		if self.is_wifi_active():
-			self.list_data.append((self.stop_wifi,0,"[x] WIFI"))
+		if zynconf.is_wifi_active():
+			if zynconf.is_service_active("hostapd"):
+				self.list_data.append((self.stop_wifi,0,"[x] WIFI Hotspot"))
+			else:
+				self.list_data.append((self.stop_wifi,0,"[x] WIFI"))
 		else:
 			self.list_data.append((self.start_wifi,0,"[  ] WIFI"))
-
-		if self.is_service_active("qmidinet"):
-			self.list_data.append((self.stop_qmidinet,0,"[x] QMidiNet"))
-		else:
-			self.list_data.append((self.start_qmidinet,0,"[  ] QMidiNet"))
+			self.list_data.append((self.start_wifi_hotspot,0,"[  ] WIFI Hotspot"))
 
 		if os.environ.get('ZYNTHIAN_TOUCHOSC'):
-			if self.is_service_active("touchosc2midi"):
+			if zynconf.is_service_active("touchosc2midi"):
 				self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC"))
 			else:
 				self.list_data.append((self.start_touchosc2midi,0,"[  ] TouchOSC"))
 
 		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
-			if self.is_service_active("aubionotes"):
+			if zynconf.is_service_active("aubionotes"):
 				self.list_data.append((self.stop_aubionotes,0,"[x] Audio->MIDI"))
 			else:
 				self.list_data.append((self.start_aubionotes,0,"[  ] Audio->MIDI"))
 
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
-		self.list_data.append((self.do_nothing,0,"-----------------------------"))
+		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.update_software,0,"Update Software"))
 		#self.list_data.append((self.update_library,0,"Update Zynthian Library"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
@@ -119,59 +131,13 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		self.last_action=self.list_data[i][0]
-		self.last_action()
+		if self.list_data[i][0]:
+			self.last_action=self.list_data[i][0]
+			self.last_action()
 
 
 	def set_select_path(self):
 		self.select_path.set("Admin")
-
-
-	def is_process_running(self, procname):
-		cmd="ps -e | grep %s" % procname
-		try:
-			result=check_output(cmd, shell=True).decode('utf-8','ignore')
-			if len(result)>3: return True
-			else: return False
-		except Exception as e:
-			return False
-
-
-	def is_service_active(self, service):
-		cmd="systemctl is-active %s" % service
-		try:
-			result=check_output(cmd, shell=True).decode('utf-8','ignore')
-		except Exception as e:
-			result="ERROR: %s" % e
-		#print("Is service "+str(service)+" active? => "+str(result))
-		if result.strip()=='active': return True
-		else: return False
-
-
-	def get_netinfo(self, exclude_down=True):
-		netinfo={}
-		for ifc, snics in psutil.net_if_addrs().items():
-			if ifc=="lo":
-				continue
-			for snic in snics:
-				if snic.family == socket.AF_INET:
-					netinfo[ifc]=snic
-			if ifc not in netinfo:
-				c=0
-				for snic in snics:
-					if snic.family == socket.AF_INET6:
-						c+=1
-				if c>=2:
-					netinfo[ifc]=snic
-			if ifc not in netinfo and not exclude_down:
-				netinfo[ifc]=None
-		return netinfo
-
-
-	def is_wifi_active(self):
-		for ifc in self.get_netinfo():
-			if ifc.startswith("wlan"):
-				return True
 
 
 	def execute_commands(self):
@@ -271,10 +237,23 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				check_output("systemctl stop a2jmidid", shell=True)
 				self.zyngui.all_sounds_off()
 
+#------------------------------------------------------------------------------
+# AUDIO/MIDI RECORDER/PLAYER
+#------------------------------------------------------------------------------
 
-	def do_nothing(self):
-		pass
+	def audio_recorder(self):
+		logging.info("Audio Recorder")
+		self.zyngui.show_modal("audio_recorder")
 
+
+	def midi_recorder(self):
+		logging.info("MIDI Recorder")
+		self.zyngui.show_modal("midi_recorder")
+
+
+#------------------------------------------------------------------------------
+# MIDI OPTIONS
+#------------------------------------------------------------------------------
 
 	def toggle_single_channel(self):
 		if zynthian_gui_config.midi_single_active_channel:
@@ -294,14 +273,81 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.fill_list()
 
 
-	def audio_recorder(self):
-		logging.info("Audio Recorder")
-		self.zyngui.show_modal("audio_recorder")
+	def toggle_prog_change_zs3(self):
+		if zynthian_gui_config.midi_prog_change_zs3:
+			logging.info("ZS3 Program Change OFF")
+			zynthian_gui_config.midi_prog_change_zs3=False
+		else:
+			logging.info("ZS3 Program Change ON")
+			zynthian_gui_config.midi_prog_change_zs3=True
+
+		# Save config
+		zynconf.update_midi_profile({ 
+			"ZYNTHIAN_MIDI_PROG_CHANGE_ZS3": str(int(zynthian_gui_config.midi_prog_change_zs3))
+		})
+
+		self.fill_list()
 
 
-	def midi_recorder(self):
-		logging.info("MIDI Recorder")
-		self.zyngui.show_modal("midi_recorder")
+	def toggle_preset_preload_noteon(self):
+		if zynthian_gui_config.preset_preload_noteon:
+			logging.info("Preset Preload OFF")
+			zynthian_gui_config.preset_preload_noteon=False
+		else:
+			logging.info("Preset Preload ON")
+			zynthian_gui_config.preset_preload_noteon=True
+
+		# Save config
+		zynconf.update_midi_profile({ 
+			"ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON": str(int(zynthian_gui_config.preset_preload_noteon))
+		})
+
+		self.fill_list()
+
+
+	def start_qmidinet(self, save_config=True):
+		logging.info("STARTING QMIDINET")
+
+		try:
+			check_output("systemctl start qmidinet", shell=True)
+			zynthian_gui_config.midi_network_enabled = 1
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
+				})
+
+		except Exception as e:
+			logging.error(e)
+
+
+		self.fill_list()
+
+
+	def stop_qmidinet(self, save_config=True):
+		logging.info("STOPPING QMIDINET")
+
+		try:
+			check_output("systemctl stop qmidinet", shell=True)
+			zynthian_gui_config.midi_network_enabled = 0
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
+				})
+
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	#Start/Stop QMidiNet depending on configuration
+	def default_qmidinet(self):
+		if zynthian_gui_config.midi_network_enabled:
+			self.start_qmidinet(False)
+		else:
+			self.stop_qmidinet(False)
 
 
 	def midi_profile(self):
@@ -309,69 +355,46 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.zyngui.show_modal("midi_profile")
 
 
+#------------------------------------------------------------------------------
+# NETWORK FEATURES
+#------------------------------------------------------------------------------
+
 	def network_info(self):
-		logging.info("NETWORK INFO")
 		self.zyngui.show_info("NETWORK INFO\n")
-		self.zyngui.add_info(" Link-Local Name => {}.local\n".format(os.uname().nodename),"SUCCESS")
-		for ifc, snic in self.get_netinfo().items():
-			if snic.family==socket.AF_INET and snic.address:
-				self.zyngui.add_info(" {} => {}\n".format(ifc,snic.address),"SUCCESS")
-			else:
-				self.zyngui.add_info(" {} => {}\n".format(ifc,"connecting..."),"WARNING")
+
+		res = zynconf.network_info()
+		for k, v in res.items():
+			self.zyngui.add_info(" {} => {}\n".format(k,v[0]),v[1])
+
 		self.zyngui.hide_info_timer(5000)
 		self.zyngui.stop_loading()
 
 
 	def start_wifi(self):
-		logging.info("STARTING WIFI")
-		for ifc in self.get_netinfo(False):
-			if ifc.startswith("wlan"):
-				logging.info("Starting %s ..." % ifc)
-				try:
-					check_output("ifconfig {} up".format(ifc), shell=True)
-				except Exception as e:
-					logging.error(e)
-		sleep(3)
+		if not zynconf.start_wifi():
+			self.zyngui.show_info("STARTING WIFI ERROR\n")
+			self.zyngui.add_info("Can't start WIFI network!","WARNING")
+			self.zyngui.hide_info_timer(2000)
+
+		self.fill_list()
+
+
+	def start_wifi_hotspot(self):
+		if not zynconf.start_wifi_hotspot():
+			self.zyngui.show_info("STARTING WIFI HOTSPOT ERROR\n")
+			self.zyngui.add_info("Can't start WIFI Hotspot!","WARNING")
+			self.zyngui.hide_info_timer(2000)
+
 		self.fill_list()
 
 
 	def stop_wifi(self):
-		logging.info("STOPPING WIFI")
-		for ifc in self.get_netinfo():
-			if ifc.startswith("wlan"):
-				logging.info("Stopping %s ..." % ifc)
-				try:
-					check_output("ifconfig {} down".format(ifc), shell=True)
-				except Exception as e:
-					logging.error(e)
-		sleep(1)
+		if not zynconf.stop_wifi():
+			self.zyngui.show_info("STOPPING WIFI ERROR\n")
+			self.zyngui.add_info("Can't stop WIFI network!","WARNING")
+			self.zyngui.hide_info_timer(2000)
+
 		self.fill_list()
-
-
-	def start_qmidinet(self):
-		logging.info("STARTING QMIDINET")
-		try:
-			check_output("systemctl start qmidinet", shell=True)
-		except Exception as e:
-			logging.error(e)
-		self.fill_list()
-
-
-	def stop_qmidinet(self):
-		logging.info("STOPPING QMIDINET")
-		try:
-			check_output("systemctl stop qmidinet", shell=True)
-		except Exception as e:
-			logging.error(e)
-		self.fill_list()
-
-
-	#Start/Stop QMidiNet depending on configuration
-	def default_qmidinet(self):
-		if int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED',0)):
-			self.start_qmidinet()
-		else:
-			self.stop_qmidinet()
 
 
 	def start_touchosc2midi(self):
@@ -428,7 +451,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def restart_gui(self):
-		logging.info("RESTART GUI")
+		logging.info("RESTART ZYNTHIAN-UI")
 		self.last_state_action()
 		self.zyngui.exit(102)
 
@@ -460,7 +483,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def last_state_action(self):
-		if zynthian_gui_config.restore_last_state:
+		if zynthian_gui_config.restore_last_state and len(self.zyngui.screens['layer'].layers)>0:
 			self.zyngui.screens['snapshot'].save_last_state_snapshot()
 		else:
 			self.zyngui.screens['snapshot'].delete_last_state_snapshot()

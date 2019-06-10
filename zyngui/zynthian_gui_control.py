@@ -150,6 +150,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		#Set/Restore XY controllers highlight
 		self.set_xyselect_controllers()
+
 		#Release Mutex Lock
 		self.lock.release()
 

@@ -245,25 +245,26 @@ class zynthian_engine_aeolus(zynthian_engine):
 		#Send Program Change
 		self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
 
-		#Update Controller Values
-		for ig, gc in enumerate(preset[3]):
-			for ic, ctrl in enumerate(self.instrument[ig]['ctrls']):
-				if (gc >> ic) & 1:
-					ctrl[2]='on'
-				else:
-					ctrl[2]='off'
-		self.refresh_all()
+		if not preload:
+			#Update Controller Values
+			for ig, gc in enumerate(preset[3]):
+				for ic, ctrl in enumerate(self.instrument[ig]['ctrls']):
+					if (gc >> ic) & 1:
+						ctrl[2]='on'
+					else:
+						ctrl[2]='off'
+			self.refresh_all()
 
-		#Change Preset for all Layers
-		for l in self.layers:
-			if l!=layer:
-				l.preset_index=layer.preset_index
-				l.preset_name=layer.preset_name
-				l.preset_info=copy.deepcopy(layer.preset_info)
-				l.preset_bank_index=l.bank_index
-				l.preload_index=l.preset_index
-				l.preload_name=l.preset_name
-				l.preload_info=l.preset_info
+			#Change Preset for all Layers
+			for l in self.layers:
+				if l!=layer:
+					l.preset_index=layer.preset_index
+					l.preset_name=layer.preset_name
+					l.preset_info=copy.deepcopy(layer.preset_info)
+					l.preset_bank_index=l.bank_index
+					l.preload_index=l.preset_index
+					l.preload_name=l.preset_name
+					l.preload_info=l.preset_info
 
 		return True
 
