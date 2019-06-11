@@ -52,9 +52,9 @@ PIANOTEQ_MY_PRESETS_DIR = PIANOTEQ_DATA_DIR + '/Presets/My Presets'
 PIANOTEQ_MIDIMAPPINGS_DIR = PIANOTEQ_DATA_DIR + '/MidiMappings'
 
 try:
-	PIANOTEQ_VERSION=list(map(int, os.environ.get('PIANOTEQ_VERSION',"6.0.3").split(".")))
+	PIANOTEQ_VERSION=list(map(int, os.environ.get('PIANOTEQ_VERSION',"6.5.1").split(".")))
 except:
-	PIANOTEQ_VERSION=(6,0,3)
+	PIANOTEQ_VERSION=(6,5,1)
 
 PIANOTEQ_PRODUCT=os.environ.get('PIANOTEQ_PRODUCT',"STAGE")
 PIANOTEQ_TRIAL=int(os.environ.get('PIANOTEQ_TRIAL',"1"))
@@ -349,7 +349,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				self.base_command = PIANOTEQ_BINARY + " --headless"
 			else:
 				self.base_command = PIANOTEQ_BINARY + " --headless --multicore max"
-
 
 		# Create & fix Pianoteq config
 		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
