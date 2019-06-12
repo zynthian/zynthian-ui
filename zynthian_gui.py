@@ -1249,8 +1249,7 @@ class zynthian_gui:
 
 	def raw_all_notes_off(self):
 		logging.info("Raw All Notes Off!")
-		for chan in range(16):
-			self.raw_all_notes_off_chan(chan)
+		lib_zyncoder.zynmidi_send_all_notes_off()
 
 
 	def all_sounds_off_chan(self, chan):
@@ -1265,8 +1264,7 @@ class zynthian_gui:
 
 	def raw_all_notes_off_chan(self, chan):
 		logging.info("Raw All Notes Off for channel {}!".format(chan))
-		for n in range(128):
-			lib_zyncoder.zynmidi_send_note_off(chan,n,0)
+		lib_zyncoder.zynmidi_send_all_notes_off_chan(chan)
 
 		
 	#------------------------------------------------------------------
