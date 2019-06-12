@@ -178,9 +178,19 @@ class zynthian_engine_jalv(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 
+	def add_layer(self, layer):
+		super().add_layer(layer)
+		self.set_midi_chan(layer)
+
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
+
+
+	def set_midi_chan(self, layer):
+		if self.plugin_name=="Triceratops":
+			self.lv2_zctrl_dict["midi_channel"].set_value(layer.midi_chan+1.5)
 
 
 	#----------------------------------------------------------------------------
