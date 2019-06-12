@@ -275,17 +275,6 @@ def audio_autoconnect():
 	except:
 		pass
 
-	#Get dpmeter ports
-	dpmeter_out=jclient.get_ports("jackpeak", is_input=True, is_audio=True)
-
-	#Connect mplayer to DPMeter
-	mplayer_in=jclient.get_ports("MPlayer", is_output=True, is_audio=True)
-	try:
-		jclient.connect(mplayer_in[0],dpmeter_out[0])
-		jclient.connect(mplayer_in[1],dpmeter_out[1])
-	except:
-		pass
-
 	#Get layers list from UI
 	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 
@@ -308,13 +297,6 @@ def audio_autoconnect():
 					except:
 						pass
 
-					if ao=="system":
-						try:
-							jclient.connect(ports[0],dpmeter_out[0])
-							jclient.connect(ports[1],dpmeter_out[1])
-						except:
-							pass
-
 				else:
 					try:
 						jclient.disconnect(ports[0],input_ports[ao][0])
@@ -322,12 +304,38 @@ def audio_autoconnect():
 					except:
 						pass
 
-					if ao=="system":
-						try:
-							jclient.disconnect(ports[0],dpmeter_out[0])
-							jclient.disconnect(ports[1],dpmeter_out[1])
-						except:
-							pass
+	#Prepare for setup dpmeter connections
+	dpmeter_out = jclient.get_ports("jackpeak", is_input=True, is_audio=True)
+	dpmeter_conports_1=jclient.get_all_connections("jackpeak:input_a")
+	dpmeter_conports_2=jclient.get_all_connections("jackpeak:input_b")
+	sysout_conports_1 = jclient.get_all_connections("system:playback_1")
+	sysout_conports_2 = jclient.get_all_connections("system:playback_2")
+
+	#Disconnect ports from dpmeter (those that are not connected to System Out, if any ...)
+	for cp in dpmeter_conports_1:
+		if cp not in sysout_conports_1:
+			try:
+				jclient.disconnect(cp,dpmeter_out[0])
+			except:
+				pass
+	for cp in dpmeter_conports_2:
+		if cp not in sysout_conports_2:
+			try:
+				jclient.disconnect(cp,dpmeter_out[1])
+			except:
+				pass
+
+	#Connect ports to dpmeter (those currently connected to System Out)
+	for cp in sysout_conports_1:
+		try:
+			jclient.connect(cp,dpmeter_out[0])
+		except:
+			pass
+	for cp in sysout_conports_2:
+		try:
+			jclient.connect(cp,dpmeter_out[1])
+		except:
+			pass
 
 	#Get System Capture ports => jack output ports!!
 	system_capture=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
