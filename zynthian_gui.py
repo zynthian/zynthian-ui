@@ -1348,19 +1348,26 @@ if zynthian_gui_config.wiring_layout=="EMULATOR":
 #------------------------------------------------------------------------------
 
 
-def sigterm_handler(_signo, _stack_frame):
-	logging.info("Catch SIGTERM ...")
-	zyngui.stop()
-	zynthian_gui_config.top.destroy()
+def exit_handler(signo, stack_frame):
+	logging.info("Catch Exit Signal ({}) ...".format(signo))
+	if signo==signal.SIGINT:
+		exit_code=100
+	elif signo==signal.SIGQUIT:
+		exit_code=0
+	elif signo==signal.SIGTERM:
+		exit_code=101
+
+	zyngui.exit(exit_code)
 
 
-signal.signal(signal.SIGTERM, sigterm_handler)
-
+signal.signal(signal.SIGINT, exit_handler)
+signal.signal(signal.SIGQUIT, exit_handler)
+signal.signal(signal.SIGTERM, exit_handler)
+#signal.signal(signal.SIGKILL, exit_handler)
 
 #------------------------------------------------------------------------------
 # TKinter Main Loop
 #------------------------------------------------------------------------------
-
 
 zynthian_gui_config.top.mainloop()
 

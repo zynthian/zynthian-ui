@@ -367,6 +367,17 @@ def audio_autoconnect():
 					pass
 
 
+def audio_disconnect_sysout():
+	sysout_ports=jclient.get_ports("system", is_input=True, is_audio=True)
+	for sop in sysout_ports:
+		conports = jclient.get_all_connections(sop)
+		for cp in conports:
+			try:
+				jclient.disconnect(cp, sop)
+			except:
+				pass
+
+
 def get_audio_input_ports():
 	res=OrderedDict()
 	try:
@@ -436,8 +447,11 @@ def start(rt=2):
 
 
 def stop():
-	global exit_flag, thread
+	global exit_flag
 	exit_flag=True
+	acquire_lock()
+	audio_disconnect_sysout()
+	release_lock()
 
 
 def is_running():
