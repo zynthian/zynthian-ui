@@ -85,11 +85,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
 
-		if zynconf.is_service_active("qmidinet"):
-			self.list_data.append((self.stop_qmidinet,0,"[x] MIDI Network"))
-		else:
-			self.list_data.append((self.start_qmidinet,0,"[  ] MIDI Network"))
-
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
 		self.list_data.append((None,0,"-----------------------------"))
@@ -109,6 +104,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC"))
 			else:
 				self.list_data.append((self.start_touchosc2midi,0,"[  ] TouchOSC"))
+
+		if zynconf.is_service_active("qmidinet"):
+			self.list_data.append((self.stop_qmidinet,0,"[x] QmidiNet"))
+		else:
+			self.list_data.append((self.start_qmidinet,0,"[  ] QmidiNet"))
 
 		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
 			if zynconf.is_service_active("aubionotes"):
