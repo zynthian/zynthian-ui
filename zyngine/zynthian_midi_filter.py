@@ -186,8 +186,8 @@ class MidiFilterRule:
 					raise MidiFilterException("MAP rule channel lists can't be matched")
 				if len(self.args[1].ev_list)!=len(self.args[1].ev_list):
 					raise MidiFilterException("MAP rule event lists can't be matched")
-			except:
-				raise MidiFilterException("Invalid MAP rule format (%s)" % rule)
+			except Exception as e:
+				raise MidiFilterException("Invalid MAP rule format (%s): %s" % (rule, e))
 		else:
 			raise MidiFilterException("Invalid RULE type (%s)" % self.rule_type)
 
