@@ -188,6 +188,9 @@ class zynthian_gui:
 			lib_zyncoder.set_midi_filter_tuning_freq(self.fine_tuning_freq)
 			#Set MIDI Master Channel
 			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
+			#Start / stop MIDI network services
+			zynthian_gui_admin.default_qmidinet(self.screens['admin'])
+			zynthian_gui_admin.default_touchosc(self.screens['admin'])
 			#Setup MIDI filter rules
 			if self.midi_filter_script:
 				self.midi_filter_script.clean()

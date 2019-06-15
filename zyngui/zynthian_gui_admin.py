@@ -59,7 +59,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.child_pid=None
 		self.last_action=None
 		super().__init__('Action', True)
-		self.default_qmidinet()
 
 
 	def fill_list(self):
@@ -85,6 +84,16 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
 
+		if zynconf.is_service_active("qmidinet"):
+			self.list_data.append((self.stop_qmidinet,0,"[x] QmidiNet"))
+		else:
+			self.list_data.append((self.start_qmidinet,0,"[  ] QmidiNet"))
+
+		if zynconf.is_service_active("touchosc2midi"):
+			self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC"))
+		else:
+			self.list_data.append((self.start_touchosc2midi,0,"[  ] TouchOSC"))
+
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
 		self.list_data.append((None,0,"-----------------------------"))
@@ -98,17 +107,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.start_wifi,0,"[  ] WIFI"))
 			self.list_data.append((self.start_wifi_hotspot,0,"[  ] WIFI Hotspot"))
-
-		if os.environ.get('ZYNTHIAN_TOUCHOSC'):
-			if zynconf.is_service_active("touchosc2midi"):
-				self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC"))
-			else:
-				self.list_data.append((self.start_touchosc2midi,0,"[  ] TouchOSC"))
-
-		if zynconf.is_service_active("qmidinet"):
-			self.list_data.append((self.stop_qmidinet,0,"[x] QmidiNet"))
-		else:
-			self.list_data.append((self.start_qmidinet,0,"[  ] QmidiNet"))
 
 		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
 			if zynconf.is_service_active("aubionotes"):
@@ -320,7 +318,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		except Exception as e:
 			logging.error(e)
 
-
 		self.fill_list()
 
 
@@ -349,11 +346,51 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.stop_qmidinet(False)
 
+			
+
+	def start_touchosc2midi(self, save_config=True):
+		logging.info("STARTING touchosc2midi")
+		try:
+			check_output("systemctl start touchosc2midi", shell=True)
+			zynthian_gui_config.touchosc_enabled = 1
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_TOUCHOSC": str(zynthian_gui_config.touchosc_enabled)
+				})
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	def stop_touchosc2midi(self, save_config=True):
+		logging.info("STOPPING touchosc2midi")
+		try:
+			check_output("systemctl stop touchosc2midi", shell=True)
+			zynthian_gui_config.touchosc_enabled = 0
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_TOUCHOSC": str(zynthian_gui_config.touchosc_enabled)
+				})
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	#Start/Stop TouchOSC depending on configuration
+	def default_touchosc(self):
+		if zynthian_gui_config.touchosc_enabled:
+			self.start_touchosc2midi(False)
+		else:
+			self.stop_touchosc2midi(False)
+
 
 	def midi_profile(self):
 		logging.info("MIDI Profile")
 		self.zyngui.show_modal("midi_profile")
-
 
 #------------------------------------------------------------------------------
 # NETWORK FEATURES
@@ -394,18 +431,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.zyngui.add_info("Can't stop WIFI network!","WARNING")
 			self.zyngui.hide_info_timer(2000)
 
-		self.fill_list()
-
-
-	def start_touchosc2midi(self):
-		logging.info("STARTING touchosc2midi")
-		check_output("systemctl start touchosc2midi", shell=True)
-		self.fill_list()
-
-
-	def stop_touchosc2midi(self):
-		logging.info("STOPPING touchosc2midi")
-		check_output("systemctl stop touchosc2midi", shell=True)
 		self.fill_list()
 
 
