@@ -304,38 +304,40 @@ def audio_autoconnect():
 					except:
 						pass
 
-	#Prepare for setup dpmeter connections
-	dpmeter_out = jclient.get_ports("jackpeak", is_input=True, is_audio=True)
-	dpmeter_conports_1=jclient.get_all_connections("jackpeak:input_a")
-	dpmeter_conports_2=jclient.get_all_connections("jackpeak:input_b")
-	sysout_conports_1 = jclient.get_all_connections("system:playback_1")
-	sysout_conports_2 = jclient.get_all_connections("system:playback_2")
+	#Setup dpmeter connections if enabled ...
+	if not zynthian_gui_config.show_cpu_status:
+		#Prepare for setup dpmeter connections
+		dpmeter_out = jclient.get_ports("jackpeak", is_input=True, is_audio=True)
+		dpmeter_conports_1=jclient.get_all_connections("jackpeak:input_a")
+		dpmeter_conports_2=jclient.get_all_connections("jackpeak:input_b")
+		sysout_conports_1 = jclient.get_all_connections("system:playback_1")
+		sysout_conports_2 = jclient.get_all_connections("system:playback_2")
 
-	#Disconnect ports from dpmeter (those that are not connected to System Out, if any ...)
-	for cp in dpmeter_conports_1:
-		if cp not in sysout_conports_1:
+		#Disconnect ports from dpmeter (those that are not connected to System Out, if any ...)
+		for cp in dpmeter_conports_1:
+			if cp not in sysout_conports_1:
+				try:
+					jclient.disconnect(cp,dpmeter_out[0])
+				except:
+					pass
+		for cp in dpmeter_conports_2:
+			if cp not in sysout_conports_2:
+				try:
+					jclient.disconnect(cp,dpmeter_out[1])
+				except:
+					pass
+
+		#Connect ports to dpmeter (those currently connected to System Out)
+		for cp in sysout_conports_1:
 			try:
-				jclient.disconnect(cp,dpmeter_out[0])
+				jclient.connect(cp,dpmeter_out[0])
 			except:
 				pass
-	for cp in dpmeter_conports_2:
-		if cp not in sysout_conports_2:
+		for cp in sysout_conports_2:
 			try:
-				jclient.disconnect(cp,dpmeter_out[1])
+				jclient.connect(cp,dpmeter_out[1])
 			except:
 				pass
-
-	#Connect ports to dpmeter (those currently connected to System Out)
-	for cp in sysout_conports_1:
-		try:
-			jclient.connect(cp,dpmeter_out[0])
-		except:
-			pass
-	for cp in sysout_conports_2:
-		try:
-			jclient.connect(cp,dpmeter_out[1])
-		except:
-			pass
 
 	#Get System Capture ports => jack output ports!!
 	system_capture=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
