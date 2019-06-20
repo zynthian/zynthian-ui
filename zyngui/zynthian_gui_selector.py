@@ -649,7 +649,9 @@ class zynthian_gui_selector:
 		
 	def cb_keybinding(self,event):
 		logging.info("Key press %d %s" % (event.keycode, event.keysym))
+
 		switchSuffix = "SHORT"
+
 		if event.state == 1: # Shift modifier
 			switchSuffix = "BOLD"
 			if event.keycode == 65: # Space
@@ -658,6 +660,7 @@ class zynthian_gui_selector:
 			elif event.keysym == "Insert":
 				self.zyngui.callable_ui_action("REBOOT")
 				return
+
 		elif event.state == 4: # Ctrl modifier
 			switchSuffix = "LONG"
 			if event.keycode == 65: # Space
@@ -669,13 +672,14 @@ class zynthian_gui_selector:
 			elif event.keysym == "m":
 				self.zyngui.callable_ui_action("RELOAD_MIDI_CONFIG")
 				return
-		if event.keysym == "Return":
+
+		if event.keysym in ("Return", "Right"):
 			self.zyngui.callable_ui_action("SWITCH_SELECT_" + switchSuffix)
-		elif event.keysym == "BackSpace" or event.keysym == "Escape":
+		elif event.keysym in ("BackSpace", "Escape", "Left"):
 			self.zyngui.callable_ui_action("SWITCH_BACK_" + switchSuffix)
-		elif event.keysym == "l" or event.keysym == "L":
+		elif event.keysym in ("l", "L"):
 			self.zyngui.callable_ui_action("SWITCH_LAYER_" + switchSuffix)
-		elif event.keysym == "s" or event.keysym == "S":
+		elif event.keysym in ("s", "S"):
 			self.zyngui.callable_ui_action("SWITCH_SNAPSHOT_" + switchSuffix)
 		elif event.keysym == "Up":
 			self.zyngui.callable_ui_action("SELECT_UP")
