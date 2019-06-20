@@ -678,9 +678,9 @@ class zynthian_gui_selector:
 		elif event.keysym == "s" or event.keysym == "S":
 			self.zyngui.callable_ui_action("SWITCH_SNAPSHOT_" + switchSuffix)
 		elif event.keysym == "Up":
-			self.zyngui.callable_ui_action("SELECT_DOWN")
-		elif event.keysym == "Down":
 			self.zyngui.callable_ui_action("SELECT_UP")
+		elif event.keysym == "Down":
+			self.zyngui.callable_ui_action("SELECT_DOWN")
 		elif event.keysym == "r":
 			self.zyngui.callable_ui_action("START_AUDIO_RECORD")
 		elif event.keysym == "R":
