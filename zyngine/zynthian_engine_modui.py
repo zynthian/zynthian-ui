@@ -163,42 +163,36 @@ class zynthian_engine_modui(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 
-	def get_num_of_plugins_with_presets(self):
-		n=0
-		for pgraph in self.plugin_info:
-			if len(self.plugin_info[pgraph]['presets'])>0:
-				n+=1
-
-		return n
-
-
 	def get_preset_list(self, bank):
+		self.pedelpresets.clear()
+
+		# Get Pedalboard Presets ...
 		presets = self.api_get_request('/pedalpreset/list')
 		if not presets:
 			self.api_post_request('/pedalpreset/enable')
 			presets = self.api_get_request('/pedalpreset/list')
 
-		self.pedelpresets.clear()
-		for pid in sorted(presets):
-			title = presets[pid]
-			preset_entry = (pid, [0,0,0], title, '')
-			self.pedelpresets[pid] = preset_entry
-			logging.debug("Add pedalboard preset " + title)
+		if presets:
+			for pid in sorted(presets):
+				title = presets[pid]
+				logging.debug("Add pedalboard preset " + title)
+				preset_entry = (pid, [0,0,0], title, '')
+				self.pedelpresets[pid] = preset_entry
 
-		npwp=self.get_num_of_plugins_with_presets()
+			preset_list = list(self.pedelpresets.values())
+			preset_list.append((None,[0,0,0],"-----------------------------", ''))
 
-		preset_list = list(self.pedelpresets.values())
-		preset_list.append((None,[0,0,0],"-----------------------------", ''))
+		else:
+			preset_list = list()
+
+		# Get Plugins Presets ...
 		for pgraph in self.plugin_info:
 			preset_dict = OrderedDict()
-
 			for prs in self.plugin_info[pgraph]['presets']:
 				title = self.plugin_info[pgraph]['name'] + '/' + prs['label']
-
+				logging.debug("Add effect preset " + title)
 				preset_dict[prs['uri']] = len(preset_list)
 				preset_list.append((prs['uri'], [0,0,0], title, pgraph))
-				logging.debug("Add effect preset " + title)
-
 				self.plugin_info[pgraph]['presets_dict'] = preset_dict
 
 		return preset_list
@@ -405,8 +399,15 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def api_get_request(self, path, data=None, json=None):
 		self.start_loading()
-		res=requests.get(self.base_api_url + path, data=data, json=json)
+		try:
+			res=requests.get(self.base_api_url + path, data=data, json=json)
+		except Exception as e:
+			self.stop_loading()
+			logging.error(e)
+			return
+
 		self.stop_loading()
+
 		if res.status_code != 200:
 			logging.error("GET call to MOD-UI API: "+str(res.status_code) + " => " +self.base_api_url + path)
 		else:
@@ -415,8 +416,15 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def api_post_request(self, path, data=None, json=None):
 		self.start_loading()
-		res=requests.post(self.base_api_url + path, data=data, json=json)
+		try:
+			res=requests.post(self.base_api_url + path, data=data, json=json)
+		except Exception as e:
+			self.stop_loading()
+			logging.error(e)
+			return
+
 		self.stop_loading()
+
 		if res.status_code != 200:
 			logging.error("POST call to MOD-UI API: "+str(res.status_code) + " => " +self.base_api_url + path)
 		else:
@@ -428,6 +436,7 @@ class zynthian_engine_modui(zynthian_engine):
 		if bdirname!='default.pedalboard':
 			#Find bundle_path in bank list ...
 			layer=self.layers[0]
+			layer.load_bank_list()
 			for i in range(len(layer.bank_list)):
 				#logging.debug("BUNDLE PATH SEARCH => %s <=> %s" % (layer.bank_list[i][0].split('/')[-1], bdirname))
 				if layer.bank_list[i][0].split('/')[-1]==bdirname:
@@ -437,8 +446,7 @@ class zynthian_engine_modui(zynthian_engine):
 					logging.info('Bank Selected from Bundlepath: ' + bank_name + ' (' + str(i)+')')
 					self.zyngui.screens['bank'].select(i)
 					layer.set_bank(i,False)
-					#Show preset screen
-					self.zyngui.show_screen('preset')
+
 					break
 
 
