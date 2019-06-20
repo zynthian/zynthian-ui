@@ -85,14 +85,19 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
 
 		if zynconf.is_service_active("qmidinet"):
-			self.list_data.append((self.stop_qmidinet,0,"[x] QmidiNet"))
+			self.list_data.append((self.stop_qmidinet,0,"[x] QmidiNet (MIDI over IP)"))
 		else:
-			self.list_data.append((self.start_qmidinet,0,"[  ] QmidiNet"))
+			self.list_data.append((self.start_qmidinet,0,"[  ] QmidiNet (MIDI over IP)"))
 
 		if zynconf.is_service_active("touchosc2midi"):
-			self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC"))
+			self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC MIDI Bridge"))
 		else:
-			self.list_data.append((self.start_touchosc2midi,0,"[  ] TouchOSC"))
+			self.list_data.append((self.start_touchosc2midi,0,"[  ] TouchOSC MIDI Bridge"))
+
+		if zynconf.is_service_active("aubionotes"):
+			self.list_data.append((self.stop_aubionotes,0,"[x] AubioNotes (Audio2MIDI)"))
+		else:
+			self.list_data.append((self.start_aubionotes,0,"[  ] AubioNotes (Audio2MIDI)"))
 
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
@@ -108,11 +113,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.start_wifi,0,"[  ] WIFI"))
 			self.list_data.append((self.start_wifi_hotspot,0,"[  ] WIFI Hotspot"))
 
-		if os.environ.get('ZYNTHIAN_AUBIONOTES'):
-			if zynconf.is_service_active("aubionotes"):
-				self.list_data.append((self.stop_aubionotes,0,"[x] Audio->MIDI"))
-			else:
-				self.list_data.append((self.start_aubionotes,0,"[  ] Audio->MIDI"))
 
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
@@ -352,11 +352,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("STARTING touchosc2midi")
 		try:
 			check_output("systemctl start touchosc2midi", shell=True)
-			zynthian_gui_config.touchosc_enabled = 1
+			zynthian_gui_config.midi_touchosc_enabled = 1
 			# Update MIDI profile
 			if save_config:
 				zynconf.update_midi_profile({ 
-					"ZYNTHIAN_MIDI_TOUCHOSC": str(zynthian_gui_config.touchosc_enabled)
+					"ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
 				})
 		except Exception as e:
 			logging.error(e)
@@ -368,11 +368,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("STOPPING touchosc2midi")
 		try:
 			check_output("systemctl stop touchosc2midi", shell=True)
-			zynthian_gui_config.touchosc_enabled = 0
+			zynthian_gui_config.midi_touchosc_enabled = 0
 			# Update MIDI profile
 			if save_config:
 				zynconf.update_midi_profile({ 
-					"ZYNTHIAN_MIDI_TOUCHOSC": str(zynthian_gui_config.touchosc_enabled)
+					"ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
 				})
 		except Exception as e:
 			logging.error(e)
@@ -382,10 +382,50 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	#Start/Stop TouchOSC depending on configuration
 	def default_touchosc(self):
-		if zynthian_gui_config.touchosc_enabled:
+		if zynthian_gui_config.midi_touchosc_enabled:
 			self.start_touchosc2midi(False)
 		else:
 			self.stop_touchosc2midi(False)
+
+
+	def start_aubionotes(self, save_config=True):
+		logging.info("STARTING aubionotes")
+		try:
+			check_output("systemctl start aubionotes", shell=True)
+			zynthian_gui_config.midi_aubionotes_enabled = 1
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
+				})
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	def stop_aubionotes(self, save_config=True):
+		logging.info("STOPPING aubionotes")
+		try:
+			check_output("systemctl stop aubionotes", shell=True)
+			zynthian_gui_config.midi_aubionotes_enabled = 0
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
+				})
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	#Start/Stop AubioNotes depending on configuration
+	def default_aubionotes(self):
+		if zynthian_gui_config.midi_aubionotes_enabled:
+			self.start_aubionotes(False)
+		else:
+			self.stop_aubionotes(False)
 
 
 	def midi_profile(self):
@@ -431,18 +471,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.zyngui.add_info("Can't stop WIFI network!","WARNING")
 			self.zyngui.hide_info_timer(2000)
 
-		self.fill_list()
-
-
-	def start_aubionotes(self):
-		logging.info("STARTING aubionotes")
-		check_output("systemctl start aubionotes", shell=True)
-		self.fill_list()
-
-
-	def stop_aubionotes(self):
-		logging.info("STOPPING aubionotes")
-		check_output("systemctl stop aubionotes", shell=True)
 		self.fill_list()
 
 

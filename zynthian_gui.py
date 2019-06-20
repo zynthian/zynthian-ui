@@ -164,12 +164,8 @@ class zynthian_gui:
 			#Init Zyncoder Library
 			lib_zyncoder_init()
 			lib_zyncoder=zyncoder.get_lib_zyncoder()
-			#Init MIDI subsystem
-			self.init_midi()
 			self.zynmidi=zynthian_zcmidi()
-			#Set Master Volume to Max.
-			lib_zyncoder.zynmidi_send_master_ccontrol_change(0x7,0xFF)
-			#Init MIDI and Switches
+			#Init Switches
 			self.zynswitches_init()
 		except Exception as e:
 			logging.error("ERROR initializing Controllers & MIDI-router: %s" % e)
@@ -188,9 +184,6 @@ class zynthian_gui:
 			lib_zyncoder.set_midi_filter_tuning_freq(self.fine_tuning_freq)
 			#Set MIDI Master Channel
 			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
-			#Start / stop MIDI network services
-			zynthian_gui_admin.default_qmidinet(self.screens['admin'])
-			zynthian_gui_admin.default_touchosc(self.screens['admin'])
 			#Setup MIDI filter rules
 			if self.midi_filter_script:
 				self.midi_filter_script.clean()
@@ -200,6 +193,13 @@ class zynthian_gui:
 			logging.error("ERROR initializing MIDI : %s" % e)
 
 
+	def init_midi_services(self):
+		#Start / stop MIDI aux. services
+		self.screens['admin'].default_qmidinet()
+		self.screens['admin'].default_touchosc()
+		self.screens['admin'].default_aubionotes()
+
+
 	def reload_midi_config(self):
 		zynconf.load_config()
 		midi_profile_fpath=zynconf.get_midi_config_fpath()
@@ -207,6 +207,7 @@ class zynthian_gui:
 			zynconf.load_config(True,midi_profile_fpath)
 			zynthian_gui_config.set_midi_config()
 			self.init_midi()
+			self.init_midi_services()
 
 
 	# ---------------------------------------------------------------------------
@@ -284,6 +285,10 @@ class zynthian_gui:
 
 		# Show initial screen => Channel list
 		self.show_screen('layer')
+
+		#Init MIDI Subsystem => MIDI Profile
+		self.init_midi()
+		self.init_midi_services()
 
 		# Init Auto-connector
 		zynautoconnect.start()

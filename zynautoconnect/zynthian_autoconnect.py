@@ -51,19 +51,6 @@ jclient=None
 thread=None
 exit_flag=False
 
-#Aubio Config?
-if os.environ.get('ZYNTHIAN_AUBIONOTES'):
-	zynthian_aubionotes=True
-else:
-	zynthian_aubionotes=False
-
-
-#TouchOSC Config?
-if os.environ.get('ZYNTHIAN_TOUCHOSC'):
-	zynthian_touchosc=True
-else:
-	zynthian_touchosc=False
-
 #------------------------------------------------------------------------------
 
 def get_port_alias_id(midi_port):
@@ -95,14 +82,15 @@ def midi_autoconnect():
 		hw_in=[]
 
 	#Add Aubio MIDI input port ...
-	if zynthian_aubionotes:
+	if zynthian_gui_config.midi_aubionotes_enabled:
 		aubio_out=jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
 			hw_out.append(aubio_out[0])
 		except:
 			pass
+
 	#Add TouchOSC input ports ...
-	if zynthian_touchosc:
+	if zynthian_gui_config.midi_touchosc_enabled:
 		rtmidi_out=jclient.get_ports("RtMidiOut Client", is_output=True, is_physical=False, is_midi=True)
 		for port in rtmidi_out:
 			try:
@@ -114,11 +102,12 @@ def midi_autoconnect():
 	#logger.debug("Output Device Ports: {}".format(hw_in))
 
 	#Get Network (qmidinet) MIDI input/output ports ...
-	qmidinet_out=jclient.get_ports("QmidiNet", is_output=True, is_physical=False, is_midi=True)
-	qmidinet_in=jclient.get_ports("QmidiNet", is_input=True, is_physical=False, is_midi=True)
+	if zynthian_gui_config.midi_network_enabled:
+		qmidinet_out=jclient.get_ports("QmidiNet", is_output=True, is_physical=False, is_midi=True)
+		qmidinet_in=jclient.get_ports("QmidiNet", is_input=True, is_physical=False, is_midi=True)
 
-	#logger.debug("QMidiNet Input Port: {}".format(qmidinet_out))
-	#logger.debug("QMidiNet Output Port: {}".format(qmidinet_in))
+		#logger.debug("QMidiNet Input Port: {}".format(qmidinet_out))
+		#logger.debug("QMidiNet Output Port: {}".format(qmidinet_in))
 
 	#Get Engines list from UI
 	zyngine_list=zynthian_gui_config.zyngui.screens["engine"].zyngines
@@ -357,7 +346,7 @@ def audio_autoconnect():
 					pass
 
 
-		if zynthian_aubionotes:
+		if zynthian_gui_config.midi_aubionotes_enabled:
 			#Get Aubio Input ports ...
 			aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
 			#Connect System Capture to Aubio ports
