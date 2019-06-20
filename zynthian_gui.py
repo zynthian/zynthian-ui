@@ -504,20 +504,16 @@ class zynthian_gui:
 			self.raw_all_notes_off()
 			
 		elif cuia == "START_AUDIO_RECORD":
-			if len(params) > 0 and params[0] > 0:
-				self.screens['audio_recorder'].start_recording()
-				
+			self.screens['audio_recorder'].start_recording()
+
 		elif cuia == "STOP_AUDIO_RECORD":
-			if len(params) > 0 and params[0] > 0:
-				self.screens['audio_recorder'].stop_recording()
-				
+			self.screens['audio_recorder'].stop_recording()
+
 		elif cuia == "START_MIDI_RECORD":
-			if len(params) > 0 and params[0] > 0:
-				self.screens['midi_recorder'].start_recording()
-				
+			self.screens['midi_recorder'].start_recording()
+
 		elif cuia == "STOP_MIDI_RECORD":
-			if len(params) > 0 and params[0] > 0:
-				self.screens['midi_recorder'].stop_recording()
+			self.screens['midi_recorder'].stop_recording()
 
 		elif cuia == "SELECT":
 			try:
@@ -1000,7 +996,7 @@ class zynthian_gui:
 					elif evtype==0x9:
 						note = str((ev & 0x7F00)>>8)
 						vel = (ev & 0x007F)
-						if note in self.note2cuia:
+						if vel != 0 and note in self.note2cuia:
 							self.callable_ui_action(self.note2cuia[note], [vel])
 
 				#Program Change ...
