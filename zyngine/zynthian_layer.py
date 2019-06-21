@@ -236,8 +236,8 @@ class zynthian_layer:
 
 
 	def restore_preset(self):
-		if self.preset_index is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
-			if self.bank_index!=self.preset_bank_index:
+		if self.preset_name is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
+			if self.preset_bank_index is not None and self.bank_index!=self.preset_bank_index:
 				self.set_bank(self.preset_bank_index,False)
 			self.preload_index=self.preset_index
 			self.preload_name=self.preset_name
