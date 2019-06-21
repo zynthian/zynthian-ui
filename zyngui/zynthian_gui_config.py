@@ -42,8 +42,6 @@ import zynconf
 log_level=int(os.environ.get('ZYNTHIAN_LOG_LEVEL',logging.WARNING))
 #log_level=logging.DEBUG
 
-raise_exceptions=int(os.environ.get('ZYNTHIAN_RAISE_EXCEPTIONS',False))
-
 # Set root logging level
 logging.basicConfig(stream=sys.stderr, level=log_level)
 

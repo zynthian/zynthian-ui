@@ -704,11 +704,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.select_action(self.index)
 
 		except Exception as e:
-			if zynthian_gui_config.raise_exceptions:
-				raise e
-			else:
-				logging.error("Invalid snapshot format: %s" % e)
-				return False
+			self.zyngui.reset_loading()
+			logging.exception("Invalid snapshot: %s" % e)
+			return False
 
 		return True
 

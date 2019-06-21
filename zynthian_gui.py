@@ -949,10 +949,8 @@ class zynthian_gui:
 				self.zynswitch_defered_exec()
 				self.zynswitches()
 			except Exception as err:
-				if zynthian_gui_config.raise_exceptions:
-					raise err
-				else:
-					logging.warning("zynthian_gui.zyncoder_read() => %s" % err)
+				self.reset_loading()
+				logging.exception(err)
 
 
 	def zynmidi_read(self):
@@ -1049,7 +1047,8 @@ class zynthian_gui:
 						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
 
 		except Exception as err:
-			logging.error("zynthian_gui.zynmidi_read() => %s" % err)
+				self.reset_loading()
+				logging.exception(err)
 
 
 	def start_loading_thread(self):
@@ -1140,10 +1139,8 @@ class zynthian_gui:
 				self.curlayer.refresh()
 
 		except Exception as e:
-			if zynthian_gui_config.raise_exceptions:
-				raise e
-			else:
-				logging.error(e)
+			self.zyngui.reset_loading()
+			logging.exception(e)
 
 		# Poll
 		if self.polling:
@@ -1209,10 +1206,7 @@ class zynthian_gui:
 			self.status_info['midi'] = False
 
 		except Exception as e:
-			if zynthian_gui_config.raise_exceptions:
-				raise err
-			else:
-				logging.error(e)
+			logging.exception(e)
 
 		# Poll
 		if self.polling:
