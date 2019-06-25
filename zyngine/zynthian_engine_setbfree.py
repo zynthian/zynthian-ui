@@ -229,23 +229,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 
-	def add_layer(self, layer):
-		super().add_layer(layer)
-		layer.listen_midi_cc = True
-
-
-	def del_layer(self, layer):
-		super().del_layer(layer)
-		layer.listen_midi_cc = False
-
-
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
-
-
-	def set_midi_chan(self, layer):
-		pass
 
 
 	#----------------------------------------------------------------------------
@@ -391,7 +377,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 				logging.debug("Can't update controller '{}' => {}".format(zcsymbol,e))
 
 
-	def midi_control_change(self, zctrl, val):
+	def midi_zctrl_change(self, zctrl, val):
 		try:
 			if val!=zctrl.get_value():
 				zctrl.set_value(val)

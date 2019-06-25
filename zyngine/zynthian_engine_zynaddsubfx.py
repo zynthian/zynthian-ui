@@ -373,11 +373,16 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	def cb_osc_param_change(self, path, args):
 		if path in self.slot_zctrls:
 			#logging.debug("OSC Param Change %s => %s" % (path, args[0]))
-			zctrl=self.slot_zctrls[path]
 			try:
-				self.zyngui.screens['control'].get_zgui_controller(zctrl).set_value(args[0],True,False)
+				zctrl=self.slot_zctrls[path]
+				zctrl.set_value(args[0])
+
+				#Refresh GUI controller in screen when needed ...
+				if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
+					self.zyngui.screens['control'].set_controller_value(zctrl)
 			except:
 				pass
+
 			if zctrl.midi_learn_cc is None:
 				liblo.send(self.osc_target, "/automate/slot%d/midi-cc" % zctrl.slot_i)
 

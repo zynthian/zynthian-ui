@@ -61,7 +61,7 @@ class zynthian_layer:
 		self.ctrl_screens_dict = None
 		self.active_screen_index = -1
 
-		self.listen_midi_cc = False
+		self.listen_midi_cc = True
 		self.refresh_flag = False
 
 		self.reset_zs3()
@@ -333,8 +333,8 @@ class zynthian_layer:
 				for k, zctrl in self.controllers_dict.items():
 					if zctrl.midi_cc==ccnum:
 						try:
-							# Aeolus, setBfree => Hacer con TODOS???
-							self.engine.midi_control_change(zctrl, ccval)
+							# Aeolus, FluidSynth, LinuxSampler, puredata, Pianoteq, setBfree, ZynAddSubFX
+							self.engine.midi_zctrl_change(zctrl, ccval)
 						except:
 							pass
 

@@ -506,12 +506,22 @@ class zynthian_engine:
 	#----------------------------------------------------------------------------
 
 
-	#def midi_control_change(self, chan, ccnum, val):
-	#	raise Exception("NOT IMPLEMENTED!")
+	def midi_control_change(self, chan, ccnum, val):
+		raise Exception("NOT IMPLEMENTED!")
 
 
-	#def midi_control_change(self, zctrl, val):
-	#	raise Exception("NOT IMPLEMENTED!")
+	def midi_zctrl_change(self, zctrl, val):
+		try:
+			if val!=zctrl.get_value():
+				zctrl.set_value(val)
+				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
+
+				#Refresh GUI controller in screen when needed ...
+				if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
+					self.zyngui.screens['control'].set_controller_value(zctrl)
+
+		except Exception as e:
+			logging.debug(e)
 
 
 	# ---------------------------------------------------------------------------

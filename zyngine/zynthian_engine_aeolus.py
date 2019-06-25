@@ -171,12 +171,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def add_layer(self, layer):
 		super().add_layer(layer)
-		layer.listen_midi_cc=True
 
 
 	def del_layer(self, layer):
 		super().del_layer(layer)
-		layer.listen_midi_cc=False
 
 
 	# ---------------------------------------------------------------------------
@@ -315,7 +313,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 
 	def send_controller_value(self, zctrl):
-		self.midi_control_change(zctrl, int(zctrl.get_value()))
+		self.midi_zctrl_change(zctrl, int(zctrl.get_value()))
 
 
 	#----------------------------------------------------------------------------
@@ -323,7 +321,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 
-	def midi_control_change(self, zctrl, val):
+	def midi_zctrl_change(self, zctrl, val):
 		try:
 			if isinstance(zctrl.graph_path,list):
 				if isinstance(val,int):
