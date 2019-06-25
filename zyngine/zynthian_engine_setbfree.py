@@ -231,12 +231,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	def add_layer(self, layer):
 		super().add_layer(layer)
-		layer.listen_midi_cc=True
+		layer.listen_midi_cc = True
 
 
 	def del_layer(self, layer):
 		super().del_layer(layer)
-		layer.listen_midi_cc=False
+		layer.listen_midi_cc = False
 
 
 	# ---------------------------------------------------------------------------
