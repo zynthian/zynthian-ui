@@ -458,15 +458,16 @@ class zynthian_gui_controller:
 			if isinstance(zctrl.ticks,list):
 				if zctrl.ticks[0]>zctrl.ticks[-1]:
 					self.inverted=True
-				if isinstance(zctrl.midi_cc, int) and zctrl.midi_cc>0:
+				if (isinstance(zctrl.midi_cc, int) and zctrl.midi_cc>0):
 					self.max_value=127
 					self.step=max(1,int(16/self.n_values))
 				else:
-					self.max_value=zctrl.value_range
-					if self.max_value>32:
-						self.step=max(1,int(self.max_value/(self.n_values*4)))
+					if zctrl.value_range>32:
+						self.step = max(4,int(zctrl.value_range/(self.n_values*4)))
+						self.max_value = zctrl.value_range + self.step*4
 					else:
 						self.mult=max(4,int(32/self.n_values))
+						self.max_value = zctrl.value_range + 1
 			else:
 				self.max_value=127;
 				self.step=max(1,int(16/self.n_values))
