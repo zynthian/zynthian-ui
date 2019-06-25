@@ -333,12 +333,14 @@ class zynthian_layer:
 				for k, zctrl in self.controllers_dict.items():
 					if zctrl.midi_cc==ccnum:
 						try:
+							# Aeolus, setBfree => Hacer con TODOS???
 							self.engine.midi_control_change(zctrl, ccval)
 						except:
 							pass
 
 			elif not self.listen_midi_cc:
 				try:
+					# Jalv
 					self.engine.midi_control_change(chan, ccnum, ccval)
 				except:
 					pass
