@@ -109,8 +109,8 @@ class zynthian_controller:
 
 			if not self.ticks:
 				#Generate ticks ...
-				n=len(self.labels)
-				self.ticks=[]
+				n = len(self.labels)
+				self.ticks = []
 				if self.is_integer:
 					for i in range(n):
 						self.ticks.append(self.value_min+int(i*(self.value_max+1)/n))
@@ -120,26 +120,26 @@ class zynthian_controller:
 
 			#Calculate min, max
 			if self.ticks[0]<=self.ticks[-1]:
-				self.value_min=self.ticks[0]
-				self.value_max=self.ticks[-1]
+				self.value_min = self.ticks[0]
+				self.value_max = self.ticks[-1]
 			else:
-				self.value_min=self.ticks[-1]
-				self.value_max=self.ticks[0]
+				self.value_min = self.ticks[-1]
+				self.value_max = self.ticks[0]
 
 			#Generate dictionary for fast conversion labels=>values
-			self.label2value={}
-			self.value2label={}
+			self.label2value = {}
+			self.value2label = {}
 			for i in range(len(self.labels)):
-				self.label2value[str(self.labels[i])]=self.ticks[i]
-				self.value2label[str(self.ticks[i])]=self.labels[i]
+				self.label2value[str(self.labels[i])] = self.ticks[i]
+				self.value2label[str(self.ticks[i])] = self.labels[i]
 
 		#Common configuration
-		self.value_range=self.value_max-self.value_min
+		self.value_range = self.value_max-self.value_min
 
 		if self.is_integer:
-			self.value_mid=self.value_min+int(self.value_range/2)
+			self.value_mid = self.value_min+int(self.value_range/2)
 		else:
-			self.value_mid=self.value_min+self.value_range/2
+			self.value_mid = self.value_min+self.value_range/2
 
 		self._set_value(self.value)
 		if self.value_default is None:
@@ -147,65 +147,65 @@ class zynthian_controller:
 
 
 	def setup_controller(self, chan, cc, val, maxval=127):
-		self.midi_chan=chan
+		self.midi_chan = chan
 
 		# OSC Path / MIDI CC
 		if isinstance(cc,str):
-			self.osc_path=cc
+			self.osc_path = cc
 		else:
-			self.midi_cc=cc
+			self.midi_cc = cc
 
-		self.value_min=0
-		self.value_max=127
-		self.value=val
-		self.is_toggle=False
-		self.is_integer=True
+		self.value_min = 0
+		self.value_max = 127
+		self.value = val
+		self.is_toggle = False
+		self.is_integer = True
 
 		# Numeric
 		if isinstance(maxval,int):
-			self.value_max=maxval
+			self.value_max = maxval
 		# Selector
 		elif isinstance(maxval,str):
 			self.labels=maxval.split('|')
 		elif isinstance(maxval,list):
 			if isinstance(maxval[0],list):
-				self.labels=maxval[0]
-				self.ticks=maxval[1]
+				self.labels = maxval[0]
+				self.ticks = maxval[1]
 			else:
-				self.labels=maxval
+				self.labels = maxval
 
 		self._configure()
 
 
 	def set_midi_chan(self, chan):
-		self.midi_chan=chan
+		self.midi_chan = chan
 
 
 	def get_ctrl_array(self):
-		tit=self.short_name
+		tit = self.short_name
 		if self.midi_chan:
-			chan=self.midi_chan
+			chan = self.midi_chan
 		else:
-			chan=0
+			chan = 0
 		if self.midi_cc:
-			ctrl=self.midi_cc
+			ctrl = self.midi_cc
 		elif self.osc_path:
-			ctrl=self.osc_path
+			ctrl = self.osc_path
 		elif self.graph_path:
-			ctrl=self.graph_path
+			ctrl = self.graph_path
 		
 		if self.labels:
-			val=self.get_value2label()
+			val = self.get_value2label()
 			if self.ticks:
-				minval=[self.labels, self.ticks]
-				maxval=None
+				minval = [self.labels, self.ticks]
+				maxval = None
 			else:
-				minval=self.labels
-				maxval=None
+				minval = self.labels
+				maxval = None
 		else:
-			val=self.value
-			minval=self.value_min
-			maxval=self.value_max
+			val = self.value
+			minval = self.value_min
+			maxval = self.value_max
 		return [tit,chan,ctrl,val,minval,maxval]
 
 
@@ -215,17 +215,17 @@ class zynthian_controller:
 
 	def _set_value(self, val):
 		if isinstance(val, str):
-			self.value=self.get_label2value(val)
+			self.value = self.get_label2value(val)
 			return
 
 		elif self.is_toggle:
 			if val==self.value_min or val==self.value_max:
-				self.value=val
+				self.value = val
 			else:
 				if val<self.value_mid:
-					self.value=self.value_min
+					self.value = self.value_min
 				else:
-					self.value=self.value_max
+					self.value = self.value_max
 			return
 
 		elif self.ticks:
@@ -233,7 +233,7 @@ class zynthian_controller:
 			pass
 
 		elif self.is_integer:
-			val=int(val)
+			val = int(val)
 
 		if val>self.value_max:
 			self.value=self.value_max
