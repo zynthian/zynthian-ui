@@ -321,7 +321,7 @@ class zynthian_gui_controller:
 			self.midi_bind = self.canvas.create_text(
 				self.width/2,
 				self.height-8,
-				width=int(2*0.8*zynthian_gui_config.font_size),
+				width=int(3*0.8*zynthian_gui_config.font_size),
 				justify=tkinter.CENTER,
 				fill=color,
 				font=(zynthian_gui_config.font_family,int(0.7*zynthian_gui_config.font_size)),
@@ -337,7 +337,8 @@ class zynthian_gui_controller:
 
 	def set_midi_bind(self):
 		if self.zctrl.midi_cc==0:
-			self.erase_midi_bind()
+			#self.erase_midi_bind()
+			self.plot_midi_bind("/{}".format(self.zctrl.value_range))
 		elif self.zyngui.midi_learn_mode:
 			self.plot_midi_bind("??",zynthian_gui_config.color_ml)
 		elif self.zyngui.midi_learn_zctrl and self.zctrl==self.zyngui.midi_learn_zctrl:
