@@ -321,7 +321,7 @@ class zynthian_gui_controller:
 			self.midi_bind = self.canvas.create_text(
 				self.width/2,
 				self.height-8,
-				width=int(3*0.8*zynthian_gui_config.font_size),
+				width=int(3*0.9*zynthian_gui_config.font_size),
 				justify=tkinter.CENTER,
 				fill=color,
 				font=(zynthian_gui_config.font_family,int(0.7*zynthian_gui_config.font_size)),
