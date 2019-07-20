@@ -306,7 +306,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			logging.debug("STARTING SETBFREE!!")
 			self.generate_config_file(midi_chans)
 			self.start()
-			self.zyngui.zynautoconnect()
+			self.zyngui.zynautoconnect(True)
 
 			midi_prog = self.manuals_config[4][2]
 			if midi_prog and isinstance(midi_prog, int):

@@ -208,6 +208,7 @@ class zynthian_gui:
 			zynthian_gui_config.set_midi_config()
 			self.init_midi()
 			self.init_midi_services()
+			self.zynautoconnect(True)
 
 
 	# ---------------------------------------------------------------------------
@@ -290,7 +291,7 @@ class zynthian_gui:
 		self.init_midi()
 		self.init_midi_services()
 
-		# Init Auto-connector
+		# Init Auto-connector (and call it for first time!)
 		zynautoconnect.start()
 
 		# Initialize OSC
@@ -1294,8 +1295,8 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 
-	def zynautoconnect(self):
-		zynautoconnect.autoconnect()
+	def zynautoconnect(self, force=False):
+		zynautoconnect.autoconnect(force)
 
 
 	def zynautoconnect_acquire_lock(self):
