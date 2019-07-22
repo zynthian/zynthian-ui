@@ -1368,6 +1368,9 @@ signal.signal(signal.SIGTERM, exit_handler)
 # TKinter Main Loop
 #------------------------------------------------------------------------------
 
+#import cProfile
+#cProfile.run('zynthian_gui_config.top.mainloop()')
+
 zynthian_gui_config.top.mainloop()
 
 logging.info("Exit with code {} ...\n\n".format(zyngui.exit_code))

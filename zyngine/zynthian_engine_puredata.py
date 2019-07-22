@@ -26,6 +26,7 @@ import os
 import logging
 import subprocess
 import oyaml as yaml
+from time import sleep
 from collections import OrderedDict
 from os.path import isfile,isdir,join
 
@@ -74,10 +75,12 @@ class zynthian_engine_puredata(zynthian_engine):
 			('_', self.my_data_dir + "/presets/puredata")
 		]
 
+		startup_patch=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/presets/puredata/zynthian_startup.pd"
+
 		if self.config_remote_display():
-			self.base_command="/usr/bin/pd -jack -rt -alsamidi -mididev 1 -send \";pd dsp 1\""
+			self.base_command="/usr/bin/pd -jack -rt -alsamidi -mididev 1 -open \"{}\"".format(startup_patch)
 		else:
-			self.base_command="/usr/bin/pd -nogui -jack -rt -alsamidi -mididev 1 -send \";pd dsp 1\""
+			self.base_command="/usr/bin/pd -nogui -jack -rt -alsamidi -mididev 1 -open \"{}\"".format(startup_patch)
 
 		self.reset()
 
@@ -117,6 +120,7 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.stop()
 		self.start()
 		self.refresh_all()
+		sleep(0.32)
 		return True
 
 

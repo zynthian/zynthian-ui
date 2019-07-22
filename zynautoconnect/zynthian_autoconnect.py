@@ -131,14 +131,6 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
-
-	#Check for new devices (HW and virtual)...
-	if not force and hw_str==last_hw_str:
-		last_hw_str = hw_str
-		return
-	else:
-		last_hw_str = hw_str
-
 	#Get Engines list from UI
 	zyngine_list=zynthian_gui_config.zyngui.screens["engine"].zyngines
 
@@ -148,8 +140,10 @@ def midi_autoconnect(force=False):
 		#logger.debug("zyngine: {}".format(zyngine.jackname))
 		port_name = zyngine.jackname
 
+		#Detect Pure Data => Force!
 		#Dirty hack for having MIDI working with PureData: #TODO => Improve it!!
 		if port_name=="pure_data_0":
+			force = True
 			port_name = "Pure Data"
 
 		ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
@@ -168,6 +162,13 @@ def midi_autoconnect(force=False):
 			pass
 
 	#logger.debug("Synth Engine Ports: {}".format(engines_in))
+
+	#Check for new devices (HW and virtual)...
+	if not force and hw_str==last_hw_str:
+		last_hw_str = hw_str
+		return
+	else:
+		last_hw_str = hw_str
 
 	#Get Synth Engines MIDI output ports
 	engines_out=[]
