@@ -604,14 +604,14 @@ class zynthian_gui:
 
 
 	def zynswitches_midi_setup(self, midi_chan):
-		if midi_chan>0:
+		if midi_chan is not None:
 			logging.info("MIDI SWITCHES SETUP...")
 
 			for i in range(0, zynthian_gui_config.n_custom_switches):
 				swi = 4 + i
 				cc_num = zynthian_gui_config.custom_switch_midi_cc[i]
 				if cc_num is not None:
-					lib_zyncoder.setup_zynswitch_midi(swi, midi_chan, cc_num)
+					lib_zyncoder.setup_zynswitch_midi(swi, int(midi_chan), int(cc_num))
 					logging.info("MIDI ZYNSWITCH {} => CH#{}, CC#{}".format(swi, midi_chan, cc_num))
 
 
