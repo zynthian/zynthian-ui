@@ -217,7 +217,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def add_layer_engine(self, eng, midi_chan=None):
 		self.add_layer_eng=eng
 
-		if eng.nickname=='MD' or eng.nickname=='PD':
+		if eng.nickname=='MD':
 			self.add_layer_midich(None)
 
 		elif eng.nickname=='AE':

@@ -66,7 +66,7 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.nickname = "PD"
 		self.jackname = "pure_data_0"
 
-		self.options['midi_chan']=False
+		#self.options['midi_chan']=False
 
 		self.preset = ""
 		self.preset_config = None
@@ -120,7 +120,9 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.stop()
 		self.start()
 		self.refresh_all()
-		sleep(0.32)
+		sleep(0.3)
+		self.zyngui.zynautoconnect(True)
+		layer.send_ctrl_midi_cc()
 		return True
 
 
@@ -179,7 +181,7 @@ class zynthian_engine_puredata(zynthian_engine):
 					if isinstance(options,int):
 						options={ 'midi_cc': options }
 					if 'midi_chan' not in options:
-						options['midi_chan']=0
+						options['midi_chan']=layer.midi_chan
 					midi_cc=options['midi_cc']
 					logging.debug("CTRL %s: %s" % (midi_cc, name))
 					title=str.replace(name, '_', ' ')
