@@ -140,11 +140,15 @@ def midi_autoconnect(force=False):
 		#logger.debug("zyngine: {}".format(zyngine.jackname))
 		port_name = zyngine.jackname
 
-		#Detect Pure Data => Force!
 		#Dirty hack for having MIDI working with PureData: #TODO => Improve it!!
 		if port_name=="pure_data_0":
-			force = True
+			#force = True
 			port_name = "Pure Data"
+
+		#Dirty hack for having MIDI working with CSound: #TODO => Improve it!!
+		if port_name=="csound6":
+			#force = True
+			port_name = "Csound"
 
 		ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
 		try:
