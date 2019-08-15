@@ -508,6 +508,7 @@ class zynthian_layer:
 		#logging.debug("Setting connections:")
 		#for jn in ao:
 		#	logging.debug("  {} => {}".format(self.engine.jackname, jn))
+		self.zyngui.zynautoconnect(True)
 
 
 	def add_audio_out(self, jackname):
@@ -517,6 +518,8 @@ class zynthian_layer:
 		if jackname not in self.audio_out:
 			self.audio_out.append(jackname)
 			logging.debug("Connecting {} => {}".format(self.engine.jackname, jackname))
+
+		self.zyngui.zynautoconnect(True)
 
 
 	def del_audio_out(self, jackname):
@@ -529,6 +532,8 @@ class zynthian_layer:
 		except:
 			pass
 
+		self.zyngui.zynautoconnect(True)
+
 
 	def toggle_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
@@ -539,13 +544,17 @@ class zynthian_layer:
 		else:
 			self.audio_out.remove(jackname)
 
+		self.zyngui.zynautoconnect(True)
+
 
 	def reset_audio_out(self):
 		self.audio_out=["system"]
+		self.zyngui.zynautoconnect(True)
 
 
 	def mute_audio_out(self):
 		self.audio_out=[]
+		self.zyngui.zynautoconnect(True)
 
 
 	# ---------------------------------------------------------------------------
