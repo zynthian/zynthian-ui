@@ -72,7 +72,8 @@ class zynthian_engine_csound(zynthian_engine):
 		self.preset_config = None
 
 		self.bank_dirs = [
-			('_', self.my_data_dir + "/presets/csound")
+			('MY', self.my_data_dir + "/presets/csound"),
+			('_', self.data_dir + "/presets/csound")
 		]
 
 

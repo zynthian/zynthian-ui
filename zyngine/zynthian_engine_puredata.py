@@ -72,7 +72,8 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.preset_config = None
 
 		self.bank_dirs = [
-			('_', self.my_data_dir + "/presets/puredata")
+			('MY', self.my_data_dir + "/presets/puredata"),
+			('_', self.data_dir + "/presets/puredata")
 		]
 
 		startup_patch=os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/presets/puredata/zynthian_startup.pd"
