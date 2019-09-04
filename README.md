@@ -32,4 +32,4 @@ This repository contains the specific software used by a Zynthian Box. It includ
 
 A standard Zynthian Box get updated from this repository by default, but can be configured to get updated from other repositories.
 
-You can learn more about the Zynthian Project reading [the blog] (http://blog.zynthian.org) or visiting [the website] (http://zynthian.org). Also, you can join the conversation in [the forum] (https://discourse.zynthian.org).
+You can learn more about the Zynthian Project reading [the blog](http://blog.zynthian.org) or visiting [the website](http://zynthian.org). Also, you can join the conversation in [the forum](https://discourse.zynthian.org).
