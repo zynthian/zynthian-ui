@@ -17,13 +17,13 @@ Zynthian is a multi-engine platform and at the present time can run the next Syn
 
 The [Zynthian Distribution] (http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/) includes a good amount of sound libraries and presets, but can be extended by the user.
 
-A [Zynthian Box] (http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/) is a hardware device that complains the [Zynthian Hardware Specificacion] (http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/):
+A [Zynthian Box] (http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/) is a hardware device that complains the [Zynthian Hardware Specification] (http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/):
 
 + Raspberry Pi 2/3
 + HifiBerry DAC+ or other soundcard compatible with RBPi
 + PiTFT touchscreen or other screen compatible with RBPi
-+ 4 rotary encoders + switches (zynthian controller modules)
-+ GPIO expander (MCP23008) => you need it becasue the RBPi GPIOs are not enough
++ 4 rotary encoders + switches (Zynthian controller modules)
++ GPIO expander (MCP23008) => you need it because the RBPi GPIOs are not enough
 + MIDI-IN using RBPi UART (optional)
 
 ![Image of Zynthian Hardware Architecture](http://zynthian.org/img/github/zynthian_hardware_scheme.png)
