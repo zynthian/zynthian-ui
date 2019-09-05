@@ -46,10 +46,12 @@ logger.setLevel(logging.ERROR)
 # Define some Constants and Global Variables
 #-------------------------------------------------------------------------------
 
-refresh_time=2
-jclient=None
-thread=None
-exit_flag=False
+refresh_time = 2
+jclient = None
+thread = None
+exit_flag = False
+
+last_hw_str = None
 
 #------------------------------------------------------------------------------
 
@@ -62,7 +64,9 @@ def get_port_alias_id(midi_port):
 
 #------------------------------------------------------------------------------
 
-def midi_autoconnect():
+def midi_autoconnect(force=False):
+	global last_hw_str
+	
 	logger.info("ZynAutoConnect: MIDI ...")
 
 	#------------------------------------
@@ -101,13 +105,31 @@ def midi_autoconnect():
 	#logger.debug("Input Device Ports: {}".format(hw_out))
 	#logger.debug("Output Device Ports: {}".format(hw_in))
 
+	#Calculate device list fingerprint (HW & virtual)
+	hw_str=""
+	for hw in hw_out:
+		hw_str += hw.name + "\n"
+	for hw in hw_in:
+		hw_str += hw.name + "\n"
+
+
 	#Get Network (qmidinet) MIDI input/output ports ...
 	if zynthian_gui_config.midi_network_enabled:
-		qmidinet_out=jclient.get_ports("QmidiNet", is_output=True, is_physical=False, is_midi=True)
-		qmidinet_in=jclient.get_ports("QmidiNet", is_input=True, is_physical=False, is_midi=True)
+		try:
+			qmidinet_out=jclient.get_ports("QmidiNet", is_output=True, is_physical=False, is_midi=True)
+			#logger.debug("QMidiNet Input Port: {}".format(qmidinet_out))
+			for qmp in qmidinet_out:
+				hw_str += qmp.name + "\n"
+		except:
+			pass
 
-		#logger.debug("QMidiNet Input Port: {}".format(qmidinet_out))
-		#logger.debug("QMidiNet Output Port: {}".format(qmidinet_in))
+		try:
+			qmidinet_in=jclient.get_ports("QmidiNet", is_input=True, is_physical=False, is_midi=True)
+			#logger.debug("QMidiNet Output Port: {}".format(qmidinet_in))
+			for qmp in qmidinet_in:
+				hw_str += qmp.name + "\n"
+		except:
+			pass
 
 	#Get Engines list from UI
 	zyngine_list=zynthian_gui_config.zyngui.screens["engine"].zyngines
@@ -120,7 +142,13 @@ def midi_autoconnect():
 
 		#Dirty hack for having MIDI working with PureData: #TODO => Improve it!!
 		if port_name=="pure_data_0":
+			#force = True
 			port_name = "Pure Data"
+
+		#Dirty hack for having MIDI working with CSound: #TODO => Improve it!!
+		if port_name=="csound6":
+			#force = True
+			port_name = "Csound"
 
 		ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
 		try:
@@ -138,6 +166,13 @@ def midi_autoconnect():
 			pass
 
 	#logger.debug("Synth Engine Ports: {}".format(engines_in))
+
+	#Check for new devices (HW and virtual)...
+	if not force and hw_str==last_hw_str:
+		last_hw_str = hw_str
+		return
+	else:
+		last_hw_str = hw_str
 
 	#Get Synth Engines MIDI output ports
 	engines_out=[]
@@ -250,7 +285,12 @@ def midi_autoconnect():
 			pass
 
 
-def audio_autoconnect():
+def audio_autoconnect(force=False):
+
+	if not force:
+		logger.info("ZynAutoConnect: Escaped for Audio ...")
+		return
+
 	logger.info("ZynAutoConnect: Audio ...")
 
 	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
@@ -387,13 +427,13 @@ def get_audio_input_ports():
 	return res
 
 
-def autoconnect():
+def autoconnect(force=False):
 	#Get Mutex Lock 
 	acquire_lock()
 
 	#Autoconnect
-	midi_autoconnect()
-	audio_autoconnect()
+	midi_autoconnect(force)
+	audio_autoconnect(force)
 
 	#Release Mutex Lock
 	release_lock()

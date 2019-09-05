@@ -208,6 +208,7 @@ class zynthian_gui:
 			zynthian_gui_config.set_midi_config()
 			self.init_midi()
 			self.init_midi_services()
+			self.zynautoconnect(True)
 
 
 	# ---------------------------------------------------------------------------
@@ -290,7 +291,7 @@ class zynthian_gui:
 		self.init_midi()
 		self.init_midi_services()
 
-		# Init Auto-connector
+		# Init Auto-connector (and call it for first time!)
 		zynautoconnect.start()
 
 		# Initialize OSC
@@ -603,14 +604,14 @@ class zynthian_gui:
 
 
 	def zynswitches_midi_setup(self, midi_chan):
-		if midi_chan>0:
+		if midi_chan is not None:
 			logging.info("MIDI SWITCHES SETUP...")
 
 			for i in range(0, zynthian_gui_config.n_custom_switches):
 				swi = 4 + i
 				cc_num = zynthian_gui_config.custom_switch_midi_cc[i]
 				if cc_num is not None:
-					lib_zyncoder.setup_zynswitch_midi(swi, midi_chan, cc_num)
+					lib_zyncoder.setup_zynswitch_midi(swi, int(midi_chan), int(cc_num))
 					logging.info("MIDI ZYNSWITCH {} => CH#{}, CC#{}".format(swi, midi_chan, cc_num))
 
 
@@ -1294,8 +1295,8 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 
-	def zynautoconnect(self):
-		zynautoconnect.autoconnect()
+	def zynautoconnect(self, force=False):
+		zynautoconnect.autoconnect(force)
 
 
 	def zynautoconnect_acquire_lock(self):
@@ -1366,6 +1367,9 @@ signal.signal(signal.SIGTERM, exit_handler)
 #------------------------------------------------------------------------------
 # TKinter Main Loop
 #------------------------------------------------------------------------------
+
+#import cProfile
+#cProfile.run('zynthian_gui_config.top.mainloop()')
 
 zynthian_gui_config.top.mainloop()
 

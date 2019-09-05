@@ -314,6 +314,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				zynconf.update_midi_profile({ 
 					"ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
 				})
+			# Call autoconnect after a little time
+			sleep(0.5)
+			self.zyngui.zynautoconnect(True)
 
 		except Exception as e:
 			logging.error(e)
@@ -358,6 +361,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				zynconf.update_midi_profile({ 
 					"ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
 				})
+			# Call autoconnect after a little time
+			sleep(0.5)
+			self.zyngui.zynautoconnect(True)
+
 		except Exception as e:
 			logging.error(e)
 
@@ -374,6 +381,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				zynconf.update_midi_profile({ 
 					"ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
 				})
+
 		except Exception as e:
 			logging.error(e)
 
@@ -398,6 +406,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				zynconf.update_midi_profile({ 
 					"ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
 				})
+			# Call autoconnect after a little time
+			sleep(0.5)
+			self.zyngui.zynautoconnect(True)
+
 		except Exception as e:
 			logging.error(e)
 
@@ -414,6 +426,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				zynconf.update_midi_profile({ 
 					"ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
 				})
+
 		except Exception as e:
 			logging.error(e)
 

@@ -57,7 +57,7 @@ def initializator(cls):
 @initializator
 class zynthian_gui_engine(zynthian_gui_selector):
 
-	single_layer_engines = ["BF", "MD", "PT", "PD", "AE"]
+	single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS"]
 	check_channels_engines = ["AE"]
 
 	@classmethod
@@ -83,6 +83,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			cls.engine_info['JV/{}'.format(plugin_name)] = (plugin_name, "{} - Plugin LV2".format(plugin_name), plugin_info['TYPE'], zynthian_engine_jalv)
 
 		cls.engine_info['PD'] = ("PureData", "PureData - Visual Programming", "Special", zynthian_engine_puredata)
+		#cls.engine_info['CS'] = ("CSound", "CSound Audio Language", "Special", zynthian_engine_csound)
 		cls.engine_info['MD'] = ("MOD-UI", "MOD-UI - Plugin Host", "Special", zynthian_engine_modui)
 
 

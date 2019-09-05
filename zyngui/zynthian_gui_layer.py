@@ -217,7 +217,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def add_layer_engine(self, eng, midi_chan=None):
 		self.add_layer_eng=eng
 
-		if eng.nickname=='MD' or eng.nickname=='PD':
+		if eng.nickname=='MD':
 			self.add_layer_midich(None)
 
 		elif eng.nickname=='AE':
@@ -247,7 +247,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.add_to_fxchain(layer)
 
 			self.layers.append(layer)
-			self.zyngui.zynautoconnect()
+			self.zyngui.zynautoconnect(True)
 
 			if select:
 				self.fill_list()
@@ -266,7 +266,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			
 			self.drop_from_fxchain(self.layers[i])
 			self.layers[i].mute_audio_out()
-			self.zyngui.zynautoconnect()
+			self.zyngui.zynautoconnect(True)
 
 			self.zyngui.zynautoconnect_acquire_lock()
 			self.layers[i].reset()
@@ -648,7 +648,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.screens['engine'].clean_unused_engines()
 
 			#Autoconnect
-			self.zyngui.zynautoconnect()
+			self.zyngui.zynautoconnect(True)
 
 			#Set extended config
 			if 'extended_config' in snapshot:

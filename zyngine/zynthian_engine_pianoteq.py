@@ -555,6 +555,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			self.command += " --preset \"{}\"".format(preset[0])
 			self.stop()
 			self.start()
+			self.zyngui.zynautoconnect(True)
 
 		layer.send_ctrl_midi_cc()
 		return True
