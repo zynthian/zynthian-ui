@@ -274,7 +274,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		preset_list=[]
 		preset_dpath=bank[0]
 		if os.path.isdir(preset_dpath):
-			cmd="find '"+preset_dpath+"' -maxdepth 2 -type f -name '*.sfz'"
+			cmd="find '"+preset_dpath+"' -maxdepth 3 -type f -name '*.sfz'"
 			output=check_output(cmd, shell=True).decode('utf8')
 			cmd="find '"+preset_dpath+"' -maxdepth 2 -type f -name '*.gig'"
 			output=output+"\n"+check_output(cmd, shell=True).decode('utf8')
