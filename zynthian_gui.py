@@ -1299,6 +1299,14 @@ class zynthian_gui:
 		zynautoconnect.autoconnect(force)
 
 
+	def zynautoconnect_midi(self, force=False):
+		zynautoconnect.midi_autoconnect(force)
+
+
+	def zynautoconnect_audio(self, force=False):
+		zynautoconnect.audio_autoconnect(force)
+
+
 	def zynautoconnect_acquire_lock(self):
 		#Get Mutex Lock
 		zynautoconnect.acquire_lock()

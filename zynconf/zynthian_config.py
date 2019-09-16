@@ -91,6 +91,7 @@ def get_midi_config_fpath(fpath=None):
 
 	return fpath
 
+
 def load_config(set_env=True, fpath=None):
 	if not fpath:
 		fpath=get_config_fpath()

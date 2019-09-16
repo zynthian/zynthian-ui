@@ -39,8 +39,8 @@ from zyngui import zynthian_gui_config
 #-------------------------------------------------------------------------------
 
 logger=logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
-#logger.setLevel(logging.DEBUG)
+#logger.setLevel(logging.ERROR)
+logger.setLevel(logging.DEBUG)
 
 #-------------------------------------------------------------------------------
 # Define some Constants and Global Variables
@@ -66,7 +66,10 @@ def get_port_alias_id(midi_port):
 
 def midi_autoconnect(force=False):
 	global last_hw_str
-	
+
+	#Get Mutex Lock 
+	acquire_lock()
+
 	logger.info("ZynAutoConnect: MIDI ...")
 
 	#------------------------------------
@@ -170,6 +173,8 @@ def midi_autoconnect(force=False):
 	#Check for new devices (HW and virtual)...
 	if not force and hw_str==last_hw_str:
 		last_hw_str = hw_str
+		#Release Mutex Lock
+		release_lock()
 		return
 	else:
 		last_hw_str = hw_str
@@ -284,12 +289,18 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
+	#Release Mutex Lock
+	release_lock()
+
 
 def audio_autoconnect(force=False):
 
 	if not force:
 		logger.info("ZynAutoConnect: Escaped for Audio ...")
 		return
+
+	#Get Mutex Lock 
+	acquire_lock()
 
 	logger.info("ZynAutoConnect: Audio ...")
 
@@ -397,6 +408,9 @@ def audio_autoconnect(force=False):
 				except:
 					pass
 
+	#Release Mutex Lock
+	release_lock()
+
 
 def audio_disconnect_sysout():
 	sysout_ports=jclient.get_ports("system", is_input=True, is_audio=True)
@@ -428,15 +442,8 @@ def get_audio_input_ports():
 
 
 def autoconnect(force=False):
-	#Get Mutex Lock 
-	acquire_lock()
-
-	#Autoconnect
 	midi_autoconnect(force)
 	audio_autoconnect(force)
-
-	#Release Mutex Lock
-	release_lock()
 
 
 def autoconnect_thread():
