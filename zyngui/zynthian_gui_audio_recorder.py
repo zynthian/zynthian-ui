@@ -53,7 +53,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 	def __init__(self):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
-		self.capture_dir_usb = "/media/usb0"
+		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 		self.current_record = None
 		self.rec_proc = None
 		self.play_proc = None

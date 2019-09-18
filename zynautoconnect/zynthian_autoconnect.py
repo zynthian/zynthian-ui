@@ -39,8 +39,8 @@ from zyngui import zynthian_gui_config
 #-------------------------------------------------------------------------------
 
 logger=logging.getLogger(__name__)
-#logger.setLevel(logging.ERROR)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.ERROR)
+#logger.setLevel(logging.DEBUG)
 
 #-------------------------------------------------------------------------------
 # Define some Constants and Global Variables

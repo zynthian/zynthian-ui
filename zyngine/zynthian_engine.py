@@ -47,6 +47,7 @@ class zynthian_engine:
 
 	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
 	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
+	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 
 	# ---------------------------------------------------------------------------
 	# Default Controllers & Screens
@@ -295,13 +296,17 @@ class zynthian_engine:
 		for dpd in dpath:
 			dp=dpd[1]
 			dn=dpd[0]
-			for f in sorted(os.listdir(dp)):
-				if not f.startswith('.') and isfile(join(dp,f)) and f[-xlen:].lower()==fext:
-					title=str.replace(f[:-xlen], '_', ' ')
-					if dn!='_': title=dn+'/'+title
-					#print("filelist => "+title)
-					res.append((join(dp,f),i,title,dn))
-					i=i+1
+			try:
+				for f in sorted(os.listdir(dp)):
+					if not f.startswith('.') and isfile(join(dp,f)) and f[-xlen:].lower()==fext:
+						title=str.replace(f[:-xlen], '_', ' ')
+						if dn!='_': title=dn+'/'+title
+						#print("filelist => "+title)
+						res.append((join(dp,f),i,title,dn))
+						i=i+1
+			except:
+				pass
+
 		self.stop_loading()
 		return res
 
@@ -314,14 +319,18 @@ class zynthian_engine:
 		for dpd in dpath:
 			dp=dpd[1]
 			dn=dpd[0]
-			for f in sorted(os.listdir(dp)):
-				if not f.startswith('.') and isdir(join(dp,f)):
-					title,ext=os.path.splitext(f)
-					title=str.replace(title, '_', ' ')
-					if dn!='_': title=dn+'/'+title
-					#print("dirlist => "+title)
-					res.append((join(dp,f),i,title,dn))
-					i=i+1
+			try:
+				for f in sorted(os.listdir(dp)):
+					if not f.startswith('.') and isdir(join(dp,f)):
+						title,ext=os.path.splitext(f)
+						title=str.replace(title, '_', ' ')
+						if dn!='_': title=dn+'/'+title
+						#print("dirlist => "+title)
+						res.append((join(dp,f),i,title,dn))
+						i=i+1
+			except:
+				pass
+
 		self.stop_loading()
 		return res
 

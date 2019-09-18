@@ -64,8 +64,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.command_prompt = "\n> "
 
 		self.soundfont_dirs=[
-			('_', self.data_dir + "/soundfonts/sf2"),
-			('MY', self.my_data_dir + "/soundfonts/sf2")
+			('EX', self.ex_data_dir + "/soundfonts/sf2"),
+			('MY', self.my_data_dir + "/soundfonts/sf2"),
+			('_', self.data_dir + "/soundfonts/sf2")
 		]
 
 		self.start()

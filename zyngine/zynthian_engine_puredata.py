@@ -72,6 +72,7 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.preset_config = None
 
 		self.bank_dirs = [
+			('EX', self.ex_data_dir + "/presets/puredata"),
 			('_', self.my_data_dir + "/presets/puredata")
 		]
 

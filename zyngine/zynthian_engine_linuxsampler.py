@@ -89,10 +89,12 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 		self.lscp_dir = self.data_dir + "/lscp"
 		self.bank_dirs = [
-			('SFZ', self.data_dir + "/soundfonts/sfz"),
-			('GIG', self.data_dir + "/soundfonts/gig"),
+			('ExSFZ', self.ex_data_dir + "/soundfonts/sfz"),
+			('ExGIG', self.ex_data_dir + "/soundfonts/gig"),
 			('MySFZ', self.my_data_dir + "/soundfonts/sfz"),
-			('MyGIG', self.my_data_dir + "/soundfonts/gig")
+			('MyGIG', self.my_data_dir + "/soundfonts/gig"),
+			('SFZ', self.data_dir + "/soundfonts/sfz"),
+			('GIG', self.data_dir + "/soundfonts/gig")
 		]
 		self.lscp_v1_6_supported=False
 		self.start()

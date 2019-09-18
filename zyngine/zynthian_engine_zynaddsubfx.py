@@ -108,9 +108,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 		self.command_prompt = "\n\\[INFO] Main Loop..."
 
-		self.conf_dir = self.data_dir + "/zynconf"
 		self.bank_dirs = [
-			('MY', self.my_data_dir + "/zynbanks"),
+			('EX', self.ex_data_dir + "/presets/zynaddsubfx"),
+			('MY', self.my_data_dir + "/presets/zynaddsubfx"),
 			('_', self.data_dir + "/zynbanks")
 		]
 		self.osc_paths_data = []
