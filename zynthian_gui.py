@@ -415,6 +415,7 @@ class zynthian_gui:
 	def enter_midi_learn_mode(self):
 		self.midi_learn_mode = True
 		self.midi_learn_zctrl = None
+		lib_zyncoder.set_midi_learning_mode(1)
 		self.screens['control'].refresh_midi_bind()
 		self.screens['control'].set_select_path()
 		#self.show_modal('zs3_learn')
