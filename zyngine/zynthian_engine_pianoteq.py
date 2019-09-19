@@ -229,7 +229,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	]
 
 	bank_list_v6_5 = [
-		('Kalimba', 0, 'Kalimba', '_', 'Kalmiba:A')
+		('Kalimba', 0, 'Kalimba', '_', 'Kalimba:A')
 	]
 
 	bank_list_v6_4 = [
