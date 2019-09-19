@@ -224,6 +224,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Banks
 	# ---------------------------------------------------------------------------
 
+	bank_list_v6_6 = [
+                ('Celtic Harp', 0, 'Celtic Harp', '_', 'Celtic Harp:A')
+	]
+
+	bank_list_v6_5 = [
+		('Kalimba', 0, 'Kalimba', '_', 'Kalimba:A')
+	]
+
 	bank_list_v6_4 = [
 		('BechsteinDG', 0, 'BechsteinDG', '_', 'BechsteinDG:A')
 	]
@@ -410,8 +418,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:
 			self.bank_list = self.bank_list_v6_3 + self.bank_list
 
-		if PIANOTEQ_VERSION[0] >= 6 and PIANOTEQ_VERSION[1] >= 4:
+		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=4:
 			self.bank_list = self.bank_list_v6_4 + self.bank_list
+
+		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=5:
+			self.bank_list = self.bank_list_v6_5 + self.bank_list
+
+		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=6:
+			self.bank_list = self.bank_list_v6_6 + self.bank_list
 
 		if not PIANOTEQ_TRIAL:
 			# Separate Licensed from Free and Demo
