@@ -225,7 +225,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	bank_list_v6_6 = [
-		('Celtic Harp', 0, 'Celtic Harp', '_', 'Celtic Harp')
+                ('Celtic Harp', 0, 'Celtic Harp', '_', 'Celtic Harp:A')
 	]
 
 	bank_list_v6_5 = [
