@@ -28,6 +28,7 @@ import os
 import sys
 import copy
 import logging
+from collections import OrderedDict
 from json import JSONEncoder, JSONDecoder
 
 # Zynthian specific modules
@@ -301,17 +302,23 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			for root_layer in root_layers_to_delete:
 				for layer in reversed(self.get_fxchain_layers(root_layer)):
 					self.remove_layer(self.layers.index(layer), False)
-			
+
 			# Clean unused engines
 			if cleanup_unused_engines:
 				self.zyngui.screens['engine'].clean_unused_engines()
 
 
 	def remove_all_layers(self, cleanup_unused_engines=True):
+		# Remove all layers
 		while len(self.layers)>0:
 			self.remove_layer(len(self.layers)-1, False)
+
+		# Clean unused engines
 		if cleanup_unused_engines:
 			self.zyngui.screens['engine'].clean_unused_engines()
+
+		# Reset MIDI config
+		self.reset_midi_profile()
 
 
 	#def refresh(self):
@@ -732,19 +739,27 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_midi_profile_state(self):
-		pass
+		# Get MIDI profile state from environment
+		midi_profile_state = OrderedDict()
+		for key in os.environ.keys():
+			if key.startswith("ZYNTHIAN_MIDI_"):
+				midi_profile_state[key[14:]] = os.environ[key]
+		return midi_profile_state
 
 
 	def set_midi_profile_state(self, mps):
-		pass
-		# Create midi profile file with received state
-		# Load midi profile
+		# Load MIDI profile from saved state
+		if mps is not None:
+			for key in mps:
+				os.environ["ZYNTHIAN_MIDI_" + key] = mps[key]
+			zynthian_gui_config.set_midi_config()
+			self.zyngui.init_midi()
+			self.zyngui.init_midi_services()
+			self.zyngui.zynautoconnect(True)
 
 
 	def reset_midi_profile(self):
-		pass
-		# Delete SS midi profile file
-		# Back to configured MIDI profile
+		self.zyngui.reload_midi_config()
 
 
 	def set_select_path(self):
