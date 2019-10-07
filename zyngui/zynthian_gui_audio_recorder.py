@@ -192,7 +192,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		self.update_list()
 
 
-	def start_playing(self, fpath):
+	def start_playing(self, fpath=None):
 		if self.current_record:
 			self.stop_playing()
 
