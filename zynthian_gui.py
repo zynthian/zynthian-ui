@@ -979,15 +979,47 @@ class zynthian_gui:
 				if ev==0: break
 
 				self.status_info['midi'] = True
-				evtype = (ev & 0xF00000)>>20
-				chan = (ev & 0x0F0000)>>16
+				evtype = (ev & 0xF00000) >> 20
+				chan = (ev & 0x0F0000) >> 16
 				
 				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
 				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
-				#Master MIDI Channel ...
-				if chan==zynthian_gui_config.master_midi_channel:
-					#Webconf configured messages for Snapshot Control ...
+				# System Messages
+				if evtype==0xF:
+					# Song Position Pointer...
+					if chan==0x1:
+						timecode = (ev & 0xFF) >> 8;
+					elif chan==0x2:
+						pos = ev & 0xFFFF;
+					# Song Select...
+					elif chan==0x3:
+						song_number = (ev & 0xFF) >> 8;
+					# Timeclock
+					elif chan==0x8:
+						pass
+					# MIDI tick
+					elif chan==0x9:
+						pass
+					# Start
+					elif chan==0xA:
+						self.callable_ui_action("START_MIDI_PLAY")
+					# Continue
+					elif chan==0xB:
+						self.callable_ui_action("START_MIDI_PLAY")
+					# Stop
+					elif chan==0xC:
+						self.callable_ui_action("STOP_MIDI_PLAY")
+					# Active Sensing
+					elif chan==0xE:
+						pass
+					# Reset
+					elif chan==0xF:
+						pass
+
+				# Master MIDI Channel ...
+				elif chan==zynthian_gui_config.master_midi_channel:
+					# Webconf configured messages for Snapshot Control ...
 					logging.info("MASTER MIDI MESSAGE: %s" % hex(ev))
 					if ev==zynthian_gui_config.master_midi_program_change_up:
 						logging.debug("PROGRAM CHANGE UP!")
@@ -1001,12 +1033,12 @@ class zynthian_gui:
 					elif ev==zynthian_gui_config.master_midi_bank_change_down:
 						logging.debug("BANK CHANGE DOWN!")
 						self.screens['snapshot'].midi_bank_change_down()
-					#Program Change => Snapshot Load
+					# Program Change => Snapshot Load
 					elif evtype==0xC:
 						pgm = ((ev & 0x7F00)>>8) - zynthian_gui_config.master_midi_program_base
 						logging.debug("PROGRAM CHANGE %d" % pgm)
 						self.screens['snapshot'].midi_program_change(pgm)
-					#Control Change ...
+					# Control Change ...
 					elif evtype==0xB:
 						ccnum=(ev & 0x7F00)>>8
 						if ccnum==zynthian_gui_config.master_midi_bank_change_ccnum:
@@ -1017,14 +1049,14 @@ class zynthian_gui:
 							self.all_sounds_off()
 						elif ccnum==123:
 							self.all_notes_off()
-					#Note-on => CUIA
+					# Note-on => CUIA
 					elif evtype==0x9:
 						note = str((ev & 0x7F00)>>8)
 						vel = (ev & 0x007F)
 						if vel != 0 and note in self.note2cuia:
 							self.callable_ui_action(self.note2cuia[note], [vel])
 
-				#Program Change ...
+				# Program Change ...
 				elif evtype==0xC:
 					pgm = (ev & 0x7F00)>>8
 					logging.info("MIDI PROGRAM CHANGE: CH{} => {}".format(chan,pgm))
@@ -1045,7 +1077,7 @@ class zynthian_gui:
 						#if not self.modal_screen and self.curlayer and chan==self.curlayer.get_midi_chan():
 						#	self.show_screen('control')
 
-				#Note-On ...
+				# Note-On ...
 				elif evtype==0x9:
 					#Preload preset (note-on)
 					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
@@ -1053,7 +1085,7 @@ class zynthian_gui:
 						self.screens['preset'].preselect_action()
 						self.stop_loading()
 
-				#Control Change ...
+				# Control Change ...
 				elif evtype==0xB:
 					ccnum=(ev & 0x7F00)>>8
 					ccval=(ev & 0x007F)

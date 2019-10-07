@@ -174,7 +174,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			cmd=self.sys_dir +"/sbin/jack_capture.sh --zui"
 			#logging.info("COMMAND: %s" % cmd)
 			self.rec_proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
-			sleep(0.5)
+			sleep(0.2)
 			check_output("echo play | jack_transport", shell=True)
 		except Exception as e:
 			logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
@@ -188,7 +188,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		check_output("echo stop | jack_transport", shell=True)
 		self.rec_proc.communicate()
 		while zynconf.is_process_running("jack_capture"):
-			sleep(1)
+			sleep(0.2)
 		self.update_list()
 
 
@@ -221,7 +221,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 			thread = threading.Thread(target=runInThread, args=(self.stop_playing, cmd.split(" ")), daemon=True)
 			thread.start()
-			sleep(0.5)
+			sleep(0.2)
 			self.current_record=fpath
 
 		except Exception as e:
@@ -246,6 +246,9 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 
 	def get_current_track_fpath(self):
+		# Fill list if it's empty ...
+		if not self.list_data:
+			self.fill_list()
 		#if selected track ...
 		if self.list_data[self.index][1]>0:
 			return self.list_data[self.index][0]
