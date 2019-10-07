@@ -681,18 +681,30 @@ class zynthian_gui_selector:
 			self.zyngui.callable_ui_action("SWITCH_LAYER_" + switchSuffix)
 		elif event.keysym in ("s", "S"):
 			self.zyngui.callable_ui_action("SWITCH_SNAPSHOT_" + switchSuffix)
+
 		elif event.keysym == "Up":
 			self.zyngui.callable_ui_action("SELECT_UP")
 		elif event.keysym == "Down":
 			self.zyngui.callable_ui_action("SELECT_DOWN")
+
 		elif event.keysym == "r":
 			self.zyngui.callable_ui_action("START_AUDIO_RECORD")
 		elif event.keysym == "R":
 			self.zyngui.callable_ui_action("STOP_AUDIO_RECORD")
+		elif event.keysym == "p":
+			self.zyngui.callable_ui_action("START_AUDIO_PLAY")
+		elif event.keysym == "P":
+			self.zyngui.callable_ui_action("STOP_AUDIO_PLAY")
+
 		elif event.keysym == "m":
 			self.zyngui.callable_ui_action("START_MIDI_RECORD")
 		elif event.keysym == "M":
 			self.zyngui.callable_ui_action("STOP_MIDI_RECORD")
+		elif event.keysym == "k":
+			self.zyngui.callable_ui_action("START_MIDI_PLAY")
+		elif event.keysym == "K":
+			self.zyngui.callable_ui_action("STOP_MIDI_PLAY")
+
 		elif event.keycode == 65: # Space
 			self.zyngui.callable_ui_action("ALL_NOTES_OFF")
 		elif event.keysym == "Insert":

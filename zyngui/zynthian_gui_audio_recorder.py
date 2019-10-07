@@ -195,26 +195,40 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def start_playing(self, fpath):
 		if self.current_record:
 			self.stop_playing()
+
+		if fpath is None:
+			fpath = self.get_current_track_fpath()
+		
+		if fpath is None:
+			logging.info("No track to play!")
+			return
+
 		logging.info("STARTING AUDIO PLAY '{}' ...".format(fpath))
+
 		try:
 			if zynthian_gui_config.audio_play_loop:
 				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -loop 0 -ao jack {}".format(fpath)
 			else:
 				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -ao jack {}".format(fpath)
+
 			logging.info("COMMAND: %s" % cmd)
+
 			def runInThread(onExit, pargs):
 				self.play_proc = Popen(pargs, stdin=PIPE, universal_newlines=True)
 				self.play_proc.wait()
 				self.stop_playing()
 				return
+
 			thread = threading.Thread(target=runInThread, args=(self.stop_playing, cmd.split(" ")), daemon=True)
 			thread.start()
 			sleep(0.5)
 			self.current_record=fpath
+
 		except Exception as e:
 			logging.error("ERROR STARTING AUDIO PLAY: %s" % e)
 			self.zyngui.show_info("ERROR STARTING AUDIO PLAY:\n %s" % e)
 			self.zyngui.hide_info_timer(5000)
+
 		self.update_list()
 
 
@@ -230,6 +244,19 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		self.current_record=None
 		self.update_list()
 
+
+	def get_current_track_fpath(self):
+		#if selected track ...
+		if self.list_data[self.index][1]>0:
+			return self.list_data[self.index][0]
+		#return last track if there is one ...
+		elif self.list_data[-1][1]>0:
+			return self.list_data[-1][0]
+		#else return None
+		else:
+			return None
+
+
 	def toggle_loop(self):
 		if zynthian_gui_config.audio_play_loop:
 			logging.info("Audio play loop OFF")
@@ -239,6 +266,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			zynthian_gui_config.audio_play_loop=True
 		zynconf.save_config({"ZYNTHIAN_AUDIO_PLAY_LOOP": str(int(zynthian_gui_config.audio_play_loop))})
 		self.update_list()
+
 
 	def set_select_path(self):
 		self.select_path.set("Audio Recorder")

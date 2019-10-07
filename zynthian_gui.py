@@ -100,10 +100,15 @@ class zynthian_gui:
 		"11": "ALL_SOUNDS_OFF",
 		"12": "ALL_OFF",
 
-		"20": "START_AUDIO_RECORD",
-		"21": "STOP_AUDIO_RECORD",
-		"22": "START_MIDI_RECORD",
-		"23": "STOP_MIDI_RECORD",
+		"24": "START_AUDIO_RECORD",
+		"25": "STOP_AUDIO_RECORD",
+		"26": "START_AUDIO_PLAY",
+		"27": "STOP_AUDIO_PLAY",
+
+		"36": "START_MIDI_RECORD",
+		"37": "STOP_MIDI_RECORD",
+		"38": "START_MIDI_PLAY",
+		"39": "STOP_MIDI_PLAY",
 
 		"51": "SELECT",
 		"52": "SELECT_UP",
@@ -519,11 +524,23 @@ class zynthian_gui:
 		elif cuia == "STOP_AUDIO_RECORD":
 			self.screens['audio_recorder'].stop_recording()
 
+		elif cuia == "START_AUDIO_PLAY":
+			self.screens['audio_recorder'].start_playing()
+
+		elif cuia == "STOP_AUDIO_PLAY":
+			self.screens['audio_recorder'].stop_playing()
+
 		elif cuia == "START_MIDI_RECORD":
 			self.screens['midi_recorder'].start_recording()
 
 		elif cuia == "STOP_MIDI_RECORD":
 			self.screens['midi_recorder'].stop_recording()
+
+		elif cuia == "START_MIDI_PLAY":
+			self.screens['midi_recorder'].start_playing()
+
+		elif cuia == "STOP_MIDI_PLAY":
+			self.screens['midi_recorder'].stop_playing()
 
 		elif cuia == "SELECT":
 			try:
