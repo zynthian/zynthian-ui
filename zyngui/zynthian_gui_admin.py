@@ -106,12 +106,12 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		if zynconf.is_wifi_active():
 			if zynconf.is_service_active("hostapd"):
-				self.list_data.append((self.stop_wifi,0,"[x] WIFI Hotspot"))
+				self.list_data.append((self.stop_wifi,0,"[x] Wi-Fi Hotspot"))
 			else:
-				self.list_data.append((self.stop_wifi,0,"[x] WIFI"))
+				self.list_data.append((self.stop_wifi,0,"[x] Wi-Fi"))
 		else:
-			self.list_data.append((self.start_wifi,0,"[  ] WIFI"))
-			self.list_data.append((self.start_wifi_hotspot,0,"[  ] WIFI Hotspot"))
+			self.list_data.append((self.start_wifi,0,"[  ] Wi-Fi"))
+			self.list_data.append((self.start_wifi_hotspot,0,"[  ] Wi-Fi Hotspot"))
 
 
 		self.list_data.append((None,0,"-----------------------------"))
