@@ -168,7 +168,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.generate_ctrl_screens(self.lv2_zctrl_dict)
 
 		# Get preset list from plugin host
+		self.bank_npresets = {}
 		self.preset_list = self._get_preset_list()
+		self.bank_list = self._get_bank_list()
 
 		self.reset()
 
@@ -198,9 +200,32 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
+	def _get_bank_list(self):
+		self.start_loading()
+		logging.info("Getting Bank List from LV2 Plugin ...")
+
+		bank_list = []
+		output = self.proc_cmd("\get_banks")
+		for line in sorted(output.split("\n")):
+			try:
+				parts = line.split(" => ")
+				if len(parts)==2:
+					title = parts[0].strip()
+					url = parts[1].strip()
+					if url in self.bank_npresets:
+						bank_list.append((url, None, title, None))
+			except Exception as e:
+				logging.error(e)
+
+		if "NoBank" in self.bank_npresets:
+			bank_list.append(("NoBank", None, "NoBank", None))
+
+		self.stop_loading()
+		return bank_list
+
 
 	def get_bank_list(self, layer=None):
-		return [("", None, "", None)]
+		return self.bank_list
 
 
 	def set_bank(self, layer, bank):
@@ -215,23 +240,42 @@ class zynthian_engine_jalv(zynthian_engine):
 	def _get_preset_list(self):
 		self.start_loading()
 		logging.info("Getting Preset List from LV2 Plugin ...")
-		preset_list=[]
+
+		preset_list = []
 		output=self.proc_cmd("\get_presets")
 		for line in sorted(output.split("\n")):
 			try:
-				parts=line.split(" => ")
+				parts = line.split(" => ")
 				if len(parts)==2:
-					title=parts[0].strip()
-					url=parts[1].strip()
-					preset_list.append((url,None,title,None))
+					title = parts[0].strip()
+
+					uri_parts = parts[1].strip().split(", ")
+					uri_preset = uri_parts[0].strip()
+					uri_banks = uri_parts[1:]
+					if len(uri_banks)==0:
+						uri_banks.append("NoBank")
+					preset_list.append((uri_preset,None,title,uri_banks))
+
+					#Count presets/bank
+					for uri in uri_banks:
+						try:
+							self.bank_npresets[uri] += 1
+						except:
+							self.bank_npresets[uri] = 1
+
 			except Exception as e:
 				logging.error(e)
+
 		self.stop_loading()
 		return preset_list
 
 
 	def get_preset_list(self, bank):
-		return self.preset_list
+		bank_preset_list = []
+		for preset in  self.preset_list:
+			if bank[0] in preset[3]:
+				bank_preset_list.append(preset)
+		return bank_preset_list
 
 
 	def set_preset(self, layer, preset, preload=False):
