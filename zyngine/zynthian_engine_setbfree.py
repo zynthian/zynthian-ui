@@ -202,7 +202,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	def generate_config_file(self, midi_chans):
 		# Get user's config
-		my_cfg_fpath= self.my_data_dir + "/setbfree/cfg/zynthian.cfg"
+		my_cfg_fpath= self.config_dir + "/setbfree/zynthian.cfg"
 		try:
 			with open(my_cfg_fpath, 'r') as my_cfg_file:
 				my_cfg_data=my_cfg_file.read()
