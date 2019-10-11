@@ -361,70 +361,78 @@ set_midi_config()
 midi_play_loop=int(os.environ.get('ZYNTHIAN_MIDI_PLAY_LOOP',0))
 audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
 
-#------------------------------------------------------------------------------
-# Create & Configure Top Level window 
-#------------------------------------------------------------------------------
 
-top = tkinter.Tk()
-
-# Try to autodetect screen size if not configured
+#------------------------------------------------------------------------------
+# X11 Related Stuff
+#------------------------------------------------------------------------------
 try:
-	if not display_width:
-		display_width = top.winfo_screenwidth()
-		ctrl_width = int(display_width/4)
-	if not display_height:
-		display_height = top.winfo_screenheight()
-		topbar_height = int(display_height/10)
-		ctrl_height = int((display_height-topbar_height)/2)
-except:
-	logging.warning("Can't get screen size. Using default 320x240!")
-	display_width = 320
-	display_height = 240
-	topbar_height = int(display_height/10)
-	ctrl_width = int(display_width/4)
-	ctrl_height = int((display_height-topbar_height)/2)
+	#------------------------------------------------------------------------------
+	# Create & Configure Top Level window 
+	#------------------------------------------------------------------------------
 
-# Adjust font size, if not defined
-if not font_size:
-	font_size = int(display_width/32)
+	top = tkinter.Tk()
 
-# Adjust Root Window Geometry
-top.geometry(str(display_width)+'x'+str(display_height))
-top.maxsize(display_width,display_height)
-top.minsize(display_width,display_height)
-
-# Disable cursor for real Zynthian Boxes
-if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES" and not force_enable_cursor:
-	top.config(cursor="none")
-else:
-	top.config(cursor="cross")
-
-#------------------------------------------------------------------------------
-# Global Variables
-#------------------------------------------------------------------------------
-
-# Fonts
-font_listbox=(font_family,int(1.0*font_size))
-font_topbar=(font_family,int(1.1*font_size))
-
-# Loading Logo Animation
-loading_imgs=[]
-pil_frame = Image.open("./img/zynthian_gui_loading.gif")
-fw, fh = pil_frame.size
-fw2=ctrl_width-8
-fh2=int(fh*fw2/fw)
-nframes = 0
-while pil_frame:
-	pil_frame2 = pil_frame.resize((fw2, fh2), Image.ANTIALIAS)
-	# convert PIL image object to Tkinter PhotoImage object
-	loading_imgs.append(ImageTk.PhotoImage(pil_frame2))
-	nframes += 1
+	# Try to autodetect screen size if not configured
 	try:
-		pil_frame.seek(nframes)
-	except EOFError:
-		break;
-#for i in range(13):
-#	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
+		if not display_width:
+			display_width = top.winfo_screenwidth()
+			ctrl_width = int(display_width/4)
+		if not display_height:
+			display_height = top.winfo_screenheight()
+			topbar_height = int(display_height/10)
+			ctrl_height = int((display_height-topbar_height)/2)
+	except:
+		logging.warning("Can't get screen size. Using default 320x240!")
+		display_width = 320
+		display_height = 240
+		topbar_height = int(display_height/10)
+		ctrl_width = int(display_width/4)
+		ctrl_height = int((display_height-topbar_height)/2)
+
+	# Adjust font size, if not defined
+	if not font_size:
+		font_size = int(display_width/32)
+
+	# Adjust Root Window Geometry
+	top.geometry(str(display_width)+'x'+str(display_height))
+	top.maxsize(display_width,display_height)
+	top.minsize(display_width,display_height)
+
+	# Disable cursor for real Zynthian Boxes
+	if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES" and not force_enable_cursor:
+		top.config(cursor="none")
+	else:
+		top.config(cursor="cross")
+
+	#------------------------------------------------------------------------------
+	# Global Variables
+	#------------------------------------------------------------------------------
+
+	# Fonts
+	font_listbox=(font_family,int(1.0*font_size))
+	font_topbar=(font_family,int(1.1*font_size))
+
+	# Loading Logo Animation
+	loading_imgs=[]
+	pil_frame = Image.open("./img/zynthian_gui_loading.gif")
+	fw, fh = pil_frame.size
+	fw2=ctrl_width-8
+	fh2=int(fh*fw2/fw)
+	nframes = 0
+	while pil_frame:
+		pil_frame2 = pil_frame.resize((fw2, fh2), Image.ANTIALIAS)
+		# convert PIL image object to Tkinter PhotoImage object
+		loading_imgs.append(ImageTk.PhotoImage(pil_frame2))
+		nframes += 1
+		try:
+			pil_frame.seek(nframes)
+		except EOFError:
+			break;
+	#for i in range(13):
+	#	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
+
+except:
+	logging.warning("No Display!")
 
 #------------------------------------------------------------------------------
 # Zynthian GUI variable
