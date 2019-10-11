@@ -45,6 +45,7 @@ class zynthian_engine:
 	# Data dirs 
 	# ---------------------------------------------------------------------------
 
+	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
 	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
 	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
 	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")

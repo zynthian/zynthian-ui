@@ -49,7 +49,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Plugin List
 	#------------------------------------------------------------------------------
 
-	JALV_LV2_CONFIG_FILE = "{}/jalv_plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR','/zynthian/config'))
+	JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(zynthian_engine.config_dir)
 
 	plugins_dict = OrderedDict([
 		("Dexed", {'TYPE': "MIDI Synth",'URL': "https://github.com/dcoredump/dexed.lv2"}),

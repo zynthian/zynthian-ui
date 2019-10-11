@@ -379,7 +379,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 		# Load (and generate if need it) the preset list
 		self.presets = defaultdict(list)
-		self.presets_cache_fpath = self.my_data_dir + '/pianoteq6/presets_cache.json'
+		self.presets_cache_fpath = self.config_dir + '/pianoteq6/presets_cache.json'
 		if os.path.isfile(self.presets_cache_fpath) and not update_presets_cache:
 			self.load_presets_cache()
 		else:
