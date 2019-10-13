@@ -454,10 +454,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		#Get internal presets from Pianoteq ...
 		try:
 			pianoteq=subprocess.Popen([PIANOTEQ_BINARY, "--list-presets"],stdout=subprocess.PIPE)
+			bank_list = sorted(self.bank_list, key=lambda bank: len(bank[0]) if bank[0] else 0, reverse=True)
 			for line in pianoteq.stdout:
 				l=line.rstrip().decode("utf-8")
 				logging.debug("PRESET => {}".format(l))
-				for bank in self.bank_list:
+				for bank in bank_list:
 					try:
 						b=bank[0]
 						if b:
