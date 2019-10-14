@@ -225,7 +225,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	bank_list_v6_6 = [
-                ('Celtic Harp', 0, 'Celtic Harp', '_', 'Celtic Harp:A')
+        ('Celtic Harp', 0, 'Celtic Harp', '_', 'Celtic Harp:A')
 	]
 
 	bank_list_v6_5 = [
@@ -233,7 +233,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	]
 
 	bank_list_v6_4 = [
-		('BechsteinDG', 0, 'BechsteinDG', '_', 'BechsteinDG:A')
+		('C. Bechstein DG', 0, 'C. Bechstein DG', '_', 'BechsteinDG:A')
 	]
 
 	bank_list_v6_3=[
@@ -454,19 +454,23 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		#Get internal presets from Pianoteq ...
 		try:
 			pianoteq=subprocess.Popen([PIANOTEQ_BINARY, "--list-presets"],stdout=subprocess.PIPE)
+			bank_list = sorted(self.bank_list, key=lambda bank: len(bank[0]) if bank[0] else 0, reverse=True)
 			for line in pianoteq.stdout:
 				l=line.rstrip().decode("utf-8")
 				logging.debug("PRESET => {}".format(l))
-				for bank in self.bank_list:
+				for bank in bank_list:
 					try:
 						b=bank[0]
-						if b==l:
-							self.presets[b].append([l,None,'<default>',None])
-						elif b+' '==l[0:len(b)+1]:
-							#logging.debug("'%s' == '%s'" % (b,l[0:len(b)]))
-							preset_title=l[len(b):].strip()
-							preset_title=re.sub('^- ','',preset_title)
-							self.presets[b].append([l,None,preset_title,None])
+						if b:
+							if b==l:
+								self.presets[b].append([l,None,'<default>',None])
+								break
+							elif b+' '==l[0:len(b)+1]:
+								#logging.debug("'%s' == '%s'" % (b,l[0:len(b)]))
+								preset_title=l[len(b):].strip()
+								preset_title=re.sub('^- ','',preset_title)
+								self.presets[b].append([l,None,preset_title,None])
+								break
 					except:
 						pass
 		except Exception as e:
