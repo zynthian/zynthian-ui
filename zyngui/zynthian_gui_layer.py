@@ -658,16 +658,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			snapshot=JSONDecoder().decode(json)
 
-			#Clean all layers
-			self.remove_all_layers(False)
+			#Clean all layers & Stop Engines
+			self.remove_all_layers(True)
 
 			#Start engines
 			for lss in snapshot['layers']:
 				engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
 				self.layers.append(zynthian_layer(engine,lss['midi_chan'],zynthian_gui_config.zyngui))
 
-			#Remove unused engines
-			self.zyngui.screens['engine'].clean_unused_engines()
+			#Remove unused engines => Trying to reuse engine instances create problems (audio routing & jack names, etc..)
+			#self.zyngui.screens['engine'].clean_unused_engines()
 
 			#Autoconnect
 			self.zyngui.zynautoconnect(True)
