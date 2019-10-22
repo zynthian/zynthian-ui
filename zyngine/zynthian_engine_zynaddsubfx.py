@@ -520,4 +520,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		os.remove(preset_path)
 
 
+	@classmethod
+	def zynapi_download(cls, fullpath):
+		return fullpath
+
+
 #******************************************************************************
