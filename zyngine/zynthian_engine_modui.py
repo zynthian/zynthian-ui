@@ -40,11 +40,21 @@ from . import zynthian_controller
 
 class zynthian_engine_modui(zynthian_engine):
 
+	# ---------------------------------------------------------------------------
+	# Config variables
+	# ---------------------------------------------------------------------------
+
+	base_api_url = 'http://localhost:8888'
+	websocket_url = 'ws://localhost:8888/websocket'
+
+	bank_dirs = [
+		('EX', zynthian_engine.ex_data_dir + "/presets/mod-ui/pedalboards"),
+		('_', zynthian_engine.my_data_dir + "/presets/mod-ui/pedalboards")
+	]
 
 	# ---------------------------------------------------------------------------
 	# Initialization
 	# ---------------------------------------------------------------------------
-
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
@@ -62,17 +72,10 @@ class zynthian_engine_modui(zynthian_engine):
 			'midi_chan': False
 		}
 
-		self.base_api_url = 'http://localhost:8888'
-		self.websocket_url = 'ws://localhost:8888/websocket'
 		self.websocket = None
 		self.ws_thread = None
 		self.ws_preset_loaded = False
 		self.ws_bundle_loaded = False
-
-		self.bank_dirs = [
-			('EX', self.ex_data_dir + "/mod-pedalboards"),
-			('_', self.my_data_dir + "/mod-pedalboards")
-		]
 		self.hw_ports = {}
 
 		self.reset()
@@ -88,21 +91,17 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def start(self):
-		self.start_loading()
 		if not self.is_service_active("mod-ui"):
 			logging.info("STARTING MOD-HOST & MOD-UI services...")
 			check_output(("systemctl start mod-host && systemctl start mod-ui"),shell=True)
-		self.stop_loading()
 
 
 	def stop(self):
-		self.start_loading()
 		#self.stop_websocket()
 		if self.is_service_active("mod-ui"):
 			logging.info("STOPPING MOD-HOST & MOD-UI services...")
 			#check_output(("systemctl stop mod-host && systemctl stop mod-ui"),shell=True)
 			check_output(("systemctl stop mod-ui"),shell=True)
-		self.stop_loading()
 
 
 	def is_service_active(self, service="mod-ui"):
@@ -114,11 +113,9 @@ class zynthian_engine_modui(zynthian_engine):
 		if result.strip()=='active': return True
 		else: return False
 
-
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
-
 
 	def add_layer(self, layer):
 		layer.listen_midi_cc = False
@@ -131,11 +128,9 @@ class zynthian_engine_modui(zynthian_engine):
 		super().del_layer(layer)
 		self.graph_reset()
 
-
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
-
 
 	def get_bank_list(self, layer=None):
 		return self.get_dirlist(self.bank_dirs)
@@ -159,11 +154,9 @@ class zynthian_engine_modui(zynthian_engine):
 			sleep(0.1)
 			i=i+2
 
-
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
-
 
 	def get_preset_list(self, bank):
 		self.pedelpresets.clear()
@@ -235,11 +228,9 @@ class zynthian_engine_modui(zynthian_engine):
 		except:
 			return False
 
-
 	#----------------------------------------------------------------------------
 	# Controllers Managament
 	#----------------------------------------------------------------------------
-
 
 	def get_controllers_dict(self, layer):
 		zctrls=OrderedDict()
@@ -273,11 +264,9 @@ class zynthian_engine_modui(zynthian_engine):
 		self.websocket.send("param_set %s %.6f" % (zctrl.graph_path, zctrl.value))
 		logging.debug("WS << param_set %s %.6f" % (zctrl.graph_path, zctrl.value))
 
-
 	#----------------------------------------------------------------------------
 	# Websocket & MOD-UI API Management
 	#----------------------------------------------------------------------------
-
 
 	def start_websocket(self):
 		logging.info("Connecting to MOD-UI websocket...")
@@ -400,15 +389,11 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def api_get_request(self, path, data=None, json=None):
-		self.start_loading()
 		try:
 			res=requests.get(self.base_api_url + path, data=data, json=json)
 		except Exception as e:
-			self.stop_loading()
 			logging.error(e)
 			return
-
-		self.stop_loading()
 
 		if res.status_code != 200:
 			logging.error("GET call to MOD-UI API: "+str(res.status_code) + " => " +self.base_api_url + path)
@@ -417,15 +402,11 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def api_post_request(self, path, data=None, json=None):
-		self.start_loading()
 		try:
 			res=requests.post(self.base_api_url + path, data=data, json=json)
 		except Exception as e:
-			self.stop_loading()
 			logging.error(e)
 			return
-
-		self.stop_loading()
 
 		if res.status_code != 200:
 			logging.error("POST call to MOD-UI API: "+str(res.status_code) + " => " +self.base_api_url + path)
@@ -448,7 +429,6 @@ class zynthian_engine_modui(zynthian_engine):
 					logging.info('Bank Selected from Bundlepath: ' + bank_name + ' (' + str(i)+')')
 					self.zyngui.screens['bank'].select(i)
 					layer.set_bank(i,False)
-
 					break
 
 
@@ -677,11 +657,9 @@ class zynthian_engine_modui(zynthian_engine):
 
 		self.ws_preset_loaded = True
 
-
 	#----------------------------------------------------------------------------
 	# MIDI learning
 	#----------------------------------------------------------------------------
-
 
 	def init_midi_learn(self, zctrl):
 		logging.info("Learning '%s' ..." % zctrl.graph_path)
@@ -739,6 +717,27 @@ class zynthian_engine_modui(zynthian_engine):
 		#{"uri":"/midi-learn","label":"Reset","minimum":"0","maximum":"1","value":0,"steps":"1"}
 		logging.debug("Parameter Address Data => %s" % str(data))
 		return data
+
+	# ---------------------------------------------------------------------------
+	# API methods
+	# ---------------------------------------------------------------------------
+
+	@classmethod
+	def zynapi_get_banks(cls):
+		banks=[]
+		for b in cls.get_dirlist(cls.bank_dirs):
+			banks.append({
+				'text': b[2],
+				'name': b[2],
+				'fullpath': b[0],
+				'raw': b
+			})
+		return banks
+
+
+	@classmethod
+	def zynapi_get_presets(cls, bank):
+		return []
 
 
 #******************************************************************************

@@ -31,7 +31,9 @@ from collections import OrderedDict
 from . import zynthian_engine
 from . import zynthian_controller
 
-
+#------------------------------------------------------------------------------
+# Module methods
+#------------------------------------------------------------------------------
 
 def get_jalv_plugins():
 	if isfile(zynthian_engine_jalv.JALV_LV2_CONFIG_FILE):
@@ -113,14 +115,18 @@ class zynthian_engine_jalv(zynthian_engine):
 		}
 	}
 
-	_ctrls=None
-	_ctrl_screens=None
+	_ctrls = None
+	_ctrl_screens = None
 
+	#----------------------------------------------------------------------------
+	# ZynAPI variables
+	#----------------------------------------------------------------------------
+
+	zynapi_instance = None
 
 	#----------------------------------------------------------------------------
 	# Initialization
 	#----------------------------------------------------------------------------
-
 
 	def __init__(self, plugin_name, plugin_type, zyngui=None):
 		super().__init__(zyngui)
@@ -132,15 +138,15 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
+		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
+		self.learned_zctrls = {}
+
 		if self.config_remote_display():
 			self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))		#TODO => Is possible to run plugins UI?
 		else:
 			self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))
 
 		self.command_prompt = "\n> "
-
-		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
-		self.learned_zctrls = {}
 
 		output = self.start()
 
@@ -174,34 +180,28 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		self.reset()
 
-
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
-
 
 	def add_layer(self, layer):
 		layer.listen_midi_cc = False
 		super().add_layer(layer)
 		self.set_midi_chan(layer)
 
-
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-
 	def set_midi_chan(self, layer):
 		if self.plugin_name=="Triceratops":
 			self.lv2_zctrl_dict["midi_channel"].set_value(layer.midi_chan+1.5)
-
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
 	def _get_bank_list(self):
-		self.start_loading()
 		logging.info("Getting Bank List from LV2 Plugin ...")
 
 		bank_list = []
@@ -220,7 +220,6 @@ class zynthian_engine_jalv(zynthian_engine):
 		if "NoBank" in self.bank_npresets:
 			bank_list.append(("NoBank", None, "NoBank", None))
 
-		self.stop_loading()
 		return bank_list
 
 
@@ -231,14 +230,11 @@ class zynthian_engine_jalv(zynthian_engine):
 	def set_bank(self, layer, bank):
 		return True
 
-
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
 
-
 	def _get_preset_list(self):
-		self.start_loading()
 		logging.info("Getting Preset List from LV2 Plugin ...")
 
 		preset_list = []
@@ -266,7 +262,6 @@ class zynthian_engine_jalv(zynthian_engine):
 			except Exception as e:
 				logging.error(e)
 
-		self.stop_loading()
 		return preset_list
 
 
@@ -302,14 +297,11 @@ class zynthian_engine_jalv(zynthian_engine):
 		except:
 			return False
 
-
 	#----------------------------------------------------------------------------
 	# Controllers Managament
 	#----------------------------------------------------------------------------
 
-
 	def get_lv2_controllers_dict(self):
-		self.start_loading()
 		logging.info("Getting Controller List from LV2 Plugin ...")
 		output=self.proc_cmd("\info_controls")
 		zctrls=OrderedDict()
@@ -384,7 +376,6 @@ class zynthian_engine_jalv(zynthian_engine):
 				except Exception as e:
 					logging.error(e)
 
-		self.stop_loading()
 		return zctrls
 
 
@@ -425,11 +416,9 @@ class zynthian_engine_jalv(zynthian_engine):
 	def send_controller_value(self, zctrl):
 		self.proc_cmd("\set_control %d, %.6f" % (zctrl.graph_path, zctrl.value))
 
-
 	#----------------------------------------------------------------------------
 	# MIDI learning
 	#----------------------------------------------------------------------------
-
 
 	def init_midi_learn(self, zctrl):
 		if zctrl.graph_path:
@@ -471,11 +460,9 @@ class zynthian_engine_jalv(zynthian_engine):
 	def cb_midi_learn(self, zctrl, chan, cc):
 		return self.set_midi_learn(zctrl, chan, cc)
 
-
 	#----------------------------------------------------------------------------
 	# MIDI CC processing
 	#----------------------------------------------------------------------------
-
 
 	def midi_control_change(self, chan, ccnum, val):
 		try:
@@ -483,6 +470,44 @@ class zynthian_engine_jalv(zynthian_engine):
 		except:
 			pass
 
+	# ---------------------------------------------------------------------------
+	# API methods
+	# ---------------------------------------------------------------------------
+
+	@classmethod
+	def init_zynapi_instance(cls, plugin_name, plugin_type):
+		if cls.zynapi_instance and cls.zynapi_instance != "JV/" + plugin_name:
+			cls.zynapi_instance.stop()
+			cls.zynapi_instance = None
+
+		if not cls.zynapi_instance:
+			cls.zynapi_instance = cls(plugin_name, plugin_type)
+
+
+	@classmethod
+	def zynapi_get_banks(cls):
+		banks=[]
+		for b in cls.zynapi_instance.get_bank_list():
+			banks.append({
+				'text': b[2],
+				'name': b[2],
+				'fullpath': b[0],
+				'raw': b
+			})
+		return banks
+
+
+	@classmethod
+	def zynapi_get_presets(cls, bank):
+		presets=[]
+		for p in cls.zynapi_instance.get_preset_list(bank['raw']):
+			presets.append({
+				'text': p[2],
+				'name': p[2],
+				'fullpath': p[0],
+				'raw': p
+			})
+		return presets
 
 
 #******************************************************************************

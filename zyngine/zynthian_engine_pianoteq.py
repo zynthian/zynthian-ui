@@ -48,7 +48,7 @@ PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/pianoteq"
 PIANOTEQ_CONFIG_DIR = os.path.expanduser("~")  + "/.config/Modartt"
 PIANOTEQ_DATA_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq'
 PIANOTEQ_ADDON_DIR = PIANOTEQ_DATA_DIR + '/Addons'
-PIANOTEQ_MY_PRESETS_DIR = PIANOTEQ_DATA_DIR + '/Presets/My Presets'
+PIANOTEQ_MY_PRESETS_DIR = PIANOTEQ_DATA_DIR + '/Presets'
 PIANOTEQ_MIDIMAPPINGS_DIR = PIANOTEQ_DATA_DIR + '/MidiMappings'
 
 try:
@@ -225,72 +225,72 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	bank_list_v6_6 = [
-        ('Celtic Harp', 0, 'Celtic Harp', '_', 'Celtic Harp:A')
+        ('Celtic Harp', 0, 'Celtic Harp', 'Celtic Harp:A')
 	]
 
 	bank_list_v6_5 = [
-		('Kalimba', 0, 'Kalimba', '_', 'Kalimba:A')
+		('Kalimba', 0, 'Kalimba', 'Kalimba:A')
 	]
 
 	bank_list_v6_4 = [
-		('C. Bechstein DG', 0, 'C. Bechstein DG', '_', 'BechsteinDG:A')
+		('C. Bechstein DG', 0, 'C. Bechstein DG', 'BechsteinDG:A')
 	]
 
 	bank_list_v6_3=[
-		('Ant. Petrof', 0, 'Ant. Petrof', '_', 'Antpetrof:A')
+		('Ant. Petrof', 0, 'Ant. Petrof', 'Antpetrof:A')
 	]
 
 	bank_list=[
-		('Steinway D', 1, 'Steinway D', '_', 'D4:A'),
-		('Steinway B', 2, 'Steinway B', '_', 'Modelb:A'),
-		('Steingraeber', 3, 'Steingraeber', '_', 'Steingraeber:A'),
-		('Grotrian', 4, 'Grotrian', '_', 'Grotrian:A'),
-		('Bluethner', 5, 'Bluethner', '_', 'Bluethner:A'),
-		('YC5', 6, 'YC5', '_', 'Rock:A'),
-		('K2', 7, 'K2', '_', 'K2:A'),
-		('U4', 8, 'U4', '_', 'U4:A'),
-		('MKI', 9, 'MKI', '_', 'Electric:A'),
-		('MKII', 10, 'MKII', '_', 'Electric:A'),
-		('W1', 11, 'W1', '_', 'Electric:A'),
-		('Clavinet D6', 12, 'Clavinet D6', '_', 'Clavinet:A'),
-		('Pianet N', 13, 'Pianet N', '_', 'Clavinet:A'),
-		('Pianet T', 14, 'Pianet T', '_', 'Clavinet:A'),
-		('Electra', 15, 'Electra', '_', 'Clavinet:A'),
-		('Vibraphone V-B', 16, 'Vibraphone V-B', '_', 'Vibes:A'),
-		('Vibraphone V-M', 17, 'Vibraphone V-M', '_', 'Vibes:A'),
-		('Celesta', 18, 'Celesta', '_', 'Celeste:A'),
-		('Glockenspiel', 19, 'Glockenspiel', '_', 'Celeste:A'),
-		('Toy Piano', 20, 'Toy Piano', '_', 'Celeste:A'),
-		('Marimba', 21, 'Marimba', '_', 'Xylo:A'),
-		('Xylophone', 22, 'Xylophone', '_', 'Xylo:A'),
-		('Steel Drum', 23, 'Steel Drum', '_', 'Steel:A'),
-		('Spacedrum', 24, 'Spacedrum', '_', 'Steel:A'),
-		('Hand Pan', 25, 'Hand Pan', '_', 'Steel:A'),
-		('Tank Drum', 26, 'Tank Drum', '_', 'Steel:A'),
-		('H. Ruckers II Harpsichord', 27, 'H. Ruckers II Harpsichord', '_', 'Harpsichord:A'),
-		('Concert Harp', 28, 'Concert Harp', '_', 'Harp:A'),
-		('J. Dohnal', 29, 'J. Dohnal', '_', 'Kremsegg1:A'),
-		('I. Besendorfer', 30, 'I. Besendorfer', '_', 'Kremsegg1:A'),
-		('S. Erard', 31, 'S. Erard', '_', 'Kremsegg1:A'),
-		('J.B. Streicher', 32 , 'J.B. Streicher', '_', 'Kremsegg1:A'),
-		('J. Broadwood', 33, 'J. Broadwood', '_', 'Kremsegg2:A'),
-		('I. Pleyel', 34, 'I. Pleyel', '_', 'Kremsegg2:A'),
-		('J. Frenzel', 35, 'J. Frenzel', '_', 'Kremsegg2:A'),
-		('C. Bechstein', 36, 'C. Bechstein', '_', 'Kremsegg2:A'),
-		('Cimbalom', 37, 'Cimbalom', '_', 'KIViR'),
-		('Neupert Clavichord', 38, 'Neupert Clavichord', '_', 'KIViR'),
-		('F.E. Blanchet Harpsichord', 39, 'F.E. Blanchet Harpsichord', '_', 'KIViR'),
-		('C. Grimaldi Harpsichord', 40, 'C. Grimaldi Harpsichord', '_', 'KIViR'),
-		('J. Schantz', 41, 'J. Schantz', '_', 'KIViR'),
-		('J.E. Schmidt', 42, 'J.E. Schmidt', '_', 'KIViR'),
-		('A. Walter', 43, 'A. Walter', '_', 'KIViR'),
-		('D. Schoffstoss', 44, 'D. Schoffstoss', '_', 'KIViR'),
-		('C. Graf', 45, 'C. Graf', '_', 'KIViR'),
-		('Erard', 46, 'Erard', '_', 'KIViR'),
-		('Pleyel', 47, 'Pleyel', '_', 'KIViR'),
-		('CP-80', 48, 'CP-80', '_', 'KIViR'),
-		('Church Bells', 49, 'Church Bells', '_', 'bells'),
-		('Tubular Bells', 50, 'Tubular Bells', '_', 'bells')
+		('Steinway D', 1, 'Steinway D', 'D4:A'),
+		('Steinway B', 2, 'Steinway B', 'Modelb:A'),
+		('Steingraeber', 3, 'Steingraeber', 'Steingraeber:A'),
+		('Grotrian', 4, 'Grotrian', 'Grotrian:A'),
+		('Bluethner', 5, 'Bluethner', 'Bluethner:A'),
+		('YC5', 6, 'YC5', 'Rock:A'),
+		('K2', 7, 'K2', 'K2:A'),
+		('U4', 8, 'U4', 'U4:A'),
+		('MKI', 9, 'MKI', 'Electric:A'),
+		('MKII', 10, 'MKII', 'Electric:A'),
+		('W1', 11, 'W1', 'Electric:A'),
+		('Clavinet D6', 12, 'Clavinet D6', 'Clavinet:A'),
+		('Pianet N', 13, 'Pianet N', 'Clavinet:A'),
+		('Pianet T', 14, 'Pianet T', 'Clavinet:A'),
+		('Electra', 15, 'Electra', 'Clavinet:A'),
+		('Vibraphone V-B', 16, 'Vibraphone V-B', 'Vibes:A'),
+		('Vibraphone V-M', 17, 'Vibraphone V-M', 'Vibes:A'),
+		('Celesta', 18, 'Celesta', 'Celeste:A'),
+		('Glockenspiel', 19, 'Glockenspiel', 'Celeste:A'),
+		('Toy Piano', 20, 'Toy Piano', 'Celeste:A'),
+		('Marimba', 21, 'Marimba', 'Xylo:A'),
+		('Xylophone', 22, 'Xylophone', 'Xylo:A'),
+		('Steel Drum', 23, 'Steel Drum', 'Steel:A'),
+		('Spacedrum', 24, 'Spacedrum', 'Steel:A'),
+		('Hand Pan', 25, 'Hand Pan', 'Steel:A'),
+		('Tank Drum', 26, 'Tank Drum', 'Steel:A'),
+		('H. Ruckers II Harpsichord', 27, 'H. Ruckers II Harpsichord', 'Harpsichord:A'),
+		('Concert Harp', 28, 'Concert Harp', 'Harp:A'),
+		('J. Dohnal', 29, 'J. Dohnal', 'Kremsegg1:A'),
+		('I. Besendorfer', 30, 'I. Besendorfer', 'Kremsegg1:A'),
+		('S. Erard', 31, 'S. Erard', 'Kremsegg1:A'),
+		('J.B. Streicher', 32 , 'J.B. Streicher', 'Kremsegg1:A'),
+		('J. Broadwood', 33, 'J. Broadwood', 'Kremsegg2:A'),
+		('I. Pleyel', 34, 'I. Pleyel', 'Kremsegg2:A'),
+		('J. Frenzel', 35, 'J. Frenzel', 'Kremsegg2:A'),
+		('C. Bechstein', 36, 'C. Bechstein', 'Kremsegg2:A'),
+		('Cimbalom', 37, 'Cimbalom', 'KIViR'),
+		('Neupert Clavichord', 38, 'Neupert Clavichord', 'KIViR'),
+		('F.E. Blanchet Harpsichord', 39, 'F.E. Blanchet Harpsichord', 'KIViR'),
+		('C. Grimaldi Harpsichord', 40, 'C. Grimaldi Harpsichord', 'KIViR'),
+		('J. Schantz', 41, 'J. Schantz', 'KIViR'),
+		('J.E. Schmidt', 42, 'J.E. Schmidt', 'KIViR'),
+		('A. Walter', 43, 'A. Walter', 'KIViR'),
+		('D. Schoffstoss', 44, 'D. Schoffstoss', 'KIViR'),
+		('C. Graf', 45, 'C. Graf', 'KIViR'),
+		('Erard', 46, 'Erard', 'KIViR'),
+		('Pleyel', 47, 'Pleyel', 'KIViR'),
+		('CP-80', 48, 'CP-80', 'KIViR'),
+		('Church Bells', 49, 'Church Bells', 'bells'),
+		('Tubular Bells', 50, 'Tubular Bells', 'bells')
 	]
 
 	free_instruments = [
@@ -328,6 +328,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		#['reverb2',['volume','rev room','rev p/d','rev e/r']],
 		#['reverb3',['volume','rev tone']]
 	]
+
+	#----------------------------------------------------------------------------
+	# Config Variables
+	#----------------------------------------------------------------------------
+
+	user_presets_path = PIANOTEQ_MY_PRESETS_DIR
+	user_presets_flist = None
 
 	#----------------------------------------------------------------------------
 	# Initialization
@@ -373,7 +380,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.prepare_banks()
 
 		# Create "My Presets" directory if not already exist
-		self.user_presets_path=PIANOTEQ_MY_PRESETS_DIR
 		if not os.path.exists(self.user_presets_path):
 			os.makedirs(self.user_presets_path)
 
@@ -385,7 +391,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		else:
 			self.save_presets_cache()
 
-		self.get_user_presets()
+		self.load_user_presets()
 		self.purge_banks()
 		self.generate_presets_midimapping()
 
@@ -405,6 +411,18 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
+
+	# Get user banks
+	@classmethod
+	def get_user_banks(cls):
+		cls.user_presets_flist = cls.get_user_preset_files()
+		user_banks = []
+		for bank in cls.bank_list:
+			user_presets = cls.get_user_presets(bank)
+			if len(user_presets)>0:
+				user_banks.append(list(bank) + [bank[2]])
+		return user_banks
+
 
 	def get_bank_list(self, layer=None):
 		return self.bank_list
@@ -435,9 +453,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				licensed_banks = []
 				unlicensed_banks = []
 				for bank in self.bank_list:
-					if bank[4].upper() in map(str.upper, subl):
+					if bank[3].upper() in map(str.upper, subl):
 						licensed_banks.append(bank)
-					elif bank[4].upper() in map(str.upper, self.free_instruments):
+					elif bank[3].upper() in map(str.upper, self.free_instruments):
 						free_banks.append(bank)
 					else:
 						unlicensed_banks.append(bank)
@@ -514,22 +532,42 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		return True
 
 
+	# Get user preset file list
+	@classmethod
+	def get_user_preset_files(cls):
+		flist = []
+		for d in sorted(os.listdir(cls.user_presets_path)):
+			for f in sorted(os.listdir(cls.user_presets_path + "/" + d)):
+				flist.append(d + "/" + f)
+		return flist
+
+
 	# Get user presets
-	def get_user_presets(self):
-		user_presets_flist=sorted(os.listdir(self.user_presets_path))
+	@classmethod
+	def get_user_presets(cls, bank):
+		user_presets = []
+		if bank[0]:
+			bank_name = bank[0]
+			bank_prefix = bank_name + " "
+			logging.debug("Getting User presets for {}".format(bank_name))
+			for f in cls.user_presets_flist:
+				if (isfile(join(cls.user_presets_path,f)) and f[-4:].lower()==".fxp"):
+					dbank,fname = f.split("/",1)
+					if bank_prefix==fname[0:len(bank_prefix)]:
+						preset_path = dbank + "/" + fname[:-4]
+						preset_title = dbank + "/" + str.replace(fname[len(bank_prefix):-4], '_', ' ').strip()
+						user_presets.append([preset_path,None,preset_title,None,dbank])
+		return user_presets
+
+
+	# Get user presets
+	def load_user_presets(self):
+		type(self).user_presets_flist = self.get_user_preset_files()
 		for bank in self.bank_list:
-			if bank[0]:
-				user_presets = []
-				bank_name = bank[0]
-				bank_prefix = bank_name + " "
-				logging.debug("Getting User presets for %s [%s]" % (self.name,bank_name))
-				for f in user_presets_flist:
-					if (isfile(join(self.user_presets_path,f)) and f[-4:].lower()==".fxp"):
-						if bank_prefix==f[0:len(bank_prefix)]:
-							preset_path="My Presets/" + f[:-4]
-							preset_title="MY/" + str.replace(f[len(bank_prefix):-4], '_', ' ').strip()
-							user_presets.append([preset_path,None,preset_title,None])
+			user_presets = self.get_user_presets(bank)
+			if len(user_presets)>0:
 				#Add internal presets
+				bank_name = bank[0]
 				try:
 					self.presets[bank_name] = user_presets + self.presets[bank_name]
 				except:
@@ -547,7 +585,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def get_preset_list(self, bank):
-		self.start_loading()
 		bank_name = bank[0]
 		if bank_name in self.presets:
 			logging.info("Getting Preset List for %s [%s]" % (self.name,bank_name))
@@ -555,7 +592,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		else:
 			logging.error("Can't get Preset List for %s [%s]" % (self.name,bank_name))
 			res = []
-		self.stop_loading()
 		return res
 
 
@@ -653,6 +689,34 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			file.seek(0)
 			file.write(header)
 
+	# ---------------------------------------------------------------------------
+	# API methods
+	# ---------------------------------------------------------------------------
 
-#******************************************************************************
+	@classmethod
+	def zynapi_get_banks(cls):
+		banks=[]
+		for b in cls.get_user_banks():
+			banks.append({
+				'text': b[2],
+				'name': b[2],
+				'fullpath': b[0],
+				'raw': b
+			})
+		return banks
+
+
+	@classmethod
+	def zynapi_get_presets(cls, bank):
+		presets=[]
+		for p in cls.get_user_presets(bank['raw']):
+			presets.append({
+				'text': p[2],
+				'name': p[2][len(p[4])+1:],
+				'fullpath': p[0],
+				'raw': p
+			})
+		return presets
+
+
 #******************************************************************************

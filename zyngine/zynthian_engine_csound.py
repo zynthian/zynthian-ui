@@ -55,6 +55,15 @@ class zynthian_engine_csound(zynthian_engine):
 	]
 
 	#----------------------------------------------------------------------------
+	# Config variables
+	#----------------------------------------------------------------------------
+
+	bank_dirs = [
+		('EX', zynthian_engine.ex_data_dir + "/presets/csound"),
+		('_', zynthian_engine.my_data_dir + "/presets/csound")
+	]
+
+	#----------------------------------------------------------------------------
 	# Initialization
 	#----------------------------------------------------------------------------
 
@@ -70,12 +79,6 @@ class zynthian_engine_csound(zynthian_engine):
 
 		self.preset = ""
 		self.preset_config = None
-
-		self.bank_dirs = [
-			('EX', self.ex_data_dir + "/presets/csound")
-			('_', self.my_data_dir + "/presets/csound")
-		]
-
 
 		if self.config_remote_display():
 			self.nogui = False
@@ -98,7 +101,6 @@ class zynthian_engine_csound(zynthian_engine):
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-
 	def get_bank_list(self, layer=None):
 		return self.get_dirlist(self.bank_dirs)
 
@@ -109,7 +111,6 @@ class zynthian_engine_csound(zynthian_engine):
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
-
 
 	def get_preset_list(self, bank):
 		return self.get_dirlist(bank[0])
@@ -182,7 +183,6 @@ class zynthian_engine_csound(zynthian_engine):
 	def cmp_presets(self, preset1, preset2):
 		return True
 
-
 	#----------------------------------------------------------------------------
 	# Controllers Managament
 	#----------------------------------------------------------------------------
@@ -226,6 +226,35 @@ class zynthian_engine_csound(zynthian_engine):
 	#--------------------------------------------------------------------------
 	# Special
 	#--------------------------------------------------------------------------
+
+	# ---------------------------------------------------------------------------
+	# API methods
+	# ---------------------------------------------------------------------------
+
+	@classmethod
+	def zynapi_get_banks(cls):
+		banks=[]
+		for b in cls.get_dirlist(cls.bank_dirs):
+			banks.append({
+				'text': b[4],
+				'name': b[2],
+				'fullpath': b[0],
+				'raw': b
+			})
+		return banks
+
+
+	@classmethod
+	def zynapi_get_presets(cls, bank):
+		presets=[]
+		for p in cls.get_dirlist(bank['fullpath']):
+			presets.append({
+				'text': p[4],
+				'name': p[2],
+				'fullpath': p[0],
+				'raw': p
+			})
+		return presets
 
 
 #******************************************************************************

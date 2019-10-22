@@ -39,18 +39,27 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
-
 	# Controller Screens
 	_ctrl_screens=[
 		['main',['volume','expression','pan','sustain']],
 		['effects',['volume','modulation','reverb','chorus']]
 	]
 
+	# ---------------------------------------------------------------------------
+	# Config variables
+	# ---------------------------------------------------------------------------
+
+	fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64"
+
+	soundfont_dirs=[
+		('EX', zynthian_engine.ex_data_dir + "/soundfonts/sf2"),
+		('MY', zynthian_engine.my_data_dir + "/soundfonts/sf2"),
+		('_', zynthian_engine.data_dir + "/soundfonts/sf2")
+	]
 
 	# ---------------------------------------------------------------------------
 	# Initialization
 	# ---------------------------------------------------------------------------
-
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
@@ -58,16 +67,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.nickname = "FS"
 		self.jackname = "fluidsynth"
 
-		fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64"
-		self.command = "/usr/local/bin/fluidsynth -p fluidsynth -a jack -m jack -g 1 -j {}".format(fs_options)
-
+		self.command = "/usr/local/bin/fluidsynth -p fluidsynth -a jack -m jack -g 1 -j {}".format(self.fs_options)
 		self.command_prompt = "\n> "
-
-		self.soundfont_dirs=[
-			('EX', self.ex_data_dir + "/soundfonts/sf2"),
-			('MY', self.my_data_dir + "/soundfonts/sf2"),
-			('_', self.data_dir + "/soundfonts/sf2")
-		]
 
 		self.start()
 		self.reset()
@@ -83,7 +84,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Subproccess Management & IPC
 	# ---------------------------------------------------------------------------
 
-
 	def stop(self):
 		try:
 			self.proc.sendline("quit")
@@ -91,11 +91,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		except:
 			super().stop()
 
-
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
-
 
 	def add_layer(self, layer):
 		super().add_layer(layer)
@@ -109,20 +107,16 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			self.set_all_midi_routes()
 		self.unload_unused_soundfonts()
 
-
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-
 	def set_midi_chan(self, layer):
 		self.setup_router(layer)
-
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
-
 
 	def get_bank_list(self, layer=None):
 		return self.get_filelist(self.soundfont_dirs,"sf2")
@@ -135,11 +129,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		else:
 			return False
 
-
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
-
 
 	def get_preset_list(self, bank):
 		logging.info("Getting Preset List for {}".format(bank[2]))
@@ -185,11 +177,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		except:
 			return False
 
-
 	# ---------------------------------------------------------------------------
 	# Specific functions
 	# ---------------------------------------------------------------------------
-
 
 	def get_free_parts(self):
 		free_parts = list(range(0,16))
@@ -285,6 +275,27 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def clear_midi_routes(self):
 		self.proc_cmd("router_clear")
+
+	# ---------------------------------------------------------------------------
+	# API methods
+	# ---------------------------------------------------------------------------
+
+	@classmethod
+	def zynapi_get_banks(cls):
+		banks=[]
+		for b in cls.get_filelist(cls.soundfont_dirs,"sf2"):
+			banks.append({
+				'text': b[4],
+				'name': b[2],
+				'fullpath': b[0],
+				'raw': b
+			})
+		return banks
+
+
+	@classmethod
+	def zynapi_get_presets(cls, bank):
+		return []
 
 
 #******************************************************************************
