@@ -503,7 +503,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	@classmethod
 	def zynapi_remove_bank(cls, bank_path):
-		#os.rmdir(bank_path)
 		shutil.rmtree(bank_path)
 
 

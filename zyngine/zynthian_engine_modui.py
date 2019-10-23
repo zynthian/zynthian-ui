@@ -24,6 +24,7 @@
 
 import os
 import copy
+import shutil
 import logging
 import requests
 import websocket
@@ -738,6 +739,23 @@ class zynthian_engine_modui(zynthian_engine):
 	@classmethod
 	def zynapi_get_presets(cls, bank):
 		return []
+
+
+	@classmethod
+	def zynapi_rename_bank(cls, bank_path, new_bank_name):
+		head, tail = os.path.split(bank_path)
+		new_bank_path = head + "/" + new_bank_name
+		os.rename(bank_path, new_bank_path)
+
+
+	@classmethod
+	def zynapi_remove_bank(cls, bank_path):
+		shutil.rmtree(bank_path)
+
+
+	@classmethod
+	def zynapi_download(cls, fullpath):
+		return fullpath
 
 
 #******************************************************************************

@@ -333,7 +333,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Config Variables
 	#----------------------------------------------------------------------------
 
-	user_presets_path = PIANOTEQ_MY_PRESETS_DIR
+	user_presets_dpath = PIANOTEQ_MY_PRESETS_DIR
 	user_presets_flist = None
 
 	#----------------------------------------------------------------------------
@@ -380,8 +380,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.prepare_banks()
 
 		# Create "My Presets" directory if not already exist
-		if not os.path.exists(self.user_presets_path):
-			os.makedirs(self.user_presets_path)
+		if not os.path.exists(self.user_presets_dpath):
+			os.makedirs(self.user_presets_dpath)
 
 		# Load (and generate if need it) the preset list
 		self.presets = defaultdict(list)
@@ -536,8 +536,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	@classmethod
 	def get_user_preset_files(cls):
 		flist = []
-		for d in sorted(os.listdir(cls.user_presets_path)):
-			for f in sorted(os.listdir(cls.user_presets_path + "/" + d)):
+		for d in sorted(os.listdir(cls.user_presets_dpath)):
+			for f in sorted(os.listdir(cls.user_presets_dpath + "/" + d)):
 				flist.append(d + "/" + f)
 		return flist
 
@@ -551,7 +551,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			bank_prefix = bank_name + " "
 			logging.debug("Getting User presets for {}".format(bank_name))
 			for f in cls.user_presets_flist:
-				if (isfile(join(cls.user_presets_path,f)) and f[-4:].lower()==".fxp"):
+				if (isfile(join(cls.user_presets_dpath,f)) and f[-4:].lower()==".fxp"):
 					dbank,fname = f.split("/",1)
 					if bank_prefix==fname[0:len(bank_prefix)]:
 						preset_path = dbank + "/" + fname[:-4]
@@ -711,12 +711,34 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		presets=[]
 		for p in cls.get_user_presets(bank['raw']):
 			presets.append({
-				'text': p[2],
+				'text': p[2] + ".fxp",
 				'name': p[2][len(p[4])+1:],
-				'fullpath': p[0],
+				'fullpath': cls.user_presets_dpath + "/" + p[0] + ".fxp",
 				'raw': p
 			})
 		return presets
+
+
+	@classmethod
+	def zynapi_rename_preset(cls, preset_path, new_preset_name):
+		head, tail = os.path.split(preset_path)
+		fname, ext = os.path.splitext(tail)
+
+		for b in cls.get_user_banks():
+			if fname.startswith(b[2]):
+				new_preset_path = head + "/" + b[2] + " " + new_preset_name + ext
+				os.rename(preset_path, new_preset_path)
+				break
+
+
+	@classmethod
+	def zynapi_remove_preset(cls, preset_path):
+		os.remove(preset_path)
+
+
+	@classmethod
+	def zynapi_download(cls, fullpath):
+		return fullpath
 
 
 #******************************************************************************

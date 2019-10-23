@@ -26,6 +26,7 @@ import os
 import re
 import logging
 import socket
+import shutil
 from time import sleep
 from os.path import isfile, isdir
 from subprocess import check_output
@@ -462,13 +463,55 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	def zynapi_get_presets(cls, bank):
 		presets=[]
 		for p in cls._get_preset_list(bank['raw']):
+			head, tail = os.path.split(p[2])
 			presets.append({
 				'text': p[4],
-				'name': p[2],
+				'name': tail,
 				'fullpath': p[0],
 				'raw': p
 			})
 		return presets
+
+
+	@classmethod
+	def zynapi_new_bank(cls, bank_name):
+		os.mkdir(zynthian_engine.my_data_dir + "/soundfonts/sfz/" + bank_name)
+
+
+	@classmethod
+	def zynapi_rename_bank(cls, bank_path, new_bank_name):
+		head, tail = os.path.split(bank_path)
+		new_bank_path = head + "/" + new_bank_name
+		os.rename(bank_path, new_bank_path)
+
+
+	@classmethod
+	def zynapi_remove_bank(cls, bank_path):
+		shutil.rmtree(bank_path)
+
+
+	@classmethod
+	def zynapi_rename_preset(cls, preset_path, new_preset_name):
+		head, tail = os.path.split(preset_path)
+		fname, ext = os.path.splitext(tail)
+		new_preset_path = head + "/" + new_preset_name + ext
+		os.rename(preset_path, new_preset_path)
+
+
+	@classmethod
+	def zynapi_remove_preset(cls, preset_path):
+		os.remove(preset_path)
+		#TODO => If last preset in SFZ dir, delete it too!
+
+
+	@classmethod
+	def zynapi_download(cls, fullpath):
+		fname, ext = os.path.splitext(fullpath)
+		if ext[0]=='.':
+			head, tail = os.path.split(fullpath)
+			return head
+		else:
+			return fullpath
 
 
 #******************************************************************************

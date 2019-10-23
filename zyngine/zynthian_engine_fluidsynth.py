@@ -284,9 +284,10 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def zynapi_get_banks(cls):
 		banks=[]
 		for b in cls.get_filelist(cls.soundfont_dirs,"sf2"):
+			head, tail = os.path.split(b[2])
 			banks.append({
-				'text': b[4],
-				'name': b[2],
+				'text': b[2] + ".sf2",
+				'name': tail,
 				'fullpath': b[0],
 				'raw': b
 			})
@@ -296,6 +297,24 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	@classmethod
 	def zynapi_get_presets(cls, bank):
 		return []
+
+
+	@classmethod
+	def zynapi_rename_bank(cls, bank_path, new_bank_name):
+		head, tail = os.path.split(bank_path)
+		fname, ext = os.path.splitext(tail)
+		new_bank_path = head + "/" + new_bank_name + ext
+		os.rename(bank_path, new_bank_path)
+
+
+	@classmethod
+	def zynapi_remove_bank(cls, bank_path):
+		os.remove(bank_path)
+
+
+	@classmethod
+	def zynapi_download(cls, fullpath):
+		return fullpath
 
 
 #******************************************************************************

@@ -23,6 +23,7 @@
 #******************************************************************************
 
 import os
+import shutil
 import logging
 import subprocess
 import oyaml as yaml
@@ -235,6 +236,40 @@ class zynthian_engine_puredata(zynthian_engine):
 				'raw': p
 			})
 		return presets
+
+
+	@classmethod
+	def zynapi_new_bank(cls, bank_name):
+		os.mkdir(zynthian_engine.my_data_dir + "/presets/puredata/" + bank_name)
+
+
+	@classmethod
+	def zynapi_rename_bank(cls, bank_path, new_bank_name):
+		head, tail = os.path.split(bank_path)
+		new_bank_path = head + "/" + new_bank_name
+		os.rename(bank_path, new_bank_path)
+
+
+	@classmethod
+	def zynapi_remove_bank(cls, bank_path):
+		shutil.rmtree(bank_path)
+
+
+	@classmethod
+	def zynapi_rename_preset(cls, preset_path, new_preset_name):
+		head, tail = os.path.split(preset_path)
+		new_preset_path = head + "/" + new_preset_name
+		os.rename(preset_path, new_preset_path)
+
+
+	@classmethod
+	def zynapi_remove_preset(cls, preset_path):
+		shutil.rmtree(preset_path)
+
+
+	@classmethod
+	def zynapi_download(cls, fullpath):
+		return fullpath
 
 
 #******************************************************************************
