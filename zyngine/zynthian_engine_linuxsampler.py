@@ -514,4 +514,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			return fullpath
 
 
+	@classmethod
+	def zynapi_martifact_formats(cls):
+		return "sfz" # gig
+
 #******************************************************************************

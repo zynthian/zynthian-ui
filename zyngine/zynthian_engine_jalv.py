@@ -510,4 +510,16 @@ class zynthian_engine_jalv(zynthian_engine):
 		return presets
 
 
+	@classmethod
+	def zynapi_martifact_formats(cls):
+		if cls.zynapi_instance.plugin_name=="Dexed":
+			return "syx"
+		elif cls.zynapi_instance.plugin_name=="synthv1":
+			return "synthv1"
+		elif cls.zynapi_instance.plugin_name=="Helm":
+			return "helm"
+		else:
+			return "lv2"
+
+
 #******************************************************************************

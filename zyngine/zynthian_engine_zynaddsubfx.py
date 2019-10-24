@@ -524,4 +524,21 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		return fullpath
 
 
+	@classmethod
+	def zynapi_install(cls, dpath, bank_path):
+		if os.path.isdir(dpath):
+			shutil.move(dpath, zynthian_engine.my_data_dir + "/presets/zynaddsubfx/")
+			#TODO Remove not xiz files
+		else:
+			fname, ext = os.path.splitext(dpath)
+			if ext=='.xiz':
+				shutil.move(dpath, bank_path)
+			else:
+				raise Exception("File doesn't seem like a XIZ preset!")
+
+
+	@classmethod
+	def zynapi_martifact_formats(cls):
+		return "xiz"
+
 #******************************************************************************

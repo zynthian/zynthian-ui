@@ -317,4 +317,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		return fullpath
 
 
+	@classmethod
+	def zynapi_martifact_formats(cls):
+		return "sf2"
+
+
 #******************************************************************************
