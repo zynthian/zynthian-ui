@@ -71,7 +71,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 		self.bank_dirs = [
 			('EX', self.ex_data_dir + "/mod-pedalboards"),
-			('_', self.my_data_dir + "/mod-pedalboards")
+			('_', self.my_data_dir + "/presets/mod-ui/pedalboards")
 		]
 		self.hw_ports = {}
 
