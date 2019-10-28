@@ -310,47 +310,49 @@ def set_midi_config():
 	enabled_midi_fb_ports=zynconf.get_enabled_midi_fb_ports(midi_ports)
 
 	# Master Channel Features
-	master_midi_channel=int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
 
-	master_midi_change_type=os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANGE_TYPE',"Roland")
+	master_midi_channel = int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
+	if master_midi_channel>16:
+		master_midi_channel = 16
+	master_midi_channel = master_midi_channel-1
+	mmc_hex = hex(master_midi_channel)[2]
 
-	master_midi_program_change_up=os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_UP',"C#7F")
-	master_midi_program_change_down=os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_DOWN',"C#00")
-
-	if master_midi_program_change_down=="C#00":
-		master_midi_program_base=1
-	else:
-		master_midi_program_base=0
+	master_midi_change_type = os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANGE_TYPE',"Roland")
 
 	#Use LSB Bank by default
-	master_midi_bank_change_ccnum=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM',0x20)
+	master_midi_bank_change_ccnum = int(os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM',0x20))
 	#Use MSB Bank by default
-	#master_midi_bank_change_ccnum=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM',0x00)
+	#master_midi_bank_change_ccnum = int(os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM',0x00))
 
-	master_midi_bank_change_up=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_UP',"B#207F")
-	master_midi_bank_change_down=os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_DOWN',"B#2000")
+	mmpcu = os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_UP', "")
+	if len(mmpcu)==4:
+		master_midi_program_change_up = int('{:<06}'.format(mmpcu.replace('#',mmc_hex)),16)
+	else:
+		master_midi_program_change_up = None
 
-	try:
-		master_midi_bank_change_down_ccnum=int(master_midi_bank_change_down[2:4],16)
-		if master_midi_bank_change_down_ccnum==master_midi_bank_change_ccnum:
-			master_midi_bank_base=1
-		else:
-			master_midi_bank_base=0
-	except:
-		master_midi_bank_base=0
+	mmpcd = os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_DOWN', "")
+	if len(mmpcd)==4:
+		master_midi_program_change_down = int('{:<06}'.format(mmpcd.replace('#',mmc_hex)),16)
+	else:
+		master_midi_program_change_down = None
 
-	#MIDI channels: 0-15
-	if master_midi_channel>16:
-		master_midi_channel=16
-	master_midi_channel=master_midi_channel-1
-	mmc_hex=hex(master_midi_channel)[2]
+	mmbcu = os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_UP', "")
+	if len(mmbcu)==6:
+		master_midi_bank_change_up = int('{:<06}'.format(mmbcu.replace('#',mmc_hex)),16)
+	else:
+		master_midi_bank_change_up = None
 
-	#Calculate MIDI Sequences and convert to Integer
-	master_midi_program_change_up=int('{:<06}'.format(master_midi_program_change_up.replace('#',mmc_hex)),16)
-	master_midi_program_change_down=int('{:<06}'.format(master_midi_program_change_down.replace('#',mmc_hex)),16)
-	master_midi_bank_change_up=int('{:<06}'.format(master_midi_bank_change_up.replace('#',mmc_hex)),16)
-	master_midi_bank_change_down=int('{:<06}'.format(master_midi_bank_change_down.replace('#',mmc_hex)),16)
+	mmbcd = os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_DOWN', "")
+	if len(mmbcd)==6:
+		master_midi_bank_change_down = int('{:<06}'.format(mmbcd.replace('#',mmc_hex)),16)
+	else:
+		master_midi_bank_change_down = None
 
+	logging.info("MMC Bank Change CCNum: {}".format(master_midi_bank_change_ccnum))
+	logging.info("MMC Bank Change UP: {}".format(master_midi_bank_change_up))
+	logging.info("MMC Bank Change DOWN: {}".format(master_midi_bank_change_down))
+	logging.info("MMC Program Change UP: {}".format(master_midi_program_change_up))
+	logging.info("MMC Program Change DOWN: {}".format(master_midi_program_change_down))
 
 #Set MIDI config variables
 set_midi_config()

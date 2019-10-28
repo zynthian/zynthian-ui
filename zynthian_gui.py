@@ -1035,14 +1035,14 @@ class zynthian_gui:
 						self.screens['snapshot'].midi_bank_change_down()
 					# Program Change => Snapshot Load
 					elif evtype==0xC:
-						pgm = ((ev & 0x7F00)>>8) - zynthian_gui_config.master_midi_program_base
+						pgm = ((ev & 0x7F00)>>8)
 						logging.debug("PROGRAM CHANGE %d" % pgm)
 						self.screens['snapshot'].midi_program_change(pgm)
 					# Control Change ...
 					elif evtype==0xB:
 						ccnum=(ev & 0x7F00)>>8
 						if ccnum==zynthian_gui_config.master_midi_bank_change_ccnum:
-							bnk = (ev & 0x7F) - zynthian_gui_config.master_midi_bank_base
+							bnk = (ev & 0x7F)
 							logging.debug("BANK CHANGE %d" % bnk)
 							self.screens['snapshot'].midi_bank_change(bnk)
 						elif ccnum==120:
