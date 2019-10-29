@@ -217,7 +217,9 @@ class zynthian_engine_jalv(zynthian_engine):
 			except Exception as e:
 				logging.error(e)
 
-		if "NoBank" in self.bank_npresets:
+		if len(bank_list)==0:
+			bank_list.append(("", None, "", None))
+		elif "NoBank" in self.bank_npresets:
 			bank_list.append(("NoBank", None, "NoBank", None))
 
 		return bank_list
