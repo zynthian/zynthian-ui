@@ -37,51 +37,6 @@ from json import JSONEncoder, JSONDecoder
 
 from . import zynthian_engine
 
-
-#------------------------------------------------------------------------------
-# Pianoteq module constants & parameter configuration/initialization
-#------------------------------------------------------------------------------
-
-PIANOTEQ_SW_DIR = os.environ.get('ZYNTHIAN_SW_DIR',"/zynthian/zynthian-sw") + "/pianoteq6"
-PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/pianoteq"
-
-PIANOTEQ_CONFIG_DIR = os.path.expanduser("~")  + "/.config/Modartt"
-PIANOTEQ_DATA_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq'
-PIANOTEQ_ADDON_DIR = PIANOTEQ_DATA_DIR + '/Addons'
-PIANOTEQ_MY_PRESETS_DIR = PIANOTEQ_DATA_DIR + '/Presets'
-PIANOTEQ_MIDIMAPPINGS_DIR = PIANOTEQ_DATA_DIR + '/MidiMappings'
-
-try:
-	PIANOTEQ_VERSION=list(map(int, os.environ.get('PIANOTEQ_VERSION',"6.5.1").split(".")))
-except:
-	PIANOTEQ_VERSION=(6,5,1)
-
-PIANOTEQ_PRODUCT=os.environ.get('PIANOTEQ_PRODUCT',"STAGE")
-PIANOTEQ_TRIAL=int(os.environ.get('PIANOTEQ_TRIAL',"1"))
-PIANOTEQ_NAME="Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1])
-
-if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=5):
-	PIANOTEQ_JACK_PORT_NAME="Pianoteq"
-else:
-	PIANOTEQ_JACK_PORT_NAME=PIANOTEQ_NAME
-
-if PIANOTEQ_PRODUCT=="STANDARD":
-	PIANOTEQ_CONFIG_FILENAME = "{}.prefs".format(PIANOTEQ_NAME)
-else:
-	PIANOTEQ_CONFIG_FILENAME = "{} {}.prefs".format(PIANOTEQ_NAME, PIANOTEQ_PRODUCT)
-
-PIANOTEQ_CONFIG_FILE =  PIANOTEQ_CONFIG_DIR + "/" + PIANOTEQ_CONFIG_FILENAME
-
-if PIANOTEQ_VERSION[1]==0:
-	PIANOTEQ_CONFIG_INTERNAL_SR=22050
-	PIANOTEQ_CONFIG_VOICES=32
-	PIANOTEQ_CONFIG_MULTICORE=1
-else:
-	PIANOTEQ_CONFIG_INTERNAL_SR=22050
-	PIANOTEQ_CONFIG_VOICES=32
-	PIANOTEQ_CONFIG_MULTICORE=2
-
-
 #------------------------------------------------------------------------------
 # Pianoteq module helper functions
 #------------------------------------------------------------------------------
@@ -212,6 +167,57 @@ def fix_pianoteq_config():
 			logging.error("Fixing Pianoteq config failed: {}".format(e))
 			return format(e)
 
+
+#------------------------------------------------------------------------------
+# Pianoteq module constants & parameter configuration/initialization
+#------------------------------------------------------------------------------
+
+PIANOTEQ_SW_DIR = os.environ.get('ZYNTHIAN_SW_DIR',"/zynthian/zynthian-sw") + "/pianoteq6"
+PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/pianoteq"
+
+PIANOTEQ_CONFIG_DIR = os.path.expanduser("~")  + "/.config/Modartt"
+PIANOTEQ_DATA_DIR = os.path.expanduser("~")  + '/.local/share/Modartt/Pianoteq'
+PIANOTEQ_ADDON_DIR = PIANOTEQ_DATA_DIR + '/Addons'
+PIANOTEQ_MY_PRESETS_DIR = PIANOTEQ_DATA_DIR + '/Presets'
+PIANOTEQ_MIDIMAPPINGS_DIR = PIANOTEQ_DATA_DIR + '/MidiMappings'
+
+try:
+	PIANOTEQ_VERSION=list(map(int, os.environ.get('PIANOTEQ_VERSION').split(".")))
+	PIANOTEQ_PRODUCT=os.environ.get('PIANOTEQ_PRODUCT')
+	PIANOTEQ_TRIAL=int(os.environ.get('PIANOTEQ_TRIAL'))
+except:
+	info = get_pianoteq_binary_info()
+	if info:
+		PIANOTEQ_VERSION=list(map(int, str(info['version']).split(".")))
+		PIANOTEQ_PRODUCT=str(info['product'])
+		PIANOTEQ_TRIAL=int(info['trial'])
+	else:
+		PIANOTEQ_VERSION=[6,5,1]
+		PIANOTEQ_PRODUCT="STAGE"
+		PIANOTEQ_TRIAL=1
+
+PIANOTEQ_NAME="Pianoteq{}{}".format(PIANOTEQ_VERSION[0],PIANOTEQ_VERSION[1])
+
+if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=5):
+	PIANOTEQ_JACK_PORT_NAME="Pianoteq"
+else:
+	PIANOTEQ_JACK_PORT_NAME=PIANOTEQ_NAME
+
+if PIANOTEQ_PRODUCT=="STANDARD":
+	PIANOTEQ_CONFIG_FILENAME = "{}.prefs".format(PIANOTEQ_NAME)
+else:
+	PIANOTEQ_CONFIG_FILENAME = "{} {}.prefs".format(PIANOTEQ_NAME, PIANOTEQ_PRODUCT)
+
+PIANOTEQ_CONFIG_FILE =  PIANOTEQ_CONFIG_DIR + "/" + PIANOTEQ_CONFIG_FILENAME
+
+if PIANOTEQ_VERSION[1]==0:
+	PIANOTEQ_CONFIG_INTERNAL_SR=22050
+	PIANOTEQ_CONFIG_VOICES=32
+	PIANOTEQ_CONFIG_MULTICORE=1
+else:
+	PIANOTEQ_CONFIG_INTERNAL_SR=22050
+	PIANOTEQ_CONFIG_VOICES=32
+	PIANOTEQ_CONFIG_MULTICORE=2
 
 
 #------------------------------------------------------------------------------
