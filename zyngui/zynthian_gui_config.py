@@ -348,11 +348,11 @@ def set_midi_config():
 	else:
 		master_midi_bank_change_down = None
 
-	logging.info("MMC Bank Change CCNum: {}".format(master_midi_bank_change_ccnum))
-	logging.info("MMC Bank Change UP: {}".format(master_midi_bank_change_up))
-	logging.info("MMC Bank Change DOWN: {}".format(master_midi_bank_change_down))
-	logging.info("MMC Program Change UP: {}".format(master_midi_program_change_up))
-	logging.info("MMC Program Change DOWN: {}".format(master_midi_program_change_down))
+	logging.debug("MMC Bank Change CCNum: {}".format(master_midi_bank_change_ccnum))
+	logging.debug("MMC Bank Change UP: {}".format(master_midi_bank_change_up))
+	logging.debug("MMC Bank Change DOWN: {}".format(master_midi_bank_change_down))
+	logging.debug("MMC Program Change UP: {}".format(master_midi_program_change_up))
+	logging.debug("MMC Program Change DOWN: {}".format(master_midi_program_change_down))
 
 #Set MIDI config variables
 set_midi_config()
