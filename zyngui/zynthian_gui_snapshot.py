@@ -62,18 +62,17 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		return join(self.base_dir,self.bank_dir,f);
 
 
-	def get_next_name(self, nz=3):
+	def get_next_name(self):
 		n=max(map(lambda item: int(item[2].split('-')[0]) if item[2].split('-')[0].isdigit() else 0, self.list_data))
-		fmt="{0:0%dd}" % nz
-		return fmt.format(n+1)
+		return "{0:03d}".format(n+1)
 
 
 	def get_new_snapshot(self):
-		return self.get_next_name(3) + '.zss'
+		return self.get_next_name() + '.zss'
 
 
 	def get_new_bankdir(self):
-		return self.get_next_name(5)
+		return self.get_next_name()
 
 
 	def change_index_offset(self, i):
@@ -89,7 +88,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 		# If no banks, create the first one and choose it.
 		if n_banks == 0:
-			self.bank_dir = "00000"
+			self.bank_dir = "000"
 			os.makedirs(self.base_dir + "/" + self.bank_dir)
 			self.bankless_mode = True
 
