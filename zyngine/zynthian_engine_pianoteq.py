@@ -582,11 +582,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	# Remove banks without presets
 	def purge_banks(self):
-		logging.debug("purge_banks started")
+		logging.debug("Purge Banks ...")
 		purged_bank_list=[]
 		for bank in self.bank_list:
-			if not bank[0] or (bank[0] and len(self.presets[bank[0]])>0):
-				purged_bank_list.append(bank)
+			try:
+				if not bank[0] or (bank[0] in self.presets and len(self.presets[bank[0]])>0):
+					purged_bank_list.append(bank)
+			except:
+				pass
 		self.bank_list=purged_bank_list
 
 
