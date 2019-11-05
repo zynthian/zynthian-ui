@@ -217,10 +217,10 @@ class zynthian_engine_jalv(zynthian_engine):
 			except Exception as e:
 				logging.error(e)
 
-		if len(bank_list)==0:
-			bank_list.append(("", None, "", None))
-		elif "NoBank" in self.bank_npresets:
+		if "NoBank" in self.bank_npresets:
 			bank_list.append(("NoBank", None, "NoBank", None))
+		elif len(bank_list)==0:
+			bank_list.append(("", None, "", None))
 
 		return bank_list
 
@@ -239,6 +239,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	def _get_preset_list(self):
 		logging.info("Getting Preset List from LV2 Plugin ...")
 
+		self.bank_npresets = {}
 		preset_list = []
 		output=self.proc_cmd("\get_presets")
 		for line in sorted(output.split("\n")):
