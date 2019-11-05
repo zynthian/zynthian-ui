@@ -59,11 +59,12 @@ class zynthian_engine_puredata(zynthian_engine):
 	# Config variables
 	#----------------------------------------------------------------------------
 
-	startup_patch = zynthian_engine.my_data_dir + "/presets/puredata/zynthian_startup.pd"
+	startup_patch = zynthian_engine.data_dir + "/presets/puredata/zynthian_startup.pd"
 
 	bank_dirs = [
 		('EX', zynthian_engine.ex_data_dir + "/presets/puredata"),
-		('_', zynthian_engine.my_data_dir + "/presets/puredata")
+		('MY', zynthian_engine.my_data_dir + "/presets/puredata"),
+		('_', zynthian_engine.data_dir + "/presets/puredata")
 	]
 
 	#----------------------------------------------------------------------------
