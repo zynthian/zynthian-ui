@@ -534,7 +534,12 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			if ext=='.xiz':
 				shutil.move(dpath, bank_path)
 			else:
-				raise Exception("File doesn't seem like a XIZ preset!")
+				raise Exception("File doesn't look like a XIZ preset!")
+
+
+	@classmethod
+	def zynapi_get_formats(cls):
+		return "xiz,zip,tgz,tar.gz"
 
 
 	@classmethod

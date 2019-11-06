@@ -758,4 +758,18 @@ class zynthian_engine_modui(zynthian_engine):
 		return fullpath
 
 
+	@classmethod
+	def zynapi_install(cls, dpath, bank_path):
+		if os.path.isdir(dpath):
+			shutil.move(dpath, zynthian_engine.my_data_dir + "/presets/mod-ui/pedalboards")
+			#TODO Test if it's a MOD-UI pedalboard
+		else:
+			raise Exception("File doesn't look like a MOD-UI pedalboard!")
+
+
+	@classmethod
+	def zynapi_get_formats(cls):
+		return "zip,tgz,tar.gz"
+
+
 #******************************************************************************

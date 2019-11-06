@@ -237,8 +237,8 @@ class zynthian_engine_csound(zynthian_engine):
 		banks=[]
 		for b in cls.get_dirlist(cls.bank_dirs):
 			banks.append({
-				'text': b[4],
-				'name': b[2],
+				'text': b[2],
+				'name': b[4],
 				'fullpath': b[0],
 				'raw': b
 			})
@@ -290,6 +290,26 @@ class zynthian_engine_csound(zynthian_engine):
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		return fullpath
+
+
+	@classmethod
+	def zynapi_install(cls, dpath, bank_path):
+		if os.path.isdir(dpath):
+			shutil.move(dpath, bank_path)
+			#TODO Test if it's a CSound bundle
+		else:
+			fname, ext = os.path.splitext(dpath)
+			if ext=='.csd':
+				bank_path += "/" + fname
+				os.mkdir(bank_path)
+				shutil.move(dpath, bank_path)
+			else:
+				raise Exception("File doesn't look like a CSound patch!")
+
+
+	@classmethod
+	def zynapi_get_formats(cls):
+		return "csd,zip,tgz,tar.gz"
 
 
 #******************************************************************************

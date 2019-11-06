@@ -515,6 +515,25 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 
 	@classmethod
+	def zynapi_install(cls, dpath, bank_path):
+		#TODO: Test that bank_path fits preset type (sfz/gig)
+		 
+		fname, ext = os.path.splitext(dpath)
+		if os.path.isdir(dpath):
+			shutil.move(dpath, bank_path)
+			#TODO: Test if it's a SFZ soundfont
+		elif ext=='.gig' or ext==".GIG":
+			shutil.move(dpath, bank_path)
+		else:
+			raise Exception("File doesn't look like a SFZ or GIG soundfont")
+
+
+	@classmethod
+	def zynapi_get_formats(cls):
+		return "gig,zip,tgz,tar.gz"
+
+
+	@classmethod
 	def zynapi_martifact_formats(cls):
 		return "sfz" # gig
 

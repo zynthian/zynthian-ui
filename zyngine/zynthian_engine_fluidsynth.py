@@ -25,6 +25,7 @@
 import os
 import re
 import copy
+import shutil
 import logging
 from . import zynthian_engine
 from . import zynthian_controller
@@ -315,6 +316,26 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		return fullpath
+
+
+	@classmethod
+	def zynapi_install(cls, dpath, bank_path):
+		dest_dir = zynthian_engine.my_data_dir + "/soundfonts/sf2"
+		
+		if os.path.isdir(dpath):
+			shutil.move(dpath + "/*.sf2", dest_dir)
+			shutil.move(dpath + "/*.SF2", dest_dir)
+		else:
+			fname, ext = os.path.splitext(dpath)
+			if ext=='.sf2' or ext==".SF2":
+				shutil.move(dpath, dest_dir)
+			else:
+				raise Exception("File doesn't look like a SF2 soundfont")
+
+
+	@classmethod
+	def zynapi_get_formats(cls):
+		return "sf2,zip,tgz,tar.gz"
 
 
 	@classmethod
