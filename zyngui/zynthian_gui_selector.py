@@ -651,7 +651,7 @@ class zynthian_gui_selector:
 
 def load_keybinding(self, config):
 	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-	config_fpath = config_dir + "/keymap/" + config + ".yml"
+	config_fpath = config_dir + "/keybinding/" + config + ".yml"
 	try:
 		with open(config_fpath,"r") as fh:
 			yml = fh.read()
@@ -693,7 +693,7 @@ def load_keybinding(self, config):
 
 def save_keybinding(self, config):
 	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-	config_fpath = config_dir + "/keymap/" + config + ".yml"
+	config_fpath = config_dir + "/keybinding/" + config + ".yml"
 	try:
 		with open(config_fpath,"w") as fh:
 			yaml.dump(self.keybinding, fh)
