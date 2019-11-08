@@ -658,11 +658,9 @@ class zynthian_gui_selector:
 		keysym = event.keysym
 		if event.keycode == 65:
 			keysym = "space"
-		try:
-			for action,map in keybinding.map.items():
-				if map["keysym"].count(keysym) and event.state == map["modifier"]:
-					self.zyngui.callable_ui_action(action)
-					return
-		except:
-			return("break") # Unexpected error - do nothing
+		action = zynthian_gui_keybinding.getInstance().getFunctionName(keysym, event.state)
+		if action != None
+			self.zyngui.callable_ui_action(action)
+			return
+		return("break") # Unexpected error - do nothing
 #------------------------------------------------------------------------------

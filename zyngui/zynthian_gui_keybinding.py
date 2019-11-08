@@ -84,6 +84,16 @@ class zynthian_gui_keybinding:
 				"RESTART_UI":{"modifier":0, "keysym":"Insert"}
 			}
 
+	
+	def getFunctionName(self, keysym, modifier):
+		logging.info("Get keybinding function name for keysym: %s, modifier: %d", keysym, modifier)
+		try:
+			for action,map in self.map.items():
+				if map["keysym"].count(keysym) and modifier == map["modifier"]:
+					return action
+		except:
+			logging.warning("Failed to parse key binding")
+
 
 	def load(self, config):
 		config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
