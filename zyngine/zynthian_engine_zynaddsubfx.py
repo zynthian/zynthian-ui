@@ -527,17 +527,25 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
+		
+		
 		if os.path.isdir(dpath):
-			# Get list of directories (banks) containing xiz files and move to destiny
-			dbanks=[]
+			# Get list of directories (banks) containing xiz files ...
 			xiz_files = check_output("find \"{}\" -iname *.xiz".format(dpath), shell=True).decode("utf-8").split("\n")
-			if len(xiz_files)==0:
-				raise Exception("No XIZ files found!")
+
+			# Copy xiz files to destiny, creating the bank if needed ...
+			count = 0
 			for f in xiz_files:
-				dbank, xiz_fname = os.path.split(f)
-				if dbank not in dbanks:
-					dbanks.append(dbank)
-					shutil.move(dbank, zynthian_engine.my_data_dir + "/presets/zynaddsubfx")
+				head, xiz_fname = os.path.split(f)
+				head, dbank = os.path.split(head)
+				if dbank:
+					dest_dir = zynthian_engine.my_data_dir + "/presets/zynaddsubfx/" + dbank
+					os.makedirs(dest_dir, exist_ok=True)
+					shutil.move(f, dest_dir + "/" + xiz_fname)
+					count += 1
+
+			if count==0:
+				raise Exception("No XIZ files found!")
 
 		else:
 			fname, ext = os.path.splitext(dpath)
