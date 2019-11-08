@@ -34,6 +34,7 @@ from PIL import Image, ImageTk
 from zyngine import zynthian_controller
 from . import zynthian_gui_config
 from . import zynthian_gui_controller
+import zynthian_gui_keybinding
 
 #------------------------------------------------------------------------------
 # Configure logging
@@ -54,8 +55,7 @@ class zynthian_gui_selector:
 		self.shown = False
 		self.zselector = None
 		self.zyngui = zynthian_gui_config.zyngui
-		self.keybinding = None
-		load_keybinding(self, 'default')
+		self.keybinding = zynthian_gui_keybinding.getInstance()
 
 		#Status Area Canvas Objects
 		self.status_cpubar = None
@@ -649,75 +649,20 @@ class zynthian_gui_selector:
 		return False
 
 
-def load_keybinding(self, config):
-	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-	config_fpath = config_dir + "/keybinding/" + config + ".yml"
-	try:
-		with open(config_fpath,"r") as fh:
-			yml = fh.read()
-			logging.info("Loading keyboard binding config file %s => \n%s" % (config_fpath,yml))
-			self.keybinding = yaml.load(yml, Loader=yaml.SafeLoader)
-			return True
-	except Exception as e:
-		logging.error("Can't load keyboard binding config file '%s': %s - using default binding" % (config_fpath,e))
-		# Default map of key binding defaults. Modifier: 0=none, 1=shift, 4=ctrl.
-		self.keybinding = {
-			"ALL_SOUNDS_OFF":{"modifier":1, "keysym":"space"},
-			"REBOOT":{"modifier":1, "keysym":"Insert"},
-			"ALL_OFF":{"modifier":4, "keysym":"space"},
-			"POWER_OFF":{"modifier":4, "keysym":"Insert"},
-			"RELOAD_MIDI_CONFIG":{"modifier":4, "keysym":"m"},
-			"SWITCH_SELECT_SHORT":{"modifier":0, "keysym":"Return,Right"},
-			"SWITCH_SELECT_BOLD":{"modifier":1, "keysym":"Return,Right"},
-			"SWITCH_SELECT_LONG":{"modifier":4, "keysym":"Return,Right"},
-			"SWITCH_BACK_SHORT":{"modifier":0, "keysym":"BackSpace,Escape,Left"},
-			"SWITCH_BACK_BOLD":{"modifier":1, "keysym":"BackSpace,Escape,Left"},
-			"SWITCH_BACK_LONG":{"modifier":4, "keysym":"BackSpace,Escape,Left"},
-			"SWITCH_LAYER_SHORT":{"modifier":0, "keysym":"l,L"},
-			"SWITCH_LAYER_BOLD":{"modifier":1, "keysym":"l,L"},
-			"SWITCH_LAYER_LONG":{"modifier":4, "keysym":"l,L"},
-			"SWITCH_SNAPSHOT_SHORT":{"modifier":0, "keysym":"s,S"},
-			"SWITCH_SNAPSHOT_BOLD":{"modifier":1, "keysym":"s,S"},
-			"SWITCH_SNAPSHOT_LONG":{"modifier":4, "keysym":"s,S"},
-			"SELECT_UP":{"modifier":0, "keysym":"Up"},
-			"SELECT_DOWN":{"modifier":0, "keysym":"Down"},
-			"START_AUDIO_RECORD":{"modifier":0, "keysym":"r"},
-			"STOP_AUDIO_RECORD":{"modifier":0, "keysym":"R"},
-			"START_MIDI_RECORD":{"modifier":0, "keysym":"m"},
-			"STOP_MIDI_RECORD":{"modifier":0, "keysym":"M"},
-			"ALL_NOTES_OFF":{"modifier":0, "keysym":"space"},
-			"RESTART_UI":{"modifier":0, "keysym":"Insert"}
-		}
-		return False
-
-
-def save_keybinding(self, config):
-	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-	config_fpath = config_dir + "/keybinding/" + config + ".yml"
-	try:
-		with open(config_fpath,"w") as fh:
-			yaml.dump(self.keybinding, fh)
-			logging.info("Saving keyboard binding config file %s => \n%s" % (config_fpath,yml))
-			return True
-	except Exception as e:
-		logging.error("Can't save keyboard binding config file '%s': %s" % (config_fpath,e))
-		return False
-
-
-def cb_keybinding(self,event):
-	logging.info("Key press %d %s" % (event.keycode, event.keysym))
-	
-	if event.keysym == "Tab":
-		return("break") # Ignore TAB key (for now) to avoid confusing widget focus change
-	# Space is not recognised as keysym so need to convert keycode
-	keysym = event.keysym
-	if event.keycode == 65:
-		keysym = "space"
-	try:
-		for action,map in keybinding.items():
-			if map["keysym"].count(keysym) and event.state == map["modifier"]:
-				self.zyngui.callable_ui_action(action)
-				return
-	except:
-		return("break") # Unexpected error - do nothing
+	def cb_keybinding(self,event):
+		logging.info("Key press %d %s" % (event.keycode, event.keysym))
+		
+		if event.keysym == "Tab":
+			return("break") # Ignore TAB key (for now) to avoid confusing widget focus change
+		# Space is not recognised as keysym so need to convert keycode
+		keysym = event.keysym
+		if event.keycode == 65:
+			keysym = "space"
+		try:
+			for action,map in keybinding.map.items():
+				if map["keysym"].count(keysym) and event.state == map["modifier"]:
+					self.zyngui.callable_ui_action(action)
+					return
+		except:
+			return("break") # Unexpected error - do nothing
 #------------------------------------------------------------------------------
