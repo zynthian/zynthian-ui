@@ -154,9 +154,16 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				sleep(wait)
 
 
-	def clean_unused_engines(self):
+	def stop_unused_engines(self):
 		for eng in list(self.zyngines.keys()):
 			if len(self.zyngines[eng].layers)==0:
+				self.zyngines[eng].stop()
+				del self.zyngines[eng]
+
+
+	def stop_unused_jalv_engines(self):
+		for eng in list(self.zyngines.keys()):
+			if len(self.zyngines[eng].layers)==0 and eng[0:3]=="JV/":
 				self.zyngines[eng].stop()
 				del self.zyngines[eng]
 
