@@ -26,6 +26,9 @@
 import sys
 import logging
 
+# Zynthian specific modules
+from . import zynthian_gui_config
+
 #------------------------------------------------------------------------------
 # Configure logging
 #------------------------------------------------------------------------------
@@ -41,10 +44,10 @@ class zynthian_gui_keybinding:
 
 	__instance = None
 	
-	@staticmethod 
+	@staticmethod
 	def getInstance():
 		if zynthian_gui_keybinding.__instance == None:
-			zynthian_gui_keybinding.__instance = self
+			zynthian_gui_keybinding()
 		return zynthian_gui_keybinding.__instance
 
 

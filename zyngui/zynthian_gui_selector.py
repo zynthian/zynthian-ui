@@ -34,7 +34,7 @@ from PIL import Image, ImageTk
 from zyngine import zynthian_controller
 from . import zynthian_gui_config
 from . import zynthian_gui_controller
-import zynthian_gui_keybinding
+from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 
 #------------------------------------------------------------------------------
 # Configure logging
