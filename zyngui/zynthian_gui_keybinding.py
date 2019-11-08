@@ -77,9 +77,9 @@ class zynthian_gui_keybinding:
 				"SELECT_UP":{"modifier":0, "keysym":"Up"},
 				"SELECT_DOWN":{"modifier":0, "keysym":"Down"},
 				"START_AUDIO_RECORD":{"modifier":0, "keysym":"r"},
-				"STOP_AUDIO_RECORD":{"modifier":0, "keysym":"R"},
+				"STOP_AUDIO_RECORD":{"modifier":1, "keysym":"R"},
 				"START_MIDI_RECORD":{"modifier":0, "keysym":"m"},
-				"STOP_MIDI_RECORD":{"modifier":0, "keysym":"M"},
+				"STOP_MIDI_RECORD":{"modifier":1, "keysym":"M"},
 				"ALL_NOTES_OFF":{"modifier":0, "keysym":"space"},
 				"RESTART_UI":{"modifier":0, "keysym":"Insert"}
 			}
