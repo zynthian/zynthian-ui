@@ -263,7 +263,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.zyngui.show_screen('layer')
 
 
-	def remove_layer(self, i, cleanup_unused_engines=True):
+	def remove_layer(self, i, stop_unused_engines=True):
 		if i>=0 and i<len(self.layers):
 			logging.debug("Removing layer {} => {} ...".format(i, self.layers[i].get_basepath()))
 			
@@ -286,11 +286,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.fill_list()
 			self.set_selector()
 			self.zyngui.set_curlayer(self.curlayer)
-			if cleanup_unused_engines:
-				self.zyngui.screens['engine'].clean_unused_engines()
+
+			# Stop unused engines
+			if stop_unused_engines:
+				self.zyngui.screens['engine'].stop_unused_engines()
 
 
-	def remove_root_layer(self, i, cleanup_unused_engines=True):
+	def remove_root_layer(self, i, stop_unused_engines=True):
 		if i>=0 and i<len(self.root_layers):
 			# For some engines (Aeolus, setBfree), delete all layers on the same engine
 			if self.root_layers[i].engine.nickname in ['BF', 'AE']:
@@ -303,19 +305,19 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				for layer in reversed(self.get_fxchain_layers(root_layer)):
 					self.remove_layer(self.layers.index(layer), False)
 
-			# Clean unused engines
-			if cleanup_unused_engines:
-				self.zyngui.screens['engine'].clean_unused_engines()
+			# Stop unused engines
+			if stop_unused_engines:
+				self.zyngui.screens['engine'].stop_unused_engines()
 
 
-	def remove_all_layers(self, cleanup_unused_engines=True):
+	def remove_all_layers(self, stop_engines=True):
 		# Remove all layers
 		while len(self.layers)>0:
 			self.remove_layer(len(self.layers)-1, False)
 
-		# Clean unused engines
-		if cleanup_unused_engines:
-			self.zyngui.screens['engine'].clean_unused_engines()
+		# Stop ALL engines
+		if stop_engines:
+			self.zyngui.screens['engine'].stop_unused_engines()
 
 		# Reset MIDI config
 		self.reset_midi_profile()
@@ -658,16 +660,20 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			snapshot=JSONDecoder().decode(json)
 
-			#Clean all layers & Stop Engines
-			self.remove_all_layers(True)
+			#Clean all layers, but don't stop unused engines
+			self.remove_all_layers(False)
 
-			#Start engines
+			# Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
+			# so we stop Jalv engines!
+			self.zyngui.screens['engine'].stop_unused_jalv_engines()
+
+			#Create new layers, starting engines when needed
 			for lss in snapshot['layers']:
 				engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
 				self.layers.append(zynthian_layer(engine,lss['midi_chan'],zynthian_gui_config.zyngui))
 
-			#Remove unused engines => Trying to reuse engine instances create problems (audio routing & jack names, etc..)
-			#self.zyngui.screens['engine'].clean_unused_engines()
+			# Finally, stop all unused engines
+			self.zyngui.screens['engine'].stop_unused_engines()
 
 			#Autoconnect
 			self.zyngui.zynautoconnect(True)
