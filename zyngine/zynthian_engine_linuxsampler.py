@@ -531,6 +531,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 					#shutil.rmtree(head)
 			except:
 				raise Exception("Directory doesn't contain any SFZ file")
+
 			# Move directory to destiny bank
 			shutil.move(dpath, bank_path)
 
@@ -548,6 +549,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	@classmethod
 	def zynapi_martifact_formats(cls):
-		return "sfz" # gig
+		return "sfz,gig"
 
 #******************************************************************************

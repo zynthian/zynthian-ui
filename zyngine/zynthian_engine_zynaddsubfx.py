@@ -29,6 +29,7 @@ import liblo
 import shutil
 from time import sleep
 from os.path import isfile, join
+from subprocess import check_output
 from . import zynthian_engine
 
 #------------------------------------------------------------------------------
@@ -527,14 +528,24 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
 		if os.path.isdir(dpath):
-			shutil.move(dpath, zynthian_engine.my_data_dir + "/presets/zynaddsubfx/")
-			#TODO Remove not xiz files
+			# Get list of directories (banks) containing xiz files and move to destiny
+			dbanks=[]
+			xiz_files = check_output("find \"{}\" -iname *.xiz".format(dpath), shell=True).decode("utf-8").split("\n")
+			if len(xiz_files)==0:
+				raise Exception("No XIZ files found!")
+			for f in xiz_files:
+				dbank, xiz_fname = os.path.split(f)
+				if dbank not in dbanks:
+					dbanks.append(dbank)
+					shutil.move(dbank, zynthian_engine.my_data_dir + "/presets/zynaddsubfx")
+
 		else:
 			fname, ext = os.path.splitext(dpath)
 			if ext=='.xiz':
 				shutil.move(dpath, bank_path)
 			else:
 				raise Exception("File doesn't look like a XIZ preset!")
+
 
 
 	@classmethod
