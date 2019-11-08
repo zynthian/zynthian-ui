@@ -374,6 +374,8 @@ class zynthian_layer:
 	def restore_snapshot_1(self, snapshot):
 		#Constructor, including engine and midi_chan info, is called before
 
+		self.wait_stop_loading()
+
 		#Load bank list and set bank
 		self.bank_name=snapshot['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
 		self.load_bank_list()
@@ -405,6 +407,8 @@ class zynthian_layer:
 		# Wait a little bit if a preset has been loaded 
 		if self.preset_loaded:
 			sleep(0.2)
+
+		self.wait_stop_loading()
 
 		#Set controller values
 		for k in snapshot['controllers_dict']:
