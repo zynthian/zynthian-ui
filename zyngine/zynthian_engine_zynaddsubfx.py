@@ -531,7 +531,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		
 		if os.path.isdir(dpath):
 			# Get list of directories (banks) containing xiz files ...
-			xiz_files = check_output("find \"{}\" -iname *.xiz".format(dpath), shell=True).decode("utf-8").split("\n")
+			xiz_files = check_output("find \"{}\" -type f -iname *.xiz".format(dpath), shell=True).decode("utf-8").split("\n")
 
 			# Copy xiz files to destiny, creating the bank if needed ...
 			count = 0

@@ -27,6 +27,7 @@ import re
 import copy
 import shutil
 import logging
+from subprocess import check_output
 from . import zynthian_engine
 from . import zynthian_controller
 
@@ -321,11 +322,28 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
-		fname, ext = os.path.splitext(dpath)
-		if ext in ['.sf2', ".SF2", '.sf3', ".SF3"]:
-			shutil.move(dpath, zynthian_engine.my_data_dir + "/soundfonts/sf2")
+
+		if os.path.isdir(dpath):
+			# Get list of sf2/sf3 files ...
+			sfx_files = check_output("find \"{}\" -type f -iname *.sf2 -o -iname *.sf3".format(dpath), shell=True).decode("utf-8").split("\n")
+
+			# Copy sf2/sf3 files to destiny ...
+			count = 0
+			for f in sfx_files:
+				head, fname = os.path.split(f)
+				if fname:
+					shutil.move(f, zynthian_engine.my_data_dir + "/soundfonts/sf2/" + fname)
+					count += 1
+
+			if count==0:
+				raise Exception("No SF2/SF3 soundfont files found!")
+
 		else:
-			raise Exception("File doesn't look like a SF2/SF3 soundfont")
+			fname, ext = os.path.splitext(dpath)
+			if ext in ['.sf2', ".SF2", '.sf3', ".SF3"]:
+				shutil.move(dpath, zynthian_engine.my_data_dir + "/soundfonts/sf2")
+			else:
+				raise Exception("File doesn't look like a SF2/SF3 soundfont")
 
 
 	@classmethod

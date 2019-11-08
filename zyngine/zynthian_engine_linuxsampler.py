@@ -523,7 +523,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		if os.path.isdir(dpath):
 			# Locate sfz files and move all them to first level directory
 			try:
-				sfz_files = check_output("find \"{}\" -iname *.sfz".format(dpath), shell=True).decode("utf-8").split("\n")
+				sfz_files = check_output("find \"{}\" -type f -iname *.sfz".format(dpath), shell=True).decode("utf-8").split("\n")
 				head, tail = os.path.split(sfz_files[0])
 				if head!=dpath:
 					for f in glob.glob(head + "/*"):
