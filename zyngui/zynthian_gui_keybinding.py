@@ -131,6 +131,7 @@ class zynthian_gui_keybinding:
 	
 		logging.info("Get keybinding function name for keysym: %s, modifier: %d", keysym, modifier)
 		try:
+			keysym = keysym.lower()
 			for action,map in self.map.items():
 				if map["keysym"].count(keysym) and modifier == map["modifier"]:
 					return action
@@ -145,7 +146,7 @@ class zynthian_gui_keybinding:
 		Parameters
 		----------
 		config : str,optional
-			Name of configuration to load - the file <config>.yml will be loaded from the Zynthian config directory
+			Name of configuration to load - the file <config>.yaml will be loaded from the Zynthian config directory
 			Default: "default"
 		
 		Returns
@@ -154,14 +155,16 @@ class zynthian_gui_keybinding:
 			True on success		
 		"""
 
-		logging.info("Loading key binding from %s.yml", config)
+		logging.info("Loading key binding from %s.yaml", config)
 		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-		config_fpath = config_dir + "/keybinding/" + config + ".yml"
+		config_fpath = config_dir + "/keybinding/" + config + ".yaml"
 		try:
 			with open(config_fpath,"r") as fh:
 				yml = fh.read()
 				logging.info("Loading keyboard binding config file %s => \n%s" % (config_fpath,yml))
 				self.map = yaml.load(yml, Loader=yaml.SafeLoader)
+				for action,map in self.map.items():
+					map["keysym"] = map["keysym"].lower()
 				return True
 		except Exception as e:
 			logging.error("Can't load keyboard binding config file '%s': %s - using default binding" % (config_fpath,e))
@@ -176,7 +179,7 @@ class zynthian_gui_keybinding:
 		Parameters
 		----------
 		config : str,optional
-			Name of configuration to save - the file <config>.yml will be saved to the Zynthian config directory
+			Name of configuration to save - the file <config>.yaml will be saved to the Zynthian config directory
 			Default: "default"
 		
 		Returns
@@ -185,9 +188,9 @@ class zynthian_gui_keybinding:
 			True on success
 		"""
 		
-		logging.info("Saving key binding to %s.yml", config)
+		logging.info("Saving key binding to %s.yaml", config)
 		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-		config_fpath = config_dir + "/keybinding/" + config + ".yml"
+		config_fpath = config_dir + "/keybinding/" + config + ".yaml"
 		try:
 			with open(config_fpath,"w") as fh:
 				yaml.dump(self.map, fh)
