@@ -23,7 +23,8 @@
 # 
 #******************************************************************************
 
-import sys
+from os import environ
+from sys import stderr
 import logging
 
 # Zynthian specific modules
@@ -34,7 +35,7 @@ from . import zynthian_gui_config
 #------------------------------------------------------------------------------
 
 # Set root logging level
-logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
+logging.basicConfig(stream=stderr, level=zynthian_gui_config.log_level)
 
 #------------------------------------------------------------------------------
 # Zynthian Keyboard Binding Class
@@ -153,7 +154,7 @@ class zynthian_gui_keybinding:
 		"""
 
 		logging.info("Loading key binding from %s.yml", config)
-		config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
+		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
 		config_fpath = config_dir + "/keybinding/" + config + ".yml"
 		try:
 			with open(config_fpath,"r") as fh:
@@ -184,7 +185,7 @@ class zynthian_gui_keybinding:
 		"""
 		
 		logging.info("Saving key binding to %s.yml", config)
-		config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
+		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
 		config_fpath = config_dir + "/keybinding/" + config + ".yml"
 		try:
 			with open(config_fpath,"w") as fh:

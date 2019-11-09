@@ -155,11 +155,8 @@ class zynthian_gui:
 		self.status_counter = 0
 		
 		# Load keyboard binding map
-		try:
-			zynthian_gui_keybinding.getInstance().load()
-		except:
-			logging.error("Failed to load key binding")
-
+		zynthian_gui_keybinding.getInstance().load()
+		
 		# Initialize peakmeter audio monitor if needed
 		if not zynthian_gui_config.show_cpu_status:
 			try:
