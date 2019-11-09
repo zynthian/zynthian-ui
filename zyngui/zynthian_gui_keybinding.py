@@ -41,17 +41,41 @@ logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
 #------------------------------------------------------------------------------
 
 class zynthian_gui_keybinding:
+	"""
+	Provides interface to key binding
+	
+	Note: This class is a singleton and should not be instantiated directly (which will raise an exception).
+	Use getInstance() to get the instance of the singleton and access functions and methods from that instance.
+	"""
 
 	__instance = None
 	
 	@staticmethod
 	def getInstance():
+		"""
+		Access the singleton
+		
+		Returns
+		-------
+		zynthian_gui_keybinding
+			The singleton object which should be used for all access
+		"""
+	
 		if zynthian_gui_keybinding.__instance == None:
 			zynthian_gui_keybinding()
 		return zynthian_gui_keybinding.__instance
 
 
 	def __init__(self):
+		"""
+		Do not initiate this class directly. Use getInstance() to access the singleton object.
+		
+		Raises
+		------
+		Exception
+			If object already instantiated.
+		"""
+		
 		if zynthian_gui_keybinding.__instance == None:
 			zynthian_gui_keybinding.__instance = self
 		else:
@@ -86,6 +110,28 @@ class zynthian_gui_keybinding:
 
 	
 	def getFunctionName(self, keysym, modifier):
+		"""
+		Get the name of the function bound to the key combination passed
+		
+		Parameters
+		----------
+		keysym : str
+			Keyboard symbol to lookup
+		modifier : int
+			Keyboard modifier to lookup [0: none, 1: shift, 2: capslock, 4: ctrl, 8: alt]
+
+		Returns
+		-------
+		str
+			Name of the function mapped to the key binding
+			<None> if no match found
+		
+		Raises
+		------
+		Exception
+			If parsing fails, e.g. invalid binding map
+		"""
+	
 		logging.info("Get keybinding function name for keysym: %s, modifier: %d", keysym, modifier)
 		try:
 			for action,map in self.map.items():
@@ -95,7 +141,27 @@ class zynthian_gui_keybinding:
 			logging.warning("Failed to parse key binding")
 
 
-	def load(self, config):
+	def load(self, config="default"):
+		"""
+		Load key binding map from file
+		
+		Parameters
+		----------
+		config : str,optional
+			Name of configuration to load - the file <config>.yaml will be loaded from the Zynthian config directory
+			Default: "default"
+		
+		Returns
+		-------
+		bool
+			True on success
+		
+		Raises
+		------
+		Exception
+			If fails to load or parse yaml configuration file
+		"""
+		
 		config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
 		config_fpath = config_dir + "/keybinding/" + config + ".yml"
 		try:
@@ -110,8 +176,26 @@ class zynthian_gui_keybinding:
 			return False
 
 
-	@staticmethod
 	def save(self, config):
+		"""
+		Save key binding map to file
+		
+		Parameters
+		----------
+		config : str
+			Name of configuration to save - the file <config>.yaml will be saved to the Zynthian config directory
+		
+		Returns
+		-------
+		bool
+			True on success
+		
+		Raises
+		------
+		Exception
+			If fails to save yaml configuration file
+		"""
+		
 		config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
 		config_fpath = config_dir + "/keybinding/" + config + ".yml"
 		try:

@@ -55,7 +55,6 @@ class zynthian_gui_selector:
 		self.shown = False
 		self.zselector = None
 		self.zyngui = zynthian_gui_config.zyngui
-		self.keybinding = zynthian_gui_keybinding.getInstance()
 
 		#Status Area Canvas Objects
 		self.status_cpubar = None
