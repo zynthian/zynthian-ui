@@ -25,6 +25,7 @@
 
 from os import environ
 from sys import stderr
+import oyaml as yaml
 import logging
 
 # Zynthian specific modules
