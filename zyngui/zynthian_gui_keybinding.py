@@ -144,7 +144,7 @@ class zynthian_gui_keybinding:
 		Parameters
 		----------
 		config : str,optional
-			Name of configuration to load - the file <config>.yaml will be loaded from the Zynthian config directory
+			Name of configuration to load - the file <config>.yml will be loaded from the Zynthian config directory
 			Default: "default"
 		
 		Returns
@@ -175,7 +175,7 @@ class zynthian_gui_keybinding:
 		Parameters
 		----------
 		config : str,optional
-			Name of configuration to save - the file <config>.yaml will be saved to the Zynthian config directory
+			Name of configuration to save - the file <config>.yml will be saved to the Zynthian config directory
 			Default: "default"
 		
 		Returns
