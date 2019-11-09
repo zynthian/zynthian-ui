@@ -124,12 +124,7 @@ class zynthian_gui_keybinding:
 		-------
 		str
 			Name of the function mapped to the key binding
-			<None> if no match found
-		
-		Raises
-		------
-		Exception
-			If parsing fails, e.g. invalid binding map
+			<None> if no match found		
 		"""
 	
 		logging.info("Get keybinding function name for keysym: %s, modifier: %d", keysym, modifier)
@@ -154,14 +149,10 @@ class zynthian_gui_keybinding:
 		Returns
 		-------
 		bool
-			True on success
-		
-		Raises
-		------
-		Exception
-			If fails to load or parse yaml configuration file
+			True on success		
 		"""
-		
+
+		logging.info("Loading key binding from %s.yml", config)
 		config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
 		config_fpath = config_dir + "/keybinding/" + config + ".yml"
 		try:
@@ -176,26 +167,23 @@ class zynthian_gui_keybinding:
 			return False
 
 
-	def save(self, config):
+	def save(self, config="default"):
 		"""
 		Save key binding map to file
 		
 		Parameters
 		----------
-		config : str
+		config : str,optional
 			Name of configuration to save - the file <config>.yaml will be saved to the Zynthian config directory
+			Default: "default"
 		
 		Returns
 		-------
 		bool
 			True on success
-		
-		Raises
-		------
-		Exception
-			If fails to save yaml configuration file
 		"""
 		
+		logging.info("Saving key binding to %s.yml", config)
 		config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
 		config_fpath = config_dir + "/keybinding/" + config + ".yml"
 		try:
