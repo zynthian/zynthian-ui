@@ -82,34 +82,7 @@ class zynthian_gui_keybinding:
 			zynthian_gui_keybinding.__instance = self
 		else:
 			raise Exception("Use getInstance() to get the singleton object.")
-		self.map = {
-				"ALL_SOUNDS_OFF":{"modifier":1, "keysym":"space"},
-				"REBOOT":{"modifier":1, "keysym":"insert"},
-				"ALL_OFF":{"modifier":4, "keysym":"space"},
-				"POWER_OFF":{"modifier":4, "keysym":"insert"},
-				"RELOAD_MIDI_CONFIG":{"modifier":4, "keysym":"m"},
-				"SWITCH_SELECT_SHORT":{"modifier":0, "keysym":"return,right"},
-				"SWITCH_SELECT_BOLD":{"modifier":1, "keysym":"return,right"},
-				"SWITCH_SELECT_LONG":{"modifier":4, "keysym":"return,right"},
-				"SWITCH_BACK_SHORT":{"modifier":0, "keysym":"backSpace,escape,left"},
-				"SWITCH_BACK_BOLD":{"modifier":1, "keysym":"backspace,escape,left"},
-				"SWITCH_BACK_LONG":{"modifier":4, "keysym":"backspace,escape,left"},
-				"SWITCH_LAYER_SHORT":{"modifier":0, "keysym":"l"},
-				"SWITCH_LAYER_BOLD":{"modifier":1, "keysym":"l"},
-				"SWITCH_LAYER_LONG":{"modifier":4, "keysym":"l"},
-				"SWITCH_SNAPSHOT_SHORT":{"modifier":0, "keysym":"s"},
-				"SWITCH_SNAPSHOT_BOLD":{"modifier":1, "keysym":"s"},
-				"SWITCH_SNAPSHOT_LONG":{"modifier":4, "keysym":"s"},
-				"SELECT_UP":{"modifier":0, "keysym":"up"},
-				"SELECT_DOWN":{"modifier":0, "keysym":"down"},
-				"START_AUDIO_RECORD":{"modifier":0, "keysym":"r"},
-				"STOP_AUDIO_RECORD":{"modifier":1, "keysym":"r"},
-				"START_MIDI_RECORD":{"modifier":0, "keysym":"m"},
-				"STOP_MIDI_RECORD":{"modifier":1, "keysym":"m"},
-				"ALL_NOTES_OFF":{"modifier":0, "keysym":"space"},
-				"RESTART_UI":{"modifier":0, "keysym":"insert"}
-			}
-
+		self.resetConfig()
 	
 	def getFunctionName(self, keysym, modifier):
 		"""
@@ -132,7 +105,7 @@ class zynthian_gui_keybinding:
 		logging.info("Get keybinding function name for keysym: %s, modifier: %d", keysym, modifier)
 		try:
 			keysym = keysym.lower()
-			for action,map in self.map.items():
+			for action,map in self.config['map'].items():
 				if map["keysym"].count(keysym) and modifier == map["modifier"]:
 					return action
 		except:
@@ -162,8 +135,8 @@ class zynthian_gui_keybinding:
 			with open(config_fpath,"r") as fh:
 				yml = fh.read()
 				logging.info("Loading keyboard binding config file %s => \n%s" % (config_fpath,yml))
-				self.map = yaml.load(yml, Loader=yaml.SafeLoader)
-				for action,map in self.map.items():
+				self.config = yaml.load(yml, Loader=yaml.SafeLoader)
+				for action,map in self.config['map'].items():
 					map["keysym"] = map["keysym"][0].lower()
 				return True
 		except Exception as e:
@@ -193,7 +166,7 @@ class zynthian_gui_keybinding:
 		config_fpath = config_dir + "/" + config + ".yaml"
 		try:
 			with open(config_fpath,"w") as fh:
-				yaml.dump(self.map, fh)
+				yaml.dump(self.config, fh)
 				logging.info("Saving keyboard binding config file %s" % (config_fpath))
 				return True
 		except Exception as e:
@@ -207,6 +180,67 @@ class zynthian_gui_keybinding:
 		"""
 		
 		logging.info("Clearing key binding modifiers")
-		for action,map in self.map.items():
+		for action,map in self.config['map'].items():
 			map['modifier'] = 0
+
+
+	def resetConfig(self):
+		"""
+		Reset keyboard binding to default values
+		"""
+		
+			self.config = {
+				"enabled": True,
+				"map": {
+					"ALL_SOUNDS_OFF":{"modifier":1, "keysym":"space"},
+					"REBOOT":{"modifier":1, "keysym":"insert"},
+					"ALL_OFF":{"modifier":4, "keysym":"space"},
+					"POWER_OFF":{"modifier":4, "keysym":"insert"},
+					"RELOAD_MIDI_CONFIG":{"modifier":4, "keysym":"m"},
+					"SWITCH_SELECT_SHORT":{"modifier":0, "keysym":"return,right"},
+					"SWITCH_SELECT_BOLD":{"modifier":1, "keysym":"return,right"},
+					"SWITCH_SELECT_LONG":{"modifier":4, "keysym":"return,right"},
+					"SWITCH_BACK_SHORT":{"modifier":0, "keysym":"backSpace,escape,left"},
+					"SWITCH_BACK_BOLD":{"modifier":1, "keysym":"backspace,escape,left"},
+					"SWITCH_BACK_LONG":{"modifier":4, "keysym":"backspace,escape,left"},
+					"SWITCH_LAYER_SHORT":{"modifier":0, "keysym":"l"},
+					"SWITCH_LAYER_BOLD":{"modifier":1, "keysym":"l"},
+					"SWITCH_LAYER_LONG":{"modifier":4, "keysym":"l"},
+					"SWITCH_SNAPSHOT_SHORT":{"modifier":0, "keysym":"s"},
+					"SWITCH_SNAPSHOT_BOLD":{"modifier":1, "keysym":"s"},
+					"SWITCH_SNAPSHOT_LONG":{"modifier":4, "keysym":"s"},
+					"SELECT_UP":{"modifier":0, "keysym":"up"},
+					"SELECT_DOWN":{"modifier":0, "keysym":"down"},
+					"START_AUDIO_RECORD":{"modifier":0, "keysym":"r"},
+					"STOP_AUDIO_RECORD":{"modifier":1, "keysym":"r"},
+					"START_MIDI_RECORD":{"modifier":0, "keysym":"m"},
+					"STOP_MIDI_RECORD":{"modifier":1, "keysym":"m"},
+					"ALL_NOTES_OFF":{"modifier":0, "keysym":"space"},
+					"RESTART_UI":{"modifier":0, "keysym":"insert"}
+				}
+			}
+			
+	
+	enable(self, enabled=True):
+		"""
+		Enable or disable keyboard binding
+		Parameters
+		----------
+		enabled : bool,optional
+			True to enable, false to disable - default: True
+		"""
+		
+		self.config["enabled"] = enabled
+
+		
+	isEnabled():
+		"""
+		Is keyboard binding enabled?
+		Returns
+		-------
+		bool True if enabled
+		"""
+
+		return self.config["enabled"]
+		
 #------------------------------------------------------------------------------
