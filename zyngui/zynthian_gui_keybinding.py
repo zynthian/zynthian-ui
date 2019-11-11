@@ -189,36 +189,36 @@ class zynthian_gui_keybinding:
 		Reset keyboard binding to default values
 		"""
 		
-			self.config = {
-				"enabled": True,
-				"map": {
-					"ALL_SOUNDS_OFF":{"modifier":1, "keysym":"space"},
-					"REBOOT":{"modifier":1, "keysym":"insert"},
-					"ALL_OFF":{"modifier":4, "keysym":"space"},
-					"POWER_OFF":{"modifier":4, "keysym":"insert"},
-					"RELOAD_MIDI_CONFIG":{"modifier":4, "keysym":"m"},
-					"SWITCH_SELECT_SHORT":{"modifier":0, "keysym":"return,right"},
-					"SWITCH_SELECT_BOLD":{"modifier":1, "keysym":"return,right"},
-					"SWITCH_SELECT_LONG":{"modifier":4, "keysym":"return,right"},
-					"SWITCH_BACK_SHORT":{"modifier":0, "keysym":"backSpace,escape,left"},
-					"SWITCH_BACK_BOLD":{"modifier":1, "keysym":"backspace,escape,left"},
-					"SWITCH_BACK_LONG":{"modifier":4, "keysym":"backspace,escape,left"},
-					"SWITCH_LAYER_SHORT":{"modifier":0, "keysym":"l"},
-					"SWITCH_LAYER_BOLD":{"modifier":1, "keysym":"l"},
-					"SWITCH_LAYER_LONG":{"modifier":4, "keysym":"l"},
-					"SWITCH_SNAPSHOT_SHORT":{"modifier":0, "keysym":"s"},
-					"SWITCH_SNAPSHOT_BOLD":{"modifier":1, "keysym":"s"},
-					"SWITCH_SNAPSHOT_LONG":{"modifier":4, "keysym":"s"},
-					"SELECT_UP":{"modifier":0, "keysym":"up"},
-					"SELECT_DOWN":{"modifier":0, "keysym":"down"},
-					"START_AUDIO_RECORD":{"modifier":0, "keysym":"r"},
-					"STOP_AUDIO_RECORD":{"modifier":1, "keysym":"r"},
-					"START_MIDI_RECORD":{"modifier":0, "keysym":"m"},
-					"STOP_MIDI_RECORD":{"modifier":1, "keysym":"m"},
-					"ALL_NOTES_OFF":{"modifier":0, "keysym":"space"},
-					"RESTART_UI":{"modifier":0, "keysym":"insert"}
-				}
+		self.config = {
+			"enabled": True,
+			"map": {
+				"ALL_SOUNDS_OFF":{"modifier":1, "keysym":"space"},
+				"REBOOT":{"modifier":1, "keysym":"insert"},
+				"ALL_OFF":{"modifier":4, "keysym":"space"},
+				"POWER_OFF":{"modifier":4, "keysym":"insert"},
+				"RELOAD_MIDI_CONFIG":{"modifier":4, "keysym":"m"},
+				"SWITCH_SELECT_SHORT":{"modifier":0, "keysym":"return,right"},
+				"SWITCH_SELECT_BOLD":{"modifier":1, "keysym":"return,right"},
+				"SWITCH_SELECT_LONG":{"modifier":4, "keysym":"return,right"},
+				"SWITCH_BACK_SHORT":{"modifier":0, "keysym":"backSpace,escape,left"},
+				"SWITCH_BACK_BOLD":{"modifier":1, "keysym":"backspace,escape,left"},
+				"SWITCH_BACK_LONG":{"modifier":4, "keysym":"backspace,escape,left"},
+				"SWITCH_LAYER_SHORT":{"modifier":0, "keysym":"l"},
+				"SWITCH_LAYER_BOLD":{"modifier":1, "keysym":"l"},
+				"SWITCH_LAYER_LONG":{"modifier":4, "keysym":"l"},
+				"SWITCH_SNAPSHOT_SHORT":{"modifier":0, "keysym":"s"},
+				"SWITCH_SNAPSHOT_BOLD":{"modifier":1, "keysym":"s"},
+				"SWITCH_SNAPSHOT_LONG":{"modifier":4, "keysym":"s"},
+				"SELECT_UP":{"modifier":0, "keysym":"up"},
+				"SELECT_DOWN":{"modifier":0, "keysym":"down"},
+				"START_AUDIO_RECORD":{"modifier":0, "keysym":"r"},
+				"STOP_AUDIO_RECORD":{"modifier":1, "keysym":"r"},
+				"START_MIDI_RECORD":{"modifier":0, "keysym":"m"},
+				"STOP_MIDI_RECORD":{"modifier":1, "keysym":"m"},
+				"ALL_NOTES_OFF":{"modifier":0, "keysym":"space"},
+				"RESTART_UI":{"modifier":0, "keysym":"insert"}
 			}
+		}
 			
 	
 	enable(self, enabled=True):
