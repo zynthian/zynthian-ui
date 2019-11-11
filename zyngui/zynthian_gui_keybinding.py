@@ -164,10 +164,10 @@ class zynthian_gui_keybinding:
 				logging.info("Loading keyboard binding config file %s => \n%s" % (config_fpath,yml))
 				self.map = yaml.load(yml, Loader=yaml.SafeLoader)
 				for action,map in self.map.items():
-					map["keysym"] = map["keysym"].lower()
+					map["keysym"] = map["keysym"][0].lower()
 				return True
 		except Exception as e:
-			logging.error("Can't load keyboard binding config file '%s': %s - using default binding" % (config_fpath,e))
+			logging.warning("Can't load keyboard binding config file '%s': %s - using default binding" % (config_fpath,e))
 			# Default map of key binding defaults. Modifier: 0=none, 1=shift, 4=ctrl.
 			return False
 
@@ -197,7 +197,7 @@ class zynthian_gui_keybinding:
 				logging.info("Saving keyboard binding config file %s" % (config_fpath))
 				return True
 		except Exception as e:
-			logging.error("Can't save keyboard binding config file '%s': %s" % (config_fpath,e))
+			logging.warning("Can't save keyboard binding config file '%s': %s" % (config_fpath,e))
 			return False
 			
 		
