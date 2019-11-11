@@ -221,7 +221,7 @@ class zynthian_gui_keybinding:
 		}
 			
 	
-	enable(self, enabled=True):
+	def enable(self, enabled=True):
 		"""
 		Enable or disable keyboard binding
 		Parameters
@@ -233,7 +233,7 @@ class zynthian_gui_keybinding:
 		self.config["enabled"] = enabled
 
 		
-	isEnabled():
+	def isEnabled(self):
 		"""
 		Is keyboard binding enabled?
 		Returns
