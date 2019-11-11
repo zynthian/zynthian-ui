@@ -139,7 +139,7 @@ class zynthian_gui_keybinding:
 			logging.warning("Failed to parse key binding")
 
 
-	def load(self, config="default"):
+	def load(self, config="keybinding"):
 		"""
 		Load key binding map from file
 		
@@ -147,7 +147,7 @@ class zynthian_gui_keybinding:
 		----------
 		config : str,optional
 			Name of configuration to load - the file <config>.yaml will be loaded from the Zynthian config directory
-			Default: "default"
+			Default: 'keybinding'
 		
 		Returns
 		-------
@@ -157,7 +157,7 @@ class zynthian_gui_keybinding:
 
 		logging.info("Loading key binding from %s.yaml", config)
 		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-		config_fpath = config_dir + "/keybinding/" + config + ".yaml"
+		config_fpath = config_dir + "/" + config + ".yaml"
 		try:
 			with open(config_fpath,"r") as fh:
 				yml = fh.read()
@@ -172,7 +172,7 @@ class zynthian_gui_keybinding:
 			return False
 
 
-	def save(self, config="default"):
+	def save(self, config="keybinding"):
 		"""
 		Save key binding map to file
 		
@@ -180,7 +180,7 @@ class zynthian_gui_keybinding:
 		----------
 		config : str,optional
 			Name of configuration to save - the file <config>.yaml will be saved to the Zynthian config directory
-			Default: "default"
+			Default: 'keybinding'
 		
 		Returns
 		-------
@@ -190,7 +190,7 @@ class zynthian_gui_keybinding:
 		
 		logging.info("Saving key binding to %s.yaml", config)
 		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-		config_fpath = config_dir + "/keybinding/" + config + ".yaml"
+		config_fpath = config_dir + "/" + config + ".yaml"
 		try:
 			with open(config_fpath,"w") as fh:
 				yaml.dump(self.map, fh)
