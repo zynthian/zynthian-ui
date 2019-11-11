@@ -194,9 +194,19 @@ class zynthian_gui_keybinding:
 		try:
 			with open(config_fpath,"w") as fh:
 				yaml.dump(self.map, fh)
-				logging.info("Saving keyboard binding config file %s => \n%s" % (config_fpath,yml))
+				logging.info("Saving keyboard binding config file %s" % (config_fpath))
 				return True
 		except Exception as e:
 			logging.error("Can't save keyboard binding config file '%s': %s" % (config_fpath,e))
 			return False
+			
+		
+	def resetModifiers(self):
+		"""
+		Clears all modifier settings (use before setting modifiers from webconf)
+		"""
+		
+		logging.info("Clearing key binding modifiers")
+		for action,map in self.map.items():
+			map['modifier'] = 0
 #------------------------------------------------------------------------------
