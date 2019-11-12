@@ -27,6 +27,7 @@ from os import environ
 from sys import stderr
 import oyaml as yaml
 import logging
+import copy
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -49,6 +50,38 @@ class zynthian_gui_keybinding:
 	Note: This class is a singleton and should not be instantiated directly (which will raise an exception).
 	Use getInstance() to get the instance of the singleton and access functions and methods from that instance.
 	"""
+
+	default_config = {
+		"enabled": True,
+		"map": {
+			"ALL_SOUNDS_OFF": { "modifier": 1, "keysym": "Space" },
+			"REBOOT": { "modifier": 1, "keysym": "Insert" },
+			"ALL_OFF": { "modifier": 4, "keysym": "Space" },
+			"POWER_OFF": { "modifier" : 4, "keysym" : "Insert" },
+			"RELOAD_MIDI_CONFIG": { "modifier": 4, "keysym": "m" },
+			"SWITCH_SELECT_SHORT": { "modifier": 0, "keysym": "Return, Right" },
+			"SWITCH_SELECT_BOLD": { "modifier": 1, "keysym": "Return, Right" },
+			"SWITCH_SELECT_LONG": { "modifier": 4, "keysym": "Return, Right" },
+			"SWITCH_BACK_SHORT": { "modifier": 0, "keysym": "BackSpace, Escape, Left" },
+			"SWITCH_BACK_BOLD": { "modifier": 1, "keysym": "BackSpace, Escape, Left" },
+			"SWITCH_BACK_LONG": { "modifier": 4, "keysym": "BackSpace, Escape, Left" },
+			"SWITCH_LAYER_SHORT": { "modifier": 0, "keysym": "l" },
+			"SWITCH_LAYER_BOLD": { "modifier": 1, "keysym": "l" },
+			"SWITCH_LAYER_LONG": { "modifier": 4, "keysym": "l" },
+			"SWITCH_SNAPSHOT_SHORT": { "modifier": 0, "keysym": "s" },
+			"SWITCH_SNAPSHOT_BOLD": { "modifier": 1, "keysym": "s" },
+			"SWITCH_SNAPSHOT_LONG": { "modifier": 4, "keysym": "s" },
+			"SELECT_UP": { "modifier": 0, "keysym": "Up" },
+			"SELECT_DOWN": { "modifier": 0, "keysym": "Down" },
+			"START_AUDIO_RECORD": { "modifier": 0, "keysym": "r" },
+			"STOP_AUDIO_RECORD": { "modifier": 1, "keysym": "r" },
+			"START_MIDI_RECORD": { "modifier": 0, "keysym": "m" },
+			"STOP_MIDI_RECORD": { "modifier": 1, "keysym": "m" },
+			"ALL_NOTES_OFF": { "modifier": 0, "keysym": "Space" },
+			"RESTART_UI": { "modifier": 0, "keysym": "Insert" }
+		}
+	}
+
 
 	__instance = None
 	
@@ -105,15 +138,28 @@ class zynthian_gui_keybinding:
 			<None> if no match found		
 		"""
 	
-		logging.info("Get keybinding function name for keysym: %s, modifier: %d", keysym, modifier)
+		logging.debug("Get keybinding function name for keysym: %s, modifier: %d", keysym, modifier)
 		try:
 			keysym = keysym.lower()
-			for action,map in self.config['map'].items():
-				if map["keysym"].count(keysym) and modifier == map["modifier"]:
-					return action
+			rkey = "{}^{}".format(modifier, keysym)
+			return self.rmap[rkey]
 
 		except:
-			logging.warning("Failed to parse key binding")
+			logging.debug("Key not configured")
+
+
+	def parse_map(self):
+		"""
+		Generate reverse keymap for fast lookup events.
+		
+		"""
+
+		self.rmap = {}
+		for action, m in self.config['map'].items():
+			keysyms = m['keysym'].lower().split(',')
+			for ks in keysyms:
+				rkey = "{}^{}".format(m['modifier'], ks.strip())
+				self.rmap[rkey] = action
 
 
 	def load(self, config="keybinding"):
@@ -132,21 +178,20 @@ class zynthian_gui_keybinding:
 			True on success		
 		"""
 
-		logging.info("Loading key binding from %s.yaml", config)
+		logging.info("Loading key binding from {}.yaml".format(config))
 		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
 		config_fpath = config_dir + "/" + config + ".yaml"
 		try:
-			with open(config_fpath,"r") as fh:
+			with open(config_fpath, "r") as fh:
 				yml = fh.read()
-				logging.info("Loading keyboard binding config file %s => \n%s" % (config_fpath,yml))
+				logging.debug("Loading keyboard binding config file %s => \n%s" % (config_fpath,yml))
 				self.config = yaml.load(yml, Loader=yaml.SafeLoader)
-				for action,map in self.config['map'].items():
-					map["keysym"] = map["keysym"][0].lower()
+				self.parse_map()
 				return True
 
 		except Exception as e:
-			logging.warning("Can't load keyboard binding config file '%s': %s - using default binding" % (config_fpath,e))
-			# Default map of key binding defaults. Modifier: 0=none, 1=shift, 4=ctrl.
+			logging.warning("Can't load keyboard binding config file '{}'. Using default.".format(config_fpath))
+			self.resetConfig()
 			return False
 
 
@@ -176,7 +221,7 @@ class zynthian_gui_keybinding:
 				return True
 
 		except Exception as e:
-			logging.warning("Can't save keyboard binding config file '%s': %s" % (config_fpath,e))
+			logging.error("Can't save keyboard binding config file '{}': {}".format(config_fpath,e))
 			return False
 
 
@@ -194,37 +239,9 @@ class zynthian_gui_keybinding:
 		"""
 		Reset keyboard binding to default values
 		"""
-		
-		self.config = {
-			"enabled": True,
-			"map": {
-				"ALL_SOUNDS_OFF":{"modifier":1, "keysym":"space"},
-				"REBOOT":{"modifier":1, "keysym":"insert"},
-				"ALL_OFF":{"modifier":4, "keysym":"space"},
-				"POWER_OFF":{"modifier":4, "keysym":"insert"},
-				"RELOAD_MIDI_CONFIG":{"modifier":4, "keysym":"m"},
-				"SWITCH_SELECT_SHORT":{"modifier":0, "keysym":"return,right"},
-				"SWITCH_SELECT_BOLD":{"modifier":1, "keysym":"return,right"},
-				"SWITCH_SELECT_LONG":{"modifier":4, "keysym":"return,right"},
-				"SWITCH_BACK_SHORT":{"modifier":0, "keysym":"backSpace,escape,left"},
-				"SWITCH_BACK_BOLD":{"modifier":1, "keysym":"backspace,escape,left"},
-				"SWITCH_BACK_LONG":{"modifier":4, "keysym":"backspace,escape,left"},
-				"SWITCH_LAYER_SHORT":{"modifier":0, "keysym":"l"},
-				"SWITCH_LAYER_BOLD":{"modifier":1, "keysym":"l"},
-				"SWITCH_LAYER_LONG":{"modifier":4, "keysym":"l"},
-				"SWITCH_SNAPSHOT_SHORT":{"modifier":0, "keysym":"s"},
-				"SWITCH_SNAPSHOT_BOLD":{"modifier":1, "keysym":"s"},
-				"SWITCH_SNAPSHOT_LONG":{"modifier":4, "keysym":"s"},
-				"SELECT_UP":{"modifier":0, "keysym":"up"},
-				"SELECT_DOWN":{"modifier":0, "keysym":"down"},
-				"START_AUDIO_RECORD":{"modifier":0, "keysym":"r"},
-				"STOP_AUDIO_RECORD":{"modifier":1, "keysym":"r"},
-				"START_MIDI_RECORD":{"modifier":0, "keysym":"m"},
-				"STOP_MIDI_RECORD":{"modifier":1, "keysym":"m"},
-				"ALL_NOTES_OFF":{"modifier":0, "keysym":"space"},
-				"RESTART_UI":{"modifier":0, "keysym":"insert"}
-			}
-		}
+
+		self.config = copy.copy(self.default_config)
+		self.parse_map()
 
 
 	def enable(self, enabled=True):
