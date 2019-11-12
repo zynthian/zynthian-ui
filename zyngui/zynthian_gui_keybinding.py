@@ -150,7 +150,7 @@ class zynthian_gui_keybinding:
 
 	def parse_map(self):
 		"""
-		Generate reverse keymap for fast lookup events.
+		Generate reverse keymap for fast event lookup.
 		
 		"""
 
