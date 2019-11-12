@@ -230,7 +230,7 @@ class zynthian_gui_keybinding:
 	def enable(self, enabled=True):
 		"""
 		Enable or disable keyboard binding
-		
+
 		Parameters
 		----------
 		enabled : bool,optional
@@ -243,7 +243,7 @@ class zynthian_gui_keybinding:
 	def isEnabled(self):
 		"""
 		Is keyboard binding enabled?
-		
+
 		Returns
 		-------
 		bool True if enabled

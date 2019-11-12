@@ -106,7 +106,8 @@ class zynthian_gui_selector:
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.display_height,
 			bg=zynthian_gui_config.color_bg)
-		self.main_frame.bind("<Key>", self.cb_keybinding)
+		if zynthian_gui_keybinding.getInstance().isEnabled():
+			self.main_frame.bind("<Key>", self.cb_keybinding)
 
 		# Topbar's frame
 		self.tb_frame = tkinter.Frame(self.main_frame, 
@@ -191,7 +192,8 @@ class zynthian_gui_selector:
 		self.listbox.bind("<B1-Motion>",self.cb_listbox_motion)
 		self.listbox.bind("<Button-4>",self.cb_listbox_wheel)
 		self.listbox.bind("<Button-5>",self.cb_listbox_wheel)
-		self.listbox.bind("<Key>", self.cb_keybinding)
+		if zynthian_gui_keybinding.getInstance().isEnabled():
+			self.listbox.bind("<Key>", self.cb_keybinding)
 
 		# Canvas for loading image animation
 		self.loading_canvas = tkinter.Canvas(self.main_frame,
@@ -651,6 +653,10 @@ class zynthian_gui_selector:
 	def cb_keybinding(self, event):
 		logging.info("Key press {} {}".format(event.keycode, event.keysym))
 
+		if not zynthian_gui_keybinding.getInstance().isEnabled():
+			logging.info("Key binding is disabled - ignoring key press")
+			return
+		
 		# Ignore TAB key (for now) to avoid confusing widget focus change
 		if event.keysym == "Tab":
 			return
