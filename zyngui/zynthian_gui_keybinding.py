@@ -62,9 +62,10 @@ class zynthian_gui_keybinding:
 		zynthian_gui_keybinding
 			The singleton object which should be used for all access
 		"""
-	
+
 		if zynthian_gui_keybinding.__instance == None:
 			zynthian_gui_keybinding()
+
 		return zynthian_gui_keybinding.__instance
 
 
@@ -82,8 +83,10 @@ class zynthian_gui_keybinding:
 			zynthian_gui_keybinding.__instance = self
 		else:
 			raise Exception("Use getInstance() to get the singleton object.")
+
 		self.resetConfig()
-	
+
+
 	def getFunctionName(self, keysym, modifier):
 		"""
 		Get the name of the function bound to the key combination passed
@@ -108,6 +111,7 @@ class zynthian_gui_keybinding:
 			for action,map in self.config['map'].items():
 				if map["keysym"].count(keysym) and modifier == map["modifier"]:
 					return action
+
 		except:
 			logging.warning("Failed to parse key binding")
 
@@ -139,6 +143,7 @@ class zynthian_gui_keybinding:
 				for action,map in self.config['map'].items():
 					map["keysym"] = map["keysym"][0].lower()
 				return True
+
 		except Exception as e:
 			logging.warning("Can't load keyboard binding config file '%s': %s - using default binding" % (config_fpath,e))
 			# Default map of key binding defaults. Modifier: 0=none, 1=shift, 4=ctrl.
@@ -169,11 +174,12 @@ class zynthian_gui_keybinding:
 				yaml.dump(self.config, fh)
 				logging.info("Saving keyboard binding config file %s" % (config_fpath))
 				return True
+
 		except Exception as e:
 			logging.warning("Can't save keyboard binding config file '%s': %s" % (config_fpath,e))
 			return False
-			
-		
+
+
 	def resetModifiers(self):
 		"""
 		Clears all modifier settings (use before setting modifiers from webconf)
@@ -219,11 +225,12 @@ class zynthian_gui_keybinding:
 				"RESTART_UI":{"modifier":0, "keysym":"insert"}
 			}
 		}
-			
-	
+
+
 	def enable(self, enabled=True):
 		"""
 		Enable or disable keyboard binding
+		
 		Parameters
 		----------
 		enabled : bool,optional
@@ -232,15 +239,17 @@ class zynthian_gui_keybinding:
 		
 		self.config["enabled"] = enabled
 
-		
+
 	def isEnabled(self):
 		"""
 		Is keyboard binding enabled?
+		
 		Returns
 		-------
 		bool True if enabled
 		"""
 
 		return self.config["enabled"]
-		
+
+
 #------------------------------------------------------------------------------

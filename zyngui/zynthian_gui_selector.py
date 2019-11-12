@@ -648,18 +648,23 @@ class zynthian_gui_selector:
 		return False
 
 
-	def cb_keybinding(self,event):
-		logging.info("Key press %d %s" % (event.keycode, event.keysym))
-		
+	def cb_keybinding(self, event):
+		logging.info("Key press {} {}".format(event.keycode, event.keysym))
+
+		# Ignore TAB key (for now) to avoid confusing widget focus change
 		if event.keysym == "Tab":
-			return("break") # Ignore TAB key (for now) to avoid confusing widget focus change
+			return
+
 		# Space is not recognised as keysym so need to convert keycode
-		keysym = event.keysym
 		if event.keycode == 65:
 			keysym = "space"
+		else:
+			keysym = event.keysym
+
 		action = zynthian_gui_keybinding.getInstance().getFunctionName(keysym, event.state)
+
 		if action != None:
 			self.zyngui.callable_ui_action(action)
-			return
-		return("break") # Unexpected error - do nothing
+
+
 #------------------------------------------------------------------------------
