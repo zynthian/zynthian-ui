@@ -138,7 +138,7 @@ class zynthian_gui_keybinding:
 			<None> if no match found		
 		"""
 	
-		logging.debug("Get keybinding function name for keysym: %s, modifier: %d", keysym, modifier)
+		logging.debug("Get keybinding function name for keysym: {}, modifier: {}".format(keysym, modifier))
 		try:
 			keysym = keysym.lower()
 			rkey = "{}^{}".format(modifier, keysym)
@@ -184,7 +184,7 @@ class zynthian_gui_keybinding:
 		try:
 			with open(config_fpath, "r") as fh:
 				yml = fh.read()
-				logging.debug("Loading keyboard binding config file %s => \n%s" % (config_fpath,yml))
+				logging.debug("Loading keyboard binding config file {} =>\n{}".format(config_fpath,yml))
 				self.config = yaml.load(yml, Loader=yaml.SafeLoader)
 				self.parse_map()
 				return True
@@ -217,7 +217,7 @@ class zynthian_gui_keybinding:
 		try:
 			with open(config_fpath,"w") as fh:
 				yaml.dump(self.config, fh)
-				logging.info("Saving keyboard binding config file %s" % (config_fpath))
+				logging.info("Saving keyboard binding config file {}".format(config_fpath))
 				return True
 
 		except Exception as e:
