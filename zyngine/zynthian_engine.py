@@ -46,8 +46,10 @@ class zynthian_engine:
 	# Data dirs 
 	# ---------------------------------------------------------------------------
 
+	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
 	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
 	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
+	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 
 	# ---------------------------------------------------------------------------
 	# Default Controllers & Screens
@@ -76,6 +78,10 @@ class zynthian_engine:
 	]
 
 	# ---------------------------------------------------------------------------
+	# Config variables
+	# ---------------------------------------------------------------------------
+
+	# ---------------------------------------------------------------------------
 	# Initialization
 	# ---------------------------------------------------------------------------
 
@@ -89,6 +95,13 @@ class zynthian_engine:
 
 		self.loading = 0
 		self.layers = []
+
+		self.options = {
+			'clone': True,
+			'transpose': True,
+			'audio_route': True,
+			'midi_chan': True
+		}
 
 		#IPC variables
 		self.proc = None
@@ -108,12 +121,6 @@ class zynthian_engine:
 		self.osc_server_port = None
 		self.osc_server_url = None
 
-		self.options = {
-			'clone': True,
-			'transpose': True,
-			'audio_route': True,
-			'midi_chan': True
-		}
 
 	def __del__(self):
 		self.stop()
@@ -186,7 +193,6 @@ class zynthian_engine:
 		if not self.proc:
 			logging.info("Starting Engine " + self.name)
 			try:
-				self.start_loading()
 
 				if self.remote_host:
 					if self.command_env:
@@ -210,7 +216,6 @@ class zynthian_engine:
 				if self.proc_start_sleep:
 					sleep(self.proc_start_sleep)
 
-				self.stop_loading()
 				return output
 
 			except Exception as err:
@@ -219,7 +224,6 @@ class zynthian_engine:
 
 	def stop(self, wait=0.2):
 		if self.proc:
-			self.start_loading()
 			try:
 				logging.info("Stoping Engine " + self.name)
 				if self.remote_host:
@@ -231,7 +235,6 @@ class zynthian_engine:
 			except Exception as err:
 				logging.error("Can't stop engine {} => {}".format(self.name, err))
 			self.proc=None
-			self.stop_loading()
 
 
 	def proc_get_output(self):
@@ -239,6 +242,7 @@ class zynthian_engine:
 			self.proc.expect(self.command_prompt)
 			return self.proc.before.decode()
 		else:
+			logging.error("Command Prompt is not defined!!")
 			return None
 
 
@@ -261,8 +265,6 @@ class zynthian_engine:
 
 
 	def osc_init(self, target_port=None, proto=liblo.UDP):
-		self.start_loading()
-
 		if self.remote_host:
 			osc_host = self.remote_host
 		else:
@@ -284,18 +286,14 @@ class zynthian_engine:
 		except liblo.AddressError as err:
 			logging.error("OSC Server can't be initialized (%s). Running without OSC feedback." % err)
 
-		self.stop_loading()
-
 
 	def osc_end(self):
 		if self.osc_server:
-			self.start_loading()
 			try:
 				#self.osc_server.stop()
 				logging.info("OSC server stopped")
 			except Exception as err:
 				logging.error("Can't stop OSC server => %s" % err)
-			self.stop_loading()
 
 
 	def osc_add_methods(self):
@@ -313,8 +311,8 @@ class zynthian_engine:
 	# ---------------------------------------------------------------------------
 
 
-	def get_filelist(self, dpath, fext):
-		self.start_loading()
+	@staticmethod
+	def get_filelist(dpath, fext):
 		res=[]
 		if isinstance(dpath, str): dpath=[('_', dpath)]
 		fext='.'+fext
@@ -323,39 +321,45 @@ class zynthian_engine:
 		for dpd in dpath:
 			dp=dpd[1]
 			dn=dpd[0]
-			for f in sorted(os.listdir(dp)):
-				if not f.startswith('.') and isfile(join(dp,f)) and f[-xlen:].lower()==fext:
-					title=str.replace(f[:-xlen], '_', ' ')
-					if dn!='_': title=dn+'/'+title
-					#print("filelist => "+title)
-					res.append((join(dp,f),i,title,dn))
-					i=i+1
-		self.stop_loading()
+			try:
+				for f in sorted(os.listdir(dp)):
+					if not f.startswith('.') and isfile(join(dp,f)) and f[-xlen:].lower()==fext:
+						title=str.replace(f[:-xlen], '_', ' ')
+						if dn!='_': title=dn+'/'+title
+						#print("filelist => "+title)
+						res.append((join(dp,f),i,title,dn,f))
+						i=i+1
+			except:
+				pass
+
 		return res
 
 
-	def get_dirlist(self, dpath):
-		self.start_loading()
+	@staticmethod
+	def get_dirlist(dpath):
 		res=[]
 		if isinstance(dpath, str): dpath=[('_', dpath)]
 		i=0
 		for dpd in dpath:
 			dp=dpd[1]
 			dn=dpd[0]
-			for f in sorted(os.listdir(dp)):
-				if not f.startswith('.') and isdir(join(dp,f)):
-					title,ext=os.path.splitext(f)
-					title=str.replace(title, '_', ' ')
-					if dn!='_': title=dn+'/'+title
-					#print("dirlist => "+title)
-					res.append((join(dp,f),i,title,dn))
-					i=i+1
-		self.stop_loading()
+			try:
+				for f in sorted(os.listdir(dp)):
+					if not f.startswith('.') and isdir(join(dp,f)):
+						title,ext=os.path.splitext(f)
+						title=str.replace(title, '_', ' ')
+						if dn!='_': title=dn+'/'+title
+						#print("dirlist => "+title)
+						res.append((join(dp,f),i,title,dn,f))
+						i=i+1
+			except:
+				pass
+
 		return res
 
 
-	def get_cmdlist(self,cmd):
-		self.start_loading()
+	@staticmethod
+	def get_cmdlist(cmd):
 		res=[]
 		i=0
 		output=check_output(cmd, shell=True)
@@ -364,7 +368,6 @@ class zynthian_engine:
 			title=str.replace(f, '_', ' ')
 			res.append((f,i,title))
 			i=i+1
-		self.stop_loading()
 		return res
 
 
@@ -439,9 +442,12 @@ class zynthian_engine:
 
 
 	def cmp_presets(self, preset1, preset2):
-		if preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
-			return True
-		else:
+		try:
+			if preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
+				return True
+			else:
+				return False
+		except:
 			return False
 
 
@@ -531,12 +537,22 @@ class zynthian_engine:
 	#----------------------------------------------------------------------------
 
 
-	#def midi_control_change(self, chan, ccnum, val):
-	#	raise Exception("NOT IMPLEMENTED!")
+	def midi_control_change(self, chan, ccnum, val):
+		raise Exception("NOT IMPLEMENTED!")
 
 
-	#def midi_control_change(self, zctrl, val):
-	#	raise Exception("NOT IMPLEMENTED!")
+	def midi_zctrl_change(self, zctrl, val):
+		try:
+			if val!=zctrl.get_value():
+				zctrl.set_value(val)
+				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
+
+				#Refresh GUI controller in screen when needed ...
+				if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
+					self.zyngui.screens['control'].set_controller_value(zctrl)
+
+		except Exception as e:
+			logging.debug(e)
 
 
 	# ---------------------------------------------------------------------------
@@ -563,6 +579,15 @@ class zynthian_engine:
 
 	def set_extended_config(self, xconfig):
 		pass
+
+	# ---------------------------------------------------------------------------
+	# API methods
+	# ---------------------------------------------------------------------------
+
+	@classmethod
+	def get_zynapi_methods(cls):
+		return [f for f in dir(cls) if f.startswith('zynapi_')]
+		#callable(f) and
 
 
 #******************************************************************************

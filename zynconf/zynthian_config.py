@@ -25,7 +25,10 @@
 import os
 import re
 import sys
+import socket
+import psutil
 import logging
+from time import sleep
 from shutil import copyfile
 from subprocess import check_output
 from collections import OrderedDict
@@ -53,10 +56,39 @@ CustomUiAction = [
 	"POWER_OFF",
 	"REBOOT",
 	"RESTART_UI",
+
 	"ALL_NOTES_OFF",
 	"ALL_SOUNDS_OFF",
-	"ALL_OFF"
+	"ALL_OFF",
+
+	"START_AUDIO_RECORD",
+	"STOP_AUDIO_RECORD",
+	"START_MIDI_RECORD",
+	"STOP_MIDI_RECORD",
+
+	"SELECT",
+	"SELECT_UP",
+	"SELECT_DOWN",
+
+	"SWITCH_LAYER_SHORT",
+	"SWITCH_LAYER_BOLD",
+	"SWITCH_LAYER_LONG",
+	"SWITCH_BACK_SHORT",
+	"SWITCH_BACK_BOLD",
+	"SWITCH_BACK_LONG",
+	"SWITCH_SNAPSHOT_SHORT",
+	"SWITCH_SNAPSHOT_BOLD",
+	"SWITCH_SNAPSHOT_LONG",
+	"SWITCH_SELECT_SHORT",
+	"SWITCH_SELECT_BOLD",
+	"SWITCH_SELECT_LONG"
 ];
+
+#-------------------------------------------------------------------------------
+# Global variables
+#-------------------------------------------------------------------------------
+
+sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
 
 #-------------------------------------------------------------------------------
 # Config related functions
@@ -81,6 +113,7 @@ def get_midi_config_fpath(fpath=None):
 		copyfile(default_src, fpath)
 
 	return fpath
+
 
 def load_config(set_env=True, fpath=None):
 	if not fpath:
@@ -238,6 +271,184 @@ def update_midi_profile(params, fpath=None):
 
 	for k in midi_params:
 		del params[k]
+
+
+#-------------------------------------------------------------------------------
+# Network Config related functions
+#-------------------------------------------------------------------------------
+
+
+def get_netinfo(exclude_down=True):
+	netinfo={}
+	for ifc, snics in psutil.net_if_addrs().items():
+		if ifc=="lo":
+			continue
+		for snic in snics:
+			if snic.family == socket.AF_INET:
+				netinfo[ifc]=snic
+		if ifc not in netinfo:
+			c=0
+			for snic in snics:
+				if snic.family == socket.AF_INET6:
+					c+=1
+			if c>=2:
+				netinfo[ifc]=snic
+		if ifc not in netinfo and not exclude_down:
+			netinfo[ifc]=None
+	return netinfo
+
+
+def is_wifi_active():
+	for ifc in get_netinfo():
+		if ifc.startswith("wlan"):
+			return True
+
+
+def network_info():
+	logging.info("NETWORK INFO")
+
+	res = OrderedDict()
+	res["Link-Local Name"] = ["{}.local".format(os.uname().nodename),"SUCCESS"]
+	for ifc, snic in get_netinfo().items():
+		if snic.family==socket.AF_INET and snic.address:
+			res[ifc] = [str(snic.address),"SUCCESS"]
+		else:
+			res[ifc] = ["connecting...","WARNING"]
+
+	return res
+
+
+def start_wifi():
+	logging.info("STARTING WIFI")
+
+	check_output(sys_dir + "/sbin/set_wifi.sh on", shell=True)
+	sleep(2)
+
+	counter=0
+	success=False
+	while True:
+		counter += 1
+		for ifc, snic in get_netinfo().items():
+			#logging.debug("{} => {}, {}".format(ifc,snic.family,snic.address))
+			if ifc.startswith("wlan") and snic.family==socket.AF_INET and snic.address:
+				success=True
+				break
+
+		if success:
+			save_config({ 
+					"ZYNTHIAN_WIFI_MODE": 'on'
+			})
+			return True
+
+		elif counter>20:
+			return False
+
+		sleep(1)
+
+
+def start_wifi_hotspot():
+	logging.info("STARTING WIFI HOTSPOT")
+
+	check_output(sys_dir + "/sbin/set_wifi.sh hotspot", shell=True)
+	sleep(2)
+
+	counter=0
+	success=False
+	while True:
+		counter += 1
+		for ifc, snic in get_netinfo().items():
+			#logging.debug("{} => {}, {}".format(ifc,snic.family,snic.address))
+			if ifc.startswith("wlan") and snic.family==socket.AF_INET and snic.address:
+				success=True
+				break
+
+		if success:
+			save_config({ 
+					"ZYNTHIAN_WIFI_MODE": 'hotspot'
+			})
+			return True
+
+		elif counter>20:
+			return False
+
+		sleep(1)
+
+
+def stop_wifi():
+	logging.info("STOPPING WIFI")
+
+	check_output(sys_dir + "/sbin/set_wifi.sh off", shell=True)
+
+	counter = 0
+	success = False
+	while not success:
+		counter += 1
+		success = True
+		for ifc in get_netinfo():
+			#logging.debug("{} is UP".format(ifc))
+			if ifc.startswith("wlan"):
+				success = False
+				break
+
+		if success:
+			save_config({ 
+					"ZYNTHIAN_WIFI_MODE": 'off'
+			})
+			return True
+
+		elif counter>10:
+			return False
+
+		sleep(1)
+
+
+def wifi_up():
+	logging.info("WIFI UP")
+	check_output(sys_dir + "/sbin/set_wifi.sh up", shell=True)
+
+
+def wifi_down():
+	logging.info("WIFI DOWN")
+	check_output(sys_dir + "/sbin/set_wifi.sh down", shell=True)
+
+
+def get_current_wifi_mode():
+	if is_wifi_active():
+		if is_service_active("hostapd"):
+			return "hotspot"
+		else:
+			return "on"
+
+	return "off"
+
+
+#-------------------------------------------------------------------------------
+# Utility functions
+#-------------------------------------------------------------------------------
+
+def is_process_running(procname):
+	cmd="ps -e | grep %s" % procname
+	try:
+		result=check_output(cmd, shell=True).decode('utf-8','ignore')
+		if len(result)>3:
+			return True
+		else:
+			return False
+	except Exception as e:
+		return False
+
+
+def is_service_active(service):
+	cmd="systemctl is-active %s" % service
+	try:
+		result=check_output(cmd, shell=True).decode('utf-8','ignore')
+	except Exception as e:
+		result="ERROR: %s" % e
+	#loggin.debug("Is service "+str(service)+" active? => "+str(result))
+	if result.strip()=='active':
+		return True
+	else:
+		return False
 
 
 #------------------------------------------------------------------------------

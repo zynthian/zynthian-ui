@@ -133,11 +133,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 						self.set_zcontroller(i,ctrl)
 						i=i+1
 					except Exception as e:
-						if zynthian_gui_config.raise_exceptions:
-							raise e
-						else:
-							logging.error("Controller %s (%d) => %s" % (ctrl.short_name,i,e))
-							self.zgui_controllers[i].hide()
+						logging.exception("Controller %s (%d) => %s" % (ctrl.short_name,i,e))
+						self.zgui_controllers[i].hide()
 
 				#Hide rest of GUI controllers
 				for i in range(i,len(self.zgui_controllers)):
@@ -150,6 +147,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		#Set/Restore XY controllers highlight
 		self.set_xyselect_controllers()
+
 		#Release Mutex Lock
 		self.lock.release()
 

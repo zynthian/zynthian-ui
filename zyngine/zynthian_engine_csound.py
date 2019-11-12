@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
-# ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_puredata)
+# ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_csound)
 #
-# zynthian_engine implementation for PureData
+# zynthian_engine implementation for CSound
 #
-# Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2019 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -35,10 +35,10 @@ from . import zynthian_engine
 from . import zynthian_controller
 
 #------------------------------------------------------------------------------
-# Puredata Engine Class
+# CSound Engine Class
 #------------------------------------------------------------------------------
 
-class zynthian_engine_puredata(zynthian_engine):
+class zynthian_engine_csound(zynthian_engine):
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
@@ -59,12 +59,9 @@ class zynthian_engine_puredata(zynthian_engine):
 	# Config variables
 	#----------------------------------------------------------------------------
 
-	startup_patch = zynthian_engine.data_dir + "/presets/puredata/zynthian_startup.pd"
-
 	bank_dirs = [
-		('EX', zynthian_engine.ex_data_dir + "/presets/puredata"),
-		('MY', zynthian_engine.my_data_dir + "/presets/puredata"),
-		('_', zynthian_engine.data_dir + "/presets/puredata")
+		('EX', zynthian_engine.ex_data_dir + "/presets/csound"),
+		('_', zynthian_engine.my_data_dir + "/presets/csound")
 	]
 
 	#----------------------------------------------------------------------------
@@ -75,9 +72,9 @@ class zynthian_engine_puredata(zynthian_engine):
 		super().__init__(zyngui)
 
 		self.type = "Special"
-		self.name = "PureData"
-		self.nickname = "PD"
-		self.jackname = "pure_data_0"
+		self.name = "CSound"
+		self.nickname = "CS"
+		self.jackname = "csound6"
 
 		#self.options['midi_chan']=False
 
@@ -85,9 +82,11 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.preset_config = None
 
 		if self.config_remote_display():
-			self.base_command="/usr/bin/pd -jack -rt -alsamidi -mididev 1 -open \"{}\"".format(self.startup_patch)
+			self.nogui = False
+			self.base_command="/usr/bin/csound -+rtaudio=jack -+rtmidi=alsaseq -M14 -o dac"
 		else:
-			self.base_command="/usr/bin/pd -nogui -jack -rt -alsamidi -mididev 1 -open \"{}\"".format(self.startup_patch)
+			self.nogui = True
+			self.base_command="/usr/bin/csound --nodisplays -+rtaudio=jack -+rtmidi=alsaseq -M14 -o dac"
 
 		self.reset()
 
@@ -119,8 +118,8 @@ class zynthian_engine_puredata(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		self.load_preset_config(preset)
-		self.command=self.base_command+ " " + self.get_preset_filepath(preset)
+		self.load_preset_config(preset[0])
+		self.command=self.base_command+ " " + self.get_fixed_preset_filepath(preset[0])
 		self.preset=preset[0]
 		self.stop()
 		self.start()
@@ -131,8 +130,8 @@ class zynthian_engine_puredata(zynthian_engine):
 		return True
 
 
-	def load_preset_config(self, preset):
-		config_fpath = preset[0] + "/zynconfig.yml"
+	def load_preset_config(self, preset_dir):
+		config_fpath = preset_dir + "/zynconfig.yml"
 		try:
 			with open(config_fpath,"r") as fh:
 				yml = fh.read()
@@ -144,21 +143,41 @@ class zynthian_engine_puredata(zynthian_engine):
 			return False
 
 
-	def get_preset_filepath(self, preset):
+	def get_preset_filepath(self, preset_dir):
 		if self.preset_config:
-			preset_fpath = preset[0] + "/" + self.preset_config['main_file']
+			preset_fpath = preset_dir + "/" + self.preset_config['main_file']
 			if isfile(preset_fpath):
 				return preset_fpath
 
-		preset_fpath = preset[0] + "/main.pd"
+		preset_fpath = preset_dir + "/main.csd"
 		if isfile(preset_fpath):
 			return preset_fpath
 		
-		preset_fpath = preset[0] + "/" + os.path.basename(preset[0]) + ".pd"
+		preset_fpath = preset_dir + "/" + os.path.basename(preset_dir) + ".csd"
 		if isfile(preset_fpath):
 			return preset_fpath
 		
-		preset_fpath = join(preset[0],os.listdir(preset[0])[0])
+		preset_fpath = join(preset_dir,os.listdir(preset_dir)[0])
+		
+		return preset_fpath
+
+
+	def get_fixed_preset_filepath(self, preset_dir):
+		
+		preset_fpath=self.get_preset_filepath(preset_dir)
+		
+		if self.nogui:
+			# Generate on-the-fly CSD file, disabling GUI
+			with open(preset_fpath, 'r') as f:
+				data=f.read()
+				data = data.replace('FLrun', ";FLrun")
+				fixed_preset_fpath = preset_fpath.replace(".csd", ".nogui.csd")
+
+				with open(fixed_preset_fpath, 'w') as ff:
+					ff.write(data)
+
+				return fixed_preset_fpath
+
 		return preset_fpath
 
 
@@ -241,7 +260,7 @@ class zynthian_engine_puredata(zynthian_engine):
 
 	@classmethod
 	def zynapi_new_bank(cls, bank_name):
-		os.mkdir(zynthian_engine.my_data_dir + "/presets/puredata/" + bank_name)
+		os.mkdir(zynthian_engine.my_data_dir + "/presets/csound/" + bank_name)
 
 
 	@classmethod
@@ -277,20 +296,20 @@ class zynthian_engine_puredata(zynthian_engine):
 	def zynapi_install(cls, dpath, bank_path):
 		if os.path.isdir(dpath):
 			shutil.move(dpath, bank_path)
-			#TODO Test if it's a PD bundle
+			#TODO Test if it's a CSound bundle
 		else:
 			fname, ext = os.path.splitext(dpath)
-			if ext=='.pd':
+			if ext=='.csd':
 				bank_path += "/" + fname
 				os.mkdir(bank_path)
 				shutil.move(dpath, bank_path)
 			else:
-				raise Exception("File doesn't look like a PD patch!")
+				raise Exception("File doesn't look like a CSound patch!")
 
 
 	@classmethod
 	def zynapi_get_formats(cls):
-		return "pd,zip,tgz,tar.gz"
+		return "csd,zip,tgz,tar.gz"
 
 
 #******************************************************************************

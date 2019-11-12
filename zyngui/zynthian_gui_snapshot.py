@@ -62,18 +62,17 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		return join(self.base_dir,self.bank_dir,f);
 
 
-	def get_next_name(self, nz=3):
+	def get_next_name(self):
 		n=max(map(lambda item: int(item[2].split('-')[0]) if item[2].split('-')[0].isdigit() else 0, self.list_data))
-		fmt="{0:0%dd}" % nz
-		return fmt.format(n+1)
+		return "{0:03d}".format(n+1)
 
 
 	def get_new_snapshot(self):
-		return self.get_next_name(3) + '.zss'
+		return self.get_next_name() + '.zss'
 
 
 	def get_new_bankdir(self):
-		return self.get_next_name(5)
+		return self.get_next_name()
 
 
 	def change_index_offset(self, i):
@@ -89,7 +88,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 		# If no banks, create the first one and choose it.
 		if n_banks == 0:
-			self.bank_dir = "00001"
+			self.bank_dir = "000"
 			os.makedirs(self.base_dir + "/" + self.bank_dir)
 			self.bankless_mode = True
 
@@ -129,9 +128,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				try:
 					bn=self.get_midi_number(f)
 					self.midi_banks[str(bn)]=i
-					logging.debug("Snapshot Bank '%s' => MIDI bank %d." % (f,bn))
+					logging.debug("Snapshot Bank '%s' => MIDI bank %d" % (f,bn))
 				except:
-					logging.warning("Snapshot Bank '%s' don't have a MIDI bank number." % f)
+					logging.warning("Snapshot Bank '%s' don't have a MIDI bank number" % f)
 				i=i+1
 
 
@@ -159,6 +158,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 		self.change_index_offset(i)
 
+		head, bname = os.path.split(self.bank_dir)
 		for f in sorted(os.listdir(join(self.base_dir,self.bank_dir))):
 			fpath=self.get_snapshot_fpath(f)
 			if isfile(fpath) and f[-4:].lower()=='.zss':
@@ -166,11 +166,12 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				title=f[:-4]
 				self.list_data.append((fpath,i,title))
 				try:
+					bn=self.get_midi_number(bname)
 					pn=self.get_midi_number(title)
 					self.midi_programs[str(pn)]=i
-					logging.debug("Snapshot '%s' => MIDI program %d." % (title,pn))
+					logging.debug("Snapshot '{}' => MIDI bank {}, program {}".format(title,bn,pn))
 				except:
-					logging.warning("Snapshot '%s' don't have a MIDI program number." % title)
+					logging.warning("Snapshot '{}' don't have a MIDI program number".format(title))
 				i += 1
 
 
@@ -265,14 +266,14 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def get_midi_number(self, f):
-		return int(f.split('-')[0])-1
+		return int(f.split('-')[0])
 
 
 	def midi_bank_change(self, bn):
-		#Get bank list if needed
-		if self.bank_dir is not None:
-			self.bank_dir=None
-			self.fill_list()
+		#Get bank list
+		old_bank_dir=self.bank_dir
+		self.bank_dir=None
+		self.fill_list()
 		#Load bank dir
 		bn=str(bn)
 		if bn in self.midi_banks:
@@ -281,18 +282,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.show()
 			return True
 		else:
+			self.bank_dir=old_bank_dir
 			return False
 
 
 	def midi_bank_change_offset(self,offset):
-		old_bank_dir=self.bank_dir
-		if self.bank_dir is not None:
-			bn=self.get_midi_number(self.bank_dir)+offset
-		else:
-			bn=0
-		if not self.midi_bank_change(bn):
-			self.bank_dir=old_bank_dir
-			self.show()
+		try:
+			bn = self.get_midi_number(self.bank_dir)+offset
+			self.midi_bank_change(bn)
+		except:
+			logging.warning("Can't do Snapshot Bank Change Offset {}".format(offset))
 
 
 	def midi_bank_change_up(self):
@@ -306,6 +305,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def midi_program_change(self, pn):
 		#If no bank selected, default to first bank
 		if self.bank_dir is None:
+			self.fill_list()
 			self.bank_dir=self.list_data[0][2]
 			self.fill_list()
 		#Load snapshot

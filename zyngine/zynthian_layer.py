@@ -61,7 +61,7 @@ class zynthian_layer:
 		self.ctrl_screens_dict = None
 		self.active_screen_index = -1
 
-		self.listen_midi_cc = False
+		self.listen_midi_cc = True
 		self.refresh_flag = False
 
 		self.reset_zs3()
@@ -74,9 +74,16 @@ class zynthian_layer:
 		if self.refresh_flag:
 			self.refresh_flag=False
 			self.refresh_controllers()
+
 			#TODO: Improve this Dirty Hack!!
 			if self.engine.nickname=='MD':
 				self.zyngui.screens['preset'].fill_list()
+				if self.zyngui.active_screen=='bank':
+					if self.preset_name:
+						self.zyngui.show_screen('control')
+					else:
+						self.zyngui.show_screen('preset')
+
 			self.zyngui.refresh_screen()
 
 
@@ -229,8 +236,8 @@ class zynthian_layer:
 
 
 	def restore_preset(self):
-		if self.preset_index is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
-			if self.bank_index!=self.preset_bank_index:
+		if self.preset_name is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
+			if self.preset_bank_index is not None and self.bank_index!=self.preset_bank_index:
 				self.set_bank(self.preset_bank_index,False)
 			self.preload_index=self.preset_index
 			self.preload_name=self.preset_name
@@ -326,12 +333,14 @@ class zynthian_layer:
 				for k, zctrl in self.controllers_dict.items():
 					if zctrl.midi_cc==ccnum:
 						try:
-							self.engine.midi_control_change(zctrl, ccval)
+							# Aeolus, FluidSynth, LinuxSampler, puredata, Pianoteq, setBfree, ZynAddSubFX
+							self.engine.midi_zctrl_change(zctrl, ccval)
 						except:
 							pass
 
 			elif not self.listen_midi_cc:
 				try:
+					# Jalv
 					self.engine.midi_control_change(chan, ccnum, ccval)
 				except:
 					pass
@@ -365,6 +374,8 @@ class zynthian_layer:
 	def restore_snapshot_1(self, snapshot):
 		#Constructor, including engine and midi_chan info, is called before
 
+		self.wait_stop_loading()
+
 		#Load bank list and set bank
 		self.bank_name=snapshot['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
 		self.load_bank_list()
@@ -396,6 +407,8 @@ class zynthian_layer:
 		# Wait a little bit if a preset has been loaded 
 		if self.preset_loaded:
 			sleep(0.2)
+
+		self.wait_stop_loading()
 
 		#Set controller values
 		for k in snapshot['controllers_dict']:
@@ -494,14 +507,16 @@ class zynthian_layer:
 		return self.audio_out
 
 
-	def set_audio_out(self, ao):
+	def set_audio_out(self, ao, autoconnect=True):
 		self.audio_out=ao
 		#logging.debug("Setting connections:")
 		#for jn in ao:
 		#	logging.debug("  {} => {}".format(self.engine.jackname, jn))
+		if autoconnect:
+			self.zyngui.zynautoconnect_audio(True)
 
 
-	def add_audio_out(self, jackname):
+	def add_audio_out(self, jackname, autoconnect=True):
 		if isinstance(jackname, zynthian_layer):
 			jackname=jackname.jackname
 
@@ -509,8 +524,11 @@ class zynthian_layer:
 			self.audio_out.append(jackname)
 			logging.debug("Connecting {} => {}".format(self.engine.jackname, jackname))
 
+		if autoconnect:
+			self.zyngui.zynautoconnect_audio(True)
 
-	def del_audio_out(self, jackname):
+
+	def del_audio_out(self, jackname, autoconnect=True):
 		if isinstance(jackname, zynthian_layer):
 			jackname=jackname.jackname
 
@@ -520,8 +538,11 @@ class zynthian_layer:
 		except:
 			pass
 
+		if autoconnect:
+			self.zyngui.zynautoconnect_audio(True)
 
-	def toggle_audio_out(self, jackname):
+
+	def toggle_audio_out(self, jackname, autoconnect=True):
 		if isinstance(jackname, zynthian_layer):
 			jackname=jackname.jackname
 
@@ -530,9 +551,20 @@ class zynthian_layer:
 		else:
 			self.audio_out.remove(jackname)
 
+		if autoconnect:
+			self.zyngui.zynautoconnect_audio(True)
 
-	def reset_audio_out(self):
+
+	def reset_audio_out(self, autoconnect=True):
 		self.audio_out=["system"]
+		if autoconnect:
+			self.zyngui.zynautoconnect_audio(True)
+
+
+	def mute_audio_out(self, autoconnect=True):
+		self.audio_out=[]
+		if autoconnect:
+			self.zyngui.zynautoconnect_audio(True)
 
 
 	# ---------------------------------------------------------------------------

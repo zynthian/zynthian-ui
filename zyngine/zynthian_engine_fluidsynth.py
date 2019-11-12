@@ -25,7 +25,9 @@
 import os
 import re
 import copy
+import shutil
 import logging
+from subprocess import check_output
 from . import zynthian_engine
 from . import zynthian_controller
 
@@ -39,18 +41,27 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
-
 	# Controller Screens
 	_ctrl_screens=[
 		['main',['volume','expression','pan','sustain']],
 		['effects',['volume','modulation','reverb','chorus']]
 	]
 
+	# ---------------------------------------------------------------------------
+	# Config variables
+	# ---------------------------------------------------------------------------
+
+	fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64"
+
+	soundfont_dirs=[
+		('EX', zynthian_engine.ex_data_dir + "/soundfonts/sf2"),
+		('MY', zynthian_engine.my_data_dir + "/soundfonts/sf2"),
+		('_', zynthian_engine.data_dir + "/soundfonts/sf2")
+	]
 
 	# ---------------------------------------------------------------------------
 	# Initialization
 	# ---------------------------------------------------------------------------
-
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
@@ -58,15 +69,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.nickname = "FS"
 		self.jackname = "fluidsynth"
 
-		fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64"
-		self.command = "/usr/local/bin/fluidsynth -p fluidsynth -a jack -m jack -g 1 -j {}".format(fs_options)
-
+		self.command = "/usr/local/bin/fluidsynth -p fluidsynth -a jack -m jack -g 1 -j {}".format(self.fs_options)
 		self.command_prompt = "\n> "
-
-		self.soundfont_dirs=[
-			('_', self.data_dir + "/soundfonts/sf2"),
-			('MY', self.my_data_dir + "/soundfonts/sf2")
-		]
 
 		self.start()
 		self.reset()
@@ -82,7 +86,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Subproccess Management & IPC
 	# ---------------------------------------------------------------------------
 
-
 	def stop(self):
 		try:
 			self.proc.sendline("quit")
@@ -90,11 +93,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		except:
 			super().stop()
 
-
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
-
 
 	def add_layer(self, layer):
 		super().add_layer(layer)
@@ -108,23 +109,19 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			self.set_all_midi_routes()
 		self.unload_unused_soundfonts()
 
-
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-
 	def set_midi_chan(self, layer):
 		self.setup_router(layer)
-
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-
 	def get_bank_list(self, layer=None):
-		return self.get_filelist(self.soundfont_dirs,"sf2")
+		return self.get_filelist(self.soundfont_dirs,"sf2") + self.get_filelist(self.soundfont_dirs,"sf3")
 
 
 	def set_bank(self, layer, bank):
@@ -134,11 +131,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		else:
 			return False
 
-
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
-
 
 	def get_preset_list(self, bank):
 		logging.info("Getting Preset List for {}".format(bank[2]))
@@ -184,11 +179,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		except:
 			return False
 
-
 	# ---------------------------------------------------------------------------
 	# Specific functions
 	# ---------------------------------------------------------------------------
-
 
 	def get_free_parts(self):
 		free_parts = list(range(0,16))
@@ -284,6 +277,83 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def clear_midi_routes(self):
 		self.proc_cmd("router_clear")
+
+	# ---------------------------------------------------------------------------
+	# API methods
+	# ---------------------------------------------------------------------------
+
+	@classmethod
+	def zynapi_get_banks(cls):
+		banks=[]
+		for b in cls.get_filelist(cls.soundfont_dirs,"sf2") + cls.get_filelist(cls.soundfont_dirs,"sf3"):
+			head, tail = os.path.split(b[0])
+			fname, fext = os.path.splitext(tail)
+			banks.append({
+				'text': tail,
+				'name': fname,
+				'fullpath': b[0],
+				'raw': b
+			})
+		return banks
+
+
+	@classmethod
+	def zynapi_get_presets(cls, bank):
+		return []
+
+
+	@classmethod
+	def zynapi_rename_bank(cls, bank_path, new_bank_name):
+		head, tail = os.path.split(bank_path)
+		fname, ext = os.path.splitext(tail)
+		new_bank_path = head + "/" + new_bank_name + ext
+		os.rename(bank_path, new_bank_path)
+
+
+	@classmethod
+	def zynapi_remove_bank(cls, bank_path):
+		os.remove(bank_path)
+
+
+	@classmethod
+	def zynapi_download(cls, fullpath):
+		return fullpath
+
+
+	@classmethod
+	def zynapi_install(cls, dpath, bank_path):
+
+		if os.path.isdir(dpath):
+			# Get list of sf2/sf3 files ...
+			sfx_files = check_output("find \"{}\" -type f -iname *.sf2 -o -iname *.sf3".format(dpath), shell=True).decode("utf-8").split("\n")
+
+			# Copy sf2/sf3 files to destiny ...
+			count = 0
+			for f in sfx_files:
+				head, fname = os.path.split(f)
+				if fname:
+					shutil.move(f, zynthian_engine.my_data_dir + "/soundfonts/sf2/" + fname)
+					count += 1
+
+			if count==0:
+				raise Exception("No SF2/SF3 soundfont files found!")
+
+		else:
+			fname, ext = os.path.splitext(dpath)
+			if ext in ['.sf2', ".SF2", '.sf3', ".SF3"]:
+				shutil.move(dpath, zynthian_engine.my_data_dir + "/soundfonts/sf2")
+			else:
+				raise Exception("File doesn't look like a SF2/SF3 soundfont")
+
+
+	@classmethod
+	def zynapi_get_formats(cls):
+		return "sf2,sf3,zip,tgz,tar.gz"
+
+
+	@classmethod
+	def zynapi_martifact_formats(cls):
+		return "sf2,sf3"
 
 
 #******************************************************************************
