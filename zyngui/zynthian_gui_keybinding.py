@@ -54,11 +54,15 @@ class zynthian_gui_keybinding:
 	default_config = {
 		"enabled": True,
 		"map": {
+			"ALL_NOTES_OFF": { "modifier": 0, "keysym": "Space" },
 			"ALL_SOUNDS_OFF": { "modifier": 1, "keysym": "Space" },
-			"REBOOT": { "modifier": 1, "keysym": "Insert" },
 			"ALL_OFF": { "modifier": 4, "keysym": "Space" },
+
+			"RESTART_UI": { "modifier": 0, "keysym": "Insert" },
+			"REBOOT": { "modifier": 1, "keysym": "Insert" },
 			"POWER_OFF": { "modifier" : 4, "keysym" : "Insert" },
 			"RELOAD_MIDI_CONFIG": { "modifier": 4, "keysym": "m" },
+
 			"SWITCH_SELECT_SHORT": { "modifier": 0, "keysym": "Return, Right" },
 			"SWITCH_SELECT_BOLD": { "modifier": 1, "keysym": "Return, Right" },
 			"SWITCH_SELECT_LONG": { "modifier": 4, "keysym": "Return, Right" },
@@ -71,14 +75,21 @@ class zynthian_gui_keybinding:
 			"SWITCH_SNAPSHOT_SHORT": { "modifier": 0, "keysym": "s" },
 			"SWITCH_SNAPSHOT_BOLD": { "modifier": 1, "keysym": "s" },
 			"SWITCH_SNAPSHOT_LONG": { "modifier": 4, "keysym": "s" },
+
 			"SELECT_UP": { "modifier": 0, "keysym": "Up" },
 			"SELECT_DOWN": { "modifier": 0, "keysym": "Down" },
+
 			"START_AUDIO_RECORD": { "modifier": 0, "keysym": "r" },
 			"STOP_AUDIO_RECORD": { "modifier": 1, "keysym": "r" },
+			"TOGGLE_AUDIO_RECORD": { "modifier": 8, "keysym": "r" },
+			"START_AUDIO_PLAY": { "modifier": 4, "keysym": "r" },
+			"STOP_AUDIO_PLAY": { "modifier": 5, "keysym": "r" },
+
 			"START_MIDI_RECORD": { "modifier": 0, "keysym": "m" },
 			"STOP_MIDI_RECORD": { "modifier": 1, "keysym": "m" },
-			"ALL_NOTES_OFF": { "modifier": 0, "keysym": "Space" },
-			"RESTART_UI": { "modifier": 0, "keysym": "Insert" }
+			"TOGGLE_MIDI_RECORD": { "modifier": 8, "keysym": "m" },
+			"START_MIDI_PLAY": { "modifier": 4, "keysym": "m" },
+			"STOP_MIDI_PLAY": { "modifier": 5, "keysym": "m" }
 		}
 	}
 
