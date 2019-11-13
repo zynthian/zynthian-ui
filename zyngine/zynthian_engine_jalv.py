@@ -514,15 +514,53 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	@classmethod
+	def zynapi_install(cls, dpath, bank_path):
+		fname, ext = os.path.splitext(dpath)
+		native_ext = cls.native_formats()
+
+		if os.path.isdir(dpath):
+			if ext=='.lv2'
+				shutil.move(dpath, zynthian_engine.my_data_dir + "/presets/lv2/")
+			else:
+				#Call preset converter
+				pass
+		else:
+			if ext[1:]==native_ext:
+				#Call preset converter
+				pass
+			else:
+				raise Exception("File doesn't look like a {} preset!".format(native_ext))
+
+
+	@classmethod
+	def zynapi_get_formats(cls):
+		formats = "zip,tgz,tar.gz"
+		fmt = cls.zynapi_native_formats()
+		if fmt:
+			formats = fmt + "," + formats
+
+		return formats
+
+
+	@classmethod
 	def zynapi_martifact_formats(cls):
+		fmt = cls.zynapi_native_formats()
+		if fmt:
+			return fmt
+		else:
+			return "lv2"
+
+
+	@classmethod
+	def zynapi_native_formats(cls):
 		if cls.zynapi_instance.plugin_name=="Dexed":
 			return "syx"
 		elif cls.zynapi_instance.plugin_name=="synthv1":
 			return "synthv1"
-		elif cls.zynapi_instance.plugin_name=="Helm":
-			return "helm"
-		else:
-			return "lv2"
+		elif cls.zynapi_instance.plugin_name=="padthv1":
+			return "padthv1"
+		#elif cls.zynapi_instance.plugin_name=="Helm":
+		#	return "helm"
 
 
 #******************************************************************************
