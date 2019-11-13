@@ -28,6 +28,7 @@ from sys import stderr
 import oyaml as yaml
 import logging
 import copy
+import liblo
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -38,6 +39,12 @@ from . import zynthian_gui_config
 
 # Set root logging level
 logging.basicConfig(stream=stderr, level=zynthian_gui_config.log_level)
+
+#------------------------------------------------------------------------------
+# Zynthian-UI OSC Address
+#------------------------------------------------------------------------------
+
+zynthian_ui_osc_addr = liblo.Address('localhost',1370,liblo.UDP)
 
 #------------------------------------------------------------------------------
 # Zynthian Keyboard Binding Class
@@ -280,4 +287,10 @@ class zynthian_gui_keybinding:
 		return self.config["enabled"]
 
 
+	def reload_keybinding(self):
+		"""
+		Sends a message to UI to reload keybinding from saved file
+		"""
+		
+		liblo.send(zynthian_ui_osc_addr, "/CUIA/RELOAD_KEY_BINDING")
 #------------------------------------------------------------------------------

@@ -96,6 +96,7 @@ class zynthian_gui:
 		"1": "REBOOT",
 		"2": "RESTART_UI",
 		"3": "RELOAD_MIDI_CONFIG",
+		"4": "RELOAD_KEY_BINDING",
 
 		"10": "ALL_NOTES_OFF",
 		"11": "ALL_SOUNDS_OFF",
@@ -218,6 +219,10 @@ class zynthian_gui:
 			self.init_midi()
 			self.init_midi_services()
 			self.zynautoconnect(True)
+
+
+	def reload_key_binding(self):
+		zynthian_gui_keybinding.getInstance().load()
 
 
 	# ---------------------------------------------------------------------------
@@ -508,6 +513,9 @@ class zynthian_gui:
 
 		elif cuia == "RELOAD_MIDI_CONFIG":
 			self.reload_midi_config()
+
+		elif cuia == "RELOAD_KEY_BINDING":
+			self.reload_key_binding()
 
 		elif cuia == "ALL_NOTES_OFF":
 			self.all_notes_off()
