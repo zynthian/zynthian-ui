@@ -61,15 +61,6 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 
 	def get_status(self):
-		if zynconf.is_process_running("jack_capture"):
-			return "REC"
-		elif self.current_record:
-			return "PLAY"
-		else:
-			return None
-
-
-	def get_status(self):
 		status=None
 
 		if zynconf.is_process_running("jack_capture"):
