@@ -200,7 +200,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			start_recording()
 
 
-def start_playing(self, fpath=None):
+	def start_playing(self, fpath=None):
 		if self.current_record:
 			self.stop_playing()
 
