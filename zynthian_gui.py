@@ -69,6 +69,7 @@ from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
+from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
@@ -155,7 +156,10 @@ class zynthian_gui:
 
 		self.status_info = {}
 		self.status_counter = 0
-
+		
+		# Load keyboard binding map
+		zynthian_gui_keybinding.getInstance().load()
+		
 		# Initialize peakmeter audio monitor if needed
 		if not zynthian_gui_config.show_cpu_status:
 			try:
