@@ -195,9 +195,9 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def toggle_recording(self):
 		logging.info("TOGGLING AUDIO RECORDING ...")
 		if "REC" in get_status:
-			stop_recording()
+			self.stop_recording()
 		else:
-			start_recording()
+			self.start_recording()
 
 
 	def start_playing(self, fpath=None):
