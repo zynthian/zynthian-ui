@@ -78,6 +78,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self.ws_preset_loaded = False
 		self.ws_bundle_loaded = False
 		self.hw_ports = {}
+		self.midi_dev_info = None
 
 		self.reset()
 		self.start()
@@ -92,17 +93,20 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def start(self):
+		self.ws_bundle_loaded = False
 		if not self.is_service_active("mod-ui"):
 			logging.info("STARTING MOD-HOST & MOD-UI services...")
 			check_output(("systemctl start mod-host && systemctl start mod-ui"),shell=True)
+			#check_output(("systemctl start mod-ui"),shell=True)
 
 
 	def stop(self):
 		#self.stop_websocket()
 		if self.is_service_active("mod-ui"):
 			logging.info("STOPPING MOD-HOST & MOD-UI services...")
-			#check_output(("systemctl stop mod-host && systemctl stop mod-ui"),shell=True)
-			check_output(("systemctl stop mod-ui"),shell=True)
+			check_output(("systemctl stop mod-host && systemctl stop mod-ui"),shell=True)
+			#check_output(("systemctl stop mod-ui"),shell=True)
+		self.ws_bundle_loaded = False
 
 
 	def is_service_active(self, service="mod-ui"):
@@ -126,8 +130,8 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def del_layer(self, layer):
-		super().del_layer(layer)
 		self.graph_reset()
+		super().del_layer(layer)
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
@@ -271,19 +275,34 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def start_websocket(self):
 		logging.info("Connecting to MOD-UI websocket...")
+
 		i=0
 		while i<100:
 			try:
 				self.websocket = websocket.create_connection(self.websocket_url)
 				break
 			except:
-				i=i+1
-				sleep(0.1)
+				i += 1
+				sleep(0.5)
+
 		if i<100:
 			self.ws_thread=Thread(target=self.task_websocket, args=())
 			self.ws_thread.daemon = True # thread dies with the program
 			self.ws_thread.start()
-			return True
+			
+			j=0
+			while j<100:
+				if self.ws_bundle_loaded:
+					break
+				j += 1
+				sleep(0.1)
+				
+			if j<100:
+				return True
+			else:
+				self.stop_websocket()
+				return False
+
 		else:
 			return False 
 
@@ -361,10 +380,14 @@ class zynthian_engine_modui(zynthian_engine):
 
 				elif command == "stop":
 					logging.error("Restarting MOD services ...")
+					self.start_loading()
 					self.stop()
 					self.start()
+					self.stop_loading()
 
 			except websocket._exceptions.WebSocketConnectionClosedException:
+				self.start_loading()
+
 				if self.is_service_active("mod-ui"):
 					try:
 						logging.error("Connection Closed. Retrying to connect ...")
@@ -379,14 +402,20 @@ class zynthian_engine_modui(zynthian_engine):
 							error_counter=0
 						else:
 							error_counter+=1
-							sleep(0.1)
+							sleep(1)
 				else:
 					logging.error("Connection Closed & MOD-UI stopped. Finishing...")
 					self.ws_thread=None
+					self.stop_loading()				
 					return
+
+				self.stop_loading()				
+
 			except Exception as e:
 				logging.error("task_websocket() => %s (%s)" % (e,type(e)))
+				self.start_loading()
 				sleep(1)
+				self.stop_loading()
 
 
 	def api_get_request(self, path, data=None, json=None):
@@ -599,22 +628,29 @@ class zynthian_engine_modui(zynthian_engine):
 
 	#Connect unconnected MIDI-USB devices to the "input plugin" ...
 	def graph_autoconnect_midi_input(self):
-		midi_master="/graph/serial_midi_in"
+		midi_zynthian = "/graph/zynthian_main_out"
+		midi_master = "/graph/serial_midi_in"
 		if midi_master in self.graph:
 			for dest in self.graph[midi_master]:
 				for src in self.hw_ports['midi']['input']:
-					if src not in self.graph:
+					if src!=midi_zynthian and src not in self.graph:
 						self.api_get_request("/effect/connect/"+src+","+dest)
 
 
 	def enable_midi_devices(self):
-		res=self.api_get_request("/jack/get_midi_devices")
+		self.midi_dev_info=self.api_get_request("/jack/get_midi_devices")
 		#logging.debug("API /jack/get_midi_devices => {}".format(res))
-		if 'devList' in res:
-			data=[]
-			for dev in res['devList']: 
+		if 'devList' in self.midi_dev_info:
+			devs=[]
+			for dev in self.midi_dev_info['devList']: 
 				#if dev not in res['devsInUse']: 
-				data.append(dev)
+				devs.append(dev)
+			data = devs
+			#Last MOD-UI version has changed set_midi_devices API call format:
+			#data = {
+			#	"devs": devs,
+			#	"midiAggregatedMode": False
+			#}
 			if len(data)>0:
 				res = self.api_post_request("/jack/set_midi_devices",json=data)
 				#logging.debug("API /jack/set_midi_devices => {}".format(data))
@@ -663,12 +699,12 @@ class zynthian_engine_modui(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def init_midi_learn(self, zctrl):
-		logging.info("Learning '%s' ..." % zctrl.graph_path)
+		logging.info("Learning '{}' ...".format(zctrl.graph_path))
 		res = self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=self.get_parameter_address_data(zctrl,"/midi-learn"))
 
 
 	def midi_unlearn(self, zctrl):
-		logging.info("Unlearning '%s' ..." % zctrl.graph_path)
+		logging.info("Unlearning '{}' ...".format(zctrl.graph_path))
 		try:
 			pad=self.get_parameter_address_data(zctrl,"null")
 			if self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=pad):
@@ -682,7 +718,7 @@ class zynthian_engine_modui(zynthian_engine):
 	def set_midi_learn(self, zctrl, chan, cc):
 		try:
 			if zctrl.graph_path and chan is not None and cc is not None:
-				logging.info("Set MIDI map '{}' => {}, {}" % (zctrl.graph_path, chan, cc))
+				logging.info("Set MIDI map '{}' => {}, {}".format(zctrl.graph_path, chan, cc))
 				uri="/midi-custom_Ch.{}_CC#{}".format(chan+1, cc)
 				pad=self.get_parameter_address_data(zctrl,uri)
 				if self.api_post_request("/effect/parameter/address/"+zctrl.graph_path,json=pad):
@@ -693,11 +729,11 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def midi_map_cb(self, pgraph, symbol, chan, cc):
-		logging.info("MIDI Map: %s %s => %s, %s" % (pgraph,symbol,chan,cc))
+		logging.info("MIDI Map: {} {} => {}, {}".format(pgraph, symbol, chan, cc))
 		try:
-			self.plugin_zctrls[pgraph][symbol]._cb_midi_learn(int(chan),int(cc))
+			self.plugin_zctrls[pgraph][symbol]._cb_midi_learn(int(chan), int(cc))
 		except Exception as err:
-			logging.error("Parameter Not Found: "+pgraph+"/"+symbol+" => "+str(err))
+			logging.error("Parameter Not Found: {}/{} => {}".format(pgraph, symbol, err))
 
 
 	def get_parameter_address_data(self, zctrl, uri):
@@ -716,7 +752,7 @@ class zynthian_engine_modui(zynthian_engine):
 		#{"uri":"/midi-learn","label":"Record","minimum":"0","maximum":"1","value":0,"steps":"1"}
 		#{"uri":"/midi-learn","label":"SooperLooper","minimum":0,"maximum":1,"value":0}
 		#{"uri":"/midi-learn","label":"Reset","minimum":"0","maximum":"1","value":0,"steps":"1"}
-		logging.debug("Parameter Address Data => %s" % str(data))
+		logging.debug("Parameter Address Data => {}".format(data))
 		return data
 
 	# ---------------------------------------------------------------------------
