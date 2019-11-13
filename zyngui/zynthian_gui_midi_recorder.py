@@ -190,7 +190,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def toggle_recording(self):
 		logging.info("TOGGLING MIDI RECORDING ...")
-		if "REC" in self.get_status():
+		if self.get_status()=="REC" or self.get_status()=="PLAY+REC":
 			self.stop_recording()
 		else:
 			self.start_recording()
