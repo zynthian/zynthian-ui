@@ -61,15 +61,6 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 
 	def get_status(self):
-		if zynconf.is_process_running("jack_capture"):
-			return "REC"
-		elif self.current_record:
-			return "PLAY"
-		else:
-			return None
-
-
-	def get_status(self):
 		status=None
 
 		if zynconf.is_process_running("jack_capture"):
@@ -190,6 +181,14 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		while zynconf.is_process_running("jack_capture"):
 			sleep(0.2)
 		self.update_list()
+
+
+	def toggle_recording(self):
+		logging.info("TOGGLING AUDIO RECORDING ...")
+		if self.get_status() in ("REC", "PLAY+REC"):
+			self.stop_recording()
+		else:
+			self.start_recording()
 
 
 	def start_playing(self, fpath=None):

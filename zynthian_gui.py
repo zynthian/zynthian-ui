@@ -100,11 +100,14 @@ class zynthian_gui:
 		"11": "ALL_SOUNDS_OFF",
 		"12": "ALL_OFF",
 
+		"23": "TOGGLE_AUDIO_RECORD",
 		"24": "START_AUDIO_RECORD",
 		"25": "STOP_AUDIO_RECORD",
 		"26": "START_AUDIO_PLAY",
 		"27": "STOP_AUDIO_PLAY",
+		"27": "STOP_AUDIO_PLAY",
 
+		"35": "TOGGLE_MIDI_RECORD",
 		"36": "START_MIDI_RECORD",
 		"37": "STOP_MIDI_RECORD",
 		"38": "START_MIDI_PLAY",
@@ -524,6 +527,9 @@ class zynthian_gui:
 		elif cuia == "STOP_AUDIO_RECORD":
 			self.screens['audio_recorder'].stop_recording()
 
+		elif cuia == "TOGGLE_AUDIO_RECORD":
+			self.screens['audio_recorder'].toggle_recording()
+
 		elif cuia == "START_AUDIO_PLAY":
 			self.screens['audio_recorder'].start_playing()
 
@@ -535,6 +541,9 @@ class zynthian_gui:
 
 		elif cuia == "STOP_MIDI_RECORD":
 			self.screens['midi_recorder'].stop_recording()
+
+		elif cuia == "TOGGLE_MIDI_RECORD":
+			self.screens['midi_recorder'].toggle_recording()
 
 		elif cuia == "START_MIDI_PLAY":
 			self.screens['midi_recorder'].start_playing()

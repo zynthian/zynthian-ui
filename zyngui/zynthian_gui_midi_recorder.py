@@ -180,13 +180,21 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def stop_recording(self):
-		logging.info("STOPPING MIDI RECORD ...")
+		logging.info("STOPPING MIDI RECORDING ...")
 		self.rec_proc.terminate()
 		os.killpg(os.getpgid(self.rec_proc.pid), signal.SIGINT)
 		while self.rec_proc.poll() is None:
 			sleep(0.2)
 		self.update_list()
-	
+
+
+	def toggle_recording(self):
+		logging.info("TOGGLING MIDI RECORDING ...")
+		if self.get_status() in ("REC", "PLAY+REC"):
+			self.stop_recording()
+		else:
+			self.start_recording()
+
 
 	def start_playing(self, fpath=None):
 		if self.play_proc and self.play_proc.poll() is None:
