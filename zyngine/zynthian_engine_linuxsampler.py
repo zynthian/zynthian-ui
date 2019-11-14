@@ -535,7 +535,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			# Move directory to destiny bank
 			shutil.move(dpath, bank_path)
 
-		elif ext=='.gig' or ext==".GIG":
+		elif ext.lower()=='.gig':
 			shutil.move(dpath, bank_path)
 
 		else:
