@@ -34,6 +34,7 @@ from PIL import Image, ImageTk
 from zyngine import zynthian_controller
 from . import zynthian_gui_config
 from . import zynthian_gui_controller
+from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 
 #------------------------------------------------------------------------------
 # Configure logging
@@ -646,70 +647,28 @@ class zynthian_gui_selector:
 
 		return False
 
+
+	def cb_keybinding(self, event):
+		logging.debug("Key press {} {}".format(event.keycode, event.keysym))
+
+		if not zynthian_gui_keybinding.getInstance().isEnabled():
+			logging.debug("Key binding is disabled - ignoring key press")
+			return
 		
-	def cb_keybinding(self,event):
-		logging.info("Key press %d %s" % (event.keycode, event.keysym))
+		# Ignore TAB key (for now) to avoid confusing widget focus change
+		if event.keysym == "Tab":
+			return
 
-		switchSuffix = "SHORT"
+		# Space is not recognised as keysym so need to convert keycode
+		if event.keycode == 65:
+			keysym = "Space"
+		else:
+			keysym = event.keysym
 
-		if event.state == 1: # Shift modifier
-			switchSuffix = "BOLD"
-			if event.keycode == 65: # Space
-				self.zyngui.callable_ui_action("ALL_SOUNDS_OFF")
-				return
-			elif event.keysym == "Insert":
-				self.zyngui.callable_ui_action("REBOOT")
-				return
+		action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
 
-		elif event.state == 4: # Ctrl modifier
-			switchSuffix = "LONG"
-			if event.keycode == 65: # Space
-				self.zyngui.callable_ui_action("ALL_OFF")
-				return
-			elif event.keysym == "Insert":
-				self.zyngui.callable_ui_action("POWER_OFF")
-				return
-			elif event.keysym == "m":
-				self.zyngui.callable_ui_action("RELOAD_MIDI_CONFIG")
-				return
+		if action != None:
+			self.zyngui.callable_ui_action(action)
 
-		if event.keysym in ("Return", "Right"):
-			self.zyngui.callable_ui_action("SWITCH_SELECT_" + switchSuffix)
-		elif event.keysym in ("BackSpace", "Escape", "Left"):
-			self.zyngui.callable_ui_action("SWITCH_BACK_" + switchSuffix)
-		elif event.keysym in ("l", "L"):
-			self.zyngui.callable_ui_action("SWITCH_LAYER_" + switchSuffix)
-		elif event.keysym in ("s", "S"):
-			self.zyngui.callable_ui_action("SWITCH_SNAPSHOT_" + switchSuffix)
-
-		elif event.keysym == "Up":
-			self.zyngui.callable_ui_action("SELECT_UP")
-		elif event.keysym == "Down":
-			self.zyngui.callable_ui_action("SELECT_DOWN")
-
-		elif event.keysym == "r":
-			self.zyngui.callable_ui_action("START_AUDIO_RECORD")
-		elif event.keysym == "R":
-			self.zyngui.callable_ui_action("STOP_AUDIO_RECORD")
-		elif event.keysym == "p":
-			self.zyngui.callable_ui_action("START_AUDIO_PLAY")
-		elif event.keysym == "P":
-			self.zyngui.callable_ui_action("STOP_AUDIO_PLAY")
-
-		elif event.keysym == "m":
-			self.zyngui.callable_ui_action("START_MIDI_RECORD")
-		elif event.keysym == "M":
-			self.zyngui.callable_ui_action("STOP_MIDI_RECORD")
-		elif event.keysym == "k":
-			self.zyngui.callable_ui_action("START_MIDI_PLAY")
-		elif event.keysym == "K":
-			self.zyngui.callable_ui_action("STOP_MIDI_PLAY")
-
-		elif event.keycode == 65: # Space
-			self.zyngui.callable_ui_action("ALL_NOTES_OFF")
-		elif event.keysym == "Insert":
-			self.zyngui.callable_ui_action("RESTART_UI")
-		elif event.keysym == "Tab":
-			return("break") # Ignore TAB key (for now) to avoid confusing widget focus change
 
 #------------------------------------------------------------------------------

@@ -69,6 +69,7 @@ from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
+from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
@@ -95,6 +96,7 @@ class zynthian_gui:
 		"1": "REBOOT",
 		"2": "RESTART_UI",
 		"3": "RELOAD_MIDI_CONFIG",
+		"4": "RELOAD_KEY_BINDING",
 
 		"10": "ALL_NOTES_OFF",
 		"11": "ALL_SOUNDS_OFF",
@@ -155,7 +157,10 @@ class zynthian_gui:
 
 		self.status_info = {}
 		self.status_counter = 0
-
+		
+		# Load keyboard binding map
+		zynthian_gui_keybinding.getInstance().load()
+		
 		# Initialize peakmeter audio monitor if needed
 		if not zynthian_gui_config.show_cpu_status:
 			try:
@@ -217,7 +222,6 @@ class zynthian_gui:
 			self.init_midi()
 			self.init_midi_services()
 			self.zynautoconnect(True)
-
 
 	# ---------------------------------------------------------------------------
 	# OSC Management
@@ -507,6 +511,9 @@ class zynthian_gui:
 
 		elif cuia == "RELOAD_MIDI_CONFIG":
 			self.reload_midi_config()
+
+		elif cuia == "RELOAD_KEY_BINDING":
+			zynthian_gui_keybinding.getInstance().load()
 
 		elif cuia == "ALL_NOTES_OFF":
 			self.all_notes_off()
