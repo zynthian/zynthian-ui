@@ -220,11 +220,6 @@ class zynthian_gui:
 			self.init_midi_services()
 			self.zynautoconnect(True)
 
-
-	def reload_key_binding(self):
-		zynthian_gui_keybinding.getInstance().load()
-
-
 	# ---------------------------------------------------------------------------
 	# OSC Management
 	# ---------------------------------------------------------------------------
@@ -515,7 +510,7 @@ class zynthian_gui:
 			self.reload_midi_config()
 
 		elif cuia == "RELOAD_KEY_BINDING":
-			self.reload_key_binding()
+			zynthian_gui_keybinding.getInstance().load()
 
 		elif cuia == "ALL_NOTES_OFF":
 			self.all_notes_off()

@@ -41,12 +41,6 @@ from . import zynthian_gui_config
 logging.basicConfig(stream=stderr, level=zynthian_gui_config.log_level)
 
 #------------------------------------------------------------------------------
-# Zynthian-UI OSC Address
-#------------------------------------------------------------------------------
-
-zynthian_ui_osc_addr = liblo.Address('localhost',1370,liblo.UDP)
-
-#------------------------------------------------------------------------------
 # Zynthian Keyboard Binding Class
 #------------------------------------------------------------------------------
 
@@ -58,6 +52,13 @@ class zynthian_gui_keybinding:
 	Use getInstance() to get the instance of the singleton and access functions and methods from that instance.
 	"""
 
+	modifiers = {
+		'shift': 1,
+		'caps': 2,
+		'ctrl': 4,
+		'alt': 8
+	}
+
 	default_config = {
 		"enabled": True,
 		"map": {
@@ -65,10 +66,10 @@ class zynthian_gui_keybinding:
 			"ALL_SOUNDS_OFF": { "modifier": 1, "keysym": "Space" },
 			"ALL_OFF": { "modifier": 4, "keysym": "Space" },
 
-			"RESTART_UI": { "modifier": 0, "keysym": "Insert" },
-			"REBOOT": { "modifier": 1, "keysym": "Insert" },
-			"POWER_OFF": { "modifier" : 4, "keysym" : "Insert" },
-			"RELOAD_MIDI_CONFIG": { "modifier": 4, "keysym": "m" },
+			"RESTART_UI": { "modifier": 1, "keysym": "Home" },
+			"REBOOT": { "modifier": 4, "keysym": "Home" },
+			"POWER_OFF": { "modifier" : 4, "keysym" : "End" },
+			"RELOAD_MIDI_CONFIG": { "modifier": 4, "keysym": "Insert" },
 
 			"SWITCH_SELECT_SHORT": { "modifier": 0, "keysym": "Return, Right" },
 			"SWITCH_SELECT_BOLD": { "modifier": 1, "keysym": "Return, Right" },
@@ -86,11 +87,11 @@ class zynthian_gui_keybinding:
 			"SELECT_UP": { "modifier": 0, "keysym": "Up" },
 			"SELECT_DOWN": { "modifier": 0, "keysym": "Down" },
 
-			"START_AUDIO_RECORD": { "modifier": 0, "keysym": "r" },
-			"STOP_AUDIO_RECORD": { "modifier": 1, "keysym": "r" },
-			"TOGGLE_AUDIO_RECORD": { "modifier": 8, "keysym": "r" },
-			"START_AUDIO_PLAY": { "modifier": 4, "keysym": "r" },
-			"STOP_AUDIO_PLAY": { "modifier": 5, "keysym": "r" },
+			"START_AUDIO_RECORD": { "modifier": 0, "keysym": "a" },
+			"STOP_AUDIO_RECORD": { "modifier": 1, "keysym": "a" },
+			"TOGGLE_AUDIO_RECORD": { "modifier": 8, "keysym": "a" },
+			"START_AUDIO_PLAY": { "modifier": 4, "keysym": "a" },
+			"STOP_AUDIO_PLAY": { "modifier": 5, "keysym": "a" },
 
 			"START_MIDI_RECORD": { "modifier": 0, "keysym": "m" },
 			"STOP_MIDI_RECORD": { "modifier": 1, "keysym": "m" },
@@ -135,10 +136,10 @@ class zynthian_gui_keybinding:
 		else:
 			raise Exception("Use getInstance() to get the singleton object.")
 
-		self.resetConfig()
+		self.reset_config()
 
 
-	def getFunctionName(self, keysym, modifier):
+	def get_key_action(self, keysym, modifier):
 		"""
 		Get the name of the function bound to the key combination passed
 		
@@ -243,23 +244,37 @@ class zynthian_gui_keybinding:
 			return False
 
 
-	def resetModifiers(self):
+	def reset_modifiers(self):
 		"""
 		Clears all modifier settings (use before setting modifiers from webconf)
 		"""
 		
 		logging.info("Clearing key binding modifiers")
-		for action,map in self.config['map'].items():
-			map['modifier'] = 0
+		for action,kb in self.config['map'].items():
+			kb['modifier'] = 0
 
 
-	def resetConfig(self):
+	def reset_config(self):
 		"""
 		Reset keyboard binding to default values
 		"""
 
 		self.config = copy.copy(self.default_config)
 		self.parse_map()
+
+
+	def set_binding_keysym(self, action, keysym):
+		self.config['map'][action]['keysym'] = keysym
+
+
+	def add_binding_modifier(self, action, mod):
+		if isinstance(mod, str):
+			try:
+				mod = self.modifiers[mod]
+			except:
+				return
+
+		self.config['map'][action]['modifier'] |= mod
 
 
 	def enable(self, enabled=True):
@@ -286,11 +301,4 @@ class zynthian_gui_keybinding:
 
 		return self.config["enabled"]
 
-
-	def reload_keybinding(self):
-		"""
-		Sends a message to UI to reload keybinding from saved file
-		"""
-		
-		liblo.send(zynthian_ui_osc_addr, "/CUIA/RELOAD_KEY_BINDING")
 #------------------------------------------------------------------------------
