@@ -665,7 +665,11 @@ class zynthian_gui_selector:
 		else:
 			keysym = event.keysym
 
+<<<<<<< HEAD
 		action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
+=======
+		action = zynthian_gui_keybinding.getInstance().getFunctionName(keysym, event.state)
+>>>>>>> 06b1f6d64e863f1d9ef2cd0833dd3cf84341ceba
 
 		if action != None:
 			self.zyngui.callable_ui_action(action)
