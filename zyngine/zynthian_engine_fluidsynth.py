@@ -340,7 +340,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 		else:
 			fname, ext = os.path.splitext(dpath)
-			if ext in ['.sf2', ".SF2", '.sf3', ".SF3"]:
+			if ext.lower() in ['.sf2', '.sf3']:
 				shutil.move(dpath, zynthian_engine.my_data_dir + "/soundfonts/sf2")
 			else:
 				raise Exception("File doesn't look like a SF2/SF3 soundfont")

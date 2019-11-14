@@ -23,10 +23,13 @@
 #******************************************************************************
 
 import os
+import re
 import json
+import shutil
 import logging
 from os.path import isfile
 from collections import OrderedDict
+from subprocess import check_output, STDOUT
 
 from . import zynthian_engine
 from . import zynthian_controller
@@ -488,6 +491,18 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	@classmethod
+	def refresh_zynapi_instance(cls):
+		#TODO Improve this! Jalv should return an updated preset/bank list ...
+		#cls.zynapi_instance.preset_list = cls.zynapi_instance._get_preset_list()
+		#cls.zynapi_instance.bank_list = cls.zynapi_instance._get_bank_list()
+		if cls.zynapi_instance:
+			plugin_name = cls.zynapi_instance.plugin_name
+			plugin_type = cls.zynapi_instance.type
+			cls.zynapi_instance.stop()
+			cls.zynapi_instance = cls(plugin_name, plugin_type)
+
+
+	@classmethod
 	def zynapi_get_banks(cls):
 		banks=[]
 		for b in cls.zynapi_instance.get_bank_list():
@@ -514,15 +529,63 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	@classmethod
+	def zynapi_install(cls, dpath, bank_path):
+		fname, ext = os.path.splitext(dpath)
+		native_ext = cls.zynapi_native_formats()
+
+		if os.path.isdir(dpath) and ext.lower()=='.lv2':
+				shutil.move(dpath, zynthian_engine.my_data_dir + "/presets/lv2/")
+				# TODO: Sanitize!!!
+
+		elif os.path.isdir(dpath) or ext[1:].lower()==native_ext:
+			preset2lv2_cmd = "cd /tmp; /usr/local/bin/preset2lv2 {} \"{}\""
+			if cls.zynapi_instance.plugin_name=="Dexed":
+				native_format = "dx7syx"
+			else:
+				native_format = native_ext
+
+			try:
+				res = check_output(preset2lv2_cmd.format(native_format ,dpath), stderr=STDOUT, shell=True).decode("utf-8")
+				dpath = "/tmp/" + re.compile(".*Bundle '(.*)' generated.*").search(res).group(1)
+				shutil.move(dpath, zynthian_engine.my_data_dir + "/presets/lv2/")
+				cls.refresh_zynapi_instance()
+
+			except Exception as e:
+				raise Exception("Conversion to LV2 failed! => {}".format(e))
+
+		else:
+			raise Exception("Unknown preset format '{}'!".format(native_ext))
+
+
+	@classmethod
+	def zynapi_get_formats(cls):
+		formats = "zip,tgz,tar.gz"
+		fmt = cls.zynapi_native_formats()
+		if fmt:
+			formats = fmt + "," + formats
+
+		return formats
+
+
+	@classmethod
 	def zynapi_martifact_formats(cls):
+		fmt = cls.zynapi_native_formats()
+		if fmt:
+			return fmt
+		else:
+			return "lv2"
+
+
+	@classmethod
+	def zynapi_native_formats(cls):
 		if cls.zynapi_instance.plugin_name=="Dexed":
 			return "syx"
 		elif cls.zynapi_instance.plugin_name=="synthv1":
 			return "synthv1"
-		elif cls.zynapi_instance.plugin_name=="Helm":
-			return "helm"
-		else:
-			return "lv2"
+		elif cls.zynapi_instance.plugin_name=="padthv1":
+			return "padthv1"
+		#elif cls.zynapi_instance.plugin_name=="Helm":
+		#	return "helm"
 
 
 #******************************************************************************
