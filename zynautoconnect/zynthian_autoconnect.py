@@ -498,7 +498,7 @@ def is_running():
 
 
 def cb_jack_xrun(delayed_usecs: float):
-	logging.error("Jack Audio XRUN!")
+	logger.error("Jack Audio XRUN!")
 	zynthian_gui_config.zyngui.status_info['xrun'] = True
 
 

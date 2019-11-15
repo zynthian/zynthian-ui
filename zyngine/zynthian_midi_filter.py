@@ -56,13 +56,6 @@ sys.path.append(os.environ.get('ZYNTHIAN_UI_DIR'))
 from zyncoder import *
 
 #------------------------------------------------------------------------------
-# Configure logging
-#------------------------------------------------------------------------------
-
-# Set root logging level
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-
-#------------------------------------------------------------------------------
 # Parser related classes
 #------------------------------------------------------------------------------
 
@@ -327,5 +320,8 @@ class TestMidiFilterRule(unittest.TestCase):
 
 
 if __name__ == '__main__':
+	# Set root logging level
+	logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
 	zyncoder.lib_zyncoder_init()
 	unittest.main()

@@ -37,20 +37,9 @@ from . import zynthian_gui_config
 from . import zynthian_gui_selector
 from zyngine import zynthian_layer
 
-
-#------------------------------------------------------------------------------
-# Configure logging
-#------------------------------------------------------------------------------
-
-
-# Set root logging level
-logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
-
-
 #------------------------------------------------------------------------------
 # Zynthian Layer Selection GUI Class
 #------------------------------------------------------------------------------
-
 
 class zynthian_gui_layer(zynthian_gui_selector):
 

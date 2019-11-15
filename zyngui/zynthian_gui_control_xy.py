@@ -31,13 +31,6 @@ import logging
 from . import zynthian_gui_config
 
 #------------------------------------------------------------------------------
-# Configure logging
-#------------------------------------------------------------------------------
-
-# Set root logging level
-logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
-
-#------------------------------------------------------------------------------
 # Zynthian X-Y Controller GUI Class
 #------------------------------------------------------------------------------
 

@@ -34,13 +34,6 @@ import liblo
 from . import zynthian_gui_config
 
 #------------------------------------------------------------------------------
-# Configure logging
-#------------------------------------------------------------------------------
-
-# Set root logging level
-logging.basicConfig(stream=stderr, level=zynthian_gui_config.log_level)
-
-#------------------------------------------------------------------------------
 # Zynthian Keyboard Binding Class
 #------------------------------------------------------------------------------
 

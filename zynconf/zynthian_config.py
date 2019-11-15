@@ -37,8 +37,7 @@ from collections import OrderedDict
 # Configure logging
 #-------------------------------------------------------------------------------
 
-logger=logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
+#logging.getLogger(__name__).setLevel(logging.ERROR)
 
 #-------------------------------------------------------------------------------
 # UI Definitions

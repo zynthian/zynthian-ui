@@ -37,13 +37,6 @@ from . import zynthian_gui_controller
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 
 #------------------------------------------------------------------------------
-# Configure logging
-#------------------------------------------------------------------------------
-
-# Set root logging level
-logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
-
-#------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
 #------------------------------------------------------------------------------
 

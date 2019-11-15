@@ -30,13 +30,6 @@ import logging
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
-#------------------------------------------------------------------------------
-# Configure logging
-#------------------------------------------------------------------------------
-
-# Set root logging level
-logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
-
 #-------------------------------------------------------------------------------
 # Zynthian Preset/Instrument Selection GUI Class
 #-------------------------------------------------------------------------------

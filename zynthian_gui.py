@@ -73,16 +73,6 @@ from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
-#------------------------------------------------------------------------------
-# Configure logging
-#------------------------------------------------------------------------------
-
-# Set root logging level
-logging.basicConfig(stream=sys.stderr, level=zynthian_gui_config.log_level)
-
-# Reduce log level for other modules
-logging.getLogger("urllib3").setLevel(logging.WARNING)
-
 #-------------------------------------------------------------------------------
 # Zynthian Main GUI Class
 #-------------------------------------------------------------------------------
