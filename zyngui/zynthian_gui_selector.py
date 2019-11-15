@@ -458,13 +458,14 @@ class zynthian_gui_selector:
 
 
 	def set_selector(self):
-		if self.zselector:
-			self.zselector_ctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
-			self.zselector.config(self.zselector_ctrl)
-			self.zselector.show()
-		else:
-			self.zselector_ctrl=zynthian_controller(None,self.selector_caption,self.selector_caption,{ 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
-			self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.main_frame,self.zselector_ctrl)
+		if self.shown:
+			if self.zselector:
+				self.zselector_ctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
+				self.zselector.config(self.zselector_ctrl)
+				self.zselector.show()
+			else:
+				self.zselector_ctrl=zynthian_controller(None,self.selector_caption,self.selector_caption,{ 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
+				self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.main_frame,self.zselector_ctrl)
 
 
 	def fill_list(self):
@@ -488,7 +489,7 @@ class zynthian_gui_selector:
 
 
 	def zyncoder_read(self):
-		if self.zselector:
+		if self.shown and self.zselector:
 			self.zselector.read_zyncoder()
 			if self.index!=self.zselector.value:
 				self.select(self.zselector.value)
@@ -518,7 +519,7 @@ class zynthian_gui_selector:
 	def select(self, index=None):
 		if index is None: index=self.index
 		self.select_listbox(index)
-		if self.zselector and self.zselector.value!=self.index:
+		if self.shown and self.zselector and self.zselector.value!=self.index:
 			self.zselector.set_value(self.index, True)
 
 
