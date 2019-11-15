@@ -51,7 +51,7 @@ def get_jalv_plugins():
 class zynthian_engine_jalv(zynthian_engine):
 
 	#------------------------------------------------------------------------------
-	# Plugin List
+	# Plugin List (this list is used ONLY if no config file is found)
 	#------------------------------------------------------------------------------
 
 	JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(zynthian_engine.config_dir)
@@ -69,6 +69,26 @@ class zynthian_engine_jalv(zynthian_engine):
 		("Triceratops", {'TYPE': "MIDI Synth",'URL': "http://nickbailey.co.nr/triceratops"}),
 		("Raffo MiniMoog", {'TYPE': "MIDI Synth",'URL': "http://example.org/raffo"})
 	])
+
+	#------------------------------------------------------------------------------
+	# Native formats configuration (used by zynapi_install, preset converter, etc.)
+	#------------------------------------------------------------------------------
+
+	plugin2native_ext = {
+		"Dexed": "syx",
+		"synthv1": "synthv1",
+		"padthv1": "padthv1",
+		"OBXD": "fxb"
+		#"Helm": "helm"
+	}
+
+	plugin2preset2lv2_format = {
+		"Dexed": "dx7syx",
+		"synthv1": "synthv1",
+		"padthv1": "padthv1",
+		"OBXD": "obxdfxb"
+		#"Helm": "helm"
+	}
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
@@ -531,36 +551,47 @@ class zynthian_engine_jalv(zynthian_engine):
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
 		fname, ext = os.path.splitext(dpath)
-		native_ext = cls.zynapi_native_formats()
+		native_ext = cls.zynapi_get_native_ext()
 
-		if os.path.isdir(dpath) and ext.lower()=='.lv2':
-				shutil.move(dpath, zynthian_engine.my_data_dir + "/presets/lv2/")
-				# TODO: Sanitize!!!
+		# Try to copy LV2 bundles ...
+		if os.path.isdir(dpath):
+			# Find manifest.ttl
+			manifest_files = check_output("find \"{}\" -type f -iname manifest.ttl".format(dpath), shell=True).decode("utf-8").split("\n")
+			# Copy LV2 bundle directories to destiny ...
+			count = 0
+			for f in manifest_files:
+				bpath, fname = os.path.split(f)
+				head, bname = os.path.split(bpath)
+				if bname:
+					shutil.rmtree(zynthian_engine.my_data_dir + "/presets/lv2/" + bname, ignore_errors=True)
+					shutil.move(bpath, zynthian_engine.my_data_dir + "/presets/lv2/")
+					count += 1
+			if count>0:
+				cls.refresh_zynapi_instance()
+				return
 
-		elif os.path.isdir(dpath) or ext[1:].lower()==native_ext:
-			preset2lv2_cmd = "cd /tmp; /usr/local/bin/preset2lv2 {} \"{}\""
-			if cls.zynapi_instance.plugin_name=="Dexed":
-				native_format = "dx7syx"
-			else:
-				native_format = native_ext
-
+		# Else, try to convert from native format ...
+		if os.path.isdir(dpath) or ext[1:].lower()==native_ext:
+			preset2lv2_cmd = "cd /tmp; /usr/local/bin/preset2lv2 {} \"{}\"".format(cls.zynapi_get_preset2lv2_format(), dpath)
 			try:
-				res = check_output(preset2lv2_cmd.format(native_format ,dpath), stderr=STDOUT, shell=True).decode("utf-8")
-				dpath = "/tmp/" + re.compile(".*Bundle '(.*)' generated.*").search(res).group(1)
-				shutil.move(dpath, zynthian_engine.my_data_dir + "/presets/lv2/")
+				res = check_output(preset2lv2_cmd, stderr=STDOUT, shell=True).decode("utf-8")
+				bname = re.compile(".*Bundle '(.*)' generated.*").search(res).group(1)
+				bpath = "/tmp/" + bname
+				shutil.rmtree(zynthian_engine.my_data_dir + "/presets/lv2/" + bname, ignore_errors=True)
+				shutil.move(bpath, zynthian_engine.my_data_dir + "/presets/lv2/")
 				cls.refresh_zynapi_instance()
 
 			except Exception as e:
-				raise Exception("Conversion to LV2 failed! => {}".format(e))
+				raise Exception("Conversion from {} to LV2 failed! => {}".format(native_ext, e))
 
 		else:
-			raise Exception("Unknown preset format '{}'!".format(native_ext))
+			raise Exception("Unknown preset format: {}".format(native_ext))
 
 
 	@classmethod
 	def zynapi_get_formats(cls):
 		formats = "zip,tgz,tar.gz"
-		fmt = cls.zynapi_native_formats()
+		fmt = cls.zynapi_get_native_ext()
 		if fmt:
 			formats = fmt + "," + formats
 
@@ -569,7 +600,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	@classmethod
 	def zynapi_martifact_formats(cls):
-		fmt = cls.zynapi_native_formats()
+		fmt = cls.zynapi_get_native_ext()
 		if fmt:
 			return fmt
 		else:
@@ -577,15 +608,19 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	@classmethod
-	def zynapi_native_formats(cls):
-		if cls.zynapi_instance.plugin_name=="Dexed":
-			return "syx"
-		elif cls.zynapi_instance.plugin_name=="synthv1":
-			return "synthv1"
-		elif cls.zynapi_instance.plugin_name=="padthv1":
-			return "padthv1"
-		#elif cls.zynapi_instance.plugin_name=="Helm":
-		#	return "helm"
+	def zynapi_get_native_ext(cls):
+		try:
+			return cls.plugin2native_ext[cls.zynapi_instance.plugin_name]
+		except:
+			return None
+
+
+	@classmethod
+	def zynapi_get_preset2lv2_format(cls):
+		try:
+			return cls.plugin2preset2lv2_format[cls.zynapi_instance.plugin_name]
+		except:
+			return None
 
 
 #******************************************************************************
