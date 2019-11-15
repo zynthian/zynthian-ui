@@ -203,7 +203,7 @@ class zynthian_gui_keybinding:
 
 		except Exception as e:
 			logging.warning("Can't load keyboard binding config file '{}'. Using default.".format(config_fpath))
-			self.resetConfig()
+			self.reset_config()
 			return False
 
 
