@@ -63,7 +63,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		("MDA Piano", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/Piano"}),
 		("MDA JX10", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/JX10"}),
 		("MDA DX10", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/DX10"}),
-		("OBXD", {'TYPE': "MIDI Synth",'URL': "https://obxd.wordpress.com"}),
+		("Obxd", {'TYPE': "MIDI Synth",'URL': "https://obxd.wordpress.com"}),
 		("SynthV1", {'TYPE': "MIDI Synth",'URL': "http://synthv1.sourceforge.net/lv2"}),
 		("Noize Mak3r", {'TYPE': "MIDI Synth",'URL': "http://kunz.corrupt.ch/products/tal-noisemaker"}),
 		("Triceratops", {'TYPE': "MIDI Synth",'URL': "http://nickbailey.co.nr/triceratops"}),
@@ -78,7 +78,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		"Dexed": "syx",
 		"synthv1": "synthv1",
 		"padthv1": "padthv1",
-		"OBXD": "fxb"
+		"Obxd": "fxb"
 		#"Helm": "helm"
 	}
 
@@ -86,7 +86,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		"Dexed": "dx7syx",
 		"synthv1": "synthv1",
 		"padthv1": "padthv1",
-		"OBXD": "obxdfxb"
+		"Obxd": "obxdfxb"
 		#"Helm": "helm"
 	}
 
