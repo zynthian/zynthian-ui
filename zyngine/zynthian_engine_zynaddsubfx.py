@@ -463,16 +463,14 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_banks(cls):
-		bank_dirs = [
-			('_', zynthian_engine.my_data_dir + "/presets/zynaddsubfx"),
-		]
 		banks=[]
 		for b in cls.get_dirlist(cls.bank_dirs):
 			banks.append({
 				'text': b[2],
 				'name': b[4],
 				'fullpath': b[0],
-				'raw': b
+				'raw': b,
+				'readonly': False
 			})
 		return banks
 
@@ -485,7 +483,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				'text': p[4],
 				'name': os.path.splitext(p[4])[0],
 				'fullpath': p[0],
-				'raw': p
+				'raw': p,
+				'readonly': False
 			})
 		return presets
 

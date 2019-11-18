@@ -710,7 +710,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				'text': b[2],
 				'name': b[2],
 				'fullpath': b[0],
-				'raw': b
+				'raw': b,
+				'readonly': True
 			})
 		return banks
 
@@ -723,7 +724,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				'text': p[2] + ".fxp",
 				'name': p[2][len(p[4])+1:],
 				'fullpath': cls.user_presets_dpath + "/" + p[0] + ".fxp",
-				'raw': p
+				'raw': p,
+				'readonly': False
 			})
 		return presets
 

@@ -767,7 +767,8 @@ class zynthian_engine_modui(zynthian_engine):
 				'text': b[2],
 				'name': b[2],
 				'fullpath': b[0],
-				'raw': b
+				'raw': b,
+				'readonly': False
 			})
 		return banks
 

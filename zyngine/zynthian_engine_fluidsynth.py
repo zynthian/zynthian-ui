@@ -292,7 +292,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				'text': tail,
 				'name': fname,
 				'fullpath': b[0],
-				'raw': b
+				'raw': b,
+				'readonly': False
 			})
 		return banks
 

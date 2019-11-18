@@ -530,7 +530,8 @@ class zynthian_engine_jalv(zynthian_engine):
 				'text': b[2],
 				'name': b[2],
 				'fullpath': b[0],
-				'raw': b
+				'raw': b,
+				'readonly': False if b[0].startswith("file:///") else True
 			})
 		return banks
 
@@ -543,9 +544,41 @@ class zynthian_engine_jalv(zynthian_engine):
 				'text': p[2],
 				'name': p[2],
 				'fullpath': p[0],
-				'raw': p
+				'raw': p,
+				'readonly': False if p[0].startswith("file:///") else True
 			})
 		return presets
+
+
+	@classmethod
+	def zynapi_rename_bank(cls, bank_path, new_bank_name):
+		if bank_path.startswith("file:///"):
+			bundle_path, bank_name = os.path.split(bank_path)
+			bundle_path = bundle_path[7:]
+			raise Exception("Renaming LV2 banks is not implemented yet!")
+		else:
+			raise Exception("Bank is read-only!")
+
+
+	@classmethod
+	def zynapi_remove_bank(cls, bank_path):
+		if bank_path.startswith("file:///"):
+			bundle_path, bank_name = os.path.split(bank_path)
+			bundle_path = bundle_path[7:]
+			shutil.rmtree(bundle_path)
+			cls.refresh_zynapi_instance()
+		else:
+			raise Exception("Bank is read-only".format(bank_path))
+
+
+	@classmethod
+	def zynapi_download(cls, fullpath):
+		if fullpath.startswith("file:///"):
+			bundle_path, bank_name = os.path.split(fullpath)
+			bundle_path = bundle_path[7:]
+			return bundle_path
+		else:
+			raise Exception("Bank is not downloadable!")
 
 
 	@classmethod
