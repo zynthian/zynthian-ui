@@ -544,7 +544,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_formats(cls):
-		return "gig,zip,tgz,tar.gz"
+		return "gig,zip,tgz,tar.gz,tar.bz2"
 
 
 	@classmethod

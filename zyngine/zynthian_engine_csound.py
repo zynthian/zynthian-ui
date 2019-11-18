@@ -309,7 +309,7 @@ class zynthian_engine_csound(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_formats(cls):
-		return "csd,zip,tgz,tar.gz"
+		return "csd,zip,tgz,tar.gz,tar.bz2"
 
 
 #******************************************************************************

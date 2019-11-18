@@ -290,7 +290,7 @@ class zynthian_engine_puredata(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_formats(cls):
-		return "pd,zip,tgz,tar.gz"
+		return "pd,zip,tgz,tar.gz,tar.bz2"
 
 
 #******************************************************************************

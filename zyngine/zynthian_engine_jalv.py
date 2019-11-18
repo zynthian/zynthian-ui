@@ -590,7 +590,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_formats(cls):
-		formats = "zip,tgz,tar.gz"
+		formats = "zip,tgz,tar.gz,tar.bz2"
 		fmt = cls.zynapi_get_native_ext()
 		if fmt:
 			formats = fmt + "," + formats
