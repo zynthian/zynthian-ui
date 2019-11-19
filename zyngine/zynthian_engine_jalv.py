@@ -151,7 +151,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, plugin_name, plugin_type, zyngui=None):
+	def __init__(self, plugin_name, plugin_type, zyngui=None, no_plugin_instance=False):
 		super().__init__(zyngui)
 
 		self.type = plugin_type
@@ -164,10 +164,13 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
 
-		if self.config_remote_display():
-			self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))		#TODO => Is possible to run plugins UI?
+		if no_plugin_instance:
+			self.command = ("/usr/local/bin/jalv -z {}".format(self.plugin_url))
 		else:
-			self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))
+			if self.config_remote_display():
+				self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))		#TODO => Is possible to run plugin's UI?
+			else:
+				self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))
 
 		self.command_prompt = "\n> "
 
@@ -507,7 +510,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			cls.zynapi_instance = None
 
 		if not cls.zynapi_instance:
-			cls.zynapi_instance = cls(plugin_name, plugin_type)
+			cls.zynapi_instance = cls(plugin_name, plugin_type, None, True)
 
 
 	@classmethod
@@ -519,7 +522,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			plugin_name = cls.zynapi_instance.plugin_name
 			plugin_type = cls.zynapi_instance.type
 			cls.zynapi_instance.stop()
-			cls.zynapi_instance = cls(plugin_name, plugin_type)
+			cls.zynapi_instance = cls(plugin_name, plugin_type, None, True)
 
 
 	@classmethod
