@@ -556,9 +556,8 @@ class zynthian_engine_jalv(zynthian_engine):
 	@classmethod
 	def zynapi_rename_bank(cls, bank_path, new_bank_name):
 		if bank_path.startswith("file:///"):
-			bundle_path, bank_name = os.path.split(bank_path)
-			bundle_path = bundle_path[7:]
-			raise Exception("Renaming LV2 banks is not implemented yet!")
+			cls.lv2_rename_bank(bank_path, new_bank_name)
+			cls.refresh_zynapi_instance()
 		else:
 			raise Exception("Bank is read-only!")
 
@@ -571,7 +570,25 @@ class zynthian_engine_jalv(zynthian_engine):
 			shutil.rmtree(bundle_path)
 			cls.refresh_zynapi_instance()
 		else:
-			raise Exception("Bank is read-only".format(bank_path))
+			raise Exception("Bank is read-only")
+
+
+	@classmethod
+	def zynapi_rename_preset(cls, preset_path, new_preset_name):
+		if preset_path.startswith("file:///"):
+			cls.lv2_rename_preset(preset_path, new_preset_name)
+			cls.refresh_zynapi_instance()
+		else:
+			raise Exception("Preset is read-only!")
+
+
+	@classmethod
+	def zynapi_remove_preset(cls, preset_path):
+		if preset_path.startswith("file:///"):
+			cls.lv2_remove_preset(preset_path)
+			cls.refresh_zynapi_instance()
+		else:
+			raise Exception("Preset is read-only")
 
 
 	@classmethod
@@ -611,7 +628,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			preset2lv2_cmd = "cd /tmp; /usr/local/bin/preset2lv2 {} \"{}\"".format(cls.zynapi_get_preset2lv2_format(), dpath)
 			try:
 				res = check_output(preset2lv2_cmd, stderr=STDOUT, shell=True).decode("utf-8")
-				bname = re.compile(".*Bundle '(.*)' generated.*").search(res).group(1)
+				bname = re.compile("Bundle '(.*)' generated").search(res).group(1)
 				bpath = "/tmp/" + bname
 				shutil.rmtree(zynthian_engine.my_data_dir + "/presets/lv2/" + bname, ignore_errors=True)
 				shutil.move(bpath, zynthian_engine.my_data_dir + "/presets/lv2/")
@@ -657,6 +674,100 @@ class zynthian_engine_jalv(zynthian_engine):
 			return cls.plugin2preset2lv2_format[cls.zynapi_instance.plugin_name]
 		except:
 			return None
+
+
+	#--------------------------------------------------------------------------
+	# LV2 Bundle TTL file manipulations
+	#--------------------------------------------------------------------------
+
+	@staticmethod
+	def ttl_read_parts(fpath):
+		with open(fpath, 'r') as f:
+			data = f.read()
+			parts = data.split(".\n")
+			f.close()
+			return parts
+
+
+	@staticmethod
+	def ttl_write_parts(fpath, parts):
+		with open(fpath, 'w') as f:
+			data = ".\n".join(parts)
+			f.write(data)
+			logging.debug(data)
+			f.close()
+
+
+	@staticmethod
+	def lv2_rename_bank(bank_path, new_bank_name):
+		bank_path = bank_path[7:]
+		bundle_path, bank_dname = os.path.split(bank_path)
+
+		ttl_fpath = bundle_path + "/manifest.ttl"
+		parts = zynthian_engine_jalv.ttl_read_parts(ttl_fpath)
+
+		bmre = re.compile("<{}>[\s]+a pset:bank ;".format(bank_dname))
+		brre = re.compile("([\s]+rdfs:label[\s]+\").*(\" )")
+		for i,p in enumerate(parts):
+			if bmre.search(p):
+				new_bank_name = zynthian_engine_jalv.sanitize_text(new_bank_name)
+				parts[i] = brre.sub(lambda m: m.group(1)+new_bank_name+m.group(2), p)
+				zynthian_engine_jalv.ttl_write_parts(ttl_fpath, parts)
+				return
+
+		raise Exception("Format doesn't match!")
+
+
+	@staticmethod
+	def lv2_rename_preset(preset_path, new_preset_name):
+		preset_path = preset_path[7:]
+		bundle_path, preset_fname = os.path.split(preset_path)
+
+		parts = zynthian_engine_jalv.ttl_read_parts(preset_path)
+
+		bmre = re.compile("<{}>[\s]+a pset:Preset ;".format(preset_fname))
+		brre = re.compile("([\s]+rdfs:label[\s]+\").*(\" )")
+		for i,p in enumerate(parts):
+			if bmre.search(p):
+				new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
+				parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
+				zynthian_engine_jalv.ttl_write_parts(preset_path, parts)
+				return
+
+		raise Exception("Format doesn't match!")
+
+
+	@staticmethod
+	def lv2_remove_preset(preset_path):
+		preset_path = preset_path[7:]
+		bundle_path, preset_fname = os.path.split(preset_path)
+
+		ttl_fpath = bundle_path + "/manifest.ttl"
+		parts = zynthian_engine_jalv.ttl_read_parts(ttl_fpath)
+
+		bmre = re.compile("<{}>[\s]+a pset:Preset ;".format(preset_fname))
+		for i,p in enumerate(parts):
+			if bmre.search(p):
+				del parts[i]
+				zynthian_engine_jalv.ttl_write_parts(ttl_fpath, parts)
+				os.remove(preset_path)
+				return
+
+		raise Exception("Format doesn't match!")
+
+
+	@staticmethod
+	def sanitize_text(text):
+		# Remove bad chars
+		bad_chars = ['.', ',', ';', ':', '!', '*', '+', '?', '@', '&', '$', '%', '=', '"', '\'', '`', '/', '\\', '^', '<', '>', '[', ']', '(', ')', '{', '}']
+		for i in bad_chars: 
+			text = text.replace(i, ' ')
+			
+		# Strip and replace (multi)spaces by single underscore
+		text = '_'.join(text.split())
+		text = '_'.join(filter(None,text.split('_')))
+	
+		return text
 
 
 #******************************************************************************
