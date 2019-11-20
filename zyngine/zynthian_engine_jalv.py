@@ -631,10 +631,11 @@ class zynthian_engine_jalv(zynthian_engine):
 			preset2lv2_cmd = "cd /tmp; /usr/local/bin/preset2lv2 {} \"{}\"".format(cls.zynapi_get_preset2lv2_format(), dpath)
 			try:
 				res = check_output(preset2lv2_cmd, stderr=STDOUT, shell=True).decode("utf-8")
-				bname = re.compile("Bundle '(.*)' generated").search(res).group(1)
-				bpath = "/tmp/" + bname
-				shutil.rmtree(zynthian_engine.my_data_dir + "/presets/lv2/" + bname, ignore_errors=True)
-				shutil.move(bpath, zynthian_engine.my_data_dir + "/presets/lv2/")
+				for bname in re.compile("Bundle '(.*)' generated").findall(res):
+					bpath = "/tmp/" + bname
+					shutil.rmtree(zynthian_engine.my_data_dir + "/presets/lv2/" + bname, ignore_errors=True)
+					shutil.move(bpath, zynthian_engine.my_data_dir + "/presets/lv2/")
+
 				cls.refresh_zynapi_instance()
 
 			except Exception as e:
