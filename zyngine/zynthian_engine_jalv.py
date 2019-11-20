@@ -508,12 +508,14 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	@classmethod
 	def init_zynapi_instance(cls, plugin_name, plugin_type):
-		if cls.zynapi_instance and cls.zynapi_instance != "JV/" + plugin_name:
+		if cls.zynapi_instance and cls.zynapi_instance.plugin_name!=plugin_name:
 			cls.zynapi_instance.stop()
 			cls.zynapi_instance = None
 
 		if not cls.zynapi_instance:
 			cls.zynapi_instance = cls(plugin_name, plugin_type, None, True)
+		else:
+			logging.debug("\n\n********** REUSING INSTANCE for '{}'***********".format(plugin_name))
 
 
 	@classmethod
@@ -633,6 +635,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				res = check_output(preset2lv2_cmd, stderr=STDOUT, shell=True).decode("utf-8")
 				for bname in re.compile("Bundle '(.*)' generated").findall(res):
 					bpath = "/tmp/" + bname
+					logging.debug("Copying LV2-Bundle '{}' ...".format(bpath))
 					shutil.rmtree(zynthian_engine.my_data_dir + "/presets/lv2/" + bname, ignore_errors=True)
 					shutil.move(bpath, zynthian_engine.my_data_dir + "/presets/lv2/")
 
@@ -698,7 +701,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		with open(fpath, 'w') as f:
 			data = ".\n".join(parts)
 			f.write(data)
-			logging.debug(data)
+			#logging.debug(data)
 			f.close()
 
 
