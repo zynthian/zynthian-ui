@@ -274,10 +274,13 @@ class zynthian_engine_jalv(zynthian_engine):
 				if len(parts)==2:
 					title = parts[0].strip()
 
-					uri_parts = parts[1].strip().split(", ")
+					uri_parts = parts[1].strip().split(",")
 					uri_preset = uri_parts[0].strip()
-					uri_banks = uri_parts[1:]
-					if len(uri_banks)==0:
+					uri_banks = []
+					uri_bank = uri_parts[1].strip()
+					if uri_bank:
+						uri_banks.append(uri_bank)
+					else:
 						uri_banks.append("NoBank")
 					preset_list.append((uri_preset,None,title,uri_banks))
 
@@ -703,16 +706,17 @@ class zynthian_engine_jalv(zynthian_engine):
 		bank_path = bank_path[7:]
 		bundle_path, bank_dname = os.path.split(bank_path)
 
-		ttl_fpath = bundle_path + "/manifest.ttl"
-		parts = zynthian_engine_jalv.ttl_read_parts(ttl_fpath)
+		man_fpath = bundle_path + "/manifest.ttl"
+		parts = zynthian_engine_jalv.ttl_read_parts(man_fpath)
 
-		bmre = re.compile("<{}>[\s]+a pset:bank ;".format(bank_dname))
-		brre = re.compile("([\s]+rdfs:label[\s]+\").*(\" )")
+		bmre1 = re.compile(r"<{}>".format(bank_dname))
+		bmre2 = re.compile(r"(.*)a pset:bank ;")
+		brre = re.compile(r"([\s]+rdfs:label[\s]+\").*(\" )")
 		for i,p in enumerate(parts):
-			if bmre.search(p):
+			if bmre1.search(p) and bmre2.search(p):
 				new_bank_name = zynthian_engine_jalv.sanitize_text(new_bank_name)
 				parts[i] = brre.sub(lambda m: m.group(1)+new_bank_name+m.group(2), p)
-				zynthian_engine_jalv.ttl_write_parts(ttl_fpath, parts)
+				zynthian_engine_jalv.ttl_write_parts(man_fpath, parts)
 				return
 
 		raise Exception("Format doesn't match!")
@@ -723,18 +727,31 @@ class zynthian_engine_jalv(zynthian_engine):
 		preset_path = preset_path[7:]
 		bundle_path, preset_fname = os.path.split(preset_path)
 
-		parts = zynthian_engine_jalv.ttl_read_parts(preset_path)
+		man_fpath = bundle_path + "/manifest.ttl"
+		man_parts = zynthian_engine_jalv.ttl_read_parts(man_fpath)
+		prs_parts = zynthian_engine_jalv.ttl_read_parts(preset_path)
 
-		bmre = re.compile("<{}>[\s]+a pset:Preset ;".format(preset_fname))
+		bmre1 = re.compile(r"<{}>".format(preset_fname))
+		bmre2 = re.compile(r"(.*)a pset:Preset ;")
 		brre = re.compile("([\s]+rdfs:label[\s]+\").*(\" )")
-		for i,p in enumerate(parts):
-			if bmre.search(p):
-				new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
-				parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
-				zynthian_engine_jalv.ttl_write_parts(preset_path, parts)
-				return
 
-		raise Exception("Format doesn't match!")
+		renamed = False
+		for i,p in enumerate(man_parts):
+			if bmre1.search(p) and bmre2.search(p):
+				new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
+				man_parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
+				zynthian_engine_jalv.ttl_write_parts(man_fpath, man_parts)
+				renamed = True
+
+		for i,p in enumerate(prs_parts):
+			if bmre2.search(p):
+				new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
+				prs_parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
+				zynthian_engine_jalv.ttl_write_parts(preset_path, prs_parts)
+				renamed = True
+
+		if not renamed:
+			raise Exception("Format doesn't match!")
 
 
 	@staticmethod
@@ -742,14 +759,15 @@ class zynthian_engine_jalv(zynthian_engine):
 		preset_path = preset_path[7:]
 		bundle_path, preset_fname = os.path.split(preset_path)
 
-		ttl_fpath = bundle_path + "/manifest.ttl"
-		parts = zynthian_engine_jalv.ttl_read_parts(ttl_fpath)
+		man_fpath = bundle_path + "/manifest.ttl"
+		parts = zynthian_engine_jalv.ttl_read_parts(man_fpath)
 
-		bmre = re.compile("<{}>[\s]+a pset:Preset ;".format(preset_fname))
+		bmre1 = re.compile(r"<{}>".format(preset_fname))
+		bmre2 = re.compile(r"(.*)a pset:Preset ;")
 		for i,p in enumerate(parts):
-			if bmre.search(p):
+			if bmre1.search(p) and bmre2.search(p):
 				del parts[i]
-				zynthian_engine_jalv.ttl_write_parts(ttl_fpath, parts)
+				zynthian_engine_jalv.ttl_write_parts(man_fpath, parts)
 				os.remove(preset_path)
 				return
 
