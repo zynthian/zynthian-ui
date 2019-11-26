@@ -132,7 +132,7 @@ def load_config(set_env=True, fpath=None):
 			#logging.debug("CONFIG VARNAME: %s" % res.group(1))
 
 	# Execute config script and dump environment
-	env=check_output("source %s;env" % fpath, shell=True, universal_newlines=True, executable="/bin/bash")
+	env=check_output("source \"{}\";env".format(fpath), shell=True, universal_newlines=True, executable="/bin/bash")
 
 	# Parse environment dump
 	config={}
