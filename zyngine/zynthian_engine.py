@@ -185,9 +185,10 @@ class zynthian_engine:
 
 	def start(self):
 		if not self.proc:
-			logging.info("Starting Engine " + self.name)
+			logging.info("Starting Engine {}".format(self.name))
 			try:
 
+				logging.debug("Command: {}".format(self.command))
 				if self.command_env:
 					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
 				else:
@@ -223,7 +224,7 @@ class zynthian_engine:
 			self.proc.expect(self.command_prompt)
 			return self.proc.before.decode()
 		else:
-			logging.error("Command Prompt is not defined!!")
+			logging.warning("Command Prompt is not defined!")
 			return None
 
 
@@ -319,6 +320,8 @@ class zynthian_engine:
 			dn=dpd[0]
 			try:
 				for f in sorted(os.listdir(dp)):
+					if next(os.scandir(join(dp,f)), None) is None:
+						continue
 					if not f.startswith('.') and isdir(join(dp,f)):
 						title,ext=os.path.splitext(f)
 						title=str.replace(title, '_', ' ')
