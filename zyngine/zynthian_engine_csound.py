@@ -61,7 +61,8 @@ class zynthian_engine_csound(zynthian_engine):
 
 	bank_dirs = [
 		('EX', zynthian_engine.ex_data_dir + "/presets/csound"),
-		('_', zynthian_engine.my_data_dir + "/presets/csound")
+		('MY', zynthian_engine.my_data_dir + "/presets/csound"),
+		('_', zynthian_engine.data_dir + "/presets/csound")
 	]
 
 	#----------------------------------------------------------------------------
@@ -119,7 +120,7 @@ class zynthian_engine_csound(zynthian_engine):
 
 	def set_preset(self, layer, preset, preload=False):
 		self.load_preset_config(preset[0])
-		self.command=self.base_command+ " " + self.get_fixed_preset_filepath(preset[0])
+		self.command=self.base_command+ " " + self.get_fixed_preset_filepath(preset[0], layer.midi_chan)
 		self.preset=preset[0]
 		self.stop()
 		self.start()
@@ -162,21 +163,26 @@ class zynthian_engine_csound(zynthian_engine):
 		return preset_fpath
 
 
-	def get_fixed_preset_filepath(self, preset_dir):
+	def get_fixed_preset_filepath(self, preset_dir, midi_chan):
 		
 		preset_fpath=self.get_preset_filepath(preset_dir)
-		
-		if self.nogui:
-			# Generate on-the-fly CSD file, disabling GUI
-			with open(preset_fpath, 'r') as f:
-				data=f.read()
+
+		# Generate on-the-fly CSD file
+		with open(preset_fpath, 'r') as f:
+			data=f.read()
+
+			# Set MIDI channel
+			data = data.replace('imidichan = 1', "imidichan = {}".format(midi_chan + 1))
+
+			# Disable GUI
+			if self.nogui:
 				data = data.replace('FLrun', ";FLrun")
-				fixed_preset_fpath = preset_fpath.replace(".csd", ".nogui.csd")
 
-				with open(fixed_preset_fpath, 'w') as ff:
-					ff.write(data)
+			fixed_preset_fpath = preset_fpath.replace(".csd", ".zynthian.csd")
+			with open(fixed_preset_fpath, 'w') as ff:
+				ff.write(data)
 
-				return fixed_preset_fpath
+			return fixed_preset_fpath
 
 		return preset_fpath
 
