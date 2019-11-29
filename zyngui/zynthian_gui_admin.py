@@ -30,7 +30,7 @@ import signal
 import logging
 from time import sleep
 from threading  import Thread
-from subprocess import check_output, Popen, PIPE
+from subprocess import check_output, Popen, PIPE, STDOUT
 
 # Zynthian specific modules
 import zynconf
@@ -140,7 +140,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.zyngui.add_info("EXECUTING:\n","EMPHASIS")
 			self.zyngui.add_info("{}\n".format(cmd))
 			try:
-				self.proc=Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+				self.proc=Popen(cmd, shell=True, stdout=PIPE, stderr=STDOUT, universal_newlines=True)
 				self.zyngui.add_info("RESULT:\n","EMPHASIS")
 				for line in self.proc.stdout:
 					if re.search("ERROR", line, re.IGNORECASE):
@@ -196,7 +196,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 					result="ERROR: %s" % error
 					logging.error(result)
 					self.zyngui.add_info(result,"ERROR")
-				else:
+				if output:
 					logging.info(output)
 					self.zyngui.add_info(output)
 			except Exception as e:
