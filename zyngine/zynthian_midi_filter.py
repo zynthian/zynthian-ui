@@ -9,7 +9,7 @@
 #  MAP [CH#??] EV[#??] => [CH#??] EV[#??]
 #  CLEAN [CH#??] EV[#??]
 #
-# Valid event types: 
+# Valid event types (EV): 
 # -------------------------------------
 #  NON => Note-On
 #  NOFF => Note-Off
@@ -21,7 +21,7 @@
 # 
 # Valid numeric expressions:
 # -------------------------------------
-#  5				=> a single number
+#  5			=> a single number
 #  5,6,7 		=> a list of numbers
 #  5:7			=> a range of numbers, including both limitters
 #  1,2,3:5	=> a mix of lists and ranges
@@ -174,11 +174,23 @@ class MidiFilterRule:
 				# Parse arguments
 				self.args.append(MidiFilterArgs(parts[1:arrow_i]))
 				self.args.append(MidiFilterArgs(parts[arrow_i+1:],self.args[0]))
-				# Check consistency of rule lists
-				if len(self.args[0].ch_list)!=len(self.args[1].ch_list):
-					raise MidiFilterException("MAP rule channel lists can't be matched")
-				if len(self.args[1].ev_list)!=len(self.args[1].ev_list):
-					raise MidiFilterException("MAP rule event lists can't be matched")
+				
+				n0 = len(self.args[0].ch_list)
+				n1 = len(self.args[1].ch_list)
+				if n0>1 and n1==1:
+					self.args[1].ch_list = self.args[1].ch_list * n0
+				elif n0!=n1:
+					raise Exception("MAP rule channel lists can't be matched ({}=>{})".format(n0,n1))
+				logging.debug("Mapping {} channels to {} ...".format(n0, n1))
+
+				m0 = len(self.args[0].ev_list)
+				m1 = len(self.args[1].ev_list)
+				if m1==1:
+					self.args[1].ev_list = self.args[1].ev_list * m0
+				elif m0!=m1:
+					raise Exception("MAP rule event lists can't be matched ({}=>{}".format(m0,m1))
+				logging.debug("Mapping {} events to {} ...".format(m0, m1))
+
 			except Exception as e:
 				raise MidiFilterException("Invalid MAP rule format (%s): %s" % (rule, e))
 		else:
@@ -201,7 +213,9 @@ class MidiFilterRule:
 							zyncoder.lib_zyncoder.set_midi_filter_event_ignore(ev_type, ch, ev_num)
 						elif self.rule_type=="CLEAN":
 							zyncoder.lib_zyncoder.del_midi_filter_event_map(ev_type, ch, ev_num)
+
 		elif self.rule_type=="MAP":
+			
 			for ch1,ch2 in zip(self.args[0].ch_list,self.args[1].ch_list):
 				ev1_type=MidiFilterArgs.EVENT_TYPE_CODES[self.args[0].ev_type]
 				ev2_type=MidiFilterArgs.EVENT_TYPE_CODES[self.args[1].ev_type]
@@ -210,6 +224,7 @@ class MidiFilterRule:
 					logging.debug("MAP CH#%s %s#%s => CH#%s %s#%s" % (ch1,self.args[0].ev_type,ev1_num,ch2,self.args[1].ev_type,ev2_num))
 					if set_rules:
 						zyncoder.lib_zyncoder.set_midi_filter_event_map(ev1_type, ch1, ev1_num, ev2_type, ch2, ev2_num)
+
 		return n_rules
 
 
@@ -293,7 +308,7 @@ class TestMidiFilterRule(unittest.TestCase):
 		with self.assertRaises(MidiFilterException):
 			MidiFilterRule("IGNORE CH#1,2,3:8 PB#7,8", False)
 		with self.assertRaises(MidiFilterException):
-			MidiFilterRule("IGNORE CH#1,2,3:8 KP#1:3", False)
+			MidiFilterRule("IGNORE CH#1,2,3:8 CP#1:3", False)
 
 
 	def test_map_rules(self):
@@ -310,6 +325,8 @@ class TestMidiFilterRule(unittest.TestCase):
 		self.assertTrue(mfr.set_rules()==18)
 		mfr=MidiFilterRule("MAP CH#1,2,3:8 CC#1:3,7,8 => CH#5:10,11,12 CC#1,2,4:6", False)
 		self.assertTrue(mfr.set_rules()==40)
+		mfr=MidiFilterRule("MAP CH#0:15 CC#45 => CH#15 CC#76", False)
+		self.assertTrue(mfr.set_rules()==16)
 		#Bad rules
 		with self.assertRaises(MidiFilterException):
 			MidiFilterRule("MAP XH#1,2,3:8 PB#7,8 => JK#76", False)
