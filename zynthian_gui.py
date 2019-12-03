@@ -267,24 +267,27 @@ class zynthian_gui:
 
 	def start(self):
 		# Create initial GUI Screens
-		self.screens['admin']=zynthian_gui_admin()
-		self.screens['info']=zynthian_gui_info()
-		self.screens['snapshot']=zynthian_gui_snapshot()
-		self.screens['layer']=zynthian_gui_layer()
-		self.screens['layer_options']=zynthian_gui_layer_options()
-		self.screens['engine']=zynthian_gui_engine()
-		self.screens['midi_chan']=zynthian_gui_midi_chan()
-		self.screens['transpose']=zynthian_gui_transpose()
-		self.screens['audio_out']=zynthian_gui_audio_out()
-		self.screens['bank']=zynthian_gui_bank()
-		self.screens['preset']=zynthian_gui_preset()
-		self.screens['control']=zynthian_gui_control()
-		self.screens['control_xy']=zynthian_gui_control_xy()
-		self.screens['midi_profile']=zynthian_gui_midi_profile()
-		self.screens['audio_recorder']=zynthian_gui_audio_recorder()
-		self.screens['midi_recorder']=zynthian_gui_midi_recorder()
-		self.screens['zs3_learn']=zynthian_gui_zs3_learn()
-		self.screens['confirm']=zynthian_gui_confirm()
+		self.screens['admin'] = zynthian_gui_admin()
+		self.screens['info'] = zynthian_gui_info()
+		self.screens['snapshot'] = zynthian_gui_snapshot()
+		self.screens['layer'] = zynthian_gui_layer()
+		self.screens['layer_options'] = zynthian_gui_layer_options()
+		self.screens['engine'] = zynthian_gui_engine()
+		self.screens['midi_chan'] = zynthian_gui_midi_chan()
+		self.screens['transpose'] = zynthian_gui_transpose()
+		self.screens['audio_out'] = zynthian_gui_audio_out()
+		self.screens['bank'] = zynthian_gui_bank()
+		self.screens['preset'] = zynthian_gui_preset()
+		self.screens['control'] = zynthian_gui_control()
+		self.screens['control_xy'] = zynthian_gui_control_xy()
+		self.screens['midi_profile'] = zynthian_gui_midi_profile()
+		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
+		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
+		self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
+		self.screens['confirm'] = zynthian_gui_confirm()
+
+		# Add Mixer Layer
+		self.screens['layer'].add_layer_mixer()
 
 		# Show initial screen => Channel list
 		self.show_screen('layer')
@@ -459,6 +462,9 @@ class zynthian_gui:
 		active_chan = -1
 
 		if self.curlayer:
+			# Don't change nothing for MIXER
+			if self.curlayer.engine.nickname=='MX':
+				return
 			curlayer_chan = self.curlayer.get_midi_chan()
 			if curlayer_chan is None:
 				curlayer_chan = -1

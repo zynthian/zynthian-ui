@@ -484,6 +484,32 @@ class zynthian_engine:
 		return zctrls
 
 
+	def generate_ctrl_screens(self, zctrl_dict=None):
+		if zctrl_dict is None:
+			zctrl_dict=self.zctrl_dict
+
+		if self._ctrl_screens is None:
+			self._ctrl_screens=[]
+
+		c=1
+		ctrl_set=[]
+		for symbol, zctrl in zctrl_dict.items():
+			try:
+				#logging.debug("CTRL {}".format(symbol))
+				ctrl_set.append(symbol)
+				if len(ctrl_set)>=4:
+					#logging.debug("ADDING CONTROLLER SCREEN {}#{}".format(self.nickname,c))
+					self._ctrl_screens.append(["{}#{}".format(self.nickname,c),ctrl_set])
+					ctrl_set=[]
+					c=c+1
+			except Exception as err:
+				logging.error("Generating Controller Screens => {}".format(err))
+
+		if len(ctrl_set)>=1:
+			#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+			self._ctrl_screens.append(["{}#{}".format(self.nickname,c),ctrl_set])
+
+
 	def send_controller_value(self, zctrl):
 		raise Exception("NOT IMPLEMENTED!")
 
