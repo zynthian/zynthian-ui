@@ -107,7 +107,7 @@ class zynthian_engine_mixer(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, layer):
-		zctrls = {}
+		zctrls = OrderedDict()
 
 		logging.debug("MIXER CTRL LIST: {}".format(self.ctrl_list))
 
@@ -127,72 +127,92 @@ class zynthian_engine_mixer(zynthian_engine):
 					ctrl_symbol = None
 	
 				ctrl_type = None
-				ctrl_chans = None
+				ctrl_caps = None
+				ctrl_pchans = []
+				ctrl_cchans = []
 				ctrl_items = None
 				ctrl_item0 = None
+				ctrl_ticks = None
+				ctrl_limits = None
 				ctrl_value = 50
 				ctrl_maxval = 100
 				ctrl_minval = 0
 
-				logging.debug("MIXER CONTROL => {}\n{}".format(ctrl_name, ctrl))
+				#logging.debug("MIXER CONTROL => {}\n{}".format(ctrl_name, ctrl))
 				for line in lines[1:]:
 					try:
 						key, value = line.strip().split(": ",1)
-						logging.debug("  {} => {}".format(key,value))
+						#logging.debug("  {} => {}".format(key,value))
 					except:
 						continue
 
-					if key=='Playback channels':
-						ctrl_type = "Playback"
-						#ctrl_name = "Volume"
-						ctrl_chans = value.strip().split(' - ')
+					if key=='Capabilities':
+						ctrl_caps = value.split(' ')
+						if 'enum' in ctrl_caps:
+							ctrl_type = "Selector"
+						elif 'pvolume' in ctrl_caps:
+							ctrl_type = "Playback"
+						elif 'cvolume' in ctrl_caps:
+							ctrl_type = "Capture"
+						elif 'pswitch' in ctrl_caps or 'cswitch' in ctrl_caps:
+							ctrl_type = "Toggle"
+							ctrl_items = ["off", "on"]
+							ctrl_ticks = [0, 1]
+
+					elif key=='Playback channels':
+						ctrl_pchans = value.strip().split(' - ')
 
 					elif key=='Capture channels':
-						ctrl_type = "Capture"
-						#ctrl_name = "Input Gain"
-						ctrl_chans = value.strip().split(' - ')
+						ctrl_cchans = value.strip().split(' - ')
 
-					elif key=='Capabilities' and value=='enum':
-						ctrl_type = "Selector"
+					elif key=='Limits':
+						m = re.match(".*(\d+) - (\d+).*", value, re.M | re.I)
+						if m:
+							ctrl_limits = [int(m.group(1)), int(m.group(2))]
+							if ctrl_limits[0]==0 and ctrl_limits[1]==1:
+								ctrl_type = "VToggle"
+								ctrl_items = ["off", "on"]
+								ctrl_ticks = [0, 100]
 
 					elif key=='Items':
 						ctrl_items = value[1:-1].split("' '")
+						ctrl_ticks = list(range(len(ctrl_items)))
 
 					elif key=='Item0':
 						ctrl_item0 = value[1:-1]
 
-					elif ctrl_chans and key in ctrl_chans:
-						m = re.match(".*(Playback|Capture).*\[(\d*)%\].*", value, re.M | re.I)
-						if m:
-							ctrl_value = int(m.group(2))
-							if m.group(1) == 'Capture':
-								ctrl_type = "Capture"
+					elif key in list(set(ctrl_pchans) | set(ctrl_cchans)):
+						if ctrl_type=="Toggle":
+							m = re.match(".*\[(off|on)\].*", value, re.M | re.I)
+							if m:
+								ctrl_item0 = m.group(1)
 							else:
-								ctrl_type = "Playback"
+								ctrl_item0 = "off"
 						else:
-							m = re.match(".*\[(\d*)%\].*", line, re.M | re.I)
+							m = re.match(".*\[(\d*)%\].*", value, re.M | re.I)
 							if m:
 								ctrl_value = int(m.group(1))
+								if ctrl_type=="VToggle":
+									ctrl_item0 = 'on' if (ctrl_value>0) else 'off'
 
 				if ctrl_symbol and ctrl_type and (not self.ctrl_list or ctrl_name in self.ctrl_list):
-					if ctrl_type=='Selector' and len(ctrl_items)>1:
-						logging.debug("ADDING ZCTRL SELECTOR: {} => {} ({})".format(ctrl_symbol, ctrl_item0, ctrl_value))
+					if ctrl_type in ("Selector", "Toggle", "VToggle") and len(ctrl_items)>1:
+						#logging.debug("ADDING ZCTRL SELECTOR: {} => {}".format(ctrl_symbol, ctrl_item0))
 						zctrls[ctrl_symbol]=zynthian_controller(self, ctrl_symbol, ctrl_name, {
-							'graph_path': "'{}'".format(ctrl_name),
+							'graph_path': [ctrl_name, ctrl_type],
 							'labels': ctrl_items,
-							'ticks': list(range(len(ctrl_items))),
+							'ticks': ctrl_ticks,
 							'value': ctrl_item0,
-							'value_min': 0,
-							'value_max': len(ctrl_items)-1,
-							'is_toggle': False,
+							'value_min': ctrl_ticks[0],
+							'value_max': ctrl_ticks[-1],
+							'is_toggle': (ctrl_type=='Toggle'),
 							'is_integer': True
 						})
 					elif ctrl_type in ("Playback" ,"Capture"):
-						logging.debug("ADDING ZCTRL LEVEL: {} => {}".format(ctrl_symbol, ctrl_value))
+						#logging.debug("ADDING ZCTRL LEVEL: {} => {}".format(ctrl_symbol, ctrl_value))
 						zctrls[ctrl_symbol]=zynthian_controller(self, ctrl_symbol, ctrl_name, {
-							'graph_path': "'{}' {}".format(ctrl_name, ctrl_type),
+							'graph_path': [ctrl_name, ctrl_type],
 							'value': ctrl_value,
-							'value_default': 50,
 							'value_min': ctrl_minval,
 							'value_max': ctrl_maxval,
 							'is_toggle': False,
@@ -203,10 +223,16 @@ class zynthian_engine_mixer(zynthian_engine):
 			logging.error(err)
 
 		# Sort zctrls to match the configured mixer control list
-		sorted_zctrls = OrderedDict()
-		for ctrl_name in self.ctrl_list:
-			ctrl_symbol = ctrl_name.replace(' ', '_')
-			sorted_zctrls[ctrl_symbol] = zctrls[ctrl_symbol]
+		if len(self.ctrl_list)>0:
+			sorted_zctrls = OrderedDict()
+			for ctrl_name in self.ctrl_list:
+				ctrl_symbol = ctrl_name.replace(' ', '_')
+				try:
+					sorted_zctrls[ctrl_symbol] = zctrls[ctrl_symbol]
+				except:
+					pass
+		else:
+			sorted_zctrls = zctrls
 
 		# Generate control screens
 		self.generate_ctrl_screens(sorted_zctrls)
@@ -217,9 +243,12 @@ class zynthian_engine_mixer(zynthian_engine):
 	def send_controller_value(self, zctrl):
 		try:
 			if zctrl.labels:
-				amixer_command = "amixer -M -c {} set {} '{}'".format(self.device_name, zctrl.graph_path, zctrl.get_value2label())
+				if zctrl.graph_path[1]=="VToggle":
+					amixer_command = "amixer -M -c {} set '{}' '{}%'".format(self.device_name, zctrl.graph_path[0], zctrl.value)
+				else:
+					amixer_command = "amixer -M -c {} set '{}' '{}'".format(self.device_name, zctrl.graph_path[0], zctrl.get_value2label())
 			else:
-				amixer_command = "amixer -M -c {} set {} {}% unmute".format(self.device_name, zctrl.graph_path, zctrl.value)
+				amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format(self.device_name, zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
 
 			logging.debug(amixer_command)
 			check_output(amixer_command, shell=True)
