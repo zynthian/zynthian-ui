@@ -172,8 +172,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 	base_dir = zynthian_engine.data_dir + "/setbfree"
 	presets_fpath = base_dir + "/pgm/all.pgm"
 	config_tpl_fpath = base_dir + "/cfg/zynthian.cfg.tpl"
-	config_my_fpath = zynthian_engine.config_dir + "/setbfree/cfg/zynthian.cfg"
-	config_autogen_fpath = zynthian_engine.config_dir + "/setbfree/cfg/.autogen.cfg"
+	config_my_fpath = zynthian_engine.config_dir + "/setbfree/zynthian.cfg"
+	config_autogen_fpath = zynthian_engine.config_dir + "/setbfree/.autogen.cfg"
 
 	#----------------------------------------------------------------------------
 	# Initialization
