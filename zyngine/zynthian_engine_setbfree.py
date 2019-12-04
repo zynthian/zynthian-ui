@@ -218,7 +218,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str(1 + midi_chans[2]))
 			cfg_data = cfg_data.replace('#TONEWHEEL.CONFIG#', self.tonewheel_config[self.tonewheel_model])
 			cfg_data += "\n" + my_cfg_data
-			with open(self.config_autogen_fpath, 'w') as cfg_file:
+			with open(self.config_autogen_fpath, 'w+') as cfg_file:
 				cfg_file.write(cfg_data)
 
 	# ---------------------------------------------------------------------------
