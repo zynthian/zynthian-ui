@@ -35,6 +35,8 @@ from subprocess import check_output, Popen, PIPE
 import zynconf
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
+from . import zynthian_gui_controller
+from zyngine import zynthian_controller
 
 #------------------------------------------------------------------------------
 # Zynthian Audio Recorder GUI Class
@@ -43,6 +45,7 @@ from . import zynthian_gui_selector
 class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	
 	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
+	mplayer_ctrl_fifo_path = "/tmp/mplayer-control"
 
 	def __init__(self):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
@@ -50,7 +53,17 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		self.current_record = None
 		self.rec_proc = None
 		self.play_proc = None
+
 		super().__init__('Audio Recorder', True)
+
+		self.volume_zctrl = zynthian_controller(self, "volume", "Volume", {
+			'value': 60,
+			'value_min': 0,
+			'value_max': 100,
+			'is_toggle': False,
+			'is_integer': False
+		})
+		self.volume_zgui_ctrl = None
 
 
 	def get_status(self):
@@ -197,22 +210,29 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 		logging.info("STARTING AUDIO PLAY '{}' ...".format(fpath))
 
+		# Create control fifo is needed ...
+		try:
+			os.mkfifo(self.mplayer_ctrl_fifo_path)
+		except:
+			pass
+
 		try:
 			if zynthian_gui_config.audio_play_loop:
-				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -loop 0 -ao jack {}".format(fpath)
+				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -loop 0 -ao jack -input file='{}' '{}'".format(self.mplayer_ctrl_fifo_path, fpath)
 			else:
-				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -ao jack {}".format(fpath)
+				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -ao jack -input file='{}' '{}'".format(self.mplayer_ctrl_fifo_path, fpath)
 
 			logging.info("COMMAND: %s" % cmd)
 
-			def runInThread(onExit, pargs):
-				self.play_proc = Popen(pargs, stdin=PIPE, universal_newlines=True)
+			def runInThread(onExit, cmd):
+				self.play_proc = Popen(cmd, shell=True, universal_newlines=True)
 				self.play_proc.wait()
-				self.stop_playing()
+				self.end_playing()
 				return
 
-			thread = threading.Thread(target=runInThread, args=(self.stop_playing, cmd.split(" ")), daemon=True)
+			thread = threading.Thread(target=runInThread, args=(self.end_playing, cmd), daemon=True)
 			thread.start()
+			self.show_playing_volume()
 			sleep(0.2)
 			self.current_record=fpath
 
@@ -224,17 +244,55 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		self.update_list()
 
 
+	def end_playing(self):
+		logging.info("ENDING AUDIO PLAY ...")
+		try:
+			self.mplayer_ctrl_fifo.close()
+			self.mplayer_ctrl_fifo = None
+		except:
+			pass
+		self.current_record=None
+		self.volume_zgui_ctrl.hide()
+		self.update_list()
+
+
+	def send_mplayer_command(self, cmd):
+		with open(self.mplayer_ctrl_fifo_path, "w") as f:
+			f.write(cmd + "\n")
+			f.close()
+
+
 	def stop_playing(self):
 		logging.info("STOPPING AUDIO PLAY ...")
 		try:
-			self.play_proc.stdin.write("quit\n")
-			self.play_proc.stdin.flush()
+			self.send_mplayer_command("quit")
 			sleep(0.5)
 			self.play_proc.terminate()
 		except:
 			pass
-		self.current_record=None
-		self.update_list()
+
+
+	def show_playing_volume(self):
+		if self.volume_zgui_ctrl:
+			self.volume_zgui_ctrl.config(self.volume_zctrl)
+			self.volume_zgui_ctrl.show()
+		else:
+			self.volume_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.volume_zctrl)
+
+		self.send_controller_value(self.volume_zctrl)
+
+
+	# Implement engine's method
+	def send_controller_value(self, zctrl):
+		if zctrl.symbol=="volume":
+			self.send_mplayer_command("volume {} 1".format(zctrl.value))
+			logging.debug("SET PLAYING VOLUME => {}".format(zctrl.value))
+
+
+	def zyncoder_read(self):
+		super().zyncoder_read()
+		if self.shown and self.volume_zgui_ctrl:
+			self.volume_zgui_ctrl.read_zyncoder()
 
 
 	def get_current_track_fpath(self):
