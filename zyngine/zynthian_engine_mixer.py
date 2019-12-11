@@ -48,6 +48,12 @@ class zynthian_engine_mixer(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	#----------------------------------------------------------------------------
+	# ZynAPI variables
+	#----------------------------------------------------------------------------
+
+	zynapi_instance = None
+
+	#----------------------------------------------------------------------------
 	# Initialization
 	#----------------------------------------------------------------------------
 
@@ -282,6 +288,30 @@ class zynthian_engine_mixer(zynthian_engine):
 			self.ctrl_list = os.environ.get('SOUNDCARD_MIXER').split(',')
 		except:
 			self.ctrl_list = None
+
+
+	# ---------------------------------------------------------------------------
+	# API methods
+	# ---------------------------------------------------------------------------
+
+	@classmethod
+	def init_zynapi_instance(cls):
+		if not cls.zynapi_instance:
+			cls.zynapi_instance = cls(None)
+		else:
+			logging.debug("\n\n********** REUSING INSTANCE ***********")
+
+
+	@classmethod
+	def refresh_zynapi_instance(cls):
+		if cls.zynapi_instance:
+			cls.zynapi_instance.stop()
+			cls.zynapi_instance = cls(None)
+
+
+	@classmethod
+	def zynapi_get_controllers(cls):
+		return cls.zynapi_instance.get_controllers_dict(None)
 
 
 #******************************************************************************
