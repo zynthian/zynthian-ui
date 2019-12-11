@@ -48,6 +48,7 @@ from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
+from zyngine import zynthian_engine_transport
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -178,7 +179,6 @@ class zynthian_gui:
 	# MIDI Router Init & Config
 	# ---------------------------------------------------------------------------
 
-
 	def init_midi(self):
 		try:
 			global lib_zyncoder
@@ -216,7 +216,6 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 	# OSC Management
 	# ---------------------------------------------------------------------------
-
 
 	def osc_init(self, port=1370, proto=liblo.UDP):
 		try:
@@ -264,7 +263,6 @@ class zynthian_gui:
 	# GUI Core Management
 	# ---------------------------------------------------------------------------
 
-
 	def start(self):
 		# Create initial GUI Screens
 		self.screens['admin'] = zynthian_gui_admin()
@@ -299,6 +297,9 @@ class zynthian_gui:
 		# Init Auto-connector (and call it for first time!)
 		zynautoconnect.start()
 
+		# Initialize jack Transport
+		self.zyntransport = zynthian_engine_transport()
+
 		# Initialize OSC
 		self.osc_init()
 
@@ -332,6 +333,7 @@ class zynthian_gui:
 		self.osc_end()
 		zynautoconnect.stop()
 		self.screens['layer'].reset()
+		self.zyntransport.stop()
 
 
 	def hide_screens(self,exclude=None):

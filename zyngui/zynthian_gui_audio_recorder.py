@@ -66,6 +66,12 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		self.volume_zgui_ctrl = None
 
 
+	def hide(self):
+		super().hide()
+		if self.volume_zgui_ctrl:
+			self.volume_zgui_ctrl.hide()
+
+
 	def get_status(self):
 		status=None
 
@@ -93,6 +99,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 		if status=="PLAY" or status=="PLAY+REC":
 			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
+			self.show_playing_volume()
 
 		if zynthian_gui_config.audio_play_loop:
 			self.list_data.append(("LOOP",0,"[x] Loop Play"))
@@ -172,7 +179,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			#logging.info("COMMAND: %s" % cmd)
 			self.rec_proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
 			sleep(0.2)
-			check_output("echo play | jack_transport", shell=True)
+			self.zyngui.zyntransport.play()
 		except Exception as e:
 			logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
 			self.zyngui.show_info("ERROR STARTING AUDIO RECORD:\n %s" % e)
@@ -182,10 +189,11 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 	def stop_recording(self):
 		logging.info("STOPPING AUDIO RECORD ...")
-		check_output("echo stop | jack_transport", shell=True)
+		self.zyngui.zyntransport.pause()
 		self.rec_proc.communicate()
 		while zynconf.is_process_running("jack_capture"):
 			sleep(0.2)
+		self.rec_proc = None
 		self.update_list()
 
 
@@ -232,8 +240,9 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 			thread = threading.Thread(target=runInThread, args=(self.end_playing, cmd), daemon=True)
 			thread.start()
+			sleep(0.5)
 			self.show_playing_volume()
-			sleep(0.2)
+			self.send_controller_value(self.volume_zctrl)
 			self.current_record=fpath
 
 		except Exception as e:
@@ -268,6 +277,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.send_mplayer_command("quit")
 			sleep(0.5)
 			self.play_proc.terminate()
+			self.play_proc = None
 		except:
 			pass
 
@@ -278,8 +288,6 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.volume_zgui_ctrl.show()
 		else:
 			self.volume_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.volume_zctrl)
-
-		self.send_controller_value(self.volume_zctrl)
 
 
 	# Implement engine's method

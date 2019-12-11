@@ -78,8 +78,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def hide(self):
+		super().hide()
 		if self.shown:
-			super().hide()
 			for zc in self.zgui_controllers: zc.hide()
 			if self.zselector: self.zselector.hide()
 

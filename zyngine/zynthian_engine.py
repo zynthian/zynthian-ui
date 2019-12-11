@@ -35,11 +35,11 @@ from collections import OrderedDict
 
 from . import zynthian_controller
 
-#------------------------------------------------------------------------------
-# Synth Engine Base Class
-#------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------
+# Basic Engine Class: Spawn a proccess & manage IPC communication using pexpect
+#--------------------------------------------------------------------------------
 
-class zynthian_engine:
+class zynthian_basic_engine:
 
 	# ---------------------------------------------------------------------------
 	# Data dirs 
@@ -49,6 +49,93 @@ class zynthian_engine:
 	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
 	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
 	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
+
+	# ---------------------------------------------------------------------------
+	# Initialization
+	# ---------------------------------------------------------------------------
+
+	def __init__(self, name=None, command=None, prompt=None):
+		self.name = name
+
+		self.proc = None
+		self.proc_timeout = 20
+		self.proc_start_sleep = None
+		self.command = command
+		self.command_env = None
+		self.command_prompt = prompt
+
+
+	def __del__(self):
+		self.stop()
+
+
+	# ---------------------------------------------------------------------------
+	# Subproccess Management & IPC
+	# ---------------------------------------------------------------------------
+
+	def start(self):
+		if not self.proc:
+			logging.info("Starting Engine {}".format(self.name))
+			try:
+
+				logging.debug("Command: {}".format(self.command))
+				if self.command_env:
+					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
+				else:
+					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout)
+
+				self.proc.delaybeforesend = 0
+
+				output = self.proc_get_output()
+
+				if self.proc_start_sleep:
+					sleep(self.proc_start_sleep)
+
+				return output
+
+			except Exception as err:
+				logging.error("Can't start engine {} => {}".format(self.name, err))
+
+
+	def stop(self, wait=0.2):
+		if self.proc:
+			try:
+				logging.info("Stoping Engine " + self.name)
+				self.proc.terminate()
+				if wait>0: sleep(wait)
+				self.proc.terminate(True)
+			except Exception as err:
+				logging.error("Can't stop engine {} => {}".format(self.name, err))
+			self.proc=None
+
+
+	def proc_get_output(self):
+		if self.command_prompt:
+			self.proc.expect(self.command_prompt)
+			return self.proc.before.decode()
+		else:
+			logging.warning("Command Prompt is not defined!")
+			return None
+
+
+	def proc_cmd(self, cmd):
+		if self.proc:
+			try:
+				#logging.debug("proc command: "+cmd)
+				self.proc.sendline(cmd)
+				out=self.proc_get_output()
+				#logging.debug("proc output:\n{}".format(out))
+			except Exception as err:
+				out=""
+				logging.error("Can't exec engine command: {} => {}".format(cmd, err))
+			return out
+
+
+#------------------------------------------------------------------------------
+# Synth Engine Base Class
+#------------------------------------------------------------------------------
+
+class zynthian_engine(zynthian_basic_engine):
 
 	# ---------------------------------------------------------------------------
 	# Default Controllers & Screens
@@ -85,10 +172,11 @@ class zynthian_engine:
 	# ---------------------------------------------------------------------------
 
 	def __init__(self, zyngui=None):
+		super().__init__()
+
 		self.zyngui=zyngui
 
 		self.type = "MIDI Synth"
-		self.name = ""
 		self.nickname = ""
 		self.jackname = ""
 
@@ -101,14 +189,6 @@ class zynthian_engine:
 			'audio_route': True,
 			'midi_chan': True
 		}
-
-		#IPC variables
-		self.proc = None
-		self.proc_timeout = 20
-		self.proc_start_sleep = None
-		self.command = None
-		self.command_env = None
-		self.command_prompt = None
 
 		self.osc_target = None
 		self.osc_target_port = None
@@ -179,72 +259,8 @@ class zynthian_engine:
 			layer.refresh_flag=refresh
 
 	# ---------------------------------------------------------------------------
-	# Subproccess Management & IPC
-	# ---------------------------------------------------------------------------
-
-
-	def start(self):
-		if not self.proc:
-			logging.info("Starting Engine {}".format(self.name))
-			try:
-
-				logging.debug("Command: {}".format(self.command))
-				if self.command_env:
-					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
-				else:
-					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout)
-
-				self.proc.delaybeforesend = 0
-
-				output = self.proc_get_output()
-
-				if self.proc_start_sleep:
-					sleep(self.proc_start_sleep)
-
-				return output
-
-			except Exception as err:
-				logging.error("Can't start engine {} => {}".format(self.name, err))
-
-
-	def stop(self, wait=0.2):
-		if self.proc:
-			try:
-				logging.info("Stoping Engine " + self.name)
-				self.proc.terminate()
-				if wait>0: sleep(wait)
-				self.proc.terminate(True)
-			except Exception as err:
-				logging.error("Can't stop engine {} => {}".format(self.name, err))
-			self.proc=None
-
-
-	def proc_get_output(self):
-		if self.command_prompt:
-			self.proc.expect(self.command_prompt)
-			return self.proc.before.decode()
-		else:
-			logging.warning("Command Prompt is not defined!")
-			return None
-
-
-	def proc_cmd(self, cmd):
-		if self.proc:
-			try:
-				#logging.debug("proc command: "+cmd)
-				self.proc.sendline(cmd)
-				out=self.proc_get_output()
-				logging.debug("proc output:\n{}".format(out))
-			except Exception as err:
-				out=""
-				logging.error("Can't exec engine command: {} => {}".format(cmd, err))
-			return out
-
-
-	# ---------------------------------------------------------------------------
 	# OSC Management
 	# ---------------------------------------------------------------------------
-
 
 	def osc_init(self, target_port=None, proto=liblo.UDP):
 		if target_port:
@@ -284,7 +300,6 @@ class zynthian_engine:
 	# ---------------------------------------------------------------------------
 	# Generating list from different sources
 	# ---------------------------------------------------------------------------
-
 
 	@staticmethod
 	def get_filelist(dpath, fext):
@@ -352,7 +367,6 @@ class zynthian_engine:
 	# Layer Management
 	# ---------------------------------------------------------------------------
 
-
 	def add_layer(self, layer):
 		self.layers.append(layer)
 		layer.jackname = self.jackname
@@ -371,7 +385,6 @@ class zynthian_engine:
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
-
 
 	def set_midi_chan(self, layer):
 		pass
@@ -405,7 +418,6 @@ class zynthian_engine:
 	# Preset Management
 	# ---------------------------------------------------------------------------
 
-
 	def get_preset_list(self, bank):
 		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name),'PD'
 
@@ -431,7 +443,6 @@ class zynthian_engine:
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
-
 
 	# Get zynthian controllers dictionary:
 	# + Default implementation uses a static controller definition array
@@ -518,7 +529,6 @@ class zynthian_engine:
 	# MIDI Learn
 	# ---------------------------------------------------------------------------
 
-
 	def midi_learn(self, zctrl):
 		raise Exception("NOT IMPLEMENTED!")
 
@@ -538,7 +548,6 @@ class zynthian_engine:
 	#----------------------------------------------------------------------------
 	# MIDI CC processing
 	#----------------------------------------------------------------------------
-
 
 	def midi_control_change(self, chan, ccnum, val):
 		raise Exception("NOT IMPLEMENTED!")
@@ -562,7 +571,6 @@ class zynthian_engine:
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
 
-
 	def get_path(self, layer):
 		return self.nickname
 
@@ -570,7 +578,6 @@ class zynthian_engine:
 	# ---------------------------------------------------------------------------
 	# Options and Extended Config
 	# ---------------------------------------------------------------------------
-
 
 	def get_options(self):
 		return self.options

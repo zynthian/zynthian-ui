@@ -23,6 +23,7 @@
 # 
 #******************************************************************************
 
+import os
 import sys
 import logging
 import re
@@ -32,7 +33,6 @@ from collections import OrderedDict
 
 # Zynthian specific modules
 import zynautoconnect
-import os
 from zyngine import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_jalv import *

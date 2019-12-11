@@ -30,12 +30,14 @@ import signal
 import threading
 from time import sleep
 from os.path import isfile, isdir, join, basename
-from subprocess import check_output, Popen, PIPE
+from subprocess import check_output, Popen, PIPE, STDOUT
 
 # Zynthian specific modules
 import zynconf
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
+from . import zynthian_gui_controller
+from zyngine import zynthian_controller
 
 #------------------------------------------------------------------------------
 # Zynthian MIDI Recorder GUI Class
@@ -54,7 +56,17 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.current_record = None
 		self.rec_proc = None
 		self.play_proc = None
+
 		super().__init__('MIDI Recorder', True)
+
+		self.bpm_zctrl = zynthian_controller(self, "bpm", "BPM", {
+			'value': 120,
+			'value_min': 10,
+			'value_max': 360,
+			'is_toggle': False,
+			'is_integer': True
+		})
+		self.bpm_zgui_ctrl = None
 
 
 	def get_status(self):
@@ -72,6 +84,12 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		return status
 
 
+	def hide(self):
+		super().hide()
+		if self.bpm_zgui_ctrl:
+			self.bpm_zgui_ctrl.hide()
+
+
 	def fill_list(self):
 		self.index = 0
 		self.list_data = []
@@ -84,13 +102,15 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		if status=="PLAY" or status=="PLAY+REC":
 			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
-			
+			self.show_playing_bpm()
+
 		if zynthian_gui_config.midi_play_loop:
 			self.list_data.append(("LOOP",0,"[x] Loop Play"))
 		else:
 			self.list_data.append(("LOOP",0,"[  ] Loop Play"))
 
 		self.list_data.append((None,0,"-----------------------------"))
+
 
 		i = 1
 		# Files in SD-Card
@@ -178,6 +198,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		os.killpg(os.getpgid(self.rec_proc.pid), signal.SIGINT)
 		while self.rec_proc.poll() is None:
 			sleep(0.2)
+		self.rec_proc = None
 		self.update_list()
 
 
@@ -204,19 +225,35 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		try:
 			if zynthian_gui_config.midi_play_loop:
-				cmd="/usr/local/bin/jack-smf-player -s -t -l -a {} {}".format(self.jack_play_port, fpath)
+				cmd="/usr/local/bin/jack-smf-player -n -l -s -a '{}' -r 63 '{}'".format(self.jack_play_port, fpath)
 			else:
-				cmd="/usr/local/bin/jack-smf-player -s -t -a {} {}".format(self.jack_play_port, fpath)
+				cmd="/usr/local/bin/jack-smf-player -n -s -a '{}' -r 63 '{}'".format(self.jack_play_port, fpath)
 
 			logging.info("COMMAND: %s" % cmd)
 
-			def runInThread(onExit, pargs):
-				self.play_proc = Popen(pargs)
-				self.play_proc.wait()
+			self.zyngui.zyntransport.pause()
+			self.zyngui.zyntransport.locate(0)
+			self.show_playing_bpm()
+
+			def runInThread(onExit, cmd):
+				self.play_proc = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True, universal_newlines=True)
+				for line in self.play_proc.stdout:
+					parts = line.split("SONG BPM:")
+					if len(parts)>1:
+						try:
+							song_bpm = int(float(parts[1].strip()))
+							self.bpm_zctrl.set_value(song_bpm, True)
+							logging.debug("PARSED SONG BPM: {}".format(song_bpm))
+							self.zyngui.zyntransport.play()
+						except Exception as e:
+							logging.debug(e)
+					elif not zynthian_gui_config.midi_play_loop and line.find("End of song.")>=0:
+						break
+				#self.play_proc.wait()
 				self.stop_playing()
 				return
 
-			thread = threading.Thread(target=runInThread, args=(self.stop_playing, cmd.split(" ")), daemon=True)
+			thread = threading.Thread(target=runInThread, args=(self.stop_playing, cmd), daemon=True)
 			thread.start()
 			sleep(0.2)
 			self.current_record=fpath
@@ -232,13 +269,37 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def stop_playing(self):
 		logging.info("STOPPING MIDI PLAY ...")
 		try:
+			self.zyngui.zyntransport.pause()
 			self.play_proc.send_signal(signal.SIGINT)
 			sleep(0.2)
 			self.play_proc.terminate()
+			self.play_proc = None
 		except:
 			pass
 		self.current_record=None
+		self.bpm_zgui_ctrl.hide()
 		self.update_list()
+
+
+	def show_playing_bpm(self):
+		if self.bpm_zgui_ctrl:
+			self.bpm_zgui_ctrl.config(self.bpm_zctrl)
+			self.bpm_zgui_ctrl.show()
+		else:
+			self.bpm_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.bpm_zctrl)
+
+
+	# Implement engine's method
+	def send_controller_value(self, zctrl):
+		if zctrl.symbol=="bpm":
+			self.zyngui.zyntransport.tempo(zctrl.value)
+			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
+
+
+	def zyncoder_read(self):
+		super().zyncoder_read()
+		if self.shown and self.bpm_zgui_ctrl:
+			self.bpm_zgui_ctrl.read_zyncoder()
 
 
 	def get_current_track_fpath(self):
