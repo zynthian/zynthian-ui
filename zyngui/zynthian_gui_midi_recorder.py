@@ -194,11 +194,17 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def stop_recording(self):
 		logging.info("STOPPING MIDI RECORDING ...")
-		self.rec_proc.terminate()
-		os.killpg(os.getpgid(self.rec_proc.pid), signal.SIGINT)
-		while self.rec_proc.poll() is None:
-			sleep(0.2)
-		self.rec_proc = None
+		try:
+			self.rec_proc.terminate()
+			os.killpg(os.getpgid(self.rec_proc.pid), signal.SIGINT)
+			while self.rec_proc.poll() is None:
+				sleep(0.2)
+			self.rec_proc = None
+		except Exception as e:
+			logging.error("ERROR STOPPING MIDI RECORD: %s" % e)
+			self.zyngui.show_info("ERROR STOPPING MIDI RECORD:\n %s" % e)
+			self.zyngui.hide_info_timer(5000)
+
 		self.update_list()
 
 
@@ -274,8 +280,11 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			sleep(0.2)
 			self.play_proc.terminate()
 			self.play_proc = None
-		except:
-			pass
+		except Exception as e:
+			logging.error("ERROR STOPPING MIDI PLAY: %s" % e)
+			self.zyngui.show_info("ERROR STOPPING MIDI PLAY:\n %s" % e)
+			self.zyngui.hide_info_timer(5000)
+
 		self.current_record=None
 		self.bpm_zgui_ctrl.hide()
 		self.update_list()
