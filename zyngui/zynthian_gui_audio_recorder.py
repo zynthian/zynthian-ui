@@ -265,7 +265,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		try:
 			self.mplayer_ctrl_fifo.close()
 			self.mplayer_ctrl_fifo = None
-		except Exception e:
+		except Exception as e:
 			logging.error("ERROR ENDING AUDIO PLAY: %s" % e)
 			self.zyngui.show_info("ERROR ENDING AUDIO PLAY:\n %s" % e)
 			self.zyngui.hide_info_timer(5000)
@@ -288,7 +288,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			sleep(0.5)
 			self.play_proc.terminate()
 			self.play_proc = None
-		except Exception e:
+		except Exception as e:
 			logging.error("ERROR STOPPING AUDIO PLAY: %s" % e)
 			self.zyngui.show_info("ERROR STOPPING AUDIO PLAY:\n %s" % e)
 			self.zyngui.hide_info_timer(5000)
