@@ -97,16 +97,16 @@ class zynthian_basic_engine:
 				logging.error("Can't start engine {} => {}".format(self.name, err))
 
 
-	def stop(self, wait=0.2):
+	def stop(self):
 		if self.proc:
 			try:
 				logging.info("Stoping Engine " + self.name)
 				self.proc.terminate()
-				if wait>0: sleep(wait)
+				sleep(0.2)
 				self.proc.terminate(True)
+				self.proc=None
 			except Exception as err:
 				logging.error("Can't stop engine {} => {}".format(self.name, err))
-			self.proc=None
 
 
 	def proc_get_output(self):

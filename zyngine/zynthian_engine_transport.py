@@ -22,6 +22,7 @@
 #
 #******************************************************************************
 
+import pexpect
 from . import zynthian_basic_engine
 
 #------------------------------------------------------------------------------
@@ -44,8 +45,13 @@ class zynthian_engine_transport(zynthian_basic_engine):
 
 
 	def stop(self):
-		self.proc.sendline("quit")
-		super().stop()
+		try:
+			self.proc.sendline("quit")
+			self.proc.expect(pexpect.EOF)
+			self.proc = None
+		except Exception as e:
+			logging.error("Can't stop engine {} => {}".format(self.name, e))
+			super().stop()
 
 
 	# Common Transport commands

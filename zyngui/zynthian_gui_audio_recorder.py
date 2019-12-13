@@ -260,34 +260,26 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		self.update_list()
 
 
-	def end_playing(self):
-		logging.info("ENDING AUDIO PLAY ...")
-		try:
-			self.mplayer_ctrl_fifo.close()
-			self.mplayer_ctrl_fifo = None
-		except Exception as e:
-			logging.error("ERROR ENDING AUDIO PLAY: %s" % e)
-			self.zyngui.show_info("ERROR ENDING AUDIO PLAY:\n %s" % e)
-			self.zyngui.hide_info_timer(5000)
-
-		self.current_record=None
-		self.volume_zgui_ctrl.hide()
-		self.update_list()
-
-
 	def send_mplayer_command(self, cmd):
 		with open(self.mplayer_ctrl_fifo_path, "w") as f:
 			f.write(cmd + "\n")
 			f.close()
 
 
+	def end_playing(self):
+		logging.info("ENDING AUDIO PLAY ...")
+		self.play_proc = None
+		self.current_record=None
+		self.volume_zgui_ctrl.hide()
+		self.update_list()
+
+
 	def stop_playing(self):
 		logging.info("STOPPING AUDIO PLAY ...")
 		try:
 			self.send_mplayer_command("quit")
-			sleep(0.5)
-			self.play_proc.terminate()
-			self.play_proc = None
+			while self.play_proc:
+				sleep(0.1)
 		except Exception as e:
 			logging.error("ERROR STOPPING AUDIO PLAY: %s" % e)
 			self.zyngui.show_info("ERROR STOPPING AUDIO PLAY:\n %s" % e)

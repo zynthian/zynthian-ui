@@ -189,13 +189,13 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			logging.error("ERROR STARTING MIDI RECORD: %s" % e)
 			self.zyngui.show_info("ERROR STARTING MIDI RECORD:\n %s" % e)
 			self.zyngui.hide_info_timer(5000)
+
 		self.update_list()
 
 
 	def stop_recording(self):
 		logging.info("STOPPING MIDI RECORDING ...")
 		try:
-			self.rec_proc.terminate()
 			os.killpg(os.getpgid(self.rec_proc.pid), signal.SIGINT)
 			while self.rec_proc.poll() is None:
 				sleep(0.2)
@@ -242,8 +242,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.show_playing_bpm()
 
 			def runInThread(onExit, cmd):
-				self.play_proc = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True, universal_newlines=True)
+				self.play_proc = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True, universal_newlines=True, preexec_fn=os.setpgrp)
+
 				for line in self.play_proc.stdout:
+					#logging.debug("JACK-SMF-PLAYER => {}".format(line))
 					parts = line.split("SONG BPM:")
 					if len(parts)>1:
 						try:
@@ -251,15 +253,16 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 							self.bpm_zctrl.set_value(song_bpm, True)
 							logging.debug("PARSED SONG BPM: {}".format(song_bpm))
 							self.zyngui.zyntransport.play()
+							self.zyngui.zyntransport.locate(0)
 						except Exception as e:
 							logging.debug(e)
 					elif not zynthian_gui_config.midi_play_loop and line.find("End of song.")>=0:
-						break
+						os.killpg(os.getpgid(self.play_proc.pid), signal.SIGTERM)
 				#self.play_proc.wait()
-				self.stop_playing()
+				self.end_playing()
 				return
 
-			thread = threading.Thread(target=runInThread, args=(self.stop_playing, cmd), daemon=True)
+			thread = threading.Thread(target=runInThread, args=(self.end_playing, cmd), daemon=True)
 			thread.start()
 			sleep(0.2)
 			self.current_record=fpath
@@ -272,22 +275,25 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.update_list()
 
 
+	def end_playing(self):
+		logging.info("ENDING MIDI PLAY ...")
+		self.zyngui.zyntransport.pause()
+		self.play_proc = None
+		self.current_record=None
+		self.bpm_zgui_ctrl.hide()
+		self.update_list()
+
+
 	def stop_playing(self):
 		logging.info("STOPPING MIDI PLAY ...")
 		try:
-			self.zyngui.zyntransport.pause()
-			self.play_proc.send_signal(signal.SIGINT)
-			sleep(0.2)
-			self.play_proc.terminate()
-			self.play_proc = None
+			os.killpg(os.getpgid(self.play_proc.pid), signal.SIGTERM)
+			while self.play_proc:
+				sleep(0.1)
 		except Exception as e:
 			logging.error("ERROR STOPPING MIDI PLAY: %s" % e)
 			self.zyngui.show_info("ERROR STOPPING MIDI PLAY:\n %s" % e)
 			self.zyngui.hide_info_timer(5000)
-
-		self.current_record=None
-		self.bpm_zgui_ctrl.hide()
-		self.update_list()
 
 
 	def show_playing_bpm(self):
