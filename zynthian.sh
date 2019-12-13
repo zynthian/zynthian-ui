@@ -50,12 +50,16 @@ function load_config_env() {
 
 function backlight_on() {
 	# Turn On Display Backlight
-	echo 0 > /sys/class/backlight/soc:backlight/bl_power
+	#echo 0 > /sys/class/backlight/soc:backlight/bl_power
+	#echo 0 > /sys/class/backlight/fb_ili9486/bl_power
+	echo 0 > /sys/class/backlight/*/bl_power
 }
 
 function backlight_off() {
 	# Turn Off Display Backlight
-	echo 1 > /sys/class/backlight/soc:backlight/bl_power
+	#echo 1 > /sys/class/backlight/soc:backlight/bl_power
+	#echo 1 > /sys/class/backlight/fb_ili9486/bl_power
+	echo 1 > /sys/class/backlight/*/bl_power
 }
 
 function screensaver_off() {
@@ -88,6 +92,7 @@ function splash_zynthian_error() {
 
 cd $ZYNTHIAN_UI_DIR
 
+backlight_on
 screensaver_off
 
 while true; do
