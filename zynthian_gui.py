@@ -1421,20 +1421,30 @@ if zynthian_gui_config.wiring_layout=="EMULATOR":
 
 def exit_handler(signo, stack_frame):
 	logging.info("Catch Exit Signal ({}) ...".format(signo))
-	if signo==signal.SIGINT:
-		exit_code=100
+	if signo==signal.SIGHUP:
+		exit_code = 0
+	elif signo==signal.SIGINT:
+		exit_code = 100
 	elif signo==signal.SIGQUIT:
-		exit_code=0
+		exit_code = 102
 	elif signo==signal.SIGTERM:
-		exit_code=101
+		exit_code = 101
 
 	zyngui.exit(exit_code)
 
 
+signal.signal(signal.SIGHUP, exit_handler)
 signal.signal(signal.SIGINT, exit_handler)
 signal.signal(signal.SIGQUIT, exit_handler)
 signal.signal(signal.SIGTERM, exit_handler)
-#signal.signal(signal.SIGKILL, exit_handler)
+
+
+def delete_window():
+	exit_code = 101
+	zyngui.exit(exit_code)
+
+
+zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
 
 #------------------------------------------------------------------------------
 # TKinter Main Loop
