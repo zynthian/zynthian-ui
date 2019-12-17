@@ -481,7 +481,12 @@ class zynthian_gui_controller:
 					self.max_value=self.n_values=r
 					self.mult=max(1,int(128/self.n_values))
 					val=zctrl.value-zctrl.value_min
-				#Integer > 127 || Float
+				#Integer > 127, not MIDI controller
+				elif isinstance(r,int) and zctrl.midi_cc is None:
+					self.max_value=self.n_values=r
+					self.scale_value=1
+					val=(zctrl.value-zctrl.value_min)
+				#Float or (Integer>127 and MIDI controller)
 				else:
 					self.max_value=self.n_values=127
 					self.scale_value=r/self.max_value
@@ -490,6 +495,7 @@ class zynthian_gui_controller:
 					elif self.scale_value<0.13:
 						self.format_print="{0:.1f}"
 					val=(zctrl.value-zctrl.value_min)/self.scale_value
+
 				#If many values => use adaptative step size based on rotary speed
 				if self.n_values>=96:
 					self.step=0
@@ -578,7 +584,7 @@ class zynthian_gui_controller:
 			#logging.debug("CONTROL %d VALUE => %s" % (self.index,self.value))
 			if self.shown:
 				if set_zyncoder and zyncoder.lib_zyncoder:
-					if self.mult>1: v=self.mult*v
+					if self.mult>1: v = self.mult*v
 					zyncoder.lib_zyncoder.set_value_zyncoder(self.index,ctypes.c_uint(int(v)),int(send_zyncoder))
 				self.plot_value()
 			return True
@@ -599,7 +605,7 @@ class zynthian_gui_controller:
 			val=self.value*self.mult-self.val0
 
 		if self.mult>1:
-			val=int((val+1)/self.mult)
+			val = int((val+1)/self.mult)
 
 		return self.set_value(val)
 
