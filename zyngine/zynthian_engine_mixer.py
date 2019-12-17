@@ -229,7 +229,7 @@ class zynthian_engine_mixer(zynthian_engine):
 			logging.error(err)
 
 		# Sort zctrls to match the configured mixer control list
-		if len(self.ctrl_list)>0:
+		if self.ctrl_list and len(self.ctrl_list)>0:
 			sorted_zctrls = OrderedDict()
 			for ctrl_name in self.ctrl_list:
 				ctrl_symbol = ctrl_name.replace(' ', '_')
