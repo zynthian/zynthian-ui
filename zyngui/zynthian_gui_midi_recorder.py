@@ -62,7 +62,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.bpm_zctrl = zynthian_controller(self, "bpm", "BPM", {
 			'value': 120,
 			'value_min': 10,
-			'value_max': 360,
+			'value_max': 400,
 			'is_toggle': False,
 			'is_integer': True
 		})
@@ -244,20 +244,26 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			def runInThread(onExit, cmd):
 				self.play_proc = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True, universal_newlines=True, preexec_fn=os.setpgrp)
 
+				song_bpm = None
 				for line in self.play_proc.stdout:
 					#logging.debug("JACK-SMF-PLAYER => {}".format(line))
-					parts = line.split("SONG BPM:")
-					if len(parts)>1:
-						try:
-							song_bpm = int(float(parts[1].strip()))
-							self.bpm_zctrl.set_value(song_bpm, True)
-							logging.debug("PARSED SONG BPM: {}".format(song_bpm))
+					if line.find("Ready to Play...")>=0:
 							self.zyngui.zyntransport.play()
 							self.zyngui.zyntransport.locate(0)
-						except Exception as e:
-							logging.debug(e)
+
 					elif not zynthian_gui_config.midi_play_loop and line.find("End of song.")>=0:
 						os.killpg(os.getpgid(self.play_proc.pid), signal.SIGTERM)
+
+					elif not song_bpm:
+						parts = line.split("SONG BPM:")
+						if len(parts)>1:
+							try:
+								song_bpm = int(float(parts[1].strip()))
+								self.bpm_zctrl.set_value(song_bpm)
+								self.bpm_zgui_ctrl.zctrl_sync()
+							except Exception as e:
+								logging.debug(e)
+
 				#self.play_proc.wait()
 				self.end_playing()
 				return
