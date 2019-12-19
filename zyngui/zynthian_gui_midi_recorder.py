@@ -231,9 +231,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		try:
 			if zynthian_gui_config.midi_play_loop:
-				cmd="/usr/local/bin/jack-smf-player -n -l -s -a '{}' -r 63 '{}'".format(self.jack_play_port, fpath)
+				cmd="/usr/local/bin/jack-smf-player -n -l -s -a \"{}\" -r 63 \"{}\"".format(self.jack_play_port, fpath)
 			else:
-				cmd="/usr/local/bin/jack-smf-player -n -s -a '{}' -r 63 '{}'".format(self.jack_play_port, fpath)
+				cmd="/usr/local/bin/jack-smf-player -n -s -a \"{}\" -r 63 \"{}\"".format(self.jack_play_port, fpath)
 
 			logging.info("COMMAND: %s" % cmd)
 
