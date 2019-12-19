@@ -69,7 +69,8 @@ class zynthian_engine_mixer(zynthian_engine):
 			'clone': False,
 			'transpose': False,
 			'audio_route': False,
-			'midi_chan': False
+			'midi_chan': False,
+			'indelible' : True
 		}
 
 		self.get_soundcard_config()
