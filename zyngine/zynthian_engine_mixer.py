@@ -24,6 +24,7 @@
 
 import os
 import re
+import shlex
 import logging
 from subprocess import check_output
 from collections import OrderedDict
@@ -73,11 +74,18 @@ class zynthian_engine_mixer(zynthian_engine):
 			'indelible' : True
 		}
 
+		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
+		self.learned_zctrls = {}
+
 		self.get_soundcard_config()
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
+
+	def add_layer(self, layer):
+		layer.listen_midi_cc = False
+		super().add_layer(layer)
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
@@ -258,11 +266,65 @@ class zynthian_engine_mixer(zynthian_engine):
 				amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format(self.device_name, zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
 
 			logging.debug(amixer_command)
-			check_output(amixer_command, shell=True)
+			check_output(shlex.split(amixer_command))
 
 		except Exception as err:
 			logging.error(err)
 
+
+	#----------------------------------------------------------------------------
+	# MIDI learning
+	#----------------------------------------------------------------------------
+
+	def init_midi_learn(self, zctrl):
+		if zctrl.graph_path:
+			logging.info("Learning '{}' ({}) ...".format(zctrl.symbol,zctrl.graph_path))
+
+
+	def midi_unlearn(self, zctrl):
+		if str(zctrl.graph_path) in self.learned_zctrls:
+			logging.info("Unlearning '{}' ...".format(zctrl.symbol))
+			try:
+				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
+				del self.learned_zctrls[str(zctrl.graph_path)]
+				return zctrl._unset_midi_learn()
+			except Exception as e:
+				logging.warning("Can't unlearn => {}".format(e))
+
+
+	def set_midi_learn(self, zctrl ,chan, cc):
+		try:
+			# Clean current binding if any ...
+			try:
+				self.learned_cc[chan][cc].midi_unlearn()
+			except:
+				pass
+			# Add midi learning info
+			self.learned_zctrls[str(zctrl.graph_path)] = zctrl
+			self.learned_cc[chan][cc] = zctrl
+			return zctrl._set_midi_learn(chan, cc)
+		except Exception as e:
+			logging.error("Can't learn {} => {}".format(zctrl.symbol, e))
+
+
+	def reset_midi_learn(self):
+		logging.info("Reset MIDI-learn ...")
+		self.learned_zctrls = {}
+		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
+
+
+	def cb_midi_learn(self, zctrl, chan, cc):
+		return self.set_midi_learn(zctrl, chan, cc)
+
+	#----------------------------------------------------------------------------
+	# MIDI CC processing
+	#----------------------------------------------------------------------------
+
+	def midi_control_change(self, chan, ccnum, val):
+		try:
+			self.learned_cc[chan][ccnum].midi_control_change(val)
+		except:
+			pass
 
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String
