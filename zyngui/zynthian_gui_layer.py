@@ -358,7 +358,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		selected = False
 		for layer in self.layers:
 			mch=layer.get_midi_chan()
-			if mch is None or mch==midich:
+			if layer.engine.nickname!='MX' and (mch is None or mch==midich):
 				if layer.set_preset(preset_index,True) and not selected:
 					try:
 						self.select_action(self.root_layers.index(layer))
