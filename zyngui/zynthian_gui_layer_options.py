@@ -102,7 +102,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if 'midi_chan' in eng_options and eng_options['midi_chan']:
 				self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
 
-			if 'indelible' in eng_options and eng_options['indelible']:
+			if 'indelible' not in eng_options or not eng_options['indelible']:
 				self.list_data.append((self.layer_remove, None, "Remove Layer"))
 
 			# Add separator
