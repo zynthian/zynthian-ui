@@ -26,6 +26,8 @@ import os
 import re
 import shlex
 import logging
+import threading
+from time import sleep
 from subprocess import check_output
 from collections import OrderedDict
 
@@ -74,10 +76,18 @@ class zynthian_engine_mixer(zynthian_engine):
 			'indelible' : True
 		}
 
+		self.zctrls = None
+		self.sender_poll_enabled = False
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
 
 		self.get_soundcard_config()
+
+
+		def stop(self):
+			self.stop_sender_poll()
+			super().stop()
+
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
@@ -125,6 +135,8 @@ class zynthian_engine_mixer(zynthian_engine):
 		zctrls = OrderedDict()
 
 		logging.debug("MIXER CTRL LIST: {}".format(self.ctrl_list))
+
+		self.stop_sender_poll()
 
 		try:
 			ctrls = check_output("amixer -M -c {}".format(self.device_name), shell=True).decode("utf-8").split("Simple mixer control ")
@@ -213,7 +225,8 @@ class zynthian_engine_mixer(zynthian_engine):
 				if ctrl_symbol and ctrl_type and (not self.ctrl_list or ctrl_name in self.ctrl_list):
 					if ctrl_type in ("Selector", "Toggle", "VToggle") and len(ctrl_items)>1:
 						#logging.debug("ADDING ZCTRL SELECTOR: {} => {}".format(ctrl_symbol, ctrl_item0))
-						zctrls[ctrl_symbol]=zynthian_controller(self, ctrl_symbol, ctrl_name, {
+						
+						zctrl = zynthian_controller(self, ctrl_symbol, ctrl_name, {
 							'graph_path': [ctrl_name, ctrl_type],
 							'labels': ctrl_items,
 							'ticks': ctrl_ticks,
@@ -225,7 +238,7 @@ class zynthian_engine_mixer(zynthian_engine):
 						})
 					elif ctrl_type in ("Playback" ,"Capture"):
 						#logging.debug("ADDING ZCTRL LEVEL: {} => {}".format(ctrl_symbol, ctrl_value))
-						zctrls[ctrl_symbol]=zynthian_controller(self, ctrl_symbol, ctrl_name, {
+						zctrl = zynthian_controller(self, ctrl_symbol, ctrl_name, {
 							'graph_path': [ctrl_name, ctrl_type],
 							'value': ctrl_value,
 							'value_min': ctrl_minval,
@@ -233,6 +246,11 @@ class zynthian_engine_mixer(zynthian_engine):
 							'is_toggle': False,
 							'is_integer': True
 						})
+					else:
+						zctrl = None
+
+					zctrl.last_value_sent = None
+					zctrls[ctrl_symbol] = zctrl
 
 		except Exception as err:
 			logging.error(err)
@@ -252,10 +270,17 @@ class zynthian_engine_mixer(zynthian_engine):
 		# Generate control screens
 		self.generate_ctrl_screens(sorted_zctrls)
 
+		self.zctrls = sorted_zctrls
+		self.start_sender_poll()
+
 		return sorted_zctrls
 
 
 	def send_controller_value(self, zctrl):
+		pass
+
+
+	def _send_controller_value(self, zctrl):
 		try:
 			if zctrl.labels:
 				if zctrl.graph_path[1]=="VToggle":
@@ -270,6 +295,29 @@ class zynthian_engine_mixer(zynthian_engine):
 
 		except Exception as err:
 			logging.error(err)
+
+
+	def start_sender_poll(self):
+
+		def runInThread():
+			while self.sender_poll_enabled:
+				counter = 0
+				if self.zctrls:
+					for sym, zctrl in self.zctrls.items():
+						if zctrl.last_value_sent != zctrl.value:
+							zctrl.last_value_sent = zctrl.value
+							self._send_controller_value(zctrl)
+							counter += 1
+
+				if counter==0:
+					sleep(0.05)
+
+		thread = threading.Thread(target=runInThread, daemon=True)
+		thread.start()
+
+
+	def stop_sender_poll(self):
+		self.sender_poll_enabled = True
 
 
 	#----------------------------------------------------------------------------
