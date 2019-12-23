@@ -85,12 +85,14 @@ class zynthian_gui_keybinding:
 			"TOGGLE_AUDIO_RECORD": { "modifier": 8, "keysym": "a" },
 			"START_AUDIO_PLAY": { "modifier": 4, "keysym": "a" },
 			"STOP_AUDIO_PLAY": { "modifier": 5, "keysym": "a" },
+			"TOGGLE_AUDIO_PLAY": { "modifier": 12, "keysym": "a" },
 
 			"START_MIDI_RECORD": { "modifier": 0, "keysym": "m" },
 			"STOP_MIDI_RECORD": { "modifier": 1, "keysym": "m" },
 			"TOGGLE_MIDI_RECORD": { "modifier": 8, "keysym": "m" },
 			"START_MIDI_PLAY": { "modifier": 4, "keysym": "m" },
-			"STOP_MIDI_PLAY": { "modifier": 5, "keysym": "m" }
+			"STOP_MIDI_PLAY": { "modifier": 5, "keysym": "m" },
+			"TOGGLE_MIDI_PLAY": { "modifier": 12, "keysym": "m" }
 		}
 	}
 
