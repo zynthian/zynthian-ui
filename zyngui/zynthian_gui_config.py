@@ -239,8 +239,9 @@ color_off=os.environ.get('ZYNTHIAN_UI_COLOR_OFF',"#5a626d")
 color_hl=os.environ.get('ZYNTHIAN_UI_COLOR_HL',"#00b000")
 color_ml=os.environ.get('ZYNTHIAN_UI_COLOR_ML',"#f0f000")
 color_low_on=os.environ.get('ZYNTHIAN_UI_COLOR_LOW_ON',"#b00000")
-color_info=os.environ.get('ZYNTHIAN_UI_COLOR_INFO',"#0000e0")
 color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG',"#3a424d")
+color_info=os.environ.get('ZYNTHIAN_UI_COLOR_INFO',"#0000e0")
+color_error=os.environ.get('ZYNTHIAN_UI_COLOR_ERROR',"#ff0000")
 
 # Color Scheme
 color_panel_bd=color_bg
@@ -254,7 +255,7 @@ color_ctrl_tx_off=color_tx_off
 color_status_midi=color_info
 color_status_play=color_hl
 color_status_record=color_low_on
-color_status_error=color_on
+color_status_error=color_error
 
 #------------------------------------------------------------------------------
 # UI Font Parameters
