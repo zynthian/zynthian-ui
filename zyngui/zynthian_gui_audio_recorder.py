@@ -286,6 +286,14 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.zyngui.hide_info_timer(5000)
 
 
+	def toggle_playing(self):
+		logging.info("TOGGLING AUDIO PLAY ...")
+		if self.get_status() in ("PLAY", "PLAY+REC"):
+			self.stop_playing()
+		else:
+			self.start_playing()
+
+
 	def show_playing_volume(self):
 		if self.volume_zgui_ctrl:
 			self.volume_zgui_ctrl.config(self.volume_zctrl)
