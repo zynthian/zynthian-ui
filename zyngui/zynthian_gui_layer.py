@@ -270,9 +270,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if self.curlayer not in self.root_layers:
 				self.index=0
 				try:
-					self.curlayer=self.root_layers[self.index]
+					self.curlayer = self.root_layers[self.index]
 				except:
-					self.curlayer=None
+					self.curlayer = None
+			else:
+				self.index = self.root_layers.index(self.curlayer)
 
 			self.fill_list()
 			self.set_selector()
