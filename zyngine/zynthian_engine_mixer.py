@@ -396,7 +396,7 @@ class zynthian_engine_mixer(zynthian_engine):
 			self.device_name = "0"
 
 		try:
-			self.ctrl_list = os.environ.get('SOUNDCARD_MIXER').split(',')
+			self.ctrl_list = list(filter(str.strip, os.environ.get('SOUNDCARD_MIXER').split(',')))
 		except:
 			self.ctrl_list = None
 
