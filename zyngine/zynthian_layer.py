@@ -588,15 +588,25 @@ class zynthian_layer:
 
 	def get_bankpath(self):
 		path = self.get_basepath()
-		if self.bank_name:
+		if self.bank_name and self.bank_name!="NoBank":
 			path += " > " + self.bank_name
 		return path
 
 
 	def get_presetpath(self):
-		path = self.get_bankpath()
-		if self.preset_name:
-			path += "/" + self.preset_name
+		path = self.get_basepath()
+
+		subpath = None
+		if self.bank_name and self.bank_name!="NoBank":
+			subpath = self.bank_name
+			if self.preset_name:
+				subpath += "/" + self.preset_name
+		elif self.preset_name:
+			subpath = self.preset_name
+
+		if subpath:
+			path += " > " + subpath
+
 		return path
 
 
