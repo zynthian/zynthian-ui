@@ -135,7 +135,23 @@ class zynthian_engine_jalv(zynthian_engine):
 		"Obxd": {
 		},
 		"synthv1": {
+		},
+		"reMID": {
+			"ctrls": [
+				['volume',7,96],
+			],
+			"ctrl_screens": [['MIDI Controllers',['volume']]]
+		},
+		"SO-666 Feedback Synthesizer": {
+			"ctrls": [
+				['feedback',1,32],
+				['volume',7,100],
+				['resonance',71,64],
+				['cutoff',74,60]
+			],
+			"ctrl_screens": [['MIDI Controllers',['volume','feedback','cutoff','resonance']]]
 		}
+
 	}
 
 	_ctrls = None
@@ -222,6 +238,8 @@ class zynthian_engine_jalv(zynthian_engine):
 	def set_midi_chan(self, layer):
 		if self.plugin_name=="Triceratops":
 			self.lv2_zctrl_dict["midi_channel"].set_value(layer.midi_chan+1.5)
+		elif self.plugin_name.startswith("SO-"):
+			self.lv2_zctrl_dict["channel"].set_value(layer.midi_chan)
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
