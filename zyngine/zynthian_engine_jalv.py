@@ -141,17 +141,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				['volume',7,96],
 			],
 			"ctrl_screens": [['MIDI Controllers',['volume']]]
-		},
-		"SO-666 Feedback Synthesizer": {
-			"ctrls": [
-				['feedback',1,32],
-				['volume',7,100],
-				['resonance',71,64],
-				['cutoff',74,60]
-			],
-			"ctrl_screens": [['MIDI Controllers',['volume','feedback','cutoff','resonance']]]
 		}
-
 	}
 
 	_ctrls = None
