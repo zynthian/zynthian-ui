@@ -386,15 +386,16 @@ def audio_autoconnect(force=False):
 		#Connect system capture to effect root layers ...
 		root_layers=zynthian_gui_config.zyngui.screens["layer"].get_fxchain_roots()
 		for rl in root_layers:
-			#Get Root Layer Input ports ...
-			rl_in=jclient.get_ports(rl.jackname, is_input=True, is_audio=True)
-			#Connect System Capture to Root Layer ports
-			if len(rl_in)>0:
-				try:
-					jclient.connect(system_capture[0],rl_in[0])
-					jclient.connect(system_capture[1],rl_in[0])
-				except:
-					pass
+			if rl.jackname:
+				#Get Root Layer Input ports ...
+				rl_in=jclient.get_ports(rl.jackname, is_input=True, is_audio=True)
+				#Connect System Capture to Root Layer ports
+				if len(rl_in)>0:
+					try:
+						jclient.connect(system_capture[0],rl_in[0])
+						jclient.connect(system_capture[1],rl_in[0])
+					except:
+						pass
 
 
 		if zynthian_gui_config.midi_aubionotes_enabled:
