@@ -177,7 +177,7 @@ class zynthian_engine_mixer(zynthian_engine):
 						ctrl_caps = value.split(' ')
 						if 'enum' in ctrl_caps:
 							ctrl_type = "Selector"
-						elif 'pvolume' in ctrl_caps:
+						elif 'volume' in ctrl_caps or 'pvolume' in ctrl_caps:
 							ctrl_type = "Playback"
 						elif 'cvolume' in ctrl_caps:
 							ctrl_type = "Capture"
