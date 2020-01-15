@@ -407,9 +407,12 @@ def audio_autoconnect(force=False):
 
 			#Connect System Capture to Root Layer ports
 			if len(rl_in)>0:
+				if len(rl_in)==1:
+					rl_in.append(rl_in[0])
+
 				try:
 					jclient.connect(system_capture[0],rl_in[0])
-					jclient.connect(system_capture[1],rl_in[0])
+					jclient.connect(system_capture[1],rl_in[1])
 				except:
 					pass
 
@@ -419,9 +422,12 @@ def audio_autoconnect(force=False):
 			aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
 			#Connect System Capture to Aubio ports
 			if len(aubio_in)>0:
+				if len(aubio_in)==1:
+					aubio_in.append(aubio_in[0])
+
 				try:
 					jclient.connect(system_capture[0],aubio_in[0])
-					jclient.connect(system_capture[1],aubio_in[0])
+					jclient.connect(system_capture[1],aubio_in[1])
 				except:
 					pass
 
