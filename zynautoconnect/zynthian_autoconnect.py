@@ -38,9 +38,13 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
+log_level = logging.DEBUG
+
 logger=logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
-#logger.setLevel(logging.DEBUG)
+logger.setLevel(log_level)
+
+#if log_level==logging.DEBUG:
+#	import inspect
 
 #-------------------------------------------------------------------------------
 # Define some Constants and Global Variables
@@ -168,7 +172,7 @@ def midi_autoconnect(force=False):
 			#logger.warning("Engine {} is not present".format(zyngine.jackname))
 			pass
 
-	#logger.debug("Synth Engine Ports: {}".format(engines_in))
+	#logger.debug("Synth Engine Input Ports: {}".format(engines_in))
 
 	#Check for new devices (HW and virtual)...
 	if not force and hw_str==last_hw_str:
@@ -193,7 +197,7 @@ def midi_autoconnect(force=False):
 			#logger.warning("Engine {} is not present".format(zyngine.jackname))
 			pass
 
-	#logger.debug("Synth Engine Ports: {}".format(engines_out))
+	#logger.debug("Synth Engine Output Ports: {}".format(engines_out))
 
 	#Get Zynthian Midi Router MIDI ports
 	zmr_out=OrderedDict()
@@ -211,15 +215,19 @@ def midi_autoconnect(force=False):
 	#------------------------------------
 
 	#Connect "Not Disabled" Input Device Ports to ZynMidiRouter:main_in
+	#TODO Solve X-file about lock/delays/xruns when executing this fragment after deleting all layers
 	for hw in hw_out:
-		#logger.debug("Connecting MIDI Input {} => {}".format(hw,zmr_in['main_in'])
+		#logger.debug("Connecting MIDI Input {} => {}".format(hw,zmr_in['main_in']))
 		try:
 			if get_port_alias_id(hw) in zynthian_gui_config.disabled_midi_in_ports:
 				jclient.disconnect(hw,zmr_in['main_in'])
 			else:
 				jclient.connect(hw,zmr_in['main_in'])
-		except:
+		except Exception as e:
+			#logger.debug("Exception {}".format(e))
 			pass
+
+	#logger.debug("Connecting QMidiNet input port to ZynMidiRouter:net_in ...")
 
 	#Connect QMidiNet Input Port to ZynMidiRouter:net_in
 	try:
@@ -233,6 +241,8 @@ def midi_autoconnect(force=False):
 			jclient.connect(eop[0],zmr_in['ctrl_in'])
 	except:
 		pass
+
+	#logger.debug("Connecting ZynMidiRouter to engines ...")
 
 	#Connect ZynMidiRouter to engines
 	for eip in engines_in:
@@ -456,10 +466,18 @@ def autoconnect_thread():
 
 
 def acquire_lock():
+	#if log_level==logging.DEBUG:
+	#	calframe = inspect.getouterframes(inspect.currentframe(), 2)
+	#	logger.debug("Waiting for lock, requested from '{}'...".format(format(calframe[1][3])))
 	lock.acquire()
+	#logger.debug("... lock acquired!!")
+
 
 
 def release_lock():
+	#if log_level==logging.DEBUG:
+	#	calframe = inspect.getouterframes(inspect.currentframe(), 2)
+	#	logger.debug("Lock released from '{}'".format(calframe[1][3]))
 	lock.release()
 
 
