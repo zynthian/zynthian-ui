@@ -330,6 +330,9 @@ def audio_autoconnect(force=False):
 
 	#Connect Synth Engines to assigned outputs
 	for i, layer in enumerate(layers_list):
+		if not layer.get_jackname():
+			continue
+
 		ports=jclient.get_ports(layer.get_jackname(), is_output=True, is_audio=True, is_physical=False)
 		if ports:
 			if len(ports)==1:
@@ -396,8 +399,12 @@ def audio_autoconnect(force=False):
 		#Connect system capture to effect root layers ...
 		root_layers=zynthian_gui_config.zyngui.screens["layer"].get_fxchain_roots()
 		for rl in root_layers:
+			if not rl.get_jackname():
+				continue
+
 			#Get Root Layer Input ports ...
-			rl_in=jclient.get_ports(rl.jackname, is_input=True, is_audio=True)
+			rl_in=jclient.get_ports(rl.get_jackname(), is_input=True, is_audio=True)
+
 			#Connect System Capture to Root Layer ports
 			if len(rl_in)>0:
 				try:
