@@ -297,6 +297,7 @@ class zynthian_engine_mixer(zynthian_engine):
 
 			logging.debug(amixer_command)
 			check_output(shlex.split(amixer_command))
+			sleep(0.05)
 
 		except Exception as err:
 			logging.error(err)
