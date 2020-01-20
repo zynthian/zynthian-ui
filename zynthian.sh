@@ -79,10 +79,22 @@ function splash_zynthian() {
 
 function splash_zynthian_error() {
 	if [ -c $FRAMEBUFFER ]; then
+		#Get the IP
+		#zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
+		zynthian_ip=`ip route get 1 | sed 's/^.*src \([^ ]*\).*$/\1/;q'`
+
+		#Generate an error image with the IP ...
+		img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
+		img_w=`identify -format '%w' $img_fpath`
+		img_h=`identify -format '%h' $img_fpath`
+		pos_x=$(expr $img_w \* 100 / 266)
+		pos_y=$(expr $img_h \* 100 / 110)
+		font_size=$(expr $img_w / 24)
+		convert -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"IP: $zynthian_ip\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
+		
+		#Display error image
+		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
 		#cat $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.raw > $FRAMEBUFFER
-		zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
-		convert -pointsize 14 -fill white -draw "text 110,225 \"IP: $zynthian_ip\"" $ZYNTHIAN_UI_DIR/img/zynthian_logo_error.png $ZYNTHIAN_CONFIG_DIR/img/zynthian_logo_error_ip.png
-		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/zynthian_logo_error_ip.png
 	fi  
 }
 
