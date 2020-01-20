@@ -38,7 +38,7 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = logging.DEBUG
+log_level = logging.ERROR
 
 logger=logging.getLogger(__name__)
 logger.setLevel(log_level)
