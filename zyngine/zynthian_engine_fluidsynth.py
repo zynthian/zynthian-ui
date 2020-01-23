@@ -127,12 +127,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def set_bank(self, layer, bank):
 		if self.load_soundfont(bank[0]):
 			self.unload_unused_soundfonts()
+			self.set_all_presets()
 			return True
 		else:
 			return False
 
 	# ---------------------------------------------------------------------------
-	# Bank Management
+	# Preset Management
 	# ---------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
@@ -202,16 +203,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			sfi=None
 			cre=re.compile(r"loaded SoundFont has ID (\d+)")
 			for line in output.split("\n"):
+				#logging.debug(" => {}".format(line))
 				res=cre.match(line)
 				if res:
 					sfi=int(res.group(1))
 			# If soundfont was loaded succesfully ...
 			if sfi is not None:
 				logging.info("Loaded SoundFont '{}' => {}".format(sf,sfi))
-				# Re-select presets for all layers to prevent instrument change
-				for layer in self.layers:
-					if layer.preset_info:
-						self.set_preset(layer, layer.preset_info)
 				# Insert ID in soundfont_index dictionary
 				self.soundfont_index[sf]=sfi
 				# Return soundfont ID
@@ -219,20 +217,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			else:
 				logging.warning("SoundFont '{}' can't be loaded".format(sf))
 				return False
-
-
-	def setup_router(self, layer):
-		if layer.part_i is not None:
-			# Clear and recreate all routes if the routes for this layer were set already
-			self.set_all_midi_routes()
-		else:
-			# No need to clear routes if there is the only layer to add
-			try:
-				layer.part_i=self.get_free_parts()[0]
-				logging.debug("ADD LAYER => PART {}".format(layer.part_i))
-			except:
-				logging.error("ADD LAYER => NO FREE PARTS!")
-			self.set_layer_midi_routes(layer)
 
 
 	def unload_unused_soundfonts(self):
@@ -249,6 +233,27 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			logging.info("Unload SoundFont => {}".format(sfi))
 			self.proc_cmd("unload {}".format(sfi))
 			del self.soundfont_index[sf]
+
+
+	# Set presets for all layers to restore soundfont assign (select) after load/unload soundfonts 
+	def set_all_presets(self):
+		for layer in self.layers:
+			if layer.preset_info:
+				self.set_preset(layer, layer.preset_info)
+
+
+	def setup_router(self, layer):
+		if layer.part_i is not None:
+			# Clear and recreate all routes if the routes for this layer were set already
+			self.set_all_midi_routes()
+		else:
+			# No need to clear routes if there is the only layer to add
+			try:
+				layer.part_i=self.get_free_parts()[0]
+				logging.debug("ADD LAYER => PART {}".format(layer.part_i))
+			except:
+				logging.error("ADD LAYER => NO FREE PARTS!")
+			self.set_layer_midi_routes(layer)
 
 
 	def set_layer_midi_routes(self, layer):
@@ -277,6 +282,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def clear_midi_routes(self):
 		self.proc_cmd("router_clear")
+
 
 	# ---------------------------------------------------------------------------
 	# API methods
