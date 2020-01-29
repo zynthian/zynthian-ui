@@ -77,10 +77,15 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
 
-		if zynconf.is_service_active("qmidinet"):
-			self.list_data.append((self.stop_qmidinet,0,"[x] QmidiNet (MIDI over IP)"))
+		if zynconf.is_service_active("jackrtpmidid"):
+			self.list_data.append((self.stop_rtpmidi,0,"[x] RTP-MIDI"))
 		else:
-			self.list_data.append((self.start_qmidinet,0,"[  ] QmidiNet (MIDI over IP)"))
+			self.list_data.append((self.start_rtpmidi,0,"[  ] RTP-MIDI"))
+
+		if zynconf.is_service_active("qmidinet"):
+			self.list_data.append((self.stop_qmidinet,0,"[x] QmidiNet (IP Multicast)"))
+		else:
+			self.list_data.append((self.start_qmidinet,0,"[  ] QmidiNet (IP Multicast)"))
 
 		if zynconf.is_service_active("touchosc2midi"):
 			self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC MIDI Bridge"))
@@ -342,7 +347,53 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.stop_qmidinet(False)
 
-			
+
+	def start_rtpmidi(self, save_config=True):
+		logging.info("STARTING RTP-MIDI")
+
+		try:
+			check_output("systemctl start jackrtpmidid", shell=True)
+			zynthian_gui_config.midi_rtpmidi_enabled = 1
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
+				})
+			# Call autoconnect after a little time
+			sleep(0.5)
+			self.zyngui.zynautoconnect_midi(True)
+
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	def stop_rtpmidi(self, save_config=True):
+		logging.info("STOPPING RTP-MIDI")
+
+		try:
+			check_output("systemctl stop jackrtpmidid", shell=True)
+			zynthian_gui_config.midi_rtpmidi_enabled = 0
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
+				})
+
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	#Start/Stop RTP-MIDI depending on configuration
+	def default_rtpmidi(self):
+		if zynthian_gui_config.midi_rtpmidi_enabled:
+			self.start_rtpmidi(False)
+		else:
+			self.stop_rtpmidi(False)
+
 
 	def start_touchosc2midi(self, save_config=True):
 		logging.info("STARTING touchosc2midi")

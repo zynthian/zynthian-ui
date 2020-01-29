@@ -119,8 +119,25 @@ def midi_autoconnect(force=False):
 	for hw in hw_in:
 		hw_str += hw.name + "\n"
 
+	#Get RTP-MIDI input/output ports ...
+	if zynthian_gui_config.midi_rtpmidi_enabled:
+		try:
+			rtpmidi_out=jclient.get_ports("jackrtpmidid", is_output=True, is_physical=False, is_midi=True)
+			#logger.debug("RTP-MIDI Input Port: {}".format(rtpmidi_out))
+			for p in rtpmidi_out:
+				hw_str += p.name + "\n"
+		except:
+			pass
 
-	#Get Network (qmidinet) MIDI input/output ports ...
+		try:
+			rtpmidi_in=jclient.get_ports("jackrtpmidid", is_input=True, is_physical=False, is_midi=True)
+			#logger.debug("RTP-MIDI Output Port: {}".format(rtpmidi_in))
+			for p in rtpmidi_in:
+				hw_str += p.name + "\n"
+		except:
+			pass
+
+	#Get QMidiNet input/output ports ...
 	if zynthian_gui_config.midi_network_enabled:
 		try:
 			qmidinet_out=jclient.get_ports("QmidiNet", is_output=True, is_physical=False, is_midi=True)
@@ -229,6 +246,12 @@ def midi_autoconnect(force=False):
 
 	#logger.debug("Connecting QMidiNet input port to ZynMidiRouter:net_in ...")
 
+	#Connect RTP-MIDI Input Port to ZynMidiRouter:net_in
+	try:
+		jclient.connect(rtpmidi_out[0],zmr_in['net_in'])
+	except:
+		pass
+
 	#Connect QMidiNet Input Port to ZynMidiRouter:net_in
 	try:
 		jclient.connect(qmidinet_out[0],zmr_in['net_in'])
@@ -286,6 +309,12 @@ def midi_autoconnect(force=False):
 	#Connect ZynMidiRouter:net_out to QMidiNet Output Port
 	try:
 		jclient.connect(zmr_out['net_out'],qmidinet_in[0])
+	except:
+		pass
+
+	#Connect ZynMidiRouter:net_out to RTP-MIDI Output Port
+	try:
+		jclient.connect(zmr_out['net_out'],rtpmidi_in[0])
 	except:
 		pass
 
