@@ -152,13 +152,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def next(self):
-		self.index = self.index+1;
+		if len(self.root_layers)>2:
 
-		if self.index>=len(self.root_layers):
-			self.index = 0
+			self.index += 1
 
-		self.select_listbox(self.index)
-		self.layer_control()
+			if self.index>=len(self.root_layers):
+				self.index = 0
+
+			if self.root_layers[self.index].engine.nickname=='MX':
+				self.next()
+			else:
+				self.select_listbox(self.index)
+				self.layer_control()
 
 
 	def get_num_layers(self):
