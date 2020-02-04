@@ -214,6 +214,7 @@ class zynthian_gui_selector:
 		if not self.shown:
 			self.shown=True
 			self.main_frame.grid()
+
 		self.fill_list()
 		self.set_selector()
 		self.set_select_path()
@@ -520,7 +521,7 @@ class zynthian_gui_selector:
 		if index is None: index=self.index
 		self.select_listbox(index)
 		if self.shown and self.zselector and self.zselector.value!=self.index:
-			self.zselector.set_value(self.index, True)
+			self.zselector.set_value(self.index, True, False)
 
 
 	def select_up(self, n=1):
@@ -574,7 +575,7 @@ class zynthian_gui_selector:
 		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 		if dts > 0.1:
 			#logging.debug("LISTBOX MOTION => %d" % self.index)
-			self.zselector.set_value(self.get_cursel(), True)
+			self.zselector.set_value(self.get_cursel(), True, False)
 
 
 	def cb_listbox_wheel(self,event):
@@ -584,7 +585,7 @@ class zynthian_gui_selector:
 		if (event.num == 4 or event.delta == 120) and self.index < (len(self.list_data)-1):
 			index += 1
 		if index!=self.index:
-			self.zselector.set_value(index, True)
+			self.zselector.set_value(index, True, False)
 
 
 	def cb_loading_push(self,event):

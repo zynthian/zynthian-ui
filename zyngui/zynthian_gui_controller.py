@@ -430,7 +430,7 @@ class zynthian_gui_controller:
 
 
 	def config(self, zctrl):
-		#print("CONFIG CONTROLLER %s => %s" % (self.index,zctrl.name))
+		#logging.debug("CONFIG CONTROLLER %s => %s" % (self.index,zctrl.name))
 		self.zctrl=zctrl
 		self.step=1
 		self.mult=1
@@ -586,6 +586,7 @@ class zynthian_gui_controller:
 				if set_zyncoder and zyncoder.lib_zyncoder:
 					if self.mult>1: v = self.mult*v
 					zyncoder.lib_zyncoder.set_value_zyncoder(self.index,ctypes.c_uint(int(v)),int(send_zyncoder))
+					#logging.debug("set_value_zyncoder {} ({}, {}) => {}".format(self.index, self.zctrl.symbol,self.zctrl.midi_cc,v))
 				self.plot_value()
 			return True
 
