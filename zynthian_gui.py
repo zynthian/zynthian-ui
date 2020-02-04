@@ -35,7 +35,7 @@ import threading
 from time import sleep
 from os.path import isfile
 from datetime import datetime
-from threading  import Thread
+from threading  import Thread, Lock
 from subprocess import check_output
 from ctypes import c_float
 
@@ -149,7 +149,10 @@ class zynthian_gui:
 
 		self.status_info = {}
 		self.status_counter = 0
-		
+
+		# Create Lock object to avoid concurrence problems
+		self.lock = Lock();
+
 		# Load keyboard binding map
 		zynthian_gui_keybinding.getInstance().load()
 		
@@ -338,38 +341,45 @@ class zynthian_gui:
 		self.zyntransport.stop()
 
 
-	def hide_screens(self,exclude=None):
+	def hide_screens(self, exclude=None):
 		if not exclude:
 			exclude=self.active_screen
+
 		for screen_name,screen in self.screens.items():
 			if screen_name!=exclude:
 				screen.hide();
 
 
-	def show_active_screen(self):
-		if not self.active_screen:
-			self.active_screen = "layer"
-		self.screens[self.active_screen].show()
-		self.hide_screens()
-		self.modal_screen=None
+	def show_screen(self, screen=None):
+		if screen is None:
+			if self.active_screen:
+				screen = self.active_screen
+			else:
+				screen = "layer"
 
-
-	def refresh_screen(self):
-		if self.active_screen=='preset' and len(self.curlayer.preset_list)<=1:
-			self.active_screen='control'
-		self.show_active_screen()
-
-
-	def show_screen(self,screen=None):
-		if screen:
-			self.active_screen=screen
-		self.show_active_screen()
+		self.lock.acquire()
+		self.hide_screens(exclude=screen)
+		self.screens[screen].show()
+		self.active_screen = screen
+		self.modal_screen = None
+		self.lock.release()
 
 
 	def show_modal(self, screen):
 		self.modal_screen=screen
 		self.screens[screen].show()
 		self.hide_screens(exclude=screen)
+
+
+	def show_active_screen(self):
+		self.show_screen()
+
+
+	def refresh_screen(self):
+		screen = self.active_screen
+		if screen=='preset' and len(self.curlayer.preset_list)<=1:
+			screen='control'
+		self.show_screen(screen)
 
 
 	def get_current_screen(self):
@@ -983,12 +993,18 @@ class zynthian_gui:
 	def zyncoder_read(self):
 		if not self.loading: #TODO Es necesario???
 			try:
+				#Read Zyncoders
+				self.lock.acquire()
 				if self.modal_screen:
 					self.screens[self.modal_screen].zyncoder_read()
 				else:
 					self.screens[self.active_screen].zyncoder_read()
+				self.lock.release()
+				
+				#Zynswitches
 				self.zynswitch_defered_exec()
 				self.zynswitches()
+
 			except Exception as err:
 				self.reset_loading()
 				logging.exception(err)

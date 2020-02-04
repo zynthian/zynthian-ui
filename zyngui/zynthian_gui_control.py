@@ -29,7 +29,6 @@ import tkinter
 from time import sleep
 from string import Template
 from datetime import datetime
-from threading  import Lock
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
@@ -60,8 +59,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.x_zctrl=None
 		self.y_zctrl=None
 
-		# Create Lock object to avoid concurrence problems
-		self.lock=Lock();
 		# Create "pusher" canvas => used in mode "select"
 		self.pusher= tkinter.Frame(self.main_frame,
 			width=zynthian_gui_config.ctrl_width,
@@ -79,9 +76,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def hide(self):
 		super().hide()
-		if self.shown:
-			for zc in self.zgui_controllers: zc.hide()
-			if self.zselector: self.zselector.hide()
+		#if self.shown:
+		#	for zc in self.zgui_controllers: zc.hide()
+		#	if self.zselector: self.zselector.hide()
 
 
 	def fill_list(self):
@@ -104,7 +101,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_controller_screen(self):
 		#Get Mutex Lock 
-		self.lock.acquire()
+		#self.zyngui.lock.acquire()
 
 		#Get screen info
 		if self.index < len(self.list_data):
@@ -143,7 +140,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.set_xyselect_controllers()
 
 		#Release Mutex Lock
-		self.lock.release()
+		#self.zyngui.lock.release()
 
 
 	def set_zcontroller(self, i, ctrl):
@@ -285,9 +282,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def zyncoder_read(self):
-		#Get Mutex Lock
-		self.lock.acquire()
-
 		#Read Controller
 		if self.mode=='control' and self.zcontrollers:
 			for i, zctrl in enumerate(self.zcontrollers):
@@ -305,9 +299,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		elif self.mode=='select':
 			super().zyncoder_read()
-
-		#Release Mutex Lock
-		self.lock.release()
 
 
 	def zyncoder_read_xyselect(self, zctrl, i):
