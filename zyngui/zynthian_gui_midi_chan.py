@@ -110,15 +110,21 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 			self.zyngui.show_modal('layer_options')
 
 		elif self.mode=='CLONE':
-			if selchan!=self.midi_chan:
-				if zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, selchan):
-					zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, selchan, 0)
-					self.fill_list()
-				else:
-					zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, selchan, 1)
-					self.fill_list()
 
-				logging.info("CLONE MIDI CHANNEL {} => {}".format(self.midi_chan, selchan))
+			if selchan!=self.midi_chan:
+				if t=='S':
+					if zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, selchan):
+						zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, selchan, 0)
+						self.fill_list()
+					else:
+						zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, selchan, 1)
+						self.fill_list()
+
+					logging.info("CLONE MIDI CHANNEL {} => {}".format(self.midi_chan, selchan))
+
+				elif t=='B':
+					self.zyngui.screens['midi_cc'].set_clone_channels(self.midi_chan, selchan)
+					self.zyngui.show_modal('midi_cc')
 
 
 	def back_action(self):

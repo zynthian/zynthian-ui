@@ -338,13 +338,17 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def set_clone(self, clone_status):
 		for i in range(0,16):
 			for j in range(0,16):
-				zyncoder.lib_zyncoder.set_midi_filter_clone(i,j,clone_status[i][j])
+				if isinstance(clone_status[i][j],dict):
+					zyncoder.lib_zyncoder.set_midi_filter_clone(i,j,clone_status[i][j]['enabled'])
+					self.zyngui.screens['midi_cc'].set_clone_cc(i,j,clone_status[i][j]['cc'])
+				else:
+					zyncoder.lib_zyncoder.set_midi_filter_clone(i,j,clone_status[i][j])
+					zyncoder.lib_zyncoder.reset_midi_filter_clone_cc(i,j)
 
 
 	def reset_clone(self):
 		for i in range(0,16):
-			for j in range(0,16):
-				zyncoder.lib_zyncoder.set_midi_filter_clone(i,j,0)
+			zyncoder.lib_zyncoder.reset_midi_filter_clone(i)
 
 
 	def set_transpose(self, transpose_status):
@@ -629,17 +633,25 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				'extended_config': self.get_extended_config(),
 				'midi_profile_state': self.get_midi_profile_state()
 			}
+
 			#Layers info
 			for layer in self.layers:
 				snapshot['layers'].append(layer.get_snapshot())
+
 			#Clone info
 			for i in range(0,16):
 				snapshot['clone'].append([])
 				for j in range(0,16):
-					snapshot['clone'][i].append(zyncoder.lib_zyncoder.get_midi_filter_clone(i,j))
+					clone_info = {
+						'enabled': zyncoder.lib_zyncoder.get_midi_filter_clone(i,j),
+						'cc': list(map(int,zyncoder.lib_zyncoder.get_midi_filter_clone_cc(i,j).nonzero()[0]))
+					}
+					snapshot['clone'][i].append(clone_info)
+
 			#Transpose info
 			for i in range(0,16):
 				snapshot['transpose'].append(zyncoder.lib_zyncoder.get_midi_filter_transpose(i))
+
 			#JSON Encode
 			json=JSONEncoder().encode(snapshot)
 			logging.info("Saving snapshot %s => \n%s" % (fpath,json))

@@ -10,6 +10,7 @@ __all__ = [
 	"zynthian_gui_layer_options",
 	"zynthian_gui_engine",
 	"zynthian_gui_midi_chan",
+	"zynthian_gui_midi_cc",
 	"zynthian_gui_transpose",
 	"zynthian_gui_audio_out",
 	"zynthian_gui_bank",
@@ -34,6 +35,7 @@ from zyngui.zynthian_gui_layer import zynthian_gui_layer
 from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
+from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
 from zyngui.zynthian_gui_transpose import zynthian_gui_transpose
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
