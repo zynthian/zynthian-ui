@@ -26,9 +26,6 @@
 import sys
 import tkinter
 import logging
-import ctypes
-import numpy
-from numpy.ctypeslib import ndpointer
 
 # Zynthian specific modules
 from zyncoder import *
@@ -42,9 +39,6 @@ from . import zynthian_gui_selector
 class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 	def __init__(self):
-
-		zyncoder.lib_zyncoder.get_midi_filter_clone_cc.restype = ndpointer(dtype=ctypes.c_ubyte, shape=(128,))
-
 		self.set_mode('ADD')
 		super().__init__('Channel', True)
 
