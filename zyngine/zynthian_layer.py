@@ -377,15 +377,25 @@ class zynthian_layer:
 		self.wait_stop_loading()
 
 		#Load bank list and set bank
-		self.bank_name=snapshot['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
-		self.load_bank_list()
-		self.bank_name=None
-		self.set_bank_by_name(snapshot['bank_name'])
+		try:
+			self.bank_name=snapshot['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
+			self.load_bank_list()
+			self.bank_name=None
+			self.set_bank_by_name(snapshot['bank_name'])
+
+		except Exception as e:
+			logging.warning("Invalid Bank on layer {}: {}".format(self.get_basepath(), e))
+
 		self.wait_stop_loading()
 	
 		#Load preset list and set preset
-		self.load_preset_list()
-		self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
+		try:
+			self.load_preset_list()
+			self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
+
+		except Exception as e:
+			logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
+
 		self.wait_stop_loading()
 
 		#Refresh controller config
@@ -412,7 +422,10 @@ class zynthian_layer:
 
 		#Set controller values
 		for k in snapshot['controllers_dict']:
-			self.controllers_dict[k].restore_snapshot(snapshot['controllers_dict'][k])
+			try:
+				self.controllers_dict[k].restore_snapshot(snapshot['controllers_dict'][k])
+			except Exception as e:
+				logging.warning("Invalid Controller on layer {}: {}".format(self.get_basepath(), e))
 
 
 	def wait_stop_loading(self):
