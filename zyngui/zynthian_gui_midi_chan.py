@@ -26,6 +26,9 @@
 import sys
 import tkinter
 import logging
+import ctypes
+import numpy
+from numpy.ctypeslib import ndpointer
 
 # Zynthian specific modules
 from zyncoder import *
@@ -39,6 +42,9 @@ from . import zynthian_gui_selector
 class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 	def __init__(self):
+
+		zyncoder.lib_zyncoder.get_midi_filter_clone_cc.restype = ndpointer(dtype=ctypes.c_ubyte, shape=(128,))
+
 		self.set_mode('ADD')
 		super().__init__('Channel', True)
 
@@ -68,9 +74,11 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 				if i==self.midi_chan:
 					continue
 				elif zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, i):
-					self.list_data.append((str(i+1),i,"[x] Channel {}".format(i+1)))
+					cc_to_clone = zyncoder.lib_zyncoder.get_midi_filter_clone_cc(self.midi_chan, i).nonzero()[0]
+					self.list_data.append((str(i+1),i,"[x] CH#{}, CC {}".format(i+1, ' '.join(map(str, cc_to_clone)))))
+					logging.debug("CC TO CLONE: {}".format(cc_to_clone))
 				else:
-					self.list_data.append((str(i+1),i,"[  ] Channel {}".format(i+1)))
+					self.list_data.append((str(i+1),i,"[  ] CH#{}".format(i+1)))
 		super().fill_list()
 
 
