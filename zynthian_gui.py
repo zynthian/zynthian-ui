@@ -689,7 +689,7 @@ class zynthian_gui:
 
 		# Standard 4 ZynSwitches
 		if i==0:
-			pass
+			self.screens['layer'].layer_mixer()
 
 		elif i==1:
 			self.show_screen('admin')

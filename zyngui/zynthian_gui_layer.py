@@ -134,7 +134,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def layer_control(self):
 		self.curlayer = self.root_layers[self.index]
 		self.zyngui.set_curlayer(self.curlayer)
-		# If there is an preset selection for the active layer ...
+		# If there is a preset selection for the active layer ...
 		if self.curlayer.get_preset_name():
 			self.zyngui.show_screen('control')
 		else:
@@ -142,6 +142,17 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			# If there is only one bank, jump to preset selection
 			if len(self.curlayer.bank_list)<=1:
 				self.zyngui.screens['bank'].select_action(0)
+
+
+	def layer_mixer(self):
+		i = 0
+		while i<len(self.root_layers):
+			if self.root_layers[i].engine.nickname=='MX':
+				self.index = i
+				self.select_listbox(self.index)
+				self.layer_control()
+				return
+			i += 1
 
 
 	def layer_options(self):
