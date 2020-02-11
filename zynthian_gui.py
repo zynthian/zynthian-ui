@@ -823,7 +823,7 @@ class zynthian_gui:
 		# Standard 4 ZynSwitches
 		if i==0:
 			if self.active_screen=='control':
-				if self.screens['layer'].get_num_root_layers()>1:
+				if self.screens['layer'].get_num_root_layers()>2:
 					logging.info("Next layer")
 					self.screens['layer'].next()
 					self.show_screen('control')
