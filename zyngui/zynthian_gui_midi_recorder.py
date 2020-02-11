@@ -288,6 +288,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.current_record=None
 		self.bpm_zgui_ctrl.hide()
 		self.update_list()
+		self.zyngui.callable_ui_action("ALL_OFF")
 
 
 	def stop_playing(self):
