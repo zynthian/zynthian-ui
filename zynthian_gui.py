@@ -529,12 +529,10 @@ class zynthian_gui:
 
 		elif cuia == "ALL_NOTES_OFF":
 			self.all_notes_off()
-			
-		elif cuia == "ALL_SOUNDS_OFF":
-			self.all_notes_off()
-			self.all_sounds_off()
+			sleep(0.1)
+			self.raw_all_notes_off()
 
-		elif cuia == "ALL_OFF":
+		elif cuia == "ALL_SOUNDS_OFF" or cuia == "ALL_OFF":
 			self.all_notes_off()
 			self.all_sounds_off()
 			sleep(0.1)
