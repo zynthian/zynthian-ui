@@ -324,8 +324,11 @@ def set_midi_config():
 	master_midi_channel = int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
 	if master_midi_channel>16:
 		master_midi_channel = 16
-	master_midi_channel = master_midi_channel-1
-	mmc_hex = hex(master_midi_channel)[2]
+	master_midi_channel -= 1
+	if master_midi_channel>=0: 
+		mmc_hex = hex(master_midi_channel)[2]
+	else:
+		mmc_hex = None
 
 	master_midi_change_type = os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANGE_TYPE',"Roland")
 
@@ -335,25 +338,25 @@ def set_midi_config():
 	#master_midi_bank_change_ccnum = int(os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM',0x00))
 
 	mmpcu = os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_UP', "")
-	if len(mmpcu)==4:
+	if mmc_hex and len(mmpcu)==4:
 		master_midi_program_change_up = int('{:<06}'.format(mmpcu.replace('#',mmc_hex)),16)
 	else:
 		master_midi_program_change_up = None
 
 	mmpcd = os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_DOWN', "")
-	if len(mmpcd)==4:
+	if mmc_hex and len(mmpcd)==4:
 		master_midi_program_change_down = int('{:<06}'.format(mmpcd.replace('#',mmc_hex)),16)
 	else:
 		master_midi_program_change_down = None
 
 	mmbcu = os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_UP', "")
-	if len(mmbcu)==6:
+	if mmc_hex and len(mmbcu)==6:
 		master_midi_bank_change_up = int('{:<06}'.format(mmbcu.replace('#',mmc_hex)),16)
 	else:
 		master_midi_bank_change_up = None
 
 	mmbcd = os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_DOWN', "")
-	if len(mmbcd)==6:
+	if mmc_hex and len(mmbcd)==6:
 		master_midi_bank_change_down = int('{:<06}'.format(mmbcd.replace('#',mmc_hex)),16)
 	else:
 		master_midi_bank_change_down = None
