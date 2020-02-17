@@ -57,12 +57,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def init_engine_info(cls):
 
 		cls.engine_info=OrderedDict([
-			["MX", ("Mixer", "ALSA Mixer", "MIXER", zynthian_engine_mixer)],
-			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", zynthian_engine_zynaddsubfx)],
-			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", zynthian_engine_fluidsynth)],
-			["LS", ("LinuxSampler", "LinuxSampler - SFZ/GIG Player", "MIDI Synth", zynthian_engine_linuxsampler)],
-			["BF", ("setBfree", "setBfree - Hammond Emulator", "MIDI Synth", zynthian_engine_setbfree)],
-			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", zynthian_engine_aeolus)]
+			["MX", ("Mixer", "ALSA Mixer", "MIXER", zynthian_engine_mixer, True)],
+			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", zynthian_engine_zynaddsubfx, True)],
+			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", zynthian_engine_fluidsynth, True)],
+			["LS", ("LinuxSampler", "LinuxSampler - SFZ/GIG Player", "MIDI Synth", zynthian_engine_linuxsampler, True)],
+			["BF", ("setBfree", "setBfree - Hammond Emulator", "MIDI Synth", zynthian_engine_setbfree, True)],
+			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", zynthian_engine_aeolus, True)]
 		])
 
 		if check_pianoteq_binary():
@@ -71,14 +71,14 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				PIANOTEQ_VERSION[1],
 				PIANOTEQ_PRODUCT,
 				" (Demo)" if PIANOTEQ_TRIAL else "")
-			cls.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title, "MIDI Synth", zynthian_engine_pianoteq)
+			cls.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title, "MIDI Synth", zynthian_engine_pianoteq, True)
 
 		for plugin_name, plugin_info in get_jalv_plugins().items():
-			cls.engine_info['JV/{}'.format(plugin_name)] = (plugin_name, "{} - Plugin LV2".format(plugin_name), plugin_info['TYPE'], zynthian_engine_jalv)
+			cls.engine_info['JV/{}'.format(plugin_name)] = (plugin_name, "{} - Plugin LV2".format(plugin_name), plugin_info['TYPE'], zynthian_engine_jalv, plugin_info['ENABLED'])
 
-		cls.engine_info['PD'] = ("PureData", "PureData - Visual Programming", "Special", zynthian_engine_puredata)
-		#cls.engine_info['CS'] = ("CSound", "CSound Audio Language", "Special", zynthian_engine_csound)
-		cls.engine_info['MD'] = ("MOD-UI", "MOD-UI - Plugin Host", "Special", zynthian_engine_modui)
+		cls.engine_info['PD'] = ("PureData", "PureData - Visual Programming", "Special", zynthian_engine_puredata, True)
+		cls.engine_info['CS'] = ("CSound", "CSound Audio Language", "Special", zynthian_engine_csound, False)
+		cls.engine_info['MD'] = ("MOD-UI", "MOD-UI - Plugin Host", "Special", zynthian_engine_modui, True)
 
 
 	def __init__(self):
@@ -104,7 +104,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.list_data=[]
 		i=0
 		for en, info in self.engine_info.items():
-			if ((info[2]==self.engine_type or self.engine_type is None) and
+			if (info[4] and (info[2]==self.engine_type or self.engine_type is None) and
 				(en not in self.single_layer_engines or en not in self.zyngines)):
 
 				# For some engines, check if needed channels are free ...

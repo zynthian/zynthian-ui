@@ -42,6 +42,11 @@ def get_jalv_plugins():
 	if isfile(zynthian_engine_jalv.JALV_LV2_CONFIG_FILE):
 		with open(zynthian_engine_jalv.JALV_LV2_CONFIG_FILE,'r') as f:
 			zynthian_engine_jalv.plugins_dict=json.load(f, object_pairs_hook=OrderedDict)
+
+		for name in zynthian_engine_jalv.plugins_dict:
+			if 'ENABLED' not in zynthian_engine_jalv.plugins_dict[name]:
+				zynthian_engine_jalv.plugins_dict[name]['ENABLED'] = False
+			
 	return zynthian_engine_jalv.plugins_dict
 
 #------------------------------------------------------------------------------
