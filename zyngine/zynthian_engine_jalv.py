@@ -45,7 +45,7 @@ def get_jalv_plugins():
 
 		for name in zynthian_engine_jalv.plugins_dict:
 			if 'ENABLED' not in zynthian_engine_jalv.plugins_dict[name]:
-				zynthian_engine_jalv.plugins_dict[name]['ENABLED'] = False
+				zynthian_engine_jalv.plugins_dict[name]['ENABLED'] = True
 			
 	return zynthian_engine_jalv.plugins_dict
 
