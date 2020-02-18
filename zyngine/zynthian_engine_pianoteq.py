@@ -655,7 +655,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 					try:
 						#logging.debug("Generating Pianoteq MIDI-Mapping for {}".format(prs[0]))
 						midi_event_str = bytes("Program Change " + str(len(data)+1),"utf8")
-						action_str = bytes("{LoadPreset|28||" + prs[0] + "|0}","utf8")
+						parts = prs[0].split('/')
+						if len(parts)>1:
+							action_str = bytes("{{LoadPreset|28|{}|{}|0}}".format(parts[0],parts[1]),"utf8")
+						else:
+							action_str = bytes("{{LoadPreset|28||{}|0}}".format(prs[0]),"utf8")
 						row = b'\x01\x00\x00\x00'
 						row += struct.pack("<I",len(midi_event_str)) + midi_event_str
 						row += struct.pack("<I",len(action_str)) + action_str
