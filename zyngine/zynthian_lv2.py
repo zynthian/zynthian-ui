@@ -27,6 +27,7 @@ import sys
 import json
 import lilv
 import time
+import string
 import logging
 
 from enum import Enum
@@ -321,7 +322,7 @@ def _generate_plugin_presets_cache(plugin):
 			presets_info[k]['presets'] = sorted(presets_info[k]['presets'], key=lambda k: k['label'])
 
 	# Save cache file
-	fpath_cache = "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), plugin_name)
+	fpath_cache = "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), sanitize_fname(plugin_name))
 	try:
 		with open(fpath_cache,'w') as f:
 			json.dump(presets_info, f)
@@ -332,7 +333,7 @@ def _generate_plugin_presets_cache(plugin):
 
 
 def get_plugin_presets(plugin_name):
-	fpath_cache = "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), plugin_name)
+	fpath_cache = "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), sanitize_fname(plugin_name))
 	try:
 		with open(fpath_cache) as f:
 			presets_info = json.load(f, object_pairs_hook=OrderedDict)
@@ -346,6 +347,23 @@ def get_plugin_presets(plugin_name):
 			presets_info = OrderedDict()
 
 	return presets_info
+
+
+def sanitize_fname(s):
+	"""Take a string and return a valid filename constructed from the string.
+	Uses a whitelist approach: any characters not present in valid_chars are
+	removed. Also spaces are replaced with underscores.
+
+	Note: this method may produce invalid filenames such as ``, `.` or `..`
+	When I use this method I prepend a date string like '2009_01_15_19_46_32_'
+	and append a file extension like '.txt', so I avoid the potential of using
+	an invalid filename.
+	"""
+
+	valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+	filename = ''.join(c for c in s if c in valid_chars)
+	filename = filename.replace(' ','_') # I don't like spaces in filenames.
+	return filename
 
 
 #------------------------------------------------------------------------------
