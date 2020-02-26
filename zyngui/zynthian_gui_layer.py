@@ -320,21 +320,27 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def remove_all_layers(self, stop_engines=True, remove_mixer_layer=False):
-		# Remove all layers
+		# Remove all layers: Step 1 => Drop from FX chain and mute
 		i = len(self.layers)
 		while i>0:
 			i -= 1
-			if self.layers[i].engine.nickname=='MX' and not remove_mixer_layer:
-				logging.debug("Mixer layer not removed!")
-			else:
-				logging.debug("Removing layer {} => {} ...".format(i, self.layers[i].get_basepath()))
+			if self.layers[i].engine.nickname!='MX' or remove_mixer_layer:
+				logging.debug("Mute layer {} => {} ...".format(i, self.layers[i].get_basepath()))
 				self.drop_from_fxchain(self.layers[i])
 				self.layers[i].mute_audio_out()
-				self.zyngui.zynautoconnect(True)
-				self.zyngui.zynautoconnect_acquire_lock()
+
+		self.zyngui.zynautoconnect(True)
+
+		# Remove all layers: Step 2 => Delete layers
+		i = len(self.layers)
+		self.zyngui.zynautoconnect_acquire_lock()
+		while i>0:
+			i -= 1
+			if self.layers[i].engine.nickname!='MX' or remove_mixer_layer:
+				logging.debug("Remove layer {} => {} ...".format(i, self.layers[i].get_basepath()))
 				self.layers[i].reset()
 				del self.layers[i]
-				self.zyngui.zynautoconnect_release_lock()
+		self.zyngui.zynautoconnect_release_lock()
 
 		self.index=0
 		try:
