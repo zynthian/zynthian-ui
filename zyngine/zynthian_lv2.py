@@ -338,8 +338,8 @@ def get_plugin_presets(plugin_name):
 		logging.error("Can't load presets cache file '{}': {}".format(fpath_cache, e))
 		try:
 			global plugins
-			return generate_plugin_presets(plugins[plugin_name]['URL'])
-		except:
+			return generate_plugin_presets_cache(plugins[plugin_name]['URL'])
+		except Exception as e:
 			logging.error("Error generating presets cache for '{}': {}".format(plugin_name, e))
 			presets_info = OrderedDict()
 
