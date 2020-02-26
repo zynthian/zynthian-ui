@@ -1025,7 +1025,7 @@ class zynthian_gui:
 				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
 				# System Messages
-				if evtype==0xF:
+				if zynthian_gui_config.midi_sys_enabled and evtype==0xF:
 					# Song Position Pointer...
 					if chan==0x1:
 						timecode = (ev & 0xFF) >> 8;

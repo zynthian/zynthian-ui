@@ -288,7 +288,7 @@ show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
 
 def set_midi_config():
 	global preset_preload_noteon, midi_single_active_channel
-	global midi_network_enabled, midi_rtpmidi_enabled 
+	global midi_sys_enabled, midi_network_enabled, midi_rtpmidi_enabled 
 	global midi_touchosc_enabled, midi_aubionotes_enabled
 	global midi_prog_change_zs3, midi_fine_tuning, midi_filter_rules
 	global master_midi_channel, master_midi_change_type
@@ -299,6 +299,7 @@ def set_midi_config():
 	global disabled_midi_in_ports, enabled_midi_out_ports, enabled_midi_fb_ports
 
 	# MIDI options
+	midi_sys_enabled=int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED',1))
 	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440))
 	midi_single_active_channel=int(os.environ.get('ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL',0))
 	midi_prog_change_zs3=int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3',1))

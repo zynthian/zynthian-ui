@@ -62,6 +62,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.list_data.append((None,0,"-----------------------------"))
 
+		if zynthian_gui_config.midi_sys_enabled:
+			self.list_data.append((self.toggle_midi_sys,0,"[x] MIDI System Messages"))
+		else:
+			self.list_data.append((self.toggle_midi_sys,0,"[  ] MIDI System Messages"))
+
 		if zynthian_gui_config.midi_single_active_channel:
 			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
 		else:
@@ -250,6 +255,22 @@ class zynthian_gui_admin(zynthian_gui_selector):
 #------------------------------------------------------------------------------
 # MIDI OPTIONS
 #------------------------------------------------------------------------------
+
+	def toggle_midi_sys(self):
+		if zynthian_gui_config.midi_sys_enabled:
+			logging.info("MIDI System Messages OFF")
+			zynthian_gui_config.midi_sys_enabled=False
+		else:
+			logging.info("MIDI System Messages ON")
+			zynthian_gui_config.midi_sys_enabled=True
+
+		# Update MIDI profile
+		zynconf.update_midi_profile({ 
+			"ZYNTHIAN_MIDI_SYS_ENABLED": str(int(zynthian_gui_config.midi_sys_enabled))
+		})
+
+		self.fill_list()
+
 
 	def toggle_single_channel(self):
 		if zynthian_gui_config.midi_single_active_channel:
