@@ -151,6 +151,9 @@ class zynthian_gui:
 		self.status_info = {}
 		self.status_counter = 0
 
+		self.zynautoconnect_audio_flag = False
+		self.zynautoconnect_midi_flag = False
+
 		# Create Lock object to avoid concurrence problems
 		self.lock = Lock();
 
@@ -217,7 +220,7 @@ class zynthian_gui:
 			zynthian_gui_config.set_midi_config()
 			self.init_midi()
 			self.init_midi_services()
-			self.zynautoconnect(True)
+			self.zynautoconnect()
 
 	# ---------------------------------------------------------------------------
 	# OSC Management
@@ -257,7 +260,10 @@ class zynthian_gui:
 
 		parts = path.split("/", 2)
 		if parts[0]=="" and parts[1].upper()=="CUIA":
+			#Execute action
 			self.callable_ui_action(parts[2].upper(), args)
+			#Run autoconnect if needed
+			self.zynautoconnect_do()
 		else:
 			logging.warning("Not supported OSC call '{}'".format(path))
 
@@ -332,6 +338,9 @@ class zynthian_gui:
 		self.start_polling()
 		self.start_loading_thread()
 		self.start_zyncoder_thread()
+
+		#Run autoconnect if needed
+		self.zynautoconnect_do()
 
 
 	def stop(self):
@@ -1010,6 +1019,9 @@ class zynthian_gui:
 				self.reset_loading()
 				logging.exception(err)
 
+			#Run autoconnect if needed
+			self.zynautoconnect_do()
+
 
 	def zynmidi_read(self):
 		try:
@@ -1094,6 +1106,9 @@ class zynthian_gui:
 						vel = (ev & 0x007F)
 						if vel != 0 and note in self.note2cuia:
 							self.callable_ui_action(self.note2cuia[note], [vel])
+
+					#Run autoconnect if needed
+					self.zynautoconnect_do()
 
 				# Program Change ...
 				elif evtype==0xC:
@@ -1385,15 +1400,36 @@ class zynthian_gui:
 
 
 	def zynautoconnect(self, force=False):
-		zynautoconnect.autoconnect(force)
+		if force:
+			zynautoconnect.midi_autoconnect(True)
+			zynautoconnect.audio_autoconnect(True)
+		else:
+			self.zynautoconnect_midi_flag = True
+			self.zynautoconnect_audio_flag = True
 
 
 	def zynautoconnect_midi(self, force=False):
-		zynautoconnect.midi_autoconnect(force)
+		if force:
+			zynautoconnect.midi_autoconnect(True)
+		else:
+			self.zynautoconnect_midi_flag = True
 
 
 	def zynautoconnect_audio(self, force=False):
-		zynautoconnect.audio_autoconnect(force)
+		if force:
+			zynautoconnect.midi_autoconnect(True)
+		else:
+			self.zynautoconnect_audio_flag = True
+
+
+	def zynautoconnect_do(self):
+		if self.zynautoconnect_midi_flag:
+			self.zynautoconnect_midi_flag = False
+			zynautoconnect.midi_autoconnect(True)
+
+		if self.zynautoconnect_audio_flag:
+			self.zynautoconnect_audio_flag = False
+			zynautoconnect.audio_autoconnect(True)
 
 
 	def zynautoconnect_acquire_lock(self):

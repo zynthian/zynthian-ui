@@ -31,6 +31,7 @@ from os.path import isfile
 from collections import OrderedDict
 from subprocess import check_output, STDOUT
 
+from . import zynthian_lv2
 from . import zynthian_engine
 from . import zynthian_controller
 
@@ -39,14 +40,7 @@ from . import zynthian_controller
 #------------------------------------------------------------------------------
 
 def get_jalv_plugins():
-	if isfile(zynthian_engine_jalv.JALV_LV2_CONFIG_FILE):
-		with open(zynthian_engine_jalv.JALV_LV2_CONFIG_FILE,'r') as f:
-			zynthian_engine_jalv.plugins_dict=json.load(f, object_pairs_hook=OrderedDict)
-
-		for name in zynthian_engine_jalv.plugins_dict:
-			if 'ENABLED' not in zynthian_engine_jalv.plugins_dict[name]:
-				zynthian_engine_jalv.plugins_dict[name]['ENABLED'] = True
-			
+	zynthian_engine_jalv.plugins_dict = zynthian_lv2.plugins
 	return zynthian_engine_jalv.plugins_dict
 
 #------------------------------------------------------------------------------
@@ -58,8 +52,6 @@ class zynthian_engine_jalv(zynthian_engine):
 	#------------------------------------------------------------------------------
 	# Plugin List (this list is used ONLY if no config file is found)
 	#------------------------------------------------------------------------------
-
-	JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(zynthian_engine.config_dir)
 
 	plugins_dict = OrderedDict([
 		("Dexed", {'TYPE': "MIDI Synth",'URL': "https://github.com/dcoredump/dexed.lv2"}),
@@ -162,7 +154,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, plugin_name, plugin_type, zyngui=None, no_plugin_instance=False):
+	def __init__(self, plugin_name, plugin_type, zyngui=None, dryrun=False):
 		super().__init__(zyngui)
 
 		self.type = plugin_type
@@ -175,45 +167,41 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
 
-		if no_plugin_instance:
-			self.command = ("/usr/local/bin/jalv -z {}".format(self.plugin_url))
-		else:
+		if not dryrun:
 			if self.config_remote_display():
 				self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))		#TODO => Is possible to run plugin's UI?
 			else:
 				self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))
 
-		self.command_prompt = "\n> "
+			self.command_prompt = "\n> "
 
-		output = self.start()
+			output = self.start()
 
-		# Get Plugin & Jack names from Jalv starting text ...
-		self.jackname = None
-		if output:
-			for line in output.split("\n"):
-				if line[0:15]=="JACK Real Name:":
-					self.jackname = line[16:].strip()
-					logging.debug("Jack Name => {}".format(self.jackname))
-					break
-				elif line[0:10]=="JACK Name:":
-					self.plugin_name = line[11:].strip()
-					logging.debug("Plugin Name => {}".format(self.plugin_name))
+			# Get Plugin & Jack names from Jalv starting text ...
+			self.jackname = None
+			if output:
+				for line in output.split("\n"):
+					if line[0:10]=="JACK Name:":
+						self.jackname = line[11:].strip()
+						logging.debug("Jack Name => {}".format(self.jackname))
+						break
 
-		# Set static MIDI Controllers from hardcoded plugin info
-		try:
-			self._ctrls = self.plugin_ctrl_info[self.plugin_name]['ctrls']
-			self._ctrl_screens = self.plugin_ctrl_info[self.plugin_name]['ctrl_screens']
-		except:
-			logging.info("No defined MIDI controllers for '{}'.".format(self.plugin_name))
+			# Set static MIDI Controllers from hardcoded plugin info
+			try:
+				self._ctrls = self.plugin_ctrl_info[self.plugin_name]['ctrls']
+				self._ctrl_screens = self.plugin_ctrl_info[self.plugin_name]['ctrl_screens']
+			except:
+				logging.info("No defined MIDI controllers for '{}'.".format(self.plugin_name))
 
-		# Generate LV2-Plugin Controllers
-		self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
-		self.generate_ctrl_screens(self.lv2_zctrl_dict)
+			# Generate LV2-Plugin Controllers
+			self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
+			self.generate_ctrl_screens(self.lv2_zctrl_dict)
 
-		# Get preset list from plugin host
-		self.bank_npresets = {}
-		self.preset_list = self._get_preset_list()
-		self.bank_list = self._get_bank_list()
+		# Get bank & presets info
+		self.preset_info = zynthian_lv2.get_plugin_presets(plugin_name)
+		self.bank_list = []
+		for bank_label, info in self.preset_info.items():
+			self.bank_list.append((info['bank_url'], None, bank_label, None))
 
 		self.reset()
 
@@ -240,30 +228,6 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-	def _get_bank_list(self):
-		logging.info("Getting Bank List from LV2 Plugin ...")
-
-		bank_list = []
-		output = self.proc_cmd("\get_banks")
-		for line in sorted(output.split("\n")):
-			try:
-				parts = line.split(" => ")
-				if len(parts)==2:
-					title = parts[0].strip()
-					url = parts[1].strip()
-					if url in self.bank_npresets:
-						bank_list.append((url, None, title, None))
-			except Exception as e:
-				logging.error(e)
-
-		if "NoBank" in self.bank_npresets:
-			bank_list.append(("NoBank", None, "NoBank", None))
-		elif len(bank_list)==0:
-			bank_list.append(("", None, "", None))
-
-		return bank_list
-
-
 	def get_bank_list(self, layer=None):
 		return self.bank_list
 
@@ -275,51 +239,15 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Preset Managament
 	#----------------------------------------------------------------------------
 
-	def _get_preset_list(self):
-		logging.info("Getting Preset List from LV2 Plugin ...")
-
-		self.bank_npresets = {}
+	def get_preset_list(self, bank):
 		preset_list = []
-		output=self.proc_cmd("\get_presets")
-		for line in sorted(output.split("\n")):
-			try:
-				parts = line.split(" => ")
-				if len(parts)==2:
-					title = parts[0].strip()
-
-					uri_parts = parts[1].strip().split(",")
-					uri_preset = uri_parts[0].strip()
-					uri_banks = []
-					uri_bank = uri_parts[1].strip()
-					if uri_bank:
-						uri_banks.append(uri_bank)
-					else:
-						uri_banks.append("NoBank")
-					preset_list.append((uri_preset,None,title,uri_banks))
-
-					#Count presets/bank
-					for uri in uri_banks:
-						try:
-							self.bank_npresets[uri] += 1
-						except:
-							self.bank_npresets[uri] = 1
-
-			except Exception as e:
-				logging.error(e)
-
+		for info in  self.preset_info[bank[2]]['presets']:
+			preset_list.append((info['url'], None, info['label'], bank[0]))
 		return preset_list
 
 
-	def get_preset_list(self, bank):
-		bank_preset_list = []
-		for preset in  self.preset_list:
-			if bank[0] in preset[3]:
-				bank_preset_list.append(preset)
-		return bank_preset_list
-
-
 	def set_preset(self, layer, preset, preload=False):
-		output=self.proc_cmd("\set_preset {}".format(preset[0]))
+		output=self.proc_cmd("preset {}".format(preset[0]))
 
 		#Parse new controller values
 		for line in output.split("\n"):
@@ -348,78 +276,74 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def get_lv2_controllers_dict(self):
 		logging.info("Getting Controller List from LV2 Plugin ...")
-		output=self.proc_cmd("\info_controls")
-		zctrls=OrderedDict()
-		for line in output.split("\n"):
-			parts=line.split(" => ")
-			if len(parts)==2:
-				symbol=parts[0]
-				try:
-					info=json.JSONDecoder().decode(parts[1])
 
-					#If there is points info ...
-					if len(info['points'])>1:
-						labels=[]
-						values=[]
-						for p in info['points']:
-							labels.append(p['label'])
-							values.append(p['value'])
-						try:
-							val=info['value']
-						except:
-							val=labels[0]
-						zctrls[symbol]=zynthian_controller(self,symbol,info['label'],{
-							'graph_path': info['index'],
-							'value': val,
-							'labels': labels,
-							'ticks': values,
-							'value_min': values[0],
-							'value_max': values[-1],
-							'is_toggle': info['is_toggle'],
-							'is_integer': info['is_integer']
-						})
+		zctrls = OrderedDict()
+		for i, info in zynthian_lv2.get_plugin_ports(self.plugin_url).items():
+			symbol = info['symbol']
+			try:
+				#If there is points info ...
+				if len(info['scale_points'])>1:
+					labels = []
+					values = []
+					for p in info['scale_points']:
+						labels.append(p['label'])
+						values.append(p['value'])
 
-					#If it's a normal controller ...
-					else:
-						r=info['max']-info['min']
-						if info['is_integer']:
-							if r==1 and info['is_toggle']:
-								if info['value']==0: val='off'
-								else: val='on'
-								zctrls[symbol]=zynthian_controller(self,symbol,info['label'],{
-									'graph_path': info['index'],
-									'value': val,
-									'labels': ['off','on'],
-									'ticks': [0,1],
-									'value_min': 0,
-									'value_max': 1,
-									'is_toggle': True,
-									'is_integer': True
-								})
+					zctrls[symbol] = zynthian_controller(self, symbol, info['label'], {
+						'graph_path': info['index'],
+						'value': info['value'],
+						'labels': labels,
+						'ticks': values,
+						'value_min': values[0],
+						'value_max': values[-1],
+						'is_toggle': info['is_toggled'],
+						'is_integer': info['is_integer']
+					})
+
+				#If it's a normal controller ...
+				else:
+					r = info['range']['max'] - info['range']['min']
+					if info['is_integer']:
+						if r==1 and info['is_toggled']:
+							if info['value']==0:
+								val = 'off'
 							else:
-								zctrls[symbol]=zynthian_controller(self,symbol,info['label'],{
-									'graph_path': info['index'],
-									'value': int(info['value']),
-									'value_default': int(info['default']),
-									'value_min': int(info['min']),
-									'value_max': int(info['max']),
-									'is_toggle': False,
-									'is_integer': True
-								})
-						else:
-								zctrls[symbol]=zynthian_controller(self,symbol,info['label'],{
-									'graph_path': info['index'],
-									'value': info['value'],
-									'value_default': info['default'],
-									'value_min': info['min'],
-									'value_max': info['max'],
-									'is_toggle': False,
-									'is_integer': False
-								})
+								val = 'on'
 
-				#If control info is not OK
-				except Exception as e:
-					logging.error(e)
+							zctrls[symbol] = zynthian_controller(self, symbol, info['label'], {
+								'graph_path': info['index'],
+								'value': val,
+								'labels': ['off','on'],
+								'ticks': [0, 1],
+								'value_min': 0,
+								'value_max': 1,
+								'is_toggle': True,
+								'is_integer': True
+							})
+						else:
+							zctrls[symbol] = zynthian_controller(self, symbol, info['label'], {
+								'graph_path': info['index'],
+								'value': int(info['value']),
+								'value_default': int(info['range']['default']),
+								'value_min': int(info['range']['min']),
+								'value_max': int(info['range']['max']),
+								'is_toggle': False,
+								'is_integer': True
+							})
+					else:
+							zctrls[symbol] = zynthian_controller(self, symbol, info['label'], {
+								'graph_path': info['index'],
+								'value': info['value'],
+								'value_default': info['range']['default'],
+								'value_min': info['range']['min'],
+								'value_max': info['range']['max'],
+								'is_toggle': False,
+								'is_integer': False
+							})
+
+			#If control info is not OK
+			except Exception as e:
+				logging.error(e)
 
 		return zctrls
 
@@ -459,7 +383,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def send_controller_value(self, zctrl):
-		self.proc_cmd("\set_control %d, %.6f" % (zctrl.graph_path, zctrl.value))
+		self.proc_cmd("set %d, %.6f" % (zctrl.graph_path, zctrl.value))
 
 	#----------------------------------------------------------------------------
 	# MIDI learning
@@ -552,7 +476,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				'name': b[2],
 				'fullpath': b[0],
 				'raw': b,
-				'readonly': False if b[0].startswith("file:///") else True
+				'readonly': False if not b[0] or b[0].startswith("file:///") else True
 			})
 		return banks
 
@@ -566,7 +490,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				'name': p[2],
 				'fullpath': p[0],
 				'raw': p,
-				'readonly': False if p[0].startswith("file:///") else True
+				'readonly': False if not p[0] or p[0].startswith("file:///") else True
 			})
 		return presets
 
