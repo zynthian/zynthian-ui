@@ -40,7 +40,7 @@ from . import zynthian_controller
 #------------------------------------------------------------------------------
 
 def get_jalv_plugins():
-	zynthian_engine_jalv.plugins_dict = zynthian_lv2.plugins
+	zynthian_engine_jalv.plugins_dict = zynthian_lv2.get_plugins()
 	return zynthian_engine_jalv.plugins_dict
 
 #------------------------------------------------------------------------------

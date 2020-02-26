@@ -67,15 +67,28 @@ world.ns.presets = lilv.Namespace(world, "http://lv2plug.in/ns/ext/presets#")
 
 plugins = None
 plugin_by_type = None
+plugins_mtime = None
+
+
+def get_plugins():
+	global plugins, plugins_mtime
+	mtime = os.stat(JALV_LV2_CONFIG_FILE).st_mtime
+	if mtime != plugins_mtime:
+		plugins_mtime = mtime
+		return load_plugins()
+	else:
+		return plugins
 
 
 def load_plugins():
-	global plugins
+	global plugins, plugins_mtime
 	plugins = OrderedDict()
 
 	try:
 		with open(JALV_LV2_CONFIG_FILE) as f:
 			plugins = json.load(f, object_pairs_hook=OrderedDict)
+
+		plugins_mtime = os.stat(JALV_LV2_CONFIG_FILE).st_mtime
 		convert_from_all_plugins()
 
 	except Exception as e:
@@ -87,12 +100,14 @@ def load_plugins():
 
 
 def save_plugins():
-	global plugins
+	global plugins, plugins_mtime
 
 	try:
 		with open(JALV_LV2_CONFIG_FILE, 'w') as f:
 			json.dump(plugins, f)
 
+		plugins_mtime = os.stat(JALV_LV2_CONFIG_FILE).st_mtime
+	
 	except Exception as e:
 		logging.error('Saving list of LV2-Plugins failed: {}'.format(e))
 
@@ -106,7 +121,7 @@ def is_plugin_enabled(plugin_name):
 
 
 def generate_plugins_config_file():
-	global world, plugins
+	global world, plugins, plugins_mtime
 	genplugins = OrderedDict()
 
 	start = int(round(time.time() * 1000))
@@ -125,6 +140,8 @@ def generate_plugins_config_file():
 
 		with open(JALV_LV2_CONFIG_FILE, 'w') as f:
 			json.dump(plugins, f)
+
+		plugins_mtime = os.stat(JALV_LV2_CONFIG_FILE).st_mtime
 
 	except Exception as e:
 		logging.error('Generating list of LV2-Plugins failed: {}'.format(e))
@@ -146,7 +163,7 @@ def get_plugins_by_type():
 
 
 def convert_from_all_plugins():
-	global plugins
+	global plugins, plugins_mtime
 	try:
 		name, prop = next(iter(plugins.items()))
 		if 'ENABLED' not in prop:
@@ -167,6 +184,8 @@ def convert_from_all_plugins():
 
 			with open(JALV_LV2_CONFIG_FILE,'w') as f:
 				json.dump(plugins, f)
+
+			plugins_mtime = os.stat(JALV_LV2_CONFIG_FILE).st_mtime
 
 			try:
 				os.remove(JALV_LV2_CONFIG_FILE_ALL)
