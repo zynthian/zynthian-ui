@@ -37,8 +37,10 @@ from collections import OrderedDict
 # Log level and debuging
 #------------------------------------------------------------------------------
 
-#log_level=logging.DEBUG
-#logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
+if __name__ == '__main__':
+	#log_level=logging.DEBUG
+	log_level=logging.WARNING
+	logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
 
 #------------------------------------------------------------------------------
 
@@ -296,7 +298,7 @@ def _generate_plugin_presets_cache(plugin):
 
 		bank = world.get(preset, world.ns.presets.bank, None)
 		if bank is None:
-			logging.warning("Preset <{}> has no bank!".format(preset))
+			logging.info("Preset <{}> has no bank!".format(preset))
 		else:
 			try:
 				bank = banks_dict[str(bank)]
