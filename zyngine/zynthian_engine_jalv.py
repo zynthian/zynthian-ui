@@ -199,9 +199,13 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		# Get bank & presets info
 		self.preset_info = zynthian_lv2.get_plugin_presets(plugin_name)
+
 		self.bank_list = []
 		for bank_label, info in self.preset_info.items():
 			self.bank_list.append((info['bank_url'], None, bank_label, None))
+
+		if len(self.bank_list)==0:
+			self.bank_list.append(("", None, "", None))
 
 		self.reset()
 
@@ -241,8 +245,12 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def get_preset_list(self, bank):
 		preset_list = []
-		for info in  self.preset_info[bank[2]]['presets']:
-			preset_list.append((info['url'], None, info['label'], bank[0]))
+		try:
+			for info in  self.preset_info[bank[2]]['presets']:
+				preset_list.append((info['url'], None, info['label'], bank[0]))
+		except:
+			preset_list.append(("", None, "", None))
+
 		return preset_list
 
 
