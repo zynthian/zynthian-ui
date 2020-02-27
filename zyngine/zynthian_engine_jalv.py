@@ -391,7 +391,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def send_controller_value(self, zctrl):
-		self.proc_cmd("set %d, %.6f" % (zctrl.graph_path, zctrl.value))
+		self.proc_cmd("set %d %.6f" % (zctrl.graph_path, zctrl.value))
 
 	#----------------------------------------------------------------------------
 	# MIDI learning
