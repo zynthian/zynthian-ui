@@ -29,6 +29,7 @@ import lilv
 import time
 import string
 import logging
+import contextlib
 
 from enum import Enum
 from collections import OrderedDict
@@ -42,6 +43,64 @@ if __name__ == '__main__':
 	#log_level=logging.DEBUG
 	log_level=logging.WARNING
 	logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
+
+#------------------------------------------------------------------------------
+# Avoid output from lilv
+#------------------------------------------------------------------------------
+
+from contextlib import contextmanager
+
+@contextmanager
+def stdout_redirected(to=os.devnull):
+    '''
+    import os
+
+    with stdout_redirected(to=filename):
+        print("from Python")
+        os.system("echo non-Python applications are also supported")
+    '''
+    fd = sys.stdout.fileno()
+
+    ##### assert that Python and C stdio write using the same file descriptor
+    ####assert libc.fileno(ctypes.c_void_p.in_dll(libc, "stdout")) == fd == 1
+
+    def _redirect_stdout(to):
+        sys.stdout.close() # + implicit flush()
+        os.dup2(to.fileno(), fd) # fd writes to 'to' file
+        sys.stdout = os.fdopen(fd, 'w') # Python writes to fd
+
+    with os.fdopen(os.dup(fd), 'w') as old_stdout:
+        with open(to, 'w') as file:
+            _redirect_stdout(to=file)
+        try:
+            yield # allow code to be run with the redirected stdout
+        finally:
+            _redirect_stdout(to=old_stdout) # restore stdout.
+                                            # buffering and flags such as
+                                            # CLOEXEC may be different
+
+
+@contextmanager
+def stderr_redirected(to=os.devnull):
+    fd = sys.stderr.fileno()
+
+    ##### assert that Python and C stdio write using the same file descriptor
+    ####assert libc.fileno(ctypes.c_void_p.in_dll(libc, "stderr")) == fd == 1
+
+    def _redirect_stderr(to):
+        sys.stderr.close() # + implicit flush()
+        os.dup2(to.fileno(), fd) # fd writes to 'to' file
+        sys.stderr = os.fdopen(fd, 'w') # Python writes to fd
+
+    with os.fdopen(os.dup(fd), 'w') as old_stderr:
+        with open(to, 'w') as file:
+            _redirect_stderr(to=file)
+        try:
+            yield # allow code to be run with the redirected stdout
+        finally:
+            _redirect_stderr(to=old_stderr) # restore stdout.
+                                            # buffering and flags such as
+                                            # CLOEXEC may be different
 
 #------------------------------------------------------------------------------
 
@@ -120,13 +179,15 @@ def is_plugin_enabled(plugin_name):
 		return False
 
 
-def generate_plugins_config_file():
+def generate_plugins_config_file(load_all=True):
 	global world, plugins, plugins_mtime
 	genplugins = OrderedDict()
 
 	start = int(round(time.time() * 1000))
 	try:
-		world.load_all()
+		if load_all:
+			with stderr_redirected():
+				world.load_all()
 		for plugin in world.get_all_plugins():
 			name = str(plugin.get_name())
 			logging.info("Plugin '{}'".format(name))
@@ -259,18 +320,24 @@ def get_plugin_type(plugin):
 # LV2 Bank/Preset management
 #------------------------------------------------------------------------------
 
-def generate_all_presets_cache():
+def generate_all_presets_cache(load_all=True):
 	global world
-	world.load_all()
+
+	if load_all:
+		with stderr_redirected():
+			world.load_all()
 
 	plugins = world.get_all_plugins()
 	for plugin in plugins:
 		_generate_plugin_presets_cache(plugin)
 
 
-def generate_plugin_presets_cache(plugin_url):
+def generate_plugin_presets_cache(plugin_url, load_all=True):
 	global world
-	world.load_all()
+
+	if load_all:
+		with stderr_redirected():
+			world.load_all()
 
 	plugins = world.get_all_plugins()
 	return _generate_plugin_presets_cache(plugins[plugin_url])
@@ -453,7 +520,7 @@ load_plugins()
 #get_plugin_ports("http://code.google.com/p/amsynth/amsynth")
 
 if __name__ == '__main__':
-	generate_plugins_config_file()
-	generate_all_presets_cache()
+	generate_plugins_config_file(False)
+	generate_all_presets_cache(False)
 
 #------------------------------------------------------------------------------
