@@ -401,7 +401,8 @@ def _generate_plugin_presets_cache(plugin):
 		logging.debug("Preset {} <{}> => <{}>".format(label, bank, preset))
 
 	# Sort and Remove empty banks 
-	for k in presets_info:
+	keys = list(presets_info.keys())
+	for k in keys:
 		if len(presets_info[k]['presets'])==0:
 			del(presets_info[k])
 		else:
