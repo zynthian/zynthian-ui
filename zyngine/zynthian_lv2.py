@@ -124,15 +124,15 @@ def is_plugin_enabled(plugin_name):
 		return False
 
 
-def generate_plugins_config_file(load_all=True):
+def generate_plugins_config_file(refresh=True):
 	global world, plugins, plugins_mtime
 	genplugins = OrderedDict()
 
 	start = int(round(time.time() * 1000))
 	try:
-		if load_all:
-			with stderr_redirected():
-				world.load_all()
+		if refresh:
+			init_lilv()
+
 		for plugin in world.get_all_plugins():
 			name = str(plugin.get_name())
 			logging.info("Plugin '{}'".format(name))
