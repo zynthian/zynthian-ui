@@ -45,67 +45,15 @@ if __name__ == '__main__':
 	logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
 
 #------------------------------------------------------------------------------
-# Avoid output from lilv
-#------------------------------------------------------------------------------
 
-from contextlib import contextmanager
+def init_lilv():
+	global world
+	world = lilv.World()
+	world.load_all()
 
-@contextmanager
-def stdout_redirected(to=os.devnull):
-    '''
-    import os
+	world.ns.ev = lilv.Namespace(world, "http://lv2plug.in/ns/ext/event#")
+	world.ns.presets = lilv.Namespace(world, "http://lv2plug.in/ns/ext/presets#")
 
-    with stdout_redirected(to=filename):
-        print("from Python")
-        os.system("echo non-Python applications are also supported")
-    '''
-    fd = sys.stdout.fileno()
-
-    ##### assert that Python and C stdio write using the same file descriptor
-    ####assert libc.fileno(ctypes.c_void_p.in_dll(libc, "stdout")) == fd == 1
-
-    def _redirect_stdout(to):
-        sys.stdout.close() # + implicit flush()
-        os.dup2(to.fileno(), fd) # fd writes to 'to' file
-        sys.stdout = os.fdopen(fd, 'w') # Python writes to fd
-
-    with os.fdopen(os.dup(fd), 'w') as old_stdout:
-        with open(to, 'w') as file:
-            _redirect_stdout(to=file)
-        try:
-            yield # allow code to be run with the redirected stdout
-        finally:
-            _redirect_stdout(to=old_stdout) # restore stdout.
-                                            # buffering and flags such as
-                                            # CLOEXEC may be different
-
-
-@contextmanager
-def stderr_redirected(to=os.devnull):
-    fd = sys.stderr.fileno()
-
-    ##### assert that Python and C stdio write using the same file descriptor
-    ####assert libc.fileno(ctypes.c_void_p.in_dll(libc, "stderr")) == fd == 1
-
-    def _redirect_stderr(to):
-        sys.stderr.close() # + implicit flush()
-        os.dup2(to.fileno(), fd) # fd writes to 'to' file
-        sys.stderr = os.fdopen(fd, 'w') # Python writes to fd
-
-    with os.fdopen(os.dup(fd), 'w') as old_stderr:
-        with open(to, 'w') as file:
-            _redirect_stderr(to=file)
-        try:
-            yield # allow code to be run with the redirected stdout
-        finally:
-            _redirect_stderr(to=old_stderr) # restore stdout.
-                                            # buffering and flags such as
-                                            # CLOEXEC may be different
-
-#------------------------------------------------------------------------------
-
-world = lilv.World()
-world.load_all()
 
 #------------------------------------------------------------------------------
 # LV2 Plugin management
@@ -120,9 +68,6 @@ class PluginType(Enum):
 
 JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
 JALV_LV2_CONFIG_FILE_ALL = "{}/jalv/all_plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
-
-world.ns.ev = lilv.Namespace(world, "http://lv2plug.in/ns/ext/event#")
-world.ns.presets = lilv.Namespace(world, "http://lv2plug.in/ns/ext/presets#")
 
 plugins = None
 plugin_by_type = None
@@ -320,24 +265,22 @@ def get_plugin_type(plugin):
 # LV2 Bank/Preset management
 #------------------------------------------------------------------------------
 
-def generate_all_presets_cache(load_all=True):
+def generate_all_presets_cache(refresh=True):
 	global world
 
-	if load_all:
-		with stderr_redirected():
-			world.load_all()
+	if refresh:
+		init_lilv()
 
 	plugins = world.get_all_plugins()
 	for plugin in plugins:
 		_generate_plugin_presets_cache(plugin)
 
 
-def generate_plugin_presets_cache(plugin_url, load_all=True):
+def generate_plugin_presets_cache(plugin_url, refresh=True):
 	global world
 
-	if load_all:
-		with stderr_redirected():
-			world.load_all()
+	if refresh:
+		init_lilv()
 
 	plugins = world.get_all_plugins()
 	return _generate_plugin_presets_cache(plugins[plugin_url])
@@ -514,6 +457,7 @@ def get_node_value(node):
 
 #------------------------------------------------------------------------------
 
+init_lilv()
 load_plugins()
 #generate_plugin_presets_cache("http://code.google.com/p/amsynth/amsynth")
 #print(get_plugin_presets("Dexed"))
