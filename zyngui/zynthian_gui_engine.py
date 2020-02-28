@@ -120,10 +120,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		try:
-			self.zyngui.screens['layer'].add_layer_engine(self.start_engine(self.list_data[i][0]), self.midi_chan)
-		except Exception as e:
-			logging.error("Can't add layer %s => %s" % (self.list_data[i][2],e))
+		self.zyngui.screens['layer'].add_layer_engine(self.start_engine(self.list_data[i][0]), self.midi_chan)
 
 
 	def start_engine(self, eng):
