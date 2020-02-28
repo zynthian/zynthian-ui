@@ -126,7 +126,7 @@ class zynthian_engine_csound(zynthian_engine):
 		self.start()
 		self.refresh_all()
 		sleep(0.3)
-		self.zyngui.zynautoconnect(True)
+		self.zyngui.zynautoconnect()
 		layer.send_ctrl_midi_cc()
 		return True
 

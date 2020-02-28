@@ -41,6 +41,7 @@ class zynthian_layer:
 
 		self.jackname = None
 		self.audio_out = ["system"]
+		self.audio_chan = [0,1]
 
 		self.bank_list = []
 		self.bank_index = 0
@@ -520,16 +521,15 @@ class zynthian_layer:
 		return self.audio_out
 
 
-	def set_audio_out(self, ao, autoconnect=True):
+	def set_audio_out(self, ao):
 		self.audio_out=ao
 		#logging.debug("Setting connections:")
 		#for jn in ao:
 		#	logging.debug("  {} => {}".format(self.engine.jackname, jn))
-		if autoconnect:
-			self.zyngui.zynautoconnect_audio(True)
+		self.zyngui.zynautoconnect_audio()
 
 
-	def add_audio_out(self, jackname, autoconnect=True):
+	def add_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
 			jackname=jackname.jackname
 
@@ -537,11 +537,10 @@ class zynthian_layer:
 			self.audio_out.append(jackname)
 			logging.debug("Connecting {} => {}".format(self.engine.jackname, jackname))
 
-		if autoconnect:
-			self.zyngui.zynautoconnect_audio(True)
+		self.zyngui.zynautoconnect_audio()
 
 
-	def del_audio_out(self, jackname, autoconnect=True):
+	def del_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
 			jackname=jackname.jackname
 
@@ -551,11 +550,10 @@ class zynthian_layer:
 		except:
 			pass
 
-		if autoconnect:
-			self.zyngui.zynautoconnect_audio(True)
+		self.zyngui.zynautoconnect_audio()
 
 
-	def toggle_audio_out(self, jackname, autoconnect=True):
+	def toggle_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
 			jackname=jackname.jackname
 
@@ -564,20 +562,17 @@ class zynthian_layer:
 		else:
 			self.audio_out.remove(jackname)
 
-		if autoconnect:
-			self.zyngui.zynautoconnect_audio(True)
+		self.zyngui.zynautoconnect_audio()
 
 
-	def reset_audio_out(self, autoconnect=True):
+	def reset_audio_out(self):
 		self.audio_out=["system"]
-		if autoconnect:
-			self.zyngui.zynautoconnect_audio(True)
+		self.zyngui.zynautoconnect_audio()
 
 
-	def mute_audio_out(self, autoconnect=True):
+	def mute_audio_out(self):
 		self.audio_out=[]
-		if autoconnect:
-			self.zyngui.zynautoconnect_audio(True)
+		self.zyngui.zynautoconnect_audio()
 
 
 	# ---------------------------------------------------------------------------
@@ -601,7 +596,7 @@ class zynthian_layer:
 
 	def get_bankpath(self):
 		path = self.get_basepath()
-		if self.bank_name and self.bank_name!="NoBank":
+		if self.bank_name and self.bank_name!="None":
 			path += " > " + self.bank_name
 		return path
 
@@ -610,7 +605,7 @@ class zynthian_layer:
 		path = self.get_basepath()
 
 		subpath = None
-		if self.bank_name and self.bank_name!="NoBank":
+		if self.bank_name and self.bank_name!="None":
 			subpath = self.bank_name
 			if self.preset_name:
 				subpath += "/" + self.preset_name

@@ -151,6 +151,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def stop_unused_engines(self):
 		for eng in list(self.zyngines.keys()):
 			if len(self.zyngines[eng].layers)==0:
+				logging.debug("Stopping Unused Engine '{}' ...".format(eng))
 				self.zyngines[eng].stop()
 				del self.zyngines[eng]
 

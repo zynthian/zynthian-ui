@@ -225,10 +225,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.add_layer_midich(None)
 
 		elif eng.nickname=='AE':
-			self.add_layer_midich(0,False)
-			self.add_layer_midich(1,False)
-			self.add_layer_midich(2,False)
-			self.add_layer_midich(3,False)
+			self.add_layer_midich(0, False)
+			self.add_layer_midich(1, False)
+			self.add_layer_midich(2, False)
+			self.add_layer_midich(3, False)
 
 			self.fill_list()
 			self.index=len(self.layers)-4
@@ -251,7 +251,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.add_to_fxchain(layer)
 
 			self.layers.append(layer)
-			self.zyngui.zynautoconnect(True)
+			self.zyngui.zynautoconnect()
 
 			if select:
 				self.fill_list()
@@ -276,7 +276,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			
 			self.drop_from_fxchain(self.layers[i])
 			self.layers[i].mute_audio_out()
-			self.zyngui.zynautoconnect(True)
+			self.zyngui.zynautoconnect()
 
 			self.zyngui.zynautoconnect_acquire_lock()
 			self.layers[i].reset()
@@ -320,14 +320,33 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def remove_all_layers(self, stop_engines=True, remove_mixer_layer=False):
-		# Remove all layers
+		# Remove all layers: Step 1 => Drop from FX chain and mute
 		i = len(self.layers)
 		while i>0:
 			i -= 1
-			if self.layers[i].engine.nickname=='MX' and not remove_mixer_layer:
-				logging.debug("Mixer layer not removed!")
-			else:
-				self.remove_layer(i, False)
+			if self.layers[i].engine.nickname!='MX' or remove_mixer_layer:
+				logging.debug("Mute layer {} => {} ...".format(i, self.layers[i].get_basepath()))
+				self.drop_from_fxchain(self.layers[i])
+				self.layers[i].mute_audio_out()
+
+		self.zyngui.zynautoconnect(True)
+
+		# Remove all layers: Step 2 => Delete layers
+		i = len(self.layers)
+		self.zyngui.zynautoconnect_acquire_lock()
+		while i>0:
+			i -= 1
+			if self.layers[i].engine.nickname!='MX' or remove_mixer_layer:
+				logging.debug("Remove layer {} => {} ...".format(i, self.layers[i].get_basepath()))
+				self.layers[i].reset()
+				del self.layers[i]
+		self.zyngui.zynautoconnect_release_lock()
+
+		self.index=0
+		try:
+			self.curlayer = self.root_layers[self.index]
+		except:
+			self.curlayer = None
 
 		# Stop ALL engines
 		if stop_engines:
@@ -335,6 +354,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		# Reset MIDI config
 		self.reset_midi_profile()
+
+		# Refresh UI
+		self.fill_list()
+		self.set_selector()
+		self.zyngui.set_curlayer(self.curlayer)
 
 
 	#def refresh(self):
@@ -458,11 +482,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def set_audio_routing(self, audio_routing=None):
 		for i, layer in enumerate(self.layers):
 			try:
-				layer.set_audio_out(audio_routing[layer.get_jackname()], False)
+				layer.set_audio_out(audio_routing[layer.get_jackname()])
 			except:
-				layer.set_audio_out(["system"], False)
-
-		self.zyngui.zynautoconnect_audio(True)
+				layer.set_audio_out(["system"])
 
 
 	def reset_audio_routing(self):
@@ -549,15 +571,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if len(ends)>0:
 				for end in ends:
 					logging.debug("Adding to FX-chain {} => {}".format(end.get_jackname(), layer.get_jackname()))
-					end.add_audio_out(layer.get_jackname(), False)
-					end.del_audio_out("system", False)
+					end.add_audio_out(layer.get_jackname())
+					end.del_audio_out("system")
 			else:
 				logging.warning("Can't find the FX chain end ({})".format(layer.get_jackname()))
 
 		except Exception as e:
 			logging.error("Error chaining effect ({})".format(e))
-
-		self.zyngui.zynautoconnect_audio(True)
 
 
 	def drop_from_fxchain(self, layer):
@@ -566,14 +586,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if len(ups)>0:
 				for up in ups:
 					logging.debug("Dropping from FX-chain {} => {}".format(up.get_jackname(), layer.get_jackname()))
-					up.del_audio_out(layer.get_jackname(), False)
+					up.del_audio_out(layer.get_jackname())
 					for ao in layer.get_audio_out():
-						up.add_audio_out(ao, False)
+						up.add_audio_out(ao)
 
 		except Exception as e:
 			logging.error("Error unchaining effect ({})".format(e))
-
-		self.zyngui.zynautoconnect_audio(True)
 
 
 	def swap_fxchain(self, layer1, layer2):
@@ -584,22 +602,21 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		# Move inputs from layer1 to layer2
 		for l in ups1:
-			l.add_audio_out(layer2.get_jackname(), False)
-			l.del_audio_out(layer1.get_jackname(), False)
+			l.add_audio_out(layer2.get_jackname())
+			l.del_audio_out(layer1.get_jackname())
 
 		# Move inputs from layer2 to layer1
 		for l in ups2:
-			l.add_audio_out(layer1.get_jackname(), False)
-			l.del_audio_out(layer2.get_jackname(), False)
+			l.add_audio_out(layer1.get_jackname())
+			l.del_audio_out(layer2.get_jackname())
 
 		# Swap outputs from layer1 & layer2
 		ao1 = layer1.audio_out
 		ao2 = layer2.audio_out
-		layer1.set_audio_out(ao2, False)
-		layer2.set_audio_out(ao1, False)
+		layer1.set_audio_out(ao2)
+		layer2.set_audio_out(ao1)
 
 		self.zyngui.zynautoconnect_release_lock()
-		self.zyngui.zynautoconnect_audio(True)
 
 		# Swap position in layer list
 		for i,layer in enumerate(self.layers):
@@ -724,7 +741,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.screens['engine'].stop_unused_engines()
 
 			#Autoconnect
-			self.zyngui.zynautoconnect(True)
+			self.zyngui.zynautoconnect()
 
 			#Restore MIDI profile state
 			if 'midi_profile_state' in snapshot:
@@ -809,7 +826,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			zynthian_gui_config.set_midi_config()
 			self.zyngui.init_midi()
 			self.zyngui.init_midi_services()
-			self.zyngui.zynautoconnect(True)
+			self.zyngui.zynautoconnect()
+			return True
 
 
 	def reset_midi_profile(self):

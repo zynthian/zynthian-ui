@@ -106,7 +106,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 				layer.set_midi_chan(selchan)
 				logging.info("LAYER {} -> MIDI CHANNEL = {}".format(layer.get_path(), selchan))
 
-			self.zyngui.zynautoconnect_midi(True)
+			self.zyngui.zynautoconnect_midi()
 			self.zyngui.show_modal('layer_options')
 
 		elif self.mode=='CLONE':

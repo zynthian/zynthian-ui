@@ -4,6 +4,7 @@ __all__ = [
 	"zynthian_midi_filter",
 	"zynthian_controller",
 	"zynthian_layer",
+	"zynthian_lv2",
 	"zynthian_engine",
 	"zynthian_engine_zynaddsubfx",
 	"zynthian_engine_linuxsampler",
@@ -23,6 +24,7 @@ from zyngine.zynthian_zcmidi import *
 from zyngine.zynthian_midi_filter import *
 from zyngine.zynthian_controller import *
 from zyngine.zynthian_layer import *
+from zyngine.zynthian_lv2 import *
 from zyngine.zynthian_engine import *
 from zyngine.zynthian_engine_zynaddsubfx import *
 from zyngine.zynthian_engine_linuxsampler import *

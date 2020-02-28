@@ -335,7 +335,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				})
 			# Call autoconnect after a little time
 			sleep(0.5)
-			self.zyngui.zynautoconnect_midi(True)
+			self.zyngui.zynautoconnect_midi()
 
 		except Exception as e:
 			logging.error(e)
@@ -382,7 +382,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				})
 			# Call autoconnect after a little time
 			sleep(0.5)
-			self.zyngui.zynautoconnect_midi(True)
+			self.zyngui.zynautoconnect_midi()
 
 		except Exception as e:
 			logging.error(e)
@@ -428,7 +428,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				})
 			# Call autoconnect after a little time
 			sleep(0.5)
-			self.zyngui.zynautoconnect_midi(True)
+			self.zyngui.zynautoconnect_midi()
 
 		except Exception as e:
 			logging.error(e)
@@ -473,7 +473,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				})
 			# Call autoconnect after a little time
 			sleep(0.5)
-			self.zyngui.zynautoconnect(True)
+			self.zyngui.zynautoconnect()
 
 		except Exception as e:
 			logging.error(e)
