@@ -465,10 +465,8 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	@classmethod
 	def refresh_zynapi_instance(cls):
-		#TODO Improve this! Jalv should return an updated preset/bank list ...
-		#cls.zynapi_instance.preset_list = cls.zynapi_instance._get_preset_list()
-		#cls.zynapi_instance.bank_list = cls.zynapi_instance._get_bank_list()
 		if cls.zynapi_instance:
+			zynthian_lv2.generate_plugin_presets_cache(cls.zynapi_instance.plugin_url)
 			plugin_name = cls.zynapi_instance.plugin_name
 			plugin_type = cls.zynapi_instance.type
 			cls.zynapi_instance.stop()
