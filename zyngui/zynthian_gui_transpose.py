@@ -56,7 +56,9 @@ class zynthian_gui_transpose(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		zyncoder.lib_zyncoder.set_midi_filter_transpose(self.get_layer_chan(),self.list_data[i][1])
+		midi_chan = self.get_layer_chan()
+		logging.debug("TRANSPOSE MIDI CHAN {}!".format(midi_chan))
+		zyncoder.lib_zyncoder.set_midi_filter_transpose(midi_chan,self.list_data[i][1])
 		self.zyngui.show_modal('layer_options')
 
 
@@ -70,8 +72,7 @@ class zynthian_gui_transpose(zynthian_gui_selector):
 
 
 	def get_layer_chan(self):
-		layer_index=self.zyngui.screens['layer_options'].layer_index
-		return self.zyngui.screens['layer'].layers[layer_index].get_midi_chan()
+		return self.zyngui.screens['layer_options'].layer.get_midi_chan()
 
 
 #------------------------------------------------------------------------------
