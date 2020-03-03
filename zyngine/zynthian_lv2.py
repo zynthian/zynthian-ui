@@ -415,8 +415,6 @@ def get_plugin_ports(plugin_url):
 			is_enumeration = port.has_property(world.ns.lv2.enumeration)
 			is_logarithmic = port.has_property(world.ns.lv2.logarithmic)
 
-			r = port.get_range()
-
 			sp = []
 			for p in port.get_scale_points():
 				sp.append({
@@ -425,15 +423,29 @@ def get_plugin_ports(plugin_url):
 				})
 			sp = sorted(sp, key=lambda k: k['value'])
 
+			r = port.get_range()
+			try:
+				vmin = get_node_value(r[1])
+			except:
+				vmin = min(sp, key=lambda x:x['value'])
+			try:
+				vmax = get_node_value(r[2])
+			except:
+				vmax = max(sp, key=lambda x:x['value'])
+			try:
+				vdef = get_node_value(r[0])
+			except:
+				vdef = vmin
+
 			info = {
 				'index': i,
 				'symbol': str(port.get_symbol()),
 				'label': str(port.get_name()),
-				'value': get_node_value(r[0]),
+				'value': vdef,
 				'range': {
-					'default': get_node_value(r[0]),
-					'min': get_node_value(r[1]),
-					'max': get_node_value(r[2])
+					'default': vdef,
+					'min': vmin,
+					'max': vmax
 				},
 				'is_toggled': is_toggled,
 				'is_integer': is_integer,
