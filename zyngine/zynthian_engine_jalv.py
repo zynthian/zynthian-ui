@@ -184,6 +184,7 @@ class zynthian_engine_jalv(zynthian_engine):
 					if line[0:10]=="JACK Name:":
 						self.jackname = line[11:].strip()
 						logging.debug("Jack Name => {}".format(self.jackname))
+						self.jackname += ':'
 						break
 
 			# Set static MIDI Controllers from hardcoded plugin info

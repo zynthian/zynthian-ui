@@ -526,8 +526,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
-		
-		
+
 		if os.path.isdir(dpath):
 			# Get list of directories (banks) containing xiz files ...
 			xiz_files = check_output("find \"{}\" -type f -iname *.xiz".format(dpath), shell=True).decode("utf-8").split("\n")
