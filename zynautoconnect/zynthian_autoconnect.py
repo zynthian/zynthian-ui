@@ -165,7 +165,7 @@ def midi_autoconnect(force=False):
 		port_name = zyngine.jackname
 
 		#Dirty hack for having MIDI working with PureData: #TODO => Improve it!!
-		if port_name=="pure_data_0":
+		if port_name=="pure_data":
 			#force = True
 			port_name = "Pure Data"
 
