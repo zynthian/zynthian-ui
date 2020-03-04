@@ -362,10 +362,12 @@ def audio_autoconnect(force=False):
 		if not layer.get_jackname():
 			continue
 
-		ports=jclient.get_ports(layer.get_jackname(), is_output=True, is_audio=True, is_physical=False)
+		ports=jclient.get_ports(layer.get_jackname() + ':', is_output=True, is_audio=True, is_physical=False)
 		if ports:
+			logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), len(ports)))
 			if len(ports)==1:
 				ports.append(ports[0])
+				logger.debug("Converting to Stereo Output {} ...".format(layer.get_jackname()))
 
 			logger.debug("Autoconnecting Engine {} ...".format(layer.get_jackname()))
 			
@@ -432,7 +434,7 @@ def audio_autoconnect(force=False):
 				continue
 
 			#Get Root Layer Input ports ...
-			rl_in=jclient.get_ports(rl.get_jackname(), is_input=True, is_audio=True)
+			rl_in=jclient.get_ports(rl.get_jackname() + ':', is_input=True, is_audio=True)
 
 			#Connect System Capture to Root Layer ports
 			if len(rl_in)>0:
