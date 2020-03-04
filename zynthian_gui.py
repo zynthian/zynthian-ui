@@ -792,14 +792,8 @@ class zynthian_gui:
 				logging.debug("BACK TO SCREEN => {}".format(screen_back))
 				self.show_screen(screen_back)
 
-
 		elif i==2:
-			if self.modal_screen=='snapshot':
-				self.screens['snapshot'].next()
-			elif self.active_screen=='control' and self.screens['control'].mode=='control':
-				self.load_snapshot()
-			else:
-				self.save_snapshot()
+			self.load_snapshot()
 
 		elif i==3:
 			if self.modal_screen:
@@ -890,6 +884,7 @@ class zynthian_gui:
 		elif i==2:
 			if self.modal_screen=='snapshot':
 				self.screens['snapshot'].next()
+
 			elif self.active_screen=='control' and self.screens['control'].mode=='control':
 				if self.midi_learn_mode or self.midi_learn_zctrl:
 					if self.modal_screen=='zs3_learn':
@@ -898,6 +893,10 @@ class zynthian_gui:
 						self.show_modal('zs3_learn')
 				else:
 					self.enter_midi_learn_mode()
+
+			elif self.active_screen=='bank' or self.active_screen=='preset':
+				logging.warning("Show Favorites Only!")
+
 			else:
 				self.load_snapshot()
 
