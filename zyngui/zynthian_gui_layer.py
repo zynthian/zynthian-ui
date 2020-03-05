@@ -729,8 +729,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			# Check for MIXER layer ...
 			for lss in snapshot['layers']:
 				if lss['engine_nick']=="MX":
-					first_layer_index = 0
-					remove_mixer_layer = True
+					if zynthian_gui_config.ignore_snapshot_mixer_settings:
+						snapshot['layers'].remove(lss)
+					else:
+						first_layer_index = 0
+						remove_mixer_layer = True
 					break
 
 			#Clean all layers, but don't stop unused engines
