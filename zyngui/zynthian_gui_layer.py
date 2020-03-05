@@ -504,15 +504,20 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def get_fxchain_roots(self):
 		roots = []
+
+		for layer in self.layers:
+			if layer.engine.type=="Mixer":
+				roots.append(layer)
+
+		for layer in self.layers:
+			if layer.midi_chan==None and layer.engine.type in ("Special"):
+				roots.append(layer)
+
 		for chan in range(16):
 			for layer in self.layers:
 				if layer.midi_chan==chan:
 					roots.append(layer)
 					break
-
-		for layer in self.layers:
-			if layer.midi_chan==None and layer.engine.type in ("Special", "Mixer"):
-				roots.append(layer)
 
 		return roots
 
@@ -523,15 +528,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		if root_layer is not None:
 			fxchain_layers = [root_layer]
-			for layer in self.layers:
-				if layer not in fxchain_layers and layer.get_midi_chan() == root_layer.get_midi_chan():
-					fxchain_layers.append(layer)
+			if root_layer.midi_chan is not None:
+				for layer in self.layers:
+					if layer not in fxchain_layers and layer.midi_chan==root_layer.midi_chan:
+						fxchain_layers.append(layer)
 			return fxchain_layers
 		else:
 			return None
 
 
 	def get_fxchain_root(self, layer):
+		if layer.midi_chan is None:
+			return layer
 		for l in self.layers:
 			if l.midi_chan==layer.midi_chan:
 				return l
