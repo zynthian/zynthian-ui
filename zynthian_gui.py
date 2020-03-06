@@ -668,10 +668,10 @@ class zynthian_gui:
 
 			for i in range(0, zynthian_gui_config.n_custom_switches):
 				swi = 4 + i
-				cc_num = zynthian_gui_config.custom_switch_midi_cc[i]
-				if cc_num is not None:
-					lib_zyncoder.setup_zynswitch_midi(swi, int(midi_chan), int(cc_num))
-					logging.info("MIDI ZYNSWITCH {} => CH#{}, CC#{}".format(swi, midi_chan, cc_num))
+				event = zynthian_gui_config.custom_switch_midi_events[i]
+				if event is not None:
+					lib_zyncoder.setup_zynswitch_midi(swi, int(event['type']), int(midi_chan), int(event['num']))
+					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}".format(swi, event['type'], midi_chan, event['num']))
 
 
 	def zynswitches(self):
