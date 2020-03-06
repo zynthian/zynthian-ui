@@ -443,6 +443,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				layer.delete_zs3(zs3_index)
 
 
+	def delete_midi_chan_zs3(self, midich, zs3_index):
+		for layer in self.layers:
+			if layer.engine.nickname=='MX':
+				continue
+
+			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
+				layer.delete_zs3(zs3_index)
+
+
 	def get_midi_chan_zs3_status(self, midich, zs3_index):
 		for layer in self.layers:
 			if layer.engine.nickname=='MX':

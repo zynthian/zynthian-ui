@@ -83,11 +83,15 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		self.index=i
-		preset_index=self.list_data[self.index][0]
-		if isinstance(preset_index, int):
+		zs3_index=self.list_data[self.index][0]
+		if isinstance(zs3_index, int):
 			midich=self.zyngui.curlayer.get_midi_chan()
-			self.zyngui.screens['layer'].set_midi_chan_zs3(midich, preset_index)
-			self.zyngui.exit_midi_learn_mode()
+			if t=='S':
+				self.zyngui.screens['layer'].set_midi_chan_zs3(midich, zs3_index)
+				self.zyngui.exit_midi_learn_mode()
+			elif t=='B':
+				self.zyngui.screens['layer'].delete_midi_chan_zs3(midich, zs3_index)
+				self.show()
 
 
 	def back_action(self):
