@@ -160,18 +160,20 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.type = plugin_type
 		self.name = "Jalv/" + plugin_name
 		self.nickname = "JV/" + plugin_name
-
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
+
+		jname_count = zyngui.screens['layer'].get_jackname_count(plugin_name)
+		jname = "{}-{:02d}".format(plugin_name, jname_count) 
 
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
 
 		if not dryrun:
 			if self.config_remote_display():
-				self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))		#TODO => Is possible to run plugin's UI?
+				self.command = ("/usr/local/bin/jalv -n {} {}".format(jname, self.plugin_url))		#TODO => Is possible to run plugin's UI?
 			else:
-				self.command = ("/usr/local/bin/jalv {}".format(self.plugin_url))
+				self.command = ("/usr/local/bin/jalv -n {} {}".format(jname, self.plugin_url))
 
 			self.command_prompt = "\n> "
 
@@ -184,7 +186,6 @@ class zynthian_engine_jalv(zynthian_engine):
 					if line[0:10]=="JACK Name:":
 						self.jackname = line[11:].strip()
 						logging.debug("Jack Name => {}".format(self.jackname))
-						self.jackname += ':'
 						break
 
 			# Set static MIDI Controllers from hardcoded plugin info
