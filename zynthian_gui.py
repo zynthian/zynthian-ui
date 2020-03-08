@@ -670,7 +670,9 @@ class zynthian_gui:
 				swi = 4 + i
 				event = zynthian_gui_config.custom_switch_midi_events[i]
 				if event is not None:
-					lib_zyncoder.setup_zynswitch_midi(swi, int(event['type']), int(midi_chan), int(event['num']))
+					if event['chan'] is not None:
+						midi_chan = event['chan']
+					lib_zyncoder.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'])
 					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}".format(swi, event['type'], midi_chan, event['num']))
 
 

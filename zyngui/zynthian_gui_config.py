@@ -195,37 +195,42 @@ for i in range(0, n_custom_switches):
 		cuias['B'] = os.environ.get(root_varname + "__UI_BOLD")
 		cuias['L'] = os.environ.get(root_varname + "__UI_LONG")
 
-	elif custom_type=="MIDI_CC":
-		num = os.environ.get(root_varname + "__MIDI_NUM")
-		if num is None:
-			num = os.environ.get(root_varname + "__CC_NUM")
-		try:
-			midi_event = {
-				'type': 0xB,
-				'num': int(num)
-			}
-		except:
-			pass
+	else:
+		evtype = None
+		if custom_type=="MIDI_CC":
+			evtype = 0xB
+		elif custom_type=="MIDI_NOTE":
+			evtype = 0x9
+		elif custom_type=="MIDI_PROG_CHANGE":
+			evtype = 0xC
 
-	elif custom_type=="MIDI_NOTE":
-		num = os.environ.get(root_varname + "__MIDI_NUM")
-		try:
-			midi_event = {
-				'type': 0x9,
-				'num': int(num)
-			}
-		except:
-			pass
+		if evtype:
+			chan = os.environ.get(root_varname + "__MIDI_CHAN")
+			try:
+				chan = int(chan) - 1
+				if chan<0 or chan>15:
+					chan = None
+			except:
+				chan = None
 
-	elif custom_type=="MIDI_PROG_CHANGE":
-		num = os.environ.get(root_varname + "__MIDI_NUM")
-		try:
-			midi_event = {
-				'type': 0xC,
-				'num': int(num)
-			}
-		except:
-			pass
+			num = os.environ.get(root_varname + "__MIDI_NUM")
+			if num is None:
+				num = os.environ.get(root_varname + "__CC_NUM")
+			try:
+				num = int(num)
+				if num<0 or num>127:
+					num = None
+			except:
+				num = None
+
+			try:
+				midi_event = {
+					'type': 0xB,
+					'chan': chan,
+					'num': int(num)
+				}
+			except:
+				pass
 
 	custom_switch_ui_actions.append(cuias)
 	custom_switch_midi_events.append(midi_event)
