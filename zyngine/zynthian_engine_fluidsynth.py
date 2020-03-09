@@ -70,7 +70,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Config variables
 	# ---------------------------------------------------------------------------
 
-	fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 -o midi.jack.id='fluidsynth' -o audio.jack.id='fluidsynth' -o audio.jack.multi='yes' -o synth.audio-groups=8  -o synth.audio-channels=8 -o synth.effects-groups=8"
+	fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 -o midi.jack.id='fluidsynth' -o audio.jack.id='fluidsynth' -o audio.jack.multi='yes' -o synth.audio-groups=8  -o synth.audio-channels=8"
 
 	soundfont_dirs=[
 		('EX', zynthian_engine.ex_data_dir + "/soundfonts/sf2"),
@@ -87,6 +87,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.name = "FluidSynth"
 		self.nickname = "FS"
 		self.jackname = "fluidsynth"
+
+		if "Pi 4" in os.environ.get("RBPI_VERSION"):
+			n_fxgrp = 8
+		else:
+			n_fxgrp = 2
+
+		self.fs_options += " -o synth.effects-groups={}".format(n_fxgrp)
 
 		self.command = "/usr/local/bin/fluidsynth -a jack -m jack -g 1 -j {}".format(self.fs_options)
 		self.command_prompt = "\n> "
