@@ -38,7 +38,7 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = logging.DEBUG
+log_level = logging.ERROR
 
 logger=logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -364,19 +364,19 @@ def audio_autoconnect(force=False):
 
 		ports=jclient.get_ports(layer.get_jackname(), is_output=True, is_audio=True, is_physical=False)
 		if ports:
-			logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), len(ports)))
+			#logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), len(ports)))
 			if len(ports)==1:
 				ports.append(ports[0])
 				#logger.debug("Converting to Stereo Output {} ...".format(layer.get_jackname()))
 
-			logger.debug("Autoconnecting Engine {} ...".format(layer.get_jackname()))
+			#logger.debug("Autoconnecting Engine {} ...".format(layer.get_jackname()))
 			
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:
 				if ao in layer.get_audio_out():
 					if len(input_ports[ao])==1:
 						input_ports[ao].append(input_ports[ao][0])
-					logger.debug(" => Connecting to {}".format(ao))
+					#logger.debug(" => Connecting to {}".format(ao))
 					for j in range(len(ports)):
 						try:
 							jclient.connect(ports[j],input_ports[ao][j%2])
