@@ -374,6 +374,8 @@ def audio_autoconnect(force=False):
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:
 				if ao in layer.get_audio_out():
+					if len(input_ports[ao])==1:
+						input_ports[ao].append(input_ports[ao][0])
 					try:
 						logger.debug(" => Connecting to {}".format(ao))
 						jclient.connect(ports[0],input_ports[ao][0])
