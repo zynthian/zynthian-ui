@@ -51,7 +51,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Config variables
 	# ---------------------------------------------------------------------------
 
-	fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64"
+	fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 -o midi.jack.id='fluidsynth' -o audio.jack.id='fluidsynth' -o audio.jack.multi='yes' -o synth.audio-groups=16  -o synth.audio-channels=16"
 
 	soundfont_dirs=[
 		('EX', zynthian_engine.ex_data_dir + "/soundfonts/sf2"),
@@ -69,7 +69,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.nickname = "FS"
 		self.jackname = "fluidsynth"
 
-		self.command = "/usr/local/bin/fluidsynth -p fluidsynth -a jack -m jack -g 1 -j {}".format(self.fs_options)
+		self.command = "/usr/local/bin/fluidsynth -a jack -m jack -g 1 -j {}".format(self.fs_options)
 		self.command_prompt = "\n> "
 
 		self.start()
@@ -98,7 +98,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def add_layer(self, layer):
-		super().add_layer(layer)
+		self.layers.append(layer)
+		layer.jackname = None
 		layer.part_i=None
 		self.setup_router(layer)
 
@@ -249,10 +250,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		else:
 			# No need to clear routes if there is the only layer to add
 			try:
-				layer.part_i=self.get_free_parts()[0]
-				logging.debug("ADD LAYER => PART {}".format(layer.part_i))
-			except:
-				logging.error("ADD LAYER => NO FREE PARTS!")
+				layer.part_i = self.get_free_parts()[0]
+				layer.jackname = "fluidsynth:(l|r)_{:02d}".format(layer.part_i)
+				self.zyngui.zynautoconnect_audio()
+				logging.debug("Add part {} => {}".format(layer.part_i, layer.jackname))
+			except Exception as e:
+				logging.error("Can't add part! => {}".format(e))
+
 			self.set_layer_midi_routes(layer)
 
 
