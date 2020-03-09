@@ -142,26 +142,10 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	# Standard MIDI Controllers
-	_ctrls=[
-		['volume',7,96],
-		['modulation',1,0],
-		['pan',10,64],
-		['expression',11,127],
-		['sustain',64,'off',['off','on']],
-		['resonance',71,64],
-		['cutoff',74,64],
-		['reverb',91,64],
-		['chorus',93,2],
-		['portamento on/off',65,'off','off|on'],
-		['portamento time',5,64]
-	]
+	_ctrls=[]
 
 	# Controller Screens
-	_ctrl_screens=[
-		#['main',['volume','modulation','cutoff','resonance']],
-		['main',['volume','expression','pan','sustain']],
-		['effects',['volume','modulation','reverb','chorus']]
-	]
+	_ctrl_screens=[]
 
 	# ---------------------------------------------------------------------------
 	# Config variables

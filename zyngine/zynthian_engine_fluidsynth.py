@@ -41,17 +41,36 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
+	# Standard MIDI Controllers
+	_ctrls=[
+		['volume',7,96],
+		['modulation',1,0],
+		['pan',10,64],
+		['expression',11,127],
+		['sustain',64,'off',['off','on']],
+		['resonance',71,64],
+		['cutoff',74,64],
+		['reverb',91,64],
+		['chorus',93,2],
+		['portamento on/off',65,'off','off|on'],
+		['portamento time coarse',5,0],
+		['portamento time fine',37,0],
+		['portamento control',84,0]
+	]
+
+
 	# Controller Screens
 	_ctrl_screens=[
-		['main',['volume','expression','pan','sustain']],
-		['effects',['volume','modulation','reverb','chorus']]
+		['main',['volume','expression','pan','modulation']],
+		['effects',['volume','sustain','reverb','chorus']],
+		['portamento',['volume','portamento on/off','portamento time coarse','portamento time fine']]
 	]
 
 	# ---------------------------------------------------------------------------
 	# Config variables
 	# ---------------------------------------------------------------------------
 
-	fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 -o midi.jack.id='fluidsynth' -o audio.jack.id='fluidsynth' -o audio.jack.multi='yes' -o synth.audio-groups=16  -o synth.audio-channels=16"
+	fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 -o midi.jack.id='fluidsynth' -o audio.jack.id='fluidsynth' -o audio.jack.multi='yes' -o synth.audio-groups=8  -o synth.audio-channels=8 -o synth.effects-groups=8"
 
 	soundfont_dirs=[
 		('EX', zynthian_engine.ex_data_dir + "/soundfonts/sf2"),
@@ -250,10 +269,11 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		else:
 			# No need to clear routes if there is the only layer to add
 			try:
-				layer.part_i = self.get_free_parts()[0]
-				layer.jackname = "fluidsynth:(l|r)_{:02d}".format(layer.part_i)
+				i = self.get_free_parts()[0]
+				layer.part_i = i
+				layer.jackname = "fluidsynth:((l|r)_{:02d}|fx_(l|r)_({:02d}|{:02d}))".format(i,i*2,i*2+1)
 				self.zyngui.zynautoconnect_audio()
-				logging.debug("Add part {} => {}".format(layer.part_i, layer.jackname))
+				logging.debug("Add part {} => {}".format(i, layer.jackname))
 			except Exception as e:
 				logging.error("Can't add part! => {}".format(e))
 
