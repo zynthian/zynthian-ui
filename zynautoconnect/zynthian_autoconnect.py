@@ -364,12 +364,12 @@ def audio_autoconnect(force=False):
 
 		ports=jclient.get_ports(layer.get_jackname(), is_output=True, is_audio=True, is_physical=False)
 		if ports:
-			logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), len(ports)))
+			#logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), len(ports)))
 			if len(ports)==1:
 				ports.append(ports[0])
-				logger.debug("Converting to Stereo Output {} ...".format(layer.get_jackname()))
+				#logger.debug("Converting to Stereo Output {} ...".format(layer.get_jackname()))
 
-			logger.debug("Autoconnecting Engine {} ...".format(layer.get_jackname()))
+			#logger.debug("Autoconnecting Engine {} ...".format(layer.get_jackname()))
 			
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:

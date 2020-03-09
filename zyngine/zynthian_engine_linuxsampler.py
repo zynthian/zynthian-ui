@@ -218,7 +218,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def add_layer(self, layer):
-		super().add_layer(layer)
+		self.layers.append(layer)
+		layer.jackname = None
 		layer.ls_chan_info=None
 		self.ls_set_channel(layer)
 		self.set_midi_chan(layer)
@@ -228,6 +229,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	def del_layer(self, layer):
 		super().del_layer(layer)
 		self.ls_unset_channel(layer)
+
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
@@ -389,6 +391,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 					layer.ls_chan_info['audio_output']=i
 
 					layer.jackname = "{}:CH{}".format(self.jackname, i)
+					self.zyngui.zynautoconnect_audio()
 
 				except zyngine_lscp_error as err:
 					logging.error(err)
