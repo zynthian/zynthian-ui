@@ -768,7 +768,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.screens['engine'].stop_unused_engines()
 
 			#Autoconnect
-			self.zyngui.zynautoconnect()
+			self.zyngui.zynautoconnect_midi(True)
+			self.zyngui.zynautoconnect_audio()
 
 			#Restore MIDI profile state
 			if 'midi_profile_state' in snapshot:
