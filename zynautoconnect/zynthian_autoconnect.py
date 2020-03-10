@@ -66,6 +66,17 @@ def get_port_alias_id(midi_port):
 		alias_id=midi_port.name
 	return alias_id
 
+
+#Dirty hack for having MIDI working with PureData & CSound: #TODO => Improve it!!
+def get_fixed_midi_port_name(port_name):
+	if port_name=="pure_data":
+		port_name = "Pure Data"
+
+	elif port_name=="csound6":
+		port_name = "Csound"
+
+	return port_name
+
 #------------------------------------------------------------------------------
 
 def midi_autoconnect(force=False):
@@ -161,25 +172,19 @@ def midi_autoconnect(force=False):
 	#Get Engines MIDI input ports
 	engines_in=[]
 	for k, zyngine in zyngine_list.items():
-		#logger.debug("zyngine: {}".format(zyngine.jackname))
-		port_name = zyngine.jackname
+		if zyngine.jackname:
+			port_name = get_fixed_midi_port_name(zyngine.jackname)
+		else:
+			continue
 
-		#Dirty hack for having MIDI working with PureData: #TODO => Improve it!!
-		if port_name=="pure_data":
-			#force = True
-			port_name = "Pure Data"
-
-		#Dirty hack for having MIDI working with CSound: #TODO => Improve it!!
-		if port_name=="csound6":
-			#force = True
-			port_name = "Csound"
+		#logger.debug("Zyngine (MIDI-IN): {}".format(port_name))
 
 		ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
 		try:
 			port=ports[0]
 
 			#Dirty hack for zynaddsubfx: #TODO => Improve it!!!
-			if port.shortname=='osc':
+			if port_name=="zynaddsubfx" and port.shortname=='osc':
 				port=ports[1]
 
 			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
@@ -203,8 +208,14 @@ def midi_autoconnect(force=False):
 	#Get Synth Engines MIDI output ports
 	engines_out=[]
 	for k, zyngine in zyngine_list.items():
-		#logger.debug("zyngine: {}".format(zyngine.jackname))
-		ports=jclient.get_ports(zyngine.jackname, is_output=True, is_midi=True, is_physical=False)
+		if zyngine.jackname:
+			port_name = get_fixed_midi_port_name(zyngine.jackname)
+		else:
+			continue
+
+		#logger.debug("Zyngine MIDI-OUT: {}".format(port_name))
+
+		ports=jclient.get_ports(port_name, is_output=True, is_midi=True, is_physical=False)
 		try:
 			port=ports[0]
 			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
@@ -232,7 +243,6 @@ def midi_autoconnect(force=False):
 	#------------------------------------
 
 	#Connect "Not Disabled" Input Device Ports to ZynMidiRouter:main_in
-	#TODO Solve X-file about lock/delays/xruns when executing this fragment after deleting all layers
 	for hw in hw_out:
 		#logger.debug("Connecting MIDI Input {} => {}".format(hw,zmr_in['main_in']))
 		try:
@@ -244,7 +254,7 @@ def midi_autoconnect(force=False):
 			#logger.debug("Exception {}".format(e))
 			pass
 
-	#logger.debug("Connecting QMidiNet input port to ZynMidiRouter:net_in ...")
+	#logger.debug("Connecting RTP-MIDI & QMidiNet to ZynMidiRouter:net_in ...")
 
 	#Connect RTP-MIDI Input Port to ZynMidiRouter:net_in
 	try:
@@ -296,7 +306,7 @@ def midi_autoconnect(force=False):
 					except:
 						pass
 
-	#Connect ZynMidiRouter:main_out to enabled MIDI-OUT ports
+	#Connect ZynMidiRouter:midi_out to enabled MIDI-OUT ports
 	for hw in hw_in:
 		try:
 			if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_out_ports:
