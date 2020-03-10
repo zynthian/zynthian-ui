@@ -509,7 +509,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def get_jackname_count(self, jackname):
 		count = 0
 		for layer in self.layers:
-			if layer.jackname.startswith(jackname):
+			if layer.jackname is not None and layer.jackname.startswith(jackname):
 				count += 1
 		return count
 
