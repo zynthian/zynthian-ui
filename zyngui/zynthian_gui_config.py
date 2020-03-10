@@ -225,7 +225,7 @@ for i in range(0, n_custom_switches):
 
 			try:
 				midi_event = {
-					'type': 0xB,
+					'type': evtype,
 					'chan': chan,
 					'num': int(num)
 				}
