@@ -310,7 +310,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	@staticmethod
-	def get_dirlist(dpath):
+	def get_dirlist(dpath, exclude_empty=True):
 		res=[]
 		if isinstance(dpath, str): dpath=[('_', dpath)]
 		i=0
@@ -319,7 +319,7 @@ class zynthian_engine(zynthian_basic_engine):
 			dn=dpd[0]
 			try:
 				for f in sorted(os.listdir(dp)):
-					if next(os.scandir(join(dp,f)), None) is None:
+					if exclude_empty and next(os.scandir(join(dp,f)), None) is None:
 						continue
 					if not f.startswith('.') and isdir(join(dp,f)):
 						title,ext=os.path.splitext(f)

@@ -315,10 +315,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	_ctrls=[
 		['volume',7,96],
 		['dynamic',85,64],
-		['mute on/off',19,'off','off|on'],
+		['mute',19,'off','off|on'],
 		['sustain',64,'off',[['off','1/4','1/2','3/4','full'],[0,25,51,76,102]]],
-		#['sustain on/off',64,'off','off|on'],
-		#['sustain',64,0],
+		['sostenuto',66,'off',[['off','1/4','1/2','3/4','full'],[0,25,51,76,102]]],
 		#['rev on/off',30,'off','off|on'],
 		#['rev duration',31,0],
 		#['rev mix',32,0],
@@ -329,7 +328,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	]
 
 	_ctrl_screens=[
-		['main',['volume','sustain','dynamic','mute on/off']]
+		['main',['volume','sostenuto','dynamic','sustain']]
 		#['reverb1',['volume','rev on/off','rev duration','rev mix']],
 		#['reverb2',['volume','rev room','rev p/d','rev e/r']],
 		#['reverb3',['volume','rev tone']]

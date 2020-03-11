@@ -48,22 +48,21 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		['pan',10,64],
 		['expression',11,127],
 		['sustain',64,'off',['off','on']],
-		['resonance',71,64],
-		['cutoff',74,64],
 		['reverb',91,64],
 		['chorus',93,2],
-		['portamento on/off',65,'off','off|on'],
-		['portamento time coarse',5,0],
-		['portamento time fine',37,0],
-		['portamento control',84,0]
+		['portamento on/off',65,'off',['off','on']],
+		['portamento time-coarse',5,0],
+		['portamento time-fine',37,0],
+		['portamento control',84,0],
+		['sostenuto',66,'off',['off','on']],
+		['legato on/off',68,'off',['off','on']]
 	]
-
 
 	# Controller Screens
 	_ctrl_screens=[
-		['main',['volume','expression','pan','modulation']],
-		['effects',['volume','sustain','reverb','chorus']],
-		['portamento',['volume','portamento on/off','portamento time coarse','portamento time fine']]
+		['main',['volume','sostenuto','pan','sustain']],
+		['effects',['expression','modulation','reverb','chorus']],
+		['portamento',['legato on/off','portamento on/off','portamento time-coarse','portamento time-fine']],
 	]
 
 	# ---------------------------------------------------------------------------
