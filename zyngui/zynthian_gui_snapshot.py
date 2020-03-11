@@ -306,6 +306,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if pn in self.midi_programs:
 			fpath=self.list_data[self.midi_programs[pn]][0]
 			logging.debug("Snapshot Program Change %s: %s" % (pn,fpath))
+			self.zyngui.show_modal("snapshot")
 			self.zyngui.screens['layer'].load_snapshot(fpath)
 			return True
 		else:

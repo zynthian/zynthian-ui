@@ -1071,8 +1071,9 @@ class zynthian_gui:
 
 				# Master MIDI Channel ...
 				elif chan==zynthian_gui_config.master_midi_channel:
-					# Webconf configured messages for Snapshot Control ...
 					logging.info("MASTER MIDI MESSAGE: %s" % hex(ev))
+					self.start_loading()
+					# Webconf configured messages for Snapshot Control ...
 					if ev==zynthian_gui_config.master_midi_program_change_up:
 						logging.debug("PROGRAM CHANGE UP!")
 						self.screens['snapshot'].midi_program_change_up()
@@ -1108,8 +1109,9 @@ class zynthian_gui:
 						if vel != 0 and note in self.note2cuia:
 							self.callable_ui_action(self.note2cuia[note], [vel])
 
-					#Run autoconnect if needed
+					#Run autoconnect (if needed) and stop logo animation
 					self.zynautoconnect_do()
+					self.stop_loading()
 
 				# Program Change ...
 				elif evtype==0xC:
