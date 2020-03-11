@@ -640,8 +640,8 @@ class zynthian_gui:
 
 	def custom_switch_ui_action(self, i, t):
 		try:
-			cuia = zynthian_gui_config.custom_switch_ui_actions[i][t]
-			self.callable_ui_action(cuia)
+			if t in zynthian_gui_config.custom_switch_ui_actions[i]:
+				self.callable_ui_action(zynthian_gui_config.custom_switch_ui_actions[i][t])
 		except Exception as e:
 			logging.warning(e)
 

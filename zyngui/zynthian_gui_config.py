@@ -218,17 +218,12 @@ for i in range(0, n_custom_switches):
 				num = os.environ.get(root_varname + "__CC_NUM")
 			try:
 				num = int(num)
-				if num<0 or num>127:
-					num = None
-			except:
-				num = None
-
-			try:
-				midi_event = {
-					'type': evtype,
-					'chan': chan,
-					'num': int(num)
-				}
+				if num>=0 and num<=127:
+					midi_event = {
+						'type': evtype,
+						'chan': chan,
+						'num': num
+					}
 			except:
 				pass
 
