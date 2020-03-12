@@ -163,7 +163,11 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
-		jname_count = zyngui.screens['layer'].get_jackname_count(plugin_name)
+		try:
+			jname_count = zyngui.screens['layer'].get_jackname_count(plugin_name)
+		except:
+			jname_count = 0
+
 		jname = "{}-{:02d}".format(plugin_name, jname_count) 
 
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
