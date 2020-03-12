@@ -179,6 +179,7 @@ class zynthian_gui:
 			self.zynmidi=zynthian_zcmidi()
 			#Init Switches
 			self.zynswitches_init()
+			self.zynswitches_midi_setup()
 		except Exception as e:
 			logging.error("ERROR initializing Controllers & MIDI-router: %s" % e)
 
@@ -662,18 +663,21 @@ class zynthian_gui:
 				logging.info("SETUP ZYNSWITCH {} => wpGPIO {}".format(i, pin))
 
 
-	def zynswitches_midi_setup(self, midi_chan):
-		if midi_chan is not None:
-			logging.info("MIDI SWITCHES SETUP...")
+	def zynswitches_midi_setup(self, midi_chan=None):
+		logging.info("MIDI SWITCHES SETUP...")
 
-			for i in range(0, zynthian_gui_config.n_custom_switches):
-				swi = 4 + i
-				event = zynthian_gui_config.custom_switch_midi_events[i]
-				if event is not None:
-					if event['chan'] is not None:
-						midi_chan = event['chan']
+		for i in range(0, zynthian_gui_config.n_custom_switches):
+			swi = 4 + i
+			event = zynthian_gui_config.custom_switch_midi_events[i]
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				if midi_chan is not None:
 					lib_zyncoder.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'])
 					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}".format(swi, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncoder.setup_zynswitch_midi(swi, 0, 0, 0)
+					logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
 
 
 	def zynswitches(self):
