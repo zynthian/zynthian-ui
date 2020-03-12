@@ -663,7 +663,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		parts = zynthian_engine_jalv.ttl_read_parts(man_fpath)
 
 		bmre1 = re.compile(r"<{}>".format(bank_dname))
-		bmre2 = re.compile(r"(.*)a pset:bank ;")
+		bmre2 = re.compile(r"(.*)a pset:Bank ;")
 		brre = re.compile(r"([\s]+rdfs:label[\s]+\").*(\" )")
 		for i,p in enumerate(parts):
 			if bmre1.search(p) and bmre2.search(p):
