@@ -309,7 +309,7 @@ force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 #------------------------------------------------------------------------------
 
 restore_last_state=int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE',False))
-ignore_snapshot_mixer_settings=int(os.environ.get('ZYNTHIAN_UI_IGNORE_SNAPSHOT_MIXER_SETTINGS',False))
+snapshot_mixer_settings=int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS',False))
 show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
 
 #------------------------------------------------------------------------------

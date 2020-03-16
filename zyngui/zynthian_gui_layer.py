@@ -688,7 +688,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 			#Layers info
 			for layer in self.layers:
-				snapshot['layers'].append(layer.get_snapshot())
+				if zynthian_gui_config.snapshot_mixer_settings or layer.engine.nickname!="MX":
+					snapshot['layers'].append(layer.get_snapshot())
 
 			#Clone info
 			for i in range(0,16):
@@ -745,11 +746,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			# Check for MIXER layer ...
 			for lss in snapshot['layers']:
 				if lss['engine_nick']=="MX":
-					if zynthian_gui_config.ignore_snapshot_mixer_settings:
-						snapshot['layers'].remove(lss)
-					else:
+					if zynthian_gui_config.snapshot_mixer_settings:
 						first_layer_index = 0
 						remove_mixer_layer = True
+					else:
+						snapshot['layers'].remove(lss)
 					break
 
 			#Clean all layers, but don't stop unused engines

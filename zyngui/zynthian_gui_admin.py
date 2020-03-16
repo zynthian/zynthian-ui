@@ -62,11 +62,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.list_data.append((None,0,"-----------------------------"))
 
-		if zynthian_gui_config.midi_sys_enabled:
-			self.list_data.append((self.toggle_midi_sys,0,"[x] MIDI System Messages"))
-		else:
-			self.list_data.append((self.toggle_midi_sys,0,"[  ] MIDI System Messages"))
-
 		if zynthian_gui_config.midi_single_active_channel:
 			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
 		else:
@@ -81,6 +76,16 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[x] Preset Preload"))
 		else:
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
+
+		if zynthian_gui_config.snapshot_mixer_settings:
+			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[x] Mixer Settings on Snapshots"))
+		else:
+			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Mixer Settings on Snapshots"))
+
+		if zynthian_gui_config.midi_sys_enabled:
+			self.list_data.append((self.toggle_midi_sys,0,"[x] MIDI System Messages"))
+		else:
+			self.list_data.append((self.toggle_midi_sys,0,"[  ] MIDI System Messages"))
 
 		if zynconf.is_service_active("jackrtpmidid"):
 			self.list_data.append((self.stop_rtpmidi,0,"[x] RTP-MIDI"))
@@ -255,6 +260,22 @@ class zynthian_gui_admin(zynthian_gui_selector):
 #------------------------------------------------------------------------------
 # MIDI OPTIONS
 #------------------------------------------------------------------------------
+
+	def toggle_snapshot_mixer_settings(self):
+		if zynthian_gui_config.snapshot_mixer_settings:
+			logging.info("Mixer Settings on Snapshots OFF")
+			zynthian_gui_config.snapshot_mixer_settings=False
+		else:
+			logging.info("Mixer Settings on Snapshots ON")
+			zynthian_gui_config.snapshot_mixer_settings=True
+
+		# Update Config
+		zynconf.save_config({ 
+			"ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS": str(int(zynthian_gui_config.snapshot_mixer_settings))
+		})
+
+		self.fill_list()
+
 
 	def toggle_midi_sys(self):
 		if zynthian_gui_config.midi_sys_enabled:
