@@ -148,9 +148,17 @@ class zynthian_layer:
 
 
 	#TODO Optimize search!!
-	def set_bank_by_name(self, name, set_engine=True):
+	def set_bank_by_name(self, bank_name, set_engine=True):
 		for i in range(len(self.bank_list)):
-			if name==self.bank_list[i][2]:
+			if bank_name==self.bank_list[i][2]:
+				return self.set_bank(i,set_engine)
+		return False
+
+
+	#TODO Optimize search!!
+	def set_bank_by_id(self, bank_id, set_engine=True):
+		for i in range(len(self.bank_list)):
+			if bank_id==self.bank_list[i][0]:
 				return self.set_bank(i,set_engine)
 		return False
 
@@ -168,9 +176,20 @@ class zynthian_layer:
 	# ---------------------------------------------------------------------------
 
 
-	def load_preset_list(self):
+	def load_preset_list(self, only_favs=False):
 		if self.bank_info:
-			self.preset_list=self.engine.get_preset_list(self.bank_info)
+			if only_favs:
+				self.preset_list = []
+				for v in self.engine.preset_favs.values():
+					self.preset_list.append(v[1])
+
+			else:
+				self.preset_list = []
+				for preset in self.engine.get_preset_list(self.bank_info):
+					if self.engine.is_preset_fav(preset):
+						preset[2] = "*" + preset[2]
+					self.preset_list.append(preset)
+
 			logging.debug("PRESET LIST => \n%s" % str(self.preset_list))
 
 
@@ -185,8 +204,19 @@ class zynthian_layer:
 		if i < len(self.preset_list):
 			last_preset_index=self.preset_index
 			last_preset_name=self.preset_name
+			
+			preset_id = self.preset_list[i][0]
+			preset_name=self.preset_list[i][2]
+
+			if preset_id in self.engine.preset_favs:
+				if preset_name[0]=='*':
+					preset_name=preset_name[1:]
+				bank_name = self.engine.preset_favs[preset_id][0][2]
+				if bank_name!=self.bank_name:
+					self.set_bank_by_name(bank_name)
+
 			self.preset_index=i
-			self.preset_name=self.preset_list[i][2]
+			self.preset_name=preset_name
 			self.preset_info=copy.deepcopy(self.preset_list[i])
 			self.preset_bank_index=self.bank_index
 
@@ -218,9 +248,20 @@ class zynthian_layer:
 
 
 	#TODO Optimize search!!
-	def set_preset_by_name(self, name, set_engine=True):
+	def set_preset_by_name(self, preset_name, set_engine=True):
 		for i in range(len(self.preset_list)):
-			if name==self.preset_list[i][2]:
+			name_i=self.preset_list[i][2]
+			if name_i[0]=='*':
+				name_i=name_i[1:]
+			if preset_name==name_i:
+				return self.set_preset(i,set_engine)
+		return False
+
+
+	#TODO Optimize search!!
+	def set_preset_by_id(self, preset_id, set_engine=True):
+		for i in range(len(self.preset_list)):
+			if preset_id==self.preset_list[i][0]:
 				return self.set_preset(i,set_engine)
 		return False
 
@@ -255,6 +296,10 @@ class zynthian_layer:
 
 	def get_preset_index(self):
 		return self.preset_index
+
+
+	def toggle_preset_fav(self, preset):
+		self.engine.toggle_preset_fav(self, preset)
 
 
 	# ---------------------------------------------------------------------------
@@ -390,12 +435,12 @@ class zynthian_layer:
 		self.wait_stop_loading()
 	
 		#Load preset list and set preset
-		try:
-			self.load_preset_list()
-			self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
+		#try:
+		self.load_preset_list()
+		self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
 
-		except Exception as e:
-			logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
+		#except Exception as e:
+			#logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
 
 		self.wait_stop_loading()
 

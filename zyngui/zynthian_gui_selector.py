@@ -475,9 +475,11 @@ class zynthian_gui_selector:
 		#self.set_selector()
 
 
-	def update_list(self):	
+	def update_list(self):
+		yv = self.listbox.yview()
 		self.fill_list()
 		self.set_selector()
+		self.listbox.yview_moveto(yv[0])
 
 
 	def get_cursel(self):

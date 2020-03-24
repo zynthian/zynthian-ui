@@ -25,6 +25,7 @@
 #import sys
 import os
 import copy
+import json
 import liblo
 import logging
 import pexpect
@@ -187,6 +188,9 @@ class zynthian_engine(zynthian_basic_engine):
 		self.osc_server_port = None
 		self.osc_server_url = None
 
+		self.preset_favs = None
+		self.preset_favs_fpath = None
+
 
 	def __del__(self):
 		self.stop()
@@ -308,7 +312,7 @@ class zynthian_engine(zynthian_basic_engine):
 						title=str.replace(f[:-xlen], '_', ' ')
 						if dn!='_': title=dn+'/'+title
 						#print("filelist => "+title)
-						res.append((join(dp,f),i,title,dn,f))
+						res.append([join(dp,f),i,title,dn,f])
 						i=i+1
 			except:
 				pass
@@ -333,7 +337,7 @@ class zynthian_engine(zynthian_basic_engine):
 						title=str.replace(title, '_', ' ')
 						if dn!='_': title=dn+'/'+title
 						#print("dirlist => "+title)
-						res.append((join(dp,f),i,title,dn,f))
+						res.append([join(dp,f),i,title,dn,f])
 						i=i+1
 			except:
 				pass
@@ -349,7 +353,7 @@ class zynthian_engine(zynthian_basic_engine):
 		lines=output.decode('utf8').split('\n')
 		for f in lines:
 			title=str.replace(f, '_', ' ')
-			res.append((f,i,title))
+			res.append([f,i,title])
 			i=i+1
 		return res
 
@@ -429,6 +433,55 @@ class zynthian_engine(zynthian_basic_engine):
 				return False
 		except:
 			return False
+
+
+	# ---------------------------------------------------------------------------
+	# Preset Favorites Management
+	# ---------------------------------------------------------------------------
+
+	def toggle_preset_fav(self, layer, preset):
+		if self.preset_favs is None:
+			self.load_preset_favs()
+
+		try:
+			del self.preset_favs[preset[0]]
+			fav_status = False
+		except:
+			self.preset_favs[preset[0]]=[layer.bank_info, preset]
+			fav_status = True
+
+		try:
+			with open(self.preset_favs_fpath, 'w') as f:
+				json.dump(self.preset_favs, f)
+		except Exception as e:
+			logging.error("Can't save preset favorites! => {}".format(e))
+
+		return fav_status
+
+
+	def is_preset_fav(self, preset):
+		if self.preset_favs is None:
+			self.load_preset_favs()
+
+		if preset[0] in [item[1][0] for item in self.preset_favs.values()]:
+			return True
+		else:
+			return False
+
+
+	def load_preset_favs(self):
+		if self.nickname:
+			fname = self.nickname.replace("/","_")
+			self.preset_favs_fpath = self.my_data_dir + "/preset-favorites/" + fname + ".json"
+
+			try:
+				with open(self.preset_favs_fpath) as f:
+					self.preset_favs = json.load(f, object_pairs_hook=OrderedDict)
+			except:
+				self.preset_favs = OrderedDict()
+
+		else:
+			logging.warning("Can't load preset favorites until the engine have a nickname!")
 
 
 	# ---------------------------------------------------------------------------

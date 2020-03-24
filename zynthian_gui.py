@@ -901,8 +901,8 @@ class zynthian_gui:
 					self.enter_midi_learn_mode()
 
 			elif self.active_screen=='bank' or self.active_screen=='preset':
-				logging.warning("Show Favorites Only!")
-
+				self.screens['preset'].toggle_only_favs()
+				self.show_screen('preset')
 			else:
 				self.load_snapshot()
 

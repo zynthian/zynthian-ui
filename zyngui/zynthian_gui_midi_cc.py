@@ -90,7 +90,7 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 		self.set_clone_cc(self.midi_chan_from, self.midi_chan_to, self.cc)
 		
 		self.set_clone_channels(self.midi_chan_from, self.midi_chan_to)
-		self.fill_list()
+		self.update_list()
 
 		logging.info("MIDI CC {} CLONE CH#{}=>CH#{}: {}".format(cc_num, self.midi_chan_from, self.midi_chan_to, self.cc[cc_num]))
 

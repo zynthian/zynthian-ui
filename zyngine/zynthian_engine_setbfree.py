@@ -450,7 +450,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 								del params['drawbars']
 
 							#Add program to list
-							pgm_list.append((i,[0,0,prg],title,params))
+							pgm_list.append([i,[0,0,prg],title,params])
 							i=i+1
 					except:
 						#print("Ignored line: %s" % line)

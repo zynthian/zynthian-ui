@@ -253,7 +253,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		preset_list = []
 		try:
 			for info in  self.preset_info[bank[2]]['presets']:
-				preset_list.append((info['url'], None, info['label'], bank[0]))
+				preset_list.append([info['url'], None, info['label'], bank[0]])
 		except:
 			preset_list.append(("", None, "", None))
 

@@ -115,10 +115,10 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 				if t=='S':
 					if zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, selchan):
 						zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, selchan, 0)
-						self.fill_list()
+						self.update_list()
 					else:
 						zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, selchan, 1)
-						self.fill_list()
+						self.update_list()
 
 					logging.info("CLONE MIDI CHANNEL {} => {}".format(self.midi_chan, selchan))
 

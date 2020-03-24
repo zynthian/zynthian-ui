@@ -151,8 +151,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 
 	def set_bank(self, layer, bank):
-		if self.load_soundfont(bank[0]):
-			self.unload_unused_soundfonts()
+		return self.load_bank(bank[0])
+
+
+	def load_bank(self, bank_fpath, unload_unused_sf=True):
+		if self.load_soundfont(bank_fpath):
+			if unload_unused_sf:
+				self.unload_unused_soundfonts()
 			self.set_all_presets()
 			return True
 		else:
@@ -165,8 +170,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def get_preset_list(self, bank):
 		logging.info("Getting Preset List for {}".format(bank[2]))
 		preset_list=[]
-		if bank[0] in self.soundfont_index:
-			sfi=self.soundfont_index[bank[0]]
+
+		try:
+			sfi = self.soundfont_index[bank[0]]
+		except:
+			sfi = self.load_bank(bank[0], False)
+
+		if sfi:
 			output=self.proc_cmd("inst {}".format(sfi))
 			for f in output.split("\n"):
 				try:
@@ -175,26 +185,28 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 					bank_lsb=int(bank_msb/128)
 					bank_msb=bank_msb%128
 					title=str.replace(f[8:-1], '_', ' ')
-					preset_list.append((f.strip(),[bank_msb,bank_lsb,prg],title,sfi))
+					preset_list.append([bank[0] + '/' + f.strip(),[bank_msb,bank_lsb,prg],title,bank[0]])
 				except:
 					pass
-		else:
-			logging.warning("Bank {} is not loaded".format(bank[2]))
+
 		return preset_list
 
 
 	def set_preset(self, layer, preset, preload=False):
-		sfi=preset[3]
-		if sfi in self.soundfont_index.values():
-			midi_bank=preset[1][0]+preset[1][1]*128
-			midi_prg=preset[1][2]
-			logging.debug("Set Preset => Layer: {}, SoundFont: {}, Bank: {}, Program: {}".format(layer.part_i, sfi, midi_bank, midi_prg))
-			self.proc_cmd("select {} {} {} {}".format(layer.part_i, sfi, midi_bank, midi_prg))
-			layer.send_ctrl_midi_cc()
-			return True
-		else:
-			logging.warning("SoundFont {} is not loaded".format(sfi))
-			return False
+		try:
+			sfi = self.soundfont_index[preset[3]]
+		except:
+			if layer.set_bank_by_id(preset[3]):
+				sfi = self.soundfont_index[preset[3]]
+			else:
+				return False
+
+		midi_bank=preset[1][0]+preset[1][1]*128
+		midi_prg=preset[1][2]
+		logging.debug("Set Preset => Layer: {}, SoundFont: {}, Bank: {}, Program: {}".format(layer.part_i, sfi, midi_bank, midi_prg))
+		self.proc_cmd("select {} {} {} {}".format(layer.part_i, sfi, midi_bank, midi_prg))
+		layer.send_ctrl_midi_cc()
+		return True
 
 
 	def cmp_presets(self, preset1, preset2):

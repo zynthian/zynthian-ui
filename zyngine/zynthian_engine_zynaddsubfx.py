@@ -186,7 +186,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				bank_lsb=int(index/128)
 				bank_msb=bank[1]
 				prg=index%128
-				preset_list.append((preset_fpath,[bank_msb,bank_lsb,prg],title,ext,f))
+				preset_list.append([preset_fpath,[bank_msb,bank_lsb,prg],title,ext,f])
 		return preset_list
 
 
