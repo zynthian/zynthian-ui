@@ -55,7 +55,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		if self.zyngui.curlayer.set_bank(i):
-			self.zyngui.screens['preset'].only_favs = False
+			self.zyngui.screens['preset'].disable_only_favs()
 			self.zyngui.show_screen('preset')
 			# If there is only one preset, jump to instrument control
 			if len(self.zyngui.curlayer.preset_list)<=1:

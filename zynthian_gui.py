@@ -900,9 +900,13 @@ class zynthian_gui:
 				else:
 					self.enter_midi_learn_mode()
 
-			elif self.active_screen=='bank' or self.active_screen=='preset':
-				self.screens['preset'].toggle_only_favs()
+			elif self.active_screen=='bank':
+				self.screens['preset'].enable_only_favs()
 				self.show_screen('preset')
+
+			elif self.active_screen=='preset':
+				self.screens['preset'].toggle_only_favs()
+
 			else:
 				self.load_snapshot()
 
