@@ -74,13 +74,15 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def enable_only_favs(self):
 		if not self.only_favs:
 			self.only_favs = True
-			self.fill_list()
+			self.set_select_path()
+			self.update_list()
 
 
 	def disable_only_favs(self):
 		if self.only_favs:
 			self.only_favs = False
-			self.fill_list()
+			self.set_select_path()
+			self.update_list()
 
 
 	def toggle_only_favs(self):
@@ -89,7 +91,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		else:
 			self.only_favs = True
 
-		self.fill_list()
+		self.set_select_path()
+		self.update_list()
 
 
 	def set_select_path(self):
