@@ -469,6 +469,13 @@ class zynthian_engine(zynthian_basic_engine):
 			return False
 
 
+	def get_preset_favs(self):
+		if self.preset_favs is None:
+			self.load_preset_favs()
+
+		return self.preset_favs
+
+
 	def load_preset_favs(self):
 		if self.nickname:
 			fname = self.nickname.replace("/","_")

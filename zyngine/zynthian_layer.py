@@ -177,20 +177,23 @@ class zynthian_layer:
 
 
 	def load_preset_list(self, only_favs=False):
-		if self.bank_info:
-			if only_favs:
-				self.preset_list = []
-				for v in self.engine.preset_favs.values():
-					self.preset_list.append(v[1])
+		self.preset_list = []
 
-			else:
-				self.preset_list = []
-				for preset in self.engine.get_preset_list(self.bank_info):
-					if self.engine.is_preset_fav(preset):
-						preset[2] = "*" + preset[2]
-					self.preset_list.append(preset)
+		if only_favs:
+			for v in self.engine.get_preset_favs().values():
+				self.preset_list.append(v[1])
 
-			logging.debug("PRESET LIST => \n%s" % str(self.preset_list))
+		elif self.bank_info:
+			self.preset_list = []
+			for preset in self.engine.get_preset_list(self.bank_info):
+				if self.engine.is_preset_fav(preset):
+					preset[2] = "*" + preset[2]
+				self.preset_list.append(preset)
+
+		else:
+			return
+
+		logging.debug("PRESET LIST => \n%s" % str(self.preset_list))
 
 
 	def reset_preset(self):
