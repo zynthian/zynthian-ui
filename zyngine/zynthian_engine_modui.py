@@ -233,6 +233,18 @@ class zynthian_engine_modui(zynthian_engine):
 		except:
 			return False
 
+
+	def get_preset_favs(self, layer):
+		if self.preset_favs is None:
+			self.load_preset_favs()
+
+		result = OrderedDict()
+		for k,v in self.preset_favs.items():
+			if v[1][0] in [p[0] for p in layer.preset_list]:
+				result[k] = v
+
+		return result
+
 	#----------------------------------------------------------------------------
 	# Controllers Managament
 	#----------------------------------------------------------------------------

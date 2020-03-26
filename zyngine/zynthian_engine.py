@@ -459,6 +459,13 @@ class zynthian_engine(zynthian_basic_engine):
 		return fav_status
 
 
+	def get_preset_favs(self, layer):
+		if self.preset_favs is None:
+			self.load_preset_favs()
+
+		return self.preset_favs
+
+
 	def is_preset_fav(self, preset):
 		if self.preset_favs is None:
 			self.load_preset_favs()
@@ -467,13 +474,6 @@ class zynthian_engine(zynthian_basic_engine):
 			return True
 		else:
 			return False
-
-
-	def get_preset_favs(self):
-		if self.preset_favs is None:
-			self.load_preset_favs()
-
-		return self.preset_favs
 
 
 	def load_preset_favs(self):

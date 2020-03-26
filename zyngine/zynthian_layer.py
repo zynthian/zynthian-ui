@@ -177,22 +177,22 @@ class zynthian_layer:
 
 
 	def load_preset_list(self, only_favs=False):
-		self.preset_list = []
+		preset_list = []
 
 		if only_favs:
-			for v in self.engine.get_preset_favs().values():
-				self.preset_list.append(v[1])
+			for v in self.get_preset_favs().values():
+				preset_list.append(v[1])
 
 		elif self.bank_info:
-			self.preset_list = []
 			for preset in self.engine.get_preset_list(self.bank_info):
 				if self.engine.is_preset_fav(preset):
 					preset[2] = "*" + preset[2]
-				self.preset_list.append(preset)
+				preset_list.append(preset)
 
 		else:
 			return
 
+		self.preset_list = preset_list
 		logging.debug("PRESET LIST => \n%s" % str(self.preset_list))
 
 
@@ -304,6 +304,9 @@ class zynthian_layer:
 	def toggle_preset_fav(self, preset):
 		self.engine.toggle_preset_fav(self, preset)
 
+
+	def get_preset_favs(self):
+		return self.engine.get_preset_favs(self)
 
 	# ---------------------------------------------------------------------------
 	# Controllers Management
