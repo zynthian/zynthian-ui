@@ -254,10 +254,14 @@ class zynthian_layer:
 	def set_preset_by_name(self, preset_name, set_engine=True):
 		for i in range(len(self.preset_list)):
 			name_i=self.preset_list[i][2]
-			if name_i[0]=='*':
-				name_i=name_i[1:]
-			if preset_name==name_i:
-				return self.set_preset(i,set_engine)
+			try:
+				if name_i[0]=='*':
+					name_i=name_i[1:]
+				if preset_name==name_i:
+					return self.set_preset(i,set_engine)
+			except:
+				pass
+
 		return False
 
 

@@ -688,8 +688,10 @@ class zynthian_engine_modui(zynthian_engine):
 			i=self.plugin_info[pgraph]['presets_dict'][uri]
 			self.layers[0].set_preset(i, False)
 			self.zyngui.screens['control'].set_select_path()
+
 		except Exception as e:
 			logging.error("Preset Not Found: {}/{} => {}".format(pgraph, uri, e))
+
 		self.ws_preset_loaded = True
 
 
