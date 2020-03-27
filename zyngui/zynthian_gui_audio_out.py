@@ -40,27 +40,39 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 	def __init__(self):
 		self.layer=None
+		self.end_layer = None
 		super().__init__('Audio Out', True)
 
 
 	def set_layer(self, layer):
 		self.layer = layer
+		try:
+			self.end_layer = self.zyngui.screens['layer'].get_fxchain_ends(self.layer)[0]
+		except:
+			self.end_layer = None
 
 
 	def fill_list(self):
 		self.list_data = []
 
 		for k in zynautoconnect.get_audio_input_ports().keys():
-			if k != self.layer.get_jackname():
-				try:
-					title = self.zyngui.screens['layer'].get_layer_by_jackname(k).get_basepath()
-				except:
-					title = k
+			try:
+				title = self.zyngui.screens['layer'].get_layer_by_jackname(k).get_basepath()
+			except:
+				title = k
 
-				if k in self.layer.get_audio_out():
-					self.list_data.append((k, k, "[x] " + title))
-				else:
-					self.list_data.append((k, k, "[  ] " + title))
+			try:
+				ch = int(title.split('#')[0])-1
+				if ch==self.layer.midi_chan:
+					continue
+			except Exception as e:
+				logging.debug("Can't get layer's midi chan => {}",format(e))
+				pass
+
+			if self.end_layer and k in self.end_layer.get_audio_out():
+				self.list_data.append((k, k, "[x] " + title))
+			else:
+				self.list_data.append((k, k, "[  ] " + title))
 
 		super().fill_list()
 
@@ -80,7 +92,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		self.layer.toggle_audio_out(self.list_data[i][1])
+		self.end_layer.toggle_audio_out(self.list_data[i][1])
 		self.fill_list()
 
 
