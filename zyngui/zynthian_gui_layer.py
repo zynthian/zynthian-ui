@@ -562,11 +562,20 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_fxchain_ends(self, layer):
+		fxlbjn = {}
+		for fxlayer in self.get_fxchain_layers(layer):
+			fxlbjn[fxlayer.jackname] = fxlayer
+				
 		ends=[]
-		for uslayer in reversed(self.layers):
-			if layer.get_midi_chan()==uslayer.get_midi_chan():
-				if uslayer.get_jackname()!=layer.get_jackname() and 'system' in uslayer.get_audio_out():
-					ends.append(uslayer)
+		while len(ends)==0:
+			try:
+				jn = layer.get_audio_out()[0]
+				if jn in fxlbjn:
+					layer = fxlbjn[jn]
+				else:
+					ends.append(layer)
+			except:
+				ends.append(layer)
 
 		return ends
 
