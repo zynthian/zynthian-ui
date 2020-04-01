@@ -67,11 +67,13 @@ from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
-from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
-from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
+from zyngui.zynthian_gui_apps import zynthian_gui_apps
+from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
+from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
+from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
@@ -277,7 +279,7 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def start(self):
-		# Create initial GUI Screens
+		# Create Core UI Screens
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['info'] = zynthian_gui_info()
 		self.screens['snapshot'] = zynthian_gui_snapshot()
@@ -293,13 +295,15 @@ class zynthian_gui:
 		self.screens['control'] = zynthian_gui_control()
 		self.screens['control_xy'] = zynthian_gui_control_xy()
 		self.screens['midi_profile'] = zynthian_gui_midi_profile()
-		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
-		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
 		self.screens['confirm'] = zynthian_gui_confirm()
+		self.screens['apps'] = zynthian_gui_apps()
 
-		# Add Mixer Layer
-		self.screens['layer'].add_layer_mixer()
+		# Create UI Apps Screens
+		self.screens['layer'].create_amixer_layer()
+		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
+		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
+		self.screens['autoeq'] = zynthian_gui_autoeq()
 
 		# Show initial screen => Channel list
 		self.show_screen('layer')
@@ -704,13 +708,13 @@ class zynthian_gui:
 
 		# Standard 4 ZynSwitches
 		if i==0:
-			self.screens['layer'].layer_mixer()
+			self.screens['apps'].alsa_mixer()
 
 		elif i==1:
 			self.show_screen('admin')
 
 		elif i==2:
-			pass
+			self.show_modal("apps")
 
 		elif i==3:
 			self.screens['admin'].power_off()
@@ -891,6 +895,9 @@ class zynthian_gui:
 			if self.modal_screen=='snapshot':
 				self.screens['snapshot'].next()
 
+			elif self.modal_screen=='apps':
+				self.screens['apps'].alsa_mixer()
+
 			elif self.active_screen=='control' and self.screens['control'].mode=='control':
 				if self.midi_learn_mode or self.midi_learn_zctrl:
 					if self.modal_screen=='zs3_learn':
@@ -908,7 +915,7 @@ class zynthian_gui:
 				self.screens['preset'].toggle_only_favs()
 
 			else:
-				self.load_snapshot()
+				self.show_modal("apps")
 
 		elif i==3:
 			if self.modal_screen:

@@ -47,6 +47,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.layers = []
 		self.root_layers = []
 		self.curlayer = None
+		self.amixer_layer = None
 		self.show_all_layers = False
 		self.add_layer_eng = None
 		self.last_snapshot_fpath = None
@@ -59,7 +60,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.last_snapshot_fpath = None
 		self.reset_clone()
 		self.reset_transpose()
-		self.remove_all_layers(True, False)
+		self.remove_all_layers(True)
 
 
 	def toggle_show_all_layers(self):
@@ -131,6 +132,23 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.layer_options()
 
 
+	def create_amixer_layer(self):
+		mixer_eng = self.zyngui.screens['engine'].start_engine('MX')
+		self.amixer_layer=zynthian_layer(mixer_eng, None, self.zyngui)
+
+
+	def remove_amixer_layer(self):
+		self.amixer_layer.reset()
+		self.amixer_layer = None
+
+
+	def layer_control_amixer(self):
+		if self.amixer_layer:
+			self.curlayer = self.amixer_layer
+			self.zyngui.set_curlayer(self.curlayer)
+			self.zyngui.show_screen('control')
+
+
 	def layer_control(self):
 		self.curlayer = self.root_layers[self.index]
 		self.zyngui.set_curlayer(self.curlayer)
@@ -144,17 +162,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.zyngui.screens['bank'].select_action(0)
 
 
-	def layer_mixer(self):
-		i = 0
-		while i<len(self.root_layers):
-			if self.root_layers[i].engine.nickname=='MX':
-				self.index = i
-				self.select_listbox(self.index)
-				self.layer_control()
-				return
-			i += 1
-
-
 	def layer_options(self):
 		i = self.get_layer_selected()
 		if i is not None and self.root_layers[i].engine.nickname!='MX':
@@ -163,18 +170,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def next(self):
-		if len(self.root_layers)>2:
+		if len(self.root_layers)>1:
 
-			self.index += 1
+			if self.curlayer in self.layers:
+				self.index += 1
+				if self.index>=len(self.root_layers):
+					self.index = 0
 
-			if self.index>=len(self.root_layers):
-				self.index = 0
-
-			if self.root_layers[self.index].engine.nickname=='MX':
-				self.next()
-			else:
-				self.select_listbox(self.index)
-				self.layer_control()
+			self.select_listbox(self.index)
+			self.layer_control()
 
 
 	def get_num_layers(self):
@@ -264,12 +268,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.zyngui.show_screen('layer')
 
 
-	def add_layer_mixer(self):
-		mixer_eng = self.zyngui.screens['engine'].start_engine('MX')
-		layer=zynthian_layer(mixer_eng, None, self.zyngui)
-		self.layers.append(layer)
-
-
 	def remove_layer(self, i, stop_unused_engines=True):
 		if i>=0 and i<len(self.layers):
 			logging.debug("Removing layer {} => {} ...".format(i, self.layers[i].get_basepath()))
@@ -319,15 +317,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.zyngui.screens['engine'].stop_unused_engines()
 
 
-	def remove_all_layers(self, stop_engines=True, remove_mixer_layer=False):
+	def remove_all_layers(self, stop_engines=True):
 		# Remove all layers: Step 1 => Drop from FX chain and mute
 		i = len(self.layers)
 		while i>0:
 			i -= 1
-			if self.layers[i].engine.nickname!='MX' or remove_mixer_layer:
-				logging.debug("Mute layer {} => {} ...".format(i, self.layers[i].get_basepath()))
-				self.drop_from_fxchain(self.layers[i])
-				self.layers[i].mute_audio_out()
+			logging.debug("Mute layer {} => {} ...".format(i, self.layers[i].get_basepath()))
+			self.drop_from_fxchain(self.layers[i])
+			self.layers[i].mute_audio_out()
 
 		self.zyngui.zynautoconnect(True)
 
@@ -336,10 +333,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.zyngui.zynautoconnect_acquire_lock()
 		while i>0:
 			i -= 1
-			if self.layers[i].engine.nickname!='MX' or remove_mixer_layer:
-				logging.debug("Remove layer {} => {} ...".format(i, self.layers[i].get_basepath()))
-				self.layers[i].reset()
-				del self.layers[i]
+			logging.debug("Remove layer {} => {} ...".format(i, self.layers[i].get_basepath()))
+			self.layers[i].reset()
+			del self.layers[i]
 		self.zyngui.zynautoconnect_release_lock()
 
 		self.index=0
@@ -403,9 +399,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def set_midi_chan_preset(self, midich, preset_index):
 		selected = False
 		for layer in self.layers:
-			if layer.engine.nickname=='MX':
-				continue
-
 			mch=layer.get_midi_chan()
 			if mch is None or mch==midich:
 				if layer.set_preset(preset_index,True) and not selected:
@@ -419,9 +412,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def set_midi_chan_zs3(self, midich, zs3_index):
 		selected = False
 		for layer in self.layers:
-			if layer.engine.nickname=='MX':
-				continue
-
 			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
 				if layer.restore_zs3(zs3_index) and not selected:
 					try:
@@ -433,9 +423,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def save_midi_chan_zs3(self, midich, zs3_index):
 		for layer in self.layers:
-			if layer.engine.nickname=='MX':
-				continue
-
 			mch=layer.get_midi_chan()
 			if mch is None or mch==midich:
 				layer.save_zs3(zs3_index)
@@ -445,18 +432,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def delete_midi_chan_zs3(self, midich, zs3_index):
 		for layer in self.layers:
-			if layer.engine.nickname=='MX':
-				continue
-
 			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
 				layer.delete_zs3(zs3_index)
 
 
 	def get_midi_chan_zs3_status(self, midich, zs3_index):
 		for layer in self.layers:
-			if layer.engine.nickname=='MX':
-				continue
-
 			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
 				if layer.get_zs3(zs3_index):
 					return True
@@ -522,10 +503,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		roots = []
 
 		for layer in self.layers:
-			if layer.engine.type=="Mixer":
-				roots.append(layer)
-
-		for layer in self.layers:
 			if layer.midi_chan==None and layer.engine.type in ("Special"):
 				roots.append(layer)
 
@@ -538,17 +515,23 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return roots
 
 
-	def get_fxchain_layers(self, root_layer=None):
-		if root_layer is None:
-			root_layer = self.curlayer
+	def get_fxchain_layers(self, layer=None):
+		if layer is None:
+			layer = self.curlayer
 
-		if root_layer is not None:
-			fxchain_layers = [root_layer]
-			if root_layer.midi_chan is not None:
-				for layer in self.layers:
-					if layer not in fxchain_layers and layer.midi_chan==root_layer.midi_chan:
-						fxchain_layers.append(layer)
+		if layer is not None:
+			fxchain_layers = []
+
+			if layer.midi_chan is not None:
+				for l in self.layers:
+					if l not in fxchain_layers and l.midi_chan==layer.midi_chan:
+						fxchain_layers.append(l)
+
+			elif layer in self.layers:
+					fxchain_layers.append(layer)
+
 			return fxchain_layers
+
 		else:
 			return None
 
@@ -565,8 +548,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		fxlbjn = {}
 		for fxlayer in self.get_fxchain_layers(layer):
 			fxlbjn[fxlayer.jackname] = fxlayer
-				
+
 		ends=[]
+		layer = self.get_fxchain_root(layer)
 		while len(ends)==0:
 			try:
 				jn = layer.get_audio_out()[0]
@@ -600,14 +584,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def add_to_fxchain(self, layer):
 		try:
-			ends=self.get_fxchain_ends(layer)
-			if len(ends)>0:
-				for end in ends:
+			for end in self.get_fxchain_ends(layer):
+				if end!=layer:
 					logging.debug("Adding to FX-chain {} => {}".format(end.get_jackname(), layer.get_jackname()))
-					end.add_audio_out(layer.get_jackname())
-					end.del_audio_out("system")
-			else:
-				logging.warning("Can't find the FX chain end ({})".format(layer.get_jackname()))
+					layer.set_audio_out(end.get_audio_out())
+					end.set_audio_out([layer.get_jackname()])
 
 		except Exception as e:
 			logging.error("Error chaining effect ({})".format(e))
@@ -697,8 +678,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 			#Layers info
 			for layer in self.layers:
-				if zynthian_gui_config.snapshot_mixer_settings or layer.engine.nickname!="MX":
-					snapshot['layers'].append(layer.get_snapshot())
+				snapshot['layers'].append(layer.get_snapshot())
+
+			if zynthian_gui_config.snapshot_mixer_settings and self.amixer_layer:
+				snapshot['layers'].append(self.amixer_layer.get_snapshot())
 
 			#Clone info
 			for i in range(0,16):
@@ -749,21 +732,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			snapshot=JSONDecoder().decode(json)
 
-			first_layer_index = 1
-			remove_mixer_layer = False
-
-			# Check for MIXER layer ...
-			for lss in snapshot['layers']:
-				if lss['engine_nick']=="MX":
-					if zynthian_gui_config.snapshot_mixer_settings:
-						first_layer_index = 0
-						remove_mixer_layer = True
-					else:
-						snapshot['layers'].remove(lss)
-					break
-
 			#Clean all layers, but don't stop unused engines
-			self.remove_all_layers(False, remove_mixer_layer)
+			self.remove_all_layers(False)
 
 			# Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
 			# so we stop Jalv engines!
@@ -771,8 +741,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 			#Create new layers, starting engines when needed
 			for lss in snapshot['layers']:
-				engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
-				self.layers.append(zynthian_layer(engine,lss['midi_chan'], self.zyngui))
+				if lss['engine_nick']=="MX":
+					if zynthian_gui_config.snapshot_mixer_settings:
+						snapshot['amixer_layer'] = lss
+				else:
+					engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
+					self.layers.append(zynthian_layer(engine,lss['midi_chan'], self.zyngui))
 
 			# Finally, stop all unused engines
 			self.zyngui.screens['engine'].stop_unused_engines()
@@ -790,22 +764,27 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.set_extended_config(snapshot['extended_config'])
 
 			# Restore layer state, step 1 => Restore Bank & Preset Status
-			i = first_layer_index
+			i = 0
 			for lss in snapshot['layers']:
 				self.layers[i].restore_snapshot_1(lss)
 				i += 1
 
 			# Restore layer state, step 2 => Restore Controllers Status
-			i = first_layer_index
+			i = 0
 			for lss in snapshot['layers']:
 				self.layers[i].restore_snapshot_2(lss)
 				i += 1
+
+			# Restore ALSA Mixer settings
+			if self.amixer_layer and 'amixer_layer' in snapshot:
+				self.amixer_layer.restore_snapshot_1(snapshot['amixer_layer'])
+				self.amixer_layer.restore_snapshot_2(snapshot['amixer_layer'])
 
 			#Fill layer list
 			self.fill_list()
 
 			#Set active layer
-			self.index = first_layer_index + snapshot['index']
+			self.index = snapshot['index']
 			if self.index in self.layers:
 				self.curlayer=self.layers[self.index]
 				self.zyngui.set_curlayer(self.curlayer)
@@ -874,9 +853,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.show_all_layers:
-			self.select_path.set("Detailed Layer List")
+			self.select_path.set("Layers (Detailed)")
 		else:
-			self.select_path.set("Layer List")
+			self.select_path.set("Layers")
 
 
 #------------------------------------------------------------------------------

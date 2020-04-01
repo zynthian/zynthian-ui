@@ -82,9 +82,6 @@ class zynthian_gui_control_xy():
 		self.hline=self.canvas.create_line(0,self.y,zynthian_gui_config.display_width,self.y,fill=zynthian_gui_config.color_on)
 		self.vline=self.canvas.create_line(self.x,0,self.x,zynthian_gui_config.display_width,fill=zynthian_gui_config.color_on)
 
-		# Show
-		self.show()
-
 
 	def show(self):
 		if not self.shown:

@@ -200,6 +200,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				logging.info("No defined MIDI controllers for '{}'.".format(self.plugin_name))
 
 			# Generate LV2-Plugin Controllers
+			self.lv2_monitors_dict = OrderedDict()
 			self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
 			self.generate_ctrl_screens(self.lv2_zctrl_dict)
 
@@ -360,6 +361,19 @@ class zynthian_engine_jalv(zynthian_engine):
 				logging.error(e)
 
 		return zctrls
+
+
+	def get_lv2_monitors_dict(self):
+		self.lv2_monitors_dict = OrderedDict()
+		for line in self.proc_cmd("monitors").split("\n"):
+			try:
+				parts=line.split(" = ")
+				if len(parts)==2:
+					self.lv2_monitors_dict[parts[0]] = float(parts[1])
+			except Exception as e:
+				logging.error(e)
+
+		return self.lv2_monitors_dict
 
 
 	def generate_ctrl_screens(self, zctrl_dict=None):

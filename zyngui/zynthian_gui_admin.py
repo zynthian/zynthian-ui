@@ -57,11 +57,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 
-		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
-		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
-
-		self.list_data.append((None,0,"-----------------------------"))
-
 		if zynthian_gui_config.midi_single_active_channel:
 			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
 		else:
@@ -242,20 +237,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			if self.last_action==self.test_midi:
 				check_output("systemctl stop a2jmidid", shell=True)
 				self.zyngui.all_sounds_off()
-
-#------------------------------------------------------------------------------
-# AUDIO/MIDI RECORDER/PLAYER
-#------------------------------------------------------------------------------
-
-	def audio_recorder(self):
-		logging.info("Audio Recorder")
-		self.zyngui.show_modal("audio_recorder")
-
-
-	def midi_recorder(self):
-		logging.info("MIDI Recorder")
-		self.zyngui.show_modal("midi_recorder")
-
 
 #------------------------------------------------------------------------------
 # MIDI OPTIONS

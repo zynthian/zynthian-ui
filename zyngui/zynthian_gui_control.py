@@ -83,7 +83,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
+
 		self.layers = self.zyngui.screens['layer'].get_fxchain_layers()
+		# If no FXChain layers, then use the curlayer itself (probably amixer_layer)
+		if len(self.layers)==0:
+			self.layers = [self.zyngui.screens['layer'].curlayer]
+
 		i = 0
 		for layer in self.layers:
 			j = 0
@@ -91,7 +96,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.list_data.append((cscr,i,cscr,layer,j))
 				i += 1
 				j += 1
-		self.index = self.zyngui.curlayer.get_active_screen_index()
+		self.index = self.zyngui.screens['layer'].curlayer.get_active_screen_index()
 		super().fill_list()
 
 
