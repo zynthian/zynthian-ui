@@ -266,8 +266,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.replace_on_fxchain(layer)
 				else:
 					self.add_to_fxchain(layer)
+					self.layers.append(layer)
+			else:
+				self.layers.append(layer)
 
-			self.layers.append(layer)
 			self.zyngui.zynautoconnect()
 
 			if select:
@@ -611,12 +613,23 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			rlayer = self.layers[self.replace_layer_index]
 			logging.debug("Replacing on FX-chain {} => {}".format(rlayer.get_jackname(), layer.get_jackname()))
+			
+			# Re-route audio
 			layer.set_audio_out(rlayer.get_audio_out())
+			rlayer.mute_audio_out()
 			for uslayer in self.get_fxchain_upstream(rlayer):
 				uslayer.del_audio_out(rlayer.get_jackname())
 				uslayer.add_audio_out(layer.get_jackname())
 
-			self.remove_layer(self.replace_layer_index)
+			# Replace layer in list
+			self.layers[self.replace_layer_index] = layer
+
+			# Remove old layer and stop unused engines
+			self.zyngui.zynautoconnect_acquire_lock()
+			rlayer.reset()
+			self.zyngui.zynautoconnect_release_lock()
+			self.zyngui.screens['engine'].stop_unused_engines()
+
 			self.replace_layer_index = None
 
 		except Exception as e:
