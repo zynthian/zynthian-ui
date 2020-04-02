@@ -209,7 +209,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		self.bank_list = []
 		for bank_label, info in self.preset_info.items():
-			self.bank_list.append((info['bank_url'], None, bank_label, None))
+			self.bank_list.append((str(info['bank_url']), None, bank_label, None))
 
 		if len(self.bank_list)==0:
 			self.bank_list.append(("", None, "", None))
