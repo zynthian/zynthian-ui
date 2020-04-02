@@ -57,6 +57,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		# Effect Layer Options
 		if self.sublayer:
+			self.list_data.append((self.fx_replace, None, "Replace Effect"))
+
 			if len(self.sublayer.preset_list)>1:
 				self.list_data.append((self.fx_presets, None, "Effect Presets"))
 
@@ -66,7 +68,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if self.can_move_downchain():
 				self.list_data.append((self.fx_move_downchain, None, "Move Downchain"))
 
-			self.list_data.append((self.fx_replace, None, "Replace Effect"))
 			self.list_data.append((self.fx_remove, None, "Remove Effect"))
 
 		# Root Layer Options
