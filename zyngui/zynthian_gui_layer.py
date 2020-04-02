@@ -50,6 +50,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.amixer_layer = None
 		self.show_all_layers = False
 		self.add_layer_eng = None
+		self.replace_layer_index = None
 		self.last_snapshot_fpath = None
 		super().__init__('Layer', True)
 
@@ -211,14 +212,23 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def add_layer(self, etype):
-		self.add_layer_eng=None
+		self.add_layer_eng = None
+		self.replace_layer_index = None
 		self.zyngui.screens['engine'].set_engine_type(etype)
 		self.zyngui.show_modal('engine')
 
 
 	def add_fxchain_layer(self, midi_chan):
-		self.add_layer_eng=None
+		self.add_layer_eng = None
+		self.replace_layer_index = None
 		self.zyngui.screens['engine'].set_fxchain_mode(midi_chan)
+		self.zyngui.show_modal('engine')
+
+
+	def replace_fxchain_layer(self, i):
+		self.add_layer_eng = None
+		self.replace_layer_index = i
+		self.zyngui.screens['engine'].set_fxchain_mode(self.layers[i].midi_chan)
 		self.zyngui.show_modal('engine')
 
 
@@ -233,12 +243,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.add_layer_midich(1, False)
 			self.add_layer_midich(2, False)
 			self.add_layer_midich(3, False)
-
 			self.fill_list()
 			self.index=len(self.layers)-4
 			self.layer_control()
 
 		elif midi_chan is None:
+			self.replace_layer_index=None
 			self.zyngui.screens['midi_chan'].set_mode("ADD", 0, self.get_free_midi_chans())
 			self.zyngui.show_modal('midi_chan')
 
@@ -252,7 +262,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 			# Try to connect effects ...
 			if len(self.layers)>0 and layer.engine.type=="Audio Effect":
-				self.add_to_fxchain(layer)
+				if self.replace_layer_index is not None:
+					self.replace_on_fxchain(layer)
+				else:
+					self.add_to_fxchain(layer)
 
 			self.layers.append(layer)
 			self.zyngui.zynautoconnect()
@@ -592,6 +605,22 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		except Exception as e:
 			logging.error("Error chaining effect ({})".format(e))
+
+
+	def replace_on_fxchain(self, layer):
+		try:
+			rlayer = self.layers[self.replace_layer_index]
+			logging.debug("Replacing on FX-chain {} => {}".format(rlayer.get_jackname(), layer.get_jackname()))
+			layer.set_audio_out(rlayer.get_audio_out())
+			for uslayer in self.get_fxchain_upstream(rlayer):
+				uslayer.del_audio_out(rlayer.get_jackname())
+				uslayer.add_audio_out(layer.get_jackname())
+
+			self.remove_layer(self.replace_layer_index)
+			self.replace_layer_index = None
+
+		except Exception as e:
+			logging.error("Error replacing effect ({})".format(e))
 
 
 	def drop_from_fxchain(self, layer):

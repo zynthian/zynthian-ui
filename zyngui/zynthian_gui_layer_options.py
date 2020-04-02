@@ -66,6 +66,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if self.can_move_downchain():
 				self.list_data.append((self.fx_move_downchain, None, "Move Downchain"))
 
+			self.list_data.append((self.fx_replace, None, "Replace Effect"))
 			self.list_data.append((self.fx_remove, None, "Remove Effect"))
 
 		# Root Layer Options
@@ -275,6 +276,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.zyngui.show_screen('layer')
 		else:
 			self.back_action()
+
+
+	def fx_replace(self):
+		midi_chan=self.layer.midi_chan
+		self.zyngui.screens['layer'].replace_fxchain_layer(self.sublayer_index)
 
 
 	def fx_remove(self):
