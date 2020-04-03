@@ -168,7 +168,10 @@ class zynthian_engine_jalv(zynthian_engine):
 		except:
 			jname_count = 0
 
-		jname = "{}-{:02d}".format(plugin_name, jname_count) 
+                # Jack, when listing ports, accepts regular expressions as the jack name. There's no way to match
+                # literal strings. So, it's most convenient when jack names don't contain regex characters.
+                # Also, spaces in the name are no good (unless we rework the launching command below).
+		jname = "{}-{:02d}".format(plugin_name.replace("*","_").replace("[","").replace("]","").replace(" ",""), jname_count)
 
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
