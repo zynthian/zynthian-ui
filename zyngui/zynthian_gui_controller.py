@@ -471,9 +471,16 @@ class zynthian_gui_controller:
 			#"List Selection Controller" => step 1 element by rotary tick
 			if zctrl.midi_cc==0:
 				self.max_value=self.n_values=zctrl.value_max
-				self.mult=4
 				self.val0=1
 				val=zctrl.value
+
+				#If many values => use adaptative step size based on rotary speed
+				if self.n_values>=96:
+					self.step=0
+					self.mult=1
+				else:
+					self.mult=4
+
 			else:
 				r=zctrl.value_max-zctrl.value_min
 				#Integer < 127
