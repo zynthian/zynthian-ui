@@ -47,6 +47,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.layers = []
 		self.root_layers = []
 		self.curlayer = None
+		self._curlayer = None
 		self.amixer_layer = None
 		self.show_all_layers = False
 		self.add_layer_eng = None
@@ -145,22 +146,42 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def layer_control_amixer(self):
 		if self.amixer_layer:
+			self._curlayer = self.curlayer
 			self.curlayer = self.amixer_layer
 			self.zyngui.set_curlayer(self.curlayer)
-			self.zyngui.show_screen('control')
+			self.zyngui.show_modal('control')
+
+
+	def restore_curlayer(self):
+		if self._curlayer:
+			self.curlayer = self._curlayer
+			self._curlayer = None
+			self.zyngui.set_curlayer(self.curlayer)
+
+
+	def curlayer_control(self):
+		if self.curlayer:
+			self.zyngui.set_curlayer(self.curlayer)
+			# If there is a preset selection for the active layer ...
+			if self.curlayer.get_preset_name():
+				self.zyngui.show_screen('control')
+			else:
+				self.zyngui.show_screen('bank')
+				# If there is only one bank, jump to preset selection
+				if len(self.curlayer.bank_list)<=1:
+					self.zyngui.screens['bank'].select_action(0)
 
 
 	def layer_control(self):
 		self.curlayer = self.root_layers[self.index]
-		self.zyngui.set_curlayer(self.curlayer)
-		# If there is a preset selection for the active layer ...
-		if self.curlayer.get_preset_name():
-			self.zyngui.show_screen('control')
-		else:
-			self.zyngui.show_screen('bank')
-			# If there is only one bank, jump to preset selection
-			if len(self.curlayer.bank_list)<=1:
-				self.zyngui.screens['bank'].select_action(0)
+		self.curlayer_control()
+
+
+	def layer_control_restore(self):
+		if self._curlayer:
+			self.curlayer = self._curlayer
+			self._curlayer = None
+		self.curlayer_control()
 
 
 	def layer_options(self):
@@ -171,6 +192,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def next(self):
+		self.restore_curlayer()
+
 		if len(self.root_layers)>1:
 
 			if self.curlayer in self.layers:

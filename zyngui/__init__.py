@@ -20,7 +20,7 @@ __all__ = [
 	"zynthian_gui_midi_profile",
 	"zynthian_gui_zs3_learn",
 	"zynthian_gui_confirm",
-	"zynthian_gui_apps",
+	"zynthian_gui_main",
 	"zynthian_gui_audio_recorder",
 	"zynthian_gui_midi_recorder",
 	"zynthian_gui_autoeq"
@@ -47,7 +47,7 @@ from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
-from zyngui.zynthian_gui_apps import zynthian_gui_apps
+from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq

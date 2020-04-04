@@ -70,7 +70,7 @@ from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
-from zyngui.zynthian_gui_apps import zynthian_gui_apps
+from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
@@ -83,7 +83,7 @@ from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
 
 class zynthian_gui:
 
-	screens_sequence = ("admin","layer","bank","preset","control")
+	screens_sequence = ("admin","main","layer","bank","preset","control")
 
 	note2cuia = {
 		"0": "POWER_OFF",
@@ -297,7 +297,7 @@ class zynthian_gui:
 		self.screens['midi_profile'] = zynthian_gui_midi_profile()
 		self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
 		self.screens['confirm'] = zynthian_gui_confirm()
-		self.screens['apps'] = zynthian_gui_apps()
+		self.screens['main'] = zynthian_gui_main()
 
 		# Create UI Apps Screens
 		self.screens['layer'].create_amixer_layer()
@@ -305,8 +305,8 @@ class zynthian_gui:
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['autoeq'] = zynthian_gui_autoeq()
 
-		# Show initial screen => Channel list
-		self.show_screen('layer')
+		# Show initial screen
+		self.show_screen('main')
 
 		#Init MIDI Subsystem => MIDI Profile
 		self.init_midi()
@@ -337,7 +337,8 @@ class zynthian_gui:
 
 		if not snapshot_loaded:
 			# Show "load snapshot" popup. Autoclose if no snapshots available ...
-			self.load_snapshot(autoclose=True)
+			#self.load_snapshot(autoclose=True)
+			pass
 
 		# Start polling threads
 		self.start_polling()
@@ -445,6 +446,10 @@ class zynthian_gui:
 		self.modal_screen='snapshot'
 		self.screens['snapshot'].save()
 		self.hide_screens(exclude='snapshot')
+
+
+	def show_control(self):
+		self.screens['layer'].layer_control_restore()
 
 
 	def enter_midi_learn_mode(self):
@@ -708,13 +713,13 @@ class zynthian_gui:
 
 		# Standard 4 ZynSwitches
 		if i==0:
-			self.screens['apps'].alsa_mixer()
+			self.screens['main'].alsa_mixer()
 
 		elif i==1:
 			self.show_screen('admin')
 
 		elif i==2:
-			self.show_modal("apps")
+			self.show_modal("audio_recorder")
 
 		elif i==3:
 			self.screens['admin'].power_off()
@@ -744,63 +749,26 @@ class zynthian_gui:
 			if self.active_screen=='layer':
 				self.all_notes_off()
 				self.all_sounds_off()
-				if self.curlayer is not None:
-					self.show_screen('control')
+				self.show_control()
 			else:
 				if self.active_screen=='preset':
 					self.screens['preset'].restore_preset()
-
 				self.show_screen('layer')
 
 		elif i==1:
-			screen_back = None
-			# If modal screen ...
 			if self.modal_screen:
 				logging.debug("CLOSE MODAL => " + self.modal_screen)
+				self.show_screen('main')
 
-				# Try to call modal back_action method:
-				try:
-					screen_back = self.screens[self.modal_screen].back_action()
-				except:
-					pass
+			elif self.active_screen=='preset':
+				self.screens['preset'].restore_preset()
+				self.show_screen('control')
 
-			# If curlayer is set ...
-			elif self.curlayer is not None:
-				if self.active_screen=='control':
-					if len(self.curlayer.bank_list)>1:
-						screen_back = 'bank'
-					else:
-						screen_back = 'layer'
+			elif len(self.screens['layer'].layers)>0 and self.active_screen in ['main', 'admin']:
+				self.show_control()
 
-				elif self.active_screen=='preset':
-					if self.curlayer.preset_info is not None:
-						self.screens['preset'].restore_preset()
-						screen_back = 'control'
-					elif len(self.curlayer.bank_list)>1:
-						screen_back = 'bank'
-					else:
-						screen_back = 'layer'
-
-				elif self.active_screen=='bank':
-					screen_back = 'admin'
-
-				elif self.active_screen=='layer':
-					screen_back = 'control'
-
-				elif self.active_screen=='admin':
-					screen_back = 'control'
-
-			# Else, go to admin screen
 			else:
-				screen_back = 'admin'
-
-			# Back to active screen by default ...
-			if screen_back is None:
-				screen_back = self.active_screen
-
-			if screen_back:
-				logging.debug("BACK TO SCREEN => {}".format(screen_back))
-				self.show_screen(screen_back)
+				self.show_screen('main')
 
 		elif i==2:
 			self.load_snapshot()
@@ -834,10 +802,9 @@ class zynthian_gui:
 		# Standard 4 ZynSwitches
 		if i==0:
 			if self.active_screen=='control':
-				if self.screens['layer'].get_num_root_layers()>2:
+				if self.screens['layer'].get_num_root_layers()>1:
 					logging.info("Next layer")
 					self.screens['layer'].next()
-					self.show_screen('control')
 				else:
 					self.show_screen('layer')
 
@@ -895,8 +862,11 @@ class zynthian_gui:
 			if self.modal_screen=='snapshot':
 				self.screens['snapshot'].next()
 
-			elif self.modal_screen=='apps':
-				self.screens['apps'].alsa_mixer()
+			elif self.modal_screen=='audio_recorder':
+				self.show_modal('midi_recorder')
+
+			elif self.modal_screen=='midi_recorder':
+				self.show_modal('audio_recorder')
 
 			elif self.active_screen=='control' and self.screens['control'].mode=='control':
 				if self.midi_learn_mode or self.midi_learn_zctrl:
@@ -915,7 +885,7 @@ class zynthian_gui:
 				self.screens['preset'].toggle_only_favs()
 
 			else:
-				self.show_modal("apps")
+				self.show_modal("audio_recorder")
 
 		elif i==3:
 			if self.modal_screen:
