@@ -73,6 +73,7 @@ from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
+from zyngui.zynthian_gui_radio_player import zynthian_gui_radio_player
 from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
@@ -303,6 +304,7 @@ class zynthian_gui:
 		self.screens['layer'].create_amixer_layer()
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
+		self.screens['radio_player'] = zynthian_gui_radio_player()
 		self.screens['autoeq'] = zynthian_gui_autoeq()
 
 		# Show initial screen

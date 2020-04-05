@@ -52,6 +52,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 		# Add list of Apps
 		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
+		self.list_data.append((self.radio_player,0,"Playlist Player"))
 		self.list_data.append((self.alsa_mixer,0,"ALSA Mixer"))
 		self.list_data.append((self.auto_eq,0,"Auto EQ"))
 
@@ -92,6 +93,9 @@ class zynthian_gui_main(zynthian_gui_selector):
 		logging.info("MIDI Recorder")
 		self.zyngui.show_modal("midi_recorder")
 
+	def radio_player(self):
+		logging.info("Radio Player")
+		self.zyngui.show_modal("radio_player")
 
 	def alsa_mixer(self):
 		logging.info("ALSA Mixer")
