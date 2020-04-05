@@ -112,7 +112,7 @@ class zynthian_gui_radio_player(zynthian_gui_selector):
 		# Files on SD-Card
 		for f in sorted(os.listdir(self.capture_dir_sdc)):
 			fpath=join(self.capture_dir_sdc,f)
-			if isfile(fpath) and (f[-4:].lower()=='.m3u' or f[-5:].lower()=='.m3u8'):
+			if isfile(fpath) and (f[-4:].lower()=='.m3u' or f[-5:].lower()=='.m3u8' or f[-4:].lower()=='.pls'):
 				#title=str.replace(f[:-3], '_', ' ')
 				title="SDC: {}".format(f[:-4])
 				self.list_data.append((fpath,i,title))
@@ -120,7 +120,7 @@ class zynthian_gui_radio_player(zynthian_gui_selector):
 		# Files on USB-Pendrive
 		for f in sorted(os.listdir(self.capture_dir_usb)):
 			fpath=join(self.capture_dir_usb,f)
-			if isfile(fpath) and (f[-4:].lower()=='.m3u' or f[-5:].lower()=='.m3u8'):
+			if isfile(fpath) and (f[-4:].lower()=='.m3u' or f[-5:].lower()=='.m3u8' or f[-4:].lower()=='.pls'):
 				#title=str.replace(f[:-3], '_', ' ')
 				title="USB: {}".format(f[:-4])
 				self.list_data.append((fpath,i,title))
