@@ -68,6 +68,7 @@ from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
+from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
@@ -296,6 +297,7 @@ class zynthian_gui:
 		self.screens['control_xy'] = zynthian_gui_control_xy()
 		self.screens['midi_profile'] = zynthian_gui_midi_profile()
 		self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
+		self.screens['zs3_options'] = zynthian_gui_zs3_options()
 		self.screens['confirm'] = zynthian_gui_confirm()
 		self.screens['main'] = zynthian_gui_main()
 

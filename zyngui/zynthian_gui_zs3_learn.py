@@ -90,8 +90,8 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 				self.zyngui.screens['layer'].set_midi_chan_zs3(midich, zs3_index)
 				self.zyngui.exit_midi_learn_mode()
 			elif t=='B':
-				self.zyngui.screens['layer'].delete_midi_chan_zs3(midich, zs3_index)
-				self.show()
+				self.zyngui.screens['zs3_options'].config(midich, zs3_index)
+				self.zyngui.show_modal('zs3_options')
 
 
 	def back_action(self):
