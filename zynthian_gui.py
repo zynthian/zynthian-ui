@@ -84,7 +84,7 @@ from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
 
 class zynthian_gui:
 
-	screens_sequence = ("admin","main","layer","bank","preset","control")
+	screens_sequence = ("main","layer","bank","preset","control")
 
 	note2cuia = {
 		"0": "POWER_OFF",
@@ -467,7 +467,7 @@ class zynthian_gui:
 		self.midi_learn_mode = False
 		self.midi_learn_zctrl = None
 		lib_zyncoder.set_midi_learning_mode(0)
-		self.show_screen('control')
+		self.show_active_screen()
 
 
 	def show_control_xy(self, xctrl, yctrl):
@@ -718,7 +718,7 @@ class zynthian_gui:
 			self.screens['main'].alsa_mixer()
 
 		elif i==1:
-			self.show_screen('admin')
+			self.show_modal('admin')
 
 		elif i==2:
 			self.show_modal("audio_recorder")
@@ -766,7 +766,7 @@ class zynthian_gui:
 				self.screens['preset'].restore_preset()
 				self.show_screen('control')
 
-			elif len(self.screens['layer'].layers)>0 and self.active_screen in ['main', 'admin']:
+			elif self.active_screen in ['main', 'admin'] and len(self.screens['layer'].layers)>0:
 				self.show_control()
 
 			else:
@@ -844,8 +844,12 @@ class zynthian_gui:
 
 				# Back to screen-1 by default ...
 				if screen_back is None:
-					j=self.screens_sequence.index(self.active_screen)-1
-					if j<0: j=1
+					j = self.screens_sequence.index(self.active_screen)-1
+					if j<0: 
+						if len(self.screens['layer'].layers)>0:
+							j = len(self.screens_sequence)-1
+						else:
+							j=0
 					screen_back=self.screens_sequence[j]
 
 			# If there is only one preset, go back to bank selection
@@ -886,8 +890,12 @@ class zynthian_gui:
 			elif self.active_screen=='preset':
 				self.screens['preset'].toggle_only_favs()
 
+			elif len(self.screens['layer'].layers)>0:
+				self.enter_midi_learn_mode()
+				self.show_modal("zs3_learn")
+
 			else:
-				self.show_modal("audio_recorder")
+				self.load_snapshot()
 
 		elif i==3:
 			if self.modal_screen:

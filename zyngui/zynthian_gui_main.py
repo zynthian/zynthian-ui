@@ -105,7 +105,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def admin(self):
 		logging.info("Admin")
-		self.zyngui.show_screen("admin")
+		self.zyngui.show_modal("admin")
 
 
 	def set_select_path(self):
