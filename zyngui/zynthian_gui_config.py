@@ -313,6 +313,18 @@ snapshot_mixer_settings=int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS'
 show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
 
 #------------------------------------------------------------------------------
+# Jackd configuration
+#------------------------------------------------------------------------------
+
+jackd_options = {}
+for item in os.environ.get('JACKD_OPTIONS',"").strip().split('-'):
+	try:
+		parts = item.split(' ', 1)
+		jackd_options[parts[0]] = parts[1].strip()
+	except:
+		pass
+
+#------------------------------------------------------------------------------
 # MIDI Configuration
 #------------------------------------------------------------------------------
 
@@ -404,9 +416,9 @@ set_midi_config()
 #------------------------------------------------------------------------------
 # Player configuration
 #------------------------------------------------------------------------------
+
 midi_play_loop=int(os.environ.get('ZYNTHIAN_MIDI_PLAY_LOOP',0))
 audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
-
 
 #------------------------------------------------------------------------------
 # X11 Related Stuff
