@@ -695,17 +695,17 @@ class zynthian_gui:
 		if lib_zyncoder:
 			for i in range(len(zynthian_gui_config.zynswitch_pin)):
 				dtus=lib_zyncoder.get_zynswitch_dtus(i)
+				if dtus>2000000:
+					self.zynswitch_long(i)
+					return
+				if dtus>300000:
+					# Double switches must be bold!!! => by now ...
+					if self.zynswitch_double(i):
+						return
+					self.zynswitch_bold(i)
+					return
 				if dtus>0:
 					#print("Switch "+str(i)+" dtus="+str(dtus))
-					if dtus>300000:
-						if dtus>2000000:
-							self.zynswitch_long(i)
-							return
-						# Double switches must be bold!!! => by now ...
-						if self.zynswitch_double(i):
-							return
-						self.zynswitch_bold(i)
-						return
 					self.zynswitch_short(i)
 
 
