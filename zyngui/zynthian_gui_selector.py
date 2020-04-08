@@ -623,7 +623,6 @@ class zynthian_gui_selector:
 
 
 	def dscroll_select_path(self):
-
 		if self.select_path_width>self.path_canvas_width:
 			#Scroll label
 			self.select_path_offset += self.select_path_dir

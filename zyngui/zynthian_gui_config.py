@@ -230,6 +230,14 @@ for i in range(0, n_custom_switches):
 	custom_switch_ui_actions.append(cuias)
 	custom_switch_midi_events.append(midi_event)
 
+
+#------------------------------------------------------------------------------
+# Zynswitches events timing
+#------------------------------------------------------------------------------
+
+zynswitch_long_us = os.environ.get('ZYNTHIAN_SWITCH_LONG_US', 2000000)
+zynswitch_bold_us = os.environ.get('ZYNTHIAN_SWITCH_BOLD_US', 300000)
+
 #------------------------------------------------------------------------------
 # UI Geometric Parameters
 #------------------------------------------------------------------------------
