@@ -235,7 +235,7 @@ class zynthian_gui_radio_player(zynthian_gui_selector):
 			if zynthian_gui_config.audio_play_loop:
 				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -loop 0 -ao jack -input file=\"{}\" -playlist \"{}\"".format(self.mplayer_ctrl_fifo_path, fpath)
 			else:
-				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -ao jack -input file=\"{}\" -playlist  \"{}\"".format(self.mplayer_ctrl_fifo_path, fpath)
+				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -cache 1024 -nolirc -nojoystick -really-quiet -slave -ao jack -input file=\"{}\" -playlist  \"{}\"".format(self.mplayer_ctrl_fifo_path, fpath)
 
 			logging.info("COMMAND: %s" % cmd)
 
