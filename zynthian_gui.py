@@ -749,8 +749,9 @@ class zynthian_gui:
 		# Standard 4 ZynSwitches
 		if i==0:
 			if self.active_screen=='layer':
-				self.callable_ui_action("ALL_OFF")
-				self.show_control()
+				self.screens['layer'].toggle_show_all_layers()
+				self.show_screen('layer')
+
 			else:
 				if self.active_screen=='preset':
 					self.screens['preset'].restore_preset()
@@ -809,14 +810,9 @@ class zynthian_gui:
 				else:
 					self.show_screen('layer')
 
-			elif self.active_screen=='layer':
-				self.screens['layer'].toggle_show_all_layers()
-				self.show_screen('layer')
-
 			else:
 				if self.active_screen=='preset':
 					self.screens['preset'].restore_preset()
-
 				self.show_screen('layer')
 
 		elif i==1:
