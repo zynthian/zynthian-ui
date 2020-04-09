@@ -715,10 +715,10 @@ class zynthian_gui:
 
 		# Standard 4 ZynSwitches
 		if i==0:
-			self.callable_ui_action("ALL_OFF")
+			self.screens['main'].alsa_mixer()
 
 		elif i==1:
-			self.screens['main'].alsa_mixer()
+			self.callable_ui_action("ALL_OFF")
 
 		elif i==2:
 			self.show_modal("audio_recorder")
