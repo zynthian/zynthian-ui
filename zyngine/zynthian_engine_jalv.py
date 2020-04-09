@@ -163,24 +163,14 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
-		try:
-			jname_count = zyngui.screens['layer'].get_jackname_count(plugin_name)
-		except:
-			jname_count = 0
-
-                # Jack, when listing ports, accepts regular expressions as the jack name. There's no way to match
-                # literal strings. So, it's most convenient when jack names don't contain regex characters.
-                # Also, spaces in the name are no good (unless we rework the launching command below).
-		jname = "{}-{:02d}".format(plugin_name.replace("*","_").replace("[","").replace("]","").replace(" ",""), jname_count)
-
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
 
 		if not dryrun:
 			if self.config_remote_display():
-				self.command = ("/usr/local/bin/jalv -n {} {}".format(jname, self.plugin_url))		#TODO => Is possible to run plugin's UI?
+				self.command = ("/usr/local/bin/jalv -n {} {}".format(self.get_jalv_jackname(), self.plugin_url))		#TODO => Is possible to run plugin's UI?
 			else:
-				self.command = ("/usr/local/bin/jalv -n {} {}".format(jname, self.plugin_url))
+				self.command = ("/usr/local/bin/jalv -n {} {}".format(self.get_jalv_jackname(), self.plugin_url))
 
 			self.command_prompt = "\n> "
 
@@ -218,6 +208,17 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.bank_list.append(("", None, "", None))
 
 		self.reset()
+
+
+	# Jack, when listing ports, accepts regular expressions as the jack name.
+	# So, for avoiding problems, jack names shouldn't contain regex characters.
+	def get_jalv_jackname(self):
+		try:
+			jname_count = self.zyngui.screens['layer'].get_jackname_count(plugin_name)
+		except:
+			jname_count = 0
+
+		return "{}-{:02d}".format(re.sub("[\_]{1,}","_",re.sub("[\*\(\)\[\]\s]","_",self.plugin_name)), jname_count)
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
