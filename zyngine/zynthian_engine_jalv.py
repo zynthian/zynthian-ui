@@ -218,7 +218,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		except:
 			jname_count = 0
 
-		return "{}-{:02d}".format(re.sub("[\_]{1,}","_",re.sub("[\*\(\)\[\]\s]","_",self.plugin_name)), jname_count)
+		return "{}-{:02d}".format(re.sub("[\_]{2,}","_",re.sub("[\*\(\)\[\]\s]","_",self.plugin_name)), jname_count)
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
