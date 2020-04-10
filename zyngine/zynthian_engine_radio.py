@@ -64,7 +64,7 @@ class zynthian_engine_radio(zynthian_engine):
 	bank_dirs = [
 		('EX', zynthian_engine.ex_data_dir + "/playlist"),
 		('MY', zynthian_engine.my_data_dir + "/playlist"),
-		('_', zynthian_engine.data_dir + "/presets/puredata")
+		('_', zynthian_engine.data_dir + "/playlist")
 	]
 
 	#----------------------------------------------------------------------------
@@ -90,6 +90,10 @@ class zynthian_engine_radio(zynthian_engine):
 
 		self.reset()
 
+	def reset(self):
+		super().reset()
+		self.soundfont_index={}
+
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
@@ -101,43 +105,28 @@ class zynthian_engine_radio(zynthian_engine):
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
-
 	def get_bank_list(self, layer=None):
-		return self.get_dirlist(self.bank_dirs)
+		return self.get_filelist(self.bank_dirs,"pls")
 
 
 	def set_bank(self, layer, bank):
+		return self.load_bank(bank[0])
+
+
+	def load_bank(self, bank_fpath, unload_unused_sf=True):
 		return True
+
+
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
 
-	def _get_preset_list(bank):
-		preset_list=[]
-		preset_dir=bank[0]
-		index=0
-		logging.info("Getting Preset List for %s" % bank[2])
-		for f in sorted(os.listdir(preset_dir)):
-			preset_fpath=join(preset_dir,f)
-			ext=f[-3:].lower()
-			if (isfile(preset_fpath) and (ext=='m3u' or ext=='m3u8' or ext=='pls')):
-				try:
-					index=int(f[0:4])-1
-					title=str.replace(f[5:-4], '_', ' ')
-				except:
-					index+=1
-					title=str.replace(f[0:-4], '_', ' ')
-				bank_lsb=int(index/128)
-				bank_msb=bank[1]
-				prg=index%128
-				preset_list.append([preset_fpath,[bank_msb,bank_lsb,prg],title,ext,f])
-		return preset_list
-
-
-
 	def get_preset_list(self, bank):
-		return self._get_preset_list(bank)
+		logging.info("Getting Preset List for {}".format(bank[2]))
+		preset_list=["RadioX"]
+
+		return preset_list
 
 
 	def set_preset(self, layer, preset, preload=False):
