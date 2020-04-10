@@ -209,7 +209,7 @@ class zynthian_layer:
 			last_preset_name=self.preset_name
 			
 			preset_id = self.preset_list[i][0]
-			preset_name=self.preset_list[i][2]
+			preset_name = self.preset_list[i][2]
 
 			if preset_id in self.engine.preset_favs:
 				if preset_name[0]=='*':
@@ -229,9 +229,9 @@ class zynthian_layer:
 			if self.preload_info:
 				if not self.engine.cmp_presets(self.preload_info,self.preset_info):
 					set_engine_needed = True
-					self.preload_index = i
-					self.preload_name = self.preset_name
-					self.preload_info = self.preset_info
+					self.preload_index = None
+					self.preload_name = None
+					self.preload_info = None
 				else:
 					set_engine_needed = False
 
@@ -274,23 +274,24 @@ class zynthian_layer:
 
 
 	def preload_preset(self, i):
-		if i < len(self.preset_list) and (self.preload_info==None or not self.engine.cmp_presets(self.preload_info,self.preset_list[i])):
-			self.preload_index=i
-			self.preload_name=self.preset_list[i][2]
-			self.preload_info=copy.deepcopy(self.preset_list[i])
-			logging.info("Preset Preloaded: %s (%d)" % (self.preload_name,i))
-			self.engine.set_preset(self,self.preload_info,True)
-			return True
+		if i < len(self.preset_list):
+			if (not self.preload_info and not self.engine.cmp_presets(self.preset_list[i], self.preset_info)) or (self.preload_info and not self.engine.cmp_presets(self.preset_list[i], self.preload_info)):
+				self.preload_index = i
+				self.preload_name = self.preset_list[i][2]
+				self.preload_info = copy.deepcopy(self.preset_list[i])
+				logging.info("Preset Preloaded: %s (%d)" % (self.preload_name,i))
+				self.engine.set_preset(self,self.preload_info,True)
+				return True
 		return False
 
 
 	def restore_preset(self):
-		if self.preset_name is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
+		if self.preset_name is not None and self.preload_info is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
 			if self.preset_bank_index is not None and self.bank_index!=self.preset_bank_index:
 				self.set_bank(self.preset_bank_index,False)
-			self.preload_index=self.preset_index
-			self.preload_name=self.preset_name
-			self.preload_info=self.preset_info
+			self.preload_index=None
+			self.preload_name=None
+			self.preload_info=None
 			logging.info("Restore Preset: %s (%d)" % (self.preset_name,self.preset_index))
 			self.engine.set_preset(self,self.preset_info)
 			return True
