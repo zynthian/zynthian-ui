@@ -248,6 +248,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			thread = threading.Thread(target=runInThread, args=(self.end_playing, cmd), daemon=True)
 			thread.start()
 			sleep(0.5)
+			self.zyngui.zynautoconnect_audio()
 			self.show_playing_volume()
 			self.send_controller_value(self.volume_zctrl)
 			self.current_record=fpath
