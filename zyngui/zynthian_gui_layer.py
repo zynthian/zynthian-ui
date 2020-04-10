@@ -93,9 +93,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.list_data.append(('NEW_EFFECT',len(self.list_data),"NEW Effect Layer"))
 		self.list_data.append(('NEW_GENERATOR',len(self.list_data),"NEW Generator Layer"))
 		self.list_data.append(('NEW_SPECIAL',len(self.list_data),"NEW Special Layer"))
-		self.list_data.append(('RESET',len(self.list_data),"REMOVE ALL"))
+		self.list_data.append(('RESET',len(self.list_data),"REMOVE All Layers"))
 		self.list_data.append((None,len(self.list_data),"-----------------------------"))
-		self.list_data.append(('ALL_NOTES_SOUNDS_OFF',len(self.list_data),"PANIC! All Notes/Sounds Off"))
+		self.list_data.append(('ALL_OFF',len(self.list_data),"PANIC! All Notes Off"))
 
 		super().fill_list()
 
@@ -122,9 +122,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.reset()
 			self.zyngui.show_screen('layer')
 
-		elif self.list_data[i][0]=='ALL_NOTES_SOUNDS_OFF':
-			self.zyngui.all_notes_off()
-			self.zyngui.all_sounds_off()
+		elif self.list_data[i][0]=='ALL_OFF':
+			self.zyngui.callable_ui_action("ALL_OFF")
 
 		else:
 			if t=='S':
@@ -805,13 +804,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.screens['engine'].stop_unused_jalv_engines()
 
 			#Create new layers, starting engines when needed
+			i = 0
 			for lss in snapshot['layers']:
 				if lss['engine_nick']=="MX":
 					if zynthian_gui_config.snapshot_mixer_settings:
 						snapshot['amixer_layer'] = lss
+					del(snapshot['layers'][i])
 				else:
 					engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
 					self.layers.append(zynthian_layer(engine,lss['midi_chan'], self.zyngui))
+				i += 1
 
 			# Finally, stop all unused engines
 			self.zyngui.screens['engine'].stop_unused_engines()
