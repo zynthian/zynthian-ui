@@ -307,9 +307,6 @@ class zynthian_gui:
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['autoeq'] = zynthian_gui_autoeq()
 
-		# Show initial screen
-		self.show_screen('main')
-
 		#Init MIDI Subsystem => MIDI Profile
 		self.init_midi()
 		self.init_midi_services()
@@ -340,7 +337,8 @@ class zynthian_gui:
 		if not snapshot_loaded:
 			# Show "load snapshot" popup. Autoclose if no snapshots available ...
 			#self.load_snapshot(autoclose=True)
-			pass
+			# Show initial screen
+			self.show_screen('main')
 
 		# Start polling threads
 		self.start_polling()
