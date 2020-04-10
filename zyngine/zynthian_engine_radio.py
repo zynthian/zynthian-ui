@@ -86,7 +86,7 @@ class zynthian_engine_radio(zynthian_engine):
 		self.mplayer_ctrl_fifo_path = "/tmp/mplayer-control"
 		fpath = "/zynthian/zynthian-my-data/playlist/RadioX.pls"
 
-		self.base_command="/usr/bin/mplayer -nogui -noconsolecontrols -cache 1024 -nolirc -nojoystick -really-quiet -slave -ao jack:name={} -input file={} -playlist {} ".format(self.jackname, self.mplayer_ctrl_fifo_path, fpath)
+		self.base_command="/usr/bin/mplayer -nogui -noconsolecontrols -cache 1024 -nolirc -nojoystick -really-quiet -slave -ao jack:name={} -input file={} -playlist  ".format(self.jackname, self.mplayer_ctrl_fifo_path)
 
 		self.reset()
 
@@ -106,7 +106,7 @@ class zynthian_engine_radio(zynthian_engine):
 	# Bank Managament
 	#----------------------------------------------------------------------------
 	def get_bank_list(self, layer=None):
-		return self.get_filelist(self.bank_dirs,"pls")
+		return self.get_filelist(self.bank_dirs,"pls") + self.get_filelist(self.bank_dirs,"m3u") + self.get_filelist(self.bank_dirs,"m3u8")
 
 
 	def set_bank(self, layer, bank):
@@ -124,7 +124,7 @@ class zynthian_engine_radio(zynthian_engine):
 
 	def get_preset_list(self, bank):
 		logging.info("Getting Preset List for {}".format(bank[2]))
-		preset_list=["RadioX"]
+		preset_list=["sf1033"]
 
 		return preset_list
 
