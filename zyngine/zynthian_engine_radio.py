@@ -45,15 +45,13 @@ class zynthian_engine_radio(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	_ctrls=[
-		['volume',7,96],
-		['modulation',1,0],
-		['ctrl 2',2,0],
-		['ctrl 3',3,0]
+		['volume',7,60,100]
 	]
 
 	_ctrl_screens=[
-		['main',['volume','modulation','ctrl 2','ctrl 3']]
+		['main',['volume']]
 	]
+
 
 	#----------------------------------------------------------------------------
 	# Config variables
@@ -83,7 +81,7 @@ class zynthian_engine_radio(zynthian_engine):
 
 		self.preset = ""
 		self.preset_config = None
-		self.mplayer_ctrl_fifo_path = "/tmp/mplayer-control"
+		self.mplayer_ctrl_fifo_path = "/tmp/radio-control"
 		fpath = "/zynthian/zynthian-my-data/playlist/RadioX.pls"
 
 		self.base_command="/usr/bin/mplayer -nogui -noconsolecontrols -cache 1024 -nolirc -nojoystick -really-quiet -slave -ao jack:name={} -input file={} -playlist  ".format(self.jackname, self.mplayer_ctrl_fifo_path)
@@ -133,13 +131,15 @@ class zynthian_engine_radio(zynthian_engine):
 		#self.load_preset_config(preset)
 		#self.command=self.base_command+ " " + self.get_preset_filepath(preset)
 		self.command=self.base_command+ " " + self.get_preset_filepath(preset)
+
 		self.preset=preset[0]
 		self.stop()
 		self.start()
 		self.refresh_all()
+		#self.send_controller_value(self.volume_zctrl)
 		sleep(0.3)
 		self.zyngui.zynautoconnect()
-		layer.send_ctrl_midi_cc()
+		#layer.send_ctrl_midi_cc()
 		return True
 
 
@@ -182,41 +182,22 @@ class zynthian_engine_radio(zynthian_engine):
 	# Controllers Managament
 	#----------------------------------------------------------------------------
 
-	def get_controllers_dict(self, layer):
-		try:
-			ctrl_items=self.preset_config['midi_controllers'].items()
-		except:
-			return super().get_controllers_dict(layer)
-		c=1
-		ctrl_set=[]
-		zctrls=OrderedDict()
-		self._ctrl_screens=[]
-		logging.debug("Generating Controller Config ...")
-		try:
-			for name, options in ctrl_items:
-				try:
-					if isinstance(options,int):
-						options={ 'midi_cc': options }
-					if 'midi_chan' not in options:
-						options['midi_chan']=layer.midi_chan
-					midi_cc=options['midi_cc']
-					logging.debug("CTRL %s: %s" % (midi_cc, name))
-					title=str.replace(name, '_', ' ')
-					zctrls[name]=zynthian_controller(self,name,title,options)
-					ctrl_set.append(name)
-					if len(ctrl_set)>=4:
-						logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-						self._ctrl_screens.append(['Controllers#'+str(c),ctrl_set])
-						ctrl_set=[]
-						c=c+1
-				except Exception as err:
-					logging.error("Generating Controller Screens: %s" % err)
-			if len(ctrl_set)>=1:
-				logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-				self._ctrl_screens.append(['Controllers#'+str(c),ctrl_set])
-		except Exception as err:
-			logging.error("Generating Controller List: %s" % err)
-		return zctrls
+	# Get zynthian controllers dictionary:
+	# + Default implementation uses a static controller definition array
+
+
+	def send_controller_value(self, zctrl):
+		logging.info("SET PLAYING VOLUME => {}".format(zctrl.value))
+		if zctrl.symbol=='volume':
+			self.send_mplayer_command("volume {} 1".format(zctrl.value))
+
+	def send_mplayer_command(self, cmd):
+		with open(self.mplayer_ctrl_fifo_path, "w") as f:
+			f.write(cmd + "\n")
+			f.close()
+
+
+		
 
 	#--------------------------------------------------------------------------
 	# Special
