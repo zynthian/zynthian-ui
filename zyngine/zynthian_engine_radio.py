@@ -60,9 +60,9 @@ class zynthian_engine_radio(zynthian_engine):
 	startup_patch = zynthian_engine.my_data_dir + "/playlist/RadioX.pls"
 
 	bank_dirs = [
-		('EX', zynthian_engine.ex_data_dir + "/playlist"),
-		('MY', zynthian_engine.my_data_dir + "/playlist"),
-		('_', zynthian_engine.data_dir + "/playlist")
+		('EX', zynthian_engine.ex_data_dir + "/playlist/"),
+		('MY', zynthian_engine.my_data_dir + "/playlist/"),
+		('_', zynthian_engine.data_dir + "/playlist/")
 	]
 
 	#----------------------------------------------------------------------------
@@ -103,16 +103,24 @@ class zynthian_engine_radio(zynthian_engine):
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
+
 	def get_bank_list(self, layer=None):
-		return self.get_filelist(self.bank_dirs,"pls") + self.get_filelist(self.bank_dirs,"m3u") + self.get_filelist(self.bank_dirs,"m3u8")
+		return self.get_dirlist(self.bank_dirs)
 
 
-	def set_bank(self, layer, bank):
-		return self.load_bank(bank[0])
+#	def get_bank_list(self, layer=None):
+#		logging.warn(self.bank_dirs)
+#		logging.warn(self.get_dirlist(self.bank_dirs[1]))
+#		return self.get_dirlist(self.bank_dirs)
+#		return self.get_filelist(self.bank_dirs,"pls") + self.get_filelist(self.bank_dirs,"m3u") + self.get_filelist(self.bank_dirs,"m3u8")
 
 
-	def load_bank(self, bank_fpath, unload_unused_sf=True):
-		return True
+#	def set_bank(self, layer, bank):
+#		return self.load_bank(bank[0])
+
+
+#	def load_bank(self, bank_fpath, unload_unused_sf=True):
+#		return True
 
 
 
@@ -121,16 +129,15 @@ class zynthian_engine_radio(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		logging.info("Getting Preset List for {}".format(bank[2]))
-		preset_list=["sf1033"]
+		return self.get_filelist(bank[0],"pls")
 
-		return preset_list
 
 
 	def set_preset(self, layer, preset, preload=False):
+		logging.warn(preset)
 		#self.load_preset_config(preset)
 		#self.command=self.base_command+ " " + self.get_preset_filepath(preset)
-		self.command=self.base_command+ " " + self.get_preset_filepath(preset)
+		self.command=self.base_command+ " " + preset[0]
 
 		self.preset=preset[0]
 		self.stop()
