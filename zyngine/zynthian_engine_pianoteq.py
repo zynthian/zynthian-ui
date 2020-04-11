@@ -25,10 +25,11 @@
 
 import os
 import re
-import logging
+import copy
 import time
 import shutil
 import struct
+import logging
 import subprocess
 from collections import defaultdict
 from os.path import isfile,isdir,join
@@ -596,7 +597,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		bank_name = bank[0]
 		if bank_name in self.presets:
 			logging.info("Getting Preset List for %s [%s]" % (self.name,bank_name))
-			res = self.presets[bank_name]
+			res = copy.deepcopy(self.presets[bank_name])
 		else:
 			logging.error("Can't get Preset List for %s [%s]" % (self.name,bank_name))
 			res = []
