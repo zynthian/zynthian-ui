@@ -375,15 +375,22 @@ class zynthian_engine_mixer(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		try:
-			self.learned_cc[chan][ccnum].midi_control_change(val)
-		except:
-			pass
+		if self.zyngui.is_single_active_channel():
+			for ch in range(0,16):
+				try:
+					self.learned_cc[ch][ccnum].midi_control_change(val)
+				except:
+					pass
+		else:
+			try:
+				self.learned_cc[chan][ccnum].midi_control_change(val)
+			except:
+				pass
+
 
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
-
 
 	def get_path(self, layer):
 		return self.name

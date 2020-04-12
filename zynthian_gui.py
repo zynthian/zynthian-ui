@@ -526,6 +526,9 @@ class zynthian_gui:
 				sleep(0.1)
 
 
+	def is_single_active_channel(self):
+		return zynthian_gui_config.midi_single_active_channel
+
 	# -------------------------------------------------------------------
 	# Callable UI Actions
 	# -------------------------------------------------------------------

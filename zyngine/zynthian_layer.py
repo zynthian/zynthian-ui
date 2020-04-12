@@ -397,7 +397,7 @@ class zynthian_layer:
 
 			elif not self.listen_midi_cc:
 				try:
-					# Jalv
+					# Jalv, ALSA-Mixer, ...
 					self.engine.midi_control_change(chan, ccnum, ccval)
 				except:
 					pass
