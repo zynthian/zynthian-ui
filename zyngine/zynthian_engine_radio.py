@@ -58,6 +58,7 @@ class zynthian_engine_radio(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	startup_patch = zynthian_engine.my_data_dir + "/playlist/RadioX.pls"
+	mplayer_ctrl_fifo_path = "/tmp/radio-control"
 
 	bank_dirs = [
 		('EX', zynthian_engine.ex_data_dir + "/playlist/"),
@@ -81,7 +82,6 @@ class zynthian_engine_radio(zynthian_engine):
 
 		self.preset = ""
 		self.preset_config = None
-		self.mplayer_ctrl_fifo_path = "/tmp/radio-control"
 		fpath = "/zynthian/zynthian-my-data/playlist/RadioX.pls"
 
 		self.base_command="/usr/bin/mplayer -nogui -noconsolecontrols -cache 1024 -nolirc -nojoystick -really-quiet -slave -ao jack:name={} -input file={} -playlist  ".format(self.jackname, self.mplayer_ctrl_fifo_path)
@@ -129,12 +129,19 @@ class zynthian_engine_radio(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		return self.get_filelist(bank[0],"pls")
+		return self.get_filelist(self.bank_dirs,"pls") + self.get_filelist(self.bank_dirs,"m3u") + self.get_filelist(self.bank_dirs,"m3u8")
 
 
 
 	def set_preset(self, layer, preset, preload=False):
-		logging.warn(preset)
+		logging.debug(preset)
+		# Create control fifo is needed ...
+		try:
+			os.mkfifo(self.mplayer_ctrl_fifo_path)
+		except:
+			pass
+
+		
 		#self.load_preset_config(preset)
 		#self.command=self.base_command+ " " + self.get_preset_filepath(preset)
 		self.command=self.base_command+ " " + preset[0]
@@ -192,16 +199,17 @@ class zynthian_engine_radio(zynthian_engine):
 	# Get zynthian controllers dictionary:
 	# + Default implementation uses a static controller definition array
 
-
-	def send_controller_value(self, zctrl):
-		logging.info("SET PLAYING VOLUME => {}".format(zctrl.value))
-		if zctrl.symbol=='volume':
-			self.send_mplayer_command("volume {} 1".format(zctrl.value))
-
 	def send_mplayer_command(self, cmd):
+		logging.warn(cmd + " " + self.mplayer_ctrl_fifo_path)
 		with open(self.mplayer_ctrl_fifo_path, "w") as f:
 			f.write(cmd + "\n")
 			f.close()
+
+
+	def send_controller_value(self, zctrl):
+		if zctrl.symbol=='volume':
+			logging.warn("SET PLAYING VOLUME => {}".format(zctrl.value))
+			self.send_mplayer_command("volume {} 1".format(zctrl.value))
 
 
 		
