@@ -867,7 +867,7 @@ class zynthian_gui:
 			elif self.modal_screen=='midi_recorder':
 				self.show_modal('audio_recorder')
 
-			elif self.active_screen=='control' and self.screens['control'].mode=='control':
+			elif (self.active_screen=='control' or self.modal_screen=='control') and self.screens['control'].mode=='control':
 				if self.midi_learn_mode or self.midi_learn_zctrl:
 					if self.modal_screen=='zs3_learn':
 						self.show_screen('control')

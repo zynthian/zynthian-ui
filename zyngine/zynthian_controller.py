@@ -532,7 +532,7 @@ class zynthian_controller:
 		self.set_value(value)
 		#Refresh GUI controller in screen when needed ...
 		try:
-			if self.engine.zyngui.active_screen=='control' and self.engine.zyngui.screens['control'].mode=='control':
+			if (self.engine.zyngui.active_screen=='control' or self.engine.zyngui.modal_screen=='control') and self.engine.zyngui.screens['control'].mode=='control':
 				self.engine.zyngui.screens['control'].set_controller_value(self)
 		except Exception as e:
 			logging.debug(e)

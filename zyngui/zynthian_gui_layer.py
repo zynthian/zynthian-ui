@@ -490,7 +490,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def midi_control_change(self, chan, ccnum, ccval):
-		for layer in self.layers:
+		for layer in self.layers + [self.amixer_layer]:
 			layer.midi_control_change(chan, ccnum, ccval)
 
 
