@@ -27,6 +27,8 @@ import shutil
 import logging
 import subprocess
 import oyaml as yaml
+import socket
+import pickle
 from time import sleep
 from collections import OrderedDict
 from os.path import isfile,isdir,join
@@ -38,28 +40,30 @@ from . import zynthian_controller
 # Puredata Engine Class
 #------------------------------------------------------------------------------
 
-class zynthian_engine_radio(zynthian_engine):
+class zynthian_engine_sdrradio(zynthian_engine):
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
-
+	corse_freqs = [ ['88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99', '100', '101', '102', '103', '104', '105', '106', '107' ], [88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107] ]
 	_ctrls=[
-		['volume',7,60,100]
+		['volume',7,60,100],
+		['corse tune', 31 , 97 ,corse_freqs],
+		['fine tune', 32 , 7 , 9]
+		
 	]
 
 	_ctrl_screens=[
-		['main',['volume']]
+		['main',['volume','corse tune','fine tune']]
 	]
 
 
 	#----------------------------------------------------------------------------
 	# Config variables
 	#----------------------------------------------------------------------------
-
+	HOST, PORT = "localhost", 2345
 	startup_patch = zynthian_engine.my_data_dir + "/playlist/RadioX.pls"
 	mplayer_ctrl_fifo_path = "/tmp/radio-control"
-
 	bank_dirs = [
 		('EX', zynthian_engine.ex_data_dir + "/playlist/"),
 		('MY', zynthian_engine.my_data_dir + "/playlist/"),
@@ -83,7 +87,8 @@ class zynthian_engine_radio(zynthian_engine):
 		self.preset = ""
 		self.preset_config = None
 		fpath = "/zynthian/zynthian-my-data/playlist/RadioX.pls"
-
+		self.corse_var = "97"
+		self.fine_var = "7"
 		self.base_command="/usr/bin/mplayer -nogui -noconsolecontrols -cache 1024 -nolirc -nojoystick -really-quiet -slave -ao jack:name={} -input file={} -playlist  ".format(self.jackname, self.mplayer_ctrl_fifo_path)
 
 		self.reset()
@@ -126,7 +131,6 @@ class zynthian_engine_radio(zynthian_engine):
 		except:
 			pass
 
-		
 		#self.load_preset_config(preset)
 		#self.command=self.base_command+ " " + self.get_preset_filepath(preset)
 		self.command=self.base_command+ " " + preset[0]
@@ -184,19 +188,55 @@ class zynthian_engine_radio(zynthian_engine):
 	# Get zynthian controllers dictionary:
 	# + Default implementation uses a static controller definition array
 
+	def rtlsdr_connect(self):
+		logging.info("Connecting with rtl_fm_streamer Server...")
+		self.sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+		self.sock.setblocking(0)
+		self.sock.settimeout(1)
+		i=0
+		while i<20:
+			try:
+				self.sock.connect(("127.0.0.1",2345))
+				break
+			except:
+				sleep(0.25)
+				i+=1
+		return self.sock
+
+
+
+
 	def send_mplayer_command(self, cmd):
-		logging.warn(cmd + " " + self.mplayer_ctrl_fifo_path)
+		logging.debug(cmd + " " + self.mplayer_ctrl_fifo_path)
 		with open(self.mplayer_ctrl_fifo_path, "w") as f:
 			f.write(cmd + "\n")
 			f.close()
 
+	def send_tune_fm_streamer(self, tunefreq):
+		logging.debug(tunefreq)
+		freq = '{"method": "SetFrequency", "params": ['+ tunefreq+ '00000]}\r\n'
+		logging.debug("Thing to sent: {}".format(freq))
+		self.rtlsdr_connect()
+		try:
+			self.sock.send(freq.encode())
+			recieve = self.sock.recv(4096)
+		except Exception as err:
+			logging.error("FAILED rtlsdr_send: %s" % err)
+		logging.debug(recieve)
+
 
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol=='volume':
-			logging.warn("SET PLAYING VOLUME => {}".format(zctrl.value))
+			logging.debug("SET PLAYING VOLUME => {}".format(zctrl.value))
 			self.send_mplayer_command("volume {} 1".format(zctrl.value))
-
-
+		if zctrl.symbol=='corse tune':
+			logging.debug("SET CORSE TUNE => {} {}".format(zctrl.value, self.fine_var))
+			self.corse_var = str(zctrl.value)
+			self.send_tune_fm_streamer(str(zctrl.value)+self.fine_var)
+		if zctrl.symbol=='fine tune':
+			self.fine_var = str(zctrl.value)
+			logging.debug("SET FINE TUNE => {} {}".format(zctrl.value, self.corse_var))
+			self.send_tune_fm_streamer(self.corse_var+str(zctrl.value))
 		
 
 	#--------------------------------------------------------------------------
