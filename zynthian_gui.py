@@ -75,6 +75,7 @@ from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
+from zyngui.zynthian_gui_stepseq import zynthian_gui_stepseq
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
@@ -306,6 +307,7 @@ class zynthian_gui:
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['autoeq'] = zynthian_gui_autoeq()
+		self.screens['stepseq'] = zynthian_gui_stepseq()
 
 		#Init MIDI Subsystem => MIDI Profile
 		self.init_midi()
@@ -802,6 +804,11 @@ class zynthian_gui:
 		logging.info('Short Switch '+str(i))
 		self.start_loading()
 
+		if self.modal_screen=='stepseq' and i != 1:
+			self.screens[self.modal_screen].switch(i, 'S')
+			self.stop_loading()
+			return
+
 		# Standard 4 ZynSwitches
 		if i==0:
 			if self.active_screen=='control':
@@ -810,6 +817,7 @@ class zynthian_gui:
 					self.screens['layer'].next()
 				else:
 					self.show_screen('layer')
+
 
 			else:
 				if self.active_screen=='preset':
@@ -889,6 +897,9 @@ class zynthian_gui:
 			elif len(self.screens['layer'].layers)>0:
 				self.enter_midi_learn_mode()
 				self.show_modal("zs3_learn")
+
+			elif self.modal_screen=='stepseq':
+				self.screens[self.modal_screen].switch_layer('S')
 
 			else:
 				self.load_snapshot()
