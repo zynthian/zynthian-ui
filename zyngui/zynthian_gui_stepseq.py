@@ -45,6 +45,7 @@ STEP_MENU_PATTERN	= 0
 STEP_MENU_VELOCITY	= 1
 STEP_MENU_STEPS		= 2
 STEP_MENU_MIDI		= 3
+STEP_MENU_MIDI_START= 4
 SELECT_BORDER		= '#ff8717'
 PLAYHEAD_CURSOR		= '#cc701b'
 CANVAS_BACKGROUND	= '#dddddd'
@@ -64,7 +65,8 @@ class zynthian_gui_stepseq():
 		self.gridColumns = 16 # Quantity of columns in grid (default 16)
 		self.keyOrigin = 60 # MIDI note number of top row in grid
 		self.selectedCell = (self.playHead, self.keyOrigin) # Location of selected cell (step,note)
-		self.menu = [{'title': 'Pattern', 'min': 1, 'max': 1, 'value': 1}, {'title': 'Velocity', 'min': 0, 'max': 127, 'value':100}, {'title': 'Steps', 'min': 2, 'max': 32, 'value': 16}, {'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}] #TODO: Get values from persistent storage
+		#TODO: Get values from persistent storage
+		self.menu = [{'title': 'Pattern', 'min': 1, 'max': 1, 'value': 1}, {'title': 'Velocity', 'min': 0, 'max': 127, 'value':100}, {'title': 'Steps', 'min': 2, 'max': 32, 'value': 16}, {'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, {'title': 'Transport start mode', 'min': 0, 'max': 1, 'value': 0}] 
 		self.menuSelected = STEP_MENU_VELOCITY
 		self.menuSelectMode = False # True to change selected menu value, False to change menu selection
 		self.midiOutQueue = [] # List of events to be sent to MIDI output
@@ -496,7 +498,10 @@ class zynthian_gui_stepseq():
 				self.toggleMenuMode()
 			elif t == 'S':
 				if self.status == "STOP":
-					self.setPlayState("START")
+					if self.menu[STEP_MENU_MIDI_START]['value']:
+						self.setPlayState("CONTINUE")
+					else:
+						self.setPlayState("START")
 				else:
 					self.setPlayState("STOP")
 
