@@ -25,6 +25,7 @@
 #******************************************************************************
 
 import sys
+import os
 import tkinter
 import logging
 import tkinter.font as tkFont
@@ -86,8 +87,8 @@ class zynthian_gui_stepseq():
 		logging.info("Starting PyStep...")
 		# Load pattern from file
 		try:
-			#TODO: Get file from zynthian data path
-			with open('pattern.json') as f:
+			fpath=os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.json"
+			with open(fpath) as f:
 				self.patterns = json.load(f)
 		except:
 			logging.warn('Failed to load pattern file')
