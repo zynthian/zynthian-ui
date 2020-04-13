@@ -476,6 +476,9 @@ class zynthian_gui_stepseq():
 			value = zyncoder.lib_zyncoder.get_value_zyncoder(3)
 			if value > 0:
 				zyncoder.lib_zyncoder.set_value_zyncoder(3, value - 1)
+				
+	def switch_select(self, t):
+		self.switch(3, t)
 
 	def switch(self, switch, t):
 		if switch == 0:
@@ -489,6 +492,12 @@ class zynthian_gui_stepseq():
 			self.toggleEvent(self.selectedCell[0], [self.selectedCell[1], self.menu[STEP_MENU_VELOCITY]['value']])
 		if switch == 3:
 			#SELECT
-			self.toggleMenuMode()
+			if t == 'B' or self.menuSelectMode:
+				self.toggleMenuMode()
+			elif t == 'S':
+				if self.status == "STOP":
+					self.setPlayState("START")
+				else:
+					self.setPlayState("STOP")
 
 #------------------------------------------------------------------------------
