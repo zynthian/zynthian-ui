@@ -67,7 +67,7 @@ class zynthian_gui_stepseq():
 		self.keyOrigin = 60 # MIDI note number of top row in grid
 		self.selectedCell = (self.playHead, self.keyOrigin) # Location of selected cell (step,note)
 		#TODO: Get values from persistent storage
-		self.menu = [{'title': 'Pattern', 'min': 1, 'max': 1, 'value': 1}, {'title': 'Velocity', 'min': 0, 'max': 127, 'value':100}, {'title': 'Steps', 'min': 2, 'max': 32, 'value': 16}, {'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, {'title': 'Transport start mode', 'min': 0, 'max': 1, 'value': 0}] 
+		self.menu = [{'title': 'Pattern', 'min': 1, 'max': 999, 'value': 1}, {'title': 'Velocity', 'min': 0, 'max': 127, 'value':100}, {'title': 'Steps', 'min': 2, 'max': 32, 'value': 16}, {'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, {'title': 'Transport start mode', 'min': 0, 'max': 1, 'value': 0}] 
 		self.menuSelected = STEP_MENU_VELOCITY
 		self.menuSelectMode = False # True to change selected menu value, False to change menu selection
 		self.midiOutQueue = [] # List of events to be sent to MIDI output
@@ -105,9 +105,6 @@ class zynthian_gui_stepseq():
 		lblMenu = self.titleCanvas.create_text(self.width - 2, 2, anchor="ne", font=tkFont.Font(family="Times Roman", size=16), tags="lblMenu")
 		rectMenu = self.titleCanvas.create_rectangle(self.titleCanvas.bbox(lblMenu), fill="#70819e", width=0, tags="rectMenu")
 		self.titleCanvas.tag_lower(rectMenu, lblMenu)
-		self.menu[STEP_MENU_PATTERN]['max'] = len(self.patterns)
-		if self.menu[STEP_MENU_PATTERN]['value'] > self.menu[STEP_MENU_PATTERN]['max']:
-			self.menu[STEP_MENU_PATTERN]['value'] = self.menu[STEP_MENU_PATTERN]['max']
 		self.refreshMenu()
 		# Draw pianoroll
 		self.pianoRoll = tkinter.Canvas(self.main_frame, width=self.pianoRollWidth, height=self.gridRows * self.trackHeight, bg="white")
@@ -161,6 +158,7 @@ class zynthian_gui_stepseq():
 				self.toggleMenuMode()
 			self.shown=False
 			self.main_frame.grid_forget()
+			self.savePatterns()
 
 	# Function to handle start of pianoroll drag
 	def pianoRollDragStart(self, event):
@@ -356,9 +354,10 @@ class zynthian_gui_stepseq():
 			zyncoder.lib_zyncoder.set_value_zyncoder(0, note)
 			zyncoder.lib_zyncoder.set_value_zyncoder(2, step)
 
-	# Function to save pattern to json file
-	def savePattern(self):
-		with open('pattern.json', 'w') as f:
+	# Function to save patterns to json file
+	def savePatterns(self):
+		fpath=os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.json"
+		with open(fpath, 'w') as f:
 			json.dump(self.patterns, f)
 
 	# Function to set menu value
@@ -380,6 +379,8 @@ class zynthian_gui_stepseq():
 					self.drawCell(self.selectedCell[0], self.selectedCell[1] - self.keyOrigin)
 					return
 		elif menuItem == STEP_MENU_PATTERN:
+			if value >= len(self.patterns):
+				self.patterns.append([[],[],[],[],[],[],[],[]]) # Dynamically create extra patterns
 			self.loadPattern(value - 1)
 		elif menuItem == STEP_MENU_STEPS:
 			for step in range(self.gridColumns, value):
@@ -414,7 +415,11 @@ class zynthian_gui_stepseq():
 
 	# Function to update menu display
 	def refreshMenu(self):
-		self.titleCanvas.itemconfig("lblMenu", text="%s: %s" % (self.menu[self.menuSelected]['title'], self.menu[self.menuSelected]['value']))
+		if self.menuSelected == STEP_MENU_MIDI_START:
+			mode = 'CONTINUE' if self.menu[self.menuSelected]['value'] else 'START'
+			self.titleCanvas.itemconfig("lblMenu", text="%s: %s" % (self.menu[self.menuSelected]['title'], mode))
+		else:
+			self.titleCanvas.itemconfig("lblMenu", text="%s: %s" % (self.menu[self.menuSelected]['title'], self.menu[self.menuSelected]['value']))
 		self.titleCanvas.coords("rectMenu", self.titleCanvas.bbox("lblMenu"))
 
 	# Function to handle menu change
@@ -499,10 +504,8 @@ class zynthian_gui_stepseq():
 				self.toggleMenuMode()
 			elif t == 'S':
 				if self.status == "STOP":
-					if self.menu[STEP_MENU_MIDI_START]['value']:
-						self.setPlayState("CONTINUE")
-					else:
-						self.setPlayState("START")
+					command = "CONTINUE" if self.menu[self.menuSelected]['value'] else "START"
+					self.setPlayState(command)
 				else:
 					self.setPlayState("STOP")
 
