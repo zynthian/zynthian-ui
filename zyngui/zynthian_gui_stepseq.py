@@ -30,6 +30,7 @@ import logging
 import tkinter.font as tkFont
 import jack
 import json
+import threading
 from zyncoder import *
 
 # Zynthian specific modules
@@ -66,15 +67,13 @@ class zynthian_gui_stepseq():
 		self.menu = [{'title': 'Pattern', 'min': 1, 'max': 1, 'value': 1}, {'title': 'Velocity', 'min': 0, 'max': 127, 'value':100}, {'title': 'Steps', 'min': 2, 'max': 32, 'value': 16}, {'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}] #TODO: Get values from persistent storage
 		self.menuSelected = STEP_MENU_VELOCITY
 		self.menuSelectMode = False # True to change selected menu value, False to change menu selection
-
-		self.shown = False
-		self.zyngui = zynthian_gui_config.zyngui
+		self.midiOutQueue = [] # List of events to be sent to MIDI output
+		self.shown = False # True when GUI in view
+		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.display_height
-
-		self.select_zctrl=None
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
@@ -85,14 +84,13 @@ class zynthian_gui_stepseq():
 		logging.info("Starting PyStep...")
 		# Load pattern from file
 		try:
+			#TODO: Get file from zynthian data path
 			with open('pattern.json') as f:
 				self.patterns = json.load(f)
 		except:
 			logging.warn('Failed to load pattern file')
-			self.patterns = [[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]] # Default to 16 steps
-		self.menu[STEP_MENU_PATTERN]['max'] = len(self.patterns)
-		if self.menu[STEP_MENU_PATTERN]['value'] > self.menu[STEP_MENU_PATTERN]['max']:
-			self.menu[STEP_MENU_PATTERN]['value'] = self.menu[STEP_MENU_PATTERN]['max']
+			self.patterns = [[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]] # Default to empty 16 step pattern
+		# Draw pattern grid
 		self.trackHeight = 0.9 * self.height / (self.gridRows + 1)
 		self.pianoRollWidth = self.width * 0.1
 		self.gridCanvas = tkinter.Canvas(self.main_frame, width=self.width * 0.9, height=self.trackHeight * self.gridRows)
@@ -104,8 +102,11 @@ class zynthian_gui_stepseq():
 		lblMenu = self.titleCanvas.create_text(self.width - 2, 2, anchor="ne", font=tkFont.Font(family="Times Roman", size=16), tags="lblMenu")
 		rectMenu = self.titleCanvas.create_rectangle(self.titleCanvas.bbox(lblMenu), fill="#70819e", width=0, tags="rectMenu")
 		self.titleCanvas.tag_lower(rectMenu, lblMenu)
+		self.menu[STEP_MENU_PATTERN]['max'] = len(self.patterns)
+		if self.menu[STEP_MENU_PATTERN]['value'] > self.menu[STEP_MENU_PATTERN]['max']:
+			self.menu[STEP_MENU_PATTERN]['value'] = self.menu[STEP_MENU_PATTERN]['max']
 		self.refreshMenu()
-		# Draw step grid including pianoroll
+		# Draw pianoroll
 		self.pianoRoll = tkinter.Canvas(self.main_frame, width=self.pianoRollWidth, height=self.gridRows * self.trackHeight, bg="white")
 		self.pianoRoll.grid(row=1, column=0)
 		self.pianoRoll.bind("<ButtonPress-1>", self.pianoRollDragStart)
@@ -164,11 +165,11 @@ class zynthian_gui_stepseq():
 
 	# Function to handle pianoroll drag motion
 	def pianoRollDragMotion(self, event):
-		if event.y > self.pianoRollDragStartY + self.trackHeight:
+		if event.y > self.pianoRollDragStartY + self.trackHeight and self.keyOrigin < 128 - self.gridRows:
 			self.keyOrigin = self.keyOrigin + 1
 			self.pianoRollDragStartY = event.y
 			self.drawGrid()
-		elif event.y < self.pianoRollDragStartY - self.trackHeight:
+		elif event.y < self.pianoRollDragStartY - self.trackHeight and self.keyOrigin > 0:
 			self.keyOrigin = self.keyOrigin - 1
 			self.pianoRollDragStartY = event.y
 			self.drawGrid()
@@ -202,6 +203,8 @@ class zynthian_gui_stepseq():
 				break
 		if not found and note[1]:
 			self.patterns[self.pattern][step].append(note)
+			self.noteOn(note)
+			self.noteOffTimer = threading.Timer(0.1, self.noteOff, [note]).start()
 		if note[0] >= self.keyOrigin and note[0] < self.keyOrigin + self.gridRows:
 			self.selectCell(step, note[0])
 
@@ -253,15 +256,16 @@ class zynthian_gui_stepseq():
 			else:
 				self.pianoRoll.itemconfig(row + 1, fill="black")
 
+
 	# Function to send MIDI note on
 	#   note: List (MIDI note number, MIDI velocity)
 	def noteOn(self, note):
-		self.midiOutput.write_midi_event(0, (0x90 | (self.menu[STEP_MENU_MIDI]['value'] - 1), note[0], note[1]))
+		self.midiOutQueue.append((0x90 | (self.menu[STEP_MENU_MIDI]['value'] - 1), note[0], note[1]))
 
 	# Function to send MIDI note off
 	#   note: List (MIDI note number, MIDI velocity)
 	def noteOff(self, note):
-		self.midiOutput.write_midi_event(0, (0x80 | (self.menu[STEP_MENU_MIDI]['value'] - 1), note[0], note[1]))
+		self.midiOutQueue.append((0x80 | (self.menu[STEP_MENU_MIDI]['value'] - 1), note[0], note[1]))
 
 	# Function to control play head
 	#   command: Playhead command ["STOP" | "START" | "CONTINUE"]
@@ -282,13 +286,12 @@ class zynthian_gui_stepseq():
 				self.status = "STOP"
 				self.playCanvas.itemconfig("playCursor", state = 'hidden')
 				for note in self.patterns[self.pattern][self.playHead]:
-					noteOff(note)
+					self.noteOff(note)
 
 
 	# Function to handle JACK process events
 	#   frames: Quantity of frames since last process event
 	def onJackProcess(self, frames):
-		self.midiOutput.clear_buffer();
 		for offset, data in self.midiInput.incoming_midi_events():
 			if data[0] == b'\xf8':
 				# MIDI Clock
@@ -314,6 +317,10 @@ class zynthian_gui_stepseq():
 			elif data[0] == b'\xfc':
 				# MIDI Stop
 				self.setPlayState("STOP")
+		self.midiOutput.clear_buffer();
+		for out in self.midiOutQueue:
+			self.midiOutput.write_midi_event(0, out)
+		self.midiOutQueue.clear()
 
 	# Function to draw pianoroll keys (does not fill key colour)
 	def drawPianoroll(self):
@@ -328,10 +335,11 @@ class zynthian_gui_stepseq():
 		if step >= self.gridColumns or step < 0:
 			return
 		if note >= self.keyOrigin + self.gridRows:
-			if note < 127:
-				self.keyOrigin = note - self.gridRows
+			# Note is off top of display
+			if note < 128:
+				self.keyOrigin = note + 1 - self.gridRows
 			else:
-				self.keyOrigin = 127 - self.gridRows
+				self.keyOrigin = 128 - self.gridRows
 			self.drawGrid()
 		elif note < self.keyOrigin:
 			self.keyOrigin = note
@@ -353,7 +361,6 @@ class zynthian_gui_stepseq():
 	# Function to set menu value
 	#   menuItem: Index of menu item
 	#   value: Value to set menu item to
-	#	return: True on success
 	def setMenuValue(self, menuItem, value):
 		if menuItem >= len(self.menu):
 			return
@@ -361,14 +368,21 @@ class zynthian_gui_stepseq():
 			return
 		self.menu[menuItem]['value'] = value
 		self.refreshMenu()
-		if menuItem == STEP_MENU_PATTERN:
+		if menuItem == STEP_MENU_VELOCITY:
+			# Adjust velocity of selected cell
+			currentStep = self.patterns[self.pattern][self.selectedCell[0]]
+			for event in currentStep:
+				if event[0] == self.selectedCell[1]:
+					event[1] = value
+					self.drawCell(self.selectedCell[0], self.selectedCell[1] - self.keyOrigin)
+					return
+		elif menuItem == STEP_MENU_PATTERN:
 			self.loadPattern(value - 1)
-		if menuItem == STEP_MENU_STEPS:
+		elif menuItem == STEP_MENU_STEPS:
 			for step in range(self.gridColumns, value):
 				self.patterns[self.pattern].append([])
 			self.gridColumns = value
 			self.drawGrid(True)
-		return
 
 	# Function to toggle menu mode between menu selection and data entry
 	def toggleMenuMode(self):
