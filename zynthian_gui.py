@@ -804,10 +804,10 @@ class zynthian_gui:
 		logging.info('Short Switch '+str(i))
 		self.start_loading()
 
-		if self.modal_screen=='stepseq' and i != 1:
-			self.screens[self.modal_screen].switch(i, 'S')
+		if self.modal_screen=='stepseq':
 			self.stop_loading()
-			return
+			if self.screens[self.modal_screen].switch(i, 'S'):
+				return
 
 		# Standard 4 ZynSwitches
 		if i==0:

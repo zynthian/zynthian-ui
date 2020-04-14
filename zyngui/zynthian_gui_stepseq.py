@@ -494,7 +494,10 @@ class zynthian_gui_stepseq():
 			pass
 		if switch == 1:
 			#BACK
-			pass
+			if self.menuSelectMode:
+				self.toggleMenuMode()
+			else:
+				return False
 		if switch == 2:
 			#SNAPSHOT
 			self.toggleEvent(self.selectedCell[0], [self.selectedCell[1], self.menu[STEP_MENU_VELOCITY]['value']])
@@ -504,9 +507,10 @@ class zynthian_gui_stepseq():
 				self.toggleMenuMode()
 			elif t == 'S':
 				if self.status == "STOP":
-					command = "CONTINUE" if self.menu[self.menuSelected]['value'] else "START"
+					command = "CONTINUE" if self.menu[STEP_MENU_MIDI_START]['value'] else "START"
 					self.setPlayState(command)
 				else:
 					self.setPlayState("STOP")
+		return True # Tell parent that we handled this key press
 
 #------------------------------------------------------------------------------
