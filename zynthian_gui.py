@@ -376,6 +376,8 @@ class zynthian_gui:
 
 		self.lock.acquire()
 		self.hide_screens(exclude=screen)
+		if screen=='control':
+			self.screens['layer'].restore_curlayer()
 		self.screens[screen].show()
 		self.active_screen = screen
 		self.modal_screen = None
