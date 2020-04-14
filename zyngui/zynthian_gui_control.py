@@ -110,39 +110,43 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		#Get screen info
 		if self.index < len(self.list_data):
-			screen_info=self.list_data[self.index]
-			screen_title=screen_info[2]
-			screen_layer=screen_info[3]
+			screen_info = self.list_data[self.index]
+			screen_title = screen_info[2]
+			screen_layer = screen_info[3]
 
 			#Get controllers for the current screen
 			self.zyngui.curlayer.set_active_screen_index(self.index)
-			self.zcontrollers=screen_layer.get_ctrl_screen(screen_title)
-			
-			#Setup GUI Controllers
-			if self.zcontrollers:
-				logging.debug("SET CONTROLLER SCREEN {}".format(screen_title))
-				#Configure zgui_controllers
-				i=0
-				for ctrl in self.zcontrollers:
-					try:
-						#logging.debug("CONTROLLER ARRAY {} => {} ({})".format(i, ctrl.symbol, ctrl.short_name))
-						self.set_zcontroller(i,ctrl)
-						i=i+1
-					except Exception as e:
-						logging.exception("Controller %s (%d) => %s" % (ctrl.short_name,i,e))
-						self.zgui_controllers[i].hide()
+			self.zcontrollers = screen_layer.get_ctrl_screen(screen_title)
 
-				#Hide rest of GUI controllers
-				for i in range(i,len(self.zgui_controllers)):
+		else:
+			self.zcontrollers = None
+
+
+		#Setup GUI Controllers
+		if self.zcontrollers:
+			logging.debug("SET CONTROLLER SCREEN {}".format(screen_title))
+			#Configure zgui_controllers
+			i=0
+			for ctrl in self.zcontrollers:
+				try:
+					#logging.debug("CONTROLLER ARRAY {} => {} ({})".format(i, ctrl.symbol, ctrl.short_name))
+					self.set_zcontroller(i,ctrl)
+					i=i+1
+				except Exception as e:
+					logging.exception("Controller %s (%d) => %s" % (ctrl.short_name,i,e))
 					self.zgui_controllers[i].hide()
 
-			#Hide All GUI controllers
-			else:
-				for zgui_controller in self.zgui_controllers:
-					zgui_controller.hide()
+			#Hide rest of GUI controllers
+			for i in range(i,len(self.zgui_controllers)):
+				self.zgui_controllers[i].hide()
 
-		#Set/Restore XY controllers highlight
-		self.set_xyselect_controllers()
+			#Set/Restore XY controllers highlight
+			self.set_xyselect_controllers()
+
+		#Hide All GUI controllers
+		else:
+			for zgui_controller in self.zgui_controllers:
+				zgui_controller.hide()
 
 		#Release Mutex Lock
 		#self.zyngui.lock.release()
