@@ -111,6 +111,9 @@ class zynthian_gui:
 		"38": "TOGGLE_MIDI_PLAY",
 		"39": "START_MIDI_PLAY",
 		"40": "STOP_MIDI_PLAY",
+		"41": "START_STEP_SEQ",
+		"42": "CONTINUE_STEP_SEQ",
+		"43": "STOP_STEP_SEQ",
 
 		"51": "SELECT",
 		"52": "SELECT_UP",
@@ -598,6 +601,15 @@ class zynthian_gui:
 		elif cuia == "TOGGLE_MIDI_PLAY":
 			self.screens['midi_recorder'].toggle_playing()
 
+		elif cuia == "START_STEP_SEQ":
+			self.screens['stepseq'].setPlayState("START")
+
+		elif cuia == "CONTINUE_STEP_SEQ":
+			self.screens['stepseq'].setPlayState("CONTINUE")
+
+		elif cuia == "STOP_STEP_SEQ":
+			self.screens['stepseq'].setPlayState("STOP")
+
 		elif cuia == "SELECT":
 			try:
 				self.get_current_screen().select(params[0])
@@ -818,7 +830,6 @@ class zynthian_gui:
 				else:
 					self.show_screen('layer')
 
-
 			else:
 				if self.active_screen=='preset':
 					self.screens['preset'].restore_preset()
@@ -897,9 +908,6 @@ class zynthian_gui:
 			elif len(self.screens['layer'].layers)>0:
 				self.enter_midi_learn_mode()
 				self.show_modal("zs3_learn")
-
-			elif self.modal_screen=='stepseq':
-				self.screens[self.modal_screen].switch_layer('S')
 
 			else:
 				self.load_snapshot()
@@ -1057,13 +1065,13 @@ class zynthian_gui:
 						pass
 					# Start
 					elif chan==0xA:
-						self.callable_ui_action("START_MIDI_PLAY")
+						self.callable_ui_action("START_STEP_SEQ")
 					# Continue
 					elif chan==0xB:
-						self.callable_ui_action("START_MIDI_PLAY")
+						self.callable_ui_action("CONTINUE_STEP_SEQ")
 					# Stop
 					elif chan==0xC:
-						self.callable_ui_action("STOP_MIDI_PLAY")
+						self.callable_ui_action("STOP_STEP_SEQ")
 					# Active Sensing
 					elif chan==0xE:
 						pass

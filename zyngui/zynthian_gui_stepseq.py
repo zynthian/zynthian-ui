@@ -289,7 +289,6 @@ class zynthian_gui_stepseq():
 				for note in self.patterns[self.pattern][self.playHead]:
 					self.noteOff(note)
 
-
 	# Function to handle JACK process events
 	#   frames: Quantity of frames since last process event
 	def onJackProcess(self, frames):
@@ -309,15 +308,6 @@ class zynthian_gui_stepseq():
 						for note in self.patterns[self.pattern][self.playHead]:
 							self.noteOn(note)
 						self.drawPlayhead()
-			elif data[0] == b'\xfa':
-				# MIDI Start
-				self.setPlayState("START")
-			elif data[0] == b'\xfb':
-				# Midi Continue
-				self.setPlayState("CONTINUE")
-			elif data[0] == b'\xfc':
-				# MIDI Stop
-				self.setPlayState("STOP")
 		self.midiOutput.clear_buffer();
 		for out in self.midiOutQueue:
 			self.midiOutput.write_midi_event(0, out)
