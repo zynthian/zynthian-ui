@@ -1413,7 +1413,7 @@ class zynthian_gui:
 
 	def zynautoconnect_audio(self, force=False):
 		if force:
-			zynautoconnect.midi_autoconnect(True)
+			zynautoconnect.audio_autoconnect(True)
 		else:
 			self.zynautoconnect_audio_flag = True
 
