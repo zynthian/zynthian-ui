@@ -387,7 +387,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return
 		if self.mode=='select':
 			super().cb_listbox_release(event)
-		else:
+		elif self.listbox_push_ts:
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
 			if dts<0.3:
@@ -401,7 +401,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return
 		if self.mode=='select':
 			super().cb_listbox_motion(event)
-		else:
+		elif self.listbox_push_ts:
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			if dts>0.1:
 				index=self.get_cursel()
