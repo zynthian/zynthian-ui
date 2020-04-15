@@ -55,6 +55,11 @@ SELECT_BORDER		= '#ff8717'
 PLAYHEAD_CURSOR		= '#cc701b'
 CANVAS_BACKGROUND	= '#dddddd'
 SELECT_THICKNESS	= 3
+# Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
+ENC_MENU			= 0
+ENC_BACK			= 1
+ENC_NOTE			= 2
+ENC_STEP			= 3
 
 class zynthian_gui_stepseq():
 
@@ -149,18 +154,22 @@ class zynthian_gui_stepseq():
 			self.main_frame.grid()
 			# Set up encoders
 			if zyncoder.lib_zyncoder:
-				# Encoder 0 (Layer): Note
-				pin_a=zynthian_gui_config.zyncoder_pin_a[0]
-				pin_b=zynthian_gui_config.zyncoder_pin_b[0]
-				zyncoder.lib_zyncoder.setup_zyncoder(0,pin_a,pin_b,0,0,None,self.selectedCell[1],127,0)
-				# Encoder 2 (Snapshot): Step
-				pin_a=zynthian_gui_config.zyncoder_pin_a[2]
-				pin_b=zynthian_gui_config.zyncoder_pin_b[2]
-				zyncoder.lib_zyncoder.setup_zyncoder(2,pin_a,pin_b,0,0,None,self.selectedCell[0],self.gridColumns-1,0)
-				# Encoder 3 (Select): Menu
-				pin_a=zynthian_gui_config.zyncoder_pin_a[3]
-				pin_b=zynthian_gui_config.zyncoder_pin_b[3]
-				zyncoder.lib_zyncoder.setup_zyncoder(3,pin_a,pin_b,0,0,None,self.menuSelected,len(self.menu) - 1,0)
+				# Encoder 0 (Layer): Not used
+				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_BACK]
+				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_BACK]
+#				zyncoder.lib_zyncoder.setup_zyncoder(ENC_BACK,pin_a,pin_b,0,0,None,0,127,0)
+				# Encoder 1 (Back): Select note
+				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_NOTE]
+				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_NOTE]
+				zyncoder.lib_zyncoder.setup_zyncoder(ENC_NOTE,pin_a,pin_b,0,0,None,self.selectedCell[1],127,0)
+				# Encoder 2 (Snapshot): Menu
+				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
+				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_MENU]
+				zyncoder.lib_zyncoder.setup_zyncoder(ENC_MENU,pin_a,pin_b,0,0,None,self.menuSelected,len(self.menu) - 1,0)
+				# Encoder 3 (Select): Select step
+				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_STEP]
+				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_STEP]
+				zyncoder.lib_zyncoder.setup_zyncoder(ENC_STEP,pin_a,pin_b,0,0,None,self.selectedCell[0],self.gridColumns-1,0)
 
 	def hide(self):
 		if self.shown:
@@ -351,8 +360,8 @@ class zynthian_gui_stepseq():
 			self.drawCell(previousSelected[0], previousSelected[1]- self.keyOrigin) # Remove selection highlight
 			self.drawCell(self.selectedCell[0], self.selectedCell[1] - self.keyOrigin)
 		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.set_value_zyncoder(0, note)
-			zyncoder.lib_zyncoder.set_value_zyncoder(2, step)
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_NOTE, note)
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_STEP, step)
 
 	# Function to save patterns to json file
 	def savePatterns(self):
@@ -408,18 +417,13 @@ class zynthian_gui_stepseq():
 
 	# Function to toggle menu mode between menu selection and data entry
 	def toggleMenuMode(self):
-		if self.menuSelected == STEP_MENU_CLEAR:
-			# Never enter value setting mode for one-shot menu items
-			self.clearPattern(self.pattern)
-			self.loadPattern(self.pattern)
-			return
 		if not self.menuSelectMode:
 			# Value edit mode
 			self.titleCanvas.itemconfig("rectMenu", fill="#e8fc03")
 			if zyncoder.lib_zyncoder:
-				pin_a=zynthian_gui_config.zyncoder_pin_a[3]
-				pin_b=zynthian_gui_config.zyncoder_pin_b[3]
-				zyncoder.lib_zyncoder.setup_zyncoder(3,pin_a,pin_b,0,0,None,self.menu[self.menuSelected]['value'],self.menu[self.menuSelected]['max'],0)
+				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
+				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_MENU]
+				zyncoder.lib_zyncoder.setup_zyncoder(ENC_MENU,pin_a,pin_b,0,0,None,self.menu[self.menuSelected]['value'],self.menu[self.menuSelected]['max'],0)
 		else:
 			# Menu item select mode
 			self.titleCanvas.itemconfig("rectMenu", fill="#70819e")
@@ -429,9 +433,9 @@ class zynthian_gui_stepseq():
 				self.copyPattern(self.menu[STEP_MENU_PATTERN]['value'] - 1, self.pattern)
 				self.menu[STEP_MENU_PATTERN]['value'] = self.pattern + 1
 			if zyncoder.lib_zyncoder:
-				pin_a=zynthian_gui_config.zyncoder_pin_a[3]
-				pin_b=zynthian_gui_config.zyncoder_pin_b[3]
-				zyncoder.lib_zyncoder.setup_zyncoder(3,pin_a,pin_b,0,0,None,self.menuSelected,len(self.menu) - 1,0)
+				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
+				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_MENU]
+				zyncoder.lib_zyncoder.setup_zyncoder(ENC_MENU,pin_a,pin_b,0,0,None,self.menuSelected,len(self.menu) - 1,0)
 		self.menuSelectMode = not self.menuSelectMode # toggle state at end to avoid encoder update conflict
 		self.refreshMenu()
 
@@ -458,9 +462,9 @@ class zynthian_gui_stepseq():
 			self.menuSelected = value
 			self.refreshMenu()
 			if zyncoder.lib_zyncoder:
-				pin_a=zynthian_gui_config.zyncoder_pin_a[3]
-				pin_b=zynthian_gui_config.zyncoder_pin_b[3]
-				zyncoder.lib_zyncoder.setup_zyncoder(3,pin_a,pin_b,0,0,None,self.menuSelected,len(self.menu) - 1,0)
+				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
+				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_MENU]
+				zyncoder.lib_zyncoder.setup_zyncoder(ENC_MENU,pin_a,pin_b,0,0,None,self.menuSelected,len(self.menu) - 1,0)
 
 	# Function to load new pattern
 	def loadPattern(self, index):
@@ -482,16 +486,14 @@ class zynthian_gui_stepseq():
 		if not self.shown:
 			return
 		if zyncoder.lib_zyncoder:
-			# Read encoder 0 (Layer): Note
-			val=zyncoder.lib_zyncoder.get_value_zyncoder(0)
+#			val=zyncoder.lib_zyncoder.get_value_zyncoder(0)
+			val=zyncoder.lib_zyncoder.get_value_zyncoder(ENC_NOTE)
 			if val != self.selectedCell[1]:
 				self.selectCell(self.selectedCell[0], val)
-			# Read encoder 2 (Snapshot): Step
-			val=zyncoder.lib_zyncoder.get_value_zyncoder(2)
+			val=zyncoder.lib_zyncoder.get_value_zyncoder(ENC_STEP)
 			if val != self.selectedCell[0]:
 				self.selectCell(val, self.selectedCell[1])
-			# Read encoder 3 (Select): Menu
-			val = zyncoder.lib_zyncoder.get_value_zyncoder(3)
+			val = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_MENU)
 			if self.menuSelectMode:
 				# Change value
 				if val != self.menu[self.menuSelected]['value']:
@@ -503,42 +505,43 @@ class zynthian_gui_stepseq():
 
 	def select_up(self):
 		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.set_value_zyncoder(3, zyncoder.lib_zyncoder.get_value_zyncoder(3) + 1)
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_STEP, zyncoder.lib_zyncoder.get_value_zyncoder(ENC_STEP) + 1)
 
 	def select_down(self):
 		if zyncoder.lib_zyncoder:
-			value = zyncoder.lib_zyncoder.get_value_zyncoder(3)
+			value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_STEP)
 			if value > 0:
-				zyncoder.lib_zyncoder.set_value_zyncoder(3, value - 1)
+				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_STEP, value - 1)
 
 	def switch_select(self, t):
 		self.switch(3, t)
 
-	def switch(self, switch, t):
-		if switch == 0:
-			#LAYER
-			pass
-		if switch == 1:
-			#BACK
+	# Function to handle switch press
+	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#	returns True if action fully handled or False if parent action should be triggered
+	def switch(self, switch, type):
+		if type == "L":
+			return False # Don't handle any long presses
+		if switch == ENC_BACK:
 			if self.menuSelectMode:
-				self.toggleMenuMode()
+				self.toggleMenuMode() # Disable data entry before exit
 			else:
 				return False
-		if switch == 2:
-			#SNAPSHOT
-			self.toggleEvent(self.selectedCell[0], [self.selectedCell[1], self.menu[STEP_MENU_VELOCITY]['value']])
-		if switch == 3:
-			#SELECT
-			if t == 'B' or self.menuSelectMode:
+		if switch == ENC_MENU:
+			if self.menuSelected == STEP_MENU_CLEAR:
+				if type == "B":
+					self.clearPattern(self.pattern)
+					self.loadPattern(self.pattern)
+			else:
 				self.toggleMenuMode()
-			elif t == 'S':
-				if self.menuSelectMode:
-					self.toggleMenuMode()
-				elif self.status == "STOP":
-					command = "CONTINUE" if self.menu[STEP_MENU_MIDI_START]['value'] else "START"
-					self.setPlayState(command)
-				else:
-					self.setPlayState("STOP")
-		return True # Tell parent that we handled this key press
-
+		if switch == ENC_NOTE:
+			if self.status == "STOP":
+				command = "CONTINUE" if self.menu[STEP_MENU_MIDI_START]['value'] else "START"
+				self.setPlayState(command)
+			else:
+				self.setPlayState("STOP")
+		if switch == ENC_STEP:
+			self.toggleEvent(self.selectedCell[0], [self.selectedCell[1], self.menu[STEP_MENU_VELOCITY]['value']])
+		return True # Tell parent that we handled all short and bold key presses
 #------------------------------------------------------------------------------

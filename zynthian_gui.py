@@ -761,6 +761,11 @@ class zynthian_gui:
 		logging.info('Bold Switch '+str(i))
 		self.start_loading()
 
+		if self.modal_screen=='stepseq':
+			self.stop_loading()
+			if self.screens[self.modal_screen].switch(i, 'B'):
+				return
+
 		# Standard 4 ZynSwitches
 		if i==0:
 			if self.active_screen=='layer':
