@@ -64,6 +64,7 @@ ENC_STEP			= 3
 class zynthian_gui_stepseq():
 
 	def __init__(self):
+		self.redrawPlayhead = False # Flag indicating main process should redraw playhead
 		self.clock = 0 # Count of MIDI clock pulses since last step [0..24]
 		self.status = "STOP" # Play status [STOP | PLAY]
 		self.playHead = 0 # Play head position in steps [0..gridColumns]
@@ -201,6 +202,7 @@ class zynthian_gui_stepseq():
 	# Function to draw the play head cursor
 	def drawPlayhead(self):
 		self.playCanvas.coords("playCursor", 1 + self.playHead * self.stepWidth, 0, self.playHead * self.stepWidth + self.stepWidth, self.trackHeight / 2)
+		self.redrawPlayhead = False
 
 	# Function to handle mouse click / touch
 	#   event: Mouse event
@@ -272,7 +274,7 @@ class zynthian_gui_stepseq():
 			if key in (0,2,4,5,7,9,11):
 				self.pianoRoll.itemconfig(row + 1, fill="white")
 				if key == 0:
-					self.pianoRoll.create_text((self.pianoRollWidth / 2, self.trackHeight * (self.gridRows - row - 0.5)), text="C%d (%d)" % ((self.keyOrigin + row) // 12 - 1, self.keyOrigin + row), tags="notename")
+					self.pianoRoll.create_text((self.pianoRollWidth / 2, self.trackHeight * (self.gridRows - row - 0.5)), text="C%d (%d)" % ((self.keyOrigin + row) // 12 - 1, self.keyOrigin + row), font=tkFont.Font(family="Times Roman", size=int(self.trackHeight * 0.7)), tags="notename")
 			else:
 				self.pianoRoll.itemconfig(row + 1, fill="black")
 
@@ -326,7 +328,7 @@ class zynthian_gui_stepseq():
 							self.playHead = 0
 						for note in self.patterns[self.pattern][self.playHead]:
 							self.noteOn(note)
-						self.drawPlayhead()
+						self.redrawPlayhead = True
 		self.midiOutput.clear_buffer();
 		for out in self.midiOutQueue:
 			self.midiOutput.write_midi_event(0, out)
@@ -502,6 +504,8 @@ class zynthian_gui_stepseq():
 				# Change menu
 				if val != self.menuSelected:
 					self.onMenuChange(val)
+		if self.redrawPlayhead:
+			self.drawPlayhead()
 
 	def select_up(self):
 		if zyncoder.lib_zyncoder:
