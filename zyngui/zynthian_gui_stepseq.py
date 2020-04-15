@@ -49,8 +49,9 @@ STEP_MENU_VELOCITY	= 1
 STEP_MENU_STEPS		= 2
 STEP_MENU_COPY		= 3
 STEP_MENU_CLEAR		= 4
-STEP_MENU_MIDI		= 5
-STEP_MENU_MIDI_START= 6
+STEP_MENU_TRANSPOSE	= 5
+STEP_MENU_MIDI		= 6
+STEP_MENU_MIDI_START= 7
 SELECT_BORDER		= '#ff8717'
 PLAYHEAD_CURSOR		= '#cc701b'
 CANVAS_BACKGROUND	= '#dddddd'
@@ -79,9 +80,10 @@ class zynthian_gui_stepseq():
 		#TODO: Get values from persistent storage
 		self.menu = [{'title': 'Pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
 			{'title': 'Velocity', 'min': 0, 'max': 127, 'value':100}, \
-			{'title': 'Steps', 'min': 2, 'max': 32, 'value': 16}, \
+			{'title': 'Steps', 'min': 2, 'max': 64, 'value': 16}, \
 			{'title': 'Copy pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
 			{'title': 'Clear pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
+			{'title': 'Transpose', 'min': -1, 'max': 2, 'value': 1}, \
 			{'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, \
 			{'title': 'Transport start mode', 'min': 0, 'max': 1, 'value': 0}]
 		self.menuSelected = STEP_MENU_VELOCITY
@@ -328,7 +330,7 @@ class zynthian_gui_stepseq():
 							self.playHead = 0
 						for note in self.patterns[self.pattern][self.playHead]:
 							self.noteOn(note)
-						self.redrawPlayhead = True
+						self.redrawPlayhead = True # Flag playhead needs redrawing
 		self.midiOutput.clear_buffer();
 		for out in self.midiOutQueue:
 			self.midiOutput.write_midi_event(0, out)
@@ -398,6 +400,16 @@ class zynthian_gui_stepseq():
 				self.patterns[self.pattern].append([])
 			self.gridColumns = value
 			self.drawGrid(True)
+		elif menuItem == STEP_MENU_TRANSPOSE:
+			# zyncoders only support positive integers so must use offset
+			for step in range(self.gridColumns):
+				for note in self.patterns[self.pattern][step]:
+					note[0] = note[0] + value - 1
+			if zyncoder.lib_zyncoder:
+				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_MENU, 1)
+				zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
+		self.drawGrid()
+
 
 	# Function to clear a pattern
 	#	pattern: Index of the pattern to clear
