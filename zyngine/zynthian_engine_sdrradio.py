@@ -45,10 +45,10 @@ class zynthian_engine_sdrradio(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
-	corse_freqs = [ ['88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99', '100', '101', '102', '103', '104', '105', '106', '107' ], [88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107] ]
+	corse_freqs = "88|89|90|91|92|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107"
 	_ctrls=[
 		['volume',7,60,100],
-		['corse tune', 39 , 97 , 107],
+		['corse tune', 39 , '97' , corse_freqs ],
 		['fine tune', 32 , 7 , 9]
 		
 	]
@@ -230,15 +230,37 @@ class zynthian_engine_sdrradio(zynthian_engine):
 			logging.debug("SET PLAYING VOLUME => {}".format(zctrl.value))
 			self.send_mplayer_command("volume {} 1".format(zctrl.value))
 		if zctrl.symbol=='corse tune':
-			logging.debug("SET CORSE TUNE => {} {}".format(zctrl.value, self.fine_var))
-			self.corse_var = str(zctrl.value)
-			self.send_tune_fm_streamer(str(zctrl.value)+self.fine_var)
+			self.corse_var = self.retnum(str(zctrl.value))
+			logging.debug("SET CORSE TUNE => {} {}".format(self.corse_var, self.fine_var))
+			self.send_tune_fm_streamer(self.corse_var+self.fine_var)
 		if zctrl.symbol=='fine tune':
 			self.fine_var = str(zctrl.value)
 			logging.debug("SET FINE TUNE => {} {}".format(zctrl.value, self.corse_var))
 			self.send_tune_fm_streamer(self.corse_var+str(zctrl.value))
-		
-
+	def retnum(self, x):
+		numfreq = {
+			'0': '88',
+			'6': '89',
+			'12': '90',
+			'19': '91',
+			'25': '92',
+			'32': '93',
+			'38': '94',
+			'44': '95',
+			'51': '96',
+			'57': '97',
+			'64': '98',
+			'70': '99',
+			'76': '100',
+			'83': '101',
+			'89': '102',
+			'96': '103',
+			'102': '104',
+			'108': '105',
+			'115': '106',
+			'121': '107'
+		}
+		return numfreq.get(x)
 	#--------------------------------------------------------------------------
 	# Special
 	#--------------------------------------------------------------------------
