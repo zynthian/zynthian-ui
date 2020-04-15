@@ -32,6 +32,7 @@ import tkinter.font as tkFont
 import jack
 import json
 import threading
+import copy
 from zyncoder import *
 
 # Zynthian specific modules
@@ -41,12 +42,15 @@ from . import zynthian_gui_config
 # Zynthian Step-Sequencer GUI Class
 #------------------------------------------------------------------------------
 
-# Local coonstants
+# Local constants
+MAX_PATTERNS		= 999
 STEP_MENU_PATTERN	= 0
 STEP_MENU_VELOCITY	= 1
 STEP_MENU_STEPS		= 2
-STEP_MENU_MIDI		= 3
-STEP_MENU_MIDI_START= 4
+STEP_MENU_COPY		= 3
+STEP_MENU_CLEAR		= 4
+STEP_MENU_MIDI		= 5
+STEP_MENU_MIDI_START= 6
 SELECT_BORDER		= '#ff8717'
 PLAYHEAD_CURSOR		= '#cc701b'
 CANVAS_BACKGROUND	= '#dddddd'
@@ -67,7 +71,13 @@ class zynthian_gui_stepseq():
 		self.keyOrigin = 60 # MIDI note number of top row in grid
 		self.selectedCell = (self.playHead, self.keyOrigin) # Location of selected cell (step,note)
 		#TODO: Get values from persistent storage
-		self.menu = [{'title': 'Pattern', 'min': 1, 'max': 999, 'value': 1}, {'title': 'Velocity', 'min': 0, 'max': 127, 'value':100}, {'title': 'Steps', 'min': 2, 'max': 32, 'value': 16}, {'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, {'title': 'Transport start mode', 'min': 0, 'max': 1, 'value': 0}] 
+		self.menu = [{'title': 'Pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
+			{'title': 'Velocity', 'min': 0, 'max': 127, 'value':100}, \
+			{'title': 'Steps', 'min': 2, 'max': 32, 'value': 16}, \
+			{'title': 'Copy pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
+			{'title': 'Clear pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
+			{'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, \
+			{'title': 'Transport start mode', 'min': 0, 'max': 1, 'value': 0}]
 		self.menuSelected = STEP_MENU_VELOCITY
 		self.menuSelectMode = False # True to change selected menu value, False to change menu selection
 		self.midiOutQueue = [] # List of events to be sent to MIDI output
@@ -354,9 +364,7 @@ class zynthian_gui_stepseq():
 	#   menuItem: Index of menu item
 	#   value: Value to set menu item to
 	def setMenuValue(self, menuItem, value):
-		if menuItem >= len(self.menu):
-			return
-		if value < self.menu[menuItem]['min'] or value > self.menu[menuItem]['max']:
+		if menuItem >= len(self.menu) or value < self.menu[menuItem]['min'] or value > self.menu[menuItem]['max']:
 			return
 		self.menu[menuItem]['value'] = value
 		self.refreshMenu()
@@ -368,7 +376,9 @@ class zynthian_gui_stepseq():
 					event[1] = value
 					self.drawCell(self.selectedCell[0], self.selectedCell[1] - self.keyOrigin)
 					return
-		elif menuItem == STEP_MENU_PATTERN:
+		elif menuItem == STEP_MENU_PATTERN or menuItem == STEP_MENU_COPY:
+			self.menu[STEP_MENU_COPY]['value'] = value # update copy value when pattern value changes
+			self.menu[STEP_MENU_CLEAR]['value'] = value # update clear value when pattern value changes
 			if value >= len(self.patterns):
 				self.patterns.append([[],[],[],[],[],[],[],[]]) # Dynamically create extra patterns
 			self.loadPattern(value - 1)
@@ -378,10 +388,32 @@ class zynthian_gui_stepseq():
 			self.gridColumns = value
 			self.drawGrid(True)
 
+	# Function to clear a pattern
+	#	pattern: Index of the pattern to clear
+	def clearPattern(self, pattern):
+		if pattern < 0 or pattern > len(self.patterns):
+			return
+		for step in range(len(self.patterns[pattern])):
+			self.patterns[pattern][step] = []
+
+	# Function to copy pattern
+	#	source: Index of pattern to copy from
+	#	dest: Index of pattern to copy to
+	def copyPattern(self, source, dest):
+		if source < 0 or source > len(self.patterns) or dest < 0 or dest > len(self.patterns) or source == dest:
+			return
+		self.patterns[dest] = copy.deepcopy(self.patterns[source])
+		if dest == self.pattern:
+			self.loadPattern(dest)
+
 	# Function to toggle menu mode between menu selection and data entry
 	def toggleMenuMode(self):
-		self.menuSelectMode = not self.menuSelectMode
-		if self.menuSelectMode:
+		if self.menuSelected == STEP_MENU_CLEAR:
+			# Never enter value setting mode for one-shot menu items
+			self.clearPattern(self.pattern)
+			self.loadPattern(self.pattern)
+			return
+		if not self.menuSelectMode:
 			# Value edit mode
 			self.titleCanvas.itemconfig("rectMenu", fill="#e8fc03")
 			if zyncoder.lib_zyncoder:
@@ -393,10 +425,14 @@ class zynthian_gui_stepseq():
 			self.titleCanvas.itemconfig("rectMenu", fill="#70819e")
 			if self.menuSelected == STEP_MENU_STEPS:
 				self.removeObsoleteSteps()
+			elif self.menuSelected == STEP_MENU_COPY:
+				self.copyPattern(self.menu[STEP_MENU_PATTERN]['value'] - 1, self.pattern)
+				self.menu[STEP_MENU_PATTERN]['value'] = self.pattern + 1
 			if zyncoder.lib_zyncoder:
 				pin_a=zynthian_gui_config.zyncoder_pin_a[3]
 				pin_b=zynthian_gui_config.zyncoder_pin_b[3]
 				zyncoder.lib_zyncoder.setup_zyncoder(3,pin_a,pin_b,0,0,None,self.menuSelected,len(self.menu) - 1,0)
+		self.menuSelectMode = not self.menuSelectMode # toggle state at end to avoid encoder update conflict
 		self.refreshMenu()
 
 	# Function to remove steps that are not within current display window
@@ -474,7 +510,7 @@ class zynthian_gui_stepseq():
 			value = zyncoder.lib_zyncoder.get_value_zyncoder(3)
 			if value > 0:
 				zyncoder.lib_zyncoder.set_value_zyncoder(3, value - 1)
-				
+
 	def switch_select(self, t):
 		self.switch(3, t)
 
@@ -496,7 +532,9 @@ class zynthian_gui_stepseq():
 			if t == 'B' or self.menuSelectMode:
 				self.toggleMenuMode()
 			elif t == 'S':
-				if self.status == "STOP":
+				if self.menuSelectMode:
+					self.toggleMenuMode()
+				elif self.status == "STOP":
 					command = "CONTINUE" if self.menu[STEP_MENU_MIDI_START]['value'] else "START"
 					self.setPlayState(command)
 				else:

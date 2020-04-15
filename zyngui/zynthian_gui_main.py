@@ -53,8 +53,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
 		self.list_data.append((self.alsa_mixer,0,"ALSA Mixer"))
-		self.list_data.append((self.auto_eq,0,"Auto EQ"))
 		self.list_data.append((self.step_sequencer,0,"Step Sequencer"))
+		self.list_data.append((self.auto_eq,0,"Auto EQ"))
 
 		self.list_data.append((None,0,"-----------------------------"))
 
