@@ -114,10 +114,10 @@ class zynthian_gui_stepseq():
 		self.gridCanvas = tkinter.Canvas(self.main_frame, width=self.width * 0.9, height=self.trackHeight * self.gridRows)
 		self.gridCanvas.grid(row=1, column=1)
 		# Draw title bar
-		self.titleCanvas = tkinter.Canvas(self.main_frame, width=self.width, height=self.height * 0.1, bg="#70819e")
+		self.titleCanvas = tkinter.Canvas(self.main_frame, width=self.width, height=int(self.height * 0.1), bg="#70819e")
 		self.titleCanvas.grid(row=0, column=0, columnspan=2)
-		self.titleCanvas.create_text(2,2, anchor="nw", font=tkFont.Font(family="Times Roman", size=20), tags="lblPattern")
-		lblMenu = self.titleCanvas.create_text(self.width - 2, 2, anchor="ne", font=tkFont.Font(family="Times Roman", size=16), tags="lblMenu")
+		self.titleCanvas.create_text(self.width - 2, int(self.height * 0.05), anchor="e", font=tkFont.Font(family="Times Roman", size=int(self.height * 0.05)), tags="lblPattern")
+		lblMenu = self.titleCanvas.create_text(2, int(self.height * 0.05), anchor="w", font=tkFont.Font(family="Times Roman", size=int(self.height * .06)), tags="lblMenu")
 		rectMenu = self.titleCanvas.create_rectangle(self.titleCanvas.bbox(lblMenu), fill="#70819e", width=0, tags="rectMenu")
 		self.titleCanvas.tag_lower(rectMenu, lblMenu)
 		self.refreshMenu()
