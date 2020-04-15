@@ -62,8 +62,10 @@ ENC_BACK			= 1
 ENC_NOTE			= 2
 ENC_STEP			= 3
 
+# Class implements step sequencer
 class zynthian_gui_stepseq():
 
+	# Function to initialise class
 	def __init__(self):
 		self.redrawPlayhead = False # Flag indicating main process should redraw playhead
 		self.clock = 0 # Count of MIDI clock pulses since last step [0..24]
@@ -151,6 +153,7 @@ class zynthian_gui_stepseq():
 		except:
 			logging.error("Failed to connect MIDI devices")
 
+	# Function to show GUI
 	def show(self):
 		if not self.shown:
 			self.shown=True
@@ -172,8 +175,9 @@ class zynthian_gui_stepseq():
 				# Encoder 3 (Select): Select step
 				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_STEP]
 				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_STEP]
-				zyncoder.lib_zyncoder.setup_zyncoder(ENC_STEP,pin_a,pin_b,0,0,None,self.selectedCell[0],self.gridColumns-1,0)
+				zyncoder.lib_zyncoder.setup_zyncoder(ENC_STEP,pin_a,pin_b,0,0,None,self.selectedCell[0],self.gridColumns - 1,0)
 
+	# Function to hide GUI
 	def hide(self):
 		if self.shown:
 			if self.menuSelectMode:
@@ -217,7 +221,7 @@ class zynthian_gui_stepseq():
 	#   step: step (column) index
 	#   note: note list [note, velocity]
 	def toggleEvent(self, step, note):
-		if step > self.gridRows or step > self.gridColumns:
+		if step < 0 or step >= self.gridColumns:
 			return
 		found = False
 		for event in self.patterns[self.pattern][step]:
@@ -400,6 +404,10 @@ class zynthian_gui_stepseq():
 				self.patterns[self.pattern].append([])
 			self.gridColumns = value
 			self.drawGrid(True)
+			if zyncoder.lib_zyncoder:
+				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_STEP]
+				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_STEP]
+				zyncoder.lib_zyncoder.setup_zyncoder(ENC_STEP,pin_a,pin_b,0,0,None,self.selectedCell[0],self.gridColumns - 1,0)
 		elif menuItem == STEP_MENU_TRANSPOSE:
 			# zyncoders only support positive integers so must use offset
 			for step in range(self.gridColumns):
@@ -409,7 +417,6 @@ class zynthian_gui_stepseq():
 				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_MENU, 1)
 				zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
 		self.drawGrid()
-
 
 	# Function to clear a pattern
 	#	pattern: Index of the pattern to clear
@@ -492,15 +499,19 @@ class zynthian_gui_stepseq():
 		self.drawGrid(True)
 		self.playCanvas.config(width=self.gridColumns * self.stepWidth)
 		self.titleCanvas.itemconfig("lblPattern", text="Pattern: %d" % (self.pattern + 1))
+		if zyncoder.lib_zyncoder:
+			pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_STEP]
+			pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_STEP]
+			zyncoder.lib_zyncoder.setup_zyncoder(ENC_STEP,pin_a,pin_b,0,0,None,self.selectedCell[0],self.gridColumns - 1,0)
 
 	def refresh_loading(self):
 		pass
 
+	# Function to handle zyncoder polling
 	def zyncoder_read(self):
 		if not self.shown:
 			return
 		if zyncoder.lib_zyncoder:
-#			val=zyncoder.lib_zyncoder.get_value_zyncoder(0)
 			val=zyncoder.lib_zyncoder.get_value_zyncoder(ENC_NOTE)
 			if val != self.selectedCell[1]:
 				self.selectCell(self.selectedCell[0], val)
@@ -519,16 +530,19 @@ class zynthian_gui_stepseq():
 		if self.redrawPlayhead:
 			self.drawPlayhead()
 
+	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
 		if zyncoder.lib_zyncoder:
 			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_STEP, zyncoder.lib_zyncoder.get_value_zyncoder(ENC_STEP) + 1)
 
+	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
 		if zyncoder.lib_zyncoder:
 			value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_STEP)
 			if value > 0:
 				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_STEP, value - 1)
 
+	# Function to handle CUIA SELECT command
 	def switch_select(self, t):
 		self.switch(3, t)
 
