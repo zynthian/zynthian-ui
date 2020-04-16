@@ -342,9 +342,9 @@ for item in os.environ.get('JACKD_OPTIONS',"").strip().split('-'):
 
 def set_midi_config():
 	global preset_preload_noteon, midi_single_active_channel
-	global midi_sys_enabled, midi_network_enabled, midi_rtpmidi_enabled 
-	global midi_touchosc_enabled, midi_aubionotes_enabled
 	global midi_prog_change_zs3, midi_fine_tuning, midi_filter_rules
+	global midi_sys_enabled, midi_clock_enabled, midi_aubionotes_enabled
+	global midi_network_enabled, midi_rtpmidi_enabled, midi_touchosc_enabled
 	global master_midi_channel, master_midi_change_type
 	global master_midi_program_change_up, master_midi_program_change_down
 	global master_midi_program_base, master_midi_bank_change_ccnum
@@ -353,11 +353,12 @@ def set_midi_config():
 	global disabled_midi_in_ports, enabled_midi_out_ports, enabled_midi_fb_ports
 
 	# MIDI options
-	midi_sys_enabled=int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED',1))
 	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440))
 	midi_single_active_channel=int(os.environ.get('ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL',0))
 	midi_prog_change_zs3=int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3',1))
 	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON',1))
+	midi_sys_enabled=int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED',1))
+	midi_clock_enabled=int(os.environ.get('ZYNTHIAN_MIDI_CLOCK_ENABLED',0))
 	midi_network_enabled=int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED',0))
 	midi_rtpmidi_enabled=int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED',0))
 	midi_touchosc_enabled=int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED',0))
