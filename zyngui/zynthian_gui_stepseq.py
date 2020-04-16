@@ -217,22 +217,9 @@ class zynthian_gui_stepseq():
 		jackClient.set_process_callback(self.onJackProcess)
 		jackClient.activate()
 
-		# Create MIDI Connections: TODO Move this to zynautoconnect
-		try:
-			jackClient.connect("zynthstep:output", "ZynMidiRouter:main_in")
-		except:
-			logging.error("Failed to connect StepSequencer to ZynMidiRouter")
+		self.zyngui.zyntransport.tempo(DEFAULT_BPM)
+		self.zyngui.zyntransport.play()
 
-		try:
-			jackClient.connect("jack_midi_clock:mclk_out","zynthstep:input")
-			self.zyngui.zyntransport.tempo(DEFAULT_BPM)
-			self.zyngui.zyntransport.play()
-		except:
-			logging.error("Failed to connect StepSequencer to internal MIDI clock")
-			try:
-				jackClient.connect("a2j:MidiSport 2x2 [20] (capture): MidiSport 2x2 MIDI 1", "zynthstep:input")
-			except:
-				logging.error("Failed to connect StepSequencer to external MIDI clock")
 
 	# Function to show GUI
 	def show(self):
