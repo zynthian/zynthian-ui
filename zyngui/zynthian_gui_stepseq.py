@@ -113,8 +113,8 @@ class zynthian_gui_stepseq():
 		logging.info("Starting PyStep...")
 		# Load pattern from file
 		try:
-			fpath=os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.json"
-			with open(fpath) as f:
+			filename=os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.json"
+			with open(filename) as f:
 				self.patterns = json.load(f)
 		except:
 			logging.warn('Failed to load pattern file')
@@ -395,9 +395,13 @@ class zynthian_gui_stepseq():
 
 	# Function to save patterns to json file
 	def savePatterns(self):
-		fpath=os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.json"
-		with open(fpath, 'w') as f:
-			json.dump(self.patterns, f)
+		filename=os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.json"
+		os.makedirs(os.path.dirname(filename), exist_ok=True)
+		try:
+			with open(filename, 'w') as f:
+				json.dump(self.patterns, f)
+		except:
+			logging.error("Failed to save step sequence")
 
 	# Function to set menu value
 	#   menuItem: Index of menu item
