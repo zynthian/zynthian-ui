@@ -79,6 +79,12 @@ class zynthian_gui_keybinding:
 
 			"SELECT_UP": { "modifier": 0, "keysym": "Up" },
 			"SELECT_DOWN": { "modifier": 0, "keysym": "Down" },
+			"BACK_UP": { "modifier": 2, "keysym": "Up" },
+			"BACK_DOWN": { "modifier": 2, "keysym": "Down" },
+			"LAYER_UP": { "modifier": 1, "keysym": "Up" },
+			"LAYER_DOWN": { "modifier": 1, "keysym": "Down" },
+			"SNAPSHOT_UP": { "modifier": 4, "keysym": "Up" },
+			"SNAPSHOT_DOWN": { "modifier": 4, "keysym": "Down" },
 
 			"START_AUDIO_RECORD": { "modifier": 0, "keysym": "a" },
 			"STOP_AUDIO_RECORD": { "modifier": 1, "keysym": "a" },
