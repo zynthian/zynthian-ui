@@ -103,14 +103,7 @@ def midi_autoconnect(force=False):
 	if len(hw_in)==0:
 		hw_in=[]
 
-	#Add ZynthStep out port ...
-	zynthstep_out=jclient.get_ports("zynthstep", is_output=True, is_physical=False, is_midi=True)
-	try:
-		hw_out.append(zynthstep_out[0])
-	except:
-		pass
-
-	#Add Aubio MIDI out port ...
+	#Add Aubio MIDI input port ...
 	if zynthian_gui_config.midi_aubionotes_enabled:
 		aubio_out=jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
@@ -118,7 +111,7 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
-	#Add TouchOSC out ports ...
+	#Add TouchOSC input ports ...
 	if zynthian_gui_config.midi_touchosc_enabled:
 		rtmidi_out=jclient.get_ports("RtMidiOut Client", is_output=True, is_physical=False, is_midi=True)
 		for port in rtmidi_out:
@@ -344,19 +337,6 @@ def midi_autoconnect(force=False):
 				jclient.disconnect(zmr_out['ctrl_out'],hw)
 		except:
 			pass
-
-	# Connect MIDI clock to ZynthStep
-	if zynthian_gui_config.midi_clock_enabled:
-		try:
-			jclient.connect("jack_midi_clock:mclk_out","zynthstep:input")
-		except:
-			logger.error("Failed to connect internal MIDI clock to ZynthStep")
-	else: 
-		try:
-			# TODO: This should be configured from webconf ...
-			jclient.connect("a2j:MidiSport 2x2 [20] (capture): MidiSport 2x2 MIDI 1", "zynthstep:input")
-		except:
-			logger.error("Failed to connect external MIDI clock to ZynthStep")
 
 	#Release Mutex Lock
 	release_lock()

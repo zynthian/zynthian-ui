@@ -214,7 +214,6 @@ class zynthian_gui:
 
 	def init_midi_services(self):
 		#Start / stop MIDI aux. services
-		self.screens['admin'].default_midi_clock()
 		self.screens['admin'].default_rtpmidi()
 		self.screens['admin'].default_qmidinet()
 		self.screens['admin'].default_touchosc()
@@ -285,9 +284,6 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def start(self):
-		# Initialize Jack Transport Engine
-		self.zyntransport = zynthian_engine_transport()
-
 		# Create Core UI Screens
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['info'] = zynthian_gui_info()
@@ -316,12 +312,15 @@ class zynthian_gui:
 		self.screens['autoeq'] = zynthian_gui_autoeq()
 		self.screens['stepseq'] = zynthian_gui_stepseq()
 
-		# Init MIDI Subsystem => MIDI Profile
+		#Init MIDI Subsystem => MIDI Profile
 		self.init_midi()
 		self.init_midi_services()
 
 		# Init Auto-connector (and call it for first time!)
 		zynautoconnect.start()
+
+		# Initialize jack Transport
+		self.zyntransport = zynthian_engine_transport()
 
 		# Initialize OSC
 		self.osc_init()
