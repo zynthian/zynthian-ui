@@ -125,11 +125,11 @@ class zynthian_gui_stepseq():
 		self.gridCanvas = tkinter.Canvas(self.main_frame, width=self.width * 0.9, height=self.trackHeight * self.gridRows)
 		self.gridCanvas.grid(row=1, column=1)
 		# Draw title bar
-		self.titleCanvas = tkinter.Canvas(self.main_frame, width=self.width, height=int(self.height * 0.1), bg="#70819e")
+		self.titleCanvas = tkinter.Canvas(self.main_frame, width=self.width, height=int(self.height * 0.1), bg=zynthian_gui_config.color_header_bg)
 		self.titleCanvas.grid(row=0, column=0, columnspan=2)
-		self.titleCanvas.create_text(self.width - 2, int(self.height * 0.05), anchor="e", font=tkFont.Font(family="Times Roman", size=int(self.height * 0.05)), tags="lblPattern")
-		lblMenu = self.titleCanvas.create_text(2, int(self.height * 0.05), anchor="w", font=tkFont.Font(family="Times Roman", size=int(self.height * .06)), tags="lblMenu")
-		rectMenu = self.titleCanvas.create_rectangle(self.titleCanvas.bbox(lblMenu), fill="#70819e", width=0, tags="rectMenu")
+		self.titleCanvas.create_text(self.width - 2, int(self.height * 0.05), anchor="e", font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)), fill=zynthian_gui_config.color_panel_tx, tags="lblPattern")
+		lblMenu = self.titleCanvas.create_text(2, int(self.height * 0.05), anchor="w", font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * .06)), fill=zynthian_gui_config.color_panel_tx, tags="lblMenu")
+		rectMenu = self.titleCanvas.create_rectangle(self.titleCanvas.bbox(lblMenu), fill=zynthian_gui_config.color_header_bg, width=0, tags="rectMenu")
 		self.titleCanvas.tag_lower(rectMenu, lblMenu)
 		self.refreshMenu()
 		# Draw pianoroll
@@ -292,7 +292,7 @@ class zynthian_gui_stepseq():
 			if key in (0,2,4,5,7,9,11):
 				self.pianoRoll.itemconfig(row + 1, fill="white")
 				if key == 0:
-					self.pianoRoll.create_text((self.pianoRollWidth / 2, self.trackHeight * (self.gridRows - row - 0.5)), text="C%d (%d)" % ((self.keyOrigin + row) // 12 - 1, self.keyOrigin + row), font=tkFont.Font(family="Times Roman", size=int(self.trackHeight * 0.7)), tags="notename")
+					self.pianoRoll.create_text((self.pianoRollWidth / 2, self.trackHeight * (self.gridRows - row - 0.5)), text="C%d (%d)" % ((self.keyOrigin + row) // 12 - 1, self.keyOrigin + row), font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.trackHeight * 0.6)), fill=CANVAS_BACKGROUND, tags="notename")
 			else:
 				self.pianoRoll.itemconfig(row + 1, fill="black")
 
@@ -468,14 +468,14 @@ class zynthian_gui_stepseq():
 		self.menuSelectMode = not self.menuSelectMode
 		if self.menuSelectMode:
 			# Entered value edit mode
-			self.titleCanvas.itemconfig("rectMenu", fill="#e8fc03")
+			self.titleCanvas.itemconfig("rectMenu", fill=zynthian_gui_config.color_hl)
 			if zyncoder.lib_zyncoder:
 				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
 				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_MENU]
 				zyncoder.lib_zyncoder.setup_zyncoder(ENC_MENU,pin_a,pin_b,0,0,None,self.menu[self.menuSelected]['value'],self.menu[self.menuSelected]['max'],0)
 		else:
 			# Entered menu item select mode
-			self.titleCanvas.itemconfig("rectMenu", fill="#70819e")
+			self.titleCanvas.itemconfig("rectMenu", fill=zynthian_gui_config.color_header_bg)
 			if assertChange:
 				if self.menuSelected == STEP_MENU_STEPS:
 					self.removeObsoleteSteps()
