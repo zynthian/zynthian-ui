@@ -52,6 +52,7 @@ STEP_MENU_CLEAR		= 4
 STEP_MENU_TRANSPOSE	= 5
 STEP_MENU_MIDI		= 6
 STEP_MENU_MIDI_START= 7
+STEP_MENU_GRID		= 8
 SELECT_BORDER		= '#ff8717'
 PLAYHEAD_CURSOR		= '#cc701b'
 CANVAS_BACKGROUND	= '#dddddd'
@@ -87,7 +88,8 @@ class zynthian_gui_stepseq():
 			{'title': 'Clear pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
 			{'title': 'Transpose', 'min': -1, 'max': 2, 'value': 1}, \
 			{'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, \
-			{'title': 'Transport start mode', 'min': 0, 'max': 1, 'value': 0}]
+			{'title': 'Transport start mode', 'min': 0, 'max': 1, 'value': 0},
+			{'title': 'Grid lines', 'min': 0, 'max': 8, 'value': 0}]
 		self.menuSelected = STEP_MENU_VELOCITY
 		self.menuSelectMode = False # True to change selected menu value, False to change menu selection
 		self.midiOutQueue = [] # List of events to be sent to MIDI output
@@ -271,6 +273,12 @@ class zynthian_gui_stepseq():
 		# Delete existing note names
 		for item in self.pianoRoll.find_withtag("notename"):
 			self.pianoRoll.delete(item)
+		# Redraw gridlines
+		for item in self.gridCanvas.find_withtag("gridline"):
+			self.gridCanvas.delete(item)
+		for col in range(self.gridColumns):
+			if self.menu[STEP_MENU_GRID]['value'] and col % self.menu[STEP_MENU_GRID]['value'] == 0:
+				cell = self.gridCanvas.create_line(col * self.stepWidth, 0, col * self.stepWidth, self.gridRows * self.trackHeight, tags=("gridline"))
 		# Draw cells of grid
 		for row in range(self.gridRows):
 			for col in range(self.gridColumns):
