@@ -628,6 +628,42 @@ class zynthian_gui:
 			except:
 				pass
 
+		elif cuia == "BACK_UP":
+			try:
+				self.get_current_screen().back_up()
+			except:
+				pass
+
+		elif cuia == "BACK_DOWN":
+			try:
+				self.get_current_screen().back_down()
+			except:
+				pass
+
+		elif cuia == "LAYER_UP":
+			try:
+				self.get_current_screen().layer_up()
+			except:
+				pass
+
+		elif cuia == "LAYER_DOWN":
+			try:
+				self.get_current_screen().layer_down()
+			except:
+				pass
+
+		elif cuia == "SNAPSHOT_UP":
+			try:
+				self.get_current_screen().snapshot_up()
+			except:
+				pass
+
+		elif cuia == "SNAPSHOT_DOWN":
+			try:
+				self.get_current_screen().snapshot_down()
+			except:
+				pass
+
 		elif cuia == "SWITCH_LAYER_SHORT":
 			self.zynswitch_short(0)
 

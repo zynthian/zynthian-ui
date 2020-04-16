@@ -57,20 +57,25 @@ STEP_MENU_MIDI		= 7
 STEP_MENU_MIDI_START= 8
 STEP_MENU_PLAYMODE	= 9
 STEP_MENU_GRID		= 10
+STEP_MENU_ROWS		= 11
 # Look & Feel Options
 HEADER_BACKGROUND	= zynthian_gui_config.color_bg
 CANVAS_BACKGROUND	= zynthian_gui_config.color_bg
 GRID_BACKGROUND		= zynthian_gui_config.color_panel_bg
 GRID_LINES			= zynthian_gui_config.color_tx
 GRID_STRONG_LINES	= zynthian_gui_config.color_bg
+NOTE_ON_BORDER		= '#000000'
 SELECT_BORDER		= '#ff8717'
 SELECT_THICKNESS	= 2
 PLAYHEAD_CURSOR		= SELECT_BORDER
 # Encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
-ENC_MENU			= 0
+ENC_LAYER			= 0
 ENC_BACK			= 1
-ENC_NOTE			= 2
-ENC_STEP			= 3
+ENC_SNAPSHOT		= 2
+ENC_SELECT			= 3
+ENC_MENU			= ENC_LAYER
+ENC_NOTE			= ENC_SNAPSHOT
+ENC_STEP			= ENC_SELECT
 
 # Class implements step sequencer
 class zynthian_gui_stepseq():
@@ -83,15 +88,14 @@ class zynthian_gui_stepseq():
 		self.playDirection = 1 # Direction of playhead [0, -1]
 		self.clock = 0 # Count of MIDI clock pulses since last step [0..24]
 		self.status = "STOP" # Play status [STOP | PLAY]
-		self.playHead = 0 # Play head position in steps [0..gridColumns]
+		self.playhead = 0 # Play head position in steps [0..gridColumns]
 		self.pattern = 0 # Index of current pattern (zero indexed)
 		# List of notes in selected pattern, indexed by step: each step is list of events, each event is list of (note,velocity)
 		self.patterns = [] # List of patterns
 		self.stepWidth = 40 # Grid column width in pixels (default 40)
-		self.gridRows = 16 # Quantity of rows in grid (default 16)
 		self.gridColumns = 16 # Quantity of columns in grid (default 16)
 		self.keyOrigin = 60 # MIDI note number of top row in grid
-		self.selectedCell = (self.playHead, self.keyOrigin) # Location of selected cell (step,note)
+		self.selectedCell = (self.playhead, self.keyOrigin) # Location of selected cell (step,note)
 		#TODO: Get values from persistent storage
 		self.menu = [{'title': 'Pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1},
 			{'title': 'Clock BPM', 'min': 0, 'max': 300, 'value': DEFAULT_BPM},
@@ -103,7 +107,8 @@ class zynthian_gui_stepseq():
 			{'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1},
 			{'title': 'Start mode', 'min': 0, 'max': 1, 'value': 0},
 			{'title': 'Play mode', 'min': 0, 'max': 2, 'value': 0},
-			{'title': 'Grid lines', 'min': 0, 'max': 8, 'value': 0}]
+			{'title': 'Grid lines', 'min': 0, 'max': 8, 'value': 0},
+			{'title': 'Rows', 'min': 1, 'max': 100, 'value': 16}]
 		self.menuSelected = STEP_MENU_VELOCITY
 		self.menuSelectMode = False # True to change selected menu value, False to change menu selection
 		self.menuModeMutex = False # Flag to avoid updating menus whilst processing changes
@@ -114,6 +119,12 @@ class zynthian_gui_stepseq():
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.display_height
+		self.playheadHeight = 5
+		self.titlebarHeight = int(self.height * 0.1)
+		self.gridHeight = self.height - self.titlebarHeight - self.playheadHeight
+		self.gridWidth = int(self.width * 0.9)
+		self.pianoRollWidth = self.width - self.gridWidth
+		self.updateRowHeight()
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
@@ -133,11 +144,9 @@ class zynthian_gui_stepseq():
 			self.patterns = [[[] for st in range(16)]] # Default to empty 16 step pattern
 
 		# Draw pattern grid
-		self.trackHeight = 0.9 * self.height / (self.gridRows + 1)
-		self.pianoRollWidth = self.width * 0.1
 		self.gridCanvas = tkinter.Canvas(self.main_frame,
-			width=self.width * 0.9,
-			height=self.trackHeight * self.gridRows,
+			width=self.gridWidth,
+			height=self.rowHeight * self.menu[STEP_MENU_ROWS]['value'],
 			bd=0,
 			highlightthickness=0,
 			relief='flat')
@@ -146,7 +155,7 @@ class zynthian_gui_stepseq():
 		# Draw title bar
 		self.titleCanvas = tkinter.Canvas(self.main_frame,
 			width=self.width,
-			height=int(self.height * 0.1),
+			height=self.titlebarHeight,
 			bg=zynthian_gui_config.color_header_bg,
 			bd=0,
 			highlightthickness=0,
@@ -175,7 +184,7 @@ class zynthian_gui_stepseq():
 		# Draw pianoroll
 		self.pianoRoll = tkinter.Canvas(self.main_frame,
 			width=self.pianoRollWidth,
-			height=self.gridRows * self.trackHeight,
+			height=self.rowHeight*self.menu[STEP_MENU_ROWS]['value'],
 			bg="white",
 			bd=0,
 			highlightthickness=0,
@@ -184,11 +193,10 @@ class zynthian_gui_stepseq():
 		self.pianoRoll.bind("<ButtonPress-1>", self.pianoRollDragStart)
 		self.pianoRoll.bind("<ButtonRelease-1>", self.pianoRollDragEnd)
 		self.pianoRoll.bind("<B1-Motion>", self.pianoRollDragMotion)
-		self.drawPianoroll()
 
 		# Draw playhead
-		self.playCanvas = tkinter.Canvas(self.main_frame, height=self.trackHeight / 2, bg=CANVAS_BACKGROUND)
-		self.playCanvas.create_rectangle(0, 0, self.stepWidth, self.trackHeight / 2, fill=PLAYHEAD_CURSOR, state="hidden", width=0, tags="playCursor")
+		self.playCanvas = tkinter.Canvas(self.main_frame, height=self.playheadHeight, bg=CANVAS_BACKGROUND)
+		self.playCanvas.create_rectangle(0, 0, self.stepWidth, self.playheadHeight, fill=PLAYHEAD_CURSOR, state="hidden", width=0, tags="playCursor")
 		self.playCanvas.grid(row=2, column=1)
 
 		self.loadPattern(self.menu[STEP_MENU_PATTERN]['value'] - 1)
@@ -256,11 +264,11 @@ class zynthian_gui_stepseq():
 
 	# Function to handle pianoroll drag motion
 	def pianoRollDragMotion(self, event):
-		if event.y > self.pianoRollDragStartY + self.trackHeight and self.keyOrigin < 128 - self.gridRows:
+		if event.y > self.pianoRollDragStartY + self.rowHeight and self.keyOrigin < 128 - self.menu[STEP_MENU_ROWS]['value']:
 			self.keyOrigin = self.keyOrigin + 1
 			self.pianoRollDragStartY = event.y
 			self.drawGrid()
-		elif event.y < self.pianoRollDragStartY - self.trackHeight and self.keyOrigin > 0:
+		elif event.y < self.pianoRollDragStartY - self.rowHeight and self.keyOrigin > 0:
 			self.keyOrigin = self.keyOrigin - 1
 			self.pianoRollDragStartY = event.y
 			self.drawGrid()
@@ -271,7 +279,7 @@ class zynthian_gui_stepseq():
 
 	# Function to draw the play head cursor
 	def drawPlayhead(self):
-		self.playCanvas.coords("playCursor", 1 + self.playHead * self.stepWidth, 0, self.playHead * self.stepWidth + self.stepWidth, self.trackHeight / 2)
+		self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, self.playhead * self.stepWidth + self.stepWidth, self.rowHeight / 2)
 		self.redrawPlayhead = False
 
 	# Function to handle mouse click / touch
@@ -297,7 +305,7 @@ class zynthian_gui_stepseq():
 			self.patterns[self.pattern][step].append(note)
 			self.noteOn(note)
 			self.noteOffTimer = threading.Timer(0.1, self.noteOff, [note]).start()
-		if note[0] >= self.keyOrigin and note[0] < self.keyOrigin + self.gridRows:
+		if note[0] >= self.keyOrigin and note[0] < self.keyOrigin + self.menu[STEP_MENU_ROWS]['value']:
 			self.selectCell(step, note[0])
 
 	# Function to draw a grid cell
@@ -309,7 +317,7 @@ class zynthian_gui_stepseq():
 		velocity = 0 # Black
 		for note in self.patterns[self.pattern][col]:
 			if note[0] == self.keyOrigin + row:
-				velocity = note[1] * 2
+				velocity = int(note[1] / 2)
 				break
 		fill = "#%02x%02x%02x" % (velocity, velocity, velocity)
 		if self.selectedCell == (col, row + self.keyOrigin):
@@ -317,14 +325,20 @@ class zynthian_gui_stepseq():
 			thickness = SELECT_THICKNESS
 		else:
 			outline = GRID_LINES
+			#outline = NOTE_ON_BORDER
 			thickness = 1
 		cell = self.gridCanvas.find_withtag("%d,%d"%(col,row))
+		x1 = 1 + col * self.stepWidth
+		y1 = (self.menu[STEP_MENU_ROWS]['value'] - row) * self.rowHeight
+		x2 = 1 + (col + 1) * self.stepWidth - thickness
+		y2 = (self.menu[STEP_MENU_ROWS]['value'] - row - 1) * self.rowHeight + thickness
 		if cell:
 			# Update existing cell
 			self.gridCanvas.itemconfig(cell, fill=fill, outline=outline)
+			self.gridCanvas.coords(cell, x1, y1, x2, y2)
 		else:
 			# Create new cell
-			cell = self.gridCanvas.create_rectangle(thickness + col * self.stepWidth, (self.gridRows - row) * self.trackHeight, (col + 1) * self.stepWidth - thickness, (self.gridRows - row - 1) * self.trackHeight + thickness, fill=fill, outline=outline, tags=("%d,%d"%(col,row)), width=thickness)
+			cell = self.gridCanvas.create_rectangle(x1, y1, x2, y2, fill=fill, outline=outline, tags=("%d,%d"%(col,row)), width=thickness)
 			self.gridCanvas.tag_bind(cell, '<Button-1>', self.onCanvasClick)
 
 	# Function to draw grid
@@ -332,7 +346,8 @@ class zynthian_gui_stepseq():
 	def drawGrid(self, clearGrid = False):
 		if clearGrid:
 			self.gridCanvas.delete(tkinter.ALL)
-			self.stepWidth = self.width * 0.9 / self.gridColumns
+			self.stepWidth = int(self.gridWidth / self.gridColumns)
+			self.drawPianoroll()
 		# Delete existing note names
 		for item in self.pianoRoll.find_withtag("notename"):
 			self.pianoRoll.delete(item)
@@ -341,20 +356,20 @@ class zynthian_gui_stepseq():
 			self.gridCanvas.delete(item)
 		for col in range(self.gridColumns):
 			if self.menu[STEP_MENU_GRID]['value'] and col % self.menu[STEP_MENU_GRID]['value'] == 0:
-				cell = self.gridCanvas.create_line(col * self.stepWidth, 0, col * self.stepWidth, self.gridRows * self.trackHeight, tags=("gridline"))
+				cell = self.gridCanvas.create_line(col * self.stepWidth - 1, 0, col * self.stepWidth - 1, self.menu[STEP_MENU_ROWS]['value'] * self.rowHeight, width=2, tags=("gridline"))
 		# Draw cells of grid
-		for row in range(self.gridRows):
+		for row in range(self.menu[STEP_MENU_ROWS]['value']):
 			for col in range(self.gridColumns):
 				self.drawCell(col, row)
 			# Update pianoroll keys
 			key = (self.keyOrigin + row) % 12
+			id = "row%d" % (row)
 			if key in (0,2,4,5,7,9,11):
-				self.pianoRoll.itemconfig(row + 1, fill="white")
+				self.pianoRoll.itemconfig(id, fill="white")
 				if key == 0:
-					self.pianoRoll.create_text((self.pianoRollWidth / 2, self.trackHeight * (self.gridRows - row - 0.5)), text="C%d (%d)" % ((self.keyOrigin + row) // 12 - 1, self.keyOrigin + row), font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.trackHeight * 0.6)), fill=CANVAS_BACKGROUND, tags="notename")
+					self.pianoRoll.create_text((self.pianoRollWidth / 2, self.rowHeight * (self.menu[STEP_MENU_ROWS]['value'] - row - 0.5)), text="C%d (%d)" % ((self.keyOrigin + row) // 12 - 1, self.keyOrigin + row), font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.rowHeight * 0.5)), fill=CANVAS_BACKGROUND, tags="notename")
 			else:
-				self.pianoRoll.itemconfig(row + 1, fill="black")
-
+				self.pianoRoll.itemconfig(id, fill="black")
 
 	# Function to send MIDI note on
 	#   note: List (MIDI note number, MIDI velocity)
@@ -371,10 +386,10 @@ class zynthian_gui_stepseq():
 	def setPlayState(self, command):
 		if command == "START":
 				logging.info("MIDI START")
-				self.playHead = self.gridColumns - 1
+				self.playhead = self.gridColumns - 1
 				self.clock = 24
 				self.status = "PLAY"
-				self.playCanvas.coords("playCursor", 0, 0, self.stepWidth, self.trackHeight / 2)
+				self.playCanvas.coords("playCursor", 0, 0, self.stepWidth, self.rowHeight / 2)
 				self.playCanvas.itemconfig("playCursor", state = 'normal')
 		elif command == "CONTINUE":
 				logging.info("MIDI CONTINUE")
@@ -384,7 +399,7 @@ class zynthian_gui_stepseq():
 				logging.info("MIDI STOP")
 				self.status = "STOP"
 				self.playCanvas.itemconfig("playCursor", state = 'hidden')
-				for note in self.patterns[self.pattern][self.playHead]:
+				for note in self.patterns[self.pattern][self.playhead]:
 					self.noteOff(note)
 
 	# Function to handle JACK process events
@@ -398,22 +413,22 @@ class zynthian_gui_stepseq():
 					if self.clock >= 6:
 						# Time to process a time slot
 						self.clock = 0
-						for note in self.patterns[self.pattern][self.playHead]:
+						for note in self.patterns[self.pattern][self.playhead]:
 							self.noteOff(note)
-						self.playHead = self.playHead + self.playDirection
-						if self.playHead >= self.gridColumns:
+						self.playhead = self.playhead + self.playDirection
+						if self.playhead >= self.gridColumns:
 							if self.menu[STEP_MENU_PLAYMODE]['value']:
-								self.playHead = self.gridColumns - 2
+								self.playhead = self.gridColumns - 2
 								self.playDirection = -1
 							else:
-								self.playHead = 0
-						elif self.playHead < 0:
+								self.playhead = 0
+						elif self.playhead < 0:
 							if self.menu[STEP_MENU_PLAYMODE]['value'] == 1:
-								self.playHead = self.gridColumns - 1
+								self.playhead = self.gridColumns - 1
 							else:
-								self.playHead = 1
+								self.playhead = 1
 								self.playDirection = 1
-						for note in self.patterns[self.pattern][self.playHead]:
+						for note in self.patterns[self.pattern][self.playhead]:
 							self.noteOn(note)
 						self.redrawPlayhead = True # Flag playhead needs redrawing
 		self.midiOutput.clear_buffer();
@@ -423,9 +438,11 @@ class zynthian_gui_stepseq():
 
 	# Function to draw pianoroll keys (does not fill key colour)
 	def drawPianoroll(self):
-		for row in range(self.gridRows):
-			y = self.trackHeight * (self.gridRows - row)
-			self.pianoRoll.create_rectangle(0, y, self.pianoRollWidth, y - self.trackHeight)
+		self.pianoRoll.delete(tkinter.ALL)
+		for row in range(self.menu[STEP_MENU_ROWS]['value']):
+			y = self.rowHeight * (self.menu[STEP_MENU_ROWS]['value'] - row)
+			id = "row%d" % (row)
+			id = self.pianoRoll.create_rectangle(0, y, self.pianoRollWidth, y - self.rowHeight, tags=id)
 
 	# Function to update selectedCell
 	#   step: Step (column) of selected cell
@@ -433,12 +450,12 @@ class zynthian_gui_stepseq():
 	def selectCell(self, step, note):
 		if step >= self.gridColumns or step < 0:
 			return
-		if note >= self.keyOrigin + self.gridRows:
+		if note >= self.keyOrigin + self.menu[STEP_MENU_ROWS]['value']:
 			# Note is off top of display
 			if note < 128:
-				self.keyOrigin = note + 1 - self.gridRows
+				self.keyOrigin = note + 1 - self.menu[STEP_MENU_ROWS]['value']
 			else:
-				self.keyOrigin = 128 - self.gridRows
+				self.keyOrigin = 128 - self.menu[STEP_MENU_ROWS]['value']
 			self.drawGrid()
 		elif note < self.keyOrigin:
 			self.keyOrigin = note
@@ -468,6 +485,7 @@ class zynthian_gui_stepseq():
 	def setMenuValue(self, menuItem, value):
 		if menuItem >= len(self.menu) or value < self.menu[menuItem]['min'] or value > self.menu[menuItem]['max']:
 			return
+		Force = False
 		self.menu[menuItem]['value'] = value
 
 		if menuItem == STEP_MENU_VELOCITY:
@@ -508,7 +526,15 @@ class zynthian_gui_stepseq():
 				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_MENU, 1)
 				zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
 
-		self.drawGrid()
+		elif menuItem == STEP_MENU_ROWS:
+			self.updateRowHeight()
+			Force = True
+
+		self.drawGrid(Force)
+
+	# Function to calculate row height
+	def updateRowHeight(self):
+		self.rowHeight = int((self.gridHeight)  / (self.menu[STEP_MENU_ROWS]['value']))
 
 	# Function to clear a pattern
 	#	pattern: Index of the pattern to clear
@@ -609,8 +635,8 @@ class zynthian_gui_stepseq():
 		self.pattern = index
 		self.gridColumns = len(self.patterns[self.pattern])
 		self.menu[STEP_MENU_STEPS]['value'] = self.gridColumns
-		if self.playHead >= self.gridColumns:
-			self.playHead = 0
+		if self.playhead >= self.gridColumns:
+			self.playhead = 0
 		self.drawGrid(True)
 		self.playCanvas.config(width=self.gridColumns * self.stepWidth)
 		self.titleCanvas.itemconfig("lblPattern", text="Pattern %d" % (self.pattern + 1))
@@ -648,14 +674,34 @@ class zynthian_gui_stepseq():
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
 		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_STEP, zyncoder.lib_zyncoder.get_value_zyncoder(ENC_STEP) + 1)
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SELECT, zyncoder.lib_zyncoder.get_value_zyncoder(ENC_SELECT) + 1)
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
 		if zyncoder.lib_zyncoder:
-			value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_STEP)
+			value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_SELECT)
 			if value > 0:
-				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_STEP, value - 1)
+				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SELECT, value - 1)
+
+	# Function to handle CUIA LAYER_UP command
+	def layer_up():
+		if zyncoder.lib_zyncoder:
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER) + 1)
+
+	# Function to handle CUIA LAYER_DOWN command
+	def layer_down():
+		if zyncoder.lib_zyncoder:
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER) - 1)
+
+	# Function to handle CUIA SNAPSHOT_UP command
+	def snapshot_up():
+		if zyncoder.lib_zyncoder:
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, zyncoder.lib_zyncoder.get_value_zyncoder(ENC_SNAPSHOT) + 1)
+
+	# Function to handle CUIA SNAPSHOT_DOWN command
+	def snapshot_down():
+		if zyncoder.lib_zyncoder:
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, zyncoder.lib_zyncoder.get_value_zyncoder(ENC_SNAPSHOT) - 1)
 
 	# Function to handle CUIA SELECT command
 	def switch_select(self, t):
