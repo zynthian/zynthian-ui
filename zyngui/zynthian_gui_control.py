@@ -86,7 +86,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		self.layers = self.zyngui.screens['layer'].get_fxchain_layers()
 		# If no FXChain layers, then use the curlayer itself (probably amixer_layer)
-		if self.layers is None or len(self.layers)==0:
+		if len(self.layers)==0:
 			self.layers = [self.zyngui.curlayer]
 
 		i = 0
