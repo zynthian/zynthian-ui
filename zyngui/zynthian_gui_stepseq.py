@@ -52,7 +52,8 @@ STEP_MENU_CLEAR		= 4
 STEP_MENU_TRANSPOSE	= 5
 STEP_MENU_MIDI		= 6
 STEP_MENU_MIDI_START= 7
-STEP_MENU_GRID		= 8
+STEP_MENU_PLAYMODE	= 8
+STEP_MENU_GRID		= 9
 SELECT_BORDER		= '#ff8717'
 PLAYHEAD_CURSOR		= '#cc701b'
 CANVAS_BACKGROUND	= '#dddddd'
@@ -69,6 +70,7 @@ class zynthian_gui_stepseq():
 	# Function to initialise class
 	def __init__(self):
 		self.redrawPlayhead = False # Flag indicating main process should redraw playhead
+		self.playDirection = 1 # Direction of playhead [0, -1]
 		self.clock = 0 # Count of MIDI clock pulses since last step [0..24]
 		self.status = "STOP" # Play status [STOP | PLAY]
 		self.playHead = 0 # Play head position in steps [0..gridColumns]
@@ -89,9 +91,11 @@ class zynthian_gui_stepseq():
 			{'title': 'Transpose', 'min': -1, 'max': 2, 'value': 1}, \
 			{'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, \
 			{'title': 'Transport start mode', 'min': 0, 'max': 1, 'value': 0},
+			{'title': 'Play mode', 'min': 0, 'max': 2, 'value': 0},
 			{'title': 'Grid lines', 'min': 0, 'max': 8, 'value': 0}]
 		self.menuSelected = STEP_MENU_VELOCITY
 		self.menuSelectMode = False # True to change selected menu value, False to change menu selection
+		self.menuModeMutex = False # Flag to avoid updating menus whilst processing changes
 		self.midiOutQueue = [] # List of events to be sent to MIDI output
 		self.shown = False # True when GUI in view
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
@@ -183,7 +187,7 @@ class zynthian_gui_stepseq():
 	def hide(self):
 		if self.shown:
 			if self.menuSelectMode:
-				self.toggleMenuMode()
+				self.toggleMenuMode(False)
 			self.shown=False
 			self.main_frame.grid_forget()
 			self.savePatterns()
@@ -337,9 +341,19 @@ class zynthian_gui_stepseq():
 						self.clock = 0
 						for note in self.patterns[self.pattern][self.playHead]:
 							self.noteOff(note)
-						self.playHead = self.playHead + 1
+						self.playHead = self.playHead + self.playDirection
 						if self.playHead >= self.gridColumns:
-							self.playHead = 0
+							if self.menu[STEP_MENU_PLAYMODE]['value']:
+								self.playHead = self.gridColumns - 2
+								self.playDirection = -1
+							else:
+								self.playHead = 0
+						elif self.playHead < 0:
+							if self.menu[STEP_MENU_PLAYMODE]['value'] == 1:
+								self.playHead = self.gridColumns - 1
+							else:
+								self.playHead = 1
+								self.playDirection = 1
 						for note in self.patterns[self.pattern][self.playHead]:
 							self.noteOn(note)
 						self.redrawPlayhead = True # Flag playhead needs redrawing
@@ -392,7 +406,6 @@ class zynthian_gui_stepseq():
 		if menuItem >= len(self.menu) or value < self.menu[menuItem]['min'] or value > self.menu[menuItem]['max']:
 			return
 		self.menu[menuItem]['value'] = value
-		self.refreshMenu()
 		if menuItem == STEP_MENU_VELOCITY:
 			# Adjust velocity of selected cell
 			currentStep = self.patterns[self.pattern][self.selectedCell[0]]
@@ -445,28 +458,34 @@ class zynthian_gui_stepseq():
 			self.loadPattern(dest)
 
 	# Function to toggle menu mode between menu selection and data entry
-	def toggleMenuMode(self):
-		if not self.menuSelectMode:
-			# Value edit mode
+	#	assertChange: True to assert changes, False to cancel changes
+	def toggleMenuMode(self, assertChange = True):
+		self.menuModeMutex = True
+		self.menuSelectMode = not self.menuSelectMode
+		if self.menuSelectMode:
+			# Entered value edit mode
 			self.titleCanvas.itemconfig("rectMenu", fill="#e8fc03")
 			if zyncoder.lib_zyncoder:
 				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
 				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_MENU]
 				zyncoder.lib_zyncoder.setup_zyncoder(ENC_MENU,pin_a,pin_b,0,0,None,self.menu[self.menuSelected]['value'],self.menu[self.menuSelected]['max'],0)
 		else:
-			# Menu item select mode
+			# Entered menu item select mode
 			self.titleCanvas.itemconfig("rectMenu", fill="#70819e")
-			if self.menuSelected == STEP_MENU_STEPS:
-				self.removeObsoleteSteps()
-			elif self.menuSelected == STEP_MENU_COPY:
-				self.copyPattern(self.menu[STEP_MENU_PATTERN]['value'] - 1, self.pattern)
-				self.menu[STEP_MENU_PATTERN]['value'] = self.pattern + 1
+			if assertChange:
+				if self.menuSelected == STEP_MENU_STEPS:
+					self.removeObsoleteSteps()
+				elif self.menuSelected == STEP_MENU_COPY:
+					self.copyPattern(self.menu[STEP_MENU_PATTERN]['value'] - 1, self.pattern)
+					self.menu[STEP_MENU_PATTERN]['value'] = self.pattern + 1
+			elif self.menuSelected == STEP_MENU_STEPS:
+				self.loadPattern(self.pattern)
 			if zyncoder.lib_zyncoder:
 				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
 				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_MENU]
 				zyncoder.lib_zyncoder.setup_zyncoder(ENC_MENU,pin_a,pin_b,0,0,None,self.menuSelected,len(self.menu) - 1,0)
-		self.menuSelectMode = not self.menuSelectMode # toggle state at end to avoid encoder update conflict
 		self.refreshMenu()
+		self.menuModeMutex = False
 
 	# Function to remove steps that are not within current display window
 	def removeObsoleteSteps(self):
@@ -474,19 +493,35 @@ class zynthian_gui_stepseq():
 
 	# Function to update menu display
 	def refreshMenu(self):
+		menuItem = self.menu[self.menuSelected]
 		if self.menuSelected == STEP_MENU_MIDI_START:
-			mode = 'CONTINUE' if self.menu[self.menuSelected]['value'] else 'START'
-			self.titleCanvas.itemconfig("lblMenu", text="%s: %s" % (self.menu[self.menuSelected]['title'], mode))
+			value = 'CONTINUE' if menuItem['value'] else 'START'
+		elif self.menuSelected == STEP_MENU_PLAYMODE:
+			if menuItem['value'] == 1:
+				value = "Reverse"
+			elif menuItem['value'] == 2:
+				value = "Bounce"
+			else:
+				value = "Forward"
+		elif self.menuSelected == STEP_MENU_GRID and menuItem['value'] == 0:
+			value = "None"
+		elif self.menuSelected == STEP_MENU_TRANSPOSE:
+			value = "Up/Down"
+		elif self.menuSelected == STEP_MENU_COPY:
+			value = "From %d to %d" % (self.menu[STEP_MENU_PATTERN]['value'], self.pattern + 1)
 		else:
-			self.titleCanvas.itemconfig("lblMenu", text="%s: %s" % (self.menu[self.menuSelected]['title'], self.menu[self.menuSelected]['value']))
+			value = menuItem['value']
+		self.titleCanvas.itemconfig("lblMenu", text="%s: %s" % (menuItem['title'], value))
 		self.titleCanvas.coords("rectMenu", self.titleCanvas.bbox("lblMenu"))
 
 	# Function to handle menu change
 	#   value: New value
 	def onMenuChange(self, value):
+		self.menuModeMutex = True
 		if self.menuSelectMode:
 			# Set menu value
 			self.setMenuValue(self.menuSelected, value)
+			self.refreshMenu()
 		elif value >= 0 and value < len(self.menu):
 			self.menuSelected = value
 			self.refreshMenu()
@@ -494,6 +529,7 @@ class zynthian_gui_stepseq():
 				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
 				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_MENU]
 				zyncoder.lib_zyncoder.setup_zyncoder(ENC_MENU,pin_a,pin_b,0,0,None,self.menuSelected,len(self.menu) - 1,0)
+		self.menuModeMutex = False
 
 	# Function to load new pattern
 	def loadPattern(self, index):
@@ -529,11 +565,11 @@ class zynthian_gui_stepseq():
 			val = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_MENU)
 			if self.menuSelectMode:
 				# Change value
-				if val != self.menu[self.menuSelected]['value']:
+				if not self.menuModeMutex and val != self.menu[self.menuSelected]['value']:
 					self.onMenuChange(val)
 			else:
 				# Change menu
-				if val != self.menuSelected:
+				if not self.menuModeMutex and val != self.menuSelected:
 					self.onMenuChange(val)
 		if self.redrawPlayhead:
 			self.drawPlayhead()
@@ -563,7 +599,7 @@ class zynthian_gui_stepseq():
 			return False # Don't handle any long presses
 		if switch == ENC_BACK:
 			if self.menuSelectMode:
-				self.toggleMenuMode() # Disable data entry before exit
+				self.toggleMenuMode(False) # Disable data entry before exit
 			else:
 				return False
 		if switch == ENC_MENU:
