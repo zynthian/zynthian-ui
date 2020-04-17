@@ -1082,10 +1082,14 @@ class zynthian_gui:
 				ev=lib_zyncoder.read_zynmidi()
 				if ev==0: break
 
-				self.status_info['midi'] = True
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
-				
+
+				if evtype==0xF and chan==0x8:
+					self.status_info['midi_clock'] = True
+				else:
+					self.status_info['midi'] = True
+
 				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
 				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
@@ -1101,9 +1105,6 @@ class zynthian_gui:
 						song_number = (ev & 0xFF) >> 8;
 					# Timeclock
 					elif chan==0x8:
-						pass
-					# MIDI tick
-					elif chan==0x9:
 						pass
 					# Start
 					elif chan==0xA:
@@ -1207,8 +1208,8 @@ class zynthian_gui:
 						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
 
 		except Exception as err:
-				self.reset_loading()
-				logging.exception(err)
+			self.reset_loading()
+			logging.exception(err)
 
 
 	def start_loading_thread(self):
@@ -1364,6 +1365,7 @@ class zynthian_gui:
 			# Clean some status_info
 			self.status_info['xrun'] = False
 			self.status_info['midi'] = False
+			self.status_info['midi_clock'] = False
 
 		except Exception as e:
 			logging.exception(e)
