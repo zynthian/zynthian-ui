@@ -218,7 +218,6 @@ class zynthian_gui_stepseq():
 		jackClient.activate()
 
 		self.zyngui.zyntransport.tempo(DEFAULT_BPM)
-		self.zyngui.zyntransport.play()
 
 
 	# Function to show GUI
@@ -381,6 +380,7 @@ class zynthian_gui_stepseq():
 	def setPlayState(self, command):
 		if command == "START":
 				logging.info("MIDI START")
+				self.zyngui.zyntransport.play()
 				self.playhead = self.gridColumns - 1
 				self.clock = 24
 				self.status = "PLAY"
@@ -388,10 +388,12 @@ class zynthian_gui_stepseq():
 				self.playCanvas.itemconfig("playCursor", state = 'normal')
 		elif command == "CONTINUE":
 				logging.info("MIDI CONTINUE")
+				self.zyngui.zyntransport.play()
 				self.status = "PLAY"
 				self.playCanvas.itemconfig("playCursor", state = 'normal')
 		elif command == "STOP":
 				logging.info("MIDI STOP")
+				self.zyngui.zyntransport.pause()
 				self.status = "STOP"
 				self.playCanvas.itemconfig("playCursor", state = 'hidden')
 				for note in self.patterns[self.pattern][self.playhead]:
