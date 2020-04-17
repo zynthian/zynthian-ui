@@ -111,7 +111,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		self.list_data.append((None,0,"-----------------------------"))
 
-
 		i = 1
 		# Files in SD-Card
 		for f in sorted(os.listdir(self.capture_dir_sdc)):
