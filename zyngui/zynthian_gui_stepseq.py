@@ -379,25 +379,25 @@ class zynthian_gui_stepseq():
 	#   command: Playhead command ["STOP" | "START" | "CONTINUE"]
 	def setPlayState(self, command):
 		if command == "START":
-				logging.info("MIDI START")
-				self.zyngui.zyntransport.play()
-				self.playhead = self.gridColumns - 1
-				self.clock = 24
-				self.status = "PLAY"
-				self.playCanvas.coords("playCursor", 0, 0, self.stepWidth, self.rowHeight / 2)
-				self.playCanvas.itemconfig("playCursor", state = 'normal')
+			logging.info("MIDI START")
+			self.zyngui.zyntransport.play()
+			self.playhead = self.gridColumns - 1
+			self.clock = 24
+			self.status = "PLAY"
+			self.playCanvas.coords("playCursor", 0, 0, self.stepWidth, self.rowHeight / 2)
+			self.playCanvas.itemconfig("playCursor", state = 'normal')
 		elif command == "CONTINUE":
-				logging.info("MIDI CONTINUE")
-				self.zyngui.zyntransport.play()
-				self.status = "PLAY"
-				self.playCanvas.itemconfig("playCursor", state = 'normal')
+			logging.info("MIDI CONTINUE")
+			self.zyngui.zyntransport.play()
+			self.status = "PLAY"
+			self.playCanvas.itemconfig("playCursor", state = 'normal')
 		elif command == "STOP":
-				logging.info("MIDI STOP")
-				self.zyngui.zyntransport.pause()
-				self.status = "STOP"
-				self.playCanvas.itemconfig("playCursor", state = 'hidden')
-				for note in self.patterns[self.pattern][self.playhead]:
-					self.noteOff(note)
+			logging.info("MIDI STOP")
+			self.zyngui.zyntransport.pause()
+			self.status = "STOP"
+			self.playCanvas.itemconfig("playCursor", state = 'hidden')
+			for note in self.patterns[self.pattern][self.playhead]:
+				self.noteOff(note)
 
 	# Function to handle JACK process events
 	#   frames: Quantity of frames since last process event
