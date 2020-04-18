@@ -63,6 +63,7 @@ MENU_ROWS			= 11
 SELECT_BORDER		= zynthian_gui_config.color_on
 PLAYHEAD_CURSOR		= zynthian_gui_config.color_on
 CANVAS_BACKGROUND	= "grey"
+HEADER_BACKGROUND	= zynthian_gui_config.color_header_bg
 GRID_LINE			= "white"
 SELECT_THICKNESS	= 2
 # Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
@@ -123,8 +124,8 @@ class zynthian_gui_stepseq():
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.display_height,
+			width=self.width,
+			height=self.height,
 			bg=CANVAS_BACKGROUND)
 
 		logging.info("Starting PyStep...")
@@ -135,27 +136,66 @@ class zynthian_gui_stepseq():
 				self.patterns = json.load(f)
 		except:
 			logging.warn('Failed to load pattern file')
-			self.patterns = [[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]] # Default to empty 16 step pattern
+			self.patterns = [[[] for st in range(16)]] # Default to empty 16 step pattern
 		# Draw pattern grid
-		self.gridCanvas = tkinter.Canvas(self.main_frame, width=self.gridWidth, height=self.rowHeight * self.getMenuValue(MENU_ROWS))
+		self.gridCanvas = tkinter.Canvas(self.main_frame, 
+			width=self.gridWidth, 
+			height=self.rowHeight * self.getMenuValue(MENU_ROWS),
+			bg=CANVAS_BACKGROUND,
+			bd=0,
+			highlightthickness=0)
 		self.gridCanvas.grid(row=1, column=1)
 		# Draw title bar
-		self.titleCanvas = tkinter.Canvas(self.main_frame, width=self.width, height=self.titlebarHeight, bg=zynthian_gui_config.color_header_bg)
+		self.titleCanvas = tkinter.Canvas(self.main_frame, 
+			width=self.width, 
+			height=self.titlebarHeight, 
+			bg=HEADER_BACKGROUND,
+			bd=0,
+			highlightthickness=0,
+			)
 		self.titleCanvas.grid(row=0, column=0, columnspan=2)
-		self.titleCanvas.create_text(self.width - 2, int(self.height * 0.05), anchor="e", font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)), fill=zynthian_gui_config.color_panel_tx, tags="lblPattern")
-		lblMenu = self.titleCanvas.create_text(2, int(self.height * 0.05), anchor="w", font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * .06)), fill=zynthian_gui_config.color_panel_tx, tags="lblMenu")
-		rectMenu = self.titleCanvas.create_rectangle(self.titleCanvas.bbox(lblMenu), fill=zynthian_gui_config.color_header_bg, width=0, tags="rectMenu")
+		self.titleCanvas.create_text(self.width - 2,
+			int(self.height * 0.05),
+			anchor="e", 
+			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
+			size=int(self.height * 0.05)),
+			fill=zynthian_gui_config.color_panel_tx,
+			tags="lblPattern")
+		lblMenu = self.titleCanvas.create_text(2,
+			int(self.height * 0.05),
+			anchor="w",
+			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
+			size=int(self.height * 0.05)),
+			fill=zynthian_gui_config.color_panel_tx,
+			tags="lblMenu")
+		rectMenu = self.titleCanvas.create_rectangle(self.titleCanvas.bbox(lblMenu),
+			fill=zynthian_gui_config.color_header_bg,
+			width=0,
+			tags="rectMenu")
 		self.titleCanvas.tag_lower(rectMenu, lblMenu)
 		self.refreshMenu()
 		# Draw pianoroll
-		self.pianoRoll = tkinter.Canvas(self.main_frame, width=self.pianoRollWidth, height=self.getMenuValue(MENU_ROWS) * self.rowHeight, bg="white")
+		self.pianoRoll = tkinter.Canvas(self.main_frame,
+			width=self.pianoRollWidth,
+			height=self.getMenuValue(MENU_ROWS) * self.rowHeight,
+			bg="white",
+			bd=0,
+			highlightthickness=0)
 		self.pianoRoll.grid(row=1, column=0)
 		self.pianoRoll.bind("<ButtonPress-1>", self.pianoRollDragStart)
 		self.pianoRoll.bind("<ButtonRelease-1>", self.pianoRollDragEnd)
 		self.pianoRoll.bind("<B1-Motion>", self.pianoRollDragMotion)
 		# Draw playhead
-		self.playCanvas = tkinter.Canvas(self.main_frame, height=self.playheadHeight, bg=CANVAS_BACKGROUND)
-		self.playCanvas.create_rectangle(0, 0, self.stepWidth, self.playheadHeight, fill=PLAYHEAD_CURSOR, state="hidden", width=0, tags="playCursor")
+		self.playCanvas = tkinter.Canvas(self.main_frame,
+			height=self.playheadHeight,
+			bg=CANVAS_BACKGROUND,
+			bd=0,
+			highlightthickness=0)
+		self.playCanvas.create_rectangle(0, 0, self.stepWidth, self.playheadHeight,
+			fill=PLAYHEAD_CURSOR,
+			state="hidden",
+			width=0,
+			tags="playCursor")
 		self.playCanvas.grid(row=2, column=1)
 
 		self.loadPattern(self.getMenuValue(MENU_PATTERN) - 1)
@@ -470,7 +510,7 @@ class zynthian_gui_stepseq():
 		elif menuItem == MENU_TRANSPOSE:
 			return "Up/Down"
 		elif menuItem == MENU_COPY:
-			return "Copy pattern %d to %d" % (self.getMenuValue(MENU_PATTERN), self.pattern + 1)
+			return "%d => %d" % (self.getMenuValue(MENU_PATTERN), self.pattern + 1)
 		else:
 			return self.menu[menuItem]['value']
 
