@@ -46,6 +46,7 @@ from . import zynthian_gui_config
 
 # Local constants
 DEFAULT_BPM			= 120
+DEFAULT_CLK_DIV		= 6
 MAX_PATTERNS		= 999
 MAX_STEPS			= 64
 MENU_PATTERN		= 0
@@ -57,9 +58,10 @@ MENU_TRANSPOSE		= 5
 MENU_MIDI			= 6
 MENU_TIMECODE		= 7
 MENU_TEMPO			= 8
-MENU_PLAYMODE		= 9
-MENU_GRID			= 10
-MENU_ROWS			= 11
+MENU_CLOCKDIV		= 9
+MENU_PLAYMODE		= 10
+MENU_GRID			= 11
+MENU_ROWS			= 12
 SELECT_BORDER		= zynthian_gui_config.color_on
 PLAYHEAD_CURSOR		= zynthian_gui_config.color_on
 CANVAS_BACKGROUND	= "grey"
@@ -103,6 +105,7 @@ class zynthian_gui_stepseq():
 			{'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, \
 			{'title': 'Timecode', 'min': 0, 'max': 50, 'value': 0},
 			{'title': 'Tempo', 'min': 0, 'max': 999, 'value': DEFAULT_BPM},
+			{'title': 'Clock divisor', 'min': 1, 'max': 24, 'value': DEFAULT_CLK_DIV},
 			{'title': 'Play mode', 'min': 0, 'max': 2, 'value': 0},
 			{'title': 'Grid lines', 'min': 0, 'max': 16, 'value': 0},
 			{'title': 'Zoom', 'min': 1, 'max': 100, 'value': 16}]
@@ -215,7 +218,6 @@ class zynthian_gui_stepseq():
 			self.jackClient.connect("jack_midi_clock:mclk_out", "zynthstep:input")
 		except:
 			logging.error("Failed to connect MIDI devices")
-		#TODO: Set tempo
 
 	# Function to print traceback
 	#	TODO: Remove debug function (or move to other zynthian class)
@@ -306,6 +308,7 @@ class zynthian_gui_stepseq():
 			if event[0] == note:
 				self.patterns[self.pattern][step].remove(event)
 				velocity = 0
+				self.noteOff(note)
 				break
 		if velocity:
 			self.patterns[self.pattern][step].append([note, velocity])
@@ -397,11 +400,11 @@ class zynthian_gui_stepseq():
 			logging.info("MIDI START")
 			if(self.getMenuValue(MENU_PLAYMODE, False) == "Reverse"):
 				self.playDirection = -1
-				self.playhead = self.gridColumns
+				self.playhead = self.gridColumns - 1
 			else:
 				self.playhead = 0
 				self.playDirection = 1
-			self.clock = 24 # Set clock to end so that next clock cycle triggers first sequence event
+			self.clock = 0
 			self.status = "PLAY"
 			self.playCanvas.coords("playCursor", self.stepWidth * self.playhead, 0, self.stepWidth * self.playhead + self.stepWidth, PLAYHEAD_HEIGHT)
 			self.playCanvas.itemconfig("playCursor", state = 'normal')
@@ -432,15 +435,18 @@ class zynthian_gui_stepseq():
 	#	TODO: Should move JACK handler to low-level library
 	def onJackProcess(self, frames):
 		for offset, data in self.midiInput.incoming_midi_events():
-			if data[0] == b'\xf8':
-				# MIDI Clock
+			if data[0] == b'\xf8': # MIDI Clock
 				if self.status == "PLAY":
-					self.clock = self.clock + 1
-					if self.clock >= 6:
-						# Time to process a time slot
-						self.clock = 0
+					if self.clock == 0:
+						# Time to process note on
+						for note in self.patterns[self.pattern][self.playhead]:
+							self.noteOn(note[0], note[1])
+					if self.clock >= self.getMenuValue(MENU_CLOCKDIV) - 1:
+						# Time to process note off
 						for note in self.patterns[self.pattern][self.playhead]:
 							self.noteOff(note[0])
+						self.clock = 0
+						self.redrawPlayhead = True # Flag playhead needs redrawing
 						self.playhead = self.playhead + self.playDirection
 						if self.playhead >= self.gridColumns:
 							if self.getMenuValue(MENU_PLAYMODE):
@@ -454,9 +460,8 @@ class zynthian_gui_stepseq():
 							else:
 								self.playhead = 1
 								self.playDirection = 1
-						for note in self.patterns[self.pattern][self.playhead]:
-							self.noteOn(note[0], note[1])
-						self.redrawPlayhead = True # Flag playhead needs redrawing
+					else:
+						self.clock = self.clock + 1
 		self.midiOutput.clear_buffer();
 		for out in self.midiOutQueue:
 			self.midiOutput.write_midi_event(0, out)
@@ -614,8 +619,7 @@ class zynthian_gui_stepseq():
 			except:
 				logging.error("Failed to connect MIDI: %s to %s", source, destination)
 		elif menuItem == MENU_TEMPO:
-			#TODO: Set tempo
-			pass
+			self.zyngui.zyntransport.tempo(value)
 		elif menuItem == MENU_GRID:
 			self.drawGrid()
 
