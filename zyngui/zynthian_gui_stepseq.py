@@ -189,6 +189,7 @@ class zynthian_gui_stepseq():
 		self.pianoRoll.bind("<B1-Motion>", self.onPianoRollDragMotion)
 		# Draw playhead
 		self.playCanvas = tkinter.Canvas(self.main_frame,
+			width=self.gridWidth, 
 			height=PLAYHEAD_HEIGHT,
 			bg=CANVAS_BACKGROUND,
 			bd=0,
@@ -390,28 +391,41 @@ class zynthian_gui_stepseq():
 	# Function to control play head
 	#	command: Playhead command ["STOP" | "START" | "CONTINUE"]
 	def setPlayState(self, command):
+		if command == "TOGGLE":
+			command = "START" if self.status == "STOP" else "STOP"
 		if command == "START":
-				logging.info("MIDI START")
-				self.clock = 24
-				if(self.getMenuValue(MENU_PLAYMODE) == 1):
-					self.playDirection = -1
-					self.playhead = self.gridColumns
-				else:
-					self.playhead = 0
-					self.playDirection = 1
-				self.status = "PLAY"
-				self.playCanvas.coords("playCursor", self.stepWidth * self.playhead, 0, self.stepWidth * self.playhead + self.stepWidth, PLAYHEAD_HEIGHT)
-				self.playCanvas.itemconfig("playCursor", state = 'normal')
-		elif command == "CONTINUE":
-				logging.info("MIDI CONTINUE")
-				self.status = "PLAY"
-				self.playCanvas.itemconfig("playCursor", state = 'normal')
+			logging.info("MIDI START")
+			if(self.getMenuValue(MENU_PLAYMODE, False) == "Reverse"):
+				self.playDirection = -1
+				self.playhead = self.gridColumns
+			else:
+				self.playhead = 0
+				self.playDirection = 1
+			self.clock = 24 # Set clock to end so that next clock cycle triggers first sequence event
+			self.status = "PLAY"
+			self.playCanvas.coords("playCursor", self.stepWidth * self.playhead, 0, self.stepWidth * self.playhead + self.stepWidth, PLAYHEAD_HEIGHT)
+			self.playCanvas.itemconfig("playCursor", state = 'normal')
+			if self.getMenuValue(MENU_TIMECODE, False) == "Internal":
+				self.jackClient.transport_start()
+			else:
+				pass
+#				self.midiOutQueue.append([0xfa]) # MIDI START command
 		elif command == "STOP":
-				logging.info("MIDI STOP")
-				self.status = "STOP"
-				self.playCanvas.itemconfig("playCursor", state = 'hidden')
-				for note in self.patterns[self.pattern][self.playhead]:
-					self.noteOff(note[0])
+			logging.info("MIDI STOP")
+			self.status = "STOP"
+			self.playCanvas.itemconfig("playCursor", state = 'hidden')
+			if self.getMenuValue(MENU_TIMECODE, False) == "Internal":
+				self.jackClient.transport_stop()
+			else:
+				pass
+#				self.midiOutQueue.append([0xfc]) # MIDI STOP command
+			if zyncoder.lib_zyncoder:
+				zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
+		elif command == "CONTINUE":
+			logging.info("MIDI CONTINUE")
+			self.status = "PLAY"
+			self.playCanvas.itemconfig("playCursor", state = 'normal')
+
 
 	# Function to handle JACK process events
 	#	frames: Quantity of frames since last process event
@@ -562,8 +576,8 @@ class zynthian_gui_stepseq():
 					event = (self.selectedCell[0], value)
 					self.drawCell(self.selectedCell[0], self.selectedCell[1], value)
 		elif menuItem == MENU_PATTERN or menuItem == MENU_COPY:
-			self.menu[MENU_COPY]['value'] = value# update copy value when pattern value changes
-			self.menu[MENU_CLEAR]['value'] = value# update copy value when pattern value changes
+			self.menu[MENU_COPY]['value'] = value# update copy pattern index  when pattern value changes
+			self.menu[MENU_CLEAR]['value'] = value# update clear pattern index when pattern value changes
 			if value >= len(self.patterns):
 				self.patterns.append([[],[],[],[],[],[],[],[]]) # Dynamically create extra patterns
 			self.loadPattern(value - 1)
@@ -616,6 +630,9 @@ class zynthian_gui_stepseq():
 			return
 		for step in range(len(self.patterns[pattern])):
 			self.patterns[pattern][step] = []
+		if zyncoder.lib_zyncoder:
+			zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
+
 
 	# Function to copy pattern
 	#	source: Index of pattern to copy from
@@ -795,29 +812,16 @@ class zynthian_gui_stepseq():
 				self.toggleMenuMode(False) # Disable data entry before exit
 			else:
 				return False
-		if switch == ENC_MENU:
+		elif switch == ENC_MENU:
 			if self.menuSelected == MENU_CLEAR:
 				if type == "B":
 					self.clearPattern(self.pattern)
 					self.loadPattern(self.pattern)
 			else:
 				self.toggleMenuMode()
-		if switch == ENC_NOTE:
-			if self.status == "STOP":
-				self.status="PLAY"
-				if self.getMenuValue(MENU_TIMECODE) == 0:
-					#Internal clock
-					self.jackClient.transport_start()
-				else:
-					self.midiOutQueue.append([0xfa])
-			else:
-				self.status="STOP"
-				if self.getMenuValue(MENU_TIMECODE) == 0:
-					#External clock
-					self.jackClient.transport_stop()
-				else:
-					self.midiOutQueue.append([0xfc])
-		if switch == ENC_STEP:
+		elif switch == ENC_NOTE:
+			self.setPlayState("TOGGLE")
+		elif switch == ENC_STEP:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1], self.getMenuValue(MENU_VELOCITY))
 		return True # Tell parent that we handled all short and bold key presses
 #------------------------------------------------------------------------------
