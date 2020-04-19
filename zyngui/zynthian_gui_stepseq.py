@@ -68,7 +68,6 @@ PLAYHEAD_CURSOR		= zynthian_gui_config.color_on
 CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bg
 HEADER_BACKGROUND	= zynthian_gui_config.color_header_bg
 GRID_LINE			= zynthian_gui_config.color_tx
-SELECT_THICKNESS	= 1
 PLAYHEAD_HEIGHT		= 5
 # Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
 ENC_LAYER			= 0
@@ -121,6 +120,7 @@ class zynthian_gui_stepseq():
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.display_height
+		self.selectThickness = 1 + int(self.width / 500)
 		self.titlebarHeight = int(self.height * 0.1)
 		self.gridHeight = self.height - self.titlebarHeight - PLAYHEAD_HEIGHT
 		self.gridWidth = int(self.width * 0.9)
@@ -219,14 +219,6 @@ class zynthian_gui_stepseq():
 		self.midiOutput = self.jackClient.midi_outports.register("output")
 		self.jackClient.set_process_callback(self.onJackProcess)
 		self.jackClient.activate()
-		#TODO: Remove auto test connection 
-#		try:
-#			self.jackClient.connect("zynthstep:output", "ZynMidiRouter:seq_in")
-#			self.jackClient.connect("jack_midi_clock:mclk_out", "zynthstep:input")
-#		except:
-#			logging.error("Failed to connect MIDI devices")
-#		print(self.jackClient.get_all_connections('zynthstep:input'))
-
 		self.selectCell(0, self.keyOrigin + int(self.getMenuValue(MENU_ROWS) / 2))
 
 	# Function to print traceback
@@ -541,7 +533,7 @@ class zynthian_gui_stepseq():
 			coord[2] = coord[2]
 			coord[3] = coord[3]
 			if not cell:
-				cell = self.gridCanvas.create_rectangle(coord, fill="", outline=SELECT_BORDER, width=SELECT_THICKNESS, tags="selection")
+				cell = self.gridCanvas.create_rectangle(coord, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
 			else:
 				self.gridCanvas.coords(cell, coord)
 			self.gridCanvas.tag_raise(cell)
