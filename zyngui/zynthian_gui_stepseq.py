@@ -51,23 +51,24 @@ MAX_PATTERNS		= 999
 MAX_STEPS			= 64
 MENU_PATTERN		= 0
 MENU_VELOCITY		= 1
-MENU_STEPS			= 2
-MENU_COPY			= 3
-MENU_CLEAR			= 4
-MENU_TRANSPOSE		= 5
-MENU_MIDI			= 6
-MENU_TIMECODE		= 7
-MENU_TEMPO			= 8
-MENU_CLOCKDIV		= 9
-MENU_PLAYMODE		= 10
-MENU_GRID			= 11
-MENU_ROWS			= 12
+MENU_DURATION		= 2
+MENU_STEPS			= 3
+MENU_COPY			= 4
+MENU_CLEAR			= 5
+MENU_TRANSPOSE		= 6
+MENU_MIDI			= 7
+MENU_TIMECODE		= 8
+MENU_TEMPO			= 9
+MENU_CLOCKDIV		= 10
+MENU_PLAYMODE		= 11
+MENU_GRID			= 12
+MENU_ROWS			= 13
 SELECT_BORDER		= zynthian_gui_config.color_on
 PLAYHEAD_CURSOR		= zynthian_gui_config.color_on
 CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bg
 HEADER_BACKGROUND	= zynthian_gui_config.color_header_bg
 GRID_LINE			= zynthian_gui_config.color_tx
-SELECT_THICKNESS	= 2
+SELECT_THICKNESS	= 1
 PLAYHEAD_HEIGHT		= 5
 # Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
 ENC_LAYER			= 0
@@ -98,6 +99,7 @@ class zynthian_gui_stepseq():
 		#TODO: Get values from persistent storage
 		self.menu = [{'title': 'Pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
 			{'title': 'Velocity', 'min': 1, 'max': 127, 'value':100}, \
+			{'title': 'Duration', 'min': 1, 'max': 64, 'value':1}, \
 			{'title': 'Steps', 'min': 2, 'max': MAX_STEPS, 'value': 16}, \
 			{'title': 'Copy pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
 			{'title': 'Clear pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
@@ -140,6 +142,12 @@ class zynthian_gui_stepseq():
 		except:
 			logging.warn('Failed to load pattern file')
 			self.patterns = [[[] for st in range(16)]] # Default to empty 16 step pattern
+		for pattern in self.patterns:
+			for step in pattern:
+				for event in step:
+					if len(event) < 3:
+						logging.info("Fixing step in pattern")
+						event.append(1)
 		# Draw pattern grid
 		self.gridCanvas = tkinter.Canvas(self.main_frame, 
 			width=self.gridWidth, 
@@ -212,11 +220,12 @@ class zynthian_gui_stepseq():
 		self.jackClient.set_process_callback(self.onJackProcess)
 		self.jackClient.activate()
 		#TODO: Remove auto test connection 
-		try:
-			self.jackClient.connect("zynthstep:output", "ZynMidiRouter:seq_in")
-			self.jackClient.connect("jack_midi_clock:mclk_out", "zynthstep:input")
-		except:
-			logging.error("Failed to connect MIDI devices")
+#		try:
+#			self.jackClient.connect("zynthstep:output", "ZynMidiRouter:seq_in")
+#			self.jackClient.connect("jack_midi_clock:mclk_out", "zynthstep:input")
+#		except:
+#			logging.error("Failed to connect MIDI devices")
+#		print(self.jackClient.get_all_connections('zynthstep:input'))
 
 		self.selectCell(0, self.keyOrigin + int(self.getMenuValue(MENU_ROWS) / 2))
 
@@ -296,15 +305,16 @@ class zynthian_gui_stepseq():
 		closest = event.widget.find_closest(event.x, event.y)
 		tags = self.gridCanvas.gettags(closest)
 		step, note = tags[0].split(',')
-		self.toggleEvent(int(step), self.keyOrigin + int(note), self.getMenuValue(MENU_VELOCITY))
+		self.toggleEvent(int(step), self.keyOrigin + int(note))
 
 	# Function to toggle note event
 	#	step: step (column) index
 	#	note: Note number
-	#	velocity: Note velocity
-	def toggleEvent(self, step, note, velocity):
+	def toggleEvent(self, step, note):
 		if step < 0 or step >= self.gridColumns:
 			return
+		velocity = self.getMenuValue(MENU_VELOCITY)
+		duration = self.getMenuValue(MENU_DURATION)
 		for event in self.patterns[self.pattern][step]:
 			if event[0] == note:
 				self.patterns[self.pattern][step].remove(event)
@@ -312,18 +322,29 @@ class zynthian_gui_stepseq():
 				self.noteOff(note)
 				break
 		if velocity:
-			self.patterns[self.pattern][step].append([note, velocity])
+			self.patterns[self.pattern][step].append([note, velocity, duration])
 			self.noteOn(note, velocity)
 			self.noteOffTimer = threading.Timer(0.1, self.noteOff, [note]).start()
+		else:
+			duration = 1
 		if note >= self.keyOrigin and note <= self.keyOrigin + self.getMenuValue(MENU_ROWS):
 			self.selectCell(step, note)
-		self.drawCell(step, note, velocity)
-		
+		self.drawCell(step, note, velocity, duration)
+
+	# Function to get cell coordinates
+	def getCell(self, col, row, duration):
+		x1 = col * self.stepWidth + 1
+		y1 = (self.getMenuValue(MENU_ROWS) - row - 1) * self.rowHeight + 1
+		x2 = x1 + self.stepWidth * duration - 1 
+		y2 = y1 + self.rowHeight - 1
+		return [x1, y1, x2, y2]
+
 	# Function to draw a grid cell
 	#	step: Step (column) index
 	#	note: Note number
 	#	velocity: Note on velocity (0 for no note)
-	def drawCell(self, step, note, velocity = 0):
+	#	duration: Note length in steps
+	def drawCell(self, step, note, velocity = 0, duration=1):
 		if step < 0 or step >= self.gridColumns or note < self.keyOrigin or note >= self.keyOrigin + self.getMenuValue(MENU_ROWS):
 			return
 		row = note - self.keyOrigin
@@ -332,17 +353,14 @@ class zynthian_gui_stepseq():
 			velocityColour = 70 + velocity
 		fill = "#%02x%02x%02x" % (velocityColour, velocityColour, velocityColour)
 		cell = self.gridCanvas.find_withtag("%d,%d"%(step,row))
-		x1 = step * self.stepWidth + 1
-		y1 = (self.getMenuValue(MENU_ROWS) - row - 1) * self.rowHeight + 1
-		x2 = x1 + self.stepWidth + 1
-		y2 = y1 + self.rowHeight + 1
+		coord = self.getCell(step, row, duration)
 		if cell:
 			# Update existing cell
 			self.gridCanvas.itemconfig(cell, fill=fill)
-			self.gridCanvas.coords(cell, x1, y1, x2, y2)
+			self.gridCanvas.coords(cell, coord)
 		else:
 			# Create new cell
-			cell = self.gridCanvas.create_rectangle(x1, y1, x2, y2, fill=fill, outline=CANVAS_BACKGROUND, tags=("%d,%d"%(step,row), "gridcell"))
+			cell = self.gridCanvas.create_rectangle(coord, fill=fill, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step))
 			self.gridCanvas.tag_bind(cell, '<Button-1>', self.onCanvasClick)
 
 	# Function to draw grid
@@ -360,7 +378,7 @@ class zynthian_gui_stepseq():
 					self.drawCell(step, note, 0)
 			for event in self.patterns[self.pattern][step]:
 				if len(event):
-					self.drawCell(step, event[0], event[1])
+					self.drawCell(step, event[0], event[1], event[2])
 		# Delete existing note names
 		self.pianoRoll.delete("notename")
 		for note in range(self.keyOrigin, self.keyOrigin + self.getMenuValue(MENU_ROWS)):
@@ -379,6 +397,10 @@ class zynthian_gui_stepseq():
 		if self.getMenuValue(MENU_GRID):
 			for step in range(0, self.gridColumns + 1, self.getMenuValue(MENU_GRID)):
 				self.gridCanvas.create_line(step * self.stepWidth + 1, 0, step * self.stepWidth + 1, self.getMenuValue(MENU_ROWS) * self.rowHeight - 1, fill=GRID_LINE, tags=("gridline"))
+		# Set z-order to allow duration to show
+		if clearGrid:
+			for step in range(self.gridColumns):
+				self.gridCanvas.tag_lower("step%d"%step)
 
 	# Function to send MIDI note on
 	#	note: MIDI note number
@@ -473,19 +495,30 @@ class zynthian_gui_stepseq():
 		self.pianoRoll.delete(tkinter.ALL)
 		for row in range(self.getMenuValue(MENU_ROWS)):
 			x1 = 0
-			y1 = (self.getMenuValue(MENU_ROWS) - row - 1) * self.rowHeight + 1
+			y1 = self.getCell(0, row, 1)[1] - 1
 			x2 = self.pianoRollWidth
-			y2 = y1 + self.rowHeight + 1
+			y2 = y1 + self.rowHeight - 1
 			id = "row%d" % (row)
-			id = self.pianoRoll.create_rectangle(x1, y1, x2, y2, tags=id)
+			id = self.pianoRoll.create_rectangle(x1, y1, x2, y2, width=0, tags=id)
 
 	# Function to update selectedCell
 	#	step: Step (column) of selected cell
 	#	note: Note number of selected cell
 	def selectCell(self, step, note):
+		for previous in range(step - 1, -1, -1):
+			prevEvent = self.getEventAt(previous, note)
+			if not prevEvent:
+				continue
+			if prevEvent[2] > step - previous:
+				if step > self.selectedCell[0]:
+					step = previous + prevEvent[2]
+				else:
+					step = previous
+				break
 		if step < 0 or step >= self.gridColumns:
 			return
 		self.selectedCell = [step, note]
+		event = self.getEventAt(step, note)
 		if note >= self.keyOrigin + self.getMenuValue(MENU_ROWS):
 			# Note is off top of display
 			if note < 128:
@@ -499,14 +532,18 @@ class zynthian_gui_stepseq():
 		else:
 			cell = self.gridCanvas.find_withtag("selection")
 			row = note - self.keyOrigin
-			x1 = step * self.stepWidth + 1
-			y1 = (self.getMenuValue(MENU_ROWS) - row - 1) * self.rowHeight + 2
-			x2 = x1 + self.stepWidth + SELECT_THICKNESS - 1
-			y2 = y1 + self.rowHeight + SELECT_THICKNESS - 1
+			duration = 1
+			if event:
+				duration = event[2]
+			coord = self.getCell(step, row, duration)
+			coord[0] = coord[0] - 1
+			coord[1] = coord[1] - 1
+			coord[2] = coord[2]
+			coord[3] = coord[3]
 			if not cell:
-				cell = self.gridCanvas.create_rectangle(x1, y1, x2, y2, fill="", outline=SELECT_BORDER, width=SELECT_THICKNESS, tags="selection")
+				cell = self.gridCanvas.create_rectangle(coord, fill="", outline=SELECT_BORDER, width=SELECT_THICKNESS, tags="selection")
 			else:
-				self.gridCanvas.coords(cell, x1, y1, x2, y2)
+				self.gridCanvas.coords(cell, coord)
 			self.gridCanvas.tag_raise(cell)
 			if zyncoder.lib_zyncoder:
 				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_NOTE, note)
@@ -570,6 +607,12 @@ class zynthian_gui_stepseq():
 			return value
 		return self.transformMenuValue(menuItem, value)
 
+	# Function to get event for a given note at a given step
+	def getEventAt(self, step, note):
+		for event in self.patterns[self.pattern][step]:
+			if event[0] == note:
+				return event
+
 	# Function to set menu value
 	#	menuItem: Index of menu item
 	#	value: Value to set menu item to
@@ -582,17 +625,24 @@ class zynthian_gui_stepseq():
 			# Adjust velocity of selected cell
 			for event in self.patterns[self.pattern][self.selectedCell[0]]:
 				if event[0] == self.selectedCell[1]:
-					event = (self.selectedCell[0], value)
-					self.drawCell(self.selectedCell[0], self.selectedCell[1], value)
+					event[1] = value
+					self.drawCell(self.selectedCell[0], self.selectedCell[1], event[1], event[2])
+		elif menuItem == MENU_DURATION:
+			for event in self.patterns[self.pattern][self.selectedCell[0]]:
+				if event[0] == self.selectedCell[1]:
+					event[2] = value
+					self.drawCell(self.selectedCell[0], self.selectedCell[1], event[1], event[2])
 		elif menuItem == MENU_PATTERN or menuItem == MENU_COPY:
 			self.menu[MENU_COPY]['value'] = value# update copy pattern index  when pattern value changes
 			self.menu[MENU_CLEAR]['value'] = value# update clear pattern index when pattern value changes
 			if value >= len(self.patterns):
-				self.patterns.append([[],[],[],[],[],[],[],[]]) # Dynamically create extra patterns
+				self.patterns.append([[] for st in range(16)]) # Dynamically create extra patterns
 			self.loadPattern(value - 1)
+			#TODO: Remove empty patterns
 		elif menuItem == MENU_STEPS:
 			for step in range(self.gridColumns, value):
 				self.patterns[self.pattern].append([])
+				#TODO: Remove steps if BACK pressed
 			self.gridColumns = value
 			if zyncoder.lib_zyncoder:
 				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_STEP]
@@ -830,6 +880,6 @@ class zynthian_gui_stepseq():
 		elif switch == ENC_NOTE:
 			self.setPlayState("TOGGLE")
 		elif switch == ENC_STEP:
-			self.toggleEvent(self.selectedCell[0], self.selectedCell[1], self.getMenuValue(MENU_VELOCITY))
+			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
 		return True # Tell parent that we handled all short and bold key presses
 #------------------------------------------------------------------------------

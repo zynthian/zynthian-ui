@@ -89,7 +89,6 @@ class zynthian_gui_controller:
 			relief='flat',
 			bg = zynthian_gui_config.color_panel_bg)
 		# Bind canvas events
-		self.canvas_push_ts = None
 		self.canvas.bind("<Button-1>",self.cb_canvas_push)
 		self.canvas.bind("<ButtonRelease-1>",self.cb_canvas_release)
 		self.canvas.bind("<B1-Motion>",self.cb_canvas_motion)
@@ -630,44 +629,42 @@ class zynthian_gui_controller:
 
 
 	def cb_canvas_release(self,event):
-		if self.canvas_push_ts:
-			dts=(datetime.now()-self.canvas_push_ts).total_seconds()
-			motion_rate=self.canvas_motion_count/dts
-			logging.debug("CONTROL %d RELEASE => %s, %s" % (self.index, dts, motion_rate))
-			if motion_rate<10:
-				if dts<0.3:
-					self.zyngui.zynswitch_defered('S',self.index)
-				elif dts>=0.3 and dts<2:
-					self.zyngui.zynswitch_defered('B',self.index)
-				elif dts>=2:
-					self.zyngui.zynswitch_defered('L',self.index)
-			elif self.canvas_motion_dx>20:
-				self.zyngui.zynswitch_defered('X',self.index)
-			elif self.canvas_motion_dx<-20:
-				self.zyngui.zynswitch_defered('Y',self.index)
+		dts=(datetime.now()-self.canvas_push_ts).total_seconds()
+		motion_rate=self.canvas_motion_count/dts
+		logging.debug("CONTROL %d RELEASE => %s, %s" % (self.index, dts, motion_rate))
+		if motion_rate<10:
+			if dts<0.3:
+				self.zyngui.zynswitch_defered('S',self.index)
+			elif dts>=0.3 and dts<2:
+				self.zyngui.zynswitch_defered('B',self.index)
+			elif dts>=2:
+				self.zyngui.zynswitch_defered('L',self.index)
+		elif self.canvas_motion_dx>20:
+			self.zyngui.zynswitch_defered('X',self.index)
+		elif self.canvas_motion_dx<-20:
+			self.zyngui.zynswitch_defered('Y',self.index)
 
 
 	def cb_canvas_motion(self,event):
-		if self.canvas_push_ts:
-			dts=(datetime.now()-self.canvas_push_ts).total_seconds()
-			if dts>0.1:
-				dy=self.canvas_motion_y0-event.y
-				if dy!=0:
-					#logging.debug("CONTROL %d MOTION Y => %d, %d: %d" % (self.index, event.y, dy, self.value+dy))
-					if self.inverted:
-						self.set_value(self.value-dy, True)
-					else:
-						self.set_value(self.value+dy, True)
-					self.canvas_motion_y0=event.y
-					if self.canvas_motion_dy+dy!=0:
-						self.canvas_motion_count=self.canvas_motion_count+1
-					self.canvas_motion_dy=dy
-				dx=event.x-self.canvas_motion_x0
-				if dx!=0:
-					#logging.debug("CONTROL %d MOTION X => %d, %d" % (self.index, event.x, dx))
-					if abs(self.canvas_motion_dx-dx)>0:
-						self.canvas_motion_count=self.canvas_motion_count+1
-					self.canvas_motion_dx=dx
+		dts=(datetime.now()-self.canvas_push_ts).total_seconds()
+		if dts>0.1:
+			dy=self.canvas_motion_y0-event.y
+			if dy!=0:
+				#logging.debug("CONTROL %d MOTION Y => %d, %d: %d" % (self.index, event.y, dy, self.value+dy))
+				if self.inverted:
+					self.set_value(self.value-dy, True)
+				else:
+					self.set_value(self.value+dy, True)
+				self.canvas_motion_y0=event.y
+				if self.canvas_motion_dy+dy!=0:
+					self.canvas_motion_count=self.canvas_motion_count+1
+				self.canvas_motion_dy=dy
+			dx=event.x-self.canvas_motion_x0
+			if dx!=0:
+				#logging.debug("CONTROL %d MOTION X => %d, %d" % (self.index, event.x, dx))
+				if abs(self.canvas_motion_dx-dx)>0:
+					self.canvas_motion_count=self.canvas_motion_count+1
+				self.canvas_motion_dx=dx
 
 
 	def cb_canvas_wheel(self,event):
