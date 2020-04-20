@@ -102,7 +102,7 @@ class zynthian_gui_stepseq():
 			{'title': 'Steps', 'min': 2, 'max': MAX_STEPS, 'value': 16}, \
 			{'title': 'Copy pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
 			{'title': 'Clear pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
-			{'title': 'Transpose', 'min': -1, 'max': 2, 'value': 1}, \
+			{'title': 'Transpose', 'min': 0, 'max': 2, 'value': 1}, \
 			{'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, \
 			{'title': 'Timecode', 'min': 0, 'max': 50, 'value': 0},
 			{'title': 'Tempo', 'min': 0, 'max': 999, 'value': DEFAULT_BPM},
@@ -141,6 +141,8 @@ class zynthian_gui_stepseq():
 				self.patterns = json.load(f)
 		except:
 			logging.warn('Failed to load pattern file')
+		logging.info("Loaded %d patterns", len(self.patterns))
+		if(len(self.patterns) == 0):
 			self.patterns = [[[] for st in range(16)]] # Default to empty 16 step pattern
 		for pattern in self.patterns:
 			for step in pattern:
@@ -305,24 +307,38 @@ class zynthian_gui_stepseq():
 	def toggleEvent(self, step, note):
 		if step < 0 or step >= self.gridColumns:
 			return
-		velocity = self.getMenuValue(MENU_VELOCITY)
-		duration = self.getMenuValue(MENU_DURATION)
 		event = self.getEventAt(step, note)
 		if event:
-			self.patterns[self.pattern][step].remove(event)
-			velocity = 0
-			self.noteOff(note)
-			duration = 1 # Duration used by drawCell
+			self.removeEvent(step, event)
 		else:
-			event = [note, velocity, duration]
-			self.patterns[self.pattern][step].append(event)
-			self.noteOn(note, velocity)
-			self.noteOffTimer = threading.Timer(0.1, self.noteOff, [note]).start()
-			for nextStep in range(step + 1, step + duration):
-				nextEvent = self.getEventAt(nextStep, note)
-				if nextEvent:
-					self.patterns[self.pattern][nextStep].remove(nextEvent)
-					self.drawCell(nextStep, note)
+			self.addEvent(step,note)
+
+	# Function to remove an event
+	#	step: step (column) index
+	#	event: Event to remove
+	def removeEvent(self, step, event):
+		note = event[0]
+		self.patterns[self.pattern][step].remove(event)
+		self.noteOff(note)
+		self.drawCell(step, note, 0, 1)
+		self.selectCell(step, note)
+
+	# Function to add an event
+	#	step: step (column) index
+	#	note: Note number
+	def addEvent(self, step, note):
+		velocity = self.getMenuValue(MENU_VELOCITY)
+		duration = self.getMenuValue(MENU_DURATION)
+		event = [note, velocity, duration]
+		# Remove any subsequent overlapping notes
+		for nextStep in range(step, step + duration):
+			nextEvent = self.getEventAt(nextStep, note)
+			if nextEvent:
+				self.patterns[self.pattern][nextStep].remove(nextEvent)
+				self.drawCell(nextStep, note)
+		self.patterns[self.pattern][step].append(event)
+		self.noteOn(note, velocity)
+		self.noteOffTimer = threading.Timer(0.1, self.noteOff, [note]).start()
 		self.drawCell(step, note, velocity, duration)
 		self.selectCell(step, note)
 
@@ -387,7 +403,7 @@ class zynthian_gui_stepseq():
 			row = note - self.keyOrigin
 			if clearGrid:
 				# Create last note labels in grid
-				self.gridCanvas.create_text(self.gridWidth - 10, self.rowHeight * (self.getMenuValue(MENU_ROWS) - row - 0.5), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font)
+				self.gridCanvas.create_text(self.gridWidth - self.selectThickness, self.rowHeight * (self.getMenuValue(MENU_ROWS) - row - 0.5), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font, anchor="e")
 			id = "row%d" % (row)
 			if key in (0,2,4,5,7,9,11):
 				self.pianoRoll.itemconfig(id, fill="white")
@@ -458,7 +474,7 @@ class zynthian_gui_stepseq():
 
 	# Function to handle JACK process events
 	#	frames: Quantity of frames since last process event
-	#	TODO: Should move JACK handler to low-level library
+	#	TODO: Move JACK handler to low-level library
 	def onJackProcess(self, frames):
 		for offset, data in self.midiInput.incoming_midi_events():
 			if data[0] == b'\xf8': # MIDI Clock
@@ -556,9 +572,23 @@ class zynthian_gui_stepseq():
 	def savePatterns(self):
 		filename=os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.json"
 		os.makedirs(os.path.dirname(filename), exist_ok=True)
+#		# Remove empty patterns from end of list (which may have been automatically created but not used)
+#		for pattern in reversed(self.patterns):
+#			empty = True
+#			for step in pattern:
+#				if len(step):
+#					empty = False
+#					break
+#			if empty:
+#				self.patterns.remove(pattern)
+#			else:
+#				break
+#		if len(self.patterns) == 0:
+#			self.patterns = [[[] for st in range(16)]] # Default to empty 16 step pattern
 		try:
 			with open(filename, 'w') as f:
 				json.dump(self.patterns, f)
+			logging.info("Saved %d patterns", len(self.patterns))
 		except:
 			logging.error("Failed to save step sequence")
 
@@ -594,7 +624,6 @@ class zynthian_gui_stepseq():
 	def refreshMenu(self):
 		self.titleCanvas.itemconfig("lblMenu", text="%s: %s" % (self.menu[self.menuSelected]['title'], self.getMenuValue(self.menuSelected, False)))
 		self.titleCanvas.coords("rectMenu", self.titleCanvas.bbox("lblMenu"))
-
 
 	# Function to get menu value
 	#	menuItem: Index of menu item
@@ -637,19 +666,16 @@ class zynthian_gui_stepseq():
 			event = self.getEventAt(self.selectedCell[0], self.selectedCell[1])
 			if event:
 				event[2] = value
-				self.drawCell(self.selectedCell[0], self.selectedCell[1], event[1], event[2])
-			self.selectCell(self.selectedCell[0], self.selectedCell[1])
+				self.addEvent(self.selectedCell[0], event[0])
 		elif menuItem == MENU_PATTERN or menuItem == MENU_COPY:
 			self.menu[MENU_COPY]['value'] = value# update copy pattern index  when pattern value changes
 			self.menu[MENU_CLEAR]['value'] = value# update clear pattern index when pattern value changes
 			if value >= len(self.patterns):
 				self.patterns.append([[] for st in range(16)]) # Dynamically create extra patterns
 			self.loadPattern(value - 1)
-			#TODO: Remove empty patterns
 		elif menuItem == MENU_STEPS:
 			for step in range(self.gridColumns, value):
 				self.patterns[self.pattern].append([])
-				#TODO: Remove steps if BACK pressed
 			self.gridColumns = value
 			if zyncoder.lib_zyncoder:
 				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_STEP]
@@ -723,7 +749,7 @@ class zynthian_gui_stepseq():
 			if zyncoder.lib_zyncoder:
 				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
 				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_MENU]
-				zyncoder.lib_zyncoder.setup_zyncoder(ENC_MENU,pin_a,pin_b,0,0,None,self.getMenuValue(self.menuSelected),self.menu[self.menuSelected]['max'],0)
+				zyncoder.lib_zyncoder.setup_zyncoder_with_min(ENC_MENU,pin_a,pin_b,0,0,None,self.getMenuValue(self.menuSelected),self.menu[self.menuSelected]['min'],self.menu[self.menuSelected]['max'],0)
 		else:
 			# Exit value edit mode
 			self.titleCanvas.itemconfig("rectMenu", fill=zynthian_gui_config.color_header_bg)
@@ -734,6 +760,7 @@ class zynthian_gui_stepseq():
 					self.copyPattern(self.getMenuValue(MENU_PATTERN) - 1, self.pattern)
 					self.setMenuValue(MENU_PATTERN, self.pattern + 1)
 			elif self.menuSelected == MENU_STEPS:
+				self.patterns[self.pattern] = self.patterns[self.pattern][:self.gridColumns] # Remove any extra steps added
 				self.loadPattern(self.pattern)
 			if zyncoder.lib_zyncoder:
 				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
@@ -760,7 +787,6 @@ class zynthian_gui_stepseq():
 			self.menuSelected = value
 			self.refreshMenu()
 			if zyncoder.lib_zyncoder:
-				#TODO: Are we setting zyncoder for menu item list twice?
 				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
 				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_MENU]
 				zyncoder.lib_zyncoder.setup_zyncoder(ENC_MENU,pin_a,pin_b,0,0,None,self.menuSelected,len(self.menu) - 1,0)
