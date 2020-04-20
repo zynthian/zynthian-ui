@@ -307,21 +307,24 @@ class zynthian_gui_stepseq():
 			return
 		velocity = self.getMenuValue(MENU_VELOCITY)
 		duration = self.getMenuValue(MENU_DURATION)
-		for event in self.patterns[self.pattern][step]:
-			if event[0] == note:
-				self.patterns[self.pattern][step].remove(event)
-				velocity = 0
-				self.noteOff(note)
-				break
-		if velocity:
-			self.patterns[self.pattern][step].append([note, velocity, duration])
+		event = self.getEventAt(step, note)
+		if event:
+			self.patterns[self.pattern][step].remove(event)
+			velocity = 0
+			self.noteOff(note)
+			duration = 1 # Duration used by drawCell
+		else:
+			event = [note, velocity, duration]
+			self.patterns[self.pattern][step].append(event)
 			self.noteOn(note, velocity)
 			self.noteOffTimer = threading.Timer(0.1, self.noteOff, [note]).start()
-		else:
-			duration = 1
-		if note >= self.keyOrigin and note <= self.keyOrigin + self.getMenuValue(MENU_ROWS):
-			self.selectCell(step, note)
+			for nextStep in range(step + 1, step + duration):
+				nextEvent = self.getEventAt(nextStep, note)
+				if nextEvent:
+					self.patterns[self.pattern][nextStep].remove(nextEvent)
+					self.drawCell(nextStep, note)
 		self.drawCell(step, note, velocity, duration)
+		self.selectCell(step, note)
 
 	# Function to get cell coordinates
 	def getCell(self, col, row, duration):
@@ -354,10 +357,16 @@ class zynthian_gui_stepseq():
 			# Create new cell
 			cell = self.gridCanvas.create_rectangle(coord, fill=fill, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step))
 			self.gridCanvas.tag_bind(cell, '<Button-1>', self.onCanvasClick)
+		if step + duration > self.gridColumns:
+			if duration > 1:
+				self.gridCanvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - self.gridColumns + step), state="normal")
+		elif step + duration == self.gridColumns:
+				self.gridCanvas.itemconfig("lastnotetext%d" % row, state="hidden")
 
 	# Function to draw grid
 	#	clearGrid: True to clear grid and create all new elements, False to reuse existing elements if they exist
 	def drawGrid(self, clearGrid = False):
+		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.rowHeight * 0.5))
 		if clearGrid:
 			self.gridCanvas.delete(tkinter.ALL)
 			self.stepWidth = (self.gridWidth - 2) / self.gridColumns
@@ -365,9 +374,8 @@ class zynthian_gui_stepseq():
 		# Draw cells of grid
 		self.gridCanvas.itemconfig("gridcell", fill="black")
 		for step in range(self.gridColumns):
-			if clearGrid:
-				for note in range(self.keyOrigin, self.keyOrigin + self.getMenuValue(MENU_ROWS)):
-					self.drawCell(step, note, 0)
+			for note in range(self.keyOrigin, self.keyOrigin + self.getMenuValue(MENU_ROWS)):
+				self.drawCell(step, note, 0)
 			for event in self.patterns[self.pattern][step]:
 				if len(event):
 					self.drawCell(step, event[0], event[1], event[2])
@@ -377,11 +385,14 @@ class zynthian_gui_stepseq():
 			# Update pianoroll keys
 			key = note % 12
 			row = note - self.keyOrigin
+			if clearGrid:
+				# Create last note labels in grid
+				self.gridCanvas.create_text(self.gridWidth - 10, self.rowHeight * (self.getMenuValue(MENU_ROWS) - row - 0.5), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font)
 			id = "row%d" % (row)
 			if key in (0,2,4,5,7,9,11):
 				self.pianoRoll.itemconfig(id, fill="white")
 				if key == 0:
-					self.pianoRoll.create_text((self.pianoRollWidth / 2, self.rowHeight * (self.getMenuValue(MENU_ROWS) - row - 0.5)), text="C%d (%d)" % ((self.keyOrigin + row) // 12 - 1, self.keyOrigin + row), font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.rowHeight * 0.5)), fill=CANVAS_BACKGROUND, tags="notename")
+					self.pianoRoll.create_text((self.pianoRollWidth / 2, self.rowHeight * (self.getMenuValue(MENU_ROWS) - row - 0.5)), text="C%d (%d)" % ((self.keyOrigin + row) // 12 - 1, self.keyOrigin + row), font=font, fill=CANVAS_BACKGROUND, tags="notename")
 			else:
 				self.pianoRoll.itemconfig(id, fill="black")
 		# Redraw gridlines
@@ -524,7 +535,7 @@ class zynthian_gui_stepseq():
 		else:
 			cell = self.gridCanvas.find_withtag("selection")
 			row = note - self.keyOrigin
-			duration = 1
+			duration = self.getMenuValue(MENU_DURATION)
 			if event:
 				duration = event[2]
 			coord = self.getCell(step, row, duration)
@@ -601,9 +612,12 @@ class zynthian_gui_stepseq():
 
 	# Function to get event for a given note at a given step
 	def getEventAt(self, step, note):
-		for event in self.patterns[self.pattern][step]:
-			if event[0] == note:
-				return event
+		try:
+			for event in self.patterns[self.pattern][step]:
+				if event[0] == note:
+					return event
+		except:
+			return None
 
 	# Function to set menu value
 	#	menuItem: Index of menu item
@@ -620,10 +634,11 @@ class zynthian_gui_stepseq():
 					event[1] = value
 					self.drawCell(self.selectedCell[0], self.selectedCell[1], event[1], event[2])
 		elif menuItem == MENU_DURATION:
-			for event in self.patterns[self.pattern][self.selectedCell[0]]:
-				if event[0] == self.selectedCell[1]:
-					event[2] = value
-					self.drawCell(self.selectedCell[0], self.selectedCell[1], event[1], event[2])
+			event = self.getEventAt(self.selectedCell[0], self.selectedCell[1])
+			if event:
+				event[2] = value
+				self.drawCell(self.selectedCell[0], self.selectedCell[1], event[1], event[2])
+			self.selectCell(self.selectedCell[0], self.selectedCell[1])
 		elif menuItem == MENU_PATTERN or menuItem == MENU_COPY:
 			self.menu[MENU_COPY]['value'] = value# update copy pattern index  when pattern value changes
 			self.menu[MENU_CLEAR]['value'] = value# update clear pattern index when pattern value changes
@@ -651,6 +666,7 @@ class zynthian_gui_stepseq():
 				zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
 			self.drawGrid()
 		elif menuItem == MENU_ROWS:
+			# Zoom
 			self.updateRowHeight()
 			self.drawGrid(True)
 		elif menuItem == MENU_TIMECODE:
