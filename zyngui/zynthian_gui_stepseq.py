@@ -83,7 +83,6 @@ class zynthian_gui_stepseq():
 
 	# Function to initialise class
 	def __init__(self):
-		self.redrawPlayhead = False # Flag indicating main process should redraw playhead
 		self.playDirection = 1 # Direction of playhead [0, -1]
 		self.clock = 0 # Count of MIDI clock pulses since last step [0..24]
 		self.status = "STOP" # Play status [STOP | PLAY]
@@ -221,7 +220,56 @@ class zynthian_gui_stepseq():
 		self.midiOutput = self.jackClient.midi_outports.register("output")
 		self.jackClient.set_process_callback(self.onJackProcess)
 		self.jackClient.activate()
+		
+		# Thread to process MIDI clock ticks
+		self.clkEvent = threading.Event()
+		self.startClockHandler()
+
 		self.selectCell(0, self.keyOrigin + int(self.getMenuValue(MENU_ROWS) / 2))
+
+	# Function to handle MIDI clock ticks
+	def startClockHandler(self):
+		def onClock(event):
+			while(not self.zyngui.exit_flag): #TODO: Add trigger to stop thread
+				event.wait()
+				if self.status == "PLAY":
+					if self.clock == 0:
+						# Time to process note on
+						for note in self.patterns[self.pattern][self.playhead]:
+							self.noteOn(note[0], note[1])
+					if self.clock >= self.getMenuValue(MENU_CLOCKDIV) - 1:
+						# Time to process note off
+						for note in self.patterns[self.pattern][self.playhead]:
+							self.noteOff(note[0])
+						self.clock = 0
+						self.playhead = self.playhead + self.playDirection
+						if self.playhead >= self.gridColumns:
+							if self.getMenuValue(MENU_PLAYMODE):
+								self.playhead = self.gridColumns - 2
+								self.playDirection = -1
+							else:
+								self.playhead = 0
+						elif self.playhead < 0:
+							if self.getMenuValue(MENU_PLAYMODE) == 1:
+								self.playhead = self.gridColumns - 1
+							else:
+								self.playhead = 1
+								self.playDirection = 1
+					else:
+						self.clock = self.clock + 1
+					# Send MIDI events
+					self.midiOutput.clear_buffer();
+					for out in self.midiOutQueue:
+						self.midiOutput.write_midi_event(0, out)
+					self.midiOutQueue.clear()
+					if self.shown:
+						# Draw play head cursor
+						self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
+						self.redrawPlayhead = False
+					event.clear()
+
+		thread = threading.Thread(target=onClock, daemon=True, args=(self.clkEvent,))
+		thread.start()
 
 	# Function to print traceback
 	#	TODO: Remove debug function (or move to other zynthian class)
@@ -287,11 +335,6 @@ class zynthian_gui_stepseq():
 	# Function to handle end of pianoroll drag
 	def onPianoRollDragEnd(self, event):
 		self.pianoRollDragStart = None
-
-	# Function to draw the play head cursor
-	def drawPlayhead(self):
-		self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
-		self.redrawPlayhead = False
 
 	# Function to handle mouse click / touch
 	#	event: Mouse event
@@ -471,43 +514,13 @@ class zynthian_gui_stepseq():
 			self.status = "PLAY"
 			self.playCanvas.itemconfig("playCursor", state = 'normal')
 
-
 	# Function to handle JACK process events
 	#	frames: Quantity of frames since last process event
 	#	TODO: Move JACK handler to low-level library
 	def onJackProcess(self, frames):
 		for offset, data in self.midiInput.incoming_midi_events():
 			if data[0] == b'\xf8': # MIDI Clock
-				if self.status == "PLAY":
-					if self.clock == 0:
-						# Time to process note on
-						for note in self.patterns[self.pattern][self.playhead]:
-							self.noteOn(note[0], note[1])
-					if self.clock >= self.getMenuValue(MENU_CLOCKDIV) - 1:
-						# Time to process note off
-						for note in self.patterns[self.pattern][self.playhead]:
-							self.noteOff(note[0])
-						self.clock = 0
-						self.redrawPlayhead = True # Flag playhead needs redrawing
-						self.playhead = self.playhead + self.playDirection
-						if self.playhead >= self.gridColumns:
-							if self.getMenuValue(MENU_PLAYMODE):
-								self.playhead = self.gridColumns - 2
-								self.playDirection = -1
-							else:
-								self.playhead = 0
-						elif self.playhead < 0:
-							if self.getMenuValue(MENU_PLAYMODE) == 1:
-								self.playhead = self.gridColumns - 1
-							else:
-								self.playhead = 1
-								self.playDirection = 1
-					else:
-						self.clock = self.clock + 1
-		self.midiOutput.clear_buffer();
-		for out in self.midiOutQueue:
-			self.midiOutput.write_midi_event(0, out)
-		self.midiOutQueue.clear()
+				self.clkEvent.set()
 
 	# Function to draw pianoroll keys (does not fill key colour)
 	def drawPianoroll(self):
@@ -831,8 +844,6 @@ class zynthian_gui_stepseq():
 	# Function to handle zyncoder polling
 	def zyncoder_read(self):
 		#TODO: Don't want to use zyncoder read to paint playhead
-		if self.redrawPlayhead:
-			self.drawPlayhead()
 		if not self.shown or self.zyncoderMutex:
 			return
 		if zyncoder.lib_zyncoder:
