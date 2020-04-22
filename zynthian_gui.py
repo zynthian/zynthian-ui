@@ -382,6 +382,8 @@ class zynthian_gui:
 
 		self.lock.acquire()
 		self.hide_screens(exclude=screen)
+		if screen=='control':
+			self.screens['layer'].restore_curlayer()
 		self.screens[screen].show()
 		self.active_screen = screen
 		self.modal_screen = None
@@ -1474,7 +1476,7 @@ class zynthian_gui:
 
 	def zynautoconnect_audio(self, force=False):
 		if force:
-			zynautoconnect.midi_autoconnect(True)
+			zynautoconnect.audio_autoconnect(True)
 		else:
 			self.zynautoconnect_audio_flag = True
 
