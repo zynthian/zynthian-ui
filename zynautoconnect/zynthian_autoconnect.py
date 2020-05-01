@@ -103,12 +103,13 @@ def midi_autoconnect(force=False):
 	if len(hw_in)==0:
 		hw_in=[]
 
-	#Add ZynthStep out port ...
-	zynthstep_out=jclient.get_ports("zynthstep", is_output=True, is_physical=False, is_midi=True)
-	try:
-		hw_out.append(zynthstep_out[0])
-	except:
-		pass
+	#Add internal MIDI-clock port ... 
+	if zynthian_gui_config.midi_clock_enabled:
+		mclock_out=jclient.get_ports("jack_midi_clock", is_output=True, is_physical=False, is_midi=True)
+		try:
+			hw_out.append(mclock_out[0])
+		except:
+			pass
 
 	#Add Aubio MIDI out port ...
 	if zynthian_gui_config.midi_aubionotes_enabled:
@@ -263,15 +264,21 @@ def midi_autoconnect(force=False):
 
 	#logger.debug("Connecting RTP-MIDI & QMidiNet to ZynMidiRouter:net_in ...")
 
-	#Connect RTP-MIDI Input Port to ZynMidiRouter:net_in
+	#Connect RTP-MIDI output to ZynMidiRouter:net_in
 	try:
 		jclient.connect(rtpmidi_out[0],zmr_in['net_in'])
 	except:
 		pass
 
-	#Connect QMidiNet Input Port to ZynMidiRouter:net_in
+	#Connect QMidiNet output to ZynMidiRouter:net_in
 	try:
 		jclient.connect(qmidinet_out[0],zmr_in['net_in'])
+	except:
+		pass
+
+	#Connect ZynthStep output to ZynMidiRouter:step_in
+	try:
+		jclient.connect("zynthstep:output", zmr_in['step_in'])
 	except:
 		pass
 
@@ -323,15 +330,21 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
-	#Connect ZynMidiRouter:net_out to QMidiNet Output Port
+	#Connect ZynMidiRouter:net_out to QMidiNet input
 	try:
 		jclient.connect(zmr_out['net_out'],qmidinet_in[0])
 	except:
 		pass
 
-	#Connect ZynMidiRouter:net_out to RTP-MIDI Output Port
+	#Connect ZynMidiRouter:net_out to RTP-MIDI input
 	try:
 		jclient.connect(zmr_out['net_out'],rtpmidi_in[0])
+	except:
+		pass
+
+	#Connect ZynMidiRouter:step_out to ZynthStep input
+	try:
+		jclient.connect(zmr_out['step_out'], "zynthstep:input")
 	except:
 		pass
 
@@ -344,19 +357,6 @@ def midi_autoconnect(force=False):
 				jclient.disconnect(zmr_out['ctrl_out'],hw)
 		except:
 			pass
-
-	# Connect MIDI clock to ZynthStep
-	if zynthian_gui_config.midi_clock_enabled:
-		try:
-			jclient.connect("jack_midi_clock:mclk_out","zynthstep:input")
-		except:
-			logger.error("Failed to connect internal MIDI clock to ZynthStep")
-	else: 
-		try:
-			# TODO: This should be configured from webconf ...
-			jclient.connect("a2j:MidiSport 2x2 [20] (capture): MidiSport 2x2 MIDI 1", "zynthstep:input")
-		except:
-			logger.error("Failed to connect external MIDI clock to ZynthStep")
 
 	#Release Mutex Lock
 	release_lock()

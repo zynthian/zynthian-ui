@@ -220,7 +220,9 @@ class zynthian_gui_stepseq():
 		self.midiOutput = self.jackClient.midi_outports.register("output")
 		self.jackClient.set_process_callback(self.onJackProcess)
 		self.jackClient.activate()
-		
+
+		self.zyngui.zyntransport.tempo(DEFAULT_BPM)
+
 		# Thread to process MIDI clock ticks
 		self.clkEvent = threading.Event()
 		self.startClockHandler()
@@ -483,6 +485,7 @@ class zynthian_gui_stepseq():
 			command = "START" if self.status == "STOP" else "STOP"
 		if command == "START":
 			logging.info("MIDI START")
+<<<<<<< HEAD
 			if(self.getMenuValue(MENU_PLAYMODE, False) == "Reverse"):
 				self.playDirection = -1
 				self.playhead = self.gridColumns - 1
