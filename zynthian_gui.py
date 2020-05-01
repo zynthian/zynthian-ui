@@ -111,9 +111,6 @@ class zynthian_gui:
 		"38": "TOGGLE_MIDI_PLAY",
 		"39": "START_MIDI_PLAY",
 		"40": "STOP_MIDI_PLAY",
-		"41": "START_STEP_SEQ",
-		"42": "CONTINUE_STEP_SEQ",
-		"43": "STOP_STEP_SEQ",
 
 		"51": "SELECT",
 		"52": "SELECT_UP",
@@ -601,15 +598,6 @@ class zynthian_gui:
 
 		elif cuia == "TOGGLE_MIDI_PLAY":
 			self.screens['midi_recorder'].toggle_playing()
-
-		elif cuia == "START_STEP_SEQ":
-			self.screens['stepseq'].setPlayState("START")
-
-		elif cuia == "CONTINUE_STEP_SEQ":
-			self.screens['stepseq'].setPlayState("CONTINUE")
-
-		elif cuia == "STOP_STEP_SEQ":
-			self.screens['stepseq'].setPlayState("STOP")
 
 		elif cuia == "SELECT":
 			try:
@@ -1108,13 +1096,13 @@ class zynthian_gui:
 						pass
 					# Start
 					elif chan==0xA:
-						self.callable_ui_action("START_STEP_SEQ")
+						pass
 					# Continue
 					elif chan==0xB:
-						self.callable_ui_action("CONTINUE_STEP_SEQ")
+						pass
 					# Stop
 					elif chan==0xC:
-						self.callable_ui_action("STOP_STEP_SEQ")
+						pass
 					# Active Sensing
 					elif chan==0xE:
 						pass
