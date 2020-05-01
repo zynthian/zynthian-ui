@@ -340,7 +340,7 @@ class zynthian_gui:
 			# Init MIDI Subsystem => MIDI Profile
 			self.init_midi()
 			self.init_midi_services()
-			self.zyngui.zynautoconnect()
+			self.zynautoconnect()
 			# Show "load snapshot" popup. Autoclose if no snapshots available ...
 			#self.load_snapshot(autoclose=True)
 			# Show initial screen
