@@ -63,6 +63,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.reset_clone()
 		self.reset_transpose()
 		self.remove_all_layers(True)
+		self.reset_midi_profile()
 
 
 	def toggle_show_all_layers(self):
@@ -384,9 +385,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Stop ALL engines
 		if stop_engines:
 			self.zyngui.screens['engine'].stop_unused_engines()
-
-		# Reset MIDI config
-		self.reset_midi_profile()
 
 		# Refresh UI
 		self.fill_list()

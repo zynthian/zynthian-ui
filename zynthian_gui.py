@@ -316,11 +316,7 @@ class zynthian_gui:
 		self.screens['autoeq'] = zynthian_gui_autoeq()
 		self.screens['stepseq'] = zynthian_gui_stepseq()
 
-		# Init MIDI Subsystem => MIDI Profile
-		self.init_midi()
-		self.init_midi_services()
-
-		# Init Auto-connector (and call it for first time!)
+		# Init Auto-connector
 		zynautoconnect.start()
 
 		# Initialize OSC
@@ -341,6 +337,10 @@ class zynthian_gui:
 				snapshot_loaded=self.screens['layer'].load_snapshot(default_snapshot_fpath)
 
 		if not snapshot_loaded:
+			# Init MIDI Subsystem => MIDI Profile
+			self.init_midi()
+			self.init_midi_services()
+			self.zyngui.zynautoconnect()
 			# Show "load snapshot" popup. Autoclose if no snapshots available ...
 			#self.load_snapshot(autoclose=True)
 			# Show initial screen
