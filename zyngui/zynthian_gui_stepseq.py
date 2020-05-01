@@ -485,7 +485,6 @@ class zynthian_gui_stepseq():
 			command = "START" if self.status == "STOP" else "STOP"
 		if command == "START":
 			logging.info("MIDI START")
-<<<<<<< HEAD
 			if(self.getMenuValue(MENU_PLAYMODE, False) == "Reverse"):
 				self.playDirection = -1
 				self.playhead = self.gridColumns - 1
