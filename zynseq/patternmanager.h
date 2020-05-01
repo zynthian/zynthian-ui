@@ -71,6 +71,12 @@ class PatternManager
 		*/
 		void clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule);
 
+		/**	@brief	Set the tempo scale for each sequence
+		*	@param	tempo Tempo (BPM)
+		*	@param	samplerate (samples per second)
+		*/
+		void setSequenceScale(uint32_t tempo, uint32_t samplerate);
+
 	private:
 		PatternManager(); // Private constructor to avoid public instantiation
 		PatternManager(const PatternManager&); // Do not allow public copying

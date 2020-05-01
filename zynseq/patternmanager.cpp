@@ -244,13 +244,21 @@ void PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSc
 	*/
 	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
 	{
-		it->second.clock(nTime);
-		while(SEQ_EVENT* pEvent = it->second.getEvent())
+		if(it->second.clock(nTime))
 		{
-			while(pSchedule->find(pEvent->time) != pSchedule->end())
-				++(pEvent->time);
-			(*pSchedule)[pEvent->time] = new MIDI_MESSAGE(pEvent->msg);
-			printf("Scheduling event 0x%x at %d\n", pEvent->msg.command, pEvent->time);
+			while(SEQ_EVENT* pEvent = it->second.getEvent())
+			{
+				while(pSchedule->find(pEvent->time) != pSchedule->end())
+					++(pEvent->time);
+				(*pSchedule)[pEvent->time] = new MIDI_MESSAGE(pEvent->msg);
+				//printf("Scheduling event 0x%x 0x%x 0x%x at %d\n", pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
+			}
 		}
 	}
+}
+
+void PatternManager::setSequenceScale(uint32_t tempo, uint32_t samplerate)
+{
+	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
+		it->second.setScale(tempo, samplerate);
 }

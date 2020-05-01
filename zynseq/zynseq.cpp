@@ -41,6 +41,7 @@ bool g_bRunning = true; // False to stop clock thread, e.g. on exit
 jack_nframes_t g_nSamplerate; // Quantity of samples per second
 jack_nframes_t g_nBufferSize; // Quantity of samples in JACK buffer passed each process cycle
 std::map<uint32_t,MIDI_MESSAGE*> g_mSchedule; // Schedule of MIDI events (queue for sending), indexed by scheduled play time (samples since JACK epoch)
+uint32_t g_nTempo = 120; // BPM
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
@@ -137,6 +138,7 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
 {
 	printf("zynseq: Jack samplerate: %d\n", nFrames);
 	g_nSamplerate = nFrames;
+	PatternManager::getPatternManager()->setSequenceScale(g_nTempo, g_nSamplerate);
 	return 0;
 }
 
@@ -386,4 +388,11 @@ uint32_t getSequenceLength(uint32_t sequence)
 void clearSequence(uint32_t sequence)
 {
 	PatternManager::getPatternManager()->getSequence(sequence)->clear();
+}
+
+void setTempo(uint32_t tempo)
+{
+	printf("Tempo: %dBPM\n", tempo);
+	g_nTempo = tempo;
+	PatternManager::getPatternManager()->setSequenceScale(g_nTempo, g_nSamplerate);
 }

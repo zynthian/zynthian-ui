@@ -83,9 +83,10 @@ class Sequence
 
 		/**	@brief	Handle clock signal
 		*	@param	nTime Time (quantity of samples since JACK epoch)
+		*	@retval	bool True if clock triggers a sequence step
 		*	@note	Adds pending events from sequence to JACK queue
 		*/
-		void clock(uint32_t nTime);
+		bool clock(uint32_t nTime);
 
 		/**	@brief	Gets next event at current clock cycle
 		*	@retval	SEQ_EVENT* Pointer to sequence event at this time or NULL if no more events
@@ -121,6 +122,10 @@ class Sequence
 		*/
 		uint32_t getPlayPosition();
 
+		/**	@brief	Set time scale
+		*/
+		void setScale(uint32_t tempo, uint32_t samplerate);
+
 	private:
 		uint8_t m_nChannel = 0; // MIDI channel shifted left 4 bits
 		uint8_t m_nOutput = 0; // JACK output
@@ -135,6 +140,6 @@ class Sequence
 		uint32_t m_nCurrentTime = 0; // Time of last clock pulse
 		uint32_t m_nPatternCursor = 0; // Postion within pattern (clock cycle)
 		uint32_t m_nSequenceLength = 0; // Quantity of clock cycles in sequence (last pattern start + length)
-		uint32_t m_nTimeScale = 44100 * 60 / 120; // Scaling factor for time offset
+		uint32_t m_nTimeScale = 44100 * 10 / (60 * 24); // Scaling factor for time offset
 		uint32_t m_nSamplerate = 44100; // Samplerate of JACK server
 };

@@ -542,7 +542,8 @@ class zynthian_gui_stepseq():
 			self.updateRowHeight()
 			self.drawGrid(True)
 		elif menuItem == MENU_TEMPO:
-			self.zyngui.zyntransport.tempo(value)
+			#self.zyngui.zyntransport.tempo(value)
+			self.libseq.setTempo(value)
 		elif menuItem == MENU_GRID:
 			self.drawGrid()
 

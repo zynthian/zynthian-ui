@@ -100,20 +100,23 @@ void Sequence::togglePlayMode()
 		setPlayMode(STOP);
 }
 
-void Sequence::clock(uint32_t nTime)
+bool Sequence::clock(uint32_t nTime)
 {
+	// Clock cycle - update position and associated counters, status, etc.
 	if(m_nState == STOP || ++m_nDivCount < m_nDivisor)
-		return;
+		return false;
 	//printf("Sequence::clock %d/%d/%d/%d/%d\n", m_nState, m_nPosition, m_nDivCount, m_nDivisor, nTime);
-	if(m_nPosition >= m_nSequenceLength)
-	{
-		if(m_nState != LOOP)
-			m_nState = STOP;
-		m_nPosition = 0;
-		return; //!@todo Not sure we should return at end of pattern - shouldn't we continue to process if looping
-	}
 	m_nCurrentTime = nTime;
 	m_nDivCount = 0;
+	if(m_nPosition >= m_nSequenceLength)
+	{
+		m_nPosition = 0;
+		if(m_nState != LOOP)
+		{
+			m_nState = STOP;
+			return false;
+		}
+	}
 	if(m_mPatterns.find(m_nPosition) != m_mPatterns.end())
 	{
 		// Play head at start of pattern
@@ -122,6 +125,7 @@ void Sequence::clock(uint32_t nTime)
 		m_nNextEvent = 0;
 		m_nDivisor = m_mPatterns[m_nCurrentPattern]->getDivisor();
 		m_nDivCount = 0;
+		m_nEventValue = -1;
 	}
 	else if(m_nCurrentPattern >= 0 && m_nPatternCursor >= m_mPatterns[m_nCurrentPattern]->getLength())
 	{
@@ -135,32 +139,34 @@ void Sequence::clock(uint32_t nTime)
 	else
 	{
 		// Within a pattern
-		++m_nPatternCursor;
+		m_nPatternCursor += m_nDivisor;
 	}
-	++m_nPosition;
+	m_nPosition += m_nDivisor;
+	return true;
 }
 
 SEQ_EVENT* Sequence::getEvent()
 {
-	static SEQ_EVENT seqEvent;
+	// This function is called repeatedly for each clock period until no more events are available to populate JACK MIDI output schedule
+	static SEQ_EVENT seqEvent; // A MIDI event timestamped for some imminent or future time
 	if(m_nState == STOP || m_nCurrentPattern < 0 || m_nNextEvent < 0)
 		return NULL;
-	// Sequence is being played and playhead is within a pattern and event cursor is valid
+	// Sequence is being played and playhead is within a pattern
 	Pattern* pPattern = m_mPatterns[m_nCurrentPattern];
 	StepEvent* pEvent = pPattern->getEventAt(m_nNextEvent); // Don't advance event here because need to interpolate
-	if(pEvent)
+	if(pEvent && pEvent->getPosition() == m_nPatternCursor)
 	{
 		if(m_nEventValue == pEvent->getValue2end())
 		{
 			// We have reached the end of interpolation so move on to next event
+			m_nEventValue = -1;
 			pEvent = pPattern->getEventAt(++m_nNextEvent);
 			if(!pEvent || pEvent->getPosition() != m_nPatternCursor)
 			{
-				m_nEventValue = -1;
 				return NULL;
 			}
 		}
-		else if(m_nEventValue == -1)
+		if(m_nEventValue == -1)
 		{
 			// Have not yet started to interpolate value
 			m_nEventValue = pEvent->getValue2start();
@@ -168,14 +174,14 @@ SEQ_EVENT* Sequence::getEvent()
 		}
 		else if(pEvent->getValue2start() == m_nEventValue)
 		{
+			// Already processed start value
 			m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
-			seqEvent.time = m_nCurrentTime + pEvent->getDuration() * m_nTimeScale;
+			seqEvent.time = m_nCurrentTime + pEvent->getDuration() * m_nTimeScale; //!@todo Set m_nTimeScale
 		}
 	}
 	else
 	{
 		m_nEventValue = -1;
-		m_nNextEvent = -1;
 		return NULL;
 	}
 	seqEvent.msg.command = pEvent->getCommand() | m_nChannel;
@@ -223,4 +229,9 @@ uint32_t Sequence::getPatternPlayhead()
 uint32_t Sequence::getPlayPosition()
 {
 	return m_nPosition;
+}
+
+void Sequence::setScale(uint32_t tempo, uint32_t samplerate)
+{
+	m_nTimeScale = samplerate * 60 * m_nDivisor / (tempo * 24);
 }
