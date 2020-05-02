@@ -57,21 +57,21 @@ void Pattern::deleteEvent(uint32_t position, uint8_t command, uint8_t value1)
 void Pattern::addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
 {
 	//!@todo Should we limit note length to size of pattern?
-	if(step >= m_nLength / m_nDivisor || note > 127 || velocity > 127 || duration > m_nLength / m_nDivisor)
+	if(step >= m_nLength || note > 127 || velocity > 127 || duration > m_nLength)
 		return;
-	addEvent(step * m_nDivisor, MIDI_NOTE_ON, note, velocity, duration * m_nDivisor);
+	addEvent(step, MIDI_NOTE_ON, note, velocity, duration);
 }
 
 void Pattern::removeNote(uint32_t step, uint8_t note)
 {
-	deleteEvent(step * m_nDivisor, MIDI_NOTE_ON, note);
+	deleteEvent(step, MIDI_NOTE_ON, note);
 }
 
 uint8_t Pattern::getNoteVelocity(uint32_t step, uint8_t note)
 {
 	for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
 	{
-		if((*it).getPosition() == step * m_nDivisor && (*it).getCommand() == MIDI_NOTE_ON && (*it).getValue1start() == note)
+		if((*it).getPosition() == step && (*it).getCommand() == MIDI_NOTE_ON && (*it).getValue1start() == note)
 		return (*it).getValue2start();
 	}
 	return 0;
@@ -83,43 +83,43 @@ void Pattern::setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
 		return;
 	for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
 	{
-		if((*it).getPosition() == step * m_nDivisor && (*it).getCommand() == MIDI_NOTE_ON && (*it).getValue1start() == note)
+		if((*it).getPosition() == step && (*it).getCommand() == MIDI_NOTE_ON && (*it).getValue1start() == note)
 			(*it).setValue2start(velocity);
 	}
 }
 
 uint8_t Pattern::getNoteDuration(uint32_t step, uint8_t note)
 {
-	if(step * m_nDivisor > m_nLength)
+	if(step >= m_nLength)
 		return 0;
 	for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
 	{
-		if((*it).getPosition() != step * m_nDivisor || (*it).getCommand() != MIDI_NOTE_ON || (*it).getValue1start() != note)
+		if((*it).getPosition() != step || (*it).getCommand() != MIDI_NOTE_ON || (*it).getValue1start() != note)
 			continue;
-		return (*it).getDuration() / m_nDivisor;
+		return (*it).getDuration();
 	}
 	return 0;
 }
 
 void Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, uint32_t duration)
 {
-	uint32_t nDuration = duration * m_nDivisor;
-	if(step * m_nDivisor > m_nLength || control > 127 || valueStart > 127|| valueEnd > 127 || nDuration * m_nDivisor > m_nLength)
+	uint32_t nDuration = duration;
+	if(step > m_nLength || control > 127 || valueStart > 127|| valueEnd > 127 || nDuration > m_nLength)
 		return;
-	StepEvent* pControl = new StepEvent(step * m_nDivisor, control, valueStart, nDuration * m_nDivisor);
+	StepEvent* pControl = new StepEvent(step, control, valueStart, nDuration);
 	pControl->setValue2end(valueEnd);
-	StepEvent* pEvent = addEvent(step * m_nDivisor, MIDI_CONTROL, control, valueStart, nDuration);
+	StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, nDuration);
 	pEvent->setValue2end(valueEnd);
 }
 
 void Pattern::removeControl(uint32_t step, uint8_t control)
 {
-	deleteEvent(step * m_nDivisor, MIDI_CONTROL, control);
+	deleteEvent(step, MIDI_CONTROL, control);
 }
 
 void Pattern::setSteps(uint32_t steps)
 {
-	uint32_t length = steps * m_nDivisor;
+	uint32_t length = steps;
 	size_t nIndex = 0;
 	for(; nIndex < m_vEvents.size(); ++nIndex)
 		if(m_vEvents[nIndex].getPosition() >= length)
@@ -128,7 +128,7 @@ void Pattern::setSteps(uint32_t steps)
 	m_nLength = length;
 }
 
-void Pattern::setDivisor(uint32_t value)
+void Pattern::setClockDivisor(uint32_t value)
 {
 	m_nDivisor = value;
 	//!@todo quantize events

@@ -44,6 +44,7 @@ std::map<uint32_t,MIDI_MESSAGE*> g_mSchedule; // Schedule of MIDI events (queue 
 int32_t g_nTempo = 120; // BPM
 int32_t g_nClockCounter; // MIDI clock generator frame  counter
 bool g_bDebug = false; // True to output debug info
+bool g_bSendClock = false; // True to send MIDI clock to MIDI output
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
@@ -59,7 +60,16 @@ void onClock()
 		while(g_bClockIdle)
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		g_bClockIdle = true;
-		PatternManager::getPatternManager()->clock(jack_last_frame_time(g_pJackClient) + g_nBufferSize, &g_mSchedule);
+		jack_time_t nTime = jack_last_frame_time(g_pJackClient);
+		PatternManager::getPatternManager()->clock(nTime + g_nBufferSize, &g_mSchedule);
+		if(g_bSendClock)
+		{
+			while(g_mSchedule.find(nTime) != g_mSchedule.end())
+				++nTime;
+			MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
+			pMsg->command = MIDI_CLOCK;
+			g_mSchedule[nTime] = pMsg;
+		}
 	}
 }
 
@@ -294,6 +304,20 @@ void setSteps(uint32_t steps)
 	PatternManager::getPatternManager()->updateSequenceLengths();
 }
 
+uint32_t getClockDivisor()
+{
+	if(g_pPattern)
+		return g_pPattern->getClockDivisor();
+	return 6;
+}
+
+void setClockDivisor(uint32_t divisor)
+{
+	if(g_pPattern)
+		g_pPattern->setClockDivisor(divisor);
+	PatternManager::getPatternManager()->updateSequenceLengths();
+}
+
 void addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
 {
 	if(g_pPattern)
@@ -340,6 +364,8 @@ void clear()
 
 void copyPattern(uint32_t source, uint32_t destination)
 {
+	if(source == destination)
+		return;
 	Pattern* pSource = PatternManager::getPatternManager()->getPattern(source);
 	Pattern* pDestination = PatternManager::getPatternManager()->getPattern(destination);
 	PatternManager::getPatternManager()->copyPattern(pSource, pDestination);

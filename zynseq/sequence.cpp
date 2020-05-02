@@ -124,11 +124,11 @@ bool Sequence::clock(uint32_t nTime)
 		m_nCurrentPattern = m_nPosition;
 		m_nPatternCursor = 0;
 		m_nNextEvent = 0;
-		m_nDivisor = m_mPatterns[m_nCurrentPattern]->getDivisor();
+		m_nDivisor = m_mPatterns[m_nCurrentPattern]->getClockDivisor();
 		m_nDivCount = 0;
 		m_nEventValue = -1;
 	}
-	else if(m_nCurrentPattern >= 0 && m_nPatternCursor >= m_mPatterns[m_nCurrentPattern]->getLength())
+	else if(m_nCurrentPattern >= 0 && m_nPatternCursor >= m_mPatterns[m_nCurrentPattern]->getSteps())
 	{
 		// Beyond pattern but not at start of another
 		m_nCurrentPattern = -1;
@@ -140,7 +140,7 @@ bool Sequence::clock(uint32_t nTime)
 	else
 	{
 		// Within a pattern
-		m_nPatternCursor += m_nDivisor;
+		++m_nPatternCursor;
 	}
 	m_nPosition += m_nDivisor;
 	return true;
@@ -219,7 +219,7 @@ void Sequence::clear()
 
 uint32_t Sequence::getStep()
 {
-	return m_nPatternCursor / m_nDivisor;
+	return m_nPatternCursor;
 }
 
 uint32_t Sequence::getPatternPlayhead()

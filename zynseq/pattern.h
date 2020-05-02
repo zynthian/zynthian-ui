@@ -5,7 +5,7 @@
 #include <memory>
 
 /**	StepEvent class provides an individual step event .
-*	The event may be part of a song, pattern or sequence. Events do not have MIDI channel which is applied by the function to play the event, e.g. pattern player assigned to specific channel. Events have the concept of position which is an offset from some epoch measured in MIDI clock cycles. The epoch depends on the function using the event, e.g. pattern player may use start of pattern as epoch (position = 0). There is a starting and end value to allow interpolation of MIDI events between the start and end positions.
+*	The event may be part of a song, pattern or sequence. Events do not have MIDI channel which is applied by the function to play the event, e.g. pattern player assigned to specific channel. Events have the concept of position which is an offset from some epoch measured in MIDI steps. The epoch depends on the function using the event, e.g. pattern player may use start of pattern as epoch (position = 0). There is a starting and end value to allow interpolation of MIDI events between the start and end positions.
 */
 class StepEvent
 {
@@ -64,7 +64,7 @@ class StepEvent
 		void setValue1end(uint8_t value) { m_nValue1end = value; };
 		void setValue2end(uint8_t value) { m_nValue2end = value; };
 	private:
-		uint32_t m_nPosition; // Start position of event in clock cycles
+		uint32_t m_nPosition; // Start position of event in steps
 		uint32_t m_nDuration; // Duration of event
 		uint8_t m_nCommand; // MIDI command without channel
 		uint8_t m_nValue1start; // MIDI value 1 at start of event
@@ -92,11 +92,11 @@ class Pattern
 		~Pattern();
 
 		/**	@brief	Add step event to pattern
-		*	@param	position Quantity of clock cycles from start of pattern
+		*	@param	position Quantity of steps from start of pattern
 		*	@param	command MIDI command
 		*	@param	value1 MIDI value 1
 		*	@param	value2 MIDI value 2
-		*	@param	duration Event duration in clock cycles
+		*	@param	duration Event duration in steps cycles
 		*/
 		StepEvent* addEvent(uint32_t position, uint8_t command, uint8_t value1 = 0, uint8_t value2 = 0, uint32_t duration = 1);
 
@@ -170,22 +170,22 @@ class Pattern
 		/**	@brief	Get quantity of steps in pattern
 		*	@retval	uint32_t Quantity of steps
 		*/
-		uint32_t getSteps() { return m_nLength / m_nDivisor; };
+		uint32_t getSteps() { return m_nLength; };
 
-		/**	@brief	Get length of pattern in clock cycles
-		*	@retval uint32_t Length of pattern in clock cycles
+		/**	@brief	Get length of pattern in steps
+		*	@retval uint32_t Length of pattern in steps
 		*/
-		uint32_t getLength() { return m_nLength; };
+		uint32_t getLength() { return m_nLength * m_nDivisor; };
 
 		/**	@brief	Set quantity of clocks per step
 		*	@param	value Quantity of clock cycles per step
 		*/
-		void setDivisor(uint32_t value);
+		void setClockDivisor(uint32_t value);
 
 		/**	@brief	Get quantity of clocks per step
 		*	@retval	uint32_t Quantity of clocks per step
 		*/
-		uint32_t getDivisor() { return m_nDivisor; };
+		uint32_t getClockDivisor() { return m_nDivisor; };
 
 		/**	@brief	Transpose all notes within pattern
 		*	@param	value Offset to transpose
@@ -206,6 +206,6 @@ class Pattern
 		void deleteEvent(uint32_t position, uint8_t command, uint8_t value1);
 
 		std::vector<StepEvent> m_vEvents; // Vector of pattern events
-		uint32_t m_nLength; // Quantity of clock cycles in pattern
+		uint32_t m_nLength; // Quantity of steps in pattern
 		uint32_t m_nDivisor; // Clock cycles per step
 };

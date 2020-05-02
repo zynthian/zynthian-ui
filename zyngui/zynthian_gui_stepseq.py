@@ -52,15 +52,16 @@ MAX_STEPS			= 64
 MENU_PATTERN		= 0
 MENU_VELOCITY		= 1
 MENU_DURATION		= 2
-MENU_STEPS			= 3
-MENU_COPY			= 4
-MENU_CLEAR			= 5
-MENU_TRANSPOSE		= 6
-MENU_MIDI			= 7
-MENU_TEMPO			= 8
-MENU_CLOCKDIV		= 9
-MENU_GRID			= 10
-MENU_ROWS			= 11
+MENU_BEATS			= 3
+MENU_STEPS			= 4
+MENU_COPY			= 5
+MENU_CLEAR			= 6
+MENU_TRANSPOSE		= 7
+MENU_MIDI			= 8
+MENU_TEMPO			= 9
+MENU_CLOCKDIV		= 10
+MENU_GRID			= 11
+MENU_ROWS			= 12
 SELECT_BORDER		= zynthian_gui_config.color_on
 PLAYHEAD_CURSOR		= zynthian_gui_config.color_on
 CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bg
@@ -75,6 +76,9 @@ ENC_SELECT			= 3
 ENC_MENU			= ENC_LAYER
 ENC_NOTE			= ENC_SNAPSHOT
 ENC_STEP			= ENC_SELECT
+
+# List of permissible steps per beat (0 indicates custom)
+STEPS_PER_BEAT = [0,1,2,3,4,6,8,12,24]
 
 # Class implements step sequencer
 class zynthian_gui_stepseq():
@@ -93,13 +97,14 @@ class zynthian_gui_stepseq():
 		self.menu = [{'title': 'Pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
 			{'title': 'Velocity', 'min': 1, 'max': 127, 'value':100}, \
 			{'title': 'Duration', 'min': 1, 'max': 64, 'value':1}, \
+			{'title': 'Steps per beats', 'min': 0, 'max': 8, 'value': 0}, \
 			{'title': 'Steps', 'min': 2, 'max': MAX_STEPS, 'value': 16}, \
 			{'title': 'Copy pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
 			{'title': 'Clear pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
 			{'title': 'Transpose', 'min': 0, 'max': 2, 'value': 1}, \
 			{'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, \
 			{'title': 'Tempo', 'min': 0, 'max': 999, 'value': DEFAULT_BPM},
-			{'title': 'Clock divisor', 'min': 1, 'max': 24, 'value': DEFAULT_CLK_DIV},
+			{'title': 'Clocks per step', 'min': 1, 'max': 24, 'value': DEFAULT_CLK_DIV},
 			{'title': 'Grid lines', 'min': 0, 'max': 16, 'value': 0},
 			{'title': 'Zoom', 'min': 1, 'max': 100, 'value': 16}]
 		self.menuSelected = MENU_VELOCITY
@@ -475,6 +480,10 @@ class zynthian_gui_stepseq():
 			return "Up/Down"
 		elif menuItem == MENU_COPY:
 			return "%d => %d" % (self.getMenuValue(MENU_PATTERN), self.pattern + 1)
+		elif menuItem == MENU_BEATS:
+			if self.libseq.getClockDivisor() * STEPS_PER_BEAT[value] == 24 and self.menu[MENU_GRID]['value'] == STEPS_PER_BEAT[value] and value:
+				return STEPS_PER_BEAT[value]
+			return "Custom"
 		else:
 			return self.menu[menuItem]['value']
 
@@ -546,6 +555,16 @@ class zynthian_gui_stepseq():
 			self.libseq.setTempo(value)
 		elif menuItem == MENU_GRID:
 			self.drawGrid()
+		elif menuItem == MENU_CLOCKDIV:
+			self.libseq.setClockDivisor(value);
+		elif menuItem == MENU_BEATS:
+			stepsPerBeat = STEPS_PER_BEAT[value]
+			if stepsPerBeat:
+				clocksPerStep = int(24 / stepsPerBeat)
+				self.libseq.setClockDivisor(clocksPerStep)
+				self.menu[MENU_CLOCKDIV]['value'] = clocksPerStep
+				self.menu[MENU_GRID]['value'] = stepsPerBeat
+				self.drawGrid()
 
 	# Function to calculate row height
 	def updateRowHeight(self):
@@ -640,6 +659,8 @@ class zynthian_gui_stepseq():
 			self.selectedCell[0] = self.libseq.getSteps() - 1
 		self.titleCanvas.itemconfig("lblPattern", text="%d" % (self.pattern + 1))
 		self.setMenuValue(MENU_STEPS, self.libseq.getSteps())
+		self.setMenuValue(MENU_CLOCKDIV, self.libseq.getClockDivisor())
+		self.setMenuValue(MENU_TEMPO, self.libseq.getTempo())
 		if zyncoder.lib_zyncoder:
 			pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_STEP]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_STEP]

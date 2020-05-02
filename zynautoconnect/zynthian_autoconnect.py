@@ -103,7 +103,14 @@ def midi_autoconnect(force=False):
 	if len(hw_in)==0:
 		hw_in=[]
 
-	#Add Aubio MIDI input port ...
+	#Add ZynthStep out port ...
+	zynthstep_out=jclient.get_ports("zynthstep", is_output=True, is_physical=False, is_midi=True)
+	try:
+			hw_out.append(zynthstep_out[0])
+	except:
+			pass
+	
+	#Add Aubio MIDI out port ...
 	if zynthian_gui_config.midi_aubionotes_enabled:
 		aubio_out=jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
