@@ -163,9 +163,7 @@ SEQ_EVENT* Sequence::getEvent()
 			m_nEventValue = -1;
 			pEvent = pPattern->getEventAt(++m_nNextEvent);
 			if(!pEvent || pEvent->getPosition() != m_nPatternCursor)
-			{
 				return NULL;
-			}
 		}
 		if(m_nEventValue == -1)
 		{
@@ -177,7 +175,7 @@ SEQ_EVENT* Sequence::getEvent()
 		{
 			// Already processed start value
 			m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
-			seqEvent.time = m_nCurrentTime + (pEvent->getDuration() - 1) * m_nSamplePerClock;
+			seqEvent.time = m_nCurrentTime + pEvent->getDuration() * (pPattern->getClockDivisor() - 1) * m_nSamplePerClock;
 		}
 	}
 	else
