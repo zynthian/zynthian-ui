@@ -211,7 +211,6 @@ class zynthian_gui:
 
 	def init_midi_services(self):
 		#Start / stop MIDI aux. services
-		self.screens['admin'].default_midi_clock()
 		self.screens['admin'].default_rtpmidi()
 		self.screens['admin'].default_qmidinet()
 		self.screens['admin'].default_touchosc()
@@ -282,9 +281,6 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def start(self):
-		# Initialize Jack Transport Engine
-		self.zyntransport = zynthian_engine_transport()
-
 		# Create Core UI Screens
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['info'] = zynthian_gui_info()
@@ -319,6 +315,9 @@ class zynthian_gui:
 
 		# Init Auto-connector (and call it for first time!)
 		zynautoconnect.start()
+
+		# Initialize jack Transport
+		self.zyntransport = zynthian_engine_transport()
 
 		# Initialize OSC
 		self.osc_init()
@@ -379,6 +378,8 @@ class zynthian_gui:
 
 		self.lock.acquire()
 		self.hide_screens(exclude=screen)
+		if screen=='control':
+			self.screens['layer'].restore_curlayer()
 		self.screens[screen].show()
 		self.active_screen = screen
 		self.modal_screen = None
@@ -1070,6 +1071,7 @@ class zynthian_gui:
 				ev=lib_zyncoder.read_zynmidi()
 				if ev==0: break
 
+				self.status_info['midi'] = True
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
 
@@ -1093,6 +1095,9 @@ class zynthian_gui:
 						song_number = (ev & 0xFF) >> 8;
 					# Timeclock
 					elif chan==0x8:
+						pass
+					# MIDI tick
+					elif chan==0x9:
 						pass
 					# Start
 					elif chan==0xA:
@@ -1462,7 +1467,7 @@ class zynthian_gui:
 
 	def zynautoconnect_audio(self, force=False):
 		if force:
-			zynautoconnect.midi_autoconnect(True)
+			zynautoconnect.audio_autoconnect(True)
 		else:
 			self.zynautoconnect_audio_flag = True
 

@@ -179,6 +179,7 @@ class zynthian_gui_selector:
 			selectmode=tkinter.BROWSE)
 		self.listbox.grid(sticky="wens")
 		# Bind listbox events
+		self.listbox_push_ts = None
 		self.listbox.bind("<Button-1>",self.cb_listbox_push)
 		self.listbox.bind("<ButtonRelease-1>",self.cb_listbox_release)
 		self.listbox.bind("<B1-Motion>",self.cb_listbox_motion)
@@ -195,6 +196,7 @@ class zynthian_gui_selector:
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
 		self.loading_canvas.grid(row=1,column=2,sticky="ne")
+		self.loading_push_ts = None
 		self.loading_canvas.bind("<Button-1>",self.cb_loading_push)
 		self.loading_canvas.bind("<ButtonRelease-1>",self.cb_loading_release)
 
@@ -367,7 +369,7 @@ class zynthian_gui_selector:
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
 					fill=color,
-					font=("FontAwesome", self.status_fs, "bold"),
+					font=("FontAwesome",self.status_fs),
 					text=flags)
 			else:
 				self.status_canvas.itemconfig(self.status_error, text=flags, fill=color)
@@ -403,35 +405,32 @@ class zynthian_gui_selector:
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
 					fill=color,
-					font=("FontAwesome", self.status_fs, "bold"),
+					font=("FontAwesome",self.status_fs),
 					text=flags)
 			else:
 				self.status_canvas.itemconfig(self.status_recplay, text=flags, fill=color)
 
 			# Display MIDI flag
-			ul = None
-			flags = ""
-			if 'midi_clock' in status and status['midi_clock']:
-				#flags="\uf017";
-				ul = 0
+			flags=""
 			if 'midi' in status and status['midi']:
-				flags = "m"
-				#flags = "\uf001"
-			elif ul is not None:
-				flags = "__"
-				ul = None
-
+				flags="m";
+				#flags="\uf001";
+				#flags="\uf548";
+			else:
+				flags=""
 			if not self.status_midi:
+				mfs=int(self.status_fs*1.3)
 				self.status_midi = self.status_canvas.create_text(
-					int(self.status_l-self.status_fs+1),
-					int(self.status_h*0.6),
-					width=int(self.status_fs*1.2),
+					int(self.status_l-mfs+1),
+					int(self.status_h*0.55),
+					width=int(mfs*1.2),
 					justify=tkinter.RIGHT,
 					fill=zynthian_gui_config.color_status_midi,
-					font=("FontAwesome", self.status_fs, "bold"),
-					text=flags, underline=ul)
+					font=(zynthian_gui_config.font_family, mfs),
+					#font=("FontAwesome",self.status_fs),
+					text=flags)
 			else:
-				self.status_canvas.itemconfig(self.status_midi, text=flags, underline=ul)
+				self.status_canvas.itemconfig(self.status_midi, text=flags)
 
 
 	def refresh_loading(self):
@@ -568,19 +567,21 @@ class zynthian_gui_selector:
 
 
 	def cb_listbox_release(self,event):
-		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
-		#logging.debug("LISTBOX RELEASE => %s" % dts)
-		if dts < 0.3:
-			self.zyngui.zynswitch_defered('S',3)
-		elif dts>=0.3 and dts<2:
-			self.zyngui.zynswitch_defered('B',3)
+		if self.listbox_push_ts:
+			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
+			#logging.debug("LISTBOX RELEASE => %s" % dts)
+			if dts < 0.3:
+				self.zyngui.zynswitch_defered('S',3)
+			elif dts>=0.3 and dts<2:
+				self.zyngui.zynswitch_defered('B',3)
 
 
 	def cb_listbox_motion(self,event):
-		dts=(datetime.now()-self.listbox_push_ts).total_seconds()
-		if dts > 0.1:
-			#logging.debug("LISTBOX MOTION => %d" % self.index)
-			self.zselector.set_value(self.get_cursel(), True, False)
+		if self.listbox_push_ts:
+			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
+			if dts > 0.1:
+				#logging.debug("LISTBOX MOTION => %d" % self.index)
+				self.zselector.set_value(self.get_cursel(), True, False)
 
 
 	def cb_listbox_wheel(self,event):
@@ -599,14 +600,15 @@ class zynthian_gui_selector:
 
 
 	def cb_loading_release(self,event):
-		dts=(datetime.now()-self.loading_push_ts).total_seconds()
-		logging.debug("LOADING RELEASE => %s" % dts)
-		if dts<0.3:
-			self.zyngui.zynswitch_defered('S',2)
-		elif dts>=0.3 and dts<2:
-			self.zyngui.zynswitch_defered('B',2)
-		elif dts>=2:
-			self.zyngui.zynswitch_defered('L',2)
+		if self.loading_push_ts:
+			dts=(datetime.now()-self.loading_push_ts).total_seconds()
+			logging.debug("LOADING RELEASE => %s" % dts)
+			if dts<0.3:
+				self.zyngui.zynswitch_defered('S',2)
+			elif dts>=0.3 and dts<2:
+				self.zyngui.zynswitch_defered('B',2)
+			elif dts>=2:
+				self.zyngui.zynswitch_defered('L',2)
 
 
 	def cb_select_path(self, *args):

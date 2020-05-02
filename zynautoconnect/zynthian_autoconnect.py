@@ -103,15 +103,7 @@ def midi_autoconnect(force=False):
 	if len(hw_in)==0:
 		hw_in=[]
 
-	#Add internal MIDI-clock port ... 
-	if zynthian_gui_config.midi_clock_enabled:
-		mclock_out=jclient.get_ports("jack_midi_clock", is_output=True, is_physical=False, is_midi=True)
-		try:
-			hw_out.append(mclock_out[0])
-		except:
-			pass
-
-	#Add Aubio MIDI out port ...
+	#Add Aubio MIDI input port ...
 	if zynthian_gui_config.midi_aubionotes_enabled:
 		aubio_out=jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
@@ -119,7 +111,7 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
-	#Add TouchOSC out ports ...
+	#Add TouchOSC input ports ...
 	if zynthian_gui_config.midi_touchosc_enabled:
 		rtmidi_out=jclient.get_ports("RtMidiOut Client", is_output=True, is_physical=False, is_midi=True)
 		for port in rtmidi_out:
@@ -264,21 +256,15 @@ def midi_autoconnect(force=False):
 
 	#logger.debug("Connecting RTP-MIDI & QMidiNet to ZynMidiRouter:net_in ...")
 
-	#Connect RTP-MIDI output to ZynMidiRouter:net_in
+	#Connect RTP-MIDI Input Port to ZynMidiRouter:net_in
 	try:
 		jclient.connect(rtpmidi_out[0],zmr_in['net_in'])
 	except:
 		pass
 
-	#Connect QMidiNet output to ZynMidiRouter:net_in
+	#Connect QMidiNet Input Port to ZynMidiRouter:net_in
 	try:
 		jclient.connect(qmidinet_out[0],zmr_in['net_in'])
-	except:
-		pass
-
-	#Connect ZynthStep output to ZynMidiRouter:step_in
-	try:
-		jclient.connect("zynthstep:output", zmr_in['step_in'])
 	except:
 		pass
 
@@ -330,21 +316,15 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
-	#Connect ZynMidiRouter:net_out to QMidiNet input
+	#Connect ZynMidiRouter:net_out to QMidiNet Output Port
 	try:
 		jclient.connect(zmr_out['net_out'],qmidinet_in[0])
 	except:
 		pass
 
-	#Connect ZynMidiRouter:net_out to RTP-MIDI input
+	#Connect ZynMidiRouter:net_out to RTP-MIDI Output Port
 	try:
 		jclient.connect(zmr_out['net_out'],rtpmidi_in[0])
-	except:
-		pass
-
-	#Connect ZynMidiRouter:step_out to ZynthStep input
-	try:
-		jclient.connect(zmr_out['step_out'], "zynthstep:input")
 	except:
 		pass
 
