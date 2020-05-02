@@ -295,7 +295,7 @@ class zynthian_gui_stepseq():
 			self.removeEvent(step, note)
 		else:
 			self.addEvent(step, note)
-			self.libseq.playNote(note, 100, 100) # Play note when added
+			self.libseq.playNote(note, 100, self.libseq.getChannel(self.sequence), 100) # Play note when added
 
 	# Function to remove an event
 	#	step: step (column) index
@@ -529,7 +529,7 @@ class zynthian_gui_stepseq():
 			self.selectCell(self.selectedCell[0], self.selectedCell[1])
 			self.menu[MENU_DURATION]['max'] = value;
 		elif menuItem == MENU_MIDI:
-			self.libseq.setChannel(self.sequence, value);
+			self.libseq.setChannel(self.sequence, value - 1);
 		elif menuItem == MENU_TRANSPOSE:
 			# zyncoders only support positive integers so must use offset
 			self.libseq.transpose(self.getMenuValue(MENU_TRANSPOSE) - 1)

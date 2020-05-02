@@ -59,14 +59,14 @@ Pattern* Sequence::getPatternAt(uint32_t index)
 
 uint8_t Sequence::getChannel()
 {
-	return m_nChannel >> 4;
+	return m_nChannel;
 }
 
 void Sequence::setChannel(uint8_t channel)
 {
-	if(channel > 16)
+	if(channel > 15)
 		return;
-	m_nChannel = channel << 4;
+	m_nChannel = channel;
 }
 
 uint8_t Sequence::getOutput()

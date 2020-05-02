@@ -125,9 +125,10 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		pBuffer[0] = it->second->command;
 		pBuffer[1] = it->second->value1;
 		pBuffer[2] = it->second->value2;
-		printf("Sending MIDI event %d,%d,%d\n", pBuffer[0],pBuffer[1],pBuffer[2]);
 		delete it->second;
 		++it;
+		if(g_bDebug)
+			printf("Sending MIDI event %d,%d,%d\n", pBuffer[0],pBuffer[1],pBuffer[2]);
 	}
 	g_mSchedule.erase(g_mSchedule.begin(), it); //!@todo Check that erasing schedule items works, e.g. that schedule is ordered
 
@@ -244,11 +245,11 @@ void save(char* filename)
 	PatternManager::getPatternManager()->save(filename);
 }
 
-void noteOffTimer(uint8_t note, uint32_t duration)
+void noteOffTimer(uint8_t note, uint8_t channel, uint32_t duration)
 {
 	std::this_thread::sleep_for(std::chrono::milliseconds(duration));
 	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-	pMsg->command = MIDI_NOTE_ON;
+	pMsg->command = MIDI_NOTE_ON | (channel & 0x0F);
 	pMsg->value1 = note;
 	pMsg->value2 = 0;
 	uint32_t time = jack_last_frame_time(g_pJackClient) + g_nBufferSize;
@@ -257,17 +258,17 @@ void noteOffTimer(uint8_t note, uint32_t duration)
 	g_mSchedule[time] = pMsg;
 }
 
-void playNote(uint8_t note, uint8_t velocity, uint32_t duration)
+void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration)
 {
 	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-	pMsg->command = MIDI_NOTE_ON;
+	pMsg->command = MIDI_NOTE_ON | (channel & 0x0F);
 	pMsg->value1 = note;
 	pMsg->value2 = velocity;
 	uint32_t time = jack_last_frame_time(g_pJackClient) + g_nBufferSize;
 	while(g_mSchedule.find(time) != g_mSchedule.end())
 		++time;
 	g_mSchedule[time] = pMsg;
-	std::thread noteOffThread(noteOffTimer, note, 200);
+	std::thread noteOffThread(noteOffTimer, note, channel, 200);
 	noteOffThread.detach();
 }
 
@@ -375,6 +376,11 @@ uint32_t getPattern(uint32_t sequence, uint32_t position)
 void setChannel(uint32_t sequence, uint8_t channel)
 {
 	PatternManager::getPatternManager()->getSequence(sequence)->setChannel(channel);
+}
+
+uint8_t getChannel(uint32_t sequence)
+{
+	return PatternManager::getPatternManager()->getSequence(sequence)->getChannel(); 
 }
 
 void setOutput(uint32_t sequence, uint8_t output)

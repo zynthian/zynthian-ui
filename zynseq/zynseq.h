@@ -83,9 +83,10 @@ void save(char* filename);
 /**	@brief	Play a note
 *	@param	note MIDI note number
 *	@param	velocity MIDI velocity
+*	@param	channel MIDI channel
 *	@parm	duration Duration of note in milliseconds (0 to send note off only)
 */
-void playNote(uint8_t note, uint8_t velocity, uint32_t duration = 0);
+void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration = 0);
 
 
 // ** Pattern management functions - note pattern operations are quantized to steps **
@@ -184,6 +185,12 @@ uint32_t getPattern(uint32_t sequence, uint32_t position);
 *	@param	channel MIDI channel
 */
 void setChannel(uint32_t sequence, uint8_t channel);
+
+/**	@brief	Get sequence MIDI channel
+*	@param	sequence Sequence ID
+*	@retval	uint8_t MIDI channel
+*/
+uint8_t getChannel(uint32_t seqeuence);
 
 /**	@brief	Set sequence JACK output
 *	@param	sequence Sequence ID

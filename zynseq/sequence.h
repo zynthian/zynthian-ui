@@ -127,7 +127,7 @@ class Sequence
 		void setClockRate(uint32_t tempo, uint32_t samplerate);
 
 	private:
-		uint8_t m_nChannel = 0; // MIDI channel shifted left 4 bits
+		uint8_t m_nChannel = 0; // MIDI channel
 		uint8_t m_nOutput = 0; // JACK output
 		uint8_t m_nState = STOP; // Play state
 		uint32_t m_nPosition = 0; // Play position in clock cycles
