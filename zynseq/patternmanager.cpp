@@ -257,8 +257,8 @@ void PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSc
 	}
 }
 
-void PatternManager::setSequenceScale(uint32_t tempo, uint32_t samplerate)
+void PatternManager::setSequenceClockRates(uint32_t tempo, uint32_t samplerate)
 {
 	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
-		it->second.setScale(tempo, samplerate);
+		it->second.setClockRate(tempo, samplerate);
 }

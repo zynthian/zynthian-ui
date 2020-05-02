@@ -41,9 +41,16 @@ bool g_bRunning = true; // False to stop clock thread, e.g. on exit
 jack_nframes_t g_nSamplerate; // Quantity of samples per second
 jack_nframes_t g_nBufferSize; // Quantity of samples in JACK buffer passed each process cycle
 std::map<uint32_t,MIDI_MESSAGE*> g_mSchedule; // Schedule of MIDI events (queue for sending), indexed by scheduled play time (samples since JACK epoch)
-uint32_t g_nTempo = 120; // BPM
+int32_t g_nTempo = 120; // BPM
+int32_t g_nClockCounter; // MIDI clock generator frame  counter
+bool g_bDebug = false; // True to output debug info
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
+
+void debug(bool bEnable)
+{
+	g_bDebug = bEnable;
+}
 
 void onClock()
 {
@@ -94,7 +101,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 				printf("StepJackClient MIDI CONTINUE\n");
 				break;
 			case MIDI_CLOCK:
-				g_bClockIdle = false;
+//				g_bClockIdle = false;
 				break;
 			case MIDI_POSITION:
 				printf("Song position %d\n", midiEvent.buffer[1] + midiEvent.buffer[1] << 7);
@@ -122,7 +129,21 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		delete it->second;
 		++it;
 	}
-	g_mSchedule.erase(g_mSchedule.begin(), it);
+	g_mSchedule.erase(g_mSchedule.begin(), it); //!@todo Check that erasing schedule items works, e.g. that schedule is ordered
+
+	if((g_nClockCounter -= nFrames) <= 0)
+	{
+		//!@todo Improve MIDI clock jitter
+		g_bClockIdle = false;
+		g_nClockCounter = 60 * g_nSamplerate / (24 * g_nTempo) + g_nClockCounter;
+		if(g_bDebug)
+		{
+			static jack_time_t gThen;
+			jack_time_t nNow = jack_get_time();
+			printf("%" PRId64 " %" PRId64 "\n", nNow, (nNow - gThen)/1000);
+			gThen = nNow;
+		}
+	}
 
 	return 0;
 }
@@ -138,7 +159,7 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
 {
 	printf("zynseq: Jack samplerate: %d\n", nFrames);
 	g_nSamplerate = nFrames;
-	PatternManager::getPatternManager()->setSequenceScale(g_nTempo, g_nSamplerate);
+	PatternManager::getPatternManager()->setSequenceClockRates(g_nTempo, g_nSamplerate);
 	return 0;
 }
 
@@ -162,6 +183,7 @@ void end()
 
 bool init()
 {
+	setTempo(120); // Default tempo - expect host to set this but need something to start with
 	// Register with Jack server
 	char *sServerName = NULL;
 	jack_status_t nStatus;
@@ -390,9 +412,16 @@ void clearSequence(uint32_t sequence)
 	PatternManager::getPatternManager()->getSequence(sequence)->clear();
 }
 
-void setTempo(uint32_t tempo)
+void setTempo(int32_t tempo)
 {
-	printf("Tempo: %dBPM\n", tempo);
+	if(tempo < 0)
+		return; // Using signed int to allow comparison of countdown timer without casting
 	g_nTempo = tempo;
-	PatternManager::getPatternManager()->setSequenceScale(g_nTempo, g_nSamplerate);
+	PatternManager::getPatternManager()->setSequenceClockRates(g_nTempo, g_nSamplerate);
+	g_nClockCounter = 60 * g_nSamplerate / (24 * g_nTempo);
+}
+
+int32_t getTempo()
+{
+	return g_nTempo;
 }

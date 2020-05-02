@@ -4,6 +4,7 @@
 
 Sequence::Sequence()
 {
+	setClockRate(120, 44100); // Default BPM and samplerate - expect host to call setClockRate to correct this
 }
 
 Sequence::~Sequence()
@@ -176,7 +177,7 @@ SEQ_EVENT* Sequence::getEvent()
 		{
 			// Already processed start value
 			m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
-			seqEvent.time = m_nCurrentTime + pEvent->getDuration() * m_nTimeScale; //!@todo Set m_nTimeScale
+			seqEvent.time = m_nCurrentTime + (pEvent->getDuration() - 1) * m_nSamplePerClock;
 		}
 	}
 	else
@@ -231,7 +232,7 @@ uint32_t Sequence::getPlayPosition()
 	return m_nPosition;
 }
 
-void Sequence::setScale(uint32_t tempo, uint32_t samplerate)
+void Sequence::setClockRate(uint32_t tempo, uint32_t samplerate)
 {
-	m_nTimeScale = samplerate * 60 * m_nDivisor / (tempo * 24);
+	m_nSamplePerClock = samplerate * 60 / (tempo * 24);
 }

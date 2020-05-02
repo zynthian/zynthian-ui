@@ -233,7 +233,14 @@ uint32_t getStep(uint32_t sequence);
 /**	@brief	Set tempo
 *	@param	tempo Tempo (BPM)
 */
-void setTempo(uint32_t tempo);
+void setTempo(int32_t tempo);
+
+/**	@brief	Get tempo
+*	@retval	uint32_t Tempo (BPM)
+*/
+int32_t getTempo();
+
+void debug(bool bEnable);
 
 #ifdef __cplusplus
 }
