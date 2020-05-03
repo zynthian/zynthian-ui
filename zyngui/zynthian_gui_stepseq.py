@@ -102,7 +102,7 @@ class zynthian_gui_stepseq():
 			{'id':MENU_CLEAR, 'title': 'Clear pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
 			{'id':MENU_TRANSPOSE, 'title': 'Transpose', 'min': 0, 'max': 2, 'value': 1}, \
 			{'id':MENU_TEMPO, 'title': 'Tempo', 'min': 0, 'max': 999, 'value': DEFAULT_BPM},
-			{'id':MENU_ROWS, 'title': 'Vetrical zoom', 'min': 1, 'max': 100, 'value': 16},
+			{'id':MENU_ROWS, 'title': 'Vertical zoom', 'min': 1, 'max': 100, 'value': 16},
 			{'id':MENU_MIDI, 'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, \
 			{'id':MENU_CLOCKDIV, 'title': 'Clocks per step', 'min': 1, 'max': 24, 'value': DEFAULT_CLK_DIV},
 			]
@@ -328,6 +328,10 @@ class zynthian_gui_stepseq():
 			self.drawCell(step, note)
 
 	# Function to get cell coordinates
+	#	col: Column index
+	#	row: Row index
+	#	duration: Duration of cell in steps
+	#	return: Coordinates required to draw cell
 	def getCell(self, col, row, duration):
 		x1 = col * self.stepWidth + 1
 		y1 = (self.getMenuValue(MENU_ROWS) - row - 1) * self.rowHeight + 1
