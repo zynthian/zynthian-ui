@@ -75,7 +75,7 @@ from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
-from zyngui.zynthian_gui_stepseq import zynthian_gui_stepseq
+#from zyngui.zynthian_gui_stepseq import zynthian_gui_stepseq
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
@@ -314,7 +314,7 @@ class zynthian_gui:
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['autoeq'] = zynthian_gui_autoeq()
-		self.screens['stepseq'] = zynthian_gui_stepseq()
+		#self.screens['stepseq'] = zynthian_gui_stepseq()
 
 		# Init Auto-connector
 		zynautoconnect.start()
