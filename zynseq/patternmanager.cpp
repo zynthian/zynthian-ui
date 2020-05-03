@@ -72,7 +72,9 @@ void PatternManager::load(const char* filename)
 				continue;
 			Pattern* pPattern = getPattern(fileRead32(pFile));
 			pPattern->setSteps(fileRead32(pFile));
-			pPattern->setClockDivisor(fileRead32(pFile));
+			uint32_t nValue = fileRead32(pFile);
+			pPattern->setClockDivisor(nValue & 0xFF);
+			pPattern->setStepsPerBeat(nValue >> 16);
 			nPos += 12;
 			nBlockSize -= 12;
 			while(nBlockSize)
@@ -141,7 +143,7 @@ void PatternManager::save(const char* filename)
 			uint32_t nStartOfBlock = nPos;
 			nPos += fileWrite32((*it).first, pFile);
 			nPos += fileWrite32((*it).second.getSteps(), pFile);
-			nPos += fileWrite32((*it).second.getClockDivisor(), pFile);
+			nPos += fileWrite32((*it).second.getClockDivisor() | (((*it).second.getStepsPerBeat()) << 16), pFile);
 			size_t nEvent = 0;
 			while(StepEvent* pEvent = (*it).second.getEventAt(nEvent++))
 			{

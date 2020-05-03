@@ -9,7 +9,8 @@ RIFF Header:
 Block:
 	Pattern ID [4]
 	Quanity of steps [4]
-	Quantity of clock cycles per step [4]
+	Steps per beat [2] (This might be swapped with next word)
+	Clock cycles per step [2]
 	Events:
 		Start step [4]
 		Duration [4]

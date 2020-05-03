@@ -187,6 +187,17 @@ class Pattern
 		*/
 		uint32_t getClockDivisor() { return m_nDivisor; };
 
+		/**	@brief	Set quantity of steps per beat (grid line separation)
+		*	@param	value Quantity of steps per beat
+		*/
+		void setStepsPerBeat(uint32_t value);
+
+		/**	@brief	Get quantity of steps per beat
+		*	@retval	uint32_t Quantity of steps per beat
+		*/
+		uint32_t getStepsPerBeat() { return m_nStepsPerBeat; };
+
+
 		/**	@brief	Transpose all notes within pattern
 		*	@param	value Offset to transpose
 		*/
@@ -208,4 +219,5 @@ class Pattern
 		std::vector<StepEvent> m_vEvents; // Vector of pattern events
 		uint32_t m_nLength; // Quantity of steps in pattern
 		uint32_t m_nDivisor; // Clock cycles per step
+		uint32_t m_nStepsPerBeat; // Steps per beat
 };

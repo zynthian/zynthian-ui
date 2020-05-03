@@ -118,6 +118,16 @@ uint32_t getClockDivisor();
 */
 void setClockDivisor(uint32_t divisor);
 
+/**	@brief	Get steps per beat
+*	@retval	uint32_t Steps per beat
+*/
+uint32_t getStepsPerBeat();
+
+/**	@brief	Set steps per beat
+*	@param	steps Steps per beat
+*/
+void setStepsPerBeat(uint32_t steps);
+
 /**	@brief	Add note to pattern
 *	@param	step Index of step at which to add note
 *	@param	note MIDI note number

@@ -2,3 +2,6 @@
 .*~
 __pycache__
 jackpeak/build
+zynseq/build/Makefile
+zynseq/build/CMake*
+zynseq/build/cmake_install.cmake

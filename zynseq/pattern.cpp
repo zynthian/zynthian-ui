@@ -130,8 +130,15 @@ void Pattern::setSteps(uint32_t steps)
 
 void Pattern::setClockDivisor(uint32_t value)
 {
-	m_nDivisor = value;
+	if(value < 0xFF)
+		m_nDivisor = value;
 	//!@todo quantize events
+}
+
+void Pattern::setStepsPerBeat(uint32_t value)
+{
+	if(value < 0xFF)
+		m_nStepsPerBeat = value;
 }
 
 void Pattern::transpose(int value)

@@ -318,6 +318,19 @@ void setClockDivisor(uint32_t divisor)
 	PatternManager::getPatternManager()->updateSequenceLengths();
 }
 
+uint32_t getStepsPerBeat()
+{
+	if(g_pPattern)
+		return g_pPattern->getStepsPerBeat();
+	return 4;
+}
+
+void setStepsPerBeat(uint32_t steps)
+{
+	if(g_pPattern)
+		g_pPattern->setStepsPerBeat(steps);
+}
+
 void addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
 {
 	if(g_pPattern)

@@ -57,11 +57,10 @@ MENU_STEPS			= 4
 MENU_COPY			= 5
 MENU_CLEAR			= 6
 MENU_TRANSPOSE		= 7
-MENU_MIDI			= 8
-MENU_TEMPO			= 9
-MENU_CLOCKDIV		= 10
-MENU_GRID			= 11
-MENU_ROWS			= 12
+MENU_TEMPO			= 8
+MENU_ROWS			= 9
+MENU_MIDI			= 10
+MENU_CLOCKDIV		= 11
 SELECT_BORDER		= zynthian_gui_config.color_on
 PLAYHEAD_CURSOR		= zynthian_gui_config.color_on
 CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bg
@@ -94,19 +93,19 @@ class zynthian_gui_stepseq():
 		self.keyOrigin = 60 # MIDI note number of top row in grid
 		self.selectedCell = [0, self.keyOrigin] # Location of selected cell (step,note)
 		#TODO: Get values from persistent storage
-		self.menu = [{'title': 'Pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
-			{'title': 'Velocity', 'min': 1, 'max': 127, 'value':100}, \
-			{'title': 'Duration', 'min': 1, 'max': 64, 'value':1}, \
-			{'title': 'Steps per beats', 'min': 0, 'max': 8, 'value': 0}, \
-			{'title': 'Steps', 'min': 2, 'max': MAX_STEPS, 'value': 16}, \
-			{'title': 'Copy pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
-			{'title': 'Clear pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
-			{'title': 'Transpose', 'min': 0, 'max': 2, 'value': 1}, \
-			{'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, \
-			{'title': 'Tempo', 'min': 0, 'max': 999, 'value': DEFAULT_BPM},
-			{'title': 'Clocks per step', 'min': 1, 'max': 24, 'value': DEFAULT_CLK_DIV},
-			{'title': 'Grid lines', 'min': 0, 'max': 16, 'value': 0},
-			{'title': 'Zoom', 'min': 1, 'max': 100, 'value': 16}]
+		self.menu = [{'id':MENU_PATTERN, 'title': 'Pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
+			{'id':MENU_VELOCITY, 'title': 'Velocity', 'min': 1, 'max': 127, 'value':100}, \
+			{'id':MENU_DURATION,'title': 'Duration', 'min': 1, 'max': 64, 'value':1}, \
+			{'id':MENU_BEATS, 'title': 'Steps per beats', 'min': 0, 'max': 8, 'value': 0}, \
+			{'id':MENU_STEPS, 'title': 'Steps', 'min': 2, 'max': MAX_STEPS, 'value': 16}, \
+			{'id':MENU_COPY, 'title': 'Copy pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
+			{'id':MENU_CLEAR, 'title': 'Clear pattern', 'min': 1, 'max': MAX_PATTERNS, 'value': 1}, \
+			{'id':MENU_TRANSPOSE, 'title': 'Transpose', 'min': 0, 'max': 2, 'value': 1}, \
+			{'id':MENU_TEMPO, 'title': 'Tempo', 'min': 0, 'max': 999, 'value': DEFAULT_BPM},
+			{'id':MENU_ROWS, 'title': 'Vetrical zoom', 'min': 1, 'max': 100, 'value': 16},
+			{'id':MENU_MIDI, 'title': 'MIDI Channel', 'min': 1, 'max': 16, 'value': 1}, \
+			{'id':MENU_CLOCKDIV, 'title': 'Clocks per step', 'min': 1, 'max': 24, 'value': DEFAULT_CLK_DIV},
+			]
 		self.menuSelected = MENU_VELOCITY
 		self.menuSelectMode = False # True to change selected menu value, False to change menu selection
 		self.zyncoderMutex = False # Flag to avoid reading encoders whilst processing changes
@@ -266,12 +265,12 @@ class zynthian_gui_stepseq():
 			self.keyOrigin = self.keyOrigin - 1
 			self.pianoRollDragStart.y = event.y
 			self.drawGrid()
-		elif event.x < self.pianoRollDragStart.x - self.pianoRollWidth / 2:
-			if self.menuSelectMode:
-				self.toggleMenuMode(False) # Disable data entry before exit
-			else:
-				self.zyngui.show_screen(self.zyngui.active_screen)
-			return
+#		elif event.x < self.pianoRollDragStart.x - self.pianoRollWidth / 2:
+#			if self.menuSelectMode:
+#				self.toggleMenuMode(False) # Disable data entry before exit
+#			else:
+#				self.zyngui.show_screen(self.zyngui.active_screen)
+#			return
 		if self.selectedCell[1] < self.keyOrigin:
 			self.selectedCell[1] = self.keyOrigin
 		elif self.selectedCell[1] >= self.keyOrigin + self.getMenuValue(MENU_ROWS):
@@ -394,8 +393,8 @@ class zynthian_gui_stepseq():
 				self.pianoRoll.itemconfig(id, fill="black")
 		# Redraw gridlines
 		self.gridCanvas.delete("gridline")
-		if self.getMenuValue(MENU_GRID):
-			for step in range(0, self.libseq.getSteps() + 1, self.getMenuValue(MENU_GRID)):
+		if self.libseq.getStepsPerBeat():
+			for step in range(0, self.libseq.getSteps() + 1, self.libseq.getStepsPerBeat()):
 				self.gridCanvas.create_line(step * self.stepWidth + 1, 0, step * self.stepWidth + 1, self.getMenuValue(MENU_ROWS) * self.rowHeight - 1, fill=GRID_LINE, tags=("gridline"))
 		# Set z-order to allow duration to show
 		if clearGrid:
@@ -474,16 +473,14 @@ class zynthian_gui_stepseq():
 	#	value: Value to transform
 	#	returns: Transformed menu item value
 	def transformMenuValue(self, menuItem, value):
-		if menuItem == MENU_GRID and self.getMenuValue(menuItem) == 0:
-			return "None"
-		elif menuItem == MENU_TRANSPOSE:
+		if menuItem == MENU_TRANSPOSE:
 			return "Up/Down"
 		elif menuItem == MENU_COPY:
 			return "%d => %d" % (self.getMenuValue(MENU_PATTERN), self.pattern + 1)
 		elif menuItem == MENU_BEATS:
-			if self.libseq.getClockDivisor() * STEPS_PER_BEAT[value] == 24 and self.menu[MENU_GRID]['value'] == STEPS_PER_BEAT[value] and value:
+			if value:
 				return STEPS_PER_BEAT[value]
-			return "Custom"
+			return "None"
 		else:
 			return self.menu[menuItem]['value']
 
@@ -547,24 +544,21 @@ class zynthian_gui_stepseq():
 				zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
 			self.drawGrid()
 		elif menuItem == MENU_ROWS:
-			# Zoom
+			# Vertical zoom
 			self.updateRowHeight()
 			self.drawGrid(True)
 		elif menuItem == MENU_TEMPO:
-			#self.zyngui.zyntransport.tempo(value)
 			self.libseq.setTempo(value)
-		elif menuItem == MENU_GRID:
-			self.drawGrid()
 		elif menuItem == MENU_CLOCKDIV:
 			self.libseq.setClockDivisor(value);
 		elif menuItem == MENU_BEATS:
 			stepsPerBeat = STEPS_PER_BEAT[value]
 			if stepsPerBeat:
 				clocksPerStep = int(24 / stepsPerBeat)
-				self.libseq.setClockDivisor(clocksPerStep)
 				self.menu[MENU_CLOCKDIV]['value'] = clocksPerStep
-				self.menu[MENU_GRID]['value'] = stepsPerBeat
-				self.drawGrid()
+				self.libseq.setClockDivisor(clocksPerStep)
+			self.libseq.setStepsPerBeat(stepsPerBeat)
+			self.drawGrid()
 
 	# Function to calculate row height
 	def updateRowHeight(self):
@@ -662,12 +656,13 @@ class zynthian_gui_stepseq():
 		self.setMenuValue(MENU_STEPS, self.libseq.getSteps())
 		self.setMenuValue(MENU_CLOCKDIV, self.libseq.getClockDivisor())
 		self.setMenuValue(MENU_TEMPO, self.libseq.getTempo())
+		self.setMenuValue(MENU_BEATS, self.libseq.getStepsPerBeat())
 		if zyncoder.lib_zyncoder:
 			pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_STEP]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_STEP]
 			zyncoder.lib_zyncoder.setup_zyncoder(ENC_STEP,pin_a,pin_b,0,0,None,self.selectedCell[0],self.libseq.getSteps() - 1,0)
 		zyncoderMutex = False
-		self.drawGrid()
+		self.drawGrid(True)
 		self.playCanvas.coords("playCursor", 1, 0, 1 + self.stepWidth, PLAYHEAD_HEIGHT)
 
 	def refresh_loading(self):
