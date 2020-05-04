@@ -46,8 +46,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def __init__(self):
 		self.layers = []
 		self.root_layers = []
-		self.curlayer = None
-		self._curlayer = None
 		self.amixer_layer = None
 		self.show_all_layers = False
 		self.add_layer_eng = None
@@ -144,44 +142,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.amixer_layer = None
 
 
-	def layer_control_amixer(self):
-		if self.amixer_layer:
-			self._curlayer = self.curlayer
-			self.curlayer = self.amixer_layer
-			self.zyngui.set_curlayer(self.curlayer)
-			self.zyngui.show_modal('control')
-
-
-	def restore_curlayer(self):
-		if self._curlayer:
-			self.curlayer = self._curlayer
-			self._curlayer = None
-			self.zyngui.set_curlayer(self.curlayer)
-
-
-	def curlayer_control(self):
-		if self.curlayer:
-			self.zyngui.set_curlayer(self.curlayer)
-			# If there is a preset selection for the active layer ...
-			if self.curlayer.get_preset_name():
-				self.zyngui.show_screen('control')
-			else:
-				self.zyngui.show_screen('bank')
-				# If there is only one bank, jump to preset selection
-				if len(self.curlayer.bank_list)<=1:
-					self.zyngui.screens['bank'].select_action(0)
-
-
 	def layer_control(self):
-		self.curlayer = self.root_layers[self.index]
-		self.curlayer_control()
-
-
-	def layer_control_restore(self):
-		if self._curlayer:
-			self.curlayer = self._curlayer
-			self._curlayer = None
-		self.curlayer_control()
+		self.zyngui.layer_control(self.root_layers[self.index])
 
 
 	def layer_options(self):
@@ -192,11 +154,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def next(self):
-		self.restore_curlayer()
-
+		self.zyngui.restore_curlayer()
 		if len(self.root_layers)>1:
-
-			if self.curlayer in self.layers:
+			if self.zyngui.curlayer in self.layers:
 				self.index += 1
 				if self.index>=len(self.root_layers):
 					self.index = 0
@@ -319,18 +279,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			del self.layers[i]
 			self.zyngui.zynautoconnect_release_lock()
 
-			if self.curlayer not in self.root_layers:
+			if self.zyngui.curlayer in self.root_layers:
+				self.index = self.root_layers.index(self.zyngui.curlayer)
+
+			else:
 				self.index=0
 				try:
-					self.curlayer = self.root_layers[self.index]
+					self.zyngui.set_curlayer(self.root_layers[self.index])
 				except:
-					self.curlayer = None
-			else:
-				self.index = self.root_layers.index(self.curlayer)
+					self.zyngui.set_curlayer(None)
 
 			self.fill_list()
 			self.set_selector()
-			self.zyngui.set_curlayer(self.curlayer)
 
 			# Stop unused engines
 			if stop_unused_engines:
@@ -378,9 +338,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		self.index=0
 		try:
-			self.curlayer = self.root_layers[self.index]
+			curlayer = self.root_layers[self.index]
 		except:
-			self.curlayer = None
+			curlayer = None
+		self.zyngui.set_curlayer(curlayer)
 
 		# Stop ALL engines
 		if stop_engines:
@@ -389,11 +350,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Refresh UI
 		self.fill_list()
 		self.set_selector()
-		self.zyngui.set_curlayer(self.curlayer)
-
-
-	#def refresh(self):
-	#	self.curlayer.refresh()
 
 
 	#----------------------------------------------------------------------------
@@ -552,7 +508,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def get_fxchain_layers(self, layer=None):
 		if layer is None:
-			layer = self.curlayer
+			layer = self.zyngui.curlayer
 
 		if layer is not None:
 			fxchain_layers = []
@@ -851,8 +807,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			#Set active layer
 			self.index = snapshot['index']
 			if self.index in self.layers:
-				self.curlayer=self.layers[self.index]
-				self.zyngui.set_curlayer(self.curlayer)
+				self.zyngui.set_curlayer(self.layers[self.index])
 
 			#Set Clone
 			if 'clone' in snapshot:

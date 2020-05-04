@@ -180,6 +180,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		super().fill_list()
 
 
+	def set_action(self, act):
+		self.action = act
+
+
 	def show(self):
 		if not self.zyngui.curlayer:
 			self.action="LOAD"
@@ -189,16 +193,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if len(self.list_data)==0 and self.action=="LOAD":
 			self.action="SAVE"
 			super().show()
-
-
-	def load(self):
-		self.action="LOAD"
-		self.show()
-
-
-	def save(self):
-		self.action="SAVE"
-		self.show()
 
 
 	def select_action(self, i, t='S'):

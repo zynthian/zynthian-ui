@@ -96,7 +96,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def alsa_mixer(self):
 		logging.info("ALSA Mixer")
-		self.zyngui.screens['layer'].layer_control_amixer()
+		self.zyngui.show_modal("alsa_mixer")
 
 
 	def auto_eq(self):
