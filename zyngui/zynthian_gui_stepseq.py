@@ -596,7 +596,6 @@ class zynthian_gui_stepseq():
 			if zyncoder.lib_zyncoder:
 				pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_MENU]
 				pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_MENU]
-				#zyncoder.lib_zyncoder.setup_zyncoder_with_min(ENC_MENU,pin_a,pin_b,0,0,None,self.getMenuValue(self.menuSelected),self.menu[self.menuSelected]['min'],self.menu[self.menuSelected]['max'],0)
 				zyncoder.lib_zyncoder.setup_zyncoder(ENC_MENU, pin_a, pin_b, 0, 0, None, self.getMenuValue(self.menuSelected) - self.menu[self.menuSelected]['min'], self.menu[self.menuSelected]['max'], 0)
 		else:
 			# Exit value edit mode

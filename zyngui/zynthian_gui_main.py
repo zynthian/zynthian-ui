@@ -53,8 +53,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
 		self.list_data.append((self.alsa_mixer,0,"ALSA Mixer"))
-		self.list_data.append((self.step_sequencer,0,"Step Sequencer"))
-		self.list_data.append((self.auto_eq,0,"Auto EQ"))
+		#self.list_data.append((self.step_sequencer,0,"Step Sequencer (alpha)"))
+		self.list_data.append((self.auto_eq,0,"Auto EQ (alpha)"))
 
 		self.list_data.append((None,0,"-----------------------------"))
 
@@ -96,7 +96,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def alsa_mixer(self):
 		logging.info("ALSA Mixer")
-		self.zyngui.screens['layer'].layer_control_amixer()
+		self.zyngui.show_modal("alsa_mixer")
 
 
 	def auto_eq(self):

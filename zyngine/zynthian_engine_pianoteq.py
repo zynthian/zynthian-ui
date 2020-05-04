@@ -352,7 +352,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.nickname = "PT"
 		self.jackname = PIANOTEQ_JACK_PORT_NAME
 
-		self.options['midi_chan']=False
+		#self.options['midi_chan']=False
 
 		self.preset = ""
 		self.midimapping = "ZynthianControllers"
@@ -411,8 +411,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, layer):
-		self.stop()
-		self.command = self.base_command + ("--midi-channel", str(layer.get_midi_chan()+1),)
+		pass
+		#self.stop()
+		#self.command = self.base_command + ("--midi-channel", str(layer.get_midi_chan()+1),)
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
@@ -613,7 +614,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		else:
 			self.midimapping=mm
 			self.preset=preset[0]
-			self.command = self.base_command + " --midi-channel {}".format(layer.get_midi_chan()+1)
+			#self.command = self.base_command + " --midi-channel {}".format(layer.get_midi_chan()+1)
+			self.command = self.base_command + " --midi-channel all"
 			self.command += " --midimapping \"{}\"".format(self.midimapping)
 			self.command += " --preset \"{}\"".format(preset[0])
 			self.stop()

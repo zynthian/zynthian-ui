@@ -75,7 +75,7 @@ from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
-from zyngui.zynthian_gui_stepseq import zynthian_gui_stepseq
+#from zyngui.zynthian_gui_stepseq import zynthian_gui_stepseq
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
@@ -127,7 +127,20 @@ class zynthian_gui:
 		"59": "SWITCH_LAYER_LONG",
 		"71": "SWITCH_SNAPSHOT_SHORT",
 		"72": "SWITCH_SNAPSHOT_BOLD",
-		"73": "SWITCH_SNAPSHOT_LONG"
+		"73": "SWITCH_SNAPSHOT_LONG",
+
+		"80": "SCREEN_ADMIN",
+		"81": "SCREEN_LAYER",
+		"82": "SCREEN_BANK",
+		"83": "SCREEN_PRESET",
+		"84": "SCREEN_CONTROL",
+
+		"90": "MODAL_SNAPSHOT_LOAD",
+		"91": "MODAL_SNAPSHOT_SAVE",
+		"92": "MODAL_AUDIO_RECORDER",
+		"93": "MODAL_MIDI_RECORDER",
+		"94": "MODAL_ALSA_MIXER",
+		"95": "MODAL_STEPSEQ"
 	}
 
 	def __init__(self):
@@ -136,6 +149,7 @@ class zynthian_gui:
 		self.active_screen = None
 		self.modal_screen = None
 		self.curlayer = None
+		self._curlayer = None
 
 		self.dtsw = []
 		self.polling = False
@@ -304,16 +318,13 @@ class zynthian_gui:
 
 		# Create UI Apps Screens
 		self.screens['layer'].create_amixer_layer()
+		self.screens['alsa_mixer'] = self.screens['control']
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['autoeq'] = zynthian_gui_autoeq()
-		self.screens['stepseq'] = zynthian_gui_stepseq()
+		#self.screens['stepseq'] = zynthian_gui_stepseq()
 
-		# Init MIDI Subsystem => MIDI Profile
-		self.init_midi()
-		self.init_midi_services()
-
-		# Init Auto-connector (and call it for first time!)
+		# Init Auto-connector
 		zynautoconnect.start()
 
 		# Initialize jack Transport
@@ -337,8 +348,10 @@ class zynthian_gui:
 				snapshot_loaded=self.screens['layer'].load_snapshot(default_snapshot_fpath)
 
 		if not snapshot_loaded:
-			# Show "load snapshot" popup. Autoclose if no snapshots available ...
-			#self.load_snapshot(autoclose=True)
+			# Init MIDI Subsystem => MIDI Profile
+			self.init_midi()
+			self.init_midi_services()
+			self.zynautoconnect()
 			# Show initial screen
 			self.show_screen('main')
 
@@ -362,11 +375,13 @@ class zynthian_gui:
 
 	def hide_screens(self, exclude=None):
 		if not exclude:
-			exclude=self.active_screen
+			exclude = self.active_screen
 
-		for screen_name,screen in self.screens.items():
-			if screen_name!=exclude:
-				screen.hide();
+		exclude_obj = self.screens[exclude]
+
+		for screen_name, screen_obj in self.screens.items():
+			if screen_obj!=exclude_obj:
+				screen_obj.hide();
 
 
 	def show_screen(self, screen=None):
@@ -374,7 +389,10 @@ class zynthian_gui:
 			if self.active_screen:
 				screen = self.active_screen
 			else:
-				screen = "layer"
+				screen = "main"
+
+		if screen=="control":
+			self.restore_curlayer()
 
 		self.lock.acquire()
 		self.hide_screens(exclude=screen)
@@ -386,14 +404,38 @@ class zynthian_gui:
 		self.lock.release()
 
 
-	def show_modal(self, screen):
+	def show_active_screen(self):
+		self.show_screen()
+
+
+	def show_modal(self, screen, mode=None):
+		if screen=="alsa_mixer":
+			if self.screens['layer'].amixer_layer:
+				self._curlayer = self.curlayer
+				self.set_curlayer(self.screens['layer'].amixer_layer)
+			else:
+				return
+
+		elif screen=="snapshot":
+			if mode is None:
+				mode = "LOAD"
+			self.screens['snapshot'].set_action(mode)
+	
 		self.modal_screen=screen
 		self.screens[screen].show()
 		self.hide_screens(exclude=screen)
 
 
-	def show_active_screen(self):
+	def close_modal(self):
+		self.modal_screen=None
 		self.show_screen()
+
+
+	def toggle_modal(self, screen, mode=None):
+		if self.modal_screen!=screen:
+			self.show_modal(screen, mode)
+		else:
+			self.close_modal()
 
 
 	def refresh_screen(self):
@@ -437,23 +479,33 @@ class zynthian_gui:
 		self.show_screen()
 
 
-	def load_snapshot(self, autoclose=False):
-		self.modal_screen='snapshot'
-		self.screens['snapshot'].load()
-		if not autoclose or (self.screens['snapshot'].action=="LOAD" and len(self.screens['snapshot'].list_data)>1):
-			self.hide_screens(exclude='snapshot')
-		else:
-			self.show_screen('layer')
+	def load_snapshot(self):
+		self.show_modal("snapshot","LOAD")
 
 
 	def save_snapshot(self):
-		self.modal_screen='snapshot'
-		self.screens['snapshot'].save()
-		self.hide_screens(exclude='snapshot')
+		self.show_modal("snapshot","SAVE")
+
+
+	def layer_control(self, layer=None):
+		if layer is not None:
+			self.set_curlayer(layer)
+			self._curlayer = None
+
+		if self.curlayer:
+			# If there is a preset selection for the active layer ...
+			if self.curlayer.get_preset_name():
+				self.show_screen('control')
+			else:
+				self.show_screen('bank')
+				# If there is only one bank, jump to preset selection
+				if len(self.curlayer.bank_list)<=1:
+					self.screens['bank'].select_action(0)
 
 
 	def show_control(self):
-		self.screens['layer'].layer_control_restore()
+		self.restore_curlayer()
+		self.layer_control()
 
 
 	def enter_midi_learn_mode(self):
@@ -492,7 +544,13 @@ class zynthian_gui:
 			self.set_active_channel()
 			self.stop_loading()
 		else:
-			self.curlayer=None
+			self.curlayer = None
+
+
+	def restore_curlayer(self):
+		if self._curlayer:
+			self.set_curlayer(self._curlayer)
+			self._curlayer = None
 
 
 	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
@@ -690,6 +748,39 @@ class zynthian_gui:
 		elif cuia == "SWITCH_SELECT_LONG":
 			self.zynswitch_long(3)
 
+		elif cuia == "SCREEN_ADMIN":
+			self.show_screen("admin")
+
+		elif cuia == "SCREEN_LAYER":
+			self.show_screen("layer")
+
+		elif cuia == "SCREEN_BANK":
+			self.show_screen("bank")
+
+		elif cuia == "SCREEN_PRESET":
+			self.show_screen("preset")
+
+		elif cuia == "SCREEN_PRESET":
+			self.show_screen("preset")
+
+		elif cuia == "MODAL_SNAPSHOT_LOAD":
+			self.toggle_modal("snapshot", "LOAD")
+
+		elif cuia == "MODAL_SNAPSHOT_SAVE":
+			self.toggle_modal("snapshot", "SAVE")
+
+		elif cuia == "MODAL_AUDIO_RECORDER":
+			self.toggle_modal("audio_recorder")
+
+		elif cuia == "MODAL_MIDI_RECORDER":
+			self.toggle_modal("midi_recorder")
+
+		elif cuia == "MODAL_ALSA_MIXER":
+			self.toggle_modal("alsa_mixer")
+
+		elif cuia == "MODAL_STEPSEQ":
+			self.toggle_modal("stepseq")
+
 
 	def custom_switch_ui_action(self, i, t):
 		try:
@@ -756,7 +847,7 @@ class zynthian_gui:
 
 		# Standard 4 ZynSwitches
 		if i==0:
-			self.screens['main'].alsa_mixer()
+			self.show_modal("alsa_mixer")
 
 		elif i==1:
 			self.callable_ui_action("ALL_OFF")
@@ -854,7 +945,7 @@ class zynthian_gui:
 
 		# Standard 4 ZynSwitches
 		if i==0:
-			if self.active_screen=='control':
+			if self.active_screen=='control' or self.modal_screen=='alsa_mixer':
 				if self.screens['layer'].get_num_root_layers()>1:
 					logging.info("Next layer")
 					self.screens['layer'].next()
@@ -920,7 +1011,7 @@ class zynthian_gui:
 			elif self.modal_screen=='midi_recorder':
 				self.show_modal('audio_recorder')
 
-			elif (self.active_screen=='control' or self.modal_screen=='control') and self.screens['control'].mode=='control':
+			elif (self.active_screen=='control' or self.modal_screen=='alsa_mixer') and self.screens['control'].mode=='control':
 				if self.midi_learn_mode or self.midi_learn_zctrl:
 					if self.modal_screen=='zs3_learn':
 						self.show_screen('control')
@@ -1293,7 +1384,7 @@ class zynthian_gui:
 				self.curlayer.refresh()
 
 		except Exception as e:
-			self.zyngui.reset_loading()
+			self.reset_loading()
 			logging.exception(e)
 
 		# Poll
@@ -1350,7 +1441,7 @@ class zynthian_gui:
 			try:
 				if self.modal_screen:
 					self.screens[self.modal_screen].refresh_status(self.status_info)
-				else:
+				elif self.active_screen:
 					self.screens[self.active_screen].refresh_status(self.status_info)
 			except AttributeError:
 				pass
