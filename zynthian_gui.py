@@ -534,13 +534,11 @@ class zynthian_gui:
 
 	def set_curlayer(self, layer):
 		if layer is not None:
-			self.start_loading()
 			self.curlayer=layer
 			self.screens['bank'].fill_list()
 			self.screens['preset'].fill_list()
 			self.screens['control'].fill_list()
 			self.set_active_channel()
-			self.stop_loading()
 		else:
 			self.curlayer = None
 
@@ -851,7 +849,7 @@ class zynthian_gui:
 			self.callable_ui_action("ALL_OFF")
 
 		elif i==2:
-			self.show_modal("stepseq")
+			self.toggle_modal("stepseq")
 
 		elif i==3:
 			self.screens['admin'].power_off()
