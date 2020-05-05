@@ -75,7 +75,7 @@ from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
-from zyngui.zynthian_gui_stepseq import zynthian_gui_stepseq
+from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
@@ -307,7 +307,7 @@ class zynthian_gui:
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['autoeq'] = zynthian_gui_autoeq()
-		self.screens['stepseq'] = zynthian_gui_stepseq()
+		self.screens['stepseq'] = zynthian_gui_stepsequencer()
 
 		# Init MIDI Subsystem => MIDI Profile
 		self.init_midi()
@@ -787,7 +787,7 @@ class zynthian_gui:
 		logging.info('Bold Switch '+str(i))
 		self.start_loading()
 
-		if self.modal_screen=='stepseq':
+		if self.modal_screen in ['stepseq']:
 			self.stop_loading()
 			if self.screens[self.modal_screen].switch(i, 'B'):
 				return
@@ -847,7 +847,7 @@ class zynthian_gui:
 		logging.info('Short Switch '+str(i))
 		self.start_loading()
 
-		if self.modal_screen=='stepseq':
+		if self.modal_screen in ['stepseq']:
 			self.stop_loading()
 			if self.screens[self.modal_screen].switch(i, 'S'):
 				return
