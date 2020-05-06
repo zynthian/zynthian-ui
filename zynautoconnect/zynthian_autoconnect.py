@@ -109,7 +109,7 @@ def midi_autoconnect(force=False):
 			hw_out.append(zynthstep_out[0])
 	except:
 			pass
-	
+
 	#Add Aubio MIDI out port ...
 	if zynthian_gui_config.midi_aubionotes_enabled:
 		aubio_out=jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
@@ -263,15 +263,21 @@ def midi_autoconnect(force=False):
 
 	#logger.debug("Connecting RTP-MIDI & QMidiNet to ZynMidiRouter:net_in ...")
 
-	#Connect RTP-MIDI Input Port to ZynMidiRouter:net_in
+	#Connect RTP-MIDI output to ZynMidiRouter:net_in
 	try:
 		jclient.connect(rtpmidi_out[0],zmr_in['net_in'])
 	except:
 		pass
 
-	#Connect QMidiNet Input Port to ZynMidiRouter:net_in
+	#Connect QMidiNet output to ZynMidiRouter:net_in
 	try:
 		jclient.connect(qmidinet_out[0],zmr_in['net_in'])
+	except:
+		pass
+
+	#Connect ZynthStep output to ZynMidiRouter:step_in
+	try:
+		jclient.connect("zynthstep:output", zmr_in['step_in'])
 	except:
 		pass
 
@@ -323,15 +329,21 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
-	#Connect ZynMidiRouter:net_out to QMidiNet Output Port
+	#Connect ZynMidiRouter:net_out to QMidiNet input
 	try:
 		jclient.connect(zmr_out['net_out'],qmidinet_in[0])
 	except:
 		pass
 
-	#Connect ZynMidiRouter:net_out to RTP-MIDI Output Port
+	#Connect ZynMidiRouter:net_out to RTP-MIDI input
 	try:
 		jclient.connect(zmr_out['net_out'],rtpmidi_in[0])
+	except:
+		pass
+
+	#Connect ZynMidiRouter:step_out to ZynthStep input
+	try:
+		jclient.connect(zmr_out['step_out'], "zynthstep:input")
 	except:
 		pass
 
