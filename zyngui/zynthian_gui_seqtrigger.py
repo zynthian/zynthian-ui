@@ -172,7 +172,7 @@ class zynthian_gui_seqtrigger():
 				size=int(padHeight * 0.3)),
 			fill=zynthian_gui_config.color_panel_tx,
 			tags="lbl_pad:%d"%(pad),
-			text="Pad %s%d" % (chr(col + 65), row + 1))
+			text="%s%d" % (chr(col + 65), row + 1))
 			self.gridCanvas.tag_bind("pad:%d"%(pad), '<Button-1>', self.onPadPress)
 			self.gridCanvas.tag_bind("lbl_pad:%d"%(pad), '<Button-1>', self.onPadPress)
 			self.gridCanvas.tag_bind("pad:%d"%(pad), '<ButtonRelease-1>', self.onPadRelease)
