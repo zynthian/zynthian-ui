@@ -945,21 +945,26 @@ class zynthian_gui:
 
 	def zynswitch_short(self,i):
 		logging.info('Short Switch '+str(i))
-		self.start_loading()
 
 		if self.modal_screen=='stepseq':
-			self.stop_loading()
 			if self.screens[self.modal_screen].switch(i, 'S'):
 				return
+
+		self.start_loading()
 
 		# Standard 4 ZynSwitches
 		if i==0:
 			if self.active_screen=='control' or self.modal_screen=='alsa_mixer':
 				if self.screens['layer'].get_num_root_layers()>1:
 					logging.info("Next layer")
-					self.screens['layer'].next()
+					self.screens['layer'].next(True)
 				else:
 					self.show_screen('layer')
+
+			elif self.active_screen=='layer':
+				if self.screens['layer'].get_num_root_layers()>1:
+					logging.info("Next layer")
+					self.screens['layer'].next(False)
 
 			else:
 				if self.active_screen=='preset':
