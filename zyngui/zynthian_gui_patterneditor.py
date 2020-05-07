@@ -190,6 +190,8 @@ class zynthian_gui_patterneditor():
 	# Function to handle start of pianoroll drag
 	def onPianoRollDragStart(self, event):
 		self.pianoRollDragStart = event
+		keyboardPlayNote =  self.keyOrigin + self.zoom - int(event.y / self.rowHeight) - 1
+		self.parent.libseq.playNote(keyboardPlayNote, 100, self.parent.libseq.getChannel(0), 200)
 
 	# Function to handle pianoroll drag motion
 	def onPianoRollDragMotion(self, event):
@@ -279,8 +281,8 @@ class zynthian_gui_patterneditor():
 			velocityColour = 70 + velocityColour
 		else:
 			key = note % 12
-			if key in (0,2,4,5,7,9,11):
-				# White notes
+#			if key in (0,2,4,5,7,9,11): # White notes
+			if key in (1,3,6,8,10): # Black notes
 				velocityColour += 30
 		duration = self.parent.libseq.getNoteDuration(step, note)
 		if not duration:

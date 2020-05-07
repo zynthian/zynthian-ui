@@ -56,6 +56,7 @@ class zynthian_gui_seqtrigger():
 		self.parent.addMenu({'Pad mode':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':2, 'value':2, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Columns':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':8, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Rows':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':8, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':1, 'onChange':self.onMenuChange}}})
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -75,6 +76,7 @@ class zynthian_gui_seqtrigger():
 			bg = zynthian_gui_config.color_bg)
 		self.gridCanvas.grid(row=0, column=0)
 
+		#TODO: Just adding patterns to sequences for test - this should be done by user in sequence editor
 		for pattern in range(1, 65):
 			self.parent.libseq.addPattern(pattern, 0, pattern)
 
@@ -123,6 +125,9 @@ class zynthian_gui_seqtrigger():
 				self.rows = value
 				self.parent.setParam(menuItem, 'value', value)
 				self.drawGrid(True)
+		elif menuItem == 'MIDI channel':
+			self.parent.libseq.setChannel(self.selectedPad, value - 1)
+			self.parent.setParam(menuItem, 'value', value)
 		return "%s: %d" % (menuItem, value)
 
 	# Function to draw grid
@@ -154,14 +159,14 @@ class zynthian_gui_seqtrigger():
 			playMode = self.parent.libseq.getPlayMode(pad)
 			playColour = 'grey'
 			if playMode == 1:
-				playColour = 'blue'
+				playColour = '#0C5A93'
 			elif playMode == 2:
-				playColour = 'green'
+				playColour = '#006704'
 			elif self.parent.libseq.getSequenceLength(pad):
 				if self.padConfig[pad]['mode'] == 1:
-					playColour = 'dark blue'
+					playColour = '#0B425E'
 				if self.padConfig[pad]['mode'] == 2:
-					playColour = 'dark green'
+					playColour = '#024211'
 			self.gridCanvas.itemconfig(cell, fill=playColour)
 			self.gridCanvas.itemconfig(cell, fill=playColour)
 			self.gridCanvas.coords(cell, padX, padY, padX + padWidth, padY + padHeight)
@@ -203,13 +208,16 @@ class zynthian_gui_seqtrigger():
 				self.parent.libseq.setPlayMode(pad, self.padConfig[pad]['mode'])
 		if(self.parent.paramEditorState):
 			params = {'min':1, 'max':2, 'value':2, 'onChange':self.onMenuChange}
-			params['value'] = self.padConfig[pad]['mode']
+			if self.parent.paramEditor['menuitem'] == 'Pad mode':
+				params['value'] = self.parent.libseq.getPlayMode(pad)
+			elif self.parent.paramEditor['menuitem'] == 'MIDI channel':
+				params['value'] = self.parent.libseq.getChannel(pad)
 			self.parent.showParamEditor(params) #TODO: Boy this is untidy!!!
 		self.drawPad(pad)
 
 	# Function to refresh status
 	def refresh_status(self):
-		for pad in range(self.rows * self.columns):
+		for pad in range(1, self.rows * self.columns + 1):
 			self.drawPad(pad)
 
 	def refresh_loading(self):
