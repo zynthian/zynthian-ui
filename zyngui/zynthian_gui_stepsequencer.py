@@ -30,6 +30,7 @@ import os
 import tkinter
 import logging
 import tkinter.font as tkFont
+import time
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -64,8 +65,11 @@ class zynthian_gui_stepsequencer():
 		self.zyncoderMutex = [None, None, None, None] # Object that is currently "owns" encoder, indexed by encoder
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.child = None # Child GUI class
+
+		# Initalise libseq and load pattern from file
 		self.libseq = ctypes.CDLL(dirname(realpath(__file__))+"/../zynseq/build/libzynseq.so")
 		self.libseq.init()
+		self.libseq.load(bytes(os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.zynseq", "utf-8"))
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -222,14 +226,6 @@ class zynthian_gui_stepsequencer():
 			bg = zynthian_gui_config.color_bg)
 		self.status_canvas.grid(row=0, column=2, sticky="ens", padx=(self.status_lpad,0))
 
-		# Frame to hold child GUI
-		self.child_frame = tkinter.Frame(self.main_frame, 
-			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height,
-			bg=zynthian_gui_config.color_bg)
-		self.tb_frame.grid(row=1, column=0)
-		self.tb_frame.grid_propagate(False)
-
 		# Menu #TODO: Replace listbox with painted canvas providing swipe gestures
 		self.listboxTextHeight = tkFont.Font(font=zynthian_gui_config.font_listbox).metrics('linespace')
 		self.lstMenu = tkinter.Listbox(self.main_frame,
@@ -244,10 +240,14 @@ class zynthian_gui_stepsequencer():
 			selectforeground=zynthian_gui_config.color_ctrl_tx,
 			selectmode=tkinter.BROWSE)
 		self.lstMenu.bind("<Key>", self.cb_keybinding)
+		self.lstMenu.bind('<Button-1>', self.onMenuPress)
+		self.lstMenu.bind('<B1-Motion>', self.onMenuDrag)
 		self.lstMenu.bind('<ButtonRelease-1>', self.onMenuRelease)
 		self.populateMenu()
+		self.scrollTime = 0.0
 
 		self.showChild(zynthian_gui_patterneditor)
+#		self.showChild(zynthian_gui_seqtrigger)
 
 	# Function to print traceback - for debug only
 	#	TODO: Remove debug function (or move to other zynthian class)
@@ -530,9 +530,14 @@ class zynthian_gui_stepsequencer():
 		else:
 			self.transport_canvas.config(bg=zynthian_gui_config.color_bg)
 
+		# Refresh child panel
+		if self.child and self.child.shown and self.child.refresh_status:
+			self.child.refresh_status()
+
 	# Function to open menu
 	def showMenu(self):
-		self.lstMenu.grid(row=2, column=0, sticky="wn", rowspan=2, columnspan=3)
+		self.lstMenu.grid(row=1, column=0, sticky="wn")
+		self.lstMenu.tkraise()
 		self.lstMenu.selection_clear(0,tkinter.END)
 		self.lstMenu.activate(0)
 		self.lstMenu.selection_set(0)
@@ -552,6 +557,24 @@ class zynthian_gui_stepsequencer():
 			self.hideMenu()
 		else:
 			self.showMenu()
+
+	# Function to handle press menu
+	def onMenuPress(self, event):
+		print("Listbox press", self.main_frame.bbox(self.lstMenu))
+
+	# Function to handle motion menu
+	def onMenuDrag(self, event):
+		now = time.monotonic()
+		if self.scrollTime < now:
+			self.scrollTime = now + 0.1
+			try:
+				item = self.lstMenu.curselection()[0]
+				self.lstMenu.see(item + 1)
+				self.lstMenu.see(item - 1)
+			except:
+				print("oops!")
+		#self.lstMenu.winfo(height)
+		pass
 
 	# Function to handle release menu
 	def onMenuRelease(self, event):
@@ -679,6 +702,7 @@ class zynthian_gui_stepsequencer():
 	def hideChild(self):
 		if self.child:
 			self.child.hide()
+		self.child = None
 		self.populateMenu()
 		self.setTitle("Step Sequencer")
 
@@ -840,7 +864,7 @@ class zynthian_gui_stepsequencer():
 		if self.shown and zyncoder.lib_zyncoder: # and self.zyncoderMutex[encoder] == None:
 			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
-			zyncoder.lib_zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 1, 2, 0)
+			zyncoder.lib_zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 1, 2, 1)
 			self.zyncoderMutex[encoder] = object
 
 	# Function to unregister ownership of an encoder from an object

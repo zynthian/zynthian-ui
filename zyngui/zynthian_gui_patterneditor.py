@@ -104,11 +104,9 @@ class zynthian_gui_patterneditor():
 		self.updateRowHeight()
 
 		# Main Frame
-		self.main_frame = tkinter.Frame(self.parent.child_frame)
-		self.parent.child_frame.grid()
+		self.main_frame = tkinter.Frame(self.parent.main_frame)
+		self.main_frame.grid(row=1, column=0, sticky="nsew")
 
-		# Load pattern from file
-		self.parent.libseq.load(bytes(os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.zynseq", "utf-8"))
 		# Draw pattern grid
 		self.gridCanvas = tkinter.Canvas(self.main_frame, 
 			width=self.gridWidth, 
@@ -117,6 +115,8 @@ class zynthian_gui_patterneditor():
 			bd=0,
 			highlightthickness=0)
 		self.gridCanvas.grid(row=0, column=1)
+
+
 		# Draw pianoroll
 		self.pianoRoll = tkinter.Canvas(self.main_frame,
 			width=self.pianoRollWidth,
@@ -175,13 +175,12 @@ class zynthian_gui_patterneditor():
 	# Function to show GUI
 	def show(self):
 		self.setupEncoders()
-		self.main_frame.grid()
+		self.main_frame.tkraise()
 		self.shown=True
 
 	# Function to hide GUI
 	def hide(self):
 		self.shown=False
-		self.main_frame.grid_forget()
 		self.parent.unregisterZyncoder(ENC_BACK)
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterZyncoder(ENC_SNAPSHOT)

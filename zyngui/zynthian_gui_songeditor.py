@@ -53,8 +53,8 @@ class zynthian_gui_songeditor():
 		self.height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
 
 		# Main Frame
-		self.main_frame = tkinter.Frame(self.parent.child_frame)
-		self.parent.child_frame.grid()
+		self.main_frame = tkinter.Frame(self.parent.main_frame)
+		self.main_frame.grid(row=1, column=0, sticky="nsew")
 
 	#Function to set values of encoders
 	#	note: Call after other routine uses one or more encoders
@@ -63,14 +63,13 @@ class zynthian_gui_songeditor():
 
 	# Function to show GUI
 	def show(self):
+		self.main_frame.tkraise()
 		self.setupEncoders()
-		self.main_frame.grid()
 		self.shown=True
 
 	# Function to hide GUI
 	def hide(self):
 		self.shown=False
-		self.main_frame.grid_forget()
 
 	# Function to handle menu editor change
 	#	value: Menu item's value
