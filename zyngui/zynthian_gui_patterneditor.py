@@ -277,6 +277,11 @@ class zynthian_gui_patterneditor():
 		velocityColour = self.parent.libseq.getNoteVelocity(step, note)
 		if velocityColour:
 			velocityColour = 70 + velocityColour
+		else:
+			key = note % 12
+			if key in (0,2,4,5,7,9,11):
+				# White notes
+				velocityColour += 30
 		duration = self.parent.libseq.getNoteDuration(step, note)
 		if not duration:
 			duration = 1
@@ -305,14 +310,13 @@ class zynthian_gui_patterneditor():
 			self.drawPianoroll()
 		# Draw cells of grid
 		self.gridCanvas.itemconfig("gridcell", fill="black")
-		for note in range(self.keyOrigin, self.keyOrigin + self.zoom):
-			self.drawRow(note)
 		# Delete existing note names
 		self.pianoRoll.delete("notename")
 		for note in range(self.keyOrigin, self.keyOrigin + self.zoom):
 			# Update pianoroll keys
 			key = note % 12
 			row = note - self.keyOrigin
+			self.drawRow(note)
 			if clearGrid:
 				# Create last note labels in grid
 				self.gridCanvas.create_text(self.gridWidth - self.selectThickness, self.rowHeight * (self.zoom - row - 0.5), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font, anchor="e")
