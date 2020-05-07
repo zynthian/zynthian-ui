@@ -61,7 +61,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def get_new_snapshot(self):
-		return self.get_next_name() + '.zss'
+		parts = self.zyngui.screens['layer'].layers[0].get_presetpath().split('#',2)
+		name = parts[1].replace("/",">")
+		return self.get_next_name() + '-' + name + '.zss'
 
 
 	def get_new_bankdir(self):
