@@ -748,55 +748,53 @@ class zynthian_gui_stepsequencer():
 		if zyncoder.lib_zyncoder:
 			for encoder in range(len(self.zyncoderMutex)):
 				if self.zyncoderMutex[encoder]:
-					#TODO: Wrap in try / except
-					value = zyncoder.lib_zyncoder.get_value_zyncoder(encoder) - 1
-					if value > 1:
-						value = 1
-					if value:
-						logging.debug("Zyncoder %d value: %d" % (encoder, value))
-						self.zyncoderMutex[encoder].onZyncoder(encoder, value)
-					zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 1)
+					# Found a registered zyncoder
+					value = zyncoder.lib_zyncoder.get_value_zyncoder(encoder)
+					if value == 2:
+						change = 1
+						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 1)
+						self.zyncoderMutex[encoder].onZyncoder(encoder, change)
+					elif value == 0:
+						change = -1
+						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 1)
+						self.zyncoderMutex[encoder].onZyncoder(encoder, change)
 
-	#TODO: Should CUIA to encoder be done once in top level class?
+	# Function to handle CUIA encoder changes
+	def onCuiaEncoder(self, encoder, value):
+		if self.zyncoderMutex[encoder]:
+			self.zyncoderMutex[encoder].onZyncoder(encoder, value)
+
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
-		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SELECT, 2)
+		self.onCuiaEncoder(ENC_SELECT, 1);
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SELECT, 0)
+		self.onCuiaEncoder(ENC_SELECT, -1);
 
 	# Function to handle CUIA LAYER_UP command
 	def layer_up(self):
-		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 2)
+		self.onCuiaEncoder(ENC_LAYER, 1);
 
 	# Function to handle CUIA LAYER_DOWN command
 	def layer_down(self):
-		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 0)
+		self.onCuiaEncoder(ENC_LAYER, -1);
 
 	# Function to handle CUIA SNAPSHOT_UP command
 	def snapshot_up(self):
-		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, 2)
+		self.onCuiaEncoder(ENC_SNAPSHOT, 1);
 
 	# Function to handle CUIA SNAPSHOT_DOWN command
 	def snapshot_down(self):
-		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, 0)
+		self.onCuiaEncoder(ENC_SNAPSHOT, -1);
 
 	# Function to handle CUIA BACK_UP command
 	def back_up(self):
-		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, 2)
+		self.onCuiaEncoder(ENC_BACK, 1);
 
 	# Function to handle CUIA BACK_UP command
 	def back_down(self):
-		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, 0)
+		self.onCuiaEncoder(ENC_BACK, -1);
 
 	# Function to handle CUIA SELECT command
 	def switch_select(self, t):
@@ -860,8 +858,10 @@ class zynthian_gui_stepsequencer():
 	#	object: Object to register as owner
 	#	Note: Registers an object to own the encoder which will trigger that object's onZyncoder method when encoder rotated passing it +/- 1 to indicate direction
 	def registerZyncoder(self, encoder, object):
+		if encoder >= len(self.zyncoderMutex):
+			return
 		self.zyncoderMutex[encoder] = None
-		if self.shown and zyncoder.lib_zyncoder: # and self.zyncoderMutex[encoder] == None:
+		if self.shown and zyncoder.lib_zyncoder:
 			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
 			zyncoder.lib_zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 1, 2, 1)
