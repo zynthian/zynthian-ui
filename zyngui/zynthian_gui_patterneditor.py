@@ -116,6 +116,16 @@ class zynthian_gui_patterneditor():
 			highlightthickness=0)
 		self.gridCanvas.grid(row=0, column=1)
 
+		# Draw velocity level indicator
+		self.velocityCanvas = tkinter.Canvas(self.main_frame,
+			width = self.pianoRollWidth,
+			height = PLAYHEAD_HEIGHT,
+			bg=CANVAS_BACKGROUND,
+			bd=0,
+			highlightthickness=0,
+			)
+		self.velocityCanvas.create_rectangle(0, 0, self.pianoRollWidth * self.velocity / 127, PLAYHEAD_HEIGHT, fill='green', tags="velocityIndicator")
+		self.velocityCanvas.grid(column=0, row=2)
 
 		# Draw pianoroll
 		self.pianoRoll = tkinter.Canvas(self.main_frame,
@@ -140,7 +150,7 @@ class zynthian_gui_patterneditor():
 			state="normal",
 			width=0,
 			tags="playCursor")
-		self.playCanvas.grid(row=2, column=1)
+		self.playCanvas.grid(column=1, row=2)
 
 		self.loadPattern(1)
 
@@ -189,12 +199,17 @@ class zynthian_gui_patterneditor():
 
 	# Function to handle start of pianoroll drag
 	def onPianoRollDragStart(self, event):
+		if self.parent.lstMenu.winfo_viewable():
+			self.parent.hideMenu()
+			return
 		self.pianoRollDragStart = event
 		keyboardPlayNote =  self.keyOrigin + self.zoom - int(event.y / self.rowHeight) - 1
 		self.parent.libseq.playNote(keyboardPlayNote, 100, self.parent.libseq.getChannel(0), 200)
 
 	# Function to handle pianoroll drag motion
 	def onPianoRollDragMotion(self, event):
+		if not self.pianoRollDragStart:
+			return
 		if event.y > self.pianoRollDragStart.y + self.rowHeight and self.keyOrigin < 128 - self.zoom:
 			self.keyOrigin = self.keyOrigin + 1
 			self.pianoRollDragStart.y = event.y
@@ -216,6 +231,9 @@ class zynthian_gui_patterneditor():
 	# Function to handle mouse click / touch
 	#	event: Mouse event
 	def onCanvasClick(self, event):
+		if self.parent.lstMenu.winfo_viewable():
+			self.parent.hideMenu()
+			return
 		closest = event.widget.find_closest(event.x, event.y)
 		tags = self.gridCanvas.gettags(closest)
 		step, note = tags[0].split(',')
@@ -508,12 +526,15 @@ class zynthian_gui_patterneditor():
 	#	value: Current value of zyncoder
 	def onZyncoder(self, encoder, value):
 		if encoder == ENC_BACK:
+			# BACK encoder adjusts note selection
 			note = self.selectedCell[1] + value
 			self.selectCell(self.selectedCell[0], note)
 		elif encoder == ENC_SELECT:
+			# SELECT encoder adjusts step selection
 			step = self.selectedCell[0] + value
 			self.selectCell(step, self.selectedCell[1])
 		elif encoder == ENC_SNAPSHOT:
+			# SNAPSHOT encoder adjusts velocity
 			self.velocity = self.velocity + value
 			if self.velocity > 127:
 				self.velocity = 127
@@ -521,10 +542,12 @@ class zynthian_gui_patterneditor():
 			if self.velocity < 1:
 				self.velocity = 1
 				return
+			self.velocityCanvas.coords("velocityIndicator", 0, 0, self.pianoRollWidth * self.velocity / 127, PLAYHEAD_HEIGHT)
 			if self.parent.libseq.getNoteDuration(self.selectedCell[0], self.selectedCell[1]):
 				self.parent.libseq.setNoteVelocity(self.selectedCell[0], self.selectedCell[1], self.velocity)
 				self.drawCell(self.selectedCell[0], self.selectedCell[1])
 		elif encoder == ENC_LAYER:
+			# LAYER encoder adjusts duration
 			self.duration = self.duration + value
 			if self.duration > 16:
 				self.duration = 16

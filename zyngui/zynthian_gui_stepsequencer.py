@@ -62,7 +62,7 @@ class zynthian_gui_stepsequencer():
 	# Function to initialise class
 	def __init__(self):
 		self.shown = False # True when GUI in view
-		self.zyncoderMutex = [None, None, None, None] # Object that is currently "owns" encoder, indexed by encoder
+		self.zyncoderOwner = [None, None, None, None] # Object that is currently "owns" encoder, indexed by encoder
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.child = None # Child GUI class
 
@@ -541,12 +541,17 @@ class zynthian_gui_stepsequencer():
 		self.lstMenu.selection_clear(0,tkinter.END)
 		self.lstMenu.activate(0)
 		self.lstMenu.selection_set(0)
+		for encoder in range(4):
+			self.unregisterZyncoder(encoder)
 		self.registerZyncoder(ENC_SELECT, self)
+		self.registerZyncoder(ENC_LAYER, self)
 
 	# Function to close menu
 	def hideMenu(self):
 		self.unregisterZyncoder(ENC_SELECT)
 		self.lstMenu.grid_forget()
+		for encoder in range(4):
+			self.unregisterZyncoder(encoder)
 		if self.child:
 			self.child.setupEncoders()
 
@@ -652,14 +657,18 @@ class zynthian_gui_stepsequencer():
 		else:
 			self.paramEditor['onAssert'] = None
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='hidden')
+		for encoder in range(4):
+			self.unregisterZyncoder(encoder)
 		self.registerZyncoder(ENC_SELECT, self)
+		self.registerZyncoder(ENC_LAYER, self)
 
 	# Function to hide menu editor
 	def hideparamEditor(self, event):
 		self.paramEditorState = False
 		self.param_editor_canvas.grid_forget()
 		self.title_canvas.grid(row=0, column=0)
-		self.unregisterZyncoder(ENC_SELECT)
+		for encoder in range(4):
+			self.unregisterZyncoder(encoder)
 		if self.child:
 			self.child.setupEncoders()
 
@@ -714,7 +723,7 @@ class zynthian_gui_stepsequencer():
 	#	encoder: Zyncoder index [0..4]
 	#	value: Value of zyncoder change [+/- 1]
 	def onZyncoder(self, encoder, value):
-		if encoder == ENC_SELECT:
+		if encoder == ENC_SELECT or encoder == ENC_LAYER:
 			if self.lstMenu.winfo_viewable():
 				# Menu showing
 				if self.lstMenu.size() < 1:
@@ -746,23 +755,21 @@ class zynthian_gui_stepsequencer():
 		if not self.shown:
 			return
 		if zyncoder.lib_zyncoder:
-			for encoder in range(len(self.zyncoderMutex)):
-				if self.zyncoderMutex[encoder]:
+			for encoder in range(len(self.zyncoderOwner)):
+				if self.zyncoderOwner[encoder]:
 					# Found a registered zyncoder
 					value = zyncoder.lib_zyncoder.get_value_zyncoder(encoder)
 					if value == 2:
-						change = 1
-						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 1)
-						self.zyncoderMutex[encoder].onZyncoder(encoder, change)
+						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 1, 0)
+						self.zyncoderOwner[encoder].onZyncoder(encoder, 1)
 					elif value == 0:
-						change = -1
-						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 1)
-						self.zyncoderMutex[encoder].onZyncoder(encoder, change)
+						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 1, 0)
+						self.zyncoderOwner[encoder].onZyncoder(encoder, -1)
 
 	# Function to handle CUIA encoder changes
 	def onCuiaEncoder(self, encoder, value):
-		if self.zyncoderMutex[encoder]:
-			self.zyncoderMutex[encoder].onZyncoder(encoder, value)
+		if self.zyncoderOwner[encoder]:
+			self.zyncoderOwner[encoder].onZyncoder(encoder, value)
 
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
@@ -807,7 +814,9 @@ class zynthian_gui_stepsequencer():
 	def switch(self, switch, type):
 		if type == "L":
 			return False # Don't handle any long presses
-		if switch == ENC_BACK:
+		if switch == ENC_LAYER and not self.lstMenu.winfo_viewable():
+			self.toggleMenu()
+		elif switch == ENC_BACK:
 			if self.lstMenu.winfo_viewable():
 				# Close menu
 				self.hideMenu()
@@ -817,9 +826,7 @@ class zynthian_gui_stepsequencer():
 				self.hideparamEditor(0)
 				return True
 			return False
-		elif switch == ENC_LAYER:
-			self.toggleMenu()
-		elif switch == ENC_SELECT:
+		elif switch == ENC_SELECT or switch == ENC_LAYER:
 			if self.lstMenu.winfo_viewable():
 				self.onMenuSelect()
 				return True
@@ -858,21 +865,21 @@ class zynthian_gui_stepsequencer():
 	#	object: Object to register as owner
 	#	Note: Registers an object to own the encoder which will trigger that object's onZyncoder method when encoder rotated passing it +/- 1 to indicate direction
 	def registerZyncoder(self, encoder, object):
-		if encoder >= len(self.zyncoderMutex):
+		if encoder >= len(self.zyncoderOwner):
 			return
-		self.zyncoderMutex[encoder] = None
+		self.zyncoderOwner[encoder] = None
 		if self.shown and zyncoder.lib_zyncoder:
 			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
-			zyncoder.lib_zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 1, 2, 1)
-			self.zyncoderMutex[encoder] = object
+			zyncoder.lib_zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 1, 2, 0)
+			self.zyncoderOwner[encoder] = object
 
 	# Function to unregister ownership of an encoder from an object
 	#	encoder: Index of encoder to unregister
 	def unregisterZyncoder(self, encoder):
-		if encoder >= len(self.zyncoderMutex):
+		if encoder >= len(self.zyncoderOwner):
 			return
-		self.zyncoderMutex[encoder] = None
+		self.zyncoderOwner[encoder] = None
 
 #------------------------------------------------------------------------------
 
