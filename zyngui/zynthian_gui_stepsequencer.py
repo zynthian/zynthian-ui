@@ -146,7 +146,7 @@ class zynthian_gui_stepsequencer():
 				iconsize = size
 				break
 		self.imgLoopOff = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/loop.png" % (iconsize))
-		self.imgLoopOn = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/loop.png" % (iconsize))
+		self.imgLoopOn = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/loopon.png" % (iconsize))
 		self.imgBack = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/left.png" % (iconsize))
 		self.imgForward = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/right.png" % (iconsize))
 		self.imgUp = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/up.png" % (iconsize))
@@ -241,10 +241,12 @@ class zynthian_gui_stepsequencer():
 	# Function to toggle playback
 	#	event: Mouse event (not used)
 	def transportToggle(self):
-		if self.libseq.getPlayMode():
+		if self.libseq.getPlayMode(0):
 			self.libseq.setPlayMode(0, 0)
+			self.btnTransport.configure(image=self.imgLoopOff)
 		else:
 			self.libseq.setPlayMode(0, 2)
+			self.btnTransport.configure(image=self.imgLoopOn)
 
 	# Function to populate menu with global entries
 	def populateMenu(self):
