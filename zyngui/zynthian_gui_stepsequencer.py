@@ -111,107 +111,89 @@ class zynthian_gui_stepsequencer():
 			height=self.height,
 			bg=CANVAS_BACKGROUND)
 		self.main_frame.bind("<Key>", self.cb_keybinding)
+		self.main_frame.grid_propagate(False) # Don't auto size main frame
 
-		# Topbar's frame
-		buttonSize = zynthian_gui_config.topbar_height - 4
-		self.tb_frame = tkinter.Frame(self.main_frame, 
+		# Topbar frame
+		self.tb_frame = tkinter.Frame(self.main_frame,
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.topbar_height,
 			bg=zynthian_gui_config.color_bg)
-		self.tb_frame.grid(row=0, column=0)
 		self.tb_frame.grid_propagate(False)
-		self.tb_frame.bind('<Button-1>', self.toggleMenu)
+		self.tb_frame.grid(row=0, column=0)
+		self.tb_frame.grid_columnconfigure(0, weight=1)
 
 		# Title
-		title_width=zynthian_gui_config.display_width-self.status_l - self.status_lpad - 2 - buttonSize
+		font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
 		self.title_canvas = tkinter.Canvas(self.tb_frame,
-			width=title_width,
 			height=zynthian_gui_config.topbar_height,
 			bd=0,
 			highlightthickness=0,
-			relief='flat',
 			bg = zynthian_gui_config.color_bg)
+		self.title_canvas.grid_propagate(False)
 		self.title_canvas.create_text(0, zynthian_gui_config.topbar_height / 2,
+			font=font,
 			anchor="w",
-			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-				size=int(self.height * 0.05)),
 			fill=zynthian_gui_config.color_panel_tx,
 			tags="lblTitle",
 			text="Step Sequencer")
-		self.title_canvas.grid(row=0, column=0)
+		self.title_canvas.grid(row=0, column=0, sticky='ew')
 		self.title_canvas.bind('<Button-1>', self.toggleMenu)
 
-		# Transport play button
-		self.transport_canvas = tkinter.Canvas(self.tb_frame,
-			width=buttonSize + 4,
-			height=buttonSize + 4,
-			bd=0,
-			highlightthickness=0,
-			relief='flat',
-			bg = zynthian_gui_config.color_bg)
-		self.transport_canvas.create_rectangle(3, 3, buttonSize, buttonSize, outline="white", tags="btnTransport", fill=zynthian_gui_config.color_bg)
-		self.transport_canvas.create_text(2 + buttonSize / 2, 2 + buttonSize / 2,
-			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-				size=int(self.height * 0.05)),
-			fill=zynthian_gui_config.color_panel_tx,
-			tags="btnTransport",
-			text=">")
-		self.transport_canvas.tag_bind("btnTransport", '<Button-1>', self.transportToggle)
-		self.transport_canvas.grid(row=0, column=1)
+		iconsize = 60
+		iconsizes = [12,24,32,48,60]
+		for size in iconsizes:
+			if zynthian_gui_config.topbar_height <= size:
+				iconsize = size
+				break
+		self.imgLoopOff = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/loop.png" % (iconsize))
+		self.imgLoopOn = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/loop.png" % (iconsize))
+		self.imgBack = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/left.png" % (iconsize))
+		self.imgForward = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/right.png" % (iconsize))
+		self.imgUp = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/up.png" % (iconsize))
+		self.imgDown = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/down.png" % (iconsize))
+
+		self.btnTransport = tkinter.Button(self.tb_frame, command=self.transportToggle,
+			image=self.imgLoopOff,
+			bd=0, highlightthickness=0)
+		self.btnTransport.grid(column=1, row=0)
 
 		# Parameter value editor
 		self.paramEditorState = False
 		self.MENU_ITEMS = {'Back':None} # Dictionary of menu items
 		self.paramEditor = {'menuitem':None,'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange} # Values for currently editing menu item
 		self.param_editor_canvas = tkinter.Canvas(self.tb_frame,
-			width=title_width,
 			height=zynthian_gui_config.topbar_height,
-			bd=0,
-			highlightthickness=0,
-			relief='flat',
+			bd=0, highlightthickness=0,
 			bg = zynthian_gui_config.color_bg)
+		self.param_editor_canvas.grid_propagate(False)
 		# Parameter editor cancel button
-		self.param_editor_canvas.create_rectangle(2, 2, buttonSize + 2, buttonSize + 2, outline="white", tags="btnparamEditorCancel", fill=zynthian_gui_config.color_bg)
-		self.param_editor_canvas.create_text(2 + buttonSize / 2, zynthian_gui_config.topbar_height / 2,
-			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-				size=int(self.height * 0.05)),
-			fill=zynthian_gui_config.color_panel_tx,
-			tags="btnparamEditorCancel",
-			text="<")
-
-		self.param_editor_canvas.tag_bind("btnparamEditorCancel", '<Button-1>', self.hideparamEditor)
+		self.btnParamCancel = tkinter.Button(self.param_editor_canvas, command=self.hideparamEditor,
+			image=self.imgBack,
+			bd=0, highlightthickness=0)
+		self.btnParamCancel.grid(column=0, row=0)
 		# Parameter editor decrement button
-		self.param_editor_canvas.create_rectangle(2 + buttonSize, 2, 2 * buttonSize + 2, buttonSize + 2, outline="white", tags="btnparamEditorDown", fill=zynthian_gui_config.color_bg)
-		self.param_editor_canvas.create_text(2 + 3 * buttonSize / 2, zynthian_gui_config.topbar_height / 2,
-			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-				size=int(self.height * 0.05)),
-			fill=zynthian_gui_config.color_panel_tx,
-			tags="btnparamEditorDown",
-			text="-")
-		self.param_editor_canvas.tag_bind("btnparamEditorDown", '<Button-1>', self.decrementParam)
+		self.btnParamDown = tkinter.Button(self.param_editor_canvas, command=self.decrementParam,
+			image=self.imgDown,
+			bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100)
+		self.btnParamDown.grid(column=1, row=0)
 		# Parameter editor increment button
-		self.param_editor_canvas.create_rectangle(2 + 2 * buttonSize, 2, 3 * buttonSize + 2, buttonSize + 2, outline="white", tags="btnparamEditorUp", fill=zynthian_gui_config.color_bg)
-		self.param_editor_canvas.create_text(2 + 5 * buttonSize / 2, zynthian_gui_config.topbar_height / 2,
-			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-				size=int(self.height * 0.05)),
-			fill=zynthian_gui_config.color_panel_tx,
-			tags="btnparamEditorUp",
-			text="+")
-		self.param_editor_canvas.tag_bind("btnparamEditorUp", '<Button-1>', self.incrementParam)
+		self.btnParamUp = tkinter.Button(self.param_editor_canvas, command=self.incrementParam,
+			image=self.imgUp,
+			bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100)
+		self.btnParamUp.grid(column=2, row=0)
 		# Parameter editor assert button
-		self.param_editor_canvas.create_rectangle(2 + 3 * buttonSize, 2, 4 * buttonSize + 2, buttonSize + 2, outline="white", tags="btnparamEditorAssert", fill=zynthian_gui_config.color_bg)
-		self.param_editor_canvas.create_text(2 + 7 * buttonSize / 2, zynthian_gui_config.topbar_height / 2,
-			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-				size=int(self.height * 0.05)),
-			fill=zynthian_gui_config.color_panel_tx,
-			tags="btnparamEditorAssert",
-			text=">")
-		self.param_editor_canvas.tag_bind("btnparamEditorAssert", '<Button-1>', self.menuValueAssert)
+		self.btnParamAssert = tkinter.Button(self.param_editor_canvas, command=self.menuValueAssert,
+			image=self.imgForward,
+			bd=0, highlightthickness=0)
+		self.btnParamAssert.grid(column=3, row=0)
 		# Parameter editor value text
-		self.param_editor_canvas.create_text(6 + 4 * buttonSize, zynthian_gui_config.topbar_height / 2,
+		#TODO: Set text position based on button width
+		self.param_editor_canvas.update_idletasks() # Needed to calculate button geometry
+		x = self.btnParamAssert.winfo_x() + self.btnParamAssert.winfo_width()
+		self.param_editor_canvas.create_text(3 + x, zynthian_gui_config.topbar_height / 2,
+			anchor='w',
 			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
 				size=int(self.height * 0.05)),
-			anchor="w",
 			fill=zynthian_gui_config.color_panel_tx,
 			tags="btnparamEditorValue",
 			text="VALUE...")
@@ -224,7 +206,7 @@ class zynthian_gui_stepsequencer():
 			highlightthickness=0,
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
-		self.status_canvas.grid(row=0, column=2, sticky="ens", padx=(self.status_lpad,0))
+		self.status_canvas.grid(column=2, row=0, sticky="ens", padx=(2,0))
 
 		# Menu #TODO: Replace listbox with painted canvas providing swipe gestures
 		self.listboxTextHeight = tkFont.Font(font=zynthian_gui_config.font_listbox).metrics('linespace')
@@ -248,6 +230,7 @@ class zynthian_gui_stepsequencer():
 
 		self.showChild(zynthian_gui_patterneditor)
 #		self.showChild(zynthian_gui_seqtrigger)
+#		self.showChild(zynthian_gui_songeditor)
 
 	# Function to print traceback - for debug only
 	#	TODO: Remove debug function (or move to other zynthian class)
@@ -257,8 +240,8 @@ class zynthian_gui_stepsequencer():
 
 	# Function to toggle playback
 	#	event: Mouse event (not used)
-	def transportToggle(self, event=None):
-		if self.libseq.getPlayMode(0):
+	def transportToggle(self):
+		if self.libseq.getPlayMode():
 			self.libseq.setPlayMode(0, 0)
 		else:
 			self.libseq.setPlayMode(0, 2)
@@ -305,7 +288,8 @@ class zynthian_gui_stepsequencer():
 	def show(self):
 		if not self.shown:
 			self.shown=True
-			self.main_frame.grid()
+			self.main_frame.grid_propagate(False)
+			self.main_frame.grid(column=0, row=0)
 			if self.child:
 				self.child.show()
 		self.main_frame.focus()
@@ -525,7 +509,7 @@ class zynthian_gui_stepsequencer():
 				self.status_canvas.itemconfig(self.status_midi, text=flags)
 
 		# Transport play status #TODO: Need to relate to selected sequence
-		if self.libseq.getPlayMode(0):
+		if self.libseq.getPlayMode():
 			self.transport_canvas.config(bg="green")
 		else:
 			self.transport_canvas.config(bg=zynthian_gui_config.color_bg)
@@ -565,7 +549,7 @@ class zynthian_gui_stepsequencer():
 
 	# Function to handle press menu
 	def onMenuPress(self, event):
-		print("Listbox press", self.main_frame.bbox(self.lstMenu))
+		pass
 
 	# Function to handle motion menu
 	def onMenuDrag(self, event):
@@ -577,7 +561,7 @@ class zynthian_gui_stepsequencer():
 				self.lstMenu.see(item + 1)
 				self.lstMenu.see(item - 1)
 			except:
-				print("oops!")
+				pass
 		#self.lstMenu.winfo(height)
 		pass
 
@@ -629,8 +613,9 @@ class zynthian_gui_stepsequencer():
 	#		'onAssert':<function to call when value is asserted, e.g. assert button pressed> [Default: None]}
 	def showParamEditor(self, params):
 		self.paramEditorState = True
-		self.title_canvas.grid_forget()
-		self.param_editor_canvas.grid(row=0, column=0)
+		#self.title_canvas.grid_forget()
+		self.param_editor_canvas.grid_propagate(False)
+		self.param_editor_canvas.grid(column=0, row=0, sticky='nsew')
 		# Populate parameter editor with params from menuitem
 		if 'menuitem' in params:
 			self.paramEditor['menuitem'] = params['menuitem']
@@ -663,10 +648,10 @@ class zynthian_gui_stepsequencer():
 		self.registerZyncoder(ENC_LAYER, self)
 
 	# Function to hide menu editor
-	def hideparamEditor(self, event):
+	def hideparamEditor(self):
 		self.paramEditorState = False
 		self.param_editor_canvas.grid_forget()
-		self.title_canvas.grid(row=0, column=0)
+#		self.title_canvas.grid(row=0, column=0)
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
 		if self.child:
@@ -674,31 +659,31 @@ class zynthian_gui_stepsequencer():
 
 	# Function to decrement parameter value
 	#	event: Click event (ignored)
-	def decrementParam(self, event=None):
+	def decrementParam(self):
 		if self.paramEditor['value'] > self.paramEditor['min']:
 			self.paramEditor['value'] = self.paramEditor['value'] - 1
 		result=self.paramEditor['onChange'](self.paramEditor['value'])
 		if result == -1:
-			hideparamEditor(0)
+			hideparamEditor()
 		else:
 			self.param_editor_canvas.itemconfig("btnparamEditorValue", text=result)
 
 	# Function to increment selected menu value
 	#	event: Click event (ignored)
-	def incrementParam(self, event=None):
+	def incrementParam(self):
 		if self.paramEditor['value'] < self.paramEditor['max']:
 			self.paramEditor['value'] = self.paramEditor['value'] + 1
 		result=self.paramEditor['onChange'](self.paramEditor['value'])
 		if result == -1:
-			self.hideparamEditor(0)
+			self.hideparamEditor()
 		else:
 			self.param_editor_canvas.itemconfig("btnparamEditorValue", text=result)
 
 	# Function to assert selected menu value
-	def menuValueAssert(self, event=None):
+	def menuValueAssert(self):
 		if self.paramEditor and 'onAssert' in self.paramEditor and self.paramEditor['onAssert']:
 			self.paramEditor['onAssert']()
-		self.hideparamEditor(0)
+		self.hideparamEditor()
 
 	# Function to show child GUI
 	def showChild(self, child):
@@ -823,7 +808,7 @@ class zynthian_gui_stepsequencer():
 				return True
 			if self.paramEditorState:
 				# Close parameter editor
-				self.hideparamEditor(0)
+				self.hideparamEditor()
 				return True
 			return False
 		elif switch == ENC_SELECT or switch == ENC_LAYER:

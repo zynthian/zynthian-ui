@@ -198,6 +198,9 @@ class zynthian_gui_seqtrigger():
 
 	# Function to handle pad release
 	def onPadRelease(self, event):
+		if self.parent.lstMenu.winfo_viewable():
+			self.parent.hideMenu()
+			return
 		tags = self.gridCanvas.gettags(self.gridCanvas.find_withtag(tkinter.CURRENT))
 		pad = int(tags[0].split(':')[1])
 		self.selectedPad = pad
@@ -212,6 +215,8 @@ class zynthian_gui_seqtrigger():
 				params['value'] = self.parent.libseq.getPlayMode(pad)
 			elif self.parent.paramEditor['menuitem'] == 'MIDI channel':
 				params['value'] = self.parent.libseq.getChannel(pad)
+			else:
+				return
 			self.parent.showParamEditor(params) #TODO: Boy this is untidy!!!
 		self.drawPad(pad)
 
