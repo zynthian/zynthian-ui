@@ -222,6 +222,7 @@ void PatternManager::copyPattern(Pattern* source, Pattern* destination)
 	destination->clear();
 	destination->setSteps(source->getSteps());
 	destination->setClockDivisor(source->getClockDivisor());
+	destination->setStepsPerBeat(source->getStepsPerBeat());
 	size_t nIndex = 0;
 	while(StepEvent* pEvent = source->getEventAt(nIndex++))
 		destination->addEvent(pEvent);
