@@ -243,10 +243,8 @@ class zynthian_gui_stepsequencer():
 	def transportToggle(self):
 		if self.libseq.getPlayMode(0):
 			self.libseq.setPlayMode(0, 0)
-			self.btnTransport.configure(image=self.imgLoopOff)
 		else:
 			self.libseq.setPlayMode(0, 2)
-			self.btnTransport.configure(image=self.imgLoopOn)
 
 	# Function to populate menu with global entries
 	def populateMenu(self):
@@ -752,6 +750,10 @@ class zynthian_gui_stepsequencer():
 					elif value == 0:
 						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 1, 0)
 						self.zyncoderOwner[encoder].onZyncoder(encoder, -1)
+		if self.libseq.getPlayMode(0): # This should use currently loaded sequence
+			self.btnTransport.configure(image=self.imgLoopOn)
+		else:
+			self.btnTransport.configure(image=self.imgLoopOff)
 
 	# Function to handle CUIA encoder changes
 	def onCuiaEncoder(self, encoder, value):
