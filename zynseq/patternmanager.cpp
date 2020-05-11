@@ -116,7 +116,7 @@ void PatternManager::load(const char* filename)
 		}
 	}
 	fclose(pFile);
-	printf("Loaded %d patterns and %d sequences from file %s\n", m_mPatterns.size(), m_mSequences.size(), filename);
+	printf("Loaded %lu patterns and %lu sequences from file %s\n", m_mPatterns.size(), m_mSequences.size(), filename);
 }
 
 void PatternManager::save(const char* filename)

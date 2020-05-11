@@ -119,7 +119,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			case MIDI_SONG:
 				printf("Select song %d\n", midiEvent.buffer[1]);
 			default:
-				printf("Unhandled MIDI message %d\n", midiEvent.buffer[0]);
+				//printf("Unhandled MIDI message %d\n", midiEvent.buffer[0]);
+				break;
 		}
 	}
 
