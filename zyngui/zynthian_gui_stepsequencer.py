@@ -167,7 +167,7 @@ class zynthian_gui_stepsequencer():
 			bg = zynthian_gui_config.color_bg)
 		self.param_editor_canvas.grid_propagate(False)
 		# Parameter editor cancel button
-		self.btnParamCancel = tkinter.Button(self.param_editor_canvas, command=self.hideparamEditor,
+		self.btnParamCancel = tkinter.Button(self.param_editor_canvas, command=self.hideParamEditor,
 			image=self.imgBack,
 			bd=0, highlightthickness=0)
 		self.btnParamCancel.grid(column=0, row=0)
@@ -228,9 +228,9 @@ class zynthian_gui_stepsequencer():
 		self.populateMenu()
 		self.scrollTime = 0.0
 
-#		self.showChild(zynthian_gui_patterneditor)
+		self.showChild(zynthian_gui_patterneditor)
 #		self.showChild(zynthian_gui_seqtrigger)
-		self.showChild(zynthian_gui_songeditor)
+#		self.showChild(zynthian_gui_songeditor)
 
 	# Function to print traceback - for debug only
 	#	TODO: Remove debug function (or move to other zynthian class)
@@ -648,7 +648,7 @@ class zynthian_gui_stepsequencer():
 		self.registerZyncoder(ENC_LAYER, self)
 
 	# Function to hide menu editor
-	def hideparamEditor(self):
+	def hideParamEditor(self):
 		self.paramEditorState = False
 		self.param_editor_canvas.grid_forget()
 #		self.title_canvas.grid(row=0, column=0)
@@ -668,7 +668,7 @@ class zynthian_gui_stepsequencer():
 		self.paramEditor['value'] = value
 		result=self.paramEditor['onChange'](self.paramEditor['value'])
 		if result == -1:
-			hideparamEditor()
+			hideParamEditor()
 		else:
 			self.param_editor_canvas.itemconfig("btnparamEditorValue", text=result)
 
@@ -684,7 +684,7 @@ class zynthian_gui_stepsequencer():
 	def menuValueAssert(self):
 		if self.paramEditor and 'onAssert' in self.paramEditor and self.paramEditor['onAssert']:
 			self.paramEditor['onAssert']()
-		self.hideparamEditor()
+		self.hideParamEditor()
 
 	# Function to show child GUI
 	def showChild(self, child):
@@ -698,6 +698,7 @@ class zynthian_gui_stepsequencer():
 		if self.child:
 			self.child.hide()
 		self.child = None
+		self.hideParamEditor()
 		self.populateMenu()
 		self.setTitle("Step Sequencer")
 
@@ -807,7 +808,7 @@ class zynthian_gui_stepsequencer():
 				return True
 			if self.paramEditorState:
 				# Close parameter editor
-				self.hideparamEditor()
+				self.hideParamEditor()
 				return True
 			return False
 		elif switch == ENC_SELECT or switch == ENC_LAYER:

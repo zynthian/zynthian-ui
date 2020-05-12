@@ -298,6 +298,15 @@ uint32_t getSteps()
 	return 0;
 }
 
+uint32_t getPatternLength(uint32_t pattern)
+{
+	Pattern* pPattern = PatternManager::getPatternManager()->getPattern(pattern);
+	if(pPattern)
+		return pPattern->getLength();
+	else
+		return 0;
+}
+
 void setSteps(uint32_t steps)
 {
 	if(g_pPattern)

@@ -108,6 +108,12 @@ uint32_t getSteps();
 */
 void setSteps(uint32_t steps);
 
+/**	@brief	Get pattern length in clock cycles
+*	@param	pattern Index of pattern
+*	returns	Length in clock cycles
+*/
+uint32_t getPatternLength(uint32_t pattern);
+
 /**	@brief	Get clock divisor
 *	@retval	uint32_t Clock divisor
 */

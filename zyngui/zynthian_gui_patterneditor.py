@@ -356,6 +356,7 @@ class zynthian_gui_patterneditor():
 		if clearGrid:
 			for step in range(self.parent.libseq.getSteps()):
 				self.gridCanvas.tag_lower("step%d"%step)
+		self.gridCanvas.tag_raise("selection")
 
 	# Function to draw pianoroll keys (does not fill key colour)
 	def drawPianoroll(self):
@@ -369,9 +370,13 @@ class zynthian_gui_patterneditor():
 			id = self.pianoRoll.create_rectangle(x1, y1, x2, y2, width=0, tags=id)
 
 	# Function to update selectedCell
-	#	step: Step (column) of selected cell
-	#	note: Note number of selected cell
-	def selectCell(self, step, note):
+	#	step: Step (column) of selected cell (Optional - default to reselect current column)
+	#	note: Note number of selected cell (Optional - default to reselect current column)
+	def selectCell(self, step=None, note=None):
+		if not step:
+			step = self.selectedCell[0]
+		if not note:
+			note = self.selectedCell[1]
 		if step < 0 or step > self.parent.libseq.getSteps():
 			return
 		# Skip hidden (overlapping) cells
@@ -397,9 +402,11 @@ class zynthian_gui_patterneditor():
 			else:
 				self.keyOrigin = 128 - self.zoom
 			self.drawGrid()
+			self.selectCell()
 		elif note < self.keyOrigin:
 			self.keyOrigin = note
 			self.drawGrid()
+			self.selectCell()
 		else:
 			cell = self.gridCanvas.find_withtag("selection")
 			row = note - self.keyOrigin
@@ -434,6 +441,7 @@ class zynthian_gui_patterneditor():
 	def clearPattern(self):
 		self.parent.libseq.clear()
 		self.drawGrid(True)
+		self.selectCell()
 		if zyncoder.lib_zyncoder:
 			zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
 
@@ -467,7 +475,7 @@ class zynthian_gui_patterneditor():
 			self.parent.libseq.setSteps(value)
 			self.parent.setParam(menuItem, 'value', self.parent.libseq.getSteps())
 			self.drawGrid(True)
-			self.selectCell(self.selectedCell[0], self.selectedCell[1])
+			self.selectCell()
 		elif menuItem == 'MIDI channel':
 			self.parent.libseq.setChannel(self.sequence, value - 1);
 			self.parent.setParam(menuItem, 'value', self.parent.libseq.getChannel(self.sequence))
@@ -478,11 +486,13 @@ class zynthian_gui_patterneditor():
 				if zyncoder.lib_zyncoder:
 					zyncoder.lib_zyncoder.zynmidi_send_all_notes_off() #TODO: Use libseq - also, just send appropriate note off
 			self.drawGrid()
+			self.selectCell()
 			return "Transpose pattern +/-"
 		elif menuItem == 'Vertical zoom':
 			self.zoom = value
 			self.updateRowHeight()
 			self.drawGrid(True)
+			self.selectCell()
 			self.parent.setParam(menuItem, 'value', value)
 		elif menuItem == 'Tempo':
 			self.parent.libseq.setTempo(value)
@@ -502,6 +512,7 @@ class zynthian_gui_patterneditor():
 			self.parent.libseq.setStepsPerBeat(stepsPerBeat)
 			self.parent.setParam('Clocks per step', 'value', clocksPerStep)
 			self.drawGrid()
+			self.selectCell()
 			self.parent.setParam(menuItem, 'value', value)
 			value = stepsPerBeat
 		return "%s: %d" % (menuItem, value)
@@ -516,6 +527,7 @@ class zynthian_gui_patterneditor():
 		if self.selectedCell[0] >= self.parent.libseq.getSteps():
 			self.selectedCell[0] = self.parent.libseq.getSteps() - 1
 		self.drawGrid(True)
+		self.selectCell()
 		self.playCanvas.coords("playCursor", 1, 0, 1 + self.stepWidth, PLAYHEAD_HEIGHT)
 		self.parent.setParam('Steps in pattern', 'value', self.parent.libseq.getSteps())
 		self.parent.setParam('Pattern', 'value', index)
