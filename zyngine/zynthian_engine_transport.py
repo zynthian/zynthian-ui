@@ -58,11 +58,11 @@ class zynthian_engine_transport(zynthian_basic_engine):
 
 	# Common Transport commands
 
-	def play(self):
+	def transport_play(self):
 		self.proc_cmd("play")
 
 
-	def pause(self):
+	def transport_stop(self):
 		self.proc_cmd("stop")
 
 

@@ -179,7 +179,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			#logging.info("COMMAND: %s" % cmd)
 			self.rec_proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
 			sleep(0.2)
-			self.zyngui.zyntransport.play()
+			self.zyngui.zyntransport.transport_play()
 		except Exception as e:
 			logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
 			self.zyngui.show_info("ERROR STARTING AUDIO RECORD:\n %s" % e)
@@ -191,7 +191,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def stop_recording(self):
 		logging.info("STOPPING AUDIO RECORD ...")
 		try:
-			self.zyngui.zyntransport.pause()
+			self.zyngui.zyntransport.transport_stop()
 			self.rec_proc.communicate()
 			while zynconf.is_process_running("jack_capture"):
 				sleep(0.2)
