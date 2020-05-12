@@ -323,7 +323,7 @@ class zynthian_gui_patterneditor():
 	# Function to draw grid
 	#	clearGrid: True to clear grid and create all new elements, False to reuse existing elements if they exist
 	def drawGrid(self, clearGrid = False):
-		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.rowHeight * 0.5))
+		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
 		if clearGrid:
 			self.gridCanvas.delete(tkinter.ALL)
 			self.stepWidth = (self.gridWidth - 2) / self.parent.libseq.getSteps()
@@ -339,7 +339,7 @@ class zynthian_gui_patterneditor():
 			self.drawRow(note)
 			if clearGrid:
 				# Create last note labels in grid
-				self.gridCanvas.create_text(self.gridWidth - self.selectThickness, self.rowHeight * (self.zoom - row - 0.5), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font, anchor="e")
+				self.gridCanvas.create_text(self.gridWidth - self.selectThickness, self.fontsize, state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font, anchor="e")
 			id = "row%d" % (row)
 			if key in (0,2,4,5,7,9,11):
 				self.pianoRoll.itemconfig(id, fill="white")
@@ -426,6 +426,9 @@ class zynthian_gui_patterneditor():
 	# Function to calculate row height
 	def updateRowHeight(self):
 		self.rowHeight = (self.gridHeight - 2) / self.zoom
+		self.fontsize = int(self.rowHeight * 0.5)
+		if self.fontsize > 20:
+			self.fontsize = 20 # Ugly font scale limiting
 
 	# Function to clear a pattern
 	def clearPattern(self):

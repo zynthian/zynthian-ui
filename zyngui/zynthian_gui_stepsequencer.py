@@ -228,9 +228,9 @@ class zynthian_gui_stepsequencer():
 		self.populateMenu()
 		self.scrollTime = 0.0
 
-		self.showChild(zynthian_gui_patterneditor)
+#		self.showChild(zynthian_gui_patterneditor)
 #		self.showChild(zynthian_gui_seqtrigger)
-#		self.showChild(zynthian_gui_songeditor)
+		self.showChild(zynthian_gui_songeditor)
 
 	# Function to print traceback - for debug only
 	#	TODO: Remove debug function (or move to other zynthian class)
@@ -674,11 +674,11 @@ class zynthian_gui_stepsequencer():
 
 	# Function to decrement parameter value
 	def decrementParam(self):
-		changeParam(-1)
+		self.changeParam(-1)
 
 	# Function to increment selected menu value
 	def incrementParam(self):
-		changeParam(1)
+		self.changeParam(1)
 
 	# Function to assert selected menu value
 	def menuValueAssert(self):
