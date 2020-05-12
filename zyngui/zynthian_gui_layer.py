@@ -153,7 +153,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.show_modal('layer_options')
 
 
-	def next(self):
+	def next(self, control=True):
 		self.zyngui.restore_curlayer()
 		if len(self.root_layers)>1:
 			if self.zyngui.curlayer in self.layers:
@@ -161,8 +161,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				if self.index>=len(self.root_layers):
 					self.index = 0
 
-			self.select_listbox(self.index)
-			self.layer_control()
+			if control:
+				self.select_listbox(self.index)
+				self.layer_control()
+			else:
+				self.zyngui.set_curlayer(self.root_layers[self.index])
+				self.select(self.index)
 
 
 	def get_num_layers(self):
