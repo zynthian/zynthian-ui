@@ -31,14 +31,16 @@ from . import zynthian_basic_engine
 
 class zynthian_engine_transport(zynthian_basic_engine):
 
-	def __init__(self):
+	def __init__(self, tempo=120):
 		super().__init__("JackTransport", "/usr/local/bin/jack_transport", "jack_transport>")
-		
+
+		self.tempo = tempo
+
 		self.start()
 		self.proc_cmd("master")
 		self.proc_cmd("stop")
 		self.proc_cmd("locate 0")
-
+		self.set_tempo
 
 	def __del__(self):
 		self.stop()
@@ -68,9 +70,12 @@ class zynthian_engine_transport(zynthian_basic_engine):
 		self.proc_cmd("locate {}".format(pos_frames))
 
 
-	def tempo(self, bpm):
+	def set_tempo(self, bpm):
 		self.proc_cmd("tempo {}".format(bpm))
 
+
+	def get_tempo(self):
+		return self.tempo
 
 
 #******************************************************************************

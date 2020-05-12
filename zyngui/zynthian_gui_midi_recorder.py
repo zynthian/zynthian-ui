@@ -321,7 +321,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	# Implement engine's method
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol=="bpm":
-			self.zyngui.zyntransport.tempo(zctrl.value)
+			self.zyngui.zyntransport.set_tempo(zctrl.value)
 			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
 
 
