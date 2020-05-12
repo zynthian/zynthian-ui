@@ -244,7 +244,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 			logging.info("COMMAND: %s" % cmd)
 
-			self.zyngui.zyntransport.pause()
+			self.zyngui.zyntransport.transport_stop()
 			self.zyngui.zyntransport.locate(0)
 			self.show_playing_bpm()
 
@@ -255,7 +255,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				for line in self.play_proc.stdout:
 					#logging.debug("JACK-SMF-PLAYER => {}".format(line))
 					if line.find("Ready to Play...")>=0:
-							self.zyngui.zyntransport.play()
+							self.zyngui.zyntransport.transport_play()
 							self.zyngui.zyntransport.locate(0)
 
 					elif not zynthian_gui_config.midi_play_loop and line.find("End of song.")>=0:
@@ -291,7 +291,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def end_playing(self):
 		logging.info("ENDING MIDI PLAY ...")
-		self.zyngui.zyntransport.pause()
+		self.zyngui.zyntransport.transport_stop()
 		self.play_proc = None
 		self.current_record=None
 		self.bpm_zgui_ctrl.hide()
