@@ -47,6 +47,8 @@ from zyncoder import *
 SELECT_BORDER		= zynthian_gui_config.color_on
 PLAYHEAD_CURSOR		= zynthian_gui_config.color_on
 CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bg
+CELL_BACKGROUND		= zynthian_gui_config.color_panel_bd
+CELL_FOREGROUND		= zynthian_gui_config.color_panel_tx
 GRID_LINE			= zynthian_gui_config.color_tx
 PLAYHEAD_HEIGHT		= 5
 # Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
@@ -55,7 +57,7 @@ ENC_BACK			= 1
 ENC_SNAPSHOT		= 2
 ENC_SELECT			= 3
 
-# List of permissible steps per beat (0 indicates custom)
+# List of permissible steps per beat
 STEPS_PER_BEAT = [0,1,2,3,4,6,8,12,24]
 
 # Class implements step sequencer pattern editor
@@ -67,7 +69,7 @@ class zynthian_gui_patterneditor():
 		parent.setTitle("Pattern Editor")
 		# Add menus
 		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':len(STEPS_PER_BEAT), 'value':4, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT), 'value':4, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':16, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
 		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
@@ -104,7 +106,7 @@ class zynthian_gui_patterneditor():
 		self.main_frame = tkinter.Frame(self.parent.main_frame)
 		self.main_frame.grid(row=1, column=0, sticky="nsew")
 
-		# Draw pattern grid
+		# Create pattern grid canvas
 		self.gridCanvas = tkinter.Canvas(self.main_frame, 
 			width=self.gridWidth, 
 			height=self.gridHeight,
@@ -113,21 +115,21 @@ class zynthian_gui_patterneditor():
 			highlightthickness=0)
 		self.gridCanvas.grid(row=0, column=1)
 
-		# Draw velocity level indicator
+		# Create velocity level indicator canvas
 		self.velocityCanvas = tkinter.Canvas(self.main_frame,
-			width = self.pianoRollWidth,
-			height = PLAYHEAD_HEIGHT,
-			bg=CANVAS_BACKGROUND,
+			width=self.pianoRollWidth,
+			height=PLAYHEAD_HEIGHT,
+			bg=CELL_BACKGROUND,
 			bd=0,
 			highlightthickness=0,
 			)
-		self.velocityCanvas.create_rectangle(0, 0, self.pianoRollWidth * self.velocity / 127, PLAYHEAD_HEIGHT, fill='green', tags="velocityIndicator")
+		self.velocityCanvas.create_rectangle(0, 0, self.pianoRollWidth * self.velocity / 127, PLAYHEAD_HEIGHT, fill='yellow', tags="velocityIndicator", width=0)
 		self.velocityCanvas.grid(column=0, row=2)
 
-		# Draw pianoroll
+		# Create pianoroll canvas
 		self.pianoRoll = tkinter.Canvas(self.main_frame,
 			width=self.pianoRollWidth,
-			height=self.zoom * self.rowHeight,
+			height=self.gridHeight,
 			bg=CANVAS_BACKGROUND,
 			bd=0,
 			highlightthickness=0)
@@ -135,7 +137,8 @@ class zynthian_gui_patterneditor():
 		self.pianoRoll.bind("<ButtonPress-1>", self.onPianoRollDragStart)
 		self.pianoRoll.bind("<ButtonRelease-1>", self.onPianoRollDragEnd)
 		self.pianoRoll.bind("<B1-Motion>", self.onPianoRollDragMotion)
-		# Draw playhead canvas
+
+		# Create playhead canvas
 		self.playCanvas = tkinter.Canvas(self.main_frame,
 			width=self.gridWidth, 
 			height=PLAYHEAD_HEIGHT,
@@ -348,7 +351,7 @@ class zynthian_gui_patterneditor():
 		self.gridCanvas.delete("gridline")
 		if self.parent.libseq.getStepsPerBeat():
 			for step in range(0, self.parent.libseq.getSteps() + 1, self.parent.libseq.getStepsPerBeat()):
-				self.gridCanvas.create_line(step * self.stepWidth + 1, 0, step * self.stepWidth + 1, self.zoom * self.rowHeight - 1, fill=GRID_LINE, tags=("gridline"))
+				self.gridCanvas.create_line(step * self.stepWidth, 0, step * self.stepWidth, self.zoom * self.rowHeight - 1, fill=GRID_LINE, tags=("gridline"))
 		# Set z-order to allow duration to show
 		if clearGrid:
 			for step in range(self.parent.libseq.getSteps()):
@@ -359,7 +362,7 @@ class zynthian_gui_patterneditor():
 		self.pianoRoll.delete(tkinter.ALL)
 		for row in range(self.zoom):
 			x1 = 0
-			y1 = self.getCell(0, row, 1)[1] - 1
+			y1 = self.getCell(0, row, 1)[1]
 			x2 = self.pianoRollWidth
 			y2 = y1 + self.rowHeight - 1
 			id = "row%d" % (row)
@@ -490,6 +493,9 @@ class zynthian_gui_patterneditor():
 			if stepsPerBeat:
 				clocksPerStep = int(24 / stepsPerBeat)
 				self.parent.libseq.setClockDivisor(clocksPerStep)
+			else:
+				clocksPerStep = 0
+				self.parent.libseq.setClockDivisor(24)
 			self.parent.libseq.setStepsPerBeat(stepsPerBeat)
 			self.parent.setParam('Clocks per step', 'value', clocksPerStep)
 			self.drawGrid()

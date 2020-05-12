@@ -657,27 +657,28 @@ class zynthian_gui_stepsequencer():
 		if self.child:
 			self.child.setupEncoders()
 
-	# Function to decrement parameter value
-	#	event: Click event (ignored)
-	def decrementParam(self):
-		if self.paramEditor['value'] > self.paramEditor['min']:
-			self.paramEditor['value'] = self.paramEditor['value'] - 1
+	# Function to change parameter value
+	#	value: Offset by which to change parameter value
+	def changeParam(self, value):
+		value = self.paramEditor['value'] + value
+		if value < self.paramEditor['min']:
+			value = self.paramEditor['min']
+		elif value > self.paramEditor['max']:
+			value = self.paramEditor['max']
+		self.paramEditor['value'] = value
 		result=self.paramEditor['onChange'](self.paramEditor['value'])
 		if result == -1:
 			hideparamEditor()
 		else:
 			self.param_editor_canvas.itemconfig("btnparamEditorValue", text=result)
 
+	# Function to decrement parameter value
+	def decrementParam(self):
+		changeParam(-1)
+
 	# Function to increment selected menu value
-	#	event: Click event (ignored)
 	def incrementParam(self):
-		if self.paramEditor['value'] < self.paramEditor['max']:
-			self.paramEditor['value'] = self.paramEditor['value'] + 1
-		result=self.paramEditor['onChange'](self.paramEditor['value'])
-		if result == -1:
-			self.hideparamEditor()
-		else:
-			self.param_editor_canvas.itemconfig("btnparamEditorValue", text=result)
+		changeParam(1)
 
 	# Function to assert selected menu value
 	def menuValueAssert(self):
@@ -706,7 +707,7 @@ class zynthian_gui_stepsequencer():
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
-	#	value: Value of zyncoder change [+/- 1]
+	#	value: Value of zyncoder change since last read
 	def onZyncoder(self, encoder, value):
 		if encoder == ENC_SELECT or encoder == ENC_LAYER:
 			if self.lstMenu.winfo_viewable():
@@ -729,10 +730,7 @@ class zynthian_gui_stepsequencer():
 				self.lstMenu.see(index)
 			elif self.paramEditorState:
 				# Parameter editor showing
-				if value > 0:
-					self.incrementParam()
-				elif value < 0:
-					self.decrementParam()
+					self.changeParam(value)
 
 	# Function to handle zyncoder polling
 	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +1 and calculate offset
@@ -744,12 +742,9 @@ class zynthian_gui_stepsequencer():
 				if self.zyncoderOwner[encoder]:
 					# Found a registered zyncoder
 					value = zyncoder.lib_zyncoder.get_value_zyncoder(encoder)
-					if value == 2:
-						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 1, 0)
-						self.zyncoderOwner[encoder].onZyncoder(encoder, 1)
-					elif value == 0:
-						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 1, 0)
-						self.zyncoderOwner[encoder].onZyncoder(encoder, -1)
+					if value != 64:
+						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 64, 0)
+						self.zyncoderOwner[encoder].onZyncoder(encoder, value - 64)
 		if self.libseq.getPlayMode(0): # This should use currently loaded sequence
 			self.btnTransport.configure(image=self.imgLoopOn)
 		else:
@@ -852,7 +847,7 @@ class zynthian_gui_stepsequencer():
 	# Function to register ownership of an encoder by an object
 	#	encoder: Index of rotary encoder [0..3]
 	#	object: Object to register as owner
-	#	Note: Registers an object to own the encoder which will trigger that object's onZyncoder method when encoder rotated passing it +/- 1 to indicate direction
+	#	Note: Registers an object to own the encoder which will trigger that object's onZyncoder method when encoder rotated passing it +/- value since last read
 	def registerZyncoder(self, encoder, object):
 		if encoder >= len(self.zyncoderOwner):
 			return
@@ -860,7 +855,7 @@ class zynthian_gui_stepsequencer():
 		if self.shown and zyncoder.lib_zyncoder:
 			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
-			zyncoder.lib_zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 1, 2, 0)
+			zyncoder.lib_zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, 0)
 			self.zyncoderOwner[encoder] = object
 
 	# Function to unregister ownership of an encoder from an object
