@@ -513,6 +513,8 @@ class zynthian_gui_stepsequencer():
 
 	# Function to open menu
 	def showMenu(self):
+		rows = min((self.height - zynthian_gui_config.topbar_height) / self.listboxTextHeight, self.lstMenu.size())
+		self.lstMenu.configure(height = int(rows))
 		self.lstMenu.grid(row=1, column=0, sticky="wn")
 		self.lstMenu.tkraise()
 		self.lstMenu.selection_clear(0,tkinter.END)
