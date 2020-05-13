@@ -187,16 +187,16 @@ class zynthian_gui_stepsequencer():
 			bd=0, highlightthickness=0)
 		self.btnParamAssert.grid(column=3, row=0)
 		# Parameter editor value text
-		#TODO: Set text position based on button width
-		self.param_editor_canvas.update_idletasks() # Needed to calculate button geometry
-		x = self.btnParamAssert.winfo_x() + self.btnParamAssert.winfo_width()
-		self.param_editor_canvas.create_text(3 + x, zynthian_gui_config.topbar_height / 2,
+		self.param_title_canvas = tkinter.Canvas(self.param_editor_canvas, height=zynthian_gui_config.topbar_height, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_bg)
+		self.param_title_canvas.create_text(3, zynthian_gui_config.topbar_height / 2,
 			anchor='w',
 			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
 				size=int(self.height * 0.05)),
 			fill=zynthian_gui_config.color_panel_tx,
-			tags="btnparamEditorValue",
+			tags="lblparamEditorValue",
 			text="VALUE...")
+		self.param_title_canvas.grid(column=4, row=0, sticky='ew')
+		self.param_editor_canvas.grid_columnconfigure(4, weight=1)
 
 		# Canvas for displaying status: CPU, ...
 		self.status_canvas = tkinter.Canvas(self.tb_frame,
@@ -631,7 +631,7 @@ class zynthian_gui_stepsequencer():
 			self.paramEditor['onChange'] = params['onChange']
 		else:
 			self.paramEditor['onChange'] = self.onMenuChange
-		self.param_editor_canvas.itemconfig("btnparamEditorValue", text=self.paramEditor['onChange'](self.paramEditor['value']))
+		self.param_title_canvas.itemconfig("lblparamEditorValue", text=self.paramEditor['onChange'](self.paramEditor['value']))
 		if 'onAssert' in params:
 			self.paramEditor['onAssert'] = params['onAssert']
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='normal')
@@ -666,7 +666,7 @@ class zynthian_gui_stepsequencer():
 		if result == -1:
 			hideParamEditor()
 		else:
-			self.param_editor_canvas.itemconfig("btnparamEditorValue", text=result)
+			self.param_title_canvas.itemconfig("lblparamEditorValue", text=result)
 
 	# Function to decrement parameter value
 	def decrementParam(self):
