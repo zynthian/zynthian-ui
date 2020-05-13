@@ -80,6 +80,9 @@ void load(char* filename);
 */
 void save(char* filename);
 
+
+// ** Direct MIDI interface **
+
 /**	@brief	Play a note
 *	@param	note MIDI note number
 *	@param	velocity MIDI velocity
@@ -88,6 +91,32 @@ void save(char* filename);
 */
 void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration = 0);
 
+/**	@brief	Send MIDI START message
+*/
+void transportPlay();
+
+/**	@brief	Send MIDI STOP message
+*/
+void transportStop();
+
+/**	@brief	Send MIDI CONTINUE message
+*/
+void transportContinue();
+
+/**	@brief	Send MIDI CLOCK message
+*/
+void transportClock();
+
+/**	@brief	Get transport state
+*	@retval	bool True if running
+*	@note	Transport state is local interpretation derived from recieved START / STOP / CONTINUE messages
+*/
+bool isTransportRunning();
+
+/**	@brief	Toggle transport running
+*	@note	Transport state is local interpretation derived from recieved START / STOP / CONTINUE messages
+*/
+void transportToggle();
 
 // ** Pattern management functions - note pattern operations are quantized to steps **
 
@@ -262,16 +291,6 @@ void clearSequence(uint32_t sequence);
 *	@retval	uint32_t Quantitu of steps from start of pattern
 */
 uint32_t getStep(uint32_t sequence);
-
-/**	@brief	Set tempo
-*	@param	tempo Tempo (BPM)
-*/
-void setTempo(int32_t tempo);
-
-/**	@brief	Get tempo
-*	@retval	uint32_t Tempo (BPM)
-*/
-int32_t getTempo();
 
 void debug(bool bEnable);
 

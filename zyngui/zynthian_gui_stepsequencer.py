@@ -35,11 +35,10 @@ import time
 # Zynthian specific modules
 from . import zynthian_gui_config
 from zyncoder import *
-from zyngine import zynthian_engine_transport as zyntransport
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
-from zyngui.zynthian_gui_songeditor import zynthian_gui_songeditor
-from zyngui.zynthian_gui_seqtrigger import zynthian_gui_seqtrigger
+#from zyngui.zynthian_gui_songeditor import zynthian_gui_songeditor
+#from zyngui.zynthian_gui_seqtrigger import zynthian_gui_seqtrigger
 import ctypes
 from os.path import dirname, realpath
 
@@ -152,7 +151,7 @@ class zynthian_gui_stepsequencer():
 		self.imgUp = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/up.png" % (iconsize))
 		self.imgDown = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/down.png" % (iconsize))
 
-		self.btnTransport = tkinter.Button(self.tb_frame, command=self.transportToggle,
+		self.btnTransport = tkinter.Button(self.tb_frame, command=self.zyngui.zyntransport.transport_toggle,
 			image=self.imgLoopOff,
 			bd=0, highlightthickness=0)
 		self.btnTransport.grid(column=1, row=0)
@@ -238,14 +237,6 @@ class zynthian_gui_stepsequencer():
 		for trace in inspect.stack():
 			print(trace.function)
 
-	# Function to toggle playback
-	#	event: Mouse event (not used)
-	def transportToggle(self):
-		if self.libseq.getPlayMode(0):
-			self.libseq.setPlayMode(0, 0)
-		else:
-			self.libseq.setPlayMode(0, 2)
-
 	# Function to populate menu with global entries
 	def populateMenu(self):
 		self.MENU_ITEMS = {'Back':None}
@@ -253,8 +244,9 @@ class zynthian_gui_stepsequencer():
 		for item in self.MENU_ITEMS:
 			self.lstMenu.insert(tkinter.END, item)
 		self.addMenu({'Pattern Editor':{'method':self.showChild, 'params':zynthian_gui_patterneditor}})
-		self.addMenu({'Song Editor':{'method':self.showChild, 'params':zynthian_gui_songeditor}})
-		self.addMenu({'Pad Trigger':{'method':self.showChild, 'params':zynthian_gui_seqtrigger}})
+#		self.addMenu({'Song Editor':{'method':self.showChild, 'params':zynthian_gui_songeditor}})
+#		self.addMenu({'Pad Trigger':{'method':self.showChild, 'params':zynthian_gui_seqtrigger}})
+		self.addMenu({'Tempo':{'method':self.showParamEditor, 'params':{'min':0, 'max':999, 'value':self.zyngui.zyntransport.get_tempo(), 'onChange':self.onMenuChange}}})
 
 	# Function to update title
 	#	title: Title to display in topbar
@@ -596,10 +588,13 @@ class zynthian_gui_stepsequencer():
 	#	returns: String to populate menu editor label
 	#	note: This is default but other method may be used for each menu item
 	def onMenuChange(self, value):
+		menuItem = self.paramEditor['menuitem']
 		if value < self.paramEditor['min']:
 			value = self.paramEditor['min']
 		if value > self.paramEditor['max']:
 			value = self.paramEditor['max']
+		if menuItem == 'Tempo':
+			self.zyngui.zyntransport.set_tempo(value)
 		self.paramEditor['value'] = value
 		return "%s: %d" % (self.paramEditor['menuitem'], value)
 
@@ -746,7 +741,7 @@ class zynthian_gui_stepsequencer():
 					if value != 64:
 						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 64, 0)
 						self.zyncoderOwner[encoder].onZyncoder(encoder, value - 64)
-		if self.libseq.getPlayMode(0): # This should use currently loaded sequence
+		if self.zyngui.zyntransport.get_state():
 			self.btnTransport.configure(image=self.imgLoopOn)
 		else:
 			self.btnTransport.configure(image=self.imgLoopOff)

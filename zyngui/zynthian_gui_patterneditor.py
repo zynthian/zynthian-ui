@@ -74,7 +74,7 @@ class zynthian_gui_patterneditor():
 		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
 		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
 		self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'value':120, 'onChange':self.onMenuChange}}})
+#		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'value':120, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'value':16, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':1, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'onChange':self.onMenuChange}}})
@@ -494,13 +494,13 @@ class zynthian_gui_patterneditor():
 			self.drawGrid(True)
 			self.selectCell()
 			self.parent.setParam(menuItem, 'value', value)
-		elif menuItem == 'Tempo':
-			self.parent.libseq.setTempo(value)
-			self.parent.setParam(menuItem, 'value', value)
+#		elif menuItem == 'Tempo':
+#			self.parent.libseq.setTempo(value)
+#			self.parent.setParam(menuItem, 'value', value)
 		elif menuItem == 'Clocks per step':
 			self.parent.libseq.setClockDivisor(value);
 			self.parent.setParam(menuItem, 'value', value)
-			return 'Clocks per step %d (%.2f BPM)' % (value, self.parent.libseq.getTempo() * 24 / (value * self.parent.libseq.getStepsPerBeat()))
+#			return 'Clocks per step %d (%.2f BPM)' % (value, self.parent.libseq.getTempo() * 24 / (value * self.parent.libseq.getStepsPerBeat()))
 		elif menuItem == 'Steps per beat':
 			stepsPerBeat = STEPS_PER_BEAT[value]
 			if stepsPerBeat:
@@ -531,10 +531,11 @@ class zynthian_gui_patterneditor():
 		self.playCanvas.coords("playCursor", 1, 0, 1 + self.stepWidth, PLAYHEAD_HEIGHT)
 		self.parent.setParam('Steps in pattern', 'value', self.parent.libseq.getSteps())
 		self.parent.setParam('Pattern', 'value', index)
-		self.parent.setParam('Tempo', 'value', self.parent.libseq.getTempo())
+#		self.parent.setParam('Tempo', 'value', zynthian_gui_transport.getTempo())
 		self.parent.setParam('Step per beat', 'value', self.parent.libseq.getStepsPerBeat())
 		self.parent.setParam('Clocks per step', 'value', self.parent.libseq.getClockDivisor())
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
+		self.parent.libseq.setPlayMode(self.sequence, 2) #LOOP
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
@@ -542,12 +543,11 @@ class zynthian_gui_patterneditor():
 	def onZyncoder(self, encoder, value):
 		if encoder == ENC_BACK:
 			# BACK encoder adjusts note selection
-			note = self.selectedCell[1] - value
-			self.selectCell(self.selectedCell[0], note)
+			self.selectCell(self.selectedCell[0], self.selectedCell[1] - value)
 		elif encoder == ENC_SELECT:
+			pass
 			# SELECT encoder adjusts step selection
-			step = self.selectedCell[0] + value
-			self.selectCell(step, self.selectedCell[1])
+			self.selectCell(self.selectedCell[0] - value)
 		elif encoder == ENC_SNAPSHOT:
 			# SNAPSHOT encoder adjusts velocity
 			self.velocity = self.velocity + value
@@ -583,10 +583,7 @@ class zynthian_gui_patterneditor():
 		if type == "L":
 			return False # Don't handle any long presses
 		if switch == ENC_SNAPSHOT:
-			if self.parent.libseq.getPlayMode(self.sequence):
-				self.parent.libseq.setPlayMode(self.sequence, 0) #STOP
-			else:
-				self.parent.libseq.setPlayMode(self.sequence, 2) #LOOP
+			self.zyngui.zyntransport.transport_toggle()
 		elif switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
 		return True # Tell parent that we handled all short and bold key presses

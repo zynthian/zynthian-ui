@@ -41,10 +41,16 @@ bool g_bRunning = true; // False to stop clock thread, e.g. on exit
 jack_nframes_t g_nSamplerate; // Quantity of samples per second
 jack_nframes_t g_nBufferSize; // Quantity of samples in JACK buffer passed each process cycle
 std::map<uint32_t,MIDI_MESSAGE*> g_mSchedule; // Schedule of MIDI events (queue for sending), indexed by scheduled play time (samples since JACK epoch)
-int32_t g_nTempo = 120; // BPM
-int32_t g_nClockCounter; // MIDI clock generator frame  counter
 bool g_bDebug = false; // True to output debug info
-bool g_bSendClock = false; // True to send MIDI clock to MIDI output
+jack_nframes_t g_nSamplesPerClock = 918; // Quantity of samples per MIDI clock [Default: 918 gives 120BPM at 44100 samples per second]
+jack_nframes_t g_nSamplesPerClockLast = 918; // Quantity of samples per MIDI clock [Default: 918 gives 120BPM at 44100 samples per second]
+jack_nframes_t g_nLastTime = 0; // Time of previous MIDI clock in frames (samples) since JACK epoch
+jack_nframes_t g_nClockEventTime; // Time of current MIDI clock in frames (samples) since JACK epoch
+jack_nframes_t g_nClockEventTimeOffset;
+
+
+bool g_bLocked = false; // True when locked to MIDI clock
+bool g_bPlaying = false; // Local interpretation of whether MIDI clock is running
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
@@ -60,16 +66,30 @@ void onClock()
 		while(g_bClockIdle)
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		g_bClockIdle = true;
+//		printf("Clock at %u (+%u)\n", g_nClockEventTime, g_nClockEventTimeOffset);
 		jack_time_t nTime = jack_last_frame_time(g_pJackClient);
-		PatternManager::getPatternManager()->clock(nTime + g_nBufferSize, &g_mSchedule);
-		if(g_bSendClock)
+		//	Check if clock pulse duration is significantly different to last. If so, set sequence clock rates.
+		int nClockPeriod = g_nClockEventTime - g_nLastTime;
+		if(g_nLastTime && !g_bLocked)
 		{
-			while(g_mSchedule.find(nTime) != g_mSchedule.end())
-				++nTime;
-			MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-			pMsg->command = MIDI_CLOCK;
-			g_mSchedule[nTime] = pMsg;
+			// First cycle after start of clock
+			PatternManager::getPatternManager()->setSequenceClockRates(nClockPeriod);
+//			printf("Setting clock rates to %u\n", nClockPeriod);
+			g_nSamplesPerClock = nClockPeriod;
+			g_bLocked = true;
 		}
+		g_nLastTime = g_nClockEventTime;
+		if(g_bLocked)
+		{
+			int nOffset = nClockPeriod - g_nSamplesPerClock;
+			if(nOffset > 10 || nOffset < -10)
+			{
+				g_nSamplesPerClock = nClockPeriod;
+//				printf("Setting clock rates to %u\n", nClockPeriod);
+				PatternManager::getPatternManager()->setSequenceClockRates(nClockPeriod);
+			}
+		}
+		PatternManager::getPatternManager()->clock(nTime + g_nBufferSize, &g_mSchedule);
 	}
 }
 
@@ -95,6 +115,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	void* pInputBuffer = jack_port_get_buffer(g_pInputPort, nFrames);
 	jack_midi_event_t midiEvent;
 	jack_nframes_t nCount = jack_midi_get_event_count(pInputBuffer);
+	jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
 	for(i = 0; i < nCount; i++)
 	{
 		jack_midi_event_get(&midiEvent, pInputBuffer, i);
@@ -103,15 +124,27 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			case MIDI_STOP:
 				printf("StepJackClient MIDI STOP\n");
 				//!@todo Send note off messages
+				g_nLastTime = 0;
+				g_bLocked = false;
+				g_bPlaying = false;
 				break;
 			case MIDI_START:
 				printf("StepJackClient MIDI START\n");
+				g_nLastTime = 0;
+				g_bLocked = false;
+				g_bPlaying = true;
 				break;
 			case MIDI_CONTINUE:
 				printf("StepJackClient MIDI CONTINUE\n");
+				g_nLastTime = 0;
+				g_bLocked = false;
+				g_bPlaying = true;
 				break;
 			case MIDI_CLOCK:
-//				g_bClockIdle = false;
+				g_nClockEventTimeOffset = midiEvent.time;
+				g_nClockEventTime = nNow + midiEvent.time;
+				g_bClockIdle = false;
+				g_bPlaying = true;
 				break;
 			case MIDI_POSITION:
 				printf("Song position %d\n", midiEvent.buffer[1] + midiEvent.buffer[1] << 7);
@@ -143,20 +176,6 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	}
 	g_mSchedule.erase(g_mSchedule.begin(), it); //!@todo Check that erasing schedule items works, e.g. that schedule is ordered
 
-	if((g_nClockCounter -= nFrames) <= 0)
-	{
-		//!@todo Improve MIDI clock jitter
-		g_bClockIdle = false;
-		g_nClockCounter = 60 * g_nSamplerate / (24 * g_nTempo) + g_nClockCounter;
-		if(g_bDebug)
-		{
-			static jack_time_t gThen;
-			jack_time_t nNow = jack_get_time();
-			printf("%" PRId64 " %" PRId64 "\n", nNow, (nNow - gThen)/1000);
-			gThen = nNow;
-		}
-	}
-
 	return 0;
 }
 
@@ -171,13 +190,13 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
 {
 	printf("zynseq: Jack samplerate: %d\n", nFrames);
 	g_nSamplerate = nFrames;
-	PatternManager::getPatternManager()->setSequenceClockRates(g_nTempo, g_nSamplerate);
 	return 0;
 }
 
 int onJackXrun(void *pArgs)
 {
-	printf("XRUN\n");
+	if(g_bDebug)
+		printf("zynseq detected XRUN\n");
 	return 0;
 }
 
@@ -195,7 +214,6 @@ void end()
 
 bool init()
 {
-	setTempo(120); // Default tempo - expect host to set this but need something to start with
 	// Register with Jack server
 	char *sServerName = NULL;
 	jack_status_t nStatus;
@@ -224,10 +242,6 @@ bool init()
 		return false;
 	}
 
-	// Register the cleanup function to be called when program exits
-	// It raises a segmentation fault on exit, so it's disabled
-	//atexit(end);
-
 	// Register JACK callbacks
 	jack_set_process_callback(g_pJackClient, onJackProcess, 0);
 	jack_set_buffer_size_callback(g_pJackClient, onJackBufferSizeChange, 0);
@@ -241,7 +255,8 @@ bool init()
 
 	std::thread clockHandler(onClock);
 	clockHandler.detach();
-	
+
+	// Register the cleanup function to be called when program exits
 	atexit(end);
 	return true;
 }
@@ -256,6 +271,19 @@ void save(char* filename)
 	PatternManager::getPatternManager()->save(filename);
 }
 
+
+// ** Direct MIDI interface **
+
+// Schedule a MIDI message to be sent in next JACK process cycle
+void sendMidiMsg(MIDI_MESSAGE* pMsg)
+{
+	uint32_t time = jack_last_frame_time(g_pJackClient) + g_nBufferSize;
+	while(g_mSchedule.find(time) != g_mSchedule.end())
+		++time;
+	g_mSchedule[time] = pMsg;
+}
+
+// Schedule a note off event after 'duration' ms
 void noteOffTimer(uint8_t note, uint8_t channel, uint32_t duration)
 {
 	std::this_thread::sleep_for(std::chrono::milliseconds(duration));
@@ -263,10 +291,7 @@ void noteOffTimer(uint8_t note, uint8_t channel, uint32_t duration)
 	pMsg->command = MIDI_NOTE_ON | (channel & 0x0F);
 	pMsg->value1 = note;
 	pMsg->value2 = 0;
-	uint32_t time = jack_last_frame_time(g_pJackClient) + g_nBufferSize;
-	while(g_mSchedule.find(time) != g_mSchedule.end())
-		++time;
-	g_mSchedule[time] = pMsg;
+	sendMidiMsg(pMsg);
 }
 
 void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration)
@@ -275,12 +300,51 @@ void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration
 	pMsg->command = MIDI_NOTE_ON | (channel & 0x0F);
 	pMsg->value1 = note;
 	pMsg->value2 = velocity;
-	uint32_t time = jack_last_frame_time(g_pJackClient) + g_nBufferSize;
-	while(g_mSchedule.find(time) != g_mSchedule.end())
-		++time;
-	g_mSchedule[time] = pMsg;
+	sendMidiMsg(pMsg);
 	std::thread noteOffThread(noteOffTimer, note, channel, 200);
 	noteOffThread.detach();
+}
+
+void transportStart()
+{
+	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
+	pMsg->command = MIDI_START;
+	sendMidiMsg(pMsg);
+}
+
+void transportStop()
+{
+	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
+	pMsg->command = MIDI_STOP;
+	sendMidiMsg(pMsg);
+}
+
+void transportContinue()
+{
+	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
+	pMsg->command = MIDI_CONTINUE;
+	sendMidiMsg(pMsg);
+}
+
+// Send a single MIDI clock
+void transportClock()
+{
+	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
+	pMsg->command = MIDI_CLOCK;
+	sendMidiMsg(pMsg);
+}
+
+bool isTransportRunning()
+{
+	return g_bPlaying;
+}
+
+void transportToggle()
+{
+	if(g_bPlaying)
+		transportStop();
+	else
+		transportStart();
 }
 
 
@@ -447,6 +511,7 @@ void setPlayMode(uint32_t sequence, uint8_t mode)
 	PatternManager::getPatternManager()->getSequence(sequence)->setPlayMode(mode);
 }
 
+
 void togglePlayMode(uint32_t sequence)
 {
 	PatternManager::getPatternManager()->getSequence(sequence)->togglePlayMode();
@@ -465,18 +530,4 @@ uint32_t getSequenceLength(uint32_t sequence)
 void clearSequence(uint32_t sequence)
 {
 	PatternManager::getPatternManager()->getSequence(sequence)->clear();
-}
-
-void setTempo(int32_t tempo)
-{
-	if(tempo < 0)
-		return; // Using signed int to allow comparison of countdown timer without casting
-	g_nTempo = tempo;
-	PatternManager::getPatternManager()->setSequenceClockRates(g_nTempo, g_nSamplerate);
-	g_nClockCounter = 60 * g_nSamplerate / (24 * g_nTempo);
-}
-
-int32_t getTempo()
-{
-	return g_nTempo;
 }

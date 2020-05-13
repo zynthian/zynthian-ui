@@ -4,7 +4,6 @@
 
 Sequence::Sequence()
 {
-	setClockRate(120, 44100); // Default BPM and samplerate - expect host to call setClockRate to correct this
 }
 
 Sequence::~Sequence()
@@ -228,9 +227,4 @@ uint32_t Sequence::getPatternPlayhead()
 uint32_t Sequence::getPlayPosition()
 {
 	return m_nPosition;
-}
-
-void Sequence::setClockRate(uint32_t tempo, uint32_t samplerate)
-{
-	m_nSamplePerClock = samplerate * 60 / (tempo * 24);
 }

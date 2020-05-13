@@ -122,9 +122,10 @@ class Sequence
 		*/
 		uint32_t getPlayPosition();
 
-		/**	@brief	Set time scale
+		/**	@brief	Set the samples per clock used to calculate when events should be scheduled
+		*	@param	samples Quantity of samples in each clock cycle
 		*/
-		void setClockRate(uint32_t tempo, uint32_t samplerate);
+		void setClockRate(uint32_t samples) { m_nSamplePerClock = samples; };
 
 	private:
 		uint8_t m_nChannel = 0; // MIDI channel
@@ -141,5 +142,4 @@ class Sequence
 		uint32_t m_nPatternCursor = 0; // Postion within pattern (step)
 		uint32_t m_nSequenceLength = 0; // Quantity of clock cycles in sequence (last pattern start + length)
 		uint32_t m_nSamplePerClock; // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
-		uint32_t m_nSamplerate = 44100; // Samplerate of JACK server
 };
