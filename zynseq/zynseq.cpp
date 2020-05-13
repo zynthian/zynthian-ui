@@ -85,7 +85,8 @@ void onClock()
 			if(nOffset > 10 || nOffset < -10)
 			{
 				g_nSamplesPerClock = nClockPeriod;
-//				printf("Setting clock rates to %u\n", nClockPeriod);
+				if(g_bDebug)
+					printf("Setting clock rates to %u\n", nClockPeriod);
 				PatternManager::getPatternManager()->setSequenceClockRates(nClockPeriod);
 			}
 		}
