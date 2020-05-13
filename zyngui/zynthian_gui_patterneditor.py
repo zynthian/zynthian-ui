@@ -69,12 +69,11 @@ class zynthian_gui_patterneditor():
 		parent.setTitle("Pattern Editor")
 		# Add menus
 		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT), 'value':4, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'value':4, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':16, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
 		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
 		self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
-#		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'value':120, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'value':16, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':1, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'onChange':self.onMenuChange}}})
@@ -373,9 +372,9 @@ class zynthian_gui_patterneditor():
 	#	step: Step (column) of selected cell (Optional - default to reselect current column)
 	#	note: Note number of selected cell (Optional - default to reselect current column)
 	def selectCell(self, step=None, note=None):
-		if not step:
+		if step == None:
 			step = self.selectedCell[0]
-		if not note:
+		if note == None:
 			note = self.selectedCell[1]
 		if step < 0 or step > self.parent.libseq.getSteps():
 			return
@@ -494,13 +493,9 @@ class zynthian_gui_patterneditor():
 			self.drawGrid(True)
 			self.selectCell()
 			self.parent.setParam(menuItem, 'value', value)
-#		elif menuItem == 'Tempo':
-#			self.parent.libseq.setTempo(value)
-#			self.parent.setParam(menuItem, 'value', value)
 		elif menuItem == 'Clocks per step':
 			self.parent.libseq.setClockDivisor(value);
 			self.parent.setParam(menuItem, 'value', value)
-#			return 'Clocks per step %d (%.2f BPM)' % (value, self.parent.libseq.getTempo() * 24 / (value * self.parent.libseq.getStepsPerBeat()))
 		elif menuItem == 'Steps per beat':
 			stepsPerBeat = STEPS_PER_BEAT[value]
 			if stepsPerBeat:
@@ -531,7 +526,6 @@ class zynthian_gui_patterneditor():
 		self.playCanvas.coords("playCursor", 1, 0, 1 + self.stepWidth, PLAYHEAD_HEIGHT)
 		self.parent.setParam('Steps in pattern', 'value', self.parent.libseq.getSteps())
 		self.parent.setParam('Pattern', 'value', index)
-#		self.parent.setParam('Tempo', 'value', zynthian_gui_transport.getTempo())
 		self.parent.setParam('Step per beat', 'value', self.parent.libseq.getStepsPerBeat())
 		self.parent.setParam('Clocks per step', 'value', self.parent.libseq.getClockDivisor())
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
@@ -563,9 +557,12 @@ class zynthian_gui_patterneditor():
 				self.drawCell(self.selectedCell[0], self.selectedCell[1])
 		elif encoder == ENC_LAYER:
 			# LAYER encoder adjusts duration
-			self.duration = self.duration + value
-			if self.duration > 16:
-				self.duration = 16
+			if value > 0:
+				self.duration = self.duration + 1
+			if value < 0:
+				self.duration = self.duration - 1
+			if self.duration > self.parent.libseq.getSteps():
+				self.duration = self.parent.libseq.getSteps()
 				return
 			if self.duration < 1:
 				self.duration = 1

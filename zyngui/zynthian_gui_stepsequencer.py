@@ -37,8 +37,8 @@ from . import zynthian_gui_config
 from zyncoder import *
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
-#from zyngui.zynthian_gui_songeditor import zynthian_gui_songeditor
-#from zyngui.zynthian_gui_seqtrigger import zynthian_gui_seqtrigger
+from zyngui.zynthian_gui_songeditor import zynthian_gui_songeditor
+from zyngui.zynthian_gui_seqtrigger import zynthian_gui_seqtrigger
 import ctypes
 from os.path import dirname, realpath
 
@@ -66,6 +66,7 @@ class zynthian_gui_stepsequencer():
 		self.child = None # Child GUI class
 
 		# Initalise libseq and load pattern from file
+		# TODO: Should this be done at higher level rather than within a screen?
 		self.libseq = ctypes.CDLL(dirname(realpath(__file__))+"/../zynseq/build/libzynseq.so")
 		self.libseq.init()
 		self.libseq.load(bytes(os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.zynseq", "utf-8"))
@@ -244,8 +245,8 @@ class zynthian_gui_stepsequencer():
 		for item in self.MENU_ITEMS:
 			self.lstMenu.insert(tkinter.END, item)
 		self.addMenu({'Pattern Editor':{'method':self.showChild, 'params':zynthian_gui_patterneditor}})
-#		self.addMenu({'Song Editor':{'method':self.showChild, 'params':zynthian_gui_songeditor}})
-#		self.addMenu({'Pad Trigger':{'method':self.showChild, 'params':zynthian_gui_seqtrigger}})
+		self.addMenu({'Song Editor':{'method':self.showChild, 'params':zynthian_gui_songeditor}})
+		self.addMenu({'Pad Trigger':{'method':self.showChild, 'params':zynthian_gui_seqtrigger}})
 		self.addMenu({'Tempo':{'method':self.showParamEditor, 'params':{'min':0, 'max':999, 'value':self.zyngui.zyntransport.get_tempo(), 'onChange':self.onMenuChange}}})
 
 	# Function to update title
