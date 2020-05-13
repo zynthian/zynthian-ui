@@ -103,11 +103,12 @@ def midi_autoconnect(force=False):
 	if len(hw_in)==0:
 		hw_in=[]
 
-	#Add ZynthStep out port ...
-	zynthstep_out=jclient.get_ports("zynthstep", is_output=True, is_physical=False, is_midi=True)
-	try:
-			hw_out.append(zynthstep_out[0])
-	except:
+	#Add internal MIDI-clock port ... 
+	if zynthian_gui_config.midi_clock_enabled:
+		mclock_out=jclient.get_ports("jack_midi_clock", is_output=True, is_physical=False, is_midi=True)
+		try:
+			hw_out.append(mclock_out[0])
+		except:
 			pass
 
 	#Add Aubio MIDI out port ...
@@ -118,7 +119,7 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
-	#Add TouchOSC input ports ...
+	#Add TouchOSC out ports ...
 	if zynthian_gui_config.midi_touchosc_enabled:
 		rtmidi_out=jclient.get_ports("RtMidiOut Client", is_output=True, is_physical=False, is_midi=True)
 		for port in rtmidi_out:
