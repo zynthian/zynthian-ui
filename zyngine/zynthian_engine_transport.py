@@ -43,6 +43,7 @@ class zynthian_engine_transport(zynthian_basic_engine):
 		self.proc_cmd("locate 0")
 		self.set_tempo(tempo)
 
+
 	def __del__(self):
 		self.stop()
 
@@ -75,12 +76,14 @@ class zynthian_engine_transport(zynthian_basic_engine):
 		else:
 			self.transport_play()
 
+
 	def locate(self, pos_frames=0):
 		self.proc_cmd("locate {}".format(pos_frames))
 
 
 	def set_tempo(self, bpm):
 		self.proc_cmd("tempo {}".format(bpm))
+		self.tempo = bpm
 
 
 	def get_tempo(self):
