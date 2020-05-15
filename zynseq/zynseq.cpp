@@ -467,6 +467,11 @@ uint32_t getStep(uint32_t sequence)
 	return PatternManager::getPatternManager()->getSequence(sequence)->getStep();
 }
 
+void setStep(uint32_t sequence, uint32_t step)
+{
+	PatternManager::getPatternManager()->getSequence(sequence)->setStep(step);
+}
+
 void addPattern(uint32_t sequence, uint32_t position, uint32_t pattern)
 {
 	PatternManager* pPm = PatternManager::getPatternManager();
@@ -512,15 +517,29 @@ void setPlayMode(uint32_t sequence, uint8_t mode)
 	PatternManager::getPatternManager()->getSequence(sequence)->setPlayMode(mode);
 }
 
-
-void togglePlayMode(uint32_t sequence)
+uint8_t getPlayState(uint32_t sequence)
 {
-	PatternManager::getPatternManager()->getSequence(sequence)->togglePlayMode();
+	return PatternManager::getPatternManager()->getSequence(sequence)->getPlayState();
+}
+
+void setPlayState(uint32_t sequence, uint8_t state)
+{
+	PatternManager::getPatternManager()->getSequence(sequence)->setPlayState(state);
+}
+
+void togglePlayState(uint32_t sequence)
+{
+	PatternManager::getPatternManager()->getSequence(sequence)->togglePlayState();
 }
 
 uint32_t getPlayPosition(uint32_t sequence)
 {
 	return PatternManager::getPatternManager()->getSequence(sequence)->getPlayPosition();
+}
+
+void setPlayPosition(uint32_t sequence, uint32_t clock)
+{
+	PatternManager::getPatternManager()->getSequence(sequence)->setPlayPosition(clock);
 }
 
 uint32_t getSequenceLength(uint32_t sequence)

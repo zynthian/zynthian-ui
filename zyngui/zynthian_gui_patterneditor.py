@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+ 
+ #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
@@ -49,7 +50,7 @@ PLAYHEAD_CURSOR		= zynthian_gui_config.color_on
 CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bg
 CELL_BACKGROUND		= zynthian_gui_config.color_panel_bd
 CELL_FOREGROUND		= zynthian_gui_config.color_panel_tx
-GRID_LINE			= zynthian_gui_config.color_tx
+GRID_LINE			= zynthian_gui_config.color_tx_off
 PLAYHEAD_HEIGHT		= 5
 # Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
 ENC_LAYER			= 0
@@ -67,22 +68,12 @@ class zynthian_gui_patterneditor():
 	def __init__(self, parent):
 		self.parent = parent
 		parent.setTitle("Pattern Editor")
-		# Add menus
-		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'value':4, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':16, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
-		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
-		self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'value':16, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':1, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'onChange':self.onMenuChange}}})
 
 		self.zoom = 16 # Quantity of rows (notes) displayed in grid
 		self.duration = 1 # Current note entry duration
 		self.velocity = 100 # Current note entry velocity
 		self.copySource = 1 # Index of pattern to copy
-		self.sequence = 0 # Use sequence zero fo pattern editor sequence player
+		self.sequence = 0 # Use sequence zero for pattern editor sequence player
 		self.pattern = 1 # Index of current pattern
 
 		self.stepWidth = 40 # Grid column width in pixels
@@ -183,13 +174,27 @@ class zynthian_gui_patterneditor():
 
 	# Function to show GUI
 	def show(self):
+		# Add menus
+		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'value':4, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':16, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
+		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
+		self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'value':16, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':1, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'onChange':self.onMenuChange}}})
 		self.setupEncoders()
 		self.main_frame.tkraise()
+		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
+		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
 		self.shown=True
 
 	# Function to hide GUI
 	def hide(self):
 		self.shown=False
+		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_DISABLED)
+		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_STOPPED)
 		self.parent.unregisterZyncoder(ENC_BACK)
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterZyncoder(ENC_SNAPSHOT)
@@ -329,6 +334,11 @@ class zynthian_gui_patterneditor():
 			self.drawPianoroll()
 		# Draw cells of grid
 		self.gridCanvas.itemconfig("gridcell", fill="black")
+		# Redraw gridlines
+		self.gridCanvas.delete("gridline")
+		if self.parent.libseq.getStepsPerBeat():
+			for step in range(0, self.parent.libseq.getSteps() + 1, self.parent.libseq.getStepsPerBeat()):
+				self.gridCanvas.create_line(step * self.stepWidth, 0, step * self.stepWidth, self.zoom * self.rowHeight - 1, fill=GRID_LINE, tags=("gridline"))
 		# Delete existing note names
 		self.pianoRoll.delete("notename")
 		for note in range(self.keyOrigin, self.keyOrigin + self.zoom):
@@ -344,13 +354,9 @@ class zynthian_gui_patterneditor():
 				self.pianoRoll.itemconfig(id, fill="white")
 				if key == 0:
 					self.pianoRoll.create_text((self.pianoRollWidth / 2, self.rowHeight * (self.zoom - row - 0.5)), text="C%d (%d)" % ((self.keyOrigin + row) // 12 - 1, self.keyOrigin + row), font=font, fill=CANVAS_BACKGROUND, tags="notename")
+					self.gridCanvas.create_line(0, (self.zoom - row) * self.rowHeight, self.gridWidth, (self.zoom - row) * self.rowHeight, fill=GRID_LINE, tags=("gridline"))
 			else:
 				self.pianoRoll.itemconfig(id, fill="black")
-		# Redraw gridlines
-		self.gridCanvas.delete("gridline")
-		if self.parent.libseq.getStepsPerBeat():
-			for step in range(0, self.parent.libseq.getSteps() + 1, self.parent.libseq.getStepsPerBeat()):
-				self.gridCanvas.create_line(step * self.stepWidth, 0, step * self.stepWidth, self.zoom * self.rowHeight - 1, fill=GRID_LINE, tags=("gridline"))
 		# Set z-order to allow duration to show
 		if clearGrid:
 			for step in range(self.parent.libseq.getSteps()):
@@ -450,16 +456,17 @@ class zynthian_gui_patterneditor():
 		self.loadPattern(self.pattern)
 
 	# Function to handle menu editor change
-	#	value: Menu item's value
+	#	params: Menu item's parameters
 	#	returns: String to populate menu editor label
-	def onMenuChange(self, value):
-		#TODO: Implement acccess to paramEditor
-		menuItem = self.parent.paramEditor['menuitem']
-		if value < self.parent.paramEditor['min']:
-			value = self.parent.paramEditor['min']
-		if value > self.parent.paramEditor['max']:
-			value = self.parent.paramEditor['max']
-		self.parent.paramEditor['value'] = value
+	#	note: params is a dictionary with required fields: min, max, value
+	def onMenuChange(self, params):
+		menuItem = self.parent.paramEditorItem
+		value = params['value']
+		if value < params['min']:
+			value = params['min']
+		if value > params['max']:
+			value = params['max']
+		params['value'] = value
 		if menuItem == 'Pattern':
 			self.pattern = value
 			self.copySource = value
@@ -477,11 +484,11 @@ class zynthian_gui_patterneditor():
 			self.selectCell()
 		elif menuItem == 'MIDI channel':
 			self.parent.libseq.setChannel(self.sequence, value - 1);
-			self.parent.setParam(menuItem, 'value', self.parent.libseq.getChannel(self.sequence))
+			self.parent.setParam(menuItem, 'value', self.parent.libseq.getChannel(self.sequence) + 1)
 		elif menuItem == 'Transpose pattern':
 			if(value != 0):
 				self.parent.libseq.transpose(value)
-				self.parent.paramEditor['value'] = 0
+				self.parent.setParam(menuItem, 'value', 0)
 				if zyncoder.lib_zyncoder:
 					zyncoder.lib_zyncoder.zynmidi_send_all_notes_off() #TODO: Use libseq - also, just send appropriate note off
 			self.drawGrid()
@@ -529,7 +536,14 @@ class zynthian_gui_patterneditor():
 		self.parent.setParam('Step per beat', 'value', self.parent.libseq.getStepsPerBeat())
 		self.parent.setParam('Clocks per step', 'value', self.parent.libseq.getClockDivisor())
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
-		self.parent.libseq.setPlayMode(self.sequence, 2) #LOOP
+		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
+		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
+
+	# Function to handle transport toggle
+	def onTransportToggle(self):
+		if not self.zyngui.zyntransport.get_state():
+			self.parent.libseq.setStep(self.sequence, 0)
+		self.zyngui.zyntransport.transport_toggle()
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
@@ -541,7 +555,7 @@ class zynthian_gui_patterneditor():
 		elif encoder == ENC_SELECT:
 			pass
 			# SELECT encoder adjusts step selection
-			self.selectCell(self.selectedCell[0] - value)
+			self.selectCell(self.selectedCell[0] + value)
 		elif encoder == ENC_SNAPSHOT:
 			# SNAPSHOT encoder adjusts velocity
 			self.velocity = self.velocity + value
@@ -580,7 +594,7 @@ class zynthian_gui_patterneditor():
 		if type == "L":
 			return False # Don't handle any long presses
 		if switch == ENC_SNAPSHOT:
-			self.zyngui.zyntransport.transport_toggle()
+			self.onTransportToggle()
 		elif switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
 		return True # Tell parent that we handled all short and bold key presses

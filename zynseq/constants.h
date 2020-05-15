@@ -2,10 +2,20 @@
 #pragma once
 #include <cstdint>
 
-// Play status
-#define STOP			0
-#define PLAY			1
+// Play mode
+#define DISABLED		0
+#define ONESHOT			1
 #define LOOP			2
+#define ONESHOTALL		3
+#define LOOPALL			4
+#define LASTPLAYMODE	4
+
+// Play status
+#define STOPPED			0
+#define PLAYING			1
+#define STOPPING		2
+#define STARTING		3
+#define LASTPLAYSTATUS	3
 
 //MIDI commands
 #define MIDI_POSITION	0xF2
