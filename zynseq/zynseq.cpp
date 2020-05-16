@@ -47,7 +47,8 @@ jack_nframes_t g_nSamplesPerClockLast = 918; // Quantity of samples per MIDI clo
 jack_nframes_t g_nLastTime = 0; // Time of previous MIDI clock in frames (samples) since JACK epoch
 jack_nframes_t g_nClockEventTime; // Time of current MIDI clock in frames (samples) since JACK epoch
 jack_nframes_t g_nClockEventTimeOffset;
-
+uint32_t g_nSyncPeriod = 96; // Time between sync pulses (clock cycles)
+uint32_t g_nSyncCount = 0; // Time since last syn pulse (clock cycles)
 
 bool g_bLocked = false; // True when locked to MIDI clock
 bool g_bPlaying = false; // Local interpretation of whether MIDI clock is running
@@ -56,6 +57,7 @@ bool g_bPlaying = false; // Local interpretation of whether MIDI clock is runnin
 
 void debug(bool bEnable)
 {
+	printf("libseq setting debug mode %s\n", bEnable?"on":"off");
 	g_bDebug = bEnable;
 }
 
@@ -67,7 +69,6 @@ void onClock()
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		g_bClockIdle = true;
 //		printf("Clock at %u (+%u)\n", g_nClockEventTime, g_nClockEventTimeOffset);
-		jack_time_t nTime = jack_last_frame_time(g_pJackClient);
 		//	Check if clock pulse duration is significantly different to last. If so, set sequence clock rates.
 		int nClockPeriod = g_nClockEventTime - g_nLastTime;
 		if(g_nLastTime && !g_bLocked)
@@ -90,7 +91,10 @@ void onClock()
 				PatternManager::getPatternManager()->setSequenceClockRates(nClockPeriod);
 			}
 		}
-		PatternManager::getPatternManager()->clock(nTime + g_nBufferSize, &g_mSchedule);
+		bool bSync = (++g_nSyncCount > g_nSyncPeriod);
+		if(bSync)
+			g_nSyncCount = 0;
+		PatternManager::getPatternManager()->clock(g_nClockEventTime + g_nBufferSize, &g_mSchedule, bSync);
 	}
 }
 
@@ -525,6 +529,7 @@ uint8_t getPlayState(uint32_t sequence)
 void setPlayState(uint32_t sequence, uint8_t state)
 {
 	PatternManager::getPatternManager()->getSequence(sequence)->setPlayState(state);
+	PatternManager::getPatternManager()->getSequence(sequence)->setPlayState(state);
 }
 
 void togglePlayState(uint32_t sequence)
@@ -550,4 +555,14 @@ uint32_t getSequenceLength(uint32_t sequence)
 void clearSequence(uint32_t sequence)
 {
 	PatternManager::getPatternManager()->getSequence(sequence)->clear();
+}
+
+void setSyncPeriod(uint32_t period)
+{
+	g_nSyncPeriod = period;
+}
+
+uint32_t getSyncPeriod()
+{
+	return g_nSyncPeriod;
 }

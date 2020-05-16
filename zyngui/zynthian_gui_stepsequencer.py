@@ -42,18 +42,6 @@ from zyngui.zynthian_gui_seqtrigger import zynthian_gui_seqtrigger
 import ctypes
 from os.path import dirname, realpath
 
-DISABLED		= 0
-ONESHOT			= 1
-LOOP			= 2
-ONESHOTALL		= 3
-LOOPALL			= 4
-LASTPLAYMODE	= 4
-
-STOPPED			= 0
-PLAYING			= 1
-STOPPING		= 2
-LASTPLAYSTATUS	= 2
-
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer GUI Class
 #------------------------------------------------------------------------------
@@ -75,7 +63,12 @@ class zynthian_gui_stepsequencer():
 		self.shown = False # True when GUI in view
 		self.zyncoderOwner = [None, None, None, None] # Object that is currently "owns" encoder, indexed by encoder
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
-		self.child = None # Child GUI class
+		self.child = None # Index of child (from self.children)
+		self.children = [
+			{'title':'Pattern Editor', 'class':zynthian_gui_patterneditor, 'instance':None},
+			{'title':'Song Editor', 'class':zynthian_gui_songeditor, 'instance':None},
+			{'title':'ZynPad', 'class':zynthian_gui_seqtrigger, 'instance':None},
+			]
 
 		# Initalise libseq and load pattern from file
 		# TODO: Should this be done at higher level rather than within a screen?
@@ -164,7 +157,7 @@ class zynthian_gui_stepsequencer():
 		self.imgUp = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/up.png" % (iconsize))
 		self.imgDown = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/down.png" % (iconsize))
 
-		self.btnTransport = tkinter.Button(self.tb_frame, command=self.togglePlay,
+		self.btnTransport = tkinter.Button(self.tb_frame, command=self.toggleTransport,
 			image=self.imgLoopOff,
 			bd=0, highlightthickness=0)
 		self.btnTransport.grid(column=1, row=0)
@@ -239,10 +232,6 @@ class zynthian_gui_stepsequencer():
 		self.populateMenu()
 		self.scrollTime = 0.0
 
-		self.showChild(zynthian_gui_patterneditor)
-#		self.showChild(zynthian_gui_seqtrigger)
-#		self.showChild(zynthian_gui_songeditor)
-
 	# Function to print traceback - for debug only
 	#	TODO: Remove debug function (or move to other zynthian class)
 	def debugTraceback(self):
@@ -255,15 +244,20 @@ class zynthian_gui_stepsequencer():
 		self.lstMenu.delete(0, tkinter.END)
 		for item in self.MENU_ITEMS:
 			self.lstMenu.insert(tkinter.END, item)
-		self.addMenu({'Pattern Editor':{'method':self.showChild, 'params':zynthian_gui_patterneditor}})
-		self.addMenu({'Song Editor':{'method':self.showChild, 'params':zynthian_gui_songeditor}})
-		self.addMenu({'Pad Trigger':{'method':self.showChild, 'params':zynthian_gui_seqtrigger}})
+		for index in range(len(self.children)):
+			self.addMenu({self.children[index]['title']:{'method':self.showChild, 'params':index}})
 		self.addMenu({'Tempo':{'method':self.showParamEditor, 'params':{'min':0, 'max':999, 'value':self.zyngui.zyntransport.get_tempo(), 'getValue':self.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
 
 	# Function to update title
 	#	title: Title to display in topbar
 	def setTitle(self, title):
 		self.title_canvas.itemconfig("lblTitle", text=title)
+
+	# Function to get current child object from index within self.children[]
+	def getChild(self):
+		if self.child == None:
+			return None
+		return self.children[self.child]['instance']
 
 	# Function to show GUI
 	def show(self):
@@ -272,8 +266,7 @@ class zynthian_gui_stepsequencer():
 			self.populateMenu()
 			self.main_frame.grid_propagate(False)
 			self.main_frame.grid(column=0, row=0)
-			if self.child:
-				self.child.show()
+			self.showChild(self.child)
 		self.main_frame.focus()
 
 	# Function to hide GUI
@@ -281,8 +274,8 @@ class zynthian_gui_stepsequencer():
 		if self.shown:
 			self.shown=False
 			self.main_frame.grid_forget()
-			if self.child:
-				self.child.hide()
+			if self.getChild():
+				self.getChild().hide()
 
 	# Function to refresh the status widgets
 	#	status: Dictionary containing update data
@@ -487,8 +480,8 @@ class zynthian_gui_stepsequencer():
 			self.btnTransport.configure(image=self.imgLoopOff)
 
 		# Refresh child panel
-		if self.child and self.child.refresh_status:
-			self.child.refresh_status()
+		if self.getChild() and self.getChild().refresh_status:
+			self.getChild().refresh_status()
 
 	# Function to open menu
 	def showMenu(self):
@@ -510,8 +503,8 @@ class zynthian_gui_stepsequencer():
 		self.lstMenu.grid_forget()
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
-		if self.child:
-			self.child.setupEncoders()
+		if self.getChild():
+			self.getChild().setupEncoders()
 
 	# Function to handle title bar click
 	#	event: Mouse event (not used)
@@ -623,8 +616,8 @@ class zynthian_gui_stepsequencer():
 		self.param_editor_canvas.grid_forget()
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
-		if self.child:
-			self.child.setupEncoders()
+		if self.getChild():
+			self.getChild().setupEncoders()
 
 	# Function to handle menu editor value change and get display label text
 	#	params: Menu item's parameters
@@ -637,7 +630,7 @@ class zynthian_gui_stepsequencer():
 			value = params['min']
 		if value > params['max']:
 			value = params['max']
-		if self.paramEditorItem == 'Tempo':
+		if self.paramEditorItem == 'Tempo': #TODO: Tempo should be handled by paramEditor 'getValue'
 			self.zyngui.zyntransport.set_tempo(value)
 		self.setParam(self.paramEditorItem, 'value', value)
 		return "%s: %d" % (self.paramEditorItem, value)
@@ -672,25 +665,31 @@ class zynthian_gui_stepsequencer():
 		self.hideParamEditor()
 
 	# Function to show child GUI
-	def showChild(self, child):
+	def showChild(self, childIndex):
+		if not self.shown:
+			return
 		self.hideChild()
-		self.child = child(self)
-		if self.shown:
-			self.child.show()
+		if childIndex == None:
+			childIndex = 0
+		if not self.children[childIndex]['instance']:
+			self.children[childIndex]['instance'] = self.children[childIndex]['class'](self)
+		self.child = childIndex
+		self.getChild().show()
 
 	# Function to hide child GUI
 	def hideChild(self):
-		if self.child:
-			self.child.hide()
+		if self.getChild():
+			self.getChild().hide()
 		self.child = None
 		self.hideParamEditor()
 		self.populateMenu()
 		self.setTitle("Step Sequencer")
 
-	# Function to toggle play
-	def togglePlay(self):
-		if self.child and self.child.onTransportToggle:
-			self.child.onTransportToggle()
+	# Function to toggle transport
+	def toggleTransport(self):
+		self.zyngui.zyntransport.transport_toggle()
+		if self.getChild():
+			self.getChild().onTransportToggle()
 
 	# Function to refresh loading animation
 	def refresh_loading(self):
@@ -804,8 +803,10 @@ class zynthian_gui_stepsequencer():
 			elif self.paramEditorItem:
 				self.menuValueAssert()
 				return True
-		if self.child:
-			return self.child.switch(switch, type)
+		elif switch == ENC_SNAPSHOT:
+			self.toggleTransport()
+		if self.getChild():
+			return self.getChild().switch(switch, type)
 		return True # Tell parent that we handled all short and bold key presses
 
 	#Function to handle computer keyboard key press

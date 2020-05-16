@@ -281,7 +281,8 @@ SEQ_LASTPLAYMODE	= 4
 SEQ_STOPPED			= 0
 SEQ_PLAYING			= 1
 SEQ_STOPPING		= 2
-SEQ_LASTPLAYSTATUS	= 2
+SEQ_STARTING		= 3
+SEQ_LASTPLAYSTATUS	= 3
 
 
 #------------------------------------------------------------------------------

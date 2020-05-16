@@ -68,8 +68,9 @@ class PatternManager
 		/**	@brief	Handle clock
 		*	@param	nTime Offset since JACK epoch for start of next period
 		*	@param	pSchedule Pointer to the schedule to populate with events
+		*	@param	bSync True indicates a sync pulse
 		*/
-		void clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule);
+		void clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync);
 
 		/**	@brief	Set the clock rates for all sequences in samples per clock
 		*	@param	samples (samples per clock)

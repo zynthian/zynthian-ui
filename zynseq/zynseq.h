@@ -70,6 +70,11 @@ extern "C"
 */
 bool  init();
 
+/**	@brief	Enable debug output
+*	@param	bEnable True to enable debug output
+*/
+void debug(bool bEnable);
+
 /**	@brief	Load sequences and patterns from file
 *	@param	filename Full path and filename
 */
@@ -197,13 +202,12 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity);
 */
 uint32_t getNoteDuration(uint32_t step, uint8_t note);
 
-/**	@brief	Transpose a pattern
+/**	@brief	Transpose pattern
 *	@param	value +/- quantity of notes to transpose
 */
 void transpose(int8_t value);
 
-/**	@brief	Clears a pattern
-*	@todo	Implement clear of pattern and song / sequence
+/**	@brief	Clears pattern
 */
 void clear();
 
@@ -317,7 +321,15 @@ uint32_t getStep(uint32_t sequence);
 */
 void setStep(uint32_t sequence, uint32_t step);
 
-void debug(bool bEnable);
+/**	@brief	Set period between sync pulses
+*	@param	period Time between sync pulses (clock cycles)
+*/
+void setSyncPeriod(uint32_t period);
+
+/**	@brief	Get period between sync pulses
+*	@retval	uint32_t Time between sync pulses (clock cycles)
+*/
+uint32_t getSyncPeriod();
 
 #ifdef __cplusplus
 }

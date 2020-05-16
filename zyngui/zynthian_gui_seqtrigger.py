@@ -44,7 +44,6 @@ class zynthian_gui_seqtrigger():
 	# Function to initialise class
 	def __init__(self, parent):
 		self.parent = parent
-		parent.setTitle("ZynGrid")
 
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 
@@ -53,8 +52,10 @@ class zynthian_gui_seqtrigger():
 		self.selectedPad = 1 # Index of last selected pad - used to edit config
 
 		self.playModes = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all']
-		self.padColours = ['grey', '#0C5A93', '#006704', '#0C5A93', '#006704']
-		self.padColoursPlaying = ['grey', '#0B425E', '#024211', '#0B425E', '#024211']
+		self.padColoursStopped = ['grey', '#004060', '#008040', '#5794a8', '#57a861']
+		self.padColoursPlaying = ['grey', '#0C4080', '#00A040', '#2ba0d4', '#2dd24a']
+		self.padColoursStarting = ['grey', '#000070', '#009000', '#585da7', '#52ad86']
+		self.padColoursStopping = ['grey', '#000090', '#00B000', '#1358ec', '#21de81']
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -89,22 +90,16 @@ class zynthian_gui_seqtrigger():
 		self.parent.addMenu({'Pad mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(self.playModes)-1, 'value':0, 'getValue':self.getSelectedPadMode, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Grid size':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':8, 'value':8, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':1, 'getValue':self.getSelectedPadChannel, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Sync period':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':96, 'getValue':self.parent.libseq.getSyncPeriod, 'onChange':self.onMenuChange}}})
 		self.drawGrid()
 		self.main_frame.tkraise()
 		self.setupEncoders()
+		self.parent.setTitle("ZynGrid")
+
 
 	# Function to hide GUI
 	def hide(self):
 		pass
-
-	# Function to show menu editor
-	#	menuitem: Name of the menu item who's parameters to edit
-	def showParamEditor(self, menuItem):
-		if not menuItem in self.MENU_ITEMS:
-			return
-		self.paramEditorItem = menuItem
-		if self.getParam(menuItem, 'getValue'):
-			self.setParam(menuItem, 'vallue', self.getParam(menuItem, 'getValue')())
 
 	# Function to get the mode of the currently selected pad
 	#	returns: Mode of selected pad
@@ -145,6 +140,8 @@ class zynthian_gui_seqtrigger():
 			self.parent.libseq.setChannel(self.selectedPad, value - 1)
 			self.parent.setParam(menuItem, 'value', value)
 			return "%s: MIDI channel: %d" % (prefix, value)
+		elif menuItem == 'Sync period':
+			self.parent.libseq.setSyncPeriod(value)
 		return "%s: %d" % (menuItem, value)
 
 	# Function to draw grid
@@ -173,8 +170,12 @@ class zynthian_gui_seqtrigger():
 		padHeight = self.height / self.rows - 2
 		cell = self.gridCanvas.find_withtag("pad:%d"%(pad))
 		if cell:
-			if self.parent.libseq.getPlayState(pad):
-				playColour = self.padColours[self.parent.libseq.getPlayMode(pad)]
+			if self.parent.libseq.getPlayState(pad) == zynthian_gui_config.SEQ_STOPPED:
+				playColour = self.padColoursStopped[self.parent.libseq.getPlayMode(pad)]
+			elif self.parent.libseq.getPlayState(pad) == zynthian_gui_config.SEQ_STARTING:
+				playColour = self.padColoursStarting[self.parent.libseq.getPlayMode(pad)]
+			elif self.parent.libseq.getPlayState(pad) == zynthian_gui_config.SEQ_STOPPING:
+				playColour = self.padColoursStopping[self.parent.libseq.getPlayMode(pad)]
 			else:
 				playColour = self.padColoursPlaying[self.parent.libseq.getPlayMode(pad)]
 			self.gridCanvas.itemconfig(cell, fill=playColour)
@@ -220,16 +221,17 @@ class zynthian_gui_seqtrigger():
 			self.parent.refreshParamEditor()
 		if self.parent.libseq.getPlayState(pad) == zynthian_gui_config.SEQ_PLAYING:
 			self.parent.libseq.setPlayState(pad, zynthian_gui_config.SEQ_STOPPING)
-			print("Stopping pad", pad)
 		elif self.parent.libseq.getPlayMode(pad) != zynthian_gui_config.SEQ_DISABLED:
-			self.parent.libseq.setPlayState(pad, zynthian_gui_config.SEQ_PLAYING)
-			print("Starting pad", pad)
+			self.parent.libseq.setPlayState(pad, zynthian_gui_config.SEQ_STARTING)
 		playing = self.drawPad(pad)
 		if playing and not self.zyngui.zyntransport.get_state():
+			self.parent.libseq.setPlayState(pad, zynthian_gui_config.SEQ_PLAYING)
 			self.zyngui.zyntransport.locate(0)
 			self.zyngui.zyntransport.transport_play()
-		elif not playing and self.zyngui.zyntransport.get_state():
-			self.zyngui.zyntransport.transport_stop()
+
+	# Function to handle transport toggle
+	def onTransportToggle(self):
+		pass
 
 	# Function to handle pad release
 	def onPadRelease(self, event):
@@ -240,8 +242,6 @@ class zynthian_gui_seqtrigger():
 		playing = 0
 		for pad in range(1, self.rows * self.columns + 2):
 			playing = playing + self.drawPad(pad)
-		if not playing:
-			self.zyngui.zyntransport.transport_stop() #TODO: Maybe we don't want to stop the tranport
 
 	def refresh_loading(self):
 		pass

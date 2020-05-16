@@ -67,7 +67,6 @@ class zynthian_gui_patterneditor():
 	# Function to initialise class
 	def __init__(self, parent):
 		self.parent = parent
-		parent.setTitle("Pattern Editor")
 
 		self.zoom = 16 # Quantity of rows (notes) displayed in grid
 		self.duration = 1 # Current note entry duration
@@ -186,15 +185,12 @@ class zynthian_gui_patterneditor():
 		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'onChange':self.onMenuChange}}})
 		self.setupEncoders()
 		self.main_frame.tkraise()
-		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
-		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
+		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
 		self.shown=True
 
 	# Function to hide GUI
 	def hide(self):
 		self.shown=False
-		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_DISABLED)
-		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_STOPPED)
 		self.parent.unregisterZyncoder(ENC_BACK)
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterZyncoder(ENC_SNAPSHOT)
@@ -536,14 +532,15 @@ class zynthian_gui_patterneditor():
 		self.parent.setParam('Step per beat', 'value', self.parent.libseq.getStepsPerBeat())
 		self.parent.setParam('Clocks per step', 'value', self.parent.libseq.getClockDivisor())
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
-		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
-		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
 
 	# Function to handle transport toggle
 	def onTransportToggle(self):
-		if not self.zyngui.zyntransport.get_state():
+		if self.zyngui.zyntransport.get_state():
 			self.parent.libseq.setStep(self.sequence, 0)
-		self.zyngui.zyntransport.transport_toggle()
+			self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
+			self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
+		else:
+			self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_STOPPED)
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
@@ -593,8 +590,6 @@ class zynthian_gui_patterneditor():
 	def switch(self, switch, type):
 		if type == "L":
 			return False # Don't handle any long presses
-		if switch == ENC_SNAPSHOT:
-			self.onTransportToggle()
 		elif switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
 		return True # Tell parent that we handled all short and bold key presses

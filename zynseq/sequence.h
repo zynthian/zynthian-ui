@@ -1,4 +1,5 @@
 #pragma once
+#pragma once
 #include "pattern.h"
 #include <map>
 #include <forward_list>
@@ -93,11 +94,11 @@ class Sequence
 
 		/**	@brief	Handle clock signal
 		*	@param	nTime Time (quantity of samples since JACK epoch)
-		*	@param	bStart True to indicate start of sequence playout, e.g. to sync sequences (optional)
+		*	@param	bSync True to indicate sync pulse, e.g. to sync sequences (optional - default: false)
 		*	@retval	bool True if clock triggers a sequence step
 		*	@note	Adds pending events from sequence to JACK queue
 		*/
-		bool clock(uint32_t nTime, bool bStart = false);
+		bool clock(uint32_t nTime, bool bSync = false);
 
 		/**	@brief	Gets next event at current clock cycle
 		*	@retval	SEQ_EVENT* Pointer to sequence event at this time or NULL if no more events
@@ -152,7 +153,7 @@ class Sequence
 		uint8_t m_nChannel = 0; // MIDI channel
 		uint8_t m_nOutput = 0; // JACK output
 		uint8_t m_nState = STOPPED; // Play state
-		uint8_t m_nMode = ONESHOT; // Play mode
+		uint8_t m_nMode = LOOP; // Play mode
 		uint32_t m_nPosition = 0; // Play position in clock cycles
 		uint32_t m_nDivisor = 1; // Clock cycles per step
 		uint32_t m_nDivCount = 0; // Current count of clock cycles within divisor

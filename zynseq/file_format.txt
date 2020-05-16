@@ -25,11 +25,24 @@ RIFF Header:
 	Block size: 32-bit little endian
 Block:
 	Sequence ID [4]
-	Track ID[4]
 	MIDI channel [1]
 	JACK output [1]
 	Patterns:
 		Start time [4]
 		Pattern ID [4]
+RIFF Header:
+	Block ID: "song"
+	Block size: 32-bit little endian
+Block:
+	Song ID [4]
+	Tempo [2]
+	Grid size [1]
+	Sync period [2]
+	Pad [1]
+	Tracks:
+		Sequence [4]
+		Play mode [1]
+		Group [1]
+
 
 **Patterns must be stored (or loaded) before sequences which rely on references to patterns**

@@ -58,7 +58,6 @@ class zynthian_gui_songeditor():
 	# Function to initialise class
 	def __init__(self, parent):
 		self.parent = parent
-		parent.setTitle("Song Editor - work in progress")
 
 		self.verticalZoom = 16 # Quantity of rows (tracks) displayed in grid
 		self.horizontalZoom = 64 # Quantity of columns (clocks) displayed in grid
@@ -75,7 +74,6 @@ class zynthian_gui_songeditor():
 		self.trackDragStart = None
 		self.timeDragStart = None
 
-		self.shown = False # True when GUI in view
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 
 		# Geometry vars
@@ -152,11 +150,10 @@ class zynthian_gui_songeditor():
 		self.parent.addMenu({'Clocks per division':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'onChange':self.onMenuChange}}})
 		self.main_frame.tkraise()
 		self.setupEncoders()
-		self.shown=True
+		self.parent.setTitle("Song Editor - work in progress")
 
 	# Function to hide GUI
 	def hide(self):
-		self.shown=False
 		self.parent.unregisterZyncoder(ENC_BACK)
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterZyncoder(ENC_SNAPSHOT)
@@ -490,12 +487,11 @@ class zynthian_gui_songeditor():
 
 	# Function to handle transport toggle
 	def onTransportToggle(self):
-		if not self.zyngui.zyntransport.get_state():
+		if self.zyngui.zyntransport.get_state():
 			for sequence in self.tracks:
 				self.parent.libseq.setStep(sequence, 0)
 				self.parent.libseq.setPlayMode(sequence, zynthian_gui_config.SEQ_ONESHOT)
 				self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_PLAYING)
-		self.zyngui.zyntransport.transport_toggle()
 
 	def refresh_loading(self):
 		pass
@@ -520,8 +516,6 @@ class zynthian_gui_songeditor():
 	def switch(self, switch, type):
 		if type == "L":
 			return False # Don't handle any long presses
-		if switch == ENC_SNAPSHOT:
-			self.onTransportToggle()
 		elif switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
 		return True # Tell parent that we handled all short and bold key presses
