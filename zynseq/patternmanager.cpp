@@ -237,7 +237,6 @@ void PatternManager::updateSequenceLengths()
 {
 	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
 		it->second.updateLength();
-
 }
 
 void PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync)

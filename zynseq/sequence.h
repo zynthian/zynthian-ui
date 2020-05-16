@@ -42,12 +42,6 @@ class Sequence
 		*/
 		Pattern* getPattern(uint32_t position);
 
-		/**	@brief	Get pattern
-		*	@param index Index of pattern within table
-		*	@retval Pattern* Pointer to pattern or NULL if invalid index
-		*/
-		Pattern* getPatternAt(uint32_t index);
-
 		/**	@brief	Get MIDI channel
 		*	@retval	uint8_t MIDI channel
 		*/

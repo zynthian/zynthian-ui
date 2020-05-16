@@ -536,7 +536,7 @@ class zynthian_gui_patterneditor():
 	# Function to handle transport toggle
 	def onTransportToggle(self):
 		if self.zyngui.zyntransport.get_state():
-			self.parent.libseq.setStep(self.sequence, 0)
+			self.parent.libseq.setPlayPosition(self.sequence, 0)
 			self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
 			self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
 		else:

@@ -49,13 +49,6 @@ Pattern* Sequence::getPattern(uint32_t position)
 	return it->second;
 }
 
-Pattern* Sequence::getPatternAt(uint32_t index)
-{
-	if(m_mPatterns.size() >= index)
-		return NULL;
-	return m_mPatterns[index];
-}
-
 uint8_t Sequence::getChannel()
 {
 	return m_nChannel;
@@ -260,6 +253,8 @@ uint32_t Sequence::getStep()
 
 void Sequence::setStep(uint32_t step)
 {
+	if(m_nCurrentPattern < 0)
+		return;
 	if(m_mPatterns[m_nCurrentPattern] && step < m_mPatterns[m_nCurrentPattern]->getSteps())
 		m_nPatternCursor = step;
 }

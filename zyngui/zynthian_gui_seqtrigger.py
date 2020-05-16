@@ -222,6 +222,7 @@ class zynthian_gui_seqtrigger():
 		if self.parent.libseq.getPlayState(pad) == zynthian_gui_config.SEQ_PLAYING:
 			self.parent.libseq.setPlayState(pad, zynthian_gui_config.SEQ_STOPPING)
 		elif self.parent.libseq.getPlayMode(pad) != zynthian_gui_config.SEQ_DISABLED:
+			self.parent.libseq.setPlayPosition(pad, 0)
 			self.parent.libseq.setPlayState(pad, zynthian_gui_config.SEQ_STARTING)
 		playing = self.drawPad(pad)
 		if playing and not self.zyngui.zyntransport.get_state():
