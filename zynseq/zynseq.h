@@ -331,6 +331,10 @@ void setSyncPeriod(uint32_t period);
 */
 uint32_t getSyncPeriod();
 
+/**	@brief	Reset sync
+*/
+void resetSync();
+
 #ifdef __cplusplus
 }
 #endif

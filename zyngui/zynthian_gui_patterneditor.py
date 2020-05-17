@@ -482,7 +482,7 @@ class zynthian_gui_patterneditor():
 					zyncoder.lib_zyncoder.zynmidi_send_all_notes_off() #TODO: Use libseq - also, just send appropriate note off
 			self.drawGrid()
 			self.selectCell()
-			return "Transpose pattern +/-"
+			return "Transpose +/-"
 		elif menuItem == 'Vertical zoom':
 			self.zoom = value
 			self.updateRowHeight()

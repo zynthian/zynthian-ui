@@ -33,6 +33,8 @@ import tkinter.font as tkFont
 from . import zynthian_gui_config
 from zyncoder import *
 
+SELECT_BORDER		= zynthian_gui_config.color_on
+
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer Sequence / Pad Trigger GUI Class
@@ -47,8 +49,8 @@ class zynthian_gui_seqtrigger():
 
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 
-		self.columns = 8
-		self.rows = 8
+		self.columns = 4
+		self.rows = 4
 		self.selectedPad = 1 # Index of last selected pad - used to edit config
 
 		self.playModes = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all']
@@ -60,6 +62,9 @@ class zynthian_gui_seqtrigger():
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
+		self.selectThickness = 1 + int(self.width / 500) # Scale thickness of select border based on screen
+		self.colWidth = self.width / self.columns
+		self.rowHeight = self.height / self.rows
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(self.parent.main_frame)
@@ -75,6 +80,9 @@ class zynthian_gui_seqtrigger():
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
 		self.gridCanvas.grid(row=0, column=0)
+
+		# Selection highlight
+		self.selection = self.gridCanvas.create_rectangle(0, 0, self.width / self.columns, self.height / self.rows, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
 
 		#TODO: Just adding patterns to sequences for test - this should be done by user in sequence editor
 		for pattern in range(1, 65):
@@ -124,7 +132,7 @@ class zynthian_gui_seqtrigger():
 			value = params['max']
 		if menuItem == 'Tempo':
 			self.zyngui.zyntransport.set_tempo(value)
-		prefix = "Pad %s%d" % (chr(int((self.selectedPad - 1) / self.rows) + 65), (self.selectedPad - 1) % self.rows + 1)
+		prefix = "%s%d" % (chr(int((self.selectedPad - 1) / self.rows) + 65), (self.selectedPad - 1) % self.rows + 1)
 		if menuItem == 'Pad mode':
 			self.parent.libseq.setPlayMode(self.selectedPad, value)
 			self.parent.setParam(menuItem, 'value', value)
@@ -135,6 +143,8 @@ class zynthian_gui_seqtrigger():
 				self.rows = value
 				self.columns = value
 				self.parent.setParam(menuItem, 'value', value)
+				self.colWidth = self.width / self.columns
+				self.rowHeight = self.height / self.rows
 				self.drawGrid(True)
 		elif menuItem == 'MIDI channel':
 			self.parent.libseq.setChannel(self.selectedPad, value - 1)
@@ -201,7 +211,16 @@ class zynthian_gui_seqtrigger():
 		pads = self.rows * self.columns
 		if pads < 1 or pad < 1 or pad > pads:
 			return 0
-		self.drawCell(int((pad - 1) / self.rows), (pad - 1) % self.rows)
+		col = int((pad - 1) / self.rows)
+		row = (pad - 1) % self.rows
+		self.drawCell(col, row)
+		if self.selectedPad == pad:
+			if self.parent.paramEditorItem:
+				self.gridCanvas.coords(self.selection, (col * self.colWidth, row * self.rowHeight, (1 + col) * self.colWidth, (1 + row) * self.rowHeight))
+				self.gridCanvas.tag_raise(self.selection)
+				self.gridCanvas.itemconfig(self.selection, state="normal")
+			else:
+				self.gridCanvas.itemconfig(self.selection, state="hidden")
 		return self.parent.libseq.getPlayState(pad)
 
 	# Function to handle pad press
@@ -226,9 +245,8 @@ class zynthian_gui_seqtrigger():
 			self.parent.libseq.setPlayState(pad, zynthian_gui_config.SEQ_STARTING)
 		playing = self.drawPad(pad)
 		if playing and not self.zyngui.zyntransport.get_state():
-			self.parent.libseq.setPlayPosition(pad, 0)
+			self.parent.libseq.resetSync()
 			self.parent.libseq.setPlayState(pad, zynthian_gui_config.SEQ_PLAYING)
-			self.zyngui.zyntransport.locate(0)
 			self.zyngui.zyntransport.transport_play()
 
 	# Function to handle transport start

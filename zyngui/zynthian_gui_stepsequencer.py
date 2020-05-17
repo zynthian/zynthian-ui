@@ -495,6 +495,7 @@ class zynthian_gui_stepsequencer():
 		self.lstMenu.selection_clear(0,tkinter.END)
 		self.lstMenu.activate(0)
 		self.lstMenu.selection_set(0)
+		self.lstMenu.see(0)
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
 		self.registerZyncoder(ENC_SELECT, self)

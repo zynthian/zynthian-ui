@@ -48,7 +48,7 @@ jack_nframes_t g_nLastTime = 0; // Time of previous MIDI clock in frames (sample
 jack_nframes_t g_nClockEventTime; // Time of current MIDI clock in frames (samples) since JACK epoch
 jack_nframes_t g_nClockEventTimeOffset;
 uint32_t g_nSyncPeriod = 96; // Time between sync pulses (clock cycles)
-uint32_t g_nSyncCount = 0; // Time since last syn pulse (clock cycles)
+uint32_t g_nSyncCount = 0; // Time since last sync pulse (clock cycles)
 
 bool g_bLocked = false; // True when locked to MIDI clock
 bool g_bPlaying = false; // Local interpretation of whether MIDI clock is running
@@ -578,4 +578,9 @@ void setSyncPeriod(uint32_t period)
 uint32_t getSyncPeriod()
 {
 	return g_nSyncPeriod;
+}
+
+void resetSync()
+{
+	g_nSyncCount = g_nSyncPeriod;
 }
