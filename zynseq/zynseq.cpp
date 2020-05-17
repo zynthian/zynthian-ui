@@ -91,9 +91,13 @@ void onClock()
 				PatternManager::getPatternManager()->setSequenceClockRates(nClockPeriod);
 			}
 		}
-		bool bSync = (++g_nSyncCount > g_nSyncPeriod);
+		bool bSync = (++g_nSyncCount >= g_nSyncPeriod);
 		if(bSync)
+		{
 			g_nSyncCount = 0;
+			if(g_bDebug)
+				printf("+\n");
+		}
 		PatternManager::getPatternManager()->clock(g_nClockEventTime + g_nBufferSize, &g_mSchedule, bSync);
 	}
 }
@@ -127,37 +131,46 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		switch(midiEvent.buffer[0])
 		{
 			case MIDI_STOP:
-				printf("StepJackClient MIDI STOP\n");
+				if(g_bDebug)
+					printf("StepJackClient MIDI STOP\n");
 				//!@todo Send note off messages
 				g_nLastTime = 0;
 				g_bLocked = false;
 				g_bPlaying = false;
 				break;
 			case MIDI_START:
-				printf("StepJackClient MIDI START\n");
+				if(g_bDebug)
+					printf("StepJackClient MIDI START\n");
 				g_nLastTime = 0;
+				g_nSyncCount = 0;
 				g_bLocked = false;
 				g_bPlaying = true;
 				break;
 			case MIDI_CONTINUE:
-				printf("StepJackClient MIDI CONTINUE\n");
+				if(g_bDebug)
+					printf("StepJackClient MIDI CONTINUE\n");
 				g_nLastTime = 0;
 				g_bLocked = false;
 				g_bPlaying = true;
 				break;
 			case MIDI_CLOCK:
+				if(g_bDebug)
+					printf("StepJackClient MIDI CLOCK\n");
 				g_nClockEventTimeOffset = midiEvent.time;
 				g_nClockEventTime = nNow + midiEvent.time;
 				g_bClockIdle = false;
 				g_bPlaying = true;
 				break;
 			case MIDI_POSITION:
-				printf("Song position %d\n", midiEvent.buffer[1] + midiEvent.buffer[1] << 7);
+				if(g_bDebug)
+					printf("StepJackClient Song position %d\n", midiEvent.buffer[1] + midiEvent.buffer[1] << 7);
 				break;
 			case MIDI_SONG:
-				printf("Select song %d\n", midiEvent.buffer[1]);
+				if(g_bDebug)
+					printf("StepJackClient Select song %d\n", midiEvent.buffer[1]);
 			default:
-				//printf("Unhandled MIDI message %d\n", midiEvent.buffer[0]);
+//				if(g_bDebug)
+//					printf("StepJackClient Unhandled MIDI message %d\n", midiEvent.buffer[0]);
 				break;
 		}
 	}

@@ -74,7 +74,8 @@ class zynthian_gui_stepsequencer():
 		# TODO: Should this be done at higher level rather than within a screen?
 		self.libseq = ctypes.CDLL(dirname(realpath(__file__))+"/../zynseq/build/libzynseq.so")
 		self.libseq.init()
-		self.libseq.load(bytes(os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.zynseq", "utf-8"))
+		self.filename = os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.zynseq"
+		self.load(self.filename)
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -247,6 +248,8 @@ class zynthian_gui_stepsequencer():
 		for index in range(len(self.children)):
 			self.addMenu({self.children[index]['title']:{'method':self.showChild, 'params':index}})
 		self.addMenu({'Tempo':{'method':self.showParamEditor, 'params':{'min':0, 'max':999, 'value':self.zyngui.zyntransport.get_tempo(), 'getValue':self.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
+		self.addMenu({'Save':{'method':self.save}})
+		self.addMenu({'Load':{'method':self.load}})
 
 	# Function to update title
 	#	title: Title to display in topbar
@@ -689,7 +692,28 @@ class zynthian_gui_stepsequencer():
 	def toggleTransport(self):
 		self.zyngui.zyntransport.transport_toggle()
 		if self.getChild():
-			self.getChild().onTransportToggle()
+			if self.zyngui.zyntransport.get_state():
+				self.getChild().onTransportStart()
+			else:
+				self.getChild().onTransportStop()
+
+	# Function to save to RIFF file
+	#	filename: Full path and filename to save
+	def save(self, filename = None):
+		if not filename:
+			filename = self.filename
+		os.makedirs(os.path.dirname(filename), exist_ok=True)
+		self.libseq.save(bytes(filename, "utf-8"))
+
+	# Function to load from RIFF file
+	#	filename: Full path and filename to load
+	def load(self, filename = None):
+		if not filename:
+			filename = self.filename
+		self.libseq.load(bytes(filename, "utf-8"))
+		if self.getChild():
+			self.getChild().onLoad()
+			#TODO: This won't update hidden children
 
 	# Function to refresh loading animation
 	def refresh_loading(self):

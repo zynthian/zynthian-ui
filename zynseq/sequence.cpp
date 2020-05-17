@@ -102,6 +102,8 @@ void Sequence::setPlayState(uint8_t state)
 				m_nState = STOPPED;
 				return;
 		}
+	else if(state == STARTING)
+		m_nDivCount = 0;
 	if(m_nSequenceLength)
 		m_nState = state;
 	else
@@ -123,7 +125,7 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 	{
 		m_nState = PLAYING;
 	}
-	if(m_nState == STOPPED || m_nState == STARTING  || ++m_nDivCount < m_nDivisor)
+	if(m_nState == STOPPED || m_nState == STARTING || ++m_nDivCount < m_nDivisor)
 		return false;
 	//printf("Sequence::clock %d/%d/%d/%d/%d\n", m_nState, m_nPosition, m_nDivCount, m_nDivisor, nTime);
 	m_nCurrentTime = nTime;

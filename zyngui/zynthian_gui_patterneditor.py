@@ -195,7 +195,6 @@ class zynthian_gui_patterneditor():
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterZyncoder(ENC_SNAPSHOT)
 		self.parent.unregisterZyncoder(ENC_LAYER)
-		self.savePatterns() #TODO: Find better time to save patterns
 
 	# Function to handle start of pianoroll drag
 	def onPianoRollDragStart(self, event):
@@ -425,12 +424,6 @@ class zynthian_gui_patterneditor():
 				self.gridCanvas.coords(cell, coord)
 			self.gridCanvas.tag_raise(cell)
 
-	# Function to save patterns to RIFF file
-	def savePatterns(self):
-		filename=os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.zynseq"
-		os.makedirs(os.path.dirname(filename), exist_ok=True)
-		self.parent.libseq.save(bytes(filename, "utf-8"));
-
 	# Function to calculate row height
 	def updateRowHeight(self):
 		self.rowHeight = (self.gridHeight - 2) / self.zoom
@@ -533,14 +526,20 @@ class zynthian_gui_patterneditor():
 		self.parent.setParam('Clocks per step', 'value', self.parent.libseq.getClockDivisor())
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
 
-	# Function to handle transport toggle
-	def onTransportToggle(self):
-		if self.zyngui.zyntransport.get_state():
-			self.parent.libseq.setPlayPosition(self.sequence, 0)
-			self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
-			self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
-		else:
-			self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_STOPPED)
+	# Function called when new file loaded from disk
+	def onLoad(self):
+		self.loadPattern(self.pattern)
+		#TODO: Should we select pattern 1?
+
+	# Function to handle transport start
+	def onTransportStart(self):
+		self.parent.libseq.setPlayPosition(self.sequence, 0)
+		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
+		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
+
+	# Function to handle transport stop
+	def onTransportStop(self):
+		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_STOPPED)
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]

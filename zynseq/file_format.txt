@@ -30,7 +30,7 @@ Block:
 	Patterns:
 		Start time [4]
 		Pattern ID [4]
-RIFF Header:
+RIFF Header: **NOT YET IMPLEMENTED**
 	Block ID: "song"
 	Block size: 32-bit little endian
 Block:

@@ -226,16 +226,26 @@ class zynthian_gui_seqtrigger():
 			self.parent.libseq.setPlayState(pad, zynthian_gui_config.SEQ_STARTING)
 		playing = self.drawPad(pad)
 		if playing and not self.zyngui.zyntransport.get_state():
+			self.parent.libseq.setPlayPosition(pad, 0)
 			self.parent.libseq.setPlayState(pad, zynthian_gui_config.SEQ_PLAYING)
 			self.zyngui.zyntransport.locate(0)
 			self.zyngui.zyntransport.transport_play()
 
-	# Function to handle transport toggle
-	def onTransportToggle(self):
+	# Function to handle transport start
+	def onTransportStart(self):
+		for pad in range(self.rows * self.columns):
+			self.parent.libseq.setPlayPosition(pad, 0)
+
+	# Function to handle transport stop
+	def onTransportStop(self):
 		pass
 
 	# Function to handle pad release
 	def onPadRelease(self, event):
+		pass
+
+	# Function called when new file loaded from disk
+	def onLoad(self):
 		pass
 
 	# Function to refresh status

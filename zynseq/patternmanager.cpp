@@ -96,7 +96,7 @@ void PatternManager::load(const char* filename)
 		}
 		else if(memcmp(sHeader, "seq ", 4) == 0)
 		{
-			if(nBlockSize < 12)
+			if(nBlockSize < 6)
 				continue;
 			uint32_t nSequence = fileRead32(pFile);
 			uint8_t nChannel = fileRead8(pFile);

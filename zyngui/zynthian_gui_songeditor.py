@@ -485,13 +485,20 @@ class zynthian_gui_songeditor():
 		self.parent.setParam('Vertical zoom', 'max', len(self.tracks))
 		self.parent.setParam('Horizontal zoom', 'max', self.duration)
 
-	# Function to handle transport toggle
-	def onTransportToggle(self):
-		if self.zyngui.zyntransport.get_state():
-			for sequence in self.tracks:
-				self.parent.libseq.setStep(sequence, 0)
-				self.parent.libseq.setPlayMode(sequence, zynthian_gui_config.SEQ_ONESHOT)
-				self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_PLAYING)
+	# Function called when new file loaded from disk
+	def onLoad(self):
+		pass
+
+	# Function to handle transport start
+	def onTransportStart(self):
+		for sequence in self.tracks:
+			self.parent.libseq.setStep(sequence, 0)
+			self.parent.libseq.setPlayMode(sequence, zynthian_gui_config.SEQ_ONESHOT)
+			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_PLAYING)
+
+	# Function to handle transport stop
+	def onTransportStop(self):
+		pass
 
 	def refresh_loading(self):
 		pass
