@@ -296,6 +296,9 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def start(self):
+		# Initialize jack Transport
+		self.zyntransport = zynthian_engine_transport()
+
 		# Create Core UI Screens
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['info'] = zynthian_gui_info()
@@ -317,12 +320,6 @@ class zynthian_gui:
 		self.screens['confirm'] = zynthian_gui_confirm()
 		self.screens['main'] = zynthian_gui_main()
 
-		# Init Auto-connector
-		zynautoconnect.start()
-
-		# Initialize jack Transport
-		self.zyntransport = zynthian_engine_transport()
-
 		# Create UI Apps Screens
 		self.screens['layer'].create_amixer_layer()
 		self.screens['alsa_mixer'] = self.screens['control']
@@ -331,6 +328,8 @@ class zynthian_gui:
 		self.screens['autoeq'] = zynthian_gui_autoeq()
 		self.screens['stepseq'] = zynthian_gui_stepsequencer()
 
+		# Init Auto-connector
+		zynautoconnect.start()
 
 		# Initialize OSC
 		self.osc_init()
