@@ -848,7 +848,8 @@ class zynthian_gui:
 			self.show_modal("alsa_mixer")
 
 		elif i==1:
-			self.callable_ui_action("ALL_OFF")
+			#self.callable_ui_action("ALL_OFF")
+			self.show_modal("admin")
 
 		elif i==2:
 			self.toggle_modal("stepseq")
