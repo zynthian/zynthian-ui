@@ -49,13 +49,6 @@ Pattern* Sequence::getPattern(uint32_t position)
 	return it->second;
 }
 
-Pattern* Sequence::getPatternAt(uint32_t index)
-{
-	if(m_mPatterns.size() >= index)
-		return NULL;
-	return m_mPatterns[index];
-}
-
 uint8_t Sequence::getChannel()
 {
 	return m_nChannel;
@@ -80,41 +73,82 @@ void Sequence::setOutput(uint8_t output)
 
 uint8_t Sequence::getPlayMode()
 {
-	return m_nState;
+	return m_nMode;
 }
 
 void Sequence::setPlayMode(uint8_t mode)
 {
-	if(mode > 2)
+	if(mode > LASTPLAYMODE)
 		return;
-	if(mode == PLAY || mode == LOOP)
-		m_nPosition = 0;
-	m_nState = mode;
+	m_nMode = mode;
 }
 
-void Sequence::togglePlayMode()
+uint8_t Sequence::getPlayState()
 {
-	if(m_nState == STOP)
-		setPlayMode(PLAY);
-	else
-		setPlayMode(STOP);
+	return m_nState;
 }
 
-bool Sequence::clock(uint32_t nTime)
+void Sequence::setPlayState(uint8_t state)
+{
+	if(state > LASTPLAYSTATUS)
+		return;
+
+	if(state == STOPPING)
+		switch(m_nMode)
+		{
+			case DISABLED:
+			case ONESHOT:
+			case LOOP:
+				m_nState = STOPPED;
+				return;
+		}
+	else if(state == STARTING)
+		m_nDivCount = 0;
+	if(m_nSequenceLength)
+		m_nState = state;
+	else
+		m_nState = STOPPED;
+}
+
+void Sequence::togglePlayState()
+{
+	if(m_nState == STOPPED || m_nState == STOPPING)
+		setPlayState(STARTING);
+	else
+		setPlayState(STOPPING);
+}
+
+bool Sequence::clock(uint32_t nTime, bool bSync)
 {
 	// Clock cycle - update position and associated counters, status, etc.
-	if(m_nState == STOP || ++m_nDivCount < m_nDivisor)
+	if(bSync && m_nState == STARTING)
+	{
+		m_nState = PLAYING;
+	}
+	if(m_nState == STOPPED || m_nState == STARTING || ++m_nDivCount < m_nDivisor)
 		return false;
 	//printf("Sequence::clock %d/%d/%d/%d/%d\n", m_nState, m_nPosition, m_nDivCount, m_nDivisor, nTime);
 	m_nCurrentTime = nTime;
 	m_nDivCount = 0;
 	if(m_nPosition >= m_nSequenceLength)
 	{
+		// Reached end of sequence
 		m_nPosition = 0;
-		if(m_nState != LOOP)
+		if(m_nState == STOPPING)
 		{
-			m_nState = STOP;
+			m_nState = STOPPED;
 			return false;
+		}
+		switch(m_nMode)
+		{
+			case ONESHOT:
+			case DISABLED:
+			case ONESHOTALL:
+				m_nState = STOPPED;
+				return false;
+			case LOOP:
+			case LOOPALL:
+				break;
 		}
 	}
 	if(m_mPatterns.find(m_nPosition) != m_mPatterns.end())
@@ -149,7 +183,7 @@ SEQ_EVENT* Sequence::getEvent()
 {
 	// This function is called repeatedly for each clock period until no more events are available to populate JACK MIDI output schedule
 	static SEQ_EVENT seqEvent; // A MIDI event timestamped for some imminent or future time
-	if(m_nState == STOP || m_nCurrentPattern < 0 || m_nNextEvent < 0)
+	if(m_nState == STOPPED || m_nCurrentPattern < 0 || m_nNextEvent < 0)
 		return NULL;
 	// Sequence is being played and playhead is within a pattern
 	Pattern* pPattern = m_mPatterns[m_nCurrentPattern];
@@ -219,12 +253,26 @@ uint32_t Sequence::getStep()
 	return m_nPatternCursor;
 }
 
+void Sequence::setStep(uint32_t step)
+{
+	if(m_nCurrentPattern < 0)
+		return;
+	if(m_mPatterns[m_nCurrentPattern] && step < m_mPatterns[m_nCurrentPattern]->getSteps())
+		m_nPatternCursor = step;
+}
+
 uint32_t Sequence::getPatternPlayhead()
 {
-	return m_nPatternCursor;
+	return m_nPatternCursor * m_nDivisor;
 }
 
 uint32_t Sequence::getPlayPosition()
 {
 	return m_nPosition;
+}
+
+void Sequence::setPlayPosition(uint32_t clock)
+{
+	if(clock < m_nSequenceLength)
+		m_nPosition = clock;
 }

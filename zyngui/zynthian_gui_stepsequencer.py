@@ -63,13 +63,19 @@ class zynthian_gui_stepsequencer():
 		self.shown = False # True when GUI in view
 		self.zyncoderOwner = [None, None, None, None] # Object that is currently "owns" encoder, indexed by encoder
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
-		self.child = None # Child GUI class
+		self.child = None # Index of child (from self.children)
+		self.children = [
+			{'title':'Pattern Editor', 'class':zynthian_gui_patterneditor, 'instance':None},
+			{'title':'Song Editor', 'class':zynthian_gui_songeditor, 'instance':None},
+			{'title':'ZynPad', 'class':zynthian_gui_seqtrigger, 'instance':None},
+			]
 
 		# Initalise libseq and load pattern from file
 		# TODO: Should this be done at higher level rather than within a screen?
 		self.libseq = ctypes.CDLL(dirname(realpath(__file__))+"/../zynseq/build/libzynseq.so")
 		self.libseq.init()
-		self.libseq.load(bytes(os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.zynseq", "utf-8"))
+		self.filename = os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.zynseq"
+		self.load(self.filename)
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -152,15 +158,14 @@ class zynthian_gui_stepsequencer():
 		self.imgUp = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/up.png" % (iconsize))
 		self.imgDown = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/down.png" % (iconsize))
 
-		self.btnTransport = tkinter.Button(self.tb_frame, command=self.zyngui.zyntransport.transport_toggle,
+		self.btnTransport = tkinter.Button(self.tb_frame, command=self.toggleTransport,
 			image=self.imgLoopOff,
 			bd=0, highlightthickness=0)
 		self.btnTransport.grid(column=1, row=0)
 
 		# Parameter value editor
-		self.paramEditorState = False
+		self.paramEditorItem = None
 		self.MENU_ITEMS = {'Back':None} # Dictionary of menu items
-		self.paramEditor = {'menuitem':None,'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange} # Values for currently editing menu item
 		self.param_editor_canvas = tkinter.Canvas(self.tb_frame,
 			height=zynthian_gui_config.topbar_height,
 			bd=0, highlightthickness=0,
@@ -228,10 +233,6 @@ class zynthian_gui_stepsequencer():
 		self.populateMenu()
 		self.scrollTime = 0.0
 
-		self.showChild(zynthian_gui_patterneditor)
-#		self.showChild(zynthian_gui_seqtrigger)
-#		self.showChild(zynthian_gui_songeditor)
-
 	# Function to print traceback - for debug only
 	#	TODO: Remove debug function (or move to other zynthian class)
 	def debugTraceback(self):
@@ -244,47 +245,31 @@ class zynthian_gui_stepsequencer():
 		self.lstMenu.delete(0, tkinter.END)
 		for item in self.MENU_ITEMS:
 			self.lstMenu.insert(tkinter.END, item)
-		self.addMenu({'Pattern Editor':{'method':self.showChild, 'params':zynthian_gui_patterneditor}})
-		self.addMenu({'Song Editor':{'method':self.showChild, 'params':zynthian_gui_songeditor}})
-		self.addMenu({'Pad Trigger':{'method':self.showChild, 'params':zynthian_gui_seqtrigger}})
-		self.addMenu({'Tempo':{'method':self.showParamEditor, 'params':{'min':0, 'max':999, 'value':self.zyngui.zyntransport.get_tempo(), 'onChange':self.onMenuChange}}})
+		for index in range(len(self.children)):
+			self.addMenu({self.children[index]['title']:{'method':self.showChild, 'params':index}})
+		self.addMenu({'Tempo':{'method':self.showParamEditor, 'params':{'min':0, 'max':999, 'value':self.zyngui.zyntransport.get_tempo(), 'getValue':self.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
+		self.addMenu({'Save':{'method':self.save}})
+		self.addMenu({'Load':{'method':self.load}})
 
 	# Function to update title
 	#	title: Title to display in topbar
 	def setTitle(self, title):
 		self.title_canvas.itemconfig("lblTitle", text=title)
 
-	# Function to add items to menu
-	#	item: Dictionary containing menu item data, indexed by menu item title
-	def addMenu(self, item):
-		self.MENU_ITEMS.update(item)
-		self.lstMenu.insert(tkinter.END, list(item)[0])
-
-	# Function to set menu data parameters
-	#	item: Menu item name
-	#	param: Parameter name
-	#	value: Parameter value
-	def setParam(self, item, param, value):
-		if item in self.MENU_ITEMS:
-			self.MENU_ITEMS[item]['params'].update({param: value})
-
-	# Function to get menu data parameters
-	#	item: Menu item name
-	#	param: Parameter name
-	#	returns: Parameter value
-	def getParam(self, item, param):
-		if item in self.MENU_ITEMS and param in self.MENU_ITEMS[item]:
-			return self.MENU_ITEMS[item]['params'][value]
-		return None
+	# Function to get current child object from index within self.children[]
+	def getChild(self):
+		if self.child == None:
+			return None
+		return self.children[self.child]['instance']
 
 	# Function to show GUI
 	def show(self):
 		if not self.shown:
 			self.shown=True
+			self.populateMenu()
 			self.main_frame.grid_propagate(False)
 			self.main_frame.grid(column=0, row=0)
-			if self.child:
-				self.child.show()
+			self.showChild(self.child)
 		self.main_frame.focus()
 
 	# Function to hide GUI
@@ -292,17 +277,8 @@ class zynthian_gui_stepsequencer():
 		if self.shown:
 			self.shown=False
 			self.main_frame.grid_forget()
-			if self.child:
-				self.child.hide()
-
-	# Function to get GUI display status
-	#	returns True if showing
-	def is_shown(self):
-		try:
-			self.main_frame.grid_info()
-			return True
-		except:
-			return False
+			if self.getChild():
+				self.getChild().hide()
 
 	# Function to refresh the status widgets
 	#	status: Dictionary containing update data
@@ -501,23 +477,25 @@ class zynthian_gui_stepsequencer():
 			else:
 				self.status_canvas.itemconfig(self.status_midi, text=flags)
 
-		# Transport play status #TODO: Need to relate to selected sequence
-		if self.libseq.getPlayMode():
-			self.transport_canvas.config(bg="green")
+		if self.zyngui.zyntransport.get_state():
+			self.btnTransport.configure(image=self.imgLoopOn)
 		else:
-			self.transport_canvas.config(bg=zynthian_gui_config.color_bg)
+			self.btnTransport.configure(image=self.imgLoopOff)
 
 		# Refresh child panel
-		if self.child and self.child.shown and self.child.refresh_status:
-			self.child.refresh_status()
+		if self.getChild() and self.getChild().refresh_status:
+			self.getChild().refresh_status()
 
 	# Function to open menu
 	def showMenu(self):
+		rows = min((self.height - zynthian_gui_config.topbar_height) / self.listboxTextHeight, self.lstMenu.size())
+		self.lstMenu.configure(height = int(rows))
 		self.lstMenu.grid(row=1, column=0, sticky="wn")
 		self.lstMenu.tkraise()
 		self.lstMenu.selection_clear(0,tkinter.END)
 		self.lstMenu.activate(0)
 		self.lstMenu.selection_set(0)
+		self.lstMenu.see(0)
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
 		self.registerZyncoder(ENC_SELECT, self)
@@ -529,8 +507,8 @@ class zynthian_gui_stepsequencer():
 		self.lstMenu.grid_forget()
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
-		if self.child:
-			self.child.setupEncoders()
+		if self.getChild():
+			self.getChild().setupEncoders()
 
 	# Function to handle title bar click
 	#	event: Mouse event (not used)
@@ -560,83 +538,76 @@ class zynthian_gui_stepsequencer():
 
 	# Function to handle release menu
 	def onMenuRelease(self, event):
-		self.onMenuSelect(event)
+		self.onMenuSelect()
 
 	# Function to handle menu item selection (SELECT button or click on listbox entry)
-	#	event: Listbox event (not used)
-	def onMenuSelect(self, event=None):
+	def onMenuSelect(self):
 		if self.lstMenu.winfo_viewable():
-			sel = None
+			menuItem = None
 			action = None
 			params = {}
 			try:
-				sel = self.lstMenu.get(self.lstMenu.curselection()[0])
-				action = self.MENU_ITEMS[sel]['method']
-				params = self.MENU_ITEMS[sel]['params']
-				params.update({'menuitem':sel}) # Add menu name to params
+				menuItem = self.lstMenu.get(self.lstMenu.curselection()[0])
+				action = self.MENU_ITEMS[menuItem]['method']
+				params = self.MENU_ITEMS[menuItem]['params']
 			except:
 				logging.error("**Error selecting menu**")
 			self.hideMenu()
-			if not sel:
+			if not menuItem:
 				return
-			if sel == 'Back':
+			if menuItem == 'Back':
 				self.zyngui.zynswitch_defered('S',1)
+			if action == self.showParamEditor:
+				self.showParamEditor(menuItem)
 			elif action:
 				action(params) # Call menu handler defined during addMenu
 
-	# Function to set menu editor value and get display label text
-	#	value: Menu item's value
-	#	returns: String to populate menu editor label
-	#	note: This is default but other method may be used for each menu item
-	def onMenuChange(self, value):
-		menuItem = self.paramEditor['menuitem']
-		if value < self.paramEditor['min']:
-			value = self.paramEditor['min']
-		if value > self.paramEditor['max']:
-			value = self.paramEditor['max']
-		if menuItem == 'Tempo':
-			self.zyngui.zyntransport.set_tempo(value)
-		self.paramEditor['value'] = value
-		return "%s: %d" % (self.paramEditor['menuitem'], value)
+	# Function to add items to menu
+	#	item: Dictionary containing menu item data, indexed by menu item title
+	#		Dictionary should contain {'method':<function to call when menu selected>} and {'params':<parameters to pass to method>}
+	def addMenu(self, item):
+		self.MENU_ITEMS.update(item)
+		self.lstMenu.insert(tkinter.END, list(item)[0])
+
+	# Function to set menu data parameters
+	#	item: Menu item name
+	#	param: Parameter name
+	#	value: Parameter value
+	def setParam(self, item, param, value):
+		if item in self.MENU_ITEMS:
+			self.MENU_ITEMS[item]['params'].update({param: value})
+
+	# Function to refresh parameter editor display
+	def refreshParamEditor(self):
+		self.param_title_canvas.itemconfig("lblparamEditorValue", 
+			text=self.MENU_ITEMS[self.paramEditorItem]['params']['onChange'](self.MENU_ITEMS[self.paramEditorItem]['params']))
+
+	# Function to get menu data parameters
+	#	item: Menu item name
+	#	param: Parameter name
+	#	returns: Parameter value
+	def getParam(self, item, param):
+		if item in self.MENU_ITEMS and param in self.MENU_ITEMS[item]['params']:
+			return self.MENU_ITEMS[item]['params'][param]
+		return None
 
 	# Function to show menu editor
-	#	params: Dictionary of menu editor parameters: {
-	#		'menuitem':<menu title>,
-	#		'min':<minimum permissible value>, [Default: 0]
-	#		'max':<maximum permissible value>, [Default: 1]
-	#		'value':<current value>,  [Default: 0]
-	#		'onChange':<function to call when value is changed by editor>,  [Default: zynthian_gui_stepsequencer::onMenuChange]
-	#		'onAssert':<function to call when value is asserted, e.g. assert button pressed> [Default: None]}
-	def showParamEditor(self, params):
-		self.paramEditorState = True
-		#self.title_canvas.grid_forget()
+	#	menuitem: Name of the menu item who's parameters to edit
+	def showParamEditor(self, menuItem):
+		if not menuItem in self.MENU_ITEMS:
+			return
+		self.paramEditorItem = menuItem
+		if self.getParam(menuItem, 'getValue'):
+			self.setParam(menuItem, 'value', self.getParam(menuItem, 'getValue')())
 		self.param_editor_canvas.grid_propagate(False)
 		self.param_editor_canvas.grid(column=0, row=0, sticky='nsew')
-		# Populate parameter editor with params from menuitem
-		if 'menuitem' in params:
-			self.paramEditor['menuitem'] = params['menuitem']
-		if 'min' in params:
-			self.paramEditor['min'] = params['min']
-		else:
-			self.paramEditor['min'] = 0
-		if 'max' in params:
-			self.paramEditor['max'] = params['max']
-		else:
-			self.paramEditor['max'] = 1
-		if 'value' in params:
-			self.paramEditor['value'] = params['value']
-		else:
-			self.paramEditor['value'] = 0
-		if 'onChange' in params:
-			self.paramEditor['onChange'] = params['onChange']
-		else:
-			self.paramEditor['onChange'] = self.onMenuChange
-		self.param_title_canvas.itemconfig("lblparamEditorValue", text=self.paramEditor['onChange'](self.paramEditor['value']))
-		if 'onAssert' in params:
-			self.paramEditor['onAssert'] = params['onAssert']
+		# Get the value to display in the param editor
+		self.param_title_canvas.itemconfig("lblparamEditorValue", 
+			text=self.MENU_ITEMS[menuItem]['params']['onChange'](self.MENU_ITEMS[menuItem]['params'])
+			)
+		if 'onAssert' in self.MENU_ITEMS[menuItem]['params']:
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='normal')
 		else:
-			self.paramEditor['onAssert'] = None
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='hidden')
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
@@ -645,24 +616,39 @@ class zynthian_gui_stepsequencer():
 
 	# Function to hide menu editor
 	def hideParamEditor(self):
-		self.paramEditorState = False
+		self.paramEditorItem = None
 		self.param_editor_canvas.grid_forget()
-#		self.title_canvas.grid(row=0, column=0)
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
-		if self.child:
-			self.child.setupEncoders()
+		if self.getChild():
+			self.getChild().setupEncoders()
+
+	# Function to handle menu editor value change and get display label text
+	#	params: Menu item's parameters
+	#	returns: String to populate menu editor label
+	#	note: This is default but other method may be used for each menu item
+	#	note: params is a dictionary with required fields: min, max, value
+	def onMenuChange(self, params):
+		value = params['value']
+		if value < params['min']:
+			value = params['min']
+		if value > params['max']:
+			value = params['max']
+		if self.paramEditorItem == 'Tempo': #TODO: Tempo should be handled by paramEditor 'getValue'
+			self.zyngui.zyntransport.set_tempo(value)
+		self.setParam(self.paramEditorItem, 'value', value)
+		return "%s: %d" % (self.paramEditorItem, value)
 
 	# Function to change parameter value
 	#	value: Offset by which to change parameter value
 	def changeParam(self, value):
-		value = self.paramEditor['value'] + value
-		if value < self.paramEditor['min']:
-			value = self.paramEditor['min']
-		elif value > self.paramEditor['max']:
-			value = self.paramEditor['max']
-		self.paramEditor['value'] = value
-		result=self.paramEditor['onChange'](self.paramEditor['value'])
+		value = self.getParam(self.paramEditorItem, 'value') + value
+		if value < self.getParam(self.paramEditorItem, 'min'):
+			value = self.getParam(self.paramEditorItem, 'min')
+		if value > self.getParam(self.paramEditorItem, 'max'):
+			value = self.getParam(self.paramEditorItem, 'max')
+		self.setParam(self.paramEditorItem, 'value', value)
+		result = self.getParam(self.paramEditorItem, 'onChange')(self.MENU_ITEMS[self.paramEditorItem]['params'])
 		if result == -1:
 			hideParamEditor()
 		else:
@@ -678,25 +664,57 @@ class zynthian_gui_stepsequencer():
 
 	# Function to assert selected menu value
 	def menuValueAssert(self):
-		if self.paramEditor and 'onAssert' in self.paramEditor and self.paramEditor['onAssert']:
-			self.paramEditor['onAssert']()
+		if self.paramEditorItem and 'onAssert' in self.MENU_ITEMS[self.paramEditorItem]['params'] and self.MENU_ITEMS[self.paramEditorItem]['params']['onAssert']:
+			self.MENU_ITEMS[self.paramEditorItem]['params']['onAssert']()
 		self.hideParamEditor()
 
 	# Function to show child GUI
-	def showChild(self, child):
+	def showChild(self, childIndex):
+		if not self.shown:
+			return
 		self.hideChild()
-		self.child = child(self)
-		if self.shown:
-			self.child.show()
+		if childIndex == None:
+			childIndex = 0
+		if not self.children[childIndex]['instance']:
+			self.children[childIndex]['instance'] = self.children[childIndex]['class'](self)
+		self.child = childIndex
+		self.getChild().show()
 
 	# Function to hide child GUI
 	def hideChild(self):
-		if self.child:
-			self.child.hide()
+		if self.getChild():
+			self.getChild().hide()
 		self.child = None
 		self.hideParamEditor()
 		self.populateMenu()
 		self.setTitle("Step Sequencer")
+
+	# Function to toggle transport
+	def toggleTransport(self):
+		self.zyngui.zyntransport.transport_toggle()
+		if self.getChild():
+			if self.zyngui.zyntransport.get_state():
+				self.getChild().onTransportStart()
+			else:
+				self.getChild().onTransportStop()
+
+	# Function to save to RIFF file
+	#	filename: Full path and filename to save
+	def save(self, filename = None):
+		if not filename:
+			filename = self.filename
+		os.makedirs(os.path.dirname(filename), exist_ok=True)
+		self.libseq.save(bytes(filename, "utf-8"))
+
+	# Function to load from RIFF file
+	#	filename: Full path and filename to load
+	def load(self, filename = None):
+		if not filename:
+			filename = self.filename
+		self.libseq.load(bytes(filename, "utf-8"))
+		if self.getChild():
+			self.getChild().onLoad()
+			#TODO: This won't update hidden children
 
 	# Function to refresh loading animation
 	def refresh_loading(self):
@@ -725,7 +743,7 @@ class zynthian_gui_stepsequencer():
 				self.lstMenu.selection_set(index)
 				self.lstMenu.activate(index)
 				self.lstMenu.see(index)
-			elif self.paramEditorState:
+			elif self.paramEditorItem:
 				# Parameter editor showing
 					self.changeParam(value)
 
@@ -742,10 +760,6 @@ class zynthian_gui_stepsequencer():
 					if value != 64:
 						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 64, 0)
 						self.zyncoderOwner[encoder].onZyncoder(encoder, value - 64)
-		if self.zyngui.zyntransport.get_state():
-			self.btnTransport.configure(image=self.imgLoopOn)
-		else:
-			self.btnTransport.configure(image=self.imgLoopOff)
 
 	# Function to handle CUIA encoder changes
 	def onCuiaEncoder(self, encoder, value):
@@ -802,7 +816,7 @@ class zynthian_gui_stepsequencer():
 				# Close menu
 				self.hideMenu()
 				return True
-			if self.paramEditorState:
+			if self.paramEditorItem:
 				# Close parameter editor
 				self.hideParamEditor()
 				return True
@@ -811,11 +825,13 @@ class zynthian_gui_stepsequencer():
 			if self.lstMenu.winfo_viewable():
 				self.onMenuSelect()
 				return True
-			elif self.paramEditorState:
+			elif self.paramEditorItem:
 				self.menuValueAssert()
 				return True
-		if self.child:
-			return self.child.switch(switch, type)
+		elif switch == ENC_SNAPSHOT:
+			self.toggleTransport()
+		if self.getChild():
+			return self.getChild().switch(switch, type)
 		return True # Tell parent that we handled all short and bold key presses
 
 	#Function to handle computer keyboard key press

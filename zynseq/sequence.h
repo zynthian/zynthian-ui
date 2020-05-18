@@ -1,4 +1,5 @@
 #pragma once
+#pragma once
 #include "pattern.h"
 #include <map>
 #include <forward_list>
@@ -41,12 +42,6 @@ class Sequence
 		*/
 		Pattern* getPattern(uint32_t position);
 
-		/**	@brief	Get pattern
-		*	@param index Index of pattern within table
-		*	@retval Pattern* Pointer to pattern or NULL if invalid index
-		*/
-		Pattern* getPatternAt(uint32_t index);
-
 		/**	@brief	Get MIDI channel
 		*	@retval	uint8_t MIDI channel
 		*/
@@ -73,20 +68,31 @@ class Sequence
 		uint8_t getPlayMode();
 
 		/**	@brief	Set play mode
-		*	@param	mode Play mode [STOP | PLAY | LOOP]
+		*	@param	mode Play mode [DISABLED | ONESHOT | LOOP | ONESHOTALL | LOOPALL]
 		*/
 		void setPlayMode(uint8_t mode);
 
+		/**	@brief	Get play state
+		*	@retval	uint8_t Play state
+		*/
+		uint8_t getPlayState();
+
+		/**	@brief	Set play state
+		*	@param	uint8_t Play state [STOPPED | PLAYING | STOPPING]
+		*/
+		void setPlayState(uint8_t state);
+
 		/**	@brief	Toggles play / stop
 		*/
-		void togglePlayMode();
+		void togglePlayState();
 
 		/**	@brief	Handle clock signal
 		*	@param	nTime Time (quantity of samples since JACK epoch)
+		*	@param	bSync True to indicate sync pulse, e.g. to sync sequences (optional - default: false)
 		*	@retval	bool True if clock triggers a sequence step
 		*	@note	Adds pending events from sequence to JACK queue
 		*/
-		bool clock(uint32_t nTime);
+		bool clock(uint32_t nTime, bool bSync = false);
 
 		/**	@brief	Gets next event at current clock cycle
 		*	@retval	SEQ_EVENT* Pointer to sequence event at this time or NULL if no more events
@@ -112,6 +118,11 @@ class Sequence
 		*/
 		uint32_t getStep();
 
+		/**	@brief	Set position of playhead within currently playing pattern
+		*	@param	step Quantity of steps from start of pattern to position playhead
+		*/
+		void setStep(uint32_t step);
+
 		/**	@brief	Get position of playhead within currently playing pattern
 		*	@retval	uint32_t Quantity of clock cycles from start of pattern to playhead
 		*/
@@ -122,6 +133,11 @@ class Sequence
 		*/
 		uint32_t getPlayPosition();
 
+		/**	@brief	Set the position of playhead within sequence
+		*	@param	clock Quantity of clock cycles from start of sequence to position playhead
+		*/
+		void setPlayPosition(uint32_t clock);
+
 		/**	@brief	Set the samples per clock used to calculate when events should be scheduled
 		*	@param	samples Quantity of samples in each clock cycle
 		*/
@@ -130,9 +146,10 @@ class Sequence
 	private:
 		uint8_t m_nChannel = 0; // MIDI channel
 		uint8_t m_nOutput = 0; // JACK output
-		uint8_t m_nState = STOP; // Play state
+		uint8_t m_nState = STOPPED; // Play state
+		uint8_t m_nMode = LOOP; // Play mode
 		uint32_t m_nPosition = 0; // Play position in clock cycles
-		uint32_t m_nDivisor = 1; // Current pattern clock divisor
+		uint32_t m_nDivisor = 1; // Clock cycles per step
 		uint32_t m_nDivCount = 0; // Current count of clock cycles within divisor
 		std::map<uint32_t,Pattern*> m_mPatterns; // Map of patterns, indexed by start position
 		int m_nCurrentPattern = -1; // Start position of pattern currently being played

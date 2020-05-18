@@ -58,16 +58,6 @@ class zynthian_gui_songeditor():
 	# Function to initialise class
 	def __init__(self, parent):
 		self.parent = parent
-		parent.setTitle("Song Editor - work in progress")
-		# Add menus
-		self.parent.addMenu({'Song':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Copy song':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copySong}}})
-		self.parent.addMenu({'Clear song':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearSong}}})
-		self.parent.addMenu({'Transpose song':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':2, 'value':1, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'value':120, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':16, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Horizontal zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':128, 'value':64, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Clocks per division':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'onChange':self.onMenuChange}}})
 
 		self.verticalZoom = 16 # Quantity of rows (tracks) displayed in grid
 		self.horizontalZoom = 64 # Quantity of columns (clocks) displayed in grid
@@ -84,7 +74,6 @@ class zynthian_gui_songeditor():
 		self.trackDragStart = None
 		self.timeDragStart = None
 
-		self.shown = False # True when GUI in view
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 
 		# Geometry vars
@@ -151,13 +140,20 @@ class zynthian_gui_songeditor():
 
 	# Function to show GUI
 	def show(self):
+		# Add menus
+		self.parent.addMenu({'Song':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Copy song':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copySong}}})
+		self.parent.addMenu({'Clear song':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearSong}}})
+		self.parent.addMenu({'Transpose song':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':2, 'value':1, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':16, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Horizontal zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':128, 'value':64, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Clocks per division':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'onChange':self.onMenuChange}}})
 		self.main_frame.tkraise()
 		self.setupEncoders()
-		self.shown=True
+		self.parent.setTitle("Song Editor - work in progress")
 
 	# Function to hide GUI
 	def hide(self):
-		self.shown=False
 		self.parent.unregisterZyncoder(ENC_BACK)
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterZyncoder(ENC_SNAPSHOT)
@@ -427,16 +423,18 @@ class zynthian_gui_songeditor():
 		self.parent.libseq.copySong(self.copySource, self.song);
 		self.loadSong(self.song)
 
-	# Function to handle menu editor change
-	#	value: Menu item's value
+	# Function to handle menu editor value change and get display label text
+	#	params: Menu item's parameters
 	#	returns: String to populate menu editor label
-	def onMenuChange(self, value):
-		menuItem = self.parent.paramEditor['menuitem']
-		if value < self.parent.paramEditor['min']:
-			value = self.parent.paramEditor['min']
-		if value > self.parent.paramEditor['max']:
-			value = self.parent.paramEditor['max']
-		self.parent.paramEditor['value'] = value
+	#	note: params is a dictionary with required fields: min, max, value
+	def onMenuChange(self, params):
+		value = params['value']
+		if value < params['min']:
+			value = params['min']
+		if value > params['max']:
+			value = params['max']
+		menuItem = self.parent.paramEditorItem
+		self.parent.setParam(menuItem, 'value', value)
 		if menuItem == 'Song':
 			self.song = value
 			self.copySource = value
@@ -451,7 +449,7 @@ class zynthian_gui_songeditor():
 			if(value != 1):
 				for seq in self.tracks:
 					self.parent.libseq.transposeSong(seq)
-				self.parent.paramEditor['value'] = 1
+				self.parent.setParam(menuItem, 'value', 1)
 				if zyncoder.lib_zyncoder:
 					zyncoder.lib_zyncoder.zynmidi_send_all_notes_off() #TODO: Use libseq - also, just send appropriate note off
 			self.drawGrid()
@@ -470,7 +468,7 @@ class zynthian_gui_songeditor():
 			self.selectCell()
 			self.parent.setParam(menuItem, 'value', value)
 		elif menuItem == 'Tempo':
-			self.parent.libseq.setTempo(value)
+			self.zyngui.zyntransport.set_tempo(value)
 			self.parent.setParam(menuItem, 'value', value)
 		elif menuItem == 'Clocks per division':
 			#TODO: Implement clocks per division
@@ -486,6 +484,21 @@ class zynthian_gui_songeditor():
 		self.selectCell(0,0)
 		self.parent.setParam('Vertical zoom', 'max', len(self.tracks))
 		self.parent.setParam('Horizontal zoom', 'max', self.duration)
+
+	# Function called when new file loaded from disk
+	def onLoad(self):
+		pass
+
+	# Function to handle transport start
+	def onTransportStart(self):
+		for sequence in self.tracks:
+			self.parent.libseq.setStep(sequence, 0)
+			self.parent.libseq.setPlayMode(sequence, zynthian_gui_config.SEQ_ONESHOT)
+			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_PLAYING)
+
+	# Function to handle transport stop
+	def onTransportStop(self):
+		pass
 
 	def refresh_loading(self):
 		pass
@@ -510,11 +523,6 @@ class zynthian_gui_songeditor():
 	def switch(self, switch, type):
 		if type == "L":
 			return False # Don't handle any long presses
-		if switch == ENC_SNAPSHOT:
-			if self.parent.libseq.getPlayMode(self.sequence):
-				self.parent.libseq.setPlayMode(self.sequence, 0) #STOP
-			else:
-				self.parent.libseq.setPlayMode(self.sequence, 2) #LOOP
 		elif switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
 		return True # Tell parent that we handled all short and bold key presses

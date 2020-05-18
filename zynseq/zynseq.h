@@ -70,6 +70,11 @@ extern "C"
 */
 bool  init();
 
+/**	@brief	Enable debug output
+*	@param	bEnable True to enable debug output
+*/
+void debug(bool bEnable);
+
 /**	@brief	Load sequences and patterns from file
 *	@param	filename Full path and filename
 */
@@ -197,13 +202,12 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity);
 */
 uint32_t getNoteDuration(uint32_t step, uint8_t note);
 
-/**	@brief	Transpose a pattern
+/**	@brief	Transpose pattern
 *	@param	value +/- quantity of notes to transpose
 */
 void transpose(int8_t value);
 
-/**	@brief	Clears a pattern
-*	@todo	Implement clear of pattern and song / sequence
+/**	@brief	Clears pattern
 */
 void clear();
 
@@ -245,36 +249,54 @@ void setChannel(uint32_t sequence, uint8_t channel);
 *	@param	sequence Sequence ID
 *	@retval	uint8_t MIDI channel
 */
-uint8_t getChannel(uint32_t seqeuence);
+uint8_t getChannel(uint32_t sequence);
 
 /**	@brief	Set sequence JACK output
 *	@param	sequence Sequence ID
 *	@param	output JACK output
 */
-void setOutput(uint32_t seqeuence, uint8_t output);
+void setOutput(uint32_t sequence, uint8_t output);
 
 /**	@brief	Get current play mode for a sequence
 *	@param	sequence Sequence ID
-*	@retval	uint8_t Play mode [STOP | PLAY | LOOP]
+*	@retval	uint8_t Play mode [DISABLED | ONESHOT | LOOP | ONESHOTALL | LOOPALL]
 */
 uint8_t getPlayMode(uint32_t sequence);
 
 /**	@brief	Set play mode of a sequence
 *	@param	sequence Index of sequence to control
-*	@param	mode Play mode [STOP | PLAY | LOOP]
+*	@param	mode Play mode [DISABLED | ONESHOT | LOOP | ONESHOTALL | LOOPALL]
 */
 void setPlayMode(uint32_t sequence, uint8_t mode);
 
-/**	@brief	Toggles play / stop
-*	@param	sequence Index of sequence to control
+/**	@brief	Get play state
+*	@param	sequence Index of sequence
+*	@retval	uint8_t Play state [STOPPED | PLAYING | STOPPING]
 */
-void togglePlayMode(uint32_t sequence = 0);
+uint8_t getPlayState(uint32_t seqeuence);
 
-/**	@brief	Get the currently playing step
+/**	@brief	Set play state
+*	@param	sequence Index of sequence
+*	@param	uint8_t Play state [STOPPED | PLAYING | STOPPING]
+*/
+void setPlayState(uint32_t sequence, uint8_t state);
+
+/**	@brief	Toggles play / stop
+*	@retval	uint32_t sequence
+*/
+void togglePlayState(uint32_t sequence);
+
+/**	@brief	Get the currently playing clock cycle
 *	@param	Sequence ID
 *	@retval uint32_t Playhead position in clock cycles
 */
 uint32_t getPlayPosition(uint32_t sequence);
+
+/**	@brief	Set the currently playing clock cycle
+*	@param	Sequence ID
+*	@param	clock Clock cycle to position play head
+*/
+void setPlayPosition(uint32_t sequence, uint32_t clock);
 
 /**	@brief	Get length of sequence in clock cycles
 *	@param	sequence Sequence ID
@@ -288,11 +310,30 @@ uint32_t getSequenceLength(uint32_t sequence);
 void clearSequence(uint32_t sequence);
 
 /**	@brief	Get the position of playhead within pattern
-*	@retval	uint32_t Quantitu of steps from start of pattern
+*	@param	sequence Sequence number
+*	@retval	uint32_t Quantity of steps from start of pattern
 */
 uint32_t getStep(uint32_t sequence);
 
-void debug(bool bEnable);
+/**	@brief	Set the position of playhead within pattern
+*	@param	sequence Sequence number
+*	@param	step Quantity of steps from start of pattern to position playhead
+*/
+void setStep(uint32_t sequence, uint32_t step);
+
+/**	@brief	Set period between sync pulses
+*	@param	period Time between sync pulses (clock cycles)
+*/
+void setSyncPeriod(uint32_t period);
+
+/**	@brief	Get period between sync pulses
+*	@retval	uint32_t Time between sync pulses (clock cycles)
+*/
+uint32_t getSyncPeriod();
+
+/**	@brief	Reset sync
+*/
+void resetSync();
 
 #ifdef __cplusplus
 }

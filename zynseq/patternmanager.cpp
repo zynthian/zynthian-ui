@@ -96,7 +96,7 @@ void PatternManager::load(const char* filename)
 		}
 		else if(memcmp(sHeader, "seq ", 4) == 0)
 		{
-			if(nBlockSize < 12)
+			if(nBlockSize < 6)
 				continue;
 			uint32_t nSequence = fileRead32(pFile);
 			uint8_t nChannel = fileRead8(pFile);
@@ -237,17 +237,16 @@ void PatternManager::updateSequenceLengths()
 {
 	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
 		it->second.updateLength();
-
 }
 
-void PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule)
+void PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync)
 {
 	/**	Get events scheduled for next step from each playing sequence.
 		Populate schedule with start, end and interpolated events at sample offset
 	*/
 	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
 	{
-		if(it->second.clock(nTime))
+		if(it->second.clock(nTime, bSync))
 		{
 			while(SEQ_EVENT* pEvent = it->second.getEvent())
 			{

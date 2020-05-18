@@ -47,7 +47,8 @@ jack_nframes_t g_nSamplesPerClockLast = 918; // Quantity of samples per MIDI clo
 jack_nframes_t g_nLastTime = 0; // Time of previous MIDI clock in frames (samples) since JACK epoch
 jack_nframes_t g_nClockEventTime; // Time of current MIDI clock in frames (samples) since JACK epoch
 jack_nframes_t g_nClockEventTimeOffset;
-
+uint32_t g_nSyncPeriod = 96; // Time between sync pulses (clock cycles)
+uint32_t g_nSyncCount = 0; // Time since last sync pulse (clock cycles)
 
 bool g_bLocked = false; // True when locked to MIDI clock
 bool g_bPlaying = false; // Local interpretation of whether MIDI clock is running
@@ -56,6 +57,7 @@ bool g_bPlaying = false; // Local interpretation of whether MIDI clock is runnin
 
 void debug(bool bEnable)
 {
+	printf("libseq setting debug mode %s\n", bEnable?"on":"off");
 	g_bDebug = bEnable;
 }
 
@@ -67,7 +69,6 @@ void onClock()
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		g_bClockIdle = true;
 //		printf("Clock at %u (+%u)\n", g_nClockEventTime, g_nClockEventTimeOffset);
-		jack_time_t nTime = jack_last_frame_time(g_pJackClient);
 		//	Check if clock pulse duration is significantly different to last. If so, set sequence clock rates.
 		int nClockPeriod = g_nClockEventTime - g_nLastTime;
 		if(g_nLastTime && !g_bLocked)
@@ -90,7 +91,14 @@ void onClock()
 				PatternManager::getPatternManager()->setSequenceClockRates(nClockPeriod);
 			}
 		}
-		PatternManager::getPatternManager()->clock(nTime + g_nBufferSize, &g_mSchedule);
+		bool bSync = (++g_nSyncCount >= g_nSyncPeriod);
+		if(bSync)
+		{
+			g_nSyncCount = 0;
+			if(g_bDebug)
+				printf("+\n");
+		}
+		PatternManager::getPatternManager()->clock(g_nClockEventTime + g_nBufferSize, &g_mSchedule, bSync);
 	}
 }
 
@@ -123,37 +131,46 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		switch(midiEvent.buffer[0])
 		{
 			case MIDI_STOP:
-				printf("StepJackClient MIDI STOP\n");
+				if(g_bDebug)
+					printf("StepJackClient MIDI STOP\n");
 				//!@todo Send note off messages
 				g_nLastTime = 0;
 				g_bLocked = false;
 				g_bPlaying = false;
 				break;
 			case MIDI_START:
-				printf("StepJackClient MIDI START\n");
+				if(g_bDebug)
+					printf("StepJackClient MIDI START\n");
 				g_nLastTime = 0;
+				g_nSyncCount = 0;
 				g_bLocked = false;
 				g_bPlaying = true;
 				break;
 			case MIDI_CONTINUE:
-				printf("StepJackClient MIDI CONTINUE\n");
+				if(g_bDebug)
+					printf("StepJackClient MIDI CONTINUE\n");
 				g_nLastTime = 0;
 				g_bLocked = false;
 				g_bPlaying = true;
 				break;
 			case MIDI_CLOCK:
+				if(g_bDebug)
+					printf("StepJackClient MIDI CLOCK\n");
 				g_nClockEventTimeOffset = midiEvent.time;
 				g_nClockEventTime = nNow + midiEvent.time;
 				g_bClockIdle = false;
 				g_bPlaying = true;
 				break;
 			case MIDI_POSITION:
-				printf("Song position %d\n", midiEvent.buffer[1] + midiEvent.buffer[1] << 7);
+				if(g_bDebug)
+					printf("StepJackClient Song position %d\n", midiEvent.buffer[1] + midiEvent.buffer[1] << 7);
 				break;
 			case MIDI_SONG:
-				printf("Select song %d\n", midiEvent.buffer[1]);
+				if(g_bDebug)
+					printf("StepJackClient Select song %d\n", midiEvent.buffer[1]);
 			default:
-				//printf("Unhandled MIDI message %d\n", midiEvent.buffer[0]);
+//				if(g_bDebug)
+//					printf("StepJackClient Unhandled MIDI message %d\n", midiEvent.buffer[0]);
 				break;
 		}
 	}
@@ -467,6 +484,11 @@ uint32_t getStep(uint32_t sequence)
 	return PatternManager::getPatternManager()->getSequence(sequence)->getStep();
 }
 
+void setStep(uint32_t sequence, uint32_t step)
+{
+	PatternManager::getPatternManager()->getSequence(sequence)->setStep(step);
+}
+
 void addPattern(uint32_t sequence, uint32_t position, uint32_t pattern)
 {
 	PatternManager* pPm = PatternManager::getPatternManager();
@@ -512,15 +534,30 @@ void setPlayMode(uint32_t sequence, uint8_t mode)
 	PatternManager::getPatternManager()->getSequence(sequence)->setPlayMode(mode);
 }
 
-
-void togglePlayMode(uint32_t sequence)
+uint8_t getPlayState(uint32_t sequence)
 {
-	PatternManager::getPatternManager()->getSequence(sequence)->togglePlayMode();
+	return PatternManager::getPatternManager()->getSequence(sequence)->getPlayState();
+}
+
+void setPlayState(uint32_t sequence, uint8_t state)
+{
+	PatternManager::getPatternManager()->getSequence(sequence)->setPlayState(state);
+	PatternManager::getPatternManager()->getSequence(sequence)->setPlayState(state);
+}
+
+void togglePlayState(uint32_t sequence)
+{
+	PatternManager::getPatternManager()->getSequence(sequence)->togglePlayState();
 }
 
 uint32_t getPlayPosition(uint32_t sequence)
 {
 	return PatternManager::getPatternManager()->getSequence(sequence)->getPlayPosition();
+}
+
+void setPlayPosition(uint32_t sequence, uint32_t clock)
+{
+	PatternManager::getPatternManager()->getSequence(sequence)->setPlayPosition(clock);
 }
 
 uint32_t getSequenceLength(uint32_t sequence)
@@ -531,4 +568,19 @@ uint32_t getSequenceLength(uint32_t sequence)
 void clearSequence(uint32_t sequence)
 {
 	PatternManager::getPatternManager()->getSequence(sequence)->clear();
+}
+
+void setSyncPeriod(uint32_t period)
+{
+	g_nSyncPeriod = period;
+}
+
+uint32_t getSyncPeriod()
+{
+	return g_nSyncPeriod;
+}
+
+void resetSync()
+{
+	g_nSyncCount = g_nSyncPeriod;
 }
