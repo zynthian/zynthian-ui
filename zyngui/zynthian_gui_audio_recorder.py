@@ -26,6 +26,7 @@
 import os
 import sys
 import logging
+import mutagen
 import threading
 from time import sleep
 from os.path import isfile, isdir, join, basename
@@ -113,18 +114,25 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		for f in sorted(os.listdir(self.capture_dir_sdc)):
 			fpath=join(self.capture_dir_sdc,f)
 			if isfile(fpath) and (f[-4:].lower()=='.wav' or f[-4:].lower()=='.mp3'):
-				#title=str.replace(f[:-3], '_', ' ')
-				title="SDC: {}".format(f[:-4])
-				self.list_data.append((fpath,i,title))
-				i+=1
+				try:
+					length = mutagen.File(fpath).info.length
+					title="SDC: {} [{}:{}]".format(f[:-4], int(length/60), int(length%60))
+					self.list_data.append((fpath,i,title))
+					i+=1
+				except Exception as e:
+					logging.warning(e)
+
 		# Files on USB-Pendrive
 		for f in sorted(os.listdir(self.capture_dir_usb)):
 			fpath=join(self.capture_dir_usb,f)
 			if isfile(fpath) and (f[-4:].lower()=='.wav' or f[-4:].lower()=='.mp3'):
-				#title=str.replace(f[:-3], '_', ' ')
-				title="USB: {}".format(f[:-4])
-				self.list_data.append((fpath,i,title))
-				i+=1
+				try:
+					length = mutagen.File(fpath).info.length
+					title="USB: {} [{}:{}]".format(f[:-4], int(length/60), int(length%60))
+					self.list_data.append((fpath,i,title))
+					i+=1
+				except Exception as e:
+					logging.warning(e)
 
 		super().fill_list()
 
