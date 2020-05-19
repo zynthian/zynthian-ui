@@ -26,6 +26,7 @@
 import os
 import sys
 import logging
+import mutagen
 import threading
 from time import sleep
 from os.path import isfile, isdir, join, basename
@@ -110,23 +111,48 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 		i=1
 		# Files on SD-Card
-		for f in sorted(os.listdir(self.capture_dir_sdc)):
-			fpath=join(self.capture_dir_sdc,f)
-			if isfile(fpath) and (f[-4:].lower()=='.wav' or f[-4:].lower()=='.mp3'):
-				#title=str.replace(f[:-3], '_', ' ')
-				title="SDC: {}".format(f[:-4])
-				self.list_data.append((fpath,i,title))
-				i+=1
+		for fname, finfo in self.get_filelist(self.capture_dir_sdc).items():
+			l = finfo['length']
+			title="SDC: {} [{}:{}]".format(fname, int(l/60), int(l%60))
+			self.list_data.append((finfo['fpath'],i,title))
+			i+=1
+
 		# Files on USB-Pendrive
-		for f in sorted(os.listdir(self.capture_dir_usb)):
-			fpath=join(self.capture_dir_usb,f)
-			if isfile(fpath) and (f[-4:].lower()=='.wav' or f[-4:].lower()=='.mp3'):
-				#title=str.replace(f[:-3], '_', ' ')
-				title="USB: {}".format(f[:-4])
-				self.list_data.append((fpath,i,title))
-				i+=1
+		for fname, finfo in self.get_filelist(self.capture_dir_usb).items():
+			l = finfo['length']
+			title="USB: {} [{}:{}]".format(fname, int(l/60), int(l%60))
+			self.list_data.append((finfo['fpath'],i,title))
+			i+=1
 
 		super().fill_list()
+
+
+	def get_filelist(self, src_dir):
+		res = {}
+		for f in sorted(os.listdir(src_dir)):
+			fpath = join(src_dir, f)
+			fname = f[:-4]
+			fext = f[-4:].lower()
+			if isfile(fpath) and fext in ('.wav', '.mp3', '.ogg'):
+				if fname in res:
+					if fext=='.wav':
+						res[fname]['ext'] = fext
+					elif fext=='.ogg' and res[fname]['ext']!='.wav':
+						res[fname]['ext'] = fext
+				else:	
+					res[fname] = {
+						'fpath': fpath,
+						'ext': fext
+					}
+
+		for fname in res:
+			try:
+				res[fname]['length'] = mutagen.File(res[fname]['fpath']).info.length
+			except Exception as e:
+				res[fname]['length'] = 0
+				logging.warning(e)
+
+		return res
 
 
 	def fill_listbox(self):
@@ -165,7 +191,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		logging.info("DELETE AUDIO RECORDING: {}".format(fpath))
 
 		try:
-			os.remove(fpath)
+			check_output("rm -f {}.*".format(fpath[:-4]), shell=True)
+			#os.remove(fpath)
 		except Exception as e:
 			logging.error(e)
 
