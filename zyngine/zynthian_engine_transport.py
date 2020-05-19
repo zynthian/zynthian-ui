@@ -43,6 +43,7 @@ class zynthian_engine_transport(zynthian_basic_engine):
 		self.proc_cmd("locate 0")
 		self.set_tempo(tempo)
 
+
 	def __del__(self):
 		self.stop()
 

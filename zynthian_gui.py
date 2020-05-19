@@ -75,7 +75,7 @@ from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
-#from zyngui.zynthian_gui_stepseq import zynthian_gui_stepseq
+from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
@@ -111,9 +111,6 @@ class zynthian_gui:
 		"38": "TOGGLE_MIDI_PLAY",
 		"39": "START_MIDI_PLAY",
 		"40": "STOP_MIDI_PLAY",
-		"41": "START_STEP_SEQ",
-		"42": "CONTINUE_STEP_SEQ",
-		"43": "STOP_STEP_SEQ",
 
 		"51": "SELECT",
 		"52": "SELECT_UP",
@@ -299,7 +296,7 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def start(self):
-		# Initialize Jack Transport Engine
+		# Initialize jack Transport
 		self.zyntransport = zynthian_engine_transport()
 
 		# Create Core UI Screens
@@ -329,7 +326,7 @@ class zynthian_gui:
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['autoeq'] = zynthian_gui_autoeq()
-		#self.screens['stepseq'] = zynthian_gui_stepseq()
+		self.screens['stepseq'] = zynthian_gui_stepsequencer()
 
 		# Init Auto-connector
 		zynautoconnect.start()
@@ -658,15 +655,6 @@ class zynthian_gui:
 		elif cuia == "TOGGLE_MIDI_PLAY":
 			self.screens['midi_recorder'].toggle_playing()
 
-		elif cuia == "START_STEP_SEQ":
-			self.screens['stepseq'].setPlayState("START")
-
-		elif cuia == "CONTINUE_STEP_SEQ":
-			self.screens['stepseq'].setPlayState("CONTINUE")
-
-		elif cuia == "STOP_STEP_SEQ":
-			self.screens['stepseq'].setPlayState("STOP")
-
 		elif cuia == "SELECT":
 			try:
 				self.get_current_screen().select(params[0])
@@ -861,9 +849,9 @@ class zynthian_gui:
 		elif i==1:
 			#self.callable_ui_action("ALL_OFF")
 			self.show_modal("admin")
-	
+
 		elif i==2:
-			self.show_modal("audio_recorder")
+			self.toggle_modal("stepseq")
 
 		elif i==3:
 			self.screens['admin'].power_off()
@@ -888,7 +876,7 @@ class zynthian_gui:
 		logging.info('Bold Switch '+str(i))
 		self.start_loading()
 
-		if self.modal_screen=='stepseq':
+		if self.modal_screen in ['stepseq']:
 			self.stop_loading()
 			if self.screens[self.modal_screen].switch(i, 'B'):
 				return
@@ -947,7 +935,7 @@ class zynthian_gui:
 	def zynswitch_short(self,i):
 		logging.info('Short Switch '+str(i))
 
-		if self.modal_screen=='stepseq':
+		if self.modal_screen in ['stepseq']:
 			if self.screens[self.modal_screen].switch(i, 'S'):
 				return
 
@@ -1177,6 +1165,7 @@ class zynthian_gui:
 				ev=lib_zyncoder.read_zynmidi()
 				if ev==0: break
 
+				self.status_info['midi'] = True
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
 
@@ -1201,15 +1190,18 @@ class zynthian_gui:
 					# Timeclock
 					elif chan==0x8:
 						pass
+					# MIDI tick
+					elif chan==0x9:
+						pass
 					# Start
 					elif chan==0xA:
-						self.callable_ui_action("START_STEP_SEQ")
+						pass
 					# Continue
 					elif chan==0xB:
-						self.callable_ui_action("CONTINUE_STEP_SEQ")
+						pass
 					# Stop
 					elif chan==0xC:
-						self.callable_ui_action("STOP_STEP_SEQ")
+						pass
 					# Active Sensing
 					elif chan==0xE:
 						pass
