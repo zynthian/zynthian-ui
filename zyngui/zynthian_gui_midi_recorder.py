@@ -120,7 +120,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			if isfile(fpath) and f[-4:].lower()=='.mid':
 				try:
 					length = SMF(fpath).info.length
-					title="SDC: {} [{}:{}]".format(f[:-4], int(length/60), int(length%60))
+					title="SDC: {} [{}:{:02d}]".format(f[:-4], int(length/60), int(length%60))
 					self.list_data.append((fpath,i,title))
 					i+=1
 				except Exception as e:
@@ -132,7 +132,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			if isfile(fpath) and f[-4:].lower()=='.mid':
 				try:
 					length = SMF(fpath).info.length
-					title="USB: {} [{}:{}]".format(f[:-4], int(length/60), int(length%60))
+					title="USB: {} [{}:{:02d}]".format(f[:-4], int(length/60), int(length%60))
 					self.list_data.append((fpath,i,title))
 					i+=1
 				except Exception as e:

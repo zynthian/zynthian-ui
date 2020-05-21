@@ -113,14 +113,14 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		# Files on SD-Card
 		for fname, finfo in self.get_filelist(self.capture_dir_sdc).items():
 			l = finfo['length']
-			title="SDC: {} [{}:{}]".format(fname, int(l/60), int(l%60))
+			title="SDC: {} [{}:{:02d}]".format(fname, int(l/60), int(l%60))
 			self.list_data.append((finfo['fpath'],i,title))
 			i+=1
 
 		# Files on USB-Pendrive
 		for fname, finfo in self.get_filelist(self.capture_dir_usb).items():
 			l = finfo['length']
-			title="USB: {} [{}:{}]".format(fname, int(l/60), int(l%60))
+			title="USB: {} [{}:{:02d}]".format(fname, int(l/60), int(l%60))
 			self.list_data.append((finfo['fpath'],i,title))
 			i+=1
 
