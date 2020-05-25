@@ -177,7 +177,10 @@ class zynthian_gui:
 
 		# Load keyboard binding map
 		zynthian_gui_keybinding.getInstance().load()
-		
+
+		# Get Jackd Options
+		self.jackd_options = zynconf.get_jackd_options()
+
 		# Initialize peakmeter audio monitor if needed
 		if not zynthian_gui_config.show_cpu_status:
 			try:
