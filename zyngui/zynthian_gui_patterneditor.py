@@ -484,6 +484,11 @@ class zynthian_gui_patterneditor():
 			if(value != 0):
 				self.parent.libseq.transpose(value)
 				self.parent.setParam(menuItem, 'value', 0)
+				self.keyOrigin = self.keyOrigin + value
+				if self.keyOrigin < 0:
+					self.keyOrigin = 0
+				if self.keyOrigin > 127:
+					self.keyOrigin = 127
 				if zyncoder.lib_zyncoder:
 					zyncoder.lib_zyncoder.zynmidi_send_all_notes_off() #TODO: Use libseq - also, just send appropriate note off
 			self.drawGrid()

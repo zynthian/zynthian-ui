@@ -340,6 +340,17 @@ uint32_t getSyncPeriod();
 */
 void resetSync();
 
+/**	@brief	Get sequence group
+*	@param	sequence Sequence number
+*	@retval uint8_t Group
+*/
+uint8_t getGroup(uint32_t sequence);
+
+/**	@brief	Set sequence group
+*	@param	sequence Sequence number
+*	@param grou Group index
+*/
+void setGroup(uint32_t sequence, uint8_t group);
 
 // ** Song management functions **
 

@@ -596,6 +596,16 @@ void resetSync()
 	g_nSyncCount = g_nSyncPeriod;
 }
 
+uint8_t getGroup(uint32_t sequence)
+{
+	return PatternManager::getPatternManager()->getSequence(sequence)->getGroup();
+}
+
+void setGroup(uint32_t sequence, uint8_t group)
+{
+	PatternManager::getPatternManager()->getSequence(sequence)->setGroup(group);
+}
+
 
 // ** Song management functions **
 

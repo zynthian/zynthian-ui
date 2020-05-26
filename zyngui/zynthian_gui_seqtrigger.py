@@ -29,6 +29,7 @@ import tkinter
 import logging
 import tkinter.font as tkFont
 from math import sqrt
+from PIL import Image, ImageTk
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -86,6 +87,8 @@ class zynthian_gui_seqtrigger():
 		self.gridCanvas.grid(row=0, column=0)
 
 		# Icons
+		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
+
 		self.imgSingleshot = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/singleshot.png")
 		self.imgLoop = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/loop.png")
 
@@ -169,6 +172,16 @@ class zynthian_gui_seqtrigger():
 		else:
 			self.columns = int(sqrt(int(tracks - 1))+1)
 		self.rows = self.columns
+		imgWidth = int(self.width / self.columns / 4)
+		iconsize = (imgWidth, imgWidth)
+		img = (Image.open("/zynthian/zynthian-ui/icons/endnoline.png").resize(iconsize))
+		self.icon[1] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/loop.png").resize(iconsize))
+		self.icon[2] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/end.png").resize(iconsize))
+		self.icon[3] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
+		self.icon[4] = ImageTk.PhotoImage(img)
 		self.drawGrid(True)
 
 	# Function to draw grid
@@ -190,6 +203,7 @@ class zynthian_gui_seqtrigger():
 	def drawCell(self, col, row, clear = False):
 		pad = row + col * self.rows
 		sequence = self.getSequence(pad)
+		group = self.parent.libseq.getGroup(sequence)
 		if col < 0 or col >= self.columns or row < 0 or row >= self.rows:
 			return
 		padX = col * self.width / self.columns
@@ -201,7 +215,7 @@ class zynthian_gui_seqtrigger():
 			if not sequence or self.parent.libseq.getPlayMode(sequence) == zynthian_gui_config.SEQ_DISABLED or self.parent.libseq.getSequenceLength(sequence) == 0:
 				fill = self.padColourDisabled
 			elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_config.SEQ_STOPPED:
-				if col % 2:
+				if group % 2:
 					fill = self.padColourStoppedOdd
 				else:
 					fill = self.padColourStoppedEven
@@ -213,12 +227,8 @@ class zynthian_gui_seqtrigger():
 				fill = self.padColourPlaying
 			self.gridCanvas.itemconfig(cell, fill=fill)
 			self.gridCanvas.coords(cell, padX, padY, padX + padWidth, padY + padHeight)
-			if self.parent.libseq.getPlayMode(sequence) in (zynthian_gui_config.SEQ_LOOP, zynthian_gui_config.SEQ_LOOPALL):
-				self.gridCanvas.itemconfig("mode:%d"%pad, image=self.imgLoop, state='normal')
-			elif self.parent.libseq.getPlayMode(sequence) in (zynthian_gui_config.SEQ_ONESHOT, zynthian_gui_config.SEQ_ONESHOTALL):
-				self.gridCanvas.itemconfig("mode:%d"%pad, image=self.imgSingleshot, state='normal')
-			else:
-				self.gridCanvas.itemconfig("mode:%d"%pad, state='hidden')
+			mode = self.parent.libseq.getPlayMode(sequence)
+			self.gridCanvas.itemconfig("mode:%d"%pad, image=self.icon[mode], state='normal')
 		else:
 			cell = self.gridCanvas.create_rectangle(padX, padY, padX + padWidth, padY + padHeight,
 				fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell"))
@@ -227,12 +237,14 @@ class zynthian_gui_seqtrigger():
 				size=int(padHeight * 0.3)),
 				fill=zynthian_gui_config.color_panel_tx,
 				tags="lbl_pad:%d"%(pad),
-				text="%s%d" % (chr(col + 65), row + 1))
-			self.gridCanvas.create_image(padX + padWidth - 10, padY + padHeight - 10, image=self.imgSingleshot, tags=("mode:%d"%(pad)))
+				text="%s%d" % (chr(65 + group), pad))
+			self.gridCanvas.create_image(padX + padWidth - 1, padY + padHeight - 1, image=self.imgSingleshot, tags=("mode:%d"%(pad)), anchor="se")
 			self.gridCanvas.tag_bind("pad:%d"%(pad), '<Button-1>', self.onPadPress)
 			self.gridCanvas.tag_bind("lbl_pad:%d"%(pad), '<Button-1>', self.onPadPress)
+			self.gridCanvas.tag_bind("mode:%d"%(pad), '<Button-1>', self.onPadPress)
 			self.gridCanvas.tag_bind("pad:%d"%(pad), '<ButtonRelease-1>', self.onPadRelease)
 			self.gridCanvas.tag_bind("lbl_pad:%d"%(pad), '<ButtonRelease-1>', self.onPadRelease)
+			self.gridCanvas.tag_bind("mode:%d"%(pad), '<ButtonRelease-1>', self.onPadRelease)
 
 	# Function to draw pad
 	#	pad: Pad index
@@ -270,6 +282,8 @@ class zynthian_gui_seqtrigger():
 		elif menuItem == 'MIDI channel':
 			self.parent.setParam('MIDI channel', 'value', self.parent.libseq.getChannel(sequence) + 1)
 			self.parent.refreshParamEditor()
+		if sequence == 0:
+			return;
 		if self.parent.libseq.getPlayState(sequence) == zynthian_gui_config.SEQ_PLAYING:
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_STOPPING)
 		elif self.parent.libseq.getPlayMode(sequence) != zynthian_gui_config.SEQ_DISABLED:
@@ -280,19 +294,6 @@ class zynthian_gui_seqtrigger():
 			self.parent.libseq.resetSync()
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_PLAYING)
 			self.zyngui.zyntransport.transport_play()
-
-	# Function to handle transport start
-	def onTransportStart(self):
-		for pad in range(self.rows * self.columns):
-			self.parent.libseq.setPlayPosition(self.parent.libseq.getSequence(self.song, pad), 0)
-
-	# Function to handle transport pause
-	def onTransportPause(self):
-		pass
-
-	# Function to handle transport stop
-	def onTransportStop(self):
-		pass
 
 	# Function to handle pad release
 	def onPadRelease(self, event):

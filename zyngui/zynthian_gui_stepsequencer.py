@@ -709,10 +709,19 @@ class zynthian_gui_stepsequencer():
 	def pause(self):
 		self.zyngui.zyntransport.transport_stop();
 
-	# Function to stop / recue transport
+	# Function to stop and recue transport
 	def stop(self):
 		self.zyngui.zyntransport.transport_stop();
 		self.zyngui.zyntransport.locate(0);
+
+	# Function to recue transport
+	def recue(self):
+		playState = self.zyngui.zyntransport.get_state()
+		self.zyngui.zyntransport.transport_stop();
+		time.sleep(0.1)
+		self.zyngui.zyntransport.locate(0);
+		if playState:
+			self.zyngui.zyntransport.transport_play();
 
 	# Function to toggle transport
 	def toggleTransport(self):
