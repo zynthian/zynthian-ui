@@ -1,6 +1,7 @@
 #pragma once
 #include "pattern.h"
 #include "sequence.h"
+#include "song.h"
 #include <map>
 
 
@@ -25,7 +26,7 @@ class PatternManager
 		void save(const char* filename);
 
 		/**	@brief	Get pointer to a pattern
-		*	@param	index Index of pattern retrieve
+		*	@param	index Index of pattern to retrieve
 		*	@retval	Pattern* Pointer to pattern
 		*	@note	If pattern does not exist a new, default, empty pattern is created
 		*/
@@ -49,10 +50,10 @@ class PatternManager
 		void deletePattern(size_t index);
 
 		/**	@brief	Copy pattern
-		*	@param	source Pointer to pattern to copy from
-		*	@param	destination Pointer to pattern to populate
+		*	@param	source Index of pattern to copy from
+		*	@param	destination Index of pattern to populate
 		*/
-		void copyPattern(Pattern* source, Pattern* destination);
+		void copyPattern(uint32_t source, uint32_t destination);
 		
 		/**	@param	Get sequence
 		*	@param	Index of sequence
@@ -77,17 +78,71 @@ class PatternManager
 		*/
 		void setSequenceClockRates(uint32_t samples);
 
+		/**	@brief	Set playhead position for all sequences
+		*	@param	position Playhead position in clock cycles
+		*/
+		void setPlayPosition(uint32_t position);
+
+		/**	@brief	Get pointer to a song
+		*	@param	index Index of song to retrieve
+		*	@retval	Song* Pointer to song
+		*	@note	If song does not exist a new, default, empty song is created
+		*/
+		Song* getSong(size_t index);
+
+		/**	@brief	Add sequence to song as new track
+		*	@param	song Index of song
+		*/
+		void addTrack(uint32_t song);
+
+		/**	@brief	Remove track from song
+		*	@param	song Index of song
+		*	@param	track Indx of track
+		*/
+		void removeTrack(uint32_t song, uint32_t track);
+
+		/**	@brief	Copy song
+		*	@param	source Index of song to copy from
+		*	@param	destination Index of song to populate
+		*/
+		void copySong(uint32_t source, uint32_t destination);
+
+		/**	@brief	Clear all tracks from song
+		*	@param	song Song index
+		*/
+		void clearSong(uint32_t song);
+
+		/**	Start song playing
+		*	@param	song Index of song
+		*/
+		void startSong(uint32_t song);
+
+		/**	Stop song playing
+		*	@param	song Index of song
+		*/
+		void stopSong(uint32_t song);
+
+		/**	Set song play position
+		*	@param	song Index of song
+		*	@param	pos Song position
+		*/
+		void setSongPosition(uint32_t song, uint32_t pos);
+
 	private:
 		PatternManager(); // Private constructor to avoid public instantiation
 		PatternManager(const PatternManager&); // Do not allow public copying
 		PatternManager& operator = (const PatternManager&); // Do not allow public copying
 		int fileWrite32(uint32_t value, FILE *pFile);
+		int fileWrite16(uint16_t value, FILE *pFile);
 		int fileWrite8(uint8_t value, FILE *pFile);
 		uint32_t fileRead32(FILE* pFile);
+		uint16_t fileRead16(FILE* pFile);
 		uint8_t fileRead8(FILE* pFile);
 
 		static PatternManager* m_pPatternManager; // Pointer to the singleton
 		// Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
 		std::map<size_t,Pattern> m_mPatterns; // Map of patterns indexed by pattern number
 		std::map<size_t,Sequence> m_mSequences; // Map of sequences indexed by sequence number
+		std::map<size_t,Song> m_mSongs; // Map of songs indexed by song number
+		std::map<uint32_t, uint32_t> m_mSongSequences; // Map of songs mapped by sequences
 };

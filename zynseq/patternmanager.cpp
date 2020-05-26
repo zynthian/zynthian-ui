@@ -23,6 +23,13 @@ int PatternManager::fileWrite32(uint32_t value, FILE *pFile)
 	return 4;
 }
 
+int PatternManager::fileWrite16(uint16_t value, FILE *pFile)
+{
+	for(int i = 1; i >=0; --i)
+		fileWrite8((value >> i * 8), pFile);
+	return 2;
+}
+
 int PatternManager::fileWrite8(uint8_t value, FILE *pFile)
 {
 	int nResult = fwrite(&value, 1, 1, pFile);
@@ -33,6 +40,18 @@ uint8_t PatternManager::fileRead8(FILE* pFile)
 {
 	uint8_t nResult = 0;
 	fread(&nResult, 1, 1, pFile);
+	return nResult;
+}
+
+uint16_t PatternManager::fileRead16(FILE* pFile)
+{
+	uint16_t nResult = 0;
+	for(int i = 1; i >=0; --i)
+	{
+		uint8_t nValue;
+		fread(&nValue, 1, 1, pFile);
+		nResult |= nValue << (i * 8);
+	}
 	return nResult;
 }
 
@@ -52,6 +71,7 @@ void PatternManager::load(const char* filename)
 {
 	m_mSequences.clear();
 	m_mPatterns.clear();
+	uint32_t nSequence = 0;
 	FILE *pFile;
 	pFile = fopen(filename, "r");
 	if(pFile == NULL)
@@ -59,12 +79,12 @@ void PatternManager::load(const char* filename)
 		fprintf(stderr, "ERROR: PatternManager failed to open file for load %s\n", filename);
 		return;
 	}
-	size_t nPos = 0;
 	char sHeader[4];
 	// Iterate each block within RIFF file
 	while(fread(sHeader, 4, 1, pFile) == 1)
 	{
-		// Assume found RIFF header
+//		printf("Looking for RIFF block...\n");
+		// Load patterns
 		uint32_t nBlockSize = fileRead32(pFile);
 		if(memcmp(sHeader, "patn", 4) == 0)
 		{
@@ -72,10 +92,8 @@ void PatternManager::load(const char* filename)
 				continue;
 			Pattern* pPattern = getPattern(fileRead32(pFile));
 			pPattern->setSteps(fileRead32(pFile));
-			uint32_t nValue = fileRead32(pFile);
-			pPattern->setClockDivisor(nValue & 0xFF);
-			pPattern->setStepsPerBeat(nValue >> 16);
-			nPos += 12;
+			pPattern->setClocksPerStep(fileRead16(pFile));
+			pPattern->setStepsPerBeat(fileRead16(pFile));
 			nBlockSize -= 12;
 			while(nBlockSize)
 			{
@@ -91,32 +109,51 @@ void PatternManager::load(const char* filename)
 				pEvent->setValue1end(nValue1end);
 				pEvent->setValue2end(nValue2end);
 				nBlockSize -= 14;
-				nPos += 14;
 			}
 		}
-		else if(memcmp(sHeader, "seq ", 4) == 0)
+		else if(memcmp(sHeader, "song", 4) == 0)
 		{
-			if(nBlockSize < 6)
+			// Load songs
+			if(nBlockSize < 10)
 				continue;
-			uint32_t nSequence = fileRead32(pFile);
-			uint8_t nChannel = fileRead8(pFile);
-			uint8_t nOutput = fileRead8(pFile);
-			m_mSequences[nSequence].setChannel(nChannel);
-			m_mSequences[nSequence].setOutput(nOutput);
-			nPos += 6;
-			nBlockSize -= 6;
+			uint32_t nSong = fileRead32(pFile);
+			m_mSongs[nSong].setBar(fileRead16(pFile));
+			uint32_t nMasterEvents = fileRead32(pFile);
+			nBlockSize -= 10;
+			if(nBlockSize < nMasterEvents * 8) //!@todo Handle variable length data
+				continue;
+			for(uint32_t nEvent = 0; nEvent < nMasterEvents; ++nEvent)
+			{
+				m_mSongs[nSong].addMasterEvent(fileRead32(pFile), fileRead16(pFile), fileRead16(pFile));
+				nBlockSize -= 8;
+				printf("Loading master track event\n");
+			}
 			while(nBlockSize)
 			{
-				uint32_t nTime = fileRead32(pFile);
-				uint32_t nPattern = fileRead32(pFile);
-				m_mSequences[nSequence].addPattern(nTime, getPattern(nPattern));
-				nPos += 8;
-				nBlockSize -= 8;
+				if(nBlockSize < 6)
+					break;
+				m_mSongSequences[++nSequence] = nSong;
+				m_mSongs[nSong].addTrack(nSequence);
+				m_mSequences[nSequence].setChannel(fileRead8(pFile));
+				m_mSequences[nSequence].setOutput(fileRead8(pFile));
+				m_mSequences[nSequence].setPlayMode(fileRead8(pFile));
+				m_mSequences[nSequence].setGroup(fileRead8(pFile));
+				uint16_t nPatterns = fileRead16(pFile);
+				nBlockSize -= 6;
+				while(nPatterns--)
+				{
+					if(nBlockSize < 8)
+						break;
+					uint32_t nTime = fileRead32(pFile);
+					uint32_t nPattern = fileRead32(pFile);
+					m_mSequences[nSequence].addPattern(nTime, getPattern(nPattern));
+					nBlockSize -= 8;
+				}
 			}
 		}
 	}
 	fclose(pFile);
-	printf("Loaded %lu patterns and %lu sequences from file %s\n", m_mPatterns.size(), m_mSequences.size(), filename);
+	printf("Loaded %lu patterns, %lu sequences, %lu songs from file %s\n", m_mPatterns.size(), m_mSequences.size(), m_mSongs.size(), filename);
 }
 
 void PatternManager::save(const char* filename)
@@ -141,11 +178,12 @@ void PatternManager::save(const char* filename)
 			fwrite("patnxxxx", 8, 1, pFile);
 			nPos += 8;
 			uint32_t nStartOfBlock = nPos;
-			nPos += fileWrite32((*it).first, pFile);
-			nPos += fileWrite32((*it).second.getSteps(), pFile);
-			nPos += fileWrite32((*it).second.getClockDivisor() | (((*it).second.getStepsPerBeat()) << 16), pFile);
+			nPos += fileWrite32(it->first, pFile);
+			nPos += fileWrite32(it->second.getSteps(), pFile);
+			nPos += fileWrite16(it->second.getClocksPerStep(), pFile);
+			nPos += fileWrite16(it->second.getStepsPerBeat(), pFile);
 			size_t nEvent = 0;
-			while(StepEvent* pEvent = (*it).second.getEventAt(nEvent++))
+			while(StepEvent* pEvent = it->second.getEventAt(nEvent++))
 			{
 				nPos += fileWrite32(pEvent->getPosition(), pFile);
 				nPos += fileWrite32(pEvent->getDuration(), pFile);
@@ -162,24 +200,55 @@ void PatternManager::save(const char* filename)
 			fseek(pFile, 0, SEEK_END);
 		}
 	}
-	// Iterate through sequences
-	uint32_t nQoS = 0; // Quantity of sequences - purely for reporting
-	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
+	// Iterate through songs
+	uint32_t nQoS = 0; // Quantity of songs - purely for reporting
+	uint32_t nQoSeq = 0; // Quantity of sequences - purely for reporting
+	for(auto it = m_mSongs.begin(); it != m_mSongs.end(); ++it)
 	{
 		++nQoS;
-		fwrite("seq xxxx", 8, 1, pFile);
+		uint32_t nSong = it->first;
+		fwrite("songxxxx", 8, 1, pFile);
 		nPos += 8;
 		uint32_t nStartOfBlock = nPos;
-		nPos += fileWrite32((*it).first, pFile);
-		nPos += fileWrite8((*it).second.getChannel(), pFile);
-		nPos += fileWrite8((*it).second.getOutput(), pFile);
+		nPos += fileWrite32(nSong, pFile);
+		nPos += fileWrite16(m_mSongs[nSong].getBar(), pFile);
+		nPos += fileWrite32(m_mSongs[nSong].getMasterEvents(), pFile);
+		for(uint32_t nEvent = 0; nEvent < m_mSongs[nSong].getMasterEvents(); ++nEvent)
+		{
+			nPos += fileWrite32(m_mSongs[nSong].getMasterEventTime(nEvent), pFile);
+			nPos += fileWrite16(m_mSongs[nSong].getMasterEventCommand(nEvent), pFile);
+			nPos += fileWrite16(m_mSongs[nSong].getMasterEventData(nEvent), pFile);
+		}
+		for(uint32_t nSequence = 0; nSequence < m_mSongSequences.size(); ++nSequence)
+		{
+			if(m_mSongSequences[nSequence] != nSong)
+				continue;
+			nQoSeq++;
+			nPos += fileWrite8(m_mSequences[nSequence].getChannel(), pFile);
+			nPos += fileWrite8(m_mSequences[nSequence].getOutput(), pFile);
+			nPos += fileWrite8(m_mSequences[nSequence].getPlayMode(), pFile);
+			nPos += fileWrite8(m_mSequences[nSequence].getGroup(), pFile);
+			nPos += fileWrite16('\0', pFile); // Placeholder
+			uint32_t nPatternPos = 0xFFFFFFFF;
+			uint16_t nPatterns = 0;
+			while((nPatternPos = m_mSequences[nSequence].getNextPattern(nPatternPos)) != 0xFFFFFFFF)
+			{
+				nPos += fileWrite32(nPatternPos, pFile);
+				nPos += fileWrite32(getPatternIndex(m_mSequences[nSequence].getPattern(nPatternPos)), pFile);
+				++nPatterns;
+			}
+			fseek(pFile, nPos - nPatterns * 8 - 2, SEEK_SET);
+			fileWrite16(nPatterns, pFile);
+			printf("SAVE writing quantity of patterns = %d for song %d at file pos %d\n", nPatterns, nSong, nPos);
+			fseek(pFile, 0, SEEK_END);
+		}
 		nBlockSize = nPos - nStartOfBlock;
 		fseek(pFile, nStartOfBlock - 4, SEEK_SET);
 		fileWrite32(nBlockSize, pFile);
 		fseek(pFile, 0, SEEK_END);
 	}
 	fclose(pFile);
-	printf("Saved %d patterns and %d sequences to file %s\n", nQoP, nQoS, filename);
+	printf("Saved %d patterns, %d sequences, %d songs to file %s\n", nQoP, nQoSeq, nQoS, filename);
 }
 
 Pattern* PatternManager::getPattern(size_t index)
@@ -193,7 +262,7 @@ uint32_t PatternManager::getPatternIndex(Pattern* pattern)
 	for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
 		if(&(it->second) == pattern)
 			return it->first;
-	return 0; //!@todo PatternManager::getPatternIndex should return NOT_FOUND
+	return -1; //NOT_FOUND
 }
 
 size_t PatternManager::createPattern()
@@ -215,17 +284,17 @@ void PatternManager::deletePattern(size_t index)
 	m_mPatterns.erase(index);
 }
 
-void PatternManager::copyPattern(Pattern* source, Pattern* destination)
+void PatternManager::copyPattern(uint32_t source, uint32_t destination)
 {
-	if(!source || ! destination)
+	if(source == destination)
 		return;
-	destination->clear();
-	destination->setSteps(source->getSteps());
-	destination->setClockDivisor(source->getClockDivisor());
-	destination->setStepsPerBeat(source->getStepsPerBeat());
+	m_mPatterns[destination].clear();
+	m_mPatterns[destination].setSteps(m_mPatterns[source].getSteps());
+	m_mPatterns[destination].setClocksPerStep(m_mPatterns[source].getClocksPerStep());
+	m_mPatterns[destination].setStepsPerBeat(m_mPatterns[source].getStepsPerBeat());
 	size_t nIndex = 0;
-	while(StepEvent* pEvent = source->getEventAt(nIndex++))
-		destination->addEvent(pEvent);
+	while(StepEvent* pEvent = m_mPatterns[source].getEventAt(nIndex++))
+		m_mPatterns[destination].addEvent(pEvent);
 }
 
 Sequence* PatternManager::getSequence(uint32_t sequence)
@@ -244,6 +313,7 @@ void PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSc
 	/**	Get events scheduled for next step from each playing sequence.
 		Populate schedule with start, end and interpolated events at sample offset
 	*/
+	//!@todo Optimise to only send clock to active sequences
 	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
 	{
 		if(it->second.clock(nTime, bSync))
@@ -263,4 +333,93 @@ void PatternManager::setSequenceClockRates(uint32_t samples)
 {
 	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
 		it->second.setClockRate(samples);
+}
+
+void PatternManager::setPlayPosition(uint32_t position)
+{
+	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
+		it->second.setPlayPosition(position);
+}
+
+Song* PatternManager::getSong(size_t index)
+{
+	return &(m_mSongs[index]);
+}
+
+void PatternManager::addTrack(uint32_t song)
+{
+	// Need to find first missing sequence id from each song's list of track sequences...
+	uint32_t nSequence = 1;
+	for(; nSequence < m_mSongSequences.size() + 1; ++nSequence)
+	{
+		if(m_mSongSequences.find(nSequence) != m_mSongSequences.end())
+			continue;
+		break;
+	}
+	m_mSongs[song].addTrack(nSequence);
+	m_mSongSequences[nSequence] = song;
+}
+
+void PatternManager::removeTrack(uint32_t song, uint32_t track)
+{
+	uint32_t sequence = m_mSongs[song].getSequence(track);
+	if(sequence)
+	{
+		m_mSongSequences.erase(sequence);
+		m_mSongs[song].removeTrack(track);
+	}
+}
+
+void PatternManager::copySong(uint32_t source, uint32_t destination)
+{
+	if(source == destination)
+		return;
+	m_mSongs[destination].clear();
+	for(uint32_t nEvent = 0; nEvent < m_mSongs[source].getMasterEvents(); ++ nEvent)
+		m_mSongs[destination].addMasterEvent(m_mSongs[source].getMasterEventTime(nEvent), m_mSongs[source].getMasterEventCommand(nEvent), m_mSongs[source].getMasterEventData(nEvent));
+	m_mSongs[destination].setBar(m_mSongs[source].getBar());
+	for(size_t nTrack = 0; nTrack < m_mSongs[source].getTracks(); ++nTrack)
+		m_mSongs[destination].addTrack(m_mSongs[source].getSequence(nTrack));
+}
+
+void PatternManager::clearSong(uint32_t song)
+{
+	while(m_mSongs[song].getTracks())
+		removeTrack(song, 0);
+}
+
+void PatternManager::startSong(uint32_t song)
+{
+	if(song)
+	{
+		for(size_t nTrack = 0; nTrack < m_mSongs[song].getTracks(); ++ nTrack)
+		{
+			uint32_t sequence = m_mSongs[song].getSequence(nTrack);
+			m_mSequences[sequence].setPlayState(PLAYING);
+		}
+	}
+}
+
+void PatternManager::stopSong(uint32_t song)
+{
+	if(song)
+	{
+		for(size_t nTrack = 0; nTrack < m_mSongs[song].getTracks(); ++ nTrack)
+		{
+			uint32_t sequence = m_mSongs[song].getSequence(nTrack);
+			m_mSequences[sequence].setPlayState(STOPPED);
+		}
+	}
+}
+
+void PatternManager::setSongPosition(uint32_t song, uint32_t pos)
+{
+	if(song)
+	{
+		for(size_t nTrack = 0; nTrack < m_mSongs[song].getTracks(); ++ nTrack)
+		{
+			uint32_t sequence = m_mSongs[song].getSequence(nTrack);
+			m_mSequences[sequence].setPlayPosition(pos);
+		}
+	}
 }

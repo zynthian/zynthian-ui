@@ -128,10 +128,10 @@ void Pattern::setSteps(uint32_t steps)
 	m_nLength = length;
 }
 
-void Pattern::setClockDivisor(uint32_t value)
+void Pattern::setClocksPerStep(uint32_t value)
 {
 	if(value < 0xFF)
-		m_nDivisor = value;
+		m_nClkPerStep = value;
 	//!@todo quantize events
 }
 

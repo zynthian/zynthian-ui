@@ -9,8 +9,8 @@ RIFF Header:
 Block:
 	Pattern ID [4]
 	Quanity of steps [4]
-	Steps per beat [2] (This might be swapped with next word)
 	Clock cycles per step [2]
+	Steps per beat [2]
 	Events:
 		Start step [4]
 		Duration [4]
@@ -21,28 +21,24 @@ Block:
 		Value 2 end [1]
 		Unused padding [1] = 0
 RIFF Header:
-	Block ID: "seq "
-	Block size: 32-bit little endian
-Block:
-	Sequence ID [4]
-	MIDI channel [1]
-	JACK output [1]
-	Patterns:
-		Start time [4]
-		Pattern ID [4]
-RIFF Header: **NOT YET IMPLEMENTED**
 	Block ID: "song"
 	Block size: 32-bit little endian
 Block:
 	Song ID [4]
-	Tempo [2]
-	Grid size [1]
 	Sync period [2]
-	Pad [1]
-	Tracks:
-		Sequence [4]
+	Quantity of master track events [4]
+		Event time [4] 
+		Event command [2] [0x0001: Tempo]
+		Event data [2] (maybe variable data in future?)
+	Tracks (sequences):
+		MIDI channel [1]
+		JACK output [1]
 		Play mode [1]
 		Group [1]
+		Quantity of patterns [2]
+		Patterns:
+			Start time [4]
+			Pattern ID [4]
 
 
 **Patterns must be stored (or loaded) before sequences which rely on references to patterns**

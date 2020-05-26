@@ -27,6 +27,8 @@ void Sequence::addPattern(uint32_t position, Pattern* pattern)
 			{
 				// Found overlapping pattern so remove from sequence but don't delete (that is responsibility of PatternManager)
 				m_mPatterns.erase(nClock);
+				if(m_nCurrentPattern == nClock)
+					m_nCurrentPattern = -1;
 			}
 		}
 	}
@@ -38,6 +40,8 @@ void Sequence::addPattern(uint32_t position, Pattern* pattern)
 void Sequence::removePattern(uint32_t position)
 {
 	m_mPatterns.erase(position);
+	if(m_nCurrentPattern == position)
+		m_nCurrentPattern = -1;
 	updateLength();
 }
 
@@ -157,7 +161,9 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 		m_nCurrentPattern = m_nPosition;
 		m_nPatternCursor = 0;
 		m_nNextEvent = 0;
-		m_nDivisor = m_mPatterns[m_nCurrentPattern]->getClockDivisor();
+		m_nDivisor = m_mPatterns[m_nCurrentPattern]->getClocksPerStep();
+		if(m_nDivisor == 0)
+			m_nDivisor = 1;
 		m_nDivCount = 0;
 		m_nEventValue = -1;
 	}
@@ -208,7 +214,7 @@ SEQ_EVENT* Sequence::getEvent()
 		{
 			// Already processed start value
 			m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
-			seqEvent.time = m_nCurrentTime + pEvent->getDuration() * (pPattern->getClockDivisor() - 1) * m_nSamplePerClock;
+			seqEvent.time = m_nCurrentTime + pEvent->getDuration() * (pPattern->getClocksPerStep() - 1) * m_nSamplePerClock;
 		}
 	}
 	else
@@ -273,6 +279,40 @@ uint32_t Sequence::getPlayPosition()
 
 void Sequence::setPlayPosition(uint32_t clock)
 {
-	if(clock < m_nSequenceLength)
-		m_nPosition = clock;
+	m_nPosition = clock;
+	if(m_mPatterns.size() < 1)
+		return;
+	auto it = m_mPatterns.begin();
+	for(; it != m_mPatterns.end(); ++it)
+	{
+		if(it->first > clock)
+			break;
+	}
+	if(it != m_mPatterns.begin())
+		--it;
+	Pattern* pPattern = it->second;
+	uint32_t nTime = clock - it->first;
+	setStep(nTime / m_nDivisor);
+}
+
+uint32_t Sequence::getNextPattern(uint32_t previous)
+{
+	if(m_mPatterns.size() == 0)
+		return 0xFFFFFFFF;
+	if(previous == 0xFFFFFFFF)
+		return m_mPatterns.begin()->first;
+	auto it = m_mPatterns.find(previous);
+	if(++it == m_mPatterns.end())
+		return 0xFFFFFFFF;
+	return it->first;
+}
+
+void Sequence::setGroup(uint8_t group)
+{
+	m_nGroup = group;
+}
+
+uint8_t Sequence::getGroup()
+{
+	return m_nGroup;
 }

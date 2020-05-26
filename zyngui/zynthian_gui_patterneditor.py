@@ -141,9 +141,12 @@ class zynthian_gui_patterneditor():
 			tags="playCursor")
 		self.playCanvas.grid(column=1, row=2)
 
+		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
+
 		self.loadPattern(1)
 
-		self.startPlayheadHandler()
+		self.playhead = 0
+#		self.startPlayheadHandler()
 
 		# Select a cell
 		self.selectCell(0, self.keyOrigin + int(self.zoom / 2))
@@ -186,6 +189,8 @@ class zynthian_gui_patterneditor():
 		self.setupEncoders()
 		self.main_frame.tkraise()
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
+		self.parent.libseq.selectSong(0) # Select song 0 to avoid current song being played whilst editing pattern
+		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
 		self.shown=True
 
 	# Function to hide GUI
@@ -195,6 +200,7 @@ class zynthian_gui_patterneditor():
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterZyncoder(ENC_SNAPSHOT)
 		self.parent.unregisterZyncoder(ENC_LAYER)
+		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_STOPPED)
 
 	# Function to handle start of pianoroll drag
 	def onPianoRollDragStart(self, event):
@@ -490,16 +496,16 @@ class zynthian_gui_patterneditor():
 			self.selectCell()
 			self.parent.setParam(menuItem, 'value', value)
 		elif menuItem == 'Clocks per step':
-			self.parent.libseq.setClockDivisor(value);
+			self.parent.libseq.setClocksPerStep(value);
 			self.parent.setParam(menuItem, 'value', value)
 		elif menuItem == 'Steps per beat':
 			stepsPerBeat = STEPS_PER_BEAT[value]
 			if stepsPerBeat:
 				clocksPerStep = int(24 / stepsPerBeat)
-				self.parent.libseq.setClockDivisor(clocksPerStep)
+				self.parent.libseq.setClocksPerStep(clocksPerStep)
 			else:
 				clocksPerStep = 0
-				self.parent.libseq.setClockDivisor(24)
+				self.parent.libseq.setClocksPerStep(24)
 			self.parent.libseq.setStepsPerBeat(stepsPerBeat)
 			self.parent.setParam('Clocks per step', 'value', clocksPerStep)
 			self.drawGrid()
@@ -523,7 +529,7 @@ class zynthian_gui_patterneditor():
 		self.parent.setParam('Steps in pattern', 'value', self.parent.libseq.getSteps())
 		self.parent.setParam('Pattern', 'value', index)
 		self.parent.setParam('Step per beat', 'value', self.parent.libseq.getStepsPerBeat())
-		self.parent.setParam('Clocks per step', 'value', self.parent.libseq.getClockDivisor())
+		self.parent.setParam('Clocks per step', 'value', self.parent.libseq.getClocksPerStep())
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
 
 	# Function called when new file loaded from disk
@@ -531,15 +537,14 @@ class zynthian_gui_patterneditor():
 		self.loadPattern(self.pattern)
 		#TODO: Should we select pattern 1?
 
-	# Function to handle transport start
-	def onTransportStart(self):
-		self.parent.libseq.setPlayPosition(self.sequence, 0)
-		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
-		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
-
-	# Function to handle transport stop
-	def onTransportStop(self):
-		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_STOPPED)
+	# Function to refresh display
+	def refresh_status(self):
+		step = self.parent.libseq.getStep(self.sequence)
+		if self.playhead != step:
+			self.playhead = step
+			if self.shown:
+				# Draw play head cursor
+				self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]

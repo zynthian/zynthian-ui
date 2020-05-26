@@ -41,6 +41,7 @@ from zyngui.zynthian_gui_songeditor import zynthian_gui_songeditor
 from zyngui.zynthian_gui_seqtrigger import zynthian_gui_seqtrigger
 import ctypes
 from os.path import dirname, realpath
+from PIL import Image, ImageTk
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer GUI Class
@@ -145,51 +146,65 @@ class zynthian_gui_stepsequencer():
 		self.title_canvas.grid(row=0, column=0, sticky='ew')
 		self.title_canvas.bind('<Button-1>', self.toggleMenu)
 
-		iconsize = 60
-		iconsizes = [12,24,32,48,60]
-		for size in iconsizes:
-			if zynthian_gui_config.topbar_height <= size:
-				iconsize = size
-				break
-		self.imgLoopOff = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/loop.png" % (iconsize))
-		self.imgLoopOn = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/loopon.png" % (iconsize))
-		self.imgBack = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/left.png" % (iconsize))
-		self.imgForward = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/right.png" % (iconsize))
-		self.imgUp = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/up.png" % (iconsize))
-		self.imgDown = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/%d/down.png" % (iconsize))
+		iconsize = (zynthian_gui_config.topbar_height - 2, zynthian_gui_config.topbar_height - 2)
+		img = (Image.open("/zynthian/zynthian-ui/icons/play.png").resize(iconsize))
+		self.imgPlay = ImageTk.PhotoImage(img)
+		pixdata = img.load()
+		for y in range(img.size[1]):
+			for x in range(img.size[0]):
+				if pixdata[x, y][0] == (255):
+					pixdata[x, y] = (0, 255, 0, pixdata[x, y][3])
+		self.imgPlaying = ImageTk.PhotoImage(img)
+		self.imgBack = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/back.png").resize(iconsize))
+		self.imgForward = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/tick.png").resize(iconsize))
+		img = (Image.open("/zynthian/zynthian-ui/icons/arrow.png").resize(iconsize))
+		self.imgUp = ImageTk.PhotoImage(img)
+		self.imgDown = ImageTk.PhotoImage(img.rotate(180))
+
+		img = (Image.open("/zynthian/zynthian-ui/icons/stop.png").resize(iconsize))
+		self.imgStop = ImageTk.PhotoImage(img)
+		self.btnStop = tkinter.Button(self.tb_frame, command=self.stop,
+			image=self.imgStop,
+			bd=0, highlightthickness=0,
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+		self.btnStop.grid(column=1, row=0)
 
 		self.btnTransport = tkinter.Button(self.tb_frame, command=self.toggleTransport,
-			image=self.imgLoopOff,
-			bd=0, highlightthickness=0)
-		self.btnTransport.grid(column=1, row=0)
+			image=self.imgPlay,
+			bd=0, highlightthickness=0,
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+		self.btnTransport.grid(column=2, row=0)
 
 		# Parameter value editor
 		self.paramEditorItem = None
 		self.MENU_ITEMS = {'Back':None} # Dictionary of menu items
 		self.param_editor_canvas = tkinter.Canvas(self.tb_frame,
 			height=zynthian_gui_config.topbar_height,
-			bd=0, highlightthickness=0,
-			bg = zynthian_gui_config.color_bg)
+			bd=0, highlightthickness=0)
 		self.param_editor_canvas.grid_propagate(False)
 		# Parameter editor cancel button
 		self.btnParamCancel = tkinter.Button(self.param_editor_canvas, command=self.hideParamEditor,
 			image=self.imgBack,
-			bd=0, highlightthickness=0)
+			bd=0, highlightthickness=0,
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
 		self.btnParamCancel.grid(column=0, row=0)
 		# Parameter editor decrement button
 		self.btnParamDown = tkinter.Button(self.param_editor_canvas, command=self.decrementParam,
 			image=self.imgDown,
-			bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100)
+			bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
 		self.btnParamDown.grid(column=1, row=0)
 		# Parameter editor increment button
 		self.btnParamUp = tkinter.Button(self.param_editor_canvas, command=self.incrementParam,
 			image=self.imgUp,
-			bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100)
+			bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
 		self.btnParamUp.grid(column=2, row=0)
 		# Parameter editor assert button
 		self.btnParamAssert = tkinter.Button(self.param_editor_canvas, command=self.menuValueAssert,
 			image=self.imgForward,
-			bd=0, highlightthickness=0)
+			bd=0, highlightthickness=0,
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
 		self.btnParamAssert.grid(column=3, row=0)
 		# Parameter editor value text
 		self.param_title_canvas = tkinter.Canvas(self.param_editor_canvas, height=zynthian_gui_config.topbar_height, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_bg)
@@ -211,7 +226,7 @@ class zynthian_gui_stepsequencer():
 			highlightthickness=0,
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
-		self.status_canvas.grid(column=2, row=0, sticky="ens", padx=(2,0))
+		self.status_canvas.grid(column=3, row=0, sticky="ens", padx=(2,0))
 
 		# Menu #TODO: Replace listbox with painted canvas providing swipe gestures
 		self.listboxTextHeight = tkFont.Font(font=zynthian_gui_config.font_listbox).metrics('linespace')
@@ -247,7 +262,6 @@ class zynthian_gui_stepsequencer():
 			self.lstMenu.insert(tkinter.END, item)
 		for index in range(len(self.children)):
 			self.addMenu({self.children[index]['title']:{'method':self.showChild, 'params':index}})
-		self.addMenu({'Tempo':{'method':self.showParamEditor, 'params':{'min':0, 'max':999, 'value':self.zyngui.zyntransport.get_tempo(), 'getValue':self.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
 		self.addMenu({'Save':{'method':self.save}})
 		self.addMenu({'Load':{'method':self.load}})
 
@@ -477,14 +491,14 @@ class zynthian_gui_stepsequencer():
 			else:
 				self.status_canvas.itemconfig(self.status_midi, text=flags)
 
-		if self.zyngui.zyntransport.get_state():
-			self.btnTransport.configure(image=self.imgLoopOn)
-		else:
-			self.btnTransport.configure(image=self.imgLoopOff)
+			if self.libseq.isPlaying():
+				self.btnTransport.configure(image=self.imgPlaying)
+			else:
+				self.btnTransport.configure(image=self.imgPlay)
 
-		# Refresh child panel
-		if self.getChild() and self.getChild().refresh_status:
-			self.getChild().refresh_status()
+			# Refresh child panel
+			if self.getChild() and self.getChild().refresh_status:
+				self.getChild().refresh_status()
 
 	# Function to open menu
 	def showMenu(self):
@@ -634,8 +648,6 @@ class zynthian_gui_stepsequencer():
 			value = params['min']
 		if value > params['max']:
 			value = params['max']
-		if self.paramEditorItem == 'Tempo': #TODO: Tempo should be handled by paramEditor 'getValue'
-			self.zyngui.zyntransport.set_tempo(value)
 		self.setParam(self.paramEditorItem, 'value', value)
 		return "%s: %d" % (self.paramEditorItem, value)
 
@@ -689,14 +701,22 @@ class zynthian_gui_stepsequencer():
 		self.populateMenu()
 		self.setTitle("Step Sequencer")
 
+	# Function to start transport
+	def start(self):
+		self.zyngui.zyntransport.transport_stop();
+
+	# Function to pause transport
+	def pause(self):
+		self.zyngui.zyntransport.transport_stop();
+
+	# Function to stop / recue transport
+	def stop(self):
+		self.zyngui.zyntransport.transport_stop();
+		self.zyngui.zyntransport.locate(0);
+
 	# Function to toggle transport
 	def toggleTransport(self):
 		self.zyngui.zyntransport.transport_toggle()
-		if self.getChild():
-			if self.zyngui.zyntransport.get_state():
-				self.getChild().onTransportStart()
-			else:
-				self.getChild().onTransportStop()
 
 	# Function to save to RIFF file
 	#	filename: Full path and filename to save
@@ -829,7 +849,10 @@ class zynthian_gui_stepsequencer():
 				self.menuValueAssert()
 				return True
 		elif switch == ENC_SNAPSHOT:
-			self.toggleTransport()
+			if type == 'B':
+				self.stop()
+			else:
+				self.toggleTransport()
 		if self.getChild():
 			return self.getChild().switch(switch, type)
 		return True # Tell parent that we handled all short and bold key presses

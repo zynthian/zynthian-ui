@@ -80,12 +80,14 @@ class Pattern
 {
 	public:
 		/**	@brief	Construct pattern object
-		*	@param	steps Quantity of steps in pattern
-		*	@param	clkPerStep Quantity of clock cycles per step
+		*	@param	steps Quantity of steps in pattern [Optional - default: 16]
+		*	@param	clkPerStep Quantity of clock cycles per step [Optional - default: 6]
+		*	@param	stepsPerBeat Quantity of steps per beat [Optional - default: 4]
 		*/
-		Pattern(uint32_t steps = 16, uint8_t divisor = 6) :
-			m_nDivisor(divisor),
-			m_nLength(steps * divisor)
+		Pattern(uint32_t steps = 16, uint8_t clkPerStep = 6, uint8_t stepsPerBeat = 4) :
+			m_nClkPerStep(clkPerStep),
+			m_nLength(steps),
+			m_nStepsPerBeat(stepsPerBeat)
 		{
 		}
 
@@ -175,17 +177,17 @@ class Pattern
 		/**	@brief	Get length of pattern in steps
 		*	@retval uint32_t Length of pattern in steps
 		*/
-		uint32_t getLength() { return m_nLength * m_nDivisor; };
+		uint32_t getLength() { return m_nLength * m_nClkPerStep; };
 
 		/**	@brief	Set quantity of clocks per step
 		*	@param	value Quantity of clock cycles per step
 		*/
-		void setClockDivisor(uint32_t value);
+		void setClocksPerStep(uint32_t value);
 
 		/**	@brief	Get quantity of clocks per step
 		*	@retval	uint32_t Quantity of clocks per step
 		*/
-		uint32_t getClockDivisor() { return m_nDivisor; };
+		uint32_t getClocksPerStep() { return m_nClkPerStep; };
 
 		/**	@brief	Set quantity of steps per beat (grid line separation)
 		*	@param	value Quantity of steps per beat
@@ -218,6 +220,6 @@ class Pattern
 
 		std::vector<StepEvent> m_vEvents; // Vector of pattern events
 		uint32_t m_nLength; // Quantity of steps in pattern
-		uint32_t m_nDivisor; // Clock cycles per step
+		uint32_t m_nClkPerStep; // Clock cycles per step
 		uint32_t m_nStepsPerBeat; // Steps per beat
 };

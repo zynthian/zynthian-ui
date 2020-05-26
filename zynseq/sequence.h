@@ -143,15 +143,32 @@ class Sequence
 		*/
 		void setClockRate(uint32_t samples) { m_nSamplePerClock = samples; };
 
+		/**	@brief	Get position of next pattern in sequence
+		*	@param	previous Position of previous pattern (Empty to get first pattern)
+		*	@retval	uint32_t Position of next pattern or 0xFFFFFFFF if no more patterns
+		*/
+		uint32_t getNextPattern(uint32_t previous = 0xFFFFFFFF);
+
+		/**	@brief	Set group membership
+		*	@param	group Index of group
+		*/
+		void setGroup(uint8_t group);
+
+		/**	@brief	Get group membership
+		*	@retval	uint8_t Index of group
+		*/
+		uint8_t getGroup();
+
 	private:
 		uint8_t m_nChannel = 0; // MIDI channel
 		uint8_t m_nOutput = 0; // JACK output
 		uint8_t m_nState = STOPPED; // Play state
 		uint8_t m_nMode = LOOP; // Play mode
+		uint8_t m_nGroup = 0; // Group
 		uint32_t m_nPosition = 0; // Play position in clock cycles
 		uint32_t m_nDivisor = 1; // Clock cycles per step
 		uint32_t m_nDivCount = 0; // Current count of clock cycles within divisor
-		std::map<uint32_t,Pattern*> m_mPatterns; // Map of patterns, indexed by start position
+		std::map<uint32_t,Pattern*> m_mPatterns; // Map of pointers to patterns, indexed by start position
 		int m_nCurrentPattern = -1; // Start position of pattern currently being played
 		int m_nNextEvent = -1; // Index of next event to process or -1 if no more events at this clock cycle
 		int8_t m_nEventValue; // Value of event at current interpolation point or -1 if no event

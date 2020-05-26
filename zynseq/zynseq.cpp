@@ -49,9 +49,11 @@ jack_nframes_t g_nClockEventTime; // Time of current MIDI clock in frames (sampl
 jack_nframes_t g_nClockEventTimeOffset;
 uint32_t g_nSyncPeriod = 96; // Time between sync pulses (clock cycles)
 uint32_t g_nSyncCount = 0; // Time since last sync pulse (clock cycles)
+uint32_t g_nSong = 0; // Currently selected song (Song 0 will not play)
+uint32_t g_nSongPosition = 0; // Position of playhead within song (clock cycles)
 
 bool g_bLocked = false; // True when locked to MIDI clock
-bool g_bPlaying = false; // Local interpretation of whether MIDI clock is running
+bool g_bPlaying = false; // Local interpretation of play status
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
@@ -99,6 +101,8 @@ void onClock()
 				printf("+\n");
 		}
 		PatternManager::getPatternManager()->clock(g_nClockEventTime + g_nBufferSize, &g_mSchedule, bSync);
+		if(g_bPlaying && g_nSong)
+			++g_nSongPosition;
 	}
 }
 
@@ -131,27 +135,21 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		switch(midiEvent.buffer[0])
 		{
 			case MIDI_STOP:
-				if(g_bDebug)
+//				if(g_bDebug)
 					printf("StepJackClient MIDI STOP\n");
 				//!@todo Send note off messages
-				g_nLastTime = 0;
-				g_bLocked = false;
-				g_bPlaying = false;
+				pauseSong();
 				break;
 			case MIDI_START:
-				if(g_bDebug)
+//				if(g_bDebug)
 					printf("StepJackClient MIDI START\n");
-				g_nLastTime = 0;
-				g_nSyncCount = 0;
-				g_bLocked = false;
-				g_bPlaying = true;
+				stopSong();
+				startSong();
 				break;
 			case MIDI_CONTINUE:
-				if(g_bDebug)
+//				if(g_bDebug)
 					printf("StepJackClient MIDI CONTINUE\n");
-				g_nLastTime = 0;
-				g_bLocked = false;
-				g_bPlaying = true;
+				startSong();
 				break;
 			case MIDI_CLOCK:
 				if(g_bDebug)
@@ -159,15 +157,22 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 				g_nClockEventTimeOffset = midiEvent.time;
 				g_nClockEventTime = nNow + midiEvent.time;
 				g_bClockIdle = false;
-				g_bPlaying = true;
 				break;
 			case MIDI_POSITION:
-				if(g_bDebug)
-					printf("StepJackClient Song position %d\n", midiEvent.buffer[1] + midiEvent.buffer[1] << 7);
+			{
+				uint32_t nPos = (midiEvent.buffer[1] + (midiEvent.buffer[2] << 7)) * 6;
+//				if(g_bDebug)
+					printf("StepJackClient POSITION %d (clocks)\n", nPos);
+				setSongPosition(nPos);
+				if(nPos == 0)
+					setPlayPosition(0, 0);
 				break;
+			}
 			case MIDI_SONG:
-				if(g_bDebug)
+//				if(g_bDebug)
 					printf("StepJackClient Select song %d\n", midiEvent.buffer[1]);
+				g_nSong = midiEvent.buffer[1];
+				break;
 			default:
 //				if(g_bDebug)
 //					printf("StepJackClient Unhandled MIDI message %d\n", midiEvent.buffer[0]);
@@ -323,46 +328,57 @@ void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration
 	noteOffThread.detach();
 }
 
-void transportStart()
+void sendMidiStart()
 {
 	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
 	pMsg->command = MIDI_START;
 	sendMidiMsg(pMsg);
 }
 
-void transportStop()
+void sendMidiStop()
 {
 	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
 	pMsg->command = MIDI_STOP;
 	sendMidiMsg(pMsg);
 }
 
-void transportContinue()
+void sendMidiContinue()
 {
 	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
 	pMsg->command = MIDI_CONTINUE;
 	sendMidiMsg(pMsg);
 }
 
+void sendMidiSongPos(uint16_t pos)
+{
+	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
+	pMsg->command = MIDI_POSITION;
+	pMsg->value1 = pos & 0x7F;
+	pMsg->value2 = (pos >> 7) & 0x7F;
+	sendMidiMsg(pMsg);
+}
+
+void sendMidiSong(uint32_t pos)
+{
+	if(pos > 127)
+		return;
+	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
+	pMsg->command = MIDI_SONG;
+	pMsg->value1 = pos & 0x7F;
+	sendMidiMsg(pMsg);
+}
+
 // Send a single MIDI clock
-void transportClock()
+void sendMidiClock()
 {
 	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
 	pMsg->command = MIDI_CLOCK;
 	sendMidiMsg(pMsg);
 }
 
-bool isTransportRunning()
+bool isPlaying()
 {
 	return g_bPlaying;
-}
-
-void transportToggle()
-{
-	if(g_bPlaying)
-		transportStop();
-	else
-		transportStart();
 }
 
 
@@ -385,8 +401,7 @@ uint32_t getPatternLength(uint32_t pattern)
 	Pattern* pPattern = PatternManager::getPatternManager()->getPattern(pattern);
 	if(pPattern)
 		return pPattern->getLength();
-	else
-		return 0;
+	return 0;
 }
 
 void setSteps(uint32_t steps)
@@ -396,17 +411,17 @@ void setSteps(uint32_t steps)
 	PatternManager::getPatternManager()->updateSequenceLengths();
 }
 
-uint32_t getClockDivisor()
+uint32_t getClocksPerStep()
 {
 	if(g_pPattern)
-		return g_pPattern->getClockDivisor();
+		return g_pPattern->getClocksPerStep();
 	return 6;
 }
 
-void setClockDivisor(uint32_t divisor)
+void setClocksPerStep(uint32_t divisor)
 {
 	if(g_pPattern)
-		g_pPattern->setClockDivisor(divisor);
+		g_pPattern->setClocksPerStep(divisor);
 	PatternManager::getPatternManager()->updateSequenceLengths();
 }
 
@@ -469,11 +484,7 @@ void clear()
 
 void copyPattern(uint32_t source, uint32_t destination)
 {
-	if(source == destination)
-		return;
-	Pattern* pSource = PatternManager::getPatternManager()->getPattern(source);
-	Pattern* pDestination = PatternManager::getPatternManager()->getPattern(destination);
-	PatternManager::getPatternManager()->copyPattern(pSource, pDestination);
+	PatternManager::getPatternManager()->copyPattern(source, destination);
 }
 
 
@@ -506,7 +517,7 @@ uint32_t getPattern(uint32_t sequence, uint32_t position)
 	PatternManager* pPm = PatternManager::getPatternManager();
 	Sequence* pSeq = pPm->getSequence(sequence);
 	Pattern* pPattern = pSeq->getPattern(position);
-	return pPm->getPatternIndex(pPattern); //!@todo getPattern should return NOT_FOUND
+	return pPm->getPatternIndex(pPattern);
 }
 
 void setChannel(uint32_t sequence, uint8_t channel)
@@ -583,4 +594,126 @@ uint32_t getSyncPeriod()
 void resetSync()
 {
 	g_nSyncCount = g_nSyncPeriod;
+}
+
+
+// ** Song management functions **
+
+void addTrack(uint32_t song)
+{
+	if(song)
+		PatternManager::getPatternManager()->addTrack(song);
+}
+
+void removeTrack(uint32_t song, uint32_t track)
+{
+	if(song)
+		PatternManager::getPatternManager()->removeTrack(song, track);
+}
+
+void setTempo(uint32_t song, uint32_t tempo, uint32_t time)
+{
+	if(song)
+		PatternManager::getPatternManager()->getSong(song)->setTempo(tempo, time);
+}
+
+uint32_t getTempo(uint32_t song, uint32_t time)
+{
+	if(song)
+		return PatternManager::getPatternManager()->getSong(song)->getTempo(time);
+	return 120;
+}
+
+uint32_t getTracks(uint32_t song)
+{
+	if(song)
+		return PatternManager::getPatternManager()->getSong(song)->getTracks();
+	return 0;
+}
+
+uint32_t getSequence(uint32_t song, uint32_t track)
+{
+	if(song)
+		return PatternManager::getPatternManager()->getSong(song)->getSequence(track);
+	return 0;
+}
+
+void clearSong(uint32_t song)
+{
+	if(song)
+		PatternManager::getPatternManager()->clearSong(song);
+}
+
+void copySong(uint32_t source, uint32_t destination)
+{
+	PatternManager::getPatternManager()->copySong(source, destination);
+}
+
+void setBarLength(uint32_t song, uint32_t period)
+{
+	if(song)
+		PatternManager::getPatternManager()->getSong(song)->setBar(period);
+}
+
+uint32_t getBarLength(uint32_t song)
+{
+	if(song)
+		return PatternManager::getPatternManager()->getSong(song)->getBar();
+	return 96;
+}
+
+void startSong()
+{
+	if(g_nSong)
+		PatternManager::getPatternManager()->startSong(g_nSong);
+//	else
+//		PatternManager::getPatternManager()->getSequence(0)->setPlayState(PLAYING);
+	g_nLastTime = 0;
+	g_nSyncCount = 0;
+	g_bLocked = false;
+	g_bPlaying = true;
+}
+
+void pauseSong()
+{
+	if(g_nSong)
+		PatternManager::getPatternManager()->stopSong(g_nSong);
+//	PatternManager::getPatternManager()->getSequence(0)->setPlayState(STOPPED);
+	g_nLastTime = 0;
+	g_bLocked = false;
+	g_bPlaying = false;
+}
+
+void stopSong()
+{
+	if(g_nSong)
+		PatternManager::getPatternManager()->stopSong(g_nSong);
+//	PatternManager::getPatternManager()->getSequence(0)->setPlayState(STOPPED);
+	g_bPlaying = false;
+	setSongPosition(0);
+	g_nSongPosition = 0;
+}
+
+void setSongPosition(uint32_t pos)
+{
+	g_nSongPosition = pos;
+	if(g_nSong)
+		PatternManager::getPatternManager()->setSongPosition(g_nSong, pos);
+}
+
+uint32_t getSongPosition()
+{
+	return g_nSongPosition;
+}
+
+uint32_t getSong()
+{
+	return g_nSong;
+}
+
+void selectSong(uint32_t song)
+{
+	g_nSong = song;
+//	setSongPosition(0);
+//!@todo Can we send MIDI song when selecting song or will this lead to howl-round?	sendMidiSong(song);
 }

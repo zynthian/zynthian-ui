@@ -98,30 +98,34 @@ void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration
 
 /**	@brief	Send MIDI START message
 */
-void transportPlay();
+void sendMidiStart();
 
 /**	@brief	Send MIDI STOP message
 */
-void transportStop();
+void sendMidiStop();
 
 /**	@brief	Send MIDI CONTINUE message
 */
-void transportContinue();
+void sendMidiContinue();
+
+/**	@brief	Send MIDI song position message
+*/
+void sendMidiSongPos(uint16_t pos);
+
+/**	@brief	Send MIDI song select message
+*/
+void sendMidiSong(uint32_t pos);
 
 /**	@brief	Send MIDI CLOCK message
 */
-void transportClock();
+void sendMidiClock();
 
-/**	@brief	Get transport state
-*	@retval	bool True if running
-*	@note	Transport state is local interpretation derived from recieved START / STOP / CONTINUE messages
+/**	@brief	Get playing state
+*	@retval	bool True if playing
+*	@note	Playing is local interpretation derived from recieved START / STOP / CONTINUE messages
 */
-bool isTransportRunning();
+bool isPlaying();
 
-/**	@brief	Toggle transport running
-*	@note	Transport state is local interpretation derived from recieved START / STOP / CONTINUE messages
-*/
-void transportToggle();
 
 // ** Pattern management functions - note pattern operations are quantized to steps **
 
@@ -151,12 +155,12 @@ uint32_t getPatternLength(uint32_t pattern);
 /**	@brief	Get clock divisor
 *	@retval	uint32_t Clock divisor
 */
-uint32_t getClockDivisor();
+uint32_t getClocksPerStep();
 
 /**	@brief	Set clock divisor
 *	@param	divisor Clock divisor
 */
-void setClockDivisor(uint32_t divisor);
+void setClocksPerStep(uint32_t divisor);
 
 /**	@brief	Get steps per beat
 *	@retval	uint32_t Steps per beat
@@ -236,6 +240,7 @@ void removePattern(uint32_t sequence, uint32_t position);
 /**	@brief	Get index of pattern within a sequence
 *	@param	sequence Index of sequence
 *	@param	position Quantity of clock cycles from start of sequence
+*	@retval	uint32_t Pattern index or -1 if not found
 */
 uint32_t getPattern(uint32_t sequence, uint32_t position);
 
@@ -273,7 +278,7 @@ void setPlayMode(uint32_t sequence, uint8_t mode);
 *	@param	sequence Index of sequence
 *	@retval	uint8_t Play state [STOPPED | PLAYING | STOPPING]
 */
-uint8_t getPlayState(uint32_t seqeuence);
+uint8_t getPlayState(uint32_t sequence);
 
 /**	@brief	Set play state
 *	@param	sequence Index of sequence
@@ -334,6 +339,106 @@ uint32_t getSyncPeriod();
 /**	@brief	Reset sync
 */
 void resetSync();
+
+
+// ** Song management functions **
+
+/**	@brief	Add track to song
+*	@param	song Song index
+*/
+void addTrack(uint32_t song);
+
+/**	@brief	Remove track from song
+*	@param	song Song index
+*	@param	track Track index
+*/
+void removeTrack(uint32_t song, uint32_t track);
+
+/**	@brief	Add tempo to song tempo map
+*	@param	song Song index
+*	@param	tempo Tempo in BPM
+*	@param	time Clock cycles from start of song at which to add tempo change [Optional - default: 0]
+*/
+void setTempo(uint32_t song, uint32_t tempo, uint32_t time=0);
+
+/**	@brief	Get tempo at position within song
+*	@param	song Song index
+*	@param	time Clock cycles from start of song at which to get tempo [Optional - default: 0]
+'	@todo	getTempo without time parameter should get time at current play position???
+*	@retval	uint32_t Tempo in BPM
+*/
+uint32_t getTempo(uint32_t song, uint32_t time=0);
+
+/**	@brief	Get quantity of tracks in song
+*	@param	song Song index
+*	@retval	uint32_t Quantity of tracks
+*/
+uint32_t getTracks(uint32_t song);
+
+/**	@brief	Get song track sequence ID
+*	@param	song Song index
+*	@param	track Track index
+*	@retval	uint32_t Sequence index
+*/
+uint32_t getSequence(uint32_t song, uint32_t track);
+
+/**	@brief	Clears song
+*	@param	song Song index
+*/
+void clearSong(uint32_t song);
+
+/**	@brief	Copy song
+*	@param	source Index of song from which to copy
+*	@param	destination Index of song to which to copy
+*/
+void copySong(uint32_t source, uint32_t destination);
+
+/**	@brief	Get position of playhead within song
+*	@retval	uint32_t Position in clock cycles
+*	@note	This is global for all songs
+*/
+uint32_t getSongPosition();
+
+/**	@brief	Set position of playhead within song
+*	@param	position Position of playhead in clock cycles
+*/
+void setSongPosition(uint32_t position);
+
+/**	@brief	Set bar length / loop duration
+*	@param	song Song index
+*	@param	period Clock cycles per bar / loop
+*/
+void setBarLength(uint32_t song, uint32_t period);
+
+/**	@brief	Get bar length / loop duration
+*	@param	song Song index
+*	@retval	uint32_t Clock cycles per bar / loop
+*/
+uint32_t getBarLength(uint32_t song);
+
+/**	@brief	Start song playing
+*/
+void startSong();
+
+/**	@brief	Pause song
+*/
+void pauseSong();
+
+/**	@brief	Stop song playing
+*	@note	Sets play position to start of song
+*/
+void stopSong();
+
+/**	@brief	Get current song
+*	@retval	uint32_t Index of selected song
+*/
+uint32_t getSong();
+
+/**	@brief	Select song
+*	@param	song Index of song to select
+*	@todo	Limit quantity of songs to 127 (MIDI limit) and use appropriate sized data (uint8_t)
+*/
+void selectSong(uint32_t song);
 
 #ifdef __cplusplus
 }
