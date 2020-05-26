@@ -29,6 +29,7 @@ import logging
 import signal
 import threading
 from time import sleep
+from mutagen.smf import SMF
 from os.path import isfile, isdir, join, basename
 from subprocess import check_output, Popen, PIPE, STDOUT
 
@@ -117,18 +118,25 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		for f in sorted(os.listdir(self.capture_dir_sdc)):
 			fpath=join(self.capture_dir_sdc,f)
 			if isfile(fpath) and f[-4:].lower()=='.mid':
-				#title=str.replace(f[:-3], '_', ' ')
-				title="SDC: {}".format(f[:-4])
-				self.list_data.append((fpath,i,title))
-				i+=1
+				try:
+					length = SMF(fpath).info.length
+					title="SDC: {} [{}:{:02d}]".format(f[:-4], int(length/60), int(length%60))
+					self.list_data.append((fpath,i,title))
+					i+=1
+				except Exception as e:
+					logging.warning(e)
+
 		# Files on USB-Pendrive
 		for f in sorted(os.listdir(self.capture_dir_usb)):
 			fpath=join(self.capture_dir_usb,f)
 			if isfile(fpath) and f[-4:].lower()=='.mid':
-				#title=str.replace(f[:-3], '_', ' ')
-				title="USB: {}".format(f[:-4])
-				self.list_data.append((fpath,i,title))
-				i+=1
+				try:
+					length = SMF(fpath).info.length
+					title="USB: {} [{}:{:02d}]".format(f[:-4], int(length/60), int(length%60))
+					self.list_data.append((fpath,i,title))
+					i+=1
+				except Exception as e:
+					logging.warning(e)
 
 		super().fill_list()
 
