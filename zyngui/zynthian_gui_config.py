@@ -343,18 +343,6 @@ snapshot_mixer_settings=int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS'
 show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
 
 #------------------------------------------------------------------------------
-# Jackd configuration
-#------------------------------------------------------------------------------
-
-jackd_options = {}
-for item in os.environ.get('JACKD_OPTIONS',"").strip().split('-'):
-	try:
-		parts = item.split(' ', 1)
-		jackd_options[parts[0]] = parts[1].strip()
-	except:
-		pass
-
-#------------------------------------------------------------------------------
 # MIDI Configuration
 #------------------------------------------------------------------------------
 
