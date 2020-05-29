@@ -37,7 +37,14 @@ void Song::removeTrack(uint32_t track)
 
 void Song::setTempo(uint16_t tempo, uint32_t time)
 {
-	addMasterEvent(time, MASTER_EVENT_TEMPO, tempo);
+    uint16_t nPreviousTempo = 0;
+    for(size_t nEvent = 0; nEvent < m_vMasterTrack.size(); ++nEvent)
+        if(m_vMasterTrack[nEvent]->command == MASTER_EVENT_TEMPO && m_vMasterTrack[nEvent]->time < time)
+            nPreviousTempo = m_vMasterTrack[nEvent]->data;
+    if(tempo != nPreviousTempo)
+        addMasterEvent(time, MASTER_EVENT_TEMPO, tempo);
+    else
+        removeMasterEvent(time, MASTER_EVENT_TEMPO);
 }
 
 uint16_t Song::getTempo(uint32_t time)

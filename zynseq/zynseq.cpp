@@ -634,6 +634,26 @@ uint32_t getTempo(uint32_t song, uint32_t time)
 	return 120;
 }
 
+uint32_t getMasterEvents(uint32_t song)
+{
+    return PatternManager::getPatternManager()->getSong(song)->getMasterEvents();
+}
+
+uint32_t getMasterEventTime(uint32_t song, uint32_t event)
+{
+    return PatternManager::getPatternManager()->getSong(song)->getMasterEventTime(event);
+}
+
+uint16_t getMasterEventCommand(uint32_t song, uint32_t event)
+{
+    return PatternManager::getPatternManager()->getSong(song)->getMasterEventCommand(event);
+}
+
+uint16_t getMasterEventData(uint32_t song, uint32_t event)
+{
+    return PatternManager::getPatternManager()->getSong(song)->getMasterEventData(event);
+}
+
 uint32_t getTracks(uint32_t song)
 {
 	if(song)

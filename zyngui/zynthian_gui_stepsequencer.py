@@ -35,7 +35,6 @@ import time
 # Zynthian specific modules
 from . import zynthian_gui_config
 from zyncoder import *
-from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_songeditor import zynthian_gui_songeditor
 from zyngui.zynthian_gui_seqtrigger import zynthian_gui_seqtrigger
@@ -106,7 +105,7 @@ class zynthian_gui_stepsequencer():
 		#Digital Peak Meter (DPM) parameters
 		self.dpm_rangedB = 30 # Lowest meter reading in -dBFS
 		self.dpm_highdB = 10 # Start of yellow zone in -dBFS
-		self.dpm_overdB = 3  # Start of red zone in -dBFS
+		self.dpm_overdB = 3	 # Start of red zone in -dBFS
 		self.dpm_high = 1 - self.dpm_highdB / self.dpm_rangedB
 		self.dpm_over = 1 - self.dpm_overdB / self.dpm_rangedB
 		self.dpm_scale_lm = int(self.dpm_high * self.status_l)
@@ -117,7 +116,6 @@ class zynthian_gui_stepsequencer():
 			width=self.width,
 			height=self.height,
 			bg=CANVAS_BACKGROUND)
-		self.main_frame.bind("<Key>", self.cb_keybinding)
 		self.main_frame.grid_propagate(False) # Don't auto size main frame
 
 		# Topbar frame
@@ -161,23 +159,9 @@ class zynthian_gui_stepsequencer():
 		self.imgUp = ImageTk.PhotoImage(img)
 		self.imgDown = ImageTk.PhotoImage(img.rotate(180))
 
-		img = (Image.open("/zynthian/zynthian-ui/icons/stop.png").resize(iconsize))
-		self.imgStop = ImageTk.PhotoImage(img)
-		self.btnStop = tkinter.Button(self.tb_frame, command=self.stop,
-			image=self.imgStop,
-			bd=0, highlightthickness=0,
-			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
-		self.btnStop.grid(column=1, row=0)
-
-		self.btnTransport = tkinter.Button(self.tb_frame, command=self.toggleTransport,
-			image=self.imgPlay,
-			bd=0, highlightthickness=0,
-			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
-		self.btnTransport.grid(column=2, row=0)
-
 		# Parameter value editor
 		self.paramEditorItem = None
-		self.MENU_ITEMS = {'Back':None} # Dictionary of menu items
+		self.MENU_ITEMS = {} # Dictionary of menu items
 		self.param_editor_canvas = tkinter.Canvas(self.tb_frame,
 			height=zynthian_gui_config.topbar_height,
 			bd=0, highlightthickness=0)
@@ -227,6 +211,7 @@ class zynthian_gui_stepsequencer():
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
 		self.status_canvas.grid(column=3, row=0, sticky="ens", padx=(2,0))
+		self.status_canvas.bind('<Button-1>', self.toggleStatusMenu)
 
 		# Menu #TODO: Replace listbox with painted canvas providing swipe gestures
 		self.listboxTextHeight = tkFont.Font(font=zynthian_gui_config.font_listbox).metrics('linespace')
@@ -241,12 +226,38 @@ class zynthian_gui_stepsequencer():
 			selectbackground=zynthian_gui_config.color_ctrl_bg_on,
 			selectforeground=zynthian_gui_config.color_ctrl_tx,
 			selectmode=tkinter.BROWSE)
-		self.lstMenu.bind("<Key>", self.cb_keybinding)
 		self.lstMenu.bind('<Button-1>', self.onMenuPress)
 		self.lstMenu.bind('<B1-Motion>', self.onMenuDrag)
 		self.lstMenu.bind('<ButtonRelease-1>', self.onMenuRelease)
 		self.populateMenu()
 		self.scrollTime = 0.0
+		self.menu_button_canvas = tkinter.Canvas(self.tb_frame,
+			height=zynthian_gui_config.topbar_height,
+			bg=zynthian_gui_config.color_bg, bd=0, highlightthickness=0)
+		self.menu_button_canvas.grid_propagate(False)
+		self.menu_button_canvas.bind('<Button-1>', self.hideMenu)
+		self.btnMenuBack = tkinter.Button(self.menu_button_canvas, command=self.closePanelManager,
+			image=self.imgBack,
+			bd=0, highlightthickness=0,
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+		self.btnMenuBack.grid(column=0, row=0)
+		self.menu_button_canvas.grid_columnconfigure(4, weight=1)
+
+		self.status_menu_frame = tkinter.Frame(self.main_frame)
+
+		img = (Image.open("/zynthian/zynthian-ui/icons/stop.png").resize(iconsize))
+		self.imgStop = ImageTk.PhotoImage(img)
+		self.btnStop = tkinter.Button(self.status_menu_frame, command=self.stop,
+			image=self.imgStop,
+			bd=0, highlightthickness=0,
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+		self.btnStop.grid()
+
+		self.btnTransport = tkinter.Button(self.status_menu_frame, command=self.toggleTransport,
+			image=self.imgPlay,
+			bd=0, highlightthickness=0,
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+		self.btnTransport.grid()
 
 	# Function to print traceback - for debug only
 	#	TODO: Remove debug function (or move to other zynthian class)
@@ -254,13 +265,18 @@ class zynthian_gui_stepsequencer():
 		for trace in inspect.stack():
 			print(trace.function)
 
+	# Function to close the panel manager
+	def closePanelManager(self):
+		print("Close panel manager")
+		self.hideMenu()
+		self.zyngui.zynswitch_defered('S',1)
+
 	# Function to populate menu with global entries
 	def populateMenu(self):
-		self.MENU_ITEMS = {'Back':None}
 		self.lstMenu.delete(0, tkinter.END)
 		for item in self.MENU_ITEMS:
 			self.lstMenu.insert(tkinter.END, item)
-		for index in range(len(self.children)):
+		for index in range(1, len(self.children)):
 			self.addMenu({self.children[index]['title']:{'method':self.showChild, 'params':index}})
 		self.addMenu({'Save':{'method':self.save}})
 		self.addMenu({'Load':{'method':self.load}})
@@ -504,7 +520,7 @@ class zynthian_gui_stepsequencer():
 	def showMenu(self):
 		rows = min((self.height - zynthian_gui_config.topbar_height) / self.listboxTextHeight, self.lstMenu.size())
 		self.lstMenu.configure(height = int(rows))
-		self.lstMenu.grid(row=1, column=0, sticky="wn")
+		self.lstMenu.grid(column=0, row=1, sticky="nw")
 		self.lstMenu.tkraise()
 		self.lstMenu.selection_clear(0,tkinter.END)
 		self.lstMenu.activate(0)
@@ -514,11 +530,16 @@ class zynthian_gui_stepsequencer():
 			self.unregisterZyncoder(encoder)
 		self.registerZyncoder(ENC_SELECT, self)
 		self.registerZyncoder(ENC_LAYER, self)
+		self.menu_button_canvas.grid()
+		self.menu_button_canvas.grid_propagate(False)
+		self.menu_button_canvas.grid(column=0, row=0, sticky='nsew')
 
 	# Function to close menu
-	def hideMenu(self):
+	#	event: Mouse event (not used)
+	def hideMenu(self, event=None):
 		self.unregisterZyncoder(ENC_SELECT)
 		self.lstMenu.grid_forget()
+		self.menu_button_canvas.grid_forget()
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
 		if self.getChild():
@@ -531,6 +552,25 @@ class zynthian_gui_stepsequencer():
 			self.hideMenu()
 		else:
 			self.showMenu()
+
+	# Function to open status menu
+	def showStatusMenu(self):
+		print("showStatusMenu")
+		self.status_menu_frame.grid(column=0, row=1, sticky="ne")
+		self.status_menu_frame.tkraise()
+
+	# Function to close status menu
+	def hideStatusMenu(self):
+		print("hideStatusMenu")
+		self.status_menu_frame.grid_forget()
+
+	# Function to handle status bar click
+	#	event: Mouse event (not used)
+	def toggleStatusMenu(self, event=None):
+		if self.status_menu_frame.winfo_viewable():
+			self.hideStatusMenu()
+		else:
+			self.showStatusMenu()
 
 	# Function to handle press menu
 	def onMenuPress(self, event):
@@ -569,8 +609,6 @@ class zynthian_gui_stepsequencer():
 			self.hideMenu()
 			if not menuItem:
 				return
-			if menuItem == 'Back':
-				self.zyngui.zynswitch_defered('S',1)
 			if action == self.showParamEditor:
 				self.showParamEditor(menuItem)
 			elif action:
@@ -681,16 +719,16 @@ class zynthian_gui_stepsequencer():
 		self.hideParamEditor()
 
 	# Function to show child GUI
-	def showChild(self, childIndex):
+	def showChild(self, childIndex, params=None):
 		if not self.shown:
 			return
 		self.hideChild()
 		if childIndex == None:
-			childIndex = 0
+			childIndex = 1
 		if not self.children[childIndex]['instance']:
 			self.children[childIndex]['instance'] = self.children[childIndex]['class'](self)
 		self.child = childIndex
-		self.getChild().show()
+		self.getChild().show(params)
 
 	# Function to hide child GUI
 	def hideChild(self):
@@ -849,6 +887,10 @@ class zynthian_gui_stepsequencer():
 				# Close parameter editor
 				self.hideParamEditor()
 				return True
+			if self.child == 0:
+				self.hideChild()
+				self.showChild(1)
+				return True
 			return False
 		elif switch == ENC_SELECT or switch == ENC_LAYER:
 			if self.lstMenu.winfo_viewable():
@@ -865,29 +907,6 @@ class zynthian_gui_stepsequencer():
 		if self.getChild():
 			return self.getChild().switch(switch, type)
 		return True # Tell parent that we handled all short and bold key presses
-
-	#Function to handle computer keyboard key press
-	def cb_keybinding(self, event):
-		logging.debug("Key press {} {}".format(event.keycode, event.keysym))
-		self.main_frame.focus_set() # Must remove focus from listbox to avoid interference with physical keyboard
-
-		if not zynthian_gui_keybinding.getInstance().isEnabled():
-			logging.debug("Key binding is disabled - ignoring key press")
-			return
-
-		# Ignore TAB key (for now) to avoid confusing widget focus change
-		if event.keysym == "Tab":
-			return
-
-		# Space is not recognised as keysym so need to convert keycode
-		if event.keycode == 65:
-			keysym = "Space"
-		else:
-			keysym = event.keysym
-
-		action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
-		if action != None:
-			self.zyngui.callable_ui_action(action)
 
 	# Function to register ownership of an encoder by an object
 	#	encoder: Index of rotary encoder [0..3]

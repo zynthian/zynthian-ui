@@ -77,7 +77,6 @@ class zynthian_gui_base:
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.display_height,
 			bg=zynthian_gui_config.color_bg)
-		self.main_frame.bind("<Key>", self.cb_keybinding)
 
 		# Topbar's frame
 		self.tb_frame = tkinter.Frame(self.main_frame, 
@@ -326,28 +325,6 @@ class zynthian_gui_base:
 
 	def cb_topbar(self,event):
 		self.zyngui.zynswitch_defered('S',1)
-
-
-	def cb_keybinding(self, event):
-		logging.debug("Key press {} {}".format(event.keycode, event.keysym))
-
-		if not zynthian_gui_keybinding.getInstance().isEnabled():
-			logging.debug("Key binding is disabled - ignoring key press")
-			return
-		
-		# Ignore TAB key (for now) to avoid confusing widget focus change
-		if event.keysym == "Tab":
-			return
-
-		# Space is not recognised as keysym so need to convert keycode
-		if event.keycode == 65:
-			keysym = "Space"
-		else:
-			keysym = event.keysym
-
-		action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
-		if action != None:
-			self.zyngui.callable_ui_action(action)
 
 
 #------------------------------------------------------------------------------

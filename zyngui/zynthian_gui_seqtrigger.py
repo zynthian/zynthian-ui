@@ -35,7 +35,7 @@ from PIL import Image, ImageTk
 from . import zynthian_gui_config
 from zyncoder import *
 
-SELECT_BORDER		= zynthian_gui_config.color_on
+SELECT_BORDER       = zynthian_gui_config.color_on
 
 
 #------------------------------------------------------------------------------
@@ -89,19 +89,17 @@ class zynthian_gui_seqtrigger():
 		# Icons
 		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
 
-		self.imgSingleshot = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/singleshot.png")
-		self.imgLoop = tkinter.PhotoImage(file="/zynthian/zynthian-ui/icons/loop.png")
-
 		# Selection highlight
 		self.selection = self.gridCanvas.create_rectangle(0, 0, self.width / self.columns, self.height / self.rows, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
 
 	#Function to set values of encoders
-	#	note: Call after other routine uses one or more encoders
+	#   note: Call after other routine uses one or more encoders
 	def setupEncoders(self):
 		pass
 
 	# Function to show GUI
-	def show(self):
+	#   params: Misc parameters
+	def show(self, params):
 		self.parent.addMenu({'Pad mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(self.playModes)-1, 'value':0, 'getValue':self.getSelectedPadMode, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':1, 'getValue':self.getSelectedPadChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Song':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'getValue':self.getSong, 'onChange':self.onMenuChange}}})
@@ -115,12 +113,12 @@ class zynthian_gui_seqtrigger():
 		pass
 
 	# Function to get the mode of the currently selected pad
-	#	returns: Mode of selected pad
+	#   returns: Mode of selected pad
 	def getSelectedPadMode(self):
 		return self.parent.libseq.getPlayMode(self.getSequence(self.selectedPad))
 
 	# Function to get the MIDI channel of the currently selected pad
-	#	returns: MIDI channel of selected pad
+	#   returns: MIDI channel of selected pad
 	def getSelectedPadChannel(self):
 		return self.parent.libseq.getChannel(self.getSequence(self.selectedPad))
 
@@ -129,15 +127,15 @@ class zynthian_gui_seqtrigger():
 		return self.song
 
 	# Function to get pad sequence
-	#	pad: Pad index
-	#	returns: Index of sequence associated with pad
+	#   pad: Pad index
+	#   returns: Index of sequence associated with pad
 	def getSequence(self, pad):
 		return self.parent.libseq.getSequence(self.song, pad)
 
 	# Function to handle menu editor change
-	#	params: Menu item's parameters
-	#	returns: String to populate menu editor label
-	#	note: params is a dictionary with required fields: min, max, value
+	#   params: Menu item's parameters
+	#   returns: String to populate menu editor label
+	#   note: params is a dictionary with required fields: min, max, value
 	def onMenuChange(self, params):
 		menuItem = self.parent.paramEditorItem
 		value = params['value']
@@ -163,7 +161,7 @@ class zynthian_gui_seqtrigger():
 		return "%s: %d" % (menuItem, value)
 
 	# Function to load song
-	#	song: Index of song to load
+	#   song: Index of song to load
 	def loadSong(self, song):
 		self.song = song
 		tracks = self.parent.libseq.getTracks(self.song)
@@ -192,14 +190,14 @@ class zynthian_gui_seqtrigger():
 			self.drawColumn(col, clear)
 
 	# Function to draw grid column
-	#	col: Column index
+	#   col: Column index
 	def drawColumn(self, col, clear = False):
 		for row in range(self.rows):
 			self.drawCell(col, row, clear)
 
 	# Function to draw grid cell (pad)
-	#	col: Column index
-	#	row: Row index
+	#   col: Column index
+	#   row: Row index
 	def drawCell(self, col, row, clear = False):
 		pad = row + col * self.rows
 		sequence = self.getSequence(pad)
@@ -212,8 +210,11 @@ class zynthian_gui_seqtrigger():
 		padHeight = self.height / self.rows - 2
 		cell = self.gridCanvas.find_withtag("pad:%d"%(pad))
 		if cell:
+			mode = self.parent.libseq.getPlayMode(sequence)
+			self.gridCanvas.itemconfig("mode:%d"%pad, image=self.icon[mode], state='normal')
 			if not sequence or self.parent.libseq.getPlayMode(sequence) == zynthian_gui_config.SEQ_DISABLED or self.parent.libseq.getSequenceLength(sequence) == 0:
 				fill = self.padColourDisabled
+				self.gridCanvas.itemconfig("mode:%d"%pad, state='hidden')
 			elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_config.SEQ_STOPPED:
 				if group % 2:
 					fill = self.padColourStoppedOdd
@@ -227,8 +228,6 @@ class zynthian_gui_seqtrigger():
 				fill = self.padColourPlaying
 			self.gridCanvas.itemconfig(cell, fill=fill)
 			self.gridCanvas.coords(cell, padX, padY, padX + padWidth, padY + padHeight)
-			mode = self.parent.libseq.getPlayMode(sequence)
-			self.gridCanvas.itemconfig("mode:%d"%pad, image=self.icon[mode], state='normal')
 		else:
 			cell = self.gridCanvas.create_rectangle(padX, padY, padX + padWidth, padY + padHeight,
 				fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell"))
@@ -237,8 +236,8 @@ class zynthian_gui_seqtrigger():
 				size=int(padHeight * 0.3)),
 				fill=zynthian_gui_config.color_panel_tx,
 				tags="lbl_pad:%d"%(pad),
-				text="%s%d" % (chr(65 + group), pad))
-			self.gridCanvas.create_image(padX + padWidth - 1, padY + padHeight - 1, image=self.imgSingleshot, tags=("mode:%d"%(pad)), anchor="se")
+				text="%s%d" % (chr(65 + group), pad+1))
+			self.gridCanvas.create_image(padX + padWidth - 1, padY + padHeight - 1, tags=("mode:%d"%(pad)), anchor="se")
 			self.gridCanvas.tag_bind("pad:%d"%(pad), '<Button-1>', self.onPadPress)
 			self.gridCanvas.tag_bind("lbl_pad:%d"%(pad), '<Button-1>', self.onPadPress)
 			self.gridCanvas.tag_bind("mode:%d"%(pad), '<Button-1>', self.onPadPress)
@@ -247,8 +246,8 @@ class zynthian_gui_seqtrigger():
 			self.gridCanvas.tag_bind("mode:%d"%(pad), '<ButtonRelease-1>', self.onPadRelease)
 
 	# Function to draw pad
-	#	pad: Pad index
-	#	returns: Pad sequence play state
+	#   pad: Pad index
+	#   returns: Pad sequence play state
 	def drawPad(self, pad):
 		pads = self.rows * self.columns
 		if pads < 1 or pad < 0 or pad >= pads:
@@ -313,15 +312,15 @@ class zynthian_gui_seqtrigger():
 		pass
 
 	# Function to handle zyncoder value change
-	#	encoder: Zyncoder index [0..4]
-	#	value: Current value of zyncoder
+	#   encoder: Zyncoder index [0..4]
+	#   value: Current value of zyncoder
 	def onZyncoder(self, encoder, value):
 		pass
 
 	# Function to handle switch press
-	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#	returns True if action fully handled or False if parent action should be triggered
+	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#   returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
 		if type == "L":
 			return False # Don't handle any long presses

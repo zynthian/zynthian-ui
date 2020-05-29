@@ -48,6 +48,7 @@ class Song
 		/**	@brief	Set song tempo
 		*	@param	tempo Tempo in BPM
 		*	@param	time Time at which to add the tempo to the master track [Optional - default: 0]
+        *   @note   Removes tempo if same as previous tempo
 		*/
 		void setTempo(uint16_t tempo, uint32_t time = 0);
 

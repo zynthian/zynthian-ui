@@ -45,18 +45,18 @@ from zyncoder import *
 #------------------------------------------------------------------------------
 
 # Local constants
-SELECT_BORDER		= zynthian_gui_config.color_on
-PLAYHEAD_CURSOR		= zynthian_gui_config.color_on
-CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bg
-CELL_BACKGROUND		= zynthian_gui_config.color_panel_bd
-CELL_FOREGROUND		= zynthian_gui_config.color_panel_tx
-GRID_LINE			= zynthian_gui_config.color_tx_off
-PLAYHEAD_HEIGHT		= 5
+SELECT_BORDER       = zynthian_gui_config.color_on
+PLAYHEAD_CURSOR     = zynthian_gui_config.color_on
+CANVAS_BACKGROUND   = zynthian_gui_config.color_panel_bg
+CELL_BACKGROUND     = zynthian_gui_config.color_panel_bd
+CELL_FOREGROUND     = zynthian_gui_config.color_panel_tx
+GRID_LINE           = zynthian_gui_config.color_tx_off
+PLAYHEAD_HEIGHT     = 5
 # Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
-ENC_LAYER			= 0
-ENC_BACK			= 1
-ENC_SNAPSHOT		= 2
-ENC_SELECT			= 3
+ENC_LAYER           = 0
+ENC_BACK            = 1
+ENC_SNAPSHOT        = 2
+ENC_SELECT          = 3
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [0,1,2,3,4,6,8,12,24]
@@ -143,10 +143,8 @@ class zynthian_gui_patterneditor():
 
 		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
 
-		self.loadPattern(1)
-
 		self.playhead = 0
-#		self.startPlayheadHandler()
+#       self.startPlayheadHandler()
 
 		# Select a cell
 		self.selectCell(0, self.keyOrigin + int(self.zoom / 2))
@@ -167,7 +165,7 @@ class zynthian_gui_patterneditor():
 		thread.start()
 
 	#Function to set values of encoders
-	#	note: Call after other routine uses one or more encoders
+	#   note: Call after other routine uses one or more encoders
 	def setupEncoders(self):
 		self.parent.registerZyncoder(ENC_BACK, self)
 		self.parent.registerZyncoder(ENC_SELECT, self)
@@ -175,16 +173,26 @@ class zynthian_gui_patterneditor():
 		self.parent.registerZyncoder(ENC_LAYER, self)
 
 	# Function to show GUI
-	def show(self):
+	#   params: Pattern parameters to edit {'pattern':x, 'channel':x}
+	def show(self, params=None):
+		if params == None:
+			pattern = 1
+			channel = 1
+		else:
+			pattern = params['pattern']
+			channel = params['channel']
+		self.loadPattern(pattern)
+		self.parent.libseq.setChannel(self.sequence, channel)
+#        self.parent.setParam('MIDI channel', 'value', channel + 1)
 		# Add menus
-		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':pattern, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'value':4, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':16, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
 		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
 		self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'value':16, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':1, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':channel+1, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'onChange':self.onMenuChange}}})
 		self.setupEncoders()
 		self.main_frame.tkraise()
@@ -234,7 +242,7 @@ class zynthian_gui_patterneditor():
 		self.pianoRollDragStart = None
 
 	# Function to handle mouse click / touch
-	#	event: Mouse event
+	#   event: Mouse event
 	def onCanvasClick(self, event):
 		if self.parent.lstMenu.winfo_viewable():
 			self.parent.hideMenu()
@@ -245,8 +253,8 @@ class zynthian_gui_patterneditor():
 		self.toggleEvent(int(step), self.keyOrigin + int(note))
 
 	# Function to toggle note event
-	#	step: step (column) index
-	#	note: Note number
+	#   step: step (column) index
+	#   note: Note number
 	def toggleEvent(self, step, note):
 		if step < 0 or step >= self.parent.libseq.getSteps():
 			return
@@ -257,8 +265,8 @@ class zynthian_gui_patterneditor():
 			self.parent.libseq.playNote(note, 100, self.parent.libseq.getChannel(self.sequence), 100) # Play note when added
 
 	# Function to remove an event
-	#	step: step (column) index
-	#	note: MIDI note number
+	#   step: step (column) index
+	#   note: MIDI note number
 	def removeEvent(self, step, note):
 		self.parent.libseq.removeNote(step, note)
 		self.parent.libseq.playNote(note, 0) # Silence note if sounding
@@ -266,25 +274,25 @@ class zynthian_gui_patterneditor():
 		self.selectCell(step, note)
 
 	# Function to add an event
-	#	step: step (column) index
-	#	note: Note number
+	#   step: step (column) index
+	#   note: Note number
 	def addEvent(self, step, note):
 		self.parent.libseq.addNote(step, note, self.velocity, self.duration)
 		self.drawRow(note)
 		self.selectCell(step, note)
 
 	# Function to draw a grid row
-	#	note: MIDI note for the row to draw
+	#   note: MIDI note for the row to draw
 	def drawRow(self, note):
 		self.gridCanvas.itemconfig("lastnotetext%d" % (note - self.keyOrigin), state="hidden")
 		for step in range(self.parent.libseq.getSteps()):
 			self.drawCell(step, note)
 
 	# Function to get cell coordinates
-	#	col: Column index
-	#	row: Row index
-	#	duration: Duration of cell in steps
-	#	return: Coordinates required to draw cell
+	#   col: Column index
+	#   row: Row index
+	#   duration: Duration of cell in steps
+	#   return: Coordinates required to draw cell
 	def getCell(self, col, row, duration):
 		x1 = col * self.stepWidth + 1
 		y1 = (self.zoom - row - 1) * self.rowHeight + 1
@@ -293,8 +301,8 @@ class zynthian_gui_patterneditor():
 		return [x1, y1, x2, y2]
 
 	# Function to draw a grid cell
-	#	step: Step (column) index
-	#	note: Note number
+	#   step: Step (column) index
+	#   note: Note number
 	def drawCell(self, step, note):
 		if step < 0 or step >= self.parent.libseq.getSteps() or note < self.keyOrigin or note >= self.keyOrigin + self.zoom:
 			return
@@ -305,7 +313,7 @@ class zynthian_gui_patterneditor():
 		else:
 			key = note % 12
 			if key in (0,2,4,5,7,9,11): # White notes
-#			if key in (1,3,6,8,10): # Black notes
+#           if key in (1,3,6,8,10): # Black notes
 				velocityColour += 30
 		duration = self.parent.libseq.getNoteDuration(step, note)
 		if not duration:
@@ -326,7 +334,7 @@ class zynthian_gui_patterneditor():
 				self.gridCanvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - self.parent.libseq.getSteps() + step), state="normal")
 
 	# Function to draw grid
-	#	clearGrid: True to clear grid and create all new elements, False to reuse existing elements if they exist
+	#   clearGrid: True to clear grid and create all new elements, False to reuse existing elements if they exist
 	def drawGrid(self, clearGrid = False):
 		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
 		if clearGrid:
@@ -376,8 +384,8 @@ class zynthian_gui_patterneditor():
 			id = self.pianoRoll.create_rectangle(x1, y1, x2, y2, width=0, tags=id)
 
 	# Function to update selectedCell
-	#	step: Step (column) of selected cell (Optional - default to reselect current column)
-	#	note: Note number of selected cell (Optional - default to reselect current column)
+	#   step: Step (column) of selected cell (Optional - default to reselect current column)
+	#   note: Note number of selected cell (Optional - default to reselect current column)
 	def selectCell(self, step=None, note=None):
 		if step == None:
 			step = self.selectedCell[0]
@@ -451,9 +459,9 @@ class zynthian_gui_patterneditor():
 		self.loadPattern(self.pattern)
 
 	# Function to handle menu editor change
-	#	params: Menu item's parameters
-	#	returns: String to populate menu editor label
-	#	note: params is a dictionary with required fields: min, max, value
+	#   params: Menu item's parameters
+	#   returns: String to populate menu editor label
+	#   note: params is a dictionary with required fields: min, max, value
 	def onMenuChange(self, params):
 		menuItem = self.parent.paramEditorItem
 		value = params['value']
@@ -520,7 +528,7 @@ class zynthian_gui_patterneditor():
 		return "%s: %d" % (menuItem, value)
 
 	# Function to load new pattern
-	#	index: Pattern index
+	#   index: Pattern index
 	def loadPattern(self, index):
 		self.parent.libseq.clearSequence(self.sequence)
 		self.pattern = index
@@ -552,8 +560,8 @@ class zynthian_gui_patterneditor():
 				self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
 
 	# Function to handle zyncoder value change
-	#	encoder: Zyncoder index [0..4]
-	#	value: Current value of zyncoder
+	#   encoder: Zyncoder index [0..4]
+	#   value: Current value of zyncoder
 	def onZyncoder(self, encoder, value):
 		if encoder == ENC_BACK:
 			# BACK encoder adjusts note selection
@@ -593,9 +601,9 @@ class zynthian_gui_patterneditor():
 				self.selectCell(self.selectedCell[0], self.selectedCell[1])
 
 	# Function to handle switch press
-	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#	returns True if action fully handled or False if parent action should be triggered
+	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#   returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
 		if type == "L":
 			return False # Don't handle any long presses

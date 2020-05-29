@@ -380,6 +380,33 @@ void setTempo(uint32_t song, uint32_t tempo, uint32_t time=0);
 */
 uint32_t getTempo(uint32_t song, uint32_t time=0);
 
+/**	@brief	Get quantity of events in master track
+*   @param  song Song index
+*	@retval	uint32_t Quantity of events
+*/
+uint32_t getMasterEvents(uint32_t song);
+
+/**	@brief	Get time of master track event
+*   @param  song Song index
+*	@param	event Index of event
+*	@retval	uint32_t Time of event
+*/
+uint32_t getMasterEventTime(uint32_t song, uint32_t event);
+
+/**	@brief	Get command of master track event
+*   @param  song Song index
+*	@param	event Index of event
+*	@retval	uint16_t Event command
+*/
+uint16_t getMasterEventCommand(uint32_t song, uint32_t event);
+
+/**	@brief	Get data of master track event
+*   @param  song Song index
+*	@param	event Index of event
+*	@retval	uint16_t Event data
+*/
+uint16_t getMasterEventData(uint32_t song, uint32_t event);
+
 /**	@brief	Get quantity of tracks in song
 *	@param	song Song index
 *	@retval	uint32_t Quantity of tracks

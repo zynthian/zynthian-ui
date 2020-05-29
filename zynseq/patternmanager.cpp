@@ -1,7 +1,7 @@
 #include "patternmanager.h"
 #include <cstring>
 
-/**	PatternManager class methods implementation **/
+/** PatternManager class methods implementation **/
 
 PatternManager* PatternManager::m_pPatternManager = NULL; //Initialise instance to null
 
@@ -310,7 +310,7 @@ void PatternManager::updateSequenceLengths()
 
 void PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync)
 {
-	/**	Get events scheduled for next step from each playing sequence.
+	/** Get events scheduled for next step from each playing sequence.
 		Populate schedule with start, end and interpolated events at sample offset
 	*/
 	//!@todo Optimise to only send clock to active sequences
@@ -356,6 +356,7 @@ void PatternManager::addTrack(uint32_t song)
 			continue;
 		break;
 	}
+	m_mSequences[nSequence].clear();
 	m_mSongs[song].addTrack(nSequence);
 	m_mSongSequences[nSequence] = song;
 }

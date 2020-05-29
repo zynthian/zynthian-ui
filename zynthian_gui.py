@@ -1649,6 +1649,33 @@ def delete_window():
 	zyngui.exit(exit_code)
 
 
+#Function to handle computer keyboard key press
+#	event: Key event
+def cb_keybinding(event):
+	logging.debug("Key press {} {}".format(event.keycode, event.keysym))
+	zynthian_gui_config.top.focus_set() # Must remove focus from listbox to avoid interference with physical keyboard
+
+	if not zynthian_gui_keybinding.getInstance().isEnabled():
+		logging.debug("Key binding is disabled - ignoring key press")
+		return
+
+	# Ignore TAB key (for now) to avoid confusing widget focus change
+	if event.keysym == "Tab":
+		return
+
+	# Space is not recognised as keysym so need to convert keycode
+	if event.keycode == 65:
+		keysym = "Space"
+	else:
+		keysym = event.keysym
+
+	action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
+	if action != None:
+		zyngui.callable_ui_action(action)
+
+
+zynthian_gui_config.top.bind("<Key>", cb_keybinding)
+
 zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
 
 #------------------------------------------------------------------------------
