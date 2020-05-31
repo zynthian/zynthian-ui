@@ -38,7 +38,7 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = logging.ERROR
+log_level = logging.DEBUG
 
 logger=logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -174,61 +174,52 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
+	#Check for new devices (HW and virtual)...
+	if not force and hw_str==last_hw_str:
+		last_hw_str = hw_str
+		#Release Mutex Lock
+		release_lock()
+		logging.info("ZynAutoConnect: MIDI Shortened ...")
+		return
+	else:
+		last_hw_str = hw_str
+
 	#Get Engines list from UI
 	zyngine_list=zynthian_gui_config.zyngui.screens["engine"].zyngines
 
 	#Get Engines MIDI input ports
-	engines_in=[]
+	engines_in={}
 	for k, zyngine in zyngine_list.items():
-		if zyngine.jackname:
+		if zyngine.jackname and zyngine.type in ("MIDI Synth", "MIDI Tool"):
 			port_name = get_fixed_midi_port_name(zyngine.jackname)
 		else:
 			continue
-
 		#logger.debug("Zyngine (MIDI-IN): {}".format(port_name))
-
 		ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
 		try:
 			port=ports[0]
-
-			#Dirty hack for zynaddsubfx: #TODO => Improve it!!!
-			if port_name=="zynaddsubfx" and port.shortname=='osc':
-				port=ports[1]
-
 			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
-			#List of tuples => [port, active_channels]
-			engines_in.append([port, zyngine.get_active_midi_channels()])
+			engines_in[zyngine.jackname]=port
 		except:
 			#logger.warning("Engine {} is not present".format(zyngine.jackname))
 			pass
 
 	#logger.debug("Synth Engine Input Ports: {}".format(engines_in))
 
-	#Check for new devices (HW and virtual)...
-	if not force and hw_str==last_hw_str:
-		last_hw_str = hw_str
-		#Release Mutex Lock
-		release_lock()
-		return
-	else:
-		last_hw_str = hw_str
 
 	#Get Synth Engines MIDI output ports
 	engines_out=[]
 	for k, zyngine in zyngine_list.items():
-		if zyngine.jackname:
+		if zyngine.jackname and zyngine.type=="MIDI Synth":
 			port_name = get_fixed_midi_port_name(zyngine.jackname)
 		else:
 			continue
-
 		#logger.debug("Zyngine MIDI-OUT: {}".format(port_name))
-
-		ports=jclient.get_ports(port_name, is_output=True, is_midi=True, is_physical=False)
+		ports = jclient.get_ports(port_name, is_output=True, is_midi=True, is_physical=False)
 		try:
 			port=ports[0]
 			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
-			#List of tuples => [port, active_channels]
-			engines_out.append([port, zyngine.get_active_midi_channels()])
+			engines_out.append(port)
 		except:
 			#logger.warning("Engine {} is not present".format(zyngine.jackname))
 			pass
@@ -285,40 +276,74 @@ def midi_autoconnect(force=False):
 	#Connect Engine's Controller-FeedBack to ZynMidiRouter:ctrl_in
 	try:
 		for eop in engines_out:
-			jclient.connect(eop[0],zmr_in['ctrl_in'])
+			jclient.connect(eop,zmr_in['ctrl_in'])
 	except:
 		pass
 
 	#logger.debug("Connecting ZynMidiRouter to engines ...")
 
-	#Connect ZynMidiRouter to engines
-	for eip in engines_in:
-		if eip[1] is None:
-			try:
-				jclient.connect(zmr_out['main_out'],eip[0])
-			except:
-				pass
-			for ch in range(0,16):
-				try:
-					jclient.disconnect(zmr_out['ch{}_out'.format(ch)],eip[0])
-				except:
-					pass
-		else:
-			try:
-				jclient.disconnect(zmr_out['main_out'],eip[0])
-			except:
-				pass
-			for ch in range(0,16):
-				if ch in eip[1]:
+	#Get layers list from UI
+	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
+
+	#Connect MIDI chain elements
+	for i, layer in enumerate(layers_list):
+		if not layer.get_midi_jackname() or layer.engine.type!="MIDI Tool":
+			continue
+
+		port_name = get_fixed_midi_port_name(layer.get_midi_jackname())
+		ports=jclient.get_ports(port_name, is_output=True, is_midi=True, is_physical=False)
+		if ports:
+			#Connect to assigned ports and disconnect from the rest ...
+			for mi in engines_in:
+				if mi in layer.get_midi_out():
+					#logger.debug(" => Connecting to {}".format(mi))
 					try:
-						jclient.connect(zmr_out['ch{}_out'.format(ch)],eip[0])
+						jclient.connect(ports[0],engines_in[mi])
 					except:
 						pass
 				else:
 					try:
-						jclient.disconnect(zmr_out['ch{}_out'.format(ch)],eip[0])
+						jclient.disconnect(ports[0],engines_in[mi])
 					except:
 						pass
+
+
+	#Connect ZynMidiRouter to MIDI-chain roots
+	midichain_roots = zynthian_gui_config.zyngui.screens["layer"].get_midichain_roots()
+	for mcrl in midichain_roots:
+		midichain_layers = zynthian_gui_config.zyngui.screens["layer"].get_midichain_layers(mcrl)
+		for mcl in midichain_layers:
+			if not mcl.get_midi_jackname():
+				continue
+			port_name = get_fixed_midi_port_name(mcl.get_midi_jackname())
+			ports=jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
+			if ports:
+				if mcl.midi_chan is None:
+					try:
+						jclient.connect(zmr_out['main_out'], ports[0])
+					except:
+						pass
+					for ch in range(0,16):
+						try:
+							jclient.disconnect(zmr_out['ch{}_out'.format(ch)], ports[0])
+						except:
+							pass
+				else:
+					try:
+						jclient.disconnect(zmr_out['main_out'],ports[0])
+					except:
+						pass
+					for ch in range(0,16):
+						if mcl==mcrl and mcl.midi_chan==ch:
+							try:
+								jclient.connect(zmr_out['ch{}_out'.format(ch)], ports[0])
+							except:
+								pass
+						else:
+							try:
+								jclient.disconnect(zmr_out['ch{}_out'.format(ch)], ports[0])
+							except:
+								pass
 
 	#Connect ZynMidiRouter:midi_out to enabled MIDI-OUT ports
 	for hw in hw_in:
@@ -365,7 +390,7 @@ def midi_autoconnect(force=False):
 def audio_autoconnect(force=False):
 
 	if not force:
-		logger.info("ZynAutoConnect: Escaped for Audio ...")
+		logger.info("ZynAutoConnect: Audio Escaped ...")
 		return
 
 	#Get Mutex Lock 
@@ -389,7 +414,7 @@ def audio_autoconnect(force=False):
 
 	#Connect Synth Engines to assigned outputs
 	for i, layer in enumerate(layers_list):
-		if not layer.get_jackname():
+		if not layer.get_jackname() or layer.engine.type=="MIDI Tool":
 			continue
 
 		ports=jclient.get_ports(layer.get_jackname(), is_output=True, is_audio=True, is_physical=False)
@@ -400,7 +425,7 @@ def audio_autoconnect(force=False):
 				#logger.debug("Converting to Stereo Output {} ...".format(layer.get_jackname()))
 
 			#logger.debug("Autoconnecting Engine {} ...".format(layer.get_jackname()))
-			
+
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:
 				if ao in layer.get_audio_out():
