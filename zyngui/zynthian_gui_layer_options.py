@@ -89,7 +89,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		# Root Layer Options
 		else:
 			self.layer = self.zyngui.screens['layer'].root_layers[self.layer_index]
-			root_layer = self.zyngui.screens['layer'].get_fxchain_root(self.layer)
 
 			self.audiofx_layers = self.zyngui.screens['layer'].get_fxchain_layers(self.layer)
 			try:
@@ -108,14 +107,20 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 			#self.list_data.append((self.layer_presets, None, "Presets"))
 
-			if 'clone' in eng_options and eng_options['clone'] and self.layer.midi_chan is not None:
-				self.list_data.append((self.layer_clone, None, "Clone MIDI to ..."))
+			if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool'): 
+				if 'clone' in eng_options and eng_options['clone'] and self.layer.midi_chan is not None:
+					self.list_data.append((self.layer_clone, None, "Clone MIDI to ..."))
 
-			if 'transpose' in eng_options and eng_options['transpose']:
-				self.list_data.append((self.layer_transpose, None, "Transpose"))
+				if 'transpose' in eng_options and eng_options['transpose']:
+					self.list_data.append((self.layer_transpose, None, "Transpose"))
 
-			if 'audio_route' in eng_options and eng_options['audio_route']:
-				self.list_data.append((self.layer_audio_routing, None, "Audio Routing"))
+				if 'midi_route' in eng_options and eng_options['midi_route']:
+					self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
+					#TODO: Implement this!!
+
+			if self.layer.engine.type != 'MIDI Tool': 
+				if 'audio_route' in eng_options and eng_options['audio_route']:
+					self.list_data.append((self.layer_audio_routing, None, "Audio Routing"))
 
 			if 'midi_chan' in eng_options and eng_options['midi_chan']:
 				self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
@@ -123,31 +128,33 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if 'indelible' not in eng_options or not eng_options['indelible']:
 				self.list_data.append((self.layer_remove, None, "Remove Layer"))
 
-			# Add separator
-			self.list_data.append((None,None,"-----------------------------"))
+			if self.layer.engine.type != 'MIDI Tool': 
+				# Add separator
+				self.list_data.append((None,None,"-----------------------------"))
 
-			# Add Audio-FX options
-			if self.layer.midi_chan is not None:
-				self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
+				# Add Audio-FX options
+				if self.layer.midi_chan is not None:
+					self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
 
-			if len(self.audiofx_layers)>0:
-				self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
-				# Add Audio-FX layers
-				for sl in self.audiofx_layers:
-					self.list_data.append((self.audiofx_layer_action, sl, " -> " + sl.engine.get_path(sl)))
+				if len(self.audiofx_layers)>0:
+					self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
+					# Add Audio-FX layers
+					for sl in self.audiofx_layers:
+						self.list_data.append((self.audiofx_layer_action, sl, " -> " + sl.engine.get_path(sl)))
 
-			# Add separator
-			self.list_data.append((None,None,"-----------------------------"))
+			if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool'): 
+				# Add separator
+				self.list_data.append((None,None,"-----------------------------"))
 
-			# Add MIDI-FX options
-			if self.layer.midi_chan is not None:
-				self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
+				# Add MIDI-FX options
+				if self.layer.midi_chan is not None:
+					self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 
-			if len(self.midifx_layers)>0:
-				self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
-				# Add MIDI-FX layers
-				for sl in self.midifx_layers:
-					self.list_data.append((self.midifx_layer_action, sl, " -> " + sl.engine.get_path(sl)))
+				if len(self.midifx_layers)>0:
+					self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
+					# Add MIDI-FX layers
+					for sl in self.midifx_layers:
+						self.list_data.append((self.midifx_layer_action, sl, " -> " + sl.engine.get_path(sl)))
 
 		super().fill_list()
 
