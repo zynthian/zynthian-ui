@@ -35,10 +35,17 @@ Block:
 		JACK output [1]
 		Play mode [1]
 		Group [1]
+		MIDI trigger note [1]
+		Padding [1]
 		Quantity of patterns [2]
 		Patterns:
 			Start time [4]
 			Pattern ID [4]
-
+RIFF Header:
+	Block ID: 'trig'
+	Block size: 32-bit little endian
+Block:
+	MIDI channel [1]
+	Jack input [1] (Not yet implemented)
 
 **Patterns must be stored (or loaded) before sequences which rely on references to patterns**

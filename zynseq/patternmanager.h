@@ -15,6 +15,10 @@ class PatternManager
         */
         static PatternManager* getPatternManager();
 
+        /** @brief  Initialise pattern manager
+        */
+        void init();
+
         /** @brief  Load patterns from file
         *   @param  filename Full or relative path and name of file
         */
@@ -92,8 +96,9 @@ class PatternManager
 
         /** @brief  Add sequence to song as new track
         *   @param  song Index of song
+        *   @retval Index of new track
         */
-        void addTrack(uint32_t song);
+        uint32_t addTrack(uint32_t song);
 
         /** @brief  Remove track from song
         *   @param  song Index of song
@@ -113,20 +118,60 @@ class PatternManager
         void clearSong(uint32_t song);
 
         /** Start song playing
-        *   @param  song Index of song
         */
-        void startSong(uint32_t song);
+        void startSong();
 
         /** Stop song playing
-        *   @param  song Index of song
         */
-        void stopSong(uint32_t song);
+        void stopSong();
+
+        /** Get song play position
+        *   @retval  uint32_t Song position
+        */
+        uint32_t getSongPosition();
 
         /** Set song play position
-        *   @param  song Index of song
         *   @param  pos Song position
         */
-        void setSongPosition(uint32_t song, uint32_t pos);
+        void setSongPosition(uint32_t pos);
+
+        /** @brief  Get MIDI note number used to trigger sequence
+        *   @param  sequence Index of sequence
+        *   @retval uint8_t MIDI note number [0xFF for none]
+        */
+        uint8_t getTriggerNote(uint32_t sequence);
+
+        /** @brief  Set MIDI note number used to trigger sequence
+        *   @param  sequence Index of sequence
+        *   @param  note MIDI note number [0xFF for none]
+        */
+        void setTriggerNote(uint32_t sequence, uint8_t note);
+
+        /** @brief  Get MIDI trigger channel
+        *   @retval uint8_t MIDI channel
+        */
+        uint8_t getTriggerChannel();
+
+        /** @brief  Set MIDI trigger channel
+        *   @param  channel MIDI channel
+        */
+        void setTriggerChannel(uint8_t channel);
+
+        /** @brief  Trigger sequence
+        *   @param  note MIDI note number
+        */
+        void trigger(uint8_t note);
+
+        /** @brief  Set the current song
+        *   @param  song Song to select
+        */
+        void setCurrentSong(uint32_t song);
+
+        /** @brief  Get current song
+        *   @retval  uint32_t Index of current song
+        */
+        uint32_t getCurrentSong();
+
 
     private:
         PatternManager(); // Private constructor to avoid public instantiation
@@ -138,11 +183,16 @@ class PatternManager
         uint32_t fileRead32(FILE* pFile);
         uint16_t fileRead16(FILE* pFile);
         uint8_t fileRead8(FILE* pFile);
+        void doClock(uint32_t nSong, uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync);
+
+        uint8_t m_nTriggerChannel = 15; // MIDI channel to recieve sequence triggers (note-on)
+        uint32_t m_nCurrentSong = 0; // Currently selected song (ZynPad uses +1000)
 
         static PatternManager* m_pPatternManager; // Pointer to the singleton
         // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
         std::map<size_t,Pattern> m_mPatterns; // Map of patterns indexed by pattern number
         std::map<size_t,Sequence> m_mSequences; // Map of sequences indexed by sequence number
         std::map<size_t,Song> m_mSongs; // Map of songs indexed by song number
-        std::map<uint32_t, uint32_t> m_mSongSequences; // Map of songs mapped by sequences
+        std::map<uint32_t, uint32_t> m_mSongSequences; // Map of songs indexed by sequences
+        std::map<uint8_t, uint32_t> m_mTriggers; // Map of sequences indexed by MIDI note triggers
 };

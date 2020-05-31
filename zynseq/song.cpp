@@ -24,9 +24,10 @@ uint32_t Song::getSequence(uint32_t track)
 	return 0;
 }
 
-void Song::addTrack(uint32_t sequence)
+uint32_t Song::addTrack(uint32_t sequence)
 {
 	m_vTracks.push_back(sequence);
+	return m_vTracks.size() - 1;
 }
 
 void Song::removeTrack(uint32_t track)
@@ -102,22 +103,17 @@ uint16_t Song::getMasterEventData(uint32_t event)
 
 void Song::addMasterEvent(uint32_t time, uint16_t command, uint16_t data)
 {
-	printf("Request to add song master track event\n");
 	auto it = m_vMasterTrack.begin();
 	for(; it < m_vMasterTrack.end(); ++it)
 	{
-		printf("Found existing event at time %d...", (*it)->time);
 		if((*it)->time == time && (*it)->command == command)
 		{
 			(*it)->data = data;
-			printf("at same time of same type - replaced\n");
 			return;
 		}
-		printf("different type or time\n");
 		if((*it)->time > time)
 			break;
 	}
-	printf("Adding a new event to song master track at time %d\n", time);
 	MasterEvent* pEvent = new MasterEvent;
 	pEvent->time = time;
 	pEvent->command = command;
@@ -136,4 +132,19 @@ void Song::removeMasterEvent(uint32_t time, uint16_t command)
 			return;
 		}
 	}
+}
+
+void Song::clock()
+{
+	++m_nSongPosition;
+}
+
+void Song::setPosition(uint32_t position)
+{
+	m_nSongPosition = position;
+}
+
+uint32_t Song::getPosition()
+{
+	return m_nSongPosition;
 }

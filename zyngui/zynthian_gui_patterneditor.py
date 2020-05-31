@@ -72,9 +72,9 @@ class zynthian_gui_patterneditor():
 		self.duration = 1 # Current note entry duration
 		self.velocity = 100 # Current note entry velocity
 		self.copySource = 1 # Index of pattern to copy
-		self.sequence = 0 # Use sequence zero for pattern editor sequence player
-		self.pattern = 1 # Index of current pattern
-
+		#TODO: Use song operations rather than sequence
+		self.song = 0 # Use song zero for pattern editor sequnce player
+		self.sequence = parent.libseq.getSequence(self.song, 0) # Sequence used for pattern editor sequence player
 		self.stepWidth = 40 # Grid column width in pixels
 		self.keyOrigin = 60 # MIDI note number of bottom row in grid
 		self.selectedCell = [0, self.keyOrigin] # Location of selected cell (step,note)
@@ -150,6 +150,7 @@ class zynthian_gui_patterneditor():
 		self.selectCell(0, self.keyOrigin + int(self.zoom / 2))
 
 	# Function to draw play cursor - periodically checks for change in current step then redraws cursor if necessary
+	#TODO: Remove thread handling playhead (now using refresh_status)
 	def startPlayheadHandler(self):
 		def onStep():
 			playhead = 0
@@ -175,15 +176,14 @@ class zynthian_gui_patterneditor():
 	# Function to show GUI
 	#   params: Pattern parameters to edit {'pattern':x, 'channel':x}
 	def show(self, params=None):
-		if params == None:
-			pattern = 1
-			channel = 1
-		else:
+		try:
 			pattern = params['pattern']
 			channel = params['channel']
+		except:
+			pattern = 1
+			channel = 1
 		self.loadPattern(pattern)
 		self.parent.libseq.setChannel(self.sequence, channel)
-#        self.parent.setParam('MIDI channel', 'value', channel + 1)
 		# Add menus
 		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':pattern, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'value':4, 'onChange':self.onMenuChange}}})
@@ -197,7 +197,6 @@ class zynthian_gui_patterneditor():
 		self.setupEncoders()
 		self.main_frame.tkraise()
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
-		self.parent.libseq.selectSong(0) # Select song 0 to avoid current song being played whilst editing pattern
 		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
 		self.shown=True
 
@@ -530,6 +529,7 @@ class zynthian_gui_patterneditor():
 	# Function to load new pattern
 	#   index: Pattern index
 	def loadPattern(self, index):
+		self.sequence = self.parent.libseq.getSequence(self.song, 0)
 		self.parent.libseq.clearSequence(self.sequence)
 		self.pattern = index
 		self.parent.libseq.selectPattern(index)

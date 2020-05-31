@@ -159,12 +159,23 @@ class Sequence
 		*/
 		uint8_t getGroup();
 
+		/**	@brief	Set trigger MIDI note
+		*	@param	trigger MIDI note
+		*/
+		void setTrigger(uint8_t trigger);
+
+		/**	@brief	Get trigger MIDI note
+		*	@retval	uint8_t MID note
+		*/
+		uint8_t getTrigger();
+
 	private:
 		uint8_t m_nChannel = 0; // MIDI channel
 		uint8_t m_nOutput = 0; // JACK output
 		uint8_t m_nState = STOPPED; // Play state
 		uint8_t m_nMode = LOOP; // Play mode
 		uint8_t m_nGroup = 0; // Group
+		uint8_t m_nTrigger = 0xFF; // MIDI note to trigger sequence
 		uint32_t m_nPosition = 0; // Play position in clock cycles
 		uint32_t m_nDivisor = 1; // Clock cycles per step
 		uint32_t m_nDivCount = 0; // Current count of clock cycles within divisor

@@ -37,8 +37,9 @@ class Song
 
 		/**	@brief	Add track to song
 		*	@param	sequence Index of sequence to add as track
+		*	@retval	Index of new track
 		*/
-		void addTrack(uint32_t sequence);
+		uint32_t addTrack(uint32_t sequence);
 
 		/**	@brief	Remove track to song
 		*	@param	track Index of track to remove
@@ -117,6 +118,20 @@ class Song
 		*	@param	command Event command
 		*/
 		void removeMasterEvent(uint32_t time, uint16_t command);
+
+		/** @brief  Handle clock
+		*/
+		void clock();
+
+		/**	@brief	Set song position
+		*	@param	position Song position in clock cycles
+		*/
+		void setPosition(uint32_t position);
+
+		/**	@brief	Get song position
+		*	@retval	uint32_t Song position in clock cycles
+		*/
+		uint32_t getPosition();
 
 	private:
 		std::vector<uint32_t> m_vTracks; // Index of sequences representing each track

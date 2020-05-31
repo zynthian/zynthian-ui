@@ -126,6 +126,27 @@ void sendMidiClock();
 */
 bool isPlaying();
 
+/**	@brief	Get MIDI channel used for external trigger of sequences
+*	@retval uint8_t MIDI channel
+*/
+uint8_t getTriggerChannel();
+
+/**	@brief	Set MIDI channel used for external trigger of sequences
+*	@param channel MIDI channel
+*/
+void setTriggerChannel(uint8_t channel);
+
+/**	@brief	Get MIDI note number used to trigger sequence
+*	@param	sequence Index of sequence
+*	@retval	uint8_t MIDI note number
+*/
+uint8_t getTriggerNote(uint32_t sequence);
+
+/**	@brief	Set MIDI note number used to trigger sequence
+*	@param	sequence Index of sequence
+*	@param	note MIDI note number [0xFF for none]
+*/
+void setTriggerNote(uint32_t sequence, uint8_t note);
 
 // ** Pattern management functions - note pattern operations are quantized to steps **
 
@@ -356,8 +377,9 @@ void setGroup(uint32_t sequence, uint8_t group);
 
 /**	@brief	Add track to song
 *	@param	song Song index
+*	@retval	uint32_t Index of new track
 */
-void addTrack(uint32_t song);
+uint32_t addTrack(uint32_t song);
 
 /**	@brief	Remove track from song
 *	@param	song Song index
@@ -474,7 +496,8 @@ uint32_t getSong();
 
 /**	@brief	Select song
 *	@param	song Index of song to select
-*	@todo	Limit quantity of songs to 127 (MIDI limit) and use appropriate sized data (uint8_t)
+*	@@note	Song 0 is reserved for pattern editor. Songs 1-128 may be selected with MIDI song select.
+*	@todo	Limit quantity of songs to 128 (MIDI limit) and use appropriate sized data (uint8_t)
 */
 void selectSong(uint32_t song);
 

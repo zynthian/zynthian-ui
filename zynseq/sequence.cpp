@@ -317,3 +317,16 @@ uint8_t Sequence::getGroup()
 {
 	return m_nGroup;
 }
+
+void Sequence::setTrigger(uint8_t trigger)
+{
+	if(trigger < 128)
+		m_nTrigger = trigger;
+	else
+		m_nTrigger = 0xFF;
+}
+
+uint8_t Sequence::getTrigger()
+{
+	return m_nTrigger;
+}

@@ -49,8 +49,6 @@ jack_nframes_t g_nClockEventTime; // Time of current MIDI clock in frames (sampl
 jack_nframes_t g_nClockEventTimeOffset;
 uint32_t g_nSyncPeriod = 96; // Time between sync pulses (clock cycles)
 uint32_t g_nSyncCount = 0; // Time since last sync pulse (clock cycles)
-uint32_t g_nSong = 0; // Currently selected song (Song 0 will not play)
-uint32_t g_nSongPosition = 0; // Position of playhead within song (clock cycles)
 
 bool g_bLocked = false; // True when locked to MIDI clock
 bool g_bPlaying = false; // Local interpretation of play status
@@ -101,8 +99,6 @@ void onClock()
 				printf("+\n");
 		}
 		PatternManager::getPatternManager()->clock(g_nClockEventTime + g_nBufferSize, &g_mSchedule, bSync);
-		if(g_bPlaying && g_nSong)
-			++g_nSongPosition;
 	}
 }
 
@@ -171,13 +167,15 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			case MIDI_SONG:
 //				if(g_bDebug)
 					printf("StepJackClient Select song %d\n", midiEvent.buffer[1]);
-				g_nSong = midiEvent.buffer[1];
+				PatternManager::getPatternManager()->setCurrentSong(midiEvent.buffer[1] + 1);
 				break;
 			default:
 //				if(g_bDebug)
 //					printf("StepJackClient Unhandled MIDI message %d\n", midiEvent.buffer[0]);
 				break;
 		}
+		if((midiEvent.buffer[0] == (MIDI_NOTE_ON | PatternManager::getPatternManager()->getTriggerChannel())) && midiEvent.buffer[2])
+			PatternManager::getPatternManager()->trigger(midiEvent.buffer[1]);
 	}
 
 	// Send MIDI output aligned with first sample of frame resulting in similar latency to audio
@@ -381,6 +379,27 @@ bool isPlaying()
 	return g_bPlaying;
 }
 
+uint8_t getTriggerChannel()
+{
+	return PatternManager::getPatternManager()->getTriggerChannel();
+}
+
+void setTriggerChannel(uint8_t channel)
+{
+	if(channel > 15)
+		return;
+	PatternManager::getPatternManager()->setTriggerChannel(channel);
+}
+
+uint8_t getTriggerNote(uint32_t sequence)
+{
+	return PatternManager::getPatternManager()->getTriggerNote(sequence);
+}
+
+void setTriggerNote(uint32_t sequence, uint8_t note)
+{
+	PatternManager::getPatternManager()->setTriggerNote(sequence, note);
+}
 
 // ** Pattern management functions **
 
@@ -609,29 +628,24 @@ void setGroup(uint32_t sequence, uint8_t group)
 
 // ** Song management functions **
 
-void addTrack(uint32_t song)
+uint32_t addTrack(uint32_t song)
 {
-	if(song)
-		PatternManager::getPatternManager()->addTrack(song);
+	return PatternManager::getPatternManager()->addTrack(song);
 }
 
 void removeTrack(uint32_t song, uint32_t track)
 {
-	if(song)
-		PatternManager::getPatternManager()->removeTrack(song, track);
+	PatternManager::getPatternManager()->removeTrack(song, track);
 }
 
 void setTempo(uint32_t song, uint32_t tempo, uint32_t time)
 {
-	if(song)
-		PatternManager::getPatternManager()->getSong(song)->setTempo(tempo, time);
+	PatternManager::getPatternManager()->getSong(song)->setTempo(tempo, time);
 }
 
 uint32_t getTempo(uint32_t song, uint32_t time)
 {
-	if(song)
-		return PatternManager::getPatternManager()->getSong(song)->getTempo(time);
-	return 120;
+	return PatternManager::getPatternManager()->getSong(song)->getTempo(time);
 }
 
 uint32_t getMasterEvents(uint32_t song)
@@ -656,22 +670,17 @@ uint16_t getMasterEventData(uint32_t song, uint32_t event)
 
 uint32_t getTracks(uint32_t song)
 {
-	if(song)
-		return PatternManager::getPatternManager()->getSong(song)->getTracks();
-	return 0;
+	return PatternManager::getPatternManager()->getSong(song)->getTracks();
 }
 
 uint32_t getSequence(uint32_t song, uint32_t track)
 {
-	if(song)
-		return PatternManager::getPatternManager()->getSong(song)->getSequence(track);
-	return 0;
+	return PatternManager::getPatternManager()->getSong(song)->getSequence(track);
 }
 
 void clearSong(uint32_t song)
 {
-	if(song)
-		PatternManager::getPatternManager()->clearSong(song);
+	PatternManager::getPatternManager()->clearSong(song);
 }
 
 void copySong(uint32_t source, uint32_t destination)
@@ -681,21 +690,17 @@ void copySong(uint32_t source, uint32_t destination)
 
 void setBarLength(uint32_t song, uint32_t period)
 {
-	if(song)
-		PatternManager::getPatternManager()->getSong(song)->setBar(period);
+	PatternManager::getPatternManager()->getSong(song)->setBar(period);
 }
 
 uint32_t getBarLength(uint32_t song)
 {
-	if(song)
-		return PatternManager::getPatternManager()->getSong(song)->getBar();
-	return 96;
+	return PatternManager::getPatternManager()->getSong(song)->getBar();
 }
 
 void startSong()
 {
-	if(g_nSong)
-		PatternManager::getPatternManager()->startSong(g_nSong);
+	PatternManager::getPatternManager()->startSong();
 //	else
 //		PatternManager::getPatternManager()->getSequence(0)->setPlayState(PLAYING);
 	g_nLastTime = 0;
@@ -706,8 +711,7 @@ void startSong()
 
 void pauseSong()
 {
-	if(g_nSong)
-		PatternManager::getPatternManager()->stopSong(g_nSong);
+	PatternManager::getPatternManager()->stopSong();
 //	PatternManager::getPatternManager()->getSequence(0)->setPlayState(STOPPED);
 	g_nLastTime = 0;
 	g_bLocked = false;
@@ -716,34 +720,28 @@ void pauseSong()
 
 void stopSong()
 {
-	if(g_nSong)
-		PatternManager::getPatternManager()->stopSong(g_nSong);
+	PatternManager::getPatternManager()->stopSong();
 //	PatternManager::getPatternManager()->getSequence(0)->setPlayState(STOPPED);
 	g_bPlaying = false;
 	setSongPosition(0);
-	g_nSongPosition = 0;
 }
 
 void setSongPosition(uint32_t pos)
 {
-	g_nSongPosition = pos;
-	if(g_nSong)
-		PatternManager::getPatternManager()->setSongPosition(g_nSong, pos);
+	PatternManager::getPatternManager()->setSongPosition(pos);
 }
 
 uint32_t getSongPosition()
 {
-	return g_nSongPosition;
+	return PatternManager::getPatternManager()->getSongPosition();
 }
 
 uint32_t getSong()
 {
-	return g_nSong;
+	return PatternManager::getPatternManager()->getCurrentSong();
 }
 
 void selectSong(uint32_t song)
 {
-	g_nSong = song;
-//	setSongPosition(0);
-//!@todo Can we send MIDI song when selecting song or will this lead to howl-round?	sendMidiSong(song);
+	PatternManager::getPatternManager()->setCurrentSong(song);
 }
