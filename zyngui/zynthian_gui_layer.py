@@ -340,8 +340,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			else:
 				root_layers_to_delete = [self.root_layers[i]]
 
-			# Remove root layer and fxchain
+			# Remove layers
 			for root_layer in root_layers_to_delete:
+				# Remove midichain
+				midichain_layers = self.get_midichain_layers(root_layer)
+				if len(midichain_layers)>0:
+					midichain_layers.remove(root_layer)
+				for layer in reversed(midichain_layers):
+					self.remove_layer(self.layers.index(layer), False)
+				# Remove fxchain & root_layer 
 				for layer in reversed(self.get_fxchain_layers(root_layer)):
 					self.remove_layer(self.layers.index(layer), False)
 

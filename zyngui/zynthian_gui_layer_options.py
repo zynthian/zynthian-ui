@@ -91,16 +91,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.layer = self.zyngui.screens['layer'].root_layers[self.layer_index]
 
 			self.audiofx_layers = self.zyngui.screens['layer'].get_fxchain_layers(self.layer)
-			try:
+			if self.audiofx_layers and len(self.audiofx_layers)>0:
 				self.audiofx_layers.remove(self.layer)
-			except:
-				pass
 
 			self.midifx_layers = self.zyngui.screens['layer'].get_midichain_layers(self.layer)
-			try:
+			if self.midifx_layers and len(self.midifx_layers)>0:
 				self.midifx_layers.remove(self.layer)
-			except:
-				pass
 
 			# Add root layer options
 			eng_options = self.layer.engine.get_options()

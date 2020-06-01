@@ -38,7 +38,7 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = logging.DEBUG
+log_level = logging.WARNING
 
 logger=logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -179,7 +179,7 @@ def midi_autoconnect(force=False):
 		last_hw_str = hw_str
 		#Release Mutex Lock
 		release_lock()
-		logging.info("ZynAutoConnect: MIDI Shortened ...")
+		logger.info("ZynAutoConnect: MIDI Shortened ...")
 		return
 	else:
 		last_hw_str = hw_str
@@ -197,9 +197,8 @@ def midi_autoconnect(force=False):
 		#logger.debug("Zyngine (MIDI-IN): {}".format(port_name))
 		ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
 		try:
-			port=ports[0]
-			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
-			engines_in[zyngine.jackname]=port
+			#logger.debug("Engine {}:{} found".format(zyngine.jackname,ports[0].short_name))
+			engines_in[zyngine.jackname]=ports[0]
 		except:
 			#logger.warning("Engine {} is not present".format(zyngine.jackname))
 			pass
@@ -217,9 +216,8 @@ def midi_autoconnect(force=False):
 		#logger.debug("Zyngine MIDI-OUT: {}".format(port_name))
 		ports = jclient.get_ports(port_name, is_output=True, is_midi=True, is_physical=False)
 		try:
-			port=ports[0]
-			#logger.debug("Engine {}:{} found".format(zyngine.jackname,port.short_name))
-			engines_out.append(port)
+			#logger.debug("Engine {}:{} found".format(zyngine.jackname,ports[0].short_name))
+			engines_out.append(ports[0])
 		except:
 			#logger.warning("Engine {} is not present".format(zyngine.jackname))
 			pass
@@ -301,6 +299,10 @@ def midi_autoconnect(force=False):
 						jclient.connect(ports[0],engines_in[mi])
 					except:
 						pass
+					try:
+						jclient.disconnect(zmr_out['ch{}_out'.format(layer.midi_chan)], engines_in[mi])
+					except:
+						pass
 				else:
 					try:
 						jclient.disconnect(ports[0],engines_in[mi])
@@ -310,40 +312,42 @@ def midi_autoconnect(force=False):
 
 	#Connect ZynMidiRouter to MIDI-chain roots
 	midichain_roots = zynthian_gui_config.zyngui.screens["layer"].get_midichain_roots()
+
+	# => Get Root-engines info
+	root_engine_info = {}
 	for mcrl in midichain_roots:
-		midichain_layers = zynthian_gui_config.zyngui.screens["layer"].get_midichain_layers(mcrl)
-		for mcl in midichain_layers:
-			if not mcl.get_midi_jackname():
-				continue
-			port_name = get_fixed_midi_port_name(mcl.get_midi_jackname())
-			ports=jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
-			if ports:
-				if mcl.midi_chan is None:
+		if mcrl.get_midi_jackname():
+			jackname = mcrl.get_midi_jackname()
+			if jackname in root_engine_info and mcrl.midi_chan is not None:
+				root_engine_info[jackname]['chans'].append(mcrl.midi_chan)
+			else:
+				port_name = get_fixed_midi_port_name(jackname)
+				ports=jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
+				if ports:
+					root_engine_info[jackname] = {
+						'port': ports[0],
+						'chans': [mcrl.midi_chan]
+					}
+
+	for jn, info in root_engine_info.items():
+		if None in info['chans']:
+			try:
+				jclient.connect(zmr_out['main_out'], info['port'])
+			except:
+				pass
+		
+		else:
+			for ch in range(0,16):
+				if ch in info['chans']:
 					try:
-						jclient.connect(zmr_out['main_out'], ports[0])
+						jclient.connect(zmr_out['ch{}_out'.format(ch)], info['port'])
 					except:
 						pass
-					for ch in range(0,16):
-						try:
-							jclient.disconnect(zmr_out['ch{}_out'.format(ch)], ports[0])
-						except:
-							pass
 				else:
 					try:
-						jclient.disconnect(zmr_out['main_out'],ports[0])
+						jclient.disconnect(zmr_out['ch{}_out'.format(ch)], info['port'])
 					except:
 						pass
-					for ch in range(0,16):
-						if mcl==mcrl and mcl.midi_chan==ch:
-							try:
-								jclient.connect(zmr_out['ch{}_out'.format(ch)], ports[0])
-							except:
-								pass
-						else:
-							try:
-								jclient.disconnect(zmr_out['ch{}_out'.format(ch)], ports[0])
-							except:
-								pass
 
 	#Connect ZynMidiRouter:midi_out to enabled MIDI-OUT ports
 	for hw in hw_in:
