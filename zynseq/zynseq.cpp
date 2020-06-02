@@ -51,6 +51,7 @@ uint32_t g_nSyncPeriod = 96; // Time between sync pulses (clock cycles)
 uint32_t g_nSyncCount = 0; // Time since last sync pulse (clock cycles)
 uint32_t g_nSongPosition = 0; // Clocks since start of song
 
+uint8_t g_nPllCount = 0; // Quantity of clock cycles to count before PLL is flagged as locked
 bool g_bLocked = false; // True when locked to MIDI clock
 bool g_bPlaying = false; // Local interpretation of play status
 
@@ -72,34 +73,40 @@ void onClock()
 //		printf("Clock at %u (+%u)\n", g_nClockEventTime, g_nClockEventTimeOffset);
 		//	Check if clock pulse duration is significantly different to last. If so, set sequence clock rates.
 		int nClockPeriod = g_nClockEventTime - g_nLastTime;
-		if(g_nLastTime && !g_bLocked)
+		if(g_nLastTime && !g_bLocked)// && ++g_nPllCount > 2) //!@todo Can reduce PLL count below 2 - maybe lose completely because g_nLastTime check ensures at least on loop
 		{
-			// First cycle after start of clock
+			// Second cycle after start of clock
 			PatternManager::getPatternManager()->setSequenceClockRates(nClockPeriod);
-//			printf("Setting clock rates to %u\n", nClockPeriod);
+			if(g_bDebug)
+				printf("Setting clock rates to %u\n", nClockPeriod);
 			g_nSamplesPerClock = nClockPeriod;
 			g_bLocked = true;
 		}
 		g_nLastTime = g_nClockEventTime;
 		if(g_bLocked)
 		{
+			bool bSync = (++g_nSyncCount >= g_nSyncPeriod);
+			if(bSync)
+			{
+				// This is a sync / loop point
+				g_nSyncCount = 0;
+				if(g_bDebug)
+					printf("+\n");
+			}
+			if(g_bPlaying)
+				PatternManager::getPatternManager()->clock(g_nClockEventTime + g_nBufferSize, &g_mSchedule, bSync);
+
+			// Check for clock drift
 			int nOffset = nClockPeriod - g_nSamplesPerClock;
 			if(nOffset > 10 || nOffset < -10)
 			{
+				// Clock has drifted by 10 samples per clock beat so let's resync PLL
 				g_nSamplesPerClock = nClockPeriod;
 				if(g_bDebug)
-					printf("Setting clock rates to %u\n", nClockPeriod);
+					printf("Drift... setting clock rates to %u\n", nClockPeriod);
 				PatternManager::getPatternManager()->setSequenceClockRates(nClockPeriod);
 			}
 		}
-		bool bSync = (++g_nSyncCount >= g_nSyncPeriod);
-		if(bSync)
-		{
-			g_nSyncCount = 0;
-			if(g_bDebug)
-				printf("+\n");
-		}
-		PatternManager::getPatternManager()->clock(g_nClockEventTime + g_nBufferSize, &g_mSchedule, bSync);
 	}
 }
 
@@ -154,7 +161,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 				g_nClockEventTimeOffset = midiEvent.time;
 				g_nClockEventTime = nNow + midiEvent.time;
 				g_bClockIdle = false;
-				if(g_bPlaying)
+				if(g_bPlaying && g_bLocked)
 					++g_nSongPosition;
 				break;
 			case MIDI_POSITION:
@@ -175,10 +182,11 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 //					printf("StepJackClient Unhandled MIDI message %d\n", midiEvent.buffer[0]);
 				break;
 		}
+		// Handle MIDI Note On events to trigger sequences
 		if((midiEvent.buffer[0] == (MIDI_NOTE_ON | PatternManager::getPatternManager()->getTriggerChannel())) && midiEvent.buffer[2])
 		{
-			PatternManager::getPatternManager()->trigger(midiEvent.buffer[1]);
-			if(!g_bPlaying)
+			printf("MIDI NOTE ON\n");
+			if(PatternManager::getPatternManager()->trigger(midiEvent.buffer[1]) && !g_bPlaying)
 				sendMidiStart();
 		}
 	}
@@ -336,6 +344,7 @@ void sendMidiStart()
 	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
 	pMsg->command = MIDI_START;
 	sendMidiMsg(pMsg);
+	printf("Sending MIDI Start... does it get recieved back???\n");
 }
 
 void sendMidiStop()
@@ -572,7 +581,6 @@ uint8_t getPlayState(uint32_t sequence)
 void setPlayState(uint32_t sequence, uint8_t state)
 {
 	PatternManager::getPatternManager()->getSequence(sequence)->setPlayState(state);
-	PatternManager::getPatternManager()->getSequence(sequence)->setPlayState(state);
 }
 
 void togglePlayState(uint32_t sequence)
@@ -704,14 +712,13 @@ void startSong()
 	g_nLastTime = 0;
 	g_nSyncCount = 0;
 	g_bLocked = false;
+	g_nPllCount = 0;
 	g_bPlaying = true;
 }
 
 void pauseSong()
 {
 	PatternManager::getPatternManager()->stopSong();
-	g_nLastTime = 0;
-	g_bLocked = false;
 	g_bPlaying = false;
 }
 
@@ -726,6 +733,7 @@ void stopSong()
 void setSongPosition(uint32_t pos)
 {
 	PatternManager::getPatternManager()->setSongPosition(pos);
+	g_nPllCount = 0;
 	g_nSongPosition = pos;
 }
 
@@ -741,5 +749,6 @@ uint32_t getSong()
 
 void selectSong(uint32_t song)
 {
+	stopSong();
 	PatternManager::getPatternManager()->setCurrentSong(song);
 }

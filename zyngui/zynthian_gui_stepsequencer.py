@@ -70,6 +70,7 @@ class zynthian_gui_stepsequencer():
 		# TODO: Should this be done at higher level rather than within a screen?
 		self.libseq = ctypes.CDLL(dirname(realpath(__file__))+"/../zynseq/build/libzynseq.so")
 		self.libseq.init()
+#		self.libseq.debug(True)
 		self.filename = os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.zynseq"
 		self.load(self.filename)
 

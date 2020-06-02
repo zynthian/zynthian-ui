@@ -149,8 +149,9 @@ class PatternManager
 
         /** @brief  Trigger sequence
         *   @param  note MIDI note number
+        *   @retval bool True if sequence triggered (or stopped)
         */
-        void trigger(uint8_t note);
+        bool trigger(uint8_t note);
 
         /** @brief  Set the current song
         *   @param  song Song to select

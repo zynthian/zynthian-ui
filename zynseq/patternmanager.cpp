@@ -366,7 +366,7 @@ inline void PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uin
 				while(pSchedule->find(pEvent->time) != pSchedule->end())
 					++(pEvent->time);
 				(*pSchedule)[pEvent->time] = new MIDI_MESSAGE(pEvent->msg);
-				printf("Scheduling event 0x%x 0x%x 0x%x at %d\n", pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
+				//printf("Scheduling event 0x%x 0x%x 0x%x at %d\n", pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
 			}
 		}
 	}
@@ -377,6 +377,7 @@ void PatternManager::setSequenceClockRates(uint32_t samples)
 	size_t nTrack = 0;
 	while(uint32_t nSeq = m_mSongs[m_nCurrentSong].getSequence(nTrack++))
 		m_mSequences[nSeq].setClockRate(samples);
+	nTrack = 0;
 	while(uint32_t nSeq = m_mSongs[m_nCurrentSong + 1000].getSequence(nTrack++))
 		m_mSequences[nSeq].setClockRate(samples);
 }
@@ -479,11 +480,12 @@ void PatternManager::setTriggerChannel(uint8_t channel)
 		m_nTriggerChannel = channel;
 }
 
-void PatternManager::trigger(uint8_t note)
+bool PatternManager::trigger(uint8_t note)
 {
 	if(m_mTriggers.find(note) == m_mTriggers.end())
-		return;
+		return false;
 	m_mSequences[m_mTriggers[note]].togglePlayState();
+	return true;
 }
 
 void PatternManager::setCurrentSong(uint32_t song)

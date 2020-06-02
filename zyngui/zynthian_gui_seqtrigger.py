@@ -282,6 +282,8 @@ class zynthian_gui_seqtrigger():
 			return;
 		if self.parent.libseq.getPlayState(sequence) == zynthian_gui_config.SEQ_PLAYING:
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_STOPPING)
+		elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_config.SEQ_STARTING:
+			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_STOPPED)
 		elif self.parent.libseq.getPlayMode(sequence) != zynthian_gui_config.SEQ_DISABLED:
 			self.parent.libseq.setPlayPosition(sequence, 0)
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_STARTING)

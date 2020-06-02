@@ -111,7 +111,6 @@ void Sequence::setPlayState(uint8_t state)
 		m_nState = state;
 	else
 		m_nState = STOPPED;
-	m_nDivCount = 0; //!@todo What should div count be?
 }
 
 void Sequence::togglePlayState()
@@ -188,7 +187,7 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 
 SEQ_EVENT* Sequence::getEvent()
 {
-	printf("Sequence::getEvent state: %d pattern:%d nextevent:%d\n", m_nState, m_nCurrentPattern, m_nNextEvent);
+	//printf("Sequence::getEvent state: %d pattern:%d nextevent:%d\n", m_nState, m_nCurrentPattern, m_nNextEvent);
 	// This function is called repeatedly for each clock period until no more events are available to populate JACK MIDI output schedule
 	static SEQ_EVENT seqEvent; // A MIDI event timestamped for some imminent or future time
 	if(m_nState == STOPPED || m_nCurrentPattern < 0 || m_nNextEvent < 0)
@@ -227,7 +226,7 @@ SEQ_EVENT* Sequence::getEvent()
 	seqEvent.msg.command = pEvent->getCommand() | m_nChannel;
 	seqEvent.msg.value1 = pEvent->getValue1start();
 	seqEvent.msg.value2 = m_nEventValue;
-	printf("sequence::getEvent Event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %u\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nCurrentTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
+	//printf("sequence::getEvent Event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %u\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nCurrentTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
 	return &seqEvent;
 }
 
