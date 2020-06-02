@@ -76,7 +76,6 @@ class zynthian_gui_songeditor():
 		self.colOffset = 0 # Index of time division at left column in grid
 		self.selectedCell = [0, 0] # Location of selected cell (time div,track)
 		self.pattern = 1 # Index of current pattern to add to sequence
-		self.duration = 128 #TODO Get duration from song sequences
 		self.position = 0 # Current playhead position
 		self.timePress = 0 # Time of last grid touch
 		self.editorMode = 0 # Editor mode [0: Song, 1: Pads]
@@ -179,13 +178,14 @@ class zynthian_gui_songeditor():
 		self.parent.addMenu({'Clear song':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearSong}}})
 		self.parent.addMenu({'Transpose song':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':2, 'value':1, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':self.verticalZoom, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Horizontal zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':128, 'value':64, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Horizontal zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999 
+		, 'value':64, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':1, 'getValue':self.getTrackChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Clocks per division':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'getValue':self.getClocksPerDivision, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tracks':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':64, 'value':self.getTracks(), 'getValue':self.getTracks, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'value':self.zyngui.zyntransport.get_tempo(), 'getValue':self.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Bar / sync':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':16, 'getValue':self.getBarLength, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Group':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':255, 'value':0, 'getValue':self.getGroup, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Group':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':25, 'value':0, 'getValue':self.getGroup, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':4, 'value':0, 'getValue':self.getMode, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Trigger':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':128, 'value':60, 'getValue':self.getTrigger, 'onChange':self.onMenuChange, 'onAssert':self.setTrigger}}})
 		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'getValue':self.getPattern, 'onChange':self.onMenuChange}}})
@@ -319,8 +319,7 @@ class zynthian_gui_songeditor():
 		if self.parent.lstMenu.winfo_viewable():
 			self.parent.hideMenu()
 			return
-		if self.duration > self.horizontalZoom:
-			self.timeDragStart = event
+		self.timeDragStart = event
 
 	# Function to handle time drag motion
 	def onTimeDragMotion(self, event):
@@ -333,18 +332,18 @@ class zynthian_gui_songeditor():
 		pos = self.colOffset + offset
 		if pos < 0:
 			pos = 0
-		if pos + self.horizontalZoom >= self.duration:
-			pos = self.duration - self.horizontalZoom
 		if self.colOffset == pos:
 			return
 		self.colOffset = pos
 		self.drawGrid()
 		col = self.selectedCell[0]
+		duration = int(self.parent.libseq.getPatternLength(self.pattern) / self.clocksPerDivision)
 		if self.selectedCell[0] < self.colOffset:
-			col = self.colOffset
-		elif self.selectedCell[0] >= self.colOffset + self.horizontalZoom:
-			col = self.colOffset + self.horizontalZoom - 1
-		self.selectCell(col, self.selectedCell[1])
+			self.selectCell(self.colOffset, self.selectedCell[1])
+		elif self.selectedCell[0] > self.colOffset + self.horizontalZoom  - duration:
+			self.selectCell(self.colOffset + self.horizontalZoom - duration, self.selectedCell[1])
+		else:
+			self.selectCell()
 
 	# Function to handle end of time drag
 	def onTimeDragEnd(self, event):
@@ -474,6 +473,8 @@ class zynthian_gui_songeditor():
 		track = int(row) + self.rowOffset
 		sequence = self.parent.libseq.getSequence(self.song, track)
 		print("Song %d, track %d, sequence:%d, trigger:%d, playstate:%d"%(self.song, track, sequence, self.parent.libseq.getTriggerNote(sequence), self.parent.libseq.getPlayState(sequence)))
+		self.selectedCell[1] = track
+		self.selectCell()
 
 	# Function to get cell coordinates
 	#	col: Column index
@@ -615,8 +616,6 @@ class zynthian_gui_songeditor():
 			track = 0
 		if time < 0:
 			time = 0
-		if time >= self.duration:
-			time = self.duration - 1
 		if time < 0:
 			time = 0;
 		duration = int(self.parent.libseq.getPatternLength(self.pattern) / self.clocksPerDivision)
@@ -732,6 +731,7 @@ class zynthian_gui_songeditor():
 			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
 			self.parent.libseq.setGroup(sequence, value);
 			self.drawGrid(True)
+			return "Group: %s" % (chr(65 + value))
 		elif menuItem == "Mode":
 			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
 			self.parent.libseq.setPlayMode(sequence, value);
@@ -785,27 +785,6 @@ class zynthian_gui_songeditor():
 	def onLoad(self):
 		#TODO: Redraw song
 		pass
-
-	# Function to handle transport start
-	def onTransportStart(self):
-		for track in range(self.parent.libseq.getTracks(self.song)):
-			sequence = self.parent.libseq.getSequence(self.song, track)
-			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_PLAYING)
-		self.drawGrid()
-
-	# Function to handle transport stop
-	def onTransportPause(self):
-		for track in range(self.parent.libseq.getTracks(self.song)):
-			sequence = self.parent.libseq.getSequence(self.song, track)
-			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_STOPPED)
-
-	# Function to handle transport stop
-	def onTransportStop(self):
-		for track in range(self.parent.libseq.getTracks(self.song)):
-			sequence = self.parent.libseq.getSequence(self.song, track)
-			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_STOPPED)
-			self.parent.libseq.setPlayPosition(sequence, 0)
-		self.showPos(0)
 
 	# Function to scroll grid to show position in song
 	#	pos: Song position in clocks cycles

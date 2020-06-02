@@ -732,6 +732,7 @@ class zynthian_gui_stepsequencer():
 			return
 		self.populateMenu()
 		self.child.show(params)
+		self.status_menu_frame.tkraise()
 
 	# Function to hide child GUI
 	def hideChild(self):

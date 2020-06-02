@@ -31,7 +31,7 @@ class Song
 
 		/**	@brief Get index of track sequences
 		*	@param	track Track index
-		*	@retval	uint32_t Sequence index
+		*	@retval	uint32_t Sequence index (0 if track does not exist)
 		*/
 		uint32_t getSequence(uint32_t track);
 
@@ -118,20 +118,6 @@ class Song
 		*	@param	command Event command
 		*/
 		void removeMasterEvent(uint32_t time, uint16_t command);
-
-		/** @brief  Handle clock
-		*/
-		void clock();
-
-		/**	@brief	Set song position
-		*	@param	position Song position in clock cycles
-		*/
-		void setPosition(uint32_t position);
-
-		/**	@brief	Get song position
-		*	@retval	uint32_t Song position in clock cycles
-		*/
-		uint32_t getPosition();
 
 	private:
 		std::vector<uint32_t> m_vTracks; // Index of sequences representing each track

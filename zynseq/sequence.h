@@ -118,11 +118,6 @@ class Sequence
 		*/
 		uint32_t getStep();
 
-		/**	@brief	Set position of playhead within currently playing pattern
-		*	@param	step Quantity of steps from start of pattern to position playhead
-		*/
-		void setStep(uint32_t step);
-
 		/**	@brief	Get position of playhead within currently playing pattern
 		*	@retval	uint32_t Quantity of clock cycles from start of pattern to playhead
 		*/
@@ -177,7 +172,7 @@ class Sequence
 		uint8_t m_nGroup = 0; // Group
 		uint8_t m_nTrigger = 0xFF; // MIDI note to trigger sequence
 		uint32_t m_nPosition = 0; // Play position in clock cycles
-		uint32_t m_nDivisor = 1; // Clock cycles per step
+		uint32_t m_nClkPerStep = 1; // Clock cycles per step
 		uint32_t m_nDivCount = 0; // Current count of clock cycles within divisor
 		std::map<uint32_t,Pattern*> m_mPatterns; // Map of pointers to patterns, indexed by start position
 		int m_nCurrentPattern = -1; // Start position of pattern currently being played

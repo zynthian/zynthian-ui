@@ -133,18 +133,3 @@ void Song::removeMasterEvent(uint32_t time, uint16_t command)
 		}
 	}
 }
-
-void Song::clock()
-{
-	++m_nSongPosition;
-}
-
-void Song::setPosition(uint32_t position)
-{
-	m_nSongPosition = position;
-}
-
-uint32_t Song::getPosition()
-{
-	return m_nSongPosition;
-}

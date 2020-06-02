@@ -82,11 +82,6 @@ class PatternManager
         */
         void setSequenceClockRates(uint32_t samples);
 
-        /** @brief  Set playhead position for all sequences
-        *   @param  position Playhead position in clock cycles
-        */
-        void setPlayPosition(uint32_t position);
-
         /** @brief  Get pointer to a song
         *   @param  index Index of song to retrieve
         *   @retval Song* Pointer to song
@@ -124,11 +119,6 @@ class PatternManager
         /** Stop song playing
         */
         void stopSong();
-
-        /** Get song play position
-        *   @retval  uint32_t Song position
-        */
-        uint32_t getSongPosition();
 
         /** Set song play position
         *   @param  pos Song position

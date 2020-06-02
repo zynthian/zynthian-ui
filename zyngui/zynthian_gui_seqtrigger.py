@@ -273,7 +273,7 @@ class zynthian_gui_seqtrigger():
 		pad = int(tags[0].split(':')[1])
 		self.selectedPad = pad
 		sequence = self.getSequence(pad)
-		print("Pressed pad %d, sequence %d, playmode %d, channel %d, length %d"%(pad, sequence, self.parent.libseq.getPlayMode(sequence), self.parent.libseq.getChannel(sequence), self.parent.libseq.getSequenceLength(sequence)))
+		print("Pressed pad %d, song %d, sequence %d, playmode %d, channel %d, length %d"%(pad, self.song, sequence, self.parent.libseq.getPlayMode(sequence), self.parent.libseq.getChannel(sequence), self.parent.libseq.getSequenceLength(sequence)))
 		menuItem = self.parent.paramEditorItem
 		if menuItem == 'Pad mode':
 			self.parent.setParam('Pad mode', 'value', self.parent.libseq.getPlayMode(sequence))

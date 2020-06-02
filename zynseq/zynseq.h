@@ -341,12 +341,6 @@ void clearSequence(uint32_t sequence);
 */
 uint32_t getStep(uint32_t sequence);
 
-/**	@brief	Set the position of playhead within pattern
-*	@param	sequence Sequence number
-*	@param	step Quantity of steps from start of pattern to position playhead
-*/
-void setStep(uint32_t sequence, uint32_t step);
-
 /**	@brief	Set period between sync pulses
 *	@param	period Time between sync pulses (clock cycles)
 */
@@ -476,11 +470,11 @@ void setBarLength(uint32_t song, uint32_t period);
 */
 uint32_t getBarLength(uint32_t song);
 
-/**	@brief	Start song playing
+/**	@brief	Start song playing - resume from current position
 */
 void startSong();
 
-/**	@brief	Pause song
+/**	@brief	Pause song - do not recue
 */
 void pauseSong();
 

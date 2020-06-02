@@ -366,11 +366,10 @@ inline void PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uin
 				while(pSchedule->find(pEvent->time) != pSchedule->end())
 					++(pEvent->time);
 				(*pSchedule)[pEvent->time] = new MIDI_MESSAGE(pEvent->msg);
-				//printf("Scheduling event 0x%x 0x%x 0x%x at %d\n", pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
+				printf("Scheduling event 0x%x 0x%x 0x%x at %d\n", pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
 			}
 		}
 	}
-	m_mSongs[nSong].clock();
 }
 
 void PatternManager::setSequenceClockRates(uint32_t samples)
@@ -378,14 +377,8 @@ void PatternManager::setSequenceClockRates(uint32_t samples)
 	size_t nTrack = 0;
 	while(uint32_t nSeq = m_mSongs[m_nCurrentSong].getSequence(nTrack++))
 		m_mSequences[nSeq].setClockRate(samples);
-}
-
-void PatternManager::setPlayPosition(uint32_t position)
-{
-	size_t nTrack = 0;
-	while(uint32_t nSeq = m_mSongs[m_nCurrentSong].getSequence(nTrack++))
-		m_mSequences[nSeq].setPlayPosition(position);
-	m_mSongs[m_nCurrentSong].setPosition(position);
+	while(uint32_t nSeq = m_mSongs[m_nCurrentSong + 1000].getSequence(nTrack++))
+		m_mSequences[nSeq].setClockRate(samples);
 }
 
 Song* PatternManager::getSong(size_t index)
@@ -454,19 +447,11 @@ void PatternManager::stopSong()
 	}
 }
 
-uint32_t PatternManager::getSongPosition()
-{
-	return m_mSongs[m_nCurrentSong].getPosition();
-}
-
 void PatternManager::setSongPosition(uint32_t pos)
 {
-	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong].getTracks(); ++ nTrack)
-	{
-		uint32_t sequence = m_mSongs[m_nCurrentSong].getSequence(nTrack);
-		m_mSequences[sequence].setPlayPosition(pos);
-	}
-	m_mSongs[m_nCurrentSong].setPosition(pos);
+	size_t nTrack = 0;
+	while(uint32_t nSequence = m_mSongs[m_nCurrentSong].getSequence(nTrack++))
+		m_mSequences[nSequence].setPlayPosition(pos);
 }
 
 uint8_t PatternManager::getTriggerNote(uint32_t sequence)
@@ -496,11 +481,9 @@ void PatternManager::setTriggerChannel(uint8_t channel)
 
 void PatternManager::trigger(uint8_t note)
 {
-	printf("PatternManager::trigger(%d)\n", note);
 	if(m_mTriggers.find(note) == m_mTriggers.end())
 		return;
 	m_mSequences[m_mTriggers[note]].togglePlayState();
-	printf("PatternManager::trigger playing note %d of sequence %d\n", note, m_mTriggers[note]);
 }
 
 void PatternManager::setCurrentSong(uint32_t song)

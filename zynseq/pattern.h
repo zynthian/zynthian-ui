@@ -174,8 +174,8 @@ class Pattern
 		*/
 		uint32_t getSteps() { return m_nLength; };
 
-		/**	@brief	Get length of pattern in steps
-		*	@retval uint32_t Length of pattern in steps
+		/**	@brief	Get length of pattern in clock cycles
+		*	@retval uint32_t Length of pattern in clock cycles
 		*/
 		uint32_t getLength() { return m_nLength * m_nClkPerStep; };
 

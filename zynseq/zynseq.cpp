@@ -49,6 +49,7 @@ jack_nframes_t g_nClockEventTime; // Time of current MIDI clock in frames (sampl
 jack_nframes_t g_nClockEventTimeOffset;
 uint32_t g_nSyncPeriod = 96; // Time between sync pulses (clock cycles)
 uint32_t g_nSyncCount = 0; // Time since last sync pulse (clock cycles)
+uint32_t g_nSongPosition = 0; // Clocks since start of song
 
 bool g_bLocked = false; // True when locked to MIDI clock
 bool g_bPlaying = false; // Local interpretation of play status
@@ -153,6 +154,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 				g_nClockEventTimeOffset = midiEvent.time;
 				g_nClockEventTime = nNow + midiEvent.time;
 				g_bClockIdle = false;
+				if(g_bPlaying)
+					++g_nSongPosition;
 				break;
 			case MIDI_POSITION:
 			{
@@ -160,8 +163,6 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 //				if(g_bDebug)
 					printf("StepJackClient POSITION %d (clocks)\n", nPos);
 				setSongPosition(nPos);
-				if(nPos == 0)
-					setPlayPosition(0, 0);
 				break;
 			}
 			case MIDI_SONG:
@@ -175,7 +176,11 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 				break;
 		}
 		if((midiEvent.buffer[0] == (MIDI_NOTE_ON | PatternManager::getPatternManager()->getTriggerChannel())) && midiEvent.buffer[2])
+		{
 			PatternManager::getPatternManager()->trigger(midiEvent.buffer[1]);
+			if(!g_bPlaying)
+				sendMidiStart();
+		}
 	}
 
 	// Send MIDI output aligned with first sample of frame resulting in similar latency to audio
@@ -514,11 +519,6 @@ uint32_t getStep(uint32_t sequence)
 	return PatternManager::getPatternManager()->getSequence(sequence)->getStep();
 }
 
-void setStep(uint32_t sequence, uint32_t step)
-{
-	PatternManager::getPatternManager()->getSequence(sequence)->setStep(step);
-}
-
 void addPattern(uint32_t sequence, uint32_t position, uint32_t pattern)
 {
 	PatternManager* pPm = PatternManager::getPatternManager();
@@ -701,8 +701,6 @@ uint32_t getBarLength(uint32_t song)
 void startSong()
 {
 	PatternManager::getPatternManager()->startSong();
-//	else
-//		PatternManager::getPatternManager()->getSequence(0)->setPlayState(PLAYING);
 	g_nLastTime = 0;
 	g_nSyncCount = 0;
 	g_bLocked = false;
@@ -712,7 +710,6 @@ void startSong()
 void pauseSong()
 {
 	PatternManager::getPatternManager()->stopSong();
-//	PatternManager::getPatternManager()->getSequence(0)->setPlayState(STOPPED);
 	g_nLastTime = 0;
 	g_bLocked = false;
 	g_bPlaying = false;
@@ -729,11 +726,12 @@ void stopSong()
 void setSongPosition(uint32_t pos)
 {
 	PatternManager::getPatternManager()->setSongPosition(pos);
+	g_nSongPosition = pos;
 }
 
 uint32_t getSongPosition()
 {
-	return PatternManager::getPatternManager()->getSongPosition();
+	return g_nSongPosition;
 }
 
 uint32_t getSong()

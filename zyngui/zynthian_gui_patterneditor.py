@@ -185,15 +185,14 @@ class zynthian_gui_patterneditor():
 		self.loadPattern(pattern)
 		self.parent.libseq.setChannel(self.sequence, channel)
 		# Add menus
-		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':pattern, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'value':4, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':16, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
+		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getPattern, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'getValue':self.parent.libseq.getStepsPerBeat, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'getValue':self.parent.libseq.getSteps, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getCopySource, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
 		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
 		self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'value':16, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':channel+1, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'getValue':self.getVerticalZoom, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.parent.libseq.getClocksPerStep, 'onChange':self.onMenuChange}}})
 		self.setupEncoders()
 		self.main_frame.tkraise()
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
@@ -216,7 +215,7 @@ class zynthian_gui_patterneditor():
 			return
 		self.pianoRollDragStart = event
 		keyboardPlayNote =  self.keyOrigin + self.zoom - int(event.y / self.rowHeight) - 1
-		self.parent.libseq.playNote(keyboardPlayNote, 100, self.parent.libseq.getChannel(0), 200)
+		self.parent.libseq.playNote(keyboardPlayNote, 100, self.parent.libseq.getChannel(self.sequence), 200)
 
 	# Function to handle pianoroll drag motion
 	def onPianoRollDragMotion(self, event):
@@ -457,6 +456,18 @@ class zynthian_gui_patterneditor():
 		self.parent.libseq.copyPattern(self.copySource, self.pattern);
 		self.loadPattern(self.pattern)
 
+	# Function to get pattern index
+	def getPattern(self):
+		return self.pattern
+
+	# Function to get copy source
+	def getCopySource(self):
+		return self.copySource
+
+	# Function to get vertical zoom
+	def getVerticalZoom(self):
+		return self.zoom
+
 	# Function to handle menu editor change
 	#   params: Menu item's parameters
 	#   returns: String to populate menu editor label
@@ -472,7 +483,6 @@ class zynthian_gui_patterneditor():
 		if menuItem == 'Pattern':
 			self.pattern = value
 			self.copySource = value
-			self.parent.setParam('Copy pattern', 'value', value)
 			self.loadPattern(value)
 		elif menuItem == 'Clear pattern':
 			return "Clear pattern %d?" % (self.pattern)
@@ -481,12 +491,8 @@ class zynthian_gui_patterneditor():
 			return "Copy %d=>%d?" % (self.copySource, value)
 		elif menuItem == 'Steps in pattern':
 			self.parent.libseq.setSteps(value)
-			self.parent.setParam(menuItem, 'value', self.parent.libseq.getSteps())
 			self.drawGrid(True)
 			self.selectCell()
-		elif menuItem == 'MIDI channel':
-			self.parent.libseq.setChannel(self.sequence, value - 1);
-			self.parent.setParam(menuItem, 'value', self.parent.libseq.getChannel(self.sequence) + 1)
 		elif menuItem == 'Transpose pattern':
 			if(value != 0):
 				self.parent.libseq.transpose(value)
@@ -506,10 +512,8 @@ class zynthian_gui_patterneditor():
 			self.updateRowHeight()
 			self.drawGrid(True)
 			self.selectCell()
-			self.parent.setParam(menuItem, 'value', value)
 		elif menuItem == 'Clocks per step':
 			self.parent.libseq.setClocksPerStep(value);
-			self.parent.setParam(menuItem, 'value', value)
 		elif menuItem == 'Steps per beat':
 			stepsPerBeat = STEPS_PER_BEAT[value]
 			if stepsPerBeat:
@@ -519,10 +523,8 @@ class zynthian_gui_patterneditor():
 				clocksPerStep = 0
 				self.parent.libseq.setClocksPerStep(24)
 			self.parent.libseq.setStepsPerBeat(stepsPerBeat)
-			self.parent.setParam('Clocks per step', 'value', clocksPerStep)
 			self.drawGrid()
 			self.selectCell()
-			self.parent.setParam(menuItem, 'value', value)
 			value = stepsPerBeat
 		return "%s: %d" % (menuItem, value)
 
@@ -539,10 +541,6 @@ class zynthian_gui_patterneditor():
 		self.drawGrid(True)
 		self.selectCell()
 		self.playCanvas.coords("playCursor", 1, 0, 1 + self.stepWidth, PLAYHEAD_HEIGHT)
-		self.parent.setParam('Steps in pattern', 'value', self.parent.libseq.getSteps())
-		self.parent.setParam('Pattern', 'value', index)
-		self.parent.setParam('Step per beat', 'value', self.parent.libseq.getStepsPerBeat())
-		self.parent.setParam('Clocks per step', 'value', self.parent.libseq.getClocksPerStep())
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
 
 	# Function called when new file loaded from disk
