@@ -348,9 +348,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					midichain_layers.remove(root_layer)
 				for layer in reversed(midichain_layers):
 					self.remove_layer(self.layers.index(layer), False)
-				# Remove fxchain & root_layer 
-				for layer in reversed(self.get_fxchain_layers(root_layer)):
+				# Remove fchain
+				fxchain_layers = self.get_fxchain_layers(root_layer)
+				if len(fxchain_layers)>0:
+					fxchain_layers.remove(root_layer)
+				for layer in reversed(fxchain_layers):
 					self.remove_layer(self.layers.index(layer), False)
+				# Remove root_layer 
+				self.remove_layer(self.layers.index(root_layer), False)
 
 			# Stop unused engines
 			if stop_unused_engines:
