@@ -60,6 +60,19 @@ uint16_t Song::getTempo(uint32_t time)
 	return 120; // If no tempo set then return default tempo
 }
 
+size_t Song::getNextTempoChange(uint32_t time)
+{
+	for(size_t nIndex = 0; nIndex < m_vMasterTrack.size(); ++nIndex)
+	{
+		if(m_vMasterTrack[nIndex]->command != MASTER_EVENT_TEMPO)
+			continue;
+		if(m_vMasterTrack[nIndex]->time < time)
+			continue;
+		return nIndex;
+	}
+	return -1;
+}
+
 void Song::setBar(uint32_t period)
 {
 	m_nBar = period;

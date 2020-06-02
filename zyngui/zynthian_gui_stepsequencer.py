@@ -769,7 +769,6 @@ class zynthian_gui_stepsequencer():
 	# Function to select song
 	#	song: Index of song to select
 	def selectSong(self, song):
-		#TODO: Should we stop song and recue?
 		if song > 0:
 			self.libseq.selectSong(song)
 			self.song = song

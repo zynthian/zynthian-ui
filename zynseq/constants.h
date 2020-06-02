@@ -17,7 +17,7 @@
 #define STARTING		3
 #define LASTPLAYSTATUS	3
 
-//MIDI commands
+// MIDI commands
 #define MIDI_POSITION	0xF2
 #define MIDI_SONG		0xF3
 #define MIDI_CLOCK		0xF8
@@ -27,6 +27,9 @@
 #define MIDI_NOTE_OFF	0x80
 #define MIDI_NOTE_ON	0x90
 #define MIDI_CONTROL	0xB0
+
+// Master track event types
+#define MASTER_EVENT_TEMPO 1
 
 struct MIDI_MESSAGE {
 	uint8_t command;

@@ -10,8 +10,6 @@ struct MasterEvent {
 	uint16_t data;
 };
 
-#define MASTER_EVENT_TEMPO 1
-
 /**	Song class provides a group of sequences
 */
 class Song
@@ -119,9 +117,15 @@ class Song
 		*/
 		void removeMasterEvent(uint32_t time, uint16_t command);
 
+		/**	@brief	Get next tempo change
+		*	@param	time Time from which to search
+		*	@retval	size_t Index of master event describing tempo change
+		*	@note	This may fail if master events are inserted or removed between calls
+		*/
+		size_t getNextTempoChange(uint32_t time);
+
 	private:
 		std::vector<uint32_t> m_vTracks; // Index of sequences representing each track
-		uint32_t m_nSongPosition = 0;
 		uint32_t m_nBar = 96; // Clock cycles per bar / loop point
 		std::vector<MasterEvent*> m_vMasterTrack; // List of master track events
 };

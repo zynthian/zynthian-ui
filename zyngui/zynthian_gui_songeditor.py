@@ -176,7 +176,6 @@ class zynthian_gui_songeditor():
 		self.parent.addMenu({'Song / pads':{'method':self.toggleEditorMode}})
 		self.parent.addMenu({'Copy song':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copySong}}})
 		self.parent.addMenu({'Clear song':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearSong}}})
-		self.parent.addMenu({'Transpose song':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':2, 'value':1, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':self.verticalZoom, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Horizontal zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999 
 		, 'value':64, 'onChange':self.onMenuChange}}})
@@ -446,7 +445,7 @@ class zynthian_gui_songeditor():
 
 		trigger = self.parent.libseq.getTriggerNote(sequence)
 		if trigger < 128:
-			self.trackTitleCanvas.itemconfig(title, text="%s%d (%d,%d)" % (chr(65+group), track + 1, channel, trigger))
+			self.trackTitleCanvas.itemconfig(title, text="%s%d (%d,%s)" % (chr(65+group), track + 1, channel, self.getNote(trigger)))
 		else:
 			self.trackTitleCanvas.itemconfig(title, text="%s%d (%d)" % (chr(65+group), track + 1, channel))
 		self.trackTitleCanvas.itemconfig(modeIcon, image=self.icon[mode])
@@ -691,9 +690,6 @@ class zynthian_gui_songeditor():
 		elif menuItem =='Copy song':
 			self.selectSong()
 			return "Copy %d=>%d?" % (self.copySource, value)
-		elif menuItem == 'Transpose song':
-			#TODO: Add transpose song
-			return "Transpose song +/-"
 		elif menuItem == 'Vertical zoom':
 			self.verticalZoom = value
 			self.updateCellSize()
@@ -742,6 +738,8 @@ class zynthian_gui_songeditor():
 			self.trigger = value
 			if value > 127:
 				return "Trigger: None"
+			else:
+				return "Trigger: %s%d" % self.getNote(value)
 		elif menuItem == "Pattern":
 			self.setPattern(value)
 		elif menuItem == "Tracks":
@@ -758,6 +756,15 @@ class zynthian_gui_songeditor():
 	def setClocksPerDivision(self, clocks):
 		if clocks:
 			self.clocksPerDivision = clocks
+
+	# Function to get (note name, octave)
+	#	note: MIDI note number
+	#	returns: String containing note name and octave number, e.g. "C#4"
+	def getNote(self, note):
+		notes = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
+		noteName = notes[note % 12]
+		octave = int(note / 12) - 1
+		return "%s%d" % (noteName, octave)
 
 	# Function to get MIDI channel of selected track
 	#	returns: MIDI channel

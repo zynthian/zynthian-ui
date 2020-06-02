@@ -121,9 +121,16 @@ class PatternManager
         void stopSong();
 
         /** Set song play position
-        *   @param  pos Song position
+        *   @param pos Song position
         */
         void setSongPosition(uint32_t pos);
+
+        /** Set sequence play state
+        *   @param sequence Sequence index
+        *   @param state Play state
+        *   @note  Stops other sequences in group
+        */
+        void setSequencePlayState(uint32_t sequence, uint8_t state);
 
         /** @brief  Get MIDI note number used to trigger sequence
         *   @param  sequence Index of sequence

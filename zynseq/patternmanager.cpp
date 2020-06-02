@@ -432,7 +432,7 @@ void PatternManager::clearSong(uint32_t song)
 
 void PatternManager::startSong()
 {
-	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong].getTracks(); ++ nTrack)
+	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong].getTracks(); ++nTrack)
 	{
 		uint32_t sequence = m_mSongs[m_nCurrentSong].getSequence(nTrack);
 		m_mSequences[sequence].setPlayState(PLAYING);
@@ -441,7 +441,7 @@ void PatternManager::startSong()
 
 void PatternManager::stopSong()
 {
-	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong].getTracks(); ++ nTrack)
+	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong].getTracks(); ++nTrack)
 	{
 		uint32_t sequence = m_mSongs[m_nCurrentSong].getSequence(nTrack);
 		m_mSequences[sequence].setPlayState(STOPPED);
@@ -453,6 +453,21 @@ void PatternManager::setSongPosition(uint32_t pos)
 	size_t nTrack = 0;
 	while(uint32_t nSequence = m_mSongs[m_nCurrentSong].getSequence(nTrack++))
 		m_mSequences[nSequence].setPlayPosition(pos);
+}
+
+void PatternManager::setSequencePlayState(uint32_t sequence, uint8_t state)
+{
+	if(m_nCurrentSong && state == STARTING || state == PLAYING)
+	{
+		uint8_t nGroup = m_mSequences[sequence].getGroup();
+		for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong + 1000].getTracks(); ++nTrack)
+		{
+			uint32_t nSequence = m_mSongs[m_nCurrentSong + 1000].getSequence(nTrack);
+			if(m_mSequences[nSequence].getGroup() == nGroup && m_mSequences[nSequence].getPlayState() != STOPPED)
+				m_mSequences[nSequence].setPlayState(STOPPING);
+		}
+	}
+	m_mSequences[sequence].setPlayState(state);
 }
 
 uint8_t PatternManager::getTriggerNote(uint32_t sequence)
@@ -491,6 +506,26 @@ bool PatternManager::trigger(uint8_t note)
 void PatternManager::setCurrentSong(uint32_t song)
 {
 	m_nCurrentSong = song;
+	if(m_mSongs[song].getTracks() == 0)
+		for(size_t nIndex = 0; nIndex < 16; ++nIndex)
+		{
+			uint32_t nTrack = addTrack(song);
+			uint32_t nSequence = m_mSongs[song].getSequence(nTrack);
+			m_mSequences[nSequence].setChannel(nIndex);
+			m_mSequences[nSequence].setTrigger(nIndex + 60);
+			m_mSequences[nSequence].setGroup(nIndex / 4);
+			m_mSequences[nSequence].setPlayMode(ONESHOT);
+		}
+	if(m_mSongs[song + 1000].getTracks() == 0)
+		for(size_t nIndex = 0; nIndex < 16; ++nIndex)
+		{
+			uint32_t nTrack = addTrack(song + 1000);
+			uint32_t nSequence = m_mSongs[song + 1000].getSequence(nTrack);
+			m_mSequences[nSequence].setChannel(nIndex);
+			m_mSequences[nSequence].setTrigger(nIndex + 60);
+			m_mSequences[nSequence].setGroup(nIndex / 4);
+			m_mSequences[nSequence].setPlayMode(LOOPALL);
+		}
 }
 
 uint32_t PatternManager::getCurrentSong()

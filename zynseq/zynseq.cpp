@@ -55,12 +55,25 @@ uint8_t g_nPllCount = 0; // Quantity of clock cycles to count before PLL is flag
 bool g_bLocked = false; // True when locked to MIDI clock
 bool g_bPlaying = false; // Local interpretation of play status
 
+struct TEMPO_CHANGE {
+	uint32_t time = 0;
+	uint32_t tempo = 120;
+} g_tempoChange;
+
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
 void debug(bool bEnable)
 {
 	printf("libseq setting debug mode %s\n", bEnable?"on":"off");
 	g_bDebug = bEnable;
+}
+
+void updateTempoChange()
+{
+	Song* pSong = PatternManager::getPatternManager()->getSong(PatternManager::getPatternManager()->getCurrentSong());
+	size_t nIndex = pSong->getNextTempoChange(g_nSongPosition + 1);
+	g_tempoChange.time = pSong->getMasterEventTime(nIndex);
+	g_tempoChange.tempo = pSong->getMasterEventData(nIndex);
 }
 
 void onClock()
@@ -94,7 +107,15 @@ void onClock()
 					printf("+\n");
 			}
 			if(g_bPlaying)
+			{
 				PatternManager::getPatternManager()->clock(g_nClockEventTime + g_nBufferSize, &g_mSchedule, bSync);
+				if(g_tempoChange.time == g_nSongPosition)
+				{
+					//!@todo Now what? We need to set the tempo of a clock we don't have access to!!!
+					printf("Tempo change to %dBPM at %d\n", g_tempoChange.tempo, g_nSongPosition);
+					updateTempoChange();
+				}
+			}
 
 			// Check for clock drift
 			int nOffset = nClockPeriod - g_nSamplesPerClock;
@@ -139,19 +160,19 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		switch(midiEvent.buffer[0])
 		{
 			case MIDI_STOP:
-//				if(g_bDebug)
+				if(g_bDebug)
 					printf("StepJackClient MIDI STOP\n");
 				//!@todo Send note off messages
 				pauseSong();
 				break;
 			case MIDI_START:
-//				if(g_bDebug)
+				if(g_bDebug)
 					printf("StepJackClient MIDI START\n");
 				stopSong();
 				startSong();
 				break;
 			case MIDI_CONTINUE:
-//				if(g_bDebug)
+				if(g_bDebug)
 					printf("StepJackClient MIDI CONTINUE\n");
 				startSong();
 				break;
@@ -167,13 +188,13 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			case MIDI_POSITION:
 			{
 				uint32_t nPos = (midiEvent.buffer[1] + (midiEvent.buffer[2] << 7)) * 6;
-//				if(g_bDebug)
+				if(g_bDebug)
 					printf("StepJackClient POSITION %d (clocks)\n", nPos);
 				setSongPosition(nPos);
 				break;
 			}
 			case MIDI_SONG:
-//				if(g_bDebug)
+				if(g_bDebug)
 					printf("StepJackClient Select song %d\n", midiEvent.buffer[1]);
 				PatternManager::getPatternManager()->setCurrentSong(midiEvent.buffer[1] + 1);
 				break;
@@ -185,7 +206,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		// Handle MIDI Note On events to trigger sequences
 		if((midiEvent.buffer[0] == (MIDI_NOTE_ON | PatternManager::getPatternManager()->getTriggerChannel())) && midiEvent.buffer[2])
 		{
-			printf("MIDI NOTE ON\n");
+			printf("MIDI NOTE ON %d\n", midiEvent.buffer[1]);
 			if(PatternManager::getPatternManager()->trigger(midiEvent.buffer[1]) && !g_bPlaying)
 				sendMidiStart();
 		}
@@ -580,7 +601,7 @@ uint8_t getPlayState(uint32_t sequence)
 
 void setPlayState(uint32_t sequence, uint8_t state)
 {
-	PatternManager::getPatternManager()->getSequence(sequence)->setPlayState(state);
+	PatternManager::getPatternManager()->setSequencePlayState(sequence, state);
 }
 
 void togglePlayState(uint32_t sequence)
@@ -735,6 +756,7 @@ void setSongPosition(uint32_t pos)
 	PatternManager::getPatternManager()->setSongPosition(pos);
 	g_nPllCount = 0;
 	g_nSongPosition = pos;
+	updateTempoChange();
 }
 
 uint32_t getSongPosition()
