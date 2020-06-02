@@ -204,13 +204,13 @@ class zynthian_gui_keybinding:
 		try:
 			with open(config_fpath, "r") as fh:
 				yml = fh.read()
-				logging.debug("Loading keyboard binding config file {} =>\n{}".format(config_fpath,yml))
+				logging.debug("Loading keyboard binding config file '{}' =>\n{}".format(config_fpath,yml))
 				self.config = yaml.load(yml, Loader=yaml.SafeLoader)
 				self.parse_map()
 				return True
 
 		except Exception as e:
-			logging.warning("Can't load keyboard binding config file '{}'. Using default.".format(config_fpath))
+			logging.debug("Loading default keyboard bindings.")
 			self.reset_config()
 			return False
 
