@@ -316,7 +316,6 @@ def midi_autoconnect(force=False):
 	# => Get Root-engines info
 	root_engine_info = {}
 	for mcrl in midichain_roots:
-		logger.debug("MIDI ROOT ENGINE INFO: {}".format(mcrl.get_midi_jackname()))
 		if mcrl.get_midi_jackname():
 			jackname = mcrl.get_midi_jackname()
 			if jackname in root_engine_info:
@@ -331,6 +330,7 @@ def midi_autoconnect(force=False):
 					}
 
 	for jn, info in root_engine_info.items():
+		logger.debug("MIDI ROOT ENGINE INFO: {} => {}".format(jn, info))
 		if None in info['chans']:
 			try:
 				jclient.connect(zmr_out['main_out'], info['port'])
