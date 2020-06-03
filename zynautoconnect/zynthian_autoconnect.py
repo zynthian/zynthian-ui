@@ -38,7 +38,7 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = logging.WARNING
+log_level = logging.DEBUG
 
 logger=logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -316,9 +316,10 @@ def midi_autoconnect(force=False):
 	# => Get Root-engines info
 	root_engine_info = {}
 	for mcrl in midichain_roots:
+		logger.debug("MIDI ROOT ENGINE INFO: {}".format(mcrl.get_midi_jackname()))
 		if mcrl.get_midi_jackname():
 			jackname = mcrl.get_midi_jackname()
-			if jackname in root_engine_info and mcrl.midi_chan is not None:
+			if jackname in root_engine_info:
 				root_engine_info[jackname]['chans'].append(mcrl.midi_chan)
 			else:
 				port_name = get_fixed_midi_port_name(jackname)
