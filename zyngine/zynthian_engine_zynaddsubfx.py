@@ -148,7 +148,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	def add_layer(self, layer):
 		self.layers.append(layer)
 		layer.part_i = self.get_free_parts()[0]
-		layer.jackname = "{}:part{}".format(self.jackname, layer.part_i)
+		layer.jackname = "{}:part{}/".format(self.jackname, layer.part_i)
 		logging.debug("ADD LAYER => Part {} ({})".format(layer.part_i, self.jackname))
 
 
