@@ -64,6 +64,7 @@ class zynthian_gui_stepsequencer():
 		self.zyncoderOwner = [None, None, None, None] # Object that is currently "owns" encoder, indexed by encoder
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.child = None # Pointer to instance of child panel
+		self.lastchild = 1 # Index of last child shown - used to return to same screen
 		self.song = 1 # The song that will play / edit (may be different to libseq.getSong, e.g. when editing patter)
 
 		# Initalise libseq and load pattern from file
@@ -720,7 +721,10 @@ class zynthian_gui_stepsequencer():
 		if not self.shown:
 			return
 		self.hideChild()
-		if childIndex == None or childIndex == 1:
+		if childIndex == None:
+			childIndex = self.lastchild
+		self.lastchild = childIndex # A bit contrived but it allows us to return to same panel
+		if childIndex == 1:
 			self.libseq.selectSong(self.song)
 			self.child = self.songEditor
 		elif childIndex == 0:

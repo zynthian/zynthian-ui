@@ -242,6 +242,21 @@ void clear();
 */
 void copyPattern(uint32_t source, uint32_t destination);
 
+/**	@brief	Set MIDI input channel
+*	@param	channel MIDI channel [0..16]
+*	@note	>16 to disable MIDI input
+*/
+void setInputChannel(uint8_t channel);
+
+/**	@brief	Get MIDI input channel
+*	@retval	uint8_t MIDI channel [0..15, 0xFF if disabled]
+*/
+uint8_t getInputChannel();
+
+/**	@brief	Check if pattern has changed since last check
+*	@retval	bool True if pattern has changed
+*/
+bool isModified();
 
 // ** Sequence management functions **
 
@@ -249,8 +264,10 @@ void copyPattern(uint32_t source, uint32_t destination);
 *	@param	sequence Index of sequence
 *	@param	position Quantity of clock cycles from start of sequence at which to add pattern
 *	@param	pattern Index of pattern
+*	@param	force True to remove overlapping patterns, false to fail if overlapping patterns 
+*	@retval	True if pattern inserted
 */
-void addPattern(uint32_t sequence, uint32_t position, uint32_t pattern);
+bool addPattern(uint32_t sequence, uint32_t position, uint32_t pattern, bool force);
 
 /**	@brief	Remove pattern to a sequence
 *	@param	sequence Index of sequence

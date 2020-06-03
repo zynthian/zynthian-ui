@@ -413,8 +413,8 @@ class zynthian_gui_songeditor():
 	def addEvent(self, div, track):
 		time = div * self.clocksPerDivision
 		sequence = self.parent.libseq.getSequence(self.song, track)
-		self.parent.libseq.addPattern(sequence, time, self.pattern)
-		self.drawTrack(track)
+		if self.parent.libseq.addPattern(sequence, time, self.pattern, False):
+			self.drawTrack(track)
 
 	# Function to draw track
 	#	track: Track index
@@ -431,17 +431,17 @@ class zynthian_gui_songeditor():
 		channel = self.parent.libseq.getChannel(sequence) + 1
 		group = self.parent.libseq.getGroup(sequence)
 		mode = self.parent.libseq.getPlayMode(sequence)
-		title = self.trackTitleCanvas.find_withtag('rowtitle%d'%(row))
-		modeIcon = self.trackTitleCanvas.find_withtag('rowicon%d'%(row))
+		title = self.trackTitleCanvas.find_withtag('rowtitle:%d'%(row))
+		modeIcon = self.trackTitleCanvas.find_withtag('rowicon:%d'%(row))
 		titleBack = self.trackTitleCanvas.find_withtag('rowback:%d'%(row))
 
 		if not titleBack:
-			titleBack = self.trackTitleCanvas.create_rectangle(0, self.rowHeight * row, self.trackTitleWidth, (1 + row) * self.rowHeight, tags=('rowback:%d'%(row)))
+			titleBack = self.trackTitleCanvas.create_rectangle(0, self.rowHeight * row, self.trackTitleWidth, (1 + row) * self.rowHeight, tags=('rowback:%d'%(row), 'tracktitle'))
 		if not title:
 			font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
-			title = self.trackTitleCanvas.create_text((0, self.rowHeight * (row + 0.5)), font=font, fill=CELL_FOREGROUND, tags=("rowtitle%d" % (row),"trackname"), anchor="w")
+			title = self.trackTitleCanvas.create_text((0, self.rowHeight * (row + 0.5)), font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row),"trackname", 'tracktitle'), anchor="w")
 		if not modeIcon:
-			modeIcon = self.trackTitleCanvas.create_image(self.trackTitleWidth, row * self.rowHeight, anchor='ne', tags=('rowicon%d'%(row)))
+			modeIcon = self.trackTitleCanvas.create_image(self.trackTitleWidth, row * self.rowHeight, anchor='ne', tags=('rowicon:%d'%(row), 'tracktitle'))
 
 		trigger = self.parent.libseq.getTriggerNote(sequence)
 		if trigger < 128:
@@ -455,7 +455,7 @@ class zynthian_gui_songeditor():
 			fill = self.padColourStoppedEven
 		self.trackTitleCanvas.itemconfig(titleBack, fill=fill)
 		
-		self.trackTitleCanvas.tag_bind(titleBack, "<Button-1>", self.onTrackClick)
+		self.trackTitleCanvas.tag_bind('tracktitle', "<Button-1>", self.onTrackClick)
 
 		for col in range(self.horizontalZoom):
 			self.drawCell(col, row)
@@ -739,7 +739,7 @@ class zynthian_gui_songeditor():
 			if value > 127:
 				return "Trigger: None"
 			else:
-				return "Trigger: %s%d" % self.getNote(value)
+				return "Trigger: %s" % self.getNote(value)
 		elif menuItem == "Pattern":
 			self.setPattern(value)
 		elif menuItem == "Tracks":
@@ -774,12 +774,13 @@ class zynthian_gui_songeditor():
 		channel = self.parent.libseq.getChannel(sequence) + 1
 		return channel
 
-	# Function to load new pattern
+	# Function to display song
 	def selectSong(self):
 		song = self.parent.libseq.getSong()
 		if song != 0:
 			self.song = song
 		self.parent.setParam('Tempo', 'value', self.parent.libseq.getTempo(self.song))
+		self.zyngui.zyntransport.locate(self.position) #TODO: Ideally remember last position
 		if self.editorMode:
 			self.parent.setTitle("Pad Editor (%d)" % (self.song))
 			self.song = self.song + 1000

@@ -50,6 +50,10 @@ jack_nframes_t g_nClockEventTimeOffset;
 uint32_t g_nSyncPeriod = 96; // Time between sync pulses (clock cycles)
 uint32_t g_nSyncCount = 0; // Time since last sync pulse (clock cycles)
 uint32_t g_nSongPosition = 0; // Clocks since start of song
+uint32_t g_nSongLength = 0; // Clocks cycles to end of song
+bool g_bModified = false; // True if pattern has changed since last check
+
+uint8_t g_nInputChannel = 1; // MIDI input channel (>15 to disable MIDI input)
 
 uint8_t g_nPllCount = 0; // Quantity of clock cycles to count before PLL is flagged as locked
 bool g_bLocked = false; // True when locked to MIDI clock
@@ -83,7 +87,6 @@ void onClock()
 		while(g_bClockIdle)
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		g_bClockIdle = true;
-//		printf("Clock at %u (+%u)\n", g_nClockEventTime, g_nClockEventTimeOffset);
 		//	Check if clock pulse duration is significantly different to last. If so, set sequence clock rates.
 		int nClockPeriod = g_nClockEventTime - g_nLastTime;
 		if(g_nLastTime && !g_bLocked)// && ++g_nPllCount > 2) //!@todo Can reduce PLL count below 2 - maybe lose completely because g_nLastTime check ensures at least on loop
@@ -112,7 +115,7 @@ void onClock()
 				if(g_tempoChange.time == g_nSongPosition)
 				{
 					//!@todo Now what? We need to set the tempo of a clock we don't have access to!!!
-					printf("Tempo change to %dBPM at %d\n", g_tempoChange.tempo, g_nSongPosition);
+					printf("Tempo change to %d BPM at %d\n", g_tempoChange.tempo, g_nSongPosition);
 					updateTempoChange();
 				}
 			}
@@ -127,6 +130,17 @@ void onClock()
 					printf("Drift... setting clock rates to %u\n", nClockPeriod);
 				PatternManager::getPatternManager()->setSequenceClockRates(nClockPeriod);
 			}
+
+			// Check for end of song
+			//!@todo song length should really be a property of the song class
+/*
+			if(g_nSongPosition >= g_nSongLength)
+			{
+				printf("Passed end of song (%d)\n", g_nSongLength);
+				if(PatternManager::getPatternManager()->getCurrentSong() == 0 || PatternManager::getPatternManager()->getCurrentSong() > 1000)
+					setSongPosition(0);
+			}
+*/
 		}
 	}
 }
@@ -206,9 +220,27 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		// Handle MIDI Note On events to trigger sequences
 		if((midiEvent.buffer[0] == (MIDI_NOTE_ON | PatternManager::getPatternManager()->getTriggerChannel())) && midiEvent.buffer[2])
 		{
-			printf("MIDI NOTE ON %d\n", midiEvent.buffer[1]);
 			if(PatternManager::getPatternManager()->trigger(midiEvent.buffer[1]) && !g_bPlaying)
 				sendMidiStart();
+		}
+		if(PatternManager::getPatternManager()->getCurrentSong() == 0 && g_nInputChannel < 16 && (midiEvent.buffer[0] == (MIDI_NOTE_ON | g_nInputChannel)) && midiEvent.buffer[2])
+		{
+			if(g_pPattern)
+			{
+				Sequence* pSeq = PatternManager::getPatternManager()->getSequence(1);
+				uint32_t nStep = pSeq->getStep();
+				if(getNoteVelocity(nStep, midiEvent.buffer[1]))
+					g_pPattern->removeNote(nStep, midiEvent.buffer[1]);
+				else
+					g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
+				if(!g_bPlaying)
+				{
+					if(++nStep >= g_pPattern->getSteps())
+						nStep = 0;
+					pSeq->setStep(nStep);
+				}
+				g_bModified = true;
+			}
 		}
 	}
 
@@ -462,7 +494,7 @@ void setSteps(uint32_t steps)
 {
 	if(g_pPattern)
 		g_pPattern->setSteps(steps);
-	PatternManager::getPatternManager()->updateSequenceLengths();
+	g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(0);
 }
 
 uint32_t getClocksPerStep()
@@ -476,7 +508,7 @@ void setClocksPerStep(uint32_t divisor)
 {
 	if(g_pPattern)
 		g_pPattern->setClocksPerStep(divisor);
-	PatternManager::getPatternManager()->updateSequenceLengths();
+	g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(0);
 }
 
 uint32_t getStepsPerBeat()
@@ -541,6 +573,17 @@ void copyPattern(uint32_t source, uint32_t destination)
 	PatternManager::getPatternManager()->copyPattern(source, destination);
 }
 
+void setInputChannel(uint8_t channel)
+{
+	if(channel > 15)
+		g_nInputChannel = 0xFF;
+	g_nInputChannel = channel;
+}
+
+uint8_t getInputChannel()
+{
+	return g_nInputChannel;
+}
 
 // ** Sequence management functions **
 
@@ -549,16 +592,19 @@ uint32_t getStep(uint32_t sequence)
 	return PatternManager::getPatternManager()->getSequence(sequence)->getStep();
 }
 
-void addPattern(uint32_t sequence, uint32_t position, uint32_t pattern)
+bool addPattern(uint32_t sequence, uint32_t position, uint32_t pattern, bool force)
 {
 	PatternManager* pPm = PatternManager::getPatternManager();
-	pPm->getSequence(sequence)->addPattern(position, pPm->getPattern(pattern));
+	bool bUpdated = pPm->getSequence(sequence)->addPattern(position, pPm->getPattern(pattern), force);
+	g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(pPm->getCurrentSong());
+	return bUpdated;
 }
 
 void removePattern(uint32_t sequence, uint32_t position)
 {
 	PatternManager* pPm = PatternManager::getPatternManager();
 	pPm->getSequence(sequence)->removePattern(position);
+	g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(pPm->getCurrentSong());
 }
 
 uint32_t getPattern(uint32_t sequence, uint32_t position)
@@ -626,7 +672,9 @@ uint32_t getSequenceLength(uint32_t sequence)
 
 void clearSequence(uint32_t sequence)
 {
+	// This is only used by pattern editor
 	PatternManager::getPatternManager()->getSequence(sequence)->clear();
+	g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(0);
 }
 
 void setSyncPeriod(uint32_t period)
@@ -665,6 +713,7 @@ uint32_t addTrack(uint32_t song)
 void removeTrack(uint32_t song, uint32_t track)
 {
 	PatternManager::getPatternManager()->removeTrack(song, track);
+	g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);
 }
 
 void setTempo(uint32_t song, uint32_t tempo, uint32_t time)
@@ -710,6 +759,7 @@ uint32_t getSequence(uint32_t song, uint32_t track)
 void clearSong(uint32_t song)
 {
 	PatternManager::getPatternManager()->clearSong(song);
+	g_nSongLength = 0;
 }
 
 void copySong(uint32_t source, uint32_t destination)
@@ -771,6 +821,19 @@ uint32_t getSong()
 
 void selectSong(uint32_t song)
 {
+	if(g_bDebug)
+		printf("Selecting song %d\n", song);
 	stopSong();
 	PatternManager::getPatternManager()->setCurrentSong(song);
+	g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);
+}
+
+bool isModified()
+{
+	if(g_bModified)
+	{
+		g_bModified = false;
+		return true;
+	}
+	return false;
 }

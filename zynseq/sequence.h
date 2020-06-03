@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 #include "pattern.h"
 #include <map>
 #include <forward_list>
@@ -27,9 +26,10 @@ class Sequence
 		/**	@brief	Add pattern to sequence
 		*	@param	position Quantity of clock cycles from start of sequence at which to add pattern
 		*	@param	pattern Pointer to pattern to add
-		*	@note	Overlapping patterns will be removed
+		*	@param	force True to remove overlapping patterns, false to fail if overlapping patterns (Default: false)
+		*	@retval	bool True if pattern added
 		*/
-		void addPattern(uint32_t position, Pattern* pattern);
+		bool addPattern(uint32_t position, Pattern* pattern, bool force = false);
 
 		/**	@brief	Remove pattern from sequence
 		*	@param	position Quantity of clock cycles from start of sequence at which pattern starts
@@ -101,8 +101,9 @@ class Sequence
 		SEQ_EVENT* getEvent();
 
 		/**	@brief	Update length of sequence by iterating through all patterns to find last clock cycle
+		*	'retval	uint32_t Duration of sequence in clock cycles
 		*/
-		void updateLength();
+		uint32_t updateLength();
 
 		/**	@brief	Get duration of sequence in clock cycles
 		*	@retval	uint32_t Length of sequence in clock cycles
@@ -117,6 +118,11 @@ class Sequence
 		*	@retval	uint32_t Quantity of steps from start of pattern to playhead
 		*/
 		uint32_t getStep();
+
+		/**	@brief	Set position of playhead within currently playing pattern
+		*	@param	uint32_t Quantity of steps from start of pattern to playhead
+		*/
+		void setStep(uint32_t step);
 
 		/**	@brief	Get position of playhead within currently playing pattern
 		*	@retval	uint32_t Quantity of clock cycles from start of pattern to playhead
@@ -177,7 +183,7 @@ class Sequence
 		std::map<uint32_t,Pattern*> m_mPatterns; // Map of pointers to patterns, indexed by start position
 		int m_nCurrentPattern = -1; // Start position of pattern currently being played
 		int m_nNextEvent = -1; // Index of next event to process or -1 if no more events at this clock cycle
-		int8_t m_nEventValue; // Value of event at current interpolation point or -1 if no event
+		int8_t m_nEventValue = -1; // Value of event at current interpolation point or -1 if no event
 		uint32_t m_nCurrentTime = 0; // Time of last clock pulse (sample)
 		uint32_t m_nPatternCursor = 0; // Postion within pattern (step)
 		uint32_t m_nSequenceLength = 0; // Quantity of clock cycles in sequence (last pattern start + length)

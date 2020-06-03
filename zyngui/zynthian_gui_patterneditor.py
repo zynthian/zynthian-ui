@@ -186,6 +186,7 @@ class zynthian_gui_patterneditor():
 		self.parent.libseq.setChannel(self.sequence, channel)
 		# Add menus
 		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getPattern, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Input channel':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':16, 'getValue':self.getInputChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'getValue':self.parent.libseq.getStepsPerBeat, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'getValue':self.parent.libseq.getSteps, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getCopySource, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
@@ -460,6 +461,13 @@ class zynthian_gui_patterneditor():
 	def getPattern(self):
 		return self.pattern
 
+	# Function to get pattern index
+	def getInputChannel(self):
+		channel = self.parent.libseq.getInputChannel() + 1
+		if channel > 16:
+			channel = 0
+		return channel
+
 	# Function to get copy source
 	def getCopySource(self):
 		return self.copySource
@@ -484,6 +492,11 @@ class zynthian_gui_patterneditor():
 			self.pattern = value
 			self.copySource = value
 			self.loadPattern(value)
+		elif menuItem == 'Input channel':
+			if value == 0:
+				self.parent.libseq.setInputChannel(0xFF)
+				return 'Input channel: None'
+			self.parent.libseq.setInputChannel(value - 1)
 		elif menuItem == 'Clear pattern':
 			return "Clear pattern %d?" % (self.pattern)
 		elif menuItem =='Copy pattern':
@@ -556,6 +569,8 @@ class zynthian_gui_patterneditor():
 			if self.shown:
 				# Draw play head cursor
 				self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
+		if self.parent.libseq.isModified():
+			self.drawGrid();
 
 	# Function to handle zyncoder value change
 	#   encoder: Zyncoder index [0..4]

@@ -65,10 +65,12 @@ class PatternManager
         */
         Sequence* getSequence(uint32_t sequence);
 
-        /** @brief  Update all sequence lengths
+        /** @brief  Update sequence lengths in current song
+        /** @param  song Index of song to update
+        *   @retval uint32_t Clock cycle of end of last sequence in current song
         *   @note   Blunt tool to update each sequence after any pattern length changes
         */
-        void updateSequenceLengths();
+        uint32_t updateSequenceLengths(uint32_t song);
 
         /** @brief  Handle clock
         *   @param  nTime Offset since JACK epoch for start of next period

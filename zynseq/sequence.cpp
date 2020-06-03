@@ -10,9 +10,9 @@ Sequence::~Sequence()
 {
 }
 
-void Sequence::addPattern(uint32_t position, Pattern* pattern)
+bool Sequence::addPattern(uint32_t position, Pattern* pattern, bool force)
 {
-	// Find and remove overlapping patterns
+	// Find (and remove) overlapping patterns
 	uint32_t nStart = position;
 	uint32_t nEnd = nStart + pattern->getLength();
 	for(uint32_t nClock = 0; nClock <= position + pattern->getLength(); ++nClock)
@@ -25,6 +25,8 @@ void Sequence::addPattern(uint32_t position, Pattern* pattern)
 
 			if((nStart >= nExistingStart && nStart < nExistingEnd) || (nEnd > nExistingStart && nEnd <= nExistingEnd))
 			{
+				if(!force)
+					return false;
 				// Found overlapping pattern so remove from sequence but don't delete (that is responsibility of PatternManager)
 				m_mPatterns.erase(nClock);
 				if(m_nCurrentPattern == nClock)
@@ -34,7 +36,8 @@ void Sequence::addPattern(uint32_t position, Pattern* pattern)
 	}
 	m_mPatterns[position] = pattern;
 	if(m_nSequenceLength < position + pattern->getLength())
-		m_nSequenceLength = position + pattern->getLength();
+		m_nSequenceLength = position + pattern->getLength(); //!@todo Does this shrink and stretch song?
+	return true;
 }
 
 void Sequence::removePattern(uint32_t position)
@@ -187,7 +190,6 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 
 SEQ_EVENT* Sequence::getEvent()
 {
-	//printf("Sequence::getEvent state: %d pattern:%d nextevent:%d\n", m_nState, m_nCurrentPattern, m_nNextEvent);
 	// This function is called repeatedly for each clock period until no more events are available to populate JACK MIDI output schedule
 	static SEQ_EVENT seqEvent; // A MIDI event timestamped for some imminent or future time
 	if(m_nState == STOPPED || m_nCurrentPattern < 0 || m_nNextEvent < 0)
@@ -230,12 +232,13 @@ SEQ_EVENT* Sequence::getEvent()
 	return &seqEvent;
 }
 
-void Sequence::updateLength()
+uint32_t Sequence::updateLength()
 {
 	m_nSequenceLength = 0;
 	for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
 		if(it->first + it->second->getLength() > m_nSequenceLength)
 			m_nSequenceLength = it->first + it->second->getLength();
+	return m_nSequenceLength;
 }
 
 uint32_t Sequence::getLength()
@@ -259,6 +262,11 @@ void Sequence::clear()
 uint32_t Sequence::getStep()
 {
 	return m_nPatternCursor;
+}
+
+void Sequence::setStep(uint32_t step)
+{
+	m_nPatternCursor = step;
 }
 
 uint32_t Sequence::getPatternPlayhead()
@@ -325,8 +333,6 @@ void Sequence::setPlayPosition(uint32_t clock)
 				break;
 		}
 	}
-
-	//printf("Sequence::setPlayPosition song pos: %d, pattern cursor: %d, next event: %d, divcount: %u\n", m_nPosition, m_nPatternCursor, m_nNextEvent, m_nDivCount);
 }
 
 uint32_t Sequence::getNextPattern(uint32_t previous)

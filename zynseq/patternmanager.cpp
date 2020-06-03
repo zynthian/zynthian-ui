@@ -338,10 +338,17 @@ Sequence* PatternManager::getSequence(uint32_t sequence)
 	return &(m_mSequences[sequence]);
 }
 
-void PatternManager::updateSequenceLengths()
+uint32_t PatternManager::updateSequenceLengths(uint32_t song)
 {
-	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
-		it->second.updateLength();
+	uint32_t nSongLength = 0;
+	size_t nTrack = 0;
+	while(uint32_t nSeq = m_mSongs[song].getSequence(nTrack++))
+	{
+		uint32_t nSeqLen = m_mSequences[nSeq].updateLength();
+		if(nSeqLen > nSongLength)
+			nSongLength = nSeqLen;
+	}
+	return nSongLength;
 }
 
 void PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync)
@@ -365,8 +372,9 @@ inline void PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uin
 			{
 				while(pSchedule->find(pEvent->time) != pSchedule->end())
 					++(pEvent->time);
-				(*pSchedule)[pEvent->time] = new MIDI_MESSAGE(pEvent->msg);
-				//printf("Scheduling event 0x%x 0x%x 0x%x at %d\n", pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
+				MIDI_MESSAGE* pNewEvent  = new MIDI_MESSAGE(pEvent->msg);
+				(*pSchedule)[pEvent->time] = pNewEvent;
+//				printf("Time: %d Scheduling event 0x%x 0x%x 0x%x at %d\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
 			}
 		}
 	}
@@ -404,11 +412,14 @@ uint32_t PatternManager::addTrack(uint32_t song)
 
 void PatternManager::removeTrack(uint32_t song, uint32_t track)
 {
+	// Remove sequence from m_mSequences, m_mSongSequences, m_mTriggers, track from song
 	uint32_t sequence = m_mSongs[song].getSequence(track);
 	if(sequence)
 	{
 		m_mSongSequences.erase(sequence);
+		setTriggerNote(sequence, -1);
 		m_mSongs[song].removeTrack(track);
+		m_mSequences.erase(sequence);
 	}
 }
 
@@ -463,7 +474,9 @@ void PatternManager::setSequencePlayState(uint32_t sequence, uint8_t state)
 		for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong + 1000].getTracks(); ++nTrack)
 		{
 			uint32_t nSequence = m_mSongs[m_nCurrentSong + 1000].getSequence(nTrack);
-			if(m_mSequences[nSequence].getGroup() == nGroup && m_mSequences[nSequence].getPlayState() != STOPPED)
+			if(m_mSequences[nSequence].getGroup() == nGroup && m_mSequences[nSequence].getPlayState() == STARTING)
+				m_mSequences[nSequence].setPlayState(STOPPED);
+			else if(m_mSequences[nSequence].getGroup() == nGroup && m_mSequences[nSequence].getPlayState() != STOPPED)
 				m_mSequences[nSequence].setPlayState(STOPPING);
 		}
 	}
@@ -512,8 +525,7 @@ void PatternManager::setCurrentSong(uint32_t song)
 			uint32_t nTrack = addTrack(song);
 			uint32_t nSequence = m_mSongs[song].getSequence(nTrack);
 			m_mSequences[nSequence].setChannel(nIndex);
-			m_mSequences[nSequence].setTrigger(nIndex + 60);
-			m_mSequences[nSequence].setGroup(nIndex / 4);
+			m_mSequences[nSequence].setGroup(nIndex);
 			m_mSequences[nSequence].setPlayMode(ONESHOT);
 		}
 	if(m_mSongs[song + 1000].getTracks() == 0)

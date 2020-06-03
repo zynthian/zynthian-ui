@@ -32,7 +32,7 @@
 #define MASTER_EVENT_TEMPO 1
 
 struct MIDI_MESSAGE {
-	uint8_t command;
-	uint8_t value1;
-	uint8_t value2;
+	uint8_t command = 0;
+	uint8_t value1 = 0;
+	uint8_t value2 = 0;
 };
