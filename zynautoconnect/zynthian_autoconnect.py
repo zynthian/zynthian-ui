@@ -190,7 +190,7 @@ def midi_autoconnect(force=False):
 	#Get Engines MIDI input ports
 	engines_in={}
 	for k, zyngine in zyngine_list.items():
-		if zyngine.jackname and zyngine.type in ("MIDI Synth", "MIDI Tool"):
+		if zyngine.jackname and zyngine.type in ("MIDI Synth", "MIDI Tool", "Special") and zyngine.nickname!="MD":
 			port_name = get_fixed_midi_port_name(zyngine.jackname)
 		else:
 			continue
@@ -293,8 +293,9 @@ def midi_autoconnect(force=False):
 		if ports:
 			#Connect to assigned ports and disconnect from the rest ...
 			for mi in engines_in:
+				logger.debug(" => Probing {} => {}".format(port_name, mi))
 				if mi in layer.get_midi_out():
-					#logger.debug(" => Connecting to {}".format(mi))
+					logger.debug(" => Connecting {} => {}".format(port_name, mi))
 					try:
 						jclient.connect(ports[0],engines_in[mi])
 					except:
