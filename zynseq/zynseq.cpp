@@ -46,7 +46,6 @@ jack_nframes_t g_nSamplesPerClock = 918; // Quantity of samples per MIDI clock [
 jack_nframes_t g_nSamplesPerClockLast = 918; // Quantity of samples per MIDI clock [Default: 918 gives 120BPM at 44100 samples per second]
 jack_nframes_t g_nLastTime = 0; // Time of previous MIDI clock in frames (samples) since JACK epoch
 jack_nframes_t g_nClockEventTime; // Time of current MIDI clock in frames (samples) since JACK epoch
-jack_nframes_t g_nClockEventTimeOffset;
 uint32_t g_nSyncPeriod = 96; // Time between sync pulses (clock cycles)
 uint32_t g_nSyncCount = 0; // Time since last sync pulse (clock cycles)
 uint32_t g_nSongPosition = 0; // Clocks since start of song
@@ -111,7 +110,7 @@ void onClock()
 			}
 			if(g_bPlaying)
 			{
-				PatternManager::getPatternManager()->clock(g_nClockEventTime + g_nBufferSize, &g_mSchedule, bSync);
+				PatternManager::getPatternManager()->clock(g_nClockEventTime, &g_mSchedule, bSync);
 				if(g_tempoChange.time == g_nSongPosition)
 				{
 					//!@todo Now what? We need to set the tempo of a clock we don't have access to!!!
@@ -193,7 +192,6 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			case MIDI_CLOCK:
 				if(g_bDebug)
 					printf("StepJackClient MIDI CLOCK\n");
-				g_nClockEventTimeOffset = midiEvent.time;
 				g_nClockEventTime = nNow + midiEvent.time;
 				g_bClockIdle = false;
 				if(g_bPlaying && g_bLocked)
@@ -245,14 +243,20 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	}
 
 	// Send MIDI output aligned with first sample of frame resulting in similar latency to audio
+	//!@todo Send at sample accurate timing rather than salvo at start of frame - reduce jitter
 	//!@todo Interpolate events across frame, e.g. CC variations
 	auto it = g_mSchedule.begin();
+	jack_nframes_t nTime;
 	while(it != g_mSchedule.end())
 	{
-		if(it->first > jack_last_frame_time(g_pJackClient))
-			break;
+		if(it->first >= nNow + g_nBufferSize)
+			break; // Event scheduled beyond this buffer
+		if(it->first < nNow)
+			nTime = 0; // Oops! This event is in the past so send as soon as possible
+		else
+			nTime = it->first - nNow; // Schedule event at scheduled time offset
 		// Get a pointer to the next 3 available bytes in the output buffer
-		pBuffer = jack_midi_event_reserve(pOutputBuffer, 0, 3);
+		pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, 3);
 		pBuffer[0] = it->second->command;
 		pBuffer[1] = it->second->value1;
 		pBuffer[2] = it->second->value2;
@@ -364,7 +368,8 @@ void save(char* filename)
 // Schedule a MIDI message to be sent in next JACK process cycle
 void sendMidiMsg(MIDI_MESSAGE* pMsg)
 {
-	uint32_t time = jack_last_frame_time(g_pJackClient) + g_nBufferSize;
+	// Find first available time slot
+	uint32_t time = 0;
 	while(g_mSchedule.find(time) != g_mSchedule.end())
 		++time;
 	g_mSchedule[time] = pMsg;

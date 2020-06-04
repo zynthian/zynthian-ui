@@ -371,10 +371,10 @@ inline void PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uin
 			while(SEQ_EVENT* pEvent = m_mSequences[nSeq].getEvent())
 			{
 				while(pSchedule->find(pEvent->time) != pSchedule->end())
-					++(pEvent->time);
+					++(pEvent->time); // Move event forward until we find a spare time slot
 				MIDI_MESSAGE* pNewEvent  = new MIDI_MESSAGE(pEvent->msg);
 				(*pSchedule)[pEvent->time] = pNewEvent;
-//				printf("Time: %d Scheduling event 0x%x 0x%x 0x%x at %d\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
+				//printf("Time: %d Scheduling event 0x%x 0x%x 0x%x at %d\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
 			}
 		}
 	}

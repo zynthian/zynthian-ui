@@ -197,7 +197,7 @@ SEQ_EVENT* Sequence::getEvent()
 	// Sequence is being played and playhead is within a pattern
 	Pattern* pPattern = m_mPatterns[m_nCurrentPattern];
 	StepEvent* pEvent = pPattern->getEventAt(m_nNextEvent); // Don't advance event here because need to interpolate
-	if(pEvent && pEvent->getPosition() == m_nPatternCursor)
+	if(pEvent && pEvent->getPosition() <= m_nPatternCursor)
 	{
 		if(m_nEventValue == pEvent->getValue2end())
 		{
