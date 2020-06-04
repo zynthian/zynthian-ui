@@ -66,7 +66,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 				if ch==self.layer.midi_chan:
 					continue
 			except Exception as e:
-				logging.debug("Can't get layer's midi chan => {}",format(e))
+				#logging.debug("Can't get layer's midi chan => {}".format(e))
 				pass
 
 			if self.end_layer and k in self.end_layer.get_audio_out():

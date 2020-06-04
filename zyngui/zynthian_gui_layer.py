@@ -563,7 +563,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def get_layer_by_jackname(self, jackname):
 		for layer in self.layers:
-			if layer.jackname==jackname:
+			if layer.jackname in jackname:
 				return layer
 
 
