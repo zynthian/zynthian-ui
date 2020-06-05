@@ -74,7 +74,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			cls.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title, "MIDI Synth", zynthian_engine_pianoteq, True)
 
 		for plugin_name, plugin_info in get_jalv_plugins().items():
-			cls.engine_info['JV/{}'.format(plugin_name)] = (plugin_name, "{} - Plugin LV2".format(plugin_name), plugin_info['TYPE'], zynthian_engine_jalv, plugin_info['ENABLED'])
+			cls.engine_info['JV/{}'.format(plugin_name)] = (plugin_name, "{} - {}".format(plugin_info.get('CLASS',''), plugin_name), plugin_info['TYPE'], zynthian_engine_jalv, plugin_info['ENABLED'])
 
 		cls.engine_info['PD'] = ("PureData", "PureData - Visual Programming", "Special", zynthian_engine_puredata, True)
 		cls.engine_info['CS'] = ("CSound", "CSound Audio Language", "Special", zynthian_engine_csound, False)
@@ -103,7 +103,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.index=0
 		self.list_data=[]
 		i=0
-		for en, info in self.engine_info.items():
+		# Sort by second element (index 1) of the value of the map (which is the displayed name)
+		for en, info in sorted(self.engine_info.items(), key=lambda kv: kv[1][1]):
 			if (info[4] and (info[2]==self.engine_type or self.engine_type is None) and
 				(en not in self.single_layer_engines or en not in self.zyngines)):
 
