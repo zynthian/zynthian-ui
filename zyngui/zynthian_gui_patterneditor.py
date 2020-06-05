@@ -78,6 +78,9 @@ class zynthian_gui_patterneditor():
 		self.stepWidth = 40 # Grid column width in pixels
 		self.keyOrigin = 60 # MIDI note number of bottom row in grid
 		self.selectedCell = [0, self.keyOrigin] # Location of selected cell (step,note)
+		self.dragVelocity = False # True indicates drag will adjust velocity and duration
+		self.dragStartVelocity = None # Velocity value at start of drag
+		self.gridDragStart = None # Coordinates at start of grid drag
 		#TODO: Get values from persistent storage
 		self.shown = False # True when GUI in view
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
@@ -251,6 +254,89 @@ class zynthian_gui_patterneditor():
 		step, note = tags[0].split(',')
 		self.toggleEvent(int(step), self.keyOrigin + int(note))
 
+	# Function to handle grid mouse down
+	#	event: Mouse event
+	def onGridPress(self, event):
+		if self.parent.lstMenu.winfo_viewable():
+			self.parent.hideMenu()
+			return
+		self.gridDragStart = event
+		try:
+			col,row = self.gridCanvas.gettags(self.gridCanvas.find_withtag(tkinter.CURRENT))[0].split(',')
+		except:
+			return
+		note = self.keyOrigin + int(row)
+		step = int(col)
+		if step < 0 or step >= self.parent.libseq.getSteps():
+			return
+		self.dragStartVelocity = self.parent.libseq.getNoteVelocity(step, note)
+		if not self.dragStartVelocity:
+			self.parent.libseq.playNote(note, 100, self.parent.libseq.getChannel(self.sequence), 200)
+		self.selectCell(int(col), self.keyOrigin + int(row))
+
+	# Function to handle grid mouse release
+	#	event: Mouse event
+	def onGridRelease(self, event):
+		if not self.gridDragStart:
+			return
+		if not self.dragVelocity:
+			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
+		self.dragVelocity = False
+
+	# Function to handle grid mouse drag
+	#	event: Mouse event
+	def onGridDrag(self, event):
+		if not self.gridDragStart:
+			return
+		step = self.selectedCell[0]
+		note = self.selectedCell[1]
+		velocity = self.parent.libseq.getNoteVelocity(step, note)
+		duration = self.parent.libseq.getNoteDuration(step, note)
+		x1 = self.selectedCell[0] * self.stepWidth
+		x2 = (self.selectedCell[0] + duration) * self.stepWidth
+		x3 = (self.selectedCell[0] + 1) * self.stepWidth
+		y1 = self.gridHeight - (self.selectedCell[1] - self.keyOrigin) * self.rowHeight
+		y2 = self.gridHeight - (self.selectedCell[1] - self.keyOrigin + 1) * self.rowHeight
+		if velocity:
+			value = 0
+			if event.x > x2:
+				self.duration = self.duration + 1
+				self.addEvent(step, note)
+				self.dragVelocity = True
+			elif duration > 1 and event.x < x2 - self.stepWidth:
+				self.duration = self.duration - 1
+				self.addEvent(step, note)
+				self.dragVelocity = True
+			elif event.y < y2:
+				value = (self.gridDragStart.y - event.y) / self.rowHeight
+			elif event.y > y1:
+				value = (self.gridDragStart.y - event.y) / self.rowHeight
+			if value:
+				self.dragVelocity = True
+				self.velocity = int(self.dragStartVelocity + value * self.height / 100)
+				if self.velocity > 127:
+					self.velocity = 127
+					return
+				if self.velocity < 1:
+					self.velocity = 1
+					return
+				self.velocityCanvas.coords("velocityIndicator", 0, 0, self.pianoRollWidth * self.velocity / 127, PLAYHEAD_HEIGHT)
+				if self.parent.libseq.getNoteDuration(self.selectedCell[0], self.selectedCell[1]):
+					self.parent.libseq.setNoteVelocity(self.selectedCell[0], self.selectedCell[1], self.velocity)
+					self.drawCell(self.selectedCell[0], self.selectedCell[1])
+
+		else:
+			if event.x < x1:
+				self.selectCell(self.selectedCell[0] - 1, None)
+			elif event.x > x3:
+				self.selectCell(self.selectedCell[0] + 1, None)
+			elif event.y < y2:
+				self.selectCell(None, self.selectedCell[1] + 1)
+				self.parent.libseq.playNote(self.selectedCell[1], 100, self.parent.libseq.getChannel(self.sequence), 200)
+			elif event.y > y1:
+				self.selectCell(None, self.selectedCell[1] - 1)
+				self.parent.libseq.playNote(self.selectedCell[1], 100, self.parent.libseq.getChannel(self.sequence), 200)
+
 	# Function to toggle note event
 	#   step: step (column) index
 	#   note: Note number
@@ -261,7 +347,6 @@ class zynthian_gui_patterneditor():
 			self.removeEvent(step, note)
 		else:
 			self.addEvent(step, note)
-			self.parent.libseq.playNote(note, 100, self.parent.libseq.getChannel(self.sequence), 100) # Play note when added
 
 	# Function to remove an event
 	#   step: step (column) index
@@ -328,6 +413,9 @@ class zynthian_gui_patterneditor():
 			# Create new cell
 			cell = self.gridCanvas.create_rectangle(coord, fill=fillColour, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step))
 			self.gridCanvas.tag_bind(cell, '<Button-1>', self.onCanvasClick)
+			self.gridCanvas.tag_bind(cell, '<ButtonPress-1>', self.onGridPress)
+			self.gridCanvas.tag_bind(cell, '<ButtonRelease-1>', self.onGridRelease)
+			self.gridCanvas.tag_bind(cell, '<B1-Motion>', self.onGridDrag)
 		if step + duration > self.parent.libseq.getSteps():
 			if duration > 1:
 				self.gridCanvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - self.parent.libseq.getSteps() + step), state="normal")
