@@ -47,7 +47,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.layers = []
 		self.root_layers = []
 		self.amixer_layer = None
-		self.show_all_layers = False
 		self.add_layer_eng = None
 		self.replace_layer_index = None
 		self.last_snapshot_fpath = None
@@ -55,7 +54,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def reset(self):
-		self.show_all_layers = False
 		self.add_layer_eng = None
 		self.last_snapshot_fpath = None
 		self.reset_clone()
@@ -64,21 +62,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.reset_midi_profile()
 
 
-	def toggle_show_all_layers(self):
-		if self.show_all_layers:
-			self.show_all_layers = False
-		else:
-			self.show_all_layers = True
-
-
 	def fill_list(self):
 		self.list_data=[]
 
-		# Add list of root layers
-		if self.show_all_layers:
-			self.root_layers=self.layers
-		else:
-			self.root_layers=self.get_fxchain_roots()
+		# Get list of root layers
+		self.root_layers=self.get_fxchain_roots()
 
 		for i,layer in enumerate(self.root_layers):
 			self.list_data.append((str(i+1),i,layer.get_presetpath()))
@@ -1167,10 +1155,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		if self.show_all_layers:
-			self.select_path.set("Layers (Detailed)")
-		else:
-			self.select_path.set("Layers")
+		self.select_path.set("Layers")
 
 
 #------------------------------------------------------------------------------

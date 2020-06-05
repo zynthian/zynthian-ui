@@ -110,14 +110,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				if 'transpose' in eng_options and eng_options['transpose']:
 					self.list_data.append((self.layer_transpose, None, "Transpose"))
 
-			if self.layer.engine.type == 'MIDI Tool':
-				if 'midi_route' in eng_options and eng_options['midi_route']:
-					self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
-					#TODO: Implement this!!
+			if 'midi_route' in eng_options and eng_options['midi_route']:
+				self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
 
-			if self.layer.engine.type != 'MIDI Tool': 
-				if 'audio_route' in eng_options and eng_options['audio_route']:
-					self.list_data.append((self.layer_audio_routing, None, "Audio Routing"))
+			if 'audio_route' in eng_options and eng_options['audio_route']:
+				self.list_data.append((self.layer_audio_routing, None, "Audio Routing"))
 
 			if 'midi_chan' in eng_options and eng_options['midi_chan']:
 				self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
@@ -125,7 +122,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if 'indelible' not in eng_options or not eng_options['indelible']:
 				self.list_data.append((self.layer_remove, None, "Remove Layer"))
 
-			if self.layer.engine.type != 'MIDI Tool': 
+			if self.layer.engine.type!='MIDI Tool': 
 				# Add separator
 				self.list_data.append((None,None,"-----------------------------"))
 
@@ -275,6 +272,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_transpose(self):
 		self.zyngui.show_modal('transpose')
+
+
+	def layer_midi_routing(self):
+		self.zyngui.screens['midi_out'].set_layer(self.layer)
+		self.zyngui.show_modal('midi_out')
 
 
 	def layer_audio_routing(self):

@@ -62,6 +62,7 @@ from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
 from zyngui.zynthian_gui_transpose import zynthian_gui_transpose
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
+from zyngui.zynthian_gui_midi_out import zynthian_gui_midi_out
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
@@ -313,6 +314,7 @@ class zynthian_gui:
 		self.screens['midi_cc'] = zynthian_gui_midi_cc()
 		self.screens['transpose'] = zynthian_gui_transpose()
 		self.screens['audio_out'] = zynthian_gui_audio_out()
+		self.screens['midi_out'] = zynthian_gui_midi_out()
 		self.screens['bank'] = zynthian_gui_bank()
 		self.screens['preset'] = zynthian_gui_preset()
 		self.screens['control'] = zynthian_gui_control()
@@ -887,7 +889,6 @@ class zynthian_gui:
 		# Standard 4 ZynSwitches
 		if i==0:
 			if self.active_screen=='layer':
-				self.screens['layer'].toggle_show_all_layers()
 				self.show_screen('layer')
 
 			else:
