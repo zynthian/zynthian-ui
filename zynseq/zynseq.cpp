@@ -100,11 +100,11 @@ void onClock()
 		g_nLastTime = g_nClockEventTime;
 		if(g_bLocked)
 		{
-			bool bSync = (++g_nSyncCount >= g_nSyncPeriod);
+			bool bSync = (g_nSyncCount-- == 0);
 			if(bSync)
 			{
 				// This is a sync / loop point
-				g_nSyncCount = 0;
+				g_nSyncCount = g_nSyncPeriod - 1;
 				if(g_bDebug)
 					printf("+\n");
 			}
@@ -221,6 +221,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			if(PatternManager::getPatternManager()->trigger(midiEvent.buffer[1]) && !g_bPlaying)
 				sendMidiStart();
 		}
+		// Handle MIDI Note On events for programming patterns from MIDI input
 		if(PatternManager::getPatternManager()->getCurrentSong() == 0 && g_nInputChannel < 16 && (midiEvent.buffer[0] == (MIDI_NOTE_ON | g_nInputChannel)) && midiEvent.buffer[2])
 		{
 			if(g_pPattern)
@@ -272,14 +273,16 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
 int onJackBufferSizeChange(jack_nframes_t nFrames, void *pArgs)
 {
-	printf("zynseq: Jack buffer size: %d\n", nFrames);
+	if(g_bDebug)
+		printf("zynseq: Jack buffer size: %d\n", nFrames);
 	g_nBufferSize = nFrames;
 	return 0;
 }
 
 int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
 {
-	printf("zynseq: Jack samplerate: %d\n", nFrames);
+	if(g_bDebug)
+		printf("zynseq: Jack samplerate: %d\n", nFrames);
 	g_nSamplerate = nFrames;
 	return 0;
 }
@@ -694,7 +697,7 @@ uint32_t getSyncPeriod()
 
 void resetSync()
 {
-	g_nSyncCount = g_nSyncPeriod;
+	g_nSyncCount = 0;
 }
 
 uint8_t getGroup(uint32_t sequence)
@@ -786,9 +789,8 @@ void startSong()
 {
 	PatternManager::getPatternManager()->startSong();
 	g_nLastTime = 0;
-	g_nSyncCount = 0;
-	g_bLocked = false;
 	g_nPllCount = 0;
+	g_bLocked = false;
 	g_bPlaying = true;
 }
 
@@ -809,6 +811,7 @@ void stopSong()
 void setSongPosition(uint32_t pos)
 {
 	PatternManager::getPatternManager()->setSongPosition(pos);
+	g_nSyncCount = 0;
 	g_nPllCount = 0;
 	g_nSongPosition = pos;
 	updateTempoChange();

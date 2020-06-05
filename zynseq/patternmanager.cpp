@@ -461,6 +461,8 @@ void PatternManager::stopSong()
 
 void PatternManager::setSongPosition(uint32_t pos)
 {
+	if(m_nCurrentSong == 0)
+		pos = pos % m_mPatterns[1].getLength();
 	size_t nTrack = 0;
 	while(uint32_t nSequence = m_mSongs[m_nCurrentSong].getSequence(nTrack++))
 		m_mSequences[nSequence].setPlayPosition(pos);

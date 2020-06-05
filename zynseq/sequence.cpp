@@ -29,8 +29,8 @@ bool Sequence::addPattern(uint32_t position, Pattern* pattern, bool force)
 					return false;
 				// Found overlapping pattern so remove from sequence but don't delete (that is responsibility of PatternManager)
 				m_mPatterns.erase(nClock);
-				if(m_nCurrentPattern == nClock)
-					m_nCurrentPattern = -1;
+				if(m_nCurrentPatternPos == nClock)
+					m_nCurrentPatternPos = -1;
 			}
 		}
 	}
@@ -43,8 +43,8 @@ bool Sequence::addPattern(uint32_t position, Pattern* pattern, bool force)
 void Sequence::removePattern(uint32_t position)
 {
 	m_mPatterns.erase(position);
-	if(m_nCurrentPattern == position)
-		m_nCurrentPattern = -1;
+	if(m_nCurrentPatternPos == position)
+		m_nCurrentPatternPos = -1;
 	updateLength();
 }
 
@@ -127,108 +127,119 @@ void Sequence::togglePlayState()
 bool Sequence::clock(uint32_t nTime, bool bSync)
 {
 	// Clock cycle - update position and associated counters, status, etc.
+	// After this call all counters point to next position
+	bool bReturn = false;
 	if(bSync && m_nState == STARTING)
-	{
 		m_nState = PLAYING;
-	}
-	if(m_nState == STOPPED || m_nState == STARTING || m_nDivCount-- != 0)
-		return false;
-	//printf("Sequence::clock PlayState: %d pos: %d div: %d time: %d PatternCursor: %d\n", m_nState, m_nPosition, m_nClkPerStep, nTime, m_nPatternCursor);
-	m_nCurrentTime = nTime;
-	m_nDivCount = m_nClkPerStep - 1;
-	if(m_nPosition >= m_nSequenceLength)
+	if(m_nState == STOPPED || m_nState == STARTING)
+		return bReturn;
+	if(m_nDivCount-- == 0)
 	{
-		// Reached end of sequence
-//		m_nPosition = 0;
-		if(m_nState == STOPPING)
+		// Reached next step
+		m_nLastClockTime = nTime;
+		m_nDivCount = m_nClkPerStep - 1;
+		if(m_nPosition >= m_nSequenceLength)
 		{
-			m_nState = STOPPED;
-			return false;
-		}
-		switch(m_nMode)
-		{
-			case ONESHOT:
-			case DISABLED:
-			case ONESHOTALL:
+			// Reached end of sequence
+			if(m_nState == STOPPING)
+			{
 				m_nState = STOPPED;
-				return false;
-			case LOOP:
-			case LOOPALL:
-				m_nPosition = 0;
-				break;
+				return bReturn;
+			}
+			switch(m_nMode)
+			{
+				case ONESHOT:
+				case DISABLED:
+				case ONESHOTALL:
+					m_nState = STOPPED;
+					return bReturn;
+				case LOOP:
+				case LOOPALL:
+					m_nPosition = 0;
+					break;
+			}
+		}
+
+		if(m_mPatterns.find(m_nPosition) != m_mPatterns.end())
+		{
+			// Playhead at start of pattern
+			m_nCurrentPatternPos = m_nPosition;
+			m_nCurrentStep = 0;
+			m_nNextEvent = 0;
+			m_nClkPerStep = m_mPatterns[m_nCurrentPatternPos]->getClocksPerStep();
+			if(m_nClkPerStep == 0)
+				m_nClkPerStep = 1;
+			m_nEventValue = -1;
+			bReturn = true;
+		}
+		else if(m_nCurrentPatternPos >= 0 && m_nPosition >= m_nCurrentPatternPos + m_mPatterns[m_nCurrentPatternPos]->getLength())
+		{
+			// At end of pattern
+			m_nCurrentPatternPos = -1;
+			m_nNextEvent = -1;
+			m_nCurrentStep = 0;
+			m_nClkPerStep = 1;
+			m_nEventValue = -1;
+		}
+		else
+		{
+			// Within or between pattern
+			bReturn = true;
 		}
 	}
-	if(m_mPatterns.find(m_nPosition) != m_mPatterns.end())
-	{
-		// Play head at start of pattern
-		m_nCurrentPattern = m_nPosition;
-		m_nPatternCursor = 0;
-		m_nNextEvent = 0;
-		m_nClkPerStep = m_mPatterns[m_nCurrentPattern]->getClocksPerStep();
-		if(m_nClkPerStep == 0)
-			m_nClkPerStep = 1;
-		m_nEventValue = -1;
-		//printf("At start of pattern. Pos: %d clkPerStep: %d\n", m_nPosition, m_nClkPerStep);
-	}
-	else if(m_nCurrentPattern >= 0 && m_nPatternCursor >= m_mPatterns[m_nCurrentPattern]->getSteps())
-	{
-		// Beyond pattern but not at start of another (between patterns)
-		m_nCurrentPattern = -1;
-		m_nNextEvent = -1;
-		m_nPatternCursor = 0;
-		m_nClkPerStep = 1;
-		m_nEventValue = -1;
-	}
-	else
-	{
-		// Within a pattern
-		++m_nPatternCursor;
-	}
-	m_nPosition += m_nClkPerStep;
-	return true;
+	++m_nPosition;
+	return bReturn;
 }
 
 SEQ_EVENT* Sequence::getEvent()
 {
 	// This function is called repeatedly for each clock period until no more events are available to populate JACK MIDI output schedule
 	static SEQ_EVENT seqEvent; // A MIDI event timestamped for some imminent or future time
-	if(m_nState == STOPPED || m_nCurrentPattern < 0 || m_nNextEvent < 0)
+	if(m_nState == STOPPED || m_nCurrentPatternPos < 0 || m_nNextEvent < 0)
 		return NULL;
 	// Sequence is being played and playhead is within a pattern
-	Pattern* pPattern = m_mPatterns[m_nCurrentPattern];
+	Pattern* pPattern = m_mPatterns[m_nCurrentPatternPos];
 	StepEvent* pEvent = pPattern->getEventAt(m_nNextEvent); // Don't advance event here because need to interpolate
-	if(pEvent && pEvent->getPosition() <= m_nPatternCursor)
+	if(pEvent && pEvent->getPosition() <= m_nCurrentStep)
 	{
+		// Found event at (or before) this step
 		if(m_nEventValue == pEvent->getValue2end())
 		{
 			// We have reached the end of interpolation so move on to next event
 			m_nEventValue = -1;
 			pEvent = pPattern->getEventAt(++m_nNextEvent);
-			if(!pEvent || pEvent->getPosition() != m_nPatternCursor)
+			if(!pEvent || pEvent->getPosition() != m_nCurrentStep)
+			{
+				// No more events or next event is not this step so move to next step
+				if(++m_nCurrentStep >= pPattern->getSteps())
+					m_nCurrentStep = 0;
 				return NULL;
+			}
 		}
 		if(m_nEventValue == -1)
 		{
 			// Have not yet started to interpolate value
 			m_nEventValue = pEvent->getValue2start();
-			seqEvent.time = m_nCurrentTime;
+			seqEvent.time = m_nLastClockTime;
 		}
 		else if(pEvent->getValue2start() == m_nEventValue)
 		{
 			// Already processed start value
 			m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
-			seqEvent.time = m_nCurrentTime + pEvent->getDuration() * (pPattern->getClocksPerStep() - 1) * m_nSamplePerClock; // -1 to send note-off one clock before next step
+			seqEvent.time = m_nLastClockTime + pEvent->getDuration() * (pPattern->getClocksPerStep() - 1) * m_nSamplePerClock; // -1 to send note-off one clock before next step
 		}
 	}
 	else
 	{
 		m_nEventValue = -1;
+		if(++m_nCurrentStep >= pPattern->getSteps())
+			m_nCurrentStep = 0;
 		return NULL;
 	}
 	seqEvent.msg.command = pEvent->getCommand() | m_nChannel;
 	seqEvent.msg.value1 = pEvent->getValue1start();
 	seqEvent.msg.value2 = m_nEventValue;
-	//printf("sequence::getEvent Event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %u\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nCurrentTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
+	//printf("sequence::getEvent Event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %u\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
 	return &seqEvent;
 }
 
@@ -251,9 +262,9 @@ void Sequence::clear()
 	m_mPatterns.clear();
 	m_nSequenceLength = 0;
 	m_nEventValue = -1;
-	m_nCurrentPattern = -1;
+	m_nCurrentPatternPos = -1;
 	m_nNextEvent = -1;
-	m_nPatternCursor = 0;
+	m_nCurrentStep = 0;
 	m_nClkPerStep = 1;
 	m_nDivCount = 0;
 	m_nPosition = 0;
@@ -261,17 +272,18 @@ void Sequence::clear()
 
 uint32_t Sequence::getStep()
 {
-	return m_nPatternCursor;
+	return m_nCurrentStep;
 }
 
 void Sequence::setStep(uint32_t step)
 {
-	m_nPatternCursor = step;
+	if(m_nCurrentPatternPos >= 0 && step < m_mPatterns[m_nCurrentPatternPos]->getSteps())
+		m_nCurrentStep = step;
 }
 
 uint32_t Sequence::getPatternPlayhead()
 {
-	return m_nPatternCursor * m_nClkPerStep;
+	return m_nCurrentStep * m_nClkPerStep;
 }
 
 uint32_t Sequence::getPlayPosition()
@@ -284,7 +296,7 @@ void Sequence::setPlayPosition(uint32_t clock)
 	if(m_mPatterns.size() < 1)
 		return;
 
-	// Find if we are within a pattern
+	// Find if new position is within a pattern
 	auto it = m_mPatterns.begin();
 	for(; it != m_mPatterns.end(); ++it)
 	{
@@ -300,8 +312,8 @@ void Sequence::setPlayPosition(uint32_t clock)
 	if(clock >= it->first + pPattern->getLength())
 	{
 		// Between patterns
-		m_nCurrentPattern = -1;
-		m_nPatternCursor = 0;
+		m_nCurrentPatternPos = -1;
+		m_nCurrentStep = 0;
 		m_nNextEvent = -1;
 		m_nClkPerStep = 1;
 		m_nEventValue = -1;
@@ -310,26 +322,27 @@ void Sequence::setPlayPosition(uint32_t clock)
 	else
 	{
 		// Within pattern
-		m_nCurrentPattern = it->first;
+		m_nCurrentPatternPos = it->first;
 
-		m_nClkPerStep = m_mPatterns[m_nCurrentPattern]->getClocksPerStep();
+		m_nClkPerStep = m_mPatterns[m_nCurrentPatternPos]->getClocksPerStep();
 		if(m_nClkPerStep == 0)
 			m_nClkPerStep = 1;
 
-		m_nDivCount = (clock - m_nCurrentPattern) % m_nClkPerStep; // Clocks cycles until next step
+		m_nDivCount = (clock - m_nCurrentPatternPos) % m_nClkPerStep; // Clocks cycles until next step
 		if(m_nDivCount)
-			m_nDivCount = m_nClkPerStep - m_nDivCount - 1;
+			m_nDivCount = m_nClkPerStep - m_nDivCount;
 
 		m_nPosition = clock + m_nDivCount; // Position at next step
 
-		m_nPatternCursor = (clock - m_nCurrentPattern) / m_nClkPerStep - 1;
+		m_nCurrentStep = (clock - m_nCurrentPatternPos) / m_nClkPerStep;
 
+		// Find position of first event in pattern at this step
 		m_nNextEvent = -1;
 		uint32_t nEvent = 0;
 		while(StepEvent* pEvent = pPattern->getEventAt(nEvent++))
 		{
 			++m_nNextEvent;
-			if(pEvent->getPosition() >= m_nPatternCursor)
+			if(pEvent->getPosition() >= m_nCurrentStep)
 				break;
 		}
 	}

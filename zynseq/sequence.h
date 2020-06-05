@@ -181,11 +181,11 @@ class Sequence
 		uint32_t m_nClkPerStep = 1; // Clock cycles per step
 		uint32_t m_nDivCount = 0; // Current count of clock cycles within divisor
 		std::map<uint32_t,Pattern*> m_mPatterns; // Map of pointers to patterns, indexed by start position
-		int m_nCurrentPattern = -1; // Start position of pattern currently being played
+		int m_nCurrentPatternPos = -1; // Start position of pattern currently being played
 		int m_nNextEvent = -1; // Index of next event to process or -1 if no more events at this clock cycle
 		int8_t m_nEventValue = -1; // Value of event at current interpolation point or -1 if no event
-		uint32_t m_nCurrentTime = 0; // Time of last clock pulse (sample)
-		uint32_t m_nPatternCursor = 0; // Postion within pattern (step)
+		uint32_t m_nLastClockTime = 0; // Time of last clock pulse (sample)
+		uint32_t m_nCurrentStep = 0; // Postion within pattern (step)
 		uint32_t m_nSequenceLength = 0; // Quantity of clock cycles in sequence (last pattern start + length)
 		uint32_t m_nSamplePerClock; // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
 };
