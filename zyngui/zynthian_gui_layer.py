@@ -539,7 +539,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			try:
 				layer.set_midi_out(midi_routing[layer.get_jackname()])
 			except:
-				layer.set_midi_out(["system"])
+				layer.set_midi_out([])
 
 
 	def reset_midi_routing(self):
