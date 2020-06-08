@@ -50,10 +50,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.add_layer_eng = None
 		self.replace_layer_index = None
 		self.last_snapshot_fpath = None
+		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
 		super().__init__('Layer', True)
 
 
 	def reset(self):
+		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
+		self.show_all_layers = False
 		self.add_layer_eng = None
 		self.last_snapshot_fpath = None
 		self.reset_clone()
@@ -457,12 +460,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for layer in self.layers:
 			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
 				if layer.restore_zs3(zs3_index) and not selected:
+					self.last_zs3_index[midich] = zs3_index
 					try:
 						self.select_action(self.root_layers.index(layer))
 						selected = True
 					except Exception as e:
 						logging.error("Can't select layer => {}".format(e))
 
+	def get_last_zs3_index(self, midich):
+		return self.last_zs3_index[midich]
 
 	def save_midi_chan_zs3(self, midich, zs3_index):
 		for layer in self.layers:
