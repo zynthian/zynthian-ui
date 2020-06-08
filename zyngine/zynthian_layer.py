@@ -534,27 +534,31 @@ class zynthian_layer:
 		zs3 = self.zs3_list[i]
 
 		if zs3:
-			#Load bank list and set bank
-			self.load_bank_list()
-			self.set_bank_by_name(zs3['bank_name'])
-			self.wait_stop_loading()
+			# For non-LV2 engines, bank and preset can affect what controllers do.
+			# In case of LV2, just restoring the controllers ought to be enough, which is nice
+			# since it saves the 0.3 second delay between setting a preset and updating controllers.
+			if not self.engine.nickname.startswith('JV'):
+				#Load bank list and set bank
+				self.load_bank_list()
+				self.set_bank_by_name(zs3['bank_name'])
+				self.wait_stop_loading()
 
-			#Load preset list and set preset
-			self.load_preset_list()
-			self.set_preset_by_name(zs3['preset_name'])
-			self.wait_stop_loading()
+				#Load preset list and set preset
+				self.load_preset_list()
+				self.set_preset_by_name(zs3['preset_name'])
+				self.wait_stop_loading()
 
-			#Refresh controller config
-			if self.refresh_flag:
-				self.refresh_flag=False
-				self.refresh_controllers()
+				#Refresh controller config
+				if self.refresh_flag:
+					self.refresh_flag=False
+					self.refresh_controllers()
+				sleep(0.3)
 
 			#Set active screen
 			if 'active_screen_index' in zs3:
 				self.active_screen_index=zs3['active_screen_index']
 
 			#Set controller values
-			sleep(0.3)
 			for k in zs3['controllers_dict']:
 				self.controllers_dict[k].restore_snapshot(zs3['controllers_dict'][k])
 
