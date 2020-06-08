@@ -31,10 +31,13 @@ import os
 import tkinter
 import logging
 import tkinter.font as tkFont
+import json
+import glob
 import threading
 from time import sleep
+import time
 import ctypes
-from os.path import dirname, realpath
+from os.path import dirname, realpath, basename
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -76,11 +79,15 @@ class zynthian_gui_patterneditor():
 		self.song = 0 # Use song zero for pattern editor sequnce player
 		self.sequence = parent.libseq.getSequence(self.song, 0) # Sequence used for pattern editor sequence player
 		self.stepWidth = 40 # Grid column width in pixels
-		self.keyOrigin = 60 # MIDI note number of bottom row in grid
-		self.selectedCell = [0, self.keyOrigin] # Location of selected cell (step,note)
+		self.keyMapOffset = 60 # MIDI note number of bottom row in grid
+		self.selectedCell = [0, 0] # Location of selected cell (column,row)
 		self.dragVelocity = False # True indicates drag will adjust velocity and duration
 		self.dragStartVelocity = None # Velocity value at start of drag
 		self.gridDragStart = None # Coordinates at start of grid drag
+		self.keyMapIndex = 0 # Index of selected key map
+		self.keyMap = [] # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
+		self.notes = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
+		self.scaleRoot = 0 # Index of root note of selected scale [0..11]
 		#TODO: Get values from persistent storage
 		self.shown = False # True when GUI in view
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
@@ -126,9 +133,9 @@ class zynthian_gui_patterneditor():
 			bd=0,
 			highlightthickness=0)
 		self.pianoRoll.grid(row=0, column=0)
-		self.pianoRoll.bind("<ButtonPress-1>", self.onPianoRollDragStart)
-		self.pianoRoll.bind("<ButtonRelease-1>", self.onPianoRollDragEnd)
-		self.pianoRoll.bind("<B1-Motion>", self.onPianoRollDragMotion)
+		self.pianoRoll.bind("<ButtonPress-1>", self.onPianoRollPress)
+		self.pianoRoll.bind("<ButtonRelease-1>", self.onPianoRollRelease)
+		self.pianoRoll.bind("<B1-Motion>", self.onPianoRollMotion)
 
 		# Create playhead canvas
 		self.playCanvas = tkinter.Canvas(self.main_frame,
@@ -149,8 +156,11 @@ class zynthian_gui_patterneditor():
 		self.playhead = 0
 #       self.startPlayheadHandler()
 
+		# Load default keymap
+		self.loadKeymap(None)
+
 		# Select a cell
-		self.selectCell(0, self.keyOrigin + int(self.zoom / 2))
+		self.selectCell(0, self.keyMapOffset)
 
 	# Function to draw play cursor - periodically checks for change in current step then redraws cursor if necessary
 	#TODO: Remove thread handling playhead (now using refresh_status)
@@ -187,16 +197,7 @@ class zynthian_gui_patterneditor():
 			channel = 1
 		self.loadPattern(pattern)
 		self.parent.libseq.setChannel(self.sequence, channel)
-		# Add menus
-		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getPattern, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Input channel':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':16, 'getValue':self.getInputChannel, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'getValue':self.parent.libseq.getStepsPerBeat, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'getValue':self.parent.libseq.getSteps, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getCopySource, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
-		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
-		self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'getValue':self.getVerticalZoom, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.parent.libseq.getClocksPerStep, 'onChange':self.onMenuChange}}})
+		self.addMenus()
 		self.setupEncoders()
 		self.main_frame.tkraise()
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
@@ -212,35 +213,103 @@ class zynthian_gui_patterneditor():
 		self.parent.unregisterZyncoder(ENC_LAYER)
 		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_STOPPED)
 
+	# Function to add menus
+	def addMenus(self):
+		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getPattern, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Input channel':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':16, 'getValue':self.getInputChannel, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'getValue':self.parent.libseq.getStepsPerBeat, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'getValue':self.parent.libseq.getSteps, 'onChange':self.onMenuChange, 'onAssert':self.assertSteps}}})
+		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getCopySource, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
+		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
+		self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'getValue':self.getVerticalZoom, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.parent.libseq.getClocksPerStep, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Key map':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':self.getKeyMaps(), 'getValue':self.getKeyMapIndex, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Scale root':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':11, 'getValue':self.getScaleRoot, 'onChange':self.onMenuChange}}})
+
+	# Function to get scaleRoot
+	def getScaleRoot(self):
+		return self.scaleRoot
+
+	# Function to get quantity of key maps
+	#	returns: Quanity of available key maps
+	def getKeyMaps(self):
+		return len(glob.glob('/zynthian/zynthian-my-data/sequences/*.map'))
+
+	# Function to get current key map
+	#	returns: Index of current key map
+	def getKeyMapIndex(self):
+		return self.keyMapIndex
+
+	# Function to set current key map
+	#	filename: Keymap filename [None for default chromatic scale]
+	def loadKeymap(self, filename):
+		if filename == None:
+			self.keyMap = []
+			for note in range(0,128):
+				newEntry = {"note":note}
+				key = note % 12
+				if key in (1,3,6,8,10): # Black notes
+					newEntry.update({"colour":"black"})
+				if key == 0: # 'C'
+					newEntry.update({"name":"C%d" % (note // 12 - 1)})
+				self.keyMap.append(newEntry)
+				self.selectedCell[1] = 60
+		else:
+			try:
+				with open(filename) as json_file:
+					data = json.load(json_file)
+				if data["type"] == "map":
+					# Map of defined keys
+					self.keyMap = data["keys"]
+				elif data["type"] == "scale":
+					self.keyMap = []
+					for octave in range(0,9):
+						for offset in data['scale']:
+							note = self.scaleRoot + offset + octave * 12
+							if note > 127:
+								break
+							self.keyMap.append({"note":note, "name":"%s%d"%(self.notes[note % 12],note // 12 - 1)})
+				if "default" in data:
+					for index in range(len(self.keyMap)):
+						if self.keyMap[index]['note'] ==  int(data["default"]):
+							self.selectedCell[1] = index
+							break
+			except:
+				return
+		self.drawGrid(True)
+		self.selectCell()
+
 	# Function to handle start of pianoroll drag
-	def onPianoRollDragStart(self, event):
+	def onPianoRollPress(self, event):
 		if self.parent.lstMenu.winfo_viewable():
 			self.parent.hideMenu()
 			return
 		self.pianoRollDragStart = event
-		keyboardPlayNote =  self.keyOrigin + self.zoom - int(event.y / self.rowHeight) - 1
-		self.parent.libseq.playNote(keyboardPlayNote, 100, self.parent.libseq.getChannel(self.sequence), 200)
+		index = self.keyMapOffset + self.zoom - int(event.y / self.rowHeight) - 1
+		note = self.keyMap[index]['note']
+		self.parent.libseq.playNote(note, 100, self.parent.libseq.getChannel(self.sequence), 200)
 
 	# Function to handle pianoroll drag motion
-	def onPianoRollDragMotion(self, event):
+	def onPianoRollMotion(self, event):
 		if not self.pianoRollDragStart:
 			return
-		if event.y > self.pianoRollDragStart.y + self.rowHeight and self.keyOrigin < 128 - self.zoom:
-			self.keyOrigin = self.keyOrigin + 1
+		if event.y > self.pianoRollDragStart.y + self.rowHeight and self.keyMapOffset < len(self.keyMap) - self.zoom:
+			self.keyMapOffset = self.keyMapOffset + 1
 			self.pianoRollDragStart.y = event.y
 			self.drawGrid()
-		elif event.y < self.pianoRollDragStart.y - self.rowHeight and self.keyOrigin > 0:
-			self.keyOrigin = self.keyOrigin - 1
+		elif event.y < self.pianoRollDragStart.y - self.rowHeight and self.keyMapOffset > 0:
+			self.keyMapOffset = self.keyMapOffset - 1
 			self.pianoRollDragStart.y = event.y
 			self.drawGrid()
-		if self.selectedCell[1] < self.keyOrigin:
-			self.selectedCell[1] = self.keyOrigin
-		elif self.selectedCell[1] >= self.keyOrigin + self.zoom:
-			self.selectedCell[1] = self.keyOrigin + self.zoom - 1
-		self.selectCell(self.selectedCell[0], self.selectedCell[1])
+		if self.selectedCell[1] < self.keyMapOffset:
+			self.selectedCell[1] = self.keyMapOffset
+		elif self.selectedCell[1] >= self.keyMapOffset + self.zoom:
+			self.selectedCell[1] = self.keyMapOffset + self.zoom - 1
+		self.selectCell()
 
 	# Function to handle end of pianoroll drag
-	def onPianoRollDragEnd(self, event):
+	def onPianoRollRelease(self, event):
 		self.pianoRollDragStart = None
 
 	# Function to handle mouse click / touch
@@ -249,10 +318,11 @@ class zynthian_gui_patterneditor():
 		if self.parent.lstMenu.winfo_viewable():
 			self.parent.hideMenu()
 			return
-		closest = event.widget.find_closest(event.x, event.y)
-		tags = self.gridCanvas.gettags(closest)
-		step, note = tags[0].split(',')
-		self.toggleEvent(int(step), self.keyOrigin + int(note))
+		try:
+			col,row = self.gridCanvas.gettags(self.gridCanvas.find_withtag(tkinter.CURRENT))[0].split(',')
+		except:
+			return
+		self.toggleEvent(int(col), int(row) + self.keyMapOffset)
 
 	# Function to handle grid mouse down
 	#	event: Mouse event
@@ -265,14 +335,16 @@ class zynthian_gui_patterneditor():
 			col,row = self.gridCanvas.gettags(self.gridCanvas.find_withtag(tkinter.CURRENT))[0].split(',')
 		except:
 			return
-		note = self.keyOrigin + int(row)
+		note = self.getNoteFromRow(int(row))
+		if note == None:
+			return
 		step = int(col)
 		if step < 0 or step >= self.parent.libseq.getSteps():
 			return
 		self.dragStartVelocity = self.parent.libseq.getNoteVelocity(step, note)
 		if not self.dragStartVelocity:
 			self.parent.libseq.playNote(note, 100, self.parent.libseq.getChannel(self.sequence), 200)
-		self.selectCell(int(col), self.keyOrigin + int(row))
+		self.selectCell(int(col), self.keyMapOffset + int(row))
 
 	# Function to handle grid mouse release
 	#	event: Mouse event
@@ -289,23 +361,24 @@ class zynthian_gui_patterneditor():
 		if not self.gridDragStart:
 			return
 		step = self.selectedCell[0]
-		note = self.selectedCell[1]
+		index = self.selectedCell[1]
+		note = self.keyMap[index]['note']
 		velocity = self.parent.libseq.getNoteVelocity(step, note)
 		duration = self.parent.libseq.getNoteDuration(step, note)
 		x1 = self.selectedCell[0] * self.stepWidth
 		x2 = (self.selectedCell[0] + duration) * self.stepWidth
 		x3 = (self.selectedCell[0] + 1) * self.stepWidth
-		y1 = self.gridHeight - (self.selectedCell[1] - self.keyOrigin) * self.rowHeight
-		y2 = self.gridHeight - (self.selectedCell[1] - self.keyOrigin + 1) * self.rowHeight
+		y1 = self.gridHeight - (self.selectedCell[1] - self.keyMapOffset) * self.rowHeight
+		y2 = self.gridHeight - (self.selectedCell[1] - self.keyMapOffset + 1) * self.rowHeight
 		if velocity:
 			value = 0
 			if event.x > x2:
 				self.duration = self.duration + 1
-				self.addEvent(step, note)
+				self.addEvent(step, self.keyMapOffset + row)
 				self.dragVelocity = True
 			elif duration > 1 and event.x < x2 - self.stepWidth:
 				self.duration = self.duration - 1
-				self.addEvent(step, note)
+				self.addEvent(step, self.keyMapOffset + row)
 				self.dragVelocity = True
 			elif event.y < y2:
 				value = (self.gridDragStart.y - event.y) / self.rowHeight
@@ -321,10 +394,9 @@ class zynthian_gui_patterneditor():
 					self.velocity = 1
 					return
 				self.velocityCanvas.coords("velocityIndicator", 0, 0, self.pianoRollWidth * self.velocity / 127, PLAYHEAD_HEIGHT)
-				if self.parent.libseq.getNoteDuration(self.selectedCell[0], self.selectedCell[1]):
-					self.parent.libseq.setNoteVelocity(self.selectedCell[0], self.selectedCell[1], self.velocity)
-					self.drawCell(self.selectedCell[0], self.selectedCell[1])
-
+				if self.parent.libseq.getNoteDuration(self.selectedCell[0], note):
+					self.parent.libseq.setNoteVelocity(self.selectedCell[0], note, self.velocity)
+					self.drawCell(self.selectedCell[0], row)
 		else:
 			if event.x < x1:
 				self.selectCell(self.selectedCell[0] - 1, None)
@@ -332,45 +404,60 @@ class zynthian_gui_patterneditor():
 				self.selectCell(self.selectedCell[0] + 1, None)
 			elif event.y < y2:
 				self.selectCell(None, self.selectedCell[1] + 1)
-				self.parent.libseq.playNote(self.selectedCell[1], 100, self.parent.libseq.getChannel(self.sequence), 200)
+				self.parent.libseq.playNote(self.getNoteFromRow(self.selectedCell[1]), 100, self.parent.libseq.getChannel(self.sequence), 200)
 			elif event.y > y1:
 				self.selectCell(None, self.selectedCell[1] - 1)
-				self.parent.libseq.playNote(self.selectedCell[1], 100, self.parent.libseq.getChannel(self.sequence), 200)
+				self.parent.libseq.playNote(self.getNoteFromRow(self.selectedCell[1]), 100, self.parent.libseq.getChannel(self.sequence), 200)
 
 	# Function to toggle note event
-	#   step: step (column) index
-	#   note: Note number
-	def toggleEvent(self, step, note):
-		if step < 0 or step >= self.parent.libseq.getSteps():
+	#	step: step (column) index
+	#	index: key map index
+	def toggleEvent(self, step, index):
+		if step < 0 or step >= self.parent.libseq.getSteps() or index >= len(self.keyMap):
 			return
+		note = self.keyMap[index]['note']
 		if self.parent.libseq.getNoteVelocity(step, note):
-			self.removeEvent(step, note)
+			self.removeEvent(step, index)
 		else:
-			self.addEvent(step, note)
+			self.addEvent(step, index)
+
+	# Function Get note from row index
+	#	row: Index of row
+	#	returns: MIDI note or None if not in map
+	def getNoteFromRow(self, row):
+		if row + self.keyMapOffset < len(self.keyMap):
+			return self.keyMap[row + self.keyMapOffset]["note"]
+		return None
 
 	# Function to remove an event
-	#   step: step (column) index
-	#   note: MIDI note number
-	def removeEvent(self, step, note):
+	#	step: step (column) index
+	#	index: keymap index
+	def removeEvent(self, step, index):
+		if index >= len(self.keyMap):
+			return
+		note = self.keyMap[index]['note']
 		self.parent.libseq.removeNote(step, note)
 		self.parent.libseq.playNote(note, 0) # Silence note if sounding
-		self.drawRow(note)
-		self.selectCell(step, note)
+		self.drawRow(index)
+		self.selectCell(step, index)
 
 	# Function to add an event
-	#   step: step (column) index
-	#   note: Note number
-	def addEvent(self, step, note):
+	#	step: step (column) index
+	#	index: keymap index
+	def addEvent(self, step, index):
+		row = index - self.keyMapOffset
+		note = self.getNoteFromRow(row)
 		self.parent.libseq.addNote(step, note, self.velocity, self.duration)
-		self.drawRow(note)
-		self.selectCell(step, note)
+		self.drawRow(index)
+		self.selectCell(step, index)
 
 	# Function to draw a grid row
-	#   note: MIDI note for the row to draw
-	def drawRow(self, note):
-		self.gridCanvas.itemconfig("lastnotetext%d" % (note - self.keyOrigin), state="hidden")
+	#	index: keymap index
+	def drawRow(self, index):
+		row = index - self.keyMapOffset
+		self.gridCanvas.itemconfig("lastnotetext%d" % (row), state="hidden")
 		for step in range(self.parent.libseq.getSteps()):
-			self.drawCell(step, note)
+			self.drawCell(step, row)
 
 	# Function to get cell coordinates
 	#   col: Column index
@@ -385,19 +472,24 @@ class zynthian_gui_patterneditor():
 		return [x1, y1, x2, y2]
 
 	# Function to draw a grid cell
-	#   step: Step (column) index
-	#   note: Note number
-	def drawCell(self, step, note):
-		if step < 0 or step >= self.parent.libseq.getSteps() or note < self.keyOrigin or note >= self.keyOrigin + self.zoom:
+	#	step: Step (column) index
+	#	row: Index of row
+	def drawCell(self, step, row):
+		if step < 0 or step >= self.parent.libseq.getSteps() or row < 0 or row >= self.zoom:
 			return
-		row = note - self.keyOrigin
+		note = self.getNoteFromRow(row)
 		velocityColour = self.parent.libseq.getNoteVelocity(step, note)
 		if velocityColour:
 			velocityColour = 70 + velocityColour
-		else:
+		elif self.keyMapIndex == 0:
+			# Draw tramlines for white notes in chromatic scale
 			key = note % 12
 			if key in (0,2,4,5,7,9,11): # White notes
-#           if key in (1,3,6,8,10): # Black notes
+#			if key in (1,3,6,8,10): # Black notes
+				velocityColour += 30
+		else:
+			# Draw tramlines for odd rows in other scales and maps
+			if (row + self.keyMapOffset) % 2:
 				velocityColour += 30
 		duration = self.parent.libseq.getNoteDuration(step, note)
 		if not duration:
@@ -423,6 +515,12 @@ class zynthian_gui_patterneditor():
 	# Function to draw grid
 	#   clearGrid: True to clear grid and create all new elements, False to reuse existing elements if they exist
 	def drawGrid(self, clearGrid = False):
+		if self.parent.libseq.getSteps() == 0:
+			return #TODO: Should we clear grid?
+		if self.keyMapOffset > len(self.keyMap) - self.zoom:
+			self.keyMapOffset = len(self.keyMap) - self.zoom
+		if self.keyMapOffset < 0:
+			self.keyMapOffset = 0
 		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
 		if clearGrid:
 			self.gridCanvas.delete(tkinter.ALL)
@@ -437,29 +535,36 @@ class zynthian_gui_patterneditor():
 				self.gridCanvas.create_line(step * self.stepWidth, 0, step * self.stepWidth, self.zoom * self.rowHeight - 1, fill=GRID_LINE, tags=("gridline"))
 		# Delete existing note names
 		self.pianoRoll.delete("notename")
-		for note in range(self.keyOrigin, self.keyOrigin + self.zoom):
+		for row in range(0, self.zoom):
+			index = row + self.keyMapOffset
+			if(index >= len(self.keyMap)):
+				break
+			self.drawRow(index)
 			# Update pianoroll keys
-			key = note % 12
-			row = note - self.keyOrigin
-			self.drawRow(note)
 			if clearGrid:
 				# Create last note labels in grid
 				self.gridCanvas.create_text(self.gridWidth - self.selectThickness, self.fontsize, state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font, anchor="e")
 			id = "row%d" % (row)
-			if key in (0,2,4,5,7,9,11):
-				self.pianoRoll.itemconfig(id, fill="white")
-				if key == 0:
-					self.pianoRoll.create_text((self.pianoRollWidth / 2, self.rowHeight * (self.zoom - row - 0.5)), text="C%d (%d)" % ((self.keyOrigin + row) // 12 - 1, self.keyOrigin + row), font=font, fill=CANVAS_BACKGROUND, tags="notename")
-					self.gridCanvas.create_line(0, (self.zoom - row) * self.rowHeight, self.gridWidth, (self.zoom - row) * self.rowHeight, fill=GRID_LINE, tags=("gridline"))
-			else:
-				self.pianoRoll.itemconfig(id, fill="black")
+			try:
+				name = self.keyMap[index]["name"]
+			except:
+				name = None
+			try:
+				colour = self.keyMap[index]["colour"]
+			except:
+				colour = "white"
+			self.pianoRoll.itemconfig(id, fill=colour)
+			if name:
+				self.pianoRoll.create_text((self.pianoRollWidth / 2, self.rowHeight * (self.zoom - row - 0.5)), text=name, font=font, fill=CANVAS_BACKGROUND, tags="notename")
+			if self.keyMap[index]['note'] % 12 == self.scaleRoot:
+				self.gridCanvas.create_line(0, (self.zoom - row) * self.rowHeight, self.gridWidth, (self.zoom - row) * self.rowHeight, fill=GRID_LINE, tags=("gridline"))
 		# Set z-order to allow duration to show
 		if clearGrid:
 			for step in range(self.parent.libseq.getSteps()):
 				self.gridCanvas.tag_lower("step%d"%step)
 		self.gridCanvas.tag_raise("selection")
 
-	# Function to draw pianoroll keys (does not fill key colour)
+	# Function to draw pianoroll key outlines (does not fill key colour)
 	def drawPianoroll(self):
 		self.pianoRoll.delete(tkinter.ALL)
 		for row in range(self.zoom):
@@ -471,15 +576,34 @@ class zynthian_gui_patterneditor():
 			id = self.pianoRoll.create_rectangle(x1, y1, x2, y2, width=0, tags=id)
 
 	# Function to update selectedCell
-	#   step: Step (column) of selected cell (Optional - default to reselect current column)
-	#   note: Note number of selected cell (Optional - default to reselect current column)
-	def selectCell(self, step=None, note=None):
+	#	step: Step (column) of selected cell (Optional - default to reselect current column)
+	#	index: Index of keymap to select (Optional - default to reselect current row) Maybe outside visible range to scroll display
+	def selectCell(self, step=None, index=None):
+		redraw = False
 		if step == None:
 			step = self.selectedCell[0]
-		if note == None:
-			note = self.selectedCell[1]
-		if step < 0 or step > self.parent.libseq.getSteps():
-			return
+		if index == None:
+			index = self.selectedCell[1]
+		if step < 0:
+			step = 0
+		if step >= self.parent.libseq.getSteps():
+			step = self.parent.libseq.getSteps() - 1
+		if index >= len(self.keyMap):
+			index = len(self.keyMap) - 1
+		if index >= self.keyMapOffset + self.zoom:
+			# Note is off top of display
+			self.keyMapOffset = index - self.zoom + 1
+			redraw = True
+		if index < 0:
+			index = 0
+		if index < self.keyMapOffset:
+			# Note is off bottom of display
+			self.keyMapOffset = index
+			redraw = True
+		if redraw:
+			self.drawGrid()
+		row = index - self.keyMapOffset
+		note = self.keyMap[index]['note']
 		# Skip hidden (overlapping) cells
 		for previous in range(step - 1, -1, -1):
 			prevDuration = self.parent.libseq.getNoteDuration(previous, note)
@@ -495,35 +619,21 @@ class zynthian_gui_patterneditor():
 			step = 0;
 		if step >= self.parent.libseq.getSteps():
 			step = self.parent.libseq.getSteps() - 1
-		self.selectedCell = [step, note]
-		if note >= self.keyOrigin + self.zoom:
-			# Note is off top of display
-			if note < 128:
-				self.keyOrigin = note + 1 - self.zoom
-			else:
-				self.keyOrigin = 128 - self.zoom
-			self.drawGrid()
-			self.selectCell()
-		elif note < self.keyOrigin:
-			self.keyOrigin = note
-			self.drawGrid()
-			self.selectCell()
+		self.selectedCell = [step, index]
+		cell = self.gridCanvas.find_withtag("selection")
+		duration = self.parent.libseq.getNoteDuration(step, row)
+		if not duration:
+			duration = self.duration
+		coord = self.getCell(step, row, duration)
+		coord[0] = coord[0] - 1
+		coord[1] = coord[1] - 1
+		coord[2] = coord[2]
+		coord[3] = coord[3]
+		if not cell:
+			cell = self.gridCanvas.create_rectangle(coord, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
 		else:
-			cell = self.gridCanvas.find_withtag("selection")
-			row = note - self.keyOrigin
-			duration = self.parent.libseq.getNoteDuration(step, note)
-			if not duration:
-				duration = self.duration
-			coord = self.getCell(step, row, duration)
-			coord[0] = coord[0] - 1
-			coord[1] = coord[1] - 1
-			coord[2] = coord[2]
-			coord[3] = coord[3]
-			if not cell:
-				cell = self.gridCanvas.create_rectangle(coord, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
-			else:
-				self.gridCanvas.coords(cell, coord)
-			self.gridCanvas.tag_raise(cell)
+			self.gridCanvas.coords(cell, coord)
+		self.gridCanvas.tag_raise(cell)
 
 	# Function to calculate row height
 	def updateRowHeight(self):
@@ -564,6 +674,12 @@ class zynthian_gui_patterneditor():
 	def getVerticalZoom(self):
 		return self.zoom
 
+	# Function to assert steps in pattern
+	def assertSteps(self):
+		self.parent.libseq.setSteps(self.parent.getParam('Steps in pattern', 'value'))
+		self.drawGrid(True)
+		self.selectCell()
+
 	# Function to handle menu editor change
 	#   params: Menu item's parameters
 	#   returns: String to populate menu editor label
@@ -590,23 +706,19 @@ class zynthian_gui_patterneditor():
 		elif menuItem =='Copy pattern':
 			self.loadPattern(value)
 			return "Copy %d=>%d?" % (self.copySource, value)
-		elif menuItem == 'Steps in pattern':
-			self.parent.libseq.setSteps(value)
-			self.drawGrid(True)
-			self.selectCell()
 		elif menuItem == 'Transpose pattern':
-			if(value != 0):
+			if(value != 0 and self.keyMapIndex == 0):
 				self.parent.libseq.transpose(value)
 				self.parent.setParam(menuItem, 'value', 0)
-				self.keyOrigin = self.keyOrigin + value
-				if self.keyOrigin < 0:
-					self.keyOrigin = 0
-				if self.keyOrigin > 127:
-					self.keyOrigin = 127
-				if zyncoder.lib_zyncoder:
-					zyncoder.lib_zyncoder.zynmidi_send_all_notes_off() #TODO: Use libseq - also, just send appropriate note off
-			self.drawGrid()
-			self.selectCell()
+				self.keyMapOffset = self.keyMapOffset + value
+				if self.keyMapOffset > 128 - self.zoom:
+					self.keyMapOffset = 128 - self.zoom
+				elif self.keyMapOffset < 0:
+					self.keyMapOffset = 0
+				else:
+					self.selectedCell[1] = self.selectedCell[1] + value
+				self.drawGrid()
+				selectCell()
 			return "Transpose +/-"
 		elif menuItem == 'Vertical zoom':
 			self.zoom = value
@@ -627,6 +739,28 @@ class zynthian_gui_patterneditor():
 			self.drawGrid()
 			self.selectCell()
 			value = stepsPerBeat
+		elif menuItem == 'Key map':
+			keymaps = glob.glob('/zynthian/zynthian-my-data/sequences/*.map')
+			params['max'] = len(keymaps)
+			if value > params['max']:
+				value = params['max']
+			self.keyMapIndex = value
+			if value > 0:
+				self.loadKeymap(keymaps[value - 1])
+				return "Key map: %s" % (basename(keymaps[value - 1]).split('.')[0])
+			else:
+				self.loadKeymap(None)
+				return "Key map: Chromatic"
+		elif menuItem == 'Scale root':
+			offset = value - self.scaleRoot
+			self.scaleRoot = value
+			if self.parent.getParam('Key map', 'value'):
+				for key in self.keyMap:
+					note = key['note'] + offset
+					key['note'] = note
+					key['name'] = "%s%d" % (self.notes[note % 12], note // 12)
+			self.drawGrid(True)
+			return "Scale root: %s" % (self.notes[value])
 		return "%s: %d" % (menuItem, value)
 
 	# Function to load new pattern
@@ -656,7 +790,7 @@ class zynthian_gui_patterneditor():
 			self.playhead = step
 			if self.shown:
 				# Draw play head cursor
-				self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
+				self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * 	self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
 		if self.parent.libseq.isModified():
 			self.drawGrid();
 
@@ -666,11 +800,11 @@ class zynthian_gui_patterneditor():
 	def onZyncoder(self, encoder, value):
 		if encoder == ENC_BACK:
 			# BACK encoder adjusts note selection
-			self.selectCell(self.selectedCell[0], self.selectedCell[1] - value)
+			self.selectCell(None, self.selectedCell[1] - value)
 		elif encoder == ENC_SELECT:
 			pass
 			# SELECT encoder adjusts step selection
-			self.selectCell(self.selectedCell[0] + value)
+			self.selectCell(self.selectedCell[0] + value, None)
 		elif encoder == ENC_SNAPSHOT:
 			# SNAPSHOT encoder adjusts velocity
 			self.velocity = self.velocity + value
@@ -681,8 +815,9 @@ class zynthian_gui_patterneditor():
 				self.velocity = 1
 				return
 			self.velocityCanvas.coords("velocityIndicator", 0, 0, self.pianoRollWidth * self.velocity / 127, PLAYHEAD_HEIGHT)
-			if self.parent.libseq.getNoteDuration(self.selectedCell[0], self.selectedCell[1]):
-				self.parent.libseq.setNoteVelocity(self.selectedCell[0], self.selectedCell[1], self.velocity)
+			note = self.getNoteFromRow(self.selectedCell[1])
+			if self.parent.libseq.getNoteDuration(self.selectedCell[0], note):
+				self.parent.libseq.setNoteVelocity(self.selectedCell[0], note, self.velocity)
 				self.drawCell(self.selectedCell[0], self.selectedCell[1])
 		elif encoder == ENC_LAYER:
 			# LAYER encoder adjusts duration
@@ -699,7 +834,7 @@ class zynthian_gui_patterneditor():
 			if self.parent.libseq.getNoteDuration(self.selectedCell[0], self.selectedCell[1]):
 				self.addEvent(self.selectedCell[0], self.selectedCell[1])
 			else:
-				self.selectCell(self.selectedCell[0], self.selectedCell[1])
+				self.selectCell()
 
 	# Function to handle switch press
 	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]

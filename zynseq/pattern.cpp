@@ -143,6 +143,16 @@ void Pattern::setStepsPerBeat(uint32_t value)
 
 void Pattern::transpose(int value)
 {
+	// Check if any notes will be transposed out of MIDI note range (0..127)
+	for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
+	{
+		if((*it).getCommand() != MIDI_NOTE_ON)
+			continue;
+		int note = (*it).getValue1start() + value;
+		if(note > 127 || note < 0)
+			return;
+	}
+
 	for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
 	{
 		if((*it).getCommand() != MIDI_NOTE_ON)
