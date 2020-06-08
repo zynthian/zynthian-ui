@@ -49,10 +49,13 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		#Add list of programs
 		midich=self.zyngui.curlayer.get_midi_chan()
 		zs3_indexes=self.zyngui.screens['layer'].get_midi_chan_zs3_used_indexes(midich)
+		select_zs3_idx = self.zyngui.screens['layer'].get_last_zs3_index(midich)
 		self.num_programs=len(zs3_indexes)
 		for i, zs3_index in enumerate(zs3_indexes):
 			zs3_title="Program {}".format(zs3_index)
 			self.list_data.append((zs3_index,len(self.list_data),zs3_title))
+			if zs3_index == select_zs3_idx:
+				self.index = len(self.list_data) - 1
 
 		#Add "Waiting for Program Change" message
 		if len(self.list_data)>0:
