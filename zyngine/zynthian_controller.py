@@ -373,6 +373,7 @@ class zynthian_controller:
 				self.set_midi_learn(int(snapshot['midi_learn_chan']), int(snapshot['midi_learn_cc']))
 		else:
 			self.set_value(snapshot,True)
+		self.refresh_gui()
 
 
 	#--------------------------------------------------------------------------
@@ -530,6 +531,9 @@ class zynthian_controller:
 	def midi_control_change(self, val):
 		value=self.value_min+val*self.value_range/127
 		self.set_value(value)
+		self.refresh_gui()
+
+	def refresh_gui(self):
 		#Refresh GUI controller in screen when needed ...
 		try:
 			if (self.engine.zyngui.active_screen=='control' or self.engine.zyngui.modal_screen=='control') and self.engine.zyngui.screens['control'].mode=='control':
