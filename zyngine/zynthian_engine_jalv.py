@@ -163,6 +163,10 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
+		if plugin_type=="MIDI Tool":
+			self.options['midi_route'] = True
+			self.options['audio_route'] = False
+
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
 

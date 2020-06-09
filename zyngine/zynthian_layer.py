@@ -42,6 +42,7 @@ class zynthian_layer:
 		self.jackname = None
 		self.audio_out = ["system"]
 		self.audio_chan = [0,1]
+		self.midi_out = []
 
 		self.bank_list = []
 		self.bank_index = 0
@@ -575,7 +576,11 @@ class zynthian_layer:
 
 	def get_jackname(self):
 		return self.jackname
-		
+
+
+	def get_audio_jackname(self):
+		return self.jackname
+
 
 	def get_audio_out(self):
 		return self.audio_out
@@ -583,30 +588,27 @@ class zynthian_layer:
 
 	def set_audio_out(self, ao):
 		self.audio_out=ao
-		#logging.debug("Setting connections:")
-		#for jn in ao:
-		#	logging.debug("  {} => {}".format(self.engine.jackname, jn))
 		self.zyngui.zynautoconnect_audio()
 
 
 	def add_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
-			jackname=jackname.jackname
+			jackname=jackname.get_audio_jackname()
 
 		if jackname not in self.audio_out:
 			self.audio_out.append(jackname)
-			logging.debug("Connecting {} => {}".format(self.engine.jackname, jackname))
+			logging.debug("Connecting Audio {} => {}".format(self.get_audio_jackname(), jackname))
 
 		self.zyngui.zynautoconnect_audio()
 
 
 	def del_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
-			jackname=jackname.jackname
+			jackname=jackname.get_audio_jackname()
 
 		try:
 			self.audio_out.remove(jackname)
-			logging.debug("Disconnecting {} => {}".format(self.engine.jackname, jackname))
+			logging.debug("Disconnecting Audio {} => {}".format(self.get_audio_jackname(), jackname))
 		except:
 			pass
 
@@ -615,7 +617,7 @@ class zynthian_layer:
 
 	def toggle_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
-			jackname=jackname.jackname
+			jackname=jackname.get_audio_jackname()
 
 		if jackname not in self.audio_out:
 			self.audio_out.append(jackname)
@@ -633,6 +635,67 @@ class zynthian_layer:
 	def mute_audio_out(self):
 		self.audio_out=[]
 		self.zyngui.zynautoconnect_audio()
+
+
+	# ---------------------------------------------------------------------------
+	# MIDI Routing:
+	# ---------------------------------------------------------------------------
+
+	def get_midi_jackname(self):
+		return self.engine.jackname
+
+
+	def get_midi_out(self):
+		return self.midi_out
+
+
+	def set_midi_out(self, mo):
+		self.midi_out=mo
+		#logging.debug("Setting MIDI connections:")
+		#for jn in mo:
+		#	logging.debug("  {} => {}".format(self.engine.jackname, jn))
+		self.zyngui.zynautoconnect_midi()
+
+
+	def add_midi_out(self, jackname):
+		if isinstance(jackname, zynthian_layer):
+			jackname=jackname.get_midi_jackname()
+
+		if jackname not in self.midi_out:
+			self.midi_out.append(jackname)
+			logging.debug("Connecting MIDI {} => {}".format(self.get_midi_jackname(), jackname))
+
+		self.zyngui.zynautoconnect_midi()
+
+
+	def del_midi_out(self, jackname):
+		if isinstance(jackname, zynthian_layer):
+			jackname=jackname.get_midi_jackname()
+
+		try:
+			self.midi_out.remove(jackname)
+			logging.debug("Disconnecting MIDI {} => {}".format(self.get_midi_jackname(), jackname))
+		except:
+			pass
+
+		self.zyngui.zynautoconnect_midi()
+
+
+	def toggle_midi_out(self, jackname):
+		if isinstance(jackname, zynthian_layer):
+			jackname=jackname.get_midi_jackname()
+
+		if jackname not in self.midi_out:
+			self.midi_out.append(jackname)
+		else:
+			self.midi_out.remove(jackname)
+
+		self.zyngui.zynautoconnect_midi()
+
+
+	def mute_midi_out(self):
+		self.midi_out=[]
+		self.zyngui.zynautoconnect_midi()
 
 
 	# ---------------------------------------------------------------------------
