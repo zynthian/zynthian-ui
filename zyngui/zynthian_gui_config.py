@@ -141,6 +141,16 @@ elif wiring_layout=="MCP23017_ZynScreen":
 	if not zyncoder_pin_b: zyncoder_pin_b=[101,104,109,112]
 	if not zynswitch_pin: zynswitch_pin=[100,103,108,111,106,107,114,115]
 	select_ctrl=3
+elif wiring_layout=="MCP23017_EPDF":
+	if not zyncoder_pin_a: zyncoder_pin_a=[103,100,111,108]
+	if not zyncoder_pin_b: zyncoder_pin_b=[104,101,112,109]
+	if not zynswitch_pin: zynswitch_pin=[105,102,112,110,106,107,114,115]
+	select_ctrl=3
+elif wiring_layout=="MCP23017_EPDF_REVERSE":
+	if not zyncoder_pin_b: zyncoder_pin_a=[104,101,112,109]
+	if not zyncoder_pin_a: zyncoder_pin_b=[103,100,111,108]
+	if not zynswitch_pin: zynswitch_pin=[105,102,112,110,106,107,114,115]
+	select_ctrl=3
 elif wiring_layout=="I2C_HWC":
 	if not zyncoder_pin_a: zyncoder_pin_a=[1,2,3,4]
 	zyncoder_pin_b=[0,0,0,0]
