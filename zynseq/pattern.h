@@ -199,6 +199,25 @@ class Pattern
 		*/
 		uint32_t getStepsPerBeat() { return m_nStepsPerBeat; };
 
+		/**	@brief	Set map / scale used by pattern editor for this pattern
+		*	@param	map Index of map / scale
+		*/
+		void setScale(uint8_t scale) { m_nScale = scale; };
+
+		/**	@brief	Get map / scale used by pattern editor for this pattern
+		*	@retval	uint8_t Index of map / scale
+		*/
+		uint8_t getScale() { return m_nScale; };
+
+		/**	@brief	Set scale tonic (root note) used by pattern editor for current pattern
+		*	@param	tonic Scale tonic
+		*/
+		void setTonic(uint8_t tonic) { m_nTonic = tonic; };
+
+		/**	@brief	Get scale tonic (root note) used by pattern editor for current pattern
+		*	@retval	uint8_t Tonic
+		*/
+		uint8_t getTonic() { return m_nTonic; };
 
 		/**	@brief	Transpose all notes within pattern
 		*	@param	value Offset to transpose
@@ -222,4 +241,6 @@ class Pattern
 		uint32_t m_nLength; // Quantity of steps in pattern
 		uint32_t m_nClkPerStep; // Clock cycles per step
 		uint32_t m_nStepsPerBeat; // Steps per beat
+		uint8_t m_nScale = 0; // Index of scale
+		uint8_t m_nTonic = 0; // Scale tonic (root note)
 };

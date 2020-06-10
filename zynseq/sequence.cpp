@@ -383,3 +383,13 @@ uint8_t Sequence::getTrigger()
 {
 	return m_nTrigger;
 }
+
+void Sequence::setMap(uint8_t map)
+{
+	m_nMap = map;
+}
+
+uint8_t Sequence::getMap()
+{
+	return m_nMap;
+}

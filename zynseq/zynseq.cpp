@@ -593,6 +593,32 @@ uint8_t getInputChannel()
 	return g_nInputChannel;
 }
 
+void setScale(uint32_t scale)
+{
+	if(g_pPattern)
+		g_pPattern->setScale(scale);
+}
+
+uint32_t getScale()
+{
+	if(g_pPattern)
+		return g_pPattern->getScale();
+	return 0;
+}
+
+void setTonic(uint8_t tonic)
+{
+	if(g_pPattern)
+		g_pPattern->setTonic(tonic);
+}
+
+uint8_t getTonic()
+{
+	if(g_pPattern)
+		return g_pPattern->getTonic();
+	return 0;
+}
+
 // ** Sequence management functions **
 
 uint32_t getStep(uint32_t sequence)

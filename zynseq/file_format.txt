@@ -1,8 +1,13 @@
 zynseq file format (RIFF)
-
+=========================
 Pattern time is measured in steps.
 Sequence time is measured in MIDI clock cycles.
 
+RIFF Header: (Version block must be first. If ommitted assume version 0.)
+	Block ID: "vers"
+	Block size: 32-bit little endian
+Block:
+	File format version [32]
 RIFF Header:
 	Block ID: "patn"
 	Block size: 32-bit little endian
@@ -11,6 +16,8 @@ Block:
 	Quanity of steps [4]
 	Clock cycles per step [2]
 	Steps per beat [2]
+	Map / scale [1] (Added in V1)
+	Scale tonic [1] (Added in V1)
 	Events:
 		Start step [4]
 		Duration [4]
@@ -36,7 +43,7 @@ Block:
 		Play mode [1]
 		Group [1]
 		MIDI trigger note [1]
-		Padding [1]
+		Keymap [1] (bits scale: 0..200, 254=map)
 		Quantity of patterns [2]
 		Patterns:
 			Start time [4]
@@ -47,5 +54,32 @@ RIFF Header:
 Block:
 	MIDI channel [1]
 	Jack input [1] (Not yet implemented)
+RIFF Header: (user defined scales)
+	Block ID: 'scal'
+	Block size: 32-bit little endian
+Block:
+	Scale index [1] (0..200)
+	Quantity of notes in scale [1]
+	Notes:
+		Note offset [1]
+	Pad if necessary [0/1]
+
 
 **Patterns must be stored (or loaded) before sequences which rely on references to patterns**
+
+Keymap File Format
+==================
+Keymaps are stored in JSON. There are two types:
+Map:
+{
+	"type":"map", # Defines the type of the map (required: map | scale)
+	"scale":[0,2,4,5,7,9,11], # Array of note offsets within scale (required for scale type: values: 0..11)
+	"default":48, # Defines the default MIDI note to select after loading map (0..127 Default: 60)
+	"keys":       # Array of keys in map (required for map type)
+	[
+		{
+			"note":36,            # MIDI note number (required: 0..127)
+			"name":"Kick Drum",   # Title to show on key (default: note+octave, e.g. C4)
+			"colour":"#000000"}   # Background colour of key (default: white)
+	]
+}

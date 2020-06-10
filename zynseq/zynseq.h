@@ -253,6 +253,26 @@ void setInputChannel(uint8_t channel);
 */
 uint8_t getInputChannel();
 
+/**	@brief	Set scale used by pattern editor for current pattern
+*	@param	scale Index of scale
+*/
+void setScale(uint32_t scale);
+
+/**	@brief	Get scale used by pattern editor for current pattern
+*	@retval	uint32_t Index of scale
+*/
+uint32_t getScale();
+
+/**	@brief	Set scale tonic (root note) used by pattern editor for current pattern
+*	@param	tonic Scale tonic
+*/
+void setTonic(uint8_t tonic);
+
+/**	@brief	Get scale tonic (root note) used by pattern editor for current pattern
+*	@retval	uint8_t Tonic
+*/
+uint8_t getTonic();
+
 /**	@brief	Check if pattern has changed since last check
 *	@retval	bool True if pattern has changed
 */

@@ -84,6 +84,7 @@ void PatternManager::load(const char* filename)
 {
 	init();
 	uint32_t nSequence = 1;
+	uint32_t nVersion = 0;
 	FILE *pFile;
 	pFile = fopen(filename, "r");
 	if(pFile == NULL)
@@ -98,14 +99,25 @@ void PatternManager::load(const char* filename)
 //		printf("Looking for RIFF block...\n");
 		// Load patterns
 		uint32_t nBlockSize = fileRead32(pFile);
+		if(memcmp(sHeader, "vers",4) == 0)
+			nVersion = fileRead32(pFile);
 		if(memcmp(sHeader, "patn", 4) == 0)
 		{
-			if(nBlockSize < 12)
+			if(nVersion > 0)
+				if(nBlockSize < 14)
+					continue;
+			else if(nBlockSize < 12)
 				continue;
 			Pattern* pPattern = getPattern(fileRead32(pFile));
 			pPattern->setSteps(fileRead32(pFile));
 			pPattern->setClocksPerStep(fileRead16(pFile));
 			pPattern->setStepsPerBeat(fileRead16(pFile));
+			if(nVersion > 0)
+			{
+				pPattern->setScale(fileRead8(pFile));
+				pPattern->setTonic(fileRead8(pFile));
+				nBlockSize -= 2;
+			}
 			nBlockSize -= 12;
 			while(nBlockSize)
 			{
@@ -150,7 +162,7 @@ void PatternManager::load(const char* filename)
 				m_mSequences[nSequence].setPlayMode(fileRead8(pFile));
 				m_mSequences[nSequence].setGroup(fileRead8(pFile));
 				m_mSequences[nSequence].setTrigger(fileRead8(pFile));
-				fileRead8(pFile);
+				m_mSequences[nSequence].setMap(fileRead8(pFile));
 				uint16_t nPatterns = fileRead16(pFile);
 				nBlockSize -= 8;
 				while(nPatterns--)
@@ -174,7 +186,7 @@ void PatternManager::load(const char* filename)
 		}
 	}
 	fclose(pFile);
-	printf("Loaded %lu patterns, %lu sequences, %lu songs from file %s\n", m_mPatterns.size(), m_mSequences.size(), m_mSongs.size(), filename);
+	printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu songs from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mSongs.size(), filename);
 }
 
 void PatternManager::save(const char* filename)
@@ -188,14 +200,21 @@ void PatternManager::save(const char* filename)
 		return;
 	}
 	uint32_t nBlockSize;
-	uint32_t nQoP = 0;
+	fwrite("vers", 4, 1, pFile);
+	nPos += 4;
+	nPos += fileWrite32(4, pFile);
+	nPos += fileWrite32(1, pFile);
+
+	uint32_t nQoP = 0; // Quantity of patterns - purely for reporting
+	uint32_t nQoS = 0; // Quantity of songs - purely for reporting
+	uint32_t nQoSeq = 0; // Quantity of sequences - purely for reporting
 	// Iterate through patterns
 	for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
 	{
 		// Only save patterns with content
 		if((*it).second.getEventAt(0))
 		{
-			++nQoP; // Quantity of patterns - purely for reporting
+			++nQoP;
 			fwrite("patnxxxx", 8, 1, pFile);
 			nPos += 8;
 			uint32_t nStartOfBlock = nPos;
@@ -203,6 +222,8 @@ void PatternManager::save(const char* filename)
 			nPos += fileWrite32(it->second.getSteps(), pFile);
 			nPos += fileWrite16(it->second.getClocksPerStep(), pFile);
 			nPos += fileWrite16(it->second.getStepsPerBeat(), pFile);
+			nPos += fileWrite8(it->second.getScale(), pFile);
+			nPos += fileWrite8(it->second.getTonic(), pFile);
 			size_t nEvent = 0;
 			while(StepEvent* pEvent = it->second.getEventAt(nEvent++))
 			{
@@ -222,8 +243,6 @@ void PatternManager::save(const char* filename)
 		}
 	}
 	// Iterate through songs
-	uint32_t nQoS = 0; // Quantity of songs - purely for reporting
-	uint32_t nQoSeq = 0; // Quantity of sequences - purely for reporting
 	for(auto it = m_mSongs.begin(); it != m_mSongs.end(); ++it)
 	{
 		++nQoS;
@@ -252,7 +271,7 @@ void PatternManager::save(const char* filename)
 			nPos += fileWrite8(m_mSequences[nSequence].getPlayMode(), pFile);
 			nPos += fileWrite8(m_mSequences[nSequence].getGroup(), pFile);
 			nPos += fileWrite8(m_mSequences[nSequence].getTrigger(), pFile);
-			nPos += fileWrite8('\0', pFile); // Padding
+			nPos += fileWrite8(m_mSequences[nSequence].getMap(), pFile);
 			nPos += fileWrite16('\0', pFile); // Placeholder
 			uint32_t nPatternPos = 0xFFFFFFFF;
 			uint16_t nPatterns = 0;

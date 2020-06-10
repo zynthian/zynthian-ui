@@ -777,8 +777,10 @@ class zynthian_gui_stepsequencer():
 			self.libseq.selectSong(song)
 			self.song = song
 			self.zyngui.zyntransport.set_tempo(self.libseq.getTempo(song))
-			if self.child:
+			try:
 				self.child.selectSong()
+			except:
+				pass
 
 	# Function to toggle transport
 	def toggleTransport(self):

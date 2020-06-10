@@ -166,9 +166,19 @@ class Sequence
 		void setTrigger(uint8_t trigger);
 
 		/**	@brief	Get trigger MIDI note
-		*	@retval	uint8_t MID note
+		*	@retval	uint8_t MIDI note
 		*/
 		uint8_t getTrigger();
+
+		/**	@brief	Set map / scale index
+		*	@param	map
+		*/
+		void setMap(uint8_t map);
+
+		/**	@brief	Get map / scale index
+		*	@retval	uint8_t Map / scale index
+		*/
+		uint8_t getMap();
 
 	private:
 		uint8_t m_nChannel = 0; // MIDI channel
@@ -177,6 +187,7 @@ class Sequence
 		uint8_t m_nMode = LOOP; // Play mode
 		uint8_t m_nGroup = 0; // Group
 		uint8_t m_nTrigger = 0xFF; // MIDI note to trigger sequence
+		uint8_t m_nMap = 0; // Map / scale index
 		uint32_t m_nPosition = 0; // Play position in clock cycles
 		uint32_t m_nClkPerStep = 1; // Clock cycles per step
 		uint32_t m_nDivCount = 0; // Current count of clock cycles within divisor
