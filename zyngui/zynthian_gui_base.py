@@ -55,6 +55,7 @@ class zynthian_gui_base:
 		self.status_error = None
 		self.status_recplay = None
 		self.status_midi = None
+		self.status_midi_clock = None
 
 		#Status Area Parameters
 		self.status_h = zynthian_gui_config.topbar_height
@@ -299,17 +300,11 @@ class zynthian_gui_base:
 				self.status_canvas.itemconfig(self.status_recplay, text=flags, fill=color)
 
 			# Display MIDI flag
-			ul = None
-			flags = ""
-			if 'midi_clock' in status and status['midi_clock']:
-				#flags="\uf017";
-				ul = 0
 			if 'midi' in status and status['midi']:
 				flags = "m"
 				#flags = "\uf001"
-			elif ul is not None:
-				flags = "__"
-				ul = None
+			else:
+				flags = ""
 
 			if not self.status_midi:
 				self.status_midi = self.status_canvas.create_text(
@@ -319,9 +314,26 @@ class zynthian_gui_base:
 					justify=tkinter.RIGHT,
 					fill=zynthian_gui_config.color_status_midi,
 					font=("FontAwesome", self.status_fs, "bold"),
-					text=flags, underline=ul)
+					text=flags)
 			else:
-				self.status_canvas.itemconfig(self.status_midi, text=flags, underline=ul)
+				self.status_canvas.itemconfig(self.status_midi, text=flags)
+
+			# Display MIDI clock flag
+			if 'midi_clock' in status and status['midi_clock']:
+				mcstate = "normal"
+			else:
+				mcstate = "hidden"
+
+			if not self.status_midi_clock:
+				self.status_midi_clock = self.status_canvas.create_line(
+					int(self.status_l-self.status_fs*1.7+1),
+					int(self.status_h*0.85),
+					int(self.status_l-2),
+					int(self.status_h*0.85),
+					fill=zynthian_gui_config.color_status_midi,
+					state=mcstate)
+			else:
+				self.status_canvas.itemconfig(self.status_midi_clock, state=mcstate)
 
 
 	def cb_topbar(self,event):

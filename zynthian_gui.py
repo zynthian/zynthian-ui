@@ -1169,7 +1169,6 @@ class zynthian_gui:
 				ev=lib_zyncoder.read_zynmidi()
 				if ev==0: break
 
-				self.status_info['midi'] = True
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
 
