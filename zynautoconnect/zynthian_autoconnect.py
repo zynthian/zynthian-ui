@@ -38,7 +38,7 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = logging.DEBUG
+log_level = logging.WARNING
 
 logger=logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -639,7 +639,7 @@ def is_running():
 
 
 def cb_jack_xrun(delayed_usecs: float):
-	logger.error("Jack Audio XRUN!")
+	logger.warning("Jack Audio XRUN!")
 	zynthian_gui_config.zyngui.status_info['xrun'] = True
 
 
