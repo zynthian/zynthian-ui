@@ -85,6 +85,7 @@ class zynthian_gui_base:
 			bg=zynthian_gui_config.color_bg)
 		self.tb_frame.grid(row=0, column=0, columnspan=3)
 		self.tb_frame.grid_propagate(False)
+		self.tb_frame.grid_columnconfigure(0, weight=1)
 		# Setup Topbar's Callback
 		self.tb_frame.bind("<Button-1>", self.cb_topbar)
 
