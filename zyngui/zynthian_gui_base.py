@@ -301,10 +301,9 @@ class zynthian_gui_base:
 
 			# Display MIDI flag
 			if 'midi' in status and status['midi']:
-				flags = "m"
-				#flags = "\uf001"
+				mstate = "normal"
 			else:
-				flags = ""
+				mstate = "hidden"
 
 			if not self.status_midi:
 				self.status_midi = self.status_canvas.create_text(
@@ -314,9 +313,10 @@ class zynthian_gui_base:
 					justify=tkinter.RIGHT,
 					fill=zynthian_gui_config.color_status_midi,
 					font=("FontAwesome", self.status_fs, "bold"),
-					text=flags)
+					text="m",
+					state=mstate)
 			else:
-				self.status_canvas.itemconfig(self.status_midi, text=flags)
+				self.status_canvas.itemconfig(self.status_midi, state=mstate)
 
 			# Display MIDI clock flag
 			if 'midi_clock' in status and status['midi_clock']:
