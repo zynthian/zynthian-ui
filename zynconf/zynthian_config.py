@@ -477,6 +477,20 @@ def is_service_active(service):
 	else:
 		return False
 
+#------------------------------------------------------------------------------
+# Jackd configuration
+#------------------------------------------------------------------------------
+
+def get_jackd_options():
+	jackd_options = {}
+	for item in os.environ.get('JACKD_OPTIONS',"").strip().split('-'):
+		try:
+			parts = item.split(' ', 1)
+			jackd_options[parts[0]] = parts[1].strip()
+		except:
+			pass
+
+	return jackd_options
 
 #------------------------------------------------------------------------------
 

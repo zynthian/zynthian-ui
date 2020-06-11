@@ -80,7 +80,7 @@ class zynthian_engine_puredata(zynthian_engine):
 		#self.jackname = "pure_data_0"
 		self.jackname = "pure_data"
 
-		#self.options['midi_chan']=False
+		self.options['midi_route'] = True
 
 		self.preset = ""
 		self.preset_config = None
@@ -126,7 +126,7 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.stop()
 		self.start()
 		self.refresh_all()
-		sleep(0.3)
+		sleep(0.5)
 		self.zyngui.zynautoconnect_midi(True)
 		self.zyngui.zynautoconnect_audio(False)
 		layer.send_ctrl_midi_cc()

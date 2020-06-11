@@ -98,6 +98,11 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.midi_chan = midi_chan
 
 
+	def set_midichain_mode(self, midi_chan):
+		self.engine_type = "MIDI Tool"
+		self.midi_chan = midi_chan
+
+
 	def fill_list(self):
 		self.init_engine_info()
 		self.index=0

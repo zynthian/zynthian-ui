@@ -47,7 +47,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.layers = []
 		self.root_layers = []
 		self.amixer_layer = None
-		self.show_all_layers = False
 		self.add_layer_eng = None
 		self.replace_layer_index = None
 		self.last_snapshot_fpath = None
@@ -55,7 +54,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def reset(self):
-		self.show_all_layers = False
 		self.add_layer_eng = None
 		self.last_snapshot_fpath = None
 		self.reset_clone()
@@ -64,21 +62,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.reset_midi_profile()
 
 
-	def toggle_show_all_layers(self):
-		if self.show_all_layers:
-			self.show_all_layers = False
-		else:
-			self.show_all_layers = True
-
-
 	def fill_list(self):
 		self.list_data=[]
 
-		# Add list of root layers
-		if self.show_all_layers:
-			self.root_layers=self.layers
-		else:
-			self.root_layers=self.get_fxchain_roots()
+		# Get list of root layers
+		self.root_layers=self.get_fxchain_roots()
 
 		for i,layer in enumerate(self.root_layers):
 			self.list_data.append((str(i+1),i,layer.get_presetpath()))
@@ -89,7 +77,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		# Add fixed entries
 		self.list_data.append(('NEW_SYNTH',len(self.list_data),"NEW Synth Layer"))
-		self.list_data.append(('NEW_EFFECT',len(self.list_data),"NEW Effect Layer"))
+		self.list_data.append(('NEW_AUDIO_FX',len(self.list_data),"NEW Audio-FX Layer"))
+		self.list_data.append(('NEW_MIDI_FX',len(self.list_data),"NEW MIDI-FX Layer"))
 		self.list_data.append(('NEW_GENERATOR',len(self.list_data),"NEW Generator Layer"))
 		self.list_data.append(('NEW_SPECIAL',len(self.list_data),"NEW Special Layer"))
 		self.list_data.append(('RESET',len(self.list_data),"REMOVE All Layers"))
@@ -108,8 +97,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		elif self.list_data[i][0]=='NEW_SYNTH':
 			self.add_layer("MIDI Synth")
 
-		elif self.list_data[i][0]=='NEW_EFFECT':
+		elif self.list_data[i][0]=='NEW_AUDIO_FX':
 			self.add_layer("Audio Effect")
+
+		elif self.list_data[i][0]=='NEW_MIDI_FX':
+			self.add_layer("MIDI Tool")
 
 		elif self.list_data[i][0]=='NEW_GENERATOR':
 			self.add_layer("Audio Generator")
@@ -219,6 +211,20 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.zyngui.show_modal('engine')
 
 
+	def add_midichain_layer(self, midi_chan):
+		self.add_layer_eng = None
+		self.replace_layer_index = None
+		self.zyngui.screens['engine'].set_midichain_mode(midi_chan)
+		self.zyngui.show_modal('engine')
+
+
+	def replace_midichain_layer(self, i):
+		self.add_layer_eng = None
+		self.replace_layer_index = i
+		self.zyngui.screens['engine'].set_midichain_mode(self.layers[i].midi_chan)
+		self.zyngui.show_modal('engine')
+
+
 	def add_layer_engine(self, eng, midi_chan=None):
 		self.add_layer_eng=eng
 
@@ -247,13 +253,21 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if self.add_layer_eng:
 			layer=zynthian_layer(self.add_layer_eng, midich, self.zyngui)
 
-			# Try to connect effects ...
+			# Try to connect Audio Effects ...
 			if len(self.layers)>0 and layer.engine.type=="Audio Effect":
 				if self.replace_layer_index is not None:
 					self.replace_on_fxchain(layer)
 				else:
 					self.add_to_fxchain(layer)
 					self.layers.append(layer)
+			# Try to connect MIDI tools ...
+			elif len(self.layers)>0 and layer.engine.type=="MIDI Tool":
+				if self.replace_layer_index is not None:
+					self.replace_on_midichain(layer)
+				else:
+					self.add_to_midichain(layer)
+					self.layers.append(layer)
+			# New root layer
 			else:
 				self.layers.append(layer)
 
@@ -273,14 +287,19 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def remove_layer(self, i, stop_unused_engines=True):
 		if i>=0 and i<len(self.layers):
 			logging.debug("Removing layer {} => {} ...".format(i, self.layers[i].get_basepath()))
-			
-			self.drop_from_fxchain(self.layers[i])
-			self.layers[i].mute_audio_out()
+
+			if self.layers[i].engine.type == "MIDI Tool":
+				self.drop_from_midichain(self.layers[i])
+				self.layers[i].mute_midi_out()
+			else:
+				self.drop_from_fxchain(self.layers[i])
+				self.layers[i].mute_audio_out()
+
 			self.zyngui.zynautoconnect()
 
 			self.zyngui.zynautoconnect_acquire_lock()
 			self.layers[i].reset()
-			del self.layers[i]
+			self.layers.pop(i)
 			self.zyngui.zynautoconnect_release_lock()
 
 			if self.zyngui.curlayer in self.root_layers:
@@ -303,16 +322,43 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def remove_root_layer(self, i, stop_unused_engines=True):
 		if i>=0 and i<len(self.root_layers):
-			# For some engines (Aeolus, setBfree), delete all layers on the same engine
+			# For some engines (Aeolus, setBfree), delete all layers from the same engine
 			if self.root_layers[i].engine.nickname in ['BF', 'AE']:
 				root_layers_to_delete = copy.copy(self.root_layers[i].engine.layers)
 			else:
 				root_layers_to_delete = [self.root_layers[i]]
 
-			# Remove root layer and fxchain
+			# Mute Audio Layers & build list of layers to delete
+			layers_to_delete = []
 			for root_layer in root_layers_to_delete:
-				for layer in reversed(self.get_fxchain_layers(root_layer)):
-					self.remove_layer(self.layers.index(layer), False)
+				# Midichain layers
+				midichain_layers = self.get_midichain_layers(root_layer)
+				if len(midichain_layers)>0:
+					midichain_layers.remove(root_layer)
+				layers_to_delete += midichain_layers
+				for layer in reversed(midichain_layers):
+					logging.debug("Mute MIDI layer '{}' ...".format(i, layer.get_basepath()))
+					self.drop_from_midichain(layer)
+					layer.mute_midi_out()
+				# Fxchain layers => Mute!
+				fxchain_layers = self.get_fxchain_layers(root_layer)
+				if len(fxchain_layers)>0:
+					fxchain_layers.remove(root_layer)
+				layers_to_delete += fxchain_layers
+				for layer in reversed(fxchain_layers):
+					logging.debug("Mute Audio layer '{}' ...".format(i, layer.get_basepath()))
+					self.drop_from_fxchain(layer)
+					layer.mute_audio_out()
+				# Root_layer
+				layers_to_delete.append(root_layer)
+				root_layer.mute_midi_out()
+				root_layer.mute_audio_out()
+
+			self.zyngui.zynautoconnect(True)
+
+			# Remove layers
+			for layer in layers_to_delete:
+				self.remove_layer(self.layers.index(layer), False)
 
 			# Stop unused engines
 			if stop_unused_engines:
@@ -325,6 +371,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		while i>0:
 			i -= 1
 			logging.debug("Mute layer {} => {} ...".format(i, self.layers[i].get_basepath()))
+			self.drop_from_midichain(self.layers[i])
+			self.layers[i].mute_midi_out()
 			self.drop_from_fxchain(self.layers[i])
 			self.layers[i].mute_audio_out()
 
@@ -337,7 +385,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			i -= 1
 			logging.debug("Remove layer {} => {} ...".format(i, self.layers[i].get_basepath()))
 			self.layers[i].reset()
-			del self.layers[i]
+			self.layers.pop(i)
 		self.zyngui.zynautoconnect_release_lock()
 
 		self.index=0
@@ -456,7 +504,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	# Audio Routing
 	#----------------------------------------------------------------------------
 
-
 	def get_audio_routing(self):
 		res={}
 		for i, layer in enumerate(self.layers):
@@ -476,9 +523,35 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.set_audio_routing()
 
 
+	#----------------------------------------------------------------------------
+	# MIDI Routing
+	#----------------------------------------------------------------------------
+
+	def get_midi_routing(self):
+		res={}
+		for i, layer in enumerate(self.layers):
+			res[layer.get_jackname()]=layer.get_midi_out()
+		return res
+
+
+	def set_midi_routing(self, midi_routing=None):
+		for i, layer in enumerate(self.layers):
+			try:
+				layer.set_midi_out(midi_routing[layer.get_jackname()])
+			except:
+				layer.set_midi_out([])
+
+
+	def reset_midi_routing(self):
+		self.set_midi_routing()
+
+	#----------------------------------------------------------------------------
+	# Jackname managing
+	#----------------------------------------------------------------------------
+
 	def get_layer_by_jackname(self, jackname):
 		for layer in self.layers:
-			if layer.jackname==jackname:
+			if layer.jackname in jackname:
 				return layer
 
 
@@ -489,10 +562,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				count += 1
 		return count
 
+
 	# ---------------------------------------------------------------------------
 	# FX-Chain
 	# ---------------------------------------------------------------------------
-
 
 	def get_fxchain_roots(self):
 		roots = []
@@ -519,7 +592,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 			if layer.midi_chan is not None:
 				for l in self.layers:
-					if l not in fxchain_layers and l.midi_chan==layer.midi_chan:
+					if l.engine.type!="MIDI Tool" and l not in fxchain_layers and l.midi_chan==layer.midi_chan:
 						fxchain_layers.append(l)
 
 			elif layer in self.layers:
@@ -586,7 +659,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					end.set_audio_out([layer.get_jackname()])
 
 		except Exception as e:
-			logging.error("Error chaining effect ({})".format(e))
+			logging.error("Error chaining Audio Effect ({})".format(e))
 
 
 	def replace_on_fxchain(self, layer):
@@ -613,7 +686,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.replace_layer_index = None
 
 		except Exception as e:
-			logging.error("Error replacing effect ({})".format(e))
+			logging.error("Error replacing Audio Effect ({})".format(e))
 
 
 	def drop_from_fxchain(self, layer):
@@ -627,7 +700,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 						up.add_audio_out(ao)
 
 		except Exception as e:
-			logging.error("Error unchaining effect ({})".format(e))
+			logging.error("Error unchaining Audio Effect ({})".format(e))
 
 
 	def swap_fxchain(self, layer1, layer2):
@@ -651,6 +724,205 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		ao2 = layer2.audio_out
 		layer1.set_audio_out(ao2)
 		layer2.set_audio_out(ao1)
+
+		self.zyngui.zynautoconnect_release_lock()
+
+		# Swap position in layer list
+		for i,layer in enumerate(self.layers):
+			if layer==layer1:
+				self.layers[i] = layer2
+
+			elif layer==layer2:
+				self.layers[i] = layer1
+
+	# ---------------------------------------------------------------------------
+	# MIDI-Chain
+	# ---------------------------------------------------------------------------
+
+	def get_midichain_roots(self):
+		roots = []
+
+		for layer in self.layers:
+			if layer.midi_chan==None and layer.engine.type in ("Special"):
+				roots.append(layer)
+
+		for chan in range(16):
+			rl = self.get_midichain_root_by_chan(chan)
+			if rl:
+				roots.append(rl)
+
+		return roots
+
+
+	def get_midichain_layers(self, layer=None):
+		if layer is None:
+			layer = self.zyngui.curlayer
+
+		if layer is not None:
+			midichain_layers = []
+
+			if layer.midi_chan is not None:
+				for l in self.layers:
+					if l.engine.type in ("MIDI Synth", "MIDI Tool", "Special") and l not in midichain_layers and l.midi_chan==layer.midi_chan:
+						midichain_layers.append(l)
+
+			return midichain_layers
+
+		else:
+			return None
+
+
+	def get_midichain_root(self, layer):
+		if layer.midi_chan is None:
+			return layer
+
+		for l in self.layers:
+			if l.engine.type=="MIDI Tool" and l.midi_chan==layer.midi_chan:
+				return l
+
+		for l in self.layers:
+			if l.engine.type in ("MIDI Synth", "Special") and l.midi_chan==layer.midi_chan:
+				return l
+
+		return None
+
+
+	def get_midichain_root_by_chan(self, chan):
+		if chan is None:
+			for l in self.layers:
+				if l.midi_chan is None:
+					return l
+
+		else:
+			for l in self.layers:
+				if l.engine.type=="MIDI Tool" and l.midi_chan==chan:
+					return l
+
+			for l in self.layers:
+				if l.engine.type in ("MIDI Synth", "Special") and l.midi_chan==chan:
+					return l
+
+		return None
+
+
+	def get_midichain_ends(self, layer):
+		midilbjn = {}
+		for midilayer in self.get_midichain_layers(layer):
+			midilbjn[midilayer.get_midi_jackname()] = midilayer
+
+		ends=[]
+		layer = self.get_midichain_root(layer)
+		while len(ends)==0:
+			try:
+				jn = layer.get_midi_out()[0]
+				if jn in midilbjn:
+					layer = midilbjn[jn]
+				else:
+					ends.append(layer)
+			except:
+				ends.append(layer)
+
+		return ends
+
+
+	def get_midichain_upstream(self, layer):
+		ups=[]
+		for uslayer in self.layers:
+			if layer.get_midi_jackname() in uslayer.get_midi_out():
+				ups.append(uslayer)
+
+		return ups
+
+
+	def get_midichain_downstream(self, layer):
+		downs=[]
+		for uslayer in self.layers:
+			if uslayer.get_midi_jackname() in layer.get_midi_out():
+				downs.append(uslayer)
+
+		return downs
+
+
+	def add_to_midichain(self, layer):
+		try:
+			for end in self.get_midichain_ends(layer):
+				if end!=layer:
+					logging.debug("Adding to MIDI-chain {} => {}".format(end.get_midi_jackname(), layer.get_midi_jackname()))
+					if end.engine.type=="MIDI Tool":
+						layer.set_midi_out(end.get_midi_out())
+						end.set_midi_out([layer.get_midi_jackname()])
+					else:
+						layer.set_midi_out([end.get_midi_jackname()])
+						for uslayer in self.get_midichain_upstream(end):
+							uslayer.del_midi_out(end.get_midi_jackname())
+							uslayer.add_midi_out(layer.get_midi_jackname())
+
+		except Exception as e:
+			logging.error("Error chaining MIDI tool ({})".format(e))
+
+
+	def replace_on_midichain(self, layer):
+		try:
+			rlayer = self.layers[self.replace_layer_index]
+			logging.debug("Replacing on MIDI-chain {} => {}".format(rlayer.get_midi_jackname(), layer.get_midi_jackname()))
+			
+			# Re-route audio
+			layer.set_midi_out(rlayer.get_midi_out())
+			rlayer.mute_midi_out()
+			for uslayer in self.get_midichain_upstream(rlayer):
+				uslayer.del_midi_out(rlayer.get_midi_jackname())
+				uslayer.add_midi_out(layer.get_midi_jackname())
+
+			# Replace layer in list
+			self.layers[self.replace_layer_index] = layer
+
+			# Remove old layer and stop unused engines
+			self.zyngui.zynautoconnect_acquire_lock()
+			rlayer.reset()
+			self.zyngui.zynautoconnect_release_lock()
+			self.zyngui.screens['engine'].stop_unused_engines()
+
+			self.replace_layer_index = None
+
+		except Exception as e:
+			logging.error("Error replacing MIDI tool ({})".format(e))
+
+
+	def drop_from_midichain(self, layer):
+		try:
+			ups=self.get_midichain_upstream(layer)
+			if len(ups)>0:
+				for up in ups:
+					logging.debug("Dropping from MIDI-chain {} => {}".format(up.get_midi_jackname(), layer.get_midi_jackname()))
+					up.del_midi_out(layer.get_midi_jackname())
+					for mo in layer.get_midi_out():
+						up.add_midi_out(mo)
+
+		except Exception as e:
+			logging.error("Error unchaining MIDI tool ({})".format(e))
+
+
+	def swap_midichain(self, layer1, layer2):
+		ups1 = self.get_midichain_upstream(layer1)
+		ups2 = self.get_midichain_upstream(layer2)
+
+		self.zyngui.zynautoconnect_acquire_lock()
+
+		# Move inputs from layer1 to layer2
+		for l in ups1:
+			l.add_midi_out(layer2.get_midi_jackname())
+			l.del_midi_out(layer1.get_midi_jackname())
+
+		# Move inputs from layer2 to layer1
+		for l in ups2:
+			l.add_midi_out(layer1.get_midi_jackname())
+			l.del_midi_out(layer2.get_midi_jackname())
+
+		# Swap outputs from layer1 & layer2
+		mo1 = layer1.midi_out
+		mo2 = layer2.midi_out
+		layer1.set_midi_out(mo2)
+		layer2.set_midi_out(mo1)
 
 		self.zyngui.zynautoconnect_release_lock()
 
@@ -694,6 +966,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				'clone':[],
 				'transpose':[],
 				'audio_routing': self.get_audio_routing(),
+				'midi_routing': self.get_midi_routing(),
 				'extended_config': self.get_extended_config(),
 				'midi_profile_state': self.get_midi_profile_state()
 			}
@@ -776,6 +1049,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			# Finally, stop all unused engines
 			self.zyngui.screens['engine'].stop_unused_engines()
 
+			#Set MIDI Routing
+			if 'midi_routing' in snapshot:
+				self.set_midi_routing(snapshot['midi_routing'])
+			else:
+				self.reset_midi_routing()
+
+			#Set Audio Routing
+			if 'audio_routing' in snapshot:
+				self.set_audio_routing(snapshot['audio_routing'])
+			else:
+				self.reset_audio_routing()
+
 			#Autoconnect
 			self.zyngui.zynautoconnect_midi(True)
 			self.zyngui.zynautoconnect_audio()
@@ -828,12 +1113,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			#Set CC-Map
 			#TODO
 
-			#Set Audio Routing
-			if 'audio_routing' in snapshot:
-				self.set_audio_routing(snapshot['audio_routing'])
-			else:
-				self.reset_audio_routing()
-
 			#Post action
 			if self.index<len(self.root_layers):
 				self.select_action(self.index)
@@ -876,10 +1155,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		if self.show_all_layers:
-			self.select_path.set("Layers (Detailed)")
-		else:
-			self.select_path.set("Layers")
+		self.select_path.set("Layers")
 
 
 #------------------------------------------------------------------------------
