@@ -114,7 +114,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
 
 			if 'audio_route' in eng_options and eng_options['audio_route']:
-				self.list_data.append((self.layer_audio_routing, None, "Audio Routing"))
+				self.list_data.append((self.layer_audio_input, None, "Audio Capture"))
+				self.list_data.append((self.layer_audio_routing, None, "Audio Output"))
 
 			if 'midi_chan' in eng_options and eng_options['midi_chan']:
 				self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
@@ -282,7 +283,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def layer_audio_routing(self):
 		self.zyngui.screens['audio_out'].set_layer(self.layer)
 		self.zyngui.show_modal('audio_out')
-
+		
+	def layer_audio_input(self):
+		self.zyngui.screens['audio_in'].set_layer(self.layer)
+		self.zyngui.show_modal('audio_in')
 
 	def layer_remove(self):
 		self.zyngui.screens['layer'].remove_root_layer(self.layer_index)

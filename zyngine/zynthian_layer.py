@@ -26,6 +26,7 @@ import logging
 import copy
 from time import sleep
 from collections import OrderedDict
+import zynautoconnect
 
 class zynthian_layer:
 
@@ -41,7 +42,9 @@ class zynthian_layer:
 
 		self.jackname = None
 		self.audio_out = ["system"]
-		self.audio_chan = [0,1]
+		# A dict with jack input port names as keys, and the index into the top LV2's input port list as value
+		self.audio_in = {}
+		self.audio_chan = [0,1] # FIXME are these used? no references in zynthian_ui
 		self.midi_out = []
 
 		self.bank_list = []
@@ -622,6 +625,18 @@ class zynthian_layer:
 
 		self.zyngui.zynautoconnect_audio()
 
+	def toggle_audio_in(self, jackname):
+		portcount = len(zynautoconnect.get_input_ports(self))
+		port = self.audio_in.get(jackname, -1) + 1
+		if (port >= portcount):
+			port = -1
+		self.audio_in[jackname] = port
+		self.zyngui.zynautoconnect_audio()
+
+	# Returns the index of the LV2 input port of the top effect that the given
+	# jack capture port should be connected to, or -1 if it should not be connected.
+	def get_audio_in_targetport(self, jackname):
+		return self.audio_in.get(jackname, -1)
 
 	def reset_audio_out(self):
 		self.audio_out=["system"]

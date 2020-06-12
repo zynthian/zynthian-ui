@@ -38,7 +38,7 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = logging.WARNING
+log_level = logging.DEBUG
 
 logger=logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -408,7 +408,6 @@ def midi_autoconnect(force=False):
 	#Release Mutex Lock
 	release_lock()
 
-
 def audio_autoconnect(force=False):
 
 	if not force:
@@ -503,7 +502,7 @@ def audio_autoconnect(force=False):
 				pass
 
 	#Get System Capture ports => jack output ports!!
-	system_capture=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
+	system_capture=get_audio_capture_ports()
 	if len(system_capture)>0:
 
 		#Connect system capture to effect root layers ...
@@ -513,19 +512,40 @@ def audio_autoconnect(force=False):
 				continue
 
 			#Get Root Layer Input ports ...
-			rl_in=jclient.get_ports(rl.get_jackname(), is_input=True, is_audio=True)
+			rl_in=get_input_ports(rl)
 
-			#Connect System Capture to Root Layer ports
-			if len(rl_in)>0:
-				if len(rl_in)==1:
-					rl_in.append(rl_in[0])
+			if len(rl.audio_in) == 0 and len(rl_in) > 0:
+				#Standard routing: Connect System Capture to Root Layer ports
+				for c in range(0, max(2, len(system_capture))):
+					if (len(rl_in) > c):
+						rl.audio_in[system_capture[c].name] = c
+					else:
+						rl.audio_in[system_capture[c].name] = 0
+				logging.info("Created standard routing: {}".format(rl.audio_in))
 
+			# First, disconnect all capture ports from all inputs
+			for cap in system_capture:
+				for c in range(0, len(rl_in)):
+					try:
+						jclient.disconnect(cap, rl_in[c])
+					except:
+						pass
+
+			# Now, connect the ones configured in the layer's audio_in
+			for src_name, target in rl.audio_in.items():
+				logging.debug("foo")
+				logging.debug("{} -> {}".format(src_name, target))
+				src = -1
+				logging.debug("bar")
+				for src in range(0, len(system_capture)):
+					if (system_capture[src].name == src_name):
+						break
+				if (src == -1 or target == -1 or target >= len(rl_in)):
+					continue
 				try:
-					jclient.connect(system_capture[0],rl_in[0])
-					jclient.connect(system_capture[1],rl_in[1])
+					jclient.connect(system_capture[src], rl_in[target])
 				except:
 					pass
-
 
 		if zynthian_gui_config.midi_aubionotes_enabled:
 			#Get Aubio Input ports ...
@@ -556,6 +576,12 @@ def audio_disconnect_sysout():
 				pass
 
 
+def get_audio_capture_ports():
+	return jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
+
+def get_input_ports(layer):
+	return jclient.get_ports(layer.get_jackname(), is_input=True, is_audio=True)
+                        
 def get_audio_input_ports():
 	res=OrderedDict()
 	try:
