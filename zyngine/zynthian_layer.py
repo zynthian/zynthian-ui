@@ -26,6 +26,7 @@ import logging
 import copy
 from time import sleep
 from collections import OrderedDict
+import zynautoconnect
 
 class zynthian_layer:
 
@@ -41,7 +42,6 @@ class zynthian_layer:
 
 		self.jackname = None
 		self.audio_out = ["system:playback_1", "system:playback_2"]
-		self.audio_in = []
 		self.midi_out = []
 
 		self.bank_list = []
@@ -71,6 +71,9 @@ class zynthian_layer:
 		self.engine.add_layer(self)
 		self.refresh_controllers()
 
+		# A dict with jack input port names as keys, and shortname(s) of an LV2's input port list a list value.
+		# Default to the first suggested config, and take the second element of the tuple (which is the config)
+		self.audio_in = self.suggest_audio_in_list()[0][1]
 
 	def refresh(self):
 		if self.refresh_flag:
@@ -634,7 +637,45 @@ class zynthian_layer:
 
 		self.zyngui.zynautoconnect_audio()
 
+	# Returns a list of 2-tuples, each tuple being a combination of
+	# - A dict that can be used as audio_in (mapping audio capture)
+	# - A description for that dict
+	def suggest_audio_in_list(self):
+		inputPorts = zynautoconnect.get_input_ports(self)
+		capturePorts = zynautoconnect.get_audio_capture_ports()
+		result = []
+		if len(inputPorts) == 1:
+			inputPort = inputPorts[0]
+			# Mono channel
+			for p in capturePorts:
+				result.append((
+					"Mono from {}".format(p.shortname),
+					{ p.name: [ inputPort.name ] }
+				))
+		elif len(inputPorts) > 1:
+			# Stereo channel. Assuming the first 2 LV2 inputs are L and R.
+			for idx, p in enumerate(capturePorts):
+				if (idx % 2) == 0 and idx < len(capturePorts) - 1:
+					l = p
+					r = capturePorts[idx + 1]
+					result.append((
+						"Stereo from {} and {}".format(l.shortname, r.shortname),
+						{ l.name: [ inputPorts[0].name ],
+						  r.name: [ inputPorts[1].name ]}
+					))
+				result.append((
+					"Mono from {}".format(p.shortname),
+					{ p.name: [ inputPorts[0].name, inputPorts[1].name ] }
+				))
+		result.append((
+			"No capture input", {}
+		))
+		return result
 
+	def set_audio_in(self, settings):
+		self.audio_in = settings
+		self.zyngui.zynautoconnect_audio()
+		
 	def reset_audio_out(self):
 		self.audio_out=["system:playback_1", "system:playback_2"]
 		self.zyngui.zynautoconnect_audio()

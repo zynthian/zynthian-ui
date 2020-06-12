@@ -38,7 +38,7 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = logging.WARNING
+log_level = logging.DEBUG
 
 logger=logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -408,7 +408,6 @@ def midi_autoconnect(force=False):
 	#Release Mutex Lock
 	release_lock()
 
-
 def audio_autoconnect(force=False):
 
 	if not force:
@@ -504,7 +503,7 @@ def audio_autoconnect(force=False):
 				pass
 
 	#Get System Capture ports => jack output ports!!
-	system_capture=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
+	system_capture=get_audio_capture_ports()
 	if len(system_capture)>0:
 
 		#Connect system capture to effect root layers ...
@@ -514,19 +513,33 @@ def audio_autoconnect(force=False):
 				continue
 
 			#Get Root Layer Input ports ...
-			rl_in=jclient.get_ports(rl.get_jackname(), is_input=True, is_audio=True)
+			rl_in=get_input_ports(rl)
 
-			#Connect System Capture to Root Layer ports
-			if len(rl_in)>0:
-				if len(rl_in)==1:
-					rl_in.append(rl_in[0])
-
-				try:
-					jclient.connect(system_capture[0],rl_in[0])
-					jclient.connect(system_capture[1],rl_in[1])
-				except:
-					pass
-
+			try:
+				for idx,src in enumerate(system_capture):
+					logging.debug("Trying {}".format(src))
+					disconnect = list(map(lambda x:x.name, rl_in))
+					for inputName in rl.audio_in.get(src.name, []):
+						disconnect.remove(inputName)
+						for dst in rl_in:
+							if dst.name == inputName:
+								logging.debug("{} -> {}".format(src, dst))
+								try:
+									jclient.connect(src, dst)
+								except:
+									pass
+								break
+					for inputName in disconnect:
+						for dst in rl_in:
+							if dst.name == inputName:
+								logging.debug("{} XX {}".format(src, dst))
+								try:
+									jclient.disconnect(src, dst)
+								except:
+									pass
+								break
+			except Exception as e:
+				logging.error("err", exc_info = e)
 
 		if zynthian_gui_config.midi_aubionotes_enabled:
 			#Get Aubio Input ports ...
@@ -557,6 +570,18 @@ def audio_disconnect_sysout():
 				pass
 
 
+def get_audio_capture_ports():
+	if jclient == None:
+		return []
+	else:
+		return jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
+
+def get_input_ports(layer):
+	if jclient == None:
+		return []
+	else:
+		return jclient.get_ports(layer.get_jackname(), is_input=True, is_audio=True)
+                        
 def get_audio_input_ports():
 	res=OrderedDict()
 	try:
