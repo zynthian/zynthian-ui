@@ -119,10 +119,10 @@ class Song
 
 		/**	@brief	Get next tempo change
 		*	@param	time Time from which to search
-		*	@retval	size_t Index of master event describing tempo change
+		*	@retval	size_t Index of master event describing tempo change (-1 if no more changes in song)
 		*	@note	This may fail if master events are inserted or removed between calls
 		*/
-		size_t getNextTempoChange(uint32_t time);
+		int getNextTempoChange(uint32_t time);
 
 	private:
 		std::vector<uint32_t> m_vTracks; // Index of sequences representing each track

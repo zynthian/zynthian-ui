@@ -464,8 +464,8 @@ void PatternManager::startSong()
 {
 	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong].getTracks(); ++nTrack)
 	{
-		uint32_t sequence = m_mSongs[m_nCurrentSong].getSequence(nTrack);
-		m_mSequences[sequence].setPlayState(PLAYING);
+		uint32_t nSequence = m_mSongs[m_nCurrentSong].getSequence(nTrack);
+		m_mSequences[nSequence].setPlayState(PLAYING);
 	}
 }
 
@@ -473,8 +473,8 @@ void PatternManager::stopSong()
 {
 	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong].getTracks(); ++nTrack)
 	{
-		uint32_t sequence = m_mSongs[m_nCurrentSong].getSequence(nTrack);
-		m_mSequences[sequence].setPlayState(STOPPED);
+		uint32_t nSequence = m_mSongs[m_nCurrentSong].getSequence(nTrack);
+		m_mSequences[nSequence].setPlayState(STOPPED);
 	}
 }
 

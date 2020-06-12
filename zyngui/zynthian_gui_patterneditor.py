@@ -208,6 +208,7 @@ class zynthian_gui_patterneditor():
 		self.parent.unregisterZyncoder(ENC_SNAPSHOT)
 		self.parent.unregisterZyncoder(ENC_LAYER)
 		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_STOPPED)
+		self.parent.zyngui.zyntransport.transport_stop() #TODO: Stopping transport due to jack_transport restarting if locate called
 
 	# Function to add menus
 	def addMenus(self):
@@ -220,6 +221,7 @@ class zynthian_gui_patterneditor():
 		self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'getValue':self.getVerticalZoom, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.parent.libseq.getClocksPerStep, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Scale':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':self.getScales(), 'getValue':self.parent.libseq.getScale, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tonic':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':12, 'getValue':self.parent.libseq.getTonic, 'onChange':self.onMenuChange}}})
 
@@ -739,6 +741,8 @@ class zynthian_gui_patterneditor():
 			self.drawGrid()
 			self.selectCell()
 			value = stepsPerBeat
+		elif menuItem == 'Tempo':
+			self.parent.zyngui.zyntransport.set_tempo(value)
 		elif menuItem == 'Scale':
 			self.parent.libseq.setScale(value)
 			name = self.loadKeymap()

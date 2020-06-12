@@ -50,17 +50,19 @@ void Song::setTempo(uint16_t tempo, uint32_t time)
 
 uint16_t Song::getTempo(uint32_t time)
 {
+	uint16_t nTempo = 120;
 	auto it = m_vMasterTrack.begin();
 	for(; it != m_vMasterTrack.end(); ++it)
 	{
-		if(time > (*it)->time || (*it)->command != MASTER_EVENT_TEMPO)
-			continue;
-		return (*it)->data;
+		if((*it)->command == MASTER_EVENT_TEMPO)
+			nTempo = (*it)->data;
+		if(time <= (*it)->time)
+			break;
 	}
-	return 120; // If no tempo set then return default tempo
+	return nTempo;
 }
 
-size_t Song::getNextTempoChange(uint32_t time)
+int Song::getNextTempoChange(uint32_t time)
 {
 	for(size_t nIndex = 0; nIndex < m_vMasterTrack.size(); ++nIndex)
 	{

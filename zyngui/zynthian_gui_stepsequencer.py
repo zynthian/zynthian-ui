@@ -516,6 +516,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def stop(self):
 		self.zyngui.zyntransport.transport_stop();
 		self.zyngui.zyntransport.locate(0);
+		tempo = self.libseq.getTempo(self.song, 0)
+		self.zyngui.zyntransport.set_tempo(tempo)
 
 	# Function to recue transport
 	def recue(self):
@@ -530,9 +532,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	#	song: Index of song to select
 	def selectSong(self, song):
 		if song > 0:
+			self.zyngui.zyntransport.transport_stop() #TODO: Stopping transport due to jack_transport restarting if locate called
 			self.libseq.selectSong(song)
 			self.song = song
-			self.zyngui.zyntransport.set_tempo(self.libseq.getTempo(song))
+			self.zyngui.zyntransport.set_tempo(self.libseq.getTempo(song, 0))
 			try:
 				self.child.selectSong()
 			except:

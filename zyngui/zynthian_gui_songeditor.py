@@ -179,16 +179,15 @@ class zynthian_gui_songeditor():
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':self.verticalZoom, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Horizontal zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999 
 		, 'value':64, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'value':1, 'getValue':self.getTrackChannel, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Clocks per division':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'value':6, 'getValue':self.getClocksPerDivision, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Tracks':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':64, 'value':self.getTracks(), 'getValue':self.getTracks, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'value':self.zyngui.zyntransport.get_tempo(), 'getValue':self.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Bar / sync':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':16, 'getValue':self.getBarLength, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Group':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':25, 'value':0, 'getValue':self.getGroup, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':4, 'value':0, 'getValue':self.getMode, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Trigger':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':128, 'value':60, 'getValue':self.getTrigger, 'onChange':self.onMenuChange, 'onAssert':self.setTrigger}}})
-		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'getValue':self.getPattern, 'onChange':self.onMenuChange}}})
-
+		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.getTrackChannel, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Clocks per division':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.getClocksPerDivision, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Tracks':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':64, 'getValue':self.getTracks, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.getTempo, 'onChange':self.onMenuChange, 'onAssert':self.assertTempo}}})
+		self.parent.addMenu({'Bar / sync':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getBarLength, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Group':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':25, 'getValue':self.getGroup, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':4, 'getValue':self.getMode, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Trigger':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':128, 'getValue':self.getTrigger, 'onChange':self.onMenuChange, 'onAssert':self.setTrigger}}})
+		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getPattern, 'onChange':self.onMenuChange}}})
 
 	# Function to show GUI
 	#	song: Song to show
@@ -204,6 +203,18 @@ class zynthian_gui_songeditor():
 		self.parent.unregisterZyncoder(ENC_BACK)
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterZyncoder(ENC_LAYER)
+
+	# Function to get tempo at current cursor position
+	def getTempo(self):
+		return self.parent.libseq.getTempo(self.song, self.selectedCell[0] * self.clocksPerDivision)
+
+	# Function to assert tempo change
+	def assertTempo(self):
+		value = self.parent.getParam('Tempo', 'value')
+		if self.position == self.selectedCell[0]:
+			self.zyngui.zyntransport.set_tempo(value)
+		self.parent.libseq.setTempo(self.song, value, self.selectedCell[0] * self.clocksPerDivision)
+		self.drawGrid()
 
 	# Function to get group of selected track
 	def getGroup(self):
@@ -595,20 +606,55 @@ class zynthian_gui_songeditor():
 			time = self.selectedCell[0]
 		if track == None:
 			track = self.selectedCell[1]
-		# Skip hidden (overlapping) cells
+		duration = int(self.parent.libseq.getPatternLength(self.pattern) / self.clocksPerDivision)
+		if not duration:
+			duration = 1
+		# Skip cells if pettern won't fit
 		sequence = self.parent.libseq.getSequence(self.song, track)
+		prevStart = 0
+		prevEnd = 0
+		nextStart = time
+		forward = time > self.selectedCell[0]
 		for previous in range(time - 1, -1, -1):
 			# Iterate time divs back to start
 			prevPattern = self.parent.libseq.getPattern(sequence, previous * self.clocksPerDivision)
 			if prevPattern == -1:
 				continue
 			prevDuration = int(self.parent.libseq.getPatternLength(prevPattern, track) / self.clocksPerDivision)
-			if prevDuration > time - previous:
-				if time > self.selectedCell[0]:
-					time = previous + prevDuration
+			prevStart = previous
+			prevEnd = prevStart + prevDuration
+			break
+		for next in range(time + 1, time + duration * 2):
+			nextPattern = self.parent.libseq.getPattern(sequence, next * self.clocksPerDivision)
+			if nextPattern == -1:
+				continue
+			nextStart = next
+			break
+		if nextStart < prevEnd:
+			nextStart = prevEnd
+		if time >= prevEnd and time < nextStart:
+			# Between patterns
+			if time + duration > nextStart:
+				# Insufficient space for new pattern between pattern
+				if forward:
+					time = nextStart
 				else:
-					time = previous
-				break
+					if nextStart - prevEnd < duration:
+						time = prevStart
+					else:
+						time = nextStart - duration
+		elif time == prevStart:
+			# At start of previous
+			pass
+		elif time > prevStart and time < prevEnd:
+			# Within pattern
+			if forward:
+				time = nextStart
+			else:
+				time = prevStart
+		if time == 0 and duration > nextStart:
+			time = nextStart
+
 		if track >= self.parent.libseq.getTracks(self.song):
 			track = self.parent.libseq.getTracks(self.song) - 1;
 		if track < 0:
@@ -617,9 +663,6 @@ class zynthian_gui_songeditor():
 			time = 0
 		if time < 0:
 			time = 0;
-		duration = int(self.parent.libseq.getPatternLength(self.pattern) / self.clocksPerDivision)
-		if not duration:
-			duration = 1
 		if time + duration > self.colOffset + self.horizontalZoom:
 			# time is off right of display
 			self.colOffset = time + duration - self.horizontalZoom
@@ -660,7 +703,7 @@ class zynthian_gui_songeditor():
 			self.fontsize = 16 # Ugly font scale limiting
 		self.loadIcons()
 
-	# Function to clear a pattern
+	# Function to clear song
 	def clearSong(self):
 		self.parent.libseq.clearSong(self.song)
 		self.drawGrid(True)
@@ -668,7 +711,7 @@ class zynthian_gui_songeditor():
 			zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
 		self.selectCell(0,0)
 
-	# Function to copy pattern
+	# Function to copy song
 	def copySong(self):
 		self.parent.libseq.copySong(self.copySource, self.song);
 		self.selectSong()
@@ -688,6 +731,7 @@ class zynthian_gui_songeditor():
 		if menuItem == 'Clear song':
 			return "Clear song %d?" % (self.song)
 		elif menuItem =='Copy song':
+			self.parent.libseq.selectSong(value) 
 			self.selectSong()
 			return "Copy %d=>%d?" % (self.copySource, value)
 		elif menuItem == 'Vertical zoom':
@@ -713,9 +757,7 @@ class zynthian_gui_songeditor():
 			self.parent.libseq.setChannel(sequence, value - 1)
 			self.drawTrack(self.selectedCell[1])
 		elif menuItem == 'Tempo':
-			self.zyngui.zyntransport.set_tempo(value)
-			self.parent.libseq.setTempo(self.song, value, self.selectedCell[0] * self.clocksPerDivision)
-			self.drawGrid()
+			pass
 		elif menuItem == 'Bar / sync':
 			self.parent.libseq.setBarLength(self.song, value * self.clocksPerDivision)
 			if self.editorMode:
@@ -779,7 +821,6 @@ class zynthian_gui_songeditor():
 		song = self.parent.libseq.getSong()
 		if song != 0:
 			self.song = song
-		self.parent.setParam('Tempo', 'value', self.parent.libseq.getTempo(self.song))
 		self.zyngui.zyntransport.locate(self.position) #TODO: Ideally remember last position
 		if self.editorMode:
 			self.parent.setTitle("Pad Editor (%d)" % (self.song))

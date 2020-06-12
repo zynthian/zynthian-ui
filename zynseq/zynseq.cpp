@@ -73,10 +73,14 @@ void debug(bool bEnable)
 
 void updateTempoChange()
 {
-	Song* pSong = PatternManager::getPatternManager()->getSong(PatternManager::getPatternManager()->getCurrentSong());
-	size_t nIndex = pSong->getNextTempoChange(g_nSongPosition + 1);
-	g_tempoChange.time = pSong->getMasterEventTime(nIndex);
-	g_tempoChange.tempo = pSong->getMasterEventData(nIndex);
+	uint32_t nSong = PatternManager::getPatternManager()->getCurrentSong();
+	Song* pSong = PatternManager::getPatternManager()->getSong(nSong);
+	int nIndex = pSong->getNextTempoChange(g_nSongPosition);
+	if(nIndex > -1)
+	{
+		g_tempoChange.time = pSong->getMasterEventTime(nIndex);
+		g_tempoChange.tempo = pSong->getMasterEventData(nIndex);
+	}
 }
 
 void onClock()
@@ -114,7 +118,7 @@ void onClock()
 				if(g_tempoChange.time == g_nSongPosition)
 				{
 					//!@todo Now what? We need to set the tempo of a clock we don't have access to!!!
-					printf("Tempo change to %d BPM at %d\n", g_tempoChange.tempo, g_nSongPosition);
+					printf("Tempo change to %d BPM at %d but no method to influence master clock!!!\n", g_tempoChange.tempo, g_nSongPosition);
 					updateTempoChange();
 				}
 			}
