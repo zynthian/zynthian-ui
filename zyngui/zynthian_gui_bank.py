@@ -42,12 +42,18 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
     
 	def fill_list(self):
+		if not self.zyngui.curlayer:
+			logging.error("Can't fill bank list for None layer!")
+			return
 		self.zyngui.curlayer.load_bank_list()
 		self.list_data=self.zyngui.curlayer.bank_list
 		super().fill_list()
 
 
 	def show(self):
+		if not self.zyngui.curlayer:
+			logging.error("Can't show bank list for None layer!")
+			return
 		self.index=self.zyngui.curlayer.get_bank_index()
 		logging.debug("BANK INDEX => %s" % self.index)
 		super().show()
