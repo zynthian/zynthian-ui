@@ -523,7 +523,7 @@ class zynthian_layer:
 			}
 
 			for k in self.controllers_dict:
-				logging.info("Saving {}".format(k))
+				logging.debug("Saving {}".format(k))
 				zs3['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
 
 			self.zs3_list[i] = zs3
@@ -536,19 +536,18 @@ class zynthian_layer:
 		zs3 = self.zs3_list[i]
 
 		if zs3:
-			if zs3['bank_name']:
-				#Load bank list and set bank (if one was selected)
-				self.load_bank_list()
+			# Set bank and load preset list if needed
+			if zs3['bank_name'] and zs3['bank_name']!=self.bank_name:
 				self.set_bank_by_name(zs3['bank_name'])
+				self.load_preset_list()
 				self.wait_stop_loading()
 
-			if zs3['preset_name']:
-				#Load preset list and set preset (if one was selected)
-				self.load_preset_list()
+			# Set preset if needed
+			if zs3['preset_name'] and zs3['preset_name']!=self.preset_name:
 				self.set_preset_by_name(zs3['preset_name'])
 				self.wait_stop_loading()
 
-			#Refresh controller config
+			# Refresh controller config
 			if self.refresh_flag:
 				self.refresh_flag=False
 				self.refresh_controllers()
@@ -559,11 +558,11 @@ class zynthian_layer:
 			if not self.engine.nickname.startswith('JV'):
 				sleep(0.3)
 
-			#Set active screen
+			# Set active screen
 			if 'active_screen_index' in zs3:
 				self.active_screen_index=zs3['active_screen_index']
 
-			#Set controller values
+			# Set controller values
 			for k in zs3['controllers_dict']:
 				self.controllers_dict[k].restore_snapshot(zs3['controllers_dict'][k])
 
