@@ -155,7 +155,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def fill_listbox(self):
 		super().fill_listbox()
-		# TODO Give the category headers a nice color
 		for i, val in enumerate(self.list_data):
 			if val[0]==None:
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_off,'fg':zynthian_gui_config.color_tx_off})
