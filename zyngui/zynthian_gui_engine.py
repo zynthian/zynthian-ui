@@ -26,7 +26,6 @@
 import os
 import re
 import sys
-import copy
 import logging
 import subprocess
 from time import sleep
@@ -78,9 +77,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			cls.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title, "MIDI Synth", None, zynthian_engine_pianoteq, True)
 		
 		for plugin_name, plugin_info in get_jalv_plugins().items():
-			en = 'JV/{}'.format(plugin_name)
-			info = (plugin_name, plugin_name, plugin_info['TYPE'], plugin_info.get('CLASS', None), zynthian_engine_jalv, plugin_info['ENABLED'])
-			cls.engine_info[en] = info
+			eng = 'JV/{}'.format(plugin_name)
+			cls.engine_info[eng] = (plugin_name, plugin_name, plugin_info['TYPE'], plugin_info.get('CLASS', None), zynthian_engine_jalv, plugin_info['ENABLED'])
 
 
 	def __init__(self):
