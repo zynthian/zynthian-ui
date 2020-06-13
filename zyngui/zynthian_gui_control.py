@@ -84,13 +84,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data = []
 
+		if not self.zyngui.curlayer:
+			logging.error("Can't fill control screen list for None layer!")
+			return
+
 		self.layers = self.zyngui.screens['layer'].get_fxchain_layers()
 		# If no FXChain layers, then use the curlayer itself
 		if self.layers is None or len(self.layers)==0:
 			self.layers = [self.zyngui.curlayer]
 
 		midichain_layers = self.zyngui.screens['layer'].get_midichain_layers()
-		if len(midichain_layers)>1:
+		if midichain_layers is not None and len(midichain_layers)>1:
 			midichain_layers.remove(self.zyngui.curlayer)
 			self.layers += midichain_layers
 
