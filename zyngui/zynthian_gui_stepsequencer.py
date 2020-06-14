@@ -163,7 +163,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.listboxTextHeight = tkFont.Font(font=zynthian_gui_config.font_listbox).metrics('linespace')
 		self.lstMenu = tkinter.Listbox(self.main_frame,
 			font=zynthian_gui_config.font_listbox,
-			height = int(self.height / self.listboxTextHeight / 2),
 			bd=7,
 			highlightthickness=0,
 			relief='flat',
@@ -243,7 +242,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def show(self):
 		if not self.shown:
 			self.shown=True
-			self.populateMenu()
 			self.main_frame.grid_propagate(False)
 			self.main_frame.grid(column=0, row=0)
 			self.showChild()
@@ -273,7 +271,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to open menu
 	def showMenu(self):
-		rows = min((self.height - zynthian_gui_config.topbar_height) / self.listboxTextHeight, self.lstMenu.size())
+		self.populateMenu()
+		if self.child:
+			self.child.populateMenu()
+		rows = min((self.height - zynthian_gui_config.topbar_height) / self.listboxTextHeight - 1, self.lstMenu.size())
 		self.lstMenu.configure(height = int(rows))
 		self.lstMenu.grid(column=0, row=1, sticky="nw")
 		self.lstMenu.tkraise()
@@ -491,7 +492,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.child = self.zynpad
 		else:
 			return
-		self.populateMenu()
 		self.child.show(params)
 		self.status_menu_frame.tkraise()
 
@@ -501,7 +501,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.child.hide()
 		self.child = None
 		self.hideParamEditor()
-		self.populateMenu()
 		self.setTitle("Step Sequencer")
 
 	# Function to start transport

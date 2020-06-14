@@ -82,10 +82,12 @@ class zynthian_gui_songeditor():
 		self.song = 1 # Index of song being edited (1000 * editorMode + libseq.getSong)
 		self.trigger = 60 # MIDI note number to set trigger
 		#TODO: Populate tracks from file
-		self.trackDragStart = None
-		self.timeDragStart = None
+		self.trackDragStart = None # Set to loaction of mouse during drag
+		self.timeDragStart = None # Set to time of click to test for bold click
+		self.gridDragStart = None # Set to location of click during drag
 		self.clocksPerDivision = 6
 		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
+		self.cells = [[None] * 2 for _ in range(self.verticalZoom * self.horizontalZoom)] # 2D array of cells 0:cell, 1:cell label
 
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 
@@ -153,7 +155,11 @@ class zynthian_gui_songeditor():
 
 	# Function to load and resize icons
 	def loadIcons(self):
-		iconsize = (int(self.rowHeight), int(self.rowHeight))
+		if self.rowHeight > self.trackTitleWidth / 3:
+			iconHeight = self.trackTitleWidth / 3
+		else:
+			iconHeight = self.rowHeight
+		iconsize = (int(iconHeight), int(iconHeight))
 		img = (Image.open("/zynthian/zynthian-ui/icons/endnoline.png").resize(iconsize))
 		self.icon[1] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/loop.png").resize(iconsize))
@@ -173,12 +179,15 @@ class zynthian_gui_songeditor():
 	# Function to populate menu
 	def populateMenu(self):
 		# Only show song editor menu entries if we have a song selected
-		self.parent.addMenu({'Song / pads':{'method':self.toggleEditorMode}})
+		if self.editorMode:
+			self.parent.addMenu({'Edit song':{'method':self.toggleEditorMode}})
+		else:
+			self.parent.addMenu({'Edit pads':{'method':self.toggleEditorMode}})
 		self.parent.addMenu({'Copy song':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copySong}}})
 		self.parent.addMenu({'Clear song':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearSong}}})
-		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':self.verticalZoom, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':self.verticalZoom, 'onChange':self.onMenuChange,'onAssert':self.assertAndRedraw}}})
 		self.parent.addMenu({'Horizontal zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999 
-		, 'value':64, 'onChange':self.onMenuChange}}})
+		, 'value':64, 'onChange':self.onMenuChange,'onAssert':self.assertAndRedraw}}})
 		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.getTrackChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Clocks per division':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.getClocksPerDivision, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tracks':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':64, 'getValue':self.getTracks, 'onChange':self.onMenuChange}}})
@@ -192,7 +201,6 @@ class zynthian_gui_songeditor():
 	# Function to show GUI
 	#	song: Song to show
 	def show(self, params=None):
-		self.populateMenu()
 		self.main_frame.tkraise()
 		self.setupEncoders()
 		self.selectSong()
@@ -207,6 +215,12 @@ class zynthian_gui_songeditor():
 	# Function to get tempo at current cursor position
 	def getTempo(self):
 		return self.parent.libseq.getTempo(self.song, self.selectedCell[0] * self.clocksPerDivision)
+
+	# Function to assert zoom changes and redraw screen
+	def assertAndRedraw(self):
+		self.updateCellSize()
+		self.drawGrid(True)
+		self.selectCell()
 
 	# Function to assert tempo change
 	def assertTempo(self):
@@ -238,7 +252,7 @@ class zynthian_gui_songeditor():
 	def setTrigger(self):
 		sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
 		self.parent.libseq.setTriggerNote(sequence, self.trigger);
-		self.drawGrid(True)
+		self.drawGrid()
 
 	# Function to get bar duration
 	def getBarLength(self):
@@ -365,6 +379,10 @@ class zynthian_gui_songeditor():
 		if self.parent.lstMenu.winfo_viewable():
 			self.parent.hideMenu()
 			return
+		if self.parent.paramEditorItem != None:
+			self.parent.hideParamEditor()
+			return
+		self.gridDragStart = event
 		self.timePress = monotonic()
 		tags = self.gridCanvas.gettags(self.gridCanvas.find_withtag(tkinter.CURRENT))
 		if not tags:
@@ -376,6 +394,9 @@ class zynthian_gui_songeditor():
 	# Function to handle grid mouse release
 	#	event: Mouse event
 	def onGridRelease(self, event):
+		if not self.gridDragStart:
+			return
+		self.gridDragStart = None
 		tags = self.gridCanvas.gettags(self.gridCanvas.find_withtag(tkinter.CURRENT))
 		if not tags:
 			return
@@ -432,27 +453,22 @@ class zynthian_gui_songeditor():
 	def drawTrack(self, track):
 		self.drawRow(track - self.rowOffset)
 
-	# Function to draw a grid row
-	#	row: Grid row to draw
-	def drawRow(self, row):
-		if row + self.rowOffset >= self.parent.libseq.getTracks(self.song):
-			return
-		track = self.rowOffset + row
+	# Function to draw track label
+	#	track: Track index
+	def drawTrackLabel(self, track):
+		row = track - self.rowOffset
 		sequence = self.parent.libseq.getSequence(self.song, track)
 		channel = self.parent.libseq.getChannel(sequence) + 1
 		group = self.parent.libseq.getGroup(sequence)
 		mode = self.parent.libseq.getPlayMode(sequence)
-		title = self.trackTitleCanvas.find_withtag('rowtitle:%d'%(row))
-		modeIcon = self.trackTitleCanvas.find_withtag('rowicon:%d'%(row))
-		titleBack = self.trackTitleCanvas.find_withtag('rowback:%d'%(row))
 
-		if not titleBack:
-			titleBack = self.trackTitleCanvas.create_rectangle(0, self.rowHeight * row, self.trackTitleWidth, (1 + row) * self.rowHeight, tags=('rowback:%d'%(row), 'tracktitle'))
-		if not title:
-			font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
-			title = self.trackTitleCanvas.create_text((0, self.rowHeight * (row + 0.5)), font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row),"trackname", 'tracktitle'), anchor="w")
-		if not modeIcon:
-			modeIcon = self.trackTitleCanvas.create_image(self.trackTitleWidth, row * self.rowHeight, anchor='ne', tags=('rowicon:%d'%(row), 'tracktitle'))
+		self.trackTitleCanvas.delete('rowtitle:%d'%(row))
+		self.trackTitleCanvas.delete('rowicon:%d'%(row))
+		self.trackTitleCanvas.delete('rowback:%d'%(row))
+		titleBack = self.trackTitleCanvas.create_rectangle(0, self.rowHeight * row, self.trackTitleWidth, (1 + row) * self.rowHeight, tags=('rowback:%d'%(row), 'tracktitle'))
+		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
+		title = self.trackTitleCanvas.create_text((0, self.rowHeight * (row + 0.5)), font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row),"trackname", 'tracktitle'), anchor="w")
+		modeIcon = self.trackTitleCanvas.create_image(self.trackTitleWidth, row * self.rowHeight, anchor='ne', tags=('rowicon:%d'%(row), 'tracktitle'))
 
 		trigger = self.parent.libseq.getTriggerNote(sequence)
 		if trigger < 128:
@@ -465,14 +481,20 @@ class zynthian_gui_songeditor():
 		else:
 			fill = self.padColourStoppedEven
 		self.trackTitleCanvas.itemconfig(titleBack, fill=fill)
-		
 		self.trackTitleCanvas.tag_bind('tracktitle', "<Button-1>", self.onTrackClick)
+
+	# Function to draw a grid row
+	#	row: Grid row to draw
+	#	redrawTrackTitles: True to redraw track titles (Default: True)
+	def drawRow(self, row, redrawTrackTitles = True):
+		if row + self.rowOffset >= self.parent.libseq.getTracks(self.song):
+			return
+		track = self.rowOffset + row
+		if(redrawTrackTitles):
+			self.drawTrackLabel(track)
 
 		for col in range(self.horizontalZoom):
 			self.drawCell(col, row)
-			cell = self.gridCanvas.find_withtag("%d,%d"%(col,row))
-			if cell:
-				self.gridCanvas.tag_lower(cell)
 
 	# Function to handle track title click
 	def onTrackClick(self, event):
@@ -502,7 +524,8 @@ class zynthian_gui_songeditor():
 	#	col: Column index
 	#	row: Row index
 	def drawCell(self, col, row):
-		if col < 0 or col >= self.horizontalZoom or row < 0 or row >= self.verticalZoom:
+		cellIndex = row * self.horizontalZoom + col # Cells are stored in array sequentially: 1st row, 2nd row...
+		if cellIndex >= len(self.cells):
 			return
 
 		track = self.rowOffset + row
@@ -533,8 +556,8 @@ class zynthian_gui_songeditor():
 			duration = 1
 
 		#print("draw cell time=%d track=%d col=%d row=%d sequence=%d pattern=%d, duration=%d" % (time,track,col, row, sequence, pattern, duration))
-		cell = self.gridCanvas.find_withtag("%d,%d"%(col,row))
-		celltext = self.gridCanvas.find_withtag("celltext:%d,%d"%(col,row))
+		cell = self.cells[cellIndex][0]
+		celltext = self.cells[cellIndex][1]
 		coord = self.getCellCoord(col, row, duration)
 		if not cell:
 			# Create new cell
@@ -542,9 +565,13 @@ class zynthian_gui_songeditor():
 			celltext = self.gridCanvas.create_text(coord[0] + 1, coord[1] + self.rowHeight / 2, fill=CELL_FOREGROUND, tags=("celltext:%d,%d"%(col,row)))
 			self.gridCanvas.tag_bind(cell, '<ButtonPress-1>', self.onGridPress)
 			self.gridCanvas.tag_bind(cell, '<ButtonRelease-1>', self.onGridRelease)
+			self.gridCanvas.tag_lower(cell) # Assume cells are always created left to right
+			self.cells[cellIndex][0] = cell
+			self.cells[cellIndex][1] = celltext
 		# Update existing cell
-		self.gridCanvas.itemconfig(cell, fill=fill)
-		self.gridCanvas.coords(cell, coord)
+		else:
+			self.gridCanvas.itemconfig(cell, fill=fill)
+			self.gridCanvas.coords(cell, coord)
 		if pattern == -1:
 			self.gridCanvas.itemconfig(celltext, state='hidden')
 		else:
@@ -556,19 +583,22 @@ class zynthian_gui_songeditor():
 
 	# Function to draw grid
 	#	clearGrid: True to clear grid and create all new elements, False to reuse existing elements if they exist
-	def drawGrid(self, clearGrid = False):
+	def drawGrid(self, clearGrid = False, redrawTrackTitles = True):
 		if clearGrid:
 			self.gridCanvas.delete(tkinter.ALL)
 			self.trackTitleCanvas.delete(tkinter.ALL)
 			self.columnWidth = self.gridWidth / self.horizontalZoom
 			self.gridCanvas.create_line(0, 0, 0, self.gridHeight, fill=PLAYHEAD_CURSOR, tags='playheadline')
+			self.cells = [[None] * 2 for _ in range(self.verticalZoom * self.horizontalZoom)]
 
-		# Draw cells of grid
+		# Draw rows of grid
 		self.gridCanvas.itemconfig("gridcell", fill=CANVAS_BACKGROUND)
 		for row in range(self.verticalZoom):
 			if row >= self.parent.libseq.getTracks(self.song):
 				break
-			self.drawRow(row)
+			self.drawRow(row, redrawTrackTitles)
+
+		# Vertical (bar / sync) lines
 		self.gridCanvas.delete('barlines')
 		self.playCanvas.delete('barlines')
 		font = tkFont.Font(size=self.smallFontSize)
@@ -581,9 +611,11 @@ class zynthian_gui_songeditor():
 			else:
 				self.playCanvas.create_text(bar * self.columnWidth, 0, fill='white', text="%d"%(bar+self.colOffset), anchor='nw', tags='barlines')
 
+		# Hide selection if not in view - #TODO: WHEN WOULD THAT BE???
 		if self.selectedCell[0] < self.colOffset or self.selectedCell[0] > self.colOffset + self.horizontalZoom or self.selectedCell[1] < self.rowOffset or self.selectedCell[1] > self.rowOffset + self.verticalZoom:
 			self.gridCanvas.itemconfig('selection', state='hidden')
 
+		# Master track
 		self.playCanvas.delete('bpm')
 		for event in range(self.parent.libseq.getMasterEvents(self.song)):
 			time = self.parent.libseq.getMasterEventTime(self.song, event) / self.clocksPerDivision
@@ -680,7 +712,7 @@ class zynthian_gui_songeditor():
 			redraw = True
 		self.selectedCell = [time, track]
 		if redraw:
-			self.drawGrid(True)
+			self.drawGrid(Fa)
 		coord = self.getCellCoord(time - self.colOffset, track - self.rowOffset, duration)
 		coord[0] = coord[0] - 1
 		coord[1] = coord[1] - 1
@@ -699,8 +731,8 @@ class zynthian_gui_songeditor():
 		self.rowHeight = (self.gridHeight - 2) / self.verticalZoom
 		self.columnWidth = self.gridWidth / self.horizontalZoom
 		self.fontsize = int(self.rowHeight * 0.4)
-		if self.fontsize > 16:
-			self.fontsize = 16 # Ugly font scale limiting
+		if self.fontsize > self.trackTitleWidth * 0.15:
+			self.fontsize = int(self.trackTitleWidth * 0.15) # Ugly font scale limiting
 		self.loadIcons()
 
 	# Function to clear song
@@ -736,16 +768,8 @@ class zynthian_gui_songeditor():
 			return "Copy %d=>%d?" % (self.copySource, value)
 		elif menuItem == 'Vertical zoom':
 			self.verticalZoom = value
-			self.updateCellSize()
-			self.drawGrid(True)
-			self.selectCell()
-			self.parent.setParam(menuItem, 'value', value)
 		elif menuItem == 'Horizontal zoom':
 			self.horizontalZoom = value
-			self.updateCellSize()
-			self.drawGrid(True)
-			self.selectCell()
-			self.parent.setParam(menuItem, 'value', value)
 		elif menuItem == 'Clocks per division':
 			self.parent.setParam(menuItem, 'value', value)
 			self.setClocksPerDivision(value)
@@ -764,20 +788,23 @@ class zynthian_gui_songeditor():
 				self.parent.libseq.setBarLength(self.song - 1000, value * self.clocksPerDivision)
 			else:
 				self.parent.libseq.setBarLength(self.song + 1000, value * self.clocksPerDivision)
-			self.drawGrid(True)
+			self.drawGrid()
 		elif menuItem == "Group":
 			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
 			self.parent.libseq.setGroup(sequence, value);
-			self.drawGrid(True)
+			self.drawTrackLabel(self.selectedCell[1])
 			return "Group: %s" % (chr(65 + value))
 		elif menuItem == "Mode":
 			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
 			self.parent.libseq.setPlayMode(sequence, value);
-			self.drawGrid(True)
+			self.drawTrackLabel(self.selectedCell[1])
 			playMode = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all']
 			return "Mode: %s" % (playMode[value])
 		elif menuItem == "Trigger":
 			self.trigger = value
+			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
+			self.parent.libseq.setTriggerNote(sequence, self.trigger);
+			self.drawTrackLabel(self.selectedCell[1])
 			if value > 127:
 				return "Trigger: None"
 			else:

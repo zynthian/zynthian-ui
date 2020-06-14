@@ -90,6 +90,7 @@ class zynthian_gui_patterneditor():
 		#TODO: Get values from persistent storage
 		self.shown = False # True when GUI in view
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
+		self.cells = [] # Array of cells indices
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -193,7 +194,6 @@ class zynthian_gui_patterneditor():
 			channel = 1
 		self.parent.libseq.setChannel(self.sequence, channel)
 		self.loadPattern(pattern)
-		self.addMenus()
 		self.setupEncoders()
 		self.main_frame.tkraise()
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
@@ -211,15 +211,16 @@ class zynthian_gui_patterneditor():
 		self.parent.zyngui.zyntransport.transport_stop() #TODO: Stopping transport due to jack_transport restarting if locate called
 
 	# Function to add menus
-	def addMenus(self):
+	def populateMenu(self):
 		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getPattern, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Input channel':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':16, 'getValue':self.getInputChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'getValue':self.parent.libseq.getStepsPerBeat, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'getValue':self.parent.libseq.getSteps, 'onChange':self.onMenuChange, 'onAssert':self.assertSteps}}})
 		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getCopySource, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
 		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
-		self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'getValue':self.getVerticalZoom, 'onChange':self.onMenuChange}}})
+		if self.parent.libseq.getScale():
+			self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'getValue':self.getVerticalZoom, 'onChange':self.onMenuChange, 'onAssert':self.assertZoom}}})
 		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.parent.libseq.getClocksPerStep, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Scale':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':self.getScales(), 'getValue':self.parent.libseq.getScale, 'onChange':self.onMenuChange}}})
@@ -232,6 +233,12 @@ class zynthian_gui_patterneditor():
 		with open("/zynthian/zynthian-my-data/sequences/scales.json") as json_file:
 			data = json.load(json_file)
 		return len(data)
+
+	# Function to assert zoom level
+	def assertZoom(self):
+		self.updateRowHeight()
+		self.drawGrid(True)
+		self.selectCell()
 
 	# Function to populate keymap array
 	#	returns Name of scale / map
@@ -285,7 +292,7 @@ class zynthian_gui_patterneditor():
 							break
 						self.keymap.append({"note":note, "name":"%s%d"%(self.notes[note % 12],note // 12 - 1)})
 				name = data[scale]['name']
-		self.drawGrid(True)
+		self.drawGrid()
 		self.selectCell(0, int(len(self.keymap) / 2))
 		return name
 
@@ -305,14 +312,18 @@ class zynthian_gui_patterneditor():
 	def onPianoRollMotion(self, event):
 		if not self.pianoRollDragStart:
 			return
-		if event.y > self.pianoRollDragStart.y + self.rowHeight and self.keyMapOffset < len(self.keymap) - self.zoom:
-			self.keyMapOffset = self.keyMapOffset + 1
-			self.pianoRollDragStart.y = event.y
-			self.drawGrid()
-		elif event.y < self.pianoRollDragStart.y - self.rowHeight and self.keyMapOffset > 0:
-			self.keyMapOffset = self.keyMapOffset - 1
-			self.pianoRollDragStart.y = event.y
-			self.drawGrid()
+		offset = int((event.y - self.pianoRollDragStart.y) / self.rowHeight)
+		if offset == 0:
+			return
+		self.keyMapOffset = self.keyMapOffset + offset
+		if self.keyMapOffset < 0:
+			self.keyMapOffset = 0
+		if self.keyMapOffset > len(self.keymap) - self.zoom:
+			self.keyMapOffset = len(self.keymap) - self.zoom
+
+		self.pianoRollDragStart = event
+		self.drawGrid()
+
 		if self.selectedCell[1] < self.keyMapOffset:
 			self.selectedCell[1] = self.keyMapOffset
 		elif self.selectedCell[1] >= self.keyMapOffset + self.zoom:
@@ -323,23 +334,15 @@ class zynthian_gui_patterneditor():
 	def onPianoRollRelease(self, event):
 		self.pianoRollDragStart = None
 
-	# Function to handle mouse click / touch
-	#   event: Mouse event
-	def onCanvasClick(self, event):
-		if self.parent.lstMenu.winfo_viewable():
-			self.parent.hideMenu()
-			return
-		try:
-			col,row = self.gridCanvas.gettags(self.gridCanvas.find_withtag(tkinter.CURRENT))[0].split(',')
-		except:
-			return
-		self.toggleEvent(int(col), int(row) + self.keyMapOffset)
 
 	# Function to handle grid mouse down
 	#	event: Mouse event
 	def onGridPress(self, event):
 		if self.parent.lstMenu.winfo_viewable():
 			self.parent.hideMenu()
+			return
+		if self.parent.paramEditorItem != None:
+			self.parent.hideParamEditor()
 			return
 		self.gridDragStart = event
 		try:
@@ -363,6 +366,7 @@ class zynthian_gui_patterneditor():
 		if not self.dragVelocity:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
 		self.dragVelocity = False
+		self.gridDragStart = None
 
 	# Function to handle grid mouse drag
 	#	event: Mouse event
@@ -475,7 +479,8 @@ class zynthian_gui_patterneditor():
 	#	step: Step (column) index
 	#	row: Index of row
 	def drawCell(self, step, row):
-		if step < 0 or step >= self.parent.libseq.getSteps() or row < 0 or row >= self.zoom:
+		cellIndex = row * self.parent.libseq.getSteps() + step # Cells are stored in array sequentially: 1st row, 2nd row...
+		if cellIndex >= len(self.cells):
 			return
 		note = self.keymap[row + self.keyMapOffset]["note"]
 		velocityColour = self.parent.libseq.getNoteVelocity(step, note)
@@ -495,7 +500,7 @@ class zynthian_gui_patterneditor():
 		if not duration:
 			duration = 1
 		fillColour = "#%02x%02x%02x" % (velocityColour, velocityColour, velocityColour)
-		cell = self.gridCanvas.find_withtag("%d,%d"%(step,row))
+		cell = self.cells[cellIndex]
 		coord = self.getCell(step, row, duration)
 		if cell:
 			# Update existing cell
@@ -504,10 +509,10 @@ class zynthian_gui_patterneditor():
 		else:
 			# Create new cell
 			cell = self.gridCanvas.create_rectangle(coord, fill=fillColour, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step))
-			self.gridCanvas.tag_bind(cell, '<Button-1>', self.onCanvasClick)
 			self.gridCanvas.tag_bind(cell, '<ButtonPress-1>', self.onGridPress)
 			self.gridCanvas.tag_bind(cell, '<ButtonRelease-1>', self.onGridRelease)
 			self.gridCanvas.tag_bind(cell, '<B1-Motion>', self.onGridDrag)
+			self.cells[cellIndex] = cell
 		if step + duration > self.parent.libseq.getSteps():
 			if duration > 1:
 				self.gridCanvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - self.parent.libseq.getSteps() + step), state="normal")
@@ -526,6 +531,7 @@ class zynthian_gui_patterneditor():
 			self.gridCanvas.delete(tkinter.ALL)
 			self.stepWidth = (self.gridWidth - 2) / self.parent.libseq.getSteps()
 			self.drawPianoroll()
+			self.cells = [None] * self.zoom * self.parent.libseq.getSteps()
 		# Draw cells of grid
 		self.gridCanvas.itemconfig("gridcell", fill="black")
 		# Redraw gridlines
@@ -709,7 +715,15 @@ class zynthian_gui_patterneditor():
 			self.loadPattern(value)
 			return "Copy %d=>%d?" % (self.copySource, value)
 		elif menuItem == 'Transpose pattern':
-			if(value != 0 and self.parent.libseq.getScale() == 0):
+			if self.parent.libseq.getScale() == 0:
+				self.parent.hideParamEditor()
+				return
+			if self.parent.libseq.getScale() > 1:
+				# Only allow transpose when showing chromatic scale
+				self.parent.libseq.setScale(1)
+				self.loadKeymap()
+				self.drawGrid()
+			if (value != 0 and self.parent.libseq.getScale()):
 				self.parent.libseq.transpose(value)
 				self.parent.setParam(menuItem, 'value', 0)
 				self.keyMapOffset = self.keyMapOffset + value
@@ -720,13 +734,10 @@ class zynthian_gui_patterneditor():
 				else:
 					self.selectedCell[1] = self.selectedCell[1] + value
 				self.drawGrid()
-				selectCell()
+				self.selectCell()
 			return "Transpose +/-"
 		elif menuItem == 'Vertical zoom':
 			self.zoom = value
-			self.updateRowHeight()
-			self.drawGrid(True)
-			self.selectCell()
 		elif menuItem == 'Clocks per step':
 			self.parent.libseq.setClocksPerStep(value);
 		elif menuItem == 'Steps per beat':
@@ -760,7 +771,7 @@ class zynthian_gui_patterneditor():
 					note = key['note'] + offset
 					key['note'] = note
 					key['name'] = "%s%d" % (self.notes[note % 12], note // 12)
-			self.drawGrid(True)
+			self.drawGrid()
 			return "Tonic: %s" % (self.notes[value])
 		return "%s: %d" % (menuItem, value)
 
