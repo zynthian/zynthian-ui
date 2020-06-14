@@ -712,7 +712,7 @@ class zynthian_gui_songeditor():
 			redraw = True
 		self.selectedCell = [time, track]
 		if redraw:
-			self.drawGrid(Fa)
+			self.drawGrid()
 		coord = self.getCellCoord(time - self.colOffset, track - self.rowOffset, duration)
 		coord[0] = coord[0] - 1
 		coord[1] = coord[1] - 1
