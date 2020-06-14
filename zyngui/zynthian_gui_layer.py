@@ -522,7 +522,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			try:
 				layer.set_audio_out(audio_routing[layer.get_jackname()])
 			except:
-				layer.set_audio_out(["system"])
+				layer.reset_audio_out()
 
 
 	def reset_audio_routing(self):

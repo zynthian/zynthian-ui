@@ -40,8 +40,8 @@ class zynthian_layer:
 		self.midi_chan = midi_chan
 
 		self.jackname = None
-		self.audio_out = ["system"]
-		self.audio_chan = [0,1]
+		self.audio_out = ["system:playback_1", "system:playback_2"]
+		self.audio_in = []
 		self.midi_out = []
 
 		self.bank_list = []
@@ -590,6 +590,11 @@ class zynthian_layer:
 
 
 	def set_audio_out(self, ao):
+		#Fix legacy routing (backward compatibility with old snapshots)
+		if "system" in ao:
+			ao.remove("system")
+			ao += ["system:playback_1", "system:playback_2"]
+			
 		self.audio_out=ao
 		self.zyngui.zynautoconnect_audio()
 
@@ -631,7 +636,7 @@ class zynthian_layer:
 
 
 	def reset_audio_out(self):
-		self.audio_out=["system"]
+		self.audio_out=["system:playback_1", "system:playback_2"]
 		self.zyngui.zynautoconnect_audio()
 
 

@@ -441,29 +441,26 @@ def audio_autoconnect(force=False):
 
 		ports=jclient.get_ports(layer.get_jackname(), is_output=True, is_audio=True, is_physical=False)
 		if ports:
-			#logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), len(ports)))
-			if len(ports)==1:
-				ports.append(ports[0])
-				#logger.debug("Converting to Stereo Output {} ...".format(layer.get_jackname()))
+			np = len(ports)
+			#logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), np))
 
 			#logger.debug("Autoconnecting Engine {} ...".format(layer.get_jackname()))
 
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:
+				nip = len(input_ports[ao])
 				if ao in layer.get_audio_out():
-					if len(input_ports[ao])==1:
-						input_ports[ao].append(input_ports[ao][0])
 					#logger.debug(" => Connecting to {}".format(ao))
-					for j in range(len(ports)):
+					for j in range(max(np, nip)):
 						try:
-							jclient.connect(ports[j],input_ports[ao][j%2])
+							jclient.connect(ports[j%np],input_ports[ao][j%nip])
 						except:
 							pass
 
 				else:
-					for j in range(len(ports)):
+					for j in range(max(np, nip)):
 						try:
-							jclient.disconnect(ports[j],input_ports[ao][j%2])
+							jclient.disconnect(ports[j%np],input_ports[ao][j%nip])
 						except:
 							pass
 
@@ -564,6 +561,8 @@ def get_audio_input_ports():
 			client_name=parts[0]
 			if client_name[:7]=="effect_" or client_name=="jack_capture" or client_name=="jackpeak":
 				continue
+			if client_name=="system":
+				client_name = aip.name
 			if client_name not in res:
 				res[client_name]=[aip]
 				#logger.debug("AUDIO INPUT PORT: {}".format(client_name))
