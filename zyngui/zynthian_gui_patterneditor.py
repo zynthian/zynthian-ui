@@ -292,7 +292,6 @@ class zynthian_gui_patterneditor():
 							break
 						self.keymap.append({"note":note, "name":"%s%d"%(self.notes[note % 12],note // 12 - 1)})
 				name = data[scale]['name']
-		self.drawGrid()
 		self.selectCell(0, int(len(self.keymap) / 2))
 		return name
 
@@ -757,6 +756,7 @@ class zynthian_gui_patterneditor():
 		elif menuItem == 'Scale':
 			self.parent.libseq.setScale(value)
 			name = self.loadKeymap()
+			self.drawGrid()
 			return "Keymap: %s" % (name)
 		elif menuItem == 'Tonic':
 			if value < 0:

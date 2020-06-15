@@ -447,8 +447,12 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def changeParam(self, value):
 		value = self.getParam(self.paramEditorItem, 'value') + value
 		if value < self.getParam(self.paramEditorItem, 'min'):
+			if self.getParam(self.paramEditorItem, 'value' == value):
+				return
 			value = self.getParam(self.paramEditorItem, 'min')
 		if value > self.getParam(self.paramEditorItem, 'max'):
+			if self.getParam(self.paramEditorItem, 'value' == value):
+				return
 			value = self.getParam(self.paramEditorItem, 'max')
 		self.setParam(self.paramEditorItem, 'value', value)
 		result = self.getParam(self.paramEditorItem, 'onChange')(self.MENU_ITEMS[self.paramEditorItem]['params'])

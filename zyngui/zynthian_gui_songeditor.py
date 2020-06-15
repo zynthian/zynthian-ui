@@ -31,6 +31,7 @@ import threading
 import tkinter.font as tkFont
 from PIL import Image, ImageTk
 from time import monotonic
+from threading import Timer
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -77,7 +78,7 @@ class zynthian_gui_songeditor():
 		self.selectedCell = [0, 0] # Location of selected cell (time div,track)
 		self.pattern = 1 # Index of current pattern to add to sequence
 		self.position = 0 # Current playhead position
-		self.timePress = 0 # Time of last grid touch
+		self.gridTimer = Timer(0.5, self.onGridTimer) # Grid press and hold timer
 		self.editorMode = 0 # Editor mode [0: Song, 1: Pads]
 		self.song = 1 # Index of song being edited (1000 * editorMode + libseq.getSong)
 		self.trigger = 60 # MIDI note number to set trigger
@@ -382,36 +383,54 @@ class zynthian_gui_songeditor():
 		if self.parent.paramEditorItem != None:
 			self.parent.hideParamEditor()
 			return
+
 		self.gridDragStart = event
-		self.timePress = monotonic()
+
+		self.gridTimer = Timer(0.4, self.onGridTimer)
+		self.gridTimer.start()
 		tags = self.gridCanvas.gettags(self.gridCanvas.find_withtag(tkinter.CURRENT))
 		if not tags:
 			return
 		col, row = tags[0].split(',')
-		self.selectCell(self.colOffset + int(col), self.rowOffset + int(row))
-		pass
+		self.selectCell(self.colOffset + int(col), self.rowOffset + int(row), False)
 
 	# Function to handle grid mouse release
 	#	event: Mouse event
 	def onGridRelease(self, event):
+		self.gridTimer.cancel()
 		if not self.gridDragStart:
 			return
 		self.gridDragStart = None
-		tags = self.gridCanvas.gettags(self.gridCanvas.find_withtag(tkinter.CURRENT))
-		if not tags:
-			return
-		col, row = tags[0].split(',')
-		if(monotonic() - self.timePress > 0.4):
-			track = self.rowOffset + self.selectedCell[1]
-			time = (self.colOffset + self.selectedCell[0]) * self.clocksPerDivision # time in clock cycles
-			sequence = self.parent.libseq.getSequence(self.song, track)
-			pattern = self.parent.libseq.getPattern(sequence, time)
-			channel = self.parent.libseq.getChannel(sequence)
-			if pattern > 0:
-				self.parent.showChild(0, {'pattern':pattern, 'channel':channel})
 
-		else:
-			self.toggleEvent(self.colOffset + int(col), self.rowOffset + int(row))
+		self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
+
+	# Function to handle grid mouse motion
+	#	event: Mouse event
+	def onGridMotion(self, event):
+		if self.gridDragStart == None:
+			return
+		col = self.colOffset + int(event.x / self.columnWidth)
+		row = self.rowOffset + int(event.y / self.rowHeight)
+		if col != self.selectedCell[0] or row != self.selectedCell[1]:
+			self.gridTimer.cancel()
+			self.gridDragStart.x = event.x
+			self.gridDragStart.y = event.y
+			self.selectCell(col, row, False)
+
+	# Function to handle grid press and hold
+	def onGridTimer(self):
+		self.gridDragStart = None
+		self.showParamEditor()
+
+	# Function to show pattern editor
+	def showPatternEditor(self):
+		track = self.rowOffset + self.selectedCell[1]
+		time = self.selectedCell[0] * self.clocksPerDivision # time in clock cycles
+		sequence = self.parent.libseq.getSequence(self.song, track)
+		pattern = self.parent.libseq.getPattern(sequence, time)
+		channel = self.parent.libseq.getChannel(sequence)
+		if pattern > 0:
+			self.parent.showChild(0, {'pattern':pattern, 'channel':channel})
 
 	# Function to handle pattern click
 	#	event: Mouse event
@@ -565,6 +584,7 @@ class zynthian_gui_songeditor():
 			celltext = self.gridCanvas.create_text(coord[0] + 1, coord[1] + self.rowHeight / 2, fill=CELL_FOREGROUND, tags=("celltext:%d,%d"%(col,row)))
 			self.gridCanvas.tag_bind(cell, '<ButtonPress-1>', self.onGridPress)
 			self.gridCanvas.tag_bind(cell, '<ButtonRelease-1>', self.onGridRelease)
+			self.gridCanvas.tag_bind(cell, '<B1-Motion>', self.onGridMotion)
 			self.gridCanvas.tag_lower(cell) # Assume cells are always created left to right
 			self.cells[cellIndex][0] = cell
 			self.cells[cellIndex][1] = celltext
@@ -632,7 +652,8 @@ class zynthian_gui_songeditor():
 	# Function to update selectedCell
 	#	time: Time (column) of selected cell (Optional - default to reselect current column)
 	#	track: Track number of selected cell (Optional - default to reselect current row)
-	def selectCell(self, time=None, track=None):
+	#	snap: True to snap to closest pattern (Optional - default True)
+	def selectCell(self, time=None, track=None, snap=True):
 		redraw = False
 		if time == None:
 			time = self.selectedCell[0]
@@ -641,51 +662,55 @@ class zynthian_gui_songeditor():
 		duration = int(self.parent.libseq.getPatternLength(self.pattern) / self.clocksPerDivision)
 		if not duration:
 			duration = 1
-		# Skip cells if pettern won't fit
-		sequence = self.parent.libseq.getSequence(self.song, track)
-		prevStart = 0
-		prevEnd = 0
-		nextStart = time
 		forward = time > self.selectedCell[0]
-		for previous in range(time - 1, -1, -1):
-			# Iterate time divs back to start
-			prevPattern = self.parent.libseq.getPattern(sequence, previous * self.clocksPerDivision)
-			if prevPattern == -1:
-				continue
-			prevDuration = int(self.parent.libseq.getPatternLength(prevPattern, track) / self.clocksPerDivision)
-			prevStart = previous
-			prevEnd = prevStart + prevDuration
-			break
-		for next in range(time + 1, time + duration * 2):
-			nextPattern = self.parent.libseq.getPattern(sequence, next * self.clocksPerDivision)
-			if nextPattern == -1:
-				continue
-			nextStart = next
-			break
-		if nextStart < prevEnd:
-			nextStart = prevEnd
-		if time >= prevEnd and time < nextStart:
-			# Between patterns
-			if time + duration > nextStart:
-				# Insufficient space for new pattern between pattern
+		backward = None
+		if time < self.selectedCell[0]:
+			backward = time
+		# Skip cells if pattern won't fit
+		if snap:
+			sequence = self.parent.libseq.getSequence(self.song, track)
+			prevStart = 0
+			prevEnd = 0
+			nextStart = time
+			for previous in range(time - 1, -1, -1):
+				# Iterate time divs back to start
+				prevPattern = self.parent.libseq.getPattern(sequence, previous * self.clocksPerDivision)
+				if prevPattern == -1:
+					continue
+				prevDuration = int(self.parent.libseq.getPatternLength(prevPattern, track) / self.clocksPerDivision)
+				prevStart = previous
+				prevEnd = prevStart + prevDuration
+				break
+			for next in range(time + 1, time + duration * 2):
+				nextPattern = self.parent.libseq.getPattern(sequence, next * self.clocksPerDivision)
+				if nextPattern == -1:
+					continue
+				nextStart = next
+				break
+			if nextStart < prevEnd:
+				nextStart = prevEnd
+			if time >= prevEnd and time < nextStart:
+				# Between patterns
+				if time + duration > nextStart:
+					# Insufficient space for new pattern between pattern
+					if forward:
+						time = nextStart
+					else:
+						if nextStart - prevEnd < duration:
+							time = prevStart
+						else:
+							time = nextStart - duration
+			elif time == prevStart:
+				# At start of previous
+				pass
+			elif time > prevStart and time < prevEnd:
+				# Within pattern
 				if forward:
 					time = nextStart
 				else:
-					if nextStart - prevEnd < duration:
-						time = prevStart
-					else:
-						time = nextStart - duration
-		elif time == prevStart:
-			# At start of previous
-			pass
-		elif time > prevStart and time < prevEnd:
-			# Within pattern
-			if forward:
+					time = prevStart
+			if time == 0 and duration > nextStart:
 				time = nextStart
-			else:
-				time = prevStart
-		if time == 0 and duration > nextStart:
-			time = nextStart
 
 		if track >= self.parent.libseq.getTracks(self.song):
 			track = self.parent.libseq.getTracks(self.song) - 1;
@@ -709,6 +734,9 @@ class zynthian_gui_songeditor():
 			redraw = True
 		elif track < self.rowOffset:
 			self.rowOffset = track
+			redraw = True
+		if backward != None and self.colOffset > 0 and time > backward:
+			self.colOffset = self.colOffset - 1
 			redraw = True
 		self.selectedCell = [time, track]
 		if redraw:
@@ -906,13 +934,7 @@ class zynthian_gui_songeditor():
 		if type == 'L':
 			return False # Don't handle any long presses
 		elif switch == ENC_SELECT and type == 'B':
-			track = self.rowOffset + self.selectedCell[1]
-			time = (self.colOffset + self.selectedCell[0]) * self.clocksPerDivision # time in clock cycles
-			sequence = self.parent.libseq.getSequence(self.song, track)
-			pattern = self.parent.libseq.getPattern(sequence, time)
-			channel = self.parent.libseq.getChannel(sequence)
-			if pattern > 0:
-				self.parent.showChild(0, {'pattern':pattern, 'channel':channel})
+			self.showPatternEditor()
 		elif switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
 		return True # Tell parent that we handled all short and bold key presses
