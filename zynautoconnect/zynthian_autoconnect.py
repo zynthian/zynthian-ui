@@ -449,9 +449,13 @@ def audio_autoconnect(force=False):
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:
 				nip = len(input_ports[ao])
+				if ao.startswith("system:playback_"):
+					jrange = [int(ao[-1])-1]
+				else:
+					jrange = list(range(max(np, nip)))
 				if ao in layer.get_audio_out():
 					#logger.debug(" => Connecting to {}".format(ao))
-					for j in range(max(np, nip)):
+					for j in jrange:
 						try:
 							jclient.connect(ports[j%np],input_ports[ao][j%nip])
 						except:
