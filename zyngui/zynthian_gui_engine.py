@@ -139,7 +139,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 		# Display help if no engines are enabled ...
 		if len(self.list_data)==0:
-			self.list_data.append((None,len(self.list_data),"http://{}.local/ to enable".format(os.uname().nodename)))
+			self.list_data.append((None,len(self.list_data),"Enable LV2-plugins on webconf".format(os.uname().nodename)))
 
 		# Select the first element that is not a category heading
 		self.index = 0
@@ -159,7 +159,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		self.zyngui.screens['layer'].add_layer_engine(self.start_engine(self.list_data[i][0]), self.midi_chan)
+		if i is not None and self.list_data[i][0]:
+			self.zyngui.screens['layer'].add_layer_engine(self.start_engine(self.list_data[i][0]), self.midi_chan)
 
 
 	def start_engine(self, eng):
