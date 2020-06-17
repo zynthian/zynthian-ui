@@ -320,7 +320,7 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
 
 int onJackXrun(void *pArgs)
 {
-//	if(g_bDebug)
+	if(g_bDebug)
 		printf("zynseq detected XRUN\n");
 	return 0;
 }
