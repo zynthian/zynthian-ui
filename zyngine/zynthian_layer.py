@@ -40,8 +40,8 @@ class zynthian_layer:
 		self.midi_chan = midi_chan
 
 		self.jackname = None
-		self.audio_out = ["system"]
-		self.audio_chan = [0,1]
+		self.audio_out = ["system:playback_1", "system:playback_2"]
+		self.audio_in = []
 		self.midi_out = []
 
 		self.bank_list = []
@@ -523,6 +523,7 @@ class zynthian_layer:
 			}
 
 			for k in self.controllers_dict:
+				logging.debug("Saving {}".format(k))
 				zs3['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
 
 			self.zs3_list[i] = zs3
@@ -535,27 +536,33 @@ class zynthian_layer:
 		zs3 = self.zs3_list[i]
 
 		if zs3:
-			#Load bank list and set bank
-			self.load_bank_list()
-			self.set_bank_by_name(zs3['bank_name'])
-			self.wait_stop_loading()
+			# Set bank and load preset list if needed
+			if zs3['bank_name'] and zs3['bank_name']!=self.bank_name:
+				self.set_bank_by_name(zs3['bank_name'])
+				self.load_preset_list()
+				self.wait_stop_loading()
 
-			#Load preset list and set preset
-			self.load_preset_list()
-			self.set_preset_by_name(zs3['preset_name'])
-			self.wait_stop_loading()
+			# Set preset if needed
+			if zs3['preset_name'] and zs3['preset_name']!=self.preset_name:
+				self.set_preset_by_name(zs3['preset_name'])
+				self.wait_stop_loading()
 
-			#Refresh controller config
+			# Refresh controller config
 			if self.refresh_flag:
 				self.refresh_flag=False
 				self.refresh_controllers()
+			
+			# For non-LV2 engines, bank and preset can affect what controllers do.
+			# In case of LV2, just restoring the controllers ought to be enough, which is nice
+			# since it saves the 0.3 second delay between setting a preset and updating controllers.
+			if not self.engine.nickname.startswith('JV'):
+				sleep(0.3)
 
-			#Set active screen
+			# Set active screen
 			if 'active_screen_index' in zs3:
 				self.active_screen_index=zs3['active_screen_index']
 
-			#Set controller values
-			sleep(0.3)
+			# Set controller values
 			for k in zs3['controllers_dict']:
 				self.controllers_dict[k].restore_snapshot(zs3['controllers_dict'][k])
 
@@ -583,6 +590,11 @@ class zynthian_layer:
 
 
 	def set_audio_out(self, ao):
+		#Fix legacy routing (backward compatibility with old snapshots)
+		if "system" in ao:
+			ao.remove("system")
+			ao += ["system:playback_1", "system:playback_2"]
+			
 		self.audio_out=ao
 		self.zyngui.zynautoconnect_audio()
 
@@ -624,7 +636,7 @@ class zynthian_layer:
 
 
 	def reset_audio_out(self):
-		self.audio_out=["system"]
+		self.audio_out=["system:playback_1", "system:playback_2"]
 		self.zyngui.zynautoconnect_audio()
 
 

@@ -990,19 +990,19 @@ class zynthian_gui:
 				if screen_back is None:
 					j = self.screens_sequence.index(self.active_screen)-1
 					if j<0: 
-						if len(self.screens['layer'].layers)>0:
+						if len(self.screens['layer'].layers)>0 and self.curlayer:
 							j = len(self.screens_sequence)-1
 						else:
-							j=0
-					screen_back=self.screens_sequence[j]
+							j = 0
+					screen_back = self.screens_sequence[j]
 
 			# If there is only one preset, go back to bank selection
 			if screen_back=='preset' and len(self.curlayer.preset_list)<=1:
-				screen_back='bank'
+				screen_back = 'bank'
 
 			# If there is only one bank, go back to layer selection
 			if screen_back=='bank' and len(self.curlayer.bank_list)<=1:
-				screen_back='layer'
+				screen_back = 'layer'
 
 			if screen_back:
 				logging.debug("BACK TO SCREEN => {}".format(screen_back))

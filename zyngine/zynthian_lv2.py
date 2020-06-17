@@ -30,6 +30,7 @@ import time
 import string
 import logging
 import contextlib
+import re
 
 from enum import Enum
 from collections import OrderedDict
@@ -139,6 +140,7 @@ def generate_plugins_config_file(refresh=True):
 			genplugins[name] = {
 				'URL': str(plugin.get_uri()),
 				'TYPE': get_plugin_type(plugin).value,
+				'CLASS': re.sub(' Plugin', '', str(plugin.get_class().get_label())),
 				'ENABLED': is_plugin_enabled(name)
 			}
 
