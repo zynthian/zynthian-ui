@@ -180,6 +180,16 @@ class Sequence
 		*/
 		uint8_t getMap();
 
+		/**	@brief	Set MIDI channel used to send sequence play status, e.g. to light controller pads
+		*	@param channel MIDI channel [0..15, 255 for none]
+		*/
+		void setTallyChannel(uint8_t channel);
+
+		/**	@brief	Get MIDI channel used to send sequence play status, e.g. to light controller pads
+		*	@retval uint8_t MIDI channel [0..15, 255 for none]
+		*/
+		uint8_t getTallyChannel();
+
 	private:
 		uint8_t m_nChannel = 0; // MIDI channel
 		uint8_t m_nOutput = 0; // JACK output
@@ -188,6 +198,8 @@ class Sequence
 		uint8_t m_nGroup = 0; // Group
 		uint8_t m_nTrigger = 0xFF; // MIDI note to trigger sequence
 		uint8_t m_nMap = 0; // Map / scale index
+		uint8_t m_nTallyChannel = 255; // MIDI channel to send play state tallies (>15 to disable)
+		bool m_bStateChanged = false; // True if play state changed in current clock cycle
 		uint32_t m_nPosition = 0; // Play position in clock cycles
 		uint32_t m_nClkPerStep = 1; // Clock cycles per step
 		uint32_t m_nDivCount = 0; // Current count of clock cycles within divisor

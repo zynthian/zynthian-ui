@@ -113,7 +113,9 @@ class zynthian_gui_seqtrigger():
 	# Function to populate menu
 	def populateMenu(self):
 		self.parent.addMenu({'Pad mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(self.playModes)-1, 'value':0, 'getValue':self.getSelectedPadMode, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.getTriggerChannel, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Trigger channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.getTriggerChannel, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Tally channel':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':15, 'getValue':self.getTallyChannel, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
 
 	# Function to hide GUI
 	def hide(self):
@@ -123,6 +125,15 @@ class zynthian_gui_seqtrigger():
 	#   returns: MIDI channel
 	def getTriggerChannel(self):
 		return self.parent.libseq.getTriggerChannel() + 1
+
+	# Function to get the MIDI tally channel
+	#   returns: MIDI channel to send tallies (e.g. to light controller pads)
+	def getTallyChannel(self):
+		channel = self.parent.libseq.getTallyChannel()
+		if channel > 15:
+			return 0
+		else:
+			return channel + 1
 
 	# Function to get the mode of the currently selected pad
 	#   returns: Mode of selected pad
@@ -152,14 +163,35 @@ class zynthian_gui_seqtrigger():
 		prefix = "%s%d" % (chr(int((self.selectedPad - 1) / self.rows) + 65), (self.selectedPad - 1) % self.rows + 1)
 		if menuItem == 'Pad mode':
 			self.parent.libseq.setPlayMode(self.getSequence(self.selectedPad), value)
-			self.parent.setParam(menuItem, 'value', value)
 			self.drawPad(self.selectedPad)
 			return "%s: %s" % (prefix, self.playModes[value])
-		elif menuItem == 'MIDI channel':
+		elif menuItem == 'Trigger channel':
 			self.parent.libseq.setTriggerChannel(value - 1)
-			self.parent.setParam(menuItem, 'value', value)
-			return "%s: MIDI channel: %d" % (prefix, value)
+			return "%s: Channel: %d" % (prefix, value)
+		elif menuItem == 'Tally channel':
+			if value == 0:
+				self.setPadTallies(255)
+				return "None"
+			else:
+				self.setPadTallies(value - 1)
+			return "Channel: %d" % (value)
 		return "%s: %d" % (menuItem, value)
+
+	# Function to configure pad tallies
+	#	channel: MIDI channel to send tallies (255 to disable tallies)
+	def setPadTallies(self, channel):
+		print("setPadTallies for song %d to channel %d"%(self.song, channel))
+		#TODO: Currently only handles Akai APC
+		for track in range(self.parent.libseq.getTracks(self.song)):
+			sequence = self.parent.libseq.getSequence(self.song, track)
+			if sequence:
+				note = self.parent.libseq.getTriggerNote(sequence)
+				self.parent.libseq.setTallyChannel(sequence, channel)
+				if channel < 16:
+					if note < 128 and self.parent.libseq.getSequenceLength(sequence):
+						self.parent.libseq.playNote(note, 3, channel, 0)
+					else:
+						self.parent.libseq.playNote(note, 0, channel, 0)
 
 	# Function to load song
 	def selectSong(self):
@@ -306,9 +338,8 @@ class zynthian_gui_seqtrigger():
 
 	# Function to refresh status
 	def refresh_status(self):
-		playing = 0
 		for pad in range(0, self.rows * self.columns):
-			playing = playing + self.drawPad(pad)
+			self.drawPad(pad)
 
 	def refresh_loading(self):
 		pass

@@ -57,6 +57,7 @@ uint8_t g_nInputChannel = 1; // MIDI input channel (>15 to disable MIDI input)
 uint8_t g_nPllCount = 0; // Quantity of clock cycles to count before PLL is flagged as locked
 bool g_bLocked = false; // True when locked to MIDI clock
 bool g_bPlaying = false; // Local interpretation of play status
+bool g_bMutex = false; // Mutex lock for access to g_mSchedule
 
 struct TEMPO_CHANGE {
 	uint32_t time = 0;
@@ -114,7 +115,11 @@ void onClock()
 			}
 			if(g_bPlaying)
 			{
+				while(g_bMutex)
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				g_bMutex = true;
 				PatternManager::getPatternManager()->clock(g_nClockEventTime, &g_mSchedule, bSync);
+				g_bMutex = false;
 				if(g_tempoChange.time == g_nSongPosition)
 				{
 					//!@todo Now what? We need to set the tempo of a clock we don't have access to!!!
@@ -250,28 +255,50 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	// Send MIDI output aligned with first sample of frame resulting in similar latency to audio
 	//!@todo Send at sample accurate timing rather than salvo at start of frame - reduce jitter
 	//!@todo Interpolate events across frame, e.g. CC variations
+	while(g_bMutex)
+		std::this_thread::sleep_for(std::chrono::microseconds(10));
+	g_bMutex = true;
 	auto it = g_mSchedule.begin();
-	jack_nframes_t nTime;
-	while(it != g_mSchedule.end())
+	jack_nframes_t nTime, nNextTime = 0;
+	if(g_mSchedule.size())
 	{
-		if(it->first >= nNow + g_nBufferSize)
-			break; // Event scheduled beyond this buffer
-		if(it->first < nNow)
-			nTime = 0; // Oops! This event is in the past so send as soon as possible
-		else
-			nTime = it->first - nNow; // Schedule event at scheduled time offset
-		// Get a pointer to the next 3 available bytes in the output buffer
-		pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, 3);
-		pBuffer[0] = it->second->command;
-		pBuffer[1] = it->second->value1;
-		pBuffer[2] = it->second->value2;
-		delete it->second;
-		++it;
-		if(g_bDebug)
-			printf("Sending MIDI event %d,%d,%d\n", pBuffer[0],pBuffer[1],pBuffer[2]);
+		while(it != g_mSchedule.end())
+		{
+			if(it->first >= nNow + g_nBufferSize)
+				break; // Event scheduled beyond this buffer
+			if(it->first < nNow)
+				nTime = nNextTime; // This event is in the past so send as soon as possible
+				// If lots of events are added in past then they may be sent out of order because frame boundary may be hit and existing events will be left in thier previous position, e.g. at time 57 then up to 56 events could be inserted before this. Low risk and only for immediate events so unlikely to have significnat impact.
+			else
+				nTime = it->first - nNow; // Schedule event at scheduled time offset
+			if(nTime < nNextTime)
+				nTime = nNextTime; // Ensure we send events in order - this may bump events slightly latter than scheduled (by individual samples so not much)
+			if(nTime >= g_nBufferSize)
+			{
+				g_bMutex = false;
+				return 0; // Must have bumped beyond end of this frame time so must wait until next frame
+			}
+			nNextTime = nTime + 1;
+			// Get a pointer to the next 3 available bytes in the output buffer
+			//!@todo Should we use correct buffer size based on MIDI message size, e.g. 1 byte for realtime messages?
+			pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, 3);
+			if(pBuffer == NULL)
+				break; // Exceeded buffer size (or other issue)
+			if(it->second)
+			{
+				pBuffer[0] = it->second->command;
+				pBuffer[1] = it->second->value1;
+				pBuffer[2] = it->second->value2;
+				delete it->second;
+				it->second = NULL;
+			}
+			++it;
+			if(g_bDebug)
+				printf("Sending MIDI event %d,%d,%d\n", pBuffer[0],pBuffer[1],pBuffer[2]);
+		}
+		g_mSchedule.erase(g_mSchedule.begin(), it); //!@todo Check that erasing schedule items works, e.g. that schedule is ordered
 	}
-	g_mSchedule.erase(g_mSchedule.begin(), it); //!@todo Check that erasing schedule items works, e.g. that schedule is ordered
-
+	g_bMutex = false;
 	return 0;
 }
 
@@ -293,7 +320,7 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
 
 int onJackXrun(void *pArgs)
 {
-	if(g_bDebug)
+//	if(g_bDebug)
 		printf("zynseq detected XRUN\n");
 	return 0;
 }
@@ -302,6 +329,7 @@ void end()
 {
 	printf("zynseq exit\n");
 	g_bRunning = false;
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	for(auto it : g_mSchedule)
 	{
 		delete it.second;
@@ -377,9 +405,13 @@ void sendMidiMsg(MIDI_MESSAGE* pMsg)
 {
 	// Find first available time slot
 	uint32_t time = 0;
+	while(g_bMutex)
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	g_bMutex = true;
 	while(g_mSchedule.find(time) != g_mSchedule.end())
 		++time;
 	g_mSchedule[time] = pMsg;
+	g_bMutex = false;
 }
 
 // Schedule a note off event after 'duration' ms
@@ -400,8 +432,11 @@ void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration
 	pMsg->value1 = note;
 	pMsg->value2 = velocity;
 	sendMidiMsg(pMsg);
-	std::thread noteOffThread(noteOffTimer, note, channel, 200);
-	noteOffThread.detach();
+	if(duration)
+	{
+		std::thread noteOffThread(noteOffTimer, note, channel, duration);
+		noteOffThread.detach();
+	}
 }
 
 void sendMidiStart()
@@ -623,6 +658,16 @@ uint8_t getTonic()
 	return 0;
 }
 
+bool isModified()
+{
+	if(g_bModified)
+	{
+		g_bModified = false;
+		return true;
+	}
+	return false;
+}
+
 // ** Sequence management functions **
 
 uint32_t getStep(uint32_t sequence)
@@ -738,6 +783,16 @@ uint8_t getGroup(uint32_t sequence)
 void setGroup(uint32_t sequence, uint8_t group)
 {
 	PatternManager::getPatternManager()->getSequence(sequence)->setGroup(group);
+}
+
+uint8_t getTallyChannel(uint32_t sequence)
+{
+	return PatternManager::getPatternManager()->getSequence(sequence)->getTallyChannel();
+}
+
+void setTallyChannel(uint32_t sequence, uint8_t channel)
+{
+	PatternManager::getPatternManager()->getSequence(sequence)->setTallyChannel(channel);
 }
 
 
@@ -864,14 +919,4 @@ void selectSong(uint32_t song)
 	stopSong();
 	PatternManager::getPatternManager()->setCurrentSong(song);
 	g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);
-}
-
-bool isModified()
-{
-	if(g_bModified)
-	{
-		g_bModified = false;
-		return true;
-	}
-	return false;
 }

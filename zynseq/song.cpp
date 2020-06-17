@@ -4,6 +4,7 @@
 
 Song::Song()
 {
+	setTempo(120, 0);
 }
 
 Song::~Song()
@@ -38,14 +39,22 @@ void Song::removeTrack(uint32_t track)
 
 void Song::setTempo(uint16_t tempo, uint32_t time)
 {
-    uint16_t nPreviousTempo = 0;
+    addMasterEvent(time, MASTER_EVENT_TEMPO, tempo);
+    // Remove consecutive duplicates
+    int32_t nPrevious = -1;
     for(size_t nEvent = 0; nEvent < m_vMasterTrack.size(); ++nEvent)
-        if(m_vMasterTrack[nEvent]->command == MASTER_EVENT_TEMPO && m_vMasterTrack[nEvent]->time < time)
-            nPreviousTempo = m_vMasterTrack[nEvent]->data;
-    if(tempo != nPreviousTempo)
-        addMasterEvent(time, MASTER_EVENT_TEMPO, tempo);
-    else
-        removeMasterEvent(time, MASTER_EVENT_TEMPO);
+    {
+        if(m_vMasterTrack[nEvent]->command == MASTER_EVENT_TEMPO)
+        {
+            if(nPrevious == -1)
+                nPrevious = nEvent;
+            else
+                if(m_vMasterTrack[nPrevious]->data == m_vMasterTrack[nEvent]->data)
+                    removeMasterEvent(m_vMasterTrack[nEvent]->time, MASTER_EVENT_TEMPO);
+                else
+                    nPrevious = nEvent;
+        }
+    }
 }
 
 uint16_t Song::getTempo(uint32_t time)

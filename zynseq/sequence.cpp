@@ -129,6 +129,7 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 	// Clock cycle - update position and associated counters, status, etc.
 	// After this call all counters point to next position
 	bool bReturn = false;
+	uint8_t nState = m_nState;
 	if(bSync && m_nState == STARTING)
 		m_nState = PLAYING;
 	if(m_nState == STOPPED || m_nState == STARTING)
@@ -188,6 +189,11 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 		}
 	}
 	++m_nPosition;
+	if(nState != m_nState && m_nTallyChannel < 16 && m_nTrigger < 128)
+	{
+		m_bStateChanged = true;
+		bReturn = true;
+	}
 	return bReturn;
 }
 
@@ -195,6 +201,32 @@ SEQ_EVENT* Sequence::getEvent()
 {
 	// This function is called repeatedly for each clock period until no more events are available to populate JACK MIDI output schedule
 	static SEQ_EVENT seqEvent; // A MIDI event timestamped for some imminent or future time
+	if(m_bStateChanged)
+	{
+		// Sequence play state changed so send tally
+		m_bStateChanged = false;
+		seqEvent.time = m_nLastClockTime;
+		seqEvent.msg.command = MIDI_NOTE_ON;
+		seqEvent.msg.value1 = m_nTrigger;
+		switch(m_nState)
+		{
+			//!@todo Tallies are hard coded to Akai APC but should be configurable, but not within each sequence as that is wasteful. Could expose m_bStateChanged the put logic in PatternManager (or above)
+			case STOPPED:
+				seqEvent.msg.value2 = 3;
+				break;
+			case PLAYING:
+				seqEvent.msg.value2 = 1;
+				break;
+			case STOPPING:
+				seqEvent.msg.value2 = 4;
+				break;
+			case STARTING:
+				seqEvent.msg.value2 = 5;
+				break;
+		}
+		printf("Sequence::getEvent returning note ON for state change note: %d, velocity: %d\n", seqEvent.msg.value1, seqEvent.msg.value2);
+		return &seqEvent;
+	}
 	if(m_nState == STOPPED || m_nCurrentPatternPos < 0 || m_nNextEvent < 0)
 		return NULL;
 	// Sequence is being played and playhead is within a pattern
@@ -392,4 +424,17 @@ void Sequence::setMap(uint8_t map)
 uint8_t Sequence::getMap()
 {
 	return m_nMap;
+}
+
+void Sequence::setTallyChannel(uint8_t channel)
+{
+	if(channel > 15)
+		m_nTallyChannel = 255;
+	else
+		m_nTallyChannel = channel;
+}
+
+uint8_t Sequence::getTallyChannel()
+{
+	return m_nTallyChannel;
 }

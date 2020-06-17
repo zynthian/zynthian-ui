@@ -114,9 +114,9 @@ class zynthian_gui_songeditor():
 			bg=CANVAS_BACKGROUND,
 			bd=0,
 			highlightthickness=0)
-#		self.trackTitleCanvas.bind("<ButtonPress-1>", self.onTrackDragStart)
-#		self.trackTitleCanvas.bind("<ButtonRelease-1>", self.onTrackDragEnd)
-#		self.trackTitleCanvas.bind("<B1-Motion>", self.onTrackDragMotion)
+		self.trackTitleCanvas.bind("<ButtonPress-1>", self.onTrackDragStart)
+		self.trackTitleCanvas.bind("<ButtonRelease-1>", self.onTrackDragEnd)
+		self.trackTitleCanvas.bind("<B1-Motion>", self.onTrackDragMotion)
 		self.trackTitleCanvas.grid(column=1, row=0)
 
 		# Create grid canvas
@@ -191,12 +191,12 @@ class zynthian_gui_songeditor():
 		, 'value':64, 'onChange':self.onMenuChange,'onAssert':self.assertAndRedraw}}})
 		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.getTrackChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Clocks per division':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.getClocksPerDivision, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Tracks':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':64, 'getValue':self.getTracks, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Tracks':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':64, 'getValue':self.getTracks, 'onChange':self.onMenuChange, 'onAssert':self.setTracks}}})
 		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.getTempo, 'onChange':self.onMenuChange, 'onAssert':self.assertTempo}}})
 		self.parent.addMenu({'Bar / sync':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getBarLength, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Group':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':25, 'getValue':self.getGroup, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':4, 'getValue':self.getMode, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Trigger':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':128, 'getValue':self.getTrigger, 'onChange':self.onMenuChange, 'onAssert':self.setTrigger}}})
+		self.parent.addMenu({'Trigger':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':128, 'getValue':self.getTrigger, 'onChange':self.onMenuChange, 'onAssert':self.setTrigger}}})
 		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getPattern, 'onChange':self.onMenuChange}}})
 
 	# Function to show GUI
@@ -284,7 +284,8 @@ class zynthian_gui_songeditor():
 	# Function to set quantity of tracks in song
 	#	tracks: Quantity of tracks in song
 	#	Note: Tracks will be deleted from or added to end of track list as necessary
-	def setTracks(self, tracks):
+	def setTracks(self):
+		tracks = self.parent.getParam('Tracks', 'value')
 		# Remove surplus tracks
 		while self.parent.libseq.getTracks(self.song) > tracks:
 			self.parent.libseq.removeTrack(self.song, tracks)
@@ -292,10 +293,16 @@ class zynthian_gui_songeditor():
 		while self.parent.libseq.getTracks(self.song) < tracks:
 			track = self.parent.libseq.addTrack(self.song)
 			sequence = self.parent.libseq.getSequence(self.song, track)
-			mode = 1
 			if self.editorMode:
-				mode = 4
-			self.parent.libseq.setPlayMode(sequence, mode)
+				self.parent.libseq.setGroup(sequence, int(track / 4))
+				self.parent.libseq.setChannel(sequence, int(track / 4))
+				self.parent.libseq.setPlayMode(sequence, 4)
+			else:
+				if track < 26:
+					self.parent.libseq.setGroup(sequence, track)
+				if track <= 16:
+					self.parent.libseq.setChannel(sequence, track)
+				self.parent.libseq.setPlayMode(sequence, 1)
 		self.drawGrid(True)
 
 	# Function to get quantity of tracks in song
@@ -420,7 +427,7 @@ class zynthian_gui_songeditor():
 	# Function to handle grid press and hold
 	def onGridTimer(self):
 		self.gridDragStart = None
-		self.showParamEditor()
+		self.showPatternEditor()
 
 	# Function to show pattern editor
 	def showPatternEditor(self):
@@ -839,8 +846,8 @@ class zynthian_gui_songeditor():
 				return "Trigger: %s" % self.getNote(value)
 		elif menuItem == "Pattern":
 			self.setPattern(value)
-		elif menuItem == "Tracks":
-			self.setTracks(value)
+#		elif menuItem == "Tracks":
+#			self.setTracks(value)
 		return "%s: %d" % (menuItem, value)
 
 	# Function to get clocks per division

@@ -92,7 +92,7 @@ void save(char* filename);
 *	@param	note MIDI note number
 *	@param	velocity MIDI velocity
 *	@param	channel MIDI channel
-*	@parm	duration Duration of note in milliseconds (0 to send note off only)
+*	@parm	duration Duration of note in milliseconds (0 to send note on only)
 */
 void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration = 0);
 
@@ -400,9 +400,34 @@ uint8_t getGroup(uint32_t sequence);
 
 /**	@brief	Set sequence group
 *	@param	sequence Sequence number
-*	@param grou Group index
+*	@param group Group index
 */
 void setGroup(uint32_t sequence, uint8_t group);
+
+/**	@brief	Get MIDI channel used to send sequence play status, e.g. to light controller pads
+*	@param	sequence Index of sequence
+*	@retval uint8_t MIDI channel [0..15, 255 for none]
+*/
+uint8_t getTallyChannel(uint32_t sequence);
+
+/**	@brief	Set MIDI channel used to send sequence play status, e.g. to light controller pads
+*	@param	sequence Index of sequence
+*	@param channel MIDI channel [0..15, 255 for none]
+*/
+void setTallyChannel(uint32_t sequence, uint8_t channel);
+
+/**	@brief	Set MIDI note used to send sequence play status, e.g. to light controller pads
+*	@param	sequence Index of sequence
+*	@param note MIDI note [0..127]
+*/
+void setTallyNote(uint32_t sequence, uint8_t note);
+
+/**	@brief	Get MIDI note used to send sequence play status, e.g. to light controller pads
+*	@param	sequence Index of sequence
+*	@retval uint8_t MIDI note [0..127]
+*/
+uint8_t getTallyNote(uint32_t sequence);
+
 
 // ** Song management functions **
 
@@ -495,17 +520,17 @@ uint32_t getSongPosition();
 */
 void setSongPosition(uint32_t position);
 
-/**	@brief	Set bar length / loop duration
-*	@param	song Song index
-*	@param	period Clock cycles per bar / loop
-*/
-void setBarLength(uint32_t song, uint32_t period);
-
 /**	@brief	Get bar length / loop duration
 *	@param	song Song index
 *	@retval	uint32_t Clock cycles per bar / loop
 */
 uint32_t getBarLength(uint32_t song);
+
+/**	@brief	Set bar length / loop duration
+*	@param	song Song index
+*	@param	period Clock cycles per bar / loop
+*/
+void setBarLength(uint32_t song, uint32_t period);
 
 /**	@brief	Start song playing - resume from current position
 */
@@ -527,7 +552,7 @@ uint32_t getSong();
 
 /**	@brief	Select song
 *	@param	song Index of song to select
-*	@@note	Song 0 is reserved for pattern editor. Songs 1-128 may be selected with MIDI song select.
+*	@Note	Song 0 is reserved for pattern editor. Songs 1-128 may be selected with MIDI song select.
 *	@todo	Limit quantity of songs to 128 (MIDI limit) and use appropriate sized data (uint8_t)
 */
 void selectSong(uint32_t song);
