@@ -117,7 +117,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				self.list_data.append((self.layer_audio_capture, None, "Audio Capture"))
 
 			if 'audio_route' in eng_options and eng_options['audio_route']:
-				self.list_data.append((self.layer_audio_routing, None, "Audio Output Routing"))
+				self.list_data.append((self.layer_audio_routing, None, "Audio Output"))
 
 			if 'midi_chan' in eng_options and eng_options['midi_chan']:
 				self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
