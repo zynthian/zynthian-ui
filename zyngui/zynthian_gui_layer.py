@@ -511,9 +511,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	#----------------------------------------------------------------------------
 
 	def get_audio_routing(self):
-		res={}
+		res = {}
 		for i, layer in enumerate(self.layers):
-			res[layer.get_jackname()]=layer.get_audio_out()
+			res[layer.get_jackname()] = layer.get_audio_out()
 		return res
 
 
@@ -527,6 +527,29 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def reset_audio_routing(self):
 		self.set_audio_routing()
+
+
+	#----------------------------------------------------------------------------
+	# Audio Capture
+	#----------------------------------------------------------------------------
+
+	def get_audio_capture(self):
+		res = {}
+		for i, layer in enumerate(self.layers):
+			res[layer.get_jackname()] = layer.get_audio_in()
+		return res
+
+
+	def set_audio_capture(self, audio_capture=None):
+		for i, layer in enumerate(self.layers):
+			try:
+				layer.set_audio_in(audio_capture[layer.get_jackname()])
+			except:
+				layer.reset_audio_in()
+
+
+	def reset_audio_capture(self):
+		self.set_audio_capture()
 
 
 	#----------------------------------------------------------------------------
@@ -971,6 +994,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				'layers':[],
 				'clone':[],
 				'transpose':[],
+				'audio_capture': self.get_audio_capture(),
 				'audio_routing': self.get_audio_routing(),
 				'midi_routing': self.get_midi_routing(),
 				'extended_config': self.get_extended_config(),
@@ -1064,6 +1088,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			#Set Audio Routing
 			if 'audio_routing' in snapshot:
 				self.set_audio_routing(snapshot['audio_routing'])
+			else:
+				self.reset_audio_routing()
+
+			#Set Audio Routing
+			if 'audio_capture' in snapshot:
+				self.set_audio_capture(snapshot['audio_capture'])
 			else:
 				self.reset_audio_routing()
 

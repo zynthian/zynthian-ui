@@ -41,7 +41,7 @@ class zynthian_layer:
 
 		self.jackname = None
 		self.audio_out = ["system:playback_1", "system:playback_2"]
-		self.audio_in = []
+		self.audio_in = ["system:capture_1", "system:capture_2"]
 		self.midi_out = []
 
 		self.bank_list = []
@@ -573,7 +573,7 @@ class zynthian_layer:
 
 
 	# ---------------------------------------------------------------------------
-	# Audio Routing:
+	# Audio Output Routing:
 	# ---------------------------------------------------------------------------
 
 
@@ -605,7 +605,7 @@ class zynthian_layer:
 
 		if jackname not in self.audio_out:
 			self.audio_out.append(jackname)
-			logging.debug("Connecting Audio {} => {}".format(self.get_audio_jackname(), jackname))
+			logging.debug("Connecting Audio Output {} => {}".format(self.get_audio_jackname(), jackname))
 
 		self.zyngui.zynautoconnect_audio()
 
@@ -616,7 +616,7 @@ class zynthian_layer:
 
 		try:
 			self.audio_out.remove(jackname)
-			logging.debug("Disconnecting Audio {} => {}".format(self.get_audio_jackname(), jackname))
+			logging.debug("Disconnecting Audio Output {} => {}".format(self.get_audio_jackname(), jackname))
 		except:
 			pass
 
@@ -642,6 +642,59 @@ class zynthian_layer:
 
 	def mute_audio_out(self):
 		self.audio_out=[]
+		self.zyngui.zynautoconnect_audio()
+
+
+	# ---------------------------------------------------------------------------
+	# Audio Input Routing:
+	# ---------------------------------------------------------------------------
+
+
+	def get_audio_in(self):
+		return self.audio_in
+
+
+	def set_audio_in(self, ai):		
+		self.audio_in=ai
+		self.zyngui.zynautoconnect_audio()
+
+
+	def add_audio_in(self, jackname):
+		if jackname not in self.audio_in:
+			self.audio_in.append(jackname)
+			logging.debug("Connecting Audio Capture {} => {}".format(jackname, self.get_audio_jackname()))
+
+		self.zyngui.zynautoconnect_audio()
+
+
+	def del_audio_in(self, jackname):
+		try:
+			self.audio_in.remove(jackname)
+			logging.debug("Disconnecting Audio Capture {} => {}".format(jackname, self.get_audio_jackname()))
+		except:
+			pass
+
+		self.zyngui.zynautoconnect_audio()
+
+
+	def toggle_audio_in(self, jackname):
+		if jackname not in self.audio_in:
+			self.audio_in.append(jackname)
+		else:
+			self.audio_in.remove(jackname)
+
+		logging.debug("Toggling Audio Capture: {}".format(jackname))
+
+		self.zyngui.zynautoconnect_audio()
+
+
+	def reset_audio_in(self):
+		self.audio_in=["system:capture_1", "system:capture_2"]
+		self.zyngui.zynautoconnect_audio()
+
+
+	def mute_audio_in(self):
+		self.audio_in=[]
 		self.zyngui.zynautoconnect_audio()
 
 

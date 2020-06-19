@@ -426,8 +426,8 @@ def audio_autoconnect(force=False):
 	#Disconnect Monitor from System Output
 	mon_in=jclient.get_ports("mod-monitor", is_output=True, is_audio=True)
 	try:
-		jclient.disconnect(mon_in[0],input_ports['system'][0])
-		jclient.disconnect(mon_in[1],input_ports['system'][1])
+		jclient.disconnect(mon_in[0],'system:playback_1')
+		jclient.disconnect(mon_in[1],'system:playback_2')
 	except:
 		pass
 
@@ -436,23 +436,24 @@ def audio_autoconnect(force=False):
 
 	#Connect Synth Engines to assigned outputs
 	for i, layer in enumerate(layers_list):
-		if not layer.get_jackname() or layer.engine.type=="MIDI Tool":
+		if not layer.get_audio_jackname() or layer.engine.type=="MIDI Tool":
 			continue
 
-		ports=jclient.get_ports(layer.get_jackname(), is_output=True, is_audio=True, is_physical=False)
+		ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
 		if ports:
-			np = len(ports)
-			#logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), np))
+			#logger.debug("Connecting Engine {} ...".format(layer.get_jackname()))
 
-			#logger.debug("Autoconnecting Engine {} ...".format(layer.get_jackname()))
+			np = min(len(ports), 2)
+			#logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), np))
 
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:
-				nip = len(input_ports[ao])
+				nip = min(len(input_ports[ao]), 2)
 				if ao.startswith("system:playback_"):
 					jrange = [int(ao[-1])-1]
 				else:
 					jrange = list(range(max(np, nip)))
+
 				if ao in layer.get_audio_out():
 					#logger.debug(" => Connecting to {}".format(ao))
 					for j in jrange:
@@ -462,7 +463,7 @@ def audio_autoconnect(force=False):
 							pass
 
 				else:
-					for j in range(max(np, nip)):
+					for j in jrange:
 						try:
 							jclient.disconnect(ports[j%np],input_ports[ao][j%nip])
 						except:
@@ -504,43 +505,63 @@ def audio_autoconnect(force=False):
 				pass
 
 	#Get System Capture ports => jack output ports!!
-	system_capture=jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
-	if len(system_capture)>0:
+	capture_ports = get_audio_capture_ports()
+	if len(capture_ports)>0:
 
-		#Connect system capture to effect root layers ...
-		root_layers=zynthian_gui_config.zyngui.screens["layer"].get_fxchain_roots()
+		root_layers = zynthian_gui_config.zyngui.screens["layer"].get_fxchain_roots()
+		#Connect system capture ports to FX-layers root ...
 		for rl in root_layers:
-			if not rl.get_jackname():
+			if not rl.get_audio_jackname() or layer.engine.type!="Audio Effect":
 				continue
 
 			#Get Root Layer Input ports ...
-			rl_in=jclient.get_ports(rl.get_jackname(), is_input=True, is_audio=True)
-
-			#Connect System Capture to Root Layer ports
+			rl_in = jclient.get_ports(rl.get_audio_jackname(), is_input=True, is_audio=True)
 			if len(rl_in)>0:
-				if len(rl_in)==1:
-					rl_in.append(rl_in[0])
+				nsc = len(rl.get_audio_in())
+	
+				#Connect System Capture to Root Layer ports
+				j = 0
+				for scp in capture_ports:
+					if scp.name in rl.get_audio_in():
+						k = 0
+						for rl_inp in rl_in:
+							if k%nsc==j%nsc:
+								#logger.debug("Connecting {} to {} ...".format(scp.name, layer.get_audio_jackname()))
+								try:
+									jclient.connect(scp, rl_inp)
+								except:
+									pass
+							else:
+								try:
+									jclient.disconnect(scp, rl_inp)
+								except:
+									pass
+							k += 1
+							# Limit to 2 input ports 
+							#if k>1:
+							#	break
 
-				try:
-					jclient.connect(system_capture[0],rl_in[0])
-					jclient.connect(system_capture[1],rl_in[1])
-				except:
-					pass
-
+					else:
+						for rl_inp in rl_in:
+							try:
+								jclient.disconnect(scp, rl_inp)
+							except:
+								pass
+					j += 1
 
 		if zynthian_gui_config.midi_aubionotes_enabled:
 			#Get Aubio Input ports ...
-			aubio_in=jclient.get_ports("aubio", is_input=True, is_audio=True)
-			#Connect System Capture to Aubio ports
+			aubio_in = jclient.get_ports("aubio", is_input=True, is_audio=True)
 			if len(aubio_in)>0:
-				if len(aubio_in)==1:
-					aubio_in.append(aubio_in[0])
-
-				try:
-					jclient.connect(system_capture[0],aubio_in[0])
-					jclient.connect(system_capture[1],aubio_in[1])
-				except:
-					pass
+				nip = max(len(aubio_in), 2)
+				#Connect System Capture to Aubio ports
+				j=0
+				for scp in capture_ports:
+					try:
+						jclient.connect(scp, aubio_in[j%nip])
+					except:
+						pass
+					j += 1
 
 	#Release Mutex Lock
 	release_lock()
@@ -555,6 +576,10 @@ def audio_disconnect_sysout():
 				jclient.disconnect(cp, sop)
 			except:
 				pass
+
+
+def get_audio_capture_ports():
+	return jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
 
 
 def get_audio_input_ports():
