@@ -78,7 +78,7 @@ class zynthian_gui_songeditor():
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
-		self.height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
+		self.height=zynthian_gui_config.body_height
 		self.selectThickness = 1 + int(self.width / 500) # Scale thickness of select border based on screen resolution
 		self.gridHeight = self.height - PLAYHEAD_HEIGHT
 		self.gridWidth = int(self.width * 0.9)

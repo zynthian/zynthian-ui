@@ -61,7 +61,7 @@ class zynthian_gui_seqtrigger():
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
-		self.height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
+		self.height=zynthian_gui_config.body_height
 		self.selectThickness = 1 + int(self.width / 500) # Scale thickness of select border based on screen
 		self.colWidth = self.width / self.columns
 		self.rowHeight = self.height / self.rows

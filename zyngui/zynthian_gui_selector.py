@@ -57,7 +57,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		self.select_path_dir=2
 
 		# Listbox Size
-		self.lb_height=zynthian_gui_config.display_height-zynthian_gui_config.topbar_height
+		self.lb_height=zynthian_gui_config.body_height
 		self.wide=wide
 		if self.wide:
 			self.lb_width=zynthian_gui_config.display_width-zynthian_gui_config.ctrl_width
