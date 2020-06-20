@@ -113,8 +113,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if 'midi_route' in eng_options and eng_options['midi_route']:
 				self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
 
+			if 'audio_capture' in eng_options and eng_options['audio_capture']:
+				self.list_data.append((self.layer_audio_capture, None, "Audio Capture"))
+
 			if 'audio_route' in eng_options and eng_options['audio_route']:
-				self.list_data.append((self.layer_audio_routing, None, "Audio Routing"))
+				self.list_data.append((self.layer_audio_routing, None, "Audio Output"))
 
 			if 'midi_chan' in eng_options and eng_options['midi_chan']:
 				self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
@@ -284,10 +287,14 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.zyngui.show_modal('audio_out')
 
 
+	def layer_audio_capture(self):
+		self.zyngui.screens['audio_in'].set_layer(self.layer)
+		self.zyngui.show_modal('audio_in')
+
+
 	def layer_remove(self):
 		self.zyngui.screens['layer'].remove_root_layer(self.layer_index)
 		self.zyngui.show_screen('layer')
-
 
 	# FX-Chain management
 

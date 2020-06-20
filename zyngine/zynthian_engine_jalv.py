@@ -166,6 +166,8 @@ class zynthian_engine_jalv(zynthian_engine):
 		if plugin_type=="MIDI Tool":
 			self.options['midi_route'] = True
 			self.options['audio_route'] = False
+		elif plugin_type=="Audio Effect":
+			self.options['audio_capture'] = True
 
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
