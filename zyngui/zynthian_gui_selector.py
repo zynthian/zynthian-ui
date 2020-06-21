@@ -143,6 +143,9 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		self.loading_canvas.bind("<Button-1>",self.cb_loading_push)
 		self.loading_canvas.bind("<ButtonRelease-1>",self.cb_loading_release)
 
+		# Init touchbar
+		self.init_touchbar()
+
 		# Setup Loading Logo Animation
 		self.loading_index=0
 		self.loading_item=self.loading_canvas.create_image(3, 3, image = zynthian_gui_config.loading_imgs[0], anchor=tkinter.NW)

@@ -103,6 +103,54 @@ class zynthian_gui_base:
 		# Configure Topbar's Frame column widths
 		#self.tb_frame.grid_columnconfigure(0, minsize=self.path_canvas_width)
 
+		self.button_push_ts = 0
+
+	def init_touchbar(self):
+		# Touchbar frame
+		if not zynthian_gui_config.enable_touch_widgets:
+			return
+
+		self.touch_frame = tkinter.Frame(self.main_frame,
+		width=zynthian_gui_config.display_width,
+		height=zynthian_gui_config.touchbar_height,
+		bg=zynthian_gui_config.color_bg)
+		self.touch_frame.grid(row=3, column=0, columnspan=3)
+		self.touch_frame.grid_propagate(False)
+		for i in range(4):
+			self.touch_frame.grid_columnconfigure(
+				i, minsize=zynthian_gui_config.button_width)
+
+		self.add_button(0, 0, 'Layer')
+		self.add_button(1, 2, 'Snapshot')
+		self.add_button(2, 1, 'Back')
+		self.add_button(3, 3, 'Select')
+
+	def add_button(self, column, index, label):
+		select_button = tkinter.Button(
+			self.touch_frame,
+			bg=zynthian_gui_config.color_bg,
+			fg=zynthian_gui_config.color_header_tx,
+			activebackground=zynthian_gui_config.color_bg,
+			activeforeground=zynthian_gui_config.color_header_tx,
+			text=label)
+		select_button.grid(row=0, column=column, sticky='we')
+		select_button.bind('<ButtonPress-1>', lambda e: self.button_down(index, e))
+		select_button.bind('<ButtonRelease-1>', lambda e: self.button_up(index, e))
+
+	def button_down(self, index, event):
+		self.button_push_ts=datetime.now()
+
+	def button_up(self, index, event):
+		t = 'S'
+		if self.button_push_ts:
+			dts=(datetime.now()-self.button_push_ts).total_seconds()
+			if dts<0.3:
+				t = 'S'
+			elif dts>=0.3 and dts<2:
+				t = 'B'
+			elif dts>=2:
+				t = 'L'
+		self.zyngui.zynswitch_defered(t,index)
 
 	def show(self):
 		if not self.shown:

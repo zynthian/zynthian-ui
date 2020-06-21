@@ -465,6 +465,7 @@ try:
 			display_height=240
 
 	ctrl_width = display_width//4
+	button_width = display_width//4
 	topbar_height = display_height//10
 	touchbar_height = enable_touch_widgets and display_height//5 or 0
 	body_height = display_height-topbar_height-touchbar_height
