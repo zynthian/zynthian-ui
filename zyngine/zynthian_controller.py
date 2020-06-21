@@ -278,7 +278,7 @@ class zynthian_controller:
 				logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol,e))
 
 
-	def get_value2label(self, val=None):
+	def get_value2index(self, val=None):
 		if val is None:
 			val=self.value
 		try:
@@ -286,22 +286,30 @@ class zynthian_controller:
 				if self.ticks[0]>self.ticks[-1]:
 					for i in reversed(range(len(self.labels))):
 						if val<=self.ticks[i]:
-							return self.labels[i]
-					return self.labels[0]
+							return i
+					return 0
 				else:
 					for i in range(len(self.labels)-1):
 						#logging.debug("V2L testing range {} => {} in {}-{}".format(i,val,self.ticks[i],self.ticks[i+1]))
 						if val<self.ticks[i+1]:
-							return self.labels[i]
-					return self.labels[i+1]
+							return i
+					return i+1
 			elif self.labels:
 				i=min(int((val-self.value_min)*len(self.labels)/self.value_range), len(self.labels)-1)
 				#logging.debug("V2L => {} has index {}".format(val,i))
-				return self.labels[i]
+				return i
 			else:
-				return val
+				return None
 		except Exception as e:
 			logging.error(e)
+
+
+	def get_value2label(self, val=None):
+		i = self.get_value2index(val)
+		if i is not None:
+			return self.labels[i]
+		else:
+			return val
 
 
 	def get_label2value(self, label):
