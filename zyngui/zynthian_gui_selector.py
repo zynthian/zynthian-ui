@@ -57,7 +57,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		self.select_path_dir=2
 
 		# Listbox Size
-		self.lb_height=zynthian_gui_config.display_height-zynthian_gui_config.topbar_height
+		self.lb_height=zynthian_gui_config.body_height
 		self.wide=wide
 		if self.wide:
 			self.lb_width=zynthian_gui_config.display_width-zynthian_gui_config.ctrl_width
@@ -142,6 +142,9 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		self.loading_push_ts = None
 		self.loading_canvas.bind("<Button-1>",self.cb_loading_push)
 		self.loading_canvas.bind("<ButtonRelease-1>",self.cb_loading_release)
+
+		# Init touchbar
+		self.init_touchbar()
 
 		# Setup Loading Logo Animation
 		self.loading_index=0
