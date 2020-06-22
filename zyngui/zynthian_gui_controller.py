@@ -24,10 +24,11 @@
 #******************************************************************************
 
 import sys
-import logging
+import math
 import liblo
-import tkinter
 import ctypes
+import tkinter
+import logging
 from time import sleep
 from string import Template
 from datetime import datetime
@@ -56,6 +57,7 @@ class zynthian_gui_controller:
 		self.max_value=127
 		self.inverted=False
 		self.selmode = False
+		self.logarithmic = False
 		self.step=1
 		self.mult=1
 		self.val0=0
@@ -140,12 +142,11 @@ class zynthian_gui_controller:
 
 		if self.zctrl.labels:
 			valplot=None
+			val=self.value
 
 			#DIRTY HACK => It should be improved!! 
-			if self.zctrl.value_min<0:
-				val=self.zctrl.value_min+self.value
-			else:
-				val=self.value
+			#if self.zctrl.value_min<0:
+			#	val=self.zctrl.value_min+self.value
 
 			try:
 				if self.zctrl.ticks:
@@ -186,16 +187,19 @@ class zynthian_gui_controller:
 		else:
 			self.value_plot=self.value
 			if self.zctrl.midi_cc==0:
-				val=self.val0+self.value
+				val = self.val0+self.value
 				self.zctrl.set_value(val)
-				self.value_print=str(val)
+				self.value_print = str(val)
 			else:
-				val=self.zctrl.value_min+self.value*self.scale_value
-				self.zctrl.set_value(val)
-				if self.format_print:
-					self.value_print=self.format_print.format(val)
+				if self.logarithmic:
+					val = self.zctrl.value_min*pow(self.scale_value, self.value/self.n_values)
 				else:
-					self.value_print=str(int(val))
+					val = self.zctrl.value_min+self.value*self.scale_value
+				self.zctrl.set_value(val)
+				if self.format_print and val<1000 and val>-1000:
+					self.value_print = self.format_print.format(val)
+				else:
+					self.value_print = str(int(val))
 
 		#print("VALUE: %s" % self.value)
 		#print("VALUE PLOT: %s" % self.value_plot)
@@ -414,7 +418,7 @@ class zynthian_gui_controller:
 				font_scale=1.4
 		else:
 			if self.format_print:
-				maxlen=max(len(self.format_print.format(self.zctrl.value_min)),len(self.format_print.format(self.zctrl.value_max)))
+				maxlen=5
 			else:
 				maxlen=max(len(str(self.zctrl.value_min)),len(str(self.zctrl.value_max)))
 			if maxlen>5:
@@ -445,6 +449,7 @@ class zynthian_gui_controller:
 		self.n_values=127
 		self.inverted=False
 		self.selmode = False
+		self.logarithmic = zctrl.is_logarithmic
 		self.scale_value=1
 		self.format_print=None
 		self.set_title(zctrl.short_name)
@@ -495,18 +500,17 @@ class zynthian_gui_controller:
 					self.mult=4
 
 			else:
-				r=zctrl.value_max-zctrl.value_min
-				if isinstance(r,int):
+				if zctrl.is_integer:
 					#Integer < 127
-					if r<=127:
-						self.max_value=self.n_values=r
+					if zctrl.value_range<=127:
+						self.max_value=self.n_values=zctrl.value_range
 						self.mult=max(1,int(128/self.n_values))
 						val=zctrl.value-zctrl.value_min
 					#Integer > 127
 					else:
 						#Not MIDI controller
 						if zctrl.midi_cc is None:
-							self.max_value=self.n_values=r
+							self.max_value=self.n_values=zctrl.value_range
 							self.scale_value=1
 							val=(zctrl.value-zctrl.value_min)
 						#MIDI controller
@@ -517,12 +521,14 @@ class zynthian_gui_controller:
 				#Float
 				else:
 					self.max_value=self.n_values=200
-					self.scale_value=r/self.max_value
-					if zctrl.value_min>-10 and zctrl.value_max<10:
-						self.format_print="{0:.2f}"
-					elif zctrl.value_min>-100 and zctrl.value_max<100:
-						self.format_print="{0:.1f}"
-					val=(zctrl.value-zctrl.value_min)/self.scale_value
+					self.format_print="{0:.3g}"
+					if self.logarithmic:
+						self.scale_value = self.zctrl.value_max/self.zctrl.value_min
+						self.log_scale_value = math.log(self.scale_value)
+						val = self.n_values*math.log(zctrl.value/zctrl.value_min)/self.log_scale_value
+					else:
+						self.scale_value = zctrl.value_range/self.max_value
+						val = (zctrl.value-zctrl.value_min)/self.scale_value
 
 				#If many values => use adaptative step size based on rotary speed
 				if self.n_values>=96:
@@ -569,8 +575,10 @@ class zynthian_gui_controller:
 			#"List Selection Controller" => step 1 element by rotary tick
 			if self.zctrl.midi_cc==0:
 				val=self.zctrl.value
+			elif self.logarithmic:
+				val = self.n_values*math.log(zctrl.value/zctrl.value_min)/self.log_scale_value
 			else:
-				val=(self.zctrl.value-self.zctrl.value_min)/self.scale_value
+				val = (self.zctrl.value-self.zctrl.value_min)/self.scale_value
 		#Set value & Update zyncoder
 		self.set_value(val, True, False)
 		#logging.debug("ZCTRL SYNC {} => {}".format(self.title, val))

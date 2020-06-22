@@ -54,6 +54,7 @@ def init_lilv():
 
 	world.ns.ev = lilv.Namespace(world, "http://lv2plug.in/ns/ext/event#")
 	world.ns.presets = lilv.Namespace(world, "http://lv2plug.in/ns/ext/presets#")
+	world.ns.portprops = lilv.Namespace(world, "http://lv2plug.in/ns/ext/port-props#")
 
 
 #------------------------------------------------------------------------------
@@ -415,7 +416,11 @@ def get_plugin_ports(plugin_url):
 			is_toggled = port.has_property(world.ns.lv2.toggled)
 			is_integer = port.has_property(world.ns.lv2.integer)
 			is_enumeration = port.has_property(world.ns.lv2.enumeration)
-			is_logarithmic = port.has_property(world.ns.lv2.logarithmic)
+			is_logarithmic = port.has_property(world.ns.portprops.logarithmic)
+
+			#logging.debug("PORT {} propierties =>".format(port.get_symbol()))
+			#for node in port.get_properties():
+			#	logging.debug("    => {}".format(get_node_value(node)))
 
 			sp = []
 			for p in port.get_scale_points():
