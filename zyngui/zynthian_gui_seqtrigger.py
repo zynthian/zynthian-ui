@@ -79,7 +79,6 @@ class zynthian_gui_seqtrigger():
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(self.parent.main_frame)
-		self.main_frame = tkinter.Frame(self.parent.main_frame)
 		self.main_frame.grid(row=1, column=0, sticky="nsew")
 
 		# Pad grid
@@ -180,7 +179,6 @@ class zynthian_gui_seqtrigger():
 	# Function to configure pad tallies
 	#	channel: MIDI channel to send tallies (255 to disable tallies)
 	def setPadTallies(self, channel):
-		print("setPadTallies for song %d to channel %d"%(self.song, channel))
 		#TODO: Currently only handles Akai APC
 		for track in range(self.parent.libseq.getTracks(self.song)):
 			sequence = self.parent.libseq.getSequence(self.song, track)
@@ -350,12 +348,4 @@ class zynthian_gui_seqtrigger():
 	def onZyncoder(self, encoder, value):
 		pass
 
-	# Function to handle switch press
-	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#   returns True if action fully handled or False if parent action should be triggered
-	def switch(self, switch, type):
-		if type == "L":
-			return False # Don't handle any long presses
-		return True # Tell parent that we handled all short and bold key presses
 #------------------------------------------------------------------------------

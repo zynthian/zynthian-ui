@@ -42,6 +42,8 @@ from zyncoder import *
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_songeditor import zynthian_gui_songeditor
 from zyngui.zynthian_gui_seqtrigger import zynthian_gui_seqtrigger
+from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
+from zyngui.zynthian_gui_rename import zynthian_gui_rename
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer GUI Class
@@ -56,14 +58,17 @@ ENC_BACK			= 1
 ENC_SNAPSHOT		= 2
 ENC_SELECT			= 3
 
-# Class implements host screen which shows topstrap with widgets, title and menu and hosts a panel below
+USER_PATH			= "/zynthian/zynthian-my-data/zynseq"
+
+# Class implements zynthian step sequencer parent, hosting child screens:editors, players, etc.
 class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to initialise class
 	def __init__(self):
 		super().__init__()
 		self.shown = False # True when GUI in view
-		self.zyncoderOwner = [None, None, None, None] # Object that is currently "owns" encoder, indexed by encoder
+		self.zyncoderOwner = [None, None, None, None] # Object that currently "owns" encoder, indexed by encoder
+		self.switchOwner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.child = None # Pointer to instance of child panel
 		self.lastchild = 1 # Index of last child shown - used to return to same screen
@@ -74,7 +79,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.libseq = ctypes.CDLL(dirname(realpath(__file__))+"/../zynseq/build/libzynseq.so")
 		self.libseq.init()
 #		self.libseq.debug(True)
-		self.filename = os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/sequences/patterns.zynseq"
+		self.filename = "default"
 		self.load(self.filename)
 
 		# Geometry vars
@@ -82,7 +87,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.height=zynthian_gui_config.display_height
 
 		# Title
-		font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
+#		font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
+		font=zynthian_gui_config.font_topbar
 		self.title_canvas = tkinter.Canvas(self.tb_frame,
 			height=zynthian_gui_config.topbar_height,
 			bd=0,
@@ -148,8 +154,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.param_title_canvas = tkinter.Canvas(self.param_editor_canvas, height=zynthian_gui_config.topbar_height, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_bg)
 		self.param_title_canvas.create_text(3, zynthian_gui_config.topbar_height / 2,
 			anchor='w',
-			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-				size=int(self.height * 0.05)),
+			font=zynthian_gui_config.font_topbar,
+#			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
+#				size=int(self.height * 0.05)),
 			fill=zynthian_gui_config.color_panel_tx,
 			tags="lblparamEditorValue",
 			text="VALUE...")
@@ -229,8 +236,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.child == None or self.child == self.songEditor:
 			self.addMenu({'ZynPad':{'method':self.showChild, 'params':2}})
 		self.addMenu({'Song':{'method':self.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.libseq.getSong, 'onChange':self.onMenuChange}}})
-		self.addMenu({'Load':{'method':self.load}})
-		self.addMenu({'Save':{'method':self.save}})
+		self.addMenu({'Load':{'method':self.select_filename, 'params':self.filename}})
+		self.addMenu({'Save':{'method':self.save_as, 'params':self.filename}})
 		self.addMenu({'---':{}})
 
 	# Function to update title
@@ -284,6 +291,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.lstMenu.see(0)
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
+		self.registerSwitch(ENC_SELECT, self)
+		self.registerSwitch(ENC_BACK, self)
 		self.menu_button_canvas.grid()
 		self.menu_button_canvas.grid_propagate(False)
 		self.menu_button_canvas.grid(column=0, row=0, sticky='nsew')
@@ -416,6 +425,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='hidden')
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
+		self.registerSwitch(ENC_SELECT, self)
+		self.registerSwitch(ENC_BACK, self)
 
 	# Function to hide menu editor
 	def hideParamEditor(self):
@@ -492,7 +503,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.libseq.selectSong(0)
 			self.child = self.patternEditor
 		elif childIndex == 2:
-			self.libseq.selectSong(self.song)
+#			self.libseq.selectSong(self.song)
 			self.child = self.zynpad
 		else:
 			return
@@ -506,6 +517,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.child = None
 		self.hideParamEditor()
 		self.setTitle("Step Sequencer")
+		for switch in range(4):
+			for type in ['S', 'B', 'L']:
+				self.unregisterSwitch(switch, type)
 
 	# Function to start transport
 	def start(self):
@@ -548,23 +562,34 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def toggleTransport(self):
 		self.zyngui.zyntransport.transport_toggle()
 
+	# Function to name file before saving
+	#	filename: Starting filename
+	def	save_as(self, filename):
+		zynthian_gui_rename(self, self.save, filename)
+
 	# Function to save to RIFF file
 	#	filename: Full path and filename to save
 	def save(self, filename = None):
 		if not filename:
 			filename = self.filename
-		os.makedirs(os.path.dirname(filename), exist_ok=True)
-		self.libseq.save(bytes(filename, "utf-8"))
+		os.makedirs(USER_PATH, exist_ok=True)
+		self.libseq.save(bytes(USER_PATH + "/" + filename + ".zynseq", "utf-8"))
+		self.filename = filename
+
+	# Function to show file dialog to select file to load
+	def select_filename(self, filename):
+		zynthian_gui_fileselector(self, self.load, USER_PATH, "zynseq", filename)
 
 	# Function to load from RIFF file
 	#	filename: Full path and filename to load
-	def load(self, filename = None):
-		if not filename:
+	def load(self, filename=None):
+		if filename == None:
 			filename = self.filename
-		self.libseq.load(bytes(filename, "utf-8"))
-		if self.child:
-			self.child.onLoad()
-			#TODO: This won't update hidden children
+		if self.libseq.load(bytes(USER_PATH + "/" + filename + ".zynseq", "utf-8")):
+			self.filename = filename
+			if self.child:
+				self.child.onLoad()
+				#TODO: This won't update hidden children
 
 	# Function to refresh loading animation
 	def refresh_loading(self):
@@ -654,13 +679,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def switch_select(self, t):
 		self.switch(ENC_SELECT, t)
 
-	# Function to handle switch press
+	# Function to handle switch presses
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
-	def switch(self, switch, type):
-		if type == "L":
-			return False # Don't handle any long presses
+	def onSwitch(self, switch, type):
 		if switch == ENC_LAYER and not self.lstMenu.winfo_viewable():
 			self.toggleMenu()
 		elif switch == ENC_BACK:
@@ -688,9 +711,62 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				self.stop()
 			else:
 				self.toggleTransport()
-		if self.child:
-			return self.child.switch(switch, type)
 		return True # Tell parent that we handled all short and bold key presses
+
+	# Function to manage switch press
+	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#	returns True if action fully handled or False if parent action should be triggered
+	def switch(self, switch, type):
+		if type == 'S':
+			typeIndex = 0
+		elif type == 'B':
+			typeIndex = 1
+		elif type == 'L':
+			typeIndex = 2
+		else:
+			return
+		index = switch * 3 + typeIndex
+		if index >= len(self.switchOwner) or self.switchOwner[index] == None:
+			return False # No one is handling this switch action so let parent manage it
+		return self.switchOwner[index].onSwitch(switch, type)
+
+	# Function to register ownsership of switches
+	#	switch: Index of switch [0..3]
+	#	object: Object to register as owner
+	#	type: Press type ['S'=Short, 'B'=Bold, 'L'=Long, Default:'S']
+	def registerSwitch(self, switch, object, type='S'):
+		if type == 'S':
+			typeIndex = 0
+		elif type == 'B':
+			typeIndex = 1
+		elif type == 'L':
+			typeIndex = 2
+		else:
+			return
+		index = switch * 3 + typeIndex
+		if index >= len(self.switchOwner):
+			return
+		self.switchOwner[index] = None
+		if self.shown:
+			self.switchOwner[index] = object
+
+	# Function to unrestister ownership of a switch from an object
+	#	switch: Index of switch [0..3]
+	#	type: Press type ['S'=Short, 'B'=Bold, 'L'=Long, Default:'S']
+	def unregisterSwitch(self, switch, type=0):
+		if type == 'S':
+			typeIndex = 0
+		elif type == 'B':
+			typeIndex = 1
+		elif type == 'L':
+			typeIndex = 2
+		else:
+			return
+		index = switch * 3 + typeIndex
+		if index >= len(self.switchOwner):
+			return
+		self.registerSwitch(switch, self, type)
 
 	# Function to register ownership of an encoder by an object
 	#	encoder: Index of rotary encoder [0..3]

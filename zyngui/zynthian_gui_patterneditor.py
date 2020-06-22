@@ -56,6 +56,7 @@ CELL_BACKGROUND     = zynthian_gui_config.color_panel_bd
 CELL_FOREGROUND     = zynthian_gui_config.color_panel_tx
 GRID_LINE           = zynthian_gui_config.color_tx_off
 PLAYHEAD_HEIGHT     = 5
+CONFIG_ROOT         = "/zynthian/zynthian-data/zynseq/"
 # Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
 ENC_LAYER           = 0
 ENC_BACK            = 1
@@ -71,6 +72,8 @@ class zynthian_gui_patterneditor():
 	# Function to initialise class
 	def __init__(self, parent):
 		self.parent = parent
+
+		os.makedirs(CONFIG_ROOT, exist_ok=True)
 
 		self.zoom = 16 # Quantity of rows (notes) displayed in grid
 		self.duration = 1 # Current note entry duration
@@ -182,6 +185,7 @@ class zynthian_gui_patterneditor():
 		self.parent.registerZyncoder(ENC_SELECT, self)
 		self.parent.registerZyncoder(ENC_SNAPSHOT, self)
 		self.parent.registerZyncoder(ENC_LAYER, self)
+		self.parent.registerSwitch(ENC_SELECT, self)
 
 	# Function to show GUI
 	#   params: Pattern parameters to edit {'pattern':x, 'channel':x}
@@ -207,6 +211,7 @@ class zynthian_gui_patterneditor():
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterZyncoder(ENC_SNAPSHOT)
 		self.parent.unregisterZyncoder(ENC_LAYER)
+		self.parent.unregisterSwitch(ENC_SELECT)
 		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_STOPPED)
 		self.parent.zyngui.zyntransport.transport_stop() #TODO: Stopping transport due to jack_transport restarting if locate called
 
@@ -230,8 +235,11 @@ class zynthian_gui_patterneditor():
 	#	returns: Quantity of available scales
 	def getScales(self):
 		data = []
-		with open("/zynthian/zynthian-my-data/sequences/scales.json") as json_file:
-			data = json.load(json_file)
+		try:
+			with open(CONFIG_ROOT + "/scales.json") as json_file:
+				data = json.load(json_file)
+		except:
+			logging.warning("Unable to open scales.json")
 		return len(data)
 
 	# Function to assert zoom level
@@ -256,15 +264,18 @@ class zynthian_gui_patterneditor():
 					break
 			if path:
 				path = path.split('#')[1]
-				with open("/zynthian/zynthian-my-data/sequences/keymaps.json") as json_file:
-					data = json.load(json_file)
-				if path in data:
-					name = data[path]
-					xml = minidom.parse("/zynthian/zynthian-my-data/sequences/%s.midnam" % (name))
-					notes = xml.getElementsByTagName('Note')
-					self.scale = []
-					for note in notes:
-						self.keymap.append({'note':int(note.attributes['Number'].value), 'name':note.attributes['Name'].value})
+				try:
+					with open(CONFIG_ROOT + "/keymaps.json") as json_file:
+						data = json.load(json_file)
+					if path in data:
+						name = data[path]
+						xml = minidom.parse(CONFIG_ROOT + "/%s.midnam" % (name))
+						notes = xml.getElementsByTagName('Note')
+						self.scale = []
+						for note in notes:
+							self.keymap.append({'note':int(note.attributes['Number'].value), 'name':note.attributes['Name'].value})
+				except:
+					logging.warning("Unable to load keymaps.json")
 		if name == None: # Not found map
 			# Scale
 			if scale > 0:
@@ -281,7 +292,7 @@ class zynthian_gui_patterneditor():
 					self.keymap.append(newEntry)
 					name = "Chromatic"
 			else:
-				with open("/zynthian/zynthian-my-data/sequences/scales.json") as json_file:
+				with open(CONFIG_ROOT + "/scales.json") as json_file:
 					data = json.load(json_file)
 				if len(data) <= scale:
 					scale = 0
@@ -853,10 +864,9 @@ class zynthian_gui_patterneditor():
 	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
-	def switch(self, switch, type):
-		if type == "L":
-			return False # Don't handle any long presses
-		elif switch == ENC_SELECT:
+	def onSwitch(self, switch, type):
+		if switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
-		return True # Tell parent that we handled all short and bold key presses
+			return True
+		return False
 #------------------------------------------------------------------------------

@@ -764,9 +764,6 @@ class zynthian_gui:
 		elif cuia == "SCREEN_PRESET":
 			self.show_screen("preset")
 
-		elif cuia == "SCREEN_PRESET":
-			self.show_screen("preset")
-
 		elif cuia == "MODAL_SNAPSHOT_LOAD":
 			self.toggle_modal("snapshot", "LOAD")
 

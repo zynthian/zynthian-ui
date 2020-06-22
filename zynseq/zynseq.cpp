@@ -387,9 +387,9 @@ bool init()
 	return true;
 }
 
-void load(char* filename)
+bool load(char* filename)
 {
-	PatternManager::getPatternManager()->load(filename);
+	return PatternManager::getPatternManager()->load(filename);
 }
 
 void save(char* filename)

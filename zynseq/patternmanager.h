@@ -21,8 +21,9 @@ class PatternManager
 
         /** @brief  Load patterns from file
         *   @param  filename Full or relative path and name of file
+        *   @retval bool True on success
         */
-        void load(const char* filename);
+        bool load(const char* filename);
 
         /** @brief  Save patterns to file
         *   @param  filename Full or relative path and name of file

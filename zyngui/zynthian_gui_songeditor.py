@@ -170,12 +170,13 @@ class zynthian_gui_songeditor():
 		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
 		self.icon[4] = ImageTk.PhotoImage(img)
 
-	#Function to set values of encoders
-	#	note: Call after other routine uses one or more encoders
+	# Function to register encoders
 	def setupEncoders(self):
 		self.parent.registerZyncoder(ENC_BACK, self)
 		self.parent.registerZyncoder(ENC_SELECT, self)
 		self.parent.registerZyncoder(ENC_LAYER, self)
+		self.parent.registerSwitch(ENC_SELECT, self, 'S')
+		self.parent.registerSwitch(ENC_SELECT, self, 'B')
 
 	# Function to populate menu
 	def populateMenu(self):
@@ -937,12 +938,12 @@ class zynthian_gui_songeditor():
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
-	def switch(self, switch, type):
-		if type == 'L':
-			return False # Don't handle any long presses
-		elif switch == ENC_SELECT and type == 'B':
+	def onSwitch(self, switch, type):
+		if switch == ENC_SELECT and type == 'B':
 			self.showPatternEditor()
 		elif switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
-		return True # Tell parent that we handled all short and bold key presses
+		else:
+			return False
+		return True
 #------------------------------------------------------------------------------

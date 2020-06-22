@@ -77,8 +77,9 @@ void debug(bool bEnable);
 
 /**	@brief	Load sequences and patterns from file
 *	@param	filename Full path and filename
+*	@retval bool True on success
 */
-void load(char* filename);
+bool load(char* filename);
 
 /**	@brief	Save sequences and patterns from file
 *	@param	filename Full path and filename

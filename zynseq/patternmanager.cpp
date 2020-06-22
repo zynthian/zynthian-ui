@@ -80,7 +80,7 @@ uint32_t PatternManager::fileRead32(FILE* pFile)
 	return nResult;
 }
 
-void PatternManager::load(const char* filename)
+bool PatternManager::load(const char* filename)
 {
 	init();
 	uint32_t nSequence = 1;
@@ -90,7 +90,7 @@ void PatternManager::load(const char* filename)
 	if(pFile == NULL)
 	{
 		fprintf(stderr, "ERROR: PatternManager failed to open file for load %s\n", filename);
-		return;
+		return false;
 	}
 	char sHeader[4];
 	// Iterate each block within RIFF file
@@ -187,6 +187,7 @@ void PatternManager::load(const char* filename)
 	}
 	fclose(pFile);
 	printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu songs from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mSongs.size(), filename);
+	return true;
 }
 
 void PatternManager::save(const char* filename)
