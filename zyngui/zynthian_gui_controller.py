@@ -55,6 +55,7 @@ class zynthian_gui_controller:
 		self.n_values=127
 		self.max_value=127
 		self.inverted=False
+		self.selmode = False
 		self.step=1
 		self.mult=1
 		self.val0=0
@@ -148,7 +149,11 @@ class zynthian_gui_controller:
 
 			try:
 				if self.zctrl.ticks:
-					if self.inverted:
+					if self.selmode:
+						i = val
+						valplot=self.scale_plot*val
+						val=self.zctrl.ticks[i]
+					elif self.inverted:
 						for i in reversed(range(self.n_values)):
 							if val<=self.zctrl.ticks[i]:
 								break
@@ -439,6 +444,7 @@ class zynthian_gui_controller:
 		self.value=None
 		self.n_values=127
 		self.inverted=False
+		self.selmode = False
 		self.scale_value=1
 		self.format_print=None
 		self.set_title(zctrl.short_name)
@@ -449,23 +455,29 @@ class zynthian_gui_controller:
 		#List of values (value selector)
 		if isinstance(zctrl.labels,list):
 			self.n_values=len(zctrl.labels)
-			val=zctrl.value-zctrl.value_min
 			if isinstance(zctrl.ticks,list):
 				if zctrl.ticks[0]>zctrl.ticks[-1]:
 					self.inverted=True
 				if (isinstance(zctrl.midi_cc, int) and zctrl.midi_cc>0):
 					self.max_value=127
 					self.step=max(1,int(16/self.n_values))
+					val=zctrl.value-zctrl.value_min
 				else:
-					if zctrl.value_range>32:
-						self.step = max(4,int(zctrl.value_range/(self.n_values*4)))
-						self.max_value = zctrl.value_range + self.step*4
-					else:
-						self.mult=max(4,int(32/self.n_values))
-						self.max_value = zctrl.value_range + 1
+					self.selmode = True
+					self.max_value = self.n_values-1
+					self.mult = max(4,int(32/self.n_values))
+					val=zctrl.get_value2index()
+
+					#if zctrl.value_range>32:
+						#self.step = max(4,int(zctrl.value_range/(self.n_values*4)))
+						#self.max_value = zctrl.value_range + self.step*4
+					#else:
+					#	self.mult=max(4,int(32/self.n_values))
+					#	self.max_value = zctrl.value_range + 1
 			else:
 				self.max_value=127;
 				self.step=max(1,int(16/self.n_values))
+				val=zctrl.value-zctrl.value_min
 
 		#Numeric value
 		else:
@@ -484,23 +496,31 @@ class zynthian_gui_controller:
 
 			else:
 				r=zctrl.value_max-zctrl.value_min
-				#Integer < 127
-				if isinstance(r,int) and r<=127:
-					self.max_value=self.n_values=r
-					self.mult=max(1,int(128/self.n_values))
-					val=zctrl.value-zctrl.value_min
-				#Integer > 127, not MIDI controller
-				elif isinstance(r,int) and zctrl.midi_cc is None:
-					self.max_value=self.n_values=r
-					self.scale_value=1
-					val=(zctrl.value-zctrl.value_min)
-				#Float or (Integer>127 and MIDI controller)
+				if isinstance(r,int):
+					#Integer < 127
+					if r<=127:
+						self.max_value=self.n_values=r
+						self.mult=max(1,int(128/self.n_values))
+						val=zctrl.value-zctrl.value_min
+					#Integer > 127
+					else:
+						#Not MIDI controller
+						if zctrl.midi_cc is None:
+							self.max_value=self.n_values=r
+							self.scale_value=1
+							val=(zctrl.value-zctrl.value_min)
+						#MIDI controller
+						else:
+							self.max_value=self.n_values=127
+							self.scale_value=r/self.max_value
+							val=(zctrl.value-zctrl.value_min)/self.scale_value
+				#Float
 				else:
-					self.max_value=self.n_values=127
+					self.max_value=self.n_values=200
 					self.scale_value=r/self.max_value
-					if self.scale_value<0.013:
+					if zctrl.value_min>-10 and zctrl.value_max<10:
 						self.format_print="{0:.2f}"
-					elif self.scale_value<0.13:
+					elif zctrl.value_min>-100 and zctrl.value_max<100:
 						self.format_print="{0:.1f}"
 					val=(zctrl.value-zctrl.value_min)/self.scale_value
 
@@ -509,7 +529,9 @@ class zynthian_gui_controller:
 					self.step=0
 
 		#Calculate scale parameter for plotting
-		if zctrl.ticks:
+		if self.selmode:
+			self.scale_plot=self.max_value/(self.n_values-1)
+		elif zctrl.ticks:
 			self.scale_plot=self.max_value/zctrl.value_range
 		elif self.n_values>1:
 			self.scale_plot=self.max_value/(self.n_values-1)
@@ -537,6 +559,8 @@ class zynthian_gui_controller:
 
 	def zctrl_sync(self):
 		#List of values (value selector)
+		if self.selmode:
+			val=self.zctrl.get_label2index()
 		if self.zctrl.labels:
 			#logging.debug("ZCTRL SYNC LABEL => {}".format(self.zctrl.get_value2label()))
 			val=self.zctrl.get_label2value(self.zctrl.get_value2label())
