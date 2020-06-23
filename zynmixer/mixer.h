@@ -41,23 +41,27 @@ void end();
 /** @brief  Set channel level
 *   @param  channel Index of channel
 *   @param  level Channel level (0..1)
+*   @note   Channel > MAX_CHANNELS will set master fader level
 */
 void setLevel(int channel, float level);
 
 /** @brief  Get channel level
 *   @param  channel Index of channel
 *   @retval float Channel level (0..1)
+*   @note   Channel > MAX_CHANNELS will retrived master fader level
 */
 float getLevel(int channel);
 
-/** @brief  Set channel pan
+/** @brief  Set channel balance
 *   @param  channel Index of channel
 *   @param  pan Channel pan (-1..1)
+*   @note   Channel > MAX_CHANNELS will set master balance
 */
-void setPan(int channel, float pan);
+void setBalance(int channel, float pan);
 
-/** @brief  Get channel pan
+/** @brief  Get channel balance
 *   @param  channel Index of channel
 *   @retval float Channel pan (-1..1)
+*   @note   Channel > MAX_CHANNELS will retrived master balance
 */
-float getPan(int channel);
+float getBalance(int channel);

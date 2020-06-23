@@ -50,11 +50,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
-		self.fader_width = (self.width - 4 ) / 18
-		self.fader_height = self.height - 10
+		self.fader_width = (self.width - 6 ) / 17
+		self.fader_height = self.height - 20
 
 		# Faders
-		self.channel_faders = [None] * 16
+		self.channel_faders = [None] * 17 # 16 channels + Master
 		self.selected_fader = None
 
 		# Fader Canvas
@@ -65,12 +65,27 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			bg = zynthian_gui_config.color_bg)
 		self.main_canvas.grid()
 
+
 		# Draw faders
-		for fader in range(16):
-			self.channel_faders[fader] = self.main_canvas.create_rectangle(1 + fader * self.fader_width, 1, 1 + (fader + 1) * self.fader_width - 1, self.fader_height, fill='grey')
+		offset = 1
+		fill = 'green'
+		for fader in range(17):
+			label = "Layer %d" % fader
+			if fader > 15:
+				offset = 4
+				fill = 'red'
+				label = 'Master'
+			fader_bg = self.main_canvas.create_rectangle(offset + fader * self.fader_width, 1, offset + self.fader_width * (fader + 1) - 1, self.fader_height, fill='grey', width=0)
+			self.channel_faders[fader] = self.main_canvas.create_rectangle(offset + fader * self.fader_width, 1, offset + self.fader_width * (fader + 1) - 1, self.fader_height, fill=fill, width=0)
 			self.main_canvas.tag_bind(self.channel_faders[fader], "<ButtonPress-1>", self.on_fader_press)
+			self.main_canvas.tag_bind(fader_bg, "<ButtonPress-1>", self.on_fader_press)
 			self.main_canvas.tag_bind(self.channel_faders[fader], "<ButtonRelease-1>", self.on_fader_release)
+			self.main_canvas.tag_bind(fader_bg, "<ButtonRelease-1>", self.on_fader_release)
 			self.main_canvas.tag_bind(self.channel_faders[fader], "<B1-Motion>", self.on_fader_motion)
+			self.main_canvas.tag_bind(fader_bg, "<B1-Motion>", self.on_fader_motion)
+			self.main_canvas.create_text(offset + int(self.fader_width * (fader + 0.5)), self.fader_height + 10, text=label)
+			self.draw_fader(fader)
+		self.main_canvas.create_line(0, self.fader_height * 0.2, self.width, self.fader_height * 0.2, fill="white")
 
 
 	# Function to set fader values
@@ -80,7 +95,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if fader > len(self.channel_faders) or value < 0 or value > 1:
 			return
 		zynmixer.set_level(fader, value)
-		self.main_canvas.coords(self.channel_faders[fader], fader * self.fader_width, self.fader_height * value, (fader + 1) * self.fader_width - 1, self.fader_height)
+		self.draw_fader(fader)
+
+
+	# Function to draw fader
+	#	fader: index of fader
+	def draw_fader(self, fader):
+		offset = 1
+		if fader > 15: offset = 4
+		self.main_canvas.coords(self.channel_faders[fader], offset + fader * self.fader_width, self.fader_height * (1 - zynmixer.get_level(fader)), offset + (fader + 1) * self.fader_width - 1, self.fader_height)
 
 
 	# Function to handle fader press
@@ -108,9 +131,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def on_fader_motion(self, event):
 		if self.selected_fader == None:
 			return
-		if event.y > self.fader_height or event.y < 0:
-			return
-		level = 1 - ((self.fader_height - event.y) / self.fader_height)
+		level = zynmixer.get_level(self.selected_fader) + (self.drag_start.y - event.y) / self.fader_height
+		if level > 1: level = 1
+		if level < 0: level = 0
+		self.drag_start = event
 		self.set_fader(self.selected_fader, level)
 
 
