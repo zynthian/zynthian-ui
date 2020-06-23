@@ -44,6 +44,7 @@ import zynconf
 import zynautoconnect
 from jackpeak import *
 from jackpeak.jackpeak import lib_jackpeak, lib_jackpeak_init
+from zynmixer.zynmixer import lib_zynmixer, lib_zynmixer_init
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine import zynthian_zcmidi
@@ -78,6 +79,7 @@ from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
 from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
+from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
@@ -206,6 +208,12 @@ class zynthian_gui:
 		except Exception as e:
 			logging.error("ERROR initializing Controllers & MIDI-router: %s" % e)
 
+		# Initialize main audio output mixer
+		try:
+			global lib_zynmixer
+			lib_zynmixer = lib_zynmixer_init()
+		except Exception as e:
+			logging.error("ERROR initializing zynmixer: %s" % e)
 
 	# ---------------------------------------------------------------------------
 	# MIDI Router Init & Config
@@ -334,6 +342,7 @@ class zynthian_gui:
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['autoeq'] = zynthian_gui_autoeq()
 		self.screens['stepseq'] = zynthian_gui_stepsequencer()
+		self.screens['audio_mixer'] = zynthian_gui_mixer()
 
 		# Init Auto-connector
 		zynautoconnect.start()

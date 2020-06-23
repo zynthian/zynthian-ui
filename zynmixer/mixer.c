@@ -106,14 +106,12 @@ int init()
 		g_dynamic[nPort].reqpan = 0.0;
 		char sName[10];
 		sprintf(sName, "input_a%02d", nPort);
-		printf("Creating input port %s\n", sName);
 		if (!(g_pInputPort[nPort * 2] = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
 		{
 			fprintf(stderr, "libzynmixer cannot register %s\n", sName);
 			exit(1);
 		}
 		sprintf(sName, "input_b%02d", nPort);
-		printf("Creating input port %s\n", sName);
 		if (!(g_pInputPort[nPort * 2 + 1] = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
 		{
 			fprintf(stderr, "libzynmixer cannot register %s\n", sName);
