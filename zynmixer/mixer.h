@@ -65,3 +65,20 @@ void setBalance(int channel, float pan);
 *   @note   Channel > MAX_CHANNELS will retrived master balance
 */
 float getBalance(int channel);
+
+/** @brief  Set mute state of channel
+*   @param  channel Index of channel
+*   @param  mute Mute status (0: Unmute, 1: Mute)
+*/
+void setMute(int channel, int mute);
+
+/** @brief  Get mute state of channel
+*   @param  channel Index of channel
+*   @retval  int Mute status (0: Unmute, 1: Mute)
+*/
+int getMute(int channel);
+
+/** @brief  Toggles mute of a channel
+*   @param  channel Index of channel
+*/
+void toggleMute(int channel);

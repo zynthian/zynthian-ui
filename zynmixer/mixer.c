@@ -40,6 +40,7 @@ struct dynamic
 	float reqlevel;
 	float balance;
 	float reqbalance;
+	int mute;
 };
 
 jack_port_t * g_pInputPort[MAX_CHANNELS * 2];
@@ -57,6 +58,20 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	memset(pOutA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
 	memset(pOutB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
 
+	float reqlevel = g_master.reqlevel;
+	if(g_master.mute)
+		reqlevel = 0.0;
+	float fDiff = reqlevel - g_master.level;
+	if(fabs(fDiff) > 0.001)
+		g_master.level += fDiff / 10;
+	else
+		g_master.level = reqlevel;
+	fDiff = g_master.reqbalance - g_master.balance;
+	if(fabs(fDiff) > 0.001)
+		g_master.balance += fDiff / 10;
+	else
+		g_master.balance = g_master.reqbalance;
+
 	unsigned int i,j;
 	for(j = 0; j < MAX_CHANNELS; j++)
 	{
@@ -69,11 +84,15 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			pOutA[i] += pInA[i] * fFactorA;
 			pOutB[i] += pInB[i] * fFactorB;
 		}
-		float fDiff = g_dynamic[j].reqlevel - g_dynamic[j].level;
+		if(g_dynamic[j].mute)
+			reqlevel = 0;
+		else
+			reqlevel = g_dynamic[j].reqlevel;
+		fDiff = reqlevel - g_dynamic[j].level;
 		if(fabs(fDiff) > 0.001)
 			g_dynamic[j].level += fDiff / 10;
 		else
-			g_dynamic[j].level = g_dynamic[j].reqlevel;
+			g_dynamic[j].level = reqlevel;
 		fDiff = g_dynamic[j].reqbalance - g_dynamic[j].balance;
 		if(fabs(fDiff) > 0.001)
 			g_dynamic[j].balance += fDiff / 10;
@@ -81,16 +100,6 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			g_dynamic[j].balance = g_dynamic[j].reqbalance;
 
 	}
-	float fDiff = g_master.reqlevel - g_master.level;
-	if(fabs(fDiff) > 0.001)
-		g_master.level += fDiff / 10;
-	else
-		g_master.level = g_master.reqlevel;
-	fDiff = g_master.reqbalance - g_master.balance;
-	if(fabs(fDiff) > 0.001)
-		g_master.balance += fDiff / 10;
-	else
-		g_master.balance = g_master.reqbalance;
 	return 0;
 }
 
@@ -112,10 +121,11 @@ int init()
 	// Create input ports
 	for(size_t nPort = 0; nPort < MAX_CHANNELS; ++nPort)
 	{
-		g_dynamic[nPort].level = 1.0;
-		g_dynamic[nPort].reqlevel = 1.0;
+		g_dynamic[nPort].level = 0.0;
+		g_dynamic[nPort].reqlevel = 0.8;
 		g_dynamic[nPort].balance = 0.0;
 		g_dynamic[nPort].reqbalance = 0.0;
+		g_dynamic[nPort].mute = 0;
 		char sName[10];
 		sprintf(sName, "input_a%02d", nPort);
 		if (!(g_pInputPort[nPort * 2] = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
@@ -145,10 +155,11 @@ int init()
 		fprintf(stderr, "libzynmixer cannot register output B\n");
 		exit(1);
 	}
-	g_master.level = 1.0;
-	g_master.reqlevel = 1.0;
+	g_master.level = 0.0;
+	g_master.reqlevel = 0.8;
 	g_master.balance = 0.0;
 	g_master.reqbalance = 0.0;
+	g_master.mute = 0;
 
 	#ifdef DEBUG
 	fprintf(stderr,"libzynmixer registered output ports\n");
@@ -207,4 +218,32 @@ float getBalance(int channel)
 	if(channel >= MAX_CHANNELS)
 		return g_master.reqbalance;
 	return g_dynamic[channel].reqbalance;
+}
+
+void setMute(int channel, int mute)
+{
+	if(channel >= MAX_CHANNELS)
+		g_master.mute = mute;
+	else
+		g_dynamic[channel].mute = mute;
+}
+
+int getMute(int channel)
+{
+	if(channel >= MAX_CHANNELS)
+		return g_master.mute;
+	return g_dynamic[channel].mute;
+}
+
+void toggleMute(int channel)
+{
+	int mute;
+	if(channel >= MAX_CHANNELS)
+		mute = g_master.mute;
+	else
+		mute = g_dynamic[channel].mute;
+	if(mute)
+		setMute(channel, 0);
+	else
+		setMute(channel, 1);
 }

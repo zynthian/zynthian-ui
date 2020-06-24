@@ -81,4 +81,26 @@ def get_balance(channel):
 		return lib_zynmixer.getBalance(channel)
 	return 0
 
+#	Function to set mute for a channel
+#	channel: Index of channel
+#	mute: Mute state (True to mute)
+def	set_mute(channel, mute):
+	if lib_zynmixer:
+		lib_zynmixer.setMute(channel, mute)
+
+#	Function to get mute for a channel
+#	channel: Index of channel
+#	returns: Mute state (True if muted)
+def	get_mute(channel):
+	if lib_zynmixer:
+		return lib_zynmixer.getMute(channel)
+	else:
+		return True
+
+#	Function to toggle mute of a channel
+#	channel: Index of channel
+def toggle_mute(channel):
+	if lib_zynmixer:
+		lib_zynmixer.toggleMute(channel)
+
 #-------------------------------------------------------------------------------
