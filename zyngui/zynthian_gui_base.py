@@ -24,6 +24,7 @@
 #******************************************************************************
 
 import sys
+import datetime
 import logging
 import tkinter
 from tkinter import font as tkFont
@@ -119,11 +120,13 @@ class zynthian_gui_base:
 		for i in range(4):
 			self.touch_frame.grid_columnconfigure(
 				i, minsize=zynthian_gui_config.button_width)
+		self.touch_frame.grid_rowconfigure(
+			0, minsize=zynthian_gui_config.touchbar_height)
 
-		self.add_button(0, 0, 'Layer')
-		self.add_button(1, 2, 'Snapshot')
-		self.add_button(2, 1, 'Back')
-		self.add_button(3, 3, 'Select')
+		self.add_button(0, 1, 'BACK')
+		self.add_button(1, 0, 'LAYER')
+		self.add_button(2, 2, 'SNAPSHOT')
+		self.add_button(3, 3, 'SELECT')
 
 	def add_button(self, column, index, label):
 		select_button = tkinter.Button(
@@ -132,6 +135,7 @@ class zynthian_gui_base:
 			fg=zynthian_gui_config.color_header_tx,
 			activebackground=zynthian_gui_config.color_bg,
 			activeforeground=zynthian_gui_config.color_header_tx,
+			padx=0,
 			text=label)
 		select_button.grid(row=0, column=column, sticky='we')
 		select_button.bind('<ButtonPress-1>', lambda e: self.button_down(index, e))
