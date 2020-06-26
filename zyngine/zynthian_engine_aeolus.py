@@ -225,7 +225,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 			if gc['preset']>i and gc['bank']==bank[1]:
 				i=gc['preset']
 				title="Preset {0:02d}".format(i+1)
-				res.append([bank[1] + '/' + title,[0,bank[1],i],title,gc['gconf']])
+				res.append([str(bank[1]) + '/' + title,[0,bank[1],i],title,gc['gconf']])
 		return res
 
 

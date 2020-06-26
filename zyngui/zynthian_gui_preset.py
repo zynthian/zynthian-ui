@@ -42,12 +42,18 @@ class zynthian_gui_preset(zynthian_gui_selector):
       
       
 	def fill_list(self):
+		if not self.zyngui.curlayer:
+			logging.error("Can't fill preset list for None layer!")
+			return
 		self.zyngui.curlayer.load_preset_list(self.only_favs)
 		self.list_data=self.zyngui.curlayer.preset_list
 		super().fill_list()
 
 
 	def show(self, only_favs=None):
+		if not self.zyngui.curlayer:
+			logging.error("Can't show preset list for None layer!")
+			return
 		if only_favs is not None:
 			self.only_favs = only_favs
 		self.index=self.zyngui.curlayer.get_preset_index()

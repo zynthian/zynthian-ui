@@ -76,6 +76,10 @@ CustomUiAction = [
 	"STOP_MIDI_PLAY",
 	"TOGGLE_MIDI_PLAY",
 
+	"START_STEP_SEQ",
+	"CONTINUE_STEP_SEQ",
+	"STOP_STEP_SEQ",
+
 	"SELECT",
 	"SELECT_UP",
 	"SELECT_DOWN",
@@ -91,7 +95,20 @@ CustomUiAction = [
 	"SWITCH_SNAPSHOT_LONG",
 	"SWITCH_SELECT_SHORT",
 	"SWITCH_SELECT_BOLD",
-	"SWITCH_SELECT_LONG"
+	"SWITCH_SELECT_LONG",
+	
+	"SCREEN_ADMIN",
+	"SCREEN_LAYER",
+	"SCREEN_BANK",
+	"SCREEN_PRESET",
+	"SCREEN_CONTROL",
+
+	"MODAL_SNAPSHOT_LOAD",
+	"MODAL_SNAPSHOT_SAVE",
+	"MODAL_AUDIO_RECORDER",
+	"MODAL_MIDI_RECORDER",
+	"MODAL_ALSA_MIXER",
+	"MODAL_STEPSEQ"
 ];
 
 #-------------------------------------------------------------------------------
@@ -460,6 +477,20 @@ def is_service_active(service):
 	else:
 		return False
 
+#------------------------------------------------------------------------------
+# Jackd configuration
+#------------------------------------------------------------------------------
+
+def get_jackd_options():
+	jackd_options = {}
+	for item in os.environ.get('JACKD_OPTIONS',"").strip().split('-'):
+		try:
+			parts = item.split(' ', 1)
+			jackd_options[parts[0]] = parts[1].strip()
+		except:
+			pass
+
+	return jackd_options
 
 #------------------------------------------------------------------------------
 

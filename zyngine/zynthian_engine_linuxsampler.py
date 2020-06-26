@@ -391,7 +391,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 					self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_CHANNEL {} 1 {}".format(ls_chan_id, i*2+1))
 					layer.ls_chan_info['audio_output']=i
 
-					layer.jackname = "{}:CH{}".format(self.jackname, i)
+					layer.jackname = "{}:CH{}_".format(self.jackname, i)
 					self.zyngui.zynautoconnect_audio()
 
 				except zyngine_lscp_error as err:

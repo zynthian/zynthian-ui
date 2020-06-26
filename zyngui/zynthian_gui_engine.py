@@ -24,9 +24,9 @@
 #******************************************************************************
 
 import os
+import re
 import sys
 import logging
-import re
 import subprocess
 from time import sleep
 from collections import OrderedDict
@@ -57,12 +57,15 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def init_engine_info(cls):
 
 		cls.engine_info=OrderedDict([
-			["MX", ("Mixer", "ALSA Mixer", "MIXER", zynthian_engine_mixer, True)],
-			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", zynthian_engine_zynaddsubfx, True)],
-			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", zynthian_engine_fluidsynth, True)],
-			["LS", ("LinuxSampler", "LinuxSampler - SFZ/GIG Player", "MIDI Synth", zynthian_engine_linuxsampler, True)],
-			["BF", ("setBfree", "setBfree - Hammond Emulator", "MIDI Synth", zynthian_engine_setbfree, True)],
-			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", zynthian_engine_aeolus, True)]
+			["MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_mixer, True)],
+			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", None, zynthian_engine_zynaddsubfx, True)],
+			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", None, zynthian_engine_fluidsynth, True)],
+			["LS", ("LinuxSampler", "LinuxSampler - SFZ/GIG Player", "MIDI Synth", None, zynthian_engine_linuxsampler, True)],
+			["BF", ("setBfree", "setBfree - Hammond Emulator", "MIDI Synth", None, zynthian_engine_setbfree, True)],
+			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", None, zynthian_engine_aeolus, True)],
+			['PD', ("PureData", "PureData - Visual Programming", "Special", None, zynthian_engine_puredata, True)],
+			['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
+			['MD', ("MOD-UI", "MOD-UI - Plugin Host", "Special", None, zynthian_engine_modui, True)]
 		])
 
 		if check_pianoteq_binary():
@@ -71,10 +74,11 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				PIANOTEQ_VERSION[1],
 				PIANOTEQ_PRODUCT,
 				" (Demo)" if PIANOTEQ_TRIAL else "")
-			cls.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title, "MIDI Synth", zynthian_engine_pianoteq, True)
-
+			cls.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title, "MIDI Synth", None, zynthian_engine_pianoteq, True)
+		
 		for plugin_name, plugin_info in get_jalv_plugins().items():
-			cls.engine_info['JV/{}'.format(plugin_name)] = (plugin_name, "{} - Plugin LV2".format(plugin_name), plugin_info['TYPE'], zynthian_engine_jalv, plugin_info['ENABLED'])
+			eng = 'JV/{}'.format(plugin_name)
+			cls.engine_info[eng] = (plugin_name, plugin_name, plugin_info['TYPE'], plugin_info.get('CLASS', None), zynthian_engine_jalv, plugin_info['ENABLED'])
 
 		cls.engine_info['PD'] = ("PureData", "PureData - Visual Programming", "Special", zynthian_engine_puredata, True)
 		cls.engine_info['CS'] = ("CSound", "CSound Audio Language", "Special", zynthian_engine_csound, False)
@@ -100,35 +104,75 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.midi_chan = midi_chan
 
 
+	def set_midichain_mode(self, midi_chan):
+		self.engine_type = "MIDI Tool"
+		self.midi_chan = midi_chan
+		self.init_engine_info()
+
+
+	def filtered_engines_by_cat(self):
+		result = OrderedDict()
+		for eng, info in self.engine_info.items():
+			eng_type = info[2]
+			cat = info[3]
+			enabled = info[5]
+			if enabled and (eng_type==self.engine_type or self.engine_type is None) and (eng not in self.single_layer_engines or eng not in self.zyngines):
+				if cat not in result:
+					result[cat] = OrderedDict()
+				result[cat][eng] = info
+		return result
+
+
 	def fill_list(self):
 		self.init_engine_info()
-		self.index=0
 		self.list_data=[]
-		i=0
-		for en, info in self.engine_info.items():
-			if (info[4] and (info[2]==self.engine_type or self.engine_type is None) and
-				(en not in self.single_layer_engines or en not in self.zyngines)):
 
+		# Sort category headings, but headings starting with "Zynthian" are shown first
+		
+		for cat, infos in sorted(self.filtered_engines_by_cat().items(), key = lambda kv:"!" if kv[0] is None else kv[0]):
+			# Add category header...
+			if cat:
+				if self.engine_type=="MIDI Synth":
+					self.list_data.append((None,len(self.list_data),"> LV2 {}".format(cat)))
+				else:
+					self.list_data.append((None,len(self.list_data),"> {}".format(cat)))
+
+			# Add engines on this category...
+			for eng, info in infos.items():
 				# For some engines, check if needed channels are free ...
-				if (en in self.check_channels_engines and
-					not all(chan in self.zyngui.screens['layer'].get_free_midi_chans() for chan in info[3].get_needed_channels())):
-						continue
+				if eng not in self.check_channels_engines or all(chan in self.zyngui.screens['layer'].get_free_midi_chans() for chan in info[4].get_needed_channels()):
+					self.list_data.append((eng,len(self.list_data),info[1],info[0]))
 
-				ei=self.engine_info[en]
-				self.list_data.append((en,i,ei[1],ei[0]))
-				i=i+1
+		# Display help if no engines are enabled ...
+		if len(self.list_data)==0:
+			self.list_data.append((None,len(self.list_data),"Enable LV2-plugins on webconf".format(os.uname().nodename)))
 
+		# Select the first element that is not a category heading
+		self.index = 0
+		for i, val in enumerate(self.list_data):
+			if val[0] != None:
+				self.index = i
+				break
+		
 		super().fill_list()
 
 
+	def fill_listbox(self):
+		super().fill_listbox()
+		for i, val in enumerate(self.list_data):
+			if val[0]==None:
+				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_off,'fg':zynthian_gui_config.color_tx_off})
+
+
 	def select_action(self, i, t='S'):
-		self.zyngui.screens['layer'].add_layer_engine(self.start_engine(self.list_data[i][0]), self.midi_chan)
+		if i is not None and self.list_data[i][0]:
+			self.zyngui.screens['layer'].add_layer_engine(self.start_engine(self.list_data[i][0]), self.midi_chan)
 
 
 	def start_engine(self, eng):
 		if eng not in self.zyngines:
 			info=self.engine_info[eng]
-			zynthian_engine_class=info[3]
+			zynthian_engine_class=info[4]
 			if eng[0:3]=="JV/":
 				eng="JV/{}".format(self.zyngine_counter)
 				self.zyngines[eng]=zynthian_engine_class(info[0], info[2], self.zyngui)

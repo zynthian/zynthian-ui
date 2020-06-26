@@ -50,6 +50,7 @@ class zynthian_controller:
 		self.ticks=None
 		self.is_toggle=False
 		self.is_integer=True
+		self.is_logarithmic=False
 
 		self.midi_chan=None
 		self.midi_cc=None
@@ -90,6 +91,8 @@ class zynthian_controller:
 			self.is_toggle=options['is_toggle']
 		if 'is_integer' in options:
 			self.is_integer=options['is_integer']
+		if 'is_logarithmic' in options:
+			self.is_logarithmic=options['is_logarithmic']
 		if 'midi_chan' in options:
 			self.midi_chan=options['midi_chan']
 		if 'midi_cc' in options:
@@ -160,6 +163,7 @@ class zynthian_controller:
 		self.value = val
 		self.is_toggle = False
 		self.is_integer = True
+		self.is_logarithmic = False
 
 		# Numeric
 		if isinstance(maxval,int):
@@ -278,7 +282,7 @@ class zynthian_controller:
 				logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol,e))
 
 
-	def get_value2label(self, val=None):
+	def get_value2index(self, val=None):
 		if val is None:
 			val=self.value
 		try:
@@ -286,22 +290,30 @@ class zynthian_controller:
 				if self.ticks[0]>self.ticks[-1]:
 					for i in reversed(range(len(self.labels))):
 						if val<=self.ticks[i]:
-							return self.labels[i]
-					return self.labels[0]
+							return i
+					return 0
 				else:
 					for i in range(len(self.labels)-1):
 						#logging.debug("V2L testing range {} => {} in {}-{}".format(i,val,self.ticks[i],self.ticks[i+1]))
 						if val<self.ticks[i+1]:
-							return self.labels[i]
-					return self.labels[i+1]
+							return i
+					return i+1
 			elif self.labels:
 				i=min(int((val-self.value_min)*len(self.labels)/self.value_range), len(self.labels)-1)
 				#logging.debug("V2L => {} has index {}".format(val,i))
-				return self.labels[i]
+				return i
 			else:
-				return val
+				return None
 		except Exception as e:
 			logging.error(e)
+
+
+	def get_value2label(self, val=None):
+		i = self.get_value2index(val)
+		if i is not None:
+			return self.labels[i]
+		else:
+			return val
 
 
 	def get_label2value(self, label):
@@ -373,6 +385,7 @@ class zynthian_controller:
 				self.set_midi_learn(int(snapshot['midi_learn_chan']), int(snapshot['midi_learn_cc']))
 		else:
 			self.set_value(snapshot,True)
+		self.refresh_gui()
 
 
 	#--------------------------------------------------------------------------
@@ -530,9 +543,12 @@ class zynthian_controller:
 	def midi_control_change(self, val):
 		value=self.value_min+val*self.value_range/127
 		self.set_value(value)
+		self.refresh_gui()
+
+	def refresh_gui(self):
 		#Refresh GUI controller in screen when needed ...
 		try:
-			if self.engine.zyngui.active_screen=='control' and self.engine.zyngui.screens['control'].mode=='control':
+			if (self.engine.zyngui.active_screen=='control' or self.engine.zyngui.modal_screen=='control') and self.engine.zyngui.screens['control'].mode=='control':
 				self.engine.zyngui.screens['control'].set_controller_value(self)
 		except Exception as e:
 			logging.debug(e)

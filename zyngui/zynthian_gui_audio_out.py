@@ -3,7 +3,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian GUI Audio-out Selector Class
+# Zynthian GUI Audio-Out Selector Class
 # 
 # Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
 #
@@ -33,7 +33,7 @@ from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
-# Zynthian MIDI Channel Selection GUI Class
+# Zynthian Audio-Out Selection GUI Class
 #------------------------------------------------------------------------------
 
 class zynthian_gui_audio_out(zynthian_gui_selector):
@@ -66,7 +66,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 				if ch==self.layer.midi_chan:
 					continue
 			except Exception as e:
-				logging.debug("Can't get layer's midi chan => {}",format(e))
+				#logging.debug("Can't get layer's midi chan => {}".format(e))
 				pass
 
 			if self.end_layer and k in self.end_layer.get_audio_out():
@@ -79,16 +79,6 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 	def fill_listbox(self):
 		super().fill_listbox()
-		#self.highlight()
-
-
-	# Highlight current engine assigned outputs ...
-	def highlight(self):
-		for i in range(len(self.list_data)):
-			if self.list_data[i][2][:2]=='[x':
-				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_hl})
-			else:
-				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
 
 
 	def select_action(self, i, t='S'):
@@ -102,9 +92,6 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		if self.layer and self.layer.get_basepath():
-			self.select_path.set("Send Audio from {} to ...".format(self.layer.get_basepath()))
-		else:
-			self.select_path.set("Audio Routing ...")
+		self.select_path.set("Send Audio to ...")
 
 #------------------------------------------------------------------------------

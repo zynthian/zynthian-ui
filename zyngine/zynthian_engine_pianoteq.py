@@ -25,10 +25,11 @@
 
 import os
 import re
-import logging
+import copy
 import time
 import shutil
 import struct
+import logging
 import subprocess
 from collections import defaultdict
 from os.path import isfile,isdir,join
@@ -351,7 +352,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.nickname = "PT"
 		self.jackname = PIANOTEQ_JACK_PORT_NAME
 
-		self.options['midi_chan']=False
+		#self.options['midi_chan']=False
 
 		self.preset = ""
 		self.midimapping = "ZynthianControllers"
@@ -410,8 +411,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, layer):
-		self.stop()
-		self.command = self.base_command + ("--midi-channel", str(layer.get_midi_chan()+1),)
+		pass
+		#self.stop()
+		#self.command = self.base_command + ("--midi-channel", str(layer.get_midi_chan()+1),)
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
@@ -596,7 +598,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		bank_name = bank[0]
 		if bank_name in self.presets:
 			logging.info("Getting Preset List for %s [%s]" % (self.name,bank_name))
-			res = self.presets[bank_name]
+			res = copy.deepcopy(self.presets[bank_name])
 		else:
 			logging.error("Can't get Preset List for %s [%s]" % (self.name,bank_name))
 			res = []
@@ -612,12 +614,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		else:
 			self.midimapping=mm
 			self.preset=preset[0]
-			self.command = self.base_command + " --midi-channel {}".format(layer.get_midi_chan()+1)
+			#self.command = self.base_command + " --midi-channel {}".format(layer.get_midi_chan()+1)
+			self.command = self.base_command + " --midi-channel all"
 			self.command += " --midimapping \"{}\"".format(self.midimapping)
 			self.command += " --preset \"{}\"".format(preset[0])
 			self.stop()
 			self.start()
-			self.zyngui.zynautoconnect()
+			self.zyngui.zynautoconnect_midi(True)
+			self.zyngui.zynautoconnect_audio(False)
 
 		layer.send_ctrl_midi_cc()
 		return True

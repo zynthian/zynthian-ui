@@ -13,12 +13,15 @@ __all__ = [
 	"zynthian_gui_midi_cc",
 	"zynthian_gui_transpose",
 	"zynthian_gui_audio_out",
+	"zynthian_gui_midi_out",
+	"zynthian_gui_audio_in",
 	"zynthian_gui_bank",
 	"zynthian_gui_preset",
 	"zynthian_gui_control",
 	"zynthian_gui_control_xy",
 	"zynthian_gui_midi_profile",
 	"zynthian_gui_zs3_learn",
+	"zynthian_gui_zs3_options",
 	"zynthian_gui_confirm",
 	"zynthian_gui_main",
 	"zynthian_gui_audio_recorder",
@@ -40,12 +43,15 @@ from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
 from zyngui.zynthian_gui_transpose import zynthian_gui_transpose
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
+from zyngui.zynthian_gui_midi_out import zynthian_gui_midi_out
+from zyngui.zynthian_gui_audio_in import zynthian_gui_audio_in
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
+from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder

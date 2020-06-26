@@ -141,6 +141,16 @@ elif wiring_layout=="MCP23017_ZynScreen":
 	if not zyncoder_pin_b: zyncoder_pin_b=[101,104,109,112]
 	if not zynswitch_pin: zynswitch_pin=[100,103,108,111,106,107,114,115]
 	select_ctrl=3
+elif wiring_layout=="MCP23017_EPDF":
+	if not zyncoder_pin_a: zyncoder_pin_a=[103,100,111,108]
+	if not zyncoder_pin_b: zyncoder_pin_b=[104,101,112,109]
+	if not zynswitch_pin: zynswitch_pin=[105,102,112,110,106,107,114,115]
+	select_ctrl=3
+elif wiring_layout=="MCP23017_EPDF_REVERSE":
+	if not zyncoder_pin_b: zyncoder_pin_a=[104,101,112,109]
+	if not zyncoder_pin_a: zyncoder_pin_b=[103,100,111,108]
+	if not zynswitch_pin: zynswitch_pin=[105,102,112,110,106,107,114,115]
+	select_ctrl=3
 elif wiring_layout=="I2C_HWC":
 	if not zyncoder_pin_a: zyncoder_pin_a=[1,2,3,4]
 	zyncoder_pin_b=[0,0,0,0]
@@ -230,6 +240,18 @@ for i in range(0, n_custom_switches):
 	custom_switch_ui_actions.append(cuias)
 	custom_switch_midi_events.append(midi_event)
 
+
+#------------------------------------------------------------------------------
+# Zynswitches events timing
+#------------------------------------------------------------------------------
+
+try:
+	zynswitch_bold_us = 1000 * int(os.environ.get('ZYNTHIAN_UI_SWITCH_BOLD_MS', 300))
+	zynswitch_long_us = 1000 * int(os.environ.get('ZYNTHIAN_UI_SWITCH_LONG_MS', 2000))
+except:
+	zynswitch_bold_us = 300000
+	zynswitch_long_us = 2000000
+
 #------------------------------------------------------------------------------
 # UI Geometric Parameters
 #------------------------------------------------------------------------------
@@ -257,6 +279,23 @@ ctrl_pos=[
 ]
 
 #------------------------------------------------------------------------------
+# Sequence states
+#------------------------------------------------------------------------------
+SEQ_DISABLED		= 0
+SEQ_ONESHOT			= 1
+SEQ_LOOP			= 2
+SEQ_ONESHOTALL		= 3
+SEQ_LOOPALL			= 4
+SEQ_LASTPLAYMODE	= 4
+
+SEQ_STOPPED			= 0
+SEQ_PLAYING			= 1
+SEQ_STOPPING		= 2
+SEQ_STARTING		= 3
+SEQ_LASTPLAYSTATUS	= 3
+
+
+#------------------------------------------------------------------------------
 # UI Color Parameters
 #------------------------------------------------------------------------------
 
@@ -269,7 +308,7 @@ color_hl=os.environ.get('ZYNTHIAN_UI_COLOR_HL',"#00b000")
 color_ml=os.environ.get('ZYNTHIAN_UI_COLOR_ML',"#f0f000")
 color_low_on=os.environ.get('ZYNTHIAN_UI_COLOR_LOW_ON',"#b00000")
 color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG',"#3a424d")
-color_info=os.environ.get('ZYNTHIAN_UI_COLOR_INFO',"#0000e0")
+color_info=os.environ.get('ZYNTHIAN_UI_COLOR_INFO',"#8080ff")
 color_error=os.environ.get('ZYNTHIAN_UI_COLOR_ERROR',"#ff0000")
 
 # Color Scheme
@@ -299,9 +338,10 @@ font_family=os.environ.get('ZYNTHIAN_UI_FONT_FAMILY',"Audiowide")
 font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 
 #------------------------------------------------------------------------------
-# UI Cursor
+# Touch Optionms
 #------------------------------------------------------------------------------
 
+enable_touch_widgets=int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS',False))
 force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 
 #------------------------------------------------------------------------------
@@ -318,9 +358,9 @@ show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
 
 def set_midi_config():
 	global preset_preload_noteon, midi_single_active_channel
-	global midi_sys_enabled, midi_network_enabled, midi_rtpmidi_enabled 
-	global midi_touchosc_enabled, midi_aubionotes_enabled
 	global midi_prog_change_zs3, midi_fine_tuning, midi_filter_rules
+	global midi_sys_enabled, midi_clock_enabled, midi_aubionotes_enabled
+	global midi_network_enabled, midi_rtpmidi_enabled, midi_touchosc_enabled
 	global master_midi_channel, master_midi_change_type
 	global master_midi_program_change_up, master_midi_program_change_down
 	global master_midi_program_base, master_midi_bank_change_ccnum
@@ -329,11 +369,12 @@ def set_midi_config():
 	global disabled_midi_in_ports, enabled_midi_out_ports, enabled_midi_fb_ports
 
 	# MIDI options
-	midi_sys_enabled=int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED',1))
 	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440))
 	midi_single_active_channel=int(os.environ.get('ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL',0))
 	midi_prog_change_zs3=int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3',1))
 	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON',1))
+	midi_sys_enabled=int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED',1))
+	midi_clock_enabled=int(os.environ.get('ZYNTHIAN_MIDI_CLOCK_ENABLED',0))
 	midi_network_enabled=int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED',0))
 	midi_rtpmidi_enabled=int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED',0))
 	midi_touchosc_enabled=int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED',0))
@@ -404,9 +445,9 @@ set_midi_config()
 #------------------------------------------------------------------------------
 # Player configuration
 #------------------------------------------------------------------------------
+
 midi_play_loop=int(os.environ.get('ZYNTHIAN_MIDI_PLAY_LOOP',0))
 audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
-
 
 #------------------------------------------------------------------------------
 # X11 Related Stuff

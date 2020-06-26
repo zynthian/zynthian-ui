@@ -111,10 +111,20 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 		self.osc_target_port = 6693
 
+		try:
+			self.sr = int(self.zyngui.jackd_options['r'])
+		except:
+			self.sr = 44100
+
+		try:
+			self.bs = int(self.zyngui.jackd_options['p'])
+		except:
+			self.bs = 256
+
 		if self.config_remote_display():
-			self.command = "/usr/local/bin/zynaddsubfx -O jack-multi -I jack -P {} -a".format(self.osc_target_port)
+			self.command = "/usr/local/bin/zynaddsubfx -r {} -b {} -O jack-multi -I jack -P {} -a".format(self.sr, self.bs, self.osc_target_port)
 		else:
-			self.command = "/usr/local/bin/zynaddsubfx -O jack-multi -I jack -P {} -a -U".format(self.osc_target_port)
+			self.command = "/usr/local/bin/zynaddsubfx -r {} -b {} -O jack-multi -I jack -P {} -a -U".format(self.sr, self.bs, self.osc_target_port)
 
 		self.command_prompt = "\n\\[INFO] Main Loop..."
 
@@ -138,7 +148,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	def add_layer(self, layer):
 		self.layers.append(layer)
 		layer.part_i = self.get_free_parts()[0]
-		layer.jackname = "{}:part{}".format(self.jackname, layer.part_i)
+		layer.jackname = "{}:part{}/".format(self.jackname, layer.part_i)
 		logging.debug("ADD LAYER => Part {} ({})".format(layer.part_i, self.jackname))
 
 

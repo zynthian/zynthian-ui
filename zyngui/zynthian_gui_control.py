@@ -84,10 +84,19 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data = []
 
+		if not self.zyngui.curlayer:
+			logging.error("Can't fill control screen list for None layer!")
+			return
+
 		self.layers = self.zyngui.screens['layer'].get_fxchain_layers()
-		# If no FXChain layers, then use the curlayer itself (probably amixer_layer)
-		if len(self.layers)==0:
+		# If no FXChain layers, then use the curlayer itself
+		if self.layers is None or len(self.layers)==0:
 			self.layers = [self.zyngui.curlayer]
+
+		midichain_layers = self.zyngui.screens['layer'].get_midichain_layers()
+		if midichain_layers is not None and len(midichain_layers)>1:
+			midichain_layers.remove(self.zyngui.curlayer)
+			self.layers += midichain_layers
 
 		i = 0
 		for layer in self.layers:
@@ -110,39 +119,43 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		#Get screen info
 		if self.index < len(self.list_data):
-			screen_info=self.list_data[self.index]
-			screen_title=screen_info[2]
-			screen_layer=screen_info[3]
+			screen_info = self.list_data[self.index]
+			screen_title = screen_info[2]
+			screen_layer = screen_info[3]
 
 			#Get controllers for the current screen
 			self.zyngui.curlayer.set_active_screen_index(self.index)
-			self.zcontrollers=screen_layer.get_ctrl_screen(screen_title)
-			
-			#Setup GUI Controllers
-			if self.zcontrollers:
-				logging.debug("SET CONTROLLER SCREEN {}".format(screen_title))
-				#Configure zgui_controllers
-				i=0
-				for ctrl in self.zcontrollers:
-					try:
-						#logging.debug("CONTROLLER ARRAY {} => {} ({})".format(i, ctrl.symbol, ctrl.short_name))
-						self.set_zcontroller(i,ctrl)
-						i=i+1
-					except Exception as e:
-						logging.exception("Controller %s (%d) => %s" % (ctrl.short_name,i,e))
-						self.zgui_controllers[i].hide()
+			self.zcontrollers = screen_layer.get_ctrl_screen(screen_title)
 
-				#Hide rest of GUI controllers
-				for i in range(i,len(self.zgui_controllers)):
+		else:
+			self.zcontrollers = None
+
+
+		#Setup GUI Controllers
+		if self.zcontrollers:
+			logging.debug("SET CONTROLLER SCREEN {}".format(screen_title))
+			#Configure zgui_controllers
+			i=0
+			for ctrl in self.zcontrollers:
+				try:
+					#logging.debug("CONTROLLER ARRAY {} => {} ({})".format(i, ctrl.symbol, ctrl.short_name))
+					self.set_zcontroller(i,ctrl)
+					i=i+1
+				except Exception as e:
+					logging.exception("Controller %s (%d) => %s" % (ctrl.short_name,i,e))
 					self.zgui_controllers[i].hide()
 
-			#Hide All GUI controllers
-			else:
-				for zgui_controller in self.zgui_controllers:
-					zgui_controller.hide()
+			#Hide rest of GUI controllers
+			for i in range(i,len(self.zgui_controllers)):
+				self.zgui_controllers[i].hide()
 
-		#Set/Restore XY controllers highlight
-		self.set_xyselect_controllers()
+			#Set/Restore XY controllers highlight
+			self.set_xyselect_controllers()
+
+		#Hide All GUI controllers
+		else:
+			for zgui_controller in self.zgui_controllers:
+				zgui_controller.hide()
 
 		#Release Mutex Lock
 		#self.zyngui.lock.release()
@@ -387,7 +400,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return
 		if self.mode=='select':
 			super().cb_listbox_release(event)
-		else:
+		elif self.listbox_push_ts:
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
 			if dts<0.3:
@@ -401,7 +414,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return
 		if self.mode=='select':
 			super().cb_listbox_motion(event)
-		else:
+		elif self.listbox_push_ts:
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			if dts>0.1:
 				index=self.get_cursel()

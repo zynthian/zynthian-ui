@@ -163,21 +163,20 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
-		try:
-			jname_count = zyngui.screens['layer'].get_jackname_count(plugin_name)
-		except:
-			jname_count = 0
-
-		jname = "{}-{:02d}".format(plugin_name, jname_count) 
+		if plugin_type=="MIDI Tool":
+			self.options['midi_route'] = True
+			self.options['audio_route'] = False
+		elif plugin_type=="Audio Effect":
+			self.options['audio_capture'] = True
 
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
 
 		if not dryrun:
 			if self.config_remote_display():
-				self.command = ("/usr/local/bin/jalv -n {} {}".format(jname, self.plugin_url))		#TODO => Is possible to run plugin's UI?
+				self.command = ("/usr/local/bin/jalv -n {} {}".format(self.get_jalv_jackname(), self.plugin_url))		#TODO => Is possible to run plugin's UI?
 			else:
-				self.command = ("/usr/local/bin/jalv -n {} {}".format(jname, self.plugin_url))
+				self.command = ("/usr/local/bin/jalv -n {} {}".format(self.get_jalv_jackname(), self.plugin_url))
 
 			self.command_prompt = "\n> "
 
@@ -215,6 +214,17 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.bank_list.append(("", None, "", None))
 
 		self.reset()
+
+
+	# Jack, when listing ports, accepts regular expressions as the jack name.
+	# So, for avoiding problems, jack names shouldn't contain regex characters.
+	def get_jalv_jackname(self):
+		try:
+			jname_count = self.zyngui.screens['layer'].get_jackname_count(plugin_name)
+		except:
+			jname_count = 0
+
+		return "{}-{:02d}".format(re.sub("[\_]{2,}","_",re.sub("[\*\(\)\[\]\s]","_",self.plugin_name)), jname_count)
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
@@ -295,6 +305,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		zctrls = OrderedDict()
 		for i, info in zynthian_lv2.get_plugin_ports(self.plugin_url).items():
 			symbol = info['symbol']
+			#logging.debug("Controller {} info =>\n{}!".format(symbol, info))
 			try:
 				#If there is points info ...
 				if len(info['scale_points'])>1:
@@ -315,11 +326,11 @@ class zynthian_engine_jalv(zynthian_engine):
 						'is_integer': info['is_integer']
 					})
 
-				#If it's a normal controller ...
+				#If it's a numeric controller ...
 				else:
 					r = info['range']['max'] - info['range']['min']
 					if info['is_integer']:
-						if r==1 and info['is_toggled']:
+						if info['is_toggled']:
 							if info['value']==0:
 								val = 'off'
 							else:
@@ -329,9 +340,9 @@ class zynthian_engine_jalv(zynthian_engine):
 								'graph_path': info['index'],
 								'value': val,
 								'labels': ['off','on'],
-								'ticks': [0, 1],
-								'value_min': 0,
-								'value_max': 1,
+								'ticks': [int(info['range']['min']), int(info['range']['max'])],
+								'value_min': int(info['range']['min']),
+								'value_max': int(info['range']['max']),
 								'is_toggle': True,
 								'is_integer': True
 							})
@@ -343,9 +354,27 @@ class zynthian_engine_jalv(zynthian_engine):
 								'value_min': int(info['range']['min']),
 								'value_max': int(info['range']['max']),
 								'is_toggle': False,
-								'is_integer': True
+								'is_integer': True,
+								'is_logarithmic': info['is_logarithmic']
 							})
 					else:
+						if info['is_toggled']:
+							if info['value']==0:
+								val = 'off'
+							else:
+								val = 'on'
+
+							zctrls[symbol] = zynthian_controller(self, symbol, info['label'], {
+								'graph_path': info['index'],
+								'value': val,
+								'labels': ['off','on'],
+								'ticks': [info['range']['min'], info['range']['max']],
+								'value_min': info['range']['min'],
+								'value_max': info['range']['max'],
+								'is_toggle': True,
+								'is_integer': False
+							})
+						else:
 							zctrls[symbol] = zynthian_controller(self, symbol, info['label'], {
 								'graph_path': info['index'],
 								'value': info['value'],
@@ -353,7 +382,8 @@ class zynthian_engine_jalv(zynthian_engine):
 								'value_min': info['range']['min'],
 								'value_max': info['range']['max'],
 								'is_toggle': False,
-								'is_integer': False
+								'is_integer': False,
+								'is_logarithmic': info['is_logarithmic']
 							})
 
 			#If control info is not OK

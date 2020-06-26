@@ -1,0 +1,48 @@
+zynseq file format (RIFF)
+
+Pattern time is measured in steps.
+Sequence time is measured in MIDI clock cycles.
+
+RIFF Header:
+	Block ID: "patn"
+	Block size: 32-bit little endian
+Block:
+	Pattern ID [4]
+	Quanity of steps [4]
+	Steps per beat [2] (This might be swapped with next word)
+	Clock cycles per step [2]
+	Events:
+		Start step [4]
+		Duration [4]
+		Command [1]
+		Value 1 start [1]
+		Value 2 start [1]
+		Value 1 end [1]
+		Value 2 end [1]
+		Unused padding [1] = 0
+RIFF Header:
+	Block ID: "seq "
+	Block size: 32-bit little endian
+Block:
+	Sequence ID [4]
+	MIDI channel [1]
+	JACK output [1]
+	Patterns:
+		Start time [4]
+		Pattern ID [4]
+RIFF Header: **NOT YET IMPLEMENTED**
+	Block ID: "song"
+	Block size: 32-bit little endian
+Block:
+	Song ID [4]
+	Tempo [2]
+	Grid size [1]
+	Sync period [2]
+	Pad [1]
+	Tracks:
+		Sequence [4]
+		Play mode [1]
+		Group [1]
+
+
+**Patterns must be stored (or loaded) before sequences which rely on references to patterns**

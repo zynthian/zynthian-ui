@@ -26,6 +26,7 @@
 import os
 import sys
 import logging
+import mutagen
 import threading
 from time import sleep
 from os.path import isfile, isdir, join, basename
@@ -110,23 +111,48 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 		i=1
 		# Files on SD-Card
-		for f in sorted(os.listdir(self.capture_dir_sdc)):
-			fpath=join(self.capture_dir_sdc,f)
-			if isfile(fpath) and (f[-4:].lower()=='.wav' or f[-4:].lower()=='.mp3'):
-				#title=str.replace(f[:-3], '_', ' ')
-				title="SDC: {}".format(f[:-4])
-				self.list_data.append((fpath,i,title))
-				i+=1
+		for fname, finfo in self.get_filelist(self.capture_dir_sdc).items():
+			l = finfo['length']
+			title="SDC: {} [{}:{:02d}]".format(fname, int(l/60), int(l%60))
+			self.list_data.append((finfo['fpath'],i,title))
+			i+=1
+
 		# Files on USB-Pendrive
-		for f in sorted(os.listdir(self.capture_dir_usb)):
-			fpath=join(self.capture_dir_usb,f)
-			if isfile(fpath) and (f[-4:].lower()=='.wav' or f[-4:].lower()=='.mp3'):
-				#title=str.replace(f[:-3], '_', ' ')
-				title="USB: {}".format(f[:-4])
-				self.list_data.append((fpath,i,title))
-				i+=1
+		for fname, finfo in self.get_filelist(self.capture_dir_usb).items():
+			l = finfo['length']
+			title="USB: {} [{}:{:02d}]".format(fname, int(l/60), int(l%60))
+			self.list_data.append((finfo['fpath'],i,title))
+			i+=1
 
 		super().fill_list()
+
+
+	def get_filelist(self, src_dir):
+		res = {}
+		for f in sorted(os.listdir(src_dir)):
+			fpath = join(src_dir, f)
+			fname = f[:-4]
+			fext = f[-4:].lower()
+			if isfile(fpath) and fext in ('.wav', '.mp3', '.ogg'):
+				if fname in res:
+					if fext=='.wav':
+						res[fname]['ext'] = fext
+					elif fext=='.ogg' and res[fname]['ext']!='.wav':
+						res[fname]['ext'] = fext
+				else:	
+					res[fname] = {
+						'fpath': fpath,
+						'ext': fext
+					}
+
+		for fname in res:
+			try:
+				res[fname]['length'] = mutagen.File(res[fname]['fpath']).info.length
+			except Exception as e:
+				res[fname]['length'] = 0
+				logging.warning(e)
+
+		return res
 
 
 	def fill_listbox(self):
@@ -165,7 +191,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		logging.info("DELETE AUDIO RECORDING: {}".format(fpath))
 
 		try:
-			os.remove(fpath)
+			check_output("rm -f {}.*".format(fpath[:-4]), shell=True)
+			#os.remove(fpath)
 		except Exception as e:
 			logging.error(e)
 
@@ -173,48 +200,55 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 
 	def start_recording(self):
-		logging.info("STARTING NEW AUDIO RECORD ...")
-		try:
-			cmd=self.sys_dir +"/sbin/jack_capture.sh --zui"
-			#logging.info("COMMAND: %s" % cmd)
-			self.rec_proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
-			sleep(0.2)
-			self.zyngui.zyntransport.play()
-		except Exception as e:
-			logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
-			self.zyngui.show_info("ERROR STARTING AUDIO RECORD:\n %s" % e)
-			self.zyngui.hide_info_timer(5000)
+		if self.get_status() not in ("REC", "PLAY+REC"):
+			logging.info("STARTING NEW AUDIO RECORD ...")
+			try:
+				cmd=self.sys_dir +"/sbin/jack_capture.sh --zui"
+				#logging.info("COMMAND: %s" % cmd)
+				self.rec_proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
+				sleep(0.2)
+				self.zyngui.zyntransport.transport_play()
+			except Exception as e:
+				logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
+				self.zyngui.show_info("ERROR STARTING AUDIO RECORD:\n %s" % e)
+				self.zyngui.hide_info_timer(5000)
 
-		self.update_list()
+			self.update_list()
+			return True
+
+		else:
+			return False
 
 
 	def stop_recording(self):
-		logging.info("STOPPING AUDIO RECORD ...")
-		try:
-			self.zyngui.zyntransport.pause()
-			self.rec_proc.communicate()
-			while zynconf.is_process_running("jack_capture"):
-				sleep(0.2)
-			self.rec_proc = None
-		except Exception as e:
-			logging.error("ERROR STOPPING AUDIO RECORD: %s" % e)
-			self.zyngui.show_info("ERROR STOPPING AUDIO RECORD:\n %s" % e)
-			self.zyngui.hide_info_timer(5000)
+		if self.get_status() in ("REC", "PLAY+REC"):
+			logging.info("STOPPING AUDIO RECORD ...")
+			try:
+				self.zyngui.zyntransport.transport_stop()
+				self.rec_proc.communicate()
+				while zynconf.is_process_running("jack_capture"):
+					sleep(0.2)
+				self.rec_proc = None
+			except Exception as e:
+				logging.error("ERROR STOPPING AUDIO RECORD: %s" % e)
+				self.zyngui.show_info("ERROR STOPPING AUDIO RECORD:\n %s" % e)
+				self.zyngui.hide_info_timer(5000)
 
-		self.update_list()
+			self.update_list()
+			return True
+
+		else:
+			return False
 
 
 	def toggle_recording(self):
 		logging.info("TOGGLING AUDIO RECORDING ...")
-		if self.get_status() in ("REC", "PLAY+REC"):
-			self.stop_recording()
-		else:
+		if not self.stop_recording():
 			self.start_recording()
 
 
 	def start_playing(self, fpath=None):
-		if self.current_record:
-			self.stop_playing()
+		self.stop_playing()
 
 		if fpath is None:
 			fpath = self.get_current_track_fpath()
@@ -248,6 +282,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			thread = threading.Thread(target=runInThread, args=(self.end_playing, cmd), daemon=True)
 			thread.start()
 			sleep(0.5)
+			self.zyngui.zynautoconnect_audio()
 			self.show_playing_volume()
 			self.send_controller_value(self.volume_zctrl)
 			self.current_record=fpath
@@ -258,6 +293,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.zyngui.hide_info_timer(5000)
 
 		self.update_list()
+		return True
 
 
 	def send_mplayer_command(self, cmd):
@@ -275,22 +311,25 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 
 	def stop_playing(self):
-		logging.info("STOPPING AUDIO PLAY ...")
-		try:
-			self.send_mplayer_command("quit")
-			while self.play_proc:
-				sleep(0.1)
-		except Exception as e:
-			logging.error("ERROR STOPPING AUDIO PLAY: %s" % e)
-			self.zyngui.show_info("ERROR STOPPING AUDIO PLAY:\n %s" % e)
-			self.zyngui.hide_info_timer(5000)
+		if self.get_status() in ("PLAY", "PLAY+REC"):
+			logging.info("STOPPING AUDIO PLAY ...")
+			try:
+				self.send_mplayer_command("quit")
+				while self.play_proc:
+					sleep(0.1)
+			except Exception as e:
+				logging.error("ERROR STOPPING AUDIO PLAY: %s" % e)
+				self.zyngui.show_info("ERROR STOPPING AUDIO PLAY:\n %s" % e)
+				self.zyngui.hide_info_timer(5000)
+			return True
+
+		else:
+			return False
 
 
 	def toggle_playing(self):
 		logging.info("TOGGLING AUDIO PLAY ...")
-		if self.get_status() in ("PLAY", "PLAY+REC"):
-			self.stop_playing()
-		else:
+		if not self.stop_playing():
 			self.start_playing()
 
 
