@@ -50,24 +50,23 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
-		
-		# Channel height = self.height.
-		# Edit button, 1, fader, 0, legend
+
 		self.fader_width = (self.width - 6 ) / 17
 		legend_height = self.height * 0.05
 		self.edit_height = self.height * 0.1
 		self.balance_height = self.edit_height * 0.2
-		self.balance_top = self.edit_height * 0.9
-		self.fader_height = self.height - self.edit_height - legend_height - 1
+		self.balance_bottom = self.edit_height
+		self.fader_height = self.height - self.edit_height - legend_height - 2
 		self.fader_bottom = self.height - legend_height
 		self.fader_top = self.fader_bottom - self.fader_height
-		mute_top = 1
+		self.mute_top = 1
 
 		# Arrays of GUI elements for channel strips - 16 channels + Master
 		self.faders = [None] * 17
+		self.legends = [None] * 17
 		self.balances_left = [None] * 17
 		self.balances_right = [None] * 17
-		self.selected_channel = None
+		self.selected_channel = 0
 		self.mutes = [None] * 17
 		self.edit_buttons = [None] * 17
 
@@ -84,31 +83,32 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.grid()
 
 
-		# Draw faders
+		# Draw channel strips
 		offset = 1
 		fill = 'gray'
-		for fader in range(17):
-			label = "Layer %d" % (fader + 1)
-			if fader > 15:
+		for channel in range(17):
+			label = "Layer %d" % (channel + 1)
+			if channel > 15:
 				offset = 4
-				fill = 'red4'
+				fill = 'purple4'
 				label = 'Master'
-			left_edge = offset + self.fader_width * fader
+			left_edge = offset + self.fader_width * channel
 			fader_centre = left_edge + self.fader_width * 0.5
-			fader_bg = self.main_canvas.create_rectangle(left_edge, self.fader_top, left_edge + self.fader_width - 1, self.fader_bottom, fill=zynthian_gui_config.color_bg, width=0, tags=('Channel:%d'%fader, 'fader_control', 'mixer', 'background'))
-			self.faders[fader] = self.main_canvas.create_rectangle(left_edge, self.fader_top, left_edge + self.fader_width - 1, self.fader_bottom, fill=fill, width=0, tags=('Channel:%d'%fader, 'fader_control', 'mixer'))
+			fader_bg = self.main_canvas.create_rectangle(left_edge, self.fader_top, left_edge + self.fader_width - 1, self.fader_bottom, fill=zynthian_gui_config.color_bg, width=0, tags=('Channel:%d'%channel, 'fader_control', 'mixer', 'background'))
+			self.faders[channel] = self.main_canvas.create_rectangle(left_edge, self.fader_top, left_edge + self.fader_width - 1, self.fader_bottom, fill=fill, width=0, tags=('Channel:%d'%channel, 'fader_control', 'mixer'))
 
-			self.main_canvas.create_text(int(fader_centre), self.height - legend_height / 2,  fill='white', text=label)
+			self.legends[channel] = self.main_canvas.create_text(int(fader_centre), self.height - legend_height / 2,  fill='white', text=label, tags='mixer')
 
 
 			# Edit button
-			self.edit_buttons[fader] = self.main_canvas.create_rectangle(left_edge, 0, left_edge + self.fader_width - 1, self.edit_height, fill=zynthian_gui_config.color_bg, width=0, tags=('Channel:%d'%fader, 'edit_button', 'background'))
-			self.mutes[fader] = self.main_canvas.create_text(left_edge + 1, mute_top, text='M', state=tkinter.HIDDEN, fill='red', anchor='nw', tags=('Channel:%d'%fader, 'edit_button', 'mixer'))
-			self.balances_left[fader] = self.main_canvas.create_rectangle(left_edge, self.balance_top, int(fader_centre - 0.5), self.balance_top + self.balance_height, fill='dark green', width=0, tags=('Channel:%d'%fader, 'edit_button', 'mixer'))
-			self.balances_right[fader] = self.main_canvas.create_rectangle(int(fader_centre + 0.5), self.balance_top, left_edge + self.fader_width - 1, self.balance_top + self.balance_height, fill='dark red', width=0, tags=('Channel:%d'%fader, 'edit_button', 'mixer'))
+			self.edit_buttons[channel] = self.main_canvas.create_rectangle(left_edge, 1, left_edge + self.fader_width - 1, self.edit_height, fill=zynthian_gui_config.color_bg, width=0, tags=('Channel:%d'%channel, 'edit_button', 'background'))
+			self.mutes[channel] = self.main_canvas.create_text(left_edge + 1, self.mute_top, text='M', state='hidden', fill='red', anchor='nw', tags=('Mute:%d'%channel, 'edit_button', 'mutes'))
+			self.balances_left[channel] = self.main_canvas.create_rectangle(left_edge, self.balance_bottom - self.balance_height, int(fader_centre - 0.5), self.balance_bottom, fill='dark green', width=0, tags=('Channel:%d'%channel, 'edit_button', 'mixer'))
+			self.balances_right[channel] = self.main_canvas.create_rectangle(int(fader_centre + 0.5), self.balance_bottom - self.balance_height, left_edge + self.fader_width - 1, self.balance_bottom, fill='dark red', width=0, tags=('Channel:%d'%channel, 'edit_button', 'mixer'))
 
-			self.draw_channel(fader)
+			self.draw_channel(channel)
 
+		self.main_canvas.tag_bind('edit_button', '<ButtonPress-1>', self.on_edit_press)
 		self.main_canvas.tag_bind('edit_button', '<ButtonRelease-1>', self.on_edit_release)
 		self.main_canvas.tag_bind('fader_control', "<ButtonPress-1>", self.on_fader_press)
 		self.main_canvas.tag_bind('fader_control', "<ButtonRelease-1>", self.on_fader_release)
@@ -128,6 +128,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.tag_bind(self.balance_control, "<B1-Motion>", self.on_balance_motion)
 		self.main_canvas.create_line(0, self.fader_top + self.fader_height * 0.2, self.fader_width, self.fader_top + self.fader_height * 0.2, fill="white", tags=('edit_control'), state='hidden')
 
+		self.mute_button_text = self.main_canvas.create_text(1 + int(self.fader_width * 1.5), int(self.edit_height / 2), fill='white', text="MUTE", state='hidden', tags=('edit_control'))
+		self.layer_button_text = self.main_canvas.create_text(1 + int(self.fader_width * 2.5), int(self.edit_height / 2), fill='white', text="LAYER", state='hidden', tags=('edit_control'))
+		self.cancel_edit_button_text = self.main_canvas.create_text(1 + int(self.fader_width * 3.5), int(self.edit_height / 2), fill='white', text="CANCEL", state='hidden', tags=('edit_control'))
+		self.main_canvas.tag_bind(self.mute_button_text, "<ButtonRelease-1>", self.on_mute_release)
+		self.main_canvas.tag_bind(self.layer_button_text, "<ButtonRelease-1>", self.on_layer_release)
+		self.main_canvas.tag_bind(self.cancel_edit_button_text, "<ButtonPress-1>", self.on_cancel_press)
+
 	# Function to set fader values
 	#	fader: Index of fader
 	#	value: Fader value (0..1)
@@ -142,41 +149,53 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	channel: index of channel
 	def draw_channel(self, channel):
 		if self.edit_channel == None:
+			# Mixer mode so show channel in its mixer position
 			if channel > 15:
 				offset = 4 + channel * self.fader_width
 			else:
 				offset = 1 + channel * self.fader_width
 		else:
+			# Edit mode so show channel in left most position
 			offset = 1
 		self.main_canvas.coords(self.faders[channel], offset, self.fader_top + self.fader_height * (1 - zynmixer.get_level(channel)), offset + self.fader_width - 1, self.fader_bottom)
-		mute_state = tkinter.HIDDEN
+		mute_state = 'hidden'
 		if zynmixer.get_mute(channel):
-			mute_state = tkinter.NORMAL
+			mute_state = 'normal'
 		self.main_canvas.itemconfig(self.mutes[channel], state=mute_state)
 
 		balance = zynmixer.get_balance(channel)
-		centre = (balance + 1) * self.fader_width / 2
-		self.main_canvas.coords(self.balances_left[channel], offset, self.balance_top, int(offset + centre - 0.5), self.balance_top + self.balance_height)
-		self.main_canvas.coords(self.balances_right[channel], int(offset + centre + 0.5), self.balance_top, offset + self.fader_width - 1, self.balance_top + self.balance_height)
-
+		if balance > 0:
+			self.main_canvas.coords(self.balances_left[channel],
+				int(offset + balance * self.fader_width / 2), self.balance_bottom - self.balance_height, 
+				offset + self.fader_width / 2, self.balance_bottom)
+			self.main_canvas.coords(self.balances_right[channel], 
+				int(offset + self.fader_width / 2), self.balance_bottom - self.balance_height, 
+				int(offset + self.fader_width), self.balance_bottom)
+		else:
+			self.main_canvas.coords(self.balances_left[channel], 
+				offset, self.balance_bottom - self.balance_height,
+				int(offset + self.fader_width / 2), self.balance_bottom)
+			self.main_canvas.coords(self.balances_right[channel], 
+				offset + self.fader_width / 2, self.balance_bottom - self.balance_height,
+				offset + self.fader_width * balance / 2 + self.fader_width, self.balance_bottom)
+		self.main_canvas.coords(self.mutes[channel], offset + 2, self.mute_top)
 
 	# Function to handle fader press
 	#	event: Mouse event
 	def on_fader_press(self, event):
 		self.drag_start = event
-		self.press_time = monotonic()
 		try:
 			sel = int(self.main_canvas.find_withtag(tkinter.CURRENT)[0])
-			fader = int(self.main_canvas.gettags(sel)[0].split(':')[1])
+			channel = int(self.main_canvas.gettags(sel)[0].split(':')[1])
 		except:
 			return
-		self.selected_channel = fader
+		self.selected_channel = channel
 
 
 	# Function to handle fader release
 	#	event: Mouse event
 	def on_fader_release(self, event):
-		self.press_time = None
+		pass
 
 
 	# Function to handle fader drag
@@ -184,8 +203,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def on_fader_motion(self, event):
 		if self.selected_channel == None:
 			return
-		if (abs(event.x - self.drag_start.x) + abs(event.y - self.drag_start.y)) > 5:
-			self.press_time = None
 		level = zynmixer.get_level(self.selected_channel) + (self.drag_start.y - event.y) / self.fader_height
 		if level > 1: level = 1
 		if level < 0: level = 0
@@ -216,31 +233,89 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		zynmixer.set_balance(self.selected_channel, balance)
 
 
-	# Function to handle edit button release
+	# Function to handle edit button press
 	#	event: Mouse event
-	def on_edit_release(self, event):
+	def on_edit_press(self, event):
+		self.press_time = monotonic()
 		try:
 			sel = int(self.main_canvas.find_withtag(tkinter.CURRENT)[0])
 			channel = int(self.main_canvas.gettags(sel)[0].split(':')[1])
 		except:
 			return
-		if self.edit_channel == None:
+		self.selected_channel = channel
+
+
+	# Function to handle edit button release
+	#	event: Mouse event
+	def on_edit_release(self, event):
+		if self.press_time:
+			self.press_time = None
+		else:
+			return
+		zynmixer.toggle_mute(self.selected_channel)
+
+
+	# Function to toggle edit / mixer mode
+	#	channel: Index of channel to edit or None to show mixer
+	def set_mode(self, channel):
+		if channel != None:
 			# Change to edit mode
 			self.edit_channel = channel
 			self.main_canvas.itemconfig('mixer', state='hidden')
+			self.main_canvas.itemconfig('mutes', state='hidden')
+			if channel > 15:
+				self.main_canvas.itemconfig(self.legends[0], text='Master', state='normal')
+			else:
+				self.main_canvas.itemconfig(self.legends[0], text='Layer %d'%(channel + 1), state='normal')
 			self.main_canvas.coords('Channel:%d'%(channel), 1, self.fader_top, self.fader_width, self.fader_bottom)
 			self.draw_channel(channel)
 			self.main_canvas.itemconfig('Channel:%d'%(channel), state='normal')
 			self.main_canvas.itemconfig('edit_control', state='normal')
+			self.main_canvas.tag_unbind('edit_button', '<ButtonPress-1>')
+			self.main_canvas.tag_unbind('edit_button', '<ButtonRelease-1>')
+			self.main_canvas.tag_bind(self.edit_buttons[0], '<ButtonPress-1>', self.on_edit_release)
+			self.main_canvas.tag_bind(self.edit_buttons[1], '<ButtonPress-1>', self.on_mute_release)
+			self.main_canvas.tag_bind(self.edit_buttons[2], '<ButtonPress-1>', self.on_layer_release)
+			self.main_canvas.tag_bind(self.edit_buttons[3], '<ButtonPress-1>', self.on_cancel_press)
+			self.selected_channel = channel
 		else:
 			# Change to mixer mode
 			self.edit_channel = None
 			self.main_canvas.itemconfig('edit_control', state='hidden')
+			self.main_canvas.itemconfig(self.legends[0], text='Layer 1')
 			self.main_canvas.coords('Channel:%d'%(self.selected_channel), 1 + self.fader_width * self.selected_channel, self.fader_top, 1 + self.fader_width * self.selected_channel + self.fader_width - 1, self.fader_bottom)
-			self.draw_channel(channel)
+			self.draw_channel(self.selected_channel)
 			self.main_canvas.itemconfig('mixer', state='normal')
 			self.main_canvas.tag_lower('background')
-		self.selected_channel = channel
+			for button in self.edit_buttons:
+				# Because we bind to the index (not the tag) we must unbind the index for each button
+				self.main_canvas.tag_unbind(button, '<ButtonPress-1>')
+			self.main_canvas.tag_bind('edit_button', '<ButtonPress-1>', self.on_edit_press)
+			self.main_canvas.tag_bind('edit_button', '<ButtonRelease-1>', self.on_edit_release)
+
+
+	# Function to handle mute button release
+	#	event: Mouse event
+	def on_mute_release(self, event):
+		zynmixer.toggle_mute(self.selected_channel)
+
+
+	# Function to handle layer button release
+	#	event: Mouse event
+	def on_layer_release(self, event):
+		self.zyngui.show_screen('layer') #TODO: Show relevant layer control screen
+
+
+	# Function to handle cancel edit button release
+	#	event: Mouse event
+	def on_cancel_press(self, event):
+		self.set_mode(None)
+
+
+	def show(self):
+		super().show()
+		self.set_mode(None)
+
 
 	# Function to refresh loading animation
 	def refresh_loading(self):
@@ -262,5 +337,5 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.draw_channel(self.selected_channel)
 			if self.press_time and (monotonic() - self.press_time) > 0.4:
 				self.press_time = None
-				zynmixer.toggle_mute(self.selected_channel)
+				self.set_mode(self.selected_channel)
 

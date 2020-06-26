@@ -75,8 +75,12 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	unsigned int i,j;
 	for(j = 0; j < MAX_CHANNELS; j++)
 	{
-		float fFactorA = g_master.level * g_dynamic[j].level * (g_dynamic[j].balance - 1) / -2;
-		float fFactorB = g_master.level * g_dynamic[j].level * (g_dynamic[j].balance + 1) / 2;
+		float fFactorA = g_master.level * g_dynamic[j].level;
+		float fFactorB = g_master.level * g_dynamic[j].level;
+		if(g_dynamic[j].balance > 0.0)
+			fFactorA *= (1 - g_dynamic[j].balance);
+		if(g_dynamic[j].balance < 0.0)
+			fFactorB *= (1 + g_dynamic[j].balance);
 		pInA = jack_port_get_buffer(g_pInputPort[j*2], nFrames);
 		pInB = jack_port_get_buffer(g_pInputPort[j*2+1], nFrames);
 		for (i = 0; i < nFrames; i++)
@@ -90,12 +94,12 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			reqlevel = g_dynamic[j].reqlevel;
 		fDiff = reqlevel - g_dynamic[j].level;
 		if(fabs(fDiff) > 0.001)
-			g_dynamic[j].level += fDiff / 10;
+			g_dynamic[j].level += fDiff / 5;
 		else
 			g_dynamic[j].level = reqlevel;
 		fDiff = g_dynamic[j].reqbalance - g_dynamic[j].balance;
 		if(fabs(fDiff) > 0.001)
-			g_dynamic[j].balance += fDiff / 10;
+			g_dynamic[j].balance += fDiff / 5;
 		else
 			g_dynamic[j].balance = g_dynamic[j].reqbalance;
 
