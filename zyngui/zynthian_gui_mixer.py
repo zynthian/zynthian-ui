@@ -37,6 +37,12 @@ from . import zynthian_gui_base
 from . import zynthian_gui_config
 from . import zynthian_gui_controller
 from zynmixer import *
+from zyncoder import *
+
+ENC_LAYER			= 0
+ENC_BACK			= 1
+ENC_SNAPSHOT		= 2
+ENC_SELECT			= 3
 
 #------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
@@ -73,6 +79,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.press_time = None
 
 		self.edit_channel = None
+		self.mode = 1 # 1:Mixer, 0:Edit
 
 		# Fader Canvas
 		self.main_canvas = tkinter.Canvas(self.main_frame,
@@ -97,7 +104,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			fader_bg = self.main_canvas.create_rectangle(left_edge, self.fader_top, left_edge + self.fader_width - 1, self.fader_bottom, fill=zynthian_gui_config.color_bg, width=0, tags=('Channel:%d'%channel, 'fader_control', 'mixer', 'background'))
 			self.faders[channel] = self.main_canvas.create_rectangle(left_edge, self.fader_top, left_edge + self.fader_width - 1, self.fader_bottom, fill=fill, width=0, tags=('Channel:%d'%channel, 'fader_control', 'mixer'))
 
-			self.legends[channel] = self.main_canvas.create_text(int(fader_centre), self.height - legend_height / 2,  fill='white', text=label, tags='mixer')
+			self.legends[channel] = self.main_canvas.create_text(int(fader_centre), self.height - legend_height / 2,  fill='white', text=label, tags=('Channel:%d'%(channel),'fader_control','mixer'))
 
 
 			# Edit button
@@ -111,8 +118,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.tag_bind('edit_button', '<ButtonPress-1>', self.on_edit_press)
 		self.main_canvas.tag_bind('edit_button', '<ButtonRelease-1>', self.on_edit_release)
 		self.main_canvas.tag_bind('fader_control', "<ButtonPress-1>", self.on_fader_press)
-		self.main_canvas.tag_bind('fader_control', "<ButtonRelease-1>", self.on_fader_release)
-		self.main_canvas.tag_bind('fader_control', "<B1-Motion>", self.on_fader_motion)
+		self.main_canvas.tag_bind('fader_control', '<ButtonRelease-1>', self.on_fader_release)
+		self.main_canvas.tag_bind('fader_control', '<B1-Motion>', self.on_fader_motion)
 
 		# 0dB line
 		self.main_canvas.create_line(0, self.fader_top + self.fader_height * 0.2, self.width, self.fader_top + self.fader_height * 0.2, fill="white", tags=('mixer'))
@@ -134,6 +141,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.tag_bind(self.mute_button_text, "<ButtonRelease-1>", self.on_mute_release)
 		self.main_canvas.tag_bind(self.layer_button_text, "<ButtonRelease-1>", self.on_layer_release)
 		self.main_canvas.tag_bind(self.cancel_edit_button_text, "<ButtonPress-1>", self.on_cancel_press)
+
+		# Selection border
+		self.selection_border = self.main_canvas.create_rectangle(1, 1, self.fader_width, self.height, width=2, outline=zynthian_gui_config.color_on)
 
 	# Function to set fader values
 	#	fader: Index of fader
@@ -180,6 +190,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				offset + self.fader_width * balance / 2 + self.fader_width, self.balance_bottom)
 		self.main_canvas.coords(self.mutes[channel], offset + 2, self.mute_top)
 
+
+	# Function to display selected channel highlight border
+	# channel: Index of channel to highlight
+	def highlight_channel(self, channel):
+		self.main_canvas.coords(self.selection_border, 1 + self.fader_width * channel, 1, 2 + self.fader_width * (channel + 1), self.height - 1)
+
+
+	# Function to select channel
+	# channel: Idex of channel to select
+	def select_channel(self, channel):
+		if channel > 16 or channel < 0:
+			return
+		self.selected_channel = channel
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, self.selected_channel, 0)
+		self.highlight_channel(channel)
+
 	# Function to handle fader press
 	#	event: Mouse event
 	def on_fader_press(self, event):
@@ -189,7 +215,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			channel = int(self.main_canvas.gettags(sel)[0].split(':')[1])
 		except:
 			return
-		self.selected_channel = channel
+		self.select_channel(channel)
 
 
 	# Function to handle fader release
@@ -242,7 +268,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			channel = int(self.main_canvas.gettags(sel)[0].split(':')[1])
 		except:
 			return
-		self.selected_channel = channel
+		self.select_channel(channel)
 
 
 	# Function to handle edit button release
@@ -260,9 +286,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def set_mode(self, channel):
 		if channel != None:
 			# Change to edit mode
+			self.mode = 0
 			self.edit_channel = channel
 			self.main_canvas.itemconfig('mixer', state='hidden')
 			self.main_canvas.itemconfig('mutes', state='hidden')
+			self.main_canvas.itemconfig(self.selection_border, state='hidden')
 			if channel > 15:
 				self.main_canvas.itemconfig(self.legends[0], text='Master', state='normal')
 			else:
@@ -280,12 +308,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.selected_channel = channel
 		else:
 			# Change to mixer mode
+			self.mode = 1
 			self.edit_channel = None
 			self.main_canvas.itemconfig('edit_control', state='hidden')
 			self.main_canvas.itemconfig(self.legends[0], text='Layer 1')
 			self.main_canvas.coords('Channel:%d'%(self.selected_channel), 1 + self.fader_width * self.selected_channel, self.fader_top, 1 + self.fader_width * self.selected_channel + self.fader_width - 1, self.fader_bottom)
 			self.draw_channel(self.selected_channel)
 			self.main_canvas.itemconfig('mixer', state='normal')
+			self.main_canvas.itemconfig(self.selection_border, state='normal')
 			self.main_canvas.tag_lower('background')
 			for button in self.edit_buttons:
 				# Because we bind to the index (not the tag) we must unbind the index for each button
@@ -315,6 +345,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def show(self):
 		super().show()
 		self.set_mode(None)
+		zyncoder.lib_zyncoder.setup_zyncoder(ENC_BACK, zynthian_gui_config.zyncoder_pin_a[ENC_BACK], zynthian_gui_config.zyncoder_pin_b[ENC_BACK], 0, 0, None, self.selected_channel, 16, 0)
+		zyncoder.lib_zyncoder.setup_zyncoder(ENC_SELECT, zynthian_gui_config.zyncoder_pin_a[ENC_SELECT], zynthian_gui_config.zyncoder_pin_b[ENC_SELECT], 0, 0, None, 64, 127, 0)
+		zyncoder.lib_zyncoder.setup_zyncoder(ENC_SNAPSHOT, zynthian_gui_config.zyncoder_pin_a[ENC_SNAPSHOT], zynthian_gui_config.zyncoder_pin_b[ENC_SNAPSHOT], 0, 0, None, 64, 127, 0)
 
 
 	# Function to refresh loading animation
@@ -322,9 +355,75 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		pass
 
 
+	# Function to handle CUIA SELECT_UP command
+	def select_up(self):
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SELECT, 65, 0)
+
+
+	# Function to handle CUIA SELECT_DOWN command
+	def select_down(self):
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SELECT, 63, 0)
+
+
+	# Function to handle CUIA BACK_UP command
+	def back_up(self):
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, self.selected_channel + 1, 0)
+
+
+	# Function to handle CUIA BACK_DOWN command
+	def back_down(self):
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, self.selected_channel - 1, 0)
+
+
+	# Function to handle CUIA LAYER_UP command
+	def layer_up(self):
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 63, 0)
+
+
+	# Function to handle CUIA LAYER_DOWN command
+	def layer_down(self):
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 63, 0)
+
+
+	# Function to handle CUIA SNAPSHOT_UP command
+	def snapshot_up(self):
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, 65, 0)
+
+
+	# Function to handle CUIA SNAPSHOT_DOWN command
+	def snapshot_down(self):
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, 63, 0)
+
+
 	# Function to handle zyncoder polling
+	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +1 and calculate offset
 	def zyncoder_read(self):
-		pass
+		if not self.shown:
+			return
+		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_BACK)
+		if(self.mode and value != self.selected_channel):
+			self.select_channel(value)
+		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_SELECT)
+		if(value != 64):
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SELECT, 64, 0)
+			level = zynmixer.get_level(self.selected_channel) + (value - 64) * 0.01
+			if level > 1: level = 1
+			if level < 0: level = 0
+			zynmixer.set_level(self.selected_channel, level)
+		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_SNAPSHOT)
+		if(value != 64):
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, 64, 0)
+			balance = zynmixer.get_balance(self.selected_channel) + (value - 64) * 0.01
+			if balance > 1: balance = 1
+			if balance < -1: balance = -1
+			zynmixer.set_balance(self.selected_channel, balance)
+
+
+	# Function to handle SELECT switch
+	# mode: Switch mode ('S'|'B'|'L')
+	def switch_select(self, mode):
+		zynmixer.toggle_mute(self.selected_channel)
+
 
 	# Function to refresh screen
 	def refresh_status(self, status={}):
