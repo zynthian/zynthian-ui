@@ -60,8 +60,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.fader_width = (self.width - 6 ) / 17
 		legend_height = self.height * 0.05
 		self.edit_height = self.height * 0.1
-		self.balance_height = self.edit_height * 0.2
-		self.balance_bottom = self.edit_height
+		self.balance_height = self.edit_height * 0.3
+		self.balance_top = self.edit_height - self.balance_height
+		self.balance_control_centre = self.width / 2 
+		self.balance_control_width = self.width / 4 # Width of each half of balance control
 		self.fader_height = self.height - self.edit_height - legend_height - 2
 		self.fader_bottom = self.height - legend_height
 		self.fader_top = self.fader_bottom - self.fader_height
@@ -110,8 +112,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			# Edit button
 			self.edit_buttons[channel] = self.main_canvas.create_rectangle(left_edge, 1, left_edge + self.fader_width - 1, self.edit_height, fill=zynthian_gui_config.color_bg, width=0, tags=('Channel:%d'%channel, 'edit_button', 'background'))
 			self.mutes[channel] = self.main_canvas.create_text(left_edge + 1, self.mute_top, text='M', state='hidden', fill='red', anchor='nw', tags=('Mute:%d'%channel, 'edit_button', 'mutes'))
-			self.balances_left[channel] = self.main_canvas.create_rectangle(left_edge, self.balance_bottom - self.balance_height, int(fader_centre - 0.5), self.balance_bottom, fill='dark green', width=0, tags=('Channel:%d'%channel, 'edit_button', 'mixer'))
-			self.balances_right[channel] = self.main_canvas.create_rectangle(int(fader_centre + 0.5), self.balance_bottom - self.balance_height, left_edge + self.fader_width - 1, self.balance_bottom, fill='dark red', width=0, tags=('Channel:%d'%channel, 'edit_button', 'mixer'))
+			self.balances_left[channel] = self.main_canvas.create_rectangle(left_edge, self.fader_top, int(fader_centre - 0.5), self.fader_top + self.balance_height, fill='dark green', width=0, tags=('Channel:%d'%channel, 'edit_button', 'mixer'))
+			self.balances_right[channel] = self.main_canvas.create_rectangle(int(fader_centre + 0.5), self.fader_top, left_edge + self.fader_width - 1, self.fader_top + self.balance_height , fill='dark red', width=0, tags=('Channel:%d'%channel, 'edit_button', 'mixer'))
 
 			self.draw_channel(channel)
 
@@ -125,14 +127,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.create_line(0, self.fader_top + self.fader_height * 0.2, self.width, self.fader_top + self.fader_height * 0.2, fill="white", tags=('mixer'))
 
 		# Edit widgets
-		balance_control_bg = self.main_canvas.create_rectangle(self.fader_width + 1, self.fader_top, self.width - self.fader_width - 4, self.fader_top + self.fader_width, fill=zynthian_gui_config.color_bg, width=0, state='hidden', tags='edit_control')
-		self.balance_control = self.main_canvas.create_rectangle(self.fader_width + 1, self.fader_top, self.width - self.fader_width - 4, self.fader_top + self.fader_width, fill='dark blue', width=0, state='hidden', tags='edit_control')
-		self.main_canvas.tag_bind(balance_control_bg, "<ButtonPress-1>", self.on_balance_press)
-		self.main_canvas.tag_bind(self.balance_control, "<ButtonPress-1>", self.on_balance_press)
-		self.main_canvas.tag_bind(balance_control_bg, "<ButtonRelease-1>", self.on_balance_release)
-		self.main_canvas.tag_bind(self.balance_control, "<ButtonRelease-1>", self.on_balance_release)
-		self.main_canvas.tag_bind(balance_control_bg, "<B1-Motion>", self.on_balance_motion)
-		self.main_canvas.tag_bind(self.balance_control, "<B1-Motion>", self.on_balance_motion)
+		balance_control_bg = self.main_canvas.create_rectangle(self.balance_control_centre - self.balance_control_width, self.fader_top, self.balance_control_centre + self.balance_control_width, self.fader_top + self.fader_width, fill=zynthian_gui_config.color_bg, width=0, state='hidden', tags=('edit_control','balance_control'))
+		self.balance_control_left = self.main_canvas.create_rectangle(int(self.balance_control_centre - self.balance_control_width), self.fader_top, self.balance_control_centre, self.fader_top + self.fader_width, fill='dark green', width=0, state='hidden', tags=('edit_control','balance_control'))
+		self.balance_control_right = self.main_canvas.create_rectangle(self.balance_control_centre, self.fader_top, self.balance_control_centre + self.balance_control_width, self.fader_top + self.fader_width, fill='dark red', width=0, state='hidden', tags=('edit_control','balance_control'))
+		self.main_canvas.tag_bind('balance_control', "<ButtonPress-1>", self.on_balance_press)
+		self.main_canvas.tag_bind('balance_control', "<ButtonRelease-1>", self.on_balance_release)
+		self.main_canvas.tag_bind('balance_control', "<B1-Motion>", self.on_balance_motion)
 		self.main_canvas.create_line(0, self.fader_top + self.fader_height * 0.2, self.fader_width, self.fader_top + self.fader_height * 0.2, fill="white", tags=('edit_control'), state='hidden')
 
 		self.mute_button_text = self.main_canvas.create_text(1 + int(self.fader_width * 1.5), int(self.edit_height / 2), fill='white', text="MUTE", state='hidden', tags=('edit_control'))
@@ -176,18 +176,33 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		balance = zynmixer.get_balance(channel)
 		if balance > 0:
 			self.main_canvas.coords(self.balances_left[channel],
-				int(offset + balance * self.fader_width / 2), self.balance_bottom - self.balance_height, 
-				offset + self.fader_width / 2, self.balance_bottom)
+				int(offset + balance * self.fader_width / 2), self.balance_top, 
+				offset + self.fader_width / 2, self.balance_top + self.balance_height)
 			self.main_canvas.coords(self.balances_right[channel], 
-				int(offset + self.fader_width / 2), self.balance_bottom - self.balance_height, 
-				int(offset + self.fader_width), self.balance_bottom)
+				int(offset + self.fader_width / 2), self.balance_top, 
+				int(offset + self.fader_width), self.balance_top + self.balance_height)
 		else:
 			self.main_canvas.coords(self.balances_left[channel], 
-				offset, self.balance_bottom - self.balance_height,
-				int(offset + self.fader_width / 2), self.balance_bottom)
+				offset, self.balance_top,
+				int(offset + self.fader_width / 2), self.balance_top + self. balance_height)
 			self.main_canvas.coords(self.balances_right[channel], 
-				offset + self.fader_width / 2, self.balance_bottom - self.balance_height,
-				offset + self.fader_width * balance / 2 + self.fader_width, self.balance_bottom)
+				offset + self.fader_width / 2, self.balance_top,
+				offset + self.fader_width * balance / 2 + self.fader_width, self.balance_top + self.balance_height)
+		if self.mode == 0:
+			if balance > 0:
+				self.main_canvas.coords(self.balance_control_left,
+					int(self.balance_control_centre - (1 - balance) * self.balance_control_width), self.fader_top, 
+					self.balance_control_centre, self.fader_top + self.fader_width)
+				self.main_canvas.coords(self.balance_control_right, 
+					self.balance_control_centre, self.fader_top, 
+					self.balance_control_centre + self.balance_control_width, self.fader_top+ self.fader_width)
+			else:
+				self.main_canvas.coords(self.balance_control_left, 
+					self.balance_control_centre - self.balance_control_width, self.fader_top,
+					self.balance_control_centre, self.fader_top + self.fader_width)
+				self.main_canvas.coords(self.balance_control_right, 
+					self.balance_control_centre, self.fader_top,
+					self.balance_control_centre + (1 + balance) * self.balance_control_width, self.fader_top + self.fader_width)
 		self.main_canvas.coords(self.mutes[channel], offset + 2, self.mute_top)
 
 
@@ -252,7 +267,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def on_balance_motion(self, event):
 		if self.selected_channel == None:
 			return
-		balance = zynmixer.get_balance(self.selected_channel) + (event.x - self.balance_drag_start.x) / self.fader_height
+		balance = zynmixer.get_balance(self.selected_channel) + (event.x - self.balance_drag_start.x) / self.balance_control_width
 		if balance > 1: balance = 1
 		if balance < -1: balance = -1
 		self.balance_drag_start = event
