@@ -358,6 +358,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	def show(self):
+		layers_list=zynthian_gui_config.zyngui.screens['layer'].layers
+		for index in range(16):
+			try:
+				self.main_canvas.itemconfig(self.legends[index], text=layers_list[index].engine.name)
+			except:
+				self.main_canvas.itemconfig(self.legends[index], text='Ch %d'%index)
 		super().show()
 		self.set_mode(None)
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_BACK, zynthian_gui_config.zyncoder_pin_a[ENC_BACK], zynthian_gui_config.zyncoder_pin_b[ENC_BACK], 0, 0, None, self.selected_channel, 16, 0)

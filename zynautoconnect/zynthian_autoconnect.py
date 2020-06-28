@@ -450,59 +450,76 @@ def audio_autoconnect(force=False):
 			for ao in input_ports:
 				nip = min(len(input_ports[ao]), 2)
 				if ao.startswith("system:playback_"):
-					jrange = [int(ao[-1])-1]
+					dest = [0]
+				elif ao == "zynmixer":
+					dest = [layer.midi_chan * 2, layer.midi_chan * 2 + 1] #TODO: Handle layers without MIDI channel
+				elif nip == 1:
+					dest = [0, 0]
+#					jrange = list(range(max(np, nip)))
 				else:
-					jrange = list(range(max(np, nip)))
+					dest = [0, 1]
 
 				if ao in layer.get_audio_out():
 					#logger.debug(" => Connecting to {}".format(ao))
-					for j in jrange:
-						try:
-							jclient.connect(ports[j%np],input_ports[ao][j%nip])
-						except:
-							pass
+					try:
+						jclient.connect(ports[0], input_ports[ao][dest[0]])
+						jclient.connect(ports[np - 1], input_ports[ao][dest[1]])
+					except:
+						pass
 
 				else:
-					for j in jrange:
-						try:
-							jclient.disconnect(ports[j%np],input_ports[ao][j%nip])
-						except:
-							pass
+					try:
+						jclient.disconnect(ports[0], input_ports[ao][dest[0]])
+						jclient.disconnect(ports[np - 1], input_ports[ao][dest[1]])
+					except:
+						pass
+
+	# Connect mixer to main output
+	try:
+		jclient.connect('zynmixer:output_a', 'system:playback_1')
+		jclient.connect('zynmixer:output_b', 'system:playback_2')
+	except:
+		pass
 
 	#Setup dpmeter connections if enabled ...
 	if not zynthian_gui_config.show_cpu_status:
-		#Prepare for setup dpmeter connections
-		dpmeter_out = jclient.get_ports("jackpeak", is_input=True, is_audio=True)
-		dpmeter_conports_1=jclient.get_all_connections("jackpeak:input_a")
-		dpmeter_conports_2=jclient.get_all_connections("jackpeak:input_b")
-		sysout_conports_1 = jclient.get_all_connections("system:playback_1")
-		sysout_conports_2 = jclient.get_all_connections("system:playback_2")
+#		#Prepare for setup dpmeter connections
+#		dpmeter_out = jclient.get_ports("jackpeak", is_input=True, is_audio=True)
+#		dpmeter_conports_1=jclient.get_all_connections("jackpeak:input_a")
+#		dpmeter_conports_2=jclient.get_all_connections("jackpeak:input_b")
+#		sysout_conports_1 = jclient.get_all_connections("system:playback_1")
+#		sysout_conports_2 = jclient.get_all_connections("system:playback_2")
 
 		#Disconnect ports from dpmeter (those that are not connected to System Out, if any ...)
-		for cp in dpmeter_conports_1:
-			if cp not in sysout_conports_1:
-				try:
-					jclient.disconnect(cp,dpmeter_out[0])
-				except:
-					pass
-		for cp in dpmeter_conports_2:
-			if cp not in sysout_conports_2:
-				try:
-					jclient.disconnect(cp,dpmeter_out[1])
-				except:
-					pass
-
-		#Connect ports to dpmeter (those currently connected to System Out)
-		for cp in sysout_conports_1:
-			try:
-				jclient.connect(cp,dpmeter_out[0])
-			except:
-				pass
-		for cp in sysout_conports_2:
-			try:
-				jclient.connect(cp,dpmeter_out[1])
-			except:
-				pass
+#		for cp in dpmeter_conports_1:
+#			if cp not in sysout_conports_1:
+#				try:
+#					jclient.disconnect(cp,dpmeter_out[0])
+#				except:
+#					pass
+#		for cp in dpmeter_conports_2:
+#			if cp not in sysout_conports_2:
+#				try:
+#					jclient.disconnect(cp,dpmeter_out[1])
+#				except:
+#					pass
+#
+#		#Connect ports to dpmeter (those currently connected to System Out)
+#		for cp in sysout_conports_1:
+#			try:
+#				jclient.connect(cp,dpmeter_out[0])
+#			except:
+#				pass
+#		for cp in sysout_conports_2:
+#			try:
+#				jclient.connect(cp,dpmeter_out[1])
+#			except:
+#				pass
+		try:
+			jclient.connect('zynmixer:output_a', 'jackpeak:input_a')
+			jclient.connect('zynmixer:output_b', 'jackpeak:input_b')
+		except:
+			pass
 
 	#Get System Capture ports => jack output ports!!
 	capture_ports = get_audio_capture_ports()
