@@ -24,7 +24,7 @@
 #******************************************************************************
 
 import sys
-import datetime
+import time
 import logging
 import tkinter
 from tkinter import font as tkFont
@@ -137,17 +137,17 @@ class zynthian_gui_base:
 			activeforeground=zynthian_gui_config.color_header_tx,
 			padx=0,
 			text=label)
-		select_button.grid(row=0, column=column, sticky='we')
+		select_button.grid(row=0, column=column, sticky='nswe')
 		select_button.bind('<ButtonPress-1>', lambda e: self.button_down(index, e))
 		select_button.bind('<ButtonRelease-1>', lambda e: self.button_up(index, e))
 
 	def button_down(self, index, event):
-		self.button_push_ts=datetime.now()
+		self.button_push_ts=time.monotonic()
 
 	def button_up(self, index, event):
 		t = 'S'
 		if self.button_push_ts:
-			dts=(datetime.now()-self.button_push_ts).total_seconds()
+			dts=(time.monotonic()-self.button_push_ts)
 			if dts<0.3:
 				t = 'S'
 			elif dts>=0.3 and dts<2:
