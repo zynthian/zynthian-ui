@@ -435,44 +435,47 @@ def audio_autoconnect(force=False):
 	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 
 	#Connect Synth Engines to assigned outputs
-	for i, layer in enumerate(layers_list):
+	for layer_index, layer in enumerate(layers_list):
 		if not layer.get_audio_jackname() or layer.engine.type=="MIDI Tool":
 			continue
 
-		ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
-		if ports:
+		src_ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
+		print("Layer %d is %s with JACK output ports: %s and configured output ports: %s"%(layer_index, layer.engine.name, src_ports, layer.get_audio_out()))
+		if src_ports:
 			#logger.debug("Connecting Engine {} ...".format(layer.get_jackname()))
-
-			np = min(len(ports), 2)
-			#logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), np))
 
 			#Connect to assigned ports and disconnect from the rest ...
 			for ao in input_ports:
-				nip = min(len(input_ports[ao]), 2)
 				if ao.startswith("system:playback_"):
 					dest = [0]
 				elif ao == "zynmixer":
 					dest = [layer.midi_chan * 2, layer.midi_chan * 2 + 1] #TODO: Handle layers without MIDI channel
-				elif nip == 1:
+				elif len(input_ports[ao]) == 1:
 					dest = [0, 0]
-#					jrange = list(range(max(np, nip)))
 				else:
 					dest = [0, 1]
 
 				if ao in layer.get_audio_out():
 					#logger.debug(" => Connecting to {}".format(ao))
-					try:
-						jclient.connect(ports[0], input_ports[ao][dest[0]])
-						jclient.connect(ports[np - 1], input_ports[ao][dest[1]])
-					except:
-						pass
+					for index, src_port in enumerate(src_ports):
+						try:
+							print("Connecting:", src_port, input_ports[ao][dest[index%2]])
+							jclient.connect(src_port, input_ports[ao][dest[index%2]])
+							if(len(src_ports) == 1):
+								print("Connecting:", src_port, input_ports[ao][dest[index%2]])
+								jclient.connect(src_port, input_ports[ao][dest[index%2]])
+						except:
+							pass
 
 				else:
-					try:
-						jclient.disconnect(ports[0], input_ports[ao][dest[0]])
-						jclient.disconnect(ports[np - 1], input_ports[ao][dest[1]])
-					except:
-						pass
+					for index, src_port in enumerate(src_ports):
+						try:
+							print("Disconnecting:", src_port, input_ports[ao][dest[0]])
+							jclient.disconnect(src_port, input_ports[ao][dest[0]])
+							print("Disconnecting:", src_port, input_ports[ao][dest[0]])
+							jclient.disconnect(src_port, input_ports[ao][dest[1]])
+						except:
+							pass
 
 	# Connect mixer to main output
 	try:

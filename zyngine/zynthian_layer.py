@@ -107,13 +107,13 @@ class zynthian_layer:
 
 
 	def set_midi_chan(self, midi_chan):
-		print("Setting layer MIDI channel to", midi_chan)
 		self.midi_chan=midi_chan
 		self.engine.set_midi_chan(self)
 		for zctrl in self.controllers_dict.values():
 			zctrl.set_midi_chan(midi_chan)
-		self.audio_out = ["zynmixer:input_%02da"%(midi_chan + 1), "zynmixer:input_%02db"%(midi_chan + 1)]
-
+		if midi_chan != None:
+			self.audio_out = ["zynmixer", "zynmixer"]
+			self.zyngui.zynautoconnect_audio()
 
 	def get_midi_chan(self):
 		return self.midi_chan

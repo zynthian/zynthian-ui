@@ -58,14 +58,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
 
 		self.fader_width = (self.width - 6 ) / 17
-		legend_height = self.height * 0.05
+		self.legend_height = self.height * 0.05
 		self.edit_height = self.height * 0.1
 		self.balance_height = self.edit_height * 0.3
 		self.balance_top = self.edit_height - self.balance_height
 		self.balance_control_centre = self.width / 2 
 		self.balance_control_width = self.width / 4 # Width of each half of balance control
-		self.fader_height = self.height - self.edit_height - legend_height - 2
-		self.fader_bottom = self.height - legend_height
+		self.fader_height = self.height - self.edit_height - self.legend_height - 2
+		self.fader_bottom = self.height - self.legend_height
 		self.fader_top = self.fader_bottom - self.fader_height
 		self.mute_top = 1
 
@@ -96,17 +96,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		offset = 1
 		fill = 'gray'
 		for channel in range(17):
-			label = "Layer %d" % (channel + 1)
+			label = ""
 			if channel > 15:
 				offset = 4
 				fill = 'purple4'
 				label = 'Master'
 			left_edge = offset + self.fader_width * channel
 			fader_centre = left_edge + self.fader_width * 0.5
-			fader_bg = self.main_canvas.create_rectangle(left_edge, self.fader_top, left_edge + self.fader_width - 1, self.fader_bottom, fill=zynthian_gui_config.color_bg, width=0, tags=('Channel:%d'%channel, 'fader_control', 'mixer', 'background'))
-			self.faders[channel] = self.main_canvas.create_rectangle(left_edge, self.fader_top, left_edge + self.fader_width - 1, self.fader_bottom, fill=fill, width=0, tags=('Channel:%d'%channel, 'fader_control', 'mixer'))
+			fader_bg = self.main_canvas.create_rectangle(left_edge, self.fader_top, left_edge + self.fader_width - 1, self.fader_bottom, fill=zynthian_gui_config.color_bg, width=0, tags=('Fader:%d'%channel, 'Channel:%d'%channel, 'fader_control', 'mixer', 'background'))
+			self.faders[channel] = self.main_canvas.create_rectangle(left_edge, self.fader_top, left_edge + self.fader_width - 1, self.fader_bottom, fill=fill, width=0, tags=('Fader:%d'%channel, 'Channel:%d'%channel, 'fader_control', 'mixer'))
 
-			self.legends[channel] = self.main_canvas.create_text(int(fader_centre), self.height - legend_height / 2, fill='white', text=label, tags=('Channel:%d'%(channel),'fader_control','mixer'), angle=90, anchor="sw")
+			self.legends[channel] = self.main_canvas.create_text(int(fader_centre), self.height - self.legend_height - 2, fill='white', text=label, tags=('Legend:%d'%(channel), 'Channel:%d'%(channel), 'fader_control','mixer'), angle=90, anchor="w")
+			if channel < 16:
+				self.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill='white', text=channel + 1, tags=('Channel_id:%d'%(channel), 'Channel:%d'%(channel), 'fader_control','mixer'))
 
 
 			# Edit button
@@ -209,7 +211,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to display selected channel highlight border
 	# channel: Index of channel to highlight
 	def highlight_channel(self, channel):
-		self.main_canvas.coords(self.selection_border, 1 + self.fader_width * channel, 1, 2 + self.fader_width * (channel + 1), self.height - 1)
+		if channel < 16:
+			self.main_canvas.coords(self.selection_border, 1 + self.fader_width * channel, 1, self.fader_width * (channel + 1), self.height - 1)
+		else:
+			self.main_canvas.coords(self.selection_border, 4 + self.fader_width * channel, 1, 4 + self.fader_width * (channel + 1), self.height - 1)
 
 
 	# Function to select channel
@@ -242,8 +247,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle fader drag
 	#	event: Mouse event
 	def on_fader_motion(self, event):
-		if self.selected_channel == None:
-			return
 		level = zynmixer.get_level(self.selected_channel) + (self.drag_start.y - event.y) / self.fader_height
 		if level > 1: level = 1
 		if level < 0: level = 0
@@ -265,8 +268,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to balance fader drag
 	#	event: Mouse event
 	def on_balance_motion(self, event):
-		if self.selected_channel == None:
-			return
 		balance = zynmixer.get_balance(self.selected_channel) + (event.x - self.balance_drag_start.x) / self.balance_control_width
 		if balance > 1: balance = 1
 		if balance < -1: balance = -1
@@ -302,19 +303,21 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		layers_list=zynthian_gui_config.zyngui.screens['layer'].layers
 		if channel != None:
 			# Change to edit mode
+			layer = None
+			for l in layers_list:
+				if l.midi_chan == channel:
+					layer = l
+					break
+			if layer == None:
+				return #TODO: Handle master channel
 			self.mode = 0
 			self.edit_channel = channel
 			self.main_canvas.itemconfig('mixer', state='hidden')
 			self.main_canvas.itemconfig('mutes', state='hidden')
 			self.main_canvas.itemconfig(self.selection_border, state='hidden')
-			if channel > 15:
-				self.main_canvas.itemconfig(self.legends[0], text='Master', state='normal')
-			else:
-				try:
-					self.main_canvas.itemconfig(self.legends[0], text="%02d: %s - %s"%(channel + 1, layers_list[channel].engine.name, layers_list[channel].preset_name), state='normal')
-				except:
-					self.main_canvas.itemconfig(self.legends[0], text='%02d:'%(channel + 1), state='normal')
-			self.main_canvas.coords('Channel:%d'%(channel), 1, self.fader_top, self.fader_width, self.fader_bottom)
+			self.main_canvas.coords('Fader:%d'%(channel), 1, self.fader_top, self.fader_width, self.fader_bottom)
+			self.main_canvas.coords('Legend:%d'%(channel), 1 + self.fader_width / 2, self.height - self.legend_height - 2)
+			self.main_canvas.coords('Channel_id:%d'%(channel), 1 + self.fader_width / 2, self.height - self.legend_height / 2)
 			self.draw_channel(channel)
 			self.main_canvas.itemconfig('Channel:%d'%(channel), state='normal')
 			self.main_canvas.itemconfig('edit_control', state='normal')
@@ -330,8 +333,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.mode = 1
 			self.edit_channel = None
 			self.main_canvas.itemconfig('edit_control', state='hidden')
-			self.main_canvas.itemconfig(self.legends[0], text="01: %s - %s"%(layers_list[0].engine.name, layers_list[0].preset_name), state='normal')
-			self.main_canvas.coords('Channel:%d'%(self.selected_channel), 1 + self.fader_width * self.selected_channel, self.fader_top, 1 + self.fader_width * self.selected_channel + self.fader_width - 1, self.fader_bottom)
+			self.main_canvas.coords(self.legends[self.selected_channel], 1 + self.fader_width * (self.selected_channel + 0.5), self.height - self.legend_height - 2)
+			self.main_canvas.coords('Fader:%d'%(self.selected_channel), 1 + self.fader_width * self.selected_channel, self.fader_top, 1 + self.fader_width * self.selected_channel + self.fader_width - 1, self.fader_bottom)
+			self.main_canvas.coords('Legend:%d'%(self.selected_channel), 1 + self.fader_width * (self.selected_channel + 0.5), self.height - self.legend_height - 2)
+			self.main_canvas.coords('Channel_id:%d'%(self.selected_channel), self.fader_width * (self.selected_channel + 0.5), self.height - self.legend_height / 2)
 			self.draw_channel(self.selected_channel)
 			self.main_canvas.itemconfig('mixer', state='normal')
 			self.main_canvas.itemconfig(self.selection_border, state='normal')
@@ -364,15 +369,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def show(self):
 		layers_list=zynthian_gui_config.zyngui.screens['layer'].layers
 		for channel in range(16):
-			try:
-				self.main_canvas.itemconfig(self.legends[channel], text="%02d: %s - %s"%(channel, layers_list[channel].engine.name, layers_list[channel].preset_name), state='normal')
-			except:
-				self.main_canvas.itemconfig(self.legends[channel], text='%02d:'%channel)
+			self.main_canvas.itemconfig(self.legends[channel], text='')
+		for layer in layers_list:
+			self.main_canvas.itemconfig(self.legends[layer.midi_chan], text="%s - %s"%(layer.engine.name, layer.preset_name), state='normal')
 		super().show()
 		self.set_mode(None)
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_BACK, zynthian_gui_config.zyncoder_pin_a[ENC_BACK], zynthian_gui_config.zyncoder_pin_b[ENC_BACK], 0, 0, None, self.selected_channel, 16, 0)
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_SELECT, zynthian_gui_config.zyncoder_pin_a[ENC_SELECT], zynthian_gui_config.zyncoder_pin_b[ENC_SELECT], 0, 0, None, 64, 127, 0)
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_SNAPSHOT, zynthian_gui_config.zyncoder_pin_a[ENC_SNAPSHOT], zynthian_gui_config.zyncoder_pin_b[ENC_SNAPSHOT], 0, 0, None, 64, 127, 0)
+		zyncoder.lib_zyncoder.setup_zyncoder(ENC_LAYER, zynthian_gui_config.zyncoder_pin_a[ENC_LAYER], zynthian_gui_config.zyncoder_pin_b[ENC_LAYER], 0, 0, None, 64, 127, 0)
 
 
 	# Function to refresh loading animation
@@ -392,17 +397,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA BACK_UP command
 	def back_up(self):
-		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, self.selected_channel + 1, 0)
+		if self.selected_channel < 17:
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, self.selected_channel + 1, 0)
 
 
 	# Function to handle CUIA BACK_DOWN command
 	def back_down(self):
-		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, self.selected_channel - 1, 0)
+		if self.selected_channel:
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, self.selected_channel - 1, 0)
 
 
 	# Function to handle CUIA LAYER_UP command
 	def layer_up(self):
-		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 63, 0)
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 65, 0)
 
 
 	# Function to handle CUIA LAYER_DOWN command
@@ -442,6 +449,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if balance > 1: balance = 1
 			if balance < -1: balance = -1
 			zynmixer.set_balance(self.selected_channel, balance)
+		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER)
+		if(value != 64):
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 64, 0)
+			level = zynmixer.get_level(16) + (value - 64) * 0.01
+			if level > 1: level = 1
+			if level < 0: level = 0
+			zynmixer.set_level(16, level)
+		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER)
 
 
 	# Function to handle SELECT switch
