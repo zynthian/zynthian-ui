@@ -36,6 +36,13 @@ from . import zynthian_gui_selector
 
 class zynthian_gui_preset(zynthian_gui_selector):
 
+	buttonbar_config = [
+		(1, 'BACK'),
+		(0, 'LAYER'),
+		(2, 'FAVS'),
+		(3, 'SELECT')
+	]
+
 	def __init__(self):
 		self.only_favs = False
 		super().__init__('Preset', True)

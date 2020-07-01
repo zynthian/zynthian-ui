@@ -467,8 +467,8 @@ try:
 	ctrl_width = display_width//4
 	button_width = display_width//4
 	topbar_height = display_height//10
-	touchbar_height = enable_touch_widgets and display_height//6 or 0
-	body_height = display_height-topbar_height-touchbar_height
+	buttonbar_height = enable_touch_widgets and display_height//7 or 0
+	body_height = display_height-topbar_height-buttonbar_height
 	ctrl_height = body_height//2
 
 	# Adjust font size, if not defined
@@ -491,8 +491,9 @@ try:
 	#------------------------------------------------------------------------------
 
 	# Fonts
-	font_listbox=(font_family,int(1.0*font_size))
-	font_topbar=(font_family,int(1.1*font_size))
+	font_listbox = (font_family,int(1.0*font_size))
+	font_topbar = (font_family,int(1.1*font_size))
+	font_buttonbar = (font_family,int(0.8*font_size))
 
 	# Loading Logo Animation
 	loading_imgs=[]
@@ -513,8 +514,8 @@ try:
 	#for i in range(13):
 	#	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
 
-except:
-	logging.warning("No Display!")
+except Exception as e:
+	logging.error("Failed to configure geometry => {}".format(e))
 
 #------------------------------------------------------------------------------
 # Zynthian GUI variable

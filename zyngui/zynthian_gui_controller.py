@@ -86,7 +86,7 @@ class zynthian_gui_controller:
 		# Create Canvas
 		self.canvas=tkinter.Canvas(self.main_frame,
 			width=self.width,
-			height=self.height-1,
+			height=self.height,
 			bd=0,
 			highlightthickness=0,
 			relief='flat',
@@ -107,8 +107,12 @@ class zynthian_gui_controller:
 	def show(self):
 		#print("SHOW CONTROLLER "+str(self.ctrl)+" => "+str(self.shown))
 		if not self.shown:
+			if self.index%2==0:
+				pady = (0,2)
+			else:
+				pady = (0,0)
+			self.canvas.grid(row=self.row, column=self.col, sticky=self.sticky, pady=pady)
 			self.shown=True
-			self.canvas.grid(row=self.row,column=self.col,sticky=self.sticky)
 			self.plot_value()
 
 
@@ -288,9 +292,9 @@ class zynthian_gui_controller:
 		else:
 			degd=0
 		if (not self.arc and self.zctrl.midi_cc!=0) or not self.value_text:
-			x1=0.2*self.trw
+			x1=0.18*self.trw
 			y1=self.height-int(0.7*self.trw)-6
-			x2=x1+0.7*self.trw
+			x2=x1+int(0.7*self.trw)
 			y2=self.height-6
 		if self.arc:
 			self.canvas.itemconfig(self.arc, extent=degd)
