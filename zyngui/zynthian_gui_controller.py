@@ -570,7 +570,7 @@ class zynthian_gui_controller:
 	def zctrl_sync(self):
 		#List of values (value selector)
 		if self.selmode:
-			val=self.zctrl.get_label2index()
+			val=self.zctrl.get_value2index()
 		if self.zctrl.labels:
 			#logging.debug("ZCTRL SYNC LABEL => {}".format(self.zctrl.get_value2label()))
 			val=self.zctrl.get_label2value(self.zctrl.get_value2label())

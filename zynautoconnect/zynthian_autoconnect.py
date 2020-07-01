@@ -517,7 +517,7 @@ def audio_autoconnect(force=False):
 			#Get Root Layer Input ports ...
 			rl_in = jclient.get_ports(rl.get_audio_jackname(), is_input=True, is_audio=True)
 			if len(rl_in)>0:
-				nsc = len(rl.get_audio_in())
+				nsc = min(len(rl.get_audio_in()),len(rl_in))
 	
 				#Connect System Capture to Root Layer ports
 				j = 0
