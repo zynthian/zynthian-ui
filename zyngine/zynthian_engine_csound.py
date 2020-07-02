@@ -84,10 +84,10 @@ class zynthian_engine_csound(zynthian_engine):
 
 		if self.config_remote_display():
 			self.nogui = False
-			self.base_command="/usr/bin/csound -+rtaudio=jack -+rtmidi=alsaseq -M14 -o dac"
+			self.base_command="csound -+rtaudio=jack -+rtmidi=alsaseq -M14 -o dac"
 		else:
 			self.nogui = True
-			self.base_command="/usr/bin/csound --nodisplays -+rtaudio=jack -+rtmidi=alsaseq -M14 -o dac"
+			self.base_command="csound --nodisplays -+rtaudio=jack -+rtmidi=alsaseq -M14 -o dac"
 
 		self.reset()
 

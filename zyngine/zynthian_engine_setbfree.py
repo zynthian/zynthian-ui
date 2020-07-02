@@ -192,9 +192,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		#Process command ...
 		if self.config_remote_display():
-			self.command = "/usr/local/bin/setBfree -p \"{}\" -c \"{}\"".format(self.presets_fpath, self.config_autogen_fpath)
+			self.command = "setBfree -p \"{}\" -c \"{}\"".format(self.presets_fpath, self.config_autogen_fpath)
 		else:
-			self.command = "/usr/local/bin/setBfree -p \"{}\" -c \"{}\"".format(self.presets_fpath, self.config_autogen_fpath)
+			self.command = "setBfree -p \"{}\" -c \"{}\"".format(self.presets_fpath, self.config_autogen_fpath)
 
 		self.command_prompt = "\nAll systems go."
 
