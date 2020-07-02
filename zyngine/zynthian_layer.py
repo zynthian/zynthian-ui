@@ -42,7 +42,7 @@ class zynthian_layer:
 		self.jackname = None
 		self.audio_out = ["system:playback_1", "system:playback_2"]
 		if midi_chan != None:
-			self.audio_out = ["zynmixer", "zynmixer"]
+			self.audio_out = ["zynmixer:input_%02da"%(midi_chan), "zynmixer:input_%02db"%(midi_chan)]
 		self.audio_in = ["system:capture_1", "system:capture_2"]
 		self.midi_out = []
 
@@ -112,7 +112,7 @@ class zynthian_layer:
 		for zctrl in self.controllers_dict.values():
 			zctrl.set_midi_chan(midi_chan)
 		if midi_chan != None:
-			self.audio_out = ["zynmixer", "zynmixer"]
+			self.audio_out = ["zynmixer:input_%02da"%(midi_chan), "zynmixer:input_%02db"%(midi_chan)]
 			self.zyngui.zynautoconnect_audio()
 
 	def get_midi_chan(self):
@@ -628,12 +628,15 @@ class zynthian_layer:
 
 
 	def toggle_audio_out(self, jackname):
+		print("zynthian_layer::toggle_audio_out jackname:", jackname)
 		if isinstance(jackname, zynthian_layer):
 			jackname=jackname.get_audio_jackname()
 
 		if jackname not in self.audio_out:
+			print("toggle_audio_out adding %s to %s"%(jackname, self.audio_out))
 			self.audio_out.append(jackname)
 		else:
+			print("toggle_audio_out removing %s from %s"%(jackname, self.audio_out))
 			self.audio_out.remove(jackname)
 
 		self.zyngui.zynautoconnect_audio()
@@ -641,6 +644,8 @@ class zynthian_layer:
 
 	def reset_audio_out(self):
 		self.audio_out=["system:playback_1", "system:playback_2"]
+		if midi_chan != None:
+			self.audio_out = ["zynmixer:input_%02da"%(midi_chan), "zynmixer:input_%02db"%(midi_chan)]
 		self.zyngui.zynautoconnect_audio()
 
 

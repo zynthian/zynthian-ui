@@ -24,6 +24,7 @@
 #******************************************************************************
 
 import sys
+import time
 import logging
 import tkinter
 from tkinter import font as tkFont
@@ -37,6 +38,14 @@ from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 #------------------------------------------------------------------------------
 
 class zynthian_gui_base:
+
+	#Default buttonbar config (touchwidget)
+	buttonbar_config = [
+		(1, 'BACK'),
+		(0, 'LAYER'),
+		(2, 'LEARN'),
+		(3, 'SELECT')
+	]
 
 	def __init__(self):
 		self.shown = False
@@ -102,6 +111,69 @@ class zynthian_gui_base:
 
 		# Configure Topbar's Frame column widths
 		#self.tb_frame.grid_columnconfigure(0, minsize=self.path_canvas_width)
+
+		self.button_push_ts = 0
+
+
+	def init_buttonbar(self):
+		# Touchbar frame
+		if not zynthian_gui_config.enable_touch_widgets:
+			return
+
+		self.buttonbar_frame = tkinter.Frame(self.main_frame,
+			width=zynthian_gui_config.display_width,
+			height=zynthian_gui_config.buttonbar_height,
+			bg=zynthian_gui_config.color_bg)
+		self.buttonbar_frame.grid(row=3, column=0, columnspan=3, padx=(0,0), pady=(2,0))
+		self.buttonbar_frame.grid_propagate(False)
+		self.buttonbar_frame.grid_rowconfigure(
+			0, minsize=zynthian_gui_config.buttonbar_height, pad=0)
+		for i in range(4):
+			self.buttonbar_frame.grid_columnconfigure(
+				i, minsize=zynthian_gui_config.button_width, pad=0)
+			self.add_button(i, self.buttonbar_config[i][0], self.buttonbar_config[i][1])
+
+
+	def add_button(self, column, index, label):
+		select_button = tkinter.Button(
+			self.buttonbar_frame,
+			bg=zynthian_gui_config.color_panel_bg,
+			fg=zynthian_gui_config.color_header_tx,
+			activebackground=zynthian_gui_config.color_panel_bg,
+			activeforeground=zynthian_gui_config.color_header_tx,
+			highlightbackground=zynthian_gui_config.color_bg,
+			highlightcolor=zynthian_gui_config.color_bg,
+			highlightthickness=0,
+			bd=0,
+			relief='flat',
+			font=zynthian_gui_config.font_buttonbar,
+			text=label)
+		if column==0:
+			padx = (0,1)
+		elif column==3:
+			padx = (1,0)
+		else:
+			padx = (1,1)
+		select_button.grid(row=0, column=column, sticky='nswe', padx=padx)
+		select_button.bind('<ButtonPress-1>', lambda e: self.button_down(index, e))
+		select_button.bind('<ButtonRelease-1>', lambda e: self.button_up(index, e))
+
+
+	def button_down(self, index, event):
+		self.button_push_ts=time.monotonic()
+
+
+	def button_up(self, index, event):
+		t = 'S'
+		if self.button_push_ts:
+			dts=(time.monotonic()-self.button_push_ts)
+			if dts<0.3:
+				t = 'S'
+			elif dts>=0.3 and dts<2:
+				t = 'B'
+			elif dts>=2:
+				t = 'L'
+		self.zyngui.zynswitch_defered(t,index)
 
 
 	def show(self):

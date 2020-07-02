@@ -256,20 +256,6 @@ except:
 # UI Geometric Parameters
 #------------------------------------------------------------------------------
 
-# Screen Size => Autodetect if None
-if os.environ.get('DISPLAY_WIDTH'):
-	display_width=int(os.environ.get('DISPLAY_WIDTH'))
-	ctrl_width=int(display_width/4)
-else:
-	display_width=None
-
-if os.environ.get('DISPLAY_HEIGHT'):
-	display_height=int(os.environ.get('DISPLAY_HEIGHT'))
-	topbar_height=int(display_height/10)
-	ctrl_height=int((display_height-topbar_height)/2)
-else:
-	display_height=None
-
 # Controller Positions
 ctrl_pos=[
 	(1,0,"nw"),
@@ -459,22 +445,31 @@ try:
 
 	top = tkinter.Tk()
 
-	# Try to autodetect screen size if not configured
-	try:
-		if not display_width:
+	# Screen Size => Autodetect if None
+	if os.environ.get('DISPLAY_WIDTH'):
+		display_width=int(os.environ.get('DISPLAY_WIDTH'))
+	else:
+		try:
 			display_width = top.winfo_screenwidth()
-			ctrl_width = int(display_width/4)
-		if not display_height:
+		except:
+			logging.warning("Can't get screen width. Using default 320!")
+			display_width=320
+
+	if os.environ.get('DISPLAY_HEIGHT'):
+		display_height=int(os.environ.get('DISPLAY_HEIGHT'))
+	else:
+		try:
 			display_height = top.winfo_screenheight()
-			topbar_height = int(display_height/10)
-			ctrl_height = int((display_height-topbar_height)/2)
-	except:
-		logging.warning("Can't get screen size. Using default 320x240!")
-		display_width = 320
-		display_height = 240
-		topbar_height = int(display_height/10)
-		ctrl_width = int(display_width/4)
-		ctrl_height = int((display_height-topbar_height)/2)
+		except:
+			logging.warning("Can't get screen height. Using default 240!")
+			display_height=240
+
+	ctrl_width = display_width//4
+	button_width = display_width//4
+	topbar_height = display_height//10
+	buttonbar_height = enable_touch_widgets and display_height//7 or 0
+	body_height = display_height-topbar_height-buttonbar_height
+	ctrl_height = body_height//2
 
 	# Adjust font size, if not defined
 	if not font_size:
@@ -496,8 +491,9 @@ try:
 	#------------------------------------------------------------------------------
 
 	# Fonts
-	font_listbox=(font_family,int(1.0*font_size))
-	font_topbar=(font_family,int(1.1*font_size))
+	font_listbox = (font_family,int(1.0*font_size))
+	font_topbar = (font_family,int(1.1*font_size))
+	font_buttonbar = (font_family,int(0.8*font_size))
 
 	# Loading Logo Animation
 	loading_imgs=[]
@@ -518,8 +514,8 @@ try:
 	#for i in range(13):
 	#	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
 
-except:
-	logging.warning("No Display!")
+except Exception as e:
+	logging.error("Failed to configure geometry => {}".format(e))
 
 #------------------------------------------------------------------------------
 # Zynthian GUI variable

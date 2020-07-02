@@ -86,7 +86,7 @@ class zynthian_gui_controller:
 		# Create Canvas
 		self.canvas=tkinter.Canvas(self.main_frame,
 			width=self.width,
-			height=self.height-1,
+			height=self.height,
 			bd=0,
 			highlightthickness=0,
 			relief='flat',
@@ -107,8 +107,12 @@ class zynthian_gui_controller:
 	def show(self):
 		#print("SHOW CONTROLLER "+str(self.ctrl)+" => "+str(self.shown))
 		if not self.shown:
+			if self.index%2==0:
+				pady = (0,2)
+			else:
+				pady = (0,0)
+			self.canvas.grid(row=self.row, column=self.col, sticky=self.sticky, pady=pady)
 			self.shown=True
-			self.canvas.grid(row=self.row,column=self.col,sticky=self.sticky)
 			self.plot_value()
 
 
@@ -213,15 +217,20 @@ class zynthian_gui_controller:
 		lx=self.trw-4
 		ly=2*self.trh
 		y2=y1-ly
+
 		if self.max_value>0:
 			x2=x1+lx*self.value_plot/self.max_value
 		else:
 			x2=x1
+
 		if self.rectangle:
 				self.canvas.coords(self.rectangle,(x1, y1, x2, y2))
 		elif self.zctrl.midi_cc!=0:
 			self.rectangle_bg=self.canvas.create_rectangle((x1, y1, x1+lx, y2), fill=zynthian_gui_config.color_ctrl_bg_off, width=0)
 			self.rectangle=self.canvas.create_rectangle((x1, y1, x2, y2), fill=zynthian_gui_config.color_ctrl_bg_on, width=0)
+			self.canvas.tag_lower(self.rectangle_bg)
+			self.canvas.tag_lower(self.rectangle)
+
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=value_print)
 		else:
@@ -246,18 +255,23 @@ class zynthian_gui_controller:
 		self.calculate_plot_values()
 		x1=2
 		y1=int(0.8*self.height)+self.trh
+
 		if self.max_value>0:
 			x2=x1+self.trw*self.value_plot/self.max_value
 			y2=y1-self.trh*self.value_plot/self.max_value
 		else:
 			x2=x1
 			y2=y1
+
 		if self.triangle:
 				#self.canvas.coords(self.triangle_bg,(x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh))
 				self.canvas.coords(self.triangle,(x1, y1, x2, y1, x2, y2))
 		elif self.zctrl.midi_cc!=0:
 			self.triangle_bg=self.canvas.create_polygon((x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh), fill=zynthian_gui_config.color_ctrl_bg_off)
 			self.triangle=self.canvas.create_polygon((x1, y1, x2, y1, x2, y2), fill=zynthian_gui_config.color_ctrl_bg_on)
+			self.canvas.tag_lower(self.triangle_bg)
+			self.canvas.tag_lower(self.triangle)
+
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)
 		else:
@@ -283,15 +297,18 @@ class zynthian_gui_controller:
 		thickness=1.1*zynthian_gui_config.font_size
 		degmax=300
 		deg0=90+degmax/2
+
 		if self.max_value!=0:
 			degd=-degmax*self.value_plot/self.max_value
 		else:
 			degd=0
+
 		if (not self.arc and self.zctrl.midi_cc!=0) or not self.value_text:
-			x1=0.2*self.trw
+			x1=0.18*self.trw
 			y1=self.height-int(0.7*self.trw)-6
-			x2=x1+0.7*self.trw
+			x2=x1+int(0.7*self.trw)
 			y2=self.height-6
+
 		if self.arc:
 			self.canvas.itemconfig(self.arc, extent=degd)
 		elif self.zctrl.midi_cc!=0:
@@ -301,6 +318,8 @@ class zynthian_gui_controller:
 				width=thickness,
 				start=deg0,
 				extent=degd)
+			self.canvas.tag_lower(self.arc)
+
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)
 		else:
@@ -381,16 +400,18 @@ class zynthian_gui_controller:
 		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,fs))
 		#Set title label
 		if not self.label_title:
-			self.label_title = tkinter.Label(self.canvas,
+			self.label_title = self.canvas.create_text(3, 4,
+				anchor=tkinter.NW,
+				justify=tkinter.LEFT,
+				width=maxlen,
 				text=self.title,
 				font=(zynthian_gui_config.font_family,fs),
-				wraplength=self.width-6,
-				justify=tkinter.LEFT,
-				bg=zynthian_gui_config.color_panel_bg,
-				fg=zynthian_gui_config.color_panel_tx)
-			self.label_title.place(x=3, y=4, anchor=tkinter.NW)
+				fill=zynthian_gui_config.color_panel_tx)
 		else:
-			self.label_title.config(text=self.title,font=(zynthian_gui_config.font_family,fs))
+			self.canvas.itemconfigure(self.label_title,
+				width=maxlen,
+				text=self.title,
+				font=(zynthian_gui_config.font_family,fs))
 
 
 	def calculate_value_font_size(self):

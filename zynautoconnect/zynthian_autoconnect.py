@@ -421,7 +421,10 @@ def audio_autoconnect(force=False):
 	logger.info("ZynAutoConnect: Audio ...")
 
 	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
-	input_ports=get_audio_input_ports()
+	input_ports=get_audio_input_ports(True)
+
+	#Get System Playback Ports
+	playback_ports = get_audio_playback_ports()
 
 	#Disconnect Monitor from System Output
 	mon_in=jclient.get_ports("mod-monitor", is_output=True, is_audio=True)
@@ -439,25 +442,56 @@ def audio_autoconnect(force=False):
 		if not layer.get_audio_jackname() or layer.engine.type=="MIDI Tool":
 			continue
 
-		src_ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
-		print("Layer %d is %s with JACK output ports: %s and configured output ports: %s"%(layer_index, layer.engine.name, src_ports, layer.get_audio_out()))
-		if src_ports:
-			#logger.debug("Connecting Engine {} ...".format(layer.get_jackname()))
+		layer_playback = [jn for jn in layer.get_audio_out() if jn.startswith("zynmixer:input_") or jn.startswith("system:playback_")]
+		nlpb = len(layer_playback)
+		print("Layer %s playback %s, playback ports %s"%(layer.engine.name, layer_playback, playback_ports))
 
-			#Connect to assigned ports and disconnect from the rest ...
+		ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
+		print("ports:",ports)
+		if len(ports)>0:
+			#logger.debug("Connecting Layer {} ...".format(layer.get_jackname()))
+			np = min(len(ports), 2)
+			#logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), np))
+
+			#Connect layer to routed playback ports and disconnect from the rest ...
+			print("len(playback_ports):",len(playback_ports))
+			if len(playback_ports)>0:
+				print("Attempt to connect / disconnect")
+				npb = min(nlpb,len(ports))
+				for j, pbp in enumerate(playback_ports):
+					print("Try",pbp.name)
+					if pbp.name in layer_playback:
+						for k, lop in enumerate(ports):
+							if k%npb==j%npb:
+								#logger.debug("Connecting {} to {} ...".format(lop.name, pbp.name))
+								try:
+									print("connect",lop,pbp)
+									jclient.connect(lop, pbp)
+								except:
+									pass
+							else:
+								#logger.debug("Disconnecting {} from {} ...".format(lop.name, pbp.name))
+								try:
+									print("disconnect",lop,pbp)
+									jclient.disconnect(lop, pbp)
+								except:
+									pass
+					else:
+						for lop in ports:
+							#logger.debug("Disconnecting {} from {} ...".format(lop.name, pbp.name))
+							try:
+								print("else disconnect",lop, pbp)
+								jclient.disconnect(lop, pbp)
+							except:
+								pass
+
+			#Connect to routed layer input ports and disconnect from the rest ...
 			for ao in input_ports:
-				if ao.startswith("system:playback_"):
-					dest = [0]
-				elif ao == "zynmixer":
-					dest = [layer.midi_chan * 2, layer.midi_chan * 2 + 1] #TODO: Handle layers without MIDI channel
-				elif len(input_ports[ao]) == 1:
-					dest = [0, 0]
-				else:
-					dest = [0, 1]
-
+				nip = min(len(input_ports[ao]), 2)
+				jrange = list(range(max(np, nip)))
 				if ao in layer.get_audio_out():
-					#logger.debug(" => Connecting to {}".format(ao))
-					for index, src_port in enumerate(src_ports):
+					#logger.debug(" => Connecting to {} : {}".format(ao,jrange))
+					for j in jrange:
 						try:
 							print("Connecting:", src_port, input_ports[ao][dest[index%2]])
 							jclient.connect(src_port, input_ports[ao][dest[index%2]])
@@ -466,9 +500,9 @@ def audio_autoconnect(force=False):
 								jclient.connect(src_port, input_ports[ao][dest[index%2]])
 						except:
 							pass
-
 				else:
-					for index, src_port in enumerate(src_ports):
+					#logger.debug(" => Disconnecting from {} : {}".format(ao,jrange))
+					for j in jrange:
 						try:
 							print("Disconnecting:", src_port, input_ports[ao][dest[0]])
 							jclient.disconnect(src_port, input_ports[ao][dest[0]])
@@ -484,40 +518,8 @@ def audio_autoconnect(force=False):
 	except:
 		pass
 
-	#Setup dpmeter connections if enabled ...
+	# Connect mixer to dpm
 	if not zynthian_gui_config.show_cpu_status:
-#		#Prepare for setup dpmeter connections
-#		dpmeter_out = jclient.get_ports("jackpeak", is_input=True, is_audio=True)
-#		dpmeter_conports_1=jclient.get_all_connections("jackpeak:input_a")
-#		dpmeter_conports_2=jclient.get_all_connections("jackpeak:input_b")
-#		sysout_conports_1 = jclient.get_all_connections("system:playback_1")
-#		sysout_conports_2 = jclient.get_all_connections("system:playback_2")
-
-		#Disconnect ports from dpmeter (those that are not connected to System Out, if any ...)
-#		for cp in dpmeter_conports_1:
-#			if cp not in sysout_conports_1:
-#				try:
-#					jclient.disconnect(cp,dpmeter_out[0])
-#				except:
-#					pass
-#		for cp in dpmeter_conports_2:
-#			if cp not in sysout_conports_2:
-#				try:
-#					jclient.disconnect(cp,dpmeter_out[1])
-#				except:
-#					pass
-#
-#		#Connect ports to dpmeter (those currently connected to System Out)
-#		for cp in sysout_conports_1:
-#			try:
-#				jclient.connect(cp,dpmeter_out[0])
-#			except:
-#				pass
-#		for cp in sysout_conports_2:
-#			try:
-#				jclient.connect(cp,dpmeter_out[1])
-#			except:
-#				pass
 		try:
 			jclient.connect('zynmixer:output_a', 'jackpeak:input_a')
 			jclient.connect('zynmixer:output_b', 'jackpeak:input_b')
@@ -540,11 +542,9 @@ def audio_autoconnect(force=False):
 				nsc = min(len(rl.get_audio_in()),len(rl_in))
 	
 				#Connect System Capture to Root Layer ports
-				j = 0
-				for scp in capture_ports:
+				for j, scp in enumerate(capture_ports):
 					if scp.name in rl.get_audio_in():
-						k = 0
-						for rl_inp in rl_in:
+						for k, rl_inp in enumerate(rl_in):
 							if k%nsc==j%nsc:
 								#logger.debug("Connecting {} to {} ...".format(scp.name, layer.get_audio_jackname()))
 								try:
@@ -556,9 +556,8 @@ def audio_autoconnect(force=False):
 									jclient.disconnect(scp, rl_inp)
 								except:
 									pass
-							k += 1
 							# Limit to 2 input ports 
-							#if k>1:
+							#if k>=1:
 							#	break
 
 					else:
@@ -567,7 +566,6 @@ def audio_autoconnect(force=False):
 								jclient.disconnect(scp, rl_inp)
 							except:
 								pass
-					j += 1
 
 		if zynthian_gui_config.midi_aubionotes_enabled:
 			#Get Aubio Input ports ...
@@ -599,19 +597,27 @@ def audio_disconnect_sysout():
 
 
 def get_audio_capture_ports():
-	return jclient.get_ports(is_output=True, is_audio=True, is_physical=True)
+	return jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
 
 
-def get_audio_input_ports():
+def get_audio_playback_ports():
+	ports = jclient.get_ports("zynmixer", is_input=True, is_audio=True, is_physical=False)
+	return ports + jclient.get_ports("system", is_input=True, is_audio=True, is_physical=True)
+
+
+def get_audio_input_ports(exclude_system_playback=False):
 	res=OrderedDict()
 	try:
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
 			parts=aip.name.split(':')
 			client_name=parts[0]
-			if client_name[:7]=="effect_" or client_name=="jack_capture" or client_name=="jackpeak":
+			if client_name=="jack_capture" or client_name=="jackpeak" or client_name[:7]=="effect_":
 				continue
-			if client_name=="system":
-				client_name = aip.name
+			if client_name=="system" or client_name=="zynmixer":
+				if exclude_system_playback:
+					continue
+				else:
+					client_name = aip.name
 			if client_name not in res:
 				res[client_name]=[aip]
 				#logger.debug("AUDIO INPUT PORT: {}".format(client_name))
