@@ -439,40 +439,35 @@ def audio_autoconnect(force=False):
 
 	#Connect Synth Engines to assigned outputs
 	for layer_index, layer in enumerate(layers_list):
+		print("Iterating layers",layer_index, layer.engine.name)
 		if not layer.get_audio_jackname() or layer.engine.type=="MIDI Tool":
 			continue
 
 		layer_playback = [jn for jn in layer.get_audio_out() if jn.startswith("zynmixer:input_") or jn.startswith("system:playback_")]
 		nlpb = len(layer_playback)
-		print("Layer %s playback %s, playback ports %s"%(layer.engine.name, layer_playback, playback_ports))
-
+		
 		ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
-		print("ports:",ports)
+		print("zynthian_autoconnect: layer: %s layer audio targets: %s"%(layer.engine.name, layer.get_audio_out()), ports)
 		if len(ports)>0:
 			#logger.debug("Connecting Layer {} ...".format(layer.get_jackname()))
 			np = min(len(ports), 2)
 			#logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), np))
 
 			#Connect layer to routed playback ports and disconnect from the rest ...
-			print("len(playback_ports):",len(playback_ports))
 			if len(playback_ports)>0:
-				print("Attempt to connect / disconnect")
 				npb = min(nlpb,len(ports))
 				for j, pbp in enumerate(playback_ports):
-					print("Try",pbp.name)
 					if pbp.name in layer_playback:
 						for k, lop in enumerate(ports):
 							if k%npb==j%npb:
 								#logger.debug("Connecting {} to {} ...".format(lop.name, pbp.name))
 								try:
-									print("connect",lop,pbp)
 									jclient.connect(lop, pbp)
 								except:
 									pass
 							else:
 								#logger.debug("Disconnecting {} from {} ...".format(lop.name, pbp.name))
 								try:
-									print("disconnect",lop,pbp)
 									jclient.disconnect(lop, pbp)
 								except:
 									pass
@@ -480,7 +475,6 @@ def audio_autoconnect(force=False):
 						for lop in ports:
 							#logger.debug("Disconnecting {} from {} ...".format(lop.name, pbp.name))
 							try:
-								print("else disconnect",lop, pbp)
 								jclient.disconnect(lop, pbp)
 							except:
 								pass
@@ -493,10 +487,8 @@ def audio_autoconnect(force=False):
 					#logger.debug(" => Connecting to {} : {}".format(ao,jrange))
 					for j in jrange:
 						try:
-							print("Connecting:", src_port, input_ports[ao][dest[index%2]])
 							jclient.connect(src_port, input_ports[ao][dest[index%2]])
 							if(len(src_ports) == 1):
-								print("Connecting:", src_port, input_ports[ao][dest[index%2]])
 								jclient.connect(src_port, input_ports[ao][dest[index%2]])
 						except:
 							pass
@@ -504,9 +496,7 @@ def audio_autoconnect(force=False):
 					#logger.debug(" => Disconnecting from {} : {}".format(ao,jrange))
 					for j in jrange:
 						try:
-							print("Disconnecting:", src_port, input_ports[ao][dest[0]])
 							jclient.disconnect(src_port, input_ports[ao][dest[0]])
-							print("Disconnecting:", src_port, input_ports[ao][dest[0]])
 							jclient.disconnect(src_port, input_ports[ao][dest[1]])
 						except:
 							pass

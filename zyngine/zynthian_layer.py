@@ -628,15 +628,12 @@ class zynthian_layer:
 
 
 	def toggle_audio_out(self, jackname):
-		print("zynthian_layer::toggle_audio_out jackname:", jackname)
 		if isinstance(jackname, zynthian_layer):
 			jackname=jackname.get_audio_jackname()
 
 		if jackname not in self.audio_out:
-			print("toggle_audio_out adding %s to %s"%(jackname, self.audio_out))
 			self.audio_out.append(jackname)
 		else:
-			print("toggle_audio_out removing %s from %s"%(jackname, self.audio_out))
 			self.audio_out.remove(jackname)
 
 		self.zyngui.zynautoconnect_audio()
