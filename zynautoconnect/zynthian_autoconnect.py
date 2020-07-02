@@ -487,17 +487,14 @@ def audio_autoconnect(force=False):
 					#logger.debug(" => Connecting to {} : {}".format(ao,jrange))
 					for j in jrange:
 						try:
-							jclient.connect(src_port, input_ports[ao][dest[index%2]])
-							if(len(src_ports) == 1):
-								jclient.connect(src_port, input_ports[ao][dest[index%2]])
+							jclient.connect(ports[j%np],input_ports[ao][j%nip])
 						except:
 							pass
 				else:
 					#logger.debug(" => Disconnecting from {} : {}".format(ao,jrange))
 					for j in jrange:
 						try:
-							jclient.disconnect(src_port, input_ports[ao][dest[0]])
-							jclient.disconnect(src_port, input_ports[ao][dest[1]])
+							jclient.disconnect(ports[j%np],input_ports[ao][j%nip])
 						except:
 							pass
 
