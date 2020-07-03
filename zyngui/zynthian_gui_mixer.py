@@ -55,7 +55,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
-		self.height=zynthian_gui_config.body_height # zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
+		self.height=zynthian_gui_config.body_height
 
 		self.fader_width = (self.width - 6 ) / 17
 		self.legend_height = self.height * 0.05
@@ -87,6 +87,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Topbar title
 		self.title_canvas = tkinter.Canvas(self.tb_frame,
+			width=zynthian_gui_config.display_width-self.status_l-self.status_lpad-2,
 #			width=self.path_canvas_width,
 			height=zynthian_gui_config.topbar_height,
 			bd=0,
@@ -94,6 +95,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
 		self.title_canvas.grid(row=0, column=0, sticky="ewns")
+		self.title_canvas.create_text(1, zynthian_gui_config.topbar_height / 2,
+			font=zynthian_gui_config.font_topbar,
+			text="Audio Mixer",
+			fill=zynthian_gui_config.color_header_tx,
+			anchor="w")
 
 		# Fader Canvas
 		self.main_canvas = tkinter.Canvas(self.main_frame,
@@ -501,7 +507,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT switch
 	# mode: Switch mode ('S'|'B'|'L')
 	def switch_select(self, mode):
-		zynmixer.toggle_mute(self.selected_channel)
+		if mode == 'S':
+			zynmixer.toggle_mute(self.selected_channel)
+		elif mode == 'B':
+			self.set_edit_mode()
 
 
 	# Function to refresh screen
