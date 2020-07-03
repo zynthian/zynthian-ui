@@ -55,7 +55,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
-		self.height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
+		self.height=zynthian_gui_config.body_height # zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
 
 		self.fader_width = (self.width - 6 ) / 17
 		self.legend_height = self.height * 0.05
@@ -75,6 +75,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.balances_left = [None] * 17
 		self.balances_right = [None] * 17
 		self.selected_channel = 0
+		self.selected_layer = None
 		self.mutes = [None] * 17
 		self.edit_buttons = [None] * 17
 
@@ -83,6 +84,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.edit_channel = None
 		self.mode = 1 # 1:Mixer, 0:Edit
 
+
+		# Topbar title
+		self.title_canvas = tkinter.Canvas(self.tb_frame,
+#			width=self.path_canvas_width,
+			height=zynthian_gui_config.topbar_height,
+			bd=0,
+			highlightthickness=0,
+			relief='flat',
+			bg = zynthian_gui_config.color_bg)
+		self.title_canvas.grid(row=0, column=0, sticky="ewns")
+
 		# Fader Canvas
 		self.main_canvas = tkinter.Canvas(self.main_frame,
 			height=self.height,
@@ -90,7 +102,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			bd=0, highlightthickness=0,
 			bg = zynthian_gui_config.color_panel_bg)
 		self.main_canvas.grid()
-
 
 		# Draw channel strips
 		offset = 1
@@ -147,6 +158,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Selection border
 		self.selection_border = self.main_canvas.create_rectangle(1, 1, self.fader_width, self.height, width=2, outline=zynthian_gui_config.color_on)
 
+		# Init touchbar
+		self.init_buttonbar()
+
 	# Function to set fader values
 	#	fader: Index of fader
 	#	value: Fader value (0..1)
@@ -160,6 +174,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to draw channel strip
 	#	channel: index of channel
 	def draw_channel(self, channel):
+#		if channel < 16 and zynmixer.is_channel_routed(channel) == 0:
+#			self.main_canvas.itemconfig('Channel:%d'%channel, state='hidden')
+#			return
+#		else:
+#			self.main_canvas.itemconfig('Channel:%d'%channel, state='normal')
 		if self.edit_channel == None:
 			# Mixer mode so show channel in its mixer position
 			if channel > 15:
@@ -220,11 +239,31 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to select channel
 	# channel: Idex of channel to select
 	def select_channel(self, channel):
-		if channel > 16 or channel < 0:
+		if channel > 16 or channel < 0 or channel == self.selected_channel:
 			return
+#		Skip channels with nothing routed
+#		dir = 1
+#		end = 17
+#		if channel < self.selected_channel:
+#			dir = -1
+#			end = -1
+#		for ch in range(channel, end, dir):
+#			if zynmixer.is_channel_routed(ch) != 0:
+#				self.selected_channel = ch
+#				break
+#		if ch > 15:
+#			self.selected_channel = 16
 		self.selected_channel = channel
 		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, self.selected_channel, 0)
-		self.highlight_channel(channel)
+		self.highlight_channel(self.selected_channel)
+
+		self.selected_layer = None
+		layers_list=zynthian_gui_config.zyngui.screens['layer'].layers
+		for layer in layers_list:
+			if layer.midi_chan == self.selected_channel:
+				self.selected_layer = layer
+				break
+
 
 	# Function to handle fader press
 	#	event: Mouse event
@@ -297,55 +336,54 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		zynmixer.toggle_mute(self.selected_channel)
 
 
-	# Function to toggle edit / mixer mode
-	#	channel: Index of channel to edit or None to show mixer
-	def set_mode(self, channel):
+	# Function change to edit mode
+	def set_edit_mode(self):
 		layers_list=zynthian_gui_config.zyngui.screens['layer'].layers
-		if channel != None:
-			# Change to edit mode
-			layer = None
-			for l in layers_list:
-				if l.midi_chan == channel:
-					layer = l
-					break
-			if layer == None:
-				return #TODO: Handle master channel
-			self.mode = 0
-			self.edit_channel = channel
-			self.main_canvas.itemconfig('mixer', state='hidden')
-			self.main_canvas.itemconfig('mutes', state='hidden')
-			self.main_canvas.itemconfig(self.selection_border, state='hidden')
-			self.main_canvas.coords('Fader:%d'%(channel), 1, self.fader_top, self.fader_width, self.fader_bottom)
-			self.main_canvas.coords('Legend:%d'%(channel), 1 + self.fader_width / 2, self.height - self.legend_height - 2)
-			self.main_canvas.coords('Channel_id:%d'%(channel), 1 + self.fader_width / 2, self.height - self.legend_height / 2)
-			self.draw_channel(channel)
-			self.main_canvas.itemconfig('Channel:%d'%(channel), state='normal')
-			self.main_canvas.itemconfig('edit_control', state='normal')
-			self.main_canvas.tag_unbind('edit_button', '<ButtonPress-1>')
-			self.main_canvas.tag_unbind('edit_button', '<ButtonRelease-1>')
-			self.main_canvas.tag_bind(self.edit_buttons[0], '<ButtonPress-1>', self.on_edit_release)
-			self.main_canvas.tag_bind(self.edit_buttons[1], '<ButtonPress-1>', self.on_mute_release)
-			self.main_canvas.tag_bind(self.edit_buttons[2], '<ButtonPress-1>', self.on_layer_release)
-			self.main_canvas.tag_bind(self.edit_buttons[3], '<ButtonPress-1>', self.on_cancel_press)
-			self.selected_channel = channel
-		else:
-			# Change to mixer mode
-			self.mode = 1
-			self.edit_channel = None
-			self.main_canvas.itemconfig('edit_control', state='hidden')
-			self.main_canvas.coords(self.legends[self.selected_channel], 1 + self.fader_width * (self.selected_channel + 0.5), self.height - self.legend_height - 2)
-			self.main_canvas.coords('Fader:%d'%(self.selected_channel), 1 + self.fader_width * self.selected_channel, self.fader_top, 1 + self.fader_width * self.selected_channel + self.fader_width - 1, self.fader_bottom)
-			self.main_canvas.coords('Legend:%d'%(self.selected_channel), 1 + self.fader_width * (self.selected_channel + 0.5), self.height - self.legend_height - 2)
-			self.main_canvas.coords('Channel_id:%d'%(self.selected_channel), self.fader_width * (self.selected_channel + 0.5), self.height - self.legend_height / 2)
-			self.draw_channel(self.selected_channel)
-			self.main_canvas.itemconfig('mixer', state='normal')
-			self.main_canvas.itemconfig(self.selection_border, state='normal')
-			self.main_canvas.tag_lower('background')
-			for button in self.edit_buttons:
-				# Because we bind to the index (not the tag) we must unbind the index for each button
-				self.main_canvas.tag_unbind(button, '<ButtonPress-1>')
-			self.main_canvas.tag_bind('edit_button', '<ButtonPress-1>', self.on_edit_press)
-			self.main_canvas.tag_bind('edit_button', '<ButtonRelease-1>', self.on_edit_release)
+		# Change to edit mode
+		layer = None
+		for l in layers_list:
+			if l.midi_chan == self.selected_channel:
+				layer = l
+				break
+		if self.selected_channel < 16 and layer == None:
+			return
+		self.mode = 0
+		self.edit_channel = self.selected_channel
+		self.main_canvas.itemconfig('mixer', state='hidden')
+		self.main_canvas.itemconfig('mutes', state='hidden')
+		self.main_canvas.itemconfig(self.selection_border, state='hidden')
+		self.main_canvas.coords('Fader:%d'%(self.selected_channel), 1, self.fader_top, self.fader_width, self.fader_bottom)
+		self.main_canvas.coords('Legend:%d'%(self.selected_channel), 1 + self.fader_width / 2, self.height - self.legend_height - 2)
+		self.main_canvas.coords('Channel_id:%d'%(self.selected_channel), 1 + self.fader_width / 2, self.height - self.legend_height / 2)
+		self.draw_channel(self.selected_channel)
+		self.main_canvas.itemconfig('Channel:%d'%(self.selected_channel), state='normal')
+		self.main_canvas.itemconfig('edit_control', state='normal')
+		self.main_canvas.tag_unbind('edit_button', '<ButtonPress-1>')
+		self.main_canvas.tag_unbind('edit_button', '<ButtonRelease-1>')
+		self.main_canvas.tag_bind(self.edit_buttons[0], '<ButtonPress-1>', self.on_edit_release)
+		self.main_canvas.tag_bind(self.edit_buttons[1], '<ButtonPress-1>', self.on_mute_release)
+		self.main_canvas.tag_bind(self.edit_buttons[2], '<ButtonPress-1>', self.on_layer_release)
+		self.main_canvas.tag_bind(self.edit_buttons[3], '<ButtonPress-1>', self.on_cancel_press)
+
+
+	# Function change to mixer mode
+	def set_mixer_mode(self):
+		self.mode = 1
+		self.edit_channel = None
+		self.main_canvas.itemconfig('edit_control', state='hidden')
+		self.main_canvas.coords(self.legends[self.selected_channel], 1 + self.fader_width * (self.selected_channel + 0.5), self.height - self.legend_height - 2)
+		self.main_canvas.coords('Fader:%d'%(self.selected_channel), 1 + self.fader_width * self.selected_channel, self.fader_top, 1 + self.fader_width * self.selected_channel + self.fader_width - 1, self.fader_bottom)
+		self.main_canvas.coords('Legend:%d'%(self.selected_channel), 1 + self.fader_width * (self.selected_channel + 0.5), self.height - self.legend_height - 2)
+		self.main_canvas.coords('Channel_id:%d'%(self.selected_channel), self.fader_width * (self.selected_channel + 0.5), self.height - self.legend_height / 2)
+		self.draw_channel(self.selected_channel)
+		self.main_canvas.itemconfig('mixer', state='normal')
+		self.main_canvas.itemconfig(self.selection_border, state='normal')
+		self.main_canvas.tag_lower('background')
+		for button in self.edit_buttons:
+			# Because we bind to the index (not the tag) we must unbind the index for each button
+			self.main_canvas.tag_unbind(button, '<ButtonPress-1>')
+		self.main_canvas.tag_bind('edit_button', '<ButtonPress-1>', self.on_edit_press)
+		self.main_canvas.tag_bind('edit_button', '<ButtonRelease-1>', self.on_edit_release)
 
 
 	# Function to handle mute button release
@@ -357,13 +395,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle layer button release
 	#	event: Mouse event
 	def on_layer_release(self, event):
-		self.zyngui.show_screen('layer') #TODO: Show relevant layer control screen
+#		self.zyngui.show_screen('layer') #TODO: Show relevant layer control screen
+		self.zyngui.layer_control(self.selected_layer)
 
 
 	# Function to handle cancel edit button release
 	#	event: Mouse event
 	def on_cancel_press(self, event):
-		self.set_mode(None)
+		self.set_mixer_mode()
 
 
 	def show(self):
@@ -373,7 +412,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		for layer in layers_list:
 			self.main_canvas.itemconfig(self.legends[layer.midi_chan], text="%s - %s"%(layer.engine.name, layer.preset_name), state='normal')
 		super().show()
-		self.set_mode(None)
+		self.set_mixer_mode()
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_BACK, zynthian_gui_config.zyncoder_pin_a[ENC_BACK], zynthian_gui_config.zyncoder_pin_b[ENC_BACK], 0, 0, None, self.selected_channel, 16, 0)
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_SELECT, zynthian_gui_config.zyncoder_pin_a[ENC_SELECT], zynthian_gui_config.zyncoder_pin_b[ENC_SELECT], 0, 0, None, 64, 127, 0)
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_SNAPSHOT, zynthian_gui_config.zyncoder_pin_a[ENC_SNAPSHOT], zynthian_gui_config.zyncoder_pin_b[ENC_SNAPSHOT], 0, 0, None, 64, 127, 0)
@@ -476,5 +515,5 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.draw_channel(self.selected_channel)
 			if self.press_time and (monotonic() - self.press_time) > 0.4:
 				self.press_time = None
-				self.set_mode(self.selected_channel)
+				self.set_edit_mode()
 

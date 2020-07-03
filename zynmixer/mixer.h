@@ -82,3 +82,9 @@ int getMute(int channel);
 *   @param  channel Index of channel
 */
 void toggleMute(int channel);
+
+/** @brief  Check if channel has source routed
+*   @param  channel Index of channel
+*   @retval int 1 if channel has source routed. 0 if no source routed to channel.
+*/
+int isChannelRouted(int channel);

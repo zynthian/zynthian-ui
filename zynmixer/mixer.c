@@ -131,13 +131,13 @@ int init()
 		g_dynamic[nPort].reqbalance = 0.0;
 		g_dynamic[nPort].mute = 0;
 		char sName[10];
-		sprintf(sName, "input_%02da", nPort + 1);
+		sprintf(sName, "input_%02da", nPort);
 		if (!(g_pInputPort[nPort * 2] = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
 		{
 			fprintf(stderr, "libzynmixer cannot register %s\n", sName);
 			exit(1);
 		}
-		sprintf(sName, "input_%02db", nPort + 1);
+		sprintf(sName, "input_%02db", nPort);
 		if (!(g_pInputPort[nPort * 2 + 1] = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
 		{
 			fprintf(stderr, "libzynmixer cannot register %s\n", sName);
@@ -172,7 +172,7 @@ int init()
 	// Register the cleanup function to be called when program exits
 	//atexit(end);
 
-	// Register the callback to calculate peak sample
+	// Register the callback to perform audio mixing
 	jack_set_process_callback(g_pJackClient, onJackProcess, 0);
 
 	if(jack_activate(g_pJackClient)) {
@@ -250,4 +250,11 @@ void toggleMute(int channel)
 		setMute(channel, 0);
 	else
 		setMute(channel, 1);
+}
+
+int isChannelRouted(int channel)
+{
+	if(channel >= MAX_CHANNELS)
+		return 0;
+	return (jack_port_connected(g_pInputPort[channel * 2]) > 0 && (jack_port_connected(g_pInputPort[channel * 2]) > 0));
 }
