@@ -71,12 +71,19 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		g_master.balance += fDiff / 10;
 	else
 		g_master.balance = g_master.reqbalance;
+	
+	float fMasterFactorA = g_master.level;
+	float fMasterFactorB = g_master.level;
+	if(g_master.balance > 0.0)
+		fMasterFactorA = g_master.level * (1 - g_master.balance);
+	if(g_master.balance < 0.0)
+		fMasterFactorB = g_master.level * (1 + g_master.balance);
 
 	unsigned int i,j;
 	for(j = 0; j < MAX_CHANNELS; j++)
 	{
-		float fFactorA = g_master.level * g_dynamic[j].level;
-		float fFactorB = g_master.level * g_dynamic[j].level;
+		float fFactorA = fMasterFactorA * g_dynamic[j].level;
+		float fFactorB = fMasterFactorB * g_dynamic[j].level;
 		if(g_dynamic[j].balance > 0.0)
 			fFactorA *= (1 - g_dynamic[j].balance);
 		if(g_dynamic[j].balance < 0.0)
