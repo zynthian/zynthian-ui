@@ -243,6 +243,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.index=len(self.layers)-4
 			self.layer_control()
 
+		elif eng.nickname == 'VCV':
+			self.add_layer_midich(None)
+
 		elif midi_chan is None:
 			self.replace_layer_index=None
 			self.zyngui.screens['midi_chan'].set_mode("ADD", 0, self.get_free_midi_chans())
