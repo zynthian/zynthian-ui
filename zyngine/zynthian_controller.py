@@ -50,6 +50,7 @@ class zynthian_controller:
 		self.ticks=None
 		self.is_toggle=False
 		self.is_integer=True
+		self.is_logarithmic=False
 
 		self.midi_chan=None
 		self.midi_cc=None
@@ -90,6 +91,8 @@ class zynthian_controller:
 			self.is_toggle=options['is_toggle']
 		if 'is_integer' in options:
 			self.is_integer=options['is_integer']
+		if 'is_logarithmic' in options:
+			self.is_logarithmic=options['is_logarithmic']
 		if 'midi_chan' in options:
 			self.midi_chan=options['midi_chan']
 		if 'midi_cc' in options:
@@ -160,6 +163,7 @@ class zynthian_controller:
 		self.value = val
 		self.is_toggle = False
 		self.is_integer = True
+		self.is_logarithmic = False
 
 		# Numeric
 		if isinstance(maxval,int):

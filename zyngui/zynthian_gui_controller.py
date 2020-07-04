@@ -24,10 +24,11 @@
 #******************************************************************************
 
 import sys
-import logging
+import math
 import liblo
-import tkinter
 import ctypes
+import tkinter
+import logging
 from time import sleep
 from string import Template
 from datetime import datetime
@@ -56,6 +57,7 @@ class zynthian_gui_controller:
 		self.max_value=127
 		self.inverted=False
 		self.selmode = False
+		self.logarithmic = False
 		self.step=1
 		self.mult=1
 		self.val0=0
@@ -84,7 +86,7 @@ class zynthian_gui_controller:
 		# Create Canvas
 		self.canvas=tkinter.Canvas(self.main_frame,
 			width=self.width,
-			height=self.height-1,
+			height=self.height,
 			bd=0,
 			highlightthickness=0,
 			relief='flat',
@@ -105,8 +107,12 @@ class zynthian_gui_controller:
 	def show(self):
 		#print("SHOW CONTROLLER "+str(self.ctrl)+" => "+str(self.shown))
 		if not self.shown:
+			if self.index%2==0:
+				pady = (0,2)
+			else:
+				pady = (0,0)
+			self.canvas.grid(row=self.row, column=self.col, sticky=self.sticky, pady=pady)
 			self.shown=True
-			self.canvas.grid(row=self.row,column=self.col,sticky=self.sticky)
 			self.plot_value()
 
 
@@ -140,12 +146,11 @@ class zynthian_gui_controller:
 
 		if self.zctrl.labels:
 			valplot=None
+			val=self.value
 
 			#DIRTY HACK => It should be improved!! 
-			if self.zctrl.value_min<0:
-				val=self.zctrl.value_min+self.value
-			else:
-				val=self.value
+			#if self.zctrl.value_min<0:
+			#	val=self.zctrl.value_min+self.value
 
 			try:
 				if self.zctrl.ticks:
@@ -186,16 +191,19 @@ class zynthian_gui_controller:
 		else:
 			self.value_plot=self.value
 			if self.zctrl.midi_cc==0:
-				val=self.val0+self.value
+				val = self.val0+self.value
 				self.zctrl.set_value(val)
-				self.value_print=str(val)
+				self.value_print = str(val)
 			else:
-				val=self.zctrl.value_min+self.value*self.scale_value
-				self.zctrl.set_value(val)
-				if self.format_print:
-					self.value_print=self.format_print.format(val)
+				if self.logarithmic:
+					val = self.zctrl.value_min*pow(self.scale_value, self.value/self.n_values)
 				else:
-					self.value_print=str(int(val))
+					val = self.zctrl.value_min+self.value*self.scale_value
+				self.zctrl.set_value(val)
+				if self.format_print and val<1000 and val>-1000:
+					self.value_print = self.format_print.format(val)
+				else:
+					self.value_print = str(int(val))
 
 		#print("VALUE: %s" % self.value)
 		#print("VALUE PLOT: %s" % self.value_plot)
@@ -209,15 +217,20 @@ class zynthian_gui_controller:
 		lx=self.trw-4
 		ly=2*self.trh
 		y2=y1-ly
+
 		if self.max_value>0:
 			x2=x1+lx*self.value_plot/self.max_value
 		else:
 			x2=x1
+
 		if self.rectangle:
 				self.canvas.coords(self.rectangle,(x1, y1, x2, y2))
 		elif self.zctrl.midi_cc!=0:
 			self.rectangle_bg=self.canvas.create_rectangle((x1, y1, x1+lx, y2), fill=zynthian_gui_config.color_ctrl_bg_off, width=0)
 			self.rectangle=self.canvas.create_rectangle((x1, y1, x2, y2), fill=zynthian_gui_config.color_ctrl_bg_on, width=0)
+			self.canvas.tag_lower(self.rectangle_bg)
+			self.canvas.tag_lower(self.rectangle)
+
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=value_print)
 		else:
@@ -242,18 +255,23 @@ class zynthian_gui_controller:
 		self.calculate_plot_values()
 		x1=2
 		y1=int(0.8*self.height)+self.trh
+
 		if self.max_value>0:
 			x2=x1+self.trw*self.value_plot/self.max_value
 			y2=y1-self.trh*self.value_plot/self.max_value
 		else:
 			x2=x1
 			y2=y1
+
 		if self.triangle:
 				#self.canvas.coords(self.triangle_bg,(x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh))
 				self.canvas.coords(self.triangle,(x1, y1, x2, y1, x2, y2))
 		elif self.zctrl.midi_cc!=0:
 			self.triangle_bg=self.canvas.create_polygon((x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh), fill=zynthian_gui_config.color_ctrl_bg_off)
 			self.triangle=self.canvas.create_polygon((x1, y1, x2, y1, x2, y2), fill=zynthian_gui_config.color_ctrl_bg_on)
+			self.canvas.tag_lower(self.triangle_bg)
+			self.canvas.tag_lower(self.triangle)
+
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)
 		else:
@@ -279,15 +297,18 @@ class zynthian_gui_controller:
 		thickness=1.1*zynthian_gui_config.font_size
 		degmax=300
 		deg0=90+degmax/2
+
 		if self.max_value!=0:
 			degd=-degmax*self.value_plot/self.max_value
 		else:
 			degd=0
+
 		if (not self.arc and self.zctrl.midi_cc!=0) or not self.value_text:
-			x1=0.2*self.trw
+			x1=0.18*self.trw
 			y1=self.height-int(0.7*self.trw)-6
-			x2=x1+0.7*self.trw
+			x2=x1+int(0.7*self.trw)
 			y2=self.height-6
+
 		if self.arc:
 			self.canvas.itemconfig(self.arc, extent=degd)
 		elif self.zctrl.midi_cc!=0:
@@ -297,6 +318,8 @@ class zynthian_gui_controller:
 				width=thickness,
 				start=deg0,
 				extent=degd)
+			self.canvas.tag_lower(self.arc)
+
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)
 		else:
@@ -377,16 +400,18 @@ class zynthian_gui_controller:
 		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,fs))
 		#Set title label
 		if not self.label_title:
-			self.label_title = tkinter.Label(self.canvas,
+			self.label_title = self.canvas.create_text(3, 4,
+				anchor=tkinter.NW,
+				justify=tkinter.LEFT,
+				width=maxlen,
 				text=self.title,
 				font=(zynthian_gui_config.font_family,fs),
-				wraplength=self.width-6,
-				justify=tkinter.LEFT,
-				bg=zynthian_gui_config.color_panel_bg,
-				fg=zynthian_gui_config.color_panel_tx)
-			self.label_title.place(x=3, y=4, anchor=tkinter.NW)
+				fill=zynthian_gui_config.color_panel_tx)
 		else:
-			self.label_title.config(text=self.title,font=(zynthian_gui_config.font_family,fs))
+			self.canvas.itemconfigure(self.label_title,
+				width=maxlen,
+				text=self.title,
+				font=(zynthian_gui_config.font_family,fs))
 
 
 	def calculate_value_font_size(self):
@@ -414,7 +439,7 @@ class zynthian_gui_controller:
 				font_scale=1.4
 		else:
 			if self.format_print:
-				maxlen=max(len(self.format_print.format(self.zctrl.value_min)),len(self.format_print.format(self.zctrl.value_max)))
+				maxlen=5
 			else:
 				maxlen=max(len(str(self.zctrl.value_min)),len(str(self.zctrl.value_max)))
 			if maxlen>5:
@@ -445,6 +470,7 @@ class zynthian_gui_controller:
 		self.n_values=127
 		self.inverted=False
 		self.selmode = False
+		self.logarithmic = zctrl.is_logarithmic
 		self.scale_value=1
 		self.format_print=None
 		self.set_title(zctrl.short_name)
@@ -495,18 +521,17 @@ class zynthian_gui_controller:
 					self.mult=4
 
 			else:
-				r=zctrl.value_max-zctrl.value_min
-				if isinstance(r,int):
+				if zctrl.is_integer:
 					#Integer < 127
-					if r<=127:
-						self.max_value=self.n_values=r
+					if zctrl.value_range<=127:
+						self.max_value=self.n_values=zctrl.value_range
 						self.mult=max(1,int(128/self.n_values))
 						val=zctrl.value-zctrl.value_min
 					#Integer > 127
 					else:
 						#Not MIDI controller
 						if zctrl.midi_cc is None:
-							self.max_value=self.n_values=r
+							self.max_value=self.n_values=zctrl.value_range
 							self.scale_value=1
 							val=(zctrl.value-zctrl.value_min)
 						#MIDI controller
@@ -517,12 +542,14 @@ class zynthian_gui_controller:
 				#Float
 				else:
 					self.max_value=self.n_values=200
-					self.scale_value=r/self.max_value
-					if zctrl.value_min>-10 and zctrl.value_max<10:
-						self.format_print="{0:.2f}"
-					elif zctrl.value_min>-100 and zctrl.value_max<100:
-						self.format_print="{0:.1f}"
-					val=(zctrl.value-zctrl.value_min)/self.scale_value
+					self.format_print="{0:.3g}"
+					if self.logarithmic:
+						self.scale_value = self.zctrl.value_max/self.zctrl.value_min
+						self.log_scale_value = math.log(self.scale_value)
+						val = self.n_values*math.log(zctrl.value/zctrl.value_min)/self.log_scale_value
+					else:
+						self.scale_value = zctrl.value_range/self.max_value
+						val = (zctrl.value-zctrl.value_min)/self.scale_value
 
 				#If many values => use adaptative step size based on rotary speed
 				if self.n_values>=96:
@@ -560,7 +587,7 @@ class zynthian_gui_controller:
 	def zctrl_sync(self):
 		#List of values (value selector)
 		if self.selmode:
-			val=self.zctrl.get_label2index()
+			val=self.zctrl.get_value2index()
 		if self.zctrl.labels:
 			#logging.debug("ZCTRL SYNC LABEL => {}".format(self.zctrl.get_value2label()))
 			val=self.zctrl.get_label2value(self.zctrl.get_value2label())
@@ -569,8 +596,10 @@ class zynthian_gui_controller:
 			#"List Selection Controller" => step 1 element by rotary tick
 			if self.zctrl.midi_cc==0:
 				val=self.zctrl.value
+			elif self.logarithmic:
+				val = self.n_values*math.log(zctrl.value/zctrl.value_min)/self.log_scale_value
 			else:
-				val=(self.zctrl.value-self.zctrl.value_min)/self.scale_value
+				val = (self.zctrl.value-self.zctrl.value_min)/self.scale_value
 		#Set value & Update zyncoder
 		self.set_value(val, True, False)
 		#logging.debug("ZCTRL SYNC {} => {}".format(self.title, val))

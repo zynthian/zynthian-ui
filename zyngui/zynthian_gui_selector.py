@@ -57,7 +57,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		self.select_path_dir=2
 
 		# Listbox Size
-		self.lb_height=zynthian_gui_config.display_height-zynthian_gui_config.topbar_height
+		self.lb_height=zynthian_gui_config.body_height+1
 		self.wide=wide
 		if self.wide:
 			self.lb_width=zynthian_gui_config.display_width-zynthian_gui_config.ctrl_width
@@ -86,6 +86,8 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 			bg=zynthian_gui_config.color_header_bg,
 			fg=zynthian_gui_config.color_header_tx)
 		self.label_select_path.place(x=0, y=0)
+		# Setup Topbar's Callback
+		self.label_select_path.bind("<Button-1>", self.cb_topbar)
 
 		# Configure Topbar's Frame column widths
 		self.tb_frame.grid_columnconfigure(0, minsize=self.path_canvas_width)
@@ -141,6 +143,9 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		self.loading_push_ts = None
 		self.loading_canvas.bind("<Button-1>",self.cb_loading_push)
 		self.loading_canvas.bind("<ButtonRelease-1>",self.cb_loading_release)
+
+		# Init touchbar
+		self.init_buttonbar()
 
 		# Setup Loading Logo Animation
 		self.loading_index=0

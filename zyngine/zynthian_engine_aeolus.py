@@ -154,10 +154,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 		if self.config_remote_display():
 			self.proc_start_sleep = 3
 			self.command_prompt = None
-			self.command = "/usr/bin/aeolus"
+			self.command = "aeolus"
 		else:
 			self.command_prompt = "\nAeolus>"
-			self.command = "/usr/bin/aeolus -t"
+			self.command = "aeolus -t"
 
 		self.presets_data = self.read_presets_file()
 		self.generate_ctrl_list()

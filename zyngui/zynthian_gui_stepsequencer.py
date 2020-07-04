@@ -214,6 +214,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.songEditor = zynthian_gui_songeditor(self)
 		self.zynpad = zynthian_gui_seqtrigger(self)
 
+		# Init touchbar
+		self.init_buttonbar()
+
 		self.selectSong(self.song)
 
 	# Function to print traceback - for debug only
