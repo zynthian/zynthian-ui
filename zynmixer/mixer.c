@@ -71,7 +71,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		g_master.balance += fDiff / 10;
 	else
 		g_master.balance = g_master.reqbalance;
-	
+
 	float fMasterFactorA = g_master.level;
 	float fMasterFactorB = g_master.level;
 	if(g_master.balance > 0.0)
@@ -79,38 +79,105 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	if(g_master.balance < 0.0)
 		fMasterFactorB = g_master.level * (1 + g_master.balance);
 
-	unsigned int i,j;
-	for(j = 0; j < MAX_CHANNELS; j++)
-	{
-		float fFactorA = fMasterFactorA * g_dynamic[j].level;
-		float fFactorB = fMasterFactorB * g_dynamic[j].level;
-		if(g_dynamic[j].balance > 0.0)
-			fFactorA *= (1 - g_dynamic[j].balance);
-		if(g_dynamic[j].balance < 0.0)
-			fFactorB *= (1 + g_dynamic[j].balance);
-		pInA = jack_port_get_buffer(g_pInputPort[j*2], nFrames);
-		pInB = jack_port_get_buffer(g_pInputPort[j*2+1], nFrames);
-		for (i = 0; i < nFrames; i++)
-		{
-			pOutA[i] += pInA[i] * fFactorA;
-			pOutB[i] += pInB[i] * fFactorB;
-		}
-		if(g_dynamic[j].mute)
-			reqlevel = 0;
-		else
-			reqlevel = g_dynamic[j].reqlevel;
-		fDiff = reqlevel - g_dynamic[j].level;
-		if(fabs(fDiff) > 0.001)
-			g_dynamic[j].level += fDiff / 5;
-		else
-			g_dynamic[j].level = reqlevel;
-		fDiff = g_dynamic[j].reqbalance - g_dynamic[j].balance;
-		if(fabs(fDiff) > 0.001)
-			g_dynamic[j].balance += fDiff / 5;
-		else
-			g_dynamic[j].balance = g_dynamic[j].reqbalance;
+	unsigned int frame,chan;
+	float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB;
 
+	// Apply gain adjustment to each channel and sum to main output
+	for(chan = 0; chan < MAX_CHANNELS; chan++)
+	{
+		if(g_dynamic[chan].balance > 0.0)
+			curLevelA = g_dynamic[chan].level * (1 - g_dynamic[chan].balance);
+		else
+			curLevelA = g_dynamic[chan].level;
+		if(g_dynamic[chan].balance < 0.0)
+			curLevelB = g_dynamic[chan].level * (1 + g_dynamic[chan].balance);
+		else
+			curLevelB = g_dynamic[chan].level;
+
+		if(g_dynamic[chan].mute)
+		{
+			g_dynamic[chan].level = 0;
+			reqLevelA = 0.0;
+			reqLevelB = 0.0;
+		}
+		else
+		{
+			if(g_dynamic[chan].reqbalance > 0.0)
+				reqLevelA = g_dynamic[chan].reqlevel * (1 - g_dynamic[chan].reqbalance);
+			else
+				reqLevelA = g_dynamic[chan].reqlevel;
+			if(g_dynamic[chan].reqbalance < 0.0)
+				reqLevelB = g_dynamic[chan].reqlevel * (1 + g_dynamic[chan].reqbalance);
+			else
+				reqLevelB = g_dynamic[chan].reqlevel;
+		}
+
+		fDeltaA = (reqLevelA - curLevelA) / nFrames;
+		fDeltaB = (reqLevelB - curLevelB) / nFrames;
+
+		pInA = jack_port_get_buffer(g_pInputPort[chan*2], nFrames);
+		pInB = jack_port_get_buffer(g_pInputPort[chan*2+1], nFrames);
+
+		for (frame = 0; frame < nFrames; frame++)
+		{
+			pOutA[frame] += pInA[frame] * curLevelA;
+			pOutB[frame] += pInB[frame] * curLevelB;
+			curLevelA += fDeltaA;
+			curLevelB += fDeltaB;
+		}
+
+		if(g_dynamic[chan].mute)
+			g_dynamic[chan].level = 0.0;
+		else
+			g_dynamic[chan].level = g_dynamic[chan].reqlevel;
+		g_dynamic[chan].balance = g_dynamic[chan].reqbalance;
 	}
+
+	// Adjust gain of main output
+	if(g_master.balance > 0.0)
+		curLevelA = g_master.level * (1 - g_master.balance);
+	else
+		curLevelA = g_master.level;
+	if(g_master.balance < 0.0)
+		curLevelB = g_master.level * (1 + g_master.balance);
+	else
+		curLevelB = g_master.level;
+
+	if(g_master.mute)
+	{
+		g_master.level = 0;
+		reqLevelA = 0.0;
+		reqLevelB = 0.0;
+	}
+	else
+	{
+		if(g_master.reqbalance > 0.0)
+			reqLevelA = g_master.reqlevel * (1 - g_master.reqbalance);
+		else
+			reqLevelA = g_master.reqlevel;
+		if(g_master.reqbalance < 0.0)
+			reqLevelB = g_master.reqlevel * (1 + g_master.reqbalance);
+		else
+			reqLevelB = g_master.reqlevel;
+	}
+
+	fDeltaA = (reqLevelA - curLevelA) / nFrames;
+	fDeltaB = (reqLevelB - curLevelB) / nFrames;
+
+	for (frame = 0; frame < nFrames; frame++)
+	{
+		pOutA[frame] *= curLevelA;
+		pOutB[frame] *= curLevelB;
+		curLevelA += fDeltaA;
+		curLevelB += fDeltaB;
+	}
+
+	if(g_master.mute)
+		g_master.level = 0.0;
+	else
+		g_master.level = g_master.reqlevel;
+	g_master.balance = g_master.reqbalance;
+
 	return 0;
 }
 
