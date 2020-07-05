@@ -122,9 +122,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			self.bs = 256
 
 		if self.config_remote_display():
-			self.command = "/usr/local/bin/zynaddsubfx -r {} -b {} -O jack-multi -I jack -P {} -a".format(self.sr, self.bs, self.osc_target_port)
+			self.command = "zynaddsubfx -r {} -b {} -O jack-multi -I jack -P {} -a".format(self.sr, self.bs, self.osc_target_port)
 		else:
-			self.command = "/usr/local/bin/zynaddsubfx -r {} -b {} -O jack-multi -I jack -P {} -a -U".format(self.sr, self.bs, self.osc_target_port)
+			self.command = "zynaddsubfx -r {} -b {} -O jack-multi -I jack -P {} -a -U".format(self.sr, self.bs, self.osc_target_port)
 
 		self.command_prompt = "\n\\[INFO] Main Loop..."
 

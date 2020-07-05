@@ -94,7 +94,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 		self.fs_options += " -o synth.effects-groups={}".format(n_fxgrp)
 
-		self.command = "/usr/local/bin/fluidsynth -a jack -m jack -g 1 {}".format(self.fs_options)
+		self.command = "fluidsynth -a jack -m jack -g 1 {}".format(self.fs_options)
 		self.command_prompt = "\n> "
 
 		self.start()

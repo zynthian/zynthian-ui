@@ -174,9 +174,9 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		if not dryrun:
 			if self.config_remote_display():
-				self.command = ("/usr/local/bin/jalv -n {} {}".format(self.get_jalv_jackname(), self.plugin_url))		#TODO => Is possible to run plugin's UI?
+				self.command = ("jalv -n {} {}".format(self.get_jalv_jackname(), self.plugin_url))		#TODO => Is possible to run plugin's UI?
 			else:
-				self.command = ("/usr/local/bin/jalv -n {} {}".format(self.get_jalv_jackname(), self.plugin_url))
+				self.command = ("jalv -n {} {}".format(self.get_jalv_jackname(), self.plugin_url))
 
 			self.command_prompt = "\n> "
 
