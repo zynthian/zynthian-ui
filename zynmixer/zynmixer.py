@@ -105,8 +105,10 @@ def toggle_mute(channel):
 
 #	Function to check if channel has audio routed to its input
 #	channel: Index of channel
+#	returns True if routed
 def is_channel_routed(channel):
 	if lib_zynmixer:
-		return lib_zynmixer.isChannelRouted(channel)
+		return (lib_zynmixer.isChannelRouted(channel) != 0)
+	return False
 
 #-------------------------------------------------------------------------------

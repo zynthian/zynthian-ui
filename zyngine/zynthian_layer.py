@@ -642,8 +642,8 @@ class zynthian_layer:
 
 	def reset_audio_out(self):
 		self.audio_out=["system:playback_1", "system:playback_2"]
-		if midi_chan != None:
-			self.audio_out = ["zynmixer:input_%02da"%(midi_chan), "zynmixer:input_%02db"%(midi_chan)]
+		if self.midi_chan != None:
+			self.audio_out = ["zynmixer:input_%02da"%(self.midi_chan), "zynmixer:input_%02db"%(self.midi_chan)]
 		self.zyngui.zynautoconnect_audio()
 
 

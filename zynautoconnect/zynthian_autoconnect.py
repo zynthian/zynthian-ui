@@ -439,7 +439,6 @@ def audio_autoconnect(force=False):
 
 	#Connect Synth Engines to assigned outputs
 	for layer_index, layer in enumerate(layers_list):
-		print("Iterating layers",layer_index, layer.engine.name)
 		if not layer.get_audio_jackname() or layer.engine.type=="MIDI Tool":
 			continue
 
@@ -447,7 +446,6 @@ def audio_autoconnect(force=False):
 		nlpb = len(layer_playback)
 		
 		ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
-		print("zynthian_autoconnect: layer: %s layer audio targets: %s"%(layer.engine.name, layer.get_audio_out()), ports)
 		if len(ports)>0:
 			#logger.debug("Connecting Layer {} ...".format(layer.get_jackname()))
 			np = min(len(ports), 2)
