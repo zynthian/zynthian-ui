@@ -193,6 +193,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return free_chans
 
 
+	def get_next_free_midi_chan(self, chan0):
+		free_chans = self.get_free_midi_chans()
+		for i in range(1,16):
+			chan = (chan0 + i) % 16
+			if chan in free_chans:
+				return chan
+		raise Exception("No available free MIDI channels!")
+
+
 	def add_layer(self, etype):
 		self.add_layer_eng = None
 		self.replace_layer_index = None
