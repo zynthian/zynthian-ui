@@ -260,8 +260,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.tonewheel_model = bank[0]
 
 		if not self.proc:
-			midi_chans = [self.layers[0].get_midi_chan(), 15, 15]
-			free_chans = self.zyngui.screens['layer'].get_free_midi_chans()
+			ch = self.layers[0].get_midi_chan()
+			midi_chans = [ch, 15, 15]
 
 			logging.info("Upper Layer in chan {}".format(midi_chans[0]))
 			self.layers[0].bank_name = "Upper"
@@ -271,11 +271,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			# Extra layers
 			if self.manuals_config[4][0]:
 				try:
-					# Adding Lower Manual Layer
-					if midi_chans[0] + 1 in free_chans:
-						midi_chans[1] = midi_chans[0] + 1
-					else:
-						midi_chans[1] = free_chans.pop(0)
+					ch = midi_chans[1] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
 					logging.info("Lower Manual Layer in chan {}".format(midi_chans[1]))
 					self.zyngui.screens['layer'].add_layer_midich(midi_chans[1], False)
 					self.layers[1].bank_name = "Lower"
@@ -288,10 +284,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			if self.manuals_config[4][1]:
 				try:
 					# Adding Pedal Layer
-					if midi_chans[0] + 2 in free_chans:
-						midi_chans[2] = midi_chans[0] + 2
-					else:
-						midi_chans[2] = free_chans.pop(0)
+					midi_chans[2] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
 					logging.info("Pedal Layer in chan {}".format(midi_chans[2]))
 					self.zyngui.screens['layer'].add_layer_midich(midi_chans[2], False)
 					i=len(self.layers)-1
@@ -306,7 +299,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 			logging.debug("STARTING SETBFREE!!")
 			self.generate_config_file(midi_chans)
 			self.start()
-			self.zyngui.zynautoconnect()
+			self.zyngui.zynautoconnect_midi(True)
+			self.zyngui.zynautoconnect_audio()
 
 			midi_prog = self.manuals_config[4][2]
 			if midi_prog and isinstance(midi_prog, int):
@@ -316,6 +310,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 			#self.zyngui.screens['layer'].fill_list()
 
 			return True
+
+
+
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
