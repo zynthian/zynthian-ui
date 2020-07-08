@@ -42,6 +42,7 @@ from os.path import dirname, realpath, basename
 # Zynthian specific modules
 from . import zynthian_gui_config
 from . import zynthian_gui_layer
+from . import zynthian_gui_stepsequencer
 from zyncoder import *
 
 #------------------------------------------------------------------------------
@@ -154,7 +155,7 @@ class zynthian_gui_patterneditor():
 			tags="playCursor")
 		self.playCanvas.grid(column=1, row=2)
 
-		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_config.SEQ_LOOP)
+		self.parent.libseq.setPlayMode(self.sequence, zynthian_gui_stepsequencer.SEQ_LOOP)
 
 		self.playhead = 0
 #		self.startPlayheadHandler()
@@ -201,7 +202,7 @@ class zynthian_gui_patterneditor():
 		self.setupEncoders()
 		self.main_frame.tkraise()
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
-		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_PLAYING)
+		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_PLAYING)
 		self.shown=True
 
 	# Function to hide GUI
@@ -212,7 +213,7 @@ class zynthian_gui_patterneditor():
 		self.parent.unregisterZyncoder(ENC_SNAPSHOT)
 		self.parent.unregisterZyncoder(ENC_LAYER)
 		self.parent.unregisterSwitch(ENC_SELECT)
-		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_config.SEQ_STOPPED)
+		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 		self.parent.zyngui.zyntransport.transport_stop() #TODO: Stopping transport due to jack_transport restarting if locate called
 
 	# Function to add menus

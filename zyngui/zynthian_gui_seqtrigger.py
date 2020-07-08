@@ -39,6 +39,7 @@ from PIL import Image, ImageTk
 
 # Zynthian specific modules
 from . import zynthian_gui_config
+from . import zynthian_gui_stepsequencer
 from zyncoder import *
 
 SELECT_BORDER	= zynthian_gui_config.color_on
@@ -245,17 +246,17 @@ class zynthian_gui_seqtrigger():
 		if cell:
 			mode = self.parent.libseq.getPlayMode(sequence)
 			self.gridCanvas.itemconfig("mode:%d"%pad, image=self.icon[mode], state='normal')
-			if not sequence or self.parent.libseq.getPlayMode(sequence) == zynthian_gui_config.SEQ_DISABLED or self.parent.libseq.getSequenceLength(sequence) == 0:
+			if not sequence or self.parent.libseq.getPlayMode(sequence) == zynthian_gui_stepsequencer.SEQ_DISABLED or self.parent.libseq.getSequenceLength(sequence) == 0:
 				fill = self.padColourDisabled
 				self.gridCanvas.itemconfig("mode:%d"%pad, state='hidden')
-			elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_config.SEQ_STOPPED:
+			elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
 				if group % 2:
 					fill = self.padColourStoppedOdd
 				else:
 					fill = self.padColourStoppedEven
-			elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_config.SEQ_STARTING:
+			elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STARTING:
 				fill = self.padColourStarting
-			elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_config.SEQ_STOPPING:
+			elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STOPPING:
 				fill = self.padColourStopping
 			else:
 				fill = self.padColourPlaying
@@ -313,17 +314,17 @@ class zynthian_gui_seqtrigger():
 			self.parent.refreshParamEditor()
 		if sequence == 0:
 			return;
-		if self.parent.libseq.getPlayState(sequence) == zynthian_gui_config.SEQ_PLAYING:
-			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_STOPPING)
-		elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_config.SEQ_STARTING:
-			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_STOPPED)
-		elif self.parent.libseq.getPlayMode(sequence) != zynthian_gui_config.SEQ_DISABLED:
+		if self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_PLAYING:
+			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STOPPING)
+		elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STARTING:
+			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
+		elif self.parent.libseq.getPlayMode(sequence) != zynthian_gui_stepsequencer.SEQ_DISABLED:
 			self.parent.libseq.setPlayPosition(sequence, 0)
-			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_STARTING)
+			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STARTING)
 		playing = self.drawPad(pad)
 		if playing and not self.zyngui.zyntransport.get_state():
 			self.parent.libseq.resetSync()
-			self.parent.libseq.setPlayState(sequence, zynthian_gui_config.SEQ_PLAYING)
+			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_PLAYING)
 			self.zyngui.zyntransport.transport_play()
 
 	# Function to handle pad release

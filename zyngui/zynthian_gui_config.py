@@ -264,22 +264,6 @@ ctrl_pos=[
 	(2,2,"se")
 ]
 
-#------------------------------------------------------------------------------
-# Sequence states
-#------------------------------------------------------------------------------
-SEQ_DISABLED		= 0
-SEQ_ONESHOT			= 1
-SEQ_LOOP			= 2
-SEQ_ONESHOTALL		= 3
-SEQ_LOOPALL			= 4
-SEQ_LASTPLAYMODE	= 4
-
-SEQ_STOPPED			= 0
-SEQ_PLAYING			= 1
-SEQ_STOPPING		= 2
-SEQ_STARTING		= 3
-SEQ_LASTPLAYSTATUS	= 3
-
 
 #------------------------------------------------------------------------------
 # UI Color Parameters

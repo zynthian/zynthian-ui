@@ -58,6 +58,22 @@ ENC_BACK			= 1
 ENC_SNAPSHOT		= 2
 ENC_SELECT			= 3
 
+#------------------------------------------------------------------------------
+# Sequence states
+#------------------------------------------------------------------------------
+SEQ_DISABLED		= 0
+SEQ_ONESHOT			= 1
+SEQ_LOOP			= 2
+SEQ_ONESHOTALL		= 3
+SEQ_LOOPALL			= 4
+SEQ_LASTPLAYMODE	= 4
+
+SEQ_STOPPED			= 0
+SEQ_PLAYING			= 1
+SEQ_STOPPING		= 2
+SEQ_STARTING		= 3
+SEQ_LASTPLAYSTATUS	= 3
+
 USER_PATH			= "/zynthian/zynthian-my-data/zynseq"
 
 # Class implements zynthian step sequencer parent, hosting child screens:editors, players, etc.
