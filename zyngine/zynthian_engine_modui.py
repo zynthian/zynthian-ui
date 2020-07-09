@@ -90,6 +90,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self.plugin_info = OrderedDict()
 		self.plugin_zctrls = OrderedDict()
 		self.pedal_presets = OrderedDict()
+		self.pedal_preset_noun = 'snapshot'
 
 
 	def start(self):
@@ -167,10 +168,15 @@ class zynthian_engine_modui(zynthian_engine):
 		self.pedal_presets.clear()
 
 		# Get Pedalboard Presets ...
-		presets = self.api_get_request('/pedalpreset/list')
+		presets = self.api_get_request('/%s/list' % self.pedal_preset_noun)
+		if presets is None:
+			# switch to old mod-ui API which uses 'pedalpreset' instead of 'snapshot'
+			self.pedal_preset_noun = 'pedalpreset'
+			presets = self.api_get_request('/%s/list' % self.pedal_preset_noun)
+
 		if not presets:
-			self.api_post_request('/pedalpreset/enable')
-			presets = self.api_get_request('/pedalpreset/list')
+			self.api_post_request('/%s/enable' % self.pedal_preset_noun)
+			presets = self.api_get_request('/%s/list' % self.pedal_preset_noun)
 
 		if presets:
 			for pid in sorted(presets):
@@ -217,7 +223,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def load_pedalboard_preset(self, preset):
 		self.ws_preset_loaded = False
-		res = self.api_get_request("/pedalpreset/load", data={'id':preset})
+		res = self.api_get_request("/%s/load" % self.pedal_preset_noun, data={'id':preset})
 		i=0
 		while not self.ws_preset_loaded and i<100: 
 			sleep(0.1)
@@ -651,18 +657,23 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def enable_midi_devices(self):
 		self.midi_dev_info=self.api_get_request("/jack/get_midi_devices")
+
+		# detect whether to use the old or new data format for set_midi_devices
+		# based on the reponse for get_midi_devices
+		old_set_midi_devices = 'midiAggregatedMode' not in self.midi_dev_info
 		#logging.debug("API /jack/get_midi_devices => {}".format(res))
 		if 'devList' in self.midi_dev_info:
 			devs=[]
 			for dev in self.midi_dev_info['devList']: 
 				#if dev not in res['devsInUse']: 
 				devs.append(dev)
-			data = devs
-			#Last MOD-UI version has changed set_midi_devices API call format:
-			#data = {
-			#	"devs": devs,
-			#	"midiAggregatedMode": False
-			#}
+			if old_set_midi_devices:
+				data = devs
+			else:
+				data = {
+					"devs": devs,
+					"midiAggregatedMode": False
+				}
 			if len(data)>0:
 				res = self.api_post_request("/jack/set_midi_devices",json=data)
 				#logging.debug("API /jack/set_midi_devices => {}".format(data))
