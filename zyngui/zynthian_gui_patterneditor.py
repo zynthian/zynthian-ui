@@ -38,11 +38,13 @@ from time import sleep
 import time
 import ctypes
 from os.path import dirname, realpath, basename
+from mido import MidiFile
 
 # Zynthian specific modules
 from . import zynthian_gui_config
 from . import zynthian_gui_layer
 from . import zynthian_gui_stepsequencer
+from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
 from zyncoder import *
 
 #------------------------------------------------------------------------------
@@ -57,7 +59,7 @@ CELL_BACKGROUND     = zynthian_gui_config.color_panel_bd
 CELL_FOREGROUND     = zynthian_gui_config.color_panel_tx
 GRID_LINE           = zynthian_gui_config.color_tx_off
 PLAYHEAD_HEIGHT     = 5
-CONFIG_ROOT         = "/zynthian/zynthian-data/zynseq/"
+CONFIG_ROOT         = "/zynthian/zynthian-data/zynseq"
 # Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
 ENC_LAYER           = 0
 ENC_BACK            = 1
@@ -231,6 +233,7 @@ class zynthian_gui_patterneditor():
 		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Scale':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':self.getScales(), 'getValue':self.parent.libseq.getScale, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tonic':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':12, 'getValue':self.parent.libseq.getTonic, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Import':{'method':self.selectImport}})
 
 	# Function to get quantity of scales
 	#	returns: Quantity of available scales
@@ -802,6 +805,73 @@ class zynthian_gui_patterneditor():
 		self.selectCell()
 		self.playCanvas.coords("playCursor", 1, 0, 1 + self.stepWidth, PLAYHEAD_HEIGHT)
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
+
+	# Function to select .mid file to import
+	def selectImport(self, params):
+		zynthian_gui_fileselector(self.parent, self.importMid, zynthian_gui_stepsequencer.USER_PATH, "mid")
+
+	# Function to import patterns from .mid file
+	#	filename: Full path and filename of midi file from which to import
+	def importMid(self, filename):
+		# Open file
+		try:
+			mid = MidiFile(filename)
+		except:
+			logging.warning("Unable to open file %s for import", filename)
+			return
+
+		# Extract first tempo from file
+		tempo = None
+		for msg in mid:
+			if msg.type == "set_tempo":
+				tempo = msg.tempo
+				break
+		if tempo == None:
+			logging.warning("Cannot find tempo marker within %s. Aborting import.", filename)
+			return
+
+		# Iterate through events in file matching current pattern MIDI channel
+		pattern = self.pattern
+		self.parent.libseq.selectPattern(pattern)
+		self.parent.libseq.clear()
+		notes = [{'step':0, 'velocity':0} for i in range(127)]
+		offset = 0
+		sec_per_beat = tempo / 1000000
+		steps_per_beat = self.parent.libseq.getStepsPerBeat()
+		if steps_per_beat:
+			clocks_per_step = int(24 / steps_per_beat)
+		else:
+			clocks_per_step = 24
+		self.parent.libseq.setClocksPerStep(clocks_per_step)
+		sec_per_step = sec_per_beat / steps_per_beat
+		step = 0
+		max_steps = self.parent.libseq.getSteps()
+		channel = self.parent.libseq.getChannel(self.sequence)
+		populated_pattern = False
+		for msg in mid:
+			offset += msg.time
+			step = int(offset / sec_per_step) % max_steps
+			this_pattern = pattern + int(int(offset / sec_per_step) / max_steps)
+			if this_pattern > self.pattern:
+				if populated_pattern:
+					populated_pattern = False
+					self.pattern = this_pattern
+					self.parent.libseq.selectPattern(this_pattern)
+					self.parent.libseq.clear()
+					self.parent.libseq.setSteps(max_steps)
+					self.parent.libseq.setStepsPerBeat(steps_per_beat)
+					self.parent.libseq.setClocksPerStep(clocks_per_step)
+			if msg.type != 'note_on' and msg.type != 'note_off' or msg.channel != channel: continue
+			populated_pattern = True
+			if msg.type == 'note_on' and msg.velocity:
+				notes[msg.note]['step'] = step
+				notes[msg.note]['velocity'] = msg.velocity
+			elif msg.type == 'note_off' or msg.type == 'note_on' and msg.velocity == 0:
+				duration = step - notes[msg.note]['step'] + 1
+				if duration < 0:
+					duration += max_steps
+				self.parent.libseq.addNote(step, msg.note, notes[msg.note]['velocity'], duration)
+		self.pattern = pattern
 
 	# Function called when new file loaded from disk
 	def onLoad(self):

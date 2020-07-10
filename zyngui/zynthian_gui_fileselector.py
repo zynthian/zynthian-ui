@@ -61,6 +61,7 @@ class zynthian_gui_fileselector():
 		self.path = path
 		self.filename = filename
 		self.ext = ext
+		self.files = {}
 
 		# Cancel button
 		self.tb_panel = tkinter.Frame(parent.tb_frame,
@@ -99,6 +100,8 @@ class zynthian_gui_fileselector():
 			filename = os.path.basename(full_filename)
 			name = os.path.splitext(filename)[0]
 			self.file_list.insert(tkinter.END, name)
+			self.files[name] = full_filename 
+		print("zynthian_gui_fileselector file list:",self.files)
 		self.file_list.selection_set(0)
 
 		rows = min((zynthian_gui_config.display_height - zynthian_gui_config.topbar_height) / self.listboxTextHeight - 1, self.file_list.size())
@@ -128,7 +131,11 @@ class zynthian_gui_fileselector():
 	# Function to handle listbox release
 	#	event: Mouse event
 	def on_listbox_release(self, event):
-		self.function(self.file_list.get(self.file_list.curselection()[0]))
+		self.assert_selection()
+
+	# Function to trigger file action
+	def assert_selection(self):
+		self.function(self.files[self.file_list.get(self.file_list.curselection()[0])])
 		self.hide()
 
 	# Function to delete file
@@ -186,7 +193,6 @@ class zynthian_gui_fileselector():
 		elif switch == ENC_BACK:
 			self.hide()
 		elif switch == ENC_SELECT:
-			self.function(self.file_list.get(self.file_list.curselection()[0]))
-			self.hide()
+			self.assert_selection()
 		return True # Tell parent that we handled all short and bold key presses
 #------------------------------------------------------------------------------
