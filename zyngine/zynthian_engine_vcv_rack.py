@@ -23,6 +23,7 @@ import os
 import json
 import logging
 import subprocess
+from time import sleep
 
 from . import zynthian_engine
 
@@ -54,12 +55,14 @@ class zynthian_engine_vcv_rack(zynthian_engine):
 
 		self.options = {}
 
-		# self.base_command = "xpra start-desktop :100 --start-child=\"{} -d\" --exit-with-children --xvfb=\"Xorg :10 vt7 -auth .Xauthority -config xrdp/xorg.conf -noreset -nolisten tcp\" --start-via-proxy=no --systemd-run=no --file-transfer=no --printing=no --resize-display=no --mdns=no --pulseaudio=no --dbus-proxy=no --dbus-control=no --webcam=no --notifications=no".format(VCV_RACK_BINARY)
 		self.reset()
 
-	def start(self):
+	def start(self, patch_path):
 		super().start()
-		subprocess.run(["{}/start-vcv-rack.sh".format(VCV_RACK_DIR)])
+		subprocess.run(["{}/start-vcv-rack.sh".format(VCV_RACK_DIR), patch_path])
+		sleep(10)
+		self.zyngui.zynautoconnect_midi(True)
+		self.zyngui.zynautoconnect_audio(True)
 
 	def stop(self):
 		super().stop()
@@ -79,12 +82,16 @@ class zynthian_engine_vcv_rack(zynthian_engine):
 
 
 	def load_bundle(self, path):
-		with open(VCV_RACK_CONFIG, 'r') as config_file:
-			config = json.load(config_file)
-			config['patchPath'] = path
-		with open(VCV_RACK_CONFIG, 'w') as config_file:
-			json.dump(config, config_file, indent=4)
-		self.start()
+		self.stop()
+		self.start(path)
+
+
+	#----------------------------------------------------------------------------
+	# Preset Managament
+	#----------------------------------------------------------------------------
+
+	def get_preset_list(self, bank):
+		return []
 
 
 	# ---------------------------------------------------------------------------
