@@ -41,6 +41,8 @@ def lib_zynmixer_init():
 		lib_zynmixer.init()
 		lib_zynmixer.getLevel.restype = c_float
 		lib_zynmixer.getBalance.restype = c_float
+		lib_zynmixer.getDpm.restype = c_float
+		lib_zynmixer.getDpmHold.restype = c_float
 	except Exception as e:
 		lib_zynmixer=None
 		print("Can't init zynmixer library: %s" % str(e))
@@ -105,10 +107,28 @@ def toggle_mute(channel):
 
 #	Function to check if channel has audio routed to its input
 #	channel: Index of channel
-#	returns True if routed
+#	returns: True if routed
 def is_channel_routed(channel):
 	if lib_zynmixer:
 		return (lib_zynmixer.isChannelRouted(channel) != 0)
 	return False
+
+#	Function to get peak programme level for a channel
+#	channel: Index of channel
+#	leg: 0 for A-leg (left), 1 for B-leg (right)
+#	returns: Peak programme level
+def get_dpm(channel, leg):
+	if lib_zynmixer:
+		return lib_zynmixer.getDpm(channel, leg)
+	return -200.0
+
+#	Function to get peak programme hold level for a channel
+#	channel: Index of channel
+#	leg: 0 for A-leg (left), 1 for B-leg (right)
+#	returns: Peak programme hold level
+def get_dpm_hold(channel, leg):
+	if lib_zynmixer:
+		return lib_zynmixer.getDpmHold(channel, leg)
+	return -200.0
 
 #-------------------------------------------------------------------------------

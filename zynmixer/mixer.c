@@ -40,6 +40,12 @@ struct dynamic
 	float reqlevel;
 	float balance;
 	float reqbalance;
+	float dpmA;
+	float dpmB;
+	float dpmAdamped;
+	float dpmBdamped;
+	float holdA;
+	float holdB;
 	int mute;
 };
 
@@ -48,6 +54,9 @@ jack_port_t * g_pOutputPort[2];
 jack_client_t * g_pJackClient;
 struct dynamic g_dynamic[MAX_CHANNELS];
 struct dynamic g_master;
+int g_bDpm = 1;
+unsigned int g_nDampingCount = 0;
+unsigned int g_nHoldCount = 0;
 
 static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 {
@@ -58,30 +67,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	memset(pOutA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
 	memset(pOutB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
 
-	float reqlevel = g_master.reqlevel;
-	if(g_master.mute)
-		reqlevel = 0.0;
-	float fDiff = reqlevel - g_master.level;
-	if(fabs(fDiff) > 0.001)
-		g_master.level += fDiff / 10;
-	else
-		g_master.level = reqlevel;
-	fDiff = g_master.reqbalance - g_master.balance;
-	if(fabs(fDiff) > 0.001)
-		g_master.balance += fDiff / 10;
-	else
-		g_master.balance = g_master.reqbalance;
-
-	float fMasterFactorA = g_master.level;
-	float fMasterFactorB = g_master.level;
-	if(g_master.balance > 0.0)
-		fMasterFactorA = g_master.level * (1 - g_master.balance);
-	if(g_master.balance < 0.0)
-		fMasterFactorB = g_master.level * (1 + g_master.balance);
-
-	unsigned int frame,chan;
-	float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB;
-
+	unsigned int frame, chan;
+	float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB, fSampleA, fSampleB;
 	// Apply gain adjustment to each channel and sum to main output
 	for(chan = 0; chan < MAX_CHANNELS; chan++)
 	{
@@ -96,7 +83,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
 		if(g_dynamic[chan].mute)
 		{
-			g_dynamic[chan].level = 0;
+			g_dynamic[chan].level = 0; // We can set this here because we have the data and will iterate towards 0 over this frame
 			reqLevelA = 0.0;
 			reqLevelB = 0.0;
 		}
@@ -110,6 +97,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 				reqLevelB = g_dynamic[chan].reqlevel * (1 + g_dynamic[chan].reqbalance);
 			else
 				reqLevelB = g_dynamic[chan].reqlevel;
+			g_dynamic[chan].level = g_dynamic[chan].reqlevel;
+			g_dynamic[chan].balance = g_dynamic[chan].reqbalance;
 		}
 
 		fDeltaA = (reqLevelA - curLevelA) / nFrames;
@@ -118,19 +107,42 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		pInA = jack_port_get_buffer(g_pInputPort[chan*2], nFrames);
 		pInB = jack_port_get_buffer(g_pInputPort[chan*2+1], nFrames);
 
-		for (frame = 0; frame < nFrames; frame++)
+		for(frame = 0; frame < nFrames; frame++)
 		{
-			pOutA[frame] += pInA[frame] * curLevelA;
-			pOutB[frame] += pInB[frame] * curLevelB;
+			fSampleA = pInA[frame] * curLevelA;
+			pOutA[frame] += fSampleA;
+			fSampleB = pInB[frame] * curLevelB;
+			pOutB[frame] += fSampleB;
 			curLevelA += fDeltaA;
 			curLevelB += fDeltaB;
+			if(g_bDpm)
+			{
+				fSampleA = fabs(fSampleA);
+				if(fSampleA > g_dynamic[chan].dpmA)
+					g_dynamic[chan].dpmA = fSampleA;
+				fSampleB = fabs(fSampleB);
+				if(fSampleB > g_dynamic[chan].dpmB)
+					g_dynamic[chan].dpmB = fSampleB;
+			}
+		}
+		if(g_bDpm)
+		{
+			if(g_nDampingCount == 0)
+			if(g_dynamic[chan].dpmA > g_dynamic[chan].holdA)
+				g_dynamic[chan].holdA = g_dynamic[chan].dpmA;
+			if(g_dynamic[chan].dpmB > g_dynamic[chan].holdB)
+				g_dynamic[chan].holdB = g_dynamic[chan].dpmB;
+			if(g_nHoldCount == 0)
+			{
+				g_dynamic[chan].holdA = g_dynamic[chan].dpmA;
+				g_dynamic[chan].holdB = g_dynamic[chan].dpmB;
+			}
+			{
+				g_dynamic[chan].dpmA *= 0.9;
+				g_dynamic[chan].dpmB *= 0.9;
+			}
 		}
 
-		if(g_dynamic[chan].mute)
-			g_dynamic[chan].level = 0.0;
-		else
-			g_dynamic[chan].level = g_dynamic[chan].reqlevel;
-		g_dynamic[chan].balance = g_dynamic[chan].reqbalance;
 	}
 
 	// Adjust gain of main output
@@ -145,7 +157,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
 	if(g_master.mute)
 	{
-		g_master.level = 0;
+		g_master.level = 0; // We can set this here because we have the data and will iterate towards 0 over this frame
 		reqLevelA = 0.0;
 		reqLevelB = 0.0;
 	}
@@ -159,24 +171,49 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			reqLevelB = g_master.reqlevel * (1 + g_master.reqbalance);
 		else
 			reqLevelB = g_master.reqlevel;
+		g_master.level = g_master.reqlevel;
+		g_master.balance = g_master.reqbalance;
 	}
 
 	fDeltaA = (reqLevelA - curLevelA) / nFrames;
 	fDeltaB = (reqLevelB - curLevelB) / nFrames;
 
-	for (frame = 0; frame < nFrames; frame++)
+	for(frame = 0; frame < nFrames; frame++)
 	{
 		pOutA[frame] *= curLevelA;
 		pOutB[frame] *= curLevelB;
 		curLevelA += fDeltaA;
 		curLevelB += fDeltaB;
+		if(g_bDpm)
+		{
+			fSampleA = fabs(pOutA[frame]);
+			if(fSampleA > g_master.dpmA)
+				g_master.dpmA = fSampleA;
+			fSampleB = fabs(pOutB[frame]);
+			if(fSampleB > g_master.dpmB)
+				g_master.dpmB = fSampleB;
+		}
 	}
 
-	if(g_master.mute)
-		g_master.level = 0.0;
-	else
-		g_master.level = g_master.reqlevel;
-	g_master.balance = g_master.reqbalance;
+	if(g_bDpm)
+	{
+		if(g_nDampingCount == 0)
+		{
+			// Adjust dpm every g_nDampingCount frames
+			g_master.dpmA *= 0.9;
+			g_master.dpmB *= 0.9;
+			g_nDampingCount = 10;
+		}
+		if(g_nHoldCount == 0)
+		{
+			g_master.holdA = g_master.dpmA;
+			g_master.holdB = g_master.dpmB;
+			g_nHoldCount = 200;
+		}
+
+		--g_nDampingCount;
+		--g_nHoldCount;
+	}
 
 	return 0;
 }
@@ -331,4 +368,87 @@ int isChannelRouted(int channel)
 	if(channel >= MAX_CHANNELS)
 		return 0;
 	return (jack_port_connected(g_pInputPort[channel * 2]) > 0 && (jack_port_connected(g_pInputPort[channel * 2]) > 0));
+}
+
+static float convertToDBFS(float raw) {
+	if(raw <= 0)
+		return -200;
+	float fValue = 20 * log10f(raw);
+	if(fValue < -200)
+		fValue = -200;
+	return fValue;
+}
+
+float getDpm(int channel, int leg)
+{
+	if(g_bDpm == 0)
+		return -200.0;
+
+	if(channel >= MAX_CHANNELS)
+	{
+		if(leg)
+			return convertToDBFS(g_master.dpmB);
+		return convertToDBFS(g_master.dpmA);
+	}
+	if(leg)
+		return convertToDBFS(g_dynamic[channel].dpmB);
+	return convertToDBFS(g_dynamic[channel].dpmA);
+
+
+	float fPeak = 0.0;
+	if(channel >= MAX_CHANNELS)
+	{
+		if(leg)
+		{
+			fPeak = g_master.dpmB;
+			if(fPeak < g_master.dpmBdamped * 0.1)
+				fPeak = g_master.dpmBdamped * 0.1;
+			g_master.dpmBdamped = fPeak;
+		}
+		else
+		{
+			fPeak = g_master.dpmA;
+			if(fPeak < g_master.dpmAdamped * 0.1)
+				fPeak = g_master.dpmAdamped * 0.1;
+			g_master.dpmAdamped = fPeak;
+		}
+	}
+	else
+	{
+		if(leg)
+		{
+			fPeak = g_dynamic[channel].dpmB;
+			if(fPeak < g_dynamic[channel].dpmBdamped * 0.1)
+				fPeak = g_dynamic[channel].dpmBdamped * 0.1;
+			g_dynamic[channel].dpmBdamped = fPeak;
+		}
+		else
+		{
+			fPeak = g_dynamic[channel].dpmA;
+			if(fPeak < g_dynamic[channel].dpmAdamped * 0.1)
+				fPeak = g_dynamic[channel].dpmAdamped * 0.1;
+			g_dynamic[channel].dpmAdamped = fPeak;
+		}
+	}
+	return convertToDBFS(fPeak);
+}
+
+float getDpmHold(int channel, int leg)
+{
+	if(g_bDpm == 0)
+		return -200.0;
+	if(channel >= MAX_CHANNELS)
+	{
+		if(leg)
+			return convertToDBFS(g_master.holdB);
+		return convertToDBFS(g_master.holdA);
+	}
+	if(leg)
+		return convertToDBFS(g_dynamic[channel].holdB);
+	return convertToDBFS(g_dynamic[channel].holdA);
+}
+
+void enableDpm(int enable)
+{
+	g_bDpm = enable;
 }

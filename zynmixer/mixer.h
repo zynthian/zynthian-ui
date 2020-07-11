@@ -88,3 +88,23 @@ void toggleMute(int channel);
 *   @retval int 1 if channel has source routed. 0 if no source routed to channel.
 */
 int isChannelRouted(int channel);
+
+/** @brief  Get DPM level
+*   @param  channel Index of channel
+*   @param  leg 0 for A leg (left), 1 for B leg (right)
+*   @retval float DPM level
+*/
+float getDpm(int channel, int leg);
+
+/** @brief  Get DPM hold level
+*   @param  channel Index of channel
+*   @param  leg 0 for A leg (left), 1 for B leg (right)
+*   @retval float DPM hold level
+*/
+float getDpmHold(int channel, int leg);
+
+/** @brief  Enable / disable peak programme metering
+*   @param  enable 1 to enable, 0 to disable
+*   @note   DPM increase CPU processing so may be disabled if this causes issues (like xruns)
+*/
+void enableDpm(int enable);
