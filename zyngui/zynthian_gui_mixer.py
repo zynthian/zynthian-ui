@@ -86,7 +86,7 @@ class zynthian_gui_mixer_channel():
 		fader_centre = x + width * 0.5
 
 		#Digital Peak Meter (DPM) parameters
-		self.dpm_rangedB = 30 # Lowest meter reading in -dBFS
+		self.dpm_rangedB = 50 # Lowest meter reading in -dBFS
 		self.dpm_highdB = 10 # Start of yellow zone in -dBFS
 		self.dpm_overdB = 3  # Start of red zone in -dBFS
 		self.dpm_high = 1 - self.dpm_highdB / self.dpm_rangedB
@@ -421,7 +421,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.channels[channel] = zynthian_gui_mixer_channel(self.main_canvas, 1 + self.fader_width * channel, 0, self.fader_width - 1, self.height, channel, self.select_midi_channel, self.set_edit_mode)
 
 		self.master_channel = zynthian_gui_mixer_channel(self.main_canvas, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, 16, self.select_midi_channel, self.set_edit_mode)
-		self.master_channel.set_fader_colour("dark blue")
+		self.master_channel.set_fader_colour("gray32")
 
 
 		# Edit widgets
