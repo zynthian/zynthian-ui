@@ -42,8 +42,9 @@ from ctypes import c_float
 # Zynthian specific modules
 import zynconf
 import zynautoconnect
-from jackpeak import *
-from jackpeak.jackpeak import lib_jackpeak, lib_jackpeak_init
+#from jackpeak import *
+#from jackpeak.jackpeak import lib_jackpeak, lib_jackpeak_init
+from zynmixer import *
 from zynmixer.zynmixer import lib_zynmixer, lib_zynmixer_init
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
@@ -186,14 +187,14 @@ class zynthian_gui:
 		self.jackd_options = zynconf.get_jackd_options()
 
 		# Initialize peakmeter audio monitor if needed
-		if not zynthian_gui_config.show_cpu_status:
-			try:
-				global lib_jackpeak
-				lib_jackpeak = lib_jackpeak_init()
-				lib_jackpeak.setDecay(c_float(0.2))
-				lib_jackpeak.setHoldCount(10)
-			except Exception as e:
-				logging.error("ERROR initializing jackpeak: %s" % e)
+#		if not zynthian_gui_config.show_cpu_status:
+#			try:
+#				global lib_jackpeak
+#				lib_jackpeak = lib_jackpeak_init()
+#				lib_jackpeak.setDecay(c_float(0.2))
+#				lib_jackpeak.setHoldCount(10)
+#			except Exception as e:
+#				logging.error("ERROR initializing jackpeak: %s" % e)
 
 		# Initialize Controllers (Rotary & Switches) & MIDI-router
 		try:
@@ -1420,10 +1421,11 @@ class zynthian_gui:
 				self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
 			else:
 				# Get audio peak level
-				self.status_info['peakA'] = lib_jackpeak.getPeak(0)
-				self.status_info['peakB'] = lib_jackpeak.getPeak(1)
-				self.status_info['holdA'] = lib_jackpeak.getHold(0)
-				self.status_info['holdB'] = lib_jackpeak.getHold(1)
+				MIXER_MAIN = 16 #TODO This constant should go somewhere else
+				self.status_info['peakA'] = lib_zynmixer.getDpm(MIXER_MAIN, 0)
+				self.status_info['peakB'] = lib_zynmixer.getDpm(MIXER_MAIN, 1)
+				self.status_info['holdA'] = lib_zynmixer.getDpmHold(MIXER_MAIN, 0)
+				self.status_info['holdB'] = lib_zynmixer.getDpmHold(MIXER_MAIN, 1)
 
 			# Get Status Flags (once each 5 refreshes)
 			if self.status_counter>5:

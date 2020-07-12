@@ -190,40 +190,34 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		pOutB[frame] *= curLevelB;
 		curLevelA += fDeltaA;
 		curLevelB += fDeltaB;
-		if(g_bDpm)
-		{
-			fSampleA = fabs(pOutA[frame]);
-			if(fSampleA > g_mainOutput.dpmA)
-				g_mainOutput.dpmA = fSampleA;
-			fSampleB = fabs(pOutB[frame]);
-			if(fSampleB > g_mainOutput.dpmB)
-				g_mainOutput.dpmB = fSampleB;
-		}
+		fSampleA = fabs(pOutA[frame]);
+		if(fSampleA > g_mainOutput.dpmA)
+			g_mainOutput.dpmA = fSampleA;
+		fSampleB = fabs(pOutB[frame]);
+		if(fSampleB > g_mainOutput.dpmB)
+			g_mainOutput.dpmB = fSampleB;
 	}
 
-	if(g_bDpm)
+	if(g_mainOutput.dpmA > g_mainOutput.holdA)
+		g_mainOutput.holdA = g_mainOutput.dpmA;
+	if(g_mainOutput.dpmB > g_mainOutput.holdB)
+		g_mainOutput.holdB = g_mainOutput.dpmB;
+	if(g_nHoldCount == 0)
 	{
-		if(g_mainOutput.dpmA > g_mainOutput.holdA)
-			g_mainOutput.holdA = g_mainOutput.dpmA;
-		if(g_mainOutput.dpmB > g_mainOutput.holdB)
-			g_mainOutput.holdB = g_mainOutput.dpmB;
-		if(g_nHoldCount == 0)
-		{
-			g_mainOutput.holdA = g_mainOutput.dpmA;
-			g_mainOutput.holdB = g_mainOutput.dpmB;
-			g_nHoldCount = 200;
-		}
-		if(g_nDampingCount == 0)
-		{
-			g_mainOutput.dpmA *= 0.9;
-			g_mainOutput.dpmB *= 0.9;
-			g_nDampingCount = 10;
-		}
-
-		// Damping and hold counts are used throughout cycle so update at end of cycle
-		--g_nDampingCount;
-		--g_nHoldCount;
+		g_mainOutput.holdA = g_mainOutput.dpmA;
+		g_mainOutput.holdB = g_mainOutput.dpmB;
+		g_nHoldCount = 200;
 	}
+	if(g_nDampingCount == 0)
+	{
+		g_mainOutput.dpmA *= 0.9;
+		g_mainOutput.dpmB *= 0.9;
+		g_nDampingCount = 10;
+	}
+
+	// Damping and hold counts are used throughout cycle so update at end of cycle
+	--g_nDampingCount;
+	--g_nHoldCount;
 
 	return 0;
 }
@@ -405,9 +399,6 @@ static float convertToDBFS(float raw) {
 
 float getDpm(int channel, int leg)
 {
-	if(g_bDpm == 0)
-		return -200.0;
-
 	if(channel >= MAX_CHANNELS)
 	{
 		if(leg)
@@ -421,8 +412,6 @@ float getDpm(int channel, int leg)
 
 float getDpmHold(int channel, int leg)
 {
-	if(g_bDpm == 0)
-		return -200.0;
 	if(channel >= MAX_CHANNELS)
 	{
 		if(leg)
