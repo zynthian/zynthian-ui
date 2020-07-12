@@ -426,4 +426,14 @@ float getDpmHold(int channel, int leg)
 void enableDpm(int enable)
 {
 	g_bDpm = enable;
+	if(g_bDpm == 0)
+	{
+		for(unsigned int chan = 0; chan < MAX_CHANNELS; ++chan)
+		{
+			g_dynamic[chan].dpmA = 0;
+			g_dynamic[chan].dpmB = 0;
+			g_dynamic[chan].holdA = 0;
+			g_dynamic[chan].holdB = 0;
+		}
+	}
 }

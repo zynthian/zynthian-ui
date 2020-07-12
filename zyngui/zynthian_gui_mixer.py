@@ -79,7 +79,7 @@ class zynthian_gui_mixer_channel():
 		self.balance_top = self.edit_height - self.balance_height
 		self.balance_control_centre = self.width / 2 
 		self.balance_control_width = self.width / 4 # Width of each half of balance control
-		self.fader_height = self.height - self.edit_height - self.legend_height - 2
+		self.fader_height = self.height - self.edit_height - self.legend_height
 		self.fader_bottom = self.height - self.legend_height
 		self.fader_top = self.fader_bottom - self.fader_height
 		self.mute_top = 1
@@ -94,7 +94,7 @@ class zynthian_gui_mixer_channel():
 		self.dpm_scale_lm = int(self.dpm_high * self.fader_height)
 		self.dpm_scale_lh = int(self.dpm_over * self.fader_height)
 
-		self.dpm_width = 4 #TODO Scale to display
+		self.dpm_width = int(self.width / 10)
 		self.dpm_a_x = x + self.width - self.dpm_width * 2 - 2
 		self.dpm_a_y = self.fader_bottom
 		self.dpm_b_x = x + self.width - self.dpm_width - 1
@@ -121,8 +121,8 @@ class zynthian_gui_mixer_channel():
 		self.main_canvas.itemconfig(self.fader_bg, tags=("fader:%d"%(self.fader_bg), "mixer"))
 		self.fader = self.main_canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_colour, width=0, tags=("fader:%d"%(self.fader_bg), "mixer"))
 
-		self.legend = self.main_canvas.create_text(int(fader_centre), self.height - self.legend_height - 2, fill=self.legend_colour, text="", tags=("fader:%d"%(self.fader_bg),"mixer"), angle=90, anchor="w")
-		self.legend_strip = self.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_colour, text="-", tags=("fader:%d"%(self.fader_bg), "mixer"))
+		self.legend = self.main_canvas.create_text(x + 1, self.height - self.legend_height - 2, fill=self.legend_colour, text="", tags=("fader:%d"%(self.fader_bg),"mixer"), angle=90, anchor="nw", font=("Helvetica", int(self.width / 5)))
+		self.legend_strip = self.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_colour, text="-", tags=("fader:%d"%(self.fader_bg), "mixer"), font=("Helvetica", int(self.width / 5)))
 
 
 		# DPM
@@ -185,7 +185,7 @@ class zynthian_gui_mixer_channel():
 					layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 					for layer in layers_list:
 						if layer.midi_chan == self.channel:
-							self.main_canvas.itemconfig(self.legend, text="%s - %s"%(layer.engine.name, layer.preset_name), state="normal")
+							self.main_canvas.itemconfig(self.legend, text="%s\n%s"%(layer.engine.name, layer.preset_name), state="normal")
 							break
 				else:
 					self.hide()
@@ -370,7 +370,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.fader_width = (self.width - 6 ) / (self.max_channels + 1)
 		self.legend_height = self.height * 0.05
 		self.edit_height = self.height * 0.1
-		self.selection_border_width = 2
+		self.selection_border_width = int(self.height / 200)
 
 		self.fader_height = self.height - self.edit_height - self.legend_height - 2
 		self.fader_bottom = self.height - self.legend_height
@@ -443,7 +443,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.tag_bind("cancel_button", "<ButtonPress-1>", self.on_cancel_press)
 
 		# Selection border
-		self.selection_border = self.main_canvas.create_rectangle(1, 1, self.fader_width, self.height - self.selection_border_width, width=self.selection_border_width, outline=zynthian_gui_config.color_on)
+		self.selection_border = self.main_canvas.create_rectangle(0,0,0,0, width=self.selection_border_width, outline=zynthian_gui_config.color_on)
 
 		zynmixer.enable_dpm(False) # Disable DPM by default - they get enabled when mixer is shown
 
@@ -459,7 +459,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			chan_strip = self.channels[channel]
 		else:
 			chan_strip = self.master_channel
-		self.main_canvas.coords(self.selection_border, chan_strip.x, chan_strip.y + self.selection_border_width, chan_strip.x + chan_strip.width, chan_strip.y + chan_strip.height - self.selection_border_width)
+		self.main_canvas.coords(self.selection_border, chan_strip.x, chan_strip.y + chan_strip.height * 0.95 + self.selection_border_width, chan_strip.x + chan_strip.width, chan_strip.y + chan_strip.height - self.selection_border_width)
 
 
 	# Function to select channel by MIDI channel
@@ -603,6 +603,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.set_mixer_mode()
 		zynmixer.enable_dpm(True)
 		self.master_channel.set_channel(16)
+		self.highlight_channel(self.selected_channel)
 		super().show()
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_BACK, zynthian_gui_config.zyncoder_pin_a[ENC_BACK], zynthian_gui_config.zyncoder_pin_b[ENC_BACK], 0, 0, None, self.selected_channel, self.number_layers, 0)
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_SELECT, zynthian_gui_config.zyncoder_pin_a[ENC_SELECT], zynthian_gui_config.zyncoder_pin_b[ENC_SELECT], 0, 0, None, 64, 127, 0)
