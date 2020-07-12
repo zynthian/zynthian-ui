@@ -127,7 +127,6 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		}
 		if(g_bDpm)
 		{
-			if(g_nDampingCount == 0)
 			if(g_dynamic[chan].dpmA > g_dynamic[chan].holdA)
 				g_dynamic[chan].holdA = g_dynamic[chan].dpmA;
 			if(g_dynamic[chan].dpmB > g_dynamic[chan].holdB)
@@ -137,6 +136,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 				g_dynamic[chan].holdA = g_dynamic[chan].dpmA;
 				g_dynamic[chan].holdB = g_dynamic[chan].dpmB;
 			}
+			if(g_nDampingCount == 0)
 			{
 				g_dynamic[chan].dpmA *= 0.9;
 				g_dynamic[chan].dpmB *= 0.9;
@@ -197,18 +197,22 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
 	if(g_bDpm)
 	{
+		if(g_master.dpmA > g_master.holdA)
+			g_master.holdA = g_master.dpmA;
+		if(g_master.dpmB > g_master.holdB)
+			g_master.holdB = g_master.dpmB;
+		if(g_nHoldCount == 0)
+		{
+			g_master.holdA = g_master.dpmA;
+			g_master.holdB = g_master.dpmB;
+			g_nHoldCount = 200;
+		}
 		if(g_nDampingCount == 0)
 		{
 			// Adjust dpm every g_nDampingCount frames
 			g_master.dpmA *= 0.9;
 			g_master.dpmB *= 0.9;
 			g_nDampingCount = 10;
-		}
-		if(g_nHoldCount == 0)
-		{
-			g_master.holdA = g_master.dpmA;
-			g_master.holdB = g_master.dpmB;
-			g_nHoldCount = 200;
 		}
 
 		--g_nDampingCount;
