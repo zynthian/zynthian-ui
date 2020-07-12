@@ -131,4 +131,11 @@ def get_dpm_hold(channel, leg):
 		return lib_zynmixer.getDpmHold(channel, leg)
 	return -200.0
 
+#	Function to enable or disable digital peak meters
+#	enable: True to enable
+def enable_dpm(enable):
+	if enable:
+		lib_zynmixer.enableDpm(1)
+	else:
+		lib_zynmixer.enableDpm(0)
 #-------------------------------------------------------------------------------

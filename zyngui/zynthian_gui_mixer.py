@@ -445,6 +445,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Selection border
 		self.selection_border = self.main_canvas.create_rectangle(1, 1, self.fader_width, self.height - self.selection_border_width, width=self.selection_border_width, outline=zynthian_gui_config.color_on)
 
+		zynmixer.enable_dpm(False) # Disable DPM by default - they get enabled when mixer is shown
+
 		# Init touchbar
 		self.init_buttonbar()
 
@@ -590,8 +592,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.set_mixer_mode()
 
 
+	# Function to handle hiding display
+	def hide(self):
+		zynmixer.enable_dpm(False)
+		super().hide()
+
+
+	# Function to handle showing display
 	def show(self):
 		self.set_mixer_mode()
+		zynmixer.enable_dpm(True)
 		self.master_channel.set_channel(16)
 		super().show()
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_BACK, zynthian_gui_config.zyncoder_pin_a[ENC_BACK], zynthian_gui_config.zyncoder_pin_b[ENC_BACK], 0, 0, None, self.selected_channel, self.number_layers, 0)
