@@ -36,8 +36,8 @@
 
 struct dynamic
 {
-	jack_port_t * port_a; // Jack input port A
-	jack_port_t * port_b; // Jack input port B
+	jack_port_t * portA; // Jack input port A
+	jack_port_t * portB; // Jack input port B
 	float level; // Current fader level 0..1
 	float reqlevel; // Requested fader level 0..1
 	float balance; // Current balance -1..+1
@@ -55,14 +55,16 @@ struct dynamic g_dynamic[MAX_CHANNELS];
 struct dynamic g_mainOutput;
 int g_bDpm = 1;
 unsigned int g_nDampingCount = 0;
+unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
 unsigned int g_nHoldCount = 0;
+float g_fDpmDecay = 0.9; // Factor to scale for DPM decay - defines resolution of DPM decay
 
 static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 {
 	jack_default_audio_sample_t *pInA, *pInB, *pOutA, *pOutB;
 
-	pOutA = jack_port_get_buffer(g_mainOutput.port_a, nFrames);
-	pOutB = jack_port_get_buffer(g_mainOutput.port_b, nFrames);
+	pOutA = jack_port_get_buffer(g_mainOutput.portA, nFrames);
+	pOutB = jack_port_get_buffer(g_mainOutput.portB, nFrames);
 	memset(pOutA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
 	memset(pOutB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
 
@@ -106,8 +108,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			fDeltaA = (reqLevelA - curLevelA) / nFrames;
 			fDeltaB = (reqLevelB - curLevelB) / nFrames;
 
-			pInA = jack_port_get_buffer(g_dynamic[chan].port_a, nFrames);
-			pInB = jack_port_get_buffer(g_dynamic[chan].port_b, nFrames);
+			pInA = jack_port_get_buffer(g_dynamic[chan].portA, nFrames);
+			pInB = jack_port_get_buffer(g_dynamic[chan].portB, nFrames);
 
 			// Iterate samples scaling each and adding to output and set DPM if any samples louder than current DPM
 			for(frame = 0; frame < nFrames; frame++)
@@ -144,8 +146,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 				if(g_nDampingCount == 0)
 				{
 					// Only update damping release each g_nDampingCount cycles
-					g_dynamic[chan].dpmA *= 0.9;
-					g_dynamic[chan].dpmB *= 0.9;
+					g_dynamic[chan].dpmA *= g_fDpmDecay;
+					g_dynamic[chan].dpmB *= g_fDpmDecay;
 				}
 			}
 		}
@@ -206,13 +208,13 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	{
 		g_mainOutput.holdA = g_mainOutput.dpmA;
 		g_mainOutput.holdB = g_mainOutput.dpmB;
-		g_nHoldCount = 200;
+		g_nHoldCount = g_nDampingPeriod * 20;
 	}
 	if(g_nDampingCount == 0)
 	{
-		g_mainOutput.dpmA *= 0.9;
-		g_mainOutput.dpmB *= 0.9;
-		g_nDampingCount = 10;
+		g_mainOutput.dpmA *= g_fDpmDecay;
+		g_mainOutput.dpmB *= g_fDpmDecay;
+		g_nDampingCount = g_nDampingPeriod;
 	}
 
 	// Damping and hold counts are used throughout cycle so update at end of cycle
@@ -227,11 +229,23 @@ void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void
 	unsigned int chan;
 	for(chan = 0; chan < MAX_CHANNELS; chan++)
 	{
-		if(jack_port_connected(g_dynamic[chan].port_a) > 0 && (jack_port_connected(g_dynamic[chan].port_a) > 0))
+		if(jack_port_connected(g_dynamic[chan].portA) > 0 && (jack_port_connected(g_dynamic[chan].portA) > 0))
 			g_dynamic[chan].routed = 1;
 		else
 			g_dynamic[chan].routed = 0;
 	}
+}
+
+int onJackSamplerate(jack_nframes_t nSamplerate, void *arg)
+{
+	g_nDampingPeriod = g_fDpmDecay * jack_get_sample_rate(g_pJackClient) / jack_get_buffer_size(g_pJackClient) / 15;
+	return 0;
+}
+
+int onJackBuffersize(jack_nframes_t nBuffersize, void *arg)
+{
+	g_nDampingPeriod = g_fDpmDecay * jack_get_sample_rate(g_pJackClient) / jack_get_buffer_size(g_pJackClient) / 15;
+	return 0;
 }
 
 int init()
@@ -259,13 +273,13 @@ int init()
 		g_dynamic[chan].mute = 0;
 		char sName[10];
 		sprintf(sName, "input_%02da", chan);
-		if (!(g_dynamic[chan].port_a = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
+		if (!(g_dynamic[chan].portA = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
 		{
 			fprintf(stderr, "libzynmixer cannot register %s\n", sName);
 			exit(1);
 		}
 		sprintf(sName, "input_%02db", chan);
-		if (!(g_dynamic[chan].port_b = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
+		if (!(g_dynamic[chan].portB = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
 		{
 			fprintf(stderr, "libzynmixer cannot register %s\n", sName);
 			exit(1);
@@ -276,12 +290,12 @@ int init()
 	#endif
 
 	// Create output ports
-	if(!(g_mainOutput.port_a = jack_port_register(g_pJackClient, "output_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0)))
+	if(!(g_mainOutput.portA = jack_port_register(g_pJackClient, "output_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0)))
 	{
 		fprintf(stderr, "libzynmixer cannot register output A\n");
 		exit(1);
 	}
-	if(!(g_mainOutput.port_b = jack_port_register(g_pJackClient, "output_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0)))
+	if(!(g_mainOutput.portB = jack_port_register(g_pJackClient, "output_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0)))
 	{
 		fprintf(stderr, "libzynmixer cannot register output B\n");
 		exit(1);
@@ -303,6 +317,8 @@ int init()
 	// Register the callbacks
 	jack_set_process_callback(g_pJackClient, onJackProcess, 0);
 	jack_set_port_connect_callback(g_pJackClient, onJackConnect, 0);
+	jack_set_sample_rate_callback(g_pJackClient, onJackSamplerate, 0);
+	jack_set_buffer_size_callback(g_pJackClient, onJackBuffersize, 0);
 
 	if(jack_activate(g_pJackClient)) {
 		fprintf(stderr, "libzynmixer cannot activate client\n");
