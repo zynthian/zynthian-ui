@@ -951,7 +951,7 @@ class zynthian_gui:
 	def zynswitch_short(self,i):
 		logging.info('Short Switch '+str(i))
 
-		if self.modal_screen in ['stepseq']:
+		if self.modal_screen in ['stepseq', 'audio_mixer']:
 			if self.screens[self.modal_screen].switch(i, 'S'):
 				return
 

@@ -65,7 +65,7 @@ class zynthian_gui_mixer_channel():
 		self.width = width
 		self.height = height
 		self.hidden = False
-		if channel and channel > 16:
+		if channel and channel <= 16:
 			self.channel = channel
 		else:
 			self.channel = None
@@ -177,8 +177,8 @@ class zynthian_gui_mixer_channel():
 			self.main_canvas.itemconfig(self.legend, text="")
 			self.main_canvas.coords(self.fader_background, self.x, self.fader_top, self.x + self.width, self.fader_bottom)
 			if self.channel == 16:
-				self.main_canvas.itemconfig(self.legend_strip, text="Master")
-				self.main_canvas.itemconfig(self.legend, text="Master")
+				self.main_canvas.itemconfig(self.legend_strip, text="Main")
+				self.main_canvas.itemconfig(self.legend, text="Main")
 			else:
 				if zynmixer.is_channel_routed(self.channel):
 					self.main_canvas.itemconfig(self.legend_strip, text=self.channel+1)
@@ -362,9 +362,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.body_height
 
-
-		self.number_layers = 0 # Quantity of layers
-		self.max_channels = 16 # Maximum quantiy of faders to display (Defines fader width. Master always displayed.) #TODO: Get from config and estimate initial value if not in config
+		self.number_layers = 0 # Quantity of layers (routed channels)
+		self.max_channels = 4 # Maximum quantiy of faders to display (Defines fader width. Main always displayed.) #TODO: Get from config and estimate initial value if not in config
 		if self.width < 600: self.max_channels = 8
 		if self.width < 400: self.max_channels = 4
 		self.fader_width = (self.width - 6 ) / (self.max_channels + 1)
@@ -381,7 +380,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.balance_control_width = self.width / 4 # Width of each half of balance control
 		self.mute_top = 1
 
-		# Arrays of GUI elements for channel strips - Channels + Master
+		# Arrays of GUI elements for channel strips - Channels + Main
 		self.channels = [None] * self.max_channels
 		self.selected_channel = 0
 		self.channel_offset = 0 # Index of first channel displayed on far left
@@ -420,8 +419,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		for channel in range(self.max_channels):
 			self.channels[channel] = zynthian_gui_mixer_channel(self.main_canvas, 1 + self.fader_width * channel, 0, self.fader_width - 1, self.height, channel, self.select_midi_channel, self.set_edit_mode)
 
-		self.master_channel = zynthian_gui_mixer_channel(self.main_canvas, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, 16, self.select_midi_channel, self.set_edit_mode)
-		self.master_channel.set_fader_colour("gray32")
+		self.main_channel = zynthian_gui_mixer_channel(self.main_canvas, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, 16, self.select_midi_channel, self.set_edit_mode)
+		self.main_channel.set_fader_colour("gray32")
 
 
 		# Edit widgets
@@ -455,10 +454,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# channel: Index of channel to highlight
 	def highlight_channel(self, channel):
 		#TODO: Scroll channels
-		if channel < self.number_layers and channel < self.max_channels:
-			chan_strip = self.channels[channel]
+		if channel < self.number_layers:
+			chan_strip = self.channels[channel - self.channel_offset]
 		else:
-			chan_strip = self.master_channel
+			chan_strip = self.main_channel
 		self.main_canvas.coords(self.selection_border, chan_strip.x, chan_strip.y + chan_strip.height * 0.95 + self.selection_border_width, chan_strip.x + chan_strip.width, chan_strip.y + chan_strip.height - self.selection_border_width)
 
 
@@ -477,15 +476,23 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to select channel by index
 	#	channel: Index of channel to select
 	def select_channel(self, channel):
-		if self.mode == 0 or channel == None or channel > self.number_layers or channel < 0:# or channel == self.selected_channel:
+		if self.mode == 0 or channel == None or channel < 0 or channel > self.number_layers:
 			return
 		self.selected_channel = channel
+
+		if self.selected_channel < self.channel_offset:
+			self.channel_offset = channel
+			self.set_mixer_mode()
+		elif self.selected_channel >= self.max_channels and self.selected_channel != self.number_layers:
+			self.channel_offset = self.selected_channel - self.max_channels + 1
+			self.set_mixer_mode()
+
 		self.highlight_channel(self.selected_channel)
 		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, self.selected_channel, 0)
 
 		self.selected_layer = None
 		if channel == self.number_layers:
-			return # Master channel selected
+			return # Main channel selected
 		layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 		for layer in layers_list:
 			if layer.midi_chan == self.get_midi_channel(self.selected_channel):
@@ -497,11 +504,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	channel: Index of GUI channel
 	#	returns: MIDI channel
 	def get_midi_channel(self, channel):
-		if channel > self.max_channels:
-			return None
 		if channel == self.number_layers:
 			return 16
-		return self.channels[channel].channel
+		if channel > self.number_layers:
+			return None
+		return self.channels[channel - self.channel_offset].channel
 
 
 	# Function to handle balance press
@@ -560,14 +567,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		for channel in range(self.max_channels):
 			self.channels[channel].set_channel(None)
 		self.number_layers = 0
+		count = 0
 		for channel in range(16):
-			if zynmixer.is_channel_routed(channel) and self.number_layers < self.max_channels:
-				self.channels[self.number_layers].set_channel(channel)
+			if zynmixer.is_channel_routed(channel):
+				if self.number_layers >= self.channel_offset and count < self.max_channels:
+					self.channels[count].set_channel(channel)
+					count += 1
 				self.number_layers += 1
-#		for layer in layers_list:
-#			if layer.midi_chan != None and self.number_layers < self.max_channels:
-#				self.channels[self.number_layers].set_channel(layer.midi_chan)
-#				self.number_layers += 1
 		self.main_canvas.itemconfig(self.selection_border, state="normal")
 		self.mode = 1
 		self.edit_channel = None
@@ -602,7 +608,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def show(self):
 		self.set_mixer_mode()
 		zynmixer.enable_dpm(True)
-		self.master_channel.set_channel(16)
+		self.main_channel.set_channel(16)
 		self.highlight_channel(self.selected_channel)
 		super().show()
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_BACK, zynthian_gui_config.zyncoder_pin_a[ENC_BACK], zynthian_gui_config.zyncoder_pin_b[ENC_BACK], 0, 0, None, self.selected_channel, self.number_layers, 0)
@@ -628,8 +634,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA BACK_UP command
 	def back_up(self):
-		if self.selected_channel < self.number_layers + 1:
-			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, self.selected_channel + 1, 0)
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, self.selected_channel + 1, 0)
 
 
 	# Function to handle CUIA BACK_DOWN command
@@ -682,6 +687,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if balance < -1: balance = -1
 			zynmixer.set_balance(self.get_midi_channel(self.selected_channel), balance)
 		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER)
+		# Main output
 		if(value != 64):
 			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 64, 0)
 			level = zynmixer.get_level(self.number_layers) + (value - 64) * 0.01
@@ -700,11 +706,23 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.set_edit_mode()
 
 
+	# Function to handle switch press
+	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#	returns True if action fully handled or False if parent action should be triggered
+	def switch(self, switch, type):
+		if type == "S" and switch == ENC_BACK:
+			if self.mode == 0:
+				self.set_mixer_mode()
+				return True
+		return False
+
+
 	# Function to refresh screen
 	def refresh_status(self, status={}):
 		if self.shown:
 			super().refresh_status(status)
-			self.master_channel.draw()
+			self.main_channel.draw()
 			if self.edit_channel == None:
 				for fader in range(self.max_channels):
 					self.channels[fader].draw()
