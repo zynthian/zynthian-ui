@@ -116,14 +116,15 @@ class zynthian_gui_mixer_channel():
 		self.low_colour = "dark green"
 		self.medium_colour = "#AAAA00" # yellow
 		self.high_colour = "dark red"
+		font=(zynthian_gui_config.font_family, int(self.legend_height / 2))
 
 		# Fader
 		self.fader_bg = self.main_canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_background, width=0)
 		self.main_canvas.itemconfig(self.fader_bg, tags=("fader:%d"%(self.fader_bg), "mixer"))
 		self.fader = self.main_canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_colour, width=0, tags=("fader:%d"%(self.fader_bg), "mixer"))
 
-		self.legend = self.main_canvas.create_text(x + 1, self.height - self.legend_height - 2, fill=self.legend_colour, text="", tags=("fader:%d"%(self.fader_bg),"mixer"), angle=90, anchor="nw", font=(zynthian_gui_config.font_family, int(self.fader_height / 35)))
-		self.legend_strip = self.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_colour, text="-", tags=("fader:%d"%(self.fader_bg), "mixer"), font=(zynthian_gui_config.font_family, int(self.legend_height / 2)))
+		self.legend = self.main_canvas.create_text(x + 1, self.height - self.legend_height - 2, fill=self.legend_colour, text="", tags=("fader:%d"%(self.fader_bg),"mixer"), angle=90, anchor="nw", font=font)
+		self.legend_strip = self.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_colour, text="-", tags=("fader:%d"%(self.fader_bg), "mixer"), font=font)
 
 
 		# DPM
@@ -144,10 +145,10 @@ class zynthian_gui_mixer_channel():
 		self.main_canvas.itemconfig(self.edit_bg, tags=("mute_button:%d"%(self.edit_bg),"edit_button:%d"%(self.edit_bg), "mixer"))
 
 		self.solo = self.main_canvas.create_rectangle(x, 0, x + self.width, self.edit_height * 0.4 - 1, fill="gray30", width=0, tags=("solo_button:%d"%(self.edit_bg),"edit_button:%d"%(self.edit_bg), "mixer"))
-		self.main_canvas.create_text(x + self.width / 2, self.edit_height * 0.2, text="Solo", fill="gray70", tags=("solo_button:%d"%(self.edit_bg),"edit_button:%d"%(self.edit_bg), "mixer"))
+		self.main_canvas.create_text(x + self.width / 2, self.edit_height * 0.2 - 1, text="Solo", fill="gray70", tags=("solo_button:%d"%(self.edit_bg),"edit_button:%d"%(self.edit_bg), "mixer"), font=font)
 
-		self.mute = self.main_canvas.create_rectangle(x, self.edit_height * 0.4, x + self.width, self.edit_height * 0.8 - 1, fill="gray30", width=0, tags=("mute_button:%d"%(self.edit_bg),"edit_button:%d"%(self.edit_bg), "mixer"))
-		self.main_canvas.create_text(x + self.width / 2, self.edit_height * 0.6, text="Mute", fill="gray70", tags=("mute_button:%d"%(self.edit_bg),"edit_button:%d"%(self.edit_bg), "mixer"))
+		self.mute = self.main_canvas.create_rectangle(x, self.edit_height * 0.4, x + self.width, self.edit_height * 0.8, fill="gray30", width=0, tags=("mute_button:%d"%(self.edit_bg),"edit_button:%d"%(self.edit_bg), "mixer"))
+		self.main_canvas.create_text(x + self.width / 2, self.edit_height * 0.6, text="Mute", fill="gray70", tags=("mute_button:%d"%(self.edit_bg),"edit_button:%d"%(self.edit_bg), "mixer"), font=font)
 
 		# Balance indicator
 		self.balance_left = self.main_canvas.create_rectangle(x, self.fader_top, int(fader_centre - 0.5), self.fader_top + self.balance_height, fill=self.left_colour, width=0, tags=("mute_button:%d"%(self.edit_bg),"edit_button:%d"%(self.edit_bg), "mixer"))
@@ -444,7 +445,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 		# Edit widgets
-		font=("Helvetica", int(self.edit_height / 4))
+		font=(zynthian_gui_config.font_family, int(self.edit_height / 4))
 		f=tkFont.Font(family=zynthian_gui_config.font_family, size=int(self.edit_height / 4))
 		button_width = f.measure(" BALANCE ") # Width of widest text on edit buttons
 		balance_control_bg = self.main_canvas.create_rectangle(self.balance_control_centre - self.balance_control_width, 0, self.balance_control_centre + self.balance_control_width, self.balance_control_height, fill=zynthian_gui_config.color_bg, width=0, state="hidden", tags=("edit_control","balance_control"))
