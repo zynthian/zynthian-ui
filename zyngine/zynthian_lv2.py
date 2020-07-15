@@ -220,7 +220,8 @@ def get_plugin_type(plugin):
 	}
 
 	# Try to determine the plugin type from the LV2 class ...
-	plugin_class = str(plugin.get_class().get_label())
+	plugin_class = re.sub(' Plugin', '', str(plugin.get_class().get_label()))
+	
 	if plugin_class in lv2_plugin_classes["MIDI_SYNTH"]:
 		return PluginType.MIDI_SYNTH
 
