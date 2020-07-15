@@ -214,7 +214,7 @@ class zynthian_engine(zynthian_basic_engine):
 						if len(parts)>=2 and parts[1]: fvars[parts[0]]=parts[1]
 			except:
 				fvars['DISPLAY']=""
-		if 'DISPLAY' not in fvars or not fvars['DISPLAY']:
+		if 'DISPLAY' not in fvars or not fvars['DISPLAY'] or fvars['DISPLAY'] == 'NONE':
 			logging.info("NO REMOTE DISPLAY")
 			return False
 		else:
