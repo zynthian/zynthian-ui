@@ -59,6 +59,10 @@ class zynthian_gui_mixer_channel():
 	#	channel: Index of channel (used for labels)
 	#	on_select_cb: Function to call when fader is selected (must accept channel as parameter)
 	#	on_edit_cb: Function to call when channel edit is requested
+
+	mute_colour = "yellow4"
+	solo_colour = "DodgerBlue4"
+
 	def __init__(self, canvas, x, y, width, height, channel, on_select_cb, on_edit_cb):
 		self.main_canvas = canvas
 		self.x = x
@@ -83,7 +87,6 @@ class zynthian_gui_mixer_channel():
 		self.fader_height = self.height - self.edit_height - self.legend_height
 		self.fader_bottom = self.height - self.legend_height
 		self.fader_top = self.fader_bottom - self.fader_height
-		self.mute_top = 1
 		fader_centre = x + width * 0.5
 
 		#Digital Peak Meter (DPM) parameters
@@ -112,8 +115,6 @@ class zynthian_gui_mixer_channel():
 		self.edit_button_background = zynthian_gui_config.color_bg
 		self.left_colour = "dark red"
 		self.right_colour = "dark green"
-		self.mute_colour = "yellow4"
-		self.solo_colour = "DodgerBlue4"
 		self.low_colour = "dark green"
 		self.medium_colour = "#AAAA00" # yellow
 		self.high_colour = "dark red"
@@ -400,7 +401,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.balance_top = self.fader_top
 		self.balance_control_width = self.width / 4 # Width of each half of balance control
 		self.balance_control_centre = self.fader_width + self.balance_control_width
-		self.mute_top = 1
 
 		# Arrays of GUI elements for channel strips - Channels + Main
 		self.channels = [None] * self.max_channels
@@ -455,10 +455,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.tag_bind("balance_control", "<ButtonPress-1>", self.on_balance_press)
 		self.main_canvas.tag_bind("balance_control", "<ButtonRelease-1>", self.on_balance_release)
 		self.main_canvas.tag_bind("balance_control", "<B1-Motion>", self.on_balance_motion)
-		# Mute button
+
 		edit_button_x = 1 + int(self.fader_width)
 		edit_button_y = self.balance_control_height + 1
-		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill="dark red", tags=("edit_control", "mute_button"))
+		# Solo button
+		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill=zynthian_gui_mixer_channel.solo_colour, tags=("edit_control", "solo_button"))
+		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="SOLO", state="hidden", tags=("edit_control", "solo_button"), font=font, justify='center')
+		# Mute button
+		edit_button_y += self.edit_height
+		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill=zynthian_gui_mixer_channel.mute_colour, tags=("edit_control", "mute_button"))
 		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="MUTE", state="hidden", tags=("edit_control", "mute_button"), font=font, justify='center')
 		# Layer button
 		edit_button_y += self.edit_height
@@ -478,6 +483,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="CANCEL", state="hidden", tags=("edit_control", "cancel_button"), font=font, justify='center')
 
 		self.main_canvas.tag_bind("mute_button", "<ButtonRelease-1>", self.on_mute_release)
+		self.main_canvas.tag_bind("solo_button", "<ButtonRelease-1>", self.on_solo_release)
 		self.main_canvas.tag_bind("layer_button", "<ButtonRelease-1>", self.on_layer_release)
 		self.main_canvas.tag_bind("reset_gain_button", "<ButtonRelease-1>", self.on_reset_level_release)
 		self.main_canvas.tag_bind("reset_balance_button", "<ButtonRelease-1>", self.on_reset_balance_release)
@@ -624,6 +630,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	event: Mouse event
 	def on_mute_release(self, event):
 		zynmixer.toggle_mute(self.get_midi_channel(self.selected_channel))
+
+
+	# Function to handle solo button release
+	#	event: Mouse event
+	def on_solo_release(self, event):
+		zynmixer.toggle_solo(self.get_midi_channel(self.selected_channel))
 
 
 	# Function to handle layer button release
@@ -793,11 +805,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to handle OSC messages
-	def osc(self, path, args, types):
+	def osc(self, path, args, types, src):
 #		print("zynthian_gui_mixer::osc", path, args, types)
 		if path[:5] == "fader":
 			try:
-					zynmixer.set_level(int(path[5:]), args[0])
+				zynmixer.set_level(int(path[5:]), args[0])
 			except:
 				pass
 		elif path[:7] == "balance":
