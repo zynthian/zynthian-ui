@@ -105,6 +105,32 @@ def toggle_mute(channel):
 	if lib_zynmixer:
 		lib_zynmixer.toggleMute(channel)
 
+#	Function to set solo for a channel
+#	channel: Index of channel
+#	solo: Solo state (True to solo)
+def	set_solo(channel, solo):
+	if lib_zynmixer:
+		lib_zynmixer.setSolo(channel, solo)
+
+#	Function to get solo for a channel
+#	channel: Index of channel
+#	returns: Solo state (True if solo)
+def	get_solo(channel):
+	if lib_zynmixer:
+		return lib_zynmixer.getSolo(channel) == 1
+	else:
+		return True
+
+#	Function to toggle mute of a channel
+#	channel: Index of channel
+def toggle_solo(channel):
+	if lib_zynmixer:
+		if get_solo(channel):
+			set_solo(channel, False)
+		else:
+			set_solo(channel, True)
+
+
 #	Function to check if channel has audio routed to its input
 #	channel: Index of channel
 #	returns: True if routed

@@ -78,6 +78,18 @@ void setMute(int channel, int mute);
 */
 int getMute(int channel);
 
+/** @brief  Set solo state of channel
+*   @param  channel Index of channel
+*   @param  solo Solostatus (0: Normal, 1: Solo)
+*/
+void setSolo(int channel, int solo);
+
+/** @brief  Get solo state of channel
+*   @param  channel Index of channel
+*   @retval  int Solo status (0: Normal, 1: solo)
+*/
+int getSolo(int channel);
+
 /** @brief  Toggles mute of a channel
 *   @param  channel Index of channel
 */

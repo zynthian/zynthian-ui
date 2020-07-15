@@ -47,6 +47,7 @@ struct dynamic
 	float holdA; // Current peak hold level A-leg
 	float holdB; // Current peak hold level B-leg
 	int mute; // 1 if muted
+	int solo; // 1 if solo
 	int routed; // 1 if source routed to channel
 };
 
@@ -84,7 +85,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			else
 				curLevelB = g_dynamic[chan].level;
 
-			if(g_dynamic[chan].mute)
+			if(g_dynamic[chan].mute || g_mainOutput.solo && g_dynamic[chan].solo != 1)
 			{
 				g_dynamic[chan].level = 0; // We can set this here because we have the data and will iterate towards 0 over this frame
 				reqLevelA = 0.0;
@@ -382,6 +383,28 @@ int getMute(int channel)
 	if(channel >= MAX_CHANNELS)
 		return g_mainOutput.mute;
 	return g_dynamic[channel].mute;
+}
+
+void setSolo(int channel, int solo)
+{
+	if(channel >= MAX_CHANNELS)
+	{
+		for(int nChannel = 0; nChannel < MAX_CHANNELS; ++nChannel)
+			g_dynamic[nChannel].solo = 0;
+	}
+	else
+		g_dynamic[channel].solo = solo;
+	// g_mainOutput.solo indicates overall summary of solo status, i.e. 1 if any channel solo enabled
+	g_mainOutput.solo = 0;
+	for(int nChannel = 0; nChannel < MAX_CHANNELS; ++ nChannel)
+		g_mainOutput.solo |= g_dynamic[nChannel].solo;
+}
+
+int getSolo(int channel)
+{
+	if(channel >= MAX_CHANNELS)
+		return g_mainOutput.solo;
+	return g_dynamic[channel].solo;
 }
 
 void toggleMute(int channel)
