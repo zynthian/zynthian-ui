@@ -30,6 +30,7 @@ import tkinter
 from time import monotonic
 from tkinter import font as tkFont
 from PIL import Image, ImageTk
+import liblo
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
@@ -790,3 +791,27 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.channels[0].draw()
 				self.draw_balance_edit()
 
+
+	# Function to handle OSC messages
+	def osc(self, path, args, types):
+#		print("zynthian_gui_mixer::osc", path, args, types)
+		if path[:5] == "fader":
+			try:
+					zynmixer.set_level(int(path[5:]), args[0])
+			except:
+				pass
+		elif path[:7] == "balance":
+			try:
+				zynmixer.set_balance(int(path[7:]), args[0])
+			except:
+				pass
+		elif path[:4] == "mute":
+			try:
+				zynmixer.set_mute(int(path[4:]), int(args[0]))
+			except:
+				pass
+		elif path[:4] == "solo":
+			try:
+				zynmixer.set_solo(int(path[4:]), int(args[0]))
+			except:
+				pass

@@ -298,6 +298,10 @@ class zynthian_gui:
 			self.callable_ui_action(parts[2].upper(), args)
 			#Run autoconnect if needed
 			self.zynautoconnect_do()
+		elif parts[1]=="mixer":
+			zynthian_gui_mixer.osc(self, parts[2], args, types)
+		elif parts[1]=="startConnection/":
+			zynthian_gui_mixer.osc(self, parts[2], args, types)
 		else:
 			logging.warning("Not supported OSC call '{}'".format(path))
 
