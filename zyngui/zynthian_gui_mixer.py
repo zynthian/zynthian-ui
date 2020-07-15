@@ -424,21 +424,38 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 		# Edit widgets
-		balance_control_bg = self.main_canvas.create_rectangle(self.balance_control_centre - self.balance_control_width, self.fader_top, self.balance_control_centre + self.balance_control_width, self.fader_top + self.balance_control_height, fill=zynthian_gui_config.color_bg, width=0, state="hidden", tags=("edit_control","balance_control"))
-		self.balance_control_left = self.main_canvas.create_rectangle(int(self.balance_control_centre - self.balance_control_width), self.fader_top, self.balance_control_centre, self.fader_top + self.balance_control_height, fill="dark red", width=0, state="hidden", tags=("edit_control","balance_control"))
-		self.balance_control_right = self.main_canvas.create_rectangle(self.balance_control_centre, self.fader_top, self.balance_control_centre + self.balance_control_width, self.fader_top + self.balance_control_height, fill="dark green", width=0, state="hidden", tags=("edit_control","balance_control"))
+		balance_control_bg = self.main_canvas.create_rectangle(self.balance_control_centre - self.balance_control_width, 0, self.balance_control_centre + self.balance_control_width, self.balance_control_height, fill=zynthian_gui_config.color_bg, width=0, state="hidden", tags=("edit_control","balance_control"))
+		self.balance_control_left = self.main_canvas.create_rectangle(int(self.balance_control_centre - self.balance_control_width), 0, self.balance_control_centre, self.balance_control_height, fill="dark red", width=0, state="hidden", tags=("edit_control","balance_control"))
+		self.balance_control_right = self.main_canvas.create_rectangle(self.balance_control_centre, 0, self.balance_control_centre + self.balance_control_width, self.balance_control_height, fill="dark green", width=0, state="hidden", tags=("edit_control","balance_control"))
 		self.main_canvas.tag_bind("balance_control", "<ButtonPress-1>", self.on_balance_press)
 		self.main_canvas.tag_bind("balance_control", "<ButtonRelease-1>", self.on_balance_release)
 		self.main_canvas.tag_bind("balance_control", "<B1-Motion>", self.on_balance_motion)
+		# Mute button
+		edit_button_x = 1 + int(self.fader_width)
+		edit_button_y = self.balance_control_height + 1
+		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + self.fader_width, edit_button_y + self.edit_height, state="hidden", fill="dark red", tags=("edit_control", "mute_button"))
+		self.main_canvas.create_text(edit_button_x + int(self.fader_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="MUTE", state="hidden", tags=("edit_control", "mute_button"))
+		# Layer button
+		edit_button_y += self.edit_height
+		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + self.fader_width, edit_button_y + self.edit_height, state="hidden", fill="orange", tags=("edit_control", "layer_button"))
+		self.layer_button_text = self.main_canvas.create_text(edit_button_x + int(self.fader_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="LAYER", state="hidden", tags=("edit_control", "layer_button"))
+		# Reset gain button
+		edit_button_y += self.edit_height
+		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + self.fader_width, edit_button_y + self.edit_height, state="hidden", fill="blue", tags=("edit_control", "reset_gain_button"))
+		self.reset_gain_button_text = self.main_canvas.create_text(edit_button_x + int(self.fader_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="RESET GAIN", state="hidden", tags=("edit_control", "reset_gain_button"))
+		# Reset balance button
+		edit_button_y += self.edit_height
+		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + self.fader_width, edit_button_y + self.edit_height, state="hidden", fill="blue", tags=("edit_control", "reset_balance_button"))
+		self.reset_balance_button_text = self.main_canvas.create_text(edit_button_x + int(self.fader_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="RESET BALANCE", state="hidden", tags=("edit_control", "reset_balance_button"))
+		# Cancel button
+		edit_button_y += self.edit_height
+		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + self.fader_width, edit_button_y + self.edit_height, state="hidden", fill=zynthian_gui_config.color_bg, tags=("edit_control", "cancel_button"))
+		self.main_canvas.create_text(edit_button_x + int(self.fader_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="CANCEL", state="hidden", tags=("edit_control", "cancel_button"))
 
-		self.main_canvas.create_rectangle(1 + int(self.fader_width), 0, self.fader_width * 2 - 1, self.edit_height, state="hidden", fill="dark red", tags=("edit_control", "mute_button"))
-		self.main_canvas.create_text(1 + int(self.fader_width * 1.5), int(self.edit_height / 2), fill="white", text="MUTE", state="hidden", tags=("edit_control", "mute_button"))
-		self.main_canvas.create_rectangle(1 + int(self.fader_width * 2), 0, self.fader_width * 3 - 1, self.edit_height, state="hidden", fill="orange", tags=("edit_control", "layer_button"))
-		self.layer_button_text = self.main_canvas.create_text(1 + int(self.fader_width * 2.5), int(self.edit_height / 2), fill="white", text="LAYER", state="hidden", tags=("edit_control", "layer_button"))
-		self.main_canvas.create_rectangle(1 + int(self.fader_width * 3), 0, self.fader_width * 4 - 1, self.edit_height, state="hidden", fill=zynthian_gui_config.color_bg, tags=("edit_control", "cancel_button"))
-		self.main_canvas.create_text(1 + int(self.fader_width * 3.5), int(self.edit_height / 2), fill="white", text="CANCEL", state="hidden", tags=("edit_control", "cancel_button"))
 		self.main_canvas.tag_bind("mute_button", "<ButtonRelease-1>", self.on_mute_release)
 		self.main_canvas.tag_bind("layer_button", "<ButtonRelease-1>", self.on_layer_release)
+		self.main_canvas.tag_bind("reset_gain_button", "<ButtonRelease-1>", self.on_reset_level_release)
+		self.main_canvas.tag_bind("reset_balance_button", "<ButtonRelease-1>", self.on_reset_balance_release)
 		self.main_canvas.tag_bind("cancel_button", "<ButtonPress-1>", self.on_cancel_press)
 
 		# Selection border
@@ -533,11 +550,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		zynmixer.set_balance(self.get_midi_channel(self.selected_channel), balance)
 
 		if balance > 0:
-			self.main_canvas.coords(self.balance_control_left, self.balance_control_centre - (1-balance) * self.balance_control_width, self.fader_top, self.balance_control_centre, self.fader_top + self.balance_control_height)
-			self.main_canvas.coords(self.balance_control_right, self.balance_control_centre, self.fader_top, self.balance_control_centre + self.balance_control_width, self.fader_top + self.balance_control_height)
+			self.main_canvas.coords(self.balance_control_left, self.balance_control_centre - (1-balance) * self.balance_control_width, 0, self.balance_control_centre, self.balance_control_height)
+			self.main_canvas.coords(self.balance_control_right, self.balance_control_centre, 0, self.balance_control_centre + self.balance_control_width, self.balance_control_height)
 		if balance < 0:
-			self.main_canvas.coords(self.balance_control_left, self.balance_control_centre - self.balance_control_width, self.fader_top, self.balance_control_centre, self.fader_top + self.balance_control_height)
-			self.main_canvas.coords(self.balance_control_right, self.balance_control_centre, self.fader_top, self.balance_control_centre + self.balance_control_width + self.balance_control_width * balance, self.fader_top + self.balance_control_height)
+			self.main_canvas.coords(self.balance_control_left, self.balance_control_centre - self.balance_control_width, 0, self.balance_control_centre, self.balance_control_height)
+			self.main_canvas.coords(self.balance_control_right, self.balance_control_centre, 0, self.balance_control_centre + self.balance_control_width + self.balance_control_width * balance, self.balance_control_height)
 
 
 	# Function change to edit mode
@@ -553,11 +570,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.channels[0].draw(True)
 		balance = zynmixer.get_balance(self.get_midi_channel(self.selected_channel))
 		if balance > 0:
-			self.main_canvas.coords(self.balance_control_left, self.balance_control_centre - (1-balance) * self.balance_control_width, self.fader_top, self.balance_control_centre, self.fader_top + self.balance_control_height)
-			self.main_canvas.coords(self.balance_control_right, self.balance_control_centre, self.fader_top, self.balance_control_centre + self.balance_control_width, self.fader_top + self.balance_control_height)
+			self.main_canvas.coords(self.balance_control_left, self.balance_control_centre - (1-balance) * self.balance_control_width, 0, self.balance_control_centre, self.balance_control_height)
+			self.main_canvas.coords(self.balance_control_right, self.balance_control_centre, 0, self.balance_control_centre + self.balance_control_width, self.balance_control_height)
 		else:
-			self.main_canvas.coords(self.balance_control_left, self.balance_control_centre - self.balance_control_width, self.fader_top, self.balance_control_centre, self.fader_top + self.balance_control_height)
-			self.main_canvas.coords(self.balance_control_right, self.balance_control_centre, self.fader_top, self.balance_control_centre + self.balance_control_width + self.balance_control_width * balance, self.fader_top + self.balance_control_height)
+			self.main_canvas.coords(self.balance_control_left, self.balance_control_centre - self.balance_control_width, 0, self.balance_control_centre, self.balance_control_height)
+			self.main_canvas.coords(self.balance_control_right, self.balance_control_centre, 0, self.balance_control_centre + self.balance_control_width + self.balance_control_width * balance, self.balance_control_height)
 
 
 	# Function change to mixer mode
@@ -588,8 +605,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle layer button release
 	#	event: Mouse event
 	def on_layer_release(self, event):
-#		self.zyngui.show_screen("layer") #TODO: Show relevant layer control screen
 		self.zyngui.layer_control(self.selected_layer)
+
+
+	# Function to handle reset gain button release
+	#	event: Mouse event
+	def on_reset_level_release(self, event):
+		zynmixer.set_level(self.selected_channel, 0.8)
+
+
+	# Function to handle reset balance button release
+	#	event: Mouse event
+	def on_reset_balance_release(self, event):
+		zynmixer.set_balance(self.selected_channel, 0)
 
 
 	# Function to handle cancel edit button release
