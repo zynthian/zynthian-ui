@@ -370,6 +370,7 @@ class zynthian_gui_mixer_channel():
 	def on_solo_release(self, event):
 		if self.channel != None:
 			zynmixer.toggle_solo(self.channel)
+			self.on_select_cb(self.channel)
 
 
 #------------------------------------------------------------------------------
