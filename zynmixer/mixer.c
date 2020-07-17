@@ -211,9 +211,14 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
     fDeltaA = (reqLevelA - curLevelA) / nFrames;
     fDeltaB = (reqLevelB - curLevelB) / nFrames;
-
     for(frame = 0; frame < nFrames; frame++)
     {
+        if(g_mainOutput.mono)
+        {
+            fSampleM = (pOutA[frame] + pOutB[frame]) / 2;
+            pOutA[frame] = fSampleM;
+            pOutB[frame] = fSampleM;
+        }
         pOutA[frame] *= curLevelA;
         pOutB[frame] *= curLevelB;
         curLevelA += fDeltaA;
