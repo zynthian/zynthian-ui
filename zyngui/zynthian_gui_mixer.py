@@ -463,6 +463,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="SOLO", state="hidden", tags=("edit_control", "solo_button"), font=font, justify='center')
 		# Mute button
 		edit_button_y += self.edit_height
+		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill=zynthian_gui_mixer_channel.mute_colour, tags=("edit_control", "mono_button"))
+		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="MONO", state="hidden", tags=("edit_control", "mono_button"), font=font, justify='center')
+		# Mute button
+		edit_button_y += self.edit_height
 		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill=zynthian_gui_mixer_channel.mute_colour, tags=("edit_control", "mute_button"))
 		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="MUTE", state="hidden", tags=("edit_control", "mute_button"), font=font, justify='center')
 		# Layer button
@@ -484,6 +488,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.main_canvas.tag_bind("mute_button", "<ButtonRelease-1>", self.on_mute_release)
 		self.main_canvas.tag_bind("solo_button", "<ButtonRelease-1>", self.on_solo_release)
+		self.main_canvas.tag_bind("mono_button", "<ButtonRelease-1>", self.on_mono_release)
 		self.main_canvas.tag_bind("layer_button", "<ButtonRelease-1>", self.on_layer_release)
 		self.main_canvas.tag_bind("reset_gain_button", "<ButtonRelease-1>", self.on_reset_level_release)
 		self.main_canvas.tag_bind("reset_balance_button", "<ButtonRelease-1>", self.on_reset_balance_release)
@@ -636,6 +641,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	event: Mouse event
 	def on_solo_release(self, event):
 		zynmixer.toggle_solo(self.get_midi_channel(self.selected_channel))
+
+
+	# Function to handle mono button release
+	#	event: Mouse event
+	def on_mono_release(self, event):
+		zynmixer.toggle_mono(self.get_midi_channel(self.selected_channel))
 
 
 	# Function to handle layer button release

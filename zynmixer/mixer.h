@@ -95,6 +95,18 @@ int getSolo(int channel);
 */
 void toggleMute(int channel);
 
+/** @brief  Set mono state of channel
+*   @param  channel Index of channel
+*   @param  mono (0: Stereo, 1: Mono)
+*/
+void setMono(int channel, int mono);
+
+/** @brief  Get mono state of channel
+*   @param  channel Index of channel
+*   @retval int Channel mono state (0: Stereo, 1: mono)
+*/
+int  getMono(int channel);
+
 /** @brief  Check if channel has source routed
 *   @param  channel Index of channel
 *   @retval int 1 if channel has source routed. 0 if no source routed to channel.

@@ -130,6 +130,31 @@ def toggle_solo(channel):
 		else:
 			set_solo(channel, True)
 
+#	Function to mono a channel
+#	channel: Index of channel
+#	mono: Mono state (True to solo)
+def	set_mono(channel, mono):
+	if lib_zynmixer:
+		lib_zynmixer.setMono(channel, mono)
+
+#	Function to get mono for a channel
+#	channel: Index of channel
+#	returns: Mono state (True if mono)
+def	get_mono(channel):
+	if lib_zynmixer:
+		return lib_zynmixer.getMono(channel) == 1
+	else:
+		return True
+
+#	Function to toggle mono of a channel
+#	channel: Index of channel
+def toggle_mono(channel):
+	if lib_zynmixer:
+		if get_mono(channel):
+			set_mono(channel, False)
+		else:
+			set_mono(channel, True)
+
 
 #	Function to check if channel has audio routed to its input
 #	channel: Index of channel
