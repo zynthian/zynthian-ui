@@ -203,8 +203,13 @@ class zynthian_gui_mixer_channel():
 					self.hide()
 					return
 
-
 		# DPM
+		if zynmixer.get_mono(self.channel):
+			self.main_canvas.itemconfig(self.dpm_l_a, fill="gray80")
+			self.main_canvas.itemconfig(self.dpm_l_b, fill="gray80")
+		else:
+			self.main_canvas.itemconfig(self.dpm_l_a, fill=self.low_colour)
+			self.main_canvas.itemconfig(self.dpm_l_b, fill=self.low_colour)
 		# Display audio peak
 		signal = max(0, 1 + zynmixer.get_dpm(self.channel,0) / self.dpm_rangedB)
 		llA = int(min(signal, self.dpm_high) * self.fader_height)

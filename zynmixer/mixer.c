@@ -120,16 +120,18 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 {
                     fSampleM = pInA[frame];
                     fSampleM += pInB[frame];
-                    pOutA[frame] += fSampleM * curLevelA / 2;
-                    pOutB[frame] += fSampleM * curLevelB / 2;
+                    fSampleA = fSampleM * curLevelA / 2;
+                    fSampleB = fSampleM * curLevelB / 2;
+                    pOutA[frame] += fSampleA;
+                    pOutB[frame] += fSampleB;
                     curLevelA += fDeltaA;
                     curLevelB += fDeltaB;
                     if(g_bDpm)
                     {
-                        fSampleA = fabs(pOutA[frame]);
+                        fSampleA = fabs(fSampleA);
                         if(fSampleA > g_dynamic[chan].dpmA)
                             g_dynamic[chan].dpmA = fSampleA;
-                        fSampleB = fabs(pOutB[frame]);
+                        fSampleB = fabs(fSampleB);
                         if(fSampleB > g_dynamic[chan].dpmB)
                             g_dynamic[chan].dpmB = fSampleB;
                     }
