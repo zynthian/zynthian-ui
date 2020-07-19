@@ -27,6 +27,7 @@
 #include <stdlib.h> //provides exit
 #include <string.h> // provides memset
 #include <math.h> //provides fabs
+#include <unistd.h> // provides sleep
 
 #include "mixer.h"
 
@@ -345,7 +346,7 @@ int init()
     #endif
 
     // Register the cleanup function to be called when library exits
-    //atexit(end);
+    atexit(end);
 
     // Register the callbacks
     jack_set_process_callback(g_pJackClient, onJackProcess, 0);
@@ -367,7 +368,12 @@ int init()
 
 void end() {
     if(g_pJackClient)
+    {
+        // Mute output and wait for soft mute to occur before closing link with jack server
+        setLevel(MAX_CHANNELS, 0.0);
+        usleep(100000);
         jack_client_close(g_pJackClient);
+    }
 }
 
 void setLevel(int channel, float level)
