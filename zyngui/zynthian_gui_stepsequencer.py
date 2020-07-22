@@ -303,7 +303,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.populateMenu()
 		if self.child:
 			self.child.populateMenu()
-		rows = min((self.height - zynthian_gui_config.topbar_height) / self.listboxTextHeight - 1, self.lstMenu.size())
+		button_height = 0
+		if zynthian_gui_config.enable_touch_widgets:
+			button_height = zynthian_gui_config.buttonbar_height
+		rows = min((self.height - zynthian_gui_config.topbar_height - button_height) / self.listboxTextHeight - 1, self.lstMenu.size())
 		self.lstMenu.configure(height = int(rows))
 		self.lstMenu.grid(column=0, row=1, sticky="nw")
 		self.lstMenu.tkraise()
