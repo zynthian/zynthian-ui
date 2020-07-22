@@ -41,10 +41,12 @@ class zynthian_gui_base:
 
 	#Default buttonbar config (touchwidget)
 	buttonbar_config = [
-		(1, 'BACK'),
+		(1, '←'),
+		(4, '↑'),
+		(5, '↓'),
+		(3, '→'),
 		(0, 'LAYER'),
 		(2, 'LEARN'),
-		(3, 'SELECT')
 	]
 
 	def __init__(self):
@@ -167,7 +169,7 @@ class zynthian_gui_base:
 		self.buttonbar_frame.grid_propagate(False)
 		self.buttonbar_frame.grid_rowconfigure(
 			0, minsize=zynthian_gui_config.buttonbar_height, pad=0)
-		for i in range(4):
+		for i in range(len(self.buttonbar_config)):
 			self.buttonbar_frame.grid_columnconfigure(
 				i, minsize=zynthian_gui_config.button_width, pad=0)
 			self.add_button(i, self.buttonbar_config[i][0], self.buttonbar_config[i][1])
@@ -212,7 +214,12 @@ class zynthian_gui_base:
 				t = 'B'
 			elif dts>=2:
 				t = 'L'
-		self.zyngui.zynswitch_defered(t,index)
+		if index == 4:
+			self.zyngui.callable_ui_action("SELECT_UP")
+		elif index == 5:
+			self.zyngui.callable_ui_action("SELECT_DOWN")
+		else:
+			self.zyngui.zynswitch_defered(t,index)
 
 
 	def show(self):

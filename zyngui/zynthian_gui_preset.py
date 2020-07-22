@@ -37,10 +37,12 @@ from . import zynthian_gui_selector
 class zynthian_gui_preset(zynthian_gui_selector):
 
 	buttonbar_config = [
-		(1, 'BACK'),
+		(1, '←'),
+		(4, '↑'),
+		(5, '↓'),
+		(3, '→'),
 		(0, 'LAYER'),
 		(2, 'FAVS'),
-		(3, 'SELECT')
 	]
 
 	def __init__(self):
