@@ -1591,6 +1591,17 @@ class zynthian_gui:
 		zynautoconnect.release_lock()
 
 
+	#------------------------------------------------------------------
+	# Jackd Info
+	#------------------------------------------------------------------
+
+	def get_jackd_samplerate(self):
+		return zynautoconnect.get_jackd_samplerate()
+
+	def get_jackd_blocksize(self):
+		return zynautoconnect.get_jackd_blocksize()
+
+
 #------------------------------------------------------------------------------
 # GUI & Synth Engine initialization
 #------------------------------------------------------------------------------

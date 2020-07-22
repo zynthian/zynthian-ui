@@ -705,4 +705,15 @@ def get_jack_cpu_load():
 	return jclient.cpu_load()
 
 
+def get_jack_samplerate():
+	return jclient.samplerate
+
+
+def get_jack_blocksize():
+	return jclient.blocksize
+
+
+
+
+
 #------------------------------------------------------------------------------
