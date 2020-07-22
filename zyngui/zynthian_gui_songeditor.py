@@ -143,17 +143,17 @@ class zynthian_gui_songeditor():
 		self.patternCanvas.grid(column=1, row=1)
 		self.patternCanvas.bind('<ButtonPress-1>', self.onPatternClick)
 
-		# Create playhead canvas
-		self.playCanvas = tkinter.Canvas(self.main_frame,
+		# Create mastertrack canvas
+		self.mastertrackCanvas = tkinter.Canvas(self.main_frame,
 			width=self.gridWidth, 
 			height=self.masterTrackHeight,
 			bg=CANVAS_BACKGROUND,
 			bd=0,
 			highlightthickness=0)
-		self.playCanvas.bind("<ButtonPress-1>", self.onTimeDragStart)
-		self.playCanvas.bind("<ButtonRelease-1>", self.onTimeDragEnd)
-		self.playCanvas.bind("<B1-Motion>", self.onTimeDragMotion)
-		self.playCanvas.grid(column=2, row=1)
+		self.mastertrackCanvas.bind("<ButtonPress-1>", self.onTimeDragStart)
+		self.mastertrackCanvas.bind("<ButtonRelease-1>", self.onTimeDragEnd)
+		self.mastertrackCanvas.bind("<B1-Motion>", self.onTimeDragMotion)
+		self.mastertrackCanvas.grid(column=2, row=1)
 
 
 	# Function to load and resize icons
@@ -612,44 +612,41 @@ class zynthian_gui_songeditor():
 #				self.gridCanvas.itemconfig("lastpatterntext%d" % row, text="+%d" % (duration - self.parent.libseq.getPatternLength() + time), state="normal")
 
 	# Function to draw grid
-	#	clearGrid: True to clear grid and create all new elements, False to reuse existing elements if they exist
-	def drawGrid(self, clearGrid = False, redrawTrackTitles = True):
+	def drawGrid(self):
 		if self.redraw_pending == 2:
-			clearGrid = True
-		self.redraw_pending = 0
-		if clearGrid:
 			self.gridCanvas.delete(tkinter.ALL)
 			self.trackTitleCanvas.delete(tkinter.ALL)
 			self.columnWidth = self.gridWidth / self.horizontalZoom
 			self.gridCanvas.create_line(0, 0, 0, self.gridHeight, fill=PLAYHEAD_CURSOR, tags='playheadline')
 			self.cells = [[None] * 2 for _ in range(self.verticalZoom * self.horizontalZoom)]
+		self.redraw_pending = 0
 
 		# Draw rows of grid
 		self.gridCanvas.itemconfig("gridcell", fill=CANVAS_BACKGROUND)
 		for row in range(self.verticalZoom):
 			if row >= self.parent.libseq.getTracks(self.song):
 				break
-			self.drawRow(row, redrawTrackTitles)
+			self.drawRow(row, True)
 
 		# Vertical (bar / sync) lines
 		self.gridCanvas.delete('barlines')
-		self.playCanvas.delete('barlines')
+		self.mastertrackCanvas.delete('barlines')
 		font = tkFont.Font(size=self.smallFontSize)
 		tempoY = font.metrics('linespace')
 		offset = 0 - int(self.colOffset % self.horizontalZoom)
 		for bar in range(offset, self.horizontalZoom, int(self.parent.libseq.getBarLength(self.song) / self.getClocksPerDivision())):
 			self.gridCanvas.create_line(bar * self.columnWidth, 0, bar * self.columnWidth, self.gridHeight, fill='white', tags='barlines')
 			if bar:
-				self.playCanvas.create_text(bar * self.columnWidth, 0, fill='white', text="%d"%(bar+self.colOffset), anchor='n', tags='barlines')
+				self.mastertrackCanvas.create_text(bar * self.columnWidth, 0, fill='white', text="%d"%(bar+self.colOffset), anchor='n', tags='barlines')
 			else:
-				self.playCanvas.create_text(bar * self.columnWidth, 0, fill='white', text="%d"%(bar+self.colOffset), anchor='nw', tags='barlines')
+				self.mastertrackCanvas.create_text(bar * self.columnWidth, 0, fill='white', text="%d"%(bar+self.colOffset), anchor='nw', tags='barlines')
 
 		# Hide selection if not in view - #TODO: WHEN WOULD THAT BE???
 		if self.selectedCell[0] < self.colOffset or self.selectedCell[0] > self.colOffset + self.horizontalZoom or self.selectedCell[1] < self.rowOffset or self.selectedCell[1] > self.rowOffset + self.verticalZoom:
 			self.gridCanvas.itemconfig('selection', state='hidden')
 
 		# Master track
-		self.playCanvas.delete('bpm')
+		self.mastertrackCanvas.delete('bpm')
 		for event in range(self.parent.libseq.getMasterEvents(self.song)):
 			time = self.parent.libseq.getMasterEventTime(self.song, event) / self.clocksPerDivision
 			if time >= self.colOffset and time <= self.colOffset + self.horizontalZoom:
@@ -658,9 +655,9 @@ class zynthian_gui_songeditor():
 					tempoX = (time - self.colOffset) * self.columnWidth
 					data = self.parent.libseq.getMasterEventData(self.song, event)
 					if tempoX:
-						self.playCanvas.create_text(tempoX, tempoY, fill='red', text=data, anchor='n', tags='bpm')
+						self.mastertrackCanvas.create_text(tempoX, tempoY, fill='red', text=data, anchor='n', tags='bpm')
 					else:
-						self.playCanvas.create_text(tempoX, tempoY, fill='red', text=data, anchor='nw', tags='bpm')
+						self.mastertrackCanvas.create_text(tempoX, tempoY, fill='red', text=data, anchor='nw', tags='bpm')
 
 	# Function to update selectedCell
 	#	time: Time (column) of selected cell (Optional - default to reselect current column)
@@ -918,10 +915,11 @@ class zynthian_gui_songeditor():
 	def refresh_status(self):
 		if self.redraw_pending:
 			self.drawGrid()
-		pos = self.parent.libseq.getSongPosition(self.song) / self.clocksPerDivision
-		if self.position != pos:
-			self.showPos(pos)
-		self.gridCanvas.coords('playheadline', (pos - self.colOffset) * self.columnWidth, 0, (pos - self.colOffset) * self.columnWidth, self.gridHeight)
+		if self.song < 1000:
+			pos = self.parent.libseq.getSongPosition(self.song) / self.clocksPerDivision
+			if self.position != pos:
+				self.showPos(pos)
+			self.gridCanvas.coords('playheadline', (pos - self.colOffset) * self.columnWidth, 0, (pos - self.colOffset) * self.columnWidth, self.gridHeight)
 
 	def refresh_loading(self):
 		pass
