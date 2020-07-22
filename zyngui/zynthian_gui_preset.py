@@ -40,6 +40,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		(1, 'BACK'),
 		(0, 'LAYER'),
 		(2, 'FAVS'),
+		(4, "UP"),
+		(5, "DOWN"),
 		(3, 'SELECT')
 	]
 
