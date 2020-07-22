@@ -153,19 +153,22 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			image=self.imgDown,
 			bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
 			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
-		self.btnParamDown.grid(column=1, row=0)
+		if zynthian_gui_config.enable_touch_widgets:
+			self.btnParamDown.grid(column=1, row=0)
 		# Parameter editor increment button
 		self.btnParamUp = tkinter.Button(self.param_editor_canvas, command=self.incrementParam,
 			image=self.imgUp,
 			bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
 			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
-		self.btnParamUp.grid(column=2, row=0)
+		if zynthian_gui_config.enable_touch_widgets:
+			self.btnParamUp.grid(column=2, row=0)
 		# Parameter editor assert button
 		self.btnParamAssert = tkinter.Button(self.param_editor_canvas, command=self.menuValueAssert,
 			image=self.imgForward,
 			bd=0, highlightthickness=0,
 			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
-		self.btnParamAssert.grid(column=3, row=0)
+		if zynthian_gui_config.enable_touch_widgets:
+			self.btnParamAssert.grid(column=3, row=0)
 		# Parameter editor value text
 		self.param_title_canvas = tkinter.Canvas(self.param_editor_canvas, height=zynthian_gui_config.topbar_height, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_bg)
 		self.param_title_canvas.create_text(3, zynthian_gui_config.topbar_height / 2,

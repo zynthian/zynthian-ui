@@ -542,7 +542,7 @@ void PatternManager::setCurrentSong(uint32_t song)
 {
 	m_nCurrentSong = song;
 	if(m_mSongs[song].getTracks() == 0)
-		for(size_t nIndex = 0; nIndex < 16; ++nIndex)
+		for(size_t nIndex = 0; nIndex < DEFAULT_TRACK_COUNT; ++nIndex)
 		{
 			uint32_t nTrack = addTrack(song);
 			uint32_t nSequence = m_mSongs[song].getSequence(nTrack);
@@ -551,7 +551,7 @@ void PatternManager::setCurrentSong(uint32_t song)
 			m_mSequences[nSequence].setPlayMode(ONESHOT);
 		}
 	if(m_mSongs[song + 1000].getTracks() == 0)
-		for(size_t nIndex = 0; nIndex < 16; ++nIndex)
+		for(size_t nIndex = 0; nIndex < DEFAULT_TRACK_COUNT; ++nIndex)
 		{
 			uint32_t nTrack = addTrack(song + 1000);
 			uint32_t nSequence = m_mSongs[song + 1000].getSequence(nTrack);

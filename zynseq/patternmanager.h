@@ -4,6 +4,7 @@
 #include "song.h"
 #include <map>
 
+#define DEFAULT_TRACK_COUNT 4
 
 /** PatternManager class provides creation, recall, update and delete of patterns which other modules can subseqnetly use. It manages persistent (disk) storage. PatternManager is implemented as a singleton ensuring a single instance is available to all callers.
 */
