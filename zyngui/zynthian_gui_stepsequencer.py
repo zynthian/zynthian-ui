@@ -79,6 +79,13 @@ USER_PATH			= "/zynthian/zynthian-my-data/zynseq"
 # Class implements zynthian step sequencer parent, hosting child screens:editors, players, etc.
 class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
+	buttonbar_config = [
+		(1, 'BACK'),
+		(0, 'MENU'),
+		(2, 'TRANSPORT'),
+		(3, 'TOGGLE')
+	]
+
 	# Function to initialise class
 	def __init__(self):
 		super().__init__()
