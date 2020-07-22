@@ -701,15 +701,15 @@ def cb_jack_xrun(delayed_usecs: float):
 	zynthian_gui_config.zyngui.status_info['xrun'] = True
 
 
-def get_jack_cpu_load():
+def get_jackd_cpu_load():
 	return jclient.cpu_load()
 
 
-def get_jack_samplerate():
+def get_jackd_samplerate():
 	return jclient.samplerate
 
 
-def get_jack_blocksize():
+def get_jackd_blocksize():
 	return jclient.blocksize
 
 
