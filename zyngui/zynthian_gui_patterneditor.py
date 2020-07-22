@@ -97,6 +97,7 @@ class zynthian_gui_patterneditor():
 		self.shown = False # True when GUI in view
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.cells = [] # Array of cells indices
+		self.redraw_pending = 0
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -249,7 +250,7 @@ class zynthian_gui_patterneditor():
 	# Function to assert zoom level
 	def assertZoom(self):
 		self.updateRowHeight()
-		self.drawGrid(True)
+		self.redraw_pending = 2
 		self.selectCell()
 
 	# Function to populate keymap array
@@ -336,7 +337,7 @@ class zynthian_gui_patterneditor():
 			self.keyMapOffset = len(self.keymap) - self.zoom
 
 		self.pianoRollDragStart = event
-		self.drawGrid()
+		self.redraw_pending = 1
 
 		if self.selectedCell[1] < self.keyMapOffset:
 			self.selectedCell[1] = self.keyMapOffset
@@ -532,8 +533,9 @@ class zynthian_gui_patterneditor():
 				self.gridCanvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - self.parent.libseq.getSteps() + step), state="normal")
 
 	# Function to draw grid
-	#   clearGrid: True to clear grid and create all new elements, False to reuse existing elements if they exist
-	def drawGrid(self, clearGrid = False):
+	def drawGrid(self):
+		clearGrid = (self.redraw_pending == 2)
+		self.redraw_pending = 0
 		if self.parent.libseq.getSteps() == 0:
 			return #TODO: Should we clear grid?
 		if self.keyMapOffset > len(self.keymap) - self.zoom:
@@ -623,7 +625,7 @@ class zynthian_gui_patterneditor():
 			self.keyMapOffset = index
 			redraw = True
 		if redraw:
-			self.drawGrid()
+			self.redraw_pending = 1
 		row = index - self.keyMapOffset
 		note = self.keymap[index]['note']
 		# Skip hidden (overlapping) cells
@@ -667,7 +669,7 @@ class zynthian_gui_patterneditor():
 	# Function to clear a pattern
 	def clearPattern(self):
 		self.parent.libseq.clear()
-		self.drawGrid(True)
+		self.redraw_pending = 2
 		self.selectCell()
 		if zyncoder.lib_zyncoder:
 			zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
@@ -699,7 +701,7 @@ class zynthian_gui_patterneditor():
 	# Function to assert steps in pattern
 	def assertSteps(self):
 		self.parent.libseq.setSteps(self.parent.getParam('Steps in pattern', 'value'))
-		self.drawGrid(True)
+		self.redraw_pending = 2
 		self.selectCell()
 
 	# Function to handle menu editor change
@@ -736,7 +738,7 @@ class zynthian_gui_patterneditor():
 				# Only allow transpose when showing chromatic scale
 				self.parent.libseq.setScale(1)
 				self.loadKeymap()
-				self.drawGrid()
+				self.redraw_pending = 1
 			if (value != 0 and self.parent.libseq.getScale()):
 				self.parent.libseq.transpose(value)
 				self.parent.setParam(menuItem, 'value', 0)
@@ -747,7 +749,7 @@ class zynthian_gui_patterneditor():
 					self.keyMapOffset = 0
 				else:
 					self.selectedCell[1] = self.selectedCell[1] + value
-				self.drawGrid()
+				self.redraw_pending = 1
 				self.selectCell()
 			return "Transpose +/-"
 		elif menuItem == 'Vertical zoom':
@@ -763,7 +765,7 @@ class zynthian_gui_patterneditor():
 				clocksPerStep = 0
 				self.parent.libseq.setClocksPerStep(24)
 			self.parent.libseq.setStepsPerBeat(stepsPerBeat)
-			self.drawGrid()
+			self.redraw_pending = 1
 			self.selectCell()
 			value = stepsPerBeat
 		elif menuItem == 'Tempo':
@@ -771,7 +773,7 @@ class zynthian_gui_patterneditor():
 		elif menuItem == 'Scale':
 			self.parent.libseq.setScale(value)
 			name = self.loadKeymap()
-			self.drawGrid()
+			self.redraw_pending = 1
 			return "Keymap: %s" % (name)
 		elif menuItem == 'Tonic':
 			if value < 0:
@@ -786,7 +788,7 @@ class zynthian_gui_patterneditor():
 					note = key['note'] + offset
 					key['note'] = note
 					key['name'] = "%s%d" % (self.notes[note % 12], note // 12)
-			self.drawGrid()
+			self.redraw_pending = 1
 			return "Tonic: %s" % (self.notes[value])
 		return "%s: %d" % (menuItem, value)
 
@@ -801,7 +803,7 @@ class zynthian_gui_patterneditor():
 		if self.selectedCell[0] >= self.parent.libseq.getSteps():
 			self.selectedCell[0] = self.parent.libseq.getSteps() - 1
 		self.loadKeymap()
-		self.drawGrid(True)
+		self.redraw_pending = 2
 		self.selectCell()
 		self.playCanvas.coords("playCursor", 1, 0, 1 + self.stepWidth, PLAYHEAD_HEIGHT)
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
@@ -886,8 +888,8 @@ class zynthian_gui_patterneditor():
 			if self.shown:
 				# Draw play head cursor
 				self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * 	self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
-		if self.parent.libseq.isModified():
-			self.drawGrid();
+		if self.redraw_pending or self.parent.libseq.isModified():
+			self.drawGrid()
 
 	# Function to handle zyncoder value change
 	#   encoder: Zyncoder index [0..4]

@@ -32,6 +32,7 @@ import tkinter.font as tkFont
 from PIL import Image, ImageTk
 from time import monotonic
 from threading import Timer
+import traceback
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -89,6 +90,7 @@ class zynthian_gui_songeditor():
 		self.clocksPerDivision = 6
 		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
 		self.cells = [[None] * 2 for _ in range(self.verticalZoom * self.horizontalZoom)] # 2D array of cells 0:cell, 1:cell label
+		self.redraw_pending = 0
 
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 
@@ -204,8 +206,8 @@ class zynthian_gui_songeditor():
 	#	song: Song to show
 	def show(self, params=None):
 		self.main_frame.tkraise()
-		self.setupEncoders()
 		self.selectSong()
+		self.setupEncoders()
 
 	# Function to hide GUI
 	def hide(self):
@@ -221,7 +223,7 @@ class zynthian_gui_songeditor():
 	# Function to assert zoom changes and redraw screen
 	def assertAndRedraw(self):
 		self.updateCellSize()
-		self.drawGrid(True)
+		self.redraw_pending = 2
 		self.selectCell()
 
 	# Function to assert tempo change
@@ -230,7 +232,7 @@ class zynthian_gui_songeditor():
 		if self.position == self.selectedCell[0]:
 			self.zyngui.zyntransport.set_tempo(value)
 		self.parent.libseq.setTempo(self.song, value, self.selectedCell[0] * self.clocksPerDivision)
-		self.drawGrid()
+		self.redraw_pending = 1
 
 	# Function to get group of selected track
 	def getGroup(self):
@@ -254,7 +256,7 @@ class zynthian_gui_songeditor():
 	def setTrigger(self):
 		sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
 		self.parent.libseq.setTriggerNote(sequence, self.trigger);
-		self.drawGrid()
+		self.redraw_pending = 1
 
 	# Function to get bar duration
 	def getBarLength(self):
@@ -304,7 +306,7 @@ class zynthian_gui_songeditor():
 				if track <= 16:
 					self.parent.libseq.setChannel(sequence, track)
 				self.parent.libseq.setPlayMode(sequence, 1)
-		self.drawGrid(True)
+		self.redraw_pending = 2
 
 	# Function to get quantity of tracks in song
 	#	returns: Quantity of tracks in song
@@ -335,7 +337,7 @@ class zynthian_gui_songeditor():
 		if self.rowOffset == pos:
 			return
 		self.rowOffset = pos
-		self.drawGrid()
+		self.redraw_pending = 1
 		track=self.selectedCell[1]
 		if self.selectedCell[1] < self.rowOffset:
 			track = self.rowOffset
@@ -368,7 +370,7 @@ class zynthian_gui_songeditor():
 		if self.colOffset == pos:
 			return
 		self.colOffset = pos
-		self.drawGrid()
+		self.redraw_pending = 1
 		col = self.selectedCell[0]
 		duration = int(self.parent.libseq.getPatternLength(self.pattern) / self.clocksPerDivision)
 		if self.selectedCell[0] < self.colOffset:
@@ -612,6 +614,9 @@ class zynthian_gui_songeditor():
 	# Function to draw grid
 	#	clearGrid: True to clear grid and create all new elements, False to reuse existing elements if they exist
 	def drawGrid(self, clearGrid = False, redrawTrackTitles = True):
+		if self.redraw_pending == 2:
+			clearGrid = True
+		self.redraw_pending = 0
 		if clearGrid:
 			self.gridCanvas.delete(tkinter.ALL)
 			self.trackTitleCanvas.delete(tkinter.ALL)
@@ -748,7 +753,7 @@ class zynthian_gui_songeditor():
 			redraw = True
 		self.selectedCell = [time, track]
 		if redraw:
-			self.drawGrid()
+			self.redraw_pending = 1
 		coord = self.getCellCoord(time - self.colOffset, track - self.rowOffset, duration)
 		coord[0] = coord[0] - 1
 		coord[1] = coord[1] - 1
@@ -774,7 +779,7 @@ class zynthian_gui_songeditor():
 	# Function to clear song
 	def clearSong(self):
 		self.parent.libseq.clearSong(self.song)
-		self.drawGrid(True)
+		self.redraw_pending = 2
 		if zyncoder.lib_zyncoder:
 			zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
 		self.selectCell(0,0)
@@ -809,7 +814,7 @@ class zynthian_gui_songeditor():
 		elif menuItem == 'Clocks per division':
 			self.parent.setParam(menuItem, 'value', value)
 			self.setClocksPerDivision(value)
-			self.drawGrid()
+			self.redraw_pending = 1
 		elif menuItem == 'MIDI channel':
 			self.parent.setParam(menuItem, 'value', value)
 			track = self.selectedCell[1] + self.rowOffset
@@ -824,7 +829,7 @@ class zynthian_gui_songeditor():
 				self.parent.libseq.setBarLength(self.song - 1000, value * self.clocksPerDivision)
 			else:
 				self.parent.libseq.setBarLength(self.song + 1000, value * self.clocksPerDivision)
-			self.drawGrid()
+			self.redraw_pending = 1
 		elif menuItem == "Group":
 			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
 			self.parent.libseq.setGroup(sequence, value);
@@ -890,7 +895,7 @@ class zynthian_gui_songeditor():
 			self.song = self.song + 1000
 		else:
 			self.parent.setTitle("Song Editor (%d)" % (self.song))
-		self.drawGrid(True)
+		self.redraw_pending = 2
 		self.selectCell()
 
 	# Function called when new file loaded from disk
@@ -907,10 +912,12 @@ class zynthian_gui_songeditor():
 		self.position = int(pos)
 		if self.colOffset < 0:
 			self.colOffset = 0
-		self.drawGrid()
+		self.redraw_pending = 1
 
 	# Function to refresh playhead
 	def refresh_status(self):
+		if self.redraw_pending:
+			self.drawGrid()
 		pos = self.parent.libseq.getSongPosition(self.song) / self.clocksPerDivision
 		if self.position != pos:
 			self.showPos(pos)
