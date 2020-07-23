@@ -143,8 +143,7 @@ class zynthian_gui_control_xy():
 
 		if xv!=self.xvalue:
 			self.xvalue = xv
-			self.x_zctrl.set_value(self.xvalue)
-			self.zyngui.screens['control'].set_controller_value(self.x_zctrl)
+			self.x_zctrl.set_value(self.xvalue, True)
 
 		if self.y_zctrl.is_logarithmic:
 			yv = self.y_zctrl.value_min*pow(self.y_zctrl.powbase, self.y/self.height)
@@ -153,8 +152,7 @@ class zynthian_gui_control_xy():
 
 		if yv!=self.yvalue:
 			self.yvalue = yv
-			self.y_zctrl.set_value(self.yvalue)
-			self.zyngui.screens['control'].set_controller_value(self.y_zctrl)
+			self.y_zctrl.set_value(self.yvalue, True)
 
 
 	def cb_canvas(self, event):
@@ -168,6 +166,11 @@ class zynthian_gui_control_xy():
 	def zyncoder_read(self):
 		# Wait 0.3 seconds after last motion for start reading encoders again
 		if self.last_motion_ts is None or (datetime.now()-self.last_motion_ts).total_seconds()>0.1:
+			if self.last_motion_ts is not None:
+				self.last_motion_ts = None
+				self.zyngui.screens['control'].set_controller_value(self.x_zctrl)
+				self.zyngui.screens['control'].set_controller_value(self.y_zctrl)
+
 			self.zyngui.screens['control'].zyncoder_read()
 			self.get_controller_values()
 
