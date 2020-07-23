@@ -134,9 +134,9 @@ def fix_pianoteq_config():
 				logging.debug("Fixing Audio Setup")
 				for devicesetup in audio_setup_node.iter('DEVICESETUP'):
 					devicesetup.set('deviceType','JACK')
-					devicesetup.set('audioOutputDeviceName','Auto-connect ON')
-					devicesetup.set('audioInputDeviceName','Auto-connect ON')
-					devicesetup.set('audioDeviceRate','44100')
+					devicesetup.set('audioOutputDeviceName','Auto-connect OFF')
+					devicesetup.set('audioInputDeviceName','Auto-connect OFF')
+					devicesetup.set('audioDeviceRate',str(PIANOTEQ_SAMPLERATE))
 					devicesetup.set('forceStereo','0')
 			else:
 				logging.debug("Creating new Audio Setup")
@@ -144,9 +144,9 @@ def fix_pianoteq_config():
 				value.set('name','audio-setup')
 				devicesetup = ElementTree.SubElement(value,'DEVICESETUP')
 				devicesetup.set('deviceType','JACK')
-				devicesetup.set('audioOutputDeviceName','Auto-connect ON')
-				devicesetup.set('audioInputDeviceName','Auto-connect ON')
-				devicesetup.set('audioDeviceRate','44100')
+				devicesetup.set('audioOutputDeviceName','Auto-connect OFF')
+				devicesetup.set('audioInputDeviceName','Auto-connect OFF')
+				devicesetup.set('audioDeviceRate',str(PIANOTEQ_SAMPLERATE))
 				devicesetup.set('forceStereo','0')
 				root.append(value)
 
@@ -211,15 +211,17 @@ else:
 
 PIANOTEQ_CONFIG_FILE =  PIANOTEQ_CONFIG_DIR + "/" + PIANOTEQ_CONFIG_FILENAME
 
+PIANOTEQ_SAMPLERATE = self.zyngui.get_jackd_samplerate()
+PIANOTEQ_CONFIG_INTERNAL_SR = PIANOTEQ_SAMPLERATE
+while PIANOTEQ_CONFIG_INTERNAL_SR > 24000:
+	PIANOTEQ_CONFIG_INTERNAL_SR=PIANOTEQ_CONFIG_INTERNAL_SR / 2
+
 if PIANOTEQ_VERSION[1]==0:
-	PIANOTEQ_CONFIG_INTERNAL_SR=22050
 	PIANOTEQ_CONFIG_VOICES=32
 	PIANOTEQ_CONFIG_MULTICORE=1
 else:
-	PIANOTEQ_CONFIG_INTERNAL_SR=22050
 	PIANOTEQ_CONFIG_VOICES=32
 	PIANOTEQ_CONFIG_MULTICORE=2
-
 
 #------------------------------------------------------------------------------
 # Piantoteq Engine Class
