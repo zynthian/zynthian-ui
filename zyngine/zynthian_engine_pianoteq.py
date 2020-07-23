@@ -35,7 +35,6 @@ from collections import defaultdict
 from os.path import isfile,isdir,join
 from xml.etree import ElementTree
 from json import JSONEncoder, JSONDecoder
-import jack
 
 from . import zynthian_engine
 
@@ -212,13 +211,10 @@ else:
 
 PIANOTEQ_CONFIG_FILE =  PIANOTEQ_CONFIG_DIR + "/" + PIANOTEQ_CONFIG_FILENAME
 
-jack_client = jack.Client("zynpianoteq")
-PIANOTEQ_SAMPLERATE = jack_client.samplerate
-jack_client = None
+PIANOTEQ_SAMPLERATE = self.zyngui.get_jackd_samplerate()
 PIANOTEQ_CONFIG_INTERNAL_SR = PIANOTEQ_SAMPLERATE
 while PIANOTEQ_CONFIG_INTERNAL_SR > 24000:
 	PIANOTEQ_CONFIG_INTERNAL_SR=PIANOTEQ_CONFIG_INTERNAL_SR / 2
-
 
 if PIANOTEQ_VERSION[1]==0:
 	PIANOTEQ_CONFIG_VOICES=32
@@ -226,7 +222,6 @@ if PIANOTEQ_VERSION[1]==0:
 else:
 	PIANOTEQ_CONFIG_VOICES=32
 	PIANOTEQ_CONFIG_MULTICORE=2
-
 
 #------------------------------------------------------------------------------
 # Piantoteq Engine Class
