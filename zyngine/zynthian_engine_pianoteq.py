@@ -109,8 +109,21 @@ def get_pianoteq_subl():
 	return subl
 
 
-def fix_pianoteq_config():
+def fix_pianoteq_config(samplerate):
 	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
+
+		PIANOTEQ_SAMPLERATE = samplerate
+		PIANOTEQ_CONFIG_INTERNAL_SR = PIANOTEQ_SAMPLERATE
+		while PIANOTEQ_CONFIG_INTERNAL_SR > 24000:
+			PIANOTEQ_CONFIG_INTERNAL_SR=PIANOTEQ_CONFIG_INTERNAL_SR / 2
+
+		if PIANOTEQ_VERSION[1]==0:
+			PIANOTEQ_CONFIG_VOICES=32
+			PIANOTEQ_CONFIG_MULTICORE=1
+		else:
+			PIANOTEQ_CONFIG_VOICES=32
+			PIANOTEQ_CONFIG_MULTICORE=2
+
 		tree = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
 		root= tree.getroot()
 		try:
@@ -210,18 +223,6 @@ else:
 	PIANOTEQ_CONFIG_FILENAME = "{} {}.prefs".format(PIANOTEQ_NAME, PIANOTEQ_PRODUCT)
 
 PIANOTEQ_CONFIG_FILE =  PIANOTEQ_CONFIG_DIR + "/" + PIANOTEQ_CONFIG_FILENAME
-
-PIANOTEQ_SAMPLERATE = self.zyngui.get_jackd_samplerate()
-PIANOTEQ_CONFIG_INTERNAL_SR = PIANOTEQ_SAMPLERATE
-while PIANOTEQ_CONFIG_INTERNAL_SR > 24000:
-	PIANOTEQ_CONFIG_INTERNAL_SR=PIANOTEQ_CONFIG_INTERNAL_SR / 2
-
-if PIANOTEQ_VERSION[1]==0:
-	PIANOTEQ_CONFIG_VOICES=32
-	PIANOTEQ_CONFIG_MULTICORE=1
-else:
-	PIANOTEQ_CONFIG_VOICES=32
-	PIANOTEQ_CONFIG_MULTICORE=2
 
 #------------------------------------------------------------------------------
 # Piantoteq Engine Class
@@ -382,7 +383,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			else:
 				shutil.copy(self.data_dir + "/pianoteq6/Pianoteq6.prefs", PIANOTEQ_CONFIG_FILE)
 
-		fix_pianoteq_config()
+		fix_pianoteq_config(self.zyngui.get_jackd_samplerate())
 
 		# Prepare bank list
 		self.prepare_banks()
