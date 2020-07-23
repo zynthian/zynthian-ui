@@ -920,3 +920,19 @@ void selectSong(uint32_t song)
 	PatternManager::getPatternManager()->setCurrentSong(song);
 	g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);
 }
+
+void solo(uint32_t song, uint32_t track, int solo)
+{
+	Song* pSong = PatternManager::getPatternManager()->getSong(song);
+	uint32_t nSequence;
+	for(uint32_t i = 0; i < getTracks(song); ++i)
+	{
+		nSequence = pSong->getSequence(i);
+		PatternManager::getPatternManager()->getSequence(nSequence)->solo(false);
+		setPlayState(nSequence, STOPPED);
+	}
+	nSequence = pSong->getSequence(track);
+	PatternManager::getPatternManager()->getSequence(nSequence)->solo(solo);
+	if(solo && g_bPlaying)
+		setPlayState(nSequence, PLAYING);
+}

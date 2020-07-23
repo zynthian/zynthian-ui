@@ -215,6 +215,7 @@ class zynthian_gui_songeditor():
 		self.parent.unregisterZyncoder(ENC_BACK)
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterZyncoder(ENC_LAYER)
+#		self.parent.libseq.solo(self.song, 0, False)
 
 	# Function to get tempo at current cursor position
 	def getTempo(self):
@@ -224,7 +225,6 @@ class zynthian_gui_songeditor():
 	def assertAndRedraw(self):
 		self.updateCellSize()
 		self.redraw_pending = 2
-		self.selectCell()
 
 	# Function to assert tempo change
 	def assertTempo(self):
@@ -280,6 +280,7 @@ class zynthian_gui_songeditor():
 	def toggleEditorMode(self, params=None):
 		if self.editorMode:
 			self.editorMode = 0
+			self.parent.libseq.solo(self.song, 0, False)
 		else:
 			self.editorMode = 1
 		self.selectSong()
@@ -619,6 +620,7 @@ class zynthian_gui_songeditor():
 			self.columnWidth = self.gridWidth / self.horizontalZoom
 			self.gridCanvas.create_line(0, 0, 0, self.gridHeight, fill=PLAYHEAD_CURSOR, tags='playheadline')
 			self.cells = [[None] * 2 for _ in range(self.verticalZoom * self.horizontalZoom)]
+			self.selectCell()
 		self.redraw_pending = 0
 
 		# Draw rows of grid
@@ -659,12 +661,11 @@ class zynthian_gui_songeditor():
 					else:
 						self.mastertrackCanvas.create_text(tempoX, tempoY, fill='red', text=data, anchor='nw', tags='bpm')
 
-	# Function to update selectedCell
+	# Function to select a cell within the grid
 	#	time: Time (column) of selected cell (Optional - default to reselect current column)
 	#	track: Track number of selected cell (Optional - default to reselect current row)
 	#	snap: True to snap to closest pattern (Optional - default True)
 	def selectCell(self, time=None, track=None, snap=True):
-		redraw = False
 		if time == None:
 			time = self.selectedCell[0]
 		if track == None:
@@ -733,36 +734,38 @@ class zynthian_gui_songeditor():
 		if time + duration > self.colOffset + self.horizontalZoom:
 			# time is off right of display
 			self.colOffset = time + duration - self.horizontalZoom
-			redraw = True
+			self.redraw_pending = 1
 		if time < self.colOffset:
 			# time is off left of display
 			self.colOffset = time
-			redraw = True
+			self.redraw_pending = 1
 		if track >= self.rowOffset + self.verticalZoom:
 			# track is off bottom of display
 			self.rowOffset = track - self.verticalZoom + 1
-			redraw = True
+			self.redraw_pending = 1
 		elif track < self.rowOffset:
 			self.rowOffset = track
-			redraw = True
+			self.redraw_pending = 1
 		if backward != None and self.colOffset > 0 and time > backward:
 			self.colOffset = self.colOffset - 1
-			redraw = True
-		self.selectedCell = [time, track]
-		if redraw:
 			self.redraw_pending = 1
+		self.selectedCell = [time, track]
 		coord = self.getCellCoord(time - self.colOffset, track - self.rowOffset, duration)
 		coord[0] = coord[0] - 1
 		coord[1] = coord[1] - 1
 		coord[2] = coord[2]
 		coord[3] = coord[3]
-		cell = self.gridCanvas.find_withtag("selection")
-		if not cell:
-			cell = self.gridCanvas.create_rectangle(coord, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
+		selection_border = self.gridCanvas.find_withtag("selection")
+		if not selection_border:
+			selection_border = self.gridCanvas.create_rectangle(coord, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
 		else:
-			self.gridCanvas.coords(cell, coord)
-		self.gridCanvas.itemconfig(cell, state='normal')
-		self.gridCanvas.tag_raise(cell)
+			self.gridCanvas.coords(selection_border, coord)
+		self.gridCanvas.itemconfig(selection_border, state='normal')
+		self.gridCanvas.tag_raise(selection_border)
+
+		if self.song > 1000:
+			self.parent.libseq.solo(self.song, track, True)
+
 
 	# Function to calculate cell size
 	def updateCellSize(self):
@@ -892,8 +895,8 @@ class zynthian_gui_songeditor():
 			self.song = self.song + 1000
 		else:
 			self.parent.setTitle("Song Editor (%d)" % (self.song))
+			self.parent.libseq.solo(self.song + 1000, 0, False) # Clear solo from pad editor when switching to song editor
 		self.redraw_pending = 2
-		self.selectCell()
 
 	# Function called when new file loaded from disk
 	def onLoad(self):
@@ -917,9 +920,12 @@ class zynthian_gui_songeditor():
 			self.drawGrid()
 		if self.song < 1000:
 			pos = self.parent.libseq.getSongPosition(self.song) / self.clocksPerDivision
-			if self.position != pos:
-				self.showPos(pos)
-			self.gridCanvas.coords('playheadline', (pos - self.colOffset) * self.columnWidth, 0, (pos - self.colOffset) * self.columnWidth, self.gridHeight)
+		else:
+			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1]) #TODO: Offset?
+			pos = self.parent.libseq.getPlayPosition(sequence) / self.clocksPerDivision
+		if self.position != pos:
+			self.showPos(pos)
+		self.gridCanvas.coords('playheadline', (pos - self.colOffset) * self.columnWidth, 0, (pos - self.colOffset) * self.columnWidth, self.gridHeight)
 
 	def refresh_loading(self):
 		pass

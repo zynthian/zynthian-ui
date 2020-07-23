@@ -558,6 +558,13 @@ uint32_t getSong();
 */
 void selectSong(uint32_t song);
 
+/**	@brief	Selects a track to solo, muting other tracks in song
+*	@brief	song Index of song
+*	@param	track Index of track to solo
+*	@param	solo True to solo, false to clear solo
+*/
+void solo(uint32_t song, uint32_t track, int solo);
+
 #ifdef __cplusplus
 }
 #endif

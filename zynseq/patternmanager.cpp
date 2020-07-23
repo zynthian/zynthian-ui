@@ -468,6 +468,12 @@ void PatternManager::startSong()
 		uint32_t nSequence = m_mSongs[m_nCurrentSong].getSequence(nTrack);
 		m_mSequences[nSequence].setPlayState(PLAYING);
 	}
+	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong + 1000].getTracks(); ++nTrack)
+	{
+		uint32_t nSequence = m_mSongs[m_nCurrentSong + 1000].getSequence(nTrack);
+		if(m_mSequences[nSequence].isSolo())
+			m_mSequences[nSequence].setPlayState(PLAYING);
+	}
 }
 
 void PatternManager::stopSong()

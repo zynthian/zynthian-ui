@@ -438,3 +438,13 @@ uint8_t Sequence::getTallyChannel()
 {
 	return m_nTallyChannel;
 }
+
+void Sequence::solo(bool solo)
+{
+	m_bSolo = solo;
+}
+
+bool Sequence::isSolo()
+{
+	return m_bSolo;
+}

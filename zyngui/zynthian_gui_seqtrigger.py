@@ -197,6 +197,7 @@ class zynthian_gui_seqtrigger():
 		#TODO: Should we stop song and recue?
 		song = self.parent.libseq.getSong()
 		self.song = song + 1000
+#		self.parent.libseq.solo(self.song, 0, False)
 		tracks = self.parent.libseq.getTracks(self.song)
 		if tracks < 1:
 			self.columns = 1
