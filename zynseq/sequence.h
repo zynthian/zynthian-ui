@@ -190,6 +190,16 @@ class Sequence
 		*/
 		uint8_t getTallyChannel();
 
+		/**	@brief	Solo sequence
+		*	@param	solo True to solo [Default: true]
+		*/
+		void solo(bool solo=true);
+
+		/**	@brief	Get solo state of sequence
+		*	@retval	bool True if solo
+		*/
+		bool isSolo();
+
 	private:
 		uint8_t m_nChannel = 0; // MIDI channel
 		uint8_t m_nOutput = 0; // JACK output
@@ -211,4 +221,5 @@ class Sequence
 		uint32_t m_nCurrentStep = 0; // Postion within pattern (step)
 		uint32_t m_nSequenceLength = 0; // Quantity of clock cycles in sequence (last pattern start + length)
 		uint32_t m_nSamplePerClock; // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
+		bool m_bSolo = false; // True if sequence is solo
 };

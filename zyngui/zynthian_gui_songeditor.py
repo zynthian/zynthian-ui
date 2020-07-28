@@ -183,10 +183,6 @@ class zynthian_gui_songeditor():
 	# Function to populate menu
 	def populateMenu(self):
 		# Only show song editor menu entries if we have a song selected
-		if self.editorMode:
-			self.parent.addMenu({'Edit song':{'method':self.toggleEditorMode}})
-		else:
-			self.parent.addMenu({'Edit pads':{'method':self.toggleEditorMode}})
 		self.parent.addMenu({'Copy song':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copySong}}})
 		self.parent.addMenu({'Clear song':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearSong}}})
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':self.verticalZoom, 'onChange':self.onMenuChange,'onAssert':self.assertAndRedraw}}})
@@ -205,8 +201,11 @@ class zynthian_gui_songeditor():
 	# Function to show GUI
 	#	song: Song to show
 	def show(self, params=None):
+		if params != None:
+			self.editorMode = params
 		self.main_frame.tkraise()
 		self.selectSong()
+#		self.redraw_pending = 2
 		self.setupEncoders()
 
 	# Function to hide GUI
@@ -276,14 +275,6 @@ class zynthian_gui_songeditor():
 		self.parent.setParam('Pattern', 'value', self.pattern)
 		self.selectCell()
 
-	# Function to toggle editor mode: song or pad editor
-	def toggleEditorMode(self, params=None):
-		if self.editorMode:
-			self.editorMode = 0
-			self.parent.libseq.solo(self.song, 0, False)
-		else:
-			self.editorMode = 1
-		self.selectSong()
 
 	# Function to set quantity of tracks in song
 	#	tracks: Quantity of tracks in song
@@ -889,13 +880,13 @@ class zynthian_gui_songeditor():
 		song = self.parent.libseq.getSong()
 		if song != 0:
 			self.song = song
-		self.zyngui.zyntransport.locate(self.position) #TODO: Ideally remember last position
+#		self.zyngui.zyntransport.locate(self.position) #TODO: Ideally remember last position
 		if self.editorMode:
 			self.parent.setTitle("Pad Editor (%d)" % (self.song))
 			self.song = self.song + 1000
 		else:
 			self.parent.setTitle("Song Editor (%d)" % (self.song))
-			self.parent.libseq.solo(self.song + 1000, 0, False) # Clear solo from pad editor when switching to song editor
+#			self.parent.libseq.solo(self.song + 1000, 0, False) # Clear solo from pad editor when switching to song editor
 		self.redraw_pending = 2
 
 	# Function called when new file loaded from disk

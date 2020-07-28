@@ -50,7 +50,7 @@ SELECT_BORDER	= zynthian_gui_config.color_on
 #------------------------------------------------------------------------------
 
 # Class implements step sequencer
-class zynthian_gui_seqtrigger():
+class zynthian_gui_zynpad():
 
 	# Function to initialise class
 	def __init__(self, parent):

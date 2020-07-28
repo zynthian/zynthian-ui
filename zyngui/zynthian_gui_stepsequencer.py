@@ -41,7 +41,7 @@ from . import zynthian_gui_config
 from zyncoder import *
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_songeditor import zynthian_gui_songeditor
-from zyngui.zynthian_gui_seqtrigger import zynthian_gui_seqtrigger
+from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
 from zyngui.zynthian_gui_rename import zynthian_gui_rename
 
@@ -149,32 +149,31 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			height=zynthian_gui_config.topbar_height,
 			bd=0, highlightthickness=0)
 		self.param_editor_canvas.grid_propagate(False)
-		# Parameter editor cancel button
-		self.btnParamCancel = tkinter.Button(self.param_editor_canvas, command=self.hideParamEditor,
-			image=self.imgBack,
-			bd=0, highlightthickness=0,
-			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
-		self.btnParamCancel.grid(column=0, row=0)
-		# Parameter editor decrement button
-		self.btnParamDown = tkinter.Button(self.param_editor_canvas, command=self.decrementParam,
-			image=self.imgDown,
-			bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
-			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+
 		if zynthian_gui_config.enable_touch_widgets:
+			# Parameter editor cancel button
+			self.btnParamCancel = tkinter.Button(self.param_editor_canvas, command=self.hideParamEditor,
+				image=self.imgBack,
+				bd=0, highlightthickness=0,
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+			self.btnParamCancel.grid(column=0, row=0)
+			# Parameter editor decrement button
+			self.btnParamDown = tkinter.Button(self.param_editor_canvas, command=self.decrementParam,
+				image=self.imgDown,
+				bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
 			self.btnParamDown.grid(column=1, row=0)
-		# Parameter editor increment button
-		self.btnParamUp = tkinter.Button(self.param_editor_canvas, command=self.incrementParam,
-			image=self.imgUp,
-			bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
-			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
-		if zynthian_gui_config.enable_touch_widgets:
+			# Parameter editor increment button
+			self.btnParamUp = tkinter.Button(self.param_editor_canvas, command=self.incrementParam,
+				image=self.imgUp,
+				bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
 			self.btnParamUp.grid(column=2, row=0)
-		# Parameter editor assert button
-		self.btnParamAssert = tkinter.Button(self.param_editor_canvas, command=self.menuValueAssert,
-			image=self.imgForward,
-			bd=0, highlightthickness=0,
-			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
-		if zynthian_gui_config.enable_touch_widgets:
+			# Parameter editor assert button
+			self.btnParamAssert = tkinter.Button(self.param_editor_canvas, command=self.menuValueAssert,
+				image=self.imgForward,
+				bd=0, highlightthickness=0,
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
 			self.btnParamAssert.grid(column=3, row=0)
 		# Parameter editor value text
 		self.param_title_canvas = tkinter.Canvas(self.param_editor_canvas, height=zynthian_gui_config.topbar_height, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_bg)
@@ -208,17 +207,18 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.lstMenu.bind('<B1-Motion>', self.onMenuDrag)
 		self.lstMenu.bind('<ButtonRelease-1>', self.onMenuRelease)
 		self.scrollTime = 0.0
-		self.menu_button_canvas = tkinter.Canvas(self.tb_frame,
-			height=zynthian_gui_config.topbar_height,
-			bg=zynthian_gui_config.color_bg, bd=0, highlightthickness=0)
-		self.menu_button_canvas.grid_propagate(False)
-		self.menu_button_canvas.bind('<Button-1>', self.hideMenu)
-		self.btnMenuBack = tkinter.Button(self.menu_button_canvas, command=self.closePanelManager,
-			image=self.imgBack,
-			bd=0, highlightthickness=0,
-			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
-		self.btnMenuBack.grid(column=0, row=0)
-		self.menu_button_canvas.grid_columnconfigure(4, weight=1)
+		if zynthian_gui_config.enable_touch_widgets:
+			self.menu_button_canvas = tkinter.Canvas(self.tb_frame,
+				height=zynthian_gui_config.topbar_height,
+				bg=zynthian_gui_config.color_bg, bd=0, highlightthickness=0)
+			self.menu_button_canvas.grid_propagate(False)
+			self.menu_button_canvas.bind('<Button-1>', self.hideMenu)
+			self.btnMenuBack = tkinter.Button(self.menu_button_canvas, command=self.closePanelManager,
+				image=self.imgBack,
+				bd=0, highlightthickness=0,
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+			self.btnMenuBack.grid(column=0, row=0)
+			self.menu_button_canvas.grid_columnconfigure(4, weight=1)
 
 		self.status_menu_frame = tkinter.Frame(self.main_frame)
 
@@ -238,7 +238,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 		self.patternEditor = zynthian_gui_patterneditor(self)
 		self.songEditor = zynthian_gui_songeditor(self)
-		self.zynpad = zynthian_gui_seqtrigger(self)
+		self.zynpad = zynthian_gui_zynpad(self)
 
 		# Init touchbar
 		self.init_buttonbar()
@@ -260,10 +260,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def populateMenu(self):
 		self.lstMenu.delete(0, tkinter.END)
 		self.MENU_ITEMS = {} # Dictionary of menu items
-		if self.child == None or self.child == self.zynpad:
-			self.addMenu({'Song Editor':{'method':self.showChild, 'params':1}})
-		if self.child == None or self.child == self.songEditor:
-			self.addMenu({'ZynPad':{'method':self.showChild, 'params':2}})
+		self.addMenu({'Song Editor':{'method':self.showChild, 'params':1}})
+		self.addMenu({'Pad Editor':{'method':self.showChild, 'params':3}})
+		self.addMenu({'ZynPad':{'method':self.showChild, 'params':2}})
 		self.addMenu({'Song':{'method':self.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.libseq.getSong, 'onChange':self.onMenuChange}}})
 		self.addMenu({'Load':{'method':self.select_filename, 'params':self.filename}})
 		self.addMenu({'Save':{'method':self.save_as, 'params':self.filename}})
@@ -325,9 +324,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.unregisterZyncoder(encoder)
 		self.registerSwitch(ENC_SELECT, self)
 		self.registerSwitch(ENC_BACK, self)
-		self.menu_button_canvas.grid()
-		self.menu_button_canvas.grid_propagate(False)
-		self.menu_button_canvas.grid(column=0, row=0, sticky='nsew')
+		if zynthian_gui_config.enable_touch_widgets:
+			self.menu_button_canvas.grid()
+			self.menu_button_canvas.grid_propagate(False)
+			self.menu_button_canvas.grid(column=0, row=0, sticky='nsew')
 
 	# Function to close menu
 	#	event: Mouse event (not used)
@@ -335,7 +335,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.hideParamEditor()
 		self.unregisterZyncoder(ENC_SELECT)
 		self.lstMenu.grid_forget()
-		self.menu_button_canvas.grid_forget()
+		if zynthian_gui_config.enable_touch_widgets:
+			self.menu_button_canvas.grid_forget()
 		for encoder in range(4):
 			self.unregisterZyncoder(encoder)
 		if self.child:
@@ -519,7 +520,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.hideParamEditor()
 
 	# Function to show child GUI
-	#	childIndex: Index of child to show [0:PatternEditor 1:SongEditor 2:ZynPad]
+	#	childIndex: Index of child to show [0:PatternEditor 1:SongEditor 2:ZynPad 3:PadEditor]
 	#	params: Parameters to pass to child class show() method
 	def showChild(self, childIndex=None, params=None):
 		if not self.shown:
@@ -531,6 +532,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if childIndex == 1:
 			self.libseq.selectSong(self.song)
 			self.child = self.songEditor
+			params = 0
+		elif childIndex == 3:
+			self.libseq.selectSong(self.song)
+			self.child = self.songEditor
+			params = 1
 		elif childIndex == 0:
 			self.libseq.selectSong(0)
 			self.child = self.patternEditor
@@ -548,7 +554,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.child.hide()
 		self.child = None
 		self.hideParamEditor()
-		self.setTitle("Step Sequencer")
+#		self.setTitle("Step Sequencer")
 		for switch in range(4):
 			for type in ['S', 'B', 'L']:
 				self.unregisterSwitch(switch, type)

@@ -916,7 +916,7 @@ void selectSong(uint32_t song)
 {
 	if(g_bDebug)
 		printf("Selecting song %d\n", song);
-	stopSong();
+//	stopSong();
 	PatternManager::getPatternManager()->setCurrentSong(song);
 	g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);
 }
