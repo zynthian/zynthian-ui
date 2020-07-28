@@ -597,7 +597,7 @@ class zynthian_gui_controller:
 			if self.zctrl.midi_cc==0:
 				val=self.zctrl.value
 			elif self.logarithmic:
-				val = self.n_values*math.log(zctrl.value/zctrl.value_min)/self.log_scale_value
+				val = self.n_values*math.log(self.zctrl.value/self.zctrl.value_min)/self.log_scale_value
 			else:
 				val = (self.zctrl.value-self.zctrl.value_min)/self.scale_value
 		#Set value & Update zyncoder

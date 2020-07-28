@@ -112,13 +112,15 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		self.osc_target_port = 6693
 
 		try:
-			self.sr = int(self.zyngui.jackd_options['r'])
-		except:
+			self.sr = int(self.zyngui.get_jackd_samplerate())
+		except Exception as e:
+			logging.error(e)
 			self.sr = 44100
 
 		try:
-			self.bs = int(self.zyngui.jackd_options['p'])
-		except:
+			self.bs = int(self.zyngui.get_jackd_blocksize())
+		except Exception as e:
+			logging.error(e)
 			self.bs = 256
 
 		if self.config_remote_display():

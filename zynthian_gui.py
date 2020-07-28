@@ -1405,7 +1405,7 @@ class zynthian_gui:
 			if zynthian_gui_config.show_cpu_status:
 				# Get CPU Load
 				#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
-				self.status_info['cpu_load'] = zynautoconnect.get_jack_cpu_load()
+				self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
 			else:
 				# Get audio peak level
 				self.status_info['peakA'] = lib_jackpeak.getPeak(0)
@@ -1586,6 +1586,18 @@ class zynthian_gui:
 	def zynautoconnect_release_lock(self):
 		#Release Mutex Lock
 		zynautoconnect.release_lock()
+
+
+	#------------------------------------------------------------------
+	# Jackd Info
+	#------------------------------------------------------------------
+
+	def get_jackd_samplerate(self):
+		return zynautoconnect.get_jackd_samplerate()
+
+
+	def get_jackd_blocksize(self):
+		return zynautoconnect.get_jackd_blocksize()
 
 
 #------------------------------------------------------------------------------

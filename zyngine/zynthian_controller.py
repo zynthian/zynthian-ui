@@ -22,9 +22,10 @@
 # 
 #******************************************************************************
 
-import logging
+import math
 import liblo
 import ctypes
+import logging
 
 # Zynthian specific modules
 from zyncoder import *
@@ -144,6 +145,10 @@ class zynthian_controller:
 		else:
 			self.value_mid = self.value_min+self.value_range/2
 
+		if self.is_logarithmic:
+			self.powbase = self.value_max/self.value_min
+			self.log_powbase = math.log(self.powbase)
+
 		self._set_value(self.value)
 		if self.value_default is None:
 			self.value_default=self.value
@@ -251,7 +256,9 @@ class zynthian_controller:
 		self._set_value(val)
 
 		if self.engine:
-			mval=self.get_ctrl_midi_val()
+			if self.midi_learn_cc or self.midi_cc:
+				mval=self.get_ctrl_midi_val()
+
 			try:
 				# Send value using engine method...
 				self.engine.send_controller_value(self)
@@ -260,14 +267,15 @@ class zynthian_controller:
 					try:
 						# Send value using OSC/MIDI ...
 						if self.osc_path:
-							liblo.send(self.engine.osc_target,self.osc_path,self.get_ctrl_osc_val())
-						elif self.midi_cc:
-							zyncoder.lib_zyncoder.zynmidi_send_ccontrol_change(self.midi_chan,self.midi_cc,mval)
+							liblo.send(self.engine.osc_target,self.osc_path, self.get_ctrl_osc_val())
+							logging.debug("Sending OSC controller '{}' value => {}".format(self.symbol, val))
 
-						logging.debug("Sending controller '{}' value => {} ({})".format(self.symbol,val,mval))
+						elif self.midi_cc:
+							zyncoder.lib_zyncoder.zynmidi_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
+							logging.debug("Sending MIDI controller '{}' value => {} ({})".format(self.symbol, val, mval))
 
 					except Exception as e:
-						logging.warning("Can't send controller '{}' value => {}".format(self.symbol,e))
+						logging.warning("Can't send controller '{}' value: {} => {}".format(self.symbol, val, e))
 
 			# Send feedback to MIDI controllers
 			try:
@@ -337,10 +345,14 @@ class zynthian_controller:
 
 	def get_ctrl_midi_val(self):
 		try:
-			val=min(127, int(127*(self.value-self.value_min)/self.value_range))
+			if self.is_logarithmic:
+				val = int(127*math.log(self.value/self.value_min)/self.log_powbase)
+			else:
+				val = min(127, int(127*(self.value-self.value_min)/self.value_range))
 		except Exception as e:
 			logging.error(e)
 			val=0
+
 		return val
 
 
@@ -539,11 +551,14 @@ class zynthian_controller:
 	# MIDI CC processing
 	#----------------------------------------------------------------------------
 
-
 	def midi_control_change(self, val):
-		value=self.value_min+val*self.value_range/127
+		if self.is_logarithmic:
+			value = self.value_min*pow(self.powbase, val/127)
+		else:
+			value = self.value_min+val*self.value_range/127
 		self.set_value(value)
 		self.refresh_gui()
+
 
 	def refresh_gui(self):
 		#Refresh GUI controller in screen when needed ...

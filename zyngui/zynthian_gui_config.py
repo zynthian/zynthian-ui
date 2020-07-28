@@ -42,7 +42,7 @@ import zynconf
 log_level=int(os.environ.get('ZYNTHIAN_LOG_LEVEL',logging.WARNING))
 #log_level=logging.DEBUG
 
-logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
+logging.basicConfig(format='%(levelname)s:%(module)s.%(funcName)s: %(message)s', stream=sys.stderr, level=log_level)
 
 # Reduce log level for other modules
 logging.getLogger("urllib3").setLevel(logging.WARNING)

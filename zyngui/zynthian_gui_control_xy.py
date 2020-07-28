@@ -24,8 +24,10 @@
 #******************************************************************************
 
 import sys
+import math
 import tkinter
 import logging
+from datetime import datetime
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -48,7 +50,6 @@ class zynthian_gui_control_xy():
 		self.width=zynthian_gui_config.display_width-2*self.padx
 		self.x=self.width/2
 		self.x_zctrl=None
-		self.xvalue_max=127
 		self.xvalue=64
 
 		# Init X vars
@@ -56,8 +57,9 @@ class zynthian_gui_control_xy():
 		self.height=zynthian_gui_config.display_height-2*self.pady
 		self.y=self.height/2
 		self.y_zctrl=None
-		self.yvalue_max=127
 		self.yvalue=64
+
+		self.last_motion_ts = None
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
@@ -99,57 +101,78 @@ class zynthian_gui_control_xy():
 	def set_controllers(self, x_zctrl, y_zctrl):
 		self.x_zctrl=x_zctrl
 		self.y_zctrl=y_zctrl
-		self.xvalue_max=self.x_zctrl.value_max
-		self.yvalue_max=self.y_zctrl.value_max
 		self.get_controller_values()
 
 
 	def set_x_controller(self, x_zctrl):
 		self.x_zctrl=x_zctrl
-		self.xvalue_max=self.x_zctrl.value_max
 		self.get_controller_values()
 
 
 	def set_y_controller(self, y_zctrl):
 		self.y_zctrl=y_zctrl
-		self.yvalue_max=self.y_zctrl.value_max
 		self.get_controller_values()
 
 
 	def get_controller_values(self):
-		xv=self.x_zctrl.value
-		if xv!=self.xvalue:
-			self.xvalue=xv
-			self.x=int(self.xvalue*zynthian_gui_config.display_width/self.xvalue_max)
+		if self.x_zctrl.value!=self.xvalue:
+			self.xvalue = self.x_zctrl.value
+			if self.x_zctrl.is_logarithmic:
+				self.x = int(self.width*math.log(self.xvalue/self.x_zctrl.value_min)/self.x_zctrl.log_powbase)
+			else:
+				self.x = int(self.width*(self.xvalue-self.x_zctrl.value_min)/self.x_zctrl.value_range)
 			self.canvas.coords(self.vline,self.x,0,self.x,self.height)
-		yv=self.y_zctrl.value
-		if yv!=self.yvalue:
-			self.yvalue=yv
-			self.y=int(self.yvalue*zynthian_gui_config.display_height/self.yvalue_max)
+
+		if self.y_zctrl.value!=self.yvalue:
+			self.yvalue = self.y_zctrl.value
+			if self.y_zctrl.is_logarithmic:
+				self.y = int(self.height*math.log(self.yvalue/self.y_zctrl.value_min)/self.y_zctrl.log_powbase)
+			else:
+				self.y = int(self.height*(self.yvalue-self.y_zctrl.value_min)/self.y_zctrl.value_range)
 			self.canvas.coords(self.hline,0,self.y,self.width,self.y)
 
 
 	def refresh(self):
-		self.xvalue=self.x*self.xvalue_max/self.width
-		self.yvalue=self.y*self.yvalue_max/self.height
 		self.canvas.coords(self.hline,0,self.y,self.width,self.y)
 		self.canvas.coords(self.vline,self.x,0,self.x,self.height)
-		if self.x_zctrl is not None:
-			self.x_zctrl.set_value(self.xvalue,True)
-		if self.y_zctrl is not None:
-			self.y_zctrl.set_value(self.yvalue,True)
+
+		if self.x_zctrl.is_logarithmic:
+			xv = self.x_zctrl.value_min*pow(self.x_zctrl.powbase, self.x/self.width)
+		else:
+			xv = self.x_zctrl.value_min+ self.x*self.x_zctrl.value_range/self.width
+
+		if xv!=self.xvalue:
+			self.xvalue = xv
+			self.x_zctrl.set_value(self.xvalue, True)
+
+		if self.y_zctrl.is_logarithmic:
+			yv = self.y_zctrl.value_min*pow(self.y_zctrl.powbase, self.y/self.height)
+		else:	
+			yv = self.y_zctrl.value_min + self.y*self.y_zctrl.value_range/self.height
+
+		if yv!=self.yvalue:
+			self.yvalue = yv
+			self.y_zctrl.set_value(self.yvalue, True)
 
 
 	def cb_canvas(self, event):
 		#logging.debug("XY controller => %s, %s" % (event.x, event.y))
-		self.x=event.x
-		self.y=event.y
+		self.x = event.x
+		self.y = event.y
 		self.refresh()
+		self.last_motion_ts = datetime.now()
 
 
 	def zyncoder_read(self):
-		self.zyngui.screens['control'].zyncoder_read()
-		self.get_controller_values()
+		# Wait 0.3 seconds after last motion for start reading encoders again
+		if self.last_motion_ts is None or (datetime.now()-self.last_motion_ts).total_seconds()>0.1:
+			if self.last_motion_ts is not None:
+				self.last_motion_ts = None
+				self.zyngui.screens['control'].set_controller_value(self.x_zctrl)
+				self.zyngui.screens['control'].set_controller_value(self.y_zctrl)
+
+			self.zyngui.screens['control'].zyncoder_read()
+			self.get_controller_values()
 
 
 	def refresh_loading(self):
