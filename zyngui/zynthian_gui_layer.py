@@ -1088,31 +1088,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			# Finally, stop all unused engines
 			self.zyngui.screens['engine'].stop_unused_engines()
 
+			#Restore MIDI profile state
+			if 'midi_profile_state' in snapshot:
+				self.set_midi_profile_state(snapshot['midi_profile_state'])
+
 			#Set MIDI Routing
 			if 'midi_routing' in snapshot:
 				self.set_midi_routing(snapshot['midi_routing'])
 			else:
 				self.reset_midi_routing()
 
-			#Set Audio Routing
-			if 'audio_routing' in snapshot:
-				self.set_audio_routing(snapshot['audio_routing'])
-			else:
-				self.reset_audio_routing()
-
-			#Set Audio Routing
-			if 'audio_capture' in snapshot:
-				self.set_audio_capture(snapshot['audio_capture'])
-			else:
-				self.reset_audio_routing()
-
-			#Autoconnect
+			#Autoconnect MIDI
 			self.zyngui.zynautoconnect_midi(True)
-			self.zyngui.zynautoconnect_audio()
-
-			#Restore MIDI profile state
-			if 'midi_profile_state' in snapshot:
-				self.set_midi_profile_state(snapshot['midi_profile_state'])
 
 			#Set extended config
 			if 'extended_config' in snapshot:
@@ -1129,6 +1116,21 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			for lss in snapshot['layers']:
 				self.layers[i].restore_snapshot_2(lss)
 				i += 1
+
+			#Set Audio Routing
+			if 'audio_routing' in snapshot:
+				self.set_audio_routing(snapshot['audio_routing'])
+			else:
+				self.reset_audio_routing()
+
+			#Set Audio Capture
+			if 'audio_capture' in snapshot:
+				self.set_audio_capture(snapshot['audio_capture'])
+			else:
+				self.reset_audio_routing()
+
+			#Autoconnect Audio
+			self.zyngui.zynautoconnect_audio()
 
 			# Restore ALSA Mixer settings
 			if self.amixer_layer and 'amixer_layer' in snapshot:
