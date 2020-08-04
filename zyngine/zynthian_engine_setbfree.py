@@ -221,6 +221,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			with open(self.config_autogen_fpath, 'w+') as cfg_file:
 				cfg_file.write(cfg_data)
 
+
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
@@ -313,7 +314,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 
 
-
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
@@ -339,6 +339,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 				return False
 		except:
 			return False
+
 
 	#----------------------------------------------------------------------------
 	# Controller Managament
@@ -481,7 +482,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		try:
 			self.manuals_config = xconfig['manuals_config']
 			self.tonewheel_model = xconfig['tonewheel_model']
-
 		except Exception as e:
 			logging.error("Can't setup extended config => {}".format(e))
 

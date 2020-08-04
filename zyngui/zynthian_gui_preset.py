@@ -52,7 +52,13 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if not self.zyngui.curlayer:
 			logging.error("Can't fill preset list for None layer!")
 			return
+
 		self.zyngui.curlayer.load_preset_list(self.only_favs)
+		if not self.zyngui.curlayer.preset_list and self.only_favs:
+			self.only_favs = False
+			self.set_select_path()
+			self.zyngui.curlayer.load_preset_list()
+			
 		self.list_data=self.zyngui.curlayer.preset_list
 		super().fill_list()
 
@@ -74,6 +80,14 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		else:
 			self.zyngui.curlayer.toggle_preset_fav(self.list_data[i])
 			self.update_list()
+
+
+	def back_action(self):
+		if self.only_favs:
+			self.disable_only_favs()
+			return ''
+		else:
+			return None
 
 
 	def preselect_action(self):
@@ -110,7 +124,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.only_favs:
-			self.select_path.set("Favorites")
+			self.select_path.set(self.zyngui.curlayer.get_basepath() + " > Favorites")
 		else:
 			if self.zyngui.curlayer:
 				self.select_path.set(self.zyngui.curlayer.get_bankpath())
