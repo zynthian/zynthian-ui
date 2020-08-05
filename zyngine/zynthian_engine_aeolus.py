@@ -22,9 +22,12 @@
 #
 #******************************************************************************
 
-import logging
+import os
+import glob
 import copy
+import shutil
 import struct
+import logging
 from collections import OrderedDict
 
 from . import zynthian_engine
@@ -37,10 +40,29 @@ from . import zynthian_controller
 class zynthian_engine_aeolus(zynthian_engine):
 
 	# ---------------------------------------------------------------------------
+	# Tuning temperaments
+	# ---------------------------------------------------------------------------
+
+	tuning_temp_dict = {
+		"Meantone 1/4": 1,
+		"Werckmeister III": 2,
+		"Kimberger III": 3,
+		"Well Tempered": 4,
+		"Equally Tempered": 5,
+		"Vogel/Ahrend": 6,
+		"Vallotti": 7,
+		"Kellner": 8,
+		"Lehman": 9,
+		"Pure C/F/G": 10
+#		"Pythagorean": 11 => Crash!!
+	}
+
+	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
-	instrument=[{
+	#TODO: Parse instrument definition 
+	instrument = [{
 		"name": "Manual III",
 		"chan": 2,
 		"buttons": [
@@ -133,11 +155,15 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# Config variables
 	#----------------------------------------------------------------------------
 
+	waves_dpath = "/usr/share/aeolus/stops/waves"
+	config_fpath = "/usr/share/aeolus/stops/Aeolus/definition"
+	presets_fpath = "/root/.aeolus-presets"
+	#presets_fpath = "/usr/share/aeolus/stops/Aeolus/presets"
+
 	n_banks = 32
 	n_presets = 32
 	stop_cc_num = 98
 	ctrl_cc_num_start = 14
-	presets_fpath = "/root/.aeolus-presets"
 
 	#----------------------------------------------------------------------------
 	# Initialization
@@ -159,11 +185,80 @@ class zynthian_engine_aeolus(zynthian_engine):
 			self.command_prompt = "\nAeolus>"
 			self.command = "aeolus -t"
 
+		self.get_current_config()
+
 		self.presets_data = self.read_presets_file()
 		self.generate_ctrl_list()
 
-		self.start()
+		self.tuning_temp = None
 		self.reset()
+
+
+
+	def start(self):
+		super().start()
+
+		#Save waves when needed and possible (no GUI!)
+		if self.command_prompt and self.is_empty_waves():
+			logging.error("New config saved!")
+			self.proc_cmd("!")
+
+
+	def get_current_config(self):
+		# Get current config ...
+		with open(self.config_fpath, 'r') as cfg_file:
+			self.config_lines = cfg_file.readlines()
+			for line in self.config_lines:
+				if line.startswith("/tuning"):
+					parts = line[8:].split(' ')
+					try:
+						self.current_tuning_freq = float(parts[0])
+						logging.info("Current tuning frequency = {:.1f}".format(self.current_tuning_freq))
+					except Exception as e:
+						logging.error("Can't get current tuning frequency! Using default (440.0 Hz) => {}".format(e))
+						self.current_tuning_freq = 440.0
+					try:
+						self.current_tuning_temp = int(parts[1])
+						logging.info("Current tuning temperament = {:d}".format(self.current_tuning_temp))
+					except Exception as e:
+						logging.error("Can't get current tuning temperament! Using default (Equally Tempered) => {}".format(e))
+						self.current_tuning_temp = 5
+
+
+	def fix_config(self):
+		regenerate = False
+		# Generate tuning line
+		tuning_line = "/tuning {:.1f} {:d}\n".format(self.zyngui.fine_tuning_freq, self.tuning_temp)
+		# Get current config ...
+		for i,line in enumerate(self.config_lines):
+			if line.startswith("/tuning"):
+				if line!=tuning_line:
+					self.config_lines[i] = tuning_line
+					regenerate = True
+				break
+		# Delete waves & fix config file
+		if regenerate:
+			self.del_waves()
+			with open(self.config_fpath, 'w+') as cfg_file:
+				cfg_file.writelines(self.config_lines)
+			return True
+
+
+	def del_waves(self):
+		try:
+			shutil.rmtree(self.waves_dpath, ignore_errors=True)
+			os.mkdir(self.waves_dpath)
+			logging.info("Waves deleted! Retuning ...")
+		except Exception as e:
+			logging.error("Can't delete waves! => {}".format(e))
+
+
+	def is_empty_waves(self):
+		if not os.listdir(self.waves_dpath):
+			return True
+		else:
+			return False
+
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
@@ -193,17 +288,38 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def get_bank_list(self, layer=None):
 		res=[]
-		i=-1
-		#for i in range(self.n_banks):
-		for gc in self.presets_data['group_config']:
-			if gc['bank']>i:
-				i=gc['bank']
-				title="Bank {0:02d}".format(i+1)
-				res.append((title,i,title))
+		if not self.tuning_temp:
+			for title, i in self.tuning_temp_dict.items():
+				res.append((title, i, title))
+			self.zyngui.screens['bank'].index = self.current_tuning_temp-1
+		else:
+			i=-1
+			for gc in self.presets_data['group_config']:
+				if gc['bank']>i:
+					i=gc['bank']
+					title="Bank {0:02d}".format(i+1)
+					res.append((title,i,title))
 		return res
 
 
 	def set_bank(self, layer, bank):
+		if not self.tuning_temp:
+			self.tuning_temp = bank[1]
+			res = False
+		else:
+			res = True
+
+		if self.fix_config() or not self.proc:
+			self.stop()
+			self.start()
+			self.zyngui.zynautoconnect_midi(True)
+			self.zyngui.zynautoconnect_audio()
+			self.layers[0].load_bank_list()
+			self.layers[0].reset_bank()
+			
+			if not res:
+				return False
+
 		self.zyngui.zynmidi.set_midi_bank_lsb(layer.get_midi_chan(), bank[1])
 		#Change Bank for all Layers
 		for l in self.layers:
@@ -409,15 +525,35 @@ class zynthian_engine_aeolus(zynthian_engine):
 			}
 
 	# ---------------------------------------------------------------------------
+	# Extended Config
+	# ---------------------------------------------------------------------------
+
+	def get_extended_config(self):
+		xconfig = { 
+			'tuning_temp': self.tuning_temp,
+		}
+		return xconfig
+
+
+	def set_extended_config(self, xconfig):
+		try:
+			self.tuning_temp = xconfig['tuning_temp']
+		except Exception as e:
+			logging.error("Can't setup extended config => {}".format(e))
+
+
+	# ---------------------------------------------------------------------------
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
 
 	def get_path(self, layer):
 		path=self.nickname
-		chan_name=self.get_chan_name(layer.get_midi_chan())
-		if chan_name:
-			path=path+'/'+chan_name
+		if not self.tuning_temp:
+			path += "/Temperament"
+		else:
+			chan_name=self.get_chan_name(layer.get_midi_chan())
+			if chan_name:
+				path=path+'/'+chan_name
 		return path
-
 
 #******************************************************************************
