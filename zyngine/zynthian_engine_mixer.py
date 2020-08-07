@@ -24,6 +24,7 @@
 
 import os
 import re
+import copy
 import shlex
 import logging
 import threading
@@ -132,19 +133,48 @@ class zynthian_engine_mixer(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, layer, ctrl_list=None):
-		zctrls = OrderedDict()
-
 		if ctrl_list=="*":
 			ctrl_list = None
 		elif ctrl_list is None:
-			ctrl_list = self.ctrl_list
+			ctrl_list = copy.copy(self.ctrl_list)
 
 		logging.debug("MIXER CTRL LIST: {}".format(ctrl_list))
 
 		self.stop_sender_poll()
 
+		zctrls = self.get_mixer_zctrls(self.device_name, ctrl_list)
+		if self.device_name!="Headphones" and self.zyngui.get_zynthian_config("rbpi_headphones"):
+			zctrls_headphones = self.get_mixer_zctrls("Headphones", ["Headphone"])
+			zctrls["Headphone"] = zctrls_headphones["Headphone"]
+			ctrl_list.insert(0, "Headphone")
+
+		# Sort zctrls to match the configured mixer control list
+		if ctrl_list and len(ctrl_list)>0:
+			sorted_zctrls = OrderedDict()
+			for ctrl_name in ctrl_list:
+				ctrl_symbol = ctrl_name.replace(' ', '_')
+				try:
+					sorted_zctrls[ctrl_symbol] = zctrls[ctrl_symbol]
+				except:
+					pass
+		else:
+			sorted_zctrls = zctrls
+
+		# Generate control screens
+		self._ctrl_screens = None
+		self.generate_ctrl_screens(sorted_zctrls)
+
+		self.zctrls = sorted_zctrls
+		self.start_sender_poll()
+
+		return sorted_zctrls
+
+
+	def get_mixer_zctrls(self, device_name, ctrl_list):
+		zctrls = OrderedDict()
+
 		try:
-			ctrls = check_output("amixer -M -c {}".format(self.device_name), shell=True).decode("utf-8").split("Simple mixer control ")
+			ctrls = check_output("amixer -M -c {}".format(device_name), shell=True).decode("utf-8").split("Simple mixer control ")
 			for ctrl in ctrls:
 				lines = ctrl.splitlines()
 				if len(lines)==0:
@@ -260,25 +290,7 @@ class zynthian_engine_mixer(zynthian_engine):
 		except Exception as err:
 			logging.error(err)
 
-		# Sort zctrls to match the configured mixer control list
-		if ctrl_list and len(ctrl_list)>0:
-			sorted_zctrls = OrderedDict()
-			for ctrl_name in ctrl_list:
-				ctrl_symbol = ctrl_name.replace(' ', '_')
-				try:
-					sorted_zctrls[ctrl_symbol] = zctrls[ctrl_symbol]
-				except:
-					pass
-		else:
-			sorted_zctrls = zctrls
-
-		# Generate control screens
-		self.generate_ctrl_screens(sorted_zctrls)
-
-		self.zctrls = sorted_zctrls
-		self.start_sender_poll()
-
-		return sorted_zctrls
+		return zctrls
 
 
 	def send_controller_value(self, zctrl):
@@ -287,7 +299,9 @@ class zynthian_engine_mixer(zynthian_engine):
 
 	def _send_controller_value(self, zctrl):
 		try:
-			if zctrl.labels:
+			if zctrl.graph_path[0]=="Headphone" and self.zyngui.get_zynthian_config("rbpi_headphones"):
+				amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format("Headphones", zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
+			elif zctrl.labels:
 				if zctrl.graph_path[1]=="VToggle":
 					amixer_command = "amixer -M -c {} set '{}' '{}%'".format(self.device_name, zctrl.graph_path[0], zctrl.value)
 				else:
@@ -318,12 +332,13 @@ class zynthian_engine_mixer(zynthian_engine):
 				if counter==0:
 					sleep(0.05)
 
+		self.sender_poll_enabled = True
 		thread = threading.Thread(target=runInThread, daemon=True)
 		thread.start()
 
 
 	def stop_sender_poll(self):
-		self.sender_poll_enabled = True
+		self.sender_poll_enabled = False
 
 
 	#----------------------------------------------------------------------------

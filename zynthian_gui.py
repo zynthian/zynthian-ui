@@ -418,6 +418,7 @@ class zynthian_gui:
 		if screen=="alsa_mixer":
 			if self.screens['layer'].amixer_layer:
 				self._curlayer = self.curlayer
+				self.screens['layer'].amixer_layer.refresh_controllers()
 				self.set_curlayer(self.screens['layer'].amixer_layer)
 			else:
 				return
@@ -1601,6 +1602,14 @@ class zynthian_gui:
 
 	def get_jackd_blocksize(self):
 		return zynautoconnect.get_jackd_blocksize()
+
+
+	#------------------------------------------------------------------
+	# Zynthian Config Info
+	#------------------------------------------------------------------
+
+	def get_zynthian_config(self, varname):
+		return eval("zynthian_gui_config.{}".format(varname))
 
 
 #------------------------------------------------------------------------------
