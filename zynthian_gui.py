@@ -229,7 +229,7 @@ class zynthian_gui:
 
 
 	def init_midi_services(self):
-		#Start / stop MIDI aux. services
+		#Start/Stop MIDI aux. services
 		self.screens['admin'].default_midi_clock()
 		self.screens['admin'].default_rtpmidi()
 		self.screens['admin'].default_qmidinet()

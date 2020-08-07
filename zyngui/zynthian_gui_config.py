@@ -324,7 +324,7 @@ font_family=os.environ.get('ZYNTHIAN_UI_FONT_FAMILY',"Audiowide")
 font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 
 #------------------------------------------------------------------------------
-# Touch Optionms
+# Touch Options
 #------------------------------------------------------------------------------
 
 enable_touch_widgets=int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS',False))
@@ -337,6 +337,12 @@ force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 restore_last_state=int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE',False))
 snapshot_mixer_settings=int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS',False))
 show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
+
+#------------------------------------------------------------------------------
+# Audio Options
+#------------------------------------------------------------------------------
+
+rbpi_headphones=int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES',False))
 
 #------------------------------------------------------------------------------
 # MIDI Configuration

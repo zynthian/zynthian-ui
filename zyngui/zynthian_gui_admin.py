@@ -51,11 +51,21 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.thread=None
 		self.child_pid=None
 		self.last_action=None
+
 		super().__init__('Action', True)
+
+		# Initialize Headphones
+		self.default_rbpi_headphones()
+
 
 
 	def fill_list(self):
 		self.list_data=[]
+
+		if zynthian_gui_config.rbpi_headphones:
+			self.list_data.append((self.stop_rbpi_headphones,0,"[x] Headphones"))
+		else:
+			self.list_data.append((self.start_rbpi_headphones,0,"[  ] Headphones"))
 
 		if zynthian_gui_config.midi_single_active_channel:
 			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
@@ -243,9 +253,56 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				check_output("systemctl stop a2jmidid", shell=True)
 				self.zyngui.all_sounds_off()
 
-#------------------------------------------------------------------------------
-# MIDI OPTIONS
-#------------------------------------------------------------------------------
+	#------------------------------------------------------------------------------
+	# CONFIG OPTIONS
+	#------------------------------------------------------------------------------
+
+	def start_rbpi_headphones(self, save_config=True):
+		logging.info("STARTING RBPI HEADPHONES")
+
+		try:
+			check_output("systemctl start headphones", shell=True)
+			zynthian_gui_config.rbpi_headphones = 1
+			# Update Config
+			if save_config:
+				zynconf.save_config({ 
+					"ZYNTHIAN_RBPI_HEADPHONES": str(zynthian_gui_config.rbpi_headphones)
+				})
+			# Call autoconnect after a little time
+			sleep(0.5)
+			self.zyngui.zynautoconnect_audio()
+
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	def stop_rbpi_headphones(self, save_config=True):
+		logging.info("STOPPING RBPI HEADPHONES")
+
+		try:
+			check_output("systemctl stop headphones", shell=True)
+			zynthian_gui_config.rbpi_headphones = 0
+			# Update Config
+			if save_config:
+				zynconf.save_config({ 
+					"ZYNTHIAN_RBPI_HEADPHONES": str(int(zynthian_gui_config.rbpi_headphones))
+				})
+
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	#Start/Stop RBPI Headphones depending on configuration
+	def default_rbpi_headphones(self):
+		if zynthian_gui_config.rbpi_headphones:
+			self.start_rbpi_headphones(False)
+		else:
+			self.stop_rbpi_headphones(False)
+
 
 	def toggle_snapshot_mixer_settings(self):
 		if zynthian_gui_config.snapshot_mixer_settings:
