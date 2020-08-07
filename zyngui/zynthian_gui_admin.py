@@ -666,7 +666,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def test_audio(self):
 		logging.info("TESTING AUDIO")
 		self.zyngui.show_info("TEST AUDIO")
-		self.killable_start_command(["mpg123 {}/audio/test.mp3".format(self.data_dir)])
+		#self.killable_start_command(["mpg123 {}/audio/test.mp3".format(self.data_dir)])
+		self.killable_start_command(["mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -ao jack {}/audio/test.mp3".format(self.data_dir)])
+		sleep(0.5)
+		self.zyngui.zynautoconnect_audio()
+
 
 	def test_midi(self):
 		logging.info("TESTING MIDI")
