@@ -153,9 +153,14 @@ class zynthian_engine_mixer(zynthian_engine):
 		zctrls = self.get_mixer_zctrls(self.device_name, ctrl_list)
 		if self.allow_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
 			try:
-				zctrls_headphones = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone"])
-				zctrls["Headphone"] = zctrls_headphones["Headphone"]
-				ctrl_list.insert(0, "Headphone")
+				zctrls_headphones = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone","PCM"])
+				if "headphone" in zctrls:
+					zctrls["Headphone"] = zctrls_headphones["Headphone"]
+					ctrl_list.insert(0, "Headphone")
+				elif "PCM" in zctrls:
+					zctrls["Headphone"] = zctrls_headphones["PCM"]
+					zctrls["Headphone"].symbol = zctrls["Headphone"].name = zctrls["Headphone"].short_name = "Headphone"
+					ctrl_list.insert(0, "Headphone")
 			except Exception as e:
 				logging.error("Can't configure headphones volume control".format(e))
 
