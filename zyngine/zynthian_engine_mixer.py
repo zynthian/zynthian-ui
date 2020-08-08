@@ -41,6 +41,8 @@ from . import zynthian_controller
 
 class zynthian_engine_mixer(zynthian_engine):
 
+	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
+
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
@@ -143,8 +145,8 @@ class zynthian_engine_mixer(zynthian_engine):
 		self.stop_sender_poll()
 
 		zctrls = self.get_mixer_zctrls(self.device_name, ctrl_list)
-		if self.device_name!="Headphones" and self.zyngui.get_zynthian_config("rbpi_headphones"):
-			zctrls_headphones = self.get_mixer_zctrls("Headphones", ["Headphone"])
+		if self.rbpi_device_name and self.device_name!=self.rbpi_device_name and self.zyngui.get_zynthian_config("rbpi_headphones"):
+			zctrls_headphones = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone"])
 			zctrls["Headphone"] = zctrls_headphones["Headphone"]
 			ctrl_list.insert(0, "Headphone")
 
@@ -299,8 +301,8 @@ class zynthian_engine_mixer(zynthian_engine):
 
 	def _send_controller_value(self, zctrl):
 		try:
-			if zctrl.graph_path[0]=="Headphone" and self.zyngui.get_zynthian_config("rbpi_headphones"):
-				amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format("Headphones", zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
+			if zctrl.graph_path[0]=="Headphone" and self.rbpi_device_name and self.zyngui.get_zynthian_config("rbpi_headphones"):
+				amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format(self.rbpi_device_name, zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
 			elif zctrl.labels:
 				if zctrl.graph_path[1]=="VToggle":
 					amixer_command = "amixer -M -c {} set '{}' '{}%'".format(self.device_name, zctrl.graph_path[0], zctrl.value)
@@ -422,6 +424,12 @@ class zynthian_engine_mixer(zynthian_engine):
 			self.device_name = res.group(1)
 		except:
 			self.device_name = "0"
+
+		try:
+			cmd = self.sys_dir + "/sbin/get_rbpi_audio_device.sh"
+			self.rbpi_device_name = check_output(cmd, shell=True).decode("utf-8")
+		except:
+			self.rbpi_device_name = None
 
 		try:
 			self.ctrl_list = list(filter(str.strip, os.environ.get('SOUNDCARD_MIXER').split(',')))
