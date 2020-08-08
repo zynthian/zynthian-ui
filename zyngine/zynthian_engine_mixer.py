@@ -134,6 +134,12 @@ class zynthian_engine_mixer(zynthian_engine):
 	# Controllers Managament
 	#----------------------------------------------------------------------------
 
+	def allow_headphones(self):
+		if self.rbpi_device_name and self.device_name!=self.rbpi_device_name:
+			return True
+		else:
+			return False
+
 	def get_controllers_dict(self, layer, ctrl_list=None):
 		if ctrl_list=="*":
 			ctrl_list = None
@@ -145,7 +151,7 @@ class zynthian_engine_mixer(zynthian_engine):
 		self.stop_sender_poll()
 
 		zctrls = self.get_mixer_zctrls(self.device_name, ctrl_list)
-		if self.rbpi_device_name and self.device_name!=self.rbpi_device_name and self.zyngui.get_zynthian_config("rbpi_headphones"):
+		if self.allow_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
 			zctrls_headphones = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone"])
 			zctrls["Headphone"] = zctrls_headphones["Headphone"]
 			ctrl_list.insert(0, "Headphone")
@@ -301,7 +307,7 @@ class zynthian_engine_mixer(zynthian_engine):
 
 	def _send_controller_value(self, zctrl):
 		try:
-			if zctrl.graph_path[0]=="Headphone" and self.rbpi_device_name and self.zyngui.get_zynthian_config("rbpi_headphones"):
+			if zctrl.graph_path[0]=="Headphone" and self.allow_headphones() and self.zyngui and  self.zyngui.get_zynthian_config("rbpi_headphones"):
 				amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format(self.rbpi_device_name, zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
 			elif zctrl.labels:
 				if zctrl.graph_path[1]=="VToggle":
@@ -459,6 +465,16 @@ class zynthian_engine_mixer(zynthian_engine):
 	@classmethod
 	def zynapi_get_controllers(cls, ctrl_list="*"):
 		return cls.zynapi_instance.get_controllers_dict(None, ctrl_list)
+
+
+	@classmethod
+	def zynapi_get_device_name(cls):
+		return cls.zynapi_instance.device_name
+
+
+	@classmethod
+	def zynapi_get_rbpi_device_name(cls):
+		return cls.zynapi_instance.rbpi_device_name
 
 
 #******************************************************************************

@@ -55,17 +55,18 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		super().__init__('Action', True)
 
 		# Initialize Headphones
-		self.default_rbpi_headphones()
-
+		if self.zyngui.allow_headphones():
+			self.default_rbpi_headphones()
 
 
 	def fill_list(self):
 		self.list_data=[]
 
-		if zynthian_gui_config.rbpi_headphones:
-			self.list_data.append((self.stop_rbpi_headphones,0,"[x] Headphones"))
-		else:
-			self.list_data.append((self.start_rbpi_headphones,0,"[  ] Headphones"))
+		if self.zyngui.allow_headphones():
+			if zynthian_gui_config.rbpi_headphones:
+				self.list_data.append((self.stop_rbpi_headphones,0,"[x] Headphones"))
+			else:
+				self.list_data.append((self.start_rbpi_headphones,0,"[  ] Headphones"))
 
 		if zynthian_gui_config.midi_single_active_channel:
 			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
