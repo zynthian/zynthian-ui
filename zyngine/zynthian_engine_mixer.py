@@ -154,15 +154,20 @@ class zynthian_engine_mixer(zynthian_engine):
 		if self.allow_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
 			try:
 				zctrls_headphones = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone","PCM"])
-				if "headphone" in zctrls:
-					zctrls["Headphone"] = zctrls_headphones["Headphone"]
-					ctrl_list.insert(0, "Headphone")
-				elif "PCM" in zctrls:
-					zctrls["Headphone"] = zctrls_headphones["PCM"]
-					zctrls["Headphone"].symbol = zctrls["Headphone"].name = zctrls["Headphone"].short_name = "Headphone"
-					ctrl_list.insert(0, "Headphone")
+				if "headphone" in zctrls_headphones:
+					hp_zctrl = zctrls_headphones["Headphone"]
+				elif "PCM" in zctrls_headphones:
+					hp_zctrl = zctrls_headphones["PCM"]
+					hp_zctrl.symbol = hp_zctrl.name = hp_zctrl.short_name = "Headphone"
+				else:
+					raise Exception("Headphones volume control not found!")
+
+				zctrls["Headphone"] = hp_zctrl
+				ctrl_list.insert(0, "Headphone")
+				logging.debug("Added Headphone Volume Control")
+
 			except Exception as e:
-				logging.error("Can't configure headphones volume control".format(e))
+				logging.error("Can't configure headphones volume control: {}".format(e))
 
 		# Sort zctrls to match the configured mixer control list
 		if ctrl_list and len(ctrl_list)>0:
@@ -315,7 +320,7 @@ class zynthian_engine_mixer(zynthian_engine):
 
 	def _send_controller_value(self, zctrl):
 		try:
-			if zctrl.graph_path[0]=="Headphone" and self.allow_headphones() and self.zyngui and  self.zyngui.get_zynthian_config("rbpi_headphones"):
+			if zctrl.symbol=="Headphone" and self.allow_headphones() and self.zyngui and  self.zyngui.get_zynthian_config("rbpi_headphones"):
 				amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format(self.rbpi_device_name, zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
 			elif zctrl.labels:
 				if zctrl.graph_path[1]=="VToggle":
