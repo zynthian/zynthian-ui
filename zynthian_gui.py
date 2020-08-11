@@ -76,7 +76,7 @@ from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
-from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
+#from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
 from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
@@ -229,7 +229,7 @@ class zynthian_gui:
 
 
 	def init_midi_services(self):
-		#Start / stop MIDI aux. services
+		#Start/Stop MIDI aux. services
 		self.screens['admin'].default_midi_clock()
 		self.screens['admin'].default_rtpmidi()
 		self.screens['admin'].default_qmidinet()
@@ -305,12 +305,12 @@ class zynthian_gui:
 		self.zyntransport = zynthian_engine_transport()
 
 		# Create Core UI Screens
-		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['info'] = zynthian_gui_info()
-		self.screens['snapshot'] = zynthian_gui_snapshot()
+		self.screens['confirm'] = zynthian_gui_confirm()
+		self.screens['engine'] = zynthian_gui_engine()
 		self.screens['layer'] = zynthian_gui_layer()
 		self.screens['layer_options'] = zynthian_gui_layer_options()
-		self.screens['engine'] = zynthian_gui_engine()
+		self.screens['snapshot'] = zynthian_gui_snapshot()
 		self.screens['midi_chan'] = zynthian_gui_midi_chan()
 		self.screens['midi_cc'] = zynthian_gui_midi_cc()
 		self.screens['transpose'] = zynthian_gui_transpose()
@@ -324,15 +324,14 @@ class zynthian_gui:
 		self.screens['midi_profile'] = zynthian_gui_midi_profile()
 		self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
 		self.screens['zs3_options'] = zynthian_gui_zs3_options()
-		self.screens['confirm'] = zynthian_gui_confirm()
 		self.screens['main'] = zynthian_gui_main()
+		self.screens['admin'] = zynthian_gui_admin()
 
 		# Create UI Apps Screens
-		self.screens['layer'].create_amixer_layer()
 		self.screens['alsa_mixer'] = self.screens['control']
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
-		self.screens['autoeq'] = zynthian_gui_autoeq()
+		#self.screens['autoeq'] = zynthian_gui_autoeq()
 		self.screens['stepseq'] = zynthian_gui_stepsequencer()
 
 		# Init Auto-connector
@@ -418,6 +417,7 @@ class zynthian_gui:
 		if screen=="alsa_mixer":
 			if self.screens['layer'].amixer_layer:
 				self._curlayer = self.curlayer
+				self.screens['layer'].amixer_layer.refresh_controllers()
 				self.set_curlayer(self.screens['layer'].amixer_layer)
 			else:
 				return
@@ -1598,6 +1598,18 @@ class zynthian_gui:
 
 	def get_jackd_blocksize(self):
 		return zynautoconnect.get_jackd_blocksize()
+
+
+	#------------------------------------------------------------------
+	# Zynthian Config Info
+	#------------------------------------------------------------------
+
+	def get_zynthian_config(self, varname):
+		return eval("zynthian_gui_config.{}".format(varname))
+
+
+	def allow_headphones(self):
+		return self.screens['layer'].amixer_layer.engine.allow_headphones()
 
 
 #------------------------------------------------------------------------------

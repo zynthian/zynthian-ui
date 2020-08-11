@@ -209,7 +209,7 @@ class zynthian_layer:
 			last_preset_index=self.preset_index
 			last_preset_name=self.preset_name
 			
-			preset_id = self.preset_list[i][0]
+			preset_id = str(self.preset_list[i][0])
 			preset_name = self.preset_list[i][2]
 
 			if preset_id in self.engine.preset_favs:
