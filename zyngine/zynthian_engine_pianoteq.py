@@ -234,6 +234,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Banks
 	# ---------------------------------------------------------------------------
 
+	bank_list_v6_7 = [
+		('NY Steinway Square', 0, 'NY Steinway Square', 'Karsten:A'),
+		('J. Weimes Pianoforte', 0, 'J. Weimes Pianoforte', 'Karsten:A'),
+		('Ph. Schmidt Square', 0, 'Ph. Schmidt Square', 'Karsten:A'),
+		('G. Giusti Harpsichord', 0, 'G. Giusti Harpsichord', 'Karsten:A'),
+		('J. Salodiensis Virginal', 0, 'J. Salodiensis Virginal', 'Karsten:A')
+	]
+
 	bank_list_v6_6 = [
         ('Celtic Harp', 0, 'Celtic Harp', 'Celtic Harp:A')
 	]
@@ -458,6 +466,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=6:
 			self.bank_list = self.bank_list_v6_6 + self.bank_list
+
+		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=7:
+			self.bank_list = self.bank_list_v6_7 + self.bank_list
 
 		if not PIANOTEQ_TRIAL:
 			# Separate Licensed from Free and Demo
