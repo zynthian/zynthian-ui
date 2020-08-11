@@ -42,7 +42,7 @@ class zynthian_layer:
 		self.jackname = None
 		self.audio_out = ["system:playback_1", "system:playback_2"]
 		if midi_chan != None:
-			self.audio_out = ["zynmixer:input_%02da"%(midi_chan), "zynmixer:input_%02db"%(midi_chan)]
+			self.audio_out = ["zynmixer:input_%02da"%(midi_chan + 1), "zynmixer:input_%02db"%(midi_chan + 1)]
 		self.audio_in = ["system:capture_1", "system:capture_2"]
 		self.midi_out = []
 
@@ -113,7 +113,7 @@ class zynthian_layer:
 			zctrl.set_midi_chan(midi_chan)
 		for index, output in enumerate(self.audio_out):
 			if output.startswith("zynmixer:input_"):
-				self.audio_out[index] = "zynmixer:input_%02d%s"%(midi_chan, output[-1:])
+				self.audio_out[index] = "zynmixer:input_%02d%s"%(midi_chan + 1, output[-1:])
 		self.zyngui.zynautoconnect_audio()
 
 	def get_midi_chan(self):
@@ -214,7 +214,7 @@ class zynthian_layer:
 			last_preset_index=self.preset_index
 			last_preset_name=self.preset_name
 			
-			preset_id = self.preset_list[i][0]
+			preset_id = str(self.preset_list[i][0])
 			preset_name = self.preset_list[i][2]
 
 			if preset_id in self.engine.preset_favs:
@@ -643,7 +643,7 @@ class zynthian_layer:
 	def reset_audio_out(self):
 		self.audio_out=["system:playback_1", "system:playback_2"]
 		if self.midi_chan != None:
-			self.audio_out = ["zynmixer:input_%02da"%(self.midi_chan), "zynmixer:input_%02db"%(self.midi_chan)]
+			self.audio_out = ["zynmixer:input_%02da"%(self.midi_chan + 1), "zynmixer:input_%02db"%(self.midi_chan + 1)]
 		self.zyngui.zynautoconnect_audio()
 
 

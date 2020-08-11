@@ -498,16 +498,24 @@ def audio_autoconnect(force=False):
 
 	# Connect mixer to main output
 	try:
-		jclient.connect('zynmixer:output_a', 'system:playback_1')
-		jclient.connect('zynmixer:output_b', 'system:playback_2')
+		jclient.connect("zynmixer:output_a", "system:playback_1")
+		jclient.connect("zynmixer:output_b", "system:playback_2")
+	except:
+		pass
+
+	# Connect mixer to headphones
+	headphones_out = jclient.get_ports("Headphones", is_input=True, is_audio=True)
+	try:
+		jclient.connect("zynmixer:output_a", "Headphones:playback_1")
+		jclient.connect("zynmixer:output_b", "Headphones:playback_2")
 	except:
 		pass
 
 	# Connect mixer to dpm
 	if not zynthian_gui_config.show_cpu_status:
 		try:
-			jclient.connect('zynmixer:output_a', 'jackpeak:input_a')
-			jclient.connect('zynmixer:output_b', 'jackpeak:input_b')
+			jclient.connect("zynmixer:output_a", "jackpeak:input_a")
+			jclient.connect("zynmixer:output_b", "jackpeak:input_b")
 		except:
 			pass
 
@@ -682,8 +690,19 @@ def cb_jack_xrun(delayed_usecs: float):
 	zynthian_gui_config.zyngui.status_info['xrun'] = True
 
 
-def get_jack_cpu_load():
+def get_jackd_cpu_load():
 	return jclient.cpu_load()
+
+
+def get_jackd_samplerate():
+	return jclient.samplerate
+
+
+def get_jackd_blocksize():
+	return jclient.blocksize
+
+
+
 
 
 #------------------------------------------------------------------------------

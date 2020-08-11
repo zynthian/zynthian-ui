@@ -444,10 +444,10 @@ class zynthian_engine(zynthian_basic_engine):
 			self.load_preset_favs()
 
 		try:
-			del self.preset_favs[preset[0]]
+			del self.preset_favs[str(preset[0])]
 			fav_status = False
 		except:
-			self.preset_favs[preset[0]]=[layer.bank_info, preset]
+			self.preset_favs[str(preset[0])]=[layer.bank_info, preset]
 			fav_status = True
 
 		try:
@@ -470,7 +470,8 @@ class zynthian_engine(zynthian_basic_engine):
 		if self.preset_favs is None:
 			self.load_preset_favs()
 
-		if preset[0] in [item[1][0] for item in self.preset_favs.values()]:
+		#if str(preset[0]) in [str(item[1][0]) for item in self.preset_favs.values()]:
+		if str(preset[0]) in self.preset_favs:
 			return True
 		else:
 			return False

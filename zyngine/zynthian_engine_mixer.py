@@ -24,6 +24,7 @@
 
 import os
 import re
+import copy
 import shlex
 import logging
 import threading
@@ -39,6 +40,8 @@ from . import zynthian_controller
 #------------------------------------------------------------------------------
 
 class zynthian_engine_mixer(zynthian_engine):
+
+	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
@@ -131,20 +134,68 @@ class zynthian_engine_mixer(zynthian_engine):
 	# Controllers Managament
 	#----------------------------------------------------------------------------
 
-	def get_controllers_dict(self, layer, ctrl_list=None):
-		zctrls = OrderedDict()
+	def allow_headphones(self):
+		if self.rbpi_device_name and self.device_name!=self.rbpi_device_name:
+			return True
+		else:
+			return False
 
+	def get_controllers_dict(self, layer, ctrl_list=None):
 		if ctrl_list=="*":
 			ctrl_list = None
 		elif ctrl_list is None:
-			ctrl_list = self.ctrl_list
+			ctrl_list = copy.copy(self.ctrl_list)
 
 		logging.debug("MIXER CTRL LIST: {}".format(ctrl_list))
 
 		self.stop_sender_poll()
 
+		zctrls = self.get_mixer_zctrls(self.device_name, ctrl_list)
+		if self.allow_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
+			try:
+				zctrls_headphones = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone","PCM"])
+				if "headphone" in zctrls_headphones:
+					hp_zctrl = zctrls_headphones["Headphone"]
+				elif "PCM" in zctrls_headphones:
+					hp_zctrl = zctrls_headphones["PCM"]
+					hp_zctrl.symbol = hp_zctrl.name = hp_zctrl.short_name = "Headphone"
+				else:
+					raise Exception("Headphones volume control not found!")
+
+				zctrls["Headphone"] = hp_zctrl
+				ctrl_list.insert(0, "Headphone")
+				logging.debug("Added Headphone Volume Control")
+
+			except Exception as e:
+				logging.error("Can't configure headphones volume control: {}".format(e))
+
+		# Sort zctrls to match the configured mixer control list
+		if ctrl_list and len(ctrl_list)>0:
+			sorted_zctrls = OrderedDict()
+			for ctrl_name in ctrl_list:
+				ctrl_symbol = ctrl_name.replace(' ', '_')
+				try:
+					sorted_zctrls[ctrl_symbol] = zctrls[ctrl_symbol]
+				except:
+					pass
+		else:
+			sorted_zctrls = zctrls
+
+		# Generate control screens
+		self._ctrl_screens = None
+		self.generate_ctrl_screens(sorted_zctrls)
+
+		self.zctrls = sorted_zctrls
+		self.start_sender_poll()
+
+		return sorted_zctrls
+
+
+	def get_mixer_zctrls(self, device_name, ctrl_list):
+		zctrls = OrderedDict()
+
 		try:
-			ctrls = check_output("amixer -M -c {}".format(self.device_name), shell=True).decode("utf-8").split("Simple mixer control ")
+			ctrls = check_output("amixer -M -c {}".format(device_name), shell=True).decode("utf-8").split("Simple mixer control ")
 			for ctrl in ctrls:
 				lines = ctrl.splitlines()
 				if len(lines)==0:
@@ -260,25 +311,7 @@ class zynthian_engine_mixer(zynthian_engine):
 		except Exception as err:
 			logging.error(err)
 
-		# Sort zctrls to match the configured mixer control list
-		if ctrl_list and len(ctrl_list)>0:
-			sorted_zctrls = OrderedDict()
-			for ctrl_name in ctrl_list:
-				ctrl_symbol = ctrl_name.replace(' ', '_')
-				try:
-					sorted_zctrls[ctrl_symbol] = zctrls[ctrl_symbol]
-				except:
-					pass
-		else:
-			sorted_zctrls = zctrls
-
-		# Generate control screens
-		self.generate_ctrl_screens(sorted_zctrls)
-
-		self.zctrls = sorted_zctrls
-		self.start_sender_poll()
-
-		return sorted_zctrls
+		return zctrls
 
 
 	def send_controller_value(self, zctrl):
@@ -287,7 +320,9 @@ class zynthian_engine_mixer(zynthian_engine):
 
 	def _send_controller_value(self, zctrl):
 		try:
-			if zctrl.labels:
+			if zctrl.symbol=="Headphone" and self.allow_headphones() and self.zyngui and  self.zyngui.get_zynthian_config("rbpi_headphones"):
+				amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format(self.rbpi_device_name, zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
+			elif zctrl.labels:
 				if zctrl.graph_path[1]=="VToggle":
 					amixer_command = "amixer -M -c {} set '{}' '{}%'".format(self.device_name, zctrl.graph_path[0], zctrl.value)
 				else:
@@ -318,12 +353,13 @@ class zynthian_engine_mixer(zynthian_engine):
 				if counter==0:
 					sleep(0.05)
 
+		self.sender_poll_enabled = True
 		thread = threading.Thread(target=runInThread, daemon=True)
 		thread.start()
 
 
 	def stop_sender_poll(self):
-		self.sender_poll_enabled = True
+		self.sender_poll_enabled = False
 
 
 	#----------------------------------------------------------------------------
@@ -409,6 +445,12 @@ class zynthian_engine_mixer(zynthian_engine):
 			self.device_name = "0"
 
 		try:
+			cmd = self.sys_dir + "/sbin/get_rbpi_audio_device.sh"
+			self.rbpi_device_name = check_output(cmd, shell=True).decode("utf-8")
+		except:
+			self.rbpi_device_name = None
+
+		try:
 			self.ctrl_list = list(filter(str.strip, os.environ.get('SOUNDCARD_MIXER').split(',')))
 		except:
 			self.ctrl_list = None
@@ -436,6 +478,16 @@ class zynthian_engine_mixer(zynthian_engine):
 	@classmethod
 	def zynapi_get_controllers(cls, ctrl_list="*"):
 		return cls.zynapi_instance.get_controllers_dict(None, ctrl_list)
+
+
+	@classmethod
+	def zynapi_get_device_name(cls):
+		return cls.zynapi_instance.device_name
+
+
+	@classmethod
+	def zynapi_get_rbpi_device_name(cls):
+		return cls.zynapi_instance.rbpi_device_name
 
 
 #******************************************************************************
