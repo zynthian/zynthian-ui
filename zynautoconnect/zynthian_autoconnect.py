@@ -504,7 +504,6 @@ def audio_autoconnect(force=False):
 		pass
 
 	# Connect mixer to headphones
-	headphones_out = jclient.get_ports("Headphones", is_input=True, is_audio=True)
 	try:
 		jclient.connect("zynmixer:output_a", "Headphones:playback_1")
 		jclient.connect("zynmixer:output_b", "Headphones:playback_2")
