@@ -264,7 +264,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		('Steingraeber', 3, 'Steingraeber', 'Steingraeber:A'),
 		('Grotrian', 4, 'Grotrian', 'Grotrian:A'),
 		('Bluethner', 5, 'Bluethner', 'Bluethner:A'),
-		('YC5', 6, 'YC5', 'Rock:A'),
+		('YC5', 6, 'YC5', 'YC5:A'),
 		('K2', 7, 'K2', 'K2:A'),
 		('U4', 8, 'U4', 'U4:A'),
 		('MKI', 9, 'MKI', 'Electric:A'),
