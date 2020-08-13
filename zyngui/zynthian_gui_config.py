@@ -444,84 +444,86 @@ audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
 #------------------------------------------------------------------------------
 # X11 Related Stuff
 #------------------------------------------------------------------------------
-try:
-	#------------------------------------------------------------------------------
-	# Create & Configure Top Level window 
-	#------------------------------------------------------------------------------
 
-	top = tkinter.Tk()
+if "zynthian_gui.py" in sys.argv[0]:
+	try:
+		#------------------------------------------------------------------------------
+		# Create & Configure Top Level window 
+		#------------------------------------------------------------------------------
 
-	# Screen Size => Autodetect if None
-	if os.environ.get('DISPLAY_WIDTH'):
-		display_width=int(os.environ.get('DISPLAY_WIDTH'))
-	else:
-		try:
-			display_width = top.winfo_screenwidth()
-		except:
-			logging.warning("Can't get screen width. Using default 320!")
-			display_width=320
+		top = tkinter.Tk()
 
-	if os.environ.get('DISPLAY_HEIGHT'):
-		display_height=int(os.environ.get('DISPLAY_HEIGHT'))
-	else:
-		try:
-			display_height = top.winfo_screenheight()
-		except:
-			logging.warning("Can't get screen height. Using default 240!")
-			display_height=240
+		# Screen Size => Autodetect if None
+		if os.environ.get('DISPLAY_WIDTH'):
+			display_width=int(os.environ.get('DISPLAY_WIDTH'))
+		else:
+			try:
+				display_width = top.winfo_screenwidth()
+			except:
+				logging.warning("Can't get screen width. Using default 320!")
+				display_width=320
 
-	ctrl_width = display_width//4
-	button_width = display_width//4
-	topbar_height = display_height//10
-	buttonbar_height = enable_touch_widgets and display_height//7 or 0
-	body_height = display_height-topbar_height-buttonbar_height
-	ctrl_height = body_height//2
+		if os.environ.get('DISPLAY_HEIGHT'):
+			display_height=int(os.environ.get('DISPLAY_HEIGHT'))
+		else:
+			try:
+				display_height = top.winfo_screenheight()
+			except:
+				logging.warning("Can't get screen height. Using default 240!")
+				display_height=240
 
-	# Adjust font size, if not defined
-	if not font_size:
-		font_size = int(display_width/32)
+		ctrl_width = display_width//4
+		button_width = display_width//4
+		topbar_height = display_height//10
+		buttonbar_height = enable_touch_widgets and display_height//7 or 0
+		body_height = display_height-topbar_height-buttonbar_height
+		ctrl_height = body_height//2
 
-	# Adjust Root Window Geometry
-	top.geometry(str(display_width)+'x'+str(display_height))
-	top.maxsize(display_width,display_height)
-	top.minsize(display_width,display_height)
+		# Adjust font size, if not defined
+		if not font_size:
+			font_size = int(display_width/32)
 
-	# Disable cursor for real Zynthian Boxes
-	if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES" and not force_enable_cursor:
-		top.config(cursor="none")
-	else:
-		top.config(cursor="cross")
+		# Adjust Root Window Geometry
+		top.geometry(str(display_width)+'x'+str(display_height))
+		top.maxsize(display_width,display_height)
+		top.minsize(display_width,display_height)
 
-	#------------------------------------------------------------------------------
-	# Global Variables
-	#------------------------------------------------------------------------------
+		# Disable cursor for real Zynthian Boxes
+		if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES" and not force_enable_cursor:
+			top.config(cursor="none")
+		else:
+			top.config(cursor="cross")
 
-	# Fonts
-	font_listbox = (font_family,int(1.0*font_size))
-	font_topbar = (font_family,int(1.1*font_size))
-	font_buttonbar = (font_family,int(0.8*font_size))
+		#------------------------------------------------------------------------------
+		# Global Variables
+		#------------------------------------------------------------------------------
 
-	# Loading Logo Animation
-	loading_imgs=[]
-	pil_frame = Image.open("./img/zynthian_gui_loading.gif")
-	fw, fh = pil_frame.size
-	fw2=ctrl_width-8
-	fh2=int(fh*fw2/fw)
-	nframes = 0
-	while pil_frame:
-		pil_frame2 = pil_frame.resize((fw2, fh2), Image.ANTIALIAS)
-		# convert PIL image object to Tkinter PhotoImage object
-		loading_imgs.append(ImageTk.PhotoImage(pil_frame2))
-		nframes += 1
-		try:
-			pil_frame.seek(nframes)
-		except EOFError:
-			break;
-	#for i in range(13):
-	#	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
+		# Fonts
+		font_listbox = (font_family,int(1.0*font_size))
+		font_topbar = (font_family,int(1.1*font_size))
+		font_buttonbar = (font_family,int(0.8*font_size))
 
-except Exception as e:
-	logging.error("Failed to configure geometry => {}".format(e))
+		# Loading Logo Animation
+		loading_imgs=[]
+		pil_frame = Image.open("./img/zynthian_gui_loading.gif")
+		fw, fh = pil_frame.size
+		fw2=ctrl_width-8
+		fh2=int(fh*fw2/fw)
+		nframes = 0
+		while pil_frame:
+			pil_frame2 = pil_frame.resize((fw2, fh2), Image.ANTIALIAS)
+			# convert PIL image object to Tkinter PhotoImage object
+			loading_imgs.append(ImageTk.PhotoImage(pil_frame2))
+			nframes += 1
+			try:
+				pil_frame.seek(nframes)
+			except EOFError:
+				break;
+		#for i in range(13):
+		#	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
+
+	except Exception as e:
+		logging.error("Failed to configure geometry => {}".format(e))
 
 #------------------------------------------------------------------------------
 # Zynthian GUI variable
