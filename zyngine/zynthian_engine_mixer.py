@@ -53,6 +53,8 @@ class zynthian_engine_mixer(zynthian_engine):
 	# Config variables
 	#----------------------------------------------------------------------------
 
+	chan_names = ["Left", "Right"]
+
 	#----------------------------------------------------------------------------
 	# ZynAPI variables
 	#----------------------------------------------------------------------------
@@ -175,7 +177,9 @@ class zynthian_engine_mixer(zynthian_engine):
 			for ctrl_name in ctrl_list:
 				ctrl_symbol = ctrl_name.replace(' ', '_')
 				try:
-					sorted_zctrls[ctrl_symbol] = zctrls[ctrl_symbol]
+					for k in zctrls:
+						if k.startswith(ctrl_symbol):
+							sorted_zctrls[k] = zctrls[k]
 				except:
 					pass
 		else:
@@ -211,15 +215,15 @@ class zynthian_engine_mixer(zynthian_engine):
 	
 				ctrl_type = None
 				ctrl_caps = None
-				ctrl_pchans = []
-				ctrl_cchans = []
+				ctrl_chans = []
 				ctrl_items = None
 				ctrl_item0 = None
 				ctrl_ticks = None
 				ctrl_limits = None
-				ctrl_value = 50
 				ctrl_maxval = 100
 				ctrl_minval = 0
+				ctrl_value = 50
+				ctrl_values = []
 
 				#logging.debug("MIXER CONTROL => {}\n{}".format(ctrl_name, ctrl))
 				for line in lines[1:]:
@@ -243,10 +247,10 @@ class zynthian_engine_mixer(zynthian_engine):
 							ctrl_ticks = [0, 1]
 
 					elif key=='Playback channels':
-						ctrl_pchans = value.strip().split(' - ')
+						ctrl_chans = value.strip().split(' - ')
 
 					elif key=='Capture channels':
-						ctrl_cchans = value.strip().split(' - ')
+						ctrl_chans = value.strip().split(' - ')
 
 					elif key=='Limits':
 						m = re.match(".*(\d+) - (\d+).*", value, re.M | re.I)
@@ -264,7 +268,7 @@ class zynthian_engine_mixer(zynthian_engine):
 					elif key=='Item0':
 						ctrl_item0 = value[1:-1]
 
-					elif key in list(set(ctrl_pchans) | set(ctrl_cchans)):
+					elif key in ctrl_chans:
 						if ctrl_type=="Toggle":
 							m = re.match(".*\[(off|on)\].*", value, re.M | re.I)
 							if m:
@@ -275,6 +279,7 @@ class zynthian_engine_mixer(zynthian_engine):
 							m = re.match(".*\[(\d*)%\].*", value, re.M | re.I)
 							if m:
 								ctrl_value = int(m.group(1))
+								ctrl_values.append(ctrl_value)
 								if ctrl_type=="VToggle":
 									ctrl_item0 = 'on' if (ctrl_value>0) else 'off'
 
@@ -292,21 +297,34 @@ class zynthian_engine_mixer(zynthian_engine):
 							'is_toggle': (ctrl_type=='Toggle'),
 							'is_integer': True
 						})
-					elif ctrl_type in ("Playback" ,"Capture"):
-						#logging.debug("ADDING ZCTRL LEVEL: {} => {}".format(ctrl_symbol, ctrl_value))
-						zctrl = zynthian_controller(self, ctrl_symbol, ctrl_name, {
-							'graph_path': [ctrl_name, ctrl_type],
-							'value': ctrl_value,
-							'value_min': ctrl_minval,
-							'value_max': ctrl_maxval,
-							'is_toggle': False,
-							'is_integer': True
-						})
-					else:
-						zctrl = None
+						zctrl.last_value_sent = None
+						zctrls[ctrl_symbol] = zctrl
 
-					zctrl.last_value_sent = None
-					zctrls[ctrl_symbol] = zctrl
+					elif ctrl_type in ("Playback" ,"Capture"):
+						for i, chan in enumerate(ctrl_chans):
+							if len(ctrl_chans)>2: 
+								graph_path = [ctrl_name, ctrl_type, i]
+								zctrl_symbol = ctrl_symbol + "_" + str(i)
+								zctrl_name = ctrl_name + " " + str(i)
+							elif len(ctrl_chans)==2: 
+								graph_path = [ctrl_name, ctrl_type, i]
+								zctrl_symbol = ctrl_symbol + "_" + str(i)
+								zctrl_name = ctrl_name + " " + self.chan_names[i]
+							else:
+								graph_path = [ctrl_name, ctrl_type]
+								zctrl_symbol = ctrl_symbol
+								zctrl_name = ctrl_name
+							logging.debug("ADDING ZCTRL LEVEL: {} => {}".format(zctrl_symbol, ctrl_values[i]))
+							zctrl = zynthian_controller(self, zctrl_symbol, zctrl_name, {
+								'graph_path': graph_path,
+								'value': ctrl_values[i],
+								'value_min': ctrl_minval,
+								'value_max': ctrl_maxval,
+								'is_toggle': False,
+								'is_integer': True
+							})
+							zctrl.last_value_sent = None
+							zctrls[zctrl_symbol] = zctrl
 
 		except Exception as err:
 			logging.error(err)
@@ -320,15 +338,26 @@ class zynthian_engine_mixer(zynthian_engine):
 
 	def _send_controller_value(self, zctrl):
 		try:
-			if zctrl.symbol=="Headphone" and self.allow_headphones() and self.zyngui and  self.zyngui.get_zynthian_config("rbpi_headphones"):
-				amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format(self.rbpi_device_name, zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
-			elif zctrl.labels:
+			if zctrl.labels:
 				if zctrl.graph_path[1]=="VToggle":
 					amixer_command = "amixer -M -c {} set '{}' '{}%'".format(self.device_name, zctrl.graph_path[0], zctrl.value)
 				else:
 					amixer_command = "amixer -M -c {} set '{}' '{}'".format(self.device_name, zctrl.graph_path[0], zctrl.get_value2label())
 			else:
-				amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format(self.device_name, zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
+				if zctrl.symbol=="Headphone" and self.allow_headphones() and self.zyngui and  self.zyngui.get_zynthian_config("rbpi_headphones"):
+					devname = self.rbpi_device_name
+				else:
+					devname = self.device_name
+
+				values=[]
+				if len(zctrl.graph_path)>2:
+					for k, lzctrl in self.layers[0].controllers_dict.items():
+						if k.startswith(zctrl.symbol[:-1]):
+							values.append("{}%".format(lzctrl.value))
+				else:
+					values.append("{}%".format(zctrl.value))
+
+				amixer_command = "amixer -M -c {} set '{}' '{}' {} unmute".format(devname, zctrl.graph_path[0], zctrl.graph_path[1], ','.join(values))
 
 			logging.debug(amixer_command)
 			check_output(shlex.split(amixer_command))
