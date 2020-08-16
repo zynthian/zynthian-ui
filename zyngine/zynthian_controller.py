@@ -369,9 +369,13 @@ class zynthian_controller:
 
 
 	def get_snapshot(self):
-		snapshot = {
-			'value': self.value
-		}
+		snapshot = {}
+		
+		# Value
+		if math.isnan(self.value):
+			snapshot['value'] = None
+		else:
+			snapshot['value'] = self.value
 
 		# MIDI learning info
 		if self.midi_learn_chan is not None and self.midi_learn_cc is not None:
