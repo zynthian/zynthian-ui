@@ -813,6 +813,7 @@ class zynthian_gui:
 	def zynswitches_midi_setup(self, midi_chan=None):
 		logging.info("MIDI SWITCHES SETUP...")
 
+		# Configure Custom Switches
 		for i in range(0, zynthian_gui_config.n_custom_switches):
 			swi = 4 + i
 			event = zynthian_gui_config.custom_switch_midi_events[i]
@@ -825,6 +826,18 @@ class zynthian_gui:
 				else:
 					lib_zyncoder.setup_zynswitch_midi(swi, 0, 0, 0)
 					logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
+
+		# Configure Zynaptik Analog Inputs (CV-IN)
+		for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				if midi_chan is not None:
+					lib_zyncoder.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
+					logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncoder.disable_zynaptik_cvin(i)
+					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(swi))
 
 
 	def zynswitches(self):
@@ -864,17 +877,8 @@ class zynthian_gui:
 			self.screens['admin'].power_off()
 
 		# Custom ZynSwitches
-		elif i==4:
-			self.custom_switch_ui_action(0, "L")
-
-		elif i==5:
-			self.custom_switch_ui_action(1, "L")
-
-		elif i==6:
-			self.custom_switch_ui_action(2, "L")
-
-		elif i==7:
-			self.custom_switch_ui_action(3, "L")
+		elif i>=4:
+			self.custom_switch_ui_action(i-4, "L")
 
 		self.stop_loading()
 
@@ -923,17 +927,8 @@ class zynthian_gui:
 				self.screens[self.active_screen].switch_select('B')
 
 		# Custom ZynSwitches
-		elif i==4:
-			self.custom_switch_ui_action(0, "B")
-
-		elif i==5:
-			self.custom_switch_ui_action(1, "B")
-
-		elif i==6:
-			self.custom_switch_ui_action(2, "B")
-
-		elif i==7:
-			self.custom_switch_ui_action(3, "B")
+		elif i>=4:
+			self.custom_switch_ui_action(i-4, "B")
 
 		self.stop_loading()
 
@@ -1050,17 +1045,8 @@ class zynthian_gui:
 				self.screens[self.active_screen].switch_select('S')
 
 		# Custom ZynSwitches
-		elif i==4:
-			self.custom_switch_ui_action(0, "S")
-
-		elif i==5:
-			self.custom_switch_ui_action(1, "S")
-
-		elif i==6:
-			self.custom_switch_ui_action(2, "S")
-
-		elif i==7:
-			self.custom_switch_ui_action(3, "S")
+		elif i>=4:
+			self.custom_switch_ui_action(i-4, "S")
 
 		self.stop_loading()
 

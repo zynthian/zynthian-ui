@@ -188,10 +188,13 @@ logging.debug("SWITCHES layout: %s" % zynswitch_pin)
 # Custom Switches Action Configuration
 #------------------------------------------------------------------------------
 
-n_custom_switches = 4
-
 custom_switch_ui_actions = []
 custom_switch_midi_events = []
+
+try:
+	n_custom_switches = max(0, len(zynswitch_pin) - 4)
+except:
+	n_custom_switches = 0
 
 for i in range(0, n_custom_switches):
 	cuias = {}
@@ -240,6 +243,54 @@ for i in range(0, n_custom_switches):
 	custom_switch_ui_actions.append(cuias)
 	custom_switch_midi_events.append(midi_event)
 
+#------------------------------------------------------------------------------
+# Zynaptik Configuration
+#------------------------------------------------------------------------------
+zynaptik_ad_midi_events = []
+
+zynaptik_config = os.environ.get("ZYNTHIAN_WIRING_ZYNAPTIK_CONFIG")
+if zynaptik_config:
+	#------------------------------------------------------------------------------
+	# Zynaptik AD Action Configuration
+	#------------------------------------------------------------------------------
+
+	n_zynaptik_ad = 4
+	for i in range(0, n_zynaptik_ad):
+		midi_event = None
+
+		root_varname = "ZYNTHIAN_WIRING_ZYNAPTIK_AD{0:0>2}".format(i+1)
+		event_type = os.environ.get(root_varname, "")
+
+		evtype = None
+		if event_type=="MIDI_CC":
+			evtype = 0xB
+		elif event_type=="MIDI_PITCH_BEND":
+			evtype = 0xE
+		elif event_type=="MIDI_CHAN_PRESS":
+			evtype = 0xD
+
+		if evtype:
+			chan = os.environ.get(root_varname + "__MIDI_CHAN")
+			try:
+				chan = int(chan) - 1
+				if chan<0 or chan>15:
+					chan = None
+			except:
+				chan = None
+
+			num = os.environ.get(root_varname + "__MIDI_NUM")
+			try:
+				num = int(num)
+				if num>=0 and num<=127:
+					midi_event = {
+						'type': evtype,
+						'chan': chan,
+						'num': num
+					}
+			except:
+				pass
+
+		zynaptik_ad_midi_events.append(midi_event)
 
 #------------------------------------------------------------------------------
 # Zynswitches events timing
