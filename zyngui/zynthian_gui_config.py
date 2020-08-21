@@ -246,10 +246,12 @@ for i in range(0, n_custom_switches):
 #------------------------------------------------------------------------------
 # Zynaptik Configuration
 #------------------------------------------------------------------------------
+
 zynaptik_ad_midi_events = []
 
 zynaptik_config = os.environ.get("ZYNTHIAN_WIRING_ZYNAPTIK_CONFIG")
 if zynaptik_config:
+
 	#------------------------------------------------------------------------------
 	# Zynaptik AD Action Configuration
 	#------------------------------------------------------------------------------
