@@ -837,7 +837,7 @@ class zynthian_gui:
 					logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
 				else:
 					lib_zyncoder.disable_zynaptik_cvin(i)
-					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(swi))
+					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
 
 
 	def zynswitches(self):
