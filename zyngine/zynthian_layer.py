@@ -42,7 +42,7 @@ class zynthian_layer:
 		self.jackname = None
 		self.audio_out = ["system:playback_1", "system:playback_2"]
 		self.audio_in = ["system:capture_1", "system:capture_2"]
-		self.midi_out = []
+		self.midi_out = ["MIDI-OUT", "NET-OUT"]
 
 		self.bank_list = []
 		self.bank_index = 0
