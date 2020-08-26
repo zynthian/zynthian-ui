@@ -44,7 +44,7 @@ class zynthian_layer:
 		if midi_chan != None:
 			self.audio_out = ["zynmixer:input_%02da"%(midi_chan + 1), "zynmixer:input_%02db"%(midi_chan + 1)]
 		self.audio_in = ["system:capture_1", "system:capture_2"]
-		self.midi_out = []
+		self.midi_out = ["MIDI-OUT", "NET-OUT"]
 
 		self.bank_list = []
 		self.bank_index = 0

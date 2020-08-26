@@ -370,6 +370,7 @@ class zynthian_engine_mixer(zynthian_engine):
 	def start_sender_poll(self):
 
 		def runInThread():
+			sleep(0.1)
 			while self.sender_poll_enabled:
 				counter = 0
 				if self.zctrls:

@@ -88,6 +88,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Mixer Settings on Snapshots"))
 
+		if zynthian_gui_config.midi_filter_output:
+			self.list_data.append((self.toggle_midi_filter_output,0,"[x] MIDI Filter Ouput"))
+		else:
+			self.list_data.append((self.toggle_midi_filter_output,0,"[  ] MIDI Filter Output"))
+
 		if zynthian_gui_config.midi_sys_enabled:
 			self.list_data.append((self.toggle_midi_sys,0,"[x] MIDI System Messages"))
 		else:
@@ -318,6 +323,23 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS": str(int(zynthian_gui_config.snapshot_mixer_settings))
 		})
 
+		self.fill_list()
+
+
+	def toggle_midi_filter_output(self):
+		if zynthian_gui_config.midi_filter_output:
+			logging.info("MIDI Filter Output OFF")
+			zynthian_gui_config.midi_filter_output=False
+		else:
+			logging.info("MIDI Filter Output ON")
+			zynthian_gui_config.midi_filter_output=True
+
+		# Update MIDI profile
+		zynconf.update_midi_profile({ 
+			"ZYNTHIAN_MIDI_FILTER_OUTPUT": str(int(zynthian_gui_config.midi_filter_output))
+		})
+
+		self.zyngui.zynautoconnect_midi()
 		self.fill_list()
 
 
