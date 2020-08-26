@@ -305,7 +305,7 @@ class zynthian_engine_mixer(zynthian_engine):
 							if len(ctrl_chans)>2: 
 								graph_path = [ctrl_name, ctrl_type, i]
 								zctrl_symbol = ctrl_symbol + "_" + str(i)
-								zctrl_name = ctrl_name + " " + str(i)
+								zctrl_name = ctrl_name + " " + str(i+1)
 							elif len(ctrl_chans)==2: 
 								graph_path = [ctrl_name, ctrl_type, i]
 								zctrl_symbol = ctrl_symbol + "_" + str(i)
