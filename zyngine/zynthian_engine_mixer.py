@@ -286,7 +286,6 @@ class zynthian_engine_mixer(zynthian_engine):
 				if ctrl_symbol and ctrl_type and (not ctrl_list or ctrl_name in ctrl_list):
 					if ctrl_type in ("Selector", "Toggle", "VToggle") and len(ctrl_items)>1:
 						#logging.debug("ADDING ZCTRL SELECTOR: {} => {}".format(ctrl_symbol, ctrl_item0))
-						
 						zctrl = zynthian_controller(self, ctrl_symbol, ctrl_name, {
 							'graph_path': [ctrl_name, ctrl_type],
 							'labels': ctrl_items,
@@ -302,11 +301,11 @@ class zynthian_engine_mixer(zynthian_engine):
 
 					elif ctrl_type in ("Playback" ,"Capture"):
 						for i, chan in enumerate(ctrl_chans):
-							if len(ctrl_chans)>2: 
+							if ctrl_list and len(ctrl_chans)>2:
 								graph_path = [ctrl_name, ctrl_type, i]
 								zctrl_symbol = ctrl_symbol + "_" + str(i)
-								zctrl_name = ctrl_name + " " + str(i)
-							elif len(ctrl_chans)==2: 
+								zctrl_name = ctrl_name + " " + str(i+1)
+							elif ctrl_list and len(ctrl_chans)==2:
 								graph_path = [ctrl_name, ctrl_type, i]
 								zctrl_symbol = ctrl_symbol + "_" + str(i)
 								zctrl_name = ctrl_name + " " + self.chan_names[i]
