@@ -87,7 +87,7 @@ from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 
 class zynthian_gui:
 
-	screens_sequence = ("admin", "main","layer","bank","preset","control")
+	screens_sequence = ("main","layer","bank","preset","control")
 
 	note2cuia = {
 		"0": "POWER_OFF",

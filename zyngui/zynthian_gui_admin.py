@@ -758,9 +758,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.zyngui.screens['snapshot'].delete_last_state_snapshot()
 
 
-	def back_action(self):
-		self.zyngui.show_screen("main")
-		return ''
+	#def back_action(self):
+	#	self.zyngui.show_screen("main")
+	#	return ''
 
 
 #------------------------------------------------------------------------------
