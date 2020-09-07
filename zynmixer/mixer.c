@@ -70,6 +70,7 @@ unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM d
 unsigned int g_nHoldCount = 0;
 float g_fDpmDecay = 0.9; // Factor to scale for DPM decay - defines resolution of DPM decay
 struct sockaddr_in g_oscClient[MAX_OSC_CLIENTS]; // Array of registered OSC clients
+char g_oscdpm[20];
 
 void sendOscFloat(const char* path, float value)
 {
@@ -212,6 +213,10 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     // Only update damping release each g_nDampingCount cycles
                     g_dynamic[chan].dpmA *= g_fDpmDecay;
                     g_dynamic[chan].dpmB *= g_fDpmDecay;
+                    sprintf(g_oscdpm, "/mixer/dpm%da", chan);
+                    sendOscFloat(g_oscdpm, g_dynamic[chan].holdA);
+                    sprintf(g_oscdpm, "/mixer/dpm%db", chan);
+                    sendOscFloat(g_oscdpm, g_dynamic[chan].holdB);
                 }
             }
         }
@@ -278,6 +283,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         g_mainOutput.holdA = g_mainOutput.dpmA;
         g_mainOutput.holdB = g_mainOutput.dpmB;
         g_nHoldCount = g_nDampingPeriod * 20;
+        sendOscFloat("/mixer/dpmA", g_mainOutput.holdA);
+        sendOscFloat("/mixer/dpmB", g_mainOutput.holdB);
     }
     if(g_nDampingCount == 0)
     {
@@ -622,7 +629,6 @@ int addOscClient(const char* client)
 
 void removeOscClient(const char* client)
 {
-    fprintf(stderr, "libzynmixer: Removing OSC client %s\n", client);
     char pClient[sizeof(struct in_addr)];
     if(inet_pton(AF_INET, client, pClient) != 1)
         return;
