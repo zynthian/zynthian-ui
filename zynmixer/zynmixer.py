@@ -25,6 +25,7 @@
 
 from ctypes import *
 from os.path import dirname, realpath
+import unicodedata
 
 #-------------------------------------------------------------------------------
 # Jackpeak Library Wrapper
@@ -189,4 +190,17 @@ def enable_dpm(enable):
 		lib_zynmixer.enableDpm(1)
 	else:
 		lib_zynmixer.enableDpm(0)
+
+#	Function to add OSC client registration
+#	client: IP address of OSC client
+def add_osc_client(client):
+	if lib_zynmixer:
+		lib_zynmixer.addOscClient(c_char_p(client.encode('utf-8')))
+
+#	Function to remove OSC client registration
+#	client: IP address of OSC client
+def remove_osc_client(client):
+	if lib_zynmixer:
+		lib_zynmixer.removeOscClient(c_char_p(client.encode('utf-8')))
+
 #-------------------------------------------------------------------------------

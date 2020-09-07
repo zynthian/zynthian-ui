@@ -31,9 +31,17 @@
 
 #include "mixer.h"
 
+#include "tinyosc.h"
+#include <arpa/inet.h> // provides inet_pton
+
+char g_oscbuffer[1024];
+char g_oscpath[20]; //!@todo Ensure path length is sufficient for all paths, e.g. /mixer/faderxxx
+int g_oscfd = -1; // File descriptor for OSC socket
+
 #define DEBUG
 
 #define MAX_CHANNELS 16
+#define MAX_OSC_CLIENTS 5
 
 struct dynamic
 {
@@ -61,6 +69,33 @@ unsigned int g_nDampingCount = 0;
 unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
 unsigned int g_nHoldCount = 0;
 float g_fDpmDecay = 0.9; // Factor to scale for DPM decay - defines resolution of DPM decay
+struct sockaddr_in g_oscClient[MAX_OSC_CLIENTS]; // Array of registered OSC clients
+
+void sendOscFloat(const char* path, float value)
+{
+    if(g_oscfd == -1)
+        return;
+    for(int i = 0; i < MAX_OSC_CLIENTS; ++i)
+    {
+        if(g_oscClient[i].sin_addr.s_addr == 0)
+            continue;
+        int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "f", value);
+        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM|MSG_DONTWAIT, (const struct sockaddr *) &g_oscClient[i], sizeof(g_oscClient[i]));
+    }
+}
+
+void sendOscInt(const char* path, int value)
+{
+    if(g_oscfd == -1)
+        return;
+    for(int i = 0; i < MAX_OSC_CLIENTS; ++i)
+    {
+        if(g_oscClient[i].sin_addr.s_addr == 0)
+            continue;
+        int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "i", value);
+        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM|MSG_DONTWAIT, (const struct sockaddr *) &g_oscClient[i], sizeof(g_oscClient[i]));
+    }
+}
 
 static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 {
@@ -284,17 +319,27 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void *arg)
 
 int init()
 {
+    // Initialsize OSC
+    g_oscfd = socket(AF_INET, SOCK_DGRAM, 0);
+    for(int i = 0; i < MAX_OSC_CLIENTS; ++i)
+    {
+        memset(g_oscClient[i].sin_zero, '\0', sizeof g_oscClient[i].sin_zero);
+        g_oscClient[i].sin_family = AF_INET;
+        g_oscClient[i].sin_port = htons(1370);
+        g_oscClient[i].sin_addr.s_addr = 0;
+    }
+
     // Register with Jack server
     char *sServerName = NULL;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
 
     if ((g_pJackClient = jack_client_open("zynmixer", nOptions, &nStatus, sServerName)) == 0) {
-        fprintf(stderr, "libzynmixer failed to start jack client: %d\n", nStatus);
+        fprintf(stderr, "libzynmixer: Failed to start jack client: %d\n", nStatus);
         exit(1);
     }
     #ifdef DEBUG
-    fprintf(stderr,"libzynmixer registering as '%s'.\n", jack_get_client_name(g_pJackClient));
+    fprintf(stderr,"libzynmixer: Registering as '%s'.\n", jack_get_client_name(g_pJackClient));
     #endif
 
     // Create input ports
@@ -309,29 +354,29 @@ int init()
         sprintf(sName, "input_%02da", chan + 1);
         if (!(g_dynamic[chan].portA = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
         {
-            fprintf(stderr, "libzynmixer cannot register %s\n", sName);
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", sName);
             exit(1);
         }
         sprintf(sName, "input_%02db", chan + 1);
         if (!(g_dynamic[chan].portB = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
         {
-            fprintf(stderr, "libzynmixer cannot register %s\n", sName);
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", sName);
             exit(1);
         }
     }
     #ifdef DEBUG
-    fprintf(stderr,"libzynmixer created input ports\n");
+    fprintf(stderr,"libzynmixer: Created input ports\n");
     #endif
 
     // Create output ports
     if(!(g_mainOutput.portA = jack_port_register(g_pJackClient, "output_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0)))
     {
-        fprintf(stderr, "libzynmixer cannot register output A\n");
+        fprintf(stderr, "libzynmixer: Cannot register output A\n");
         exit(1);
     }
     if(!(g_mainOutput.portB = jack_port_register(g_pJackClient, "output_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0)))
     {
-        fprintf(stderr, "libzynmixer cannot register output B\n");
+        fprintf(stderr, "libzynmixer: Cannot register output B\n");
         exit(1);
     }
     g_mainOutput.level = 0.0;
@@ -342,7 +387,7 @@ int init()
     g_mainOutput.routed = 1;
 
     #ifdef DEBUG
-    fprintf(stderr,"libzynmixer registered output ports\n");
+    fprintf(stderr,"libzynmixer: Registered output ports\n");
     #endif
 
     // Register the cleanup function to be called when library exits
@@ -355,12 +400,12 @@ int init()
     jack_set_buffer_size_callback(g_pJackClient, onJackBuffersize, 0);
 
     if(jack_activate(g_pJackClient)) {
-        fprintf(stderr, "libzynmixer cannot activate client\n");
+        fprintf(stderr, "libzynmixer: Cannot activate client\n");
         exit(1);
     }
 
     #ifdef DEBUG
-    fprintf(stderr,"libzynmixer activated client\n");
+    fprintf(stderr,"libzynmixer: Activated client\n");
     #endif
 
     return 1;
@@ -382,6 +427,8 @@ void setLevel(int channel, float level)
         g_mainOutput.reqlevel = level;
     else
         g_dynamic[channel].reqlevel = level;
+    sprintf(g_oscpath, "/mixer/fader%d", channel);
+    sendOscFloat(g_oscpath, level);
 }
 
 float getLevel(int channel)
@@ -399,6 +446,8 @@ void setBalance(int channel, float balance)
         g_mainOutput.reqbalance = balance;
     else
         g_dynamic[channel].reqbalance = balance;
+    sprintf(g_oscpath, "/mixer/balance%d", channel);
+    sendOscFloat(g_oscpath, balance);
 }
 
 float getBalance(int channel)
@@ -414,6 +463,8 @@ void setMute(int channel, int mute)
         g_mainOutput.mute = mute;
     else
         g_dynamic[channel].mute = mute;
+    sprintf(g_oscpath, "/mixer/mute%d", channel);
+    sendOscInt(g_oscpath, mute);
 }
 
 int getMute(int channel)
@@ -428,14 +479,24 @@ void setSolo(int channel, int solo)
     if(channel >= MAX_CHANNELS)
     {
         for(int nChannel = 0; nChannel < MAX_CHANNELS; ++nChannel)
+        {
             g_dynamic[nChannel].solo = 0;
+            sprintf(g_oscpath, "/mixer/solo%d", nChannel);
+            sendOscInt(g_oscpath, 0);
+        }
     }
     else
+    {
         g_dynamic[channel].solo = solo;
+        sprintf(g_oscpath, "/mixer/solo%d", channel);
+        sendOscInt(g_oscpath, solo);
+    }
     // g_mainOutput.solo indicates overall summary of solo status, i.e. 1 if any channel solo enabled
     g_mainOutput.solo = 0;
     for(int nChannel = 0; nChannel < MAX_CHANNELS; ++ nChannel)
         g_mainOutput.solo |= g_dynamic[nChannel].solo;
+    sprintf(g_oscpath, "/mixer/solo%d", MAX_CHANNELS);
+    sendOscInt(g_oscpath, g_mainOutput.solo);
 }
 
 int getSolo(int channel)
@@ -464,6 +525,8 @@ void setMono(int channel, int mono){
         g_mainOutput.mono = (mono != 0);
     else
         g_dynamic[channel].mono = (mono != 0);
+    sprintf(g_oscpath, "/mixer/mono%d", channel);
+    sendOscInt(g_oscpath, mono);
 }
 
 int getMono(int channel)
@@ -529,3 +592,52 @@ void enableDpm(int enable)
         }
     }
 }
+
+int addOscClient(const char* client)
+{
+    for(int i = 0; i < MAX_OSC_CLIENTS; ++i)
+    {
+        if(g_oscClient[i].sin_addr.s_addr != 0)
+            continue;
+        if(inet_pton(AF_INET, client, &(g_oscClient[i].sin_addr)) != 1)
+        {
+            g_oscClient[i].sin_addr.s_addr = 0;
+            fprintf(stderr, "libzynmixer: Failed to register client %s\n", client);
+            return -1;
+        }
+        fprintf(stderr, "libzynmixer: Added OSC client %d: %s\n", i, client);
+        for(int nChannel = 0; nChannel <= MAX_CHANNELS; ++nChannel)
+        {
+            setBalance(nChannel, getBalance(nChannel));
+            setLevel(nChannel, getLevel(nChannel));
+            setMono(nChannel, getMono(nChannel));
+            setMute(nChannel, getMute(nChannel));
+            setSolo(nChannel, getSolo(nChannel));
+        }
+      return i;
+    }
+    fprintf(stderr, "libzynmixer: Not adding OSC client %s - Maximum client count reached [%d]\n", client, MAX_OSC_CLIENTS);
+    return -1;
+}
+
+void removeOscClient(const char* client)
+{
+    fprintf(stderr, "libzynmixer: Removing OSC client %s\n", client);
+    char pClient[sizeof(struct in_addr)];
+    if(inet_pton(AF_INET, client, pClient) != 1)
+        return;
+    for(int i = 0; i < sizeof(struct in_addr); ++i)
+        printf("%d.", pClient[i]);
+    printf("\n");
+    for(int i = 0; i < MAX_OSC_CLIENTS; ++i)
+    {
+        if(memcmp(pClient, &g_oscClient[i].sin_addr.s_addr, 4) == 0)
+        {
+            g_oscClient[i].sin_addr.s_addr = 0;
+            fprintf(stderr, "libzynmixer: Removed OSC client %d: %s\n", i, client);
+            return;
+        }
+    }
+    fprintf(stderr, "libzynmixer: OSC client %s not registered\n", client);
+}
+

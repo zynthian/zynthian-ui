@@ -37,7 +37,8 @@ from os.path import isfile
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
-from ctypes import c_float
+from ctypes import c_float,c_char_p
+from time import monotonic
 
 # Zynthian specific modules
 import zynconf
@@ -186,6 +187,10 @@ class zynthian_gui:
 		# Get Jackd Options
 		self.jackd_options = zynconf.get_jackd_options()
 
+		# Dictionary of {OSC clients, last heartbeat} registered for mixer feedback
+		self.osc_clients = {}
+		self.osc_timer = 12
+
 		# Initialize peakmeter audio monitor if needed
 #		if not zynthian_gui_config.show_cpu_status:
 #			try:
@@ -298,8 +303,16 @@ class zynthian_gui:
 			self.callable_ui_action(parts[2].upper(), args)
 			#Run autoconnect if needed
 			self.zynautoconnect_do()
-		elif parts[1]=="mixer":
-			self.screens['audio_mixer'].osc(parts[2], args, types, src)
+		elif parts[1]=="mixer" or parts[1] == "dawosc":
+			if parts[2]=="heartbeat" or parts[2] == "setup":
+				if src.hostname not in self.osc_clients:
+					try:
+						lib_zynmixer.addOscClient(c_char_p(src.hostname.encode('utf-8')))
+					except:
+						logging.warning("Failed to add OSC client registration %s", src.hostname)
+				self.osc_clients[src.hostname] = monotonic()
+			else:
+				self.screens['audio_mixer'].osc(parts[2], args, types, src)
 		else:
 			logging.warning("Not supported OSC call '{}'".format(path))
 
@@ -1366,6 +1379,7 @@ class zynthian_gui:
 		self.polling=True
 		self.zyngine_refresh()
 		self.refresh_status()
+		self.osc_timeout()
 
 
 	def stop_polling(self):
@@ -1464,6 +1478,20 @@ class zynthian_gui:
 		# Poll
 		if self.polling:
 			zynthian_gui_config.top.after(200, self.refresh_status)
+
+
+	def osc_timeout(self):
+		self.watchdog_last_check = monotonic()
+		for client in list(self.osc_clients):
+			if self.osc_clients[client] < self.watchdog_last_check - self.osc_timer:
+				self.osc_clients.pop(client)
+				try:
+					lib_zynmixer.removeOscClient(c_char_p(client.encode('utf-8')))
+				except:
+					pass
+		# Poll
+		if self.polling:
+			zynthian_gui_config.top.after(self.osc_timer * 1000, self.osc_timeout)
 
 
 	#------------------------------------------------------------------

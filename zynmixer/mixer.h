@@ -132,3 +132,15 @@ float getDpmHold(int channel, int leg);
 *   @note   DPM increase CPU processing so may be disabled if this causes issues (like xruns)
 */
 void enableDpm(int enable);
+
+/** @brief  Adds client to list of registered OSC clients
+*   @param  client IP address of client
+*   @retval int Index of client or -1 on failure
+*   @note   Clients get all updates including DPM
+*/
+int addOscClient(const char* client);
+
+/** @brief  Removes client from list of registered OSC clients
+*   @param  client IP address of client
+*/
+void removeOscClient(const char* client);
