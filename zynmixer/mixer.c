@@ -37,6 +37,7 @@
 char g_oscbuffer[1024];
 char g_oscpath[20]; //!@todo Ensure path length is sufficient for all paths, e.g. /mixer/faderxxx
 int g_oscfd = -1; // File descriptor for OSC socket
+int g_bOsc = 0; // True if OSC client subscribed
 
 #define DEBUG
 
@@ -71,6 +72,16 @@ unsigned int g_nHoldCount = 0;
 float g_fDpmDecay = 0.9; // Factor to scale for DPM decay - defines resolution of DPM decay
 struct sockaddr_in g_oscClient[MAX_OSC_CLIENTS]; // Array of registered OSC clients
 char g_oscdpm[20];
+
+
+static float convertToDBFS(float raw) {
+    if(raw <= 0)
+        return -200;
+    float fValue = 20 * log10f(raw);
+    if(fValue < -200)
+        fValue = -200;
+    return fValue;
+}
 
 void sendOscFloat(const char* path, float value)
 {
@@ -163,7 +174,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     pOutB[frame] += fSampleB;
                     curLevelA += fDeltaA;
                     curLevelB += fDeltaB;
-                    if(g_bDpm)
+                    if(g_bDpm || g_bOsc)
                     {
                         fSampleA = fabs(fSampleA);
                         if(fSampleA > g_dynamic[chan].dpmA)
@@ -184,7 +195,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     pOutB[frame] += fSampleB;
                     curLevelA += fDeltaA;
                     curLevelB += fDeltaB;
-                    if(g_bDpm)
+                    if(g_bDpm || g_bOsc)
                     {
                         fSampleA = fabs(fSampleA);
                         if(fSampleA > g_dynamic[chan].dpmA)
@@ -196,7 +207,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 }
             }
             // Update peak hold and scale DPM for damped release
-            if(g_bDpm)
+            if(g_bDpm || g_bOsc)
             {
                 if(g_dynamic[chan].dpmA > g_dynamic[chan].holdA)
                     g_dynamic[chan].holdA = g_dynamic[chan].dpmA;
@@ -214,9 +225,9 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     g_dynamic[chan].dpmA *= g_fDpmDecay;
                     g_dynamic[chan].dpmB *= g_fDpmDecay;
                     sprintf(g_oscdpm, "/mixer/dpm%da", chan);
-                    sendOscFloat(g_oscdpm, g_dynamic[chan].holdA);
+                    sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdA));
                     sprintf(g_oscdpm, "/mixer/dpm%db", chan);
-                    sendOscFloat(g_oscdpm, g_dynamic[chan].holdB);
+                    sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdB));
                 }
             }
         }
@@ -283,14 +294,14 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         g_mainOutput.holdA = g_mainOutput.dpmA;
         g_mainOutput.holdB = g_mainOutput.dpmB;
         g_nHoldCount = g_nDampingPeriod * 20;
-        sendOscFloat("/mixer/dpmA", g_mainOutput.holdA);
-        sendOscFloat("/mixer/dpmB", g_mainOutput.holdB);
     }
     if(g_nDampingCount == 0)
     {
         g_mainOutput.dpmA *= g_fDpmDecay;
         g_mainOutput.dpmB *= g_fDpmDecay;
         g_nDampingCount = g_nDampingPeriod;
+        sendOscFloat("/mixer/dpmA", convertToDBFS(g_mainOutput.holdA));
+        sendOscFloat("/mixer/dpmB", convertToDBFS(g_mainOutput.holdB));
     }
 
     // Damping and hold counts are used throughout cycle so update at end of cycle
@@ -550,15 +561,6 @@ int isChannelRouted(int channel)
     return g_dynamic[channel].routed;
 }
 
-static float convertToDBFS(float raw) {
-    if(raw <= 0)
-        return -200;
-    float fValue = 20 * log10f(raw);
-    if(fValue < -200)
-        fValue = -200;
-    return fValue;
-}
-
 float getDpm(int channel, int leg)
 {
     if(channel >= MAX_CHANNELS)
@@ -621,7 +623,8 @@ int addOscClient(const char* client)
             setMute(nChannel, getMute(nChannel));
             setSolo(nChannel, getSolo(nChannel));
         }
-      return i;
+        g_bOsc = 1;
+        return i;
     }
     fprintf(stderr, "libzynmixer: Not adding OSC client %s - Maximum client count reached [%d]\n", client, MAX_OSC_CLIENTS);
     return -1;
@@ -632,18 +635,16 @@ void removeOscClient(const char* client)
     char pClient[sizeof(struct in_addr)];
     if(inet_pton(AF_INET, client, pClient) != 1)
         return;
-    for(int i = 0; i < sizeof(struct in_addr); ++i)
-        printf("%d.", pClient[i]);
-    printf("\n");
+    g_bOsc = 0;
     for(int i = 0; i < MAX_OSC_CLIENTS; ++i)
     {
         if(memcmp(pClient, &g_oscClient[i].sin_addr.s_addr, 4) == 0)
         {
             g_oscClient[i].sin_addr.s_addr = 0;
             fprintf(stderr, "libzynmixer: Removed OSC client %d: %s\n", i, client);
-            return;
         }
+        if(g_oscClient[i].sin_addr.s_addr != 0)
+            g_bOsc = 1;
     }
-    fprintf(stderr, "libzynmixer: OSC client %s not registered\n", client);
 }
 
