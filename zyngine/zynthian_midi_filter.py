@@ -351,6 +351,7 @@ class TestMidiFilterRule(unittest.TestCase):
 if __name__ == '__main__':
 	# Set root logging level
 	logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+	logging.getLogger().setLevel(level=logging.DEBUG)
 
 	zyncoder.lib_zyncoder_init()
 	unittest.main()

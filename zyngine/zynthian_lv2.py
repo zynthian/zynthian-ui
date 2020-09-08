@@ -35,16 +35,6 @@ import re
 from enum import Enum
 from collections import OrderedDict
 
-
-#------------------------------------------------------------------------------
-# Log level and debuging
-#------------------------------------------------------------------------------
-
-if __name__ == '__main__':
-	#log_level=logging.DEBUG
-	log_level=logging.WARNING
-	logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
-
 #------------------------------------------------------------------------------
 
 def init_lilv():
@@ -485,6 +475,12 @@ load_plugins()
 #get_plugin_ports("http://code.google.com/p/amsynth/amsynth")
 
 if __name__ == '__main__':
+
+	#log_level=logging.DEBUG
+	log_level=logging.WARNING
+	logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
+	logging.getLogger().setLevel(level=log_level)
+
 	generate_plugins_config_file(False)
 	generate_all_presets_cache(False)
 
