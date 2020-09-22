@@ -113,14 +113,14 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		# Files on SD-Card
 		for fname, finfo in self.get_filelist(self.capture_dir_sdc).items():
 			l = finfo['length']
-			title="SDC: {} [{}:{:02d}]".format(fname, int(l/60), int(l%60))
+			title="SD[{}:{:02d}] {}".format(int(l/60), int(l%60),fname)
 			self.list_data.append((finfo['fpath'],i,title))
 			i+=1
 
 		# Files on USB-Pendrive
 		for fname, finfo in self.get_filelist(self.capture_dir_usb).items():
 			l = finfo['length']
-			title="USB: {} [{}:{:02d}]".format(fname, int(l/60), int(l%60))
+			title="USB[{}:{:02d}] {}".format(int(l/60), int(l%60),fname)
 			self.list_data.append((finfo['fpath'],i,title))
 			i+=1
 
@@ -187,6 +187,24 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 				self.zyngui.show_confirm("Do you really want to delete '{}'?".format(self.list_data[i][2]), self.delete_confirmed, fpath)
 
 
+	def get_next_filenum(self):
+		try:
+			n = max(map(lambda item: int(os.path.basename(item[0]).split('-')[0]) if os.path.basename(item[0]).split('-')[0].isdigit() else 0, self.list_data))
+		except:
+			n = 0
+		return "{0:03d}".format(n+1)
+
+
+	def get_new_filename(self):
+		try:
+			parts = self.zyngui.curlayer.get_presetpath().split('#',2)
+			file_name = parts[1].replace("/",">")
+			file_name = file_name.replace(" > ",">")
+		except:
+			file_name = "jack_capture"
+		return self.get_next_filenum() + '-' + file_name + '.wav'
+
+
 	def delete_confirmed(self, fpath):
 		logging.info("DELETE AUDIO RECORDING: {}".format(fpath))
 
@@ -203,9 +221,9 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		if self.get_status() not in ("REC", "PLAY+REC"):
 			logging.info("STARTING NEW AUDIO RECORD ...")
 			try:
-				cmd=self.sys_dir +"/sbin/jack_capture.sh --zui"
+				cmd=[self.sys_dir +"/sbin/jack_capture.sh", "--zui", self.get_new_filename()]
 				#logging.info("COMMAND: %s" % cmd)
-				self.rec_proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
+				self.rec_proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
 				sleep(0.2)
 				self.zyngui.zyntransport.transport_play()
 			except Exception as e:
