@@ -189,7 +189,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 	def get_next_filenum(self):
 		try:
-			n = max(map(lambda item: int(os.path.basename(item[0]).split('-')[0]) if os.path.basename(item[0]).split('-')[0].isdigit() else 0, self.list_data))
+			n = max(map(lambda item: int(os.path.basename(item[0]).split('-')[0]) if item[0] and os.path.basename(item[0]).split('-')[0].isdigit() else 0, self.list_data))
 		except:
 			n = 0
 		return "{0:03d}".format(n+1)
