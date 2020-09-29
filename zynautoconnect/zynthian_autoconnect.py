@@ -509,13 +509,14 @@ def audio_autoconnect(force=False):
 						except:
 							pass
 
-		#Connect MIDI-Input if it exist ... (i.e. x42 AutoTune)
-		midi_ports=jclient.get_ports(layer.get_midi_jackname(), is_input=True, is_midi=True, is_physical=False)
-		if len(midi_ports)>0:
-			try:
-				jclient.connect("ZynMidiRouter:ch{}_out".format(layer.midi_chan), midi_ports[0])
-			except:
-				pass
+		#Connect MIDI-Input on Audio-FXs, if it exist ... (i.e. x42 AutoTune)
+		if layer.engine.type=="Audio Effect":
+			midi_ports=jclient.get_ports(layer.get_midi_jackname(), is_input=True, is_midi=True, is_physical=False)
+			if len(midi_ports)>0:
+				try:
+					jclient.connect("ZynMidiRouter:ch{}_out".format(layer.midi_chan), midi_ports[0])
+				except:
+					pass
 
 	headphones_out = jclient.get_ports("Headphones", is_input=True, is_audio=True)
 
