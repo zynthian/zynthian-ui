@@ -9,4 +9,4 @@ link_directories(/usr/local/lib)
 add_library(jackpeak SHARED jackpeak.h jackpeak.c)
 	target_link_libraries(jackpeak jack)
 
-install(TARGETS jackpeak LIBRARY DESTINATION lib)
+install(TARGETS jackpeak LIBRARY DESTINATION ../lib)

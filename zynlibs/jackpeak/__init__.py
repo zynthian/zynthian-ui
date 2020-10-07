@@ -2,4 +2,4 @@
 __all__ = [
 	"jackpeak"
 ]
-from jackpeak.jackpeak import *
+from zynlibs.jackpeak.jackpeak import *
