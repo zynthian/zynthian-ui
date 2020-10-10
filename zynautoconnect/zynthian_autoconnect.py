@@ -660,7 +660,11 @@ def audio_disconnect_sysout():
 
 
 def get_audio_capture_ports():
-	return jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
+	ports = []
+	for port in jclient.get_ports(is_output=True, is_audio=True):
+		if port.name.split(':')[0] == "system" and port.is_physical or port.shortname[:11] == "from_slave_":
+			ports.append(port)
+	return ports
 
 
 def get_audio_playback_ports():

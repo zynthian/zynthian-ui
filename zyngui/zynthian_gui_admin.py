@@ -123,6 +123,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.start_aubionotes,0,"[  ] AubioNotes (Audio2MIDI)"))
 
+		if zynthian_gui_config.netjack2_enabled:
+			self.list_data.append((self.stop_netjack2,0,"[x] netJack2 Hub"))
+		else:
+			self.list_data.append((self.start_netjack2,0,"[  ] netJack2 Hub"))
+
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
 		self.list_data.append((None,0,"-----------------------------"))
@@ -643,6 +648,53 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def midi_profile(self):
 		logging.info("MIDI Profile")
 		self.zyngui.show_modal("midi_profile")
+
+
+	def start_netjack2(self, save_config=True):
+		logging.info("STARTING NETJACK2")
+
+		try:
+			check_output("jack_load netmanager", shell=True)
+			zynthian_gui_config.netjack2_enabled = 1
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_NETJACK2_ENABLED": str(zynthian_gui_config.netjack2_enabled)
+				})
+			# Call autoconnect after a little time
+			sleep(0.5)
+			self.zyngui.zynautoconnect_audio()
+
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	def stop_netjack2(self, save_config=True):
+		logging.info("STOPPING NETJACK2")
+
+		try:
+			check_output("jack_unload netmanager", shell=True)
+			zynthian_gui_config.netjack2_enabled = 0
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_NETJACK2_ENABLED": str(zynthian_gui_config.netjack2_enabled)
+				})
+
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	#Start/Stop netJack2 depending on configuration
+	def default_netjack2(self):
+		if zynthian_gui_config.netjack2_enabled:
+			self.start_netjack2(False)
+		else:
+			self.stop_netjack2(False)
 
 #------------------------------------------------------------------------------
 # NETWORK FEATURES
