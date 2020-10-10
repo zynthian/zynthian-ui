@@ -654,8 +654,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("STARTING NETJACK2")
 
 		try:
-			check_output("jack_load netmanager", shell=True)
 			zynthian_gui_config.netjack2_enabled = 1
+			check_output("jack_load netmanager", shell=True)
 			# Update MIDI profile
 			if save_config:
 				zynconf.update_midi_profile({ 
@@ -675,8 +675,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("STOPPING NETJACK2")
 
 		try:
-			check_output("jack_unload netmanager", shell=True)
 			zynthian_gui_config.netjack2_enabled = 0
+			check_output("jack_unload netmanager", shell=True)
 			# Update MIDI profile
 			if save_config:
 				zynconf.update_midi_profile({ 
