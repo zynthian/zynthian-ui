@@ -175,11 +175,10 @@ class zynthian_engine_mixer(zynthian_engine):
 		if ctrl_list and len(ctrl_list)>0:
 			sorted_zctrls = OrderedDict()
 			for ctrl_name in ctrl_list:
-				ctrl_symbol = ctrl_name.replace(' ', '_')
 				try:
-					for k in zctrls:
-						if k.startswith(ctrl_symbol):
-							sorted_zctrls[k] = zctrls[k]
+					for k, zctrl in zctrls.items():
+						if zctrl.name==ctrl_name:
+							sorted_zctrls[k] = zctrl
 				except:
 					pass
 		else:
@@ -283,10 +282,9 @@ class zynthian_engine_mixer(zynthian_engine):
 								if ctrl_type=="VToggle":
 									ctrl_item0 = 'on' if (ctrl_value>0) else 'off'
 
-				if ctrl_symbol and ctrl_type and (not ctrl_list or ctrl_name in ctrl_list):
-					if ctrl_type in ("Selector", "Toggle", "VToggle") and len(ctrl_items)>1:
+				if ctrl_symbol and ctrl_type:
+					if ctrl_type in ("Selector", "Toggle", "VToggle") and len(ctrl_items)>1 and (not ctrl_list or ctrl_name in ctrl_list):
 						#logging.debug("ADDING ZCTRL SELECTOR: {} => {}".format(ctrl_symbol, ctrl_item0))
-						
 						zctrl = zynthian_controller(self, ctrl_symbol, ctrl_name, {
 							'graph_path': [ctrl_name, ctrl_type],
 							'labels': ctrl_items,
@@ -302,29 +300,30 @@ class zynthian_engine_mixer(zynthian_engine):
 
 					elif ctrl_type in ("Playback" ,"Capture"):
 						for i, chan in enumerate(ctrl_chans):
-							if len(ctrl_chans)>2: 
-								graph_path = [ctrl_name, ctrl_type, i]
+							if len(ctrl_chans)>2:
+								graph_path = [ctrl_name, ctrl_type, i, len(ctrl_chans)]
 								zctrl_symbol = ctrl_symbol + "_" + str(i)
-								zctrl_name = ctrl_name + " " + str(i)
-							elif len(ctrl_chans)==2: 
-								graph_path = [ctrl_name, ctrl_type, i]
+								zctrl_name = ctrl_name + " " + str(i+1)
+							elif len(ctrl_chans)==2:
+								graph_path = [ctrl_name, ctrl_type, i, 2]
 								zctrl_symbol = ctrl_symbol + "_" + str(i)
 								zctrl_name = ctrl_name + " " + self.chan_names[i]
 							else:
 								graph_path = [ctrl_name, ctrl_type]
 								zctrl_symbol = ctrl_symbol
 								zctrl_name = ctrl_name
-							logging.debug("ADDING ZCTRL LEVEL: {} => {}".format(zctrl_symbol, ctrl_values[i]))
-							zctrl = zynthian_controller(self, zctrl_symbol, zctrl_name, {
-								'graph_path': graph_path,
-								'value': ctrl_values[i],
-								'value_min': ctrl_minval,
-								'value_max': ctrl_maxval,
-								'is_toggle': False,
-								'is_integer': True
-							})
-							zctrl.last_value_sent = None
-							zctrls[zctrl_symbol] = zctrl
+							if not ctrl_list or zctrl_name in ctrl_list:
+								logging.debug("ADDING ZCTRL LEVEL: {} => {}".format(zctrl_symbol, ctrl_values[i]))
+								zctrl = zynthian_controller(self, zctrl_symbol, zctrl_name, {
+									'graph_path': graph_path,
+									'value': ctrl_values[i],
+									'value_min': ctrl_minval,
+									'value_max': ctrl_maxval,
+									'is_toggle': False,
+									'is_integer': True
+								})
+								zctrl.last_value_sent = None
+								zctrls[zctrl_symbol] = zctrl
 
 		except Exception as err:
 			logging.error(err)
@@ -344,16 +343,21 @@ class zynthian_engine_mixer(zynthian_engine):
 				else:
 					amixer_command = "amixer -M -c {} set '{}' '{}'".format(self.device_name, zctrl.graph_path[0], zctrl.get_value2label())
 			else:
-				if zctrl.symbol=="Headphone" and self.allow_headphones() and self.zyngui and  self.zyngui.get_zynthian_config("rbpi_headphones"):
+				if zctrl.symbol=="Headphone" and self.allow_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
 					devname = self.rbpi_device_name
 				else:
 					devname = self.device_name
 
 				values=[]
 				if len(zctrl.graph_path)>2:
-					for k, lzctrl in self.layers[0].controllers_dict.items():
-						if k.startswith(zctrl.symbol[:-1]):
-							values.append("{}%".format(lzctrl.value))
+					nchans = zctrl.graph_path[3]
+					symbol_prefix = zctrl.symbol[:-1]
+					for i in range(0, nchans):
+						symbol_i = symbol_prefix + str(i)
+						if symbol_i in self.zctrls:
+							values.append("{}%".format(self.zctrls[symbol_i].value))
+						else:
+							values.append("0%")
 				else:
 					values.append("{}%".format(zctrl.value))
 

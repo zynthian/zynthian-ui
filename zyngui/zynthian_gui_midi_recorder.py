@@ -120,7 +120,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			if isfile(fpath) and f[-4:].lower()=='.mid':
 				try:
 					length = SMF(fpath).info.length
-					title="SDC: {} [{}:{:02d}]".format(f[:-4], int(length/60), int(length%60))
+					title="SD[{}:{:02d}] {}".format(int(length/60), int(length%60), f[:-4])
 					self.list_data.append((fpath,i,title))
 					i+=1
 				except Exception as e:
@@ -132,7 +132,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			if isfile(fpath) and f[-4:].lower()=='.mid':
 				try:
 					length = SMF(fpath).info.length
-					title="USB: {} [{}:{:02d}]".format(f[:-4], int(length/60), int(length%60))
+					title="USB[{}:{:02d}] {}".format(int(length/60), int(length%60),f[:-4])
 					self.list_data.append((fpath,i,title))
 					i+=1
 				except Exception as e:
@@ -175,6 +175,25 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				self.zyngui.show_confirm("Do you really want to delete '{}'?".format(self.list_data[i][2]), self.delete_confirmed, fpath)
 
 
+	def get_next_filenum(self):
+		try:
+			n = max(map(lambda item: int(os.path.basename(item[0]).split('-')[0]) if item[0] and os.path.basename(item[0]).split('-')[0].isdigit() else 0, self.list_data))
+		except Exception as e:
+			logging.error("EXCEPTION!! => {}".format(e))
+			n = 0
+		return "{0:03d}".format(n+1)
+
+
+	def get_new_filename(self):
+		try:
+			parts = self.zyngui.curlayer.get_presetpath().split('#',2)
+			file_name = parts[1].replace("/",">")
+			file_name = file_name.replace(" > ",">")
+		except:
+			file_name = "jack_capture"
+		return self.get_next_filenum() + '-' + file_name + '.mid'
+
+
 	def delete_confirmed(self, fpath):
 		logging.info("DELETE MIDI RECORDING: {}".format(fpath))
 		
@@ -190,9 +209,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if self.get_status() not in ("REC", "PLAY+REC"):
 			logging.info("STARTING NEW MIDI RECORD ...")
 			try:
-				cmd=self.sys_dir +"/sbin/jack-smf-recorder.sh --port {}".format(self.jack_record_port)
+				cmd = [self.sys_dir + "/sbin/jack-smf-recorder.sh", self.jack_record_port, self.get_new_filename()]
 				#logging.info("COMMAND: %s" % cmd)
-				self.rec_proc=Popen(cmd.split(" "), shell=True, preexec_fn=os.setpgrp)
+				self.rec_proc = Popen(cmd, preexec_fn=os.setpgrp)
 				sleep(0.2)
 			except Exception as e:
 				logging.error("ERROR STARTING MIDI RECORD: %s" % e)

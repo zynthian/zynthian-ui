@@ -42,8 +42,7 @@ from ctypes import c_float
 # Zynthian specific modules
 import zynconf
 import zynautoconnect
-from jackpeak import *
-from jackpeak.jackpeak import lib_jackpeak, lib_jackpeak_init
+from zynlibs.jackpeak import lib_jackpeak, lib_jackpeak_init
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine import zynthian_zcmidi
