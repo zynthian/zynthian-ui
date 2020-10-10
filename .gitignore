@@ -3,3 +3,4 @@
 __pycache__
 jackpeak/build
 zynseq/build
+zynlibs/*/build
