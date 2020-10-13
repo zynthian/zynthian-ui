@@ -379,19 +379,6 @@ void clearSequence(uint32_t sequence);
 */
 uint32_t getStep(uint32_t sequence);
 
-/**	@brief	Set period between sync pulses
-*	@param	period Time between sync pulses (clock cycles)
-*/
-void setSyncPeriod(uint32_t period);
-
-/**	@brief	Get period between sync pulses
-*	@retval	uint32_t Time between sync pulses (clock cycles)
-*/
-uint32_t getSyncPeriod();
-
-/**	@brief	Reset sync
-*/
-void resetSync();
 
 /**	@brief	Get sequence group
 *	@param	sequence Sequence number
