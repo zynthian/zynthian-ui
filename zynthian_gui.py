@@ -838,6 +838,18 @@ class zynthian_gui:
 					lib_zyncoder.disable_zynaptik_cvin(i)
 					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
 
+		# Configure Zyntof Inputs (Distance Sensor)
+		for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				if midi_chan is not None:
+					lib_zyncoder.setup_zyntof(i, event['type'], midi_chan, event['num'])
+					logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncoder.disable_zyntof(i)
+					logging.info("ZYNTOF {}: DISABLED!".format(i))
+
 
 	def zynswitches(self):
 		if lib_zyncoder:

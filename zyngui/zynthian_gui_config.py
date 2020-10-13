@@ -245,6 +245,45 @@ for i in range(0, n_custom_switches):
 	custom_switch_midi_events.append(midi_event)
 
 #------------------------------------------------------------------------------
+# Zynaptik & Zyntof configuration helpers
+#------------------------------------------------------------------------------
+
+def get_zynsensor_config(root_varname):
+	midi_event = None
+	evtype = None
+
+	event_type = os.environ.get(root_varname, "")
+	if event_type=="MIDI_CC":
+		evtype = 0xB
+	elif event_type=="MIDI_PITCH_BEND":
+		evtype = 0xE
+	elif event_type=="MIDI_CHAN_PRESS":
+		evtype = 0xD
+
+	if evtype:
+		chan = os.environ.get(root_varname + "__MIDI_CHAN")
+		try:
+			chan = int(chan) - 1
+			if chan<0 or chan>15:
+				chan = None
+		except:
+			chan = None
+
+		num = os.environ.get(root_varname + "__MIDI_NUM")
+		try:
+			num = int(num)
+			if num>=0 and num<=127:
+				midi_event = {
+					'type': evtype,
+					'chan': chan,
+					'num': num
+				}
+		except:
+			pass
+
+	return midi_event
+
+#------------------------------------------------------------------------------
 # Zynaptik Configuration
 #------------------------------------------------------------------------------
 
@@ -252,48 +291,25 @@ zynaptik_ad_midi_events = []
 
 zynaptik_config = os.environ.get("ZYNTHIAN_WIRING_ZYNAPTIK_CONFIG")
 if zynaptik_config:
-
-	#------------------------------------------------------------------------------
 	# Zynaptik AD Action Configuration
-	#------------------------------------------------------------------------------
-
 	n_zynaptik_ad = 4
 	for i in range(0, n_zynaptik_ad):
-		midi_event = None
-
 		root_varname = "ZYNTHIAN_WIRING_ZYNAPTIK_AD{0:0>2}".format(i+1)
-		event_type = os.environ.get(root_varname, "")
+		zynaptik_ad_midi_events.append(get_zynsensor_config(root_varname))
 
-		evtype = None
-		if event_type=="MIDI_CC":
-			evtype = 0xB
-		elif event_type=="MIDI_PITCH_BEND":
-			evtype = 0xE
-		elif event_type=="MIDI_CHAN_PRESS":
-			evtype = 0xD
+#------------------------------------------------------------------------------
+# Zyntof Configuration
+#------------------------------------------------------------------------------
 
-		if evtype:
-			chan = os.environ.get(root_varname + "__MIDI_CHAN")
-			try:
-				chan = int(chan) - 1
-				if chan<0 or chan>15:
-					chan = None
-			except:
-				chan = None
+zyntof_midi_events = []
 
-			num = os.environ.get(root_varname + "__MIDI_NUM")
-			try:
-				num = int(num)
-				if num>=0 and num<=127:
-					midi_event = {
-						'type': evtype,
-						'chan': chan,
-						'num': num
-					}
-			except:
-				pass
-
-		zynaptik_ad_midi_events.append(midi_event)
+zyntof_config = os.environ.get("ZYNTHIAN_WIRING_ZYNTOF_CONFIG")
+if zyntof_config:
+	# Zyntof Action Configuration
+	n_zyntofs = int(zyntof_config)
+	for i in range(0, n_zyntofs):
+		root_varname = "ZYNTHIAN_WIRING_ZYNTOF{0:0>2}".format(i+1)
+		zyntof_midi_events.append(get_zynsensor_config(root_varname))
 
 #------------------------------------------------------------------------------
 # Zynswitches events timing
