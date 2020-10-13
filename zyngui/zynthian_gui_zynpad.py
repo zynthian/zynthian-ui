@@ -324,7 +324,7 @@ class zynthian_gui_zynpad():
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STARTING)
 		playing = self.drawPad(pad)
 		if playing and not self.zyngui.zyntransport.get_state():
-			self.parent.libseq.resetSync()
+			self.zyngui.zyntransport.locate(0)
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_PLAYING)
 			self.zyngui.zyntransport.transport_play()
 

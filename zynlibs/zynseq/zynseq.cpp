@@ -92,13 +92,13 @@ void onClock()
 		g_bClockIdle = true;
 		if(g_bPlaying)
 		{
+			printf("Clock %s\n", g_bSync?"sync":"");
 			while(g_bMutex)
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			g_bMutex = true;
 			PatternManager::getPatternManager()->clock(g_nClockEventTime, &g_mSchedule, g_bSync); // Pass current clock time and pointer to schedule to pattern manager so it can populate with events. Pass sync pulse so that it can syncronise its sequences, e.g. start zynpad sequences
+			g_bSync = false;
 			g_bMutex = false;
-			if(g_bSync)
-				printf("**Sync**\n");
 			if(g_tempoChange.time == g_nSongPosition)
 			{
 				//!@todo Now what? We need to set the tempo of a clock we don't have access to!!! This may sit better in the Jack timecode master
@@ -134,8 +134,13 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	*/
 	static jack_position_t transportPosition; // JACK transport position structure populated each cycle and checked for transport progress
 	static bool bSync = false; // Track if we have sent a sync pulse for this bar
+	static uint8_t nPulse = 0; // Clock pulse count 0..23
 	static uint32_t nTicksPerPulse;
 	static double dTicksPerFrame;
+	static double dTicksPerBeat; // Store so that we can check for change and do less maths
+	static double dBeatsPerMinute; // Store so that we can check for change and do less maths
+	static double dBeatsPerBar; // Store so that we can check for change and do less maths
+	static jack_nframes_t nFramerate; // Store so that we can check for change and do less maths
 
 	// Get output buffer that will be processed in this process cycle
 	void* pOutputBuffer = jack_port_get_buffer(g_pOutputPort, nFrames);
@@ -144,27 +149,34 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
 
 	// Only play sequences if JACK transport is rolling
-	//!@todo Check if note off will be sent when transport stopped
-	if(jack_transport_query(g_pJackClient, &transportPosition) == JackTransportRolling)
+	if(jack_transport_query(g_pJackClient, &transportPosition) == JackTransportRolling && transportPosition.valid & JackPositionBBT)
 	{
-		uint32_t nTPP = transportPosition.ticks_per_beat / 24;
-		double dTPF = transportPosition.ticks_per_beat * transportPosition.beats_per_minute / 60 / transportPosition.frame_rate;
-		uint32_t nNextPulse = transportPosition.tick % nTicksPerPulse;
-		
-		if(nTicksPerPulse != nTPP || dTicksPerFrame != dTPF)
+		if(dTicksPerBeat != transportPosition.ticks_per_beat || dBeatsPerMinute != transportPosition.beats_per_minute || nFramerate != transportPosition.frame_rate | dBeatsPerBar != transportPosition.beats_per_bar)
 		{
-			nTicksPerPulse = nTPP;
-			dTicksPerFrame = dTPF;
+			// Something has changed so recalculate values
+			dTicksPerBeat = transportPosition.ticks_per_beat;
+			dBeatsPerBar = transportPosition.beats_per_bar;
+			dBeatsPerMinute = transportPosition.beats_per_minute;
+			nFramerate = transportPosition.frame_rate;
+			nTicksPerPulse = transportPosition.ticks_per_beat / 24;;
+			dTicksPerFrame = transportPosition.ticks_per_beat * transportPosition.beats_per_minute / 60 / transportPosition.frame_rate;
 			PatternManager::getPatternManager()->setSequenceClockRates(nTicksPerPulse / dTicksPerFrame);
 		}
+		uint32_t nNextPulse = (nTicksPerPulse - (transportPosition.tick % nTicksPerPulse)) / dTicksPerFrame;
+		//printf("NextPulse: %u frames (transportPosition.tick: %u nTicksPerPulse: %u)\n", nNextPulse, transportPosition.tick, nTicksPerPulse);
 		if(nNextPulse < nFrames) //!@todo Handle several pulses in same frame
 		{
+			if(transportPosition.beat == 1 && transportPosition.tick < nTicksPerPulse)
+				nPulse = 0;
 			// There is a MIDI clock due in this cycle
-			//!@todo g_bSync is currently being set late because we are looking forward for next pulse but using current beat
-			g_bSync = (transportPosition.beat == 1 && !bSync); // Sync on first beat of each bar
-			bSync = (transportPosition.beat == 1);
+			//!@todo g_bSync is currently being set late because we are looking forward for next pulse but using current beat. Maybe that is okay.
+			printf("Beat: %u Clock: %u Tick: %u, \n",transportPosition.beat, nPulse, transportPosition.tick);
+			if(transportPosition.beat == 1 && nPulse == 0)
+				g_bSync = true;
 			g_nClockEventTime = nNow + nNextPulse + nFrames; // Offset for low jitter but one cycle latency
-			g_bClockIdle = false; //Pulse a step - may be insufficient for position changes
+			if(++nPulse > 23)
+				nPulse = 0;
+			g_bClockIdle = false; // Clock pulse
 			//!@todo We need to position playback correctly, i.e. manage discontinuity in clock / position
 			//!@todo Update song position if song playing (or maybe we just derive it dynamically)
 		}
