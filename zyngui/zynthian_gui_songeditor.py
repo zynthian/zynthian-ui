@@ -207,6 +207,7 @@ class zynthian_gui_songeditor():
 		self.selectSong()
 #		self.redraw_pending = 2
 		self.setupEncoders()
+		print("song editor show complete")
 
 	# Function to hide GUI
 	def hide(self):
@@ -754,8 +755,8 @@ class zynthian_gui_songeditor():
 		self.gridCanvas.itemconfig(selection_border, state='normal')
 		self.gridCanvas.tag_raise(selection_border)
 
-		if self.song > 1000:
-			self.parent.libseq.solo(self.song, track, True)
+#		if self.song > 1000: # Solo will stop playback which may be undesirable
+#			self.parent.libseq.solo(self.song, track, True)
 
 
 	# Function to calculate cell size

@@ -38,7 +38,7 @@ jack_port_t * g_pOutputPort; // Pointer to the JACK output port
 jack_client_t *g_pJackClient = NULL; // Pointer to the JACK client
 double g_dPosition = 0; // Position reported by JACK timebase master measured in Jack ticks
 
-bool g_bClockIdle = true; // True to indicate clock pulse
+bool g_bClockIdle = true; // False to indicate clock pulse
 bool g_bRunning = true; // False to stop clock thread, e.g. on exit
 jack_nframes_t g_nSamplerate; // Quantity of samples per second
 jack_nframes_t g_nBufferSize; // Quantity of samples in JACK buffer passed each process cycle
@@ -51,7 +51,7 @@ bool g_bModified = false; // True if pattern has changed since last check
 
 uint8_t g_nInputChannel = 1; // MIDI input channel (>15 to disable MIDI input)
 
-bool g_bPlaying = true; // True if any sequence playing - used to reduce load when idle but not implemented (always true)
+bool g_bPlaying = false; // True if any sequences playing
 bool g_bSongPlaying = false; // True if song playing
 bool g_bSync = false; // True to indicate transport is at a sync pulse (start of bar)
 bool g_bMutex = false; // Mutex lock for access to g_mSchedule
@@ -63,12 +63,14 @@ struct TEMPO_CHANGE {
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
+// Enable / disable debug output
 void debug(bool bEnable)
 {
 	printf("libseq setting debug mode %s\n", bEnable?"on":"off");
 	g_bDebug = bEnable;
 }
 
+// Update the next tempo point in tempo map - should probably move to timebase master
 void updateTempoChange()
 {
 	uint32_t nSong = PatternManager::getPatternManager()->getCurrentSong();
@@ -81,7 +83,7 @@ void updateTempoChange()
 	}
 }
 
-// This is the thread that waits for a MIDI clock pulse
+// Thread that waits for a clock pulse
 void onClock()
 {
 	//!@todo Start new clock thread when needed (something playing) and exit when nothing playing???
@@ -90,13 +92,14 @@ void onClock()
 		while(g_bClockIdle)
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		g_bClockIdle = true;
-		if(g_bPlaying)
+		//if(g_bPlaying)
 		{
-			printf("Clock %s\n", g_bSync?"sync":"");
 			while(g_bMutex)
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			g_bMutex = true;
-			PatternManager::getPatternManager()->clock(g_nClockEventTime, &g_mSchedule, g_bSync); // Pass current clock time and pointer to schedule to pattern manager so it can populate with events. Pass sync pulse so that it can syncronise its sequences, e.g. start zynpad sequences
+			PatternManager::getPatternManager()->clock(g_nClockEventTime, &g_mSchedule, g_bSync); // Pass current clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can syncronise its sequences, e.g. start zynpad sequences
+			if(g_bSync)
+				g_bPlaying = PatternManager::getPatternManager()->isPlaying(); // Update playing state each sync cycle
 			g_bSync = false;
 			g_bMutex = false;
 			if(g_tempoChange.time == g_nSongPosition)
@@ -134,7 +137,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	*/
 	static jack_position_t transportPosition; // JACK transport position structure populated each cycle and checked for transport progress
 	static bool bSync = false; // Track if we have sent a sync pulse for this bar
-	static uint8_t nPulse = 0; // Clock pulse count 0..23
+	static uint8_t nClock = 0; // Clock pulse count 0..23
 	static uint32_t nTicksPerPulse;
 	static double dTicksPerFrame;
 	static double dTicksPerBeat; // Store so that we can check for change and do less maths
@@ -166,19 +169,19 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 		//printf("NextPulse: %u frames (transportPosition.tick: %u nTicksPerPulse: %u)\n", nNextPulse, transportPosition.tick, nTicksPerPulse);
 		if(nNextPulse < nFrames) //!@todo Handle several pulses in same frame
 		{
-			if(transportPosition.beat == 1 && transportPosition.tick < nTicksPerPulse)
-				nPulse = 0;
-			// There is a MIDI clock due in this cycle
+			// There is a clock pulse due in this cycle
+			if(transportPosition.tick < nTicksPerPulse)
+				nClock = 0;
 			//!@todo g_bSync is currently being set late because we are looking forward for next pulse but using current beat. Maybe that is okay.
-			printf("Beat: %u Clock: %u Tick: %u, \n",transportPosition.beat, nPulse, transportPosition.tick);
-			if(transportPosition.beat == 1 && nPulse == 0)
+			if(transportPosition.beat == 1 && nClock == 0)
 				g_bSync = true;
+			printf("Bar: %u Beat: %u Clock: %u Tick: %u %s \n", transportPosition.bar, transportPosition.beat, nClock, transportPosition.tick, g_bSync?"SYNC":"");
 			g_nClockEventTime = nNow + nNextPulse + nFrames; // Offset for low jitter but one cycle latency
-			if(++nPulse > 23)
-				nPulse = 0;
+			++nClock;
 			g_bClockIdle = false; // Clock pulse
 			//!@todo We need to position playback correctly, i.e. manage discontinuity in clock / position
 			//!@todo Update song position if song playing (or maybe we just derive it dynamically)
+            //!@todo First beat after start can be wrong duration, e.g. too few clock cycles probably due to sync being late
 		}
 	}
 
@@ -450,6 +453,8 @@ void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration
 	}
 }
 
+//!@todo Do we still need functions to send MIDI transport control (start, stop, continuew, songpos, song select, clock)?
+
 void sendMidiStart()
 {
 	MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
@@ -502,6 +507,11 @@ void sendMidiClock()
 bool isPlaying()
 {
 	return g_bPlaying;
+}
+
+bool isSongPlaying()
+{
+	return g_bSongPlaying;
 }
 
 uint8_t getTriggerChannel()
@@ -742,11 +752,14 @@ uint8_t getPlayState(uint32_t sequence)
 void setPlayState(uint32_t sequence, uint8_t state)
 {
 	PatternManager::getPatternManager()->setSequencePlayState(sequence, state);
+	g_bPlaying = PatternManager::getPatternManager()->isPlaying();
 }
 
 void togglePlayState(uint32_t sequence)
 {
-	PatternManager::getPatternManager()->getSequence(sequence)->togglePlayState();
+	uint8_t nState = PatternManager::getPatternManager()->getSequence(sequence)->getPlayState();
+	nState = (nState == STOPPED || nState == STOPPING)?STARTING:STOPPING;
+	setPlayState(sequence, nState);
 }
 
 uint32_t getPlayPosition(uint32_t sequence)
@@ -871,12 +884,14 @@ void startSong()
 {
 	PatternManager::getPatternManager()->startSong();
 	g_bSongPlaying = true;
+	g_bPlaying = PatternManager::getPatternManager()->isPlaying();
 }
 
 void pauseSong()
 {
 	PatternManager::getPatternManager()->stopSong();
 	g_bSongPlaying = false;
+	g_bPlaying = PatternManager::getPatternManager()->isPlaying();
 }
 
 void stopSong()
@@ -885,6 +900,7 @@ void stopSong()
 //	PatternManager::getPatternManager()->getSequence(0)->setPlayState(STOPPED);
 	g_bSongPlaying = false;
 	setSongPosition(0);
+	g_bPlaying = PatternManager::getPatternManager()->isPlaying();
 }
 
 void setSongPosition(uint32_t pos)

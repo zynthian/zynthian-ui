@@ -132,6 +132,8 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 	uint8_t nState = m_nState;
 	if(bSync && m_nState == STARTING)
 		m_nState = PLAYING;
+	if(bSync && m_nState == STOPPING && (m_nMode == ONESHOTSYNC || m_nMode == LOOPSYNC))
+		m_nState = STOPPED;
 	if(m_nState == STOPPED || m_nState == STARTING)
 		return bReturn;
 	if(m_nDivCount-- == 0)
@@ -152,10 +154,12 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 				case ONESHOT:
 				case DISABLED:
 				case ONESHOTALL:
+				case ONESHOTSYNC:
 					m_nState = STOPPED;
 					return bReturn;
 				case LOOP:
 				case LOOPALL:
+				case LOOPSYNC:
 					m_nPosition = 0;
 					break;
 			}

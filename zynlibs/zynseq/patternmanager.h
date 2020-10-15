@@ -174,6 +174,10 @@ class PatternManager
         */
         uint32_t getCurrentSong();
 
+        /** @brief  Get overall play state
+        *   @retval bool True if any sequence is staring, playing or stopping. False if all sequences are stopped
+        */
+        bool isPlaying();
 
     private:
         PatternManager(); // Private constructor to avoid public instantiation

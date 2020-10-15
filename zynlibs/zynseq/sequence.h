@@ -68,7 +68,7 @@ class Sequence
 		uint8_t getPlayMode();
 
 		/**	@brief	Set play mode
-		*	@param	mode Play mode [DISABLED | ONESHOT | LOOP | ONESHOTALL | LOOPALL]
+		*	@param	mode Play mode [DISABLED | ONESHOT | LOOP | ONESHOTALL | LOOPALL | ONESHOTSYNC | LOOPSYNC]
 		*/
 		void setPlayMode(uint8_t mode);
 

@@ -190,6 +190,7 @@ class zynthian_gui_patterneditor():
 		self.parent.registerZyncoder(ENC_SNAPSHOT, self)
 		self.parent.registerZyncoder(ENC_LAYER, self)
 		self.parent.registerSwitch(ENC_SELECT, self)
+		self.parent.registerSwitch(ENC_SNAPSHOT, self)
 
 	# Function to show GUI
 	#   params: Pattern parameters to edit {'pattern':x, 'channel':x}
@@ -205,7 +206,6 @@ class zynthian_gui_patterneditor():
 		self.setupEncoders()
 		self.main_frame.tkraise()
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
-		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_PLAYING)
 		self.shown=True
 
 	# Function to hide GUI
@@ -217,7 +217,7 @@ class zynthian_gui_patterneditor():
 		self.parent.unregisterZyncoder(ENC_LAYER)
 		self.parent.unregisterSwitch(ENC_SELECT)
 		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
-		self.parent.zyngui.zyntransport.transport_stop() #TODO: Stopping transport due to jack_transport restarting if locate called
+#		self.parent.zyngui.zyntransport.transport_stop() #TODO: Stopping transport due to jack_transport restarting if locate called
 
 	# Function to add menus
 	def populateMenu(self):
@@ -940,6 +940,16 @@ class zynthian_gui_patterneditor():
 	def onSwitch(self, switch, type):
 		if switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
+			return True
+		elif switch == ENC_SNAPSHOT:
+			if not self.parent.libseq.isPlaying():
+				# Nothing is running so reset to zero and start immediately - workaround issue with jack_transport by stopping and pausing before locate
+				self.parent.zyngui.zyntransport.transport_stop()
+				sleep(0.1)
+				self.parent.zyngui.zyntransport.locate(0)
+			self.parent.libseq.setPlayPosition(self.sequence, 0)
+			self.parent.libseq.togglePlayState(self.sequence)
+			self.parent.zyngui.zyntransport.transport_play() # Start transport in case it has been stopped
 			return True
 		return False
 #------------------------------------------------------------------------------

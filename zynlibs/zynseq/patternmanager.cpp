@@ -572,3 +572,11 @@ uint32_t PatternManager::getCurrentSong()
 {
 	return m_nCurrentSong;
 }
+
+bool PatternManager::isPlaying()
+{
+	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
+		if(it->second.getPlayState() != STOPPED)
+			return true;
+	return false;
+}

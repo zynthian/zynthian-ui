@@ -8,7 +8,9 @@
 #define LOOP			2
 #define ONESHOTALL		3
 #define LOOPALL			4
-#define LASTPLAYMODE	4
+#define ONESHOTSYNC		5
+#define LOOPSYNC		6
+#define LASTPLAYMODE	6
 
 // Play status
 #define STOPPED			0

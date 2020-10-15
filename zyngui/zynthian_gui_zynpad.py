@@ -36,6 +36,7 @@ import logging
 import tkinter.font as tkFont
 from math import sqrt
 from PIL import Image, ImageTk
+from time import sleep
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -63,7 +64,7 @@ class zynthian_gui_zynpad():
 		self.selectedPad = 1 # Index of last selected pad - used to edit config
 		self.song = 1001 # Index of song used to configure pads
 
-		self.playModes = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all']
+		self.playModes = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
 		self.padColourDisabled = 'grey'
 		self.padColourStarting = 'orange'
 		self.padColourPlaying = 'green'
@@ -93,7 +94,7 @@ class zynthian_gui_zynpad():
 		self.gridCanvas.grid(row=0, column=0)
 
 		# Icons
-		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
+		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
 
 		# Selection highlight
 		self.selection = self.gridCanvas.create_rectangle(0, 0, self.width / self.columns, self.height / self.rows, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
@@ -214,6 +215,10 @@ class zynthian_gui_zynpad():
 		self.icon[3] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
 		self.icon[4] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/end.png").resize(iconsize))
+		self.icon[5] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
+		self.icon[6] = ImageTk.PhotoImage(img)
 		self.drawGrid(True)
 		self.parent.setTitle("ZynPad (%d)"%(song))
 
@@ -315,6 +320,12 @@ class zynthian_gui_zynpad():
 			self.parent.refreshParamEditor()
 		if sequence == 0:
 			return;
+		if not self.parent.libseq.isPlaying():
+			# Nothing is running so reset to zero and start immediately - workaround issue with jack_transport by stopping and pausing before locate
+			self.parent.zyngui.zyntransport.transport_stop()
+			sleep(0.1)
+			self.parent.zyngui.zyntransport.locate(0)
+			self.parent.zyngui.zyntransport.transport_play()
 		if self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_PLAYING:
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STOPPING)
 		elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STARTING:

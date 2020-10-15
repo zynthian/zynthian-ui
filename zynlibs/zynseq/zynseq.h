@@ -122,10 +122,14 @@ void sendMidiSong(uint32_t pos);
 void sendMidiClock();
 
 /**	@brief	Get playing state
-*	@retval	bool True if playing
-*	@note	Playing is local interpretation derived from recieved START / STOP / CONTINUE messages
+*	@retval	bool True if any sequence is playing
 */
 bool isPlaying();
+
+/**	@brief	Get song playing state
+*	@retval	bool True if song is playing
+*/
+bool isSongPlaying();
 
 /**	@brief	Get MIDI channel used for external trigger of sequences
 *	@retval uint8_t MIDI channel
