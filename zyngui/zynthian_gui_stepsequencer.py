@@ -103,7 +103,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.libseq = ctypes.CDLL(dirname(realpath(__file__))+"/../zynlibs/zynseq/build/libzynseq.so")
 		self.libseq.init()
 #		self.libseq.debug(True)
-		self.filename = USER_PATH + "/default.zynseq"
+		self.filename = "default"
 		self.load(self.filename)
 
 		# Geometry vars
@@ -610,7 +610,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		zynthian_gui_rename(self, self.save, filename)
 
 	# Function to save to RIFF file
-	#	filename: Full path and filename to save
+	#	filename: Filename without path or extension
 	def save(self, filename = None):
 		if not filename:
 			filename = self.filename
@@ -623,12 +623,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		zynthian_gui_fileselector(self, self.load, USER_PATH, "zynseq", filename)
 
 	# Function to load from RIFF file
-	#	filename: Full path and filename to load
+	#	filename: Filename without path or extension
 	def load(self, filename=None):
-		print("Filename:", filename)
 		if filename == None:
 			filename = self.filename
-		if self.libseq.load(bytes(filename, "utf-8")):
+		if self.libseq.load(bytes(USER_PATH + "/" + filename + ".zynseq", "utf-8")):
 			self.filename = filename
 			if self.child:
 				self.child.onLoad()

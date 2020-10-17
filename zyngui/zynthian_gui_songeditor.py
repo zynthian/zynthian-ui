@@ -63,7 +63,7 @@ class zynthian_gui_songeditor():
 		self.parent = parent
 
 		#TODO: Put colours in a common file
-		self.playModes = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all']
+		self.playModes = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
 		self.padColourDisabled = 'grey'
 		self.padColourStarting = 'orange'
 		self.padColourPlaying = 'green'
@@ -88,7 +88,7 @@ class zynthian_gui_songeditor():
 		self.timeDragStart = None # Set to time of click to test for bold click
 		self.gridDragStart = None # Set to location of click during drag
 		self.clocksPerDivision = 6
-		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
+		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
 		self.cells = [[None] * 2 for _ in range(self.verticalZoom * self.horizontalZoom)] # 2D array of cells 0:cell, 1:cell label
 		self.redraw_pending = 0
 
@@ -171,6 +171,10 @@ class zynthian_gui_songeditor():
 		self.icon[3] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
 		self.icon[4] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/end.png").resize(iconsize))
+		self.icon[5] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
+		self.icon[6] = ImageTk.PhotoImage(img)
 
 	# Function to register encoders
 	def setupEncoders(self):
@@ -194,7 +198,7 @@ class zynthian_gui_songeditor():
 		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.getTempo, 'onChange':self.onMenuChange, 'onAssert':self.assertTempo}}})
 		self.parent.addMenu({'Bar / sync':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getBarLength, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Group':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':25, 'getValue':self.getGroup, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':4, 'getValue':self.getMode, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(self.playModes)-1, 'getValue':self.getMode, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Trigger':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':128, 'getValue':self.getTrigger, 'onChange':self.onMenuChange, 'onAssert':self.setTrigger}}})
 		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getPattern, 'onChange':self.onMenuChange}}})
 
@@ -292,7 +296,7 @@ class zynthian_gui_songeditor():
 			if self.editorMode:
 				self.parent.libseq.setGroup(sequence, int(track / 4))
 				self.parent.libseq.setChannel(sequence, int(track / 4))
-				self.parent.libseq.setPlayMode(sequence, 4)
+				self.parent.libseq.setPlayMode(sequence, 6)
 			else:
 				if track < 26:
 					self.parent.libseq.setGroup(sequence, track)
@@ -831,8 +835,7 @@ class zynthian_gui_songeditor():
 			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
 			self.parent.libseq.setPlayMode(sequence, value);
 			self.drawTrackLabel(self.selectedCell[1])
-			playMode = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all']
-			return "Mode: %s" % (playMode[value])
+			return "Mode: %s" % (self.playModes[value])
 		elif menuItem == "Trigger":
 			self.trigger = value
 			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])

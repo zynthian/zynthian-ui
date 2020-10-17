@@ -324,8 +324,8 @@ class zynthian_gui_zynpad():
 			# Nothing is running so reset to zero and start immediately - workaround issue with jack_transport by stopping and pausing before locate
 			self.parent.zyngui.zyntransport.transport_stop()
 			sleep(0.1)
-			self.parent.zyngui.zyntransport.locate(0)
-			self.parent.zyngui.zyntransport.transport_play()
+			self.zyngui.zyntransport.locate(0)
+			self.zyngui.zyntransport.transport_play()
 		if self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_PLAYING:
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STOPPING)
 		elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STARTING:
@@ -334,10 +334,6 @@ class zynthian_gui_zynpad():
 			self.parent.libseq.setPlayPosition(sequence, 0)
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STARTING)
 		playing = self.drawPad(pad)
-		if playing and not self.zyngui.zyntransport.get_state():
-			self.zyngui.zyntransport.locate(0)
-			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_PLAYING)
-			self.zyngui.zyntransport.transport_play()
 
 	# Function to handle pad release
 	def onPadRelease(self, event):
