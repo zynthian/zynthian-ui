@@ -113,7 +113,7 @@ class zynthian_gui_zynpad():
 
 	# Function to populate menu
 	def populateMenu(self):
-		self.parent.addMenu({'Pad mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(self.playModes)-1, 'value':0, 'getValue':self.getSelectedPadMode, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Pad mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(self.playModes)-1, 'getValue':self.getSelectedPadMode, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Trigger channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.getTriggerChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tally channel':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':15, 'getValue':self.getTallyChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})

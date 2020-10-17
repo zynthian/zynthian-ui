@@ -211,7 +211,6 @@ class zynthian_gui_songeditor():
 		self.selectSong()
 #		self.redraw_pending = 2
 		self.setupEncoders()
-		print("song editor show complete")
 
 	# Function to hide GUI
 	def hide(self):

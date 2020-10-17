@@ -561,10 +561,10 @@ void PatternManager::setCurrentSong(uint32_t song)
 		{
 			uint32_t nTrack = addTrack(song + 1000);
 			uint32_t nSequence = m_mSongs[song + 1000].getSequence(nTrack);
-			m_mSequences[nSequence].setChannel(nIndex);
+			m_mSequences[nSequence].setChannel(0);
 			m_mSequences[nSequence].setTrigger(nIndex + 60);
-			m_mSequences[nSequence].setGroup(nIndex / 4);
-			m_mSequences[nSequence].setPlayMode(LOOPALL);
+			m_mSequences[nSequence].setGroup(0);
+			m_mSequences[nSequence].setPlayMode(LOOPSYNC);
 		}
 }
 
