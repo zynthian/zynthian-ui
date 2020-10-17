@@ -228,11 +228,10 @@ SEQ_EVENT* Sequence::getEvent()
 				seqEvent.msg.value2 = 5;
 				break;
 		}
-		printf("Sequence::getEvent returning note ON for state change note: %d, velocity: %d\n", seqEvent.msg.value1, seqEvent.msg.value2);
 		return &seqEvent;
 	}
 	if(m_nState == STOPPED || m_nCurrentPatternPos < 0 || m_nNextEvent < 0)
-		return NULL;
+		return NULL; //!@todo Can we stop between note on and note off being processed resulting in stuck note?
 	// Sequence is being played and playhead is within a pattern
 	Pattern* pPattern = m_mPatterns[m_nCurrentPatternPos];
 	StepEvent* pEvent = pPattern->getEventAt(m_nNextEvent); // Don't advance event here because need to interpolate

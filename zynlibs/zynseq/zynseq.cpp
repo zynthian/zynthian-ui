@@ -39,6 +39,7 @@ jack_client_t *g_pJackClient = NULL; // Pointer to the JACK client
 double g_dPosition = 0; // Position reported by JACK timebase master measured in Jack ticks
 
 bool g_bClockIdle = true; // False to indicate clock pulse
+bool g_bClockRateChange = true; // True when a recalculation of clock rate required
 bool g_bRunning = true; // False to stop clock thread, e.g. on exit
 jack_nframes_t g_nSamplerate; // Quantity of samples per second
 jack_nframes_t g_nBufferSize; // Quantity of samples in JACK buffer passed each process cycle
@@ -154,7 +155,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 	// Only play sequences if JACK transport is rolling
 	if(jack_transport_query(g_pJackClient, &transportPosition) == JackTransportRolling && transportPosition.valid & JackPositionBBT)
 	{
-		if(dTicksPerBeat != transportPosition.ticks_per_beat || dBeatsPerMinute != transportPosition.beats_per_minute || nFramerate != transportPosition.frame_rate | dBeatsPerBar != transportPosition.beats_per_bar)
+		if(g_bClockRateChange || dTicksPerBeat != transportPosition.ticks_per_beat || dBeatsPerMinute != transportPosition.beats_per_minute || nFramerate != transportPosition.frame_rate | dBeatsPerBar != transportPosition.beats_per_bar)
 		{
 			// Something has changed so recalculate values
 			dTicksPerBeat = transportPosition.ticks_per_beat;
@@ -164,6 +165,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			nTicksPerPulse = transportPosition.ticks_per_beat / 24;;
 			dTicksPerFrame = transportPosition.ticks_per_beat * transportPosition.beats_per_minute / 60 / transportPosition.frame_rate;
 			PatternManager::getPatternManager()->setSequenceClockRates(nTicksPerPulse / dTicksPerFrame);
+			g_bClockRateChange = false;
 		}
 		uint32_t nNextPulse = (nTicksPerPulse - (transportPosition.tick % nTicksPerPulse)) / dTicksPerFrame;
 		//printf("NextPulse: %u frames (transportPosition.tick: %u nTicksPerPulse: %u)\n", nNextPulse, transportPosition.tick, nTicksPerPulse);
@@ -175,7 +177,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 			//!@todo g_bSync is currently being set late because we are looking forward for next pulse but using current beat. Maybe that is okay.
 			if(transportPosition.beat == 1 && nClock == 0)
 				g_bSync = true;
-			printf("Bar: %u Beat: %u Clock: %u Tick: %u %s \n", transportPosition.bar, transportPosition.beat, nClock, transportPosition.tick, g_bSync?"SYNC":"");
+			//printf("Bar: %u Beat: %u Clock: %u Tick: %u %s \n", transportPosition.bar, transportPosition.beat, nClock, transportPosition.tick, g_bSync?"SYNC":"");
 			g_nClockEventTime = nNow + nNextPulse + nFrames; // Offset for low jitter but one cycle latency
 			++nClock;
 			g_bClockIdle = false; // Clock pulse
@@ -751,6 +753,8 @@ uint8_t getPlayState(uint32_t sequence)
 
 void setPlayState(uint32_t sequence, uint8_t state)
 {
+	if(state == STARTING)
+		g_bClockRateChange = true;
 	PatternManager::getPatternManager()->setSequencePlayState(sequence, state);
 	g_bPlaying = PatternManager::getPatternManager()->isPlaying();
 }
