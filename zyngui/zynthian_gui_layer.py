@@ -462,7 +462,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					continue
 				if layer.set_preset(preset_index,True) and not selected:
 					try:
-						self.select_action(self.root_layers.index(layer))
+						#self.select_action(self.root_layers.index(layer))
 						selected = True
 					except Exception as e:
 						logging.error("Can't select layer => {}".format(e))
@@ -480,8 +480,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					except Exception as e:
 						logging.error("Can't select layer => {}".format(e))
 
+
 	def get_last_zs3_index(self, midich):
 		return self.last_zs3_index[midich]
+
 
 	def save_midi_chan_zs3(self, midich, zs3_index):
 		for layer in self.layers:
