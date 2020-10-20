@@ -142,7 +142,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.update_software,0,"Update Software"))
-		#self.list_data.append((self.update_library,0,"Update Zynthian Library"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.restart_gui,0,"Restart UI"))
@@ -704,11 +703,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("UPDATE SOFTWARE")
 		self.zyngui.show_info("UPDATE SOFTWARE")
 		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
-
-	def update_library(self):
-		logging.info("UPDATE LIBRARY")
-		self.zyngui.show_info("UPDATE LIBRARY")
-		self.start_command([self.sys_dir + "/scripts/update_zynthian_data.sh"])
 
 
 	def update_system(self):
