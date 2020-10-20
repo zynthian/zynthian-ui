@@ -256,7 +256,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			os.kill(self.child_pid, signal.SIGTERM)
 			self.child_pid=None
 			if self.last_action==self.test_midi:
-				check_output("systemctl stop a2jmidid", shell=True)
 				self.zyngui.all_sounds_off()
 
 	#------------------------------------------------------------------------------
@@ -698,7 +697,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def test_midi(self):
 		logging.info("TESTING MIDI")
 		self.zyngui.show_info("TEST MIDI")
-		check_output("systemctl start a2jmidid", shell=True)
 		self.killable_start_command(["aplaymidi -p 14 {}/mid/test.mid".format(self.data_dir)])
 
 
