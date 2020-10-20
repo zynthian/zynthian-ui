@@ -457,6 +457,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for layer in self.layers:
 			mch=layer.get_midi_chan()
 			if mch is None or mch==midich:
+				# Fluidsynth engine => ignore Program Change on channel 9
+				if layer.engine.nickname=="FS" and mch==9:
+					continue
 				if layer.set_preset(preset_index,True) and not selected:
 					try:
 						self.select_action(self.root_layers.index(layer))
