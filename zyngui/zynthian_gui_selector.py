@@ -209,6 +209,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		self.fill_listbox()
 		self.select()
 		#self.set_selector()
+		self.last_index_change_ts = datetime.min
 
 
 	def update_list(self):
@@ -253,6 +254,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 				else: self.listbox.see(index)
 				# Set index value
 				self.index=index
+				self.last_index_change_ts=datetime.now()
 
 
 	def select(self, index=None):

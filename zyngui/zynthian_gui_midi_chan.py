@@ -26,6 +26,7 @@
 import sys
 import tkinter
 import logging
+from datetime import datetime
 
 # Zynthian specific modules
 from zyncoder import *
@@ -50,12 +51,14 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		else:
 			self.chan_list = range(16)
 
+		self.midi_chan_act = None
+
 		if self.mode=='ADD':
 			pass
 		elif self.mode=='SET':
-			self.index=chan
+			self.index = self.get_midi_chan_index(chan)
 		elif self.mode=='CLONE':
-			self.midi_chan=chan
+			self.midi_chan = chan
 
 
 	def fill_list(self):
@@ -90,12 +93,17 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_hl})
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
-
 			i += 1
 
 
+	def get_midi_chan_index(self, chan):
+		for i,ch in enumerate(self.chan_list):
+			if ch==chan:
+				return i
+
+
 	def select_action(self, i, t='S'):
-		selchan=self.list_data[i][1]
+		selchan = self.list_data[i][1]
 
 		if self.mode=='ADD':
 			self.zyngui.screens['layer'].add_layer_midich(selchan)
@@ -125,6 +133,17 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 				elif t=='B':
 					self.zyngui.screens['midi_cc'].set_clone_channels(self.midi_chan, selchan)
 					self.zyngui.show_modal('midi_cc')
+
+
+	def midi_chan_activity(self, chan):
+		if self.shown and not zynthian_gui_config.midi_single_active_channel:
+			i = self.get_midi_chan_index(chan)
+			if i is not None and i!=self.index:
+				dts = (datetime.now()-self.last_index_change_ts).total_seconds()
+				selchan = self.list_data[self.index][1]
+				if (selchan==self.midi_chan_act and dts>0.2) or dts>2:
+					self.midi_chan_act = chan
+					self.select(i)
 
 
 	def back_action(self):

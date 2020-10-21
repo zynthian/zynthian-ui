@@ -1278,6 +1278,7 @@ class zynthian_gui:
 
 				# Note-On ...
 				elif evtype==0x9:
+					self.screens['midi_chan'].midi_chan_activity(chan)
 					#Preload preset (note-on)
 					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
 						self.start_loading()
@@ -1286,6 +1287,7 @@ class zynthian_gui:
 
 				# Control Change ...
 				elif evtype==0xB:
+					self.screens['midi_chan'].midi_chan_activity(chan)
 					ccnum=(ev & 0x7F00)>>8
 					ccval=(ev & 0x007F)
 					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
