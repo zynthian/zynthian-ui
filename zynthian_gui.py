@@ -963,7 +963,9 @@ class zynthian_gui:
 					self.show_screen('layer')
 
 			elif self.active_screen=='layer':
-				if self.screens['layer'].get_num_root_layers()>1:
+				if self.modal_screen is not None:
+					self.show_screen('layer')
+				elif self.screens['layer'].get_num_root_layers()>1:
 					logging.info("Next layer")
 					self.screens['layer'].next(False)
 
