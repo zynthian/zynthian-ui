@@ -264,7 +264,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def layer_midi_chan(self):
-		chan_list = (self.zyngui.screens['layer'].get_free_midi_chans() + [self.layer.midi_chan]).sort()
+		chan_list = self.zyngui.screens['layer'].get_free_midi_chans() + [self.layer.midi_chan]
+		chan_list.sort()
 		self.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan, chan_list)
 		self.zyngui.show_modal('midi_chan')
 
