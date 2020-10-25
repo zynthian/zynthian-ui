@@ -112,33 +112,44 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		self.list_data.append((None,0,"-----------------------------"))
 
-
-		i = 1
-		# Files in SD-Card
-		for f in sorted(os.listdir(self.capture_dir_sdc)):
-			fpath=join(self.capture_dir_sdc,f)
-			if isfile(fpath) and f[-4:].lower()=='.mid':
-				try:
-					length = SMF(fpath).info.length
-					title="SD[{}:{:02d}] {}".format(int(length/60), int(length%60), f[:-4])
-					self.list_data.append((fpath,i,title))
-					i+=1
-				except Exception as e:
-					logging.warning(e)
+		i=1
+		# Files on SD-Card
+		for fname, finfo in self.get_filelist(self.capture_dir_sdc).items():
+			l = finfo['length']
+			title="SD[{}:{:02d}] {}".format(int(l/60), int(l%60),fname.replace(";","/"))
+			self.list_data.append((finfo['fpath'],i,title))
+			i+=1
 
 		# Files on USB-Pendrive
-		for f in sorted(os.listdir(self.capture_dir_usb)):
-			fpath=join(self.capture_dir_usb,f)
-			if isfile(fpath) and f[-4:].lower()=='.mid':
-				try:
-					length = SMF(fpath).info.length
-					title="USB[{}:{:02d}] {}".format(int(length/60), int(length%60),f[:-4])
-					self.list_data.append((fpath,i,title))
-					i+=1
-				except Exception as e:
-					logging.warning(e)
+		for fname, finfo in self.get_filelist(self.capture_dir_usb).items():
+			l = finfo['length']
+			title="USB[{}:{:02d}] {}".format(int(l/60), int(l%60),fname.replace(";","/"))
+			self.list_data.append((finfo['fpath'],i,title))
+			i+=1
 
 		super().fill_list()
+
+
+	def get_filelist(self, src_dir):
+		res = {}
+		for f in sorted(os.listdir(src_dir)):
+			fpath = join(src_dir, f)
+			fname = f[:-4]
+			fext = f[-4:].lower()
+			if isfile(fpath) and fext in ('.mid'):
+				res[fname] = {
+					'fpath': fpath,
+					'ext': fext
+				}
+
+		for fname in res:
+			try:
+				res[fname]['length'] = mutagen.File(res[fname]['fpath']).info.length
+			except Exception as e:
+				res[fname]['length'] = 0
+				logging.warning(e)
+
+		return res
 
 
 	def fill_listbox(self):
@@ -177,9 +188,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def get_next_filenum(self):
 		try:
-			n = max(map(lambda item: int(os.path.basename(item[0]).split('-')[0]) if item[0] and os.path.basename(item[0]).split('-')[0].isdigit() else 0, self.list_data))
-		except Exception as e:
-			logging.error("EXCEPTION!! => {}".format(e))
+			n = max(map(lambda item: int(os.path.basename(item[0])[0:3]) if item[0] and os.path.basename(item[0])[0:3].isdigit() else 0, self.list_data))
+		except:
 			n = 0
 		return "{0:03d}".format(n+1)
 
@@ -187,8 +197,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def get_new_filename(self):
 		try:
 			parts = self.zyngui.curlayer.get_presetpath().split('#',2)
-			file_name = parts[1].replace("/",">")
-			file_name = file_name.replace(" > ",">")
+			file_name = parts[1].replace("/",";")
+			file_name = file_name.replace(">",";")
+			file_name = file_name.replace(" ; ",";")
 		except:
 			file_name = "jack_capture"
 		return self.get_next_filenum() + '-' + file_name + '.mid'
