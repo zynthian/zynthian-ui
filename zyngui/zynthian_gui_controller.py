@@ -662,7 +662,7 @@ class zynthian_gui_controller:
 	def read_zyncoder(self):
 		if zyncoder.lib_zyncoder:
 			val=zyncoder.lib_zyncoder.get_value_zyncoder(self.index)
-			#logging.debug("ZYNCODER %d RAW VALUE => %s" % (self.index,val))
+			#logging.debug("ZYNCODER %d (%s), RAW VALUE => %s" % (self.index,self.title,val))
 		else:
 			val=self.value*self.mult-self.val0
 
