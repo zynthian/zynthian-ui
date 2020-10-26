@@ -113,14 +113,14 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		# Files on SD-Card
 		for fname, finfo in self.get_filelist(self.capture_dir_sdc).items():
 			l = finfo['length']
-			title="SD[{}:{:02d}] {}".format(int(l/60), int(l%60),fname.replace(";","/"))
+			title="SD[{}:{:02d}] {}".format(int(l/60), int(l%60),fname.replace(";",">",1).replace(";","/"))
 			self.list_data.append((finfo['fpath'],i,title))
 			i+=1
 
 		# Files on USB-Pendrive
 		for fname, finfo in self.get_filelist(self.capture_dir_usb).items():
 			l = finfo['length']
-			title="USB[{}:{:02d}] {}".format(int(l/60), int(l%60),fname.replace(";","/"))
+			title="USB[{}:{:02d}] {}".format(int(l/60), int(l%60),fname.replace(";",">",1).replace(";","/"))
 			self.list_data.append((finfo['fpath'],i,title))
 			i+=1
 
@@ -198,9 +198,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def get_new_filename(self):
 		try:
 			parts = self.zyngui.curlayer.get_presetpath().split('#',2)
-			file_name = parts[1].replace("/",";")
-			file_name = file_name.replace(">",";")
-			file_name = file_name.replace(" ; ",";")
+			file_name = parts[1].replace("/",";").replace(">",";").replace(" ; ",";")
 		except:
 			file_name = "jack_capture"
 		return self.get_next_filenum() + '-' + file_name + '.wav'
@@ -208,14 +206,12 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 	def delete_confirmed(self, fpath):
 		logging.info("DELETE AUDIO RECORDING: {}".format(fpath))
-
 		for ext in ("wav", "ogg", "mp3"):
 			try:
 				os.remove("{}.{}".format(fpath[:-4],ext))
 			except Exception as e:
 				#logging.error(e)
 				pass
-
 		self.zyngui.show_modal("audio_recorder")
 
 

@@ -62,7 +62,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def get_new_snapshot(self):
 		parts = self.zyngui.screens['layer'].layers[0].get_presetpath().split('#',2)
-		name = parts[1].replace("/",">")
+		name = parts[1].replace("/",";").replace(">",";").replace(" ; ",";")
 		return self.get_next_name() + '-' + name + '.zss'
 
 
@@ -157,8 +157,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		for f in sorted(os.listdir(join(self.base_dir,self.bank_dir))):
 			fpath=self.get_snapshot_fpath(f)
 			if isfile(fpath) and f[-4:].lower()=='.zss':
-				#title=str.replace(f[:-4], '_', ' ')
-				title=f[:-4]
+				title = f[:-4].replace(';','>',1).replace(';','/')
 				self.list_data.append((fpath,i,title))
 				try:
 					bn=self.get_midi_number(bname)
@@ -219,15 +218,18 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			if fpath=='NEW_SNAPSHOT':
 				self.zyngui.screens['layer'].reset()
 				self.zyngui.show_screen('layer')
-			else:
-				self.zyngui.screens['layer'].load_snapshot(fpath)
-				#self.zyngui.show_screen('control')
+			elif fpath:
+				if t=='S':
+					self.zyngui.screens['layer'].load_snapshot(fpath)
+					#self.zyngui.show_screen('control')
+				else:
+					self.zyngui.show_confirm("Do you really want to delete '{}'?".format(fname), self.delete_confirmed, fpath)
 		elif self.action=="SAVE":
 			if fpath=='NEW_SNAPSHOT':
 				fpath=self.get_snapshot_fpath(self.get_new_snapshot())
 				self.zyngui.screens['layer'].save_snapshot(fpath)
 				self.zyngui.show_active_screen()
-			else:
+			elif fpath:
 				if isfile(fpath):
 					self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % fname, self.cb_confirm_save_snapshot,[fpath])
 				else:
@@ -252,6 +254,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			os.remove(self.last_state_snapshot_fpath)
 		except:
 			pass
+
+
+	def delete_confirmed(self, fpath):
+		logging.info("DELETE SNAPSHOT: {}".format(fpath))
+		try:
+			os.remove(fpath)
+		except Exception as e:
+			logging.error(e)
+
+		self.zyngui.show_modal("snapshot")
 
 
 	def get_midi_number(self, f):
