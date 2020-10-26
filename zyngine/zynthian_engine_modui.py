@@ -499,98 +499,101 @@ class zynthian_engine_modui(zynthian_engine):
 			for param in pinfo['ports']['control']['input']:
 				#Skip ports with the folowing designations (like MOD-UI)
 				if not param['designation'] in ["http://lv2plug.in/ns/lv2core#enabled",
-												"http://lv2plug.in/ns/lv2core#freeWheeling",
-												"http://lv2plug.in/ns/ext/time#beatsPerBar",
-												"http://lv2plug.in/ns/ext/time#beatsPerMinute",
-												"http://lv2plug.in/ns/ext/time#speed"]:
-					try:
-						ctrl_graph=pgraph+'/'+param['symbol']
-						#If there is range info (should be!!) ...
-						if param['valid'] and param['ranges'] and len(param['ranges'])>2:
+					"http://lv2plug.in/ns/lv2core#freeWheeling",
+					"http://lv2plug.in/ns/ext/time#beatsPerBar",
+					"http://lv2plug.in/ns/ext/time#beatsPerMinute",
+					"http://lv2plug.in/ns/ext/time#speed"]:
+						continue
 
-							if param['properties'] and 'integer' in param['properties']:
-								is_integer=True
-							else:
-								is_integer=False
+				try:
+					ctrl_graph=pgraph+'/'+param['symbol']
+					#If there is range info (should be!!) ...
+					if param['valid'] and param['ranges'] and len(param['ranges'])>2:
 
-							#If there is Scale Points info ...
-							if param['scalePoints'] and len(param['scalePoints'])>1:
-								labels=[]
-								values=[]
-								for p in param['scalePoints']:
-									if p['valid']:
-										labels.append(p['label'])
-										values.append(p['value'])
-								try:
-									val=param['ranges']['default']
-								except:
-									val=values[0]
+						if param['properties'] and 'integer' in param['properties']:
+							is_integer=True
+						else:
+							is_integer=False
 
-								param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
-									'graph_path': ctrl_graph,
-									'value': val,
-									'labels': labels,
-									'ticks': values,
-									'value_min': 0,
-									'value_max': len(values)-1,
-									'is_toggle': False,
-									'is_integer': is_integer
-								})
+						#If there is Scale Points info ...
+						if param['scalePoints'] and len(param['scalePoints'])>1:
+							labels=[]
+							values=[]
+							for p in param['scalePoints']:
+								if p['valid']:
+									labels.append(p['label'])
+									values.append(p['value'])
+							try:
+								val=param['ranges']['default']
+							except:
+								val=values[0]
 
-							#If it's a normal controller ...
-							else:
-								pranges=param['ranges']
-								r=pranges['maximum']-pranges['minimum']
-								if is_integer:
-									if r==1:
-										val=pranges['default']
-										param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
-											'graph_path': ctrl_graph,
-											'value': val,
-											'labels': ['off','on'],
-											'ticks': [0,1],
-											'value_min': 0,
-											'value_max': 1,
-											'is_toggle': True,
-											'is_integer': True
-										})
-									else:
-										param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
-											'graph_path': ctrl_graph,
-											'value': int(pranges['default']),
-											'value_default': int(pranges['default']),
-											'value_min': int(pranges['minimum']),
-											'value_max': int(pranges['maximum']),
-											'is_toggle': False,
-											'is_integer': True
-										})
+							param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
+								'graph_path': ctrl_graph,
+								'value': val,
+								'labels': labels,
+								'ticks': values,
+								'value_min': 0,
+								'value_max': len(values)-1,
+								'is_toggle': False,
+								'is_integer': is_integer
+							})
+
+						#If it's a normal controller ...
+						else:
+							pranges=param['ranges']
+							r=pranges['maximum']-pranges['minimum']
+							if is_integer:
+								if r==1:
+									val=pranges['default']
+									param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
+										'graph_path': ctrl_graph,
+										'value': val,
+										'labels': ['off','on'],
+										'ticks': [0,1],
+										'value_min': 0,
+										'value_max': 1,
+										'is_toggle': True,
+										'is_integer': True
+									})
 								else:
 									param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
 										'graph_path': ctrl_graph,
-										'value': pranges['default'],
-										'value_default': pranges['default'],
-										'value_min': pranges['minimum'],
-										'value_max': pranges['maximum'],
+										'value': int(pranges['default']),
+										'value_default': int(pranges['default']),
+										'value_min': int(pranges['minimum']),
+										'value_max': int(pranges['maximum']),
 										'is_toggle': False,
-										'is_integer': False
+										'is_integer': True
 									})
+							else:
+								param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
+									'graph_path': ctrl_graph,
+									'value': pranges['default'],
+									'value_default': pranges['default'],
+									'value_min': pranges['minimum'],
+									'value_max': pranges['maximum'],
+									'is_toggle': False,
+									'is_integer': False
+								})
 
-						#If there is no range info (should be!!) => Default MIDI CC controller with 0-127 range
-						else:
-							param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
-								'graph_path': ctrl_graph,
-								'value': 0,
-								'value_default': 0,
-								'value_min': 0,
-								'value_max': 127,
-								'is_toggle': False,
-								'is_integer': True
-							})
+					#If there is no range info (should be!!) => Default MIDI CC controller with 0-127 range
+					else:
+						param['ctrl']=zynthian_controller(self,param['symbol'],param['shortName'],{
+							'graph_path': ctrl_graph,
+							'value': 0,
+							'value_default': 0,
+							'value_min': 0,
+							'value_max': 127,
+							'is_toggle': False,
+							'is_integer': True
+						})
 
-						#Add ZController to plugin_zctrl dictionary
-						self.plugin_zctrls[pgraph][param['symbol']]=param['ctrl']
-					except Exception as err:
-						logging.error("Configuring Controllers: "+pgraph+" => "+str(err))
+					#Add ZController to plugin_zctrl dictionary
+					self.plugin_zctrls[pgraph][param['symbol']]=param['ctrl']
+
+				except Exception as err:
+					logging.error("Configuring Controllers: "+pgraph+" => "+str(err))
 
 			#Add bypass Zcontroller
 			bypass_zctrl=zynthian_controller(self,'bypass','bypass',{
