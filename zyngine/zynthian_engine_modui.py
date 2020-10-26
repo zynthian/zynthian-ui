@@ -498,7 +498,7 @@ class zynthian_engine_modui(zynthian_engine):
 			#Add parameters to dictionary
 			for param in pinfo['ports']['control']['input']:
 				#Skip ports with the folowing designations (like MOD-UI)
-				if not param['designation'] in ["http://lv2plug.in/ns/lv2core#enabled",
+				if param['designation'] in ["http://lv2plug.in/ns/lv2core#enabled",
 					"http://lv2plug.in/ns/lv2core#freeWheeling",
 					"http://lv2plug.in/ns/ext/time#beatsPerBar",
 					"http://lv2plug.in/ns/ext/time#beatsPerMinute",
