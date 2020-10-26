@@ -497,6 +497,14 @@ class zynthian_engine_modui(zynthian_engine):
 			self.plugin_zctrls[pgraph]={}
 			#Add parameters to dictionary
 			for param in pinfo['ports']['control']['input']:
+				#Skip ports with the folowing designations (like MOD-UI)
+				if param['designation'] in ["http://lv2plug.in/ns/lv2core#enabled",
+					"http://lv2plug.in/ns/lv2core#freeWheeling",
+					"http://lv2plug.in/ns/ext/time#beatsPerBar",
+					"http://lv2plug.in/ns/ext/time#beatsPerMinute",
+					"http://lv2plug.in/ns/ext/time#speed"]:
+						continue
+
 				try:
 					ctrl_graph=pgraph+'/'+param['symbol']
 					#If there is range info (should be!!) ...
@@ -583,6 +591,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 					#Add ZController to plugin_zctrl dictionary
 					self.plugin_zctrls[pgraph][param['symbol']]=param['ctrl']
+
 				except Exception as err:
 					logging.error("Configuring Controllers: "+pgraph+" => "+str(err))
 
