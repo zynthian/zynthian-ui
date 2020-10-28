@@ -51,8 +51,9 @@ from zyngine import zynthian_engine_transport
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_info import zynthian_gui_info
+from zyngui.zynthian_gui_option import zynthian_gui_option
+from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_layer import zynthian_gui_layer
 from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
@@ -306,6 +307,7 @@ class zynthian_gui:
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
 		self.screens['confirm'] = zynthian_gui_confirm()
+		self.screens['option'] = zynthian_gui_option()
 		self.screens['engine'] = zynthian_gui_engine()
 		self.screens['layer'] = zynthian_gui_layer()
 		self.screens['layer_options'] = zynthian_gui_layer_options()

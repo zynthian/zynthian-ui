@@ -34,6 +34,7 @@ import zyngui.zynthian_gui_config as zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_info import zynthian_gui_info
+from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_layer import zynthian_gui_layer

@@ -43,6 +43,7 @@ class zynthian_layer:
 		self.audio_out = ["system:playback_1", "system:playback_2"]
 		self.audio_in = ["system:capture_1", "system:capture_2"]
 		self.midi_out = ["MIDI-OUT", "NET-OUT"]
+		self.chain_parallel = False
 
 		self.bank_list = []
 		self.bank_index = 0
@@ -422,6 +423,7 @@ class zynthian_layer:
 			'preset_info': self.preset_info,
 			'controllers_dict': {},
 			'zs3_list': self.zs3_list,
+			'chain_parallel': self.chain_parallel,
 			'active_screen_index': self.active_screen_index
 		}
 		for k in self.controllers_dict:
@@ -464,6 +466,10 @@ class zynthian_layer:
 		#Set zs3 list
 		if 'zs3_list' in snapshot:
 			self.zs3_list = snapshot['zs3_list']
+
+		#Set chain parallel flag
+		if 'chain_parallel' in snapshot:
+			self.chain_parallel = snapshot['chain_parallel']
 
 		#Set active screen
 		if 'active_screen_index' in snapshot:

@@ -279,18 +279,19 @@ def midi_autoconnect(force=False):
 	# => Get Root-engines info
 	root_engine_info = {}
 	for mcrl in midichain_roots:
-		if mcrl.get_midi_jackname():
-			jackname = mcrl.get_midi_jackname()
-			if jackname in root_engine_info:
-				root_engine_info[jackname]['chans'].append(mcrl.midi_chan)
-			else:
-				port_name = get_fixed_midi_port_name(jackname)
-				ports=jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
-				if ports:
-					root_engine_info[jackname] = {
-						'port': ports[0],
-						'chans': [mcrl.midi_chan]
-					}
+		for mcprl in zynthian_gui_config.zyngui.screens["layer"].get_midichain_pars(mcrl):
+			if mcprl.get_midi_jackname():
+				jackname = mcprl.get_midi_jackname()
+				if jackname in root_engine_info:
+					root_engine_info[jackname]['chans'].append(mcprl.midi_chan)
+				else:
+					port_name = get_fixed_midi_port_name(jackname)
+					ports=jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
+					if ports:
+						root_engine_info[jackname] = {
+							'port': ports[0],
+							'chans': [mcprl.midi_chan]
+						}
 
 	for jn, info in root_engine_info.items():
 		#logger.debug("MIDI ROOT ENGINE INFO: {} => {}".format(jn, info))
@@ -599,36 +600,38 @@ def audio_autoconnect(force=False):
 			if not rl.get_audio_jackname() or layer.engine.type!="Audio Effect":
 				continue
 
-			#Get Root Layer Input ports ...
-			rl_in = jclient.get_ports(rl.get_audio_jackname(), is_input=True, is_audio=True)
-			if len(rl_in)>0:
-				nsc = min(len(rl.get_audio_in()),len(rl_in))
-	
-				#Connect System Capture to Root Layer ports
-				for j, scp in enumerate(capture_ports):
-					if scp.name in rl.get_audio_in():
-						for k, rl_inp in enumerate(rl_in):
-							if k%nsc==j%nsc:
-								#logger.debug("Connecting {} to {} ...".format(scp.name, layer.get_audio_jackname()))
-								try:
-									jclient.connect(scp, rl_inp)
-								except:
-									pass
-							else:
-								try:
-									jclient.disconnect(scp, rl_inp)
-								except:
-									pass
-							# Limit to 2 input ports 
-							#if k>=1:
-							#	break
+			# Connect to FX-layers roots and their "pars" (parallel layers)
+			for rlp in zynthian_gui_config.zyngui.screens["layer"].get_fxchain_pars(rl):
+				#Get Root Layer Input ports ...
+				rlp_in = jclient.get_ports(rlp.get_audio_jackname(), is_input=True, is_audio=True)
+				if len(rlp_in)>0:
+					nsc = min(len(rlp.get_audio_in()),len(rlp_in))
+		
+					#Connect System Capture to Root Layer ports
+					for j, scp in enumerate(capture_ports):
+						if scp.name in rlp.get_audio_in():
+							for k, rlp_inp in enumerate(rlp_in):
+								if k%nsc==j%nsc:
+									#logger.debug("Connecting {} to {} ...".format(scp.name, layer.get_audio_jackname()))
+									try:
+										jclient.connect(scp, rlp_inp)
+									except:
+										pass
+								else:
+									try:
+										jclient.disconnect(scp, rlp_inp)
+									except:
+										pass
+								# Limit to 2 input ports 
+								#if k>=1:
+								#	break
 
-					else:
-						for rl_inp in rl_in:
-							try:
-								jclient.disconnect(scp, rl_inp)
-							except:
-								pass
+						else:
+							for rlp_inp in rlp_in:
+								try:
+									jclient.disconnect(scp, rlp_inp)
+								except:
+									pass
 
 		if zynthian_gui_config.midi_aubionotes_enabled:
 			#Get Aubio Input ports ...
