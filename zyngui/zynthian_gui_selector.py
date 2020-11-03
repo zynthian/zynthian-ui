@@ -48,6 +48,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		self.index = 0
 		self.list_data = []
 		self.zselector = None
+		self.zselector_hiden = False
 
 		#Title Area parameters
 		self.path_canvas_width=zynthian_gui_config.display_width-self.status_l-self.status_lpad-2
@@ -194,7 +195,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 			self.listbox.insert(tkinter.END, item[2])
 
 
-	def set_selector(self):
+	def set_selector(self, zs_hiden=False):
 		if self.shown:
 			if self.zselector:
 				self.zselector_ctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
@@ -202,7 +203,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 				self.zselector.show()
 			else:
 				self.zselector_ctrl=zynthian_controller(None,self.selector_caption,self.selector_caption,{ 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
-				self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.main_frame,self.zselector_ctrl)
+				self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.main_frame,self.zselector_ctrl,zs_hiden)
 
 
 	def fill_list(self):
@@ -233,6 +234,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 			self.zselector.read_zyncoder()
 			if self.index!=self.zselector.value:
 				self.select(self.zselector.value)
+				return True
 
 
 	def select_listbox(self,index):

@@ -45,7 +45,7 @@ from . import zynthian_gui_config
 
 class zynthian_gui_controller:
 
-	def __init__(self, indx, frm, zctrl):
+	def __init__(self, indx, frm, zctrl, hiden=False):
 		self.width=zynthian_gui_config.ctrl_width
 		self.height=zynthian_gui_config.ctrl_height
 		self.trw=zynthian_gui_config.ctrl_width-6
@@ -68,6 +68,7 @@ class zynthian_gui_controller:
 		self.value_print=None
 		self.value_font_size=14
 
+		self.hiden=hiden
 		self.shown=False
 		self.rectangle=None
 		self.triangle=None
@@ -81,8 +82,7 @@ class zynthian_gui_controller:
 		self.row=zynthian_gui_config.ctrl_pos[indx][0]
 		self.col=zynthian_gui_config.ctrl_pos[indx][1]
 		self.sticky=zynthian_gui_config.ctrl_pos[indx][2]
-		self.plot_value=self.plot_value_arc
-		self.erase_value=self.erase_value_arc
+
 		# Create Canvas
 		self.canvas=tkinter.Canvas(self.main_frame,
 			width=self.width,
@@ -107,13 +107,14 @@ class zynthian_gui_controller:
 	def show(self):
 		#print("SHOW CONTROLLER "+str(self.ctrl)+" => "+str(self.shown))
 		if not self.shown:
-			if self.index%2==0:
-				pady = (0,2)
-			else:
-				pady = (0,0)
-			self.canvas.grid(row=self.row, column=self.col, sticky=self.sticky, pady=pady)
 			self.shown=True
-			self.plot_value()
+			if not self.hiden:
+				if self.index%2==0:
+					pady = (0,2)
+				else:
+					pady = (0,0)
+				self.canvas.grid(row=self.row, column=self.col, sticky=self.sticky, pady=pady)
+				self.plot_value()
 
 
 	def hide(self):
@@ -122,9 +123,9 @@ class zynthian_gui_controller:
 			self.canvas.grid_forget()
 
 
-	def set_hl(self):
+	def set_hl(self, color=zynthian_gui_config.color_hl):
 		try:
-			self.canvas.itemconfig(self.arc, outline=zynthian_gui_config.color_hl)
+			self.canvas.itemconfig(self.arc, outline=color)
 		except:
 			pass
 
@@ -208,6 +209,16 @@ class zynthian_gui_controller:
 		#print("VALUE: %s" % self.value)
 		#print("VALUE PLOT: %s" % self.value_plot)
 		#print("VALUE PRINT: %s" % self.value_print)
+
+
+	def plot_value(self):
+		if not self.hiden:
+			self.plot_value_arc()
+
+
+	def erase_value(self):
+		if not self.hiden:
+			self.erase_value_arc()
 
 
 	def plot_value_rectangle(self):
