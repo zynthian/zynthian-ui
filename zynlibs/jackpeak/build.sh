@@ -9,5 +9,7 @@ pushd $DIR
 	pushd build
 		cmake ..
 		make
+		success=$?
 	popd
 popd
+exit $success

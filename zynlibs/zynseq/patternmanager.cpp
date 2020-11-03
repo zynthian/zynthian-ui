@@ -142,13 +142,13 @@ bool PatternManager::load(const char* filename)
 				continue;
 			uint32_t nSong = fileRead32(pFile);
 			m_mSongs[nSong].setBar(fileRead16(pFile));
-			uint32_t nMasterEvents = fileRead32(pFile);
+			uint32_t nTimebaseEvents = fileRead32(pFile);
 			nBlockSize -= 10;
-			if(nBlockSize < nMasterEvents * 8) //!@todo Handle variable length data
+			if(nBlockSize < nTimebaseEvents * 8) //!@todo Handle variable length data
 				continue;
-			for(uint32_t nEvent = 0; nEvent < nMasterEvents; ++nEvent)
+			for(uint32_t nEvent = 0; nEvent < nTimebaseEvents; ++nEvent)
 			{
-				m_mSongs[nSong].addMasterEvent(fileRead32(pFile), fileRead16(pFile), fileRead16(pFile));
+				m_mSongs[nSong].getTimebase()->addTimebaseEvent(fileRead16(pFile), fileRead16(pFile), fileRead16(pFile), fileRead16(pFile));
 				nBlockSize -= 8;
 			}
 			while(nBlockSize)
@@ -192,6 +192,7 @@ bool PatternManager::load(const char* filename)
 
 void PatternManager::save(const char* filename)
 {
+	//!@todo Need to save / load ticks per beat (unless we always use 1920)
 	FILE *pFile;
 	int nPos = 0;
 	pFile = fopen(filename, "w");
@@ -255,12 +256,14 @@ void PatternManager::save(const char* filename)
 		uint32_t nStartOfBlock = nPos;
 		nPos += fileWrite32(nSong, pFile);
 		nPos += fileWrite16(m_mSongs[nSong].getBar(), pFile);
-		nPos += fileWrite32(m_mSongs[nSong].getMasterEvents(), pFile);
-		for(uint32_t nEvent = 0; nEvent < m_mSongs[nSong].getMasterEvents(); ++nEvent)
+		nPos += fileWrite32(m_mSongs[nSong].getTimebase()->getEventQuant(), pFile);
+		for(size_t nIndex = 0; nIndex < m_mSongs[nSong].getTimebase()->getEventQuant(); ++nIndex)
 		{
-			nPos += fileWrite32(m_mSongs[nSong].getMasterEventTime(nEvent), pFile);
-			nPos += fileWrite16(m_mSongs[nSong].getMasterEventCommand(nEvent), pFile);
-			nPos += fileWrite16(m_mSongs[nSong].getMasterEventData(nEvent), pFile);
+			TimebaseEvent* pEvent = m_mSongs[nSong].getTimebase()->getEvent(nIndex);
+			nPos += fileWrite16(pEvent->measure, pFile);
+			nPos += fileWrite16(pEvent->tick, pFile);
+			nPos += fileWrite16(pEvent->type, pFile);
+			nPos += fileWrite16(pEvent->value, pFile);
 		}
 		for(uint32_t nSequence = 0; nSequence < m_mSongSequences.size(); ++nSequence)
 		{
@@ -448,9 +451,11 @@ void PatternManager::copySong(uint32_t source, uint32_t destination)
 	if(source == destination)
 		return;
 	m_mSongs[destination].clear();
-	for(uint32_t nEvent = 0; nEvent < m_mSongs[source].getMasterEvents(); ++ nEvent)
-		m_mSongs[destination].addMasterEvent(m_mSongs[source].getMasterEventTime(nEvent), m_mSongs[source].getMasterEventCommand(nEvent), m_mSongs[source].getMasterEventData(nEvent));
-	m_mSongs[destination].setBar(m_mSongs[source].getBar());
+	for(uint32_t nEvent = 0; nEvent < m_mSongs[source].getTimebase()->getEventQuant(); ++ nEvent)
+	{
+		TimebaseEvent* pSourceEvent = m_mSongs[source].getTimebase()->getEvent(nEvent);
+		m_mSongs[destination].getTimebase()->addTimebaseEvent(pSourceEvent->measure, pSourceEvent->tick, pSourceEvent->type, pSourceEvent->value);
+	}
 	for(size_t nTrack = 0; nTrack < m_mSongs[source].getTracks(); ++nTrack)
 		m_mSongs[destination].addTrack(m_mSongs[source].getSequence(nTrack));
 }
@@ -461,19 +466,21 @@ void PatternManager::clearSong(uint32_t song)
 		removeTrack(song, 0);
 }
 
-void PatternManager::startSong()
+void PatternManager::startSong(bool bFast)
 {
 	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong].getTracks(); ++nTrack)
 	{
 		uint32_t nSequence = m_mSongs[m_nCurrentSong].getSequence(nTrack);
-		m_mSequences[nSequence].setPlayState(PLAYING);
+		m_mSequences[nSequence].setPlayState(bFast?PLAYING:STARTING);
 	}
+	/*
 	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong + 1000].getTracks(); ++nTrack)
 	{
 		uint32_t nSequence = m_mSongs[m_nCurrentSong + 1000].getSequence(nTrack);
 		if(m_mSequences[nSequence].isSolo())
-			m_mSequences[nSequence].setPlayState(PLAYING);
+			m_mSequences[nSequence].setPlayState(bFast?PLAYING:STARTING);
 	}
+	*/
 }
 
 void PatternManager::stopSong()
@@ -579,4 +586,11 @@ bool PatternManager::isPlaying()
 		if(it->second.getPlayState() != STOPPED)
 			return true;
 	return false;
+}
+
+
+void PatternManager::stop()
+{
+	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
+		it->second.setPlayState(STOPPED);
 }

@@ -1,14 +1,8 @@
 #pragma once
 #include "constants.h"
+#include "timebase.h"
 #include <cstdio>
 #include <vector>
-
-/**	Master track event type */
-struct MasterEvent {
-	uint32_t time;
-	uint16_t command;
-	uint16_t data;
-};
 
 /**	Song class provides a group of sequences
 */
@@ -16,7 +10,6 @@ class Song
 {
 	public:
 		/**	@brief	Construct song object
-		*	@param	Tracks Quantity of tracks in song
 		*/
 		Song();
 
@@ -46,16 +39,31 @@ class Song
 
 		/**	@brief	Set song tempo
 		*	@param	tempo Tempo in BPM
-		*	@param	time Time at which to add the tempo to the master track [Optional - default: 0]
+		*	@param	measure Measure (bar) at which to set tempo
+		*	@param	tick Tick at which to set tempo [Optional - default: 0]
         *   @note   Removes tempo if same as previous tempo
 		*/
-		void setTempo(uint16_t tempo, uint32_t time = 0);
+		void setTempo(uint16_t tempo, uint16_t measure, uint16_t tick=0);
 
 		/**	@brief	Get song tempo
-		*	@param	time Time at which to query tempo [Optional - default: 0]
+		*	@param	measure Measure (bar) at which to get tempo
+		*	@param	beat Tick at which to get tempo [Optional - default: 0]
 		*	@retval	uint16_t Tempo in BPM
 		*/
-		uint16_t getTempo(uint32_t time = 0);
+		uint16_t getTempo(uint16_t measure, uint16_t tick=0);
+
+		/**	@brief	Set song time signature
+		*	@param	timesig Time signature - MSB: Numerator, LSB: Denominator
+		*	@param	measure Measure (bar) at which to set time signature
+        *   @note   Removes time signature if same as previous time signature
+		*/
+		void setTimeSig(uint16_t timesig, uint16_t measure);
+
+		/**	@brief	Get song time signature
+		*	@param	measure Measure (bar) at which to get time signature
+		*	@retval	uint16_t Time signature MSB: Numerator LSB: Denominator
+		*/
+		uint16_t getTimeSig(uint16_t measure);
 
 		/**	@brief	Set bar / loop  period
 		*	@param	period Bar length / loop point in clock cycles
@@ -80,52 +88,14 @@ class Song
 		/**	@brief	Clears content of song, removing all sequences
 		*/
 		void clear();
-
-		/**	@brief	Get quantity of events in master track
-		*	@retval	uint32_t Quantity of events
+		
+		/**	@brief	Get timebase map
+		*	retval	Timebase* Pointer to timebase map
 		*/
-		uint32_t getMasterEvents();
-
-		/**	@brief	Get time of master track event
-		*	@param	event Index of event
-		*	@retval	uint32_t Time of event
-		*/
-		uint32_t getMasterEventTime(uint32_t event);
-
-		/**	@brief	Get command of master track event
-		*	@param	event Index of event
-		*	@retval	uint16_t Event command
-		*/
-		uint16_t getMasterEventCommand(uint32_t event);
-
-		/**	@brief	Get data of master track event
-		*	@param	event Index of event
-		*	@retval	uint16_t Event data
-		*/
-		uint16_t getMasterEventData(uint32_t event);
-
-		/**	@brief	Add master track event
-		*	@param	time Time of event
-		*	@param	command Event command
-		*	@param	data Event data
-		*/
-		void addMasterEvent(uint32_t time, uint16_t command, uint16_t data);
-
-		/**	@brief	Remove master track event
-		*	@param	time Time of event
-		*	@param	command Event command
-		*/
-		void removeMasterEvent(uint32_t time, uint16_t command);
-
-		/**	@brief	Get next tempo change
-		*	@param	time Time from which to search
-		*	@retval	size_t Index of master event describing tempo change (-1 if no more changes in song)
-		*	@note	This may fail if master events are inserted or removed between calls
-		*/
-		int getNextTempoChange(uint32_t time);
+		Timebase* getTimebase();
 
 	private:
 		std::vector<uint32_t> m_vTracks; // Index of sequences representing each track
 		uint32_t m_nBar = 96; // Clock cycles per bar / loop point
-		std::vector<MasterEvent*> m_vMasterTrack; // List of master track events
+		Timebase m_timebase; // Timebase map
 };

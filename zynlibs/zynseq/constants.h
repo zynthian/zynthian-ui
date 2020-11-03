@@ -2,6 +2,9 @@
 #pragma once
 #include <cstdint>
 
+#define DEFAULT_TEMPO	120 // March time (120 BPM)
+#define DEFAULT_TIMESIG	0x0404 // Common time (4/4)
+
 // Play mode
 #define DISABLED		0
 #define ONESHOT			1
@@ -30,11 +33,9 @@
 #define MIDI_NOTE_ON	0x90
 #define MIDI_CONTROL	0xB0
 
-// Master track event types
-#define MASTER_EVENT_TEMPO 1
-
 struct MIDI_MESSAGE {
 	uint8_t command = 0;
 	uint8_t value1 = 0;
 	uint8_t value2 = 0;
 };
+

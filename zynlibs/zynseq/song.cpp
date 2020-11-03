@@ -4,13 +4,11 @@
 
 Song::Song()
 {
-	setTempo(120, 0);
+	setTempo(120, 1);
 }
 
 Song::~Song()
 {
-	for(size_t nEvent = 0; nEvent < m_vMasterTrack.size(); ++nEvent)
-		delete m_vMasterTrack[nEvent];
 }
 
 size_t Song::getTracks()
@@ -37,61 +35,14 @@ void Song::removeTrack(uint32_t track)
 		m_vTracks.erase(m_vTracks.begin() + track);
 }
 
-void Song::setTempo(uint16_t tempo, uint32_t time)
-{
-    addMasterEvent(time, MASTER_EVENT_TEMPO, tempo);
-    // Remove consecutive duplicates
-    int32_t nPrevious = -1;
-    for(size_t nEvent = 0; nEvent < m_vMasterTrack.size(); ++nEvent)
-    {
-        if(m_vMasterTrack[nEvent]->command == MASTER_EVENT_TEMPO)
-        {
-            if(nPrevious == -1)
-                nPrevious = nEvent;
-            else
-                if(m_vMasterTrack[nPrevious]->data == m_vMasterTrack[nEvent]->data)
-                    removeMasterEvent(m_vMasterTrack[nEvent]->time, MASTER_EVENT_TEMPO);
-                else
-                    nPrevious = nEvent;
-        }
-    }
-}
-
-uint16_t Song::getTempo(uint32_t time)
-{
-	uint16_t nTempo = 120;
-	auto it = m_vMasterTrack.begin();
-	for(; it != m_vMasterTrack.end(); ++it)
-	{
-		if((*it)->command == MASTER_EVENT_TEMPO)
-			nTempo = (*it)->data;
-		if(time <= (*it)->time)
-			break;
-	}
-	return nTempo;
-}
-
-int Song::getNextTempoChange(uint32_t time)
-{
-	for(size_t nIndex = 0; nIndex < m_vMasterTrack.size(); ++nIndex)
-	{
-		if(m_vMasterTrack[nIndex]->command != MASTER_EVENT_TEMPO)
-			continue;
-		if(m_vMasterTrack[nIndex]->time < time)
-			continue;
-		return nIndex;
-	}
-	return -1;
-}
-
 void Song::setBar(uint32_t period)
 {
-	m_nBar = period;
+   m_nBar = period;
 }
 
 uint32_t Song::getBar()
 {
-	return m_nBar;
+   return m_nBar;
 }
 
 void Song::clear()
@@ -99,61 +50,34 @@ void Song::clear()
 	m_vTracks.clear();
 }
 
-uint32_t Song::getMasterEvents()
+void Song::setTempo(uint16_t tempo, uint16_t measure, uint16_t tick)
 {
-	return m_vMasterTrack.size();
+	m_timebase.addTimebaseEvent(measure, tick, TIMEBASE_TYPE_TEMPO, tempo);
 }
 
-uint32_t Song::getMasterEventTime(uint32_t event)
+uint16_t Song::getTempo(uint16_t measure, uint16_t tick)
 {
-	if(event >= m_vMasterTrack.size())
-		return 0;
-	return m_vMasterTrack[event]->time;
+	TimebaseEvent* pEvent = m_timebase.getPreviousTimebaseEvent(measure, tick, TIMEBASE_TYPE_TEMPO);
+	if(pEvent)
+		return pEvent->value;
+	return DEFAULT_TEMPO; // Default tempo if none found
 }
 
-uint16_t Song::getMasterEventCommand(uint32_t event)
+void Song::setTimeSig(uint16_t timesig, uint16_t measure)
 {
-	if(event >= m_vMasterTrack.size())
-		return 0;
-	return m_vMasterTrack[event]->command;
+	m_timebase.addTimebaseEvent(measure, 0, TIMEBASE_TYPE_TIMESIG, timesig);
 }
 
-uint16_t Song::getMasterEventData(uint32_t event)
+uint16_t Song::getTimeSig(uint16_t measure)
 {
-	if(event >= m_vMasterTrack.size())
-		return 0;
-	return m_vMasterTrack[event]->data;
+	TimebaseEvent* pEvent = m_timebase.getPreviousTimebaseEvent(measure, 1, TIMEBASE_TYPE_TIMESIG);
+	if(pEvent)
+		return pEvent->value;
+	return DEFAULT_TIMESIG;
 }
 
-void Song::addMasterEvent(uint32_t time, uint16_t command, uint16_t data)
+Timebase* Song::getTimebase()
 {
-	auto it = m_vMasterTrack.begin();
-	for(; it < m_vMasterTrack.end(); ++it)
-	{
-		if((*it)->time == time && (*it)->command == command)
-		{
-			(*it)->data = data;
-			return;
-		}
-		if((*it)->time > time)
-			break;
-	}
-	MasterEvent* pEvent = new MasterEvent;
-	pEvent->time = time;
-	pEvent->command = command;
-	pEvent->data = data;
-	m_vMasterTrack.insert(it, pEvent);
+	return &m_timebase;
 }
 
-void Song::removeMasterEvent(uint32_t time, uint16_t command)
-{
-	auto it = m_vMasterTrack.begin();
-	for(; it < m_vMasterTrack.end(); ++it)
-	{
-		if((*it)->time == time && (*it)->command == command)
-		{
-			delete(*it);
-			return;
-		}
-	}
-}

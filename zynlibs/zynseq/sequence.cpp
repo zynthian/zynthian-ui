@@ -109,7 +109,8 @@ void Sequence::setPlayState(uint8_t state)
 				return;
 		}
 	else if(state == STARTING)
-		m_nDivCount = 0; //!@todo What should div count be?
+		setPlayPosition(m_nPosition);
+//		m_nDivCount = 0; //!@todo What should div count be?
 	if(m_nSequenceLength)
 		m_nState = state;
 	else
@@ -128,6 +129,7 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 {
 	// Clock cycle - update position and associated counters, status, etc.
 	// After this call all counters point to next position
+	// Events are triggered when m_nDivCount. Step is incremented after this so the countdown occurs whilst m_nCurrentStep is already set.
 	bool bReturn = false;
 	uint8_t nState = m_nState;
 	if(bSync && m_nState == STARTING)
@@ -136,13 +138,14 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 		m_nState = STOPPED;
 	if(m_nState == STOPPED || m_nState == STARTING)
 		return bReturn;
-	if(m_nDivCount-- == 0)
+	//printf("Sequence clocked at %u. Step: %u m_nDivCount: %u m_nClkPerStep: %u\n", m_nPosition, m_nCurrentStep, m_nDivCount, m_nClkPerStep);
+	if(m_nDivCount == 0)
 	{
 		// Reached next step
 		m_nLastClockTime = nTime;
-		m_nDivCount = m_nClkPerStep - 1;
 		if(m_nPosition >= m_nSequenceLength)
 		{
+			printf("Reached end of sequence\n");
 			// Reached end of sequence
 			if(m_nState == STOPPING)
 			{
@@ -167,6 +170,7 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 
 		if(m_mPatterns.find(m_nPosition) != m_mPatterns.end())
 		{
+			printf("Start of pattern\n");
 			// Playhead at start of pattern
 			m_nCurrentPatternPos = m_nPosition;
 			m_nCurrentStep = 0;
@@ -176,9 +180,11 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 				m_nClkPerStep = 1;
 			m_nEventValue = -1;
 			bReturn = true;
+			printf("m_nCurrentPatternPos: %u m_nClkPerStep: %u\n", m_nCurrentPatternPos, m_nClkPerStep);
 		}
 		else if(m_nCurrentPatternPos >= 0 && m_nPosition >= m_nCurrentPatternPos + m_mPatterns[m_nCurrentPatternPos]->getLength())
 		{
+			printf("End of pattern\n");
 			// At end of pattern
 			m_nCurrentPatternPos = -1;
 			m_nNextEvent = -1;
@@ -191,7 +197,9 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 			// Within or between pattern
 			bReturn = true;
 		}
+		m_nDivCount = m_nClkPerStep;
 	}
+	--m_nDivCount;
 	++m_nPosition;
 	if(nState != m_nState && m_nTallyChannel < 16 && m_nTrigger < 128)
 	{
@@ -328,6 +336,7 @@ uint32_t Sequence::getPlayPosition()
 
 void Sequence::setPlayPosition(uint32_t clock)
 {
+	m_nPosition = clock;
 	if(m_mPatterns.size() < 1)
 		return;
 
@@ -342,9 +351,7 @@ void Sequence::setPlayPosition(uint32_t clock)
 		--it;
 	Pattern* pPattern = it->second;
 
-	uint32_t nTime = clock - it->first; // Clock cycles since start of last (maybe current) pattern
-
-	if(clock >= it->first + pPattern->getLength())
+	if(clock >= it->first + pPattern->getLength() || clock < it->first)
 	{
 		// Between patterns
 		m_nCurrentPatternPos = -1;
@@ -366,8 +373,6 @@ void Sequence::setPlayPosition(uint32_t clock)
 		m_nDivCount = (clock - m_nCurrentPatternPos) % m_nClkPerStep; // Clocks cycles until next step
 		if(m_nDivCount)
 			m_nDivCount = m_nClkPerStep - m_nDivCount;
-
-		m_nPosition = clock + m_nDivCount; // Position at next step
 
 		m_nCurrentStep = (clock - m_nCurrentPatternPos) / m_nClkPerStep;
 

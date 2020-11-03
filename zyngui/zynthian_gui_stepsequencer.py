@@ -541,6 +541,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			params = 1
 			self.song_editor_mode = 3
 		elif childIndex == 0:
+			self.libseq.stop() #TODO This is a sledgehammer approach - stopping everything when editing pattern because otherwise we need to consider relative positions for everything
 			self.libseq.selectSong(0)
 			self.child = self.patternEditor
 		elif childIndex == 2:
@@ -564,37 +565,37 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to start transport
 	def start(self):
-		self.zyngui.zyntransport.transport_start();
+		self.parent.libseq.transportStart();
 
 	# Function to pause transport
 	def pause(self):
-		self.zyngui.zyntransport.transport_stop();
+		self.parent.libseq.transportStop();
 
 	# Function to stop and recue transport
 	def stop(self):
-		self.zyngui.zyntransport.transport_stop();
-		self.zyngui.zyntransport.locate(0);
+		self.parent.libseq.transportStop();
+		self.parent.libseq.locate(0);
 		tempo = self.libseq.getTempo(self.song, 0)
-		self.zyngui.zyntransport.set_tempo(tempo)
+		self.parent.libseq.setTempo(tempo)
 
 	# Function to recue transport
 	def recue(self):
-		playState = self.zyngui.zyntransport.get_state()
+		playState = self.parent.libseq.getPlayState()
 		# Workaround issue with jack_transport needing to stop and pause before locate
-		self.zyngui.zyntransport.transport_stop();
+		self.parent.libseq.transportStop();
 		time.sleep(0.1)
-		self.zyngui.zyntransport.locate(0);
+		self.parent.libseq.locate(0);
 		if playState:
-			self.zyngui.zyntransport.transport_play();
+			self.parent.libseq.transportStart();
 
 	# Function to select song
 	#	song: Index of song to select
 	def selectSong(self, song):
 		if song > 0:
-#			self.zyngui.zyntransport.transport_stop() #TODO: Stopping transport due to jack_transport restarting if locate called
+#			self.parent.libseq.transportStop() #TODO: Stopping transport due to jack_transport restarting if locate called
 			self.libseq.selectSong(song)
 			self.song = song
-			self.zyngui.zyntransport.set_tempo(self.libseq.getTempo(song, 0))
+			self.libseq.setTempo(self.libseq.getTempo(song, 0))
 			try:
 				self.child.selectSong()
 			except:
@@ -602,7 +603,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to toggle transport
 	def toggleTransport(self):
-		self.zyngui.zyntransport.transport_toggle()
+		self.parent.libseq.transportToggle()
 
 	# Function to name file before saving
 	#	filename: Starting filename
@@ -748,11 +749,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			elif self.paramEditorItem:
 				self.menuValueAssert()
 				return True
-		elif switch == ENC_SNAPSHOT:
-			if type == 'B':
-				self.stop()
-#			else:
-#				self.toggleTransport()
 		return True # Tell parent that we handled all short and bold key presses
 
 	# Function to manage switch press

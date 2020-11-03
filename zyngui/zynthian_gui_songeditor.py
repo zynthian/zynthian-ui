@@ -30,7 +30,7 @@ import logging
 import threading
 import tkinter.font as tkFont
 from PIL import Image, ImageTk
-from time import monotonic
+from time import monotonic, sleep
 from threading import Timer
 import traceback
 
@@ -183,6 +183,8 @@ class zynthian_gui_songeditor():
 		self.parent.registerZyncoder(ENC_LAYER, self)
 		self.parent.registerSwitch(ENC_SELECT, self, 'S')
 		self.parent.registerSwitch(ENC_SELECT, self, 'B')
+		self.parent.registerSwitch(ENC_SNAPSHOT, self, 'S')
+		self.parent.registerSwitch(ENC_SNAPSHOT, self, 'B')
 
 	# Function to populate menu
 	def populateMenu(self):
@@ -196,7 +198,7 @@ class zynthian_gui_songeditor():
 		self.parent.addMenu({'Clocks per division':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.getClocksPerDivision, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tracks':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':64, 'getValue':self.getTracks, 'onChange':self.onMenuChange, 'onAssert':self.setTracks}}})
 		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.getTempo, 'onChange':self.onMenuChange, 'onAssert':self.assertTempo}}})
-		self.parent.addMenu({'Bar / sync':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getBarLength, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Bar / sync':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getBeatsPerBar, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Group':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':25, 'getValue':self.getGroup, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(self.playModes)-1, 'getValue':self.getMode, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Trigger':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':128, 'getValue':self.getTrigger, 'onChange':self.onMenuChange, 'onAssert':self.setTrigger}}})
@@ -233,7 +235,7 @@ class zynthian_gui_songeditor():
 	def assertTempo(self):
 		value = self.parent.getParam('Tempo', 'value')
 		if self.position == self.selectedCell[0]:
-			self.zyngui.zyntransport.set_tempo(value)
+			self.parent.libseq.setTempo(value)
 		self.parent.libseq.setTempo(self.song, value, self.selectedCell[0] * self.clocksPerDivision)
 		self.redraw_pending = 1
 
@@ -262,8 +264,9 @@ class zynthian_gui_songeditor():
 		self.redraw_pending = 1
 
 	# Function to get bar duration
-	def getBarLength(self):
-		return int(self.parent.libseq.getBarLength(self.song) / self.clocksPerDivision)
+	def getBeatsPerBar(self):
+		#TODO: Do we want beats per bar at cursor or play position?
+		return int(self.parent.libseq.getBeatsPerBar(self.song, self.song_position))
 
 	# Function to get pattern (to add to song)
 	def getPattern(self):
@@ -712,7 +715,10 @@ class zynthian_gui_songeditor():
 			elif time > prevStart and time < prevEnd:
 				# Within pattern
 				if forward:
-					time = nextStart
+					if prevEnd + duration > nextStart:
+						time = nextStart
+					else:
+						time = prevEnd
 				else:
 					time = prevStart
 			if time == 0 and duration > nextStart:
@@ -819,11 +825,11 @@ class zynthian_gui_songeditor():
 		elif menuItem == 'Tempo':
 			pass
 		elif menuItem == 'Bar / sync':
-			self.parent.libseq.setBarLength(self.song, value * self.clocksPerDivision)
+			self.parent.libseq.setBeatsPerBar(self.song, value)
 			if self.editorMode:
-				self.parent.libseq.setBarLength(self.song - 1000, value * self.clocksPerDivision)
+				self.parent.libseq.setBeatsPerBar(self.song - 1000, value)
 			else:
-				self.parent.libseq.setBarLength(self.song + 1000, value * self.clocksPerDivision)
+				self.parent.libseq.setBeatsPerBar(self.song + 1000, value)
 			self.redraw_pending = 1
 		elif menuItem == "Group":
 			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
@@ -883,7 +889,6 @@ class zynthian_gui_songeditor():
 		song = self.parent.libseq.getSong()
 		if song != 0:
 			self.song = song
-#		self.zyngui.zyntransport.locate(self.position) #TODO: Ideally remember last position
 		if self.editorMode:
 			self.parent.setTitle("Pad Editor (%d)" % (self.song))
 			self.song = self.song + 1000
@@ -898,7 +903,7 @@ class zynthian_gui_songeditor():
 		pass
 
 	# Function to scroll grid to show position in song
-	#	pos: Song position in clocks cycles
+	#	pos: Song position in divisions
 	def showPos(self, pos):
 		if pos >= self.colOffset and pos < self.colOffset + self.horizontalZoom:
 			return
@@ -913,12 +918,13 @@ class zynthian_gui_songeditor():
 		if self.redraw_pending:
 			self.drawGrid()
 		if self.song < 1000:
-			pos = self.parent.libseq.getSongPosition(self.song) / self.clocksPerDivision
+			pos = self.parent.libseq.getSongPosition() / self.clocksPerDivision
 		else:
 			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1]) #TODO: Offset?
 			pos = self.parent.libseq.getPlayPosition(sequence) / self.clocksPerDivision
 		if self.position != pos:
 			self.showPos(pos)
+			self.position = pos
 		self.gridCanvas.coords('playheadline', (pos - self.colOffset) * self.columnWidth, 0, (pos - self.colOffset) * self.columnWidth, self.gridHeight)
 
 	def refresh_loading(self):
@@ -948,6 +954,30 @@ class zynthian_gui_songeditor():
 			self.showPatternEditor()
 		elif switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
+		elif switch == ENC_SNAPSHOT:
+			if type == 'B':
+				#TODO Validate bold snapshot behaviour
+				self.parent.libseq.stopSong()
+				if not self.parent.libseq.isPlaying():
+					self.parent.libseq.transportStop()
+					self.parent.libseq.transportLocate.libseq(self.parent.libseq.getSongPosition())
+			else:
+				if self.parent.libseq.isSongPlaying():
+					self.parent.libseq.pauseSong()
+					if not self.parent.libseq.isPlaying():
+						self.parent.libseq.transportStop()
+						#TODO Do we need to stop transport?
+				else:
+					if self.parent.libseq.isPlaying():
+						self.parent.libseq.setSongToStartOfMeasure()
+#						self.parent.libseq.transportStop()
+#						sleep(0.1)
+#						self.parent.libseq.locate(self.parent.libseq.getSongPosition())
+						self.parent.libseq.startSong(False)
+#						self.parent.libseq.transportStop()
+					else:
+						self.parent.libseq.startSong(True)
+						self.parent.libseq.transportStart()
 		else:
 			return False
 		return True

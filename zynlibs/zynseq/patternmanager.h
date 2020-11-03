@@ -117,8 +117,9 @@ class PatternManager
         void clearSong(uint32_t song);
 
         /** Start song playing
+        *	@param	bFast True to start playing immediately. False to wait for next sync pulse.
         */
-        void startSong();
+        void startSong(bool bFast = false);
 
         /** Stop song playing
         */
@@ -178,6 +179,10 @@ class PatternManager
         *   @retval bool True if any sequence is staring, playing or stopping. False if all sequences are stopped
         */
         bool isPlaying();
+
+        /** @brief  Stop all sequences
+        */
+        void stop();
 
     private:
         PatternManager(); // Private constructor to avoid public instantiation

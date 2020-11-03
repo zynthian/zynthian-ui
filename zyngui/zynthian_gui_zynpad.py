@@ -116,7 +116,7 @@ class zynthian_gui_zynpad():
 		self.parent.addMenu({'Pad mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(self.playModes)-1, 'getValue':self.getSelectedPadMode, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Trigger channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.getTriggerChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tally channel':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':15, 'getValue':self.getTallyChannel, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.libseq.getTempo, 'onChange':self.onMenuChange}}})
 
 	# Function to hide GUI
 	def hide(self):
@@ -160,7 +160,7 @@ class zynthian_gui_zynpad():
 			value = params['max']
 		if menuItem == 'Tempo':
 			#TODO: Consider how this works with tempo map (song master channel)
-			self.zyngui.zyntransport.set_tempo(value)
+			self.parent.libseq.setTempo(value)
 		prefix = "%s%d" % (chr(int((self.selectedPad - 1) / self.rows) + 65), (self.selectedPad - 1) % self.rows + 1)
 		if menuItem == 'Pad mode':
 			self.parent.libseq.setPlayMode(self.getSequence(self.selectedPad), value)
@@ -320,17 +320,18 @@ class zynthian_gui_zynpad():
 			self.parent.refreshParamEditor()
 		if sequence == 0:
 			return;
-		if not self.parent.libseq.isPlaying():
-			# Nothing is running so reset to zero and start immediately - workaround issue with jack_transport by stopping and pausing before locate
-			self.parent.zyngui.zyntransport.transport_stop()
-			sleep(0.1)
-			self.zyngui.zyntransport.locate(0)
-			self.zyngui.zyntransport.transport_play()
 		if self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_PLAYING:
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STOPPING)
 		elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STARTING:
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 		elif self.parent.libseq.getPlayMode(sequence) != zynthian_gui_stepsequencer.SEQ_DISABLED:
+			if not self.parent.libseq.isPlaying():
+				# Nothing is running so reset to zero and start immediately - workaround issue with jack_transport by stopping and pausing before locate
+				#TODO Should this go into libseq?
+				self.parent.libseq.transportStop()
+				sleep(0.1)
+				self.parent.libseq.transportLocate(0)
+				self.parent.libseq.transportStart()
 			self.parent.libseq.setPlayPosition(sequence, 0)
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STARTING)
 		playing = self.drawPad(pad)

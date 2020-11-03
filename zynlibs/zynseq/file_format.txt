@@ -33,9 +33,10 @@ RIFF Header:
 Block:
 	Song ID [4]
 	Sync period [2]
-	Quantity of master track events [4]
-		Event time [4] 
-		Event command [2] [0x0001: Tempo]
+	Quantity of timebase track events [4]
+		Event measure [2]
+		Event tick [2]
+		Event command [2] [0x0001: Tempo, 0x0002: Time signature]
 		Event data [2] (maybe variable data in future?)
 	Tracks (sequences):
 		MIDI channel [1]

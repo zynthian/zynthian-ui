@@ -217,7 +217,6 @@ class zynthian_gui_patterneditor():
 		self.parent.unregisterZyncoder(ENC_LAYER)
 		self.parent.unregisterSwitch(ENC_SELECT)
 		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
-#		self.parent.zyngui.zyntransport.transport_stop() #TODO: Stopping transport due to jack_transport restarting if locate called
 
 	# Function to add menus
 	def populateMenu(self):
@@ -231,7 +230,7 @@ class zynthian_gui_patterneditor():
 			self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'getValue':self.getVerticalZoom, 'onChange':self.onMenuChange, 'onAssert':self.assertZoom}}})
 		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.parent.libseq.getClocksPerStep, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.zyngui.zyntransport.get_tempo, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.libseq.transportGetTempo, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Scale':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':self.getScales(), 'getValue':self.parent.libseq.getScale, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tonic':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':12, 'getValue':self.parent.libseq.getTonic, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Import':{'method':self.selectImport}})
@@ -769,7 +768,7 @@ class zynthian_gui_patterneditor():
 			self.selectCell()
 			value = stepsPerBeat
 		elif menuItem == 'Tempo':
-			self.parent.zyngui.zyntransport.set_tempo(value)
+			self.parent.libseq.transportSetTempo(value)
 		elif menuItem == 'Scale':
 			self.parent.libseq.setScale(value)
 			name = self.loadKeymap()
@@ -944,12 +943,12 @@ class zynthian_gui_patterneditor():
 		elif switch == ENC_SNAPSHOT:
 			if not self.parent.libseq.isPlaying():
 				# Nothing is running so reset to zero and start immediately - workaround issue with jack_transport by stopping and pausing before locate
-				self.parent.zyngui.zyntransport.transport_stop()
+				self.parent.libseq.transportStop()
 				sleep(0.1)
-				self.parent.zyngui.zyntransport.locate(0)
+				self.parent.libseq.transportLocate(0)
 			self.parent.libseq.setPlayPosition(self.sequence, 0)
 			self.parent.libseq.togglePlayState(self.sequence)
-			self.parent.zyngui.zyntransport.transport_play() # Start transport in case it has been stopped
+			self.parent.libseq.transportStart() # Start transport in case it has been stopped
 			return True
 		return False
 #------------------------------------------------------------------------------
