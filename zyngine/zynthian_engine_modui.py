@@ -695,7 +695,7 @@ class zynthian_engine_modui(zynthian_engine):
 			zctrl.value=float(val)
 
 			#Refresh GUI controller in screen when needed ...
-			if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control' and not self.zyngui.modal_screen:
+			if self.zyngui.active_screen=='control' and not self.zyngui.modal_screen:
 				self.zyngui.screens['control'].set_controller_value(zctrl)
 
 		except Exception as err:
