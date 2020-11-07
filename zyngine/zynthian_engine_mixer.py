@@ -156,13 +156,13 @@ class zynthian_engine_mixer(zynthian_engine):
 		if self.allow_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
 			try:
 				zctrls_headphones = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone","PCM"])
-				if "headphone" in zctrls_headphones:
+				if "Headphone" in zctrls_headphones:
 					hp_zctrl = zctrls_headphones["Headphone"]
 				elif "PCM" in zctrls_headphones:
 					hp_zctrl = zctrls_headphones["PCM"]
 					hp_zctrl.symbol = hp_zctrl.name = hp_zctrl.short_name = "Headphone"
 				else:
-					raise Exception("Headphones volume control not found!")
+					raise Exception("Headphone volume control not found!")
 
 				zctrls["Headphone"] = hp_zctrl
 				ctrl_list.insert(0, "Headphone")
