@@ -344,16 +344,22 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def set_controller_value(self, zctrl, val=None):
 		if val is not None:
 			zctrl.set_value(val)
-		for zgui_controller in self.zgui_controllers:
+		for i,zgui_controller in enumerate(self.zgui_controllers):
 			if zgui_controller.zctrl==zctrl:
-				zgui_controller.zctrl_sync()
+				if i==zynthian_gui_config.select_ctrl and self.mode=='select':
+					zgui_controller.zctrl_sync(False)
+				else:
+					zgui_controller.zctrl_sync(True)
 
 
 	def set_controller_value_by_index(self, i, val=None):
 		zgui_controller=self.zgui_controllers[i]
 		if val is not None:
 			zgui_controller.zctrl.set_value(val)
-		zgui_controller.zctrl_sync()
+		if i==zynthian_gui_config.select_ctrl and self.mode=='select':
+			zgui_controller.zctrl_sync(False)
+		else:
+			zgui_controller.zctrl_sync(True)
 
 
 	def get_controller_value(self, zctrl):
