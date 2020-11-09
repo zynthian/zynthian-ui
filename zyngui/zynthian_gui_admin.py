@@ -69,9 +69,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				self.list_data.append((self.start_rbpi_headphones,0,"[  ] Headphones"))
 
 		if zynthian_gui_config.midi_single_active_channel:
-			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
+			self.list_data.append((self.toggle_single_channel,0,"->  Stage Mode"))
 		else:
-			self.list_data.append((self.toggle_single_channel,0,"[  ] Single Channel Mode"))
+			self.list_data.append((self.toggle_single_channel,0,"=>  Multi-timbral Mode"))
 
 		if zynthian_gui_config.midi_prog_change_zs3:
 			self.list_data.append((self.toggle_prog_change_zs3,0,"[x] Program Change ZS3"))
