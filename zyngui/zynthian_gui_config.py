@@ -201,7 +201,7 @@ for i in range(0, n_custom_switches):
 	cuias = {}
 	midi_event = None
 
-	root_varname = "ZYNTHIAN_WIRING_CUSTOM_SWITCH_{0:0>2}".format(i+1)
+	root_varname = "ZYNTHIAN_WIRING_CUSTOM_SWITCH_{:02d}".format(i+1)
 	custom_type = os.environ.get(root_varname, "")
 
 	if custom_type == "UI_ACTION":
@@ -294,7 +294,7 @@ if zynaptik_config:
 	# Zynaptik AD Action Configuration
 	n_zynaptik_ad = 4
 	for i in range(0, n_zynaptik_ad):
-		root_varname = "ZYNTHIAN_WIRING_ZYNAPTIK_AD{0:0>2}".format(i+1)
+		root_varname = "ZYNTHIAN_WIRING_ZYNAPTIK_AD{:02d}".format(i+1)
 		zynaptik_ad_midi_events.append(get_zynsensor_config(root_varname))
 
 #------------------------------------------------------------------------------
@@ -308,7 +308,7 @@ if zyntof_config:
 	# Zyntof Action Configuration
 	n_zyntofs = int(zyntof_config)
 	for i in range(0, n_zyntofs):
-		root_varname = "ZYNTHIAN_WIRING_ZYNTOF{0:0>2}".format(i+1)
+		root_varname = "ZYNTHIAN_WIRING_ZYNTOF{:02d}".format(i+1)
 		zyntof_midi_events.append(get_zynsensor_config(root_varname))
 
 #------------------------------------------------------------------------------
