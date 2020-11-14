@@ -152,7 +152,8 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 			self.zyngui.show_modal('layer_options')
 			return ''
 		else:
-			return None
+			self.zyngui.show_modal('engine')
+			return ''
 
 
 	def set_select_path(self):

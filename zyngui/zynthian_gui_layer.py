@@ -268,10 +268,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def add_layer_engine(self, eng, midi_chan=None):
 		self.add_layer_eng=eng
 
-		if eng.nickname=='MD':
+		if eng=='MD':
 			self.add_layer_midich(None)
 
-		elif eng.nickname=='AE':
+		elif eng=='AE':
 			self.add_layer_midich(0, False)
 			self.add_layer_midich(1, False)
 			self.add_layer_midich(2, False)
@@ -291,7 +291,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def add_layer_midich(self, midich, select=True):
 		if self.add_layer_eng:
-			layer=zynthian_layer(self.add_layer_eng, midich, self.zyngui)
+			zyngine = self.zyngui.screens['engine'].start_engine(self.add_layer_eng)
+			layer=zynthian_layer(zyngine, midich, self.zyngui)
 
 			# Try to connect Audio Effects ...
 			if len(self.layers)>0 and layer.engine.type=="Audio Effect":
