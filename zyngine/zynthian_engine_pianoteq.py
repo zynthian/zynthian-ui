@@ -234,6 +234,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Banks
 	# ---------------------------------------------------------------------------
 
+	bank_list_v7_0 = [
+		('NY Steinway D', 0, 'Grand Steinway D (New-York)', 'D4:A'),
+		('HB Steinway D', 0, 'Grand Steinway D (Hamburg)', 'D4:A')
+	]
+	
 	bank_list_v6_7 = [
 		('NY Steinway Square', 0, 'NY Steinway Square', 'Karsten:A'),
 		('J. Weimes Pianoforte', 0, 'J. Weimes Pianoforte', 'Karsten:A'),
@@ -455,6 +460,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def prepare_banks(self):
+		if PIANOTEQ_VERSION[0]>=7 and PIANOTEQ_VERSION[1]>=0:
+			self.bank_list = self.bank_list_v7_0 + self.bank_list
+		
 		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:
 			self.bank_list = self.bank_list_v6_3 + self.bank_list
 
