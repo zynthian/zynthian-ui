@@ -191,6 +191,9 @@ class zynthian_engine(zynthian_basic_engine):
 		self.preset_favs = None
 		self.preset_favs_fpath = None
 
+		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
+		self.learned_zctrls = {}
+
 
 	def __del__(self):
 		self.stop()
@@ -577,24 +580,48 @@ class zynthian_engine(zynthian_basic_engine):
 		raise Exception("NOT IMPLEMENTED!")
 
 
-	# ---------------------------------------------------------------------------
-	# MIDI Learn
-	# ---------------------------------------------------------------------------
+	#----------------------------------------------------------------------------
+	# MIDI learning
+	#----------------------------------------------------------------------------
 
-	def midi_learn(self, zctrl):
-		raise Exception("NOT IMPLEMENTED!")
+	def init_midi_learn(self, zctrl):
+		logging.info("Learning '{}' ({}) ...".format(zctrl.symbol,zctrl.get_path()))
 
 
 	def midi_unlearn(self, zctrl):
-		raise Exception("NOT IMPLEMENTED!")
+		if zctrl.get_path() in self.learned_zctrls:
+			logging.info("Unlearning '{}' ...".format(zctrl.symbol))
+			try:
+				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
+				del self.learned_zctrls[zctrl.get_path()]
+				return zctrl._unset_midi_learn()
+			except Exception as e:
+				logging.warning("Can't unlearn => {}".format(e))
 
 
-	def set_midi_learn(self, zctrl):
-		raise Exception("NOT IMPLEMENTED!")
+	def set_midi_learn(self, zctrl ,chan, cc):
+		try:
+			# Clean current binding if any ...
+			try:
+				self.learned_cc[chan][cc].midi_unlearn()
+			except:
+				pass
+			# Add midi learning info
+			self.learned_zctrls[zctrl.get_path()] = zctrl
+			self.learned_cc[chan][cc] = zctrl
+			return zctrl._set_midi_learn(chan, cc)
+		except Exception as e:
+			logging.error("Can't learn {} => {}".format(zctrl.symbol, e))
 
 
 	def reset_midi_learn(self):
-		raise Exception("NOT IMPLEMENTED!")
+		logging.info("Reset MIDI-learn ...")
+		self.learned_zctrls = {}
+		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
+
+
+	def cb_midi_learn(self, zctrl, chan, cc):
+		return self.set_midi_learn(zctrl, chan, cc)
 
 
 	#----------------------------------------------------------------------------
@@ -602,7 +629,17 @@ class zynthian_engine(zynthian_basic_engine):
 	#----------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		raise Exception("NOT IMPLEMENTED!")
+		if self.zyngui.is_single_active_channel():
+			for ch in range(0,16):
+				try:
+					self.learned_cc[ch][ccnum].midi_control_change(val)
+				except:
+					pass
+		else:
+			try:
+				self.learned_cc[chan][ccnum].midi_control_change(val)
+			except:
+				pass
 
 
 	def midi_zctrl_change(self, zctrl, val):

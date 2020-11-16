@@ -186,6 +186,17 @@ class zynthian_controller:
 		self._configure()
 
 
+	def get_path(self):
+		if self.osc_path:
+			return self.osc_path
+		elif self.graph_path:
+			return self.graph_path
+		elif self.midi_chan is not None and self.midi_cc is not None:
+			return "{}#{}".format(self_midi_chan,self.midi_cc)
+		else:
+			return None
+
+
 	def set_midi_chan(self, chan):
 		self.midi_chan = chan
 

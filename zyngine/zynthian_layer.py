@@ -27,6 +27,10 @@ import copy
 from time import sleep
 from collections import OrderedDict
 
+# Zynthian specific modules
+from zyncoder import *
+
+
 class zynthian_layer:
 
 	# ---------------------------------------------------------------------------
@@ -387,22 +391,37 @@ class zynthian_layer:
 
 	def midi_control_change(self, chan, ccnum, ccval):
 		if self.engine:
-			if self.listen_midi_cc and chan==self.midi_chan:
+			#logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
+
+			# Engine MIDI-Learn zctrls
+			try:
+				self.engine.midi_control_change(chan, ccnum, ccval)
+			except:
+				pass
+
+			# MIDI-CC zctrls (also router MIDI-learn, aka CC-swaps)
+			if self.listen_midi_cc:
 				#TODO => Optimize!!
-				for k, zctrl in self.controllers_dict.items():
-					if zctrl.midi_cc==ccnum:
+				if self.zyngui.is_single_active_channel():
+					for k, zctrl in self.controllers_dict.items():
 						try:
-							# Aeolus, FluidSynth, LinuxSampler, puredata, Pianoteq, setBfree, ZynAddSubFX
-							self.engine.midi_zctrl_change(zctrl, ccval)
+							if zctrl.midi_learn_cc and zctrl.midi_learn_cc>0:
+								if self.midi_chan==chan and zctrl.midi_learn_cc==ccnum:
+									self.engine.midi_zctrl_change(zctrl, ccval)
+							elif self.midi_chan==chan and zctrl.midi_cc==ccnum:
+								self.engine.midi_zctrl_change(zctrl, ccval)
 						except:
 							pass
-
-			elif not self.listen_midi_cc:
-				try:
-					# Jalv, ALSA-Mixer, ...
-					self.engine.midi_control_change(chan, ccnum, ccval)
-				except:
-					pass
+				else:
+					for k, zctrl in self.controllers_dict.items():
+						try:
+							if zctrl.midi_learn_cc and zctrl.midi_learn_cc>0:
+								if zctrl.midi_learn_chan==chan and zctrl.midi_learn_cc==ccnum:
+									self.engine.midi_zctrl_change(zctrl, ccval)
+							elif zctrl.midi_chan==chan and zctrl.midi_cc==ccnum:
+								self.engine.midi_zctrl_change(zctrl, ccval)
+						except:
+							pass
 
 
 	# ---------------------------------------------------------------------------

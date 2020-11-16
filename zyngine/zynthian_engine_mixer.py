@@ -83,8 +83,6 @@ class zynthian_engine_mixer(zynthian_engine):
 
 		self.zctrls = None
 		self.sender_poll_enabled = False
-		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
-		self.learned_zctrls = {}
 
 		self.get_soundcard_config()
 
@@ -131,6 +129,7 @@ class zynthian_engine_mixer(zynthian_engine):
 
 	def cmp_presets(self, preset1, preset2):
 		return True
+
 
 	#----------------------------------------------------------------------------
 	# Controllers Managament
@@ -394,68 +393,6 @@ class zynthian_engine_mixer(zynthian_engine):
 
 	def stop_sender_poll(self):
 		self.sender_poll_enabled = False
-
-
-	#----------------------------------------------------------------------------
-	# MIDI learning
-	#----------------------------------------------------------------------------
-
-	def init_midi_learn(self, zctrl):
-		if zctrl.graph_path:
-			logging.info("Learning '{}' ({}) ...".format(zctrl.symbol,zctrl.graph_path))
-
-
-	def midi_unlearn(self, zctrl):
-		if str(zctrl.graph_path) in self.learned_zctrls:
-			logging.info("Unlearning '{}' ...".format(zctrl.symbol))
-			try:
-				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
-				del self.learned_zctrls[str(zctrl.graph_path)]
-				return zctrl._unset_midi_learn()
-			except Exception as e:
-				logging.warning("Can't unlearn => {}".format(e))
-
-
-	def set_midi_learn(self, zctrl ,chan, cc):
-		try:
-			# Clean current binding if any ...
-			try:
-				self.learned_cc[chan][cc].midi_unlearn()
-			except:
-				pass
-			# Add midi learning info
-			self.learned_zctrls[str(zctrl.graph_path)] = zctrl
-			self.learned_cc[chan][cc] = zctrl
-			return zctrl._set_midi_learn(chan, cc)
-		except Exception as e:
-			logging.error("Can't learn {} => {}".format(zctrl.symbol, e))
-
-
-	def reset_midi_learn(self):
-		logging.info("Reset MIDI-learn ...")
-		self.learned_zctrls = {}
-		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
-
-
-	def cb_midi_learn(self, zctrl, chan, cc):
-		return self.set_midi_learn(zctrl, chan, cc)
-
-	#----------------------------------------------------------------------------
-	# MIDI CC processing
-	#----------------------------------------------------------------------------
-
-	def midi_control_change(self, chan, ccnum, val):
-		if self.zyngui.is_single_active_channel():
-			for ch in range(0,16):
-				try:
-					self.learned_cc[ch][ccnum].midi_control_change(val)
-				except:
-					pass
-		else:
-			try:
-				self.learned_cc[chan][ccnum].midi_control_change(val)
-			except:
-				pass
 
 
 	# ---------------------------------------------------------------------------

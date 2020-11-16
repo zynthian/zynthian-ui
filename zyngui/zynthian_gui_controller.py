@@ -376,15 +376,15 @@ class zynthian_gui_controller:
 			self.plot_midi_bind("??",zynthian_gui_config.color_ml)
 		elif self.zyngui.midi_learn_zctrl and self.zctrl==self.zyngui.midi_learn_zctrl:
 			self.plot_midi_bind("??",zynthian_gui_config.color_hl)
-		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
-			midi_cc = zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
-			self.plot_midi_bind(midi_cc)
 		elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
-			midi_cc = zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_learn_chan, self.zctrl.midi_learn_cc)
-			if not midi_cc:
-				midi_cc = self.zctrl.midi_learn_cc
-			if not zynthian_gui_config.midi_single_active_channel:
+			midi_cc = self.zctrl.midi_learn_cc
+			if not self.zyngui.is_single_active_channel():
 				midi_cc = "{}#{}".format(self.zctrl.midi_learn_chan+1,midi_cc)
+			self.plot_midi_bind(midi_cc)
+		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
+			midi_cc = self.zctrl.midi_cc 
+			if not self.zyngui.is_single_active_channel():
+				midi_cc = "{}#{}".format(self.zctrl.midi_chan+1,self.zctrl.midi_cc)
 			self.plot_midi_bind(midi_cc)
 		else:
 			self.erase_midi_bind()
