@@ -198,11 +198,13 @@ class zynthian_engine(zynthian_basic_engine):
 	def __del__(self):
 		self.stop()
 
+
 	def reset(self):
 		#Reset Vars
 		self.loading=0
 		self.loading_snapshot=False
 		#TODO: OSC, IPC, ...
+
 
 	def config_remote_display(self):
 		fvars={}
@@ -217,6 +219,7 @@ class zynthian_engine(zynthian_basic_engine):
 						if len(parts)>=2 and parts[1]: fvars[parts[0]]=parts[1]
 			except:
 				fvars['DISPLAY']=""
+
 		if 'DISPLAY' not in fvars or not fvars['DISPLAY'] or fvars['DISPLAY'] == 'NONE':
 			logging.info("NO REMOTE DISPLAY")
 			return False
@@ -629,17 +632,10 @@ class zynthian_engine(zynthian_basic_engine):
 	#----------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		if self.zyngui.is_single_active_channel():
-			for ch in range(0,16):
-				try:
-					self.learned_cc[ch][ccnum].midi_control_change(val)
-				except:
-					pass
-		else:
-			try:
-				self.learned_cc[chan][ccnum].midi_control_change(val)
-			except:
-				pass
+		try:
+			self.learned_cc[chan][ccnum].midi_control_change(val)
+		except:
+			pass
 
 
 	def midi_zctrl_change(self, zctrl, val):
@@ -649,7 +645,7 @@ class zynthian_engine(zynthian_basic_engine):
 				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
 
 				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.active_screen=='control' and not self.zyngui.modal_screen:
+				if (self.zyngui.active_screen=='control' and not self.zyngui.modal_screen) or self.zyngui.modal_screen=='alsa_mixer':
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 
 		except Exception as e:

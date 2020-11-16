@@ -400,8 +400,8 @@ class zynthian_layer:
 				pass
 
 			# MIDI-CC zctrls (also router MIDI-learn, aka CC-swaps)
+			#TODO => Optimize!! Use the MIDI learning mechanism for caching this ...
 			if self.listen_midi_cc:
-				#TODO => Optimize!!
 				if self.zyngui.is_single_active_channel():
 					for k, zctrl in self.controllers_dict.items():
 						try:

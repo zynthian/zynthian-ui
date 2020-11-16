@@ -77,8 +77,7 @@ class zynthian_engine_mixer(zynthian_engine):
 			'clone': False,
 			'transpose': False,
 			'audio_route': False,
-			'midi_chan': False,
-			'indelible' : True
+			'midi_chan': False
 		}
 
 		self.zctrls = None
@@ -394,6 +393,23 @@ class zynthian_engine_mixer(zynthian_engine):
 	def stop_sender_poll(self):
 		self.sender_poll_enabled = False
 
+
+	#----------------------------------------------------------------------------
+	# MIDI CC processing
+	#----------------------------------------------------------------------------
+
+	def midi_control_change(self, chan, ccnum, val):
+		if self.zyngui.is_single_active_channel():
+			for ch in range(0,16):
+				try:
+					self.learned_cc[ch][ccnum].midi_control_change(val)
+				except:
+					pass
+		else:
+			try:
+				self.learned_cc[chan][ccnum].midi_control_change(val)
+			except:
+				pass
 
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String
