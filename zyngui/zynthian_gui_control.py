@@ -341,6 +341,14 @@ class zynthian_gui_control(zynthian_gui_selector):
 			zgui_controller.set_midi_bind()
 
 
+	def plot_zctrls(self):
+		if self.mode=='select':
+			super().plot_zctrls()
+		if self.zgui_controllers:
+			for zgui_ctrl in self.zgui_controllers:
+				zgui_ctrl.plot_value()
+
+
 	def set_controller_value(self, zctrl, val=None):
 		if val is not None:
 			zctrl.set_value(val)

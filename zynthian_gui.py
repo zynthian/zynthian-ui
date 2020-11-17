@@ -1137,6 +1137,7 @@ class zynthian_gui:
 			self.zyncoder_read()
 			self.zynmidi_read()
 			self.osc_receive()
+			self.plot_zctrls()
 			sleep(0.04)
 			if self.zynread_wait_flag:
 				sleep(0.3)
@@ -1305,6 +1306,18 @@ class zynthian_gui:
 		except Exception as err:
 			self.reset_loading()
 			logging.exception(err)
+
+
+	def plot_zctrls(self):
+		try:
+			if self.modal_screen:
+				self.screens[self.modal_screen].plot_zctrls()
+			else:
+				self.screens[self.active_screen].plot_zctrls()
+		except AttributeError:
+			pass
+		except Exception as e:
+			logging.error(e)
 
 
 	def start_loading_thread(self):

@@ -206,6 +206,10 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 				self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.main_frame,self.zselector_ctrl,zs_hiden)
 
 
+	def plot_zctrls(self):
+		self.zselector.plot_value()
+
+
 	def fill_list(self):
 		self.fill_listbox()
 		self.select()

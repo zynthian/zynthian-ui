@@ -76,6 +76,7 @@ class zynthian_gui_controller:
 		self.value_text=None
 		self.label_title=None
 		self.midi_bind=None
+		self.refresh_plot_value = False
 
 		self.index=indx
 		self.main_frame=frm
@@ -114,6 +115,7 @@ class zynthian_gui_controller:
 				else:
 					pady = (0,0)
 				self.canvas.grid(row=self.row, column=self.col, sticky=self.sticky, pady=pady)
+				self.calculate_plot_values()
 				self.plot_value()
 
 
@@ -138,7 +140,9 @@ class zynthian_gui_controller:
 
 
 	def calculate_plot_values(self):
-
+		if self.hiden:
+			return
+			
 		if self.value>self.max_value:
 			self.value=self.max_value
 
@@ -206,14 +210,17 @@ class zynthian_gui_controller:
 				else:
 					self.value_print = str(int(val))
 
+		self.refresh_plot_value = True
+
 		#print("VALUE: %s" % self.value)
 		#print("VALUE PLOT: %s" % self.value_plot)
 		#print("VALUE PRINT: %s" % self.value_print)
 
 
 	def plot_value(self):
-		if not self.hiden:
+		if not self.hiden and self.refresh_plot_value:
 			self.plot_value_arc()
+			self.refresh_plot_value = False
 
 
 	def erase_value(self):
@@ -222,7 +229,6 @@ class zynthian_gui_controller:
 
 
 	def plot_value_rectangle(self):
-		self.calculate_plot_values()
 		x1=6
 		y1=self.height-5
 		lx=self.trw-4
@@ -263,7 +269,6 @@ class zynthian_gui_controller:
 
 
 	def plot_value_triangle(self):
-		self.calculate_plot_values()
 		x1=2
 		y1=int(0.8*self.height)+self.trh
 
@@ -304,7 +309,6 @@ class zynthian_gui_controller:
 
 
 	def plot_value_arc(self):
-		self.calculate_plot_values()
 		thickness=1.1*zynthian_gui_config.font_size
 		degmax=300
 		deg0=90+degmax/2
@@ -661,7 +665,7 @@ class zynthian_gui_controller:
 					if self.mult>1: v = self.mult*v
 					zyncoder.lib_zyncoder.set_value_zyncoder(self.index,ctypes.c_uint(int(v)),int(send_zyncoder))
 					#logging.debug("set_value_zyncoder {} ({}, {}) => {}".format(self.index, self.zctrl.symbol,self.zctrl.midi_cc,v))
-				self.plot_value()
+				self.calculate_plot_values()
 			return True
 
 
