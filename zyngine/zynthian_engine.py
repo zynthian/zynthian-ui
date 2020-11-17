@@ -617,6 +617,19 @@ class zynthian_engine(zynthian_basic_engine):
 			logging.error("Can't learn {} => {}".format(zctrl.symbol, e))
 
 
+	def keep_midi_learn(self, zctrl):
+		try:
+			zpath = zctrl.get_path()
+			old_zctrl = self.learned_zctrls[zpath]
+			chan = old_zctrl.midi_learn_chan
+			cc = old_zctrl.midi_learn_cc
+			self.learned_zctrls[zpath] = zctrl
+			self.learned_cc[chan][cc] = zctrl
+			return zctrl._set_midi_learn(chan, cc)
+		except:
+			pass
+
+
 	def reset_midi_learn(self):
 		logging.info("Reset MIDI-learn ...")
 		self.learned_zctrls = {}
