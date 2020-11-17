@@ -2,6 +2,14 @@
 
 /**	Pattern class methods implementation **/
 
+Pattern::Pattern(uint32_t steps, uint8_t clkPerStep, uint8_t stepsPerBeat, uint8_t beatType) :
+	m_nClkPerStep(clkPerStep),
+	m_nLength(steps),
+	m_nStepsPerBeat(stepsPerBeat),
+	m_nBeatType(beatType)
+{
+}
+
 Pattern::~Pattern()
 {
 }
@@ -117,6 +125,12 @@ void Pattern::removeControl(uint32_t step, uint8_t control)
 	deleteEvent(step, MIDI_CONTROL, control);
 }
 
+uint8_t Pattern::getControlDuration(uint32_t step, uint8_t control)
+{
+	//!@todo Implement getControlDuration
+	return 0;
+}
+
 void Pattern::setSteps(uint32_t steps)
 {
 	uint32_t length = steps;
@@ -128,6 +142,34 @@ void Pattern::setSteps(uint32_t steps)
 	m_nLength = length;
 }
 
+uint32_t Pattern::getSteps()
+{
+	return m_nLength;
+}
+
+void Pattern::setBeatType(uint8_t beatType)
+{
+	printf("Pattern::setBeatType(%u)\n", beatType);
+	for(uint8_t nValue = 1; nValue <= 64; nValue = nValue << 1)
+    {
+        if(beatType > nValue)
+            continue;
+		m_nBeatType = nValue;
+        setClocksPerStep(96 / (m_nStepsPerBeat * m_nBeatType)); //!@todo This might need more attention
+        return;
+    }
+}
+
+uint8_t Pattern::getBeatType()
+{
+	return m_nBeatType;
+}
+
+uint32_t Pattern::getLength()
+{
+	return m_nLength * m_nClkPerStep;
+}
+
 void Pattern::setClocksPerStep(uint32_t value)
 {
 	if(value < 0xFF)
@@ -135,10 +177,52 @@ void Pattern::setClocksPerStep(uint32_t value)
 	//!@todo quantize events
 }
 
+uint32_t Pattern::getClocksPerStep()
+{
+	return m_nClkPerStep;
+}
+
 void Pattern::setStepsPerBeat(uint32_t value)
 {
-	if(value < 0xFF)
-		m_nStepsPerBeat = value;
+	switch(value)
+	{
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 6:
+		case 8:
+		case 12:
+		case 24:
+			m_nStepsPerBeat = value;
+			setClocksPerStep(96 / (m_nStepsPerBeat * m_nBeatType));
+		break;
+	}
+}
+
+uint32_t Pattern::getStepsPerBeat()
+{
+	return m_nStepsPerBeat;
+}
+
+void Pattern::setScale(uint8_t scale)
+{
+	m_nScale = scale;
+}
+
+uint8_t Pattern::getScale()
+{
+	return m_nScale;
+}
+
+void Pattern::setTonic(uint8_t tonic)
+{
+	m_nTonic = tonic;
+}
+
+uint8_t Pattern::getTonic()
+{
+	return m_nTonic;
 }
 
 void Pattern::transpose(int value)

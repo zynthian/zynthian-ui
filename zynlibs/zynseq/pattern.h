@@ -83,14 +83,12 @@ class Pattern
 		*	@param	steps Quantity of steps in pattern [Optional - default: 16]
 		*	@param	clkPerStep Quantity of clock cycles per step [Optional - default: 6]
 		*	@param	stepsPerBeat Quantity of steps per beat [Optional - default: 4]
+		*   @param	beatType Time signature denominator [Optional - default: 4]
 		*/
-		Pattern(uint32_t steps = 16, uint8_t clkPerStep = 6, uint8_t stepsPerBeat = 4) :
-			m_nClkPerStep(clkPerStep),
-			m_nLength(steps),
-			m_nStepsPerBeat(stepsPerBeat)
-		{
-		}
-
+		Pattern(uint32_t steps = 16, uint8_t clkPerStep = 6, uint8_t stepsPerBeat = 4, uint8_t beatType = 4);
+		
+		/**	@brief	Destruct pattern object
+		*/
 		~Pattern();
 
 		/**	@brief	Add step event to pattern
@@ -152,17 +150,18 @@ class Pattern
 		*/
 		void addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, uint32_t duration = 1);
 
-		/**	@brief	Get duration of controller event
-		*	@param	position Quantity of steps from start of pattern at which control starts
-		*	@param	control MIDI controller number
-		*/
-		void getControlDuration(uint32_t step, uint8_t control);
-
 		/**	@brief	Remove continuous controller from pattern
 		*	@param	position Quantity of steps from start of pattern at which control starts
 		*	@param	control MIDI controller number
 		*/
 		void removeControl(uint32_t step, uint8_t control);
+
+		/**	@brief	Get duration of controller event
+		*	@param	position Quantity of steps from start of pattern at which control starts
+		*	@param	control MIDI controller number
+		*	@retval	uint32_t Duration of control or 0 if control does not exist
+		*/
+		uint8_t getControlDuration(uint32_t step, uint8_t control);
 
 		/**	@brief	Set quantity of steps in pattern
 		*	@param	steps Pattern length in steps
@@ -172,12 +171,22 @@ class Pattern
 		/**	@brief	Get quantity of steps in pattern
 		*	@retval	uint32_t Quantity of steps
 		*/
-		uint32_t getSteps() { return m_nLength; };
+		uint32_t getSteps();
+
+		/** @brief  Set beat type (time signature denominator)
+		*   @param  beatType Beat type (power of 2)
+		*/
+		void setBeatType(uint8_t beatType);
+
+		/** @brief  Get beat type (time signature denominator)
+		*   @retval uint8_t Beat type (power of 2)
+		*/
+		uint8_t getBeatType();
 
 		/**	@brief	Get length of pattern in clock cycles
 		*	@retval uint32_t Length of pattern in clock cycles
 		*/
-		uint32_t getLength() { return m_nLength * m_nClkPerStep; };
+		uint32_t getLength();
 
 		/**	@brief	Set quantity of clocks per step
 		*	@param	value Quantity of clock cycles per step
@@ -187,7 +196,7 @@ class Pattern
 		/**	@brief	Get quantity of clocks per step
 		*	@retval	uint32_t Quantity of clocks per step
 		*/
-		uint32_t getClocksPerStep() { return m_nClkPerStep; };
+		uint32_t getClocksPerStep();
 
 		/**	@brief	Set quantity of steps per beat (grid line separation)
 		*	@param	value Quantity of steps per beat
@@ -197,27 +206,27 @@ class Pattern
 		/**	@brief	Get quantity of steps per beat
 		*	@retval	uint32_t Quantity of steps per beat
 		*/
-		uint32_t getStepsPerBeat() { return m_nStepsPerBeat; };
+		uint32_t getStepsPerBeat();
 
 		/**	@brief	Set map / scale used by pattern editor for this pattern
 		*	@param	map Index of map / scale
 		*/
-		void setScale(uint8_t scale) { m_nScale = scale; };
+		void setScale(uint8_t scale);
 
 		/**	@brief	Get map / scale used by pattern editor for this pattern
 		*	@retval	uint8_t Index of map / scale
 		*/
-		uint8_t getScale() { return m_nScale; };
+		uint8_t getScale();
 
 		/**	@brief	Set scale tonic (root note) used by pattern editor for current pattern
 		*	@param	tonic Scale tonic
 		*/
-		void setTonic(uint8_t tonic) { m_nTonic = tonic; };
+		void setTonic(uint8_t tonic);
 
 		/**	@brief	Get scale tonic (root note) used by pattern editor for current pattern
 		*	@retval	uint8_t Tonic
 		*/
-		uint8_t getTonic() { return m_nTonic; };
+		uint8_t getTonic();
 
 		/**	@brief	Transpose all notes within pattern
 		*	@param	value Offset to transpose
@@ -241,6 +250,7 @@ class Pattern
 		uint32_t m_nLength; // Quantity of steps in pattern
 		uint32_t m_nClkPerStep; // Clock cycles per step
 		uint32_t m_nStepsPerBeat; // Steps per beat
+		uint8_t m_nBeatType = 4; // Time signature denominator
 		uint8_t m_nScale = 0; // Index of scale
 		uint8_t m_nTonic = 0; // Scale tonic (root note)
 };

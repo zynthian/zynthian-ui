@@ -47,7 +47,7 @@ from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
-from zyngine import zynthian_engine_transport
+#from zyngine import zynthian_engine_transport
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -301,7 +301,7 @@ class zynthian_gui:
 
 	def start(self):
 		# Initialize jack Transport
-		self.zyntransport = zynthian_engine_transport()
+		#self.zyntransport = zynthian_engine_transport()
 
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
@@ -376,7 +376,7 @@ class zynthian_gui:
 		self.osc_end()
 		zynautoconnect.stop()
 		self.screens['layer'].reset()
-		self.zyntransport.stop()
+		#self.zyntransport.stop()
 
 
 	def hide_screens(self, exclude=None):

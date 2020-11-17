@@ -154,7 +154,7 @@ uint8_t getTriggerNote(uint32_t sequence);
 */
 void setTriggerNote(uint32_t sequence, uint8_t note);
 
-// ** Pattern management functions - note pattern operations are quantized to steps **
+// ** Pattern management functions - pattern events are quantized to steps **
 
 /** @brief  Select active pattern
 *   @note   All subsequent pattern methods act on this pattern
@@ -164,7 +164,7 @@ void setTriggerNote(uint32_t sequence, uint8_t note);
 void selectPattern(uint32_t pattern);
 
 /** @brief  Get quantity of steps in selected pattern
-*   @retval uint32_t Duration of pattern in clock cycles
+*   @retval uint32_t Quantity of steps
 */
 uint32_t getSteps();
 
@@ -172,6 +172,16 @@ uint32_t getSteps();
 *   @param  steps Quantity of steps
 */
 void setSteps(uint32_t steps);
+
+/** @brief  Get quantity of beats in selected pattern
+*   @retval uint32_t Quantity of beats
+*/
+uint32_t getBeatsInPattern();
+
+/** @brief  Set quantity of beats in selected pattern
+*   @param  beats Quantity of beats
+*/
+void setBeatsInPattern(uint32_t beats);
 
 /** @brief  Get pattern length in clock cycles
 *   @param  pattern Index of pattern
@@ -198,6 +208,16 @@ uint32_t getStepsPerBeat();
 *   @param  steps Steps per beat
 */
 void setStepsPerBeat(uint32_t steps);
+
+/** @brief  Get beat type (time signature denominator) for current pattern
+*   @retval uint8_t Beat type (power of 2)
+*/
+uint8_t getBeatType();
+
+/** @brief  Set beat type (time signature denominator) for current pattern
+*   @param  beatType Beat type (power of 2)
+*/
+void setBeatType(uint8_t beatType);
 
 /** @brief  Add note to pattern
 *   @param  step Index of step at which to add note
@@ -572,12 +592,13 @@ void solo(uint32_t song, uint32_t track, int solo);
 */
 void transportLocate(uint32_t frame);
 
-/** @brief  Reposition transport
-*   @param  measure Measure (bar)
-*   @param  beat Beat within bar (optional - default: 1)
-*   @param  tick Tick within beat (optional - default: 0)
+/** @brief  Get frame offset at BBT position
+*   @param  measure Measure (bar) [>0]
+*   @param  beat Beat within bar [>0, <=beats per bar]
+*   @param  tick Tick within beat [<ticks per beat]
+*   @retval uint32_t Frames since start of song until requested position
 */
-void transportReposition(uint32_t measure, uint32_t beat=1, uint32_t tick=0);
+uint32_t transportGetLocation(uint32_t measure, uint32_t beat, uint32_t tick);
 
 /** @brief  Register as timebase master
 *   @retval bool True if successfully became timebase master
@@ -607,13 +628,14 @@ uint8_t transportGetPlayStatus();
 
 /** @brief  Set tempo
 *   @param  tempo Beats per minute
+*   @todo   Using integer for tempo to simplify Python interface but should use float
 */
-void transportSetTempo(float tempo);
+void transportSetTempo(uint32_t tempo);
 
 /** @brief  get tempo
-*   @retval float Tempo in beats per minute
+*   @retval uint32_t Tempo in beats per minute
 */
-float transportGetTempo();
+uint32_t transportGetTempo();
      
 /** @brief  Set sync timeout
 *   @param  timeout Quantity of microseconds to wait for slow sync clients at start of play

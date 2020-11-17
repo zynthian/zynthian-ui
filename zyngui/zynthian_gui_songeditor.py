@@ -6,7 +6,7 @@
 # Zynthian GUI Step-Sequencer Class
 # 
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2020 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2020 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 # 
@@ -72,7 +72,7 @@ class zynthian_gui_songeditor():
 		self.padColourStoppedOdd = 'blue'
 
 		self.verticalZoom = 16 # Quantity of rows (tracks) displayed in grid
-		self.horizontalZoom = 64 # Quantity of columns (time divisions) displayed in grid
+		self.horizontalZoom = 16 # Quantity of columns (time divisions) displayed in grid
 		self.copySource = 1 # Index of song to copy
 		self.rowOffset = 0 # Index of track at top row in grid
 		self.colOffset = 0 # Index of time division at left column in grid
@@ -87,7 +87,7 @@ class zynthian_gui_songeditor():
 		self.trackDragStart = None # Set to loaction of mouse during drag
 		self.timeDragStart = None # Set to time of click to test for bold click
 		self.gridDragStart = None # Set to location of click during drag
-		self.clocksPerDivision = 6
+		self.clocksPerDivision = 24
 		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
 		self.cells = [[None] * 2 for _ in range(self.verticalZoom * self.horizontalZoom)] # 2D array of cells 0:cell, 1:cell label
 		self.redraw_pending = 0
@@ -97,10 +97,10 @@ class zynthian_gui_songeditor():
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.body_height
-		self.masterTrackHeight = int(self.height / 10)
-		self.smallFontSize = int(self.masterTrackHeight / 3);
+		self.timebaseTrackHeight = int(self.height / 10)
+		self.smallFontSize = int(self.timebaseTrackHeight / 3);
 		self.selectThickness = 1 + int(self.width / 500) # Scale thickness of select border based on screen resolution
-		self.gridHeight = self.height - self.masterTrackHeight
+		self.gridHeight = self.height - self.timebaseTrackHeight
 		self.gridWidth = int(self.width * 0.9)
 		self.trackTitleWidth = self.width - self.gridWidth
 		self.updateCellSize()
@@ -134,26 +134,26 @@ class zynthian_gui_songeditor():
 		# Create pattern entry indicator
 		self.patternCanvas = tkinter.Canvas(self.main_frame,
 			width=self.trackTitleWidth,
-			height=self.masterTrackHeight,
+			height=self.timebaseTrackHeight,
 			bg=CELL_BACKGROUND,
 			bd=0,
 			highlightthickness=0,
 			)
-		self.patternCanvas.create_text(self.trackTitleWidth / 2, self.masterTrackHeight / 2, tags="patternIndicator", fill='white', text='%d'%(self.pattern), font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(0.9 * self.masterTrackHeight)))
+		self.patternCanvas.create_text(self.trackTitleWidth / 2, self.timebaseTrackHeight / 2, tags="patternIndicator", fill='white', text='%d'%(self.pattern), font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(0.9 * self.timebaseTrackHeight)))
 		self.patternCanvas.grid(column=1, row=1)
 		self.patternCanvas.bind('<ButtonPress-1>', self.onPatternClick)
 
-		# Create mastertrack canvas
-		self.mastertrackCanvas = tkinter.Canvas(self.main_frame,
+		# Create timebase track canvas
+		self.timebasetrackCanvas = tkinter.Canvas(self.main_frame,
 			width=self.gridWidth, 
-			height=self.masterTrackHeight,
+			height=self.timebaseTrackHeight,
 			bg=CANVAS_BACKGROUND,
 			bd=0,
 			highlightthickness=0)
-		self.mastertrackCanvas.bind("<ButtonPress-1>", self.onTimeDragStart)
-		self.mastertrackCanvas.bind("<ButtonRelease-1>", self.onTimeDragEnd)
-		self.mastertrackCanvas.bind("<B1-Motion>", self.onTimeDragMotion)
-		self.mastertrackCanvas.grid(column=2, row=1)
+		self.timebasetrackCanvas.bind("<ButtonPress-1>", self.onTimeDragStart)
+		self.timebasetrackCanvas.bind("<ButtonRelease-1>", self.onTimeDragEnd)
+		self.timebasetrackCanvas.bind("<B1-Motion>", self.onTimeDragMotion)
+		self.timebasetrackCanvas.grid(column=2, row=1)
 
 
 	# Function to load and resize icons
@@ -195,7 +195,6 @@ class zynthian_gui_songeditor():
 		self.parent.addMenu({'Horizontal zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999 
 		, 'value':64, 'onChange':self.onMenuChange,'onAssert':self.assertAndRedraw}}})
 		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.getTrackChannel, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Clocks per division':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.getClocksPerDivision, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tracks':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':64, 'getValue':self.getTracks, 'onChange':self.onMenuChange, 'onAssert':self.setTracks}}})
 		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.getTempo, 'onChange':self.onMenuChange, 'onAssert':self.assertTempo}}})
 		self.parent.addMenu({'Bar / sync':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getBeatsPerBar, 'onChange':self.onMenuChange}}})
@@ -235,7 +234,8 @@ class zynthian_gui_songeditor():
 	def assertTempo(self):
 		value = self.parent.getParam('Tempo', 'value')
 		if self.position == self.selectedCell[0]:
-			self.parent.libseq.setTempo(value)
+			self.parent.libseq.transportSetTempo(value)
+		#TODO: Need to use measure + tick to set tempo - and all other song timebase operations
 		self.parent.libseq.setTempo(self.song, value, self.selectedCell[0] * self.clocksPerDivision)
 		self.redraw_pending = 1
 
@@ -568,14 +568,14 @@ class zynthian_gui_songeditor():
 				for t in range(time, -1, -self.clocksPerDivision):
 					pattern = self.parent.libseq.getPattern(sequence, t)
 					if pattern != -1:
-						duration = int((self.parent.libseq.getPatternLength(pattern) + t) / int(self.getClocksPerDivision())) - self.colOffset
+						duration = int((self.parent.libseq.getPatternLength(pattern) + t) / self.clocksPerDivision) - self.colOffset
 						if duration > 0:
 							fill = CELL_BACKGROUND
 						else:
 							pattern = -1
 						break
 		else:
-			duration = int(self.parent.libseq.getPatternLength(pattern) / int(self.getClocksPerDivision()))
+			duration = int(self.parent.libseq.getPatternLength(pattern) / self.clocksPerDivision)
 			fill = CELL_BACKGROUND
 			#print("Drawing cell %d,%d for track %d, sequence %d, pattern %d, duration %d"%(col,row,track,sequence,pattern,duration))
 		if col + duration > self.colOffset + self.horizontalZoom:
@@ -630,34 +630,35 @@ class zynthian_gui_songeditor():
 
 		# Vertical (bar / sync) lines
 		self.gridCanvas.delete('barlines')
-		self.mastertrackCanvas.delete('barlines')
+		self.timebasetrackCanvas.delete('barlines')
 		font = tkFont.Font(size=self.smallFontSize)
 		tempoY = font.metrics('linespace')
 		offset = 0 - int(self.colOffset % self.horizontalZoom)
-		for bar in range(offset, self.horizontalZoom, int(self.parent.libseq.getBarLength(self.song) / self.getClocksPerDivision())):
+		for bar in range(offset, self.horizontalZoom, int(self.parent.libseq.getBarLength(self.song) / self.clocksPerDivision)):
 			self.gridCanvas.create_line(bar * self.columnWidth, 0, bar * self.columnWidth, self.gridHeight, fill='white', tags='barlines')
 			if bar:
-				self.mastertrackCanvas.create_text(bar * self.columnWidth, 0, fill='white', text="%d"%(bar+self.colOffset), anchor='n', tags='barlines')
+				self.timebasetrackCanvas.create_text(bar * self.columnWidth, 0, fill='white', text="%d"%(bar+self.colOffset), anchor='n', tags='barlines')
 			else:
-				self.mastertrackCanvas.create_text(bar * self.columnWidth, 0, fill='white', text="%d"%(bar+self.colOffset), anchor='nw', tags='barlines')
+				self.timebasetrackCanvas.create_text(bar * self.columnWidth, 0, fill='white', text="%d"%(bar+self.colOffset), anchor='nw', tags='barlines')
 
 		# Hide selection if not in view - #TODO: WHEN WOULD THAT BE???
 		if self.selectedCell[0] < self.colOffset or self.selectedCell[0] > self.colOffset + self.horizontalZoom or self.selectedCell[1] < self.rowOffset or self.selectedCell[1] > self.rowOffset + self.verticalZoom:
 			self.gridCanvas.itemconfig('selection', state='hidden')
 
-		# Master track
-		self.mastertrackCanvas.delete('bpm')
-		for event in range(self.parent.libseq.getMasterEvents(self.song)):
-			time = self.parent.libseq.getMasterEventTime(self.song, event) / self.clocksPerDivision
+		# Timebase track
+		self.timebasetrackCanvas.delete('bpm')
+		print("Drawing timebase track")
+		for event in range(self.parent.libseq.getTimebaseEvents(self.song)):
+			time = self.parent.libseq.getTimebaseEventTime(self.song, event) / self.clocksPerDivision
 			if time >= self.colOffset and time <= self.colOffset + self.horizontalZoom:
-				command = self.parent.libseq.getMasterEventCommand(self.song, event)
+				command = self.parent.libseq.getTimebaseEventCommand(self.song, event)
 				if command == 1: # Tempo
 					tempoX = (time - self.colOffset) * self.columnWidth
-					data = self.parent.libseq.getMasterEventData(self.song, event)
+					data = self.parent.libseq.getTimebaseEventData(self.song, event)
 					if tempoX:
-						self.mastertrackCanvas.create_text(tempoX, tempoY, fill='red', text=data, anchor='n', tags='bpm')
+						self.timebasetrackCanvas.create_text(tempoX, tempoY, fill='red', text=data, anchor='n', tags='bpm')
 					else:
-						self.mastertrackCanvas.create_text(tempoX, tempoY, fill='red', text=data, anchor='nw', tags='bpm')
+						self.timebasetrackCanvas.create_text(tempoX, tempoY, fill='red', text=data, anchor='nw', tags='bpm')
 
 	# Function to select a cell within the grid
 	#	time: Time (column) of selected cell (Optional - default to reselect current column)
@@ -812,10 +813,6 @@ class zynthian_gui_songeditor():
 			self.verticalZoom = value
 		elif menuItem == 'Horizontal zoom':
 			self.horizontalZoom = value
-		elif menuItem == 'Clocks per division':
-			self.parent.setParam(menuItem, 'value', value)
-			self.setClocksPerDivision(value)
-			self.redraw_pending = 1
 		elif menuItem == 'MIDI channel':
 			self.parent.setParam(menuItem, 'value', value)
 			track = self.selectedCell[1] + self.rowOffset
@@ -855,17 +852,6 @@ class zynthian_gui_songeditor():
 #		elif menuItem == "Tracks":
 #			self.setTracks(value)
 		return "%s: %d" % (menuItem, value)
-
-	# Function to get clocks per division
-	#	Returns: Clock cycles per horizontal time division
-	def getClocksPerDivision(self):
-		return self.clocksPerDivision
-
-	# Function to set clocks per division
-	#	clocks: Clock cycles per horizontal time division
-	def setClocksPerDivision(self, clocks):
-		if clocks:
-			self.clocksPerDivision = clocks
 
 	# Function to get (note name, octave)
 	#	note: MIDI note number
@@ -960,7 +946,7 @@ class zynthian_gui_songeditor():
 				self.parent.libseq.stopSong()
 				if not self.parent.libseq.isPlaying():
 					self.parent.libseq.transportStop()
-					self.parent.libseq.transportLocate.libseq(self.parent.libseq.getSongPosition())
+					self.parent.libseq.transportLocate(self.parent.libseq.getSongPosition())
 			else:
 				if self.parent.libseq.isSongPlaying():
 					self.parent.libseq.pauseSong()

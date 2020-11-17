@@ -160,7 +160,7 @@ class zynthian_gui_zynpad():
 			value = params['max']
 		if menuItem == 'Tempo':
 			#TODO: Consider how this works with tempo map (song master channel)
-			self.parent.libseq.setTempo(value)
+			self.parent.libseq.transportSetTempo(value)
 		prefix = "%s%d" % (chr(int((self.selectedPad - 1) / self.rows) + 65), (self.selectedPad - 1) % self.rows + 1)
 		if menuItem == 'Pad mode':
 			self.parent.libseq.setPlayMode(self.getSequence(self.selectedPad), value)

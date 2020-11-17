@@ -1,5 +1,4 @@
- 
- #!/usr/bin/python3
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
@@ -67,7 +66,7 @@ ENC_SNAPSHOT        = 2
 ENC_SELECT          = 3
 
 # List of permissible steps per beat
-STEPS_PER_BEAT = [0,1,2,3,4,6,8,12,24]
+STEPS_PER_BEAT = [1,2,3,4,6,8,12,24]
 
 # Class implements step sequencer pattern editor
 class zynthian_gui_patterneditor():
@@ -222,18 +221,27 @@ class zynthian_gui_patterneditor():
 	def populateMenu(self):
 		self.parent.addMenu({'Pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getPattern, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Input channel':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':16, 'getValue':self.getInputChannel, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'getValue':self.parent.libseq.getStepsPerBeat, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Steps in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'getValue':self.parent.libseq.getSteps, 'onChange':self.onMenuChange, 'onAssert':self.assertSteps}}})
+		self.parent.addMenu({'Beats in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.parent.libseq.getBeatsInPattern, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'getValue':self.getStepsPerBeatIndex, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Beat type':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'getValue':self.parent.libseq.getBeatType, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getCopySource, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
 		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
 		if self.parent.libseq.getScale():
 			self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'getValue':self.getVerticalZoom, 'onChange':self.onMenuChange, 'onAssert':self.assertZoom}}})
-		self.parent.addMenu({'Clocks per step':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':24, 'getValue':self.parent.libseq.getClocksPerStep, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.libseq.transportGetTempo, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Scale':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':self.getScales(), 'getValue':self.parent.libseq.getScale, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tonic':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':12, 'getValue':self.parent.libseq.getTonic, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Import':{'method':self.selectImport}})
+
+	# Function to get the index of the closest steps per beat in array of allowed values
+	#	returns: Index of closest allowed value
+	def getStepsPerBeatIndex(self):
+		stepsPerBeat = self.parent.libseq.getStepsPerBeat()
+		for index in range(len(STEPS_PER_BEAT)):
+			if STEPS_PER_BEAT[index] >= stepsPerBeat:
+				return index
+		return index
 
 	# Function to get quantity of scales
 	#	returns: Quantity of available scales
@@ -697,12 +705,6 @@ class zynthian_gui_patterneditor():
 	def getVerticalZoom(self):
 		return self.zoom
 
-	# Function to assert steps in pattern
-	def assertSteps(self):
-		self.parent.libseq.setSteps(self.parent.getParam('Steps in pattern', 'value'))
-		self.redraw_pending = 2
-		self.selectCell()
-
 	# Function to handle menu editor change
 	#   params: Menu item's parameters
 	#   returns: String to populate menu editor label
@@ -753,20 +755,22 @@ class zynthian_gui_patterneditor():
 			return "Transpose +/-"
 		elif menuItem == 'Vertical zoom':
 			self.zoom = value
-		elif menuItem == 'Clocks per step':
-			self.parent.libseq.setClocksPerStep(value);
+		elif menuItem == 'Beats in pattern':
+			self.parent.libseq.setBeatsInPattern(value)
+			self.redraw_pending = 2
 		elif menuItem == 'Steps per beat':
 			stepsPerBeat = STEPS_PER_BEAT[value]
-			if stepsPerBeat:
-				clocksPerStep = int(24 / stepsPerBeat)
-				self.parent.libseq.setClocksPerStep(clocksPerStep)
-			else:
-				clocksPerStep = 0
-				self.parent.libseq.setClocksPerStep(24)
 			self.parent.libseq.setStepsPerBeat(stepsPerBeat)
-			self.redraw_pending = 1
-			self.selectCell()
+			self.redraw_pending = 2
 			value = stepsPerBeat
+		elif menuItem == 'Beat type':
+			prevVal = self.parent.libseq.getBeatType()
+			if prevVal > value:
+				value = prevVal >> 1
+			self.parent.libseq.setBeatType(value)
+			self.redraw_pending = 2
+			value = self.parent.libseq.getBeatType()
+			self.parent.setParam('Beat type', 'value', value)
 		elif menuItem == 'Tempo':
 			self.parent.libseq.transportSetTempo(value)
 		elif menuItem == 'Scale':
