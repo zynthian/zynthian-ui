@@ -6,7 +6,6 @@
 # Valid rule formats:
 # -------------------------------------
 #  IGNORE [CH#??] EV[#??]
-#  TOGGLE [CH#??] EV[#??]
 #  MAP [CH#??] EV[#??] => [CH#??] EV[#??]
 #  CLEAN [CH#??] EV[#??]
 #
@@ -162,8 +161,8 @@ class MidiFilterRule:
 		parts=rule.split()
 		self.rule_type=parts[0]
 
-		# IGNORE, TOGGLE or CLEAN rule ...
-		if self.rule_type in ("IGNORE", "TOGGLE", "CLEAN"):
+		# IGNORE or CLEAN rule ...
+		if self.rule_type in ("IGNORE", "CLEAN"):
 			if len(parts)>3:
 				raise MidiFilterException("Invalid rule format. Too many parts.")
 			# Parse arguments
@@ -203,7 +202,7 @@ class MidiFilterRule:
 
 	def set_rules(self, set_rules=True):
 		n_rules=0
-		if self.rule_type in ("IGNORE", "TOGGLE", "CLEAN"):
+		if self.rule_type in ("IGNORE", "CLEAN"):
 			for ch in self.args[0].ch_list:
 				ev_type=MidiFilterArgs.EVENT_TYPE_CODES[self.args[0].ev_type]
 				for ev_num in self.args[0].ev_list:
@@ -212,19 +211,8 @@ class MidiFilterRule:
 					if set_rules:
 						if self.rule_type=="IGNORE":
 							zyncoder.lib_zyncoder.set_midi_filter_event_ignore(ev_type, ch, ev_num)
-						elif self.rule_type=="TOGGLE":
-							if ev_type==0xB:
-								zyncoder.lib_zyncoder.set_midi_filter_cc_toggle(ch, ev_num, 1)
-							elif ev_type==0x9:
-								zyncoder.lib_zyncoder.set_midi_filter_note_toggle(ch, ev_num, 1)
-							else:
-								raise MidiFilterException("Event type not supported by TOGGLE")
 						elif self.rule_type=="CLEAN":
 							zyncoder.lib_zyncoder.del_midi_filter_event_map(ev_type, ch, ev_num)
-							if ev_type==0xB:
-								zyncoder.lib_zyncoder.set_midi_filter_cc_toggle(ch, ev_num, 0)
-							elif ev_type==0x9:
-								zyncoder.lib_zyncoder.set_midi_filter_note_toggle(ch, ev_num, 0)
 
 		elif self.rule_type=="MAP":
 			
