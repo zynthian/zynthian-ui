@@ -370,6 +370,12 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.volume_zgui_ctrl.read_zyncoder()
 
 
+	def plot_zctrls(self):
+		super().plot_zctrls()
+		if self.volume_zgui_ctrl:
+			self.volume_zgui_ctrl.plot_value()
+
+
 	def get_current_track_fpath(self):
 		# Fill list if it's empty ...
 		if not self.list_data:

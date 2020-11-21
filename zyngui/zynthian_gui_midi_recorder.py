@@ -26,10 +26,10 @@
 import os
 import sys
 import logging
+import mutagen
 import signal
 import threading
 from time import sleep
-from mutagen.smf import SMF
 from os.path import isfile, isdir, join, basename
 from subprocess import check_output, Popen, PIPE, STDOUT
 
@@ -376,6 +376,12 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		super().zyncoder_read()
 		if self.shown and self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.read_zyncoder()
+
+
+	def plot_zctrls(self):
+		super().plot_zctrls()
+		if self.bpm_zgui_ctrl:
+			self.bpm_zgui_ctrl.plot_value()
 
 
 	def get_current_track_fpath(self):
