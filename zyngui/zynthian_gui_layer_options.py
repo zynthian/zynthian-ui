@@ -136,12 +136,14 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				if len(self.audiofx_layers)>0:
 					self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
 					# Add Audio-FX layers
+					sl0 = None
 					for sl in self.audiofx_layers:
-						if sl.chain_parallel:
+						if sl.is_parallel_audio_routed(sl0):
 							bullet = " || "
 						else:
 							bullet = " -> "
 						self.list_data.append((self.audiofx_layer_action, sl, bullet + sl.engine.get_path(sl)))
+						sl0 = sl
 
 			if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.engine.nickname!='MD':
 				# Add separator
@@ -154,12 +156,14 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				if len(self.midifx_layers)>0:
 					self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
 					# Add MIDI-FX layers
+					sl0 = None
 					for sl in self.midifx_layers:
-						if sl.chain_parallel:
+						if sl.is_parallel_midi_routed(sl0):
 							bullet = " || "
 						else:
 							bullet = " -> "
 						self.list_data.append((self.midifx_layer_action, sl, bullet + sl.engine.get_path(sl)))
+						sl0 = sl
 
 		super().fill_list()
 

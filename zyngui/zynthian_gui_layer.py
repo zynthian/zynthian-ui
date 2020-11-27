@@ -299,16 +299,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				if self.replace_layer_index is not None:
 					self.replace_on_fxchain(layer)
 				else:
-					layer.chain_parallel = self.layer_chain_parallel
-					self.add_to_fxchain(layer)
+					self.add_to_fxchain(layer, self.layer_chain_parallel)
 					self.layers.append(layer)
 			# Try to connect MIDI tools ...
 			elif len(self.layers)>0 and layer.engine.type=="MIDI Tool":
 				if self.replace_layer_index is not None:
 					self.replace_on_midichain(layer)
 				else:
-					layer.chain_parallel = self.layer_chain_parallel
-					self.add_to_midichain(layer)
+					self.add_to_midichain(layer, self.layer_chain_parallel)
 					self.layers.append(layer)
 			# New root layer
 			else:
@@ -695,19 +693,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				return l
 
 
+	# Returns FX-chain layers routed to extra-chain ports or not routed at all.
 	def get_fxchain_ends(self, layer):
 		fxlbjn = {}
 		for fxlayer in self.get_fxchain_layers(layer):
 			fxlbjn[fxlayer.jackname] = fxlayer
 
 		ends=[]
-		layer = self.get_fxchain_root(layer)
-		while len(ends)==0:
+		for layer in fxlbjn.values():
 			try:
-				jn = layer.get_audio_out()[0]
-				if jn in fxlbjn:
-					layer = fxlbjn[jn]
-				else:
+				if layer.get_audio_out()[0] not in fxlbjn:
 					ends.append(layer)
 			except:
 				ends.append(layer)
@@ -737,19 +732,19 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		pars = [layer]
 		#logging.error("FX ROOT LAYER => {}".format(layer.get_basepath()))
 		for l in self.layers:
-			if l!=layer and l.engine.type=="Audio Effect" and l.midi_chan==layer.midi_chan and collections.Counter(l.audio_out)==collections.Counter(layer.audio_out) and l.chain_parallel:
+			if l!=layer and l.engine.type=="Audio Effect" and l.midi_chan==layer.midi_chan and collections.Counter(l.audio_out)==collections.Counter(layer.audio_out):
 				pars.append(l)
 				#logging.error("PARALLEL LAYER => {}".format(l.get_audio_jackname()))
 		return pars
 
 
-	def add_to_fxchain(self, layer):
+	def add_to_fxchain(self, layer, chain_parallel=False):
 		try:
 			for end in self.get_fxchain_ends(layer):
 				if end!=layer:
 					logging.debug("Adding to FX-chain {} => {}".format(end.get_audio_jackname(), layer.get_audio_jackname()))
 					layer.set_audio_out(end.get_audio_out())
-					if layer.chain_parallel:
+					if chain_parallel:
 						for uslayer in self.get_fxchain_upstream(end):
 							uslayer.add_audio_out(layer.get_audio_jackname())
 					else:
@@ -765,7 +760,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			logging.debug("Replacing on FX-chain {} => {}".format(rlayer.get_jackname(), layer.get_jackname()))
 			
 			# Re-route audio
-			layer.chain_parallel = rlayer.chain_parallel
 			layer.set_audio_out(rlayer.get_audio_out())
 			rlayer.mute_audio_out()
 			for uslayer in self.get_fxchain_upstream(rlayer):
@@ -789,14 +783,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def drop_from_fxchain(self, layer):
 		try:
-			ups=self.get_fxchain_upstream(layer)
-			if len(ups)>0:
-				for up in ups:
-					logging.debug("Dropping from FX-chain {} => {}".format(up.get_jackname(), layer.get_jackname()))
-					up.del_audio_out(layer.get_jackname())
-					if layer.chain_parallel:
-						for ao in layer.get_audio_out():
-							up.add_audio_out(ao)
+			for up in self.get_fxchain_upstream(layer):
+				logging.debug("Dropping from FX-chain {} => {}".format(up.get_jackname(), layer.get_jackname()))
+				up.del_audio_out(layer.get_jackname())
+				if len(up.get_audio_out())==0:
+					up.set_audio_out(layer.get_audio_out())
 
 		except Exception as e:
 			logging.error("Error unchaining Audio Effect ({})".format(e))
@@ -823,9 +814,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		ao2 = layer2.audio_out
 		layer1.set_audio_out(ao2)
 		layer2.set_audio_out(ao1)
-
-		# Swap chain_parallel value
-		layer1.chain_parallel, layer2.chain_parallel = layer2.chain_parallel, layer1.chain_parallel
 
 		self.zyngui.zynautoconnect_release_lock()
 
@@ -916,21 +904,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return None
 
 
-	# Walk MIDI-FX chain starting from root until no more layers or layer is not part of the layers's chain.
-	# Return last layer on the MIDI-FX's chain
+	# Returns MIDI-chain layers routed to extra-chain ports or not routed at all.
 	def get_midichain_ends(self, layer):
 		midilbjn = {}
 		for midilayer in self.get_midichain_layers(layer):
 			midilbjn[midilayer.get_midi_jackname()] = midilayer
 
 		ends = []
-		layer = self.get_midichain_root(layer)
-		while len(ends)==0:
+		for layer in midilbjn.values():
 			try:
-				jn = layer.get_midi_out()[0]
-				if jn in midilbjn:
-					layer = midilbjn[jn]
-				else:
+				if layer.get_midi_out()[0] not in midilbjn:
 					ends.append(layer)
 			except:
 				ends.append(layer)
@@ -960,27 +943,27 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		pars = [layer]
 		#logging.error("MIDI ROOT LAYER => {}".format(layer.get_basepath()))
 		for l in self.layers:
-			if l!=layer and l.engine.type=="MIDI Tool" and l.midi_chan==layer.midi_chan and collections.Counter(l.midi_out)==collections.Counter(layer.midi_out) and l.chain_parallel:
+			if l!=layer and l.engine.type=="MIDI Tool" and l.midi_chan==layer.midi_chan and collections.Counter(l.midi_out)==collections.Counter(layer.midi_out):
 				pars.append(l)
 				#logging.error("PARALLEL LAYER => {}".format(l.get_midi_jackname()))
 		return pars
 
 
-	def add_to_midichain(self, layer):
+	def add_to_midichain(self, layer, chain_parallel=False):
 		try:
 			for end in self.get_midichain_ends(layer):
 				if end!=layer:
 					logging.debug("Adding to MIDI-chain {} => {}".format(end.get_midi_jackname(), layer.get_midi_jackname()))
 					if end.engine.type=="MIDI Tool":
 						layer.set_midi_out(end.get_midi_out())
-						if layer.chain_parallel:
+						if chain_parallel:
 							for uslayer in self.get_midichain_upstream(end):
 								uslayer.add_midi_out(layer.get_midi_jackname())
 						else:
 							end.set_midi_out([layer.get_midi_jackname()])
 					else:
 						layer.set_midi_out([end.get_midi_jackname()])
-						if layer.chain_parallel:
+						if chain_parallel:
 							for uslayer in self.get_midichain_upstream(end):
 								for uuslayer in self.get_midichain_upstream(uslayer):
 									uuslayer.add_midi_out(layer.get_midi_jackname())
@@ -999,7 +982,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			logging.debug("Replacing on MIDI-chain {} => {}".format(rlayer.get_midi_jackname(), layer.get_midi_jackname()))
 			
 			# Re-route audio
-			layer.chain_parallel = rlayer.chain_parallel
 			layer.set_midi_out(rlayer.get_midi_out())
 			rlayer.mute_midi_out()
 			for uslayer in self.get_midichain_upstream(rlayer):
@@ -1023,14 +1005,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def drop_from_midichain(self, layer):
 		try:
-			ups=self.get_midichain_upstream(layer)
-			if len(ups)>0:
-				for up in ups:
-					logging.debug("Dropping from MIDI-chain {} => {}".format(up.get_midi_jackname(), layer.get_midi_jackname()))
-					up.del_midi_out(layer.get_midi_jackname())
-					if not layer.chain_parallel:
-						for mo in layer.get_midi_out():
-							up.add_midi_out(mo)
+			for up in self.get_midichain_upstream(layer):
+				logging.debug("Dropping from MIDI-chain {} => {}".format(up.get_midi_jackname(), layer.get_midi_jackname()))
+				up.del_midi_out(layer.get_midi_jackname())
+				if len(up.get_midi_out())==0:
+					up.set_midi_out(layer.get_midi_out())
 
 		except Exception as e:
 			logging.error("Error unchaining MIDI tool ({})".format(e))
@@ -1057,9 +1036,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		mo2 = layer2.midi_out
 		layer1.set_midi_out(mo2)
 		layer2.set_midi_out(mo1)
-
-		# Swap chain_parallel value
-		layer1.chain_parallel, layer2.chain_parallel = layer2.chain_parallel, layer1.chain_parallel
 
 		self.zyngui.zynautoconnect_release_lock()
 
