@@ -248,7 +248,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	]
 
 	bank_list_v6_6 = [
-        ('Celtic Harp', 0, 'Celtic Harp', 'Celtic Harp:A')
+        	('Celtic Harp', 0, 'Celtic Harp', 'Celtic Harp:A')
 	]
 
 	bank_list_v6_5 = [
@@ -460,23 +460,25 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def prepare_banks(self):
-		if PIANOTEQ_VERSION[0]>=7 and PIANOTEQ_VERSION[1]>=0:
-			self.bank_list = self.bank_list_v7_0 + self.bank_list
 		
-		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:
+		if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=3):
 			self.bank_list = self.bank_list_v6_3 + self.bank_list
 
-		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=4:
+		if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=4):
 			self.bank_list = self.bank_list_v6_4 + self.bank_list
 
-		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=5:
+		if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=5):
 			self.bank_list = self.bank_list_v6_5 + self.bank_list
 
-		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=6:
+		if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=6):
 			self.bank_list = self.bank_list_v6_6 + self.bank_list
 
-		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=7:
+		if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=7):
 			self.bank_list = self.bank_list_v6_7 + self.bank_list
+
+		if PIANOTEQ_VERSION[0]>7 or (PIANOTEQ_VERSION[0]==7 and PIANOTEQ_VERSION[1]>=0):
+                        self.bank_list = self.bank_list_v7_0 + self.bank_list
+
 
 		if not PIANOTEQ_TRIAL:
 			# Separate Licensed from Free and Demo
@@ -494,7 +496,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 						unlicensed_banks.append(bank)
 				self.bank_list = licensed_banks + free_banks + self.spacer_demo_bank + unlicensed_banks
 
-
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
@@ -506,6 +507,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		try:
 			pianoteq=subprocess.Popen([PIANOTEQ_BINARY, "--list-presets"],stdout=subprocess.PIPE)
 			bank_list = sorted(self.bank_list, key=lambda bank: len(bank[0]) if bank[0] else 0, reverse=True)
+			logging.debug("bank_list => {}".format(bank_list))
 			for line in pianoteq.stdout:
 				l=line.rstrip().decode("utf-8")
 				logging.debug("PRESET => {}".format(l))
