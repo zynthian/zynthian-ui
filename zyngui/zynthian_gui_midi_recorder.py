@@ -376,6 +376,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		super().zyncoder_read()
 		if self.shown and self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.read_zyncoder()
+		return [0,1]
 
 
 	def plot_zctrls(self):

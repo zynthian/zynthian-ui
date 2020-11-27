@@ -368,8 +368,11 @@ class zynthian_gui:
 		self.start_loading_thread()
 		self.start_zyncoder_thread()
 
-		#Run autoconnect if needed
+		# Run autoconnect if needed
 		self.zynautoconnect_do()
+
+		# Initialize MPE Zones
+		#self.init_mpe_zones(0, 2)
 
 
 	def stop(self):
@@ -1021,6 +1024,9 @@ class zynthian_gui:
 				self.show_screen(screen_back)
 
 		elif i==2:
+			# TEST
+			self.init_mpe_zones(0, 2)
+		
 			if self.modal_screen=='snapshot':
 				self.screens['snapshot'].next()
 
@@ -1150,9 +1156,13 @@ class zynthian_gui:
 				#Read Zyncoders
 				self.lock.acquire()
 				if self.modal_screen:
-					self.screens[self.modal_screen].zyncoder_read()
+					free_zyncoders = self.screens[self.modal_screen].zyncoder_read()
 				else:
-					self.screens[self.active_screen].zyncoder_read()
+					free_zyncoders = self.screens[self.active_screen].zyncoder_read()
+
+				if free_zyncoders:
+					self.screens["control"].zyncoder_read(free_zyncoders)
+
 				self.lock.release()
 				
 				#Zynswitches
@@ -1534,7 +1544,30 @@ class zynthian_gui:
 		logging.info("Raw All Notes Off for channel {}!".format(chan))
 		lib_zyncoder.zynmidi_send_all_notes_off_chan(chan)
 
-		
+
+	#------------------------------------------------------------------
+	# MPE initialization
+	#------------------------------------------------------------------
+
+	def init_mpe_zones(self, lower_n_chans, upper_n_chans):
+		# Configure Lower Zone 
+		if not isinstance(lower_n_chans, int) or lower_n_chans<0 or lower_n_chans>0xF:
+			logging.error("Can't initialize MPE Lower Zone. Incorrect num of channels ({})".format(lower_n_chans))
+		else:
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0x0, 0x79, 0x0)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0x0, 0x64, 0x6)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0x0, 0x65, 0x0)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0x0, 0x06, lower_n_chans)
+
+		# Configure Upper Zone 
+		if not isinstance(upper_n_chans, int) or upper_n_chans<0 or upper_n_chans>0xF:
+			logging.error("Can't initialize MPE Upper Zone. Incorrect num of channels ({})".format(upper_n_chans))
+		else:
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0xF, 0x79, 0x0)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0xF, 0x64, 0x6)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0xF, 0x65, 0x0)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0xF, 0x06, upper_n_chans)
+
 	#------------------------------------------------------------------
 	# MIDI learning
 	#------------------------------------------------------------------

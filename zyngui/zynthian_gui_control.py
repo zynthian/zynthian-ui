@@ -285,22 +285,22 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.click_listbox()
 
 
-
-	def zyncoder_read(self):
+	def zyncoder_read(self, zcnums=None):
 		#Read Controller
 		if self.mode=='control' and self.zcontrollers:
 			for i, zctrl in enumerate(self.zcontrollers):
 				#print('Read Control ' + str(self.zgui_controllers[i].title))
 
-				res=self.zgui_controllers[i].read_zyncoder()
-				
-				if res and self.zyngui.midi_learn_mode:
-					logging.debug("MIDI-learn ZController {}".format(i))
-					self.zyngui.midi_learn_mode = False
-					self.midi_learn(i)
+				if not zcnums or i in zcnums: 
+					res=self.zgui_controllers[i].read_zyncoder()
+					
+					if res and self.zyngui.midi_learn_mode:
+						logging.debug("MIDI-learn ZController {}".format(i))
+						self.zyngui.midi_learn_mode = False
+						self.midi_learn(i)
 
-				if res and self.xyselect_mode:
-					self.zyncoder_read_xyselect(zctrl, i)
+					if res and self.xyselect_mode:
+						self.zyncoder_read_xyselect(zctrl, i)
 
 		elif self.mode=='select':
 			if super().zyncoder_read():
