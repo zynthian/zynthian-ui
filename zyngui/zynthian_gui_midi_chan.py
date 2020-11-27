@@ -49,7 +49,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		if chan_list:
 			self.chan_list = chan_list
 		else:
-			self.chan_list = range(16)
+			self.chan_list = list(range(16))
 
 		self.midi_chan_act = None
 
@@ -65,10 +65,14 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		self.list_data=[]
 		if self.mode=='ADD' or self.mode=='SET':
 			for i in self.chan_list:
+				if i==zynthian_gui_config.master_midi_channel:
+					continue
 				self.list_data.append((str(i+1),i,"MIDI CH#"+str(i+1)))
 		elif self.mode=='CLONE':
 			for i in self.chan_list:
-				if i==self.midi_chan:
+				if i in (self.midi_chan, zynthian_gui_config.master_midi_channel):
+					continue
+
 					continue
 				elif zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, i):
 					cc_to_clone = zyncoder.lib_zyncoder.get_midi_filter_clone_cc(self.midi_chan, i).nonzero()[0]
