@@ -5,9 +5,9 @@
 #
 # Valid rule formats:
 # -------------------------------------
-#  IGNORE [CH#??] EV[#??]
-#  MAP [CH#??] EV[#??] => [CH#??] EV[#??]
-#  CLEAN [CH#??] EV[#??]
+#  IGNORE [CH#??] [EV[#??]]
+#  MAP [CH#??] [EV[#??]] => [CH#??] [EV[#??]]
+#  CLEAN [CH#??] [EV[#??]]
 #
 # Valid event types (EV): 
 # -------------------------------------
@@ -347,6 +347,8 @@ class TestMidiFilterRule(unittest.TestCase):
 
 	def test_ignore_rules(self):
 		#Good rules
+		mfr=MidiFilterRule("IGNORE CH#3", False)
+		self.assertTrue(mfr.set_rules()==128*7)
 		mfr=MidiFilterRule("IGNORE CH#3 CC#5", False)
 		self.assertTrue(mfr.set_rules()==1)
 		mfr=MidiFilterRule("IGNORE CH#3,5,7 PB", False)
@@ -368,6 +370,8 @@ class TestMidiFilterRule(unittest.TestCase):
 
 	def test_map_rules(self):
 		#Good rules
+		mfr=MidiFilterRule("MAP CH#3 => CH#1", False)
+		self.assertTrue(mfr.set_rules()==128*7)
 		mfr=MidiFilterRule("MAP CH#1 CC#5 => CC#7", False)
 		self.assertTrue(mfr.set_rules()==1)
 		mfr=MidiFilterRule("MAP CH#3 CC#5 => CH#4 CC#7", False)
