@@ -1215,8 +1215,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.fill_list()
 
 			#Set active layer
-			self.index = snapshot['index']
-			if self.index in self.layers:
+			if snapshot['index']<len(self.layers):
+				self.index = snapshot['index']
+				self.zyngui.set_curlayer(self.layers[self.index])
+			elif len(self.layers)>0:
+				self.index = 0
 				self.zyngui.set_curlayer(self.layers[self.index])
 
 			#Set Clone
