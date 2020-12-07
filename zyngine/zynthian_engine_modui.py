@@ -69,7 +69,6 @@ class zynthian_engine_modui(zynthian_engine):
 		self.options= {
 			'clone': False,
 			'note_range': False,
-			'transpose': False,
 			'audio_route': False,
 			'midi_chan': False
 		}
