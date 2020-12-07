@@ -247,7 +247,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
 			if self.halftone_zctrl:
 				self.halftone_zctrl.setup_zyncoder()
 			else:
-				self.halftone_ctrl=zynthian_controller(None, 'halftone transpose', 'halftone transpose', { 'midi_cc':0, 'value_max':25 })
+				self.halftone_ctrl=zynthian_controller(None, 'semitone transpose', 'semitone transpose', { 'midi_cc':0, 'value_max':25 })
 				self.halftone_zctrl=zynthian_gui_controller(0, self.main_frame, self.halftone_ctrl, False)
 			self.halftone_zctrl.val0=-12
 			self.halftone_zctrl.erase_midi_bind()
