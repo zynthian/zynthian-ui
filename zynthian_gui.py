@@ -61,7 +61,6 @@ from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
 from zyngui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
-from zyngui.zynthian_gui_transpose import zynthian_gui_transpose
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
 from zyngui.zynthian_gui_midi_out import zynthian_gui_midi_out
 from zyngui.zynthian_gui_audio_in import zynthian_gui_audio_in
@@ -316,7 +315,6 @@ class zynthian_gui:
 		self.screens['midi_chan'] = zynthian_gui_midi_chan()
 		self.screens['midi_cc'] = zynthian_gui_midi_cc()
 		self.screens['midi_key_range'] = zynthian_gui_midi_key_range()
-		self.screens['transpose'] = zynthian_gui_transpose()
 		self.screens['audio_out'] = zynthian_gui_audio_out()
 		self.screens['midi_out'] = zynthian_gui_midi_out()
 		self.screens['audio_in'] = zynthian_gui_audio_in()
