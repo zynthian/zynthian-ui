@@ -108,10 +108,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 					self.list_data.append((self.layer_clone, None, "Clone MIDI to ..."))
 
 				if 'note_range' in eng_options and eng_options['note_range']:
-					self.list_data.append((self.layer_note_range, None, "Note Range"))
-
-				if 'transpose' in eng_options and eng_options['transpose']:
-					self.list_data.append((self.layer_transpose, None, "Transpose"))
+					self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
 
 			if 'midi_route' in eng_options and eng_options['midi_route']:
 				self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))

@@ -50,15 +50,17 @@ class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
 		self.chan = None
 		self.note_low = 0
 		self.note_high = 127
-		self.octave = 0
+		self.octave_trans = 0
+		self.halftone_trans = 0
 
 		self.learn_toggle = 0
 
 		self.nlow_zctrl=None
 		self.nhigh_zctrl=None
 		self.octave_zctrl=None
+		self.halftone_zctrl=None
 
-		self.space_frame_width = zynthian_gui_config.display_width-zynthian_gui_config.ctrl_width
+		self.space_frame_width = zynthian_gui_config.display_width-2*zynthian_gui_config.ctrl_width
 		self.space_frame_height = zynthian_gui_config.ctrl_height - 2
 
 		self.piano_canvas_width = zynthian_gui_config.display_width
@@ -72,7 +74,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
 			width=self.space_frame_width,
 			height=self.space_frame_height,
 			bg=zynthian_gui_config.color_panel_bg)
-		self.space_frame.grid(row=1, column=0, rowspan=1, columnspan=2, padx=(0,2), pady=(0,2), sticky="wens")
+		self.space_frame.grid(row=1, column=1, rowspan=1, columnspan=1, padx=(2,2), pady=(0,2), sticky="wens")
 
 		self.note_info_canvas = tkinter.Canvas(self.main_frame,
 			width=self.piano_canvas_width,
@@ -103,7 +105,8 @@ class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
 		self.chan = chan
 		self.note_low = zyncoder.lib_zyncoder.get_midi_filter_note_low(chan)
 		self.note_high = zyncoder.lib_zyncoder.get_midi_filter_note_high(chan)
-		self.octave = zyncoder.lib_zyncoder.get_midi_filter_octave_trans(chan)
+		self.octave_trans = zyncoder.lib_zyncoder.get_midi_filter_octave_trans(chan)
+		self.halftone_trans = zyncoder.lib_zyncoder.get_midi_filter_halftone_trans(chan)
 		self.set_select_path()
 
 
@@ -238,13 +241,24 @@ class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
 				self.octave_zctrl=zynthian_gui_controller(2, self.main_frame, self.octave_ctrl, False)
 			self.octave_zctrl.val0=-5
 			self.octave_zctrl.erase_midi_bind()
-			self.octave_zctrl.set_value(self.octave+5, True)
+			self.octave_zctrl.set_value(self.octave_trans+5, True)
 			self.octave_zctrl.show()
+
+			if self.halftone_zctrl:
+				self.halftone_zctrl.setup_zyncoder()
+			else:
+				self.halftone_ctrl=zynthian_controller(None, 'halftone transpose', 'halftone transpose', { 'midi_cc':0, 'value_max':25 })
+				self.halftone_zctrl=zynthian_gui_controller(0, self.main_frame, self.halftone_ctrl, False)
+			self.halftone_zctrl.val0=-12
+			self.halftone_zctrl.erase_midi_bind()
+			self.halftone_zctrl.set_value(self.halftone_trans+12, True)
+			self.halftone_zctrl.show()
 
 
 	def plot_zctrls(self):
 		if self.replot:
 			self.octave_zctrl.plot_value()
+			self.halftone_zctrl.plot_value()
 			self.update_piano()
 			self.update_text()
 
@@ -285,10 +299,17 @@ class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
 				self.replot = True
 
 			self.octave_zctrl.read_zyncoder()
-			if (self.octave+5)!=self.octave_zctrl.value:
-				self.octave = self.octave_zctrl.value-5
-				logging.debug("SETTING FILTER OCTAVE TRANS.: {}".format(self.octave))
-				zyncoder.lib_zyncoder.set_midi_filter_octave_trans(self.chan, self.octave)
+			if (self.octave_trans+5)!=self.octave_zctrl.value:
+				self.octave_trans = self.octave_zctrl.value-5
+				logging.debug("SETTING FILTER OCTAVE TRANS.: {}".format(self.octave_trans))
+				zyncoder.lib_zyncoder.set_midi_filter_octave_trans(self.chan, self.octave_trans)
+				self.replot = True
+
+			self.halftone_zctrl.read_zyncoder()
+			if (self.halftone_trans+12)!=self.halftone_zctrl.value:
+				self.halftone_trans = self.halftone_zctrl.value-12
+				logging.debug("SETTING FILTER HALFTONE TRANS.: {}".format(self.halftone_trans))
+				zyncoder.lib_zyncoder.set_midi_filter_halftone_trans(self.chan, self.halftone_trans)
 				self.replot = True
 
 		return [0]
@@ -316,9 +337,9 @@ class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
 
 	def set_select_path(self):
 		try:
-			self.select_path.set("{} > Note Range...".format(self.zyngui.screens['layer_options'].layer.get_basepath()))
+			self.select_path.set("{} > Note Range & Transpose...".format(self.zyngui.screens['layer_options'].layer.get_basepath()))
 		except:
-			self.select_path.set("Note Range...")
+			self.select_path.set("Note Range & Transpose...")
 
 
 	def cb_piano_canvas(self,event):
