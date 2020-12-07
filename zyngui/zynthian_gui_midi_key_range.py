@@ -129,6 +129,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
 			else:
 				bgcolor = "#FFFFFF"
 			key = self.piano_canvas.create_rectangle((x1, 0, x2, self.piano_canvas_height), fill=bgcolor, width=0)
+			self.piano_canvas.tag_lower(key)
 			midi_note += 1 
 			self.piano_keys.append(key)
 			#logging.error("PLOTTING PIANO WHITE KEY {}: {}".format(midi_note,x1))
@@ -138,9 +139,9 @@ class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
 
 			# plot black key when needed ...
 			if self.black_keys_pattern[i % 7]:
-				x1b = x1-int(key_width/2)
-				x2b = x2-int(key_width/2)
-				if x1b<self.piano_canvas_width:
+				x1b = x1-int(key_width/3)
+				x2b = x1b+int(2*key_width/3)
+				if x2b<self.piano_canvas_width:
 					if self.note_low>midi_note or self.note_high<midi_note:
 						bgcolor = "#707070"
 					else:
