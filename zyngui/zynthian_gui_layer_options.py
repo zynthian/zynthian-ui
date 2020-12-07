@@ -107,6 +107,9 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				if 'clone' in eng_options and eng_options['clone'] and self.layer.midi_chan is not None:
 					self.list_data.append((self.layer_clone, None, "Clone MIDI to ..."))
 
+				if 'note_range' in eng_options and eng_options['note_range']:
+					self.list_data.append((self.layer_note_range, None, "Note Range"))
+
 				if 'transpose' in eng_options and eng_options['transpose']:
 					self.list_data.append((self.layer_transpose, None, "Transpose"))
 
@@ -285,6 +288,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def layer_clone(self):
 		self.zyngui.screens['midi_chan'].set_mode("CLONE", self.layer.midi_chan)
 		self.zyngui.show_modal('midi_chan')
+
+
+	def layer_note_range(self):
+		self.zyngui.screens['midi_key_range'].config(self.layer.midi_chan)
+		self.zyngui.show_modal('midi_key_range')
 
 
 	def layer_transpose(self):

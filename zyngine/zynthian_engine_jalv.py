@@ -168,6 +168,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.options['audio_route'] = False
 		elif plugin_type=="Audio Effect":
 			self.options['audio_capture'] = True
+			self.options['note_range'] = False
 
 		if not dryrun:
 			if self.config_remote_display():

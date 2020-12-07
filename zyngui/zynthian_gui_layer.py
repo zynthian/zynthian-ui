@@ -63,7 +63,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.add_layer_eng = None
 		self.last_snapshot_fpath = None
 		self.reset_clone()
-		self.reset_transpose()
+		self.reset_note_range()
 		self.remove_all_layers(True)
 		self.reset_midi_profile()
 
@@ -446,9 +446,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	#----------------------------------------------------------------------------
-	# Clone & Transpose
+	# Clone, Note Range & Transpose
 	#----------------------------------------------------------------------------
-
 
 	def set_clone(self, clone_status):
 		for i in range(0,16):
@@ -466,14 +465,19 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			zyncoder.lib_zyncoder.reset_midi_filter_clone(i)
 
 
-	def set_transpose(self, transpose_status):
+	def set_transpose(self, tr_status):
 		for i in range(0,16):
-			zyncoder.lib_zyncoder.set_midi_filter_transpose(i,transpose_status[i])
+			zyncoder.lib_zyncoder.set_midi_filter_halftone_trans(i, tr_status[i]['halftone_trans'])
 
 
-	def reset_transpose(self):
+	def set_note_range(self, nr_status):
 		for i in range(0,16):
-			zyncoder.lib_zyncoder.set_midi_filter_transpose(i,0)
+			zyncoder.lib_zyncoder.set_midi_filter_note_range(i, nr_status[i]['note_low'], nr_status[i]['note_high'], nr_status[i]['octave_trans'], nr_status[i]['halftone_trans'])
+
+
+	def reset_note_range(self):
+		for i in range(0,16):
+			zyncoder.lib_zyncoder.reset_midi_filter_note_range(i)
 
 
 	#----------------------------------------------------------------------------
@@ -1076,7 +1080,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				'index':self.index,
 				'layers':[],
 				'clone':[],
-				'transpose':[],
+				'note_range':[],
 				'audio_capture': self.get_audio_capture(),
 				'audio_routing': self.get_audio_routing(),
 				'midi_routing': self.get_midi_routing(),
@@ -1101,9 +1105,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					}
 					snapshot['clone'][i].append(clone_info)
 
-			#Transpose info
+			#Note-range info
 			for i in range(0,16):
-				snapshot['transpose'].append(zyncoder.lib_zyncoder.get_midi_filter_transpose(i))
+				info = {
+					'note_low': zyncoder.lib_zyncoder.get_midi_filter_note_low(i),
+					'note_high': zyncoder.lib_zyncoder.get_midi_filter_note_high(i),
+					'octave_trans': zyncoder.lib_zyncoder.get_midi_filter_octave_trans(i),
+					'halftone_trans': zyncoder.lib_zyncoder.get_midi_filter_halftone_trans(i)
+				}
+				snapshot['note_range'].append(info)
 
 			#JSON Encode
 			json=JSONEncoder().encode(snapshot)
@@ -1228,11 +1238,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			else:
 				self.reset_clone()
 
-			#Set Transpose
-			if 'transpose' in snapshot:
+			# Note-range & Tranpose
+			self.reset_note_range()
+			if 'note_range' in snapshot:
+				self.set_note_range(snapshot['note_range'])
+			#BW compat.
+			elif 'transpose' in snapshot:
 				self.set_transpose(snapshot['transpose'])
-			else:
-				self.reset_transpose()
 
 			#Set CC-Map
 			#TODO

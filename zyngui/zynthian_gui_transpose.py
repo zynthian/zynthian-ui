@@ -43,22 +43,22 @@ class zynthian_gui_transpose(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data=[]
-		for i in range(0,121):
-			offset=i-60
+		for i in range(0,25):
+			offset=i-12
 			self.list_data.append((str(i),offset,str(offset)))
 		super().fill_list()
 
 
 	def show(self):
-		offset=zyncoder.lib_zyncoder.get_midi_filter_transpose(self.get_layer_chan())
-		self.index=60+offset
+		offset=zyncoder.lib_zyncoder.get_midi_filter_halftone_trans(self.get_layer_chan())
+		self.index=12+offset
 		super().show()
 
 
 	def select_action(self, i, t='S'):
 		midi_chan = self.get_layer_chan()
 		logging.debug("TRANSPOSE MIDI CHAN {}!".format(midi_chan))
-		zyncoder.lib_zyncoder.set_midi_filter_transpose(midi_chan,self.list_data[i][1])
+		zyncoder.lib_zyncoder.set_midi_filter_halftone_trans(midi_chan,self.list_data[i][1])
 		self.zyngui.show_modal('layer_options')
 
 

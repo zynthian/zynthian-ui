@@ -177,6 +177,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 		self.options = {
 			'clone': True,
+			'note_range': True,
 			'transpose': True,
 			'audio_route': True,
 			'midi_chan': True
