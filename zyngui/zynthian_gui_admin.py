@@ -119,6 +119,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.start_aubionotes,0,"[  ] AubioNotes (Audio2MIDI)"))
 
+		if zynconf.is_service_active("jamulus"):
+			self.list_data.append((self.stop_jamulus,0,"[x]︎ Jamulus Client"))
+		else:
+			self.list_data.append((self.start_jamulus,0,"[  ] Jamulus Client"))
+
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
 		self.list_data.append((None,0,"-----------------------------"))
@@ -592,6 +597,51 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.start_aubionotes(False)
 		else:
 			self.stop_aubionotes(False)
+
+
+	def start_jamulus(self, save_config=True):
+		logging.info("STARTING Jamulus")
+		try:
+			check_output("systemctl start jamulus", shell=True)
+			zynthian_gui_config.midi_jamulus_enabled = 1
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_JAMULUS_ENABLED": str(zynthian_gui_config.midi_jamulus_enabled)
+				})
+			# Call autoconnect after a little time
+			sleep(0.5)
+			self.zyngui.zynautoconnect()
+
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	def stop_jamulus(self, save_config=True):
+		logging.info("STOPPING Jamulus")
+		try:
+			check_output("systemctl stop jamulus", shell=True)
+			zynthian_gui_config.midi_jamulus_enabled = 0
+			# Update MIDI profile
+			if save_config:
+				zynconf.update_midi_profile({ 
+					"ZYNTHIAN_MIDI_JAMULUS_ENABLED": str(zynthian_gui_config.midi_jamulus_enabled)
+				})
+
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	#Start/Stop Jamulus depending on configuration
+	def default_jamulus(self):
+		if zynthian_gui_config.midi_jamulus_enabled:
+			self.start_jamulus(False)
+		else:
+			self.stop_jamulus(False)
 
 
 	def midi_profile(self):
