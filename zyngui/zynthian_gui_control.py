@@ -174,11 +174,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 				pass
 
 
-	def set_mode_select(self):
-		self.mode='select'
+	def set_selector_screen(self): 
 		for i in range(0,len(self.zgui_controllers)):
 			self.zgui_controllers[i].set_hl(zynthian_gui_config.color_ctrl_bg_off)
 		self.set_selector()
+
+
+	def set_mode_select(self):
+		self.mode='select'
+		self.set_selector_screen()
 		#self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
 		#	selectforeground=zynthian_gui_config.color_ctrl_tx,
 		#	fg=zynthian_gui_config.color_ctrl_tx)
@@ -285,6 +289,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.click_listbox()
 
 
+	def select(self, index=None):
+		super().select(index)
+		if self.mode=='select':
+			self.set_controller_screen()
+			self.set_selector_screen()
+		
+
 	def zyncoder_read(self, zcnums=None):
 		#Read Controller
 		if self.mode=='control' and self.zcontrollers:
@@ -303,9 +314,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 						self.zyncoder_read_xyselect(zctrl, i)
 
 		elif self.mode=='select':
-			if super().zyncoder_read():
-				self.set_controller_screen()
-				self.set_mode_select()
+			super().zyncoder_read()
 
 
 	def zyncoder_read_xyselect(self, zctrl, i):
