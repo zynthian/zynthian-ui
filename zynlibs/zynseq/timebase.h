@@ -28,8 +28,8 @@
 #define TIMEBASE_TYPE_TIMESIG   2
 
 struct TimebaseEvent {
-    uint16_t measure; // Measure at which event occurs in timeline
-    uint16_t tick; // Tick at which event occurs within measure (0 for timesig)
+    uint16_t bar; // Bar at which event occurs in timeline
+    uint16_t clock; // Clock at which event occurs within bar (0 for timesig)
     uint16_t type; // Event type [TIMEBASE_TYPE_TEMPO | TIMEBASE_TYPE_TIMESIG]
     uint16_t value; // Value
 };
@@ -49,35 +49,35 @@ class Timebase
         ~Timebase();
         
         /** @brief  Add timebase event to map
-        *   @param  measure Measure within which event occurs
-        *   @param  tick Tick within measure at which event occurs
+        *   @param  bar Bar within which event occurs
+        *   @param  clock Clock within bar at which event occurs
         *   @param  type Event type
         *   @param  value Event value
         */
-        void addTimebaseEvent(uint16_t measure, uint16_t tick, uint16_t type, uint16_t value);
+        void addTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type, uint16_t value);
 
         /** @brief  Remove timebase event from map
-        *   @param  measure Measure within which event occurs
-        *   @param  tick Tick within measure at which event occurs
+        *   @param  bar Bar within which event occurs
+        *   @param  clock Clock within bar at which event occurs
         *   @param  type Event type mask
         */
-        void removeTimebaseEvent(uint16_t measure, uint16_t tick, uint16_t type);
+        void removeTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type);
 
         /** @brief  Get next timebase event
-        *   @param  measure Measure from which to search
-        *   @param  tick Tick within measure from which to search
+        *   @param  bar Bar from which to search
+        *   @param  ckock Clock within bar from which to search
         *   @param  type Timebase event type mask
         *   @retval TimebaseEvent* Pointer to timebase event or NULL if none found
         */
-        TimebaseEvent* getNextTimebaseEvent(uint16_t measure, uint16_t tick, uint16_t type);
+        TimebaseEvent* getNextTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type);
 
         /** @brief  Get previous timebase event
-        *   @param  measure Measure from which to search
-        *   @param  tick Tick within measure from which to search
+        *   @param  bat Bar from which to search
+        *   @param  clock Clock within bar from which to search
         *   @param  type Timebase event type
         *   @retval TimebaseEvent* Pointer to timebase event or NULL if none found
         */
-        TimebaseEvent* getPreviousTimebaseEvent(uint16_t measure, uint16_t tick, uint16_t type);
+        TimebaseEvent* getPreviousTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type);
 
         /** @brief  Get quantity of timebase events
         *   @retval uint32_t Quanity of timebase events in map

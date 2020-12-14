@@ -2,9 +2,8 @@
 
 /**	Pattern class methods implementation **/
 
-Pattern::Pattern(uint32_t steps, uint8_t clkPerStep, uint8_t stepsPerBeat, uint8_t beatType) :
-	m_nClkPerStep(clkPerStep),
-	m_nLength(steps),
+Pattern::Pattern(uint32_t beats, uint8_t stepsPerBeat, uint8_t beatType) :
+	m_nBeats(beats),
 	m_nStepsPerBeat(stepsPerBeat),
 	m_nBeatType(beatType)
 {
@@ -31,7 +30,7 @@ StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1,
 				break;
 		}
 	}
-	uint32_t nTime = position % m_nLength;
+	uint32_t nTime = position % (m_nBeats * m_nStepsPerBeat);
 	auto it = m_vEvents.begin();
 	for(; it != m_vEvents.end(); ++it)
 	{
@@ -62,12 +61,13 @@ void Pattern::deleteEvent(uint32_t position, uint8_t command, uint8_t value1)
 	}
 }
 
-void Pattern::addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
+bool Pattern::addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
 {
 	//!@todo Should we limit note length to size of pattern?
-	if(step >= m_nLength || note > 127 || velocity > 127 || duration > m_nLength)
-		return;
+	if(step >= (m_nBeats * m_nStepsPerBeat) || note > 127 || velocity > 127 || duration > (m_nBeats * m_nStepsPerBeat))
+		return false;
 	addEvent(step, MIDI_NOTE_ON, note, velocity, duration);
+	return true;
 }
 
 void Pattern::removeNote(uint32_t step, uint8_t note)
@@ -98,7 +98,7 @@ void Pattern::setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
 
 uint8_t Pattern::getNoteDuration(uint32_t step, uint8_t note)
 {
-	if(step >= m_nLength)
+	if(step >= (m_nBeats * m_nStepsPerBeat))
 		return 0;
 	for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
 	{
@@ -112,7 +112,7 @@ uint8_t Pattern::getNoteDuration(uint32_t step, uint8_t note)
 void Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, uint32_t duration)
 {
 	uint32_t nDuration = duration;
-	if(step > m_nLength || control > 127 || valueStart > 127|| valueEnd > 127 || nDuration > m_nLength)
+	if(step > (m_nBeats * m_nStepsPerBeat) || control > 127 || valueStart > 127|| valueEnd > 127 || nDuration > (m_nBeats * m_nStepsPerBeat))
 		return;
 	StepEvent* pControl = new StepEvent(step, control, valueStart, nDuration);
 	pControl->setValue2end(valueEnd);
@@ -131,31 +131,18 @@ uint8_t Pattern::getControlDuration(uint32_t step, uint8_t control)
 	return 0;
 }
 
-void Pattern::setSteps(uint32_t steps)
-{
-	uint32_t length = steps;
-	size_t nIndex = 0;
-	for(; nIndex < m_vEvents.size(); ++nIndex)
-		if(m_vEvents[nIndex].getPosition() >= length)
-			break;
-	m_vEvents.resize(nIndex);
-	m_nLength = length;
-}
-
 uint32_t Pattern::getSteps()
 {
-	return m_nLength;
+	return (m_nBeats * m_nStepsPerBeat);
 }
 
 void Pattern::setBeatType(uint8_t beatType)
 {
-	printf("Pattern::setBeatType(%u)\n", beatType);
 	for(uint8_t nValue = 1; nValue <= 64; nValue = nValue << 1)
     {
         if(beatType > nValue)
             continue;
 		m_nBeatType = nValue;
-        setClocksPerStep(96 / (m_nStepsPerBeat * m_nBeatType)); //!@todo This might need more attention
         return;
     }
 }
@@ -167,22 +154,15 @@ uint8_t Pattern::getBeatType()
 
 uint32_t Pattern::getLength()
 {
-	return m_nLength * m_nClkPerStep;
-}
-
-void Pattern::setClocksPerStep(uint32_t value)
-{
-	if(value < 0xFF)
-		m_nClkPerStep = value;
-	//!@todo quantize events
+	return m_nBeats * 24;
 }
 
 uint32_t Pattern::getClocksPerStep()
 {
-	return m_nClkPerStep;
+	return 96 / (m_nStepsPerBeat * m_nBeatType);
 }
 
-void Pattern::setStepsPerBeat(uint32_t value)
+bool Pattern::setStepsPerBeat(uint32_t value)
 {
 	switch(value)
 	{
@@ -195,14 +175,34 @@ void Pattern::setStepsPerBeat(uint32_t value)
 		case 12:
 		case 24:
 			m_nStepsPerBeat = value;
-			setClocksPerStep(96 / (m_nStepsPerBeat * m_nBeatType));
 		break;
+		default:
+			return false;
 	}
+	//!@todo Recalculate timing elements
+	return true;
 }
 
 uint32_t Pattern::getStepsPerBeat()
 {
 	return m_nStepsPerBeat;
+}
+
+void Pattern::setBeatsInPattern(uint32_t beats)
+{
+	m_nBeats = beats;
+	
+	// Remove steps if shrinking
+	size_t nIndex = 0;
+	for(; nIndex < m_vEvents.size(); ++nIndex)
+		if(m_vEvents[nIndex].getPosition() >= (m_nBeats * m_nStepsPerBeat))
+			break;
+	m_vEvents.resize(nIndex);
+}
+
+uint32_t Pattern::getBeatsInPattern()
+{
+	return m_nBeats;
 }
 
 void Pattern::setScale(uint8_t scale)

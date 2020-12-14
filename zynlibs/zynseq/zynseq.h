@@ -47,7 +47,6 @@
             Play status, Play position
         
     Call init() to initialise JACK client
-    Call end() to exit //!@todo Can this be done automatically by atexit()
 */
 
 #include "constants.h"
@@ -66,15 +65,16 @@ extern "C"
 // ** Library management functions **
 
 /** @brief  Initialise JACK client
-    @@note  Call init() before using other library methods
-    @retval bool True on success
+*   @param  bTimebaseMaster True to become timebase master (optional - Default: false)
+*   @note   Call init() before using other library methods
+*   @retval bool True on success
 */
-bool  init();
+bool init(bool bTimebaseMaster = false);
 
 /** @brief  Enable debug output
 *   @param  bEnable True to enable debug output
 */
-void debug(bool bEnable);
+void enableDebug(bool bEnable);
 
 /** @brief  Load sequences and patterns from file
 *   @param  filename Full path and filename
@@ -89,12 +89,13 @@ void save(char* filename);
 
 
 // ** Direct MIDI interface **
+//!@todo Should direct MIDI output be removed because JACK clients can do that themselves?
 
 /** @brief  Play a note
 *   @param  note MIDI note number
 *   @param  velocity MIDI velocity
 *   @param  channel MIDI channel
-*   @parm   duration Duration of note in milliseconds (0 to send note on only)
+*   @param  duration Duration of note in milliseconds (0 to send note on only) Maximum 1 minute
 */
 void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration = 0);
 
@@ -122,11 +123,7 @@ void sendMidiSong(uint32_t pos);
 */
 void sendMidiClock();
 
-/** @brief  Get playing state
-*   @retval bool True if any sequence is playing
-*/
-bool isPlaying();
-
+// ** Status **
 /** @brief  Get song playing state
 *   @retval bool True if song is playing
 */
@@ -163,15 +160,15 @@ void setTriggerNote(uint32_t sequence, uint8_t note);
 */
 void selectPattern(uint32_t pattern);
 
+/** @brief  Get the index of the currently selected pattern
+*   @retval uint32_t Index of pattern or -1 if not found
+*/
+uint32_t getPatternIndex();
+
 /** @brief  Get quantity of steps in selected pattern
 *   @retval uint32_t Quantity of steps
 */
 uint32_t getSteps();
-
-/** @brief  Set quantity of steps in selected pattern
-*   @param  steps Quantity of steps
-*/
-void setSteps(uint32_t steps);
 
 /** @brief  Get quantity of beats in selected pattern
 *   @retval uint32_t Quantity of beats
@@ -180,6 +177,7 @@ uint32_t getBeatsInPattern();
 
 /** @brief  Set quantity of beats in selected pattern
 *   @param  beats Quantity of beats
+*   @note   Adjusts steps to match steps per beat
 */
 void setBeatsInPattern(uint32_t beats);
 
@@ -194,11 +192,6 @@ uint32_t getPatternLength(uint32_t pattern);
 */
 uint32_t getClocksPerStep();
 
-/** @brief  Set clock divisor
-*   @param  divisor Clock divisor
-*/
-void setClocksPerStep(uint32_t divisor);
-
 /** @brief  Get steps per beat
 *   @retval uint32_t Steps per beat
 */
@@ -206,6 +199,7 @@ uint32_t getStepsPerBeat();
 
 /** @brief  Set steps per beat
 *   @param  steps Steps per beat
+*   @note   Calculates pattern length from beats in pattern
 */
 void setStepsPerBeat(uint32_t steps);
 
@@ -224,8 +218,9 @@ void setBeatType(uint8_t beatType);
 *   @param  note MIDI note number
 *   @param  velocity MIDI velocity value
 *   @param  duration Quantity of steps note should play for
+*   @retval bool True on success
 */
-void addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration);
+bool addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration);
 
 /** @brief  Removes note from pattern
 *   @param  step Index of step at which to remove note
@@ -258,7 +253,8 @@ uint32_t getNoteDuration(uint32_t step, uint8_t note);
 */
 void transpose(int8_t value);
 
-/** @brief  Clears pattern
+/** @brief  Clears events from pattern
+*   @note   Does not change other parameters such as pattern length
 */
 void clear();
 
@@ -313,7 +309,7 @@ bool isModified();
 *   @param  force True to remove overlapping patterns, false to fail if overlapping patterns 
 *   @retval True if pattern inserted
 */
-bool addPattern(uint32_t sequence, uint32_t position, uint32_t pattern, bool force);
+bool  addPattern(uint32_t sequence, uint32_t position, uint32_t pattern, bool force);
 
 /** @brief  Remove pattern to a sequence
 *   @param  sequence Index of sequence
@@ -360,18 +356,20 @@ void setPlayMode(uint32_t sequence, uint8_t mode);
 
 /** @brief  Get play state
 *   @param  sequence Index of sequence
-*   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING]
+*   @retval uint8_t Play state [STOPPED | STARTING | PLAYING | STOPPING]
 */
 uint8_t getPlayState(uint32_t sequence);
 
 /** @brief  Set play state
 *   @param  sequence Index of sequence
-*   @param  uint8_t Play state [STOPPED | PLAYING | STOPPING]
+*   @param  uint8_t Play state [STOPPED | STARTING | PLAYING | STOPPING]
+*   @note   STARTING will reset to start of sequence. PLAYING resumes at last played position.
 */
 void setPlayState(uint32_t sequence, uint8_t state);
 
 /** @brief  Toggles play / stop
 *   @retval uint32_t sequence
+*   @todo   Sets value to STARTING / STOPPING but may wish to use STARTED / STOPPED, e.g. for songs but is used by trigger for pads
 */
 void togglePlayState(uint32_t sequence);
 
@@ -463,35 +461,35 @@ void removeTrack(uint32_t song, uint32_t track);
 /** @brief  Add tempo to song tempo map
 *   @param  song Song index
 *   @param  tempo Tempo in BPM
-*   @param  measure Measure (bar) of song at which to add tempo change [Optional - default: 1]
-*   @param  tick Tick within measure at which to add tempo change [Optional - default: 0]
+*   @param  bar Bar of song at which to add tempo change [Optional - default: 1]
+*   @param  tick Tick within bar at which to add tempo change [Optional - default: 0]
 */
-void setTempo(uint32_t song, uint32_t tempo, uint16_t measure=1, uint16_t tick=0);
+void setTempo(uint32_t song, uint32_t tempo, uint16_t bar=1, uint16_t tick=0);
 
 /** @brief  Get tempo at position within song
 *   @param  song Song index
-*   @param  measure Measure (bar) of song at which to get tempo [Optional - default: 1]
-*   @param  tick Tick within measure at which to get tempo [Optional - default: 0]
+*   @param  bar Bar of song at which to get tempo [Optional - default: 1]
+*   @param  tick Tick within bar at which to get tempo [Optional - default: 0]
 '   @todo   getTempo without time parameter should get time at current play position???
 *   @retval uint32_t Tempo in BPM
 */
-uint32_t getTempo(uint32_t song, uint16_t measure=1, uint16_t tick=0);
+uint32_t getTempo(uint32_t song, uint16_t bar=1, uint16_t tick=0);
 
 /** @brief  Add time signature to song
 *   @param  song Song index
 *   @param  beats Beats per bar (numerator)
 *   @param  type Beat type (denominator)
-*   @param  measure Measure (bar) of song at which to add tempo change [Optional - default: 1]
-*   @param  tick Tick within measure at which to add tempo change [Optional - default: 0]
+*   @param  bar Bar of song at which to add tempo change [Optional - default: 1]
+*   @param  tick Tick within bar at which to add tempo change [Optional - default: 0]
 */
-void setTimeSig(uint32_t song, uint8_t beats, uint8_t type, uint16_t measure);
+void setTimeSig(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar);
 
 /** @brief  Get time signature at position within song
 *   @param  song Song index
-*   @param  measure Measure (bar) of song at which to time signature
+*   @param  bar Bar of song at which to time signature
 *   @retval uint16_t Time signature - MSB numerator, LSB denominator
 */
-uint16_t getTimeSig(uint32_t song, uint16_t measure);
+uint16_t getTimeSig(uint32_t song, uint16_t bar);
 
 /** @brief  Get quantity of tracks in song
 *   @param  song Song index
@@ -528,9 +526,9 @@ uint32_t getSongPosition();
 */
 void setSongPosition(uint32_t position);
 
-/** @brief  Sets the song position to the start of the current measure (bar)
+/** @brief  Sets the transport to start of the current bar
 */
-void setSongToStartOfMeasure();
+void setTransportToStartOfBar();
 
 /** @brief  Get bar length / loop duration
 *   @param  song Song index
@@ -541,6 +539,7 @@ uint32_t getBarLength(uint32_t song);
 /** @brief  Set bar length / loop duration
 *   @param  song Song index
 *   @param  period Clock cycles per bar / loop
+*   @todo   Implement setBarLength
 */
 void setBarLength(uint32_t song, uint32_t period);
 
@@ -593,12 +592,12 @@ void solo(uint32_t song, uint32_t track, int solo);
 void transportLocate(uint32_t frame);
 
 /** @brief  Get frame offset at BBT position
-*   @param  measure Measure (bar) [>0]
+*   @param  bar Bar [>0]
 *   @param  beat Beat within bar [>0, <=beats per bar]
 *   @param  tick Tick within beat [<ticks per beat]
 *   @retval uint32_t Frames since start of song until requested position
 */
-uint32_t transportGetLocation(uint32_t measure, uint32_t beat, uint32_t tick);
+uint32_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick);
 
 /** @brief  Register as timebase master
 *   @retval bool True if successfully became timebase master

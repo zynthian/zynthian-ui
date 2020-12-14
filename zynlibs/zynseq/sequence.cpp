@@ -88,6 +88,8 @@ void Sequence::setPlayMode(uint8_t mode)
 	if(mode > LASTPLAYMODE)
 		return;
 	m_nMode = mode;
+	if(m_nMode == DISABLED)
+		m_nState = STOPPED;
 }
 
 uint8_t Sequence::getPlayState()
@@ -97,7 +99,7 @@ uint8_t Sequence::getPlayState()
 
 void Sequence::setPlayState(uint8_t state)
 {
-	if(state > LASTPLAYSTATUS)
+	if(state > LASTPLAYSTATUS || m_nMode == DISABLED)
 		return;
 	if(state == STOPPING)
 		switch(m_nMode)
@@ -109,7 +111,9 @@ void Sequence::setPlayState(uint8_t state)
 				return;
 		}
 	else if(state == STARTING)
-		setPlayPosition(m_nPosition);
+		setPlayPosition(0); // Set to start of sequence when starting
+	else if(state == PLAYING)
+		setPlayPosition(0); // Resume when playing
 //		m_nDivCount = 0; //!@todo What should div count be?
 	if(m_nSequenceLength)
 		m_nState = state;
@@ -125,16 +129,18 @@ void Sequence::togglePlayState()
 		setPlayState(STOPPING);
 }
 
-bool Sequence::clock(uint32_t nTime, bool bSync)
+bool Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 {
 	// Clock cycle - update position and associated counters, status, etc.
 	// After this call all counters point to next position
 	// Events are triggered when m_nDivCount. Step is incremented after this so the countdown occurs whilst m_nCurrentStep is already set.
+	// nTime has absolute time and provides info to populate events with times that signal JACK main audio callback when to trigger events
+	m_dSamplesPerClock = dSamplesPerClock;
 	bool bReturn = false;
 	uint8_t nState = m_nState;
 	if(bSync && m_nState == STARTING)
 		m_nState = PLAYING;
-	if(bSync && m_nState == STOPPING && (m_nMode == ONESHOTSYNC || m_nMode == LOOPSYNC))
+	if(bSync && m_nState == STOPPING && m_nMode != ONESHOTALL && m_nMode != LOOPALL)
 		m_nState = STOPPED;
 	if(m_nState == STOPPED || m_nState == STARTING)
 		return bReturn;
@@ -145,11 +151,12 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 		m_nLastClockTime = nTime;
 		if(m_nPosition >= m_nSequenceLength)
 		{
-			printf("Reached end of sequence\n");
+			//printf("Reached end of sequence\n");
 			// Reached end of sequence
 			if(m_nState == STOPPING)
 			{
 				m_nState = STOPPED;
+				m_nPosition = 0;
 				return bReturn;
 			}
 			switch(m_nMode)
@@ -159,6 +166,7 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 				case ONESHOTALL:
 				case ONESHOTSYNC:
 					m_nState = STOPPED;
+					m_nPosition = 0;
 					return bReturn;
 				case LOOP:
 				case LOOPALL:
@@ -170,7 +178,7 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 
 		if(m_mPatterns.find(m_nPosition) != m_mPatterns.end())
 		{
-			printf("Start of pattern\n");
+			//printf("Start of pattern\n");
 			// Playhead at start of pattern
 			m_nCurrentPatternPos = m_nPosition;
 			m_nCurrentStep = 0;
@@ -180,11 +188,11 @@ bool Sequence::clock(uint32_t nTime, bool bSync)
 				m_nClkPerStep = 1;
 			m_nEventValue = -1;
 			bReturn = true;
-			printf("m_nCurrentPatternPos: %u m_nClkPerStep: %u\n", m_nCurrentPatternPos, m_nClkPerStep);
+			//printf("m_nCurrentPatternPos: %u m_nClkPerStep: %u\n", m_nCurrentPatternPos, m_nClkPerStep);
 		}
 		else if(m_nCurrentPatternPos >= 0 && m_nPosition >= m_nCurrentPatternPos + m_mPatterns[m_nCurrentPatternPos]->getLength())
 		{
-			printf("End of pattern\n");
+			//printf("End of pattern\n");
 			// At end of pattern
 			m_nCurrentPatternPos = -1;
 			m_nNextEvent = -1;
@@ -269,7 +277,8 @@ SEQ_EVENT* Sequence::getEvent()
 		{
 			// Already processed start value
 			m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
-			seqEvent.time = m_nLastClockTime + pEvent->getDuration() * (pPattern->getClocksPerStep() - 1) * m_nSamplePerClock; // -1 to send note-off one clock before next step
+			seqEvent.time = m_nLastClockTime + pEvent->getDuration() * (pPattern->getClocksPerStep() - 1) * m_dSamplesPerClock; // -1 to send note-off one clock before next step
+			//printf("Scheduling note off. Event duration: %u, clocks per step: %u, samples per clock: %u\n", pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
 		}
 	}
 	else
@@ -282,7 +291,7 @@ SEQ_EVENT* Sequence::getEvent()
 	seqEvent.msg.command = pEvent->getCommand() | m_nChannel;
 	seqEvent.msg.value1 = pEvent->getValue1start();
 	seqEvent.msg.value2 = m_nEventValue;
-	//printf("sequence::getEvent Event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %u\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
+	//printf("sequence::getEvent Scheduled event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %f\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_dSamplesPerClock);
 	return &seqEvent;
 }
 

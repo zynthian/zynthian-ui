@@ -29,62 +29,62 @@ Timebase::~Timebase()
         delete *it;
 }
 
-void Timebase::addTimebaseEvent(uint16_t measure, uint16_t tick, uint16_t type, uint16_t value)
+void Timebase::addTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type, uint16_t value)
 {
     auto it = m_vEvents.begin();
     for(; it < m_vEvents.end(); ++it)
     {
-        if((*it)->measure ==measure && (*it)->tick == tick && (*it)->type == type)
+        if((*it)->bar ==bar && (*it)->clock == clock && (*it)->type == type)
         {
             // Replace existing event
             (*it)->value = value;
             return;
         }
-        if((*it)->measure > measure || ((*it)->measure == measure && (*it)->tick > tick))
+        if((*it)->bar > bar || ((*it)->bar == bar && (*it)->clock > clock))
             break; // Found point to insert
     }
     TimebaseEvent* pEvent = new TimebaseEvent;
-    pEvent->measure = measure;
-    pEvent->tick = tick;
+    pEvent->bar = bar;
+    pEvent->clock = clock;
     pEvent->type = type;
     pEvent->value = value;
     m_vEvents.insert(it, pEvent);
 }
 
-void Timebase::removeTimebaseEvent(uint16_t measure, uint16_t tick, uint16_t type)
+void Timebase::removeTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type)
 {
     auto it = m_vEvents.begin();
     for(; it < m_vEvents.end(); ++it)
     {
-        if((*it)->measure == measure && (*it)->tick == tick && (*it)->type == type)
+        if((*it)->bar == bar && (*it)->clock == clock && (*it)->type == type)
         {
             delete(*it);
         }
     }
 }
 
-TimebaseEvent* Timebase::getNextTimebaseEvent(uint16_t measure, uint16_t tick, uint16_t type)
+TimebaseEvent* Timebase::getNextTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type)
 {
     for(size_t nIndex = 0; nIndex < m_vEvents.size(); ++nIndex)
     {
         if(m_vEvents[nIndex]->type != type)
             continue;
-        if(m_vEvents[nIndex]->measure < measure || (m_vEvents[nIndex]->measure == measure && m_vEvents[nIndex]->tick <= tick))
+        if(m_vEvents[nIndex]->bar < bar || (m_vEvents[nIndex]->bar == bar && m_vEvents[nIndex]->clock <= clock))
             continue;
         return m_vEvents[nIndex];
     }
     return NULL;
 }
 
-TimebaseEvent* Timebase::getPreviousTimebaseEvent(uint16_t measure, uint16_t tick, uint16_t type)
+TimebaseEvent* Timebase::getPreviousTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type)
 {
     TimebaseEvent* pEvent = NULL;
     for(size_t nIndex = 0; nIndex < m_vEvents.size(); ++nIndex)
     {
         if(m_vEvents[nIndex]->type != type)
             continue;
-        if(m_vEvents[nIndex]->measure < measure)
-        if(m_vEvents[nIndex]->measure < measure || (m_vEvents[nIndex]->measure == measure && m_vEvents[nIndex]->tick < tick))
+        if(m_vEvents[nIndex]->bar < bar)
+        if(m_vEvents[nIndex]->bar < bar || (m_vEvents[nIndex]->bar == bar && m_vEvents[nIndex]->clock < clock))
             pEvent = m_vEvents[nIndex];
         else
             return pEvent;

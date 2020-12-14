@@ -88,11 +88,13 @@ class Sequence
 
 		/**	@brief	Handle clock signal
 		*	@param	nTime Time (quantity of samples since JACK epoch)
-		*	@param	bSync True to indicate sync pulse, e.g. to sync sequences (optional - default: false)
+		*	@param	bSync True to indicate sync pulse, e.g. to sync sequences
+		* 	@param	dSamplesPerClock Samples per clock
 		*	@retval	bool True if clock triggers a sequence step
 		*	@note	Adds pending events from sequence to JACK queue
+		* 	@note	Sequences are clocked syncronously but not locked to absolute time so depend on start time for absolute timing
 		*/
-		bool clock(uint32_t nTime, bool bSync = false);
+		bool clock(uint32_t nTime, bool bSync, double dSamplesPerClock);
 
 		/**	@brief	Gets next event at current clock cycle
 		*	@retval	SEQ_EVENT* Pointer to sequence event at this time or NULL if no more events
@@ -138,11 +140,6 @@ class Sequence
 		*	@param	clock Quantity of clock cycles from start of sequence to position playhead
 		*/
 		void setPlayPosition(uint32_t clock);
-
-		/**	@brief	Set the samples per clock used to calculate when events should be scheduled
-		*	@param	samples Quantity of samples in each clock cycle
-		*/
-		void setClockRate(uint32_t samples) { m_nSamplePerClock = samples; };
 
 		/**	@brief	Get position of next pattern in sequence
 		*	@param	previous Position of previous pattern (Empty to get first pattern)
@@ -220,6 +217,6 @@ class Sequence
 		uint32_t m_nLastClockTime = 0; // Time of last clock pulse (sample)
 		uint32_t m_nCurrentStep = 0; // Postion within pattern (step)
 		uint32_t m_nSequenceLength = 0; // Quantity of clock cycles in sequence (last pattern start + length)
-		uint32_t m_nSamplePerClock; // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
+		double m_dSamplesPerClock; // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
 		bool m_bSolo = false; // True if sequence is solo
 };

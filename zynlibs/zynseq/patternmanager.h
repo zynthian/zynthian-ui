@@ -5,6 +5,7 @@
 #include <map>
 
 #define DEFAULT_TRACK_COUNT 4
+#define FILE_VERSION 2
 
 /** PatternManager class provides creation, recall, update and delete of patterns which other modules can subseqnetly use. It manages persistent (disk) storage. PatternManager is implemented as a singleton ensuring a single instance is available to all callers.
 */
@@ -40,7 +41,7 @@ class PatternManager
 
         /** @brief  Get the index of a pattern
         *   @param  pattern Pointer to pattern
-        *   @retval uint32_t Index of pattern
+        *   @retval uint32_t Index of pattern or -1 if not found
         */
         uint32_t getPatternIndex(Pattern* pattern);
 
@@ -74,17 +75,19 @@ class PatternManager
         */
         uint32_t updateSequenceLengths(uint32_t song);
 
+        /** @brief  Update all sequence lengths
+        *   @note   Blunt tool to update each sequence after any pattern length changes
+        */
+        void updateAllSequenceLengths();
+
         /** @brief  Handle clock
         *   @param  nTime Offset since JACK epoch for start of next period
         *   @param  pSchedule Pointer to the schedule to populate with events
         *   @param  bSync True indicates a sync pulse
+        *   @param  dSamplesPerClock Quantity of samples in each clock cycle
+        *   @retval bool True if pattern is not stopped
         */
-        void clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync);
-
-        /** @brief  Set the clock rates for all sequences in samples per clock
-        *   @param  samples (samples per clock)
-        */
-        void setSequenceClockRates(uint32_t samples);
+        bool clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock);
 
         /** @brief  Get pointer to a song
         *   @param  index Index of song to retrieve
@@ -161,9 +164,9 @@ class PatternManager
 
         /** @brief  Trigger sequence
         *   @param  note MIDI note number
-        *   @retval bool True if sequence triggered (or stopped)
+        *   @retval uint32_t Index of sequence triggered (or stopped) or 0 if no sequence triggered (can't trigger sequence 9)
         */
-        bool trigger(uint8_t note);
+        uint32_t trigger(uint8_t note);
 
         /** @brief  Set the current song
         *   @param  song Song to select
@@ -194,7 +197,7 @@ class PatternManager
         uint32_t fileRead32(FILE* pFile);
         uint16_t fileRead16(FILE* pFile);
         uint8_t fileRead8(FILE* pFile);
-        void doClock(uint32_t nSong, uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync);
+        bool doClock(uint32_t nSong, uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock);
 
         uint8_t m_nTriggerChannel = 15; // MIDI channel to recieve sequence triggers (note-on)
         uint32_t m_nCurrentSong = 0; // Currently selected song (ZynPad uses +1000)

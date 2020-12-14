@@ -5,7 +5,7 @@
 #include <memory>
 
 /**	StepEvent class provides an individual step event .
-*	The event may be part of a song, pattern or sequence. Events do not have MIDI channel which is applied by the function to play the event, e.g. pattern player assigned to specific channel. Events have the concept of position which is an offset from some epoch measured in MIDI steps. The epoch depends on the function using the event, e.g. pattern player may use start of pattern as epoch (position = 0). There is a starting and end value to allow interpolation of MIDI events between the start and end positions.
+*	The event may be part of a song, pattern or sequence. Events do not have MIDI channel which is applied by the function to play the event, e.g. pattern player assigned to specific channel. Events have the concept of position which is an offset from some epoch measured in steps. The epoch depends on the function using the event, e.g. pattern player may use start of pattern as epoch (position = 0). There is a starting and end value to allow interpolation of MIDI events between the start and end positions.
 */
 class StepEvent
 {
@@ -65,7 +65,7 @@ class StepEvent
 		void setValue2end(uint8_t value) { m_nValue2end = value; };
 	private:
 		uint32_t m_nPosition; // Start position of event in steps
-		uint32_t m_nDuration; // Duration of event
+		uint32_t m_nDuration; // Duration of event in steps
 		uint8_t m_nCommand; // MIDI command without channel
 		uint8_t m_nValue1start; // MIDI value 1 at start of event
 		uint8_t m_nValue2start; // MIDI value 2 at start of event
@@ -80,12 +80,11 @@ class Pattern
 {
 	public:
 		/**	@brief	Construct pattern object
-		*	@param	steps Quantity of steps in pattern [Optional - default: 16]
-		*	@param	clkPerStep Quantity of clock cycles per step [Optional - default: 6]
+		*	@param	beats Quantity of beats in pattern [Optional - default:4]
 		*	@param	stepsPerBeat Quantity of steps per beat [Optional - default: 4]
 		*   @param	beatType Time signature denominator [Optional - default: 4]
 		*/
-		Pattern(uint32_t steps = 16, uint8_t clkPerStep = 6, uint8_t stepsPerBeat = 4, uint8_t beatType = 4);
+		Pattern(uint32_t beats = 4, uint8_t stepsPerBeat = 4, uint8_t beatType = 4);
 		
 		/**	@brief	Destruct pattern object
 		*/
@@ -111,8 +110,9 @@ class Pattern
 		*	@param	note MIDI note number
 		*	@param	velocity MIDI velocity
 		*	@param	duration Duration of note in steps
+		* 	@retval bool True on success
 		*/
-		void addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration = 1);
+		bool addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration = 1);
 
 		/**	@brief	Remove note from pattern
 		*	@param	position Quantity of steps from start of pattern at which to remove note
@@ -163,11 +163,6 @@ class Pattern
 		*/
 		uint8_t getControlDuration(uint32_t step, uint8_t control);
 
-		/**	@brief	Set quantity of steps in pattern
-		*	@param	steps Pattern length in steps
-		*/
-		void setSteps(uint32_t steps);
-
 		/**	@brief	Get quantity of steps in pattern
 		*	@retval	uint32_t Quantity of steps
 		*/
@@ -188,10 +183,6 @@ class Pattern
 		*/
 		uint32_t getLength();
 
-		/**	@brief	Set quantity of clocks per step
-		*	@param	value Quantity of clock cycles per step
-		*/
-		void setClocksPerStep(uint32_t value);
 
 		/**	@brief	Get quantity of clocks per step
 		*	@retval	uint32_t Quantity of clocks per step
@@ -199,14 +190,25 @@ class Pattern
 		uint32_t getClocksPerStep();
 
 		/**	@brief	Set quantity of steps per beat (grid line separation)
-		*	@param	value Quantity of steps per beat
+		*	@param	value Quantity of steps per beat constrained to [1|2|3|4|6|8|12|24]
+		* 	@retval bool True on success
 		*/
-		void setStepsPerBeat(uint32_t value);
+		bool setStepsPerBeat(uint32_t value);
 
 		/**	@brief	Get quantity of steps per beat
 		*	@retval	uint32_t Quantity of steps per beat
 		*/
 		uint32_t getStepsPerBeat();
+		
+		/**	@brief	Set beats in pattern
+		*	@param	beats Quantity of beats in pattern
+		*/
+		void setBeatsInPattern(uint32_t beats);
+		
+		/**	@brief	Get beats in pattern
+		*	@retval uint32_t Quantity of beats in pattern
+		*/
+		uint32_t getBeatsInPattern();
 
 		/**	@brief	Set map / scale used by pattern editor for this pattern
 		*	@param	map Index of map / scale
@@ -247,7 +249,7 @@ class Pattern
 		void deleteEvent(uint32_t position, uint8_t command, uint8_t value1);
 
 		std::vector<StepEvent> m_vEvents; // Vector of pattern events
-		uint32_t m_nLength; // Quantity of steps in pattern
+		uint32_t m_nBeats; // Quantity of beats in pattern
 		uint32_t m_nClkPerStep; // Clock cycles per step
 		uint32_t m_nStepsPerBeat; // Steps per beat
 		uint8_t m_nBeatType = 4; // Time signature denominator

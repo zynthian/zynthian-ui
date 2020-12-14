@@ -101,24 +101,19 @@ bool PatternManager::load(const char* filename)
 		uint32_t nBlockSize = fileRead32(pFile);
 		if(memcmp(sHeader, "vers",4) == 0)
 			nVersion = fileRead32(pFile);
+		if(nVersion < FILE_VERSION)
+			return false; //!@todo Convert old file formats
 		if(memcmp(sHeader, "patn", 4) == 0)
 		{
-			if(nVersion > 0)
-				if(nBlockSize < 14)
-					continue;
-			else if(nBlockSize < 12)
+			if(nBlockSize < 14)
 				continue;
 			Pattern* pPattern = getPattern(fileRead32(pFile));
-			pPattern->setSteps(fileRead32(pFile));
-			pPattern->setClocksPerStep(fileRead16(pFile));
+			pPattern->setBeatsInPattern(fileRead32(pFile));
+			fileRead16(pFile); //!@todo remove or use this for clocks per beat
 			pPattern->setStepsPerBeat(fileRead16(pFile));
-			if(nVersion > 0)
-			{
-				pPattern->setScale(fileRead8(pFile));
-				pPattern->setTonic(fileRead8(pFile));
-				nBlockSize -= 2;
-			}
-			nBlockSize -= 12;
+			pPattern->setScale(fileRead8(pFile));
+			pPattern->setTonic(fileRead8(pFile));
+			nBlockSize -= 14;
 			while(nBlockSize)
 			{
 				uint32_t nTime = fileRead32(pFile);
@@ -186,7 +181,7 @@ bool PatternManager::load(const char* filename)
 		}
 	}
 	fclose(pFile);
-	printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu songs from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mSongs.size(), filename);
+	//printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu songs from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mSongs.size(), filename);
 	return true;
 }
 
@@ -202,10 +197,10 @@ void PatternManager::save(const char* filename)
 		return;
 	}
 	uint32_t nBlockSize;
-	fwrite("vers", 4, 1, pFile);
+	fwrite("vers", 4, 1, pFile); // RIFF block name
 	nPos += 4;
-	nPos += fileWrite32(4, pFile);
-	nPos += fileWrite32(1, pFile);
+	nPos += fileWrite32(4, pFile); // RIFF block size
+	nPos += fileWrite32(FILE_VERSION, pFile); // RIFF block content
 
 	uint32_t nQoP = 0; // Quantity of patterns - purely for reporting
 	uint32_t nQoS = 0; // Quantity of songs - purely for reporting
@@ -221,7 +216,7 @@ void PatternManager::save(const char* filename)
 			nPos += 8;
 			uint32_t nStartOfBlock = nPos;
 			nPos += fileWrite32(it->first, pFile);
-			nPos += fileWrite32(it->second.getSteps(), pFile);
+			nPos += fileWrite32(it->second.getBeatsInPattern(), pFile);
 			nPos += fileWrite16(it->second.getClocksPerStep(), pFile);
 			nPos += fileWrite16(it->second.getStepsPerBeat(), pFile);
 			nPos += fileWrite8(it->second.getScale(), pFile);
@@ -260,8 +255,8 @@ void PatternManager::save(const char* filename)
 		for(size_t nIndex = 0; nIndex < m_mSongs[nSong].getTimebase()->getEventQuant(); ++nIndex)
 		{
 			TimebaseEvent* pEvent = m_mSongs[nSong].getTimebase()->getEvent(nIndex);
-			nPos += fileWrite16(pEvent->measure, pFile);
-			nPos += fileWrite16(pEvent->tick, pFile);
+			nPos += fileWrite16(pEvent->bar, pFile);
+			nPos += fileWrite16(pEvent->clock, pFile);
 			nPos += fileWrite16(pEvent->type, pFile);
 			nPos += fileWrite16(pEvent->value, pFile);
 		}
@@ -307,7 +302,7 @@ void PatternManager::save(const char* filename)
 	fseek(pFile, 0, SEEK_END);
 
 	fclose(pFile);
-	printf("Saved %d patterns, %d sequences, %d songs to file %s\n", nQoP, nQoSeq, nQoS, filename);
+	//printf("Saved %d patterns, %d sequences, %d songs to file %s\n", nQoP, nQoSeq, nQoS, filename);
 }
 
 Pattern* PatternManager::getPattern(size_t index)
@@ -348,8 +343,7 @@ void PatternManager::copyPattern(uint32_t source, uint32_t destination)
 	if(source == destination)
 		return;
 	m_mPatterns[destination].clear();
-	m_mPatterns[destination].setSteps(m_mPatterns[source].getSteps());
-	m_mPatterns[destination].setClocksPerStep(m_mPatterns[source].getClocksPerStep());
+	m_mPatterns[destination].setBeatsInPattern(m_mPatterns[source].getBeatsInPattern());
 	m_mPatterns[destination].setStepsPerBeat(m_mPatterns[source].getStepsPerBeat());
 	size_t nIndex = 0;
 	while(StepEvent* pEvent = m_mPatterns[source].getEventAt(nIndex++))
@@ -374,43 +368,46 @@ uint32_t PatternManager::updateSequenceLengths(uint32_t song)
 	return nSongLength;
 }
 
-void PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync)
+void PatternManager::updateAllSequenceLengths()
 {
-	doClock(m_nCurrentSong, nTime, pSchedule, bSync);
-	if(m_nCurrentSong)
-		doClock(m_nCurrentSong + 1000, nTime, pSchedule, bSync);
+	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
+		it->second.updateLength();
 }
 
-inline void PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync)
+bool PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock)
+{
+	//!@todo It may be better for each sequence to have a flag indicating if it is part of the song or a pad rather than simple >1000
+	bool bPlaying = doClock(m_nCurrentSong, nTime, pSchedule, bSync, dSamplesPerClock); // Clock song
+	bPlaying |= doClock(m_nCurrentSong + 1000, nTime, pSchedule, bSync, dSamplesPerClock); // Clock zynpads
+	return bPlaying;
+}
+
+inline bool PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock)
 {
 	/** Get events scheduled for next step from each playing sequence.
 		Populate schedule with start, end and interpolated events at sample offset
 	*/
+	if(nSong == 1000)
+		return false; // Base song is 0 which is used for pattern editor so has not corresponding zynpad
 	size_t nTrack = 0;
+	bool bPlaying = false;
 	while(uint32_t nSeq = m_mSongs[nSong].getSequence(nTrack++))
 	{
-		if(m_mSequences[nSeq].clock(nTime, bSync))
+		if(m_mSequences[nSeq].clock(nTime, bSync, dSamplesPerClock))
 		{
 			while(SEQ_EVENT* pEvent = m_mSequences[nSeq].getEvent())
 			{
-				while(pSchedule->find(pEvent->time) != pSchedule->end())
-					++(pEvent->time); // Move event forward until we find a spare time slot
-				MIDI_MESSAGE* pNewEvent  = new MIDI_MESSAGE(pEvent->msg);
-				(*pSchedule)[pEvent->time] = pNewEvent;
+				uint32_t nTime = pEvent->time;
+				while(pSchedule->find(nTime) != pSchedule->end())
+					++nTime; // Move event forward until we find a spare time slot
+				MIDI_MESSAGE* pNewEvent = new MIDI_MESSAGE(pEvent->msg);
+				(*pSchedule)[nTime] = pNewEvent;
 				//printf("Clock time: %u Scheduling event 0x%x 0x%x 0x%x at %u\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
 			}
 		}
+		bPlaying |= (m_mSequences[nSeq].getPlayState() != STOPPED);
 	}
-}
-
-void PatternManager::setSequenceClockRates(uint32_t samples)
-{
-	size_t nTrack = 0;
-	while(uint32_t nSeq = m_mSongs[m_nCurrentSong].getSequence(nTrack++))
-		m_mSequences[nSeq].setClockRate(samples);
-	nTrack = 0;
-	while(uint32_t nSeq = m_mSongs[m_nCurrentSong + 1000].getSequence(nTrack++))
-		m_mSequences[nSeq].setClockRate(samples);
+	return bPlaying;
 }
 
 Song* PatternManager::getSong(size_t index)
@@ -454,7 +451,7 @@ void PatternManager::copySong(uint32_t source, uint32_t destination)
 	for(uint32_t nEvent = 0; nEvent < m_mSongs[source].getTimebase()->getEventQuant(); ++ nEvent)
 	{
 		TimebaseEvent* pSourceEvent = m_mSongs[source].getTimebase()->getEvent(nEvent);
-		m_mSongs[destination].getTimebase()->addTimebaseEvent(pSourceEvent->measure, pSourceEvent->tick, pSourceEvent->type, pSourceEvent->value);
+		m_mSongs[destination].getTimebase()->addTimebaseEvent(pSourceEvent->bar, pSourceEvent->clock, pSourceEvent->type, pSourceEvent->value);
 	}
 	for(size_t nTrack = 0; nTrack < m_mSongs[source].getTracks(); ++nTrack)
 		m_mSongs[destination].addTrack(m_mSongs[source].getSequence(nTrack));
@@ -511,7 +508,7 @@ void PatternManager::setSequencePlayState(uint32_t sequence, uint8_t state)
 			uint32_t nSequence = m_mSongs[m_nCurrentSong + 1000].getSequence(nTrack);
 			if(m_mSequences[nSequence].getGroup() == nGroup && m_mSequences[nSequence].getPlayState() == STARTING)
 				m_mSequences[nSequence].setPlayState(STOPPED);
-			else if(m_mSequences[nSequence].getGroup() == nGroup && m_mSequences[nSequence].getPlayState() != STOPPED)
+			else if(m_mSequences[nSequence].getGroup() == nGroup && m_mSequences[nSequence].getPlayState() != STOPPED && nSequence != sequence)
 				m_mSequences[nSequence].setPlayState(STOPPING);
 		}
 	}
@@ -543,12 +540,12 @@ void PatternManager::setTriggerChannel(uint8_t channel)
 		m_nTriggerChannel = channel;
 }
 
-bool PatternManager::trigger(uint8_t note)
+uint32_t PatternManager::trigger(uint8_t note)
 {
 	if(m_mTriggers.find(note) == m_mTriggers.end())
-		return false;
+		return 0;
 	m_mSequences[m_mTriggers[note]].togglePlayState();
-	return true;
+	return m_mTriggers[note];
 }
 
 void PatternManager::setCurrentSong(uint32_t song)
@@ -582,6 +579,7 @@ uint32_t PatternManager::getCurrentSong()
 
 bool PatternManager::isPlaying()
 {
+	//!@todo Should this return false if tranpsort is stopped?
 	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
 		if(it->second.getPlayState() != STOPPED)
 			return true;
