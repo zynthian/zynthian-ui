@@ -402,14 +402,19 @@ class zynthian_layer:
 			# MIDI-CC zctrls (also router MIDI-learn, aka CC-swaps)
 			#TODO => Optimize!! Use the MIDI learning mechanism for caching this ...
 			if self.listen_midi_cc:
+				swap_info = zyncoder.lib_zyncoder.get_midi_filter_cc_swap(chan, ccnum)
+				midi_chan = swap_info >> 8
+				midi_cc = swap_info & 0xFF
+
 				if self.zyngui.is_single_active_channel():
 					for k, zctrl in self.controllers_dict.items():
 						try:
 							if zctrl.midi_learn_cc and zctrl.midi_learn_cc>0:
 								if self.midi_chan==chan and zctrl.midi_learn_cc==ccnum:
 									self.engine.midi_zctrl_change(zctrl, ccval)
-							elif self.midi_chan==chan and zctrl.midi_cc==ccnum:
-								self.engine.midi_zctrl_change(zctrl, ccval)
+							else:
+								if self.midi_chan==midi_chan and zctrl.midi_cc==midi_cc:
+									self.engine.midi_zctrl_change(zctrl, ccval)
 						except:
 							pass
 				else:
@@ -418,8 +423,9 @@ class zynthian_layer:
 							if zctrl.midi_learn_cc and zctrl.midi_learn_cc>0:
 								if zctrl.midi_learn_chan==chan and zctrl.midi_learn_cc==ccnum:
 									self.engine.midi_zctrl_change(zctrl, ccval)
-							elif zctrl.midi_chan==chan and zctrl.midi_cc==ccnum:
-								self.engine.midi_zctrl_change(zctrl, ccval)
+							else:
+								if zctrl.midi_chan==midi_chan and zctrl.midi_cc==midi_cc:
+									self.engine.midi_zctrl_change(zctrl, ccval)
 						except:
 							pass
 

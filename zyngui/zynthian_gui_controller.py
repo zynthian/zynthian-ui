@@ -386,9 +386,12 @@ class zynthian_gui_controller:
 				midi_cc = "{}#{}".format(self.zctrl.midi_learn_chan+1,midi_cc)
 			self.plot_midi_bind(midi_cc)
 		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
-			midi_cc = self.zctrl.midi_cc 
+			#midi_cc = self.zctrl.midi_cc
+			swap_info= zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
+			midi_chan = swap_info >> 8
+			midi_cc = swap_info & 0xFF
 			if not self.zyngui.is_single_active_channel():
-				midi_cc = "{}#{}".format(self.zctrl.midi_chan+1,self.zctrl.midi_cc)
+				midi_cc = "{}#{}".format(midi_chan+1,midi_cc)
 			self.plot_midi_bind(midi_cc)
 		else:
 			self.erase_midi_bind()
