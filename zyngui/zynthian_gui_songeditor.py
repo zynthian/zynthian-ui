@@ -612,6 +612,7 @@ class zynthian_gui_songeditor():
 
 	# Function to draw grid
 	def drawGrid(self):
+		print("zynthian_gui_songeditor::drawGrid Tracks:", self.parent.libseq.getTracks(self.song))
 		if self.redraw_pending == 2:
 			self.gridCanvas.delete(tkinter.ALL)
 			self.trackTitleCanvas.delete(tkinter.ALL)
@@ -904,10 +905,10 @@ class zynthian_gui_songeditor():
 		if self.redraw_pending:
 			self.drawGrid()
 		if self.song < 1000:
-			pos = self.parent.libseq.getSongPosition() / self.clocksPerDivision
+			pos = self.parent.libseq.getSongPosition()# / self.clocksPerDivision
 		else:
 			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1]) #TODO: Offset?
-			pos = self.parent.libseq.getPlayPosition(sequence) / self.clocksPerDivision
+			pos = self.parent.libseq.getPlayPosition(sequence)# / self.clocksPerDivision
 		if self.position != pos:
 			self.showPos(pos)
 			self.position = pos

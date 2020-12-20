@@ -165,22 +165,6 @@ class zynthian_gui_patterneditor():
 		# Select a cell
 		self.selectCell(0, self.keyMapOffset)
 
-	# Function to draw play cursor - periodically checks for change in current step then redraws cursor if necessary
-	#TODO: Remove thread handling playhead (now using refresh_status)
-	def startPlayheadHandler(self):
-		def onStep():
-			playhead = 0
-			while(not self.zyngui.exit_flag):
-				step = self.parent.libseq.getStep(self.sequence)
-				if playhead != step:
-					playhead = step
-					if self.shown:
-						# Draw play head cursor
-						self.playCanvas.coords("playCursor", 1 + playhead * self.stepWidth, 0, 1 + playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
-				sleep(0.1) #TODO It would be great if this could be event driven rather than poll every 100ms
-		thread = threading.Thread(target=onStep, daemon=True)
-		thread.start()
-
 	#Function to set values of encoders
 	#   note: Call after other routine uses one or more encoders
 	def setupEncoders(self):
@@ -190,6 +174,7 @@ class zynthian_gui_patterneditor():
 		self.parent.registerZyncoder(ENC_LAYER, self)
 		self.parent.registerSwitch(ENC_SELECT, self)
 		self.parent.registerSwitch(ENC_SNAPSHOT, self)
+		self.parent.registerSwitch(ENC_SNAPSHOT, self, "B")
 
 	# Function to show GUI
 	#   params: Pattern parameters to edit {'pattern':x, 'channel':x}
@@ -205,6 +190,8 @@ class zynthian_gui_patterneditor():
 		self.setupEncoders()
 		self.main_frame.tkraise()
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
+		self.parent.libseq.selectSong(0)
+		self.parent.libseq.setSongToStartOfBar();
 		self.shown=True
 
 	# Function to hide GUI
@@ -215,6 +202,8 @@ class zynthian_gui_patterneditor():
 		self.parent.unregisterZyncoder(ENC_SNAPSHOT)
 		self.parent.unregisterZyncoder(ENC_LAYER)
 		self.parent.unregisterSwitch(ENC_SELECT)
+		self.parent.unregisterSwitch(ENC_SNAPSHOT)
+		self.parent.unregisterSwitch(ENC_SNAPSHOT, "B")
 		self.parent.libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 
 	# Function to add menus
@@ -555,6 +544,7 @@ class zynthian_gui_patterneditor():
 			self.stepWidth = (self.gridWidth - 2) / self.parent.libseq.getSteps()
 			self.drawPianoroll()
 			self.cells = [None] * self.zoom * self.parent.libseq.getSteps()
+			self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
 		# Draw cells of grid
 		self.gridCanvas.itemconfig("gridcell", fill="black")
 		# Redraw gridlines
@@ -890,7 +880,7 @@ class zynthian_gui_patterneditor():
 			self.playhead = step
 			if self.shown:
 				# Draw play head cursor
-				self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * 	self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
+				self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
 		if self.redraw_pending or self.parent.libseq.isModified():
 			self.drawGrid()
 
@@ -945,14 +935,15 @@ class zynthian_gui_patterneditor():
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
 			return True
 		elif switch == ENC_SNAPSHOT:
-			if not self.parent.libseq.isPlaying():
-				# Nothing is running so reset to zero and start immediately - workaround issue with jack_transport by stopping and pausing before locate
-				self.parent.libseq.transportStop()
-				sleep(0.1)
-				self.parent.libseq.transportLocate(0)
-			self.parent.libseq.setPlayPosition(self.sequence, 0)
+			if type == "B":
+				self.parent.libseq.setPlayPosition(self.sequence, 0)
+				self.parent.libseq.setSongToStartOfBar() 
+				return True
 			self.parent.libseq.togglePlayState(self.sequence)
 			self.parent.libseq.transportStart() # Start transport in case it has been stopped
+			#if not self.parent.libseq.isPlaying():
+				# Nothing is running so reset to zero and start immediately 
+			#	self.parent.libseq.transportLocate(0)
 			return True
 		return False
 #------------------------------------------------------------------------------

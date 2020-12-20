@@ -94,7 +94,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.switchOwner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.child = None # Pointer to instance of child panel
-		self.lastchild = 1 # Index of last child shown - used to return to same screen
+		self.lastchild = 2 # Index of last child shown - used to return to same screen
 		self.song = 1 # The song that will play / edit (may be different to libseq.getSong, e.g. when editing patter)
 		self.song_editor_mode = 1 # 1 for song editor, 3 for pad editor
 
@@ -102,9 +102,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		# TODO: Should this be done at higher level rather than within a screen?
 		self.libseq = ctypes.CDLL(dirname(realpath(__file__))+"/../zynlibs/zynseq/build/libzynseq.so")
 		self.libseq.init()
-#		self.libseq.debug(True)
+		self.libseq.enableDebug(True)
 		self.filename = "default"
+		time.sleep(2)
 		self.load(self.filename)
+		print("Loaded file")
+		time.sleep(2)
+		print("Continuing")
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -261,9 +265,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def populateMenu(self):
 		self.lstMenu.delete(0, tkinter.END)
 		self.MENU_ITEMS = {} # Dictionary of menu items
-		self.addMenu({'Song Editor':{'method':self.showChild, 'params':1}})
-		self.addMenu({'Pad Editor':{'method':self.showChild, 'params':3}})
 		self.addMenu({'ZynPad':{'method':self.showChild, 'params':2}})
+		self.addMenu({'Pad Editor':{'method':self.showChild, 'params':3}})
+#		self.addMenu({'Song Editor':{'method':self.showChild, 'params':1}})
 		self.addMenu({'Song':{'method':self.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.libseq.getSong, 'onChange':self.onMenuChange}}})
 		self.addMenu({'Load':{'method':self.select_filename, 'params':self.filename}})
 		self.addMenu({'Save':{'method':self.save_as, 'params':self.filename}})
@@ -296,11 +300,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def refresh_status(self, status={}):
 		if self.shown:
 			super().refresh_status(status)
-			if self.libseq.isPlaying():
-				self.btnTransport.configure(image=self.imgPlaying)
-			else:
-				self.btnTransport.configure(image=self.imgPlay)
-
 			# Refresh child panel
 			if self.child:
 				self.child.refresh_status()
