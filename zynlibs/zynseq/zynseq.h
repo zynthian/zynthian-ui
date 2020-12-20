@@ -370,7 +370,7 @@ void setPlayState(uint32_t sequence, uint8_t state);
 
 /** @brief  Toggles play / stop
 *   @retval uint32_t sequence
-*   @todo   Sets value to STARTING / STOPPING but may wish to use STARTED / STOPPED, e.g. for songs but is used by trigger for pads
+*   @todo   Sets value to STARTING / STOPPING but may wish to use STARTED / STOPPED, e.g. for songs but is used by trigger for pads - use sequence mode to decide start / stop behaviour
 */
 void togglePlayState(uint32_t sequence);
 

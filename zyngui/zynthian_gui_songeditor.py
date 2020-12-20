@@ -612,7 +612,6 @@ class zynthian_gui_songeditor():
 
 	# Function to draw grid
 	def drawGrid(self):
-		print("zynthian_gui_songeditor::drawGrid Tracks:", self.parent.libseq.getTracks(self.song))
 		if self.redraw_pending == 2:
 			self.gridCanvas.delete(tkinter.ALL)
 			self.trackTitleCanvas.delete(tkinter.ALL)
@@ -904,15 +903,15 @@ class zynthian_gui_songeditor():
 	def refresh_status(self):
 		if self.redraw_pending:
 			self.drawGrid()
-		if self.song < 1000:
-			pos = self.parent.libseq.getSongPosition()# / self.clocksPerDivision
-		else:
-			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1]) #TODO: Offset?
-			pos = self.parent.libseq.getPlayPosition(sequence)# / self.clocksPerDivision
-		if self.position != pos:
-			self.showPos(pos)
-			self.position = pos
-		self.gridCanvas.coords('playheadline', (pos - self.colOffset) * self.columnWidth, 0, (pos - self.colOffset) * self.columnWidth, self.gridHeight)
+#		if self.song < 1000:
+#			pos = self.parent.libseq.getSongPosition()# / self.clocksPerDivision
+#		else:
+#			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1]) #TODO: Offset?
+#			pos = self.parent.libseq.getPlayPosition(sequence)# / self.clocksPerDivision
+#		if self.position != pos:
+#			self.showPos(pos)
+#			self.position = pos
+#		self.gridCanvas.coords('playheadline', (pos - self.colOffset) * self.columnWidth, 0, (pos - self.colOffset) * self.columnWidth, self.gridHeight)
 
 	def refresh_loading(self):
 		pass

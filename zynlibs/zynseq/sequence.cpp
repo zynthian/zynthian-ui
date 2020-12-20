@@ -342,6 +342,7 @@ void Sequence::setStep(uint32_t step)
 
 uint32_t Sequence::getPatternPlayhead()
 {
+	//!@todo Is this used?
 	return m_nCurrentStep * m_nClkPerStep;
 }
 

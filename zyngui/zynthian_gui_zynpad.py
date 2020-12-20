@@ -260,8 +260,10 @@ class zynthian_gui_zynpad():
 		cell = self.gridCanvas.find_withtag("pad:%d"%(pad))
 		if cell:
 			mode = self.parent.libseq.getPlayMode(sequence)
+			if self.parent.libseq.getSequenceLength(sequence) == 0:
+				mode = 0
 			self.gridCanvas.itemconfig("mode:%d"%pad, image=self.icon[mode], state='normal')
-			if not sequence or self.parent.libseq.getPlayMode(sequence) == zynthian_gui_stepsequencer.SEQ_DISABLED or self.parent.libseq.getSequenceLength(sequence) == 0:
+			if not sequence or self.parent.libseq.getPlayMode(sequence) == zynthian_gui_stepsequencer.SEQ_DISABLED:
 				fill = self.padColourDisabled
 				self.gridCanvas.itemconfig("mode:%d"%pad, state='hidden')
 			elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
@@ -320,22 +322,15 @@ class zynthian_gui_zynpad():
 		self.selectedPad = pad
 		self.selectedCol = int((pad) / self.columns)
 		self.selectedRow = (pad) % self.columns
-		sequence = self.getSequence(pad)
-#		print("Pressed pad %d, song %d, sequence %d, playmode %d, channel %d, length %d"%(pad, self.song, sequence, self.parent.libseq.getPlayMode(sequence), self.parent.libseq.getChannel(sequence), self.parent.libseq.getSequenceLength(sequence)))
-		menuItem = self.parent.paramEditorItem
-		if menuItem == 'Pad mode':
-			self.parent.setParam('Pad mode', 'value', self.parent.libseq.getPlayMode(sequence))
-			self.parent.refreshParamEditor()
+		self.togglePad()
+		
+	# Function to toggle pad
+	def togglePad(self):
+		sequence = self.getSequence(self.selectedPad)
 		if sequence == 0:
 			return;
-		if self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_PLAYING:
-			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STOPPING)
-		elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STARTING:
-			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
-		elif self.parent.libseq.getPlayMode(sequence) != zynthian_gui_stepsequencer.SEQ_DISABLED:
-			self.parent.libseq.setPlayPosition(sequence, 0)
-			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STARTING)
-		playing = self.drawPad(pad)
+		self.parent.libseq.togglePlayState(sequence)
+		playing = self.drawPad(self.selectedPad)
 
 	# Function to handle pad release
 	def onPadRelease(self, event):
@@ -379,8 +374,7 @@ class zynthian_gui_zynpad():
 	#	returns True if action fully handled or False if parent action should be triggered
 	def onSwitch(self, switch, type):
 		if switch == ENC_SELECT:
-			print("zynpad ENTER pad:%d sequence:%d"%(self.selectedPad, self.getSequence(self.selectedPad)))
-			self.parent.libseq.togglePlayState(self.getSequence(self.selectedPad))
+			self.togglePad()
 			return True
 		return False
 

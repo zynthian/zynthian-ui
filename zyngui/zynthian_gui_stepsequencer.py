@@ -564,34 +564,34 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to start transport
 	def start(self):
-		self.parent.libseq.transportStart();
+		self.libseq.transportStart();
 
 	# Function to pause transport
 	def pause(self):
-		self.parent.libseq.transportStop();
+		self.libseq.transportStop();
 
 	# Function to stop and recue transport
 	def stop(self):
-		self.parent.libseq.transportStop();
-		self.parent.libseq.locate(0);
-		tempo = self.libseq.getTempo(self.song, 0)
-		self.parent.libseq.setTempo(tempo)
+		if self.child == self.patternEditor:
+			self.libseq.setPlayState(0, SEQ_STOPPED)
+			self.libseq.setTransportToStartOfBar()
+		#TODO: Handle other views
 
 	# Function to recue transport
 	def recue(self):
-		playState = self.parent.libseq.getPlayState()
+		playState = self.libseq.getPlayState()
 		# Workaround issue with jack_transport needing to stop and pause before locate
-		self.parent.libseq.transportStop();
+		self.libseq.transportStop();
 		time.sleep(0.1)
-		self.parent.libseq.locate(0);
+		self.libseq.locate(0);
 		if playState:
-			self.parent.libseq.transportStart();
+			self.libseq.transportStart();
 
 	# Function to select song
 	#	song: Index of song to select
 	def selectSong(self, song):
 		if song > 0:
-#			self.parent.libseq.transportStop() #TODO: Stopping transport due to jack_transport restarting if locate called
+#			self.libseq.transportStop() #TODO: Stopping transport due to jack_transport restarting if locate called
 			self.libseq.selectSong(song)
 			self.song = song
 			self.libseq.setTempo(self.libseq.getTempo(song, 0))
@@ -602,7 +602,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to toggle transport
 	def toggleTransport(self):
-		self.parent.libseq.transportToggle()
+		if self.child == self.patternEditor:
+			self.libseq.togglePlayState(0)
+		#TODO: Handle transport for other views
 
 	# Function to name file before saving
 	#	filename: Starting filename

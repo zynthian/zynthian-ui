@@ -191,7 +191,7 @@ class zynthian_gui_patterneditor():
 		self.main_frame.tkraise()
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
 		self.parent.libseq.selectSong(0)
-		self.parent.libseq.setSongToStartOfBar();
+		self.parent.libseq.setTransportToStartOfBar();
 		self.shown=True
 
 	# Function to hide GUI
@@ -428,7 +428,7 @@ class zynthian_gui_patterneditor():
 				self.selectCell(self.selectedCell[0] + 1, None)
 			elif event.y < y2:
 				self.selectCell(None, self.selectedCell[1] + 1)
-				self.parent.libseq.playNote(self.keymap[self.selectedCell[1]]["note"], 100, self.parent.libseq.getChannel(self.sequence), 200)
+				self.parent.libseq.playNote(self.keymap[self.selectedCell[1]]["notree"], 100, self.parent.libseq.getChannel(self.sequence), 200)
 			elif event.y > y1:
 				self.selectCell(None, self.selectedCell[1] - 1)
 				self.parent.libseq.playNote(self.keymap[self.selectedCell[1]]["note"], 100, self.parent.libseq.getChannel(self.sequence), 200)
@@ -436,7 +436,7 @@ class zynthian_gui_patterneditor():
 	# Function to toggle note event
 	#	step: step (column) index
 	#	index: key map index
-	def toggleEvent(self, step, index):
+	def toggleEvent(self, step, index, playnote=False):
 		if step < 0 or step >= self.parent.libseq.getSteps() or index >= len(self.keymap):
 			return
 		note = self.keymap[index]['note']
@@ -444,6 +444,8 @@ class zynthian_gui_patterneditor():
 			self.removeEvent(step, index)
 		else:
 			self.addEvent(step, index)
+			if playnote:
+				self.parent.libseq.playNote(note, 100, self.parent.libseq.getChannel(self.sequence), 200)
 
 	# Function to remove an event
 	#	step: step (column) index
@@ -880,6 +882,7 @@ class zynthian_gui_patterneditor():
 			self.playhead = step
 			if self.shown:
 				# Draw play head cursor
+				print("Pattern editor drawing play cursor playhead:%d stepWidth:%d"%(self.playhead, self.stepWidth))
 				self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
 		if self.redraw_pending or self.parent.libseq.isModified():
 			self.drawGrid()
@@ -932,18 +935,13 @@ class zynthian_gui_patterneditor():
 	#   returns True if action fully handled or False if parent action should be triggered
 	def onSwitch(self, switch, type):
 		if switch == ENC_SELECT:
-			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
+			self.toggleEvent(self.selectedCell[0], self.selectedCell[1], True)
 			return True
 		elif switch == ENC_SNAPSHOT:
 			if type == "B":
-				self.parent.libseq.setPlayPosition(self.sequence, 0)
-				self.parent.libseq.setSongToStartOfBar() 
+				self.parent.libseq.setTransportToStartOfBar() 
 				return True
 			self.parent.libseq.togglePlayState(self.sequence)
-			self.parent.libseq.transportStart() # Start transport in case it has been stopped
-			#if not self.parent.libseq.isPlaying():
-				# Nothing is running so reset to zero and start immediately 
-			#	self.parent.libseq.transportLocate(0)
 			return True
 		return False
 #------------------------------------------------------------------------------
