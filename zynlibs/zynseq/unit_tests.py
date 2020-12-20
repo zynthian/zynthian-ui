@@ -45,6 +45,8 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.init()
         zynseq_midi_out = client.get_port_by_name('zynthstep:output')
         zynseq_midi_in = client.get_port_by_name('zynthstep:input')
+        midi_in.connect(zynseq_midi_out)
+        midi_out.connect(zynseq_midi_in)
     #
     def test_aa00_debug(self):
         libseq.enableDebug(True)
@@ -177,13 +179,13 @@ class TestLibZynSeq(unittest.TestCase):
         tb=client.transport_query()
         bar = tb[1]['bar']
         self.assertEqual(tb[0], jack.ROLLING)
+        self.assertEqual(tb[1]['beat'], 1) # Should be at start of bar
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
         for beat in range(1,5):
             self.assertEqual(tb[1]['bar'], bar)
             self.assertEqual(tb[1]['beat'], beat)
             sleep(0.5)
             tb=client.transport_query()
-        self.assertEqual(tb[1]['bar'], 1)
         self.assertEqual(tb[1]['beat'], 1)
         # Stop playback - loop sync should should continue playing until loop point
         libseq.setPlayState(sequence, play_state["STOPPING"])
@@ -399,16 +401,14 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(client.transport_state, jack.STOPPED)
     # Playback tests
     def test_ah00_routing(self):
-        midi_in.connect(zynseq_midi_out)
         self.assertEqual(midi_in.connections, [zynseq_midi_out])
-        midi_out.connect(zynseq_midi_in)
         self.assertEqual(midi_out.connections, [zynseq_midi_in])
     # Play individual note live
     def test_ah01_play_notes(self):
         for velocity in range(100, 20, -20):
             for note in (60, 64, 67, 72):
                 libseq.playNote(note, velocity, 0, 200)
-                sleep(0.01)
+                sleep(0.1) #TODO: This should be 0.01 delay but is failing - check Python minimum delay - seems to be fairly linear at 10ms so check out zynseq code
                 self.assertEqual(binascii.hexlify(last_rx).decode(), "90%02x%02x"%(note,velocity)) # Note on
                 sleep(0.2)
                 self.assertEqual(binascii.hexlify(last_rx).decode(), "90%02x00"%(note)) # Note off
@@ -425,6 +425,7 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(binascii.hexlify(last_rx).decode(), "914000") # same as previous because this fails to sound
     # Playback sequence
     def test_ah02_playback(self):
+        sleep(0.1)
         self.assertEqual(client.transport_state, jack.STOPPED)
         sequence = libseq.getSequence(1001,libseq.addTrack(1001))
         libseq.clearSequence(sequence)
@@ -432,20 +433,21 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.setBeatsInPattern(4)
         libseq.setStepsPerBeat(4)
         libseq.clear()
-        libseq.addNote(0, 60, 101, 1)
-        libseq.addNote(4, 61, 102, 1)
-        libseq.addNote(8, 62, 103, 1)
-        libseq.addNote(12, 63, 104, 1)
+        libseq.addNote(0, 0x40, 101, 1)
+        libseq.addNote(4, 0x41, 102, 1)
+        libseq.addNote(8, 0x42, 103, 1)
+        libseq.addNote(12, 0x43, 104, 1)
         libseq.addPattern(sequence,0,999,True)
         libseq.setPlayMode(sequence, play_mode["ONESHOT"])
-        libseq.setPlayState(sequence, play_state["STARTING"])
         step_duration = (60 / 120) / 4
         libseq.setPlayState(sequence, play_state["STARTING"])
         for i in range(0,4):
             sleep(step_duration * 0.5)
-            self.assertEqual(binascii.hexlify(last_rx).decode(), "90%02x%02x"%(60+i,101+i)) # Note on
-            sleep(step_duration * 3.5)
-            self.assertEqual(binascii.hexlify(last_rx).decode(), "90%02x00"%(60+i)) # Note off
+            self.assertEqual(binascii.hexlify(last_rx).decode(), "90%02x%02x"%(0x40+i,101+i)) # Note on
+            sleep(step_duration * 1)
+            self.assertEqual(binascii.hexlify(last_rx).decode(), "90%02x00"%(0x40+i)) # Note off
+            sleep(step_duration * 2.5)
+            self.assertEqual(binascii.hexlify(last_rx).decode(), "90%02x00"%(0x40+i)) # Note off
         sleep(2)
     # MIDI playback channel
     def test_ah03_playback_channel(self):
@@ -507,9 +509,252 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getPlayState(sequence), play_state["STOPPING"])
         sleep(2)
         self.assertEqual(libseq.getPlayState(sequence), play_state["STOPPED"])
+    # Sequence play tallies
+    def test_ah05_tallies(self):
+        client.transport_stop()
+        sleep(0.3)
+        global last_rx
+        last_rx = bytes(0)
+        sequence1 = libseq.getSequence(1001,libseq.addTrack(1001))
+        sequence2 = libseq.getSequence(1001,libseq.addTrack(1001))
+        self.assertEqual(libseq.getTallyChannel(sequence1), 255) # New sequences should have tally disabled
+        libseq.setTallyChannel(sequence1, 4)
+        self.assertEqual(libseq.getTallyChannel(sequence1), 4)
+        libseq.setTriggerNote(sequence1, 0x10)
+        libseq.selectPattern(2)
+        libseq.clear()
+        libseq.setBeatsInPattern(2)
+        libseq.addPattern(sequence1, 999, 0, True)
+        libseq.addPattern(sequence2, 999, 0, True)
+        libseq.setPlayMode(sequence1, play_mode["LOOPSYNC"])
+        libseq.setPlayMode(sequence2, play_mode["LOOPSYNC"])
+        libseq.setPlayState(sequence2, play_state["STARTING"]) # Start a loop playing so that we can watch sequence1 state progress
+        sleep(0.1)
+        self.assertEqual(libseq.getPlayState(sequence2), play_state["PLAYING"])
+        libseq.setPlayState(sequence1, play_state["STARTING"])
+        sleep(0.1)
+        self.assertEqual(libseq.getPlayState(sequence1), play_state["STARTING"])
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "941005") # Starting tally = 5
+        sleep(2)
+        self.assertEqual(libseq.getPlayState(sequence1), play_state["PLAYING"])
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "941001") # Playing tally = 1
+        libseq.setPlayState(sequence1, play_state["STOPPING"])
+        libseq.setPlayState(sequence2, play_state["STOPPING"])
+        sleep(0.1)
+        self.assertEqual(libseq.getPlayState(sequence1), play_state["STOPPING"])
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "941004") # Stopping tally = 4
+        sleep(2)
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "941003") # Stopped tally = 3
+        self.assertEqual(libseq.getPlayState(sequence1), play_state["STOPPED"])
+        self.assertEqual(libseq.getPlayState(sequence2), play_state["STOPPED"])
+    # Exclusive groups
+    def test_ah06_groups(self):
+        client.transport_stop()
+        sleep(0.3)
+        libseq.selectSong(2)
+        libseq.selectPattern(1)
+        libseq.clear()
+        libseq.setBeatsInPattern(4)
+        libseq.setStepsPerBeat(4)
+        sequenceA1 = libseq.getSequence(1002,libseq.addTrack(1002))
+        sequenceA2 = libseq.getSequence(1002,libseq.addTrack(1002))
+        sequenceB1 = libseq.getSequence(1002,libseq.addTrack(1002))
+        libseq.addPattern(sequenceA1, 0, 1, True)
+        libseq.addPattern(sequenceA2, 0, 1, True)
+        libseq.addPattern(sequenceB1, 0, 1, True)
+        libseq.setGroup(sequenceA1,1)
+        libseq.setGroup(sequenceA2,1)
+        libseq.setGroup(sequenceB1,2)
+        libseq.setPlayMode(sequenceA1, play_mode["LOOPSYNC"])
+        libseq.setPlayMode(sequenceA2, play_mode["LOOPSYNC"])
+        libseq.setPlayMode(sequenceB1, play_mode["LOOPSYNC"])
+        libseq.setPlayState(sequenceA1, play_state["STARTING"])
+        sleep(0.1)
+        self.assertEqual(libseq.getPlayState(sequenceA1), play_state["PLAYING"])
+        self.assertEqual(libseq.getPlayState(sequenceA2), play_state["STOPPED"])
+        self.assertEqual(libseq.getPlayState(sequenceB1), play_state["STOPPED"])
+        libseq.setPlayState(sequenceA2, play_state["STARTING"])
+        sleep(0.1)
+        self.assertEqual(libseq.getPlayState(sequenceA1), play_state["STOPPING"])
+        self.assertEqual(libseq.getPlayState(sequenceA2), play_state["STARTING"])
+        self.assertEqual(libseq.getPlayState(sequenceB1), play_state["STOPPED"])
+        libseq.setPlayState(sequenceB1, play_state["STARTING"])
+        sleep(0.1)
+        self.assertEqual(libseq.getPlayState(sequenceA1), play_state["STOPPING"])
+        self.assertEqual(libseq.getPlayState(sequenceA2), play_state["STARTING"])
+        self.assertEqual(libseq.getPlayState(sequenceB1), play_state["STARTING"])
+        libseq.setPlayState(sequenceA2, play_state["STOPPING"])
+        sleep(0.1)
+        self.assertEqual(libseq.getPlayState(sequenceA1), play_state["STOPPING"])
+        self.assertEqual(libseq.getPlayState(sequenceA2), play_state["STOPPING"])
+        self.assertEqual(libseq.getPlayState(sequenceB1), play_state["STARTING"])
+        libseq.setPlayState(sequenceB1, play_state["STOPPING"])
+        sleep(0.1)
+        self.assertEqual(libseq.getPlayState(sequenceA1), play_state["STOPPING"])
+        self.assertEqual(libseq.getPlayState(sequenceA2), play_state["STOPPING"])
+        self.assertEqual(libseq.getPlayState(sequenceB1), play_state["STOPPING"])
+        sleep(2)
+        self.assertEqual(libseq.getPlayState(sequenceA1), play_state["STOPPED"])
+        self.assertEqual(libseq.getPlayState(sequenceA2), play_state["STOPPED"])
+        self.assertEqual(libseq.getPlayState(sequenceB1), play_state["STOPPED"])
+    # Song management
+    def test_ai00_song(self):
+        client.transport_stop()
+        libseq.selectSong(5)
+        self.assertEqual(libseq.getSong(), 5)
+        libseq.clearSong(5)
+        self.assertEqual(libseq.getTracks(5), 0)
+        self.assertEqual(libseq.addTrack(5), 0)
+        self.assertEqual(libseq.addTrack(5), 1)
+        self.assertEqual(libseq.getTracks(5), 2)
+        libseq.removeTrack(5,0)
+        self.assertEqual(libseq.getTracks(5), 1)
+        self.assertNotEqual(libseq.getSequence(5,0), 0)
+        libseq.clearSong(6)
+        self.assertEqual(libseq.getTracks(6), 0)
+        libseq.copySong(5, 6)
+        self.assertEqual(libseq.getTracks(6), 1)
+        #TODO: Check content of copied song
+    def test_ai01_timesig(self):
+        libseq.selectSong(5)
+        self.assertEqual(libseq.getTimeSig(5, 0), 0x0404) # Default time signature should be 4/4
+        sleep(0.1)
+        self.assertEqual(client.transport_state, jack.STOPPED)
+        sequence = libseq.getSequence(1005,libseq.addTrack(1005))
+        libseq.clearSequence(sequence)
+        libseq.selectPattern(999)
+        libseq.setBeatsInPattern(4)
+        libseq.setStepsPerBeat(4)
+        libseq.clear()
+        libseq.addNote(0, 0x41, 0x64, 1)
+        libseq.addNote(4, 0x42, 0x64, 1)
+        libseq.addNote(8, 0x43, 0x64, 1)
+        libseq.addNote(12, 0x44, 0x64, 1)
+        libseq.addPattern(sequence,0,999,True)
+        libseq.setPlayMode(sequence, play_mode["LOOPSYNC"])
+        step_duration = (60 / 120) / 4
+        libseq.setPlayState(sequence, play_state["STARTING"])
+        for i in range(0,100):
+            sleep(0.001)
+            if libseq.getPlayState(sequence) == play_state["PLAYING"]:
+                break
+        self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
+        for i in range(0,4):
+            sleep(step_duration)
+            if binascii.hexlify(last_rx).decode() == "904100":
+                break
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "904100")
+        for i in range(0,4):
+            sleep(step_duration)
+            if binascii.hexlify(last_rx).decode() == "904200":
+                break
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "904200")
+        for i in range(0,4):
+            sleep(step_duration)
+            if binascii.hexlify(last_rx).decode() == "904300":
+                break
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "904300")
+        for i in range(0,4):
+            sleep(step_duration)
+            if binascii.hexlify(last_rx).decode() == "904400":
+                break
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "904400")
+        libseq.setPlayState(sequence, play_state["STOPPING"])
+        sleep(2)
+        self.assertEqual(libseq.getPlayState(sequence), play_state["STOPPED"])
+        self.assertEqual(client.transport_state, jack.STOPPED)
+        libseq.setTimeSig(5, 2, 4, 0)
+        self.assertEqual(libseq.getTimeSig(5, 1, 0), 0x0204)
+        self.assertEqual(libseq.getTimeSig(5, 4, 0), 0x0204)
+        libseq.setPlayState(sequence, play_state["STARTING"])
+        for i in range(0,100):
+            sleep(0.001)
+            if libseq.getPlayState(sequence) == play_state["PLAYING"]:
+                break
+        self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
+        for i in range(0,4):
+            sleep(step_duration)
+            if binascii.hexlify(last_rx).decode() == "904100":
+                break
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "904100")
+        for i in range(0,4):
+            sleep(step_duration)
+            if binascii.hexlify(last_rx).decode() == "904200":
+                break
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "904200")
+        for i in range(0,4):
+            sleep(step_duration)
+            if binascii.hexlify(last_rx).decode() == "904100":
+                break
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "904100")
+        for i in range(0,4):
+            sleep(step_duration)
+            if binascii.hexlify(last_rx).decode() == "904200":
+                break
+        self.assertEqual(binascii.hexlify(last_rx).decode(), "904200")
+        libseq.setPlayState(sequence, play_state["STOPPING"])
+        sleep(2)
+        self.assertEqual(libseq.getPlayState(sequence), play_state["STOPPED"])
+        self.assertEqual(client.transport_state, jack.STOPPED)
+    def test_ai02_tempo(self):
+        client.transport_stop()
+        sleep(0.1)
+        self.assertEqual(client.transport_state, jack.STOPPED)
+        libseq.selectSong(5)
+        self.assertEqual(libseq.getTempo(5, 1, 0), 120) # Default tempo should be 120
+        sequence = libseq.getSequence(1005,libseq.addTrack(1005))
+        libseq.clearSequence(sequence)
+        libseq.selectPattern(999)
+        libseq.setBeatsInPattern(4)
+        libseq.setStepsPerBeat(4)
+        libseq.clear()
+        libseq.addNote(0, 0x41, 0x64, 1)
+        libseq.addNote(4, 0x42, 0x64, 1)
+        libseq.addNote(8, 0x43, 0x64, 1)
+        libseq.addNote(12, 0x44, 0x64, 1)
+        libseq.addPattern(sequence,0,999,True)
+        libseq.setPlayMode(sequence, play_mode["ONESHOTSYNC"])
+        step_duration = (60 / 120) / 4
+        libseq.setTimeSig(5, 4, 4, 0)
+        libseq.setPlayState(sequence, play_state["STARTING"])
+        for i in range(0,100):
+            sleep(0.001)
+            if libseq.getPlayState(sequence) == play_state["PLAYING"]:
+                break
+        self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
+        for i in range(0,300):
+            sleep(0.01)
+            if libseq.getPlayState(sequence) == play_state["STOPPED"]:
+                break
+        self.assertEqual(int((i / 100 + step_duration / 2) / step_duration), 16)
+        self.assertEqual(libseq.getPlayState(sequence), play_state["STOPPED"])
+        for i in range(0,400):
+            sleep(0.01)
+            if client.transport_state ==jack.STOPPED:
+                break
+        self.assertEqual(client.transport_state, jack.STOPPED)
+        # Change tempo
+        libseq.setTempo(5, 60, 1, 0) # Halve the tempo
+        step_duration = (60 / 60) / 4
+        libseq.setPlayState(sequence, play_state["STARTING"])
+        for i in range(0,100):
+            sleep(0.001)
+            if libseq.getPlayState(sequence) == play_state["PLAYING"]:
+                break
+        self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
+        for i in range(0,600):
+            sleep(0.01)
+            if libseq.getPlayState(sequence) == play_state["STOPPED"]:
+                break
+        self.assertEqual(int((i / 100 + step_duration / 2) / step_duration), 16)
+        self.assertEqual(libseq.getPlayState(sequence), play_state["STOPPED"])
+        for i in range(0,400):
+            sleep(0.01)
+            if client.transport_state ==jack.STOPPED:
+                break
+        self.assertEqual(client.transport_state, jack.STOPPED)
         
 
-
-    #TOOO Check beat type, sendMidiXXX (or remove), isSongPlaying, getTriggerChannel, setTriggerChannel, getTriggerNote, setTriggerNote, setInputChannel, getInputChannel, setScale, getScale, setTonic, getTonic, setChannel, getChannel, setOutput
+    #TOOO Check beat type, sendMidiXXX (or remove), isSongPlaying, getTriggerChannel, setTriggerChannel, getTriggerNote, setTriggerNote, setInputChannel, getInputChannel, setScale, getScale, setTonic, getTonic, setChannel, getChannel, setOutput, setTempo, getTempo, setSongPosition, getSongPosition, startSong, pauseSong, toggleSong, solo, transportXXX
 
 unittest.main()

@@ -89,7 +89,10 @@ void Sequence::setPlayMode(uint8_t mode)
 		return;
 	m_nMode = mode;
 	if(m_nMode == DISABLED)
+	{
 		m_nState = STOPPED;
+		m_bStateChanged = true;
+	}
 }
 
 uint8_t Sequence::getPlayState()
@@ -99,12 +102,12 @@ uint8_t Sequence::getPlayState()
 
 void Sequence::setPlayState(uint8_t state)
 {
-	if(state > LASTPLAYSTATUS || m_nMode == DISABLED)
+	if(state > LASTPLAYSTATUS || m_nMode == DISABLED || state == m_nState)
 		return;
+	m_bStateChanged = true;
 	if(state == STOPPING)
 		switch(m_nMode)
 		{
-			case DISABLED:
 			case ONESHOT:
 			case LOOP:
 				m_nState = STOPPED;
@@ -142,79 +145,79 @@ bool Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 		m_nState = PLAYING;
 	if(bSync && m_nState == STOPPING && m_nMode != ONESHOTALL && m_nMode != LOOPALL)
 		m_nState = STOPPED;
-	if(m_nState == STOPPED || m_nState == STARTING)
-		return bReturn;
-	//printf("Sequence clocked at %u. Step: %u m_nDivCount: %u m_nClkPerStep: %u\n", m_nPosition, m_nCurrentStep, m_nDivCount, m_nClkPerStep);
-	if(m_nDivCount == 0)
+	if(m_nState != STOPPED && m_nState != STARTING)
 	{
-		// Reached next step
-		m_nLastClockTime = nTime;
-		if(m_nPosition >= m_nSequenceLength)
+		//printf("Sequence clocked at %u. Step: %u m_nDivCount: %u m_nClkPerStep: %u\n", m_nPosition, m_nCurrentStep, m_nDivCount, m_nClkPerStep);
+		if(m_nDivCount == 0)
 		{
-			//printf("Reached end of sequence\n");
-			// Reached end of sequence
-			if(m_nState == STOPPING)
+			// Reached next step
+			m_nLastClockTime = nTime;
+			if(m_nPosition >= m_nSequenceLength || (bSync && m_nMode == LOOPSYNC))
 			{
-				m_nState = STOPPED;
-				m_nPosition = 0;
-				return bReturn;
-			}
-			switch(m_nMode)
-			{
-				case ONESHOT:
-				case DISABLED:
-				case ONESHOTALL:
-				case ONESHOTSYNC:
+				//printf("Reached end of sequence\n");
+				// Reached end of sequence
+				if(m_nState == STOPPING)
+				{
 					m_nState = STOPPED;
 					m_nPosition = 0;
-					return bReturn;
-				case LOOP:
-				case LOOPALL:
-				case LOOPSYNC:
-					m_nPosition = 0;
-					break;
+					m_bStateChanged = true;
+					return true;
+				}
+				switch(m_nMode)
+				{
+					case ONESHOT:
+					case DISABLED:
+					case ONESHOTALL:
+					case ONESHOTSYNC:
+						m_nState = STOPPED;
+						m_nPosition = 0;
+						m_bStateChanged = true;
+						return true;
+					case LOOP:
+					case LOOPALL:
+					case LOOPSYNC:
+						m_nPosition = 0;
+						break;
+				}
 			}
-		}
 
-		if(m_mPatterns.find(m_nPosition) != m_mPatterns.end())
-		{
-			//printf("Start of pattern\n");
-			// Playhead at start of pattern
-			m_nCurrentPatternPos = m_nPosition;
-			m_nCurrentStep = 0;
-			m_nNextEvent = 0;
-			m_nClkPerStep = m_mPatterns[m_nCurrentPatternPos]->getClocksPerStep();
-			if(m_nClkPerStep == 0)
+			if(m_mPatterns.find(m_nPosition) != m_mPatterns.end())
+			{
+				//printf("Start of pattern\n");
+				// Playhead at start of pattern
+				m_nCurrentPatternPos = m_nPosition;
+				m_nCurrentStep = 0;
+				m_nNextEvent = 0;
+				m_nClkPerStep = m_mPatterns[m_nCurrentPatternPos]->getClocksPerStep();
+				if(m_nClkPerStep == 0)
+					m_nClkPerStep = 1;
+				m_nEventValue = -1;
+				bReturn = true;
+				//printf("m_nCurrentPatternPos: %u m_nClkPerStep: %u\n", m_nCurrentPatternPos, m_nClkPerStep);
+			}
+			else if(m_nCurrentPatternPos >= 0 && m_nPosition >= m_nCurrentPatternPos + m_mPatterns[m_nCurrentPatternPos]->getLength())
+			{
+				//printf("End of pattern\n");
+				// At end of pattern
+				m_nCurrentPatternPos = -1;
+				m_nNextEvent = -1;
+				m_nCurrentStep = 0;
 				m_nClkPerStep = 1;
-			m_nEventValue = -1;
-			bReturn = true;
-			//printf("m_nCurrentPatternPos: %u m_nClkPerStep: %u\n", m_nCurrentPatternPos, m_nClkPerStep);
+				m_nEventValue = -1;
+			}
+			else
+			{
+				// Within or between pattern
+				bReturn = true;
+			}
+			m_nDivCount = m_nClkPerStep;
 		}
-		else if(m_nCurrentPatternPos >= 0 && m_nPosition >= m_nCurrentPatternPos + m_mPatterns[m_nCurrentPatternPos]->getLength())
-		{
-			//printf("End of pattern\n");
-			// At end of pattern
-			m_nCurrentPatternPos = -1;
-			m_nNextEvent = -1;
-			m_nCurrentStep = 0;
-			m_nClkPerStep = 1;
-			m_nEventValue = -1;
-		}
-		else
-		{
-			// Within or between pattern
-			bReturn = true;
-		}
-		m_nDivCount = m_nClkPerStep;
+		--m_nDivCount;
+		++m_nPosition;
 	}
-	--m_nDivCount;
-	++m_nPosition;
-	if(nState != m_nState && m_nTallyChannel < 16 && m_nTrigger < 128)
-	{
+	if(nState != m_nState)
 		m_bStateChanged = true;
-		bReturn = true;
-	}
-	return bReturn;
+	return bReturn | m_bStateChanged;
 }
 
 SEQ_EVENT* Sequence::getEvent()
@@ -224,27 +227,31 @@ SEQ_EVENT* Sequence::getEvent()
 	if(m_bStateChanged)
 	{
 		// Sequence play state changed so send tally
+		//!@todo Should probably move this below realtime messages
 		m_bStateChanged = false;
-		seqEvent.time = m_nLastClockTime;
-		seqEvent.msg.command = MIDI_NOTE_ON;
-		seqEvent.msg.value1 = m_nTrigger;
-		switch(m_nState)
+		if(m_nTallyChannel < 16 && m_nTrigger < 128)
 		{
-			//!@todo Tallies are hard coded to Akai APC but should be configurable, but not within each sequence as that is wasteful. Could expose m_bStateChanged the put logic in PatternManager (or above)
-			case STOPPED:
-				seqEvent.msg.value2 = 3;
-				break;
-			case PLAYING:
-				seqEvent.msg.value2 = 1;
-				break;
-			case STOPPING:
-				seqEvent.msg.value2 = 4;
-				break;
-			case STARTING:
-				seqEvent.msg.value2 = 5;
-				break;
+			seqEvent.time = m_nLastClockTime;
+			seqEvent.msg.command = MIDI_NOTE_ON | m_nTallyChannel;
+			seqEvent.msg.value1 = m_nTrigger;
+			switch(m_nState)
+			{
+				//!@todo Tallies are hard coded to Akai APC but should be configurable, but not within each sequence as that is wasteful. Could expose m_bStateChanged the put logic in PatternManager (or above)
+				case STOPPED:
+					seqEvent.msg.value2 = 3;
+					break;
+				case PLAYING:
+					seqEvent.msg.value2 = 1;
+					break;
+				case STOPPING:
+					seqEvent.msg.value2 = 4;
+					break;
+				case STARTING:
+					seqEvent.msg.value2 = 5;
+					break;
+			}
+			return &seqEvent;
 		}
-		return &seqEvent;
 	}
 	if(m_nState == STOPPED || m_nCurrentPatternPos < 0 || m_nNextEvent < 0)
 		return NULL; //!@todo Can we stop between note on and note off being processed resulting in stuck note?
@@ -291,7 +298,7 @@ SEQ_EVENT* Sequence::getEvent()
 	seqEvent.msg.command = pEvent->getCommand() | m_nChannel;
 	seqEvent.msg.value1 = pEvent->getValue1start();
 	seqEvent.msg.value2 = m_nEventValue;
-	//printf("sequence::getEvent Scheduled event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %f\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_dSamplesPerClock);
+	//printf("sequence::getEvent Scheduled event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %f event position: %u\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_dSamplesPerClock, pEvent->getPosition());
 	return &seqEvent;
 }
 

@@ -29,12 +29,34 @@ Timebase::~Timebase()
         delete *it;
 }
 
+uint16_t Timebase::getTempo(uint16_t bar, uint16_t clock)
+{
+    uint16_t nValue = DEFAULT_TEMPO;
+    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
+    {
+        if((*it)->type == TIMEBASE_TYPE_TEMPO && ((*it)->bar < bar || (*it)->bar == bar && (*it)->clock <= clock))
+            nValue = (*it)->value;
+    }
+    return nValue;
+}
+
+uint16_t Timebase::getTimeSig(uint16_t bar, uint16_t clock)
+{
+    uint16_t nValue = DEFAULT_TIMESIG;
+    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
+    {
+        if((*it)->type == TIMEBASE_TYPE_TIMESIG && ((*it)->bar < bar || (*it)->bar == bar && (*it)->clock <= clock))
+            nValue = (*it)->value;
+    }
+    return nValue;
+}
+
 void Timebase::addTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type, uint16_t value)
 {
     auto it = m_vEvents.begin();
     for(; it < m_vEvents.end(); ++it)
     {
-        if((*it)->bar ==bar && (*it)->clock == clock && (*it)->type == type)
+        if((*it)->bar == bar && (*it)->clock == clock && (*it)->type == type)
         {
             // Replace existing event
             (*it)->value = value;
@@ -53,25 +75,38 @@ void Timebase::addTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type, uin
 
 void Timebase::removeTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type)
 {
-    auto it = m_vEvents.begin();
-    for(; it < m_vEvents.end(); ++it)
+    for(auto it = m_vEvents.begin(); it < m_vEvents.end(); ++it)
     {
         if((*it)->bar == bar && (*it)->clock == clock && (*it)->type == type)
         {
             delete(*it);
+            m_vEvents.erase(it);
+            return;
         }
     }
 }
 
 TimebaseEvent* Timebase::getNextTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type)
 {
-    for(size_t nIndex = 0; nIndex < m_vEvents.size(); ++nIndex)
+    for(auto it = m_vEvents.begin(); it < m_vEvents.end(); ++it)
     {
-        if(m_vEvents[nIndex]->type != type)
+        if((*it)->bar < bar || ((*it)->bar == bar && (*it)->clock <= clock))
             continue;
-        if(m_vEvents[nIndex]->bar < bar || (m_vEvents[nIndex]->bar == bar && m_vEvents[nIndex]->clock <= clock))
+        if((*it)->type & type)
+            return (*it);
+    }
+    return NULL;
+}
+
+TimebaseEvent* Timebase::getNextTimebaseEvent(TimebaseEvent* pEvent)
+{
+    if(!pEvent || m_vEvents.size() < 2)
+        return NULL;
+    for(size_t nIndex = 0; nIndex < m_vEvents.size() - 1; ++nIndex)
+    {
+        if(m_vEvents[nIndex] != pEvent)
             continue;
-        return m_vEvents[nIndex];
+        return m_vEvents[nIndex + 1];
     }
     return NULL;
 }
@@ -79,17 +114,23 @@ TimebaseEvent* Timebase::getNextTimebaseEvent(uint16_t bar, uint16_t clock, uint
 TimebaseEvent* Timebase::getPreviousTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type)
 {
     TimebaseEvent* pEvent = NULL;
-    for(size_t nIndex = 0; nIndex < m_vEvents.size(); ++nIndex)
+    for(auto it = m_vEvents.begin(); it < m_vEvents.end(); ++it)
     {
-        if(m_vEvents[nIndex]->type != type)
+        if(!((*it)->type & type))
             continue;
-        if(m_vEvents[nIndex]->bar < bar)
-        if(m_vEvents[nIndex]->bar < bar || (m_vEvents[nIndex]->bar == bar && m_vEvents[nIndex]->clock < clock))
-            pEvent = m_vEvents[nIndex];
+        if((*it)->bar < bar || ((*it)->bar == bar && (*it)->clock < clock))
+            pEvent = (*it);
         else
             return pEvent;
     }
     return pEvent;
+}
+
+TimebaseEvent* Timebase::getFirstTimebaseEvent()
+{
+    if(m_vEvents.size())
+        return m_vEvents[0];
+    return NULL;
 }
 
 uint32_t Timebase::getEventQuant()

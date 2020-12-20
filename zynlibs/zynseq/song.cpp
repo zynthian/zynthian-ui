@@ -50,27 +50,28 @@ void Song::clear()
 	m_vTracks.clear();
 }
 
-void Song::setTempo(uint16_t tempo, uint16_t measure, uint16_t tick)
+void Song::setTempo(uint16_t tempo, uint16_t bar, uint16_t tick)
 {
-	m_timebase.addTimebaseEvent(measure, tick, TIMEBASE_TYPE_TEMPO, tempo);
+	m_timebase.addTimebaseEvent(bar, tick, TIMEBASE_TYPE_TEMPO, tempo);
 }
 
-uint16_t Song::getTempo(uint16_t measure, uint16_t tick)
+uint16_t Song::getTempo(uint16_t bar, uint16_t tick)
 {
-	TimebaseEvent* pEvent = m_timebase.getPreviousTimebaseEvent(measure, tick, TIMEBASE_TYPE_TEMPO);
-	if(pEvent)
-		return pEvent->value;
-	return DEFAULT_TEMPO; // Default tempo if none found
+	return m_timebase.getTempo(bar, tick);
 }
 
-void Song::setTimeSig(uint16_t timesig, uint16_t measure)
+void Song::setTimeSig(uint16_t timesig, uint16_t bar)
 {
-	m_timebase.addTimebaseEvent(measure, 0, TIMEBASE_TYPE_TIMESIG, timesig);
+	if(bar < 1)
+		bar = 1;
+	m_timebase.addTimebaseEvent(bar, 0, TIMEBASE_TYPE_TIMESIG, timesig);
 }
 
-uint16_t Song::getTimeSig(uint16_t measure)
+uint16_t Song::getTimeSig(uint16_t bar)
 {
-	TimebaseEvent* pEvent = m_timebase.getPreviousTimebaseEvent(measure, 1, TIMEBASE_TYPE_TIMESIG);
+	if(bar < 1)
+		bar = 1;
+	TimebaseEvent* pEvent = m_timebase.getPreviousTimebaseEvent(bar, 1, TIMEBASE_TYPE_TIMESIG);
 	if(pEvent)
 		return pEvent->value;
 	return DEFAULT_TIMESIG;

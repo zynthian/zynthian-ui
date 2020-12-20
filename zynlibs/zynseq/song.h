@@ -39,31 +39,31 @@ class Song
 
 		/**	@brief	Set song tempo
 		*	@param	tempo Tempo in BPM
-		*	@param	measure Measure (bar) at which to set tempo
+		*	@param	bar Bar (measure) at which to set tempo
 		*	@param	tick Tick at which to set tempo [Optional - default: 0]
         *   @note   Removes tempo if same as previous tempo
 		*/
-		void setTempo(uint16_t tempo, uint16_t measure, uint16_t tick=0);
+		void setTempo(uint16_t tempo, uint16_t bar, uint16_t tick=0);
 
 		/**	@brief	Get song tempo
-		*	@param	measure Measure (bar) at which to get tempo
+		*	@param	bar Bar (measure) at which to get tempo
 		*	@param	beat Tick at which to get tempo [Optional - default: 0]
 		*	@retval	uint16_t Tempo in BPM
 		*/
-		uint16_t getTempo(uint16_t measure, uint16_t tick=0);
+		uint16_t getTempo(uint16_t bar, uint16_t tick=0);
 
 		/**	@brief	Set song time signature
 		*	@param	timesig Time signature - MSB: Numerator, LSB: Denominator
-		*	@param	measure Measure (bar) at which to set time signature
+		*	@param	bar Bar (measure) at which to set time signature
         *   @note   Removes time signature if same as previous time signature
 		*/
-		void setTimeSig(uint16_t timesig, uint16_t measure);
+		void setTimeSig(uint16_t timesig, uint16_t bar);
 
 		/**	@brief	Get song time signature
-		*	@param	measure Measure (bar) at which to get time signature
+		*	@param	bar Bar (measure) at which to get time signature
 		*	@retval	uint16_t Time signature MSB: Numerator LSB: Denominator
 		*/
-		uint16_t getTimeSig(uint16_t measure);
+		uint16_t getTimeSig(uint16_t bar);
 
 		/**	@brief	Set bar / loop  period
 		*	@param	period Bar length / loop point in clock cycles

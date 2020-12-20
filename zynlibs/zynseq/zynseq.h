@@ -152,6 +152,7 @@ uint8_t getTriggerNote(uint32_t sequence);
 void setTriggerNote(uint32_t sequence, uint8_t note);
 
 // ** Pattern management functions - pattern events are quantized to steps **
+//!@todo Curernt implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the pattern index, e.g. clearPattern(index)
 
 /** @brief  Select active pattern
 *   @note   All subsequent pattern methods act on this pattern
@@ -406,7 +407,6 @@ void clearSequence(uint32_t sequence);
 */
 uint32_t getStep(uint32_t sequence);
 
-
 /** @brief  Get sequence group
 *   @param  sequence Sequence number
 *   @retval uint8_t Group
@@ -458,39 +458,6 @@ uint32_t addTrack(uint32_t song);
 */
 void removeTrack(uint32_t song, uint32_t track);
 
-/** @brief  Add tempo to song tempo map
-*   @param  song Song index
-*   @param  tempo Tempo in BPM
-*   @param  bar Bar of song at which to add tempo change [Optional - default: 1]
-*   @param  tick Tick within bar at which to add tempo change [Optional - default: 0]
-*/
-void setTempo(uint32_t song, uint32_t tempo, uint16_t bar=1, uint16_t tick=0);
-
-/** @brief  Get tempo at position within song
-*   @param  song Song index
-*   @param  bar Bar of song at which to get tempo [Optional - default: 1]
-*   @param  tick Tick within bar at which to get tempo [Optional - default: 0]
-'   @todo   getTempo without time parameter should get time at current play position???
-*   @retval uint32_t Tempo in BPM
-*/
-uint32_t getTempo(uint32_t song, uint16_t bar=1, uint16_t tick=0);
-
-/** @brief  Add time signature to song
-*   @param  song Song index
-*   @param  beats Beats per bar (numerator)
-*   @param  type Beat type (denominator)
-*   @param  bar Bar of song at which to add tempo change [Optional - default: 1]
-*   @param  tick Tick within bar at which to add tempo change [Optional - default: 0]
-*/
-void setTimeSig(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar);
-
-/** @brief  Get time signature at position within song
-*   @param  song Song index
-*   @param  bar Bar of song at which to time signature
-*   @retval uint16_t Time signature - MSB numerator, LSB denominator
-*/
-uint16_t getTimeSig(uint32_t song, uint16_t bar);
-
 /** @brief  Get quantity of tracks in song
 *   @param  song Song index
 *   @retval uint32_t Quantity of tracks
@@ -515,6 +482,39 @@ void clearSong(uint32_t song);
 */
 void copySong(uint32_t source, uint32_t destination);
 
+/** @brief  Add tempo to song tempo map
+*   @param  song Song index
+*   @param  tempo Tempo in BPM
+*   @param  bar Bar of song at which to add tempo change [Optional - default: 1]
+*   @param  tick Tick within bar at which to add tempo change [Optional - default: 0]
+*/
+void setTempo(uint32_t song, uint32_t tempo, uint16_t bar=1, uint16_t tick=0);
+
+/** @brief  Get tempo at position within song
+*   @param  song Song index
+*   @param  bar Bar of song at which to get tempo [Optional - default: 1]
+*   @param  tick Tick within bar at which to get tempo [Optional - default: 0]
+'   @todo   getTempo without time parameter should get time at current play position???
+*   @retval uint32_t Tempo in BPM
+*/
+uint32_t getTempo(uint32_t song, uint16_t bar=1, uint16_t tick=0);
+
+/** @brief  Add time signature to song
+*   @param  song Song index
+*   @param  beats Beats per bar (numerator)
+*   @param  type Beat type (denominator)
+*   @param  bar Bar of song at which to add tempo change
+*   @param  tick Tick within bar at which to add tempo change
+*/
+void setTimeSig(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar);
+
+/** @brief  Get time signature at position within song
+*   @param  song Song index
+*   @param  bar Bar of song at which to time signature
+*   @retval uint16_t Time signature - MSB numerator, LSB denominator
+*/
+uint16_t getTimeSig(uint32_t song, uint16_t bar);
+
 /** @brief  Get position of playhead within song
 *   @retval uint32_t Position in clock cycles
 *   @note   This is global for all songs
@@ -529,19 +529,6 @@ void setSongPosition(uint32_t position);
 /** @brief  Sets the transport to start of the current bar
 */
 void setTransportToStartOfBar();
-
-/** @brief  Get bar length / loop duration
-*   @param  song Song index
-*   @retval uint32_t Clock cycles per bar / loop
-*/
-uint32_t getBarLength(uint32_t song);
-
-/** @brief  Set bar length / loop duration
-*   @param  song Song index
-*   @param  period Clock cycles per bar / loop
-*   @todo   Implement setBarLength
-*/
-void setBarLength(uint32_t song, uint32_t period);
 
 /** @brief  Start song playing - resume from current position
 *   @param  bFast True to start playing immediately. False to wait for next sync pulse.
@@ -640,11 +627,6 @@ uint32_t transportGetTempo();
 *   @param  timeout Quantity of microseconds to wait for slow sync clients at start of play
 */
 void transportSetSyncTimeout(uint32_t timeout);
-
-/** @brief  Set timebase map
-*   @param  timebase Pointer to Timebase object to use for timebase map
-*/
-void transportSetTimebaseMap(Timebase* timebase);
 
 
 #ifdef __cplusplus

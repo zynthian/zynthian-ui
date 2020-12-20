@@ -123,11 +123,13 @@ void updateBBT(jack_position_t* position)
     position->beats_per_bar = g_fBeatsPerBar;
     position->beats_per_minute = g_dTempo;
     position->beat_type = g_fBeatType;
+    position->ticks_per_beat = g_dTicksPerBeat;
     position->bar_start_tick = 0; //!@todo Need to calculate this
-    return;
+    //g_pNextTimebaseEvent = g_pTimebase->getPreviousTimebaseEvent(position->bar, (position->beat - 1) * position->ticks_per_beat + position->tick  , TIMEBASE_TYPE_ANY);
 
 
     // Iterate through events, calculating quantity of frames between each event
+    /*
     if(g_pTimebase)
     {
         for(size_t nIndex = 0; nIndex < g_pTimebase->getEventQuant(); ++nIndex)
@@ -156,6 +158,7 @@ void updateBBT(jack_position_t* position)
             }
         }
     }
+    */
     // Calculate BBT from last section
     dFramesInSection = position->frame - dFrames;
     nTicksInSection = dFramesInSection / dFramesPerTick;
@@ -168,14 +171,8 @@ void updateBBT(jack_position_t* position)
     position->bar_start_tick = nTicksFromStart - nTicksInLastBar;
     g_nClock = position->tick % (uint32_t)g_dTicksPerClock;
     g_nFramesToNextClock = 0; //!@todo Quantisation error?
-    static uint32_t nDebugFrames = 0;
-    static uint32_t nDebugBeat = 0;
-    if(nDebugBeat != position->beat)
-    {
-//        printf("At start of period: Beat %u, %u frames since last beat, %u ticks\n", position->beat, position->frame - nDebugFrames, position->tick);
-        nDebugBeat = position->beat;
-        nDebugFrames = position->frame;
-    }
+    //g_dTempo = g_pTimebase->getTempo(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick) / g_dTicksPerClock);
+    //g_fBeatsPerBar = uint16_t(g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick) / g_dTicksPerClock)) >> 8;
 }
 
 /*  Handle timebase callback - update timebase elements (BBT) from transport position
@@ -197,11 +194,38 @@ void updateBBT(jack_position_t* position)
 void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPeriod,
           jack_position_t *pPosition, int bUpdate, void* pArgs)
 {
-    jack_nframes_t nRemainingFrames = nFramesInPeriod; // Quantity of frames in this period left to process for clock generation
+    jack_nframes_t nRemainingFrames = nFramesInPeriod; // Quantity of frames in this period left to process for clock generation    
+
+    // Process timebase events
+    while(g_pTimebase && g_pNextTimebaseEvent && (g_pNextTimebaseEvent->bar <= g_nBar)) // || g_pNextTimebaseEvent->bar == g_nBar && g_pNextTimebaseEvent->clock <= g_nClock))
+    {
+        if(g_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO)
+        {
+            g_dTempo = g_pNextTimebaseEvent->value;
+            g_dFramesPerClock = getFramesPerClock(g_dTempo);
+            pPosition->beats_per_minute = g_dTempo;
+            g_bTimebaseChanged = true;
+            DPRINTF("Tempo change to %0.0fbpm frames/clk: %f\n", g_dTempo, g_dFramesPerClock);
+        }
+        else if(g_pNextTimebaseEvent->type == TIMEBASE_TYPE_TIMESIG)
+        {
+            g_fBeatsPerBar = g_pNextTimebaseEvent->value >> 8;
+            g_fBeatType = g_pNextTimebaseEvent->value & 0x0F;
+            pPosition->beats_per_bar = g_fBeatsPerBar;
+            g_bTimebaseChanged = true;
+            DPRINTF("Time signature change to %0.0f/%0.0f\n", g_fBeatsPerBar, g_fBeatType);
+        }
+        g_pNextTimebaseEvent = g_pTimebase->getNextTimebaseEvent(g_pNextTimebaseEvent);
+    }
 
     // Calculate BBT at start of next period
     if(bUpdate || g_bTimebaseChanged)
     {
+        if(g_pTimebase)
+        {
+            g_dTempo = g_pTimebase->getTempo(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick));
+            g_fBeatsPerBar = g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick)) >> 8;
+        }
         // Update position based on parameters passed
         if(pPosition->valid & JackPositionBBT)
         {
@@ -233,7 +257,6 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         g_bTimebaseChanged = false;
         DPRINTF("New position: Jack frame: %u Frame: %u Bar: %u Beat: %u Tick: %u Clock: %u\n", g_nTransportStartFrame, pPosition->frame, pPosition->bar, pPosition->beat, pPosition->tick, g_nClock);
         //!@todo Check impact of timebase discontinuity
-        //return;
     }
     else
     {
@@ -251,13 +274,14 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         if(!g_nBeat && isSongPlaying())
             pPosition->frame = transportGetLocation(pPosition->bar, pPosition->beat, pPosition->tick); //!@todo Does this work? (yes). Are there any discontinuity or impact on other clients? Can it be optimsed?
     }
-    
     // Now iterate through clocks in next period, adding any events and handling any timebase changes
     if(transportGetPlayStatus() == JackTransportRolling)
     {
+        //Returning here stops seg fault
         bool bSync = false;
         while(g_nFramesToNextClock < nRemainingFrames)
         {
+            //!@todo I think segfault may be triggered within this while loop
             bSync = false;
             //!@todo Have added a period to clock position but it should already be offset as pPosition->frame refers to next cycle
             jack_nframes_t nClockPos = g_nFramesToNextClock + pPosition->frame + g_nTransportStartFrame + nFramesInPeriod; // Absolute position of clock within next period
@@ -268,33 +292,8 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
                 g_nTick = g_dTicksPerBeat * (g_nBeat - 1);
                 if(g_nSongStatus == PLAYING && ++g_nSongPosition > g_nSongLength)
                     g_nSongStatus = STOPPED;
-                if(bSync)
-                {
-                    if(g_nSongStatus == STARTING)
+                if(bSync && g_nSongStatus == STARTING)
                         g_nSongStatus = PLAYING; // Start song at start of bar
-                }
-            }
-            // Process timebase events
-            if(g_pNextTimebaseEvent && g_pNextTimebaseEvent->bar == g_nBar && g_pNextTimebaseEvent->clock <= g_nClock)
-            {
-                if(bSync)
-                {
-                    // Check for time signature change which only occur at start of bar
-                    TimebaseEvent* pEvent = g_pTimebase->getNextTimebaseEvent(g_nBar, g_nClock, TIMEBASE_TYPE_TIMESIG);
-                    if(pEvent)
-                    {
-                        g_fBeatsPerBar = pEvent->value >> 8;
-                        g_fBeatType = pEvent->value & 0x0F;
-                        DPRINTF("Time signature change to %0.0f/%0.0f\n", g_fBeatsPerBar, g_fBeatType);
-                    }
-                }
-                TimebaseEvent* pEvent = g_pTimebase->getNextTimebaseEvent(g_nBar, g_nClock, TIMEBASE_TYPE_TEMPO);
-                if(pEvent)
-                {
-                    g_dTempo = pEvent->value;
-                    g_dFramesPerClock = getFramesPerClock(pEvent->value);
-                    DPRINTF("Tempo change to %0.0fbpm\n", g_dTempo);
-                }
             }
             // Schedule events in next period
             g_bPlaying = PatternManager::getPatternManager()->clock(nClockPos, &g_mSchedule, bSync, g_dFramesPerClock); // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can syncronise its sequences, e.g. start zynpad sequences
@@ -303,12 +302,13 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
             if(++g_nClock > 23)
             {
                 g_nClock = 0;
-                if(++g_nBeat > pPosition->beats_per_bar)
+                if(++g_nBeat > g_fBeatsPerBar)
                 {
                     g_nBeat = 1;
                     if(g_nSongStatus == PLAYING)
                         ++g_nBar;
                 }
+                DPRINTF("Beat %u of %f\n", g_nBeat, g_fBeatsPerBar);
             }
         }
         g_nFramesToNextClock -= nRemainingFrames;
@@ -344,7 +344,6 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     static uint8_t nClock = 24; // Clock pulse count 0..23
     static uint32_t nTicksPerPulse;
     static double dTicksPerFrame;
-    static double dTicksPerBeat; // Store so that we can check for change and do less maths
     static double dBeatsPerMinute; // Store so that we can check for change and do less maths
     static double dBeatsPerBar; // Store so that we can check for change and do less maths
     static jack_nframes_t nFramerate; // Store so that we can check for change and do less maths
@@ -393,7 +392,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             }
             case MIDI_SONG:
                 DPRINTF("StepJackClient Select song %d\n", midiEvent.buffer[1]);
-                PatternManager::getPatternManager()->setCurrentSong(midiEvent.buffer[1] + 1);
+                selectSong(midiEvent.buffer[1] + 1);
                 break;
             default:
                 break;
@@ -510,7 +509,7 @@ bool init(bool bTimebaseMaster)
     jack_options_t nOptions = JackNoStartServer;
     
     if(g_pJackClient)
-        return false;
+        return false; // Already initialised
 
     if((g_pJackClient = jack_client_open("zynthstep", nOptions, &nStatus, sServerName)) == 0)
     {
@@ -551,9 +550,10 @@ bool init(bool bTimebaseMaster)
     // Register the cleanup function to be called when program exits
     atexit(end);
     
+    selectSong(1);
+    
     transportStop();
     transportLocate(0);
-    g_dFramesPerClock = getFramesPerClock(g_dTempo);
     return true;
 }
 
@@ -1027,8 +1027,13 @@ void removeTrack(uint32_t song, uint32_t track)
 
 void setTempo(uint32_t song, uint32_t tempo, uint16_t bar, uint16_t tick)
 {
-    g_dFramesPerClock = getFramesPerClock(g_dTempo);
     PatternManager::getPatternManager()->getSong(song)->setTempo(tempo, bar, tick);
+    if(song == getSong())
+    {
+        g_bTimebaseChanged = true;
+        if(g_pTimebase)
+            g_pNextTimebaseEvent = g_pTimebase->getFirstTimebaseEvent(); //!@todo Overkill parsing whole timebase map
+    }
 }
 
 uint32_t getTempo(uint32_t song, uint16_t bar, uint16_t tick)
@@ -1038,7 +1043,15 @@ uint32_t getTempo(uint32_t song, uint16_t bar, uint16_t tick)
 
 void setTimeSig(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar)
 {
-    PatternManager::getPatternManager()->getSong(song)->setTimeSig((beats << 8) & type, bar);
+    if(bar < 1)
+        bar = 1;
+    PatternManager::getPatternManager()->getSong(song)->setTimeSig((beats << 8) | type, bar);
+    if(song == getSong())
+    {
+        g_bTimebaseChanged = true;
+        if(g_pTimebase)
+            g_pNextTimebaseEvent = g_pTimebase->getFirstTimebaseEvent(); //!@todo Overkill parsing whole timebase map
+    }
 }
 
 uint16_t getTimeSig(uint32_t song, uint16_t bar)
@@ -1114,7 +1127,10 @@ void setSongPosition(uint32_t pos)
 {
     PatternManager::getPatternManager()->setSongPosition(pos);
     g_nSongPosition = pos;
+    //!@todo Update g_pNextTimebaseEvent
+
 }
+
 void setTransportToStartOfBar()
 {
     jack_position_t position;
@@ -1123,6 +1139,7 @@ void setTransportToStartOfBar()
     position.tick = 0;
 //    position.valid = JackPositionBBT;
     jack_transport_reposition(g_pJackClient, &position);
+//    g_pNextTimebaseEvent = g_pTimebase->getPreviousTimebaseEvent(position.bar, 1, TIMEBASE_TYPE_ANY); //!@todo Might miss event if 2 at start of bar
 }
 
 uint32_t getSongPosition()
@@ -1141,6 +1158,9 @@ void selectSong(uint32_t song)
 //  stopSong();
     PatternManager::getPatternManager()->setCurrentSong(song);
     g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);
+    g_pTimebase = PatternManager::getPatternManager()->getSong(song)->getTimebase();
+    if(g_pTimebase)
+        g_pNextTimebaseEvent = g_pTimebase->getFirstTimebaseEvent();
 }
 
 void solo(uint32_t song, uint32_t track, int solo)
@@ -1178,6 +1198,7 @@ jack_nframes_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick)
     uint32_t nTicksPerBar = g_dTicksPerBeat * (DEFAULT_TIMESIG >> 8);
     double dFramesPerTick = getFramesPerTick(DEFAULT_TEMPO);
     double dFrames = 0; // Frames to position
+    /*
     if(g_pTimebase)
     {
         for(size_t nIndex = 0; nIndex < g_pTimebase->getEventQuant(); ++nIndex)
@@ -1195,6 +1216,7 @@ jack_nframes_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick)
                 nTicksPerBar = g_dTicksPerBeat * (pEvent->value >> 8);
         }
     }
+    */
     dFrames += dFramesPerTick * (bar * nTicksPerBar + beat * g_dTicksPerBeat + tick - nTicksToPrev);
     return dFrames;
 }
@@ -1250,10 +1272,5 @@ uint32_t transportGetTempo()
 void transportSetSyncTimeout(uint32_t timeout)
 {
     jack_set_sync_timeout(g_pJackClient, timeout);
-}
-
-void transportSetTimebaseMap(Timebase* timebase)
-{
-    g_pTimebase = timebase;
 }
 
