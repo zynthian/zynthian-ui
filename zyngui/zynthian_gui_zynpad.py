@@ -61,7 +61,9 @@ class zynthian_gui_zynpad():
 
 		self.columns = 4
 		self.rows = 4
-		self.selectedPad = 1 # Index of last selected pad - used to edit config
+		self.selectedPad = 0 # Index of selected pad
+		self.selectedCol = 0
+		self.selectedRow = 0
 		self.song = 1001 # Index of song used to configure pads
 
 		self.playModes = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
@@ -75,7 +77,7 @@ class zynthian_gui_zynpad():
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.body_height
-		self.selectThickness = 1 + int(self.width / 500) # Scale thickness of select border based on screen
+		self.selectThickness = 4#1 + int(self.width / 500) # Scale thickness of select border based on screen
 		self.colWidth = self.width / self.columns
 		self.rowHeight = self.height / self.rows
 
@@ -97,12 +99,14 @@ class zynthian_gui_zynpad():
 		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
 
 		# Selection highlight
-		self.selection = self.gridCanvas.create_rectangle(0, 0, self.width / self.columns, self.height / self.rows, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
+		self.selection = self.gridCanvas.create_rectangle(0, 0, self.colWidth, self.rowHeight, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
 
 	#Function to set values of encoders
 	#	note: Call after other routine uses one or more encoders
 	def setupEncoders(self):
-		pass
+		self.parent.registerZyncoder(ENC_BACK, self)
+		self.parent.registerZyncoder(ENC_SELECT, self)
+		self.parent.registerSwitch(ENC_SELECT, self, 'S')
 
 	# Function to show GUI
 	#   params: Misc parameters
@@ -120,7 +124,9 @@ class zynthian_gui_zynpad():
 
 	# Function to hide GUI
 	def hide(self):
-		pass
+		self.parent.unregisterZyncoder(ENC_BACK)
+		self.parent.unregisterZyncoder(ENC_SELECT)
+		self.parent.unregisterSwitch(ENC_SELECT)
 
 	# Function to get the MIDI trigger channel
 	#   returns: MIDI channel
@@ -161,7 +167,7 @@ class zynthian_gui_zynpad():
 		if menuItem == 'Tempo':
 			#TODO: Consider how this works with tempo map (song master channel)
 			self.parent.libseq.transportSetTempo(value)
-		prefix = "%s%d" % (chr(int((self.selectedPad - 1) / self.rows) + 65), (self.selectedPad - 1) % self.rows + 1)
+		prefix = "%s%d" % (chr(int((self.selectedPad) / self.rows) + 65), (self.selectedPad) % self.rows + 1)
 		if menuItem == 'Pad mode':
 			self.parent.libseq.setPlayMode(self.getSequence(self.selectedPad), value)
 			self.drawPad(self.selectedPad)
@@ -205,6 +211,8 @@ class zynthian_gui_zynpad():
 		else:
 			self.columns = int(sqrt(int(tracks - 1))+1)
 		self.rows = self.columns
+		self.colWidth = self.width / self.columns
+		self.rowHeight = self.height / self.rows
 		imgWidth = int(self.width / self.columns / 4)
 		iconsize = (imgWidth, imgWidth)
 		img = (Image.open("/zynthian/zynthian-ui/icons/endnoline.png").resize(iconsize))
@@ -226,6 +234,7 @@ class zynthian_gui_zynpad():
 	def drawGrid(self, clear = False):
 		if clear:
 			self.gridCanvas.delete(tkinter.ALL)
+			self.selection = self.gridCanvas.create_rectangle(0, 0, self.colWidth, self.rowHeight, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
 		for col in range(self.columns):
 			self.drawColumn(col, clear)
 
@@ -296,12 +305,9 @@ class zynthian_gui_zynpad():
 		row = pad % self.rows
 		self.drawCell(col, row)
 		if self.selectedPad == pad:
-			if self.parent.paramEditorItem:
-				self.gridCanvas.coords(self.selection, (col * self.colWidth, row * self.rowHeight, (1 + col) * self.colWidth, (1 + row) * self.rowHeight))
-				self.gridCanvas.tag_raise(self.selection)
-				self.gridCanvas.itemconfig(self.selection, state="normal")
-			else:
-				self.gridCanvas.itemconfig(self.selection, state="hidden")
+			self.gridCanvas.coords(self.selection, 1 + col * self.colWidth, 1 + row * self.rowHeight, (1 + col) * self.colWidth - self.selectThickness, (1 + row) * self.rowHeight - self.selectThickness)
+			self.gridCanvas.tag_raise(self.selection)
+			self.gridCanvas.itemconfig(self.selection, state="normal")
 		return self.parent.libseq.getPlayState(self.getSequence(pad))
 
 	# Function to handle pad press
@@ -312,6 +318,8 @@ class zynthian_gui_zynpad():
 		tags = self.gridCanvas.gettags(self.gridCanvas.find_withtag(tkinter.CURRENT))
 		pad = int(tags[0].split(':')[1])
 		self.selectedPad = pad
+		self.selectedCol = int((pad) / self.columns)
+		self.selectedRow = (pad) % self.columns
 		sequence = self.getSequence(pad)
 #		print("Pressed pad %d, song %d, sequence %d, playmode %d, channel %d, length %d"%(pad, self.song, sequence, self.parent.libseq.getPlayMode(sequence), self.parent.libseq.getChannel(sequence), self.parent.libseq.getSequenceLength(sequence)))
 		menuItem = self.parent.paramEditorItem
@@ -325,13 +333,6 @@ class zynthian_gui_zynpad():
 		elif self.parent.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STARTING:
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 		elif self.parent.libseq.getPlayMode(sequence) != zynthian_gui_stepsequencer.SEQ_DISABLED:
-			if not self.parent.libseq.isPlaying():
-				# Nothing is running so reset to zero and start immediately - workaround issue with jack_transport by stopping and pausing before locate
-				#TODO Should this go into libseq?
-				self.parent.libseq.transportStop()
-				sleep(0.1)
-				self.parent.libseq.transportLocate(0)
-				self.parent.libseq.transportStart()
 			self.parent.libseq.setPlayPosition(sequence, 0)
 			self.parent.libseq.setPlayState(sequence, zynthian_gui_stepsequencer.SEQ_STARTING)
 		playing = self.drawPad(pad)
@@ -356,6 +357,31 @@ class zynthian_gui_zynpad():
 	#   encoder: Zyncoder index [0..4]
 	#   value: Current value of zyncoder
 	def onZyncoder(self, encoder, value):
-		pass
+		if encoder == ENC_SELECT:
+			# SELECT encoder adjusts pad selection
+			self.selectedCol += value
+			if self.selectedCol < 0:
+				self.selectedCol = 0
+			if self.selectedCol >= self.columns:
+				self.selectedCol = self.columns - 1
+		elif encoder == ENC_BACK:
+			# BACK encoder adjusts pad selection
+			self.selectedRow += value
+			if self.selectedRow < 0:
+				self.selectedRow = 0
+			if self.selectedRow >= self.rows:
+				self.selectedRow = self.rows - 1
+		self.selectedPad = self.selectedRow + self.selectedCol * self.rows
+
+	# Function to handle switch press
+	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#	returns True if action fully handled or False if parent action should be triggered
+	def onSwitch(self, switch, type):
+		if switch == ENC_SELECT:
+			print("zynpad ENTER pad:%d sequence:%d"%(self.selectedPad, self.getSequence(self.selectedPad)))
+			self.parent.libseq.togglePlayState(self.getSequence(self.selectedPad))
+			return True
+		return False
 
 #------------------------------------------------------------------------------
