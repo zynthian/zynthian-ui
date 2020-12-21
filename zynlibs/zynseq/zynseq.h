@@ -161,7 +161,7 @@ void setTriggerNote(uint32_t sequence, uint8_t note);
 */
 void selectPattern(uint32_t pattern);
 
-/** @brief  Get the index of the currently selected pattern
+/** @brief  Get the index of the selected pattern
 *   @retval uint32_t Index of pattern or -1 if not found
 */
 uint32_t getPatternIndex();
@@ -188,12 +188,12 @@ void setBeatsInPattern(uint32_t beats);
 */
 uint32_t getPatternLength(uint32_t pattern);
 
-/** @brief  Get clock divisor
-*   @retval uint32_t Clock divisor
+/** @brief  Get clocks per step for selected pattern
+*   @retval uint32_t Clock cycles per step
 */
 uint32_t getClocksPerStep();
 
-/** @brief  Get steps per beat
+/** @brief  Get steps per beat from selected pattern
 *   @retval uint32_t Steps per beat
 */
 uint32_t getStepsPerBeat();
@@ -204,17 +204,17 @@ uint32_t getStepsPerBeat();
 */
 void setStepsPerBeat(uint32_t steps);
 
-/** @brief  Get beat type (time signature denominator) for current pattern
+/** @brief  Get beat type (time signature denominator) for selected pattern
 *   @retval uint8_t Beat type (power of 2)
 */
 uint8_t getBeatType();
 
-/** @brief  Set beat type (time signature denominator) for current pattern
+/** @brief  Set beat type (time signature denominator) for selected pattern
 *   @param  beatType Beat type (power of 2)
 */
 void setBeatType(uint8_t beatType);
 
-/** @brief  Add note to pattern
+/** @brief  Add note to selected pattern
 *   @param  step Index of step at which to add note
 *   @param  note MIDI note number
 *   @param  velocity MIDI velocity value
@@ -223,38 +223,38 @@ void setBeatType(uint8_t beatType);
 */
 bool addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration);
 
-/** @brief  Removes note from pattern
+/** @brief  Removes note from selected pattern
 *   @param  step Index of step at which to remove note
 *   @param  note MIDI note number to remove
 */
 void removeNote(uint32_t step, uint8_t note);
 
-/** @brief  Get velocity of note in pattern
+/** @brief  Get velocity of note in selected pattern
 *   @param  step Index of step at which note resides
 *   @param  note MIDI note number
 */
 uint8_t getNoteVelocity(uint32_t step, uint8_t note);
 
-/** @brief  Set velocity of note
+/** @brief  Set velocity of note in selected pattern
 *   @param  step Index of step at which note resides
 *   @param  note MIDI note number
 *   @param  velocity MIDI velocity
 */
 void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity);
 
-/** @brief  Get duration of note
+/** @brief  Get duration of note in selected pattern
 *   @param  position Index of step at which note starts
 *   @note   note MIDI note number
 *   @retval uint32_t Duration in steps or 0 if note does not exist
 */
 uint32_t getNoteDuration(uint32_t step, uint8_t note);
 
-/** @brief  Transpose pattern
+/** @brief  Transpose selected pattern
 *   @param  value +/- quantity of notes to transpose
 */
 void transpose(int8_t value);
 
-/** @brief  Clears events from pattern
+/** @brief  Clears events from selected pattern
 *   @note   Does not change other parameters such as pattern length
 */
 void clear();
@@ -276,30 +276,30 @@ void setInputChannel(uint8_t channel);
 */
 uint8_t getInputChannel();
 
-/** @brief  Set scale used by pattern editor for current pattern
+/** @brief  Set scale used by pattern editor for selected pattern
 *   @param  scale Index of scale
 */
 void setScale(uint32_t scale);
 
-/** @brief  Get scale used by pattern editor for current pattern
+/** @brief  Get scale used by pattern editor for selected pattern
 *   @retval uint32_t Index of scale
 */
 uint32_t getScale();
 
-/** @brief  Set scale tonic (root note) used by pattern editor for current pattern
+/** @brief  Set scale tonic (root note) for selected pattern (used by pattern editor)
 *   @param  tonic Scale tonic
 */
 void setTonic(uint8_t tonic);
 
-/** @brief  Get scale tonic (root note) used by pattern editor for current pattern
+/** @brief  Get scale tonic (root note) for selected pattern (used by pattern editor)
 *   @retval uint8_t Tonic
 */
 uint8_t getTonic();
 
-/** @brief  Check if pattern has changed since last check
+/** @brief  Check if selected pattern has changed since last check
 *   @retval bool True if pattern has changed
 */
-bool isModified();
+bool isPatternModified();
 
 // ** Sequence management functions **
 
@@ -560,7 +560,7 @@ uint32_t getSong();
 
 /** @brief  Select song
 *   @param  song Index of song to select
-*   @Note   Song 0 is reserved for pattern editor. Songs 1-128 may be selected with MIDI song select.
+*   @Note   Song 0 is reserved for pattern editor. Songs 1-128 may be selected with MIDI song select (0-127).
 *   @todo   Limit quantity of songs to 128 (MIDI limit) and use appropriate sized data (uint8_t)
 */
 void selectSong(uint32_t song);

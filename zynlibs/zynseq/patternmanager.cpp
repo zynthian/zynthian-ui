@@ -379,6 +379,7 @@ bool PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSc
 	//!@todo It may be better for each sequence to have a flag indicating if it is part of the song or a pad rather than simple >1000
 	bool bPlaying = doClock(m_nCurrentSong, nTime, pSchedule, bSync, dSamplesPerClock); // Clock song
 	bPlaying |= doClock(m_nCurrentSong + 1000, nTime, pSchedule, bSync, dSamplesPerClock); // Clock zynpads
+	bPlaying |= doClock(0, nTime, pSchedule, bSync, dSamplesPerClock); // Clock pattern editor
 	return bPlaying;
 }
 

@@ -541,7 +541,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.song_editor_mode = 3
 		elif childIndex == 0:
 			self.libseq.stop() #TODO This is a sledgehammer approach - stopping everything when editing pattern because otherwise we need to consider relative positions for everything
-			self.libseq.selectSong(0)
+			#self.libseq.selectSong(0)
 			self.child = self.patternEditor
 		elif childIndex == 2:
 #			self.libseq.selectSong(self.song)
@@ -594,7 +594,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 #			self.libseq.transportStop() #TODO: Stopping transport due to jack_transport restarting if locate called
 			self.libseq.selectSong(song)
 			self.song = song
-			self.libseq.setTempo(self.libseq.getTempo(song, 0))
+#			self.libseq.setTempo(self.libseq.getTempo(song, 0))
 			try:
 				self.child.selectSong()
 			except:

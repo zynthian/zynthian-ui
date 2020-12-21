@@ -82,8 +82,7 @@ class zynthian_gui_patterneditor():
 		self.velocity = 100 # Current note entry velocity
 		self.copySource = 1 # Index of pattern to copy
 		#TODO: Use song operations rather than sequence
-		self.song = 0 # Use song zero for pattern editor sequnce player
-		self.sequence = parent.libseq.getSequence(self.song, 0) # Sequence used for pattern editor sequence player
+		self.sequence = parent.libseq.getSequence(0, 0) # Sequence used for pattern editor sequence player (track 0 in song 0)
 		self.stepWidth = 40 # Grid column width in pixels
 		self.keyMapOffset = 60 # MIDI note number of bottom row in grid
 		self.selectedCell = [0, 0] # Location of selected cell (column,row)
@@ -190,7 +189,6 @@ class zynthian_gui_patterneditor():
 		self.setupEncoders()
 		self.main_frame.tkraise()
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
-		self.parent.libseq.selectSong(0)
 		self.parent.libseq.setTransportToStartOfBar();
 		self.shown=True
 
@@ -764,7 +762,8 @@ class zynthian_gui_patterneditor():
 			value = self.parent.libseq.getBeatType()
 			self.parent.setParam('Beat type', 'value', value)
 		elif menuItem == 'Tempo':
-			self.parent.libseq.transportSetTempo(value)
+			self.parent.libseq.setTempo(0, value, 1, 0) # Tempo for pattern editor song (0)
+			self.parent.libseq.setTempo(self.parent.libseq.getSong(), value, 1, 0) # Tempo for whichever song we have loaded from which we entered the pattern editor
 		elif menuItem == 'Scale':
 			self.parent.libseq.setScale(value)
 			name = self.loadKeymap()
@@ -790,7 +789,6 @@ class zynthian_gui_patterneditor():
 	# Function to load new pattern
 	#   index: Pattern index
 	def loadPattern(self, index):
-		self.sequence = self.parent.libseq.getSequence(self.song, 0)
 		self.parent.libseq.clearSequence(self.sequence)
 		self.pattern = index
 		self.parent.libseq.selectPattern(index)
@@ -835,11 +833,6 @@ class zynthian_gui_patterneditor():
 		offset = 0
 		sec_per_beat = tempo / 1000000
 		steps_per_beat = self.parent.libseq.getStepsPerBeat()
-		if steps_per_beat:
-			clocks_per_step = int(24 / steps_per_beat)
-		else:
-			clocks_per_step = 24
-		self.parent.libseq.setClocksPerStep(clocks_per_step)
 		sec_per_step = sec_per_beat / steps_per_beat
 		step = 0
 		max_steps = self.parent.libseq.getSteps()
@@ -857,7 +850,6 @@ class zynthian_gui_patterneditor():
 					self.parent.libseq.clear()
 					self.parent.libseq.setSteps(max_steps)
 					self.parent.libseq.setStepsPerBeat(steps_per_beat)
-					self.parent.libseq.setClocksPerStep(clocks_per_step)
 			if msg.type != 'note_on' and msg.type != 'note_off' or msg.channel != channel: continue
 			populated_pattern = True
 			if msg.type == 'note_on' and msg.velocity:
@@ -882,9 +874,8 @@ class zynthian_gui_patterneditor():
 			self.playhead = step
 			if self.shown:
 				# Draw play head cursor
-				print("Pattern editor drawing play cursor playhead:%d stepWidth:%d"%(self.playhead, self.stepWidth))
 				self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
-		if self.redraw_pending or self.parent.libseq.isModified():
+		if self.redraw_pending or self.parent.libseq.isPatternModified():
 			self.drawGrid()
 
 	# Function to handle zyncoder value change

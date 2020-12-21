@@ -866,7 +866,7 @@ uint8_t getTonic()
     return 0;
 }
 
-bool isModified()
+bool isPatternModified()
 {
     if(g_bModified)
     {

@@ -444,6 +444,7 @@ class zynthian_gui_songeditor():
 	# Function to handle pattern click
 	#	event: Mouse event
 	def onPatternClick(self, event):
+		self.populateMenu() # Probably better way but this ensures 'Pattern' is in the menu
 		self.parent.showParamEditor('Pattern')
 
 	# Function to toggle note event

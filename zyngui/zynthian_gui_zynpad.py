@@ -282,6 +282,8 @@ class zynthian_gui_zynpad():
 		else:
 			cell = self.gridCanvas.create_rectangle(padX, padY, padX + padWidth, padY + padHeight,
 				fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell"))
+			if pad >= self.parent.libseq.getTracks(self.song):
+				return
 			self.gridCanvas.create_text(padX + padWidth / 2, padY + padHeight / 2,
 				font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
 				size=int(padHeight * 0.3)),
