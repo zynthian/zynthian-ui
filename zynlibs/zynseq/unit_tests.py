@@ -119,18 +119,24 @@ class TestLibZynSeq(unittest.TestCase):
     #
     def test_ac10_is_pattern_modified(self):
         libseq.addNote(0,60,100,4)
-        self.assertTrue(libseq.isModified())
-        self.assertFalse(libseq.isModified())
+        self.assertTrue(libseq.isPatternModified())
+        self.assertFalse(libseq.isPatternModified())
     # Song tests
     def test_ad00_select_song(self):
+        libseq.selectSong(999)
+        self.assertEqual(libseq.getSong(), 999)
+        libseq.selectSong(1000)
+        self.assertEqual(libseq.getSong(), 999) # Max 999 songs
         libseq.selectSong(1)
-        self.assertEqual(libseq.getTracks(1), 4)
+        self.assertEqual(libseq.getSong(), 1)
     #
     def test_ad01_tracks(self):
-        self.assertEqual(libseq.addTrack(1), 4)
-        libseq.removeTrack(1,4)
-        self.assertEqual(libseq.getTracks(1), 4)
-        self.assertEqual(libseq.getSequenceLength(libseq.getSequence(1,1)), 0) # New tracks should contain empty sequence
+        tracks = libseq.getTracks(1)
+        self.assertEqual(libseq.addTrack(1), tracks) # Return value should be next track
+        self.assertEqual(libseq.getTracks(1), tracks + 1)
+        libseq.removeTrack(1,0)
+        self.assertEqual(libseq.getTracks(1), tracks)
+        self.assertEqual(libseq.getSequenceLength(libseq.getSequence(1, tracks)), 0) # New tracks should contain empty sequence
     # Sequence tests
     def test_ae00_add_pattern(self):
         sequence = libseq.getSequence(1,1)

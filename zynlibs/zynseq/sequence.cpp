@@ -132,14 +132,14 @@ void Sequence::togglePlayState()
 		setPlayState(STOPPING);
 }
 
-bool Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
+uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 {
 	// Clock cycle - update position and associated counters, status, etc.
 	// After this call all counters point to next position
 	// Events are triggered when m_nDivCount. Step is incremented after this so the countdown occurs whilst m_nCurrentStep is already set.
 	// nTime has absolute time and provides info to populate events with times that signal JACK main audio callback when to trigger events
 	m_dSamplesPerClock = dSamplesPerClock;
-	bool bReturn = false;
+	uint8_t nReturn = 0;
 	uint8_t nState = m_nState;
 	if(bSync && m_nState == STARTING)
 		m_nState = PLAYING;
@@ -192,7 +192,7 @@ bool Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 				if(m_nClkPerStep == 0)
 					m_nClkPerStep = 1;
 				m_nEventValue = -1;
-				bReturn = true;
+				nReturn = 1;
 				//printf("m_nCurrentPatternPos: %u m_nClkPerStep: %u\n", m_nCurrentPatternPos, m_nClkPerStep);
 			}
 			else if(m_nCurrentPatternPos >= 0 && m_nPosition >= m_nCurrentPatternPos + m_mPatterns[m_nCurrentPatternPos]->getLength())
@@ -208,53 +208,29 @@ bool Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 			else
 			{
 				// Within or between pattern
-				bReturn = true;
+				nReturn = 1;
 			}
 			m_nDivCount = m_nClkPerStep;
 		}
 		--m_nDivCount;
 		++m_nPosition;
 	}
-	if(nState != m_nState)
-		m_bStateChanged = true;
-	return bReturn | m_bStateChanged;
+	if(nState != m_nState || m_bStateChanged)
+	{
+		m_bStateChanged = false;
+		return nReturn | 2;
+	}
+	return nReturn;
 }
 
 SEQ_EVENT* Sequence::getEvent()
 {
 	// This function is called repeatedly for each clock period until no more events are available to populate JACK MIDI output schedule
 	static SEQ_EVENT seqEvent; // A MIDI event timestamped for some imminent or future time
-	if(m_bStateChanged)
-	{
-		// Sequence play state changed so send tally
-		//!@todo Should probably move this below realtime messages
-		m_bStateChanged = false;
-		if(m_nTallyChannel < 16 && m_nTrigger < 128)
-		{
-			seqEvent.time = m_nLastClockTime;
-			seqEvent.msg.command = MIDI_NOTE_ON | m_nTallyChannel;
-			seqEvent.msg.value1 = m_nTrigger;
-			switch(m_nState)
-			{
-				//!@todo Tallies are hard coded to Akai APC but should be configurable, but not within each sequence as that is wasteful. Could expose m_bStateChanged the put logic in PatternManager (or above)
-				case STOPPED:
-					seqEvent.msg.value2 = 3;
-					break;
-				case PLAYING:
-					seqEvent.msg.value2 = 1;
-					break;
-				case STOPPING:
-					seqEvent.msg.value2 = 4;
-					break;
-				case STARTING:
-					seqEvent.msg.value2 = 5;
-					break;
-			}
-			return &seqEvent;
-		}
-	}
-	if(m_nState == STOPPED || m_nCurrentPatternPos < 0 || m_nNextEvent < 0)
+	if(m_nState == STOPPED || m_nState == STARTING || m_nCurrentPatternPos < 0 || m_nNextEvent < 0)
 		return NULL; //!@todo Can we stop between note on and note off being processed resulting in stuck note?
+	
+	//!@todo If STOPPING then the next event is found even if not on this clock cycle
 	// Sequence is being played and playhead is within a pattern
 	Pattern* pPattern = m_mPatterns[m_nCurrentPatternPos];
 	StepEvent* pEvent = pPattern->getEventAt(m_nNextEvent); // Don't advance event here because need to interpolate

@@ -1155,6 +1155,8 @@ uint32_t getSong()
 void selectSong(uint32_t song)
 {
     DPRINTF("Selecting song %d\n", song);
+    if(song > 999)
+        return;
 //  stopSong();
     PatternManager::getPatternManager()->setCurrentSong(song);
     g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);

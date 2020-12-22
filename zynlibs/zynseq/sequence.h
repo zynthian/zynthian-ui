@@ -90,11 +90,10 @@ class Sequence
 		*	@param	nTime Time (quantity of samples since JACK epoch)
 		*	@param	bSync True to indicate sync pulse, e.g. to sync sequences
 		* 	@param	dSamplesPerClock Samples per clock
-		*	@retval	bool True if clock triggers a sequence step
-		*	@note	Adds pending events from sequence to JACK queue
+		*	@retval	uint8_t Bitwise flag of what clock triggers [1=sequence step | 2=change of state]
 		* 	@note	Sequences are clocked syncronously but not locked to absolute time so depend on start time for absolute timing
 		*/
-		bool clock(uint32_t nTime, bool bSync, double dSamplesPerClock);
+		uint8_t clock(uint32_t nTime, bool bSync, double dSamplesPerClock);
 
 		/**	@brief	Gets next event at current clock cycle
 		*	@retval	SEQ_EVENT* Pointer to sequence event at this time or NULL if no more events

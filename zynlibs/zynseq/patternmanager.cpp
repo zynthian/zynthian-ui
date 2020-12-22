@@ -394,7 +394,8 @@ inline bool PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uin
 	bool bPlaying = false;
 	while(uint32_t nSeq = m_mSongs[nSong].getSequence(nTrack++))
 	{
-		if(m_mSequences[nSeq].clock(nTime, bSync, dSamplesPerClock))
+		uint8_t nEventType = m_mSequences[nSeq].clock(nTime, bSync, dSamplesPerClock);
+		if(nEventType & 1)
 		{
 			while(SEQ_EVENT* pEvent = m_mSequences[nSeq].getEvent())
 			{
@@ -404,6 +405,38 @@ inline bool PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uin
 				MIDI_MESSAGE* pNewEvent = new MIDI_MESSAGE(pEvent->msg);
 				(*pSchedule)[nTime] = pNewEvent;
 				//printf("Clock time: %u Scheduling event 0x%x 0x%x 0x%x at %u\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
+			}
+		}
+		if(nEventType & 2)
+		{
+			uint8_t nTallyChannel = m_mSequences[nSeq].getTallyChannel();
+			uint8_t nTrigger = m_mSequences[nSeq].getTrigger();
+			printf("PatternManager::doClock Handle change of play state for sequence %u tally channel:%u trigger:%u\n", nSeq, nTallyChannel, nTrigger);
+			if(nTallyChannel < 16 && nTrigger < 128)
+			{
+				MIDI_MESSAGE* pEvent = new MIDI_MESSAGE();
+				pEvent->command = MIDI_NOTE_ON | nTallyChannel;
+				pEvent->value1 = nTrigger;
+				switch(m_mSequences[nSeq].getPlayState())
+				{
+					//!@todo Tallies are hard coded to Akai APC but should be configurable
+					case STOPPED:
+						pEvent->value2 = 3;
+						break;
+					case PLAYING:
+						pEvent->value2 = 1;
+						break;
+					case STOPPING:
+						pEvent->value2 = 4;
+						break;
+					case STARTING:
+						pEvent->value2 = 5;
+						break;
+				}
+				//!@todo Can we optimise time search?
+				while(pSchedule->find(nTime) != pSchedule->end())
+					++nTime; // Move event forward until we find a spare time slot
+				(*pSchedule)[nTime] = pEvent;
 			}
 		}
 		bPlaying |= (m_mSequences[nSeq].getPlayState() != STOPPED);
