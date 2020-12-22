@@ -581,7 +581,7 @@ class zynthian_gui_patterneditor():
 		if clearGrid:
 			for step in range(self.parent.libseq.getSteps()):
 				self.gridCanvas.tag_lower("step%d"%step)
-		self.gridCanvas.tag_raise("selection")
+		self.selectCell()
 
 	# Function to draw pianoroll key outlines (does not fill key colour)
 	def drawPianoroll(self):
@@ -872,9 +872,7 @@ class zynthian_gui_patterneditor():
 		step = self.parent.libseq.getStep(self.sequence)
 		if self.playhead != step:
 			self.playhead = step
-			if self.shown:
-				# Draw play head cursor
-				self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
+			self.playCanvas.coords("playCursor", 1 + self.playhead * self.stepWidth, 0, 1 + self.playhead * self.stepWidth + self.stepWidth, PLAYHEAD_HEIGHT)
 		if self.redraw_pending or self.parent.libseq.isPatternModified():
 			self.drawGrid()
 

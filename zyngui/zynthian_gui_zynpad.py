@@ -300,7 +300,6 @@ class zynthian_gui_zynpad():
 
 	# Function to draw pad
 	#   pad: Pad index
-	#   returns: Pad sequence play state
 	def drawPad(self, pad):
 		pads = self.rows * self.columns
 		if pads < 1 or pad < 0 or pad >= pads:
@@ -312,7 +311,6 @@ class zynthian_gui_zynpad():
 			self.gridCanvas.coords(self.selection, 1 + col * self.colWidth, 1 + row * self.rowHeight, (1 + col) * self.colWidth - self.selectThickness, (1 + row) * self.rowHeight - self.selectThickness)
 			self.gridCanvas.tag_raise(self.selection)
 			self.gridCanvas.itemconfig(self.selection, state="normal")
-		return self.parent.libseq.getPlayState(self.getSequence(pad))
 
 	# Function to handle pad press
 	def onPadPress(self, event):
@@ -332,7 +330,6 @@ class zynthian_gui_zynpad():
 		if sequence == 0:
 			return;
 		self.parent.libseq.togglePlayState(sequence)
-		playing = self.drawPad(self.selectedPad)
 
 	# Function to handle pad release
 	def onPadRelease(self, event):

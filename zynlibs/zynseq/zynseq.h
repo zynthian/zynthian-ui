@@ -467,7 +467,7 @@ uint32_t getTracks(uint32_t song);
 /** @brief  Get song track sequence ID
 *   @param  song Song index
 *   @param  track Track index
-*   @retval uint32_t Sequence index
+*   @retval uint32_t Sequence index (0 if none found)
 */
 uint32_t getSequence(uint32_t song, uint32_t track);
 
