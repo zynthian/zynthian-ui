@@ -37,20 +37,30 @@ class Song
 		*/
 		void removeTrack(uint32_t track);
 
-		/**	@brief	Set song tempo
+		/**	@brief	Add tempo to song timebase map
 		*	@param	tempo Tempo in BPM
 		*	@param	bar Bar (measure) at which to set tempo
 		*	@param	tick Tick at which to set tempo [Optional - default: 0]
         *   @note   Removes tempo if same as previous tempo
 		*/
-		void setTempo(uint16_t tempo, uint16_t bar, uint16_t tick=0);
-
-		/**	@brief	Get song tempo
+		void addTempo(uint16_t tempo, uint16_t bar, uint16_t tick=0);
+		
+		/**	@brief	Get tempo from song timebase map
 		*	@param	bar Bar (measure) at which to get tempo
 		*	@param	beat Tick at which to get tempo [Optional - default: 0]
 		*	@retval	uint16_t Tempo in BPM
 		*/
 		uint16_t getTempo(uint16_t bar, uint16_t tick=0);
+
+		/**	@brief	Set song tempo
+		*	@param	tempo Tempo in BPM
+		*/
+		void setTempo(uint16_t tempo);
+
+		/**	@brief	Get song tempo
+		*	@retval	uint16_t Tempo in BPM
+		*/
+		uint16_t getTempo();
 
 		/**	@brief	Set song time signature
 		*	@param	timesig Time signature - MSB: Numerator, LSB: Denominator
@@ -98,4 +108,5 @@ class Song
 		std::vector<uint32_t> m_vTracks; // Index of sequences representing each track
 		uint32_t m_nBar = 96; // Clock cycles per bar / loop point
 		Timebase m_timebase; // Timebase map
+		uint16_t m_nTempo = 120; // Default tempo for song (overriden by tempo events in timebase map)
 };

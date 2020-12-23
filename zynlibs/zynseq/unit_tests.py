@@ -7,6 +7,7 @@ import unittest
 import ctypes
 import jack
 from time import sleep
+import time
 import filecmp
 import binascii
 
@@ -30,6 +31,7 @@ def process(frames):
     for offset, data in midi_in.incoming_midi_events():
         if data:
             last_rx = data
+    midi_in.clear_buffer()
     if send_midi:
         midi_out.write_midi_event(0, send_midi)
         send_midi = None
@@ -37,20 +39,22 @@ def process(frames):
 client.activate()
 
 class TestLibZynSeq(unittest.TestCase):
-    def setUpClass():
+    @classmethod
+    def setUpClass(self):
         global libseq
         global zynseq_midi_out
         global zynseq_midi_in
         libseq = ctypes.CDLL("/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
         libseq.init()
+        sleep(1) #TODO: This delay avoids segfault - figure out what causes segfault if library used too soon after init
         zynseq_midi_out = client.get_port_by_name('zynthstep:output')
         zynseq_midi_in = client.get_port_by_name('zynthstep:input')
         midi_in.connect(zynseq_midi_out)
         midi_out.connect(zynseq_midi_in)
     #
     def test_aa00_debug(self):
-        libseq.enableDebug(True)
-        libseq.enableDebug(False)
+       libseq.enableDebug(True)
+       libseq.enableDebug(False)
     def test_aa01_loadfile(self):
         self.assertTrue(libseq.load(bytes("/zynthian/zynthian-my-data/zynseq/default.zynseq", "utf-8")))
     #
@@ -740,7 +744,7 @@ class TestLibZynSeq(unittest.TestCase):
                 break
         self.assertEqual(client.transport_state, jack.STOPPED)
         # Change tempo
-        libseq.setTempo(5, 60, 1, 0) # Halve the tempo
+        libseq.addTempo(5, 60, 1, 0) # Halve the tempo
         step_duration = (60 / 60) / 4
         libseq.setPlayState(sequence, play_state["STARTING"])
         for i in range(0,100):
@@ -759,7 +763,44 @@ class TestLibZynSeq(unittest.TestCase):
             if client.transport_state ==jack.STOPPED:
                 break
         self.assertEqual(client.transport_state, jack.STOPPED)
-        
+    def test_ai02_tempo(self):
+        global last_rx
+        libseq.enableDebug()
+        libseq.selectSong(1)
+        sleep(0.1)
+        self.assertEqual(client.transport_state, jack.STOPPED)
+        sequence = libseq.getSequence(1001,libseq.addTrack(1001))
+        libseq.clearSequence(sequence)
+        libseq.selectPattern(999)
+        libseq.setBeatsInPattern(1)
+        libseq.setStepsPerBeat(4)
+        libseq.clear()
+        libseq.addNote(0, 0x41, 0x64, 1)
+        libseq.addPattern(sequence,0,999,True)
+        libseq.setPlayMode(sequence, play_mode["LOOPSYNC"])
+        libseq.setTimeSig(1, 1, 4, 1)
+        libseq.setPlayState(sequence, play_state["STARTING"])
+        for i in range(0,100):
+            sleep(0.001)
+            if libseq.getPlayState(sequence) == play_state["PLAYING"]:
+                break
+        self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
+        for tempo in range(120, 20, -40):
+            print("Setting tempo", tempo)
+            libseq.setTempo(tempo)
+            time1 = time.time()
+            last_rx = bytes(0)
+            while (binascii.hexlify(last_rx).decode() != "904100") and (time.time() < time1 + 1):
+                pass
+            time1 = time.time()
+            last_rx = bytes(0)
+            while (binascii.hexlify(last_rx).decode() != "904100") and (time.time() < time1 + 1):
+                pass
+            time2 = time.time()
+            min_time = 58/tempo
+            max_time = 62/tempo
+            self.assertTrue(min_time < time2-time1 < max_time)
+
 
     #TOOO Check beat type, sendMidiXXX (or remove), isSongPlaying, getTriggerChannel, setTriggerChannel, getTriggerNote, setTriggerNote, setInputChannel, getInputChannel, setScale, getScale, setTonic, getTonic, setChannel, getChannel, setOutput, setTempo, getTempo, setSongPosition, getSongPosition, startSong, pauseSong, toggleSong, solo, transportXXX
 

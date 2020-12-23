@@ -1,6 +1,6 @@
 zynseq file format (RIFF)
 =========================
-Version 2
+Version 3
 Pattern time is measured in steps.
 Sequence time is measured in MIDI clock cycles.
 
@@ -14,8 +14,8 @@ RIFF Header:
 	Block size: 32-bit little endian
 Block:
 	Pattern ID [4]
-	Quanity of beats [4]
-	Clock cycles per step [2] Not used
+	Quantity of beats [4] (Changed in V2 - was quantity of steps)
+	Not used [2] (Not used since V2 - was clock cycles per step)
 	Steps per beat [2]
 	Map / scale [1] (Added in V1)
 	Scale tonic [1] (Added in V1)
@@ -34,6 +34,7 @@ RIFF Header:
 Block:
 	Song ID [4]
 	Sync period [2]
+	Tempo [2] (Added in V3)
 	Quantity of timebase track events [4]
 		Event measure [2]
 		Event tick [2]

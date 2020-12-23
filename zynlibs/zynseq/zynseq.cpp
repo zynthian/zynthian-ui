@@ -48,6 +48,7 @@ uint32_t g_nSongPosition = 0; // Clocks since start of song
 uint32_t g_nSongLength = 0; // Clocks cycles to end of song
 bool g_bModified = false; // True if pattern has changed since last check
 bool g_bPlaying = false; // True if any sequence in current song is playing
+uint32_t g_nXruns = 0;
 
 uint8_t g_nInputChannel = 1; // MIDI input channel (>15 to disable MIDI input)
 
@@ -197,6 +198,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
     jack_nframes_t nRemainingFrames = nFramesInPeriod; // Quantity of frames in this period left to process for clock generation    
 
     // Process timebase events
+    /* Disabled timebase events until linear song implemented
     while(g_pTimebase && g_pNextTimebaseEvent && (g_pNextTimebaseEvent->bar <= g_nBar)) // || g_pNextTimebaseEvent->bar == g_nBar && g_pNextTimebaseEvent->clock <= g_nClock))
     {
         if(g_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO)
@@ -217,22 +219,25 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         }
         g_pNextTimebaseEvent = g_pTimebase->getNextTimebaseEvent(g_pNextTimebaseEvent);
     }
+    */
 
     // Calculate BBT at start of next period
     if(bUpdate || g_bTimebaseChanged)
     {
+        /*
         if(g_pTimebase)
         {
             g_dTempo = g_pTimebase->getTempo(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick));
             g_fBeatsPerBar = g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick)) >> 8;
         }
+        */
         // Update position based on parameters passed
         if(pPosition->valid & JackPositionBBT)
         {
             // Set position from BBT
             DPRINTF("bUpdate: %s, g_bTimebaseChanged: %s, Position valid flags: %u\n", bUpdate?"True":"False", g_bTimebaseChanged?"True":"False", pPosition->valid);
             DPRINTF("PreSet position from BBT Bar: %u Beat: %u Tick: %u Clock: %u\n", pPosition->bar, pPosition->beat, pPosition->tick, g_nClock);
-            DPRINTF("Beats per bar: %f\n", pPosition->beats_per_bar);
+            DPRINTF("Beats per bar: %f Tempo: %f\n", pPosition->beats_per_bar, g_dTempo);
             // Fix overruns
             pPosition->beat += pPosition->tick / (uint32_t)pPosition->ticks_per_beat;
             pPosition->tick %= (uint32_t)(pPosition->ticks_per_beat);
@@ -240,7 +245,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
             pPosition->beat = ((pPosition->beat - 1) % (uint32_t)(pPosition->beats_per_bar)) + 1;
             pPosition->frame = transportGetLocation(pPosition->bar, pPosition->beat, pPosition->tick);
             pPosition->ticks_per_beat = g_dTicksPerBeat;
-            pPosition->beats_per_minute = g_dTempo;
+            pPosition->beats_per_minute = g_dTempo; //!@todo Need to set tempo from position pointer to allow external clients to set tempo
             g_nClock = pPosition->tick / g_dTicksPerClock;
             g_nBar = pPosition->bar;
             g_nBeat = pPosition->beat;
@@ -254,6 +259,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         }
         g_nTransportStartFrame = jack_frame_time(g_pJackClient) + pPosition->frame;
         pPosition->valid = JackPositionBBT;
+        g_dFramesPerClock = getFramesPerClock(g_dTempo);
         g_bTimebaseChanged = false;
         DPRINTF("New position: Jack frame: %u Frame: %u Bar: %u Beat: %u Tick: %u Clock: %u\n", g_nTransportStartFrame, pPosition->frame, pPosition->bar, pPosition->beat, pPosition->tick, g_nClock);
         //!@todo Check impact of timebase discontinuity
@@ -281,7 +287,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         bool bSync = false;
         while(g_nFramesToNextClock < nRemainingFrames)
         {
-            //!@todo I think segfault may be triggered within this while loop
+            //!@todo I think segfault may be triggered within this while loop but only soon after init
             bSync = false;
             //!@todo Have added a period to clock position but it should already be offset as pPosition->frame refers to next cycle
             jack_nframes_t nClockPos = g_nFramesToNextClock + pPosition->frame + g_nTransportStartFrame + nFramesInPeriod; // Absolute position of clock within next period
@@ -313,6 +319,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         }
         g_nFramesToNextClock -= nRemainingFrames;
         g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
+        
         if(bSync && !g_bPlaying)
         {
             //!@todo We stop at end of bar to encourage previous block of code to run but we may prefer to stop more promptly
@@ -477,7 +484,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
 int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
 {
-    DPRINTF("zynseq: Jack sample rate: %d\n", nFrames);
+    DPRINTF("zynseq: Jack sample rate: %u\n", nFrames);
     g_nSampleRate = nFrames;
     g_dFramesPerClock = getFramesPerClock(g_dTempo);
     return 0;
@@ -485,7 +492,7 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
 
 int onJackXrun(void *pArgs)
 {
-    DPRINTF("zynseq detected XRUN\n");
+    DPRINTF("zynseq detected XRUN %u\n", ++g_nXruns);
     return 0;
 }
 
@@ -554,7 +561,7 @@ bool init(bool bTimebaseMaster)
     
     transportStop();
     transportLocate(0);
-    return true;
+    return true; //!@todo If library loaded and initialised by Python then methods called too early (soon) it segfaults
 }
 
 bool load(char* filename)
@@ -1025,9 +1032,9 @@ void removeTrack(uint32_t song, uint32_t track)
     g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);
 }
 
-void setTempo(uint32_t song, uint32_t tempo, uint16_t bar, uint16_t tick)
+void addTempoEvent(uint32_t song, uint32_t tempo, uint16_t bar, uint16_t tick)
 {
-    PatternManager::getPatternManager()->getSong(song)->setTempo(tempo, bar, tick);
+    PatternManager::getPatternManager()->getSong(song)->addTempo(tempo, bar, tick);
     if(song == getSong())
     {
         g_bTimebaseChanged = true;
@@ -1036,7 +1043,7 @@ void setTempo(uint32_t song, uint32_t tempo, uint16_t bar, uint16_t tick)
     }
 }
 
-uint32_t getTempo(uint32_t song, uint16_t bar, uint16_t tick)
+uint32_t getTempoEvent(uint32_t song, uint16_t bar, uint16_t tick)
 {
     return PatternManager::getPatternManager()->getSong(song)->getTempo(bar, tick);
 }
@@ -1157,12 +1164,13 @@ void selectSong(uint32_t song)
     DPRINTF("Selecting song %d\n", song);
     if(song > 999)
         return;
-//  stopSong();
     PatternManager::getPatternManager()->setCurrentSong(song);
     g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);
     g_pTimebase = PatternManager::getPatternManager()->getSong(song)->getTimebase();
     if(g_pTimebase)
         g_pNextTimebaseEvent = g_pTimebase->getFirstTimebaseEvent();
+    if(transportGetPlayStatus() == JackTransportStopped)
+        setTempo(PatternManager::getPatternManager()->getSongTempo());
 }
 
 void solo(uint32_t song, uint32_t track, int solo)
@@ -1198,7 +1206,9 @@ jack_nframes_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick)
     uint32_t nTicksToPrev = 0;
     uint32_t nTicksToEvent = 0;
     uint32_t nTicksPerBar = g_dTicksPerBeat * (DEFAULT_TIMESIG >> 8);
-    double dFramesPerTick = getFramesPerTick(DEFAULT_TEMPO);
+//!@todo Handle changes in tempo and time signature
+//    double dFramesPerTick = getFramesPerTick(DEFAULT_TEMPO);
+    double dFramesPerTick = getFramesPerTick(g_dTempo);
     double dFrames = 0; // Frames to position
     /*
     if(g_pTimebase)
@@ -1243,6 +1253,7 @@ void transportStart()
 void transportStop()
 {
     jack_transport_stop(g_pJackClient);
+    stopSong();
 }
 
 void transportToggle()
@@ -1260,13 +1271,18 @@ uint8_t transportGetPlayStatus()
     return jack_transport_query(g_pJackClient, &position);
 }
 
-void transportSetTempo(uint32_t tempo)
+void setTempo(uint32_t tempo)
 {
-    g_dTempo = tempo;
-    g_bTimebaseChanged = true; //!@todo Need to validate that this is required and behaves as expected
+    if(tempo > 0 && tempo < 500)
+    {
+        g_dTempo = tempo;
+        g_dFramesPerClock = getFramesPerClock(tempo);
+//        g_bTimebaseChanged = true;
+        PatternManager::getPatternManager()->setSongTempo(tempo);
+    }
 }
 
-uint32_t transportGetTempo()
+uint32_t getTempo()
 {
     return g_dTempo;
 }

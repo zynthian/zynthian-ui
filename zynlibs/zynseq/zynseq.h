@@ -488,7 +488,7 @@ void copySong(uint32_t source, uint32_t destination);
 *   @param  bar Bar of song at which to add tempo change [Optional - default: 1]
 *   @param  tick Tick within bar at which to add tempo change [Optional - default: 0]
 */
-void setTempo(uint32_t song, uint32_t tempo, uint16_t bar=1, uint16_t tick=0);
+void addTempoEvent(uint32_t song, uint32_t tempo, uint16_t bar=1, uint16_t tick=0);
 
 /** @brief  Get tempo at position within song
 *   @param  song Song index
@@ -497,7 +497,7 @@ void setTempo(uint32_t song, uint32_t tempo, uint16_t bar=1, uint16_t tick=0);
 '   @todo   getTempo without time parameter should get time at current play position???
 *   @retval uint32_t Tempo in BPM
 */
-uint32_t getTempo(uint32_t song, uint16_t bar=1, uint16_t tick=0);
+uint32_t getTempoEvent(uint32_t song, uint16_t bar=1, uint16_t tick=0);
 
 /** @brief  Add time signature to song
 *   @param  song Song index
@@ -612,16 +612,17 @@ void transportToggle();
 */
 uint8_t transportGetPlayStatus();
 
-/** @brief  Set tempo
+/** @brief  Set transport tempo
 *   @param  tempo Beats per minute
 *   @todo   Using integer for tempo to simplify Python interface but should use float
+*   @note   Tempo is saved with song but tempo map events override this
 */
-void transportSetTempo(uint32_t tempo);
+void setTempo(uint32_t tempo);
 
-/** @brief  get tempo
+/** @brief  Get transport tempo
 *   @retval uint32_t Tempo in beats per minute
 */
-uint32_t transportGetTempo();
+uint32_t getTempo();
      
 /** @brief  Set sync timeout
 *   @param  timeout Quantity of microseconds to wait for slow sync clients at start of play

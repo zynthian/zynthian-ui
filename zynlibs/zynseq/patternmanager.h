@@ -5,7 +5,7 @@
 #include <map>
 
 #define DEFAULT_TRACK_COUNT 4
-#define FILE_VERSION 2
+#define FILE_VERSION 3
 
 /** PatternManager class provides creation, recall, update and delete of patterns which other modules can subseqnetly use. It manages persistent (disk) storage. PatternManager is implemented as a singleton ensuring a single instance is available to all callers.
 */
@@ -186,7 +186,17 @@ class PatternManager
         /** @brief  Stop all sequences
         */
         void stop();
+        
+        /** @brief  Set tempo of current song
+        *   @param  tempo Tempo in beats per minute
+        */
+        void setSongTempo(uint16_t tempo);
 
+        /** @brief  Get tempo of current song
+        *   @retval uint16_t Tempo in beats per minute
+        */
+        uint16_t getSongTempo();
+        
     private:
         PatternManager(); // Private constructor to avoid public instantiation
         PatternManager(const PatternManager&); // Do not allow public copying
@@ -201,6 +211,7 @@ class PatternManager
 
         uint8_t m_nTriggerChannel = 15; // MIDI channel to recieve sequence triggers (note-on)
         uint32_t m_nCurrentSong = 0; // Currently selected song (ZynPad uses +1000)
+        uint32_t m_nCurrentlyPlayingSong = 0; // Currently playing song (ZynPad uses +1000)
 
         static PatternManager* m_pPatternManager; // Pointer to the singleton
         // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances

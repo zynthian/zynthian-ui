@@ -4,7 +4,6 @@
 
 Song::Song()
 {
-	setTempo(120, 1);
 }
 
 Song::~Song()
@@ -50,7 +49,7 @@ void Song::clear()
 	m_vTracks.clear();
 }
 
-void Song::setTempo(uint16_t tempo, uint16_t bar, uint16_t tick)
+void Song::addTempo(uint16_t tempo, uint16_t bar, uint16_t tick)
 {
 	m_timebase.addTimebaseEvent(bar, tick, TIMEBASE_TYPE_TEMPO, tempo);
 }
@@ -58,6 +57,16 @@ void Song::setTempo(uint16_t tempo, uint16_t bar, uint16_t tick)
 uint16_t Song::getTempo(uint16_t bar, uint16_t tick)
 {
 	return m_timebase.getTempo(bar, tick);
+}
+
+uint16_t Song::getTempo()
+{
+	return m_nTempo;
+}
+
+void Song::setTempo(uint16_t tempo)
+{
+	m_nTempo = tempo;
 }
 
 void Song::setTimeSig(uint16_t timesig, uint16_t bar)

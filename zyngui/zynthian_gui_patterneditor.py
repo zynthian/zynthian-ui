@@ -762,8 +762,7 @@ class zynthian_gui_patterneditor():
 			value = self.parent.libseq.getBeatType()
 			self.parent.setParam('Beat type', 'value', value)
 		elif menuItem == 'Tempo':
-			self.parent.libseq.setTempo(0, value, 1, 0) # Tempo for pattern editor song (0)
-			self.parent.libseq.setTempo(self.parent.libseq.getSong(), value, 1, 0) # Tempo for whichever song we have loaded from which we entered the pattern editor
+			self.parent.libseq.setTempo(value)
 		elif menuItem == 'Scale':
 			self.parent.libseq.setScale(value)
 			name = self.loadKeymap()

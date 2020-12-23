@@ -234,9 +234,9 @@ class zynthian_gui_songeditor():
 	def assertTempo(self):
 		value = self.parent.getParam('Tempo', 'value')
 		if self.position == self.selectedCell[0]:
-			self.parent.libseq.transportSetTempo(value)
+			self.parent.libseq.setTempo(value)
 		#TODO: Need to use measure + tick to set tempo - and all other song timebase operations
-		self.parent.libseq.setTempo(self.song, value, self.selectedCell[0] * self.clocksPerDivision)
+		self.parent.libseq.addTempo(self.song, value, self.selectedCell[0] * self.clocksPerDivision)
 		self.redraw_pending = 1
 
 	# Function to get group of selected track

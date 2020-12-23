@@ -594,7 +594,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 #			self.libseq.transportStop() #TODO: Stopping transport due to jack_transport restarting if locate called
 			self.libseq.selectSong(song)
 			self.song = song
-#			self.libseq.setTempo(self.libseq.getTempo(song, 0))
 			try:
 				self.child.selectSong()
 			except:
@@ -643,7 +642,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	#	encoder: Zyncoder index [0..4]
 	#	value: Value of zyncoder change since last read
 	def onZyncoder(self, encoder, value):
-		if encoder == ENC_SELECT or encoder == ENC_LAYER:
+		if encoder == ENC_SELECT:
 			if self.lstMenu.winfo_viewable():
 				# Menu showing
 				if self.lstMenu.size() < 1:
@@ -665,6 +664,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			elif self.paramEditorItem:
 				# Parameter editor showing
 				self.changeParam(value)
+		elif encoder == ENC_LAYER:
+			self.libseq.setTempo(self.libseq.getTempo() + value)
+			#TODO: Display tempo temporarily
 		elif encoder == ENC_SNAPSHOT:
 			self.selectSong(self.libseq.getSong() + value)
 
