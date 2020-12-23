@@ -942,6 +942,7 @@ class zynthian_gui_songeditor():
 		elif switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
 		elif switch == ENC_SNAPSHOT:
+			return
 			if type == 'B':
 				#TODO Validate bold snapshot behaviour
 				self.parent.libseq.stopSong()
@@ -951,20 +952,12 @@ class zynthian_gui_songeditor():
 			else:
 				if self.parent.libseq.isSongPlaying():
 					self.parent.libseq.pauseSong()
-					if not self.parent.libseq.isPlaying():
-						self.parent.libseq.transportStop()
-						#TODO Do we need to stop transport?
 				else:
 					if self.parent.libseq.isPlaying():
 						self.parent.libseq.setSongToStartOfMeasure()
-#						self.parent.libseq.transportStop()
-#						sleep(0.1)
-#						self.parent.libseq.locate(self.parent.libseq.getSongPosition())
 						self.parent.libseq.startSong(False)
-#						self.parent.libseq.transportStop()
 					else:
 						self.parent.libseq.startSong(True)
-						self.parent.libseq.transportStart()
 		else:
 			return False
 		return True

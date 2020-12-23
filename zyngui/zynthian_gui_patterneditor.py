@@ -186,6 +186,7 @@ class zynthian_gui_patterneditor():
 			channel = 1
 		self.parent.libseq.setChannel(self.sequence, channel)
 		self.loadPattern(pattern)
+		self.copySource = pattern
 		self.setupEncoders()
 		self.main_frame.tkraise()
 		self.parent.setTitle("Pattern Editor (%d)" % (self.pattern))
@@ -216,7 +217,7 @@ class zynthian_gui_patterneditor():
 		if self.parent.libseq.getScale():
 			self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':127, 'getValue':self.getVerticalZoom, 'onChange':self.onMenuChange, 'onAssert':self.assertZoom}}})
-		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.libseq.transportGetTempo, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.parent.libseq.getTempo, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Scale':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':self.getScales(), 'getValue':self.parent.libseq.getScale, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tonic':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':12, 'getValue':self.parent.libseq.getTonic, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Import':{'method':self.selectImport}})
@@ -675,6 +676,7 @@ class zynthian_gui_patterneditor():
 	def copyPattern(self):
 		self.parent.libseq.copyPattern(self.copySource, self.pattern);
 		self.loadPattern(self.pattern)
+		self.copySource = self.pattern
 
 	# Function to get pattern index
 	def getPattern(self):

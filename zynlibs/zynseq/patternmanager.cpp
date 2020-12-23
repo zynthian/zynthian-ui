@@ -540,9 +540,9 @@ void PatternManager::startSong(bool bFast)
 
 void PatternManager::stopSong()
 {
-	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentlyPlayingSong].getTracks(); ++nTrack)
+	for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentSong].getTracks(); ++nTrack)
 	{
-		uint32_t nSequence = m_mSongs[m_nCurrentlyPlayingSong].getSequence(nTrack);
+		uint32_t nSequence = m_mSongs[m_nCurrentSong].getSequence(nTrack);
 		m_mSequences[nSequence].setPlayState(STOPPED);
 	}
 }
@@ -608,6 +608,8 @@ uint32_t PatternManager::trigger(uint8_t note)
 
 void PatternManager::setCurrentSong(uint32_t song)
 {
+	if(!isPlaying())
+		m_nCurrentlyPlayingSong = song;
 	m_nCurrentSong = song;
 	if(m_mSongs[song].getTracks() == 0)
 		for(size_t nIndex = 0; nIndex < DEFAULT_TRACK_COUNT; ++nIndex)
