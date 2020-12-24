@@ -25,7 +25,12 @@
 import logging
 import copy
 from time import sleep
+import collections
 from collections import OrderedDict
+
+# Zynthian specific modules
+from zyncoder import *
+
 
 class zynthian_layer:
 
@@ -386,22 +391,43 @@ class zynthian_layer:
 
 	def midi_control_change(self, chan, ccnum, ccval):
 		if self.engine:
-			if self.listen_midi_cc and chan==self.midi_chan:
-				#TODO => Optimize!!
-				for k, zctrl in self.controllers_dict.items():
-					if zctrl.midi_cc==ccnum:
+			#logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
+
+			# Engine MIDI-Learn zctrls
+			try:
+				self.engine.midi_control_change(chan, ccnum, ccval)
+			except:
+				pass
+
+			# MIDI-CC zctrls (also router MIDI-learn, aka CC-swaps)
+			#TODO => Optimize!! Use the MIDI learning mechanism for caching this ...
+			if self.listen_midi_cc:
+				swap_info = zyncoder.lib_zyncoder.get_midi_filter_cc_swap(chan, ccnum)
+				midi_chan = swap_info >> 8
+				midi_cc = swap_info & 0xFF
+
+				if self.zyngui.is_single_active_channel():
+					for k, zctrl in self.controllers_dict.items():
 						try:
-							# Aeolus, FluidSynth, LinuxSampler, puredata, Pianoteq, setBfree, ZynAddSubFX
-							self.engine.midi_zctrl_change(zctrl, ccval)
+							if zctrl.midi_learn_cc and zctrl.midi_learn_cc>0:
+								if self.midi_chan==chan and zctrl.midi_learn_cc==ccnum:
+									self.engine.midi_zctrl_change(zctrl, ccval)
+							else:
+								if self.midi_chan==midi_chan and zctrl.midi_cc==midi_cc:
+									self.engine.midi_zctrl_change(zctrl, ccval)
 						except:
 							pass
-
-			elif not self.listen_midi_cc:
-				try:
-					# Jalv, ALSA-Mixer, ...
-					self.engine.midi_control_change(chan, ccnum, ccval)
-				except:
-					pass
+				else:
+					for k, zctrl in self.controllers_dict.items():
+						try:
+							if zctrl.midi_learn_cc and zctrl.midi_learn_cc>0:
+								if zctrl.midi_learn_chan==chan and zctrl.midi_learn_cc==ccnum:
+									self.engine.midi_zctrl_change(zctrl, ccval)
+							else:
+								if zctrl.midi_chan==midi_chan and zctrl.midi_cc==midi_cc:
+									self.engine.midi_zctrl_change(zctrl, ccval)
+						except:
+							pass
 
 
 	# ---------------------------------------------------------------------------
@@ -698,6 +724,12 @@ class zynthian_layer:
 		self.zyngui.zynautoconnect_audio()
 
 
+	def is_parallel_audio_routed(self, layer):
+		if isinstance(layer, zynthian_layer) and layer!=self and layer.midi_chan==self.midi_chan and collections.Counter(layer.audio_out)==collections.Counter(self.audio_out):
+			return True
+		else:
+			return False
+
 	# ---------------------------------------------------------------------------
 	# MIDI Routing:
 	# ---------------------------------------------------------------------------
@@ -757,6 +789,13 @@ class zynthian_layer:
 	def mute_midi_out(self):
 		self.midi_out=[]
 		self.zyngui.zynautoconnect_midi()
+
+
+	def is_parallel_midi_routed(self, layer):
+		if isinstance(layer, zynthian_layer) and layer!=self and layer.midi_chan==self.midi_chan and collections.Counter(layer.midi_out)==collections.Counter(self.midi_out):
+			return True
+		else:
+			return False
 
 
 	# ---------------------------------------------------------------------------

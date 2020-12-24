@@ -82,6 +82,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 
 	def __init__(self):
+		self.reset_index = True
 		self.zyngine_counter = 0
 		self.zyngines = OrderedDict()
 		self.set_engine_type("MIDI Synth")
@@ -91,16 +92,19 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def set_engine_type(self, etype):
 		self.engine_type = etype
 		self.midi_chan = None
+		self.reset_index = True
 
 
 	def set_fxchain_mode(self, midi_chan):
 		self.engine_type = "Audio Effect"
 		self.midi_chan = midi_chan
+		self.reset_index = True
 
 
 	def set_midichain_mode(self, midi_chan):
 		self.engine_type = "MIDI Tool"
 		self.midi_chan = midi_chan
+		self.reset_index = True
 		self.init_engine_info()
 
 
@@ -142,12 +146,14 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			self.list_data.append((None,len(self.list_data),"Enable LV2-plugins on webconf".format(os.uname().nodename)))
 
 		# Select the first element that is not a category heading
-		self.index = 0
-		for i, val in enumerate(self.list_data):
-			if val[0] != None:
-				self.index = i
-				break
-		
+		if self.reset_index:
+			self.index = 0
+			for i, val in enumerate(self.list_data):
+				if val[0] != None:
+					self.index = i
+					break
+			self.reset_index = False
+
 		super().fill_list()
 
 
@@ -160,7 +166,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		if i is not None and self.list_data[i][0]:
-			self.zyngui.screens['layer'].add_layer_engine(self.start_engine(self.list_data[i][0]), self.midi_chan)
+			self.zyngui.screens['layer'].add_layer_engine(self.list_data[i][0], self.midi_chan)
 
 
 	def start_engine(self, eng):

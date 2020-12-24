@@ -51,7 +51,7 @@ CustomSwitchActionType = [
 	"MIDI_PROG_CHANGE"
 ];
 
-ZynaptikADActionType = [
+ZynSensorActionType = [
 	"NONE",
 	"MIDI_CC",
 	"MIDI_PITCH_BEND",

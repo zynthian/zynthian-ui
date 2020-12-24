@@ -177,7 +177,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 		self.options = {
 			'clone': True,
-			'transpose': True,
+			'note_range': True,
 			'audio_route': True,
 			'midi_chan': True
 		}
@@ -191,15 +191,20 @@ class zynthian_engine(zynthian_basic_engine):
 		self.preset_favs = None
 		self.preset_favs_fpath = None
 
+		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
+		self.learned_zctrls = {}
+
 
 	def __del__(self):
 		self.stop()
+
 
 	def reset(self):
 		#Reset Vars
 		self.loading=0
 		self.loading_snapshot=False
 		#TODO: OSC, IPC, ...
+
 
 	def config_remote_display(self):
 		fvars={}
@@ -214,6 +219,7 @@ class zynthian_engine(zynthian_basic_engine):
 						if len(parts)>=2 and parts[1]: fvars[parts[0]]=parts[1]
 			except:
 				fvars['DISPLAY']=""
+
 		if 'DISPLAY' not in fvars or not fvars['DISPLAY'] or fvars['DISPLAY'] == 'NONE':
 			logging.info("NO REMOTE DISPLAY")
 			return False
@@ -577,24 +583,61 @@ class zynthian_engine(zynthian_basic_engine):
 		raise Exception("NOT IMPLEMENTED!")
 
 
-	# ---------------------------------------------------------------------------
-	# MIDI Learn
-	# ---------------------------------------------------------------------------
+	#----------------------------------------------------------------------------
+	# MIDI learning
+	#----------------------------------------------------------------------------
 
-	def midi_learn(self, zctrl):
-		raise Exception("NOT IMPLEMENTED!")
+	def init_midi_learn(self, zctrl):
+		logging.info("Learning '{}' ({}) ...".format(zctrl.symbol,zctrl.get_path()))
 
 
 	def midi_unlearn(self, zctrl):
-		raise Exception("NOT IMPLEMENTED!")
+		if zctrl.get_path() in self.learned_zctrls:
+			logging.info("Unlearning '{}' ...".format(zctrl.symbol))
+			try:
+				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
+				del self.learned_zctrls[zctrl.get_path()]
+				return zctrl._unset_midi_learn()
+			except Exception as e:
+				logging.warning("Can't unlearn => {}".format(e))
 
 
-	def set_midi_learn(self, zctrl):
-		raise Exception("NOT IMPLEMENTED!")
+	def set_midi_learn(self, zctrl ,chan, cc):
+		try:
+			# Clean current binding if any ...
+			try:
+				self.learned_cc[chan][cc].midi_unlearn()
+			except:
+				pass
+			# Add midi learning info
+			self.learned_zctrls[zctrl.get_path()] = zctrl
+			self.learned_cc[chan][cc] = zctrl
+			return zctrl._set_midi_learn(chan, cc)
+		except Exception as e:
+			logging.error("Can't learn {} => {}".format(zctrl.symbol, e))
+
+
+	def keep_midi_learn(self, zctrl):
+		try:
+			zpath = zctrl.get_path()
+			old_zctrl = self.learned_zctrls[zpath]
+			chan = old_zctrl.midi_learn_chan
+			cc = old_zctrl.midi_learn_cc
+			self.learned_zctrls[zpath] = zctrl
+			self.learned_cc[chan][cc] = zctrl
+			return zctrl._set_midi_learn(chan, cc)
+		except:
+			pass
 
 
 	def reset_midi_learn(self):
-		raise Exception("NOT IMPLEMENTED!")
+		logging.info("Reset MIDI-learn ...")
+		self.learned_zctrls = {}
+		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
+
+
+	def cb_midi_learn(self, zctrl, chan, cc):
+		return self.set_midi_learn(zctrl, chan, cc)
 
 
 	#----------------------------------------------------------------------------
@@ -602,7 +645,10 @@ class zynthian_engine(zynthian_basic_engine):
 	#----------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		raise Exception("NOT IMPLEMENTED!")
+		try:
+			self.learned_cc[chan][ccnum].midi_control_change(val)
+		except:
+			pass
 
 
 	def midi_zctrl_change(self, zctrl, val):
@@ -612,7 +658,7 @@ class zynthian_engine(zynthian_basic_engine):
 				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
 
 				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
+				if (self.zyngui.active_screen=='control' and not self.zyngui.modal_screen) or self.zyngui.modal_screen=='alsa_mixer':
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 
 		except Exception as e:

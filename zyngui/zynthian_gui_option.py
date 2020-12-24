@@ -3,9 +3,9 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian GUI Transpose Selector Class
+# Zynthian GUI Option Selector Class
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -24,55 +24,46 @@
 #******************************************************************************
 
 import sys
+import tkinter
 import logging
 
 # Zynthian specific modules
-from zyncoder import *
-from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
-# Zynthian Transpose Selection GUI Class
+# Zynthian Option Selection GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_transpose(zynthian_gui_selector):
+class zynthian_gui_option(zynthian_gui_selector):
 
 	def __init__(self):
-		super().__init__('Transpose', True)
+		self.title = ""
+		self.options = []
+		self.cb_select = None
+		super().__init__("Option", True)
+
+
+	def config(self, title, options, cb_select):
+		self.title = title
+		self.options = options
+		self.cb_select = cb_select
 
 
 	def fill_list(self):
+		i=0
 		self.list_data=[]
-		for i in range(0,121):
-			offset=i-60
-			self.list_data.append((str(i),offset,str(offset)))
+		for k,v in self.options.items():
+			self.list_data.append((v,i,k))
+			i += 1
 		super().fill_list()
 
 
-	def show(self):
-		offset=zyncoder.lib_zyncoder.get_midi_filter_transpose(self.get_layer_chan())
-		self.index=60+offset
-		super().show()
-
-
 	def select_action(self, i, t='S'):
-		midi_chan = self.get_layer_chan()
-		logging.debug("TRANSPOSE MIDI CHAN {}!".format(midi_chan))
-		zyncoder.lib_zyncoder.set_midi_filter_transpose(midi_chan,self.list_data[i][1])
-		self.zyngui.show_modal('layer_options')
-
-
-	def back_action(self):
-		self.zyngui.show_modal('layer_options')
-		return ''
+		if self.cb_select:
+			self.cb_select(self.list_data[i][0])
 
 
 	def set_select_path(self):
-		self.select_path.set("Transpose")
-
-
-	def get_layer_chan(self):
-		return self.zyngui.screens['layer_options'].layer.get_midi_chan()
-
+		self.select_path.set(self.title)
 
 #------------------------------------------------------------------------------

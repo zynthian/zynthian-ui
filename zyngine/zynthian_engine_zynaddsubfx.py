@@ -281,23 +281,31 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def osc_add_methods(self):
-			self.osc_server.add_method("/volume", 'i', self.cb_osc_load_preset)
-			#self.osc_server.add_method("/paths", None, self.cb_osc_paths)
-			self.osc_server.add_method("/automate/active-slot", 'i', self.cb_osc_automate_active_slot)
-			for i in range(0,16):
-				self.osc_server.add_method("/automate/slot%d/midi-cc" % i, 'i', self.cb_osc_automate_slot_midi_cc)
-			#self.osc_server.add_method(None, 'i', self.zyngui.cb_osc_ctrl)
-			#super().osc_add_methods()
+		self.osc_server.add_method("/volume", 'i', self.cb_osc_load_preset)
+		#self.osc_server.add_method("/paths", None, self.cb_osc_paths)
+		#self.osc_server.add_method("/automate/active-slot", 'i', self.cb_osc_automate_active_slot)
+		#for i in range(0,16):
+			#self.osc_server.add_method("/automate/slot%d/midi-cc" % i, 'i', self.cb_osc_automate_slot_midi_cc)
+		#self.osc_server.add_method(None, 'i', self.zyngui.cb_osc_ctrl)
+		#super().osc_add_methods()
 
 
 	def cb_osc_load_preset(self, path, args):
 		self.stop_loading()
 
+
+	def send_controller_value(self, zctrl):
+		if zctrl.osc_path:
+			liblo.send(self.osc_target,zctrl.osc_path, zctrl.get_ctrl_osc_val())
+		else:
+			raise Exception("NO OSC CONTROLLER")
+
+
 	#----------------------------------------------------------------------------
-	# MIDI learning
+	# ZynAddSubFX Native MIDI learning => Deprecated!
 	#----------------------------------------------------------------------------
 
-	def init_midi_learn(self, zctrl):
+	def XXX_init_midi_learn(self, zctrl):
 		if zctrl.osc_path:
 			# Set current learning-slot zctrl
 			logging.info("Learning '%s' ..." % zctrl.osc_path)
@@ -310,7 +318,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			self.osc_server.add_method(zctrl.osc_path, 'i', self.cb_osc_param_change)
 
 
-	def midi_unlearn(self, zctrl):
+	def XXX_midi_unlearn(self, zctrl):
 		if zctrl.osc_path in self.slot_zctrls:
 			logging.info("Unlearning '%s' ..." % zctrl.osc_path)
 			try:
@@ -324,7 +332,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				logging.warning("Can't Clear Automate Slot %s => %s" % (zctrl.osc_path,e))
 
 
-	def set_midi_learn(self, zctrl, chan, cc):
+	def XXX_set_midi_learn(self, zctrl, chan, cc):
 		try:
 			if zctrl.osc_path and zctrl.slot_i is not None and chan is not None and cc is not None:
 				logging.info("Set Automate Slot %d: %s => %d, %d" % (zctrl.slot_i, zctrl.osc_path, chan, cc))
@@ -341,14 +349,14 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			return zctrl._unset_midi_learn()
 
 
-	def reset_midi_learn(self):
+	def XXX_reset_midi_learn(self):
 		logging.info("Reset MIDI-learn ...")
 		liblo.send(self.osc_target, "/automate/clear", "*")
 		self.current_slot_zctrl=None
 		self.slot_zctrls={}
 
 
-	def cb_osc_automate_active_slot(self, path, args, types, src):
+	def XXX_cb_osc_automate_active_slot(self, path, args, types, src):
 		if self.current_slot_zctrl:
 			slot_i=args[0]
 			logging.debug("Automate active-slot: %s" % slot_i)
@@ -378,7 +386,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				liblo.send(self.osc_target, "/automate/learn-binding-new-slot", self.current_slot_zctrl.osc_path)
 
 
-	def cb_osc_param_change(self, path, args):
+	def XXX_cb_osc_param_change(self, path, args):
 		if path in self.slot_zctrls:
 			#logging.debug("OSC Param Change %s => %s" % (path, args[0]))
 			try:
@@ -386,7 +394,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				zctrl.set_value(args[0])
 
 				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
+				if self.zyngui.active_screen=='control' and not self.zyngui.modal_screen:
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 			except:
 				pass
@@ -395,7 +403,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				liblo.send(self.osc_target, "/automate/slot%d/midi-cc" % zctrl.slot_i)
 
 
-	def cb_osc_automate_slot_midi_cc(self, path, args, types, src):
+	def XXX_cb_osc_automate_slot_midi_cc(self, path, args, types, src):
 		# Test if there is a current MIDI-learning zctrl and a valid MIDI-CC number is returned
 		if self.current_slot_zctrl and args[0]>=0:
 			try:

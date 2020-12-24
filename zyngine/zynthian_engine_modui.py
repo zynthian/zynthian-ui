@@ -68,7 +68,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self.audio_out = []
 		self.options= {
 			'clone': False,
-			'transpose': False,
+			'note_range': False,
 			'audio_route': False,
 			'midi_chan': False
 		}
@@ -497,6 +497,14 @@ class zynthian_engine_modui(zynthian_engine):
 			self.plugin_zctrls[pgraph]={}
 			#Add parameters to dictionary
 			for param in pinfo['ports']['control']['input']:
+				#Skip ports with the folowing designations (like MOD-UI)
+				if param['designation'] in ["http://lv2plug.in/ns/lv2core#enabled",
+					"http://lv2plug.in/ns/lv2core#freeWheeling",
+					"http://lv2plug.in/ns/ext/time#beatsPerBar",
+					"http://lv2plug.in/ns/ext/time#beatsPerMinute",
+					"http://lv2plug.in/ns/ext/time#speed"]:
+						continue
+
 				try:
 					ctrl_graph=pgraph+'/'+param['symbol']
 					#If there is range info (should be!!) ...
@@ -583,6 +591,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 					#Add ZController to plugin_zctrl dictionary
 					self.plugin_zctrls[pgraph][param['symbol']]=param['ctrl']
+
 				except Exception as err:
 					logging.error("Configuring Controllers: "+pgraph+" => "+str(err))
 
@@ -686,7 +695,7 @@ class zynthian_engine_modui(zynthian_engine):
 			zctrl.value=float(val)
 
 			#Refresh GUI controller in screen when needed ...
-			if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
+			if self.zyngui.active_screen=='control' and not self.zyngui.modal_screen:
 				self.zyngui.screens['control'].set_controller_value(zctrl)
 
 		except Exception as err:

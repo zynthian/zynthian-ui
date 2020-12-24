@@ -75,16 +75,13 @@ class zynthian_engine_mixer(zynthian_engine):
 		self.audio_out = []
 		self.options= {
 			'clone': False,
-			'transpose': False,
+			'note_range': False,
 			'audio_route': False,
-			'midi_chan': False,
-			'indelible' : True
+			'midi_chan': False
 		}
 
 		self.zctrls = None
 		self.sender_poll_enabled = False
-		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
-		self.learned_zctrls = {}
 
 		self.get_soundcard_config()
 
@@ -132,6 +129,7 @@ class zynthian_engine_mixer(zynthian_engine):
 	def cmp_presets(self, preset1, preset2):
 		return True
 
+
 	#----------------------------------------------------------------------------
 	# Controllers Managament
 	#----------------------------------------------------------------------------
@@ -156,13 +154,13 @@ class zynthian_engine_mixer(zynthian_engine):
 		if self.allow_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
 			try:
 				zctrls_headphones = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone","PCM"])
-				if "headphone" in zctrls_headphones:
+				if "Headphone" in zctrls_headphones:
 					hp_zctrl = zctrls_headphones["Headphone"]
 				elif "PCM" in zctrls_headphones:
 					hp_zctrl = zctrls_headphones["PCM"]
 					hp_zctrl.symbol = hp_zctrl.name = hp_zctrl.short_name = "Headphone"
 				else:
-					raise Exception("Headphones volume control not found!")
+					raise Exception("Headphone volume control not found!")
 
 				zctrls["Headphone"] = hp_zctrl
 				ctrl_list.insert(0, "Headphone")
@@ -179,6 +177,7 @@ class zynthian_engine_mixer(zynthian_engine):
 					for k, zctrl in zctrls.items():
 						if zctrl.name==ctrl_name:
 							sorted_zctrls[k] = zctrl
+							self.keep_midi_learn(zctrl)
 				except:
 					pass
 		else:
@@ -397,50 +396,6 @@ class zynthian_engine_mixer(zynthian_engine):
 
 
 	#----------------------------------------------------------------------------
-	# MIDI learning
-	#----------------------------------------------------------------------------
-
-	def init_midi_learn(self, zctrl):
-		if zctrl.graph_path:
-			logging.info("Learning '{}' ({}) ...".format(zctrl.symbol,zctrl.graph_path))
-
-
-	def midi_unlearn(self, zctrl):
-		if str(zctrl.graph_path) in self.learned_zctrls:
-			logging.info("Unlearning '{}' ...".format(zctrl.symbol))
-			try:
-				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
-				del self.learned_zctrls[str(zctrl.graph_path)]
-				return zctrl._unset_midi_learn()
-			except Exception as e:
-				logging.warning("Can't unlearn => {}".format(e))
-
-
-	def set_midi_learn(self, zctrl ,chan, cc):
-		try:
-			# Clean current binding if any ...
-			try:
-				self.learned_cc[chan][cc].midi_unlearn()
-			except:
-				pass
-			# Add midi learning info
-			self.learned_zctrls[str(zctrl.graph_path)] = zctrl
-			self.learned_cc[chan][cc] = zctrl
-			return zctrl._set_midi_learn(chan, cc)
-		except Exception as e:
-			logging.error("Can't learn {} => {}".format(zctrl.symbol, e))
-
-
-	def reset_midi_learn(self):
-		logging.info("Reset MIDI-learn ...")
-		self.learned_zctrls = {}
-		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
-
-
-	def cb_midi_learn(self, zctrl, chan, cc):
-		return self.set_midi_learn(zctrl, chan, cc)
-
-	#----------------------------------------------------------------------------
 	# MIDI CC processing
 	#----------------------------------------------------------------------------
 
@@ -456,7 +411,6 @@ class zynthian_engine_mixer(zynthian_engine):
 				self.learned_cc[chan][ccnum].midi_control_change(val)
 			except:
 				pass
-
 
 	# ---------------------------------------------------------------------------
 	# Layer "Path" String

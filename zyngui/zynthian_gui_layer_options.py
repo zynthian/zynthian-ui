@@ -103,12 +103,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 			#self.list_data.append((self.layer_presets, None, "Presets"))
 
-			if self.layer.midi_chan is not None: 
+			if self.layer.midi_chan is not None:
+				if 'note_range' in eng_options and eng_options['note_range']:
+					self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
+
 				if 'clone' in eng_options and eng_options['clone'] and self.layer.midi_chan is not None:
 					self.list_data.append((self.layer_clone, None, "Clone MIDI to ..."))
-
-				if 'transpose' in eng_options and eng_options['transpose']:
-					self.list_data.append((self.layer_transpose, None, "Transpose"))
 
 			if 'midi_route' in eng_options and eng_options['midi_route']:
 				self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
@@ -136,8 +136,14 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				if len(self.audiofx_layers)>0:
 					self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
 					# Add Audio-FX layers
+					sl0 = None
 					for sl in self.audiofx_layers:
-						self.list_data.append((self.audiofx_layer_action, sl, " -> " + sl.engine.get_path(sl)))
+						if sl.is_parallel_audio_routed(sl0):
+							bullet = " || "
+						else:
+							bullet = " -> "
+						self.list_data.append((self.audiofx_layer_action, sl, bullet + sl.engine.get_path(sl)))
+						sl0 = sl
 
 			if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.engine.nickname!='MD':
 				# Add separator
@@ -150,8 +156,14 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				if len(self.midifx_layers)>0:
 					self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
 					# Add MIDI-FX layers
+					sl0 = None
 					for sl in self.midifx_layers:
-						self.list_data.append((self.midifx_layer_action, sl, " -> " + sl.engine.get_path(sl)))
+						if sl.is_parallel_midi_routed(sl0):
+							bullet = " || "
+						else:
+							bullet = " -> "
+						self.list_data.append((self.midifx_layer_action, sl, bullet + sl.engine.get_path(sl)))
+						sl0 = sl
 
 		super().fill_list()
 
@@ -264,13 +276,20 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def layer_midi_chan(self):
-		self.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan, self.zyngui.screens['layer'].get_free_midi_chans())
+		chan_list = self.zyngui.screens['layer'].get_free_midi_chans() + [self.layer.midi_chan]
+		chan_list.sort()
+		self.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan, chan_list)
 		self.zyngui.show_modal('midi_chan')
 
 
 	def layer_clone(self):
 		self.zyngui.screens['midi_chan'].set_mode("CLONE", self.layer.midi_chan)
 		self.zyngui.show_modal('midi_chan')
+
+
+	def layer_note_range(self):
+		self.zyngui.screens['midi_key_range'].config(self.layer.midi_chan)
+		self.zyngui.show_modal('midi_key_range')
 
 
 	def layer_transpose(self):

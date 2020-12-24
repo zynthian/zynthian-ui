@@ -69,9 +69,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				self.list_data.append((self.start_rbpi_headphones,0,"[  ] Headphones"))
 
 		if zynthian_gui_config.midi_single_active_channel:
-			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
+			self.list_data.append((self.toggle_single_channel,0,"->  Stage Mode"))
 		else:
-			self.list_data.append((self.toggle_single_channel,0,"[  ] Single Channel Mode"))
+			self.list_data.append((self.toggle_single_channel,0,"=>  Multi-timbral Mode"))
 
 		if zynthian_gui_config.midi_prog_change_zs3:
 			self.list_data.append((self.toggle_prog_change_zs3,0,"[x] Program Change ZS3"))
@@ -142,7 +142,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.update_software,0,"Update Software"))
-		#self.list_data.append((self.update_library,0,"Update Zynthian Library"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.restart_gui,0,"Restart UI"))
@@ -256,7 +255,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			os.kill(self.child_pid, signal.SIGTERM)
 			self.child_pid=None
 			if self.last_action==self.test_midi:
-				check_output("systemctl stop a2jmidid", shell=True)
 				self.zyngui.all_sounds_off()
 
 	#------------------------------------------------------------------------------
@@ -698,7 +696,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def test_midi(self):
 		logging.info("TESTING MIDI")
 		self.zyngui.show_info("TEST MIDI")
-		check_output("systemctl start a2jmidid", shell=True)
 		self.killable_start_command(["aplaymidi -p 14 {}/mid/test.mid".format(self.data_dir)])
 
 
@@ -706,11 +703,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("UPDATE SOFTWARE")
 		self.zyngui.show_info("UPDATE SOFTWARE")
 		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
-
-	def update_library(self):
-		logging.info("UPDATE LIBRARY")
-		self.zyngui.show_info("UPDATE LIBRARY")
-		self.start_command([self.sys_dir + "/scripts/update_zynthian_data.sh"])
 
 
 	def update_system(self):

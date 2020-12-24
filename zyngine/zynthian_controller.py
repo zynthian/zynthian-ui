@@ -186,6 +186,17 @@ class zynthian_controller:
 		self._configure()
 
 
+	def get_path(self):
+		if self.osc_path:
+			return str(self.osc_path)
+		elif self.graph_path:
+			return str(self.graph_path)
+		elif self.midi_chan is not None and self.midi_cc is not None:
+			return "{}#{}".format(self_midi_chan,self.midi_cc)
+		else:
+			return None
+
+
 	def set_midi_chan(self, chan):
 		self.midi_chan = chan
 
@@ -567,7 +578,7 @@ class zynthian_controller:
 	def refresh_gui(self):
 		#Refresh GUI controller in screen when needed ...
 		try:
-			if (self.engine.zyngui.active_screen=='control' or self.engine.zyngui.modal_screen=='control') and self.engine.zyngui.screens['control'].mode=='control':
+			if (self.engine.zyngui.active_screen=='control' and not self.engine.zyngui.modal_screen) or self.engine.zyngui.modal_screen=='alsa_mixer':
 				self.engine.zyngui.screens['control'].set_controller_value(self)
 		except Exception as e:
 			logging.debug(e)

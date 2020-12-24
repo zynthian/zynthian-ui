@@ -51,15 +51,16 @@ from zyngine import zynthian_midi_filter
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_info import zynthian_gui_info
+from zyngui.zynthian_gui_option import zynthian_gui_option
+from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_layer import zynthian_gui_layer
 from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
-from zyngui.zynthian_gui_transpose import zynthian_gui_transpose
+from zyngui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
 from zyngui.zynthian_gui_midi_out import zynthian_gui_midi_out
 from zyngui.zynthian_gui_audio_in import zynthian_gui_audio_in
@@ -306,13 +307,14 @@ class zynthian_gui:
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
 		self.screens['confirm'] = zynthian_gui_confirm()
+		self.screens['option'] = zynthian_gui_option()
 		self.screens['engine'] = zynthian_gui_engine()
 		self.screens['layer'] = zynthian_gui_layer()
 		self.screens['layer_options'] = zynthian_gui_layer_options()
 		self.screens['snapshot'] = zynthian_gui_snapshot()
 		self.screens['midi_chan'] = zynthian_gui_midi_chan()
 		self.screens['midi_cc'] = zynthian_gui_midi_cc()
-		self.screens['transpose'] = zynthian_gui_transpose()
+		self.screens['midi_key_range'] = zynthian_gui_midi_key_range()
 		self.screens['audio_out'] = zynthian_gui_audio_out()
 		self.screens['midi_out'] = zynthian_gui_midi_out()
 		self.screens['audio_in'] = zynthian_gui_audio_in()
@@ -366,8 +368,11 @@ class zynthian_gui:
 		self.start_loading_thread()
 		self.start_zyncoder_thread()
 
-		#Run autoconnect if needed
+		# Run autoconnect if needed
 		self.zynautoconnect_do()
+
+		# Initialize MPE Zones
+		#self.init_mpe_zones(0, 2)
 
 
 	def stop(self):
@@ -523,9 +528,10 @@ class zynthian_gui:
 
 
 	def exit_midi_learn_mode(self):
-		self.midi_learn_mode = False
-		self.midi_learn_zctrl = None
-		lib_zyncoder.set_midi_learning_mode(0)
+		if self.midi_learn_mode:
+			self.midi_learn_mode = False
+			self.midi_learn_zctrl = None
+			lib_zyncoder.set_midi_learning_mode(0)
 		self.show_active_screen()
 
 
@@ -835,6 +841,18 @@ class zynthian_gui:
 					lib_zyncoder.disable_zynaptik_cvin(i)
 					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
 
+		# Configure Zyntof Inputs (Distance Sensor)
+		for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				if midi_chan is not None:
+					lib_zyncoder.setup_zyntof(i, event['type'], midi_chan, event['num'])
+					logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncoder.disable_zyntof(i)
+					logging.info("ZYNTOF {}: DISABLED!".format(i))
+
 
 	def zynswitches(self):
 		if lib_zyncoder:
@@ -948,7 +966,9 @@ class zynthian_gui:
 					self.show_screen('layer')
 
 			elif self.active_screen=='layer':
-				if self.screens['layer'].get_num_root_layers()>1:
+				if self.modal_screen is not None:
+					self.show_screen('layer')
+				elif self.screens['layer'].get_num_root_layers()>1:
 					logging.info("Next layer")
 					self.screens['layer'].next(False)
 
@@ -1002,6 +1022,9 @@ class zynthian_gui:
 				self.show_screen(screen_back)
 
 		elif i==2:
+			# TEST
+			self.init_mpe_zones(0, 2)
+		
 			if self.modal_screen=='snapshot':
 				self.screens['snapshot'].next()
 
@@ -1118,6 +1141,7 @@ class zynthian_gui:
 			self.zyncoder_read()
 			self.zynmidi_read()
 			self.osc_receive()
+			self.plot_zctrls()
 			sleep(0.04)
 			if self.zynread_wait_flag:
 				sleep(0.3)
@@ -1130,9 +1154,13 @@ class zynthian_gui:
 				#Read Zyncoders
 				self.lock.acquire()
 				if self.modal_screen:
-					self.screens[self.modal_screen].zyncoder_read()
+					free_zyncoders = self.screens[self.modal_screen].zyncoder_read()
 				else:
-					self.screens[self.active_screen].zyncoder_read()
+					free_zyncoders = self.screens[self.active_screen].zyncoder_read()
+
+				if free_zyncoders:
+					self.screens["control"].zyncoder_read(free_zyncoders)
+
 				self.lock.release()
 				
 				#Zynswitches
@@ -1263,14 +1291,20 @@ class zynthian_gui:
 
 				# Note-On ...
 				elif evtype==0x9:
+					self.screens['midi_chan'].midi_chan_activity(chan)
 					#Preload preset (note-on)
 					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
 						self.start_loading()
 						self.screens['preset'].preselect_action()
 						self.stop_loading()
+					#Note Range Learn
+					if self.modal_screen=='midi_key_range':
+						note = (ev & 0x7F00)>>8
+						self.screens['midi_key_range'].learn_note_range(note)
 
 				# Control Change ...
 				elif evtype==0xB:
+					self.screens['midi_chan'].midi_chan_activity(chan)
 					ccnum=(ev & 0x7F00)>>8
 					ccval=(ev & 0x007F)
 					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
@@ -1284,6 +1318,18 @@ class zynthian_gui:
 		except Exception as err:
 			self.reset_loading()
 			logging.exception(err)
+
+
+	def plot_zctrls(self):
+		try:
+			if self.modal_screen:
+				self.screens[self.modal_screen].plot_zctrls()
+			else:
+				self.screens[self.active_screen].plot_zctrls()
+		except AttributeError:
+			pass
+		except Exception as e:
+			logging.error(e)
 
 
 	def start_loading_thread(self):
@@ -1500,7 +1546,30 @@ class zynthian_gui:
 		logging.info("Raw All Notes Off for channel {}!".format(chan))
 		lib_zyncoder.zynmidi_send_all_notes_off_chan(chan)
 
-		
+
+	#------------------------------------------------------------------
+	# MPE initialization
+	#------------------------------------------------------------------
+
+	def init_mpe_zones(self, lower_n_chans, upper_n_chans):
+		# Configure Lower Zone 
+		if not isinstance(lower_n_chans, int) or lower_n_chans<0 or lower_n_chans>0xF:
+			logging.error("Can't initialize MPE Lower Zone. Incorrect num of channels ({})".format(lower_n_chans))
+		else:
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0x0, 0x79, 0x0)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0x0, 0x64, 0x6)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0x0, 0x65, 0x0)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0x0, 0x06, lower_n_chans)
+
+		# Configure Upper Zone 
+		if not isinstance(upper_n_chans, int) or upper_n_chans<0 or upper_n_chans>0xF:
+			logging.error("Can't initialize MPE Upper Zone. Incorrect num of channels ({})".format(upper_n_chans))
+		else:
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0xF, 0x79, 0x0)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0xF, 0x64, 0x6)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0xF, 0x65, 0x0)
+			lib_zyncoder.ctrlfb_send_ccontrol_change(0xF, 0x06, upper_n_chans)
+
 	#------------------------------------------------------------------
 	# MIDI learning
 	#------------------------------------------------------------------

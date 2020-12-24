@@ -40,15 +40,15 @@ from . import zynthian_gui_selector
 class zynthian_gui_midi_cc(zynthian_gui_selector):
 
 	def __init__(self):
-		self.midi_chan_from = None
-		self.midi_chan_to = None
+		self.chan_from = None
+		self.chan_to = None
 		self.cc = [0] * 16
 		super().__init__('CC', True)
 
 
-	def set_clone_channels(self, chan_from, chan_to):
-		self.midi_chan_from = chan_from
-		self.midi_chan_to = chan_to
+	def config(self, chan_from, chan_to):
+		self.chan_from = chan_from
+		self.chan_to = chan_to
 		self.cc = zyncoder.lib_zyncoder.get_midi_filter_clone_cc(chan_from, chan_to).tolist()
 
 
@@ -87,12 +87,12 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 		else:
 			self.cc[cc_num] = 1
 			
-		self.set_clone_cc(self.midi_chan_from, self.midi_chan_to, self.cc)
+		self.set_clone_cc(self.chan_from, self.chan_to, self.cc)
 		
-		self.set_clone_channels(self.midi_chan_from, self.midi_chan_to)
+		self.config(self.chan_from, self.chan_to)
 		self.update_list()
 
-		logging.info("MIDI CC {} CLONE CH#{}=>CH#{}: {}".format(cc_num, self.midi_chan_from, self.midi_chan_to, self.cc[cc_num]))
+		logging.info("MIDI CC {} CLONE CH#{}=>CH#{}: {}".format(cc_num, self.chan_from, self.chan_to, self.cc[cc_num]))
 
 
 	def back_action(self):
@@ -102,9 +102,9 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 
 	def set_select_path(self):
 		try:
-			self.select_path.set("Clone {} => {}, MIDI CC...".format(self.midi_chan_from, self.midi_chan_to))
+			self.select_path.set("Clone {} => {} / CC...".format(self.chan_from+1, self.chan_to+1))
 		except:
-			self.select_path.set("Clone MIDI CC...")
+			self.select_path.set("Clone CC...")
 
 
 #------------------------------------------------------------------------------
