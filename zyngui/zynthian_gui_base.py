@@ -519,4 +519,8 @@ class zynthian_gui_base:
 		return False
 
 
+	def set_select_path(self):
+		pass
+
+
 #------------------------------------------------------------------------------

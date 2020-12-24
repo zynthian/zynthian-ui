@@ -255,10 +255,6 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		pass
 
 
-	def set_select_path(self):
-		pass
-
-
 	def cb_listbox_push(self,event):
 		self.listbox_push_ts=datetime.now()
 		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
