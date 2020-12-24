@@ -102,7 +102,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		# TODO: Should this be done at higher level rather than within a screen?
 		self.libseq = ctypes.CDLL(dirname(realpath(__file__))+"/../zynlibs/zynseq/build/libzynseq.so")
 		self.libseq.init()
-		self.libseq.enableDebug(True)
+		# self.libseq.enableDebug(True)
 		self.filename = "default"
 		time.sleep(2)
 		self.load(self.filename)
