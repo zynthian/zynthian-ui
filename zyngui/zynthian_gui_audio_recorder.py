@@ -76,7 +76,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def get_status(self):
 		status=None
 
-		if zynconf.is_process_running("jack_capture"):
+		if self.rec_proc:
 			status="REC"
 
 		if self.current_record:
@@ -219,11 +219,15 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		if self.get_status() not in ("REC", "PLAY+REC"):
 			logging.info("STARTING NEW AUDIO RECORD ...")
 			try:
-				cmd=[self.sys_dir +"/sbin/jack_capture.sh", "--zui", self.get_new_filename()]
-				#logging.info("COMMAND: %s" % cmd)
-				self.rec_proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
-				sleep(0.2)
-				self.zyngui.zyntransport.transport_play()
+				capture_dir = "/media/usb0"
+				check_mount = Popen(("/bin/mountpoint", "-q", "--", capture_dir))
+				if check_mount.wait() != 0:
+					capture_dir = "/zynthian/zynthian-my-data/capture"
+					try:
+						os.mkdir(capture_dir)
+					except:
+						pass
+				self.rec_proc = Popen(("/usr/local/bin/jack_capture", "--daemon", self.get_new_filename()), cwd=capture_dir)				
 			except Exception as e:
 				logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
 				self.zyngui.show_info("ERROR STARTING AUDIO RECORD:\n %s" % e)
@@ -240,10 +244,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		if self.get_status() in ("REC", "PLAY+REC"):
 			logging.info("STOPPING AUDIO RECORD ...")
 			try:
-				self.zyngui.zyntransport.transport_stop()
-				self.rec_proc.communicate()
-				while zynconf.is_process_running("jack_capture"):
-					sleep(0.2)
+				self.rec_proc.terminate()
 				self.rec_proc = None
 			except Exception as e:
 				logging.error("ERROR STOPPING AUDIO RECORD: %s" % e)
