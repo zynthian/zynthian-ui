@@ -88,7 +88,8 @@ class zynthian_gui_patterneditor():
 		self.stepWidth = 40 # Grid column width in pixels
 		self.keyMapOffset = 60 # MIDI note number of bottom row in grid
 		self.selectedCell = [0, 0] # Location of selected cell (column,row)
-		self.dragVelocity = False # True indicates drag will adjust velocity and duration
+		self.dragVelocity = False # True indicates drag will adjust velocity
+		self.dragDuration = False # True indicates drag will adjust duration
 		self.dragStartVelocity = None # Velocity value at start of drag
 		self.gridDragStart = None # Coordinates at start of grid drag
 		self.keymap = [] # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
@@ -363,6 +364,8 @@ class zynthian_gui_patterneditor():
 		if step < 0 or step >= self.libseq.getSteps():
 			return
 		self.dragStartVelocity = self.libseq.getNoteVelocity(step, note)
+		self.dragStartDuration = self.libseq.getNoteDuration(step, note)
+		self.dragStartStep = int(event.x / self.stepWidth)
 		if not self.dragStartVelocity:
 			self.libseq.playNote(note, 100, self.libseq.getChannel(self.sequence), 200)
 		self.selectCell(int(col), self.keyMapOffset + int(row))
@@ -372,9 +375,10 @@ class zynthian_gui_patterneditor():
 	def onGridRelease(self, event):
 		if not self.gridDragStart:
 			return
-		if not self.dragVelocity:
+		if not (self.dragVelocity or self.dragDuration):
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
 		self.dragVelocity = False
+		self.dragDuration = False
 		self.gridDragStart = None
 
 	# Function to handle grid mouse drag
@@ -385,48 +389,46 @@ class zynthian_gui_patterneditor():
 		step = self.selectedCell[0]
 		index = self.selectedCell[1]
 		note = self.keymap[index]['note']
-		velocity = self.libseq.getNoteVelocity(step, note)
-		duration = self.libseq.getNoteDuration(step, note)
-		x1 = self.selectedCell[0] * self.stepWidth
-		x2 = (self.selectedCell[0] + duration) * self.stepWidth
-		x3 = (self.selectedCell[0] + 1) * self.stepWidth
-		y1 = self.gridHeight - (self.selectedCell[1] - self.keyMapOffset) * self.rowHeight
-		y2 = self.gridHeight - (self.selectedCell[1] - self.keyMapOffset + 1) * self.rowHeight
-		if velocity:
+		if self.dragStartVelocity:
+			# Selected cell has a note so we want to adjust its velocity or duration
+			if not self.dragVelocity and not self.dragDuration and (event.x > (self.dragStartStep + 1) * self.stepWidth or event.x < self.dragStartStep * self.stepWidth):
+				self.dragDuration = True
+			if not self.dragDuration and not self.dragVelocity and (event.y > self.gridDragStart.y + self.rowHeight / 2 or event.y < self.gridDragStart.y - self.rowHeight / 2):
+				self.dragVelocity = True
 			value = 0
-			if event.x > x2:
-				self.duration = self.duration + 1
-				self.addEvent(step, index)
-				self.dragVelocity = True
-			elif duration > 1 and event.x < x2 - self.stepWidth:
-				self.duration = self.duration - 1
-				self.addEvent(step, index)
-				self.dragVelocity = True
-			elif event.y < y2:
+			if self.dragVelocity:
 				value = (self.gridDragStart.y - event.y) / self.rowHeight
-			elif event.y > y1:
-				value = (self.gridDragStart.y - event.y) / self.rowHeight
-			if value:
-				self.dragVelocity = True
-				self.velocity = int(self.dragStartVelocity + value * self.height / 100)
-				if self.velocity > 127:
-					self.velocity = 127
-					return
-				if self.velocity < 1:
-					self.velocity = 1
-					return
-				self.velocityCanvas.coords("velocityIndicator", 0, 0, self.pianoRollWidth * self.velocity / 127, PLAYHEAD_HEIGHT)
-				if self.libseq.getNoteDuration(self.selectedCell[0], note):
-					self.libseq.setNoteVelocity(self.selectedCell[0], note, self.velocity)
-					self.drawCell(self.selectedCell[0], index)
+				if value:
+					self.velocity = int(self.dragStartVelocity + value * self.height / 100)
+					if self.velocity > 127:
+						self.velocity = 127
+						return
+					if self.velocity < 1:
+						self.velocity = 1
+						return
+					self.velocityCanvas.coords("velocityIndicator", 0, 0, self.pianoRollWidth * self.velocity / 127, PLAYHEAD_HEIGHT)
+					if self.libseq.getNoteDuration(self.selectedCell[0], note):
+						self.libseq.setNoteVelocity(self.selectedCell[0], note, self.velocity)
+						self.drawCell(self.selectedCell[0], index)
+			if self.dragDuration:
+				value = int(event.x / self.stepWidth) - self.dragStartStep
+				duration = self.dragStartDuration + value
+				if duration != self.duration and duration > 0:
+					self.duration = duration
+					self.addEvent(step, index) # Change length by adding event over previous one
 		else:
+			# Clicked on empty cell so want to add a new note by dragging towards the desired cell
+			x1 = self.selectedCell[0] * self.stepWidth # x pos of start of event
+			x3 = (self.selectedCell[0] + 1) * self.stepWidth # x pos right of event's first cell
+			y1 = self.gridHeight - (self.selectedCell[1] - self.keyMapOffset) * self.rowHeight # y pos of top of selected row
+			y2 = self.gridHeight - (self.selectedCell[1] - self.keyMapOffset + 1) * self.rowHeight # y pos of bottom of selected row
 			if event.x < x1:
 				self.selectCell(self.selectedCell[0] - 1, None)
 			elif event.x > x3:
 				self.selectCell(self.selectedCell[0] + 1, None)
 			elif event.y < y2:
 				self.selectCell(None, self.selectedCell[1] + 1)
-				self.libseq.playNote(self.keymap[self.selectedCell[1]]["notree"], 100, self.libseq.getChannel(self.sequence), 200)
+				self.libseq.playNote(self.keymap[self.selectedCell[1]]["note"], 100, self.libseq.getChannel(self.sequence), 200)
 			elif event.y > y1:
 				self.selectCell(None, self.selectedCell[1] - 1)
 				self.libseq.playNote(self.keymap[self.selectedCell[1]]["note"], 100, self.libseq.getChannel(self.sequence), 200)

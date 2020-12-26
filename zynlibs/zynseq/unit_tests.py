@@ -187,16 +187,14 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.setPlayState(sequence, play_state["STARTING"])
         sleep(0.1)
         tb=client.transport_query()
-        bar = tb[1]['bar']
         self.assertEqual(tb[0], jack.ROLLING)
-        self.assertEqual(tb[1]['beat'], 1) # Should be at start of bar
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
-        for beat in range(1,5):
-            self.assertEqual(tb[1]['bar'], bar)
-            self.assertEqual(tb[1]['beat'], beat)
+        for beat in range(0,5):
+            print("Beat",beat+1)
+            self.assertEqual(tb[1]['bar'], 1)
+            self.assertEqual(tb[1]['beat'], beat % 4 + 1)
             sleep(0.5)
             tb=client.transport_query()
-        self.assertEqual(tb[1]['beat'], 1)
         # Stop playback - loop sync should should continue playing until loop point
         libseq.setPlayState(sequence, play_state["STOPPING"])
         self.assertEqual(libseq.getPlayState(sequence), play_state["STOPPING"])
