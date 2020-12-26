@@ -37,7 +37,7 @@ from os.path import isfile
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
-from ctypes import c_float
+from ctypes import c_float, CDLL
 
 # Zynthian specific modules
 import zynconf
@@ -206,6 +206,8 @@ class zynthian_gui:
 		except Exception as e:
 			logging.error("ERROR initializing Controllers & MIDI-router: %s" % e)
 
+		self.libseq = CDLL("/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
+		self.libseq.init()
 
 	# ---------------------------------------------------------------------------
 	# MIDI Router Init & Config

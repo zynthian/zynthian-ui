@@ -61,6 +61,7 @@ class zynthian_gui_songeditor():
 	# Function to initialise class
 	def __init__(self, parent):
 		self.parent = parent
+		self.libseq = parent.zyngui.libseq
 
 		#TODO: Put colours in a common file
 		self.playModes = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
@@ -219,11 +220,11 @@ class zynthian_gui_songeditor():
 		self.parent.unregisterZyncoder(ENC_BACK)
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterZyncoder(ENC_LAYER)
-#		self.parent.libseq.solo(self.song, 0, False)
+#		self.libseq.solo(self.song, 0, False)
 
 	# Function to get tempo at current cursor position
 	def getTempo(self):
-		return self.parent.libseq.getTempo(self.song, self.selectedCell[0] * self.clocksPerDivision)
+		return self.libseq.getTempo(self.song, self.selectedCell[0] * self.clocksPerDivision)
 
 	# Function to assert zoom changes and redraw screen
 	def assertAndRedraw(self):
@@ -234,39 +235,39 @@ class zynthian_gui_songeditor():
 	def assertTempo(self):
 		value = self.parent.getParam('Tempo', 'value')
 		if self.position == self.selectedCell[0]:
-			self.parent.libseq.setTempo(value)
+			self.libseq.setTempo(value)
 		#TODO: Need to use measure + tick to set tempo - and all other song timebase operations
-		self.parent.libseq.addTempo(self.song, value, self.selectedCell[0] * self.clocksPerDivision)
+		self.libseq.addTempo(self.song, value, self.selectedCell[0] * self.clocksPerDivision)
 		self.redraw_pending = 1
 
 	# Function to get group of selected track
 	def getGroup(self):
-		sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
-		return int(self.parent.libseq.getGroup(sequence))
+		sequence = self.libseq.getSequence(self.song, self.selectedCell[1])
+		return int(self.libseq.getGroup(sequence))
 
 	# Function to get play mode of selected track
 	def getMode(self):
-		sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
-		return int(self.parent.libseq.getPlayMode(sequence))
+		sequence = self.libseq.getSequence(self.song, self.selectedCell[1])
+		return int(self.libseq.getPlayMode(sequence))
 
 	# Function to get trigger note of selected track
 	def getTrigger(self):
-		sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
-		trigger = int(self.parent.libseq.getTriggerNote(sequence))
+		sequence = self.libseq.getSequence(self.song, self.selectedCell[1])
+		trigger = int(self.libseq.getTriggerNote(sequence))
 		if trigger > 127:
 			trigger = 128
 		return trigger
 
 	# Function to set trigger note of selected track
 	def setTrigger(self):
-		sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
-		self.parent.libseq.setTriggerNote(sequence, self.trigger);
+		sequence = self.libseq.getSequence(self.song, self.selectedCell[1])
+		self.libseq.setTriggerNote(sequence, self.trigger);
 		self.redraw_pending = 1
 
 	# Function to get bar duration
 	def getBeatsPerBar(self):
 		#TODO: Do we want beats per bar at cursor or play position?
-		return int(self.parent.libseq.getBeatsPerBar(self.song, self.song_position))
+		return int(self.libseq.getBeatsPerBar(self.song, self.song_position))
 
 	# Function to get pattern (to add to song)
 	def getPattern(self):
@@ -289,35 +290,35 @@ class zynthian_gui_songeditor():
 	def setTracks(self):
 		tracks = self.parent.getParam('Tracks', 'value')
 		# Remove surplus tracks
-		while self.parent.libseq.getTracks(self.song) > tracks:
-			self.parent.libseq.removeTrack(self.song, tracks)
+		while self.libseq.getTracks(self.song) > tracks:
+			self.libseq.removeTrack(self.song, tracks)
 		# Add extra tracks
-		while self.parent.libseq.getTracks(self.song) < tracks:
-			track = self.parent.libseq.addTrack(self.song)
-			sequence = self.parent.libseq.getSequence(self.song, track)
+		while self.libseq.getTracks(self.song) < tracks:
+			track = self.libseq.addTrack(self.song)
+			sequence = self.libseq.getSequence(self.song, track)
 			if self.editorMode:
-				self.parent.libseq.setGroup(sequence, int(track / 4))
-				self.parent.libseq.setChannel(sequence, int(track / 4))
-				self.parent.libseq.setPlayMode(sequence, 6)
+				self.libseq.setGroup(sequence, int(track / 4))
+				self.libseq.setChannel(sequence, int(track / 4))
+				self.libseq.setPlayMode(sequence, 6)
 			else:
 				if track < 26:
-					self.parent.libseq.setGroup(sequence, track)
+					self.libseq.setGroup(sequence, track)
 				if track <= 16:
-					self.parent.libseq.setChannel(sequence, track)
-				self.parent.libseq.setPlayMode(sequence, 1)
+					self.libseq.setChannel(sequence, track)
+				self.libseq.setPlayMode(sequence, 1)
 		self.redraw_pending = 2
 
 	# Function to get quantity of tracks in song
 	#	returns: Quantity of tracks in song
 	def getTracks(self):
-		return self.parent.libseq.getTracks(self.song)
+		return self.libseq.getTracks(self.song)
 
 	# Function to handle start of track drag
 	def onTrackDragStart(self, event):
 		if self.parent.lstMenu.winfo_viewable():
 			self.parent.hideMenu()
 			return
-		if self.parent.libseq.getTracks(self.song) > self.verticalZoom:
+		if self.libseq.getTracks(self.song) > self.verticalZoom:
 			self.trackDragStart = event
 
 	# Function to handle track drag motion
@@ -331,8 +332,8 @@ class zynthian_gui_songeditor():
 		pos = self.rowOffset - offset
 		if pos < 0:
 			pos = 0
-		if pos + self.verticalZoom >= self.parent.libseq.getTracks(self.song):
-			pos = self.parent.libseq.getTracks(self.song) - self.verticalZoom
+		if pos + self.verticalZoom >= self.libseq.getTracks(self.song):
+			pos = self.libseq.getTracks(self.song) - self.verticalZoom
 		if self.rowOffset == pos:
 			return
 		self.rowOffset = pos
@@ -371,7 +372,7 @@ class zynthian_gui_songeditor():
 		self.colOffset = pos
 		self.redraw_pending = 1
 		col = self.selectedCell[0]
-		duration = int(self.parent.libseq.getPatternLength(self.pattern) / self.clocksPerDivision)
+		duration = int(self.libseq.getPatternLength(self.pattern) / self.clocksPerDivision)
 		if self.selectedCell[0] < self.colOffset:
 			self.selectCell(self.colOffset, self.selectedCell[1])
 		elif self.selectedCell[0] > self.colOffset + self.horizontalZoom  - duration:
@@ -435,9 +436,9 @@ class zynthian_gui_songeditor():
 	def showPatternEditor(self):
 		track = self.rowOffset + self.selectedCell[1]
 		time = self.selectedCell[0] * self.clocksPerDivision # time in clock cycles
-		sequence = self.parent.libseq.getSequence(self.song, track)
-		pattern = self.parent.libseq.getPattern(sequence, time)
-		channel = self.parent.libseq.getChannel(sequence)
+		sequence = self.libseq.getSequence(self.song, track)
+		pattern = self.libseq.getPattern(sequence, time)
+		channel = self.libseq.getChannel(sequence)
 		if pattern > 0:
 			self.parent.showChild(0, {'pattern':pattern, 'channel':channel})
 
@@ -452,8 +453,8 @@ class zynthian_gui_songeditor():
 	#	track: Track number
 	def toggleEvent(self, div, track):
 		time = div * self.clocksPerDivision
-		sequence = self.parent.libseq.getSequence(self.song, track)
-		if self.parent.libseq.getPattern(sequence, time) == -1:
+		sequence = self.libseq.getSequence(self.song, track)
+		if self.libseq.getPattern(sequence, time) == -1:
 			self.addEvent(div, track)
 		else:
 			self.removeEvent(div, track)
@@ -464,8 +465,8 @@ class zynthian_gui_songeditor():
 	#	track: Track number
 	def removeEvent(self, div, track):
 		time = div * self.clocksPerDivision
-		sequence = self.parent.libseq.getSequence(self.song, track)
-		self.parent.libseq.removePattern(sequence, time)
+		sequence = self.libseq.getSequence(self.song, track)
+		self.libseq.removePattern(sequence, time)
 		self.drawTrack(track)
 
 	# Function to add an event
@@ -473,8 +474,8 @@ class zynthian_gui_songeditor():
 	#	track: Track number
 	def addEvent(self, div, track):
 		time = div * self.clocksPerDivision
-		sequence = self.parent.libseq.getSequence(self.song, track)
-		if self.parent.libseq.addPattern(sequence, time, self.pattern, False):
+		sequence = self.libseq.getSequence(self.song, track)
+		if self.libseq.addPattern(sequence, time, self.pattern, False):
 			self.drawTrack(track)
 
 	# Function to draw track
@@ -486,10 +487,10 @@ class zynthian_gui_songeditor():
 	#	track: Track index
 	def drawTrackLabel(self, track):
 		row = track - self.rowOffset
-		sequence = self.parent.libseq.getSequence(self.song, track)
-		channel = self.parent.libseq.getChannel(sequence) + 1
-		group = self.parent.libseq.getGroup(sequence)
-		mode = self.parent.libseq.getPlayMode(sequence)
+		sequence = self.libseq.getSequence(self.song, track)
+		channel = self.libseq.getChannel(sequence) + 1
+		group = self.libseq.getGroup(sequence)
+		mode = self.libseq.getPlayMode(sequence)
 
 		self.trackTitleCanvas.delete('rowtitle:%d'%(row))
 		self.trackTitleCanvas.delete('rowicon:%d'%(row))
@@ -499,7 +500,7 @@ class zynthian_gui_songeditor():
 		title = self.trackTitleCanvas.create_text((0, self.rowHeight * (row + 0.5)), font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row),"trackname", 'tracktitle'), anchor="w")
 		modeIcon = self.trackTitleCanvas.create_image(self.trackTitleWidth, row * self.rowHeight, anchor='ne', tags=('rowicon:%d'%(row), 'tracktitle'))
 
-		trigger = self.parent.libseq.getTriggerNote(sequence)
+		trigger = self.libseq.getTriggerNote(sequence)
 		if trigger < 128:
 			self.trackTitleCanvas.itemconfig(title, text="%s%d (%d,%s)" % (chr(65+group), track + 1, channel, self.getNote(trigger)))
 		else:
@@ -516,7 +517,7 @@ class zynthian_gui_songeditor():
 	#	row: Grid row to draw
 	#	redrawTrackTitles: True to redraw track titles (Default: True)
 	def drawRow(self, row, redrawTrackTitles = True):
-		if row + self.rowOffset >= self.parent.libseq.getTracks(self.song):
+		if row + self.rowOffset >= self.libseq.getTracks(self.song):
 			return
 		track = self.rowOffset + row
 		if(redrawTrackTitles):
@@ -532,8 +533,8 @@ class zynthian_gui_songeditor():
 			return
 		dummy, row = tags[0].split(':')
 		track = int(row) + self.rowOffset
-		sequence = self.parent.libseq.getSequence(self.song, track)
-		print("Song %d, track %d, sequence:%d, trigger:%d, playstate:%d"%(self.song, track, sequence, self.parent.libseq.getTriggerNote(sequence), self.parent.libseq.getPlayState(sequence)))
+		sequence = self.libseq.getSequence(self.song, track)
+		print("Song %d, track %d, sequence:%d, trigger:%d, playstate:%d"%(self.song, track, sequence, self.libseq.getTriggerNote(sequence), self.libseq.getPlayState(sequence)))
 		self.selectedCell[1] = track
 		self.selectCell()
 
@@ -559,24 +560,24 @@ class zynthian_gui_songeditor():
 
 		track = self.rowOffset + row
 		time = (self.colOffset + col) * self.clocksPerDivision # time in clock cycles
-		sequence = self.parent.libseq.getSequence(self.song, track)
+		sequence = self.libseq.getSequence(self.song, track)
 
-		pattern = self.parent.libseq.getPattern(sequence, time)
+		pattern = self.libseq.getPattern(sequence, time)
 		if pattern == -1:
 			fill = CANVAS_BACKGROUND
 			duration = 1
 			if col == 0:
 				for t in range(time, -1, -self.clocksPerDivision):
-					pattern = self.parent.libseq.getPattern(sequence, t)
+					pattern = self.libseq.getPattern(sequence, t)
 					if pattern != -1:
-						duration = int((self.parent.libseq.getPatternLength(pattern) + t) / self.clocksPerDivision) - self.colOffset
+						duration = int((self.libseq.getPatternLength(pattern) + t) / self.clocksPerDivision) - self.colOffset
 						if duration > 0:
 							fill = CELL_BACKGROUND
 						else:
 							pattern = -1
 						break
 		else:
-			duration = int(self.parent.libseq.getPatternLength(pattern) / self.clocksPerDivision)
+			duration = int(self.libseq.getPatternLength(pattern) / self.clocksPerDivision)
 			fill = CELL_BACKGROUND
 			#print("Drawing cell %d,%d for track %d, sequence %d, pattern %d, duration %d"%(col,row,track,sequence,pattern,duration))
 		if col + duration > self.colOffset + self.horizontalZoom:
@@ -609,7 +610,7 @@ class zynthian_gui_songeditor():
 			self.gridCanvas.coords(celltext, coord[0] + int(duration * self.columnWidth / 2), int(coord[1] + self.rowHeight / 2))
 #		if time + duration > self.horizontalZoom:
 #			if duration > 1:
-#				self.gridCanvas.itemconfig("lastpatterntext%d" % row, text="+%d" % (duration - self.parent.libseq.getPatternLength() + time), state="normal")
+#				self.gridCanvas.itemconfig("lastpatterntext%d" % row, text="+%d" % (duration - self.libseq.getPatternLength() + time), state="normal")
 
 	# Function to draw grid
 	def drawGrid(self):
@@ -625,7 +626,7 @@ class zynthian_gui_songeditor():
 		# Draw rows of grid
 		self.gridCanvas.itemconfig("gridcell", fill=CANVAS_BACKGROUND)
 		for row in range(self.verticalZoom):
-			if row >= self.parent.libseq.getTracks(self.song):
+			if row >= self.libseq.getTracks(self.song):
 				break
 			self.drawRow(row, True)
 
@@ -635,7 +636,7 @@ class zynthian_gui_songeditor():
 		font = tkFont.Font(size=self.smallFontSize)
 		tempoY = font.metrics('linespace')
 		offset = 0 - int(self.colOffset % self.horizontalZoom)
-		for bar in range(offset, self.horizontalZoom, int(self.parent.libseq.getBarLength(self.song) / self.clocksPerDivision)):
+		for bar in range(offset, self.horizontalZoom, int(self.libseq.getBarLength(self.song) / self.clocksPerDivision)):
 			self.gridCanvas.create_line(bar * self.columnWidth, 0, bar * self.columnWidth, self.gridHeight, fill='white', tags='barlines')
 			if bar:
 				self.timebasetrackCanvas.create_text(bar * self.columnWidth, 0, fill='white', text="%d"%(bar+self.colOffset), anchor='n', tags='barlines')
@@ -649,13 +650,13 @@ class zynthian_gui_songeditor():
 		# Timebase track
 		self.timebasetrackCanvas.delete('bpm')
 		print("Drawing timebase track")
-		for event in range(self.parent.libseq.getTimebaseEvents(self.song)):
-			time = self.parent.libseq.getTimebaseEventTime(self.song, event) / self.clocksPerDivision
+		for event in range(self.libseq.getTimebaseEvents(self.song)):
+			time = self.libseq.getTimebaseEventTime(self.song, event) / self.clocksPerDivision
 			if time >= self.colOffset and time <= self.colOffset + self.horizontalZoom:
-				command = self.parent.libseq.getTimebaseEventCommand(self.song, event)
+				command = self.libseq.getTimebaseEventCommand(self.song, event)
 				if command == 1: # Tempo
 					tempoX = (time - self.colOffset) * self.columnWidth
-					data = self.parent.libseq.getTimebaseEventData(self.song, event)
+					data = self.libseq.getTimebaseEventData(self.song, event)
 					if tempoX:
 						self.timebasetrackCanvas.create_text(tempoX, tempoY, fill='red', text=data, anchor='n', tags='bpm')
 					else:
@@ -670,7 +671,7 @@ class zynthian_gui_songeditor():
 			time = self.selectedCell[0]
 		if track == None:
 			track = self.selectedCell[1]
-		duration = int(self.parent.libseq.getPatternLength(self.pattern) / self.clocksPerDivision)
+		duration = int(self.libseq.getPatternLength(self.pattern) / self.clocksPerDivision)
 		if not duration:
 			duration = 1
 		forward = time > self.selectedCell[0]
@@ -679,21 +680,21 @@ class zynthian_gui_songeditor():
 			backward = time
 		# Skip cells if pattern won't fit
 		if snap:
-			sequence = self.parent.libseq.getSequence(self.song, track)
+			sequence = self.libseq.getSequence(self.song, track)
 			prevStart = 0
 			prevEnd = 0
 			nextStart = time
 			for previous in range(time - 1, -1, -1):
 				# Iterate time divs back to start
-				prevPattern = self.parent.libseq.getPattern(sequence, previous * self.clocksPerDivision)
+				prevPattern = self.libseq.getPattern(sequence, previous * self.clocksPerDivision)
 				if prevPattern == -1:
 					continue
-				prevDuration = int(self.parent.libseq.getPatternLength(prevPattern, track) / self.clocksPerDivision)
+				prevDuration = int(self.libseq.getPatternLength(prevPattern, track) / self.clocksPerDivision)
 				prevStart = previous
 				prevEnd = prevStart + prevDuration
 				break
 			for next in range(time + 1, time + duration * 2):
-				nextPattern = self.parent.libseq.getPattern(sequence, next * self.clocksPerDivision)
+				nextPattern = self.libseq.getPattern(sequence, next * self.clocksPerDivision)
 				if nextPattern == -1:
 					continue
 				nextStart = next
@@ -726,8 +727,8 @@ class zynthian_gui_songeditor():
 			if time == 0 and duration > nextStart:
 				time = nextStart
 
-		if track >= self.parent.libseq.getTracks(self.song):
-			track = self.parent.libseq.getTracks(self.song) - 1;
+		if track >= self.libseq.getTracks(self.song):
+			track = self.libseq.getTracks(self.song) - 1;
 		if track < 0:
 			track = 0
 		if time < 0:
@@ -767,7 +768,7 @@ class zynthian_gui_songeditor():
 		self.gridCanvas.tag_raise(selection_border)
 
 #		if self.song > 1000: # Solo will stop playback which may be undesirable
-#			self.parent.libseq.solo(self.song, track, True)
+#			self.libseq.solo(self.song, track, True)
 
 
 	# Function to calculate cell size
@@ -781,7 +782,7 @@ class zynthian_gui_songeditor():
 
 	# Function to clear song
 	def clearSong(self):
-		self.parent.libseq.clearSong(self.song)
+		self.libseq.clearSong(self.song)
 		self.redraw_pending = 2
 		if zyncoder.lib_zyncoder:
 			zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
@@ -789,7 +790,7 @@ class zynthian_gui_songeditor():
 
 	# Function to copy song
 	def copySong(self):
-		self.parent.libseq.copySong(self.copySource, self.song);
+		self.libseq.copySong(self.copySource, self.song);
 		self.selectSong()
 
 	# Function to handle menu editor value change and get display label text
@@ -807,7 +808,7 @@ class zynthian_gui_songeditor():
 		if menuItem == 'Clear song':
 			return "Clear song %d?" % (self.song)
 		elif menuItem =='Copy song':
-			self.parent.libseq.selectSong(value) 
+			self.libseq.selectSong(value) 
 			self.selectSong()
 			return "Copy %d=>%d?" % (self.copySource, value)
 		elif menuItem == 'Vertical zoom':
@@ -817,32 +818,32 @@ class zynthian_gui_songeditor():
 		elif menuItem == 'MIDI channel':
 			self.parent.setParam(menuItem, 'value', value)
 			track = self.selectedCell[1] + self.rowOffset
-			sequence = self.parent.libseq.getSequence(self.song, track)
-			self.parent.libseq.setChannel(sequence, value - 1)
+			sequence = self.libseq.getSequence(self.song, track)
+			self.libseq.setChannel(sequence, value - 1)
 			self.drawTrack(self.selectedCell[1])
 		elif menuItem == 'Tempo':
 			pass
 		elif menuItem == 'Bar / sync':
-			self.parent.libseq.setBeatsPerBar(self.song, value)
+			self.libseq.setBeatsPerBar(self.song, value)
 			if self.editorMode:
-				self.parent.libseq.setBeatsPerBar(self.song - 1000, value)
+				self.libseq.setBeatsPerBar(self.song - 1000, value)
 			else:
-				self.parent.libseq.setBeatsPerBar(self.song + 1000, value)
+				self.libseq.setBeatsPerBar(self.song + 1000, value)
 			self.redraw_pending = 1
 		elif menuItem == "Group":
-			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
-			self.parent.libseq.setGroup(sequence, value);
+			sequence = self.libseq.getSequence(self.song, self.selectedCell[1])
+			self.libseq.setGroup(sequence, value);
 			self.drawTrackLabel(self.selectedCell[1])
 			return "Group: %s" % (chr(65 + value))
 		elif menuItem == "Mode":
-			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
-			self.parent.libseq.setPlayMode(sequence, value);
+			sequence = self.libseq.getSequence(self.song, self.selectedCell[1])
+			self.libseq.setPlayMode(sequence, value);
 			self.drawTrackLabel(self.selectedCell[1])
 			return "Mode: %s" % (self.playModes[value])
 		elif menuItem == "Trigger":
 			self.trigger = value
-			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1])
-			self.parent.libseq.setTriggerNote(sequence, self.trigger);
+			sequence = self.libseq.getSequence(self.song, self.selectedCell[1])
+			self.libseq.setTriggerNote(sequence, self.trigger);
 			self.drawTrackLabel(self.selectedCell[1])
 			if value > 127:
 				return "Trigger: None"
@@ -867,13 +868,13 @@ class zynthian_gui_songeditor():
 	#	returns: MIDI channel
 	def getTrackChannel(self):
 		track = self.selectedCell[1]
-		sequence = self.parent.libseq.getSequence(self.song, track)
-		channel = self.parent.libseq.getChannel(sequence) + 1
+		sequence = self.libseq.getSequence(self.song, track)
+		channel = self.libseq.getChannel(sequence) + 1
 		return channel
 
 	# Function to display song
 	def selectSong(self):
-		song = self.parent.libseq.getSong()
+		song = self.libseq.getSong()
 		if song != 0:
 			self.song = song
 		if self.editorMode:
@@ -881,7 +882,7 @@ class zynthian_gui_songeditor():
 			self.song = self.song + 1000
 		else:
 			self.parent.setTitle("Song Editor (%d)" % (self.song))
-#			self.parent.libseq.solo(self.song + 1000, 0, False) # Clear solo from pad editor when switching to song editor
+#			self.libseq.solo(self.song + 1000, 0, False) # Clear solo from pad editor when switching to song editor
 		self.redraw_pending = 2
 
 	# Function called when new file loaded from disk
@@ -905,10 +906,10 @@ class zynthian_gui_songeditor():
 		if self.redraw_pending:
 			self.drawGrid()
 #		if self.song < 1000:
-#			pos = self.parent.libseq.getSongPosition()# / self.clocksPerDivision
+#			pos = self.libseq.getSongPosition()# / self.clocksPerDivision
 #		else:
-#			sequence = self.parent.libseq.getSequence(self.song, self.selectedCell[1]) #TODO: Offset?
-#			pos = self.parent.libseq.getPlayPosition(sequence)# / self.clocksPerDivision
+#			sequence = self.libseq.getSequence(self.song, self.selectedCell[1]) #TODO: Offset?
+#			pos = self.libseq.getPlayPosition(sequence)# / self.clocksPerDivision
 #		if self.position != pos:
 #			self.showPos(pos)
 #			self.position = pos
@@ -945,19 +946,19 @@ class zynthian_gui_songeditor():
 			return
 			if type == 'B':
 				#TODO Validate bold snapshot behaviour
-				self.parent.libseq.stopSong()
-				if not self.parent.libseq.isPlaying():
-					self.parent.libseq.transportStop()
-					self.parent.libseq.transportLocate(self.parent.libseq.getSongPosition())
+				self.libseq.stopSong()
+				if not self.libseq.isPlaying():
+					self.libseq.transportStop()
+					self.libseq.transportLocate(self.libseq.getSongPosition())
 			else:
-				if self.parent.libseq.isSongPlaying():
-					self.parent.libseq.pauseSong()
+				if self.libseq.isSongPlaying():
+					self.libseq.pauseSong()
 				else:
-					if self.parent.libseq.isPlaying():
-						self.parent.libseq.setSongToStartOfMeasure()
-						self.parent.libseq.startSong(False)
+					if self.libseq.isPlaying():
+						self.libseq.setSongToStartOfMeasure()
+						self.libseq.startSong(False)
 					else:
-						self.parent.libseq.startSong(True)
+						self.libseq.startSong(True)
 		else:
 			return False
 		return True

@@ -99,16 +99,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.song_editor_mode = 1 # 1 for song editor, 3 for pad editor
 
 		# Initalise libseq and load pattern from file
-		# TODO: Should this be done at higher level rather than within a screen?
-		self.libseq = ctypes.CDLL(dirname(realpath(__file__))+"/../zynlibs/zynseq/build/libzynseq.so")
-		self.libseq.init()
-		# self.libseq.enableDebug(True)
+		# self.zyngui.libseq.enableDebug(True)
 		self.filename = "default"
-		time.sleep(2)
 		self.load(self.filename)
-		print("Loaded file")
-		time.sleep(2)
-		print("Continuing")
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -268,7 +261,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.addMenu({'ZynPad':{'method':self.showChild, 'params':2}})
 		self.addMenu({'Pad Editor':{'method':self.showChild, 'params':3}})
 #		self.addMenu({'Song Editor':{'method':self.showChild, 'params':1}})
-		self.addMenu({'Song':{'method':self.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.libseq.getSong, 'onChange':self.onMenuChange}}})
+		self.addMenu({'Song':{'method':self.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.zyngui.libseq.getSong, 'onChange':self.onMenuChange}}})
 		self.addMenu({'Load':{'method':self.select_filename, 'params':self.filename}})
 		self.addMenu({'Save':{'method':self.save_as, 'params':self.filename}})
 		self.addMenu({'---':{}})
@@ -530,21 +523,21 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			childIndex = self.lastchild
 		self.lastchild = childIndex # A bit contrived but it allows us to return to same panel
 		if childIndex == 1:
-			self.libseq.selectSong(self.song)
+			self.zyngui.libseq.selectSong(self.song)
 			self.child = self.songEditor
 			params = 0
 			self.song_editor_mode = 1
 		elif childIndex == 3:
-			self.libseq.selectSong(self.song)
+			self.zyngui.libseq.selectSong(self.song)
 			self.child = self.songEditor
 			params = 1
 			self.song_editor_mode = 3
 		elif childIndex == 0:
-			self.libseq.stop() #TODO This is a sledgehammer approach - stopping everything when editing pattern because otherwise we need to consider relative positions for everything
-			#self.libseq.selectSong(0)
+			self.zyngui.libseq.stop() #TODO This is a sledgehammer approach - stopping everything when editing pattern because otherwise we need to consider relative positions for everything
+			#self.zyngui.libseq.selectSong(0)
 			self.child = self.patternEditor
 		elif childIndex == 2:
-#			self.libseq.selectSong(self.song)
+#			self.zyngui.libseq.selectSong(self.song)
 			self.child = self.zynpad
 		else:
 			return
@@ -564,35 +557,35 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to start transport
 	def start(self):
-		self.libseq.transportStart();
+		self.zyngui.libseq.transportStart();
 
 	# Function to pause transport
 	def pause(self):
-		self.libseq.transportStop();
+		self.zyngui.libseq.transportStop();
 
 	# Function to stop and recue transport
 	def stop(self):
 		if self.child == self.patternEditor:
-			self.libseq.setPlayState(0, SEQ_STOPPED)
-			self.libseq.setTransportToStartOfBar()
+			self.zyngui.libseq.setPlayState(0, SEQ_STOPPED)
+			self.zyngui.libseq.setTransportToStartOfBar()
 		#TODO: Handle other views
 
 	# Function to recue transport
 	def recue(self):
-		playState = self.libseq.getPlayState()
+		playState = self.zyngui.libseq.getPlayState()
 		# Workaround issue with jack_transport needing to stop and pause before locate
-		self.libseq.transportStop();
+		self.zyngui.libseq.transportStop();
 		time.sleep(0.1)
-		self.libseq.locate(0);
+		self.zyngui.libseq.locate(0);
 		if playState:
-			self.libseq.transportStart();
+			self.zyngui.libseq.transportStart();
 
 	# Function to select song
 	#	song: Index of song to select
 	def selectSong(self, song):
 		if song > 0:
-#			self.libseq.transportStop() #TODO: Stopping transport due to jack_transport restarting if locate called
-			self.libseq.selectSong(song)
+#			self.zyngui.libseq.transportStop() #TODO: Stopping transport due to jack_transport restarting if locate called
+			self.zyngui.libseq.selectSong(song)
 			self.song = song
 			try:
 				self.child.selectSong()
@@ -602,7 +595,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to toggle transport
 	def toggleTransport(self):
 		if self.child == self.patternEditor:
-			self.libseq.togglePlayState(0)
+			self.zyngui.libseq.togglePlayState(0)
 		#TODO: Handle transport for other views
 
 	# Function to name file before saving
@@ -616,7 +609,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if not filename:
 			filename = self.filename
 		os.makedirs(USER_PATH, exist_ok=True)
-		self.libseq.save(bytes(USER_PATH + "/" + filename + ".zynseq", "utf-8"))
+		self.zyngui.libseq.save(bytes(USER_PATH + "/" + filename + ".zynseq", "utf-8"))
 		self.filename = filename
 
 	# Function to show file dialog to select file to load
@@ -628,7 +621,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def load(self, filename=None):
 		if filename == None:
 			filename = self.filename
-		if self.libseq.load(bytes(USER_PATH + "/" + filename + ".zynseq", "utf-8")):
+		if self.zyngui.libseq.load(bytes(USER_PATH + "/" + filename + ".zynseq", "utf-8")):
 			self.filename = filename
 			if self.child:
 				self.child.onLoad()
@@ -665,10 +658,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				# Parameter editor showing
 				self.changeParam(value)
 		elif encoder == ENC_LAYER:
-			self.libseq.setTempo(self.libseq.getTempo() + value)
+			self.zyngui.libseq.setTempo(self.zyngui.libseq.getTempo() + value)
 			#TODO: Display tempo temporarily
 		elif encoder == ENC_SNAPSHOT:
-			self.selectSong(self.libseq.getSong() + value)
+			self.selectSong(self.zyngui.libseq.getSong() + value)
 
 	# Function to handle zyncoder polling
 	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +1 and calculate offset
