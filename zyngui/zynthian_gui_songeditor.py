@@ -72,8 +72,8 @@ class zynthian_gui_songeditor():
 		self.padColourStoppedEven = 'purple'
 		self.padColourStoppedOdd = 'blue'
 
-		self.verticalZoom = 16 # Quantity of rows (tracks) displayed in grid
-		self.horizontalZoom = 16 # Quantity of columns (time divisions) displayed in grid
+		self.verticalZoom = 4 # Quantity of rows (tracks) displayed in grid
+		self.horizontalZoom = 8 # Quantity of columns (time divisions) displayed in grid
 		self.copySource = 1 # Index of song to copy
 		self.rowOffset = 0 # Index of track at top row in grid
 		self.colOffset = 0 # Index of time division at left column in grid
