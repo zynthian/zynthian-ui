@@ -82,7 +82,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	buttonbar_config = [
 		(1, 'BACK'),
 		(0, 'MENU'),
-		(2, 'TRANSPORT'),
+		(2, ''),
 		(3, 'TOGGLE')
 	]
 
@@ -522,6 +522,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if childIndex == None:
 			childIndex = self.lastchild
 		self.lastchild = childIndex # A bit contrived but it allows us to return to same panel
+		self.buttonbar_config[2] = (2, '')
 		if childIndex == 1:
 			self.zyngui.libseq.selectSong(self.song)
 			self.child = self.songEditor
@@ -536,12 +537,14 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.libseq.stop() #TODO This is a sledgehammer approach - stopping everything when editing pattern because otherwise we need to consider relative positions for everything
 			#self.zyngui.libseq.selectSong(0)
 			self.child = self.patternEditor
+			self.buttonbar_config[2] = (2, 'PLAY')
 		elif childIndex == 2:
 #			self.zyngui.libseq.selectSong(self.song)
 			self.child = self.zynpad
 		else:
 			return
 		self.child.show(params)
+		self.init_buttonbar()
 		self.status_menu_frame.tkraise()
 
 	# Function to hide child GUI
@@ -595,7 +598,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to toggle transport
 	def toggleTransport(self):
 		if self.child == self.patternEditor:
-			self.zyngui.libseq.togglePlayState(0)
+			self.zyngui.libseq.togglePlayState(self.patternEditor.sequence)
 		#TODO: Handle transport for other views
 
 	# Function to name file before saving

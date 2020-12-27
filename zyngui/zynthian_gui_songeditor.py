@@ -184,8 +184,6 @@ class zynthian_gui_songeditor():
 		self.parent.registerZyncoder(ENC_LAYER, self)
 		self.parent.registerSwitch(ENC_SELECT, self, 'S')
 		self.parent.registerSwitch(ENC_SELECT, self, 'B')
-		self.parent.registerSwitch(ENC_SNAPSHOT, self, 'S')
-		self.parent.registerSwitch(ENC_SNAPSHOT, self, 'B')
 
 	# Function to populate menu
 	def populateMenu(self):
@@ -942,23 +940,6 @@ class zynthian_gui_songeditor():
 			self.showPatternEditor()
 		elif switch == ENC_SELECT:
 			self.toggleEvent(self.selectedCell[0], self.selectedCell[1])
-		elif switch == ENC_SNAPSHOT:
-			return
-			if type == 'B':
-				#TODO Validate bold snapshot behaviour
-				self.libseq.stopSong()
-				if not self.libseq.isPlaying():
-					self.libseq.transportStop()
-					self.libseq.transportLocate(self.libseq.getSongPosition())
-			else:
-				if self.libseq.isSongPlaying():
-					self.libseq.pauseSong()
-				else:
-					if self.libseq.isPlaying():
-						self.libseq.setSongToStartOfMeasure()
-						self.libseq.startSong(False)
-					else:
-						self.libseq.startSong(True)
 		else:
 			return False
 		return True

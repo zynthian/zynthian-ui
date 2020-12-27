@@ -54,12 +54,14 @@ class zynthian_gui_fileselector():
 	#	path: Filesystem path to show
 	#	ext: File extension to filter
 	#	filename: Name of file to select in list (Opitonal: Defaults to first file)
-	def __init__(self, parent, function, path, ext, filename=None):
+	#	return_full_path: True to return full path. False to return filename (Optional: Defaults to filename only)
+	def __init__(self, parent, function, path, ext, filename=None, return_full_path=False):
 		self.parent = parent
 
 		self.function = function
 		self.path = path
 		self.filename = filename
+		self.return_full_path = return_full_path
 		self.ext = ext
 		self.files = {}
 
@@ -101,7 +103,6 @@ class zynthian_gui_fileselector():
 			name = os.path.splitext(filename)[0]
 			self.file_list.insert(tkinter.END, name)
 			self.files[name] = full_filename 
-		print("zynthian_gui_fileselector file list:",self.files)
 		self.file_list.selection_set(0)
 
 		rows = min((zynthian_gui_config.display_height - zynthian_gui_config.topbar_height) / self.listboxTextHeight - 1, self.file_list.size())
@@ -135,7 +136,10 @@ class zynthian_gui_fileselector():
 
 	# Function to trigger file action
 	def assert_selection(self):
-		self.function(self.files[self.file_list.get(self.file_list.curselection()[0])])
+		if self.return_full_path:
+			self.function(self.files[self.file_list.get(self.file_list.curselection()[0])])
+		else:
+			self.function(self.file_list.get(self.file_list.curselection()))
 		self.hide()
 
 	# Function to delete file
