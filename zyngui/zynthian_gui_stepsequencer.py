@@ -728,7 +728,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def onSwitch(self, switch, type):
 		if switch == ENC_LAYER and not self.lstMenu.winfo_viewable():
 			self.toggleMenu()
-		elif switch == ENC_BACK:
+		elif switch == ENC_BACK and type == 'B':
+			return False
+		elif switch == ENC_BACK and type == 'S':
 			if self.lstMenu.winfo_viewable():
 				# Close menu
 				self.hideMenu()
