@@ -807,7 +807,10 @@ class zynthian_gui_songeditor():
 		menuItem = self.parent.paramEditorItem
 		self.parent.setParam(menuItem, 'value', value)
 		if menuItem == 'Clear song':
-			return "Clear song %d?" % (self.song)
+			if self.song < 1000:
+				return "Clear song %d?" % (self.song)
+			else:
+				return "Clear song %d?" % (self.song - 1000)
 		elif menuItem =='Copy song':
 			self.libseq.selectSong(value) 
 			self.selectSong(False)
