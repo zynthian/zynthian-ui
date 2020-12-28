@@ -818,13 +818,13 @@ class zynthian_gui_patterneditor():
 			return
 
 		# Extract first tempo from file
-		tempo = None
+		tempo = 60000000/120
 		for msg in mid:
 			if msg.type == "set_tempo":
 				tempo = msg.tempo
 				break
 		if tempo == None:
-			logging.warning("Cannot find tempo marker within %s. Aborting import.", filename)
+			logging.warning("Cannot find tempo marker within %s. Assuming 120 BPM.", filename)
 			return
 		
 		# Iterate through events in file matching current pattern MIDI channel
