@@ -819,9 +819,7 @@ class zynthian_gui_songeditor():
 		elif menuItem == 'Horizontal zoom':
 			self.horizontalZoom = value
 		elif menuItem == 'MIDI channel':
-			self.parent.setParam(menuItem, 'value', value)
-			track = self.selectedCell[1] + self.rowOffset
-			sequence = self.libseq.getSequence(self.song, track)
+			sequence = self.libseq.getSequence(self.song, self.selectedCell[1])
 			self.libseq.setChannel(sequence, value - 1)
 			self.drawTrack(self.selectedCell[1])
 		elif menuItem == 'Tempo':
