@@ -805,7 +805,7 @@ class zynthian_gui_patterneditor():
 
 	# Function to select .mid file to import
 	def selectImport(self, params):
-		zynthian_gui_fileselector(self.parent, self.importMid, zynthian_gui_stepsequencer.os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture", "mid")
+		zynthian_gui_fileselector(self.parent, self.importMid, zynthian_gui_stepsequencer.os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture", "mid", None, True)
 
 	# Function to import patterns from .mid file
 	#	filename: Full path and filename of midi file from which to import
