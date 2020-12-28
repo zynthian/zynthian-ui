@@ -638,9 +638,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	#	encoder: Zyncoder index [0..4]
 	#	value: Value of zyncoder change since last read
 	def onZyncoder(self, encoder, value):
-		if encoder == ENC_SELECT:
-			if self.lstMenu.winfo_viewable():
-				# Menu showing
+		if self.lstMenu.winfo_viewable():
+			# Menu showing
+			if encoder == ENC_SELECT or encoder == ENC_LAYER:
 				if self.lstMenu.size() < 1:
 					return
 				index = 0
@@ -657,11 +657,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				self.lstMenu.selection_set(index)
 				self.lstMenu.activate(index)
 				self.lstMenu.see(index)
-			elif self.paramEditorItem:
-				# Parameter editor showing
+		elif self.paramEditorItem:
+			# Parameter editor showing
+			if encoder == ENC_SELECT or encoder == ENC_LAYER:
 				self.changeParam(value)
 		elif encoder == ENC_LAYER:
 			self.zyngui.libseq.setTempo(self.zyngui.libseq.getTempo() + value)
+			print("Adjust Tempo", self.zyngui.libseq.getTempo())
 			#TODO: Display tempo temporarily
 		elif encoder == ENC_SNAPSHOT:
 			self.selectSong(self.zyngui.libseq.getSong() + value)
