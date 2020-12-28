@@ -95,7 +95,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.child = None # Pointer to instance of child panel
 		self.lastchild = 2 # Index of last child shown - used to return to same screen
-		self.song = 1 # The song that will play / edit (may be different to libseq.getSong, e.g. when editing patter)
+		self.song = 1 # The song that will play / edit (may be different to libseq.getSong, e.g. when editing pattern)
 		self.song_editor_mode = 1 # 1 for song editor, 3 for pad editor
 
 		# Initalise libseq and load pattern from file
@@ -287,6 +287,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.main_frame.grid_forget()
 			if self.child:
 				self.child.hide()
+			if self.zyngui.libseq.isModified():# and not self.zyngui.libseq.transportGetPlayStatus():
+				print("Saving sequence because hiding")
+				self.save() #TODO: Should only save if dirty
 
 	# Function to refresh the status widgets
 	#	status: Dictionary containing update data
@@ -604,7 +607,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to name file before saving
 	#	filename: Starting filename
 	def	save_as(self, filename):
-		zynthian_gui_rename(self, self.save, filename)
+		rename_ui = zynthian_gui_rename(self, self.save, filename)
+		if rename_ui.ok:
+			self.filename = filename
+		del rename_ui
 
 	# Function to save to RIFF file
 	#	filename: Filename without path or extension
@@ -613,7 +619,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			filename = self.filename
 		os.makedirs(USER_PATH, exist_ok=True)
 		self.zyngui.libseq.save(bytes(USER_PATH + "/" + filename + ".zynseq", "utf-8"))
-		self.filename = filename
 
 	# Function to show file dialog to select file to load
 	def select_filename(self, filename):
@@ -663,7 +668,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				self.changeParam(value)
 		elif encoder == ENC_LAYER:
 			self.zyngui.libseq.setTempo(self.zyngui.libseq.getTempo() + value)
-			print("Adjust Tempo", self.zyngui.libseq.getTempo())
 			#TODO: Display tempo temporarily
 		elif encoder == ENC_SNAPSHOT:
 			self.selectSong(self.zyngui.libseq.getSong() + value)

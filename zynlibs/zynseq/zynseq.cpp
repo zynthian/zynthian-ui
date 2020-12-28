@@ -46,9 +46,11 @@ std::map<uint32_t,MIDI_MESSAGE*> g_mSchedule; // Schedule of MIDI events (queue 
 bool g_bDebug = false; // True to output debug info
 uint32_t g_nSongPosition = 0; // Clocks since start of song
 uint32_t g_nSongLength = 0; // Clocks cycles to end of song
-bool g_bModified = false; // True if pattern has changed since last check
+bool g_bPatternModified = false; // True if pattern has changed since last check
 bool g_bPlaying = false; // True if any sequence in current song is playing
 uint32_t g_nXruns = 0;
+bool g_bDirty = false; // True if anything has been modified
+uint32_t g_nEditorSequence = getSequence(0,0); // Sequence used by pattern editor which may have some modifications without affecting dirty flag
 
 uint8_t g_nInputChannel = 1; // MIDI input channel (>15 to disable MIDI input)
 
@@ -567,11 +569,14 @@ bool init(bool bTimebaseMaster)
 bool load(char* filename)
 {
     return PatternManager::getPatternManager()->load(filename);
+    g_bDirty = false;
 }
 
 void save(char* filename)
 {
     PatternManager::getPatternManager()->save(filename);
+    g_bDirty = false;
+    printf("zynseq::save\n");
 }
 
 
@@ -680,6 +685,7 @@ void setTriggerChannel(uint8_t channel)
     if(channel > 15)
         return;
     PatternManager::getPatternManager()->setTriggerChannel(channel);
+    g_bDirty = true;
 }
 
 uint8_t getTriggerNote(uint32_t sequence)
@@ -690,6 +696,7 @@ uint8_t getTriggerNote(uint32_t sequence)
 void setTriggerNote(uint32_t sequence, uint8_t note)
 {
     PatternManager::getPatternManager()->setTriggerNote(sequence, note);
+    g_bDirty = true;
 }
 
 // ** Pattern management functions **
@@ -699,7 +706,7 @@ void selectPattern(uint32_t pattern)
     g_pPattern = PatternManager::getPatternManager()->getPattern(pattern);
     if(g_pPattern)
         g_nPattern = pattern;
-    g_bModified = true;
+    g_bPatternModified = true;
 }
 
 uint32_t getPatternIndex()
@@ -735,7 +742,8 @@ void setBeatsInPattern(uint32_t beats)
         return;
     g_pPattern->setBeatsInPattern(beats);
     PatternManager::getPatternManager()->updateAllSequenceLengths();
-    g_bModified = true;
+    g_bPatternModified = true;
+    g_bDirty = true;
     //!@todo Update song length if relevant
 }
 
@@ -758,7 +766,8 @@ void setStepsPerBeat(uint32_t steps)
     if(!g_pPattern)
         return;
     g_pPattern->setStepsPerBeat(steps);
-    g_bModified = true;
+    g_bPatternModified = true;
+    g_bDirty = true;
 }
 
 uint8_t getBeatType()
@@ -773,14 +782,16 @@ void setBeatType(uint8_t beatType)
     if(!g_pPattern)
         return;
     g_pPattern->setBeatType(beatType);
-    g_bModified = true;
+    g_bPatternModified = true;
+    g_bDirty = true;
 }
 
 bool addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
 {
     if(!g_pPattern)
         return false;
-    g_bModified = true;
+    g_bPatternModified = true;
+    g_bDirty = true;
     return g_pPattern->addNote(step, note, velocity, duration);
 }
 
@@ -788,8 +799,9 @@ void removeNote(uint32_t step, uint8_t note)
 {
     if(!g_pPattern)
         return;
-    g_bModified = true;
+    g_bPatternModified = true;
     g_pPattern->removeNote(step, note);
+    g_bDirty = true;
 }
 
 uint8_t getNoteVelocity(uint32_t step, uint8_t note)
@@ -803,8 +815,9 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
 {
     if(!g_pPattern)
         return;
-    g_bModified = true;
+    g_bPatternModified = true;
     g_pPattern->setNoteVelocity(step, note, velocity);
+    g_bDirty = true;
 }
 
 uint32_t getNoteDuration(uint32_t step, uint8_t note)
@@ -818,21 +831,24 @@ void transpose(int8_t value)
 {
     if(!g_pPattern)
         return;
-    g_bModified = true;
+    g_bPatternModified = true;
     g_pPattern->transpose(value);
+    g_bDirty = true;
 }
 
 void clear()
 {
     if(!g_pPattern)
         return;
-    g_bModified = true;
+    g_bPatternModified = true;
     g_pPattern->clear();
+    g_bDirty = true;
 }
 
 void copyPattern(uint32_t source, uint32_t destination)
 {
     PatternManager::getPatternManager()->copyPattern(source, destination);
+    g_bDirty = true;
 }
 
 void setInputChannel(uint8_t channel)
@@ -840,6 +856,7 @@ void setInputChannel(uint8_t channel)
     if(channel > 15)
         g_nInputChannel = 0xFF;
     g_nInputChannel = channel;
+    g_bDirty = true;
 }
 
 uint8_t getInputChannel()
@@ -849,8 +866,11 @@ uint8_t getInputChannel()
 
 void setScale(uint32_t scale)
 {
-    if(g_pPattern)
-        g_pPattern->setScale(scale);
+    if(!g_pPattern)
+        return;
+    if(scale != g_pPattern->getScale())
+        g_bDirty = true;
+    g_pPattern->setScale(scale);
 }
 
 uint32_t getScale()
@@ -862,8 +882,10 @@ uint32_t getScale()
 
 void setTonic(uint8_t tonic)
 {
-    if(g_pPattern)
-        g_pPattern->setTonic(tonic);
+    if(!g_pPattern)
+        return;
+    g_pPattern->setTonic(tonic);
+    g_bDirty = true;
 }
 
 uint8_t getTonic()
@@ -875,9 +897,9 @@ uint8_t getTonic()
 
 bool isPatternModified()
 {
-    if(g_bModified)
+    if(g_bPatternModified)
     {
-        g_bModified = false;
+        g_bPatternModified = false;
         return true;
     }
     return false;
@@ -895,6 +917,8 @@ bool addPattern(uint32_t sequence, uint32_t position, uint32_t pattern, bool for
     PatternManager* pPm = PatternManager::getPatternManager();
     bool bUpdated = pPm->getSequence(sequence)->addPattern(position, pPm->getPattern(pattern), force);
     g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(pPm->getCurrentSong());
+    if(sequence != g_nEditorSequence)
+        g_bDirty |= bUpdated;
     return bUpdated;
 }
 
@@ -903,6 +927,7 @@ void removePattern(uint32_t sequence, uint32_t position)
     PatternManager* pPm = PatternManager::getPatternManager();
     pPm->getSequence(sequence)->removePattern(position);
     g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(pPm->getCurrentSong());
+    g_bDirty = true;
 }
 
 uint32_t getPattern(uint32_t sequence, uint32_t position)
@@ -916,6 +941,10 @@ uint32_t getPattern(uint32_t sequence, uint32_t position)
 void setChannel(uint32_t sequence, uint8_t channel)
 {
     PatternManager::getPatternManager()->getSequence(sequence)->setChannel(channel);
+    if(g_nEditorSequence != sequence)
+    {
+        g_bDirty = true;
+    }
 }
 
 uint8_t getChannel(uint32_t sequence)
@@ -926,6 +955,10 @@ uint8_t getChannel(uint32_t sequence)
 void setOutput(uint32_t sequence, uint8_t output)
 {
     PatternManager::getPatternManager()->getSequence(sequence)->setOutput(output);
+    if(g_nEditorSequence != sequence)
+    {
+        g_bDirty = true;
+    }
 }
 
 uint8_t getPlayMode(uint32_t sequence)
@@ -936,7 +969,11 @@ uint8_t getPlayMode(uint32_t sequence)
 void setPlayMode(uint32_t sequence, uint8_t mode)
 {
     PatternManager::getPatternManager()->getSequence(sequence)->setPlayMode(mode);
- }
+    if(g_nEditorSequence != sequence)
+    {
+        g_bDirty = true;
+    }
+}
 
 uint8_t getPlayState(uint32_t sequence)
 {
@@ -994,6 +1031,8 @@ void clearSequence(uint32_t sequence)
     // This is only used by pattern editor
     PatternManager::getPatternManager()->getSequence(sequence)->clear();
     PatternManager::getPatternManager()->updateAllSequenceLengths();
+    if(g_nEditorSequence != sequence)
+        g_bDirty = true;
     //!@todo Update song length if required
 }
 
@@ -1006,6 +1045,8 @@ uint8_t getGroup(uint32_t sequence)
 void setGroup(uint32_t sequence, uint8_t group)
 {
     PatternManager::getPatternManager()->getSequence(sequence)->setGroup(group);
+    if(g_nEditorSequence != sequence)
+        g_bDirty = true;
 }
 
 uint8_t getTallyChannel(uint32_t sequence)
@@ -1016,6 +1057,8 @@ uint8_t getTallyChannel(uint32_t sequence)
 void setTallyChannel(uint32_t sequence, uint8_t channel)
 {
     PatternManager::getPatternManager()->getSequence(sequence)->setTallyChannel(channel);
+    if(g_nEditorSequence != sequence)
+        g_bDirty = true;
 }
 
 
@@ -1023,6 +1066,7 @@ void setTallyChannel(uint32_t sequence, uint8_t channel)
 
 uint32_t addTrack(uint32_t song)
 {
+    g_bDirty = true;
     return PatternManager::getPatternManager()->addTrack(song);
 }
 
@@ -1030,6 +1074,7 @@ void removeTrack(uint32_t song, uint32_t track)
 {
     PatternManager::getPatternManager()->removeTrack(song, track);
     g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);
+    g_bDirty = true;
 }
 
 void addTempoEvent(uint32_t song, uint32_t tempo, uint16_t bar, uint16_t tick)
@@ -1041,6 +1086,7 @@ void addTempoEvent(uint32_t song, uint32_t tempo, uint16_t bar, uint16_t tick)
         if(g_pTimebase)
             g_pNextTimebaseEvent = g_pTimebase->getFirstTimebaseEvent(); //!@todo Overkill parsing whole timebase map
     }
+    g_bDirty = true;
 }
 
 uint32_t getTempoEvent(uint32_t song, uint16_t bar, uint16_t tick)
@@ -1059,6 +1105,7 @@ void setTimeSig(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar)
         if(g_pTimebase)
             g_pNextTimebaseEvent = g_pTimebase->getFirstTimebaseEvent(); //!@todo Overkill parsing whole timebase map
     }
+    g_bDirty = true;
 }
 
 uint16_t getTimeSig(uint32_t song, uint16_t bar)
@@ -1090,11 +1137,13 @@ void clearSong(uint32_t song)
 {
     PatternManager::getPatternManager()->clearSong(song);
     g_nSongLength = 0;
+    g_bDirty = true;
 }
 
 void copySong(uint32_t source, uint32_t destination)
 {
     PatternManager::getPatternManager()->copySong(source, destination);
+    g_bDirty = true;
 }
 
 void startSong(bool bFast)
@@ -1278,6 +1327,8 @@ void setTempo(uint32_t tempo)
         g_dTempo = tempo;
         g_dFramesPerClock = getFramesPerClock(tempo);
 //        g_bTimebaseChanged = true;
+        if(PatternManager::getPatternManager()->getSongTempo() != tempo)
+            g_bDirty = true;
         PatternManager::getPatternManager()->setSongTempo(tempo);
     }
 }
@@ -1292,3 +1343,7 @@ void transportSetSyncTimeout(uint32_t timeout)
     jack_set_sync_timeout(g_pJackClient, timeout);
 }
 
+bool isModified()
+{
+    return g_bDirty;
+}

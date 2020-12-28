@@ -54,6 +54,7 @@ class zynthian_gui_rename():
 		self.parent = parent
 		self.function = function
 		self.name = name
+		self.ok = False
 		self.columns = 10 # Quantity of columns in keyboard grid
 		self.rows = 5 # Quantity of rows in keyboard grid
 		self.shift = False # True when shift locked
@@ -152,9 +153,11 @@ class zynthian_gui_rename():
 			self.name = self.name[:-1]
 		elif key == self.btn_enter:
 			self.function(self.name)
+			self.ok = True
 			self.hide()
 			return
 		elif key == self.btn_cancel:
+			self.ok = False
 			self.hide()
 			return
 		elif key == self.btn_shift:

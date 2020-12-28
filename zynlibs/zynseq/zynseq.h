@@ -64,6 +64,11 @@ extern "C"
 
 // ** Library management functions **
 
+/** @brief  Check if any changes have occured since last save
+*   @retval bool True if changed since last save
+*/
+bool isModified();
+
 /** @brief  Initialise JACK client
 *   @param  bTimebaseMaster True to become timebase master (optional - Default: false)
 *   @note   Call init() before using other library methods
