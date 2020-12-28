@@ -432,9 +432,8 @@ class zynthian_gui_songeditor():
 
 	# Function to show pattern editor
 	def showPatternEditor(self):
-		track = self.rowOffset + self.selectedCell[1]
 		time = self.selectedCell[0] * self.clocksPerDivision # time in clock cycles
-		sequence = self.libseq.getSequence(self.song, track)
+		sequence = self.libseq.getSequence(self.song, self.selectedCell[1])
 		pattern = self.libseq.getPattern(sequence, time)
 		channel = self.libseq.getChannel(sequence)
 		if pattern > 0:
