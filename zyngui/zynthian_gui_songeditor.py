@@ -74,7 +74,7 @@ class zynthian_gui_songeditor():
 
 		self.verticalZoom = 4 # Quantity of rows (tracks) displayed in grid
 		self.horizontalZoom = 8 # Quantity of columns (time divisions) displayed in grid
-		self.copySource = 1 # Index of song to copy
+		self.copySource = 1 # Index of song to copy (add 1000 for pad editor)
 		self.rowOffset = 0 # Index of track at top row in grid
 		self.colOffset = 0 # Index of time division at left column in grid
 		self.selectedCell = [0, 0] # Location of selected cell (time div,track)
@@ -188,7 +188,7 @@ class zynthian_gui_songeditor():
 	# Function to populate menu
 	def populateMenu(self):
 		# Only show song editor menu entries if we have a song selected
-		self.parent.addMenu({'Copy song':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':1, 'onChange':self.onMenuChange,'onAssert':self.copySong}}})
+		self.parent.addMenu({'Copy song':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'value':self.copySource, 'onChange':self.onMenuChange,'onAssert':self.copySong}}})
 		self.parent.addMenu({'Clear song':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearSong}}})
 		self.parent.addMenu({'Vertical zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'value':self.verticalZoom, 'onChange':self.onMenuChange,'onAssert':self.assertAndRedraw}}})
 		self.parent.addMenu({'Horizontal zoom':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999 
@@ -788,7 +788,10 @@ class zynthian_gui_songeditor():
 
 	# Function to copy song
 	def copySong(self):
-		self.libseq.copySong(self.copySource, self.song);
+		if(self.song > 1000):
+			self.libseq.copySong(self.copySource + 1000, self.song);
+		else:
+			self.libseq.copySong(self.copySource, self.song);
 		self.selectSong()
 
 	# Function to handle menu editor value change and get display label text
@@ -807,7 +810,7 @@ class zynthian_gui_songeditor():
 			return "Clear song %d?" % (self.song)
 		elif menuItem =='Copy song':
 			self.libseq.selectSong(value) 
-			self.selectSong()
+			self.selectSong(False)
 			return "Copy %d=>%d?" % (self.copySource, value)
 		elif menuItem == 'Vertical zoom':
 			self.verticalZoom = value
@@ -871,7 +874,7 @@ class zynthian_gui_songeditor():
 		return channel
 
 	# Function to display song
-	def selectSong(self):
+	def selectSong(self, updateCopySource = True):
 		song = self.libseq.getSong()
 		if song != 0:
 			self.song = song
@@ -881,6 +884,11 @@ class zynthian_gui_songeditor():
 		else:
 			self.parent.setTitle("Song Editor (%d)" % (self.song))
 #			self.libseq.solo(self.song + 1000, 0, False) # Clear solo from pad editor when switching to song editor
+		if updateCopySource:
+			if self.song > 1000:
+				self.copySource = self.song - 1000
+			else:
+				self.copySource = self.song
 		self.redraw_pending = 2
 
 	# Function called when new file loaded from disk
