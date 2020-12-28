@@ -58,7 +58,7 @@ class zynthian_gui_rename():
 		self.rows = 5 # Quantity of rows in keyboard grid
 		self.shift = False # True when shift locked
 		self.buttons = [] # Array of buttons in keyboard layout
-		self.selected_button = 0; # Index of highlighted button
+		self.selected_button = 44; # Index of highlighted button
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -106,7 +106,7 @@ class zynthian_gui_rename():
 	# Function to draw keyboard
 	def refresh_keys(self):
 		if self.shift:
-			self.keys = ['!','£','$','€','%','^','*','(',')','+',
+			self.keys = ['!','£','$','€','%','*','(',')','+','-',
 						'Q','W','E','R','T','Y','U','I','O','P',
 						'A','S','D','F','G','H','J','K','L','[',
 						'Z','X','C','V','B','N','M','<','>',']']
