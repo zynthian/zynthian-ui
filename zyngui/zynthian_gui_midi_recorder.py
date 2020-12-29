@@ -273,9 +273,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		try:
 			if zynthian_gui_config.midi_play_loop:
-				cmd="/usr/local/bin/jack-smf-player -t -l -s -a \"{}\" -r 63 \"{}\"".format(self.jack_play_port, fpath)
+				cmd="/usr/local/bin/jack-smf-player -n -l -s -a \"{}\" -r 63 \"{}\"".format(self.jack_play_port, fpath)
 			else:
-				cmd="/usr/local/bin/jack-smf-player -t -s -a \"{}\" -r 63 \"{}\"".format(self.jack_play_port, fpath)
+				cmd="/usr/local/bin/jack-smf-player -n -s -a \"{}\" -r 63 \"{}\"".format(self.jack_play_port, fpath)
 
 			logging.info("COMMAND: %s" % cmd)
 
@@ -287,7 +287,11 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				song_bpm = None
 				for line in self.play_proc.stdout:
 					#logging.debug("JACK-SMF-PLAYER => {}".format(line))
-					if not zynthian_gui_config.midi_play_loop and line.find("End of song.")>=0:
+					if line.find("Ready to Play...")>=0:
+						self.zyngui.libseq.transportStart(bytes("midi_rec","utf-8"))
+						self.zyngui.libseq.transportLocate(0)
+
+					elif not zynthian_gui_config.midi_play_loop and line.find("End of song.")>=0:
 						os.killpg(os.getpgid(self.play_proc.pid), signal.SIGTERM)
 
 					elif not song_bpm:
@@ -320,6 +324,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def end_playing(self):
 		logging.info("ENDING MIDI PLAY ...")
+		self.zyngui.libseq.transportStop(bytes("midi_rec","utf-8"))
 		self.play_proc = None
 		self.current_record=None
 		self.bpm_zgui_ctrl.hide()
@@ -361,7 +366,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	# Implement engine's method
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol=="bpm":
-			self.zyngui.zynseq.setTempo(zctrl.value)
+			self.zyngui.libseq.setTempo(zctrl.value)
 			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
 
 

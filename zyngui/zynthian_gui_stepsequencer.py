@@ -288,8 +288,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			if self.child:
 				self.child.hide()
 			if self.zyngui.libseq.isModified():# and not self.zyngui.libseq.transportGetPlayStatus():
-				print("Saving sequence because hiding")
-				self.save() #TODO: Should only save if dirty
+				self.save()
 
 	# Function to refresh the status widgets
 	#	status: Dictionary containing update data
@@ -563,11 +562,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to start transport
 	def start(self):
-		self.zyngui.libseq.transportStart();
+		self.zyngui.libseq.transportStart(bytes("zynseq","utf-8"));
 
 	# Function to pause transport
 	def pause(self):
-		self.zyngui.libseq.transportStop();
+		self.zyngui.libseq.transportStop(bytes("zynseq","utf-8"));
 
 	# Function to stop and recue transport
 	def stop(self):
@@ -578,13 +577,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to recue transport
 	def recue(self):
-		playState = self.zyngui.libseq.getPlayState()
-		# Workaround issue with jack_transport needing to stop and pause before locate
-		self.zyngui.libseq.transportStop();
-		time.sleep(0.1)
 		self.zyngui.libseq.locate(0);
-		if playState:
-			self.zyngui.libseq.transportStart();
 
 	# Function to select song
 	#	song: Index of song to select

@@ -419,12 +419,12 @@ inline bool PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uin
 		{
 			while(SEQ_EVENT* pEvent = m_mSequences[nSeq].getEvent())
 			{
-				uint32_t nTime = pEvent->time;
-				while(pSchedule->find(nTime) != pSchedule->end())
-					++nTime; // Move event forward until we find a spare time slot
+				uint32_t nEventTime = pEvent->time;
+				while(pSchedule->find(nEventTime) != pSchedule->end())
+					++nEventTime; // Move event forward until we find a spare time slot
 				MIDI_MESSAGE* pNewEvent = new MIDI_MESSAGE(pEvent->msg);
-				(*pSchedule)[nTime] = pNewEvent;
-				//printf("Clock time: %u Scheduling event 0x%x 0x%x 0x%x at %u\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time);
+				(*pSchedule)[nEventTime] = pNewEvent;
+				//printf("Clock time: %u Scheduling event 0x%x 0x%x 0x%x with time %u at %u\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time, nEventTime);
 			}
 		}
 		if(nEventType & 2)

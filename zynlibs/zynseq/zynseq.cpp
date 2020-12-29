@@ -26,12 +26,14 @@
 #include <stdio.h> //provides printf
 #include <stdlib.h> //provides exit
 #include <thread> //provides thread for timer
-#include <chrono> //provides timespan for timer
 #include "patternmanager.h" //provides management of patterns and sequences
 #include "timebase.h" //provides timebase event map
 #include <jack/jack.h> //provides JACK interface
 #include <jack/midiport.h> //provides JACK MIDI interface
 #include "zynseq.h" //exposes library methods as c functions
+#include <set>
+#include <string>
+#include <cstring> //provides strcmp
 
 #define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
 
@@ -51,6 +53,8 @@ bool g_bPlaying = false; // True if any sequence in current song is playing
 uint32_t g_nXruns = 0;
 bool g_bDirty = false; // True if anything has been modified
 uint32_t g_nEditorSequence = getSequence(0,0); // Sequence used by pattern editor which may have some modifications without affecting dirty flag
+std::set<std::string> g_setTransportClient; // Set of timebase clients having requested transport play 
+bool g_bClientPlaying = false; // True if any external client has requested transport play
 
 uint8_t g_nInputChannel = 1; // MIDI input channel (>15 to disable MIDI input)
 
@@ -259,7 +263,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
             updateBBT(pPosition);
             DPRINTF("Set position from frame %u\n", pPosition->frame);
         }
-        g_nTransportStartFrame = jack_frame_time(g_pJackClient) + pPosition->frame;
+        g_nTransportStartFrame = jack_frame_time(g_pJackClient) - pPosition->frame;
         pPosition->valid = JackPositionBBT;
         g_dFramesPerClock = getFramesPerClock(g_dTempo);
         g_bTimebaseChanged = false;
@@ -293,6 +297,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
             bSync = false;
             //!@todo Have added a period to clock position but it should already be offset as pPosition->frame refers to next cycle
             jack_nframes_t nClockPos = g_nFramesToNextClock + pPosition->frame + g_nTransportStartFrame + nFramesInPeriod; // Absolute position of clock within next period
+            //printf("nClockPos: %u g_nFramesToNextClock: %u pPosition->frame: %u g_nTransportStartFrame: %u nFramesInPeriod: %u\n", nClockPos, g_nFramesToNextClock, pPosition->frame, g_nTransportStartFrame, nFramesInPeriod);
             if(!g_nClock)
             {
                 // Clock zero so on beat
@@ -313,7 +318,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
                 if(++g_nBeat > g_fBeatsPerBar)
                 {
                     g_nBeat = 1;
-                    if(g_nSongStatus == PLAYING)
+                    if(g_nSongStatus == PLAYING || g_bClientPlaying)
                         ++g_nBar;
                 }
                 DPRINTF("Beat %u of %f\n", g_nBeat, g_fBeatsPerBar);
@@ -326,8 +331,8 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         {
             //!@todo We stop at end of bar to encourage previous block of code to run but we may prefer to stop more promptly
             DPRINTF("Stopping transport because no sequences playing clock: %u beat: %u tick: %u\n", g_nClock, g_nBeat, g_nTick);
-            transportStop();
-            transportLocate(0);
+            transportStop("zynseq");
+//            transportLocate(0); //!@todo Will this locate adversely affect other clients?
         }
     }
 }
@@ -410,7 +415,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         if((midiEvent.buffer[0] == (MIDI_NOTE_ON | PatternManager::getPatternManager()->getTriggerChannel())) && midiEvent.buffer[2])
         {
             if(getPlayState(PatternManager::getPatternManager()->trigger(midiEvent.buffer[1])) != STOPPED)
-                transportStart();
+                transportStart("zynseq");
         }
         // Handle MIDI Note On events for programming patterns from MIDI input
         if(PatternManager::getPatternManager()->getCurrentSong() == 0 && g_nInputChannel < 16 && (midiEvent.buffer[0] == (MIDI_NOTE_ON | g_nInputChannel)) && midiEvent.buffer[2])
@@ -561,7 +566,7 @@ bool init(bool bTimebaseMaster)
     
     selectSong(1);
     
-    transportStop();
+    transportStop("zynseq");
     transportLocate(0);
     return true; //!@todo If library loaded and initialised by Python then methods called too early (soon) it segfaults
 }
@@ -989,7 +994,7 @@ void setPlayState(uint32_t sequence, uint8_t state)
 //            state = PLAYING;
             PatternManager::getPatternManager()->setSequencePlayState(sequence, state);
             setTransportToStartOfBar();
-            transportStart();
+            transportStart("zynseq");
             return;
         }
         else if(state == STOPPING)
@@ -1184,7 +1189,7 @@ void setSongPosition(uint32_t pos)
     PatternManager::getPatternManager()->setSongPosition(pos);
     g_nSongPosition = pos;
     //!@todo Update g_pNextTimebaseEvent
-
+    transportLocate(pos * g_dFramesPerClock);
 }
 
 void setTransportToStartOfBar()
@@ -1294,23 +1299,35 @@ void transportReleaseTimebase()
     jack_release_timebase(g_pJackClient);
 }
 
-void transportStart()
+void transportStart(const char* client)
 {
-    jack_transport_start(g_pJackClient);
+    if(strcmp("zynseq", client))
+    {
+        // Not zynseq so flag other client(s) playing
+        g_bClientPlaying = true;
+        g_setTransportClient.emplace(client);
+    }
+    jack_transport_start(g_pJackClient); //!@todo Should we check if transport already running?
 }
 
-void transportStop()
+void transportStop(const char* client)
 {
-    jack_transport_stop(g_pJackClient);
-    stopSong();
+    auto itClient = g_setTransportClient.find(std::string(client));
+    if(itClient != g_setTransportClient.end())
+        g_setTransportClient.erase(itClient);
+    g_bClientPlaying = (g_setTransportClient.size() != 0);
+    if(!g_bClientPlaying && !g_bPlaying)
+        jack_transport_stop(g_pJackClient);
+//    if(strcmp(client, "zynseq") == 0)
+//        stopSong();
 }
 
-void transportToggle()
+void transportToggle(const char* client)
 {
     if(transportGetPlayStatus() == JackTransportRolling)
-        transportStop();
+        transportStop(client);
     else
-        transportStart();
+        transportStart(client);
 }
 
 uint8_t transportGetPlayStatus()
