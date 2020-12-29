@@ -601,16 +601,19 @@ bool transportRequestTimebase();
 void transportReleaseTimebase();
 
 /** @brief  Start transport rolling
+*   @param  client Name of client requesting change
 **/
-void transportStart();
+void transportStart(const char* client);
 
 /** @brief  Stop transport rolling
+*   @param  client Name of client requesting change
 */
-void transportStop();
+void transportStop(const char* client);
 
 /** @brief  Toggle between play and stop state
+*   @param  client Name of client requesting change
 */
-void transportToggle();
+void transportToggle(const char* client);
 
 /** @brief  Get play status
 *   @retval uint8_t Status [JackTransportStopped | JackTransportRolling | JackTransportStarting]
