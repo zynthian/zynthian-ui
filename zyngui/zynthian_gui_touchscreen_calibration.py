@@ -146,11 +146,20 @@ class zynthian_gui_touchscreen_calibration:
 		if self.index < 4:
 			self.touch_points[self.index].x = event.x
 			self.touch_points[self.index].y = event.y
-			print(self.display_points[self.index].x, self.display_points[self.index].y, event.x, event.y)
 			self.index += 1
 		if self.index > 3:
-			if self.calcCalibrationMatrix():
-				self.setCalibration(self.device_name, self.transform_matrix, True)
+			# Get average coords for corners of touch rectangle
+			touch_min_x = (self.touch_points[0].x + self.touch_points[3].x) / 2
+			touch_max_x = (self.touch_points[1].x + self.touch_points[2].x) / 2
+			touch_min_y = (self.touch_points[0].y + self.touch_points[1].y) / 2
+			touch_max_y = (self.touch_points[2].y + self.touch_points[3].y) / 2
+			touch_width = abs(touch_max_x - touch_min_x)
+			touch_height = abs(touch_max_y - touch_min_y)
+			self.transform_matrix[0] = touch_width / (self.width * 0.7)
+			self.transform_matrix[4] = touch_height / (self.height * 0.7)
+			self.transform_matrix[2] = ((self.width * 0.15) - touch_min_x) / self.width
+			self.transform_matrix[5] = ((self.height * 0.15) - touch_min_y) / self.height
+			self.setCalibration(self.device_name, self.transform_matrix, True)
 			#TODO: Allow user to check calibration
 			self.hide()
 		self.drawCross()
@@ -241,41 +250,6 @@ class zynthian_gui_touchscreen_calibration:
 		return matrix
 
 
-	# 	Calculate calibration matrix from previously populated display and touch points
-	#	Returns: True on success
-	def calcCalibrationMatrix(self):
-		# Get average coords for corners of touch rectangle
-		touch_min_x = (self.touch_points[0].x + self.touch_points[3].x) / 2
-		touch_max_x = (self.touch_points[1].x + self.touch_points[2].x) / 2
-		touch_min_y = (self.touch_points[0].y + self.touch_points[1].y) / 2
-		touch_max_y = (self.touch_points[2].y + self.touch_points[3].y) / 2
-		touch_width = touch_max_x - touch_min_x
-		touch_height = touch_max_y - touch_min_y
-		self.transform_matrix[0] = touch_width / self.width
-		self.transform_matrix[4] = touch_height / self.height
-		self.transform_matrix[2] = touch_min_x / self.width
-		self.transform_matrix[5] = touch_min_y / self.height
-		return True
-		
-		divider = (((self.touch_points[0].x - self.touch_points[2].x) * (self.touch_points[1].y - self.touch_points[2].y)) -
-			((self.touch_points[1].x - self.touch_points[2].x) * (self.touch_points[0].y - self.touch_points[2].y)))
-		if divider == 0:
-			return False
-		self.transform_matrix[0] = (((self.display_points[0].x - self.display_points[2].x) * (self.touch_points[1].y - self.touch_points[2].y) - 
-			(self.display_points[1].x - self.display_points[2].x) * (self.touch_points[0].y - self.touch_points[2].y)) / divider)
-		self.transform_matrix[1] = (((self.touch_points[0].x - self.touch_points[2].x) * (self.display_points[1].x - self.display_points[2].x) - 
-			(self.display_points[0].x - self.display_points[2].x) * (self.touch_points[1].x - self.touch_points[2].x)) / divider)
-		self.transform_matrix[2] = (((self.touch_points[2].x * self.display_points[1].x - self.touch_points[1].x * self.display_points[2].x) * self.touch_points[0].y +
-			(self.touch_points[0].x * self.display_points[2].x - self.touch_points[2].x * self.display_points[0].x) * self.touch_points[1].y +
-			(self.touch_points[1].x * self.display_points[0].x - self.touch_points[0].x * self.display_points[1].x) * self.touch_points[2].y) / divider)
-		self.transform_matrix[3] = ((((self.display_points[0].y - self.display_points[2].y) * (self.touch_points[1].y - self.touch_points[2].y)) - 
-			((self.display_points[1].y - self.display_points[2].y) * (self.touch_points[0].y - self.touch_points[2].y))) / divider)
-		self.transform_matrix[4] = ((((self.touch_points[0].x - self.touch_points[2].x) * (self.display_points[1].y - self.display_points[2].y)) - 
-			((self.display_points[0].y - self.display_points[2].y) * (self.touch_points[1].x - self.touch_points[2].x))) / divider)
-		self.transform_matrix[5] = (((self.touch_points[2].x * self.display_points[1].y - self.touch_points[1].x * self.display_points[2].y) * self.touch_points[0].y +
-			(self.touch_points[0].x * self.display_points[2].y - self.touch_points[2].x * self.display_points[0].y) * self.touch_points[1].y +
-			(self.touch_points[1].x * self.display_points[0].y - self.touch_points[0].x * self.display_points[1].y) * self.touch_points[2].y) / divider)
-		return True
 
 
 	#	Apply screen calibration
