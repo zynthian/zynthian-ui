@@ -97,13 +97,11 @@ class zynthian_gui_touchscreen_calibration:
 		# Coordinate transform matrix
 		self.transform_matrix = [1,0,0, 0,1,0, 0,0,1]
 		self.identify_matrix = [1,0,0, 0,1,0, 0,0,1]
-		self.display_points = [point(self.width * 0.15, self.height * 0.15), point(self.width * 0.85, self.height * 0.15), point(self.width * 0.85, self.height * 0.85), point(self.width * 0.15, self.height * 0.85)]
-		self.touch_points = [point(), point(), point(), point()]
-		self.touch_min = point()
-		self.touch_max = point()
-
+		self.display_points = [point(self.width * 0.15, self.height * 0.15), point(self.width * 0.85, self.height * 0.85)]
+		self.touch_points = [point(), point()]
+		
 		# Crosshair
-		self.index = 0 # Index of current calibration point (0=NW, 1=NE, 2=SE, 3=SW)
+		self.index = 0 # Index of current calibration point (0=NW, 1=SE)
 		self.crosshair_size = self.width / 20 # half width of cross hairs
 		self.crosshair_circle = self.canvas.create_oval(
 			self.display_points[self.index].x - self.crosshair_size * 0.8, self.display_points[self.index].y - self.crosshair_size * 0.8,
@@ -154,7 +152,7 @@ class zynthian_gui_touchscreen_calibration:
 				self.canvas.itemconfig(self.device_text, text=self.device_name)
 			else:
 				return
-		if self.index < 4:
+		if self.index < 2:
 			if self.index > 0:
 				# Debounce
 				if abs(event.x - self.touch_points[self.index - 1].x) < self.debounce and abs(event.y - self.touch_points[self.index - 1].y) < self.debounce:
@@ -163,23 +161,25 @@ class zynthian_gui_touchscreen_calibration:
 			self.touch_points[self.index].x = event.x
 			self.touch_points[self.index].y = event.y
 			self.index += 1
-		if self.index > 3:
+		if self.index > 1:
 			# Get average coords for corners of touch rectangle
-			touch_min_x = (self.touch_points[0].x + self.touch_points[3].x) / 2
-			touch_max_x = (self.touch_points[1].x + self.touch_points[2].x) / 2
-			touch_min_y = (self.touch_points[0].y + self.touch_points[1].y) / 2
-			touch_max_y = (self.touch_points[2].y + self.touch_points[3].y) / 2
+			min_x = self.touch_points[0].x
+			max_x = self.touch_points[1].x
+			min_y = self.touch_points[0].y
+			max_y = self.touch_points[1].y
+			if min_x == max_x or min_y == max_y:
+				return #TODO: Check if this condition causes issue elsewhere
 			# Check for rotation
-			a = self.width * 0.7 / (touch_max_x - touch_min_x)
-			if touch_min_x < touch_max_x:
-				c = (self.width * 0.15 - a * touch_min_x) / self.width
+			a = self.width * 0.7 / (max_x - min_x)
+			if min_x < max_x:
+				c = (self.width * 0.15 - a * min_x) / self.width
 			else:
-				c = (self.width * 0.15 - a * touch_min_x) / self.width
-			e = self.height * 0.7 / (touch_max_y - touch_min_y)
-			if touch_min_y < touch_max_y:
-				f = (self.height * 0.15 - e * touch_min_y) / self.height
+				c = (self.width * 0.15 - a * min_x) / self.width
+			e = self.height * 0.7 / (max_y - min_y)
+			if min_y < max_y:
+				f = (self.height * 0.15 - e * min_y) / self.height
 			else:
-				f = (self.height * 0.15 - e * touch_min_y) / self.height
+				f = (self.height * 0.15 - e * min_y) / self.height
 			self.transform_matrix[0] = a
 			self.transform_matrix[2] = c
 			self.transform_matrix[4] = e
@@ -187,12 +187,13 @@ class zynthian_gui_touchscreen_calibration:
 			self.setCalibration(self.device_name, self.transform_matrix, True)
 			#TODO: Allow user to check calibration
 			self.hide()
+			return
 		self.drawCross()
 
 	
 	#	Draws the crosshairs for touch registration for current index (0..3)
 	def drawCross(self):
-		if self.index > 3:
+		if self.index > 1:
 			return
 		self.canvas.coords(self.crosshair_vertical,
 			self.display_points[self.index].x, self.display_points[self.index].y - self.crosshair_size,
