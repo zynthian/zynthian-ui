@@ -79,7 +79,7 @@ class zynthian_gui_touchscreen_calibration:
 			self.height / 2 - zynthian_gui_config.font_size * 2,
 			font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size,"normal"),
 			fill="white",
-			text="Touch screen to detect and start calibration")
+			text="Touch to start calibration")
 
 		# Countdown timer
 		self.countdown_text = self.canvas.create_text(self.width / 2,
@@ -139,7 +139,7 @@ class zynthian_gui_touchscreen_calibration:
 				else:
 					self.setCalibration(device, self.devices[device]["ctm"]) # Reset calibration of other devices that we changed during detection
 			if self.device_name:
-				self.canvas.itemconfig(self.instruction_text, text="Calibrating %s\nTouch each crosshair. Measurement taken when released"%(self.device_name))
+				self.canvas.itemconfig(self.instruction_text, text="%s\nTouch (drag and) release on each crosshair"%(self.device_name))
 				self.index = 0
 				self.drawCross()
 			return
@@ -153,12 +153,21 @@ class zynthian_gui_touchscreen_calibration:
 			touch_max_x = (self.touch_points[1].x + self.touch_points[2].x) / 2
 			touch_min_y = (self.touch_points[0].y + self.touch_points[1].y) / 2
 			touch_max_y = (self.touch_points[2].y + self.touch_points[3].y) / 2
-			touch_width = abs(touch_max_x - touch_min_x)
-			touch_height = abs(touch_max_y - touch_min_y)
-			self.transform_matrix[0] = touch_width / (self.width * 0.7)
-			self.transform_matrix[4] = touch_height / (self.height * 0.7)
-			self.transform_matrix[2] = ((self.width * 0.15) - touch_min_x) / self.width
-			self.transform_matrix[5] = ((self.height * 0.15) - touch_min_y) / self.height
+			# Check for rotation
+			a = self.width * 0.7 / (touch_max_x - touch_min_x)
+			if touch_min_x < touch_max_x:
+				c = (self.width * 0.15 - a * touch_min_x) / self.width
+			else:
+				c = (self.width * 0.15 - a * touch_min_x) / self.width
+			e = self.height * 0.7 / (touch_max_y - touch_min_y)
+			if touch_min_y < touch_max_y:
+				f = (self.height * 0.15 - e * touch_min_y) / self.height
+			else:
+				f = (self.height * 0.15 - e * touch_min_y) / self.height
+			self.transform_matrix[0] = a
+			self.transform_matrix[2] = c
+			self.transform_matrix[4] = e
+			self.transform_matrix[5] = f
 			self.setCalibration(self.device_name, self.transform_matrix, True)
 			#TODO: Allow user to check calibration
 			self.hide()
@@ -254,10 +263,21 @@ class zynthian_gui_touchscreen_calibration:
 
 	#	Apply screen calibration
 	#	device: Name or ID of device to calibrate
-	#	matrix: Transorm matrix as 9 element array (3x3)
+	#	matrix: Transform matrix as 9 element array (3x3)
 	#	write_file: True to write configuration to file (default: false)
 	def setCalibration(self, device, matrix, write_file=False):
 		try:
+			logging.debug("Touchscreen calibration %s matrix [%f %f %f %f %f %f %f %f %f]", 
+				device,
+				matrix[0],
+				matrix[1],
+				matrix[2],
+				matrix[3],
+				matrix[4],
+				matrix[5],
+				matrix[6],
+				matrix[7],
+				matrix[8])
 			proc = run(["xinput", "--set-prop", device, "Coordinate Transformation Matrix",
 				str(matrix[0]), str(matrix[1]), str(matrix[2]), str(matrix[3]), str(matrix[4]), str(matrix[5]), str(matrix[6]), str(matrix[7]), str(matrix[8])])
 			if write_file:
