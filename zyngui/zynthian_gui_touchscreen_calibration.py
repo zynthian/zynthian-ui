@@ -57,6 +57,7 @@ class zynthian_gui_touchscreen_calibration:
 		self.zyngui=zynthian_gui_config.zyngui
 		self.height = zynthian_gui_config.display_height
 		self.width = zynthian_gui_config.display_width
+		self.debounce = 0.1 * self.height
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
@@ -79,15 +80,19 @@ class zynthian_gui_touchscreen_calibration:
 			self.height / 2 - zynthian_gui_config.font_size * 2,
 			font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size,"normal"),
 			fill="white",
-			text="Touch to start calibration")
+			text="Touch each crosshair")
+		self.device_text = self.canvas.create_text(self.width / 2,
+			self.height - zynthian_gui_config.font_size * 2,
+			font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size,"normal"),
+			fill="white")
 
 		# Countdown timer
 		self.countdown_text = self.canvas.create_text(self.width / 2,
 			self.height / 2,
 			font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size,"normal"),
-			fill="red",
-			text="Closing in 5s")
+			fill="red")
 		self.timer = Timer(interval=1, function=self.onTimer)
+		self.timeout = 7 # Period in seconds after last touch until sceen closes with no change
 		
 		# Coordinate transform matrix
 		self.transform_matrix = [1,0,0, 0,1,0, 0,0,1]
@@ -100,16 +105,23 @@ class zynthian_gui_touchscreen_calibration:
 		# Crosshair
 		self.index = 0 # Index of current calibration point (0=NW, 1=NE, 2=SE, 3=SW)
 		self.crosshair_size = self.width / 20 # half width of cross hairs
+		self.crosshair_circle = self.canvas.create_oval(
+			self.display_points[self.index].x - self.crosshair_size * 0.8, self.display_points[self.index].y - self.crosshair_size * 0.8,
+			self.display_points[self.index].x + self.crosshair_size * 0.8, self.display_points[self.index].y + self.crosshair_size * 0.8,
+			width=3, outline="white", tags="crosshairs")
+		self.crosshair_inner_circle = self.canvas.create_oval(
+			self.display_points[self.index].x - self.crosshair_size * 0.2, self.display_points[self.index].y - self.crosshair_size * 0.2,
+			self.display_points[self.index].x + self.crosshair_size * 0.2, self.display_points[self.index].y + self.crosshair_size * 0.2,
+			width=3, outline="white", tags="crosshairs")
 		self.crosshair_vertical = self.canvas.create_line(
 			self.display_points[self.index].x, self.display_points[self.index].y - self.crosshair_size,
 			self.display_points[self.index].x, self.display_points[self.index].y - self.crosshair_size,
-			fill="white", state=tkinter.HIDDEN, tags="crosshairs")
+			width=3, fill="white", tags="crosshairs")
 		self.crosshair_horizontal = self.canvas.create_line(
 			self.display_points[self.index].x - self.crosshair_size, self.display_points[self.index].y,
 			self.display_points[self.index].x + self.crosshair_size, self.display_points[self.index].y,
-			fill="white", state=tkinter.HIDDEN, tags="crosshairs")
-		#TODO: Add circle to crosshairs?
-
+			width=3, fill="white", tags="crosshairs")
+		
 		self.canvas.pack()
 		self.device_name = None # Name of selected device
 		self.devices = {} # Dictionary of device properties indexed by device name
@@ -118,19 +130,19 @@ class zynthian_gui_touchscreen_calibration:
 	#	Handle touch event
 	#	event: Event including x,y coordinates
 	def onPress(self, event):
-		self.countdown = 5 # Reset countdown timer when screen touched
+		self.countdown = self.timeout # Reset countdown timer when screen touched
 		if not self.device_name:
 			self.index = 0
 			self.detectTouchscreens()
 			for device in self.devices:
+				# Reset all calibration to increase chance of first press triggering and identifying the device
 				self.setCalibration(device, self.identify_matrix)
-				#TODO: Reset any devices that we don't use back to their previous state
-	
+
 	
 	#	Handle touch release event
 	#	event: Event including x,y coordinates
 	def onRelease(self, event):
-		self.countdown = 5 # Reset countdown timer when screen touched
+		self.countdown = self.timeout # Reset countdown timer when screen touched
 		if not self.device_name:
 			for device in self.devices:
 				last_touch = self.getLastTouch(device)
@@ -139,11 +151,15 @@ class zynthian_gui_touchscreen_calibration:
 				else:
 					self.setCalibration(device, self.devices[device]["ctm"]) # Reset calibration of other devices that we changed during detection
 			if self.device_name:
-				self.canvas.itemconfig(self.instruction_text, text="%s\nTouch (drag and) release on each crosshair"%(self.device_name))
-				self.index = 0
-				self.drawCross()
-			return
+				self.canvas.itemconfig(self.device_text, text=self.device_name)
+			else:
+				return
 		if self.index < 4:
+			if self.index > 0:
+				# Debounce
+				if abs(event.x - self.touch_points[self.index - 1].x) < self.debounce and abs(event.y - self.touch_points[self.index - 1].y) < self.debounce:
+					return
+			# More points to acquire
 			self.touch_points[self.index].x = event.x
 			self.touch_points[self.index].y = event.y
 			self.index += 1
@@ -184,6 +200,12 @@ class zynthian_gui_touchscreen_calibration:
 		self.canvas.coords(self.crosshair_horizontal,
 			self.display_points[self.index].x - self.crosshair_size, self.display_points[self.index].y,
 			self.display_points[self.index].x + self.crosshair_size, self.display_points[self.index].y)
+		self.canvas.coords(self.crosshair_circle,
+			self.display_points[self.index].x - self.crosshair_size * 0.8, self.display_points[self.index].y - self.crosshair_size * 0.8,
+			self.display_points[self.index].x + self.crosshair_size * 0.8, self.display_points[self.index].y + self.crosshair_size * 0.8)
+		self.canvas.coords(self.crosshair_inner_circle,
+			self.display_points[self.index].x - self.crosshair_size * 0.2, self.display_points[self.index].y - self.crosshair_size * 0.2,
+			self.display_points[self.index].x + self.crosshair_size * 0.2, self.display_points[self.index].y + self.crosshair_size * 0.2)
 		self.canvas.itemconfig("crosshairs", state=tkinter.NORMAL)
 
 
@@ -202,6 +224,7 @@ class zynthian_gui_touchscreen_calibration:
 			logging.warning("Failed to detect touchscreen last touch")
 			return point(0,0)
 		return point(x,y)
+
 
 	#	Populate list of touchscreens with relevant properties
 	def detectTouchscreens(self):
@@ -259,8 +282,6 @@ class zynthian_gui_touchscreen_calibration:
 		return matrix
 
 
-
-
 	#	Apply screen calibration
 	#	device: Name or ID of device to calibrate
 	#	matrix: Transform matrix as 9 element array (3x3)
@@ -296,8 +317,6 @@ class zynthian_gui_touchscreen_calibration:
 	#	Hide display
 	def hide(self):
 		if self.shown:
-			self.canvas.itemconfig("crosshairs", state=tkinter.HIDDEN)
-			self.canvas.itemconfig(self.instruction_text, text="Touch screen to detect and start calibration")
 			self.shown=False
 			self.timer.cancel()
 			self.main_frame.grid_forget()
@@ -309,9 +328,11 @@ class zynthian_gui_touchscreen_calibration:
 		if not self.shown:
 			self.shown=True
 			self.device_name = None
-			self.canvas.itemconfig(self.countdown_text, text="Closing in 5s")
-			self.countdown= 5
+			self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.timeout))
+			self.canvas.itemconfig(self.device_text, text="")
+			self.countdown = self.timeout
 			self.index = 0
+			self.drawCross()
 			self.main_frame.grid()
 			self.onTimer()
 
@@ -322,6 +343,9 @@ class zynthian_gui_touchscreen_calibration:
 			self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.countdown))
 			if self.countdown <= 0:
 				self.hide()
+				if self.device_name:
+					# Timeout so restore previous config
+					self.setCalibration(self.device_name, self.devices[self.device_name]["ctm"])
 			else:
 				self.timer = Timer(interval=1, function=self.onTimer)
 				self.timer.start()
@@ -348,7 +372,5 @@ class zynthian_gui_touchscreen_calibration:
 	def back_action(self):
 		self.hide()
 		return self.zyngui.active_screen
-
-
 
 #-------------------------------------------------------------------------------
