@@ -29,6 +29,7 @@ import tkinter.font as tkFont
 from PIL import Image, ImageTk
 from threading import Timer
 from subprocess import run,PIPE
+from datetime import datetime # Only to timestamp config file updates
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -63,7 +64,8 @@ class zynthian_gui_touchscreen_calibration:
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
 			width = self.width,
 			height = self.height,
-			bg = zynthian_gui_config.color_bg)
+			bg = zynthian_gui_config.color_bg,
+			cursor="none")
 
 		# Canvas
 		self.canvas = tkinter.Canvas(self.main_frame,
@@ -303,12 +305,32 @@ class zynthian_gui_touchscreen_calibration:
 			proc = run(["xinput", "--set-prop", device, "Coordinate Transformation Matrix",
 				str(matrix[0]), str(matrix[1]), str(matrix[2]), str(matrix[3]), str(matrix[4]), str(matrix[5]), str(matrix[6]), str(matrix[7]), str(matrix[8])])
 			if write_file:
-				# Create config file
-				f = open("/etc/X11/xorg.conf.d/99-calibration.conf", "w")
-				f.write('Section "InputClass"\n')
+				# Update config file
+				try:
+					f = open("/etc/X11/xorg.conf.d/99-calibration.conf", "r")
+					config = f.read()
+					section_start = config.find('Section "InputClass"')
+					while section_start >= 0:
+						section_end = config.find('EndSection', section_start)
+						if section_end > section_start and config.find('MatchProduct "%s'%(device), section_start, section_end) > section_start:
+							tm_start = config.find('Option "TransformationMatrix"', section_start, section_end)
+							tm_end = config.find('\n', tm_start, section_end)
+							if tm_start > section_start and tm_end > tm_start:
+								f = open("/etc/X11/xorg.conf.d/99-calibration.conf", "w")
+								f.write(config[:tm_start + 29])
+								f.write(' "%f %f %f %f %f %f %f %f %f"' % (matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8]))
+								f.write(' # updated %s'%(datetime.now()))
+								f.write(config[tm_end:])
+								f.close()
+								return
+				except:
+					pass # File probably does not yet exist
+				# If we got here then we need to append this device to config
+				f = open("/etc/X11/xorg.conf.d/99-calibration.conf", "a")
+				f.write('\nSection "InputClass" # Created %s\n'%(datetime.now()))
 				f.write('	Identifier "calibration"\n')
 				f.write('	MatchProduct "%s"\n'%(device))
-				f.write('	Option "TransformationMatrix" "%f %f %f %f %f %f 0 0 1"\n' % (matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]))
+				f.write('	Option "TransformationMatrix" "%f %f %f %f %f %f %f %f %f"\n' % (matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8]))
 				f.write('EndSection\n')
 				f.close()
 		except Exception as e:
