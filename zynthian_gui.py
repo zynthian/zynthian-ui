@@ -328,7 +328,7 @@ class zynthian_gui:
 		self.screens['zs3_options'] = zynthian_gui_zs3_options()
 		self.screens['main'] = zynthian_gui_main()
 		self.screens['admin'] = zynthian_gui_admin()
-		self.screens['touchscreen_clibration'] = zynthian_gui_touchscreen_calibration()
+		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
 
 		# Create UI Apps Screens
 		self.screens['alsa_mixer'] = self.screens['control']
@@ -492,7 +492,7 @@ class zynthian_gui:
 
 
 	def calibrate_touchscreen(self):
-		self.show_modal('touchscreen_clibration')
+		self.show_modal('touchscreen_calibration')
 
 
 	def load_snapshot(self):
