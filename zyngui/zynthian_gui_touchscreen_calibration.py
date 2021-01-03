@@ -54,11 +54,11 @@ class zynthian_gui_touchscreen_calibration:
 
 	# Function to initialise class
 	def __init__(self):
-		self.shown=False
+		self.shown = False
 		self.zyngui=zynthian_gui_config.zyngui
 		self.height = zynthian_gui_config.display_height
 		self.width = zynthian_gui_config.display_width
-		self.debounce = 0.5 * self.height # Touches cannot be closer than this
+		self.debounce = 0.5 * self.height # Clicks cannot be closer than this
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
@@ -96,11 +96,10 @@ class zynthian_gui_touchscreen_calibration:
 		self.pressed = False # True if screen pressed
 		
 		# Coordinate transform matrix
-		self.identify_matrix = [1,0,0, 0,1,0, 0,0,1]
 		self.display_points = [point(self.width * 0.15, self.height * 0.15), point(self.width * 0.85, self.height * 0.85)]
-		self.touch_points = [point(), point()]
+		self.touch_points = [point(), point()] # List of touch point results
 		
-		# Crosshair
+		# Crosshair target
 		self.index = 0 # Index of current calibration point (0=NW, 1=SE)
 		self.crosshair_size = self.width / 20 # half width of cross hairs
 		self.crosshair_circle = self.canvas.create_oval(
@@ -119,11 +118,10 @@ class zynthian_gui_touchscreen_calibration:
 			self.display_points[self.index].x - self.crosshair_size, self.display_points[self.index].y,
 			self.display_points[self.index].x + self.crosshair_size, self.display_points[self.index].y,
 			width=3, fill="white", tags=("crosshairs","crosshairs_lines"))
-		
 		self.canvas.pack()
-		self.device_name = None # Name of selected device
-		self.ctm = [0.0 for i in range(9)] # Coordinate Transformation Matrix
 
+		self.device_name = None # Name of selected device
+		
 
 	#	Run xinput
 	#	args: List of arguments to pass to xinput
@@ -135,7 +133,7 @@ class zynthian_gui_touchscreen_calibration:
 			universal_newlines=True).stdout
 
 
-	#	Tread waiting for first touch to detect touch interface
+	#	Thread waiting for first touch to detect touch interface
 	def detectDevice(self):
 		# Populate list of absolute x/y devices
 		devices = []
@@ -144,6 +142,7 @@ class zynthian_gui_touchscreen_calibration:
 				device = InputDevice("/dev/input/%s" % (filename))
 				if ecodes.EV_ABS in device.capabilities().keys():
 					devices.append(device)
+
 		# Loop until we get a touch button event or the view hides
 		running = True
 		while running and self.shown:
@@ -175,12 +174,17 @@ class zynthian_gui_touchscreen_calibration:
 		node_end = props.find('"', node_start + 1)
 		if node_start < 0 or node_end < 0:
 			return
-		self.ctm = [float(x) for x in props[ctm_start:ctm_end].split(', ')]
-		
-	
+		# Store CTM to allow restore if we cancel calibration
+		self.ctm = []
+		for value in props[ctm_start:ctm_end].split(", "):
+			self.ctm.append(float(value))
+		self.node = props[node_start:node_end] # Get node name to allow mapping between evdev and xinput names
+		self.setCalibration(name, [1,0,0,0,1,0,0,0,1]) # Reset calibration to allow absolute acquisition
+
+
 	#	Handle touch press event
-	#	event: Event including x,y coordinates
-	def onPress(self, event):
+	#	event: Event including x,y coordinates (optional)
+	def onPress(self, event=None):
 		#TODO: First calibration does not stop countdown
 		self.canvas.itemconfig("crosshairs_lines", fill="red")
 		self.canvas.itemconfig("crosshairs_circles", outline="red")
@@ -195,7 +199,7 @@ class zynthian_gui_touchscreen_calibration:
 		self.pressed = False
 		self.countdown = self.timeout
 		if not self.device_name:
-				return
+			return
 		if self.index < 2:
 			# More points to acquire
 			self.touch_points[self.index].x = event.x
@@ -211,8 +215,10 @@ class zynthian_gui_touchscreen_calibration:
 				min_y = self.touch_points[0].y
 				max_y = self.touch_points[1].y
 				if min_x == max_x or min_y == max_y:
-					return #TODO: Check if this condition causes issue elsewhere
-				# Check for rotation
+					self.index = 0
+					self.drawCross()
+					return
+				# Acquisition complete - calculate calibration data
 				a = self.width * 0.7 / (max_x - min_x)
 				if min_x < max_x:
 					c = (self.width * 0.15 - a * min_x) / self.width
@@ -225,12 +231,12 @@ class zynthian_gui_touchscreen_calibration:
 					f = (self.height * 0.15 - e * min_y) / self.height
 				self.setCalibration(self.device_name, [a, 0, c, 0, e, f, 0, 0, 1], True)
 				#TODO: Allow user to check calibration
-				self.hide()
+				self.hide(False)
 				return
 		self.drawCross()
 
 	
-	#	Draws the crosshairs for touch registration for current index (0..1)
+	#	Draws the crosshairs for touch registration for current index (0=NW,1=SE)
 	def drawCross(self):
 		if self.index > 1:
 			return
@@ -269,7 +275,7 @@ class zynthian_gui_touchscreen_calibration:
 			self.xinput("--set-prop", device, "Coordinate Transformation Matrix",
 				str(matrix[0]), str(matrix[1]), str(matrix[2]), str(matrix[3]), str(matrix[4]), str(matrix[5]), str(matrix[6]), str(matrix[7]), str(matrix[8]))
 			if write_file:
-				# Update config file
+				# Update exsting config in file
 				try:
 					f = open("/etc/X11/xorg.conf.d/99-calibration.conf", "r")
 					config = f.read()
@@ -298,15 +304,19 @@ class zynthian_gui_touchscreen_calibration:
 				f.write('EndSection\n')
 				f.close()
 		except Exception as e:
-			logging.warning("Failed to set touchscreen calibration", e)
-	
+			logging.warning("Failed to set touchscreen calibration")
+
 
 	#	Hide display
-	def hide(self):
+	#	reset: True to reset calibration (default: True)
+	#	TODO: This sometimes leaves grey blank screen (if something fails)
+	def hide(self, reset=True):
 		if self.shown:
 			self.shown=False
 			self.timer.cancel()
 			self.main_frame.grid_forget()
+			if reset and self.device_name and self.ctm:
+				setCalibration(self.device_name, self.ctm)
 			self.zyngui.show_screen(self.zyngui.active_screen)
 
 
@@ -315,6 +325,7 @@ class zynthian_gui_touchscreen_calibration:
 		if not self.shown:
 			self.shown=True
 			self.device_name = None
+			self.ctm = None
 			self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.timeout))
 			self.canvas.itemconfig(self.device_text, text="")
 			self.countdown = self.timeout
