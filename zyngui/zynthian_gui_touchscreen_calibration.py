@@ -160,6 +160,7 @@ class zynthian_gui_touchscreen_calibration:
 	#	Set the device to configure
 	#	name: Device name
 	def setDevice(self, name):
+		#TODO: The evdev name and xinput name do not necessarily match - we could use evdev to set values
 		self.device_name = name
 		self.canvas.itemconfig(self.device_text, text=name)
 		#TODO: Do we need to set ctm here?
@@ -180,6 +181,7 @@ class zynthian_gui_touchscreen_calibration:
 	#	Handle touch press event
 	#	event: Event including x,y coordinates
 	def onPress(self, event):
+		#TODO: First calibration does not stop countdown
 		self.canvas.itemconfig("crosshairs_lines", fill="red")
 		self.canvas.itemconfig("crosshairs_circles", outline="red")
 		self.pressed = True
@@ -191,6 +193,7 @@ class zynthian_gui_touchscreen_calibration:
 		self.canvas.itemconfig("crosshairs_lines", fill="white")
 		self.canvas.itemconfig("crosshairs_circles", outline="white")
 		self.pressed = False
+		self.countdown = self.timeout
 		if not self.device_name:
 				return
 		if self.index < 2:
