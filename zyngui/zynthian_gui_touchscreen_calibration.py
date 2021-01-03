@@ -120,7 +120,7 @@ class zynthian_gui_touchscreen_calibration:
 			width=3, fill="white", tags=("crosshairs","crosshairs_lines"))
 		self.canvas.pack()
 
-		self.device_name = None # Name of selected device
+		self.device_name = None # libinput name of selected device
 		
 
 	#	Run xinput
@@ -150,36 +150,47 @@ class zynthian_gui_touchscreen_calibration:
 			for device in r: # Iterate through all devices that have triggered events
 				for event in device.read(): # Iterate through all events from each device
 					if event.code == ecodes.BTN_TOUCH: #TODO: Handle other button press - can we use ecode.BTN?
-						self.setDevice(device.name)
-						self.canvas.bind('<Button-1>', self.onPress)
-						self.canvas.bind('<ButtonRelease-1>', self.onRelease)
-						running = False
+						if self.setDevice(device.name, device.path):
+							self.canvas.bind('<Button-1>', self.onPress)
+							self.canvas.bind('<ButtonRelease-1>', self.onRelease)
+							running = False
 
 
 	#	Set the device to configure
-	#	name: Device name
-	def setDevice(self, name):
-		#TODO: The evdev name and xinput name do not necessarily match - we could use evdev to set values
-		self.device_name = name
+	#	name: evdev device name
+	#	path: Path to device, e.g. '/dev/input/event0'
+	#	Returns: True on success
+	def setDevice(self, name, path):
+		# Transform evdev name to libinput name
+		props = None
+		for libinput_name in self.xinput("--list", "--name-only").split("\n"):
+			props_temp = self.xinput('--list-props', libinput_name)
+			if props_temp.find(path) != -1:
+				props = props_temp
+				break
+		if not props:
+			return False
+		self.device_name = libinput_name
 		self.canvas.itemconfig(self.device_text, text=name)
 		#TODO: Do we need to set ctm here?
-		props = self.xinput('--list-props', name)
+		props = self.xinput('--list-props', self.device_name)
 		ctm_start = props.find('Coordinate Transformation Matrix')
 		ctm_end = props.find("\n", ctm_start)
 		if ctm_start < 0 or ctm_end < 0:
-			return
+			return False
 		ctm_start += 40
 		node_start = props.find('Device Node')
 		node_start = props.find('"', node_start)
 		node_end = props.find('"', node_start + 1)
 		if node_start < 0 or node_end < 0:
-			return
+			return False
 		# Store CTM to allow restore if we cancel calibration
 		self.ctm = []
 		for value in props[ctm_start:ctm_end].split(", "):
 			self.ctm.append(float(value))
 		self.node = props[node_start:node_end] # Get node name to allow mapping between evdev and xinput names
-		self.setCalibration(name, [1,0,0,0,1,0,0,0,1]) # Reset calibration to allow absolute acquisition
+		self.setCalibration(self.device_name, [1,0,0,0,1,0,0,0,1]) # Reset calibration to allow absolute acquisition
+		return True
 
 
 	#	Handle touch press event
@@ -256,12 +267,12 @@ class zynthian_gui_touchscreen_calibration:
 
 
 	#	Apply screen calibration
-	#	device: Name or ID of device to calibrate
+	#	device: libinput name or ID of device to calibrate
 	#	matrix: Transform matrix as 9 element array (3x3)
 	#	write_file: True to write configuration to file (default: false)
 	def setCalibration(self, device, matrix, write_file=False):
 		try:
-			logging.debug("Touchscreen calibration %s matrix [%f %f %f %f %f %f %f %f %f]", 
+			logging.debug("Calibration touchscreen '%s' with matrix [%f %f %f %f %f %f %f %f %f]", 
 				device,
 				matrix[0],
 				matrix[1],
@@ -293,6 +304,8 @@ class zynthian_gui_touchscreen_calibration:
 								f.write(config[tm_end:])
 								f.close()
 								return
+						section_start = config.find('Section "InputClass"', section_end)
+						
 				except:
 					pass # File probably does not yet exist
 				# If we got here then we need to append this device to config
@@ -304,7 +317,7 @@ class zynthian_gui_touchscreen_calibration:
 				f.write('EndSection\n')
 				f.close()
 		except Exception as e:
-			logging.warning("Failed to set touchscreen calibration")
+			logging.warning("Failed to set touchscreen calibration", e)
 
 
 	#	Hide display
