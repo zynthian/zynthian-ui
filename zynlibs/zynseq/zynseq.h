@@ -511,14 +511,14 @@ uint32_t getTempoEvent(uint32_t song, uint16_t bar=1, uint16_t tick=0);
 *   @param  bar Bar of song at which to add tempo change
 *   @param  tick Tick within bar at which to add tempo change
 */
-void setTimeSig(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar);
+void addTimeSigEvent(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar);
 
 /** @brief  Get time signature at position within song
 *   @param  song Song index
 *   @param  bar Bar of song at which to time signature
 *   @retval uint16_t Time signature - MSB numerator, LSB denominator
 */
-uint16_t getTimeSig(uint32_t song, uint16_t bar);
+uint16_t getTimeSigEvent(uint32_t song, uint16_t bar);
 
 /** @brief  Get position of playhead within song
 *   @retval uint32_t Position in clock cycles

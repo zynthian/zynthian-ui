@@ -76,7 +76,7 @@ uint32_t g_nTick = 0; // Current tick within bar
 double g_dBarStartTick = 0; // Quantity of ticks from start of song to start of current bar
 jack_nframes_t g_nFramesToNextClock = 0; // Quantity of frames from start of next period to next clock pulse (24 clocks per beat, 1920/24=80 tickst per clock. Depends on tempo and sample rate)
 jack_nframes_t g_nTransportStartFrame = 0; // Quantity of frames from JACK epoch to transport start
-double g_dFramesPerClock;
+double g_dFramesPerClock = 60 * g_nSampleRate / (g_dTempo *  g_dTicksPerBeat) * g_dTicksPerClock;
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
@@ -227,7 +227,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
     }
     */
 
-    // Calculate BBT at start of next period
+    // Calculate BBT at start of next period if transport starting, locating or change in tempo or timebase (although latter is commented out)
     if(bUpdate || g_bTimebaseChanged)
     {
         /*
@@ -283,17 +283,16 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         pPosition->ticks_per_beat = g_dTicksPerBeat;
         pPosition->beats_per_minute = g_dTempo;
         // Loop frame if not playing song
-        if(!g_nBeat && isSongPlaying())
-            pPosition->frame = transportGetLocation(pPosition->bar, pPosition->beat, pPosition->tick); //!@todo Does this work? (yes). Are there any discontinuity or impact on other clients? Can it be optimsed?
+//        if(!g_nBeat && isSongPlaying())
+//            pPosition->frame = transportGetLocation(pPosition->bar, pPosition->beat, pPosition->tick); //!@todo Does this work? (yes). Are there any discontinuity or impact on other clients? Can it be optimsed?
     }
     // Now iterate through clocks in next period, adding any events and handling any timebase changes
     if(transportGetPlayStatus() == JackTransportRolling)
     {
-        //Returning here stops seg fault
         bool bSync = false;
         while(g_nFramesToNextClock < nRemainingFrames)
         {
-            //!@todo I think segfault may be triggered within this while loop but only soon after init
+            //!@todo I think segfault may be triggered within this while loop but only _soon_ after init
             bSync = false;
             //!@todo Have added a period to clock position but it should already be offset as pPosition->frame refers to next cycle
             jack_nframes_t nClockPos = g_nFramesToNextClock + pPosition->frame + g_nTransportStartFrame + nFramesInPeriod; // Absolute position of clock within next period
@@ -530,7 +529,7 @@ bool init(bool bTimebaseMaster)
         fprintf(stderr, "libzynseq failed to start jack client: %d\n", nStatus);
         return false;
     }
-    
+
     // Create input port
     if(!(g_pInputPort = jack_port_register(g_pJackClient, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0)))
     {
@@ -544,6 +543,9 @@ bool init(bool bTimebaseMaster)
         fprintf(stderr, "libzynseq cannot register output port\n");
         return false;
     }
+    
+	g_nSampleRate = jack_get_sample_rate(g_pJackClient);
+	g_dFramesPerClock = getFramesPerClock(g_dTempo);
 
     // Register JACK callbacks
     jack_set_process_callback(g_pJackClient, onJackProcess, 0);
@@ -1099,7 +1101,7 @@ uint32_t getTempoEvent(uint32_t song, uint16_t bar, uint16_t tick)
     return PatternManager::getPatternManager()->getSong(song)->getTempo(bar, tick);
 }
 
-void setTimeSig(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar)
+void addTimeSigEvent(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar)
 {
     if(bar < 1)
         bar = 1;
@@ -1113,19 +1115,19 @@ void setTimeSig(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar)
     g_bDirty = true;
 }
 
-uint16_t getTimeSig(uint32_t song, uint16_t bar)
+uint16_t getTimeSigEvent(uint32_t song, uint16_t bar)
 {
     return PatternManager::getPatternManager()->getSong(song)->getTimeSig(bar);
 }
 
 uint8_t getBeatsPerBar(uint32_t song, uint16_t bar)
 {
-    return getTimeSig(song, bar) >> 8;
+    return getTimeSigEvent(song, bar) >> 8;
 }
 
 uint8_t getBeatType(uint32_t song, uint16_t bar)
 {
-    return getTimeSig(song, bar) & 0xFF;
+    return getTimeSigEvent(song, bar) & 0xFF;
 }
 
 uint32_t getTracks(uint32_t song)

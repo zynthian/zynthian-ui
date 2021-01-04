@@ -235,7 +235,7 @@ class zynthian_gui_songeditor():
 		if self.position == self.selectedCell[0]:
 			self.libseq.setTempo(value)
 		#TODO: Need to use measure + tick to set tempo - and all other song timebase operations
-		self.libseq.addTempo(self.song, value, self.selectedCell[0] * self.clocksPerDivision)
+		self.libseq.addTempoEvent(self.song, value, self.selectedCell[0] * self.clocksPerDivision)
 		self.redraw_pending = 1
 
 	# Function to get group of selected track
