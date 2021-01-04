@@ -301,6 +301,7 @@ class zynthian_gui_touchscreen_calibration:
 				str(matrix[0]), str(matrix[1]), str(matrix[2]), str(matrix[3]), str(matrix[4]), str(matrix[5]), str(matrix[6]), str(matrix[7]), str(matrix[8]))
 			if write_file:
 				# Update exsting config in file
+				"""
 				try:
 					f = open("/etc/X11/xorg.conf.d/99-calibration.conf", "r")
 					config = f.read()
@@ -319,17 +320,27 @@ class zynthian_gui_touchscreen_calibration:
 								f.close()
 								return
 						section_start = config.find('Section "InputClass"', section_end)
-						
 				except:
 					pass # File probably does not yet exist
+				"""
 				# If we got here then we need to append this device to config
-				f = open("/etc/X11/xorg.conf.d/99-calibration.conf", "a")
-				f.write('\nSection "InputClass" # Created %s\n'%(datetime.now()))
-				f.write('	Identifier "calibration"\n')
-				f.write('	MatchProduct "%s"\n'%(device))
-				f.write('	Option "TransformationMatrix" "%f %f %f %f %f %f %f %f %f"\n' % (matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8]))
-				f.write('EndSection\n')
-				f.close()
+				# For the record it is with deep reservation that I code this duplicate writing of files - I was only follwing orders!
+				try:
+					os.mkdir(os.environ.get("ZYNTHIAN_CONFIG_DIR") + "/touchscreen/")
+				except:
+					pass # directory already exists
+				with open(os.environ.get("ZYNTHIAN_CONFIG_DIR") + "/touchscreen/" + os.environ.get("DISPLAY_NAME"), "w") as f:
+					f.write('Section "InputClass" # Created %s\n'%(datetime.now()))
+					f.write('	Identifier "calibration"\n')
+					f.write('	MatchProduct "%s"\n'%(device))
+					f.write('	Option "TransformationMatrix" "%f %f %f %f %f %f %f %f %f"\n' % (matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8]))
+					f.write('EndSection\n')
+				with open("/etc/X11/xorg.conf.d/99-calibration.conf", "w") as f:
+					f.write('Section "InputClass" # Created %s\n'%(datetime.now()))
+					f.write('	Identifier "calibration"\n')
+					f.write('	MatchProduct "%s"\n'%(device))
+					f.write('	Option "TransformationMatrix" "%f %f %f %f %f %f %f %f %f"\n' % (matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8]))
+					f.write('EndSection\n')
 		except Exception as e:
 			logging.warning("Failed to set touchscreen calibration", e)
 
