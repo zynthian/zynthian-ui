@@ -363,6 +363,8 @@ class zynthian_gui_touchscreen_calibration:
 			self.shown=True
 			self.device_name = None
 			self.ctm = None
+			self.canvas.unbind('<Button-1>')
+			self.canvas.unbind('<ButtonRelease-1>')
 			self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.timeout))
 			self.canvas.itemconfig(self.device_text, text="")
 			self.countdown = self.timeout
