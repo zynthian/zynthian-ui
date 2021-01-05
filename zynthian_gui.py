@@ -534,10 +534,11 @@ class zynthian_gui:
 
 
 	def exit_midi_learn_mode(self):
-		if self.midi_learn_mode:
-			self.midi_learn_mode = False
-			self.midi_learn_zctrl = None
-			lib_zyncoder.set_midi_learning_mode(0)
+		self.midi_learn_mode = False
+		self.midi_learn_zctrl = None
+		lib_zyncoder.set_midi_learning_mode(0)
+		self.screens['control'].refresh_midi_bind()
+		self.screens['control'].set_select_path()
 		self.show_active_screen()
 
 
@@ -1031,9 +1032,6 @@ class zynthian_gui:
 				self.show_screen(screen_back)
 
 		elif i==2:
-			# TEST
-			self.init_mpe_zones(0, 2)
-		
 			if self.modal_screen=='snapshot':
 				self.screens['snapshot'].next()
 
