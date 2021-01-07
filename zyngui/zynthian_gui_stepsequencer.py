@@ -739,7 +739,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				self.hideParamEditor()
 				return True
 			if self.child == self.patternEditor:
-				self.showChild(self.song_editor_mode)
+				self.showChild(2) #TODO: Have hardcoded return to zynpad but need to use breadcrumb or last chid or something
 				return True
 			return False
 		elif switch == ENC_SELECT or switch == ENC_LAYER:
@@ -772,22 +772,23 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to register ownsership of switches
 	#	switch: Index of switch [0..3]
 	#	object: Object to register as owner
-	#	type: Press type ['S'=Short, 'B'=Bold, 'L'=Long, Default:'S']
+	#	type: Press type ['S'=Short, 'B'=Bold, 'L'=Long, Default:'S'] Can pass several, e.g. "SB" for both short and bold
 	def registerSwitch(self, switch, object, type='S'):
-		if type == 'S':
-			typeIndex = 0
-		elif type == 'B':
-			typeIndex = 1
-		elif type == 'L':
-			typeIndex = 2
-		else:
-			return
-		index = switch * 3 + typeIndex
-		if index >= len(self.switchOwner):
-			return
-		self.switchOwner[index] = None
-		if self.shown:
-			self.switchOwner[index] = object
+		for t in type:
+			if t == 'S':
+				typeIndex = 0
+			elif t == 'B':
+				typeIndex = 1
+			elif t == 'L':
+				typeIndex = 2
+			else:
+				continue
+			index = switch * 3 + typeIndex
+			if index >= len(self.switchOwner):
+				return
+			self.switchOwner[index] = None
+			if self.shown:
+				self.switchOwner[index] = object
 
 	# Function to unrestister ownership of a switch from an object
 	#	switch: Index of switch [0..3]

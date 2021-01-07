@@ -37,6 +37,7 @@ import tkinter.font as tkFont
 from math import sqrt
 from PIL import Image, ImageTk
 from time import sleep
+from threading import Timer
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -60,8 +61,7 @@ class zynthian_gui_zynpad():
 
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 
-		self.columns = 4
-		self.rows = 4
+		self.columns = 4 # Equal quantity of rows and columns
 		self.selectedPad = 0 # Index of selected pad
 		self.selectedCol = 0
 		self.selectedRow = 0
@@ -80,7 +80,7 @@ class zynthian_gui_zynpad():
 		self.height=zynthian_gui_config.body_height
 		self.selectThickness = 4#1 + int(self.width / 500) # Scale thickness of select border based on screen
 		self.colWidth = self.width / self.columns
-		self.rowHeight = self.height / self.rows
+		self.rowHeight = self.height / self.columns
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(self.parent.main_frame)
@@ -95,6 +95,7 @@ class zynthian_gui_zynpad():
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
 		self.gridCanvas.grid(row=0, column=0)
+		self.gridTimer = Timer(2, self.onGridTimer) # Grid press and hold timer
 
 		# Icons
 		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
@@ -107,7 +108,7 @@ class zynthian_gui_zynpad():
 	def setupEncoders(self):
 		self.parent.registerZyncoder(ENC_BACK, self)
 		self.parent.registerZyncoder(ENC_SELECT, self)
-		self.parent.registerSwitch(ENC_SELECT, self, 'S')
+		self.parent.registerSwitch(ENC_SELECT, self, 'SB')
 
 	# Function to show GUI
 	#   params: Misc parameters
@@ -121,6 +122,7 @@ class zynthian_gui_zynpad():
 		self.parent.addMenu({'Pad mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(self.playModes)-1, 'getValue':self.getSelectedPadMode, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Trigger channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.getTriggerChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tally channel':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':15, 'getValue':self.getTallyChannel, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Quantity of pads':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'getValue':self.getPads, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.libseq.getTempo, 'onChange':self.onMenuChange}}})
 
 	# Function to hide GUI
@@ -167,7 +169,7 @@ class zynthian_gui_zynpad():
 			value = params['max']
 		if menuItem == 'Tempo':
 			self.libseq.setTempo(value)
-		prefix = "%s%d" % (chr(int((self.selectedPad) / self.rows) + 65), (self.selectedPad) % self.rows + 1)
+		prefix = "%s%d" % (chr(int((self.selectedPad) / self.columns) + 65), (self.selectedPad) % self.columns + 1)
 		if menuItem == 'Pad mode':
 			self.libseq.setPlayMode(self.getSequence(self.selectedPad), value)
 			self.drawPad(self.selectedPad)
@@ -182,7 +184,31 @@ class zynthian_gui_zynpad():
 			else:
 				self.setPadTallies(value - 1)
 			return "Channel: %d" % (value)
+		elif menuItem == "Quantity of pads":
+			self.setPads(value)
+			#TODO: Should we avoid removing pads / sequences until we have asserted change?
 		return "%s: %d" % (menuItem, value)
+
+
+	# Function to get quantity of pads
+	def getPads(self):
+		return self.libseq.getTracks(self.song)
+
+
+	# Function to set quantity of pads
+	#	pads: Quantity of pads
+	#	Note: Tracks will be deleted from or added to end of track list as necessary
+	def setPads(self, pads):
+		orig_pads = self.getPads()
+		# Remove surplus tracks
+		while self.getPads() > pads:
+			self.libseq.removeTrack(self.song, pads)
+		# Add extra tracks
+		while self.getPads() < pads:
+			sequence = self.libseq.addTrack(self.song)
+			#TODO: Configure sequences / pads
+		pads = self.getPads()
+		self.updateGrid()
 
 	# Function to configure pad tallies
 	#	channel: MIDI channel to send tallies (255 to disable tallies)
@@ -206,13 +232,6 @@ class zynthian_gui_zynpad():
 		self.song = song + 1000
 #		self.libseq.solo(self.song, 0, False)
 		tracks = self.libseq.getTracks(self.song)
-		if tracks < 1:
-			self.columns = 1
-		else:
-			self.columns = int(sqrt(int(tracks - 1))+1)
-		self.rows = self.columns
-		self.colWidth = self.width / self.columns
-		self.rowHeight = self.height / self.rows
 		imgWidth = int(self.width / self.columns / 4)
 		iconsize = (imgWidth, imgWidth)
 		img = (Image.open("/zynthian/zynthian-ui/icons/endnoline.png").resize(iconsize))
@@ -227,36 +246,46 @@ class zynthian_gui_zynpad():
 		self.icon[5] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
 		self.icon[6] = ImageTk.PhotoImage(img)
-		self.drawGrid(True)
+		self.updateGrid()
 		self.parent.setTitle("ZynPad (%d)"%(song))
 
-	# Function to draw grid
-	def drawGrid(self, clear = False):
-		if clear:
-			self.gridCanvas.delete(tkinter.ALL)
-			self.selection = self.gridCanvas.create_rectangle(0, 0, self.colWidth, self.rowHeight, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
-		for col in range(self.columns):
-			self.drawColumn(col, clear)
+	# Function to clear and calculate grid sizes
+	# Grid is peridicall refreshed by refresh function which draws cells if required
+	def updateGrid(self):
+		self.gridCanvas.delete(tkinter.ALL)
+		pads = self.getPads()
+		if pads < 1:
+			self.columns = 1
+		else:
+			self.columns = int(sqrt(pads - 1) + 1)
+		self.colWidth = self.width / self.columns
+		self.rowHeight = self.height / self.columns
+		self.selection = self.gridCanvas.create_rectangle(0, 0, self.colWidth, self.rowHeight, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
+		# Add pattern to sequence if missing TODO: Need to avoid this if using sequence editor - possibly by creating new sequences with a pattern by default
+		for pad in range(self.columns**2):
+			sequence = self.getSequence(pad)
+			if sequence == 0:
+				continue # This should not occur because all pads are tied to tracks which are sequences
+			pattern = self.libseq.getPattern(sequence, 0)
+			if pattern == -1:
+				pattern = 1001 + (self.song - 1001) * 64 + pad
+				logging.warning("Auto add pattern %d to pad %d in song %d", pattern, pad, self.song)
+				self.libseq.addPattern(sequence, 0, pattern, True)
 
-	# Function to draw grid column
-	#   col: Column index
-	def drawColumn(self, col, clear = False):
-		for row in range(self.rows):
-			self.drawCell(col, row, clear)
 
 	# Function to draw grid cell (pad)
 	#   col: Column index
 	#   row: Row index
 	def drawCell(self, col, row, clear = False):
-		pad = row + col * self.rows
+		if col < 0 or col >= self.columns or row < 0 or row >= self.columns:
+			return
+		pad = row + col * self.columns
 		sequence = self.getSequence(pad)
 		group = self.libseq.getGroup(sequence)
-		if col < 0 or col >= self.columns or row < 0 or row >= self.rows:
-			return
 		padX = col * self.width / self.columns
-		padY = row * self.height / self.rows
+		padY = row * self.height / self.columns
 		padWidth = self.width / self.columns - 2 #TODO: Calculate pad size once
-		padHeight = self.height / self.rows - 2
+		padHeight = self.height / self.columns - 2
 		cell = self.gridCanvas.find_withtag("pad:%d"%(pad))
 		if cell:
 			mode = self.libseq.getPlayMode(sequence)
@@ -301,12 +330,15 @@ class zynthian_gui_zynpad():
 	# Function to draw pad
 	#   pad: Pad index
 	def drawPad(self, pad):
-		pads = self.rows * self.columns
-		if pads < 1 or pad < 0 or pad >= pads:
-			return 0
-		col = int(pad / self.rows)
-		row = pad % self.rows
-		self.drawCell(col, row)
+		pads = self.columns**2
+		if pads < 1 or pad < 0:
+			return
+		col = int(pad / self.columns)
+		row = pad % self.columns
+		if pad >= pads:
+			self.updateGrid()
+		else:
+			self.drawCell(col, row)
 		if self.selectedPad == pad:
 			self.gridCanvas.coords(self.selection, 1 + col * self.colWidth, 1 + row * self.rowHeight, (1 + col) * self.colWidth - self.selectThickness, (1 + row) * self.rowHeight - self.selectThickness)
 			self.gridCanvas.tag_raise(self.selection)
@@ -323,6 +355,8 @@ class zynthian_gui_zynpad():
 		self.selectedCol = int((pad) / self.columns)
 		self.selectedRow = (pad) % self.columns
 		self.togglePad()
+		self.gridTimer = Timer(2, self.onGridTimer)
+		self.gridTimer.start()
 		
 	# Function to toggle pad
 	def togglePad(self):
@@ -333,7 +367,25 @@ class zynthian_gui_zynpad():
 
 	# Function to handle pad release
 	def onPadRelease(self, event):
-		pass
+		self.gridTimer.cancel()
+
+	# Function to handle grid press and hold
+	def onGridTimer(self):
+		self.gridDragStart = None
+		self.showPatternEditor()
+
+	# Function to show pattern editor for first pattern of sequence of selected pad
+	def showPatternEditor(self):
+		logging.warning("TODO: Implement zynthian_gui_zynpad::showPatternEditor")
+		sequence = self.getSequence(self.selectedPad)
+		if sequence == 0:
+			return
+		pattern = self.libseq.getPattern(sequence, 0)
+		if pattern == -1:
+			return
+		channel = self.libseq.getChannel(sequence)
+		self.parent.showChild(0, {"pattern":pattern, "channel":channel})
+		#TODO: How do we indicate to return to zynpad when closing pattern editor?
 
 	# Function called when new file loaded from disk
 	def onLoad(self):
@@ -341,7 +393,7 @@ class zynthian_gui_zynpad():
 
 	# Function to refresh status
 	def refresh_status(self):
-		for pad in range(0, self.rows * self.columns):
+		for pad in range(0, self.columns**2):
 			self.drawPad(pad)
 
 	def refresh_loading(self):
@@ -363,9 +415,9 @@ class zynthian_gui_zynpad():
 			self.selectedRow += value
 			if self.selectedRow < 0:
 				self.selectedRow = 0
-			if self.selectedRow >= self.rows:
-				self.selectedRow = self.rows - 1
-		self.selectedPad = self.selectedRow + self.selectedCol * self.rows
+			if self.selectedRow >= self.columns:
+				self.selectedRow = self.columns - 1
+		self.selectedPad = self.selectedRow + self.selectedCol * self.columns
 
 	# Function to handle switch press
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
@@ -373,7 +425,10 @@ class zynthian_gui_zynpad():
 	#	returns True if action fully handled or False if parent action should be triggered
 	def onSwitch(self, switch, type):
 		if switch == ENC_SELECT:
-			self.togglePad()
+			if type == 'S':
+				self.togglePad()
+			elif type == "B":
+				self.showPatternEditor()
 			return True
 		return False
 
