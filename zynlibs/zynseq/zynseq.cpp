@@ -592,9 +592,8 @@ void save(char* filename)
 // Schedule a MIDI message to be sent in next JACK process cycle
 void sendMidiMsg(MIDI_MESSAGE* pMsg)
 {
-    //!@todo Should we schedule MIDI messages to be sent at offset within period?
     // Find first available time slot
-    uint32_t time = 0;
+    uint32_t time = jack_frames_since_cycle_start(g_pJackClient);
     while(g_bMutex)
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     g_bMutex = true;

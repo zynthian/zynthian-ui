@@ -31,6 +31,7 @@ import tkinter
 import logging
 import tkinter.font as tkFont
 import time
+from threading import Timer
 import ctypes
 from os.path import dirname, realpath
 from PIL import Image, ImageTk
@@ -98,8 +99,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.song = 1 # The song that will play / edit (may be different to libseq.getSong, e.g. when editing pattern)
 		self.song_editor_mode = 1 # 1 for song editor, 3 for pad editor
 
-		# Initalise libseq and load pattern from file
-		# self.zyngui.libseq.enableDebug(True)
+		# Load default sequence file
 		self.filename = "default"
 		self.load(self.filename)
 
@@ -242,6 +242,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.init_buttonbar()
 
 		self.selectSong(self.song)
+		self.populateMenu()
+		self.param_editor_timer = None
 
 	# Function to print traceback - for debug only
 	#	TODO: Remove debug function (or move to other zynthian class)
@@ -262,6 +264,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.addMenu({'Pad Editor':{'method':self.showChild, 'params':3}})
 #		self.addMenu({'Song Editor':{'method':self.showChild, 'params':1}})
 		self.addMenu({'Song':{'method':self.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.zyngui.libseq.getSong, 'onChange':self.onMenuChange}}})
+		self.addMenu({'Tempo':{'method':self.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.zyngui.libseq.getTempo, 'onChange':self.onMenuChange}}})
 		self.addMenu({'Load':{'method':self.select_filename, 'params':self.filename}})
 		self.addMenu({'Save':{'method':self.save_as, 'params':self.filename}})
 		self.addMenu({'---':{}})
@@ -441,7 +444,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to show menu editor
 	#	menuitem: Name of the menu item who's parameters to edit
-	def showParamEditor(self, menuItem):
+	#	timeout: Seconds before hiding (don't show any editor buttons)
+	def showParamEditor(self, menuItem, timeout=0):
 		if not menuItem in self.MENU_ITEMS:
 			return
 		self.paramEditorItem = menuItem
@@ -453,6 +457,12 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.param_title_canvas.itemconfig("lblparamEditorValue", 
 			text=self.MENU_ITEMS[menuItem]['params']['onChange'](self.MENU_ITEMS[menuItem]['params'])
 			)
+		if timeout:
+			if self.param_editor_timer:
+				self.param_editor_timer.cancel()
+			self.param_editor_timer = Timer(timeout, self.hideParamEditor)
+			self.param_editor_timer.start()
+			return
 		if 'onAssert' in self.MENU_ITEMS[menuItem]['params']:
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='normal')
 		else:
@@ -464,6 +474,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to hide menu editor
 	def hideParamEditor(self):
+		if self.param_editor_timer:
+			self.param_editor_timer.cancel()
+			self.param_editor_timer = None
 		self.paramEditorItem = None
 		self.param_editor_canvas.grid_forget()
 		for encoder in range(4):
@@ -484,6 +497,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			value = params['max']
 		if self.paramEditorItem == 'Song':
 			self.selectSong(value)
+		elif self.paramEditorItem == 'Tempo':
+			self.zyngui.libseq.setTempo(value);
 		self.setParam(self.paramEditorItem, 'value', value)
 		return "%s: %d" % (self.paramEditorItem, value)
 
@@ -661,15 +676,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				self.lstMenu.selection_set(index)
 				self.lstMenu.activate(index)
 				self.lstMenu.see(index)
-		elif self.paramEditorItem:
+		elif self.paramEditorItem and not self.param_editor_timer:
 			# Parameter editor showing
 			if encoder == ENC_SELECT or encoder == ENC_LAYER:
 				self.changeParam(value)
-		elif encoder == ENC_LAYER:
-			self.zyngui.libseq.setTempo(self.zyngui.libseq.getTempo() + value)
-			#TODO: Display tempo temporarily
 		elif encoder == ENC_SNAPSHOT:
-			self.selectSong(self.zyngui.libseq.getSong() + value)
+			self.zyngui.libseq.setTempo(self.zyngui.libseq.getTempo() + value)
+			self.showParamEditor("Tempo", 2)
 
 	# Function to handle zyncoder polling
 	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +1 and calculate offset

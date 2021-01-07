@@ -173,11 +173,9 @@ class zynthian_gui_patterneditor():
 	def setupEncoders(self):
 		self.parent.registerZyncoder(ENC_BACK, self)
 		self.parent.registerZyncoder(ENC_SELECT, self)
-		self.parent.registerZyncoder(ENC_SNAPSHOT, self)
 		self.parent.registerZyncoder(ENC_LAYER, self)
 		self.parent.registerSwitch(ENC_SELECT, self, "SB")
-		self.parent.registerSwitch(ENC_SNAPSHOT, self)
-		self.parent.registerSwitch(ENC_SNAPSHOT, self, "B")
+		self.parent.registerSwitch(ENC_SNAPSHOT, self, "SB")
 
 	# Function to show GUI
 	#   params: Pattern parameters to edit {'pattern':x, 'channel':x}
@@ -199,11 +197,9 @@ class zynthian_gui_patterneditor():
 		self.shown=False
 		self.parent.unregisterZyncoder(ENC_BACK)
 		self.parent.unregisterZyncoder(ENC_SELECT)
-		self.parent.unregisterZyncoder(ENC_SNAPSHOT)
 		self.parent.unregisterZyncoder(ENC_LAYER)
-		self.parent.unregisterSwitch(ENC_SELECT)
-		self.parent.unregisterSwitch(ENC_SNAPSHOT)
-		self.parent.unregisterSwitch(ENC_SNAPSHOT, "B")
+		self.parent.unregisterSwitch(ENC_SELECT, "SB")
+		self.parent.unregisterSwitch(ENC_SNAPSHOT, "SB")
 		self.libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 
 	# Function to add menus
@@ -213,7 +209,7 @@ class zynthian_gui_patterneditor():
 		self.parent.addMenu({'Beats in pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.libseq.getBeatsInPattern, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Steps per beat':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'getValue':self.getStepsPerBeatIndex, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Beat type':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'getValue':self.libseq.getBeatType, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.getCopySource, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
+		self.parent.addMenu({'Copy pattern':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':1999, 'getValue':self.getCopySource, 'onChange':self.onMenuChange,'onAssert':self.copyPattern}}})
 		self.parent.addMenu({'Clear pattern':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':1, 'value':0, 'onChange':self.onMenuChange, 'onAssert':self.clearPattern}}})
 		if self.libseq.getScale():
 			self.parent.addMenu({'Transpose pattern':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':1, 'value':0, 'onChange':self.onMenuChange}}})
@@ -944,7 +940,7 @@ class zynthian_gui_patterneditor():
 			return True
 		elif switch == ENC_SNAPSHOT:
 			if type == "B":
-				self.libseq.setTransportToStartOfBar() 
+				self.libseq.setTransportToStartOfBar()
 				return True
 			self.libseq.togglePlayState(self.sequence)
 			return True
