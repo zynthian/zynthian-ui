@@ -258,7 +258,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
             g_nTick = pPosition->tick;
             DPRINTF("Set position from BBT Bar: %u Beat: %u Tick: %u Clock: %u\n", pPosition->bar, pPosition->beat, pPosition->tick, g_nClock);
         }
-        else
+        else// if(!bUpdate) //!@todo I have masked bUpdate because I don't see why we would be reaching here but we do and need to figure out why
         {
             updateBBT(pPosition);
             DPRINTF("Set position from frame %u\n", pPosition->frame);
@@ -297,7 +297,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
             //!@todo Have added a period to clock position but it should already be offset as pPosition->frame refers to next cycle
             jack_nframes_t nClockPos = g_nFramesToNextClock + pPosition->frame + g_nTransportStartFrame + nFramesInPeriod; // Absolute position of clock within next period
             //printf("nClockPos: %u g_nFramesToNextClock: %u pPosition->frame: %u g_nTransportStartFrame: %u nFramesInPeriod: %u\n", nClockPos, g_nFramesToNextClock, pPosition->frame, g_nTransportStartFrame, nFramesInPeriod);
-            if(!g_nClock)
+            if(g_nClock == 0)
             {
                 // Clock zero so on beat
                 bSync = (g_nBeat == 1);
@@ -1096,7 +1096,7 @@ void addTempoEvent(uint32_t song, uint32_t tempo, uint16_t bar, uint16_t tick)
     g_bDirty = true;
 }
 
-uint32_t getTempoEvent(uint32_t song, uint16_t bar, uint16_t tick)
+uint32_t getTempoAt(uint32_t song, uint16_t bar, uint16_t tick)
 {
     return PatternManager::getPatternManager()->getSong(song)->getTempo(bar, tick);
 }
@@ -1115,19 +1115,19 @@ void addTimeSigEvent(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar)
     g_bDirty = true;
 }
 
-uint16_t getTimeSigEvent(uint32_t song, uint16_t bar)
+uint16_t getTimeSigAt(uint32_t song, uint16_t bar)
 {
     return PatternManager::getPatternManager()->getSong(song)->getTimeSig(bar);
 }
 
 uint8_t getBeatsPerBar(uint32_t song, uint16_t bar)
 {
-    return getTimeSigEvent(song, bar) >> 8;
+    return getTimeSigAt(song, bar) >> 8;
 }
 
 uint8_t getBeatType(uint32_t song, uint16_t bar)
 {
-    return getTimeSigEvent(song, bar) & 0xFF;
+    return getTimeSigAt(song, bar) & 0xFF;
 }
 
 uint32_t getTracks(uint32_t song)

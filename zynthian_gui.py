@@ -207,7 +207,7 @@ class zynthian_gui:
 			logging.error("ERROR initializing Controllers & MIDI-router: %s" % e)
 
 		self.libseq = CDLL("/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
-		self.libseq.init()
+		self.libseq.init(True)
 
 	# ---------------------------------------------------------------------------
 	# MIDI Router Init & Config
@@ -232,7 +232,6 @@ class zynthian_gui:
 
 	def init_midi_services(self):
 		#Start/Stop MIDI aux. services
-		self.screens['admin'].default_midi_clock()
 		self.screens['admin'].default_rtpmidi()
 		self.screens['admin'].default_qmidinet()
 		self.screens['admin'].default_touchosc()

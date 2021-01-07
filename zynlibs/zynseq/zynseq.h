@@ -373,7 +373,7 @@ uint8_t getPlayState(uint32_t sequence);
 */
 void setPlayState(uint32_t sequence, uint8_t state);
 
-/** @brief  Toggles play / stop
+/** @brief  Toggles starting / stopping
 *   @retval uint32_t sequence
 *   @todo   Sets value to STARTING / STOPPING but may wish to use STARTED / STOPPED, e.g. for songs but is used by trigger for pads - use sequence mode to decide start / stop behaviour
 */
@@ -502,7 +502,7 @@ void addTempoEvent(uint32_t song, uint32_t tempo, uint16_t bar=1, uint16_t tick=
 '   @todo   getTempo without time parameter should get time at current play position???
 *   @retval uint32_t Tempo in BPM
 */
-uint32_t getTempoEvent(uint32_t song, uint16_t bar=1, uint16_t tick=0);
+uint32_t getTempoAt(uint32_t song, uint16_t bar=1, uint16_t tick=0);
 
 /** @brief  Add time signature to song
 *   @param  song Song index
@@ -518,7 +518,7 @@ void addTimeSigEvent(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar);
 *   @param  bar Bar of song at which to time signature
 *   @retval uint16_t Time signature - MSB numerator, LSB denominator
 */
-uint16_t getTimeSigEvent(uint32_t song, uint16_t bar);
+uint16_t getTimeSigAt(uint32_t song, uint16_t bar);
 
 /** @brief  Get position of playhead within song
 *   @retval uint32_t Position in clock cycles

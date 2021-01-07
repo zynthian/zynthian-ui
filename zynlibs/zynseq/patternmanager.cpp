@@ -558,16 +558,20 @@ void PatternManager::setSongPosition(uint32_t pos)
 
 void PatternManager::setSequencePlayState(uint32_t sequence, uint8_t state)
 {
-	if(m_nCurrentlyPlayingSong && state == STARTING || state == PLAYING)
+	if(m_nCurrentlyPlayingSong && (state == STARTING || state == PLAYING))
 	{
+		// Stop other sequences in same group
 		uint8_t nGroup = m_mSequences[sequence].getGroup();
 		for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentlyPlayingSong + 1000].getTracks(); ++nTrack)
 		{
 			uint32_t nSequence = m_mSongs[m_nCurrentlyPlayingSong + 1000].getSequence(nTrack);
-			if(m_mSequences[nSequence].getGroup() == nGroup && m_mSequences[nSequence].getPlayState() == STARTING)
-				m_mSequences[nSequence].setPlayState(STOPPED);
-			else if(m_mSequences[nSequence].getGroup() == nGroup && m_mSequences[nSequence].getPlayState() != STOPPED && nSequence != sequence)
-				m_mSequences[nSequence].setPlayState(STOPPING);
+			if(nSequence != sequence && m_mSequences[nSequence].getGroup() == nGroup)
+			{
+				if(m_mSequences[nSequence].getPlayState() == STARTING)
+					m_mSequences[nSequence].setPlayState(STOPPED);
+				else if(m_mSequences[nSequence].getPlayState() != STOPPED)
+					m_mSequences[nSequence].setPlayState(STOPPING);
+			}
 		}
 	}
 	m_mSequences[sequence].setPlayState(state);

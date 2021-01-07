@@ -45,7 +45,7 @@ class TestLibZynSeq(unittest.TestCase):
         global zynseq_midi_out
         global zynseq_midi_in
         libseq = ctypes.CDLL("/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
-        libseq.init()
+        libseq.init(True)
         sleep(1) #TODO: This delay avoids segfault - figure out what causes segfault if library used too soon after init
         zynseq_midi_out = client.get_port_by_name('zynthstep:output')
         zynseq_midi_in = client.get_port_by_name('zynthstep:input')
@@ -78,50 +78,63 @@ class TestLibZynSeq(unittest.TestCase):
         self.check_pattern(4, 4, 4)
     #
     def test_ac01_set_beats(self):
+        libseq.selectPattern(999)
         libseq.setBeatsInPattern(5)
         self.check_pattern(4, 4, 5)
     #
     def test_ac02_set_steps_per_beat(self):
+        libseq.selectPattern(999)
+        libseq.setBeatsInPattern(5)
         self.assertFalse(libseq.setStepsPerBeat(7)) # Not a permitted value
         self.check_pattern(4, 4, 5)
         self.assertTrue(libseq.setStepsPerBeat(8))
         self.check_pattern(4, 8, 5)
     #
     def test_ac03_add_note(self):
+        libseq.selectPattern(999)
         self.assertTrue(libseq.addNote(0,60,100,4))
         self.assertEqual(libseq.getNoteVelocity(0,60), 100)
         self.assertEqual(libseq.getNoteDuration(0,60), 4)
     #
     def test_ac04_add_note_too_long(self):
+        libseq.selectPattern(999)
+        self.assertTrue(libseq.addNote(0,60,100,4))
         self.assertFalse(libseq.addNote(0,60,100,200))
         self.assertEqual(libseq.getNoteVelocity(0,60), 100)
         self.assertEqual(libseq.getNoteDuration(0,60), 4)
     #
     def test_ac05_set_note_velocity(self):
+        libseq.selectPattern(999)
+        self.assertTrue(libseq.addNote(0,60,100,4))
         libseq.setNoteVelocity(0,60,123)
         self.assertEqual(libseq.getNoteVelocity(0,60), 123)
     #
     def test_ac06_set_note_duration(self):
+        libseq.selectPattern(999)
         libseq.addNote(0,60,123,2)
         self.assertEqual(libseq.getNoteDuration(0,60), 2)
     #
     def test_ac07_transpose(self):
+        libseq.selectPattern(999)
+        libseq.addNote(0,60,123,2)
         libseq.transpose(5)
         self.assertEqual(libseq.getNoteDuration(0,65), 2)
         self.assertEqual(libseq.getNoteVelocity(0,65), 123)
     #
     def test_ac08_copy_pattern(self):
+        libseq.selectPattern(999)
+        libseq.addNote(0,60,123,2)
         libseq.copyPattern(999, 998)
         libseq.selectPattern(998)
-        self.assertEqual(libseq.getNoteDuration(0,65), 2)
-        self.assertEqual(libseq.getNoteVelocity(0,65), 123)
-        
+        self.assertEqual(libseq.getNoteDuration(0,60), 2)
+        self.assertEqual(libseq.getNoteVelocity(0,60), 123)
     #
     def test_ac09_clear_pattern(self):
         libseq.clear()
         self.assertEqual(libseq.getNoteDuration(0,65), 0)
     #
     def test_ac10_is_pattern_modified(self):
+        libseq.selectPattern(999)
         libseq.addNote(0,60,100,4)
         self.assertTrue(libseq.isPatternModified())
         self.assertFalse(libseq.isPatternModified())
@@ -190,7 +203,7 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(tb[0], jack.ROLLING)
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
         for beat in range(0,5):
-            print("Beat",beat+1)
+            print("Beat", beat % 4 + 1)
             self.assertEqual(tb[1]['bar'], 1)
             self.assertEqual(tb[1]['beat'], beat % 4 + 1)
             sleep(0.5)
@@ -625,7 +638,7 @@ class TestLibZynSeq(unittest.TestCase):
         #TODO: Check content of copied song
     def test_ai01_timesig(self):
         libseq.selectSong(5)
-        self.assertEqual(libseq.getTimeSig(5, 0), 0x0404) # Default time signature should be 4/4
+        self.assertEqual(libseq.getTimeSigAt(5, 0), 0x0404) # Default time signature should be 4/4
         sleep(0.1)
         self.assertEqual(client.transport_state, jack.STOPPED)
         sequence = libseq.getSequence(1005,libseq.addTrack(1005))
@@ -671,9 +684,9 @@ class TestLibZynSeq(unittest.TestCase):
         sleep(2)
         self.assertEqual(libseq.getPlayState(sequence), play_state["STOPPED"])
         self.assertEqual(client.transport_state, jack.STOPPED)
-        libseq.setTimeSig(5, 2, 4, 0)
-        self.assertEqual(libseq.getTimeSig(5, 1, 0), 0x0204)
-        self.assertEqual(libseq.getTimeSig(5, 4, 0), 0x0204)
+        libseq.addTimeSigEvent(5, 2, 4, 0)
+        self.assertEqual(libseq.getTimeSigAt(5, 1, 0), 0x0204)
+        self.assertEqual(libseq.getTimeSigAt(5, 4, 0), 0x0204)
         libseq.setPlayState(sequence, play_state["STARTING"])
         for i in range(0,100):
             sleep(0.001)
@@ -709,7 +722,7 @@ class TestLibZynSeq(unittest.TestCase):
         sleep(0.1)
         self.assertEqual(client.transport_state, jack.STOPPED)
         libseq.selectSong(5)
-        self.assertEqual(libseq.getTempo(5, 1, 0), 120) # Default tempo should be 120
+        self.assertEqual(libseq.getTempoAt(5, 1, 0), 120) # Default tempo should be 120
         sequence = libseq.getSequence(1005,libseq.addTrack(1005))
         libseq.clearSequence(sequence)
         libseq.selectPattern(999)
@@ -723,7 +736,7 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.addPattern(sequence,0,999,True)
         libseq.setPlayMode(sequence, play_mode["ONESHOTSYNC"])
         step_duration = (60 / 120) / 4
-        libseq.setTimeSig(5, 4, 4, 0)
+        libseq.addTimeSigEvent(5, 4, 4, 0)
         libseq.setPlayState(sequence, play_state["STARTING"])
         for i in range(0,100):
             sleep(0.001)
@@ -776,7 +789,7 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.addNote(0, 0x41, 0x64, 1)
         libseq.addPattern(sequence,0,999,True)
         libseq.setPlayMode(sequence, play_mode["LOOPSYNC"])
-        libseq.setTimeSig(1, 1, 4, 1)
+        libseq.addTimeSigEvent(1, 1, 4, 1)
         libseq.setPlayState(sequence, play_state["STARTING"])
         for i in range(0,100):
             sleep(0.001)
@@ -784,7 +797,6 @@ class TestLibZynSeq(unittest.TestCase):
                 break
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
         for tempo in range(120, 20, -40):
-            print("Setting tempo", tempo)
             libseq.setTempo(tempo)
             time1 = time.time()
             last_rx = bytes(0)
