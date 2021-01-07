@@ -140,7 +140,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		if zynconf.is_service_active("vncserver-x11-serviced"):
 			self.list_data.append((self.stop_vnc,0,"[x] VNC enabled"))
 		else:
-			elf.list_data.append((self.start_vnc,0,"[  ] VNC Disabled")) 
+			self.list_data.append((self.start_vnc,0,"[  ] VNC Disabled")) 
 			
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))

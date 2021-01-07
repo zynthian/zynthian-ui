@@ -525,8 +525,8 @@ def start_vnc():
 	success=False
 	while not success:
 		counter += 1
-		if ( is_service_active("vncserver-x11-serviced") and is_service_enabled("vncserver-x11-serviced")):
-			succes=True
+		if is_service_active("vncserver-x11-serviced") and is_service_enabled("vncserver-x11-serviced"):
+			success=True
 			return True
 
 		elif counter>20:
@@ -544,9 +544,10 @@ def stop_vnc():
 	counter=0
 	success=False
 	while not success:
+		
 		counter += 1
-		if not( is_service_active("vncserver-x11-serviced") or is_service_enabled("vncserver-x11-serviced")):
-			succes=True
+		if not (is_service_active("vncserver-x11-serviced") or is_service_enabled("vncserver-x11-serviced")):
+			success=True
 			return True
 
 		elif counter>20:
