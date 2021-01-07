@@ -482,6 +482,18 @@ def is_service_active(service):
 		return True
 	else:
 		return False
+		
+def is_service_enabled(service):
+	cmd="systemctl is-enabled %s" % service
+	try:
+		result=check_output(cmd, shell=True).decode('utf-8','ignore')
+	except Exception as e:
+		result="ERROR: %s" % e
+	#loggin.debug("Is service "+str(service)+" enabled? => "+str(result))
+	if result.strip()=='enabled':
+		return True
+	else:
+		return False
 
 #------------------------------------------------------------------------------
 # Jackd configuration
@@ -499,4 +511,45 @@ def get_jackd_options():
 	return jackd_options
 
 #------------------------------------------------------------------------------
+# VNC service controls
+#------------------------------------------------------------------------------
 
+def start_vnc():
+	logging.info("STARTING VNC")
+	cmd = "systemctl start vncserver-x11-serviced && systemctl enable vncserver-x11-serviced"
+
+	check_output(cmd, shell=True)
+	sleep(2)
+
+	counter=0
+	success=False
+	while not success:
+		counter += 1
+		if ( is_service_active("vncserver-x11-serviced") and is_service_enabled("vncserver-x11-serviced")):
+			succes=True
+			return True
+
+		elif counter>20:
+			return False
+
+		sleep(1)
+		
+def stop_vnc():
+	logging.info("Stopping VNC")
+	cmd = "systemctl stop vncserver-x11-serviced && systemctl disable vncserver-x11-serviced"
+
+	check_output(cmd, shell=True)
+	sleep(2)
+
+	counter=0
+	success=False
+	while not success:
+		counter += 1
+		if not( is_service_active("vncserver-x11-serviced") or is_service_enabled("vncserver-x11-serviced")):
+			succes=True
+			return True
+
+		elif counter>20:
+			return False
+
+		sleep(1)
