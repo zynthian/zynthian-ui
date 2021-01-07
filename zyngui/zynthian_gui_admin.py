@@ -136,7 +136,12 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.start_wifi,0,"[  ] Wi-Fi"))
 			self.list_data.append((self.start_wifi_hotspot,0,"[  ] Wi-Fi Hotspot"))
-
+			
+		if zynconf.is_service_active("vncserver-x11-serviced"):
+			self.list_data.append((self.stop_vnc,0,"[x] VNC enabled"))
+		else:
+			elf.list_data.append((self.start_vnc,0,"[  ] VNC Disabled")) 
+			
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
@@ -680,6 +685,22 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		if not zynconf.stop_wifi():
 			self.zyngui.show_info("STOPPING WIFI ERROR\n")
 			self.zyngui.add_info("Can't stop WIFI network!","WARNING")
+			self.zyngui.hide_info_timer(2000)
+
+		self.fill_list()
+		
+	def start_vnc(self):
+		if not zynconf.start_vnc():
+			self.zyngui.show_info("STARTING VNC ERROR\n")
+			self.zyngui.add_info("Can't start VNC Service!","WARNING")
+			self.zyngui.hide_info_timer(2000)
+
+		self.fill_list()
+		
+	def stop_vnc(self):
+		if not zynconf.stop_vnc():
+			self.zyngui.show_info("STOPPING VNC ERROR\n")
+			self.zyngui.add_info("Can't stop VNC Service!","WARNING")
 			self.zyngui.hide_info_timer(2000)
 
 		self.fill_list()
