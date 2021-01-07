@@ -376,7 +376,6 @@ class zynthian_gui_zynpad():
 
 	# Function to show pattern editor for first pattern of sequence of selected pad
 	def showPatternEditor(self):
-		logging.warning("TODO: Implement zynthian_gui_zynpad::showPatternEditor")
 		sequence = self.getSequence(self.selectedPad)
 		if sequence == 0:
 			return
