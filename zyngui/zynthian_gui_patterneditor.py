@@ -79,6 +79,7 @@ class zynthian_gui_patterneditor():
 
 		os.makedirs(CONFIG_ROOT, exist_ok=True)
 
+		self.edit_mode = False
 		self.zoom = 16 # Quantity of rows (notes) displayed in grid
 		self.duration = 1 # Current note entry duration
 		self.velocity = 100 # Current note entry velocity
@@ -174,7 +175,7 @@ class zynthian_gui_patterneditor():
 		self.parent.registerZyncoder(ENC_SELECT, self)
 		self.parent.registerZyncoder(ENC_SNAPSHOT, self)
 		self.parent.registerZyncoder(ENC_LAYER, self)
-		self.parent.registerSwitch(ENC_SELECT, self)
+		self.parent.registerSwitch(ENC_SELECT, self, "SB")
 		self.parent.registerSwitch(ENC_SNAPSHOT, self)
 		self.parent.registerSwitch(ENC_SNAPSHOT, self, "B")
 
@@ -221,6 +222,18 @@ class zynthian_gui_patterneditor():
 		self.parent.addMenu({'Scale':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':self.getScales(), 'getValue':self.libseq.getScale, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tonic':{'method':self.parent.showParamEditor, 'params':{'min':-1, 'max':12, 'getValue':self.libseq.getTonic, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Import':{'method':self.selectImport}})
+
+	# Function to set edit mode
+	def enableEdit(self, enable):
+		if enable:
+			self.edit_mode = True
+			self.parent.registerSwitch(ENC_BACK, self)
+			self.parent.setTitle("EDIT MODE (%d)" % (self.pattern), zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+		else:
+			self.edit_mode = False
+			self.parent.unregisterSwitch(ENC_BACK)
+			self.parent.setTitle("Pattern Editor (%d)" % (self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+
 
 	# Function to get the index of the closest steps per beat in array of allowed values
 	#	returns: Index of closest allowed value
@@ -884,42 +897,39 @@ class zynthian_gui_patterneditor():
 	#   value: Current value of zyncoder
 	def onZyncoder(self, encoder, value):
 		if encoder == ENC_BACK:
-			# BACK encoder adjusts note selection
-			self.selectCell(None, self.selectedCell[1] - value)
-		elif encoder == ENC_SELECT:
-			pass
-			# SELECT encoder adjusts step selection
-			self.selectCell(self.selectedCell[0] + value, None)
-		elif encoder == ENC_SNAPSHOT:
-			# SNAPSHOT encoder adjusts velocity
-			self.velocity = self.velocity + value
-			if self.velocity > 127:
-				self.velocity = 127
-				return
-			if self.velocity < 1:
-				self.velocity = 1
-				return
-			self.velocityCanvas.coords("velocityIndicator", 0, 0, self.pianoRollWidth * self.velocity / 127, PLAYHEAD_HEIGHT)
-			note = self.keymap[self.selectedCell[1]]["note"]
-			if self.libseq.getNoteDuration(self.selectedCell[0], note):
-				self.libseq.setNoteVelocity(self.selectedCell[0], note, self.velocity)
-				self.drawCell(self.selectedCell[0], self.selectedCell[1])
-		elif encoder == ENC_LAYER:
-			# LAYER encoder adjusts duration
-			if value > 0:
-				self.duration = self.duration + 1
-			if value < 0:
-				self.duration = self.duration - 1
-			if self.duration > self.libseq.getSteps():
-				self.duration = self.libseq.getSteps()
-				return
-			if self.duration < 1:
-				self.duration = 1
-				return
-			if self.libseq.getNoteDuration(self.selectedCell[0], self.selectedCell[1]):
-				self.addEvent(self.selectedCell[0], self.selectedCell[1])
+			if self.edit_mode:
+				self.velocity = self.velocity + value
+				if self.velocity > 127:
+					self.velocity = 127
+					return
+				if self.velocity < 1:
+					self.velocity = 1
+					return
+				self.velocityCanvas.coords("velocityIndicator", 0, 0, self.pianoRollWidth * self.velocity / 127, PLAYHEAD_HEIGHT)
+				note = self.keymap[self.selectedCell[1]]["note"]
+				if self.libseq.getNoteDuration(self.selectedCell[0], note):
+					self.libseq.setNoteVelocity(self.selectedCell[0], note, self.velocity)
+					self.drawCell(self.selectedCell[0], self.selectedCell[1])
 			else:
-				self.selectCell()
+				self.selectCell(None, self.selectedCell[1] - value)
+		elif encoder == ENC_SELECT:
+			if self.edit_mode:
+				if value > 0:
+					self.duration = self.duration + 1
+				if value < 0:
+					self.duration = self.duration - 1
+				if self.duration > self.libseq.getSteps():
+					self.duration = self.libseq.getSteps()
+					return
+				if self.duration < 1:
+					self.duration = 1
+					return
+				if self.libseq.getNoteDuration(self.selectedCell[0], self.selectedCell[1]):
+					self.addEvent(self.selectedCell[0], self.selectedCell[1])
+				else:
+					self.selectCell()
+			else:
+				self.selectCell(self.selectedCell[0] + value, None)
 
 	# Function to handle switch press
 	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
@@ -927,13 +937,19 @@ class zynthian_gui_patterneditor():
 	#   returns True if action fully handled or False if parent action should be triggered
 	def onSwitch(self, switch, type):
 		if switch == ENC_SELECT:
-			self.toggleEvent(self.selectedCell[0], self.selectedCell[1], True)
+			if type == "S":
+				self.toggleEvent(self.selectedCell[0], self.selectedCell[1], True)
+			else:
+				self.enableEdit(True)
 			return True
 		elif switch == ENC_SNAPSHOT:
 			if type == "B":
 				self.libseq.setTransportToStartOfBar() 
 				return True
 			self.libseq.togglePlayState(self.sequence)
+			return True
+		elif switch == ENC_BACK:
+			self.enableEdit(False)
 			return True
 		return False
 #------------------------------------------------------------------------------

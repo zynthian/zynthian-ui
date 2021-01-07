@@ -114,7 +114,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			height=zynthian_gui_config.topbar_height,
 			bd=0,
 			highlightthickness=0,
-			bg = zynthian_gui_config.color_bg)
+			bg = zynthian_gui_config.color_header_bg)
 		self.title_canvas.grid_propagate(False)
 		self.title_canvas.create_text(0, zynthian_gui_config.topbar_height / 2,
 			font=font,
@@ -153,28 +153,28 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.btnParamCancel = tkinter.Button(self.param_editor_canvas, command=self.hideParamEditor,
 				image=self.imgBack,
 				bd=0, highlightthickness=0,
-				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
 			self.btnParamCancel.grid(column=0, row=0)
 			# Parameter editor decrement button
 			self.btnParamDown = tkinter.Button(self.param_editor_canvas, command=self.decrementParam,
 				image=self.imgDown,
 				bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
-				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
 			self.btnParamDown.grid(column=1, row=0)
 			# Parameter editor increment button
 			self.btnParamUp = tkinter.Button(self.param_editor_canvas, command=self.incrementParam,
 				image=self.imgUp,
 				bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
-				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
 			self.btnParamUp.grid(column=2, row=0)
 			# Parameter editor assert button
 			self.btnParamAssert = tkinter.Button(self.param_editor_canvas, command=self.menuValueAssert,
 				image=self.imgForward,
 				bd=0, highlightthickness=0,
-				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
 			self.btnParamAssert.grid(column=3, row=0)
 		# Parameter editor value text
-		self.param_title_canvas = tkinter.Canvas(self.param_editor_canvas, height=zynthian_gui_config.topbar_height, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_bg)
+		self.param_title_canvas = tkinter.Canvas(self.param_editor_canvas, height=zynthian_gui_config.topbar_height, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_header_bg)
 		self.param_title_canvas.create_text(3, zynthian_gui_config.topbar_height / 2,
 			anchor='w',
 			font=zynthian_gui_config.font_topbar,
@@ -214,7 +214,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.btnMenuBack = tkinter.Button(self.menu_button_canvas, command=self.closePanelManager,
 				image=self.imgBack,
 				bd=0, highlightthickness=0,
-				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
 			self.btnMenuBack.grid(column=0, row=0)
 			self.menu_button_canvas.grid_columnconfigure(4, weight=1)
 
@@ -225,13 +225,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.btnStop = tkinter.Button(self.status_menu_frame, command=self.stop,
 			image=self.imgStop,
 			bd=0, highlightthickness=0,
-			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
 		self.btnStop.grid()
 
 		self.btnTransport = tkinter.Button(self.status_menu_frame, command=self.toggleTransport,
 			image=self.imgPlay,
 			bd=0, highlightthickness=0,
-			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_bg, bg=zynthian_gui_config.color_bg)
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
 		self.btnTransport.grid()
 
 		self.patternEditor = zynthian_gui_patterneditor(self)
@@ -268,8 +268,14 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to update title
 	#	title: Title to display in topbar
-	def setTitle(self, title):
+	#	fg: Title foreground colour [Default: Do not change]
+	#	bg: Title background colour [Default: Do not change]
+	def setTitle(self, title, fg=None, bg=None):
 		self.title_canvas.itemconfig("lblTitle", text=title)
+		if fg:
+			self.title_canvas.itemconfig("lblTitle", fill=fg)
+		if bg:
+			self.title_canvas.configure(bg=bg)
 
 	# Function to show GUI
 	def show(self):
