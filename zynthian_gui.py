@@ -78,6 +78,7 @@ from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 #from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
 from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
+from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
@@ -328,6 +329,7 @@ class zynthian_gui:
 		self.screens['zs3_options'] = zynthian_gui_zs3_options()
 		self.screens['main'] = zynthian_gui_main()
 		self.screens['admin'] = zynthian_gui_admin()
+		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
 
 		# Create UI Apps Screens
 		self.screens['alsa_mixer'] = self.screens['control']
@@ -490,6 +492,10 @@ class zynthian_gui:
 		self.show_screen()
 
 
+	def calibrate_touchscreen(self):
+		self.show_modal('touchscreen_calibration')
+
+
 	def load_snapshot(self):
 		self.show_modal("snapshot","LOAD")
 
@@ -529,10 +535,11 @@ class zynthian_gui:
 
 
 	def exit_midi_learn_mode(self):
-		if self.midi_learn_mode:
-			self.midi_learn_mode = False
-			self.midi_learn_zctrl = None
-			lib_zyncoder.set_midi_learning_mode(0)
+		self.midi_learn_mode = False
+		self.midi_learn_zctrl = None
+		lib_zyncoder.set_midi_learning_mode(0)
+		self.screens['control'].refresh_midi_bind()
+		self.screens['control'].set_select_path()
 		self.show_active_screen()
 
 
@@ -1023,9 +1030,6 @@ class zynthian_gui:
 				self.show_screen(screen_back)
 
 		elif i==2:
-			# TEST
-			self.init_mpe_zones(0, 2)
-		
 			if self.modal_screen=='snapshot':
 				self.screens['snapshot'].next()
 
