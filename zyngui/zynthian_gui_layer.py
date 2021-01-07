@@ -336,25 +336,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.drop_from_fxchain(self.layers[i])
 				self.layers[i].mute_audio_out()
 
-			self.zyngui.zynautoconnect()
+			self.zyngui.zynautoconnect(True)
 
 			self.zyngui.zynautoconnect_acquire_lock()
 			self.layers[i].reset()
 			self.layers.pop(i)
 			self.zyngui.zynautoconnect_release_lock()
-
-			if self.zyngui.curlayer in self.root_layers:
-				self.index = self.root_layers.index(self.zyngui.curlayer)
-
-			else:
-				self.index=0
-				try:
-					self.zyngui.set_curlayer(self.root_layers[self.index])
-				except:
-					self.zyngui.set_curlayer(None)
-
-			self.fill_list()
-			self.set_selector()
 
 			# Stop unused engines
 			if stop_unused_engines:
@@ -398,12 +385,33 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.zynautoconnect(True)
 
 			# Remove layers
+			self.zyngui.zynautoconnect_acquire_lock()
 			for layer in layers_to_delete:
-				self.remove_layer(self.layers.index(layer), False)
+				try:
+					i = self.layers.index(layer)
+					self.layers[i].reset()
+					self.layers.pop(i)
+				except Exception as e:
+					logging.error("Can't delete layer {} => {}".format(i,e))
+			self.zyngui.zynautoconnect_release_lock()
 
 			# Stop unused engines
 			if stop_unused_engines:
 				self.zyngui.screens['engine'].stop_unused_engines()
+
+			# Recalculate selector and root_layers list
+			self.fill_list()
+
+			if self.zyngui.curlayer in self.root_layers:
+				self.index = self.root_layers.index(self.zyngui.curlayer)
+			else:
+				self.index=0
+				try:
+					self.zyngui.set_curlayer(self.root_layers[self.index])
+				except:
+					self.zyngui.set_curlayer(None)
+
+			self.set_selector()
 
 
 	def remove_all_layers(self, stop_engines=True):
@@ -429,16 +437,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.layers.pop(i)
 		self.zyngui.zynautoconnect_release_lock()
 
-		self.index=0
-		try:
-			curlayer = self.root_layers[self.index]
-		except:
-			curlayer = None
-		self.zyngui.set_curlayer(curlayer)
-
 		# Stop ALL engines
 		if stop_engines:
 			self.zyngui.screens['engine'].stop_unused_engines()
+
+		self.index=0
+		self.zyngui.set_curlayer(None)
 
 		# Refresh UI
 		self.fill_list()
@@ -467,7 +471,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def set_transpose(self, tr_status):
 		for i in range(0,16):
-			zyncoder.lib_zyncoder.set_midi_filter_halftone_trans(i, tr_status[i]['halftone_trans'])
+			zyncoder.lib_zyncoder.set_midi_filter_halftone_trans(i, tr_status[i])
 
 
 	def set_note_range(self, nr_status):
