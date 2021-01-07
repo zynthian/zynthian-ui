@@ -200,7 +200,7 @@ class Sequence
 		uint8_t m_nChannel = 0; // MIDI channel
 		uint8_t m_nOutput = 0; // JACK output
 		uint8_t m_nState = STOPPED; // Play state
-		uint8_t m_nMode = LOOP; // Play mode
+		uint8_t m_nMode = LOOPSYNC; // Play mode
 		uint8_t m_nGroup = 0; // Group
 		uint8_t m_nTrigger = 0xFF; // MIDI note to trigger sequence
 		uint8_t m_nMap = 0; // Map / scale index
