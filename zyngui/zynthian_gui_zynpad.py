@@ -120,16 +120,22 @@ class zynthian_gui_zynpad():
 	# Function to populate menu
 	def populateMenu(self):
 		self.parent.addMenu({'Pad mode':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':len(self.playModes)-1, 'getValue':self.getSelectedPadMode, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Group':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':25, 'getValue':self.getGroup, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'MIDI channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.getPadChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Trigger channel':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':16, 'getValue':self.getTriggerChannel, 'onChange':self.onMenuChange}}})
 		self.parent.addMenu({'Tally channel':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':15, 'getValue':self.getTallyChannel, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Quantity of pads':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'getValue':self.getPads, 'onChange':self.onMenuChange}}})
-		self.parent.addMenu({'Tempo':{'method':self.parent.showParamEditor, 'params':{'min':0, 'max':999, 'getValue':self.libseq.getTempo, 'onChange':self.onMenuChange}}})
+		self.parent.addMenu({'Quantity of pads':{'method':self.parent.showParamEditor, 'params':{'min':1, 'max':64, 'getValue':self.getPads, 'onChange':self.onMenuChange, 'onAssert':self.setPads}}})
 
 	# Function to hide GUI
 	def hide(self):
 		self.parent.unregisterZyncoder(ENC_BACK)
 		self.parent.unregisterZyncoder(ENC_SELECT)
 		self.parent.unregisterSwitch(ENC_SELECT)
+
+	# Function to get MIDI channel of selected pad
+	#	returns: MIDI channel
+	def getPadChannel(self):
+		return self.libseq.getChannel(self.getSequence(self.selectedPad)) + 1
 
 	# Function to get the MIDI trigger channel
 	#   returns: MIDI channel
@@ -144,6 +150,10 @@ class zynthian_gui_zynpad():
 			return 0
 		else:
 			return channel + 1
+
+	# Function to get group of selected track
+	def getGroup(self):
+		return self.libseq.getGroup(self.getSequence(self.selectedPad))
 
 	# Function to get the mode of the currently selected pad
 	#   returns: Mode of selected pad
@@ -167,26 +177,23 @@ class zynthian_gui_zynpad():
 			value = params['min']
 		if value > params['max']:
 			value = params['max']
-		if menuItem == 'Tempo':
-			self.libseq.setTempo(value)
-		prefix = "%s%d" % (chr(int((self.selectedPad) / self.columns) + 65), (self.selectedPad) % self.columns + 1)
 		if menuItem == 'Pad mode':
 			self.libseq.setPlayMode(self.getSequence(self.selectedPad), value)
-			self.drawPad(self.selectedPad)
-			return "%s: %s" % (prefix, self.playModes[value])
+#			self.drawPad(self.selectedPad)
+			return "Pad mode: %s" % (self.playModes[value])
+		elif menuItem == "Group":
+			self.libseq.setGroup(self.getSequence(self.selectedPad), value);
+			return "Group: %s" % (chr(65 + value))
+		elif menuItem == 'MIDI channel':
+			self.libseq.setChannel(self.getSequence(self.selectedPad), value - 1)
 		elif menuItem == 'Trigger channel':
 			self.libseq.setTriggerChannel(value - 1)
-			return "%s: Channel: %d" % (prefix, value)
 		elif menuItem == 'Tally channel':
 			if value == 0:
 				self.setPadTallies(255)
 				return "None"
 			else:
 				self.setPadTallies(value - 1)
-			return "Channel: %d" % (value)
-		elif menuItem == "Quantity of pads":
-			self.setPads(value)
-			#TODO: Should we avoid removing pads / sequences until we have asserted change?
 		return "%s: %d" % (menuItem, value)
 
 
@@ -198,8 +205,9 @@ class zynthian_gui_zynpad():
 	# Function to set quantity of pads
 	#	pads: Quantity of pads
 	#	Note: Tracks will be deleted from or added to end of track list as necessary
-	def setPads(self, pads):
+	def setPads(self):
 		orig_pads = self.getPads()
+		pads = self.parent.getParam('Quantity of pads', 'value')
 		# Remove surplus tracks
 		while self.getPads() > pads:
 			self.libseq.removeTrack(self.song, pads)
@@ -277,6 +285,7 @@ class zynthian_gui_zynpad():
 	#   col: Column index
 	#   row: Row index
 	def drawCell(self, col, row, clear = False):
+		#TODO: Optimise pad refresh
 		if col < 0 or col >= self.columns or row < 0 or row >= self.columns:
 			return
 		pad = row + col * self.columns
@@ -307,6 +316,7 @@ class zynthian_gui_zynpad():
 			else:
 				fill = self.padColourPlaying
 			self.gridCanvas.itemconfig(cell, fill=fill)
+			self.gridCanvas.itemconfig("lbl_pad:%d"%(pad), text="%s%d" % (chr(65 + group), pad + 1))
 			self.gridCanvas.coords(cell, padX, padY, padX + padWidth, padY + padHeight)
 		else:
 			cell = self.gridCanvas.create_rectangle(padX, padY, padX + padWidth, padY + padHeight,
