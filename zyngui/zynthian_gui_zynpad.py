@@ -118,8 +118,7 @@ class zynthian_gui_zynpad():
 		self.parent.add_menu({'Pad mode':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(zynthian_gui_stepsequencer.PLAY_MODES)-1, 'get_value':self.get_selected_pad_mode, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Group':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':25, 'get_value':self.get_group, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'MIDI channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_pad_channel, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Trigger channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_trigger_channel, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Tally channel':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':15, 'get_value':self.get_tally_channel, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Trigger note':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':128, 'get_value':self.get_trigger_note, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Quantity of pads':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':self.get_pads, 'on_change':self.on_menu_change, 'on_assert':self.set_pads}}})
 
 	# Function to hide GUI
@@ -133,19 +132,11 @@ class zynthian_gui_zynpad():
 	def get_pad_channel(self):
 		return self.libseq.getChannel(self.get_sequence(self.selected_pad)) + 1
 
-	# Function to get the MIDI trigger channel
-	#   returns: MIDI channel
-	def get_trigger_channel(self):
-		return self.libseq.getTriggerChannel() + 1
 
-	# Function to get the MIDI tally channel
-	#   returns: MIDI channel to send tallies (e.g. to light controller pads)
-	def get_tally_channel(self):
-		channel = self.libseq.getTallyChannel()
-		if channel > 15:
-			return 0
-		else:
-			return channel + 1
+	# Function to get the MIDI trigger note
+	#   returns: MIDI note
+	def get_trigger_note(self):
+		return self.libseq.getTriggerNote(self.get_sequence(self.selected_pad))
 
 	# Function to get group of selected track
 	def get_group(self):
@@ -182,14 +173,11 @@ class zynthian_gui_zynpad():
 			return "Group: %s" % (chr(65 + value))
 		elif menu_item == 'MIDI channel':
 			self.libseq.setChannel(self.get_sequence(self.selected_pad), value - 1)
-		elif menu_item == 'Trigger channel':
-			self.libseq.setTriggerChannel(value - 1)
-		elif menu_item == 'Tally channel':
-			if value == 0:
-				self.set_pad_tallies(255)
-				return "None"
-			else:
-				self.set_pad_tallies(value - 1)
+		elif menu_item == 'Trigger note':
+			self.libseq.setTriggerNote(self.get_sequence(self.selected_pad), value)
+			if value > 127:
+				return "Trigger note: None"
+			return "Trigger note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value)
 		return "%s: %d" % (menu_item, value)
 
 
@@ -213,20 +201,6 @@ class zynthian_gui_zynpad():
 		pads = self.get_pads()
 		self.update_grid()
 
-	# Function to configure pad tallies
-	#	channel: MIDI channel to send tallies (255 to disable tallies)
-	def set_pad_tallies(self, channel):
-		#TODO: Currently only handles Akai APC
-		for track in range(self.libseq.getTracks(self.song)):
-			sequence = self.libseq.getSequence(self.song, track)
-			if sequence:
-				note = self.libseq.getTriggerNote(sequence)
-				self.libseq.setTallyChannel(sequence, channel)
-				if channel < 16:
-					if note < 128 and self.libseq.getSequenceLength(sequence):
-						self.libseq.playNote(note, 3, channel, 0)
-					else:
-						self.libseq.playNote(note, 0, channel, 0)
 
 	# Function to load song
 	def select_song(self):

@@ -202,7 +202,6 @@ class zynthian_gui_songeditor():
 	# Function to show GUI
 	#	song: Song to show
 	def show(self, params=None):
-		logging.warning(params)
 		try:
 			self.editor_mode = params["mode"]
 		except:
@@ -488,47 +487,42 @@ class zynthian_gui_songeditor():
 	# Function to draw track label
 	#	track: Track index
 	def draw_track_label(self, track):
-		try:
-			row = track - self.row_offset
-			sequence = self.libseq.getSequence(self.song, track)
-			channel = self.libseq.getChannel(sequence) + 1
-			group = self.libseq.getGroup(sequence)
-			mode = self.libseq.getPlayMode(sequence)
+		row = track - self.row_offset
+		sequence = self.libseq.getSequence(self.song, track)
+		channel = self.libseq.getChannel(sequence) + 1
+		group = self.libseq.getGroup(sequence)
+		mode = self.libseq.getPlayMode(sequence)
 
-			self.track_title_canvas.delete('rowtitle:%d'%(row))
-			self.track_title_canvas.delete('rowicon:%d'%(row))
-			self.track_title_canvas.delete('rowback:%d'%(row))
-			title_back = self.track_title_canvas.create_rectangle(0, self.row_height * row, self.track_title_width, (1 + row) * self.row_height, tags=('rowback:%d'%(row), 'tracktitle'))
-			font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
-			title = self.track_title_canvas.create_text((0, self.row_height * (row + 0.5)), font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row),"trackname", 'tracktitle'), anchor="w")
-			mode_icon = self.track_title_canvas.create_image(self.track_title_width, row * self.row_height, anchor='ne', tags=('rowicon:%d'%(row), 'tracktitle'))
+		self.track_title_canvas.delete('rowtitle:%d'%(row))
+		self.track_title_canvas.delete('rowicon:%d'%(row))
+		self.track_title_canvas.delete('rowback:%d'%(row))
+		title_back = self.track_title_canvas.create_rectangle(0, self.row_height * row, self.track_title_width, (1 + row) * self.row_height, tags=('rowback:%d'%(row), 'tracktitle'))
+		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
+		title = self.track_title_canvas.create_text((0, self.row_height * (row + 0.5)), font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row),"trackname", 'tracktitle'), anchor="w")
+		mode_icon = self.track_title_canvas.create_image(self.track_title_width, row * self.row_height, anchor='ne', tags=('rowicon:%d'%(row), 'tracktitle'))
 
-			trigger = self.libseq.getTriggerNote(sequence)
-			if trigger < 128:
-				self.track_title_canvas.itemconfig(title, text="%s%d (%d,%s)" % (chr(65+group), track + 1, channel, self.get_note(trigger)))
-			else:
-				self.track_title_canvas.itemconfig(title, text="%s%d (%d)" % (chr(65+group), track + 1, channel))
-			self.track_title_canvas.itemconfig(mode_icon, image=self.icon[mode])
-			if group % 2:
-				fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED_EVEN
-			else:
-				fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED_ODD
-			self.track_title_canvas.itemconfig(title_back, fill=fill)
-			self.track_title_canvas.tag_bind('tracktitle', "<Button-1>", self.on_track_click)
-		except Exception as e:
-			logging.warning("Error: %s", e)
+		trigger = self.libseq.getTriggerNote(sequence)
+		if trigger < 128:
+			self.track_title_canvas.itemconfig(title, text="%s%d (%d,%s)" % (chr(65+group), track + 1, channel, self.get_note(trigger)))
+		else:
+			self.track_title_canvas.itemconfig(title, text="%s%d (%d)" % (chr(65+group), track + 1, channel))
+		self.track_title_canvas.itemconfig(mode_icon, image=self.icon[mode])
+		if group % 2:
+			fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED_EVEN
+		else:
+			fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED_ODD
+		self.track_title_canvas.itemconfig(title_back, fill=fill)
+		self.track_title_canvas.tag_bind('tracktitle', "<Button-1>", self.on_track_click)
 
 	# Function to draw a grid row
 	#	row: Grid row to draw
 	#	redrawTrackTitles: True to redraw track titles (Default: True)
 	def draw_row(self, row, redraw_track_titles = True):
-		logging.warning("row:%d redraw_track_titles:%d", row, redraw_track_titles)
 		if row + self.row_offset >= self.libseq.getTracks(self.song):
 			return
 		track = self.row_offset + row
 		if(redraw_track_titles):
 			self.draw_track_label(track)
-
 		for col in range(self.horizontal_zoom):
 			self.draw_cell(col, row)
 

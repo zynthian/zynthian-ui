@@ -565,7 +565,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			try:
 				params["track"] = self.zynpad.selected_pad
 			except:
-				logging.warning("Failed to set track when opening pad editor")
 				pass
 			params["mode"] = "pad"
 		elif name == "pattern editor":
@@ -659,6 +658,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			filename = self.filename
 		if self.zyngui.libseq.load(bytes(USER_PATH + "/" + filename + ".zynseq", "utf-8")):
 			self.filename = filename
+			self.zyngui.libseq.setTriggerChannel(zynthian_gui_config.master_midi_channel)
 			if self.child:
 				self.child.on_load()
 				#TODO: This won't update hidden children
