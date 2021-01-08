@@ -109,7 +109,7 @@ class zynthian_gui_fileselector():
 		self.file_list.configure(height = int(rows))
 
 		self.file_list.grid(row=1, column=0, sticky="nsew")
-		self.setupEncoders()
+		self.setup_encoders()
 
 	# Function to handle listbox press
 	#	event: Mouse event
@@ -148,26 +148,26 @@ class zynthian_gui_fileselector():
 
 	# Function to hide dialog
 	def hide(self):
-		self.parent.unregisterZyncoder(ENC_SELECT)
-		self.parent.unregisterSwitch(ENC_SELECT)
-		self.parent.unregisterSwitch(ENC_SELECT, "B")
-		self.parent.unregisterSwitch(ENC_BACK, "B")
+		self.parent.unregister_zyncoder(ENC_SELECT)
+		self.parent.unregister_switch(ENC_SELECT)
+		self.parent.unregister_switch(ENC_SELECT, "B")
+		self.parent.unregister_switch(ENC_BACK, "B")
 		self.file_list.destroy()
 #		self.btnCancel.destroy()
 		self.tb_panel.destroy()
-		self.parent.showChild()
+		self.parent.show_child()
 
 	# Function to register encoders
-	def setupEncoders(self):
-		self.parent.registerZyncoder(ENC_SELECT, self)
-		self.parent.registerSwitch(ENC_SELECT, self)
-		self.parent.registerSwitch(ENC_SELECT, self, "B")
-		self.parent.registerSwitch(ENC_BACK, self)
+	def setup_encoders(self):
+		self.parent.register_zyncoder(ENC_SELECT, self)
+		self.parent.register_switch(ENC_SELECT, self)
+		self.parent.register_switch(ENC_SELECT, self, "B")
+		self.parent.register_switch(ENC_BACK, self)
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
 	#	value: Current value of zyncoder
-	def onZyncoder(self, encoder, value):
+	def on_zyncoder(self, encoder, value):
 		if encoder == ENC_SELECT:
 			# SELECT encoder select file
 			try:
@@ -190,7 +190,7 @@ class zynthian_gui_fileselector():
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
-	def onSwitch(self, switch, type):
+	def on_switch(self, switch, type):
 		if switch == ENC_SELECT and type == 'B':
 			filename = self.file_list.get(self.file_list.curselection()[0])
 			self.parent.zyngui.show_confirm("Do you really want to delete %s?"%(filename), self.delete_confirmed, filename)

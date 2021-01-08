@@ -77,6 +77,14 @@ SEQ_LASTPLAYSTATUS	= 3
 
 USER_PATH			= "/zynthian/zynthian-my-data/zynseq"
 
+PLAY_MODES = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
+PAD_COLOUR_DISABLED = 'grey'
+PAD_COLOUR_STARTING = 'orange'
+PAD_COLOUR_PLAYING = 'green'
+PAD_COLOUR_STOPPING = 'red'
+PAD_COLOUR_STOPPED_ODD = 'purple'
+PAD_COLOUR_STOPPED_EVEN = 'blue'
+
 # Class implements zynthian step sequencer parent, hosting child screens:editors, players, etc.
 class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
@@ -91,8 +99,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def __init__(self):
 		super().__init__()
 		self.shown = False # True when GUI in view
-		self.zyncoderOwner = [None, None, None, None] # Object that currently "owns" encoder, indexed by encoder
-		self.switchOwner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
+		self.zyncoder_owner = [None, None, None, None] # Object that currently "owns" encoder, indexed by encoder
+		self.switch_owner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.child = None # Pointer to instance of child panel
 		self.last_child = None # Pointer to instance of last child shown - used to return to same screen
@@ -122,57 +130,57 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			tags="lblTitle",
 			text="Step Sequencer")
 		self.title_canvas.grid(row=0, column=0, sticky='ew')
-		self.title_canvas.bind('<Button-1>', self.toggleMenu)
+		self.title_canvas.bind('<Button-1>', self.toggle_menu)
 
 		iconsize = (zynthian_gui_config.topbar_height - 2, zynthian_gui_config.topbar_height - 2)
 		img = (Image.open("/zynthian/zynthian-ui/icons/play.png").resize(iconsize))
-		self.imgPlay = ImageTk.PhotoImage(img)
+		self.image_play = ImageTk.PhotoImage(img)
 		pixdata = img.load()
 		for y in range(img.size[1]):
 			for x in range(img.size[0]):
 				if pixdata[x, y][0] == (255):
 					pixdata[x, y] = (0, 255, 0, pixdata[x, y][3])
-		self.imgPlaying = ImageTk.PhotoImage(img)
-		self.imgBack = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/back.png").resize(iconsize))
-		self.imgForward = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/tick.png").resize(iconsize))
+		self.image_playing = ImageTk.PhotoImage(img)
+		self.image_back = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/back.png").resize(iconsize))
+		self.image_forward = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/tick.png").resize(iconsize))
 		img = (Image.open("/zynthian/zynthian-ui/icons/arrow.png").resize(iconsize))
-		self.imgUp = ImageTk.PhotoImage(img)
-		self.imgDown = ImageTk.PhotoImage(img.rotate(180))
+		self.image_up = ImageTk.PhotoImage(img)
+		self.image_down = ImageTk.PhotoImage(img.rotate(180))
 
 		# Parameter value editor
-		self.paramEditorItem = None
-		self.MENU_ITEMS = {} # Dictionary of menu items
+		self.param_editor_item = None
+		self.menu_items = {} # Dictionary of menu items
 		self.param_editor_canvas = tkinter.Canvas(self.tb_frame,
 			height=zynthian_gui_config.topbar_height,
 			bd=0, highlightthickness=0)
 		self.param_editor_canvas.grid_propagate(False)
-		self.param_editor_canvas.bind('<Button-1>', self.hideParamEditor)
+		self.param_editor_canvas.bind('<Button-1>', self.hide_param_editor)
 
 		if zynthian_gui_config.enable_touch_widgets:
 			# Parameter editor cancel button
-			self.btnParamCancel = tkinter.Button(self.param_editor_canvas, command=self.hideParamEditor,
-				image=self.imgBack,
+			self.button_param_cancel = tkinter.Button(self.param_editor_canvas, command=self.hide_param_editor,
+				image=self.image_back,
 				bd=0, highlightthickness=0,
 				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.btnParamCancel.grid(column=0, row=0)
+			self.button_param_cancel.grid(column=0, row=0)
 			# Parameter editor decrement button
-			self.btnParamDown = tkinter.Button(self.param_editor_canvas, command=self.decrementParam,
-				image=self.imgDown,
+			self.button_param_down = tkinter.Button(self.param_editor_canvas, command=self.decrement_param,
+				image=self.image_down,
 				bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
 				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.btnParamDown.grid(column=1, row=0)
+			self.button_param_down.grid(column=1, row=0)
 			# Parameter editor increment button
-			self.btnParamUp = tkinter.Button(self.param_editor_canvas, command=self.incrementParam,
-				image=self.imgUp,
+			self.button_param_up = tkinter.Button(self.param_editor_canvas, command=self.increment_param,
+				image=self.image_up,
 				bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
 				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.btnParamUp.grid(column=2, row=0)
+			self.button_param_up.grid(column=2, row=0)
 			# Parameter editor assert button
-			self.btnParamAssert = tkinter.Button(self.param_editor_canvas, command=self.menuValueAssert,
-				image=self.imgForward,
+			self.button_param_assert = tkinter.Button(self.param_editor_canvas, command=self.menu_value_assert,
+				image=self.image_forward,
 				bd=0, highlightthickness=0,
 				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.btnParamAssert.grid(column=3, row=0)
+			self.button_param_assert.grid(column=3, row=0)
 		# Parameter editor value text
 		self.param_title_canvas = tkinter.Canvas(self.param_editor_canvas, height=zynthian_gui_config.topbar_height, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_header_bg)
 		self.param_title_canvas.create_text(3, zynthian_gui_config.topbar_height / 2,
@@ -181,19 +189,19 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 #			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
 #				size=int(self.height * 0.05)),
 			fill=zynthian_gui_config.color_panel_tx,
-			tags="lblparamEditorValue",
+			tags="lbl_param_editor_value",
 			text="VALUE...")
 		self.param_title_canvas.grid(column=4, row=0, sticky='ew')
 		self.param_editor_canvas.grid_columnconfigure(4, weight=1)
-		self.param_title_canvas.bind('<Button-1>', self.hideParamEditor)
+		self.param_title_canvas.bind('<Button-1>', self.hide_param_editor)
 
 
 		#TODO: Consolidate menu to base class
-		self.status_canvas.bind('<Button-1>', self.toggleStatusMenu)
+		self.status_canvas.bind('<Button-1>', self.toggle_status_menu)
 
 		# Menu #TODO: Replace listbox with painted canvas providing swipe gestures
-		self.listboxTextHeight = tkFont.Font(font=zynthian_gui_config.font_listbox).metrics('linespace')
-		self.lstMenu = tkinter.Listbox(self.main_frame,
+		self.listbox_text_height = tkFont.Font(font=zynthian_gui_config.font_listbox).metrics('linespace')
+		self.lst_menu = tkinter.Listbox(self.main_frame,
 			font=zynthian_gui_config.font_listbox,
 			bd=7,
 			highlightthickness=0,
@@ -203,79 +211,79 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			selectbackground=zynthian_gui_config.color_ctrl_bg_on,
 			selectforeground=zynthian_gui_config.color_ctrl_tx,
 			selectmode=tkinter.BROWSE)
-		self.lstMenu.bind('<Button-1>', self.onMenuPress)
-		self.lstMenu.bind('<B1-Motion>', self.onMenuDrag)
-		self.lstMenu.bind('<ButtonRelease-1>', self.onMenuRelease)
+		self.lst_menu.bind('<Button-1>', self.on_menu_press)
+		self.lst_menu.bind('<B1-Motion>', self.on_menu_drag)
+		self.lst_menu.bind('<ButtonRelease-1>', self.on_menu_release)
 		self.scrollTime = 0.0
 		if zynthian_gui_config.enable_touch_widgets:
 			self.menu_button_canvas = tkinter.Canvas(self.tb_frame,
 				height=zynthian_gui_config.topbar_height,
 				bg=zynthian_gui_config.color_bg, bd=0, highlightthickness=0)
 			self.menu_button_canvas.grid_propagate(False)
-			self.menu_button_canvas.bind('<Button-1>', self.hideMenu)
-			self.btnMenuBack = tkinter.Button(self.menu_button_canvas, command=self.closePanelManager,
-				image=self.imgBack,
+			self.menu_button_canvas.bind('<Button-1>', self.hide_menu)
+			self.btn_menu_back = tkinter.Button(self.menu_button_canvas, command=self.close_panel_manager,
+				image=self.image_back,
 				bd=0, highlightthickness=0,
 				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.btnMenuBack.grid(column=0, row=0)
+			self.btn_menu_back.grid(column=0, row=0)
 			self.menu_button_canvas.grid_columnconfigure(4, weight=1)
 
 		self.status_menu_frame = tkinter.Frame(self.main_frame)
 
 		img = (Image.open("/zynthian/zynthian-ui/icons/stop.png").resize(iconsize))
-		self.imgStop = ImageTk.PhotoImage(img)
-		self.btnStop = tkinter.Button(self.status_menu_frame, command=self.stop,
-			image=self.imgStop,
+		self.image_stop = ImageTk.PhotoImage(img)
+		self.button_stop = tkinter.Button(self.status_menu_frame, command=self.stop,
+			image=self.image_stop,
 			bd=0, highlightthickness=0,
 			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-		self.btnStop.grid()
+		self.button_stop.grid()
 
-		self.btnTransport = tkinter.Button(self.status_menu_frame, command=self.toggleTransport,
-			image=self.imgPlay,
+		self.button_transport = tkinter.Button(self.status_menu_frame, command=self.toggle_transport,
+			image=self.image_play,
 			bd=0, highlightthickness=0,
 			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-		self.btnTransport.grid()
+		self.button_transport.grid()
 
-		self.patternEditor = zynthian_gui_patterneditor(self)
-		self.songEditor = zynthian_gui_songeditor(self)
+		self.pattern_editor = zynthian_gui_patterneditor(self)
+		self.song_editor = zynthian_gui_songeditor(self)
 		self.zynpad = zynthian_gui_zynpad(self)
 
 		# Init touchbar
 		self.init_buttonbar()
 
-		self.selectSong(self.song)
-		self.populateMenu()
+		self.select_song(self.song)
+		self.populate_menu()
 		self.param_editor_timer = None
 
 	# Function to print traceback - for debug only
 	#	TODO: Remove debug function (or move to other zynthian class)
-	def debugTraceback(self):
+	def debug_traceback(self):
 		for trace in inspect.stack():
 			print(trace.function)
 
 	# Function to close the panel manager
-	def closePanelManager(self):
-		self.hideMenu()
+	def close_panel_manager(self):
+		self.hide_menu()
 		self.zyngui.zynswitch_defered('S', 1)
 
 	# Function to populate menu with global entries
-	def populateMenu(self):
-		self.lstMenu.delete(0, tkinter.END)
-		self.MENU_ITEMS = {} # Dictionary of menu items
-		self.addMenu({'ZynPad':{'method':self.showChild, 'params':"zynpad"}})
-		self.addMenu({'Pad Editor':{'method':self.showChild, 'params':"pad editor"}})
-#		self.addMenu({'Song Editor':{'method':self.showChild, 'params':"song editor"}})
-		self.addMenu({'Song':{'method':self.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.zyngui.libseq.getSong, 'onChange':self.onMenuChange}}})
-		self.addMenu({'Tempo':{'method':self.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.zyngui.libseq.getTempo, 'onChange':self.onMenuChange}}})
-		self.addMenu({'Load':{'method':self.select_filename, 'params':self.filename}})
-		self.addMenu({'Save':{'method':self.save_as, 'params':self.filename}})
-		self.addMenu({'---':{}})
+	def populate_menu(self):
+		self.lst_menu.delete(0, tkinter.END)
+		self.menu_items = {} # Dictionary of menu items
+		self.add_menu({'ZynPad':{'method':self.show_child, 'params':"zynpad"}})
+		self.add_menu({'Pad Editor':{'method':self.show_child, 'params':"pad editor"}})
+#		self.addMenu({'Song Editor':{'method':self.show_child, 'params':"song editor"}})
+		self.add_menu({'Song':{'method':self.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':self.zyngui.libseq.getSong, 'on_change':self.on_menu_change}}})
+		self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':self.zyngui.libseq.getTempo, 'on_change':self.on_menu_change}}})
+		self.add_menu({'Load':{'method':self.select_filename, 'params':self.filename}})
+		self.add_menu({'Save':{'method':self.save_as, 'params':self.filename}})
+		self.add_menu({'---':{}})
 
 	# Function to update title
 	#	title: Title to display in topbar
 	#	fg: Title foreground colour [Default: Do not change]
 	#	bg: Title background colour [Default: Do not change]
-	def setTitle(self, title, fg=None, bg=None):
+	def set_title(self, title, fg=None, bg=None):
 		self.title_canvas.itemconfig("lblTitle", text=title)
 		if fg:
 			self.title_canvas.itemconfig("lblTitle", fill=fg)
@@ -288,7 +296,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.shown=True
 			self.main_frame.grid_propagate(False)
 			self.main_frame.grid(column=0, row=0)
-			self.showChild(self.last_child)
+			self.show_child()
 		self.main_frame.focus()
 
 	# Function to hide GUI
@@ -311,25 +319,25 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				self.child.refresh_status()
 
 	# Function to open menu
-	def showMenu(self):
-		self.populateMenu()
+	def show_menu(self):
+		self.populate_menu()
 		if self.child:
-			self.child.populateMenu()
+			self.child.populate_menu()
 		button_height = 0
 		if zynthian_gui_config.enable_touch_widgets:
 			button_height = zynthian_gui_config.buttonbar_height
-		rows = min((self.height - zynthian_gui_config.topbar_height - button_height) / self.listboxTextHeight - 1, self.lstMenu.size())
-		self.lstMenu.configure(height = int(rows))
-		self.lstMenu.grid(column=0, row=1, sticky="nw")
-		self.lstMenu.tkraise()
-		self.lstMenu.selection_clear(0,tkinter.END)
-		self.lstMenu.activate(0)
-		self.lstMenu.selection_set(0)
-		self.lstMenu.see(0)
+		rows = min((self.height - zynthian_gui_config.topbar_height - button_height) / self.listbox_text_height - 1, self.lst_menu.size())
+		self.lst_menu.configure(height = int(rows))
+		self.lst_menu.grid(column=0, row=1, sticky="nw")
+		self.lst_menu.tkraise()
+		self.lst_menu.selection_clear(0,tkinter.END)
+		self.lst_menu.activate(0)
+		self.lst_menu.selection_set(0)
+		self.lst_menu.see(0)
 		for encoder in range(4):
-			self.unregisterZyncoder(encoder)
-		self.registerSwitch(ENC_SELECT, self)
-		self.registerSwitch(ENC_BACK, self)
+			self.unregister_zyncoder(encoder)
+		self.register_switch(ENC_SELECT, self)
+		self.register_switch(ENC_BACK, self)
 		if zynthian_gui_config.enable_touch_widgets:
 			self.menu_button_canvas.grid()
 			self.menu_button_canvas.grid_propagate(False)
@@ -337,232 +345,233 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to close menu
 	#	event: Mouse event (not used)
-	def hideMenu(self, event=None):
-		self.hideParamEditor()
-		self.unregisterZyncoder(ENC_SELECT)
-		self.lstMenu.grid_forget()
+	def hide_menu(self, event=None):
+		self.hide_param_editor()
+		self.unregister_zyncoder(ENC_SELECT)
+		self.lst_menu.grid_forget()
 		if zynthian_gui_config.enable_touch_widgets:
 			self.menu_button_canvas.grid_forget()
 		for encoder in range(4):
-			self.unregisterZyncoder(encoder)
+			self.unregister_zyncoder(encoder)
 		if self.child:
-			self.child.setupEncoders()
+			self.child.setup_encoders()
 
 	# Function to handle title bar click
 	#	event: Mouse event (not used)
-	def toggleMenu(self, event=None):
-		if self.lstMenu.winfo_viewable():
-			self.hideMenu()
+	def toggle_menu(self, event=None):
+		if self.lst_menu.winfo_viewable():
+			self.hide_menu()
 		else:
-			self.showMenu()
+			self.show_menu()
 
 	# Function to open status menu
-	def showStatusMenu(self):
+	def show_status_menu(self):
 		self.status_menu_frame.grid(column=0, row=1, sticky="ne")
 		self.status_menu_frame.tkraise()
 
 	# Function to close status menu
-	def hideStatusMenu(self):
+	def hide_status_menu(self):
 		self.status_menu_frame.grid_forget()
 
 	# Function to handle status bar click
 	#	event: Mouse event (not used)
-	def toggleStatusMenu(self, event=None):
+	def toggle_status_menu(self, event=None):
 		if self.status_menu_frame.winfo_viewable():
-			self.hideStatusMenu()
+			self.hide_status_menu()
 		else:
-			self.showStatusMenu()
+			self.show_status_menu()
 
 	# Function to handle press menu
-	def onMenuPress(self, event):
+	def on_menu_press(self, event):
 		pass
 
 	# Function to handle motion menu
-	def onMenuDrag(self, event):
+	def on_menu_drag(self, event):
 		now = time.monotonic()
 		if self.scrollTime < now:
 			self.scrollTime = now + 0.1
 			try:
-				item = self.lstMenu.curselection()[0]
-				self.lstMenu.see(item + 1)
-				self.lstMenu.see(item - 1)
+				item = self.lst_menu.curselection()[0]
+				self.lst_menu.see(item + 1)
+				self.lst_menu.see(item - 1)
 			except:
 				pass
 		#self.lstMenu.winfo(height)
 		pass
 
 	# Function to handle release menu
-	def onMenuRelease(self, event):
-		self.onMenuSelect()
+	def on_menu_release(self, event):
+		self.on_menu_select()
 
 	# Function to handle menu item selection (SELECT button or click on listbox entry)
-	def onMenuSelect(self):
-		if self.lstMenu.winfo_viewable():
-			menuItem = None
+	def on_menu_select(self):
+		if self.lst_menu.winfo_viewable():
+			menu_item = None
 			action = None
 			params = {}
 			try:
-				menuItem = self.lstMenu.get(self.lstMenu.curselection()[0])
-				action = self.MENU_ITEMS[menuItem]['method']
-				params = self.MENU_ITEMS[menuItem]['params']
+				menu_item = self.lst_menu.get(self.lst_menu.curselection()[0])
+				action = self.menu_items[menu_item]['method']
+				params = self.menu_items[menu_item]['params']
 			except:
 				logging.error("**Error selecting menu**")
-			self.hideMenu()
-			if not menuItem:
+			self.hide_menu()
+			if not menu_item:
 				return
-			if action == self.showParamEditor:
-				self.showParamEditor(menuItem)
+			if action == self.show_param_editor:
+				self.show_param_editor(menu_item)
 			elif action:
 				action(params) # Call menu handler defined during addMenu
 
 	# Function to add items to menu
 	#	item: Dictionary containing menu item data, indexed by menu item title
 	#		Dictionary should contain {'method':<function to call when menu selected>} and {'params':<parameters to pass to method>}
-	def addMenu(self, item):
-		self.MENU_ITEMS.update(item)
-		self.lstMenu.insert(tkinter.END, list(item)[0])
+	def add_menu(self, item):
+		self.menu_items.update(item)
+		self.lst_menu.insert(tkinter.END, list(item)[0])
 
 	# Function to set menu data parameters
 	#	item: Menu item name
 	#	param: Parameter name
 	#	value: Parameter value
-	def setParam(self, item, param, value):
-		if item in self.MENU_ITEMS:
-			self.MENU_ITEMS[item]['params'].update({param: value})
+	def set_param(self, item, param, value):
+		if item in self.menu_items:
+			self.menu_items[item]['params'].update({param: value})
 
 	# Function to refresh parameter editor display
 	def refreshParamEditor(self):
-		self.param_title_canvas.itemconfig("lblparamEditorValue", 
-			text=self.MENU_ITEMS[self.paramEditorItem]['params']['onChange'](self.MENU_ITEMS[self.paramEditorItem]['params']))
+		self.param_title_canvas.itemconfig("lbl_param_editor_value", 
+			text=self.menu_items[self.param_editor_item]['params']['on_change'](self.menu_items[self.param_editor_item]['params']))
 
 	# Function to get menu data parameters
 	#	item: Menu item name
 	#	param: Parameter name
 	#	returns: Parameter value
-	def getParam(self, item, param):
-		if item in self.MENU_ITEMS and param in self.MENU_ITEMS[item]['params']:
-			return self.MENU_ITEMS[item]['params'][param]
+	def get_param(self, item, param):
+		if item in self.menu_items and param in self.menu_items[item]['params']:
+			return self.menu_items[item]['params'][param]
 		return None
 
 	# Function to show menu editor
 	#	menuitem: Name of the menu item who's parameters to edit
 	#	timeout: Seconds before hiding (don't show any editor buttons)
-	def showParamEditor(self, menuItem, timeout=0):
-		if not menuItem in self.MENU_ITEMS:
+	def show_param_editor(self, menu_item, timeout=0):
+		if not menu_item in self.menu_items:
 			return
-		self.paramEditorItem = menuItem
-		if self.getParam(menuItem, 'getValue'):
-			self.setParam(menuItem, 'value', self.getParam(menuItem, 'getValue')())
+		self.param_editor_item = menu_item
+		if self.get_param(menu_item, 'get_value'):
+			self.set_param(menu_item, 'value', self.get_param(menu_item, 'get_value')())
 		self.param_editor_canvas.grid_propagate(False)
 		self.param_editor_canvas.grid(column=0, row=0, sticky='nsew')
 		# Get the value to display in the param editor
-		self.param_title_canvas.itemconfig("lblparamEditorValue", 
-			text=self.MENU_ITEMS[menuItem]['params']['onChange'](self.MENU_ITEMS[menuItem]['params'])
+		self.param_title_canvas.itemconfig("lbl_param_editor_value", 
+			text=self.menu_items[menu_item]['params']['on_change'](self.menu_items[menu_item]['params'])
 			)
 		if timeout:
 			if self.param_editor_timer:
 				self.param_editor_timer.cancel()
-			self.param_editor_timer = Timer(timeout, self.hideParamEditor)
+			self.param_editor_timer = Timer(timeout, self.hide_param_editor)
 			self.param_editor_timer.start()
 			return
-		if 'onAssert' in self.MENU_ITEMS[menuItem]['params']:
+		if 'on_assert' in self.menu_items[menu_item]['params']:
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='normal')
 		else:
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='hidden')
 		for encoder in range(4):
-			self.unregisterZyncoder(encoder)
-		self.registerSwitch(ENC_SELECT, self)
-		self.registerSwitch(ENC_BACK, self)
+			self.unregister_zyncoder(encoder)
+		self.register_switch(ENC_SELECT, self)
+		self.register_switch(ENC_BACK, self)
 
 	# Function to hide menu editor
 	#	event: Mouse event (not used)
-	def hideParamEditor(self, event=None):
+	def hide_param_editor(self, event=None):
 		if self.param_editor_timer:
 			self.param_editor_timer.cancel()
 			self.param_editor_timer = None
-		self.paramEditorItem = None
+		self.param_editor_item = None
 		self.param_editor_canvas.grid_forget()
 		for encoder in range(4):
-			self.unregisterZyncoder(encoder)
+			self.unregister_zyncoder(encoder)
 		if self.child:
-			self.child.setupEncoders()
+			self.child.setup_encoders()
 
 	# Function to handle menu editor value change and get display label text
 	#	params: Menu item's parameters
 	#	returns: String to populate menu editor label
 	#	note: This is default but other method may be used for each menu item
 	#	note: params is a dictionary with required fields: min, max, value
-	def onMenuChange(self, params):
+	def on_menu_change(self, params):
 		value = params['value']
 		if value < params['min']:
 			value = params['min']
 		if value > params['max']:
 			value = params['max']
-		if self.paramEditorItem == 'Song':
-			self.selectSong(value)
-		elif self.paramEditorItem == 'Tempo':
-			self.zyngui.libseq.setTempo(value);
-		self.setParam(self.paramEditorItem, 'value', value)
-		return "%s: %d" % (self.paramEditorItem, value)
+		if self.param_editor_item == 'Song':
+			self.select_song(value)
+		elif self.param_editor_item == 'Tempo':
+			self.zyngui.libseq.setTempo(value)
+		self.set_param(self.param_editor_item, 'value', value)
+		return "%s: %d" % (self.param_editor_item, value)
 
 	# Function to change parameter value
 	#	value: Offset by which to change parameter value
-	def changeParam(self, value):
-		value = self.getParam(self.paramEditorItem, 'value') + value
-		if value < self.getParam(self.paramEditorItem, 'min'):
-			if self.getParam(self.paramEditorItem, 'value' == value):
+	def change_param(self, value):
+		value = self.get_param(self.param_editor_item, 'value') + value
+		if value < self.get_param(self.param_editor_item, 'min'):
+			if self.get_param(self.param_editor_item, 'value' == value):
 				return
-			value = self.getParam(self.paramEditorItem, 'min')
-		if value > self.getParam(self.paramEditorItem, 'max'):
-			if self.getParam(self.paramEditorItem, 'value' == value):
+			value = self.get_param(self.param_editor_item, 'min')
+		if value > self.get_param(self.param_editor_item, 'max'):
+			if self.get_param(self.param_editor_item, 'value' == value):
 				return
-			value = self.getParam(self.paramEditorItem, 'max')
-		self.setParam(self.paramEditorItem, 'value', value)
-		result = self.getParam(self.paramEditorItem, 'onChange')(self.MENU_ITEMS[self.paramEditorItem]['params'])
+			value = self.get_param(self.param_editor_item, 'max')
+		self.set_param(self.param_editor_item, 'value', value)
+		result = self.get_param(self.param_editor_item, 'on_change')(self.menu_items[self.param_editor_item]['params'])
 		if result == -1:
-			hideParamEditor()
+			self.parent.hide_param_editor()
 		else:
-			self.param_title_canvas.itemconfig("lblparamEditorValue", text=result)
+			self.param_title_canvas.itemconfig("lbl_param_editor_value", text=result)
 
 	# Function to decrement parameter value
-	def decrementParam(self):
-		self.changeParam(-1)
+	def decrement_param(self):
+		self.change_param(-1)
 
 	# Function to increment selected menu value
-	def incrementParam(self):
-		self.changeParam(1)
+	def increment_param(self):
+		self.change_param(1)
 
 	# Function to assert selected menu value
-	def menuValueAssert(self):
-		if self.paramEditorItem and 'onAssert' in self.MENU_ITEMS[self.paramEditorItem]['params'] and self.MENU_ITEMS[self.paramEditorItem]['params']['onAssert']:
-			self.MENU_ITEMS[self.paramEditorItem]['params']['onAssert']()
-		self.hideParamEditor()
+	def menu_value_assert(self):
+		if self.param_editor_item and 'on_assert' in self.menu_items[self.param_editor_item]['params'] and self.menu_items[self.param_editor_item]['params']['on_assert']:
+			self.menu_items[self.param_editor_item]['params']['on_assert']()
+		self.hide_param_editor()
 
 	# Function to show child GUI
 	#	name: Name of child to show
 	#	params: Dictionary of parameters to pass to child class show() method
-	def showChild(self, name=None, params={}):
+	def show_child(self, name=None, params={}):
 		if not self.shown:
 			return
 		if not name:
 			name = "zynpad"
-		self.hideChild()
+		self.hide_child()
 		self.buttonbar_config[2] = (2, '')
 		if name == "song editor":
 			self.zyngui.libseq.selectSong(self.song)
-			self.child = self.songEditor
+			self.child = self.song_editor
 		elif name == "pad editor":
 			self.zyngui.libseq.selectSong(self.song)
-			self.child = self.songEditor
+			self.child = self.song_editor
 			try:
-				params["track"] = self.zynpad.selectedPad
+				params["track"] = self.zynpad.selected_pad
 			except:
+				logging.warning("Failed to set track when opening pad editor")
 				pass
 			params["mode"] = "pad"
 		elif name == "pattern editor":
 			self.zyngui.libseq.stop() #TODO This is a sledgehammer approach - stopping everything when editing pattern because otherwise we need to consider relative positions for everything
 			#self.zyngui.libseq.selectSong(0)
-			self.child = self.patternEditor
+			self.child = self.pattern_editor
 			params["mode"] = "song"
 			self.buttonbar_config[2] = (2, 'PLAY')
 		elif name == "zynpad":
@@ -575,52 +584,52 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.status_menu_frame.tkraise()
 
 	# Function to hide child GUI
-	def hideChild(self):
+	def hide_child(self):
 		if self.child:
-			self.last_child = self.child.getName()
+			self.last_child = self.child.get_name()
 			self.child.hide()
 		self.child = None
-		self.hideParamEditor()
-#		self.setTitle("Step Sequencer")
+		self.hide_param_editor()
+#		self.set_title("Step Sequencer")
 		for switch in range(4):
 			for type in ['S', 'B', 'L']:
-				self.unregisterSwitch(switch, type)
+				self.unregister_switch(switch, type)
 
 	# Function to start transport
 	def start(self):
-		self.zyngui.libseq.transportStart(bytes("zynseq","utf-8"));
+		self.zyngui.libseq.transportStart(bytes("zynseq","utf-8"))
 
 	# Function to pause transport
 	def pause(self):
-		self.zyngui.libseq.transportStop(bytes("zynseq","utf-8"));
+		self.zyngui.libseq.transportStop(bytes("zynseq","utf-8"))
 
 	# Function to stop and recue transport
 	def stop(self):
-		if self.child == self.patternEditor:
+		if self.child == self.pattern_editor:
 			self.zyngui.libseq.setPlayState(0, SEQ_STOPPED)
 			self.zyngui.libseq.setTransportToStartOfBar()
 		#TODO: Handle other views
 
 	# Function to recue transport
 	def recue(self):
-		self.zyngui.libseq.locate(0);
+		self.zyngui.libseq.locate(0)
 
 	# Function to select song
 	#	song: Index of song to select
-	def selectSong(self, song):
+	def select_song(self, song):
 		if song > 0:
 #			self.zyngui.libseq.transportStop() #TODO: Stopping transport due to jack_transport restarting if locate called
 			self.zyngui.libseq.selectSong(song)
 			self.song = song
 			try:
-				self.child.selectSong()
+				self.child.select_song()
 			except:
 				pass
 
 	# Function to toggle transport
-	def toggleTransport(self):
-		if self.child == self.patternEditor:
-			self.zyngui.libseq.togglePlayState(self.patternEditor.sequence)
+	def toggle_transport(self):
+		if self.child == self.pattern_editor:
+			self.zyngui.libseq.togglePlayState(self.pattern_editor.sequence)
 		#TODO: Handle transport for other views
 
 	# Function to name file before saving
@@ -651,7 +660,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.zyngui.libseq.load(bytes(USER_PATH + "/" + filename + ".zynseq", "utf-8")):
 			self.filename = filename
 			if self.child:
-				self.child.onLoad()
+				self.child.on_load()
 				#TODO: This won't update hidden children
 
 	# Function to refresh loading animation
@@ -661,33 +670,33 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
 	#	value: Value of zyncoder change since last read
-	def onZyncoder(self, encoder, value):
-		if self.lstMenu.winfo_viewable():
+	def on_zyncoder(self, encoder, value):
+		if self.lst_menu.winfo_viewable():
 			# Menu showing
 			if encoder == ENC_SELECT or encoder == ENC_LAYER:
-				if self.lstMenu.size() < 1:
+				if self.lst_menu.size() < 1:
 					return
 				index = 0
 				try:
-					index = self.lstMenu.curselection()[0]
+					index = self.lst_menu.curselection()[0]
 				except:
 					logging.error("Problem detecting menu selection")
 				index = index + value
 				if index < 0:
 					index = 0
-				if index >= self.lstMenu.size():
-					index = self.lstMenu.size() - 1
-				self.lstMenu.selection_clear(0,tkinter.END)
-				self.lstMenu.selection_set(index)
-				self.lstMenu.activate(index)
-				self.lstMenu.see(index)
-		elif self.paramEditorItem and not self.param_editor_timer:
+				if index >= self.lst_menu.size():
+					index = self.lst_menu.size() - 1
+				self.lst_menu.selection_clear(0,tkinter.END)
+				self.lst_menu.selection_set(index)
+				self.lst_menu.activate(index)
+				self.lst_menu.see(index)
+		elif self.param_editor_item and not self.param_editor_timer:
 			# Parameter editor showing
 			if encoder == ENC_SELECT or encoder == ENC_LAYER:
-				self.changeParam(value)
-		elif encoder == ENC_SNAPSHOT:
+				self.change_param(value)
+		if encoder == ENC_SNAPSHOT:
 			self.zyngui.libseq.setTempo(self.zyngui.libseq.getTempo() + value)
-			self.showParamEditor("Tempo", 2)
+			self.show_param_editor("Tempo", 2)
 
 	# Function to handle zyncoder polling
 	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +1 and calculate offset
@@ -695,50 +704,49 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if not self.shown:
 			return
 		if zyncoder.lib_zyncoder:
-			for encoder in range(len(self.zyncoderOwner)):
-				if self.zyncoderOwner[encoder]:
+			for encoder in range(len(self.zyncoder_owner)):
+				if self.zyncoder_owner[encoder]:
 					# Found a registered zyncoder
 					value = zyncoder.lib_zyncoder.get_value_zyncoder(encoder)
 					if value != 64:
 						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 64, 0)
-						self.zyncoderOwner[encoder].onZyncoder(encoder, value - 64)
+						self.zyncoder_owner[encoder].on_zyncoder(encoder, value - 64)
 
 	# Function to handle CUIA encoder changes
-	def onCuiaEncoder(self, encoder, value):
-		if self.zyncoderOwner[encoder]:
-			self.zyncoderOwner[encoder].onZyncoder(encoder, value)
+	def on_cuia_encoder(self, encoder, value):
+		if self.zyncoder_owner[encoder]:
+			self.zyncoder_owner[encoder].on_zyncoder(encoder, value)
 
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
-		self.onCuiaEncoder(ENC_SELECT, 1);
+		self.on_cuia_encoder(ENC_SELECT, 1)
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		self.onCuiaEncoder(ENC_SELECT, -1);
+		self.on_cuia_encoder(ENC_SELECT, -1)
 
 	# Function to handle CUIA LAYER_UP command
 	def layer_up(self):
-		self.onCuiaEncoder(ENC_LAYER, 1);
+		self.on_cuia_encoder(ENC_LAYER, 1)
 
 	# Function to handle CUIA LAYER_DOWN command
 	def layer_down(self):
-		self.onCuiaEncoder(ENC_LAYER, -1);
+		self.on_cuia_encoder(ENC_LAYER, -1)
 
 	# Function to handle CUIA SNAPSHOT_UP command
 	def snapshot_up(self):
-		self.onCuiaEncoder(ENC_SNAPSHOT, 1);
-
+		self.on_cuia_encoder(ENC_SNAPSHOT, 1)
 	# Function to handle CUIA SNAPSHOT_DOWN command
 	def snapshot_down(self):
-		self.onCuiaEncoder(ENC_SNAPSHOT, -1);
+		self.on_cuia_encoder(ENC_SNAPSHOT, -1)
 
 	# Function to handle CUIA BACK_UP command
 	def back_up(self):
-		self.onCuiaEncoder(ENC_BACK, 1);
+		self.on_cuia_encoder(ENC_BACK, 1)
 
 	# Function to handle CUIA BACK_UP command
 	def back_down(self):
-		self.onCuiaEncoder(ENC_BACK, -1);
+		self.on_cuia_encoder(ENC_BACK, -1)
 
 	# Function to handle CUIA SELECT command
 	def switch_select(self, t):
@@ -748,33 +756,33 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
-	def onSwitch(self, switch, type):
-		if switch == ENC_LAYER and not self.lstMenu.winfo_viewable():
-			self.toggleMenu()
+	def on_switch(self, switch, type):
+		if switch == ENC_LAYER and not self.lst_menu.winfo_viewable():
+			self.toggle_menu()
 		elif switch == ENC_BACK and type == 'B':
 			return False
 		elif switch == ENC_BACK and type == 'S':
-			if self.lstMenu.winfo_viewable():
+			if self.lst_menu.winfo_viewable():
 				# Close menu
-				self.hideMenu()
+				self.hide_menu()
 				return True
-			if self.paramEditorItem:
+			if self.param_editor_item:
 				# Close parameter editor
-				self.hideParamEditor()
+				self.hide_param_editor()
 				return True
-			if self.child == self.songEditor:
-				self.showChild("zynpad")
+			if self.child == self.song_editor:
+				self.show_child("zynpad")
 				return True
 			if self.child != self.zynpad:
-				self.showChild(self.last_child)
+				self.show_child(self.last_child)
 				return True
 			return False
 		elif switch == ENC_SELECT or switch == ENC_LAYER:
-			if self.lstMenu.winfo_viewable():
-				self.onMenuSelect()
+			if self.lst_menu.winfo_viewable():
+				self.on_menu_select()
 				return True
-			elif self.paramEditorItem:
-				self.menuValueAssert()
+			elif self.param_editor_item:
+				self.menu_value_assert()
 				return True
 		return True # Tell parent that we handled all short and bold key presses
 
@@ -784,77 +792,77 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
 		if type == 'S':
-			typeIndex = 0
+			type_index = 0
 		elif type == 'B':
-			typeIndex = 1
+			type_index = 1
 		elif type == 'L':
-			typeIndex = 2
+			type_index = 2
 		else:
 			return
-		index = switch * 3 + typeIndex
-		if index >= len(self.switchOwner) or self.switchOwner[index] == None:
+		index = switch * 3 + type_index
+		if index >= len(self.switch_owner) or self.switch_owner[index] == None:
 			return False # No one is handling this switch action so let parent manage it
-		return self.switchOwner[index].onSwitch(switch, type)
+		return self.switch_owner[index].on_switch(switch, type)
 
 	# Function to register ownsership of switches
 	#	switch: Index of switch [0..3]
 	#	object: Object to register as owner
 	#	type: Press type ['S'=Short, 'B'=Bold, 'L'=Long, Default:'S'] Can pass several, e.g. "SB" for both short and bold
-	def registerSwitch(self, switch, object, type='S'):
+	def register_switch(self, switch, object, type='S'):
 		for t in type:
 			if t == 'S':
-				typeIndex = 0
+				type_index = 0
 			elif t == 'B':
-				typeIndex = 1
+				type_index = 1
 			elif t == 'L':
-				typeIndex = 2
+				type_index = 2
 			else:
 				continue
-			index = switch * 3 + typeIndex
-			if index >= len(self.switchOwner):
+			index = switch * 3 + type_index
+			if index >= len(self.switch_owner):
 				return
-			self.switchOwner[index] = None
+			self.switch_owner[index] = None
 			if self.shown:
-				self.switchOwner[index] = object
+				self.switch_owner[index] = object
 
 	# Function to unrestister ownership of a switch from an object (and handle in this class instead)
 	#	switch: Index of switch [0..3]
 	#	type: Press type ['S'=Short, 'B'=Bold, 'L'=Long, Default:'S'] Can pass several, e.g. "SB" for both short and bold
-	def unregisterSwitch(self, switch, type='S'):
+	def unregister_switch(self, switch, type='S'):
 		for t in type:
 			if t == 'S':
-				typeIndex = 0
+				type_index = 0
 			elif t == 'B':
-				typeIndex = 1
+				type_index = 1
 			elif t == 'L':
-				typeIndex = 2
+				type_index = 2
 			else:
 				continue
-			index = switch * 3 + typeIndex
-			if index >= len(self.switchOwner):
+			index = switch * 3 + type_index
+			if index >= len(self.switch_owner):
 				continue
-			self.registerSwitch(switch, self, t)
+			self.register_switch(switch, self, t)
 
 	# Function to register ownership of an encoder by an object
 	#	encoder: Index of rotary encoder [0..3]
 	#	object: Object to register as owner
 	#	Note: Registers an object to own the encoder which will trigger that object's onZyncoder method when encoder rotated passing it +/- value since last read
-	def registerZyncoder(self, encoder, object):
-		if encoder >= len(self.zyncoderOwner):
+	def register_zyncoder(self, encoder, object):
+		if encoder >= len(self.zyncoder_owner):
 			return
-		self.zyncoderOwner[encoder] = None
+		self.zyncoder_owner[encoder] = None
 		if self.shown and zyncoder.lib_zyncoder:
 			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
 			zyncoder.lib_zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, 0)
-			self.zyncoderOwner[encoder] = object
+			self.zyncoder_owner[encoder] = object
 
 	# Function to unregister ownership of an encoder from an object
 	#	encoder: Index of encoder to unregister
-	def unregisterZyncoder(self, encoder):
-		if encoder >= len(self.zyncoderOwner):
+	def unregister_zyncoder(self, encoder):
+		if encoder >= len(self.zyncoder_owner):
 			return
-		self.registerZyncoder(encoder, self)
+		self.register_zyncoder(encoder, self)
 
 #------------------------------------------------------------------------------
 

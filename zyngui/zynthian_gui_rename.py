@@ -59,7 +59,7 @@ class zynthian_gui_rename():
 		self.rows = 5 # Quantity of rows in keyboard grid
 		self.shift = False # True when shift locked
 		self.buttons = [] # Array of buttons in keyboard layout
-		self.selected_button = 44; # Index of highlighted button
+		self.selected_button = 44 # Index of highlighted button
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -99,7 +99,7 @@ class zynthian_gui_rename():
 		self.btn_enter = self.add_button('ENTER', 8, row, 2)
 
 		self.refresh_keys()
-		self.setupEncoders()
+		self.setup_encoders()
 
 		self.highlight_box = self.key_canvas.create_rectangle(0, 0, self.key_width, self.key_height, outline="red", width=2)
 		self.highlight(self.selected_button)
@@ -186,7 +186,7 @@ class zynthian_gui_rename():
 	# Function to hide dialog
 	def hide(self):
 		self.main_frame.destroy()
-		self.parent.showChild()
+		self.parent.show_child()
 
 	# Function to assert ENTER
 	def execute_enter(self):
@@ -194,16 +194,16 @@ class zynthian_gui_rename():
 		self.hide()
 
 	# Function to register encoders
-	def setupEncoders(self):
-		self.parent.registerZyncoder(ENC_SELECT, self)
-		self.parent.registerZyncoder(ENC_BACK, self)
-		self.parent.registerSwitch(ENC_SELECT, self)
-		self.parent.registerSwitch(ENC_BACK, self)
+	def setup_encoders(self):
+		self.parent.register_zyncoder(ENC_SELECT, self)
+		self.parent.register_zyncoder(ENC_BACK, self)
+		self.parent.register_switch(ENC_SELECT, self)
+		self.parent.register_switch(ENC_BACK, self)
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
 	#	value: Current value of zyncoder
-	def onZyncoder(self, encoder, value):
+	def on_zyncoder(self, encoder, value):
 		if encoder == ENC_SELECT:
 			# SELECT encoder select key
 			self.selected_button = self.selected_button + value
@@ -242,7 +242,7 @@ class zynthian_gui_rename():
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
-	def onSwitch(self, switch, type):
+	def on_switch(self, switch, type):
 		if switch == ENC_BACK:
 			self.hide()
 		elif switch == ENC_SELECT:
