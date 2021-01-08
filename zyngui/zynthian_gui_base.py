@@ -156,7 +156,7 @@ class zynthian_gui_base:
 
 	def init_buttonbar(self):
 		# Touchbar frame
-		if not zynthian_gui_config.enable_touch_widgets:
+		if not zynthian_gui_config.enable_onscreen_buttons:
 			return
 
 		self.buttonbar_frame = tkinter.Frame(self.main_frame,

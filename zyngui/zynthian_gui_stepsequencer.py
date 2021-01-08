@@ -147,6 +147,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			height=zynthian_gui_config.topbar_height,
 			bd=0, highlightthickness=0)
 		self.param_editor_canvas.grid_propagate(False)
+		self.param_editor_canvas.bind('<Button-1>', self.hideParamEditor)
 
 		if zynthian_gui_config.enable_touch_widgets:
 			# Parameter editor cancel button
@@ -185,6 +186,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			text="VALUE...")
 		self.param_title_canvas.grid(column=4, row=0, sticky='ew')
 		self.param_editor_canvas.grid_columnconfigure(4, weight=1)
+		self.param_title_canvas.bind('<Button-1>', self.hideParamEditor)
+
 
 		#TODO: Consolidate menu to base class
 		self.status_canvas.bind('<Button-1>', self.toggleStatusMenu)
@@ -473,7 +476,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.registerSwitch(ENC_BACK, self)
 
 	# Function to hide menu editor
-	def hideParamEditor(self):
+	#	event: Mouse event (not used)
+	def hideParamEditor(self, event=None):
 		if self.param_editor_timer:
 			self.param_editor_timer.cancel()
 			self.param_editor_timer = None
