@@ -103,6 +103,10 @@ class zynthian_gui_zynpad():
 		# Selection highlight
 		self.selection = self.gridCanvas.create_rectangle(0, 0, self.colWidth, self.rowHeight, fill="", outline=SELECT_BORDER, width=self.selectThickness, tags="selection")
 
+	# Function to get name of this view
+	def getName(self):
+		return "zynpad"
+
 	#Function to set values of encoders
 	#	note: Call after other routine uses one or more encoders
 	def setupEncoders(self):
@@ -393,7 +397,7 @@ class zynthian_gui_zynpad():
 		if pattern == -1:
 			return
 		channel = self.libseq.getChannel(sequence)
-		self.parent.showChild(0, {"pattern":pattern, "channel":channel})
+		self.parent.showChild("pattern editor", {"pattern":pattern, "channel":channel})
 		#TODO: How do we indicate to return to zynpad when closing pattern editor?
 
 	# Function called when new file loaded from disk

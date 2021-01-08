@@ -95,9 +95,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.switchOwner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.child = None # Pointer to instance of child panel
-		self.lastchild = 2 # Index of last child shown - used to return to same screen
+		self.last_child = None # Pointer to instance of last child shown - used to return to same screen
 		self.song = 1 # The song that will play / edit (may be different to libseq.getSong, e.g. when editing pattern)
-		self.song_editor_mode = 1 # 1 for song editor, 3 for pad editor
 
 		# Load default sequence file
 		self.filename = "default"
@@ -263,9 +262,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def populateMenu(self):
 		self.lstMenu.delete(0, tkinter.END)
 		self.MENU_ITEMS = {} # Dictionary of menu items
-		self.addMenu({'ZynPad':{'method':self.showChild, 'params':2}})
-		self.addMenu({'Pad Editor':{'method':self.showChild, 'params':3}})
-#		self.addMenu({'Song Editor':{'method':self.showChild, 'params':1}})
+		self.addMenu({'ZynPad':{'method':self.showChild, 'params':"zynpad"}})
+		self.addMenu({'Pad Editor':{'method':self.showChild, 'params':"pad editor"}})
+#		self.addMenu({'Song Editor':{'method':self.showChild, 'params':"song editor"}})
 		self.addMenu({'Song':{'method':self.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.zyngui.libseq.getSong, 'onChange':self.onMenuChange}}})
 		self.addMenu({'Tempo':{'method':self.showParamEditor, 'params':{'min':1, 'max':999, 'getValue':self.zyngui.libseq.getTempo, 'onChange':self.onMenuChange}}})
 		self.addMenu({'Load':{'method':self.select_filename, 'params':self.filename}})
@@ -289,7 +288,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.shown=True
 			self.main_frame.grid_propagate(False)
 			self.main_frame.grid(column=0, row=0)
-			self.showChild()
+			self.showChild(self.last_child)
 		self.main_frame.focus()
 
 	# Function to hide GUI
@@ -540,32 +539,33 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.hideParamEditor()
 
 	# Function to show child GUI
-	#	childIndex: Index of child to show [0:PatternEditor 1:SongEditor 2:ZynPad 3:PadEditor]
-	#	params: Parameters to pass to child class show() method
-	def showChild(self, childIndex=None, params=None):
+	#	name: Name of child to show
+	#	params: Dictionary of parameters to pass to child class show() method
+	def showChild(self, name=None, params={}):
 		if not self.shown:
 			return
+		if not name:
+			name = "zynpad"
 		self.hideChild()
-		if childIndex == None:
-			childIndex = self.lastchild
-		self.lastchild = childIndex # A bit contrived but it allows us to return to same panel
 		self.buttonbar_config[2] = (2, '')
-		if childIndex == 1:
+		if name == "song editor":
 			self.zyngui.libseq.selectSong(self.song)
 			self.child = self.songEditor
-			params = 0
-			self.song_editor_mode = 1
-		elif childIndex == 3:
+		elif name == "pad editor":
 			self.zyngui.libseq.selectSong(self.song)
 			self.child = self.songEditor
-			params = 1
-			self.song_editor_mode = 3
-		elif childIndex == 0:
+			try:
+				params["track"] = self.zynpad.selectedPad
+			except:
+				pass
+			params["mode"] = "pad"
+		elif name == "pattern editor":
 			self.zyngui.libseq.stop() #TODO This is a sledgehammer approach - stopping everything when editing pattern because otherwise we need to consider relative positions for everything
 			#self.zyngui.libseq.selectSong(0)
 			self.child = self.patternEditor
+			params["mode"] = "song"
 			self.buttonbar_config[2] = (2, 'PLAY')
-		elif childIndex == 2:
+		elif name == "zynpad":
 #			self.zyngui.libseq.selectSong(self.song)
 			self.child = self.zynpad
 		else:
@@ -577,6 +577,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to hide child GUI
 	def hideChild(self):
 		if self.child:
+			self.last_child = self.child.getName()
 			self.child.hide()
 		self.child = None
 		self.hideParamEditor()
@@ -761,8 +762,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				# Close parameter editor
 				self.hideParamEditor()
 				return True
-			if self.child == self.patternEditor or self.child == self.songEditor:
-				self.showChild(2) #TODO: Have hardcoded return to zynpad but need to use breadcrumb or last chid or something
+			if self.child == self.songEditor:
+				self.showChild("zynpad")
+				return True
+			if self.child != self.zynpad:
+				self.showChild(self.last_child)
 				return True
 			return False
 		elif switch == ENC_SELECT or switch == ENC_LAYER:

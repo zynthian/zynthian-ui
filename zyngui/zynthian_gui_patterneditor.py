@@ -168,6 +168,10 @@ class zynthian_gui_patterneditor():
 		# Select a cell
 		self.selectCell(0, self.keyMapOffset)
 
+	# Function to get name of this view
+	def getName(self):
+		return "pattern editor"
+
 	#Function to set values of encoders
 	#   note: Call after other routine uses one or more encoders
 	def setupEncoders(self):

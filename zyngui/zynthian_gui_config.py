@@ -382,6 +382,7 @@ font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 #------------------------------------------------------------------------------
 
 enable_touch_widgets=int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS',False))
+enable_onscreen_buttons=int(os.environ.get('ZYNTHIAN_UI_ONSCREEN_BUTTONS',False))
 force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 
 #------------------------------------------------------------------------------
@@ -531,7 +532,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 		ctrl_width = display_width//4
 		button_width = display_width//4
 		topbar_height = display_height//10
-		buttonbar_height = enable_touch_widgets and display_height//7 or 0
+		buttonbar_height = enable_onscreen_buttons and display_height//7 or 0
 		body_height = display_height-topbar_height-buttonbar_height
 		ctrl_height = body_height//2
 

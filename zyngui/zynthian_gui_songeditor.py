@@ -81,7 +81,7 @@ class zynthian_gui_songeditor():
 		self.pattern = 1 # Index of current pattern to add to sequence
 		self.position = 0 # Current playhead position
 		self.gridTimer = Timer(0.5, self.onGridTimer) # Grid press and hold timer
-		self.editorMode = 0 # Editor mode [0: Song, 1: Pads]
+		self.editor_mode = "song" # Editor mode [song | pads]
 		self.song = 1 # Index of song being edited (1000 * editorMode + libseq.getSong)
 		self.trigger = 60 # MIDI note number to set trigger
 		#TODO: Populate tracks from file
@@ -156,6 +156,11 @@ class zynthian_gui_songeditor():
 		self.timebasetrackCanvas.bind("<B1-Motion>", self.onTimeDragMotion)
 		self.timebasetrackCanvas.grid(column=2, row=1)
 
+	# Function to get name of this view
+	def getName(self):
+		if self.editor_mode == "pad":
+			return "pad editor"
+		return "song editor"
 
 	# Function to load and resize icons
 	def loadIcons(self):
@@ -205,8 +210,15 @@ class zynthian_gui_songeditor():
 	# Function to show GUI
 	#	song: Song to show
 	def show(self, params=None):
-		if params != None:
-			self.editorMode = params
+		try:
+			self.editor_mode = params["mode"]
+		except:
+			pass # No parameter "mode" passed
+		try:
+			self.selectedCell[1] = params["track"]
+			self.redraw_pending = 2
+		except:
+			pass # No parameter "mode" passed
 		self.main_frame.tkraise()
 		self.selectSong()
 #		self.redraw_pending = 2
@@ -294,7 +306,7 @@ class zynthian_gui_songeditor():
 		while self.libseq.getTracks(self.song) < tracks:
 			track = self.libseq.addTrack(self.song)
 			sequence = self.libseq.getSequence(self.song, track)
-			if self.editorMode:
+			if self.editor_mode == "pad":
 				self.libseq.setGroup(sequence, int(track / 4))
 				self.libseq.setChannel(sequence, int(track / 4))
 				self.libseq.setPlayMode(sequence, 6)
@@ -437,7 +449,7 @@ class zynthian_gui_songeditor():
 		pattern = self.libseq.getPattern(sequence, time)
 		channel = self.libseq.getChannel(sequence)
 		if pattern > 0:
-			self.parent.showChild(0, {'pattern':pattern, 'channel':channel})
+			self.parent.showChild("pattern editor", {'pattern':pattern, 'channel':channel})
 
 	# Function to handle pattern click
 	#	event: Mouse event
@@ -826,7 +838,7 @@ class zynthian_gui_songeditor():
 			pass
 		elif menuItem == 'Bar / sync':
 			self.libseq.setBeatsPerBar(self.song, value)
-			if self.editorMode:
+			if self.editor_mode == "pad":
 				self.libseq.setBeatsPerBar(self.song - 1000, value)
 			else:
 				self.libseq.setBeatsPerBar(self.song + 1000, value)
@@ -878,7 +890,7 @@ class zynthian_gui_songeditor():
 		song = self.libseq.getSong()
 		if song != 0:
 			self.song = song
-		if self.editorMode:
+		if self.editor_mode == "pad":
 			self.parent.setTitle("Pad Editor (%d)" % (self.song))
 			self.song = self.song + 1000
 		else:
