@@ -1067,6 +1067,10 @@ void setTallyChannel(uint32_t sequence, uint8_t channel)
         g_bDirty = true;
 }
 
+bool hasSequenceChanged(uint32_t sequence)
+{
+    return PatternManager::getPatternManager()->getSequence(sequence)->hasChanged();
+}
 
 // ** Song management functions **
 
@@ -1365,3 +1369,4 @@ bool isModified()
 {
     return g_bDirty;
 }
+

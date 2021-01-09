@@ -44,7 +44,6 @@ from . import zynthian_gui_config
 from . import zynthian_gui_layer
 from . import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
-from zyncoder import *
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer Pattern Editor GUI Class

@@ -42,7 +42,6 @@ from threading import Timer
 # Zynthian specific modules
 from . import zynthian_gui_config
 from . import zynthian_gui_stepsequencer
-from zyncoder import *
 
 SELECT_BORDER	= zynthian_gui_config.color_on
 
@@ -176,11 +175,9 @@ class zynthian_gui_zynpad():
 			value = params['max']
 		if menu_item == 'Pad mode':
 			self.libseq.setPlayMode(self.get_sequence(self.selected_pad), value)
-			self.draw_pad(self.selected_pad, True)
 			return "Pad mode: %s" % (zynthian_gui_stepsequencer.PLAY_MODES[value])
 		elif menu_item == "Group":
 			self.libseq.setGroup(self.get_sequence(self.selected_pad), value)
-			self.draw_pad(self.selected_pad, True)
 			return "Group: %s" % (chr(65 + value))
 		elif menu_item == 'MIDI channel':
 			self.libseq.setChannel(self.get_sequence(self.selected_pad), value - 1)
@@ -247,7 +244,7 @@ class zynthian_gui_zynpad():
 		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
 		self.icon[6] = ImageTk.PhotoImage(img)
 
-		# Add pattern to sequence if missing TODO: Need to avoid this if using sequence editor - possibly by creating new sequences with a pattern by default
+		# Add pattern to sequence if missing
 		for pad in range(self.columns**2):
 			sequence = self.get_sequence(pad)
 			pad_x = pad % self.columns * self.column_width
@@ -267,49 +264,52 @@ class zynthian_gui_zynpad():
 			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
 			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
 			self.draw_pad(pad, True)
+		self.update_selection_cursor()
 
 
-	# Function to draw pad
+	# Function to refresh pad if it has changed
 	#   pad: Pad index
-	#	update: True to update static elements like mode
-	def draw_pad(self, pad, update=False):
-		#TODO: Optimisation - pad refresh
+	#	force: True to froce refresh
+	def draw_pad(self, pad, force=False):
 		if pad >= self.libseq.getTracks(self.song):
 			return
-		row = int(pad / self.columns)
-		col = pad % self.columns
-		sequence = self.get_sequence(pad)
-		mode = self.libseq.getPlayMode(sequence)
-		group = self.libseq.getGroup(sequence)
-		pad_x = col * self.column_width
-		pad_y = row * self.row_height
 		cell = self.grid_canvas.find_withtag("pad:%d"%(pad))
-		if self.selected_pad == pad:
-			# Move and show seletion cursor
-			self.grid_canvas.coords(self.selection, 1 + col * self.column_width, 1 + row * self.row_height, (1 + col) * self.column_width - self.select_thickness, (1 + row) * self.row_height - self.select_thickness)
-			self.grid_canvas.tag_raise(self.selection)
-			self.grid_canvas.itemconfig(self.selection, state="normal")
 		if cell:
-			if not sequence or mode == zynthian_gui_stepsequencer.SEQ_DISABLED:
-				fill = zynthian_gui_stepsequencer.PAD_COLOUR_DISABLED
-			elif self.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
-				if group % 2:
-					fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED_EVEN
+			sequence = self.get_sequence(pad)
+			if force or self.libseq.hasSequenceChanged(sequence):
+				mode = self.libseq.getPlayMode(sequence)
+				group = self.libseq.getGroup(sequence)
+				if not sequence or mode == zynthian_gui_stepsequencer.SEQ_DISABLED:
+					fill = zynthian_gui_stepsequencer.PAD_COLOUR_DISABLED
+				elif self.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
+					if group % 2:
+						fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED_EVEN
+					else:
+						fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED_ODD
+				elif self.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STARTING:
+					fill = zynthian_gui_stepsequencer.PAD_COLOUR_STARTING
+				elif self.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STOPPING:
+					fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPING
 				else:
-					fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED_ODD
-			elif self.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STARTING:
-				fill = zynthian_gui_stepsequencer.PAD_COLOUR_STARTING
-			elif self.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STOPPING:
-				fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPING
-			else:
-				fill = zynthian_gui_stepsequencer.PAD_COLOUR_PLAYING
-			self.grid_canvas.itemconfig(cell, fill=fill)
-			if update:
+					fill = zynthian_gui_stepsequencer.PAD_COLOUR_PLAYING
+				self.grid_canvas.itemconfig(cell, fill=fill)
+				pad_x = (pad % self.columns) * self.column_width
+				pad_y = int(pad / self.columns) * self.row_height
 				if self.libseq.getSequenceLength(sequence) == 0:
 					mode = 0
 				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text="%s%d" % (chr(65 + group), pad + 1))
 				self.grid_canvas.coords(cell, pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2)
 				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.icon[mode])
+
+
+	# Function to move selection cursor
+	def update_selection_cursor(self):
+		row = int(self.selected_pad / self.columns)
+		col = self.selected_pad % self.columns
+		self.grid_canvas.coords(self.selection,
+				1 + col * self.column_width, 1 + row * self.row_height,
+				(1 + col) * self.column_width - self.select_thickness, (1 + row) * self.row_height - self.select_thickness)
+		self.grid_canvas.tag_raise(self.selection)
 
 
 	# Function to handle pad press
@@ -380,6 +380,7 @@ class zynthian_gui_zynpad():
 			value = self.selected_pad + self.columns * value
 		if value >= 0 and value < self.libseq.getTracks(self.song):
 			self.selected_pad = value
+		self.update_selection_cursor()
 
 
 	# Function to handle switch press

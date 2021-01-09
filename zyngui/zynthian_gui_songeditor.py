@@ -37,7 +37,6 @@ import traceback
 # Zynthian specific modules
 from . import zynthian_gui_config
 from . import zynthian_gui_stepsequencer
-from zyncoder import *
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer Song Editor GUI Class

@@ -93,6 +93,7 @@ void Sequence::setPlayMode(uint8_t mode)
 		m_nState = STOPPED;
 		m_bStateChanged = true;
 	}
+	m_bChanged = true;
 }
 
 uint8_t Sequence::getPlayState()
@@ -105,6 +106,7 @@ void Sequence::setPlayState(uint8_t state)
 	if(state > LASTPLAYSTATUS || m_nMode == DISABLED || state == m_nState)
 		return;
 	m_bStateChanged = true;
+	m_bChanged = true;
 	if(state == STOPPING)
 		switch(m_nMode)
 		{
@@ -142,9 +144,15 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 	uint8_t nReturn = 0;
 	uint8_t nState = m_nState;
 	if(bSync && m_nState == STARTING)
+	{
 		m_nState = PLAYING;
+		m_bChanged = true;
+	}
 	if(bSync && m_nState == STOPPING && m_nMode != ONESHOTALL && m_nMode != LOOPALL)
+	{
 		m_nState = STOPPED;
+		m_bChanged = true;
+	}
 	if(m_nState != STOPPED && m_nState != STARTING)
 	{
 		//printf("Sequence clocked at %u. Step: %u m_nDivCount: %u m_nClkPerStep: %u\n", m_nPosition, m_nCurrentStep, m_nDivCount, m_nClkPerStep);
@@ -161,6 +169,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 					m_nState = STOPPED;
 					m_nPosition = 0;
 					m_bStateChanged = true;
+					m_bChanged = true;
 					return true;
 				}
 				switch(m_nMode)
@@ -172,6 +181,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 						m_nState = STOPPED;
 						m_nPosition = 0;
 						m_bStateChanged = true;
+						m_bChanged = true;
 						return true;
 					case LOOP:
 					case LOOPALL:
@@ -397,6 +407,7 @@ void Sequence::setGroup(uint8_t group)
 {
     if(group <= 26)
         m_nGroup = group;
+		m_bChanged = true;
 }
 
 uint8_t Sequence::getGroup()
@@ -448,4 +459,11 @@ void Sequence::solo(bool solo)
 bool Sequence::isSolo()
 {
 	return m_bSolo;
+}
+
+bool Sequence::hasChanged()
+{
+	bool bState = m_bChanged;
+	m_bChanged = false;
+	return bState;
 }

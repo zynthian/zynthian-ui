@@ -196,6 +196,12 @@ class Sequence
 		*/
 		bool isSolo();
 
+		/**	@brief	Check if a parameter has changed since last call
+		*	@retval	bool True if changed
+		*	@note	monitors: state, mode, group
+		*/
+		bool hasChanged();
+
 	private:
 		uint8_t m_nChannel = 0; // MIDI channel
 		uint8_t m_nOutput = 0; // JACK output
@@ -218,4 +224,5 @@ class Sequence
 		uint32_t m_nSequenceLength = 0; // Quantity of clock cycles in sequence (last pattern start + length)
 		double m_dSamplesPerClock; // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
 		bool m_bSolo = false; // True if sequence is solo
+		bool m_bChanged = true; // True if state changed since last hasChanged()
 };

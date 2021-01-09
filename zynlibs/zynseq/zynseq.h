@@ -420,7 +420,7 @@ uint8_t getGroup(uint32_t sequence);
 
 /** @brief  Set sequence group
 *   @param  sequence Sequence number
-*   @param group Group index
+*   @param  group Group index
 */
 void setGroup(uint32_t sequence, uint8_t group);
 
@@ -432,13 +432,13 @@ uint8_t getTallyChannel(uint32_t sequence);
 
 /** @brief  Set MIDI channel used to send sequence play status, e.g. to light controller pads
 *   @param  sequence Index of sequence
-*   @param channel MIDI channel [0..15, 255 for none]
+*   @param  channel MIDI channel [0..15, 255 for none]
 */
 void setTallyChannel(uint32_t sequence, uint8_t channel);
 
 /** @brief  Set MIDI note used to send sequence play status, e.g. to light controller pads
 *   @param  sequence Index of sequence
-*   @param note MIDI note [0..127]
+*   @param  note MIDI note [0..127]
 */
 void setTallyNote(uint32_t sequence, uint8_t note);
 
@@ -448,6 +448,11 @@ void setTallyNote(uint32_t sequence, uint8_t note);
 */
 uint8_t getTallyNote(uint32_t sequence);
 
+/** @brief  Check if a sequence play state, group or mode has changed since last checked
+*   @param  sequence Index of sequence
+*   @retval bool True if changed
+*/
+bool hasSequenceChanged(uint32_t sequence);
 
 // ** Song management functions **
 
