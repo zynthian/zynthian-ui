@@ -189,8 +189,8 @@ class zynthian_gui_songeditor():
 		self.parent.add_menu({'Copy song': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':999, 'value':self.copy_source, 'on_change':self.on_menu_change,'on_assert':self.copy_song}}})
 		self.parent.add_menu({'Clear song': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_song}}})
 		self.parent.add_menu({'Vertical zoom': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':64, 'value':self.vertical_zoom, 'on_change':self.on_menu_change,'on_assert':self.assert_and_redraw}}})
-		self.parent.add_menu({'Horizontal zoom': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':999 
-		, 'value':64, 'on_change':self.on_menu_change,'on_assert':self.assert_and_redraw}}})
+		self.parent.add_menu({'Horizontal zoom': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':64 
+		, 'get_value':self.get_horizontal_zoom, 'on_change':self.on_menu_change,'on_assert':self.assert_and_redraw}}})
 		self.parent.add_menu({'MIDI channel': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':16, 'get_value':self.get_track_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Tracks': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':64, 'get_value':self.get_tracks, 'on_change':self.on_menu_change, 'on_assert':self.set_tracks}}})
 		self.parent.add_menu({'Tempo': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':999, 'get_value':self.get_tempo, 'on_change':self.on_menu_change, 'on_assert':self.assert_tempo}}})
@@ -200,6 +200,11 @@ class zynthian_gui_songeditor():
 		self.parent.add_menu({'Trigger': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':128, 'get_value':self.get_trigger, 'on_change':self.on_menu_change, 'on_assert':self.set_trigger}}})
 		self.parent.add_menu({'Pattern': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
 
+
+	# Function to get horizontal zoom
+	#	Returns: Horizontal zoom
+	def get_horizontal_zoom(self):
+		return self.horizontal_zoom
 
 	# Function to show GUI
 	#	song: Song to show
