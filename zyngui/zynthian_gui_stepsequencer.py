@@ -95,6 +95,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		(3, 'TOGGLE')
 	]
 
+
 	# Function to initialise class
 	def __init__(self):
 		super().__init__()
@@ -255,16 +256,19 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.populate_menu()
 		self.param_editor_timer = None
 
+
 	# Function to print traceback - for debug only
 	#	TODO: Remove debug function (or move to other zynthian class)
 	def debug_traceback(self):
 		for trace in inspect.stack():
 			print(trace.function)
 
+
 	# Function to close the panel manager
 	def close_panel_manager(self):
 		self.hide_menu()
 		self.zyngui.zynswitch_defered('S', 1)
+
 
 	# Function to populate menu with global entries
 	def populate_menu(self):
@@ -279,6 +283,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.add_menu({'Save':{'method':self.save_as, 'params':self.filename}})
 		self.add_menu({'---':{}})
 
+
 	# Function to update title
 	#	title: Title to display in topbar
 	#	fg: Title foreground colour [Default: Do not change]
@@ -290,6 +295,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if bg:
 			self.title_canvas.configure(bg=bg)
 
+
 	# Function to show GUI
 	def show(self):
 		if not self.shown:
@@ -298,6 +304,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.main_frame.grid(column=0, row=0)
 			self.show_child()
 		self.main_frame.focus()
+
 
 	# Function to hide GUI
 	def hide(self):
@@ -309,6 +316,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			if self.zyngui.libseq.isModified():# and not self.zyngui.libseq.transportGetPlayStatus():
 				self.save()
 
+
 	# Function to refresh the status widgets
 	#	status: Dictionary containing update data
 	def refresh_status(self, status={}):
@@ -317,6 +325,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			# Refresh child panel
 			if self.child:
 				self.child.refresh_status()
+
 
 	# Function to open menu
 	def show_menu(self):
@@ -343,6 +352,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.menu_button_canvas.grid_propagate(False)
 			self.menu_button_canvas.grid(column=0, row=0, sticky='nsew')
 
+
 	# Function to close menu
 	#	event: Mouse event (not used)
 	def hide_menu(self, event=None):
@@ -364,14 +374,17 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.show_menu()
 
+
 	# Function to open status menu
 	def show_status_menu(self):
 		self.status_menu_frame.grid(column=0, row=1, sticky="ne")
 		self.status_menu_frame.tkraise()
 
+
 	# Function to close status menu
 	def hide_status_menu(self):
 		self.status_menu_frame.grid_forget()
+
 
 	# Function to handle status bar click
 	#	event: Mouse event (not used)
@@ -381,9 +394,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.show_status_menu()
 
+
 	# Function to handle press menu
 	def on_menu_press(self, event):
 		pass
+
 
 	# Function to handle motion menu
 	def on_menu_drag(self, event):
@@ -399,9 +414,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		#self.lstMenu.winfo(height)
 		pass
 
+
 	# Function to handle release menu
 	def on_menu_release(self, event):
 		self.on_menu_select()
+
 
 	# Function to handle menu item selection (SELECT button or click on listbox entry)
 	def on_menu_select(self):
@@ -423,12 +440,14 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			elif action:
 				action(params) # Call menu handler defined during addMenu
 
+
 	# Function to add items to menu
 	#	item: Dictionary containing menu item data, indexed by menu item title
 	#		Dictionary should contain {'method':<function to call when menu selected>} and {'params':<parameters to pass to method>}
 	def add_menu(self, item):
 		self.menu_items.update(item)
 		self.lst_menu.insert(tkinter.END, list(item)[0])
+
 
 	# Function to set menu data parameters
 	#	item: Menu item name
@@ -438,10 +457,12 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if item in self.menu_items:
 			self.menu_items[item]['params'].update({param: value})
 
+
 	# Function to refresh parameter editor display
 	def refreshParamEditor(self):
 		self.param_title_canvas.itemconfig("lbl_param_editor_value", 
 			text=self.menu_items[self.param_editor_item]['params']['on_change'](self.menu_items[self.param_editor_item]['params']))
+
 
 	# Function to get menu data parameters
 	#	item: Menu item name
@@ -451,6 +472,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if item in self.menu_items and param in self.menu_items[item]['params']:
 			return self.menu_items[item]['params'][param]
 		return None
+
 
 	# Function to show menu editor
 	#	menuitem: Name of the menu item who's parameters to edit
@@ -482,6 +504,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.register_switch(ENC_SELECT, self)
 		self.register_switch(ENC_BACK, self)
 
+
 	# Function to hide menu editor
 	#	event: Mouse event (not used)
 	def hide_param_editor(self, event=None):
@@ -494,6 +517,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.unregister_zyncoder(encoder)
 		if self.child:
 			self.child.setup_encoders()
+
 
 	# Function to handle menu editor value change and get display label text
 	#	params: Menu item's parameters
@@ -512,6 +536,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.libseq.setTempo(value)
 		self.set_param(self.param_editor_item, 'value', value)
 		return "%s: %d" % (self.param_editor_item, value)
+
 
 	# Function to change parameter value
 	#	value: Offset by which to change parameter value
@@ -532,19 +557,23 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.param_title_canvas.itemconfig("lbl_param_editor_value", text=result)
 
+
 	# Function to decrement parameter value
 	def decrement_param(self):
 		self.change_param(-1)
 
+
 	# Function to increment selected menu value
 	def increment_param(self):
 		self.change_param(1)
+
 
 	# Function to assert selected menu value
 	def menu_value_assert(self):
 		if self.param_editor_item and 'on_assert' in self.menu_items[self.param_editor_item]['params'] and self.menu_items[self.param_editor_item]['params']['on_assert']:
 			self.menu_items[self.param_editor_item]['params']['on_assert']()
 		self.hide_param_editor()
+
 
 	# Function to show child GUI
 	#	name: Name of child to show
@@ -582,6 +611,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.init_buttonbar()
 		self.status_menu_frame.tkraise()
 
+
 	# Function to hide child GUI
 	def hide_child(self):
 		if self.child:
@@ -594,13 +624,16 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			for type in ['S', 'B', 'L']:
 				self.unregister_switch(switch, type)
 
+
 	# Function to start transport
 	def start(self):
 		self.zyngui.libseq.transportStart(bytes("zynseq","utf-8"))
 
+
 	# Function to pause transport
 	def pause(self):
 		self.zyngui.libseq.transportStop(bytes("zynseq","utf-8"))
+
 
 	# Function to stop and recue transport
 	def stop(self):
@@ -609,9 +642,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.libseq.setTransportToStartOfBar()
 		#TODO: Handle other views
 
+
 	# Function to recue transport
 	def recue(self):
 		self.zyngui.libseq.locate(0)
+
 
 	# Function to select song
 	#	song: Index of song to select
@@ -625,11 +660,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			except:
 				pass
 
+
 	# Function to toggle transport
 	def toggle_transport(self):
 		if self.child == self.pattern_editor:
 			self.zyngui.libseq.togglePlayState(self.pattern_editor.sequence)
 		#TODO: Handle transport for other views
+
 
 	# Function to name file before saving
 	#	filename: Starting filename
@@ -639,6 +676,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.filename = filename
 		del rename_ui
 
+
 	# Function to save to RIFF file
 	#	filename: Filename without path or extension
 	def save(self, filename = None):
@@ -647,9 +685,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		os.makedirs(USER_PATH, exist_ok=True)
 		self.zyngui.libseq.save(bytes(USER_PATH + "/" + filename + ".zynseq", "utf-8"))
 
+
 	# Function to show file dialog to select file to load
 	def select_filename(self, filename):
 		zynthian_gui_fileselector(self, self.load, USER_PATH, "zynseq", filename)
+
 
 	# Function to load from RIFF file
 	#	filename: Filename without path or extension
@@ -663,9 +703,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				self.child.on_load()
 				#TODO: This won't update hidden children
 
+
 	# Function to refresh loading animation
 	def refresh_loading(self):
 		pass
+
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
@@ -698,6 +740,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.libseq.setTempo(self.zyngui.libseq.getTempo() + value)
 			self.show_param_editor("Tempo", 2)
 
+
 	# Function to handle zyncoder polling
 	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +1 and calculate offset
 	def zyncoder_read(self):
@@ -712,45 +755,58 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 64, 0)
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, value - 64)
 
+
+
 	# Function to handle CUIA encoder changes
 	def on_cuia_encoder(self, encoder, value):
 		if self.zyncoder_owner[encoder]:
 			self.zyncoder_owner[encoder].on_zyncoder(encoder, value)
 
+
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
 		self.on_cuia_encoder(ENC_SELECT, 1)
+
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
 		self.on_cuia_encoder(ENC_SELECT, -1)
 
+
 	# Function to handle CUIA LAYER_UP command
 	def layer_up(self):
 		self.on_cuia_encoder(ENC_LAYER, 1)
+
 
 	# Function to handle CUIA LAYER_DOWN command
 	def layer_down(self):
 		self.on_cuia_encoder(ENC_LAYER, -1)
 
+
 	# Function to handle CUIA SNAPSHOT_UP command
 	def snapshot_up(self):
 		self.on_cuia_encoder(ENC_SNAPSHOT, 1)
+
+
 	# Function to handle CUIA SNAPSHOT_DOWN command
 	def snapshot_down(self):
 		self.on_cuia_encoder(ENC_SNAPSHOT, -1)
+
 
 	# Function to handle CUIA BACK_UP command
 	def back_up(self):
 		self.on_cuia_encoder(ENC_BACK, 1)
 
+
 	# Function to handle CUIA BACK_UP command
 	def back_down(self):
 		self.on_cuia_encoder(ENC_BACK, -1)
 
+
 	# Function to handle CUIA SELECT command
 	def switch_select(self, t):
 		self.switch(ENC_SELECT, t)
+
 
 	# Function to handle switch presses
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
@@ -786,6 +842,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				return True
 		return True # Tell parent that we handled all short and bold key presses
 
+
 	# Function to manage switch press
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
@@ -803,6 +860,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if index >= len(self.switch_owner) or self.switch_owner[index] == None:
 			return False # No one is handling this switch action so let parent manage it
 		return self.switch_owner[index].on_switch(switch, type)
+
 
 	# Function to register ownsership of switches
 	#	switch: Index of switch [0..3]
@@ -825,6 +883,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			if self.shown:
 				self.switch_owner[index] = object
 
+
 	# Function to unrestister ownership of a switch from an object (and handle in this class instead)
 	#	switch: Index of switch [0..3]
 	#	type: Press type ['S'=Short, 'B'=Bold, 'L'=Long, Default:'S'] Can pass several, e.g. "SB" for both short and bold
@@ -843,6 +902,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				continue
 			self.register_switch(switch, self, t)
 
+
 	# Function to register ownership of an encoder by an object
 	#	encoder: Index of rotary encoder [0..3]
 	#	object: Object to register as owner
@@ -856,6 +916,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
 			zyncoder.lib_zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, 0)
 			self.zyncoder_owner[encoder] = object
+
 
 	# Function to unregister ownership of an encoder from an object
 	#	encoder: Index of encoder to unregister

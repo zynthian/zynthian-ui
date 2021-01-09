@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-'''
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -24,7 +23,6 @@
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
 #******************************************************************************
-'''
 
 import inspect
 import tkinter
@@ -148,11 +146,13 @@ class zynthian_gui_songeditor():
 		self.timebase_track_canvas.bind("<B1-Motion>", self.on_time_drag_motion)
 		self.timebase_track_canvas.grid(column=2, row=1)
 
+
 	# Function to get name of this view
 	def get_name(self):
 		if self.editor_mode == "pad":
 			return "pad editor"
 		return "song editor"
+
 
 	# Function to load and resize icons
 	def load_icons(self):
@@ -174,6 +174,7 @@ class zynthian_gui_songeditor():
 		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
 		self.icon[6] = ImageTk.PhotoImage(img)
 
+
 	# Function to register encoders
 	def setup_encoders(self):
 		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_BACK, self)
@@ -181,6 +182,7 @@ class zynthian_gui_songeditor():
 		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER, self)
 		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SELECT, self, 'S')
 		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SELECT, self, 'B')
+
 
 	# Function to populate menu
 	def populate_menu(self):
@@ -199,6 +201,7 @@ class zynthian_gui_songeditor():
 		self.parent.add_menu({'Trigger': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':128, 'get_value':self.get_trigger, 'on_change':self.on_menu_change, 'on_assert':self.set_trigger}}})
 		self.parent.add_menu({'Pattern': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
 
+
 	# Function to show GUI
 	#	song: Song to show
 	def show(self, params=None):
@@ -216,6 +219,7 @@ class zynthian_gui_songeditor():
 #		self.redraw_pending = 2
 		self.setup_encoders()
 
+
 	# Function to hide GUI
 	def hide(self):
 		#TODO: Move unregister_zyncoder to panel manager
@@ -224,14 +228,17 @@ class zynthian_gui_songeditor():
 		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER)
 #		self.libseq.solo(self.song, 0, False)
 
+
 	# Function to get tempo at current cursor position
 	def get_tempo(self):
 		return self.libseq.getTempo(self.song, self.selected_cell[0] * self.clocks_per_division)
+
 
 	# Function to assert zoom changes and redraw screen
 	def assert_and_redraw(self):
 		self.update_cell_size()
 		self.redraw_pending = 2
+
 
 	# Function to assert tempo change
 	def assert_tempo(self):
@@ -242,15 +249,18 @@ class zynthian_gui_songeditor():
 		self.libseq.addTempoEvent(self.song, value, self.selected_cell[0] * self.clocks_per_division)
 		self.redraw_pending = 1
 
+
 	# Function to get group of selected track
 	def get_group(self):
 		sequence = self.libseq.getSequence(self.song, self.selected_cell[1])
 		return int(self.libseq.getGroup(sequence))
 
+
 	# Function to get play mode of selected track
 	def getMode(self):
 		sequence = self.libseq.getSequence(self.song, self.selected_cell[1])
 		return int(self.libseq.getPlayMode(sequence))
+
 
 	# Function to get trigger note of selected track
 	def get_trigger(self):
@@ -260,20 +270,24 @@ class zynthian_gui_songeditor():
 			trigger = 128
 		return trigger
 
+
 	# Function to set trigger note of selected track
 	def set_trigger(self):
 		sequence = self.libseq.getSequence(self.song, self.selected_cell[1])
 		self.libseq.setTriggerNote(sequence, self.trigger)
 		self.redraw_pending = 1
 
+
 	# Function to get bar duration
 	def get_beats_per_bar(self):
 		#TODO: Do we want beats per bar at cursor or play position?
 		return int(self.libseq.getBeatsPerBar(self.song, self.song_position))
 
+
 	# Function to get pattern (to add to song)
 	def get_pattern(self):
 		return self.pattern
+
 
 	# Function to set pattern (to add to song)
 	def set_pattern(self, pattern):
@@ -310,10 +324,12 @@ class zynthian_gui_songeditor():
 				self.libseq.setPlayMode(sequence, 1)
 		self.redraw_pending = 2
 
+
 	# Function to get quantity of tracks in song
 	#	returns: Quantity of tracks in song
 	def get_tracks(self):
 		return self.libseq.getTracks(self.song)
+
 
 	# Function to handle start of track drag
 	def on_track_drag_start(self, event):
@@ -322,6 +338,7 @@ class zynthian_gui_songeditor():
 			return
 		if self.libseq.getTracks(self.song) > self.vertical_zoom:
 			self.track_drag_start = event
+
 
 	# Function to handle track drag motion
 	def on_track_drag_motion(self, event):
@@ -347,9 +364,11 @@ class zynthian_gui_songeditor():
 			track = self.row_offset + self.vertical_zoom - 1
 		self.select_cell(self.selected_cell[0], track)
 
+
 	# Function to handle end of track drag
 	def on_track_drag_end(self, event):
 		self.track_drag_start = None
+
 
 	# Function to handle start of time drag
 	def on_time_drag_start(self, event):
@@ -357,6 +376,7 @@ class zynthian_gui_songeditor():
 			self.parent.hide_menu()
 			return
 		self.time_drag_start = event
+
 
 	# Function to handle time drag motion
 	def on_time_drag_motion(self, event):
@@ -382,9 +402,11 @@ class zynthian_gui_songeditor():
 		else:
 			self.select_cell()
 
+
 	# Function to handle end of time drag
 	def on_time_drag_end(self, event):
 		self.time_drag_start = None
+
 
 	# Function to handle grid mouse press
 	#	event: Mouse event
@@ -406,6 +428,7 @@ class zynthian_gui_songeditor():
 		col, row = tags[0].split(',')
 		self.select_cell(self.col_offset + int(col), self.row_offset + int(row), False)
 
+
 	# Function to handle grid mouse release
 	#	event: Mouse event
 	def on_grid_release(self, event):
@@ -415,6 +438,7 @@ class zynthian_gui_songeditor():
 		self.grid_drag_start = None
 
 		self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+
 
 	# Function to handle grid mouse motion
 	#	event: Mouse event
@@ -429,10 +453,12 @@ class zynthian_gui_songeditor():
 			self.grid_drag_start.y = event.y
 			self.select_cell(col, row, False)
 
+
 	# Function to handle grid press and hold
 	def on_grid_timer(self):
 		self.grid_drag_start = None
 		self.show_pattern_editor()
+
 
 	# Function to show pattern editor
 	def show_pattern_editor(self):
@@ -443,11 +469,13 @@ class zynthian_gui_songeditor():
 		if pattern > 0:
 			self.parent.show_child("pattern editor", {'pattern':pattern, 'channel':channel})
 
+
 	# Function to handle pattern click
 	#	event: Mouse event
 	def on_pattern_click(self, event):
 		self.populate_menu() # Probably better way but this ensures 'Pattern' is in the menu
 		self.parent.show_param_editor('Pattern')
+
 
 	# Function to toggle note event
 	#	col: Column
@@ -461,6 +489,7 @@ class zynthian_gui_songeditor():
 			self.remove_event(div, track)
 		self.select_cell(div, track)
 
+
 	# Function to remove an event
 	#	div: Time division index (column + columun offset)
 	#	track: Track number
@@ -469,6 +498,7 @@ class zynthian_gui_songeditor():
 		sequence = self.libseq.getSequence(self.song, track)
 		self.libseq.removePattern(sequence, time)
 		self.draw_track(track)
+
 
 	# Function to add an event
 	#	div: Time division index (column + columun offset)
@@ -479,10 +509,12 @@ class zynthian_gui_songeditor():
 		if self.libseq.addPattern(sequence, time, self.pattern, False):
 			self.draw_track(track)
 
+
 	# Function to draw track
 	#	track: Track index
 	def draw_track(self, track):
 		self.draw_row(track - self.row_offset)
+
 
 	# Function to draw track label
 	#	track: Track index
@@ -514,6 +546,7 @@ class zynthian_gui_songeditor():
 		self.track_title_canvas.itemconfig(title_back, fill=fill)
 		self.track_title_canvas.tag_bind('tracktitle', "<Button-1>", self.on_track_click)
 
+
 	# Function to draw a grid row
 	#	row: Grid row to draw
 	#	redrawTrackTitles: True to redraw track titles (Default: True)
@@ -525,6 +558,7 @@ class zynthian_gui_songeditor():
 			self.draw_track_label(track)
 		for col in range(self.horizontal_zoom):
 			self.draw_cell(col, row)
+
 
 	# Function to handle track title click
 	def on_track_click(self, event):
@@ -538,6 +572,7 @@ class zynthian_gui_songeditor():
 		self.selected_cell[1] = track
 		self.select_cell()
 
+
 	# Function to get cell coordinates
 	#	col: Column index
 	#	row: Row index
@@ -549,6 +584,7 @@ class zynthian_gui_songeditor():
 		x2 = x1 + self.column_width * duration - 1 
 		y2 = y1 + self.row_height - 1
 		return [x1, y1, x2, y2]
+
 
 	# Function to draw a grid cell
 	#	col: Column index
@@ -612,6 +648,7 @@ class zynthian_gui_songeditor():
 #			if duration > 1:
 #				self.grid_canvas.itemconfig("lastpatterntext%d" % row, text="+%d" % (duration - self.libseq.getPatternLength() + time), state="normal")
 
+
 	# Function to draw grid
 	def draw_grid(self):
 		if self.redraw_pending == 2:
@@ -661,6 +698,7 @@ class zynthian_gui_songeditor():
 						self.timebase_track_canvas.create_text(tempoX, tempo_y, fill='red', text=data, anchor='n', tags='bpm')
 					else:
 						self.timebase_track_canvas.create_text(tempoX, tempo_y, fill='red', text=data, anchor='nw', tags='bpm')
+
 
 	# Function to select a cell within the grid
 	#	time: Time (column) of selected cell (Optional - default to reselect current column)
@@ -780,6 +818,7 @@ class zynthian_gui_songeditor():
 			self.fontsize = int(self.track_title_width * 0.3) # Ugly font scale limiting
 		self.load_icons()
 
+
 	# Function to clear song
 	def clear_song(self):
 		self.libseq.clearSong(self.song)
@@ -788,6 +827,7 @@ class zynthian_gui_songeditor():
 			zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
 		self.select_cell(0,0)
 
+
 	# Function to copy song
 	def copy_song(self):
 		if(self.song > 1000):
@@ -795,6 +835,7 @@ class zynthian_gui_songeditor():
 		else:
 			self.libseq.copySong(self.copy_source, self.song)
 		self.select_song()
+
 
 	# Function to handle menu editor value change and get display label text
 	#	params: Menu item's parameters
@@ -859,6 +900,7 @@ class zynthian_gui_songeditor():
 #			self.set_tracks(value)
 		return "%s: %d" % (menu_item, value)
 
+
 	# Function to get (note name, octave)
 	#	note: MIDI note number
 	#	returns: String containing note name and octave number, e.g. "C#4"
@@ -868,6 +910,7 @@ class zynthian_gui_songeditor():
 		octave = int(note / 12) - 1
 		return "%s%d" % (note_name, octave)
 
+
 	# Function to get MIDI channel of selected track
 	#	returns: MIDI channel
 	def get_track_channel(self):
@@ -875,6 +918,7 @@ class zynthian_gui_songeditor():
 		sequence = self.libseq.getSequence(self.song, track)
 		channel = self.libseq.getChannel(sequence) + 1
 		return channel
+
 
 	# Function to display song
 	def select_song(self, update_copy_source = True):
@@ -894,10 +938,12 @@ class zynthian_gui_songeditor():
 				self.copy_source = self.song
 		self.redraw_pending = 2
 
+
 	# Function called when new file loaded from disk
 	def on_load(self):
 		#TODO: Redraw song
 		pass
+
 
 	# Function to scroll grid to show position in song
 	#	pos: Song position in divisions
@@ -909,6 +955,7 @@ class zynthian_gui_songeditor():
 		if self.col_offset < 0:
 			self.col_offset = 0
 		self.redraw_pending = 1
+
 
 	# Function to refresh playhead
 	def refresh_status(self):
@@ -924,8 +971,6 @@ class zynthian_gui_songeditor():
 #			self.position = pos
 #		self.grid_canvas.coords('playheadline', (pos - self.col_offset) * self.column_width, 0, (pos - self.col_offset) * self.column_width, self.grid_height)
 
-	def refresh_loading(self):
-		pass
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
@@ -941,6 +986,7 @@ class zynthian_gui_songeditor():
 			self.select_cell(time, self.selected_cell[1])
 		elif encoder == zynthian_gui_stepsequencer.ENC_LAYER:
 			self.set_pattern(self.pattern + value)
+
 
 	# Function to handle switch press
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]

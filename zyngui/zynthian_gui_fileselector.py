@@ -111,10 +111,12 @@ class zynthian_gui_fileselector():
 		self.file_list.grid(row=1, column=0, sticky="nsew")
 		self.setup_encoders()
 
+
 	# Function to handle listbox press
 	#	event: Mouse event
 	def on_listbox_press(self, event):
 		pass
+
 
 	# Function to handle listbox drag
 	#	event: Mouse event
@@ -129,10 +131,12 @@ class zynthian_gui_fileselector():
 			except:
 				pass
 
+
 	# Function to handle listbox release
 	#	event: Mouse event
 	def on_listbox_release(self, event):
 		self.assert_selection()
+
 
 	# Function to trigger file action
 	def assert_selection(self):
@@ -142,9 +146,11 @@ class zynthian_gui_fileselector():
 			self.function(self.file_list.get(self.file_list.curselection()))
 		self.hide()
 
+
 	# Function to delete file
 	def delete_confirmed(self, filename):
 		os.remove(self.path + "/" + filename + "." + self.ext)
+
 
 	# Function to hide dialog
 	def hide(self):
@@ -157,12 +163,14 @@ class zynthian_gui_fileselector():
 		self.tb_panel.destroy()
 		self.parent.show_child()
 
+
 	# Function to register encoders
 	def setup_encoders(self):
 		self.parent.register_zyncoder(ENC_SELECT, self)
 		self.parent.register_switch(ENC_SELECT, self)
 		self.parent.register_switch(ENC_SELECT, self, "B")
 		self.parent.register_switch(ENC_BACK, self)
+
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
@@ -185,6 +193,7 @@ class zynthian_gui_fileselector():
 			self.file_list.selection_set(index)
 			self.file_list.activate(index)
 			self.file_list.see(index)
+
 
 	# Function to handle switch press
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]

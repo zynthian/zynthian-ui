@@ -104,6 +104,7 @@ class zynthian_gui_rename():
 		self.highlight_box = self.key_canvas.create_rectangle(0, 0, self.key_width, self.key_height, outline="red", width=2)
 		self.highlight(self.selected_button)
 
+
 	# Function to draw keyboard
 	def refresh_keys(self):
 		if self.shift:
@@ -120,6 +121,7 @@ class zynthian_gui_rename():
 		for index in range(len(self.keys)):
 			self.key_canvas.itemconfig(self.buttons[index][1], text=self.keys[index], tags=("key:%d"%(index),"keycaps"))
 
+
 	# Function to add a button to the keyboard
 	#	label: Button label
 	#	col: Column to add button
@@ -135,6 +137,7 @@ class zynthian_gui_rename():
 		self.buttons.append([r,l])
 		return index
 
+
 	# Function to handle key press
 	#	event: Mouse event
 	def on_key_press(self, event = None):
@@ -143,6 +146,7 @@ class zynthian_gui_rename():
 			return
 		dummy, index = tags[0].split(':')
 		self.execute_key_press(int(index))
+
 
 	# Function to execute a key press
 	#	key: Index of key
@@ -175,6 +179,7 @@ class zynthian_gui_rename():
 		self.name_canvas.itemconfig(self.name_label, text=self.name)
 		self.highlight(key)
 
+
 	# Function to highlight key
 	def highlight(self, key):
 		if key >= len(self.buttons):
@@ -183,15 +188,18 @@ class zynthian_gui_rename():
 		self.key_canvas.coords(self.highlight_box, box[0]+1, box[1]+1, box[2], box[3])
 		self.selected_button = key
 
+
 	# Function to hide dialog
 	def hide(self):
 		self.main_frame.destroy()
 		self.parent.show_child()
 
+
 	# Function to assert ENTER
 	def execute_enter(self):
 		self.function(self.name)
 		self.hide()
+
 
 	# Function to register encoders
 	def setup_encoders(self):
@@ -199,6 +207,7 @@ class zynthian_gui_rename():
 		self.parent.register_zyncoder(ENC_BACK, self)
 		self.parent.register_switch(ENC_SELECT, self)
 		self.parent.register_switch(ENC_BACK, self)
+
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
@@ -238,6 +247,7 @@ class zynthian_gui_rename():
 				return
 			self.highlight(selection)
 
+
 	# Function to handle switch press
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
@@ -248,4 +258,5 @@ class zynthian_gui_rename():
 		elif switch == ENC_SELECT:
 			self.execute_key_press(self.selected_button)
 		return True # Tell parent that we handled all short and bold key presses
+
 #------------------------------------------------------------------------------

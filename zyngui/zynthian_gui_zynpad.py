@@ -95,9 +95,11 @@ class zynthian_gui_zynpad():
 		# Selection highlight
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
 
+
 	# Function to get name of this view
 	def get_name(self):
 		return "zynpad"
+
 
 	#Function to set values of encoders
 	#	note: Call after other routine uses one or more encoders
@@ -106,6 +108,7 @@ class zynthian_gui_zynpad():
 		self.parent.register_zyncoder(ENC_SELECT, self)
 		self.parent.register_switch(ENC_SELECT, self, 'SB')
 
+
 	# Function to show GUI
 	#   params: Misc parameters
 	def show(self, params):
@@ -113,19 +116,22 @@ class zynthian_gui_zynpad():
 		self.setup_encoders()
 		self.select_song()
 
+
 	# Function to populate menu
 	def populate_menu(self):
 		self.parent.add_menu({'Pad mode':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(zynthian_gui_stepsequencer.PLAY_MODES)-1, 'get_value':self.get_selected_pad_mode, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Group':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':25, 'get_value':self.get_group, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'MIDI channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_pad_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Trigger note':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':128, 'get_value':self.get_trigger_note, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Quantity of pads':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':self.get_pads, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Grid size':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':8, 'get_value':self.get_columns, 'on_change':self.on_menu_change}}})
+
 
 	# Function to hide GUI
 	def hide(self):
 		self.parent.unregister_zyncoder(ENC_BACK)
 		self.parent.unregister_zyncoder(ENC_SELECT)
 		self.parent.unregister_switch(ENC_SELECT)
+
 
 	# Function to get MIDI channel of selected pad
 	#	returns: MIDI channel
@@ -138,20 +144,24 @@ class zynthian_gui_zynpad():
 	def get_trigger_note(self):
 		return self.libseq.getTriggerNote(self.get_sequence(self.selected_pad))
 
+
 	# Function to get group of selected track
 	def get_group(self):
 		return self.libseq.getGroup(self.get_sequence(self.selected_pad))
+
 
 	# Function to get the mode of the currently selected pad
 	#   returns: Mode of selected pad
 	def get_selected_pad_mode(self):
 		return self.libseq.getPlayMode(self.get_sequence(self.selected_pad))
 
+
 	# Function to get pad sequence
 	#   pad: Pad index
 	#   returns: Index of sequence associated with pad
 	def get_sequence(self, pad):
 		return self.libseq.getSequence(self.song, pad)
+
 
 	# Function to handle menu editor change
 	#   params: Menu item's parameters
@@ -178,20 +188,20 @@ class zynthian_gui_zynpad():
 			if value > 127:
 				return "Trigger note: None"
 			return "Trigger note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value)
-		elif menu_item == 'Quantity of pads':
-			if value > self.get_pads():
+		elif menu_item == 'Grid size':
+			if value > self.columns:
 				self.columns += 1
-			elif value < self.get_pads():
+				self.set_pads(self.columns**2)
+			elif value < self.columns:
 				self.columns -= 1
-			value = self.columns**2
-			self.set_pads(value)
-		params['value'] = value
+				self.set_pads(self.columns**2)
+			return "Grid size: %dx%d" % (value, value)
 		return "%s: %d" % (menu_item, value)
 
 
-	# Function to get quantity of pads
-	def get_pads(self):
-		return self.libseq.getTracks(self.song)
+	# Function to get quantity of columns in grid
+	def get_columns(self):
+		return self.columns
 
 
 	# Function to set quantity of pads
@@ -199,10 +209,10 @@ class zynthian_gui_zynpad():
 	#	Note: Tracks will be deleted from or added to end of track list as necessary
 	def set_pads(self, pads):
 		# Remove surplus tracks
-		while self.get_pads() > pads:
+		while self.libseq.getTracks(self.song) > pads:
 			self.libseq.removeTrack(self.song, pads)
 		# Add extra tracks
-		while self.get_pads() < pads:
+		while self.libseq.getTracks(self.song) < pads:
 			self.libseq.addTrack(self.song)
 			#TODO: Configure sequences / pads
 		self.update_grid()
@@ -214,7 +224,23 @@ class zynthian_gui_zynpad():
 		song = self.libseq.getSong()
 		self.song = song + 1000
 #		self.libseq.solo(self.song, 0, False)
-		tracks = self.libseq.getTracks(self.song)
+		self.update_grid()
+		self.parent.set_title("ZynPad (%d)"%(song))
+
+
+	# Function to clear and calculate grid sizes
+	# Grid is peridicall refreshed by refresh function which draws cells if required
+	def update_grid(self):
+		self.grid_canvas.delete(tkinter.ALL)
+		pads = self.libseq.getTracks(self.song)
+		if pads < 1:
+			self.columns = 1
+		else:
+			self.columns = int(sqrt(pads - 1) + 1)
+		self.column_width = self.width / self.columns
+		self.row_height = self.height / self.columns
+		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
+
 		imgWidth = int(self.width / self.columns / 4)
 		iconsize = (imgWidth, imgWidth)
 		img = (Image.open("/zynthian/zynthian-ui/icons/endnoline.png").resize(iconsize))
@@ -229,21 +255,8 @@ class zynthian_gui_zynpad():
 		self.icon[5] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
 		self.icon[6] = ImageTk.PhotoImage(img)
-		self.update_grid()
-		self.parent.set_title("ZynPad (%d)"%(song))
 
-	# Function to clear and calculate grid sizes
-	# Grid is peridicall refreshed by refresh function which draws cells if required
-	def update_grid(self):
-		self.grid_canvas.delete(tkinter.ALL)
-		pads = self.get_pads()
-		if pads < 1:
-			self.columns = 1
-		else:
-			self.columns = int(sqrt(pads - 1) + 1)
-		self.column_width = self.width / self.columns
-		self.row_height = self.height / self.columns
-		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
+
 		# Add pattern to sequence if missing TODO: Need to avoid this if using sequence editor - possibly by creating new sequences with a pattern by default
 		for pad in range(self.columns**2):
 			sequence = self.get_sequence(pad)
@@ -252,7 +265,6 @@ class zynthian_gui_zynpad():
 			pattern = self.libseq.getPattern(sequence, 0)
 			if pattern == -1:
 				pattern = 1001 + (self.song - 1001) * 64 + pad
-				logging.warning("Auto add pattern %d to pad %d in song %d", pattern, pad, self.song)
 				self.libseq.addPattern(sequence, 0, pattern, True)
 
 
@@ -310,6 +322,7 @@ class zynthian_gui_zynpad():
 			self.grid_canvas.tag_bind("lbl_pad:%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
 			self.grid_canvas.tag_bind("mode:%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
 
+
 	# Function to draw pad
 	#   pad: Pad index
 	def draw_pad(self, pad):
@@ -328,6 +341,7 @@ class zynthian_gui_zynpad():
 			self.grid_canvas.tag_raise(self.selection)
 			self.grid_canvas.itemconfig(self.selection, state="normal")
 
+
 	# Function to handle pad press
 	def on_pad_press(self, event):
 		if self.parent.lst_menu.winfo_viewable():
@@ -340,6 +354,7 @@ class zynthian_gui_zynpad():
 		self.grid_timer = Timer(2, self.on_grid_timer)
 		self.grid_timer.start()
 		
+
 	# Function to toggle pad
 	def toggle_pad(self):
 		sequence = self.get_sequence(self.selected_pad)
@@ -347,14 +362,17 @@ class zynthian_gui_zynpad():
 			return
 		self.libseq.togglePlayState(sequence)
 
+
 	# Function to handle pad release
 	def on_pad_release(self, event):
 		self.grid_timer.cancel()
+
 
 	# Function to handle grid press and hold
 	def on_grid_timer(self):
 		self.gridDragStart = None
 		self.show_pattern_editor()
+
 
 	# Function to show pattern editor for first pattern of sequence of selected pad
 	def show_pattern_editor(self):
@@ -368,6 +386,7 @@ class zynthian_gui_zynpad():
 		self.parent.show_child("pattern editor", {"pattern":pattern, "channel":channel})
 		#TODO: How do we indicate to return to zynpad when closing pattern editor?
 
+
 	# Function called when new file loaded from disk
 	def on_load(self):
 		pass
@@ -377,8 +396,6 @@ class zynthian_gui_zynpad():
 		for pad in range(0, self.columns**2):
 			self.draw_pad(pad)
 
-	def refresh_loading(self):
-		pass
 
 	# Function to handle zyncoder value change
 	#   encoder: Zyncoder index [0..4]
@@ -390,8 +407,9 @@ class zynthian_gui_zynpad():
 		elif encoder == ENC_BACK:
 			# BACK encoder adjusts vertical pad selection
 			value = self.selected_pad + self.columns * value
-		if value >= 0 and value < self.get_pads():
+		if value >= 0 and value < self.libseq.getTracks(self.song):
 			self.selected_pad = value
+
 
 	# Function to handle switch press
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
