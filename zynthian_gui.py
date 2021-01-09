@@ -76,8 +76,10 @@ from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
-#from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
-from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
+if "autoeq" in zynthian_gui_config.experimental_features:
+	from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
+if "zynseq" in zynthian_gui_config.experimental_features:
+	from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
@@ -207,8 +209,9 @@ class zynthian_gui:
 		except Exception as e:
 			logging.error("ERROR initializing Controllers & MIDI-router: %s" % e)
 
-		self.libseq = CDLL("/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
-		self.libseq.init(True)
+		if "zynseq" in zynthian_gui_config.experimental_features:
+			self.libseq = CDLL("/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
+			self.libseq.init(True)
 
 	# ---------------------------------------------------------------------------
 	# MIDI Router Init & Config
@@ -335,8 +338,10 @@ class zynthian_gui:
 		self.screens['alsa_mixer'] = self.screens['control']
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
-		#self.screens['autoeq'] = zynthian_gui_autoeq()
-		self.screens['stepseq'] = zynthian_gui_stepsequencer()
+		if "autoeq" in zynthian_gui_config.experimental_features:
+			self.screens['autoeq'] = zynthian_gui_autoeq()
+		if "zynseq" in zynthian_gui_config.experimental_features:
+			self.screens['stepseq'] = zynthian_gui_stepsequencer()
 
 		# Init Auto-connector
 		zynautoconnect.start()
@@ -792,7 +797,7 @@ class zynthian_gui:
 		elif cuia == "MODAL_ALSA_MIXER":
 			self.toggle_modal("alsa_mixer")
 
-		elif cuia == "MODAL_STEPSEQ":
+		elif cuia == "MODAL_STEPSEQ" and "zynseq" in zynthian_gui_config.experimental_features:
 			self.toggle_modal("stepseq")
 
 
@@ -892,7 +897,7 @@ class zynthian_gui:
 			#self.callable_ui_action("ALL_OFF")
 			self.show_modal("admin")
 
-		elif i==2:
+		elif i==2 and "zynseq" in zynthian_gui_config.experimental_features:
 			self.toggle_modal("stepseq")
 
 		elif i==3:

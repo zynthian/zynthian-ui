@@ -499,6 +499,11 @@ midi_play_loop=int(os.environ.get('ZYNTHIAN_MIDI_PLAY_LOOP',0))
 audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
 
 #------------------------------------------------------------------------------
+# Experimental features
+#------------------------------------------------------------------------------
+experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES',"zynseq").split(',')
+
+#------------------------------------------------------------------------------
 # X11 Related Stuff
 #------------------------------------------------------------------------------
 
@@ -575,7 +580,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 			try:
 				pil_frame.seek(nframes)
 			except EOFError:
-				break;
+				break
 		#for i in range(13):
 		#	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
 

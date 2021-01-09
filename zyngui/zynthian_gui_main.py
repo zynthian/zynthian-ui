@@ -27,6 +27,7 @@ import logging
 
 # Zynthian specific modules
 from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # Zynthian App Selection GUI Class
@@ -53,8 +54,10 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
 		self.list_data.append((self.alsa_mixer,0,"ALSA Mixer"))
-		self.list_data.append((self.step_sequencer,0,"Step Sequencer"))
-		#self.list_data.append((self.auto_eq,0,"Auto EQ (alpha)"))
+		if "zynseq" in zynthian_gui_config.experimental_features:
+			self.list_data.append((self.step_sequencer,0,"Step Sequencer"))
+		if "autoeq" in zynthian_gui_config.experimental_features:
+			self.list_data.append((self.auto_eq,0,"Auto EQ (alpha)"))
 
 		self.list_data.append((None,0,"-----------------------------"))
 
