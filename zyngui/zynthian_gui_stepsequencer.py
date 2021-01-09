@@ -748,7 +748,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			for encoder in range(len(self.zyncoder_owner)):
 				if self.zyncoder_owner[encoder]:
 					# Found a registered zyncoder
-					value = self.zyncoder.lib_zyncoder.get_value_zyncoder(encoder)
+					value = zyncoder.lib_zyncoder.get_value_zyncoder(encoder)
 					if value != 64:
 						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 64, 0)
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, value - 64)
