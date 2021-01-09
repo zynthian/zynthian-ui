@@ -61,7 +61,7 @@ class zynthian_gui_zynpad():
 
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 
-		self.columns = 4 # Equal quantity of rows and columns
+		self.columns = 4 # Quantity of columns in grid
 		self.selected_pad = 0 # Index of selected pad
 		self.song = 1001 # Index of song used to configure pads
 		self.redraw_pending = 0 # What to redraw: 0=nothing, 1=existing elements, 2=recreate grid
@@ -176,10 +176,11 @@ class zynthian_gui_zynpad():
 			value = params['max']
 		if menu_item == 'Pad mode':
 			self.libseq.setPlayMode(self.get_sequence(self.selected_pad), value)
-#			self.draw_pad(self.selected_pad)
+			self.draw_pad(self.selected_pad, True)
 			return "Pad mode: %s" % (zynthian_gui_stepsequencer.PLAY_MODES[value])
 		elif menu_item == "Group":
 			self.libseq.setGroup(self.get_sequence(self.selected_pad), value)
+			self.draw_pad(self.selected_pad, True)
 			return "Group: %s" % (chr(65 + value))
 		elif menu_item == 'MIDI channel':
 			self.libseq.setChannel(self.get_sequence(self.selected_pad), value - 1)
@@ -189,12 +190,8 @@ class zynthian_gui_zynpad():
 				return "Trigger note: None"
 			return "Trigger note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value)
 		elif menu_item == 'Grid size':
-			if value > self.columns:
-				self.columns += 1
-				self.set_pads(self.columns**2)
-			elif value < self.columns:
-				self.columns -= 1
-				self.set_pads(self.columns**2)
+			if value != self.columns:
+				self.update_grid(value**2)
 			return "Grid size: %dx%d" % (value, value)
 		return "%s: %d" % (menu_item, value)
 
@@ -204,44 +201,38 @@ class zynthian_gui_zynpad():
 		return self.columns
 
 
-	# Function to set quantity of pads
-	#	pads: Quantity of pads
-	#	Note: Tracks will be deleted from or added to end of track list as necessary
-	def set_pads(self, pads):
-		# Remove surplus tracks
-		while self.libseq.getTracks(self.song) > pads:
-			self.libseq.removeTrack(self.song, pads)
-		# Add extra tracks
-		while self.libseq.getTracks(self.song) < pads:
-			self.libseq.addTrack(self.song)
-			#TODO: Configure sequences / pads
-		self.update_grid()
-
-
 	# Function to load song
 	def select_song(self):
 		#TODO: Should we stop song and recue?
-		song = self.libseq.getSong()
-		self.song = song + 1000
-#		self.libseq.solo(self.song, 0, False)
+		self.song = self.libseq.getSong() + 1000
 		self.update_grid()
-		self.parent.set_title("ZynPad (%d)"%(song))
+		self.parent.set_title("ZynPad (%d)"%(self.song - 1000))
 
 
 	# Function to clear and calculate grid sizes
-	# Grid is peridicall refreshed by refresh function which draws cells if required
-	def update_grid(self):
+	#	pads: Quantity of pads to draw (Default: get from sequence else update sequence with this quantity of tracks)
+	def update_grid(self, pads=None):
 		self.grid_canvas.delete(tkinter.ALL)
-		pads = self.libseq.getTracks(self.song)
-		if pads < 1:
-			self.columns = 1
+		if not pads:
+			pads = self.libseq.getTracks(self.song)
+		if pads < 2:
+			pads = 1
 		else:
-			self.columns = int(sqrt(pads - 1) + 1)
+			pads -= 1
+		self.columns = int(sqrt(pads - 1)) + 1
+		pads = self.columns**2
+		# Remove surplus and add missing tracks
+		while self.libseq.getTracks(self.song) > pads:
+			self.libseq.removeTrack(self.song, pads)
+		while self.libseq.getTracks(self.song) < pads:
+			self.libseq.addTrack(self.song)
+			#TODO: Configure sequences / pads
+
 		self.column_width = self.width / self.columns
 		self.row_height = self.height / self.columns
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
 
-		imgWidth = int(self.width / self.columns / 4)
+		imgWidth = int(self.column_width / 4)
 		iconsize = (imgWidth, imgWidth)
 		img = (Image.open("/zynthian/zynthian-ui/icons/endnoline.png").resize(iconsize))
 		self.icon[1] = ImageTk.PhotoImage(img)
@@ -256,39 +247,51 @@ class zynthian_gui_zynpad():
 		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
 		self.icon[6] = ImageTk.PhotoImage(img)
 
-
 		# Add pattern to sequence if missing TODO: Need to avoid this if using sequence editor - possibly by creating new sequences with a pattern by default
 		for pad in range(self.columns**2):
 			sequence = self.get_sequence(pad)
+			pad_x = pad % self.columns * self.column_width
+			pad_y = int(pad / self.columns) * self.row_height
 			if sequence == 0:
 				continue # This should not occur because all pads are tied to tracks which are sequences
-			pattern = self.libseq.getPattern(sequence, 0)
-			if pattern == -1:
-				pattern = 1001 + (self.song - 1001) * 64 + pad
-				self.libseq.addPattern(sequence, 0, pattern, True)
+			if self.libseq.getPattern(sequence, 0) == -1:
+				self.libseq.addPattern(sequence, 0, 1001 + (self.song - 1001) * 64 + pad, True)
+			self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
+				fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell", "trigger_%d"%(pad)))
+			self.grid_canvas.create_text(pad_x + self.column_width / 2, pad_y + self.row_height / 2,
+				font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
+				size=int(self.row_height * 0.3)),
+				fill=zynthian_gui_config.color_panel_tx,
+				tags=("lbl_pad:%d"%(pad),"trigger_%d"%(pad)))
+			self.grid_canvas.create_image(pad_x + self.column_width - 3, pad_y + self.row_height - 3, tags=("mode:%d"%(pad)), anchor="se")
+			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
+			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
+			self.draw_pad(pad, True)
 
 
-	# Function to draw grid cell (pad)
-	#   col: Column index
-	#   row: Row index
-	def draw_cell(self, col, row, clear = False):
+	# Function to draw pad
+	#   pad: Pad index
+	#	update: True to update static elements like mode
+	def draw_pad(self, pad, update=False):
 		#TODO: Optimisation - pad refresh
-		if col < 0 or col >= self.columns or row < 0 or row >= self.columns:
+		if pad >= self.libseq.getTracks(self.song):
 			return
-		pad = col + row * self.columns
+		row = int(pad / self.columns)
+		col = pad % self.columns
 		sequence = self.get_sequence(pad)
+		mode = self.libseq.getPlayMode(sequence)
 		group = self.libseq.getGroup(sequence)
 		pad_x = col * self.column_width
 		pad_y = row * self.row_height
 		cell = self.grid_canvas.find_withtag("pad:%d"%(pad))
+		if self.selected_pad == pad:
+			# Move and show seletion cursor
+			self.grid_canvas.coords(self.selection, 1 + col * self.column_width, 1 + row * self.row_height, (1 + col) * self.column_width - self.select_thickness, (1 + row) * self.row_height - self.select_thickness)
+			self.grid_canvas.tag_raise(self.selection)
+			self.grid_canvas.itemconfig(self.selection, state="normal")
 		if cell:
-			mode = self.libseq.getPlayMode(sequence)
-			if self.libseq.getSequenceLength(sequence) == 0:
-				mode = 0
-			self.grid_canvas.itemconfig("mode:%d"%pad, image=self.icon[mode], state='normal')
-			if not sequence or self.libseq.getPlayMode(sequence) == zynthian_gui_stepsequencer.SEQ_DISABLED:
+			if not sequence or mode == zynthian_gui_stepsequencer.SEQ_DISABLED:
 				fill = zynthian_gui_stepsequencer.PAD_COLOUR_DISABLED
-				self.grid_canvas.itemconfig("mode:%d"%pad, state='hidden')
 			elif self.libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
 				if group % 2:
 					fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED_EVEN
@@ -301,45 +304,12 @@ class zynthian_gui_zynpad():
 			else:
 				fill = zynthian_gui_stepsequencer.PAD_COLOUR_PLAYING
 			self.grid_canvas.itemconfig(cell, fill=fill)
-			self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text="%s%d" % (chr(65 + group), pad + 1))
-			self.grid_canvas.coords(cell, pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2)
-		else:
-			cell = self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
-				fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell"))
-			if pad >= self.libseq.getTracks(self.song):
-				return
-			self.grid_canvas.create_text(pad_x + self.column_width / 2, pad_y + self.row_height / 2,
-				font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-				size=int(self.row_height * 0.3)),
-				fill=zynthian_gui_config.color_panel_tx,
-				tags="lbl_pad:%d"%(pad),
-				text="%s%d" % (chr(65 + group), pad+1))
-			self.grid_canvas.create_image(pad_x + self.column_width - 3, pad_y + self.row_height - 3, tags=("mode:%d"%(pad)), anchor="se")
-			self.grid_canvas.tag_bind("pad:%d"%(pad), '<Button-1>', self.on_pad_press)
-			self.grid_canvas.tag_bind("lbl_pad:%d"%(pad), '<Button-1>', self.on_pad_press)
-			self.grid_canvas.tag_bind("mode:%d"%(pad), '<Button-1>', self.on_pad_press)
-			self.grid_canvas.tag_bind("pad:%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
-			self.grid_canvas.tag_bind("lbl_pad:%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
-			self.grid_canvas.tag_bind("mode:%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
-
-
-	# Function to draw pad
-	#   pad: Pad index
-	def draw_pad(self, pad):
-		pads = self.columns**2 #TODO: Optimisation - Performing maths for every pad draw which happens for every pad on every refresh (many times a second)
-		if pads < 1 or pad < 0:
-			return
-		row = int(pad / self.columns)
-		col = pad % self.columns
-		if pad >= pads:
-			self.update_grid() #TODO: Optimisation - this will recreate grid for every pad that extends its size
-		else:
-			self.draw_cell(col, row)
-		if self.selected_pad == pad:
-			# Move and show seletion cursor
-			self.grid_canvas.coords(self.selection, 1 + col * self.column_width, 1 + row * self.row_height, (1 + col) * self.column_width - self.select_thickness, (1 + row) * self.row_height - self.select_thickness)
-			self.grid_canvas.tag_raise(self.selection)
-			self.grid_canvas.itemconfig(self.selection, state="normal")
+			if update:
+				if self.libseq.getSequenceLength(sequence) == 0:
+					mode = 0
+				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text="%s%d" % (chr(65 + group), pad + 1))
+				self.grid_canvas.coords(cell, pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2)
+				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.icon[mode])
 
 
 	# Function to handle pad press
@@ -390,6 +360,7 @@ class zynthian_gui_zynpad():
 	# Function called when new file loaded from disk
 	def on_load(self):
 		pass
+
 
 	# Function to refresh status
 	def refresh_status(self):

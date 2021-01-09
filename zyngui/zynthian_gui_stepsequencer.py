@@ -704,11 +704,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				#TODO: This won't update hidden children
 
 
-	# Function to refresh loading animation
-	def refresh_loading(self):
-		pass
-
-
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
 	#	value: Value of zyncoder change since last read

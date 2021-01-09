@@ -232,7 +232,7 @@ class zynthian_gui_patterneditor():
 		if enable:
 			self.edit_mode = True
 			self.parent.register_switch(ENC_BACK, self)
-			self.parent.set_title("NOTE PARAMETERS (%d)" % (self.pattern), zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+			self.parent.set_title("Note Parameters (%d)" % (self.pattern), zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 		else:
 			self.edit_mode = False
 			self.parent.unregister_switch(ENC_BACK)
