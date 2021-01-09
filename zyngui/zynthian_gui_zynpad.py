@@ -119,7 +119,7 @@ class zynthian_gui_zynpad():
 		self.parent.add_menu({'Group':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':25, 'get_value':self.get_group, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'MIDI channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_pad_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Trigger note':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':128, 'get_value':self.get_trigger_note, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Quantity of pads':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':self.get_pads, 'on_change':self.on_menu_change, 'on_assert':self.set_pads}}})
+		self.parent.add_menu({'Quantity of pads':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':self.get_pads, 'on_change':self.on_menu_change}}})
 
 	# Function to hide GUI
 	def hide(self):
@@ -178,6 +178,14 @@ class zynthian_gui_zynpad():
 			if value > 127:
 				return "Trigger note: None"
 			return "Trigger note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value)
+		elif menu_item == 'Quantity of pads':
+			if value > self.get_pads():
+				self.columns += 1
+			elif value < self.get_pads():
+				self.columns -= 1
+			value = self.columns**2
+			self.set_pads(value)
+		params['value'] = value
 		return "%s: %d" % (menu_item, value)
 
 
@@ -189,16 +197,14 @@ class zynthian_gui_zynpad():
 	# Function to set quantity of pads
 	#	pads: Quantity of pads
 	#	Note: Tracks will be deleted from or added to end of track list as necessary
-	def set_pads(self):
-		pads = self.parent.get_param('Quantity of pads', 'value')
+	def set_pads(self, pads):
 		# Remove surplus tracks
 		while self.get_pads() > pads:
 			self.libseq.removeTrack(self.song, pads)
 		# Add extra tracks
 		while self.get_pads() < pads:
-			sequence = self.libseq.addTrack(self.song)
+			self.libseq.addTrack(self.song)
 			#TODO: Configure sequences / pads
-		pads = self.get_pads()
 		self.update_grid()
 
 
@@ -257,7 +263,7 @@ class zynthian_gui_zynpad():
 		#TODO: Optimisation - pad refresh
 		if col < 0 or col >= self.columns or row < 0 or row >= self.columns:
 			return
-		pad = row + col * self.columns
+		pad = col + row * self.columns
 		sequence = self.get_sequence(pad)
 		group = self.libseq.getGroup(sequence)
 		pad_x = col * self.column_width
@@ -310,8 +316,8 @@ class zynthian_gui_zynpad():
 		pads = self.columns**2 #TODO: Optimisation - Performing maths for every pad draw which happens for every pad on every refresh (many times a second)
 		if pads < 1 or pad < 0:
 			return
-		col = int(pad / self.columns)
-		row = pad % self.columns
+		row = int(pad / self.columns)
+		col = pad % self.columns
 		if pad >= pads:
 			self.update_grid() #TODO: Optimisation - this will recreate grid for every pad that extends its size
 		else:
@@ -378,23 +384,14 @@ class zynthian_gui_zynpad():
 	#   encoder: Zyncoder index [0..4]
 	#   value: Current value of zyncoder
 	def on_zyncoder(self, encoder, value):
-		column = int(self.selected_pad / self.columns)
-		row = self.selected_pad - column * self.columns
 		if encoder == ENC_SELECT:
 			# SELECT encoder adjusts horizontal pad selection
-			column += value
-			if column < 0:
-				column = 0
-			if column >= self.columns:
-				column = self.columns - 1
+			value = self.selected_pad + value
 		elif encoder == ENC_BACK:
 			# BACK encoder adjusts vertical pad selection
-			row += value
-			if row < 0:
-				row = 0
-			if row >= self.columns:
-				row = self.columns - 1
-		self.selected_pad = row + column * self.columns
+			value = self.selected_pad + self.columns * value
+		if value >= 0 and value < self.get_pads():
+			self.selected_pad = value
 
 	# Function to handle switch press
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]

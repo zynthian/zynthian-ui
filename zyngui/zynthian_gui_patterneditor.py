@@ -232,7 +232,7 @@ class zynthian_gui_patterneditor():
 		if enable:
 			self.edit_mode = True
 			self.parent.register_switch(ENC_BACK, self)
-			self.parent.set_title("EDIT MODE (%d)" % (self.pattern), zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+			self.parent.set_title("NOTE PARAMETERS (%d)" % (self.pattern), zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 		else:
 			self.edit_mode = False
 			self.parent.unregister_switch(ENC_BACK)
@@ -936,6 +936,9 @@ class zynthian_gui_patterneditor():
 	#   returns True if action fully handled or False if parent action should be triggered
 	def on_switch(self, switch, type):
 		if switch == ENC_SELECT:
+			if self.edit_mode:
+				self.enable_edit(False)
+				return True
 			if type == "S":
 				self.toggle_event(self.selected_cell[0], self.selected_cell[1], True)
 			else:

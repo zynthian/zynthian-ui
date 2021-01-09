@@ -503,9 +503,9 @@ class zynthian_gui_songeditor():
 
 		trigger = self.libseq.getTriggerNote(sequence)
 		if trigger < 128:
-			self.track_title_canvas.itemconfig(title, text="%s%d (%d,%s)" % (chr(65+group), track + 1, channel, self.get_note(trigger)))
+			self.track_title_canvas.itemconfig(title, text="%s%d\n(%d,%s)" % (chr(65+group), track + 1, channel, self.get_note(trigger)))
 		else:
-			self.track_title_canvas.itemconfig(title, text="%s%d (%d)" % (chr(65+group), track + 1, channel))
+			self.track_title_canvas.itemconfig(title, text="%s%d\n(%d)" % (chr(65+group), track + 1, channel))
 		self.track_title_canvas.itemconfig(mode_icon, image=self.icon[mode])
 		if group % 2:
 			fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED_EVEN
@@ -775,9 +775,9 @@ class zynthian_gui_songeditor():
 	def update_cell_size(self):
 		self.row_height = (self.grid_height - 2) / self.vertical_zoom
 		self.column_width = self.grid_width / self.horizontal_zoom
-		self.fontsize = int(self.row_height * 0.4)
-		if self.fontsize > self.track_title_width * 0.15:
-			self.fontsize = int(self.track_title_width * 0.15) # Ugly font scale limiting
+		self.fontsize = int(self.row_height * 0.3)
+		if self.fontsize > self.track_title_width * 0.3:
+			self.fontsize = int(self.track_title_width * 0.3) # Ugly font scale limiting
 		self.load_icons()
 
 	# Function to clear song
