@@ -196,7 +196,7 @@ class zynthian_gui_patterneditor():
 		self.copySource = self.pattern
 		self.setup_encoders()
 		self.main_frame.tkraise()
-		self.parent.set_title("Pattern Editor (%d)" % (self.pattern))
+		self.parent.set_title("Pattern %d" % (self.pattern))
 		self.shown=True
 
 	# Function to hide GUI
@@ -686,8 +686,8 @@ class zynthian_gui_patterneditor():
 		self.libseq.clear()
 		self.redraw_pending = 2
 		self.select_cell()
-		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
+		if self.zyngui.lib_zyncoder:
+			self.zyngui.lib_zyncoder.zynmidi_send_all_notes_off()
 
 	# Function to copy pattern
 	def copy_pattern(self):

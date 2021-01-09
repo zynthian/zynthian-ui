@@ -222,6 +222,10 @@ class zynthian_gui_songeditor():
 		self.select_song()
 #		self.redraw_pending = 2
 		self.setup_encoders()
+		if self.editor_mode == "pad":
+			self.parent.set_title("Song %d" % (self.song - 1000))
+		else:
+			self.parent.set_title("Song %d" % (self.song))
 
 
 	# Function to hide GUI
@@ -285,7 +289,8 @@ class zynthian_gui_songeditor():
 	# Function to get bar duration
 	def get_beats_per_bar(self):
 		#TODO: Do we want beats per bar at cursor or play position?
-		return int(self.libseq.getBeatsPerBar(self.song, self.song_position))
+		return 4
+		#return int(self.libseq.getBeatsPerBar(self.song, self.song_position))
 
 
 	# Function to get pattern (to add to song)
@@ -397,7 +402,6 @@ class zynthian_gui_songeditor():
 			return
 		self.col_offset = pos
 		self.redraw_pending = 1
-		col = self.selected_cell[0]
 		duration = int(self.libseq.getPatternLength(self.pattern) / self.clocks_per_division)
 		if self.selected_cell[0] < self.col_offset:
 			self.select_cell(self.col_offset, self.selected_cell[1])
@@ -827,8 +831,8 @@ class zynthian_gui_songeditor():
 	def clear_song(self):
 		self.libseq.clearSong(self.song)
 		self.redraw_pending = 2
-		if zyncoder.lib_zyncoder:
-			zyncoder.lib_zyncoder.zynmidi_send_all_notes_off()
+		if self.zyngui.lib_zyncoder:
+			self.zyngui.lib_zyncoder.zynmidi_send_all_notes_off()
 		self.select_cell(0,0)
 
 
@@ -930,11 +934,7 @@ class zynthian_gui_songeditor():
 		if song != 0:
 			self.song = song
 		if self.editor_mode == "pad":
-			self.parent.set_title("Pad Editor (%d)" % (self.song))
 			self.song = self.song + 1000
-		else:
-			self.parent.set_titlele("Song Editor (%d)" % (self.song))
-#			self.libseq.solo(self.song + 1000, 0, False) # Clear solo from pad editor when switching to song editor
 		if update_copy_source:
 			if self.song > 1000:
 				self.copy_source = self.song - 1000

@@ -274,8 +274,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def populate_menu(self):
 		self.lst_menu.delete(0, tkinter.END)
 		self.menu_items = {} # Dictionary of menu items
-		self.add_menu({'ZynPad':{'method':self.show_child, 'params':"zynpad"}})
-		self.add_menu({'Pad Editor':{'method':self.show_child, 'params':"pad editor"}})
+		if self.child != self.zynpad:
+			self.add_menu({'Pads':{'method':self.show_child, 'params':"zynpad"}})
+		if self.child != self.song_editor:
+			self.add_menu({'Arranger':{'method':self.show_child, 'params':"pad editor"}})
 #		self.addMenu({'Song Editor':{'method':self.show_child, 'params':"song editor"}})
 		self.add_menu({'Song':{'method':self.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':self.zyngui.libseq.getSong, 'on_change':self.on_menu_change}}})
 		self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':self.zyngui.libseq.getTempo, 'on_change':self.on_menu_change}}})
@@ -655,6 +657,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 #			self.zyngui.libseq.transportStop() #TODO: Stopping transport due to jack_transport restarting if locate called
 			self.zyngui.libseq.selectSong(song)
 			self.song = song
+			self.set_title("Song %d" % self.song)
 			try:
 				self.child.select_song()
 			except:
@@ -747,7 +750,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					# Found a registered zyncoder
 					value = zyncoder.lib_zyncoder.get_value_zyncoder(encoder)
 					if value != 64:
-						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 64, 0)
+						self.zynlib.lib_zyncoder.set_value_zyncoder(encoder, 64, 0)
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, value - 64)
 
 

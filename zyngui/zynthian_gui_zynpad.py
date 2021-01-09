@@ -114,6 +114,7 @@ class zynthian_gui_zynpad():
 		self.main_frame.tkraise()
 		self.setup_encoders()
 		self.select_song()
+		self.parent.set_title("Song %d" % (self.song - 1000))
 
 
 	# Function to populate menu
@@ -203,7 +204,6 @@ class zynthian_gui_zynpad():
 		#TODO: Should we stop song and recue?
 		self.song = self.libseq.getSong() + 1000
 		self.update_grid()
-		self.parent.set_title("ZynPad (%d)"%(self.song - 1000))
 
 
 	# Function to clear and calculate grid sizes
@@ -354,7 +354,6 @@ class zynthian_gui_zynpad():
 			return
 		channel = self.libseq.getChannel(sequence)
 		self.parent.show_child("pattern editor", {"pattern":pattern, "channel":channel})
-		#TODO: How do we indicate to return to zynpad when closing pattern editor?
 
 
 	# Function called when new file loaded from disk
