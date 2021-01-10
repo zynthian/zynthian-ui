@@ -865,7 +865,7 @@ class zynthian_gui_songeditor():
 		elif menu_item =='Copy song':
 			self.libseq.selectSong(value) 
 			self.select_song(False)
-			return "Copy %d=>%d?" % (self.copy_source, value)
+			return "Copy song %d=>%d?" % (self.copy_source, value)
 		elif menu_item == 'Vertical zoom':
 			self.vertical_zoom = value
 		elif menu_item == 'Horizontal zoom':

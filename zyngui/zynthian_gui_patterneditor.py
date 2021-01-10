@@ -234,7 +234,7 @@ class zynthian_gui_patterneditor():
 		else:
 			self.edit_mode = False
 			self.parent.unregister_switch(ENC_BACK)
-			self.parent.set_title("Pattern Editor (%d)" % (self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+			self.parent.set_title("Pattern %d" % (self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
 
 
 	# Function to get the index of the closest steps per beat in array of allowed values
@@ -814,7 +814,7 @@ class zynthian_gui_patterneditor():
 		self.redraw_pending = 2
 		self.select_cell()
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
-		self.parent.set_title("Pattern Editor (%d)" % (self.pattern))
+		self.parent.set_title("Pattern %d" % (self.pattern))
 
 	# Function to select .mid file to import
 	def select_import(self, params):
