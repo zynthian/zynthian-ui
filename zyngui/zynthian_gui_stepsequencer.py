@@ -118,16 +118,18 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		# Title
 #		font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
 		font=zynthian_gui_config.font_topbar
+		self.title_fg = zynthian_gui_config.color_panel_tx
+		self.title_bg = zynthian_gui_config.color_header_bg
 		self.title_canvas = tkinter.Canvas(self.tb_frame,
 			height=zynthian_gui_config.topbar_height,
 			bd=0,
 			highlightthickness=0,
-			bg = zynthian_gui_config.color_header_bg)
+			bg = self.title_bg)
 		self.title_canvas.grid_propagate(False)
 		self.title_canvas.create_text(0, zynthian_gui_config.topbar_height / 2,
 			font=font,
 			anchor="w",
-			fill=zynthian_gui_config.color_panel_tx,
+			fill=self.title_fg,
 			tags="lblTitle",
 			text="Step Sequencer")
 		self.title_canvas.grid(row=0, column=0, sticky='ew')
@@ -196,7 +198,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.param_editor_canvas.grid_columnconfigure(4, weight=1)
 		self.param_title_canvas.bind('<Button-1>', self.hide_param_editor)
 
-
 		#TODO: Consolidate menu to base class
 		self.status_canvas.bind('<Button-1>', self.toggle_status_menu)
 
@@ -252,9 +253,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		# Init touchbar
 		self.init_buttonbar()
 
+		self.title_timer = None
 		self.select_song(self.song)
 		self.populate_menu()
-		self.param_editor_timer = None
 
 
 	# Function to print traceback - for debug only
@@ -280,7 +281,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.add_menu({'Arranger':{'method':self.show_child, 'params':"pad editor"}})
 #		self.addMenu({'Song Editor':{'method':self.show_child, 'params':"song editor"}})
 		self.add_menu({'Song':{'method':self.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':self.zyngui.libseq.getSong, 'on_change':self.on_menu_change}}})
-		self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':self.zyngui.libseq.getTempo, 'on_change':self.on_menu_change}}})
+		if zynthian_gui_config.enable_touch_widgets:
+			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':self.zyngui.libseq.getTempo, 'on_change':self.on_menu_change}}})
 		self.add_menu({'Load':{'method':self.select_filename, 'params':self.filename}})
 		self.add_menu({'Save':{'method':self.save_as, 'params':self.filename}})
 		self.add_menu({'---':{}})
@@ -290,12 +292,35 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	#	title: Title to display in topbar
 	#	fg: Title foreground colour [Default: Do not change]
 	#	bg: Title background colour [Default: Do not change]
-	def set_title(self, title, fg=None, bg=None):
-		self.title_canvas.itemconfig("lblTitle", text=title)
+	#	timeout: If set, title is shown for this period (seconds) then reverts to previous title
+	def set_title(self, title, fg=None, bg=None, timeout = None):
+		if self.title_timer:
+			self.title_timer.cancel()
+			self.title_timer = None
+		if timeout:
+			self.title_timer = Timer(timeout, self.on_title_timeout)
+			self.title_timer.start()
+		else:
+			self.title = title
+			if fg:
+				self.title_fg = fg
+			if bg:
+				self.title_bg = bg
+		self.title_canvas.itemconfig("lblTitle", text=title, fill=self.title_fg)
 		if fg:
 			self.title_canvas.itemconfig("lblTitle", fill=fg)
 		if bg:
 			self.title_canvas.configure(bg=bg)
+		else:
+			self.title_canvas.configure(bg=self.title_bg)
+
+
+	# Function to revert title after toast
+	def on_title_timeout(self):
+		if self.title_timer:
+			self.title_timer.cancel()
+			self.title_timer = None
+		self.set_title(self.title)
 
 
 	# Function to show GUI
@@ -379,8 +404,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to open status menu
 	def show_status_menu(self):
-		self.status_menu_frame.grid(column=0, row=1, sticky="ne")
-		self.status_menu_frame.tkraise()
+		if zynthian_gui_config.enable_touch_widgets:
+			self.status_menu_frame.grid(column=0, row=1, sticky="ne")
+			self.status_menu_frame.tkraise()
 
 
 	# Function to close status menu
@@ -478,8 +504,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to show menu editor
 	#	menuitem: Name of the menu item who's parameters to edit
-	#	timeout: Seconds before hiding (don't show any editor buttons)
-	def show_param_editor(self, menu_item, timeout=0):
+	def show_param_editor(self, menu_item):
 		if not menu_item in self.menu_items:
 			return
 		self.param_editor_item = menu_item
@@ -491,12 +516,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.param_title_canvas.itemconfig("lbl_param_editor_value", 
 			text=self.menu_items[menu_item]['params']['on_change'](self.menu_items[menu_item]['params'])
 			)
-		if timeout:
-			if self.param_editor_timer:
-				self.param_editor_timer.cancel()
-			self.param_editor_timer = Timer(timeout, self.hide_param_editor)
-			self.param_editor_timer.start()
-			return
 		if 'on_assert' in self.menu_items[menu_item]['params']:
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='normal')
 		else:
@@ -510,9 +529,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to hide menu editor
 	#	event: Mouse event (not used)
 	def hide_param_editor(self, event=None):
-		if self.param_editor_timer:
-			self.param_editor_timer.cancel()
-			self.param_editor_timer = None
 		self.param_editor_item = None
 		self.param_editor_canvas.grid_forget()
 		for encoder in range(4):
@@ -536,6 +552,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.select_song(value)
 		elif self.param_editor_item == 'Tempo':
 			self.zyngui.libseq.setTempo(value)
+			return "Tempo: %d BPM" % (value)
 		self.set_param(self.param_editor_item, 'value', value)
 		return "%s: %d" % (self.param_editor_item, value)
 
@@ -730,13 +747,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				self.lst_menu.selection_set(index)
 				self.lst_menu.activate(index)
 				self.lst_menu.see(index)
-		elif self.param_editor_item and not self.param_editor_timer:
+		elif self.param_editor_item:
 			# Parameter editor showing
 			if encoder == ENC_SELECT or encoder == ENC_LAYER:
 				self.change_param(value)
 		if encoder == ENC_SNAPSHOT:
 			self.zyngui.libseq.setTempo(self.zyngui.libseq.getTempo() + value)
-			self.show_param_editor("Tempo", 2)
+			self.set_title("Tempo: %d BPM" % (self.zyngui.libseq.getTempo()), None, None, 2)
 
 
 	# Function to handle zyncoder polling

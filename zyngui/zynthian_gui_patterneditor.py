@@ -221,7 +221,6 @@ class zynthian_gui_patterneditor():
 		if self.libseq.getScale():
 			self.parent.add_menu({'Transpose pattern':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':1, 'value':0, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Vertical zoom':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':127, 'get_value':self.get_vertical_zoom, 'on_change':self.on_menu_change, 'on_assert':self.assert_zoom}}})
-		self.parent.add_menu({'Tempo':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':999, 'get_value':self.libseq.getTempo, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Scale':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':self.get_scales(), 'get_value':self.libseq.getScale, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Tonic':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':12, 'get_value':self.libseq.getTonic, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Import':{'method':self.select_import}})
@@ -780,8 +779,6 @@ class zynthian_gui_patterneditor():
 			self.redraw_pending = 2
 			value = self.libseq.getBeatType()
 			self.parent.set_param('Beat type', 'value', value)
-		elif menuItem == 'Tempo':
-			self.libseq.setTempo(value)
 		elif menuItem == 'Scale':
 			self.libseq.setScale(value)
 			name = self.load_keymap()

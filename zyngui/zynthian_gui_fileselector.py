@@ -155,20 +155,18 @@ class zynthian_gui_fileselector():
 	# Function to hide dialog
 	def hide(self):
 		self.parent.unregister_zyncoder(ENC_SELECT)
-		self.parent.unregister_switch(ENC_SELECT)
-		self.parent.unregister_switch(ENC_SELECT, "B")
-		self.parent.unregister_switch(ENC_BACK, "B")
+		self.parent.unregister_switch(ENC_SELECT, "SB")
+		self.parent.unregister_switch(ENC_BACK)
 		self.file_list.destroy()
 #		self.btnCancel.destroy()
 		self.tb_panel.destroy()
-		self.parent.show_child()
+		self.parent.show_child(self.parent.last_child)
 
 
 	# Function to register encoders
 	def setup_encoders(self):
 		self.parent.register_zyncoder(ENC_SELECT, self)
-		self.parent.register_switch(ENC_SELECT, self)
-		self.parent.register_switch(ENC_SELECT, self, "B")
+		self.parent.register_switch(ENC_SELECT, self, "SB")
 		self.parent.register_switch(ENC_BACK, self)
 
 
