@@ -281,6 +281,17 @@ void setInputChannel(uint8_t channel);
 */
 uint8_t getInputChannel();
 
+/** @brief  Set note used as rest when using MIDI input for pattern editing
+*   @param  note MIDI note number [0..127]
+*   @note   >127 to disable rest
+*/
+void setInputRest(uint8_t note);
+
+/** @brief  Get note used as rest when using MIDI input for pattern editing
+*   @retval uint8_t MIDI note number [0..127, 0xFF if disabled]
+*/
+uint8_t getInputRest();
+
 /** @brief  Set scale used by pattern editor for selected pattern
 *   @param  scale Index of scale
 */

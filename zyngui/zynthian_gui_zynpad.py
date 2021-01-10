@@ -122,7 +122,7 @@ class zynthian_gui_zynpad():
 		self.parent.add_menu({'Pad mode':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(zynthian_gui_stepsequencer.PLAY_MODES)-1, 'get_value':self.get_selected_pad_mode, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Group':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':25, 'get_value':self.get_group, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'MIDI channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_pad_channel, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Trigger note':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':128, 'get_value':self.get_trigger_note, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Trigger note':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':128, 'get_value':self.get_trigger_note, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Grid size':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':8, 'get_value':self.get_columns, 'on_change':self.on_menu_change}}})
 
 
@@ -142,7 +142,10 @@ class zynthian_gui_zynpad():
 	# Function to get the MIDI trigger note
 	#   returns: MIDI note
 	def get_trigger_note(self):
-		return self.libseq.getTriggerNote(self.get_sequence(self.selected_pad))
+		trigger = self.libseq.getTriggerNote(self.get_sequence(self.selected_pad))
+		if trigger > 128:
+			trigger = 128
+		return trigger
 
 
 	# Function to get group of selected track
@@ -183,6 +186,8 @@ class zynthian_gui_zynpad():
 		elif menu_item == 'MIDI channel':
 			self.libseq.setChannel(self.get_sequence(self.selected_pad), value - 1)
 		elif menu_item == 'Trigger note':
+			if value > 128 or value < 0:
+				value = 128
 			self.libseq.setTriggerNote(self.get_sequence(self.selected_pad), value)
 			if value > 127:
 				return "Trigger note: None"
@@ -260,7 +265,7 @@ class zynthian_gui_zynpad():
 				size=int(self.row_height * 0.3)),
 				fill=zynthian_gui_config.color_panel_tx,
 				tags=("lbl_pad:%d"%(pad),"trigger_%d"%(pad)))
-			self.grid_canvas.create_image(pad_x + self.column_width - 3, pad_y + self.row_height - 3, tags=("mode:%d"%(pad)), anchor="se")
+			self.grid_canvas.create_image(pad_x + self.column_width - 3, pad_y + self.row_height - 3, tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
 			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
 			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
 			self.draw_pad(pad, True)

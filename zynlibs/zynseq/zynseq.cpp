@@ -57,6 +57,7 @@ std::set<std::string> g_setTransportClient; // Set of timebase clients having re
 bool g_bClientPlaying = false; // True if any external client has requested transport play
 
 uint8_t g_nInputChannel = 1; // MIDI input channel (>15 to disable MIDI input)
+uint8_t g_nInputRest = 0xFF; // MIDI note number that creates rest in pattern
 
 uint8_t g_nSongStatus = STOPPED; // Status of song (not other sequences)
 bool g_bMutex = false; // Mutex lock for access to g_mSchedule
@@ -425,7 +426,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 uint32_t nStep = pSeq->getStep();
                 if(getNoteVelocity(nStep, midiEvent.buffer[1]))
                     g_pPattern->removeNote(nStep, midiEvent.buffer[1]);
-                else
+                else if(midiEvent.buffer[1] != g_nInputRest)
                     g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
                 if(transportGetPlayStatus() != JackTransportRolling)
                 {
@@ -868,6 +869,19 @@ void setInputChannel(uint8_t channel)
 uint8_t getInputChannel()
 {
     return g_nInputChannel;
+}
+
+void setInputRest(uint8_t note)
+{
+    if(note > 127)
+        g_nInputRest = 0xFF;
+    g_nInputRest = note;
+    g_bDirty = true;
+}
+
+uint8_t getInputRest()
+{
+    return g_nInputRest;
 }
 
 void setScale(uint32_t scale)

@@ -135,7 +135,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.title_canvas.grid(row=0, column=0, sticky='ew')
 		self.title_canvas.bind('<Button-1>', self.toggle_menu)
 
-		iconsize = (zynthian_gui_config.topbar_height - 2, zynthian_gui_config.topbar_height - 2)
+		iconsize = (zynthian_gui_config.topbar_height - 4, zynthian_gui_config.topbar_height - 4)
 		img = (Image.open("/zynthian/zynthian-ui/icons/play.png").resize(iconsize))
 		self.image_play = ImageTk.PhotoImage(img)
 		pixdata = img.load()
@@ -165,25 +165,25 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				image=self.image_back,
 				bd=0, highlightthickness=0,
 				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.button_param_cancel.grid(column=0, row=0)
+			self.button_param_cancel.grid(column=0, row=0, padx=1)
 			# Parameter editor decrement button
 			self.button_param_down = tkinter.Button(self.param_editor_canvas, command=self.decrement_param,
 				image=self.image_down,
 				bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
 				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.button_param_down.grid(column=1, row=0)
+			self.button_param_down.grid(column=1, row=0, padx=1)
 			# Parameter editor increment button
 			self.button_param_up = tkinter.Button(self.param_editor_canvas, command=self.increment_param,
 				image=self.image_up,
 				bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
 				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.button_param_up.grid(column=2, row=0)
+			self.button_param_up.grid(column=2, row=0, padx=1)
 			# Parameter editor assert button
 			self.button_param_assert = tkinter.Button(self.param_editor_canvas, command=self.menu_value_assert,
 				image=self.image_forward,
 				bd=0, highlightthickness=0,
 				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.button_param_assert.grid(column=3, row=0)
+			self.button_param_assert.grid(column=3, row=0, padx=1)
 		# Parameter editor value text
 		self.param_title_canvas = tkinter.Canvas(self.param_editor_canvas, height=zynthian_gui_config.topbar_height, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_header_bg)
 		self.param_title_canvas.create_text(3, zynthian_gui_config.topbar_height / 2,
@@ -256,6 +256,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.title_timer = None
 		self.select_song(self.song)
 		self.populate_menu()
+
 
 
 	# Function to print traceback - for debug only
@@ -754,6 +755,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if encoder == ENC_SNAPSHOT:
 			self.zyngui.libseq.setTempo(self.zyngui.libseq.getTempo() + value)
 			self.set_title("Tempo: %d BPM" % (self.zyngui.libseq.getTempo()), None, None, 2)
+		if encoder == ENC_LAYER:
+			self.select_song(self.song + value)
 
 
 	# Function to handle zyncoder polling

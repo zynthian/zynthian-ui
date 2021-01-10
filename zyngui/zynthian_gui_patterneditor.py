@@ -67,6 +67,7 @@ ENC_SELECT          = 3
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1,2,3,4,6,8,12,24]
 
+
 # Class implements step sequencer pattern editor
 class zynthian_gui_patterneditor():
 	#TODO: Inherit child views from superclass
@@ -167,13 +168,16 @@ class zynthian_gui_patterneditor():
 		# Select a cell
 		self.select_cell(0, self.keymap_offset)
 
+
 	# Function to get name of this view
 	def get_name(self):
 		return "pattern editor"
 	
+
 	# Function called when new file loaded
 	def on_load(self):
 		pass
+
 
 	#Function to set values of encoders
 	#   note: Call after other routine uses one or more encoders
@@ -183,6 +187,7 @@ class zynthian_gui_patterneditor():
 		self.parent.register_zyncoder(ENC_LAYER, self)
 		self.parent.register_switch(ENC_SELECT, self, "SB")
 		self.parent.register_switch(ENC_SNAPSHOT, self, "SB")
+
 
 	# Function to show GUI
 	#   params: Pattern parameters to edit {'pattern':x, 'channel':x}
@@ -199,6 +204,7 @@ class zynthian_gui_patterneditor():
 		self.parent.set_title("Pattern %d" % (self.pattern))
 		self.shown=True
 
+
 	# Function to hide GUI
 	def hide(self):
 		self.shown=False
@@ -209,10 +215,10 @@ class zynthian_gui_patterneditor():
 		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT, "SB")
 		self.libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 
+
 	# Function to add menus
 	def populate_menu(self):
 		self.parent.add_menu({'Pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Input channel':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':16, 'get_value':self.get_input_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Beats in pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.libseq.getBeatsInPattern, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Steps per beat':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'get_value':self.get_steps_per_beat_index, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Beat type':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':self.libseq.getBeatType, 'on_change':self.on_menu_change}}})
@@ -224,6 +230,9 @@ class zynthian_gui_patterneditor():
 		self.parent.add_menu({'Scale':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':self.get_scales(), 'get_value':self.libseq.getScale, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Tonic':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':12, 'get_value':self.libseq.getTonic, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Import':{'method':self.select_import}})
+		self.parent.add_menu({'Input channel':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':16, 'get_value':self.get_input_channel, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Rest note':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':128, 'get_value':self.libseq.getInputRest, 'on_change':self.on_menu_change}}})
+
 
 	# Function to set edit mode
 	def enable_edit(self, enable):
@@ -246,6 +255,7 @@ class zynthian_gui_patterneditor():
 				return index
 		return index
 
+
 	# Function to get quantity of scales
 	#	returns: Quantity of available scales
 	def get_scales(self):
@@ -257,11 +267,13 @@ class zynthian_gui_patterneditor():
 			logging.warning("Unable to open scales.json")
 		return len(data)
 
+
 	# Function to assert zoom level
 	def assert_zoom(self):
 		self.update_row_height()
 		self.redraw_pending = 2
 		self.select_cell()
+
 
 	# Function to populate keymap array
 	#	returns Name of scale / map
@@ -321,6 +333,7 @@ class zynthian_gui_patterneditor():
 		self.select_cell(0, int(len(self.keymap) / 2))
 		return name
 
+
 	# Function to handle start of pianoroll drag
 	def on_pianoroll_press(self, event):
 		if self.parent.lst_menu.winfo_viewable():
@@ -332,6 +345,7 @@ class zynthian_gui_patterneditor():
 			return
 		note = self.keymap[index]['note']
 		self.libseq.playNote(note, 100, self.libseq.getChannel(self.sequence), 200)
+
 
 	# Function to handle pianoroll drag motion
 	def on_pianoroll_motion(self, event):
@@ -354,6 +368,7 @@ class zynthian_gui_patterneditor():
 		elif self.selected_cell[1] >= self.keymap_offset + self.zoom:
 			self.selected_cell[1] = self.keymap_offset + self.zoom - 1
 		self.select_cell()
+
 
 	# Function to handle end of pianoroll drag
 	def on_pianoroll_release(self, event):
@@ -385,6 +400,7 @@ class zynthian_gui_patterneditor():
 			self.libseq.playNote(note, 100, self.libseq.getChannel(self.sequence), 200)
 		self.select_cell(int(col), self.keymap_offset + int(row))
 
+
 	# Function to handle grid mouse release
 	#	event: Mouse event
 	def on_grid_release(self, event):
@@ -395,6 +411,7 @@ class zynthian_gui_patterneditor():
 		self.drag_velocity = False
 		self.drag_duration = False
 		self.grid_drag_start = None
+
 
 	# Function to handle grid mouse drag
 	#	event: Mouse event
@@ -448,6 +465,7 @@ class zynthian_gui_patterneditor():
 				self.select_cell(None, self.selected_cell[1] - 1)
 				self.libseq.playNote(self.keymap[self.selected_cell[1]]["note"], 100, self.libseq.getChannel(self.sequence), 200)
 
+
 	# Function to toggle note event
 	#	step: step (column) index
 	#	index: key map index
@@ -462,6 +480,7 @@ class zynthian_gui_patterneditor():
 			if playnote:
 				self.libseq.playNote(note, 100, self.libseq.getChannel(self.sequence), 200)
 
+
 	# Function to remove an event
 	#	step: step (column) index
 	#	index: keymap index
@@ -474,6 +493,7 @@ class zynthian_gui_patterneditor():
 		self.draw_row(index)
 		self.select_cell(step, index)
 
+
 	# Function to add an event
 	#	step: step (column) index
 	#	index: keymap index
@@ -483,6 +503,7 @@ class zynthian_gui_patterneditor():
 		self.draw_row(index)
 		self.select_cell(step, index)
 
+
 	# Function to draw a grid row
 	#	index: keymap index
 	def draw_row(self, index):
@@ -490,6 +511,7 @@ class zynthian_gui_patterneditor():
 		self.grid_canvas.itemconfig("lastnotetext%d" % (row), state="hidden")
 		for step in range(self.libseq.getSteps()):
 			self.draw_cell(step, row)
+
 
 	# Function to get cell coordinates
 	#   col: Column index
@@ -502,6 +524,7 @@ class zynthian_gui_patterneditor():
 		x2 = x1 + self.step_width * duration - 1 
 		y2 = y1 + self.rowHeight - 1
 		return [x1, y1, x2, y2]
+
 
 	# Function to draw a grid cell
 	#	step: Step (column) index
@@ -544,6 +567,7 @@ class zynthian_gui_patterneditor():
 		if step + duration > self.libseq.getSteps():
 			if duration > 1:
 				self.grid_canvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - self.libseq.getSteps() + step), state="normal")
+
 
 	# Function to draw grid
 	def draw_grid(self):
@@ -600,6 +624,7 @@ class zynthian_gui_patterneditor():
 				self.grid_canvas.tag_lower("step%d"%step)
 		self.select_cell()
 
+
 	# Function to draw pianoroll key outlines (does not fill key colour)
 	def draw_pianoroll(self):
 		self.pianoRoll.delete(tkinter.ALL)
@@ -610,6 +635,7 @@ class zynthian_gui_patterneditor():
 			y2 = y1 + self.rowHeight - 1
 			id = "row%d" % (row)
 			id = self.pianoRoll.create_rectangle(x1, y1, x2, y2, width=0, tags=id)
+
 
 	# Function to update selectedCell
 	#	step: Step (column) of selected cell (Optional - default to reselect current column)
@@ -673,12 +699,14 @@ class zynthian_gui_patterneditor():
 			self.grid_canvas.coords(cell, coord)
 		self.grid_canvas.tag_raise(cell)
 
+
 	# Function to calculate row height
 	def update_row_height(self):
 		self.rowHeight = (self.grid_height - 2) / self.zoom
 		self.fontsize = int(self.rowHeight * 0.5)
 		if self.fontsize > 20:
 			self.fontsize = 20 # Ugly font scale limiting
+
 
 	# Function to clear a pattern
 	def clear_pattern(self):
@@ -688,15 +716,18 @@ class zynthian_gui_patterneditor():
 		if self.zyngui.lib_zyncoder:
 			self.zyngui.lib_zyncoder.zynmidi_send_all_notes_off()
 
+
 	# Function to copy pattern
 	def copy_pattern(self):
 		self.libseq.copyPattern(self.copySource, self.pattern)
 		self.load_pattern(self.pattern)
 		self.copySource = self.pattern
 
+
 	# Function to get pattern index
 	def get_pattern(self):
 		return self.pattern
+
 
 	# Function to get pattern index
 	def get_input_channel(self):
@@ -705,13 +736,16 @@ class zynthian_gui_patterneditor():
 			channel = 0
 		return channel
 
+
 	# Function to get copy source
 	def get_copy_source(self):
 		return self.copySource
 
+
 	# Function to get vertical zoom
 	def get_vertical_zoom(self):
 		return self.zoom
+
 
 	# Function to handle menu editor change
 	#   params: Menu item's parameters
@@ -729,11 +763,6 @@ class zynthian_gui_patterneditor():
 			self.pattern = value
 			self.copySource = value
 			self.load_pattern(value)
-		elif menuItem == 'Input channel':
-			if value == 0:
-				self.libseq.setInputChannel(0xFF)
-				return 'Input channel: None'
-			self.libseq.setInputChannel(value - 1)
 		elif menuItem == 'Clear pattern':
 			return "Clear pattern %d?" % (self.pattern)
 		elif menuItem =='Copy pattern':
@@ -799,7 +828,20 @@ class zynthian_gui_patterneditor():
 					key['name'] = "%s%d" % (self.notes[note % 12], note // 12)
 			self.redraw_pending = 1
 			return "Tonic: %s" % (self.notes[value])
+		elif menuItem == 'Input channel':
+			if value == 0:
+				self.libseq.setInputChannel(0xFF)
+				return 'Input channel: None'
+			self.libseq.setInputChannel(value - 1)
+		elif menuItem == 'Rest note':
+			if value < 0 or value > 127:
+				value = 128
+			self.libseq.setInputRest(value)
+			if value > 127:
+				return "Rest note: None"
+			return "Rest note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value)
 		return "%s: %d" % (menuItem, value)
+
 
 	# Function to load new pattern
 	#   index: Pattern index
@@ -816,9 +858,11 @@ class zynthian_gui_patterneditor():
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
 		self.parent.set_title("Pattern %d" % (self.pattern))
 
+
 	# Function to select .mid file to import
 	def select_import(self, params):
 		zynthian_gui_fileselector(self.parent, self.import_mid, zynthian_gui_stepsequencer.os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture", "mid", None, True)
+
 
 	# Function to import patterns from .mid file
 	#	filename: Full path and filename of midi file from which to import
@@ -852,7 +896,7 @@ class zynthian_gui_patterneditor():
 		step = 0
 		max_steps = self.libseq.getSteps()
 		beats = self.libseq.getBeatsInPattern()
-		channel = self.libseq.getChannel(self.sequence)
+		channel = self.get_input_channel()
 		populated_pattern = False
 		for msg in mid:
 			offset += msg.time
@@ -878,6 +922,7 @@ class zynthian_gui_patterneditor():
 				self.libseq.addNote(step, msg.note, notes[msg.note]['velocity'], duration)
 		self.load_pattern(pattern) # Reload our starting pattern in the editor
 
+
 	# Function to refresh display
 	def refresh_status(self):
 		step = self.libseq.getStep(self.sequence)
@@ -886,6 +931,7 @@ class zynthian_gui_patterneditor():
 			self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width, 0, 1 + self.playhead * self.step_width + self.step_width, PLAYHEAD_HEIGHT)
 		if self.redraw_pending or self.libseq.isPatternModified():
 			self.draw_grid()
+
 
 	# Function to handle zyncoder value change
 	#   encoder: Zyncoder index [0..4]
@@ -925,6 +971,7 @@ class zynthian_gui_patterneditor():
 					self.select_cell()
 			else:
 				self.select_cell(self.selected_cell[0] + value, None)
+
 
 	# Function to handle switch press
 	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
