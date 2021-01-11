@@ -83,7 +83,7 @@ class zynthian_gui_patterneditor():
 		self.zoom = 16 # Quantity of rows (notes) displayed in grid
 		self.duration = 1 # Current note entry duration
 		self.velocity = 100 # Current note entry velocity
-		self.copySource = 1 # Index of pattern to copy
+		self.copy_source = 1 # Index of pattern to copy
 		#TODO: Use song operations rather than sequence
 		self.sequence = self.libseq.getSequence(0, 0) # Sequence used for pattern editor sequence player (track 0 in song 0)
 		self.step_width = 40 # Grid column width in pixels
@@ -198,10 +198,13 @@ class zynthian_gui_patterneditor():
 			self.libseq.setTransportToStartOfBar()
 		except:
 			pass # Probably already populated and just returning from menu action or similar
-		self.copySource = self.pattern
+		self.copy_source = self.pattern
 		self.setup_encoders()
 		self.main_frame.tkraise()
-		self.parent.set_title("Pattern %d" % (self.pattern))
+		if self.pattern > 1000:
+			self.parent.set_title("Song %d Pad %d" % (int((self.pattern - 1000)/64) + 1, (self.pattern - 1000)%64))
+		else:
+			self.parent.set_title("Pattern %d" % (self.pattern))
 		self.shown=True
 
 
@@ -222,7 +225,7 @@ class zynthian_gui_patterneditor():
 		self.parent.add_menu({'Beats in pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.libseq.getBeatsInPattern, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Steps per beat':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'get_value':self.get_steps_per_beat_index, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Beat type':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':self.libseq.getBeatType, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Copy pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':1999, 'get_value':self.get_copy_source, 'on_change':self.on_menu_change,'on_assert':self.copy_pattern}}})
+		self.parent.add_menu({'Copy pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':1999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change,'on_assert':self.copy_pattern}}})
 		self.parent.add_menu({'Clear pattern':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_pattern}}})
 		if self.libseq.getScale():
 			self.parent.add_menu({'Transpose pattern':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':1, 'value':0, 'on_change':self.on_menu_change}}})
@@ -719,9 +722,9 @@ class zynthian_gui_patterneditor():
 
 	# Function to copy pattern
 	def copy_pattern(self):
-		self.libseq.copyPattern(self.copySource, self.pattern)
+		self.libseq.copyPattern(self.copy_source, self.pattern)
 		self.load_pattern(self.pattern)
-		self.copySource = self.pattern
+		self.copy_source = self.pattern
 
 
 	# Function to get pattern index
@@ -735,11 +738,6 @@ class zynthian_gui_patterneditor():
 		if channel > 16:
 			channel = 0
 		return channel
-
-
-	# Function to get copy source
-	def get_copy_source(self):
-		return self.copySource
 
 
 	# Function to get vertical zoom
@@ -761,13 +759,34 @@ class zynthian_gui_patterneditor():
 		params['value'] = value
 		if menuItem == 'Pattern':
 			self.pattern = value
-			self.copySource = value
+			self.copy_source = value
 			self.load_pattern(value)
 		elif menuItem == 'Clear pattern':
 			return "Clear pattern %d?" % (self.pattern)
 		elif menuItem =='Copy pattern':
+			if value > 1000:
+				pad = (value - 1001)%64 # pad zero based
+				song = int((value - 1001)/64) # base song zero based
+				tracks = self.libseq.getTracks(1001 + song)
+				if pad >= tracks:
+					if pad == 63:
+						pad = self.libseq.getTracks(1001 + song) - 1
+					else:
+						pad = 0
+						song += 1
+				dest_name = "%d/%d" % (song+1, pad+1)
+				value = (1001 + song * 64 + pad)
+				if value < 1001:
+					value = 1001
+			else:
+				dest_name = "%d" % (value)
+			if self.copy_source > 1000:
+				src_name = "%d/%d" % (int((self.copy_source - 1001)/64) + 1, (self.copy_source - 1001)%64 + 1)
+			else:
+				src_name = "%d" % (self.copy_source)
 			self.load_pattern(value)
-			return "Copy %d=>%d?" % (self.copySource, value)
+			params['value'] = value
+			return "Copy %s => %s ?" % (src_name, dest_name)
 		elif menuItem == 'Transpose pattern':
 			if self.libseq.getScale() == 0:
 				self.parent.hideParamEditor()
@@ -856,7 +875,8 @@ class zynthian_gui_patterneditor():
 		self.redraw_pending = 2
 		self.select_cell()
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
-		self.parent.set_title("Pattern %d" % (self.pattern))
+		if self.pattern > 1000:
+			self.parent.set_title("Song %d Pad %d" % (int((self.pattern - 1000)/64) + 1, (self.pattern - 1000)%64))
 
 
 	# Function to select .mid file to import
