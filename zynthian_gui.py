@@ -612,6 +612,8 @@ class zynthian_gui:
 	# -------------------------------------------------------------------
 
 	def callable_ui_action(self, cuia, params=None):
+		logging.debug("CUIA '{}' => {}".format(cuia,params))
+		
 		if cuia == "POWER_OFF":
 			self.screens['admin'].power_off_confirmed()
 
