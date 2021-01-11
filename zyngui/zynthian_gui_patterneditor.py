@@ -40,9 +40,9 @@ from os.path import dirname, realpath, basename
 from mido import MidiFile
 
 # Zynthian specific modules
-from . import zynthian_gui_config
-from . import zynthian_gui_layer
-from . import zynthian_gui_stepsequencer
+from zyngui import zynthian_gui_config
+from zyngui import zynthian_gui_layer
+from zyngui import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
 
 #------------------------------------------------------------------------------

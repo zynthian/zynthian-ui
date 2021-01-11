@@ -37,9 +37,9 @@ from os.path import dirname, realpath
 from PIL import Image, ImageTk
 
 # Zynthian specific modules
-from . import zynthian_gui_base
-from . import zynthian_gui_config
-from zyncoder import *
+from zyngui import zynthian_gui_base
+from zyngui import zynthian_gui_config
+from zyncoder import get_lib_zyncoder
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_songeditor import zynthian_gui_songeditor
 from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
@@ -573,7 +573,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.set_param(self.param_editor_item, 'value', value)
 		result = self.get_param(self.param_editor_item, 'on_change')(self.menu_items[self.param_editor_item]['params'])
 		if result == -1:
-			self.parent.hide_param_editor()
+			self.hide_param_editor()
 		else:
 			self.param_title_canvas.itemconfig("lbl_param_editor_value", text=result)
 
@@ -764,13 +764,14 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def zyncoder_read(self):
 		if not self.shown:
 			return
-		if zyncoder.lib_zyncoder:
+		zyncoder = get_lib_zyncoder()
+		if zyncoder:
 			for encoder in range(len(self.zyncoder_owner)):
 				if self.zyncoder_owner[encoder]:
 					# Found a registered zyncoder
-					value = zyncoder.lib_zyncoder.get_value_zyncoder(encoder)
+					value = zyncoder.get_value_zyncoder(encoder)
 					if value != 64:
-						zyncoder.lib_zyncoder.set_value_zyncoder(encoder, 64, 0)
+						zyncoder.set_value_zyncoder(encoder, 64, 0)
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, value - 64)
 
 
@@ -929,10 +930,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if encoder >= len(self.zyncoder_owner):
 			return
 		self.zyncoder_owner[encoder] = None
-		if self.shown and zyncoder.lib_zyncoder:
+		zyncoder = get_lib_zyncoder()
+		if self.shown and zyncoder:
 			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
-			zyncoder.lib_zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, 0)
+			zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, 0)
 			self.zyncoder_owner[encoder] = object
 
 

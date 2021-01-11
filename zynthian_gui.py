@@ -178,7 +178,7 @@ class zynthian_gui:
 		self.zynautoconnect_midi_flag = False
 
 		# Create Lock object to avoid concurrence problems
-		self.lock = Lock();
+		self.lock = Lock()
 
 		# Load keyboard binding map
 		zynthian_gui_keybinding.getInstance().load()

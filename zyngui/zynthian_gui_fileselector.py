@@ -33,8 +33,7 @@ import time
 from PIL import Image, ImageTk
 
 # Zynthian specific modules
-from . import zynthian_gui_config
-from zyncoder import *
+from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # Zynthian File-Selector GUI Class

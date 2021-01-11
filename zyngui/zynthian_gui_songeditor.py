@@ -35,8 +35,8 @@ from threading import Timer
 import traceback
 
 # Zynthian specific modules
-from . import zynthian_gui_config
-from . import zynthian_gui_stepsequencer
+from zyngui import zynthian_gui_config
+from zyngui import zynthian_gui_stepsequencer
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer Song Editor GUI Class
@@ -831,8 +831,7 @@ class zynthian_gui_songeditor():
 	def clear_song(self):
 		self.libseq.clearSong(self.song)
 		self.redraw_pending = 2
-		if self.zyngui.lib_zyncoder:
-			self.zyngui.lib_zyncoder.zynmidi_send_all_notes_off()
+		self.zyngui.all_notes_off()
 		self.select_cell(0,0)
 
 

@@ -40,8 +40,8 @@ from time import sleep
 from threading import Timer
 
 # Zynthian specific modules
-from . import zynthian_gui_config
-from . import zynthian_gui_stepsequencer
+from zyngui import zynthian_gui_config
+from zyngui import zynthian_gui_stepsequencer
 
 SELECT_BORDER	= zynthian_gui_config.color_on
 
