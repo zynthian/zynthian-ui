@@ -208,7 +208,8 @@ class zynthian_gui_zynpad():
 	def select_song(self):
 		#TODO: Should we stop song and recue?
 		self.song = self.libseq.getSong() + 1000
-		self.selected_pad = 0
+		if self.selected_pad >= self.libseq.getTracks(self.song):
+			self.selected_pad = self.libseq.getTracks(self.song) - 1
 		self.update_grid()
 
 
