@@ -770,11 +770,16 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				if self.zyncoder_owner[encoder]:
 					# Found a registered zyncoder
 					value = zyncoder.get_value_zyncoder(encoder)
-					if value != 64:
+					if value>66:
+						step = 1
+					elif value<62:
+						step = -1
+					else:
+						step = 0
+					if step:
+						logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
+						self.zyncoder_owner[encoder].on_zyncoder(encoder, step)
 						zyncoder.set_value_zyncoder(encoder, 64, 0)
-						self.zyncoder_owner[encoder].on_zyncoder(encoder, value - 64)
-
-
 
 	# Function to handle CUIA encoder changes
 	def on_cuia_encoder(self, encoder, value):
@@ -934,7 +939,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.shown and zyncoder:
 			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
-			zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, 0)
+			zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, 1)
 			self.zyncoder_owner[encoder] = object
 
 
