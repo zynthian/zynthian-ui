@@ -777,7 +777,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					else:
 						step = 0
 					if step:
-						logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
+						#logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, step)
 						zyncoder.set_value_zyncoder(encoder, 64, 0)
 
