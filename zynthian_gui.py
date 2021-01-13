@@ -96,6 +96,7 @@ class zynthian_gui:
 		"2": "RESTART_UI",
 		"3": "RELOAD_MIDI_CONFIG",
 		"4": "RELOAD_KEY_BINDING",
+		"5": "LAST_STATE_ACTION",
 
 		"10": "ALL_NOTES_OFF",
 		"11": "ALL_SOUNDS_OFF",
@@ -628,6 +629,9 @@ class zynthian_gui:
 
 		elif cuia == "RELOAD_KEY_BINDING":
 			zynthian_gui_keybinding.getInstance().load()
+
+		elif cuia == "LAST_STATE_ACTION":
+			self.screens['admin'].last_state_action()
 
 		elif cuia == "ALL_NOTES_OFF":
 			self.all_notes_off()
