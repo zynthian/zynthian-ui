@@ -6,7 +6,7 @@ include(CheckLibraryExists)
 
 link_directories(/usr/local/lib)
 
-add_library(zynsmf SHARED zynsmf.h zynsmf.cpp)
-	target_link_libraries(zynsmf)
+add_library(zynsmf SHARED zynsmf.cpp event.cpp track.cpp smf.cpp)
+	target_link_libraries(zynsmf jack)
 
 install(TARGETS zynsmf LIBRARY DESTINATION lib)
