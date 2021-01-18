@@ -8,11 +8,6 @@
 
 #define DPRINTF(fmt, args...) if(m_bDebug) printf(fmt, ## args)
 
-Smf::Smf()
-{
-
-}
-
 Smf::~Smf()
 {
 	unload();
@@ -97,7 +92,7 @@ size_t Smf::fileReadString(FILE *pFile, char* pString, size_t nSize)
 	return nRead;
 }
 
-bool Smf::load(char* sFilename, bool bLoadEvents)
+bool Smf::load(char* sFilename)
 {
 	unload();
 
@@ -134,6 +129,7 @@ bool Smf::load(char* sFilename, bool bLoadEvents)
 			else
 			{
 				m_nTicksPerQuarterNote = nDivision & 0x7FFF;
+				m_fTickDuration = double(m_nMicrosecondsPerQuarterNote) / m_nTicksPerQuarterNote;
 				DPRINTF("Standard MIDI File - Format: %u, Tracks: %u, Ticks per quarter note: %u\n", m_nFormat, m_nTracks, m_nTicksPerQuarterNote);
 			}
 			DPRINTF("\n");
@@ -170,11 +166,14 @@ bool Smf::load(char* sFilename, bool bLoadEvents)
 						nMessageLength = fileReadVar(pFile);
 						pData = new uint8_t[nMessageLength + 1];
 						fread(pData, nMessageLength, 1, pFile);
-						pEvent = new Event(nPosition, EVENT_TYPE_META, nMetaType, nMessageLength, pData);
-						if(bLoadEvents)
-							pTrack->addEvent(pEvent);
-						if(nMetaType == 0x51) // Tempo
+						pEvent = new Event(m_fTickDuration * nPosition, EVENT_TYPE_META, nMetaType, nMessageLength, pData);
+						pTrack->addEvent(pEvent);
+						if(nMetaType == 0x51)
+						{
+							// Tempo
 							m_nMicrosecondsPerQuarterNote = pEvent->getInt32();
+							m_fTickDuration = float(m_nMicrosecondsPerQuarterNote) / m_nTicksPerQuarterNote;
+						}
 						else if(nMetaType == 0x7F) // Manufacturer
 							m_nManufacturerId = pEvent->getInt32();
 						nRunningStatus = 0;
@@ -215,9 +214,8 @@ bool Smf::load(char* sFilename, bool bLoadEvents)
 							DPRINTF("Escape sequence %u bytes\n", nMessageLength);
 							pData = new uint8_t[nMessageLength];
 							fread(pData, nMessageLength, 1, pFile);
-							pEvent = new Event(nPosition, EVENT_TYPE_ESCAPE, 0, nMessageLength, pData);
-							if(bLoadEvents)
-								pTrack->addEvent(pEvent);
+							pEvent = new Event(m_fTickDuration * nPosition, EVENT_TYPE_ESCAPE, 0, nMessageLength, pData);
+							pTrack->addEvent(pEvent);
 							nRunningStatus = 0;
 						}
 						break;
@@ -236,17 +234,15 @@ bool Smf::load(char* sFilename, bool bLoadEvents)
 								// MIDI commands with 2 parameters
 								pData = new uint8_t[2];
 								fread(pData, 1, 2, pFile);
-								pEvent = new Event(nPosition, EVENT_TYPE_MIDI, nStatus, 2, pData);
-								if(bLoadEvents)
-									pTrack->addEvent(pEvent);
+								pEvent = new Event(m_fTickDuration * nPosition, EVENT_TYPE_MIDI, nStatus, 2, pData);
+								pTrack->addEvent(pEvent);
 								break;
 							case 0xC0: // Program Change
 							case 0xD0: // Channel Pressure
 								pData = new uint8_t;
 								fread(pData, 1, 1, pFile);
-								pEvent = new Event(nPosition, EVENT_TYPE_MIDI, nStatus, 1, pData);
-								if(bLoadEvents)
-									pTrack->addEvent(pEvent);
+								pEvent = new Event(m_fTickDuration * nPosition, EVENT_TYPE_MIDI, nStatus, 1, pData);
+								pTrack->addEvent(pEvent);
 								break;
 							default:
 								DPRINTF("Unexpected MIDI event 0x%02X\n", nStatus);
@@ -266,15 +262,6 @@ bool Smf::load(char* sFilename, bool bLoadEvents)
 	}
 
 	fclose(pFile);
-	if(!m_bTimecodeBased)
-	{
-		uint32_t nSeconds = m_nDurationInTicks / m_nTicksPerQuarterNote * m_nMicrosecondsPerQuarterNote  / 1000000;
-		uint32_t nMinutes = (nSeconds / 60) % 60;
-		uint32_t nHours = nSeconds / 3600;
-		DPRINTF("Duration: %u ticks, %u quater notes, %u:%02u:%02u (assuming constant tempo)\n",  m_nDurationInTicks, m_nDurationInTicks / m_nTicksPerQuarterNote, nHours, nMinutes, nSeconds % 60);
-		DPRINTF("m_nDurationInTicks: %u, m_nTicksPerQuarterNote: %u, m_nMicrosecondsPerQuarterNote: %u, nSeconds: %u, getDuration():%f\n", m_nDurationInTicks, m_nTicksPerQuarterNote, m_nMicrosecondsPerQuarterNote, nSeconds, getDuration());
-	}
-
 	setPosition(0);
 
 	return true; //!@todo Return duration of longest track
@@ -283,9 +270,7 @@ bool Smf::load(char* sFilename, bool bLoadEvents)
 void Smf::unload()
 {
 	for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
-	{
 		delete (*it);
-	}
 	m_vTracks.clear();
 	m_bTimecodeBased = false;
 	m_nFormat = 0;
@@ -300,7 +285,7 @@ void Smf::unload()
 
 double Smf::getDuration()
 {
-	return double(m_nDurationInTicks) * m_nMicrosecondsPerQuarterNote / m_nTicksPerQuarterNote / 1000000.0;
+	return m_fTickDuration * m_nDurationInTicks / 1000;
 }
 
 Event* Smf::getNextEvent(bool bAdvance)

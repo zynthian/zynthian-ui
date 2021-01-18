@@ -9,9 +9,6 @@
 class Smf
 {
     public:
-        /** Construct SMF object */
-        Smf();
-
         /** Deconstruct SMF object */
         ~Smf();
 
@@ -22,10 +19,9 @@ class Smf
 
         /** @brief  Load a SMF file
         *   @param  sFilename Full path and name of file to load
-        *   @param  bLoadEvents True to load data to memory else parse but don't store events
         *   @retval bool True on success
         */
-        bool load(char* sFilename, bool bLoadEvents = true);
+        bool load(char* sFilename);
 
         /** @brief  Clear all song data
         */
@@ -121,9 +117,8 @@ class Smf
         uint8_t m_nSmpteResolution = 0; // SMPTE subframe resolution  (for timecode based time)
         uint16_t m_nTicksPerQuarterNote = 96; // Ticks per quarter note (for metrical based time)
         uint16_t m_nManufacturerId = 0; // Manufacturers MIDI ID (if embeded)
-        uint32_t m_nDurationInTicks = 0; // Duration in seconds
+        uint32_t m_nDurationInTicks = 0; // Duration of song in ticks
         uint32_t m_nMicrosecondsPerQuarterNote = 500000; // Microseconds per quarter note
         size_t m_nPosition = 0; // Playhead position
-        uint32_t m_nTickDuration = 1; // Duration of tick in milliseconds
-
+        double m_fTickDuration = 500.0 / 96; // Duration of tick in milliseconds
 };
