@@ -16,6 +16,7 @@ class Track
 
         /** @brief  Add an event to end of track
         *   @param  pEvent Pointer to an Event object
+        *   @todo   Add ability to insert events
         */
         void addEvent(Event* pEvent);
 
@@ -29,11 +30,11 @@ class Track
         */
         void removeEvent(Event* pEvent);
 
-        /** @brief  Get event at position
-        *   @param  nPosition Index of event
-        *   @retval Event* Pointer to event or NULL if invalid position
+        /** @brief  Get specified event
+        *   @param  nIndex Index of event (0..quantity of events -1)
+        *   @retval Event* Pointer to event or NULL if invalid index
         */
-        Event* getEvent(size_t nPosition);
+        Event* getEvent(size_t nIndex);
 
         /** @brief  Get next event in list since last call or other navigation, advance to next event
         *   @param  bAdvance True to advance to next event (Default: true)
@@ -49,10 +50,10 @@ class Track
         /** @brief  Get the quantity of events
         *   @retval size_t Quantity of events
         */
-        size_t getQuantityOfEvents();
+        size_t getEvents();
 
-        /** @brief  Set position
-        *   @param  nTime Time in milliseconds
+        /** @brief  Set position of next event cursor
+        *   @param  nTime Time in ticks since start of song
         */
        void setPosition(size_t nTime);
 

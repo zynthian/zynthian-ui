@@ -30,6 +30,9 @@ bool g_bDebug = false;
 uint32_t g_nStartOfPlayback = 0; // JACK frame position when startback commenced
 uint8_t g_nPlayState = STOPPED; // True if playing back
 bool g_bLoop = false; // True to loop at end of song
+jack_nframes_t g_nSamplerate = 44100;
+uint32_t g_nMicrosecondsPerQuarterNote = 500000; // Current tempo
+double g_dTicksPerFrame; // Current tempo
 
 Smf* g_pPlayerSmf = NULL; // Pointer to the SMF object that is attached to player
 Event* g_pEvent = NULL;
@@ -56,6 +59,8 @@ class SmfFactory {
 SmfFactory g_Smf;
 auto g_pvSmf = g_Smf.getVector();
 
+/*** Private functions not exposed as external C functions (not declared in header) ***/
+
 // return true if pointer is in list
 bool isSmfValid(Smf* pSmf)
 {
@@ -67,9 +72,10 @@ bool isSmfValid(Smf* pSmf)
 	return false;
 }
 
+/*** Public functions exposed as external C functions in header ***/
+
 Smf* addSmf()
 {
-	// Register the cleanup function to be called when library exits
 	Smf* pSmf = new Smf();
 	g_pvSmf->push_back(pSmf);
 	return pSmf;
@@ -92,7 +98,6 @@ size_t getSmfCount()
 	return g_pvSmf->size();
 }
 
-// Enable / disable debug output
 void enableDebug(bool bEnable)
 {
     printf("libsmf setting debug mode %s\n", bEnable?"on":"off");
@@ -144,12 +149,33 @@ uint8_t getFormat(Smf* pSmf)
 	return pSmf->getFormat();
 }
 
+uint32_t getEvents(Smf* pSmf, size_t nTrack)
+{
+	if(!isSmfValid(pSmf))
+		return 0;
+	return pSmf->getEvents(nTrack);
+}
+
+uint16_t getTicksPerQuarterNote(Smf* pSmf)
+{
+	if(!isSmfValid(pSmf))
+		return 0;
+	return pSmf->getTicksPerQuarterNote();
+}
+
 bool getNextEvent(Smf* pSmf)
 {
 	if(!isSmfValid(pSmf))
 		return false;
 	g_pEvent = pSmf->getNextEvent();
 	return (g_pEvent != NULL);
+}
+
+size_t getEventTrack(Smf* pSmf)
+{
+	if(!isSmfValid(pSmf))
+		return 0;
+	return pSmf->getCurrentTrack();
 }
 
 uint32_t getEventTime()
@@ -175,7 +201,7 @@ uint8_t getEventChannel()
 
 uint8_t getEventStatus()
 {
-	if(!g_pEvent || g_pEvent->getType() != EVENT_TYPE_MIDI)
+	if(!g_pEvent)// || g_pEvent->getType() != EVENT_TYPE_MIDI)
 		return 0x00;
 	return g_pEvent->getSubtype();
 }
@@ -195,11 +221,21 @@ uint8_t getEventValue2()
 }
 
 // Convert frames to milliseconds
+//!@todo framesToMicroseconds is not used
 static double framesToMicroseconds(jack_nframes_t nFrames)
 {
-	jack_nframes_t nSamplerate = jack_get_sample_rate(g_pJackClient); //!@todo Set samplerate once
-	if(nSamplerate)
-		return double(nFrames) * 1000000.0 / nSamplerate;
+	if(g_nSamplerate)
+		return double(nFrames) * 1000000.0 / g_nSamplerate;
+	return 0;
+}
+
+// Handle JACK samplerate change (also used to recalculate ticks per frame)
+static int onJackSamplerate(jack_nframes_t nFrames, void* args)
+{
+	g_nSamplerate = nFrames;
+	//!@todo This is a nasty use of double precision floating point where we should be able to do most of this with integer maths
+	if(g_pPlayerSmf)
+		g_dTicksPerFrame = double(g_pPlayerSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
 	return 0;
 }
 
@@ -214,7 +250,6 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
     if(!pPortBuffer)
         return 0; // If we can't get a buffer we can't do anything
     jack_midi_clear_buffer(pPortBuffer);
-	//!@todo It may be better to avoid clearing midi buffer every cycle in which case we need to clear it once after we have stopped
 	if(!g_pPlayerSmf || g_nPlayState == STOPPED)
 		return 0; // We don't have a SMF loaded or we are stopped so don't bother processing any data
 	jack_midi_data_t* pMidiBuffer;
@@ -248,6 +283,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 			//!@todo Should we store all note on and send individual note off messages - currently sending all notes off and all sounds off?
 			for(uint8_t nChannel = 0; nChannel < 16; ++nChannel)
 			{
+				//!@todo Sending all notes off and all sound off is excessive and will stop anyother instruments sounding that are not controlled by SMF
 				pMidiBuffer = jack_midi_event_reserve(pPortBuffer, 0, 3);
 				if(!pMidiBuffer)
 					break;
@@ -277,17 +313,26 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 	if(g_nStartOfPlayback == 0)
 		g_nStartOfPlayback = nNow;
     // Process all pending smf events
-	uint32_t nTime =  framesToMicroseconds(nNow - g_nStartOfPlayback + nFrames); // Time in ms since start of song until end of next period
+	jack_nframes_t nFramesSinceStart = nNow - g_nStartOfPlayback + nFrames; // Quantity of frames since start of song 
+	//!@todo Get the time of the next event
+	double dTime = g_dTicksPerFrame * nFramesSinceStart; // Ticks since start of song
 	while(Event* pEvent = g_pPlayerSmf->getNextEvent(false))
     {
-		if(pEvent->getTime() > nTime)
+		if(pEvent->getTime() > dTime)
 			break;
-		g_pPlayerSmf->getNextEvent();
-		/* Skip over metadata events. */
-		if(pEvent->getType() != EVENT_TYPE_MIDI)
+		pEvent = g_pPlayerSmf->getNextEvent();
+		
+		if(pEvent->getType() == EVENT_TYPE_META)
+		{
+			if(pEvent->getSubtype() == META_TYPE_TEMPO)
+			{
+				g_nMicrosecondsPerQuarterNote = pEvent->getInt32();
+				onJackSamplerate(g_nSamplerate, 0);
+			}
 			continue;
-		//printf("Found MIDI event %02X %02X %02X at %u with timing %d\n", pEvent->getSubtype(), *(pEvent->getData()), *(pEvent->getData() + 1), nTime, pEvent->getTime());
-		jack_nframes_t nOffset = 0; //!@todo schedule MIDI events at correct offset within period
+		}
+		//printf("Found MIDI event %02X %02X %02X at %lf with timing %d\n", pEvent->getSubtype(), *(pEvent->getData()), *(pEvent->getData() + 1), dTime, pEvent->getTime());
+		jack_nframes_t nOffset = dTime - nNow; //!@todo schedule MIDI events at correct offset within period
 		pMidiBuffer = jack_midi_event_reserve(pPortBuffer, nOffset, pEvent->getSize() + 1);
 		if(!pMidiBuffer)
 			break;
@@ -306,6 +351,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 
 static int onJackSync(jack_transport_state_t nState, jack_position_t* pPosition, void* args)
 {
+	//!@todo Handle jack sync callback
 	return true;
 }
 
@@ -324,6 +370,7 @@ bool attachPlayer(Smf* pSmf)
 		if(!g_pMidiPort
 			|| jack_set_process_callback(g_pJackClient, onJackProcess, 0)
 			|| jack_set_sync_callback(g_pJackClient, onJackSync, 0)
+			|| jack_set_sample_rate_callback(g_pJackClient, onJackSamplerate, 0)
 			|| jack_activate(g_pJackClient))
 		{
 			DPRINTF("Failed to create JACK client\n");
@@ -333,6 +380,8 @@ bool attachPlayer(Smf* pSmf)
 	}
 	DPRINTF("Created new JACK player\n");
 	g_pPlayerSmf = pSmf;
+	g_nSamplerate = jack_get_sample_rate(g_pJackClient);
+	onJackSamplerate(g_nSamplerate, 0); // Set g_dTicksPerFrame
 
 	return true;
 }
@@ -372,4 +421,31 @@ void stopPlayback()
 uint8_t getPlayState()
 {
 	return g_nPlayState;
+}
+
+void printEvents(Smf* pSmf, size_t nTrack)
+{
+	printf("Print events for track %u\n", nTrack);
+	if(!isSmfValid(pSmf))
+		return;
+	setPosition(pSmf, 0);
+	while(getEventTime() != -1)
+	{
+		if(pSmf->getCurrentTrack() == nTrack)
+		{
+			printf("Time: %u ", getEventTime());
+			switch(getEventType())
+			{
+				case EVENT_TYPE_META:
+					printf("Meta event 0x%02X\n", getEventStatus());
+					break;
+				case EVENT_TYPE_MIDI:
+					printf("MIDI event 0x%02X 0x%02X 0x%02X\n", getEventStatus(), getEventValue1(), getEventValue2());
+					break;
+				default:
+					printf("Other event type: 0x%02X\n", getEventType());
+			}
+		}
+		getNextEvent(pSmf);
+	}
 }

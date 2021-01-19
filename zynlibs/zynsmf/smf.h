@@ -4,7 +4,9 @@
 
 #include "track.h" //provides Track class
 #include <cstdio> //provides FILE
-#include <vector> // provides vector class
+#include <vector> //provides vector class
+#include <map> //provides map class 
+#include <string> //provides string
 
 class Smf
 {
@@ -34,17 +36,19 @@ class Smf
 
         /** @brief  Get duration of longest track
         *   @retval double Duration in milliseconds
+        *   @todo   Should Smf class should return duration in ticks, microseconds and seconds?
         */
         double getDuration();
 
-        /** @brief  Get next event after last check / time and on or before next time
+        /** @brief  Get next event since last check or last setPosition
         *   @param  bAdvance True to advance to next event (Default: true)
         *   @retval Event* Pointer to the next event
         */
         Event* getNextEvent(bool bAdvance = true);
 
-        /** @brief  Set position to time
+        /** @brief  Set event cursor position to time
         *   @param  nTime Time in milliseconds
+        *   @todo   Should Smf class setPosition be in ticks, seconds, microseconds?
         */
         void setPosition(size_t nTime);
 
@@ -52,6 +56,22 @@ class Smf
         *   @retval uint8_t SMF format [0|1|2]
         */
        uint8_t getFormat();
+
+        /** @brief  Get quantity of Events in track
+        *   @retval uint32_t Quantity of events in track
+        */
+        uint32_t getEvents(size_t nTrack);
+
+        /** @brief  Get ticks per quarter note
+        *   @retval uint16_t Ticks per quarter note
+        */
+        uint16_t getTicksPerQuarterNote();
+
+        /** @brief  Get the track which contains the last retrieved event
+        *   @retval size_t Track index
+        */
+        size_t getCurrentTrack();
+
 
     private:
         /** @brief  Write 8-bit word to file
@@ -107,18 +127,28 @@ class Smf
         */
         size_t fileReadString(FILE *pFile, char* pString, size_t nSize);
 
+        // Get the duration of a quater note at position within file measured in ticks
+        /** @brief  Get tempo in microseconds per quarter note at position in SMF
+        *   @param  nTime Position in ticks at which to get tempo
+        *   @retval uint32_t Quantity of microseconds in a quarter note
+        */
+        uint32_t getMicrosecondsPerQuarterNote(uint32_t nTime);
+
 
         std::vector<Track*> m_vTracks; // Vector of tracks within SMF
+        std::map<uint32_t, uint32_t> m_mTempoMap; // Map of tempo changes (duration of quarter note in microseconds) indexed by time in ticks
+        std::string m_sFilename; // Full path and filename
         bool m_bDebug = false; // True for debug output
         bool m_bTimecodeBased; // True for timecode based time. False for metrical based time.
         uint16_t m_nFormat = 0; // MIDI file format [0|1|2]
-        uint16_t m_nTracks = 0; // Quantity of MIDI tracks
+        uint16_t m_nTracks = 0; // Quantity of MIDI tracks reported by IFF header (actual quantity deduced by quantity of MTrk blocks in IFF)
         uint8_t m_nSmpteFps = 0; // SMPTE frames per second (for timecode based time)
         uint8_t m_nSmpteResolution = 0; // SMPTE subframe resolution  (for timecode based time)
         uint16_t m_nTicksPerQuarterNote = 96; // Ticks per quarter note (for metrical based time)
         uint16_t m_nManufacturerId = 0; // Manufacturers MIDI ID (if embeded)
         uint32_t m_nDurationInTicks = 0; // Duration of song in ticks
-        uint32_t m_nMicrosecondsPerQuarterNote = 500000; // Microseconds per quarter note
-        size_t m_nPosition = 0; // Playhead position
-        double m_fTickDuration = 500.0 / 96; // Duration of tick in milliseconds
+        size_t m_nPosition = 0; // Event cursor position in ticks
+        size_t m_nCurrentTrack = 0; // Index of track that last event was retrieved 
+        double m_fTickDuration = 500.0 / 96; // Duration of tick in milliseconds at event cursor position
+        double m_fDuration = 0; // Duration of song in seconds
 };

@@ -1,7 +1,8 @@
 /*  Standard MIDI File library for Zynthian
-*   Loads a SMF and parses events
-*   Provides time information, e.g. duration of song
+*   Manages multiple SMF
+*   
 */
+//!@todo Add license
 
 #include <cstdint>
 #include "smf.h"
@@ -14,8 +15,9 @@ extern "C"
 #define NO_EVENT 0xFFFFFFFF
 
 
-/** @brief  Add a new SMF
+/** @brief  Add a new empty SMF
 *   @retval Smf* Pointer to the new SMF
+*   @note   Use the returned pointer for subsequent operations on this SMF
 */
 Smf* addSmf();
 
@@ -34,27 +36,27 @@ size_t getSmfCount();
 */
 void enableDebug(bool bEnable);
 
-/** @brief  Load a SMF file
-*   @param  pSmf Pointer to the SMF
+/** @brief  Load and parse a file into a SMF object
+*   @param  pSmf Pointer to the SMF object to populate
 *   @param  filename Full path and name of file to load
 *   @retval bool True on success
 */
 bool load(Smf* pSmf, char* filename);
 
 /** @brief  Unload SMF file clearing all data
-*   @param  pSmf Pointer to the SMF
+*   @param  pSmf Pointer to the SMF object to unload
 */
 void unload(Smf* pSmf);
 
 /** @brief  Get duration of longest track
 *   @param  pSmf Pointer to the SMF
-*   @retval float Duration in milliseconds
+*   @retval double Duration in seconds
 */
 double getDuration(Smf* pSmf);
 
 /** @brief  Set position to time
 *   @param  pSmf Pointer to the SMF
-*   @param  time Time in milliseconds
+*   @param  time Time in ticks since start of song
 */
 void setPosition(Smf* pSmf, uint32_t time);
 
@@ -70,14 +72,34 @@ uint32_t getTracks(Smf* pSmf);
 */
 uint8_t getFormat(Smf* pSmf);
 
+/** @brief  Get quantity of events in a track
+*   @param  pSmf Pointer to the SMF
+*   @param  nTrack Track index
+*   @retval uint32_t Quantity of events in track
+*/
+uint32_t getEvents(Smf* pSmf, size_t nTrack);
+
+/** @brief  Get ticks per quarter note at event cursor
+*   @param  pSmf Pointer to the SMF
+*   @retval uint16_t Ticks per quarter note
+*   @note   Quarter notes are often ambiguously refered to as beats
+*/
+uint16_t getTicksPerQuarterNote(Smf* pSmf);
+
 /** @brief  Get the next event in SMF
 *   @param  pSmf Pointer to the SMF
 *   @retval bool False if there are no more events
 */
 bool getNextEvent(Smf* pSmf);
 
+/** @brief  Get the track of the current event
+*   @param  pSmf Pointer to the SMF
+*   @retval size_t Index of track
+*/
+size_t getEventTrack(Smf* pSmf);
+
 /** @brief  Get time of current event
-*   @retval Time offset from start of track that the event occurs NO_EVENT if no event
+*   @retval Time offset in ticks since start of song or NO_EVENT if no current event
 */
 uint32_t getEventTime();
 
@@ -91,7 +113,7 @@ uint8_t getEventType();
 */
 uint8_t getEventChannel();
 
-/** @brief  Get event MIDI status byte (including channel)
+/** @brief  Get event MIDI status byte (including channel) or meta-event type
 *   @retval uint8_t MIDI status (0x80..0xFF or 0x00 if not MIDI event)
 */
 uint8_t getEventStatus();
@@ -106,13 +128,13 @@ uint8_t getEventValue1();
 */
 uint8_t getEventValue2();
 
-/** @brief  Attach JACK player to a SMF
+/** @brief  Create a JACK client if it does note exist and attach JACK player to a SMF
 *   @param  pSmf Pointer to the SMF
 *   @retval bool True on success
 */
 bool attachPlayer(Smf* pSmf);
 
-/** @brief  Removes a JACK player
+/** @brief  Disconnect JACK player from SMF and destroy JACK client if it exists
 */
 void removePlayer();
 
@@ -133,6 +155,12 @@ void stopPlayback();
 *   @retval uint8_t Play state [STOPPED|STARTING|PLAYING|STOPPING]
 */
 uint8_t getPlayState();
+
+/** @brief  Print events in human readable format
+*   @param  pSmf Pointer to the SMF
+*   @param  nTrack Index of track to show
+*/
+void printEvents(Smf* pSmf, size_t nTrack);
 
 #ifdef __cplusplus
 }

@@ -92,6 +92,19 @@ size_t Smf::fileReadString(FILE *pFile, char* pString, size_t nSize)
 	return nRead;
 }
 
+uint32_t Smf::getMicrosecondsPerQuarterNote(uint32_t nTime)
+{
+	for(auto it = m_mTempoMap.begin(); it != m_mTempoMap.end(); ++it)
+	{
+		if(it->first < nTime)
+			continue;
+		return it->second;
+	}
+	return 500000; // Default value for 120bpm
+}
+
+/*** Public functions ***/
+
 bool Smf::load(char* sFilename)
 {
 	unload();
@@ -105,12 +118,12 @@ bool Smf::load(char* sFilename)
 	}
 	char sHeader[4];
 	
-    uint16_t nDivision = 0;
-	uint8_t nTrack = 0;
+	
 	// Iterate each block within IFF file
 	while(fread(sHeader, 4, 1, pFile) == 1)
 	{
 		uint32_t nPosition = 0;
+		double fPosition = 0.0;
 		uint32_t nBlockSize = fileRead32(pFile);
 		if(memcmp(sHeader, "MThd", 4) == 0)
 		{
@@ -118,7 +131,7 @@ bool Smf::load(char* sFilename)
 			DPRINTF("Found MThd block of size %u\n", nBlockSize);
             m_nFormat = fileRead16(pFile);
             m_nTracks = fileRead16(pFile);
-            nDivision = fileRead16(pFile);
+            uint16_t nDivision = fileRead16(pFile);
 			m_bTimecodeBased = ((nDivision & 0x8000) == 0x8000);
 			if(m_bTimecodeBased)
 			{
@@ -129,7 +142,6 @@ bool Smf::load(char* sFilename)
 			else
 			{
 				m_nTicksPerQuarterNote = nDivision & 0x7FFF;
-				m_fTickDuration = double(m_nMicrosecondsPerQuarterNote) / m_nTicksPerQuarterNote;
 				DPRINTF("Standard MIDI File - Format: %u, Tracks: %u, Ticks per quarter note: %u\n", m_nFormat, m_nTracks, m_nTicksPerQuarterNote);
 			}
 			DPRINTF("\n");
@@ -146,6 +158,7 @@ bool Smf::load(char* sFilename)
 			{
 				uint32_t nDelta = fileReadVar(pFile);
 				nPosition += nDelta;
+				fPosition += double(getMicrosecondsPerQuarterNote(nPosition)) * nDelta / m_nTicksPerQuarterNote;
 				uint8_t nStatus = fileRead8(pFile);
 				DPRINTF("Abs: %u Delta: %u ", nPosition, nDelta);
 				if((nStatus & 0x80) == 0)
@@ -166,14 +179,10 @@ bool Smf::load(char* sFilename)
 						nMessageLength = fileReadVar(pFile);
 						pData = new uint8_t[nMessageLength + 1];
 						fread(pData, nMessageLength, 1, pFile);
-						pEvent = new Event(m_fTickDuration * nPosition, EVENT_TYPE_META, nMetaType, nMessageLength, pData);
+						pEvent = new Event(nPosition, EVENT_TYPE_META, nMetaType, nMessageLength, pData);
 						pTrack->addEvent(pEvent);
 						if(nMetaType == 0x51)
-						{
-							// Tempo
-							m_nMicrosecondsPerQuarterNote = pEvent->getInt32();
-							m_fTickDuration = float(m_nMicrosecondsPerQuarterNote) / m_nTicksPerQuarterNote;
-						}
+							m_mTempoMap[nPosition] = pEvent->getInt32();
 						else if(nMetaType == 0x7F) // Manufacturer
 							m_nManufacturerId = pEvent->getInt32();
 						nRunningStatus = 0;
@@ -214,7 +223,7 @@ bool Smf::load(char* sFilename)
 							DPRINTF("Escape sequence %u bytes\n", nMessageLength);
 							pData = new uint8_t[nMessageLength];
 							fread(pData, nMessageLength, 1, pFile);
-							pEvent = new Event(m_fTickDuration * nPosition, EVENT_TYPE_ESCAPE, 0, nMessageLength, pData);
+							pEvent = new Event(nPosition, EVENT_TYPE_ESCAPE, 0, nMessageLength, pData);
 							pTrack->addEvent(pEvent);
 							nRunningStatus = 0;
 						}
@@ -222,9 +231,9 @@ bool Smf::load(char* sFilename)
 					default:
 						// MIDI event
 						nChannel = nStatus & 0x0F;
-						nStatus = nStatus & 0xF0;
+//						nStatus = nStatus & 0xF0;
 						nRunningStatus = nStatus;
-						switch(nStatus)
+						switch(nStatus & 0xF0)
 						{
 							case 0x80: // Note Off
 							case 0x90: // Note On
@@ -234,14 +243,14 @@ bool Smf::load(char* sFilename)
 								// MIDI commands with 2 parameters
 								pData = new uint8_t[2];
 								fread(pData, 1, 2, pFile);
-								pEvent = new Event(m_fTickDuration * nPosition, EVENT_TYPE_MIDI, nStatus, 2, pData);
+								pEvent = new Event(nPosition, EVENT_TYPE_MIDI, nStatus, 2, pData);
 								pTrack->addEvent(pEvent);
 								break;
 							case 0xC0: // Program Change
 							case 0xD0: // Channel Pressure
 								pData = new uint8_t;
 								fread(pData, 1, 1, pFile);
-								pEvent = new Event(m_fTickDuration * nPosition, EVENT_TYPE_MIDI, nStatus, 1, pData);
+								pEvent = new Event(nPosition, EVENT_TYPE_MIDI, nStatus, 1, pData);
 								pTrack->addEvent(pEvent);
 								break;
 							default:
@@ -259,12 +268,14 @@ bool Smf::load(char* sFilename)
 		}
 		if(nPosition > m_nDurationInTicks)
 			m_nDurationInTicks = nPosition;
+		if(fPosition > m_fDuration * 1000000)
+			m_fDuration = fPosition / 1000000;
 	}
 
 	fclose(pFile);
 	setPosition(0);
 
-	return true; //!@todo Return duration of longest track
+	return true;
 }
 
 void Smf::unload()
@@ -280,18 +291,17 @@ void Smf::unload()
 	m_nTicksPerQuarterNote = 96;
 	m_nManufacturerId = 0;
 	m_nDurationInTicks = 0;
-	m_nMicrosecondsPerQuarterNote = 500000;
+	m_fDuration = 0.0;
 }
 
 double Smf::getDuration()
 {
-	return m_fTickDuration * m_nDurationInTicks / 1000;
+	return m_fDuration;
 }
 
 Event* Smf::getNextEvent(bool bAdvance)
 {
 	size_t nPosition = -1;
-	size_t nNextTrack;
 	for(size_t nTrack = 0; nTrack < m_vTracks.size(); ++nTrack)
 	{
 		// Iterate through tracks and find earilest next event
@@ -299,14 +309,14 @@ Event* Smf::getNextEvent(bool bAdvance)
 		if(pEvent && pEvent->getTime() < nPosition)
 		{
 			nPosition = pEvent->getTime();
-			nNextTrack = nTrack;
+			m_nCurrentTrack = nTrack;
 		}
 	}
 	if(nPosition == -1)
 		return NULL;
 	if(bAdvance)
 		m_nPosition = nPosition;
-	return m_vTracks[nNextTrack]->getNextEvent(bAdvance);
+	return m_vTracks[m_nCurrentTrack]->getNextEvent(bAdvance);
 }
 
 void Smf::setPosition(size_t nTime)
@@ -324,4 +334,21 @@ size_t Smf::getTracks()
 uint8_t Smf::getFormat()
 {
 	return m_nFormat;
+}
+
+uint32_t Smf::getEvents(size_t nTrack)
+{
+	if(nTrack >= m_vTracks.size())
+		return 0;
+	return m_vTracks[nTrack]->getEvents();
+}
+
+uint16_t Smf::getTicksPerQuarterNote()
+{
+	return m_nTicksPerQuarterNote;
+}
+
+size_t Smf::getCurrentTrack()
+{
+	return m_nCurrentTrack;
 }

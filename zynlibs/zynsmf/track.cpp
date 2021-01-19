@@ -51,11 +51,11 @@ Event* Track::getNextEvent(bool bAdvance)
     return m_vSchedule[m_nNextEvent];
 }
 
-Event* Track::getEvent(size_t nPosition)
+Event* Track::getEvent(size_t nIndex)
 {
-    if(nPosition >= m_vSchedule.size())
+    if(nIndex >= m_vSchedule.size())
         return NULL;
-    return m_vSchedule[nPosition];
+    return m_vSchedule[nIndex];
 }
 
 size_t Track::getNextEventId()
@@ -63,7 +63,7 @@ size_t Track::getNextEventId()
     return m_nNextEvent;
 }
 
-size_t Track::getQuantityOfEvents()
+size_t Track::getEvents()
 {
     return m_vSchedule.size();
 }
