@@ -27,8 +27,8 @@ import os
 import sys
 import logging
 import signal
-import threading
-import ctypes, _ctypes
+from threading import Timer
+import ctypes
 from time import sleep
 from os.path import isfile, isdir, join, basename
 from subprocess import check_output, Popen, PIPE, STDOUT
@@ -57,6 +57,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.rec_proc = None
 		self.libsmf = ctypes.CDLL("/zynthian/zynthian-ui/zynlibs/zynsmf/build/libzynsmf.so")
 		self.libsmf.getDuration.restype = ctypes.c_double
+		self.libsmf.getTempo.restype = ctypes.c_float
 		self.smfplayer = None
 
 		super().__init__('MIDI Recorder', True)
@@ -69,6 +70,14 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			'is_integer': True
 		})
 		self.bpm_zgui_ctrl = None
+
+
+	def check_playback(self):
+		if self.shown and self.libsmf.getPlayState() == 0:
+			self.fill_list()
+		else:
+			self.smf_timer = Timer(interval = 1, function=self.check_playback)
+			self.smf_timer.start()
 
 
 	def get_status(self):
@@ -163,7 +172,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		for fname in res:
 			try:
 				self.libsmf.load(smf, bytes(res[fname]['fpath'], "utf-8"))
-				res[fname]['length'] = self.libsmf.getDuration(smf) / 1000
+				res[fname]['length'] = self.libsmf.getDuration(smf)
 			except Exception as e:
 				res[fname]['length'] = 0
 				logging.warning(e)
@@ -295,11 +304,14 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		try:
 			self.libsmf.load(self.smfplayer, bytes(fpath, "utf-8"))
+			self.zyngui.libseq.setTempo(int(self.libsmf.getTempo(self.smfplayer, 0))) #TODO: This isn't working
 			self.libsmf.startPlayback()
 			self.zyngui.libseq.transportStart(bytes("midi_rec","utf-8"))
 			self.zyngui.libseq.transportLocate(0)
 			self.show_playing_bpm()
 			self.current_record=fpath
+			self.smf_timer = Timer(interval = 1, function=self.check_playback)
+			self.smf_timer.start()
 		except Exception as e:
 			logging.error("ERROR STARTING MIDI PLAY: %s" % e)
 			self.zyngui.show_info("ERROR STARTING MIDI PLAY:\n %s" % e)

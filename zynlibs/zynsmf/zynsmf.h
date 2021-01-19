@@ -156,6 +156,13 @@ void stopPlayback();
 */
 uint8_t getPlayState();
 
+/** @brief  Get tempo at current position
+*   @param  pSmf Pointer to the SMF
+*   @param  nTime Ticks from start of song
+*   @retval float Tempo in BPM
+*/
+float getTempo(Smf* pSmf, uint32_t nTime);
+
 /** @brief  Print events in human readable format
 *   @param  pSmf Pointer to the SMF
 *   @param  nTrack Index of track to show

@@ -72,6 +72,12 @@ class Smf
         */
         size_t getCurrentTrack();
 
+        // Get the duration of a quater note at position within file measured in ticks
+        /** @brief  Get tempo in microseconds per quarter note at position in SMF
+        *   @param  nTime Position in ticks at which to get tempo
+        *   @retval uint32_t Quantity of microseconds in a quarter note
+        */
+        uint32_t getMicrosecondsPerQuarterNote(uint32_t nTime);
 
     private:
         /** @brief  Write 8-bit word to file
@@ -126,13 +132,6 @@ class Smf
         *   @retval size_t Quantity of bytes read from file
         */
         size_t fileReadString(FILE *pFile, char* pString, size_t nSize);
-
-        // Get the duration of a quater note at position within file measured in ticks
-        /** @brief  Get tempo in microseconds per quarter note at position in SMF
-        *   @param  nTime Position in ticks at which to get tempo
-        *   @retval uint32_t Quantity of microseconds in a quarter note
-        */
-        uint32_t getMicrosecondsPerQuarterNote(uint32_t nTime);
 
 
         std::vector<Track*> m_vTracks; // Vector of tracks within SMF

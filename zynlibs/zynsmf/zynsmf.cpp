@@ -27,12 +27,12 @@ jack_client_t* g_pJackClient = NULL;
 jack_port_t* g_pMidiPort = NULL;
 
 bool g_bDebug = false;
-uint32_t g_nStartOfPlayback = 0; // JACK frame position when startback commenced
 uint8_t g_nPlayState = STOPPED; // True if playing back
 bool g_bLoop = false; // True to loop at end of song
 jack_nframes_t g_nSamplerate = 44100;
 uint32_t g_nMicrosecondsPerQuarterNote = 500000; // Current tempo
 double g_dTicksPerFrame; // Current tempo
+double g_dPosition = 0.0; // Position within song in ticks
 
 Smf* g_pPlayerSmf = NULL; // Pointer to the SMF object that is attached to player
 Event* g_pEvent = NULL;
@@ -133,6 +133,7 @@ void setPosition(Smf* pSmf, uint32_t time)
 		return;
 	pSmf->setPosition(time);
 	g_pEvent = pSmf->getNextEvent(false);
+	g_dPosition = time;
 }
 
 uint32_t getTracks(Smf* pSmf)
@@ -220,15 +221,6 @@ uint8_t getEventValue2()
 	return *(g_pEvent->getData() + 1);
 }
 
-// Convert frames to milliseconds
-//!@todo framesToMicroseconds is not used
-static double framesToMicroseconds(jack_nframes_t nFrames)
-{
-	if(g_nSamplerate)
-		return double(nFrames) * 1000000.0 / g_nSamplerate;
-	return 0;
-}
-
 // Handle JACK samplerate change (also used to recalculate ticks per frame)
 static int onJackSamplerate(jack_nframes_t nFrames, void* args)
 {
@@ -244,6 +236,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 {
 	static jack_transport_state_t nPreviousTransportState = JackTransportStopped;
 	static uint8_t nPreviousPlayState = STOPPED;
+	static jack_position_t transport_position;
+	static double dBeatsPerMinute = 120.0;
 
 	// Prepare MIDI buffer
 	void* pPortBuffer = jack_port_get_buffer(g_pMidiPort, nFrames);
@@ -308,17 +302,20 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 
 	// Playing so send pending events
 	jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
+	jack_transport_query(g_pJackClient, &transport_position);
+	if(transport_position.beats_per_minute != dBeatsPerMinute)
+	{
+		g_nMicrosecondsPerQuarterNote = 60000000.0 / dBeatsPerMinute;
+		onJackSamplerate(g_nSamplerate, 0);
+		dBeatsPerMinute = transport_position.beats_per_minute;
+	}
+
 	//!@todo Store playback position to allow pause / resume
-	//!@todo Respond to tempo change
-	if(g_nStartOfPlayback == 0)
-		g_nStartOfPlayback = nNow;
-    // Process all pending smf events
-	jack_nframes_t nFramesSinceStart = nNow - g_nStartOfPlayback + nFrames; // Quantity of frames since start of song 
-	//!@todo Get the time of the next event
-	double dTime = g_dTicksPerFrame * nFramesSinceStart; // Ticks since start of song
+	// Process all pending smf events
+	g_dPosition += g_dTicksPerFrame * nFrames; // Ticks since start of song
 	while(Event* pEvent = g_pPlayerSmf->getNextEvent(false))
     {
-		if(pEvent->getTime() > dTime)
+		if(pEvent->getTime() > g_dPosition)
 			break;
 		pEvent = g_pPlayerSmf->getNextEvent();
 		
@@ -331,8 +328,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 			}
 			continue;
 		}
-		//printf("Found MIDI event %02X %02X %02X at %lf with timing %d\n", pEvent->getSubtype(), *(pEvent->getData()), *(pEvent->getData() + 1), dTime, pEvent->getTime());
-		jack_nframes_t nOffset = dTime - nNow; //!@todo schedule MIDI events at correct offset within period
+		//printf("Found MIDI event %02X %02X %02X at %lf with timing %d\n", pEvent->getSubtype(), *(pEvent->getData()), *(pEvent->getData() + 1), g_dPosition, pEvent->getTime());
+		jack_nframes_t nOffset = g_dPosition - nNow;
 		pMidiBuffer = jack_midi_event_reserve(pPortBuffer, nOffset, pEvent->getSize() + 1);
 		if(!pMidiBuffer)
 			break;
@@ -351,6 +348,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 
 static int onJackSync(jack_transport_state_t nState, jack_position_t* pPosition, void* args)
 {
+	printf("zynsmf::onJackSync nState:%u bar:%u beat:%u tick:%u tempo:%lfBPM\n", nState, pPosition->bar, pPosition->beat, pPosition->tick, pPosition->beats_per_minute);
 	//!@todo Handle jack sync callback
 	return true;
 }
@@ -405,7 +403,7 @@ void startPlayback()
 {
 	if(!g_pJackClient)
 		return;
-	g_nStartOfPlayback = 0;
+	g_dPosition = 0.0;
 	g_nPlayState = STARTING;
 }
 
@@ -421,6 +419,13 @@ void stopPlayback()
 uint8_t getPlayState()
 {
 	return g_nPlayState;
+}
+
+float getTempo(Smf* pSmf, uint32_t nTime)
+{
+	if(!isSmfValid(pSmf))
+		return 120.0;
+	return 600000000.0 / pSmf->getMicrosecondsPerQuarterNote(nTime);
 }
 
 void printEvents(Smf* pSmf, size_t nTrack)
