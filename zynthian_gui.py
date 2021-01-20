@@ -401,7 +401,7 @@ class zynthian_gui:
 
 		for screen_name, screen_obj in self.screens.items():
 			if screen_obj!=exclude_obj:
-				screen_obj.hide();
+				screen_obj.hide()
 
 
 	def show_screen(self, screen=None):
