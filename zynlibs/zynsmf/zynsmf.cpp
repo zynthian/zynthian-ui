@@ -133,7 +133,7 @@ void setPosition(Smf* pSmf, uint32_t time)
 		return;
 	pSmf->setPosition(time);
 	g_pEvent = pSmf->getNextEvent(false);
-	g_dPosition = time;
+	g_dPosition = double(time);
 }
 
 uint32_t getTracks(Smf* pSmf)
@@ -346,13 +346,6 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 	return 0;
 }
 
-static int onJackSync(jack_transport_state_t nState, jack_position_t* pPosition, void* args)
-{
-	printf("zynsmf::onJackSync nState:%u bar:%u beat:%u tick:%u tempo:%lfBPM\n", nState, pPosition->bar, pPosition->beat, pPosition->tick, pPosition->beats_per_minute);
-	//!@todo Handle jack sync callback
-	return true;
-}
-
 
 bool attachPlayer(Smf* pSmf)
 {
@@ -367,7 +360,6 @@ bool attachPlayer(Smf* pSmf)
 		g_pMidiPort = jack_port_register(g_pJackClient, "midi_out", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0);
 		if(!g_pMidiPort
 			|| jack_set_process_callback(g_pJackClient, onJackProcess, 0)
-			|| jack_set_sync_callback(g_pJackClient, onJackSync, 0)
 			|| jack_set_sample_rate_callback(g_pJackClient, onJackSamplerate, 0)
 			|| jack_activate(g_pJackClient))
 		{
