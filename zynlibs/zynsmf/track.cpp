@@ -42,25 +42,13 @@ void Track::removeEvent(Event* pEvent)
     }
 }
 
-Event* Track::getNextEvent(bool bAdvance)
+Event* Track::getEvent(bool bAdvance)
 {
     if(m_nNextEvent >= m_vSchedule.size())
         return NULL;
     if(bAdvance)
         return m_vSchedule[m_nNextEvent++];
     return m_vSchedule[m_nNextEvent];
-}
-
-Event* Track::getEvent(size_t nIndex)
-{
-    if(nIndex >= m_vSchedule.size())
-        return NULL;
-    return m_vSchedule[nIndex];
-}
-
-size_t Track::getNextEventId()
-{
-    return m_nNextEvent;
 }
 
 size_t Track::getEvents()

@@ -20,9 +20,9 @@ void Smf::enableDebug(bool bEnable)
 
 // Private file management functions
 
-int Smf::fileWrite8(uint8_t value, FILE *pFile)
+int Smf::fileWrite8(uint8_t nValue, FILE *pFile)
 {
-	int nResult = fwrite(&value, 1, 1, pFile);
+	int nResult = fwrite(&nValue, 1, 1, pFile);
 	return nResult;
 }
 
@@ -33,10 +33,10 @@ uint8_t Smf::fileRead8(FILE* pFile)
 	return nResult;
 }
 
-int Smf::fileWrite16(uint16_t value, FILE *pFile)
+int Smf::fileWrite16(uint16_t nValue, FILE *pFile)
 {
 	for(int i = 1; i >=0; --i)
-		fileWrite8((value >> i * 8), pFile);
+		fileWrite8((nValue >> i * 8), pFile);
 	return 2;
 }
 
@@ -52,10 +52,10 @@ uint16_t Smf::fileRead16(FILE* pFile)
 	return nResult;
 }
 
-int Smf::fileWrite32(uint32_t value, FILE *pFile)
+int Smf::fileWrite32(uint32_t nValue, FILE *pFile)
 {
 	for(int i = 3; i >=0; --i)
-		fileWrite8((value >> i * 8), pFile);
+		fileWrite8((nValue >> i * 8), pFile);
 	return 4;
 }
 
@@ -69,6 +69,30 @@ uint32_t Smf::fileRead32(FILE* pFile)
 		nResult |= nValue << (i * 8);
 	}
 	return nResult;
+}
+
+int Smf::fileWriteVar(uint32_t nValue, FILE* pFile)
+{
+	uint8_t aVal[] = {0,0,0,0};
+	int nLen = 0;
+	for(int i = 3; i >= 0; --i)
+	{
+		aVal[i] |= nValue & 0x7F;
+		if(nValue >0x7F && i)
+				aVal[i-1] = 0x80;
+		nValue >>= 7;
+	}
+	for(int i = 0; i< 4; ++i)
+	{
+		if(aVal[i] || nLen)
+		{
+			fileWrite8(aVal[i], pFile);
+			++nLen;
+		}
+	}
+	if(!nLen)
+		return fileWrite8(0, pFile);
+	return nLen;
 }
 
 uint32_t Smf::fileReadVar(FILE* pFile)
@@ -85,7 +109,12 @@ uint32_t Smf::fileReadVar(FILE* pFile)
 	return nValue;
 }
 
-size_t Smf::fileReadString(FILE *pFile, char* pString, size_t nSize)
+size_t Smf::fileWriteString(const char* pString, size_t nSize, FILE *pFile)
+{
+	return fwrite(pString, 1, nSize, pFile);
+}
+
+size_t Smf::fileReadString(char* pString, size_t nSize, FILE *pFile)
 {
 	size_t nRead = fread(pString, 1, nSize, pFile);
 	pString[nRead] = '\0';
@@ -145,6 +174,8 @@ bool Smf::load(char* sFilename)
 				DPRINTF("Standard MIDI File - Format: %u, Tracks: %u, Ticks per quarter note: %u\n", m_nFormat, m_nTracks, m_nTicksPerQuarterNote);
 			}
 			DPRINTF("\n");
+			for(size_t i = 0; i < nBlockSize - 6; ++i)
+				fileRead8(pFile); // Eat any extra header bytes which might be added in later version of SMF standard
 		}
 		else if(memcmp(sHeader, "MTrk", 4) == 0)
 		{
@@ -278,6 +309,77 @@ bool Smf::load(char* sFilename)
 	return true;
 }
 
+bool Smf::save(char* sFilename)
+{
+	FILE *pFile;
+	pFile = fopen(sFilename, "w");
+	if(pFile == NULL)
+	{
+        DPRINTF("Failed to open file '%s'\n", sFilename);
+		return false;
+	}
+
+	// Write file header IFF chunk
+	fileWriteString("MThd", 4, pFile);
+	fileWrite32(6, pFile);
+	fileWrite16(m_nFormat, pFile);
+	fileWrite16(getTracks(), pFile);
+	if(m_bTimecodeBased)
+		fileWrite16(m_nTicksPerQuarterNote | 0x8000, pFile);
+	else
+		fileWrite16(m_nTicksPerQuarterNote, pFile);
+
+	// Write each track
+	for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
+	{
+		fileWriteString("MTrk", 4, pFile);
+		uint32_t nSizePos = ftell(pFile); // Position of chunk size value within file
+		fileWrite32(0, pFile); // Placeholder for chunk size
+
+		// Write each event
+		Track* pTrack = *it;
+		pTrack->setPosition(0);
+		uint32_t nTime = 0;
+		uint8_t nRunningStatus = 0x00;
+		while(Event* pEvent = pTrack->getEvent(true))
+		{
+			fileWriteVar(pEvent->getTime() - nTime, pFile);
+			nTime = pEvent->getTime();
+			switch(pEvent->getType())
+			{
+				case EVENT_TYPE_MIDI:
+//					if(nRunningStatus != pEvent->getSubtype()) // Running status is more complex - need to consider if event from other track will interfere
+					{
+						fileWrite8(pEvent->getSubtype(), pFile);
+						nRunningStatus = pEvent->getSubtype();
+					}
+					break;
+				case EVENT_TYPE_META:
+					fileWrite8(0xFF, pFile);
+					fileWrite8(pEvent->getSubtype(), pFile);
+					fileWrite8(pEvent->getSize(), pFile); //!@todo Use SMF type value
+					nRunningStatus = 0x00;
+					break;
+				case EVENT_TYPE_SYSEX:
+					//!@todo Implement SysEx write
+					nRunningStatus = 0x00;
+					break;
+				default:
+					nRunningStatus = 0x00;
+			}
+			fwrite(pEvent->getData(), 1, pEvent->getSize(), pFile);
+		}
+		uint32_t nSize = ftell(pFile) - nSizePos - 4;
+		fseek(pFile, nSizePos, SEEK_SET);
+		fileWrite32(nSize, pFile);
+		fseek(pFile, 0, SEEK_END);
+	}
+
+
+	fclose(pFile);
+	return true;
+}
+
 void Smf::unload()
 {
 	for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
@@ -299,13 +401,13 @@ double Smf::getDuration()
 	return m_fDuration;
 }
 
-Event* Smf::getNextEvent(bool bAdvance)
+Event* Smf::getEvent(bool bAdvance)
 {
 	size_t nPosition = -1;
 	for(size_t nTrack = 0; nTrack < m_vTracks.size(); ++nTrack)
 	{
 		// Iterate through tracks and find earilest next event
-		Event* pEvent = m_vTracks[nTrack]->getNextEvent(false);
+		Event* pEvent = m_vTracks[nTrack]->getEvent(false);
 		if(pEvent && pEvent->getTime() < nPosition)
 		{
 			nPosition = pEvent->getTime();
@@ -316,7 +418,16 @@ Event* Smf::getNextEvent(bool bAdvance)
 		return NULL;
 	if(bAdvance)
 		m_nPosition = nPosition;
-	return m_vTracks[m_nCurrentTrack]->getNextEvent(bAdvance);
+	return m_vTracks[m_nCurrentTrack]->getEvent(bAdvance);
+}
+
+void Smf::addEvent(size_t nTrack, Event* pEvent)
+{
+	if(nTrack >= m_vTracks.size())
+		return;
+	m_vTracks[nTrack]->addEvent(pEvent);
+	if(pEvent->getTime() > m_nDurationInTicks)
+		m_nDurationInTicks = pEvent->getTime();
 }
 
 void Smf::setPosition(size_t nTime)
@@ -331,6 +442,21 @@ size_t Smf::getTracks()
 	return m_vTracks.size();
 }
 
+size_t Smf::addTrack()
+{
+	m_vTracks.push_back(new Track());
+	return m_vTracks.size() - 1;
+}
+
+bool Smf::removeTrack(size_t nTrack)
+{
+	if(nTrack >= m_vTracks.size())
+		return false;
+	delete m_vTracks[nTrack];
+	m_vTracks.erase(m_vTracks.begin() + nTrack);
+	return true;
+}
+
 uint8_t Smf::getFormat()
 {
 	return m_nFormat;
@@ -338,6 +464,13 @@ uint8_t Smf::getFormat()
 
 uint32_t Smf::getEvents(size_t nTrack)
 {
+	if(nTrack == -1)
+	{
+		uint32_t nCount = 0;
+		for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
+			nCount += (*it)->getEvents();
+		return nCount;
+	}
 	if(nTrack >= m_vTracks.size())
 		return 0;
 	return m_vTracks[nTrack]->getEvents();

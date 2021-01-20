@@ -25,6 +25,12 @@ class Smf
         */
         bool load(char* sFilename);
 
+        /** @brief  Save a SMF file
+        *   @param  sFilename Full path and name of file to save
+        *   @retval bool True on success
+        */
+        bool save(char* sFilename);
+
         /** @brief  Clear all song data
         */
         void unload();
@@ -34,17 +40,35 @@ class Smf
         */
         size_t getTracks();
 
+        /** @brief  Add a track
+        *   @retval size_t Index of new track
+        */
+        size_t addTrack();
+
+        /** @brief  Remove track
+        *   @param  nTrack Index of track to remove
+        *   @retval bool True on success
+        */
+        bool removeTrack(size_t nTrack);
+
         /** @brief  Get duration of longest track
         *   @retval double Duration in milliseconds
         *   @todo   Should Smf class should return duration in ticks, microseconds and seconds?
         */
         double getDuration();
 
-        /** @brief  Get next event since last check or last setPosition
-        *   @param  bAdvance True to advance to next event (Default: true)
+        /** @brief  Get current event
+        *   @param  bAdvance True to advance to next event (Default: false)
         *   @retval Event* Pointer to the next event
         */
-        Event* getNextEvent(bool bAdvance = true);
+        Event* getEvent(bool bAdvance = false);
+
+        /** @brief  Append new event to end of track
+        *   @param  nTrack Index of track to add event to
+        *   @param  pEvent Pointer to an event object
+        *   @note   Events are appended to end of track so must have appropriate time parameter   
+        */
+        void addEvent(size_t nTrack, Event* pEvent);
 
         /** @brief  Set event cursor position to time
         *   @param  nTime Time in milliseconds
@@ -58,6 +82,7 @@ class Smf
        uint8_t getFormat();
 
         /** @brief  Get quantity of Events in track
+        *   @param  nTrack Index of track or -1 to get quantity of events in all tracks
         *   @retval uint32_t Quantity of events in track
         */
         uint32_t getEvents(size_t nTrack);
@@ -85,7 +110,7 @@ class Smf
         *   @param  pfile Pointer to open file
         *   @retval int Quanity of bytes actually written to file
         */
-        int fileWrite8(uint8_t value, FILE *pFile);
+        int fileWrite8(uint8_t nValue, FILE *pFile);
 
         /** @brief  Read 8-bit word from file
         *   @param  pfile Pointer to open file
@@ -98,7 +123,7 @@ class Smf
         *   @param  pfile Pointer to open file
         *   @retval int Quanity of bytes actually written to file
         */
-        int fileWrite16(uint16_t value, FILE *pFile);
+        int fileWrite16(uint16_t nValue, FILE *pFile);
 
         /** @brief  Read 16-bit word from file
         *   @param  pfile Pointer to open file
@@ -109,9 +134,9 @@ class Smf
         /** @brief  Write 32 bit word to file
         *   @param  nValue 32-bit word to write
         *   @param  pfile Pointer to open file
-        *   @retval int Quanity of bytes actually written to file
+        *   @retval int Quantity of bytes actually written to file
         */
-        int fileWrite32(uint32_t value, FILE *pFile);
+        int fileWrite32(uint32_t nValue, FILE *pFile);
 
         /** @brief  Read 32-bit word from file
         *   @param  pfile Pointer to open file
@@ -119,19 +144,34 @@ class Smf
         */
         uint32_t fileRead32(FILE* pFile);
 
+        /** @brief  Write variable length number to file
+        *   @param  nValue Number to be written
+        *   @param  pfile Pointer to open file
+        *   @retval int Quantity of bytes written to file
+        */
+        int fileWriteVar(uint32_t nValue, FILE* pFile);
+
         /** @brief  Read variable length number from file
         *   @param  pfile Pointer to open file
         *   @retval uint32_t Number read from file
         */
         uint32_t fileReadVar(FILE* pFile);
 
-        /** @brief  Read c-string from file
-        *   @param  pfile Pointer to open file
+        /** @brief  Write c-string to file
         *   @param  pString Pointer to a char buffer to store string
         *   @param  nSize Length of c-string without terminating null character
+        *   @param  pfile Pointer to open file
+        *   @retval size_t Quantity of bytes written tofile
+        */
+        size_t fileWriteString(const char* pString, size_t nSize, FILE *pFile);
+
+        /** @brief  Read c-string from file
+        *   @param  pString Pointer to a char buffer to store string
+        *   @param  nSize Length of c-string without terminating null character
+        *   @param  pfile Pointer to open file
         *   @retval size_t Quantity of bytes read from file
         */
-        size_t fileReadString(FILE *pFile, char* pString, size_t nSize);
+        size_t fileReadString(char* pString, size_t nSize, FILE *pFile);
 
 
         std::vector<Track*> m_vTracks; // Vector of tracks within SMF

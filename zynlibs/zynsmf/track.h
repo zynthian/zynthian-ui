@@ -30,22 +30,11 @@ class Track
         */
         void removeEvent(Event* pEvent);
 
-        /** @brief  Get specified event
-        *   @param  nIndex Index of event (0..quantity of events -1)
-        *   @retval Event* Pointer to event or NULL if invalid index
-        */
-        Event* getEvent(size_t nIndex);
-
-        /** @brief  Get next event in list since last call or other navigation, advance to next event
-        *   @param  bAdvance True to advance to next event (Default: true)
+        /** @brief  Get current event in list
+        *   @param  bAdvance True to advance to next event (Default: false)
         *   @retval Event* Pointer to next event
         */
-        Event* getNextEvent(bool bAdvance = true);
-
-        /** @brief  Get index of next event
-        *   @retval size_t Index of next event
-        */
-       size_t getNextEventId();
+        Event* getEvent(bool bAdvance = false);
 
         /** @brief  Get the quantity of events
         *   @retval size_t Quantity of events

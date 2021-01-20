@@ -51,7 +51,7 @@ Event::Event(uint32_t nTime, uint8_t nType, uint8_t nSubtype, uint32_t nSize, ui
 			case 0x08:
 				memset(m_pData + nSize, 0, 1);
 				DPRINTF("Meta Program Name: %s\n", pData);
-			break;
+				break;
 			case 0x09:
 				memset(m_pData + nSize, 0, 1);
 				DPRINTF("Meta Device Name: %s\n", pData);

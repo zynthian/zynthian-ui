@@ -43,6 +43,13 @@ void enableDebug(bool bEnable);
 */
 bool load(Smf* pSmf, char* filename);
 
+/** @brief  Save a SMF object to file
+*   @param  pSmf Pointer to the SMF object to save
+*   @param  filename Full path and name of file to create or overwrite
+*   @retval bool True on success
+*/
+bool save(Smf* pSmf, char* filename);
+
 /** @brief  Unload SMF file clearing all data
 *   @param  pSmf Pointer to the SMF object to unload
 */
@@ -74,10 +81,10 @@ uint8_t getFormat(Smf* pSmf);
 
 /** @brief  Get quantity of events in a track
 *   @param  pSmf Pointer to the SMF
-*   @param  nTrack Track index
+*   @param  nTrack Track index (Optional: Default get all events in SMF)
 *   @retval uint32_t Quantity of events in track
 */
-uint32_t getEvents(Smf* pSmf, size_t nTrack);
+uint32_t getEvents(Smf* pSmf, size_t nTrack = -1);
 
 /** @brief  Get ticks per quarter note at event cursor
 *   @param  pSmf Pointer to the SMF
@@ -86,11 +93,12 @@ uint32_t getEvents(Smf* pSmf, size_t nTrack);
 */
 uint16_t getTicksPerQuarterNote(Smf* pSmf);
 
-/** @brief  Get the next event in SMF
+/** @brief  Get the current event in SMF
 *   @param  pSmf Pointer to the SMF
+*   @param  bAdvance True to advance to next event after returning current event
 *   @retval bool False if there are no more events
 */
-bool getNextEvent(Smf* pSmf);
+bool getEvent(Smf* pSmf, bool bAdvance=false);
 
 /** @brief  Get the track of the current event
 *   @param  pSmf Pointer to the SMF
@@ -134,7 +142,7 @@ uint8_t getEventValue2();
 */
 bool attachPlayer(Smf* pSmf);
 
-/** @brief  Disconnect JACK player from SMF and destroy JACK client if it exists
+/** @brief  Disconnect JACK player from SMF and destroy JACK client if it exists (and recorder not attached)
 */
 void removePlayer();
 
@@ -155,6 +163,29 @@ void stopPlayback();
 *   @retval uint8_t Play state [STOPPED|STARTING|PLAYING|STOPPING]
 */
 uint8_t getPlayState();
+
+/** @brief  Create a JACK client if it does note exist and attach JACK recorder to a SMF
+*   @param  pSmf Pointer to the SMF
+*   @retval bool True on success
+*/
+bool attachRecorder(Smf* pSmf);
+
+/** @brief  Disconnect JACK recorder from SMF and destroy JACK client if it exists (and player not attached)
+*/
+void removeRecorder();
+
+/** @brief  Start JACK recording
+*/
+void startRecording();
+
+/** @brief  Stop JACK recording
+*/
+void stopRecording();
+
+/** @brief  Get record state
+*   @retval bool True if recording
+*/
+bool isRecording();
 
 /** @brief  Get tempo at current position
 *   @param  pSmf Pointer to the SMF

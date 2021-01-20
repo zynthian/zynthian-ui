@@ -11,7 +11,13 @@
 #include <jack/midiport.h> //provides interface to JACK MIDI ports
 
 #define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
+#define MIDI_NOTE_OFF			0x80 //128
+#define MIDI_NOTE_ON			0x90 //144
+#define MIDI_POLY_PRESSURE		0xA0 //160
 #define MIDI_CONTROLLER         0xB0 //176
+#define MIDI_PROGRAM_CHANGE		0xC0 //192
+#define CHANNEL_PRESSURE		0xD0 //208
+#define MIDI_PITCH_BEND			0xE0 //224
 #define MIDI_ALL_SOUND_OFF      0x78 //120
 #define MIDI_ALL_NOTES_OFF      0x7B //123
 
@@ -24,17 +30,22 @@ enum playState
 };
 
 jack_client_t* g_pJackClient = NULL;
-jack_port_t* g_pMidiPort = NULL;
+jack_port_t* g_pMidiInputPort = NULL;
+jack_port_t* g_pMidiOutputPort = NULL;
 
 bool g_bDebug = false;
-uint8_t g_nPlayState = STOPPED; // True if playing back
+uint8_t g_nPlayState = STOPPED;
+bool g_bRecording = false;
 bool g_bLoop = false; // True to loop at end of song
 jack_nframes_t g_nSamplerate = 44100;
 uint32_t g_nMicrosecondsPerQuarterNote = 500000; // Current tempo
-double g_dTicksPerFrame; // Current tempo
+double g_dPlayerTicksPerFrame; // Current tempo
+double g_dRecorderTicksPerFrame; // Current tempo
 double g_dPosition = 0.0; // Position within song in ticks
+uint32_t g_nRecordStartPosition = 0; // Jack frame location when recording started
 
 Smf* g_pPlayerSmf = NULL; // Pointer to the SMF object that is attached to player
+Smf* g_pRecorderSmf = NULL; // Pointer to the SMF object that is attached to recorder
 Event* g_pEvent = NULL;
 
 //!@todo If playback is active and the parent process closes then seg fault occurs probably because Jack continutes to try to access the object
@@ -113,6 +124,13 @@ bool load(Smf* pSmf, char* filename)
 	return pSmf->load(filename);
 }
 
+bool save(Smf* pSmf, char* filename)
+{
+	if(!isSmfValid(pSmf))
+		return false;
+	return pSmf->save(filename);
+}
+
 void unload(Smf* pSmf)
 {
 	if(!isSmfValid(pSmf))
@@ -132,7 +150,7 @@ void setPosition(Smf* pSmf, uint32_t time)
 	if(!isSmfValid(pSmf))
 		return;
 	pSmf->setPosition(time);
-	g_pEvent = pSmf->getNextEvent(false);
+	g_pEvent = pSmf->getEvent(false);
 	g_dPosition = double(time);
 }
 
@@ -164,11 +182,11 @@ uint16_t getTicksPerQuarterNote(Smf* pSmf)
 	return pSmf->getTicksPerQuarterNote();
 }
 
-bool getNextEvent(Smf* pSmf)
+bool getEvent(Smf* pSmf, bool bAdvance)
 {
 	if(!isSmfValid(pSmf))
 		return false;
-	g_pEvent = pSmf->getNextEvent();
+	g_pEvent = pSmf->getEvent(bAdvance);
 	return (g_pEvent != NULL);
 }
 
@@ -227,145 +245,209 @@ static int onJackSamplerate(jack_nframes_t nFrames, void* args)
 	g_nSamplerate = nFrames;
 	//!@todo This is a nasty use of double precision floating point where we should be able to do most of this with integer maths
 	if(g_pPlayerSmf)
-		g_dTicksPerFrame = double(g_pPlayerSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
+		g_dPlayerTicksPerFrame = double(g_pPlayerSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
+	if(g_pRecorderSmf)
+		g_dRecorderTicksPerFrame = double(g_pRecorderSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
 	return 0;
 }
 
 // Handle JACK process callback
 static int onJackProcess(jack_nframes_t nFrames, void *notused)
 {
+	if(g_pMidiInputPort == NULL && g_pMidiOutputPort == NULL)
+		return 0;
 	static jack_transport_state_t nPreviousTransportState = JackTransportStopped;
 	static uint8_t nPreviousPlayState = STOPPED;
 	static jack_position_t transport_position;
 	static double dBeatsPerMinute = 120.0;
+	bool bTempoChange = false;
 
-	// Prepare MIDI buffer
-	void* pPortBuffer = jack_port_get_buffer(g_pMidiPort, nFrames);
-    if(!pPortBuffer)
-        return 0; // If we can't get a buffer we can't do anything
-    jack_midi_clear_buffer(pPortBuffer);
-	if(!g_pPlayerSmf || g_nPlayState == STOPPED)
-		return 0; // We don't have a SMF loaded or we are stopped so don't bother processing any data
-	jack_midi_data_t* pMidiBuffer;
-	// Check if transport running
-    jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, NULL);
-
-	// Handle change of transport state
-	if(nTransportState != nPreviousTransportState)
-	{
-		if(g_nPlayState == STARTING || g_nPlayState == PLAYING)
-		{
-			if(nTransportState == JackTransportStarting)
-				g_nPlayState = STARTING;
-			else if(nTransportState == JackTransportRolling)
-				g_nPlayState = PLAYING;
-			else
-				g_nPlayState = STOPPED;
-		}
-		else
-			g_nPlayState = STOPPED;
-		nPreviousTransportState = nTransportState;
-	}
-
-	// Handle change of play state
-	if(nPreviousPlayState != g_nPlayState | g_nPlayState == STOPPING)
-	{
-		DPRINTF("zysmf::onJackProcess Previous play state: %u New play state: %u\n", nPreviousPlayState, g_nPlayState);
-		if(g_nPlayState == STOPPED || g_nPlayState == STOPPING)
-		{
-			g_nPlayState = STOPPED;
-			//!@todo Should we store all note on and send individual note off messages - currently sending all notes off and all sounds off?
-			for(uint8_t nChannel = 0; nChannel < 16; ++nChannel)
-			{
-				//!@todo Sending all notes off and all sound off is excessive and will stop anyother instruments sounding that are not controlled by SMF
-				pMidiBuffer = jack_midi_event_reserve(pPortBuffer, 0, 3);
-				if(!pMidiBuffer)
-					break;
-				pMidiBuffer[0] = MIDI_CONTROLLER | nChannel;
-				pMidiBuffer[1] = MIDI_ALL_NOTES_OFF;
-				pMidiBuffer[2] = 0;
-				pMidiBuffer = jack_midi_event_reserve(pPortBuffer, 0, 3);
-				if(!pMidiBuffer)
-					break;
-				pMidiBuffer[0] = MIDI_CONTROLLER | nChannel;
-				pMidiBuffer[1] = MIDI_ALL_SOUND_OFF;
-				pMidiBuffer[2] = 0;
-			}
-		}
-	}
-	if(g_nPlayState == STARTING and nTransportState == JackTransportRolling)
-		g_nPlayState = PLAYING;
-	nPreviousPlayState = g_nPlayState;
-
-	if(g_nPlayState != PLAYING)
-		return 0;
-
-	// Playing so send pending events
 	jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
-	jack_transport_query(g_pJackClient, &transport_position);
+	jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, &transport_position);
 	if(transport_position.beats_per_minute != dBeatsPerMinute)
 	{
 		g_nMicrosecondsPerQuarterNote = 60000000.0 / dBeatsPerMinute;
 		onJackSamplerate(g_nSamplerate, 0);
 		dBeatsPerMinute = transport_position.beats_per_minute;
+		bTempoChange = true;
 	}
 
-	//!@todo Store playback position to allow pause / resume
-	// Process all pending smf events
-	g_dPosition += g_dTicksPerFrame * nFrames; // Ticks since start of song
-	while(Event* pEvent = g_pPlayerSmf->getNextEvent(false))
-    {
-		if(pEvent->getTime() > g_dPosition)
-			break;
-		pEvent = g_pPlayerSmf->getNextEvent();
-		
-		if(pEvent->getType() == EVENT_TYPE_META)
-		{
-			if(pEvent->getSubtype() == META_TYPE_TEMPO)
-			{
-				g_nMicrosecondsPerQuarterNote = pEvent->getInt32();
-				onJackSamplerate(g_nSamplerate, 0);
-			}
-			continue;
-		}
-		//printf("Found MIDI event %02X %02X %02X at %lf with timing %d\n", pEvent->getSubtype(), *(pEvent->getData()), *(pEvent->getData() + 1), g_dPosition, pEvent->getTime());
-		jack_nframes_t nOffset = g_dPosition - nNow;
-		pMidiBuffer = jack_midi_event_reserve(pPortBuffer, nOffset, pEvent->getSize() + 1);
-		if(!pMidiBuffer)
-			break;
-		*pMidiBuffer = pEvent->getSubtype();
-		memcpy(pMidiBuffer + 1, pEvent->getData(), pEvent->getSize()); //!@todo May be better to put all data in data buffer rather than split status and value
-	}
-	if(!g_pPlayerSmf->getNextEvent(false))
+	void* pMidiBuffer; // Pointer to the memory area used by MIDI input / output ports (reused for each)
+
+	if(g_bRecording && g_pMidiInputPort && (pMidiBuffer = jack_port_get_buffer(g_pMidiInputPort, nFrames)))
 	{
-		// No more events so must be at end ot song
-		stopPlayback();
-		if(g_bLoop)
-			startPlayback();
+		//!@todo Add tempo changes
+		jack_midi_event_t midiEvent;
+		jack_nframes_t nCount = jack_midi_get_event_count(pMidiBuffer);
+		uint8_t* pData;
+		if(nCount)
+		{
+			Event* pEvent;
+			if(g_nRecordStartPosition == 0)
+				g_nRecordStartPosition = nNow;
+			uint32_t nPosition = nNow - g_nRecordStartPosition;
+			for(jack_nframes_t i = 0; i < nCount; i++)
+			{
+				jack_midi_event_get(&midiEvent, pMidiBuffer, i);
+				switch(midiEvent.buffer[0] & 0xF0)
+				{
+					case MIDI_NOTE_ON:
+					case MIDI_NOTE_OFF:
+					case MIDI_POLY_PRESSURE:
+					case MIDI_CONTROLLER:
+					case MIDI_PITCH_BEND:
+						// 3 byte messages
+						pData = new uint8_t[2];
+						pData[0] = midiEvent.buffer[1];
+						pData[1] = midiEvent.buffer[2];
+						pEvent = new Event(g_dRecorderTicksPerFrame * nPosition, EVENT_TYPE_MIDI, midiEvent.buffer[0], 2, pData);
+						g_pRecorderSmf->addEvent(0, pEvent); //!@todo Use appropriate track
+						break;
+					case MIDI_PROGRAM_CHANGE:
+					case CHANNEL_PRESSURE:
+						// 2 byte messages
+						pData = new uint8_t[1];
+						pData[0] = midiEvent.buffer[1];
+						pEvent = new Event(g_dRecorderTicksPerFrame * nPosition, EVENT_TYPE_MIDI, midiEvent.buffer[0], 1, pData);
+						g_pRecorderSmf->addEvent(0, pEvent); //!@todo Use appropriate track
+						break;
+				}
+			}
+		}
 	}
+
+	if(g_pMidiOutputPort  && (pMidiBuffer = jack_port_get_buffer(g_pMidiOutputPort, nFrames)))
+	{
+		jack_midi_clear_buffer(pMidiBuffer);
+		if(!g_pPlayerSmf || g_nPlayState == STOPPED)
+			return 0; // We don't have a SMF loaded or we are stopped so don't bother processing any data
+
+		// Handle change of transport state
+		if(nTransportState != nPreviousTransportState)
+		{
+			if(g_nPlayState == STARTING || g_nPlayState == PLAYING)
+			{
+				if(nTransportState == JackTransportStarting)
+					g_nPlayState = STARTING;
+				else if(nTransportState == JackTransportRolling)
+					g_nPlayState = PLAYING;
+				else
+					g_nPlayState = STOPPED;
+			}
+			else
+				g_nPlayState = STOPPED;
+			nPreviousTransportState = nTransportState;
+		}
+
+		// Handle change of play state
+		if(nPreviousPlayState != g_nPlayState | g_nPlayState == STOPPING)
+		{
+			DPRINTF("zysmf::onJackProcess Previous play state: %u New play state: %u\n", nPreviousPlayState, g_nPlayState);
+			if(g_nPlayState == STOPPED || g_nPlayState == STOPPING)
+			{
+				g_nPlayState = STOPPED;
+				//!@todo Should we store all note on and send individual note off messages - currently sending all notes off and all sounds off?
+				for(uint8_t nChannel = 0; nChannel < 16; ++nChannel)
+				{
+					//!@todo Sending all notes off and all sound off is excessive and will stop anyother instruments sounding that are not controlled by SMF
+					jack_midi_data_t* pBuffer = jack_midi_event_reserve(pMidiBuffer, 0, 3);
+					if(!pBuffer)
+						break;
+					*pBuffer = MIDI_CONTROLLER | nChannel;
+					*(pBuffer + 1) = MIDI_ALL_NOTES_OFF;
+					*(pBuffer + 2) = 0;
+					pBuffer = jack_midi_event_reserve(pMidiBuffer, 0, 3);
+					if(!pBuffer)
+						break;
+					*(pBuffer) = MIDI_CONTROLLER | nChannel;
+					*(pBuffer + 1) = MIDI_ALL_SOUND_OFF;
+					*(pBuffer + 2) = 0;
+				}
+			}
+		}
+		if(g_nPlayState == STARTING and nTransportState == JackTransportRolling)
+			g_nPlayState = PLAYING;
+		nPreviousPlayState = g_nPlayState;
+
+		if(g_nPlayState == PLAYING)
+		{
+
+			//!@todo Store playback position to allow pause / resume
+			// Process all pending smf events
+			g_dPosition += g_dPlayerTicksPerFrame * nFrames; // Ticks since start of song
+			while(Event* pEvent = g_pPlayerSmf->getEvent(false))
+			{
+				if(pEvent->getTime() > g_dPosition)
+					break;
+				pEvent = g_pPlayerSmf->getEvent(true);
+				
+				if(pEvent->getType() == EVENT_TYPE_META)
+				{
+					if(pEvent->getSubtype() == META_TYPE_TEMPO)
+					{
+						g_nMicrosecondsPerQuarterNote = pEvent->getInt32();
+						onJackSamplerate(g_nSamplerate, 0);
+					}
+					continue;
+				}
+				//printf("Found MIDI event %02X %02X %02X at %lf with timing %d\n", pEvent->getSubtype(), *(pEvent->getData()), *(pEvent->getData() + 1), g_dPosition, pEvent->getTime());
+				jack_nframes_t nOffset = g_dPosition - nNow;
+				jack_midi_data_t* pBuffer = jack_midi_event_reserve(pMidiBuffer, nOffset, pEvent->getSize() + 1);
+				if(!pBuffer)
+					break;
+				*pBuffer = pEvent->getSubtype();
+				memcpy(pBuffer + 1, pEvent->getData(), pEvent->getSize());
+			}
+			if(!g_pPlayerSmf->getEvent(false))
+			{
+				// No more events so must be at end ot song
+				stopPlayback();
+				if(g_bLoop)
+					startPlayback();
+			}
+		}
+	}
+
 	return 0;
+}
+
+void removeJackClient()
+{
+	if(g_pJackClient)
+		jack_client_close(g_pJackClient);
+	g_pJackClient = NULL;
+}
+
+bool createJackClient()
+{
+	if(!g_pJackClient)
+	{
+		// Initialise JACK client
+		g_pJackClient = jack_client_open("zynsmf", JackNullOption, NULL);
+		if(g_pJackClient
+			&& !jack_set_process_callback(g_pJackClient, onJackProcess, 0)
+			&& !jack_set_sample_rate_callback(g_pJackClient, onJackSamplerate, 0)
+			&& !jack_activate(g_pJackClient))
+		return true;
+		removeJackClient();
+		return false;
+	}
+	return true;
 }
 
 bool attachPlayer(Smf* pSmf)
 {
 	if(!isSmfValid(pSmf))
 		return false;
-	if(!g_pJackClient)
+	if(!createJackClient())
+		return false;
+	if(!g_pMidiOutputPort)
+		g_pMidiOutputPort = jack_port_register(g_pJackClient, "midi_out", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0);
+	if(!g_pMidiOutputPort)
 	{
-		// Initialise JACK client
-		g_pJackClient = jack_client_open("zynmidiplayer", JackNullOption, NULL);
-		if(!g_pJackClient)
-			return false;
-		g_pMidiPort = jack_port_register(g_pJackClient, "midi_out", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0);
-		if(!g_pMidiPort
-			|| jack_set_process_callback(g_pJackClient, onJackProcess, 0)
-			|| jack_set_sample_rate_callback(g_pJackClient, onJackSamplerate, 0)
-			|| jack_activate(g_pJackClient))
-		{
-			DPRINTF("Failed to create JACK client\n");
-			removePlayer();
-			return false;
-		}
+		removePlayer();
+		DPRINTF("Failed to create JACK output port\n");
+		return false;
 	}
 	DPRINTF("Created new JACK player\n");
 	g_pPlayerSmf = pSmf;
@@ -377,11 +459,10 @@ bool attachPlayer(Smf* pSmf)
 
 void removePlayer()
 {
-	if(!g_pJackClient)
-		return;
-	jack_client_close(g_pJackClient);
-	g_pJackClient = NULL;
-	g_pMidiPort = NULL;
+	jack_port_unregister(g_pJackClient, g_pMidiOutputPort);
+	g_pMidiOutputPort = NULL;
+	if(!g_pRecorderSmf)
+		removeJackClient();
 	g_pPlayerSmf = NULL;
 }
 
@@ -412,6 +493,56 @@ uint8_t getPlayState()
 	return g_nPlayState;
 }
 
+bool attachRecorder(Smf* pSmf)
+{
+	if(!isSmfValid(pSmf))
+		return false;
+	if(!createJackClient())
+		return false;
+	if(!g_pMidiInputPort)
+		g_pMidiInputPort = jack_port_register(g_pJackClient, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
+	if(!g_pMidiInputPort)
+	{
+		removeRecorder();
+		DPRINTF("Failed to create JACK input port\n");
+		return false;
+	}
+	DPRINTF("Created new JACK recorder\n");
+	g_pRecorderSmf = pSmf;
+	g_nSamplerate = jack_get_sample_rate(g_pJackClient);
+	onJackSamplerate(g_nSamplerate, 0); // Set g_dTicksPerFrame
+	return true;
+}
+
+void removeRecorder()
+{
+	jack_port_unregister(g_pJackClient, g_pMidiInputPort);
+	g_pMidiInputPort = NULL;
+	if(!g_pPlayerSmf)
+		removeJackClient();
+	g_pRecorderSmf = NULL;
+}
+
+void startRecording()
+{
+	if(!g_pMidiInputPort || !g_pRecorderSmf)
+		return;
+	if(g_pRecorderSmf->getTracks() == 0)
+		g_pRecorderSmf->addTrack();
+	g_nRecordStartPosition = 0;
+	g_bRecording = true;
+}
+
+void stopRecording()
+{
+	g_bRecording = false;
+}
+
+bool isRecording()
+{
+	return g_bRecording;
+}
+
 float getTempo(Smf* pSmf, uint32_t nTime)
 {
 	if(!isSmfValid(pSmf))
@@ -425,7 +556,7 @@ void printEvents(Smf* pSmf, size_t nTrack)
 	if(!isSmfValid(pSmf))
 		return;
 	setPosition(pSmf, 0);
-	while(getEventTime() != -1)
+	while(getEvent(pSmf, true))
 	{
 		if(pSmf->getCurrentTrack() == nTrack)
 		{
@@ -442,6 +573,5 @@ void printEvents(Smf* pSmf, size_t nTrack)
 					printf("Other event type: 0x%02X\n", getEventType());
 			}
 		}
-		getNextEvent(pSmf);
 	}
 }
