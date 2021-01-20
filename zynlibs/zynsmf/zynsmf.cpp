@@ -346,7 +346,6 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 	return 0;
 }
 
-
 bool attachPlayer(Smf* pSmf)
 {
 	if(!isSmfValid(pSmf))

@@ -59,6 +59,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.libsmf.getDuration.restype = ctypes.c_double
 		self.libsmf.getTempo.restype = ctypes.c_float
 		self.smfplayer = None
+		self.smf_timer = None
 
 		super().__init__('MIDI Recorder', True)
 
@@ -70,6 +71,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			'is_integer': True
 		})
 		self.bpm_zgui_ctrl = None
+		logging.info("midi recorder created")
 
 
 	def check_playback(self):
@@ -324,6 +326,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def end_playing(self):
 		logging.info("ENDING MIDI PLAY ...")
 		self.zyngui.libseq.transportStop(bytes("midi_rec","utf-8"))
+		if self.smf_timer:
+			self.smf_timer.cancel()
+			self.smf_timer = None
 		self.current_record=None
 		self.bpm_zgui_ctrl.hide()
 		self.update_list()

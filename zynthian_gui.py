@@ -389,6 +389,7 @@ class zynthian_gui:
 		self.osc_end()
 		zynautoconnect.stop()
 		self.screens['layer'].reset()
+		self.screens['midi_recorder'].stop_playing() # Need to stop timing thread
 		#self.zyntransport.stop()
 
 
