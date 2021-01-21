@@ -12,15 +12,6 @@
 #include <map> //provides std::map
 
 #define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
-#define MIDI_NOTE_OFF			0x80 //128
-#define MIDI_NOTE_ON			0x90 //144
-#define MIDI_POLY_PRESSURE		0xA0 //160
-#define MIDI_CONTROLLER         0xB0 //176
-#define MIDI_PROGRAM_CHANGE		0xC0 //192
-#define CHANNEL_PRESSURE		0xD0 //208
-#define MIDI_PITCH_BEND			0xE0 //224
-#define MIDI_ALL_SOUND_OFF      0x78 //120
-#define MIDI_ALL_NOTES_OFF      0x7B //123
 
 enum playState
 {
@@ -565,7 +556,7 @@ float getTempo(Smf* pSmf, uint32_t nTime)
 {
 	if(!isSmfValid(pSmf))
 		return 120.0;
-	return 600000000.0 / pSmf->getMicrosecondsPerQuarterNote(nTime);
+	return 60000000.0 / pSmf->getMicrosecondsPerQuarterNote(nTime);
 }
 
 void printEvents(Smf* pSmf, size_t nTrack)

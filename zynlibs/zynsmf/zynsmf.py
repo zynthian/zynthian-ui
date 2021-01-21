@@ -27,32 +27,66 @@ import ctypes
 from _ctypes import dlclose
 from os.path import dirname, realpath
 
+libsmf = None
+
+EVENT_TYPE_NONE				= 0x00
+EVENT_TYPE_MIDI				= 0x01
+EVENT_TYPE_SYSEX			= 0x02
+EVENT_TYPE_META				= 0x03
+EVENT_TYPE_ESCAPE			= 0x04
+
+META_TYPE_SEQ_NUMBER		= 0x00,
+META_TYPE_TEXT				= 0x01,
+META_TYPE_COPYRIGHT			= 0x02,
+META_TYPE_TRACK_NAME		= 0x03,
+META_TYPE_INSTUMENT_NAME	= 0x04,
+META_TYPE_LYRIC				= 0x05,
+META_TYPE_MARKER			= 0x06,
+META_TYPE_CUE_POINT			= 0x07,
+META_TYPE_MIDI_CHANNEL		= 0x20,
+META_TYPE_END_OF_TRACK		= 0x2F,
+META_TYPE_TEMPO				= 0x51,
+META_TYPE_SMPTE_OFFSET		= 0x54,
+META_TYPE_TIME_SIGNATURE	= 0x58,
+META_TYPE_KEY_SIGNATURE		= 0x59,
+META_TYPE_SEQ_SPECIFIC		= 0x7F
+
+MIDI_NOTE_OFF				= 0x80 #128
+MIDI_NOTE_ON				= 0x90 #144
+MIDI_POLY_PRESSURE			= 0xA0 #160
+MIDI_CONTROLLER         	= 0xB0 #176
+MIDI_PROGRAM_CHANGE			= 0xC0 #192
+CHANNEL_PRESSURE			= 0xD0 #208
+MIDI_PITCH_BEND				= 0xE0 #224
+MIDI_ALL_SOUND_OFF      	= 0x78 #120
+MIDI_ALL_NOTES_OFF      	= 0x7B #123
+
 #-------------------------------------------------------------------------------
-# Jackpeak Library Wrapper
+# Zynthian Standard MIDI File Library Wrapper
 #-------------------------------------------------------------------------------
 
-lib_zynsmf = None
-
-def lib_zynsmf_init():
-	global lib_zynsmf
+def init():
+	global libsmf
 	try:
-		lib_zynsmf=ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynsmf.so")
-		lib_zynsmf.getDuration.restype = ctypes.c_double
+		libsmf=ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynsmf.so")
+		libsmf.getDuration.restype = ctypes.c_double
+		libsmf.getTempo.restype = ctypes.c_float
 	except Exception as e:
-		lib_zynsmf=None
-		print("Can't init zynsmf library: %s" % str(e))
+		libsmf=None
+		print("Can't initialise zynsmf library: %s" % str(e))
+
 
 def destroy():
-	global lib_zynsmf
-	if lib_zynsmf:
-		dlclose(lib_zynsmf._handle)
-	lib_zynsmf = None
+	global libsmf
+	if libsmf:
+		dlclose(libsmf._handle)
+	libsmf = None
 
-def get_lib_zynsmf():
-	if not lib_zynsmf:
-		init()
-	return lib_zynsmf
 
-def load(filename):
-	lib_zynsmf.load(bytes(filename, "utf-8"))
+def load(smf, filename):
+	if libsmf:
+		return libsmf.load(smf, bytes(filename, "utf-8"))
+	return None
+
+
 #-------------------------------------------------------------------------------

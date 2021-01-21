@@ -24,14 +24,12 @@
 #******************************************************************************
 
 import os
-import sys
 import logging
-import signal
 from threading import Timer
-import ctypes
+from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)
+from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library 
 from time import sleep
-from os.path import isfile, isdir, join, basename
-from subprocess import check_output, Popen, PIPE, STDOUT
+from os.path import isfile, join, basename
 
 # Zynthian specific modules
 import zynconf
@@ -55,11 +53,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 		self.current_record = None
 		self.rec_proc = None
-		self.libsmf = ctypes.CDLL("/zynthian/zynthian-ui/zynlibs/zynsmf/build/libzynsmf.so")
-		self.libsmf.getDuration.restype = ctypes.c_double
-		self.libsmf.getTempo.restype = ctypes.c_float
-		self.smfplayer = None
-		self.smfrecorder = None
+		self.smf_player = None
+		self.smf_recorder = None
 		self.smf_timer = None
 
 		super().__init__('MIDI Recorder', True)
@@ -76,7 +71,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def check_playback(self):
-		if self.shown and self.libsmf.getPlayState() == 0:
+		if self.shown and libsmf.getPlayState() == 0:
 			self.end_playing()
 		else:
 			self.smf_timer = Timer(interval = 1, function=self.check_playback)
@@ -86,10 +81,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def get_status(self):
 		status = None
 
-		if self.libsmf.isRecording():
+		if libsmf.isRecording():
 			status = "REC"
 
-		if self.libsmf.getPlayState():
+		if libsmf.getPlayState():
 			if status=="REC":
 				status = "PLAY+REC"
 			else:
@@ -100,9 +95,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def show(self):
 		super().show()
 		try:
-			if self.smfplayer == None:
-				self.smfplayer = self.libsmf.addSmf()
-				self.libsmf.attachPlayer(self.smfplayer)
+			if self.smf_player == None:
+				self.smf_player = libsmf.addSmf()
+				libsmf.attachPlayer(self.smf_player)
 				self.zyngui.zynautoconnect()
 		except:
 			pass
@@ -112,11 +107,16 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		super().hide()
 		if self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.hide()
-		if self.libsmf.getPlayState() == 0:
-			self.libsmf.removePlayer()
-			self.libsmf.removeSmf(self.smfplayer)
-			self.smfplayer = None
-			
+		# Remove player / recorder if not in use which reduces load on JACK
+		if libsmf.getPlayState() == 0:
+			libsmf.removePlayer()
+			libsmf.removeSmf(self.smf_player)
+			self.smf_player = None
+		if not libsmf.isRecording():
+			libsmf.removeRecorder()
+			libsmf.removeSmf(self.smf_recorder)
+			self.smf_recorder = None
+
 
 	def fill_list(self):
 		self.index = 0
@@ -134,10 +134,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		if zynthian_gui_config.midi_play_loop:
 			self.list_data.append(("LOOP",0,"[x] Loop Play"))
-			self.libsmf.setLoop(True)
+			libsmf.setLoop(True)
 		else:
 			self.list_data.append(("LOOP",0,"[  ] Loop Play"))
-			self.libsmf.setLoop(False)
+			libsmf.setLoop(False)
 
 		self.list_data.append((None,0,"-----------------------------"))
 
@@ -171,16 +171,16 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 					'ext': fext
 				}
 
-		smf = self.libsmf.addSmf()
+		smf = libsmf.addSmf()
 		for fname in res:
 			try:
-				self.libsmf.load(smf, bytes(res[fname]['fpath'], "utf-8"))
-				res[fname]['length'] = self.libsmf.getDuration(smf)
+				zynsmf.load(smf, res[fname]['fpath'])
+				res[fname]['length'] = libsmf.getDuration(smf)
 			except Exception as e:
 				res[fname]['length'] = 0
 				logging.warning(e)
 		
-		self.libsmf.removeSmf(smf)
+		libsmf.removeSmf(smf)
 
 		return res
 
@@ -192,8 +192,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	# Highlight command and current record played, if any ...
 	def highlight(self):
-		logging.info("Play state: %d", self.libsmf.getPlayState())
-		if self.libsmf.getPlayState() == 0:
+		logging.info("Play state: %d", libsmf.getPlayState())
+		if libsmf.getPlayState() == 0:
 			self.current_record=None
 		for i, row in enumerate(self.list_data):
 			if row[0] is not None and row[0]==self.current_record:
@@ -248,15 +248,15 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def start_recording(self):
-		if not self.libsmf.isRecording():
+		if not libsmf.isRecording():
 			logging.info("STARTING NEW MIDI RECORD ...")
-			if self.smfrecorder == None:
-				self.smfrecorder = self.libsmf.addSmf()
-				self.libsmf.attachRecorder(self.smfrecorder)
+			if self.smf_recorder == None:
+				self.smf_recorder = libsmf.addSmf()
+				libsmf.attachRecorder(self.smf_recorder)
 				self.zyngui.zynautoconnect()
 				sleep(0.1)
-			self.libsmf.unload(self.smfrecorder)
-			self.libsmf.startRecording()
+			libsmf.unload(self.smf_recorder)
+			libsmf.startRecording()
 			self.update_list()
 			return True
 
@@ -265,14 +265,14 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def stop_recording(self):
-		if self.libsmf.isRecording():
+		if libsmf.isRecording():
 			logging.info("STOPPING MIDI RECORDING ...")
-			self.libsmf.stopRecording()
+			libsmf.stopRecording()
 			if os.path.ismount("/media/usb0"):
 				filename = "/media/usb0/%s" % self.get_new_filename()
 			else:
 				filename = "/zynthian/zynthian-my-data/capture/%s" % self.get_new_filename()
-			self.libsmf.save(self.smfrecorder, bytes(filename, "utf-8"))
+			libsmf.save(self.smf_recorder, bytes(filename, "utf-8"))
 			self.update_list()
 			return True
 
@@ -299,9 +299,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		logging.info("STARTING MIDI PLAY '{}' ...".format(fpath))
 
 		try:
-			self.libsmf.load(self.smfplayer, bytes(fpath, "utf-8"))
-			self.zyngui.libseq.setTempo(int(self.libsmf.getTempo(self.smfplayer, 0))) #TODO: This isn't working
-			self.libsmf.startPlayback()
+			zynsmf.load(self.smf_player,fpath)
+			self.zyngui.libseq.setTempo(int(libsmf.getTempo(self.smf_player, 0))) #TODO: This isn't working
+			libsmf.startPlayback()
 			self.zyngui.libseq.transportStart(bytes("midi_rec","utf-8"))
 			self.zyngui.libseq.transportLocate(0)
 			self.show_playing_bpm()
@@ -332,7 +332,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if self.get_status() in ("PLAY", "PLAY+REC"):
 			logging.info("STOPPING MIDI PLAY ...")
 			try:
-				self.libsmf.stopPlayback()
+				libsmf.stopPlayback()
 				sleep(0.1)
 				self.end_playing()
 			except Exception as e:
