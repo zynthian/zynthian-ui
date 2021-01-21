@@ -475,7 +475,8 @@ bool attachPlayer(Smf* pSmf)
 
 void removePlayer()
 {
-	jack_port_unregister(g_pJackClient, g_pMidiOutputPort);
+	if(g_pMidiOutputPort)
+		jack_port_unregister(g_pJackClient, g_pMidiOutputPort);
 	g_pMidiOutputPort = NULL;
 	if(!g_pRecorderSmf)
 		removeJackClient();
@@ -532,7 +533,8 @@ bool attachRecorder(Smf* pSmf)
 
 void removeRecorder()
 {
-	jack_port_unregister(g_pJackClient, g_pMidiInputPort);
+	if(g_pMidiInputPort)
+		jack_port_unregister(g_pJackClient, g_pMidiInputPort);
 	g_pMidiInputPort = NULL;
 	if(!g_pPlayerSmf)
 		removeJackClient();

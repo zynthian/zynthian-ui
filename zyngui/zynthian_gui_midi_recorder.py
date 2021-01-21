@@ -248,7 +248,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def start_recording(self):
-		if self.get_status() not in ("REC", "PLAY+REC"):
+		if not self.libsmf.isRecording():
 			logging.info("STARTING NEW MIDI RECORD ...")
 			if self.smfrecorder == None:
 				self.smfrecorder = self.libsmf.addSmf()
@@ -265,10 +265,14 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def stop_recording(self):
-		if self.smfrecorder and self.libsmf.isRecording():
+		if self.libsmf.isRecording():
 			logging.info("STOPPING MIDI RECORDING ...")
 			self.libsmf.stopRecording()
-			self.libsmf.save(self.smfrecorder, bytes(self.get_new_filename(), "utf-8"))
+			if os.path.ismount("/media/usb0"):
+				filename = "/media/usb0/%s" % self.get_new_filename()
+			else:
+				filename = "/zynthian/zynthian-my-data/capture/%s" % self.get_new_filename()
+			self.libsmf.save(self.smfrecorder, bytes(filename, "utf-8"))
 			self.update_list()
 			return True
 
