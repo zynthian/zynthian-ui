@@ -9,6 +9,7 @@
 #include <cstring> //provides strcmp, memset
 #include <jack/jack.h> //provides interface to JACK
 #include <jack/midiport.h> //provides interface to JACK MIDI ports
+#include <map> //provides std::map
 
 #define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
 #define MIDI_NOTE_OFF			0x80 //128
@@ -43,6 +44,7 @@ double g_dPlayerTicksPerFrame; // Current tempo
 double g_dRecorderTicksPerFrame; // Current tempo
 double g_dPosition = 0.0; // Position within song in ticks
 uint32_t g_nRecordStartPosition = 0; // Jack frame location when recording started
+std::map<uint16_t,uint8_t> m_mHangingMidi; // Map of played (not released) notes indexed by 16-bit word (MIDI channel << 8) | note value
 
 Smf* g_pPlayerSmf = NULL; // Pointer to the SMF object that is attached to player
 Smf* g_pRecorderSmf = NULL; // Pointer to the SMF object that is attached to recorder
@@ -258,6 +260,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 		return 0;
 	static jack_transport_state_t nPreviousTransportState = JackTransportStopped;
 	static uint8_t nPreviousPlayState = STOPPED;
+	static uint8_t nStatus;
 	static jack_position_t transport_position;
 	static double dBeatsPerMinute = 120.0;
 	bool bTempoChange = false;
@@ -346,23 +349,22 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 			if(g_nPlayState == STOPPED || g_nPlayState == STOPPING)
 			{
 				g_nPlayState = STOPPED;
-				//!@todo Should we store all note on and send individual note off messages - currently sending all notes off and all sounds off?
-				for(uint8_t nChannel = 0; nChannel < 16; ++nChannel)
+				// Clear hanging notes and controllers set during playback
+				for(auto it = m_mHangingMidi.begin(); it != m_mHangingMidi.end(); ++it)
 				{
-					//!@todo Sending all notes off and all sound off is excessive and will stop anyother instruments sounding that are not controlled by SMF
-					jack_midi_data_t* pBuffer = jack_midi_event_reserve(pMidiBuffer, 0, 3);
-					if(!pBuffer)
-						break;
-					*pBuffer = MIDI_CONTROLLER | nChannel;
-					*(pBuffer + 1) = MIDI_ALL_NOTES_OFF;
-					*(pBuffer + 2) = 0;
-					pBuffer = jack_midi_event_reserve(pMidiBuffer, 0, 3);
-					if(!pBuffer)
-						break;
-					*(pBuffer) = MIDI_CONTROLLER | nChannel;
-					*(pBuffer + 1) = MIDI_ALL_SOUND_OFF;
-					*(pBuffer + 2) = 0;
+					if(it->second)
+					{
+						jack_midi_data_t* pBuffer = jack_midi_event_reserve(pMidiBuffer, 0, 3);
+						if(!pBuffer)
+							break;
+						uint8_t nStatus = it->first >> 8;
+						uint8_t nValue1 = it->first & 0x00FF;
+						*pBuffer = nStatus;
+						*(pBuffer + 1) = nValue1;
+						*(pBuffer + 2) = 0;
+					}
 				}
+				m_mHangingMidi.clear();
 			}
 		}
 		if(g_nPlayState == STARTING and nTransportState == JackTransportRolling)
@@ -390,17 +392,31 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 					}
 					continue;
 				}
-				//printf("Found MIDI event %02X %02X %02X at %lf with timing %d\n", pEvent->getSubtype(), *(pEvent->getData()), *(pEvent->getData() + 1), g_dPosition, pEvent->getTime());
-				jack_nframes_t nOffset = g_dPosition - nNow;
-				jack_midi_data_t* pBuffer = jack_midi_event_reserve(pMidiBuffer, nOffset, pEvent->getSize() + 1);
-				if(!pBuffer)
-					break;
-				*pBuffer = pEvent->getSubtype();
-				memcpy(pBuffer + 1, pEvent->getData(), pEvent->getSize());
+				if(pEvent->getType() == EVENT_TYPE_MIDI)
+				{
+					jack_nframes_t nOffset = g_dPosition - nNow;
+					jack_midi_data_t* pBuffer = jack_midi_event_reserve(pMidiBuffer, nOffset, pEvent->getSize() + 1);
+					if(!pBuffer)
+						break;
+					*pBuffer = pEvent->getSubtype();
+					memcpy(pBuffer + 1, pEvent->getData(), pEvent->getSize());
+
+					// Store note and some controller values to allow reset when stopped
+					switch(pEvent->getSubtype() & 0xF0)
+					{
+						case MIDI_CONTROLLER:
+							if(*(pEvent->getData()) < 0x64 || *(pEvent->getData()) > 0x69)
+								break;
+						case MIDI_NOTE_ON:
+						case MIDI_PITCH_BEND:
+							m_mHangingMidi[pEvent->getSubtype() << 8 | *(pEvent->getData())] = *(pEvent->getData() + 1); //key= 0xSSNN SS=status, NN=note/controller. Value is MIDI value
+					}
+					
+				}
 			}
 			if(!g_pPlayerSmf->getEvent(false))
 			{
-				// No more events so must be at end ot song
+				// No more events so must be at end of song
 				stopPlayback();
 				if(g_bLoop)
 					startPlayback();

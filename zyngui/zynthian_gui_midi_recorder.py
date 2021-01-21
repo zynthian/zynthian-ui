@@ -59,6 +59,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.libsmf.getDuration.restype = ctypes.c_double
 		self.libsmf.getTempo.restype = ctypes.c_float
 		self.smfplayer = None
+		self.smfrecorder = None
 		self.smf_timer = None
 
 		super().__init__('MIDI Recorder', True)
@@ -85,7 +86,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def get_status(self):
 		status = None
 
-		if self.rec_proc and self.rec_proc.poll() is None:
+		if self.libsmf.isRecording():
 			status = "REC"
 
 		if self.libsmf.getPlayState():
@@ -115,7 +116,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.libsmf.removePlayer()
 			self.libsmf.removeSmf(self.smfplayer)
 			self.smfplayer = None
-
+			
 
 	def fill_list(self):
 		self.index = 0
@@ -249,16 +250,13 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def start_recording(self):
 		if self.get_status() not in ("REC", "PLAY+REC"):
 			logging.info("STARTING NEW MIDI RECORD ...")
-			try:
-				cmd = [self.sys_dir + "/sbin/jack-smf-recorder.sh", self.jack_record_port, self.get_new_filename()]
-				#logging.info("COMMAND: %s" % cmd)
-				self.rec_proc = Popen(cmd, preexec_fn=os.setpgrp)
-				sleep(0.2)
-			except Exception as e:
-				logging.error("ERROR STARTING MIDI RECORD: %s" % e)
-				self.zyngui.show_info("ERROR STARTING MIDI RECORD:\n %s" % e)
-				self.zyngui.hide_info_timer(5000)
-
+			if self.smfrecorder == None:
+				self.smfrecorder = self.libsmf.addSmf()
+				self.libsmf.attachRecorder(self.smfrecorder)
+				self.zyngui.zynautoconnect()
+				sleep(0.1)
+			self.libsmf.unload(self.smfrecorder)
+			self.libsmf.startRecording()
 			self.update_list()
 			return True
 
@@ -267,18 +265,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def stop_recording(self):
-		if self.get_status() in ("REC", "PLAY+REC"):
+		if self.smfrecorder and self.libsmf.isRecording():
 			logging.info("STOPPING MIDI RECORDING ...")
-			try:
-				os.killpg(os.getpgid(self.rec_proc.pid), signal.SIGINT)
-				while self.rec_proc.poll() is None:
-					sleep(0.2)
-				self.rec_proc = None
-			except Exception as e:
-				logging.error("ERROR STOPPING MIDI RECORD: %s" % e)
-				self.zyngui.show_info("ERROR STOPPING MIDI RECORD:\n %s" % e)
-				self.zyngui.hide_info_timer(5000)
-
+			self.libsmf.stopRecording()
+			self.libsmf.save(self.smfrecorder, bytes(self.get_new_filename(), "utf-8"))
 			self.update_list()
 			return True
 

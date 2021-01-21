@@ -127,6 +127,9 @@ Event::Event(uint32_t nTime, uint8_t nType, uint8_t nSubtype, uint32_t nSize, ui
 		{
 			case 0x80:
 				DPRINTF("MIDI Note Off Channel:%u Note: %u Velocity: %u\n", nChannel, *(pData), *(pData + 1));
+				// Convert note off to zero velocity note on (used elsewhere, e.g. to silence hanging notes and may offer running status)
+				m_nSubtype = 0x90;
+				*(m_pData + 1) = 0x00;
 				break;
 			case 0x90:
 				DPRINTF("MIDI Note On Channel:%u Note: %u Velocity: %u\n", nChannel, *(pData), *(pData + 1));

@@ -311,6 +311,8 @@ bool Smf::load(char* sFilename)
 
 bool Smf::save(char* sFilename)
 {
+	if(getEvents() == 0)
+		return true; // Don't save if empty
 	FILE *pFile;
 	pFile = fopen(sFilename, "w");
 	if(pFile == NULL)
@@ -374,7 +376,6 @@ bool Smf::save(char* sFilename)
 		fileWrite32(nSize, pFile);
 		fseek(pFile, 0, SEEK_END);
 	}
-
 
 	fclose(pFile);
 	return true;

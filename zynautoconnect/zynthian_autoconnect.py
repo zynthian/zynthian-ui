@@ -228,9 +228,15 @@ def midi_autoconnect(force=False):
 	except:
 		pass
 
-	#Connect zynmidiplayer output to ZynMidiRouter:seq_in
+	#Connect zynsmf output to ZynMidiRouter:seq_in
 	try:
-		jclient.connect("zynmidiplayer:midi_out", zmr_in['seq_in'])
+		jclient.connect("zynsmf:midi_out", zmr_in['seq_in'])
+	except:
+		pass
+
+	#Connect ZynMidiRouter:main_out to zynsmf input
+	try:
+		jclient.connect(zmr_out['main_out'], "zynsmf:midi_in")
 	except:
 		pass
 

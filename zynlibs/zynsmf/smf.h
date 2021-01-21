@@ -82,10 +82,10 @@ class Smf
        uint8_t getFormat();
 
         /** @brief  Get quantity of Events in track
-        *   @param  nTrack Index of track or -1 to get quantity of events in all tracks
+        *   @param  nTrack Index of track (Optional: Default get quantity of events in all tracks)
         *   @retval uint32_t Quantity of events in track
         */
-        uint32_t getEvents(size_t nTrack);
+        uint32_t getEvents(size_t nTrack = -1);
 
         /** @brief  Get ticks per quarter note
         *   @retval uint16_t Ticks per quarter note
