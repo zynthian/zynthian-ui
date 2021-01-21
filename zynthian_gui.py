@@ -572,7 +572,7 @@ class zynthian_gui:
 
 	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
 	def set_active_channel(self):
-		curlayer_chan = -1
+		curlayer_chan = None
 		active_chan = -1
 
 		if self.curlayer:
@@ -580,9 +580,7 @@ class zynthian_gui:
 			if self.curlayer.engine.nickname=='MX':
 				return
 			curlayer_chan = self.curlayer.get_midi_chan()
-			if curlayer_chan is None:
-				curlayer_chan = -1
-			elif zynthian_gui_config.midi_single_active_channel:
+			if curlayer_chan is not None and zynthian_gui_config.midi_single_active_channel:
 				active_chan = curlayer_chan 
 				cur_active_chan = lib_zyncoder.get_midi_active_chan()
 				if cur_active_chan==active_chan:
@@ -828,7 +826,7 @@ class zynthian_gui:
 				logging.info("SETUP ZYNSWITCH {} => wpGPIO {}".format(i, pin))
 
 
-	def zynswitches_midi_setup(self, midi_chan=None):
+	def zynswitches_midi_setup(self, curlayer_chan=None):
 		logging.info("MIDI SWITCHES SETUP...")
 
 		# Configure Custom Switches
@@ -838,6 +836,9 @@ class zynthian_gui:
 			if event is not None:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
 				if midi_chan is not None:
 					lib_zyncoder.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'])
 					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}".format(swi, event['type'], midi_chan, event['num']))
@@ -850,6 +851,9 @@ class zynthian_gui:
 			if event is not None:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
 				if midi_chan is not None:
 					lib_zyncoder.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
 					logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
@@ -862,6 +866,9 @@ class zynthian_gui:
 			if event is not None:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
 				if midi_chan is not None:
 					lib_zyncoder.setup_zyntof(i, event['type'], midi_chan, event['num'])
 					logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
