@@ -61,6 +61,13 @@ MIDI_PITCH_BEND				= 0xE0 #224
 MIDI_ALL_SOUND_OFF      	= 0x78 #120
 MIDI_ALL_NOTES_OFF      	= 0x7B #123
 
+
+PLAY_STATE_STOPPED			= 0
+PLAY_STATE_STARTING			= 1
+PLAY_STATE_PLAYING			= 2
+PLAY_STATE_STOPPING			= 3
+
+
 #-------------------------------------------------------------------------------
 # Zynthian Standard MIDI File Library Wrapper
 #-------------------------------------------------------------------------------

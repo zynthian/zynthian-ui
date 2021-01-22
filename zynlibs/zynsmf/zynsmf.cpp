@@ -30,7 +30,7 @@ uint8_t g_nPlayState = STOPPED;
 bool g_bRecording = false;
 bool g_bLoop = false; // True to loop at end of song
 jack_nframes_t g_nSamplerate = 44100;
-uint32_t g_nMicrosecondsPerQuarterNote = 500000; // Current tempo
+uint32_t g_nMicrosecondsPerQuarterNote = 5000000; // Current tempo
 double g_dPlayerTicksPerFrame; // Current tempo
 double g_dRecorderTicksPerFrame; // Current tempo
 double g_dPosition = 0.0; // Position within song in ticks
@@ -258,7 +258,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 
 	jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
 	jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, &transport_position);
-	if(transport_position.beats_per_minute != dBeatsPerMinute)
+	if(nPreviousTransportState != nTransportState || transport_position.beats_per_minute != dBeatsPerMinute)
 	{
 		g_nMicrosecondsPerQuarterNote = 60000000.0 / dBeatsPerMinute;
 		onJackSamplerate(g_nSamplerate, 0);
