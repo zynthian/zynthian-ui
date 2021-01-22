@@ -104,6 +104,18 @@ class Smf
         */
         uint32_t getMicrosecondsPerQuarterNote(uint32_t nTime);
 
+        /** @brief  Mute a track
+        *   @param  nTrack Index of track to mute
+        *   @param  bMute True to mute, false to unmute
+        */
+        void muteTrack(size_t nTrack, bool bMute);
+
+        /** @brief  Check if track is muted
+        *   @param  nTrack Index of track to mute
+        *   @retval bool True if track is muted
+        */
+        bool isTrackMuted(size_t nTrack);
+
     private:
         /** @brief  Write 8-bit word to file
         *   @param  nValue 8-bit word to write

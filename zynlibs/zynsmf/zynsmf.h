@@ -101,10 +101,9 @@ uint16_t getTicksPerQuarterNote(Smf* pSmf);
 bool getEvent(Smf* pSmf, bool bAdvance=false);
 
 /** @brief  Get the track of the current event
-*   @param  pSmf Pointer to the SMF
 *   @retval size_t Index of track
 */
-size_t getEventTrack(Smf* pSmf);
+size_t getEventTrack();
 
 /** @brief  Get time of current event
 *   @retval Time offset in ticks since start of song or NO_EVENT if no current event
@@ -199,6 +198,20 @@ float getTempo(Smf* pSmf, uint32_t nTime);
 *   @param  nTrack Index of track to show
 */
 void printEvents(Smf* pSmf, size_t nTrack);
+
+/** @brief  Mute a track
+*   @param  pSmf Pointer to the SMF
+*   @param  nTrack Index of track to mute
+*   @param  bMute True to mute, false to unmute
+*/
+void muteTrack(Smf* pSmf, size_t nTrack, bool bMute);
+
+/** @brief  Check if track is muted
+*   @param  pSmf Pointer to the SMF
+*   @param  nTrack Index of track to mute
+*   @retval bool True if track is muted
+*/
+bool isTrackMuted(Smf* pSmf, size_t nTrack);
 
 #ifdef __cplusplus
 }

@@ -132,6 +132,21 @@ uint32_t Smf::getMicrosecondsPerQuarterNote(uint32_t nTime)
 	return 500000; // Default value for 120bpm
 }
 
+void Smf::muteTrack(size_t nTrack, bool bMute)
+{
+	if(nTrack >= m_vTracks.size())
+		return;
+	m_vTracks[nTrack]->mute(bMute);
+}
+
+bool Smf::isTrackMuted(size_t nTrack)
+{
+	if(nTrack >= m_vTracks.size())
+		return false;
+	return m_vTracks[nTrack]->isMuted();
+}
+
+
 /*** Public functions ***/
 
 bool Smf::load(char* sFilename)
@@ -409,7 +424,7 @@ Event* Smf::getEvent(bool bAdvance)
 	{
 		// Iterate through tracks and find earilest next event
 		Event* pEvent = m_vTracks[nTrack]->getEvent(false);
-		if(pEvent && pEvent->getTime() < nPosition)
+		if(!m_vTracks[nTrack]->isMuted() && pEvent && pEvent->getTime() < nPosition)
 		{
 			nPosition = pEvent->getTime();
 			m_nCurrentTrack = nTrack;

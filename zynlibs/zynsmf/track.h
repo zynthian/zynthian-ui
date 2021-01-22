@@ -46,7 +46,18 @@ class Track
         */
        void setPosition(size_t nTime);
 
+        /** @brief  Mute track
+        *   @param  bMute True to mute, false to unmute
+        */
+        void mute(bool bMute);
+
+        /** @brief  Check if track is muted
+        *   @retval bool True if muted
+        */
+        bool isMuted(); 
+
     private:
+        bool m_bMute = false;
         uint32_t m_nPosition;
     	std::vector<Event*> m_vSchedule;
         size_t m_nNextEvent = 0; // Index of the next event

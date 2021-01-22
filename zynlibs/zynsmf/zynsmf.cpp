@@ -39,7 +39,8 @@ std::map<uint16_t,uint8_t> m_mHangingMidi; // Map of played (not released) notes
 
 Smf* g_pPlayerSmf = NULL; // Pointer to the SMF object that is attached to player
 Smf* g_pRecorderSmf = NULL; // Pointer to the SMF object that is attached to recorder
-Event* g_pEvent = NULL;
+Smf* g_pSmf = NULL; // Pointer to the SMF containing g_pEvent (current event)
+Event* g_pEvent = NULL; // Pointer to the current event
 
 //!@todo If playback is active and the parent process closes then seg fault occurs probably because Jack continutes to try to access the object
 
@@ -143,6 +144,7 @@ void setPosition(Smf* pSmf, uint32_t time)
 	if(!isSmfValid(pSmf))
 		return;
 	pSmf->setPosition(time);
+	g_pSmf = pSmf;
 	g_pEvent = pSmf->getEvent(false);
 	g_dPosition = double(time);
 }
@@ -179,15 +181,16 @@ bool getEvent(Smf* pSmf, bool bAdvance)
 {
 	if(!isSmfValid(pSmf))
 		return false;
+	g_pSmf = pSmf;
 	g_pEvent = pSmf->getEvent(bAdvance);
 	return (g_pEvent != NULL);
 }
 
-size_t getEventTrack(Smf* pSmf)
+size_t getEventTrack()
 {
-	if(!isSmfValid(pSmf))
-		return 0;
-	return pSmf->getCurrentTrack();
+	if(!isSmfValid(g_pSmf))
+		return NO_EVENT;
+	return g_pSmf->getCurrentTrack();
 }
 
 uint32_t getEventTime()
@@ -583,4 +586,19 @@ void printEvents(Smf* pSmf, size_t nTrack)
 			}
 		}
 	}
+}
+
+void muteTrack(Smf* pSmf, size_t nTrack, bool bMute)
+{
+	if(!isSmfValid(pSmf))
+		return;
+	pSmf->muteTrack(nTrack, bMute);
+	//!@todo Clear hanging notes after muting track
+}
+
+bool isTrackMuted(Smf* pSmf, size_t nTrack)
+{
+	if(!isSmfValid(pSmf))
+		return false;
+	return pSmf->isTrackMuted(nTrack);
 }

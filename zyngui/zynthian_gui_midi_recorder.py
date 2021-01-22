@@ -270,7 +270,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				filename = "/media/usb0/%s" % self.get_new_filename()
 			else:
 				filename = "/zynthian/zynthian-my-data/capture/%s" % self.get_new_filename()
-			libsmf.save(self.smf_recorder, bytes(filename, "utf-8"))
+			zynsmf.save(self.smf_recorder, filename)
 			self.update_list()
 			return True
 

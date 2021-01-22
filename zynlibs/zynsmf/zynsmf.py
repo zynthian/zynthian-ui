@@ -95,5 +95,10 @@ def load(smf, filename):
 		return libsmf.load(smf, bytes(filename, "utf-8"))
 	return None
 
+def save(smf, filename):
+	if libsmf:
+		return libsmf.save(smf, bytes(filename, "utf-8"))
+	return None
+
 
 #-------------------------------------------------------------------------------

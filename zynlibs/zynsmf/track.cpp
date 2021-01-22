@@ -65,3 +65,13 @@ void Track::setPosition(size_t nTime)
         return;
     }
 }
+
+void Track::mute(bool bMute)
+{
+    m_bMute = bMute;
+}
+
+bool Track::isMuted()
+{
+    return m_bMute;
+}
