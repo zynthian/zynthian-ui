@@ -405,9 +405,8 @@ uint32_t Sequence::getNextPattern(uint32_t previous)
 
 void Sequence::setGroup(uint8_t group)
 {
-    if(group <= 26)
-        m_nGroup = group;
-		m_bChanged = true;
+	m_nGroup = group;
+	m_bChanged = true;
 }
 
 uint8_t Sequence::getGroup()

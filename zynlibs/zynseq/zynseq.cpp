@@ -68,7 +68,7 @@ float g_fBeatType = 4.0;
 double g_dTicksPerBeat = 1920.0;
 double g_dTempo = 120.0;
 double g_dTicksPerClock = g_dTicksPerBeat / 24;
-bool g_bTimebaseChanged = false;
+bool g_bTimebaseChanged = false; // True to trigger recalculation of timebase parameters
 Timebase* g_pTimebase = NULL; // Pointer to the timebase object for selected song
 TimebaseEvent* g_pNextTimebaseEvent = NULL; // Pointer to the next timebase event or NULL if no more events in this song
 uint32_t g_nBar = 1; // Current bar
@@ -105,10 +105,6 @@ double getFramesPerClock(double dTempo)
 // Update bars, beats, ticks for given position in frames
 void updateBBT(jack_position_t* position)
 {
-    //!@todo There is a rounding error where each beat is calculated to the nearest 256 frames (possibly period size) then corrected every 7 or 8 beats (at 44100fps, 256 period, 120BPM)
-    // This may be because this is only called once every period so need to consider partial progress through clock
-    // This might be fixed with recent code changes
-    
     //!@todo Populate bbt_offset (experimental so not urgent but could be useful)
     double dFrames = 0;
     double dFramesPerTick = getFramesPerTick(g_dTempo); //!@todo Need to use default tempo from start of song but current tempo now!!!
@@ -288,14 +284,13 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
 //            pPosition->frame = transportGetLocation(pPosition->bar, pPosition->beat, pPosition->tick); //!@todo Does this work? (yes). Are there any discontinuity or impact on other clients? Can it be optimsed?
     }
     // Now iterate through clocks in next period, adding any events and handling any timebase changes
-    if(transportGetPlayStatus() == JackTransportRolling)
+    if(nState == JackTransportRolling)
     {
         bool bSync = false;
         while(g_nFramesToNextClock < nRemainingFrames)
         {
-            //!@todo I think segfault may be triggered within this while loop but only _soon_ after init
             bSync = false;
-            //!@todo Have added a period to clock position but it should already be offset as pPosition->frame refers to next cycle
+            //!@todo Have added a period to clock position but it should already be offset as pPosition->frame refers to next cycle - maybe timebase handling depends on wheterh being updated in which case scheduling should be moved to jack process function
             jack_nframes_t nClockPos = g_nFramesToNextClock + pPosition->frame + g_nTransportStartFrame + nFramesInPeriod; // Absolute position of clock within next period
             //printf("nClockPos: %u g_nFramesToNextClock: %u pPosition->frame: %u g_nTransportStartFrame: %u nFramesInPeriod: %u\n", nClockPos, g_nFramesToNextClock, pPosition->frame, g_nTransportStartFrame, nFramesInPeriod);
             if(g_nClock == 0)
@@ -342,8 +337,8 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
     pArgs: Parameters passed to function by main thread (not used here)
 
     [For info]
-    jack_last_frame_time is the quantity of samples since JACK started
-    jack_midi_event_write sends MIDI message at sample time offset
+    jack_last_frame_time() returns the quantity of samples since JACK started until start of this period
+    jack_midi_event_write sends MIDI message at sample time offset within this period
 
     [Process]
     Process incoming MIDI events
@@ -500,6 +495,7 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
 int onJackXrun(void *pArgs)
 {
     DPRINTF("zynseq detected XRUN %u\n", ++g_nXruns);
+    g_bTimebaseChanged = true; // Discontinuity so need to recalculate timebase parameters
     return 0;
 }
 
@@ -584,7 +580,6 @@ void save(char* filename)
 {
     PatternManager::getPatternManager()->save(filename);
     g_bDirty = false;
-    printf("zynseq::save\n");
 }
 
 
@@ -674,11 +669,19 @@ void sendMidiSong(uint32_t pos)
     sendMidiMsg(pMsg);
 }
 
-// Send a single MIDI clock
 void sendMidiClock()
 {
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
     pMsg->command = MIDI_CLOCK;
+    sendMidiMsg(pMsg);
+}
+
+void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2)
+{
+    MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
+    pMsg->command = status;
+    pMsg->value1 = value1;
+    pMsg->value2 = value2;
     sendMidiMsg(pMsg);
 }
 

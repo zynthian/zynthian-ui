@@ -128,6 +128,13 @@ void sendMidiSong(uint32_t pos);
 */
 void sendMidiClock();
 
+/** @brief  Send MIDI command
+*   @param  status Status byte
+*   @param  value1 Value 1 byte
+*   @param  value2 Value 2 byte
+*/
+void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2);
+
 // ** Status **
 /** @brief  Get song playing state
 *   @retval bool True if song is playing

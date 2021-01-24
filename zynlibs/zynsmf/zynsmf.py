@@ -70,8 +70,17 @@ PLAY_STATE_STOPPING			= 3
 
 #-------------------------------------------------------------------------------
 # Zynthian Standard MIDI File Library Wrapper
+#
+#	Most library functions are accessible directly by calling libsmf.functionName(parameters)
+#	Following function wrappers provide simple access for complex data types. Access with zynsmf.function_name(parameters)
+#
+#	Include the following imports to access these two library objects:
+# 		from zynlibs.zynsmf import zynsmf
+#		from zynlibs.zynsmf.zynsmf import libsmf
+#
 #-------------------------------------------------------------------------------
 
+#	Initiate library - performed by zynsmf module
 def init():
 	global libsmf
 	try:
@@ -83,6 +92,7 @@ def init():
 		print("Can't initialise zynsmf library: %s" % str(e))
 
 
+#	Destoy instance of shared library
 def destroy():
 	global libsmf
 	if libsmf:
@@ -90,11 +100,20 @@ def destroy():
 	libsmf = None
 
 
+#	Load a MIDI file
+#	smf: Pointer to smf object to populate
+#	filename: Full path and filename
+#	Returns: True on success
 def load(smf, filename):
 	if libsmf:
 		return libsmf.load(smf, bytes(filename, "utf-8"))
 	return None
 
+
+#	Save a MIDI file
+#	smf: Pointer to smf object to save
+#	filename: Full path and filename
+#	Returns: True on success
 def save(smf, filename):
 	if libsmf:
 		return libsmf.save(smf, bytes(filename, "utf-8"))
