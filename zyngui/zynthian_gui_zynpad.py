@@ -290,6 +290,7 @@ class zynthian_gui_zynpad():
 			if force or libseq.hasSequenceChanged(sequence):
 				mode = libseq.getPlayMode(sequence)
 				group = libseq.getGroup(sequence)
+				foreground = "white"
 				if not sequence or mode == zynthian_gui_stepsequencer.SEQ_DISABLED:
 					fill = zynthian_gui_stepsequencer.PAD_COLOUR_DISABLED
 				elif libseq.getPlayState(sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
@@ -305,7 +306,7 @@ class zynthian_gui_zynpad():
 				pad_y = int(pad / self.columns) * self.row_height
 				if libseq.getSequenceLength(sequence) == 0:
 					mode = 0
-				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text="%s%d" % (chr(65 + group), pad + 1))
+				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text="%s%d" % (chr(65 + group), pad + 1), fill=foreground)
 				self.grid_canvas.coords(cell, pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2)
 				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.icon[mode])
 

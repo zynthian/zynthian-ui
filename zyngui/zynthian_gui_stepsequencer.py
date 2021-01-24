@@ -82,24 +82,24 @@ USER_PATH			= "/zynthian/zynthian-my-data/zynseq"
 
 PLAY_MODES = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
 PAD_COLOUR_DISABLED = 'grey'
-PAD_COLOUR_STARTING = 'orange'
-PAD_COLOUR_PLAYING = 'green'
+PAD_COLOUR_STARTING = '#ffbb00'
+PAD_COLOUR_PLAYING = '#00d000'
 PAD_COLOUR_STOPPING = 'red'
 PAD_COLOUR_STOPPED = [
-		'purple',			#1
+		'purple3',			#1
 		'blue', 			#2
-		'PeachPuff4',		#3
-		'thistle4',			#4
-		'deep pink',		#5
-		'LemonChiffon4',	#6
+		'#ffcccc',			#3
+		'#999966',			#4
+		'hot pink',			#5
+		'#996633',			#6
 		'LightSalmon3',		#7
-		'SlateBlue3',		#8
+		'#000066',			#8
 		'cyan4',			#9
 		'SteelBlue3',		#10
 		'MediumOrchid3',	#11
 		'RosyBrown',		#12
-		'AntiqueWhite4',	#13
-		'Yellow4',			#14
+		'#BEDDCC',			#13
+		'#ffccff',			#14
 		'dodger blue',		#15
 		'MediumPurple2'		#16
 		]
