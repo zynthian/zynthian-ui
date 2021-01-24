@@ -86,22 +86,22 @@ PAD_COLOUR_STARTING = '#ffbb00'
 PAD_COLOUR_PLAYING = '#00d000'
 PAD_COLOUR_STOPPING = 'red'
 PAD_COLOUR_STOPPED = [
-		'purple3',			#1
-		'blue', 			#2
-		'#ffcccc',			#3
-		'#999966',			#4
-		'hot pink',			#5
-		'#996633',			#6
-		'LightSalmon3',		#7
-		'#000066',			#8
-		'cyan4',			#9
-		'SteelBlue3',		#10
-		'MediumOrchid3',	#11
-		'RosyBrown',		#12
-		'#BEDDCC',			#13
-		'#ffccff',			#14
-		'dodger blue',		#15
-		'MediumPurple2'		#16
+		'#000060',			#1 dark
+		'#048C8C',			#2 dark
+		'#996633',			#3 dark
+		'#0010A0',			#4 medium too similar to 12
+		'#BF9C7C',			#5 medium
+		'#999966',			#6 medium
+		'#FC6CB4',			#7 medium
+		'#CC8464',			#8 medium
+		'#4C94CC',			#9 medium
+		'#B454CC',			#10 medium
+		'#B08080',			#11 medium
+		'#0404FC', 			#12 light
+		'#9EBDAC',			#13 light
+		'#FF13FC',			#14 light
+		'#3080C0',			#15 light
+		'#9C7CEC'			#16 light
 		]
 
 # Class implements zynthian step sequencer parent, hosting child screens:editors, players, etc.
