@@ -122,6 +122,7 @@ class zynthian_gui_zynpad():
 	# Function to populate menu
 	def populate_menu(self):
 		self.parent.add_menu({'Pad mode':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(zynthian_gui_stepsequencer.PLAY_MODES)-1, 'get_value':self.get_selected_pad_mode, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Beats in bar':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_beats_in_bar, 'on_change':self.on_menu_change}}})
 #		self.parent.add_menu({'Group':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':25, 'get_value':self.get_group, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'MIDI channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_pad_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Trigger note':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':128, 'get_value':self.get_trigger_note, 'on_change':self.on_menu_change}}})
@@ -162,6 +163,12 @@ class zynthian_gui_zynpad():
 		return libseq.getPlayMode(self.get_sequence(self.selected_pad))
 
 
+	# Function to get the duration of bar in beats
+	#	returns: Beats in bar
+	def get_beats_in_bar(self):
+		return libseq.getTimeSigAt(self.song - 1000, 1) >> 8
+
+
 	# Function to get pad sequence
 	#   pad: Pad index
 	#   returns: Index of sequence associated with pad
@@ -200,6 +207,8 @@ class zynthian_gui_zynpad():
 			if value != self.columns:
 				self.update_grid(value**2)
 			return "Grid size: %dx%d" % (value, value)
+		elif menu_item == 'Beats in bar':
+			libseq.addTimeSigEvent(self.song - 1000, value, 4, 1) #TODO Use correct beat type (currently using quarter note)
 		return "%s: %d" % (menu_item, value)
 
 

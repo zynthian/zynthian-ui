@@ -235,7 +235,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			selectmode=tkinter.BROWSE)
 		self.lst_menu.bind('<Button-1>', self.on_menu_press)
 		self.lst_menu.bind('<B1-Motion>', self.on_menu_drag)
-		self.lst_menu.bind('<ButtonRelease-1>', self.on_menu_release)
+		self.lst_menu.bind('<ButtonRelease-1>', self.on_menu_select)
 		self.scrollTime = 0.0
 		if zynthian_gui_config.enable_touch_widgets:
 			self.menu_button_canvas = tkinter.Canvas(self.tb_frame,
@@ -465,17 +465,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		pass
 
 
-	# Function to handle release menu
-	def on_menu_release(self, event):
-		self.on_menu_select()
-
-
 	# Function to handle menu item selection (SELECT button or click on listbox entry)
-	def on_menu_select(self):
+	#	event: Mouse event not used
+	def on_menu_select(self, event=None):
 		if self.lst_menu.winfo_viewable():
 			menu_item = None
 			action = None
-			params = {}
+			params = None
 			try:
 				menu_item = self.lst_menu.get(self.lst_menu.curselection()[0])
 				action = self.menu_items[menu_item]['method']

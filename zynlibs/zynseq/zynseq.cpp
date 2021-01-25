@@ -63,7 +63,7 @@ uint8_t g_nSongStatus = STOPPED; // Status of song (not other sequences)
 bool g_bMutex = false; // Mutex lock for access to g_mSchedule
 
 // Tranpsort variables apply to next period
-float g_fBeatsPerBar = 4.0;
+uint32_t g_nBeatsPerBar = 4;
 float g_fBeatType = 4.0;
 double g_dTicksPerBeat = 1920.0;
 double g_dTempo = 120.0;
@@ -75,8 +75,8 @@ uint32_t g_nBar = 1; // Current bar
 uint32_t g_nBeat = 1; // Current beat within bar
 uint32_t g_nTick = 0; // Current tick within bar
 double g_dBarStartTick = 0; // Quantity of ticks from start of song to start of current bar
-jack_nframes_t g_nFramesToNextClock = 0; // Quantity of frames from start of next period to next clock pulse (24 clocks per beat, 1920/24=80 tickst per clock. Depends on tempo and sample rate)
 jack_nframes_t g_nTransportStartFrame = 0; // Quantity of frames from JACK epoch to transport start
+double g_dFramesToNextClock = 0.0; // Frames until next clock pulse
 double g_dFramesPerClock = 60 * g_nSampleRate / (g_dTempo *  g_dTicksPerBeat) * g_dTicksPerClock;
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
 
@@ -124,7 +124,7 @@ void updateBBT(jack_position_t* position)
     position->tick = position->frame % uint32_t(dFramesPerTick);
     position->beat = (uint32_t(position->frame / dFramesPerTick) % uint32_t(g_dTicksPerBeat)) + 1;
     position->bar = (uint32_t(position->frame / dFramesPerTick / g_dTicksPerBeat) % nBeatsPerBar) + 1;
-    position->beats_per_bar = g_fBeatsPerBar;
+    position->beats_per_bar = float(g_nBeatsPerBar);
     position->beats_per_minute = g_dTempo;
     position->beat_type = g_fBeatType;
     position->ticks_per_beat = g_dTicksPerBeat;
@@ -174,9 +174,8 @@ void updateBBT(jack_position_t* position)
     nTicksFromStart += nTicksInSection;
     position->bar_start_tick = nTicksFromStart - nTicksInLastBar;
     g_nClock = position->tick % (uint32_t)g_dTicksPerClock;
-    g_nFramesToNextClock = 0; //!@todo Quantisation error?
     //g_dTempo = g_pTimebase->getTempo(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick) / g_dTicksPerClock);
-    //g_fBeatsPerBar = uint16_t(g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick) / g_dTicksPerClock)) >> 8;
+    //g_nBeatsPerBar = uint32_t(g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick) / g_dTicksPerClock)) >> 8;
 }
 
 /*  Handle timebase callback - update timebase elements (BBT) from transport position
@@ -198,8 +197,6 @@ void updateBBT(jack_position_t* position)
 void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPeriod,
           jack_position_t *pPosition, int bUpdate, void* pArgs)
 {
-    jack_nframes_t nRemainingFrames = nFramesInPeriod; // Quantity of frames in this period left to process for clock generation    
-
     // Process timebase events
     /* Disabled timebase events until linear song implemented
     while(g_pTimebase && g_pNextTimebaseEvent && (g_pNextTimebaseEvent->bar <= g_nBar)) // || g_pNextTimebaseEvent->bar == g_nBar && g_pNextTimebaseEvent->clock <= g_nClock))
@@ -214,11 +211,11 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         }
         else if(g_pNextTimebaseEvent->type == TIMEBASE_TYPE_TIMESIG)
         {
-            g_fBeatsPerBar = g_pNextTimebaseEvent->value >> 8;
+            g_nBeatsPerBar = g_pNextTimebaseEvent->value >> 8;
             g_fBeatType = g_pNextTimebaseEvent->value & 0x0F;
-            pPosition->beats_per_bar = g_fBeatsPerBar;
+            pPosition->beats_per_bar = float(g_nBeatsPerBar);
             g_bTimebaseChanged = true;
-            DPRINTF("Time signature change to %0.0f/%0.0f\n", g_fBeatsPerBar, g_fBeatType);
+            DPRINTF("Time signature change to %u/%0.0f\n", g_nBeatsPerBar, g_fBeatType);
         }
         g_pNextTimebaseEvent = g_pTimebase->getNextTimebaseEvent(g_pNextTimebaseEvent);
     }
@@ -231,7 +228,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         if(g_pTimebase)
         {
             g_dTempo = g_pTimebase->getTempo(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick));
-            g_fBeatsPerBar = g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick)) >> 8;
+            g_nBeatsPerBar = g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick)) >> 8;
         }
         */
         // Update position based on parameters passed
@@ -260,7 +257,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
             updateBBT(pPosition);
             DPRINTF("Set position from frame %u\n", pPosition->frame);
         }
-        g_nTransportStartFrame = jack_frame_time(g_pJackClient) - pPosition->frame;
+        g_nTransportStartFrame = jack_frame_time(g_pJackClient) - pPosition->frame; //!@todo This isn't setting to transport start position
         pPosition->valid = JackPositionBBT;
         g_dFramesPerClock = getFramesPerClock(g_dTempo);
         g_bTimebaseChanged = false;
@@ -275,60 +272,13 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         pPosition->beat = g_nBeat;
         pPosition->tick = g_nTick % (uint32_t)g_dTicksPerBeat;
         pPosition->bar_start_tick = g_dBarStartTick;
-        pPosition->beats_per_bar = g_fBeatsPerBar;
+        pPosition->beats_per_bar = float(g_nBeatsPerBar);
         pPosition->beat_type = g_fBeatType;
         pPosition->ticks_per_beat = g_dTicksPerBeat;
         pPosition->beats_per_minute = g_dTempo;
         // Loop frame if not playing song
 //        if(!g_nBeat && isSongPlaying())
 //            pPosition->frame = transportGetLocation(pPosition->bar, pPosition->beat, pPosition->tick); //!@todo Does this work? (yes). Are there any discontinuity or impact on other clients? Can it be optimsed?
-    }
-    // Now iterate through clocks in next period, adding any events and handling any timebase changes
-    if(nState == JackTransportRolling)
-    {
-        bool bSync = false;
-        while(g_nFramesToNextClock < nRemainingFrames)
-        {
-            bSync = false;
-            //!@todo Have added a period to clock position but it should already be offset as pPosition->frame refers to next cycle - maybe timebase handling depends on wheterh being updated in which case scheduling should be moved to jack process function
-            jack_nframes_t nClockPos = g_nFramesToNextClock + pPosition->frame + g_nTransportStartFrame + nFramesInPeriod; // Absolute position of clock within next period
-            //printf("nClockPos: %u g_nFramesToNextClock: %u pPosition->frame: %u g_nTransportStartFrame: %u nFramesInPeriod: %u\n", nClockPos, g_nFramesToNextClock, pPosition->frame, g_nTransportStartFrame, nFramesInPeriod);
-            if(g_nClock == 0)
-            {
-                // Clock zero so on beat
-                bSync = (g_nBeat == 1);
-                g_nTick = g_dTicksPerBeat * (g_nBeat - 1);
-                if(g_nSongStatus == PLAYING && ++g_nSongPosition > g_nSongLength)
-                    g_nSongStatus = STOPPED;
-                if(bSync && g_nSongStatus == STARTING)
-                        g_nSongStatus = PLAYING; // Start song at start of bar
-            }
-            // Schedule events in next period
-            g_bPlaying = PatternManager::getPatternManager()->clock(nClockPos, &g_mSchedule, bSync, g_dFramesPerClock); // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can syncronise its sequences, e.g. start zynpad sequences
-            nRemainingFrames -= g_nFramesToNextClock;
-            g_nFramesToNextClock = g_dFramesPerClock;
-            if(++g_nClock > 23)
-            {
-                g_nClock = 0;
-                if(++g_nBeat > g_fBeatsPerBar)
-                {
-                    g_nBeat = 1;
-                    if(g_nSongStatus == PLAYING || g_bClientPlaying)
-                        ++g_nBar;
-                }
-                DPRINTF("Beat %u of %f\n", g_nBeat, g_fBeatsPerBar);
-            }
-        }
-        g_nFramesToNextClock -= nRemainingFrames;
-        g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
-        
-        if(bSync && !g_bPlaying)
-        {
-            //!@todo We stop at end of bar to encourage previous block of code to run but we may prefer to stop more promptly
-            DPRINTF("Stopping transport because no sequences playing clock: %u beat: %u tick: %u\n", g_nClock, g_nBeat, g_nTick);
-            transportStop("zynseq");
-//            transportLocate(0); //!@todo Will this locate adversely affect other clients?
-        }
     }
 }
 
@@ -363,6 +313,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     unsigned char* pBuffer;
     jack_midi_clear_buffer(pOutputBuffer);
     jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
+    jack_transport_state_t nState = jack_transport_query(g_pJackClient, &transportPosition);
 
     // Process MIDI input
     void* pInputBuffer = jack_port_get_buffer(g_pInputPort, nFrames);
@@ -393,7 +344,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 break;
             case MIDI_POSITION:
             {
-                //!@todo Should we let Jack timebae master manage MIDI position changes?
+                //!@todo Should we let Jack timebase master manage MIDI position changes?
                 uint32_t nPos = (midiEvent.buffer[1] + (midiEvent.buffer[2] << 7)) * 6;
                 DPRINTF("StepJackClient POSITION %d (clocks)\n", nPos);
                 setSongPosition(nPos);
@@ -438,6 +389,58 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     while(g_bMutex)
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     g_bMutex = true;
+
+    // Iterate through clocks in this period, adding any events and handling any timebase changes
+    if(nState == JackTransportRolling)
+    {
+        bool bSync = false; // True if at start of bar
+        while(g_dFramesToNextClock < nFrames)
+        {
+            //!@todo Change of timebase can trigger this gets run early. Need to count frames rather than measure difference.
+            bSync = false;
+            if(g_nClock == 0)
+            {
+                // Clock zero so on beat
+                // Check for time signature at start of song
+                //!@todo This should be replaced when linear song implemented
+                //!@todo Move this to tranport handler
+                bSync = (g_nBeat == 1);
+                if(bSync) //!@todo Need to improve timebase handling when linear song enabled
+                    g_nBeatsPerBar = PatternManager::getPatternManager()->getSong(PatternManager::getPatternManager()->getCurrentSong())->getTimeSig(1) >> 8;
+                g_nTick = g_dTicksPerBeat * (g_nBeat - 1); //!@todo g_nTick needs offset calculation
+                if(g_nSongStatus == PLAYING && ++g_nSongPosition > g_nSongLength)
+                    g_nSongStatus = STOPPED;
+                if(bSync && g_nSongStatus == STARTING)
+                        g_nSongStatus = PLAYING; // Start song at start of bar
+            }
+            // Schedule events in next period
+            g_bPlaying = PatternManager::getPatternManager()->clock(nNow + g_dFramesToNextClock, &g_mSchedule, bSync, g_dFramesPerClock); // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can syncronise its sequences, e.g. start zynpad sequences
+            // Advance MIDI clock
+            if(++g_nClock > 23)
+            {
+                g_nClock = 0;
+                if(++g_nBeat > g_nBeatsPerBar)
+                {
+                    g_nBeat = 1;
+                    if(g_nSongStatus == PLAYING || g_bClientPlaying) //!@todo This will advance bar and stop manual beats per bar chnages working when other clients are playing
+                        ++g_nBar;
+                }
+                DPRINTF("Beat %u of %u\n", g_nBeat, g_nBeatsPerBar);
+            }
+            g_dFramesToNextClock += g_dFramesPerClock;
+        }
+        g_dFramesToNextClock -= nFrames;
+        //g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
+        
+        if(bSync && !g_bPlaying)
+        {
+            //!@todo We stop at end of bar to encourage previous block of code to run but we may prefer to stop more promptly
+            DPRINTF("Stopping transport because no sequences playing clock: %u beat: %u tick: %u\n", g_nClock, g_nBeat, g_nTick);
+            transportStop("zynseq");
+//            transportLocate(0); //!@todo Will this locate adversely affect other clients?
+        }
+    }
+
     if(g_mSchedule.size())
     {
         auto it = g_mSchedule.begin();
@@ -495,7 +498,7 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
 int onJackXrun(void *pArgs)
 {
     DPRINTF("zynseq detected XRUN %u\n", ++g_nXruns);
-    g_bTimebaseChanged = true; // Discontinuity so need to recalculate timebase parameters
+    //g_bTimebaseChanged = true; // Discontinuity so need to recalculate timebase parameters
     return 0;
 }
 
@@ -1126,12 +1129,6 @@ void addTimeSigEvent(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar)
     if(bar < 1)
         bar = 1;
     PatternManager::getPatternManager()->getSong(song)->setTimeSig((beats << 8) | type, bar);
-    if(song == getSong())
-    {
-        g_bTimebaseChanged = true;
-        if(g_pTimebase)
-            g_pNextTimebaseEvent = g_pTimebase->getFirstTimebaseEvent(); //!@todo Overkill parsing whole timebase map
-    }
     g_bDirty = true;
 }
 
@@ -1329,7 +1326,12 @@ void transportStart(const char* client)
         g_bClientPlaying = true;
         g_setTransportClient.emplace(client);
     }
-    jack_transport_start(g_pJackClient); //!@todo Should we check if transport already running?
+    jack_position_t pos;
+    if(jack_transport_query(g_pJackClient, &pos) == JackTransportStopped)
+    {
+        g_dFramesToNextClock = 0.0;
+        jack_transport_start(g_pJackClient);
+    }
 }
 
 void transportStop(const char* client)
@@ -1340,8 +1342,6 @@ void transportStop(const char* client)
     g_bClientPlaying = (g_setTransportClient.size() != 0);
     if(!g_bClientPlaying && !g_bPlaying)
         jack_transport_stop(g_pJackClient);
-//    if(strcmp(client, "zynseq") == 0)
-//        stopSong();
 }
 
 void transportToggle(const char* client)

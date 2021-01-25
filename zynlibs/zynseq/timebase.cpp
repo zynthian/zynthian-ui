@@ -39,7 +39,7 @@ uint16_t Timebase::getTempo(uint16_t bar, uint16_t clock)
     }
     return nValue;
 }
-
+#include <stdio.h>
 uint16_t Timebase::getTimeSig(uint16_t bar, uint16_t clock)
 {
     uint16_t nValue = DEFAULT_TIMESIG;

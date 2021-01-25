@@ -131,7 +131,7 @@ class zynthian_gui_songeditor():
 				bg=CELL_BACKGROUND,
 				bd=0,
 				highlightthickness=0)
-		self.pattern_canvas.create_text(self.track_title_width / 2, self.timebase_track_height / 2, tags="patternIndicator", fill='white', text='%d'%(self.pattern), font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(0.9 * self.timebase_track_height)))
+		self.pattern_canvas.create_text(self.track_title_width / 2, self.timebase_track_height / 2, tags="patternIndicator", fill='white', text='%d'%(self.pattern), font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(0.6 * self.timebase_track_height)))
 		self.pattern_canvas.grid(column=1, row=1)
 		self.pattern_canvas.bind('<ButtonPress-1>', self.on_pattern_click)
 
@@ -201,6 +201,8 @@ class zynthian_gui_songeditor():
 		self.parent.add_menu({'Mode': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':len(self.play_modes)-1, 'get_value':self.getMode, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Trigger': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':128, 'get_value':self.get_trigger, 'on_change':self.on_menu_change, 'on_assert':self.set_trigger}}})
 		self.parent.add_menu({'Pattern': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
+		if self.editor_mode == "pad":
+			self.parent.add_menu({'Reset Pad': {'method':self.reset_pad, 'params': None}})
 
 
 	# Function to get horizontal zoom
@@ -304,6 +306,8 @@ class zynthian_gui_songeditor():
 	def set_pattern(self, pattern):
 		if pattern < 1:
 			self.pattern = 1
+		elif pattern > 999:
+			pattern = 999
 		else:
 			self.pattern = pattern
 		self.pattern_canvas.itemconfig("patternIndicator", text="%d"%(self.pattern))
@@ -446,7 +450,6 @@ class zynthian_gui_songeditor():
 		if not self.grid_drag_start:
 			return
 		self.grid_drag_start = None
-
 		self.toggle_event(self.selected_cell[0], self.selected_cell[1])
 
 
@@ -649,7 +652,12 @@ class zynthian_gui_songeditor():
 		if pattern == -1:
 			self.grid_canvas.itemconfig(celltext, state='hidden')
 		else:
-			self.grid_canvas.itemconfig(celltext, text=pattern, state='normal', font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize))
+			if pattern > 1000:
+				pattern_title = "Pad %d" % ((pattern - 1000)%64)
+			else:
+				pattern_title = "%d" % (pattern)
+
+			self.grid_canvas.itemconfig(celltext, text=pattern_title, state='normal', font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize))
 			self.grid_canvas.coords(celltext, coord[0] + int(duration * self.column_width / 2), int(coord[1] + self.row_height / 2))
 #		if time + duration > self.horizontalZoom:
 #			if duration > 1:
@@ -939,6 +947,19 @@ class zynthian_gui_songeditor():
 			else:
 				self.copy_source = self.song
 		self.redraw_pending = 2
+
+
+	# Function to reset pad to default pattern
+	#	params: Parameter passed by menu not used
+	def reset_pad(self, params):
+		if self.song < 1001:
+			return
+		track = self.selected_cell[1]
+		sequence = libseq.getSequence(self.song, track)
+		libseq.clearSequence(sequence)
+		if libseq.addPattern(sequence, 0, (self.song - 1001) * 64 + track + 1001, True):
+			self.draw_track(track)
+		self.select_cell(0, track)
 
 
 	# Function called when new file loaded from disk

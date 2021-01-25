@@ -37,6 +37,8 @@ from . import zynthian_gui_config
 from . import zynthian_gui_selector
 from . import zynthian_gui_controller
 from zyngine import zynthian_controller
+from zynlibs.zynseq import zynseq
+from zynlibs.zynseq.zynseq import libseq
 
 #------------------------------------------------------------------------------
 # Zynthian MIDI Recorder GUI Class
@@ -298,11 +300,11 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		try:
 			zynsmf.load(self.smf_player,fpath)
-			tempo = int(libsmf.getTempo(self.smf_player,0))
-			self.zyngui.libseq.setTempo(tempo) #TODO: This isn't working
+			tempo = int(libsmf.getTempo(self.smf_player, 0))
+			libseq.setTempo(tempo) #TODO: This isn't working
 			libsmf.startPlayback()
-			self.zyngui.libseq.transportStart(bytes("midi_rec","utf-8"))
-			self.zyngui.libseq.transportLocate(0)
+			zynseq.transport_start("zynsmf")
+#			libseq.transportLocate(0)
 			self.show_playing_bpm()
 			self.current_playback=fpath
 			self.smf_timer = Timer(interval = 1, function=self.check_playback)
@@ -318,7 +320,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def end_playing(self):
 		logging.info("ENDING MIDI PLAY ...")
-		self.zyngui.libseq.transportStop(bytes("midi_rec","utf-8"))
+		zynseq.transport_stop("zynsmf")
 		if self.smf_timer:
 			self.smf_timer.cancel()
 			self.smf_timer = None
@@ -357,7 +359,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	# Implement engine's method
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol=="bpm":
-			self.zyngui.libseq.setTempo(zctrl.value)
+			libseq.setTempo(zctrl.value)
 			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
 
 
