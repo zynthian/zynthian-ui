@@ -485,7 +485,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	#----------------------------------------------------------------------------
-	# MIDI Control (ZS3 & CC)
+	# MIDI Control (ZS3 & PC)
 	#----------------------------------------------------------------------------
 
 	def set_midi_chan_preset(self, midich, preset_index):
@@ -498,7 +498,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					continue
 				if layer.set_preset(preset_index,True) and not selected:
 					try:
-						#self.select_action(self.root_layers.index(layer))
+						if not self.zyngui.modal_screen and self.zyngui.active_screen in ('control'):
+							self.select_action(self.root_layers.index(layer))
 						selected = True
 					except Exception as e:
 						logging.error("Can't select layer => {}".format(e))
@@ -511,7 +512,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				if layer.restore_zs3(zs3_index) and not selected:
 					self.last_zs3_index[midich] = zs3_index
 					try:
-						self.select_action(self.root_layers.index(layer))
+						if not self.zyngui.modal_screen and self.zyngui.active_screen not in ('main','layer'):
+							self.select_action(self.root_layers.index(layer))
 						selected = True
 					except Exception as e:
 						logging.error("Can't select layer => {}".format(e))
