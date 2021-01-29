@@ -225,20 +225,19 @@ class zynthian_gui_patterneditor():
 		self.parent.add_menu({'Beats in pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':libseq.getBeatsInPattern, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Steps per beat':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'get_value':self.get_steps_per_beat_index, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Beat type':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':libseq.getBeatType, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'---':{}})
-		self.parent.add_menu({'Select Pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'-------------------':{}})
+		self.parent.add_menu({'Select pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Copy pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':1999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change,'on_assert':self.copy_pattern}}})
 		self.parent.add_menu({'Clear pattern':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_pattern}}})
 		if libseq.getScale():
 			self.parent.add_menu({'Transpose pattern':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':1, 'value':0, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'---':{}})
+		self.parent.add_menu({'Import from SMF':{'method':self.select_import}})
+		self.parent.add_menu({'-------------------':{}})
 		self.parent.add_menu({'Vertical zoom':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':127, 'get_value':self.get_vertical_zoom, 'on_change':self.on_menu_change, 'on_assert':self.assert_zoom}}})
 		self.parent.add_menu({'Scale':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':self.get_scales(), 'get_value':libseq.getScale, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Tonic':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':12, 'get_value':libseq.getTonic, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'---':{}})
-		self.parent.add_menu({'Import':{'method':self.select_import}})
-		self.parent.add_menu({'Input channel':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':16, 'get_value':self.get_input_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Rest note':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':128, 'get_value':libseq.getInputRest, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Input channel':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':16, 'get_value':self.get_input_channel, 'on_change':self.on_menu_change}}})
 
 
 	# Function to set edit mode
