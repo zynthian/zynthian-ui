@@ -69,7 +69,7 @@ class zynthian_engine_mixer(zynthian_engine):
 		super().__init__(zyngui)
 
 		self.type = "Mixer"
-		self.name = "ALSA Mixer"
+		self.name = "Audio Levels"
 		self.nickname = "MX"
 
 		self.audio_out = []
