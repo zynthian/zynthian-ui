@@ -981,6 +981,7 @@ class zynthian_gui_patterneditor():
 					self.draw_cell(self.selected_cell[0], self.selected_cell[1])
 			else:
 				self.select_cell(None, self.selected_cell[1] - value)
+
 		elif encoder == ENC_SELECT:
 			if self.edit_mode:
 				if value > 0:
@@ -999,6 +1000,11 @@ class zynthian_gui_patterneditor():
 					self.select_cell()
 			else:
 				self.select_cell(self.selected_cell[0] + value, None)
+
+		elif encoder == ENC_LAYER and not self.parent.lst_menu.winfo_viewable():
+			# Show menu
+			self.parent.toggle_menu()
+			return
 
 
 	# Function to handle switch press

@@ -36,6 +36,10 @@ import ctypes
 from os.path import dirname, realpath
 from PIL import Image, ImageTk
 
+#Avoid unwanted debug messages from PIL module
+pil_logger = logging.getLogger('PIL')
+pil_logger.setLevel(logging.INFO)
+
 # Zynthian specific modules
 from zyngui import zynthian_gui_base
 from zyngui import zynthian_gui_config
@@ -47,7 +51,6 @@ from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
 from zyngui.zynthian_gui_rename import zynthian_gui_rename
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
-
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer GUI Class
@@ -129,7 +132,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 		# Load default sequence file
 		self.filename = "default"
-		self.load(self.filename)
+		#self.load(self.filename)
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -305,8 +308,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.add_menu({'Song':{'method':self.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':libseq.getSong, 'on_change':self.on_menu_change}}})
 		if zynthian_gui_config.enable_touch_widgets:
 			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':libseq.getTempo, 'on_change':self.on_menu_change}}})
-		self.add_menu({'Load':{'method':self.select_filename, 'params':self.filename}})
-		self.add_menu({'Save':{'method':self.save_as, 'params':self.filename}})
+		#self.add_menu({'Load':{'method':self.select_filename, 'params':self.filename}})
+		#self.add_menu({'Save':{'method':self.save_as, 'params':self.filename}})
 		self.add_menu({'---':{}})
 
 
@@ -706,6 +709,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		#TODO: Handle transport for other views
 
 
+	# ---------------------------------------------------------------------------
+	# ZynSeq File Management
+	# ---------------------------------------------------------------------------
+
+
 	# Function to name file before saving
 	#	filename: Starting filename
 	def	save_as(self, filename):
@@ -721,7 +729,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if not filename:
 			filename = self.filename
 		os.makedirs(USER_PATH, exist_ok=True)
-		zynseq.save(USER_PATH + "/" + filename + ".zynseq")
+		return self.save_fpath(USER_PATH + "/" + filename + ".zynseq")
+
+
+	def save_fpath(self, fpath):
+		return zynseq.save(fpath)
 
 
 	# Function to show file dialog to select file to load
@@ -734,20 +746,64 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def load(self, filename=None):
 		if filename == None:
 			filename = self.filename
-		if zynseq.load(USER_PATH + "/" + filename + ".zynseq"):
+		if self.load_fpath(USER_PATH + "/" + filename + ".zynseq"):
 			self.filename = filename
+
+
+	def load_fpath(self, fpath):
+		if zynseq.load(fpath):
 			libseq.setTriggerChannel(zynthian_gui_config.master_midi_channel)
 			if self.child:
 				self.child.on_load()
 				#TODO: This won't update hidden children
+			return True
+		else:
+			return False
 
+
+	def get_riff_data(self):
+		fpath = "/tmp/snapshot.zynseq"
+		try:
+			# Save to tmp
+			self.save_fpath(fpath)
+			# Load binary data
+			with open(fpath,"rb") as fh:
+				riff_data=fh.read()
+				logging.info("Loading RIFF data...\n")
+			return riff_data
+
+		except Exception as e:
+			logging.error("Can't get RIFF data! => {}".format(e))
+			return None
+
+
+	def restore_riff_data(self, riff_data):
+		fpath = "/tmp/snapshot.zynseq"
+		try:
+			# Save RIFF data to tmp file
+			with open(fpath,"wb") as fh:
+				fh.write(riff_data)
+				logging.info("Restoring RIFF data...\n")
+			# Load from tmp file
+			if self.load_fpath(fpath):
+				self.filename = "snapshot"
+				return True
+
+		except Exception as e:
+			logging.error("Can't restore RIFF data! => {}".format(e))
+			return False
+
+
+	# ---------------------------------------------------------------------------
+	# Encoder & Switch management 
+	# ---------------------------------------------------------------------------
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
 	#	value: Value of zyncoder change since last read
 	def on_zyncoder(self, encoder, value):
 		if self.lst_menu.winfo_viewable():
-			# Menu showing
+			# Menu browsing
 			if encoder == ENC_SELECT or encoder == ENC_LAYER:
 				if self.lst_menu.size() < 1:
 					return
@@ -765,15 +821,23 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				self.lst_menu.selection_set(index)
 				self.lst_menu.activate(index)
 				self.lst_menu.see(index)
+				return
 		elif self.param_editor_item:
-			# Parameter editor showing
+			# Parameter change
 			if encoder == ENC_SELECT or encoder == ENC_LAYER:
 				self.change_param(value)
+				return
+		elif encoder == ENC_LAYER:
+			# Show menu
+			self.toggle_menu()
+			return
+
 		if encoder == ENC_SNAPSHOT:
 			libseq.setTempo(libseq.getTempo() + value)
 			self.set_title("Tempo: %d BPM" % (libseq.getTempo()), None, None, 2)
-		if encoder == ENC_LAYER:
-			self.select_song(self.song + value)
+
+		#if encoder == ENC_LAYER:
+		#	self.select_song(self.song + value)
 
 
 	# Function to handle zyncoder polling
@@ -854,34 +918,34 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def on_switch(self, switch, type):
-		if switch == ENC_LAYER and not self.lst_menu.winfo_viewable():
-			self.toggle_menu()
-		elif switch == ENC_BACK and type == 'B':
-			return False
-		elif switch == ENC_BACK and type == 'S':
-			if self.lst_menu.winfo_viewable():
-				# Close menu
-				self.hide_menu()
+		if type == 'S':
+			if switch == ENC_BACK:
+				if self.lst_menu.winfo_viewable():
+					# Close menu
+					self.hide_menu()
+					return True
+				if self.param_editor_item:
+					# Close parameter editor
+					self.hide_param_editor()
+					return True
+				if self.child == self.song_editor:
+					self.show_child("zynpad")
+					return True
+				if self.child != self.zynpad:
+					self.show_child(self.last_child)
+					return True
+			elif switch == ENC_LAYER and not self.lst_menu.winfo_viewable():
+				self.toggle_menu()
 				return True
-			if self.param_editor_item:
-				# Close parameter editor
-				self.hide_param_editor()
-				return True
-			if self.child == self.song_editor:
-				self.show_child("zynpad")
-				return True
-			if self.child != self.zynpad:
-				self.show_child(self.last_child)
-				return True
-			return False
-		elif switch == ENC_SELECT or switch == ENC_LAYER:
-			if self.lst_menu.winfo_viewable():
-				self.on_menu_select()
-				return True
-			elif self.param_editor_item:
-				self.menu_value_assert()
-				return True
-		return True # Tell parent that we handled all short and bold key presses
+			elif switch == ENC_SELECT or switch == ENC_LAYER:
+				if self.lst_menu.winfo_viewable():
+					self.on_menu_select()
+					return True
+				elif self.param_editor_item:
+					self.menu_value_assert()
+					return True
+
+		return False # Tell parent that we handled all short and bold key presses
 
 
 	# Function to manage switch press
