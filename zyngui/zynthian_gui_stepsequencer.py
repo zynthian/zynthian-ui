@@ -769,10 +769,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			# Parameter editor showing
 			if encoder == ENC_SELECT or encoder == ENC_LAYER:
 				self.change_param(value)
-		if encoder == ENC_SNAPSHOT:
+		elif encoder == ENC_SNAPSHOT:
 			libseq.setTempo(libseq.getTempo() + value)
 			self.set_title("Tempo: %d BPM" % (libseq.getTempo()), None, None, 2)
-		if encoder == ENC_LAYER:
+		elif encoder == ENC_LAYER:
 			self.select_song(self.song + value)
 
 
