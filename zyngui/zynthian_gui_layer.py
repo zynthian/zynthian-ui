@@ -27,6 +27,7 @@
 import os
 import sys
 import copy
+import base64
 import logging
 import collections
 from collections import OrderedDict
@@ -485,7 +486,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	#----------------------------------------------------------------------------
-	# MIDI Control (ZS3 & CC)
+	# MIDI Control (ZS3 & PC)
 	#----------------------------------------------------------------------------
 
 	def set_midi_chan_preset(self, midich, preset_index):
@@ -498,7 +499,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					continue
 				if layer.set_preset(preset_index,True) and not selected:
 					try:
-						#self.select_action(self.root_layers.index(layer))
+						if not self.zyngui.modal_screen and self.zyngui.active_screen in ('control'):
+							self.select_action(self.root_layers.index(layer))
 						selected = True
 					except Exception as e:
 						logging.error("Can't select layer => {}".format(e))
@@ -511,7 +513,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				if layer.restore_zs3(zs3_index) and not selected:
 					self.last_zs3_index[midich] = zs3_index
 					try:
-						self.select_action(self.root_layers.index(layer))
+						if not self.zyngui.modal_screen and self.zyngui.active_screen not in ('main','layer'):
+							self.select_action(self.root_layers.index(layer))
 						selected = True
 					except Exception as e:
 						logging.error("Can't select layer => {}".format(e))
@@ -1077,7 +1080,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	# Snapshot Save & Load
 	#----------------------------------------------------------------------------
 
-
 	def save_snapshot(self, fpath):
 		try:
 			snapshot={
@@ -1089,7 +1091,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				'audio_routing': self.get_audio_routing(),
 				'midi_routing': self.get_midi_routing(),
 				'extended_config': self.get_extended_config(),
-				'midi_profile_state': self.get_midi_profile_state()
+				'midi_profile_state': self.get_midi_profile_state(),
 			}
 
 			#Layers info
@@ -1118,6 +1120,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					'halftone_trans': zyncoder.lib_zyncoder.get_midi_filter_halftone_trans(i)
 				}
 				snapshot['note_range'].append(info)
+
+			#Zynseq RIFF data
+			if 'stepseq' in self.zyngui.screens:
+				binary_riff_data = self.zyngui.screens['stepseq'].get_riff_data()
+				b64_data = base64_encoded_data = base64.b64encode(binary_riff_data)
+				snapshot['zynseq_riff_b64'] = b64_data.decode('utf-8')
 
 			#JSON Encode
 			json=JSONEncoder().encode(snapshot)
@@ -1250,8 +1258,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			elif 'transpose' in snapshot:
 				self.set_transpose(snapshot['transpose'])
 
-			#Set CC-Map
-			#TODO
+			#Zynseq RIFF data
+			if 'zynseq_riff_b64' in snapshot and 'stepseq' in self.zyngui.screens:
+				b64_bytes = snapshot['zynseq_riff_b64'].encode('utf-8')
+				binary_riff_data = base64.decodebytes(b64_bytes)
+				self.zyngui.screens['stepseq'].restore_riff_data(binary_riff_data)
 
 			#Post action
 			if self.index<len(self.root_layers):

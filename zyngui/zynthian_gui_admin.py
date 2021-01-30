@@ -84,9 +84,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
 
 		if zynthian_gui_config.snapshot_mixer_settings:
-			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[x] Mixer Settings on Snapshots"))
+			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[x] Audio Levels on Snapshots"))
 		else:
-			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Mixer Settings on Snapshots"))
+			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Audio Levels on Snapshots"))
 
 		if zynthian_gui_config.midi_filter_output:
 			self.list_data.append((self.toggle_midi_filter_output,0,"[x] MIDI Filter Ouput"))

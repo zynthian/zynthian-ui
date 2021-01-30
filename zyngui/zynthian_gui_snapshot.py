@@ -139,17 +139,20 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			i += 1
 
 		else:
-			if self.action=="SAVE" or isfile(self.default_snapshot_fpath):
+			if self.action=="SAVE":
+				self.list_data.append(("NEW_SNAPSHOT",i,"NEW"))
+				i += 1
 				self.list_data.append((self.default_snapshot_fpath,i,"Default"))
 				i += 1
-
-			if self.action=="LOAD" and isfile(self.last_state_snapshot_fpath):
 				self.list_data.append((self.last_state_snapshot_fpath,i,"Last State"))
 				i += 1
-
-		if self.action=="SAVE":
-			self.list_data.append(("NEW_SNAPSHOT",1,"New Snapshot"))
-			i += 1
+			elif self.action=="LOAD": 
+				if isfile(self.default_snapshot_fpath):
+					self.list_data.append((self.default_snapshot_fpath,i,"Default"))
+					i += 1
+				if isfile(self.last_state_snapshot_fpath):
+					self.list_data.append((self.last_state_snapshot_fpath,i,"Last State"))
+					i += 1
 
 		self.change_index_offset(i)
 
