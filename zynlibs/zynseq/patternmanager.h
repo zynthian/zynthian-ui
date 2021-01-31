@@ -196,7 +196,11 @@ class PatternManager
         *   @retval uint16_t Tempo in beats per minute
         */
         uint16_t getSongTempo();
-        
+
+        /** @brief  Remove all unused empty patterns
+        */
+        void cleanPatterns();
+
     private:
         PatternManager(); // Private constructor to avoid public instantiation
         PatternManager(const PatternManager&); // Do not allow public copying

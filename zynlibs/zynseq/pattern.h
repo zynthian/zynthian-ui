@@ -245,6 +245,11 @@ class Pattern
 		*/
 		StepEvent* getEventAt(uint32_t index);
 
+		/**	@brief	Get quantity of events in pattern
+		*	@retval	size_t Quantity of events
+		*/
+		size_t getEvents();
+
 	private:
 		void deleteEvent(uint32_t position, uint8_t command, uint8_t value1);
 

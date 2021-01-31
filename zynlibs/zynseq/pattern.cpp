@@ -267,3 +267,8 @@ StepEvent* Pattern::getEventAt(uint32_t index)
 		return NULL;
 	return &(m_vEvents[index]);
 }
+
+size_t Pattern::getEvents()
+{
+	return m_vEvents.size();
+}

@@ -207,6 +207,13 @@ class Sequence
 		*/
 		bool hasChanged();
 
+		/**	@brief	Gets the pattern defined by index
+		*	@param	index Index of pattern
+		*	@retval	Pattern* Pointer to pattern or Null if no pattern at index.
+		*	@note	Adding, removing or moving patterns may invalidate the index 
+		*/
+		Pattern* getPatternByIndex(size_t index);
+
 	private:
 		uint8_t m_nChannel = 0; // MIDI channel
 		uint8_t m_nOutput = 0; // JACK output

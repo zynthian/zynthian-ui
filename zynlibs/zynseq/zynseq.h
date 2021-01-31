@@ -359,6 +359,10 @@ uint32_t createPattern();
 */
 size_t getPatternsInSequence(uint32_t sequence);
 
+/** @brief  Removes unused empty patterns
+*/
+void cleanPatterns();
+
 /** @brief  Set sequence MIDI channel
 *   @param  sequence Sequence ID
 *   @param  channel MIDI channel

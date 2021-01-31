@@ -974,6 +974,11 @@ size_t getPatternsInSequence(uint32_t sequence)
     return PatternManager::getPatternManager()->getSequence(sequence)->getPatternsInSequence();
 }
 
+void cleanPatterns()
+{
+    PatternManager::getPatternManager()->cleanPatterns();
+}
+
 void setChannel(uint32_t sequence, uint8_t channel)
 {
     PatternManager::getPatternManager()->getSequence(sequence)->setChannel(channel);

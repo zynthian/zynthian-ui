@@ -337,7 +337,7 @@ uint32_t PatternManager::getPatternIndex(Pattern* pattern)
 size_t PatternManager::createPattern()
 {
 	size_t nSize = m_mPatterns.size();
-	for(size_t nIndex = 1; nIndex < nSize; ++ nIndex)
+	for(size_t nIndex = 1; nIndex < nSize; ++nIndex)
 	{
 		if(m_mPatterns.find(nIndex) != m_mPatterns.end())
 			continue;
@@ -664,4 +664,28 @@ void PatternManager::setSongTempo(uint16_t tempo)
 uint16_t PatternManager::getSongTempo()
 {
 	return m_mSongs[m_nCurrentSong].getTempo();  //!@todo Should this be currently playing song?
+}
+
+void PatternManager::cleanPatterns()
+{
+	// Create copy of patterns map
+	std::map<size_t,Pattern*> mPatterns;
+	for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
+		mPatterns[it->first] = &(it->second);
+
+	// Remove all patterns that are used by sequences
+	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
+	{
+		size_t nIndex = 0;
+		while(Pattern* pPattern = it->second.getPatternByIndex(nIndex++))
+			mPatterns.erase(getPatternIndex(pPattern));
+	}
+
+	// Remove patterns in main map that are in search map and empty
+	for(auto it = mPatterns.begin(); it != mPatterns.end(); ++it)
+	{
+		if(it->second->getEvents() == 0)
+			m_mPatterns.erase(it->first);
+	}
+
 }

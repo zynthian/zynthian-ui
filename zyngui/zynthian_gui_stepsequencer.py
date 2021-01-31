@@ -636,8 +636,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				pass
 			params["mode"] = "pad"
 		elif name == "pattern editor":
-			#libseq.stop() #TODO This is a sledgehammer approach - stopping everything when editing pattern because otherwise we need to consider relative positions for everything
-			#libseq.selectSong(0)
 			self.child = self.pattern_editor
 			params["mode"] = "song"
 			self.buttonbar_config[2] = (2, 'PLAY')
@@ -725,6 +723,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to save to RIFF file
 	#	filename: Filename without path or extension
 	def save(self, filename = None):
+		libseq.cleanPatterns()
 		if not filename:
 			filename = self.filename
 		os.makedirs(USER_PATH, exist_ok=True)

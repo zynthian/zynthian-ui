@@ -471,3 +471,15 @@ bool Sequence::hasChanged()
 	m_bChanged = false;
 	return bState;
 }
+
+Pattern* Sequence::getPatternByIndex(size_t index)
+{
+	size_t nIndex = 0;
+	for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
+	{
+		if(index == nIndex)
+			return it->second;
+		++nIndex;
+	}
+	return NULL;
+}

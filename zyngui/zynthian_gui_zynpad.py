@@ -369,6 +369,7 @@ class zynthian_gui_zynpad():
 		sequence = self.get_sequence(self.selected_pad)
 		if sequence == 0:
 			return
+		libseq.cleanPatterns()
 		if libseq.getPatternsInSequence(sequence) == 0:
 			libseq.addPattern(sequence, 0, libseq.createPattern(), True)
 		pattern = libseq.getPattern(sequence, 0)
