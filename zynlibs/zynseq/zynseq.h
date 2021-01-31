@@ -348,6 +348,17 @@ void removePattern(uint32_t sequence, uint32_t position);
 */
 uint32_t getPattern(uint32_t sequence, uint32_t position);
 
+/** @brief  Create a new pattern
+*   @retval uint32_t Index of new pattern
+*/
+uint32_t createPattern();
+
+/** @brief  Get quantity of patterns in sequence
+*   @param  sequence Index of sequence
+*   @retval size_t Quantity of patterns in sequence
+*/
+size_t getPatternsInSequence(uint32_t sequence);
+
 /** @brief  Set sequence MIDI channel
 *   @param  sequence Sequence ID
 *   @param  channel MIDI channel

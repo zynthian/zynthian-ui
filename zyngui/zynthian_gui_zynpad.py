@@ -271,8 +271,6 @@ class zynthian_gui_zynpad():
 			pad_y = int(pad / self.columns) * self.row_height
 			if sequence == 0:
 				continue # This should not occur because all pads are tied to tracks which are sequences
-			if libseq.getPattern(sequence, 0) == -1:
-				libseq.addPattern(sequence, 0, 1001 + (self.song - 1001) * 64 + pad, True)
 			self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
 				fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell", "trigger_%d"%(pad)))
 			self.grid_canvas.create_text(pad_x + self.column_width / 2, pad_y + self.row_height / 2,
@@ -363,19 +361,22 @@ class zynthian_gui_zynpad():
 	# Function to handle grid press and hold
 	def on_grid_timer(self):
 		self.gridDragStart = None
-		self.show_pattern_editor()
+		self.show_editor()
 
 
-	# Function to show pattern editor for first pattern of sequence of selected pad
-	def show_pattern_editor(self):
+	# Function to show the editor (pattern or aranger based on sequence content)
+	def show_editor(self):
 		sequence = self.get_sequence(self.selected_pad)
 		if sequence == 0:
 			return
+		if libseq.getPatternsInSequence(sequence) == 0:
+			libseq.addPattern(sequence, 0, libseq.createPattern(), True)
 		pattern = libseq.getPattern(sequence, 0)
-		if pattern == -1:
+		if pattern == -1 or libseq.getPatternsInSequence(sequence) > 1:
+			self.parent.show_child("pad editor")
 			return
 		channel = libseq.getChannel(sequence)
-		self.parent.show_child("pattern editor", {"pattern":pattern, "channel":channel})
+		self.parent.show_child("pattern editor", {"pattern":pattern, "channel":channel, "pad":self.selected_pad})
 
 
 	# Function called when new file loaded from disk
@@ -413,7 +414,7 @@ class zynthian_gui_zynpad():
 			if type == 'S':
 				self.toggle_pad()
 			elif type == "B":
-				self.show_pattern_editor()
+				self.show_editor()
 			return True
 		return False
 

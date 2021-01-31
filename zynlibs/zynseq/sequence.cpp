@@ -403,6 +403,11 @@ uint32_t Sequence::getNextPattern(uint32_t previous)
 	return it->first;
 }
 
+size_t Sequence::getPatternsInSequence()
+{
+	return m_mPatterns.size();
+}
+
 void Sequence::setGroup(uint8_t group)
 {
 	m_nGroup = group;

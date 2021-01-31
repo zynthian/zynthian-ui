@@ -146,6 +146,11 @@ class Sequence
 		*/
 		uint32_t getNextPattern(uint32_t previous = 0xFFFFFFFF);
 
+		/**	@brief	Get quantity of patterns in sequence
+		*	@retval uint32_t Quantity of patterns in sequence
+		*/
+		size_t getPatternsInSequence();
+
 		/**	@brief	Set group membership
 		*	@param	group Index of group
 		*/

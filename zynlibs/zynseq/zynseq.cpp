@@ -964,6 +964,16 @@ uint32_t getPattern(uint32_t sequence, uint32_t position)
     return pPm->getPatternIndex(pPattern);
 }
 
+uint32_t createPattern()
+{
+    return PatternManager::getPatternManager()->createPattern();
+}
+
+size_t getPatternsInSequence(uint32_t sequence)
+{
+    return PatternManager::getPatternManager()->getSequence(sequence)->getPatternsInSequence();
+}
+
 void setChannel(uint32_t sequence, uint8_t channel)
 {
     PatternManager::getPatternManager()->getSequence(sequence)->setChannel(channel);

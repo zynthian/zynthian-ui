@@ -199,8 +199,6 @@ class zynthian_gui_songeditor():
 		self.parent.add_menu({'Mode': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':len(self.play_modes)-1, 'get_value':self.getMode, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Trigger': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':128, 'get_value':self.get_trigger, 'on_change':self.on_menu_change, 'on_assert':self.set_trigger}}})
 		self.parent.add_menu({'Pattern': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
-		if self.editor_mode == "pad":
-			self.parent.add_menu({'Reset Pad': {'method':self.reset_pad, 'params': None}})
 
 
 	# Function to get horizontal zoom
@@ -480,7 +478,10 @@ class zynthian_gui_songeditor():
 		pattern = libseq.getPattern(sequence, time)
 		channel = libseq.getChannel(sequence)
 		if pattern > 0:
-			self.parent.show_child("pattern editor", {'pattern':pattern, 'channel':channel})
+			if self.editor_mode == "pad":
+				self.parent.show_child("pattern editor", {'pattern':pattern, 'channel':channel, 'pad':self.selected_cell[1]})
+			else:
+				self.parent.show_child("pattern editor", {'pattern':pattern, 'channel':channel})
 
 
 	# Function to handle pattern click
@@ -652,12 +653,7 @@ class zynthian_gui_songeditor():
 		if pattern == -1:
 			self.grid_canvas.itemconfig(celltext, state='hidden')
 		else:
-			if pattern > 1000:
-				pattern_title = "Pad %d" % ((pattern - 1000)%64)
-			else:
-				pattern_title = "%d" % (pattern)
-
-			self.grid_canvas.itemconfig(celltext, text=pattern_title, state='normal', font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize))
+			self.grid_canvas.itemconfig(celltext, text=pattern, state='normal', font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize))
 			self.grid_canvas.coords(celltext, coord[0] + int(duration * self.column_width / 2), int(coord[1] + self.row_height / 2))
 #		if time + duration > self.horizontalZoom:
 #			if duration > 1:
@@ -947,19 +943,6 @@ class zynthian_gui_songeditor():
 			else:
 				self.copy_source = self.song
 		self.redraw_pending = 2
-
-
-	# Function to reset pad to default pattern
-	#	params: Parameter passed by menu not used
-	def reset_pad(self, params):
-		if self.song < 1001:
-			return
-		track = self.selected_cell[1]
-		sequence = libseq.getSequence(self.song, track)
-		libseq.clearSequence(sequence)
-		if libseq.addPattern(sequence, 0, (self.song - 1001) * 64 + track + 1001, True):
-			self.draw_track(track)
-		self.select_cell(0, track)
 
 
 	# Function called when new file loaded from disk

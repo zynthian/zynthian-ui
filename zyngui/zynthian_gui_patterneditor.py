@@ -195,11 +195,13 @@ class zynthian_gui_patterneditor():
 
 
 	# Function to show GUI
-	#   params: Pattern parameters to edit {'pattern':x, 'channel':x}
+	#   params: Pattern parameters to edit {'pattern':x, 'channel':x, 'pad':x (optional)}
 	def show(self, params=None):
 		try:
 			self.load_pattern(params['pattern'])
 			libseq.setChannel(self.sequence, params['channel'])
+			self.title = "Pattern %d" % (params['pattern'])
+			self.title = "Pattern %d (Pad %d)" % (params['pattern'], params['pad'] + 1)
 		except:
 			pass # Probably already populated and just returning from menu action or similar
 		self.copy_source = self.pattern
@@ -767,31 +769,8 @@ class zynthian_gui_patterneditor():
 		elif menu_item == 'Clear pattern':
 			return "Clear pattern %d?" % (self.pattern)
 		elif menu_item =='Copy pattern':
-			if value > 1000:
-				# Handle copying pads
-				song = int((value - 1001)/64) # base song zero based
-				tracks = libseq.getTracks(1001 + song)
-				min_value = 1001 + song * 64
-				max_value = min_value
-				if tracks:
-					max_value = min_value + tracks - 1
-				if value > max_value:
-					if value == min_value + 63:
-						value = max_value
-					else:
-						song +=1
-						value = min_value + 64
-				pad = (value - 1001)%64 # pad zero based
-				dest_name = "%d/%d" % (song+1, pad+1)
-			else:
-				dest_name = "%d" % (value)
-			if self.copy_source > 1000:
-				src_name = "%d/%d" % (int((self.copy_source - 1001)/64) + 1, (self.copy_source - 1001)%64 + 1)
-			else:
-				src_name = "%d" % (self.copy_source)
 			self.load_pattern(value)
-			params['value'] = value
-			return "Copy %s => %s ?" % (src_name, dest_name)
+			return "Copy %d => %d ?" % (self.copy_source, value)
 		elif menu_item == 'Transpose pattern':
 			if libseq.getScale() == 0:
 				self.parent.hide_param_editor()
@@ -880,12 +859,6 @@ class zynthian_gui_patterneditor():
 		self.redraw_pending = 2
 		self.select_cell()
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
-		if self.pattern > 1000:
-			self.title = "Song %d Pad %d" % (int((self.pattern - 1000)/64) + 1, (self.pattern - 1000)%64)
-		else:
-			self.title = "Pattern %d" % (index)
-		self.parent.set_title(self.title)
-
 
 
 	# Function to select .mid file to import
