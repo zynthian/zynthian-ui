@@ -553,7 +553,6 @@ class zynthian_gui_songeditor():
 			self.track_title_canvas.itemconfig(title, text="%s%d\n(%d)" % (chr(65+group), track + 1, channel))
 		self.track_title_canvas.itemconfig(mode_icon, image=self.icon[mode])
 		fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED[group % 16]
-		logging.warning("draw_track_label %d", track)
 		self.track_title_canvas.itemconfig(title_back, fill=fill)
 		self.track_title_canvas.tag_bind('tracktitle', "<Button-1>", self.on_track_click)
 

@@ -227,7 +227,7 @@ class zynthian_gui_patterneditor():
 		self.parent.add_menu({'Beat type':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':libseq.getBeatType, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'-------------------':{}})
 		self.parent.add_menu({'Select pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Copy pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':1999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change,'on_assert':self.copy_pattern}}})
+		self.parent.add_menu({'Copy pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64872, 'get_value':self.get_pattern, 'on_change':self.on_menu_change,'on_assert':self.copy_pattern}}})
 		self.parent.add_menu({'Clear pattern':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_pattern}}})
 		if libseq.getScale():
 			self.parent.add_menu({'Transpose pattern':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':1, 'value':0, 'on_change':self.on_menu_change}}})
@@ -768,19 +768,21 @@ class zynthian_gui_patterneditor():
 			return "Clear pattern %d?" % (self.pattern)
 		elif menu_item =='Copy pattern':
 			if value > 1000:
-				pad = (value - 1001)%64 # pad zero based
+				# Handle copying pads
 				song = int((value - 1001)/64) # base song zero based
 				tracks = libseq.getTracks(1001 + song)
-				if pad >= tracks:
-					if pad == 63:
-						pad = libseq.getTracks(1001 + song) - 1
+				min_value = 1001 + song * 64
+				max_value = min_value
+				if tracks:
+					max_value = min_value + tracks - 1
+				if value > max_value:
+					if value == min_value + 63:
+						value = max_value
 					else:
-						pad = 0
-						song += 1
+						song +=1
+						value = min_value + 64
+				pad = (value - 1001)%64 # pad zero based
 				dest_name = "%d/%d" % (song+1, pad+1)
-				value = (1001 + song * 64 + pad)
-				if value < 1001:
-					value = 1001
 			else:
 				dest_name = "%d" % (value)
 			if self.copy_source > 1000:
