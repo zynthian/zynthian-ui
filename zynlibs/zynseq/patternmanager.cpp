@@ -337,7 +337,7 @@ uint32_t PatternManager::getPatternIndex(Pattern* pattern)
 size_t PatternManager::createPattern()
 {
 	size_t nSize = m_mPatterns.size();
-	for(size_t nIndex = 0; nIndex < nSize; ++ nIndex)
+	for(size_t nIndex = 1; nIndex < nSize; ++ nIndex)
 	{
 		if(m_mPatterns.find(nIndex) != m_mPatterns.end())
 			continue;
