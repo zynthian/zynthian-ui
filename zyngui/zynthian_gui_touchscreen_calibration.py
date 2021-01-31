@@ -130,9 +130,12 @@ class zynthian_gui_touchscreen_calibration:
 	#	Returns: Output of xinput as string
 	#	Credit: https://github.com/reinderien/xcalibrate
 	def xinput(self, *args):
-		return run(args=('/usr/bin/xinput', *args),
-			stdout=PIPE, check=True,
-			universal_newlines=True).stdout
+		try:
+			return run(args=('/usr/bin/xinput', *args),
+				stdout=PIPE, check=True,
+				universal_newlines=True).stdout
+		except:
+			return ""
 
 
 	#	Thread waiting for first touch to detect touch interface
