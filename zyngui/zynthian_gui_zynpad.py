@@ -338,10 +338,19 @@ class zynthian_gui_zynpad():
 		tags = self.grid_canvas.gettags(self.grid_canvas.find_withtag(tkinter.CURRENT))
 		pad = int(tags[0].split(':')[1])
 		self.selected_pad = pad
+		self.update_selection_cursor()
+		if self.parent.param_editor_item:
+			self.parent.show_param_editor(self.parent.param_editor_item)
+			return
 		self.toggle_pad()
 		self.grid_timer = Timer(2, self.on_grid_timer)
 		self.grid_timer.start()
 		
+
+	# Function to handle pad release
+	def on_pad_release(self, event):
+		self.grid_timer.cancel()
+
 
 	# Function to toggle pad
 	def toggle_pad(self):
@@ -349,11 +358,6 @@ class zynthian_gui_zynpad():
 		if sequence == 0:
 			return
 		libseq.togglePlayState(sequence)
-
-
-	# Function to handle pad release
-	def on_pad_release(self, event):
-		self.grid_timer.cancel()
 
 
 	# Function to handle grid press and hold

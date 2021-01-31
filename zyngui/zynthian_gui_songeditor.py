@@ -60,8 +60,6 @@ class zynthian_gui_songeditor():
 	# Function to initialise class
 	def __init__(self, parent):
 		self.parent = parent
-		
-		#TODO: Put colours in a common file
 		self.play_modes = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
 
 		self.vertical_zoom = 4 # Quantity of rows (tracks) displayed in grid
@@ -351,6 +349,8 @@ class zynthian_gui_songeditor():
 		if self.parent.lst_menu.winfo_viewable():
 			self.parent.hide_menu()
 			return
+		if self.parent.param_editor_item:
+			self.parent.show_param_editor(self.parent.param_editor_item)
 		if libseq.getTracks(self.song) > self.vertical_zoom:
 			self.track_drag_start = event
 
@@ -553,6 +553,7 @@ class zynthian_gui_songeditor():
 			self.track_title_canvas.itemconfig(title, text="%s%d\n(%d)" % (chr(65+group), track + 1, channel))
 		self.track_title_canvas.itemconfig(mode_icon, image=self.icon[mode])
 		fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED[group % 16]
+		logging.warning("draw_track_label %d", track)
 		self.track_title_canvas.itemconfig(title_back, fill=fill)
 		self.track_title_canvas.tag_bind('tracktitle', "<Button-1>", self.on_track_click)
 
