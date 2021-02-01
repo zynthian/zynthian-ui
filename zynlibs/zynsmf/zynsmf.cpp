@@ -261,7 +261,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 
 	jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
 	jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, &transport_position);
-	if(nPreviousTransportState != nTransportState || transport_position.beats_per_minute != dBeatsPerMinute)
+	if(nPreviousTransportState != nTransportState || transport_position.beats_per_minute != dBeatsPerMinute && transport_position.beats_per_minute > 0)
 	{
 		g_nMicrosecondsPerQuarterNote = 60000000.0 / dBeatsPerMinute;
 		onJackSamplerate(g_nSamplerate, 0);
@@ -521,7 +521,7 @@ bool attachRecorder(Smf* pSmf)
 	DPRINTF("Created new JACK recorder\n");
 	g_pRecorderSmf = pSmf;
 	g_nSamplerate = jack_get_sample_rate(g_pJackClient);
-	onJackSamplerate(g_nSamplerate, 0); // Set g_dTicksPerFrame
+	onJackSamplerate(g_nSamplerate, 0); // Set g_dRecorderTicksPerFrame
 	return true;
 }
 
