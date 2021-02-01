@@ -84,6 +84,7 @@ void enableDebug(bool bEnable);
 /** @brief  Load sequences and patterns from file
 *   @param  filename Full path and filename
 *   @retval bool True on success
+*   @note   Pass invalid or empty filename to clear sequences (returns false)
 */
 bool load(char* filename);
 

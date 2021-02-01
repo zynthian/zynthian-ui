@@ -89,10 +89,7 @@ bool PatternManager::load(const char* filename)
 	FILE *pFile;
 	pFile = fopen(filename, "r");
 	if(pFile == NULL)
-	{
-		fprintf(stderr, "ERROR: PatternManager failed to open file for load %s\n", filename);
 		return false;
-	}
 	char sHeader[4];
 	// Iterate each block within RIFF file
 	while(fread(sHeader, 4, 1, pFile) == 1)
@@ -668,6 +665,7 @@ uint16_t PatternManager::getSongTempo()
 
 void PatternManager::cleanPatterns()
 {
+	// Sequences are already cleaned during save
 	// Create copy of patterns map
 	std::map<size_t,Pattern*> mPatterns;
 	for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
