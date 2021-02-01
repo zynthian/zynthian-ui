@@ -1009,11 +1009,10 @@ uint8_t getPlayMode(uint32_t sequence)
 
 void setPlayMode(uint32_t sequence, uint8_t mode)
 {
-    PatternManager::getPatternManager()->getSequence(sequence)->setPlayMode(mode);
+    Sequence* pSequence = PatternManager::getPatternManager()->getSequence(sequence);
+    pSequence->setPlayMode(mode);
     if(g_nEditorSequence != sequence)
-    {
         g_bDirty = true;
-    }
 }
 
 uint8_t getPlayState(uint32_t sequence)
@@ -1253,8 +1252,8 @@ void selectSong(uint32_t song)
     if(song > 999)
         return;
     PatternManager::getPatternManager()->setCurrentSong(song);
-    g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);
-    g_pTimebase = PatternManager::getPatternManager()->getSong(song)->getTimebase();
+//    g_nSongLength = PatternManager::getPatternManager()->updateSequenceLengths(song);
+//    g_pTimebase = PatternManager::getPatternManager()->getSong(song)->getTimebase();
     if(g_pTimebase)
         g_pNextTimebaseEvent = g_pTimebase->getFirstTimebaseEvent();
     if(transportGetPlayStatus() == JackTransportStopped)

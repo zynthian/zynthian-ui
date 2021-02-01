@@ -19,15 +19,18 @@ PatternManager* PatternManager::getPatternManager()
 
 void PatternManager::init()
 {
+	for(auto it = m_mPlayingSequences.begin(); it != m_mPlayingSequences.end(); ++it)
+		it->second->setPlayState(STOPPED);
+	m_mPlayingSequences.clear();
 	m_mSequences.clear();
 	m_mPatterns.clear();
 	m_mSongs.clear();
 	m_mTriggers.clear();
 	m_nCurrentSong = 1;
-	m_nCurrentlyPlayingSong = 1;
-	m_mSequences[0]; // Create sequence 1 to use for pattern editor
-	m_mSongs[0].addTrack(1); // Sequence 1, song 0 used for pattern editor (cannot use seq 0)
-	m_mSongSequences[1] = 0; // Update reverse lookup table
+	m_mSequences[0]; // Create sequence 0 to use for pattern editor
+	m_mSequences[0].setGroup(0xFF); // Use invalid group to avoid stopping other sequences
+	m_mSongs[0].addTrack(0); // Sequence 0, song 0 used for pattern editor (cannot use seq 0)
+	m_mSongSequences[0] = 0; // Update reverse lookup table
 }
 
 int PatternManager::fileWrite32(uint32_t value, FILE *pFile)
@@ -388,33 +391,16 @@ void PatternManager::updateAllSequenceLengths()
 
 bool PatternManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock)
 {
-	//!@todo It may be better for each sequence to have a flag indicating if it is part of the song or a pad rather than simple >1000
-	bool bPlaying = doClock(m_nCurrentlyPlayingSong, nTime, pSchedule, bSync, dSamplesPerClock); // Clock song
-	bPlaying |= doClock(m_nCurrentlyPlayingSong + 1000, nTime, pSchedule, bSync, dSamplesPerClock); // Clock zynpads
-	if(m_nCurrentSong != m_nCurrentlyPlayingSong)
-	{
-		bPlaying |= doClock(m_nCurrentSong, nTime, pSchedule, bSync, dSamplesPerClock);
-		bPlaying |= doClock(m_nCurrentSong + 1000, nTime, pSchedule, bSync, dSamplesPerClock);
-	}
-	bPlaying |= doClock(0, nTime, pSchedule, bSync, dSamplesPerClock); // Clock pattern editor
-	return bPlaying;
-}
-
-inline bool PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock)
-{
 	/** Get events scheduled for next step from each playing sequence.
 		Populate schedule with start, end and interpolated events at sample offset
 	*/
-	if(nSong == 1000)
-		return false; // Base song is 0 which is used for pattern editor so has not corresponding zynpad
-	size_t nTrack = 0;
 	bool bPlaying = false;
-	while(uint32_t nSeq = m_mSongs[nSong].getSequence(nTrack++))
+	for(auto it = m_mPlayingSequences.begin(); it != m_mPlayingSequences.end(); ++it)
 	{
-		uint8_t nEventType = m_mSequences[nSeq].clock(nTime, bSync, dSamplesPerClock);
+		uint8_t nEventType = it->second->clock(nTime, bSync, dSamplesPerClock);
 		if(nEventType & 1)
 		{
-			while(SEQ_EVENT* pEvent = m_mSequences[nSeq].getEvent())
+			while(SEQ_EVENT* pEvent = it->second->getEvent())
 			{
 				uint32_t nEventTime = pEvent->time;
 				while(pSchedule->find(nEventTime) != pSchedule->end())
@@ -426,25 +412,20 @@ inline bool PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uin
 		}
 		if(nEventType & 2)
 		{
-			uint8_t nTallyChannel = m_mSequences[nSeq].getTallyChannel();
-			uint8_t nTrigger = m_mSequences[nSeq].getTrigger();
+			uint8_t nTallyChannel = it->second->getTallyChannel();
+			uint8_t nTrigger = it->second->getTrigger();
 			if(nTallyChannel < 16 && nTrigger < 128)
 			{
 				MIDI_MESSAGE* pEvent = new MIDI_MESSAGE();
 				pEvent->command = MIDI_NOTE_ON | nTallyChannel;
 				pEvent->value1 = nTrigger;
-				switch(m_mSequences[nSeq].getPlayState())
+				switch(it->second->getPlayState())
 				{
 					//!@todo Tallies are hard coded to Akai APC but should be configurable
 					case STOPPED:
 						pEvent->value2 = 3;
 						break;
 					case PLAYING:
-						if(m_nCurrentlyPlayingSong != m_nCurrentSong)
-						{
-							stopSong();
-							m_nCurrentlyPlayingSong = m_nCurrentSong;
-						}
 						pEvent->value2 = 1;
 						break;
 					case STOPPING:
@@ -460,7 +441,7 @@ inline bool PatternManager::doClock(uint32_t nSong, uint32_t nTime, std::map<uin
 				(*pSchedule)[nTime] = pEvent;
 			}
 		}
-		bPlaying |= (m_mSequences[nSeq].getPlayState() != STOPPED);
+		bPlaying |= (it->second->getPlayState() != STOPPED);
 	}
 	return bPlaying;
 }
@@ -546,32 +527,49 @@ void PatternManager::stopSong()
 
 void PatternManager::setSongPosition(uint32_t pos)
 {
-	if(m_nCurrentlyPlayingSong == 0)
+	if(m_nCurrentSong == 0)
 		pos = pos % m_mPatterns[1].getLength();
 	size_t nTrack = 0;
-	while(uint32_t nSequence = m_mSongs[m_nCurrentlyPlayingSong].getSequence(nTrack++))
+	while(uint32_t nSequence = m_mSongs[m_nCurrentSong].getSequence(nTrack++))
 		m_mSequences[nSequence].setPlayPosition(pos);
 }
 
 void PatternManager::setSequencePlayState(uint32_t sequence, uint8_t state)
 {
-	if(m_nCurrentlyPlayingSong && (state == STARTING || state == PLAYING))
+	if(state == STARTING || state == PLAYING)
 	{
 		// Stop other sequences in same group
 		uint8_t nGroup = m_mSequences[sequence].getGroup();
-		for(size_t nTrack = 0; nTrack < m_mSongs[m_nCurrentlyPlayingSong + 1000].getTracks(); ++nTrack)
+		for(auto it = m_mPlayingSequences.begin(); it != m_mPlayingSequences.end(); )
 		{
-			uint32_t nSequence = m_mSongs[m_nCurrentlyPlayingSong + 1000].getSequence(nTrack);
-			if(nSequence != sequence && m_mSequences[nSequence].getGroup() == nGroup)
+			if(it->second->getPlayState() == STOPPED)
 			{
-				if(m_mSequences[nSequence].getPlayState() == STARTING)
-					m_mSequences[nSequence].setPlayState(STOPPED);
-				else if(m_mSequences[nSequence].getPlayState() != STOPPED)
-					m_mSequences[nSequence].setPlayState(STOPPING);
+				// Found a pattern that has stopped so remove it from the list of playing patterns
+				m_mPlayingSequences.erase(it++);
+				continue;
 			}
+			else if(it->first != sequence && it->second->getGroup() == nGroup)
+			{
+				if(it->second->getPlayState() == STARTING)
+				{
+					it->second->setPlayState(STOPPED);
+					m_mPlayingSequences.erase(it++);
+				}
+				else if(it->second->getPlayState() != STOPPED)
+				{
+					it->second->setPlayState(STOPPING);
+					++it;
+				}
+			}
+			else
+				++it;
 		}
 	}
 	m_mSequences[sequence].setPlayState(state);
+	if(m_mSequences[sequence].getPlayState() == STOPPED)
+		m_mPlayingSequences.erase(sequence);
+	else
+		m_mPlayingSequences[sequence] = &(m_mSequences[sequence]);
 }
 
 uint8_t PatternManager::getTriggerNote(uint32_t sequence)
@@ -610,8 +608,9 @@ uint32_t PatternManager::trigger(uint8_t note)
 void PatternManager::setCurrentSong(uint32_t song)
 {
 	if(!isPlaying())
-		m_nCurrentlyPlayingSong = song;
+		m_nCurrentSong = song;
 	m_nCurrentSong = song;
+	/*
 	if(m_mSongs[song].getTracks() == 0)
 		for(size_t nIndex = 0; nIndex < DEFAULT_TRACK_COUNT; ++nIndex)
 		{
@@ -621,6 +620,7 @@ void PatternManager::setCurrentSong(uint32_t song)
 			m_mSequences[nSequence].setGroup(nIndex);
 			m_mSequences[nSequence].setPlayMode(ONESHOT);
 		}
+	*/
 	if(m_mSongs[song + 1000].getTracks() == 0)
 		for(size_t nIndex = 0; nIndex < DEFAULT_TRACK_COUNT; ++nIndex)
 		{
@@ -646,11 +646,11 @@ bool PatternManager::isPlaying()
 	return false;
 }
 
-
 void PatternManager::stop()
 {
 	for(auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
 		it->second.setPlayState(STOPPED);
+	m_mPlayingSequences.clear();
 }
 
 void PatternManager::setSongTempo(uint16_t tempo)
@@ -683,7 +683,10 @@ void PatternManager::cleanPatterns()
 	for(auto it = mPatterns.begin(); it != mPatterns.end(); ++it)
 	{
 		if(it->second->getEvents() == 0)
+		{
+			m_mPlayingSequences.erase(it->first);
 			m_mPatterns.erase(it->first);
+		}
 	}
 
 }

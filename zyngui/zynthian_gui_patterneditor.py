@@ -86,9 +86,7 @@ class zynthian_gui_patterneditor():
 		self.duration = 1 # Current note entry duration
 		self.velocity = 100 # Current note entry velocity
 		self.copy_source = 1 # Index of pattern to copy
-		#TODO: Use song operations rather than sequence
 		self.sequence = libseq.getSequence(0, 0) # Sequence used for pattern editor sequence player (track 0 in song 0)
-		libseq.setGroup(self.sequence, 0xFF) # Pattern editor sequence needs to be in different group to everything else
 		self.step_width = 40 # Grid column width in pixels
 		self.keymap_offset = 60 # MIDI note number of bottom row in grid
 		self.selected_cell = [0, 0] # Location of selected cell (column,row)
@@ -998,7 +996,10 @@ class zynthian_gui_patterneditor():
 			if type == "B":
 				libseq.setTransportToStartOfBar()
 				return True
-			libseq.togglePlayState(self.sequence)
+			if libseq.getPlayState(self.sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
+				libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_STARTING)
+			else:
+				libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 			return True
 		elif switch == ENC_BACK:
 			self.enable_edit(False)

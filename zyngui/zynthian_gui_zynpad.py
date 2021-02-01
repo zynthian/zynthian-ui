@@ -205,7 +205,13 @@ class zynthian_gui_zynpad():
 			return "Trigger note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value)
 		elif menu_item == 'Grid size':
 			if value != self.columns:
-				self.update_grid(value**2)
+				pads = value**2
+				# Remove surplus and add missing tracks
+				while libseq.getTracks(self.song) > pads:
+					libseq.removeTrack(self.song, pads)
+				while libseq.getTracks(self.song) < pads:
+					libseq.addTrack(self.song)
+				self.update_grid()
 			return "Grid size: %dx%d" % (value, value)
 		elif menu_item == 'Beats in bar':
 			libseq.addTimeSigEvent(self.song - 1000, value, 4, 1) #TODO Use correct beat type (currently using quarter note)
@@ -219,7 +225,6 @@ class zynthian_gui_zynpad():
 
 	# Function to load song
 	def select_song(self):
-		#TODO: Should we stop song and recue?
 		self.song = libseq.getSong() + 1000
 		if self.selected_pad >= libseq.getTracks(self.song):
 			self.selected_pad = libseq.getTracks(self.song) - 1
@@ -237,13 +242,6 @@ class zynthian_gui_zynpad():
 		else:
 			pads -= 1
 		self.columns = int(sqrt(pads - 1)) + 1
-		pads = self.columns**2
-		# Remove surplus and add missing tracks
-		while libseq.getTracks(self.song) > pads:
-			libseq.removeTrack(self.song, pads)
-		while libseq.getTracks(self.song) < pads:
-			libseq.addTrack(self.song)
-			#TODO: Configure sequences / pads
 
 		self.column_width = self.width / self.columns
 		self.row_height = self.height / self.columns

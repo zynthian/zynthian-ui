@@ -211,7 +211,6 @@ class PatternManager
         uint32_t fileRead32(FILE* pFile);
         uint16_t fileRead16(FILE* pFile);
         uint8_t fileRead8(FILE* pFile);
-        bool doClock(uint32_t nSong, uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock);
 
         uint8_t m_nTriggerChannel = 15; // MIDI channel to recieve sequence triggers (note-on)
         uint32_t m_nCurrentSong = 0; // Currently selected song (ZynPad uses +1000)
@@ -219,9 +218,10 @@ class PatternManager
 
         static PatternManager* m_pPatternManager; // Pointer to the singleton
         // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
-        std::map<size_t,Pattern> m_mPatterns; // Map of patterns indexed by pattern number
-        std::map<size_t,Sequence> m_mSequences; // Map of sequences indexed by sequence number
-        std::map<size_t,Song> m_mSongs; // Map of songs indexed by song number
+        std::map<size_t, Pattern> m_mPatterns; // Map of patterns indexed by pattern number
+        std::map<size_t, Sequence> m_mSequences; // Map of sequences indexed by sequence number
+        std::map<size_t, Sequence*> m_mPlayingSequences; // Map of pointers to currently playing sequences indexed by sequence number
+        std::map<size_t, Song> m_mSongs; // Map of songs indexed by song number
         std::map<uint32_t, uint32_t> m_mSongSequences; // Map of songs indexed by sequences
         std::map<uint8_t, uint32_t> m_mTriggers; // Map of sequences indexed by MIDI note triggers
 };
