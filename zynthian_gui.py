@@ -118,7 +118,13 @@ class zynthian_gui:
 
 		"51": "SELECT",
 		"52": "SELECT_UP",
-		"53": "SELECT_DOWN", 
+		"53": "SELECT_DOWN",
+		"54": "BACK_UP",
+		"55": "BACK_DOWN",
+		"56": "LAYER_UP",
+		"57": "LAYER_DOWN",
+		"58": "SNAPSHOT_UP",
+		"59": "SNAPSHOT_DOWN",
 
 		"64": "SWITCH_BACK_SHORT",
 		"63": "SWITCH_BACK_BOLD",
