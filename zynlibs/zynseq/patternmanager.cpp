@@ -344,7 +344,7 @@ size_t PatternManager::createPattern()
 		m_mPatterns[nIndex]; // Create a default pattern
 		return nIndex;
 	}
-	m_mPatterns[nSize];
+	m_mPatterns[++nSize];
 	return nSize;
 }
 
