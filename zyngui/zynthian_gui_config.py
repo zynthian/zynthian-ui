@@ -415,6 +415,12 @@ show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
 rbpi_headphones=int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES',False))
 
 #------------------------------------------------------------------------------
+# Networking Options
+#------------------------------------------------------------------------------
+
+vncserver_enabled=int(os.environ.get('ZYNTHIAN_VNCSERVER_ENABLED',False))
+
+#------------------------------------------------------------------------------
 # MIDI Configuration
 #------------------------------------------------------------------------------
 
