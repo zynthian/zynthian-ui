@@ -661,7 +661,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("STOPPING VNC SERVER")
 
 		try:
-			check_output("systemctl stop vncserver@:1", shell=True)
+			check_output("systemctl stop vncserver@:1; rm -f /root/.remote_display_env", shell=True)
 			zynthian_gui_config.vncserver_enabled = 0
 			# Update Config
 			if save_config:
