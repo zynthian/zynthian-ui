@@ -641,10 +641,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def start_vncserver(self, save_config=True):
-		logging.info("STARTING VNC SERVER")
+		logging.info("STARTING VNC SERVICES")
 
 		try:
-			check_output("systemctl start vncserver@:1; systemctl start noVNC", shell=True)
+			check_output("systemctl start vncserver@:1; systemctl start novnc", shell=True)
 			zynthian_gui_config.vncserver_enabled = 1
 			# Update Config
 			if save_config:
@@ -658,10 +658,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def stop_vncserver(self, save_config=True):
-		logging.info("STOPPING VNC SERVER")
+		logging.info("STOPPING VNC SERVICES")
 
 		try:
-			check_output("systemctl stop noVNC; systemctl stop vncserver@:1", shell=True)
+			check_output("systemctl stop novnc; systemctl stop vncserver@:1", shell=True)
 			zynthian_gui_config.vncserver_enabled = 0
 			# Update Config
 			if save_config:
