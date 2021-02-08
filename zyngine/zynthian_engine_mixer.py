@@ -439,7 +439,8 @@ class zynthian_engine_mixer(zynthian_engine):
 			self.rbpi_device_name = None
 
 		try:
-			self.ctrl_list = list(filter(str.strip, os.environ.get('SOUNDCARD_MIXER').split(',')))
+			scmix = os.environ.get('SOUNDCARD_MIXER',"").replace("\\n","")
+			self.ctrl_list = [item.strip() for item in scmix.split(',')]
 		except:
 			self.ctrl_list = None
 
