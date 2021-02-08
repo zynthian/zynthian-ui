@@ -65,9 +65,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		if self.zyngui.allow_headphones():
 			if zynthian_gui_config.rbpi_headphones:
-				self.list_data.append((self.stop_rbpi_headphones,0,"[x] Headphones"))
+				self.list_data.append((self.stop_rbpi_headphones,0,"[x] RBPi Headphones"))
 			else:
-				self.list_data.append((self.start_rbpi_headphones,0,"[  ] Headphones"))
+				self.list_data.append((self.start_rbpi_headphones,0,"[  ] RBPi Headphones"))
 
 		if zynthian_gui_config.midi_single_active_channel:
 			self.list_data.append((self.toggle_single_channel,0,"->  Stage Mode"))
