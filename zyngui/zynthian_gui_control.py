@@ -50,6 +50,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.ctrl_screens={}
 		self.zcontrollers=[]
 		self.screen_name=None
+		self.controllers_lock=False
 
 		self.zgui_controllers=[]
 		self.zgui_controllers_map={}
@@ -104,6 +105,14 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.mode=='select': super().set_selector(zs_hiden)
 
 
+	def lock_controllers(self):
+		self.controllers_lock = True
+
+
+	def unlock_controllers(self):
+		self.controllers_lock = False
+
+
 	def set_controller_screen(self):
 		#Get Mutex Lock 
 		#self.zyngui.lock.acquire()
@@ -120,7 +129,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		else:
 			self.zcontrollers = None
-
 
 		#Setup GUI Controllers
 		if self.zcontrollers:
@@ -147,6 +155,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 		else:
 			for zgui_controller in self.zgui_controllers:
 				zgui_controller.hide()
+
+		self.lock_controllers()
 
 		#Release Mutex Lock
 		#self.zyngui.lock.release()
@@ -298,7 +308,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def zyncoder_read(self, zcnums=None):
 		#Read Controller
-		if self.mode=='control' and self.zcontrollers:
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
 			for i, zctrl in enumerate(self.zcontrollers):
 				#print('Read Control ' + str(self.zgui_controllers[i].title))
 

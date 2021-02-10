@@ -351,9 +351,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to show GUI
 	def show(self):
 		if not self.shown:
-			self.shown=True
 			self.main_frame.grid_propagate(False)
 			self.main_frame.grid(column=0, row=0)
+			self.zyngui.screens["control"].unlock_controllers()
+			self.shown=True
 			self.show_child()
 		self.main_frame.focus()
 
@@ -848,6 +849,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 						#logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, step)
 						zyncoder.set_value_zyncoder(encoder, 64, 0)
+		return []
+
 
 	# Function to handle CUIA encoder changes
 	def on_cuia_encoder(self, encoder, value):

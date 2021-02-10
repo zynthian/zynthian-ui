@@ -54,9 +54,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		super().__init__('Action', True)
 
-		# Initialize Headphones
 		if self.zyngui.allow_headphones():
 			self.default_rbpi_headphones()
+
+		self.default_vncserver()
 
 
 	def fill_list(self):
@@ -64,9 +65,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		if self.zyngui.allow_headphones():
 			if zynthian_gui_config.rbpi_headphones:
-				self.list_data.append((self.stop_rbpi_headphones,0,"[x] Headphones"))
+				self.list_data.append((self.stop_rbpi_headphones,0,"[x] RBPi Headphones"))
 			else:
-				self.list_data.append((self.start_rbpi_headphones,0,"[  ] Headphones"))
+				self.list_data.append((self.start_rbpi_headphones,0,"[  ] RBPi Headphones"))
 
 		if zynthian_gui_config.midi_single_active_channel:
 			self.list_data.append((self.toggle_single_channel,0,"->  Stage Mode"))
@@ -131,6 +132,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.start_wifi,0,"[  ] Wi-Fi"))
 			self.list_data.append((self.start_wifi_hotspot,0,"[  ] Wi-Fi Hotspot"))
+
+		if zynconf.is_service_active("vncserver@:1"):
+			self.list_data.append((self.stop_vncserver,0,"[x] VNC Server"))
+		else:
+			self.list_data.append((self.start_vncserver,0,"[  ] VNC Server"))
 
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
@@ -633,6 +639,52 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.fill_list()
 
+
+	def start_vncserver(self, save_config=True):
+		logging.info("STARTING VNC SERVICES")
+
+		try:
+			check_output("systemctl start vncserver@:1; systemctl start novnc", shell=True)
+			zynthian_gui_config.vncserver_enabled = 1
+			# Update Config
+			if save_config:
+				zynconf.save_config({ 
+					"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
+				})
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	def stop_vncserver(self, save_config=True):
+		logging.info("STOPPING VNC SERVICES")
+
+		try:
+			check_output("systemctl stop novnc; systemctl stop vncserver@:1", shell=True)
+			zynthian_gui_config.vncserver_enabled = 0
+			# Update Config
+			if save_config:
+				zynconf.save_config({ 
+					"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
+				})
+		except Exception as e:
+			logging.error(e)
+
+		self.fill_list()
+
+
+	#Start/Stop VNC Server depending on configuration
+	def default_vncserver(self):
+		if zynthian_gui_config.vncserver_enabled:
+			self.start_vncserver(False)
+		else:
+			self.stop_vncserver(False)
+
+
+#------------------------------------------------------------------------------
+# SYSTEM FEATURES
+#------------------------------------------------------------------------------
 
 	def test_audio(self):
 		logging.info("TESTING AUDIO")
