@@ -75,7 +75,7 @@ class zynthian_gui_arranger():
 		self.selected_cell = [0, 0] # Location of selected cell (time div, row)
 		self.pattern = 1 # Index of current pattern to add to sequence
 		self.position = 0 # Current playhead position
-		self.grid_timer = Timer(0.5, self.on_grid_timer) # Grid press and hold timer
+		self.grid_timer = Timer(1.0, self.on_grid_timer) # Grid press and hold timer
 		#TODO: Populate tracks from file
 		self.sequence_drag_start = None # Set to loaction of mouse during drag
 		self.time_drag_start = None # Set to time of click to test for bold click
@@ -208,9 +208,11 @@ class zynthian_gui_arranger():
 			columns = 1
 		return columns
 
+
 	# Function called when sequence set loaded from file
 	def get_trigger_channel(self):
 		return libseq.getTriggerChannel() + 1
+
 
 	# Function to add track to selected sequence immediately after selected track
 	def add_track(self, params=None):
@@ -397,7 +399,7 @@ class zynthian_gui_arranger():
 
 		self.grid_drag_start = event
 
-		self.grid_timer = Timer(0.4, self.on_grid_timer)
+		self.grid_timer = Timer(1.0, self.on_grid_timer)
 		self.grid_timer.start()
 		tags = self.grid_canvas.gettags(self.grid_canvas.find_withtag(tkinter.CURRENT))
 		if not tags:
@@ -472,6 +474,7 @@ class zynthian_gui_arranger():
 		time = div * self.clocks_per_division
 		libseq.removePattern(self.parent.bank, sequence, track, time)
 		self.redraw_pending = 1 #TODO: Optimise redraw
+
 
 	# Function to add an event
 	#	div: Time division index (column + columun offset)
@@ -884,7 +887,6 @@ class zynthian_gui_arranger():
 		self.vertical_zoom = libseq.getVerticalZoom()
 		self.horizontal_zoom = libseq.getHorizontalZoom()
 		self.assert_and_redraw()
-		logging.warning("Vertical zoom:%d", self.vertical_zoom)
 
 
 	# Function to scroll grid to show position in bank
@@ -940,4 +942,6 @@ class zynthian_gui_arranger():
 		else:
 			return False
 		return True
+
+
 #------------------------------------------------------------------------------

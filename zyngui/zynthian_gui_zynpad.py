@@ -64,6 +64,7 @@ class zynthian_gui_zynpad():
 
 		self.columns = 4 # Quantity of columns in grid
 		self.selected_pad = 0 # Index of selected pad
+		self.refresh_pending = 0 # 0=no refresh pending, 1=update grid
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -192,7 +193,7 @@ class zynthian_gui_zynpad():
 			if value != self.columns:
 				# Remove surplus and add missing tracks
 				libseq.setSequencesInBank(self.parent.bank, value**2)
-				self.update_grid()
+				self.refresh_pending = 1
 			return "Grid size: %dx%d" % (value, value)
 		return "%s: %d" % (menu_item, value)
 
@@ -205,7 +206,7 @@ class zynthian_gui_zynpad():
 	# Function to load bank
 	#	bank Index of bank to select
 	def select_bank(self, bank):
-		self.update_grid()
+		self.refresh_pending = 1
 
 	# Function called when sequence set loaded from file
 	def get_trigger_channel(self):
@@ -347,6 +348,8 @@ class zynthian_gui_zynpad():
 
 	# Function to refresh status
 	def refresh_status(self):
+		if self.refresh_pending == 1:
+			self.update_grid()
 		for pad in range(0, self.columns**2):
 			self.refresh_pad(pad)
 
