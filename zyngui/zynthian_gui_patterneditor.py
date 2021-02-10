@@ -192,7 +192,6 @@ class zynthian_gui_patterneditor():
 	def show(self, params=None):
 		try:
 			self.channel = params['channel']
-			libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 			self.load_pattern(params['pattern'])
 			self.title = "Pattern %d" % (params['pattern'])
 			self.title = "Pattern %d (Pad %d)" % (params['pattern'], params['pad'] + 1)
@@ -836,6 +835,7 @@ class zynthian_gui_patterneditor():
 	#   index: Pattern index
 	def load_pattern(self, index):
 		libseq.clearSequence(self.bank, self.sequence)
+		libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 		self.pattern = index
 		libseq.selectPattern(index)
 		libseq.addPattern(self.bank, self.sequence, 0, 0, index)
