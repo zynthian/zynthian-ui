@@ -82,9 +82,8 @@ class Pattern
 		/**	@brief	Construct pattern object
 		*	@param	beats Quantity of beats in pattern [Optional - default:4]
 		*	@param	stepsPerBeat Quantity of steps per beat [Optional - default: 4]
-		*   @param	beatType Time signature denominator [Optional - default: 4]
 		*/
-		Pattern(uint32_t beats = 4, uint8_t stepsPerBeat = 4, uint8_t beatType = 4);
+		Pattern(uint32_t beats = 4, uint8_t stepsPerBeat = 4);
 		
 		/**	@brief	Destruct pattern object
 		*/
@@ -168,21 +167,10 @@ class Pattern
 		*/
 		uint32_t getSteps();
 
-		/** @brief  Set beat type (time signature denominator)
-		*   @param  beatType Beat type (power of 2)
-		*/
-		void setBeatType(uint8_t beatType);
-
-		/** @brief  Get beat type (time signature denominator)
-		*   @retval uint8_t Beat type (power of 2)
-		*/
-		uint8_t getBeatType();
-
 		/**	@brief	Get length of pattern in clock cycles
 		*	@retval uint32_t Length of pattern in clock cycles
 		*/
 		uint32_t getLength();
-
 
 		/**	@brief	Get quantity of clocks per step
 		*	@retval	uint32_t Quantity of clocks per step
@@ -257,7 +245,6 @@ class Pattern
 		uint32_t m_nBeats; // Quantity of beats in pattern
 		uint32_t m_nClkPerStep; // Clock cycles per step
 		uint32_t m_nStepsPerBeat; // Steps per beat
-		uint8_t m_nBeatType = 4; // Time signature denominator
 		uint8_t m_nScale = 0; // Index of scale
 		uint8_t m_nTonic = 0; // Scale tonic (root note)
 };

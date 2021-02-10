@@ -45,7 +45,7 @@ from zyngui import zynthian_gui_base
 from zyngui import zynthian_gui_config
 from zyncoder import get_lib_zyncoder
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
-from zyngui.zynthian_gui_songeditor import zynthian_gui_songeditor
+from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
 from zyngui.zynthian_gui_rename import zynthian_gui_rename
@@ -121,13 +121,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to initialise class
 	def __init__(self):
 		super().__init__()
-		self.shown = False # True when GUI in view
+		self.shown = False # True when GUI in bank
 		self.zyncoder_owner = [None, None, None, None] # Object that currently "owns" encoder, indexed by encoder
 		self.switch_owner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.child = None # Pointer to instance of child panel
 		self.last_child = None # Pointer to instance of last child shown - used to return to same screen
-		self.song = 1 # The song that will play / edit (may be different to libseq.getSong, e.g. when editing pattern)
+		self.bank = 1
 		#libseq.enableDebug(True)
 
 		# Load default sequence file
@@ -270,16 +270,16 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.button_transport.grid()
 
 		self.pattern_editor = zynthian_gui_patterneditor(self)
-		self.song_editor = zynthian_gui_songeditor(self)
+		self.arranger = zynthian_gui_arranger(self)
 		self.zynpad = zynthian_gui_zynpad(self)
 
 		# Init touchbar
 		self.init_buttonbar()
 
 		self.title_timer = None
-		self.select_song(self.song)
+		self.title="zynseq"
+		self.select_bank(self.bank)
 		self.populate_menu()
-
 
 
 	# Function to print traceback - for debug only
@@ -301,12 +301,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.menu_items = {} # Dictionary of menu items
 		if self.child != self.zynpad:
 			self.add_menu({'Pads':{'method':self.show_child, 'params':"zynpad"}})
-		if self.child != self.song_editor:
-			self.add_menu({'Arranger':{'method':self.show_child, 'params':"pad editor"}})
-#		self.addMenu({'Song Editor':{'method':self.show_child, 'params':"song editor"}})
-		self.add_menu({'Song':{'method':self.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':libseq.getSong, 'on_change':self.on_menu_change}}})
+		if self.child != self.arranger:
+			self.add_menu({'Arranger':{'method':self.show_child, 'params':"arranger"}})
+		if self.child != self.pattern_editor:
+			self.add_menu({'Bank':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'value':self.bank, 'on_change':self.on_menu_change}}})
 		if zynthian_gui_config.enable_touch_widgets:
-			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1, 'max':999, 'get_value':libseq.getTempo, 'on_change':self.on_menu_change}}})
+			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1, 'max':480, 'get_value':libseq.getTempo, 'on_change':self.on_menu_change}}})
+		self.add_menu({'Beats per bar':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':libseq.getBeatsPerBar, 'on_change':self.on_menu_change}}})
 		#self.add_menu({'Load':{'method':self.select_filename, 'params':self.filename}})
 		#self.add_menu({'Save':{'method':self.save_as, 'params':self.filename}})
 		self.add_menu({'-------------------':{}})
@@ -437,6 +438,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to close status menu
 	def hide_status_menu(self):
 		self.status_menu_frame.grid_forget()
+		libseq.enableMidiLearn(0, 0)
 
 
 	# Function to handle status bar click
@@ -569,11 +571,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			value = params['min']
 		if value > params['max']:
 			value = params['max']
-		if self.param_editor_item == 'Song':
-			self.select_song(value)
+		if self.param_editor_item == 'Bank':
+			self.select_bank(value)
 		elif self.param_editor_item == 'Tempo':
 			libseq.setTempo(value)
 			return "Tempo: %d BPM" % (value)
+		elif self.param_editor_item == "Beats per bar":
+			libseq.setBeatsPerBar(value)
 		self.set_param(self.param_editor_item, 'value', value)
 		return "%s: %d" % (self.param_editor_item, value)
 
@@ -625,23 +629,12 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			name = "zynpad"
 		self.hide_child()
 		self.buttonbar_config[2] = (2, '')
-		if name == "song editor":
-			libseq.selectSong(self.song)
-			self.child = self.song_editor
-		elif name == "pad editor":
-			libseq.selectSong(self.song)
-			self.child = self.song_editor
-			try:
-				params["track"] = self.zynpad.selected_pad
-			except:
-				pass
-			params["mode"] = "pad"
+		if name == "arranger":
+			self.child = self.arranger
 		elif name == "pattern editor":
 			self.child = self.pattern_editor
-			params["mode"] = "song"
 			self.buttonbar_config[2] = (2, 'PLAY')
 		elif name == "zynpad":
-#			libseq.selectSong(self.song)
 			self.child = self.zynpad
 		else:
 			return
@@ -676,9 +669,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to stop and recue transport
 	def stop(self):
 		if self.child == self.pattern_editor:
-			libseq.setPlayState(0, SEQ_STOPPED)
+			libseq.setPlayState(0, 0, SEQ_STOPPED)
 			libseq.setTransportToStartOfBar()
-		#TODO: Handle other views
+		#TODO: Handle other banks
 
 
 	# Function to recue transport
@@ -686,16 +679,30 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		libseq.locate(0)
 
 
-	# Function to select song
-	#	song: Index of song to select
-	def select_song(self, song):
-		if song > 0:
-#			libseq.transportStop() #TODO: Stopping transport due to jack_transport restarting if locate called
-			libseq.selectSong(song)
-			self.song = song
-			self.set_title("Song %d" % self.song)
+	# Function to get current bank
+	def get_bank(self):
+		return self.bank
+
+
+	# Function to select bank
+	#	bank: Index of bank to select
+	def select_bank(self, bank):
+		if bank > 0:
+			if libseq.getSequencesInBank(bank) == 0:
+				libseq.setSequencesInBank(bank, 16)
+				for pad in (1,5,9,13):
+					libseq.setChannel(bank, pad, 0, 1)
+					libseq.setGroup(bank, pad, 1)
+				for pad in (2,6,10,14):
+					libseq.setChannel(bank, pad, 0, 2)
+					libseq.setGroup(bank, pad, 2)
+				for pad in (3,7,11,15):
+					libseq.setChannel(bank, pad, 0, 9)
+					libseq.setGroup(bank, pad, 9)
+			self.bank = bank
+			self.set_title("Bank %d" % bank)
 			try:
-				self.child.select_song()
+				self.child.select_bank(bank)
 			except:
 				pass
 
@@ -703,8 +710,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to toggle transport
 	def toggle_transport(self):
 		if self.child == self.pattern_editor:
-			libseq.togglePlayState(self.pattern_editor.sequence)
-		#TODO: Handle transport for other views
+			libseq.togglePlayState(0, 0)
+		#TODO: Handle transport for other banks
 
 
 	# ---------------------------------------------------------------------------
@@ -752,9 +759,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def load_fpath(self, fpath):
 		if zynseq.load(fpath):
 			libseq.setTriggerChannel(zynthian_gui_config.master_midi_channel)
-			if self.child:
-				self.child.on_load()
-				#TODO: This won't update hidden children
 			return True
 		else:
 			return False
@@ -786,6 +790,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			# Load from tmp file
 			if self.load_fpath(fpath):
 				self.filename = "snapshot"
+				self.arranger.on_load()
 				return True
 
 		except Exception as e:
@@ -829,7 +834,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			libseq.setTempo(libseq.getTempo() + value)
 			self.set_title("Tempo: %d BPM" % (libseq.getTempo()), None, None, 2)
 		elif encoder == ENC_LAYER:
-			self.select_song(self.song + value)
+			self.select_bank(self.bank + value)
 
 
 	# Function to handle zyncoder polling
@@ -922,7 +927,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					# Close parameter editor
 					self.hide_param_editor()
 					return True
-				if self.child == self.song_editor:
+				if self.child == self.arranger:
 					self.show_child("zynpad")
 					return True
 				if self.child != self.zynpad:
