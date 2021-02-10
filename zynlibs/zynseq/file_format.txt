@@ -1,25 +1,33 @@
 zynseq file format (RIFF)
 =========================
-Version 3
+Version 4
 Pattern time is measured in steps.
 Sequence time is measured in MIDI clock cycles.
 
 RIFF Header: (Version block must be first. If ommitted assume version 0.)
 	Block ID: "vers"
-	Block size: 32-bit little endian
+	Block size: 32-bit big endian
 Block:
 	File format version [32]
+    Tempo [2]
+    Time signature (beats per bar) [2]
+	MIDI channel for triggers and tallies [1]
+	Trigger JACK input [1] (Not yet implemented)
+	Trigger JACK output [1] (Not yet implemented)
+	Padding [1]
+	Vertical zoom [2]
+	Horizontal zoom [2]
+
 RIFF Header:
 	Block ID: "patn"
-	Block size: 32-bit little endian
+	Block size: 32-bit big endian
 Block:
 	Pattern ID [4]
-	Quantity of beats [4] (Changed in V2 - was quantity of steps)
-	Not used [2] (Not used since V2 - was clock cycles per step)
+	Quantity of beats [4]
 	Steps per beat [2]
 	Map / scale [1] (Added in V1)
 	Scale tonic [1] (Added in V1)
-	Events:
+	Events: (quantity deduced from block length)
 		Start step [4]
 		Duration [4]
 		Command [1]
@@ -28,38 +36,39 @@ Block:
 		Value 1 end [1]
 		Value 2 end [1]
 		Unused padding [1] = 0
+
 RIFF Header:
-	Block ID: "song"
-	Block size: 32-bit little endian
+	Block ID: "bank"
+	Block size: 32-bit big endian
 Block:
-	Song ID [4]
-	Sync period [2]
-	Tempo [2] (Added in V3)
-	Quantity of timebase track events [4]
-		Event measure [2]
-		Event tick [2]
-		Event command [2] [0x0001: Tempo, 0x0002: Time signature]
-		Event data [2] (maybe variable data in future?)
-	Tracks (sequences):
-		MIDI channel [1]
-		JACK output [1]
-		Play mode [1]
-		Group [1]
-		MIDI trigger note [1]
-		Keymap [1] (bits scale: 0..200, 254=map)
-		Quantity of patterns [2]
-		Patterns:
-			Start time [4]
-			Pattern ID [4]
-RIFF Header:
-	Block ID: 'trig'
-	Block size: 32-bit little endian
-Block:
-	MIDI channel [1]
-	Jack input [1] (Not yet implemented)
-RIFF Header: (user defined scales)
+	Bank ID [1]
+    Padding [1]
+    Quantity of sequences (grid size) [4]
+    Sequences:
+        Play mode [1]
+        Group [1]
+		Trigger note [1] (This seems like wrong place but makes code much simpler)
+		Padding [1]
+        Quantity of tracks [4]
+        Tracks:
+            MIDI channel [1]
+            JACK output [1]
+            Keymap [1] (bits scale: 0..200, 254=map)
+            Padding [1]
+            Quantity of patterns [2]
+            Patterns:
+                Start time [4]
+                Pattern ID [4]
+        Quantity of timebase events [4]
+        Timebase events:
+            Event measure [2]
+            Event tick [2]
+            Event command [2] [0x0001: Tempo, 0x0002: Time signature]
+            Event data [2] (maybe variable data in future?)
+
+RIFF Header: (user defined scales) NOT IMPLEMENTED
 	Block ID: 'scal'
-	Block size: 32-bit little endian
+	Block size: 32-bit big endian
 Block:
 	Scale index [1] (0..200)
 	Quantity of notes in scale [1]

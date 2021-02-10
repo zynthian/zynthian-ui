@@ -59,7 +59,7 @@ class Timebase
         /** @brief  Get t at specified time
         *   @param  bar Bar at which to get time signature
         *   @param  clock Clock cycle within bar at which to get time signature
-        *   @retval uint16_t Time signature in beats per minute
+        *   @retval uint16_t Time signature in beats per bar
         */
         uint16_t getTimeSig(uint16_t bar, uint16_t clock);
         

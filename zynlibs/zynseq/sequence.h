@@ -1,66 +1,31 @@
 #pragma once
-#include "pattern.h"
-#include <map>
-#include <forward_list>
 
-struct SEQ_EVENT
-{
-	uint32_t time;
-	MIDI_MESSAGE msg;
-};
+#include "constants.h"
+#include "track.h"
+#include "timebase.h"
+#include <vector>
 
-/**	Sequence class provides an arbritary quantity of non-overlapping patterns. The sequence has a player which feeds events to a JACK client.
+/**	Sequence class provides a collection of tracks
+*   A collection of tracks that will play in unison / simultaneously
+*   A timebase track which allows change of tempo and time signature during playback
+*   A sequence can be triggered as a linear song or a looping pad
 */
 class Sequence
 {
 	public:
-		/**	@brief	Construct a Sequence object
-		*	@param	tracks Quantity of tracks
+		/**	@brief	Create Sequence object
 		*/
 		Sequence();
+		
+        /** @brief  Get sequence's mutually excusive group
+        *   @retval uint32_t sequence's group
+        */
+        uint8_t getGroup();
 
-		/**	@brief	Destroy a Sequence object
-		*/
-		~Sequence();
-
-		/**	@brief	Add pattern to sequence
-		*	@param	position Quantity of clock cycles from start of sequence at which to add pattern
-		*	@param	pattern Pointer to pattern to add
-		*	@param	force True to remove overlapping patterns, false to fail if overlapping patterns (Default: false)
-		*	@retval	bool True if pattern added
-		*/
-		bool addPattern(uint32_t position, Pattern* pattern, bool force = false);
-
-		/**	@brief	Remove pattern from sequence
-		*	@param	position Quantity of clock cycles from start of sequence at which pattern starts
-		*/
-		void removePattern(uint32_t position);
-
-		/**	@brief	Get pattern
-		*	@param	position Quantity of clock cycles from start of sequence at which pattern starts
-		*	@retval	Pattern* Pointer to pattern or NULL if no pattern starts at this position
-		*/
-		Pattern* getPattern(uint32_t position);
-
-		/**	@brief	Get MIDI channel
-		*	@retval	uint8_t MIDI channel
-		*/
-		uint8_t getChannel();
-
-		/**	@brief	Set MIDI channel
-		*	@param	channel MIDI channel
-		*/
-		void setChannel(uint8_t channel);
-
-		/**	@brief	Get JACK output
-		*	@retval	uint8_t JACK output number
-		*/
-		uint8_t getOutput();
-
-		/**	@brief	Set Jack output
-		*	@param	output JACK output index
-		*/
-		void setOutput(uint8_t output);
+        /** @brief  Set sequence's mutually exclusive group
+        *   @param  group Index of group
+        */
+       void setGroup(uint8_t group);
 
 		/**	@brief	Get play mode
 		*	@retval	uint8_t Play mode
@@ -72,26 +37,83 @@ class Sequence
 		*/
 		void setPlayMode(uint8_t mode);
 
-		/**	@brief	Get play state
-		*	@retval	uint8_t Play state
-		*/
-		uint8_t getPlayState();
+        /** @brief  Get sequence's play state
+		*	@retval	uint8_t Play state [STOPPED | PLAYING | STOPPING]
+        */
+        uint8_t getPlayState();
 
-		/**	@brief	Set play state
-		*	@param	uint8_t Play state [STOPPED | PLAYING | STOPPING]
-		*/
-		void setPlayState(uint8_t state);
+        /** @brief  Set sequence's play state
+		*	@param	state Play state [STOPPED | PLAYING | STOPPING]
+        */
+        void setPlayState(uint8_t state);
 
-		/**	@brief	Toggles play / stop
+        /** @brief  Add new track to sequence
+		*	@param	track Index of track afterwhich to add new track (Optional - default: add to end of sequence)
+		*	@retval	uint32_t Index of track added
+        */
+        uint32_t  addTrack(uint32_t track = -1);
+        
+        /** @brief  Remove a track from the sequence
+        *   @param  track Index of track within sequence
+		* 	@retval	bool True on success
+        */
+        bool removeTrack(size_t track);
+        
+        /** @brief  Get quantity of tracks in sequence
+        *   @retval size_t  Quantity of tracks
+        */
+        size_t getTracks();
+
+        /** @brief  Clear all tracks from sequence
+        */
+        void clear();
+
+        /** @brief  Get pointer to a track
+        *   @param  index Index of track within sequence
+        *   @retval Track* Pointer to track or NULL if bad index
+        */
+        Track* getTrack(size_t index);
+    
+		/**	@brief	Add tempo event to timebase track
+		*	@param	tempo Tempo in BPM
+		*	@param	bar Bar (measure) at which to set tempo
+		*	@param	tick Tick at which to set tempo [Optional - default: 0]
+        *   @note   Removes tempo if same as previous tempo
 		*/
-		void togglePlayState();
+		void addTempo(uint16_t tempo, uint16_t bar, uint16_t tick=0);
+		
+		/**	@brief	Get tempo from timebase track
+		*	@param	bar Bar (measure) at which to get tempo
+		*	@param	beat Tick at which to get tempo [Optional - default: 0]
+		*	@retval	uint16_t Tempo in BPM
+		*/
+		uint16_t getTempo(uint16_t bar, uint16_t tick=0);
+
+		/**	@brief	Add time signature to timebase track
+		*	@param	beatsPerBar Beats per bar
+		*	@param	bar Bar (measure) at which to set time signature
+        *   @note   Removes time signature if same as previous time signature
+		*/
+		void addTimeSig(uint16_t beatsPerBar, uint16_t bar);
+
+		/**	@brief	Get time signature from timebase track
+		*	@param	bar Bar (measure) at which to get time signature
+		*	@retval	uint16_t Beats per bar
+		*/
+		uint16_t getTimeSig(uint16_t bar);
+
+		/**	@brief	Get pointer to timebase track
+		*	@retval	Timebase* Pointer to timebase map
+		*/
+		Timebase* getTimebase();
 
 		/**	@brief	Handle clock signal
 		*	@param	nTime Time (quantity of samples since JACK epoch)
-		*	@param	bSync True to indicate sync pulse, e.g. to sync sequences
+		*	@param	bSync True to indicate sync pulse, e.g. to sync tracks
 		* 	@param	dSamplesPerClock Samples per clock
-		*	@retval	uint8_t Bitwise flag of what clock triggers [1=sequence step | 2=change of state]
+		*	@retval	uint8_t Bitwise flag of what clock triggers [1=track step | 2=change of state]
 		* 	@note	Sequences are clocked syncronously but not locked to absolute time so depend on start time for absolute timing
+        *   @note   Will clock each track
 		*/
 		uint8_t clock(uint32_t nTime, bool bSync, double dSamplesPerClock);
 
@@ -101,140 +123,53 @@ class Sequence
 		*/
 		SEQ_EVENT* getEvent();
 
-		/**	@brief	Update length of sequence by iterating through all patterns to find last clock cycle
-		*	'retval	uint32_t Duration of sequence in clock cycles
-		*/
-		uint32_t updateLength();
-
-		/**	@brief	Get duration of sequence in clock cycles
-		*	@retval	uint32_t Length of sequence in clock cycles
-		*/
-		uint32_t getLength();
-
-		/**	@brief	Remove all patterns from sequence
-		*/
-		void clear();
-
-		/**	@brief	Get position of playhead within currently playing pattern
-		*	@retval	uint32_t Quantity of steps from start of pattern to playhead
-		*/
-		uint32_t getStep();
-
-		/**	@brief	Set position of playhead within currently playing pattern
-		*	@param	uint32_t Quantity of steps from start of pattern to playhead
-		*/
-		void setStep(uint32_t step);
-
-		/**	@brief	Get position of playhead within currently playing pattern
-		*	@retval	uint32_t Quantity of clock cycles from start of pattern to playhead
-		*/
-		uint32_t getPatternPlayhead();
-
-		/**	@brief	Get the position of playhead within sequence
-		*	@retval	uint32_t Quantity of clock cycles from start of sequence to playhead
-		*/
-		uint32_t getPlayPosition();
-
-		/**	@brief	Set the position of playhead within sequence
-		*	@param	clock Quantity of clock cycles from start of sequence to position playhead
-		*/
-		void setPlayPosition(uint32_t clock);
-
-		/**	@brief	Get position of next pattern in sequence
-		*	@param	previous Position of previous pattern (Empty to get first pattern)
-		*	@retval	uint32_t Position of next pattern or 0xFFFFFFFF if no more patterns
-		*/
-		uint32_t getNextPattern(uint32_t previous = 0xFFFFFFFF);
-
-		/**	@brief	Get quantity of patterns in sequence
-		*	@retval uint32_t Quantity of patterns in sequence
-		*/
-		size_t getPatternsInSequence();
-
-		/**	@brief	Set group membership
-		*	@param	group Index of group
-		*/
-		void setGroup(uint8_t group);
-
-		/**	@brief	Get group membership
-		*	@retval	uint8_t Index of group
-		*/
-		uint8_t getGroup();
-
-		/**	@brief	Set trigger MIDI note
-		*	@param	trigger MIDI note
-		*/
-		void setTrigger(uint8_t trigger);
-
-		/**	@brief	Get trigger MIDI note
-		*	@retval	uint8_t MIDI note
-		*/
-		uint8_t getTrigger();
-
-		/**	@brief	Set map / scale index
-		*	@param	map
-		*/
-		void setMap(uint8_t map);
-
-		/**	@brief	Get map / scale index
-		*	@retval	uint8_t Map / scale index
-		*/
-		uint8_t getMap();
-
-		/**	@brief	Set MIDI channel used to send sequence play status, e.g. to light controller pads
+		/**	@brief	Set MIDI channel used to send track play status, e.g. to light controller pads
 		*	@param channel MIDI channel [0..15, 255 for none]
 		*/
 		void setTallyChannel(uint8_t channel);
 
-		/**	@brief	Get MIDI channel used to send sequence play status, e.g. to light controller pads
+		/**	@brief	Get MIDI channel used to send track play status, e.g. to light controller pads
 		*	@retval uint8_t MIDI channel [0..15, 255 for none]
 		*/
 		uint8_t getTallyChannel();
 
-		/**	@brief	Solo sequence
-		*	@param	solo True to solo [Default: true]
-		*/
-		void solo(bool solo=true);
+        /** @brief  Updates sequence length from track lengths
+        *   @retval uint32_t Length of sequence (longest track) in clock cycles
+        */
+        uint32_t updateLength();
 
-		/**	@brief	Get solo state of sequence
-		*	@retval	bool True if solo
-		*/
-		bool isSolo();
+        /** @brief  Get sequence length
+        *   @retval uint32_t Length of sequence (longest track) in clock cycles
+        */
+        uint32_t getLength();
 
-		/**	@brief	Check if a parameter has changed since last call
-		*	@retval	bool True if changed
-		*	@note	monitors: state, mode, group
+		/**	@brief	Set position of playback within sequence
+		*	@param	position Postion in clock cycles from start of sequence
+		*/
+		void setPlayPosition(uint32_t position);
+
+		/**	@brief	Get position of playback within sequence
+		*	@retval	uint32_t Postion in clock cycles from start of sequence
+		*/
+		uint32_t getPlayPosition();
+
+		/**	@brief	Check if sequence state has changed since last call
+		*	@retval bool True if changed
+		*	@note	Monitors group, mode, tally channel, tracks, playstate 
 		*/
 		bool hasChanged();
 
-		/**	@brief	Gets the pattern defined by index
-		*	@param	index Index of pattern
-		*	@retval	Pattern* Pointer to pattern or Null if no pattern at index.
-		*	@note	Adding, removing or moving patterns may invalidate the index 
-		*/
-		Pattern* getPatternByIndex(size_t index);
-
-	private:
-		uint8_t m_nChannel = 0; // MIDI channel
-		uint8_t m_nOutput = 0; // JACK output
-		uint8_t m_nState = STOPPED; // Play state
-		uint8_t m_nMode = LOOPALL; // Play mode
-		uint8_t m_nGroup = 0; // Group
-		uint8_t m_nTrigger = 0xFF; // MIDI note to trigger sequence
-		uint8_t m_nMap = 0; // Map / scale index
-		uint8_t m_nTallyChannel = 255; // MIDI channel to send play state tallies (>15 to disable)
-		bool m_bStateChanged = false; // True if play state changed in current clock cycle
+    private:
+        std::vector<Track> m_vTracks; // Vector of tracks within sequence
+        Timebase m_timebase; // Timebase map
+        uint8_t m_nState = STOPPED; // Play state of sequence
+        uint8_t m_nMode = LOOPALL; // Play mode of sequence
+        size_t m_nCurrentTrack = 0; // Index of track currently being queried for events
 		uint32_t m_nPosition = 0; // Play position in clock cycles
-		uint32_t m_nClkPerStep = 1; // Clock cycles per step
-		uint32_t m_nDivCount = 0; // Current count of clock cycles within divisor
-		std::map<uint32_t,Pattern*> m_mPatterns; // Map of pointers to patterns, indexed by start position
-		int m_nCurrentPatternPos = -1; // Start position of pattern currently being played
-		int m_nNextEvent = -1; // Index of next event to process or -1 if no more events at this clock cycle
-		int8_t m_nEventValue = -1; // Value of event at current interpolation point or -1 if no event
-		uint32_t m_nLastClockTime = 0; // Time of last clock pulse (sample)
-		uint32_t m_nCurrentStep = 0; // Postion within pattern (step)
-		uint32_t m_nSequenceLength = 0; // Quantity of clock cycles in sequence (last pattern start + length)
-		double m_dSamplesPerClock; // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
-		bool m_bSolo = false; // True if sequence is solo
-		bool m_bChanged = true; // True if state changed since last hasChanged()
+		uint32_t m_nLastSyncPos = 0; // Position of last sync pulse in clock cycles
+        uint32_t m_nLength = 0; // Length of sequence in clock cycles (longest track)
+        uint8_t m_nGroup = 0; // Sequence's mutually exclusive group
+		uint8_t m_nTallyChannel = 255; // MIDI channel to send play state tallies (>15 to disable)
+		uint16_t m_nTempo = 120; // Default tempo (overriden by tempo events in timebase map)
+		bool m_bChanged = false; // True if sequence content changed
 };

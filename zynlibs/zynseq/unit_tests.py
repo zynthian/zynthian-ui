@@ -10,6 +10,8 @@ from time import sleep
 import time
 import filecmp
 import binascii
+from zynlibs.zynseq import zynseq
+from zynlibs.zynseq.zynseq import libseq
 
 client = jack.Client("riban")
 midi_in = client.midi_inports.register("midi_in")
@@ -46,7 +48,6 @@ class TestLibZynSeq(unittest.TestCase):
         global zynseq_midi_in
         libseq = ctypes.CDLL("/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
         libseq.init(True)
-        sleep(1) #TODO: This delay avoids segfault - figure out what causes segfault if library used too soon after init
         zynseq_midi_out = client.get_port_by_name('zynthstep:output')
         zynseq_midi_in = client.get_port_by_name('zynthstep:input')
         midi_in.connect(zynseq_midi_out)
@@ -138,22 +139,47 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.addNote(0,60,100,4)
         self.assertTrue(libseq.isPatternModified())
         self.assertFalse(libseq.isPatternModified())
-    # Song tests
-    def test_ad00_select_song(self):
-        libseq.selectSong(999)
-        self.assertEqual(libseq.getSong(), 999)
-        libseq.selectSong(1000)
-        self.assertEqual(libseq.getSong(), 999) # Max 999 songs
-        libseq.selectSong(1)
-        self.assertEqual(libseq.getSong(), 1)
+
+    # Trigger tests
+    def test_ad00_trigger_channel(self):
+        self.assertEqual(libseq.getTriggerChannel(), 0xFF)
+        libseq.setTriggerChannel(5)
+        self.assertEqual(libseq.getTriggerChannel(), 5)
+        libseq.setTriggerChannel(16)
+        self.assertEqual(libseq.getTriggerChannel(), 0xFF)
+        self.assertEqual(libseq.getTriggerNote(0,0), 0xFF)
+        libseq.setTriggerNote(0,0,0)
+        self.assertEqual(libseq.getTriggerNote(0,0), 0)
+        libseq.setTriggerNote(0,0,127)
+        self.assertEqual(libseq.getTriggerNote(0,0), 127)
+        libseq.setTriggerNote(0,0,128)
+        self.assertEqual(libseq.getTriggerNote(0,0), 0xFF)
+
+    # Track tests
+    def test_ae00_track(self):
+        self.assertEqual(libseq.getTracks(0,0), 1)
+        self.assertTrue(libseq.addPattern(0,0,0,0,5,False))
+        self.assertEqual(libseq.getPattern(0,0,0,0), 5)
+        libseq.removePattern(0,0,0,0)
+        self.assertEqual(libseq.getPattern(0,0,0,0), -1)
+
+    # Sequence tests
+    def test_af00_sequence_channel(self):
+        self.assertEqual(libseq.getChannel(0,0,0), 0xFF)
+        libseq.setChannel(0,0,0,0)
+        self.assertEqual(libseq.getChannel(0,0,0), 0)
+        libseq.setChannel(0,0,0,15)
+        self.assertEqual(libseq.getChannel(0,0,0), 15)
+        libseq.setChannel(0,0,0,16)
+        self.assertEqual(libseq.getChannel(0,0,0), 0xFF)
     #
-    def test_ad01_tracks(self):
-        tracks = libseq.getTracks(1)
-        self.assertEqual(libseq.addTrack(1), tracks) # Return value should be next track
-        self.assertEqual(libseq.getTracks(1), tracks + 1)
-        libseq.removeTrack(1,0)
-        self.assertEqual(libseq.getTracks(1), tracks)
-        self.assertEqual(libseq.getSequenceLength(libseq.getSequence(1, tracks)), 0) # New tracks should contain empty sequence
+    def test_af01_sequence_mode(self):
+        self.assertEqual(libseq.getPlayMode(0,0), play_mode["LOOPALL"])
+        libseq.setPlayMode(0,0,play_mode["LOOPSYNC"])
+        self.assertEqual(libseq.getPlayMode(0,0), play_mode["LOOPSYNC"])
+
+
+'''
     # Sequence tests
     def test_ae00_add_pattern(self):
         sequence = libseq.getSequence(1,1)
@@ -810,7 +836,7 @@ class TestLibZynSeq(unittest.TestCase):
             min_time = 58/tempo
             max_time = 62/tempo
             self.assertTrue(min_time < time2-time1 < max_time)
-
+'''
 
     #TOOO Check beat type, sendMidiXXX (or remove), isSongPlaying, getTriggerChannel, setTriggerChannel, getTriggerNote, setTriggerNote, setInputChannel, getInputChannel, setScale, getScale, setTonic, getTonic, setChannel, getChannel, setOutput, setTempo, getTempo, setSongPosition, getSongPosition, startSong, pauseSong, toggleSong, solo, transportXXX
 

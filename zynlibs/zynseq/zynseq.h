@@ -4,7 +4,7 @@
  *
  * Library providing step sequencer as a Jack connected device
  *
- * Copyright (C) 2020 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2020-2021 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -28,24 +28,22 @@
     Selecting a pattern that does not exist will create it.
     Empty patterns do not get saved to file.
     Sequence operations act on the sequence indexed by the request.
-    Acting on a non existant sequence will create it.
-    List of active events (to allow silencing).
+    Acting on a sequence that does not exist will create it.
     The methods exposed here provide a simplified interface to the hierchical step sequencer classes.
     Those modules are:
-        PatternManager:
+        SequenceManager:
             Map of patterns indexed by number, Map of sequences, indexed by number, list of players, JACK client (pointer should not use this). Tempo.
         Step Event:
-            Individual step within a pattern
-            start, duration, command, value1start, value2start, value1end, value2end, progress
+            Individual event within a pattern
         Pattern:
-            Organises events into relative time.
-            List of events, clock divisor, quantity of steps
+            Organises events into relative time
+        Track:
+            Organises patterns into relative time
         Sequence:
-            Organises patterns into time.
-            MIDI channel, JACK output, Map of patterns, indexed by start position
-            Creates a schedule of events from a sequence. Sends events to StepJackClient at correct time.
-            Play status, Play position
-        
+            A collection of tracks which will play synchronously
+        Bank:
+            A collection of sequences
+
     Call init() to initialise JACK client
 */
 
@@ -86,13 +84,32 @@ void enableDebug(bool bEnable);
 *   @retval bool True on success
 *   @note   Pass invalid or empty filename to clear sequences (returns false)
 */
-bool load(char* filename);
+bool load(const char* filename);
 
 /** @brief  Save sequences and patterns from file
 *   @param  filename Full path and filename
 */
-void save(char* filename);
+void save(const char* filename);
 
+/** @brief  Get vertical zoom
+*   @retval uint16_t Vertical zoom
+*/
+uint16_t getVerticalZoom();
+
+/** @brief  Set vertical zoom
+*   @param zoom Vertical zoom
+*/
+void setVerticalZoom(uint16_t zoom);
+
+/** @brief  Get horizontal zoom
+*   @retval uint16_t Horizontal zoom
+*/
+uint16_t getHorizontalZoom();
+
+/** @brief  Set horizontal zoom
+*   @param uint16_t Horizontal zoom
+*/
+void setHorizontalZoom(uint16_t zoom);
 
 // ** Direct MIDI interface **
 //!@todo Should direct MIDI output be removed because JACK clients can do that themselves?
@@ -137,35 +154,59 @@ void sendMidiClock();
 void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2);
 
 // ** Status **
-/** @brief  Get song playing state
-*   @retval bool True if song is playing
-*/
-bool isSongPlaying();
-
 /** @brief  Get MIDI channel used for external trigger of sequences
 *   @retval uint8_t MIDI channel
 */
 uint8_t getTriggerChannel();
 
 /** @brief  Set MIDI channel used for external trigger of sequences
-*   @param channel MIDI channel
+*   @param channel MIDI channel [0..15 or other value to disable MIDI trigger]
 */
 void setTriggerChannel(uint8_t channel);
 
 /** @brief  Get MIDI note number used to trigger sequence
-*   @param  sequence Index of sequence
-*   @retval uint8_t MIDI note number
+*   @param  bank Index of bank containing sequence
+*   @param  sequence Index (sequence) of sequence within bank
+*   @retval uint8_t MIDI note number [0xFF for none]
 */
-uint8_t getTriggerNote(uint32_t sequence);
+uint8_t getTriggerNote(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set MIDI note number used to trigger sequence
-*   @param  sequence Index of sequence
+*   @param  bank Index of bank containing sequence
+*   @param  sequence Index (sequence) of sequence within bank
 *   @param  note MIDI note number [0xFF for none]
 */
-void setTriggerNote(uint32_t sequence, uint8_t note);
+void setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note);
 
 // ** Pattern management functions - pattern events are quantized to steps **
 //!@todo Curernt implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the pattern index, e.g. clearPattern(index)
+
+/** @brief  Enable MIDI input to add notes to current pattern
+*   @param  enable True to enable MIDI input
+*/
+void enableMidiInput(bool enable);
+
+/** @brief  Create a new pattern
+*   @retval uint32_t Index of new pattern
+*/
+uint32_t createPattern();
+
+/** @brief  Get quantity of patterns in a track
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track
+*   @retval uint32_t quantity of patterns in track
+*/
+uint32_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track);
+
+/** @brief  Get index of pattern within a track
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track
+*   @param  position Quantity of clock cycles from start of sequence
+*   @retval uint32_t Pattern index or -1 if not found
+*/
+uint32_t getPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position);
 
 /** @brief  Select active pattern
 *   @note   All subsequent pattern methods act on this pattern
@@ -216,16 +257,6 @@ uint32_t getStepsPerBeat();
 *   @note   Calculates pattern length from beats in pattern
 */
 void setStepsPerBeat(uint32_t steps);
-
-/** @brief  Get beat type (time signature denominator) for selected pattern
-*   @retval uint8_t Beat type (power of 2)
-*/
-uint8_t getBeatType();
-
-/** @brief  Set beat type (time signature denominator) for selected pattern
-*   @param  beatType Beat type (power of 2)
-*/
-void setBeatType(uint8_t beatType);
 
 /** @brief  Add note to selected pattern
 *   @param  step Index of step at which to add note
@@ -325,297 +356,266 @@ uint8_t getTonic();
 */
 bool isPatternModified();
 
-// ** Sequence management functions **
+// ** Track management functions **
 
-/** @brief  Add pattern to a sequence
+/** @brief  Get position of playhead within pattern in steps
+*   @param  bank Index of bank
 *   @param  sequence Index of sequence
-*   @param  position Quantity of clock cycles from start of sequence at which to add pattern
+*   @param  track Index of track
+*   @retval uint32_t Quantity of steps from start of pattern to playhead
+*   @todo   Function names confusing getPatternPlayhead / getStep (within Track)
+*/
+uint32_t getPatternPlayhead(uint8_t bank, uint8_t sequence, uint32_t track);
+
+/** @brief  Add pattern to a track
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track
+*   @param  position Quantity of clock cycles from start of track at which to add pattern
 *   @param  pattern Index of pattern
 *   @param  force True to remove overlapping patterns, false to fail if overlapping patterns 
 *   @retval True if pattern inserted
 */
-bool  addPattern(uint32_t sequence, uint32_t position, uint32_t pattern, bool force);
+bool addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force);
 
-/** @brief  Remove pattern to a sequence
+/** @brief  Remove pattern from track
+*   @param  bank Index of bank
 *   @param  sequence Index of sequence
-*   @param  position Quantity of clock cycles from start of sequence from which to remove pattern
+*   @param  track Index of track
+*   @param  position Quantity of clock cycles from start of track from which to remove pattern
 */
-void removePattern(uint32_t sequence, uint32_t position);
-
-/** @brief  Get index of pattern within a sequence
-*   @param  sequence Index of sequence
-*   @param  position Quantity of clock cycles from start of sequence
-*   @retval uint32_t Pattern index or -1 if not found
-*/
-uint32_t getPattern(uint32_t sequence, uint32_t position);
-
-/** @brief  Create a new pattern
-*   @retval uint32_t Index of new pattern
-*/
-uint32_t createPattern();
-
-/** @brief  Get quantity of patterns in sequence
-*   @param  sequence Index of sequence
-*   @retval size_t Quantity of patterns in sequence
-*/
-size_t getPatternsInSequence(uint32_t sequence);
+void removePattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position);
 
 /** @brief  Removes unused empty patterns
 */
 void cleanPatterns();
 
+// ** Sequence management functions **
+
 /** @brief  Set sequence MIDI channel
+*   @param  bank Index of bank
 *   @param  sequence Sequence ID
+*   @param  track Index of track
 *   @param  channel MIDI channel
 */
-void setChannel(uint32_t sequence, uint8_t channel);
+void setChannel(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t channel);
 
-/** @brief  Get sequence MIDI channel
-*   @param  sequence Sequence ID
+/** @brief  Get track MIDI channel
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track
 *   @retval uint8_t MIDI channel
 */
-uint8_t getChannel(uint32_t sequence);
-
-/** @brief  Set sequence JACK output
-*   @param  sequence Sequence ID
-*   @param  output JACK output
-*/
-void setOutput(uint32_t sequence, uint8_t output);
+uint8_t getChannel(uint8_t bank, uint8_t sequence, uint32_t track);
 
 /** @brief  Get current play mode for a sequence
-*   @param  sequence Sequence ID
+*   @param  bank Index of bank containing sequence
+*   @param  sequence Index (sequence) of sequence within bank
 *   @retval uint8_t Play mode [DISABLED | ONESHOT | LOOP | ONESHOTALL | LOOPALL]
 */
-uint8_t getPlayMode(uint32_t sequence);
+uint8_t getPlayMode(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set play mode of a sequence
-*   @param  sequence Index of sequence to control
+*   @param  bank Index of bank containing sequence
+*   @param  sequence Index (sequence) of sequence within bank
 *   @param  mode Play mode [DISABLED | ONESHOT | LOOP | ONESHOTALL | LOOPALL]
 */
-void setPlayMode(uint32_t sequence, uint8_t mode);
+void setPlayMode(uint8_t bank, uint8_t sequence, uint8_t mode);
 
 /** @brief  Get play state
-*   @param  sequence Index of sequence
+*   @param  bank Index of bank containing sequence
+*   @param  sequence Index (sequence) of sequence within bank
 *   @retval uint8_t Play state [STOPPED | STARTING | PLAYING | STOPPING]
 */
-uint8_t getPlayState(uint32_t sequence);
+uint8_t getPlayState(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set play state
-*   @param  sequence Index of sequence
+*   @param  bank Index of bank containing sequence
+*   @param  sequence Index (sequence) of sequence within bank
 *   @param  uint8_t Play state [STOPPED | STARTING | PLAYING | STOPPING]
 *   @note   STARTING will reset to start of sequence. PLAYING resumes at last played position.
+*   @note   If all sequences have stopped and no external clients have registered for transport then transport is stopped.
 */
-void setPlayState(uint32_t sequence, uint8_t state);
+void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state);
 
 /** @brief  Toggles starting / stopping
-*   @param  sequence Index of sequence
-*   @retval uint32_t sequence
-*   @todo   Sets value to STARTING / STOPPING but may wish to use STARTED / STOPPED, e.g. for songs but is used by trigger for pads - use sequence mode to decide start / stop behaviour
+*   @param  bank Index of bank containing sequence
+*   @param  sequence Index (sequence) of sequence within bank
 */
-void togglePlayState(uint32_t sequence);
+void togglePlayState(uint8_t bank, uint8_t sequence);
 
-/** @brief  Stops all sequences and songs
+/** @brief  Get quantity of tracks in a sequence
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*/
+size_t getTracksInSequence(uint8_t bank, uint8_t sequence);
+
+/** @brief  Stops all sequences
 */
 void stop();
 
 /** @brief  Get the currently playing clock cycle
+*   @param  bank Index of bank
 *   @param  Sequence ID
 *   @retval uint32_t Playhead position in clock cycles
 */
-uint32_t getPlayPosition(uint32_t sequence);
+uint32_t getPlayPosition(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set the currently playing clock cycle
-*   @param  Sequence ID
+*   @param  bank Index of bank containing sequence
+*   @param  sequence Index (sequence) of sequence within bank
 *   @param  clock Clock cycle to position play head
 */
-void setPlayPosition(uint32_t sequence, uint32_t clock);
+void setPlayPosition(uint8_t bank, uint8_t sequence, uint32_t clock);
 
 /** @brief  Get length of sequence in clock cycles
+*   @param  bank Index of bank
 *   @param  sequence Sequence ID
 *   @retval uint32_t Quantity of clock cycles in sequence
 */
-uint32_t getSequenceLength(uint32_t sequence);
+uint32_t getSequenceLength(uint8_t bank, uint8_t sequence);
 
 /** @brief  Remove all patterns from sequence
+*   @param  bank Index of bank
 *   @param  sequence Sequence number
 */
-void clearSequence(uint32_t sequence);
-
-/** @brief  Get the position of playhead within pattern
-*   @param  sequence Sequence number
-*   @retval uint32_t Quantity of steps from start of pattern
-*/
-uint32_t getStep(uint32_t sequence);
+void clearSequence(uint8_t bank, uint8_t sequence);
 
 /** @brief  Get sequence group
+*   @param  bank Index of bank
 *   @param  sequence Sequence number
 *   @retval uint8_t Group
 */
-uint8_t getGroup(uint32_t sequence);
+uint8_t getGroup(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set sequence group
+*   @param  bank Index of bank
 *   @param  sequence Sequence number
 *   @param  group Group index
 */
-void setGroup(uint32_t sequence, uint8_t group);
+void setGroup(uint8_t bank, uint8_t sequence, uint8_t group);
 
 /** @brief  Get MIDI channel used to send sequence play status, e.g. to light controller pads
+*   @param  bank Index of bank
 *   @param  sequence Index of sequence
 *   @retval uint8_t MIDI channel [0..15, 255 for none]
 */
-uint8_t getTallyChannel(uint32_t sequence);
+uint8_t getTallyChannel(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set MIDI channel used to send sequence play status, e.g. to light controller pads
+*   @param  bank Index of bank
 *   @param  sequence Index of sequence
 *   @param  channel MIDI channel [0..15, 255 for none]
 */
-void setTallyChannel(uint32_t sequence, uint8_t channel);
+void setTallyChannel(uint8_t bank, uint8_t sequence, uint8_t channel);
 
 /** @brief  Set MIDI note used to send sequence play status, e.g. to light controller pads
+*   @param  bank Index of bank
 *   @param  sequence Index of sequence
 *   @param  note MIDI note [0..127]
 */
-void setTallyNote(uint32_t sequence, uint8_t note);
+void setTallyNote(uint8_t bank, uint8_t sequence, uint8_t note);
 
 /** @brief  Get MIDI note used to send sequence play status, e.g. to light controller pads
+*   @param  bank Index of bank
 *   @param  sequence Index of sequence
 *   @retval uint8_t MIDI note [0..127]
 */
-uint8_t getTallyNote(uint32_t sequence);
+uint8_t getTallyNote(uint8_t bank, uint8_t sequence);
 
 /** @brief  Check if a sequence play state, group or mode has changed since last checked
+*   @param  bank Index of bank
 *   @param  sequence Index of sequence
 *   @retval bool True if changed
 */
-bool hasSequenceChanged(uint32_t sequence);
+bool hasSequenceChanged(uint8_t bank, uint8_t sequence);
 
-// ** Song management functions **
-
-/** @brief  Add track to song
-*   @param  song Song index
-*   @retval uint32_t Index of new track
+/** @brief  Adds a track to a sequence
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track to add new track after (Optional - default: add to end of sequence)
+*   @retval uint32_t Index of track added
 */
-uint32_t addTrack(uint32_t song);
+uint32_t addTrackToSequence(uint8_t bank, uint8_t sequence, uint32_t track=-1);
 
-/** @brief  Remove track from song
-*   @param  song Song index
-*   @param  track Track index
+/** @brief  Removes a track from a sequence
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Inde of track
 */
-void removeTrack(uint32_t song, uint32_t track);
+void removeTrackFromSequence(uint8_t bank, uint8_t sequence, uint32_t track);
 
-/** @brief  Get quantity of tracks in song
-*   @param  song Song index
-*   @retval uint32_t Quantity of tracks
-*/
-uint32_t getTracks(uint32_t song);
-
-/** @brief  Get song track sequence ID
-*   @param  song Song index
-*   @param  track Track index
-*   @retval uint32_t Sequence index (0 if none found)
-*/
-uint32_t getSequence(uint32_t song, uint32_t track);
-
-/** @brief  Clears song
-*   @param  song Song index
-*/
-void clearSong(uint32_t song);
-
-/** @brief  Copy song
-*   @param  source Index of song from which to copy
-*   @param  destination Index of song to which to copy
-*/
-void copySong(uint32_t source, uint32_t destination);
-
-/** @brief  Add tempo to song tempo map
-*   @param  song Song index
+/** @brief  Add tempo to sequence timebase track
+*   @param  bank Index of bank
+*   @param  sequence  Sequence index
 *   @param  tempo Tempo in BPM
-*   @param  bar Bar of song at which to add tempo change [Optional - default: 1]
+*   @param  bar Bar of sequence at which to add tempo change [Optional - default: 1]
 *   @param  tick Tick within bar at which to add tempo change [Optional - default: 0]
 */
-void addTempoEvent(uint32_t song, uint32_t tempo, uint16_t bar=1, uint16_t tick=0);
+void addTempoEvent(uint8_t bank, uint8_t sequence, uint32_t tempo, uint16_t bar=1, uint16_t tick=0);
 
-/** @brief  Get tempo at position within song
-*   @param  song Song index
-*   @param  bar Bar of song at which to get tempo [Optional - default: 1]
+/** @brief  Get tempo at position within sequence
+*   @param  bank Index of bank
+*   @param  sequence Sequence index
+*   @param  bar Bar at which to get tempo [Optional - default: 1]
 *   @param  tick Tick within bar at which to get tempo [Optional - default: 0]
 '   @todo   getTempo without time parameter should get time at current play position???
 *   @retval uint32_t Tempo in BPM
 */
-uint32_t getTempoAt(uint32_t song, uint16_t bar=1, uint16_t tick=0);
+uint32_t getTempoAt(uint8_t bank, uint8_t sequence, uint16_t bar=1, uint16_t tick=0);
 
-/** @brief  Add time signature to song
-*   @param  song Song index
+/** @brief  Add time signature to sequence
+*   @param  bank Index of bank
+*   @param  sequence Sequence index
 *   @param  beats Beats per bar (numerator)
 *   @param  type Beat type (denominator)
-*   @param  bar Bar of song at which to add tempo change
+*   @param  bar Bar at which to add tempo change
 *   @param  tick Tick within bar at which to add tempo change
 */
-void addTimeSigEvent(uint32_t song, uint8_t beats, uint8_t type, uint16_t bar);
+void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type, uint16_t bar);
 
-/** @brief  Get time signature at position within song
-*   @param  song Song index
-*   @param  bar Bar of song at which to time signature
+/** @brief  Get time signature at position
+*   @param  bank Index of bank
+*   @param  sequence Sequence index
+*   @param  bar Bar at which to time signature
 *   @retval uint16_t Time signature - MSB numerator, LSB denominator
 */
-uint16_t getTimeSigAt(uint32_t song, uint16_t bar);
+uint16_t getTimeSigAt(uint8_t bank, uint8_t sequence, uint16_t bar);
 
-/** @brief  Get position of playhead within song
-*   @retval uint32_t Position in clock cycles
-*   @note   This is global for all songs
-*/
-uint32_t getSongPosition();
+// ** Bank management functions **
 
-/** @brief  Set position of playhead within song
-*   @param  position Position of playhead in clock cycles
+/** @brief  Set quantity of sequences in a bank
+*   @param  bank Bank index
+*   @param  sequences Quantity of sequences
+*   @note   Sequences are created or destroyed as required
 */
-void setSongPosition(uint32_t position);
+void setSequencesInBank(uint8_t bank, uint8_t sequences);
+
+/** @brief  Get quantity of sequences in bank
+*   @param  bank Bank index
+*   @retval uint32_t Quantity of sequences
+*/
+uint32_t getSequencesInBank(uint32_t bank);
 
 /** @brief  Sets the transport to start of the current bar
 */
 void setTransportToStartOfBar();
 
-/** @brief  Start song playing - resume from current position
-*   @param  bFast True to start playing immediately. False to wait for next sync pulse.
-*/
-void startSong(bool bFast = false);
-
-/** @brief  Pause song - do not recue
-*/
-void pauseSong();
-
-/** @brief  Stop song playing
-*   @note   Sets play position to start of song
-*/
-void stopSong();
-
-/** @brief  Toggle song state between play and pause
-*/
-void toggleSong();
-
-/** @brief  Check if song is playing
-*   @retval True if playing
-*/
-bool isSongPlaying();
-
-/** @brief  Get current song
-*   @retval uint32_t Index of selected song
-*/
-uint32_t getSong();
-
-/** @brief  Select song
-*   @param  song Index of song to select
-*   @Note   Song 0 is reserved for pattern editor. Songs 1-128 may be selected with MIDI song select (0-127).
-*   @todo   Limit quantity of songs to 128 (MIDI limit) and use appropriate sized data (uint8_t)
-*/
-void selectSong(uint32_t song);
-
-/** @brief  Selects a track to solo, muting other tracks in song
-*   @brief  song Index of song
-*   @param  track Index of track to solo
+/** @brief  Selects a track to solo, muting other tracks in bank
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track (sequence) within sequence
 *   @param  solo True to solo, false to clear solo
 */
-void solo(uint32_t song, uint32_t track, int solo);
+void solo(uint8_t bank, uint8_t sequence, uint32_t track, bool solo);
+
+/** @brief  Check if track is soloed
+*   @param  bank Index of bank
+*   @param  seqeunce Index of sequence
+*   @param  track Index of track
+*   @retval bool True if solo
+*/
+bool isSolo(uint8_t bank, uint8_t sequence, uint32_t track);
 
 // ** Transport control **
 /** @brief  Locate transport to frame
@@ -623,7 +623,7 @@ void solo(uint32_t song, uint32_t track, int solo);
 */
 void transportLocate(uint32_t frame);
 
-/** @brief  Get frame offset at BBT position
+/** @brief  Get frame sequence at BBT position
 *   @param  bar Bar [>0]
 *   @param  beat Beat within bar [>0, <=beats per bar]
 *   @param  tick Tick within beat [<ticks per beat]
@@ -671,7 +671,17 @@ void setTempo(uint32_t tempo);
 *   @retval uint32_t Tempo in beats per minute
 */
 uint32_t getTempo();
-     
+
+/** @breif  Set beats per bar
+*   @uint32_t beats Beats per bar
+*/
+void setBeatsPerBar(uint32_t beats);
+
+/** @brief  Get Beats per bar
+*   @retval uint8_t Beats per bar
+*/
+uint32_t getBeatsPerBar();
+
 /** @brief  Set sync timeout
 *   @param  timeout Quantity of microseconds to wait for slow sync clients at start of play
 */

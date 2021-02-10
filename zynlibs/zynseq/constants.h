@@ -3,16 +3,15 @@
 #include <cstdint>
 
 #define DEFAULT_TEMPO	120 // March time (120 BPM)
-#define DEFAULT_TIMESIG	0x0404 // Common time (4/4)
 
 // Play mode
-#define DISABLED		0
-#define ONESHOT			1
-#define LOOP			2
-#define ONESHOTALL		3
-#define LOOPALL			4
-#define ONESHOTSYNC		5
-#define LOOPSYNC		6
+#define DISABLED		0 // Does not start, stops immediately
+#define ONESHOT			1 // Play once, stops immediately - Should it reset to zero when stopped?
+#define LOOP			2 // Loop whole sequence restarting immediately at end of sequence, stop at end of sequence
+#define ONESHOTALL		3 // Play once all way to end, stop at end of sequence
+#define LOOPALL			4 // Play whole sequence then start again at next sync point, stop at end of sequence
+#define ONESHOTSYNC		5 // Play once until sync point truncating if necessary, stop at sync point
+#define LOOPSYNC		6 // Play sequence looping at sync point, truncating if necessary, stop at sync point
 #define LASTPLAYMODE	6
 
 // Play status

@@ -73,7 +73,7 @@ STEPS_PER_BEAT = [1,2,3,4,6,8,12,24]
 
 # Class implements step sequencer pattern editor
 class zynthian_gui_patterneditor():
-	#TODO: Inherit child views from superclass
+	#TODO: Inherit child banks from superclass
 
 	# Function to initialise class
 	def __init__(self, parent):
@@ -86,7 +86,8 @@ class zynthian_gui_patterneditor():
 		self.duration = 1 # Current note entry duration
 		self.velocity = 100 # Current note entry velocity
 		self.copy_source = 1 # Index of pattern to copy
-		self.sequence = libseq.getSequence(0, 0) # Sequence used for pattern editor sequence player (track 0 in song 0)
+		self.bank = 0 # Bank used for pattern editor sequence player
+		self.sequence = 0 # Sequence used for pattern editor sequence player
 		self.step_width = 40 # Grid column width in pixels
 		self.keymap_offset = 60 # MIDI note number of bottom row in grid
 		self.selected_cell = [0, 0] # Location of selected cell (column,row)
@@ -97,11 +98,12 @@ class zynthian_gui_patterneditor():
 		self.keymap = [] # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
 		self.notes = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
 		#TODO: Get values from persistent storage
-		self.shown = False # True when GUI in view
+		self.shown = False # True when GUI in bank
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.cells = [] # Array of cells indices
 		self.redraw_pending = 0 # What to redraw: 0=nothing, 1=existing elements, 2=recreate grid
 		self.title = "Pattern 0"
+		self.channel = 0
 
 
 		# Geometry vars
@@ -163,8 +165,6 @@ class zynthian_gui_patterneditor():
 			tags="playCursor")
 		self.play_canvas.grid(column=1, row=2)
 
-		libseq.setPlayMode(self.sequence, zynthian_gui_stepsequencer.SEQ_LOOP)
-
 		self.playhead = 0
 #		self.startPlayheadHandler()
 
@@ -172,14 +172,9 @@ class zynthian_gui_patterneditor():
 		self.select_cell(0, self.keymap_offset)
 
 
-	# Function to get name of this view
+	# Function to get name of this bank
 	def get_name(self):
 		return "pattern editor"
-	
-
-	# Function called when new file loaded
-	def on_load(self):
-		pass
 
 
 	#Function to set values of encoders
@@ -196,16 +191,19 @@ class zynthian_gui_patterneditor():
 	#   params: Pattern parameters to edit {'pattern':x, 'channel':x, 'pad':x (optional)}
 	def show(self, params=None):
 		try:
+			self.channel = params['channel']
+			libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 			self.load_pattern(params['pattern'])
-			libseq.setChannel(self.sequence, params['channel'])
 			self.title = "Pattern %d" % (params['pattern'])
 			self.title = "Pattern %d (Pad %d)" % (params['pattern'], params['pad'] + 1)
 		except:
 			pass # Probably already populated and just returning from menu action or similar
+		libseq.setGroup(self.bank, self.sequence, 0xFF)
 		self.copy_source = self.pattern
 		self.setup_encoders()
 		self.main_frame.tkraise()
 		self.parent.set_title(self.title)
+		libseq.setPlayMode(self.bank, self.sequence, zynthian_gui_stepsequencer.SEQ_LOOP)
 		self.shown=True
 
 
@@ -217,14 +215,13 @@ class zynthian_gui_patterneditor():
 		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER)
 		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SELECT, "SB")
 		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT, "SB")
-		libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
+		libseq.setPlayState(self.bank, self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 
 
 	# Function to add menus
 	def populate_menu(self):
 		self.parent.add_menu({'Beats in pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':libseq.getBeatsInPattern, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Steps per beat':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'get_value':self.get_steps_per_beat_index, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Beat type':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':libseq.getBeatType, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'-------------------':{}})
 		self.parent.add_menu({'Copy pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64872, 'get_value':self.get_pattern, 'on_change':self.on_menu_change,'on_assert':self.copy_pattern}}})
 		self.parent.add_menu({'Clear pattern':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_pattern}}})
@@ -291,7 +288,7 @@ class zynthian_gui_patterneditor():
 			# Map
 			path = None
 			for layer in self.zyngui.screens['layer'].layers:
-				if layer.midi_chan == libseq.getChannel(self.sequence):
+				if layer.midi_chan == self.channel:
 					path = layer.get_presetpath()
 					break
 			if path:
@@ -349,7 +346,7 @@ class zynthian_gui_patterneditor():
 		if index >= len(self.keymap):
 			return
 		note = self.keymap[index]['note']
-		libseq.playNote(note, 100, libseq.getChannel(self.sequence), 200)
+		libseq.playNote(note, 100, self.channel, 200)
 
 
 	# Function to handle pianoroll drag motion
@@ -402,7 +399,7 @@ class zynthian_gui_patterneditor():
 		self.drag_start_duration = libseq.getNoteDuration(step, note)
 		self.drag_start_step = int(event.x / self.step_width)
 		if not self.drag_start_velocity:
-			libseq.playNote(note, 100, libseq.getChannel(self.sequence), 200)
+			libseq.playNote(note, 100, self.channel, 200)
 		self.select_cell(int(col), self.keymap_offset + int(row))
 
 
@@ -465,10 +462,10 @@ class zynthian_gui_patterneditor():
 				self.select_cell(self.selected_cell[0] + 1, None)
 			elif event.y < y2:
 				self.select_cell(None, self.selected_cell[1] + 1)
-				libseq.playNote(self.keymap[self.selected_cell[1]]["note"], 100, libseq.getChannel(self.sequence), 200)
+				libseq.playNote(self.keymap[self.selected_cell[1]]["note"], 100, self.channel, 200)
 			elif event.y > y1:
 				self.select_cell(None, self.selected_cell[1] - 1)
-				libseq.playNote(self.keymap[self.selected_cell[1]]["note"], 100, libseq.getChannel(self.sequence), 200)
+				libseq.playNote(self.keymap[self.selected_cell[1]]["note"], 100, self.channel, 200)
 
 
 	# Function to toggle note event
@@ -483,7 +480,7 @@ class zynthian_gui_patterneditor():
 		else:
 			self.add_event(step, index)
 			if playnote:
-				libseq.playNote(note, 100, libseq.getChannel(self.sequence), 200)
+				libseq.playNote(note, 100, self.channel, 200) #TODO: Maybe store MIDI channel when shown
 
 
 	# Function to remove an event
@@ -494,7 +491,7 @@ class zynthian_gui_patterneditor():
 			return
 		note = self.keymap[index]['note']
 		libseq.removeNote(step, note)
-		libseq.playNote(note, 0) # Silence note if sounding
+		libseq.playNote(note, 0, self.channel) # Silence note if sounding
 		self.draw_row(index)
 		self.select_cell(step, index)
 
@@ -718,8 +715,8 @@ class zynthian_gui_patterneditor():
 		libseq.clear()
 		self.redraw_pending = 2
 		self.select_cell()
-		if libseq.getPlayState(self.sequence) != zynthian_gui_stepsequencer.SEQ_STOPPED:
-			libseq.sendMidiCommand(0xB0 | libseq.getChannel(self.sequence), 123, 0) # All notes off
+		if libseq.getPlayState(self.bank, self.sequence, 0) != zynthian_gui_stepsequencer.SEQ_STOPPED:
+			libseq.sendMidiCommand(0xB0 | self.channel, 123, 0) # All notes off
 
 
 	# Function to copy pattern
@@ -800,14 +797,6 @@ class zynthian_gui_patterneditor():
 			libseq.setStepsPerBeat(steps_per_beat)
 			self.redraw_pending = 2
 			value = steps_per_beat
-		elif menu_item == 'Beat type':
-			prevVal = libseq.getBeatType()
-			if prevVal > value:
-				value = prevVal >> 1
-			libseq.setBeatType(value)
-			self.redraw_pending = 2
-			value = libseq.getBeatType()
-			self.parent.set_param('Beat type', 'value', value)
 		elif menu_item == 'Scale':
 			libseq.setScale(value)
 			name = self.load_keymap()
@@ -846,10 +835,10 @@ class zynthian_gui_patterneditor():
 	# Function to load new pattern
 	#   index: Pattern index
 	def load_pattern(self, index):
-		libseq.clearSequence(self.sequence)
+		libseq.clearSequence(self.bank, self.sequence)
 		self.pattern = index
 		libseq.selectPattern(index)
-		libseq.addPattern(self.sequence, 0, index)
+		libseq.addPattern(self.bank, self.sequence, 0, 0, index)
 		if self.selected_cell[0] >= libseq.getSteps():
 			self.selected_cell[0] = libseq.getSteps() - 1
 		self.load_keymap()
@@ -860,12 +849,12 @@ class zynthian_gui_patterneditor():
 
 	# Function to select .mid file to import
 	def select_import(self, params):
-		zynthian_gui_fileselector(self.parent, self.import_mid, zynthian_gui_stepsequencer.os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture", "mid", None, True)
+		zynthian_gui_fileselector(self.parent, self.import_smf, zynthian_gui_stepsequencer.os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture", "mid", None, True)
 
 
-	# Function to import patterns from .mid file
+	# Function to import patterns from standard MIDI file
 	#	filename: Full path and filename of midi file from which to import
-	def import_mid(self, filename):
+	def import_smf(self, filename):
 		# Open file
 		smf = libsmf.addSmf()
 		if not zynsmf.load(smf, filename):
@@ -924,7 +913,7 @@ class zynthian_gui_patterneditor():
 
 	# Function to refresh display
 	def refresh_status(self):
-		step = libseq.getStep(self.sequence)
+		step = libseq.getPatternPlayhead(self.bank, self.sequence, 0)
 		if self.playhead != step:
 			self.playhead = step
 			self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width, 0, 1 + self.playhead * self.step_width + self.step_width, PLAYHEAD_HEIGHT)
@@ -996,10 +985,10 @@ class zynthian_gui_patterneditor():
 			if type == "B":
 				libseq.setTransportToStartOfBar()
 				return True
-			if libseq.getPlayState(self.sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
-				libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_STARTING)
+			if libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
+				libseq.setPlayState(self.bank, self.sequence, zynthian_gui_stepsequencer.SEQ_STARTING)
 			else:
-				libseq.setPlayState(self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
+				libseq.setPlayState(self.bank, self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 			return True
 		elif switch == ENC_BACK:
 			self.enable_edit(False)

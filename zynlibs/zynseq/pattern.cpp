@@ -2,10 +2,9 @@
 
 /**	Pattern class methods implementation **/
 
-Pattern::Pattern(uint32_t beats, uint8_t stepsPerBeat, uint8_t beatType) :
+Pattern::Pattern(uint32_t beats, uint8_t stepsPerBeat) :
 	m_nBeats(beats),
-	m_nStepsPerBeat(stepsPerBeat),
-	m_nBeatType(beatType)
+	m_nStepsPerBeat(stepsPerBeat)
 {
 }
 
@@ -136,21 +135,6 @@ uint32_t Pattern::getSteps()
 	return (m_nBeats * m_nStepsPerBeat);
 }
 
-void Pattern::setBeatType(uint8_t beatType)
-{
-	for(uint8_t nValue = 1; nValue <= 64; nValue = nValue << 1)
-    {
-        if(beatType > nValue)
-            continue;
-		m_nBeatType = nValue;
-        return;
-    }
-}
-
-uint8_t Pattern::getBeatType()
-{
-	return m_nBeatType;
-}
 
 uint32_t Pattern::getLength()
 {
@@ -159,7 +143,7 @@ uint32_t Pattern::getLength()
 
 uint32_t Pattern::getClocksPerStep()
 {
-	return 96 / (m_nStepsPerBeat * m_nBeatType);
+	return 24 / m_nStepsPerBeat;
 }
 
 bool Pattern::setStepsPerBeat(uint32_t value)
