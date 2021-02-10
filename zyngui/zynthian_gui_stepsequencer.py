@@ -690,8 +690,17 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if bank > 0:
 			if libseq.getSequencesInBank(bank) == 0:
 				libseq.setSequencesInBank(bank, 16)
+				for pad in (1,5,9,13):
+					libseq.setChannel(bank, pad, 0, 1)
+					libseq.setGroup(bank, pad, 1)
+				for pad in (2,6,10,14):
+					libseq.setChannel(bank, pad, 0, 2)
+					libseq.setGroup(bank, pad, 2)
+				for pad in (3,7,11,15):
+					libseq.setChannel(bank, pad, 0, 9)
+					libseq.setGroup(bank, pad, 9)
 			self.bank = bank
-			self.set_title("Bank %d" % self.bank)
+			self.set_title("Bank %d" % bank)
 			try:
 				self.child.select_bank(bank)
 			except:
