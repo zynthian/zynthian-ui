@@ -202,7 +202,16 @@ class zynthian_gui_zynpad():
 	def select_bank(self, bank):
 		self.parent.bank = bank
 		if libseq.getSequencesInBank(bank) == 0:
-			libseq.setSequencesInBank(bank, 4)
+			libseq.setSequencesInBank(bank, 16)
+			for pad in (1,5,9,13):
+				libseq.setChannel(self.parent.bank, pad, 0, 1)
+				libseq.setGroup(self.parent.bank, pad, 1)
+			for pad in (2,6,10,14):
+				libseq.setChannel(self.parent.bank, pad, 0, 2)
+				libseq.setGroup(self.parent.bank, pad, 2)
+			for pad in (3,7,11,15):
+				libseq.setChannel(self.parent.bank, pad, 0, 9)
+				libseq.setGroup(self.parent.bank, pad, 9)
 		self.update_grid()
 
 

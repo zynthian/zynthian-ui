@@ -688,7 +688,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def select_bank(self, bank):
 		if bank > 0:
 			if libseq.getSequencesInBank(bank) == 0:
-				libseq.setSequencesInBank(bank, 4)
+				libseq.setSequencesInBank(bank, 16)
 			self.bank = bank
 			self.set_title("Bank %d" % self.bank)
 			try:

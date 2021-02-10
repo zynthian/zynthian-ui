@@ -57,8 +57,8 @@ bool g_bInputEnabled = false; // True to add notes to current pattern from MIDI 
 
 uint8_t g_nInputChannel = 1; // MIDI input channel (>15 to disable MIDI input)
 uint8_t g_nInputRest = 0xFF; // MIDI note number that creates rest in pattern
-uint16_t g_nVerticalZoom = 4;
-uint16_t g_nHorizontalZoom = 8;
+uint16_t g_nVerticalZoom = 8;
+uint16_t g_nHorizontalZoom = 16;
 
 bool g_bMutex = false; // Mutex lock for access to g_mSchedule
 
