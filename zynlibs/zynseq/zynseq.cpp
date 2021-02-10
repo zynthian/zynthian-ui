@@ -59,6 +59,7 @@ uint8_t g_nInputChannel = 1; // MIDI input channel (>15 to disable MIDI input)
 uint8_t g_nInputRest = 0xFF; // MIDI note number that creates rest in pattern
 uint16_t g_nVerticalZoom = 8;
 uint16_t g_nHorizontalZoom = 16;
+uint16_t g_nTriggerLearning = 0; // 2 word bank|sequence that is waiting for MIDI to learn trigger (0 if not learning)
 
 bool g_bMutex = false; // Mutex lock for access to g_mSchedule
 
@@ -350,9 +351,17 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         // Handle MIDI Note On events to trigger seqeuences
         if((midiEvent.buffer[0] == (MIDI_NOTE_ON | g_seqMan.getTriggerChannel())) && midiEvent.buffer[2])
         {
-            uint16_t nSeq = g_seqMan.getTriggerSequence(midiEvent.buffer[1]);
-            if(nSeq != -1)
-                togglePlayState(nSeq >> 8, nSeq & 0xFF);
+            if(g_nTriggerLearning)
+            {
+                setTriggerNote((g_nTriggerLearning >> 8) & 0xFF, g_nTriggerLearning & 0xFF, midiEvent.buffer[1]);
+                g_nTriggerLearning = 0;
+            }
+            else
+            {
+                uint16_t nSeq = g_seqMan.getTriggerSequence(midiEvent.buffer[1]);
+                if(nSeq != -1)
+                    togglePlayState(nSeq >> 8, nSeq & 0xFF);
+            }
         }
         // Handle MIDI Note On events for programming patterns from MIDI input
         if(g_bInputEnabled && g_nInputChannel < 16 && (midiEvent.buffer[0] == (MIDI_NOTE_ON | g_nInputChannel)) && midiEvent.buffer[2])
@@ -1469,6 +1478,21 @@ uint8_t getBeatsPerBar(uint8_t bank, uint8_t sequence, uint16_t bar)
 uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence)
 {
     return g_seqMan.getSequence(bank, sequence)->getTracks();
+}
+
+void enableMidiLearn(uint8_t bank, uint8_t sequence)
+{
+    g_nTriggerLearning = (bank << 8) | sequence;
+}
+
+uint8_t getMidiLearnBank()
+{
+    return g_nTriggerLearning >> 8;
+}
+
+uint8_t getMidiLearnSequence()
+{
+    return g_nTriggerLearning & 0xFF;
 }
 
 

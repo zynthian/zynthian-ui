@@ -282,7 +282,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.populate_menu()
 
 
-
 	# Function to print traceback - for debug only
 	#	TODO: Remove debug function (or move to other zynthian class)
 	def debug_traceback(self):
@@ -438,6 +437,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to close status menu
 	def hide_status_menu(self):
 		self.status_menu_frame.grid_forget()
+		libseq.enableMidiLearn(0, 0)
 
 
 	# Function to handle status bar click

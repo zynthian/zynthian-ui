@@ -130,6 +130,7 @@ class zynthian_gui_zynpad():
 		self.parent.unregister_zyncoder(ENC_BACK)
 		self.parent.unregister_zyncoder(ENC_SELECT)
 		self.parent.unregister_switch(ENC_SELECT)
+		libseq.enableMidiLearn(0, 0)
 
 
 	# Function to get MIDI channel of selected pad
@@ -180,6 +181,7 @@ class zynthian_gui_zynpad():
 			if value > 128 or value < 0:
 				value = 128
 			libseq.setTriggerNote(self.parent.bank, self.selected_pad, value)
+			libseq.enableMidiLearn(self.parent.bank, self.selected_pad)
 			if value > 127:
 				return "Trigger note: None"
 			return "Trigger note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value)

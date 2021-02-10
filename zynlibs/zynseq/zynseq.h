@@ -111,6 +111,7 @@ uint16_t getHorizontalZoom();
 */
 void setHorizontalZoom(uint16_t zoom);
 
+
 // ** Direct MIDI interface **
 //!@todo Should direct MIDI output be removed because JACK clients can do that themselves?
 
@@ -356,6 +357,7 @@ uint8_t getTonic();
 */
 bool isPatternModified();
 
+
 // ** Track management functions **
 
 /** @brief  Get position of playhead within pattern in steps
@@ -581,6 +583,24 @@ void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type
 *   @retval uint16_t Time signature - MSB numerator, LSB denominator
 */
 uint16_t getTimeSigAt(uint8_t bank, uint8_t sequence, uint16_t bar);
+
+/** @brief  Enable MIDI learn for a sequence trigger
+*   @param  bank Index of bank or 0 to disable learning
+*   @param  sequence Sequence index or 0 to disable learning
+*   @note   Whilst in learn mode the next MIDI note-on event received on trigger channel will set the pad's trigger note
+*/
+void enableMidiLearn(uint8_t bank, uint8_t sequence);
+
+/** @brief  Get bank currently in MIDI learn mode
+*   @retval uint8_t Bank index or 0 if disabled
+*/
+uint8_t getMidiLearnBank();
+
+/** @brief  Get sequence currently in MIDI learn mode
+*   @retval uint8_t Sequence index
+*/
+uint8_t getMidiLearnSequence();
+
 
 // ** Bank management functions **
 
