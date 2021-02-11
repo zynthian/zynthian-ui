@@ -64,7 +64,7 @@ class Smf
         Event* getEvent(bool bAdvance = false);
 
         /** @brief  Append new event to end of track
-        *   @param  nTrack Index of track to add event to
+        *   @param  nTrack Index of track to add event to (new tracks created if required)
         *   @param  pEvent Pointer to an event object
         *   @note   Events are appended to end of track so must have appropriate time parameter   
         */

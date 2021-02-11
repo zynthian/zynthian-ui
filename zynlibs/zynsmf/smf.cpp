@@ -6,6 +6,7 @@
 #include <stdio.h> //provides printf
 #include <cstring> //provides strcmp, memset
 
+#define MAX_TRACKS 16 // Maximum quantity of tracks automatically created
 #define DPRINTF(fmt, args...) if(m_bDebug) printf(fmt, ## args)
 
 Smf::~Smf()
@@ -440,7 +441,12 @@ Event* Smf::getEvent(bool bAdvance)
 void Smf::addEvent(size_t nTrack, Event* pEvent)
 {
 	if(nTrack >= m_vTracks.size())
+	{
+		if(nTrack > MAX_TRACKS)
 		return;
+		while(m_vTracks.size() <= nTrack)
+			addTrack();
+	}
 	m_vTracks[nTrack]->addEvent(pEvent);
 	if(pEvent->getTime() > m_nDurationInTicks)
 		m_nDurationInTicks = pEvent->getTime();

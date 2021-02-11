@@ -30,7 +30,7 @@ uint8_t g_nPlayState = STOPPED;
 bool g_bRecording = false;
 bool g_bLoop = false; // True to loop at end of song
 jack_nframes_t g_nSamplerate = 44100;
-uint32_t g_nMicrosecondsPerQuarterNote = 5000000; // Current tempo
+uint32_t g_nMicrosecondsPerQuarterNote = 500000; // Current tempo
 double g_dPlayerTicksPerFrame; // Current tempo
 double g_dRecorderTicksPerFrame; // Current tempo
 double g_dPosition = 0.0; // Position within song in ticks
@@ -280,9 +280,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 		if(nCount)
 		{
 			Event* pEvent;
-			if(g_nRecordStartPosition == 0)
-				g_nRecordStartPosition = nNow;
-			uint32_t nPosition = nNow - g_nRecordStartPosition;
+			uint8_t* pData;
+			size_t nSize;
 			for(jack_nframes_t i = 0; i < nCount; i++)
 			{
 				jack_midi_event_get(&midiEvent, pMidiBuffer, i);
@@ -294,20 +293,28 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 					case MIDI_CONTROLLER:
 					case MIDI_PITCH_BEND:
 						// 3 byte messages
-						pData = new uint8_t[2];
+						nSize = 2;
+						pData = new uint8_t[nSize];
 						pData[0] = midiEvent.buffer[1];
 						pData[1] = midiEvent.buffer[2];
-						pEvent = new Event(g_dRecorderTicksPerFrame * nPosition, EVENT_TYPE_MIDI, midiEvent.buffer[0], 2, pData);
-						g_pRecorderSmf->addEvent(0, pEvent); //!@todo Use appropriate track
 						break;
 					case MIDI_PROGRAM_CHANGE:
 					case CHANNEL_PRESSURE:
 						// 2 byte messages
-						pData = new uint8_t[1];
+						nSize = 1;
+						pData = new uint8_t[nSize];
 						pData[0] = midiEvent.buffer[1];
-						pEvent = new Event(g_dRecorderTicksPerFrame * nPosition, EVENT_TYPE_MIDI, midiEvent.buffer[0], 1, pData);
-						g_pRecorderSmf->addEvent(0, pEvent); //!@todo Use appropriate track
 						break;
+					default:
+						pData = NULL;
+				}
+				if(pData)
+				{
+					if(g_nRecordStartPosition == 0)
+						g_nRecordStartPosition = nNow + midiEvent.time; // First MIDI event triggers start of recording
+					uint32_t nPosition = nNow + midiEvent.time - g_nRecordStartPosition; // Time of event in samples since start of recording
+					pEvent = new Event(g_dRecorderTicksPerFrame * nPosition, EVENT_TYPE_MIDI, midiEvent.buffer[0], nSize, pData);
+					g_pRecorderSmf->addEvent(midiEvent.buffer[0] & 0x0F, pEvent); // Add event to a track based on its MIDI channel
 				}
 			}
 		}
@@ -541,7 +548,7 @@ void startRecording()
 		return;
 	if(g_pRecorderSmf->getTracks() == 0)
 		g_pRecorderSmf->addTrack();
-	g_nRecordStartPosition = 0;
+	g_nRecordStartPosition = 0; // Set start time to 0 so that first MIDI event will update and mark actual start of recording
 	g_bRecording = true;
 }
 
