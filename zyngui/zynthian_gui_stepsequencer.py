@@ -366,8 +366,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.main_frame.grid_forget()
 			if self.child:
 				self.child.hide()
-			if libseq.isModified():# and not libseq.transportGetPlayStatus():
-				self.save()
 
 
 	# Function to refresh the status widgets
