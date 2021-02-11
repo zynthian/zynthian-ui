@@ -86,7 +86,7 @@ class zynthian_gui_zynpad():
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
 		self.grid_canvas.grid(row=0, column=0)
-		self.grid_timer = Timer(2, self.on_grid_timer) # Grid press and hold timer
+		self.grid_timer = Timer(2.0, self.on_grid_timer) # Grid press and hold timer
 
 		# Icons
 		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
@@ -95,7 +95,7 @@ class zynthian_gui_zynpad():
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
 
 
-	# Function to get name of this bank
+	# Function to get name of this view
 	def get_name(self):
 		return "zynpad"
 
@@ -314,7 +314,7 @@ class zynthian_gui_zynpad():
 			self.parent.show_param_editor(self.parent.param_editor_item)
 			return
 		self.toggle_pad()
-		self.grid_timer = Timer(2, self.on_grid_timer)
+		self.grid_timer = Timer(2.0, self.on_grid_timer)
 		self.grid_timer.start()
 		
 

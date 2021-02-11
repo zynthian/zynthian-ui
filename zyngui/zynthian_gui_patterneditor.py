@@ -73,7 +73,7 @@ STEPS_PER_BEAT = [1,2,3,4,6,8,12,24]
 
 # Class implements step sequencer pattern editor
 class zynthian_gui_patterneditor():
-	#TODO: Inherit child banks from superclass
+	#TODO: Inherit child views from superclass
 
 	# Function to initialise class
 	def __init__(self, parent):
@@ -98,7 +98,7 @@ class zynthian_gui_patterneditor():
 		self.keymap = [] # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
 		self.notes = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
 		#TODO: Get values from persistent storage
-		self.shown = False # True when GUI in bank
+		self.shown = False # True when GUI in view
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.cells = [] # Array of cells indices
 		self.redraw_pending = 0 # What to redraw: 0=nothing, 1=existing elements, 2=recreate grid
@@ -172,7 +172,7 @@ class zynthian_gui_patterneditor():
 		self.select_cell(0, self.keymap_offset)
 
 
-	# Function to get name of this bank
+	# Function to get name of this view
 	def get_name(self):
 		return "pattern editor"
 

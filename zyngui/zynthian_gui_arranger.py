@@ -150,7 +150,7 @@ class zynthian_gui_arranger():
 		self.timebase_track_canvas.grid(column=2, row=1)
 
 
-	# Function to get name of this bank
+	# Function to get name of this view
 	def get_name(self):
 		return "arranger"
 
@@ -654,7 +654,7 @@ class zynthian_gui_arranger():
 			else:
 				self.timebase_track_canvas.create_text(bar * self.column_width, 0, fill='white', text="%d"%(bar+self.col_offset), anchor='nw', tags='barlines')
 
-		# Hide selection if not in bank - #TODO: WHEN WOULD THAT BE???
+		# Hide selection if not in view - #TODO: WHEN WOULD THAT BE???
 		if self.selected_cell[0] < self.col_offset or self.selected_cell[0] > self.col_offset + self.horizontal_zoom or self.selected_cell[1] < self.row_offset or self.selected_cell[1] > self.row_offset + self.vertical_zoom:
 			self.grid_canvas.itemconfig('selection', state='hidden')
 
@@ -887,18 +887,6 @@ class zynthian_gui_arranger():
 		self.vertical_zoom = libseq.getVerticalZoom()
 		self.horizontal_zoom = libseq.getHorizontalZoom()
 		self.assert_and_redraw()
-
-
-	# Function to scroll grid to show position in bank
-	#	pos: Song position in divisions
-	def show_pos(self, pos):
-		if pos >= self.col_offset and pos < self.col_offset + self.horizontal_zoom:
-			return
-		self.col_offset = int(pos)
-		self.position = int(pos)
-		if self.col_offset < 0:
-			self.col_offset = 0
-		self.redraw_pending = 1
 
 
 	# Function to refresh playhead

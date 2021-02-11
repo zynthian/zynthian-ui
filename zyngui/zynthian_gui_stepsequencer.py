@@ -121,13 +121,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to initialise class
 	def __init__(self):
 		super().__init__()
-		self.shown = False # True when GUI in bank
+		self.shown = False # True when GUI in view
 		self.zyncoder_owner = [None, None, None, None] # Object that currently "owns" encoder, indexed by encoder
 		self.switch_owner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.child = None # Pointer to instance of child panel
 		self.last_child = None # Pointer to instance of last child shown - used to return to same screen
-		self.bank = 1
+		self.bank = 1 # Currently displayed bank of sequences
 		#libseq.enableDebug(True)
 
 		# Load default sequence file
@@ -671,7 +671,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.child == self.pattern_editor:
 			libseq.setPlayState(0, 0, SEQ_STOPPED)
 			libseq.setTransportToStartOfBar()
-		#TODO: Handle other banks
+		#TODO: Handle other views
 
 
 	# Function to recue transport
