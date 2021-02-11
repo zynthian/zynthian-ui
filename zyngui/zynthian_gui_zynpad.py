@@ -215,6 +215,7 @@ class zynthian_gui_zynpad():
 
 	# Function to clear and calculate grid sizes
 	def update_grid(self):
+		self.refresh_pending = 0
 		self.grid_canvas.delete(tkinter.ALL)
 		pads = libseq.getSequencesInBank(self.parent.bank)
 		if pads < 1:
@@ -316,7 +317,7 @@ class zynthian_gui_zynpad():
 		self.toggle_pad()
 		self.grid_timer = Timer(2.0, self.on_grid_timer)
 		self.grid_timer.start()
-		
+
 
 	# Function to handle pad release
 	def on_pad_release(self, event):
