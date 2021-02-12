@@ -519,9 +519,9 @@ class zynthian_gui_arranger():
 		self.sequence_title_canvas.create_text((self.seq_track_title_width - 2, self.row_height * row + 1),
 				font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="ne",
 				text="%d" % (track + 1))
-		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.fontsize * 0.9))
 		self.sequence_title_canvas.create_text((0, self.row_height * (row + 1) - 1),
-				font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="sw",
+				font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.fontsize * 0.9)),
+				fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="sw",
 				text="%s" % (track_name))
 		self.sequence_title_canvas.tag_bind('sequence_title', "<Button-1>", self.on_sequence_click)
 
