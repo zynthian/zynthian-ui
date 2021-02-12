@@ -96,8 +96,8 @@ class zynthian_gui_arranger():
 		self.grid_height = self.height - self.timebase_track_height
 		self.grid_width = int(self.width * 0.9)
 		self.seq_track_title_width = self.width - self.grid_width
-		self.track_title_width = int(0.4 * self.seq_track_title_width)
-		self.sequence_title_width = self.seq_track_title_width - self.track_title_width
+		self.sequence_title_width = int(0.4 * self.seq_track_title_width)
+		self.track_title_width = self.seq_track_title_width - self.sequence_title_width
 		self.update_cell_size()
 
 		# Create main frame
@@ -240,7 +240,6 @@ class zynthian_gui_arranger():
 		self.main_frame.tkraise()
 		self.select_bank()
 		self.setup_encoders()
-		self.parent.set_title("Bank %d" % (self.parent.bank))
 
 
 	# Function to hide GUI
@@ -492,7 +491,6 @@ class zynthian_gui_arranger():
 		if row >= self.vertical_zoom:
 			return
 		self.sequence_title_canvas.delete('rowtitle:%d'%(row))
-		self.sequence_title_canvas.delete('rowicon:%d'%(row))
 		self.sequence_title_canvas.delete('rowback:%d'%(row))
 
 		if row + self.row_offset > len(self.sequence_tracks):
@@ -501,26 +499,20 @@ class zynthian_gui_arranger():
 		track = self.sequence_tracks[row + self.row_offset][1]
 		channel = libseq.getChannel(self.parent.bank, sequence, track) + 1
 		group = libseq.getGroup(self.parent.bank, sequence)
-		mode = libseq.getPlayMode(self.parent.bank, sequence)
-
-		sequence_title_background = self.sequence_title_canvas.create_rectangle(0, self.row_height * row, self.sequence_title_width, (1 + row) * self.row_height, tags=('rowback:%d'%(row), 'sequence_title'))
-		track_title_background = self.sequence_title_canvas.create_rectangle(self.sequence_title_width, self.row_height * row, self.sequence_title_width + self.sequence_title_width, (1 + row) * self.row_height, tags=('rowback:%d'%(row), 'sequence_title'))
-		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
-		sequence_title = self.sequence_title_canvas.create_text((0, self.row_height * (row + 0.5)), font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row),"sequence_name", 'sequence_title'), anchor="w")
-		track_title = self.sequence_title_canvas.create_text((self.seq_track_title_width - 2, self.row_height * (row + 0.5)), font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row),"track_name", 'sequence_title'), anchor="e")
-		mode_icon = self.sequence_title_canvas.create_image(self.sequence_title_width, row * self.row_height, anchor='ne', tags=('rowicon:%d'%(row), 'sequence_title'))
-
-		trigger = libseq.getTriggerNote(self.parent.bank, sequence)
-		if trigger < 128:
-			self.sequence_title_canvas.itemconfig(sequence_title, text="%s%d\n(%s)" % (chr(65+group), sequence + 1, self.get_note(trigger)))
-		else:
-			self.sequence_title_canvas.itemconfig(sequence_title, text="%s%d\n" % (chr(65+group), sequence + 1))
-		self.sequence_title_canvas.itemconfig(track_title, text="%d" % (channel))
-			
-		self.sequence_title_canvas.itemconfig(mode_icon, image=self.icon[mode])
 		fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED[group % 16]
-		self.sequence_title_canvas.itemconfig(sequence_title_background, fill=fill)
-		self.sequence_title_canvas.itemconfig(track_title_background, fill=fill)
+		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
+
+		self.sequence_title_canvas.create_rectangle(0, self.row_height * row + 1, 
+				self.seq_track_title_width, (1 + row) * self.row_height - 1, tags=('rowback:%d'%(row), 'sequence_title'),
+				fill=fill)
+		self.sequence_title_canvas.create_text((self.seq_track_title_width - 2, self.row_height * row + 1),
+				font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="ne",
+				text="%d\n" % (track + 1))
+		if track == 0 or row == 0:
+    		# Create sequence title label from first visible track of sequence
+			self.sequence_title_canvas.create_text((0, self.row_height * row + 1),
+					font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="nw",
+					text="%s%d"%(chr(65+group), sequence + 1))
 		self.sequence_title_canvas.tag_bind('sequence_title', "<Button-1>", self.on_sequence_click)
 
 
@@ -629,7 +621,7 @@ class zynthian_gui_arranger():
 			self.grid_canvas.delete(tkinter.ALL)
 			self.sequence_title_canvas.delete(tkinter.ALL)
 			self.column_width = self.grid_width / self.horizontal_zoom
-			self.grid_canvas.create_line(0, 0, 0, self.grid_height, fill=PLAYHEAD_CURSOR, tags='playheadline')
+#			self.grid_canvas.create_line(0, 0, 0, self.grid_height, fill=PLAYHEAD_CURSOR, tags='playheadline')
 			self.cells = [[None] * 2 for _ in range(self.vertical_zoom * self.horizontal_zoom)]
 			self.select_cell()
 		self.redraw_pending = 0
@@ -689,6 +681,7 @@ class zynthian_gui_arranger():
 		duration = int(libseq.getPatternLength(self.pattern) / self.clocks_per_division)
 		sequence = self.sequence_tracks[row][0]
 		track = self.sequence_tracks[row][1]
+		self.parent.set_title("Bank %d %s%d-%d (%d) %s" % (self.parent.bank, chr(65 + libseq.getGroup(self.parent.bank,sequence)), sequence+1, track + 1, libseq.getChannel(self.parent.bank,sequence, track) + 1, self.get_note(libseq.getTriggerNote(self.parent.bank,sequence))))
 		if not duration:
 			duration = 1
 		forward = time > self.selected_cell[0]
@@ -793,8 +786,8 @@ class zynthian_gui_arranger():
 		self.row_height = (self.grid_height - 2) / self.vertical_zoom
 		self.column_width = self.grid_width / self.horizontal_zoom
 		self.fontsize = int(self.row_height * 0.3)
-		if self.fontsize > self.sequence_title_width * 0.3:
-			self.fontsize = int(self.sequence_title_width * 0.3) # Ugly font scale limiting
+		if self.fontsize > self.row_height * 0.3:
+			self.fontsize = int(self.row_height * 0.3) # Ugly font scale limiting
 		self.load_icons()
 
 
@@ -849,6 +842,8 @@ class zynthian_gui_arranger():
 	#	note: MIDI note number
 	#	returns: String containing note name and octave number, e.g. "C#4"
 	def get_note(self, note):
+		if note > 127:
+			return ""
 		notes = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
 		note_name = notes[note % 12]
 		octave = int(note / 12) - 1
