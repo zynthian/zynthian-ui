@@ -38,6 +38,7 @@ from math import sqrt
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_stepsequencer
+from zyngui import zynthian_gui_layer
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
 
@@ -66,6 +67,7 @@ class zynthian_gui_arranger():
 		self.sequence_tracks = [] # Array of [Sequence,Track] that are visible within bank
 		self.sequence = 0 # Index of selected sequence
 		self.track = 0 # Index of selected track
+		self.layers = [None for i in range(16)] # Root layer indexed by MIDI channel
 
 		self.vertical_zoom = libseq.getVerticalZoom() # Quantity of rows (tracks) displayed in grid
 		self.horizontal_zoom = libseq.getHorizontalZoom() # Quantity of columns (time divisions) displayed in grid
@@ -497,17 +499,24 @@ class zynthian_gui_arranger():
 			return
 		sequence = self.sequence_tracks[row + self.row_offset][0]
 		track = self.sequence_tracks[row + self.row_offset][1]
-		channel = libseq.getChannel(self.parent.bank, sequence, track) + 1
 		group = libseq.getGroup(self.parent.bank, sequence)
 		fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED[group % 16]
 		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
+		channel = libseq.getChannel(self.parent.bank, sequence, track)
+		if channel < 16 and self.layers[channel]:
+			track_name = self.layers[channel].preset_name
+		else:
+			track_name = ""
 
 		self.sequence_title_canvas.create_rectangle(0, self.row_height * row + 1, 
 				self.seq_track_title_width, (1 + row) * self.row_height - 1, tags=('rowback:%d'%(row), 'sequence_title'),
 				fill=fill)
 		self.sequence_title_canvas.create_text((self.seq_track_title_width - 2, self.row_height * row + 1),
 				font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="ne",
-				text="%d\n" % (track + 1))
+				text="%d" % (track + 1))
+		self.sequence_title_canvas.create_text((0, self.row_height * (row + 1) - 1),
+				font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="sw",
+				text="%s" % (track_name))
 		if track == 0 or row == 0:
     		# Create sequence title label from first visible track of sequence
 			self.sequence_title_canvas.create_text((0, self.row_height * row + 1),
@@ -625,6 +634,13 @@ class zynthian_gui_arranger():
 			self.cells = [[None] * 2 for _ in range(self.vertical_zoom * self.horizontal_zoom)]
 			self.select_cell()
 		self.redraw_pending = 0
+
+		# Update list of layers
+		for chan in range(16):
+			for layer in self.zyngui.screens['layer'].layers:
+				if layer.midi_chan == chan:
+					self.layers[chan] = layer
+					break
 
 		# Draw rows of grid
 		self.grid_canvas.itemconfig("gridcell", fill=CANVAS_BACKGROUND)
