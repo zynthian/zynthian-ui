@@ -137,7 +137,7 @@ class SequenceManager
 
         /** @brief  Get sequence triggered by MIDI note
         *   @param  note MIDI note number
-        *   @retval uint16_t Bank (MSB) and Sequence (LSB) or -1 if not configured
+        *   @retval uint16_t Bank (MSB) and Sequence (LSB) or 0 if not configured
         */
         uint16_t getTriggerSequence(uint8_t note);
 

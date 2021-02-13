@@ -353,14 +353,15 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         // Handle MIDI Note On events to trigger seqeuences
         if((midiEvent.buffer[0] == (MIDI_NOTE_ON | g_seqMan.getTriggerChannel())) && midiEvent.buffer[2])
         {
+            uint8_t nNote = midiEvent.buffer[1];
             if(g_nTriggerLearning)
             {
-                setTriggerNote((g_nTriggerLearning >> 8) & 0xFF, g_nTriggerLearning & 0xFF, midiEvent.buffer[1]);
+                setTriggerNote((g_nTriggerLearning >> 8) & 0xFF, g_nTriggerLearning & 0xFF, nNote);
             }
             else
             {
-                uint16_t nSeq = g_seqMan.getTriggerSequence(midiEvent.buffer[1]);
-                if(nSeq != -1)
+                uint16_t nSeq = g_seqMan.getTriggerSequence(nNote);
+                if(nSeq)
                     togglePlayState(nSeq >> 8, nSeq & 0xFF);
             }
         }

@@ -295,7 +295,7 @@ uint16_t SequenceManager::getTriggerSequence(uint8_t note)
 	auto it = m_mTriggers.find(note);
 	if(it != m_mTriggers.end())
 		return it->second;
-	return -1;
+	return 0;
 }
 
 size_t SequenceManager::getPlayingSequencesCount()

@@ -756,11 +756,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 
 	def load_fpath(self, fpath):
-		if zynseq.load(fpath):
-			libseq.setTriggerChannel(zynthian_gui_config.master_midi_channel)
-			return True
-		else:
-			return False
+		return zynseq.load(fpath)
 
 
 	def get_riff_data(self):
