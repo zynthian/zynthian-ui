@@ -5,7 +5,6 @@
 #include <map>
 
 #define DEFAULT_TRACK_COUNT 4
-#define FILE_VERSION 4
 
 /** SequenceManager class provides creation, recall, update and delete of patterns which other modules can subseqnetly use. It manages persistent (disk) storage. SequenceManager is implemented as a singleton ensuring a single instance is available to all callers.
 */

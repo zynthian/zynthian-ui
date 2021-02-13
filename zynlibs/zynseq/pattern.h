@@ -238,6 +238,19 @@ class Pattern
 		*/
 		size_t getEvents();
 
+		/**	@brief	Get the reference note
+		*	@retval uint8_t MIDI note number
+		*	@note	May be used for position within user interface
+		*/
+		uint8_t getRefNote();
+		
+		/**	@brief	Set the reference note
+		*	@param	MIDI note number
+		*	@note	May be used for position within user interface
+		*/
+		void setRefNote(uint8_t note);
+		
+
 	private:
 		void deleteEvent(uint32_t position, uint8_t command, uint8_t value1);
 
@@ -247,4 +260,5 @@ class Pattern
 		uint32_t m_nStepsPerBeat; // Steps per beat
 		uint8_t m_nScale = 0; // Index of scale
 		uint8_t m_nTonic = 0; // Scale tonic (root note)
+		uint8_t m_nRefNote = 60; // Note at which to position pattern editor
 };

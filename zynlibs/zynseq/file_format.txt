@@ -1,6 +1,6 @@
 zynseq file format (RIFF)
 =========================
-Version 4
+Version 5
 Pattern time is measured in steps.
 Sequence time is measured in MIDI clock cycles.
 
@@ -27,6 +27,8 @@ Block:
 	Steps per beat [2]
 	Map / scale [1] (Added in V1)
 	Scale tonic [1] (Added in V1)
+	Reference note [1] (May be used to remember location in pattern editor) (Added in V5)
+	Padding [1] (Added in V5)
 	Events: (quantity deduced from block length)
 		Start step [4]
 		Duration [4]

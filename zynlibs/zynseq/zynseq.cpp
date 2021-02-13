@@ -35,6 +35,8 @@
 #include <string>
 #include <cstring> //provides strcmp
 
+#define FILE_VERSION 5
+
 #define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
 
 SequenceManager g_seqMan; // Instance of sequence manager
@@ -660,10 +662,10 @@ bool load(const char* filename)
 				return false;
 			}
 			nVersion = fileRead32(pFile);
-			if(nVersion != FILE_VERSION)
+			if(nVersion < 4 || nVersion > FILE_VERSION)
 			{
 				fclose(pFile);
-				//printf("Found sequence file version %d which differs to %d. Not loading file.\n", nVersion, FILE_VERSION);
+				DPRINTF("Unsupported sequence file version %d. Not loading file.\n", nVersion);
 				return false;
 			}
 			g_dTempo = fileRead16(pFile);
@@ -678,14 +680,28 @@ bool load(const char* filename)
 		}
 		if(memcmp(sHeader, "patn", 4) == 0)
 		{
+            if(nVersion == 4)
+            {
 			if(checkBlock(pFile, nBlockSize, 12))
 				continue;
+            }
+            else
+            {
+                if(checkBlock(pFile, nBlockSize, 14))
+				    continue;
+            }
 			uint32_t nPattern = fileRead32(pFile);
 			Pattern* pPattern = g_seqMan.getPattern(nPattern);
 			pPattern->setBeatsInPattern(fileRead32(pFile));
 			pPattern->setStepsPerBeat(fileRead16(pFile));
 			pPattern->setScale(fileRead8(pFile));
-			pPattern->setTonic(fileRead8(pFile));
+            pPattern->setTonic(fileRead8(pFile));
+            if(nVersion >=5)
+            {
+                pPattern->setRefNote(fileRead8(pFile));
+                fileRead8(pFile);
+    			nBlockSize -= 2;
+            }
 			nBlockSize -= 12;
 			//printf("Pattern:%u Beats:%u StepsPerBeat:%u Scale:%u Tonic:%u\n", nPattern, pPattern->getBeatsInPattern(), pPattern->getStepsPerBeat(), pPattern->getScale(), pPattern->getTonic());
 			while(nBlockSize)
@@ -817,6 +833,8 @@ void save(const char* filename)
 			nPos += fileWrite16(pPattern->getStepsPerBeat(), pFile);
 			nPos += fileWrite8(pPattern->getScale(), pFile);
 			nPos += fileWrite8(pPattern->getTonic(), pFile);
+            nPos += fileWrite8(pPattern->getRefNote(), pFile);
+            nPos += fileWrite8('\0', pFile);
 			uint32_t nEvent = 0;
 			while(StepEvent* pEvent = pPattern->getEventAt(nEvent++))
 			{
@@ -1270,6 +1288,19 @@ bool isPatternModified()
         return true;
     }
     return false;
+}
+
+uint8_t getRefNote()
+{
+    if(g_pPattern)
+        return g_pPattern->getRefNote();
+    return 60;
+}
+
+void setRefNote(uint8_t note)
+{
+    if(g_pPattern)
+        g_pPattern->setRefNote(note);
 }
 
 // ** Sequence management functions **

@@ -256,3 +256,14 @@ size_t Pattern::getEvents()
 {
 	return m_vEvents.size();
 }
+
+uint8_t Pattern::getRefNote()
+{
+	return m_nRefNote;
+}
+
+void Pattern::setRefNote(uint8_t note)
+{
+	if(note < 128)
+		m_nRefNote = note;
+}

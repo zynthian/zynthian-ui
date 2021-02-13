@@ -217,6 +217,7 @@ class zynthian_gui_patterneditor():
 		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT, "SB")
 		libseq.setPlayState(self.bank, self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 		libseq.enableMidiInput(False)
+		libseq.setRefNote(self.keymap_offset)
 
 
 	# Function to add menus
@@ -333,7 +334,6 @@ class zynthian_gui_patterneditor():
 							break
 						self.keymap.append({"note":note, "name":"%s%d"%(self.notes[note % 12],note // 12 - 1)})
 				name = data[scale]['name']
-		self.select_cell(0, int(len(self.keymap) / 2))
 		return name
 
 
@@ -843,11 +843,12 @@ class zynthian_gui_patterneditor():
 		libseq.addPattern(self.bank, self.sequence, 0, 0, index)
 		if self.selected_cell[0] >= libseq.getSteps():
 			self.selected_cell[0] = libseq.getSteps() - 1
+		self.keymap_offset = libseq.getRefNote()
 		self.load_keymap()
 		self.redraw_pending = 2
-		self.select_cell()
+		self.select_cell(0, int(self.keymap_offset + self.zoom / 2))
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
-
+		
 
 	# Function to select .mid file to import
 	def select_import(self, params):
