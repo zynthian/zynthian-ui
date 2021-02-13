@@ -372,6 +372,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 Track* pTrack = pSequence->getTrack(0);
                 if(pTrack)
                 {
+                    g_bPatternModified = true;
                     uint32_t nStep = pTrack->getPatternPlayhead();
                     if(getNoteVelocity(nStep, midiEvent.buffer[1]))
                         g_pPattern->removeNote(nStep, midiEvent.buffer[1]);
@@ -379,9 +380,10 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                         g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
                     if(transportGetPlayStatus() != JackTransportRolling)
                     {
+                        pTrack->setPosition(0);
                         if(++nStep >= g_pPattern->getSteps())
                             nStep = 0;
-//!@todo Implement advance in sequence or above                        pTrack->setPatternPlayhead(nStep);
+                        pTrack->setPatternPlayhead(nStep);
                     }
                 }
             }

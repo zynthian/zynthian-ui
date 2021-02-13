@@ -201,19 +201,29 @@ uint32_t Track::getPatternPlayhead()
 	return m_nCurrentStep;
 }
 
-/*
+
 void Track::setPatternPlayhead(uint32_t step)
 {
 	if(m_nCurrentPatternPos >= 0 && step < m_mPatterns[m_nCurrentPatternPos]->getSteps())
 		m_nCurrentStep = step;
+//	printf("Track::setPatternPlayhead(step=%u) m_nCurrentPatternPos:%u steps in pattern: %u m_nCurrentStep:%u\n", step, m_nCurrentPatternPos, m_mPatterns[m_nCurrentPatternPos]->getSteps(),  m_nCurrentStep);
 }
-*/
+
 
 void Track::setPosition(uint32_t position)
 {
 	m_nDivCount = m_nClkPerStep;
 	m_nCurrentStep = position / m_nClkPerStep;
 	m_nNextEvent = m_nSyncEvent;
+	for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
+	{
+		if(it->first <= position && it->first + it->second->getLength() > position)
+		{
+			// Found pattern that spans position
+			m_nCurrentPatternPos = it->first;
+			break;
+		}
+	}
 }
 
 uint32_t Track::getNextPattern(uint32_t previous)

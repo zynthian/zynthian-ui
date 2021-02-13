@@ -94,7 +94,7 @@ class Track
 		/**	@brief	Set position of playhead within currently playing pattern
 		*	@param	uint32_t Quantity of steps from start of pattern to playhead
 		*/
-//		void setPatternPlayhead(uint32_t step);
+		void setPatternPlayhead(uint32_t step);
 
 		/**	@brief	Set position
 		*	@param	position Quantity of clocks since start of track
