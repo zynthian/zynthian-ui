@@ -132,7 +132,6 @@ class zynthian_gui_zynpad():
 		self.parent.unregister_zyncoder(ENC_BACK)
 		self.parent.unregister_zyncoder(ENC_SELECT)
 		self.parent.unregister_switch(ENC_SELECT)
-		libseq.enableMidiLearn(0, 0)
 
 
 	# Function to get MIDI channel of selected pad
@@ -169,10 +168,13 @@ class zynthian_gui_zynpad():
 	def on_menu_change(self, params):
 		menu_item = self.parent.param_editor_item
 		value = params['value']
-		if value < params['min']:
-			value = params['min']
-		if value > params['max']:
-			value = params['max']
+		try:
+			if value < params['min']:
+				value = params['min']
+			if value > params['max']:
+				value = params['max']
+		except:
+			pass # min and max values may not be set
 		if menu_item == 'Pad mode':
 			libseq.setPlayMode(self.parent.bank, self.selected_pad, value)
 			return "Pad mode: %s" % (zynthian_gui_stepsequencer.PLAY_MODES[value])
@@ -341,7 +343,7 @@ class zynthian_gui_zynpad():
 		patterns_in_track = libseq.getPatternsInTrack(self.parent.bank, self.selected_pad, 0)
 		pattern = libseq.getPattern(self.parent.bank, self.selected_pad, 0, 0)
 		if tracks_in_sequence != 1 or patterns_in_track !=1 or pattern == -1:
-			self.parent.show_child("arranger", {"sequence":self.selected_pad})
+			self.parent.show_child("arranger")
 			return
 		channel = libseq.getChannel(self.parent.bank, self.selected_pad, 0)
 		self.parent.show_child("pattern editor", {"pattern":pattern, "channel":channel, "pad":self.selected_pad})
@@ -353,6 +355,14 @@ class zynthian_gui_zynpad():
 			self.update_grid()
 		for pad in range(0, self.columns**2):
 			self.refresh_pad(pad)
+		if self.parent.param_editor_item == "Trigger note":
+			old_value = self.parent.get_param("Trigger note", "value")
+			value = libseq.getTriggerNote(self.parent.bank, self.selected_pad)
+			if old_value != value:
+				if value < 128:
+					self.parent.set_param("Trigger note", "value", value)
+					self.parent.param_title_canvas.itemconfig("lbl_param_editor_value", 
+						text="Trigger note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value))
 
 
 	# Function to handle zyncoder value change

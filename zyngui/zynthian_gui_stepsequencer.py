@@ -436,7 +436,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to close status menu
 	def hide_status_menu(self):
 		self.status_menu_frame.grid_forget()
-		libseq.enableMidiLearn(0, 0)
 
 
 	# Function to handle status bar click
@@ -552,6 +551,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def hide_param_editor(self, event=None):
 		self.param_editor_item = None
 		self.param_editor_canvas.grid_forget()
+		libseq.enableMidiLearn(0,0)
 		for encoder in range(4):
 			self.unregister_zyncoder(encoder)
 		if self.child:
@@ -629,6 +629,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.buttonbar_config[2] = (2, '')
 		if name == "arranger":
 			self.child = self.arranger
+			params["sequence"] = self.zynpad.selected_pad
 		elif name == "pattern editor":
 			self.child = self.pattern_editor
 			self.buttonbar_config[2] = (2, 'PLAY')

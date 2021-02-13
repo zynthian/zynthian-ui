@@ -237,11 +237,15 @@ class zynthian_gui_arranger():
 
 
 	# Function to show GUI
-	#	params: Not used
+	#	params: Optional dictionary of configuration, e.g. "sequence":number
 	def show(self, params=None):
 		self.main_frame.tkraise()
 		self.select_bank()
 		self.setup_encoders()
+		try:
+			self.selected_cell[1] = params["sequence"]
+		except:
+			pass # Ignore missing (optional) parameters
 
 
 	# Function to hide GUI

@@ -356,7 +356,6 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             if(g_nTriggerLearning)
             {
                 setTriggerNote((g_nTriggerLearning >> 8) & 0xFF, g_nTriggerLearning & 0xFF, midiEvent.buffer[1]);
-                g_nTriggerLearning = 0;
             }
             else
             {
