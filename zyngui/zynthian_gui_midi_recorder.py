@@ -26,8 +26,6 @@
 import os
 import logging
 from threading import Timer
-from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)
-from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library 
 from time import sleep
 from os.path import isfile, join, basename
 
@@ -39,6 +37,8 @@ from . import zynthian_gui_controller
 from zyngine import zynthian_controller
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
+from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)
+from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library 
 
 #------------------------------------------------------------------------------
 # Zynthian MIDI Recorder GUI Class
@@ -53,7 +53,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def __init__(self):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
 		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
-		self.current_playback = None # Filename of currently playing SMF
+		self.current_playback_fpath = None # Filename of currently playing SMF
 		self.smf_player = None # Pointer to SMF player
 		self.smf_recorder = None # Pointer to SMF recorder
 		self.smf_timer = None # 1s timer used to check end of SMF playback
@@ -120,7 +120,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def fill_list(self):
-		self.index = 0
+		#self.index = 0
 		self.list_data = []
 
 		if libsmf.isRecording():
@@ -128,9 +128,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		else:
 			self.list_data.append(("START_RECORDING",0,"Start Recording"))
 
-		if libsmf.getPlayState():
-			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
-			self.show_playing_bpm()
+		#if libsmf.getPlayState():
+		#	self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
+		#	self.show_playing_bpm()
 
 		if zynthian_gui_config.midi_play_loop:
 			self.list_data.append(("LOOP",0,"[x] Loop Play"))
@@ -194,9 +194,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def highlight(self):
 		logging.info("Play state: %d", libsmf.getPlayState())
 		if libsmf.getPlayState() == 0:
-			self.current_playback=None
+			self.current_playback_fpath=None
 		for i, row in enumerate(self.list_data):
-			if row[0] is not None and row[0]==self.current_playback:
+			if row[0] is not None and row[0]==self.current_playback_fpath:
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_hl})
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
@@ -215,7 +215,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.toggle_loop()
 		elif fpath:
 			if t=='S':
-				self.start_playing(fpath)
+				self.toggle_playing(fpath)
 			else:
 				self.zyngui.show_confirm("Do you really want to delete '{}'?".format(self.list_data[i][2]), self.delete_confirmed, fpath)
 
@@ -306,7 +306,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			zynseq.transport_start("zynsmf")
 #			libseq.transportLocate(0)
 			self.show_playing_bpm()
-			self.current_playback=fpath
+			self.current_playback_fpath=fpath
 			self.smf_timer = Timer(interval = 1, function=self.check_playback)
 			self.smf_timer.start()
 		except Exception as e:
@@ -324,14 +324,14 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if self.smf_timer:
 			self.smf_timer.cancel()
 			self.smf_timer = None
-		self.current_playback=None
+		self.current_playback_fpath=None
 		if self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.hide()
 		self.update_list()
 
 
 	def stop_playing(self):
-		if libsmf.getPlayState != zynsmf.PLAY_STATE_STOPPED:
+		if libsmf.getPlayState()!=zynsmf.PLAY_STATE_STOPPED:
 			logging.info("STOPPING MIDI PLAY ...")
 			libsmf.stopPlayback()
 			sleep(0.1)
@@ -342,10 +342,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			return False
 
 
-	def toggle_playing(self):
+	def toggle_playing(self, fpath=None):
 		logging.info("TOGGLING MIDI PLAY ...")
 		if not self.stop_playing():
-			self.start_playing()
+			self.start_playing(fpath)
 
 
 	def show_playing_bpm(self):

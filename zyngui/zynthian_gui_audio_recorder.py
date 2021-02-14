@@ -89,7 +89,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 
 	def fill_list(self):
-		self.index=0
+		#self.index=0
 		self.list_data=[]
 
 		status=self.get_status()
@@ -98,9 +98,9 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		else:
 			self.list_data.append(("START_RECORDING",0,"Start Recording"))
 
-		if status=="PLAY" or status=="PLAY+REC":
-			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
-			self.show_playing_volume()
+		#if status=="PLAY" or status=="PLAY+REC":
+		#	self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
+		#	self.show_playing_volume()
 
 		if zynthian_gui_config.audio_play_loop:
 			self.list_data.append(("LOOP",0,"[x] Loop Play"))
@@ -182,7 +182,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.toggle_loop()
 		elif fpath:
 			if t=='S':
-				self.start_playing(fpath)
+				self.toggle_playing(fpath)
 			else:
 				self.zyngui.show_confirm("Do you really want to delete '{}'?".format(self.list_data[i][2]), self.delete_confirmed, fpath)
 
@@ -344,10 +344,10 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			return False
 
 
-	def toggle_playing(self):
+	def toggle_playing(self, fpath=None):
 		logging.info("TOGGLING AUDIO PLAY ...")
 		if not self.stop_playing():
-			self.start_playing()
+			self.start_playing(fpath)
 
 
 	def show_playing_volume(self):
