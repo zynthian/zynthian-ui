@@ -89,7 +89,7 @@ class zynthian_gui_zynpad():
 		self.grid_timer = Timer(2.0, self.on_grid_timer) # Grid press and hold timer
 
 		# Icons
-		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
+		self.icon = [tkinter.PhotoImage() for i in range(7)]
 
 		# Selection highlight
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
@@ -229,11 +229,11 @@ class zynthian_gui_zynpad():
 
 		imgWidth = int(self.column_width / 4)
 		iconsize = (imgWidth, imgWidth)
-		img = (Image.open("/zynthian/zynthian-ui/icons/endnoline.png").resize(iconsize))
+		img = (Image.open("/zynthian/zynthian-ui/icons/oneshot.png").resize(iconsize))
 		self.icon[1] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/loop.png").resize(iconsize))
 		self.icon[2] = ImageTk.PhotoImage(img)
-		img = (Image.open("/zynthian/zynthian-ui/icons/end.png").resize(iconsize))
+		img = (Image.open("/zynthian/zynthian-ui/icons/oneshotall.png").resize(iconsize))
 		self.icon[3] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
 		self.icon[4] = ImageTk.PhotoImage(img)

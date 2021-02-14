@@ -243,7 +243,8 @@ static int onJackSamplerate(jack_nframes_t nFrames, void* args)
 	if(g_pPlayerSmf)
 		g_dPlayerTicksPerFrame = double(g_pPlayerSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
 	if(g_pRecorderSmf)
-		g_dRecorderTicksPerFrame = double(g_pRecorderSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
+		g_dRecorderTicksPerFrame = 2.0 * double(g_pRecorderSmf->getTicksPerQuarterNote()) / g_nSamplerate;
+		//g_dRecorderTicksPerFrame = double(g_pRecorderSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
 	return 0;
 }
 
@@ -257,16 +258,32 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 	static uint8_t nStatus;
 	static jack_position_t transport_position;
 	static double dBeatsPerMinute = 120.0;
-	bool bTempoChange = false;
 
 	jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
 	jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, &transport_position);
+
+	// Handle change of tempo
 	if(nPreviousTransportState != nTransportState || transport_position.beats_per_minute != dBeatsPerMinute && transport_position.beats_per_minute > 0)
 	{
+		dBeatsPerMinute = transport_position.beats_per_minute;
 		g_nMicrosecondsPerQuarterNote = 60000000.0 / dBeatsPerMinute;
 		onJackSamplerate(g_nSamplerate, 0);
-		dBeatsPerMinute = transport_position.beats_per_minute;
-		bTempoChange = true;
+	}
+	// Handle change of transport state
+	if(nTransportState != nPreviousTransportState)
+	{
+		if(g_nPlayState == STARTING || g_nPlayState == PLAYING)
+		{
+			if(nTransportState == JackTransportStarting)
+				g_nPlayState = STARTING;
+			else if(nTransportState == JackTransportRolling)
+				g_nPlayState = PLAYING;
+			else
+				g_nPlayState = STOPPED;
+		}
+		else
+			g_nPlayState = STOPPED;
+		nPreviousTransportState = nTransportState;
 	}
 
 	void* pMidiBuffer; // Pointer to the memory area used by MIDI input / output ports (reused for each)
@@ -326,23 +343,6 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 		if(!g_pPlayerSmf || g_nPlayState == STOPPED)
 			return 0; // We don't have a SMF loaded or we are stopped so don't bother processing any data
 
-		// Handle change of transport state
-		if(nTransportState != nPreviousTransportState)
-		{
-			if(g_nPlayState == STARTING || g_nPlayState == PLAYING)
-			{
-				if(nTransportState == JackTransportStarting)
-					g_nPlayState = STARTING;
-				else if(nTransportState == JackTransportRolling)
-					g_nPlayState = PLAYING;
-				else
-					g_nPlayState = STOPPED;
-			}
-			else
-				g_nPlayState = STOPPED;
-			nPreviousTransportState = nTransportState;
-		}
-
 		// Handle change of play state
 		if(nPreviousPlayState != g_nPlayState | g_nPlayState == STOPPING)
 		{
@@ -374,7 +374,6 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 
 		if(g_nPlayState == PLAYING)
 		{
-
 			//!@todo Store playback position to allow pause / resume
 			// Process all pending smf events
 			g_dPosition += g_dPlayerTicksPerFrame * nFrames; // Ticks since start of song
@@ -546,8 +545,6 @@ void startRecording()
 {
 	if(!g_pMidiInputPort || !g_pRecorderSmf)
 		return;
-	if(g_pRecorderSmf->getTracks() == 0)
-		g_pRecorderSmf->addTrack();
 	g_nRecordStartPosition = 0; // Set start time to 0 so that first MIDI event will update and mark actual start of recording
 	g_bRecording = true;
 }
