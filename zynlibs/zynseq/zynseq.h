@@ -204,10 +204,19 @@ uint32_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track);
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
 *   @param  track Index of track
-*   @param  position Quantity of clock cycles from start of sequence
+*   @param  position Quantity of clock cycles from start of sequence where pattern starts
 *   @retval uint32_t Pattern index or -1 if not found
 */
 uint32_t getPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position);
+
+/** @brief  Get index of pattern within a track
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track
+*   @param  position Quantity of clock cycles from start of sequence that pattern spans
+*   @retval uint32_t Pattern index or -1 if not found
+*/
+uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position);
 
 /** @brief  Select active pattern
 *   @note   All subsequent pattern methods act on this pattern
