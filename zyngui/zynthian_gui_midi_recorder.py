@@ -344,10 +344,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def toggle_playing(self, fpath=None):
 		logging.info("TOGGLING MIDI PLAY ...")
-		self.stop_playing()
 		if fpath and fpath!=self.current_playback_fpath:
 			self.start_playing(fpath)
-
+		else:
+			self.stop_playing()
 
 	def show_playing_bpm(self):
 		if self.bpm_zgui_ctrl:

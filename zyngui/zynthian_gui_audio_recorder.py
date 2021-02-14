@@ -346,9 +346,10 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 	def toggle_playing(self, fpath=None):
 		logging.info("TOGGLING AUDIO PLAY ...")
-		self.stop_playing()
 		if fpath and fpath!=self.current_playback_fpath:
 			self.start_playing(fpath)
+		else:
+			self.stop_playing()
 
 
 	def show_playing_volume(self):
