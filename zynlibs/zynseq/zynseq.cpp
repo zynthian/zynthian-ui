@@ -887,7 +887,7 @@ void save(const char* filename)
 					nPos += fileWrite16(pTrack->getPatterns(), pFile);
 					for(uint16_t nPattern = 0; nPattern < pTrack->getPatterns(); ++nPattern)
 					{
-						nPos += fileWrite32(pTrack->getPatternPosition(nPattern), pFile);
+						nPos += fileWrite32(pTrack->getPatternPositionByIndex(nPattern), pFile);
                         Pattern* pPattern = pTrack->getPatternByIndex(nPattern);
                         uint32_t nPatternId = g_seqMan.getPatternIndex(pPattern);
 						nPos += fileWrite32(nPatternId, pFile);
@@ -1334,6 +1334,18 @@ uint32_t getPattern(uint8_t bank, uint8_t sequence, uint32_t track,  uint32_t po
     if(!pTrack)
         return -1;
     Pattern* pPattern = pTrack->getPattern(position);
+    return g_seqMan.getPatternIndex(pPattern);
+}
+
+uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track,  uint32_t position)
+{
+    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+    Track* pTrack = pSequence->getTrack(track);
+    if(!pTrack)
+        return -1;
+    Pattern* pPattern = pTrack->getPatternAt(position);
+    if(!pPattern)
+        return -1;
     return g_seqMan.getPatternIndex(pPattern);
 }
 

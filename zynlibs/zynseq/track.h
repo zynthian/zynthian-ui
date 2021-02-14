@@ -30,11 +30,17 @@ class Track
 		*/
 		void removePattern(uint32_t position);
 
-		/**	@brief	Get pattern
+		/**	@brief	Get pattern starting at position
 		*	@param	position Quantity of clock cycles from start of track at which pattern starts
 		*	@retval	Pattern* Pointer to pattern or NULL if no pattern starts at this position
 		*/
 		Pattern* getPattern(uint32_t position);
+
+		/**	@brief	Get pattern spanning position
+		*	@param	position Quantity of clock cycles from start of track at which pattern spans
+		*	@retval	Pattern* Pointer to pattern or NULL if no pattern starts at this position
+		*/
+		Pattern* getPatternAt(uint32_t position);
 
 		/**	@brief	Get MIDI channel
 		*	@retval	uint8_t MIDI channel
@@ -149,7 +155,13 @@ class Track
 		*	@param	index Index of pattern
 		*	@retval	uint32_t Position in clock cycles or -1 if invalid index
 		*/
-		uint32_t getPatternPosition(size_t index);
+		uint32_t getPatternPositionByIndex(size_t index);
+
+		/**	@brief	Get position of pattern defined by pattern pointer
+		*	@param	pattern Pointer to pattern
+		*	@retval	uint32_t Position in clock cycles or -1 if invalid index
+		*/
+		uint32_t getPatternPosition(Pattern* pattern);
 
 	private:
 		uint8_t m_nChannel = 0; // MIDI channel

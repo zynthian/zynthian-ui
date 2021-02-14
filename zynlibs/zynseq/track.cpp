@@ -48,6 +48,16 @@ Pattern* Track::getPattern(uint32_t position)
 	return it->second;
 }
 
+Pattern* Track::getPatternAt(uint32_t position)
+{
+	for(auto it = m_mPatterns.begin(); it!= m_mPatterns.end(); ++it)
+	{
+		if(it->first <= position && position < it->first + it->second->getLength())
+			return it->second;
+	}
+	return NULL;
+}
+
 uint8_t Track::getChannel()
 {
 	return m_nChannel;
@@ -282,7 +292,7 @@ Pattern* Track::getPatternByIndex(size_t index)
 	return NULL;
 }
 
-uint32_t Track::getPatternPosition(size_t index)
+uint32_t Track::getPatternPositionByIndex(size_t index)
 {
 	if(index >= m_mPatterns.size())
 		return -1;
@@ -290,4 +300,14 @@ uint32_t Track::getPatternPosition(size_t index)
 	while(index--)
 		++it;
 	return it->first;
+}
+
+uint32_t Track::getPatternPosition(Pattern* pattern)
+{
+	for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
+	{
+		if(it->second == pattern)
+			return it->first;
+	}
+	return -1;
 }

@@ -567,7 +567,7 @@ class zynthian_gui_arranger():
 
 
 	# Function to draw a grid cell
-	#	col: Column index (0..duration of sequence in clocks)
+	#	col: Column index (0..horizontal zoom)
 	#	row: Row index (0..vertical zoom)
 	def draw_cell(self, col, row):
 		if row >= self.vertical_zoom:
@@ -580,22 +580,23 @@ class zynthian_gui_arranger():
 		track = self.sequence_tracks[row + self.row_offset][1]
 		time = (self.col_offset + col) * self.clocks_per_division # time in clock cycles
 
-		pattern = libseq.getPattern(self.parent.bank, sequence, track, time)
-		if pattern == -1:
-			fill = CANVAS_BACKGROUND
-			duration = 1
-			if col == 0:
-				for t in range(time, -1, -self.clocks_per_division):
-					pattern = libseq.getPattern(self.parent.bank, sequence, t)
-					if pattern != -1:
-						duration = int((libseq.getPatternLength(pattern) + t) / self.clocks_per_division) - self.col_offset
-						if duration > 0:
-							fill = CELL_BACKGROUND
-						else:
-							pattern = -1
+		if col == 0:
+			pattern = libseq.getPatternAt(self.parent.bank, sequence, track, time)
+			if pattern != -1:
+				duration = int(libseq.getPatternLength(pattern) / self.clocks_per_division)
+				while time > 0:
+					time -= self.clocks_per_division
+					duration -= 1
+					if pattern != libseq.getPatternAt(self.parent.bank, sequence, track, time):
 						break
 		else:
-			duration = int(libseq.getPatternLength(pattern) / self.clocks_per_division)
+			pattern = libseq.getPattern(self.parent.bank, sequence, track, time)
+			if pattern != -1:
+				duration = int(libseq.getPatternLength(pattern) / self.clocks_per_division)
+		if pattern == -1:
+			duration = 1
+			fill = CANVAS_BACKGROUND
+		else:
 			fill = CELL_BACKGROUND
 		if col + duration > self.col_offset + self.horizontal_zoom:
 			duration = self.col_offset + self.horizontal_zoom - col
@@ -757,8 +758,6 @@ class zynthian_gui_arranger():
 			if time == 0 and duration > next_start:
 				time = next_start
 
-		if time < 0:
-			time = 0
 		if time < 0:
 			time = 0
 		if time + duration > self.col_offset + self.horizontal_zoom:

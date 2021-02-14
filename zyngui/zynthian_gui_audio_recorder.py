@@ -51,7 +51,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def __init__(self):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
 		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
-		self.current_record = None
+		self.current_playback_fpath = None
 		self.rec_proc = None
 		self.play_proc = None
 
@@ -79,7 +79,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		if self.rec_proc:
 			status="REC"
 
-		if self.current_record:
+		if self.current_playback_fpath:
 			if status=="REC":
 				status="PLAY+REC"
 			else:
@@ -163,7 +163,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	# Highlight command and current record played, if any ...
 	def highlight(self):
 		for i, row in enumerate(self.list_data):
-			if row[0] is not None and row[0]==self.current_record:
+			if row[0] is not None and row[0]==self.current_playback_fpath:
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_hl})
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
@@ -302,7 +302,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.zyngui.zynautoconnect_audio()
 			self.show_playing_volume()
 			self.send_controller_value(self.volume_zctrl)
-			self.current_record=fpath
+			self.current_playback_fpath=fpath
 
 		except Exception as e:
 			logging.error("ERROR STARTING AUDIO PLAY: %s" % e)
@@ -322,7 +322,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def end_playing(self):
 		logging.info("ENDING AUDIO PLAY ...")
 		self.play_proc = None
-		self.current_record=None
+		self.current_playback_fpath=None
 		self.volume_zgui_ctrl.hide()
 		self.update_list()
 
@@ -346,7 +346,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 	def toggle_playing(self, fpath=None):
 		logging.info("TOGGLING AUDIO PLAY ...")
-		if not self.stop_playing():
+		self.stop_playing()
+		if fpath and fpath!=self.current_playback_fpath:
 			self.start_playing(fpath)
 
 
