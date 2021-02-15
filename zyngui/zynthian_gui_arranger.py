@@ -83,7 +83,6 @@ class zynthian_gui_arranger():
 		self.time_drag_start = None # Set to time of click to test for bold click
 		self.grid_drag_start = None # Set to location of click during drag
 		self.clocks_per_division = 24
-		self.icon = [tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage(),tkinter.PhotoImage()]
 		self.cells = [[None] * 2 for _ in range(self.vertical_zoom * self.horizontal_zoom)] # 2D array of cells 0:cell, 1:cell label
 		self.redraw_pending = 0
 
@@ -155,27 +154,6 @@ class zynthian_gui_arranger():
 	# Function to get name of this view
 	def get_name(self):
 		return "arranger"
-
-
-	# Function to load and resize icons
-	def load_icons(self):
-		if self.row_height > self.seq_track_title_width / 3:
-			icon_height = self.seq_track_title_width / 3
-		else:
-			icon_height = self.row_height
-		iconsize = (int(icon_height), int(icon_height))
-		img = (Image.open("/zynthian/zynthian-ui/icons/endnoline.png").resize(iconsize))
-		self.icon[1] = ImageTk.PhotoImage(img)
-		img = (Image.open("/zynthian/zynthian-ui/icons/loop.png").resize(iconsize))
-		self.icon[2] = ImageTk.PhotoImage(img)
-		img = (Image.open("/zynthian/zynthian-ui/icons/end.png").resize(iconsize))
-		self.icon[3] = ImageTk.PhotoImage(img)
-		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
-		self.icon[4] = ImageTk.PhotoImage(img)
-		img = (Image.open("/zynthian/zynthian-ui/icons/end.png").resize(iconsize))
-		self.icon[5] = ImageTk.PhotoImage(img)
-		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
-		self.icon[6] = ImageTk.PhotoImage(img)
 
 
 	# Function to register encoders
@@ -805,7 +783,6 @@ class zynthian_gui_arranger():
 		self.fontsize = int(self.row_height * 0.3)
 		if self.fontsize > self.row_height * 0.3:
 			self.fontsize = int(self.row_height * 0.3) # Ugly font scale limiting
-		self.load_icons()
 
 
 	# Function to handle menu editor value change and get display label text
