@@ -355,7 +355,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.main_frame.grid(column=0, row=0)
 			self.zyngui.screens["control"].unlock_controllers()
 			self.shown=True
-			self.show_child()
+			self.show_child(self.last_child, {})
 		self.main_frame.focus()
 
 
@@ -620,16 +620,19 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to show child GUI
 	#	name: Name of child to show
 	#	params: Dictionary of parameters to pass to child class show() method
-	def show_child(self, name=None, params={}):
+	def show_child(self, name, params=None):
 		if not self.shown:
 			return
 		if not name:
 			name = "zynpad"
+		if not params:
+			params = {}
+		if self.child == self.zynpad:
+			params["sequence"] = self.zynpad.selected_pad
 		self.hide_child()
 		self.buttonbar_config[2] = (2, '')
 		if name == "arranger":
 			self.child = self.arranger
-			params["sequence"] = self.zynpad.selected_pad
 		elif name == "pattern editor":
 			self.child = self.pattern_editor
 			self.buttonbar_config[2] = (2, 'PLAY')
@@ -649,7 +652,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.child.hide()
 		self.child = None
 		self.hide_param_editor()
-#		self.set_title("Step Sequencer")
 		for switch in range(4):
 			for type in ['S', 'B', 'L']:
 				self.unregister_switch(switch, type)
@@ -926,7 +928,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					self.show_child("zynpad")
 					return True
 				if self.child != self.zynpad:
-					self.show_child(self.last_child)
+					self.show_child(self.last_child, {})
 					return True
 			elif switch == ENC_LAYER and not self.lst_menu.winfo_viewable():
 				self.toggle_menu()

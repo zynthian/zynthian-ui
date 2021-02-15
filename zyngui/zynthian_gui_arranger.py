@@ -238,14 +238,12 @@ class zynthian_gui_arranger():
 
 	# Function to show GUI
 	#	params: Optional dictionary of configuration, e.g. "sequence":number
-	def show(self, params=None):
+	def show(self, params={}):
 		self.main_frame.tkraise()
 		self.select_bank()
 		self.setup_encoders()
-		try:
+		if "sequence" in params:
 			self.selected_cell[1] = params["sequence"]
-		except:
-			pass # Ignore missing (optional) parameters
 
 
 	# Function to hide GUI
@@ -410,7 +408,7 @@ class zynthian_gui_arranger():
 		if not tags:
 			return
 		col, row = tags[0].split(',')
-		self.select_cell(self.col_offset + int(col), int(row), False)
+		self.select_cell(self.col_offset + int(col), self.row_offset + int(row), False)
 
 
 	# Function to handle grid mouse release
