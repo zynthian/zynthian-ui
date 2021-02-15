@@ -178,6 +178,7 @@ class zynthian_gui_arranger():
 		self.parent.add_menu({'Pattern': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Add track': {'method':self.add_track}})
 		self.parent.add_menu({'Remove track': {'method':self.remove_track}})
+		self.parent.add_menu({'Clear bank':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_bank}}})
 
 
 	# Function to get quantity of columns in grid
@@ -187,6 +188,14 @@ class zynthian_gui_arranger():
 		if columns < 0:
 			columns = 1
 		return columns
+
+
+	# Function to clear bank
+	def clear_bank(self):
+		libseq.clearBank(self.parent.bank)
+		self.parent.select_bank(self.parent.bank)
+		self.select_cell(0,0)
+		self.redraw_pending = 2
 
 
 	# Function called when sequence set loaded from file
@@ -829,6 +838,9 @@ class zynthian_gui_arranger():
 				return "Trigger: %s" % self.get_note(value)
 		elif menu_item == "Pattern":
 			self.set_pattern(value)
+		elif menu_item == 'Clear bank':
+			return "Clear bank %d?" % (self.parent.bank)
+
 		return "%s: %d" % (menu_item, value)
 
 

@@ -638,6 +638,11 @@ void setSequencesInBank(uint8_t bank, uint8_t sequences);
 */
 uint32_t getSequencesInBank(uint32_t bank);
 
+/** @brief  Clear bank
+*   @param  bank Bank index
+*/
+void clearBank(uint32_t bank);
+
 /** @brief  Sets the transport to start of the current bar
 */
 void setTransportToStartOfBar();

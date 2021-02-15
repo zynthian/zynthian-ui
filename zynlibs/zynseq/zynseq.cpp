@@ -1443,6 +1443,12 @@ size_t getSequencesInBank(uint32_t bank)
     return g_seqMan.getSequencesInBank(bank);
 }
 
+void clearBank(uint32_t bank)
+{
+    g_seqMan.clearBank(bank);
+}
+
+
 // ** Sequence management functions **
 
 uint8_t getGroup(uint8_t bank, uint8_t sequence)
