@@ -578,7 +578,8 @@ class zynthian_gui_arranger():
 		track = self.sequence_tracks[row + self.row_offset][1]
 		time = (self.col_offset + col) * self.clocks_per_division # time in clock cycles
 
-		if col == 0:
+		pattern = libseq.getPattern(self.parent.bank, sequence, track, time)
+		if pattern == -1 and col == 0:
 			pattern = libseq.getPatternAt(self.parent.bank, sequence, track, time)
 			if pattern != -1:
 				duration = int(libseq.getPatternLength(pattern) / self.clocks_per_division)
@@ -587,9 +588,7 @@ class zynthian_gui_arranger():
 					duration -= 1
 					if pattern != libseq.getPatternAt(self.parent.bank, sequence, track, time):
 						break
-		else:
-			pattern = libseq.getPattern(self.parent.bank, sequence, track, time)
-			if pattern != -1:
+		elif pattern != -1:
 				duration = int(libseq.getPatternLength(pattern) / self.clocks_per_division)
 		if pattern == -1:
 			duration = 1

@@ -126,7 +126,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.switch_owner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.child = None # Pointer to instance of child panel
-		self.last_child = None # Pointer to instance of last child shown - used to return to same screen
+		self.last_child = "zynpad" # Name of last child shown - used to return to same screen
 		self.bank = 1 # Currently displayed bank of sequences
 		#libseq.enableDebug(True)
 
@@ -366,6 +366,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.main_frame.grid_forget()
 			if self.child:
 				self.child.hide()
+			self.last_child = "zynpad"
 
 
 	# Function to refresh the status widgets
@@ -623,6 +624,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def show_child(self, name, params=None):
 		if not self.shown:
 			return
+		#logging.warning("name: %s params: %s", name, params)
 		if not name:
 			name = "zynpad"
 		if not params:
@@ -691,13 +693,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if bank > 0:
 			if libseq.getSequencesInBank(bank) == 0:
 				libseq.setSequencesInBank(bank, 16)
-				for pad in (1,5,9,13):
+				for pad in range(4,8):
 					libseq.setChannel(bank, pad, 0, 1)
 					libseq.setGroup(bank, pad, 1)
-				for pad in (2,6,10,14):
+				for pad in range(8,12):
 					libseq.setChannel(bank, pad, 0, 2)
 					libseq.setGroup(bank, pad, 2)
-				for pad in (3,7,11,15):
+				for pad in range(12,16):
 					libseq.setChannel(bank, pad, 0, 9)
 					libseq.setGroup(bank, pad, 9)
 			self.bank = bank

@@ -52,7 +52,7 @@ Pattern* Track::getPatternAt(uint32_t position)
 {
 	for(auto it = m_mPatterns.begin(); it!= m_mPatterns.end(); ++it)
 	{
-		if(it->first <= position && position < it->first + it->second->getLength())
+		if(it->first <= position && position + 1 < it->first + it->second->getLength() )
 			return it->second;
 	}
 	return NULL;

@@ -69,7 +69,7 @@ class zynthian_gui_zynpad():
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.body_height
-		self.select_thickness = 4#1 + int(self.width / 500) # Scale thickness of select border based on screen
+		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen
 		self.column_width = self.width / self.columns
 		self.row_height = self.height / self.columns
 
@@ -89,7 +89,8 @@ class zynthian_gui_zynpad():
 		self.grid_timer = Timer(2.0, self.on_grid_timer) # Grid press and hold timer
 
 		# Icons
-		self.icon = [tkinter.PhotoImage() for i in range(7)]
+		self.mode_icon = [tkinter.PhotoImage() for i in range(7)]
+		self.state_icon = [tkinter.PhotoImage() for i in range(4)]
 
 		# Selection highlight
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
@@ -227,33 +228,42 @@ class zynthian_gui_zynpad():
 		self.row_height = self.height / self.columns
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
 
-		imgWidth = int(self.column_width / 4)
-		iconsize = (imgWidth, imgWidth)
+		iconsize = (int(self.column_width * 0.6), int(self.row_height * 0.2))
 		img = (Image.open("/zynthian/zynthian-ui/icons/oneshot.png").resize(iconsize))
-		self.icon[1] = ImageTk.PhotoImage(img)
+		self.mode_icon[1] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/loop.png").resize(iconsize))
-		self.icon[2] = ImageTk.PhotoImage(img)
+		self.mode_icon[2] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/oneshotall.png").resize(iconsize))
-		self.icon[3] = ImageTk.PhotoImage(img)
-		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
-		self.icon[4] = ImageTk.PhotoImage(img)
-		img = (Image.open("/zynthian/zynthian-ui/icons/end.png").resize(iconsize))
-		self.icon[5] = ImageTk.PhotoImage(img)
-		img = (Image.open("/zynthian/zynthian-ui/icons/loopstop.png").resize(iconsize))
-		self.icon[6] = ImageTk.PhotoImage(img)
+		self.mode_icon[3] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/loopall.png").resize(iconsize))
+		self.mode_icon[4] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/oneshotsync.png").resize(iconsize))
+		self.mode_icon[5] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/loopsync.png").resize(iconsize))
+		self.mode_icon[6] = ImageTk.PhotoImage(img)
+
+		iconsize = (int(self.row_height * 0.2), int(self.row_height * 0.2))
+		img = (Image.open("/zynthian/zynthian-ui/icons/starting.png").resize(iconsize))
+		self.state_icon[zynthian_gui_stepsequencer.SEQ_STARTING] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
+		self.state_icon[zynthian_gui_stepsequencer.SEQ_PLAYING] = ImageTk.PhotoImage(img)
+		img = (Image.open("/zynthian/zynthian-ui/icons/stopping.png").resize(iconsize))
+		self.state_icon[zynthian_gui_stepsequencer.SEQ_STOPPING] = ImageTk.PhotoImage(img)
 
 		# Draw pads
 		for pad in range(self.columns**2):
-			pad_x = pad % self.columns * self.column_width
-			pad_y = int(pad / self.columns) * self.row_height
+			pad_x = int(pad / self.columns) * self.column_width
+			pad_y = pad % self.columns * self.row_height
 			self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
 				fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell", "trigger_%d"%(pad)))
-			self.grid_canvas.create_text(pad_x + self.column_width / 2, pad_y + self.row_height / 2,
+			self.grid_canvas.create_text(int(pad_x + self.column_width / 2), int(pad_y + 0.1 * self.row_height),
+				anchor="n",
 				font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
 				size=int(self.row_height * 0.3)),
 				fill=zynthian_gui_config.color_panel_tx,
 				tags=("lbl_pad:%d"%(pad),"trigger_%d"%(pad)))
-			self.grid_canvas.create_image(pad_x + self.column_width - 3, pad_y + self.row_height - 3, tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
+			self.grid_canvas.create_image(int(pad_x + self.column_width * 0.1), int(pad_y + 0.8 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
+			self.grid_canvas.create_image(int(pad_x + self.column_width * 0.9), int(pad_y + 0.8 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
 			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
 			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
 			self.refresh_pad(pad, True)
@@ -270,34 +280,28 @@ class zynthian_gui_zynpad():
 		if cell:
 			if force or libseq.hasSequenceChanged(self.parent.bank, pad):
 				mode = libseq.getPlayMode(self.parent.bank, pad)
+				state = libseq.getPlayState(self.parent.bank, pad)
 				group = libseq.getGroup(self.parent.bank, pad)
 				foreground = "white"
 				if libseq.getSequenceLength(self.parent.bank, pad) == 0 or mode == zynthian_gui_stepsequencer.SEQ_DISABLED:
-					fill = zynthian_gui_stepsequencer.PAD_COLOUR_DISABLED
-				elif libseq.getPlayState(self.parent.bank, pad) == zynthian_gui_stepsequencer.SEQ_STOPPED:
-						fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED[group%16]
-				elif libseq.getPlayState(self.parent.bank, pad) == zynthian_gui_stepsequencer.SEQ_STARTING:
-					fill = zynthian_gui_stepsequencer.PAD_COLOUR_STARTING
-				elif libseq.getPlayState(self.parent.bank, pad) == zynthian_gui_stepsequencer.SEQ_STOPPING:
-					fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPING
+					self.grid_canvas.itemconfig(cell, fill=zynthian_gui_stepsequencer.PAD_COLOUR_DISABLED)
 				else:
-					fill = zynthian_gui_stepsequencer.PAD_COLOUR_PLAYING
-				self.grid_canvas.itemconfig(cell, fill=fill)
+					self.grid_canvas.itemconfig(cell, fill=zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED[group%16])
 				pad_x = (pad % self.columns) * self.column_width
 				pad_y = int(pad / self.columns) * self.row_height
 				if libseq.getSequenceLength(self.parent.bank, pad) == 0:
 					mode = 0
 				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text="%s%d" % (chr(65 + group), pad + 1), fill=foreground)
-				self.grid_canvas.coords(cell, pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2)
-				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.icon[mode])
+				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
+				self.grid_canvas.itemconfig("state:%d"%pad, image=self.state_icon[state])
 
 
 	# Function to move selection cursor
 	def update_selection_cursor(self):
 		if self.selected_pad >= libseq.getSequencesInBank(self.parent.bank):
 			self.selected_pad = libseq.getSequencesInBank(self.parent.bank) - 1
-		row = int(self.selected_pad / self.columns)
-		col = self.selected_pad % self.columns
+		col = int(self.selected_pad / self.columns)
+		row = self.selected_pad % self.columns
 		self.grid_canvas.coords(self.selection,
 				1 + col * self.column_width, 1 + row * self.row_height,
 				(1 + col) * self.column_width - self.select_thickness, (1 + row) * self.row_height - self.select_thickness)
