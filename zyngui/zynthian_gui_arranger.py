@@ -178,6 +178,7 @@ class zynthian_gui_arranger():
 		self.parent.add_menu({'Pattern': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Add track': {'method':self.add_track}})
 		self.parent.add_menu({'Remove track': {'method':self.remove_track}})
+		self.parent.add_menu({'Clear sequence':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_sequence}}})
 		self.parent.add_menu({'Clear bank':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_bank}}})
 
 
@@ -195,6 +196,14 @@ class zynthian_gui_arranger():
 		libseq.clearBank(self.parent.bank)
 		self.parent.select_bank(self.parent.bank)
 		self.select_cell(0,0)
+		self.redraw_pending = 2
+
+
+	# Function to clear sequence
+	def clear_sequence(self):
+		libseq.clearSequence(self.parent.bank, self.sequence)
+		self.parent.select_bank(self.parent.bank)
+		self.select_cell(0,self.sequence)
 		self.redraw_pending = 2
 
 
@@ -840,6 +849,8 @@ class zynthian_gui_arranger():
 			self.set_pattern(value)
 		elif menu_item == 'Clear bank':
 			return "Clear bank %d?" % (self.parent.bank)
+		elif menu_item == 'Clear sequence':
+			return "Clear sequence %d?" % (self.sequence + 1)
 
 		return "%s: %d" % (menu_item, value)
 
