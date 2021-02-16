@@ -1435,7 +1435,11 @@ void clearSequence(uint8_t bank, uint8_t sequence)
 
 void setSequencesInBank(uint8_t bank, uint8_t sequences)
 {
+    while(g_bMutex)
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
+    g_bMutex = true;
     g_seqMan.setSequencesInBank(bank, sequences);
+    g_bMutex = false;
 }
 
 size_t getSequencesInBank(uint32_t bank)

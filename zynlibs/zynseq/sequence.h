@@ -134,9 +134,8 @@ class Sequence
 		uint8_t getTallyChannel();
 
         /** @brief  Updates sequence length from track lengths
-        *   @retval uint32_t Length of sequence (longest track) in clock cycles
         */
-        uint32_t updateLength();
+        void updateLength();
 
         /** @brief  Get sequence length
         *   @retval uint32_t Length of sequence (longest track) in clock cycles

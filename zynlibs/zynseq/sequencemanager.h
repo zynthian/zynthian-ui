@@ -58,9 +58,8 @@ class SequenceManager
         /** @brief  Update sequence lengths in current bank
         *   @param  bank Index of bank
         *   @param  sequence Index of sequence
-        *   @retval uint32_t Clock cycle of end of last sequence in current bank
         */
-        uint32_t updateSequenceLength(uint8_t bank, uint8_t sequence);
+        void updateSequenceLength(uint8_t bank, uint8_t sequence);
 
         /** @brief  Update all sequence lengths
         *   @note   Blunt tool to update each sequence after any pattern length changes
@@ -202,5 +201,5 @@ class SequenceManager
         std::map<uint32_t, Pattern> m_mPatterns; // Map of patterns indexed by pattern number
         std::vector<Sequence*> m_vPlayingSequences; // Vector of pointers to currently playing sequences (used to optimise play control)
         std::map<uint8_t, uint16_t> m_mTriggers; // Map of bank<<8|sequence indexed by MIDI note triggers
-        std::map<uint32_t, std::vector<Sequence>> m_mBanks; // Map of banks: vectors of sequences indexed by bank
+        std::map<uint32_t, std::vector<Sequence*>> m_mBanks; // Map of banks: vectors of pointers to sequences indexed by bank
 };

@@ -229,7 +229,7 @@ uint8_t Sequence::getTallyChannel()
 	return m_nTallyChannel;
 }
 
-uint32_t Sequence::updateLength()
+void Sequence::updateLength()
 {
     m_nLength = 0;
     for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
@@ -238,7 +238,6 @@ uint32_t Sequence::updateLength()
         if(nTrackLength > m_nLength)
             m_nLength = nTrackLength;
     }
-    return m_nLength;
 }
 
 uint32_t Sequence::getLength()

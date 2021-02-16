@@ -13,6 +13,9 @@ void SequenceManager::init()
 	stop();
 	m_mPatterns.clear();
 	m_mTriggers.clear();
+	for(auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank)
+		for(auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq)
+			delete (*itSeq);
 	m_mBanks.clear();
 }
 
@@ -132,9 +135,10 @@ void SequenceManager::copyPattern(uint32_t source, uint32_t destination)
 
 Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence)
 {
+	// Add missing sequences
 	while(m_mBanks[bank].size() <= sequence)
-		m_mBanks[bank].emplace_back();
-	return &(m_mBanks[bank][sequence]);
+		m_mBanks[bank].push_back(new Sequence());
+	return m_mBanks[bank][sequence];
 }
 
 bool SequenceManager::addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force)
@@ -158,16 +162,16 @@ void SequenceManager::removePattern(uint8_t bank, uint8_t sequence, uint32_t tra
 	updateSequenceLength(bank, sequence);
 }
 
-uint32_t SequenceManager::updateSequenceLength(uint8_t bank, uint8_t sequence)
+void SequenceManager::updateSequenceLength(uint8_t bank, uint8_t sequence)
 {
-	return m_mBanks[bank][sequence].updateLength();
+	getSequence(bank, sequence)->updateLength();
 }
 
 void SequenceManager::updateAllSequenceLengths()
 {
 	for(auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank)
 		for(auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq)
-			(*itSeq).updateLength();
+			(*itSeq)->updateLength();
 }
 
 size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock)
@@ -323,7 +327,7 @@ void SequenceManager::cleanPatterns()
 		for(auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq)
 		{
 			uint32_t nTrack = 0;
-			while(Track* pTrack = (*itSeq).getTrack(nTrack++))
+			while(Track* pTrack = (*itSeq)->getTrack(nTrack++))
 			{
 				uint32_t nIndex = 0;
 				while(Pattern* pPattern = pTrack->getPatternByIndex(nIndex++))
@@ -343,13 +347,19 @@ void SequenceManager::cleanPatterns()
 void SequenceManager::setSequencesInBank(uint8_t bank, uint8_t sequences)
 {
 	// Remove excessive sequences
-	while(m_mBanks[bank].size() > sequences)
+	size_t nSize = m_mBanks[bank].size();
+	while(nSize > sequences)
+	{
+		setSequencePlayState(bank, --nSize, STOPPED);
+		delete getSequence(bank, nSize);
 		m_mBanks[bank].pop_back();
+	}
 	cleanPatterns();
 	// Add required sequences
-	for(size_t nSequence = m_mBanks[bank].size(); nSequence < sequences; ++nSequence)
+	for(size_t nSequence = nSize; nSequence < sequences; ++nSequence)
 	{
-		m_mBanks[bank].emplace_back();
+		Sequence* pSequence = new Sequence();
+		m_mBanks[bank].push_back(pSequence);
 		// Add a new pattern at start of eacn new track
 		uint32_t nPattern = createPattern();
 		addPattern(bank, nSequence, 0, 0, nPattern, false);
@@ -364,7 +374,7 @@ uint32_t SequenceManager::getSequencesInBank(uint32_t bank)
 
 void SequenceManager::clearBank(uint32_t bank)
 {
-	m_mBanks.erase(bank);
+	setSequencesInBank(bank, 0);
 }
 
 uint32_t SequenceManager::getBanks()
