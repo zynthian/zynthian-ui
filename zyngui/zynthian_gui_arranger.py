@@ -278,6 +278,11 @@ class zynthian_gui_arranger():
 		return self.pattern
 
 
+	# Function to select .mid file to import
+	def select_import(self, params):
+		zynthian_gui_fileselector(self.parent, self.import_smf, zynthian_gui_stepsequencer.os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture", "mid", None, True)
+
+
 	# Function to set current pattern
 	def set_pattern(self, pattern):
 		if pattern < 1:

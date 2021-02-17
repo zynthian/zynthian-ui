@@ -229,7 +229,6 @@ class zynthian_gui_patterneditor():
 		self.parent.add_menu({'Clear pattern':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_pattern}}})
 		if libseq.getScale():
 			self.parent.add_menu({'Transpose pattern':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':1, 'value':0, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Import from SMF':{'method':self.select_import}})
 		self.parent.add_menu({'-------------------':{}})
 		self.parent.add_menu({'Vertical zoom':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':127, 'get_value':self.get_vertical_zoom, 'on_change':self.on_menu_change, 'on_assert':self.assert_zoom}}})
 		self.parent.add_menu({'Scale':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':self.get_scales(), 'get_value':libseq.getScale, 'on_change':self.on_menu_change}}})
@@ -848,70 +847,6 @@ class zynthian_gui_patterneditor():
 		self.redraw_pending = 2
 		self.select_cell(0, int(self.keymap_offset + self.zoom / 2))
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
-		
-
-	# Function to select .mid file to import
-	def select_import(self, params):
-		zynthian_gui_fileselector(self.parent, self.import_smf, zynthian_gui_stepsequencer.os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture", "mid", None, True)
-
-
-	# Function to import patterns from standard MIDI file
-	#	filename: Full path and filename of midi file from which to import
-	def import_smf(self, filename):
-		# Open file
-		smf = libsmf.addSmf()
-		if not zynsmf.load(smf, filename):
-			logging.warning("Unable to open file %s for import", filename)
-			libsmf.removeSmf(smf)
-			return
-
-		ticks_per_beat = libsmf.getTicksPerQuarterNote(smf)
-		# Iterate through events in file matching current pattern MIDI channel
-		pattern = self.pattern
-		libseq.selectPattern(pattern)
-		libseq.clear()
-		notes = [{'step':0, 'velocity':0} for i in range(127)] # map of note-on events used to calculate duration when corresponding note-off occurs
-		steps_per_beat = libseq.getStepsPerBeat()
-		ticks_per_step = ticks_per_beat / steps_per_beat
-		if ticks_per_step == 0:
-			logging.warning("Unable to calculate ticks per step")
-			return
-		step = 0
-		max_steps = libseq.getSteps()
-		beats = libseq.getBeatsInPattern()
-		channel = libseq.getInputChannel()
-		populated_pattern = False
-		libsmf.setPosition(smf, 0)
-		while libsmf.getEvent(smf,True):
-			offset = libsmf.getEventTime()
-			step = int(offset / ticks_per_step) % max_steps
-			this_pattern = pattern + int(int(offset / ticks_per_step) / max_steps)
-			if this_pattern > self.pattern:
-				if populated_pattern:
-					populated_pattern = False
-					self.pattern = this_pattern
-					libseq.selectPattern(this_pattern)
-					libseq.clear()
-					libseq.setBeatsInPattern(beats)
-					libseq.setStepsPerBeat(steps_per_beat)
-			status = libsmf.getEventStatus() & 0xF0
-			if libsmf.getEventType() != zynsmf.EVENT_TYPE_MIDI or (status) not in [zynsmf.MIDI_NOTE_ON, zynsmf.MIDI_NOTE_OFF] or libsmf.getEventChannel() != channel:
-				continue
-			populated_pattern = True
-			note_on = (status == zynsmf.MIDI_NOTE_ON and libsmf.getEventValue2())
-			note = libsmf.getEventValue1()
-			velocity = libsmf.getEventValue2()
-			if note_on:
-				notes[note]['step'] = step
-				notes[note]['velocity'] = velocity
-				libseq.addNote(step, note, notes[note]['velocity'], 1) # Create placeholder (will change duration if note off recieved)
-			else:
-				duration = step - notes[note]['step'] + 1
-				if duration < 0:
-					duration += max_steps
-				libseq.addNote(step, note, notes[note]['velocity'], duration) #TODO: This does not account for note-off events after progressing to next pattern
-		libsmf.removeSmf(smf)
-		self.load_pattern(pattern) # Reload our starting pattern in the editor
 
 
 	# Function to refresh display
