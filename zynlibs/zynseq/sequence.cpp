@@ -152,13 +152,20 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 			m_nState = STOPPED;
 		if(m_nState == STARTING)
 			m_nState = PLAYING;
+		if(m_nState == RESTARTING)
+		{
+			m_nState = PLAYING;
+			nState = PLAYING;
+		}
 		if(m_nState == STOPPING && m_nMode == LOOPSYNC)
 			m_nState = STOPPED;
 		if(m_nMode == ONESHOTSYNC || m_nMode == LOOPSYNC)
 			m_nPosition = 0;
 		m_nLastSyncPos = m_nPosition;
 	}
-	
+	else if(m_nState == RESTARTING)
+		setPlayState(STARTING);
+
 	if(m_nState == PLAYING || m_nState == STOPPING)
 	{
 		// Still playing so iterate through tracks
@@ -179,7 +186,10 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 			case LOOPSYNC:
 			case LOOPALL:
 				if(m_nState == PLAYING)
-					setPlayState(STARTING);
+				{
+					m_nState = RESTARTING;
+					nState = RESTARTING;
+				}
 			case LOOP:
 				if(m_nState == STOPPING)
 					setPlayState(STOPPED);

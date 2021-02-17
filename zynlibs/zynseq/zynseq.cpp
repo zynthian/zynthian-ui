@@ -404,7 +404,6 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         bool bSync = false; // True if at start of bar
         while(g_dFramesToNextClock < nFrames)
         {
-            //!@todo Change of timebase can trigger this gets run early. Need to count frames rather than measure difference.
             bSync = false;
             if(g_nClock == 0)
             {

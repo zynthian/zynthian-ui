@@ -226,6 +226,8 @@ size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* 
 					case STARTING:
 						pEvent->value2 = 5;
 						break;
+					default:
+						continue;
 				}
 				//!@todo Can we optimise time search?
 				while(pSchedule->find(nTime) != pSchedule->end())

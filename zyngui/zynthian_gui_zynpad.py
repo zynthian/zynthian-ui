@@ -285,6 +285,8 @@ class zynthian_gui_zynpad():
 			if force or libseq.hasSequenceChanged(self.parent.bank, pad):
 				mode = libseq.getPlayMode(self.parent.bank, pad)
 				state = libseq.getPlayState(self.parent.bank, pad)
+				if state == zynthian_gui_stepsequencer.SEQ_RESTARTING:
+					state = zynthian_gui_stepsequencer.SEQ_PLAYING
 				group = libseq.getGroup(self.parent.bank, pad)
 				foreground = "white"
 				if libseq.getSequenceLength(self.parent.bank, pad) == 0 or mode == zynthian_gui_stepsequencer.SEQ_DISABLED:

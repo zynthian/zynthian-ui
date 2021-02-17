@@ -15,11 +15,12 @@
 #define LASTPLAYMODE	6
 
 // Play status
-#define STOPPED			0
-#define PLAYING			1
-#define STOPPING		2
-#define STARTING		3
-#define LASTPLAYSTATUS	3
+#define STOPPED			0 // Sequence is stopped
+#define PLAYING			1 // Sequence is playing
+#define STOPPING		2 // Sequence is playing waiting to stop
+#define STARTING		3 // Sequence is paused waiting to start
+#define RESTARTING		4 // Sequence is paused waiting to start or play (on next clock cycle)
+#define LASTPLAYSTATUS	4
 
 // MIDI commands
 #define MIDI_POSITION	0xF2
