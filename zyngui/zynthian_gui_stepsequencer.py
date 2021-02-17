@@ -641,6 +641,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			params = {}
 		if self.child == self.zynpad:
 			params["sequence"] = self.zynpad.selected_pad
+		if self.child == self.arranger:
+			params["sequence"] = self.arranger.sequence
 		self.hide_child()
 		self.buttonbar_config[2] = (2, '')
 		if name == "arranger":

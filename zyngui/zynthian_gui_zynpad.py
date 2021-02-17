@@ -116,6 +116,10 @@ class zynthian_gui_zynpad():
 		self.setup_encoders()
 		self.parent.select_bank(self.parent.bank)
 		self.parent.set_title("Bank %d" % (self.parent.bank))
+		try:
+			self.selected_pad = params["sequence"]
+		except:
+			pass # sequence not passed as parameter
 
 
 	# Function to populate menu
