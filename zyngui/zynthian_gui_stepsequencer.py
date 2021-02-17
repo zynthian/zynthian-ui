@@ -128,6 +128,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.child = None # Pointer to instance of child panel
 		self.last_child = "zynpad" # Name of last child shown - used to return to same screen
 		self.bank = 1 # Currently displayed bank of sequences
+		self.layers = [None for i in range(16)] # Root layer indexed by MIDI channel
+
 		#libseq.enableDebug(True)
 
 		# Load default sequence file
@@ -356,6 +358,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.screens["control"].unlock_controllers()
 			self.shown=True
 			self.show_child(self.last_child, {})
+			# Update list of layers
+			for chan in range(16):
+				for layer in self.zyngui.screens['layer'].layers:
+					if layer.midi_chan == chan:
+						self.layers[chan] = layer
+						break
+
 		self.main_frame.focus()
 
 

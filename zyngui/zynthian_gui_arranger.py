@@ -67,7 +67,6 @@ class zynthian_gui_arranger():
 		self.sequence_tracks = [] # Array of [Sequence,Track] that are visible within bank
 		self.sequence = 0 # Index of selected sequence
 		self.track = 0 # Index of selected track
-		self.layers = [None for i in range(16)] # Root layer indexed by MIDI channel
 
 		self.vertical_zoom = libseq.getVerticalZoom() # Quantity of rows (tracks) displayed in grid
 		self.horizontal_zoom = libseq.getHorizontalZoom() # Quantity of columns (time divisions) displayed in grid
@@ -501,8 +500,8 @@ class zynthian_gui_arranger():
 		fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED[group % 16]
 		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
 		channel = libseq.getChannel(self.parent.bank, sequence, track)
-		if channel < 16 and self.layers[channel]:
-			track_name = self.layers[channel].preset_name
+		if channel < 16 and self.parent.layers[channel]:
+			track_name = self.parent.layers[channel].preset_name
 		else:
 			track_name = ""
 
@@ -633,13 +632,6 @@ class zynthian_gui_arranger():
 			self.cells = [[None] * 2 for _ in range(self.vertical_zoom * self.horizontal_zoom)]
 			self.select_cell()
 		self.redraw_pending = 0
-
-		# Update list of layers
-		for chan in range(16):
-			for layer in self.zyngui.screens['layer'].layers:
-				if layer.midi_chan == chan:
-					self.layers[chan] = layer
-					break
 
 		# Draw rows of grid
 		self.grid_canvas.itemconfig("gridcell", fill=CANVAS_BACKGROUND)
@@ -826,6 +818,10 @@ class zynthian_gui_arranger():
 		elif menu_item == 'MIDI channel':
 			libseq.setChannel(self.parent.bank, self.sequence, self.track, value - 1)
 			self.redraw_pending = 2
+			try:
+				return "MIDI channel: %d (%s)"%(value, self.parent.layers[value-1].preset_name)
+			except:
+				pass # No layer so just show MIDI channel
 		elif menu_item == "Group":
 			libseq.setGroup(self.parent.bank, self.sequence, value)
 			self.redraw_pending = 2

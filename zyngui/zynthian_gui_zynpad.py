@@ -182,6 +182,10 @@ class zynthian_gui_zynpad():
 		elif menu_item == 'MIDI channel':
 			libseq.setChannel(self.parent.bank, self.selected_pad, 0, value - 1)
 			libseq.setGroup(self.parent.bank, self.selected_pad, value - 1)
+			try:
+				return "MIDI channel: %d (%s)"%(value, self.parent.layers[value-1].preset_name)
+			except:
+				pass # No layer so just show MIDI channel
 		elif menu_item == 'Trigger channel':
 			libseq.setTriggerChannel(value - 1)
 		elif menu_item == 'Trigger note':
