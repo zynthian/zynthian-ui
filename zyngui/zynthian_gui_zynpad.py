@@ -375,13 +375,28 @@ class zynthian_gui_zynpad():
 	def on_zyncoder(self, encoder, value):
 		if encoder == ENC_SELECT:
 			# SELECT encoder adjusts horizontal pad selection
-			value = self.selected_pad + value
+			pad = self.selected_pad + self.columns * value
+			col = int(pad / self.columns)
+			row = pad % self.columns
+			if col >= self.columns:
+				col = 0
+				row += 1
+				pad = row + self.columns * col
+			elif pad < 0:
+				col = self.columns -1
+				row -= 1
+				pad = row + self.columns * col
+			if row < 0 or row >= self.columns or col >= self.columns:
+				return
+			self.selected_pad = pad
+			self.update_selection_cursor()
 		elif encoder == ENC_BACK:
 			# BACK encoder adjusts vertical pad selection
-			value = self.selected_pad + self.columns * value
-		if value >= 0 and value < libseq.getSequencesInBank(self.parent.bank):
-			self.selected_pad = value
-		self.update_selection_cursor()
+			pad = self.selected_pad + value
+			if pad < 0 or pad >= libseq.getSequencesInBank(self.parent.bank):
+				return
+			self.selected_pad = pad
+			self.update_selection_cursor()
 
 
 	# Function to handle switch press
