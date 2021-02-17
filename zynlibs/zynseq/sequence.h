@@ -123,16 +123,6 @@ class Sequence
 		*/
 		SEQ_EVENT* getEvent();
 
-		/**	@brief	Set MIDI channel used to send track play status, e.g. to light controller pads
-		*	@param channel MIDI channel [0..15, 255 for none]
-		*/
-		void setTallyChannel(uint8_t channel);
-
-		/**	@brief	Get MIDI channel used to send track play status, e.g. to light controller pads
-		*	@retval uint8_t MIDI channel [0..15, 255 for none]
-		*/
-		uint8_t getTallyChannel();
-
         /** @brief  Updates sequence length from track lengths
         */
         void updateLength();
@@ -154,7 +144,7 @@ class Sequence
 
 		/**	@brief	Check if sequence state has changed since last call
 		*	@retval bool True if changed
-		*	@note	Monitors group, mode, tally channel, tracks, playstate 
+		*	@note	Monitors group, mode, tracks, playstate 
 		*/
 		bool hasChanged();
 
@@ -168,7 +158,6 @@ class Sequence
 		uint32_t m_nLastSyncPos = 0; // Position of last sync pulse in clock cycles
         uint32_t m_nLength = 0; // Length of sequence in clock cycles (longest track)
         uint8_t m_nGroup = 0; // Sequence's mutually exclusive group
-		uint8_t m_nTallyChannel = 255; // MIDI channel to send play state tallies (>15 to disable)
 		uint16_t m_nTempo = 120; // Default tempo (overriden by tempo events in timebase map)
 		bool m_bChanged = false; // True if sequence content changed
 };

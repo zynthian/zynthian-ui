@@ -518,34 +518,6 @@ uint8_t getGroup(uint8_t bank, uint8_t sequence);
 */
 void setGroup(uint8_t bank, uint8_t sequence, uint8_t group);
 
-/** @brief  Get MIDI channel used to send sequence play status, e.g. to light controller pads
-*   @param  bank Index of bank
-*   @param  sequence Index of sequence
-*   @retval uint8_t MIDI channel [0..15, 255 for none]
-*/
-uint8_t getTallyChannel(uint8_t bank, uint8_t sequence);
-
-/** @brief  Set MIDI channel used to send sequence play status, e.g. to light controller pads
-*   @param  bank Index of bank
-*   @param  sequence Index of sequence
-*   @param  channel MIDI channel [0..15, 255 for none]
-*/
-void setTallyChannel(uint8_t bank, uint8_t sequence, uint8_t channel);
-
-/** @brief  Set MIDI note used to send sequence play status, e.g. to light controller pads
-*   @param  bank Index of bank
-*   @param  sequence Index of sequence
-*   @param  note MIDI note [0..127]
-*/
-void setTallyNote(uint8_t bank, uint8_t sequence, uint8_t note);
-
-/** @brief  Get MIDI note used to send sequence play status, e.g. to light controller pads
-*   @param  bank Index of bank
-*   @param  sequence Index of sequence
-*   @retval uint8_t MIDI note [0..127]
-*/
-uint8_t getTallyNote(uint8_t bank, uint8_t sequence);
-
 /** @brief  Check if a sequence play state, group or mode has changed since last checked
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence

@@ -181,16 +181,17 @@ size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* 
 	*/
 	for(auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); )
 	{
-		if((*it)->getPlayState() == STOPPED)
+		Sequence* pSequence = getSequence(it->first, it->second);
+		if(pSequence->getPlayState() == STOPPED)
 		{
 			it = m_vPlayingSequences.erase(it);
 			continue;
 		}
-		uint8_t nEventType = (*it)->clock(nTime, bSync, dSamplesPerClock);
+		uint8_t nEventType = pSequence->clock(nTime, bSync, dSamplesPerClock);
 		if(nEventType & 1)
 		{
 			// A step event
-			while(SEQ_EVENT* pEvent = (*it)->getEvent())
+			while(SEQ_EVENT* pEvent = pSequence->getEvent())
 			{
 				uint32_t nEventTime = pEvent->time;
 				while(pSchedule->find(nEventTime) != pSchedule->end())
@@ -203,15 +204,14 @@ size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* 
 		if(nEventType & 2)
 		{
 			// Change of state
-			/**	@todo Enable tallies
-			uint8_t nTallyChannel = (*it)->getTallyChannel();
-			uint8_t nTrigger = (*it)->getTrigger();
+			uint8_t nTallyChannel = getTriggerChannel();
+			uint8_t nTrigger = getTriggerNote(it->first, it->second);
 			if(nTallyChannel < 16 && nTrigger < 128)
 			{
 				MIDI_MESSAGE* pEvent = new MIDI_MESSAGE();
 				pEvent->command = MIDI_NOTE_ON | nTallyChannel;
 				pEvent->value1 = nTrigger;
-				switch((*it)->getPlayState())
+				switch(pSequence->getPlayState())
 				{
 					//!@todo Tallies are hard coded to Akai APC but should be configurable
 					case STOPPED:
@@ -232,7 +232,6 @@ size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* 
 					++nTime; // Move event forward until we find a spare time slot
 				(*pSchedule)[nTime] = pEvent;
 			}
-			*/
 		}
 		++it;
 	}
@@ -248,19 +247,20 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
 		// Stop other sequences in same group
 		for(auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it)
 		{
-			if((*it) == pSequence)
+			Sequence* pPlayingSequence = getSequence(it->first, it->second);
+			if(pPlayingSequence == pSequence)
 				bAddToList = false;
 			else
-				if((*it)->getGroup() == pSequence->getGroup())
+				if(pPlayingSequence->getGroup() == pSequence->getGroup())
 				{
-					if((*it)->getPlayState() == STARTING)
-						(*it)->setPlayState(STOPPED);
-					else if((*it)->getPlayState() != STOPPED)
-						(*it)->setPlayState(STOPPING);
+					if(pPlayingSequence->getPlayState() == STARTING)
+						pPlayingSequence->setPlayState(STOPPED);
+					else if(pPlayingSequence->getPlayState() != STOPPED)
+						pPlayingSequence->setPlayState(STOPPING);
 				}
 		}
 		if(bAddToList)
-			m_vPlayingSequences.push_back(pSequence);
+			m_vPlayingSequences.push_back(std::pair<uint32_t,uint32_t>(bank,sequence));
 	}
 	pSequence->setPlayState(state);
 }
@@ -310,7 +310,7 @@ size_t SequenceManager::getPlayingSequencesCount()
 void SequenceManager::stop()
 {
 	for(auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it)
-		(*it)->setPlayState(STOPPED);
+		getSequence(it->first, it->second)->setPlayState(STOPPED);
 	m_vPlayingSequences.clear();
 }
 

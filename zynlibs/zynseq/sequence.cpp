@@ -213,22 +213,6 @@ SEQ_EVENT* Sequence::getEvent()
     return NULL;
 }
 
-void Sequence::setTallyChannel(uint8_t channel)
-{
-	if(channel == m_nTallyChannel)
-		return;
-	if(channel > 15)
-		m_nTallyChannel = 255;
-	else
-		m_nTallyChannel = channel;
-	m_bChanged = true;
-}
-
-uint8_t Sequence::getTallyChannel()
-{
-	return m_nTallyChannel;
-}
-
 void Sequence::updateLength()
 {
     m_nLength = 0;

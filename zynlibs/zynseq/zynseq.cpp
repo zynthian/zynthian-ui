@@ -1468,19 +1468,6 @@ void setGroup(uint8_t bank, uint8_t sequence, uint8_t group)
     g_bDirty = true;
 }
 
-uint8_t getTallyChannel(uint8_t bank, uint8_t sequence)
-{
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    return pSequence->getTallyChannel();
-}
-
-void setTallyChannel(uint8_t bank, uint8_t sequence, uint8_t channel)
-{
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    pSequence->setTallyChannel(channel);
-    g_bDirty = true;
-}
-
 bool hasSequenceChanged(uint8_t bank, uint8_t sequence)
 {
     return g_seqMan.getSequence(bank, sequence)->hasChanged();
