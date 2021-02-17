@@ -1391,6 +1391,7 @@ void togglePlayState(uint8_t bank, uint8_t sequence)
 			nState = STARTING;
 			break;
 		case STARTING:
+        case RESTARTING:
 			nState = STOPPED;
 			break;
 		case PLAYING:

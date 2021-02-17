@@ -160,4 +160,5 @@ class Sequence
         uint8_t m_nGroup = 0; // Sequence's mutually exclusive group
 		uint16_t m_nTempo = 120; // Default tempo (overriden by tempo events in timebase map)
 		bool m_bChanged = false; // True if sequence content changed
+		bool m_bStateChanged = false; // True if state changed since last clock cycle
 };

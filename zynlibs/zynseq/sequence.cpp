@@ -122,13 +122,13 @@ uint8_t Sequence::getPlayState()
 
 void Sequence::setPlayState(uint8_t state)
 {
+	uint8_t nState = m_nState;
 	if(m_nMode == DISABLED)
 		state = STOPPED;
 	if(state == m_nState)
 		return;
 	if(m_nMode == ONESHOT && state == STOPPING)
 		state = STOPPED;
-	m_bChanged = true;
     m_nState = state;
 	if(m_nState == STOPPED)
 		if(m_nMode == ONESHOT)
@@ -139,6 +139,8 @@ void Sequence::setPlayState(uint8_t state)
 		}
 		else
 			m_nPosition = 0;
+	m_bStateChanged |= (nState != m_nState);
+	m_bChanged = true;
 }
 
 uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
@@ -164,7 +166,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 		m_nLastSyncPos = m_nPosition;
 	}
 	else if(m_nState == RESTARTING)
-		setPlayState(STARTING);
+		m_nState = STARTING;
 
 	if(m_nState == PLAYING || m_nState == STOPPING)
 	{
@@ -198,9 +200,11 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 		m_nLastSyncPos = 0;
 	}
 
-	if(nState != m_nState)
+	m_bStateChanged |= (nState != m_nState);
+	if(m_bStateChanged)
 	{
-		m_bChanged = true;
+		m_bChanged |= true;
+		m_bStateChanged = false;
 		return nReturn | 2;
 	}
 	return nReturn;
