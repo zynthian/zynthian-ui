@@ -18,6 +18,9 @@ void Track::clear()
 
 void Track::addEvent(Event* pEvent)
 {
+    size_t nSize = m_vSchedule.size();
+    if(nSize && m_vSchedule[nSize - 1]->getType() == 0x2F)
+        m_vSchedule.pop_back(); // Remove end of track event
     m_vSchedule.push_back(pEvent);
 }
 

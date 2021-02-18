@@ -100,6 +100,31 @@ uint16_t getTicksPerQuarterNote(Smf* pSmf);
 */
 bool getEvent(Smf* pSmf, bool bAdvance=false);
 
+/** @brief  Add MIDI note event
+*   @param  pSmf Pointer to the SMF
+*   @param  nTrack Index of track to add event
+*	@param	nTime Position of note in ticks since start of song
+*   @param  nDuration Duration of note in ticks
+*   @param  nChannel MIDI channel
+*   @param  nNote MIDI note
+*   @param  nVelocity MIDI velocity
+*/
+void addNote(Smf* pSmf, uint32_t nTrack, uint32_t nTime, uint32_t nDuration, uint8_t nChannel, uint8_t nNote, uint8_t nVelocity);
+
+/** @brief  Add tempo event
+*   @param  pSmf Pointer to the SMF
+*	@param	nTime Position of tempo change in ticks since start of song
+*   @param  nTempo Tempo in BPM
+*/
+void addTempo(Smf* pSmf, uint32_t nTime, uint32_t nTempo);
+
+/** @brief  Set end of track time (required for loop playback)
+*   @param  pSmf Pointer to the SMF
+*   @param  nTrack Index of track to add event
+*	@param	nTime Position of end of track in ticks since start of song
+*/
+void setEndOfTrack(Smf* pSmf, uint32_t nTrack, uint32_t nTime);
+
 /** @brief  Get the track of the current event
 *   @retval size_t Index of track
 */

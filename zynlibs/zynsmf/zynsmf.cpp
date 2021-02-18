@@ -170,6 +170,45 @@ uint32_t getEvents(Smf* pSmf, size_t nTrack)
 	return pSmf->getEvents(nTrack);
 }
 
+void addNote(Smf* pSmf, uint32_t nTrack, uint32_t nTime, uint32_t nDuration, uint8_t nChannel, uint8_t nNote, uint8_t nVelocity)
+{
+	if(!isSmfValid(pSmf))
+		return;
+	uint8_t* pData = new uint8_t[2];
+	*pData = nNote;
+	*(pData + 1) = nVelocity;
+	Event* pEvent = new Event(nTime, EVENT_TYPE_MIDI, 0x90 | (nChannel & 0x0F), 2, pData);
+	pSmf->addEvent(nTrack, pEvent);
+	pData = new uint8_t[2];
+	*pData = nNote;
+	*(pData + 1) = 0;
+	pEvent = new Event(nTime + nDuration, EVENT_TYPE_MIDI, 0x90 | (nChannel & 0x0F), 2, pData);
+	pSmf->addEvent(nTrack, pEvent);
+}
+
+void addTempo(Smf* pSmf, uint32_t nTime, uint32_t nTempo)
+{
+	if(!isSmfValid(pSmf))
+		return;
+	uint32_t nUspqn = (60000000/nTempo);
+	//!@todo Validate tempo calculation
+	uint8_t* pData = new uint8_t[3];
+	*pData = uint8_t(nUspqn >> 16);
+	*(pData + 1) = uint8_t(nUspqn >> 8);
+	*(pData + 2) = uint8_t(nUspqn & 0xFF);
+	Event* pEvent = new Event(nTime, EVENT_TYPE_META, 0x51, 3, pData);
+	pSmf->addEvent(0, pEvent);
+}
+
+void setEndOfTrack(Smf* pSmf, uint32_t nTrack, uint32_t nTime)
+{
+	if(!isSmfValid(pSmf))
+		return;
+	//!@todo remove existing end of track event
+	Event* pEvent = new Event(nTime, EVENT_TYPE_META, 0x2F, 0, NULL);
+	pSmf->addEvent(nTrack, pEvent);
+}
+
 uint16_t getTicksPerQuarterNote(Smf* pSmf)
 {
 	if(!isSmfValid(pSmf))

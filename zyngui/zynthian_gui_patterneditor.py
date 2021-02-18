@@ -34,6 +34,7 @@ import json
 from xml.dom import minidom
 import threading
 from time import sleep
+from datetime import datetime
 import time
 import ctypes
 from os.path import dirname, realpath, basename
@@ -47,6 +48,8 @@ from zyngui import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
+from zynlibs.zynsmf import zynsmf
+from zynlibs.zynsmf.zynsmf import libsmf
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer Pattern Editor GUI Class
@@ -177,6 +180,11 @@ class zynthian_gui_patterneditor():
 		return "pattern editor"
 
 
+	def play_note(self, note):
+		if libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
+			libseq.playNote(note, 100, self.channel, 200)
+
+
 	#Function to set values of encoders
 	#   note: Call after other routine uses one or more encoders
 	def setup_encoders(self):
@@ -235,6 +243,26 @@ class zynthian_gui_patterneditor():
 		self.parent.add_menu({'Tonic':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':12, 'get_value':libseq.getTonic, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Rest note':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':128, 'get_value':libseq.getInputRest, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Input channel':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':16, 'get_value':self.get_input_channel, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Export to SMF':{'method':self.export_smf}})
+
+
+	# Function to export pattern to SMF
+	def export_smf(self, params):
+		smf = libsmf.addSmf()
+		tempo = libseq.getTempo()
+		libsmf.addTempo(smf, 0, tempo)
+		ticks_per_step = libsmf.getTicksPerQuarterNote(smf) / libseq.getStepsPerBeat()
+		for step in range(libseq.getSteps()):
+			time = int(step * ticks_per_step)
+			for note in range(128):
+				duration = libseq.getNoteDuration(step, note)
+				if duration == 0:
+					continue
+				duration = int(duration * ticks_per_step)
+				velocity = libseq.getNoteVelocity(step, note)
+				libsmf.addNote(smf, 0, time, duration, self.channel, note, velocity)
+		libsmf.setEndOfTrack(smf, 0, int(libseq.getSteps() * ticks_per_step))
+		zynsmf.save(smf, "/zynthian/zynthian-my-data/capture/pattern%d_%s.mid"%(self.pattern, datetime.now()))
 
 
 	# Function to set edit mode
@@ -399,7 +427,7 @@ class zynthian_gui_patterneditor():
 		self.drag_start_duration = libseq.getNoteDuration(step, note)
 		self.drag_start_step = int(event.x / self.step_width)
 		if not self.drag_start_velocity:
-			libseq.playNote(note, 100, self.channel, 200)
+			self.play_note(note)
 		self.select_cell(int(col), self.keymap_offset + int(row))
 
 
@@ -462,16 +490,17 @@ class zynthian_gui_patterneditor():
 				self.select_cell(self.selected_cell[0] + 1, None)
 			elif event.y < y2:
 				self.select_cell(None, self.selected_cell[1] + 1)
-				libseq.playNote(self.keymap[self.selected_cell[1]]["note"], 100, self.channel, 200)
+				self.play_note(self.keymap[self.selected_cell[1]]["note"])
 			elif event.y > y1:
 				self.select_cell(None, self.selected_cell[1] - 1)
-				libseq.playNote(self.keymap[self.selected_cell[1]]["note"], 100, self.channel, 200)
+				self.play_note(self.keymap[self.selected_cell[1]]["note"])
 
 
 	# Function to toggle note event
 	#	step: step (column) index
 	#	index: key map index
-	def toggle_event(self, step, index, playnote=False):
+	# 	Returns: Note if note added else None
+	def toggle_event(self, step, index):
 		if step < 0 or step >= libseq.getSteps() or index >= len(self.keymap):
 			return
 		note = self.keymap[index]['note']
@@ -479,8 +508,7 @@ class zynthian_gui_patterneditor():
 			self.remove_event(step, index)
 		else:
 			self.add_event(step, index)
-			if playnote:
-				libseq.playNote(note, 100, self.channel, 200) #TODO: Maybe store MIDI channel when shown
+			return note
 
 
 	# Function to remove an event
@@ -915,7 +943,9 @@ class zynthian_gui_patterneditor():
 				self.enable_edit(False)
 				return True
 			if type == "S":
-				self.toggle_event(self.selected_cell[0], self.selected_cell[1], True)
+				note = self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+				if note:
+					self.play_note(note)
 			else:
 				self.enable_edit(True)
 			return True

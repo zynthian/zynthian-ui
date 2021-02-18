@@ -375,7 +375,7 @@ bool Smf::save(char* sFilename)
 				case EVENT_TYPE_META:
 					fileWrite8(0xFF, pFile);
 					fileWrite8(pEvent->getSubtype(), pFile);
-					fileWrite8(pEvent->getSize(), pFile); //!@todo Use SMF type value
+					fileWrite8(pEvent->getSize(), pFile); //!@todo This should be a variable length quantity
 					nRunningStatus = 0x00;
 					break;
 				case EVENT_TYPE_SYSEX:
@@ -391,6 +391,7 @@ bool Smf::save(char* sFilename)
 		fseek(pFile, nSizePos, SEEK_SET);
 		fileWrite32(nSize, pFile);
 		fseek(pFile, 0, SEEK_END);
+		//!@todo Add missing end of track events
 	}
 
 	fclose(pFile);
