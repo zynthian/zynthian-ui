@@ -497,6 +497,7 @@ class zynthian_gui:
 
 
 	def show_confirm(self, text, callback=None, cb_params=None):
+		self.modal_screen_back = self.modal_screen
 		self.modal_screen='confirm'
 		self.screens['confirm'].show(text, callback, cb_params)
 		self.hide_screens(exclude='confirm')

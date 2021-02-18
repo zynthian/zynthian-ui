@@ -31,7 +31,6 @@ from os.path import isfile, isdir, join, basename
 # Zynthian specific modules
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
-from zynlibs.zynseq import zynseq
 
 #------------------------------------------------------------------------------
 # Zynthian Load/Save Snapshot GUI Class
@@ -148,8 +147,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				self.list_data.append((self.last_state_snapshot_fpath,i,"Last State"))
 				i += 1
 			elif self.action=="LOAD": 
-				self.list_data.append(("NEW_SNAPSHOT",i,"Empty"))
-				i += 1
 				if isfile(self.default_snapshot_fpath):
 					self.list_data.append((self.default_snapshot_fpath,i,"Default"))
 					i += 1
@@ -221,12 +218,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				self.bank_dir=self.list_data[i][2]
 			self.show()
 		elif self.action=="LOAD":
-			if fpath=='NEW_SNAPSHOT':
-				self.zyngui.screens['layer'].reset()
-				self.zyngui.show_screen('layer')
-				if zynseq.libseq:
-					zynseq.load("")
-			elif fpath:
+			if fpath:
 				if t=='S':
 					self.zyngui.screens['layer'].load_snapshot(fpath)
 					#self.zyngui.show_screen('control')

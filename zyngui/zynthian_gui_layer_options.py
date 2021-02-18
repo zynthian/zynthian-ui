@@ -312,8 +312,13 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def layer_remove(self):
+		self.zyngui.show_confirm("Do you really want to remove this layer?", self.layer_remove_confirmed)
+
+
+	def layer_remove_confirmed(self, params=None):
 		self.zyngui.screens['layer'].remove_root_layer(self.layer_index)
-		self.zyngui.show_screen('layer')
+		self.zyngui.close_modal()
+
 
 	# FX-Chain management
 

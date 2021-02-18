@@ -28,6 +28,7 @@ import logging
 # Zynthian specific modules
 from . import zynthian_gui_selector
 from zyngui import zynthian_gui_config
+from zynlibs.zynseq import zynseq
 
 #------------------------------------------------------------------------------
 # Zynthian App Selection GUI Class
@@ -57,6 +58,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data.append((self.load_snapshot,0,"Load Snapshot"))
 		if len(self.zyngui.screens['layer'].layers)>0:
 			self.list_data.append((self.save_snapshot,0,"Save Snapshot"))
+			self.list_data.append((self.clean_all,0,"CLEAN ALL"))
 
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.admin,0,"Admin"))
@@ -83,6 +85,17 @@ class zynthian_gui_main(zynthian_gui_selector):
 	def save_snapshot(self):
 		logging.info("Save Snapshot")
 		self.zyngui.save_snapshot()
+
+
+	def clean_all(self):
+		self.zyngui.show_confirm("Do you really want to clean all?", self.clean_all_confirmed)
+
+
+	def clean_all_confirmed(self, params=None):
+		self.zyngui.screens['layer'].reset()
+		if zynseq.libseq:
+			zynseq.load("")
+		self.zyngui.show_screen('layer')
 
 
 	def audio_recorder(self):
