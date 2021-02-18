@@ -160,6 +160,8 @@ class zynthian_gui:
 		self.screens = {}
 		self.active_screen = None
 		self.modal_screen = None
+		self.modal_screen_back = None
+		self.modal_timer_id = None
 		self.curlayer = None
 		self._curlayer = None
 
@@ -446,15 +448,31 @@ class zynthian_gui:
 			if mode is None:
 				mode = "LOAD"
 			self.screens['snapshot'].set_action(mode)
-	
+
+		self.modal_screen_back = self.modal_screen
 		self.modal_screen=screen
 		self.screens[screen].show()
 		self.hide_screens(exclude=screen)
 
 
 	def close_modal(self):
-		self.modal_screen=None
-		self.show_screen()
+		self.cancel_modal_timer()
+		self.modal_screen = None
+		if self.modal_screen_back:
+			self.show_modal(self.modal_screen_back)
+		else:
+			self.show_screen()
+
+
+	def close_modal_timer(self, tms=3000):
+		self.cancel_modal_timer()
+		self.modal_timer_id = zynthian_gui_config.top.after(tms, self.close_modal)
+
+
+	def cancel_modal_timer(self):
+		if self.modal_timer_id:
+			zynthian_gui_config.top.after_cancel(self.modal_timer_id)
+			self.modal_timer_id = None
 
 
 	def toggle_modal(self, screen, mode=None):
@@ -485,7 +503,8 @@ class zynthian_gui:
 
 
 	def show_info(self, text, tms=None):
-		self.modal_screen='info'
+		self.modal_screen_back = self.modal_screen
+		self.modal_screen = 'info'
 		self.screens['info'].show(text)
 		self.hide_screens(exclude='info')
 		if tms:
@@ -496,13 +515,19 @@ class zynthian_gui:
 		self.screens['info'].add(text,tags)
 
 
-	def hide_info_timer(self, tms=3000):
-		zynthian_gui_config.top.after(tms, self.hide_info)
-
-
 	def hide_info(self):
-		self.screens['info'].hide()
-		self.show_screen()
+		if self.modal_screen=='info':
+			self.close_modal()
+
+
+	def hide_info_timer(self, tms=3000):
+		if self.modal_screen=='info':
+			self.cancel_info_timer()
+			self.modal_timer_id = zynthian_gui_config.top.after(tms, self.hide_info)
+
+
+	def cancel_info_timer(self):
+		self.cancel_modal_timer()
 
 
 	def calibrate_touchscreen(self):
@@ -913,15 +938,15 @@ class zynthian_gui:
 		self.start_loading()
 
 		# Standard 4 ZynSwitches
-		if i==0:
-			self.show_modal("alsa_mixer")
+		if i==0 and "zynseq" in zynthian_gui_config.experimental_features:
+			self.toggle_modal("stepseq")
 
 		elif i==1:
 			#self.callable_ui_action("ALL_OFF")
 			self.show_modal("admin")
 
-		elif i==2 and "zynseq" in zynthian_gui_config.experimental_features:
-			self.toggle_modal("stepseq")
+		elif i==2:
+			self.show_modal("alsa_mixer")
 
 		elif i==3:
 			self.screens['admin'].power_off()
@@ -944,9 +969,8 @@ class zynthian_gui:
 
 		# Standard 4 ZynSwitches
 		if i==0:
-			if self.active_screen=='layer':
-				self.show_screen('layer')
-
+			if self.active_screen=='layer' and self.modal_screen!='stepseq':
+				self.show_modal('stepseq')
 			else:
 				if self.active_screen=='preset':
 					self.screens['preset'].restore_preset()
@@ -1027,7 +1051,12 @@ class zynthian_gui:
 
 				# Back to active screen by default ...
 				if screen_back is None:
-					screen_back = self.active_screen
+					if self.modal_screen_back:
+						screen_back = self.modal_screen_back
+					else:
+						screen_back = self.active_screen
+
+				self.modal_screen = None
 
 			else:
 				try:
@@ -1055,7 +1084,10 @@ class zynthian_gui:
 
 			if screen_back:
 				logging.debug("BACK TO SCREEN => {}".format(screen_back))
-				self.show_screen(screen_back)
+				if screen_back in self.screens_sequence:
+					self.show_screen(screen_back)
+				else:
+					self.show_modal(screen_back)
 
 		elif i==2:
 			if self.modal_screen=='snapshot':

@@ -108,8 +108,9 @@ class zynthian_gui_info:
 
 
 	def back_action(self):
+		self.zyngui.cancel_modal_timer()
 		self.zyngui.screens['admin'].kill_command()
-		return self.zyngui.active_screen
+		return None
 
 
 	def cb_push(self,event):

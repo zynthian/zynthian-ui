@@ -955,7 +955,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					self.menu_value_assert()
 					return True
 
-		return False # Tell parent that we handled all short and bold key presses
+		return False # Tell parent that handle the rest of short and bold key presses
 
 
 	# Function to manage switch press
