@@ -129,7 +129,7 @@ class zynthian_gui_zynpad():
 		self.parent.add_menu({'Trigger channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_trigger_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Trigger note':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':128, 'get_value':self.get_trigger_note, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'-------------------':{}})
-		self.parent.add_menu({'Grid size':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':8, 'get_value':self.get_columns, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Grid size':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':8, 'get_value':self.get_columns, 'on_change':self.on_menu_change, 'on_assert':self.set_grid_size}}})
 
 
 	# Function to hide GUI
@@ -138,6 +138,20 @@ class zynthian_gui_zynpad():
 		self.parent.unregister_zyncoder(ENC_SELECT)
 		self.parent.unregister_switch(ENC_SELECT)
 
+
+	# Function to set quantity of pads
+	def set_grid_size(self):
+		self.columns = self.parent.get_param("Grid size", "value")
+		libseq.setSequencesInBank(self.parent.bank, self.columns ** 2)
+		for col in range(self.columns):
+			for row in range(self.columns):
+				channel = col
+				sequence = col * self.columns + row
+				if col == self.columns - 1:
+					channel = 9
+				libseq.setChannel(self.parent.bank, sequence, 0, channel)
+				libseq.setGroup(self.parent.bank, sequence, channel)
+		self.refresh_pending = 1
 
 	# Function to get MIDI channel of selected pad
 	#	returns: MIDI channel (1..16)
@@ -201,10 +215,6 @@ class zynthian_gui_zynpad():
 				return "Trigger note: None"
 			return "Trigger note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value)
 		elif menu_item == 'Grid size':
-			if value != self.columns:
-				# Remove surplus and add missing tracks
-				libseq.setSequencesInBank(self.parent.bank, value**2)
-				self.refresh_pending = 1
 			return "Grid size: %dx%d" % (value, value)
 		return "%s: %d" % (menu_item, value)
 
