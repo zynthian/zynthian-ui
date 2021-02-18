@@ -437,7 +437,7 @@ class zynthian_gui:
 
 	def show_modal(self, screen, mode=None):
 		if screen=="alsa_mixer":
-			if self.screens['layer'].amixer_layer:
+			if self.modal_screen!=screen and self.screens['layer'].amixer_layer:
 				self._curlayer = self.curlayer
 				self.screens['layer'].amixer_layer.refresh_controllers()
 				self.set_curlayer(self.screens['layer'].amixer_layer)
@@ -449,7 +449,8 @@ class zynthian_gui:
 				mode = "LOAD"
 			self.screens['snapshot'].set_action(mode)
 
-		self.modal_screen_back = self.modal_screen
+		if self.modal_screen!=screen:
+			self.modal_screen_back = self.modal_screen
 		self.modal_screen=screen
 		self.screens[screen].show()
 		self.hide_screens(exclude=screen)
@@ -457,9 +458,9 @@ class zynthian_gui:
 
 	def close_modal(self):
 		self.cancel_modal_timer()
-		self.modal_screen = None
 		if self.modal_screen_back:
 			self.show_modal(self.modal_screen_back)
+			self.modal_screen_back = None
 		else:
 			self.show_screen()
 
@@ -1089,6 +1090,7 @@ class zynthian_gui:
 					self.show_screen(screen_back)
 				else:
 					self.show_modal(screen_back)
+					self.modal_screen_back = None
 
 		elif i==2:
 			if self.modal_screen=='snapshot':
