@@ -944,6 +944,10 @@ class zynthian_gui_patterneditor():
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
 	def on_switch(self, switch, type):
+		if self.parent.lst_menu.winfo_viewable():
+			return False
+		if self.parent.param_editor_item:
+			return False
 		if switch == ENC_SELECT:
 			if self.edit_mode:
 				self.enable_edit(False)

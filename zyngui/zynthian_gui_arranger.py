@@ -936,6 +936,10 @@ class zynthian_gui_arranger():
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def on_switch(self, switch, type):
+		if self.parent.lst_menu.winfo_viewable():
+			return False
+		if self.parent.param_editor_item:
+			return False
 		if switch == zynthian_gui_stepsequencer.ENC_SELECT and type == 'B':
 			self.show_pattern_editor()
 		elif switch == zynthian_gui_stepsequencer.ENC_SELECT:
