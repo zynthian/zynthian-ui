@@ -271,7 +271,7 @@ class zynthian_gui_patterneditor():
 		if enable:
 			self.edit_mode = True
 			self.parent.register_switch(ENC_BACK, self)
-			self.parent.set_title(self.title, zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+			self.parent.set_title("Note Parameters", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 		else:
 			self.edit_mode = False
 			self.parent.unregister_switch(ENC_BACK)
@@ -909,6 +909,7 @@ class zynthian_gui_patterneditor():
 				if libseq.getNoteDuration(self.selected_cell[0], note):
 					libseq.setNoteVelocity(self.selected_cell[0], note, self.velocity)
 					self.draw_cell(self.selected_cell[0], self.selected_cell[1])
+				self.parent.set_title("Velocity: %d" % (self.velocity), None, None, 2)
 			else:
 				self.select_cell(None, self.selected_cell[1] - value)
 
@@ -928,6 +929,7 @@ class zynthian_gui_patterneditor():
 					self.add_event(self.selected_cell[0], self.selected_cell[1])
 				else:
 					self.select_cell()
+				self.parent.set_title("Duration: %d steps" % (self.duration), None, None, 2)
 			else:
 				self.select_cell(self.selected_cell[0] + value, None)
 
