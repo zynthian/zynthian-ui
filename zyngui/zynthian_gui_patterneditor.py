@@ -231,7 +231,7 @@ class zynthian_gui_patterneditor():
 
 	# Function to add menus
 	def populate_menu(self):
-		self.parent.add_menu({'Beats in pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':libseq.getBeatsInPattern, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Beats in pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':libseq.getBeatsInPattern, 'on_change':self.on_menu_change, 'on_assert': self.set_beats_in_pattern}}})
 		self.parent.add_menu({'Steps per beat':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'get_value':self.get_steps_per_beat_index, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'-------------------':{}})
 		self.parent.add_menu({'Copy pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64872, 'get_value':self.get_pattern, 'on_change':self.on_menu_change,'on_assert':self.copy_pattern}}})
@@ -276,6 +276,12 @@ class zynthian_gui_patterneditor():
 			self.edit_mode = False
 			self.parent.unregister_switch(ENC_BACK)
 			self.parent.set_title(self.title, zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+
+
+	# Function to assert beats in pattern
+	def set_beats_in_pattern(self):
+		libseq.setBeatsInPattern(self.parent.get_param('Beats in pattern', 'value'))
+		self.redraw_pending = 2
 
 
 	# Function to get the index of the closest steps per beat in array of allowed values
@@ -818,9 +824,6 @@ class zynthian_gui_patterneditor():
 			return "Transpose +/-"
 		elif menu_item == 'Vertical zoom':
 			self.zoom = value
-		elif menu_item == 'Beats in pattern':
-			libseq.setBeatsInPattern(value)
-			self.redraw_pending = 2
 		elif menu_item == 'Steps per beat':
 			steps_per_beat = STEPS_PER_BEAT[value]
 			libseq.setStepsPerBeat(steps_per_beat)
