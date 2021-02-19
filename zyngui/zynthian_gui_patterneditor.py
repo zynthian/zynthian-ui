@@ -225,6 +225,7 @@ class zynthian_gui_patterneditor():
 		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT, "SB")
 		libseq.setPlayState(self.bank, self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 		libseq.enableMidiInput(False)
+		self.enable_edit(False)
 		libseq.setRefNote(self.keymap_offset)
 
 
