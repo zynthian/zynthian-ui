@@ -117,8 +117,7 @@ class zynthian_gui_confirm():
 		except:
 			pass
 
-		if self.zyngui.modal_screen=="confirm":
-			self.zyngui.show_active_screen()
+		self.zyngui.close_modal()
 
 
 	def cb_yes_push(self, event):

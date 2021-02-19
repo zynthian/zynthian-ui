@@ -85,9 +85,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
 
 		if zynthian_gui_config.snapshot_mixer_settings:
-			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[x] Mixer Settings on Snapshots"))
+			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[x] Audio Levels on Snapshots"))
 		else:
-			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Mixer Settings on Snapshots"))
+			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Audio Levels on Snapshots"))
 
 		if zynthian_gui_config.midi_filter_output:
 			self.list_data.append((self.toggle_midi_filter_output,0,"[x] MIDI Filter Ouput"))
@@ -98,11 +98,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_midi_sys,0,"[x] MIDI System Messages"))
 		else:
 			self.list_data.append((self.toggle_midi_sys,0,"[  ] MIDI System Messages"))
-
-		if zynconf.is_service_active("jack-midi-clock"):
-			self.list_data.append((self.stop_midi_clock,0,"[x] MIDI Clock Internal"))
-		else:
-			self.list_data.append((self.start_midi_clock,0,"[  ] MIDI Clock Internal"))
 
 		if zynconf.is_service_active("jackrtpmidid"):
 			self.list_data.append((self.stop_rtpmidi,0,"[x] RTP-MIDI"))
@@ -413,52 +408,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.fill_list()
 
-
-	def start_midi_clock(self, save_config=True):
-		logging.info("STARTING MIDI CLOCK")
-
-		try:
-			check_output("systemctl start jack-midi-clock", shell=True)
-			zynthian_gui_config.midi_clock_enabled = 1
-			# Update MIDI profile
-			if save_config:
-				zynconf.update_midi_profile({ 
-					"ZYNTHIAN_MIDI_CLOCK_ENABLED": str(zynthian_gui_config.midi_clock_enabled)
-				})
-			# Call autoconnect after a little time
-			sleep(0.5)
-			self.zyngui.zynautoconnect_midi()
-
-		except Exception as e:
-			logging.error(e)
-
-		self.fill_list()
-
-
-	def stop_midi_clock(self, save_config=True):
-		logging.info("STOPPING MIDI CLOCK")
-
-		try:
-			check_output("systemctl stop jack-midi-clock", shell=True)
-			zynthian_gui_config.midi_clock_enabled = 0
-			# Update MIDI profile
-			if save_config:
-				zynconf.update_midi_profile({ 
-					"ZYNTHIAN_MIDI_CLOCK_ENABLED": str(zynthian_gui_config.midi_clock_enabled)
-				})
-
-		except Exception as e:
-			logging.error(e)
-
-		self.fill_list()
-
-
-	#Start/Stop Jack MIDI Clock depending on configuration
-	def default_midi_clock(self):
-		if zynthian_gui_config.midi_clock_enabled:
-			self.start_midi_clock(False)
-		else:
-			self.stop_midi_clock(False)
 
 
 	def start_qmidinet(self, save_config=True):

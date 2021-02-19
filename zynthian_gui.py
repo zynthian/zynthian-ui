@@ -37,7 +37,7 @@ from os.path import isfile
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
-from ctypes import c_float
+from ctypes import c_float, CDLL
 
 # Zynthian specific modules
 import zynconf
@@ -47,7 +47,7 @@ from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
-from zyngine import zynthian_engine_transport
+#from zyngine import zynthian_engine_transport
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -76,8 +76,10 @@ from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
-#from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
-from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
+if "autoeq" in zynthian_gui_config.experimental_features:
+	from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
+if "zynseq" in zynthian_gui_config.experimental_features:
+	from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
@@ -158,6 +160,8 @@ class zynthian_gui:
 		self.screens = {}
 		self.active_screen = None
 		self.modal_screen = None
+		self.modal_screen_back = None
+		self.modal_timer_id = None
 		self.curlayer = None
 		self._curlayer = None
 
@@ -183,7 +187,7 @@ class zynthian_gui:
 		self.zynautoconnect_midi_flag = False
 
 		# Create Lock object to avoid concurrence problems
-		self.lock = Lock();
+		self.lock = Lock()
 
 		# Load keyboard binding map
 		zynthian_gui_keybinding.getInstance().load()
@@ -214,6 +218,9 @@ class zynthian_gui:
 		except Exception as e:
 			logging.error("ERROR initializing Controllers & MIDI-router: %s" % e)
 
+		if "zynseq" in zynthian_gui_config.experimental_features:
+			self.libseq = CDLL("/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
+			self.libseq.init(True)
 
 	# ---------------------------------------------------------------------------
 	# MIDI Router Init & Config
@@ -238,7 +245,6 @@ class zynthian_gui:
 
 	def init_midi_services(self):
 		#Start/Stop MIDI aux. services
-		self.screens['admin'].default_midi_clock()
 		self.screens['admin'].default_rtpmidi()
 		self.screens['admin'].default_qmidinet()
 		self.screens['admin'].default_touchosc()
@@ -310,7 +316,7 @@ class zynthian_gui:
 
 	def start(self):
 		# Initialize jack Transport
-		self.zyntransport = zynthian_engine_transport()
+		#self.zyntransport = zynthian_engine_transport()
 
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
@@ -341,8 +347,10 @@ class zynthian_gui:
 		self.screens['alsa_mixer'] = self.screens['control']
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
-		#self.screens['autoeq'] = zynthian_gui_autoeq()
-		self.screens['stepseq'] = zynthian_gui_stepsequencer()
+		if "autoeq" in zynthian_gui_config.experimental_features:
+			self.screens['autoeq'] = zynthian_gui_autoeq()
+		if "zynseq" in zynthian_gui_config.experimental_features:
+			self.screens['stepseq'] = zynthian_gui_stepsequencer()
 
 		# Init Auto-connector
 		zynautoconnect.start()
@@ -390,7 +398,8 @@ class zynthian_gui:
 		self.osc_end()
 		zynautoconnect.stop()
 		self.screens['layer'].reset()
-		self.zyntransport.stop()
+		self.screens['midi_recorder'].stop_playing() # Need to stop timing thread
+		#self.zyntransport.stop()
 
 
 	def hide_screens(self, exclude=None):
@@ -401,7 +410,7 @@ class zynthian_gui:
 
 		for screen_name, screen_obj in self.screens.items():
 			if screen_obj!=exclude_obj:
-				screen_obj.hide();
+				screen_obj.hide()
 
 
 	def show_screen(self, screen=None):
@@ -428,7 +437,7 @@ class zynthian_gui:
 
 	def show_modal(self, screen, mode=None):
 		if screen=="alsa_mixer":
-			if self.screens['layer'].amixer_layer:
+			if self.modal_screen!=screen and self.screens['layer'].amixer_layer:
 				self._curlayer = self.curlayer
 				self.screens['layer'].amixer_layer.refresh_controllers()
 				self.set_curlayer(self.screens['layer'].amixer_layer)
@@ -439,15 +448,32 @@ class zynthian_gui:
 			if mode is None:
 				mode = "LOAD"
 			self.screens['snapshot'].set_action(mode)
-	
+
+		if self.modal_screen!=screen:
+			self.modal_screen_back = self.modal_screen
 		self.modal_screen=screen
 		self.screens[screen].show()
 		self.hide_screens(exclude=screen)
 
 
 	def close_modal(self):
-		self.modal_screen=None
-		self.show_screen()
+		self.cancel_modal_timer()
+		if self.modal_screen_back:
+			self.show_modal(self.modal_screen_back)
+			self.modal_screen_back = None
+		else:
+			self.show_screen()
+
+
+	def close_modal_timer(self, tms=3000):
+		self.cancel_modal_timer()
+		self.modal_timer_id = zynthian_gui_config.top.after(tms, self.close_modal)
+
+
+	def cancel_modal_timer(self):
+		if self.modal_timer_id:
+			zynthian_gui_config.top.after_cancel(self.modal_timer_id)
+			self.modal_timer_id = None
 
 
 	def toggle_modal(self, screen, mode=None):
@@ -472,13 +498,15 @@ class zynthian_gui:
 
 
 	def show_confirm(self, text, callback=None, cb_params=None):
+		self.modal_screen_back = self.modal_screen
 		self.modal_screen='confirm'
 		self.screens['confirm'].show(text, callback, cb_params)
 		self.hide_screens(exclude='confirm')
 
 
 	def show_info(self, text, tms=None):
-		self.modal_screen='info'
+		self.modal_screen_back = self.modal_screen
+		self.modal_screen = 'info'
 		self.screens['info'].show(text)
 		self.hide_screens(exclude='info')
 		if tms:
@@ -489,13 +517,19 @@ class zynthian_gui:
 		self.screens['info'].add(text,tags)
 
 
-	def hide_info_timer(self, tms=3000):
-		zynthian_gui_config.top.after(tms, self.hide_info)
-
-
 	def hide_info(self):
-		self.screens['info'].hide()
-		self.show_screen()
+		if self.modal_screen=='info':
+			self.close_modal()
+
+
+	def hide_info_timer(self, tms=3000):
+		if self.modal_screen=='info':
+			self.cancel_info_timer()
+			self.modal_timer_id = zynthian_gui_config.top.after(tms, self.hide_info)
+
+
+	def cancel_info_timer(self):
+		self.cancel_modal_timer()
 
 
 	def calibrate_touchscreen(self):
@@ -804,7 +838,7 @@ class zynthian_gui:
 		elif cuia == "MODAL_ALSA_MIXER":
 			self.toggle_modal("alsa_mixer")
 
-		elif cuia == "MODAL_STEPSEQ":
+		elif cuia == "MODAL_STEPSEQ" and "zynseq" in zynthian_gui_config.experimental_features:
 			self.toggle_modal("stepseq")
 
 
@@ -906,15 +940,15 @@ class zynthian_gui:
 		self.start_loading()
 
 		# Standard 4 ZynSwitches
-		if i==0:
-			self.show_modal("alsa_mixer")
+		if i==0 and "zynseq" in zynthian_gui_config.experimental_features:
+			self.toggle_modal("stepseq")
 
 		elif i==1:
 			#self.callable_ui_action("ALL_OFF")
 			self.show_modal("admin")
 
 		elif i==2:
-			self.toggle_modal("stepseq")
+			self.show_modal("alsa_mixer")
 
 		elif i==3:
 			self.screens['admin'].power_off()
@@ -937,9 +971,8 @@ class zynthian_gui:
 
 		# Standard 4 ZynSwitches
 		if i==0:
-			if self.active_screen=='layer':
-				self.show_screen('layer')
-
+			if self.active_screen=='layer' and self.modal_screen!='stepseq':
+				self.show_modal('stepseq')
 			else:
 				if self.active_screen=='preset':
 					self.screens['preset'].restore_preset()
@@ -1020,7 +1053,12 @@ class zynthian_gui:
 
 				# Back to active screen by default ...
 				if screen_back is None:
-					screen_back = self.active_screen
+					if self.modal_screen_back:
+						screen_back = self.modal_screen_back
+					else:
+						screen_back = self.active_screen
+
+				self.modal_screen = None
 
 			else:
 				try:
@@ -1048,7 +1086,11 @@ class zynthian_gui:
 
 			if screen_back:
 				logging.debug("BACK TO SCREEN => {}".format(screen_back))
-				self.show_screen(screen_back)
+				if screen_back in self.screens_sequence:
+					self.show_screen(screen_back)
+				else:
+					self.show_modal(screen_back)
+					self.modal_screen_back = None
 
 		elif i==2:
 			if self.modal_screen=='snapshot':
@@ -1754,6 +1796,33 @@ def delete_window():
 	exit_code = 101
 	zyngui.exit(exit_code)
 
+
+#Function to handle computer keyboard key press
+#	event: Key event
+def cb_keybinding(event):
+	logging.debug("Key press {} {}".format(event.keycode, event.keysym))
+	zynthian_gui_config.top.focus_set() # Must remove focus from listbox to avoid interference with physical keyboard
+
+	if not zynthian_gui_keybinding.getInstance().isEnabled():
+		logging.debug("Key binding is disabled - ignoring key press")
+		return
+
+	# Ignore TAB key (for now) to avoid confusing widget focus change
+	if event.keysym == "Tab":
+		return
+
+	# Space is not recognised as keysym so need to convert keycode
+	if event.keycode == 65:
+		keysym = "Space"
+	else:
+		keysym = event.keysym
+
+	action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
+	if action != None:
+		zyngui.callable_ui_action(action)
+
+
+zynthian_gui_config.top.bind("<Key>", cb_keybinding)
 
 zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
 

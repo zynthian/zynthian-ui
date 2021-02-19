@@ -384,6 +384,11 @@ class zynthian_layer:
 				logging.debug("Sending MIDI CC{}={} for {}".format(zctrl.midi_cc, zctrl.value, k))
 
 
+	def midi_unlearn(self):
+		for k, zctrl in self.controllers_dict.items():
+			zctrl.midi_unlearn()
+
+
 	#----------------------------------------------------------------------------
 	# MIDI CC processing
 	#----------------------------------------------------------------------------

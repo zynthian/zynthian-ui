@@ -103,13 +103,6 @@ def midi_autoconnect(force=False):
 	if len(hw_in)==0:
 		hw_in=[]
 
-	#Add internal MIDI-clock port ... 
-	if zynthian_gui_config.midi_clock_enabled:
-		mclock_out=jclient.get_ports("jack_midi_clock", is_output=True, is_physical=False, is_midi=True)
-		try:
-			hw_out.append(mclock_out[0])
-		except:
-			pass
 
 	#Add Aubio MIDI out port ...
 	if zynthian_gui_config.midi_aubionotes_enabled:
@@ -232,6 +225,18 @@ def midi_autoconnect(force=False):
 	#Connect ZynthStep output to ZynMidiRouter:step_in
 	try:
 		jclient.connect("zynthstep:output", zmr_in['step_in'])
+	except:
+		pass
+
+	#Connect zynsmf output to ZynMidiRouter:seq_in
+	try:
+		jclient.connect("zynsmf:midi_out", zmr_in['seq_in'])
+	except:
+		pass
+
+	#Connect ZynMidiRouter:main_out to zynsmf input
+	try:
+		jclient.connect(zmr_out['main_out'], "zynsmf:midi_in")
 	except:
 		pass
 
@@ -736,7 +741,7 @@ def start(rt=2):
 		logger.error("ZynAutoConnect ERROR: Can't connect with Jack Audio Server ({})".format(e))
 
 	# Create Lock object (Mutex) to avoid concurrence problems
-	lock=Lock();
+	lock=Lock()
 
 	# Start Autoconnect Thread
 	thread=Thread(target=autoconnect_thread, args=())

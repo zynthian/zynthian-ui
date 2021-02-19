@@ -96,7 +96,6 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		self.listbox.bind("<B1-Motion>",self.cb_listbox_motion)
 		self.listbox.bind("<Button-4>",self.cb_listbox_wheel)
 		self.listbox.bind("<Button-5>",self.cb_listbox_wheel)
-		self.listbox.bind("<Key>", self.cb_keybinding)
 
 		# Canvas for loading image animation
 		self.loading_canvas = tkinter.Canvas(self.main_frame,

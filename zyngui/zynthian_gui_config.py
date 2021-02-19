@@ -334,22 +334,6 @@ ctrl_pos=[
 	(2,2,"se")
 ]
 
-#------------------------------------------------------------------------------
-# Sequence states
-#------------------------------------------------------------------------------
-SEQ_DISABLED		= 0
-SEQ_ONESHOT			= 1
-SEQ_LOOP			= 2
-SEQ_ONESHOTALL		= 3
-SEQ_LOOPALL			= 4
-SEQ_LASTPLAYMODE	= 4
-
-SEQ_STOPPED			= 0
-SEQ_PLAYING			= 1
-SEQ_STOPPING		= 2
-SEQ_STARTING		= 3
-SEQ_LASTPLAYSTATUS	= 3
-
 
 #------------------------------------------------------------------------------
 # UI Color Parameters
@@ -398,6 +382,7 @@ font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 #------------------------------------------------------------------------------
 
 enable_touch_widgets=int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS',False))
+enable_onscreen_buttons=int(os.environ.get('ZYNTHIAN_UI_ONSCREEN_BUTTONS',False))
 force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 
 #------------------------------------------------------------------------------
@@ -520,6 +505,11 @@ midi_play_loop=int(os.environ.get('ZYNTHIAN_MIDI_PLAY_LOOP',0))
 audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
 
 #------------------------------------------------------------------------------
+# Experimental features
+#------------------------------------------------------------------------------
+experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES',"zynseq").split(',')
+
+#------------------------------------------------------------------------------
 # X11 Related Stuff
 #------------------------------------------------------------------------------
 
@@ -553,7 +543,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 		ctrl_width = display_width//4
 		button_width = display_width//4
 		topbar_height = display_height//10
-		buttonbar_height = enable_touch_widgets and display_height//7 or 0
+		buttonbar_height = enable_onscreen_buttons and display_height//7 or 0
 		body_height = display_height-topbar_height-buttonbar_height
 		ctrl_height = body_height//2
 
@@ -596,7 +586,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 			try:
 				pil_frame.seek(nframes)
 			except EOFError:
-				break;
+				break
 		#for i in range(13):
 		#	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
 

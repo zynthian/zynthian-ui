@@ -94,7 +94,6 @@ class zynthian_gui_base:
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.display_height,
 			bg=zynthian_gui_config.color_bg)
-		self.main_frame.bind("<Key>", self.cb_keybinding)
 
 		# Topbar's frame
 		self.tb_frame = tkinter.Frame(self.main_frame, 
@@ -103,6 +102,7 @@ class zynthian_gui_base:
 			bg=zynthian_gui_config.color_bg)
 		self.tb_frame.grid(row=0, column=0, columnspan=3)
 		self.tb_frame.grid_propagate(False)
+		self.tb_frame.grid_columnconfigure(0, weight=1)
 		# Setup Topbar's Callback
 		self.tb_frame.bind("<Button-1>", self.cb_topbar)
 
@@ -156,7 +156,7 @@ class zynthian_gui_base:
 
 	def init_buttonbar(self):
 		# Touchbar frame
-		if not zynthian_gui_config.enable_touch_widgets:
+		if not zynthian_gui_config.enable_onscreen_buttons:
 			return
 
 		self.buttonbar_frame = tkinter.Frame(self.main_frame,
