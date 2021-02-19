@@ -117,7 +117,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.add_layer("Special")
 
 		elif self.list_data[i][0]=='RESET':
-			self.remove_all_layers()
+			self.zyngui.show_confirm("Do you really want to remove all layers?", self.reset_confirmed)
 
 		elif self.list_data[i][0]=='ALL_OFF':
 			self.zyngui.callable_ui_action("ALL_OFF")
@@ -130,11 +130,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.layer_options()
 
 
-	def remove_all_layers(self):
-		self.zyngui.show_confirm("Do you really want to remove all layers?", self.remove_all_layers_confirmed)
-
-
-	def remove_all_layers_confirmed(self, params=None):
+	def reset_confirmed(self, params=None):
 		self.reset()
 		self.zyngui.show_screen('layer')
 
