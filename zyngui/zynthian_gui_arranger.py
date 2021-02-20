@@ -171,7 +171,7 @@ class zynthian_gui_arranger():
 		self.parent.add_menu({'MIDI channel': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':16, 'get_value':self.get_track_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Grid size': {'method':self.parent.show_param_editor, 'params':{'min':1, 'max':8, 'get_value':self.get_columns, 'on_change':self.on_menu_change, 'on_assert':self.set_grid_size}}})
 		self.parent.add_menu({'Group': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':25, 'get_value':self.get_group, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Mode': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':len(self.play_modes)-1, 'get_value':self.getMode, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Play mode': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':len(self.play_modes)-1, 'get_value':self.getMode, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Trigger channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_trigger_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Trigger note': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':128, 'get_value':self.get_trigger, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Pattern': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
@@ -831,10 +831,10 @@ class zynthian_gui_arranger():
 			libseq.setGroup(self.parent.bank, self.sequence, value)
 			self.redraw_pending = 2
 			return "Group: %s" % (chr(65 + value))
-		elif menu_item == "Mode":
+		elif menu_item == "Play mode":
 			libseq.setPlayMode(self.parent.bank, self.sequence, value)
 			self.redraw_pending = 2
-			return "Mode: %s" % (self.play_modes[value])
+			return "Play mode: %s" % (self.play_modes[value])
 		elif menu_item == 'Grid size':
 			return "Grid size: %dx%d" % (value, value)
 		elif menu_item == 'Trigger channel':

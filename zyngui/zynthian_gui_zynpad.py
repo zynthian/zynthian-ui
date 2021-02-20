@@ -124,7 +124,7 @@ class zynthian_gui_zynpad():
 
 	# Function to populate menu
 	def populate_menu(self):
-		self.parent.add_menu({'Pad mode':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(zynthian_gui_stepsequencer.PLAY_MODES)-1, 'get_value':self.get_selected_pad_mode, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Play mode':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(zynthian_gui_stepsequencer.PLAY_MODES)-1, 'get_value':self.get_selected_pad_mode, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'MIDI channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_pad_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Trigger channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_trigger_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Trigger note':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':128, 'get_value':self.get_trigger_note, 'on_change':self.on_menu_change}}})
@@ -194,9 +194,9 @@ class zynthian_gui_zynpad():
 				value = params['max']
 		except:
 			pass # min and max values may not be set
-		if menu_item == 'Pad mode':
+		if menu_item == 'Play mode':
 			libseq.setPlayMode(self.parent.bank, self.selected_pad, value)
-			return "Pad mode: %s" % (zynthian_gui_stepsequencer.PLAY_MODES[value])
+			return "Play mode: %s" % (zynthian_gui_stepsequencer.PLAY_MODES[value])
 		elif menu_item == 'MIDI channel':
 			libseq.setChannel(self.parent.bank, self.selected_pad, 0, value - 1)
 			libseq.setGroup(self.parent.bank, self.selected_pad, value - 1)
