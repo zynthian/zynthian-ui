@@ -58,7 +58,8 @@ std::set<std::string> g_setTransportClient; // Set of timebase clients having re
 bool g_bClientPlaying = false; // True if any external client has requested transport play
 bool g_bInputEnabled = false; // True to add notes to current pattern from MIDI input
 
-uint8_t g_nInputStatusByte = 0xFF; // MIDI status byte for input (optimisation) (0xFF to disable)
+uint8_t g_nInputChannel = 0xFF; // MIDI channel for input (0xFF to disable)
+bool g_bSustain = false; // True if sustain pressed during note input
 uint8_t g_nInputRest = 0xFF; // MIDI note number that creates rest in pattern
 uint8_t g_nTriggerStatusByte = MIDI_NOTE_ON | 15; // MIDI status byte which triggers a sequence (optimisation)
 uint16_t g_nVerticalZoom = 8;
@@ -372,24 +373,44 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             }
         }
 
-        // Handle MIDI Note On events for programming patterns from MIDI input
-        if(g_bInputEnabled && (midiEvent.buffer[0] == g_nInputStatusByte) && midiEvent.buffer[2])
+        // Handle MIDI events for programming patterns from MIDI input
+        if(g_bInputEnabled && g_pTrack && g_pPattern && g_nInputChannel == (midiEvent.buffer[0] & 0x0F))
         {
-            if(g_pPattern && g_pTrack)
+            uint32_t nStep = g_pTrack->getPatternPlayhead();
+            bool bAdvance = false;
+            if(((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64)
             {
-                g_bPatternModified = true;
-                uint32_t nStep = g_pTrack->getPatternPlayhead();
-                if(getNoteVelocity(nStep, midiEvent.buffer[1]))
-                    g_pPattern->removeNote(nStep, midiEvent.buffer[1]);
-                else if(midiEvent.buffer[1] != g_nInputRest)
-                    g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
-                if(transportGetPlayStatus() != JackTransportRolling)
+                // Sustain pedal event
+                if(midiEvent.buffer[2])
+                    g_bSustain = true;
+                else
                 {
-                    g_pTrack->setPosition(0);
-                    if(++nStep >= g_pPattern->getSteps())
-                        nStep = 0;
-                    g_pTrack->setPatternPlayhead(nStep);
+                    g_bSustain = false;
+                    bAdvance = true;
                 }
+            }
+            else if(((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2])
+            {
+                // Note on event
+                g_bPatternModified = true;
+                uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
+                if(g_bSustain)
+                    g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
+                else
+                {
+                    bAdvance = true;
+                    if(nDuration)
+                        g_pPattern->removeNote(nStep, midiEvent.buffer[1]);
+                    else if(midiEvent.buffer[1] != g_nInputRest)
+                        g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
+                }
+            }
+            if(bAdvance && transportGetPlayStatus() != JackTransportRolling)
+            {
+                g_pTrack->setPosition(0);
+                if(++nStep >= g_pPattern->getSteps())
+                    nStep = 0;
+                g_pTrack->setPatternPlayhead(nStep);
             }
         }
     }
@@ -1231,16 +1252,14 @@ void copyPattern(uint32_t source, uint32_t destination)
 void setInputChannel(uint8_t channel)
 {
     if(channel > 15)
-        g_nInputStatusByte = 0xFF;
-    g_nInputStatusByte = MIDI_NOTE_ON | channel;
+        g_nInputChannel = 0xFF;
+    g_nInputChannel = channel;
     g_bDirty = true;
 }
 
 uint8_t getInputChannel()
 {
-    if(g_nInputStatusByte == 0xFF)
-        return g_nInputStatusByte;
-    return g_nInputStatusByte | 0x0F;
+    return g_nInputChannel;
 }
 
 void setInputRest(uint8_t note)
