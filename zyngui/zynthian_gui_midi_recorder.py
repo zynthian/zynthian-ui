@@ -350,6 +350,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.stop_playing()
 
 	def show_playing_bpm(self):
+		self.bpm_zctrl.set_value(libseq.getTempo())
 		if self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.config(self.bpm_zctrl)
 			self.bpm_zgui_ctrl.show()
