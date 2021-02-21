@@ -311,7 +311,7 @@ class zynthian_gui_zynpad():
 				pad_y = int(pad / self.columns) * self.row_height
 				if libseq.getSequenceLength(self.parent.bank, pad) == 0:
 					mode = 0
-				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text="%s%d" % (chr(65 + group), pad + 1), fill=foreground)
+				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text="%d:%s%d" % (self.parent.bank, chr(65 + group), pad + 1), fill=foreground)
 				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
 				self.grid_canvas.itemconfig("state:%d"%pad, image=self.state_icon[state])
 
