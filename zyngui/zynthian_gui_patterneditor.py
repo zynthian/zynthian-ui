@@ -316,6 +316,10 @@ class zynthian_gui_patterneditor():
 	# Function to populate keymap array
 	#	returns Name of scale / map
 	def load_keymap(self):
+		try:
+			base_note = int(self.keymap[self.keymap_offset]['note'])
+		except:
+			base_note = 60
 		scale = libseq.getScale()
 		tonic = libseq.getTonic()
 		name = None
@@ -355,7 +359,10 @@ class zynthian_gui_patterneditor():
 					if key == 0: # 'C'
 						new_entry.update({"name":"C%d" % (note // 12 - 1)})
 					self.keymap.append(new_entry)
-					name = "Chromatic"
+					if note <= base_note:
+						self.keymap_offset = len(self.keymap) - 1
+						self.selected_cell[1] = self.keymap_offset
+				name = "Chromatic"
 			else:
 				with open(CONFIG_ROOT + "/scales.json") as json_file:
 					data = json.load(json_file)
@@ -367,6 +374,9 @@ class zynthian_gui_patterneditor():
 						if note > 127:
 							break
 						self.keymap.append({"note":note, "name":"%s%d"%(self.notes[note % 12],note // 12 - 1)})
+						if note <= base_note:
+							self.keymap_offset = len(self.keymap) - 1
+							self.selected_cell[1] = self.keymap_offset
 				name = data[scale]['name']
 		return name
 
@@ -842,11 +852,7 @@ class zynthian_gui_patterneditor():
 			self.parent.set_param('Tonic', 'value', value)
 			offset = value - libseq.getTonic()
 			libseq.setTonic(value)
-			if self.parent.get_param('Scale', 'value'):
-				for key in self.keymap:
-					note = key['note'] + offset
-					key['note'] = note
-					key['name'] = "%s%d" % (self.notes[note % 12], note // 12)
+			self.load_keymap()
 			self.redraw_pending = 1
 			return "Tonic: %s" % (self.notes[value])
 		elif menu_item == 'Input channel':
