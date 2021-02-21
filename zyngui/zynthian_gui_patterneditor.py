@@ -567,6 +567,7 @@ class zynthian_gui_patterneditor():
 	#	step: Step (column) index
 	#	row: Index of row
 	def draw_cell(self, step, row):
+		libseq.isPatternModified() # Avoid refresh redrawing whole grid
 		cellIndex = row * libseq.getSteps() + step # Cells are stored in array sequentially: 1st row, 2nd row...
 		if cellIndex >= len(self.cells):
 			return
@@ -602,8 +603,7 @@ class zynthian_gui_patterneditor():
 			self.grid_canvas.tag_bind(cell, '<B1-Motion>', self.on_grid_drag)
 			self.cells[cellIndex] = cell
 		if step + duration > libseq.getSteps():
-			if duration > 1:
-				self.grid_canvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - libseq.getSteps() + step), state="normal")
+			self.grid_canvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - libseq.getSteps() + step), state="normal")
 
 
 	# Function to draw grid
@@ -636,11 +636,11 @@ class zynthian_gui_patterneditor():
 			index = row + self.keymap_offset
 			if(index >= len(self.keymap)):
 				break
-			self.draw_row(index)
-			# Update pianoroll keys
 			if clear_grid:
 				# Create last note labels in grid
-				self.grid_canvas.create_text(self.grid_width - self.select_thickness, self.fontsize, state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font, anchor="e")
+				self.grid_canvas.create_text(self.grid_width - self.select_thickness, int(self.row_height * (self.zoom - row - 0.5)), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font, anchor="e")
+			self.draw_row(index)
+			# Update pianoroll keys
 			id = "row%d" % (row)
 			try:
 				name = self.keymap[index]["name"]
