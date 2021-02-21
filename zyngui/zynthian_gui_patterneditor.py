@@ -925,8 +925,9 @@ class zynthian_gui_patterneditor():
 				if self.duration < 1:
 					self.duration = 1
 					return
-				if libseq.getNoteDuration(self.selected_cell[0], self.selected_cell[1]):
-					self.add_event(self.selected_cell[0], self.selected_cell[1])
+				note = self.keymap[self.selected_cell[1]]["note"]
+				if libseq.getNoteDuration(self.selected_cell[0], note):
+					self.add_event(self.selected_cell[0], note)
 				else:
 					self.select_cell()
 				self.parent.set_title("Duration: %d steps" % (self.duration), None, None, 2)
