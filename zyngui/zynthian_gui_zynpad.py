@@ -331,7 +331,7 @@ class zynthian_gui_zynpad():
 	# Function to handle pad press
 	def on_pad_press(self, event):
 		if self.parent.lst_menu.winfo_viewable():
-			self.parent.hideMenu()
+			self.parent.hide_menu()
 			return
 		tags = self.grid_canvas.gettags(self.grid_canvas.find_withtag(tkinter.CURRENT))
 		pad = int(tags[0].split(':')[1])

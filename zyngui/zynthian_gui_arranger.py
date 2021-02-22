@@ -483,7 +483,7 @@ class zynthian_gui_arranger():
 	#	event: Mouse event
 	def on_grid_press(self, event):
 		if self.parent.lst_menu.winfo_viewable():
-			self.parent.hideMenu()
+			self.parent.hide_menu()
 			return
 		if self.parent.param_editor_item != None:
 			self.parent.hide_param_editor()
