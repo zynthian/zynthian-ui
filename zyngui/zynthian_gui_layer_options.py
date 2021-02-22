@@ -338,6 +338,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def audiofx_reset(self):
+		self.zyngui.show_confirm("Do you really want to remove all audio-FXs for this layer?", self.audiofx_reset_confirmed)
+
+
+	def audiofx_reset_confirmed(self, params=None):
 		# Remove all layers
 		for sl in self.audiofx_layers:
 			i = self.zyngui.screens['layer'].layers.index(sl)
@@ -397,6 +401,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def midifx_reset(self):
+		self.zyngui.show_confirm("Do you really want to remove all MIDI-FXs for this layer?", self.midifx_reset_confirmed)
+
+
+	def midifx_reset_confirmed(self):
 		# Remove all layers
 		for sl in self.midifx_layers:
 			i = self.zyngui.screens['layer'].layers.index(sl)
