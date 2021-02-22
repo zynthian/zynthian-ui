@@ -180,7 +180,7 @@ uint8_t getTriggerNote(uint8_t bank, uint8_t sequence);
 void setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note);
 
 // ** Pattern management functions - pattern events are quantized to steps **
-//!@todo Curernt implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the pattern index, e.g. clearPattern(index)
+//!@todo Current implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the pattern index, e.g. clearPattern(index)
 
 /** @brief  Enable MIDI input to add notes to current pattern
 *   @param  enable True to enable MIDI input
@@ -263,7 +263,7 @@ uint32_t getClocksPerStep();
 uint32_t getStepsPerBeat();
 
 /** @brief  Set steps per beat
-*   @param  steps Steps per beat
+*   @param  steps Steps per beat [1,2,3,4,6,8,12,24]
 *   @note   Calculates pattern length from beats in pattern
 */
 void setStepsPerBeat(uint32_t steps);
@@ -536,7 +536,7 @@ uint32_t addTrackToSequence(uint8_t bank, uint8_t sequence, uint32_t track=-1);
 /** @brief  Removes a track from a sequence
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
-*   @param  track Inde of track
+*   @param  track Index of track
 */
 void removeTrackFromSequence(uint8_t bank, uint8_t sequence, uint32_t track);
 

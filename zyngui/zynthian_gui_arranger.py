@@ -39,8 +39,11 @@ from math import sqrt
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_stepsequencer
 from zyngui import zynthian_gui_layer
+from zyngui import zynthian_gui_fileselector
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
+from zynlibs.zynsmf import zynsmf
+from zynlibs.zynsmf.zynsmf import libsmf
 
 
 #------------------------------------------------------------------------------
@@ -179,6 +182,7 @@ class zynthian_gui_arranger():
 		self.parent.add_menu({'Remove track': {'method':self.remove_track}})
 		self.parent.add_menu({'Clear sequence':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_sequence}}})
 		self.parent.add_menu({'Clear bank':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_bank}}})
+		self.parent.add_menu({'Import SMF':{'method':self.get_smf}})
 
 
 	# Function to get quantity of columns in grid
@@ -225,10 +229,100 @@ class zynthian_gui_arranger():
 		self.redraw_pending = 2
 
 
-	#	Function to get quantity of tracks in selected sequence
+	# Function to get quantity of tracks in selected sequence
 	#	Returns: Quantity of tracks
 	def get_tracks(self):
 		return libseq.getTracksInSequence(self.parent.bank, self.sequence)
+
+
+	# Function to import SMF
+	def get_smf(self, params=None):
+		zynthian_gui_fileselector.zynthian_gui_fileselector(self.parent, self.import_smf, zynthian_gui_stepsequencer.os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture", "mid", None, True)
+
+
+	def import_smf(self, filename):
+		smf = libsmf.addSmf()
+		if not zynsmf.load(smf, filename):
+			logging.warning("Failed to load file %s", filename)
+			return
+		bank = self.parent.bank
+		sequence = self.sequence
+		ticks_per_beat = libsmf.getTicksPerQuarterNote(smf)
+		steps_per_beat = 24
+		ticks_per_step = ticks_per_beat / steps_per_beat
+		beats_in_pattern = libseq.getBeatsPerBar()
+		ticks_in_pattern = beats_in_pattern * ticks_per_beat
+		clocks_per_step = 1 # For 24 steps per beat
+		ticks_per_clock = ticks_per_step / clocks_per_step
+		empty_tracks = [False for i in range(16)] # Array of boolean flags indicating if track should be removed at end of import
+#		libseq.clearSequence(bank, sequence) # TODO Do not clear sequence, get sequence length, start at next bar position or current cursor position
+
+		# Add tracks to populate - we will delete unpopulated tracks at end
+		for track in range(16):
+			if libseq.getChannel(bank, sequence, track) != track:
+				libseq.addTrackToSequence(bank, sequence, track - 1)
+				libseq.setChannel(bank, sequence, track, track)
+				empty_tracks[track] = True
+
+		# Do import
+		for channel in range(16):
+			# Iterate through each MIDI channel
+			libsmf.setPosition(smf, 0)
+			pattern = None
+			note_on = 0x90 | channel
+			note_off = 0x80 | channel
+			note_on_info = [[None,None,None,None] for i in range(127)] # Array of [pattern,time,velocity,step] indicating time that note on event received for matching note off and deriving duration
+			pattern_position = self.selected_cell[0] * ticks_per_beat # Position of current pattern within track in ticks
+
+			while libsmf.getEvent(smf, True):
+				type = libsmf.getEventType()
+				time = libsmf.getEventTime()
+				status = libsmf.getEventStatus()
+				if type == 0x01:
+					# MIDI event
+					if channel != libsmf.getEventChannel():
+						continue
+					note = libsmf.getEventValue1()
+					velocity = libsmf.getEventValue2()
+					if status == note_on and velocity:
+						# Found note-on event
+						if time >= pattern_position + ticks_in_pattern or pattern == None:
+							while time >= pattern_position + ticks_in_pattern:
+								pattern_position += ticks_in_pattern
+							pattern = libseq.createPattern()
+							libseq.selectPattern(pattern)
+							libseq.setBeatsInPattern(beats_in_pattern)
+							libseq.setStepsPerBeat(steps_per_beat)
+							position = int(pattern_position / ticks_per_clock)
+							libseq.addPattern(bank, sequence, channel, position, pattern, True)
+						step = int((time - pattern_position) / ticks_per_step)
+						note_on_info[note] = [pattern,time,velocity,step]
+						libseq.addNote(step, note, velocity, 1) # Add short event, may overwrite later when note-off detected
+					elif status == note_off or status == note_on and velocity == 0:
+						# Found note-off event
+						if note_on_info[note][0] == None:
+							continue # Do not have corresponding note-on for this note-off event
+						current_pattern = pattern
+						old_pattern = note_on_info[note][0]
+						trigger_time = note_on_info[note][1]
+						velocity = note_on_info[note][2]
+						step = note_on_info[note][3]
+						libseq.selectPattern(old_pattern)
+						duration = int((time - trigger_time) / ticks_per_step)
+						if duration < 1:
+							duration = 1
+						libseq.addNote(step, note, velocity, duration)
+						note_on_info[note] = [None,None,None,None]
+						pattern = current_pattern
+						libseq.selectPattern(pattern)
+					if(empty_tracks[channel]):
+						empty_tracks[channel] = False
+
+		# Remove empty tracks
+		for track in range(15, -1, -1):
+			if empty_tracks[track]:
+				libseq.removeTrackFromSequence(bank, sequence, track)
+		self.redraw_pending = 2
 
 
 	# Function to show GUI
@@ -276,11 +370,6 @@ class zynthian_gui_arranger():
 	# Function to get current pattern
 	def get_pattern(self):
 		return self.pattern
-
-
-	# Function to select .mid file to import
-	def select_import(self, params):
-		zynthian_gui_fileselector(self.parent, self.import_smf, zynthian_gui_stepsequencer.os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture", "mid", None, True)
 
 
 	# Function to set current pattern

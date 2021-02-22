@@ -63,7 +63,7 @@ void Pattern::deleteEvent(uint32_t position, uint8_t command, uint8_t value1)
 bool Pattern::addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
 {
 	//!@todo Should we limit note length to size of pattern?
-	if(step >= (m_nBeats * m_nStepsPerBeat) || note > 127 || velocity > 127 || duration > (m_nBeats * m_nStepsPerBeat))
+	if(step >= (m_nBeats * m_nStepsPerBeat) || note > 127 || velocity > 127) // || duration > (m_nBeats * m_nStepsPerBeat))
 		return false;
 	addEvent(step, MIDI_NOTE_ON, note, velocity, duration);
 	return true;

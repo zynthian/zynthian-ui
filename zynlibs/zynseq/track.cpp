@@ -162,7 +162,7 @@ SEQ_EVENT* Track::getEvent()
 		{
 			// Already processed start value
 			m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
-			seqEvent.time = m_nLastClockTime + pEvent->getDuration() * (pPattern->getClocksPerStep() - 1) * m_dSamplesPerClock; // -1 to send note-off one clock before next step
+			seqEvent.time = m_nLastClockTime + pEvent->getDuration() * pPattern->getClocksPerStep() * m_dSamplesPerClock - 1; // -1 to send note-off one sample before next step
 			//printf("Scheduling note off. Event duration: %u, clocks per step: %u, samples per clock: %u\n", pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
 		}
 	}

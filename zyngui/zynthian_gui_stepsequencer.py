@@ -185,13 +185,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.param_editor_canvas.grid_propagate(False)
 		self.param_editor_canvas.bind('<Button-1>', self.hide_param_editor)
 
+		# Parameter editor cancel button
+		self.button_param_cancel = tkinter.Button(self.param_editor_canvas, command=self.hide_param_editor,
+			image=self.image_back,
+			bd=0, highlightthickness=0,
+			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
+		self.button_param_cancel.grid(column=0, row=0, padx=1)
 		if zynthian_gui_config.enable_touch_widgets:
-			# Parameter editor cancel button
-			self.button_param_cancel = tkinter.Button(self.param_editor_canvas, command=self.hide_param_editor,
-				image=self.image_back,
-				bd=0, highlightthickness=0,
-				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.button_param_cancel.grid(column=0, row=0, padx=1)
 			# Parameter editor decrement button
 			self.button_param_down = tkinter.Button(self.param_editor_canvas, command=self.decrement_param,
 				image=self.image_down,
@@ -243,7 +243,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.lst_menu.bind('<B1-Motion>', self.on_menu_drag)
 		self.lst_menu.bind('<ButtonRelease-1>', self.on_menu_select)
 		self.scrollTime = 0.0
-		if zynthian_gui_config.enable_touch_widgets:
+#		if zynthian_gui_config.enable_touch_widgets:
+		if True:
 			self.menu_button_canvas = tkinter.Canvas(self.tb_frame,
 				height=zynthian_gui_config.topbar_height,
 				bg=zynthian_gui_config.color_bg, bd=0, highlightthickness=0)
@@ -409,7 +410,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.unregister_zyncoder(encoder)
 		self.register_switch(ENC_SELECT, self)
 		self.register_switch(ENC_BACK, self)
-		if zynthian_gui_config.enable_touch_widgets:
+#		if zynthian_gui_config.enable_touch_widgets:
+		if True:
 			self.menu_button_canvas.grid()
 			self.menu_button_canvas.grid_propagate(False)
 			self.menu_button_canvas.grid(column=0, row=0, sticky='nsew')
@@ -421,8 +423,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.hide_param_editor()
 		self.unregister_zyncoder(ENC_SELECT)
 		self.lst_menu.grid_forget()
-		if zynthian_gui_config.enable_touch_widgets:
-			self.menu_button_canvas.grid_forget()
+#		if zynthian_gui_config.enable_touch_widgets:
+		self.menu_button_canvas.grid_forget()
 		for encoder in range(4):
 			self.unregister_zyncoder(encoder)
 		if self.child:
