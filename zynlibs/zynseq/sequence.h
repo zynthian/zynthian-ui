@@ -4,6 +4,7 @@
 #include "track.h"
 #include "timebase.h"
 #include <vector>
+#include <string>
 
 /**	Sequence class provides a collection of tracks
 *   A collection of tracks that will play in unison / simultaneously
@@ -148,6 +149,16 @@ class Sequence
 		*/
 		bool hasChanged();
 
+		/**	@brief	Set sequence name
+		*	@param	std::string Sequence name (will be truncated at 16 characters)
+		*/
+		void setName(std::string sName);
+
+		/**	@brief	Get sequence name
+		*	@retval	std::string Sequence name (maximum 16 characters)
+		*/
+		std::string getName();
+
     private:
         std::vector<Track> m_vTracks; // Vector of tracks within sequence
         Timebase m_timebase; // Timebase map
@@ -161,4 +172,5 @@ class Sequence
 		uint16_t m_nTempo = 120; // Default tempo (overriden by tempo events in timebase map)
 		bool m_bChanged = false; // True if sequence content changed
 		bool m_bStateChanged = false; // True if state changed since last clock cycle
+		std::string m_sName; // Sequence name
 };

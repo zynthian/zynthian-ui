@@ -35,7 +35,7 @@
 #include <string>
 #include <cstring> //provides strcmp
 
-#define FILE_VERSION 5
+#define FILE_VERSION 6
 
 #define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
 
@@ -65,6 +65,7 @@ uint8_t g_nTriggerStatusByte = MIDI_NOTE_ON | 15; // MIDI status byte which trig
 uint16_t g_nVerticalZoom = 8;
 uint16_t g_nHorizontalZoom = 16;
 uint16_t g_nTriggerLearning = 0; // 2 word bank|sequence that is waiting for MIDI to learn trigger (0 if not learning)
+char g_sName[16]; // Buffer to hold sequence name so that it can be sent back for Python to parse
 
 bool g_bMutex = false; // Mutex lock for access to g_mSchedule
 
@@ -760,11 +761,30 @@ bool load(const char* filename)
 			{
 				if(checkBlock(pFile, nBlockSize, 8))
 					continue;
+				if(nVersion >= 6 && checkBlock(pFile, nBlockSize, 24))
+					continue;
 				Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
 				pSequence->setPlayMode(fileRead8(pFile));
-				pSequence->setGroup(fileRead8(pFile));
-                g_seqMan.setTriggerNote(nBank, nSequence, fileRead8(pFile));
-                fileRead8(pFile); //Padding
+				uint8_t nGroup = fileRead8(pFile);
+				pSequence->setGroup(nGroup);
+				g_seqMan.setTriggerNote(nBank, nSequence, fileRead8(pFile));
+				fileRead8(pFile); //Padding
+				char sName[17];
+				memset(sName, '\0', 17);
+				if(nVersion >= 6)
+				{
+					if(checkBlock(pFile, nBlockSize, 24))
+						continue;
+					for(size_t nIndex = 0; nIndex < 16; ++nIndex)
+						sName[nIndex] = fileRead8(pFile);
+					sName[16] = '\0';
+					nBlockSize -= 16;
+				}
+				else
+				{
+					sprintf(sName, "%d", nSequence + 1);
+				}
+				pSequence->setName(std::string(sName));
 				uint32_t nTracks = fileRead32(pFile);
 				nBlockSize -= 8;
 				//printf("  Mode:%u Group:%u Tracks:%u\n", pSequence->getPlayMode(), pSequence->getGroup(), nTracks);
@@ -892,13 +912,18 @@ void save(const char* filename)
 		nPos += fileWrite8(nBank, pFile);
 		nPos += fileWrite8(0, pFile);
 		nPos += fileWrite32(nSequences, pFile);
-        for(uint32_t nSequence = 0; nSequence < nSequences; ++nSequence)
+		for(uint32_t nSequence = 0; nSequence < nSequences; ++nSequence)
 		{
-            Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
+			Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
 			nPos += fileWrite8(pSequence->getPlayMode(), pFile);
 			nPos += fileWrite8(pSequence->getGroup(), pFile);
-            nPos += fileWrite8(g_seqMan.getTriggerNote(nBank, nSequence), pFile);
-            nPos += fileWrite8('\0', pFile);
+			nPos += fileWrite8(g_seqMan.getTriggerNote(nBank, nSequence), pFile);
+			nPos += fileWrite8('\0', pFile);
+			std::string sName = pSequence->getName();
+			for(size_t nIndex = 0; nIndex < sName.size(); ++nIndex)
+				nPos += fileWrite8(sName[nIndex], pFile);
+			for(size_t nIndex = sName.size(); nIndex < 16; ++nIndex)
+				nPos += fileWrite8('\0', pFile);
 			nPos += fileWrite32(pSequence->getTracks(), pFile);
 			for(size_t nTrack = 0; nTrack < pSequence->getTracks(); ++nTrack)
 			{
@@ -1083,6 +1108,8 @@ uint8_t getTriggerChannel()
 
 void setTriggerChannel(uint8_t channel)
 {
+    if(channel > 15)
+        channel = 0xFF;
     g_seqMan.setTriggerChannel(channel);
     g_nTriggerStatusByte = MIDI_NOTE_ON | g_seqMan.getTriggerChannel();
     g_bDirty = true;
@@ -1329,6 +1356,13 @@ void setRefNote(uint8_t note)
         g_pPattern->setRefNote(note);
 }
 
+uint32_t getLastStep()
+{
+	if(!g_pPattern)
+		return -1;
+	return g_pPattern->getLastStep();
+}
+
 // ** Sequence management functions **
 
 uint32_t getPatternPlayhead(uint8_t bank, uint8_t sequence, uint32_t track)
@@ -1564,6 +1598,31 @@ uint8_t getMidiLearnSequence()
     return g_nTriggerLearning & 0xFF;
 }
 
+void setSequenceName(uint8_t bank, uint8_t sequence, const char* name)
+{
+    g_seqMan.getSequence(bank, sequence)->setName(std::string(name));
+}
+
+const char* getSequenceName(uint8_t bank, uint8_t sequence)
+{
+    strcpy(g_sName, g_seqMan.getSequence(bank, sequence)->getName().c_str());
+    return g_sName;
+}
+
+bool moveSequence(uint8_t bank, uint8_t sequence, uint8_t position)
+{
+    return g_seqMan.moveSequence(bank, sequence, position);
+}
+
+void insertSequence(uint8_t bank, uint8_t sequence)
+{
+    g_seqMan.insertSequence(bank, sequence);
+}
+
+void removeSequence(uint8_t bank, uint8_t sequence)
+{
+    g_seqMan.removeSequence(bank, sequence);
+}
 
 // ** Track management **
 

@@ -126,8 +126,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.zyncoder_owner = [None, None, None, None] # Object that currently "owns" encoder, indexed by encoder
 		self.switch_owner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
-		self.child = None # Pointer to instance of child panel
-		self.last_child = "zynpad" # Name of last child shown - used to return to same screen
 		self.bank = 1 # Currently displayed bank of sequences
 		self.layers = [None for i in range(16)] # Root layer indexed by MIDI channel
 
@@ -162,14 +160,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.title_canvas.bind('<Button-1>', self.toggle_menu)
 
 		iconsize = (zynthian_gui_config.topbar_height - 4, zynthian_gui_config.topbar_height - 4)
-		img = (Image.open("/zynthian/zynthian-ui/icons/play.png").resize(iconsize))
-		self.image_play = ImageTk.PhotoImage(img)
-		pixdata = img.load()
-		for y in range(img.size[1]):
-			for x in range(img.size[0]):
-				if pixdata[x, y][0] == (255):
-					pixdata[x, y] = (0, 255, 0, pixdata[x, y][3])
-		self.image_playing = ImageTk.PhotoImage(img)
+		self.image_play = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
+		self.image_playing = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
 		self.image_back = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/back.png").resize(iconsize))
 		self.image_forward = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/tick.png").resize(iconsize))
 		img = (Image.open("/zynthian/zynthian-ui/icons/arrow.png").resize(iconsize))
@@ -205,7 +197,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
 			self.button_param_up.grid(column=2, row=0, padx=1)
 			# Parameter editor assert button
-			self.button_param_assert = tkinter.Button(self.param_editor_canvas, command=self.menu_value_assert,
+			self.button_param_assert = tkinter.Button(self.param_editor_canvas, command=self.param_editor_assert,
 				image=self.image_forward,
 				bd=0, highlightthickness=0,
 				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
@@ -259,7 +251,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 		self.status_menu_frame = tkinter.Frame(self.main_frame)
 
-		img = (Image.open("/zynthian/zynthian-ui/icons/stop.png").resize(iconsize))
+		img = (Image.open("/zynthian/zynthian-ui/icons/recue.png").resize(iconsize))
 		self.image_stop = ImageTk.PhotoImage(img)
 		self.button_stop = tkinter.Button(self.status_menu_frame, command=self.stop,
 			image=self.image_stop,
@@ -276,7 +268,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.pattern_editor = zynthian_gui_patterneditor(self)
 		self.arranger = zynthian_gui_arranger(self)
 		self.zynpad = zynthian_gui_zynpad(self)
-
+		self.child = None # Pointer to instance of child panel
+		self.last_child = self.zynpad # Pointer to instance of last child shown - used to return to same screen
+		
 		# Init touchbar
 		self.init_buttonbar()
 
@@ -304,9 +298,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.lst_menu.delete(0, tkinter.END)
 		self.menu_items = {} # Dictionary of menu items
 		if self.child != self.zynpad:
-			self.add_menu({'Pads':{'method':self.show_child, 'params':"zynpad"}})
+			self.add_menu({'Pads':{'method':self.show_child, 'params':self.zynpad}})
 		if self.child != self.arranger:
-			self.add_menu({'Arranger':{'method':self.show_child, 'params':"arranger"}})
+			self.add_menu({'Arranger':{'method':self.show_child, 'params':self.arranger}})
 		if self.child != self.pattern_editor:
 			self.add_menu({'Bank':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'value':self.bank, 'on_change':self.on_menu_change}}})
 		if zynthian_gui_config.enable_touch_widgets:
@@ -359,7 +353,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.main_frame.grid(column=0, row=0)
 			self.zyngui.screens["control"].unlock_controllers()
 			self.shown=True
-			self.show_child(self.last_child, {})
+			self.show_child(self.child, {})
 			# Update list of layers
 			for chan in range(16):
 				for layer in self.zyngui.screens['layer'].layers:
@@ -375,9 +369,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.shown:
 			self.shown=False
 			self.main_frame.grid_forget()
-			if self.child:
-				self.child.hide()
-			self.last_child = "zynpad"
 
 
 	# Function to refresh the status widgets
@@ -499,7 +490,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			if action == self.show_param_editor:
 				self.show_param_editor(menu_item)
 			elif action:
-				action(params) # Call menu handler defined during addMenu
+				action(params) # Call menu handler defined during add_menu
 
 
 	# Function to add items to menu
@@ -555,7 +546,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='hidden')
 		for encoder in range(4):
 			self.unregister_zyncoder(encoder)
-		self.register_switch(ENC_SELECT, self)
+		self.register_switch(ENC_SELECT, self, "SB")
 		self.register_switch(ENC_BACK, self)
 
 
@@ -571,7 +562,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.child.setup_encoders()
 
 
-	# Function to handle menu editor value change and get display label text
+	# Function to handle parameter editor value change and get display label text
 	#	params: Menu item's parameters
 	#	returns: String to populate menu editor label
 	#	note: This is default but other method may be used for each menu item
@@ -624,37 +615,48 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to assert selected menu value
-	def menu_value_assert(self):
+	def param_editor_assert(self):
 		if self.param_editor_item and 'on_assert' in self.menu_items[self.param_editor_item]['params'] and self.menu_items[self.param_editor_item]['params']['on_assert']:
 			self.menu_items[self.param_editor_item]['params']['on_assert']()
 		self.hide_param_editor()
 
 
+	# Function callback when cancel selected in parameter editor
+	def param_editor_cancel(self):
+		if self.param_editor_item and 'on_cancel' in self.menu_items[self.param_editor_item]['params'] and self.menu_items[self.param_editor_item]['params']['on_cancel']:
+			self.menu_items[self.param_editor_item]['params']['on_cancel']()
+		self.hide_param_editor()
+
+
+	# Function callback when reset selected in parameter editor
+	def param_editor_reset(self):
+		if self.param_editor_item and 'on_reset' in self.menu_items[self.param_editor_item]['params'] and self.menu_items[self.param_editor_item]['params']['on_reset']:
+			self.menu_items[self.param_editor_item]['params']['on_reset']()
+
+
 	# Function to show child GUI
 	#	name: Name of child to show
 	#	params: Dictionary of parameters to pass to child class show() method
-	def show_child(self, name, params=None):
+	def show_child(self, child, params=None):
 		if not self.shown:
 			return
 		#logging.warning("name: %s params: %s", name, params)
-		if not name:
-			name = "zynpad"
+		if not child:
+			child = self.zynpad
 		if not params:
 			params = {}
 		if self.child == self.zynpad:
 			params["sequence"] = self.zynpad.selected_pad
 		if self.child == self.arranger:
 			params["sequence"] = self.arranger.sequence
+		if self.child != self.pattern_editor:
+			self.last_child = self.child
 		self.hide_child()
 		self.buttonbar_config[2] = (2, '')
-		if name == "arranger":
-			self.child = self.arranger
-		elif name == "pattern editor":
-			self.child = self.pattern_editor
+		self.child = child
+		if child == self.pattern_editor:
 			self.buttonbar_config[2] = (2, 'PLAY')
-		elif name == "zynpad":
-			self.child = self.zynpad
-		else:
+		elif child == None:
 			return
 		self.child.show(params)
 		self.init_buttonbar()
@@ -664,7 +666,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to hide child GUI
 	def hide_child(self):
 		if self.child:
-			self.last_child = self.child.get_name()
 			self.child.hide()
 		self.child = None
 		self.hide_param_editor()
@@ -707,15 +708,16 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if bank > 0:
 			if libseq.getSequencesInBank(bank) == 0:
 				libseq.setSequencesInBank(bank, 16)
-				for pad in range(4,8):
-					libseq.setChannel(bank, pad, 0, 1)
-					libseq.setGroup(bank, pad, 1)
-				for pad in range(8,12):
-					libseq.setChannel(bank, pad, 0, 2)
-					libseq.setGroup(bank, pad, 2)
-				for pad in range(12,16):
-					libseq.setChannel(bank, pad, 0, 9)
-					libseq.setGroup(bank, pad, 9)
+				for column in range(4):
+					if column == 3:
+						channel = 9
+					else:
+						channel = column
+					for row in range(4):
+						pad = row + 4 * column
+						zynseq.set_sequence_name(bank, pad, "%d" % (pad + 1))
+						libseq.setGroup(bank, pad, channel)
+						libseq.setChannel(bank, pad, 0, channel)
 			self.bank = bank
 			self.set_title("Bank %d" % bank)
 			try:
@@ -938,10 +940,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					return True
 				if self.param_editor_item:
 					# Close parameter editor
-					self.hide_param_editor()
+					self.param_editor_cancel()
 					return True
 				if self.child == self.arranger:
-					self.show_child("zynpad")
+					self.show_child(self.zynpad)
 					return True
 				if self.child != self.zynpad:
 					self.show_child(self.last_child, {})
@@ -954,7 +956,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					self.on_menu_select()
 					return True
 				elif self.param_editor_item:
-					self.menu_value_assert()
+					self.param_editor_assert()
+					return True
+		if type == 'B':
+			if switch == ENC_SELECT:
+				if self.param_editor_item:
+					# Close parameter editor
+					self.param_editor_reset()
 					return True
 
 		return False # Tell parent that handle the rest of short and bold key presses

@@ -159,7 +159,7 @@ class zynthian_gui_fileselector():
 		self.file_list.destroy()
 #		self.btnCancel.destroy()
 		self.tb_panel.destroy()
-		self.parent.show_child(self.parent.child.get_name())
+		self.parent.show_child(self.parent.child)
 
 
 	# Function to register encoders

@@ -47,6 +47,7 @@ def init():
 	global libseq
 	try:
 		libseq=ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynseq.so")
+		libseq.getSequenceName.restype = ctypes.c_char_p
 	except Exception as e:
 		libseq=None
 		print("Can't initialise zynseq library: %s" % str(e))
@@ -76,6 +77,22 @@ def save(filename):
 	if libseq:
 		return libseq.save(bytes(filename, "utf-8"))
 	return None
+
+
+#	Set sequence name
+#	name: Sequence name (truncates at 16 characters)
+def set_sequence_name(bank, sequence, name):
+	if libseq:
+		libseq.setSequenceName(bank, sequence, bytes(name, "utf-8"))
+
+
+#	Get sequence name
+#	Returns: Sequence name (maximum 16 characters)
+def get_sequence_name(bank, sequence):
+	if libseq:
+		return libseq.getSequenceName(bank, sequence).decode("utf-8")
+	else:
+		return "%d" % (sequence)
 
 
 #	Request JACK transport start

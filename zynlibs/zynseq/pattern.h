@@ -250,6 +250,10 @@ class Pattern
 		*/
 		void setRefNote(uint8_t note);
 		
+		/**	@brief	Get last populated step
+		*	@retval	uint32_t Index of last step that contains any events or -1 if pattern is empty
+		*/
+		uint32_t getLastStep();
 
 	private:
 		void deleteEvent(uint32_t position, uint8_t command, uint8_t value1);

@@ -261,3 +261,15 @@ bool Sequence::hasChanged()
 	m_bChanged = false;
 	return bChanged;
 }
+
+void Sequence::setName(std::string sName)
+{
+	m_sName = sName;
+	m_sName.resize(16);
+}
+
+std::string Sequence::getName()
+{
+	return m_sName;
+}
+
