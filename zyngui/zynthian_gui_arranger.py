@@ -542,8 +542,9 @@ class zynthian_gui_arranger():
 	# Function to handle pattern click
 	#	event: Mouse event
 	def on_pattern_click(self, event):
-		self.populate_menu() # Probably better way but this ensures 'Pattern' is in the menu
-		self.parent.show_param_editor('Pattern')
+		if zynthian_gui_config.enable_touch_widgets:
+			self.populate_menu() # Probably better way but this ensures 'Pattern' is in the menu
+			self.parent.show_param_editor('Pattern')
 
 
 	# Function to toggle note event
@@ -603,11 +604,13 @@ class zynthian_gui_arranger():
 				self.seq_track_title_width, (1 + row) * self.row_height - 1, tags=('rowback:%d'%(row), 'sequence_title'),
 				fill=fill)
 		if track == 0 or row == 0:
-    		# Create sequence title label from first visible track of sequence
+			# Create sequence title label from first visible track of sequence
 			self.sequence_title_canvas.create_text((0, self.row_height * row + 1),
 					font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="nw",
 					text=zynseq.get_sequence_name(self.parent.bank, sequence))
-		self.sequence_title_canvas.create_text((self.seq_track_title_width - 2, self.row_height * row + 1),
+		else:
+			# Don't show track number on track 1 to allow sequence name to be longer and simplify display when single tracks are use
+			self.sequence_title_canvas.create_text((self.seq_track_title_width - 2, self.row_height * row + 1),
 				font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="ne",
 				text="%d" % (track + 1))
 		self.sequence_title_canvas.create_text((0, self.row_height * (row + 1) - 1),

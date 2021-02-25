@@ -292,7 +292,7 @@ class zynthian_gui_zynpad():
 		self.row_height = self.height / self.columns
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
 
-		iconsize = (int(self.column_width * 0.6), int(self.row_height * 0.2))
+		iconsize = (int(self.column_width * 0.5), int(self.row_height * 0.2))
 		img = (Image.open("/zynthian/zynthian-ui/icons/oneshot.png").resize(iconsize))
 		self.mode_icon[1] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/loop.png").resize(iconsize))
@@ -320,15 +320,21 @@ class zynthian_gui_zynpad():
 			pad_y = pad % self.columns * self.row_height
 			self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
 				fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell", "trigger_%d"%(pad)))
-			self.grid_canvas.create_text(int(pad_x), int(pad_y + 0.1 * self.row_height),
+			self.grid_canvas.create_text(int(pad_x + self.column_width / 2), int(pad_y + 0.01 * self.row_height),
 				width=self.column_width,
-				anchor="nw",
+				anchor="n", justify="center",
 				font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-				size=int(self.row_height * 0.3)),
+				size=int(self.row_height * 0.2)),
 				fill=zynthian_gui_config.color_panel_tx,
 				tags=("lbl_pad:%d"%(pad),"trigger_%d"%(pad)))
-			self.grid_canvas.create_image(int(pad_x + self.column_width * 0.1), int(pad_y + 0.8 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
-			self.grid_canvas.create_image(int(pad_x + self.column_width * 0.9), int(pad_y + 0.8 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
+			self.grid_canvas.create_text(pad_x + 1, pad_y + self.row_height - 1,
+				anchor="sw",
+				font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
+				size=int(self.row_height * 0.2)),
+				fill=zynthian_gui_config.color_panel_tx,
+				tags=("group:%d"%(pad),"trigger_%d"%(pad)))
+			self.grid_canvas.create_image(int(pad_x + self.column_width * 0.2), int(pad_y + 0.9 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
+			self.grid_canvas.create_image(int(pad_x + self.column_width * 0.9), int(pad_y + 0.9 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
 			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
 			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
 			self.refresh_pad(pad, True)
@@ -359,6 +365,7 @@ class zynthian_gui_zynpad():
 				if libseq.getSequenceLength(self.parent.bank, pad) == 0:
 					mode = 0
 				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text=zynseq.get_sequence_name(self.parent.bank, pad), fill=foreground)
+				self.grid_canvas.itemconfig("group:%s"%(pad), text=chr(65 + libseq.getGroup(self.parent.bank, pad)), fill=foreground)
 				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
 				self.grid_canvas.itemconfig("state:%d"%pad, image=self.state_icon[state])
 
