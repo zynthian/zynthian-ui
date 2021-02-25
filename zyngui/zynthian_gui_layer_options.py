@@ -404,7 +404,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.zyngui.show_confirm("Do you really want to remove all MIDI-FXs for this layer?", self.midifx_reset_confirmed)
 
 
-	def midifx_reset_confirmed(self):
+	def midifx_reset_confirmed(self, params=None):
 		# Remove all layers
 		for sl in self.midifx_layers:
 			i = self.zyngui.screens['layer'].layers.index(sl)
