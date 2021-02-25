@@ -338,7 +338,10 @@ class zynthian_gui_arranger():
 		self.select_bank()
 		self.setup_encoders()
 		if "sequence" in params:
-			self.selected_cell[1] = params["sequence"]
+			for row in range(len(self.sequence_tracks)):
+				if self.sequence_tracks[row][0] == params["sequence"]:
+					self.selected_cell[1] = row
+					break
 
 
 	# Function to hide GUI
