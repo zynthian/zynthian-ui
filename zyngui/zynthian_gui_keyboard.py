@@ -28,6 +28,7 @@ import tkinter
 import logging
 import math
 import tkinter.font as tkFont
+from threading import Timer
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -94,17 +95,18 @@ class zynthian_gui_keyboard():
 				self.add_button("", col, row)
 		row = row + 1
 		# Add special keys
-		self.btn_cancel = self.add_button('CANCEL', 0, row, 2)
-		self.btn_shift = self.add_button('SHIFT', 2, row, 1)
+		self.btn_cancel = self.add_button('Cancel', 0, row, 2)
+		self.btn_shift = self.add_button('Shift', 2, row, 1)
 		self.btn_space = self.add_button(' ', 3, row, 4)
-		self.btn_delete = self.add_button('DELETE', 7, row, 1)
-		self.btn_enter = self.add_button('ENTER', 8, row, 2)
+		self.btn_delete = self.add_button('Delete', 7, row, 1)
+		self.btn_enter = self.add_button('Enter', 8, row, 2)
 
 		self.refresh_keys()
 		self.setup_encoders()
 
 		self.highlight_box = self.key_canvas.create_rectangle(0, 0, self.key_width, self.key_height, outline="red", width=2)
 		self.highlight(self.selected_button)
+		self.hold_timer = Timer(0.8, self.bold_press)
 
 
 	# Function to draw keyboard
@@ -136,23 +138,40 @@ class zynthian_gui_keyboard():
 		r = self.key_canvas.create_rectangle(1 + self.key_width * col, 1 + self.key_height * row, self.key_width * (col + colspan) - 1, self.key_height * (row + 1) - 1, tags=(tag), fill="black")
 		l = self.key_canvas.create_text(1 + self.key_width * (col + colspan / 2), 1 + self.key_height * (row + 0.5), text=label, fill="white", tags=(tag))
 		self.key_canvas.tag_bind(tag, "<Button-1>", self.on_key_press)
+		self.key_canvas.tag_bind(tag, "<ButtonRelease-1>", self.on_key_release)
 		self.buttons.append([r,l])
 		return index
 
 
+	# Function to handle bold touchscreen press and hold
+	def bold_press(self):
+		self.execute_key_press(self.btn_delete, True)
+
+
 	# Function to handle key press
 	#	event: Mouse event
-	def on_key_press(self, event = None):
+	def on_key_press(self, event=None):
 		tags = self.key_canvas.gettags(self.key_canvas.find_withtag(tkinter.CURRENT))
 		if not tags:
 			return
 		dummy, index = tags[0].split(':')
-		self.execute_key_press(int(index))
+		key = int(index)
+		if key == self.btn_delete:
+			self.hold_timer = Timer(0.8, self.bold_press)
+			self.hold_timer.start()
+		self.execute_key_press(key)
+
+
+	# Function to handle key release
+	#	event: Mouse event
+	def on_key_release(self, event=None):
+		self.hold_timer.cancel()
 
 
 	# Function to execute a key press
 	#	key: Index of key
-	def execute_key_press(self, key):
+	#	bold: True if long / bold press
+	def execute_key_press(self, key, bold=False):
 		#TODO: Use button ID for special function to allow localisation
 		self.selected_button = key
 		shift = self.shift
@@ -166,7 +185,10 @@ class zynthian_gui_keyboard():
 			self.hide()
 			return
 		if key == self.btn_delete:
-			self.name = self.name[:-1]
+			if bold:
+				self.name = ""
+			else:
+				self.name = self.name[:-1]
 		elif key == self.btn_space:
 			self.name = self.name + " "
 		elif key < len(self.keys):
@@ -216,7 +238,7 @@ class zynthian_gui_keyboard():
 	def setup_encoders(self):
 		self.parent.register_zyncoder(ENC_SELECT, self)
 		self.parent.register_zyncoder(ENC_BACK, self)
-		self.parent.register_switch(ENC_SELECT, self)
+		self.parent.register_switch(ENC_SELECT, self, "SB")
 		self.parent.register_switch(ENC_BACK, self)
 
 
@@ -267,7 +289,7 @@ class zynthian_gui_keyboard():
 		if switch == ENC_BACK:
 			self.hide()
 		elif switch == ENC_SELECT:
-			self.execute_key_press(self.selected_button)
+			self.execute_key_press(self.selected_button, type=="B")
 		return True # Tell parent that we handled all short and bold key presses
 
 #------------------------------------------------------------------------------

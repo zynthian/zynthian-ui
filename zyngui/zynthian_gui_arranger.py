@@ -40,7 +40,6 @@ from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_stepsequencer
 from zyngui import zynthian_gui_layer
 from zyngui import zynthian_gui_fileselector
-from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
 from zynlibs.zynsmf import zynsmf
@@ -178,7 +177,6 @@ class zynthian_gui_arranger():
 		self.parent.add_menu({'Pattern': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Add track': {'method':self.add_track}})
 		self.parent.add_menu({'Remove track': {'method':self.remove_track}})
-		self.parent.add_menu({'Name sequence':{'method':self.name_sequence}})
 		self.parent.add_menu({'Clear sequence':{'method':self.clear_sequence}})
 		self.parent.add_menu({'Clear bank':{'method':self.clear_bank}})
 		self.parent.add_menu({'Import SMF':{'method':self.get_smf}})
@@ -230,16 +228,6 @@ class zynthian_gui_arranger():
 		libseq.removeTrackFromSequence(self.parent.bank, self.sequence, self.track)
 		self.update_sequence_tracks()
 		self.redraw_pending = 2
-
-
-	# Function to name selected sequence
-	def name_sequence(self, params=None):
-		zynthian_gui_keyboard(self.parent, self.do_rename_sequence, zynseq.get_sequence_name(self.parent.bank, self.sequence), 16)
-
-
-	# Function to rename selected sequence
-	def do_rename_sequence(self, name):
-		zynseq.set_sequence_name(self.parent.bank, self.sequence, name)
 
 
 	# Function to import SMF

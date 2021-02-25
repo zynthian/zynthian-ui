@@ -42,6 +42,7 @@ from threading import Timer
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_stepsequencer
+from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
 
@@ -130,6 +131,7 @@ class zynthian_gui_zynpad():
 		self.parent.add_menu({'Trigger note':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':128, 'get_value':self.get_trigger_note, 'on_change':self.on_menu_change, 'on_reset':self.reset_trigger_note}}})
 		self.parent.add_menu({'-------------------':{}})
 		self.parent.add_menu({'Grid size':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':8, 'get_value':self.get_columns, 'on_change':self.on_menu_change, 'on_assert':self.set_grid_size}}})
+		self.parent.add_menu({'Name sequence':{'method':self.name_sequence}})
 
 
 	# Function to hide GUI
@@ -185,6 +187,16 @@ class zynthian_gui_zynpad():
 					libseq.removeSequence(bank, offset)
 		self.columns = new_size
 		self.refresh_pending = 1
+
+
+	# Function to name selected sequence
+	def name_sequence(self, params=None):
+		zynthian_gui_keyboard(self.parent, self.do_rename_sequence, zynseq.get_sequence_name(self.parent.bank, self.selected_pad), 16)
+
+
+	# Function to rename selected sequence
+	def do_rename_sequence(self, name):
+		zynseq.set_sequence_name(self.parent.bank, self.selected_pad, name)
 
 
 	# Function to get MIDI channel of selected pad
