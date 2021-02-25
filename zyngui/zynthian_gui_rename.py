@@ -191,7 +191,7 @@ class zynthian_gui_rename():
 	# Function to hide dialog
 	def hide(self):
 		self.main_frame.destroy()
-		self.parent.show_child()
+		self.parent.show_child(self.parent.child)
 
 
 	# Function to assert ENTER

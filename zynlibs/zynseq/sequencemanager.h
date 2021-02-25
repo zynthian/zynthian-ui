@@ -175,10 +175,33 @@ class SequenceManager
         */
         uint32_t getSequencesInBank(uint32_t bank);
 
-		/**	@brief	Remove all sequences from bank
-        *   @param  bank Bank number
-		*/
-		void clearBank(uint32_t bank);
+        /** @brief  Move sequence (change order of sequences)
+        *   @param  bank Index of bank
+        *   @param  sequence Index of sequence to move
+        *   @param  position Index of sequence to move this sequence, e.g. 0 to insert as first sequence
+        *   @note   Sequences after insert point are moved up by one. Bank grows if sequence or position is higher than size of bank
+        *   @retval bool True on success
+        */
+        bool moveSequence(uint8_t bank, uint8_t sequence, uint8_t position);
+
+        /** @brief  Insert new sequence in bank
+        *   @param  bank Index of bank
+        *   @param  sequence Index at which to insert sequence , e.g. 0 to insert as first sequence
+        *   @note   Sequences after insert point are moved up by one. Bank grows if sequence is higher than size of bank
+        */
+        void insertSequence(uint8_t bank, uint8_t sequence);
+
+        /** @brief  Remove sequence from bank
+        *   @param  bank Index of bank
+        *   @param  sequence Index of sequence to remove
+        *   @note   Sequences after remove point are moved down by one. Bank grows if sequence is higher than size of bank
+        */
+        void removeSequence(uint8_t bank, uint8_t sequence);
+
+        /**	@brief	Remove all sequences from bank
+        *   @param  bank Index of bank
+        */
+        void clearBank(uint32_t bank);
 
         /** @brief  Get quantity of banks
         *   @retval uint32_t Quantity of populated banks

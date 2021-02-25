@@ -373,13 +373,58 @@ uint32_t SequenceManager::getSequencesInBank(uint32_t bank)
 	return m_mBanks[bank].size();
 }
 
+bool SequenceManager::moveSequence(uint8_t bank, uint8_t sequence, uint8_t position)
+{
+    if(sequence >= getSequencesInBank(bank))
+        setSequencesInBank(bank, sequence + 1);
+    if(position >= getSequencesInBank(bank))
+        setSequencesInBank(bank, position + 1);
+    Sequence* pSequence = getSequence(bank, sequence); // Store sequence we want to move
+    if(position < sequence)
+    {
+        for(size_t nIndex = sequence; nIndex > position; --nIndex)
+            m_mBanks[bank][nIndex] = m_mBanks[bank][nIndex - 1];
+        m_mBanks[bank][position] = pSequence;
+    }
+    else if(position > sequence)
+    {
+        for(size_t nIndex = sequence; nIndex < position; ++nIndex)
+            m_mBanks[bank][nIndex] = m_mBanks[bank][nIndex + 1];
+        m_mBanks[bank][position] = pSequence;
+    }
+    return true;
+}
+
+void SequenceManager::insertSequence(uint8_t bank, uint8_t sequence)
+{
+    if(sequence >= m_mBanks[bank].size())
+    {
+        setSequencesInBank(bank, sequence + 1);
+        return;
+    }
+    Sequence* pSequence = new Sequence();
+    m_mBanks[bank].insert(m_mBanks[bank].begin() + sequence, pSequence);
+    // Add a new pattern at start of eacn new track
+    cleanPatterns();
+    uint32_t nPattern = createPattern();
+    addPattern(bank, sequence, 0, 0, nPattern, false);
+}
+
+void SequenceManager::removeSequence(uint8_t bank, uint8_t sequence)
+{
+    if(sequence < m_mBanks[bank].size())
+    {
+        delete(m_mBanks[bank][sequence]);
+        m_mBanks[bank].erase(m_mBanks[bank].begin() + sequence);
+    }
+}
 
 void SequenceManager::clearBank(uint32_t bank)
 {
-	setSequencesInBank(bank, 0);
+    setSequencesInBank(bank, 0);
 }
 
 uint32_t SequenceManager::getBanks()
 {
-	return m_mBanks.size();
+    return m_mBanks.size();
 }

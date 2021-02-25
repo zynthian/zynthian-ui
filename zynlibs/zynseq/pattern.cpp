@@ -148,6 +148,7 @@ uint32_t Pattern::getClocksPerStep()
 
 bool Pattern::setStepsPerBeat(uint32_t value)
 {
+	float fScale = float(value) / m_nStepsPerBeat;
 	switch(value)
 	{
 		case 1:
@@ -163,7 +164,12 @@ bool Pattern::setStepsPerBeat(uint32_t value)
 		default:
 			return false;
 	}
-	//!@todo Recalculate timing elements
+	// Move events
+	for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
+	{
+		it->setPosition(it->getPosition() * fScale);
+		it->setDuration(it->getDuration() * fScale);
+	}
 	return true;
 }
 
@@ -266,4 +272,18 @@ void Pattern::setRefNote(uint8_t note)
 {
 	if(note < 128)
 		m_nRefNote = note;
+}
+
+
+uint32_t Pattern::getLastStep()
+{
+	if(m_vEvents.size() == 0)
+		return -1;
+	uint32_t nStep = 0;
+	for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
+	{
+		if((*it).getPosition() > nStep)
+			nStep = (*it).getPosition();
+	}
+	return nStep;
 }

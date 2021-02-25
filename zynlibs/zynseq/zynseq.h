@@ -378,6 +378,11 @@ uint8_t getRefNote();
 */
 void setRefNote(uint8_t note);
 
+/**	@brief	Get the last populated step
+*	@retval	uint32_t Index of last populated step or -1 if empty
+*	@note	This may allow checking for empty patterns or whether truncation will have an effect
+*/
+uint32_t getLastStep();
 
 // ** Track management functions **
 
@@ -593,6 +598,43 @@ uint8_t getMidiLearnBank();
 *   @retval uint8_t Sequence index
 */
 uint8_t getMidiLearnSequence();
+
+/** @brief  Set sequence name
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  name Sequence name (truncated at 16 characters)
+*/
+void setSequenceName(uint8_t bank, uint8_t sequence, const char* name);
+
+/** @brief  Get sequence name
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @retval const char* Pointer to sequence name
+*/
+const char* getSequenceName(uint8_t bank, uint8_t sequence);
+
+/** @brief  Move sequence (change order of sequences)
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence to move
+*   @param  position Index of sequence to move this sequence, e.g. 0 to insert as first sequence
+*   @note   Sequences after insert point are moved up by one. Bank grows if sequence or position are higher than size of bank
+*   @retval bool True on success
+*/
+bool moveSequence(uint8_t bank, uint8_t sequence, uint8_t position);
+
+/** @brief  Insert new sequence in bank
+*   @param  bank Index of bank
+*   @param  sequence Index at which to insert sequence , e.g. 0 to insert as first sequence
+*   @note   Sequences after insert point are moved up by one. Bank grows if sequence is higher than size of bank
+*/
+void insertSequence(uint8_t bank, uint8_t sequence);
+
+/** @brief  Remove sequence from bank
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence to remove
+*   @note   Sequences after remove point are moved down by one. Bank grows if sequence is higher than size of bank
+*/
+void removeSequence(uint8_t bank, uint8_t sequence);
 
 
 // ** Bank management functions **
