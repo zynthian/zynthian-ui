@@ -48,7 +48,7 @@ from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
-from zyngui.zynthian_gui_rename import zynthian_gui_rename
+from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
 
@@ -741,7 +741,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to name file before saving
 	#	filename: Starting filename
 	def	save_as(self, filename):
-		rename_ui = zynthian_gui_rename(self, self.save, filename)
+		rename_ui = zynthian_gui_keyboard(self, self.save, filename)
 		if rename_ui.ok:
 			self.filename = filename
 		del rename_ui

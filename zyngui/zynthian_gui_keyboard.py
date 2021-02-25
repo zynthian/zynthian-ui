@@ -3,7 +3,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian GUI Rename Class
+# Zynthian GUI keyboard Class
 # 
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
 # Copyright (C) 2015-2020 Brian Walton <brian@riban.co.uk>
@@ -33,8 +33,7 @@ import tkinter.font as tkFont
 from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
-# Zynthian File-Selector GUI Class
-#   Acts as Modal window. Ensure parent has set_filename(filename) function
+# Zynthian Onscreen Keyboard GUI Class
 #------------------------------------------------------------------------------
 
 ENC_LAYER			= 0
@@ -43,20 +42,24 @@ ENC_SNAPSHOT		= 2
 ENC_SELECT			= 3
 
 # Class implements renaming dialog
-class zynthian_gui_rename():
+class zynthian_gui_keyboard():
 
 	# Function to initialise class
 	#	parent: Parent instance
-	#	function: Function to call to update name
-	#	name: Current name
-	def __init__(self, parent, function, name=""):
+	#	function: Callback function called when <Enter> pressed
+	#	name: Current name (Default: empty)
+	#	max_len: Maximum quantity of characters in name (Default: no limit)
+	def __init__(self, parent, function, name="", max_len=None):
 		self.parent = parent
 		self.function = function
 		self.name = name
+		if max_len:
+			self.name = name[:max_len]
+		self.max_len = max_len
 		self.ok = False
 		self.columns = 10 # Quantity of columns in keyboard grid
 		self.rows = 5 # Quantity of rows in keyboard grid
-		self.shift = False # True when shift locked
+		self.shift = 0 # 0=Normal, 1=Shift, 2=Shift lock
 		self.buttons = [] # Array of buttons in keyboard layout
 		self.selected_button = 44 # Index of highlighted button
 
@@ -152,29 +155,38 @@ class zynthian_gui_rename():
 	def execute_key_press(self, key):
 		#TODO: Use button ID for special function to allow localisation
 		self.selected_button = key
-		if key == self.btn_delete:
-			self.name = self.name[:-1]
-		elif key == self.btn_enter:
+		shift = self.shift
+		if key == self.btn_enter:
 			self.function(self.name)
 			self.ok = True
 			self.hide()
 			return
-		elif key == self.btn_cancel:
+		if key == self.btn_cancel:
 			self.ok = False
 			self.hide()
 			return
-		elif key == self.btn_shift:
-			self.shift = not self.shift
-			if self.shift:
-				self.key_canvas.itemconfig(self.buttons[key][0], fill="grey")
-			else:
-				self.key_canvas.itemconfig(self.buttons[key][0], fill="black")
-			self.refresh_keys()
-			return
+		if key == self.btn_delete:
+			self.name = self.name[:-1]
 		elif key == self.btn_space:
 			self.name = self.name + " "
 		elif key < len(self.keys):
 			self.name = self.name + self.keys[key]
+		if key == self.btn_shift:
+			self.shift += 1
+			if self.shift > 2:
+				self.shift = 0
+		elif self.shift == 1:
+			self.shift = 0
+		if self.max_len:
+			self.name = self.name[:self.max_len]
+		if shift != self.shift:
+			if self.shift == 1:
+				self.key_canvas.itemconfig(self.buttons[self.btn_shift][0], fill="grey")
+			elif self.shift == 2:
+				self.key_canvas.itemconfig(self.buttons[self.btn_shift][0], fill="red")
+			else:
+				self.key_canvas.itemconfig(self.buttons[self.btn_shift][0], fill="black")
+			self.refresh_keys()
 		self.name_canvas.itemconfig(self.name_label, text=self.name)
 		self.highlight(key)
 

@@ -40,7 +40,7 @@ from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_stepsequencer
 from zyngui import zynthian_gui_layer
 from zyngui import zynthian_gui_fileselector
-from zyngui.zynthian_gui_rename import zynthian_gui_rename
+from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
 from zynlibs.zynsmf import zynsmf
@@ -234,7 +234,7 @@ class zynthian_gui_arranger():
 
 	# Function to name selected sequence
 	def name_sequence(self, params=None):
-		zynthian_gui_rename(self.parent, self.do_rename_sequence, zynseq.get_sequence_name(self.parent.bank, self.sequence))
+		zynthian_gui_keyboard(self.parent, self.do_rename_sequence, zynseq.get_sequence_name(self.parent.bank, self.sequence), 16)
 
 
 	# Function to rename selected sequence
