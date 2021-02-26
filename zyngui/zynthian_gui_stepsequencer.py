@@ -715,7 +715,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 						channel = column
 					for row in range(4):
 						pad = row + 4 * column
-						zynseq.set_sequence_name(bank, pad, "%d" % (pad + 1))
+						zynseq.set_sequence_name(bank, pad, "%d" % (libseq.getPatternAt(bank, pad, 0, 0)))
 						libseq.setGroup(bank, pad, channel)
 						libseq.setChannel(bank, pad, 0, channel)
 			self.bank = bank
