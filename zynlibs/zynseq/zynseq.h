@@ -366,21 +366,21 @@ uint8_t getTonic();
 */
 bool isPatternModified();
 
-/**	@brief	Get the reference note
-*	@retval uint8_t MIDI note number
-*	@note	May be used for position within user interface
+/**    @brief    Get the reference note
+*    @retval uint8_t MIDI note number
+*    @note    May be used for position within user interface
 */
 uint8_t getRefNote();
 
-/**	@brief	Set the reference note
-*	@param	MIDI note number
-*	@note	May be used for position within user interface
+/**    @brief    Set the reference note
+*    @param    MIDI note number
+*    @note    May be used for position within user interface
 */
 void setRefNote(uint8_t note);
 
-/**	@brief	Get the last populated step
-*	@retval	uint32_t Index of last populated step or -1 if empty
-*	@note	This may allow checking for empty patterns or whether truncation will have an effect
+/**    @brief    Get the last populated step
+*    @retval    uint32_t Index of last populated step or -1 if empty
+*    @note    This may allow checking for empty patterns or whether truncation will have an effect
 */
 uint32_t getLastStep();
 
