@@ -136,7 +136,7 @@ class zynthian_gui:
 		"67": "SWITCH_SELECT_LONG",
 		"60": "SWITCH_LAYER_SHORT",
 		"61": "SWITCH_LAYER_BOLD",
-		"59": "SWITCH_LAYER_LONG",
+		"68": "SWITCH_LAYER_LONG",
 		"71": "SWITCH_SNAPSHOT_SHORT",
 		"72": "SWITCH_SNAPSHOT_BOLD",
 		"73": "SWITCH_SNAPSHOT_LONG",
@@ -449,7 +449,7 @@ class zynthian_gui:
 				mode = "LOAD"
 			self.screens['snapshot'].set_action(mode)
 
-		if self.modal_screen!=screen:
+		if self.modal_screen!=screen and self.modal_screen not in ("info","confirm"):
 			self.modal_screen_back = self.modal_screen
 		self.modal_screen=screen
 		self.screens[screen].show()
