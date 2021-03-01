@@ -428,6 +428,7 @@ class zynthian_gui:
 		self.screens[screen].show()
 		self.active_screen = screen
 		self.modal_screen = None
+		self.modal_screen_back = None
 		self.lock.release()
 
 
