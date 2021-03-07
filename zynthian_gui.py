@@ -72,6 +72,7 @@ from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
+from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
@@ -321,6 +322,7 @@ class zynthian_gui:
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
 		self.screens['confirm'] = zynthian_gui_confirm()
+		self.screens['keyboard'] = zynthian_gui_keyboard()
 		self.screens['option'] = zynthian_gui_option()
 		self.screens['engine'] = zynthian_gui_engine()
 		self.screens['layer'] = zynthian_gui_layer()
@@ -502,6 +504,13 @@ class zynthian_gui:
 		self.modal_screen='confirm'
 		self.screens['confirm'].show(text, callback, cb_params)
 		self.hide_screens(exclude='confirm')
+
+
+	def show_keyboard(self, callback, text="", max_chars=None):
+		self.modal_screen_back = self.modal_screen
+		self.modal_screen="keyboard"
+		self.screens['keyboard'].show(callback, text, max_chars)
+		self.hide_screens(exclude='keyboard')
 
 
 	def show_info(self, text, tms=None):
@@ -964,7 +973,7 @@ class zynthian_gui:
 		logging.info('Bold Switch '+str(i))
 		self.start_loading()
 
-		if self.modal_screen in ['stepseq']:
+		if self.modal_screen in ['stepseq', 'keyboard']:
 			self.stop_loading()
 			if self.screens[self.modal_screen].switch(i, 'B'):
 				return

@@ -42,7 +42,6 @@ from threading import Timer
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_stepsequencer
-from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
 
@@ -191,7 +190,7 @@ class zynthian_gui_zynpad():
 
 	# Function to name selected sequence
 	def name_sequence(self, params=None):
-		zynthian_gui_keyboard(self.parent, self.do_rename_sequence, zynseq.get_sequence_name(self.parent.bank, self.selected_pad), 16)
+		self.zyngui.show_keyboard(self.do_rename_sequence, zynseq.get_sequence_name(self.parent.bank, self.selected_pad), 16)
 
 
 	# Function to rename selected sequence

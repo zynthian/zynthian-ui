@@ -6,7 +6,7 @@
 # Zynthian GUI keyboard Class
 # 
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2020 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2020-2021 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 # 
@@ -32,6 +32,7 @@ from threading import Timer
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyncoder import get_lib_zyncoder
 
 #------------------------------------------------------------------------------
 # Zynthian Onscreen Keyboard GUI Class
@@ -46,18 +47,10 @@ ENC_SELECT			= 3
 class zynthian_gui_keyboard():
 
 	# Function to initialise class
-	#	parent: Parent instance
 	#	function: Callback function called when <Enter> pressed
-	#	name: Current name (Default: empty)
-	#	max_len: Maximum quantity of characters in name (Default: no limit)
-	def __init__(self, parent, function, name="", max_len=None):
-		self.parent = parent
-		self.function = function
-		self.name = name
-		if max_len:
-			self.name = name[:max_len]
-		self.max_len = max_len
-		self.ok = False
+	def __init__(self):
+		self.zyncoder = get_lib_zyncoder()
+		self.zyngui = zynthian_gui_config.zyngui
 		self.columns = 10 # Quantity of columns in keyboard grid
 		self.rows = 5 # Quantity of rows in keyboard grid
 		self.shift = 0 # 0=Normal, 1=Shift, 2=Shift lock
@@ -71,20 +64,19 @@ class zynthian_gui_keyboard():
 		self.key_height = (self.height - 2) / self.rows
 
 		# Create main frame
-		self.main_frame = tkinter.Frame(parent.main_frame,
+		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.display_height,
 			bg=zynthian_gui_config.color_bg)
 		self.main_frame.grid_propagate(False)
-		self.main_frame.grid(column=0, row=0)
 
 		# Display string being edited
-		self.name_canvas = tkinter.Canvas(self.main_frame, width=self.width, height=zynthian_gui_config.topbar_height)
-		self.name_label = self.name_canvas.create_text(self.width / 2, zynthian_gui_config.topbar_height / 2, text=name,
+		self.text_canvas = tkinter.Canvas(self.main_frame, width=self.width, height=zynthian_gui_config.topbar_height)
+		self.text_label = self.text_canvas.create_text(self.width / 2, zynthian_gui_config.topbar_height / 2,
 		font=zynthian_gui_config.font_topbar,
 		#font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size= int(zynthian_gui_config.topbar_height * 0.8))
 		)
-		self.name_canvas.grid(column=0, row=0, sticky="nsew")
+		self.text_canvas.grid(column=0, row=0, sticky="nsew")
 
 		# Display keyboard grid
 		self.key_canvas = tkinter.Canvas(self.main_frame, width=self.width, height = self.height, bg="grey")
@@ -102,11 +94,11 @@ class zynthian_gui_keyboard():
 		self.btn_enter = self.add_button('Enter', 8, row, 2)
 
 		self.refresh_keys()
-		self.setup_encoders()
 
 		self.highlight_box = self.key_canvas.create_rectangle(0, 0, self.key_width, self.key_height, outline="red", width=2)
 		self.highlight(self.selected_button)
 		self.hold_timer = Timer(0.8, self.bold_press)
+		self.shown = False
 
 
 	# Function to draw keyboard
@@ -176,23 +168,21 @@ class zynthian_gui_keyboard():
 		self.selected_button = key
 		shift = self.shift
 		if key == self.btn_enter:
-			self.function(self.name)
-			self.ok = True
-			self.hide()
+			self.function(self.text)
+			self.zyngui.zynswitch_defered('S', ENC_BACK)
 			return
 		if key == self.btn_cancel:
-			self.ok = False
-			self.hide()
+			self.zyngui.zynswitch_defered('S', ENC_BACK)
 			return
 		if key == self.btn_delete:
 			if bold:
-				self.name = ""
+				self.text= ""
 			else:
-				self.name = self.name[:-1]
+				self.text= self.text[:-1]
 		elif key == self.btn_space:
-			self.name = self.name + " "
+			self.text= self.text+ " "
 		elif key < len(self.keys):
-			self.name = self.name + self.keys[key]
+			self.text= self.text+ self.keys[key]
 		if key == self.btn_shift:
 			self.shift += 1
 			if self.shift > 2:
@@ -200,7 +190,7 @@ class zynthian_gui_keyboard():
 		elif self.shift == 1:
 			self.shift = 0
 		if self.max_len:
-			self.name = self.name[:self.max_len]
+			self.text= self.text[:self.max_len]
 		if shift != self.shift:
 			if self.shift == 1:
 				self.key_canvas.itemconfig(self.buttons[self.btn_shift][0], fill="grey")
@@ -209,7 +199,7 @@ class zynthian_gui_keyboard():
 			else:
 				self.key_canvas.itemconfig(self.buttons[self.btn_shift][0], fill="black")
 			self.refresh_keys()
-		self.name_canvas.itemconfig(self.name_label, text=self.name)
+		self.text_canvas.itemconfig(self.text_label, text=self.text)
 		self.highlight(key)
 
 
@@ -224,22 +214,37 @@ class zynthian_gui_keyboard():
 
 	# Function to hide dialog
 	def hide(self):
-		self.main_frame.destroy()
-		self.parent.show_child(self.parent.child)
+		if self.shown:
+			self.shown=False
+			self.main_frame.grid_forget()
 
 
-	# Function to assert ENTER
-	def execute_enter(self):
-		self.function(self.name)
-		self.hide()
+	# Function to show keyboard as modal screen
+	#	text: Text to display (Default: empty)
+	#	max_len: Maximum quantity of characters in text (Default: no limit)
+	def show(self,  function, text="", max_len=None):
+		self.function = function
+		self.text= text
+		if max_len:
+			self.text= text[:max_len]
+		self.max_len = max_len
+		self.text_canvas.itemconfig(self.text_label, text=self.text)
+		if not self.shown:
+			self.selected_button = 44
+			self.setup_encoders()
+			self.main_frame.grid()
+			self.shown=True
 
 
 	# Function to register encoders
 	def setup_encoders(self):
-		self.parent.register_zyncoder(ENC_SELECT, self)
-		self.parent.register_zyncoder(ENC_BACK, self)
-		self.parent.register_switch(ENC_SELECT, self, "SB")
-		self.parent.register_switch(ENC_BACK, self)
+		if self.zyncoder:
+			pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_SELECT]
+			pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_SELECT]
+			self.zyncoder.setup_zyncoder(ENC_SELECT, pin_a, pin_b, 0, 0, None, 64, 127, 0)
+			pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_BACK]
+			pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_BACK]
+			self.zyncoder.setup_zyncoder(ENC_BACK, pin_a, pin_b, 0, 0, None, 64, 127, 0)
 
 
 	# Function to handle zyncoder value change
@@ -281,15 +286,81 @@ class zynthian_gui_keyboard():
 			self.highlight(selection)
 
 
+	# Function to handle zyncoder polling
+	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +1 and calculate offset
+	def zyncoder_read(self):
+		if not self.shown:
+			return
+		if self.zyncoder:
+			value = self.zyncoder.get_value_zyncoder(ENC_BACK)
+			if value != 64:
+				self.on_zyncoder(ENC_BACK, value - 64)
+				self.zyncoder.set_value_zyncoder(ENC_BACK, 64)
+			value = self.zyncoder.get_value_zyncoder(ENC_SELECT)
+			if value != 64:
+				self.on_zyncoder(ENC_SELECT, value - 64)
+				self.zyncoder.set_value_zyncoder(ENC_SELECT, 64)
+			return
+
+			value = self.zyncoder.get_value_zyncoder(ENC_SELECT)
+			if self.selected_button == value:
+				return
+			if value >= len(self.buttons):
+				self.zyncoder.set_value_zyncoder(ENC_SELECT, 1)
+				return
+			elif value < 0:
+				self.zyncoder.set_value_zyncoder(ENC_SELECT, len(self.buttons))
+				return
+			self.selected_button = value
+			self.highlight(value)
+
+
+	# Function to handle CUIA BACK_UP command
+	def back_up(self):
+		if self.zyncoder:
+			self.zyncoder.set_value_zyncoder(ENC_BACK, self.zyncoder.get_value_zyncoder(ENC_BACK) + 1)
+
+
+	# Function to handle CUIA BACK_DOWN command
+	def back_down(self):
+		if self.zyncoder:
+			self.zyncoder.set_value_zyncoder(ENC_BACK, self.zyncoder.get_value_zyncoder(ENC_BACK) - 1)
+
+
+	# Function to handle CUIA SELECT_UP command
+	def select_up(self):
+		if self.zyncoder:
+			self.zyncoder.set_value_zyncoder(ENC_SELECT, self.zyncoder.get_value_zyncoder(ENC_SELECT) + 1)
+
+
+	# Function to handle CUIA SELECT_DOWN command
+	def select_down(self):
+		if self.zyncoder:
+			self.zyncoder.set_value_zyncoder(ENC_SELECT, self.zyncoder.get_value_zyncoder(ENC_SELECT) - 1)
+
+
+	def switch_select(self, type):
+		self.execute_key_press(self.selected_button, type=="B")
+
+
 	# Function to handle switch press
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
-	def on_switch(self, switch, type):
+	def switch(self, switch, type):
+		return False
 		if switch == ENC_BACK:
-			self.hide()
+			pass
+#			self.zyngui.zynswitch_defered('S', ENC_BACK)
+#			self.hide()
 		elif switch == ENC_SELECT:
 			self.execute_key_press(self.selected_button, type=="B")
 		return True # Tell parent that we handled all short and bold key presses
+
+
+	# Function to refresh the loading screen (not used)
+	def refresh_loading(self):
+		pass
+
 
 #------------------------------------------------------------------------------
