@@ -78,6 +78,7 @@ class zynthian_gui_arranger():
 		self.col_offset = 0 # Index of time division at left column in grid
 		self.selected_cell = [0, 0] # Location of selected cell (time div, row)
 		self.pattern = 1 # Index of current pattern to add to sequence
+		self.pattern_to_add = 1 # Index of pattern to actually add (may be copied / moved pattern
 		self.position = 0 # Current playhead position
 		self.grid_timer = Timer(1.0, self.on_grid_timer) # Grid press and hold timer
 		#TODO: Populate tracks from file
@@ -390,6 +391,7 @@ class zynthian_gui_arranger():
 			self.pattern = pattern
 		self.pattern_canvas.itemconfig("patternIndicator", text="%d"%(self.pattern))
 		self.parent.set_param('Pattern', 'value', self.pattern)
+		self.pattern_to_add = self.pattern
 		self.select_cell()
 
 
@@ -463,7 +465,7 @@ class zynthian_gui_arranger():
 			return
 		self.col_offset = pos
 		self.redraw_pending = 1
-		duration = int(libseq.getPatternLength(self.pattern) / self.clocks_per_division)
+		duration = int(libseq.getPatternLength(self.pattern_to_add) / self.clocks_per_division)
 		if self.selected_cell[0] < self.col_offset:
 			self.select_cell(self.col_offset, self.selected_cell[1])
 		elif self.selected_cell[0] > self.col_offset + self.horizontal_zoom  - duration:
@@ -488,13 +490,17 @@ class zynthian_gui_arranger():
 			return
 
 		self.grid_drag_start = event
-
 		self.grid_timer = Timer(1.0, self.on_grid_timer)
 		self.grid_timer.start()
 		tags = self.grid_canvas.gettags(self.grid_canvas.find_withtag(tkinter.CURRENT))
 		if not tags:
 			return
-		col, row = tags[0].split(',')
+		c, r = tags[0].split(',')
+		col = int(c)
+		row = int(r)
+		sequence = self.sequence_tracks[row][0]
+		track = self.sequence_tracks[row][1]
+		pattern = libseq.getPatternAt(self.parent.bank, sequence, track, col * self.clocks_per_division)
 		self.select_cell(self.col_offset + int(col), self.row_offset + int(row), False)
 
 
@@ -506,6 +512,7 @@ class zynthian_gui_arranger():
 			return
 		self.grid_drag_start = None
 		self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+		self.pattern_to_add = self.pattern
 
 
 	# Function to handle grid mouse motion
@@ -516,7 +523,13 @@ class zynthian_gui_arranger():
 		col = self.col_offset + int(event.x / self.column_width)
 		row = self.row_offset + int(event.y / self.row_height)
 		if col != self.selected_cell[0] or row != self.selected_cell[1]:
-			self.grid_timer.cancel()
+			if self.grid_timer.isAlive():
+				self.grid_timer.cancel()
+				time = self.selected_cell[0] * self.clocks_per_division
+				self.pattern_to_add = libseq.getPattern(self.parent.bank, self.sequence, self.track, time)
+				if self.pattern_to_add == -1:
+					self.pattern_to_add = self.pattern
+				self.remove_event(self.selected_cell[0], self.sequence, self.track)
 			self.grid_drag_start.x = event.x
 			self.grid_drag_start.y = event.y
 			self.select_cell(col, row, False)
@@ -578,7 +591,7 @@ class zynthian_gui_arranger():
 	#	track: Track within sequence
 	def add_event(self, div, sequence, track):
 		time = div * self.clocks_per_division
-		if libseq.addPattern(self.parent.bank, sequence, track, time, self.pattern, False):
+		if libseq.addPattern(self.parent.bank, sequence, track, time, self.pattern_to_add, False):
 			self.redraw_pending = 1 #TODO: Optimise redraw
 
 
