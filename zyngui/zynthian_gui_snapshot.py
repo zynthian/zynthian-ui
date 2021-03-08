@@ -239,6 +239,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def cb_confirm_save_snapshot(self, params):
 		self.zyngui.screens['layer'].save_snapshot(params[0])
+		self.zyngui.show_active_screen()
 
 
 	def save_default_snapshot(self):
@@ -262,8 +263,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			os.remove(fpath)
 		except Exception as e:
 			logging.error(e)
-
-		self.zyngui.show_modal("snapshot")
 
 
 	def get_midi_number(self, f):

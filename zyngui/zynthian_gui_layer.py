@@ -529,12 +529,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def save_midi_chan_zs3(self, midich, zs3_index):
+		result = False
 		for layer in self.layers:
 			mch=layer.get_midi_chan()
 			if mch is None or mch==midich:
 				layer.save_zs3(zs3_index)
+				result = True
 			elif zynthian_gui_config.midi_single_active_channel:
 				layer.delete_zs3(zs3_index)
+
+		return result
 
 
 	def delete_midi_chan_zs3(self, midich, zs3_index):
