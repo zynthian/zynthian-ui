@@ -611,6 +611,8 @@ class zynthian_gui_arranger():
 			self.sequence_title_canvas.create_text((0, self.row_height * row + 1),
 					font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="nw",
 					text=zynseq.get_sequence_name(self.parent.bank, sequence))
+			self.grid_canvas.delete('playheadline-%d'%(row))
+			self.grid_canvas.create_line(0, self.row_height * (row + 1), 0, self.row_height * (row), fill=PLAYHEAD_CURSOR, tags=('playheadline','playheadline-%d'%(row)), state='hidden')
 		else:
 			# Don't show track number on track 1 to allow sequence name to be longer and simplify display when single tracks are use
 			self.sequence_title_canvas.create_text((self.seq_track_title_width - 2, self.row_height * row + 1),
@@ -675,14 +677,15 @@ class zynthian_gui_arranger():
 
 		pattern = libseq.getPattern(self.parent.bank, sequence, track, time)
 		if pattern == -1 and col == 0:
+			# Search for earlier pattern that extends into view
 			pattern = libseq.getPatternAt(self.parent.bank, sequence, track, time)
 			if pattern != -1:
 				duration = int(libseq.getPatternLength(pattern) / self.clocks_per_division)
 				while time > 0:
 					time -= self.clocks_per_division
-					duration -= 1
 					if pattern != libseq.getPatternAt(self.parent.bank, sequence, track, time):
 						break
+					duration -= 1
 		elif pattern != -1:
 				duration = int(libseq.getPatternLength(pattern) / self.clocks_per_division)
 		if pattern == -1:
@@ -728,7 +731,6 @@ class zynthian_gui_arranger():
 			self.grid_canvas.delete(tkinter.ALL)
 			self.sequence_title_canvas.delete(tkinter.ALL)
 			self.column_width = self.grid_width / self.horizontal_zoom
-			self.grid_canvas.create_line(0, 0, 0, self.grid_height, fill=PLAYHEAD_CURSOR, tags='playheadline')
 			self.cells = [[None] * 2 for _ in range(self.vertical_zoom * self.horizontal_zoom)]
 			self.select_cell()
 		self.redraw_pending = 0
@@ -739,6 +741,7 @@ class zynthian_gui_arranger():
 			if row + self.row_offset >= len(self.sequence_tracks):
 				break
 			self.draw_row(row, True)
+
 
 		# Vertical (bar / sync) lines
 		self.grid_canvas.delete('barlines')
@@ -858,10 +861,10 @@ class zynthian_gui_arranger():
 		if row >= self.row_offset + self.vertical_zoom:
 			# row is off bottom of display
 			self.row_offset = row - self.vertical_zoom + 1
-			self.redraw_pending = 1
+			self.redraw_pending = 2
 		elif row < self.row_offset:
 			self.row_offset = row
-			self.redraw_pending = 1
+			self.redraw_pending = 2
 		if backward != None and self.col_offset > 0 and time > backward:
 			self.col_offset = self.col_offset - 1
 			self.redraw_pending = 1
@@ -988,16 +991,27 @@ class zynthian_gui_arranger():
 	def refresh_status(self):
 		if self.redraw_pending:
 			self.draw_grid()
-#		if self.song < 1000:
-#			pos = libseq.getSongPosition()# / self.clocks_per_division
-#		else:
-#			sequence = libseq.getSequence(self.song, self.selected_cell[1]) #TODO: Offset?
-#			pos = libseq.getPlayPosition(sequence)# / self.clocks_per_division
-#		if self.position != pos:
-#			self.showPos(pos)
-#			self.position = pos
-		pos = libseq.getPlayPosition(self.parent.bank, self.sequence) / self.clocks_per_division
-		self.grid_canvas.coords('playheadline', (pos - self.col_offset) * self.column_width, 0, (pos - self.col_offset) * self.column_width, self.grid_height)
+		previous_sequence = -1
+		x = 0
+		y1 = 0
+		y2 = 0
+		seq_row = 0
+		for row in range(self.vertical_zoom):
+			sequence = self.sequence_tracks[row + self.row_offset][0]
+			if sequence != previous_sequence and sequence != -1:
+				self.grid_canvas.coords('playheadline-%d'%seq_row, x, y1, x, y2)
+				self.grid_canvas.itemconfig('playheadline-%d'%seq_row, state='normal')
+			pos = libseq.getPlayPosition(self.parent.bank, sequence) / self.clocks_per_division
+			x = (pos - self.col_offset) * self.column_width
+			if sequence == previous_sequence:
+				y2 = self.row_height * (row + 1)
+			else:
+				y1 = self.row_height * row
+				y2 = self.row_height * (row + 1)
+				seq_row = row
+			previous_sequence = sequence
+		self.grid_canvas.coords('playheadline-%d'%seq_row, x, y1, x, y2)
+		self.grid_canvas.itemconfig('playheadline-%d'%seq_row, state='normal')
 
 
 	# Function to handle zyncoder value change
