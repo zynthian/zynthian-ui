@@ -1010,6 +1010,11 @@ class zynthian_gui_arranger():
 				y2 = self.row_height * (row + 1)
 				seq_row = row
 			previous_sequence = sequence
+			if sequence == self.sequence and libseq.getPlayState(self.parent.bank, sequence) != zynthian_gui_stepsequencer.SEQ_STOPPED:
+				if x > self.grid_width:
+					self.select_cell(int(pos), self.selected_cell[1])
+				elif x < 0:
+					self.select_cell(0, self.selected_cell[1])
 		self.grid_canvas.coords('playheadline-%d'%seq_row, x, y1, x, y2)
 		self.grid_canvas.itemconfig('playheadline-%d'%seq_row, state='normal')
 
