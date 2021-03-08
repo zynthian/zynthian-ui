@@ -137,7 +137,7 @@ class zynthian_gui:
 		"67": "SWITCH_SELECT_LONG",
 		"60": "SWITCH_LAYER_SHORT",
 		"61": "SWITCH_LAYER_BOLD",
-		"59": "SWITCH_LAYER_LONG",
+		"68": "SWITCH_LAYER_LONG",
 		"71": "SWITCH_SNAPSHOT_SHORT",
 		"72": "SWITCH_SNAPSHOT_BOLD",
 		"73": "SWITCH_SNAPSHOT_LONG",
@@ -430,6 +430,7 @@ class zynthian_gui:
 		self.screens[screen].show()
 		self.active_screen = screen
 		self.modal_screen = None
+		self.modal_screen_back = None
 		self.lock.release()
 
 
@@ -451,7 +452,7 @@ class zynthian_gui:
 				mode = "LOAD"
 			self.screens['snapshot'].set_action(mode)
 
-		if self.modal_screen!=screen:
+		if self.modal_screen!=screen and self.modal_screen not in ("info","confirm"):
 			self.modal_screen_back = self.modal_screen
 		self.modal_screen=screen
 		self.screens[screen].show()
@@ -1352,9 +1353,9 @@ class zynthian_gui:
 	
 					# SubSnapShot (ZS3) MIDI learn ...
 					if self.midi_learn_mode and self.modal_screen=='zs3_learn':
-						logging.info("ZS3 Saved: CH{} => {}".format(chan,pgm))
-						self.screens['layer'].save_midi_chan_zs3(chan, pgm)
-						self.exit_midi_learn_mode()
+						if self.screens['layer'].save_midi_chan_zs3(chan, pgm):
+							logging.info("ZS3 Saved: CH{} => {}".format(chan,pgm))
+							self.exit_midi_learn_mode()
 
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:

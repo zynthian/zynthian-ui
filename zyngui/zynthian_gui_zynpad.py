@@ -436,7 +436,7 @@ class zynthian_gui_zynpad():
 			self.parent.show_child(self.parent.arranger)
 			return
 		channel = libseq.getChannel(self.parent.bank, self.selected_pad, 0)
-		self.parent.show_child(self.parent.pattern_editor, {"pattern":pattern, "channel":channel, "pad":self.selected_pad})
+		self.parent.show_child(self.parent.pattern_editor, {"pattern":pattern, "channel":channel, "name":zynseq.get_sequence_name(self.parent.bank, self.selected_pad)})
 
 
 	# Function to refresh status
