@@ -202,7 +202,7 @@ class zynthian_gui_patterneditor():
 			self.channel = params['channel']
 			self.load_pattern(params['pattern'])
 			self.title = "Pattern %d" % (params['pattern'])
-			self.title = "Pattern %d (Pad %d)" % (params['pattern'], params['pad'] + 1)
+			self.title = "Pattern %d (Seq: %s)" % (params['pattern'], params['name'])
 		except:
 			pass # Probably already populated and just returning from menu action or similar
 		libseq.setGroup(self.bank, self.sequence, 0xFF)
