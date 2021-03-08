@@ -163,8 +163,17 @@ class zynthian_gui_arranger():
 		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_BACK, self)
 		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_SELECT, self)
 		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER, self)
-		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SELECT, self, 'S')
-		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SELECT, self, 'B')
+		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SELECT, self, 'SB')
+		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT, self, 'S')
+
+
+	# Function to register encoders
+	def unregister_encoders(self):
+		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_BACK)
+		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_SELECT)
+		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER)
+		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SELECT)
+		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT)
 
 
 	# Function to populate menu
@@ -347,9 +356,7 @@ class zynthian_gui_arranger():
 	# Function to hide GUI
 	def hide(self):
 		#TODO: Move unregister_zyncoder to panel manager
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_BACK)
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_SELECT)
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER)
+		self.unregister_encoders()
 
 
 	# Function to assert zoom changes and redraw screen
@@ -538,6 +545,11 @@ class zynthian_gui_arranger():
 			self.parent.show_param_editor('Pattern')
 
 
+	# Toggle playback of selected sequence
+	def toggle_play(self):
+		libseq.togglePlayState(self.parent.bank, self.sequence)
+
+
 	# Function to toggle note event
 	#	col: Column
 	#	row: Row
@@ -716,7 +728,7 @@ class zynthian_gui_arranger():
 			self.grid_canvas.delete(tkinter.ALL)
 			self.sequence_title_canvas.delete(tkinter.ALL)
 			self.column_width = self.grid_width / self.horizontal_zoom
-#			self.grid_canvas.create_line(0, 0, 0, self.grid_height, fill=PLAYHEAD_CURSOR, tags='playheadline')
+			self.grid_canvas.create_line(0, 0, 0, self.grid_height, fill=PLAYHEAD_CURSOR, tags='playheadline')
 			self.cells = [[None] * 2 for _ in range(self.vertical_zoom * self.horizontal_zoom)]
 			self.select_cell()
 		self.redraw_pending = 0
@@ -984,7 +996,8 @@ class zynthian_gui_arranger():
 #		if self.position != pos:
 #			self.showPos(pos)
 #			self.position = pos
-#		self.grid_canvas.coords('playheadline', (pos - self.col_offset) * self.column_width, 0, (pos - self.col_offset) * self.column_width, self.grid_height)
+		pos = libseq.getPlayPosition(self.parent.bank, self.sequence) / self.clocks_per_division
+		self.grid_canvas.coords('playheadline', (pos - self.col_offset) * self.column_width, 0, (pos - self.col_offset) * self.column_width, self.grid_height)
 
 
 	# Function to handle zyncoder value change
@@ -1014,6 +1027,8 @@ class zynthian_gui_arranger():
 			self.show_pattern_editor()
 		elif switch == zynthian_gui_stepsequencer.ENC_SELECT:
 			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+		elif switch == zynthian_gui_stepsequencer.ENC_SNAPSHOT:
+			self.toggle_play()
 		else:
 			return False
 		return True
