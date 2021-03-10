@@ -566,6 +566,11 @@ class zynthian_gui_arranger():
 
 	# Toggle playback of selected sequence
 	def toggle_play(self):
+		if libseq.getPlayState(self.parent.bank, self.sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
+			bars = int(self.selected_cell[0] / libseq.getBeatsPerBar())
+			pos = bars * libseq.getBeatsPerBar() * self.clocks_per_division
+			if libseq.getSequenceLength(self.parent.bank, self.sequence) > pos:
+				libseq.setPlayPosition(self.parent.bank, self.sequence, pos)
 		libseq.togglePlayState(self.parent.bank, self.sequence)
 
 
