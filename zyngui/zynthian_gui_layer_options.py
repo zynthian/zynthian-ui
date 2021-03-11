@@ -319,7 +319,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_remove_confirmed(self, params=None):
 		self.zyngui.screens['layer'].remove_root_layer(self.layer_index)
-		self.zyngui.close_modal()
+		self.zyngui.show_active_screen()
 
 
 	def layer_midi_unlearn(self):
