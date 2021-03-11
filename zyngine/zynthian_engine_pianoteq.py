@@ -252,7 +252,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	]
 
 	bank_list_v6_5 = [
-		('Kalimba', 0, 'Kalimba', 'Kalimba:A')
+		('Kalimba', 0, 'Kalimba', 'Celeste:A')
 	]
 
 	bank_list_v6_4 = [
@@ -482,8 +482,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			for i,row in enumerate(self.bank_list):
 				if row[3]=='Steel:A':
 					self.bank_list[i] = (row[0], row[1], row[2], 'Steelpans:A')
-				elif row[3]=='Kalimba:A':
-					self.bank_list[i] = (row[0], row[1], row[2], 'Celeste:A')
 
 		if not PIANOTEQ_TRIAL:
 			# Separate Licensed from Free and Demo
