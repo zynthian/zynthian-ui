@@ -418,6 +418,22 @@ void removePattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t posi
 */
 void cleanPatterns();
 
+/**	@brief	Toggle mute of track
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track
+*/
+void toggleMute(uint8_t bank, uint8_t sequence, uint32_t track);
+
+/**	@brief	Get track mute state
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track
+*	@retval	bool True if muted
+*/
+bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track);
+
+
 // ** Sequence management functions **
 
 /** @brief  Set sequence MIDI channel

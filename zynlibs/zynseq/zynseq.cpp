@@ -1138,6 +1138,21 @@ void cleanPatterns()
     g_seqMan.cleanPatterns();
 }
 
+void toggleMute(uint8_t bank, uint8_t sequence, uint32_t track)
+{
+	Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+	if(pTrack)
+		pTrack->mute(!pTrack->isMuted());
+}
+
+bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track)
+{
+	Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+	if(pTrack)
+		return pTrack->isMuted();
+	return false;
+}	
+
 void enableMidiInput(bool enable)
 {
     g_bInputEnabled = enable;

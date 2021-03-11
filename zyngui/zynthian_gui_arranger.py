@@ -164,7 +164,7 @@ class zynthian_gui_arranger():
 		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_SELECT, self)
 		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER, self)
 		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SELECT, self, 'SB')
-		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT, self, 'S')
+		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT, self, 'SB')
 
 
 	# Function to register encoders
@@ -178,6 +178,7 @@ class zynthian_gui_arranger():
 
 	# Function to populate menu
 	def populate_menu(self):
+		self.parent.add_menu({'Mute track': {'method':self.toggle_mute}})
 		self.parent.add_menu({'Vertical zoom': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':64, 'value':self.vertical_zoom, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Horizontal zoom': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':64, 'value':self.horizontal_zoom, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'MIDI channel': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':16, 'get_value':self.get_track_channel, 'on_change':self.on_menu_change}}})
@@ -189,6 +190,12 @@ class zynthian_gui_arranger():
 		self.parent.add_menu({'Clear sequence':{'method':self.clear_sequence}})
 		self.parent.add_menu({'Clear bank':{'method':self.clear_bank}})
 		self.parent.add_menu({'Import SMF':{'method':self.get_smf}})
+
+
+	# Function to toggle mute of selected track
+	def toggle_mute(self, params=None):
+		libseq.toggleMute(self.parent.bank, self.sequence, self.track)
+		self.redraw_pending = 1
 
 
 	# Function to clear bank
@@ -621,6 +628,9 @@ class zynthian_gui_arranger():
 			return
 		sequence = self.sequence_tracks[row + self.row_offset][0]
 		track = self.sequence_tracks[row + self.row_offset][1]
+#		if libseq.isMuted(self.parent.bank, sequence, track):
+#			fill = zynthian_gui_stepsequencer.PAD_COLOUR_DISABLED
+#		else:
 		group = libseq.getGroup(self.parent.bank, sequence)
 		fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED[group % 16]
 		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
@@ -718,6 +728,8 @@ class zynthian_gui_arranger():
 		if pattern == -1:
 			duration = 1
 			fill = CANVAS_BACKGROUND
+		elif libseq.isMuted(self.parent.bank, sequence, track):
+			fill = zynthian_gui_stepsequencer.PAD_COLOUR_DISABLED
 		else:
 			fill = CELL_BACKGROUND
 		if col + duration > self.col_offset + self.horizontal_zoom:
@@ -1077,7 +1089,10 @@ class zynthian_gui_arranger():
 		elif switch == zynthian_gui_stepsequencer.ENC_SELECT:
 			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
 		elif switch == zynthian_gui_stepsequencer.ENC_SNAPSHOT:
-			self.toggle_play()
+			if type == 'B':
+				self.toggle_mute()
+			else:
+				self.toggle_play()
 		else:
 			return False
 		return True

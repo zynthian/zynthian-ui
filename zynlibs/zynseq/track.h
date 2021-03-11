@@ -138,6 +138,16 @@ class Track
         */
         bool isSolo();
 
+        /** @brief  Mute track
+        *   @param  mute True to solo [Default: true]
+        */
+        void mute(bool mute=true);
+
+        /** @brief  Get mute state of track
+        *   @retval bool True if muted
+        */
+        bool isMuted();
+
         /** @brief  Check if a parameter has changed since last call
         *   @retval bool True if changed
         *   @note    monitors: state, mode, group
@@ -178,5 +188,6 @@ class Track
         uint32_t m_nTrackLength = 0; // Quantity of clock cycles in track (last pattern start + length)
         double m_dSamplesPerClock; // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
         bool m_bSolo = false; // True if track is solo
+        bool m_bMute = false; // True if track is muted
         bool m_bChanged = true; // True if state changed since last hasChanged()
 };

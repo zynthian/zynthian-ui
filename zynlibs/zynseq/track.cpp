@@ -84,6 +84,8 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock
 {
     if(m_nTrackLength == 0)
         return 0;
+	if(m_bMute)
+		return 0;
     uint8_t nReturn = 0;
     m_dSamplesPerClock = dSamplesPerClock;
 
@@ -270,6 +272,19 @@ void Track::solo(bool solo)
 bool Track::isSolo()
 {
     return m_bSolo;
+}
+
+void Track::mute(bool mute)
+{
+    m_bMute = mute;
+    m_nEventValue = -1;
+    m_nCurrentPatternPos = -1;
+    m_nNextEvent = -1;
+}
+
+bool Track::isMuted()
+{
+    return m_bMute;
 }
 
 bool Track::hasChanged()
