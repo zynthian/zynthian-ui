@@ -172,7 +172,6 @@ class Track
         std::map<uint32_t,Pattern*> m_mPatterns; // Map of pointers to patterns, indexed by start position
         int m_nCurrentPatternPos = -1; // Start position of pattern currently being played
         int m_nNextEvent = -1; // Index of next event to process or -1 if no more events at this clock cycle
-        int m_nSyncEvent = -1; // Index of event triggered at last sync point
         int8_t m_nEventValue = -1; // Value of event at current interpolation point or -1 if no event
         uint32_t m_nLastClockTime = 0; // Time of last clock pulse (sample)
         uint32_t m_nCurrentStep = 0; // Postion within pattern (step)

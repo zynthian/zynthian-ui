@@ -94,7 +94,6 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock
         m_nCurrentPatternPos = nPosition;
         m_nCurrentStep = 0;
         m_nNextEvent = 0;
-        m_nSyncEvent = 0;
         m_nClkPerStep = m_mPatterns[m_nCurrentPatternPos]->getClocksPerStep();
         if(m_nClkPerStep == 0)
             m_nClkPerStep = 1;
@@ -108,7 +107,6 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock
         // At end of pattern
         m_nCurrentPatternPos = -1;
         m_nNextEvent = -1;
-        m_nSyncEvent = -1;
         m_nCurrentStep = 0;
         m_nClkPerStep = 1;
         m_nEventValue = -1;
@@ -122,8 +120,6 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock
         m_nLastClockTime = nTime;
         m_nDivCount = 0;
         nReturn = 1;
-        if(bSync)
-            m_nSyncEvent = m_nNextEvent;
     }
 
     ++m_nDivCount;
@@ -227,7 +223,7 @@ void Track::setPosition(uint32_t position)
 {
     m_nDivCount = m_nClkPerStep;
     m_nCurrentStep = position / m_nClkPerStep;
-    m_nNextEvent = m_nSyncEvent;
+    m_nNextEvent = -1; // Avoid playing wrong pattern
     for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
     {
         if(it->first <= position && it->first + it->second->getLength() > position)
