@@ -504,10 +504,10 @@ class zynthian_gui_arranger():
 		self.source_col = self.col_offset + int(event.x / self.column_width)
 		self.source_row = self.row_offset + int(event.y / self.row_height)
 		self.select_cell(self.col_offset + int(c), self.row_offset + int(r), False)
+		self.source_col = self.selected_cell[0]
 		self.source_seq = self.sequence
 		self.source_track = self.track
-		time = self.selected_cell[0] * self.clocks_per_division
-		self.pattern_to_add = libseq.getPattern(self.parent.bank, self.sequence, self.track, time)
+		self.pattern_to_add = libseq.getPattern(self.parent.bank, self.sequence, self.track, self.source_col * self.clocks_per_division)
 		if self.pattern_to_add == -1:
 			self.pattern_to_add = self.pattern
 
@@ -531,7 +531,7 @@ class zynthian_gui_arranger():
 
 	# Function to handle grid mouse motion
 	#	event: Mouse event
-	def on_grid_motion(self, event):
+	def on_grid_drag(self, event):
 		col = self.col_offset + int(event.x / self.column_width)
 		row = self.row_offset + int(event.y / self.row_height)
 		if col < self.col_offset or col >= self.col_offset + self.horizontal_zoom or row < self.row_offset or row >= self.row_offset + self.vertical_zoom:
@@ -582,34 +582,34 @@ class zynthian_gui_arranger():
 
 
 	# Function to toggle note event
-	#	col: Column
-	#	row: Row
-	def toggle_event(self, div, row):
-		time = div * self.clocks_per_division
+	#	col: Grid column relative to start of song
+	#	row: Grid row
+	def toggle_event(self, col, row):
+		time = col * self.clocks_per_division
 		if libseq.getPattern(self.parent.bank, self.sequence, self.track, time) == -1:
-			self.add_event(div, self.sequence, self.track)
+			self.add_event(col, self.sequence, self.track)
 		else:
-			self.remove_event(div, self.sequence, self.track)
-		self.select_cell(div, row)
+			self.remove_event(col, self.sequence, self.track)
+		self.select_cell(col, row)
 
 
 	# Function to remove an event
-	#	div: Time division index (column + columun offset)
+	#	col: Time division index (column + columun offset)
 	#	sequence: Sequence number
 	#	track: Track within sequence
-	def remove_event(self, div, sequence, track):
-		time = div * self.clocks_per_division
+	def remove_event(self, col, sequence, track):
+		time = col * self.clocks_per_division
 		libseq.removePattern(self.parent.bank, sequence, track, time)
 		self.redraw_pending = 1 #TODO: Optimise redraw
 
 
 	# Function to add an event
-	#	div: Time division index (column + columun offset)
+	#	col: Time division index (column + columun offset)
 	#	sequence: Sequence number
 	#	track: Track within sequence
 	#	returns: True on success
-	def add_event(self, div, sequence, track):
-		time = div * self.clocks_per_division
+	def add_event(self, col, sequence, track):
+		time = col * self.clocks_per_division
 		if libseq.addPattern(self.parent.bank, sequence, track, time, self.pattern_to_add, False):
 			self.redraw_pending = 1 #TODO: Optimise redraw
 			return True
@@ -746,7 +746,7 @@ class zynthian_gui_arranger():
 			celltext = self.grid_canvas.create_text(coord[0] + 1, coord[1] + self.row_height / 2, fill=CELL_FOREGROUND, tags=("%d,%d"%(col,row), "pattern"))
 			self.grid_canvas.tag_bind("pattern", '<ButtonPress-1>', self.on_grid_press)
 			self.grid_canvas.tag_bind("pattern", '<ButtonRelease-1>', self.on_grid_release)
-			self.grid_canvas.tag_bind("pattern", '<B1-Motion>', self.on_grid_motion)
+			self.grid_canvas.tag_bind("pattern", '<B1-Motion>', self.on_grid_drag)
 			self.grid_canvas.tag_lower(cell) # Assume cells are always created left to right
 			self.cells[cell_index][0] = cell
 			self.cells[cell_index][1] = celltext
