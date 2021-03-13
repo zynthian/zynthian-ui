@@ -85,7 +85,7 @@ SEQ_LASTPLAYSTATUS	= 4
 USER_PATH			= "/zynthian/zynthian-my-data/zynseq"
 
 PLAY_MODES = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
-PAD_COLOUR_DISABLED = 'grey'
+PAD_COLOUR_DISABLED = '#2a2a2a'
 PAD_COLOUR_STARTING = '#ffbb00'
 PAD_COLOUR_PLAYING = '#00d000'
 PAD_COLOUR_STOPPING = 'red'

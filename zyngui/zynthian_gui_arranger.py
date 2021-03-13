@@ -521,11 +521,11 @@ class zynthian_gui_arranger():
 			self.grid_timer.cancel()
 			return
 		self.grid_timer.cancel()
-		if self.source_col != self.selected_cell[0] or self.source_row != self.selected_cell[1]:
-			if self.add_event(self.selected_cell[0], self.sequence, self.track):
+		if self.add_event(self.selected_cell[0], self.sequence, self.track):
+			if self.source_col != self.selected_cell[0] or self.source_row != self.selected_cell[1]:
 				self.remove_event(self.source_col, self.source_seq, self.source_track)
-			else:
-				self.select_cell(self.source_col, self.source_row) # Failed to add pattern so reselect original cells
+		else:
+			self.select_cell(self.source_col, self.source_row) # Failed to add pattern so reselect original cells
 		self.pattern_to_add = self.pattern
 
 
@@ -628,9 +628,6 @@ class zynthian_gui_arranger():
 			return
 		sequence = self.sequence_tracks[row + self.row_offset][0]
 		track = self.sequence_tracks[row + self.row_offset][1]
-#		if libseq.isMuted(self.parent.bank, sequence, track):
-#			fill = zynthian_gui_stepsequencer.PAD_COLOUR_DISABLED
-#		else:
 		group = libseq.getGroup(self.parent.bank, sequence)
 		fill = zynthian_gui_stepsequencer.PAD_COLOUR_STOPPED[group % 16]
 		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
