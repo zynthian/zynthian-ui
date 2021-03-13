@@ -37,7 +37,7 @@ from os.path import isfile
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
-from ctypes import c_float, CDLL
+from ctypes import c_float, c_double, CDLL
 
 # Zynthian specific modules
 import zynconf
@@ -230,8 +230,7 @@ class zynthian_gui:
 		try:
 			global lib_zyncoder
 			#Set Global Tuning
-			self.fine_tuning_freq = int(zynthian_gui_config.midi_fine_tuning)
-			lib_zyncoder.set_midi_filter_tuning_freq(self.fine_tuning_freq)
+			lib_zyncoder.set_midi_filter_tuning_freq(c_double(zynthian_gui_config.midi_fine_tuning))
 			#Set MIDI Master Channel
 			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
 			#Setup MIDI filter rules
