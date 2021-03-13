@@ -212,7 +212,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		# Generate on-the-fly config
 		with open(self.config_tpl_fpath, 'r') as cfg_tpl_file:
 			cfg_data = cfg_tpl_file.read()
-			cfg_data = cfg_data.replace('#OSC.TUNING#', str(self.zyngui.fine_tuning_freq))
+			cfg_data = cfg_data.replace('#OSC.TUNING#', str(int(self.zyngui.fine_tuning_freq)))
 			cfg_data = cfg_data.replace('#MIDI.UPPER.CHANNEL#', str(1 + midi_chans[0]))
 			cfg_data = cfg_data.replace('#MIDI.LOWER.CHANNEL#', str(1 + midi_chans[1]))
 			cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str(1 + midi_chans[2]))
