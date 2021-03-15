@@ -691,7 +691,7 @@ bool load(const char* filename)
                 DPRINTF("Unsupported sequence file version %d. Not loading file.\n", nVersion);
                 return false;
             }
-            g_dTempo = fileRead16(pFile);
+            g_dTempo = fileRead16(pFile); //!@todo save and load tempo as fraction of BPM
             g_nBeatsPerBar = fileRead16(pFile);
             g_seqMan.setTriggerChannel(fileRead8(pFile));
             g_nTriggerStatusByte = MIDI_NOTE_ON | g_seqMan.getTriggerChannel();
@@ -1566,6 +1566,7 @@ void removeTrackFromSequence(uint8_t bank, uint8_t sequence, uint32_t track)
 
 void addTempoEvent(uint8_t bank, uint8_t sequence, uint32_t tempo, uint16_t bar, uint16_t tick)
 {
+	//!@todo Concert tempo events to use double for tempo value
     g_seqMan.getSequence(bank, sequence)->addTempo(tempo, bar, tick);
     g_bDirty = true;
 }
@@ -1794,16 +1795,16 @@ uint8_t transportGetPlayStatus()
     return jack_transport_query(g_pJackClient, &position);
 }
 
-void setTempo(uint32_t tempo)
+void setTempo(double tempo)
 {
-    if(tempo > 0 && tempo < 500)
+    if(tempo > 0.0 && tempo < 500.0)
     {
         g_dTempo = tempo;
         g_dFramesPerClock = getFramesPerClock(tempo);
     }
 }
 
-uint32_t getTempo()
+double getTempo()
 {
     return g_dTempo;
 }

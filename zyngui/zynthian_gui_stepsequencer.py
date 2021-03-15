@@ -304,12 +304,15 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.child != self.pattern_editor:
 			self.add_menu({'Bank':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'value':self.bank, 'on_change':self.on_menu_change}}})
 		if zynthian_gui_config.enable_touch_widgets:
-			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1, 'max':480, 'get_value':libseq.getTempo, 'on_change':self.on_menu_change}}})
+			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1.0, 'max':500.0, 'get_value':self.get_tempo, 'on_change':self.on_menu_change}}})
 		self.add_menu({'Beats per bar':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':libseq.getBeatsPerBar, 'on_change':self.on_menu_change}}})
 		#self.add_menu({'Load':{'method':self.select_filename, 'params':self.filename}})
 		#self.add_menu({'Save':{'method':self.save_as, 'params':self.filename}})
 		self.add_menu({'-------------------':{}})
 
+
+	def get_tempo(self):
+		return libseq.getTempo()
 
 	# Function to update title
 	#	title: Title to display in topbar
@@ -576,8 +579,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.param_editor_item == 'Bank':
 			self.select_bank(value)
 		elif self.param_editor_item == 'Tempo':
-			libseq.setTempo(value)
-			return "Tempo: %d BPM" % (value)
+			libseq.setTempo(ctypes.c_double(value))
+			return "Tempo: %0.1f BPM" % (value)
 		elif self.param_editor_item == "Beats per bar":
 			libseq.setBeatsPerBar(value)
 		self.set_param(self.param_editor_item, 'value', value)
@@ -845,9 +848,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			# Parameter change
 			if encoder == ENC_SELECT or encoder == ENC_LAYER:
 				self.change_param(value)
+			elif encoder == ENC_SNAPSHOT:
+				self.change_param(value / 10)
 		elif encoder == ENC_SNAPSHOT:
-			libseq.setTempo(libseq.getTempo() + value)
-			self.set_title("Tempo: %d BPM" % (libseq.getTempo()), None, None, 2)
+			libseq.setTempo(ctypes.c_double(libseq.getTempo() + value))
+			self.set_title("Tempo: %0.1f BPM" % (libseq.getTempo()), None, None, 2)
 		elif encoder == ENC_LAYER:
 			self.select_bank(self.bank + value)
 

@@ -585,8 +585,8 @@ uint32_t getTempoAt(uint8_t bank, uint8_t sequence, uint16_t bar=1, uint16_t tic
 *   @param  sequence Sequence index
 *   @param  beats Beats per bar (numerator)
 *   @param  type Beat type (denominator)
-*   @param  bar Bar at which to add tempo change
-*   @param  tick Tick within bar at which to add tempo change
+*   @param  bar Bar at which to add time signature change
+*   @param  tick Tick within bar at which to add time signature change
 */
 void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type, uint16_t bar);
 
@@ -741,12 +741,12 @@ uint8_t transportGetPlayStatus();
 *   @todo   Using integer for tempo to simplify Python interface but should use float
 *   @note   Tempo is saved with song but tempo map events override this
 */
-void setTempo(uint32_t tempo);
+void setTempo(double tempo);
 
 /** @brief  Get transport tempo
-*   @retval uint32_t Tempo in beats per minute
+*   @retval double Tempo in beats per minute
 */
-uint32_t getTempo();
+double getTempo();
 
 /** @breif  Set beats per bar
 *   @uint32_t beats Beats per bar
