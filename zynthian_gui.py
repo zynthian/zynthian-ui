@@ -37,7 +37,7 @@ from os.path import isfile
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
-from ctypes import c_float, CDLL
+from ctypes import c_float, c_double, CDLL
 
 # Zynthian specific modules
 import zynconf
@@ -231,8 +231,8 @@ class zynthian_gui:
 		try:
 			global lib_zyncoder
 			#Set Global Tuning
-			self.fine_tuning_freq = int(zynthian_gui_config.midi_fine_tuning)
-			lib_zyncoder.set_midi_filter_tuning_freq(self.fine_tuning_freq)
+			self.fine_tuning_freq = zynthian_gui_config.midi_fine_tuning
+			lib_zyncoder.set_midi_filter_tuning_freq(c_double(self.fine_tuning_freq))
 			#Set MIDI Master Channel
 			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
 			#Setup MIDI filter rules
@@ -360,20 +360,15 @@ class zynthian_gui:
 		# Initialize OSC
 		self.osc_init()
 
-		# Load an initial snapshot?
+		# Initial snapshot...
 		snapshot_loaded=False
+		# Try to load "last_state" snapshot ...
 		if zynthian_gui_config.restore_last_state:
-			# Try to load "last_state" snapshot ...
-			last_state_snapshot_fpath=self.screens['snapshot'].last_state_snapshot_fpath
-			if isfile(last_state_snapshot_fpath):
-				snapshot_loaded=self.screens['layer'].load_snapshot(last_state_snapshot_fpath)
-
+			snapshot_loaded=self.screens['snapshot'].load_last_state_snapshot()
+		# Try to load "default" snapshot ...
 		if not snapshot_loaded:
-			# Try to load "default" snapshot ...
-			default_snapshot_fpath=self.screens['snapshot'].default_snapshot_fpath
-			if isfile(default_snapshot_fpath):
-				snapshot_loaded=self.screens['layer'].load_snapshot(default_snapshot_fpath)
-
+			snapshot_loaded=self.screens['snapshot'].load_default_snapshot()
+		# Set empty state
 		if not snapshot_loaded:
 			# Init MIDI Subsystem => MIDI Profile
 			self.init_midi()

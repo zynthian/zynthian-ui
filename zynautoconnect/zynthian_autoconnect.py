@@ -32,6 +32,7 @@ from threading  import Thread, Lock
 from collections import OrderedDict
 
 # Zynthian specific modules
+from zyncoder import *
 from zyngui import zynthian_gui_config
 
 #-------------------------------------------------------------------------------
@@ -311,6 +312,11 @@ def midi_autoconnect(force=False):
 				try:
 					if ch in info['chans']:
 						jclient.connect(zmr_out['ch{}_out'.format(ch)], info['port'])
+						if jn in ("aeolus","fluidsynth","setBfree","zynaddsubfx"):
+							zyncoder.lib_zyncoder.zmop_chan_set_flag_droppc(ch, 1)
+						else:
+							zyncoder.lib_zyncoder.zmop_chan_set_flag_droppc(ch, 0)
+							
 					else:
 						jclient.disconnect(zmr_out['ch{}_out'.format(ch)], info['port'])
 				except:

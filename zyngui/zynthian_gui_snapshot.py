@@ -246,8 +246,18 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.zyngui.screens['layer'].save_snapshot(self.default_snapshot_fpath)
 
 
+	def load_default_snapshot(self, quiet=False):
+		if isfile(self.default_snapshot_fpath):
+			return self.zyngui.screens['layer'].load_snapshot(self.default_snapshot_fpath, quiet)
+
+
 	def save_last_state_snapshot(self):
 		self.zyngui.screens['layer'].save_snapshot(self.last_state_snapshot_fpath)
+
+
+	def load_last_state_snapshot(self, quiet=False):
+		if isfile(self.last_state_snapshot_fpath):
+			return self.zyngui.screens['layer'].load_snapshot(self.last_state_snapshot_fpath, quiet)
 
 
 	def delete_last_state_snapshot(self):
