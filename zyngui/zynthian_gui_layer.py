@@ -131,6 +131,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def reset_confirmed(self, params=None):
+		if len(self.zyngui.screens['layer'].layers)>0:
+			self.zyngui.screens['snapshot'].save_last_state_snapshot()
 		self.reset()
 		self.zyngui.show_screen('layer')
 

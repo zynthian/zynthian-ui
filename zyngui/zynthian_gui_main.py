@@ -92,6 +92,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 
 	def clean_all_confirmed(self, params=None):
+		if len(self.zyngui.screens['layer'].layers)>0:
+			self.zyngui.screens['snapshot'].save_last_state_snapshot()
 		self.zyngui.screens['layer'].reset()
 		if zynseq.libseq:
 			zynseq.load("")
