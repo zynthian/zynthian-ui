@@ -1159,7 +1159,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return True
 
 
-	def load_snapshot(self, fpath):
+	def load_snapshot(self, fpath, quiet=False):
 		try:
 			with open(fpath,"r") as fh:
 				json=fh.read()
@@ -1275,11 +1275,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.zyngui.screens['stepseq'].restore_riff_data(binary_riff_data)
 
 			#Post action
-			if self.index<len(self.root_layers):
-				self.select_action(self.index)
-			else:
-				self.index = 0
-				self.zyngui.show_screen('layer')
+			if not quiet:
+				if self.index<len(self.root_layers):
+					self.select_action(self.index)
+				else:
+					self.index = 0
+					self.zyngui.show_screen('layer')
 
 		except Exception as e:
 			self.zyngui.reset_loading()

@@ -358,20 +358,15 @@ class zynthian_gui:
 		# Initialize OSC
 		self.osc_init()
 
-		# Load an initial snapshot?
+		# Initial snapshot...
 		snapshot_loaded=False
+		# Try to load "last_state" snapshot ...
 		if zynthian_gui_config.restore_last_state:
-			# Try to load "last_state" snapshot ...
-			last_state_snapshot_fpath=self.screens['snapshot'].last_state_snapshot_fpath
-			if isfile(last_state_snapshot_fpath):
-				snapshot_loaded=self.screens['layer'].load_snapshot(last_state_snapshot_fpath)
-
+			snapshot_loaded=self.screens['snapshot'].load_last_state_snapshot()
+		# Try to load "default" snapshot ...
 		if not snapshot_loaded:
-			# Try to load "default" snapshot ...
-			default_snapshot_fpath=self.screens['snapshot'].default_snapshot_fpath
-			if isfile(default_snapshot_fpath):
-				snapshot_loaded=self.screens['layer'].load_snapshot(default_snapshot_fpath)
-
+			snapshot_loaded=self.screens['snapshot'].load_default_snapshot()
+		# Set empty state
 		if not snapshot_loaded:
 			# Init MIDI Subsystem => MIDI Profile
 			self.init_midi()

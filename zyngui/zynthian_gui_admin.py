@@ -643,6 +643,14 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def start_vncserver(self, save_config=True):
 		logging.info("STARTING VNC SERVICES")
 
+		# Save state and stop engines
+		if len(self.zyngui.screens['layer'].layers)>0:
+			self.zyngui.screens['snapshot'].save_last_state_snapshot()
+			self.zyngui.screens['layer'].reset()
+			restore_state = True
+		else:
+			restore_state = False
+
 		try:
 			check_output("systemctl start vncserver@:1; systemctl start novnc", shell=True)
 			zynthian_gui_config.vncserver_enabled = 1
@@ -654,11 +662,23 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		except Exception as e:
 			logging.error(e)
 
+		# Restore state
+		if restore_state:
+			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+
 		self.fill_list()
 
 
 	def stop_vncserver(self, save_config=True):
 		logging.info("STOPPING VNC SERVICES")
+
+		# Save state and stop engines
+		if len(self.zyngui.screens['layer'].layers)>0:
+			self.zyngui.screens['snapshot'].save_last_state_snapshot()
+			self.zyngui.screens['layer'].reset()
+			restore_state = True
+		else:
+			restore_state = False
 
 		try:
 			check_output("systemctl stop novnc; systemctl stop vncserver@:1", shell=True)
@@ -670,6 +690,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				})
 		except Exception as e:
 			logging.error(e)
+
+		# Restore state
+		if restore_state:
+			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
 
 		self.fill_list()
 
