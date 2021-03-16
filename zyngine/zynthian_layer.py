@@ -550,12 +550,21 @@ class zynthian_layer:
 				'preset_name': self.preset_name,
 				'preset_info': self.preset_info,
 				'active_screen_index': self.active_screen_index,
-				'controllers_dict': {}
+				'controllers_dict': {},
+				'note_range': {}
 			}
 
 			for k in self.controllers_dict:
 				logging.debug("Saving {}".format(k))
 				zs3['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
+
+			if self.midi_chan>=0:
+				zs3['note_range'] = {
+					'note_low': zyncoder.lib_zyncoder.get_midi_filter_note_low(self.midi_chan),
+					'note_high': zyncoder.lib_zyncoder.get_midi_filter_note_high(self.midi_chan),
+					'octave_trans': zyncoder.lib_zyncoder.get_midi_filter_octave_trans(self.midi_chan),
+					'halftone_trans': zyncoder.lib_zyncoder.get_midi_filter_halftone_trans(self.midi_chan)
+				}
 
 			self.zs3_list[i] = zs3
 
@@ -596,6 +605,11 @@ class zynthian_layer:
 			# Set controller values
 			for k in zs3['controllers_dict']:
 				self.controllers_dict[k].restore_snapshot(zs3['controllers_dict'][k])
+
+			# Set Note Range
+			if self.midi_chan>=0 and 'note_range' in zs3:
+				nr = zs3['note_range']
+				zyncoder.lib_zyncoder.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
 
 			return True
 
