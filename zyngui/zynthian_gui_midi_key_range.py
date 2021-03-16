@@ -266,6 +266,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
 
 	def show(self):
 		super().show()
+		self.zyngui.screens["control"].unlock_controllers()
 		self.set_zctrls()
 		zyncoder.lib_zyncoder.set_midi_learning_mode(1)
 
