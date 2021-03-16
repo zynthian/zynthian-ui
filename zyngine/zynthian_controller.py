@@ -282,7 +282,7 @@ class zynthian_controller:
 							logging.debug("Sending OSC controller '{}' value => {}".format(self.symbol, val))
 
 						elif self.midi_cc:
-							zyncoder.lib_zyncoder.zynmidi_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
+							zyncoder.lib_zyncoder.ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
 							logging.debug("Sending MIDI controller '{}' value => {} ({})".format(self.symbol, val, mval))
 
 					except Exception as e:

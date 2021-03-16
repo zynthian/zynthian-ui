@@ -369,6 +369,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.jackname = PIANOTEQ_JACK_PORT_NAME
 
 		#self.options['midi_chan']=False
+		self.options['drop_pc']=True
 
 		self.preset = ""
 		self.midimapping = "ZynthianControllers"

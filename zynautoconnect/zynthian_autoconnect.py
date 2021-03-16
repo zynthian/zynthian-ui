@@ -312,19 +312,20 @@ def midi_autoconnect(force=False):
 				try:
 					if ch in info['chans']:
 						jclient.connect(zmr_out['ch{}_out'.format(ch)], info['port'])
-						if jn in ("aeolus","fluidsynth","setBfree","zynaddsubfx"):
-							zyncoder.lib_zyncoder.zmop_chan_set_flag_droppc(ch, 1)
-						else:
-							zyncoder.lib_zyncoder.zmop_chan_set_flag_droppc(ch, 0)
-							
 					else:
 						jclient.disconnect(zmr_out['ch{}_out'.format(ch)], info['port'])
 				except:
 					pass
 
-	#Connect Engine's MIDI output to assigned ports
+	# Connect Engine's MIDI output to assigned ports
 	for layer in zynthian_gui_config.zyngui.screens["layer"].root_layers:
-		if layer.engine.type in ("MIDI Tool", "Special") and layer.midi_chan is not None:
+		if layer.midi_chan is None:
+			continue
+		
+		# Set "Drop Program Change" flag for each MIDI chan
+		zyncoder.lib_zyncoder.zmop_chan_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
+
+		if layer.engine.type in ("MIDI Tool", "Special"):
 			port_from_name = get_fixed_midi_port_name(layer.get_midi_jackname())
 			ports_from=jclient.get_ports(port_from_name, is_output=True, is_midi=True, is_physical=False)
 			if ports_from:

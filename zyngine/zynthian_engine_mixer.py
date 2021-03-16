@@ -77,7 +77,8 @@ class zynthian_engine_mixer(zynthian_engine):
 			'clone': False,
 			'note_range': False,
 			'audio_route': False,
-			'midi_chan': False
+			'midi_chan': False,
+			'drop_pc': False
 		}
 
 		self.zctrls = None

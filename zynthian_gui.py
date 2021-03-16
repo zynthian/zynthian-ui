@@ -1591,33 +1591,33 @@ class zynthian_gui:
 	def all_sounds_off(self):
 		logging.info("All Sounds Off!")
 		for chan in range(16):
-			lib_zyncoder.zynmidi_send_ccontrol_change(chan, 120, 0)
+			lib_zyncoder.ui_send_ccontrol_change(chan, 120, 0)
 
 
 	def all_notes_off(self):
 		logging.info("All Notes Off!")
 		for chan in range(16):
-			lib_zyncoder.zynmidi_send_ccontrol_change(chan, 123, 0)
+			lib_zyncoder.ui_send_ccontrol_change(chan, 123, 0)
 
 
 	def raw_all_notes_off(self):
 		logging.info("Raw All Notes Off!")
-		lib_zyncoder.zynmidi_send_all_notes_off()
+		lib_zyncoder.ui_send_all_notes_off()
 
 
 	def all_sounds_off_chan(self, chan):
 		logging.info("All Sounds Off for channel {}!".format(chan))
-		lib_zyncoder.zynmidi_send_ccontrol_change(chan, 120, 0)
+		lib_zyncoder.ui_send_ccontrol_change(chan, 120, 0)
 
 
 	def all_notes_off_chan(self, chan):
 		logging.info("All Notes Off for channel {}!".format(chan))
-		lib_zyncoder.zynmidi_send_ccontrol_change(chan, 123, 0)
+		lib_zyncoder.ui_send_ccontrol_change(chan, 123, 0)
 
 
 	def raw_all_notes_off_chan(self, chan):
 		logging.info("Raw All Notes Off for channel {}!".format(chan))
-		lib_zyncoder.zynmidi_send_all_notes_off_chan(chan)
+		lib_zyncoder.ui_send_all_notes_off_chan(chan)
 
 
 	#------------------------------------------------------------------

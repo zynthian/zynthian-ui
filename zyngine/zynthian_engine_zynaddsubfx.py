@@ -109,6 +109,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		self.nickname = "ZY"
 		self.jackname = "zynaddsubfx"
 
+		self.options['drop_pc']=True
+
 		self.osc_target_port = 6693
 
 		try:
