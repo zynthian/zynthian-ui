@@ -86,7 +86,7 @@ class zynthian_gui_zynpad():
 			relief='flat',
 			bg = zynthian_gui_config.color_bg)
 		self.grid_canvas.grid(row=0, column=0)
-		self.grid_timer = Timer(2.0, self.on_grid_timer) # Grid press and hold timer
+		self.grid_timer = Timer(1.4, self.on_grid_timer) # Grid press and hold timer
 
 		# Icons
 		self.mode_icon = [tkinter.PhotoImage() for i in range(7)]
@@ -124,12 +124,13 @@ class zynthian_gui_zynpad():
 
 	# Function to populate menu
 	def populate_menu(self):
-		self.parent.add_menu({'Pad mode':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(zynthian_gui_stepsequencer.PLAY_MODES)-1, 'get_value':self.get_selected_pad_mode, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Play mode':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(zynthian_gui_stepsequencer.PLAY_MODES)-1, 'get_value':self.get_selected_pad_mode, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'MIDI channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_pad_channel, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Trigger channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_trigger_channel, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Trigger note':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':128, 'get_value':self.get_trigger_note, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Trigger channel':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':16, 'get_value':self.get_trigger_channel, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Trigger note':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':128, 'get_value':self.get_trigger_note, 'on_change':self.on_menu_change, 'on_reset':self.reset_trigger_note}}})
 		self.parent.add_menu({'-------------------':{}})
 		self.parent.add_menu({'Grid size':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':8, 'get_value':self.get_columns, 'on_change':self.on_menu_change, 'on_assert':self.set_grid_size}}})
+		self.parent.add_menu({'Name sequence':{'method':self.name_sequence}})
 
 
 	# Function to hide GUI
@@ -141,17 +142,61 @@ class zynthian_gui_zynpad():
 
 	# Function to set quantity of pads
 	def set_grid_size(self):
-		self.columns = self.parent.get_param("Grid size", "value")
-		libseq.setSequencesInBank(self.parent.bank, self.columns ** 2)
-		for col in range(self.columns):
-			for row in range(self.columns):
-				channel = col
-				sequence = col * self.columns + row
-				if col == self.columns - 1:
-					channel = 9
-				libseq.setChannel(self.parent.bank, sequence, 0, channel)
-				libseq.setGroup(self.parent.bank, sequence, channel)
+		if libseq.getSequencesInBank(self.parent.bank) > self.parent.get_param("Grid size", "value") * self.parent.get_param("Grid size", "value"):
+			self.zyngui.show_confirm("Reducing the quantity of sequences in bank %d will delete sequences but patterns will still be available. Continue?" % (self.parent.bank), self.do_grid_size)
+		else:
+			self.do_grid_size()
+
+
+	# Function to actually set quantity of pad
+	def do_grid_size(self, params=None):
+		# To avoid odd behaviour we stop all sequences from playing before changing grid size (blunt but effective!)
+		bank = self.parent.bank
+		for seq in range(libseq.getSequencesInBank(bank)):
+			libseq.setPlayState(bank, seq, zynthian_gui_stepsequencer.SEQ_STOPPED)
+		channels = []
+		groups = []
+		for column in range(self.columns):
+			channels.append(libseq.getChannel(bank, column * self.columns, 0))
+			groups.append(libseq.getGroup(bank, column * self.columns))
+		new_size = self.parent.get_param("Grid size", "value")
+		delta = new_size - self.columns
+		if delta > 0:
+			# Growing grid so add extra sequences
+			for column in range(self.columns):
+				for row in range(self.columns, self.columns + delta):
+					pad = row + column * new_size
+					libseq.insertSequence(bank, pad)
+					libseq.setChannel(bank, pad, channels[column])
+					libseq.setGroup(bank, pad, groups[column])
+					zynseq.set_sequence_name(bank, pad, "%s"%(pad + 1))
+			for column in range(self.columns, new_size):
+				for row in range(new_size):
+					pad = row + column * new_size
+					libseq.insertSequence(bank, pad)
+					libseq.setChannel(bank, pad, column)
+					libseq.setGroup(bank, pad, column)
+					zynseq.set_sequence_name(bank, pad, "%s"%(pad + 1))
+		if delta < 0:
+			# Shrinking grid so remove excess sequences
+			libseq.setSequencesInBank(bank, new_size * self.columns) # Lose excess columns
+			for offset in range(new_size, new_size * new_size + 1, new_size):
+				logging.warning("offset: %d", offset)
+				for pad in range(-delta):
+					libseq.removeSequence(bank, offset)
+		self.columns = new_size
 		self.refresh_pending = 1
+
+
+	# Function to name selected sequence
+	def name_sequence(self, params=None):
+		self.zyngui.show_keyboard(self.do_rename_sequence, zynseq.get_sequence_name(self.parent.bank, self.selected_pad), 16)
+
+
+	# Function to rename selected sequence
+	def do_rename_sequence(self, name):
+		zynseq.set_sequence_name(self.parent.bank, self.selected_pad, name)
+
 
 	# Function to get MIDI channel of selected pad
 	#	returns: MIDI channel (1..16)
@@ -167,6 +212,12 @@ class zynthian_gui_zynpad():
 		if trigger > 128:
 			trigger = 128
 		return trigger
+
+
+	# Function to reset trigger note to None
+	def reset_trigger_note(self):
+		self.parent.set_param("Trigger note", 'value', 0xFF)
+		self.parent.refreshParamEditor()
 
 
 	# Function to get group of selected track
@@ -194,9 +245,9 @@ class zynthian_gui_zynpad():
 				value = params['max']
 		except:
 			pass # min and max values may not be set
-		if menu_item == 'Pad mode':
+		if menu_item == 'Play mode':
 			libseq.setPlayMode(self.parent.bank, self.selected_pad, value)
-			return "Pad mode: %s" % (zynthian_gui_stepsequencer.PLAY_MODES[value])
+			return "Play mode: %s" % (zynthian_gui_stepsequencer.PLAY_MODES[value])
 		elif menu_item == 'MIDI channel':
 			libseq.setChannel(self.parent.bank, self.selected_pad, 0, value - 1)
 			libseq.setGroup(self.parent.bank, self.selected_pad, value - 1)
@@ -205,7 +256,11 @@ class zynthian_gui_zynpad():
 			except:
 				pass # No layer so just show MIDI channel
 		elif menu_item == 'Trigger channel':
-			libseq.setTriggerChannel(value - 1)
+			if value:
+				libseq.setTriggerChannel(value - 1)
+			else:
+				libseq.setTriggerChannel(0xFF)
+				return "Trigger channel: None"
 		elif menu_item == 'Trigger note':
 			if value > 128 or value < 0:
 				value = 128
@@ -231,6 +286,8 @@ class zynthian_gui_zynpad():
 
 	# Function called when sequence set loaded from file
 	def get_trigger_channel(self):
+		if(libseq.getTriggerChannel() > 15):
+			return 0
 		return libseq.getTriggerChannel() + 1
 
 
@@ -246,7 +303,7 @@ class zynthian_gui_zynpad():
 		self.row_height = self.height / self.columns
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
 
-		iconsize = (int(self.column_width * 0.6), int(self.row_height * 0.2))
+		iconsize = (int(self.column_width * 0.5), int(self.row_height * 0.2))
 		img = (Image.open("/zynthian/zynthian-ui/icons/oneshot.png").resize(iconsize))
 		self.mode_icon[1] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/loop.png").resize(iconsize))
@@ -274,14 +331,21 @@ class zynthian_gui_zynpad():
 			pad_y = pad % self.columns * self.row_height
 			self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
 				fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell", "trigger_%d"%(pad)))
-			self.grid_canvas.create_text(int(pad_x + self.column_width / 2), int(pad_y + 0.1 * self.row_height),
-				anchor="n",
+			self.grid_canvas.create_text(int(pad_x + self.column_width / 2), int(pad_y + 0.01 * self.row_height),
+				width=self.column_width,
+				anchor="n", justify="center",
 				font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-				size=int(self.row_height * 0.3)),
+				size=int(self.row_height * 0.2)),
 				fill=zynthian_gui_config.color_panel_tx,
 				tags=("lbl_pad:%d"%(pad),"trigger_%d"%(pad)))
-			self.grid_canvas.create_image(int(pad_x + self.column_width * 0.1), int(pad_y + 0.8 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
-			self.grid_canvas.create_image(int(pad_x + self.column_width * 0.9), int(pad_y + 0.8 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
+			self.grid_canvas.create_text(pad_x + 1, pad_y + self.row_height - 1,
+				anchor="sw",
+				font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
+				size=int(self.row_height * 0.2)),
+				fill=zynthian_gui_config.color_panel_tx,
+				tags=("group:%d"%(pad),"trigger_%d"%(pad)))
+			self.grid_canvas.create_image(int(pad_x + self.column_width * 0.2), int(pad_y + 0.9 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
+			self.grid_canvas.create_image(int(pad_x + self.column_width * 0.9), int(pad_y + 0.9 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
 			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
 			self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
 			self.refresh_pad(pad, True)
@@ -311,7 +375,8 @@ class zynthian_gui_zynpad():
 				pad_y = int(pad / self.columns) * self.row_height
 				if libseq.getSequenceLength(self.parent.bank, pad) == 0:
 					mode = 0
-				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text="%s%d" % (chr(65 + group), pad + 1), fill=foreground)
+				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text=zynseq.get_sequence_name(self.parent.bank, pad), fill=foreground)
+				self.grid_canvas.itemconfig("group:%s"%(pad), text=chr(65 + libseq.getGroup(self.parent.bank, pad)), fill=foreground)
 				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
 				self.grid_canvas.itemconfig("state:%d"%pad, image=self.state_icon[state])
 
@@ -331,7 +396,7 @@ class zynthian_gui_zynpad():
 	# Function to handle pad press
 	def on_pad_press(self, event):
 		if self.parent.lst_menu.winfo_viewable():
-			self.parent.hideMenu()
+			self.parent.hide_menu()
 			return
 		tags = self.grid_canvas.gettags(self.grid_canvas.find_withtag(tkinter.CURRENT))
 		pad = int(tags[0].split(':')[1])
@@ -340,13 +405,14 @@ class zynthian_gui_zynpad():
 		if self.parent.param_editor_item:
 			self.parent.show_param_editor(self.parent.param_editor_item)
 			return
-		self.toggle_pad()
-		self.grid_timer = Timer(2.0, self.on_grid_timer)
+		self.grid_timer = Timer(1.4, self.on_grid_timer)
 		self.grid_timer.start()
 
 
 	# Function to handle pad release
 	def on_pad_release(self, event):
+		if self.grid_timer.isAlive():
+			self.toggle_pad()
 		self.grid_timer.cancel()
 
 
@@ -367,10 +433,10 @@ class zynthian_gui_zynpad():
 		patterns_in_track = libseq.getPatternsInTrack(self.parent.bank, self.selected_pad, 0)
 		pattern = libseq.getPattern(self.parent.bank, self.selected_pad, 0, 0)
 		if tracks_in_sequence != 1 or patterns_in_track !=1 or pattern == -1:
-			self.parent.show_child("arranger")
+			self.parent.show_child(self.parent.arranger)
 			return
 		channel = libseq.getChannel(self.parent.bank, self.selected_pad, 0)
-		self.parent.show_child("pattern editor", {"pattern":pattern, "channel":channel, "pad":self.selected_pad})
+		self.parent.show_child(self.parent.pattern_editor, {"pattern":pattern, "channel":channel, "name":zynseq.get_sequence_name(self.parent.bank, self.selected_pad)})
 
 
 	# Function to refresh status

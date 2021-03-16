@@ -158,7 +158,7 @@ bool Smf::load(char* sFilename)
 	pFile = fopen(sFilename, "r");
 	if(pFile == NULL)
 	{
-        DPRINTF("Failed to open file '%s'\n", sFilename);
+		DPRINTF("Failed to open file '%s'\n", sFilename);
 		return false;
 	}
 	char sHeader[4];
@@ -174,15 +174,19 @@ bool Smf::load(char* sFilename)
 		{
 			// SMF file header
 			DPRINTF("Found MThd block of size %u\n", nBlockSize);
-            m_nFormat = fileRead16(pFile);
-            m_nTracks = fileRead16(pFile);
-            uint16_t nDivision = fileRead16(pFile);
+			m_nFormat = fileRead16(pFile);
+			m_nTracks = fileRead16(pFile);
+			uint16_t nDivision = fileRead16(pFile);
 			m_bTimecodeBased = ((nDivision & 0x8000) == 0x8000);
 			if(m_bTimecodeBased)
 			{
 				m_nSmpteFps = -(int8_t(nDivision & 0xFF00) >> 8);
 				m_nSmpteResolution = nDivision & 0x00FF;
 				DPRINTF("Standard MIDI File - Format: %u, Tracks: %u, SMPTE fps: %u, SMPTE subframe resolution: %u\n", m_nFormat, m_nTracks, m_nSmpteFps, m_nSmpteResolution);
+				unload();
+				printf("zynsmf does not support SMPTE timebase SMF\n");
+				//!@todo Add support for SMPTE timebase
+				return false;
 			}
 			else
 			{

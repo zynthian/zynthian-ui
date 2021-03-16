@@ -49,10 +49,10 @@ class zynthian_gui_fileselector():
 
 	# Function to initialise class
 	#	parent: Parent instance
-	#	function: Function to call when file selected (passes filename without path or extension as only paramter)
+	#	function: Function to call when file selected (passes filename without path or extension as only parameter)
 	#	path: Filesystem path to show
 	#	ext: File extension to filter
-	#	filename: Name of file to select in list (Opitonal: Defaults to first file)
+	#	filename: Name of file to select in list (Optional: Defaults to first file)
 	#	return_full_path: True to return full path. False to return filename (Optional: Defaults to filename only)
 	def __init__(self, parent, function, path, ext, filename=None, return_full_path=False):
 		self.parent = parent
@@ -159,7 +159,7 @@ class zynthian_gui_fileselector():
 		self.file_list.destroy()
 #		self.btnCancel.destroy()
 		self.tb_panel.destroy()
-		self.parent.show_child(self.parent.last_child)
+		self.parent.show_child(self.parent.child)
 
 
 	# Function to register encoders

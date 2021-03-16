@@ -114,9 +114,9 @@ void addNote(Smf* pSmf, uint32_t nTrack, uint32_t nTime, uint32_t nDuration, uin
 /** @brief  Add tempo event
 *   @param  pSmf Pointer to the SMF
 *	@param	nTime Position of tempo change in ticks since start of song
-*   @param  nTempo Tempo in BPM
+*   @param  dTempo Tempo in BPM
 */
-void addTempo(Smf* pSmf, uint32_t nTime, uint32_t nTempo);
+void addTempo(Smf* pSmf, uint32_t nTime, double dTempo);
 
 /** @brief  Set end of track time (required for loop playback)
 *   @param  pSmf Pointer to the SMF
@@ -214,9 +214,9 @@ bool isRecording();
 /** @brief  Get tempo at current position
 *   @param  pSmf Pointer to the SMF
 *   @param  nTime Ticks from start of song
-*   @retval float Tempo in BPM
+*   @retval double Tempo in BPM
 */
-float getTempo(Smf* pSmf, uint32_t nTime);
+double getTempo(Smf* pSmf, uint32_t nTime);
 
 /** @brief  Print events in human readable format
 *   @param  pSmf Pointer to the SMF

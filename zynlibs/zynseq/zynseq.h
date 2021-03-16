@@ -180,7 +180,7 @@ uint8_t getTriggerNote(uint8_t bank, uint8_t sequence);
 void setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note);
 
 // ** Pattern management functions - pattern events are quantized to steps **
-//!@todo Curernt implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the pattern index, e.g. clearPattern(index)
+//!@todo Current implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the pattern index, e.g. clearPattern(index)
 
 /** @brief  Enable MIDI input to add notes to current pattern
 *   @param  enable True to enable MIDI input
@@ -263,7 +263,7 @@ uint32_t getClocksPerStep();
 uint32_t getStepsPerBeat();
 
 /** @brief  Set steps per beat
-*   @param  steps Steps per beat
+*   @param  steps Steps per beat [1,2,3,4,6,8,12,24]
 *   @note   Calculates pattern length from beats in pattern
 */
 void setStepsPerBeat(uint32_t steps);
@@ -366,18 +366,23 @@ uint8_t getTonic();
 */
 bool isPatternModified();
 
-/**	@brief	Get the reference note
-*	@retval uint8_t MIDI note number
-*	@note	May be used for position within user interface
+/**    @brief    Get the reference note
+*    @retval uint8_t MIDI note number
+*    @note    May be used for position within user interface
 */
 uint8_t getRefNote();
 
-/**	@brief	Set the reference note
-*	@param	MIDI note number
-*	@note	May be used for position within user interface
+/**    @brief    Set the reference note
+*    @param    MIDI note number
+*    @note    May be used for position within user interface
 */
 void setRefNote(uint8_t note);
 
+/**    @brief    Get the last populated step
+*    @retval    uint32_t Index of last populated step or -1 if empty
+*    @note    This may allow checking for empty patterns or whether truncation will have an effect
+*/
+uint32_t getLastStep();
 
 // ** Track management functions **
 
@@ -412,6 +417,22 @@ void removePattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t posi
 /** @brief  Removes unused empty patterns
 */
 void cleanPatterns();
+
+/**	@brief	Toggle mute of track
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track
+*/
+void toggleMute(uint8_t bank, uint8_t sequence, uint32_t track);
+
+/**	@brief	Get track mute state
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track
+*	@retval	bool True if muted
+*/
+bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track);
+
 
 // ** Sequence management functions **
 
@@ -536,7 +557,7 @@ uint32_t addTrackToSequence(uint8_t bank, uint8_t sequence, uint32_t track=-1);
 /** @brief  Removes a track from a sequence
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
-*   @param  track Inde of track
+*   @param  track Index of track
 */
 void removeTrackFromSequence(uint8_t bank, uint8_t sequence, uint32_t track);
 
@@ -564,8 +585,8 @@ uint32_t getTempoAt(uint8_t bank, uint8_t sequence, uint16_t bar=1, uint16_t tic
 *   @param  sequence Sequence index
 *   @param  beats Beats per bar (numerator)
 *   @param  type Beat type (denominator)
-*   @param  bar Bar at which to add tempo change
-*   @param  tick Tick within bar at which to add tempo change
+*   @param  bar Bar at which to add time signature change
+*   @param  tick Tick within bar at which to add time signature change
 */
 void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type, uint16_t bar);
 
@@ -593,6 +614,43 @@ uint8_t getMidiLearnBank();
 *   @retval uint8_t Sequence index
 */
 uint8_t getMidiLearnSequence();
+
+/** @brief  Set sequence name
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  name Sequence name (truncated at 16 characters)
+*/
+void setSequenceName(uint8_t bank, uint8_t sequence, const char* name);
+
+/** @brief  Get sequence name
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @retval const char* Pointer to sequence name
+*/
+const char* getSequenceName(uint8_t bank, uint8_t sequence);
+
+/** @brief  Move sequence (change order of sequences)
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence to move
+*   @param  position Index of sequence to move this sequence, e.g. 0 to insert as first sequence
+*   @note   Sequences after insert point are moved up by one. Bank grows if sequence or position are higher than size of bank
+*   @retval bool True on success
+*/
+bool moveSequence(uint8_t bank, uint8_t sequence, uint8_t position);
+
+/** @brief  Insert new sequence in bank
+*   @param  bank Index of bank
+*   @param  sequence Index at which to insert sequence , e.g. 0 to insert as first sequence
+*   @note   Sequences after insert point are moved up by one. Bank grows if sequence is higher than size of bank
+*/
+void insertSequence(uint8_t bank, uint8_t sequence);
+
+/** @brief  Remove sequence from bank
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence to remove
+*   @note   Sequences after remove point are moved down by one. Bank grows if sequence is higher than size of bank
+*/
+void removeSequence(uint8_t bank, uint8_t sequence);
 
 
 // ** Bank management functions **
@@ -683,12 +741,12 @@ uint8_t transportGetPlayStatus();
 *   @todo   Using integer for tempo to simplify Python interface but should use float
 *   @note   Tempo is saved with song but tempo map events override this
 */
-void setTempo(uint32_t tempo);
+void setTempo(double tempo);
 
 /** @brief  Get transport tempo
-*   @retval uint32_t Tempo in beats per minute
+*   @retval double Tempo in beats per minute
 */
-uint32_t getTempo();
+double getTempo();
 
 /** @breif  Set beats per bar
 *   @uint32_t beats Beats per bar

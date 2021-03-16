@@ -202,7 +202,7 @@ class zynthian_gui_patterneditor():
 			self.channel = params['channel']
 			self.load_pattern(params['pattern'])
 			self.title = "Pattern %d" % (params['pattern'])
-			self.title = "Pattern %d (Pad %d)" % (params['pattern'], params['pad'] + 1)
+			self.title = "Pattern %d (Seq: %s)" % (params['pattern'], params['name'])
 		except:
 			pass # Probably already populated and just returning from menu action or similar
 		libseq.setGroup(self.bank, self.sequence, 0xFF)
@@ -231,11 +231,11 @@ class zynthian_gui_patterneditor():
 
 	# Function to add menus
 	def populate_menu(self):
-		self.parent.add_menu({'Beats in pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':libseq.getBeatsInPattern, 'on_change':self.on_menu_change, 'on_assert': self.set_beats_in_pattern}}})
-		self.parent.add_menu({'Steps per beat':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'get_value':self.get_steps_per_beat_index, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Beats in pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':libseq.getBeatsInPattern, 'on_change':self.on_menu_change, 'on_assert': self.assert_beats_in_pattern}}})
+		self.parent.add_menu({'Steps per beat':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':len(STEPS_PER_BEAT)-1, 'get_value':self.get_steps_per_beat_index, 'on_change':self.on_menu_change, 'on_assert':self.assert_steps_per_beat}}})
 		self.parent.add_menu({'-------------------':{}})
-		self.parent.add_menu({'Copy pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64872, 'get_value':self.get_pattern, 'on_change':self.on_menu_change,'on_assert':self.copy_pattern}}})
-		self.parent.add_menu({'Clear pattern':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_pattern}}})
+		self.parent.add_menu({'Copy pattern':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':64872, 'get_value':self.get_pattern, 'on_change':self.on_menu_change,'on_assert':self.copy_pattern,'on_cancel':self.cancel_copy}}})
+		self.parent.add_menu({'Clear pattern':{'method':self.clear_pattern}})
 		if libseq.getScale():
 			self.parent.add_menu({'Transpose pattern':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':1, 'value':0, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'-------------------':{}})
@@ -278,8 +278,27 @@ class zynthian_gui_patterneditor():
 			self.parent.set_title(self.title, zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
 
 
+	# Function to assert steps per beat
+	def assert_steps_per_beat(self):
+		self.zyngui.show_confirm("Changing steps per beat may alter timing and/or lose notes?", self.do_steps_per_beat)
+
+
+	# Function to actually change steps per beat
+	def do_steps_per_beat(self, params=None):
+		libseq.setStepsPerBeat(STEPS_PER_BEAT[self.parent.get_param('Steps per beat', 'value')])
+		self.redraw_pending = 2
+
+
 	# Function to assert beats in pattern
-	def set_beats_in_pattern(self):
+	def assert_beats_in_pattern(self):
+		value = self.parent.get_param('Beats in pattern', 'value')
+		if libseq.getLastStep() >= libseq.getStepsPerBeat() * value:
+			self.zyngui.show_confirm("Reducing beats in pattern will truncate pattern", self.set_beats_in_pattern)
+		else:
+			self.set_beats_in_pattern()
+
+	# Function to assert beats in pattern
+	def set_beats_in_pattern(self, params=None):
 		libseq.setBeatsInPattern(self.parent.get_param('Beats in pattern', 'value'))
 		self.redraw_pending = 2
 
@@ -316,6 +335,10 @@ class zynthian_gui_patterneditor():
 	# Function to populate keymap array
 	#	returns Name of scale / map
 	def load_keymap(self):
+		try:
+			base_note = int(self.keymap[self.keymap_offset]['note'])
+		except:
+			base_note = 60
 		scale = libseq.getScale()
 		tonic = libseq.getTonic()
 		name = None
@@ -355,7 +378,10 @@ class zynthian_gui_patterneditor():
 					if key == 0: # 'C'
 						new_entry.update({"name":"C%d" % (note // 12 - 1)})
 					self.keymap.append(new_entry)
-					name = "Chromatic"
+					if note <= base_note:
+						self.keymap_offset = len(self.keymap) - 1
+						self.selected_cell[1] = self.keymap_offset
+				name = "Chromatic"
 			else:
 				with open(CONFIG_ROOT + "/scales.json") as json_file:
 					data = json.load(json_file)
@@ -367,6 +393,9 @@ class zynthian_gui_patterneditor():
 						if note > 127:
 							break
 						self.keymap.append({"note":note, "name":"%s%d"%(self.notes[note % 12],note // 12 - 1)})
+						if note <= base_note:
+							self.keymap_offset = len(self.keymap) - 1
+							self.selected_cell[1] = self.keymap_offset
 				name = data[scale]['name']
 		return name
 
@@ -567,6 +596,7 @@ class zynthian_gui_patterneditor():
 	#	step: Step (column) index
 	#	row: Index of row
 	def draw_cell(self, step, row):
+		libseq.isPatternModified() # Avoid refresh redrawing whole grid
 		cellIndex = row * libseq.getSteps() + step # Cells are stored in array sequentially: 1st row, 2nd row...
 		if cellIndex >= len(self.cells):
 			return
@@ -602,8 +632,7 @@ class zynthian_gui_patterneditor():
 			self.grid_canvas.tag_bind(cell, '<B1-Motion>', self.on_grid_drag)
 			self.cells[cellIndex] = cell
 		if step + duration > libseq.getSteps():
-			if duration > 1:
-				self.grid_canvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - libseq.getSteps() + step), state="normal")
+			self.grid_canvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - libseq.getSteps() + step), state="normal")
 
 
 	# Function to draw grid
@@ -636,11 +665,11 @@ class zynthian_gui_patterneditor():
 			index = row + self.keymap_offset
 			if(index >= len(self.keymap)):
 				break
-			self.draw_row(index)
-			# Update pianoroll keys
 			if clear_grid:
 				# Create last note labels in grid
-				self.grid_canvas.create_text(self.grid_width - self.select_thickness, self.fontsize, state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font, anchor="e")
+				self.grid_canvas.create_text(self.grid_width - self.select_thickness, int(self.row_height * (self.zoom - row - 0.5)), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font, anchor="e")
+			self.draw_row(index)
+			# Update pianoroll keys
 			id = "row%d" % (row)
 			try:
 				name = self.keymap[index]["name"]
@@ -746,7 +775,12 @@ class zynthian_gui_patterneditor():
 
 
 	# Function to clear a pattern
-	def clear_pattern(self):
+	def clear_pattern(self, params=None):
+		self.zyngui.show_confirm("Clear pattern %d?"%(self.pattern), self.do_clear_pattern)
+
+
+	# Function to actually clear pattern
+	def do_clear_pattern(self, params=None):
 		libseq.clear()
 		self.redraw_pending = 2
 		self.select_cell()
@@ -756,9 +790,28 @@ class zynthian_gui_patterneditor():
 
 	# Function to copy pattern
 	def copy_pattern(self):
-		libseq.copyPattern(self.copy_source, self.pattern)
+		if libseq.getLastStep() == -1:
+			self.do_copy_pattern(self.pattern)
+		else:
+			self.zyngui.show_confirm("Overwrite pattern %d with content from pattern %d?"%(self.pattern, self.copy_source), self.do_copy_pattern, self.pattern)
+		self.load_pattern(self.copy_source)
+
+
+	# Function to cancel copy pattern operation
+	def cancel_copy(self):
+		self.load_pattern(self.copy_source)
+
+
+	# Function to actually copy pattern
+	def do_copy_pattern(self, dest_pattern):
+		libseq.copyPattern(self.copy_source, dest_pattern)
+		self.pattern = dest_pattern
 		self.load_pattern(self.pattern)
 		self.copy_source = self.pattern
+		self.parent.arranger.pattern = self.pattern
+		self.parent.arranger.pattern_canvas.itemconfig("patternIndicator", text="%d"%(self.pattern))
+		self.title = "Pattern %d" % (self.pattern)
+		self.parent.set_title(self.title)
 
 
 	# Function to get pattern index
@@ -795,8 +848,6 @@ class zynthian_gui_patterneditor():
 			self.pattern = value
 			self.copy_source = value
 			self.load_pattern(value)
-		elif menu_item == 'Clear pattern':
-			return "Clear pattern %d?" % (self.pattern)
 		elif menu_item =='Copy pattern':
 			self.load_pattern(value)
 			return "Copy %d => %d ?" % (self.copy_source, value)
@@ -826,7 +877,7 @@ class zynthian_gui_patterneditor():
 			self.zoom = value
 		elif menu_item == 'Steps per beat':
 			steps_per_beat = STEPS_PER_BEAT[value]
-			libseq.setStepsPerBeat(steps_per_beat)
+#			libseq.setStepsPerBeat(steps_per_beat)
 			self.redraw_pending = 2
 			value = steps_per_beat
 		elif menu_item == 'Scale':
@@ -842,11 +893,7 @@ class zynthian_gui_patterneditor():
 			self.parent.set_param('Tonic', 'value', value)
 			offset = value - libseq.getTonic()
 			libseq.setTonic(value)
-			if self.parent.get_param('Scale', 'value'):
-				for key in self.keymap:
-					note = key['note'] + offset
-					key['note'] = note
-					key['name'] = "%s%d" % (self.notes[note % 12], note // 12)
+			self.load_keymap()
 			self.redraw_pending = 1
 			return "Tonic: %s" % (self.notes[value])
 		elif menu_item == 'Input channel':
@@ -925,8 +972,9 @@ class zynthian_gui_patterneditor():
 				if self.duration < 1:
 					self.duration = 1
 					return
-				if libseq.getNoteDuration(self.selected_cell[0], self.selected_cell[1]):
-					self.add_event(self.selected_cell[0], self.selected_cell[1])
+				note = self.keymap[self.selected_cell[1]]["note"]
+				if libseq.getNoteDuration(self.selected_cell[0], note):
+					self.add_event(self.selected_cell[0], note)
 				else:
 					self.select_cell()
 				self.parent.set_title("Duration: %d steps" % (self.duration), None, None, 2)

@@ -23,7 +23,7 @@ void Track::addEvent(Event* pEvent)
         m_vSchedule.pop_back(); // Remove end of track event
     for(auto it = m_vSchedule.begin(); it != m_vSchedule.end(); ++it)
     {
-        if((*it)->getTime() < pEvent->getTime())
+        if((*it)->getTime() <= pEvent->getTime())
             continue;
         m_vSchedule.insert(it, pEvent);
         return;

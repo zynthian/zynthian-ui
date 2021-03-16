@@ -39,8 +39,11 @@ from math import sqrt
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_stepsequencer
 from zyngui import zynthian_gui_layer
+from zyngui import zynthian_gui_fileselector
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
+from zynlibs.zynsmf import zynsmf
+from zynlibs.zynsmf.zynsmf import libsmf
 
 
 #------------------------------------------------------------------------------
@@ -75,12 +78,12 @@ class zynthian_gui_arranger():
 		self.col_offset = 0 # Index of time division at left column in grid
 		self.selected_cell = [0, 0] # Location of selected cell (time div, row)
 		self.pattern = 1 # Index of current pattern to add to sequence
+		self.pattern_to_add = 1 # Index of pattern to actually add (may be copied / moved pattern
 		self.position = 0 # Current playhead position
 		self.grid_timer = Timer(1.0, self.on_grid_timer) # Grid press and hold timer
 		#TODO: Populate tracks from file
 		self.sequence_drag_start = None # Set to loaction of mouse during drag
 		self.time_drag_start = None # Set to time of click to test for bold click
-		self.grid_drag_start = None # Set to location of click during drag
 		self.clocks_per_division = 24
 		self.cells = [[None] * 2 for _ in range(self.vertical_zoom * self.horizontal_zoom)] # 2D array of cells 0:cell, 1:cell label
 		self.redraw_pending = 0
@@ -160,38 +163,48 @@ class zynthian_gui_arranger():
 		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_BACK, self)
 		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_SELECT, self)
 		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER, self)
-		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SELECT, self, 'S')
-		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SELECT, self, 'B')
+		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SELECT, self, 'SB')
+		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT, self, 'SB')
+
+
+	# Function to register encoders
+	def unregister_encoders(self):
+		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_BACK)
+		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_SELECT)
+		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER)
+		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SELECT)
+		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT)
 
 
 	# Function to populate menu
 	def populate_menu(self):
+		self.parent.add_menu({'Mute track': {'method':self.toggle_mute}})
 		self.parent.add_menu({'Vertical zoom': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':64, 'value':self.vertical_zoom, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Horizontal zoom': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':64, 'value':self.horizontal_zoom, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'MIDI channel': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':16, 'get_value':self.get_track_channel, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Grid size': {'method':self.parent.show_param_editor, 'params':{'min':1, 'max':8, 'get_value':self.get_columns, 'on_change':self.on_menu_change, 'on_assert':self.set_grid_size}}})
 		self.parent.add_menu({'Group': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':25, 'get_value':self.get_group, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Mode': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':len(self.play_modes)-1, 'get_value':self.getMode, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Trigger channel':{'method':self.parent.show_param_editor, 'params':{'min':1, 'max':16, 'get_value':self.get_trigger_channel, 'on_change':self.on_menu_change}}})
-		self.parent.add_menu({'Trigger note': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':128, 'get_value':self.get_trigger, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Play mode': {'method':self.parent.show_param_editor, 'params': {'min':0, 'max':len(self.play_modes)-1, 'get_value':self.getMode, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Pattern': {'method':self.parent.show_param_editor, 'params': {'min':1, 'max':999, 'get_value':self.get_pattern, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Add track': {'method':self.add_track}})
 		self.parent.add_menu({'Remove track': {'method':self.remove_track}})
-		self.parent.add_menu({'Clear sequence':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_sequence}}})
-		self.parent.add_menu({'Clear bank':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':1, 'value':0, 'on_change':self.on_menu_change, 'on_assert':self.clear_bank}}})
+		self.parent.add_menu({'Clear sequence':{'method':self.clear_sequence}})
+		self.parent.add_menu({'Clear bank':{'method':self.clear_bank}})
+		self.parent.add_menu({'Import SMF':{'method':self.get_smf}})
 
 
-	# Function to get quantity of columns in grid
-	#	Returns: Quantity of columns
-	def get_columns(self):
-		columns = int(sqrt(libseq.getSequencesInBank(self.parent.bank)))
-		if columns < 0:
-			columns = 1
-		return columns
+	# Function to toggle mute of selected track
+	def toggle_mute(self, params=None):
+		libseq.toggleMute(self.parent.bank, self.sequence, self.track)
+		self.redraw_pending = 1
 
 
 	# Function to clear bank
-	def clear_bank(self):
+	def clear_bank(self, params=None):
+		self.zyngui.show_confirm("Clear all sequences from bank %d and reset to 4x4 grid of new sequences?" % (self.parent.bank), self.do_clear_bank)
+
+
+	# Function to actually clear bank
+	def do_clear_bank(self, params=None):
 		libseq.clearBank(self.parent.bank)
 		self.parent.select_bank(self.parent.bank)
 		self.select_cell(0,0)
@@ -199,16 +212,19 @@ class zynthian_gui_arranger():
 
 
 	# Function to clear sequence
-	def clear_sequence(self):
+	def clear_sequence(self, params=None):
+		name = zynseq.get_sequence_name(self.parent.bank, self.sequence)
+		if len(name) == 0:
+			name = "%d" % (self.sequence + 1)
+		self.zyngui.show_confirm('Clear all patterns from sequence "%s"?' %(name), self.do_clear_sequence)
+
+
+	# Function to actually clear selected sequence
+	def do_clear_sequence(self, params=None):
 		libseq.clearSequence(self.parent.bank, self.sequence)
 		self.parent.select_bank(self.parent.bank)
 		self.select_cell(0,self.sequence)
 		self.redraw_pending = 2
-
-
-	# Function called when sequence set loaded from file
-	def get_trigger_channel(self):
-		return libseq.getTriggerChannel() + 1
 
 
 	# Function to add track to selected sequence immediately after selected track
@@ -220,15 +236,115 @@ class zynthian_gui_arranger():
 
 	# Function to remove selected track
 	def remove_track(self, params=None):
+		self.zyngui.show_confirm("Remove track from sequence?", self.do_remove_track)
+
+
+	# Function to actually remove selected track
+	def do_remove_track(self, params=None):
 		libseq.removeTrackFromSequence(self.parent.bank, self.sequence, self.track)
 		self.update_sequence_tracks()
 		self.redraw_pending = 2
 
 
-	#	Function to get quantity of tracks in selected sequence
-	#	Returns: Quantity of tracks
-	def get_tracks(self):
-		return libseq.getTracksInSequence(self.parent.bank, self.sequence)
+	# Function to import SMF
+	def get_smf(self, params=None):
+		zynthian_gui_fileselector.zynthian_gui_fileselector(self.parent, self.import_smf, zynthian_gui_stepsequencer.os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture", "mid", None, True)
+
+
+	# Function to  check if SMF will overwrite tracks in sequence
+	#	filename: Filename of SMF to import
+	def import_smf(self, filename):
+		logging.warning("Seq len:%d pos:%d", libseq.getSequenceLength(self.parent.bank, self.sequence), self.selected_cell[0])
+		if libseq.getSequenceLength(self.parent.bank, self.sequence) > self.selected_cell[0] * 24:
+			self.zyngui.show_confirm("Import will overwrite part of existing sequence. Do you want to continue?", self.do_import_smf, filename)
+		else:
+			self.do_import_smf(filename)
+
+
+	def do_import_smf(self, filename):
+	# Function to actually import SMF
+		smf = libsmf.addSmf()
+		if not zynsmf.load(smf, filename):
+			logging.warning("Failed to load file %s", filename)
+			return
+		bank = self.parent.bank
+		sequence = self.sequence
+		ticks_per_beat = libsmf.getTicksPerQuarterNote(smf)
+		steps_per_beat = 24
+		ticks_per_step = ticks_per_beat / steps_per_beat
+		beats_in_pattern = libseq.getBeatsPerBar()
+		ticks_in_pattern = beats_in_pattern * ticks_per_beat
+		clocks_per_step = 1 # For 24 steps per beat
+		ticks_per_clock = ticks_per_step / clocks_per_step
+		empty_tracks = [False for i in range(16)] # Array of boolean flags indicating if track should be removed at end of import
+#		libseq.clearSequence(bank, sequence) # TODO Do not clear sequence, get sequence length, start at next bar position or current cursor position
+
+		# Add tracks to populate - we will delete unpopulated tracks at end
+		for track in range(16):
+			if libseq.getChannel(bank, sequence, track) != track:
+				libseq.addTrackToSequence(bank, sequence, track - 1)
+				libseq.setChannel(bank, sequence, track, track)
+				empty_tracks[track] = True
+
+		# Do import
+		for channel in range(16):
+			# Iterate through each MIDI channel
+			libsmf.setPosition(smf, 0)
+			pattern = None
+			note_on = 0x90 | channel
+			note_off = 0x80 | channel
+			note_on_info = [[None,None,None,None] for i in range(127)] # Array of [pattern,time,velocity,step] indicating time that note on event received for matching note off and deriving duration
+			pattern_position = self.selected_cell[0] * ticks_per_beat # Position of current pattern within track in ticks
+
+			while libsmf.getEvent(smf, True):
+				type = libsmf.getEventType()
+				time = libsmf.getEventTime()
+				status = libsmf.getEventStatus()
+				if type == 0x01:
+					# MIDI event
+					if channel != libsmf.getEventChannel():
+						continue
+					note = libsmf.getEventValue1()
+					velocity = libsmf.getEventValue2()
+					if status == note_on and velocity:
+						# Found note-on event
+						if time >= pattern_position + ticks_in_pattern or pattern == None:
+							while time >= pattern_position + ticks_in_pattern:
+								pattern_position += ticks_in_pattern
+							pattern = libseq.createPattern()
+							libseq.selectPattern(pattern)
+							libseq.setBeatsInPattern(beats_in_pattern)
+							libseq.setStepsPerBeat(steps_per_beat)
+							position = int(pattern_position / ticks_per_clock)
+							libseq.addPattern(bank, sequence, channel, position, pattern, True)
+						step = int((time - pattern_position) / ticks_per_step)
+						note_on_info[note] = [pattern,time,velocity,step]
+						libseq.addNote(step, note, velocity, 1) # Add short event, may overwrite later when note-off detected
+					elif status == note_off or status == note_on and velocity == 0:
+						# Found note-off event
+						if note_on_info[note][0] == None:
+							continue # Do not have corresponding note-on for this note-off event
+						current_pattern = pattern
+						old_pattern = note_on_info[note][0]
+						trigger_time = note_on_info[note][1]
+						velocity = note_on_info[note][2]
+						step = note_on_info[note][3]
+						libseq.selectPattern(old_pattern)
+						duration = int((time - trigger_time) / ticks_per_step)
+						if duration < 1:
+							duration = 1
+						libseq.addNote(step, note, velocity, duration)
+						note_on_info[note] = [None,None,None,None]
+						pattern = current_pattern
+						libseq.selectPattern(pattern)
+					if(empty_tracks[channel]):
+						empty_tracks[channel] = False
+
+		# Remove empty tracks
+		for track in range(15, -1, -1):
+			if empty_tracks[track]:
+				libseq.removeTrackFromSequence(bank, sequence, track)
+		self.redraw_pending = 2
 
 
 	# Function to show GUI
@@ -238,15 +354,16 @@ class zynthian_gui_arranger():
 		self.select_bank()
 		self.setup_encoders()
 		if "sequence" in params:
-			self.selected_cell[1] = params["sequence"]
+			for row in range(len(self.sequence_tracks)):
+				if self.sequence_tracks[row][0] == params["sequence"]:
+					self.selected_cell[1] = row
+					break
 
 
 	# Function to hide GUI
 	def hide(self):
 		#TODO: Move unregister_zyncoder to panel manager
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_BACK)
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_SELECT)
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER)
+		self.unregister_encoders()
 
 
 	# Function to assert zoom changes and redraw screen
@@ -265,22 +382,9 @@ class zynthian_gui_arranger():
 		return int(libseq.getPlayMode(self.parent.bank, self.sequence))
 
 
-	# Function to get trigger note of selected sequence
-	def get_trigger(self):
-		trigger = libseq.getTriggerNote(self.parent.bank, self.sequence)
-		if trigger > 127:
-			trigger = 128
-		return trigger
-
-
 	# Function to get current pattern
 	def get_pattern(self):
 		return self.pattern
-
-
-	# Function to select .mid file to import
-	def select_import(self, params):
-		zynthian_gui_fileselector(self.parent, self.import_smf, zynthian_gui_stepsequencer.os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture", "mid", None, True)
 
 
 	# Function to set current pattern
@@ -293,17 +397,8 @@ class zynthian_gui_arranger():
 			self.pattern = pattern
 		self.pattern_canvas.itemconfig("patternIndicator", text="%d"%(self.pattern))
 		self.parent.set_param('Pattern', 'value', self.pattern)
+		self.pattern_to_add = self.pattern
 		self.select_cell()
-
-
-	# Function to set quantity of sequences in bank
-	#	Note: Sequences will be deleted or added as necessary
-	def set_grid_size(self):
-		sequences = self.parent.get_param('Grid size', 'value')
-		libseq.setSequencesInBank(self.parent.bank, sequences**2)
-		if self.row_offset + self.vertical_zoom > self.update_sequence_tracks():
-			self.select_cell(self.selected_cell[0], 0)
-		self.redraw_pending = 2
 
 
 	# Function to get quantity of sequences in bank
@@ -345,7 +440,7 @@ class zynthian_gui_arranger():
 			sequence = self.row_offset
 		elif self.selected_cell[1] >= self.row_offset + self.vertical_zoom:
 			sequence = self.row_offset + self.vertical_zoom - 1
-		self.select_cell(self.selected_cell[0], sequence)
+		self.select_cell(self.selected_cell[0], sequence, False)
 
 
 	# Function to handle end of sequence drag
@@ -376,7 +471,7 @@ class zynthian_gui_arranger():
 			return
 		self.col_offset = pos
 		self.redraw_pending = 1
-		duration = int(libseq.getPatternLength(self.pattern) / self.clocks_per_division)
+		duration = int(libseq.getPatternLength(self.pattern_to_add) / self.clocks_per_division)
 		if self.selected_cell[0] < self.col_offset:
 			self.select_cell(self.col_offset, self.selected_cell[1])
 		elif self.selected_cell[0] > self.col_offset + self.horizontal_zoom  - duration:
@@ -394,50 +489,68 @@ class zynthian_gui_arranger():
 	#	event: Mouse event
 	def on_grid_press(self, event):
 		if self.parent.lst_menu.winfo_viewable():
-			self.parent.hideMenu()
+			self.parent.hide_menu()
 			return
 		if self.parent.param_editor_item != None:
 			self.parent.hide_param_editor()
 			return
 
-		self.grid_drag_start = event
-
-		self.grid_timer = Timer(1.0, self.on_grid_timer)
+		self.grid_timer = Timer(1.2, self.on_grid_timer)
 		self.grid_timer.start()
 		tags = self.grid_canvas.gettags(self.grid_canvas.find_withtag(tkinter.CURRENT))
 		if not tags:
 			return
-		col, row = tags[0].split(',')
-		self.select_cell(self.col_offset + int(col), self.row_offset + int(row), False)
+		c, r = tags[0].split(',')
+		self.source_col = self.col_offset + int(event.x / self.column_width)
+		self.source_row = self.row_offset + int(event.y / self.row_height)
+		self.select_cell(self.col_offset + int(c), self.row_offset + int(r), False)
+		self.source_col = self.selected_cell[0]
+		self.source_seq = self.sequence
+		self.source_track = self.track
+		self.pattern_to_add = libseq.getPattern(self.parent.bank, self.sequence, self.track, self.source_col * self.clocks_per_division)
+		if self.pattern_to_add == -1:
+			self.pattern_to_add = self.pattern
 
 
 	# Function to handle grid mouse release
 	#	event: Mouse event
 	def on_grid_release(self, event):
-		self.grid_timer.cancel()
-		if not self.grid_drag_start:
+		if self.grid_timer.isAlive():
+			# Haven't moved cursor so just toggle current pattern
+			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+			self.grid_timer.cancel()
 			return
-		self.grid_drag_start = None
-		self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+		self.grid_timer.cancel()
+		if self.add_event(self.selected_cell[0], self.sequence, self.track):
+			if self.source_col != self.selected_cell[0] or self.source_row != self.selected_cell[1]:
+				self.remove_event(self.source_col, self.source_seq, self.source_track)
+		else:
+			self.select_cell(self.source_col, self.source_row) # Failed to add pattern so reselect original cells
+		self.pattern_to_add = self.pattern
 
 
 	# Function to handle grid mouse motion
 	#	event: Mouse event
-	def on_grid_motion(self, event):
-		if self.grid_drag_start == None:
-			return
+	def on_grid_drag(self, event):
 		col = self.col_offset + int(event.x / self.column_width)
 		row = self.row_offset + int(event.y / self.row_height)
-		if col != self.selected_cell[0] or row != self.selected_cell[1]:
+		if col < self.col_offset or col >= self.col_offset + self.horizontal_zoom or row < self.row_offset or row >= self.row_offset + self.vertical_zoom:
+			return # Avoid scrolling display
+		if self.grid_timer.isAlive():
+			if col == self.source_col and row == self.source_row:
+				return # Haven't moved from original cell
 			self.grid_timer.cancel()
-			self.grid_drag_start.x = event.x
-			self.grid_drag_start.y = event.y
-			self.select_cell(col, row, False)
+			time = self.selected_cell[0] * self.clocks_per_division
+			self.pattern_to_add = libseq.getPattern(self.parent.bank, self.sequence, self.track, time)
+			if self.pattern_to_add == -1:
+				self.pattern_to_add = self.pattern
+		if col != self.selected_cell[0] or row != self.selected_cell[1]:
+			self.select_cell(col, row, False, False) # Move selection to show wireframe of moving (dragging) pattern
 
 
 	# Function to handle grid press and hold
 	def on_grid_timer(self):
-		self.grid_drag_start = None
+		self.pattern_to_add = self.pattern
 		self.show_pattern_editor()
 
 
@@ -447,46 +560,60 @@ class zynthian_gui_arranger():
 		pattern = libseq.getPattern(self.parent.bank, self.sequence, self.track, time)
 		channel = libseq.getChannel(self.parent.bank, self.sequence, self.track)
 		if pattern > 0:
-			self.parent.show_child("pattern editor", {'pattern':pattern, 'channel':channel})
+			self.parent.show_child(self.parent.pattern_editor, {'pattern':pattern, 'channel':channel})
 
 
 	# Function to handle pattern click
 	#	event: Mouse event
 	def on_pattern_click(self, event):
-		self.populate_menu() # Probably better way but this ensures 'Pattern' is in the menu
-		self.parent.show_param_editor('Pattern')
+		if zynthian_gui_config.enable_touch_widgets:
+			self.populate_menu() # Probably better way but this ensures 'Pattern' is in the menu
+			self.parent.show_param_editor('Pattern')
+
+
+	# Toggle playback of selected sequence
+	def toggle_play(self):
+		if libseq.getPlayState(self.parent.bank, self.sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
+			bars = int(self.selected_cell[0] / libseq.getBeatsPerBar())
+			pos = bars * libseq.getBeatsPerBar() * self.clocks_per_division
+			if libseq.getSequenceLength(self.parent.bank, self.sequence) > pos:
+				libseq.setPlayPosition(self.parent.bank, self.sequence, pos)
+		libseq.togglePlayState(self.parent.bank, self.sequence)
 
 
 	# Function to toggle note event
-	#	col: Column
-	#	row: Row
-	def toggle_event(self, div, row):
-		time = div * self.clocks_per_division
+	#	col: Grid column relative to start of song
+	#	row: Grid row
+	def toggle_event(self, col, row):
+		time = col * self.clocks_per_division
 		if libseq.getPattern(self.parent.bank, self.sequence, self.track, time) == -1:
-			self.add_event(div, self.sequence, self.track)
+			self.add_event(col, self.sequence, self.track)
 		else:
-			self.remove_event(div, self.sequence, self.track)
-		self.select_cell(div, row)
+			self.remove_event(col, self.sequence, self.track)
+		self.select_cell(col, row)
 
 
 	# Function to remove an event
-	#	div: Time division index (column + columun offset)
+	#	col: Time division index (column + columun offset)
 	#	sequence: Sequence number
 	#	track: Track within sequence
-	def remove_event(self, div, sequence, track):
-		time = div * self.clocks_per_division
+	def remove_event(self, col, sequence, track):
+		time = col * self.clocks_per_division
 		libseq.removePattern(self.parent.bank, sequence, track, time)
 		self.redraw_pending = 1 #TODO: Optimise redraw
 
 
 	# Function to add an event
-	#	div: Time division index (column + columun offset)
+	#	col: Time division index (column + columun offset)
 	#	sequence: Sequence number
 	#	track: Track within sequence
-	def add_event(self, div, sequence, track):
-		time = div * self.clocks_per_division
-		if libseq.addPattern(self.parent.bank, sequence, track, time, self.pattern, False):
+	#	returns: True on success
+	def add_event(self, col, sequence, track):
+		time = col * self.clocks_per_division
+		if libseq.addPattern(self.parent.bank, sequence, track, time, self.pattern_to_add, False):
 			self.redraw_pending = 1 #TODO: Optimise redraw
+			return True
+		return False
 
 
 	# Function to draw seqeuence / track labels
@@ -514,11 +641,15 @@ class zynthian_gui_arranger():
 				self.seq_track_title_width, (1 + row) * self.row_height - 1, tags=('rowback:%d'%(row), 'sequence_title'),
 				fill=fill)
 		if track == 0 or row == 0:
-    		# Create sequence title label from first visible track of sequence
+			# Create sequence title label from first visible track of sequence
 			self.sequence_title_canvas.create_text((0, self.row_height * row + 1),
 					font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="nw",
-					text="%s%d"%(chr(65+group), sequence + 1))
-		self.sequence_title_canvas.create_text((self.seq_track_title_width - 2, self.row_height * row + 1),
+					text=zynseq.get_sequence_name(self.parent.bank, sequence))
+			self.grid_canvas.delete('playheadline-%d'%(row))
+			self.grid_canvas.create_line(0, self.row_height * (row + 1), 0, self.row_height * (row), fill=PLAYHEAD_CURSOR, tags=('playheadline','playheadline-%d'%(row)), state='hidden')
+		else:
+			# Don't show track number on track 1 to allow sequence name to be longer and simplify display when single tracks are use
+			self.sequence_title_canvas.create_text((self.seq_track_title_width - 2, self.row_height * row + 1),
 				font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="ne",
 				text="%d" % (track + 1))
 		self.sequence_title_canvas.create_text((0, self.row_height * (row + 1) - 1),
@@ -580,19 +711,22 @@ class zynthian_gui_arranger():
 
 		pattern = libseq.getPattern(self.parent.bank, sequence, track, time)
 		if pattern == -1 and col == 0:
+			# Search for earlier pattern that extends into view
 			pattern = libseq.getPatternAt(self.parent.bank, sequence, track, time)
 			if pattern != -1:
 				duration = int(libseq.getPatternLength(pattern) / self.clocks_per_division)
-				while time > 0:
+				while time > 0 and duration > 1:
 					time -= self.clocks_per_division
 					duration -= 1
-					if pattern != libseq.getPatternAt(self.parent.bank, sequence, track, time):
+					if pattern == libseq.getPattern(self.parent.bank, sequence, track, time):
 						break
 		elif pattern != -1:
 				duration = int(libseq.getPatternLength(pattern) / self.clocks_per_division)
 		if pattern == -1:
 			duration = 1
 			fill = CANVAS_BACKGROUND
+		elif libseq.isMuted(self.parent.bank, sequence, track):
+			fill = zynthian_gui_stepsequencer.PAD_COLOUR_DISABLED
 		else:
 			fill = CELL_BACKGROUND
 		if col + duration > self.col_offset + self.horizontal_zoom:
@@ -605,11 +739,11 @@ class zynthian_gui_arranger():
 		coord = self.get_cell_coord(col, row, duration)
 		if not cell:
 			# Create new cell
-			cell = self.grid_canvas.create_rectangle(coord, fill=fill, width=0, tags=("%d,%d"%(col,row), "gridcell"))
-			celltext = self.grid_canvas.create_text(coord[0] + 1, coord[1] + self.row_height / 2, fill=CELL_FOREGROUND, tags=("celltext:%d,%d"%(col,row)))
-			self.grid_canvas.tag_bind(cell, '<ButtonPress-1>', self.on_grid_press)
-			self.grid_canvas.tag_bind(cell, '<ButtonRelease-1>', self.on_grid_release)
-			self.grid_canvas.tag_bind(cell, '<B1-Motion>', self.on_grid_motion)
+			cell = self.grid_canvas.create_rectangle(coord, fill=fill, width=0, tags=("%d,%d"%(col,row), "gridcell", "pattern"))
+			celltext = self.grid_canvas.create_text(coord[0] + 1, coord[1] + self.row_height / 2, fill=CELL_FOREGROUND, tags=("%d,%d"%(col,row), "pattern"))
+			self.grid_canvas.tag_bind("pattern", '<ButtonPress-1>', self.on_grid_press)
+			self.grid_canvas.tag_bind("pattern", '<ButtonRelease-1>', self.on_grid_release)
+			self.grid_canvas.tag_bind("pattern", '<B1-Motion>', self.on_grid_drag)
 			self.grid_canvas.tag_lower(cell) # Assume cells are always created left to right
 			self.cells[cell_index][0] = cell
 			self.cells[cell_index][1] = celltext
@@ -633,7 +767,6 @@ class zynthian_gui_arranger():
 			self.grid_canvas.delete(tkinter.ALL)
 			self.sequence_title_canvas.delete(tkinter.ALL)
 			self.column_width = self.grid_width / self.horizontal_zoom
-#			self.grid_canvas.create_line(0, 0, 0, self.grid_height, fill=PLAYHEAD_CURSOR, tags='playheadline')
 			self.cells = [[None] * 2 for _ in range(self.vertical_zoom * self.horizontal_zoom)]
 			self.select_cell()
 		self.redraw_pending = 0
@@ -645,14 +778,15 @@ class zynthian_gui_arranger():
 				break
 			self.draw_row(row, True)
 
+
 		# Vertical (bar / sync) lines
 		self.grid_canvas.delete('barlines')
 		self.timebase_track_canvas.delete('barlines')
 		font = tkFont.Font(size=self.small_font_size)
 		tempo_y = font.metrics('linespace')
 		offset = 0 - int(self.col_offset % self.horizontal_zoom)
-		for bar in range(offset, self.horizontal_zoom, int(libseq.getBarLength(self.parent.bank) / self.clocks_per_division)):
-			self.grid_canvas.create_line(bar * self.column_width, 0, bar * self.column_width, self.grid_height, fill='white', tags='barlines')
+		for bar in range(offset, self.horizontal_zoom, libseq.getBeatsPerBar()):
+			self.grid_canvas.create_line(bar * self.column_width, 0, bar * self.column_width, self.grid_height, fill='#808080', tags='barlines')
 			if bar:
 				self.timebase_track_canvas.create_text(bar * self.column_width, 0, fill='white', text="%d"%(bar+self.col_offset), anchor='n', tags='barlines')
 			else:
@@ -675,13 +809,16 @@ class zynthian_gui_arranger():
 						self.timebase_track_canvas.create_text(tempoX, tempo_y, fill='red', text=data, anchor='n', tags='bpm')
 					else:
 						self.timebase_track_canvas.create_text(tempoX, tempo_y, fill='red', text=data, anchor='nw', tags='bpm')
+		
+		self.grid_canvas.tag_lower('barlines')
 
 
 	# Function to select a cell within the grid
 	#	time: Time (column) of selected cell (Optional - default to reselect current column)
 	#	row: Row of selected cell (0..quantity of tracks. Optional - default to reselect current row)
 	#	snap: True to snap to closest pattern (Optional - default True)
-	def select_cell(self, time=None, row=None, snap=True):
+	#	scroll: True to scroll to show selected cell (Optional - default True)
+	def select_cell(self, time=None, row=None, snap=True, scroll=True):
 		if time == None:
 			time = self.selected_cell[0]
 		if row == None:
@@ -690,7 +827,7 @@ class zynthian_gui_arranger():
 			row = len(self.sequence_tracks) - 1
 		if row < 0:
 			row = 0
-		duration = int(libseq.getPatternLength(self.pattern) / self.clocks_per_division)
+		duration = int(libseq.getPatternLength(self.pattern_to_add) / self.clocks_per_division)
 		sequence = self.sequence_tracks[row][0]
 		track = self.sequence_tracks[row][1]
 		self.parent.set_title("Bank %d %s%d-%d (%d) %s" % (self.parent.bank, chr(65 + libseq.getGroup(self.parent.bank,sequence)), sequence+1, track + 1, libseq.getChannel(self.parent.bank,sequence, track) + 1, self.get_note(libseq.getTriggerNote(self.parent.bank,sequence))))
@@ -750,24 +887,25 @@ class zynthian_gui_arranger():
 
 		if time < 0:
 			time = 0
-		if time + duration > self.col_offset + self.horizontal_zoom:
-			# time is off right of display
-			self.col_offset = time + duration - self.horizontal_zoom
-			self.redraw_pending = 1
-		if time < self.col_offset:
-			# time is off left of display
-			self.col_offset = time
-			self.redraw_pending = 1
-		if row >= self.row_offset + self.vertical_zoom:
-			# row is off bottom of display
-			self.row_offset = row - self.vertical_zoom + 1
-			self.redraw_pending = 1
-		elif row < self.row_offset:
-			self.row_offset = row
-			self.redraw_pending = 1
-		if backward != None and self.col_offset > 0 and time > backward:
-			self.col_offset = self.col_offset - 1
-			self.redraw_pending = 1
+		if scroll:
+			if time + duration > self.col_offset + self.horizontal_zoom:
+				# time is off right of display
+				self.col_offset = time + duration - self.horizontal_zoom
+				self.redraw_pending = 1
+			if time < self.col_offset:
+				# time is off left of display
+				self.col_offset = time
+				self.redraw_pending = 1
+			if row >= self.row_offset + self.vertical_zoom:
+				# row is off bottom of display
+				self.row_offset = row - self.vertical_zoom + 1
+				self.redraw_pending = 2
+			elif row < self.row_offset:
+				self.row_offset = row
+				self.redraw_pending = 2
+			if backward != None and self.col_offset > 0 and time > backward:
+				self.col_offset = self.col_offset - 1
+				self.redraw_pending = 1
 		self.selected_cell = [time, row]
 		self.sequence = self.sequence_tracks[row][0]
 		self.track = self.sequence_tracks[row][1]
@@ -783,12 +921,13 @@ class zynthian_gui_arranger():
 			self.grid_canvas.coords(selection_border, coord)
 		self.grid_canvas.itemconfig(selection_border, state='normal')
 		self.grid_canvas.tag_raise(selection_border)
-		if row < self.row_offset:
-			self.row_offset = row
-			self.redraw_pending = 1
-		if row > self.row_offset + self.vertical_zoom:
-			self.row_offset = row + self.vertical_zoom
-			self.redraw_pending = 1
+		if scroll:
+			if row < self.row_offset:
+				self.row_offset = row
+				self.redraw_pending = 1
+			if row > self.row_offset + self.vertical_zoom:
+				self.row_offset = row + self.vertical_zoom
+				self.redraw_pending = 1
 
 
 	# Function to calculate cell size
@@ -831,27 +970,12 @@ class zynthian_gui_arranger():
 			libseq.setGroup(self.parent.bank, self.sequence, value)
 			self.redraw_pending = 2
 			return "Group: %s" % (chr(65 + value))
-		elif menu_item == "Mode":
+		elif menu_item == "Play mode":
 			libseq.setPlayMode(self.parent.bank, self.sequence, value)
 			self.redraw_pending = 2
-			return "Mode: %s" % (self.play_modes[value])
-		elif menu_item == 'Grid size':
-			return "Grid size: %dx%d" % (value, value)
-		elif menu_item == 'Trigger channel':
-			libseq.setTriggerChannel(value - 1)
-		elif menu_item == "Trigger note":
-			libseq.setTriggerNote(self.parent.bank, self.sequence, value)
-			self.redraw_pending = 2
-			if value > 127:
-				return "Trigger: None"
-			else:
-				return "Trigger: %s" % self.get_note(value)
+			return "Play mode: %s" % (self.play_modes[value])
 		elif menu_item == "Pattern":
 			self.set_pattern(value)
-		elif menu_item == 'Clear bank':
-			return "Clear bank %d?" % (self.parent.bank)
-		elif menu_item == 'Clear sequence':
-			return "Clear sequence %d?" % (self.sequence + 1)
 
 		return "%s: %d" % (menu_item, value)
 
@@ -906,15 +1030,32 @@ class zynthian_gui_arranger():
 	def refresh_status(self):
 		if self.redraw_pending:
 			self.draw_grid()
-#		if self.song < 1000:
-#			pos = libseq.getSongPosition()# / self.clocks_per_division
-#		else:
-#			sequence = libseq.getSequence(self.song, self.selected_cell[1]) #TODO: Offset?
-#			pos = libseq.getPlayPosition(sequence)# / self.clocks_per_division
-#		if self.position != pos:
-#			self.showPos(pos)
-#			self.position = pos
-#		self.grid_canvas.coords('playheadline', (pos - self.col_offset) * self.column_width, 0, (pos - self.col_offset) * self.column_width, self.grid_height)
+		previous_sequence = -1
+		x = 0
+		y1 = 0
+		y2 = 0
+		seq_row = 0
+		for row in range(self.vertical_zoom):
+			sequence = self.sequence_tracks[row + self.row_offset][0]
+			if sequence != previous_sequence and sequence != -1:
+				self.grid_canvas.coords('playheadline-%d'%seq_row, x, y1, x, y2)
+				self.grid_canvas.itemconfig('playheadline-%d'%seq_row, state='normal')
+			pos = libseq.getPlayPosition(self.parent.bank, sequence) / self.clocks_per_division
+			x = (pos - self.col_offset) * self.column_width
+			if sequence == previous_sequence:
+				y2 = self.row_height * (row + 1)
+			else:
+				y1 = self.row_height * row
+				y2 = self.row_height * (row + 1)
+				seq_row = row
+			previous_sequence = sequence
+			if sequence == self.sequence and libseq.getPlayState(self.parent.bank, sequence) in [zynthian_gui_stepsequencer.SEQ_PLAYING,zynthian_gui_stepsequencer.SEQ_STOPPING]:
+				if x > self.grid_width:
+					self.select_cell(int(pos), self.selected_cell[1])
+				elif x < 0:
+					self.select_cell(0, self.selected_cell[1])
+		self.grid_canvas.coords('playheadline-%d'%seq_row, x, y1, x, y2)
+		self.grid_canvas.itemconfig('playheadline-%d'%seq_row, state='normal')
 
 
 	# Function to handle zyncoder value change
@@ -944,6 +1085,11 @@ class zynthian_gui_arranger():
 			self.show_pattern_editor()
 		elif switch == zynthian_gui_stepsequencer.ENC_SELECT:
 			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+		elif switch == zynthian_gui_stepsequencer.ENC_SNAPSHOT:
+			if type == 'B':
+				self.toggle_mute()
+			else:
+				self.toggle_play()
 		else:
 			return False
 		return True

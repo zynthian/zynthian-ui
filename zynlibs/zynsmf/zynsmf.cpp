@@ -186,11 +186,11 @@ void addNote(Smf* pSmf, uint32_t nTrack, uint32_t nTime, uint32_t nDuration, uin
 	pSmf->addEvent(nTrack, pEvent);
 }
 
-void addTempo(Smf* pSmf, uint32_t nTime, uint32_t nTempo)
+void addTempo(Smf* pSmf, uint32_t nTime, double dTempo)
 {
 	if(!isSmfValid(pSmf))
 		return;
-	uint32_t nUspqn = (60000000/nTempo);
+	uint32_t nUspqn = (60000000/dTempo);
 	//!@todo Validate tempo calculation
 	uint8_t* pData = new uint8_t[3];
 	*pData = uint8_t(nUspqn >> 16);
@@ -598,7 +598,7 @@ bool isRecording()
 	return g_bRecording;
 }
 
-float getTempo(Smf* pSmf, uint32_t nTime)
+double getTempo(Smf* pSmf, uint32_t nTime)
 {
 	if(!isSmfValid(pSmf))
 		return 120.0;

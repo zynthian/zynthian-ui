@@ -86,7 +86,7 @@ def init():
 	try:
 		libsmf=ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynsmf.so")
 		libsmf.getDuration.restype = ctypes.c_double
-		libsmf.getTempo.restype = ctypes.c_float
+		libsmf.getTempo.restype = ctypes.c_double
 	except Exception as e:
 		libsmf=None
 		print("Can't initialise zynsmf library: %s" % str(e))

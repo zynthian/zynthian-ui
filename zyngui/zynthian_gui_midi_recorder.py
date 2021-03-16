@@ -28,6 +28,7 @@ import logging
 from threading import Timer
 from time import sleep
 from os.path import isfile, join, basename
+import ctypes
 
 # Zynthian specific modules
 import zynconf
@@ -300,8 +301,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		try:
 			zynsmf.load(self.smf_player,fpath)
-			tempo = int(libsmf.getTempo(self.smf_player, 0))
-			libseq.setTempo(tempo) #TODO: This isn't working
+			tempo = libsmf.getTempo(self.smf_player, 0)
+			libseq.setTempo(ctypes.c_double(tempo)) #TODO: This isn't working
 			libsmf.startPlayback()
 			zynseq.transport_start("zynsmf")
 #			libseq.transportLocate(0)
@@ -361,7 +362,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	# Implement engine's method
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol=="bpm":
-			libseq.setTempo(zctrl.value)
+			libseq.setTempo(ctypes.c_double(zctrl.value))
 			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
 
 
