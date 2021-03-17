@@ -742,7 +742,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def check_for_updates(self):
-		self.zyngui.show_info("Checking for updates...")
+		self.zyngui.show_info("CHECK FOR UPDATES")
 		self.start_command(["git -C /zynthian/zyncoder remote update; git -C /zynthian/zynthian-ui remote update; git -C /zynthian/zynthian-sys remote update; git -C /zynthian/zynthian-webconf remote update; git -C /zynthian/zynthian-data remote update"])
 
 
