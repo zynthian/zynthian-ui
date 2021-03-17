@@ -304,15 +304,12 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.child != self.pattern_editor:
 			self.add_menu({'Bank':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'value':self.bank, 'on_change':self.on_menu_change}}})
 		if zynthian_gui_config.enable_touch_widgets:
-			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1.0, 'max':500.0, 'get_value':self.get_tempo, 'on_change':self.on_menu_change}}})
+			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1.0, 'max':500.0, 'get_value':libseq.getTempo(), 'on_change':self.on_menu_change}}})
 		self.add_menu({'Beats per bar':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':libseq.getBeatsPerBar, 'on_change':self.on_menu_change}}})
 		#self.add_menu({'Load':{'method':self.select_filename, 'params':self.filename}})
 		#self.add_menu({'Save':{'method':self.save_as, 'params':self.filename}})
 		self.add_menu({'-------------------':{}})
 
-
-	def get_tempo(self):
-		return libseq.getTempo()
 
 	# Function to update title
 	#	title: Title to display in topbar
@@ -404,8 +401,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.unregister_zyncoder(encoder)
 		self.register_switch(ENC_SELECT, self)
 		self.register_switch(ENC_BACK, self)
-#		if zynthian_gui_config.enable_touch_widgets:
-		if True:
+		if zynthian_gui_config.enable_touch_widgets:
 			self.menu_button_canvas.grid()
 			self.menu_button_canvas.grid_propagate(False)
 			self.menu_button_canvas.grid(column=0, row=0, sticky='nsew')
@@ -417,8 +413,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.hide_param_editor()
 		self.unregister_zyncoder(ENC_SELECT)
 		self.lst_menu.grid_forget()
-#		if zynthian_gui_config.enable_touch_widgets:
-		self.menu_button_canvas.grid_forget()
+		if zynthian_gui_config.enable_touch_widgets:
+			self.menu_button_canvas.grid_forget()
 		for encoder in range(4):
 			self.unregister_zyncoder(encoder)
 		if self.child:
@@ -858,7 +854,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to handle zyncoder polling
-	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +1 and calculate offset
+	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at 64 and calculate offset
 	def zyncoder_read(self):
 		if not self.shown:
 			return
