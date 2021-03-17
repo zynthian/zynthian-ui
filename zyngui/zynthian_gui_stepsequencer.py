@@ -124,6 +124,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		super().__init__()
 		self.shown = False # True when GUI in view
 		self.zyncoder_owner = [None, None, None, None] # Object that currently "owns" encoder, indexed by encoder
+		self.zyncoder_step = [1, 1, 1, 1] # Zyncoder step. 0 for dynamic step (speed variable).
 		self.switch_owner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.bank = 1 # Currently displayed bank of sequences
@@ -867,7 +868,15 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				if self.zyncoder_owner[encoder]:
 					# Found a registered zyncoder
 					value = zyncoder.get_value_zyncoder(encoder)
-					step = value-64
+					if self.zyncoder_step[encoder]==0:
+						step = value-64
+					else:
+						if value>65+self.zyncoder_step[encoder]:
+							step = 1
+						elif value<63-self.zyncoder_step[encoder]:
+							step = -1
+						else:
+							step = 0
 					if step:
 						#logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, step)
@@ -1031,7 +1040,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	#	encoder: Index of rotary encoder [0..3]
 	#	object: Object to register as owner
 	#	Note: Registers an object to own the encoder which will trigger that object's onZyncoder method when encoder rotated passing it +/- value since last read
-	def register_zyncoder(self, encoder, object):
+	def register_zyncoder(self, encoder, object, step=1):
 		if encoder >= len(self.zyncoder_owner):
 			return
 		self.zyncoder_owner[encoder] = None
@@ -1039,8 +1048,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.shown and zyncoder:
 			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
-			zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, 0)
+			zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, step)
 			self.zyncoder_owner[encoder] = object
+			self.zyncoder_step[encoder] = step
 
 
 	# Function to unregister ownership of an encoder from an object
@@ -1048,7 +1058,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def unregister_zyncoder(self, encoder):
 		if encoder >= len(self.zyncoder_owner):
 			return
-		self.register_zyncoder(encoder, self)
+		if encoder==ENC_SNAPSHOT:
+			step = 0
+		else:
+			step = 1
+		self.register_zyncoder(encoder, self, step)
 
 #------------------------------------------------------------------------------
 
