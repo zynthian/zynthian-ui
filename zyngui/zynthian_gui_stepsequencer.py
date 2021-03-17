@@ -177,13 +177,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.param_editor_canvas.grid_propagate(False)
 		self.param_editor_canvas.bind('<Button-1>', self.hide_param_editor)
 
-		# Parameter editor cancel button
-		self.button_param_cancel = tkinter.Button(self.param_editor_canvas, command=self.hide_param_editor,
-			image=self.image_back,
-			bd=0, highlightthickness=0,
-			relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-		self.button_param_cancel.grid(column=0, row=0, padx=1)
 		if zynthian_gui_config.enable_touch_widgets:
+			# Parameter editor cancel button
+			self.button_param_cancel = tkinter.Button(self.param_editor_canvas, command=self.hide_param_editor,
+				image=self.image_back,
+				bd=0, highlightthickness=0,
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
+			self.button_param_cancel.grid(column=0, row=0, padx=1)
 			# Parameter editor decrement button
 			self.button_param_down = tkinter.Button(self.param_editor_canvas, command=self.decrement_param,
 				image=self.image_down,
@@ -235,8 +235,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.lst_menu.bind('<B1-Motion>', self.on_menu_drag)
 		self.lst_menu.bind('<ButtonRelease-1>', self.on_menu_select)
 		self.scrollTime = 0.0
-#		if zynthian_gui_config.enable_touch_widgets:
-		if True:
+		if zynthian_gui_config.enable_touch_widgets:
 			self.menu_button_canvas = tkinter.Canvas(self.tb_frame,
 				height=zynthian_gui_config.topbar_height,
 				bg=zynthian_gui_config.color_bg, bd=0, highlightthickness=0)
@@ -851,7 +850,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			elif encoder == ENC_SNAPSHOT:
 				self.change_param(value / 10)
 		elif encoder == ENC_SNAPSHOT:
-			libseq.setTempo(ctypes.c_double(libseq.getTempo() + value))
+			libseq.setTempo(ctypes.c_double(libseq.getTempo() + 0.1*value))
 			self.set_title("Tempo: %0.1f BPM" % (libseq.getTempo()), None, None, 2)
 		elif encoder == ENC_LAYER:
 			self.select_bank(self.bank + value)
@@ -868,12 +867,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				if self.zyncoder_owner[encoder]:
 					# Found a registered zyncoder
 					value = zyncoder.get_value_zyncoder(encoder)
-					if value>66:
-						step = 1
-					elif value<62:
-						step = -1
-					else:
-						step = 0
+					step = value-64
 					if step:
 						#logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, step)
@@ -1045,7 +1039,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.shown and zyncoder:
 			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
-			zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, 1)
+			zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, 0)
 			self.zyncoder_owner[encoder] = object
 
 
