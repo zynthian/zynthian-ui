@@ -128,6 +128,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.bank = 1 # Currently displayed bank of sequences
 		self.layers = [None for i in range(16)] # Root layer indexed by MIDI channel
+		self.max_step = [1,1,1,1] # Maximum steps each encoder can change
 
 		#libseq.enableDebug(True)
 
@@ -303,15 +304,12 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.child != self.pattern_editor:
 			self.add_menu({'Bank':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'value':self.bank, 'on_change':self.on_menu_change}}})
 		if zynthian_gui_config.enable_touch_widgets:
-			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1.0, 'max':500.0, 'get_value':self.get_tempo, 'on_change':self.on_menu_change}}})
+			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1.0, 'max':500.0, 'get_value':libseq.getTempo, 'on_change':self.on_menu_change}}})
 		self.add_menu({'Beats per bar':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':libseq.getBeatsPerBar, 'on_change':self.on_menu_change}}})
 		#self.add_menu({'Load':{'method':self.select_filename, 'params':self.filename}})
 		#self.add_menu({'Save':{'method':self.save_as, 'params':self.filename}})
 		self.add_menu({'-------------------':{}})
 
-
-	def get_tempo(self):
-		return libseq.getTempo()
 
 	# Function to update title
 	#	title: Title to display in topbar
@@ -403,8 +401,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.unregister_zyncoder(encoder)
 		self.register_switch(ENC_SELECT, self)
 		self.register_switch(ENC_BACK, self)
-#		if zynthian_gui_config.enable_touch_widgets:
-		if True:
+		if zynthian_gui_config.enable_touch_widgets:
 			self.menu_button_canvas.grid()
 			self.menu_button_canvas.grid_propagate(False)
 			self.menu_button_canvas.grid(column=0, row=0, sticky='nsew')
@@ -857,7 +854,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to handle zyncoder polling
-	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +1 and calculate offset
+	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +64 and calculate offset
 	def zyncoder_read(self):
 		if not self.shown:
 			return
@@ -869,6 +866,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					value = zyncoder.get_value_zyncoder(encoder)
 					step = value-64
 					if step:
+						if step > self.max_step[encoder]:
+							step = self.max_step[encoder]
+						if step < -self.max_step[encoder]:
+							step = -self.max_step[encoder]
 						#logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, step)
 						zyncoder.set_value_zyncoder(encoder, 64, 0)
@@ -1030,8 +1031,9 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to register ownership of an encoder by an object
 	#	encoder: Index of rotary encoder [0..3]
 	#	object: Object to register as owner
+	#	accelerate: True to enable rotary acceleration
 	#	Note: Registers an object to own the encoder which will trigger that object's onZyncoder method when encoder rotated passing it +/- value since last read
-	def register_zyncoder(self, encoder, object):
+	def register_zyncoder(self, encoder, object, accelerate=False):
 		if encoder >= len(self.zyncoder_owner):
 			return
 		self.zyncoder_owner[encoder] = None
@@ -1040,6 +1042,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
 			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
 			zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, 0)
+			if accelerate:
+				self.max_step[encoder] = 63
+			else:
+				self.max_step[encoder] = 1
 			self.zyncoder_owner[encoder] = object
 
 
@@ -1048,7 +1054,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def unregister_zyncoder(self, encoder):
 		if encoder >= len(self.zyncoder_owner):
 			return
-		self.register_zyncoder(encoder, self)
+		if encoder == ENC_SNAPSHOT:
+			self.register_zyncoder(encoder, self, True)
+		else:
+			self.register_zyncoder(encoder, self)
 
 #------------------------------------------------------------------------------
 
