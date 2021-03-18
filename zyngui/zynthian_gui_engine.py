@@ -80,6 +80,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			eng = 'JV/{}'.format(plugin_name)
 			cls.engine_info[eng] = (plugin_name, plugin_name, plugin_info['TYPE'], plugin_info.get('CLASS', None), zynthian_engine_jalv, plugin_info['ENABLED'])
 
+		cls.engine_info['PD'] = ("PureData", "PureData - Visual Programming", "Special", zynthian_engine_puredata, True)
+		cls.engine_info['CS'] = ("CSound", "CSound Audio Language", "Special", zynthian_engine_csound, False)
+		cls.engine_info['MD'] = ("MOD-UI", "MOD-UI - Plugin Host", "Special", zynthian_engine_modui, True)
+		cls.engine_info['RD'] = ("Radio", "Radio - Internet and Playlists", "Special", zynthian_engine_radio, True)
+		cls.engine_info['RT'] = ("SDR", "SDR - FM Radio", "Special", zynthian_engine_sdrradio, True)
+
 
 	def __init__(self):
 		self.reset_index = True
