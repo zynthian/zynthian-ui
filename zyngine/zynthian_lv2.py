@@ -39,7 +39,7 @@ from collections import OrderedDict
 
 def init_lilv():
 	global world
-	world = lilv.World()
+
 	world.load_all()
 
 	world.ns.ev = lilv.Namespace(world, "http://lv2plug.in/ns/ext/event#")
@@ -293,7 +293,6 @@ def _generate_plugin_presets_cache(plugin):
 	# Get banks
 	banks = plugin.get_related(world.ns.presets.Bank)
 	for bank in banks:
-		world.load_resource(bank)
 		label = world.get(bank, world.ns.rdfs.label, None)
 		if label is None:
 			logging.warning("Bank <{}> has no label!".format(bank))
@@ -336,6 +335,9 @@ def _generate_plugin_presets_cache(plugin):
 		})
 
 		logging.debug("Preset {} <{}> => <{}>".format(label, bank, preset))
+
+	for preset in presets:
+		world.unload_resource(preset)
 
 	# Sort and Remove empty banks 
 	keys = list(presets_info.keys())
@@ -467,6 +469,7 @@ def get_node_value(node):
 
 #------------------------------------------------------------------------------
 
+world = lilv.World()
 init_lilv()
 load_plugins()
 #generate_plugin_presets_cache("http://code.google.com/p/amsynth/amsynth")
