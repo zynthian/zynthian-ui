@@ -413,7 +413,7 @@ def set_midi_config():
 	global preset_preload_noteon, midi_single_active_channel
 	global midi_prog_change_zs3, midi_fine_tuning
 	global midi_filter_rules, midi_filter_output
-	global midi_sys_enabled, midi_clock_enabled, midi_aubionotes_enabled
+	global midi_sys_enabled, midi_clock_enabled, midi_aubionotes_enabled, midi_jamulus_enabled
 	global midi_network_enabled, midi_rtpmidi_enabled, midi_touchosc_enabled
 	global master_midi_channel, master_midi_change_type
 	global master_midi_program_change_up, master_midi_program_change_down
@@ -434,6 +434,7 @@ def set_midi_config():
 	midi_rtpmidi_enabled=int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED',0))
 	midi_touchosc_enabled=int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED',0))
 	midi_aubionotes_enabled=int(os.environ.get('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED',0))
+	midi_jamulus_enabled=int(os.environ.get('ZYNTHIAN_MIDI_JAMULUS_ENABLED',0))
 
 	# Filter Rules
 	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES',"")
