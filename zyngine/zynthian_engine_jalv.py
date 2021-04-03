@@ -67,6 +67,15 @@ class zynthian_engine_jalv(zynthian_engine):
 		("Raffo MiniMoog", {'TYPE': "MIDI Synth",'URL': "http://example.org/raffo"})
 	])
 
+	broken_ui = [
+			'http://calf.sourceforge.net/plugins/Monosynth',
+			'http://calf.sourceforge.net/plugins/Organ',
+			'http://nickbailey.co.nr/triceratops',
+			'http://code.google.com/p/amsynth/amsynth'
+		]
+	if "Raspberry Pi 4" not in os.environ.get('RBPI_VERSION'):
+		broken_ui.append('http://tytel.org/helm')
+
 	#------------------------------------------------------------------------------
 	# Native formats configuration (used by zynapi_install, preset converter, etc.)
 	#------------------------------------------------------------------------------
@@ -162,17 +171,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.nickname = "JV/" + plugin_name
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
-		broken_ui = [
-				'http://calf.sourceforge.net/plugins/Monosynth',
-				'http://calf.sourceforge.net/plugins/Organ',
-				'http://nickbailey.co.nr/triceratops',
-				'http://code.google.com/p/amsynth/amsynth'
-			]
-		if "Raspberry Pi 4" not in check_output(["cat", "/proc/device-tree/model"]).decode():
-			broken_ui.append('http://tytel.org/helm')
-		if self.plugin_url in broken_ui:
-			self.ui = False
-		else:
+
+		self.ui = False
+		if self.plugin_url not in self.broken_ui and 'UI' in self.plugins_dict[plugin_name]:
 			self.ui = self.plugins_dict[plugin_name]['UI']
 
 		if plugin_type=="MIDI Tool":
