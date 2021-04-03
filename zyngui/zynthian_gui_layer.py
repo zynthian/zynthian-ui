@@ -147,8 +147,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.amixer_layer = None
 
 
-	def layer_control(self):
-		self.zyngui.layer_control(self.root_layers[self.index])
+	def layer_control(self, layer=None):
+		if not layer:
+			layer = self.root_layers[self.index]
+		self.zyngui.layer_control(layer)
 
 
 	def layer_options(self):
@@ -326,7 +328,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				root_layer = self.get_fxchain_root(layer)
 				try:
 					self.index = self.root_layers.index(root_layer)
-					self.layer_control()
+					self.layer_control(layer)
 				except Exception as e:
 					logging.error(e)
 					self.zyngui.show_screen('layer')

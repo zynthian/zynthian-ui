@@ -59,10 +59,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		# Effect Layer Options
 		if self.audiofx_layer:
-			self.list_data.append((self.audiofx_replace, None, "Replace Audio-FX"))
-
 			if len(self.audiofx_layer.preset_list)>1:
 				self.list_data.append((self.audiofx_presets, None, "Audio-FX Presets"))
+
+			self.list_data.append((self.audiofx_replace, None, "Replace Audio-FX"))
 
 			if self.audiofx_can_move_upchain():
 				self.list_data.append((self.audiofx_move_upchain, None, "Move Upchain"))
@@ -200,30 +200,14 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.index = 0
 		self.audiofx_layer = layer
 		self.audiofx_layer_index = self.zyngui.screens['layer'].layers.index(layer)
-
-		if t=='S':
-			if len(self.audiofx_layer.preset_list):
-				self.audiofx_presets()
-			else:
-				self.show()
-
-		elif t=='B':
-			self.show()
+		self.show()
 
 
 	def midifx_layer_action(self, layer, t='S'):
 		self.index = 0
 		self.midifx_layer = layer
 		self.midifx_layer_index = self.zyngui.screens['layer'].layers.index(layer)
-
-		if t=='S':
-			if len(self.midifx_layer.preset_list):
-				self.midifx_presets()
-			else:
-				self.show()
-
-		elif t=='B':
-			self.show()
+		self.show()
 
 
 	def back_action(self):
@@ -352,8 +336,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def audiofx_presets(self):
-		self.zyngui.set_curlayer(self.audiofx_layer)
-		self.zyngui.show_screen('bank')
+		self.zyngui.set_curlayer(self.audiofx_layer, True)
+		self.zyngui.show_modal('bank')
 		# If there is only one bank, jump to preset selection
 		if len(self.layer.bank_list)<=1:
 			self.zyngui.screens['bank'].select_action(0)
@@ -415,8 +399,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def midifx_presets(self):
-		self.zyngui.set_curlayer(self.midifx_layer)
-		self.zyngui.show_screen('bank')
+		self.zyngui.set_curlayer(self.midifx_layer, True)
+		self.zyngui.show_modal('bank')
 		# If there is only one bank, jump to preset selection
 		if len(self.layer.bank_list)<=1:
 			self.zyngui.screens['bank'].select_action(0)

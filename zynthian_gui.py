@@ -550,16 +550,25 @@ class zynthian_gui:
 
 
 	def layer_control(self, layer=None):
+		modal = False
 		if layer is not None:
+			if layer in self.screens['layer'].root_layers:
+				self._curlayer = None
+			else:
+				modal = True
+				self._curlayer = self.curlayer
+
 			self.set_curlayer(layer)
-			self._curlayer = None
 
 		if self.curlayer:
 			# If there is a preset selection for the active layer ...
 			if self.curlayer.get_preset_name():
 				self.show_screen('control')
 			else:
-				self.show_screen('bank')
+				if modal:
+					self.show_modal('bank')
+				else:
+					self.show_screen('bank')
 				# If there is only one bank, jump to preset selection
 				if len(self.curlayer.bank_list)<=1:
 					self.screens['bank'].select_action(0)
@@ -598,8 +607,9 @@ class zynthian_gui:
 		logging.debug("SHOW CONTROL-XY => %s, %s" % (xctrl.symbol, yctrl.symbol))
 
 
-	def set_curlayer(self, layer):
+	def set_curlayer(self, layer, save=False):
 		if layer is not None:
+			self._curlayer = self.curlayer
 			self.curlayer=layer
 			self.screens['bank'].fill_list()
 			self.screens['preset'].fill_list()
