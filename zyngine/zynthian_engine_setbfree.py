@@ -266,36 +266,44 @@ class zynthian_engine_setbfree(zynthian_engine):
 			midi_chans = [ch, 15, 15]
 
 			logging.info("Upper Layer in chan {}".format(midi_chans[0]))
-			self.layers[0].bank_name = "Upper"
-			self.layers[0].load_bank_list()
-			self.layers[0].set_bank(0)
+			i = 0
+			self.layers[i].bank_name = "Upper"
+			self.layers[i].load_bank_list()
+			self.layers[i].set_bank(0)
 
 			# Extra layers
 			if self.manuals_config[4][0]:
-				try:
-					ch = midi_chans[1] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
-					logging.info("Lower Manual Layer in chan {}".format(midi_chans[1]))
-					self.zyngui.screens['layer'].add_layer_midich(midi_chans[1], False)
-					self.layers[1].bank_name = "Lower"
-					self.layers[1].load_bank_list()
-					self.layers[1].set_bank(0)
+				i += 1
+				if len(self.layers)==i:
+					try:
+						ch = midi_chans[1] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
+						logging.info("Lower Manual Layer in chan {}".format(midi_chans[1]))
+						self.zyngui.screens['layer'].add_layer_midich(midi_chans[1], False)
+						self.layers[i].bank_name = "Lower"
+						self.layers[i].load_bank_list()
+						self.layers[i].set_bank(0)
 
-				except Exception as e:
-					logging.error("Lower Manual Layer can't be added! => {}".format(e))
+					except Exception as e:
+						logging.error("Lower Manual Layer can't be added! => {}".format(e))
+				else:
+					midi_chans[1] = self.layers[i].midi_chan
 
 			if self.manuals_config[4][1]:
-				try:
-					# Adding Pedal Layer
-					midi_chans[2] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
-					logging.info("Pedal Layer in chan {}".format(midi_chans[2]))
-					self.zyngui.screens['layer'].add_layer_midich(midi_chans[2], False)
-					i=len(self.layers)-1
-					self.layers[i].bank_name = "Pedals"
-					self.layers[i].load_bank_list()
-					self.layers[i].set_bank(0)
+				i += 1
+				if len(self.layers)==i:
+					try:
+						# Adding Pedal Layer
+						midi_chans[2] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
+						logging.info("Pedal Layer in chan {}".format(midi_chans[2]))
+						self.zyngui.screens['layer'].add_layer_midich(midi_chans[2], False)
+						self.layers[i].bank_name = "Pedals"
+						self.layers[i].load_bank_list()
+						self.layers[i].set_bank(0)
 
-				except Exception as e:
-					logging.error("Pedal Layer can't be added! => {}".format(e))
+					except Exception as e:
+						logging.error("Pedal Layer can't be added! => {}".format(e))
+				else:
+					midi_chans[2] = self.layers[i].midi_chan
 
 			# Start engine
 			logging.debug("STARTING SETBFREE!!")
