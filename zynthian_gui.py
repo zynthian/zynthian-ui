@@ -1063,17 +1063,16 @@ class zynthian_gui:
 				# Try to call modal back_action method:
 				try:
 					screen_back = self.screens[self.modal_screen].back_action()
+					logging.debug("SCREEN BACK => " + screen_back)
 				except:
 					pass
 
-				# Back to active screen by default ...
+				# Back to previous screen or modal
 				if screen_back is None:
 					if self.modal_screen_back:
 						screen_back = self.modal_screen_back
 					else:
 						screen_back = self.active_screen
-
-				self.modal_screen = None
 
 			else:
 				try:

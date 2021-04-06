@@ -170,6 +170,13 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		super().fill_list()
 
 
+	def search_fx_index(self, sl):
+		for i,row in enumerate(self.list_data):
+			if row[1]==sl:
+				return i
+		return None
+
+
 	def show(self):
 		if self.layer_index is None:
 			self.layer_index = self.zyngui.screens['layer'].index
@@ -211,42 +218,20 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def back_action(self):
-		if self.audiofx_layer:
-			sl = self.audiofx_layer
+		if self.audiofx_layer or self.midifx_layer:
+			if self.audiofx_layer:
+				sl = self.audiofx_layer
+			else:
+				sl = self.midifx_layer
+
+			# Back to layer options
 			self.reset()
 			self.show()
 
 			# Recover cursor position
-			if len(self.audiofx_layers)>0:
-				self.index = len(self.list_data) - len(self.audiofx_layers)
-				try:
-					self.index += self.audiofx_layers.index(sl)
-				except:
-					pass
-
-			else:
-				self.index = len(self.list_data) - 1
-
+			self.index = self.search_fx_index(sl)
 			self.select()
-			return ''
 
-		elif self.midifx_layer:
-			sl = self.midifx_layer
-			self.reset()
-			self.show()
-
-			# Recover cursor position
-			if len(self.midifx_layers)>0:
-				self.index = len(self.list_data) - len(self.midifx_layers)
-				try:
-					self.index += self.midifx_layers.index(sl)
-				except:
-					pass
-
-			else:
-				self.index = len(self.list_data) - 1
-
-			self.select()
 			return ''
 
 		else:
