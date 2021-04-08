@@ -609,7 +609,6 @@ class zynthian_gui:
 
 	def set_curlayer(self, layer, save=False):
 		if layer is not None:
-			self._curlayer = self.curlayer
 			self.curlayer=layer
 			self.screens['bank'].fill_list()
 			self.screens['preset'].fill_list()
