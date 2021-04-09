@@ -73,10 +73,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.list_data.append((self.audiofx_remove, None, "Remove Audio-FX"))
 
 		elif self.midifx_layer:
-			self.list_data.append((self.midifx_replace, None, "Replace MIDI-FX"))
-
 			if len(self.midifx_layer.preset_list)>1:
 				self.list_data.append((self.midifx_presets, None, "MIDI-FX Presets"))
+
+			self.list_data.append((self.midifx_replace, None, "Replace MIDI-FX"))
 
 			if self.midifx_can_move_upchain():
 				self.list_data.append((self.midifx_move_upchain, None, "Move Upchain"))
@@ -324,7 +324,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.zyngui.set_curlayer(self.audiofx_layer, True)
 		self.zyngui.show_modal('bank')
 		# If there is only one bank, jump to preset selection
-		if len(self.layer.bank_list)<=1:
+		if len(self.audiofx_layer.bank_list)<=1:
 			self.zyngui.screens['bank'].select_action(0)
 
 
@@ -387,7 +387,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.zyngui.set_curlayer(self.midifx_layer, True)
 		self.zyngui.show_modal('bank')
 		# If there is only one bank, jump to preset selection
-		if len(self.layer.bank_list)<=1:
+		if len(self.midifx_layer.bank_list)<=1:
 			self.zyngui.screens['bank'].select_action(0)
 
 
