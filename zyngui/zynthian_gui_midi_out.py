@@ -87,11 +87,6 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 		self.fill_list()
 
 
-	def back_action(self):
-		self.zyngui.show_modal('layer_options')
-		return ''
-
-
 	def set_select_path(self):
 		if self.layer and self.layer.get_basepath():
 			self.select_path.set("Send MIDI from {} to ...".format(self.layer.get_basepath()))

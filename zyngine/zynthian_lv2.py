@@ -31,6 +31,7 @@ import string
 import logging
 import contextlib
 import re
+import urllib.parse
 
 from enum import Enum
 from collections import OrderedDict
@@ -116,6 +117,18 @@ def is_plugin_enabled(plugin_name):
 		return False
 
 
+def	is_plugin_ui(plugin):
+	for uri in plugin.get_data_uris():
+		try:
+			with open(urllib.parse.unquote(str(uri)[7:])) as f:
+				if f.read().find("a ui:X11UI") > 0:
+					return True
+		except:
+			logging.error("Failed to get UI for plugin %s", str(plugin.get_name()))
+			pass
+	return False
+
+
 def generate_plugins_config_file(refresh=True):
 	global world, plugins, plugins_mtime
 	genplugins = OrderedDict()
@@ -132,7 +145,8 @@ def generate_plugins_config_file(refresh=True):
 				'URL': str(plugin.get_uri()),
 				'TYPE': get_plugin_type(plugin).value,
 				'CLASS': re.sub(' Plugin', '', str(plugin.get_class().get_label())),
-				'ENABLED': is_plugin_enabled(name)
+				'ENABLED': is_plugin_enabled(name),
+				'UI': is_plugin_ui(plugin)
 			}
 
 		plugins = OrderedDict(sorted(genplugins.items()))
