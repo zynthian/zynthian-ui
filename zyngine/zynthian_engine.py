@@ -62,7 +62,7 @@ class zynthian_basic_engine:
 		self.proc_timeout = 20
 		self.proc_start_sleep = None
 		self.command = command
-		self.command_env = None
+		self.command_env = os.environ.copy()
 		self.command_prompt = prompt
 
 
@@ -78,12 +78,8 @@ class zynthian_basic_engine:
 		if not self.proc:
 			logging.info("Starting Engine {}".format(self.name))
 			try:
-
 				logging.debug("Command: {}".format(self.command))
-				if self.command_env:
-					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
-				else:
-					self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout)
+				self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
 
 				self.proc.delaybeforesend = 0
 
@@ -208,28 +204,14 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def config_remote_display(self):
-		fvars={}
-		if os.environ.get('ZYNTHIANX'):
-			fvars['DISPLAY']=os.environ.get('ZYNTHIANX')
-		else:
-			try:
-				with open("/root/.remote_display_env","r") as fh:
-					lines = fh.readlines()
-					for line in lines:
-						parts=line.strip().split('=')
-						if len(parts)>=2 and parts[1]: fvars[parts[0]]=parts[1]
-			except:
-				fvars['DISPLAY']=""
-
-		self.command_env=os.environ.copy()
-		if 'DISPLAY' not in fvars or not fvars['DISPLAY'] or fvars['DISPLAY'] == 'NONE':
-			logging.info("NO REMOTE DISPLAY")
+		if 'ZYNTHIAN_X11_SSH' in os.environ and 'SSH_CLIENT' in os.environ and 'DISPLAY' in os.environ:
+			return True
+		elif os.system('systemctl -q is-active vncserver@\:1'):
 			return False
 		else:
-			logging.info("REMOTE DISPLAY: %s" % fvars['DISPLAY'])
-			for f,v in fvars.items():
-				self.command_env[f] = v
+			self.command_env['DISPLAY'] = ':1'
 			return True
+
 
 	# ---------------------------------------------------------------------------
 	# Loading GUI signalization

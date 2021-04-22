@@ -67,6 +67,15 @@ class zynthian_engine_jalv(zynthian_engine):
 		("Raffo MiniMoog", {'TYPE': "MIDI Synth",'URL': "http://example.org/raffo"})
 	])
 
+	broken_ui = [
+			'http://calf.sourceforge.net/plugins/Monosynth',
+			'http://calf.sourceforge.net/plugins/Organ',
+			'http://nickbailey.co.nr/triceratops',
+			'http://code.google.com/p/amsynth/amsynth'
+		]
+	if "Raspberry Pi 4" not in os.environ.get('RBPI_VERSION'):
+		broken_ui.append('http://tytel.org/helm')
+
 	#------------------------------------------------------------------------------
 	# Native formats configuration (used by zynapi_install, preset converter, etc.)
 	#------------------------------------------------------------------------------
@@ -163,6 +172,10 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
+		self.ui = False
+		if self.plugin_url not in self.broken_ui and 'UI' in self.plugins_dict[plugin_name]:
+			self.ui = self.plugins_dict[plugin_name]['UI']
+
 		if plugin_type=="MIDI Tool":
 			self.options['midi_route'] = True
 			self.options['audio_route'] = False
@@ -171,7 +184,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.options['note_range'] = False
 
 		if not dryrun:
-			if self.config_remote_display():
+			if self.config_remote_display() and self.ui:
 				self.command = ("jalv.gtk --jack-name {} {}".format(self.get_jalv_jackname(), self.plugin_url))
 			else:
 				self.command_env['DISPLAY'] = "X"
@@ -272,6 +285,8 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
+		if not preset[0]:
+			return
 		output=self.proc_cmd("preset {}".format(preset[0]))
 
 		#Parse new controller values
