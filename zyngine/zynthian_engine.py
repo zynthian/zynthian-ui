@@ -221,14 +221,14 @@ class zynthian_engine(zynthian_basic_engine):
 			except:
 				fvars['DISPLAY']=""
 
+		self.command_env=os.environ.copy()
 		if 'DISPLAY' not in fvars or not fvars['DISPLAY'] or fvars['DISPLAY'] == 'NONE':
 			logging.info("NO REMOTE DISPLAY")
 			return False
 		else:
 			logging.info("REMOTE DISPLAY: %s" % fvars['DISPLAY'])
-			self.command_env=os.environ.copy()
 			for f,v in fvars.items():
-				self.command_env[f]=v
+				self.command_env[f] = v
 			return True
 
 	# ---------------------------------------------------------------------------
