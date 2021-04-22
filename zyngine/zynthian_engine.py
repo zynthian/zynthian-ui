@@ -62,7 +62,7 @@ class zynthian_basic_engine:
 		self.proc_timeout = 20
 		self.proc_start_sleep = None
 		self.command = command
-		self.command_env = None
+		self.command_env = os.environ.copy()
 		self.command_prompt = prompt
 
 
@@ -79,7 +79,7 @@ class zynthian_basic_engine:
 			logging.info("Starting Engine {}".format(self.name))
 			try:
 				logging.debug("Command: {}".format(self.command))
-				self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout)
+				self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
 
 				self.proc.delaybeforesend = 0
 
