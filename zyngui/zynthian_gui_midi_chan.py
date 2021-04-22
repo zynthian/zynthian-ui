@@ -157,15 +157,6 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 					self.select(i)
 
 
-	def back_action(self):
-		if self.mode=='SET' or self.mode=='CLONE':
-			self.zyngui.show_modal('layer_options')
-			return ''
-		else:
-			self.zyngui.show_modal('engine')
-			return ''
-
-
 	def set_select_path(self):
 		if self.mode=='ADD' or self.mode=='SET':
 			self.select_path.set("MIDI Channel")

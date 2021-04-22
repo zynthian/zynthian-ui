@@ -259,9 +259,12 @@ class zynthian_gui_touchscreen_calibration:
 				else:
 					f = (self.height * 0.15 - e * min_y) / self.height
 				self.setCalibration(self.device_name, [a, 0, c, 0, e, f, 0, 0, 1], True)
+
 				#TODO: Allow user to check calibration
-				self.hide(False)
+
+				self.zyngui.zynswitch_defered('S',1)
 				return
+
 		self.drawCross()
 
 	
@@ -357,7 +360,6 @@ class zynthian_gui_touchscreen_calibration:
 				self.setCalibration(self.device_name, self.ctm)
 			self.main_frame.grid_forget()
 			self.shown=False
-			self.zyngui.show_screen(self.zyngui.active_screen)
 
 
 	# 	Show display
@@ -384,7 +386,7 @@ class zynthian_gui_touchscreen_calibration:
 		if self.shown:
 			self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.countdown))
 			if self.countdown <= 0:
-				self.hide()
+				self.zyngui.zynswitch_defered('S',1)
 				return
 			if not self.pressed:
 				self.countdown -= 1
@@ -407,10 +409,5 @@ class zynthian_gui_touchscreen_calibration:
 	def switch_select(self, type='S'):
 		pass
 
-
-	#	Handle BACK button action
-	def back_action(self):
-		self.hide()
-		return self.zyngui.active_screen
 
 #-------------------------------------------------------------------------------

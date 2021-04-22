@@ -304,7 +304,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if self.child != self.pattern_editor:
 			self.add_menu({'Bank':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'value':self.bank, 'on_change':self.on_menu_change}}})
 		if zynthian_gui_config.enable_touch_widgets:
-			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1.0, 'max':500.0, 'get_value':libseq.getTempo(), 'on_change':self.on_menu_change}}})
+			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1.0, 'max':500.0, 'get_value':libseq.getTempo, 'on_change':self.on_menu_change}}})
 		self.add_menu({'Beats per bar':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':libseq.getBeatsPerBar, 'on_change':self.on_menu_change}}})
 		#self.add_menu({'Load':{'method':self.select_filename, 'params':self.filename}})
 		#self.add_menu({'Save':{'method':self.save_as, 'params':self.filename}})

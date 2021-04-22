@@ -102,6 +102,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.list_data=[]
 
 		i=0
+		if self.action=="SAVE":
+			self.list_data.append(("NEW_BANK",1,"New Bank"))
+			i=i+1
+
 		if self.action=="SAVE" or isfile(self.default_snapshot_fpath):
 			self.list_data.append((self.default_snapshot_fpath,i,"Default"))
 			i=i+1
@@ -109,10 +113,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if self.action=="LOAD" and isfile(self.last_state_snapshot_fpath):
 			self.list_data.append((self.last_state_snapshot_fpath,i,"Last State"))
 			i += 1
-
-		if self.action=="SAVE":
-			self.list_data.append(("NEW_BANK",1,"New Bank"))
-			i=i+1
 
 		self.change_index_offset(i)
 
@@ -138,15 +138,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.list_data.append((self.base_dir,0,".."))
 			i += 1
 
-		else:
-			if self.action=="SAVE":
-				self.list_data.append(("NEW_SNAPSHOT",i,"NEW"))
-				i += 1
+		if self.action=="SAVE":
+			self.list_data.append(("NEW_SNAPSHOT",i,"NEW"))
+			i += 1
+			if self.bankless_mode:
 				self.list_data.append((self.default_snapshot_fpath,i,"Default"))
 				i += 1
 				self.list_data.append((self.last_state_snapshot_fpath,i,"Last State"))
 				i += 1
-			elif self.action=="LOAD": 
+		elif self.action=="LOAD": 
+			if self.bankless_mode:
 				if isfile(self.default_snapshot_fpath):
 					self.list_data.append((self.default_snapshot_fpath,i,"Default"))
 					i += 1

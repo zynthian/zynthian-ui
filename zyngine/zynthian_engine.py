@@ -62,6 +62,7 @@ class zynthian_basic_engine:
 		self.proc_timeout = 20
 		self.proc_start_sleep = None
 		self.command = command
+		self.command_env = None
 		self.command_prompt = prompt
 
 
@@ -205,10 +206,11 @@ class zynthian_engine(zynthian_basic_engine):
 	def config_remote_display(self):
 		if 'ZYNTHIAN_X11_SSH' in os.environ and 'SSH_CLIENT' in os.environ and 'DISPLAY' in os.environ:
 			return True
-		if os.system('systemctl -q is-active vncserver@\:1'):
+		elif os.system('systemctl -q is-active vncserver@\:1'):
 			return False
-		os.environ['DISPLAY'] = ':1'
-		return True
+		else:
+			self.command_env['DISPLAY'] = ':1'
+			return True
 
 
 	# ---------------------------------------------------------------------------

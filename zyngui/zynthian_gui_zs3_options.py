@@ -73,11 +73,6 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 		self.zyngui.show_modal("zs3_learn")
 
 
-	def back_action(self):
-		self.zyngui.show_modal("zs3_learn")
-		return ''
-
-
 	def set_select_path(self):
 		self.select_path.set("PROG Options")
 
