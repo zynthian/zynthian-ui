@@ -31,6 +31,7 @@ import string
 import logging
 import contextlib
 import re
+import urllib.parse
 
 from enum import Enum
 from collections import OrderedDict
@@ -39,7 +40,7 @@ from collections import OrderedDict
 
 def init_lilv():
 	global world
-	world = lilv.World()
+
 	world.load_all()
 
 	world.ns.ev = lilv.Namespace(world, "http://lv2plug.in/ns/ext/event#")
@@ -116,6 +117,18 @@ def is_plugin_enabled(plugin_name):
 		return False
 
 
+def	is_plugin_ui(plugin):
+	for uri in plugin.get_data_uris():
+		try:
+			with open(urllib.parse.unquote(str(uri)[7:])) as f:
+				if f.read().find("a ui:X11UI") > 0:
+					return True
+		except:
+			logging.error("Failed to get UI for plugin %s", str(plugin.get_name()))
+			pass
+	return False
+
+
 def generate_plugins_config_file(refresh=True):
 	global world, plugins, plugins_mtime
 	genplugins = OrderedDict()
@@ -132,7 +145,8 @@ def generate_plugins_config_file(refresh=True):
 				'URL': str(plugin.get_uri()),
 				'TYPE': get_plugin_type(plugin).value,
 				'CLASS': re.sub(' Plugin', '', str(plugin.get_class().get_label())),
-				'ENABLED': is_plugin_enabled(name)
+				'ENABLED': is_plugin_enabled(name),
+				'UI': is_plugin_ui(plugin)
 			}
 
 		plugins = OrderedDict(sorted(genplugins.items()))
@@ -293,7 +307,6 @@ def _generate_plugin_presets_cache(plugin):
 	# Get banks
 	banks = plugin.get_related(world.ns.presets.Bank)
 	for bank in banks:
-		world.load_resource(bank)
 		label = world.get(bank, world.ns.rdfs.label, None)
 		if label is None:
 			logging.warning("Bank <{}> has no label!".format(bank))
@@ -336,6 +349,9 @@ def _generate_plugin_presets_cache(plugin):
 		})
 
 		logging.debug("Preset {} <{}> => <{}>".format(label, bank, preset))
+
+	for preset in presets:
+		world.unload_resource(preset)
 
 	# Sort and Remove empty banks 
 	keys = list(presets_info.keys())
@@ -467,6 +483,7 @@ def get_node_value(node):
 
 #------------------------------------------------------------------------------
 
+world = lilv.World()
 init_lilv()
 load_plugins()
 #generate_plugin_presets_cache("http://code.google.com/p/amsynth/amsynth")

@@ -235,6 +235,8 @@ class zynthian_gui:
 			lib_zyncoder.set_midi_filter_tuning_freq(c_double(self.fine_tuning_freq))
 			#Set MIDI Master Channel
 			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
+			#Set MIDI CC automode
+			lib_zyncoder.set_midi_ctrl_automode(zynthian_gui_config.midi_cc_automode)
 			#Setup MIDI filter rules
 			if self.midi_filter_script:
 				self.midi_filter_script.clean()
