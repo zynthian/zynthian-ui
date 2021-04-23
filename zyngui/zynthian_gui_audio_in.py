@@ -68,11 +68,6 @@ class zynthian_gui_audio_in(zynthian_gui_selector):
 		self.fill_list()
 
 
-	def back_action(self):
-		self.zyngui.show_modal('layer_options')
-		return ''
-
-
 	def set_select_path(self):
 		self.select_path.set("Capture Audio from ...")
 

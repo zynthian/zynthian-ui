@@ -59,10 +59,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		# Effect Layer Options
 		if self.audiofx_layer:
-			self.list_data.append((self.audiofx_replace, None, "Replace Audio-FX"))
-
 			if len(self.audiofx_layer.preset_list)>1:
 				self.list_data.append((self.audiofx_presets, None, "Audio-FX Presets"))
+
+			self.list_data.append((self.audiofx_replace, None, "Replace Audio-FX"))
 
 			if self.audiofx_can_move_upchain():
 				self.list_data.append((self.audiofx_move_upchain, None, "Move Upchain"))
@@ -73,10 +73,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.list_data.append((self.audiofx_remove, None, "Remove Audio-FX"))
 
 		elif self.midifx_layer:
-			self.list_data.append((self.midifx_replace, None, "Replace MIDI-FX"))
-
 			if len(self.midifx_layer.preset_list)>1:
 				self.list_data.append((self.midifx_presets, None, "MIDI-FX Presets"))
+
+			self.list_data.append((self.midifx_replace, None, "Replace MIDI-FX"))
 
 			if self.midifx_can_move_upchain():
 				self.list_data.append((self.midifx_move_upchain, None, "Move Upchain"))
@@ -170,6 +170,13 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		super().fill_list()
 
 
+	def search_fx_index(self, sl):
+		for i,row in enumerate(self.list_data):
+			if row[1]==sl:
+				return i
+		return None
+
+
 	def show(self):
 		if self.layer_index is None:
 			self.layer_index = self.zyngui.screens['layer'].index
@@ -200,69 +207,31 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.index = 0
 		self.audiofx_layer = layer
 		self.audiofx_layer_index = self.zyngui.screens['layer'].layers.index(layer)
-
-		if t=='S':
-			if len(self.audiofx_layer.preset_list):
-				self.audiofx_presets()
-			else:
-				self.show()
-
-		elif t=='B':
-			self.show()
+		self.show()
 
 
 	def midifx_layer_action(self, layer, t='S'):
 		self.index = 0
 		self.midifx_layer = layer
 		self.midifx_layer_index = self.zyngui.screens['layer'].layers.index(layer)
-
-		if t=='S':
-			if len(self.midifx_layer.preset_list):
-				self.midifx_presets()
-			else:
-				self.show()
-
-		elif t=='B':
-			self.show()
+		self.show()
 
 
 	def back_action(self):
-		if self.audiofx_layer:
-			sl = self.audiofx_layer
+		if self.audiofx_layer or self.midifx_layer:
+			if self.audiofx_layer:
+				sl = self.audiofx_layer
+			else:
+				sl = self.midifx_layer
+
+			# Back to layer options
 			self.reset()
 			self.show()
 
 			# Recover cursor position
-			if len(self.audiofx_layers)>0:
-				self.index = len(self.list_data) - len(self.audiofx_layers)
-				try:
-					self.index += self.audiofx_layers.index(sl)
-				except:
-					pass
-
-			else:
-				self.index = len(self.list_data) - 1
-
+			self.index = self.search_fx_index(sl)
 			self.select()
-			return ''
 
-		elif self.midifx_layer:
-			sl = self.midifx_layer
-			self.reset()
-			self.show()
-
-			# Recover cursor position
-			if len(self.midifx_layers)>0:
-				self.index = len(self.list_data) - len(self.midifx_layers)
-				try:
-					self.index += self.midifx_layers.index(sl)
-				except:
-					pass
-
-			else:
-				self.index = len(self.list_data) - 1
-
-			self.select()
 			return ''
 
 		else:
@@ -352,10 +321,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def audiofx_presets(self):
-		self.zyngui.set_curlayer(self.audiofx_layer)
-		self.zyngui.show_screen('bank')
+		self.zyngui.set_curlayer(self.audiofx_layer, True)
+		self.zyngui.show_modal('bank')
 		# If there is only one bank, jump to preset selection
-		if len(self.layer.bank_list)<=1:
+		if len(self.audiofx_layer.bank_list)<=1:
 			self.zyngui.screens['bank'].select_action(0)
 
 
@@ -415,10 +384,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def midifx_presets(self):
-		self.zyngui.set_curlayer(self.midifx_layer)
-		self.zyngui.show_screen('bank')
+		self.zyngui.set_curlayer(self.midifx_layer, True)
+		self.zyngui.show_modal('bank')
 		# If there is only one bank, jump to preset selection
-		if len(self.layer.bank_list)<=1:
+		if len(self.midifx_layer.bank_list)<=1:
 			self.zyngui.screens['bank'].select_action(0)
 
 

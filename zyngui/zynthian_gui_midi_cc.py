@@ -95,11 +95,6 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 		logging.info("MIDI CC {} CLONE CH#{}=>CH#{}: {}".format(cc_num, self.chan_from, self.chan_to, self.cc[cc_num]))
 
 
-	def back_action(self):
-		self.zyngui.show_modal('midi_chan')
-		return ''
-
-
 	def set_select_path(self):
 		try:
 			self.select_path.set("Clone {} => {} / CC...".format(self.chan_from+1, self.chan_to+1))

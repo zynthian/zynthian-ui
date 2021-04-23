@@ -235,6 +235,8 @@ class zynthian_gui:
 			lib_zyncoder.set_midi_filter_tuning_freq(c_double(self.fine_tuning_freq))
 			#Set MIDI Master Channel
 			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
+			#Set MIDI CC automode
+			lib_zyncoder.set_midi_ctrl_automode(zynthian_gui_config.midi_cc_automode)
 			#Setup MIDI filter rules
 			if self.midi_filter_script:
 				self.midi_filter_script.clean()
@@ -550,16 +552,25 @@ class zynthian_gui:
 
 
 	def layer_control(self, layer=None):
+		modal = False
 		if layer is not None:
+			if layer in self.screens['layer'].root_layers:
+				self._curlayer = None
+			else:
+				modal = True
+				self._curlayer = self.curlayer
+
 			self.set_curlayer(layer)
-			self._curlayer = None
 
 		if self.curlayer:
 			# If there is a preset selection for the active layer ...
 			if self.curlayer.get_preset_name():
 				self.show_screen('control')
 			else:
-				self.show_screen('bank')
+				if modal:
+					self.show_modal('bank')
+				else:
+					self.show_screen('bank')
 				# If there is only one bank, jump to preset selection
 				if len(self.curlayer.bank_list)<=1:
 					self.screens['bank'].select_action(0)
@@ -598,9 +609,11 @@ class zynthian_gui:
 		logging.debug("SHOW CONTROL-XY => %s, %s" % (xctrl.symbol, yctrl.symbol))
 
 
-	def set_curlayer(self, layer):
+	def set_curlayer(self, layer, save=False):
 		if layer is not None:
-			self.curlayer=layer
+			if save:
+				self._curlayer = self.curlayer
+			self.curlayer = layer
 			self.screens['bank'].fill_list()
 			self.screens['preset'].fill_list()
 			self.screens['control'].fill_list()
@@ -1053,17 +1066,16 @@ class zynthian_gui:
 				# Try to call modal back_action method:
 				try:
 					screen_back = self.screens[self.modal_screen].back_action()
+					logging.debug("SCREEN BACK => " + screen_back)
 				except:
 					pass
 
-				# Back to active screen by default ...
+				# Back to previous screen or modal
 				if screen_back is None:
 					if self.modal_screen_back:
 						screen_back = self.modal_screen_back
 					else:
 						screen_back = self.active_screen
-
-				self.modal_screen = None
 
 			else:
 				try:

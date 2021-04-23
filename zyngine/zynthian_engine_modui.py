@@ -98,15 +98,14 @@ class zynthian_engine_modui(zynthian_engine):
 		self.ws_bundle_loaded = False
 		if not self.is_service_active("mod-ui"):
 			logging.info("STARTING MOD-HOST & MOD-UI services...")
-			check_output(("systemctl start mod-host && systemctl start mod-ui"),shell=True)
-			#check_output(("systemctl start mod-ui"),shell=True)
+			check_output(("systemctl start mod-ui"),shell=True)
 
 
 	def stop(self):
 		#self.stop_websocket()
 		if self.is_service_active("mod-ui"):
 			logging.info("STOPPING MOD-HOST & MOD-UI services...")
-			check_output(("systemctl stop mod-host && systemctl stop mod-ui"),shell=True)
+			check_output(("systemctl stop mod-host && systemctl stop browsepy && systemctl stop mod-ui"),shell=True)
 			#check_output(("systemctl stop mod-ui"),shell=True)
 		self.ws_bundle_loaded = False
 

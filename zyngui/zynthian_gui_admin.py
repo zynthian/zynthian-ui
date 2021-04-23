@@ -143,7 +143,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.zyngui.calibrate_touchscreen,0,"Calibrate Touchscreen"))
-		self.list_data.append((self.update_software,0,"Update Software"))
+		if self.is_update_available():
+			self.list_data.append((self.update_software,0,"Update Software"))
+		else:
+			self.list_data.append((self.check_for_updates,0,"Check for software updates"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.restart_gui,0,"Restart UI"))
@@ -200,7 +203,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.zyngui.add_info("\n\n")
 		self.zyngui.hide_info_timer(5000)
 		self.zyngui.stop_loading()
-		self.fill_list()
 
 
 	def start_command(self,cmds):
@@ -239,7 +241,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.commands=None
 		self.zyngui.hide_info_timer(5000)
 		#self.zyngui.stop_loading()
-		self.fill_list()
 
 
 	def killable_start_command(self,cmds):
@@ -729,6 +730,19 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("UPDATE SOFTWARE")
 		self.zyngui.show_info("UPDATE SOFTWARE")
 		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
+
+
+	def is_update_available(self):
+		repos = ["/zynthian/zyncoder", "/zynthian/zynthian-ui", "/zynthian/zynthian-sys", "/zynthian/zynthian-webconf", "/zynthian/zynthian-data"]
+		update_available = False
+		for path in repos:
+			update_available |= (check_output("git -C %s status --porcelain -bs | grep behind | wc -l" % path, shell=True).decode()[:1] == '1')
+		return update_available
+
+
+	def check_for_updates(self):
+		self.zyngui.show_info("CHECK FOR UPDATES")
+		self.start_command(["git -C /zynthian/zyncoder remote update; git -C /zynthian/zynthian-ui remote update; git -C /zynthian/zynthian-sys remote update; git -C /zynthian/zynthian-webconf remote update; git -C /zynthian/zynthian-data remote update"])
 
 
 	def update_system(self):

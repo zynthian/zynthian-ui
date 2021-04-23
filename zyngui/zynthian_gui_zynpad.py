@@ -325,6 +325,8 @@ class zynthian_gui_zynpad():
 		img = (Image.open("/zynthian/zynthian-ui/icons/stopping.png").resize(iconsize))
 		self.state_icon[zynthian_gui_stepsequencer.SEQ_STOPPING] = ImageTk.PhotoImage(img)
 
+		self.text_labels = []
+
 		# Draw pads
 		for pad in range(self.columns**2):
 			pad_x = int(pad / self.columns) * self.column_width

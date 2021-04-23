@@ -332,11 +332,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
 		self.zyngui.show_modal('layer_options')
 
 
-	def back_action(self):
-		self.zyngui.show_modal('layer_options')
-		return ''
-
-
 	def set_select_path(self):
 		try:
 			self.select_path.set("{} > Note Range & Transpose...".format(self.zyngui.screens['layer_options'].layer.get_basepath()))
