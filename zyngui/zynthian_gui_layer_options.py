@@ -174,7 +174,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		for i,row in enumerate(self.list_data):
 			if row[1]==sl:
 				return i
-		return None
+		return 0
 
 
 	def show(self):
