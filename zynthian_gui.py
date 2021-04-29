@@ -898,10 +898,10 @@ class zynthian_gui:
 					midi_chan = curlayer_chan
 
 				if midi_chan is not None:
-					lib_zyncoder.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'])
-					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}".format(swi, event['type'], midi_chan, event['num']))
+					lib_zyncoder.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
+					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
 				else:
-					lib_zyncoder.setup_zynswitch_midi(swi, 0, 0, 0)
+					lib_zyncoder.setup_zynswitch_midi(swi, 0, 0, 0, 0)
 					logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
 
 		# Configure Zynaptik Analog Inputs (CV-IN)
@@ -918,6 +918,21 @@ class zynthian_gui:
 				else:
 					lib_zyncoder.disable_zynaptik_cvin(i)
 					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
+
+		# Configure Zynaptik Analog Outputs (CV-OUT)
+		for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
+				if midi_chan is not None:
+					lib_zyncoder.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
+					logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncoder.disable_zynaptik_cvout(i)
+					logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
 
 		# Configure Zyntof Inputs (Distance Sensor)
 		for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
@@ -938,19 +953,20 @@ class zynthian_gui:
 	def zynswitches(self):
 		if lib_zyncoder:
 			for i in range(len(zynthian_gui_config.zynswitch_pin)):
-				dtus=lib_zyncoder.get_zynswitch_dtus(i, zynthian_gui_config.zynswitch_long_us)
-				if dtus>zynthian_gui_config.zynswitch_long_us:
-					self.zynswitch_long(i)
-					return
-				if dtus>zynthian_gui_config.zynswitch_bold_us:
-					# Double switches must be bold!!! => by now ...
-					if self.zynswitch_double(i):
+				if i<4 or zynthian_gui_config.custom_switch_ui_actions[i-4]:
+					dtus=lib_zyncoder.get_zynswitch_dtus(i, zynthian_gui_config.zynswitch_long_us)
+					if dtus>zynthian_gui_config.zynswitch_long_us:
+						self.zynswitch_long(i)
 						return
-					self.zynswitch_bold(i)
-					return
-				if dtus>0:
-					#print("Switch "+str(i)+" dtus="+str(dtus))
-					self.zynswitch_short(i)
+					if dtus>zynthian_gui_config.zynswitch_bold_us:
+						# Double switches must be bold!!! => by now ...
+						if self.zynswitch_double(i):
+							return
+						self.zynswitch_bold(i)
+						return
+					if dtus>0:
+						#print("Switch "+str(i)+" dtus="+str(dtus))
+						self.zynswitch_short(i)
 
 
 	def zynswitch_long(self,i):

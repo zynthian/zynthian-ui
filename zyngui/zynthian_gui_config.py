@@ -108,6 +108,8 @@ def get_zynsensor_config(root_varname):
 		evtype = 0xE
 	elif event_type=="MIDI_CHAN_PRESS":
 		evtype = 0xD
+	else:
+		evtype = None
 
 	if evtype:
 		chan = os.environ.get(root_varname + "__MIDI_CHAN")
@@ -138,42 +140,26 @@ def get_zynsensor_config(root_varname):
 
 zynaptik_ad_midi_events = []
 zynaptik_da_midi_events = []
-zynaptik_cvgate_in_config = []
-zynaptik_cvgate_out_config = []
 
 zynaptik_config = os.environ.get("ZYNTHIAN_WIRING_ZYNAPTIK_CONFIG")
 if zynaptik_config:
-	zynaptik_cvgate_in = int(os.environ.get('ZYNTHIAN_WIRING_ZYNAPTIK_CVGATE_IN',"0"))
-	zynaptik_cvgate_out = int(os.environ.get('ZYNTHIAN_WIRING_ZYNAPTIK_CVGATE_OUT',"0"))
 
 	# Zynaptik Switches Configuration
 	if "16xDIO" in zynaptik_config:
 		for i in range(0, 16):
-			if i<zynaptik_cvgate_in:
-				zynaptik_cvgate_in_config.append([])
-			elif (i-8)>=0 and (i-8)<zynaptik_cvgate_out:
-				zynaptik_cvgate_out_config.append([])
-			else:
-				zynswitch_pin.append(200+i)
+			zynswitch_pin.append(200+i)
 
 	# Zynaptik AD Action Configuration
 	if "4xAD" in zynaptik_config:
 		for i in range(0, 4):
-			if i<zynaptik_cvgate_in:
-				# Configure AD for CV/Gate
-				zynaptik_ad_midi_events.append({}) #TODO 
-			else:
-				root_varname = "ZYNTHIAN_WIRING_ZYNAPTIK_AD{:02d}".format(i+1)
-				zynaptik_ad_midi_events.append(get_zynsensor_config(root_varname))
+			root_varname = "ZYNTHIAN_WIRING_ZYNAPTIK_AD{:02d}".format(i+1)
+			zynaptik_ad_midi_events.append(get_zynsensor_config(root_varname))
 
+	# Zynaptik DA Action Configuration
 	if "4xDA" in zynaptik_config:
 		for i in range(0, 4):
-			if i<zynaptik_cvgate_out:
-				# Configure DA for CV/Gate
-				zynaptik_da_midi_events.append({}) #TODO 
-			else:
-				root_varname = "ZYNTHIAN_WIRING_ZYNAPTIK_DA{:02d}".format(i+1)
-				zynaptik_da_midi_events.append(get_zynsensor_config(root_varname))
+			root_varname = "ZYNTHIAN_WIRING_ZYNAPTIK_DA{:02d}".format(i+1)
+			zynaptik_da_midi_events.append(get_zynsensor_config(root_varname))
 
 #------------------------------------------------------------------------------
 # Custom Switches Action Configuration
@@ -207,6 +193,10 @@ for i in range(0, n_custom_switches):
 			evtype = 0x9
 		elif custom_type=="MIDI_PROG_CHANGE":
 			evtype = 0xC
+		elif custom_type=="CVGATE_IN":
+			evtype = -4
+		elif custom_type=="CVGATE_OUT":
+			evtype = -5
 
 		if evtype:
 			chan = os.environ.get(root_varname + "__MIDI_CHAN")
@@ -217,9 +207,16 @@ for i in range(0, n_custom_switches):
 			except:
 				chan = None
 
-			num = os.environ.get(root_varname + "__MIDI_NUM")
-			if num is None:
-				num = os.environ.get(root_varname + "__CC_NUM")
+			if evtype>0:
+				num = os.environ.get(root_varname + "__MIDI_NUM")
+			else:
+				num = os.environ.get(root_varname + "__CV_CHAN")
+
+			try:
+				val = int(os.environ.get(root_varname + "__MIDI_VAL"))
+				val = max(min(127, val), 0)
+			except:
+				val = 0
 
 			try:
 				num = int(num)
@@ -227,7 +224,8 @@ for i in range(0, n_custom_switches):
 					midi_event = {
 						'type': evtype,
 						'chan': chan,
-						'num': num
+						'num': num,
+						'val': val
 					}
 			except:
 				pass
