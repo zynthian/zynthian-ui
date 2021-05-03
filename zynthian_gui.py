@@ -77,11 +77,10 @@ from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
+from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
+from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 if "autoeq" in zynthian_gui_config.experimental_features:
 	from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
-if "zynseq" in zynthian_gui_config.experimental_features:
-	from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
-from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
@@ -236,7 +235,9 @@ class zynthian_gui:
 			#Set MIDI Master Channel
 			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
 			#Set MIDI CC automode
-			lib_zyncoder.set_midi_ctrl_automode(zynthian_gui_config.midi_cc_automode)
+			lib_zyncoder.set_midi_filter_cc_automode(zynthian_gui_config.midi_cc_automode)
+			#Set MIDI System Messages flag
+			lib_zyncoder.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
 			#Setup MIDI filter rules
 			if self.midi_filter_script:
 				self.midi_filter_script.clean()
