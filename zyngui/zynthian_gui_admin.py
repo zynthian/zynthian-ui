@@ -34,6 +34,7 @@ from subprocess import check_output, Popen, PIPE, STDOUT
 
 # Zynthian specific modules
 import zynconf
+from zyncoder import *
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
@@ -90,9 +91,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Audio Levels on Snapshots"))
 
 		if zynthian_gui_config.midi_filter_output:
-			self.list_data.append((self.toggle_midi_filter_output,0,"[x] MIDI Filter Output"))
+			self.list_data.append((self.toggle_midi_filter_output,0,"[x] Route MIDI to Output"))
 		else:
-			self.list_data.append((self.toggle_midi_filter_output,0,"[  ] MIDI Filter Output"))
+			self.list_data.append((self.toggle_midi_filter_output,0,"[  ] Route MIDI to Output"))
 
 		if zynthian_gui_config.midi_sys_enabled:
 			self.list_data.append((self.toggle_midi_sys,0,"[x] MIDI System Messages"))
@@ -357,6 +358,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_SYS_ENABLED": str(int(zynthian_gui_config.midi_sys_enabled))
 		})
 
+		zyncoder.lib_zyncoder.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
 		self.fill_list()
 
 
