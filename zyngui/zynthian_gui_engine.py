@@ -36,6 +36,7 @@ import zynautoconnect
 from zyngine import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_jalv import *
+from zyngine.zynthian_engine_vcv_rack import check_vcv_rack_binary
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
@@ -75,6 +76,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				PIANOTEQ_PRODUCT,
 				" (Demo)" if PIANOTEQ_TRIAL else "")
 			cls.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title, "MIDI Synth", None, zynthian_engine_pianoteq, True)
+
+		if check_vcv_rack_binary():
+			cls.engine_info['VC'] = ("VCVRack", "VCV Rack - Virtual Eurorack", "Special", None, zynthian_engine_vcv_rack, True)
 		
 		for plugin_name, plugin_info in get_jalv_plugins().items():
 			eng = 'JV/{}'.format(plugin_name)
