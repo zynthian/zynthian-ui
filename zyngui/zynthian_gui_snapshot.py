@@ -240,7 +240,24 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				else:
 					self.zyngui.screens['layer'].save_snapshot(fpath)
 					self.zyngui.show_active_screen()
+		elif self.action=="RENAME":
+			if isfile(fpath):
+				self.zyngui.show_keyboard(self.rename_snapshot, fpath)
 
+
+	def rename_snapshot(self, new_fpath):
+		try:
+			fpath=self.list_data[i][0]
+			fname=self.list_data[i][2]
+		except:
+			logging.warning("List is empty")
+			return
+		try:
+			os.remove(fpath)
+			self.zyngui.screens['layer'].save_snapshot(new_fpath)
+		except:
+			logging.warning("Failed to rename %s to %s", fpath, new_fpath)
+			
 
 	def cb_confirm_save_snapshot(self, params):
 		self.zyngui.screens['layer'].save_snapshot(params[0])
