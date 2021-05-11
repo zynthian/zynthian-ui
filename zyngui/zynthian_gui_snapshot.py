@@ -228,7 +228,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 					self.zyngui.screens['layer'].load_snapshot(fpath)
 					#self.zyngui.show_screen('control')
 				else:
-					self.zyngui.show_confirm("Do you really want to delete '{}'?".format(fname), self.delete_confirmed, fpath)
+					self.contex = [[self.zyngui.show_confirm, ("Do you really want to delete %s" % fname, self.delete_confirmed), "Delete"],
+						[self.zyngui.show_keyboard, (self.rename_snapshot, fpath), "Rename"]]
+					self.zyngui.context_menu.show(fname, self.context)
 		elif self.action=="SAVE":
 			if fpath=='NEW_SNAPSHOT':
 				fpath=self.get_snapshot_fpath(self.get_new_snapshot())
