@@ -1146,13 +1146,6 @@ class zynthian_gui:
 				else:
 					self.enter_midi_learn_mode()
 
-			elif self.active_screen=='bank':
-				self.screens['preset'].enable_only_favs()
-				self.show_screen('preset')
-
-			elif self.active_screen=='preset':
-				self.screens['preset'].toggle_only_favs()
-
 			elif len(self.screens['layer'].layers)>0:
 				self.enter_midi_learn_mode()
 				self.show_modal("zs3_learn")
