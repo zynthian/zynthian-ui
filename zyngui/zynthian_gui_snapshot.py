@@ -295,6 +295,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		try:
 			copy(data[0], data[1])
 			self.fill_list()
+			self.set_selector()
 		except:
 			logging.warning("Failed to copy snapshot")
 
