@@ -168,8 +168,8 @@ class zynthian_gui_keyboard():
 		self.selected_button = key
 		shift = self.shift
 		if key == self.btn_enter:
+			self.zyngui.close_modal()
 			self.function(self.text)
-			self.zyngui.zynswitch_defered('S', ENC_BACK)
 			return
 		if key == self.btn_cancel:
 			self.zyngui.zynswitch_defered('S', ENC_BACK)

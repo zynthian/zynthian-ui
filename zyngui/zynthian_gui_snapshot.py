@@ -27,6 +27,7 @@ import os
 import sys
 import logging
 from os.path import isfile, isdir, join, basename
+from shutil import copy
 
 # Zynthian specific modules
 from . import zynthian_gui_config
@@ -230,7 +231,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				else:
 					self.context = [
 						[self.zyngui.show_confirm, ("Do you really want to delete %s" % (fname), self.delete_confirmed, fpath), "Delete"],
-						[self.zyngui.show_keyboard, (self.rename_snapshot, fname), "Rename"]
+						[self.zyngui.show_keyboard, (self.rename_snapshot, fname), "Rename"],
+						[self.zyngui.show_keyboard, (self.copy_snapshot, fname + ' (copy)'), "Copy"],
 						]
 					self.zyngui.screens['context'].config(fpath, self.context)
 					self.zyngui.show_modal("context")
@@ -253,15 +255,49 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		except:
 			logging.warning("Cannot find path of %d", self.index)
 			return
-		new_path=self.get_snapshot_fpath(new_name)
+		new_path=self.get_snapshot_fpath(new_name).replace('>',';')
 		if new_path[-4:].lower() != '.zss':
 			new_path += '.zss'
+		if isfile(new_path):
+			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_rename,[self.list_data[self.index][0],new_path])
+		else:
+			try:
+				os.rename(fpath, new_path)
+				self.fill_list()
+			except:
+				logging.warning("Failed to rename snapshot %s to %s", fpath, new_path)
+
+
+	def copy_snapshot(self, new_name):
 		try:
-			os.remove(fpath)
-			self.zyngui.screens['layer'].save_snapshot(new_path)
+			fpath=self.list_data[self.index][0]
 		except:
-			logging.warning("Failed to rename %s to %s", fpath, new_path)
-			
+			logging.warning("Cannot find path of %d", self.index)
+			return
+		new_path=self.get_snapshot_fpath(new_name).replace('>',';')
+		if new_path[-4:].lower() != '.zss':
+			new_path += '.zss'
+		if isfile(new_path):
+			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_copy,[self.list_data[self.index][0],new_path])
+		else:
+			self.do_copy([fpath, new_path])
+
+
+	def do_rename(self, data):
+		try:
+			os.rename(data[0], data[1])
+			self.fill_list()
+		except:
+			logging.warning("Failed to rename snapshot")
+
+
+	def do_copy(self, data):
+		try:
+			copy(data[0], data[1])
+			self.fill_list()
+		except:
+			logging.warning("Failed to copy snapshot")
+
 
 	def cb_confirm_save_snapshot(self, params):
 		self.zyngui.screens['layer'].save_snapshot(params[0])
