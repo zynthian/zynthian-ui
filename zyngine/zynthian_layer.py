@@ -54,6 +54,7 @@ class zynthian_layer:
 		self.bank_name = None
 		self.bank_info = None
 
+		self.show_fav_presets = False
 		self.preset_list = []
 		self.preset_index = 0
 		self.preset_name = None
@@ -126,7 +127,9 @@ class zynthian_layer:
 
 
 	def load_bank_list(self):
-		self.bank_list=self.engine.get_bank_list(self)
+		self.bank_list = self.engine.get_bank_list(self)
+		if len(self.engine.get_preset_favs(self))>0:
+			self.bank_list = [["*FAVS*",0,"*** Favorites ***"]] + self.bank_list
 		logging.debug("BANK LIST => \n%s" % str(self.bank_list))
 
 
@@ -182,10 +185,10 @@ class zynthian_layer:
 	# ---------------------------------------------------------------------------
 
 
-	def load_preset_list(self, only_favs=False):
+	def load_preset_list(self):
 		preset_list = []
 
-		if only_favs:
+		if self.show_fav_presets:
 			for v in self.get_preset_favs().values():
 				preset_list.append(v[1])
 
@@ -319,6 +322,14 @@ class zynthian_layer:
 	def get_preset_favs(self):
 		return self.engine.get_preset_favs(self)
 
+
+	def set_show_fav_presets(self, flag=True):
+		if flag:
+			self.show_fav_presets = True
+			self.reset_preset()
+		else:
+			self.show_fav_presets = False
+
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
@@ -451,6 +462,7 @@ class zynthian_layer:
 			'preset_index': self.preset_index,
 			'preset_name': self.preset_name,
 			'preset_info': self.preset_info,
+			'show_fav_presets': self.show_fav_presets,
 			'controllers_dict': {},
 			'zs3_list': self.zs3_list,
 			'active_screen_index': self.active_screen_index
@@ -464,6 +476,9 @@ class zynthian_layer:
 		#Constructor, including engine and midi_chan info, is called before
 
 		self.wait_stop_loading()
+
+		if 'show_fav_presets' in snapshot:
+			self.set_show_fav_presets(snapshot['show_fav_presets'])
 
 		#Load bank list and set bank
 		try:
