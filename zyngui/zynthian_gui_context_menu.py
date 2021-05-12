@@ -39,13 +39,18 @@ class zynthian_gui_context_menu(zynthian_gui_selector):
 
 
 	def __init__(self):
-		self.reset()
 		super().__init__('Context menu', True)
 
 
-	def show(self, title, data):
+	#	Configure context menu (before show)
+	#	title: Title to show at top of context menu
+	#	data: list of menu entries, each entry consists of a tuple of [function, function params (as list), title]
+	def config(self, title, data):
 		self.selector_caption = title
 		self.list_data = data
+		
+
+	def show(self):
 		self.fill_list()
 		super().show()
 
@@ -53,9 +58,9 @@ class zynthian_gui_context_menu(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		self.index = i
 		try:
-			self.list_data[i][0](self.list_data[i][1])
+			self.list_data[i][0](*self.list_data[i][1])
 		except:
-			logging.warning("Failed to select context menu item %d", i)
+			logging.warning("Failed to execute context menu item %d", i)
 
 
 	def back_action(self):

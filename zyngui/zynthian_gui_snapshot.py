@@ -228,9 +228,12 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 					self.zyngui.screens['layer'].load_snapshot(fpath)
 					#self.zyngui.show_screen('control')
 				else:
-					self.contex = [[self.zyngui.show_confirm, ("Do you really want to delete %s" % fname, self.delete_confirmed), "Delete"],
-						[self.zyngui.show_keyboard, (self.rename_snapshot, fpath), "Rename"]]
-					self.zyngui.context_menu.show(fname, self.context)
+					self.context = [
+						[self.zyngui.show_confirm, ("Do you really want to delete %s" % (fname), self.delete_confirmed, fpath), "Delete"],
+						[self.zyngui.show_keyboard, (self.rename_snapshot, fname), "Rename"]
+						]
+					self.zyngui.screens['context'].config(fpath, self.context)
+					self.zyngui.show_modal("context")
 		elif self.action=="SAVE":
 			if fpath=='NEW_SNAPSHOT':
 				fpath=self.get_snapshot_fpath(self.get_new_snapshot())
@@ -242,23 +245,22 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				else:
 					self.zyngui.screens['layer'].save_snapshot(fpath)
 					self.zyngui.show_active_screen()
-		elif self.action=="RENAME":
-			if isfile(fpath):
-				self.zyngui.show_keyboard(self.rename_snapshot, fpath)
 
 
-	def rename_snapshot(self, new_fpath):
+	def rename_snapshot(self, new_name):
 		try:
-			fpath=self.list_data[i][0]
-			fname=self.list_data[i][2]
+			fpath=self.list_data[self.index][0]
 		except:
-			logging.warning("List is empty")
+			logging.warning("Cannot find path of %d", self.index)
 			return
+		new_path=self.get_snapshot_fpath(new_name)
+		if new_path[-4:].lower() != '.zss':
+			new_path += '.zss'
 		try:
 			os.remove(fpath)
-			self.zyngui.screens['layer'].save_snapshot(new_fpath)
+			self.zyngui.screens['layer'].save_snapshot(new_path)
 		except:
-			logging.warning("Failed to rename %s to %s", fpath, new_fpath)
+			logging.warning("Failed to rename %s to %s", fpath, new_path)
 			
 
 	def cb_confirm_save_snapshot(self, params):
