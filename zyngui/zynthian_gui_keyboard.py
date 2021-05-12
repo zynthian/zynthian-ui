@@ -231,6 +231,7 @@ class zynthian_gui_keyboard():
 		self.text_canvas.itemconfig(self.text_label, text=self.text)
 		if not self.shown:
 			self.selected_button = 44
+			self.highlight(self.selected_button)
 			self.setup_encoders()
 			self.main_frame.grid()
 			self.shown=True

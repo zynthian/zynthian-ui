@@ -58,12 +58,10 @@ class zynthian_gui_context_menu(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		self.index = i
 		try:
+			self.zyngui.close_modal()
 			self.list_data[i][0](*self.list_data[i][1])
 		except:
 			logging.warning("Failed to execute context menu item %d", i)
 
-
-	def back_action(self):
-		return None
 
 #------------------------------------------------------------------------------
