@@ -229,7 +229,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 					self.zyngui.screens['layer'].load_snapshot(fpath)
 					#self.zyngui.show_screen('control')
 				else:
-					options = {"Delete":fpath, "Rename":fname, "Copy":fname}
+					options = {"Delete":fname, "Rename":fname, "Copy":fname}
 					self.zyngui.screens['option'].config(fname, options, self.context_cb)
 					self.zyngui.show_modal('option')
 		elif self.action=="SAVE":
@@ -248,7 +248,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def context_cb(self, index, param):
 		if index == 0:
 			# Delete
-			self.zyngui.show_confirm("Do you really want to delete %s" % (param), self.delete_confirmed, param)
+			fpath=self.list_data[self.index][0]
+			fname=self.list_data[self.index][2]
+			self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, self.get_snapshot_fpath(fpath))
 		elif index == 1:
 			# Rename
 			self.zyngui.show_keyboard(self.rename_snapshot, param)
