@@ -79,7 +79,6 @@ from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
-from zyngui.zynthian_gui_context_menu import zynthian_gui_context_menu
 if "autoeq" in zynthian_gui_config.experimental_features:
 	from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
 
@@ -350,7 +349,6 @@ class zynthian_gui:
 		self.screens['main'] = zynthian_gui_main()
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
-		self.screens['context'] = zynthian_gui_context_menu()
 
 		# Create UI Apps Screens
 		self.screens['alsa_mixer'] = self.screens['control']
