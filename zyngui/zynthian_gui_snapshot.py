@@ -229,13 +229,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 					self.zyngui.screens['layer'].load_snapshot(fpath)
 					#self.zyngui.show_screen('control')
 				else:
-					self.context = [
-						[self.zyngui.show_confirm, ("Do you really want to delete %s" % (fname), self.delete_confirmed, fpath), "Delete"],
-						[self.zyngui.show_keyboard, (self.rename_snapshot, fname), "Rename"],
-						[self.zyngui.show_keyboard, (self.copy_snapshot, fname + ' (copy)'), "Copy"],
-						]
-					self.zyngui.screens['context'].config(fpath, self.context)
-					self.zyngui.show_modal("context")
+					options = {"Delete":fpath, "Rename":fname, "Copy":fname}
+					self.zyngui.screens['option'].config(fname, options, self.context_cb)
+					self.zyngui.show_modal('option')
 		elif self.action=="SAVE":
 			if fpath=='NEW_SNAPSHOT':
 				fpath=self.get_snapshot_fpath(self.get_new_snapshot())
@@ -247,6 +243,18 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				else:
 					self.zyngui.screens['layer'].save_snapshot(fpath)
 					self.zyngui.show_active_screen()
+
+
+	def context_cb(self, index, param):
+		if index == 0:
+			# Delete
+			self.zyngui.show_confirm("Do you really want to delete %s" % (param), self.delete_confirmed, param)
+		elif index == 1:
+			# Rename
+			self.zyngui.show_keyboard(self.rename_snapshot, param)
+		elif index == 2:
+			# Copy
+			self.zyngui.show_keyboard(self.copy_snapshot, param + ' (copy)')
 
 
 	def rename_snapshot(self, new_name):

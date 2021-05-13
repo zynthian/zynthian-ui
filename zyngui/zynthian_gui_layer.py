@@ -223,7 +223,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.zyngui.show_modal('option')
 
 
-	def cb_chain_options_modal(self, chain_parallel):
+	def cb_chain_options_modal(self, i, chain_parallel):
 		self.layer_chain_parallel = chain_parallel
 		self.zyngui.show_modal('engine')
 
