@@ -345,7 +345,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		elif option == "Overwrite":
 			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.cb_confirm_save_snapshot, self.get_snapshot_fpath(fpath))
 		elif option == "Set program":
-			self.zyngui.show_keyboard(self.set_program, fname.split('-')[0])
+			if parts[0] > 127:
+				self.zyngui.show_numpad(self.set_program, '', 3)
+			else:
+				self.zyngui.show_numpad(self.set_program, format(parts[0], '03'), 3)
 		elif option == "Save as":
 			parts = self.get_parts_from_path(self.get_new_snapshot())
 			self.zyngui.show_keyboard(self.save_snapshot, parts[1])
@@ -408,14 +411,14 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		try:
 			program = int(value)
 		except:
-			logging.warning("Invalid program")
-			return
+			program = 255
 		if program < 0 or program > 127:
-			return
+			program = 255
 		parts = self.get_parts_from_path(self.list_data[self.index][0])
 		if parts == None:
 			return
-		fpath = self.get_snapshot_fpath(format(program, "03") + '-' + parts[1].replace('>',';',1).replace('/',';') + '.zss')
+		parts[0] = program
+		fpath = self.get_path_from_parts(parts)
 		os.rename(self.list_data[self.index][0], "/tmp/snapshot.tmp")
 		self.fix_program(program)
 		os.rename("/tmp/snapshot.tmp", fpath)

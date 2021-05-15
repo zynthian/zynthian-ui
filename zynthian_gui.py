@@ -72,7 +72,7 @@ from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
-from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
+from zyngui import zynthian_gui_keyboard
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
@@ -327,7 +327,7 @@ class zynthian_gui:
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
 		self.screens['confirm'] = zynthian_gui_confirm()
-		self.screens['keyboard'] = zynthian_gui_keyboard()
+		self.screens['keyboard'] = zynthian_gui_keyboard.zynthian_gui_keyboard()
 		self.screens['option'] = zynthian_gui_option()
 		self.screens['engine'] = zynthian_gui_engine()
 		self.screens['layer'] = zynthian_gui_layer()
@@ -509,6 +509,15 @@ class zynthian_gui:
 	def show_keyboard(self, callback, text="", max_chars=None):
 		self.modal_screen_back = self.modal_screen
 		self.modal_screen="keyboard"
+		self.screens['keyboard'].set_mode(zynthian_gui_keyboard.OSK_QWERTY)
+		self.screens['keyboard'].show(callback, text, max_chars)
+		self.hide_screens(exclude='keyboard')
+
+
+	def show_numpad(self, callback, text="", max_chars=None):
+		self.modal_screen_back = self.modal_screen
+		self.modal_screen="keyboard"
+		self.screens['keyboard'].set_mode(zynthian_gui_keyboard.OSK_NUMPAD)
 		self.screens['keyboard'].show(callback, text, max_chars)
 		self.hide_screens(exclude='keyboard')
 
