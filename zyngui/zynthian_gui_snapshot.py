@@ -206,7 +206,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.list_data.append((self.base_dir,i,".."))
 			i += 1
 
-		self.list_data.append(("NEW_SNAPSHOT",i,"NEW"))
+		self.list_data.append(("SAVE",i,"Save as new snapshot"))
 		if self.bankless_mode:
 			if isfile(self.default_snapshot_fpath):
 				self.list_data.append((self.default_snapshot_fpath,i,"Default"))
@@ -277,16 +277,17 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 						if zynseq.libseq:
 							zynseq.load("")
 						self.zyngui.show_screen('layer')
+					elif fpath == "SAVE":
+						parts = self.get_parts_from_path(self.get_new_snapshot())
+						self.zyngui.show_keyboard(self.save_snapshot_by_name, parts[1])
 					else:
 						self.zyngui.screens['layer'].load_snapshot(fpath)
 						#self.zyngui.show_screen('control')
 				else:
-					if fpath == 'NEW_SNAPSHOT':
-						options = {"Save as":fname}
-					else:
+					if fpath not in ['NEW_SNAPSHOT', 'SAVE']:
 						options = {"Delete":fname, "Rename":fname, "Create copy":fname, "Overwrite":fname, "Set program":fname}
-					self.zyngui.screens['option'].config(fname, options, self.context_cb)
-					self.zyngui.show_modal('option')
+						self.zyngui.screens['option'].config(fname, options, self.context_cb)
+						self.zyngui.show_modal('option')
 
 
 	def context_cb(self, option, param):
@@ -308,9 +309,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				self.zyngui.show_numpad(self.set_program, '', 3)
 			else:
 				self.zyngui.show_numpad(self.set_program, format(parts[0], '03'), 3)
-		elif option == "Save as":
-			parts = self.get_parts_from_path(self.get_new_snapshot())
-			self.zyngui.show_keyboard(self.save_snapshot_by_name, parts[1])
 
 
 	def rename_snapshot(self, new_name):
