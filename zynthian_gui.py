@@ -446,11 +446,6 @@ class zynthian_gui:
 			else:
 				return
 
-		elif screen=="snapshot":
-			if mode is None:
-				mode = "LOAD"
-			self.screens['snapshot'].set_action(mode)
-
 		if self.modal_screen!=screen and self.modal_screen not in ("info","confirm","keyboard"):
 			self.modal_screen_back = self.modal_screen
 		self.modal_screen=screen
