@@ -134,7 +134,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.start_wifi,0,"[  ] Wi-Fi"))
 			self.list_data.append((self.start_wifi_hotspot,0,"[  ] Wi-Fi Hotspot"))
 
-		if zynconf.is_service_active("vncserver@:1"):
+		if zynconf.is_service_active("vncserver0"):
 			self.list_data.append((self.stop_vncserver,0,"[x] VNC Server"))
 		else:
 			self.list_data.append((self.start_vncserver,0,"[  ] VNC Server"))
@@ -646,6 +646,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def start_vncserver(self, save_config=True):
 		logging.info("STARTING VNC SERVICES")
 
+		self.zyngui.start_loading()
 		# Save state and stop engines
 		if len(self.zyngui.screens['layer'].layers)>0:
 			self.zyngui.screens['snapshot'].save_last_state_snapshot()
@@ -655,7 +656,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			restore_state = False
 
 		try:
-			check_output("systemctl start vncserver@:1; systemctl start novnc", shell=True)
+			check_output("systemctl start novnc0", shell=True)
+			check_output("systemctl start novnc1", shell=True)
 			zynthian_gui_config.vncserver_enabled = 1
 			# Update Config
 			if save_config:
@@ -668,6 +670,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		# Restore state
 		if restore_state:
 			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+		self.zyngui.stop_loading()
 
 		self.fill_list()
 
@@ -675,6 +678,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def stop_vncserver(self, save_config=True):
 		logging.info("STOPPING VNC SERVICES")
 
+		self.zyngui.start_loading()
 		# Save state and stop engines
 		if len(self.zyngui.screens['layer'].layers)>0:
 			self.zyngui.screens['snapshot'].save_last_state_snapshot()
@@ -684,7 +688,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			restore_state = False
 
 		try:
-			check_output("systemctl stop novnc; systemctl stop vncserver@:1", shell=True)
+			check_output("systemctl stop vncserver0", shell=True)
+			check_output("systemctl stop vncserver1", shell=True)
 			zynthian_gui_config.vncserver_enabled = 0
 			# Update Config
 			if save_config:
@@ -697,6 +702,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		# Restore state
 		if restore_state:
 			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+		self.zyngui.stop_loading()
 
 		self.fill_list()
 
