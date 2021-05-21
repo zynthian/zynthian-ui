@@ -63,10 +63,6 @@ class zynthian_gui_midi_prog(zynthian_gui_selector):
 			self.cb_action(self.list_data[i][1])
 
 
-	def set_selector(self, zs_hiden=True):
-		super().set_selector(zs_hiden)
-
-
 	def set_select_path(self):
 		self.select_path.set("Program Change...")
 

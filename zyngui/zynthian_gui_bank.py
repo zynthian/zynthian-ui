@@ -76,6 +76,10 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			self.zyngui.screens['preset'].select_action(0)
 
 
+	def set_selector(self, zs_hiden=False):
+		super().set_selector(zs_hiden)
+
+
 	def set_select_path(self):
 		if self.zyngui.curlayer:
 			self.select_path.set(self.zyngui.curlayer.get_basepath())

@@ -54,7 +54,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 		# Snapshot Management
 		self.list_data.append((None,0,"-----------------------------"))
-		self.list_data.append((self.load_snapshot,0,"Snapshots"))
+		self.list_data.append((self.snapshots,0,"Snapshots"))
 		if len(self.zyngui.screens['layer'].layers)>0:
 			self.list_data.append((self.clean_all,0,"CLEAN ALL"))
 
@@ -75,14 +75,9 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.zyngui.show_screen("layer")
 
 
-	def load_snapshot(self):
-		logging.info("Load Snapshot")
-		self.zyngui.load_snapshot()
-
-
-	def save_snapshot(self):
-		logging.info("Save Snapshot")
-		self.zyngui.save_snapshot()
+	def snapshots(self):
+		logging.info("Snapshots")
+		self.zyngui.show_modal("snapshot")
 
 
 	def clean_all(self):
