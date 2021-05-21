@@ -148,8 +148,7 @@ class zynthian_gui:
 		"83": "SCREEN_PRESET",
 		"84": "SCREEN_CONTROL",
 
-		"90": "MODAL_SNAPSHOT_LOAD",
-		"91": "MODAL_SNAPSHOT_SAVE",
+		"90": "MODAL_SNAPSHOT",
 		"92": "MODAL_AUDIO_RECORDER",
 		"93": "MODAL_MIDI_RECORDER",
 		"94": "MODAL_ALSA_MIXER",
@@ -439,7 +438,7 @@ class zynthian_gui:
 		self.show_screen()
 
 
-	def show_modal(self, screen, mode=None):
+	def show_modal(self, screen):
 		if screen=="alsa_mixer":
 			if self.modal_screen!=screen and self.screens['layer'].amixer_layer:
 				self._curlayer = self.curlayer
@@ -475,9 +474,9 @@ class zynthian_gui:
 			self.modal_timer_id = None
 
 
-	def toggle_modal(self, screen, mode=None):
+	def toggle_modal(self, screen):
 		if self.modal_screen!=screen:
-			self.show_modal(screen, mode)
+			self.show_modal(screen)
 		else:
 			self.close_modal()
 
@@ -549,14 +548,6 @@ class zynthian_gui:
 
 	def calibrate_touchscreen(self):
 		self.show_modal('touchscreen_calibration')
-
-
-	def load_snapshot(self):
-		self.show_modal("snapshot","LOAD")
-
-
-	def save_snapshot(self):
-		self.show_modal("snapshot","SAVE")
 
 
 	def layer_control(self, layer=None):
@@ -849,11 +840,8 @@ class zynthian_gui:
 		elif cuia == "SCREEN_CONTROL":
 			self.show_screen("control")
 
-		elif cuia == "MODAL_SNAPSHOT_LOAD":
-			self.toggle_modal("snapshot", "LOAD")
-
-		elif cuia == "MODAL_SNAPSHOT_SAVE":
-			self.toggle_modal("snapshot", "SAVE")
+		elif cuia == "MODAL_SNAPSHOT":
+			self.toggle_modal("snapshot")
 
 		elif cuia == "MODAL_AUDIO_RECORDER":
 			self.toggle_modal("audio_recorder")
@@ -1036,7 +1024,10 @@ class zynthian_gui:
 				self.show_screen('main')
 
 		elif i==2:
-			self.load_snapshot()
+			if self.active_screen=='control':
+				self.show_modal('layer_options')
+			else:
+				self.show_modal('snapshot')
 
 		elif i==3:
 			if self.modal_screen:
@@ -1134,10 +1125,7 @@ class zynthian_gui:
 					self.modal_screen_back = None
 
 		elif i==2:
-			if self.modal_screen=='snapshot':
-				self.screens['snapshot'].next()
-
-			elif self.modal_screen=='audio_recorder':
+			if self.modal_screen=='audio_recorder':
 				self.show_modal('midi_recorder')
 
 			elif self.modal_screen=='midi_recorder':
@@ -1152,12 +1140,8 @@ class zynthian_gui:
 				else:
 					self.enter_midi_learn_mode()
 
-			elif len(self.screens['layer'].layers)>0:
-				self.enter_midi_learn_mode()
-				self.show_modal("zs3_learn")
-
 			else:
-				self.load_snapshot()
+				self.show_modal("layer_options")
 
 		elif i==3:
 			if self.modal_screen:
