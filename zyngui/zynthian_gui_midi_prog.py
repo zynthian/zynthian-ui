@@ -3,9 +3,9 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian GUI Option Selector Class
+# Zynthian GUI Midi Program Change Selector Class
 # 
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2021 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -28,43 +28,47 @@ import tkinter
 import logging
 
 # Zynthian specific modules
+from zyncoder import *
+from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
-# Zynthian Option Selection GUI Class
+# Zynthian MIDI Channel Selection GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_option(zynthian_gui_selector):
+class zynthian_gui_midi_prog(zynthian_gui_selector):
 
 	def __init__(self):
-		self.title = ""
-		self.options = []
-		self.cb_select = None
-		super().__init__("Option", True)
+		self.cb_action = None
+		super().__init__('Prog', True)
 
 
-	def config(self, title, options, cb_select):
-		self.title = title
-		self.options = options
-		self.cb_select = cb_select
+	def config(self, prg_num, cb_action):
+		try:
+			self.index = int(prg_num)
+		except:
+			self.index = 0
+		self.cb_action = cb_action
 
 
 	def fill_list(self):
-		i=0
 		self.list_data=[]
-		for k,v in self.options.items():
-			self.list_data.append((v,i,k))
-			i += 1
+		for i in range(0,128):
+				self.list_data.append((str(i),i,str(i).zfill(2)))
 		super().fill_list()
 
 
 	def select_action(self, i, t='S'):
-		if self.cb_select:
-			self.zyngui.close_modal()
-			self.cb_select(self.list_data[i][2], self.list_data[i][0])
+		if self.cb_action:
+			self.cb_action(self.list_data[i][1])
+
+
+	def set_selector(self, zs_hiden=True):
+		super().set_selector(zs_hiden)
 
 
 	def set_select_path(self):
-		self.select_path.set(self.title)
+		self.select_path.set("Program Change...")
+
 
 #------------------------------------------------------------------------------
