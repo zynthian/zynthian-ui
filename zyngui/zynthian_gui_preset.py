@@ -68,6 +68,10 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.update_list()
 
 
+	def set_selector(self, zs_hiden=False):
+		super().set_selector(zs_hiden)
+
+
 	def preselect_action(self):
 		return self.zyngui.curlayer.preload_preset(self.index)
 

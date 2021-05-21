@@ -155,7 +155,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 			self.listbox.insert(tkinter.END, item[2])
 
 
-	def set_selector(self, zs_hiden=False):
+	def set_selector(self, zs_hiden=True):
 		if self.shown:
 			if self.zselector:
 				self.zselector_ctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })

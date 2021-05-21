@@ -73,8 +73,6 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 			for i in self.chan_list:
 				if i in (self.midi_chan, zynthian_gui_config.master_midi_channel):
 					continue
-
-					continue
 				elif zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, i):
 					cc_to_clone = zyncoder.lib_zyncoder.get_midi_filter_clone_cc(self.midi_chan, i).nonzero()[0]
 					self.list_data.append((str(i+1),i,"[x] CH#{}, CC {}".format(i+1, ' '.join(map(str, cc_to_clone)))))
