@@ -206,7 +206,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.list_data.append((self.base_dir,i,".."))
 			i += 1
 
-		self.list_data.append(("SAVE",i,"Save as new snapshot"))
+		if len(self.zyngui.screens['layer'].layers)>0:
+			self.list_data.append(("SAVE",i,"Save as new snapshot"))
 		if self.bankless_mode:
 			if isfile(self.default_snapshot_fpath):
 				self.list_data.append((self.default_snapshot_fpath,i,"Default"))
@@ -269,46 +270,36 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.show()
 		else:
 			if fpath:
-				if t=='S':
-					if fpath == 'NEW_SNAPSHOT':
-						if len(self.zyngui.screens['layer'].layers) > 0:
-							self.save_last_state_snapshot()
-							self.zyngui.screens['layer'].reset()
-						if zynseq.libseq:
-							zynseq.load("")
-						self.zyngui.show_screen('layer')
-					elif fpath == "SAVE":
-						parts = self.get_parts_from_path(self.get_new_snapshot())
-						self.zyngui.show_keyboard(self.save_snapshot_by_name, parts[1])
-					else:
-						self.zyngui.screens['layer'].load_snapshot(fpath)
-						#self.zyngui.show_screen('control')
+				if fpath == "SAVE":
+					parts = self.get_parts_from_path(self.get_new_snapshot())
+					self.zyngui.show_keyboard(self.save_snapshot_by_name, parts[1])
 				else:
-					if fpath not in ['NEW_SNAPSHOT', 'SAVE']:
-						options = {"Delete":fname, "Rename":fname, "Create copy":fname, "Overwrite":fname, "Set program":fname}
-						self.zyngui.screens['option'].config(fname, options, self.context_cb)
-						self.zyngui.show_modal('option')
+					options = {"Load": fpath, "Delete":fname, "Rename":fname, "Create copy":fname, "Overwrite":fname, "Set program":fname}
+					self.zyngui.screens['option'].config(fname, options, self.context_cb)
+					self.zyngui.show_modal('option')
 
 
 	def context_cb(self, option, param):
 		fpath=self.list_data[self.index][0]
 		fname=self.list_data[self.index][2]
 		parts=self.get_parts_from_path(self.list_data[self.index][0])
-		if option == "Delete":
-			self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, self.get_snapshot_fpath(fpath))
+		if option == "Load":
+			self.zyngui.screens['layer'].load_snapshot(fpath)
+		elif option == "Overwrite":
+			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
 		elif option == "Rename":
 			if parts == None:
 				return
 			self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
 		elif option == "Create copy":
 			self.zyngui.show_keyboard(self.copy_snapshot, parts[1] + ' (copy)')
-		elif option == "Overwrite":
-			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
 		elif option == "Set program":
 			if parts[0] > 127:
 				self.zyngui.show_numpad(self.set_program, '', 3)
 			else:
 				self.zyngui.show_numpad(self.set_program, format(parts[0], '03'), 3)
+		elif option == "Delete":
+			self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, self.get_snapshot_fpath(fpath))
 
 
 	def rename_snapshot(self, new_name):
