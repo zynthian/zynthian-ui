@@ -58,21 +58,23 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	#	Get the next available program number
 	#	offset: Minimum program number to return
-	#	returns: Next available program mumber as integer or 255 if none available
+	#	returns: Next available program mumber as integer or None if none available
 	def get_next_program(self, offset):
 		files = os.listdir(self.get_snapshot_fpath(''))
 		files.sort()
 		for filename in files:
 			if offset > 127:
-				return 255
+				return None
 			program = self.get_midi_number(filename)
-			if program < offset:
+			if type(program)!=int:
 				continue
-			if program == offset:
+			if program<offset:
+				continue
+			if program==offset:
 				offset += 1
 			else:
 				return offset
-		return 255
+		return None
 
 
 	#	Rename files to ensure unique MIDI program numbers - renames files moving each conflicting file to next program
@@ -83,16 +85,15 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		files.sort()
 		for filename in files:
 			parts = self.get_parts_from_path(path + filename)
-			if parts[0] < program:
+			if parts[0] is None or parts[0] < program:
 				continue
 			if parts[0] == program:
 				if program > 127:
-					parts[0] = 255
+					parts[0] = None
 				else:
 					parts[0] += 1
 				fullname = self.get_path_from_parts(parts)
 				os.rename(parts[3], fullname)
-			program = parts[0]
 
 
 	#	Get an list of parts of a snapshot filename
@@ -101,15 +102,17 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def get_parts_from_path(self, path):
 		if path[-4:].lower() != '.zss':
 			return None
+
 		filename = os.path.basename(path)
+		name = filename[:-4].replace(';','>',1).replace(';','/')
+
 		# Check if prefix is program-
 		try:
 			program = int(filename.split('-')[0])
-		except:
-			program = 255
-		name = filename[:-4].replace(';','>',1).replace(';','/')
-		if program != 255:
 			name = name.split('-',1)[1]
+		except:
+			program = None
+
 		return [program, name, filename, path]
 
 
@@ -117,14 +120,14 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	#	parts: List of parts [program, display name, filename, path]
 	#	returns: Valid filename or None if invalid parts
 	def get_path_from_parts(self, parts):
-		if type(parts) != list or len(parts) != 4:
+		if type(parts)!=list or len(parts)!=4:
 			return None
-		if parts == None:
-			return
+
 		name = parts[1] + '.zss'
-		if parts[0] < 128:
+		if type(parts[0])==int and parts[0]<128:
 			name = format(parts[0], "03") + '-' + name
 		path = self.get_snapshot_fpath(name.replace('>',';').replace('/',';'))
+
 		return path
 
 
@@ -175,10 +178,12 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.list_data=[]
 
 		i=0
-		self.list_data.append((self.default_snapshot_fpath,i,"Default"))
-		i=i+1
-		self.list_data.append((self.last_state_snapshot_fpath,i,"Last State"))
-		i=i+1
+		if isfile(self.default_snapshot_fpath):
+			self.list_data.append((self.default_snapshot_fpath,i,"Default"))
+			i=i+1
+		if isfile(self.last_state_snapshot_fpath):
+			self.list_data.append((self.last_state_snapshot_fpath,i,"Last State"))
+			i=i+1
 		self.list_data.append(("NEW_BANK",i,"New Bank"))
 		i=i+1
 
@@ -251,12 +256,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		try:
-			fpath=self.list_data[i][0]
-			fname=self.list_data[i][2]
-		except:
-			logging.warning("List is empty")
-			return
+		fpath=self.list_data[i][0]
+
 		if fpath=='NEW_BANK':
 			self.bank_dir=self.get_new_bankdir()
 			os.mkdir(join(self.base_dir,self.bank_dir))
@@ -274,69 +275,57 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 					parts = self.get_parts_from_path(self.get_new_snapshot())
 					self.zyngui.show_keyboard(self.save_snapshot_by_name, parts[1])
 				else:
-					options = {"Load": fpath, "Delete":fname, "Rename":fname, "Create copy":fname, "Overwrite":fname, "Set program":fname}
-					self.zyngui.screens['option'].config(fname, options, self.context_cb)
-					self.zyngui.show_modal('option')
+					self.show_options(i)
 
 
-	def context_cb(self, option, param):
+	def show_options(self, i):
+		fpath=self.list_data[i][0]
+		fname=self.list_data[i][2]
+
+		options = {"Load": fpath, "Save":fname, "Rename":fname, "Create copy":fname, "Set program":fname, "Delete":fname}
+		self.zyngui.screens['option'].config(fname, options, self.options_cb)
+		self.zyngui.show_modal('option')
+
+
+	def options_cb(self, option, param):
 		fpath=self.list_data[self.index][0]
 		fname=self.list_data[self.index][2]
-		parts=self.get_parts_from_path(self.list_data[self.index][0])
+		parts=self.get_parts_from_path(fpath)
+		if parts is None:
+			logging.warning("Wrong snapshot {} => {}".format(self.index, fpath))
+			return
+
 		if option == "Load":
 			self.zyngui.screens['layer'].load_snapshot(fpath)
-		elif option == "Overwrite":
+		elif option == "Save":
 			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
 		elif option == "Rename":
-			if parts == None:
-				return
 			self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
 		elif option == "Create copy":
 			self.zyngui.show_keyboard(self.copy_snapshot, parts[1] + ' (copy)')
 		elif option == "Set program":
-			if parts[0] > 127:
-				self.zyngui.show_numpad(self.set_program, '', 3)
-			else:
-				self.zyngui.show_numpad(self.set_program, format(parts[0], '03'), 3)
+			self.zyngui.screens['midi_prog'].config(parts[0], self.set_program)
+			self.zyngui.show_modal('midi_prog')
 		elif option == "Delete":
 			self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, self.get_snapshot_fpath(fpath))
 
 
 	def rename_snapshot(self, new_name):
-		parts = self.get_parts_from_path(self.list_data[self.index][0])
-		if parts == None:
+		fpath = self.list_data[self.index][0]
+		parts = self.get_parts_from_path(fpath)
+		if parts is None:
+			logging.warning("Wrong snapshot {} => {}".format(self.index, fpath))
 			return
-		fpath = parts[3]
-		if parts[0] < 128:
+		
+		if type(parts[0])==int and parts[0]<128:
 			new_name = format(parts[0], "03") + '-' + new_name
 		new_path = self.get_snapshot_fpath(new_name).replace('>',';')
 		if new_path[-4:].lower() != '.zss':
 			new_path += '.zss'
 		if isfile(new_path):
-			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_rename,[self.list_data[self.index][0],new_path])
+			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_rename,[parts[3], new_path])
 		else:
-			try:
-				os.rename(fpath, new_path)
-				self.fill_list()
-			except:
-				logging.warning("Failed to rename snapshot %s to %s", fpath, new_path)
-
-
-	def copy_snapshot(self, new_name):
-		parts = self.get_parts_from_path(self.list_data[self.index][0])
-		if parts == None:
-			logging.warning("Cannot find path of %d", self.index)
-			return
-		parts[0] = self.get_next_program(parts[0])
-		if parts[0] < 128:
-			new_name = format(parts[0], "03") + '-' + new_name
-		new_path=self.get_snapshot_fpath(new_name.replace('>',';').replace('/',';'))
-		if new_path[-4:].lower() != '.zss':
-			new_path += '.zss'
-		if isfile(new_path):
-			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_copy,[self.list_data[self.index][0],new_path])
-		else:
-			self.do_copy([parts[3], new_path])
+			self.do_rename([parts[3], new_path])
 
 
 	def do_rename(self, data):
@@ -344,33 +333,62 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			os.rename(data[0], data[1])
 			self.fill_list()
 		except:
-			logging.warning("Failed to rename snapshot")
+			logging.warning("Failed to rename snapshot {} to {}".format(data[0], data[1]))
+
+		self.zyngui.show_modal('snapshot')
+
+
+	def copy_snapshot(self, new_name):
+		fpath = self.list_data[self.index][0]
+		parts = self.get_parts_from_path(fpath)
+		if parts is None:
+			logging.warning("Wrong snapshot {} => {}".format(self.index, fpath))
+			return
+
+		if type(parts[0])==int:
+			parts[0] = self.get_next_program(parts[0])
+		if type(parts[0])==int and parts[0]<128:
+			parts[0] = self.get_next_program(parts[0])
+			new_name = format(parts[0], "03") + '-' + new_name
+		new_path=self.get_snapshot_fpath(new_name.replace('>',';').replace('/',';'))
+		if new_path[-4:].lower() != '.zss':
+			new_path += '.zss'
+		if isfile(new_path):
+			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_copy,[parts[3],new_path])
+		else:
+			self.do_copy([parts[3], new_path])
 
 
 	def do_copy(self, data):
 		try:
 			copy(data[0], data[1])
-			self.show()
 		except:
-			logging.warning("Failed to copy snapshot")
+			logging.warning("Failed to copy snapshot {} to {}".format(data[0], data[1]))
+
+		self.zyngui.show_modal('snapshot')
 
 
 	def set_program(self, value):
+		fpath = self.list_data[self.index][0]
+		parts = self.get_parts_from_path(fpath)
+		if parts is None:
+			logging.warning("Wrong snapshot {} => {}".format(self.index, fpath))
+			return
+
 		try:
 			program = int(value)
 		except:
-			program = 255
+			program = None
 		if program < 0 or program > 127:
-			program = 255
-		parts = self.get_parts_from_path(self.list_data[self.index][0])
-		if parts == None:
-			return
+			program = None
+
+		os.rename(fpath, "/tmp/snapshot.tmp")
+		self.fix_program(program)
 		parts[0] = program
 		fpath = self.get_path_from_parts(parts)
-		os.rename(self.list_data[self.index][0], "/tmp/snapshot.tmp")
-		self.fix_program(program)
 		os.rename("/tmp/snapshot.tmp", fpath)
-		self.show()
+
+		self.zyngui.show_modal('snapshot')
 
 
 	def save_snapshot_by_name(self, name):
@@ -423,7 +441,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		try:
 			return int(f.split('-')[0])
 		except:
-			return 255
+			return None
 
 
 	def midi_bank_change(self, bn):

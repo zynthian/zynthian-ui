@@ -25,7 +25,8 @@ __all__ = [
 	"zynthian_gui_main",
 	"zynthian_gui_audio_recorder",
 	"zynthian_gui_midi_recorder",
-	"zynthian_gui_autoeq"
+	"zynthian_gui_autoeq",
+	"zynthian_gui_keyboard"
 #	"zynthian_gui_osc_browser"
 ]
 
@@ -56,4 +57,5 @@ from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
+from zyngui import zynthian_gui_keyboard
 #from zyngui.zynthian_gui_osc_browser import zynthian_gui_osc_browser
