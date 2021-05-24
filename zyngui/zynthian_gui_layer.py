@@ -1182,16 +1182,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.screens['engine'].stop_unused_jalv_engines()
 
 			#Create new layers, starting engines when needed
-			i = 0
-			for lss in snapshot['layers']:
+			for i, lss in enumerate(snapshot['layers']):
 				if lss['engine_nick']=="MX":
 					if zynthian_gui_config.snapshot_mixer_settings:
 						snapshot['amixer_layer'] = lss
-					del(snapshot['layers'][i])
+					del snapshot['layers'][i]
 				else:
 					engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
 					self.layers.append(zynthian_layer(engine,lss['midi_chan'], self.zyngui))
-				i += 1
 
 			# Finally, stop all unused engines
 			self.zyngui.screens['engine'].stop_unused_engines()
@@ -1214,16 +1212,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.set_extended_config(snapshot['extended_config'])
 
 			# Restore layer state, step 1 => Restore Bank & Preset Status
-			i = 0
-			for lss in snapshot['layers']:
+			for i, lss in enumerate(snapshot['layers']):
 				self.layers[i].restore_snapshot_1(lss)
-				i += 1
 
 			# Restore layer state, step 2 => Restore Controllers Status
-			i = 0
-			for lss in snapshot['layers']:
+			for i, lss in enumerate(snapshot['layers']):
 				self.layers[i].restore_snapshot_2(lss)
-				i += 1
 
 			#Set Audio Routing
 			if 'audio_routing' in snapshot:

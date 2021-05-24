@@ -493,12 +493,11 @@ class zynthian_layer:
 		self.wait_stop_loading()
 	
 		#Load preset list and set preset
-		#try:
-		self.load_preset_list()
-		self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
-
-		#except Exception as e:
-			#logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
+		try:
+			self.load_preset_list()
+			self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
+		except Exception as e:
+			logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
 
 		self.wait_stop_loading()
 
@@ -514,7 +513,7 @@ class zynthian_layer:
 		#Set active screen
 		if 'active_screen_index' in snapshot:
 			self.active_screen_index=snapshot['active_screen_index']
-
+			
 
 	def restore_snapshot_2(self, snapshot):
 
