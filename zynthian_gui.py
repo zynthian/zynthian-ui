@@ -1140,8 +1140,11 @@ class zynthian_gui:
 				else:
 					self.enter_midi_learn_mode()
 
+			elif self.active_screen=='layer':
+				self.screens['layer'].switch_select('B')
+
 			else:
-				self.show_modal("layer_options")
+				self.show_modal("snapshot")
 
 		elif i==3:
 			if self.modal_screen:
