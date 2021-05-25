@@ -319,7 +319,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		
 		if type(parts[0])==int and parts[0]<128:
 			new_name = format(parts[0], "03") + '-' + new_name
-		new_path = self.get_snapshot_fpath(new_name).replace('>',';')
+		new_path = self.get_snapshot_fpath(new_name.replace('>',';').replace('/',';'))
 		if new_path[-4:].lower() != '.zss':
 			new_path += '.zss'
 		if isfile(new_path):
@@ -332,8 +332,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		try:
 			os.rename(data[0], data[1])
 			self.fill_list()
-		except:
-			logging.warning("Failed to rename snapshot {} to {}".format(data[0], data[1]))
+		except Exception as e:
+			logging.warning("Failed to rename snapshot {} to {} => {}".format(data[0], data[1], e))
 
 		self.zyngui.show_modal('snapshot')
 
@@ -350,7 +350,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if type(parts[0])==int and parts[0]<128:
 			parts[0] = self.get_next_program(parts[0])
 			new_name = format(parts[0], "03") + '-' + new_name
-		new_path=self.get_snapshot_fpath(new_name.replace('>',';').replace('/',';'))
+		new_path = self.get_snapshot_fpath(new_name.replace('>',';').replace('/',';'))
 		if new_path[-4:].lower() != '.zss':
 			new_path += '.zss'
 		if isfile(new_path):
@@ -362,8 +362,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def do_copy(self, data):
 		try:
 			copy(data[0], data[1])
-		except:
-			logging.warning("Failed to copy snapshot {} to {}".format(data[0], data[1]))
+		except Exception as e:
+			logging.warning("Failed to copy snapshot {} to {} => {}".format(data[0], data[1], e))
 
 		self.zyngui.show_modal('snapshot')
 
@@ -382,11 +382,14 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if program < 0 or program > 127:
 			program = None
 
-		os.rename(fpath, "/tmp/snapshot.tmp")
-		self.fix_program(program)
-		parts[0] = program
-		fpath = self.get_path_from_parts(parts)
-		os.rename("/tmp/snapshot.tmp", fpath)
+		try:
+			os.rename(fpath, "/tmp/snapshot.tmp")
+			self.fix_program(program)
+			parts[0] = program
+			fpath = self.get_path_from_parts(parts)
+			os.rename("/tmp/snapshot.tmp", fpath)
+		except Exception as e:
+			logging.warning("Failed to set program for snapshot {} to {} => {}".format(fpath, program, e))
 
 		self.zyngui.show_modal('snapshot')
 
