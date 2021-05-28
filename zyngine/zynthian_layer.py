@@ -649,12 +649,13 @@ class zynthian_layer:
 
 
 	def set_audio_out(self, ao):
+		self.audio_out = copy.copy(ao)
+
 		#Fix legacy routing (backward compatibility with old snapshots)
-		if "system" in ao:
-			ao.remove("system")
-			ao += ["system:playback_1", "system:playback_2"]
-			
-		self.audio_out=ao
+		if "system" in self.audio_out:
+			self.audio_out.remove("system")
+			self.audio_out += ["system:playback_1", "system:playback_2"]
+
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -695,12 +696,12 @@ class zynthian_layer:
 
 
 	def reset_audio_out(self):
-		self.audio_out=["system:playback_1", "system:playback_2"]
+		self.audio_out = ["system:playback_1", "system:playback_2"]
 		self.zyngui.zynautoconnect_audio()
 
 
 	def mute_audio_out(self):
-		self.audio_out=[]
+		self.audio_out = []
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -713,8 +714,8 @@ class zynthian_layer:
 		return self.audio_in
 
 
-	def set_audio_in(self, ai):		
-		self.audio_in=ai
+	def set_audio_in(self, ai):
+		self.audio_in = copy.copy(ai)
 		self.zyngui.zynautoconnect_audio()
 
 
