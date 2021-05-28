@@ -115,7 +115,7 @@ def midi_autoconnect(force=False):
 
 	#Add TouchOSC out ports ...
 	if zynthian_gui_config.midi_touchosc_enabled:
-		rtmidi_out=jclient.get_ports("RtMidiOut Client", is_output=True, is_physical=False, is_midi=True)
+		rtmidi_out=jclient.get_ports("TouchOSC Bridge", is_output=True, is_physical=False, is_midi=True)
 		for port in rtmidi_out:
 			try:
 				hw_out.append(port)
