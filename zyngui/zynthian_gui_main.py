@@ -55,8 +55,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 		# Snapshot Management
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.snapshots,0,"Snapshots"))
-		if len(self.zyngui.screens['layer'].layers)>0:
-			self.list_data.append((self.clean_all,0,"CLEAN ALL"))
+		self.list_data.append((self.clean_all,0,"Clean All"))
 
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.admin,0,"Admin"))
