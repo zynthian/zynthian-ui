@@ -134,7 +134,6 @@ def midi_autoconnect(force=False):
 
 	#Check for new devices (HW and virtual)...
 	if not force and hw_str==last_hw_str:
-		last_hw_str = hw_str
 		#Release Mutex Lock
 		release_lock()
 		logger.info("ZynAutoConnect: MIDI Shortened ...")
