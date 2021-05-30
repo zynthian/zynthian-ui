@@ -89,7 +89,6 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.zyngui.screens['layer'].reset()
 		if zynseq.libseq:
 			zynseq.load("")
-		self.zyngui.show_screen('layer')
 
 
 	def audio_recorder(self):
