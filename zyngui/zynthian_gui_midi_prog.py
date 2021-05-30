@@ -52,15 +52,15 @@ class zynthian_gui_midi_prog(zynthian_gui_selector):
 
 
 	def fill_list(self):
-		self.list_data=[]
+		self.list_data=[(-1,0,"None")]
 		for i in range(0,128):
-				self.list_data.append((str(i),i,str(i).zfill(2)))
+				self.list_data.append((i,i+1,str(i).zfill(2)))
 		super().fill_list()
 
 
 	def select_action(self, i, t='S'):
 		if self.cb_action:
-			self.cb_action(self.list_data[i][1])
+			self.cb_action(self.list_data[i][0])
 
 
 	def set_select_path(self):

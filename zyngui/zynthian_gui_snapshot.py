@@ -72,14 +72,14 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				continue
 			if program==offset:
 				offset += 1
-			else:
-				return offset
-		return None
+		return offset
 
 
 	#	Rename files to ensure unique MIDI program numbers - renames files moving each conflicting file to next program
 	#	program: Index of first program to validate - will move this index if it exists
-	def fix_program(self, program):
+	def fix_program_numbers(self, program):
+		if program is None:
+			return
 		path = self.get_snapshot_fpath('')
 		files = os.listdir(path)
 		files.sort()
@@ -124,7 +124,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			return None
 
 		name = parts[1] + '.zss'
-		if type(parts[0])==int and parts[0]<128:
+		if type(parts[0])==int and parts[0]>=0 and parts[0]<128:
 			name = format(parts[0], "03") + '-' + name
 		path = self.get_snapshot_fpath(name.replace('>',';').replace('/',';'))
 
@@ -377,17 +377,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 		try:
 			program = int(value)
+			if program < 0 or program > 127:
+				program = None
 		except:
-			program = None
-		if program < 0 or program > 127:
 			program = None
 
 		try:
-			os.rename(fpath, "/tmp/snapshot.tmp")
-			self.fix_program(program)
+			self.fix_program_numbers(program)
 			parts[0] = program
-			fpath = self.get_path_from_parts(parts)
-			os.rename("/tmp/snapshot.tmp", fpath)
+			dfpath = self.get_path_from_parts(parts)
+			os.rename(fpath, dfpath)
 		except Exception as e:
 			logging.warning("Failed to set program for snapshot {} to {} => {}".format(fpath, program, e))
 
@@ -396,15 +395,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def save_snapshot_by_name(self, name):
 		program = self.get_next_program(1)
-		if program < 128:
-			name = format(program, "03") + "-" + name + '.zss'
-		path = self.get_snapshot_fpath(name.replace('>',';').replace('/',';'))
+		if type(program)==int and program < 128:
+			name = format(program, "03") + "-" + name
+		path = self.get_snapshot_fpath(name.replace('>',';').replace('/',';')) + '.zss'
 		self.save_snapshot(path)
+		self.zyngui.show_modal('snapshot')
 
 
 	def save_snapshot(self, path):
 		self.zyngui.screens['layer'].save_snapshot(path)
-		self.zyngui.show_active_screen()
+		self.zyngui.show_modal('snapshot')
 
 
 	def save_default_snapshot(self):
