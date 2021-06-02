@@ -467,4 +467,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.select_path.set(self.zyngui.curlayer.get_presetpath())
 
 
+	# ---------------------------------------------------------------------------
+	# Impaired Sight Stuff
+	# ---------------------------------------------------------------------------
+
+	def get_sight_impaired_title(self):
+		if self.zyngui.curlayer:
+			if self.mode=='control' and self.zyngui.midi_learn_mode:
+				return "Control MIDI-Learn for " + self.zyngui.curlayer.get_basepath(True)
+			else:
+				return "Instrument Control for " + self.zyngui.curlayer.get_presetpath(True)
+
+
 #------------------------------------------------------------------------------

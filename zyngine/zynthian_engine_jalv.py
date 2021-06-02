@@ -459,6 +459,12 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.proc_cmd("set %d %.6f" % (zctrl.graph_path, zctrl.value))
 
 
+	def get_path(self, layer, impsight=False):
+		if impsight:
+			return self.plugin_name
+		else:
+			return self.nickname
+
 	# ---------------------------------------------------------------------------
 	# API methods
 	# ---------------------------------------------------------------------------

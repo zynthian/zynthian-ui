@@ -28,8 +28,6 @@ import sys
 import copy
 import liblo
 import signal
-#import psutil
-#import alsaseq
 import logging
 import threading
 from time import sleep
@@ -47,7 +45,6 @@ from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
-#from zyngine import zynthian_engine_transport
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -80,10 +77,12 @@ from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
+
 if "autoeq" in zynthian_gui_config.experimental_features:
 	from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
 
-#from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
+if zynthian_gui_config.sight_impaired_enabled:
+	from zyngine.zynthian_engine_festival import zynthian_engine_festival
 
 #-------------------------------------------------------------------------------
 # Zynthian Main GUI Class
@@ -321,8 +320,9 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def start(self):
-		# Initialize jack Transport
-		#self.zyntransport = zynthian_engine_transport()
+		# Initialize Sight Impaired assistant
+		if zynthian_gui_config.sight_impaired_enabled:
+			self.zynvoice = zynthian_engine_festival()
 
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()

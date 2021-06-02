@@ -1316,4 +1316,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.select_path.set("Layers")
 
 
+	# ---------------------------------------------------------------------------
+	# Impaired Sight Stuff
+	# ---------------------------------------------------------------------------
+
+	def get_sight_impaired_option(self, i):
+		if i<len(self.layers):
+			return self.layers[i].get_presetpath(True)
+		else:
+			return super().get_sight_impaired_option(i)
+
 #------------------------------------------------------------------------------

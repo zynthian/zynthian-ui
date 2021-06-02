@@ -84,5 +84,13 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if self.zyngui.curlayer:
 			self.select_path.set(self.zyngui.curlayer.get_basepath())
 
+	# ---------------------------------------------------------------------------
+	# Impaired Sight Stuff
+	# ---------------------------------------------------------------------------
+
+	def get_sight_impaired_title(self):
+		if self.zyngui.curlayer:
+			return "Bank selection for " + self.zyngui.curlayer.get_basepath(True)
+
 
 #-------------------------------------------------------------------------------

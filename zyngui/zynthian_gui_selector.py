@@ -126,6 +126,9 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		self.fill_list()
 		self.set_selector()
 		self.set_select_path()
+		# Sight Impaired Assistant
+		if zynthian_gui_config.sight_impaired_enabled:
+			self.zyngui.zynvoice.say_text(self.get_sight_impaired_title())
 
 
 	def refresh_loading(self):
@@ -221,6 +224,9 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 				# Set index value
 				self.index=index
 				self.last_index_change_ts=datetime.now()
+				# Sight Impaired Assistant
+				if self.shown and zynthian_gui_config.sight_impaired_enabled:
+					self.zyngui.zynvoice.say_text(self.get_sight_impaired_option(index))
 
 
 	def select(self, index=None):
@@ -253,6 +259,10 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 
 	def select_action(self, index, t='S'):
 		pass
+
+	# ---------------------------------------------------------------------------
+	# Widget's Callback
+	# ---------------------------------------------------------------------------
 
 
 	def cb_listbox_push(self,event):
@@ -303,5 +313,25 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 				self.zyngui.zynswitch_defered('B',2)
 			elif dts>=2:
 				self.zyngui.zynswitch_defered('L',2)
+
+
+	# ---------------------------------------------------------------------------
+	# Impaired Sight Stuff
+	# ---------------------------------------------------------------------------
+
+	def get_sight_impaired_title(self):
+		return self.select_path.get()
+
+
+	def get_sight_impaired_option(self, i):
+		text = self.list_data[i][2]
+
+		if text[0]=="[":
+			if text.startswith("[x]"):
+				text = text[3:] + " is checked"
+			elif text.startswith("[  ]"):
+				text = text[4:] + " is unchecked"
+
+		return text
 
 #------------------------------------------------------------------------------

@@ -417,7 +417,7 @@ class zynthian_engine_mixer(zynthian_engine):
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
 
-	def get_path(self, layer):
+	def get_path(self, layer, impsight=False):
 		return self.name
 
 

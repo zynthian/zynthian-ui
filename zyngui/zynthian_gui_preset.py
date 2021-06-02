@@ -87,4 +87,17 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			else:
 				self.select_path.set(self.zyngui.curlayer.get_bankpath())
 
+
+	# ---------------------------------------------------------------------------
+	# Impaired Sight Stuff
+	# ---------------------------------------------------------------------------
+
+	def get_sight_impaired_title(self):
+		if self.zyngui.curlayer:
+			if self.zyngui.curlayer.show_fav_presets:
+				return "Favorite presets for " + self.zyngui.curlayer.get_basepath(True)
+			else:
+				return "Preset selection for " + self.zyngui.curlayer.get_bankpath(True)
+
+
 #------------------------------------------------------------------------------

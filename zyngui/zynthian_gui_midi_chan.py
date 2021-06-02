@@ -23,6 +23,7 @@
 # 
 #******************************************************************************
 
+import re
 import sys
 import tkinter
 import logging
@@ -42,6 +43,10 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 	def __init__(self):
 		self.set_mode('ADD')
 		super().__init__('Channel', True)
+		
+		if zynthian_gui_config.sight_impaired_enabled:
+			self.channel_option_re = re.compile("CH#([0-9]+)")
+
 
 	def set_mode(self, mode, chan=None, chan_list=None):
 		self.mode = mode
@@ -68,7 +73,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 			for i in self.chan_list:
 				if i==zynthian_gui_config.master_midi_channel:
 					continue
-				self.list_data.append((str(i+1),i,"MIDI CH#"+str(i+1)))
+				self.list_data.append((str(i+1),i,"CH#"+str(i+1)))
 		elif self.mode=='CLONE':
 			for i in self.chan_list:
 				if i in (self.midi_chan, zynthian_gui_config.master_midi_channel):
@@ -160,5 +165,10 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 			self.select_path.set("MIDI Channel")
 		elif self.mode=='CLONE':
 			self.select_path.set("Clone MIDI Channel {} to ...".format(self.midi_chan+1))
+
+
+	def get_sight_impaired_option(self, i):
+		text = super().get_sight_impaired_option(i)
+		return re.sub(self.channel_option_re, 'Channel \\1', text)
 
 #------------------------------------------------------------------------------

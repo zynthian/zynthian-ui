@@ -547,8 +547,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
 
-	def get_path(self, layer):
-		path=self.nickname
+	def get_path(self, layer, impsight=False):
+		path = super().get_path(layer, impsight)
 		if not self.tuning_temp:
 			path += "/Temperament"
 		else:

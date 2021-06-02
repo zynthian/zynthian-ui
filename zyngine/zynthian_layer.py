@@ -844,22 +844,28 @@ class zynthian_layer:
 		return path
 
 
-	def get_basepath(self):
-		path = self.engine.get_path(self)
+	def get_basepath(self, impsight=False):
+		path = self.engine.get_path(self, impsight)
 		if self.midi_chan is not None:
-			path = "{}#{}".format(self.midi_chan+1, path)
+			if impsight:
+				path = "{} on channel {}".format(path, self.midi_chan+1)
+			else:
+				path = "{}#{}".format(self.midi_chan+1, path)
 		return path
 
 
-	def get_bankpath(self):
-		path = self.get_basepath()
+	def get_bankpath(self, impsight=False):
+		path = self.get_basepath(impsight)
 		if self.bank_name and self.bank_name!="None":
-			path += " > " + self.bank_name
+			if impsight:
+				path += ". " + self.bank_name.replace("_"," ")
+			else:
+				path += " > " + self.bank_name
 		return path
 
 
-	def get_presetpath(self):
-		path = self.get_basepath()
+	def get_presetpath(self, impsight=False):
+		path = self.get_basepath(impsight)
 
 		subpath = None
 		if self.bank_name and self.bank_name!="None":
@@ -870,9 +876,12 @@ class zynthian_layer:
 			subpath = self.preset_name
 
 		if subpath:
-			path += " > " + subpath
+			if impsight:
+				path += ". " + subpath.replace("_"," ")
+			else:
+				path += " > " + subpath
 
 		return path
-
+	
 
 #******************************************************************************

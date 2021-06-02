@@ -652,8 +652,11 @@ class zynthian_engine(zynthian_basic_engine):
 	# Layer "Path" String
 	# ---------------------------------------------------------------------------
 
-	def get_path(self, layer):
-		return self.nickname
+	def get_path(self, layer, impsight=False):
+		if impsight:
+			return self.name
+		else:
+			return self.nickname
 
 
 	# ---------------------------------------------------------------------------

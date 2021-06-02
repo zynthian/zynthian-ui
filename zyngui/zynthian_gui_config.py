@@ -305,41 +305,48 @@ color_status_error=color_error
 # UI Font Parameters
 #------------------------------------------------------------------------------
 
-font_family=os.environ.get('ZYNTHIAN_UI_FONT_FAMILY',"Audiowide")
-#font_family="Helvetica" #=> the original ;-)
-#font_family="Economica" #=> small
-#font_family="Orbitron" #=> Nice, but too strange
-#font_family="Abel" #=> Quite interesting, also "Strait"
+font_family = os.environ.get('ZYNTHIAN_UI_FONT_FAMILY',"Audiowide")
+#font_family = "Helvetica" #=> the original ;-)
+#font_family = "Economica" #=> small
+#font_family = "Orbitron" #=> Nice, but too strange
+#font_family = "Abel" #=> Quite interesting, also "Strait"
 
-font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
+font_size = int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 
 #------------------------------------------------------------------------------
 # Touch Options
 #------------------------------------------------------------------------------
 
-enable_touch_widgets=int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS',False))
-enable_onscreen_buttons=int(os.environ.get('ZYNTHIAN_UI_ONSCREEN_BUTTONS',False))
-force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
+enable_touch_widgets = int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS',False))
+enable_onscreen_buttons = int(os.environ.get('ZYNTHIAN_UI_ONSCREEN_BUTTONS',False))
+force_enable_cursor = int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 
 #------------------------------------------------------------------------------
 # UI Options
 #------------------------------------------------------------------------------
 
-restore_last_state=int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE',False))
-snapshot_mixer_settings=int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS',False))
-show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
+restore_last_state = int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE',False))
+snapshot_mixer_settings = int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS',False))
+show_cpu_status = int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
 
 #------------------------------------------------------------------------------
 # Audio Options
 #------------------------------------------------------------------------------
 
-rbpi_headphones=int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES',False))
+rbpi_headphones = int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES',False))
 
 #------------------------------------------------------------------------------
 # Networking Options
 #------------------------------------------------------------------------------
 
-vncserver_enabled=int(os.environ.get('ZYNTHIAN_VNCSERVER_ENABLED',False))
+vncserver_enabled = int(os.environ.get('ZYNTHIAN_VNCSERVER_ENABLED',False))
+
+#------------------------------------------------------------------------------
+# Accessibility Options
+#------------------------------------------------------------------------------
+
+sight_impaired_enabled = int(os.environ.get('ZYNTHIAN_SIGHT_IMPAIRED_ENABLED',False))
+sight_impaired_enabled = True
 
 #------------------------------------------------------------------------------
 # MIDI Configuration
