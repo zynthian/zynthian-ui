@@ -45,7 +45,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		super().__init__('Channel', True)
 		
 		if zynthian_gui_config.sight_impaired_enabled:
-			self.channel_option_re = re.compile("CH#([0-9]+)")
+			self.channel_option_re = re.compile("CH#([0-9]+)",re.IGNORECASE)
 
 
 	def set_mode(self, mode, chan=None, chan_list=None):

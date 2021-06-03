@@ -327,9 +327,9 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 
 		if text[0]=="[":
 			if text.startswith("[x]"):
-				text = text[3:] + ", is checked"
+				text = text[4:] + ", is checked"
 			elif text.startswith("[  ]"):
-				text = text[4:] + ", is unchecked"
+				text = text[5:] + ", is unchecked"
 
 		return text
 
