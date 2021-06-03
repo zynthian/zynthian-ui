@@ -348,10 +348,6 @@ vncserver_enabled = int(os.environ.get('ZYNTHIAN_VNCSERVER_ENABLED',False))
 sight_impaired_enabled = int(os.environ.get('ZYNTHIAN_SIGHT_IMPAIRED_ENABLED',False))
 sight_impaired_voice = os.environ.get('ZYNTHIAN_SIGHT_IMPAIRED_VOICE', None)
 
-sight_impaired_enabled = True
-#sight_impaired_voice = "cmu_us_slt_arctic_hts"
-sight_impaired_voice = "kal_diphone"
-
 #------------------------------------------------------------------------------
 # MIDI Configuration
 #------------------------------------------------------------------------------
