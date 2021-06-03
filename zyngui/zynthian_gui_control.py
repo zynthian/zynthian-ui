@@ -479,4 +479,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 				return "Instrument Control for " + self.zyngui.curlayer.get_presetpath(True)
 
 
+	def get_sight_impaired_option(self, i):
+		return super().get_sight_impaired_option(i).replace("#"," ")
+
+
 #------------------------------------------------------------------------------

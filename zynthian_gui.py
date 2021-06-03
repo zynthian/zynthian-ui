@@ -322,7 +322,7 @@ class zynthian_gui:
 	def start(self):
 		# Initialize Sight Impaired assistant
 		if zynthian_gui_config.sight_impaired_enabled:
-			self.zynvoice = zynthian_engine_festival()
+			self.zynvoice = zynthian_engine_festival(zynthian_gui_config.sight_impaired_voice)
 
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()

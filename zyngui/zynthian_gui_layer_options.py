@@ -438,4 +438,19 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.select_path.set("Layer Options")
 
 
+	# ---------------------------------------------------------------------------
+	# Impaired Sight Stuff
+	# ---------------------------------------------------------------------------
+
+	def get_sight_impaired_title(self):
+		if self.audiofx_layer:
+			return "Layer Options for {}".format(self.audiofx_layer.get_basepath(True))
+		elif self.audiofx_layer:
+			return "Layer Options for {}".format(self.midifx_layer.get_basepath(True))
+		elif self.layer:
+			return "Layer Options for {}".format(self.layer.get_basepath(True))
+		else:
+			return "Layer Options"
+
+
 #------------------------------------------------------------------------------

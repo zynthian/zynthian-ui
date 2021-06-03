@@ -24,6 +24,7 @@
 
 import re
 import pexpect
+import logging
 import threading
 from time import sleep
 from . import zynthian_basic_engine
@@ -34,7 +35,7 @@ from . import zynthian_basic_engine
 
 class zynthian_engine_festival(zynthian_basic_engine):
 
-	def __init__(self, voice="kal_diphone"):
+	def __init__(self, voice=None):
 		super().__init__("Festival", "/usr/bin/festival", "festival>")
 
 		self.txt_counter_re = re.compile("[a-z0-9]",re.IGNORECASE)
@@ -43,7 +44,10 @@ class zynthian_engine_festival(zynthian_basic_engine):
 		self.speaking_flag = False
 
 		self.start()
-		self.set_voice(voice)
+
+		if voice:
+			self.set_voice(voice)
+
 		self.start_speaker()
 
 
@@ -70,6 +74,7 @@ class zynthian_engine_festival(zynthian_basic_engine):
 		self.voice = voice
 		self.proc_cmd("(voice_{})".format(voice))
 
+
 	# Speaker Thread
 	def start_speaker(self):
 
@@ -78,9 +83,10 @@ class zynthian_engine_festival(zynthian_basic_engine):
 				sleep(0.1)
 				if self.txt_buffer:
 					self.txt_to_say = self.txt_buffer
-					sleep(0.3)
+					sleep(0.2)
 					if self.txt_to_say == self.txt_buffer:
 						self.speaking_flag = True
+						logging.debug("SayText \"{}\"".format(self.txt_to_say))
 						self.proc.sendline("(SayText \"{}\")".format(self.txt_to_say))
 						self.proc_get_output()	
 						self.speaking_flag = False

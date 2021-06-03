@@ -166,6 +166,9 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		elif self.mode=='CLONE':
 			self.select_path.set("Clone MIDI Channel {} to ...".format(self.midi_chan+1))
 
+	# ---------------------------------------------------------------------------
+	# Impaired Sight Stuff
+	# ---------------------------------------------------------------------------
 
 	def get_sight_impaired_option(self, i):
 		text = super().get_sight_impaired_option(i)

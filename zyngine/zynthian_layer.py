@@ -848,7 +848,7 @@ class zynthian_layer:
 		path = self.engine.get_path(self, impsight)
 		if self.midi_chan is not None:
 			if impsight:
-				path = "{} on channel {}".format(path, self.midi_chan+1)
+				path = "{} on channel {}".format(path.capitalize(), self.midi_chan+1)
 			else:
 				path = "{}#{}".format(self.midi_chan+1, path)
 		return path
@@ -858,7 +858,7 @@ class zynthian_layer:
 		path = self.get_basepath(impsight)
 		if self.bank_name and self.bank_name!="None":
 			if impsight:
-				path += ". " + self.bank_name.replace("_"," ")
+				path += ". " + self.bank_name.replace("_"," ").capitalize()
 			else:
 				path += " > " + self.bank_name
 		return path
