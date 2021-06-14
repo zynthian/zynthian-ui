@@ -11,7 +11,6 @@ __all__ = [
 	"zynthian_gui_engine",
 	"zynthian_gui_midi_chan",
 	"zynthian_gui_midi_cc",
-	"zynthian_gui_transpose",
 	"zynthian_gui_audio_out",
 	"zynthian_gui_midi_out",
 	"zynthian_gui_audio_in",
@@ -26,7 +25,8 @@ __all__ = [
 	"zynthian_gui_main",
 	"zynthian_gui_audio_recorder",
 	"zynthian_gui_midi_recorder",
-	"zynthian_gui_autoeq"
+	"zynthian_gui_autoeq",
+	"zynthian_gui_keyboard"
 #	"zynthian_gui_osc_browser"
 ]
 
@@ -34,6 +34,7 @@ import zyngui.zynthian_gui_config as zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_info import zynthian_gui_info
+from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_layer import zynthian_gui_layer
@@ -41,7 +42,6 @@ from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
-from zyngui.zynthian_gui_transpose import zynthian_gui_transpose
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
 from zyngui.zynthian_gui_midi_out import zynthian_gui_midi_out
 from zyngui.zynthian_gui_audio_in import zynthian_gui_audio_in
@@ -57,4 +57,5 @@ from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
+from zyngui import zynthian_gui_keyboard
 #from zyngui.zynthian_gui_osc_browser import zynthian_gui_osc_browser

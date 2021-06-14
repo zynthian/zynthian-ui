@@ -87,6 +87,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.nickname = "FS"
 		self.jackname = "fluidsynth"
 
+		self.options['drop_pc']=True
+
 		if "Pi 4" in os.environ.get("RBPI_VERSION"):
 			n_fxgrp = 8
 		else:

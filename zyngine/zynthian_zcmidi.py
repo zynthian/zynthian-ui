@@ -39,7 +39,7 @@ class zynthian_zcmidi:
 		self.lib_zyncoder=zyncoder.get_lib_zyncoder()
 
 	def set_midi_control(self, chan, ctrl, val):
-		self.lib_zyncoder.zynmidi_send_ccontrol_change(chan, ctrl, val)
+		self.lib_zyncoder.ui_send_ccontrol_change(chan, ctrl, val)
 
 	def set_midi_bank_msb(self, chan, msb):
 		logging.debug("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb))
@@ -60,7 +60,7 @@ class zynthian_zcmidi:
 	def set_midi_prg(self, chan, prg):
 		logging.debug("Set MIDI CH " + str(chan) + ", Program: " + str(prg))
 		self.prg_selected[chan]=prg
-		self.lib_zyncoder.zynmidi_send_program_change(chan, prg)
+		self.lib_zyncoder.ui_send_program_change(chan, prg)
 
 	def get_midi_prg(self, chan):
 		return self.prg_selected[chan]
@@ -72,13 +72,13 @@ class zynthian_zcmidi:
 		self.prg_selected[chan]=prg
 		self.set_midi_control(chan,0,msb)
 		self.set_midi_control(chan,32,lsb)
-		self.lib_zyncoder.zynmidi_send_program_change(chan, prg)
+		self.lib_zyncoder.ui_send_program_change(chan, prg)
 
 	def get_midi_preset(self, chan):
 		return [self.bank_msb_selected[chan],self.bank_lsb_selected[chan],self.prg_selected[chan]]
 
 	def note_on(self, chan, note, vel):
-		self.lib_zyncoder.zynmidi_send_note_on(chan, note, vel)
+		self.lib_zyncoder.ui_send_note_on(chan, note, vel)
 
 	def note_off(self, chan, note):
-		self.lib_zyncoder.zynmidi_send_note_on(chan, note, 0)
+		self.lib_zyncoder.ui_send_note_on(chan, note, 0)

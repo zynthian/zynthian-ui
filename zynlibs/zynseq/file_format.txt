@@ -1,0 +1,100 @@
+zynseq file format (RIFF)
+=========================
+Version 6
+Pattern time is measured in steps.
+Sequence time is measured in MIDI clock cycles.
+
+RIFF Header: (Version block must be first. If ommitted assume version 0.)
+	Block ID: "vers"
+	Block size: 32-bit big endian
+Block:
+	File format version [32]
+    Tempo [2]
+    Time signature (beats per bar) [2]
+	MIDI channel for triggers and tallies [1]
+	Trigger JACK input [1] (Not yet implemented)
+	Trigger JACK output [1] (Not yet implemented)
+	Padding [1]
+	Vertical zoom [2]
+	Horizontal zoom [2]
+
+RIFF Header:
+	Block ID: "patn"
+	Block size: 32-bit big endian
+Block:
+	Pattern ID [4]
+	Quantity of beats [4]
+	Steps per beat [2]
+	Map / scale [1] (Added in V1)
+	Scale tonic [1] (Added in V1)
+	Reference note [1] (May be used to remember location in pattern editor) (Added in V5)
+	Padding [1] (Added in V5)
+	Events: (quantity deduced from block length)
+		Start step [4]
+		Duration [4]
+		Command [1]
+		Value 1 start [1]
+		Value 2 start [1]
+		Value 1 end [1]
+		Value 2 end [1]
+		Unused padding [1] = 0
+
+RIFF Header:
+	Block ID: "bank"
+	Block size: 32-bit big endian
+Block:
+	Bank ID [1]
+    Padding [1]
+    Quantity of sequences (grid size) [4]
+    Sequences:
+        Play mode [1]
+        Group [1]
+		Trigger note [1] (This seems like wrong place but makes code much simpler)
+		Padding [1]
+		Name [16] (Since V6)
+        Quantity of tracks [4]
+        Tracks:
+            MIDI channel [1]
+            JACK output [1]
+            Keymap [1] (bits scale: 0..200, 254=map)
+            Padding [1]
+            Quantity of patterns [2]
+            Patterns:
+                Start time [4]
+                Pattern ID [4]
+        Quantity of timebase events [4]
+        Timebase events:
+            Event measure [2]
+            Event tick [2]
+            Event command [2] [0x0001: Tempo, 0x0002: Time signature]
+            Event data [2] (maybe variable data in future?)
+
+RIFF Header: (user defined scales) NOT IMPLEMENTED
+	Block ID: 'scal'
+	Block size: 32-bit big endian
+Block:
+	Scale index [1] (0..200)
+	Quantity of notes in scale [1]
+	Notes:
+		Note offset [1]
+	Pad if necessary [0/1]
+
+
+**Patterns must be stored (or loaded) before sequences which rely on references to patterns**
+
+Keymap File Format
+==================
+Keymaps are stored in JSON. There are two types:
+Map:
+{
+	"type":"map", # Defines the type of the map (required: map | scale)
+	"scale":[0,2,4,5,7,9,11], # Array of note offsets within scale (required for scale type: values: 0..11)
+	"default":48, # Defines the default MIDI note to select after loading map (0..127 Default: 60)
+	"keys":       # Array of keys in map (required for map type)
+	[
+		{
+			"note":36,            # MIDI note number (required: 0..127)
+			"name":"Kick Drum",   # Title to show on key (default: note+octave, e.g. C4)
+			"colour":"#000000"}   # Background colour of key (default: white)
+	]
+}

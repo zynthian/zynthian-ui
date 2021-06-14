@@ -25,7 +25,12 @@
 import logging
 import copy
 from time import sleep
+import collections
 from collections import OrderedDict
+
+# Zynthian specific modules
+from zyncoder import *
+
 
 class zynthian_layer:
 
@@ -51,6 +56,7 @@ class zynthian_layer:
 		self.bank_name = None
 		self.bank_info = None
 
+		self.show_fav_presets = False
 		self.preset_list = []
 		self.preset_index = 0
 		self.preset_name = None
@@ -126,7 +132,9 @@ class zynthian_layer:
 
 
 	def load_bank_list(self):
-		self.bank_list=self.engine.get_bank_list(self)
+		self.bank_list = self.engine.get_bank_list(self)
+		if len(self.engine.get_preset_favs(self))>0:
+			self.bank_list = [["*FAVS*",0,"*** Favorites ***"]] + self.bank_list
 		logging.debug("BANK LIST => \n%s" % str(self.bank_list))
 
 
@@ -182,10 +190,10 @@ class zynthian_layer:
 	# ---------------------------------------------------------------------------
 
 
-	def load_preset_list(self, only_favs=False):
+	def load_preset_list(self):
 		preset_list = []
 
-		if only_favs:
+		if self.show_fav_presets:
 			for v in self.get_preset_favs().values():
 				preset_list.append(v[1])
 
@@ -319,6 +327,14 @@ class zynthian_layer:
 	def get_preset_favs(self):
 		return self.engine.get_preset_favs(self)
 
+
+	def set_show_fav_presets(self, flag=True):
+		if flag:
+			self.show_fav_presets = True
+			self.reset_preset()
+		else:
+			self.show_fav_presets = False
+
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
@@ -384,6 +400,11 @@ class zynthian_layer:
 				logging.debug("Sending MIDI CC{}={} for {}".format(zctrl.midi_cc, zctrl.value, k))
 
 
+	def midi_unlearn(self):
+		for k, zctrl in self.controllers_dict.items():
+			zctrl.midi_unlearn()
+
+
 	#----------------------------------------------------------------------------
 	# MIDI CC processing
 	#----------------------------------------------------------------------------
@@ -391,22 +412,43 @@ class zynthian_layer:
 
 	def midi_control_change(self, chan, ccnum, ccval):
 		if self.engine:
-			if self.listen_midi_cc and chan==self.midi_chan:
-				#TODO => Optimize!!
-				for k, zctrl in self.controllers_dict.items():
-					if zctrl.midi_cc==ccnum:
+			#logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
+
+			# Engine MIDI-Learn zctrls
+			try:
+				self.engine.midi_control_change(chan, ccnum, ccval)
+			except:
+				pass
+
+			# MIDI-CC zctrls (also router MIDI-learn, aka CC-swaps)
+			#TODO => Optimize!! Use the MIDI learning mechanism for caching this ...
+			if self.listen_midi_cc:
+				swap_info = zyncoder.lib_zyncoder.get_midi_filter_cc_swap(chan, ccnum)
+				midi_chan = swap_info >> 8
+				midi_cc = swap_info & 0xFF
+
+				if self.zyngui.is_single_active_channel():
+					for k, zctrl in self.controllers_dict.items():
 						try:
-							# Aeolus, FluidSynth, LinuxSampler, puredata, Pianoteq, setBfree, ZynAddSubFX
-							self.engine.midi_zctrl_change(zctrl, ccval)
+							if zctrl.midi_learn_cc and zctrl.midi_learn_cc>0:
+								if self.midi_chan==chan and zctrl.midi_learn_cc==ccnum:
+									self.engine.midi_zctrl_change(zctrl, ccval)
+							else:
+								if self.midi_chan==midi_chan and zctrl.midi_cc==midi_cc:
+									self.engine.midi_zctrl_change(zctrl, ccval)
 						except:
 							pass
-
-			elif not self.listen_midi_cc:
-				try:
-					# Jalv, ALSA-Mixer, ...
-					self.engine.midi_control_change(chan, ccnum, ccval)
-				except:
-					pass
+				else:
+					for k, zctrl in self.controllers_dict.items():
+						try:
+							if zctrl.midi_learn_cc and zctrl.midi_learn_cc>0:
+								if zctrl.midi_learn_chan==chan and zctrl.midi_learn_cc==ccnum:
+									self.engine.midi_zctrl_change(zctrl, ccval)
+							else:
+								if zctrl.midi_chan==midi_chan and zctrl.midi_cc==midi_cc:
+									self.engine.midi_zctrl_change(zctrl, ccval)
+						except:
+							pass
 
 
 	# ---------------------------------------------------------------------------
@@ -425,6 +467,7 @@ class zynthian_layer:
 			'preset_index': self.preset_index,
 			'preset_name': self.preset_name,
 			'preset_info': self.preset_info,
+			'show_fav_presets': self.show_fav_presets,
 			'controllers_dict': {},
 			'zs3_list': self.zs3_list,
 			'active_screen_index': self.active_screen_index
@@ -439,6 +482,9 @@ class zynthian_layer:
 
 		self.wait_stop_loading()
 
+		if 'show_fav_presets' in snapshot:
+			self.set_show_fav_presets(snapshot['show_fav_presets'])
+
 		#Load bank list and set bank
 		try:
 			self.bank_name=snapshot['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
@@ -452,12 +498,11 @@ class zynthian_layer:
 		self.wait_stop_loading()
 	
 		#Load preset list and set preset
-		#try:
-		self.load_preset_list()
-		self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
-
-		#except Exception as e:
-			#logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
+		try:
+			self.load_preset_list()
+			self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
+		except Exception as e:
+			logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
 
 		self.wait_stop_loading()
 
@@ -473,7 +518,7 @@ class zynthian_layer:
 		#Set active screen
 		if 'active_screen_index' in snapshot:
 			self.active_screen_index=snapshot['active_screen_index']
-
+			
 
 	def restore_snapshot_2(self, snapshot):
 
@@ -524,12 +569,21 @@ class zynthian_layer:
 				'preset_name': self.preset_name,
 				'preset_info': self.preset_info,
 				'active_screen_index': self.active_screen_index,
-				'controllers_dict': {}
+				'controllers_dict': {},
+				'note_range': {}
 			}
 
 			for k in self.controllers_dict:
 				logging.debug("Saving {}".format(k))
 				zs3['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
+
+			if self.midi_chan>=0:
+				zs3['note_range'] = {
+					'note_low': zyncoder.lib_zyncoder.get_midi_filter_note_low(self.midi_chan),
+					'note_high': zyncoder.lib_zyncoder.get_midi_filter_note_high(self.midi_chan),
+					'octave_trans': zyncoder.lib_zyncoder.get_midi_filter_octave_trans(self.midi_chan),
+					'halftone_trans': zyncoder.lib_zyncoder.get_midi_filter_halftone_trans(self.midi_chan)
+				}
 
 			self.zs3_list[i] = zs3
 
@@ -571,6 +625,11 @@ class zynthian_layer:
 			for k in zs3['controllers_dict']:
 				self.controllers_dict[k].restore_snapshot(zs3['controllers_dict'][k])
 
+			# Set Note Range
+			if self.midi_chan>=0 and 'note_range' in zs3:
+				nr = zs3['note_range']
+				zyncoder.lib_zyncoder.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
+
 			return True
 
 		else:
@@ -595,12 +654,13 @@ class zynthian_layer:
 
 
 	def set_audio_out(self, ao):
+		self.audio_out = copy.copy(ao)
+
 		#Fix legacy routing (backward compatibility with old snapshots)
-		if "system" in ao:
-			ao.remove("system")
-			ao += ["system:playback_1", "system:playback_2"]
-			
-		self.audio_out=ao
+		if "system" in self.audio_out:
+			self.audio_out.remove("system")
+			self.audio_out += ["system:playback_1", "system:playback_2"]
+
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -648,7 +708,7 @@ class zynthian_layer:
 
 
 	def mute_audio_out(self):
-		self.audio_out=[]
+		self.audio_out = []
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -661,8 +721,8 @@ class zynthian_layer:
 		return self.audio_in
 
 
-	def set_audio_in(self, ai):		
-		self.audio_in=ai
+	def set_audio_in(self, ai):
+		self.audio_in = copy.copy(ai)
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -704,6 +764,12 @@ class zynthian_layer:
 		self.audio_in=[]
 		self.zyngui.zynautoconnect_audio()
 
+
+	def is_parallel_audio_routed(self, layer):
+		if isinstance(layer, zynthian_layer) and layer!=self and layer.midi_chan==self.midi_chan and collections.Counter(layer.audio_out)==collections.Counter(self.audio_out):
+			return True
+		else:
+			return False
 
 	# ---------------------------------------------------------------------------
 	# MIDI Routing:
@@ -764,6 +830,13 @@ class zynthian_layer:
 	def mute_midi_out(self):
 		self.midi_out=[]
 		self.zyngui.zynautoconnect_midi()
+
+
+	def is_parallel_midi_routed(self, layer):
+		if isinstance(layer, zynthian_layer) and layer!=self and layer.midi_chan==self.midi_chan and collections.Counter(layer.midi_out)==collections.Counter(self.midi_out):
+			return True
+		else:
+			return False
 
 
 	# ---------------------------------------------------------------------------

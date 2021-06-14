@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI configuration
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2021 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -79,111 +79,87 @@ else:
 # Encoder & Switches GPIO pin assignment (wiringPi numbering)
 #------------------------------------------------------------------------------
 
-# First Prototype => Generic Plastic Case
 if wiring_layout=="PROTOTYPE-1":
-	if not zyncoder_pin_a: zyncoder_pin_a=[27,21,3,7]
-	if not zyncoder_pin_b: zyncoder_pin_b=[25,26,4,0]
-	if not zynswitch_pin: zynswitch_pin=[23,None,2,None]
 	select_ctrl=2
-# Controller RBPi connector downside, controller 1 reversed
-elif wiring_layout=="PROTOTYPE-2":
-	if not zyncoder_pin_a: zyncoder_pin_a=[27,21,4,0]
-	if not zyncoder_pin_b: zyncoder_pin_b=[25,26,3,7]
-	if not zynswitch_pin: zynswitch_pin=[23,107,2,106]
-	select_ctrl=3
-# Controller RBPi connector upside
-elif wiring_layout=="PROTOTYPE-3":
-	if not zyncoder_pin_a: zyncoder_pin_a=[27,21,3,7]
-	if not zyncoder_pin_b: zyncoder_pin_b=[25,26,4,0]
-	if not zynswitch_pin: zynswitch_pin=[107,23,106,2]
-	select_ctrl=3
-# Controller RBPi connector downside (Holger's way)
-elif wiring_layout=="PROTOTYPE-3H":
-	if not zyncoder_pin_a: zyncoder_pin_a=[21,27,7,3]
-	if not zyncoder_pin_b: zyncoder_pin_b=[26,25,0,4]
-	if not zynswitch_pin: zynswitch_pin=[107,23,106,2]
-	select_ctrl=3
-# Controller RBPi connector upside / Controller Singles
-elif wiring_layout=="PROTOTYPE-4":
-	if not zyncoder_pin_a: zyncoder_pin_a=[26,25,0,4]
-	if not zyncoder_pin_b: zyncoder_pin_b=[21,27,7,3]
-	if not zynswitch_pin: zynswitch_pin=[107,23,106,2]
-	select_ctrl=3
-# Controller RBPi connector downside / Controller Singles Inverted
-elif wiring_layout=="PROTOTYPE-4B":
-	if not zyncoder_pin_a: zyncoder_pin_a=[25,26,4,0]
-	if not zyncoder_pin_b: zyncoder_pin_b=[27,21,3,7]
-	if not zynswitch_pin: zynswitch_pin=[23,107,2,106]
-	select_ctrl=3
-# Kees layout, for display Waveshare 3.2
-elif wiring_layout=="PROTOTYPE-KEES":
-	if not zyncoder_pin_a: zyncoder_pin_a=[27,21,4,5]
-	if not zyncoder_pin_b: zyncoder_pin_b=[25,26,31,7]
-	if not zynswitch_pin: zynswitch_pin=[23,107,6,106]
-	select_ctrl=3
-# Controller RBPi connector upside / Controller Singles / Switches throw GPIO expander
-elif wiring_layout=="PROTOTYPE-5":
-	if not zyncoder_pin_a: zyncoder_pin_a=[26,25,0,4]
-	if not zyncoder_pin_b: zyncoder_pin_b=[21,27,7,3]
-	if not zynswitch_pin: zynswitch_pin=[107,105,106,104]
-	select_ctrl=3
-elif wiring_layout=="MCP23017_ENCODERS":
-	if not zyncoder_pin_a: zyncoder_pin_a=[102,105,110,113]
-	if not zyncoder_pin_b: zyncoder_pin_b=[101,104,109,112]
-	if not zynswitch_pin: zynswitch_pin=[100,103,108,111]
-	select_ctrl=3
-elif wiring_layout=="MCP23017_EXTRA":
-	if not zyncoder_pin_a: zyncoder_pin_a=[102,105,110,113]
-	if not zyncoder_pin_b: zyncoder_pin_b=[101,104,109,112]
-	if not zynswitch_pin: zynswitch_pin=[100,103,108,111,106,107,114,115]
-	select_ctrl=3
-elif wiring_layout=="MCP23017_ZynScreen":
-	if not zyncoder_pin_a: zyncoder_pin_a=[102,105,110,113]
-	if not zyncoder_pin_b: zyncoder_pin_b=[101,104,109,112]
-	if not zynswitch_pin: zynswitch_pin=[100,103,108,111,106,107,114,115]
-	select_ctrl=3
-elif wiring_layout=="MCP23017_EPDF":
-	if not zyncoder_pin_a: zyncoder_pin_a=[103,100,111,108]
-	if not zyncoder_pin_b: zyncoder_pin_b=[104,101,112,109]
-	if not zynswitch_pin: zynswitch_pin=[105,102,112,110,106,107,114,115]
-	select_ctrl=3
-elif wiring_layout=="MCP23017_EPDF_REVERSE":
-	if not zyncoder_pin_b: zyncoder_pin_a=[104,101,112,109]
-	if not zyncoder_pin_a: zyncoder_pin_b=[103,100,111,108]
-	if not zynswitch_pin: zynswitch_pin=[105,102,112,110,106,107,114,115]
-	select_ctrl=3
-elif wiring_layout=="I2C_HWC":
-	if not zyncoder_pin_a: zyncoder_pin_a=[1,2,3,4]
-	zyncoder_pin_b=[0,0,0,0]
-	if not zynswitch_pin: zynswitch_pin=[1,2,3,4]
-	select_ctrl=3
-
-# Desktop Development & Emulation
-elif wiring_layout=="EMULATOR":
-	if not zyncoder_pin_a: zyncoder_pin_a=[4,5,6,7]
-	if not zyncoder_pin_b: zyncoder_pin_b=[8,9,10,11]
-	if not zynswitch_pin: zynswitch_pin=[0,1,2,3]
-	select_ctrl=3
-# No HW Controllers => Dummy Controllers
-elif wiring_layout=="DUMMIES":
-	if not zyncoder_pin_a: zyncoder_pin_a=[0,0,0,0]
-	if not zyncoder_pin_b: zyncoder_pin_b=[0,0,0,0]
-	if not zynswitch_pin: zynswitch_pin=[0,0,0,0]
-	select_ctrl=3
-# Custom Config => blank
-elif wiring_layout=="CUSTOM":
-	select_ctrl=3
-# Default to DUMMIES
 else:
+	select_ctrl=3
+	# Default to DUMMIES
 	if not zyncoder_pin_a: zyncoder_pin_a=[0,0,0,0]
 	if not zyncoder_pin_b: zyncoder_pin_b=[0,0,0,0]
 	if not zynswitch_pin: zynswitch_pin=[0,0,0,0]
-	select_ctrl=3
 
 # Print Wiring Layout
 logging.debug("ZYNCODER A: %s" % zyncoder_pin_a)
 logging.debug("ZYNCODER B: %s" % zyncoder_pin_b)
 logging.debug("SWITCHES layout: %s" % zynswitch_pin)
+
+#------------------------------------------------------------------------------
+# Zynaptik & Zyntof configuration helpers
+#------------------------------------------------------------------------------
+
+def get_zynsensor_config(root_varname):
+	midi_event = None
+	evtype = None
+
+	event_type = os.environ.get(root_varname, "")
+	if event_type=="MIDI_CC":
+		evtype = 0xB
+	elif event_type=="MIDI_PITCH_BEND":
+		evtype = 0xE
+	elif event_type=="MIDI_CHAN_PRESS":
+		evtype = 0xD
+	else:
+		evtype = None
+
+	if evtype:
+		chan = os.environ.get(root_varname + "__MIDI_CHAN")
+		try:
+			chan = int(chan) - 1
+			if chan<0 or chan>15:
+				chan = None
+		except:
+			chan = None
+
+		num = os.environ.get(root_varname + "__MIDI_NUM")
+		try:
+			num = int(num)
+			if num>=0 and num<=127:
+				midi_event = {
+					'type': evtype,
+					'chan': chan,
+					'num': num
+				}
+		except:
+			pass
+
+	return midi_event
+
+#------------------------------------------------------------------------------
+# Zynaptik Configuration
+#------------------------------------------------------------------------------
+
+zynaptik_ad_midi_events = []
+zynaptik_da_midi_events = []
+
+zynaptik_config = os.environ.get("ZYNTHIAN_WIRING_ZYNAPTIK_CONFIG")
+if zynaptik_config:
+
+	# Zynaptik Switches Configuration
+	if "16xDIO" in zynaptik_config:
+		for i in range(0, 16):
+			zynswitch_pin.append(200+i)
+
+	# Zynaptik AD Action Configuration
+	if "4xAD" in zynaptik_config:
+		for i in range(0, 4):
+			root_varname = "ZYNTHIAN_WIRING_ZYNAPTIK_AD{:02d}".format(i+1)
+			zynaptik_ad_midi_events.append(get_zynsensor_config(root_varname))
+
+	# Zynaptik DA Action Configuration
+	if "4xDA" in zynaptik_config:
+		for i in range(0, 4):
+			root_varname = "ZYNTHIAN_WIRING_ZYNAPTIK_DA{:02d}".format(i+1)
+			zynaptik_da_midi_events.append(get_zynsensor_config(root_varname))
 
 #------------------------------------------------------------------------------
 # Custom Switches Action Configuration
@@ -201,7 +177,7 @@ for i in range(0, n_custom_switches):
 	cuias = {}
 	midi_event = None
 
-	root_varname = "ZYNTHIAN_WIRING_CUSTOM_SWITCH_{0:0>2}".format(i+1)
+	root_varname = "ZYNTHIAN_WIRING_CUSTOM_SWITCH_{:02d}".format(i+1)
 	custom_type = os.environ.get(root_varname, "")
 
 	if custom_type == "UI_ACTION":
@@ -217,6 +193,10 @@ for i in range(0, n_custom_switches):
 			evtype = 0x9
 		elif custom_type=="MIDI_PROG_CHANGE":
 			evtype = 0xC
+		elif custom_type=="CVGATE_IN":
+			evtype = -4
+		elif custom_type=="CVGATE_OUT":
+			evtype = -5
 
 		if evtype:
 			chan = os.environ.get(root_varname + "__MIDI_CHAN")
@@ -227,16 +207,25 @@ for i in range(0, n_custom_switches):
 			except:
 				chan = None
 
-			num = os.environ.get(root_varname + "__MIDI_NUM")
-			if num is None:
-				num = os.environ.get(root_varname + "__CC_NUM")
+			if evtype>0:
+				num = os.environ.get(root_varname + "__MIDI_NUM")
+			else:
+				num = os.environ.get(root_varname + "__CV_CHAN")
+
+			try:
+				val = int(os.environ.get(root_varname + "__MIDI_VAL"))
+				val = max(min(127, val), 0)
+			except:
+				val = 0
+
 			try:
 				num = int(num)
 				if num>=0 and num<=127:
 					midi_event = {
 						'type': evtype,
 						'chan': chan,
-						'num': num
+						'num': num,
+						'val': val
 					}
 			except:
 				pass
@@ -245,55 +234,18 @@ for i in range(0, n_custom_switches):
 	custom_switch_midi_events.append(midi_event)
 
 #------------------------------------------------------------------------------
-# Zynaptik Configuration
+# Zyntof Configuration
 #------------------------------------------------------------------------------
 
-zynaptik_ad_midi_events = []
+zyntof_midi_events = []
 
-zynaptik_config = os.environ.get("ZYNTHIAN_WIRING_ZYNAPTIK_CONFIG")
-if zynaptik_config:
-
-	#------------------------------------------------------------------------------
-	# Zynaptik AD Action Configuration
-	#------------------------------------------------------------------------------
-
-	n_zynaptik_ad = 4
-	for i in range(0, n_zynaptik_ad):
-		midi_event = None
-
-		root_varname = "ZYNTHIAN_WIRING_ZYNAPTIK_AD{0:0>2}".format(i+1)
-		event_type = os.environ.get(root_varname, "")
-
-		evtype = None
-		if event_type=="MIDI_CC":
-			evtype = 0xB
-		elif event_type=="MIDI_PITCH_BEND":
-			evtype = 0xE
-		elif event_type=="MIDI_CHAN_PRESS":
-			evtype = 0xD
-
-		if evtype:
-			chan = os.environ.get(root_varname + "__MIDI_CHAN")
-			try:
-				chan = int(chan) - 1
-				if chan<0 or chan>15:
-					chan = None
-			except:
-				chan = None
-
-			num = os.environ.get(root_varname + "__MIDI_NUM")
-			try:
-				num = int(num)
-				if num>=0 and num<=127:
-					midi_event = {
-						'type': evtype,
-						'chan': chan,
-						'num': num
-					}
-			except:
-				pass
-
-		zynaptik_ad_midi_events.append(midi_event)
+zyntof_config = os.environ.get("ZYNTHIAN_WIRING_ZYNTOF_CONFIG")
+if zyntof_config:
+	# Zyntof Action Configuration
+	n_zyntofs = int(zyntof_config)
+	for i in range(0, n_zyntofs):
+		root_varname = "ZYNTHIAN_WIRING_ZYNTOF{:02d}".format(i+1)
+		zyntof_midi_events.append(get_zynsensor_config(root_varname))
 
 #------------------------------------------------------------------------------
 # Zynswitches events timing
@@ -317,22 +269,6 @@ ctrl_pos=[
 	(1,2,"ne"),
 	(2,2,"se")
 ]
-
-#------------------------------------------------------------------------------
-# Sequence states
-#------------------------------------------------------------------------------
-SEQ_DISABLED		= 0
-SEQ_ONESHOT			= 1
-SEQ_LOOP			= 2
-SEQ_ONESHOTALL		= 3
-SEQ_LOOPALL			= 4
-SEQ_LASTPLAYMODE	= 4
-
-SEQ_STOPPED			= 0
-SEQ_PLAYING			= 1
-SEQ_STOPPING		= 2
-SEQ_STARTING		= 3
-SEQ_LASTPLAYSTATUS	= 3
 
 
 #------------------------------------------------------------------------------
@@ -382,6 +318,7 @@ font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 #------------------------------------------------------------------------------
 
 enable_touch_widgets=int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS',False))
+enable_onscreen_buttons=int(os.environ.get('ZYNTHIAN_UI_ONSCREEN_BUTTONS',False))
 force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 
 #------------------------------------------------------------------------------
@@ -399,6 +336,12 @@ show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
 rbpi_headphones=int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES',False))
 
 #------------------------------------------------------------------------------
+# Networking Options
+#------------------------------------------------------------------------------
+
+vncserver_enabled=int(os.environ.get('ZYNTHIAN_VNCSERVER_ENABLED',False))
+
+#------------------------------------------------------------------------------
 # MIDI Configuration
 #------------------------------------------------------------------------------
 
@@ -406,7 +349,7 @@ def set_midi_config():
 	global preset_preload_noteon, midi_single_active_channel
 	global midi_prog_change_zs3, midi_fine_tuning
 	global midi_filter_rules, midi_filter_output
-	global midi_sys_enabled, midi_clock_enabled, midi_aubionotes_enabled
+	global midi_sys_enabled, midi_cc_automode, midi_aubionotes_enabled
 	global midi_network_enabled, midi_rtpmidi_enabled, midi_touchosc_enabled
 	global master_midi_channel, master_midi_change_type
 	global master_midi_program_change_up, master_midi_program_change_down
@@ -416,13 +359,13 @@ def set_midi_config():
 	global disabled_midi_in_ports, enabled_midi_out_ports, enabled_midi_fb_ports
 
 	# MIDI options
-	midi_fine_tuning=int(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440))
+	midi_fine_tuning=float(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440.0))
 	midi_single_active_channel=int(os.environ.get('ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL',0))
 	midi_prog_change_zs3=int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3',1))
 	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON',1))
 	midi_filter_output=int(os.environ.get('ZYNTHIAN_MIDI_FILTER_OUTPUT',1))
 	midi_sys_enabled=int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED',1))
-	midi_clock_enabled=int(os.environ.get('ZYNTHIAN_MIDI_CLOCK_ENABLED',0))
+	midi_cc_automode=int(os.environ.get('ZYNTHIAN_MIDI_CC_AUTOMODE',1))
 	midi_network_enabled=int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED',0))
 	midi_rtpmidi_enabled=int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED',0))
 	midi_touchosc_enabled=int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED',0))
@@ -440,11 +383,10 @@ def set_midi_config():
 	enabled_midi_fb_ports=zynconf.get_enabled_midi_fb_ports(midi_ports)
 
 	# Master Channel Features
-
 	master_midi_channel = int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
-	if master_midi_channel>16:
-		master_midi_channel = 16
 	master_midi_channel -= 1
+	if master_midi_channel>15:
+		master_midi_channel = 15
 	if master_midi_channel>=0: 
 		mmc_hex = hex(master_midi_channel)[2]
 	else:
@@ -498,6 +440,12 @@ midi_play_loop=int(os.environ.get('ZYNTHIAN_MIDI_PLAY_LOOP',0))
 audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
 
 #------------------------------------------------------------------------------
+# Experimental features
+#------------------------------------------------------------------------------
+
+experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES',"").split(',')
+
+#------------------------------------------------------------------------------
 # X11 Related Stuff
 #------------------------------------------------------------------------------
 
@@ -531,7 +479,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 		ctrl_width = display_width//4
 		button_width = display_width//4
 		topbar_height = display_height//10
-		buttonbar_height = enable_touch_widgets and display_height//7 or 0
+		buttonbar_height = enable_onscreen_buttons and display_height//7 or 0
 		body_height = display_height-topbar_height-buttonbar_height
 		ctrl_height = body_height//2
 
@@ -574,7 +522,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 			try:
 				pil_frame.seek(nframes)
 			except EOFError:
-				break;
+				break
 		#for i in range(13):
 		#	loading_imgs.append(tkinter.PhotoImage(file="./img/zynthian_gui_loading.gif", format="gif -index "+str(i)))
 

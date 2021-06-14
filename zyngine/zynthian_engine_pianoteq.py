@@ -234,6 +234,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Banks
 	# ---------------------------------------------------------------------------
 
+	bank_list_v7_0 = [
+		('NY Steinway D', 0, 'Grand Steinway D (New-York)', 'D4:A'),
+		('HB Steinway D', 0, 'Grand Steinway D (Hamburg)', 'D4:A')
+	]
+	
 	bank_list_v6_7 = [
 		('NY Steinway Square', 0, 'NY Steinway Square', 'Karsten:A'),
 		('J. Weimes Pianoforte', 0, 'J. Weimes Pianoforte', 'Karsten:A'),
@@ -243,11 +248,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	]
 
 	bank_list_v6_6 = [
-        ('Celtic Harp', 0, 'Celtic Harp', 'Celtic Harp:A')
+        	('Celtic Harp', 0, 'Celtic Harp', 'Harp:A')
 	]
 
 	bank_list_v6_5 = [
-		('Kalimba', 0, 'Kalimba', 'Kalimba:A')
+		('Kalimba', 0, 'Kalimba', 'Celeste:A')
 	]
 
 	bank_list_v6_4 = [
@@ -364,6 +369,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.jackname = PIANOTEQ_JACK_PORT_NAME
 
 		#self.options['midi_chan']=False
+		self.options['drop_pc']=True
 
 		self.preset = ""
 		self.midimapping = "ZynthianControllers"
@@ -455,20 +461,28 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def prepare_banks(self):
-		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=3:
+		
+		if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=3):
 			self.bank_list = self.bank_list_v6_3 + self.bank_list
 
-		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=4:
+		if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=4):
 			self.bank_list = self.bank_list_v6_4 + self.bank_list
 
-		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=5:
+		if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=5):
 			self.bank_list = self.bank_list_v6_5 + self.bank_list
 
-		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=6:
+		if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=6):
 			self.bank_list = self.bank_list_v6_6 + self.bank_list
 
-		if PIANOTEQ_VERSION[0]>=6 and PIANOTEQ_VERSION[1]>=7:
+		if PIANOTEQ_VERSION[0]>6 or (PIANOTEQ_VERSION[0]==6 and PIANOTEQ_VERSION[1]>=7):
 			self.bank_list = self.bank_list_v6_7 + self.bank_list
+
+		if PIANOTEQ_VERSION[0]>7 or (PIANOTEQ_VERSION[0]==7 and PIANOTEQ_VERSION[1]>=0):
+			self.bank_list = self.bank_list_v7_0 + self.bank_list
+			# Rename some Instrument Packs
+			for i,row in enumerate(self.bank_list):
+				if row[3]=='Steel:A':
+					self.bank_list[i] = (row[0], row[1], row[2], 'Steelpans:A')
 
 		if not PIANOTEQ_TRIAL:
 			# Separate Licensed from Free and Demo
@@ -486,7 +500,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 						unlicensed_banks.append(bank)
 				self.bank_list = licensed_banks + free_banks + self.spacer_demo_bank + unlicensed_banks
 
-
 	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
@@ -498,6 +511,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		try:
 			pianoteq=subprocess.Popen([PIANOTEQ_BINARY, "--list-presets"],stdout=subprocess.PIPE)
 			bank_list = sorted(self.bank_list, key=lambda bank: len(bank[0]) if bank[0] else 0, reverse=True)
+			logging.debug("bank_list => {}".format(bank_list))
 			for line in pianoteq.stdout:
 				l=line.rstrip().decode("utf-8")
 				logging.debug("PRESET => {}".format(l))

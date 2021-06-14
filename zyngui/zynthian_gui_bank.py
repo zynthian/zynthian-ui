@@ -36,13 +36,6 @@ from . import zynthian_gui_selector
 
 class zynthian_gui_bank(zynthian_gui_selector):
 
-	buttonbar_config = [
-		(1, 'BACK'),
-		(0, 'LAYER'),
-		(2, 'FAVS'),
-		(3, 'SELECT')
-	]
-
 	def __init__(self):
 		super().__init__('Bank', True)
 
@@ -66,14 +59,25 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		if self.zyngui.curlayer.set_bank(i):
-			self.zyngui.screens['preset'].disable_only_favs()
-			self.zyngui.show_screen('preset')
-			# If there is only one preset, jump to instrument control
-			if len(self.zyngui.curlayer.preset_list)<=1:
-				self.zyngui.screens['preset'].select_action(0)
+		if self.list_data[i][0]=='*FAVS*':
+			self.zyngui.curlayer.set_show_fav_presets(True)
 		else:
-			self.show()
+			self.zyngui.curlayer.set_show_fav_presets(False)
+			if not self.zyngui.curlayer.set_bank(i):
+				self.show()
+				return
+	
+		if self.zyngui.modal_screen=="preset":
+			self.zyngui.show_modal('preset')
+		else:
+			self.zyngui.show_screen('preset')
+		# If there is only one preset, jump to instrument control
+		if len(self.zyngui.curlayer.preset_list)<=1:
+			self.zyngui.screens['preset'].select_action(0)
+
+
+	def set_selector(self, zs_hiden=False):
+		super().set_selector(zs_hiden)
 
 
 	def set_select_path(self):

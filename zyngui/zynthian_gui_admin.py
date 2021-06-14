@@ -34,6 +34,7 @@ from subprocess import check_output, Popen, PIPE, STDOUT
 
 # Zynthian specific modules
 import zynconf
+from zyncoder import *
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
@@ -54,9 +55,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		super().__init__('Action', True)
 
-		# Initialize Headphones
 		if self.zyngui.allow_headphones():
 			self.default_rbpi_headphones()
+
+		self.default_vncserver()
 
 
 	def fill_list(self):
@@ -64,14 +66,14 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		if self.zyngui.allow_headphones():
 			if zynthian_gui_config.rbpi_headphones:
-				self.list_data.append((self.stop_rbpi_headphones,0,"[x] Headphones"))
+				self.list_data.append((self.stop_rbpi_headphones,0,"[x] RBPi Headphones"))
 			else:
-				self.list_data.append((self.start_rbpi_headphones,0,"[  ] Headphones"))
+				self.list_data.append((self.start_rbpi_headphones,0,"[  ] RBPi Headphones"))
 
 		if zynthian_gui_config.midi_single_active_channel:
-			self.list_data.append((self.toggle_single_channel,0,"[x] Single Channel Mode"))
+			self.list_data.append((self.toggle_single_channel,0,"->  Stage Mode"))
 		else:
-			self.list_data.append((self.toggle_single_channel,0,"[  ] Single Channel Mode"))
+			self.list_data.append((self.toggle_single_channel,0,"=>  Multi-timbral Mode"))
 
 		if zynthian_gui_config.midi_prog_change_zs3:
 			self.list_data.append((self.toggle_prog_change_zs3,0,"[x] Program Change ZS3"))
@@ -84,24 +86,19 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
 
 		if zynthian_gui_config.snapshot_mixer_settings:
-			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[x] Mixer Settings on Snapshots"))
+			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[x] Audio Levels on Snapshots"))
 		else:
-			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Mixer Settings on Snapshots"))
+			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Audio Levels on Snapshots"))
 
 		if zynthian_gui_config.midi_filter_output:
-			self.list_data.append((self.toggle_midi_filter_output,0,"[x] MIDI Filter Ouput"))
+			self.list_data.append((self.toggle_midi_filter_output,0,"[x] Route MIDI to Output"))
 		else:
-			self.list_data.append((self.toggle_midi_filter_output,0,"[  ] MIDI Filter Output"))
+			self.list_data.append((self.toggle_midi_filter_output,0,"[  ] Route MIDI to Output"))
 
 		if zynthian_gui_config.midi_sys_enabled:
 			self.list_data.append((self.toggle_midi_sys,0,"[x] MIDI System Messages"))
 		else:
 			self.list_data.append((self.toggle_midi_sys,0,"[  ] MIDI System Messages"))
-
-		if zynconf.is_service_active("jack-midi-clock"):
-			self.list_data.append((self.stop_midi_clock,0,"[x] MIDI Clock Internal"))
-		else:
-			self.list_data.append((self.start_midi_clock,0,"[  ] MIDI Clock Internal"))
 
 		if zynconf.is_service_active("jackrtpmidid"):
 			self.list_data.append((self.stop_rtpmidi,0,"[x] RTP-MIDI"))
@@ -137,12 +134,20 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.start_wifi,0,"[  ] Wi-Fi"))
 			self.list_data.append((self.start_wifi_hotspot,0,"[  ] Wi-Fi Hotspot"))
 
+		if zynconf.is_service_active("vncserver0"):
+			self.list_data.append((self.stop_vncserver,0,"[x] VNC Server"))
+		else:
+			self.list_data.append((self.start_vncserver,0,"[  ] VNC Server"))
+
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
 		self.list_data.append((None,0,"-----------------------------"))
-		self.list_data.append((self.update_software,0,"Update Software"))
-		#self.list_data.append((self.update_library,0,"Update Zynthian Library"))
+		self.list_data.append((self.zyngui.calibrate_touchscreen,0,"Calibrate Touchscreen"))
+		if self.is_update_available():
+			self.list_data.append((self.update_software,0,"Update Software"))
+		else:
+			self.list_data.append((self.check_for_updates,0,"Check for software updates"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.restart_gui,0,"Restart UI"))
@@ -199,7 +204,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.zyngui.add_info("\n\n")
 		self.zyngui.hide_info_timer(5000)
 		self.zyngui.stop_loading()
-		self.fill_list()
 
 
 	def start_command(self,cmds):
@@ -238,7 +242,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.commands=None
 		self.zyngui.hide_info_timer(5000)
 		#self.zyngui.stop_loading()
-		self.fill_list()
 
 
 	def killable_start_command(self,cmds):
@@ -256,7 +259,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			os.kill(self.child_pid, signal.SIGTERM)
 			self.child_pid=None
 			if self.last_action==self.test_midi:
-				check_output("systemctl stop a2jmidid", shell=True)
 				self.zyngui.all_sounds_off()
 
 	#------------------------------------------------------------------------------
@@ -356,6 +358,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_SYS_ENABLED": str(int(zynthian_gui_config.midi_sys_enabled))
 		})
 
+		zyncoder.lib_zyncoder.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
 		self.fill_list()
 
 
@@ -408,52 +411,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.fill_list()
 
-
-	def start_midi_clock(self, save_config=True):
-		logging.info("STARTING MIDI CLOCK")
-
-		try:
-			check_output("systemctl start jack-midi-clock", shell=True)
-			zynthian_gui_config.midi_clock_enabled = 1
-			# Update MIDI profile
-			if save_config:
-				zynconf.update_midi_profile({ 
-					"ZYNTHIAN_MIDI_CLOCK_ENABLED": str(zynthian_gui_config.midi_clock_enabled)
-				})
-			# Call autoconnect after a little time
-			sleep(0.5)
-			self.zyngui.zynautoconnect_midi()
-
-		except Exception as e:
-			logging.error(e)
-
-		self.fill_list()
-
-
-	def stop_midi_clock(self, save_config=True):
-		logging.info("STOPPING MIDI CLOCK")
-
-		try:
-			check_output("systemctl stop jack-midi-clock", shell=True)
-			zynthian_gui_config.midi_clock_enabled = 0
-			# Update MIDI profile
-			if save_config:
-				zynconf.update_midi_profile({ 
-					"ZYNTHIAN_MIDI_CLOCK_ENABLED": str(zynthian_gui_config.midi_clock_enabled)
-				})
-
-		except Exception as e:
-			logging.error(e)
-
-		self.fill_list()
-
-
-	#Start/Stop Jack MIDI Clock depending on configuration
-	def default_midi_clock(self):
-		if zynthian_gui_config.midi_clock_enabled:
-			self.start_midi_clock(False)
-		else:
-			self.stop_midi_clock(False)
 
 
 	def start_qmidinet(self, save_config=True):
@@ -686,6 +643,82 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.fill_list()
 
 
+	def start_vncserver(self, save_config=True):
+		logging.info("STARTING VNC SERVICES")
+
+		self.zyngui.start_loading()
+		# Save state and stop engines
+		if len(self.zyngui.screens['layer'].layers)>0:
+			self.zyngui.screens['snapshot'].save_last_state_snapshot()
+			self.zyngui.screens['layer'].reset()
+			restore_state = True
+		else:
+			restore_state = False
+
+		try:
+			check_output("systemctl start novnc0", shell=True)
+			check_output("systemctl start novnc1", shell=True)
+			zynthian_gui_config.vncserver_enabled = 1
+			# Update Config
+			if save_config:
+				zynconf.save_config({ 
+					"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
+				})
+		except Exception as e:
+			logging.error(e)
+
+		# Restore state
+		if restore_state:
+			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+		self.zyngui.stop_loading()
+
+		self.fill_list()
+
+
+	def stop_vncserver(self, save_config=True):
+		logging.info("STOPPING VNC SERVICES")
+
+		self.zyngui.start_loading()
+		# Save state and stop engines
+		if len(self.zyngui.screens['layer'].layers)>0:
+			self.zyngui.screens['snapshot'].save_last_state_snapshot()
+			self.zyngui.screens['layer'].reset()
+			restore_state = True
+		else:
+			restore_state = False
+
+		try:
+			check_output("systemctl stop vncserver0", shell=True)
+			check_output("systemctl stop vncserver1", shell=True)
+			zynthian_gui_config.vncserver_enabled = 0
+			# Update Config
+			if save_config:
+				zynconf.save_config({ 
+					"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
+				})
+		except Exception as e:
+			logging.error(e)
+
+		# Restore state
+		if restore_state:
+			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+		self.zyngui.stop_loading()
+
+		self.fill_list()
+
+
+	#Start/Stop VNC Server depending on configuration
+	def default_vncserver(self):
+		if zynthian_gui_config.vncserver_enabled:
+			self.start_vncserver(False)
+		else:
+			self.stop_vncserver(False)
+
+
+#------------------------------------------------------------------------------
+# SYSTEM FEATURES
+#------------------------------------------------------------------------------
+
 	def test_audio(self):
 		logging.info("TESTING AUDIO")
 		self.zyngui.show_info("TEST AUDIO")
@@ -698,7 +731,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def test_midi(self):
 		logging.info("TESTING MIDI")
 		self.zyngui.show_info("TEST MIDI")
-		check_output("systemctl start a2jmidid", shell=True)
 		self.killable_start_command(["aplaymidi -p 14 {}/mid/test.mid".format(self.data_dir)])
 
 
@@ -707,10 +739,18 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.zyngui.show_info("UPDATE SOFTWARE")
 		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
 
-	def update_library(self):
-		logging.info("UPDATE LIBRARY")
-		self.zyngui.show_info("UPDATE LIBRARY")
-		self.start_command([self.sys_dir + "/scripts/update_zynthian_data.sh"])
+
+	def is_update_available(self):
+		repos = ["/zynthian/zyncoder", "/zynthian/zynthian-ui", "/zynthian/zynthian-sys", "/zynthian/zynthian-webconf", "/zynthian/zynthian-data"]
+		update_available = False
+		for path in repos:
+			update_available |= (check_output("git -C %s status --porcelain -bs | grep behind | wc -l" % path, shell=True).decode()[:1] == '1')
+		return update_available
+
+
+	def check_for_updates(self):
+		self.zyngui.show_info("CHECK FOR UPDATES")
+		self.start_command(["git -C /zynthian/zyncoder remote update; git -C /zynthian/zynthian-ui remote update; git -C /zynthian/zynthian-sys remote update; git -C /zynthian/zynthian-webconf remote update; git -C /zynthian/zynthian-data remote update"])
 
 
 	def update_system(self):
@@ -752,7 +792,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def last_state_action(self):
-		if zynthian_gui_config.restore_last_state and len(self.zyngui.screens['layer'].layers)>0:
+		if zynthian_gui_config.restore_last_state:
 			self.zyngui.screens['snapshot'].save_last_state_snapshot()
 		else:
 			self.zyngui.screens['snapshot'].delete_last_state_snapshot()

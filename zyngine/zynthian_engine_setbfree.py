@@ -186,6 +186,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.jackname = "setBfree"
 
 		self.options['midi_chan']=False
+		self.options['drop_pc']=True
 
 		self.manuals_config = None
 		self.tonewheel_model = None
@@ -212,7 +213,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		# Generate on-the-fly config
 		with open(self.config_tpl_fpath, 'r') as cfg_tpl_file:
 			cfg_data = cfg_tpl_file.read()
-			cfg_data = cfg_data.replace('#OSC.TUNING#', str(self.zyngui.fine_tuning_freq))
+			cfg_data = cfg_data.replace('#OSC.TUNING#', str(int(self.zyngui.fine_tuning_freq)))
 			cfg_data = cfg_data.replace('#MIDI.UPPER.CHANNEL#', str(1 + midi_chans[0]))
 			cfg_data = cfg_data.replace('#MIDI.LOWER.CHANNEL#', str(1 + midi_chans[1]))
 			cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str(1 + midi_chans[2]))
@@ -265,36 +266,44 @@ class zynthian_engine_setbfree(zynthian_engine):
 			midi_chans = [ch, 15, 15]
 
 			logging.info("Upper Layer in chan {}".format(midi_chans[0]))
-			self.layers[0].bank_name = "Upper"
-			self.layers[0].load_bank_list()
-			self.layers[0].set_bank(0)
+			i = 0
+			self.layers[i].bank_name = "Upper"
+			self.layers[i].load_bank_list()
+			self.layers[i].set_bank(0)
 
 			# Extra layers
 			if self.manuals_config[4][0]:
-				try:
-					ch = midi_chans[1] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
-					logging.info("Lower Manual Layer in chan {}".format(midi_chans[1]))
-					self.zyngui.screens['layer'].add_layer_midich(midi_chans[1], False)
-					self.layers[1].bank_name = "Lower"
-					self.layers[1].load_bank_list()
-					self.layers[1].set_bank(0)
+				i += 1
+				if len(self.layers)==i:
+					try:
+						ch = midi_chans[1] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
+						logging.info("Lower Manual Layer in chan {}".format(midi_chans[1]))
+						self.zyngui.screens['layer'].add_layer_midich(midi_chans[1], False)
+						self.layers[i].bank_name = "Lower"
+						self.layers[i].load_bank_list()
+						self.layers[i].set_bank(0)
 
-				except Exception as e:
-					logging.error("Lower Manual Layer can't be added! => {}".format(e))
+					except Exception as e:
+						logging.error("Lower Manual Layer can't be added! => {}".format(e))
+				else:
+					midi_chans[1] = self.layers[i].midi_chan
 
 			if self.manuals_config[4][1]:
-				try:
-					# Adding Pedal Layer
-					midi_chans[2] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
-					logging.info("Pedal Layer in chan {}".format(midi_chans[2]))
-					self.zyngui.screens['layer'].add_layer_midich(midi_chans[2], False)
-					i=len(self.layers)-1
-					self.layers[i].bank_name = "Pedals"
-					self.layers[i].load_bank_list()
-					self.layers[i].set_bank(0)
+				i += 1
+				if len(self.layers)==i:
+					try:
+						# Adding Pedal Layer
+						midi_chans[2] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
+						logging.info("Pedal Layer in chan {}".format(midi_chans[2]))
+						self.zyngui.screens['layer'].add_layer_midich(midi_chans[2], False)
+						self.layers[i].bank_name = "Pedals"
+						self.layers[i].load_bank_list()
+						self.layers[i].set_bank(0)
 
-				except Exception as e:
-					logging.error("Pedal Layer can't be added! => {}".format(e))
+					except Exception as e:
+						logging.error("Pedal Layer can't be added! => {}".format(e))
+				else:
+					midi_chans[2] = self.layers[i].midi_chan
 
 			# Start engine
 			logging.debug("STARTING SETBFREE!!")
@@ -366,7 +375,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 				zctrl.set_value(v, True)
 
 				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
+				if self.zyngui.active_screen=='control' and not self.zyngui.modal_screen:
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 
 			except Exception as e:
@@ -380,7 +389,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
 
 				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.active_screen=='control' and self.zyngui.screens['control'].mode=='control':
+				if self.zyngui.active_screen=='control' and not self.zyngui.modal_screen:
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 
 		except Exception as e:

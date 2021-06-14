@@ -40,30 +40,35 @@ from . import zynthian_gui_selector
 class zynthian_gui_midi_out(zynthian_gui_selector):
 
 	def __init__(self):
-		self.layer=None
+		self.end_layer = None
 		super().__init__('MIDI Out', True)
 
 
 	def set_layer(self, layer):
-		self.layer = layer
+		try:
+			self.end_layer = self.zyngui.screens['layer'].get_midichain_ends(layer)[0]
+		except:
+			self.end_layer = None
+
 
 
 	def fill_list(self):
 		self.list_data = []
 
-		midi_outs = OrderedDict([
-			["MIDI-OUT", "Hardware MIDI Out"],
-			["NET-OUT", "Network MIDI Out" ]
-		])
-		for layer in zynthian_gui_config.zyngui.screens["layer"].get_midichain_roots():
-			if layer.midi_chan!=self.layer.midi_chan:
-				midi_outs[layer.get_midi_jackname()] = layer.get_basepath()
-			
-		for jn, title in midi_outs.items():
-			if self.layer and jn in self.layer.get_midi_out():
-				self.list_data.append((jn, jn, "[x] " + title))
-			else:
-				self.list_data.append((jn, jn, "[  ] " + title))
+		if self.end_layer:
+			midi_outs = OrderedDict([
+				["MIDI-OUT", "Hardware MIDI Out"],
+				["NET-OUT", "Network MIDI Out" ]
+			])
+			for layer in zynthian_gui_config.zyngui.screens["layer"].get_midichain_roots():
+				if layer.midi_chan!=self.end_layer.midi_chan:
+					midi_outs[layer.get_midi_jackname()] = layer.get_presetpath()
+				
+			for jn, title in midi_outs.items():
+				if jn in self.end_layer.get_midi_out():
+					self.list_data.append((jn, jn, "[x] " + title))
+				else:
+					self.list_data.append((jn, jn, "[  ] " + title))
 
 		super().fill_list()
 
@@ -83,19 +88,11 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		self.layer.toggle_midi_out(self.list_data[i][1])
+		self.end_layer.toggle_midi_out(self.list_data[i][1])
 		self.fill_list()
 
 
-	def back_action(self):
-		self.zyngui.show_modal('layer_options')
-		return ''
-
-
 	def set_select_path(self):
-		if self.layer and self.layer.get_basepath():
-			self.select_path.set("Send MIDI from {} to ...".format(self.layer.get_basepath()))
-		else:
-			self.select_path.set("MIDI Routing ...")
+		self.select_path.set("Send MIDI to ...")
 
 #------------------------------------------------------------------------------

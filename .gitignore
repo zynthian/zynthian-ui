@@ -1,4 +1,7 @@
 *~
 .*~
 __pycache__
-*/build
+jackpeak/build
+zynseq/build
+zynlibs/*/build
+.vscode/launch.json

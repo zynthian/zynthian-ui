@@ -45,7 +45,7 @@ from . import zynthian_gui_config
 
 class zynthian_gui_controller:
 
-	def __init__(self, indx, frm, zctrl):
+	def __init__(self, indx, frm, zctrl, hiden=False):
 		self.width=zynthian_gui_config.ctrl_width
 		self.height=zynthian_gui_config.ctrl_height
 		self.trw=zynthian_gui_config.ctrl_width-6
@@ -68,6 +68,7 @@ class zynthian_gui_controller:
 		self.value_print=None
 		self.value_font_size=14
 
+		self.hiden=hiden
 		self.shown=False
 		self.rectangle=None
 		self.triangle=None
@@ -75,14 +76,14 @@ class zynthian_gui_controller:
 		self.value_text=None
 		self.label_title=None
 		self.midi_bind=None
+		self.refresh_plot_value = False
 
 		self.index=indx
 		self.main_frame=frm
 		self.row=zynthian_gui_config.ctrl_pos[indx][0]
 		self.col=zynthian_gui_config.ctrl_pos[indx][1]
 		self.sticky=zynthian_gui_config.ctrl_pos[indx][2]
-		self.plot_value=self.plot_value_arc
-		self.erase_value=self.erase_value_arc
+
 		# Create Canvas
 		self.canvas=tkinter.Canvas(self.main_frame,
 			width=self.width,
@@ -107,13 +108,15 @@ class zynthian_gui_controller:
 	def show(self):
 		#print("SHOW CONTROLLER "+str(self.ctrl)+" => "+str(self.shown))
 		if not self.shown:
-			if self.index%2==0:
-				pady = (0,2)
-			else:
-				pady = (0,0)
-			self.canvas.grid(row=self.row, column=self.col, sticky=self.sticky, pady=pady)
 			self.shown=True
-			self.plot_value()
+			if not self.hiden:
+				if self.index%2==0:
+					pady = (0,2)
+				else:
+					pady = (0,0)
+				self.canvas.grid(row=self.row, column=self.col, sticky=self.sticky, pady=pady)
+				self.calculate_plot_values()
+				self.plot_value()
 
 
 	def hide(self):
@@ -122,9 +125,9 @@ class zynthian_gui_controller:
 			self.canvas.grid_forget()
 
 
-	def set_hl(self):
+	def set_hl(self, color=zynthian_gui_config.color_hl):
 		try:
-			self.canvas.itemconfig(self.arc, outline=zynthian_gui_config.color_hl)
+			self.canvas.itemconfig(self.arc, outline=color)
 		except:
 			pass
 
@@ -137,7 +140,9 @@ class zynthian_gui_controller:
 
 
 	def calculate_plot_values(self):
-
+		if self.hiden:
+			return
+			
 		if self.value>self.max_value:
 			self.value=self.max_value
 
@@ -205,13 +210,25 @@ class zynthian_gui_controller:
 				else:
 					self.value_print = str(int(val))
 
+		self.refresh_plot_value = True
+
 		#print("VALUE: %s" % self.value)
 		#print("VALUE PLOT: %s" % self.value_plot)
 		#print("VALUE PRINT: %s" % self.value_print)
 
 
+	def plot_value(self):
+		if not self.hiden and self.refresh_plot_value:
+			self.plot_value_arc()
+			self.refresh_plot_value = False
+
+
+	def erase_value(self):
+		if not self.hiden:
+			self.erase_value_arc()
+
+
 	def plot_value_rectangle(self):
-		self.calculate_plot_values()
 		x1=6
 		y1=self.height-5
 		lx=self.trw-4
@@ -252,7 +269,6 @@ class zynthian_gui_controller:
 
 
 	def plot_value_triangle(self):
-		self.calculate_plot_values()
 		x1=2
 		y1=int(0.8*self.height)+self.trh
 
@@ -293,7 +309,6 @@ class zynthian_gui_controller:
 
 
 	def plot_value_arc(self):
-		self.calculate_plot_values()
 		thickness=1.1*zynthian_gui_config.font_size
 		degmax=300
 		deg0=90+degmax/2
@@ -343,7 +358,7 @@ class zynthian_gui_controller:
 			self.midi_bind = self.canvas.create_text(
 				self.width/2,
 				self.height-8,
-				width=int(3*0.9*zynthian_gui_config.font_size),
+				width=int(4*0.9*zynthian_gui_config.font_size),
 				justify=tkinter.CENTER,
 				fill=color,
 				font=(zynthian_gui_config.font_family,int(0.7*zynthian_gui_config.font_size)),
@@ -365,13 +380,18 @@ class zynthian_gui_controller:
 			self.plot_midi_bind("??",zynthian_gui_config.color_ml)
 		elif self.zyngui.midi_learn_zctrl and self.zctrl==self.zyngui.midi_learn_zctrl:
 			self.plot_midi_bind("??",zynthian_gui_config.color_hl)
-		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
-			midi_cc=zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
-			self.plot_midi_bind(midi_cc)
 		elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
-			midi_cc=zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_learn_chan, self.zctrl.midi_learn_cc)
-			if not midi_cc:
-				midi_cc=self.zctrl.midi_learn_cc
+			midi_cc = self.zctrl.midi_learn_cc
+			if not self.zyngui.is_single_active_channel():
+				midi_cc = "{}#{}".format(self.zctrl.midi_learn_chan+1,midi_cc)
+			self.plot_midi_bind(midi_cc)
+		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
+			#midi_cc = self.zctrl.midi_cc
+			swap_info= zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
+			midi_chan = swap_info >> 8
+			midi_cc = swap_info & 0xFF
+			if not self.zyngui.is_single_active_channel():
+				midi_cc = "{}#{}".format(midi_chan+1,midi_cc)
 			self.plot_midi_bind(midi_cc)
 		else:
 			self.erase_midi_bind()
@@ -584,7 +604,7 @@ class zynthian_gui_controller:
 		#logging.debug("value: "+str(self.value))
 
 
-	def zctrl_sync(self):
+	def zctrl_sync(self, set_zyncoder=True):
 		#List of values (value selector)
 		if self.selmode:
 			val=self.zctrl.get_value2index()
@@ -601,7 +621,7 @@ class zynthian_gui_controller:
 			else:
 				val = (self.zctrl.value-self.zctrl.value_min)/self.scale_value
 		#Set value & Update zyncoder
-		self.set_value(val, True, False)
+		self.set_value(val, set_zyncoder, False)
 		#logging.debug("ZCTRL SYNC {} => {}".format(self.title, val))
 
 
@@ -648,7 +668,7 @@ class zynthian_gui_controller:
 					if self.mult>1: v = self.mult*v
 					zyncoder.lib_zyncoder.set_value_zyncoder(self.index,ctypes.c_uint(int(v)),int(send_zyncoder))
 					#logging.debug("set_value_zyncoder {} ({}, {}) => {}".format(self.index, self.zctrl.symbol,self.zctrl.midi_cc,v))
-				self.plot_value()
+				self.calculate_plot_values()
 			return True
 
 
@@ -662,7 +682,7 @@ class zynthian_gui_controller:
 	def read_zyncoder(self):
 		if zyncoder.lib_zyncoder:
 			val=zyncoder.lib_zyncoder.get_value_zyncoder(self.index)
-			#logging.debug("ZYNCODER %d RAW VALUE => %s" % (self.index,val))
+			#logging.debug("ZYNCODER %d (%s), RAW VALUE => %s" % (self.index,self.title,val))
 		else:
 			val=self.value*self.mult-self.val0
 

@@ -51,7 +51,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def __init__(self):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
 		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
-		self.current_record = None
+		self.current_playback_fpath = None
 		self.rec_proc = None
 		self.play_proc = None
 
@@ -76,10 +76,10 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def get_status(self):
 		status=None
 
-		if zynconf.is_process_running("jack_capture"):
+		if self.rec_proc:
 			status="REC"
 
-		if self.current_record:
+		if self.current_playback_fpath:
 			if status=="REC":
 				status="PLAY+REC"
 			else:
@@ -89,7 +89,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 
 	def fill_list(self):
-		self.index=0
+		#self.index=0
 		self.list_data=[]
 
 		status=self.get_status()
@@ -98,9 +98,9 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		else:
 			self.list_data.append(("START_RECORDING",0,"Start Recording"))
 
-		if status=="PLAY" or status=="PLAY+REC":
-			self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
-			self.show_playing_volume()
+		#if status=="PLAY" or status=="PLAY+REC":
+		#	self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
+		#	self.show_playing_volume()
 
 		if zynthian_gui_config.audio_play_loop:
 			self.list_data.append(("LOOP",0,"[x] Loop Play"))
@@ -113,14 +113,14 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		# Files on SD-Card
 		for fname, finfo in self.get_filelist(self.capture_dir_sdc).items():
 			l = finfo['length']
-			title="SDC: {} [{}:{:02d}]".format(fname, int(l/60), int(l%60))
+			title="SD[{}:{:02d}] {}".format(int(l/60), int(l%60),fname.replace(";",">",1).replace(";","/"))
 			self.list_data.append((finfo['fpath'],i,title))
 			i+=1
 
 		# Files on USB-Pendrive
 		for fname, finfo in self.get_filelist(self.capture_dir_usb).items():
 			l = finfo['length']
-			title="USB: {} [{}:{:02d}]".format(fname, int(l/60), int(l%60))
+			title="USB[{}:{:02d}] {}".format(int(l/60), int(l%60),fname.replace(";",">",1).replace(";","/"))
 			self.list_data.append((finfo['fpath'],i,title))
 			i+=1
 
@@ -163,7 +163,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	# Highlight command and current record played, if any ...
 	def highlight(self):
 		for i, row in enumerate(self.list_data):
-			if row[0] is not None and row[0]==self.current_record:
+			if row[0] is not None and row[0]==self.current_playback_fpath:
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_hl})
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
@@ -182,20 +182,36 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.toggle_loop()
 		elif fpath:
 			if t=='S':
-				self.start_playing(fpath)
+				self.toggle_playing(fpath)
 			else:
 				self.zyngui.show_confirm("Do you really want to delete '{}'?".format(self.list_data[i][2]), self.delete_confirmed, fpath)
 
 
+	def get_next_filenum(self):
+		try:
+			n = max(map(lambda item: int(os.path.basename(item[0])[0:3]) if item[0] and os.path.basename(item[0])[0:3].isdigit() else 0, self.list_data))
+		except:
+			n = 0
+		return "{0:03d}".format(n+1)
+
+
+	def get_new_filename(self):
+		try:
+			parts = self.zyngui.curlayer.get_presetpath().split('#',2)
+			file_name = parts[1].replace("/",";").replace(">",";").replace(" ; ",";")
+		except:
+			file_name = "jack_capture"
+		return self.get_next_filenum() + '-' + file_name + '.wav'
+
+
 	def delete_confirmed(self, fpath):
 		logging.info("DELETE AUDIO RECORDING: {}".format(fpath))
-
-		try:
-			check_output("rm -f {}.*".format(fpath[:-4]), shell=True)
-			#os.remove(fpath)
-		except Exception as e:
-			logging.error(e)
-
+		for ext in ("wav", "ogg", "mp3"):
+			try:
+				os.remove("{}.{}".format(fpath[:-4],ext))
+			except Exception as e:
+				#logging.error(e)
+				pass
 		self.zyngui.show_modal("audio_recorder")
 
 
@@ -203,11 +219,15 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		if self.get_status() not in ("REC", "PLAY+REC"):
 			logging.info("STARTING NEW AUDIO RECORD ...")
 			try:
-				cmd=self.sys_dir +"/sbin/jack_capture.sh --zui"
-				#logging.info("COMMAND: %s" % cmd)
-				self.rec_proc=Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
-				sleep(0.2)
-				self.zyngui.zyntransport.transport_play()
+				capture_dir = "/media/usb0"
+				check_mount = Popen(("/bin/mountpoint", "-q", "--", capture_dir))
+				if check_mount.wait() != 0:
+					capture_dir = "/zynthian/zynthian-my-data/capture"
+					try:
+						os.mkdir(capture_dir)
+					except:
+						pass
+				self.rec_proc = Popen(("/usr/local/bin/jack_capture", "--daemon", self.get_new_filename()), cwd=capture_dir)				
 			except Exception as e:
 				logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
 				self.zyngui.show_info("ERROR STARTING AUDIO RECORD:\n %s" % e)
@@ -224,10 +244,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		if self.get_status() in ("REC", "PLAY+REC"):
 			logging.info("STOPPING AUDIO RECORD ...")
 			try:
-				self.zyngui.zyntransport.transport_stop()
-				self.rec_proc.communicate()
-				while zynconf.is_process_running("jack_capture"):
-					sleep(0.2)
+				self.rec_proc.terminate()
 				self.rec_proc = None
 			except Exception as e:
 				logging.error("ERROR STOPPING AUDIO RECORD: %s" % e)
@@ -285,7 +302,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.zyngui.zynautoconnect_audio()
 			self.show_playing_volume()
 			self.send_controller_value(self.volume_zctrl)
-			self.current_record=fpath
+			self.current_playback_fpath=fpath
 
 		except Exception as e:
 			logging.error("ERROR STARTING AUDIO PLAY: %s" % e)
@@ -305,7 +322,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def end_playing(self):
 		logging.info("ENDING AUDIO PLAY ...")
 		self.play_proc = None
-		self.current_record=None
+		self.current_playback_fpath=None
 		self.volume_zgui_ctrl.hide()
 		self.update_list()
 
@@ -327,10 +344,12 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			return False
 
 
-	def toggle_playing(self):
+	def toggle_playing(self, fpath=None):
 		logging.info("TOGGLING AUDIO PLAY ...")
-		if not self.stop_playing():
-			self.start_playing()
+		if fpath and fpath!=self.current_playback_fpath:
+			self.start_playing(fpath)
+		else:
+			self.stop_playing()
 
 
 	def show_playing_volume(self):
@@ -352,6 +371,13 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		super().zyncoder_read()
 		if self.shown and self.volume_zgui_ctrl:
 			self.volume_zgui_ctrl.read_zyncoder()
+		return [0,1]
+
+
+	def plot_zctrls(self):
+		super().plot_zctrls()
+		if self.volume_zgui_ctrl:
+			self.volume_zgui_ctrl.plot_value()
 
 
 	def get_current_track_fpath(self):
