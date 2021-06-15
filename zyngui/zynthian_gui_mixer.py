@@ -37,13 +37,13 @@ from zyngine import zynthian_controller
 from . import zynthian_gui_base
 from . import zynthian_gui_config
 from . import zynthian_gui_controller
-from zynmixer import *
+from zynlibs.zynmixer import *
 from zyncoder import *
 
-ENC_LAYER			= 0
-ENC_BACK			= 1
+ENC_LAYER		= 0
+ENC_BACK		= 1
 ENC_SNAPSHOT		= 2
-ENC_SELECT			= 3
+ENC_SELECT		= 3
 
 #------------------------------------------------------------------------------
 # Zynthian Mixer Channel Class

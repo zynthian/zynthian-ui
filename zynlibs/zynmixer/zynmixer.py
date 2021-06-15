@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #********************************************************************
-# ZYNTHIAN PROJECT: Jackpeak Python Wrapper
+# ZYNTHIAN PROJECT: Zynmixer Python Wrapper
 #
 # A Python wrapper for zynmixer library
 #
-# Copyright (C) 2019 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2019-2021 Brian Walton <riban@zynthian.org>
 #
 #********************************************************************
 #
@@ -28,14 +28,14 @@ from os.path import dirname, realpath
 import unicodedata
 
 #-------------------------------------------------------------------------------
-# Jackpeak Library Wrapper
+# Zynmixer Library Wrapper
 #-------------------------------------------------------------------------------
 
 lib_zynmixer=None
 
 #	Function to initialize library
 #	returns: Library object or None if library not initialized
-def lib_zynmixer_init():
+def init():
 	global lib_zynmixer
 	try:
 		lib_zynmixer=cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynmixer.so")

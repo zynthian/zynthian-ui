@@ -45,8 +45,8 @@ import zynconf
 import zynautoconnect
 #from jackpeak import *
 #from jackpeak.jackpeak import lib_jackpeak, lib_jackpeak_init
-from zynmixer import *
-from zynmixer.zynmixer import lib_zynmixer, lib_zynmixer_init
+from zynlibs.zynmixer import zynmixer
+from zynlibs.zynmixer.zynmixer import lib_zynmixer
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine import zynthian_zcmidi
@@ -230,7 +230,7 @@ class zynthian_gui:
 		# Initialize main audio output mixer
 		try:
 			global lib_zynmixer
-			lib_zynmixer = lib_zynmixer_init()
+			lib_zynmixer = zynmixer.init()
 		except Exception as e:
 			logging.error("ERROR initializing zynmixer: %s" % e)
 		try:
