@@ -6,7 +6,7 @@
 # Zynthian GUI Audio Mixer
 # 
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2020 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2021 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 # 
@@ -42,7 +42,7 @@ from zyncoder import *
 
 ENC_LAYER		= 0
 ENC_BACK		= 1
-ENC_SNAPSHOT		= 2
+ENC_SNAPSHOT	= 2
 ENC_SELECT		= 3
 
 #------------------------------------------------------------------------------
@@ -625,13 +625,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.edit_channel = self.selected_channel
 		for channel in self.channels:
 			channel.hide()
+		channel = self.max_channels - 1
 		self.main_canvas.itemconfig(self.selection_border, state="hidden")
-		self.channels[0].set_channel(self.get_midi_channel(self.selected_channel))
-		self.channels[0].show()
+		self.channels[channel].set_channel(self.get_midi_channel(self.selected_channel))
+		self.channels[channel].show()
 		self.main_canvas.itemconfig("edit_control", state="normal")
-		self.channels[0].draw(True)
+		self.channels[channel].draw(True)
 		self.draw_balance_edit()
-		self.set_title("Edit channel %d" % (self.selected_channel+1))
+		self.set_title("Edit channel %d" % (self.selected_channel + 1))
 
 
 	# Function change to mixer mode
