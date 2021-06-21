@@ -422,7 +422,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Topbar title
 		self.title_canvas = tkinter.Canvas(self.tb_frame,
 			width=zynthian_gui_config.display_width-self.status_l-self.status_lpad-2,
-#			width=self.path_canvas_width,
+#			width=self.title_canvas_width,
 			height=zynthian_gui_config.topbar_height,
 			bd=0,
 			highlightthickness=0,

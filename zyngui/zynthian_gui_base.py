@@ -27,6 +27,7 @@ import sys
 import time
 import logging
 import tkinter
+from threading import Timer
 from tkinter import font as tkFont
 
 # Zynthian specific modules
@@ -50,6 +51,10 @@ class zynthian_gui_base:
 	def __init__(self):
 		self.shown = False
 		self.zyngui = zynthian_gui_config.zyngui
+
+		# Geometry vars
+		self.width=zynthian_gui_config.display_width
+		self.height=zynthian_gui_config.display_height
 
 		#Status Area Canvas Objects
 		self.status_cpubar = None
@@ -83,7 +88,7 @@ class zynthian_gui_base:
 		self.dpm_scale_lh = int(self.dpm_over * self.status_l)
 
 		#Title Area parameters
-		self.path_canvas_width=zynthian_gui_config.display_width-self.status_l-self.status_lpad-2
+		self.title_canvas_width=zynthian_gui_config.display_width-self.status_l-self.status_lpad-2
 		self.select_path_font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=zynthian_gui_config.font_topbar[1])
 		self.select_path_width=0
 		self.select_path_offset=0
@@ -104,24 +109,34 @@ class zynthian_gui_base:
 		self.tb_frame.grid_propagate(False)
 		self.tb_frame.grid_columnconfigure(0, weight=1)
 		# Setup Topbar's Callback
-		self.tb_frame.bind("<Button-1>", self.cb_topbar)
+		self.tb_frame.bind("<Button-1>", self.toggle_menu)
 
-		# Topbar's Path Canvas
-		self.path_canvas = tkinter.Canvas(self.tb_frame,
-			width=self.path_canvas_width,
+		# Title
+#		font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
+		font=zynthian_gui_config.font_topbar
+		self.title_fg = zynthian_gui_config.color_panel_tx
+		self.title_bg = zynthian_gui_config.color_header_bg
+		self.title_canvas = tkinter.Canvas(self.tb_frame,
 			height=zynthian_gui_config.topbar_height,
 			bd=0,
 			highlightthickness=0,
-			relief='flat',
-			bg = zynthian_gui_config.color_bg)
-		self.path_canvas.grid(row=0, column=0, sticky="wns")
-		# Setup Topbar's Callback
-		self.path_canvas.bind("<Button-1>", self.cb_topbar)
+			bg = self.title_bg)
+		self.title_canvas.grid_propagate(False)
+		self.title_canvas.create_text(0, zynthian_gui_config.topbar_height / 2,
+			font=font,
+			anchor="w",
+			fill=self.title_fg,
+			tags="lblTitle",
+			text="")
+		self.title_canvas.grid(row=0, column=0, sticky='ew')
+		self.title_canvas.bind('<Button-1>', self.toggle_menu)
+		self.path_canvas = self.title_canvas
+		self.title_timer = None
 
 		# Topbar's Select Path
 		self.select_path = tkinter.StringVar()
 		self.select_path.trace("w", self.cb_select_path)
-		self.label_select_path = tkinter.Label(self.path_canvas,
+		self.label_select_path = tkinter.Label(self.title_canvas,
 			font=zynthian_gui_config.font_topbar,
 			textvariable=self.select_path,
 			justify=tkinter.LEFT,
@@ -129,7 +144,37 @@ class zynthian_gui_base:
 			fg=zynthian_gui_config.color_header_tx)
 		self.label_select_path.place(x=0, y=0)
 		# Setup Topbar's Callback
-		self.label_select_path.bind("<Button-1>", self.cb_topbar)
+		self.label_select_path.bind("<Button-1>", self.toggle_menu)
+		self.title_canvas.bind('<Button-1>', self.toggle_menu)
+
+		# Menu #TODO: Replace listbox with painted canvas providing swipe gestures
+		self.listbox_text_height = tkFont.Font(font=zynthian_gui_config.font_listbox).metrics('linespace')
+		self.lst_menu = tkinter.Listbox(self.main_frame,
+			font=zynthian_gui_config.font_listbox,
+			bd=7,
+			highlightthickness=0,
+			relief='flat',
+			bg=zynthian_gui_config.color_panel_bg,
+			fg=zynthian_gui_config.color_panel_tx,
+			selectbackground=zynthian_gui_config.color_ctrl_bg_on,
+			selectforeground=zynthian_gui_config.color_ctrl_tx,
+			selectmode=tkinter.BROWSE)
+		self.lst_menu.bind('<Button-1>', self.on_menu_press)
+		self.lst_menu.bind('<B1-Motion>', self.on_menu_drag)
+		self.lst_menu.bind('<ButtonRelease-1>', self.on_menu_select)
+		self.scrollTime = 0.0
+		if zynthian_gui_config.enable_touch_widgets:
+			self.menu_button_canvas = tkinter.Canvas(self.tb_frame,
+				height=zynthian_gui_config.topbar_height,
+				bg=zynthian_gui_config.color_bg, bd=0, highlightthickness=0)
+			self.menu_button_canvas.grid_propagate(False)
+			self.menu_button_canvas.bind('<Button-1>', self.hide_menu)
+			self.btn_menu_back = tkinter.Button(self.menu_button_canvas, command=self.close_panel_manager,
+				image=self.image_back,
+				bd=0, highlightthickness=0,
+				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
+			self.btn_menu_back.grid(column=0, row=0)
+			self.menu_button_canvas.grid_columnconfigure(4, weight=1)
 
 		# Canvas for displaying status: CPU, ...
 		self.status_canvas = tkinter.Canvas(self.tb_frame,
@@ -142,7 +187,7 @@ class zynthian_gui_base:
 		self.status_canvas.grid(row=0, column=1, sticky="ens", padx=(self.status_lpad,0))
 
 		# Configure Topbar's Frame column widths
-		self.tb_frame.grid_columnconfigure(0, minsize=self.path_canvas_width)
+		self.tb_frame.grid_columnconfigure(0, minsize=self.title_canvas_width)
 
 		# Init touchbar
 		#self.init_buttonbar()
@@ -152,6 +197,45 @@ class zynthian_gui_base:
 		# Update Title
 		self.set_select_path()
 		self.cb_scroll_select_path()
+
+	# Function to update title
+	#	title: Title to display in topbar
+	#	fg: Title foreground colour [Default: Do not change]
+	#	bg: Title background colour [Default: Do not change]
+	#	timeout: If set, title is shown for this period (seconds) then reverts to previous title
+	def set_title(self, title, fg=None, bg=None, timeout = None):
+		if self.title_timer:
+			self.title_timer.cancel()
+			self.title_timer = None
+		if timeout:
+			self.title_timer = Timer(timeout, self.on_title_timeout)
+			self.title_timer.start()
+		else:
+			self.title = title
+			if fg:
+				self.title_fg = fg
+			if bg:
+				self.title_bg = bg
+		self.select_path.set(title)
+#		self.title_canvas.itemconfig("lblTitle", text=title, fill=self.title_fg)
+		if fg:
+			self.label_select_path.config(fg=fg)
+		else:
+			self.label_select_path.config(fg=self.title_fg)
+		if bg:
+			self.title_canvas.configure(bg=bg)
+			self.label_select_path.config(bg=bg)
+		else:
+			self.title_canvas.configure(bg=self.title_bg)
+			self.label_select_path.config(bg=self.title_bg)
+
+
+	# Function to revert title after toast
+	def on_title_timeout(self):
+		if self.title_timer:
+			self.title_timer.cancel()
+			self.title_timer = None
+		self.set_title(self.title)
 
 
 	def init_buttonbar(self):
@@ -213,6 +297,238 @@ class zynthian_gui_base:
 			elif dts>=2:
 				t = 'L'
 		self.zyngui.zynswitch_defered(t,index)
+
+
+	# Function to trigger BACK buttong
+	def back(self, params=None):
+		self.zyngui.zynswitch_defered('S',1)
+
+
+	# Function to populate menu with global entries
+	def populate_menu(self):
+		self.lst_menu.delete(0, tkinter.END)
+		self.menu_items = {} # Dictionary of menu items
+		self.add_menu({'BACK':{'method':self.back}})
+
+
+	# Function to open menu or trigger BACK action if no menu configured
+	def show_menu(self):
+		self.populate_menu()
+		try:
+			if len(self.menu_items) == 1 and self.menu_items['BACK']['method'] == self.back:
+				self.back()
+				return
+		except:
+			pass
+
+		button_height = 0
+		if zynthian_gui_config.enable_touch_widgets:
+			button_height = zynthian_gui_config.buttonbar_height
+		rows = min((self.height - zynthian_gui_config.topbar_height - button_height) / self.listbox_text_height - 1, self.lst_menu.size())
+		self.lst_menu.configure(height = int(rows))
+		self.lst_menu.grid(column=0, row=1, sticky="nw")
+		self.lst_menu.tkraise()
+		self.lst_menu.selection_clear(0,tkinter.END)
+		self.lst_menu.activate(0)
+		self.lst_menu.selection_set(0)
+		self.lst_menu.see(0)
+		if zynthian_gui_config.enable_touch_widgets:
+			self.menu_button_canvas.grid()
+			self.menu_button_canvas.grid_propagate(False)
+			self.menu_button_canvas.grid(column=0, row=0, sticky='nsew')
+
+
+	# Function to close menu
+	#	event: Mouse event (not used)
+	def hide_menu(self, event=None):
+		self.lst_menu.grid_forget()
+		if zynthian_gui_config.enable_touch_widgets:
+			self.menu_button_canvas.grid_forget()
+
+
+	# Function to handle title bar click
+	#	event: Mouse event (not used)
+	def toggle_menu(self, event=None):
+		if self.lst_menu.winfo_viewable():
+			self.hide_menu()
+		else:
+			self.show_menu()
+
+
+	# Function to handle press menu
+	def on_menu_press(self, event):
+		pass
+
+
+	# Function to handle motion menu
+	def on_menu_drag(self, event):
+		now = time.monotonic()
+		if self.scrollTime < now:
+			self.scrollTime = now + 0.1
+			try:
+				item = self.lst_menu.curselection()[0]
+				self.lst_menu.see(item + 1)
+				self.lst_menu.see(item - 1)
+			except:
+				pass
+		#self.lstMenu.winfo(height)
+		pass
+
+
+	# Function to handle menu item selection (SELECT button or click on listbox entry)
+	#	event: Mouse event not used
+	def on_menu_select(self, event=None):
+		if self.lst_menu.winfo_viewable():
+			menu_item = None
+			action = None
+			params = None
+			try:
+				menu_item = self.lst_menu.get(self.lst_menu.curselection()[0])
+				action = self.menu_items[menu_item]['method']
+				params = self.menu_items[menu_item]['params']
+			except:
+				pass
+			self.hide_menu()
+			if not menu_item:
+				return
+			if action == self.show_param_editor:
+				self.show_param_editor(menu_item)
+			elif action:
+				action(params) # Call menu handler defined during add_menu
+
+
+	# Function to add items to menu
+	#	item: Dictionary containing menu item data, indexed by menu item title
+	#		Dictionary should contain {'method':<function to call when menu selected>} and {'params':<parameters to pass to method>}
+	def add_menu(self, item):
+		self.menu_items.update(item)
+		self.lst_menu.insert(tkinter.END, list(item)[0])
+
+
+	# Function to set menu data parameters
+	#	item: Menu item name
+	#	param: Parameter name
+	#	value: Parameter value
+	def set_param(self, item, param, value):
+		if item in self.menu_items:
+			self.menu_items[item]['params'].update({param: value})
+
+
+	# Function to refresh parameter editor display
+	def refreshParamEditor(self):
+		self.param_title_canvas.itemconfig("lbl_param_editor_value", 
+			text=self.menu_items[self.param_editor_item]['params']['on_change'](self.menu_items[self.param_editor_item]['params']))
+
+
+	# Function to get menu data parameters
+	#	item: Menu item name
+	#	param: Parameter name
+	#	returns: Parameter value
+	def get_param(self, item, param):
+		if item in self.menu_items and param in self.menu_items[item]['params']:
+			return self.menu_items[item]['params'][param]
+		return None
+
+
+	# Function to show menu editor
+	#	menuitem: Name of the menu item who's parameters to edit
+	def show_param_editor(self, menu_item):
+		if not menu_item in self.menu_items:
+			return
+		self.param_editor_item = menu_item
+		if self.get_param(menu_item, 'get_value'):
+			self.set_param(menu_item, 'value', self.get_param(menu_item, 'get_value')())
+		self.param_editor_canvas.grid_propagate(False)
+		self.param_editor_canvas.grid(column=0, row=0, sticky='nsew')
+		# Get the value to display in the param editor
+		self.param_title_canvas.itemconfig("lbl_param_editor_value", 
+			text=self.menu_items[menu_item]['params']['on_change'](self.menu_items[menu_item]['params'])
+			)
+		if 'on_assert' in self.menu_items[menu_item]['params']:
+			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='normal')
+		else:
+			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='hidden')
+		for encoder in range(4):
+			self.unregister_zyncoder(encoder)
+		self.register_switch(ENC_SELECT, self, "SB")
+		self.register_switch(ENC_BACK, self)
+
+
+	# Function to hide menu editor
+	#	event: Mouse event (not used)
+	def hide_param_editor(self, event=None):
+		self.param_editor_item = None
+		self.param_editor_canvas.grid_forget()
+		libseq.enableMidiLearn(0,0)
+		for encoder in range(4):
+			self.unregister_zyncoder(encoder)
+		if self.child:
+			self.child.setup_encoders()
+
+
+	# Function to handle parameter editor value change and get display label text
+	#	params: Menu item's parameters
+	#	returns: String to populate menu editor label
+	#	note: This is default but other method may be used for each menu item
+	#	note: params is a dictionary with required fields: min, max, value
+	def on_menu_change(self, params):
+		value = params['value']
+		if value < params['min']:
+			value = params['min']
+		if value > params['max']:
+			value = params['max']
+		self.set_param(self.param_editor_item, 'value', value)
+		return "%s: %d" % (self.param_editor_item, value)
+
+
+	# Function to change parameter value
+	#	value: Offset by which to change parameter value
+	def change_param(self, value):
+		value = self.get_param(self.param_editor_item, 'value') + value
+		if value < self.get_param(self.param_editor_item, 'min'):
+			if self.get_param(self.param_editor_item, 'value' == value):
+				return
+			value = self.get_param(self.param_editor_item, 'min')
+		if value > self.get_param(self.param_editor_item, 'max'):
+			if self.get_param(self.param_editor_item, 'value' == value):
+				return
+			value = self.get_param(self.param_editor_item, 'max')
+		self.set_param(self.param_editor_item, 'value', value)
+		result = self.get_param(self.param_editor_item, 'on_change')(self.menu_items[self.param_editor_item]['params'])
+		if result == -1:
+			self.hide_param_editor()
+		else:
+			self.param_title_canvas.itemconfig("lbl_param_editor_value", text=result)
+
+
+	# Function to decrement parameter value
+	def decrement_param(self):
+		self.change_param(-1)
+
+
+	# Function to increment selected menu value
+	def increment_param(self):
+		self.change_param(1)
+
+
+	# Function to assert selected menu value
+	def param_editor_assert(self):
+		if self.param_editor_item and 'on_assert' in self.menu_items[self.param_editor_item]['params'] and self.menu_items[self.param_editor_item]['params']['on_assert']:
+			self.menu_items[self.param_editor_item]['params']['on_assert']()
+		self.hide_param_editor()
+
+
+	# Function callback when cancel selected in parameter editor
+	def param_editor_cancel(self):
+		if self.param_editor_item and 'on_cancel' in self.menu_items[self.param_editor_item]['params'] and self.menu_items[self.param_editor_item]['params']['on_cancel']:
+			self.menu_items[self.param_editor_item]['params']['on_cancel']()
+		self.hide_param_editor()
+
+
+	# Function callback when reset selected in parameter editor
+	def param_editor_reset(self):
+		if self.param_editor_item and 'on_reset' in self.menu_items[self.param_editor_item]['params'] and self.menu_items[self.param_editor_item]['params']['on_reset']:
+			self.menu_items[self.param_editor_item]['params']['on_reset']()
 
 
 	def show(self):
@@ -455,10 +771,6 @@ class zynthian_gui_base:
 		pass
 
 
-	def cb_topbar(self,event):
-		self.zyngui.zynswitch_defered('S',1)
-
-
 	def cb_keybinding(self, event):
 		logging.debug("Key press {} {}".format(event.keycode, event.keysym))
 
@@ -483,7 +795,7 @@ class zynthian_gui_base:
 
 	def cb_select_path(self, *args):
 		self.select_path_width=self.select_path_font.measure(self.select_path.get())
-		self.select_path_offset = 0;
+		self.select_path_offset = 0
 		self.select_path_dir = 2
 		self.label_select_path.place(x=0, y=0)
 
@@ -498,13 +810,13 @@ class zynthian_gui_base:
 
 
 	def dscroll_select_path(self):
-		if self.select_path_width>self.path_canvas_width:
+		if self.select_path_width>self.title_canvas_width:
 			#Scroll label
 			self.select_path_offset += self.select_path_dir
 			self.label_select_path.place(x=-self.select_path_offset, y=0)
 
 			#Change direction ...
-			if self.select_path_offset > (self.select_path_width-self.path_canvas_width):
+			if self.select_path_offset > (self.select_path_width-self.title_canvas_width):
 				self.select_path_dir = -2
 				return True
 			elif self.select_path_offset<=0:
@@ -512,7 +824,7 @@ class zynthian_gui_base:
 				return True
 
 		elif self.select_path_offset!=0:
-			self.select_path_offset = 0;
+			self.select_path_offset = 0
 			self.select_path_dir = 2
 			self.label_select_path.place(x=0, y=0)
 

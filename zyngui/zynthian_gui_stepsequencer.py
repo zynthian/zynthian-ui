@@ -31,7 +31,6 @@ import tkinter
 import logging
 import tkinter.font as tkFont
 import time
-from threading import Timer
 import ctypes
 from os.path import dirname, realpath
 from PIL import Image, ImageTk
@@ -136,30 +135,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.filename = "default"
 		#self.load(self.filename)
 
-		# Geometry vars
-		self.width=zynthian_gui_config.display_width
-		self.height=zynthian_gui_config.display_height
-
-		# Title
-#		font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
-		font=zynthian_gui_config.font_topbar
-		self.title_fg = zynthian_gui_config.color_panel_tx
-		self.title_bg = zynthian_gui_config.color_header_bg
-		self.title_canvas = tkinter.Canvas(self.tb_frame,
-			height=zynthian_gui_config.topbar_height,
-			bd=0,
-			highlightthickness=0,
-			bg = self.title_bg)
-		self.title_canvas.grid_propagate(False)
-		self.title_canvas.create_text(0, zynthian_gui_config.topbar_height / 2,
-			font=font,
-			anchor="w",
-			fill=self.title_fg,
-			tags="lblTitle",
-			text="Step Sequencer")
-		self.title_canvas.grid(row=0, column=0, sticky='ew')
-		self.title_canvas.bind('<Button-1>', self.toggle_menu)
-
 		iconsize = (zynthian_gui_config.topbar_height - 4, zynthian_gui_config.topbar_height - 4)
 		self.image_play = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
 		self.image_playing = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
@@ -220,35 +195,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		#TODO: Consolidate menu to base class
 		self.status_canvas.bind('<Button-1>', self.toggle_status_menu)
 
-		# Menu #TODO: Replace listbox with painted canvas providing swipe gestures
-		self.listbox_text_height = tkFont.Font(font=zynthian_gui_config.font_listbox).metrics('linespace')
-		self.lst_menu = tkinter.Listbox(self.main_frame,
-			font=zynthian_gui_config.font_listbox,
-			bd=7,
-			highlightthickness=0,
-			relief='flat',
-			bg=zynthian_gui_config.color_panel_bg,
-			fg=zynthian_gui_config.color_panel_tx,
-			selectbackground=zynthian_gui_config.color_ctrl_bg_on,
-			selectforeground=zynthian_gui_config.color_ctrl_tx,
-			selectmode=tkinter.BROWSE)
-		self.lst_menu.bind('<Button-1>', self.on_menu_press)
-		self.lst_menu.bind('<B1-Motion>', self.on_menu_drag)
-		self.lst_menu.bind('<ButtonRelease-1>', self.on_menu_select)
-		self.scrollTime = 0.0
-		if zynthian_gui_config.enable_touch_widgets:
-			self.menu_button_canvas = tkinter.Canvas(self.tb_frame,
-				height=zynthian_gui_config.topbar_height,
-				bg=zynthian_gui_config.color_bg, bd=0, highlightthickness=0)
-			self.menu_button_canvas.grid_propagate(False)
-			self.menu_button_canvas.bind('<Button-1>', self.hide_menu)
-			self.btn_menu_back = tkinter.Button(self.menu_button_canvas, command=self.close_panel_manager,
-				image=self.image_back,
-				bd=0, highlightthickness=0,
-				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.btn_menu_back.grid(column=0, row=0)
-			self.menu_button_canvas.grid_columnconfigure(4, weight=1)
-
 		self.status_menu_frame = tkinter.Frame(self.main_frame)
 
 		img = (Image.open("/zynthian/zynthian-ui/icons/recue.png").resize(iconsize))
@@ -274,7 +220,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		# Init touchbar
 		self.init_buttonbar()
 
-		self.title_timer = None
 		self.title="zynseq"
 		self.select_bank(self.bank)
 		self.populate_menu()
@@ -295,8 +240,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to populate menu with global entries
 	def populate_menu(self):
-		self.lst_menu.delete(0, tkinter.END)
-		self.menu_items = {} # Dictionary of menu items
+		super().populate_menu()
 		if self.child != self.zynpad:
 			self.add_menu({'Pads':{'method':self.show_child, 'params':self.zynpad}})
 		if self.child != self.arranger:
@@ -308,41 +252,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.add_menu({'Beats per bar':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':libseq.getBeatsPerBar, 'on_change':self.on_menu_change}}})
 		#self.add_menu({'Load':{'method':self.select_filename, 'params':self.filename}})
 		self.add_menu({'-------------------':{}})
-
-
-	# Function to update title
-	#	title: Title to display in topbar
-	#	fg: Title foreground colour [Default: Do not change]
-	#	bg: Title background colour [Default: Do not change]
-	#	timeout: If set, title is shown for this period (seconds) then reverts to previous title
-	def set_title(self, title, fg=None, bg=None, timeout = None):
-		if self.title_timer:
-			self.title_timer.cancel()
-			self.title_timer = None
-		if timeout:
-			self.title_timer = Timer(timeout, self.on_title_timeout)
-			self.title_timer.start()
-		else:
-			self.title = title
-			if fg:
-				self.title_fg = fg
-			if bg:
-				self.title_bg = bg
-		self.title_canvas.itemconfig("lblTitle", text=title, fill=self.title_fg)
-		if fg:
-			self.title_canvas.itemconfig("lblTitle", fill=fg)
-		if bg:
-			self.title_canvas.configure(bg=bg)
-		else:
-			self.title_canvas.configure(bg=self.title_bg)
-
-
-	# Function to revert title after toast
-	def on_title_timeout(self):
-		if self.title_timer:
-			self.title_timer.cancel()
-			self.title_timer = None
-		self.set_title(self.title)
+		if self.child:
+			self.child.populate_menu()
 
 
 	# Function to show GUI
@@ -364,7 +275,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to hide GUI
-	def hide(self):
+	def hide(self, args=None):
 		if self.shown:
 			self.shown=False
 			self.main_frame.grid_forget()
@@ -382,50 +293,22 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to open menu
 	def show_menu(self):
-		self.populate_menu()
-		if self.child:
-			self.child.populate_menu()
-		button_height = 0
-		if zynthian_gui_config.enable_touch_widgets:
-			button_height = zynthian_gui_config.buttonbar_height
-		rows = min((self.height - zynthian_gui_config.topbar_height - button_height) / self.listbox_text_height - 1, self.lst_menu.size())
-		self.lst_menu.configure(height = int(rows))
-		self.lst_menu.grid(column=0, row=1, sticky="nw")
-		self.lst_menu.tkraise()
-		self.lst_menu.selection_clear(0,tkinter.END)
-		self.lst_menu.activate(0)
-		self.lst_menu.selection_set(0)
-		self.lst_menu.see(0)
+		super().show_menu()
 		for encoder in range(4):
 			self.unregister_zyncoder(encoder)
 		self.register_switch(ENC_SELECT, self)
 		self.register_switch(ENC_BACK, self)
-		if zynthian_gui_config.enable_touch_widgets:
-			self.menu_button_canvas.grid()
-			self.menu_button_canvas.grid_propagate(False)
-			self.menu_button_canvas.grid(column=0, row=0, sticky='nsew')
-
 
 	# Function to close menu
 	#	event: Mouse event (not used)
 	def hide_menu(self, event=None):
 		self.hide_param_editor()
 		self.unregister_zyncoder(ENC_SELECT)
-		self.lst_menu.grid_forget()
-		if zynthian_gui_config.enable_touch_widgets:
-			self.menu_button_canvas.grid_forget()
+		super().hide_menu(event)
 		for encoder in range(4):
 			self.unregister_zyncoder(encoder)
 		if self.child:
 			self.child.setup_encoders()
-
-	# Function to handle title bar click
-	#	event: Mouse event (not used)
-	def toggle_menu(self, event=None):
-		if self.lst_menu.winfo_viewable():
-			self.hide_menu()
-		else:
-			self.show_menu()
 
 
 	# Function to open status menu
@@ -447,56 +330,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.hide_status_menu()
 		else:
 			self.show_status_menu()
-
-
-	# Function to handle press menu
-	def on_menu_press(self, event):
-		pass
-
-
-	# Function to handle motion menu
-	def on_menu_drag(self, event):
-		now = time.monotonic()
-		if self.scrollTime < now:
-			self.scrollTime = now + 0.1
-			try:
-				item = self.lst_menu.curselection()[0]
-				self.lst_menu.see(item + 1)
-				self.lst_menu.see(item - 1)
-			except:
-				pass
-		#self.lstMenu.winfo(height)
-		pass
-
-
-	# Function to handle menu item selection (SELECT button or click on listbox entry)
-	#	event: Mouse event not used
-	def on_menu_select(self, event=None):
-		if self.lst_menu.winfo_viewable():
-			menu_item = None
-			action = None
-			params = None
-			try:
-				menu_item = self.lst_menu.get(self.lst_menu.curselection()[0])
-				action = self.menu_items[menu_item]['method']
-				params = self.menu_items[menu_item]['params']
-			except:
-				pass
-			self.hide_menu()
-			if not menu_item:
-				return
-			if action == self.show_param_editor:
-				self.show_param_editor(menu_item)
-			elif action:
-				action(params) # Call menu handler defined during add_menu
-
-
-	# Function to add items to menu
-	#	item: Dictionary containing menu item data, indexed by menu item title
-	#		Dictionary should contain {'method':<function to call when menu selected>} and {'params':<parameters to pass to method>}
-	def add_menu(self, item):
-		self.menu_items.update(item)
-		self.lst_menu.insert(tkinter.END, list(item)[0])
 
 
 	# Function to set menu data parameters
@@ -580,56 +413,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			libseq.setBeatsPerBar(value)
 		self.set_param(self.param_editor_item, 'value', value)
 		return "%s: %d" % (self.param_editor_item, value)
-
-
-	# Function to change parameter value
-	#	value: Offset by which to change parameter value
-	def change_param(self, value):
-		value = self.get_param(self.param_editor_item, 'value') + value
-		if value < self.get_param(self.param_editor_item, 'min'):
-			if self.get_param(self.param_editor_item, 'value' == value):
-				return
-			value = self.get_param(self.param_editor_item, 'min')
-		if value > self.get_param(self.param_editor_item, 'max'):
-			if self.get_param(self.param_editor_item, 'value' == value):
-				return
-			value = self.get_param(self.param_editor_item, 'max')
-		self.set_param(self.param_editor_item, 'value', value)
-		result = self.get_param(self.param_editor_item, 'on_change')(self.menu_items[self.param_editor_item]['params'])
-		if result == -1:
-			self.hide_param_editor()
-		else:
-			self.param_title_canvas.itemconfig("lbl_param_editor_value", text=result)
-
-
-	# Function to decrement parameter value
-	def decrement_param(self):
-		self.change_param(-1)
-
-
-	# Function to increment selected menu value
-	def increment_param(self):
-		self.change_param(1)
-
-
-	# Function to assert selected menu value
-	def param_editor_assert(self):
-		if self.param_editor_item and 'on_assert' in self.menu_items[self.param_editor_item]['params'] and self.menu_items[self.param_editor_item]['params']['on_assert']:
-			self.menu_items[self.param_editor_item]['params']['on_assert']()
-		self.hide_param_editor()
-
-
-	# Function callback when cancel selected in parameter editor
-	def param_editor_cancel(self):
-		if self.param_editor_item and 'on_cancel' in self.menu_items[self.param_editor_item]['params'] and self.menu_items[self.param_editor_item]['params']['on_cancel']:
-			self.menu_items[self.param_editor_item]['params']['on_cancel']()
-		self.hide_param_editor()
-
-
-	# Function callback when reset selected in parameter editor
-	def param_editor_reset(self):
-		if self.param_editor_item and 'on_reset' in self.menu_items[self.param_editor_item]['params'] and self.menu_items[self.param_editor_item]['params']['on_reset']:
-			self.menu_items[self.param_editor_item]['params']['on_reset']()
 
 
 	# Function to show child GUI
