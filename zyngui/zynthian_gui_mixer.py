@@ -419,22 +419,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.edit_channel = None
 		self.mode = 1 # 1:Mixer, 0:Edit
 
-		# Topbar title
-		self.title_canvas = tkinter.Canvas(self.tb_frame,
-			width=zynthian_gui_config.display_width-self.status_l-self.status_lpad-2,
-#			width=self.title_canvas_width,
-			height=zynthian_gui_config.topbar_height,
-			bd=0,
-			highlightthickness=0,
-			relief="flat",
-			bg = zynthian_gui_config.color_bg)
-		self.title_canvas.grid(row=0, column=0, sticky="ewns")
-		self.title_canvas.create_text(1, zynthian_gui_config.topbar_height / 2,
-			font=zynthian_gui_config.font_topbar,
-			text="Audio Mixer",
-			fill=zynthian_gui_config.color_header_tx,
-			anchor="w")
-
 		# Fader Canvas
 		self.main_canvas = tkinter.Canvas(self.main_frame,
 			height=self.height,
@@ -507,6 +491,37 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Init touchbar
 		self.init_buttonbar()
+
+		self.set_title("Mixer")
+
+
+	# Function to populate menu with global entries
+	def populate_menu(self):
+		super().populate_menu()
+		self.add_menu({'Edit channel':{'method':self.set_edit_mode}})
+		self.add_menu({'-------------------':{}})
+		self.add_menu({'Add Synth channel':{'method':self.add_channel, 'params':'MIDI Synth'}})
+		self.add_menu({'Add Audio channel':{'method':self.add_channel, 'params':'NEW_AUDIO_FX'}})
+		self.add_menu({'Add Generator channel':{'method':self.add_channel, 'params':'NEW_GENERATOR'}})
+		self.add_menu({'-------------------':{}})
+		self.add_menu({'REMOVE All channels':{'method':self.remove_all}})
+		self.add_menu({'PANIC! All Notes Off':{'method':self.panic}})
+
+
+	# Function to add a channel
+	def add_channel(self, type):
+		self.zyngui.screens['layer'].add_layer(type)
+
+
+	# Function to remove all channels
+	def remove_all(self, params=None):
+		self.zyngui.show_confirm("Do you really want to remove all channels?", self.zyngui.screens['layer'].reset_confirmed)
+		self.show()
+
+
+	# Function to silence all engines
+	def panic(self, params=None):
+		self.zyngui.callable_ui_action("ALL_OFF")
 
 
 	# Function to display selected channel highlight border
@@ -605,7 +620,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function change to edit mode
-	def set_edit_mode(self):
+	def set_edit_mode(self, params=None):
 		self.mode = 0
 		self.edit_channel = self.selected_channel
 		for channel in self.channels:
@@ -616,6 +631,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.itemconfig("edit_control", state="normal")
 		self.channels[0].draw(True)
 		self.draw_balance_edit()
+		self.set_title("Edit channel %d" % (self.selected_channel+1))
 
 
 	# Function change to mixer mode
@@ -635,6 +651,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.itemconfig(self.selection_border, state="normal")
 		self.mode = 1
 		self.edit_channel = None
+		self.set_title("Mixer")
 
 
 	# Function to handle mute button release
