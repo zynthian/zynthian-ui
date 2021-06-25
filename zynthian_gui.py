@@ -39,6 +39,11 @@ from threading  import Thread, Lock
 from subprocess import check_output
 from ctypes import c_float, c_double, CDLL
 
+from PySide2.QtGui import QGuiApplication
+from PySide2.QtQml import QQmlApplicationEngine
+
+sys.path.insert(1, '/zynthian/zynthian-ui/')
+
 # Zynthian specific modules
 import zynconf
 import zynautoconnect
@@ -84,6 +89,11 @@ if "zynseq" in zynthian_gui_config.experimental_features:
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
+
+from pathlib import Path
+from layerswrapper import LayersController
+from layerswrapper import LayersListModel
+from controlwrapper import ControlWrapper, ControllerWrapper
 
 #-------------------------------------------------------------------------------
 # Zynthian Main GUI Class
@@ -1755,10 +1765,26 @@ class zynthian_gui:
 # GUI & Synth Engine initialization
 #------------------------------------------------------------------------------
 
-logging.info("STARTING ZYNTHIAN-UI ...")
-zynthian_gui_config.zyngui=zyngui=zynthian_gui()
-zyngui.start()
+if __name__ == "__main__":
+    app = QGuiApplication(sys.argv)
+    engine = QQmlApplicationEngine()
 
+    logging.info("STARTING ZYNTHIAN-UI ...")
+    zynthian_gui_config.zyngui=zyngui=zynthian_gui()
+    zyngui.start()
+
+    layers_controller = LayersController(zyngui)
+    layers_model = LayersListModel(zyngui)
+    control_wrapper = ControlWrapper(zyngui)
+    engine.rootContext().setContextProperty("layers_controller", layers_controller)
+    engine.rootContext().setContextProperty("layers_model", layers_model)
+    engine.rootContext().setContextProperty("control_wrapper", control_wrapper)
+
+    engine.load(os.fspath(Path(__file__).resolve().parent / "qml-ui/main.qml"))
+
+    if not engine.rootObjects():
+        sys.exit(-1)
+    sys.exit(app.exec_())
 
 #------------------------------------------------------------------------------
 # Reparent Top Window using GTK XEmbed protocol features
