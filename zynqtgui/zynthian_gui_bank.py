@@ -81,7 +81,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.zyngui.curlayer:
-			self.select_path.set(self.zyngui.curlayer.get_basepath())
+			self.select_path = (self.zyngui.curlayer.get_basepath())
 
 
 #-------------------------------------------------------------------------------

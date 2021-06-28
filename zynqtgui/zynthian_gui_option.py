@@ -64,6 +64,6 @@ class zynthian_gui_option(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set(self.title)
+		self.select_path = (self.title)
 
 #------------------------------------------------------------------------------

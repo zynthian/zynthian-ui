@@ -58,6 +58,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.create_amixer_layer()
 		
 
+
 	def reset(self):
 		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
 		self.show_all_layers = False
@@ -185,9 +186,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_layer_selected(self):
-		i=self.get_cursel()
-		if i<len(self.root_layers):
-			return i
+		if index<len(self.root_layers):
+			return index
 		else:
 			return None
 
@@ -1319,7 +1319,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set("Layers")
+		self.select_path = ("Layers")
 
 
 #------------------------------------------------------------------------------

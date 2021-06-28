@@ -123,9 +123,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.only_favs:
-			self.select_path.set(self.zyngui.curlayer.get_basepath() + " > Favorites")
+			self.select_path = (self.zyngui.curlayer.get_basepath() + " > Favorites")
 		else:
 			if self.zyngui.curlayer:
-				self.select_path.set(self.zyngui.curlayer.get_bankpath())
+				self.select_path = (self.zyngui.curlayer.get_bankpath())
 
 #------------------------------------------------------------------------------

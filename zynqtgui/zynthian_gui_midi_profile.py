@@ -81,6 +81,6 @@ class zynthian_gui_midi_profile(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set("MIDI Profile")
+		self.select_path = ("MIDI Profile")
 
 #------------------------------------------------------------------------------

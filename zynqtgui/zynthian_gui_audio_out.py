@@ -87,6 +87,6 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set("Send Audio to ...")
+		self.select_path = ("Send Audio to ...")
 
 #------------------------------------------------------------------------------

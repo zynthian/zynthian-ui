@@ -39,11 +39,11 @@ from . import zynthian_gui_selector
 
 class zynthian_gui_midi_cc(zynthian_gui_selector):
 
-	def __init__(self):
+	def __init__(self, parent = None):
+		super(zynthian_gui_midi_cc, self).__init__('CC', parent)
 		self.chan_from = None
 		self.chan_to = None
 		self.cc = [0] * 16
-		super().__init__('CC', True)
 
 
 	def config(self, chan_from, chan_to):
@@ -97,9 +97,9 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 
 	def set_select_path(self):
 		try:
-			self.select_path.set("Clone {} => {} / CC...".format(self.chan_from+1, self.chan_to+1))
+			self.select_path = ("Clone {} => {} / CC...".format(self.chan_from+1, self.chan_to+1))
 		except:
-			self.select_path.set("Clone CC...")
+			self.select_path = ("Clone CC...")
 
 
 #------------------------------------------------------------------------------

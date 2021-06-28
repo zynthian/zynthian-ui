@@ -142,7 +142,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 					i=i+1
 				except Exception as e:
 					logging.exception("Controller %s (%d) => %s" % (ctrl.short_name,i,e))
-					self.zgui_controllers[i].hide()
+					if len(self.zgui_controllers) < i:
+						self.zgui_controllers[i].hide()
 
 			#Hide rest of GUI controllers
 			for i in range(i,len(self.zgui_controllers)):
@@ -167,7 +168,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zgui_controllers[i].config(ctrl)
 			self.zgui_controllers[i].show()
 		else:
-			self.zgui_controllers.append(zynthian_gui_controller(i,self.main_frame,ctrl))
+			self.zgui_controllers.append(zynthian_gui_controller(i,ctrl))
 		self.zgui_controllers_map[ctrl]=self.zgui_controllers[i]
 
 
@@ -207,9 +208,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.mode='control'
 		if self.zselector: self.zselector.hide()
 		self.set_controller_screen()
-		self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
-			selectforeground=zynthian_gui_config.color_ctrl_tx,
-			fg=zynthian_gui_config.color_ctrl_tx)
 		self.set_select_path()
 
 
@@ -359,6 +357,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 		for zgui_controller in self.zgui_controllers:
 			zgui_controller.set_midi_bind()
 
+	def refresh_loading(self):
+		return
 
 	def plot_zctrls(self):
 		if self.mode=='select':
@@ -462,9 +462,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def set_select_path(self):
 		if self.zyngui.curlayer:
 			if self.mode=='control' and self.zyngui.midi_learn_mode:
-				self.select_path.set(self.zyngui.curlayer.get_basepath() + "/CTRL MIDI-Learn")
+				self.select_path = (self.zyngui.curlayer.get_basepath() + "/CTRL MIDI-Learn")
 			else:
-				self.select_path.set(self.zyngui.curlayer.get_presetpath())
+				self.select_path = (self.zyngui.curlayer.get_presetpath())
 
 
 #------------------------------------------------------------------------------

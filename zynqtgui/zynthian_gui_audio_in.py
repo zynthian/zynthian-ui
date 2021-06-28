@@ -69,7 +69,7 @@ class zynthian_gui_audio_in(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set("Capture Audio from ...")
+		self.select_path = ("Capture Audio from ...")
 
 
 #------------------------------------------------------------------------------

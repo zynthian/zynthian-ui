@@ -16,7 +16,7 @@ ZComponents.SelectorPage {
     id: root
     title: "Layers"
 
-    model: layers_controller.root_layers_model
+    model: newLayers.list
 
     delegate: Kirigami.BasicListItem {
         width: view.width

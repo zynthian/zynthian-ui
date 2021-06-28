@@ -358,7 +358,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		title=(self.action.lower()+" snapshot").title()
 		if not self.bankless_mode and self.bank_dir:
 			title=title+": "+self.bank_dir
-		self.select_path.set(title)
+		self.select_path = (title)
 
 
 #------------------------------------------------------------------------------

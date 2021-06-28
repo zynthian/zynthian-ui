@@ -32,12 +32,13 @@ import signal
 #import alsaseq
 import logging
 import threading
-from time import sleep
+import time
 from os.path import isfile
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
 from ctypes import c_float, c_double, CDLL
+import sched
 
 from PySide2.QtGui import QGuiApplication
 from PySide2.QtQml import QQmlApplicationEngine
@@ -66,7 +67,7 @@ from zynqtgui.zynthian_gui_layer import zynthian_gui_layer
 #from zynqtgui.zynthian_gui_layer_options import zynthian_gui_layer_options
 from zynqtgui.zynthian_gui_engine import zynthian_gui_engine
 #from zynqtgui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
-#from zynqtgui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
+from zynqtgui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
 #from zynqtgui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
 #from zynqtgui.zynthian_gui_audio_out import zynthian_gui_audio_out
 #from zynqtgui.zynthian_gui_midi_out import zynthian_gui_midi_out
@@ -182,6 +183,7 @@ class zynthian_gui:
 
 		self.dtsw = []
 		self.polling = False
+		self.scheduler = sched.scheduler(time.time, time.sleep)
 
 		self.loading = 0
 		self.loading_thread = None
@@ -345,7 +347,7 @@ class zynthian_gui:
 		#self.screens['layer_options'] = zynthian_gui_layer_options()
 		self.screens['snapshot'] = zynthian_gui_snapshot()
 		#self.screens['midi_chan'] = zynthian_gui_midi_chan()
-		#self.screens['midi_cc'] = zynthian_gui_midi_cc()
+		self.screens['midi_cc'] = zynthian_gui_midi_cc()
 		#self.screens['midi_key_range'] = zynthian_gui_midi_key_range()
 		#self.screens['audio_out'] = zynthian_gui_audio_out()
 		#self.screens['midi_out'] = zynthian_gui_midi_out()
@@ -1458,7 +1460,7 @@ class zynthian_gui:
 					self.screens[self.active_screen].refresh_loading()
 			except Exception as err:
 				logging.error("zynthian_gui.loading_refresh() => %s" % err)
-			sleep(0.1)
+			time.sleep(0.1)
 
 
 	def wait_threads_end(self, n=20):
@@ -1498,10 +1500,12 @@ class zynthian_gui:
 
 
 	def after(self, msec, func):
-		zynthian_gui_config.top.after(msec, func)
+		self.scheduler.enter(msec, 1, func)
+		self.scheduler.run(False)
 
 
 	def zyngine_refresh(self):
+		print("REFRESHING")
 		try:
 			# Capture exit event and finish
 			if self.exit_flag:
@@ -1520,7 +1524,8 @@ class zynthian_gui:
 
 		# Poll
 		if self.polling:
-			zynthian_gui_config.top.after(160, self.zyngine_refresh)
+			self.scheduler.enter(200, 1, self.refresh_status)
+			self.scheduler.run(False);
 
 
 	def refresh_status(self):
@@ -1582,12 +1587,15 @@ class zynthian_gui:
 			self.status_info['midi'] = False
 			self.status_info['midi_clock'] = False
 
+			if self.polling:
+				self.scheduler.enter(200, 1, self.refresh_status)
+
 		except Exception as e:
 			logging.exception(e)
 
 		# Poll
 		if self.polling:
-			zynthian_gui_config.top.after(200, self.refresh_status)
+			self.scheduler.enter(200, 1, self.refresh_status)
 
 
 	#------------------------------------------------------------------
@@ -1777,6 +1785,8 @@ if __name__ == "__main__":
     control_wrapper = ControlWrapper(zyngui)
     engine.rootContext().setContextProperty("layers_controller", layers_controller)
     engine.rootContext().setContextProperty("control_wrapper", control_wrapper)
+    # TODO: zyngui as context property
+    engine.rootContext().setContextProperty("newLayers", zyngui.screens['layer'])
 
     engine.load(os.fspath(Path(__file__).resolve().parent / "qml-ui/main.qml"))
 

@@ -407,6 +407,6 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set("Audio Recorder")
+		self.select_path = ("Audio Recorder")
 
 #------------------------------------------------------------------------------

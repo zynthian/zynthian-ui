@@ -405,6 +405,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set("MIDI Recorder")
+		self.select_path = ("MIDI Recorder")
 
 #------------------------------------------------------------------------------

@@ -429,13 +429,13 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.audiofx_layer:
-			self.select_path.set("{} > Options".format(self.audiofx_layer.get_basepath()))
+			self.select_path = ("{} > Options".format(self.audiofx_layer.get_basepath()))
 		elif self.audiofx_layer:
-			self.select_path.set("{} > Options".format(self.midifx_layer.get_basepath()))
+			self.select_path = ("{} > Options".format(self.midifx_layer.get_basepath()))
 		elif self.layer:
-			self.select_path.set("{} > Options".format(self.layer.get_basepath()))
+			self.select_path = ("{} > Options".format(self.layer.get_basepath()))
 		else:
-			self.select_path.set("Layer Options")
+			self.select_path = ("Layer Options")
 
 
 #------------------------------------------------------------------------------

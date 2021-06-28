@@ -74,7 +74,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set("PROG Options")
+		self.select_path = ("PROG Options")
 
 
 #------------------------------------------------------------------------------
