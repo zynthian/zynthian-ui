@@ -27,7 +27,7 @@ import sys
 import logging
 from datetime import datetime
 
-from PySide2.QtCore import Qt, Property, Signal, QObject, QStringListModel
+from PySide2.QtCore import Qt, Property, Signal, Slot, QObject, QStringListModel
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
@@ -59,6 +59,7 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 		l = []
 
 		for item in self.list_data:
+			print(item[2])
 			l.append(item[2])
 
 		self.list_model.setStringList(l)
@@ -109,12 +110,22 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 				self.select(self.zselector.value)
 		return [0,1,2]
 
+	@Slot('int')
+	def activate_index(self, index):
+		self.select_action(index)
 
+	def set_current_index(self, index):
+		self.select(index)
+
+	def get_current_index(self):
+		return self.index
 
 	def select(self, index=None):
 		if index is None: index=self.index
+		self.index = index
 		if self.zselector and self.zselector.value!=self.index:
 			self.zselector.set_value(self.index, True, False)
+		self.current_index_changed.emit()
 
 
 	def select_up(self, n=1):
@@ -185,6 +196,8 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 
 
 	selector_list_changed = Signal()
+	current_index_changed = Signal()
 
 	selector_list = Property(QObject, get_selector_list, notify = selector_list_changed)
+	current_index = Property(int, get_current_index, set_current_index, current_index_changed)
 #------------------------------------------------------------------------------

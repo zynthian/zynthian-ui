@@ -16,11 +16,11 @@ ZComponents.SelectorPage {
     id: root
     title: "Layers"
 
-    model: newLayers.list
+    model: newLayers.selector_list
 
     delegate: Kirigami.BasicListItem {
         width: view.width
-        label: model.preset_path
+        label: model.display
         onClicked: {
             layers_controller.set_current_layer_index(index)
             applicationWindow().ensureVisible(banksPage)

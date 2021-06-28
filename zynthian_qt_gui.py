@@ -1787,6 +1787,7 @@ if __name__ == "__main__":
     engine.rootContext().setContextProperty("control_wrapper", control_wrapper)
     # TODO: zyngui as context property
     engine.rootContext().setContextProperty("newLayers", zyngui.screens['layer'])
+    engine.rootContext().setContextProperty("newBank", zyngui.screens['bank'])
 
     engine.load(os.fspath(Path(__file__).resolve().parent / "qml-ui/main.qml"))
 

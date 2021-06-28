@@ -16,14 +16,16 @@ ZComponents.SelectorPage {
     id: root
     title: "Banks"
 
-    model: layers_controller.curlayer.bank_list
+    model: newBank.selector_list
+    currentIndex: newBank.current_index
 
     delegate: Kirigami.BasicListItem {
         width: view.width
         label: model.display
         onClicked: {
-            layers_controller.curlayer.bank_index = index
-            applicationWindow().ensureVisible(presetsPage)
+            newBank.current_index = index;
+            newBank.activate_index(index);
+            applicationWindow().ensureVisible(presetsPage);
         }
     }
 }

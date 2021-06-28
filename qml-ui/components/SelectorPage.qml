@@ -17,6 +17,7 @@ Kirigami.Page {
     property alias view: view
     property alias model: view.model
     property alias delegate: view.delegate
+    property alias currentIndex: view.currentIndex
 
     Component.onCompleted: view.forceActiveFocus()
     onFocusChanged: {
