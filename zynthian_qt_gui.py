@@ -92,8 +92,8 @@ from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen
 
 #from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
-from zynqtgui.zynthian_gui_selector import zynthian_gui_selector
-from zynqtgui.zynthian_gui_layer import zynthian_gui_layer
+#from zynqtgui.zynthian_gui_selector import zynthian_gui_selector as 
+from zynqtgui.zynthian_gui_layer import zynthian_gui_layer as zynthian_qtgui_layer
 
 from pathlib import Path
 from layerswrapper import LayersController
@@ -342,7 +342,7 @@ class zynthian_gui:
 		self.screens['keyboard'] = zynthian_gui_keyboard()
 		self.screens['option'] = zynthian_gui_option()
 		self.screens['engine'] = zynthian_gui_engine()
-		self.screens['layer'] = zynthian_gui_layer()
+		self.screens['layer'] = zynthian_qtgui_layer()
 		self.screens['layer_options'] = zynthian_gui_layer_options()
 		self.screens['snapshot'] = zynthian_gui_snapshot()
 		self.screens['midi_chan'] = zynthian_gui_midi_chan()
