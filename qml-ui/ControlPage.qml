@@ -14,7 +14,7 @@ import "components" as ZComponents
 
 Kirigami.Page {
     id: root
-    title: layer_controller.curlayer.preset_name
+    title: layers_controller.curlayer.preset_name
 
     Component.onCompleted: {
         mainView.forceActiveFocus()

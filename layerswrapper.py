@@ -23,14 +23,6 @@ class LayersListModel(QAbstractListModel):
         self.zyngui = zyngui
         self.layers_manager = zyngui.screens['layer']
 
-    @Slot('int')
-    def set_current_layer(self, row):
-        if row > len(self.layers_manager.root_layers) or row < 0:
-            return
-
-        layer = self.layers_manager.root_layers[row]
-        self.zyngui.layer_control(layer)
-
     def roleNames(self):
         keys = {
             LayersListModel.ENGINE_NAME : QByteArray(b'engine_name'),
@@ -63,16 +55,19 @@ class LayersListModel(QAbstractListModel):
 
 
 class LayerWrapper(QObject):
-    def __init__(self, parent=None):
+    def __init__(self, zyngui, parent=None):
         super(LayerWrapper, self).__init__(parent)
-        self.layer = None;
+        self.layer = None
+        self.zyngui = zyngui
         self.bank_list_model = QStringListModel()
         self.preset_list_model = QStringListModel()
+
 
     def set_layer(self, layer):
         self.layer = layer
         self.bank_list_changed.emit()
         self.preset_name_changed.emit()
+        self.preset_index_changed.emit()
         self.preset_list_changed.emit()
 
 
@@ -86,8 +81,46 @@ class LayerWrapper(QObject):
         return self.bank_list_model
 
 
-    def get_preset_name():
-        return self.layer.preset_name
+    def set_bank_index(self, index):
+        if self.layer == None:
+            return
+
+        bank = self.zyngui.screens['bank']
+
+        self.layer.set_bank(index)
+        self.preset_name_changed.emit()
+        self.preset_index_changed.emit()
+        self.preset_list_changed.emit()
+        self.bank_index_changed.emit()
+
+
+    def get_bank_index(self):
+        if self.layer:
+            return self.layer.get_bank_index();
+        else:
+            return -1;
+
+
+
+    def set_preset_index(self, index):
+        if self.layer == None:
+            return
+
+        self.layer.set_preset(index)
+        self.preset_index_changed.emit()
+
+    def get_preset_index(self):
+        if self.layer:
+            return self.layer.get_preset_index()
+        else:
+            return -1;
+
+    def get_preset_name(self):
+        if self.layer:
+            return self.layer.get_preset_name()
+        else:
+            return "None";
+
 
 
     def get_preset_list(self):
@@ -102,11 +135,14 @@ class LayerWrapper(QObject):
 
 
     bank_list_changed = Signal()
+    bank_index_changed = Signal()
+    preset_index_changed = Signal()
     preset_name_changed = Signal()
     preset_list_changed = Signal()
 
     bank_list = Property(QObject, get_bank_list, notify = bank_list_changed)
-    preset_name = Property(QObject, get_preset_name, notify = preset_name_changed)
+    bank_index = Property(int, get_bank_index, set_bank_index, notify = preset_index_changed)
+    preset_name = Property(str, get_preset_name, notify = preset_name_changed)
     preset_list = Property(QObject, get_preset_list, notify = preset_list_changed)
 
 
@@ -116,14 +152,13 @@ class LayersController(QObject):
         super(LayersController, self).__init__(parent)
         self.zyngui = zyngui
         self.layers_manager = zyngui.screens['layer']
-        self.control = zyngui.screens['control']
 
-        self.curlayer_wrapper = LayerWrapper(self)
-        self.root_layers_model = LayersListModel(self)
+        self.curlayer_wrapper = LayerWrapper(zyngui, self)
+        self.r_layers_model = LayersListModel(zyngui, self)
 
 
     def get_root_layers_model(self):
-        return self.root_layers_model
+        return self.r_layers_model
 
 
     def get_curlayer(self):
@@ -136,8 +171,13 @@ class LayersController(QObject):
             return
 
         layer = self.layers_manager.root_layers[index]
+        self.layers_manager.select_action(index)
         self.zyngui.layer_control(layer)
         self.curlayer_wrapper.layer = self.zyngui.curlayer
+
+
+    def get_curlayer_index(self):
+        return self.layers_manager.index
 
 
     @Slot('void')
@@ -148,8 +188,10 @@ class LayersController(QObject):
         print(self.zyngui.curlayer.preset_list[0][2])
 
     curlayer_changed = Signal()
+    curlayer_index_changed = Signal()
 
     root_layers_model = Property(QObject, get_root_layers_model, constant = True)
     curlayer = Property(QObject, get_curlayer, notify = curlayer_changed)
+    curlayer_index = Property(int, get_curlayer_index, set_curlayer_index, notify = curlayer_index_changed)
 
 

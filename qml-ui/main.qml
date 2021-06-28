@@ -15,7 +15,7 @@ Kirigami.ApplicationWindow {
     height: screen.height
 
     pageStack.defaultColumnWidth: root.width
-    pageStack.initialPage: [mainPage, layersPage, controlPage]
+    pageStack.initialPage: [mainPage, layersPage, banksPage, presetsPage, controlPage]
 
     // FIXME: this stuff with a newer Kirigami should be done with a PageRouter?
     function ensureVisible(page) {

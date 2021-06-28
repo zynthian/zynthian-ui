@@ -22,7 +22,7 @@ ZComponents.SelectorPage {
         width: view.width
         label: model.display
         onClicked: {
-           // layers_controller.root_layers_model.set_current_layer(index)
+            layers_controller.curlayer.bank_index = index
             applicationWindow().ensureVisible(presetsPage)
         }
     }

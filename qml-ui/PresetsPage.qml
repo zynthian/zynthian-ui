@@ -16,13 +16,13 @@ ZComponents.SelectorPage {
     id: root
     title: qsTr("Presets")
 
-    model: layers_controller.curlayer.presets_list
+    model: layers_controller.curlayer.preset_list
 
     delegate: Kirigami.BasicListItem {
         width: view.width
         label: model.display
         onClicked: {
-           // layers_controller.root_layers_model.set_current_layer(index)
+            layers_controller.curlayer.preset_index = index
             applicationWindow().ensureVisible(controlPage)
         }
     }

@@ -67,11 +67,11 @@ class ControlWrapper(QObject):
         self.zyngui = zyngui
         self.curlayer = zyngui.curlayer
         self.control = zyngui.screens['control']
-        self.screen_names_model = QStringListModel()
-        self.controller_wrapper_1 = ControllerWrapper()
-        self.controller_wrapper_2 = ControllerWrapper()
-        self.controller_wrapper_3 = ControllerWrapper()
-        self.controller_wrapper_4 = ControllerWrapper()
+        self.screen_names_model = QStringListModel(self)
+        self.controller_wrapper_1 = ControllerWrapper(self)
+        self.controller_wrapper_2 = ControllerWrapper(self)
+        self.controller_wrapper_3 = ControllerWrapper(self)
+        self.controller_wrapper_4 = ControllerWrapper(self)
 
     active_screen_index_changed = Signal()
     controller_1_changed = Signal()
@@ -89,10 +89,6 @@ class ControlWrapper(QObject):
         for key in self.zyngui.curlayer.ctrl_screens_dict.keys():
             l.append(key)
 
-        print(l[index])
-        print(self.zyngui.curlayer.ctrl_screens_dict[l[index]])
-
-        print(self.zyngui.curlayer.ctrl_screens_dict[l[index]][0].name)
         self.controller_wrapper_1.set_controller(self.zyngui.curlayer.ctrl_screens_dict[l[index]][0])
         self.controller_wrapper_2.set_controller(self.zyngui.curlayer.ctrl_screens_dict[l[index]][1])
         self.controller_wrapper_3.set_controller(self.zyngui.curlayer.ctrl_screens_dict[l[index]][2])

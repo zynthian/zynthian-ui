@@ -1774,10 +1774,8 @@ if __name__ == "__main__":
     zyngui.start()
 
     layers_controller = LayersController(zyngui)
-    layers_model = LayersListModel(zyngui)
     control_wrapper = ControlWrapper(zyngui)
     engine.rootContext().setContextProperty("layers_controller", layers_controller)
-    engine.rootContext().setContextProperty("layers_model", layers_model)
     engine.rootContext().setContextProperty("control_wrapper", control_wrapper)
 
     engine.load(os.fspath(Path(__file__).resolve().parent / "qml-ui/main.qml"))
