@@ -45,7 +45,8 @@ from zyngine import zynthian_layer
 
 class zynthian_gui_layer(zynthian_gui_selector):
 
-	def __init__(self):
+	def __init__(self, parent = None):
+		super(zynthian_gui_layer, self).__init__('Layer', parent)
 		self.layers = []
 		self.root_layers = []
 		self.amixer_layer = None
@@ -54,7 +55,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.layer_chain_parallel = False
 		self.last_snapshot_fpath = None
 		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
-		super().__init__('Layer', True)
 		self.create_amixer_layer()
 		
 

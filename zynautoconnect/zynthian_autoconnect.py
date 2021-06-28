@@ -33,7 +33,7 @@ from collections import OrderedDict
 
 # Zynthian specific modules
 from zyncoder import *
-from zyngui import zynthian_gui_config
+from zynqtgui import zynthian_gui_config
 
 #-------------------------------------------------------------------------------
 # Configure logging

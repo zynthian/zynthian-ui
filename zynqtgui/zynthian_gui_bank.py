@@ -43,8 +43,8 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		(3, 'SELECT')
 	]
 
-	def __init__(self):
-		super().__init__('Bank', True)
+	def __init__(self, parent = None):
+		super(zynthian_gui_bank, self).__init__('Bank', parent)
 
     
 	def fill_list(self):

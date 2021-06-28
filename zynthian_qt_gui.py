@@ -55,45 +55,44 @@ from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
 #from zyngine import zynthian_engine_transport
-from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_controller import zynthian_gui_controller
-from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from zyngui.zynthian_gui_info import zynthian_gui_info
-from zyngui.zynthian_gui_option import zynthian_gui_option
-from zyngui.zynthian_gui_admin import zynthian_gui_admin
-from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
-from zyngui.zynthian_gui_layer import zynthian_gui_layer
-from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
-from zyngui.zynthian_gui_engine import zynthian_gui_engine
-from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
-from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
-from zyngui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
-from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
-from zyngui.zynthian_gui_midi_out import zynthian_gui_midi_out
-from zyngui.zynthian_gui_audio_in import zynthian_gui_audio_in
-from zyngui.zynthian_gui_bank import zynthian_gui_bank
-from zyngui.zynthian_gui_preset import zynthian_gui_preset
-from zyngui.zynthian_gui_control import zynthian_gui_control
-from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
-from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
-from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
-from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
-from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
-from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
-from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
-from zyngui.zynthian_gui_main import zynthian_gui_main
-from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
-from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
-if "autoeq" in zynthian_gui_config.experimental_features:
-	from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
-if "zynseq" in zynthian_gui_config.experimental_features:
-	from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
-from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
+from zynqtgui import zynthian_gui_config
+from zynqtgui.zynthian_gui_controller import zynthian_gui_controller
+#from zynqtgui.zynthian_gui_selector import zynthian_gui_selector
+#from zynqtgui.zynthian_gui_info import zynthian_gui_info
+#from zynqtgui.zynthian_gui_option import zynthian_gui_option
+from zynqtgui.zynthian_gui_admin import zynthian_gui_admin
+from zynqtgui.zynthian_gui_snapshot import zynthian_gui_snapshot
+from zynqtgui.zynthian_gui_layer import zynthian_gui_layer
+#from zynqtgui.zynthian_gui_layer_options import zynthian_gui_layer_options
+from zynqtgui.zynthian_gui_engine import zynthian_gui_engine
+#from zynqtgui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
+#from zynqtgui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
+#from zynqtgui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
+#from zynqtgui.zynthian_gui_audio_out import zynthian_gui_audio_out
+#from zynqtgui.zynthian_gui_midi_out import zynthian_gui_midi_out
+#from zynqtgui.zynthian_gui_audio_in import zynthian_gui_audio_in
+from zynqtgui.zynthian_gui_bank import zynthian_gui_bank
+from zynqtgui.zynthian_gui_preset import zynthian_gui_preset
+from zynqtgui.zynthian_gui_control import zynthian_gui_control
+#from zynqtgui.zynthian_gui_control_xy import zynthian_gui_control_xy
+#from zynqtgui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
+#from zynqtgui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
+#from zynqtgui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
+#from zynqtgui.zynthian_gui_confirm import zynthian_gui_confirm
+#from zynqtgui.zynthian_gui_keyboard import zynthian_gui_keyboard
+from zynqtgui.zynthian_gui_keybinding import zynthian_gui_keybinding
+from zynqtgui.zynthian_gui_main import zynthian_gui_main
+#from zynqtgui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
+#from zynqtgui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
+#if "autoeq" in zynthian_gui_config.experimental_features:
+	#from zynqtgui.zynthian_gui_autoeq import zynthian_gui_autoeq
+#if "zynseq" in zynthian_gui_config.experimental_features:
+	#from zynqtgui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
+#from zynqtgui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 
-#from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
+#from zynqtgui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
 #from zynqtgui.zynthian_gui_selector import zynthian_gui_selector as 
-from zynqtgui.zynthian_gui_layer import zynthian_gui_layer as zynthian_qtgui_layer
 
 from pathlib import Path
 from layerswrapper import LayersController
@@ -337,39 +336,39 @@ class zynthian_gui:
 		#self.zyntransport = zynthian_engine_transport()
 
 		# Create Core UI Screens
-		self.screens['info'] = zynthian_gui_info()
-		self.screens['confirm'] = zynthian_gui_confirm()
-		self.screens['keyboard'] = zynthian_gui_keyboard()
-		self.screens['option'] = zynthian_gui_option()
+		#self.screens['info'] = zynthian_gui_info()
+		#self.screens['confirm'] = zynthian_gui_confirm()
+		#self.screens['keyboard'] = zynthian_gui_keyboard()
+		#self.screens['option'] = zynthian_gui_option()
 		self.screens['engine'] = zynthian_gui_engine()
-		self.screens['layer'] = zynthian_qtgui_layer()
-		self.screens['layer_options'] = zynthian_gui_layer_options()
+		self.screens['layer'] = zynthian_gui_layer()
+		#self.screens['layer_options'] = zynthian_gui_layer_options()
 		self.screens['snapshot'] = zynthian_gui_snapshot()
-		self.screens['midi_chan'] = zynthian_gui_midi_chan()
-		self.screens['midi_cc'] = zynthian_gui_midi_cc()
-		self.screens['midi_key_range'] = zynthian_gui_midi_key_range()
-		self.screens['audio_out'] = zynthian_gui_audio_out()
-		self.screens['midi_out'] = zynthian_gui_midi_out()
-		self.screens['audio_in'] = zynthian_gui_audio_in()
+		#self.screens['midi_chan'] = zynthian_gui_midi_chan()
+		#self.screens['midi_cc'] = zynthian_gui_midi_cc()
+		#self.screens['midi_key_range'] = zynthian_gui_midi_key_range()
+		#self.screens['audio_out'] = zynthian_gui_audio_out()
+		#self.screens['midi_out'] = zynthian_gui_midi_out()
+		#self.screens['audio_in'] = zynthian_gui_audio_in()
 		self.screens['bank'] = zynthian_gui_bank()
 		self.screens['preset'] = zynthian_gui_preset()
 		self.screens['control'] = zynthian_gui_control()
-		self.screens['control_xy'] = zynthian_gui_control_xy()
-		self.screens['midi_profile'] = zynthian_gui_midi_profile()
-		self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
-		self.screens['zs3_options'] = zynthian_gui_zs3_options()
+		#self.screens['control_xy'] = zynthian_gui_control_xy()
+		#self.screens['midi_profile'] = zynthian_gui_midi_profile()
+		#self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
+		#self.screens['zs3_options'] = zynthian_gui_zs3_options()
 		self.screens['main'] = zynthian_gui_main()
 		self.screens['admin'] = zynthian_gui_admin()
-		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
+		#self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
 
 		# Create UI Apps Screens
-		self.screens['alsa_mixer'] = self.screens['control']
-		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
-		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
-		if "autoeq" in zynthian_gui_config.experimental_features:
-			self.screens['autoeq'] = zynthian_gui_autoeq()
-		if "zynseq" in zynthian_gui_config.experimental_features:
-			self.screens['stepseq'] = zynthian_gui_stepsequencer()
+		#self.screens['alsa_mixer'] = self.screens['control']
+		#self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
+		#self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
+		#if "autoeq" in zynthian_gui_config.experimental_features:
+			#self.screens['autoeq'] = zynthian_gui_autoeq()
+		#if "zynseq" in zynthian_gui_config.experimental_features:
+			#self.screens['stepseq'] = zynthian_gui_stepsequencer()
 
 		# Init Auto-connector
 		zynautoconnect.start()
@@ -421,10 +420,6 @@ class zynthian_gui:
 			exclude = self.active_screen
 
 		exclude_obj = self.screens[exclude]
-
-		for screen_name, screen_obj in self.screens.items():
-			if screen_obj!=exclude_obj:
-				screen_obj.hide()
 
 
 	def show_screen(self, screen=None):

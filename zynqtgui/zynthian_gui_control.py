@@ -42,8 +42,8 @@ from . import zynthian_gui_selector
 
 class zynthian_gui_control(zynthian_gui_selector):
 
-	def __init__(self, selcap='Controllers'):
-		super().__init__(selcap, False)
+	def __init__(self, selcap='Controllers', parent = None):
+		super(zynthian_gui_control, self).__init__(selcap, parent)
 
 		self.mode=None
 

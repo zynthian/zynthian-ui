@@ -45,14 +45,12 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
 	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
 
-
-	def __init__(self):
+	def __init__(self, parent = None):
+		super(zynthian_gui_admin, self).__init__('Engine', parent)
 		self.commands=None
 		self.thread=None
 		self.child_pid=None
 		self.last_action=None
-
-		super().__init__('Action', True)
 
 		if self.zyngui.allow_headphones():
 			self.default_rbpi_headphones()

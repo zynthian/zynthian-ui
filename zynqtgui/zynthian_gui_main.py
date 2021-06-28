@@ -36,9 +36,9 @@ from zynlibs.zynseq import zynseq
 
 class zynthian_gui_main(zynthian_gui_selector):
 
-	def __init__(self):
-		super().__init__('Main', True)
 
+	def __init__(self, parent = None):
+		super(zynthian_gui_main, self).__init__('Main', parent)
 
 	def fill_list(self):
 		self.list_data=[]
@@ -130,7 +130,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set("Main")
+		self.select_path = "Main"
 
 
 #------------------------------------------------------------------------------

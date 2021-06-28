@@ -38,7 +38,8 @@ from . import zynthian_gui_selector
 
 class zynthian_gui_snapshot(zynthian_gui_selector):
 
-	def __init__(self):
+	def __init__(self, parent = None):
+		super(zynthian_gui_snapshot, self).__init__('Bank', parent)
 		self.base_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots"
 		self.default_snapshot_fpath = join(self.base_dir,"default.zss")
 		self.last_state_snapshot_fpath = join(self.base_dir,"last_state.zss")
@@ -48,7 +49,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.index_offset = 0
 		self.midi_banks = {}
 		self.midi_programs = {}
-		super().__init__('Bank', True)
 
 
 	def get_snapshot_fpath(self,f):

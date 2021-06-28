@@ -43,9 +43,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		(3, 'SELECT')
 	]
 
-	def __init__(self):
-		self.only_favs = False
-		super().__init__('Preset', True)
+	def __init__(self, parent = None):
+		super(zynthian_gui_preset, self).__init__('Preset', parent)
       
       
 	def fill_list(self):

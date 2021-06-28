@@ -30,7 +30,7 @@ from datetime import datetime
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
-from . import zynthian_gui_base
+from . import zynthian_qt_gui_base
 from . import zynthian_gui_config
 from . import zynthian_gui_controller
 
@@ -40,20 +40,20 @@ from . import zynthian_gui_controller
 
 class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 
-    def __init__(self, parent = None):
+    def __init__(self, selcap='Select', parent = None):
         super(zynthian_gui_selector, self).__init__(parent)
 
         self.index = 0
         self.list_data = []
         self.zselector = None
         self.zselector_hiden = False
+        self.only_favs = True
 
         last_index_change_ts = datetime.min
         self.selector_caption=selcap
 
 
     def show(self):
-        super().show()
         self.fill_list()
         self.set_selector()
         self.set_select_path()
@@ -61,14 +61,13 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 
 
     def set_selector(self, zs_hiden=False):
-        if self.shown:
-            if self.zselector:
-                self.zselector_ctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
-                self.zselector.config(self.zselector_ctrl)
-                self.zselector.show()
-            else:
-                self.zselector_ctrl=zynthian_controller(None,self.selector_caption,self.selector_caption,{ 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
-                self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.main_frame,self.zselector_ctrl,zs_hiden)
+        if self.zselector:
+            self.zselector_ctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
+            self.zselector.config(self.zselector_ctrl)
+            self.zselector.show()
+        else:
+            self.zselector_ctrl=zynthian_controller(None,self.selector_caption,self.selector_caption,{ 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
+            self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.zselector_ctrl)
 
 
     def plot_zctrls(self):
@@ -95,7 +94,7 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 
 
     def zyncoder_read(self):
-        if self.shown and self.zselector:
+        if self.zselector:
             self.zselector.read_zyncoder()
             if self.index!=self.zselector.value:
                 self.select(self.zselector.value)
@@ -105,7 +104,7 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 
     def select(self, index=None):
         if index is None: index=self.index
-        if self.shown and self.zselector and self.zselector.value!=self.index:
+        if self.zselector and self.zselector.value!=self.index:
             self.zselector.set_value(self.index, True, False)
 
 

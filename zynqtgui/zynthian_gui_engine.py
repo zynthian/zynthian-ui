@@ -81,12 +81,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			cls.engine_info[eng] = (plugin_name, plugin_name, plugin_info['TYPE'], plugin_info.get('CLASS', None), zynthian_engine_jalv, plugin_info['ENABLED'])
 
 
-	def __init__(self):
+	def __init__(self, parent = None):
+		super(zynthian_gui_engine, self).__init__('Engine', parent)
 		self.reset_index = True
 		self.zyngine_counter = 0
 		self.zyngines = OrderedDict()
 		self.set_engine_type("MIDI Synth")
-		super().__init__('Engine', True)
 
 
 	def set_engine_type(self, etype):
