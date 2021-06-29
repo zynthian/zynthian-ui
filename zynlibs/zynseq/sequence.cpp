@@ -245,6 +245,11 @@ uint32_t Sequence::getLength()
     return m_nLength;
 }
 
+bool Sequence::isEmpty()
+{
+	return m_bEmpty;
+}
+
 void Sequence::setPlayPosition(uint32_t position)
 {
     m_nPosition = position;
