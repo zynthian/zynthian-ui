@@ -318,6 +318,8 @@ class zynthian_gui_zynpad():
 		self.mode_icon[6] = ImageTk.PhotoImage(img)
 
 		iconsize = (int(self.row_height * 0.2), int(self.row_height * 0.2))
+		img = (Image.open("/zynthian/zynthian-ui/icons/stopped.png").resize(iconsize))
+		self.state_icon[zynthian_gui_stepsequencer.SEQ_STOPPED] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/starting.png").resize(iconsize))
 		self.state_icon[zynthian_gui_stepsequencer.SEQ_STARTING] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
@@ -380,7 +382,10 @@ class zynthian_gui_zynpad():
 				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text=zynseq.get_sequence_name(self.parent.bank, pad), fill=foreground)
 				self.grid_canvas.itemconfig("group:%s"%(pad), text=chr(65 + libseq.getGroup(self.parent.bank, pad)), fill=foreground)
 				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
-				self.grid_canvas.itemconfig("state:%d"%pad, image=self.state_icon[state])
+				if libseq.isEmpty(self.parent.bank, pad):
+					self.grid_canvas.itemconfig("state:%d"%pad, image=None)
+				else:
+					self.grid_canvas.itemconfig("state:%d"%pad, image=self.state_icon[state])
 
 
 	# Function to move selection cursor

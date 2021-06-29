@@ -230,11 +230,13 @@ SEQ_EVENT* Sequence::getEvent()
 void Sequence::updateLength()
 {
     m_nLength = 0;
+	m_bEmpty = true;
     for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
     {
         uint32_t nTrackLength = (*it).updateLength();
         if(nTrackLength > m_nLength)
             m_nLength = nTrackLength;
+		m_bEmpty &= (*it).isEmpty();
     }
 }
 

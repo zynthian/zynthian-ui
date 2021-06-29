@@ -39,7 +39,7 @@ class Sequence
         void setPlayMode(uint8_t mode);
 
         /** @brief  Get sequence's play state
-        *   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING]
+        *   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING | EMPTY]
         */
         uint8_t getPlayState();
 
@@ -52,7 +52,7 @@ class Sequence
         *   @param  track Index of track afterwhich to add new track (Optional - default: add to end of sequence)
         *   @retval uint32_t Index of track added
         */
-        uint32_t  addTrack(uint32_t track = -1);
+        uint32_t addTrack(uint32_t track = -1);
         
         /** @brief  Remove a track from the sequence
         *   @param  track Index of track within sequence
