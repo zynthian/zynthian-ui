@@ -16,16 +16,8 @@ ZComponents.SelectorPage {
     id: root
     title: "Banks"
 
-    model: newBank.selector_list
-    currentIndex: newBank.current_index
-
-    delegate: Kirigami.BasicListItem {
-        width: view.width
-        label: model.display
-        onClicked: {
-            newBank.current_index = index;
-            newBank.activate_index(index);
-            applicationWindow().ensureVisible(presetsPage);
-        }
+    selector: zynthian.bank
+    onItemActivated: {
+        applicationWindow().ensureVisible(presetsPage);
     }
 }

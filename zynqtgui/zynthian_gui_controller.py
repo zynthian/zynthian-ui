@@ -78,6 +78,12 @@ class zynthian_gui_controller:
 
 		# Setup Controller and Zyncoder
 		self.config(zctrl)
+		self.show()
+
+
+	def show(self):
+		return
+
 
 	def set_midi_bind(self):
 		if self.zctrl.midi_cc==0:

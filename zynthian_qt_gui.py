@@ -40,6 +40,9 @@ from subprocess import check_output
 from ctypes import c_float, c_double, CDLL
 import sched
 
+
+# Qt modules
+from PySide2.QtCore import Qt, QObject, Slot, Signal, Property
 from PySide2.QtGui import QGuiApplication
 from PySide2.QtQml import QQmlApplicationEngine
 
@@ -104,7 +107,7 @@ from controlwrapper import ControlWrapper, ControllerWrapper
 # Zynthian Main GUI Class
 #-------------------------------------------------------------------------------
 
-class zynthian_gui:
+class zynthian_gui(QObject):
 
 	screens_sequence = ("main","layer","bank","preset","control")
 
@@ -171,7 +174,10 @@ class zynthian_gui:
 		"95": "MODAL_STEPSEQ"
 	}
 
-	def __init__(self):
+
+
+	def __init__(self, parent=None):
+		super(zynthian_gui, self).__init__(parent)
 		self.zynmidi = None
 		self.screens = {}
 		self.active_screen = None
@@ -1769,6 +1775,21 @@ class zynthian_gui:
 		return self.screens['layer'].amixer_layer.engine.allow_headphones()
 
 
+	def get_layer(self):
+		return self.screens['layer']
+
+	def get_bank(self):
+		return self.screens['bank']
+
+	def get_preset(self):
+		return self.screens['preset']
+
+	layer = Property(QObject, get_layer, constant = True)
+	bank = Property(QObject, get_bank, constant = True)
+	preset = Property(QObject, get_preset, constant = True)
+
+
+
 #------------------------------------------------------------------------------
 # GUI & Synth Engine initialization
 #------------------------------------------------------------------------------
@@ -1786,6 +1807,7 @@ if __name__ == "__main__":
     engine.rootContext().setContextProperty("layers_controller", layers_controller)
     engine.rootContext().setContextProperty("control_wrapper", control_wrapper)
     # TODO: zyngui as context property
+    engine.rootContext().setContextProperty("zynthian", zyngui)
     engine.rootContext().setContextProperty("newLayers", zyngui.screens['layer'])
     engine.rootContext().setContextProperty("newBank", zyngui.screens['bank'])
 

@@ -16,14 +16,9 @@ ZComponents.SelectorPage {
     id: root
     title: qsTr("Presets")
 
-    model: layers_controller.curlayer.preset_list
+    selector: zynthian.preset
 
-    delegate: Kirigami.BasicListItem {
-        width: view.width
-        label: model.display
-        onClicked: {
-            layers_controller.curlayer.preset_index = index
-            applicationWindow().ensureVisible(controlPage)
-        }
+    onItemActivated: {
+        applicationWindow().ensureVisible(controlPage)
     }
 }

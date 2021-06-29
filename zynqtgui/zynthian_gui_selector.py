@@ -97,6 +97,8 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 		self.fill_list()
 		self.set_selector()
 
+	def refresh_loading(self):
+		self.update_list();
 
 	# TODO: remove
 	def get_cursel(self):
@@ -199,5 +201,5 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 	current_index_changed = Signal()
 
 	selector_list = Property(QObject, get_selector_list, notify = selector_list_changed)
-	current_index = Property(int, get_current_index, set_current_index, current_index_changed)
+	current_index = Property(int, get_current_index, set_current_index, notify = current_index_changed)
 #------------------------------------------------------------------------------

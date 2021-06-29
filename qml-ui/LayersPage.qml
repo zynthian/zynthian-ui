@@ -16,14 +16,8 @@ ZComponents.SelectorPage {
     id: root
     title: "Layers"
 
-    model: newLayers.selector_list
-
-    delegate: Kirigami.BasicListItem {
-        width: view.width
-        label: model.display
-        onClicked: {
-            layers_controller.set_current_layer_index(index)
-            applicationWindow().ensureVisible(banksPage)
-        }
+    selector: zynthian.layer
+    onItemActivated: {
+        applicationWindow().ensureVisible(banksPage)
     }
 }

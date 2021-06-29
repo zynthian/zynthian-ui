@@ -19,6 +19,10 @@ Kirigami.Page {
     property alias delegate: view.delegate
     property alias currentIndex: view.currentIndex
 
+    //TODO: Bind the base selector type to qml?
+    property QtObject selector
+    signal itemActivated(int index)
+
     Component.onCompleted: view.forceActiveFocus()
     onFocusChanged: {
         if (focus) {
@@ -39,6 +43,19 @@ Kirigami.Page {
                     keyNavigationEnabled: true
                     keyNavigationWraps: true
                     clip: true
+
+                    model: root.selector.selector_list
+                    delegate: Kirigami.BasicListItem {
+                        width: view.width
+                        label: model.display
+
+                        checked: root.currentIndex === index
+                        onClicked: {
+                            root.selector.current_index = index;
+                            root.selector.activate_index(index);
+                            root.itemActivated(index)
+                        }
+                    }
                 }
             }
         }
