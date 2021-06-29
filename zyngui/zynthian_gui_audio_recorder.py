@@ -55,6 +55,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		self.rec_proc = None
 		self.play_proc = None
 
+		self.audio_out = ["system"]
+
 		super().__init__('Audio Recorder', True)
 
 		self.volume_zctrl = zynthian_controller(self, "volume", "Volume", {
@@ -283,10 +285,18 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			pass
 
 		try:
+			mplayer_options = "-nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave"
+
 			if zynthian_gui_config.audio_play_loop:
-				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -loop 0 -ao jack -input file=\"{}\" \"{}\"".format(self.mplayer_ctrl_fifo_path, fpath)
-			else:
-				cmd="/usr/bin/mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -slave -ao jack -input file=\"{}\" \"{}\"".format(self.mplayer_ctrl_fifo_path, fpath)
+				mplayer_options += " -loop 0"
+
+			try:
+				mplayer_options += " -ao jack:port=\"{}\"".format(self.audio_out[0])
+			except:
+				mplayer_options += " -ao jack"
+
+			mplayer_options += " -input file=\"{}\"".format(self.mplayer_ctrl_fifo_path)
+			cmd="/usr/bin/mplayer {} \"{}\"".format(mplayer_options, fpath)
 
 			logging.info("COMMAND: %s" % cmd)
 
@@ -404,6 +414,14 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			zynthian_gui_config.audio_play_loop=True
 		zynconf.save_config({"ZYNTHIAN_AUDIO_PLAY_LOOP": str(int(zynthian_gui_config.audio_play_loop))})
 		self.update_list()
+
+
+	def get_audio_out(self):
+		return self.audio_out
+
+
+	def toggle_audio_out(self, aout):
+		self.audio_out = [aout]
 
 
 	def set_select_path(self):

@@ -672,7 +672,7 @@ def get_audio_input_ports(exclude_system_playback=False):
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
 			parts=aip.name.split(':')
 			client_name=parts[0]
-			if client_name=="jack_capture" or client_name=="jackpeak" or client_name[:7]=="effect_":
+			if client_name in ["jack_capture","jackpeak","Headphones"] or client_name[:7]=="effect_":
 				continue
 			if client_name=="system":
 				if exclude_system_playback:

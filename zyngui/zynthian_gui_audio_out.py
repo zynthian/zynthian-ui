@@ -50,11 +50,20 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			self.end_layer = None
 
 
+	def set_audio_player(self):
+		self.end_layer = self.zyngui.screens['audio_recorder']
+
+
 	def fill_list(self):
 		self.list_data = []
 
 		if self.end_layer:
-			for k in zynautoconnect.get_audio_input_ports().keys():
+			if isinstance(self.end_layer, zynthian_gui_selector):
+				port_names = ["system"] + list(zynautoconnect.get_audio_input_ports(True).keys())
+			else:
+				port_names = zynautoconnect.get_audio_input_ports().keys()
+
+			for k in port_names:
 				try:
 					title = self.zyngui.screens['layer'].get_layer_by_jackname(k).get_basepath()
 				except:
