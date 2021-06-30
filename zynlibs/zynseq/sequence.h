@@ -177,5 +177,7 @@ class Sequence
         uint16_t m_nTempo = 120; // Default tempo (overriden by tempo events in timebase map)
         bool m_bChanged = false; // True if sequence content changed
         bool m_bStateChanged = false; // True if state changed since last clock cycle
+        bool m_bEmpty = true; // True if all patterns are emtpy (no events)
         std::string m_sName; // Sequence name
 };
+

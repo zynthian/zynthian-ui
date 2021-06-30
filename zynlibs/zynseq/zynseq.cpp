@@ -1645,6 +1645,11 @@ void removeSequence(uint8_t bank, uint8_t sequence)
     g_seqMan.removeSequence(bank, sequence);
 }
 
+void updateSequenceInfo()
+{
+    g_seqMan.updateAllSequenceLengths();
+}
+
 // ** Track management **
 
 size_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track)

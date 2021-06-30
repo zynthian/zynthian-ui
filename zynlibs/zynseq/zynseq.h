@@ -659,6 +659,10 @@ void insertSequence(uint8_t bank, uint8_t sequence);
 */
 void removeSequence(uint8_t bank, uint8_t sequence);
 
+/** @brief Update all sequence lengths and empty status
+*/
+void updateSequenceInfo();
+
 
 // ** Bank management functions **
 
