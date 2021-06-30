@@ -14,30 +14,11 @@ import "components" as ZComponents
 
 ZComponents.SelectorPage {
     id: root
-    title: qsTr("Main")
 
-    header: QQC2.Button {
-        text: "Print Debug Info"
-        onClicked: layers_controller.debug_info()
-    }
+    selector: zynthian.main
 
-    model: ListModel {
-        ListElement {
-            title: "Layers"
-            page: "LayersPage.qml"
-        }
-        ListElement {
-            title: "Sequencer"
-            page: "SequencerPage.qml"
-        }
-        ListElement {
-            title: "Audio Levels"
-            page: "LevelsPage.qml"
-        }
-    }
-
-    delegate: Kirigami.BasicListItem {
-        label: model.title
-        onClicked: applicationWindow().ensureVisible(layersPage)
+    onItemActivated: {
+        applicationWindow().ensureVisible(layersPage);
     }
 }
+

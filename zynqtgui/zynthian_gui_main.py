@@ -39,6 +39,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def __init__(self, parent = None):
 		super(zynthian_gui_main, self).__init__('Main', parent)
+		self.show()
 
 	def fill_list(self):
 		self.list_data=[]
@@ -131,6 +132,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def set_select_path(self):
 		self.select_path = "Main"
+		self.select_path_element = "Main"
+		super().set_select_path()
 
 
 #------------------------------------------------------------------------------

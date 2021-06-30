@@ -45,6 +45,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def __init__(self, parent = None):
 		super(zynthian_gui_preset, self).__init__('Preset', parent)
+		self.show()
       
       
 	def fill_list(self):
@@ -122,10 +123,12 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		if self.only_favs:
-			self.select_path = (self.zyngui.curlayer.get_basepath() + " > Favorites")
-		else:
-			if self.zyngui.curlayer:
-				self.select_path = (self.zyngui.curlayer.get_bankpath())
+		if self.zyngui.curlayer:
+			if self.only_favs:
+				self.select_path = (self.zyngui.curlayer.get_basepath() + " > Favorites")
+			else:
+				self.select_path = self.zyngui.curlayer.get_bankpath()
+			self.select_path_element = self.zyngui.curlayer.bank_name
+		super().set_select_path()
 
 #------------------------------------------------------------------------------

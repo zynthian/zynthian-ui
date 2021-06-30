@@ -14,6 +14,8 @@ import org.kde.kirigami 2.4 as Kirigami
 Kirigami.Page {
     id: root
 
+    title: root.selector.selector_path_element
+
     property alias view: view
     property alias model: view.model
     property alias delegate: view.delegate
@@ -43,12 +45,15 @@ Kirigami.Page {
                     keyNavigationEnabled: true
                     keyNavigationWraps: true
                     clip: true
+                    currentIndex: root.selector.current_index
 
                     model: root.selector.selector_list
                     delegate: Kirigami.BasicListItem {
                         width: view.width
                         label: model.display
+                        reserveSpaceForIcon: false
 
+                        checkable: false
                         checked: root.currentIndex === index
                         onClicked: {
                             root.selector.current_index = index;

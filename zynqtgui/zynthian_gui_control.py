@@ -36,6 +36,9 @@ from . import zynthian_gui_config
 from . import zynthian_gui_controller
 from . import zynthian_gui_selector
 
+# Qt modules
+from PySide2.QtCore import Qt, QObject, Slot, Signal, Property
+
 #------------------------------------------------------------------------------
 # Zynthian Instrument Controller GUI Class
 #------------------------------------------------------------------------------
@@ -59,6 +62,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.xyselect_mode=False
 		self.x_zctrl=None
 		self.y_zctrl=None
+		self.show()
 
 
 	def show(self):
@@ -104,6 +108,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def set_selector(self, zs_hiden=True):
 		if self.mode=='select': super().set_selector(zs_hiden)
 
+	def get_controllers_count(self):
+		return len(self.zgui_controllers)
+
+	@Slot(int, result=QObject)
+	def controller(self, index):
+		if index < 0 or index >= len(self.zgui_controllers):
+			return None
+		print(self.zgui_controllers[index])
+		return self.zgui_controllers[index]
 
 	def lock_controllers(self):
 		self.controllers_lock = True
@@ -168,7 +181,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zgui_controllers[i].config(ctrl)
 			self.zgui_controllers[i].show()
 		else:
-			self.zgui_controllers.append(zynthian_gui_controller(i,ctrl))
+			self.zgui_controllers.append(zynthian_gui_controller(i, ctrl, self))
+			self.controllers_count_changed.emit()
 		self.zgui_controllers_map[ctrl]=self.zgui_controllers[i]
 
 
@@ -465,6 +479,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.select_path = (self.zyngui.curlayer.get_basepath() + "/CTRL MIDI-Learn")
 			else:
 				self.select_path = (self.zyngui.curlayer.get_presetpath())
+			self.select_path_element = self.zyngui.curlayer.preset_name
+		super().set_select_path()
 
+
+
+	controllers_count_changed = Signal()
+
+	controllers_count = Property(int, get_controllers_count, notify = controllers_count_changed)
 
 #------------------------------------------------------------------------------

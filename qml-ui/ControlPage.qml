@@ -14,11 +14,11 @@ import "components" as ZComponents
 
 Kirigami.Page {
     id: root
-    title: layers_controller.curlayer.preset_name
+    title: zynthian.control.selector_path_element
+   // title: "Control"
 
     Component.onCompleted: {
         mainView.forceActiveFocus()
-        control_wrapper.active_screen_index = 0
     }
     onFocusChanged: {
         if (focus) {
@@ -31,14 +31,11 @@ Kirigami.Page {
             Layout.maximumWidth: Math.floor(root.width / 4)
             Layout.fillHeight: true
             ZComponents.Controller {
-                title: control_wrapper.controller1.name
-                max: control_wrapper.controller1.value_max
-                value: control_wrapper.controller1.value
+                // FIXME: this always assumes there are always exactly 4 controllers for the entire lifetime
+                controller: zynthian.control.controller(0)
             }
             ZComponents.Controller {
-                title: control_wrapper.controller2.name
-                max: control_wrapper.controller2.value_max
-                value: control_wrapper.controller2.value
+                controller: zynthian.control.controller(1)
             }
         }
         ZComponents.Card {
@@ -52,15 +49,16 @@ Kirigami.Page {
                     id: mainView
                     keyNavigationEnabled: true
                     keyNavigationWraps: true
-                    model: control_wrapper.screen_names
+                    model: zynthian.control.selector_list
+                    currentIndex: zynthian.control.current_index
                     clip: true
 
                     delegate: Kirigami.BasicListItem {
                         label: model.display
                         checked: mainView.currentIndex == index
                         onClicked: {
-                            control_wrapper.active_screen_index = index
-                            mainView.currentIndex = index
+                            zynthian.control.current_index = index;
+                            zynthian.control.activate_index(index);
                         }
                     }
                 }
@@ -70,14 +68,10 @@ Kirigami.Page {
             Layout.maximumWidth: Math.floor(root.width / 4)
             Layout.fillHeight: true
             ZComponents.Controller {
-                title: control_wrapper.controller3.name
-                max: control_wrapper.controller3.value_max
-                value: control_wrapper.controller3.value
+                controller: zynthian.control.controller(2)
             }
             ZComponents.Controller {
-                title: control_wrapper.controller4.name
-                max: control_wrapper.controller4.value_max
-                value: control_wrapper.controller4.value
+                controller: zynthian.control.controller(3)
             }
         }
     }

@@ -14,7 +14,6 @@ import "components" as ZComponents
 
 ZComponents.SelectorPage {
     id: root
-    title: qsTr("Presets")
 
     selector: zynthian.preset
 

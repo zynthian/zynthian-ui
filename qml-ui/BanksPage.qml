@@ -14,10 +14,12 @@ import "components" as ZComponents
 
 ZComponents.SelectorPage {
     id: root
-    title: "Banks"
 
     selector: zynthian.bank
+
     onItemActivated: {
+        zynthian.preset.current_index = index;
+        zynthian.preset.activate_index(index);
         applicationWindow().ensureVisible(presetsPage);
     }
 }

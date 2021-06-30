@@ -14,17 +14,15 @@ import org.kde.kirigami 2.4 as Kirigami
 Card {
     id: root
 
+    // instance of zynthian_gui_controller.py, TODO: should be registered in qml?
+    property QtObject controller
+
     Layout.fillWidth: true
     Layout.fillHeight: true
-    property alias title: title.text
-    property alias subtitle: subtitle.text
-    property real max
-    property real value
-    property string type
 
     contentItem: ColumnLayout {
         Kirigami.Heading {
-            id: title
+            text: root.controller.title
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             level: 2
@@ -33,19 +31,23 @@ Card {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
+            // TODO: manage logarythmic controls?
             QQC2.Dial {
                 anchors {
                     fill: parent
                     margins: Kirigami.Units.largeSpacing
                 }
-                value: root.value
+                stepSize: root.controller.step_size
+                value: root.controller.value
                 from: 0
-                to: root.max
-                scale: root.type !== "bool"
-                enabled: root.type !== "bool"
+                to: root.controller.max_value
+                scale: root.controller.value_type !== "bool"
+                enabled: root.controller.value_type !== "bool"
+                onMoved: root.controller.value = value
+
                 Kirigami.Heading {
                     anchors.centerIn: parent
-                    text: parent.value.toPrecision(2)
+                    text: root.controller.value_print
                 }
                 Behavior on value {
                     NumberAnimation {
@@ -60,9 +62,10 @@ Card {
             }
             QQC2.Switch {
                 anchors.fill: parent
-                scale: root.type === "bool"
-                enabled: root.type === "bool"
-                checked: root.value
+                scale: root.controller.value_type === "bool"
+                enabled: root.controller.value_type === "bool"
+                checked: root.controller.value !== 0
+                onToggled: root.controller.value = checked ? 1 : 0
                 Behavior on scale {
                     NumberAnimation {
                         duration: Kirigami.Units.longDuration
@@ -79,9 +82,9 @@ Card {
             }
         }
         QQC2.Label {
-            id: subtitle
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
+            text: root.controller.midi_bind
         }
     }
 }

@@ -38,38 +38,37 @@ from zyncoder import *
 from zyngine import zynthian_controller
 from . import zynthian_gui_config
 
+# Qt modules
+from PySide2.QtCore import Qt, QObject, Slot, Signal, Property
+
+
 #------------------------------------------------------------------------------
 # Controller GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_controller:
+class zynthian_gui_controller(QObject):
 
-	def __init__(self, indx, zctrl):
-		self.zyngui=zynthian_gui_config.zyngui
+	def __init__(self, indx, zctrl, parent=None):
+		super(zynthian_gui_controller, self).__init__(parent)
+		self.zyngui = zynthian_gui_config.zyngui
 		self.zctrl=None
 		self.n_values=127
-		self.max_value=127
+		self.ctrl_max_value=127
 		self.inverted=False
 		self.selmode = False
 		self.logarithmic = False
 		self.step=1
 		self.mult=1
 		self.val0=0
-		self.value=0
+		self.ctrl_title=''
+		self.ctrl_value=0
 		self.scale_plot=1
 		self.scale_value=1
-		self.value_plot=0
-		self.value_print=None
-		self.value_font_size=14
+		self.ctrl_value_plot=0
+		self.ctrl_value_print=None
 
 
-		self.rectangle=None
-		self.triangle=None
-		self.arc=None
-		self.value_text=None
-		self.label_title=None
-		self.midi_bind=None
-		self.refresh_plot_value = False
+		self.ctrl_midi_bind=None
 
 		self.index=indx
 		self.row=zynthian_gui_config.ctrl_pos[indx][0]
@@ -82,22 +81,100 @@ class zynthian_gui_controller:
 
 
 	def show(self):
+		self.calculate_plot_values()
+
+	def hide(self):
 		return
+
+
+	def calculate_plot_values(self):
+		if self.ctrl_value>self.ctrl_max_value:
+			self.ctrl_value=self.ctrl_max_value
+
+		elif self.ctrl_value<0:
+			self.ctrl_value=0
+
+		if self.zctrl.labels:
+			valplot=None
+			val=self.ctrl_value
+
+			#DIRTY HACK => It should be improved!!
+			#if self.zctrl.value_min<0:
+			#	val=self.zctrl.value_min+self.ctrl_value
+
+			try:
+				if self.zctrl.ticks:
+					if self.selmode:
+						i = val
+						valplot=self.scale_plot*val
+						val=self.zctrl.ticks[i]
+					elif self.inverted:
+						for i in reversed(range(self.n_values)):
+							if val<=self.zctrl.ticks[i]:
+								break
+						valplot=self.scale_plot*(self.ctrl_max_value-self.zctrl.ticks[i])
+						val=self.zctrl.ticks[i]
+					else:
+						for i in range(self.n_values-1):
+							if val<self.zctrl.ticks[i+1]:
+								valplot=self.scale_plot*(self.zctrl.ticks[i]-self.zctrl.ticks[0])
+								break
+						if valplot==None:
+							i+=1
+							valplot=self.scale_plot*(self.zctrl.ticks[i]-self.zctrl.ticks[0])
+						val=self.zctrl.ticks[i]
+				else:
+					i=int(self.n_values*val/(self.ctrl_max_value+self.step))
+					#logging.debug("i => %s=int(%s*%s/(%s+%s))" % (i,self.n_values,val,self.ctrl_max_value,self.step))
+					valplot=self.scale_plot*i
+
+				self.ctrl_value_plot=valplot
+				self.ctrl_value_print=self.zctrl.labels[i]
+				#self.zctrl.set_value(self.ctrl_value)
+				self.zctrl.set_value(val)
+
+			except Exception as err:
+				logging.error("Calc Error => %s" % (err))
+				self.ctrl_value_plot=self.ctrl_value
+				self.ctrl_value_print="ERR"
+
+		else:
+			self.ctrl_value_plot=self.ctrl_value
+			if self.zctrl.midi_cc==0:
+				val = self.val0+self.ctrl_value
+				self.zctrl.set_value(val)
+				self.ctrl_value_print = str(val)
+			else:
+				if self.logarithmic:
+					val = self.zctrl.value_min*pow(self.scale_value, self.ctrl_value/self.n_values)
+				else:
+					val = self.zctrl.value_min+self.ctrl_value*self.scale_value
+				self.zctrl.set_value(val)
+				if self.format_print and val<1000 and val>-1000:
+					self.ctrl_value_print = self.format_print.format(val)
+				else:
+					self.ctrl_value_print = str(int(val))
+
+		self.value_print_changed.emit()
+		#print("VALUE: %s" % self.ctrl_value)
+		#print("VALUE PLOT: %s" % self.ctrl_value_plot)
+		#print("VALUE PRINT: %s" % self.ctrl_value_print)
+
 
 
 	def set_midi_bind(self):
 		if self.zctrl.midi_cc==0:
 			#self.erase_midi_bind()
-			self.midi_bind = "/{}".format(self.zctrl.value_range)
+			self.ctrl_midi_bind = "/{}".format(self.zctrl.value_range)
 		elif self.zyngui.midi_learn_mode:
-			self.midi_bind = "??"
+			self.ctrl_midi_bind = "??"
 		elif self.zyngui.midi_learn_zctrl and self.zctrl==self.zyngui.midi_learn_zctrl:
-			self.midi_bind = "??"
+			self.ctrl_midi_bind = "??"
 		elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
 			midi_cc = self.zctrl.midi_learn_cc
 			if not self.zyngui.is_single_active_channel():
 				midi_cc = "{}#{}".format(self.zctrl.midi_learn_chan+1,midi_cc)
-			self.midi_bind = midi_cc
+			self.ctrl_midi_bind = midi_cc
 		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
 			#midi_cc = self.zctrl.midi_cc
 			swap_info= zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
@@ -105,11 +182,46 @@ class zynthian_gui_controller:
 			midi_cc = swap_info & 0xFF
 			if not self.zyngui.is_single_active_channel():
 				midi_cc = "{}#{}".format(midi_chan+1,midi_cc)
-			self.midi_bind = midi_cc
+			self.ctrl_midi_bind = midi_cc
+		self.midi_bind_changed.emit()
+
+	def get_midi_bind(self):
+		return self.ctrl_midi_bind;
+
+	def set_title(self, title):
+		self.ctrl_title = str(title)
+		self.title_canged.emit()
+
+	def get_title(self):
+		return self.ctrl_title
+
+	def write_value(self, v):
+		self.set_value(v, True)
+		self.zctrl.set_value(v)
+
+	def get_value(self):
+		return self.ctrl_value
+
+	def get_value_print(self):
+		return self.ctrl_value_print
+
+	def get_max_value(self):
+		return self.ctrl_max_value
 
 
-	def set_title(self, tit):
-		self.title = str(tit)
+	def get_value_type(self):
+		if self.zctrl.is_toggle:
+			return "bool"
+		elif self.zctrl.is_integer:
+			return "int"
+		elif self.zctrl.is_logarithmic:
+			return "logarithmic"
+		else:
+			return "float"
+
+	def get_step_size(self):
+		return self.step
+
 
 	def config(self, zctrl):
 		#logging.debug("CONFIG CONTROLLER %s => %s" % (self.index,zctrl.name))
@@ -117,7 +229,7 @@ class zynthian_gui_controller:
 		self.step=1
 		self.mult=1
 		self.val0=0
-		self.value=None
+		self.ctrl_value=None
 		self.n_values=127
 		self.inverted=False
 		self.selmode = False
@@ -136,23 +248,23 @@ class zynthian_gui_controller:
 				if zctrl.ticks[0]>zctrl.ticks[-1]:
 					self.inverted=True
 				if (isinstance(zctrl.midi_cc, int) and zctrl.midi_cc>0):
-					self.max_value=127
+					self.ctrl_max_value=127
 					self.step=max(1,int(16/self.n_values))
 					val=zctrl.value-zctrl.value_min
 				else:
 					self.selmode = True
-					self.max_value = self.n_values-1
+					self.ctrl_max_value = self.n_values-1
 					self.mult = max(4,int(32/self.n_values))
 					val=zctrl.get_value2index()
 
 					#if zctrl.value_range>32:
 						#self.step = max(4,int(zctrl.value_range/(self.n_values*4)))
-						#self.max_value = zctrl.value_range + self.step*4
+						#self.ctrl_max_value = zctrl.value_range + self.step*4
 					#else:
 					#	self.mult=max(4,int(32/self.n_values))
-					#	self.max_value = zctrl.value_range + 1
+					#	self.ctrl_max_value = zctrl.value_range + 1
 			else:
-				self.max_value=127;
+				self.ctrl_max_value=127;
 				self.step=max(1,int(16/self.n_values))
 				val=zctrl.value-zctrl.value_min
 
@@ -160,7 +272,7 @@ class zynthian_gui_controller:
 		else:
 			#"List Selection Controller" => step 1 element by rotary tick
 			if zctrl.midi_cc==0:
-				self.max_value=self.n_values=zctrl.value_max
+				self.ctrl_max_value=self.n_values=zctrl.value_max
 				self.val0=1
 				val=zctrl.value
 
@@ -175,31 +287,31 @@ class zynthian_gui_controller:
 				if zctrl.is_integer:
 					#Integer < 127
 					if zctrl.value_range<=127:
-						self.max_value=self.n_values=zctrl.value_range
+						self.ctrl_max_value=self.n_values=zctrl.value_range
 						self.mult=max(1,int(128/self.n_values))
 						val=zctrl.value-zctrl.value_min
 					#Integer > 127
 					else:
 						#Not MIDI controller
 						if zctrl.midi_cc is None:
-							self.max_value=self.n_values=zctrl.value_range
+							self.ctrl_max_value=self.n_values=zctrl.value_range
 							self.scale_value=1
 							val=(zctrl.value-zctrl.value_min)
 						#MIDI controller
 						else:
-							self.max_value=self.n_values=127
-							self.scale_value=r/self.max_value
+							self.ctrl_max_value=self.n_values=127
+							self.scale_value=r/self.ctrl_max_value
 							val=(zctrl.value-zctrl.value_min)/self.scale_value
 				#Float
 				else:
-					self.max_value=self.n_values=200
+					self.ctrl_max_value=self.n_values=200
 					self.format_print="{0:.3g}"
 					if self.logarithmic:
 						self.scale_value = self.zctrl.value_max/self.zctrl.value_min
 						self.log_scale_value = math.log(self.scale_value)
 						val = self.n_values*math.log(zctrl.value/zctrl.value_min)/self.log_scale_value
 					else:
-						self.scale_value = zctrl.value_range/self.max_value
+						self.scale_value = zctrl.value_range/self.ctrl_max_value
 						val = (zctrl.value-zctrl.value_min)/self.scale_value
 
 				#If many values => use adaptative step size based on rotary speed
@@ -208,16 +320,19 @@ class zynthian_gui_controller:
 
 		#Calculate scale parameter for plotting
 		if self.selmode:
-			self.scale_plot=self.max_value/(self.n_values-1)
+			self.scale_plot=self.ctrl_max_value/(self.n_values-1)
 		elif zctrl.ticks:
-			self.scale_plot=self.max_value/zctrl.value_range
+			self.scale_plot=self.ctrl_max_value/zctrl.value_range
 		elif self.n_values>1:
-			self.scale_plot=self.max_value/(self.n_values-1)
+			self.scale_plot=self.ctrl_max_value/(self.n_values-1)
 		else:
-			self.scale_plot=self.max_value
+			self.scale_plot=self.ctrl_max_value
 
 		self.set_value(val)
 		self.setup_zyncoder()
+		self.max_value_changed.emit()
+		self.value_type_changed.emit()
+		self.step_size_changed.emit()
 
 		#logging.debug("labels: "+str(zctrl.labels))
 		#logging.debug("ticks: "+str(zctrl.ticks))
@@ -226,12 +341,12 @@ class zynthian_gui_controller:
 		#logging.debug("range: "+str(zctrl.value_range))
 		#logging.debug("inverted: "+str(self.inverted))
 		#logging.debug("n_values: "+str(self.n_values))
-		#logging.debug("max_value: "+str(self.max_value))
+		#logging.debug("max_value: "+str(self.ctrl_max_value))
 		#logging.debug("step: "+str(self.step))
 		#logging.debug("mult: "+str(self.mult))
 		#logging.debug("scale_plot: "+str(self.scale_plot))
 		#logging.debug("val0: "+str(self.val0))
-		#logging.debug("value: "+str(self.value))
+		#logging.debug("value: "+str(self.ctrl_value))
 
 
 	def zctrl_sync(self, set_zyncoder=True):
@@ -252,7 +367,7 @@ class zynthian_gui_controller:
 				val = (self.zctrl.value-self.zctrl.value_min)/self.scale_value
 		#Set value & Update zyncoder
 		self.set_value(val, set_zyncoder, False)
-		#logging.debug("ZCTRL SYNC {} => {}".format(self.title, val))
+		#logging.debug("ZCTRL SYNC {} => {}".format(self.ctrl_title, val))
 
 
 	def setup_zyncoder(self):
@@ -280,23 +395,25 @@ class zynthian_gui_controller:
 				else:
 					pin_a=zynthian_gui_config.zyncoder_pin_a[self.index]
 					pin_b=zynthian_gui_config.zyncoder_pin_b[self.index]
-				zyncoder.lib_zyncoder.setup_zyncoder(self.index,pin_a,pin_b,self.zctrl.midi_chan,midi_cc,osc_path_char,int(self.mult*self.value),int(self.mult*(self.max_value-self.val0)),self.step)
+				zyncoder.lib_zyncoder.setup_zyncoder(self.index,pin_a,pin_b,self.zctrl.midi_chan,midi_cc,osc_path_char,int(self.mult*self.ctrl_value),int(self.mult*(self.ctrl_max_value-self.val0)),self.step)
 		except Exception as err:
 			logging.error("%s" % err)
 
-
 	def set_value(self, v, set_zyncoder=False, send_zyncoder=True):
-		if v>self.max_value:
-			v=self.max_value
+		if v>self.ctrl_max_value:
+			v=self.ctrl_max_value
 		elif v<0:
 			v=0
-		if self.value is None or self.value!=v:
-			self.value=v
-			#logging.debug("CONTROL %d VALUE => %s" % (self.index,self.value))
+		if self.ctrl_value is None or self.ctrl_value!=v:
+			self.ctrl_value=v
+
+			#logging.debug("CONTROL %d VALUE => %s" % (self.index,self.ctrl_value))
 			if set_zyncoder and zyncoder.lib_zyncoder:
 				if self.mult>1: v = self.mult*v
 				zyncoder.lib_zyncoder.set_value_zyncoder(self.index,ctypes.c_uint(int(v)),int(send_zyncoder))
 				#logging.debug("set_value_zyncoder {} ({}, {}) => {}".format(self.index, self.zctrl.symbol,self.zctrl.midi_cc,v))
+			self.calculate_plot_values()
+			self.value_changed.emit()
 			return True
 
 
@@ -310,9 +427,9 @@ class zynthian_gui_controller:
 	def read_zyncoder(self):
 		if zyncoder.lib_zyncoder:
 			val=zyncoder.lib_zyncoder.get_value_zyncoder(self.index)
-			#logging.debug("ZYNCODER %d (%s), RAW VALUE => %s" % (self.index,self.title,val))
+			#logging.debug("ZYNCODER %d (%s), RAW VALUE => %s" % (self.index,self.ctrl_title,val))
 		else:
-			val=self.value*self.mult-self.val0
+			val=self.ctrl_value*self.mult-self.val0
 
 		if self.mult>1:
 			val = int((val+1)/self.mult)
@@ -322,8 +439,25 @@ class zynthian_gui_controller:
 
 	def cb_canvas_wheel(self,event):
 		if event.num == 5 or event.delta == -120:
-			self.set_value(self.value - 1, True)
+			self.set_value(self.ctrl_value - 1, True)
 		if event.num == 4 or event.delta == 120:
-			self.set_value(self.value + 1, True)
+			self.set_value(self.ctrl_value + 1, True)
+
+
+	title_canged = Signal()
+	midi_bind_changed = Signal()
+	value_changed = Signal()
+	value_print_changed = Signal()
+	max_value_changed = Signal()
+	value_type_changed = Signal()
+	step_size_changed = Signal()
+
+	title = Property(str, get_title, notify = title_canged)
+	midi_bind = Property(str, get_midi_bind, notify = midi_bind_changed)
+	value = Property(float, get_value, write_value, notify = value_changed)
+	value_print = Property(str, get_value_print, notify = value_print_changed)
+	max_value = Property(float, get_max_value, notify = max_value_changed)
+	value_type = Property(str, get_value_type, notify = value_type_changed)
+	step_size= Property(float, get_step_size, notify = step_size_changed)
 
 #------------------------------------------------------------------------------

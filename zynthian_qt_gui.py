@@ -1511,7 +1511,7 @@ class zynthian_gui(QObject):
 
 
 	def zyngine_refresh(self):
-		print("REFRESHING")
+		print("REFRESHING zyngine")
 		try:
 			# Capture exit event and finish
 			if self.exit_flag:
@@ -1535,6 +1535,7 @@ class zynthian_gui(QObject):
 
 
 	def refresh_status(self):
+		print("REFRESHING status")
 		if self.exit_flag:
 			return
 
@@ -1775,6 +1776,9 @@ class zynthian_gui(QObject):
 		return self.screens['layer'].amixer_layer.engine.allow_headphones()
 
 
+	def get_main(self):
+		return self.screens['main']
+
 	def get_layer(self):
 		return self.screens['layer']
 
@@ -1784,9 +1788,14 @@ class zynthian_gui(QObject):
 	def get_preset(self):
 		return self.screens['preset']
 
+	def get_control(self):
+		return self.screens['control']
+
+	main = Property(QObject, get_main, constant = True)
 	layer = Property(QObject, get_layer, constant = True)
 	bank = Property(QObject, get_bank, constant = True)
 	preset = Property(QObject, get_preset, constant = True)
+	control = Property(QObject, get_control, constant = True)
 
 
 
@@ -1801,15 +1810,9 @@ if __name__ == "__main__":
     logging.info("STARTING ZYNTHIAN-UI ...")
     zynthian_gui_config.zyngui=zyngui=zynthian_gui()
     zyngui.start()
+    zyngui.show_screen('main')
 
-    layers_controller = LayersController(zyngui)
-    control_wrapper = ControlWrapper(zyngui)
-    engine.rootContext().setContextProperty("layers_controller", layers_controller)
-    engine.rootContext().setContextProperty("control_wrapper", control_wrapper)
-    # TODO: zyngui as context property
     engine.rootContext().setContextProperty("zynthian", zyngui)
-    engine.rootContext().setContextProperty("newLayers", zyngui.screens['layer'])
-    engine.rootContext().setContextProperty("newBank", zyngui.screens['bank'])
 
     engine.load(os.fspath(Path(__file__).resolve().parent / "qml-ui/main.qml"))
 

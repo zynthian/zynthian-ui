@@ -14,9 +14,9 @@ import "components" as ZComponents
 
 ZComponents.SelectorPage {
     id: root
-    title: "Layers"
 
     selector: zynthian.layer
+
     onItemActivated: {
         applicationWindow().ensureVisible(banksPage)
     }

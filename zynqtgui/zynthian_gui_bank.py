@@ -45,6 +45,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 	def __init__(self, parent = None):
 		super(zynthian_gui_bank, self).__init__('Bank', parent)
+		self.show()
 
     
 	def fill_list(self):
@@ -81,7 +82,9 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.zyngui.curlayer:
-			self.select_path = (self.zyngui.curlayer.get_basepath())
+			self.select_path = self.zyngui.curlayer.get_basepath()
+			self.select_path_element = self.zyngui.curlayer.get_basepath()
+			super().set_select_path()
 
 
 #-------------------------------------------------------------------------------
