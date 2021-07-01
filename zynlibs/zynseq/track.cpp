@@ -184,9 +184,14 @@ SEQ_EVENT* Track::getEvent()
 uint32_t Track::updateLength()
 {
     m_nTrackLength = 0;
+    m_bEmpty = true;
     for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
+    {
         if(it->first + it->second->getLength() > m_nTrackLength)
             m_nTrackLength = it->first + it->second->getLength();
+        if(it->second->getLastStep() != -1)
+            m_bEmpty = false;
+    }
     return m_nTrackLength;
 }
 
@@ -325,3 +330,10 @@ uint32_t Track::getPatternPosition(Pattern* pattern)
     }
     return -1;
 }
+
+
+bool Track::isEmpty()
+{
+    return m_bEmpty;
+}
+

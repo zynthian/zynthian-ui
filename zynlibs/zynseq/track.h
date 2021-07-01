@@ -173,6 +173,12 @@ class Track
         */
         uint32_t getPatternPosition(Pattern* pattern);
 
+        /** @brief  Check if track is empty (contains no events in any patterns)
+        *   @retval bool True if emtpy
+        *   @note   Status updated after call to getLength();
+        */
+        bool isEmpty();
+
     private:
         uint8_t m_nChannel = 0; // MIDI channel
         uint8_t m_nOutput = 0; // JACK output
@@ -190,4 +196,6 @@ class Track
         bool m_bSolo = false; // True if track is solo
         bool m_bMute = false; // True if track is muted
         bool m_bChanged = true; // True if state changed since last hasChanged()
+        bool m_bEmpty = true; //True if all patterns in track are empty (have no events)
 };
+

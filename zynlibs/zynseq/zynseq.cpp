@@ -1450,6 +1450,11 @@ uint8_t getPlayState(uint8_t bank, uint8_t sequence)
     return g_seqMan.getSequence(bank, sequence)->getPlayState();
 }
 
+bool isEmpty(uint8_t bank, uint8_t sequence)
+{
+    return g_seqMan.getSequence(bank, sequence)->isEmpty();
+}
+
 void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
 {
     if(transportGetPlayStatus() != JackTransportRolling)
@@ -1645,6 +1650,11 @@ void insertSequence(uint8_t bank, uint8_t sequence)
 void removeSequence(uint8_t bank, uint8_t sequence)
 {
     g_seqMan.removeSequence(bank, sequence);
+}
+
+void updateSequenceInfo()
+{
+    g_seqMan.updateAllSequenceLengths();
 }
 
 // ** Track management **

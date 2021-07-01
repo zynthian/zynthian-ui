@@ -1139,6 +1139,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				b64_data = base64_encoded_data = base64.b64encode(binary_riff_data)
 				snapshot['zynseq_riff_b64'] = b64_data.decode('utf-8')
 
+			#Audio Recorder out
+			snapshot['audio_recorder_out'] = self.zyngui.screens['audio_recorder'].get_audio_out()
+
 			#JSON Encode
 			json=JSONEncoder().encode(snapshot)
 			logging.info("Saving snapshot %s => \n%s" % (fpath,json))
@@ -1269,6 +1272,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				b64_bytes = snapshot['zynseq_riff_b64'].encode('utf-8')
 				binary_riff_data = base64.decodebytes(b64_bytes)
 				self.zyngui.screens['stepseq'].restore_riff_data(binary_riff_data)
+
+			#Audio Recorder Out
+			if 'audio_recorder_out' in snapshot:
+				self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out'] 
 
 			#Post action
 			if not quiet:
