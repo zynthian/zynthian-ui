@@ -49,13 +49,13 @@ class SmfFactory {
 	public:
 		SmfFactory()
 		{
-			printf("***zynsmf init***\n");
+			DPRINTF("Initialise SMF\n");
 		}
 		~SmfFactory()
 		{
 			for(auto it = m_vSmf.begin(); it != m_vSmf.end(); ++it)
 				delete *it;
-			printf("***zynsmf **exit**\n");
+			DPRINTF("Exit SMF\n");
 		}
 		std::vector<Smf*>* getVector()
 		{
