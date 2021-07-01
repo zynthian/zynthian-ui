@@ -473,6 +473,13 @@ void setPlayMode(uint8_t bank, uint8_t sequence, uint8_t mode);
 */
 uint8_t getPlayState(uint8_t bank, uint8_t sequence);
 
+/**	@brief	Check if sequence is empty (all patterns have no events)
+*   @param  bank Index of bank containing sequence
+*   @param  sequence Index (sequence) of sequence within bank
+*	@retval bool True if sequence empty else false if any pattern in sequence has any events
+*/
+bool isEmpty(uint8_t bank, uint8_t sequence);
+
 /** @brief  Set play state
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
@@ -651,6 +658,10 @@ void insertSequence(uint8_t bank, uint8_t sequence);
 *   @note   Sequences after remove point are moved down by one. Bank grows if sequence is higher than size of bank
 */
 void removeSequence(uint8_t bank, uint8_t sequence);
+
+/** @brief Update all sequence lengths and empty status
+*/
+void updateSequenceInfo();
 
 
 // ** Bank management functions **
