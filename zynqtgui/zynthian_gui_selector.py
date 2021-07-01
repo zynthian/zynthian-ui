@@ -35,6 +35,7 @@ from . import zynthian_qt_gui_base
 from . import zynthian_gui_config
 from . import zynthian_gui_controller
 
+import traceback
 
 #------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
@@ -108,8 +109,10 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 		self.fill_list()
 		self.set_selector()
 
+	# TODO: remove?
 	def refresh_loading(self):
-		self.update_list();
+		pass
+		#self.update_list();
 
 	# TODO: remove
 	def get_cursel(self):
@@ -125,7 +128,22 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 
 	@Slot('int')
 	def activate_index(self, index):
-		self.select_action(index)
+		if index is not None:
+			self.select(index)
+		else:
+			self.index=self.get_cursel()
+
+		self.select_action(self.index, 'S')
+
+	@Slot('int')
+	def activate_index_secondary(self, index):
+		if index is not None:
+			self.select(index)
+		else:
+			self.index=self.get_cursel()
+
+		self.select_action(self.index, 'B')
+
 
 	def set_current_index(self, index):
 		self.select(index)

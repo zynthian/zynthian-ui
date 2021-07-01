@@ -34,6 +34,7 @@ class ZynGui(QObject):
         super(ZynGui, self).__init__(parent)
         self.zyngui = zynthian_gui_config.zyngui
         self.select_path = ""
+        self.shown = True
 
     def set_select_path(self):
         pass

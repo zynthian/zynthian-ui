@@ -30,6 +30,9 @@ import logging
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
 
+# Qt modules
+from PySide2.QtCore import Qt, QObject, Slot, Signal, Property
+
 #-------------------------------------------------------------------------------
 # Zynthian Preset/Instrument Selection GUI Class
 #-------------------------------------------------------------------------------
@@ -97,6 +100,14 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def restore_preset(self):
 		return self.zyngui.curlayer.restore_preset()
 
+	def set_show_only_favorites(self, show):
+		if show:
+			self.enable_only_favs()
+		else:
+			self.disable_only_favs()
+
+	def get_show_only_favorites(self):
+		return self.only_favs
 
 	def enable_only_favs(self):
 		if not self.only_favs:
@@ -130,5 +141,11 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				self.select_path = self.zyngui.curlayer.get_bankpath()
 			self.select_path_element = self.zyngui.curlayer.bank_name
 		super().set_select_path()
+
+
+	show_only_favorites_changed = Signal()
+
+	show_only_favorites = Property(bool, get_show_only_favorites, set_show_only_favorites, notify = show_only_favorites_changed)
+
 
 #------------------------------------------------------------------------------

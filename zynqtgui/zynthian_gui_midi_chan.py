@@ -39,13 +39,12 @@ from . import zynthian_gui_selector
 
 class zynthian_gui_midi_chan(zynthian_gui_selector):
 
-	def __init__(self):
+	def __init__(self, parent = None):
+		super(zynthian_gui_midi_chan, self).__init__('Channel', parent)
 		self.set_mode('ADD')
-		super().__init__('Channel', True)
 
 	def set_mode(self, mode, chan=None, chan_list=None):
 		self.mode = mode
-
 		if chan_list:
 			self.chan_list = chan_list
 		else:
@@ -159,8 +158,8 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.mode=='ADD' or self.mode=='SET':
-			self.select_path = ("MIDI Channel")
+			self.select_path = self.select_path_element = ("MIDI Channel")
 		elif self.mode=='CLONE':
-			self.select_path = ("Clone MIDI Channel {} to ...".format(self.midi_chan+1))
+			self.select_path = self.select_path_element = ("Clone MIDI Channel {} to ...".format(self.midi_chan+1))
 
 #------------------------------------------------------------------------------

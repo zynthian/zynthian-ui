@@ -24,6 +24,7 @@ Kirigami.Page {
     //TODO: Bind the base selector type to qml?
     property QtObject selector
     signal itemActivated(int index)
+    signal itemActivatedSecondary(int index)
 
     Component.onCompleted: view.forceActiveFocus()
     onFocusChanged: {
@@ -60,6 +61,11 @@ Kirigami.Page {
                             root.selector.activate_index(index);
                             root.itemActivated(index)
                         }
+                        onPressAndHold: {
+                            root.selector.current_index = index;
+                            root.selector.activate_index_secondary(index);
+                            root.itemActivatedSecondary(index)
+                        }
                     }
                 }
             }
@@ -75,7 +81,7 @@ Kirigami.Page {
                 contentItem: AnimatedImage {
                     id: gif
                     source: "./img/zynthian_gui_loading.gif"
-                    paused: true
+                    paused: !zynthian.is_loading
                 }
             }
             Card {

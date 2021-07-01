@@ -430,6 +430,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			super().cb_listbox_push(event)
 
 
+	# TODO: remove?
 	def cb_listbox_release(self, event):
 		if self.xyselect_mode:
 			return
@@ -444,6 +445,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.zyngui.stop_loading()
 
 
+	# TODO: remove?
 	def cb_listbox_motion(self, event):
 		if self.xyselect_mode:
 			return
@@ -461,6 +463,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					sleep(0.04)
 
 
+	# TODO: remove?
 	def cb_listbox_wheel(self, event):
 		index = self.index
 		if (event.num == 5 or event.delta == -120) and self.index>0:

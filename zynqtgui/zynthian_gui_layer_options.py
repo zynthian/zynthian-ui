@@ -36,10 +36,9 @@ from . import zynthian_gui_selector
 
 class zynthian_gui_layer_options(zynthian_gui_selector):
 
-
-	def __init__(self):
+	def __init__(self, parent = None):
+		super(zynthian_gui_layer_options, self).__init__('Option', parent)
 		self.reset()
-		super().__init__('Option', True)
 		self.show()
 
 
@@ -88,7 +87,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.list_data.append((self.midifx_remove, None, "Remove MIDI-FX"))
 
 		# Root Layer Options
-		else:
+		elif len(self.zyngui.screens['layer'].root_layers) > 0:
 			self.layer = self.zyngui.screens['layer'].root_layers[self.layer_index]
 
 			self.audiofx_layers = self.zyngui.screens['layer'].get_fxchain_layers(self.layer)
@@ -436,7 +435,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		elif self.layer:
 			self.select_path = ("{} > Options".format(self.layer.get_basepath()))
 		else:
-			self.select_path = ("Layer Options")
+			self.select_path = "Layer Options"
+		self.select_path_element = "Options"
 
 
 #------------------------------------------------------------------------------

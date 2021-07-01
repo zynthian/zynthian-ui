@@ -31,75 +31,41 @@ import logging
 # Zynthian specific modules
 from . import zynthian_gui_config
 
+# Qt modules
+from PySide2.QtCore import Qt, QObject, Slot, Signal, Property
+
+
 #------------------------------------------------------------------------------
 # Zynthian Info GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_confirm():
+class zynthian_gui_confirm(QObject):
 
-	def __init__(self):
+	def __init__(self, parent=None):
+		super(zynthian_gui_confirm, self).__init__(parent)
 		self.shown = False
 		self.callback = None
 		self.callback_params = None
 		self.zyngui = zynthian_gui_config.zyngui
 
-		# Main Frame
-		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-			width = zynthian_gui_config.display_width,
-			height = zynthian_gui_config.display_height,
-			bg = zynthian_gui_config.color_bg)
-
-		self.text = tkinter.StringVar()
-		self.label_text = tkinter.Label(self.main_frame,
-			font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size,"normal"),
-			textvariable=self.text,
-			wraplength=zynthian_gui_config.display_width-zynthian_gui_config.font_size*2,
-			justify=tkinter.LEFT,
-			padx=zynthian_gui_config.font_size,
-			pady=zynthian_gui_config.font_size,
-			bg=zynthian_gui_config.color_bg,
-			fg=zynthian_gui_config.color_tx)
-		self.label_text.place(x=0, y=0, anchor=tkinter.NW)
-
-		self.yes_text_label=tkinter.Label(self.main_frame,
-			font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size*2,"normal"),
-			text="Yes",
-			width=3,
-			justify=tkinter.RIGHT,
-			padx=zynthian_gui_config.font_size,
-			pady=zynthian_gui_config.font_size,
-			bg=zynthian_gui_config.color_ctrl_bg_off,
-			fg=zynthian_gui_config.color_tx)
-		self.yes_text_label.bind("<Button-1>",self.cb_yes_push)
-		self.yes_text_label.place(x=zynthian_gui_config.display_width, y=zynthian_gui_config.display_height, anchor=tkinter.SE)
-
-		self.no_text_label=tkinter.Label(self.main_frame,
-			font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size*2,"normal"),
-			text="No",
-			width=3,
-			justify=tkinter.LEFT,
-			padx=zynthian_gui_config.font_size,
-			pady=zynthian_gui_config.font_size,
-			bg=zynthian_gui_config.color_ctrl_bg_off,
-			fg=zynthian_gui_config.color_tx)
-		self.no_text_label.bind("<Button-1>",self.cb_no_push)
-		self.no_text_label.place(x=0, y=zynthian_gui_config.display_height, anchor=tkinter.SW)
+		self.prop_text = ''
 
 
 	def hide(self):
 		if self.shown:
 			self.shown=False
-			self.main_frame.grid_forget()
 
 
 	def show(self, text, callback=None, cb_params=None):
-		self.text.set(text)
+		self.prop_text = text
 		self.callback = callback
 		self.callback_params = cb_params
 		if not self.shown:
 			self.shown=True
-			self.main_frame.grid()
+		self.text_changed.emit()
 
+	def get_text(self):
+		return self.prop_text
 
 	def zyncoder_read(self):
 		pass
@@ -111,6 +77,7 @@ class zynthian_gui_confirm():
 
 	def switch_select(self, t='S'):
 		logging.info("callback %s" % self.callback_params)
+		print("TRYING TO CALL CALLBACK")
 		
 		try:
 			self.callback(self.callback_params)
@@ -127,5 +94,17 @@ class zynthian_gui_confirm():
 	def cb_no_push(self, event):
 		self.zyngui.zynswitch_defered('S',1)
 
+	@Slot()
+	def accept(self):
+		self.zyngui.zynswitch_defered('S',3)
+
+	@Slot()
+	def reject(self):
+		self.zyngui.zynswitch_defered('S',1)
+
+
+	text_changed = Signal()
+
+	text = Property(str, get_text, notify = text_changed)
 
 #-------------------------------------------------------------------------------

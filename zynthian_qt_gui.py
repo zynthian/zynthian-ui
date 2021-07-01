@@ -67,9 +67,9 @@ from zynqtgui.zynthian_gui_controller import zynthian_gui_controller
 from zynqtgui.zynthian_gui_admin import zynthian_gui_admin
 from zynqtgui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zynqtgui.zynthian_gui_layer import zynthian_gui_layer
-#from zynqtgui.zynthian_gui_layer_options import zynthian_gui_layer_options
+from zynqtgui.zynthian_gui_layer_options import zynthian_gui_layer_options
 from zynqtgui.zynthian_gui_engine import zynthian_gui_engine
-#from zynqtgui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
+from zynqtgui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zynqtgui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
 #from zynqtgui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
 #from zynqtgui.zynthian_gui_audio_out import zynthian_gui_audio_out
@@ -82,7 +82,7 @@ from zynqtgui.zynthian_gui_control import zynthian_gui_control
 #from zynqtgui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 #from zynqtgui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 #from zynqtgui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
-#from zynqtgui.zynthian_gui_confirm import zynthian_gui_confirm
+from zynqtgui.zynthian_gui_confirm import zynthian_gui_confirm
 #from zynqtgui.zynthian_gui_keyboard import zynthian_gui_keyboard
 from zynqtgui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zynqtgui.zynthian_gui_main import zynthian_gui_main
@@ -313,6 +313,8 @@ class zynthian_gui(QObject):
 
 
 	def osc_receive(self):
+		if not hasattr(self, 'osc_server'):
+			return
 		while self.osc_server.recv(0):
 			pass
 
@@ -344,39 +346,39 @@ class zynthian_gui(QObject):
 		#self.zyntransport = zynthian_engine_transport()
 
 		# Create Core UI Screens
-		#self.screens['info'] = zynthian_gui_info()
-		#self.screens['confirm'] = zynthian_gui_confirm()
-		#self.screens['keyboard'] = zynthian_gui_keyboard()
-		#self.screens['option'] = zynthian_gui_option()
-		self.screens['engine'] = zynthian_gui_engine()
-		self.screens['layer'] = zynthian_gui_layer()
-		#self.screens['layer_options'] = zynthian_gui_layer_options()
-		self.screens['snapshot'] = zynthian_gui_snapshot()
-		#self.screens['midi_chan'] = zynthian_gui_midi_chan()
-		self.screens['midi_cc'] = zynthian_gui_midi_cc()
-		#self.screens['midi_key_range'] = zynthian_gui_midi_key_range()
-		#self.screens['audio_out'] = zynthian_gui_audio_out()
-		#self.screens['midi_out'] = zynthian_gui_midi_out()
-		#self.screens['audio_in'] = zynthian_gui_audio_in()
-		self.screens['bank'] = zynthian_gui_bank()
-		self.screens['preset'] = zynthian_gui_preset()
-		self.screens['control'] = zynthian_gui_control()
-		#self.screens['control_xy'] = zynthian_gui_control_xy()
-		#self.screens['midi_profile'] = zynthian_gui_midi_profile()
-		#self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
-		#self.screens['zs3_options'] = zynthian_gui_zs3_options()
-		self.screens['main'] = zynthian_gui_main()
-		self.screens['admin'] = zynthian_gui_admin()
-		#self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
+		#self.screens['info'] = zynthian_gui_info(self)
+		self.screens['confirm'] = zynthian_gui_confirm(self)
+		#self.screens['keyboard'] = zynthian_gui_keyboard(self)
+		#self.screens['option'] = zynthian_gui_option(self)
+		self.screens['engine'] = zynthian_gui_engine(self)
+		self.screens['layer'] = zynthian_gui_layer(self)
+		self.screens['layer_options'] = zynthian_gui_layer_options(self)
+		self.screens['snapshot'] = zynthian_gui_snapshot(self)
+		self.screens['midi_chan'] = zynthian_gui_midi_chan(self)
+		self.screens['midi_cc'] = zynthian_gui_midi_cc(self)
+		#self.screens['midi_key_range'] = zynthian_gui_midi_key_range(self)
+		#self.screens['audio_out'] = zynthian_gui_audio_out(self)
+		#self.screens['midi_out'] = zynthian_gui_midi_out(self)
+		#self.screens['audio_in'] = zynthian_gui_audio_in(self)
+		self.screens['bank'] = zynthian_gui_bank(self)
+		self.screens['preset'] = zynthian_gui_preset(self)
+		self.screens['control'] = zynthian_gui_control(self)
+		#self.screens['control_xy'] = zynthian_gui_control_xy(self)
+		#self.screens['midi_profile'] = zynthian_gui_midi_profile(self)
+		#self.screens['zs3_learn'] = zynthian_gui_zs3_learn(self)
+		#self.screens['zs3_options'] = zynthian_gui_zs3_options(self)
+		self.screens['main'] = zynthian_gui_main(self)
+		self.screens['admin'] = zynthian_gui_admin(self)
+		#self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration(self)
 
 		# Create UI Apps Screens
 		#self.screens['alsa_mixer'] = self.screens['control']
-		#self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
-		#self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
+		#self.screens['audio_recorder'] = zynthian_gui_audio_recorder(self)
+		#self.screens['midi_recorder'] = zynthian_gui_midi_recorder(self)
 		#if "autoeq" in zynthian_gui_config.experimental_features:
-			#self.screens['autoeq'] = zynthian_gui_autoeq()
+			#self.screens['autoeq'] = zynthian_gui_autoeq(self)
 		#if "zynseq" in zynthian_gui_config.experimental_features:
-			#self.screens['stepseq'] = zynthian_gui_stepsequencer()
+			#self.screens['stepseq'] = zynthian_gui_stepsequencer(self)
 
 		# Init Auto-connector
 		zynautoconnect.start()
@@ -447,6 +449,8 @@ class zynthian_gui(QObject):
 		self.modal_screen = None
 		self.modal_screen_back = None
 		self.lock.release()
+		self.current_screen_changed.emit()
+		self.current_modal_screen_changed.emit()
 
 
 	def show_active_screen(self):
@@ -472,7 +476,7 @@ class zynthian_gui(QObject):
 		self.modal_screen=screen
 		self.screens[screen].show()
 		self.hide_screens(exclude=screen)
-
+		self.current_modal_screen_changed.emit()
 
 	def close_modal(self):
 		self.cancel_modal_timer()
@@ -495,7 +499,7 @@ class zynthian_gui(QObject):
 
 
 	def toggle_modal(self, screen, mode=None):
-		if self.modal_screen!=screen:
+		if self.modal_screen != screen:
 			self.show_modal(screen, mode)
 		else:
 			self.close_modal()
@@ -520,6 +524,7 @@ class zynthian_gui(QObject):
 		self.modal_screen='confirm'
 		self.screens['confirm'].show(text, callback, cb_params)
 		self.hide_screens(exclude='confirm')
+		self.current_modal_screen_changed.emit()
 
 
 	def show_keyboard(self, callback, text="", max_chars=None):
@@ -527,6 +532,7 @@ class zynthian_gui(QObject):
 		self.modal_screen="keyboard"
 		self.screens['keyboard'].show(callback, text, max_chars)
 		self.hide_screens(exclude='keyboard')
+		self.current_modal_screen_changed.emit()
 
 
 	def show_info(self, text, tms=None):
@@ -536,6 +542,7 @@ class zynthian_gui(QObject):
 		self.hide_screens(exclude='info')
 		if tms:
 			zynthian_gui_config.top.after(tms, self.hide_info)
+		self.current_modal_screen_changed.emit()
 
 
 	def add_info(self, text, tags=None):
@@ -625,6 +632,7 @@ class zynthian_gui(QObject):
 		self.active_screen='control'
 		self.screens['control'].set_mode_control()
 		logging.debug("SHOW CONTROL-XY => %s, %s" % (xctrl.symbol, yctrl.symbol))
+		self.current_modal_screen_changed.emit()
 
 
 	def set_curlayer(self, layer, save=False):
@@ -676,7 +684,7 @@ class zynthian_gui(QObject):
 			if self.curlayer:
 				return self.curlayer
 			else:
-				sleep(0.1)
+				time.sleep(0.1)
 
 
 	def is_single_active_channel(self):
@@ -709,13 +717,13 @@ class zynthian_gui(QObject):
 
 		elif cuia == "ALL_NOTES_OFF":
 			self.all_notes_off()
-			sleep(0.1)
+			time.sleep(0.1)
 			self.raw_all_notes_off()
 
 		elif cuia == "ALL_SOUNDS_OFF" or cuia == "ALL_OFF":
 			self.all_notes_off()
 			self.all_sounds_off()
-			sleep(0.1)
+			time.sleep(0.1)
 			self.raw_all_notes_off()
 
 		elif cuia == "START_AUDIO_RECORD":
@@ -1047,7 +1055,7 @@ class zynthian_gui(QObject):
 
 	def zynswitch_short(self,i):
 		logging.info('Short Switch '+str(i))
-
+		print('Short Switch Triggered'+str(i))
 		if self.modal_screen in ['stepseq']:
 			if self.screens[self.modal_screen].switch(i, 'S'):
 				return
@@ -1245,9 +1253,9 @@ class zynthian_gui(QObject):
 			self.zynmidi_read()
 			self.osc_receive()
 			self.plot_zctrls()
-			sleep(0.04)
+			time.sleep(0.04)
 			if self.zynread_wait_flag:
-				sleep(0.3)
+				time.sleep(0.3)
 				self.zynread_wait_flag=False
 
 
@@ -1444,19 +1452,25 @@ class zynthian_gui(QObject):
 	def start_loading(self):
 		self.loading=self.loading+1
 		if self.loading<1: self.loading=1
+		self.is_loading_changed.emit()
 		#logging.debug("START LOADING %d" % self.loading)
 
 
 	def stop_loading(self):
 		self.loading=self.loading-1
 		if self.loading<0: self.loading=0
+		self.is_loading_changed.emit()
 		#logging.debug("STOP LOADING %d" % self.loading)
 
 
 	def reset_loading(self):
+		self.is_loading_changed.emit()
 		self.loading=0
 
+	def get_is_loading(self):
+		return self.loading > 0
 
+	# FIXME: is this necessary?
 	def loading_refresh(self):
 		while not self.exit_flag:
 			try:
@@ -1473,7 +1487,7 @@ class zynthian_gui(QObject):
 		logging.debug("Awaiting threads to end ...")
 
 		while (self.loading_thread.is_alive() or self.zyncoder_thread.is_alive() or zynautoconnect.is_running()) and n>0:
-			sleep(0.1)
+			time.sleep(0.1)
 			n -= 1
 
 		if n<=0:
@@ -1481,7 +1495,7 @@ class zynthian_gui(QObject):
 			return False
 		else:
 			logging.debug("Remaining {} active threads...".format(threading.active_count()))
-			sleep(0.5)
+			time.sleep(0.5)
 			return True
 
 
@@ -1511,7 +1525,6 @@ class zynthian_gui(QObject):
 
 
 	def zyngine_refresh(self):
-		print("REFRESHING zyngine")
 		try:
 			# Capture exit event and finish
 			if self.exit_flag:
@@ -1776,11 +1789,31 @@ class zynthian_gui(QObject):
 		return self.screens['layer'].amixer_layer.engine.allow_headphones()
 
 
+	def get_current_screen(self):
+		return self.active_screen
+
+	def get_current_modal_screen(self):
+		return self.modal_screen
+
+
+
+	def get_confirm(self):
+		return self.screens['confirm']
+
 	def get_main(self):
 		return self.screens['main']
 
+	def get_engine(self):
+		return self.screens['engine']
+
 	def get_layer(self):
 		return self.screens['layer']
+
+	def get_layer_options(self):
+		return self.screens['layer_options']
+
+	def get_midi_chan(self):
+		return self.screens['midi_chan']
 
 	def get_bank(self):
 		return self.screens['bank']
@@ -1791,8 +1824,23 @@ class zynthian_gui(QObject):
 	def get_control(self):
 		return self.screens['control']
 
+
+	current_screen_changed = Signal()
+	current_modal_screen_changed = Signal()
+	is_loading_changed = Signal()
+
+	current_screen = Property(str, get_current_screen, notify = current_screen_changed)
+	current_modal_screen = Property(str, get_current_modal_screen, notify = current_modal_screen_changed)
+
+	is_loading = Property(bool, get_is_loading, notify = is_loading_changed)
+
+
+	confirm = Property(QObject, get_confirm, constant = True)
 	main = Property(QObject, get_main, constant = True)
+	engine = Property(QObject, get_engine, constant = True)
 	layer = Property(QObject, get_layer, constant = True)
+	layer_options = Property(QObject, get_layer_options, constant = True)
+	midi_chan = Property(QObject, get_midi_chan, constant = True)
 	bank = Property(QObject, get_bank, constant = True)
 	preset = Property(QObject, get_preset, constant = True)
 	control = Property(QObject, get_control, constant = True)

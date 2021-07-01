@@ -98,6 +98,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		self.index = i
+		print(i)
+		print(self.list_data[i][0])
 
 		if self.list_data[i][0] is None:
 			pass
@@ -187,8 +189,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_layer_selected(self):
-		if index<len(self.root_layers):
-			return index
+		if self.index < len(self.root_layers):
+			return self.index
 		else:
 			return None
 
