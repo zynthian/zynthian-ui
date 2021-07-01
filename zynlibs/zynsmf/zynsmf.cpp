@@ -47,10 +47,15 @@ Event* g_pEvent = NULL; // Pointer to the current event
 // Silly little class to provide a vector of pointers and clean up on exit
 class SmfFactory {
 	public:
+		SmfFactory()
+		{
+			printf("***zynsmf init***\n");
+		}
 		~SmfFactory()
 		{
 			for(auto it = m_vSmf.begin(); it != m_vSmf.end(); ++it)
 				delete *it;
+			printf("***zynsmf **exit**\n");
 		}
 		std::vector<Smf*>* getVector()
 		{

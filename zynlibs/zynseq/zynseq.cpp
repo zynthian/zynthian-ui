@@ -534,12 +534,19 @@ void end()
     {
         delete it.second;
     }
+printf("***zynseq end***\n");
 }
 
 // ** Library management functions **
 
+__attribute__((constructor)) void foo(void) {
+    printf("zynseq constructor\n");
+    init(true);
+}
+
 bool init(bool bTimebaseMaster)
 {
+printf("***zynseq init***\n");
     // Register with Jack server
     char *sServerName = NULL;
     jack_status_t nStatus;
