@@ -69,6 +69,12 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		self.volume_zgui_ctrl = None
 
 
+	def show(self):
+		super().show()
+		if self.current_playback_fpath:
+			self.show_playing_volume()
+
+
 	def hide(self):
 		super().hide()
 		if self.volume_zgui_ctrl:
