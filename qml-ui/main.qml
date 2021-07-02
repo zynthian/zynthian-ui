@@ -196,11 +196,11 @@ Kirigami.ApplicationWindow {
                 enabled: controlPage.visible
                 onClicked: root.ensureVisible(controlPage)
             }
-            QQC2.ToolButton {
+            /*QQC2.ToolButton {
                 Layout.fillWidth: true
                 text: qsTr("Quit")
                 onClicked: Qt.quit();
-            }
+            }*/
         }
     }
 }
