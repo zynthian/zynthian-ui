@@ -13,7 +13,10 @@ import org.kde.kirigami 2.4 as Kirigami
 import "components" as ZComponents
 
 ZComponents.MainRowLayout {
-	ZComponents.SelectorPage {
-		selector: zynthian.snapshot
-	}
+    id: root
+    ZComponents.SelectorPage {
+        selector: zynthian.snapshot
+        Layout.minimumWidth: root.width
+        Layout.maximumWidth: Layout.minimumWidth
+    }
 }

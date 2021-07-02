@@ -17,21 +17,21 @@ ZComponents.MainRowLayout {
 
     ZComponents.SelectorPage {
         selector: zynthian.engine
-        Layout.minimumWidth: mainRowLayout.width
-            Layout.maximumWidth: Layout.minimumWidth
+        Layout.minimumWidth: root.width
+        Layout.maximumWidth: Layout.minimumWidth
         onItemActivated: root.activateItem(midiChanPage)
     }
 
-	ZComponents.SelectorPage {
-		id: midiChanPage
-		selector: zynthian.midi_chan
-		visible: false
-		Layout.minimumWidth: mainRowLayout.width
-		Layout.maximumWidth: Layout.minimumWidth
-		onItemActivated: {
-			applicationWindow().makeLastVisible(layersPage)
-			applicationWindow().pageStack.layers.pop()
-		}
-	}
+    ZComponents.SelectorPage {
+        id: midiChanPage
+        selector: zynthian.midi_chan
+        visible: false
+        Layout.minimumWidth: root.width
+        Layout.maximumWidth: Layout.minimumWidth
+        onItemActivated: {
+            applicationWindow().makeLastVisible(layersPage)
+            applicationWindow().pageStack.layers.pop()
+        }
+    }
 }
 

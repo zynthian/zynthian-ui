@@ -13,15 +13,18 @@ import org.kde.kirigami 2.4 as Kirigami
 import "components" as ZComponents
 
 ZComponents.MainRowLayout {
+    id: root
 
-	ZComponents.SelectorPage {
+    ZComponents.SelectorPage {
+        Layout.minimumWidth: root.width
+        Layout.maximumWidth: Layout.minimumWidth
 
-		selector: zynthian.layer_options
+        selector: zynthian.layer_options
 
-		onItemActivated: {
-			applicationWindow().makeLastVisible(layersPage)
-			applicationWindow().pageStack.layers.pop()
-		}
-	}
+        onItemActivated: {
+            applicationWindow().makeLastVisible(layersPage)
+            applicationWindow().pageStack.layers.pop()
+        }
+    }
 }
 
