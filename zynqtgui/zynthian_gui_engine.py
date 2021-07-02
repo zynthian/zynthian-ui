@@ -211,6 +211,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path = ("Engine")
+		self.select_path = "Engine"
+		self.select_path_element = "Engine"
+		super().set_select_path()
 
 #------------------------------------------------------------------------------

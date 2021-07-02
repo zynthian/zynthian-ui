@@ -83,6 +83,8 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 			self.zselector_ctrl=zynthian_controller(None,self.selector_caption,self.selector_caption,{ 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
 			self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.zselector_ctrl, self)
 
+	def get_caption(self):
+		return self.selector_caption
 
 	def set_select_path(self):
 		self.selector_path_changed.emit()
@@ -242,4 +244,5 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 	current_index = Property(int, get_current_index, set_current_index, notify = current_index_changed)
 	selector_path = Property(str, get_selector_path, notify = selector_path_changed)
 	selector_path_element = Property(str, get_selector_path_element, notify = selector_path_element_changed)
+	caption = Property(str, get_caption, constant = True)
 #------------------------------------------------------------------------------

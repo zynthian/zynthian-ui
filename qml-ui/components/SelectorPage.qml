@@ -36,7 +36,7 @@ Kirigami.Page {
     }
     header: Kirigami.Heading {
 		level: 2
-		text: root.title
+		text: root.selector.caption
 		visible: false
 	}
 

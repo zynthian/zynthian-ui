@@ -50,21 +50,23 @@ Kirigami.Page {
     }
 
     function goToPreviousPage() {
-		if (currentPage === 0) {
-			return;
-		}
-		slideAnim.stop();
-		slideAnim.from = flickable.contentX;
-		slideAnim.to = Math.max(0, Math.min(flickable.contentWidth - flickable.width, flickable.width * (root.currentPage - 1)))
-		slideAnim.start();
-	}
+        if (currentPage === 0) {
+            return;
+        }
+        slideAnim.stop();
+        slideAnim.from = flickable.contentX;
+        slideAnim.to = Math.max(0, Math.min(flickable.contentWidth - flickable.width, flickable.width * (root.currentPage - 1)))
+        slideAnim.start();
+    }
 
     header: QQC2.ToolBar {
         contentItem: Flickable {
+            id: breadcrumbFlickable
             contentHeight: height
             contentWidth: breadcrumbLayout.width
             RowLayout {
                 id: breadcrumbLayout
+                spacing: 0
                 Repeater {
                     model: layout.visibleChildren.length
                     QQC2.ToolButton {
@@ -76,8 +78,27 @@ Kirigami.Page {
                         onClicked: {
                             root.currentIndex = index
                         }
+                        onCheckedChanged: {
+                            if (!checked) {
+                                return;
+                            }
+                            if (x + width - breadcrumbFlickable.contentX <= breadcrumbFlickable.contentX + breadcrumbFlickable.width) {
+                                return;
+                            }
+                            breadcrumbSlideAnim.stop();
+                            breadcrumbSlideAnim.from = breadcrumbFlickable.contentX;
+                            breadcrumbSlideAnim.to = Math.min(breadcrumbLayout.width - breadcrumbFlickable.width, x + breadcrumbFlickable.width - width);
+                            breadcrumbSlideAnim.start();
+                        }
                     }
                 }
+            }
+            NumberAnimation {
+                id: breadcrumbSlideAnim
+                target: breadcrumbFlickable
+                property: "contentX"
+                duration: Kirigami.Units.longDuration
+                easing.type: Easing.InOutQuad
             }
         }
     }

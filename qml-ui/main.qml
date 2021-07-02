@@ -80,11 +80,11 @@ Kirigami.ApplicationWindow {
                 ensureVisible(mainPage);
                 break;
             case "layer":
-                makeLastVisible(layersPage);
+                makeLastVisible(presetsPage);
                 ensureVisible(layersPage);
                 break;
             case "bank":
-                makeLastVisible(banksPage);
+                makeLastVisible(presetsPage);
                 ensureVisible(banksPage);
                 break;
             case "preset":

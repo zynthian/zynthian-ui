@@ -12,26 +12,26 @@ import org.kde.kirigami 2.4 as Kirigami
 
 import "components" as ZComponents
 
-Kirigami.PageRow {
+ZComponents.MainRowLayout {
     id: root
 
-    defaultColumnWidth: root.width
-    globalToolBar.style: Kirigami.ApplicationHeaderStyle.Breadcrumb
-
-    initialPage: ZComponents.SelectorPage {
+    ZComponents.SelectorPage {
         selector: zynthian.engine
-        onItemActivated: root.push(midiChanComponent)
+        Layout.minimumWidth: mainRowLayout.width
+            Layout.maximumWidth: Layout.minimumWidth
+        onItemActivated: root.activateItem(midiChanPage)
     }
 
-    Component {
-        id: midiChanComponent
-        ZComponents.SelectorPage {
-            selector: zynthian.midi_chan
-            onItemActivated: {
-                applicationWindow().makeLastVisible(layersPage)
-                applicationWindow().pageStack.layers.pop()
-            }
-        }
-    }
+	ZComponents.SelectorPage {
+		id: midiChanPage
+		selector: zynthian.midi_chan
+		visible: false
+		Layout.minimumWidth: mainRowLayout.width
+		Layout.maximumWidth: Layout.minimumWidth
+		onItemActivated: {
+			applicationWindow().makeLastVisible(layersPage)
+			applicationWindow().pageStack.layers.pop()
+		}
+	}
 }
 
