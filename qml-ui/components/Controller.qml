@@ -33,6 +33,7 @@ Card {
 
             // TODO: manage logarythmic controls?
             QQC2.Dial {
+                id: dial
                 anchors {
                     fill: parent
                     margins: Kirigami.Units.largeSpacing
@@ -50,6 +51,7 @@ Card {
                     text: root.controller.value_print
                 }
                 Behavior on value {
+                    enabled: !dialMouse.pressed
                     NumberAnimation {
                         duration: Kirigami.Units.longDuration
                         easing.type: Easing.InOutQuad
@@ -59,6 +61,23 @@ Card {
                     NumberAnimation {
                         duration: Kirigami.Units.longDuration
                         easing.type: Easing.InOutQuad
+                    }
+                }
+                MouseArea {
+                    id: dialMouse
+                    anchors.fill: parent
+                    property real startY
+                    property real startValue
+                    onPressed: {
+                        startY = mouse.y;
+                        startValue = dial.value
+                    }
+                    onPositionChanged: {
+                        let delta = mouse.y - startY;
+                        print((dial.to / dial.stepSize) * (delta/height));
+                        dial.value = Math.max(dial.from, Math.min(dial.to, startValue + (dial.to / dial.stepSize) * (delta/height)));
+                        dial.moved();
+
                     }
                 }
             }
@@ -78,9 +97,9 @@ Card {
                     anchors {
                         horizontalCenter: parent.horizontalCenter
                         bottom: parent.bottom
-                        bottomMargin: parent.height / 5
+                        bottomMargin: parent.height / 4
                     }
-                    text: parent.checked ? "ON" : "OFF"
+                    text: root.controller.value_print
                 }
             }
         }
