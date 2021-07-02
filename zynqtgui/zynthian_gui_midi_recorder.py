@@ -51,7 +51,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	jack_record_port = "ZynMidiRouter:main_out"
 
-	def __init__(self):
+	def __init__(self, parent = None):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
 		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 		self.current_playback_fpath = None # Filename of currently playing SMF
@@ -59,7 +59,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.smf_recorder = None # Pointer to SMF recorder
 		self.smf_timer = None # 1s timer used to check end of SMF playback
 
-		super().__init__('MIDI Recorder', True)
+		super(zynthian_gui_midi_recorder, self).__init__('MIDI Recorder', parent)
 
 		self.bpm_zctrl = zynthian_controller(self, "bpm", "BPM", {
 			'value': 120,
@@ -306,7 +306,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			libsmf.startPlayback()
 			zynseq.transport_start("zynsmf")
 #			libseq.transportLocate(0)
-			self.show_playing_bpm()
+#			self.show_playing_bpm()
 			self.current_playback_fpath=fpath
 			self.smf_timer = Timer(interval = 1, function=self.check_playback)
 			self.smf_timer.start()
@@ -326,8 +326,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.smf_timer.cancel()
 			self.smf_timer = None
 		self.current_playback_fpath=None
-		if self.bpm_zgui_ctrl:
-			self.bpm_zgui_ctrl.hide()
+		#if self.bpm_zgui_ctrl:
+			#self.bpm_zgui_ctrl.hide()
 		self.update_list()
 
 
@@ -405,6 +405,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path = ("MIDI Recorder")
+		self.select_path = "MIDI Recorder"
+		self.select_path_element = "MIDI Recorder"
+		super().set_select_path()
+
 
 #------------------------------------------------------------------------------

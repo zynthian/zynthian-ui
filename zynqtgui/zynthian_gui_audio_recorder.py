@@ -48,14 +48,14 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
 	mplayer_ctrl_fifo_path = "/tmp/mplayer-control"
 
-	def __init__(self):
+	def __init__(self, parent = None):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
 		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 		self.current_playback_fpath = None
 		self.rec_proc = None
 		self.play_proc = None
 
-		super().__init__('Audio Recorder', True)
+		super(zynthian_gui_audio_recorder, self).__init__('Audio Recorder', parent)
 
 		self.volume_zctrl = zynthian_controller(self, "volume", "Volume", {
 			'value': 60,
@@ -323,7 +323,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		logging.info("ENDING AUDIO PLAY ...")
 		self.play_proc = None
 		self.current_playback_fpath=None
-		self.volume_zgui_ctrl.hide()
+		#self.volume_zgui_ctrl.hide()
 		self.update_list()
 
 
@@ -407,6 +407,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path = ("Audio Recorder")
+		self.select_path = "Audio Recorder"
+		self.select_path_element = "Audio Recorder"
+		super().set_select_path()
 
 #------------------------------------------------------------------------------

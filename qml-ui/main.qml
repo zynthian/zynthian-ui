@@ -81,6 +81,18 @@ Kirigami.ApplicationWindow {
             case "layer_options":
                 root.pageStack.layers.push(Qt.resolvedUrl("./LayerOptionsPage.qml"));
                 break;
+            case "snapshot":
+                root.pageStack.layers.push(Qt.resolvedUrl("./SnapshotPage.qml"));
+                break;
+            case "audio_recorder":
+                root.pageStack.layers.push(Qt.resolvedUrl("./AudioRecorderPage.qml"));
+                break;
+            case "midi_recorder":
+                root.pageStack.layers.push(Qt.resolvedUrl("./MidiRecorderPage.qml"));
+                break;
+            case "admin":
+                root.pageStack.layers.push(Qt.resolvedUrl("./AdminPage.qml"));
+                break;
             case "confirm":
                 confirmDialog.open();
                 break;
@@ -168,7 +180,7 @@ Kirigami.ApplicationWindow {
             }
             QQC2.ToolButton {
                 Layout.fillWidth: true
-                text: qsTr("Control")
+                text: qsTr("Edit")
                 enabled: controlPage.visible
                 onClicked: root.ensureVisible(controlPage)
             }

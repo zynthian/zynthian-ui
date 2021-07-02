@@ -30,51 +30,31 @@ import logging
 # Zynthian specific modules
 from . import zynthian_gui_config
 
+
+# Qt modules
+from PySide2.QtCore import Qt, QObject, Slot, Signal, Property
+
+
 #------------------------------------------------------------------------------
 # Zynthian Info GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_info:
+class zynthian_gui_info(QObject):
 
-	def __init__(self):
+	def __init__(self, parent=None):
+		super(zynthian_gui_info, self).__init__(parent)
 		self.shown=False
 		self.zyngui=zynthian_gui_config.zyngui
 
-		# Main Frame
-		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-			width = zynthian_gui_config.display_width,
-			height = zynthian_gui_config.display_height,
-			bg = zynthian_gui_config.color_bg)
-
-		#Textarea
-		self.textarea = tkinter.Text(self.main_frame,
-			height = int(zynthian_gui_config.display_height/(zynthian_gui_config.font_size+8)),
-			font=(zynthian_gui_config.font_family,zynthian_gui_config.font_size,"normal"),
-			#wraplength=80,
-			#justify=tkinter.LEFT,
-			bd=0,
-			highlightthickness=0,
-			relief=tkinter.FLAT,
-			cursor="none",
-			bg=zynthian_gui_config.color_bg,
-			fg=zynthian_gui_config.color_tx)
-		self.textarea.bind("<Button-1>", self.cb_push)
-		#self.textarea.pack(fill="both", expand=True)
-		self.textarea.place(x=0,y=0)
-
-		self.textarea.tag_config("ERROR", foreground="#C00000")
-		self.textarea.tag_config("WARNING", foreground="#FF9000")
-		self.textarea.tag_config("SUCCESS", foreground="#009000")
-		self.textarea.tag_config("EMPHASIS", foreground="#0000C0")
+		self.prop_text = ''
 
 
 	def clean(self):
-		self.textarea.delete(1.0,tkinter.END)
+		text = ''
 
 
 	def add(self, text, tags=None):
-		self.textarea.insert(tkinter.END,text,tags)
-		self.textarea.see(tkinter.END)
+		self.prop_text += '\n' + text
 
 
 	def set(self, text, tags=None):
@@ -85,14 +65,12 @@ class zynthian_gui_info:
 	def hide(self):
 		if self.shown:
 			self.shown=False
-			self.main_frame.grid_forget()
 
 
 	def show(self, text):
 		self.set(text)
 		if not self.shown:
 			self.shown=True
-			self.main_frame.grid()
 
 
 	def zyncoder_read(self):
@@ -116,5 +94,11 @@ class zynthian_gui_info:
 	def cb_push(self,event):
 		self.zyngui.zynswitch_defered('S',1)
 
+	def get_text(self):
+		return prop_text
+
+	text_changed = Signal()
+
+	text = Property(str, get_text, notify = text_changed)
 
 #-------------------------------------------------------------------------------

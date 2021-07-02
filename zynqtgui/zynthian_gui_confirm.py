@@ -39,6 +39,7 @@ from PySide2.QtCore import Qt, QObject, Slot, Signal, Property
 # Zynthian Info GUI Class
 #------------------------------------------------------------------------------
 
+# TODO: properties to read/write from QML
 class zynthian_gui_confirm(QObject):
 
 	def __init__(self, parent=None):

@@ -62,7 +62,7 @@ from zyngine import zynthian_midi_filter
 from zynqtgui import zynthian_gui_config
 from zynqtgui.zynthian_gui_controller import zynthian_gui_controller
 #from zynqtgui.zynthian_gui_selector import zynthian_gui_selector
-#from zynqtgui.zynthian_gui_info import zynthian_gui_info
+from zynqtgui.zynthian_gui_info import zynthian_gui_info
 #from zynqtgui.zynthian_gui_option import zynthian_gui_option
 from zynqtgui.zynthian_gui_admin import zynthian_gui_admin
 from zynqtgui.zynthian_gui_snapshot import zynthian_gui_snapshot
@@ -86,8 +86,8 @@ from zynqtgui.zynthian_gui_confirm import zynthian_gui_confirm
 #from zynqtgui.zynthian_gui_keyboard import zynthian_gui_keyboard
 from zynqtgui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zynqtgui.zynthian_gui_main import zynthian_gui_main
-#from zynqtgui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
-#from zynqtgui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
+from zynqtgui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
+from zynqtgui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 #if "autoeq" in zynthian_gui_config.experimental_features:
 	#from zynqtgui.zynthian_gui_autoeq import zynthian_gui_autoeq
 #if "zynseq" in zynthian_gui_config.experimental_features:
@@ -346,7 +346,7 @@ class zynthian_gui(QObject):
 		#self.zyntransport = zynthian_engine_transport()
 
 		# Create Core UI Screens
-		#self.screens['info'] = zynthian_gui_info(self)
+		self.screens['info'] = zynthian_gui_info(self)
 		self.screens['confirm'] = zynthian_gui_confirm(self)
 		#self.screens['keyboard'] = zynthian_gui_keyboard(self)
 		#self.screens['option'] = zynthian_gui_option(self)
@@ -373,8 +373,8 @@ class zynthian_gui(QObject):
 
 		# Create UI Apps Screens
 		#self.screens['alsa_mixer'] = self.screens['control']
-		#self.screens['audio_recorder'] = zynthian_gui_audio_recorder(self)
-		#self.screens['midi_recorder'] = zynthian_gui_midi_recorder(self)
+		self.screens['audio_recorder'] = zynthian_gui_audio_recorder(self)
+		self.screens['midi_recorder'] = zynthian_gui_midi_recorder(self)
 		#if "autoeq" in zynthian_gui_config.experimental_features:
 			#self.screens['autoeq'] = zynthian_gui_autoeq(self)
 		#if "zynseq" in zynthian_gui_config.experimental_features:
@@ -1797,6 +1797,9 @@ class zynthian_gui(QObject):
 
 
 
+	def get_info(self):
+		return self.screens['info']
+
 	def get_confirm(self):
 		return self.screens['confirm']
 
@@ -1812,6 +1815,12 @@ class zynthian_gui(QObject):
 	def get_layer_options(self):
 		return self.screens['layer_options']
 
+	def get_admin(self):
+		return self.screens['admin']
+
+	def get_snapshot(self):
+		return self.screens['snapshot']
+
 	def get_midi_chan(self):
 		return self.screens['midi_chan']
 
@@ -1824,6 +1833,12 @@ class zynthian_gui(QObject):
 	def get_control(self):
 		return self.screens['control']
 
+	def get_audio_recorder(self):
+		return self.screens['audio_recorder']
+
+	def get_midi_recorder(self):
+		return self.screens['midi_recorder']
+
 
 	current_screen_changed = Signal()
 	current_modal_screen_changed = Signal()
@@ -1835,15 +1850,21 @@ class zynthian_gui(QObject):
 	is_loading = Property(bool, get_is_loading, notify = is_loading_changed)
 
 
+
+	info = Property(QObject, get_info, constant = True)
 	confirm = Property(QObject, get_confirm, constant = True)
 	main = Property(QObject, get_main, constant = True)
 	engine = Property(QObject, get_engine, constant = True)
 	layer = Property(QObject, get_layer, constant = True)
 	layer_options = Property(QObject, get_layer_options, constant = True)
+	admin = Property(QObject, get_admin, constant = True)
+	snapshot = Property(QObject, get_snapshot, constant = True)
 	midi_chan = Property(QObject, get_midi_chan, constant = True)
 	bank = Property(QObject, get_bank, constant = True)
 	preset = Property(QObject, get_preset, constant = True)
 	control = Property(QObject, get_control, constant = True)
+	audio_recorder = Property(QObject, get_audio_recorder, constant = True)
+	midi_recorder = Property(QObject, get_midi_recorder, constant = True)
 
 
 

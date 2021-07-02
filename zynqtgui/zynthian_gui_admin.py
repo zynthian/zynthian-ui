@@ -161,7 +161,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path = ("Admin")
+		self.select_path = "Admin"
+		self.select_path_element = "Admin"
+		super().set_select_path()
 
 
 	def execute_commands(self):
