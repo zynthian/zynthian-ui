@@ -112,6 +112,8 @@ while true; do
 	load_config_env
 
 	# Start Zynthian GUI & Synth Engine
+	export QT_QUICK_CONTROLS_MOBILE=1
+	export QT_SCALE_FACTOR=1.2
 	./zynthian_qt_gui.py
 	status=$?
 

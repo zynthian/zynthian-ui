@@ -26,9 +26,11 @@ Kirigami.Page {
         }
     }
 
+    bottomPadding: Kirigami.Units.smallSpacing
     contentItem: RowLayout {
         ColumnLayout {
             Layout.maximumWidth: Math.floor(root.width / 4)
+            Layout.minimumWidth: Layout.maximumWidth
             Layout.fillHeight: true
             ZComponents.Controller {
                 // FIXME: this always assumes there are always exactly 4 controllers for the entire lifetime
@@ -66,6 +68,7 @@ Kirigami.Page {
         }
         ColumnLayout {
             Layout.maximumWidth: Math.floor(root.width / 4)
+            Layout.minimumWidth: Layout.maximumWidth
             Layout.fillHeight: true
             ZComponents.Controller {
                 controller: zynthian.control.controller(2)

@@ -10,8 +10,8 @@ import QtQuick.Layouts 1.4
 import QtQuick.Controls 2.2 as QQC2
 import org.kde.kirigami 2.4 as Kirigami
 
-//NOTE: this is due to a bug in Kirigami.AbstractCard from Buster's version, Replace with Kirigami.RowLAyout when possible
-QQC2.Page {
+//NOTE: this is due to a bug in Kirigami.AbstractCard from Buster's version, Replace with Kirigami.RowLayout when possible
+Kirigami.Page {
     id: root
 
     default property alias data: layout.data
@@ -20,6 +20,10 @@ QQC2.Page {
     property int currentIndex: 0
     readonly property Item currentItem: layout.visibleChildren[currentIndex]
 
+    leftPadding: 0
+    topPadding: 0
+    bottomPadding: 0
+    rightPadding: 0
 
     function activateItem(item) {
         let idx = flickable.itemIndex(item);
@@ -42,9 +46,18 @@ QQC2.Page {
             for (i in layout.children) {
                 layout.children[i].visible = i <= idx;
             }
-            currentIndex = idx;
         }
     }
+
+    function goToPreviousPage() {
+		if (currentPage === 0) {
+			return;
+		}
+		slideAnim.stop();
+		slideAnim.from = flickable.contentX;
+		slideAnim.to = Math.max(0, Math.min(flickable.contentWidth - flickable.width, flickable.width * (root.currentPage - 1)))
+		slideAnim.start();
+	}
 
     header: QQC2.ToolBar {
         contentItem: Flickable {
@@ -55,9 +68,11 @@ QQC2.Page {
                 Repeater {
                     model: layout.visibleChildren.length
                     QQC2.ToolButton {
-                        text: layout.visibleChildren[index].title
+                        text: (index > 0 ? "> ": "") + layout.visibleChildren[index].title
                         checked: root.currentIndex === index
+                        opacity: checked ? 1 : 0.8
                         checkable: false
+                        font.pointSize: 15
                         onClicked: {
                             root.currentIndex = index
                         }
@@ -164,6 +179,12 @@ QQC2.Page {
             id: layout
             spacing: 0
             height: flickable.height
+            onChildrenChanged: {
+                var i;
+                for (i in children) {
+                    children[i].Layout.fillHeight = true;
+                }
+            }
         }
     }
 }

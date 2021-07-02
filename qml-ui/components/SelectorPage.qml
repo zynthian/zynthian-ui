@@ -14,6 +14,7 @@ import org.kde.kirigami 2.4 as Kirigami
 Kirigami.Page {
     id: root
 
+    visible: true
     title: root.selector.selector_path_element
 
     property alias view: view.view
@@ -26,24 +27,30 @@ Kirigami.Page {
     signal itemActivated(int index)
     signal itemActivatedSecondary(int index)
 
+    bottomPadding: Kirigami.Units.smallSpacing
     Component.onCompleted: view.forceActiveFocus()
     onFocusChanged: {
         if (focus) {
             view.forceActiveFocus()
         }
     }
+    header: Kirigami.Heading {
+		level: 2
+		text: root.title
+		visible: false
+	}
 
-    contentItem: RowLayout {
+    contentItem: //RowLayout {
         SelectorView {
             id: view
-            Layout.fillHeight: true
-            Layout.maximumWidth: Math.floor(root.width / 4) * 3
-            Layout.minimumWidth: Layout.maximumWidth
+            //Layout.fillHeight: true
+            //Layout.maximumWidth: Math.floor(root.width / 4) * 3
+            //Layout.minimumWidth: Layout.maximumWidth
             onItemActivated: root.itemActivated(index)
             onItemActivatedSecondary: toor.itemActivatedSecondary(index)
         }
 
-
+/*
         ColumnLayout {
             Layout.fillHeight: true
             Layout.maximumWidth: Math.floor(root.width / 4)
@@ -68,5 +75,5 @@ Kirigami.Page {
                 }
             }
         }
-    }
+    }*/
 }

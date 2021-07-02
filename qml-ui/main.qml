@@ -19,36 +19,56 @@ Kirigami.ApplicationWindow {
     height: screen.height
 
     pageStack.defaultColumnWidth: root.width
-    pageStack.initialPage: [mainPage, layersPage, banksPage, presetsPage, controlPage]
+    pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
+    pageStack.initialPage: ZComponents.MainRowLayout {
+        id: mainRowLayout
+        ZComponents.SelectorPage {
+            id: mainPage
+            Layout.minimumWidth: mainRowLayout.width
+            Layout.maximumWidth: Layout.minimumWidth
+            selector: zynthian.main
+        }
+        ZComponents.SelectorPage {
+            id: layersPage
+            Layout.minimumWidth: mainRowLayout.width/3
+            Layout.maximumWidth: Layout.minimumWidth
+            header.visible: true
+            selector: zynthian.layer
+        }
+        ZComponents.SelectorPage {
+            id: banksPage
+            leftPadding: 0
+            rightPadding: 0
+            Layout.minimumWidth: mainRowLayout.width/3
+            Layout.maximumWidth: Layout.minimumWidth
+            header.visible: true
+            selector: zynthian.bank
+        }
+        ZComponents.SelectorPage {
+            id: presetsPage
+            Layout.minimumWidth: mainRowLayout.width/3
+            Layout.maximumWidth: Layout.minimumWidth
+            header.visible: true
+            selector: zynthian.preset
+        }
+        ControlPage {
+            id: controlPage
+            Layout.minimumWidth: root.width
+            Layout.maximumWidth: Layout.minimumWidth
+        }
+    }
+
+    //[mainPage, layersPage, banksPage, presetsPage, controlPage]
 
     CustomTheme {}
 
     // FIXME: this stuff with a newer Kirigami should be done with a PageRouter?
     function ensureVisible(page) {
-        let path = [mainPage, layersPage, banksPage, presetsPage, controlPage];
-        let pageIndex = path.indexOf(page);
-        if (pageIndex < 0) {
-            print("Unknown page " + page.title);
-            return;
-        }
-        if (!page.visible) {
-            var i;
-            for (i in path) {
-                let otherPage = path[i];
-                if (!otherPage.visible) {
-                    pageStack.push(otherPage);
-                }
-                if (page == otherPage) {
-                    break;
-                }
-            }
-        }
-        pageStack.currentIndex = pageIndex;
+        mainRowLayout.activateItem(page)
     }
 
     function makeLastVisible(page) {
-        ensureVisible(page);
-        pageStack.pop(page);
+        mainRowLayout.ensureLastVisibleItem(page)
     }
 
     Connections {
@@ -57,15 +77,19 @@ Kirigami.ApplicationWindow {
             switch(zynthian.current_screen) {
             case "main":
                 makeLastVisible(mainPage);
+                ensureVisible(mainPage);
                 break;
             case "layer":
                 makeLastVisible(layersPage);
+                ensureVisible(layersPage);
                 break;
             case "bank":
                 makeLastVisible(banksPage);
+                ensureVisible(banksPage);
                 break;
             case "preset":
-                makeLastVisible(presetsPage);
+                makeLastVisible(controlPage);
+                ensureVisible(presetsPage);
                 break;
             case "control":
                 makeLastVisible(controlPage);
@@ -108,25 +132,6 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    ZComponents.SelectorPage {
-        id: mainPage
-        selector: zynthian.main
-    }
-    ZComponents.SelectorPage {
-        id: layersPage
-        selector: zynthian.layer
-    }
-    ZComponents.SelectorPage {
-        id: banksPage
-        selector: zynthian.bank
-    }
-    ZComponents.SelectorPage {
-        id: presetsPage
-        selector: zynthian.preset
-    }
-    ControlPage {
-        id: controlPage
-    }
 
     QQC2.Dialog {
         id: confirmDialog
@@ -151,7 +156,7 @@ Kirigami.ApplicationWindow {
             QQC2.ToolButton {
                 Layout.fillWidth: true
                 text: qsTr("Back")
-                enabled: root.pageStack.currentIndex > 0 || root.pageStack.layers.depth > 1
+                enabled: mainRowLayout.currentPage > 0 || root.pageStack.layers.depth > 1
                 onClicked: {
                     if (root.pageStack.layers.depth > 1) {
                         if (root.pageStack.layers.currentItem.hasOwnProperty("currentIndex")
@@ -159,32 +164,42 @@ Kirigami.ApplicationWindow {
                         ) {
                             root.pageStack.layers.currentItem.currentIndex -= 1;
                         } else {
-                            root.pageStack.layers.pop()
+                            root.pageStack.layers.pop();
                         }
                     } else {
-                        root.pageStack.currentIndex -= 1;
+                        mainRowLayout.goToPreviousPage();
                     }
                 }
             }
             QQC2.ToolButton {
                 Layout.fillWidth: true
                 text: qsTr("Layers")
-                enabled: layersPage.visible
                 onClicked: root.ensureVisible(layersPage)
             }
             QQC2.ToolButton {
                 Layout.fillWidth: true
-                text: qsTr("Favorites")
+                text: mainRowLayout.currentPage === 1 ? qsTr("Favorites") : qsTr("Presets")
                 enabled: presetsPage.visible
-                checkable: true
-                checked: zynthian.preset.show_only_favorites
-                onCheckedChanged: zynthian.preset.show_only_favorites = checked
+                checkable: mainRowLayout.currentPage === 1
+                checked: mainRowLayout.currentPage === 1 && zynthian.preset.show_only_favorites
+                onCheckedChanged: {
+                    if (mainRowLayout.currentPage === 1) {
+                        zynthian.preset.show_only_favorites = checked
+                    } else {
+                        root.ensureVisible(presetsPage)
+                    }
+                }
             }
             QQC2.ToolButton {
                 Layout.fillWidth: true
                 text: qsTr("Edit")
                 enabled: controlPage.visible
                 onClicked: root.ensureVisible(controlPage)
+            }
+            QQC2.ToolButton {
+                Layout.fillWidth: true
+                text: qsTr("Quit")
+                onClicked: Qt.quit();
             }
         }
     }
