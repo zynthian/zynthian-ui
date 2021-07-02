@@ -60,6 +60,12 @@ extern "C"
 
 // ** Library management functions **
 
+/** @brief  Initialise library and connect to jackd server
+*   @param  name Client name
+*   @note   Call init() before any other functions will work
+*/
+void init(char* name);
+
 /** @brief  Check if any changes have occured since last save
 *   @retval bool True if changed since last save
 */

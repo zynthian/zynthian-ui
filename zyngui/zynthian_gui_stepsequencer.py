@@ -51,7 +51,7 @@ from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
 from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
-libseq.transportRequestTimebase()
+libseq.init(bytes("zynthstep", "utf-8"))
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer GUI Class

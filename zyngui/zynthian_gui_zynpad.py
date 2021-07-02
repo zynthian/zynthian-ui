@@ -91,6 +91,7 @@ class zynthian_gui_zynpad():
 		# Icons
 		self.mode_icon = [tkinter.PhotoImage() for i in range(7)]
 		self.state_icon = [tkinter.PhotoImage() for i in range(4)]
+		self.empty_icon = tkinter.PhotoImage()
 
 		# Selection highlight
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
@@ -383,7 +384,7 @@ class zynthian_gui_zynpad():
 				self.grid_canvas.itemconfig("group:%s"%(pad), text=chr(65 + libseq.getGroup(self.parent.bank, pad)), fill=foreground)
 				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
 				if state == 0 and libseq.isEmpty(self.parent.bank, pad):
-					self.grid_canvas.itemconfig("state:%d"%pad, image=None)
+					self.grid_canvas.itemconfig("state:%d"%pad, image=self.empty_icon)
 				else:
 					self.grid_canvas.itemconfig("state:%d"%pad, image=self.state_icon[state])
 

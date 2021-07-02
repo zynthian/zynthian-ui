@@ -538,17 +538,24 @@ void end()
 
 // ** Library management functions **
 
-__attribute__((constructor)) void init(void) {
-    printf("**zynseq initialised**\n");
+__attribute__((constructor)) void zynseq(void) {
+    printf("New instance of zynseq\n");
+}
+
+void init(char* name) {
     // Register with Jack server
+    printf("**zynseq initialising as %s**\n", name);
     char *sServerName = NULL;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
     
     if(g_pJackClient)
+    {
+        fprintf(stderr, "libzynseq already initialised\n");
         return; // Already initialised
+    }
 
-    if((g_pJackClient = jack_client_open("zynthstep", nOptions, &nStatus, sServerName)) == 0)
+    if((g_pJackClient = jack_client_open(name, nOptions, &nStatus, sServerName)) == 0)
     {
         fprintf(stderr, "libzynseq failed to start jack client: %d\n", nStatus);
         return;
@@ -583,7 +590,8 @@ __attribute__((constructor)) void init(void) {
 
     // Register the cleanup function to be called when program exits
     atexit(end);
-        
+
+    transportRequestTimebase();        
     transportStop("zynseq");
     transportLocate(0);
 }
