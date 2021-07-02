@@ -52,11 +52,13 @@ Card {
                 Behavior on value {
                     NumberAnimation {
                         duration: Kirigami.Units.longDuration
+                        easing.type: Easing.InOutQuad
                     }
                 }
                 Behavior on scale {
                     NumberAnimation {
                         duration: Kirigami.Units.longDuration
+                        easing.type: Easing.InOutQuad
                     }
                 }
             }
@@ -69,6 +71,7 @@ Card {
                 Behavior on scale {
                     NumberAnimation {
                         duration: Kirigami.Units.longDuration
+                        easing.type: Easing.InOutQuad
                     }
                 }
                 Kirigami.Heading {

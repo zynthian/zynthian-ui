@@ -1,0 +1,151 @@
+/**
+ *
+ *  SPDX-FileCopyrightText: 2021 Marco Martin <mart@kde.org>
+ *
+ *  SPDX-License-Identifier: LGPL-2.0-or-later
+ */
+
+import QtQuick 2.10
+import QtQuick.Layouts 1.4
+import QtQuick.Controls 2.2 as QQC2
+import org.kde.kirigami 2.4 as Kirigami
+
+//NOTE: this is due to a bug in Kirigami.AbstractCard from Buster's version, Replace with Kirigami.RowLAyout when possible
+QQC2.Page {
+    id: root
+
+    default property alias data: layout.data
+    readonly property int currentPage: Math.floor((flickable.contentX + flickable.width/2) / flickable.width)
+
+    property int currentIndex: 0
+    readonly property Item currentItem: layout.visibleChildren[currentIndex]
+    header: QQC2.ToolBar {
+        contentItem: Flickable {
+            contentHeight: height
+            contentWidth: breadcrumbLayout.width
+            RowLayout {
+                id: breadcrumbLayout
+                Repeater {
+                    model: layout.visibleChildren.length
+                    QQC2.ToolButton {
+                        text: layout.visibleChildren[index].title
+                        checked: root.currentIndex === index
+                        checkable: false
+                        onClicked: {
+                            root.currentIndex = index
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    onCurrentIndexChanged: {
+        if (currentIndex < 0 || currentIndex >= layout.visibleChildren.length) {
+            return;
+        }
+        slideAnim.stop();
+        slideAnim.from = flickable.contentX;
+        slideAnim.to = flickable.width * Math.floor((layout.visibleChildren[currentIndex].x + layout.visibleChildren[currentIndex].width/2) / flickable.width);
+        print((layout.visibleChildren[currentIndex]))
+        slideAnim.start();
+    }
+
+    contentItem: Flickable {
+        id: flickable
+
+        boundsBehavior: Flickable.StopAtBounds
+        contentWidth: width * Math.ceil(layout.width / width)
+        contentHeight: height
+        maximumFlickVelocity: 0
+        property int pageDeltaIntention
+        property real oldContentX
+        property real moveStartContentX
+
+        function itemIndex(item) {
+            let idx = -1;
+            var i;
+            for (i in layout.visibleChildren) {
+                let candidate = layout.visibleChildren[i];
+                if (candidate === item) {
+                    idx = i;
+                    break;
+                }
+            }
+            return idx;
+        }
+
+        onContentXChanged: {
+            // Didn't move enough
+            if (Math.abs(contentX - moveStartContentX) < root.width / 10) {
+                pageDeltaIntention = 0;
+            } else if (contentX > oldContentX && contentX > moveStartContentX) {
+                pageDeltaIntention = 1;
+            } else if (contentX < oldContentX && contentX < moveStartContentX) {
+                pageDeltaIntention = -1;
+            } else {
+                pageDeltaIntention = 0;
+            }
+            oldContentX = contentX;
+        }
+        onMovementStarted: {
+            pageDeltaIntention = 0;
+            moveStartContentX = oldContentX = contentX;
+        }
+        onMovementEnded: {
+            slideAnim.stop();
+            slideAnim.from = flickable.contentX;
+            slideAnim.to = Math.max(0, Math.min(contentWidth - width, width * (root.currentPage + pageDeltaIntention)))
+            slideAnim.start();
+        }
+        SequentialAnimation {
+            id: slideAnim
+            property alias from: internalSlideAnim.from
+            property alias to: internalSlideAnim.to
+            NumberAnimation {
+                id: internalSlideAnim
+                target: flickable
+                property: "contentX"
+                duration: Kirigami.Units.longDuration
+                easing.type: Easing.InOutQuad
+            }
+            ScriptAction {
+                script: {
+                    let itemCenter = root.currentItem.x + root.currentItem.width/2;
+                    if (itemCenter >= flickable.contentX && itemCenter <= flickable.contentX + flickable.width) {
+                        return;
+                    }
+                    print(flickable.itemIndex(layout.childAt(Math.floor(flickable.contentX + flickable.width/2), 10)))
+                    root.currentIndex = flickable.itemIndex(layout.childAt(Math.floor(flickable.contentX + flickable.width/2), 10))
+                }
+            }
+        }
+
+        RowLayout {
+            id: layout
+            spacing: 0
+            height: flickable.height
+            Repeater {
+                model: 10
+                visible: false
+                Rectangle {
+                    property string title: index
+                    color: root.currentIndex === index ? "red" : "green"
+                    radius: 20
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: Math.round(index === 9 ? flickable.width : flickable.width / 3)
+                    ColumnLayout {
+                        QQC2.Button {
+                            text: "+1"
+                            onClicked: root.currentIndex++
+                        }
+                        QQC2.Button {
+                            text: "-1"
+                            onClicked: root.currentIndex--
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
