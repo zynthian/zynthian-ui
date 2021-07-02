@@ -112,7 +112,7 @@ while true; do
 	load_config_env
 
 	# Start Zynthian GUI & Synth Engine
-	./zynthian_gui.py
+	./zynthian_qt_gui.py
 	status=$?
 
 	# Proccess output status
