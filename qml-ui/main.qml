@@ -21,6 +21,8 @@ Kirigami.ApplicationWindow {
     pageStack.defaultColumnWidth: root.width
     pageStack.initialPage: [mainPage, layersPage, banksPage, presetsPage, controlPage]
 
+    CustomTheme {}
+
     // FIXME: this stuff with a newer Kirigami should be done with a PageRouter?
     function ensureVisible(page) {
         let path = [mainPage, layersPage, banksPage, presetsPage, controlPage];

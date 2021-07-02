@@ -43,7 +43,7 @@ import sched
 
 # Qt modules
 from PySide2.QtCore import Qt, QObject, Slot, Signal, Property
-from PySide2.QtGui import QGuiApplication
+from PySide2.QtGui import QGuiApplication, QPalette, QColor
 from PySide2.QtQml import QQmlApplicationEngine
 
 
@@ -1879,6 +1879,17 @@ if __name__ == "__main__":
     logging.info("STARTING ZYNTHIAN-UI ...")
     zynthian_gui_config.zyngui=zyngui=zynthian_gui()
     zyngui.start()
+
+    palette = app.palette()
+    palette.setColor(QPalette.Window, QColor(zynthian_gui_config.color_bg))
+    palette.setColor(QPalette.WindowText, QColor(zynthian_gui_config.color_tx))
+    palette.setColor(QPalette.Button, QColor(zynthian_gui_config.color_bg))
+    palette.setColor(QPalette.ButtonText, QColor(zynthian_gui_config.color_tx))
+    palette.setColor(QPalette.Highlight, QColor(zynthian_gui_config.color_on))
+    palette.setColor(QPalette.Base, QColor(zynthian_gui_config.color_panel_bd))
+    palette.setColor(QPalette.HighlightedText, QColor("#fcfcfc"))
+    app.setPalette(palette)
+
     zyngui.show_screen('main')
 
     engine.rootContext().setContextProperty("zynthian", zyngui)
