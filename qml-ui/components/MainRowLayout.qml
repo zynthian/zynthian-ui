@@ -19,6 +19,33 @@ QQC2.Page {
 
     property int currentIndex: 0
     readonly property Item currentItem: layout.visibleChildren[currentIndex]
+
+
+    function activateItem(item) {
+        let idx = flickable.itemIndex(item);
+        if (idx >= 0) {
+            var i;
+            for (i in layout.children) {
+                layout.children[i].visible = true;
+                if (i == idx) {
+                    break;
+                }
+            }
+            currentIndex = idx;
+        }
+    }
+
+    function ensureLastVisibleItem(item) {
+        let idx = flickable.itemIndex(item);
+        if (idx >= 0) {
+            var i;
+            for (i in layout.children) {
+                layout.children[i].visible = i <= idx;
+            }
+            currentIndex = idx;
+        }
+    }
+
     header: QQC2.ToolBar {
         contentItem: Flickable {
             contentHeight: height
@@ -63,6 +90,19 @@ QQC2.Page {
         property real moveStartContentX
 
         function itemIndex(item) {
+            let idx = -1;
+            var i;
+            for (i in layout.children) {
+                let candidate = layout.children[i];
+                if (candidate === item) {
+                    idx = i;
+                    break;
+                }
+            }
+            return idx;
+        }
+
+        function visibleItemIndex(item) {
             let idx = -1;
             var i;
             for (i in layout.visibleChildren) {
@@ -115,8 +155,7 @@ QQC2.Page {
                     if (itemCenter >= flickable.contentX && itemCenter <= flickable.contentX + flickable.width) {
                         return;
                     }
-                    print(flickable.itemIndex(layout.childAt(Math.floor(flickable.contentX + flickable.width/2), 10)))
-                    root.currentIndex = flickable.itemIndex(layout.childAt(Math.floor(flickable.contentX + flickable.width/2), 10))
+                    root.currentIndex = flickable.visibleItemIndex(layout.childAt(Math.floor(flickable.contentX + flickable.width/2), 10))
                 }
             }
         }
@@ -125,27 +164,6 @@ QQC2.Page {
             id: layout
             spacing: 0
             height: flickable.height
-            Repeater {
-                model: 10
-                visible: false
-                Rectangle {
-                    property string title: index
-                    color: root.currentIndex === index ? "red" : "green"
-                    radius: 20
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: Math.round(index === 9 ? flickable.width : flickable.width / 3)
-                    ColumnLayout {
-                        QQC2.Button {
-                            text: "+1"
-                            onClicked: root.currentIndex++
-                        }
-                        QQC2.Button {
-                            text: "-1"
-                            onClicked: root.currentIndex--
-                        }
-                    }
-                }
-            }
         }
     }
 }
