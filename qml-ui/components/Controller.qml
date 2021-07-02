@@ -38,7 +38,7 @@ Card {
                     fill: parent
                     margins: Kirigami.Units.largeSpacing
                 }
-                stepSize: root.controller.step_size
+                stepSize: root.controller.step_size === 0 ? 1 : root.controller.step_size
                 value: root.controller.value
                 from: 0
                 to: root.controller.max_value
@@ -63,9 +63,11 @@ Card {
                         easing.type: Easing.InOutQuad
                     }
                 }
+                //TODO: with Qt >= 5.12 replace this with inputMode: Dial.Vertical
                 MouseArea {
                     id: dialMouse
                     anchors.fill: parent
+                    preventStealing: true
                     property real startY
                     property real startValue
                     onPressed: {
@@ -74,10 +76,7 @@ Card {
                     }
                     onPositionChanged: {
                         let delta = mouse.y - startY;
-                        print((dial.to / dial.stepSize) * (delta/height));
-                        dial.value = Math.max(dial.from, Math.min(dial.to, startValue + (dial.to / dial.stepSize) * (delta/height)));
-                        dial.moved();
-
+                        root.controller.value = Math.max(dial.from, Math.min(dial.to, startValue - (dial.to / dial.stepSize) * (delta/(Kirigami.Units.gridUnit*10))));
                     }
                 }
             }
@@ -103,6 +102,7 @@ Card {
                 }
             }
         }
+
         QQC2.Label {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter

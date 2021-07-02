@@ -40,29 +40,17 @@ Kirigami.Page {
                 controller: zynthian.control.controller(1)
             }
         }
-        ZComponents.Card {
-            leftPadding: 0
-            rightPadding: 0
+        ZComponents.SelectorView {
+            id: mainView
+            selector: zynthian.control
             Layout.fillWidth: true
             Layout.fillHeight: true
-            contentItem: QQC2.ScrollView {
-                QQC2.ScrollBar.horizontal.visible: false
-                ListView {
-                    id: mainView
-                    keyNavigationEnabled: true
-                    keyNavigationWraps: true
-                    model: zynthian.control.selector_list
-                    currentIndex: zynthian.control.current_index
-                    clip: true
-
-                    delegate: Kirigami.BasicListItem {
-                        label: model.display
-                        checked: mainView.currentIndex == index
-                        onClicked: {
-                            zynthian.control.current_index = index;
-                            zynthian.control.activate_index(index);
-                        }
-                    }
+            delegate: Kirigami.BasicListItem {
+                label: model.display
+                checked: mainView.currentIndex == index
+                onClicked: {
+                    zynthian.control.current_index = index;
+                    zynthian.control.activate_index(index);
                 }
             }
         }

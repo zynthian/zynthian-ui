@@ -35,10 +35,10 @@ Kirigami.Page {
         }
     }
     header: Kirigami.Heading {
-		level: 2
-		text: root.selector.caption
-		visible: false
-	}
+        level: 2
+        text: root.selector.caption
+        visible: false
+    }
 
     contentItem: //RowLayout {
         SelectorView {
