@@ -43,8 +43,6 @@
             A collection of tracks which will play synchronously
         Bank:
             A collection of sequences
-
-    Call init() to initialise JACK client
 */
 
 #include "constants.h"
@@ -66,13 +64,6 @@ extern "C"
 *   @retval bool True if changed since last save
 */
 bool isModified();
-
-/** @brief  Initialise JACK client
-*   @param  bTimebaseMaster True to become timebase master (optional - Default: false)
-*   @note   Call init() before using other library methods
-*   @retval bool True on success
-*/
-bool init(bool bTimebaseMaster = false);
 
 /** @brief  Enable debug output
 *   @param  bEnable True to enable debug output

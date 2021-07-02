@@ -538,7 +538,8 @@ void end()
 
 // ** Library management functions **
 
-__attribute__((constructor)) void foo(void) {
+__attribute__((constructor)) void init(void) {
+    printf("**zynseq initialised**\n");
     // Register with Jack server
     char *sServerName = NULL;
     jack_status_t nStatus;
@@ -579,11 +580,6 @@ __attribute__((constructor)) void foo(void) {
         fprintf(stderr, "libzynseq cannot activate client\n");
         return;
     }
-
-    if(transportRequestTimebase())
-        DPRINTF("Registered as timebase master\n");
-    else
-        DPRINTF("Failed to register as timebase master\n");
 
     // Register the cleanup function to be called when program exits
     atexit(end);
@@ -1831,4 +1827,3 @@ void transportSetSyncTimeout(uint32_t timeout)
 {
     jack_set_sync_timeout(g_pJackClient, timeout);
 }
-
