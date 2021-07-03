@@ -69,7 +69,6 @@ int initJackpeak() {
 	#endif
 
 	// Register the cleanup function to be called when program exits
-	// It raises a segmentation fault on exit, so it's disabled
 	atexit(endJackpeak);
 
 	// Register the callback to calculate peak sample
@@ -84,7 +83,6 @@ int initJackpeak() {
 
 void endJackpeak() {
 	printf("***Jackpeak closing***\n");
-	return;
 	if (g_pJackClient)
 		jack_client_close(g_pJackClient);
 }
