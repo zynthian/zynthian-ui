@@ -538,34 +538,41 @@ void end()
 
 // ** Library management functions **
 
-bool init(bool bTimebaseMaster)
-{
+__attribute__((constructor)) void zynseq(void) {
+    printf("New instance of zynseq\n");
+}
+
+void init(char* name) {
     // Register with Jack server
+    printf("**zynseq initialising as %s**\n", name);
     char *sServerName = NULL;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
     
     if(g_pJackClient)
-        return false; // Already initialised
+    {
+        fprintf(stderr, "libzynseq already initialised\n");
+        return; // Already initialised
+    }
 
-    if((g_pJackClient = jack_client_open("zynthstep", nOptions, &nStatus, sServerName)) == 0)
+    if((g_pJackClient = jack_client_open(name, nOptions, &nStatus, sServerName)) == 0)
     {
         fprintf(stderr, "libzynseq failed to start jack client: %d\n", nStatus);
-        return false;
+        return;
     }
 
     // Create input port
     if(!(g_pInputPort = jack_port_register(g_pJackClient, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0)))
     {
         fprintf(stderr, "libzynseq cannot register input port\n");
-        return false;
+        return;
     }
 
     // Create output port
     if(!(g_pOutputPort = jack_port_register(g_pJackClient, "output", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0)))
     {
         fprintf(stderr, "libzynseq cannot register output port\n");
-        return false;
+        return;
     }
     
     g_nSampleRate = jack_get_sample_rate(g_pJackClient);
@@ -578,21 +585,15 @@ bool init(bool bTimebaseMaster)
 
     if(jack_activate(g_pJackClient)) {
         fprintf(stderr, "libzynseq cannot activate client\n");
-        return false;
+        return;
     }
-
-    if(bTimebaseMaster)
-        if(transportRequestTimebase())
-            DPRINTF("Registered as timebase master\n");
-        else
-            DPRINTF("Failed to register as timebase master\n");
 
     // Register the cleanup function to be called when program exits
     atexit(end);
-        
+
+    transportRequestTimebase();        
     transportStop("zynseq");
     transportLocate(0);
-    return true; //!@todo If library loaded and initialised by Python then methods called too early (soon) it segfaults
 }
 
 bool isModified()
@@ -1834,4 +1835,3 @@ void transportSetSyncTimeout(uint32_t timeout)
 {
     jack_set_sync_timeout(g_pJackClient, timeout);
 }
-

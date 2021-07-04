@@ -218,9 +218,6 @@ class zynthian_gui:
 		except Exception as e:
 			logging.error("ERROR initializing Controllers & MIDI-router: %s" % e)
 
-		try:
-			self.libseq = CDLL("/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
-			self.libseq.init(True)
 		except Exception as e:
 			logging.error("ERROR initializing Sequencer: %s" % e)
 

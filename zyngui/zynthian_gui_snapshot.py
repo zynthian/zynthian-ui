@@ -32,7 +32,6 @@ from shutil import copy
 # Zynthian specific modules
 from . import zynthian_gui_config
 from . import zynthian_gui_selector
-from zynlibs.zynseq import zynseq
 
 #------------------------------------------------------------------------------
 # Zynthian Load/Save Snapshot GUI Class
