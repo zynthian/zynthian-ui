@@ -127,8 +127,8 @@ Kirigami.Page {
     }
 
     Component.onCompleted: {
-		layout.relayoutChildren()
-	}
+        layout.relayoutChildren()
+    }
 
     onCurrentIndexChanged: {
         if (currentIndex < 0 || currentIndex >= layout.visibleChildren.length) {
@@ -136,8 +136,9 @@ Kirigami.Page {
         }
         slideAnim.stop();
         slideAnim.from = flickable.contentX;
-        slideAnim.to = flickable.width * Math.floor((layout.visibleChildren[currentIndex].x + layout.visibleChildren[currentIndex].width/2) / flickable.width);
-        print((layout.visibleChildren[currentIndex]))
+        let child = layout.visibleChildren[currentIndex];
+        slideAnim.to = flickable.width * Math.floor((child.x + child.width/2) / flickable.width);
+        child.forceActiveFocus();
         slideAnim.start();
     }
 
