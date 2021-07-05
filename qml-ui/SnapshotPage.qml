@@ -34,7 +34,6 @@ ZComponents.MainRowLayout {
     id: root
     ZComponents.SelectorPage {
         selector: zynthian.snapshot
-        Layout.minimumWidth: root.width
-        Layout.maximumWidth: Layout.minimumWidth
+        implicitWidth: root.width
     }
 }

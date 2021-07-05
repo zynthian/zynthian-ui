@@ -33,7 +33,7 @@ Kirigami.Page {
     id: root
 
     default property alias data: layout.data
-    readonly property int currentPage: Math.floor((flickable.contentX + flickable.width/2) / flickable.width)
+    readonly property int currentPage: Math.floor((currentItem.x + currentItem.width/2) / flickable.width)
 
     property int currentIndex: 0
     readonly property Item currentItem: layout.visibleChildren[currentIndex]
@@ -92,7 +92,7 @@ Kirigami.Page {
                         checked: root.currentIndex === index
                         opacity: checked ? 1 : 0.8
                         checkable: false
-                        font.pointSize: 15
+                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
                         onClicked: {
                             root.currentIndex = index
                         }
@@ -100,13 +100,18 @@ Kirigami.Page {
                             if (!checked) {
                                 return;
                             }
-                            if (x + width - breadcrumbFlickable.contentX <= breadcrumbFlickable.contentX + breadcrumbFlickable.width) {
-                                return;
+
+                            if (x < breadcrumbFlickable.contentX) {
+                                breadcrumbSlideAnim.stop();
+                                breadcrumbSlideAnim.from = breadcrumbFlickable.contentX;
+                                breadcrumbSlideAnim.to = x;
+                                breadcrumbSlideAnim.start();
+                            } else if (x + width - breadcrumbFlickable.contentX >  breadcrumbFlickable.width) {
+                                breadcrumbSlideAnim.stop();
+                                breadcrumbSlideAnim.from = breadcrumbFlickable.contentX;
+                                breadcrumbSlideAnim.to = Math.min(breadcrumbLayout.width - breadcrumbFlickable.width, x - breadcrumbFlickable.width + width);
+                                breadcrumbSlideAnim.start();
                             }
-                            breadcrumbSlideAnim.stop();
-                            breadcrumbSlideAnim.from = breadcrumbFlickable.contentX;
-                            breadcrumbSlideAnim.to = Math.min(breadcrumbLayout.width - breadcrumbFlickable.width, x + breadcrumbFlickable.width - width);
-                            breadcrumbSlideAnim.start();
                         }
                     }
                 }
@@ -120,6 +125,8 @@ Kirigami.Page {
             }
         }
     }
+
+    Component.onCompleted: layout.relayoutChildren()
 
     onCurrentIndexChanged: {
         if (currentIndex < 0 || currentIndex >= layout.visibleChildren.length) {
@@ -169,6 +176,9 @@ Kirigami.Page {
             return idx;
         }
 
+        onWidthChanged: layout.relayoutChildren();
+        onHeightChanged: layout.relayoutChildren();
+
         onContentXChanged: {
             // Didn't move enough
             if (Math.abs(contentX - moveStartContentX) < root.width / 10) {
@@ -214,16 +224,34 @@ Kirigami.Page {
             }
         }
 
-        RowLayout {
+        Row {
             id: layout
             spacing: 0
             height: flickable.height
-            onChildrenChanged: {
+            onImplicitWidthChanged: {
+                print(implicitWidth)
+                relayoutChildren()
+            }
+            function relayoutChild(child) {
+                child.height = height;
+
+                let endPage = flickable.width * Math.round((child.x + child.implicitWidth) / flickable.width)
+                    if (endPage >= 1 && Math.abs(child.x + child.implicitWidth - endPage) < Kirigami.Units.gridUnit) {
+                        child.width = endPage - child.x;
+                    } else {
+
+                        child.width = child.implicitWidth > 0 ? Math.floor(child.implicitWidth) : flickable.width;
+                    }
+            }
+            function relayoutChildren() {
                 var i;
                 for (i in children) {
-                    children[i].Layout.fillHeight = true;
+                    let child = children[i];
+                    relayoutChild(child);
+                    child.implicitWidthChanged.connect(function() {relayoutChild(child)});
                 }
             }
+            onChildrenChanged: relayoutChildren()
         }
     }
 }

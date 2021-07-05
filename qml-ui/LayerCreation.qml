@@ -35,8 +35,7 @@ ZComponents.MainRowLayout {
 
     ZComponents.SelectorPage {
         selector: zynthian.engine
-        Layout.minimumWidth: root.width
-        Layout.maximumWidth: Layout.minimumWidth
+        implicitWidth: root.width
         onItemActivated: root.activateItem(midiChanPage)
     }
 
@@ -44,8 +43,7 @@ ZComponents.MainRowLayout {
         id: midiChanPage
         selector: zynthian.midi_chan
         visible: false
-        Layout.minimumWidth: root.width
-        Layout.maximumWidth: Layout.minimumWidth
+        implicitWidth: root.width
         onItemActivated: {
             applicationWindow().makeLastVisible(layersPage)
             applicationWindow().pageStack.layers.pop()

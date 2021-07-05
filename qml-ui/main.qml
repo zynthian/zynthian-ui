@@ -43,14 +43,12 @@ Kirigami.ApplicationWindow {
         id: mainRowLayout
         ZComponents.SelectorPage {
             id: mainPage
-            Layout.minimumWidth: mainRowLayout.width
-            Layout.maximumWidth: Layout.minimumWidth
+            implicitWidth: mainRowLayout.width
             selector: zynthian.main
         }
         ZComponents.SelectorPage {
             id: layersPage
-            Layout.minimumWidth: mainRowLayout.width/3
-            Layout.maximumWidth: Layout.minimumWidth
+            implicitWidth: mainRowLayout.width/3
             header.visible: true
             selector: zynthian.layer
         }
@@ -58,22 +56,19 @@ Kirigami.ApplicationWindow {
             id: banksPage
             leftPadding: 0
             rightPadding: 0
-            Layout.minimumWidth: mainRowLayout.width/3
-            Layout.maximumWidth: Layout.minimumWidth
+            implicitWidth: mainRowLayout.width/3
             header.visible: true
             selector: zynthian.bank
         }
         ZComponents.SelectorPage {
             id: presetsPage
-            Layout.minimumWidth: mainRowLayout.width/3
-            Layout.maximumWidth: Layout.minimumWidth
+            implicitWidth: mainRowLayout.width/3
             header.visible: true
             selector: zynthian.preset
         }
         ControlPage {
             id: controlPage
-            Layout.minimumWidth: root.width
-            Layout.maximumWidth: Layout.minimumWidth
+            implicitWidth: mainRowLayout.width
         }
     }
 
