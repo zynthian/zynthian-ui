@@ -126,7 +126,9 @@ Kirigami.Page {
         }
     }
 
-    Component.onCompleted: layout.relayoutChildren()
+    Component.onCompleted: {
+		layout.relayoutChildren()
+	}
 
     onCurrentIndexChanged: {
         if (currentIndex < 0 || currentIndex >= layout.visibleChildren.length) {

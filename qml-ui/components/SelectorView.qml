@@ -83,6 +83,10 @@ QQC2.ScrollView {
             }
         }
     }
-    background:  Card {}
+    background:  Rectangle {
+        color: view.activeFocus ? Kirigami.Theme.highlightColor : Kirigami.Theme.backgroundColor
+        border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.3)
+        radius: Kirigami.Units.gridUnit/2
+    }
 }
 

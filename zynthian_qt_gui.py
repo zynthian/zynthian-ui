@@ -485,6 +485,7 @@ class zynthian_gui(QObject):
 			self.modal_screen_back = None
 		else:
 			self.show_screen()
+		self.current_modal_screen_changed.emit()
 
 
 	def close_modal_timer(self, tms=3000):

@@ -79,6 +79,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		if t=='S':
 			self.zyngui.curlayer.set_preset(i)
+			if self.only_favs:
+				self.zyngui['bank'].fill_list()
 			self.zyngui.show_screen('control')
 		else:
 			self.zyngui.curlayer.toggle_preset_fav(self.list_data[i])

@@ -46,7 +46,7 @@ ZComponents.MainRowLayout {
         implicitWidth: root.width
         onItemActivated: {
            // applicationWindow().makeLastVisible(layersPage)
-           // applicationWindow().pageStack.layers.pop()
+            applicationWindow().pageStack.layers.pop()
         }
     }
 }

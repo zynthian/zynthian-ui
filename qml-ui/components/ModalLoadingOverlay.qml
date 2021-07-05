@@ -33,7 +33,7 @@ Rectangle {
     id: root
     property bool open
 
-    state: "hidden"
+    z: 999999
     color: Qt.rgba(0, 0,0, 0.3)
 
     QQC2.BusyIndicator {
@@ -50,6 +50,7 @@ Rectangle {
     states: [
         State {
             name: "visible"
+            when: zynthian.is_loading
             PropertyChanges {
                 target: root
                 opacity: 1
@@ -58,6 +59,7 @@ Rectangle {
         },
         State {
             name: "hidden"
+            when: !zynthian.is_loading
             PropertyChanges {
                 target: root
                 opacity: 0

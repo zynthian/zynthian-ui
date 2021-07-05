@@ -31,46 +31,48 @@ import org.kde.kirigami 2.6 as Kirigami
 
 import "components" as ZComponents
 
-Kirigami.ApplicationWindow {
+Kirigami.AbstractApplicationWindow {
     id: root
 
     width: screen.width
     height: screen.height
 
-    pageStack.defaultColumnWidth: root.width
-    pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
-    pageStack.initialPage: ZComponents.MainRowLayout {
-        id: mainRowLayout
-        ZComponents.SelectorPage {
-            id: mainPage
-            implicitWidth: mainRowLayout.width
-            selector: zynthian.main
-        }
-        ZComponents.SelectorPage {
-            id: layersPage
-            implicitWidth: mainRowLayout.width/3
-            header.visible: true
-            selector: zynthian.layer
-        }
-        ZComponents.SelectorPage {
-            id: banksPage
-            leftPadding: 0
-            rightPadding: 0
-            implicitWidth: mainRowLayout.width/3
-            header.visible: true
-            selector: zynthian.bank
-        }
-        ZComponents.SelectorPage {
-            id: presetsPage
-            implicitWidth: mainRowLayout.width/3
-            header.visible: true
-            selector: zynthian.preset
-        }
-        ControlPage {
-            id: controlPage
-            implicitWidth: mainRowLayout.width
-        }
-    }
+    ZComponents.LayerManager {
+		id: layerManager
+		initialItem: ZComponents.MainRowLayout {
+			id: mainRowLayout
+			ZComponents.SelectorPage {
+				id: mainPage
+			// icon.name: "go-home"
+				implicitWidth: mainRowLayout.width
+				selector: zynthian.main
+			}
+			ZComponents.SelectorPage {
+				id: layersPage
+				implicitWidth: mainRowLayout.width/3
+				header.visible: true
+				selector: zynthian.layer
+			}
+			ZComponents.SelectorPage {
+				id: banksPage
+				leftPadding: 0
+				rightPadding: 0
+				implicitWidth: mainRowLayout.width/3
+				header.visible: true
+				selector: zynthian.bank
+			}
+			ZComponents.SelectorPage {
+				id: presetsPage
+				implicitWidth: mainRowLayout.width/3
+				header.visible: true
+				selector: zynthian.preset
+			}
+			ControlPage {
+				id: controlPage
+				implicitWidth: mainRowLayout.width
+			}
+		}
+	}
 
     //[mainPage, layersPage, banksPage, presetsPage, controlPage]
 
@@ -84,6 +86,18 @@ Kirigami.ApplicationWindow {
     function makeLastVisible(page) {
         mainRowLayout.ensureLastVisibleItem(page)
     }
+
+    function show_modal(item) {
+		if (layerManager.depth > 1) {
+			layerManager.replace(item);
+		} else {
+			layerManager.push(item);
+		}
+	}
+
+	function close_modal(item) {
+		layerManager.pop(mainRowLayout);
+	}
 
     Connections {
         target: zynthian
@@ -116,28 +130,28 @@ Kirigami.ApplicationWindow {
         onCurrent_modal_screenChanged: {
             switch (zynthian.current_modal_screen) {
             case "engine":
-                root.pageStack.layers.push(Qt.resolvedUrl("./LayerCreation.qml"));
+                 root.show_modal(Qt.resolvedUrl("./LayerCreation.qml"));
                 break;
             case "layer_options":
-                root.pageStack.layers.push(Qt.resolvedUrl("./LayerOptionsPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./LayerOptionsPage.qml"));
                 break;
             case "snapshot":
-                root.pageStack.layers.push(Qt.resolvedUrl("./SnapshotPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./SnapshotPage.qml"));
                 break;
             case "audio_recorder":
-                root.pageStack.layers.push(Qt.resolvedUrl("./AudioRecorderPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./AudioRecorderPage.qml"));
                 break;
             case "midi_recorder":
-                root.pageStack.layers.push(Qt.resolvedUrl("./MidiRecorderPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./MidiRecorderPage.qml"));
                 break;
             case "admin":
-                root.pageStack.layers.push(Qt.resolvedUrl("./AdminPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./AdminPage.qml"));
                 break;
             case "confirm":
                 confirmDialog.open();
                 break;
             case "":
-                root.pageStack.layers.clear()
+                root.close_modal();
                 break;
             default:
                 print("Non managed modal screen " + zynthian.current_modal_screen)
@@ -166,7 +180,7 @@ Kirigami.ApplicationWindow {
     }
 
     ZComponents.ModalLoadingOverlay {
-        parent: root.Overlay.overlay
+        parent: root.contentItem.parent
         anchors.fill: parent
     }
 
@@ -175,15 +189,16 @@ Kirigami.ApplicationWindow {
             QQC2.ToolButton {
                 Layout.fillWidth: true
                 text: qsTr("Back")
-                enabled: mainRowLayout.currentPage > 0 || root.pageStack.layers.depth > 1
+                enabled: mainRowLayout.currentPage > 0 || layerManager.depth > 1
+                opacity: enabled ? 1 : 0.3
                 onClicked: {
-                    if (root.pageStack.layers.depth > 1) {
-                        if (root.pageStack.layers.currentItem.hasOwnProperty("currentIndex")
-                            && root.pageStack.layers.currentItem.currentIndex > 0
+                    if (layerManager.depth > 1) {
+                        if (layerManager.currentItem.hasOwnProperty("currentIndex")
+                            && layerManager.currentItem.currentIndex > 0
                         ) {
-                            root.pageStack.layers.currentItem.currentIndex -= 1;
+                            layerManager.currentItem.currentIndex -= 1;
                         } else {
-                            root.pageStack.layers.pop();
+                            layerManager.pop();
                         }
                     } else {
                         mainRowLayout.goToPreviousPage();
@@ -192,6 +207,8 @@ Kirigami.ApplicationWindow {
             }
             QQC2.ToolButton {
                 Layout.fillWidth: true
+                enabled: layersPage.visible
+                opacity: enabled ? 1 : 0.3
                 text: qsTr("Layers")
                 onClicked: root.ensureVisible(layersPage)
             }
@@ -199,6 +216,7 @@ Kirigami.ApplicationWindow {
                 Layout.fillWidth: true
                 text: mainRowLayout.currentPage === 1 ? qsTr("Favorites") : qsTr("Presets")
                 enabled: presetsPage.visible
+                opacity: enabled ? 1 : 0.3
                 checkable: mainRowLayout.currentPage === 1
                 checked: mainRowLayout.currentPage === 1 && zynthian.preset.show_only_favorites
                 onClicked: root.ensureVisible(presetsPage)
@@ -212,6 +230,7 @@ Kirigami.ApplicationWindow {
                 Layout.fillWidth: true
                 text: qsTr("Edit")
                 enabled: controlPage.visible
+                opacity: enabled ? 1 : 0.3
                 onClicked: root.ensureVisible(controlPage)
             }
             /*QQC2.ToolButton {

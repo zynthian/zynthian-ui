@@ -47,6 +47,7 @@ Kirigami.Page {
 
     bottomPadding: Kirigami.Units.smallSpacing
     Component.onCompleted: view.forceActiveFocus()
+
     onFocusChanged: {
         if (focus) {
             view.forceActiveFocus()
@@ -66,7 +67,7 @@ Kirigami.Page {
             //Layout.maximumWidth: Math.floor(root.width / 4) * 3
             //Layout.minimumWidth: Layout.maximumWidth
             onItemActivated: root.itemActivated(index)
-            onItemActivatedSecondary: toor.itemActivatedSecondary(index)
+            onItemActivatedSecondary: root.itemActivatedSecondary(index)
         }
 
 /*

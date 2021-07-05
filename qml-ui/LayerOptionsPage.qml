@@ -39,7 +39,7 @@ ZComponents.MainRowLayout {
         selector: zynthian.layer_options
 
         onItemActivated: {
-            applicationWindow().makeLastVisible(layersPage)
+            //applicationWindow().makeLastVisible(layersPage)
             applicationWindow().pageStack.layers.pop()
         }
     }
