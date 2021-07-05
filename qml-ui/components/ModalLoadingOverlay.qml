@@ -28,26 +28,49 @@ import QtQuick.Layouts 1.4
 import QtQuick.Controls 2.2 as QQC2
 import org.kde.kirigami 2.4 as Kirigami
 
-import "components" as ZComponents
-
-ZComponents.MainRowLayout {
+//NOTE: this is due to a bug in Kirigami.AbstractCard from Buster's version
+Rectangle {
     id: root
+    property bool open
 
-    ZComponents.SelectorPage {
-        selector: zynthian.engine
-        implicitWidth: root.width
-        onItemActivated: root.activateItem(midiChanPage)
+    state: "hidden"
+    color: Qt.rgba(0, 0,0, 0.3)
+
+    QQC2.BusyIndicator {
+        anchors.centerIn: parent
+        running: zynthian.is_loading
+    }
+    MouseArea {
+        anchors.fill: parent
+        onClicked: {
+            print("Overlay blocing clicks")
+        }
     }
 
-    ZComponents.SelectorPage {
-        id: midiChanPage
-        selector: zynthian.midi_chan
-        visible: false
-        implicitWidth: root.width
-        onItemActivated: {
-           // applicationWindow().makeLastVisible(layersPage)
-           // applicationWindow().pageStack.layers.pop()
+    states: [
+        State {
+            name: "visible"
+            PropertyChanges {
+                target: root
+                opacity: 1
+                visible: true
+            }
+        },
+        State {
+            name: "hidden"
+            PropertyChanges {
+                target: root
+                opacity: 0
+                visible: false
+            }
+        }
+    ]
+    transitions: Transition {
+        NumberAnimation {
+            target: root
+            property: "opacity"
+            duration: Kirigami.Units.longDuration
+            easing.type: Easing.InOutQuad
         }
     }
 }
-

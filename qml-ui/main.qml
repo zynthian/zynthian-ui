@@ -165,6 +165,11 @@ Kirigami.ApplicationWindow {
         onRejected: zynthian.confirm.reject()
     }
 
+    ZComponents.ModalLoadingOverlay {
+        parent: root.Overlay.overlay
+        anchors.fill: parent
+    }
+
     footer: QQC2.ToolBar {
         contentItem: RowLayout {
             QQC2.ToolButton {
@@ -196,11 +201,10 @@ Kirigami.ApplicationWindow {
                 enabled: presetsPage.visible
                 checkable: mainRowLayout.currentPage === 1
                 checked: mainRowLayout.currentPage === 1 && zynthian.preset.show_only_favorites
+                onClicked: root.ensureVisible(presetsPage)
                 onCheckedChanged: {
                     if (mainRowLayout.currentPage === 1) {
                         zynthian.preset.show_only_favorites = checked
-                    } else {
-                        root.ensureVisible(presetsPage)
                     }
                 }
             }

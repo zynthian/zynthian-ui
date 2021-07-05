@@ -55,7 +55,7 @@ Kirigami.Page {
     header: Kirigami.Heading {
         level: 2
         text: root.selector.caption
-        leftPadding: Kirigami.Units.largeSpacing
+        leftPadding: root.leftPadding + Kirigami.Units.largeSpacing
         visible: false
     }
 
