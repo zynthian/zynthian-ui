@@ -36,7 +36,7 @@ Kirigami.Page {
     readonly property int currentPage: Math.floor((currentItem.x + currentItem.width/2) / flickable.width)
 
     property int currentIndex: 0
-    readonly property Item currentItem: layout.visibleChildren[currentIndex]
+    readonly property Item currentItem: currentIndex >= 0 ? layout.visibleChildren[currentIndex] : null
 
     leftPadding: 0
     topPadding: 0
