@@ -76,6 +76,28 @@ Item {
 			Layout.fillHeight: true
 
 			Rectangle {
+				id: holdSignalARect
+				anchors {
+					top: parent.top
+					bottom: parent.bottom
+				}
+				opacity: 0
+				implicitWidth: Kirigami.Units.smallSpacing
+				color: "#da4453"
+				Behavior on x {
+					XAnimator {
+						duration: Kirigami.Units.shortDuration
+						easing.type: Easing.InOutQuad
+					}
+				}
+				Behavior on opacity {
+					OpacityAnimator {
+						duration: Kirigami.Units.longDuration
+						easing.type: Easing.InOutQuad
+					}
+				}
+			}
+			Rectangle {
 				id: highSignalARect
 				anchors {
 					top: parent.top
@@ -102,8 +124,14 @@ Item {
 				}
 				color: "#11d116"
 			}
+		}
+
+		Item {
+			Layout.fillWidth: true
+			Layout.fillHeight: true
+
 			Rectangle {
-				id: holdSignalARect
+				id: holdSignalBRect
 				anchors {
 					top: parent.top
 					bottom: parent.bottom
@@ -124,12 +152,6 @@ Item {
 					}
 				}
 			}
-		}
-
-		Item {
-			Layout.fillWidth: true
-			Layout.fillHeight: true
-
 			Rectangle {
 				id: highSignalBRect
 				anchors {
@@ -156,28 +178,6 @@ Item {
 					left: parent.left
 				}
 				color: "#11d116"
-			}
-			Rectangle {
-				id: holdSignalBRect
-				anchors {
-					top: parent.top
-					bottom: parent.bottom
-				}
-				opacity: 0
-				implicitWidth: Kirigami.Units.smallSpacing
-				color: "#da4453"
-				Behavior on x {
-					XAnimator {
-						duration: Kirigami.Units.shortDuration
-						easing.type: Easing.InOutQuad
-					}
-				}
-				Behavior on opacity {
-					OpacityAnimator {
-						duration: Kirigami.Units.longDuration
-						easing.type: Easing.InOutQuad
-					}
-				}
 			}
 		}
 	}
