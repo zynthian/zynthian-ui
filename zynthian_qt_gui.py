@@ -42,7 +42,7 @@ import sched
 
 
 # Qt modules
-from PySide2.QtCore import Qt, QObject, Slot, Signal, Property
+from PySide2.QtCore import Qt, QObject, Slot, Signal, Property, QTimer
 from PySide2.QtGui import QGuiApplication, QPalette, QColor
 from PySide2.QtQml import QQmlApplicationEngine
 
@@ -102,6 +102,103 @@ from pathlib import Path
 from layerswrapper import LayersController
 from layerswrapper import LayersListModel
 from controlwrapper import ControlWrapper, ControllerWrapper
+
+
+#-------------------------------------------------------------------------------
+# QObject to bridge status data to QML (ie audio levels, cpu levels etc
+#-------------------------------------------------------------------------------
+class zynthian_gui_status_data(QObject):
+	def __init__(self, parent=None):
+		super(zynthian_gui_status_data, self).__init__(parent)
+		self.status_info = {}
+		self.status_info['cpu_load'] = 0
+		self.status_info['peakA'] = 0
+		self.status_info['peakB'] = 0
+		self.status_info['holdA'] = 0
+		self.status_info['holdB'] = 0
+		self.status_info['xrun'] = False
+		self.status_info['undervoltage'] = False
+		self.status_info['overtemp'] = False
+		self.status_info['audio_recorder'] = False
+		self.status_info['midi_recorder'] = False
+
+		self.dpm_rangedB = 30 # Lowest meter reading in -dBFS
+		self.dpm_highdB = 10 # Start of yellow zone in -dBFS
+		self.dpm_overdB = 3  # Start of red zone in -dBFS
+		self.dpm_high = 1 - self.dpm_highdB / self.dpm_rangedB
+		self.dpm_over = 1 - self.dpm_overdB / self.dpm_rangedB
+
+
+	def set_status(self, status):
+		self.status_info = status;
+		self.status_changed.emit()
+
+	def get_cpu_load(self):
+		return self.status_info['cpu_load']
+
+	def get_peakA(self):
+		return self.status_info['peakA']
+
+	def get_peakB(self):
+		return self.status_info['peakB']
+
+	def get_holdA(self):
+		return self.status_info['holdA']
+
+	def get_holdB(self):
+		return self.status_info['holdB']
+
+	def get_xrun(self):
+		return self.status_info['xrun']
+
+	def get_undervoltage(self):
+		return self.status_info['undervoltage']
+
+	def get_overtemp(self):
+		return self.status_info['overtemp']
+
+	def get_audio_recorder(self):
+		return self.status_info['audio_recorder']
+
+	def get_midi_recorder(self):
+		return self.status_info['midi_recorder']
+
+
+	def get_rangedB(self):
+		return self.dpm_rangedB
+
+	def get_highdB(self):
+		return self.dpm_highdB
+
+	def get_overdB(self):
+		return self.dpm_overdB
+
+	def get_high(self):
+		return self.dpm_high
+
+	def get_over(self):
+		return self.dpm_over
+
+
+	status_changed = Signal()
+
+	cpu_load = Property(float, get_cpu_load, notify = status_changed)
+	peakA = Property(float, get_peakA, notify = status_changed)
+	peakB = Property(float, get_peakB, notify = status_changed)
+	holdA = Property(float, get_holdA, notify = status_changed)
+	holdB = Property(float, get_holdB, notify = status_changed)
+	xrun = Property(bool, get_xrun, notify = status_changed)
+	undervoltage = Property(bool, get_undervoltage, notify = status_changed)
+	overtemp = Property(bool, get_overtemp, notify = status_changed)
+	audio_recorder = Property(str, get_audio_recorder, notify = status_changed)
+	midi_recorder = Property(str, get_midi_recorder, notify = status_changed)
+
+	rangedB = Property(float, get_rangedB, constant = True)
+	highdB = Property(float, get_highdB, constant = True)
+	overdB = Property(float, get_overdB, constant = True)
+	high = Property(float, get_high, constant = True)
+	over = Property(float, get_over, constant = True)
+
 
 #-------------------------------------------------------------------------------
 # Zynthian Main GUI Class
@@ -190,6 +287,10 @@ class zynthian_gui(QObject):
 		self.dtsw = []
 		self.polling = False
 		self.scheduler = sched.scheduler(time.time, time.sleep)
+		self.timer = QTimer(self)
+		self.timer.setInterval(200)
+		self.timer.setSingleShot(False)
+		self.timer.timeout.connect(self.timer_expired)
 
 		self.loading = 0
 		self.loading_thread = None
@@ -204,6 +305,7 @@ class zynthian_gui(QObject):
 		self.midi_learn_zctrl = None
 
 		self.status_info = {}
+		self.status_object = zynthian_gui_status_data(self)
 		self.status_counter = 0
 
 		self.zynautoconnect_audio_flag = False
@@ -370,7 +472,6 @@ class zynthian_gui(QObject):
 		self.screens['main'] = zynthian_gui_main(self)
 		self.screens['admin'] = zynthian_gui_admin(self)
 		#self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration(self)
-
 		# Create UI Apps Screens
 		#self.screens['alsa_mixer'] = self.screens['control']
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder(self)
@@ -1512,17 +1613,23 @@ class zynthian_gui(QObject):
 
 	def start_polling(self):
 		self.polling=True
+		self.timer.start()
 		self.zyngine_refresh()
 		self.refresh_status()
 
 
 	def stop_polling(self):
 		self.polling=False
+		self.timer.stop()
 
+	def timer_expired(self):
+		self.zyngine_refresh()
+		self.refresh_status()
+		#logging.error("refreshed status")
 
+	# FIXME: is this actually used?
 	def after(self, msec, func):
-		self.scheduler.enter(msec, 1, func)
-		self.scheduler.run(False)
+		QTimer.singleShot(msec, func)
 
 
 	def zyngine_refresh(self):
@@ -1543,13 +1650,11 @@ class zynthian_gui(QObject):
 			logging.exception(e)
 
 		# Poll
-		if self.polling:
-			self.scheduler.enter(200, 1, self.refresh_status)
-			self.scheduler.run(False);
+		#if self.polling:
+			#QTimer.singleShot(160, self.zyngine_refresh)
 
 
 	def refresh_status(self):
-		print("REFRESHING status")
 		if self.exit_flag:
 			return
 
@@ -1596,6 +1701,8 @@ class zynthian_gui(QObject):
 
 			# Refresh On-Screen Status
 			try:
+				self.status_object.set_status(self.status_info)
+
 				if self.modal_screen:
 					self.screens[self.modal_screen].refresh_status(self.status_info)
 				elif self.active_screen:
@@ -1608,15 +1715,15 @@ class zynthian_gui(QObject):
 			self.status_info['midi'] = False
 			self.status_info['midi_clock'] = False
 
-			if self.polling:
-				self.scheduler.enter(200, 1, self.refresh_status)
+			#if self.polling:
+				#QTimer.singleShot(200, self.refresh_status)
 
 		except Exception as e:
 			logging.exception(e)
 
 		# Poll
-		if self.polling:
-			self.scheduler.enter(200, 1, self.refresh_status)
+		#if self.polling:
+			#QTimer.singleShot(200, self.refresh_status)
 
 
 	#------------------------------------------------------------------
@@ -1796,6 +1903,8 @@ class zynthian_gui(QObject):
 	def get_current_modal_screen(self):
 		return self.modal_screen
 
+	def get_status_information(self):
+		return self.status_object
 
 
 	def get_info(self):
@@ -1844,13 +1953,14 @@ class zynthian_gui(QObject):
 	current_screen_changed = Signal()
 	current_modal_screen_changed = Signal()
 	is_loading_changed = Signal()
+	status_info_changed = Signal()
 
 	current_screen = Property(str, get_current_screen, notify = current_screen_changed)
 	current_modal_screen = Property(str, get_current_modal_screen, notify = current_modal_screen_changed)
 
 	is_loading = Property(bool, get_is_loading, notify = is_loading_changed)
 
-
+	status_information = Property(QObject, get_status_information, constant = True)
 
 	info = Property(QObject, get_info, constant = True)
 	confirm = Property(QObject, get_confirm, constant = True)

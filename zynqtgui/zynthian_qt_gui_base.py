@@ -39,4 +39,7 @@ class ZynGui(QObject):
     def set_select_path(self):
         pass
 
+    def refresh_status(self, status={}):
+        pass
+
 #------------------------------------------------------------------------------

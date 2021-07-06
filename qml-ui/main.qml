@@ -41,6 +41,9 @@ Kirigami.AbstractApplicationWindow {
 		id: layerManager
 		initialItem: ZComponents.MainRowLayout {
 			id: mainRowLayout
+
+			rightHeaderControl: ZComponents.StatusInfo{}
+
 			ZComponents.SelectorPage {
 				id: mainPage
 			// icon.name: "go-home"
@@ -78,6 +81,15 @@ Kirigami.AbstractApplicationWindow {
 
     CustomTheme {}
 
+    //Timer {
+		//interval: 200
+		//repeat: true
+		//running: true
+		//onTriggered: {
+			//print("Timeout qml side")
+			//zynthian.timer_expired()
+		//}
+	//}
     // FIXME: this stuff with a newer Kirigami should be done with a PageRouter?
     function ensureVisible(page) {
         mainRowLayout.activateItem(page)

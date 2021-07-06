@@ -32,6 +32,9 @@ import org.kde.kirigami 2.4 as Kirigami
 Kirigami.Page {
     id: root
 
+    property alias leftHeaderControl: leftHeaderControl.contentItem
+    property alias rightHeaderControl: rightHeaderControl.contentItem
+
     default property alias data: layout.data
     readonly property int currentPage: Math.floor((currentItem.x + currentItem.width/2) / flickable.width)
 
@@ -78,50 +81,65 @@ Kirigami.Page {
     }
 
     header: QQC2.ToolBar {
-        contentItem: Flickable {
-            id: breadcrumbFlickable
-            contentHeight: height
-            contentWidth: breadcrumbLayout.width
-            RowLayout {
-                id: breadcrumbLayout
-                spacing: 0
-                Repeater {
-                    model: layout.visibleChildren.length
-                    QQC2.ToolButton {
-                        text: (index > 0 ? "> ": "") + layout.visibleChildren[index].title
-                        checked: root.currentIndex === index
-                        opacity: checked ? 1 : 0.8
-                        checkable: false
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
-                        onClicked: {
-                            root.currentIndex = index
-                        }
-                        onCheckedChanged: {
-                            if (!checked) {
-                                return;
+        contentItem: RowLayout {
+            QQC2.Control {
+                id: leftHeaderControl
+                Layout.fillHeight: true
+                visible: contentItem !== null
+            }
+            Flickable {
+                id: breadcrumbFlickable
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                contentHeight: height
+                contentWidth: breadcrumbLayout.width
+                RowLayout {
+                    id: breadcrumbLayout
+                    spacing: 0
+                    Repeater {
+                        model: layout.visibleChildren.length
+                        QQC2.ToolButton {
+                            text: (index > 0 ? "> ": "") + layout.visibleChildren[index].title
+                            checked: root.currentIndex === index
+                            opacity: checked ? 1 : 0.8
+                            checkable: false
+                            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
+                            onClicked: {
+                                root.currentIndex = index
                             }
+                            onCheckedChanged: {
+                                if (!checked) {
+                                    return;
+                                }
 
-                            if (x < breadcrumbFlickable.contentX) {
-                                breadcrumbSlideAnim.stop();
-                                breadcrumbSlideAnim.from = breadcrumbFlickable.contentX;
-                                breadcrumbSlideAnim.to = x;
-                                breadcrumbSlideAnim.start();
-                            } else if (x + width - breadcrumbFlickable.contentX >  breadcrumbFlickable.width) {
-                                breadcrumbSlideAnim.stop();
-                                breadcrumbSlideAnim.from = breadcrumbFlickable.contentX;
-                                breadcrumbSlideAnim.to = Math.min(breadcrumbLayout.width - breadcrumbFlickable.width, x - breadcrumbFlickable.width + width);
-                                breadcrumbSlideAnim.start();
+                                if (x < breadcrumbFlickable.contentX) {
+                                    breadcrumbSlideAnim.stop();
+                                    breadcrumbSlideAnim.from = breadcrumbFlickable.contentX;
+                                    breadcrumbSlideAnim.to = x;
+                                    breadcrumbSlideAnim.start();
+                                } else if (x + width - breadcrumbFlickable.contentX >  breadcrumbFlickable.width) {
+                                    breadcrumbSlideAnim.stop();
+                                    breadcrumbSlideAnim.from = breadcrumbFlickable.contentX;
+                                    breadcrumbSlideAnim.to = Math.min(breadcrumbLayout.width - breadcrumbFlickable.width, x - breadcrumbFlickable.width + width);
+                                    breadcrumbSlideAnim.start();
+                                }
                             }
                         }
                     }
                 }
+                NumberAnimation {
+                    id: breadcrumbSlideAnim
+                    target: breadcrumbFlickable
+                    property: "contentX"
+                    duration: Kirigami.Units.longDuration
+                    easing.type: Easing.InOutQuad
+                }
             }
-            NumberAnimation {
-                id: breadcrumbSlideAnim
-                target: breadcrumbFlickable
-                property: "contentX"
-                duration: Kirigami.Units.longDuration
-                easing.type: Easing.InOutQuad
+            QQC2.Control {
+                id: rightHeaderControl
+                Layout.fillHeight: true
+                visible: contentItem !== null
             }
         }
     }
