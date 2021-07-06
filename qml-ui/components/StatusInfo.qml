@@ -181,4 +181,32 @@ Item {
 			}
 		}
 	}
+
+	RowLayout {
+		id: statusIconsLayout
+		anchors {
+			right: parent.right
+			bottom: parent.bottom
+		}
+		height: Math.min(parent.height / 2, Kirigami.Units.iconSizes.smallMedium)
+		Kirigami.Icon {
+			Layout.fillHeight: true
+			Layout.preferredWidth: height
+			source: "dialog-warning-symbolic"
+			color: "red"
+			visible: zynthian.status_information.xrun
+		}
+		Kirigami.Icon {
+			Layout.fillHeight: true
+			Layout.preferredWidth: height
+			source: "preferences-system-power"
+			visible: zynthian.status_information.undervoltage
+		}
+		Kirigami.Icon {
+			Layout.fillHeight: true
+			Layout.preferredWidth: height
+			source: "media-record-symbolic"
+			visible: zynthian.status_information.audio_recorder || zynthian.status_information.midi_recorder
+		}
+	}
 }

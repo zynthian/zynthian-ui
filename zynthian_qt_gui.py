@@ -43,7 +43,7 @@ import sched
 
 # Qt modules
 from PySide2.QtCore import Qt, QObject, Slot, Signal, Property, QTimer
-from PySide2.QtGui import QGuiApplication, QPalette, QColor
+from PySide2.QtGui import QGuiApplication, QPalette, QColor, QIcon
 from PySide2.QtQml import QQmlApplicationEngine
 
 
@@ -152,7 +152,10 @@ class zynthian_gui_status_data(QObject):
 		return self.status_info['xrun']
 
 	def get_undervoltage(self):
-		return self.status_info['undervoltage']
+		if 'undervoltage' in self.status_info:
+			return self.status_info['undervoltage']
+		else:
+			return False
 
 	def get_overtemp(self):
 		return self.status_info['overtemp']
@@ -1990,6 +1993,9 @@ if __name__ == "__main__":
     logging.info("STARTING ZYNTHIAN-UI ...")
     zynthian_gui_config.zyngui=zyngui=zynthian_gui()
     zyngui.start()
+
+    QIcon.setThemeName("breeze")
+    print(QIcon.fromTheme("start-here"))
 
     palette = app.palette()
     palette.setColor(QPalette.Window, QColor(zynthian_gui_config.color_bg))
