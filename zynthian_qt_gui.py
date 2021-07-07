@@ -571,8 +571,8 @@ class zynthian_gui(QObject):
 		self.modal_screen = None
 		self.modal_screen_back = None
 		self.lock.release()
-		self.current_screen_changed.emit()
-		self.current_modal_screen_changed.emit()
+		self.current_screen_id_changed.emit()
+		self.current_modal_screen_id_changed.emit()
 
 
 	def show_active_screen(self):
@@ -598,7 +598,8 @@ class zynthian_gui(QObject):
 		self.modal_screen=screen
 		self.screens[screen].show()
 		self.hide_screens(exclude=screen)
-		self.current_modal_screen_changed.emit()
+		self.current_modal_screen_id_changed.emit()
+		self.current_screen_id_changed.emit()
 
 	def close_modal(self):
 		self.cancel_modal_timer()
@@ -607,7 +608,7 @@ class zynthian_gui(QObject):
 			self.modal_screen_back = None
 		else:
 			self.show_screen()
-		self.current_modal_screen_changed.emit()
+		self.current_modal_screen_id_changed.emit()
 
 
 	def close_modal_timer(self, tms=3000):
@@ -646,7 +647,7 @@ class zynthian_gui(QObject):
 		self.modal_screen='confirm'
 		self.screens['confirm'].show(text, callback, cb_params)
 		self.hide_screens(exclude='confirm')
-		self.current_modal_screen_changed.emit()
+		self.current_modal_screen_id_changed.emit()
 
 
 	def show_keyboard(self, callback, text="", max_chars=None):
@@ -654,7 +655,7 @@ class zynthian_gui(QObject):
 		self.modal_screen="keyboard"
 		self.screens['keyboard'].show(callback, text, max_chars)
 		self.hide_screens(exclude='keyboard')
-		self.current_modal_screen_changed.emit()
+		self.current_modal_screen_id_changed.emit()
 
 
 	def show_info(self, text, tms=None):
@@ -664,7 +665,7 @@ class zynthian_gui(QObject):
 		self.hide_screens(exclude='info')
 		if tms:
 			self.hide_info_timer()
-		self.current_modal_screen_changed.emit()
+		self.current_modal_screen_id_changed.emit()
 
 
 	def add_info(self, text, tags=None):
@@ -711,9 +712,11 @@ class zynthian_gui(QObject):
 
 		if self.curlayer:
 			# If there is a preset selection for the active layer ...
-			if self.curlayer.get_preset_name():
+			if zynthian_gui_config.automatically_show_control_page and self.curlayer.get_preset_name():
 				self.show_screen('control')
 			else:
+				if self.curlayer.get_preset_name():
+					self.screens['control'].preload()
 				if modal:
 					self.show_modal('bank')
 				else:
@@ -754,7 +757,7 @@ class zynthian_gui(QObject):
 		self.active_screen='control'
 		self.screens['control'].set_mode_control()
 		logging.debug("SHOW CONTROL-XY => %s, %s" % (xctrl.symbol, yctrl.symbol))
-		self.current_modal_screen_changed.emit()
+		self.current_modal_screen_id_changed.emit()
 
 
 	def set_curlayer(self, layer, save=False):
@@ -916,13 +919,13 @@ class zynthian_gui(QObject):
 
 		elif cuia == "LAYER_UP":
 			try:
-				self.get_current_screen().layer_up()
+				self.screens['layer'].layer_up()
 			except:
 				pass
 
 		elif cuia == "LAYER_DOWN":
 			try:
-				self.get_current_screen().layer_down()
+				self.screens['layer'].layer_down()
 			except:
 				pass
 
@@ -1659,7 +1662,7 @@ class zynthian_gui(QObject):
 				self.stop()
 				self.wait_threads_end()
 				logging.info("EXITING ZYNTHIAN-UI ...")
-				zynthian_gui_config.top.quit()
+				zynthian_gui_config.app.quit()
 				return
 			# Refresh Current Layer
 			elif self.curlayer and not self.loading:
@@ -1749,6 +1752,7 @@ class zynthian_gui(QObject):
 	@Slot(str)
 	def process_keybinding_shortcut(self, keyseq):
 		action = zynthian_gui_keybinding.getInstance().get_key_action(keyseq)
+
 		if action != None:
 			zyngui.callable_ui_action(action)
 
@@ -1924,10 +1928,13 @@ class zynthian_gui(QObject):
 		return self.screens['layer'].amixer_layer.engine.allow_headphones()
 
 
-	def get_current_screen(self):
-		return self.screens[self.active_screen]
+	def get_current_screen_id(self):
+		if self.modal_screen:
+			return self.modal_screen
+		else:
+			return self.active_screen
 
-	def get_current_modal_screen(self):
+	def get_current_modal_screen_id(self):
 		return self.modal_screen
 
 	def get_status_information(self):
@@ -1980,13 +1987,13 @@ class zynthian_gui(QObject):
 		return self.screens['midi_recorder']
 
 
-	current_screen_changed = Signal()
-	current_modal_screen_changed = Signal()
+	current_screen_id_changed = Signal()
+	current_modal_screen_id_changed = Signal()
 	is_loading_changed = Signal()
 	status_info_changed = Signal()
 
-	current_screen = Property(str, get_current_screen, notify = current_screen_changed)
-	current_modal_screen = Property(str, get_current_modal_screen, notify = current_modal_screen_changed)
+	current_screen_id = Property(str, get_current_screen_id, show_screen, notify = current_screen_id_changed)
+	current_modal_screen_id = Property(str, get_current_modal_screen_id, notify = current_modal_screen_id_changed)
 
 	is_loading = Property(bool, get_is_loading, notify = is_loading_changed)
 
@@ -2145,7 +2152,8 @@ if __name__ == "__main__":
 		sys.exit(-1)
 
 	# assuming there is one and only one window for now
-	zyngui.top = app.topLevelWindows()[0]
+	zynthian_gui_config.top = app.topLevelWindows()[0]
+	zynthian_gui_config.app = app
 
 	sys.exit(app.exec_())
 

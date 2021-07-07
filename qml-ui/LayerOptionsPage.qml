@@ -36,11 +36,11 @@ ZComponents.MainRowLayout {
     ZComponents.SelectorPage {
         implicitWidth: root.width
 
-        selector: zynthian.layer_options
+        selectorId: "layer_options"
 
         onItemActivated: {
             //applicationWindow().makeLastVisible(layersPage)
-            applicationWindow().pageStack.layers.pop()
+           // applicationWindow().pageStack.layers.pop()
         }
     }
 }

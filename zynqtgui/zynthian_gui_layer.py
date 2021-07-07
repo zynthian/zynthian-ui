@@ -133,6 +133,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.layer_options()
 		self.zyngui.screens['bank'].show()
 
+	def layer_up(self):
+		self.previous(zynthian_gui_config.automatically_show_control_page)
+		self.select_action(self.index)
+
+	def layer_down(self):
+		self.next(zynthian_gui_config.automatically_show_control_page)
+		self.select_action(self.index)
 
 	def reset_confirmed(self, params=None):
 		if len(self.zyngui.screens['layer'].layers)>0:
@@ -171,6 +178,21 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.index += 1
 				if self.index>=len(self.root_layers):
 					self.index = 0
+
+			if control:
+				self.select_listbox(self.index)
+				self.layer_control()
+			else:
+				self.zyngui.set_curlayer(self.root_layers[self.index])
+				self.select(self.index)
+
+	def previous(self, control=True):
+		self.zyngui.restore_curlayer()
+		if len(self.root_layers)>1:
+			if self.zyngui.curlayer in self.layers:
+				self.index -= 1
+				if self.index < 0:
+					self.index = len(self.root_layers) - 1
 
 			if control:
 				self.select_listbox(self.index)

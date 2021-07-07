@@ -509,6 +509,8 @@ audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
 #------------------------------------------------------------------------------
 experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES',"zynseq").split(',')
 
+automatically_show_control_page = False
+
 #------------------------------------------------------------------------------
 # X11 Related Stuff
 #------------------------------------------------------------------------------

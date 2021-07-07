@@ -72,6 +72,11 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 		self.set_selector()
 		self.set_select_path()
 
+	def preload(self):
+		self.zyngui.restore_curlayer()
+		self.fill_list()
+		self.set_selector()
+		self.set_select_path()
 
 
 	def set_selector(self, zs_hiden=False):

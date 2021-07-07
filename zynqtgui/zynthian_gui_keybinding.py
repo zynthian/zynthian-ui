@@ -57,6 +57,7 @@ class zynthian_gui_keybinding(QObject):
 
 	qt_modifiers = {
 		1: 'Shift',
+		2: 'Meta', #TODO: replace caps with meta everywhere
 		4: 'Ctrl',
 		8: 'Alt'
 	}

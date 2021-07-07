@@ -34,8 +34,6 @@ import "components" as ZComponents
 ZComponents.MainRowLayout {
     id: root
     ZComponents.SelectorPage {
-        selector: zynthian.admin
-        Layout.minimumWidth: root.width
-        Layout.maximumWidth: Layout.minimumWidth
+        selectorId: "admin"
     }
 }

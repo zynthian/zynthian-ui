@@ -100,7 +100,8 @@ Kirigami.Page {
                     Repeater {
                         model: layout.visibleChildren.length
                         QQC2.ToolButton {
-                            text: (index > 0 ? "> ": "") + layout.visibleChildren[index].title
+                            text: index > 0 ? "> " +layout.visibleChildren[index].title: ""
+                            icon.name: layout.visibleChildren[index].iconName
                             checked: root.currentIndex === index
                             opacity: checked ? 1 : 0.8
                             checkable: false

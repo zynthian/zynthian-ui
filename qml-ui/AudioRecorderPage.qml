@@ -33,7 +33,6 @@ import "components" as ZComponents
 ZComponents.MainRowLayout {
     id: root
     ZComponents.SelectorPage {
-        selector: zynthian.audio_recorder
-        implicitWidth: root.width
+        selectorId: "audio_recorder"
     }
 }

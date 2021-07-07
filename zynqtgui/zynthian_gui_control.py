@@ -76,6 +76,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 		#	for zc in self.zgui_controllers: zc.hide()
 		#	if self.zselector: self.zselector.hide()
 
+	def preload(self):
+		super().preload()
+		self.set_controller_screen()
 
 	def fill_list(self):
 		self.list_data = []
@@ -115,7 +118,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def controller(self, index):
 		if index < 0 or index >= len(self.zgui_controllers):
 			return None
-		print(self.zgui_controllers[index])
 		return self.zgui_controllers[index]
 
 	def lock_controllers(self):

@@ -33,7 +33,7 @@ import "components" as ZComponents
 ZComponents.MainRowLayout {
     id: root
     ZComponents.SelectorPage {
-        selector: zynthian.snapshot
+        selectorId: "snapshot"
         implicitWidth: root.width
     }
 }

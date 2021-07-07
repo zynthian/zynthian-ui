@@ -33,8 +33,9 @@ import "components" as ZComponents
 Kirigami.Page {
     id: root
     title: zynthian.control.selector_path_element
-   // title: "Control"
+    // title: "Control"
 
+    signal itemActivated(int index)
     Component.onCompleted: {
         mainView.forceActiveFocus()
     }
@@ -52,15 +53,15 @@ Kirigami.Page {
             Layout.fillHeight: true
             ZComponents.Controller {
                 // FIXME: this always assumes there are always exactly 4 controllers for the entire lifetime
-                controller: zynthian.control.controller(0)
+                controller: zynthian.control.controllers_count > 0 ? zynthian.control.controller(0) : null
             }
             ZComponents.Controller {
-                controller: zynthian.control.controller(1)
+                controller: zynthian.control.controllers_count > 1 ? zynthian.control.controller(1) : null
             }
         }
         ZComponents.SelectorView {
             id: mainView
-            selector: zynthian.control
+            selectorId: "control"
             Layout.fillWidth: true
             Layout.fillHeight: true
             delegate: Kirigami.BasicListItem {
@@ -69,6 +70,7 @@ Kirigami.Page {
                 onClicked: {
                     zynthian.control.current_index = index;
                     zynthian.control.activate_index(index);
+                    root.itemActivated(index)
                 }
             }
         }
@@ -77,10 +79,10 @@ Kirigami.Page {
             Layout.minimumWidth: Layout.maximumWidth
             Layout.fillHeight: true
             ZComponents.Controller {
-                controller: zynthian.control.controller(2)
+                controller: zynthian.control.controllers_count > 2 ? zynthian.control.controller(2) : null
             }
             ZComponents.Controller {
-                controller: zynthian.control.controller(3)
+                controller: zynthian.control.controllers_count > 3 ? zynthian.control.controller(3) : null
             }
         }
     }

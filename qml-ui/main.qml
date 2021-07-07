@@ -38,82 +38,95 @@ Kirigami.AbstractApplicationWindow {
     height: screen.height
 
     ZComponents.LayerManager {
-		id: layerManager
-		initialItem: ZComponents.MainRowLayout {
-			id: mainRowLayout
+        id: layerManager
+        initialItem: ZComponents.MainRowLayout {
+            id: mainRowLayout
 
-			rightHeaderControl: ZComponents.StatusInfo{}
+            rightHeaderControl: ZComponents.StatusInfo{}
 
-			ZComponents.SelectorPage {
-				id: mainPage
-			// icon.name: "go-home"
-				implicitWidth: mainRowLayout.width
-				selector: zynthian.main
-// 				header: RowLayout {
-// 					Repeater {
-// 						model: zynthian.keybinding.key_sequences_model
-// 						QQC2.Label {
-// 							text: model.display.indexOf("M") !== -1 ? model.display : ""
-// 							Shortcut {
-// 								sequence: model.display
-// 								context: Qt.ApplicationShortcut
-// 								onActivated: zynthian.process_keybinding_shortcut(model.display)
-// 								onActivatedAmbiguously: zynthian.process_keybinding_shortcut(model.display)
-// 							}
-// 						}
-// 					}
-// 				}
-			}
-			ZComponents.SelectorPage {
-				id: layersPage
-				implicitWidth: mainRowLayout.width/3
-				header.visible: true
-				selector: zynthian.layer
-			}
-			ZComponents.SelectorPage {
-				id: banksPage
-				leftPadding: 0
-				rightPadding: 0
-				implicitWidth: mainRowLayout.width/3
-				header.visible: true
-				selector: zynthian.bank
-			}
-			ZComponents.SelectorPage {
-				id: presetsPage
-				implicitWidth: mainRowLayout.width/3
-				header.visible: true
-				selector: zynthian.preset
-			}
-			ControlPage {
-				id: controlPage
-				implicitWidth: mainRowLayout.width
-			}
-		}
-	}
+            ZComponents.SelectorPage {
+                id: mainPage
+                iconName: "go-home"
+                implicitWidth: mainRowLayout.width
+                selectorId: "main"
+				//FIXME: find something more generic
+				onItemActivated: zynthian.current_screen_id = selectorId
+				onFocusChanged: {
+					if (focus) {
+						zynthian.current_screen_id = selectorId
+					}
+				}
+            }
+            ZComponents.SelectorPage {
+                id: layersPage
+                implicitWidth: mainRowLayout.width/3
+                header.visible: true
+                selectorId: "layer"
+				//FIXME: find something more generic
+				onItemActivated: zynthian.current_screen_id = selectorId
+				onFocusChanged: {
+					if (focus) {
+						zynthian.current_screen_id = selectorId
+					}
+				}
+            }
+            ZComponents.SelectorPage {
+                id: banksPage
+                leftPadding: 0
+                rightPadding: 0
+                implicitWidth: mainRowLayout.width/3
+                header.visible: true
+                selectorId: "bank"
+				//FIXME: find something more generic
+				onItemActivated: zynthian.current_screen_id = selectorId
+				onFocusChanged: {
+					if (focus) {
+						zynthian.current_screen_id = selectorId
+					}
+				}
+            }
+            ZComponents.SelectorPage {
+                id: presetsPage
+                implicitWidth: mainRowLayout.width/3
+                header.visible: true
+                selectorId: "preset"
+				//FIXME: find something more generic
+				onItemActivated: zynthian.current_screen_id = selectorId
+				onFocusChanged: {
+					if (focus) {
+						zynthian.current_screen_id = selectorId
+					}
+				}
+            }
+            ControlPage {
+                id: controlPage
+                implicitWidth: mainRowLayout.width
+                //FIXME: find something more generic
+                onItemActivated: zynthian.current_screen_id = 'control'
+				onFocusChanged: {
+					if (focus) {
+						zynthian.current_screen_id = 'control'
+					}
+				}
+            }
+        }
+    }
 
     //[mainPage, layersPage, banksPage, presetsPage, controlPage]
 
     CustomTheme {}
 
     Instantiator {
-		model: zynthian.keybinding.key_sequences_model
-		delegate: Shortcut {
-			sequence: model.display
-			context: Qt.ApplicationShortcut
-			onActivated: zynthian.process_keybinding_shortcut(model.display)
-			onActivatedAmbiguously: zynthian.process_keybinding_shortcut(model.display)
-		}
-	}
+        model: zynthian.keybinding.key_sequences_model
+        delegate: Shortcut {
+            //enabled: zynthian.keybinding.enabled
+            sequence: model.display
+            context: Qt.ApplicationShortcut
+            onActivated: zynthian.process_keybinding_shortcut(model.display)
+            onActivatedAmbiguously: zynthian.process_keybinding_shortcut(model.display)
+        }
+    }
 
-    //Timer {
-		//interval: 200
-		//repeat: true
-		//running: true
-		//onTriggered: {
-			//print("Timeout qml side")
-			//zynthian.timer_expired()
-		//}
-	//}
     // FIXME: this stuff with a newer Kirigami should be done with a PageRouter?
     function ensureVisible(page) {
         mainRowLayout.activateItem(page)
@@ -124,47 +137,52 @@ Kirigami.AbstractApplicationWindow {
     }
 
     function show_modal(item) {
-		if (layerManager.depth > 1) {
-			layerManager.replace(item);
-		} else {
-			layerManager.push(item);
-		}
-	}
+        if (layerManager.depth > 1) {
+            layerManager.replace(item);
+        } else {
+            layerManager.push(item);
+        }
+    }
 
-	function close_modal(item) {
-		layerManager.pop(mainRowLayout);
-	}
+    function close_modal(item) {
+        layerManager.pop(mainRowLayout);
+    }
 
     Connections {
         target: zynthian
-        onCurrent_screenChanged: {
-            switch(zynthian.current_screen) {
+        onCurrent_screen_idChanged: {
+            print("SCREEN ID CHANGED: "+zynthian.current_screen_id)
+            switch(zynthian.current_screen_id) {
             case "main":
-                makeLastVisible(mainPage);
+              //  makeLastVisible(mainPage);
                 ensureVisible(mainPage);
                 break;
             case "layer":
-                makeLastVisible(presetsPage);
+              //  makeLastVisible(presetsPage);
                 ensureVisible(layersPage);
                 break;
             case "bank":
-                makeLastVisible(presetsPage);
+               // makeLastVisible(presetsPage);
                 ensureVisible(banksPage);
                 break;
             case "preset":
-                makeLastVisible(controlPage);
+              //  makeLastVisible(controlPage);
                 ensureVisible(presetsPage);
                 break;
             case "control":
-                makeLastVisible(controlPage);
+               // makeLastVisible(controlPage);
+                ensureVisible(controlPage);
                 break;
             default:
-                print("Non managed screen " + zynthian.current_screen)
+                print("Non managed screen " + zynthian.current_screen_id)
                 break;
             }
         }
-        onCurrent_modal_screenChanged: {
-            switch (zynthian.current_modal_screen) {
+        onCurrent_modal_screen_idChanged: {
+            switch (zynthian.current_modal_screen_id) {
+            case "confirm":
+                confirmDialog.open();
+                break;
             case "engine":
                  root.show_modal(Qt.resolvedUrl("./LayerCreation.qml"));
                 break;
@@ -183,14 +201,11 @@ Kirigami.AbstractApplicationWindow {
             case "admin":
                  root.show_modal(Qt.resolvedUrl("./AdminPage.qml"));
                 break;
-            case "confirm":
-                confirmDialog.open();
-                break;
             case "":
                 root.close_modal();
                 break;
             default:
-                print("Non managed modal screen " + zynthian.current_modal_screen)
+                print("Non managed modal screen " + zynthian.current_modal_screen_id)
                 break;
             }
         }

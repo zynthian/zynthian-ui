@@ -35,11 +35,13 @@ Kirigami.Page {
     visible: true
     title: root.selector.selector_path_element
 
+    property string iconName
     property alias view: view.view
     property alias model: view.model
     property alias delegate: view.delegate
     property alias currentIndex: view.currentIndex
 
+    property alias selectorId: view.selectorId
     //TODO: Bind the base selector type to qml?
     property alias selector: view.selector
     signal itemActivated(int index)

@@ -34,14 +34,14 @@ ZComponents.MainRowLayout {
     id: root
 
     ZComponents.SelectorPage {
-        selector: zynthian.engine
+        selectorId: "engine"
         implicitWidth: root.width
         onItemActivated: root.activateItem(midiChanPage)
     }
 
     ZComponents.SelectorPage {
         id: midiChanPage
-        selector: zynthian.midi_chan
+        selectorId: "midi_chan"
         visible: false
         implicitWidth: root.width
         onItemActivated: {

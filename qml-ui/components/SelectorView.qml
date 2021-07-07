@@ -37,8 +37,9 @@ QQC2.ScrollView {
     property alias delegate: view.delegate
     property alias currentIndex: view.currentIndex
 
+    property string selectorId
     //TODO: Bind the base selector type to qml?
-    property QtObject selector
+    readonly property QtObject selector: selectorId.length > 0 ? zynthian[selectorId] : null
     signal itemActivated(int index)
     signal itemActivatedSecondary(int index)
 
@@ -87,7 +88,7 @@ QQC2.ScrollView {
     background: Rectangle {
         color: Kirigami.Theme.backgroundColor
         border.color: view.activeFocus
-            ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.3)
+            ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.5)
             : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.3)
         radius: Kirigami.Units.gridUnit/2
     }

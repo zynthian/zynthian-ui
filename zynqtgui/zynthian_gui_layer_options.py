@@ -189,7 +189,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		else:
 			self.zyngui.show_active_screen()
 
-
 	def select_action(self, i, t='S'):
 		self.index = i
 

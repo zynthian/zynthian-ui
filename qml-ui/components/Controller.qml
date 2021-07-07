@@ -40,7 +40,7 @@ Card {
 
     contentItem: ColumnLayout {
         Kirigami.Heading {
-            text: root.controller.title
+            text: root.controller ? root.controller.title : ""
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             level: 2
@@ -56,17 +56,22 @@ Card {
                     fill: parent
                     margins: Kirigami.Units.largeSpacing
                 }
-                stepSize: root.controller.step_size === 0 ? 1 : root.controller.step_size
-                value: root.controller.value
+                stepSize: root.controller ? (root.controller.step_size === 0 ? 1 : root.controller.step_size) : 0
+                value: root.controller ? root.controller.value : 0
                 from: 0
-                to: root.controller.max_value
-                scale: root.controller.value_type !== "bool"
-                enabled: root.controller.value_type !== "bool"
+                to: root.controller ? root.controller.max_value : 0
+                scale: root.controller ? root.controller.value_type !== "bool" : 0
+                enabled: root.controller && root.controller.value_type !== "bool"
                 onMoved: root.controller.value = value
 
+                // HACK on the default style dial
+                Component.onCompleted: {
+                    dial.background.color = Kirigami.Theme.highlightColor
+                    dial.handle.color = Kirigami.Theme.highlightColor
+                }
                 Kirigami.Heading {
                     anchors.centerIn: parent
-                    text: root.controller.value_print
+                    text: root.controller ? root.controller.value_print :  ""
                 }
                 Behavior on value {
                     enabled: !dialMouse.pressed
@@ -99,11 +104,19 @@ Card {
                 }
             }
             QQC2.Switch {
+                id: switchControl
                 anchors.fill: parent
-                scale: root.controller.value_type === "bool"
-                enabled: root.controller.value_type === "bool"
-                checked: root.controller.value !== 0
+                scale: root.controller ? root.controller.value_type === "bool" : 0
+                enabled: root.controller && root.controller.value_type === "bool"
+                checked: root.controller && root.controller.value !== 0
                 onToggled: root.controller.value = checked ? 1 : 0
+
+                // HACK for default style
+                Binding {
+                    target: switchControl.indicator
+                    property: "color"
+                    value: switchControl.checked ? Kirigami.Theme.highlightColor : control.palette.midlight
+                }
                 Behavior on scale {
                     NumberAnimation {
                         duration: Kirigami.Units.longDuration
@@ -114,9 +127,9 @@ Card {
                     anchors {
                         horizontalCenter: parent.horizontalCenter
                         bottom: parent.bottom
-                        bottomMargin: parent.height / 4
+                        bottomMargin: -parent.height / 4
                     }
-                    text: root.controller.value_print
+                    text: root.controller ? root.controller.value_print : ""
                 }
             }
         }
@@ -124,7 +137,7 @@ Card {
         QQC2.Label {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
-            text: root.controller.midi_bind
+            text: root.controller ? root.controller.midi_bind : ""
         }
     }
 }
