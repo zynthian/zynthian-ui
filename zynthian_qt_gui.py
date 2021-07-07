@@ -158,13 +158,22 @@ class zynthian_gui_status_data(QObject):
 			return False
 
 	def get_overtemp(self):
-		return self.status_info['overtemp']
+		if 'overtemp' in self.status_info:
+			return self.status_info['overtemp']
+		else:
+			return False
 
 	def get_audio_recorder(self):
-		return self.status_info['audio_recorder']
+		if 'audio_recorder' in self.status_info:
+			return self.status_info['audio_recorder']
+		else:
+			return False
 
 	def get_midi_recorder(self):
-		return self.status_info['midi_recorder']
+		if 'midi_recorder' in self.status_info:
+			return self.status_info['midi_recorder']
+		else:
+			return False
 
 
 	def get_rangedB(self):
