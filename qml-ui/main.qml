@@ -23,7 +23,7 @@ For a full copy of the GNU General Public License see the LICENSE.txt file.
 ******************************************************************************
 */
 
-import QtQuick 2.1
+import QtQuick 2.11
 import QtQuick.Layouts 1.4
 import QtQuick.Controls 2.2 as QQC2
 import QtQuick.Window 2.1
@@ -49,6 +49,20 @@ Kirigami.AbstractApplicationWindow {
 			// icon.name: "go-home"
 				implicitWidth: mainRowLayout.width
 				selector: zynthian.main
+// 				header: RowLayout {
+// 					Repeater {
+// 						model: zynthian.keybinding.key_sequences_model
+// 						QQC2.Label {
+// 							text: model.display.indexOf("M") !== -1 ? model.display : ""
+// 							Shortcut {
+// 								sequence: model.display
+// 								context: Qt.ApplicationShortcut
+// 								onActivated: zynthian.process_keybinding_shortcut(model.display)
+// 								onActivatedAmbiguously: zynthian.process_keybinding_shortcut(model.display)
+// 							}
+// 						}
+// 					}
+// 				}
 			}
 			ZComponents.SelectorPage {
 				id: layersPage
@@ -80,6 +94,16 @@ Kirigami.AbstractApplicationWindow {
     //[mainPage, layersPage, banksPage, presetsPage, controlPage]
 
     CustomTheme {}
+
+    Instantiator {
+		model: zynthian.keybinding.key_sequences_model
+		delegate: Shortcut {
+			sequence: model.display
+			context: Qt.ApplicationShortcut
+			onActivated: zynthian.process_keybinding_shortcut(model.display)
+			onActivatedAmbiguously: zynthian.process_keybinding_shortcut(model.display)
+		}
+	}
 
     //Timer {
 		//interval: 200

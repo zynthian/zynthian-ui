@@ -33,11 +33,14 @@ import liblo
 # Zynthian specific modules
 from . import zynthian_gui_config
 
+# Qt modules
+from PySide2.QtCore import Qt, QObject, Signal, Property, QStringListModel
+
 #------------------------------------------------------------------------------
 # Zynthian Keyboard Binding Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_keybinding:
+class zynthian_gui_keybinding(QObject):
 	"""
 	Provides interface to key binding
 	
@@ -47,9 +50,15 @@ class zynthian_gui_keybinding:
 
 	modifiers = {
 		'shift': 1,
-		'caps': 2,
+		'caps': 2, # FIXME: Qt can't do modifiers with caps lock, should we use Meta instead?
 		'ctrl': 4,
 		'alt': 8
+	}
+
+	qt_modifiers = {
+		1: 'Shift',
+		4: 'Ctrl',
+		8: 'Alt'
 	}
 
 	default_config = {
@@ -106,7 +115,7 @@ class zynthian_gui_keybinding:
 	__instance = None
 	
 	@staticmethod
-	def getInstance():
+	def getInstance(parent = None):
 		"""
 		Access the singleton
 		
@@ -117,12 +126,13 @@ class zynthian_gui_keybinding:
 		"""
 
 		if zynthian_gui_keybinding.__instance == None:
-			zynthian_gui_keybinding()
+			zynthian_gui_keybinding(parent)
 
 		return zynthian_gui_keybinding.__instance
 
 
-	def __init__(self):
+	def __init__(self, parent = None):
+		super(zynthian_gui_keybinding, self).__init__(parent)
 		"""
 		Do not initiate this class directly. Use getInstance() to access the singleton object.
 		
@@ -137,19 +147,25 @@ class zynthian_gui_keybinding:
 		else:
 			raise Exception("Use getInstance() to get the singleton object.")
 
+		self.sequences_model = QStringListModel(self)
+
 		self.reset_config()
 
+	def modifierStrings(self, modifier):
+		strings = []
+		for mod in self.qt_modifiers:
+			if (modifier & mod):
+				strings.append(self.qt_modifiers[mod])
+		return strings
 
-	def get_key_action(self, keysym, modifier):
+	def get_key_action(self, keyseq):
 		"""
 		Get the name of the function bound to the key combination passed
 		
 		Parameters
 		----------
-		keysym : str
-			Keyboard symbol to lookup
-		modifier : int
-			Keyboard modifier to lookup [0: none, 1: shift, 2: capslock, 4: ctrl, 8: alt]
+		keyseq : str
+			Keyboard key sequence that can be parsed from Qt (ie Ctrl+M)
 
 		Returns
 		-------
@@ -158,11 +174,9 @@ class zynthian_gui_keybinding:
 			<None> if no match found		
 		"""
 	
-		logging.debug("Get keybinding function name for keysym: {}, modifier: {}".format(keysym, modifier))
+		logging.debug("Get keybinding function name for keyseq: {}".format(keyseq))
 		try:
-			keysym = keysym.lower()
-			rkey = "{}^{}".format(modifier, keysym)
-			return self.rmap[rkey]
+			return self.rmap[keyseq]
 
 		except:
 			logging.debug("Key not configured")
@@ -175,11 +189,25 @@ class zynthian_gui_keybinding:
 		"""
 
 		self.rmap = {}
+		sequences = []
+
 		for action, m in self.config['map'].items():
 			keysyms = m['keysym'].lower().split(',')
 			for ks in keysyms:
-				rkey = "{}^{}".format(m['modifier'], ks.strip())
-				self.rmap[rkey] = action
+				modifier = m['modifier']
+				ks = ks.strip().capitalize()
+				if modifier == 0:
+					sequences.append(ks)
+					self.rmap[ks] = action
+				else:
+					sequence_string = ''
+					for mod in self.modifierStrings(modifier):
+						sequence_string += mod + "+"
+					sequence_string += ks
+					sequences.append(sequence_string)
+					self.rmap[sequence_string] = action
+
+		self.sequences_model.setStringList(sequences)
 
 
 	def load(self, config="keybinding"):
@@ -253,6 +281,7 @@ class zynthian_gui_keybinding:
 		logging.info("Clearing key binding modifiers")
 		for action,kb in self.config['map'].items():
 			kb['modifier'] = 0
+		self.parse_map()
 
 
 	def reset_config(self):
@@ -266,6 +295,7 @@ class zynthian_gui_keybinding:
 
 	def set_binding_keysym(self, action, keysym):
 		self.config['map'][action]['keysym'] = keysym
+		self.parse_map()
 
 
 	def add_binding_modifier(self, action, mod):
@@ -276,6 +306,7 @@ class zynthian_gui_keybinding:
 				return
 
 		self.config['map'][action]['modifier'] |= mod
+		self.parse_map()
 
 
 	def enable(self, enabled=True):
@@ -288,7 +319,11 @@ class zynthian_gui_keybinding:
 			True to enable, false to disable - default: True
 		"""
 		
+		if enable == self.config["enabled"]:
+			return
+
 		self.config["enabled"] = enabled
+		self.enabled_changed.emit()
 
 
 	def isEnabled(self):
@@ -301,5 +336,13 @@ class zynthian_gui_keybinding:
 		"""
 
 		return self.config["enabled"]
+
+	def get_key_sequences_model(self):
+		return self.sequences_model
+
+	enabled_changed = Signal()
+
+	enabled = Property(str, isEnabled, notify = enabled_changed)
+	key_sequences_model = Property(QObject, get_key_sequences_model, constant = True)
 
 #------------------------------------------------------------------------------

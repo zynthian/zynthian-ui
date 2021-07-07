@@ -167,13 +167,13 @@ class zynthian_gui_status_data(QObject):
 		if 'audio_recorder' in self.status_info:
 			return self.status_info['audio_recorder']
 		else:
-			return False
+			return None
 
 	def get_midi_recorder(self):
 		if 'midi_recorder' in self.status_info:
 			return self.status_info['midi_recorder']
 		else:
-			return False
+			return None
 
 
 	def get_rangedB(self):
@@ -336,7 +336,7 @@ class zynthian_gui(QObject):
 		self.lock = Lock()
 
 		# Load keyboard binding map
-		zynthian_gui_keybinding.getInstance().load()
+		zynthian_gui_keybinding.getInstance(self).load()
 
 		# Get Jackd Options
 		self.jackd_options = zynconf.get_jackd_options()
@@ -832,7 +832,7 @@ class zynthian_gui(QObject):
 			self.reload_midi_config()
 
 		elif cuia == "RELOAD_KEY_BINDING":
-			zynthian_gui_keybinding.getInstance().load()
+			zynthian_gui_keybinding.getInstance(self).load()
 
 		elif cuia == "LAST_STATE_ACTION":
 			self.screens['admin'].last_state_action()
@@ -1746,6 +1746,13 @@ class zynthian_gui(QObject):
 			#QTimer.singleShot(200, self.refresh_status)
 
 
+	@Slot(str)
+	def process_keybinding_shortcut(self, keyseq):
+		action = zynthian_gui_keybinding.getInstance().get_key_action(keyseq)
+		if action != None:
+			zyngui.callable_ui_action(action)
+
+
 	#------------------------------------------------------------------
 	# Engine OSC callbacks => No concurrency!! 
 	#------------------------------------------------------------------
@@ -1918,13 +1925,16 @@ class zynthian_gui(QObject):
 
 
 	def get_current_screen(self):
-		return self.active_screen
+		return self.screens[self.active_screen]
 
 	def get_current_modal_screen(self):
 		return self.modal_screen
 
 	def get_status_information(self):
 		return self.status_object
+
+	def get_keybinding(self):
+		return zynthian_gui_keybinding.getInstance(self)
 
 
 	def get_info(self):
@@ -1981,6 +1991,8 @@ class zynthian_gui(QObject):
 	is_loading = Property(bool, get_is_loading, notify = is_loading_changed)
 
 	status_information = Property(QObject, get_status_information, constant = True)
+
+	keybinding = Property(QObject, get_keybinding, constant = True)
 
 	info = Property(QObject, get_info, constant = True)
 	confirm = Property(QObject, get_confirm, constant = True)
@@ -2111,6 +2123,8 @@ if __name__ == "__main__":
 	zynthian_gui_config.zyngui=zyngui=zynthian_gui()
 	zyngui.start()
 
+	QIcon.setThemeName("breeze")
+
 	palette = app.palette()
 	palette.setColor(QPalette.Window, QColor(zynthian_gui_config.color_bg))
 	palette.setColor(QPalette.WindowText, QColor(zynthian_gui_config.color_tx))
@@ -2130,8 +2144,8 @@ if __name__ == "__main__":
 	if not engine.rootObjects() or not app.topLevelWindows():
 		sys.exit(-1)
 
+	# assuming there is one and only one window for now
 	zyngui.top = app.topLevelWindows()[0]
-	logging.error(zyngui.top)
 
 	sys.exit(app.exec_())
 

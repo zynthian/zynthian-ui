@@ -193,7 +193,7 @@ Item {
 			Layout.fillHeight: true
 			Layout.preferredWidth: height
 			source: "dialog-warning-symbolic"
-			color: "red"
+			color: Kirigami.Theme.negativeTextColor
 			visible: zynthian.status_information.xrun
 		}
 		Kirigami.Icon {
@@ -205,8 +205,48 @@ Item {
 		Kirigami.Icon {
 			Layout.fillHeight: true
 			Layout.preferredWidth: height
-			source: "media-record-symbolic"
-			visible: zynthian.status_information.audio_recorder || zynthian.status_information.midi_recorder
+			color: Kirigami.Theme.textColor
+			source: {
+				switch(zynthian.status_information.audio_recorder) {
+				case "PLAY":
+					return "media-playback-start-symbolic";
+				case "REC":
+				default:
+					return "media-record-symbolic";
+				}
+			}
+			QQC2.Label {
+				anchors {
+					right: parent.right
+					bottom: parent.bottom
+				}
+				font.pointSize: 6
+				text: qsTr("Audio")
+			}
+			visible: zynthian.status_information.audio_recorder.length > 0
+		}
+		Kirigami.Icon {
+			Layout.fillHeight: true
+			Layout.preferredWidth: height
+			color: Kirigami.Theme.textColor
+			source: {
+				switch(zynthian.status_information.audio_recorder) {
+				case "PLAY":
+					return "media-playback-start-symbolic";
+				case "REC":
+				default:
+					return "media-record-symbolic";
+				}
+			}
+			QQC2.Label {
+				anchors {
+					right: parent.right
+					bottom: parent.bottom
+				}
+				font.pointSize: 6
+				text: "Midi"
+			}
+			visible: zynthian.status_information.midi_recorder.length > 0
 		}
 	}
 }
