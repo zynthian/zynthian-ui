@@ -356,7 +356,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.bpm_zgui_ctrl.config(self.bpm_zctrl)
 			self.bpm_zgui_ctrl.show()
 		else:
-			self.bpm_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.bpm_zctrl)
+			self.bpm_zgui_ctrl = zynthian_gui_controller(2, self.bpm_zctrl)
 
 
 	# Implement engine's method

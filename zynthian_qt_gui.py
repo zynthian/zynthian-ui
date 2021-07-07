@@ -283,17 +283,26 @@ class zynthian_gui(QObject):
 		self.active_screen = None
 		self.modal_screen = None
 		self.modal_screen_back = None
-		self.modal_timer_id = None
+
+		self.modal_timer = QTimer(self)
+		self.modal_timer.setInterval(3000)
+		self.modal_timer.setSingleShot(False)
+		self.modal_timer.timeout.connect(self.close_modal)
+
+		self.info_timer = QTimer(self)
+		self.info_timer.setInterval(3000)
+		self.info_timer.setSingleShot(False)
+		self.info_timer.timeout.connect(self.hide_info)
+
 		self.curlayer = None
 		self._curlayer = None
 
 		self.dtsw = []
 		self.polling = False
-		self.scheduler = sched.scheduler(time.time, time.sleep)
-		self.timer = QTimer(self)
-		self.timer.setInterval(200)
-		self.timer.setSingleShot(False)
-		self.timer.timeout.connect(self.timer_expired)
+		self.polling_timer = QTimer(self)
+		self.polling_timer.setInterval(200)
+		self.polling_timer.setSingleShot(False)
+		self.polling_timer.timeout.connect(self.polling_timer_expired)
 
 		self.loading = 0
 		self.loading_thread = None
@@ -594,13 +603,12 @@ class zynthian_gui(QObject):
 
 	def close_modal_timer(self, tms=3000):
 		self.cancel_modal_timer()
-		self.modal_timer_id = zynthian_gui_config.top.after(tms, self.close_modal)
+		self.modal_timer.setDuration(tms)
+		self.modal_timer.start()
 
 
 	def cancel_modal_timer(self):
-		if self.modal_timer_id:
-			zynthian_gui_config.top.after_cancel(self.modal_timer_id)
-			self.modal_timer_id = None
+		self.modal_timer.stop()
 
 
 	def toggle_modal(self, screen, mode=None):
@@ -646,7 +654,7 @@ class zynthian_gui(QObject):
 		self.screens['info'].show(text)
 		self.hide_screens(exclude='info')
 		if tms:
-			zynthian_gui_config.top.after(tms, self.hide_info)
+			self.hide_info_timer()
 		self.current_modal_screen_changed.emit()
 
 
@@ -655,18 +663,18 @@ class zynthian_gui(QObject):
 
 
 	def hide_info(self):
-		if self.modal_screen=='info':
-			self.close_modal()
+		self.hide_info_timer()
 
 
 	def hide_info_timer(self, tms=3000):
 		if self.modal_screen=='info':
 			self.cancel_info_timer()
-			self.modal_timer_id = zynthian_gui_config.top.after(tms, self.hide_info)
+			self.info_timer.setDuration(tms)
+			self.info_timer.start()
 
 
 	def cancel_info_timer(self):
-		self.cancel_modal_timer()
+		self.info_timer.stop()
 
 
 	def calibrate_touchscreen(self):
@@ -1616,16 +1624,16 @@ class zynthian_gui(QObject):
 
 	def start_polling(self):
 		self.polling=True
-		self.timer.start()
+		self.polling_timer.start()
 		self.zyngine_refresh()
 		self.refresh_status()
 
 
 	def stop_polling(self):
 		self.polling=False
-		self.timer.stop()
+		self.polling_timer.stop()
 
-	def timer_expired(self):
+	def polling_timer_expired(self):
 		self.zyngine_refresh()
 		self.refresh_status()
 		#logging.error("refreshed status")
@@ -1983,62 +1991,27 @@ class zynthian_gui(QObject):
 
 
 #------------------------------------------------------------------------------
-# GUI & Synth Engine initialization
-#------------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    app = QGuiApplication(sys.argv)
-    engine = QQmlApplicationEngine()
-
-    logging.info("STARTING ZYNTHIAN-UI ...")
-    zynthian_gui_config.zyngui=zyngui=zynthian_gui()
-    zyngui.start()
-
-    QIcon.setThemeName("breeze")
-    print(QIcon.fromTheme("start-here"))
-
-    palette = app.palette()
-    palette.setColor(QPalette.Window, QColor(zynthian_gui_config.color_bg))
-    palette.setColor(QPalette.WindowText, QColor(zynthian_gui_config.color_tx))
-    palette.setColor(QPalette.Button, QColor(zynthian_gui_config.color_bg))
-    palette.setColor(QPalette.ButtonText, QColor(zynthian_gui_config.color_tx))
-    palette.setColor(QPalette.Highlight, QColor(zynthian_gui_config.color_on))
-    palette.setColor(QPalette.Base, QColor(zynthian_gui_config.color_panel_bd))
-    palette.setColor(QPalette.HighlightedText, QColor("#fcfcfc"))
-    app.setPalette(palette)
-
-    zyngui.show_screen('main')
-
-    engine.rootContext().setContextProperty("zynthian", zyngui)
-
-    engine.load(os.fspath(Path(__file__).resolve().parent / "qml-ui/main.qml"))
-
-    if not engine.rootObjects():
-        sys.exit(-1)
-    sys.exit(app.exec_())
-
-#------------------------------------------------------------------------------
 # Reparent Top Window using GTK XEmbed protocol features
 #------------------------------------------------------------------------------
 
 
-def flushflush():
-	for i in range(1000):
-		print("FLUSHFLUSHFLUSHFLUSHFLUSHFLUSHFLUSH")
-	zynthian_gui_config.top.after(200, flushflush)
+#def flushflush():
+	#for i in range(1000):
+		#print("FLUSHFLUSHFLUSHFLUSHFLUSHFLUSHFLUSH")
+	#zynthian_gui_config.top.after(200, flushflush)
 
 
-if zynthian_gui_config.wiring_layout=="EMULATOR":
-	top_xid=zynthian_gui_config.top.winfo_id()
-	print("Zynthian GUI XID: "+str(top_xid))
-	if len(sys.argv)>1:
-		parent_xid=int(sys.argv[1])
-		print("Parent XID: "+str(parent_xid))
-		zynthian_gui_config.top.geometry('-10000-10000')
-		zynthian_gui_config.top.overrideredirect(True)
-		zynthian_gui_config.top.wm_withdraw()
-		flushflush()
-		zynthian_gui_config.top.after(1000, zynthian_gui_config.top.wm_deiconify)
+#if zynthian_gui_config.wiring_layout=="EMULATOR":
+	#top_xid=zynthian_gui_config.top.winfo_id()
+	#print("Zynthian GUI XID: "+str(top_xid))
+	#if len(sys.argv)>1:
+		#parent_xid=int(sys.argv[1])
+		#print("Parent XID: "+str(parent_xid))
+		#zynthian_gui_config.top.geometry('-10000-10000')
+		#zynthian_gui_config.top.overrideredirect(True)
+		#zynthian_gui_config.top.wm_withdraw()
+		#flushflush()
+		#zynthian_gui_config.top.after(1000, zynthian_gui_config.top.wm_deiconify)
 
 
 #------------------------------------------------------------------------------
@@ -2073,32 +2046,32 @@ def delete_window():
 
 #Function to handle computer keyboard key press
 #	event: Key event
-def cb_keybinding(event):
-	logging.debug("Key press {} {}".format(event.keycode, event.keysym))
-	zynthian_gui_config.top.focus_set() # Must remove focus from listbox to avoid interference with physical keyboard
+#def cb_keybinding(event):
+	#logging.debug("Key press {} {}".format(event.keycode, event.keysym))
+	#zynthian_gui_config.top.focus_set() # Must remove focus from listbox to avoid interference with physical keyboard
 
-	if not zynthian_gui_keybinding.getInstance().isEnabled():
-		logging.debug("Key binding is disabled - ignoring key press")
-		return
+	#if not zynthian_gui_keybinding.getInstance().isEnabled():
+		#logging.debug("Key binding is disabled - ignoring key press")
+		#return
 
-	# Ignore TAB key (for now) to avoid confusing widget focus change
-	if event.keysym == "Tab":
-		return
+	## Ignore TAB key (for now) to avoid confusing widget focus change
+	#if event.keysym == "Tab":
+		#return
 
-	# Space is not recognised as keysym so need to convert keycode
-	if event.keycode == 65:
-		keysym = "Space"
-	else:
-		keysym = event.keysym
+	## Space is not recognised as keysym so need to convert keycode
+	#if event.keycode == 65:
+		#keysym = "Space"
+	#else:
+		#keysym = event.keysym
 
-	action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
-	if action != None:
-		zyngui.callable_ui_action(action)
+	#action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
+	#if action != None:
+		#zyngui.callable_ui_action(action)
 
 
-zynthian_gui_config.top.bind("<Key>", cb_keybinding)
+#zynthian_gui_config.top.bind("<Key>", cb_keybinding)
 
-zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
+#zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
 
 #------------------------------------------------------------------------------
 # TKinter Main Loop
@@ -2107,9 +2080,52 @@ zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
 #import cProfile
 #cProfile.run('zynthian_gui_config.top.mainloop()')
 
-zynthian_gui_config.top.mainloop()
+#zynthian_gui_config.top.mainloop()
 
-logging.info("Exit with code {} ...\n\n".format(zyngui.exit_code))
-exit(zyngui.exit_code)
+#logging.info("Exit with code {} ...\n\n".format(zyngui.exit_code))
+#exit(zyngui.exit_code)
+
+
+
+
+
+
+#------------------------------------------------------------------------------
+# GUI & Synth Engine initialization
+#------------------------------------------------------------------------------
+
+if __name__ == "__main__":
+	app = QGuiApplication(sys.argv)
+	engine = QQmlApplicationEngine()
+
+	logging.info("STARTING ZYNTHIAN-UI ...")
+	zynthian_gui_config.zyngui=zyngui=zynthian_gui()
+	zyngui.start()
+
+	palette = app.palette()
+	palette.setColor(QPalette.Window, QColor(zynthian_gui_config.color_bg))
+	palette.setColor(QPalette.WindowText, QColor(zynthian_gui_config.color_tx))
+	palette.setColor(QPalette.Button, QColor(zynthian_gui_config.color_bg))
+	palette.setColor(QPalette.ButtonText, QColor(zynthian_gui_config.color_tx))
+	palette.setColor(QPalette.Highlight, QColor(zynthian_gui_config.color_on))
+	palette.setColor(QPalette.Base, QColor(zynthian_gui_config.color_panel_bd))
+	palette.setColor(QPalette.HighlightedText, QColor("#fcfcfc"))
+	app.setPalette(palette)
+
+	zyngui.show_screen('main')
+
+	engine.rootContext().setContextProperty("zynthian", zyngui)
+
+	engine.load(os.fspath(Path(__file__).resolve().parent / "qml-ui/main.qml"))
+
+	if not engine.rootObjects() or not app.topLevelWindows():
+		sys.exit(-1)
+
+	zyngui.top = app.topLevelWindows()[0]
+	logging.error(zyngui.top)
+
+	sys.exit(app.exec_())
+
+
 
 #------------------------------------------------------------------------------

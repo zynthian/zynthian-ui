@@ -357,7 +357,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			self.volume_zgui_ctrl.config(self.volume_zctrl)
 			self.volume_zgui_ctrl.show()
 		else:
-			self.volume_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.volume_zctrl)
+			self.volume_zgui_ctrl = zynthian_gui_controller(2, self.volume_zctrl)
 
 
 	# Implement engine's method
