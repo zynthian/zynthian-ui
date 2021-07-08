@@ -160,22 +160,22 @@ Kirigami.AbstractApplicationWindow {
                 confirmDialog.open();
                 break;
             case "engine":
-                 root.show_modal(Qt.resolvedUrl("./Pages/LayerCreation.qml"));
+                 root.show_modal(Qt.resolvedUrl("./pages/LayerCreation.qml"));
                 break;
             case "layer_options":
-                 root.show_modal(Qt.resolvedUrl("./Pages/LayerOptionsPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./pages/LayerOptionsPage.qml"));
                 break;
             case "snapshot":
-                 root.show_modal(Qt.resolvedUrl("./Pages/SnapshotPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./pages/SnapshotPage.qml"));
                 break;
             case "audio_recorder":
-                 root.show_modal(Qt.resolvedUrl("./Pages/AudioRecorderPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./pages/AudioRecorderPage.qml"));
                 break;
             case "midi_recorder":
-                 root.show_modal(Qt.resolvedUrl("./Pages/MidiRecorderPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./pages/MidiRecorderPage.qml"));
                 break;
             case "admin":
-                 root.show_modal(Qt.resolvedUrl("./Pages/AdminPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./pages/AdminPage.qml"));
                 break;
             case "":
                 root.close_modal();
