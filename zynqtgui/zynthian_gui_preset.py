@@ -72,7 +72,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			return
 		if only_favs is not None:
 			self.only_favs = only_favs
-		self.index=self.zyngui.curlayer.get_preset_index()
+		self.select(self.zyngui.curlayer.get_preset_index())
 		super().show()
 
 
@@ -82,8 +82,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			if self.only_favs:
 				self.zyngui.screens['bank'].fill_list()
 				self.zyngui.show_screen('control')
-			#else:
-				#self.zyngui.screens['control'].preload()
+			else:
+				self.zyngui.screens['control'].show()
 		else:
 			self.zyngui.curlayer.toggle_preset_fav(self.list_data[i])
 			self.update_list()
