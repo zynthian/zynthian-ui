@@ -35,7 +35,7 @@ Kirigami.Page {
     property alias leftHeaderControl: leftHeaderControl.contentItem
     property alias rightHeaderControl: rightHeaderControl.contentItem
 
-    default property alias data: layout.data
+    default property alias items: layout.children
     readonly property int currentPage: Math.floor((currentItem.x + currentItem.width/2) / flickable.width)
 
     property int currentIndex: 0

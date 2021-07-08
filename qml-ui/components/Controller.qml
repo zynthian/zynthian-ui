@@ -115,7 +115,7 @@ Card {
                 Binding {
                     target: switchControl.indicator
                     property: "color"
-                    value: switchControl.checked ? Kirigami.Theme.highlightColor : control.palette.midlight
+                    value: switchControl.checked ? Kirigami.Theme.highlightColor : switchControl.palette.midlight
                 }
                 Behavior on scale {
                     NumberAnimation {

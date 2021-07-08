@@ -40,7 +40,7 @@ Kirigami.AbstractApplicationWindow {
 
     ZComponents.LayerManager {
         id: layerManager
-        initialItem: ZComponents.MainRowLayout {
+        initialItem: MainScreensLayout {
             id: mainRowLayout
 
             rightHeaderControl: ZComponents.StatusInfo{}
@@ -126,34 +126,7 @@ Kirigami.AbstractApplicationWindow {
 
     Connections {
         target: zynthian
-        onCurrent_screen_idChanged: {
-            print("SCREEN ID CHANGED: "+zynthian.current_screen_id)
-            switch(zynthian.current_screen_id) {
-            case "main":
-              //  makeLastVisible(mainPage);
-                ensureVisible(mainPage);
-                break;
-            case "layer":
-              //  makeLastVisible(presetsPage);
-                ensureVisible(layersPage);
-                break;
-            case "bank":
-               // makeLastVisible(presetsPage);
-                ensureVisible(banksPage);
-                break;
-            case "preset":
-              //  makeLastVisible(controlPage);
-                ensureVisible(presetsPage);
-                break;
-            case "control":
-               // makeLastVisible(controlPage);
-                ensureVisible(controlPage);
-                break;
-            default:
-                print("Non managed screen " + zynthian.current_screen_id)
-                break;
-            }
-        }
+
         onCurrent_modal_screen_idChanged: {
             switch (zynthian.current_modal_screen_id) {
             case "confirm":

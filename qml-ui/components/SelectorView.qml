@@ -70,8 +70,6 @@ QQC2.ScrollView {
                 root.currentScreenIdRequested();
             }
         }
-        onMovementStarted: root.currentScreenIdRequested()
-        onFlickStarted: root.currentScreenIdRequested()
 
         model: root.selector.selector_list
 
