@@ -34,20 +34,35 @@ ZComponents.MainRowLayout {
     id: root
 
     ZComponents.SelectorPage {
+        id: enginePage
         selectorId: "engine"
         implicitWidth: root.width
-        onItemActivated: root.activateItem(midiChanPage)
     }
 
     ZComponents.SelectorPage {
         id: midiChanPage
+        title: "Midi Channel"
         selectorId: "midi_chan"
         visible: false
         implicitWidth: root.width
-        onItemActivated: {
-           // applicationWindow().makeLastVisible(layersPage)
-            applicationWindow().pageStack.layers.pop()
-        }
     }
+
+    data: [
+        Connections {
+            target: zynthian
+
+            onCurrent_modal_screen_idChanged: {
+                switch (zynthian.current_modal_screen_id) {
+                case "engine":
+                    root.activateItem(enginePage)
+                    break;
+                case "midi_chan":
+                default:
+                    root.activateItem(midiChanPage)
+                    break;
+                }
+            }
+        }
+    ]
 }
 

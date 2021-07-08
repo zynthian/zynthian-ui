@@ -56,6 +56,7 @@ Kirigami.Page {
                     break;
                 }
             }
+            layout.forceLayout();
             currentIndex = idx;
         }
     }
@@ -100,7 +101,8 @@ Kirigami.Page {
                     Repeater {
                         model: layout.visibleChildren.length
                         QQC2.ToolButton {
-                            text: index > 0 ? "> " +layout.visibleChildren[index].title: ""
+                            text: (index > 0 ? "> " : "")
+									+ (icon.name.length === 0 ? layout.visibleChildren[index].title: "")
                             icon.name: layout.visibleChildren[index].iconName
                             checked: root.currentIndex === index
                             opacity: checked ? 1 : 0.8
@@ -157,6 +159,7 @@ Kirigami.Page {
         slideAnim.from = flickable.contentX;
         let child = layout.visibleChildren[currentIndex];
         slideAnim.to = flickable.width * Math.floor((child.x + child.width/2) / flickable.width);
+
         child.forceActiveFocus();
         slideAnim.start();
     }
@@ -251,7 +254,6 @@ Kirigami.Page {
             spacing: 0
             height: flickable.height
             onImplicitWidthChanged: {
-                print(implicitWidth)
                 relayoutChildren()
             }
             function relayoutChild(child) {

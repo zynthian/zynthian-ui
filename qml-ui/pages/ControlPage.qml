@@ -36,6 +36,7 @@ Kirigami.Page {
     // title: "Control"
 
     property alias selectorId: mainView.selectorId
+    property string iconName
 
     signal currentScreenIdRequested()
     signal itemActivated(int index)
