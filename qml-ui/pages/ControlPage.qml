@@ -35,6 +35,8 @@ Kirigami.Page {
     title: zynthian.control.selector_path_element
     // title: "Control"
 
+    property alias selectorId: mainView.selectorId
+
     signal currentScreenIdRequested()
     signal itemActivated(int index)
     Component.onCompleted: {

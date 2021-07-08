@@ -712,11 +712,9 @@ class zynthian_gui(QObject):
 
 		if self.curlayer:
 			# If there is a preset selection for the active layer ...
-			if zynthian_gui_config.automatically_show_control_page and self.curlayer.get_preset_name():
+			if self.curlayer.get_preset_name():
 				self.show_screen('control')
 			else:
-				if self.curlayer.get_preset_name():
-					self.screens['control'].preload()
 				if modal:
 					self.show_modal('bank')
 				else:

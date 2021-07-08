@@ -81,7 +81,6 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.zyngui.curlayer.set_preset(i)
 			if self.only_favs:
 				self.zyngui.screens['bank'].fill_list()
-			if zynthian_gui_config.automatically_show_control_page:
 				self.zyngui.show_screen('control')
 			#else:
 				#self.zyngui.screens['control'].preload()
