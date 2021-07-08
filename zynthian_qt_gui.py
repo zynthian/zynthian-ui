@@ -2149,7 +2149,7 @@ if __name__ == "__main__":
 	palette.setColor(QPalette.HighlightedText, zynthian_gui_config.color_tx)
 	app.setPalette(palette)
 
-	zyngui.show_screen('main')
+	zyngui.show_screen('layer')
 
 	engine.rootContext().setContextProperty("zynthian", zyngui)
 

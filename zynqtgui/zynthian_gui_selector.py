@@ -161,7 +161,7 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 	def select(self, index=None):
 		if index is None: index=self.index
 		self.index = index
-		if self.zselector and self.zselector.value!=self.index:
+		if self.zselector and self.zselector.value != self.index:
 			self.zselector.set_value(self.index, True, False)
 		self.current_index_changed.emit()
 
