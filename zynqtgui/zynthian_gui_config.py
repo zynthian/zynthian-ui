@@ -339,10 +339,10 @@ ctrl_pos=[
 # UI Color Parameters
 #------------------------------------------------------------------------------
 
-color_bg=os.environ.get('ZYNTHIAN_UI_COLOR_BG',"#000000")
-color_tx=os.environ.get('ZYNTHIAN_UI_COLOR_TX',"#ffffff")
+color_bg=os.environ.get('ZYNTHIAN_UI_COLOR_BG',"#31363b")
+color_tx=os.environ.get('ZYNTHIAN_UI_COLOR_TX',"#eff0f1")
 color_tx_off=os.environ.get('ZYNTHIAN_UI_COLOR_TX_OFF',"#e0e0e0")
-color_on=os.environ.get('ZYNTHIAN_UI_COLOR_ON',"#ff0000")
+color_on=os.environ.get('ZYNTHIAN_UI_COLOR_ON',"#2196F3")
 color_off=os.environ.get('ZYNTHIAN_UI_COLOR_OFF',"#5a626d")
 color_hl=os.environ.get('ZYNTHIAN_UI_COLOR_HL',"#00b000")
 color_ml=os.environ.get('ZYNTHIAN_UI_COLOR_ML',"#f0f000")

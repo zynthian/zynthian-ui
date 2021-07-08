@@ -35,6 +35,7 @@ Kirigami.Page {
     title: zynthian.control.selector_path_element
     // title: "Control"
 
+    signal currentScreenIdRequested()
     signal itemActivated(int index)
     Component.onCompleted: {
         mainView.forceActiveFocus()
@@ -64,15 +65,7 @@ Kirigami.Page {
             selectorId: "control"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            delegate: Kirigami.BasicListItem {
-                label: model.display
-                checked: mainView.currentIndex == index
-                onClicked: {
-                    zynthian.control.current_index = index;
-                    zynthian.control.activate_index(index);
-                    root.itemActivated(index)
-                }
-            }
+            onCurrentScreenIdRequested: root.currentScreenIdRequested()
         }
         ColumnLayout {
             Layout.maximumWidth: Math.floor(root.width / 4)

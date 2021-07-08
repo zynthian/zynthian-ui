@@ -26,7 +26,7 @@ For a full copy of the GNU General Public License see the LICENSE.txt file.
 import QtQuick 2.10
 import QtQuick.Layouts 1.4
 import QtQuick.Controls 2.2 as QQC2
-import org.kde.kirigami 2.4 as Kirigami
+import org.kde.kirigami 2.5 as Kirigami
 
 
 Kirigami.Page {
@@ -44,6 +44,7 @@ Kirigami.Page {
     property alias selectorId: view.selectorId
     //TODO: Bind the base selector type to qml?
     property alias selector: view.selector
+    signal currentScreenIdRequested()
     signal itemActivated(int index)
     signal itemActivatedSecondary(int index)
 
@@ -55,6 +56,7 @@ Kirigami.Page {
             view.forceActiveFocus()
         }
     }
+
     header: Kirigami.Heading {
         level: 2
         text: root.selector.caption
@@ -62,40 +64,13 @@ Kirigami.Page {
         visible: false
     }
 
-    contentItem: //RowLayout {
-        SelectorView {
-            id: view
-            //Layout.fillHeight: true
-            //Layout.maximumWidth: Math.floor(root.width / 4) * 3
-            //Layout.minimumWidth: Layout.maximumWidth
-            onItemActivated: root.itemActivated(index)
-            onItemActivatedSecondary: root.itemActivatedSecondary(index)
-        }
-
-/*
-        ColumnLayout {
-            Layout.fillHeight: true
-            Layout.maximumWidth: Math.floor(root.width / 4)
-            Card {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.maximumHeight: width / (gif.sourceSize.width / gif.sourceSize.height)
-
-                contentItem: AnimatedImage {
-                    id: gif
-                    source: "./img/zynthian_gui_loading.gif"
-                    paused: !zynthian.is_loading
-                }
-            }
-            Card {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                QQC2.Button {
-                    anchors.centerIn: parent
-                    text: "Quit"
-                    onClicked: Qt.quit();
-                }
-            }
-        }
-    }*/
+    contentItem: SelectorView {
+        id: view
+        //Layout.fillHeight: true
+        //Layout.maximumWidth: Math.floor(root.width / 4) * 3
+        //Layout.minimumWidth: Layout.maximumWidth
+        onCurrentScreenIdRequested: root.currentScreenIdRequested()
+        onItemActivated: root.itemActivated(index)
+        onItemActivatedSecondary: root.itemActivatedSecondary(index)
+    }
 }

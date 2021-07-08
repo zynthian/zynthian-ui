@@ -30,6 +30,7 @@ import QtQuick.Window 2.1
 import org.kde.kirigami 2.6 as Kirigami
 
 import "components" as ZComponents
+import "pages" as Pages
 
 Kirigami.AbstractApplicationWindow {
     id: root
@@ -49,26 +50,16 @@ Kirigami.AbstractApplicationWindow {
                 iconName: "go-home"
                 implicitWidth: mainRowLayout.width
                 selectorId: "main"
-				//FIXME: find something more generic
-				onItemActivated: zynthian.current_screen_id = selectorId
-				onFocusChanged: {
-					if (focus) {
-						zynthian.current_screen_id = selectorId
-					}
-				}
+                //FIXME: find something more generic
+                onCurrentScreenIdRequested: zynthian.current_screen_id = selectorId
             }
             ZComponents.SelectorPage {
                 id: layersPage
                 implicitWidth: mainRowLayout.width/3
                 header.visible: true
                 selectorId: "layer"
-				//FIXME: find something more generic
-				onItemActivated: zynthian.current_screen_id = selectorId
-				onFocusChanged: {
-					if (focus) {
-						zynthian.current_screen_id = selectorId
-					}
-				}
+                //FIXME: find something more generic
+                onCurrentScreenIdRequested: zynthian.current_screen_id = selectorId
             }
             ZComponents.SelectorPage {
                 id: banksPage
@@ -77,37 +68,22 @@ Kirigami.AbstractApplicationWindow {
                 implicitWidth: mainRowLayout.width/3
                 header.visible: true
                 selectorId: "bank"
-				//FIXME: find something more generic
-				onItemActivated: zynthian.current_screen_id = selectorId
-				onFocusChanged: {
-					if (focus) {
-						zynthian.current_screen_id = selectorId
-					}
-				}
+                //FIXME: find something more generic
+                onCurrentScreenIdRequested: zynthian.current_screen_id = selectorId
             }
             ZComponents.SelectorPage {
                 id: presetsPage
                 implicitWidth: mainRowLayout.width/3
                 header.visible: true
                 selectorId: "preset"
-				//FIXME: find something more generic
-				onItemActivated: zynthian.current_screen_id = selectorId
-				onFocusChanged: {
-					if (focus) {
-						zynthian.current_screen_id = selectorId
-					}
-				}
+                //FIXME: find something more generic
+                onCurrentScreenIdRequested: zynthian.current_screen_id = selectorId
             }
-            ControlPage {
+            Pages.ControlPage {
                 id: controlPage
                 implicitWidth: mainRowLayout.width
                 //FIXME: find something more generic
-                onItemActivated: zynthian.current_screen_id = 'control'
-				onFocusChanged: {
-					if (focus) {
-						zynthian.current_screen_id = 'control'
-					}
-				}
+                onCurrentScreenIdRequested: zynthian.current_screen_id = 'control'
             }
         }
     }
@@ -184,22 +160,22 @@ Kirigami.AbstractApplicationWindow {
                 confirmDialog.open();
                 break;
             case "engine":
-                 root.show_modal(Qt.resolvedUrl("./LayerCreation.qml"));
+                 root.show_modal(Qt.resolvedUrl("./Pages/LayerCreation.qml"));
                 break;
             case "layer_options":
-                 root.show_modal(Qt.resolvedUrl("./LayerOptionsPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./Pages/LayerOptionsPage.qml"));
                 break;
             case "snapshot":
-                 root.show_modal(Qt.resolvedUrl("./SnapshotPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./Pages/SnapshotPage.qml"));
                 break;
             case "audio_recorder":
-                 root.show_modal(Qt.resolvedUrl("./AudioRecorderPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./Pages/AudioRecorderPage.qml"));
                 break;
             case "midi_recorder":
-                 root.show_modal(Qt.resolvedUrl("./MidiRecorderPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./Pages/MidiRecorderPage.qml"));
                 break;
             case "admin":
-                 root.show_modal(Qt.resolvedUrl("./AdminPage.qml"));
+                 root.show_modal(Qt.resolvedUrl("./Pages/AdminPage.qml"));
                 break;
             case "":
                 root.close_modal();

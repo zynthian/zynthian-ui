@@ -40,6 +40,7 @@ QQC2.ScrollView {
     property string selectorId
     //TODO: Bind the base selector type to qml?
     readonly property QtObject selector: selectorId.length > 0 ? zynthian[selectorId] : null
+    signal currentScreenIdRequested()
     signal itemActivated(int index)
     signal itemActivatedSecondary(int index)
 
@@ -64,7 +65,16 @@ QQC2.ScrollView {
         clip: true
         currentIndex: root.selector.current_index
 
+        onFocusChanged: {
+            if (focus) {
+                root.currentScreenIdRequested();
+            }
+        }
+        onMovementStarted: root.currentScreenIdRequested()
+        onFlickStarted: root.currentScreenIdRequested()
+
         model: root.selector.selector_list
+
         delegate: Kirigami.BasicListItem {
             width: view.width
             label: model.display
@@ -72,15 +82,25 @@ QQC2.ScrollView {
 
             checkable: false
             checked: root.currentIndex === index
+            activeBackgroundColor: view.activeFocus ? Kirigami.Theme.highlightColor : Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.4)
             onClicked: {
+                let oldCurrent_screen_id = zynthian.current_screen_id;
                 root.selector.current_index = index;
                 root.selector.activate_index(index);
                 root.itemActivated(index)
+                // if the activation didn't explicitly ask for a new screen, set the current as this
+                if (zynthian.current_screen_id === oldCurrent_screen_id) {
+                    root.currentScreenIdRequested()
+                }
             }
             onPressAndHold: {
+                let oldCurrent_screen_id = zynthian.current_screen_id;
                 root.selector.current_index = index;
                 root.selector.activate_index_secondary(index);
                 root.itemActivatedSecondary(index)
+                if (zynthian.current_screen_id === oldCurrent_screen_id) {
+                    root.currentScreenIdRequested()
+                }
             }
         }
     }
