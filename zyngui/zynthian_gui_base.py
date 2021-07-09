@@ -30,7 +30,7 @@ import tkinter
 from tkinter import font as tkFont
 
 # Zynthian specific modules
-from . import zynthian_gui_config
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 
 #------------------------------------------------------------------------------

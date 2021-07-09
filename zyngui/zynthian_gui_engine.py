@@ -36,8 +36,8 @@ import zynautoconnect
 from zyngine import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_jalv import *
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian Engine Selection GUI Class
@@ -64,7 +64,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			["BF", ("setBfree", "setBfree - Hammond Emulator", "MIDI Synth", None, zynthian_engine_setbfree, True)],
 			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", None, zynthian_engine_aeolus, True)],
 			['PD', ("PureData", "PureData - Visual Programming", "Special", None, zynthian_engine_puredata, True)],
-			['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
+			#['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
 			['MD', ("MOD-UI", "MOD-UI - Plugin Host", "Special", None, zynthian_engine_modui, True)]
 		])
 

@@ -32,15 +32,15 @@ from PIL import Image, ImageTk
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
-from . import zynthian_gui_base
-from . import zynthian_gui_config
-from . import zynthian_gui_controller
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_base import zynthian_gui_base
+from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
 #------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
+class zynthian_gui_selector(zynthian_gui_base):
 
 	def __init__(self, selcap='Select', wide=False):
 		super().__init__()

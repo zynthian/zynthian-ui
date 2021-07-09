@@ -27,8 +27,6 @@ import os
 import re
 import sys
 import logging
-import tkinter
-from PIL import Image, ImageTk
 
 # Zynthian specific modules
 import zynconf
@@ -450,6 +448,9 @@ experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES',"").spli
 #------------------------------------------------------------------------------
 
 if "zynthian_gui.py" in sys.argv[0]:
+	import tkinter
+	from PIL import Image, ImageTk
+
 	try:
 		#------------------------------------------------------------------------------
 		# Create & Configure Top Level window 

@@ -32,9 +32,9 @@ from datetime import datetime
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
-from . import zynthian_gui_config
-from . import zynthian_gui_controller
-from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_controller import zynthian_gui_controller
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian Instrument Controller GUI Class
