@@ -54,6 +54,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.replace_layer_index = None
 		self.layer_chain_parallel = False
 		self.last_snapshot_fpath = None
+		self.auto_next_screen = False
 		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
 		self.create_amixer_layer()
 		self.show()
@@ -99,7 +100,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		self.index = i
 		self.zyngui.start_loading()
-		print(self.list_data[i][0])
 
 		if self.list_data[i][0] is None:
 			pass
@@ -133,6 +133,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.layer_options()
 		self.zyngui.screens['bank'].show()
 		self.zyngui.stop_loading()
+
+	def next_action(self):
+		self.zyngui.show_screen("bank")
 
 	def index_supports_immediate_activation(self, index=None):
 		return index >= 0 and index < len(self.root_layers)

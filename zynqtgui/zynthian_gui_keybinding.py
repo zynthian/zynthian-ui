@@ -74,9 +74,10 @@ class zynthian_gui_keybinding(QObject):
 			"POWER_OFF": { "modifier" : 4, "keysym" : "End" },
 			"RELOAD_MIDI_CONFIG": { "modifier": 4, "keysym": "Insert" },
 
-			"SWITCH_SELECT_SHORT": { "modifier": 0, "keysym": "Return, Right" },
-			"SWITCH_SELECT_BOLD": { "modifier": 1, "keysym": "Return, Right" },
-			"SWITCH_SELECT_LONG": { "modifier": 4, "keysym": "Return, Right" },
+			"SWITCH_SELECT_SHORT": { "modifier": 0, "keysym": "Return" },
+			"SWITCH_SELECT_BOLD": { "modifier": 1, "keysym": "Return" },
+			"SWITCH_SELECT_LONG": { "modifier": 4, "keysym": "Return" },
+			"NEXT_SCREEN": { "modifier": 0, "keysym": "Right" },
 			"SWITCH_BACK_SHORT": { "modifier": 0, "keysym": "BackSpace, Escape, Left" },
 			"SWITCH_BACK_BOLD": { "modifier": 1, "keysym": "BackSpace, Escape, Left" },
 			"SWITCH_BACK_LONG": { "modifier": 4, "keysym": "BackSpace, Escape, Left" },

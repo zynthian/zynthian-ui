@@ -45,6 +45,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 	def __init__(self, parent = None):
 		super(zynthian_gui_bank, self).__init__('Bank', parent)
+		self.auto_next_screen = False
 		self.show()
 
     
@@ -72,16 +73,20 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if self.zyngui.curlayer.set_bank(i):
 			self.zyngui.screens['preset'].disable_only_favs()
 			self.zyngui.screens['preset'].update_list()
-			if self.zyngui.modal_screen=="preset":
-				self.zyngui.show_modal('preset')
-			else:
-				self.zyngui.show_screen('preset')
+			if self.auto_next_screen:
+				self.next_action
 			# If there is only one preset, jump to instrument control
 			if len(self.zyngui.curlayer.preset_list)<=1:
 				self.zyngui.screens['preset'].select_action(0)
 			self.zyngui.screens['layer'].fill_list()
 		else:
 			self.show()
+
+	def next_action(self):
+		if self.zyngui.modal_screen == "preset":
+			self.zyngui.show_modal('preset')
+		else:
+			self.zyngui.show_screen('preset')
 
 	def index_supports_immediate_activation(self, index=None):
 		return True

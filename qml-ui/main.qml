@@ -38,13 +38,42 @@ Kirigami.AbstractApplicationWindow {
     width: screen.width
     height: screen.height
 
+    ZComponents.StatusInfo{
+        id: statusInfo
+        z: 9999999
+        anchors {
+            right: parent.right
+            top: parent.top
+        }
+        height: mainRowLayout.header.height
+    }
+    //HACK
+    QQC2.Button {
+		z: 9999999
+		anchors {
+            left: parent.left
+            top: parent.top
+        }
+        width: height
+        opacity: layerManager.depth == 1
+		icon.name: "go-home"
+		onClicked: zynthian.current_screen_id = 'main'
+		Behavior on opacity {
+			OpacityAnimator {
+				duration: Kirigami.Units.longDuration
+				easing.type: Easing.InOutCubic
+			}
+		}
+	}
     ZComponents.LayerManager {
         id: layerManager
         anchors.fill: parent
         initialItem: MainScreensLayout {
             id: mainRowLayout
 
-            rightHeaderControl: ZComponents.StatusInfo{}
+            rightHeaderControl: Item {
+                implicitWidth: statusInfo.implicitWidth
+            }
 
             ZComponents.SelectorPage {
                 id: mainPage

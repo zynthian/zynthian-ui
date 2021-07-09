@@ -72,6 +72,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 			self.last_action=self.list_data[i][0]
 			self.last_action()
 
+	def next_action(self):
+		self.layers()
 
 	def layers(self):
 		logging.info("Layers")

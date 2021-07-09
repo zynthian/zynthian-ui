@@ -38,6 +38,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def __init__(self, parent = None):
 		super(zynthian_gui_layer_options, self).__init__('Option', parent)
+		self.auto_next_screen = False
 		self.reset()
 		self.show()
 

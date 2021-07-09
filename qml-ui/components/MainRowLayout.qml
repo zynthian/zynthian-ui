@@ -95,12 +95,14 @@ Kirigami.Page {
                 clip: true
                 contentHeight: height
                 contentWidth: breadcrumbLayout.width
+
                 RowLayout {
                     id: breadcrumbLayout
                     spacing: 0
                     Repeater {
                         model: layout.visibleChildren.length
                         QQC2.ToolButton {
+							id: toolButton
                             text: (index > 0 ? "> " : "")
                                     + (icon.name.length === 0 ? layout.visibleChildren[index].title: "")
                             icon.name: layout.visibleChildren[index].iconName
@@ -108,11 +110,12 @@ Kirigami.Page {
                             opacity: checked ? 1 : 0.8
                             checkable: false
                             font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
-                            onClicked: {
-                                root.currentIndex = index
-                            }
-                            onCheckedChanged: {
-                                if (!checked) {
+                            Connections {
+								target: breadcrumbFlickable
+								onWidthChanged: toolButton.ensureBounds()
+							}
+                            function ensureBounds() {
+								if (!checked || breadcrumbFlickable.width === 0) {
                                     return;
                                 }
 
@@ -125,8 +128,17 @@ Kirigami.Page {
                                     breadcrumbSlideAnim.stop();
                                     breadcrumbSlideAnim.from = breadcrumbFlickable.contentX;
                                     breadcrumbSlideAnim.to = Math.min(breadcrumbLayout.width - breadcrumbFlickable.width, x - breadcrumbFlickable.width + width);
-                                    breadcrumbSlideAnim.start();
+
+									breadcrumbSlideAnim.start();
                                 }
+							}
+                            onClicked: {
+                                root.currentIndex = index
+                            }
+                            onCheckedChanged: {
+                                if (checked) {
+									ensureBounds();
+								}
                             }
                         }
                     }
@@ -138,6 +150,10 @@ Kirigami.Page {
                     duration: Kirigami.Units.longDuration
                     easing.type: Easing.InOutQuad
                 }
+            }
+            Kirigami.Separator {
+                Layout.fillHeight: true
+                visible: !breadcrumbFlickable.atXEnd
             }
             QQC2.Control {
                 id: rightHeaderControl

@@ -280,7 +280,9 @@ class zynthian_gui(QObject):
 		"92": "MODAL_AUDIO_RECORDER",
 		"93": "MODAL_MIDI_RECORDER",
 		"94": "MODAL_ALSA_MIXER",
-		"95": "MODAL_STEPSEQ"
+		"95": "MODAL_STEPSEQ",
+
+		"96": "NEXT_SCREEN"
 	}
 
 
@@ -717,10 +719,17 @@ class zynthian_gui(QObject):
 			else:
 				if self.curlayer.get_preset_name():
 					self.screens['control'].show()
-				if modal:
-					self.show_modal('bank')
+
+				if self.screens['layer'].auto_next_screen:
+					if modal:
+						self.show_modal('bank')
+					else:
+						self.show_screen('bank')
 				else:
-					self.show_screen('bank')
+					if modal:
+						self.show_modal('layer')
+					else:
+						self.show_screen('layer')
 				# If there is only one bank, jump to preset selection
 				if len(self.curlayer.bank_list)<=1:
 					self.screens['bank'].select_action(0)
@@ -824,7 +833,7 @@ class zynthian_gui(QObject):
 
 	def callable_ui_action(self, cuia, params=None):
 		logging.debug("CUIA '{}' => {}".format(cuia,params))
-		
+
 		if cuia == "POWER_OFF":
 			self.screens['admin'].power_off_confirmed()
 
@@ -1012,6 +1021,22 @@ class zynthian_gui(QObject):
 
 		elif cuia == "MODAL_STEPSEQ" and "zynseq" in zynthian_gui_config.experimental_features:
 			self.toggle_modal("stepseq")
+
+		elif cuia == "NEXT_SCREEN":
+			# Try to call next_action method:
+			if self.modal_screen:
+				try:
+					self.screens[self.modal_screen].next_action()
+				except:
+					pass
+			else:
+				try:
+					self.screens[self.active_screen].next_action()
+					logging.error(self.screens[self.active_screen].next_action)
+				except:
+					pass
+
+
 
 
 	def custom_switch_ui_action(self, i, t):
