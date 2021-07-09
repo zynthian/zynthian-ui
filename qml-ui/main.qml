@@ -40,6 +40,7 @@ Kirigami.AbstractApplicationWindow {
 
     ZComponents.LayerManager {
         id: layerManager
+        anchors.fill: parent
         initialItem: MainScreensLayout {
             id: mainRowLayout
 

@@ -168,6 +168,7 @@ class zynthian_layer:
 		return False
 
 
+	# FIXME
 	def get_bank_name(self):
 		return self.bank_name
 

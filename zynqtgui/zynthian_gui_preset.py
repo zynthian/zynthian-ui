@@ -48,6 +48,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def __init__(self, parent = None):
 		super(zynthian_gui_preset, self).__init__('Preset', parent)
+		self.only_favs = False;
 		self.show()
       
       
@@ -121,6 +122,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.only_favs = True
 			self.set_select_path()
 			self.update_list()
+			self.show_only_favorites_changed.emit()
+			if self.zyngui.curlayer.get_preset_name():
+				self.zyngui.curlayer.set_preset_by_name(self.zyngui.curlayer.get_preset_name())
 
 
 	def disable_only_favs(self):
@@ -128,6 +132,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.only_favs = False
 			self.set_select_path()
 			self.update_list()
+			self.show_only_favorites_changed.emit()
+			if self.zyngui.curlayer.get_preset_name():
+				self.zyngui.curlayer.set_preset_by_name(self.zyngui.curlayer.get_preset_name())
 
 
 	def toggle_only_favs(self):
@@ -138,6 +145,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 		self.set_select_path()
 		self.update_list()
+		self.show_only_favorites_changed.emit()
+		if self.zyngui.curlayer.get_preset_name():
+			self.zyngui.curlayer.set_preset_by_name(self.zyngui.curlayer.get_preset_name())
 
 
 	def set_select_path(self):
