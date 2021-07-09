@@ -82,6 +82,8 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		else:
 			self.show()
 
+	def index_supports_immediate_activation(self, index=None):
+		return True
 
 	def set_select_path(self):
 		if self.zyngui.curlayer:

@@ -166,13 +166,33 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 			self.zselector.set_value(self.index, True, False)
 		self.current_index_changed.emit()
 
+	def index_supports_immediate_activation(self, index=None):
+		return False
 
 	def select_up(self, n=1):
 		self.select(self.index-n)
+		#HACK
+		if self.index_supports_immediate_activation(self.index):
+			old_screen = self.zyngui.get_current_screen_id()
+			self.select_action(self.index, 'S')
+			if self.zyngui.get_current_screen_id() != old_screen:
+				if self.zyngui.modal_screen:
+					self.zyngui.show_modal(old_screen)
+				else:
+					self.zyngui.show_screen(old_screen)
 
 
 	def select_down(self, n=1):
 		self.select(self.index+n)
+		#HACK
+		if self.index_supports_immediate_activation(self.index):
+			old_screen = self.zyngui.get_current_screen_id()
+			self.select_action(self.index, 'S')
+			if self.zyngui.get_current_screen_id() != old_screen:
+				if self.zyngui.modal_screen:
+					self.zyngui.show_modal(old_screen)
+				else:
+					self.zyngui.show_screen(old_screen)
 
 
 	# TODO: remove

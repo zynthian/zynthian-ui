@@ -265,6 +265,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		self.set_mode_control()
 
+	def index_supports_immediate_activation(self, index=None):
+		return True
 
 	def back_action(self):
 		# If in controller map selection, back to instrument control

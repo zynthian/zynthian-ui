@@ -92,6 +92,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.zyngui.curlayer.toggle_preset_fav(self.list_data[i])
 			self.update_list()
 
+	def index_supports_immediate_activation(self, index=None):
+		return True
 
 	def back_action(self):
 		if self.only_favs:

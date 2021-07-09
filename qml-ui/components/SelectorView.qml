@@ -45,8 +45,9 @@ QQC2.ScrollView {
     signal itemActivatedSecondary(int index)
 
     Component.onCompleted: view.forceActiveFocus()
-    onFocusChanged: {
-        if (focus) {
+    onActiveFocusChanged: {
+        if (activeFocus) {
+			root.currentScreenIdRequested();
             view.forceActiveFocus()
         }
     }
@@ -65,8 +66,8 @@ QQC2.ScrollView {
         clip: true
         currentIndex: root.selector.current_index
 
-        onFocusChanged: {
-            if (focus) {
+        onActiveFocusChanged: {
+            if (activeFocus) {
                 root.currentScreenIdRequested();
             }
         }
@@ -80,6 +81,7 @@ QQC2.ScrollView {
 
             checkable: false
             checked: root.currentIndex === index
+            highlighted: root.currentIndex === index
             activeBackgroundColor: view.activeFocus ? Kirigami.Theme.highlightColor : Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.4)
             onClicked: {
                 let oldCurrent_screen_id = zynthian.current_screen_id;

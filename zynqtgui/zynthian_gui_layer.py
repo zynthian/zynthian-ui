@@ -133,6 +133,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.layer_options()
 		self.zyngui.screens['bank'].show()
 
+	def index_supports_immediate_activation(self, index=None):
+		return index >= 0 and index < len(self.root_layers)
+
 	def layer_up(self):
 		self.previous(zynthian_gui_config.automatically_show_control_page)
 		self.select_action(self.index)
