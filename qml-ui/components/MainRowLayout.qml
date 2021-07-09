@@ -102,7 +102,7 @@ Kirigami.Page {
                         model: layout.visibleChildren.length
                         QQC2.ToolButton {
                             text: (index > 0 ? "> " : "")
-									+ (icon.name.length === 0 ? layout.visibleChildren[index].title: "")
+                                    + (icon.name.length === 0 ? layout.visibleChildren[index].title: "")
                             icon.name: layout.visibleChildren[index].iconName
                             checked: root.currentIndex === index
                             opacity: checked ? 1 : 0.8
@@ -257,7 +257,8 @@ Kirigami.Page {
                 relayoutChildren()
             }
             function relayoutChild(child) {
-                child.height = height;
+                child.anchors.top = layout.top;
+                child.anchors.bottom = layout.bottom;
 
                 let endPage = flickable.width * Math.round((child.x + child.implicitWidth) / flickable.width)
                     if (endPage >= 1 && Math.abs(child.x + child.implicitWidth - endPage) < Kirigami.Units.gridUnit) {
