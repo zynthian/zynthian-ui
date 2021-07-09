@@ -27,7 +27,7 @@ import sys
 import logging
 from datetime import datetime
 
-from PySide2.QtCore import Qt, Property, Signal, Slot, QObject, QStringListModel
+from PySide2.QtCore import Qt, Property, Signal, Slot, QObject, QStringListModel, QTimer
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
@@ -57,6 +57,12 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 		last_index_change_ts = datetime.min
 		self.selector_caption=selcap
 		self.list_model = QStringListModel()
+
+		self.auto_activation_timer = QTimer(self)
+		self.auto_activation_timer.setInterval(300)
+		self.auto_activation_timer.setSingleShot(True)
+		self.auto_activation_timer.timeout.connect(self.auto_activation_timeout)
+		self.screen_at_timer_start = None
 
 	def get_selector_list(self):
 		l = []
@@ -143,6 +149,17 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 
 		self.select_action(self.index, 'S')
 
+	def auto_activation_timeout(self):
+		#HACK
+		if self.screen_at_timer_start == self.zyngui.get_current_screen_id() and self.index_supports_immediate_activation(self.index):
+			old_screen = self.zyngui.get_current_screen_id()
+			self.select_action(self.index, 'S')
+			if self.zyngui.get_current_screen_id() != old_screen:
+				if self.zyngui.modal_screen:
+					self.zyngui.show_modal(old_screen)
+				else:
+					self.zyngui.show_screen(old_screen)
+
 	@Slot('int')
 	def activate_index_secondary(self, index):
 		if index is not None:
@@ -170,29 +187,15 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 		return False
 
 	def select_up(self, n=1):
+		self.screen_at_timer_start = self.zyngui.get_current_screen_id()
+		self.auto_activation_timer.start()
 		self.select(self.index-n)
-		#HACK
-		if self.index_supports_immediate_activation(self.index):
-			old_screen = self.zyngui.get_current_screen_id()
-			self.select_action(self.index, 'S')
-			if self.zyngui.get_current_screen_id() != old_screen:
-				if self.zyngui.modal_screen:
-					self.zyngui.show_modal(old_screen)
-				else:
-					self.zyngui.show_screen(old_screen)
 
 
 	def select_down(self, n=1):
+		self.screen_at_timer_start = self.zyngui.get_current_screen_id()
+		self.auto_activation_timer.start()
 		self.select(self.index+n)
-		#HACK
-		if self.index_supports_immediate_activation(self.index):
-			old_screen = self.zyngui.get_current_screen_id()
-			self.select_action(self.index, 'S')
-			if self.zyngui.get_current_screen_id() != old_screen:
-				if self.zyngui.modal_screen:
-					self.zyngui.show_modal(old_screen)
-				else:
-					self.zyngui.show_screen(old_screen)
 
 
 	# TODO: remove
