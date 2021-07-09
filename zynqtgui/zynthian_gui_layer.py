@@ -98,7 +98,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		self.index = i
-		print(i)
+		self.zyngui.start_loading()
 		print(self.list_data[i][0])
 
 		if self.list_data[i][0] is None:
@@ -132,6 +132,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			elif t=='B':
 				self.layer_options()
 		self.zyngui.screens['bank'].show()
+		self.zyngui.stop_loading()
 
 	def index_supports_immediate_activation(self, index=None):
 		return index >= 0 and index < len(self.root_layers)

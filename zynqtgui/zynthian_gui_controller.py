@@ -208,6 +208,8 @@ class zynthian_gui_controller(QObject):
 	def get_max_value(self):
 		return self.ctrl_max_value
 
+	def get_value0(self):
+		return self.val0
 
 	def get_value_type(self):
 		if self.zctrl.is_toggle:
@@ -331,6 +333,7 @@ class zynthian_gui_controller(QObject):
 		self.set_value(val)
 		self.setup_zyncoder()
 		self.max_value_changed.emit()
+		self.value0_changed.emit()
 		self.value_type_changed.emit()
 		self.step_size_changed.emit()
 
@@ -449,6 +452,7 @@ class zynthian_gui_controller(QObject):
 	value_changed = Signal()
 	value_print_changed = Signal()
 	max_value_changed = Signal()
+	value0_changed = Signal()
 	value_type_changed = Signal()
 	step_size_changed = Signal()
 
@@ -456,6 +460,7 @@ class zynthian_gui_controller(QObject):
 	midi_bind = Property(str, get_midi_bind, notify = midi_bind_changed)
 	value = Property(float, get_value, write_value, notify = value_changed)
 	value_print = Property(str, get_value_print, notify = value_print_changed)
+	value0 = Property(float, get_value0, notify = value0_changed)
 	max_value = Property(float, get_max_value, notify = max_value_changed)
 	value_type = Property(str, get_value_type, notify = value_type_changed)
 	step_size= Property(float, get_step_size, notify = step_size_changed)

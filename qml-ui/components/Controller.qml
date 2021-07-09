@@ -134,6 +134,10 @@ Card {
             }
         }
 
+        /* just for debug purposes
+        QQC2.Label {
+			text: "t"+ root.controller.value_type + " s" + root.controller.step_size + " f"+ root.controller.value0 + "\n t" + root.controller.max_value + " v" +root.controller.value
+		}*/
         QQC2.Label {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
