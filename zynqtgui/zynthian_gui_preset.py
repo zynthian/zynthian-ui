@@ -61,7 +61,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.only_favs = False
 			self.set_select_path()
 			self.zyngui.curlayer.load_preset_list()
-			
+
 		self.list_data=self.zyngui.curlayer.preset_list
 		super().fill_list()
 
@@ -73,6 +73,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if only_favs is not None:
 			self.only_favs = only_favs
 		self.select(self.zyngui.curlayer.get_preset_index())
+		if not self.zyngui.curlayer.get_preset_name():
+			self.zyngui.curlayer.set_preset(self.zyngui.curlayer.get_preset_index())
+
 		super().show()
 
 

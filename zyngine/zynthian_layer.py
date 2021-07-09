@@ -31,7 +31,6 @@ from collections import OrderedDict
 # Zynthian specific modules
 from zyncoder import *
 
-
 class zynthian_layer:
 
 	# ---------------------------------------------------------------------------
@@ -83,13 +82,13 @@ class zynthian_layer:
 			self.refresh_controllers()
 
 			#TODO: Improve this Dirty Hack!!
-			if self.engine.nickname=='MD':
-				self.zyngui.screens['preset'].fill_list()
-				if self.zyngui.active_screen=='bank':
-					if self.preset_name:
-						self.zyngui.show_screen('control')
-					else:
-						self.zyngui.show_screen('preset')
+			#if self.engine.nickname=='MD':
+				#self.zyngui.screens['preset'].fill_list()
+				#if self.zyngui.active_screen=='bank':
+					#if self.preset_name:
+						#self.zyngui.show_screen('control')
+					#else:
+						#self.zyngui.show_screen('preset')
 
 			self.zyngui.refresh_screen()
 
@@ -170,7 +169,7 @@ class zynthian_layer:
 
 
 	def get_bank_name(self):
-		return self.preset_name
+		return self.bank_name
 
 
 	def get_bank_index(self):

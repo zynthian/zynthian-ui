@@ -107,6 +107,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
+		self.zyngui.start_loading()
 		selchan = self.list_data[i][1]
 		self.midi_chan_sel = selchan
 
@@ -138,6 +139,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 				elif t=='B':
 					self.clone_config_cc()
+		self.zyngui.stop_loading()
 
 
 	def clone_config_cc(self):

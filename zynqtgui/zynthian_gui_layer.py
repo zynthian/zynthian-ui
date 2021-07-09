@@ -132,8 +132,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			elif t=='B':
 				self.layer_options()
 		self.zyngui.screens['bank'].show()
-		if self.zyngui.curlayer.bank_index >= 0:
-			self.zyngui.screens['preset'].show()
 
 	def layer_up(self):
 		self.previous(zynthian_gui_config.automatically_show_control_page)
@@ -356,6 +354,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				try:
 					self.index = self.root_layers.index(root_layer)
 					self.layer_control(layer)
+					self.current_index_changed.emit()
 				except Exception as e:
 					logging.error(e)
 					self.zyngui.show_screen('layer')

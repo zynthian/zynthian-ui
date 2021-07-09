@@ -61,6 +61,8 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if not self.zyngui.curlayer:
 			logging.error("Can't show bank list for None layer!")
 			return
+		if not self.zyngui.curlayer.get_bank_name():
+			self.zyngui.curlayer.set_bank(0)
 		self.index=self.zyngui.curlayer.get_bank_index()
 		logging.debug("BANK INDEX => %s" % self.index)
 		super().show()

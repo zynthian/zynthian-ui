@@ -40,9 +40,9 @@ ZComponents.MainRowLayout {
             onCurrent_screen_idChanged: {
                 print("SCREEN ID CHANGED: "+zynthian.current_screen_id);
                 // FIXME: remove special case
-                if (zynthian.current_screen_id === "control") {
-                    zynthian.current_screen_id = "preset";
-                }
+              //  if (zynthian.current_screen_id === "control") {
+               //     zynthian.current_screen_id = "preset";
+              // }
                 var i;
                 for (i in root.items) {
                     let child = root.items[i];

@@ -561,7 +561,7 @@ class zynthian_gui(QObject):
 			else:
 				screen = "main"
 
-		if screen=="control":
+		if screen=="layer" or screen=="bank"  or screen=="preset"  or screen=="control" :
 			self.restore_curlayer()
 
 		self.lock.acquire()
@@ -712,9 +712,11 @@ class zynthian_gui(QObject):
 
 		if self.curlayer:
 			# If there is a preset selection for the active layer ...
-			if self.curlayer.get_preset_name():
+			if zynthian_gui_config.automatically_show_control_page and self.curlayer.get_preset_name():
 				self.show_screen('control')
 			else:
+				if self.curlayer.get_preset_name():
+					self.screens['control'].show()
 				if modal:
 					self.show_modal('bank')
 				else:
@@ -764,8 +766,11 @@ class zynthian_gui(QObject):
 				self._curlayer = self.curlayer
 			self.curlayer = layer
 			self.screens['bank'].fill_list()
+			self.screens['bank'].show()
 			self.screens['preset'].fill_list()
+			self.screens['preset'].show()
 			self.screens['control'].fill_list()
+			self.screens['control'].show()
 			self.set_active_channel()
 		else:
 			self.curlayer = None
@@ -1385,6 +1390,8 @@ class zynthian_gui(QObject):
 	def zyncoder_read(self):
 		if not self.loading: #TODO Es necesario???
 			try:
+				# TODO: figure out the multithreading error
+
 				#Read Zyncoders
 				self.lock.acquire()
 				if self.modal_screen:
@@ -2150,6 +2157,7 @@ if __name__ == "__main__":
 	app.setPalette(palette)
 
 	zyngui.show_screen('layer')
+	zyngui.screens['preset'].disable_only_favs()
 
 	engine.rootContext().setContextProperty("zynthian", zyngui)
 

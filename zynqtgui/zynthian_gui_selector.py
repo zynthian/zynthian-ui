@@ -127,7 +127,8 @@ class zynthian_gui_selector(zynthian_qt_gui_base.ZynGui):
 
 
 	def zyncoder_read(self):
-		if self.zselector:
+		# FIXME: figure out why sometimes the value is wrong
+		if False: #self.zselector:
 			self.zselector.read_zyncoder()
 			if self.index!=self.zselector.value:
 				self.select(self.zselector.value)
