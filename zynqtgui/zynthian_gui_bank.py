@@ -79,6 +79,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			# If there is only one preset, jump to instrument control
 			if len(self.zyngui.curlayer.preset_list)<=1:
 				self.zyngui.screens['preset'].select_action(0)
+			self.zyngui.screens['layer'].fill_list()
 		else:
 			self.show()
 

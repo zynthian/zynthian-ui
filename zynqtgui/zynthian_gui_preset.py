@@ -88,6 +88,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				self.zyngui.show_screen('control')
 			else:
 				self.zyngui.screens['control'].show()
+			self.zyngui.screens['layer'].fill_list()
 		else:
 			self.zyngui.curlayer.toggle_preset_fav(self.list_data[i])
 			self.update_list()
