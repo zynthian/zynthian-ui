@@ -193,60 +193,81 @@ Kirigami.AbstractApplicationWindow {
         anchors.fill: parent
     }
 
-    footer: QQC2.ToolBar {
-        contentItem: RowLayout {
-            QQC2.ToolButton {
-                Layout.fillWidth: true
-                text: qsTr("Back")
-                enabled: mainRowLayout.currentPage > 0 || layerManager.depth > 1
-                opacity: enabled ? 1 : 0.3
-                onClicked: {
-                    if (layerManager.depth > 1) {
-                        if (layerManager.currentItem.hasOwnProperty("currentIndex")
-                            && layerManager.currentItem.currentIndex > 0
-                        ) {
-                            layerManager.currentItem.currentIndex -= 1;
+    footer: ColumnLayout {
+        spacing: 0
+        QQC2.ToolBar {
+            Layout.fillWidth: true
+            visible: layerManager.depth === 1 && mainRowLayout.currentPage === 1
+
+            contentItem: RowLayout {
+                QQC2.ToolButton {
+                    //Layout.fillWidth: true
+					implicitWidth: backButton.width
+                    text: qsTr("Synth")
+                    onClicked: zynthian.layer.select_engine()
+                }
+                Item {
+                    Layout.fillWidth: true
+                }
+            }
+        }
+        QQC2.ToolBar {
+            Layout.fillWidth: true
+            contentItem: RowLayout {
+                QQC2.ToolButton {
+					id: backButton
+                    Layout.fillWidth: true
+                    text: qsTr("Back")
+                    enabled: mainRowLayout.currentPage > 0 || layerManager.depth > 1
+                    opacity: enabled ? 1 : 0.3
+                    onClicked: {
+                        if (layerManager.depth > 1) {
+                            if (layerManager.currentItem.hasOwnProperty("currentIndex")
+                                && layerManager.currentItem.currentIndex > 0
+                            ) {
+                                layerManager.currentItem.currentIndex -= 1;
+                            } else {
+                                layerManager.pop();
+                            }
                         } else {
-                            layerManager.pop();
+                            mainRowLayout.goToPreviousPage();
                         }
-                    } else {
-                        mainRowLayout.goToPreviousPage();
                     }
                 }
-            }
-            QQC2.ToolButton {
-                Layout.fillWidth: true
-                enabled: layersPage.visible
-                opacity: enabled ? 1 : 0.3
-                text: qsTr("Layers")
-                onClicked: root.ensureVisible(layersPage)
-            }
-            QQC2.ToolButton {
-                Layout.fillWidth: true
-                text: mainRowLayout.currentPage === 1 ? qsTr("Favorites") : qsTr("Presets")
-                enabled: presetsPage.visible
-                opacity: enabled ? 1 : 0.3
-                checkable: mainRowLayout.currentPage === 1
-                checked: mainRowLayout.currentPage === 1 && zynthian.preset.show_only_favorites
-                onClicked: root.ensureVisible(presetsPage)
-                onCheckedChanged: {
-                    if (mainRowLayout.currentPage === 1) {
-                        zynthian.preset.show_only_favorites = checked
+                QQC2.ToolButton {
+                    Layout.fillWidth: true
+                    enabled: layersPage.visible
+                    opacity: enabled ? 1 : 0.3
+                    text: qsTr("Layers")
+                    onClicked: root.ensureVisible(layersPage)
+                }
+                QQC2.ToolButton {
+                    Layout.fillWidth: true
+                    text: mainRowLayout.currentPage === 1 ? qsTr("Favorites") : qsTr("Presets")
+                    enabled: presetsPage.visible
+                    opacity: enabled ? 1 : 0.3
+                    checkable: mainRowLayout.currentPage === 1
+                    checked: mainRowLayout.currentPage === 1 && zynthian.preset.show_only_favorites
+                    onClicked: root.ensureVisible(presetsPage)
+                    onCheckedChanged: {
+                        if (mainRowLayout.currentPage === 1) {
+                            zynthian.preset.show_only_favorites = checked
+                        }
                     }
                 }
+                QQC2.ToolButton {
+                    Layout.fillWidth: true
+                    text: qsTr("Edit")
+                    enabled: controlPage.visible
+                    opacity: enabled ? 1 : 0.3
+                    onClicked: root.ensureVisible(controlPage)
+                }
+                /*QQC2.ToolButton {
+                    Layout.fillWidth: true
+                    text: qsTr("Quit")
+                    onClicked: Qt.quit();
+                }*/
             }
-            QQC2.ToolButton {
-                Layout.fillWidth: true
-                text: qsTr("Edit")
-                enabled: controlPage.visible
-                opacity: enabled ? 1 : 0.3
-                onClicked: root.ensureVisible(controlPage)
-            }
-            /*QQC2.ToolButton {
-                Layout.fillWidth: true
-                text: qsTr("Quit")
-                onClicked: Qt.quit();
-            }*/
         }
     }
 }

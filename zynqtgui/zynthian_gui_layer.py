@@ -39,6 +39,8 @@ from . import zynthian_gui_config
 from . import zynthian_gui_selector
 from zyngine import zynthian_layer
 
+from PySide2.QtCore import Qt, QObject, Slot, Signal, Property
+
 #------------------------------------------------------------------------------
 # Zynthian Layer Selection GUI Class
 #------------------------------------------------------------------------------
@@ -55,6 +57,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.layer_chain_parallel = False
 		self.last_snapshot_fpath = None
 		self.auto_next_screen = False
+		self.layer_index_replace_engine = None
 		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
 		self.create_amixer_layer()
 		self.show()
@@ -257,6 +260,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def cb_chain_options_modal(self, chain_parallel):
 		self.layer_chain_parallel = chain_parallel
+		self.layer_index_replace_engine = None
 		self.zyngui.show_modal('engine')
 
 
@@ -265,6 +269,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.replace_layer_index = None
 		self.layer_chain_parallel = False
 		self.zyngui.screens['engine'].set_engine_type(etype)
+		self.layer_index_replace_engine = None
+		self.zyngui.show_modal('engine')
+
+
+	@Slot('void')
+	def select_engine(self):
+		self.add_layer_eng = None
+		self.replace_layer_index = None
+		self.layer_chain_parallel = False
+		self.zyngui.screens['engine'].set_engine_type("MIDI Synth")
+		self.layer_index_replace_engine = self.index
+		self.zyngui.screens['engine'].midi_chan = self.layers[self.index].midi_chan
 		self.zyngui.show_modal('engine')
 
 
@@ -276,6 +292,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if self.get_fxchain_count(midi_chan)>0:
 			self.show_chain_options_modal()
 		else:
+			self.layer_index_replace_engine = None
 			self.zyngui.show_modal('engine')
 
 
@@ -284,6 +301,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.replace_layer_index = i
 		self.layer_chain_parallel = False
 		self.zyngui.screens['engine'].set_fxchain_mode(self.layers[i].midi_chan)
+		self.layer_index_replace_engine = None
 		self.zyngui.show_modal('engine')
 
 
@@ -295,6 +313,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if self.get_midichain_count(midi_chan)>0:
 			self.show_chain_options_modal()
 		else:
+			self.layer_index_replace_engine = None
 			self.zyngui.show_modal('engine')
 
 
@@ -303,6 +322,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.replace_layer_index = i
 		self.layer_chain_parallel = False
 		self.zyngui.screens['engine'].set_midichain_mode(self.layers[i].midi_chan)
+		self.layer_index_replace_engine = None
 		self.zyngui.show_modal('engine')
 
 
@@ -333,7 +353,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def add_layer_midich(self, midich, select=True):
 		if self.add_layer_eng:
 			zyngine = self.zyngui.screens['engine'].start_engine(self.add_layer_eng)
-			layer=zynthian_layer(zyngine, midich, self.zyngui)
+
+			if not self.layer_index_replace_engine == None and len(self.layers) > self.index:
+				layer = self.layers[self.layer_index_replace_engine]
+				layer.set_engine(zyngine);
+			else:
+				layer = zynthian_layer(zyngine, midich, self.zyngui)
 
 			# Try to connect Audio Effects ...
 			if len(self.layers)>0 and layer.engine.type=="Audio Effect":
@@ -365,6 +390,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				except Exception as e:
 					logging.error(e)
 					self.zyngui.show_screen('layer')
+		self.layer_index_replace_engine = None
 
 
 	def remove_layer(self, i, stop_unused_engines=True):

@@ -102,6 +102,11 @@ class zynthian_layer:
 		# Clear refresh flag
 		self.refresh_flag=False
 
+	def set_engine(self, engine):
+		self.reset()
+		self.engine = engine
+		self.engine.add_layer(self)
+		self.refresh_controllers()
 
 	# ---------------------------------------------------------------------------
 	# MIDI chan Management
