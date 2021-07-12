@@ -76,7 +76,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			if self.auto_next_screen:
 				self.next_action
 			else:
-				self.zyngui.screens['preset'].show() #FIXME: this show should be renamed in load or some thing like that
+				self.zyngui.screens['preset'].show() #FIXME: this show should be renamed in "load" or some similar name
 			# If there is only one preset, jump to instrument control
 			if len(self.zyngui.curlayer.preset_list)<=1:
 				self.zyngui.screens['preset'].select_action(0)
