@@ -33,12 +33,22 @@ import "../components" as ZComponents
 
 ZComponents.MainRowLayout {
     id: root
+    Component.onCompleted: autoHideTimer.restart()
     Kirigami.ScrollablePage {
 		title: qsTr("Info")
         Kirigami.Heading {
 			level: 2
 			wrapMode: Text.Wrap
 			text: zynthian.info.text
+			onTextChanged: autoHideTimer.restart()
+			Timer {
+				id: autoHideTimer
+				interval: 3000
+				onTriggered: {
+					print("autohidetimer triggered")
+					zynthian.info.back_action()
+				}
+			}
 		}
     }
 }

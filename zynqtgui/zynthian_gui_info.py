@@ -87,10 +87,11 @@ class zynthian_gui_info(QObject):
 	def switch_select(self, t='S'):
 		pass
 
-
+	@Slot('void')
 	def back_action(self):
 		self.zyngui.cancel_modal_timer()
 		self.zyngui.screens['admin'].kill_command()
+		self.zyngui.show_modal('admin')
 		return None
 
 

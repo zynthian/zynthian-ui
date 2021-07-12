@@ -311,6 +311,8 @@ class zynthian_gui(QObject):
 		self.info_timer.setInterval(3000)
 		self.info_timer.setSingleShot(False)
 		self.info_timer.timeout.connect(self.hide_info)
+		# HACK: in order to start the timer from the proper thread
+		self.current_modal_screen_id_changed.connect(self.info_timer.start)
 
 		self.curlayer = None
 		self._curlayer = None
