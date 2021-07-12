@@ -180,6 +180,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.screens['layer_options'].reset()
 			self.zyngui.show_modal('layer_options')
 
+	def activate_layer(self, i):
+		if len(self.root_layers) == 0 or i < 0 or i >= len(self.root_layers):
+			return
+		self.activate_index(i)
+
 	def next(self, control=True):
 		self.zyngui.restore_curlayer()
 		if len(self.root_layers)>1:
