@@ -35,12 +35,16 @@ ZComponents.MainRowLayout {
     id: root
     Component.onCompleted: autoHideTimer.restart()
     Kirigami.ScrollablePage {
+		id: page
 		title: qsTr("Info")
         Kirigami.Heading {
 			level: 2
 			wrapMode: Text.Wrap
 			text: zynthian.info.text
-			onTextChanged: autoHideTimer.restart()
+			onTextChanged: {
+				autoHideTimer.restart()
+				page.flickable.contentY = page.flickable.contentHeight - page.flickable.height
+			}
 			Timer {
 				id: autoHideTimer
 				interval: 3000
