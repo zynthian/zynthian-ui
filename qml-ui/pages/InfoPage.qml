@@ -38,7 +38,7 @@ ZComponents.MainRowLayout {
 		id: page
 		title: qsTr("Info")
         Kirigami.Heading {
-			level: 2
+			level: 3
 			wrapMode: Text.Wrap
 			text: zynthian.info.text
 			onTextChanged: {
