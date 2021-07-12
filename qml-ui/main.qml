@@ -175,7 +175,7 @@ Kirigami.AbstractApplicationWindow {
 
     QQC2.Dialog {
         id: confirmDialog
-        standardButtons: QQC2.Dialog.Yes | QQC2.Dialog.No
+        standardButtons: QQC2.Dialog.No | QQC2.Dialog.Yes 
         x: root.width / 2 - width / 2
         y: root.height / 2 - height / 2
         dim: true
