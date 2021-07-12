@@ -1716,7 +1716,7 @@ class zynthian_gui(QObject):
 				self.stop()
 				self.wait_threads_end()
 				logging.info("EXITING ZYNTHIAN-UI ...")
-				zynthian_gui_config.app.quit()
+				zynthian_gui_config.app.exit(self.exit_code)
 				return
 			# Refresh Current Layer
 			elif self.curlayer and not self.loading:
