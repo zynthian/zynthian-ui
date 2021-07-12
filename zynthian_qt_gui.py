@@ -282,7 +282,14 @@ class zynthian_gui(QObject):
 		"94": "MODAL_ALSA_MIXER",
 		"95": "MODAL_STEPSEQ",
 
-		"96": "NEXT_SCREEN"
+		"96": "NEXT_SCREEN",
+
+		"101": "LAYER_ONE",
+		"102": "LAYER_TWO",
+		"103": "LAYER_THREE",
+		"104": "LAYER_FOUR",
+		"105": "LAYER_FIVE",
+		"106": "LAYER_SIX",
 	}
 
 
@@ -1035,6 +1042,19 @@ class zynthian_gui(QObject):
 					logging.error(self.screens[self.active_screen].next_action)
 				except:
 					pass
+
+		elif cuia == "LAYER_ONE":
+			self.screens['layer'].activate_index(0)
+		elif cuia == "LAYER_TWO":
+			self.screens['layer'].activate_index(1)
+		elif cuia == "LAYER_THREE":
+			self.screens['layer'].activate_index(2)
+		elif cuia == "LAYER_FOUR":
+			self.screens['layer'].activate_index(3)
+		elif cuia == "LAYER_FIVE":
+			self.screens['layer'].activate_index(4)
+		elif cuia == "LAYER_SIX":
+			self.screens['layer'].activate_index(5)
 
 
 

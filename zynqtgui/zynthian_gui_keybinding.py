@@ -111,7 +111,14 @@ class zynthian_gui_keybinding(QObject):
 			"TOGGLE_MIDI_PLAY": { "modifier": 12, "keysym": "m" },
 
 			# Added in QML version
-			"NEXT_SCREEN": { "modifier": 0, "keysym": "Right" }
+			"NEXT_SCREEN": { "modifier": 0, "keysym": "Right" },
+
+			"LAYER_ONE": { "modifier": 0, "keysym": "1" },
+			"LAYER_TWO": { "modifier": 0, "keysym": "2" },
+			"LAYER_THREE": { "modifier": 0, "keysym": "3" },
+			"LAYER_FOUR": { "modifier": 0, "keysym": "4" },
+			"LAYER_FIVE": { "modifier": 0, "keysym": "5" },
+			"LAYER_SIX": { "modifier": 0, "keysym": "6" }
 		}
 	}
 
