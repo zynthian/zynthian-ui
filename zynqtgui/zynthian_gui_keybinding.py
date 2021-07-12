@@ -108,10 +108,10 @@ class zynthian_gui_keybinding(QObject):
 			"TOGGLE_MIDI_RECORD": { "modifier": 8, "keysym": "m" },
 			"START_MIDI_PLAY": { "modifier": 4, "keysym": "m" },
 			"STOP_MIDI_PLAY": { "modifier": 5, "keysym": "m" },
-			"TOGGLE_MIDI_PLAY": { "modifier": 12, "keysym": "m" }
+			"TOGGLE_MIDI_PLAY": { "modifier": 12, "keysym": "m" },
 
 			# Added in QML version
-			"NEXT_SCREEN": { "modifier": 0, "keysym": "Right" },
+			"NEXT_SCREEN": { "modifier": 0, "keysym": "Right" }
 		}
 	}
 
