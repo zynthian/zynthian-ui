@@ -77,7 +77,6 @@ class zynthian_gui_keybinding(QObject):
 			"SWITCH_SELECT_SHORT": { "modifier": 0, "keysym": "Return" },
 			"SWITCH_SELECT_BOLD": { "modifier": 1, "keysym": "Return" },
 			"SWITCH_SELECT_LONG": { "modifier": 4, "keysym": "Return" },
-			"NEXT_SCREEN": { "modifier": 0, "keysym": "Right" },
 			"SWITCH_BACK_SHORT": { "modifier": 0, "keysym": "BackSpace, Escape, Left" },
 			"SWITCH_BACK_BOLD": { "modifier": 1, "keysym": "BackSpace, Escape, Left" },
 			"SWITCH_BACK_LONG": { "modifier": 4, "keysym": "BackSpace, Escape, Left" },
@@ -110,6 +109,9 @@ class zynthian_gui_keybinding(QObject):
 			"START_MIDI_PLAY": { "modifier": 4, "keysym": "m" },
 			"STOP_MIDI_PLAY": { "modifier": 5, "keysym": "m" },
 			"TOGGLE_MIDI_PLAY": { "modifier": 12, "keysym": "m" }
+
+			# Added in QML version
+			"NEXT_SCREEN": { "modifier": 0, "keysym": "Right" },
 		}
 	}
 
@@ -236,6 +238,7 @@ class zynthian_gui_keybinding(QObject):
 				yml = fh.read()
 				logging.debug("Loading keyboard binding config file '{}' =>\n{}".format(config_fpath,yml))
 				self.config = yaml.load(yml, Loader=yaml.SafeLoader)
+
 				self.parse_map()
 				return True
 

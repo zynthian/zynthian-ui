@@ -113,6 +113,7 @@ while true; do
 
 	# Start Zynthian GUI & Synth Engine
 	export QT_QUICK_CONTROLS_MOBILE=1
+	export QT_QUICK_CONTROLS_STYLE=Universal
 	export QT_SCALE_FACTOR=1.2
 	#Qt5.11 didn't support this var yet
 	#export QT_QPA_SYSTEM_ICON_THEME=breeze
@@ -120,6 +121,11 @@ while true; do
 	export XDG_CURRENT_DESKTOP=kde
 	export QT_QPA_PLATFORMTHEME=generic
 	export XDG_DATA_DIRS=/usr/share
+
+	#HACK
+	rm ../config/keybinding.yaml
+	cp zynthian_envars.sh ../config
+
 	./zynthian_qt_gui.py
 	status=$?
 
