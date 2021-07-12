@@ -357,6 +357,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if not self.layer_index_replace_engine == None and len(self.layers) > self.index:
 				layer = self.layers[self.layer_index_replace_engine]
 				layer.set_engine(zyngine);
+				# initialize the bank
+				self.zyngui.screens['bank'].show()
 			else:
 				layer = zynthian_layer(zyngine, midich, self.zyngui)
 
