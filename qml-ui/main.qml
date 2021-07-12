@@ -159,6 +159,9 @@ Kirigami.AbstractApplicationWindow {
             case "admin":
                  root.show_modal(Qt.resolvedUrl("./pages/AdminPage.qml"));
                 break;
+            case "info":
+                 root.show_modal(Qt.resolvedUrl("./pages/InfoPage.qml"));
+                break;
             case "":
                 root.close_modal();
                 break;
@@ -202,7 +205,7 @@ Kirigami.AbstractApplicationWindow {
             contentItem: RowLayout {
                 QQC2.ToolButton {
                     //Layout.fillWidth: true
-					implicitWidth: backButton.width
+                    implicitWidth: backButton.width
                     text: qsTr("Synth")
                     onClicked: zynthian.layer.select_engine()
                 }
@@ -215,7 +218,7 @@ Kirigami.AbstractApplicationWindow {
             Layout.fillWidth: true
             contentItem: RowLayout {
                 QQC2.ToolButton {
-					id: backButton
+                    id: backButton
                     Layout.fillWidth: true
                     text: qsTr("Back")
                     enabled: mainRowLayout.currentPage > 0 || layerManager.depth > 1

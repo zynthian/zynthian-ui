@@ -50,16 +50,19 @@ class zynthian_gui_info(QObject):
 
 
 	def clean(self):
-		text = ''
+		self.prop_text = ''
+		self.text_changed.emit()
 
 
 	def add(self, text, tags=None):
 		self.prop_text += '\n' + text
+		self.text_changed.emit()
 
 
 	def set(self, text, tags=None):
 		self.clean()
 		self.add(text+"\n",tags)
+		self.text_changed.emit()
 
 
 	def hide(self):
@@ -67,7 +70,7 @@ class zynthian_gui_info(QObject):
 			self.shown=False
 
 
-	def show(self, text):
+	def show(self, text = ''):
 		self.set(text)
 		if not self.shown:
 			self.shown=True
@@ -95,7 +98,7 @@ class zynthian_gui_info(QObject):
 		self.zyngui.zynswitch_defered('S',1)
 
 	def get_text(self):
-		return prop_text
+		return self.prop_text
 
 	text_changed = Signal()
 

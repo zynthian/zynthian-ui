@@ -622,7 +622,7 @@ class zynthian_gui(QObject):
 
 	def close_modal_timer(self, tms=3000):
 		self.cancel_modal_timer()
-		self.modal_timer.setDuration(tms)
+		self.modal_timer.setInterval(tms)
 		self.modal_timer.start()
 
 
@@ -672,9 +672,10 @@ class zynthian_gui(QObject):
 		self.modal_screen = 'info'
 		self.screens['info'].show(text)
 		self.hide_screens(exclude='info')
+		self.current_modal_screen_id_changed.emit()
+		logging.error(tms)
 		if tms:
 			self.hide_info_timer()
-		self.current_modal_screen_id_changed.emit()
 
 
 	def add_info(self, text, tags=None):
@@ -682,13 +683,14 @@ class zynthian_gui(QObject):
 
 
 	def hide_info(self):
-		self.hide_info_timer()
+		if self.modal_screen=='info':
+			self.close_modal()
 
 
 	def hide_info_timer(self, tms=3000):
 		if self.modal_screen=='info':
 			self.cancel_info_timer()
-			self.info_timer.setDuration(tms)
+			self.info_timer.setInterval(tms)
 			self.info_timer.start()
 
 

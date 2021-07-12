@@ -725,24 +725,30 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.zyngui.show_info("TEST MIDI")
 		self.killable_start_command(["aplaymidi -p 14 {}/mid/test.mid".format(self.data_dir)])
 
-
+	# TODO enable again update of everything
 	def update_software(self):
 		logging.info("UPDATE SOFTWARE")
 		self.zyngui.show_info("UPDATE SOFTWARE")
-		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
+		#self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
+		self.start_command(["git -C /zynthian/zynthian-ui reset --hard HEAD;git -C /zynthian/zynthian-ui pull --rebase;"])
 
 
+	# TODO enable again update of everything
 	def is_update_available(self):
-		repos = ["/zynthian/zyncoder", "/zynthian/zynthian-ui", "/zynthian/zynthian-sys", "/zynthian/zynthian-webconf", "/zynthian/zynthian-data"]
+		#repos = ["/zynthian/zyncoder", "/zynthian/zynthian-ui", "/zynthian/zynthian-sys", "/zynthian/zynthian-webconf", "/zynthian/zynthian-data"]
+		repos = ["/zynthian/zynthian-ui"]
 		update_available = False
 		for path in repos:
 			update_available |= (check_output("git -C %s status --porcelain -bs | grep behind | wc -l" % path, shell=True).decode()[:1] == '1')
 		return update_available
 
 
+	# TODO enable again update of everything
 	def check_for_updates(self):
 		self.zyngui.show_info("CHECK FOR UPDATES")
-		self.start_command(["git -C /zynthian/zyncoder remote update; git -C /zynthian/zynthian-ui remote update; git -C /zynthian/zynthian-sys remote update; git -C /zynthian/zynthian-webconf remote update; git -C /zynthian/zynthian-data remote update"])
+		#self.start_command(["git -C /zynthian/zyncoder remote update; git -C /zynthian/zynthian-ui remote update; git -C /zynthian/zynthian-sys remote update; git -C /zynthian/zynthian-webconf remote update; git -C /zynthian/zynthian-data remote update"])
+		self.start_command(["git -C /zynthian/zynthian-ui remote update;"])
+
 
 
 	def update_system(self):
