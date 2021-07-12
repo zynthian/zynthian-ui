@@ -99,7 +99,7 @@ QtObject {
         Kirigami.Theme.neutralTextColor = "#F67400"
         Kirigami.Theme.positiveTextColor = "#27AE60"
 
-        Kirigami.Theme.buttonTextColor = pplicationWindow().palette.buttonText
+        Kirigami.Theme.buttonTextColor = applicationWindow().palette.buttonText
         Kirigami.Theme.buttonBackgroundColor = applicationWindow().palette.button
         Kirigami.Theme.buttonHoverColor = applicationWindow().palette.highlight
         Kirigami.Theme.buttonFocusColor = applicationWindow().palette.highlight

@@ -32,10 +32,8 @@ import org.kde.kirigami 2.4 as Kirigami
 Kirigami.Page {
     id: root
 
-    property alias leftHeaderControl: leftHeaderControl.contentItem
-    property alias rightHeaderControl: rightHeaderControl.contentItem
-
     default property alias items: layout.children
+    property alias visibleItems: layout.visibleChildren
     readonly property int currentPage: Math.floor((currentItem.x + currentItem.width/2) / flickable.width)
 
     property int currentIndex: 0
@@ -79,88 +77,6 @@ Kirigami.Page {
         slideAnim.from = flickable.contentX;
         slideAnim.to = Math.max(0, Math.min(flickable.contentWidth - flickable.width, flickable.width * (root.currentPage - 1)))
         slideAnim.start();
-    }
-
-    header: QQC2.ToolBar {
-        contentItem: RowLayout {
-            QQC2.Control {
-                id: leftHeaderControl
-                Layout.fillHeight: true
-                visible: contentItem !== null
-            }
-            Flickable {
-                id: breadcrumbFlickable
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                contentHeight: height
-                contentWidth: breadcrumbLayout.width
-
-                RowLayout {
-                    id: breadcrumbLayout
-                    spacing: 0
-                    Repeater {
-                        model: layout.visibleChildren.length
-                        QQC2.ToolButton {
-							id: toolButton
-                            text: (index > 0 ? "> " : "")
-                                    + (icon.name.length === 0 ? layout.visibleChildren[index].title: "")
-                            icon.name: layout.visibleChildren[index].iconName
-                            checked: root.currentIndex === index
-                            opacity: checked ? 1 : 0.8
-                            checkable: false
-                            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
-                            Connections {
-								target: breadcrumbFlickable
-								onWidthChanged: toolButton.ensureBounds()
-							}
-                            function ensureBounds() {
-								if (!checked || breadcrumbFlickable.width === 0) {
-                                    return;
-                                }
-
-                                if (x < breadcrumbFlickable.contentX) {
-                                    breadcrumbSlideAnim.stop();
-                                    breadcrumbSlideAnim.from = breadcrumbFlickable.contentX;
-                                    breadcrumbSlideAnim.to = x;
-                                    breadcrumbSlideAnim.start();
-                                } else if (x + width - breadcrumbFlickable.contentX >  breadcrumbFlickable.width) {
-                                    breadcrumbSlideAnim.stop();
-                                    breadcrumbSlideAnim.from = breadcrumbFlickable.contentX;
-                                    breadcrumbSlideAnim.to = Math.min(breadcrumbLayout.width - breadcrumbFlickable.width, x - breadcrumbFlickable.width + width);
-
-									breadcrumbSlideAnim.start();
-                                }
-							}
-                            onClicked: {
-                                root.currentIndex = index
-                            }
-                            onCheckedChanged: {
-                                if (checked) {
-									ensureBounds();
-								}
-                            }
-                        }
-                    }
-                }
-                NumberAnimation {
-                    id: breadcrumbSlideAnim
-                    target: breadcrumbFlickable
-                    property: "contentX"
-                    duration: Kirigami.Units.longDuration
-                    easing.type: Easing.InOutQuad
-                }
-            }
-            Kirigami.Separator {
-                Layout.fillHeight: true
-                visible: !breadcrumbFlickable.atXEnd
-            }
-            QQC2.Control {
-                id: rightHeaderControl
-                Layout.fillHeight: true
-                visible: contentItem !== null
-            }
-        }
     }
 
     Component.onCompleted: {
