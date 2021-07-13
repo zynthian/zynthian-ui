@@ -48,7 +48,6 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def __init__(self, parent = None):
 		super(zynthian_gui_preset, self).__init__('Preset', parent)
-		self.only_favs = False;
 		self.show()
       
       
@@ -57,9 +56,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			logging.error("Can't fill preset list for None layer!")
 			return
 
-		self.zyngui.curlayer.load_preset_list(self.only_favs)
-		if not self.zyngui.curlayer.preset_list and self.only_favs:
-			self.only_favs = False
+		self.zyngui.curlayer.load_preset_list()
+		if not self.zyngui.curlayer.preset_list:
 			self.set_select_path()
 			self.zyngui.curlayer.load_preset_list()
 
@@ -67,12 +65,11 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		super().fill_list()
 
 
-	def show(self, only_favs=None):
+	def show(self, show_fav_presets=None):
 		if not self.zyngui.curlayer:
 			logging.error("Can't show preset list for None layer!")
 			return
-		if only_favs is not None:
-			self.only_favs = only_favs
+
 		self.select(self.zyngui.curlayer.get_preset_index())
 		if not self.zyngui.curlayer.get_preset_name():
 			self.zyngui.curlayer.set_preset(self.zyngui.curlayer.get_preset_index())
@@ -83,11 +80,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		if t=='S':
 			self.zyngui.curlayer.set_preset(i)
-			if self.only_favs:
-				self.zyngui.screens['bank'].fill_list()
-				self.zyngui.show_screen('control')
-			else:
-				self.zyngui.screens['control'].show()
+			self.zyngui.screens['control'].show()
 			self.zyngui.screens['layer'].fill_list()
 		else:
 			self.zyngui.curlayer.toggle_preset_fav(self.list_data[i])
@@ -96,12 +89,12 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def index_supports_immediate_activation(self, index=None):
 		return True
 
-	def back_action(self):
-		if self.only_favs:
-			self.disable_only_favs()
-			return ''
-		else:
-			return None
+	#def back_action(self):
+		#if self.show_fav_presets:
+			#self.disable_show_fav_presets()
+			#return ''
+		#else:
+			#return None
 
 
 	def preselect_action(self):
@@ -113,16 +106,16 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def set_show_only_favorites(self, show):
 		if show:
-			self.enable_only_favs()
+			self.enable_show_fav_presets()
 		else:
-			self.disable_only_favs()
+			self.disable_show_fav_presets()
 
 	def get_show_only_favorites(self):
-		return self.only_favs
+		return self.zyngui.curlayer.show_fav_presets
 
-	def enable_only_favs(self):
-		if not self.only_favs:
-			self.only_favs = True
+	def enable_show_fav_presets(self):
+		if not self.zyngui.curlayer.show_fav_presets:
+			self.zyngui.curlayer.show_fav_presets = True
 			self.set_select_path()
 			self.update_list()
 			self.show_only_favorites_changed.emit()
@@ -130,9 +123,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				self.zyngui.curlayer.set_preset_by_name(self.zyngui.curlayer.get_preset_name())
 
 
-	def disable_only_favs(self):
-		if self.only_favs:
-			self.only_favs = False
+	def disable_show_fav_presets(self):
+		if self.zyngui.curlayer.show_fav_presets:
+			self.zyngui.curlayer.show_fav_presets = False
 			self.set_select_path()
 			self.update_list()
 			self.show_only_favorites_changed.emit()
@@ -140,22 +133,16 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				self.zyngui.curlayer.set_preset_by_name(self.zyngui.curlayer.get_preset_name())
 
 
-	def toggle_only_favs(self):
-		if self.only_favs:
-			self.only_favs = False
+	def toggle_show_fav_presets(self):
+		if self.zyngui.curlayer.show_fav_presets:
+			self.disable_show_fav_presets()
 		else:
-			self.only_favs = True
-
-		self.set_select_path()
-		self.update_list()
-		self.show_only_favorites_changed.emit()
-		if self.zyngui.curlayer.get_preset_name():
-			self.zyngui.curlayer.set_preset_by_name(self.zyngui.curlayer.get_preset_name())
+			self.enable_show_fav_presets()
 
 
 	def set_select_path(self):
 		if self.zyngui.curlayer:
-			if self.only_favs:
+			if self.zyngui.curlayer.show_fav_presets:
 				self.select_path = (self.zyngui.curlayer.get_basepath() + " > Favorites")
 				self.select_path_element = "Favorites"
 			else:

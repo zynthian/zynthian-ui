@@ -47,7 +47,7 @@ QQC2.ScrollView {
     Component.onCompleted: view.forceActiveFocus()
     onActiveFocusChanged: {
         if (activeFocus) {
-			root.currentScreenIdRequested();
+            root.currentScreenIdRequested();
             view.forceActiveFocus()
         }
     }
@@ -62,7 +62,7 @@ QQC2.ScrollView {
     ListView {
         id: view
         keyNavigationEnabled: true
-        keyNavigationWraps: true
+        keyNavigationWraps: false
         clip: true
         currentIndex: root.selector.current_index
 
@@ -111,6 +111,24 @@ QQC2.ScrollView {
             ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.5)
             : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.3)
         radius: Kirigami.Units.gridUnit/2
+        Kirigami.Separator {
+			anchors {
+				left: parent.left
+				right: parent.right
+				top: parent.top
+				topMargin: parent.radius
+			}
+			visible: !view.atYBeginning
+		}
+		Kirigami.Separator {
+			anchors {
+				left: parent.left
+				right: parent.right
+				bottom: parent.bottom
+				bottomMargin: parent.radius
+			}
+			visible: !view.atYEnd
+		}
     }
 }
 

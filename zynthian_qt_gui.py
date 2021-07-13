@@ -2206,7 +2206,7 @@ if __name__ == "__main__":
 	app.setPalette(palette)
 
 	zyngui.show_screen('layer')
-	zyngui.screens['preset'].disable_only_favs()
+	zyngui.screens['preset'].disable_show_fav_presets()
 
 	engine.rootContext().setContextProperty("zynthian", zyngui)
 

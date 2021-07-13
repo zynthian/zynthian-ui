@@ -64,14 +64,22 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			return
 		if not self.zyngui.curlayer.get_bank_name():
 			self.zyngui.curlayer.set_bank(0)
-		self.index=self.zyngui.curlayer.get_bank_index()
+		if self.zyngui.screens['preset'].get_show_only_favorites():
+			self.index = 0
+		else:
+			self.index = self.zyngui.curlayer.get_bank_index()
 		logging.debug("BANK INDEX => %s" % self.index)
 		super().show()
 
 
 	def select_action(self, i, t='S'):
+		if self.list_data[i][0]=='*FAVS*':
+			self.zyngui.screens['preset'].set_show_only_favorites(True)
+		else:
+			self.zyngui.screens['preset'].set_show_only_favorites(False)
+
 		if self.zyngui.curlayer.set_bank(i):
-			self.zyngui.screens['preset'].disable_only_favs()
+			#self.zyngui.screens['preset'].disable_only_favs()
 			self.zyngui.screens['preset'].update_list()
 			if self.auto_next_screen:
 				self.next_action
