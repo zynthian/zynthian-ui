@@ -26,9 +26,9 @@
 #include <jack/jack.h>
 
 enum PEAK_CHANNEL {
-	CHANNEL_A = 0,
-	CHANNEL_B = 1,
-	CHANNEL_ALL = 2
+    CHANNEL_A = 0,
+    CHANNEL_B = 1,
+    CHANNEL_ALL = 2
 };
 
 //-----------------------------------------------------------------------------
@@ -59,13 +59,13 @@ void setHoldCount(unsigned int count);
 
 /** @brief  Get raw peak value since last request
 *   @param  channel Audio channel to read
-*	@retval	float Peak value since last read [0..1]
+*    @retval	float Peak value since last read [0..1]
 */
 float getPeakRaw(unsigned int channel);
 
 /** @brief  Get damped peak value in dBFS since last request
 *   @param  channel Audio channel to read
-*	@retval float Peak or decaying value since last read [0..1 | 0..-200]
+*    @retval float Peak or decaying value since last read [0..1 | 0..-200]
 */
 float getPeak(unsigned int channel);
 
@@ -75,9 +75,9 @@ float getPeak(unsigned int channel);
 */
 float getHold(unsigned int channel);
 
-/**	@brief	Callback to handle jack process
-	@param	nFrames Quantity of frames available
-	@param	pArgs Pointer to arguments
+/**    @brief	Callback to handle jack process
+    @param	nFrames Quantity of frames available
+    @param	pArgs Pointer to arguments
 */
 static int onJackProcess(jack_nframes_t nframes, void *arg);
 
