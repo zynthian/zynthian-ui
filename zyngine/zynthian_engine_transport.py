@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_transport)
 #
 # zynthian_basic_engine implementation for Jack Transport
 #
 # Copyright (C) 2015-2019 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,78 +20,70 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import pexpect
 from . import zynthian_basic_engine
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Jack Transport Engine
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine_transport(zynthian_basic_engine):
 
-	def __init__(self, tempo=120):
-		super().__init__("JackTransport", "/usr/local/bin/jack_transport", "jack_transport>")
+    def __init__(self, tempo=120):
+        super().__init__("JackTransport", "/usr/local/bin/jack_transport", "jack_transport>")
 
-		self.tempo = tempo
-		self.state = 0
+        self.tempo = tempo
+        self.state = 0
 
-		self.start()
-		self.proc_cmd("master")
-		self.proc_cmd("stop")
-		self.proc_cmd("locate 0")
-		self.set_tempo(tempo)
+        self.start()
+        self.proc_cmd("master")
+        self.proc_cmd("stop")
+        self.proc_cmd("locate 0")
+        self.set_tempo(tempo)
 
+    def __del__(self):
+        self.stop()
 
-	def __del__(self):
-		self.stop()
+    def stop(self):
+        try:
+            self.proc.sendline("quit")
+            self.proc.expect(pexpect.EOF)
+            self.proc = None
+        except Exception as e:
+            logging.error("Can't stop engine {} => {}".format(self.name, e))
+            super().stop()
 
+    # Common Transport commands
 
-	def stop(self):
-		try:
-			self.proc.sendline("quit")
-			self.proc.expect(pexpect.EOF)
-			self.proc = None
-		except Exception as e:
-			logging.error("Can't stop engine {} => {}".format(self.name, e))
-			super().stop()
+    def transport_play(self):
+        self.proc_cmd("play")
+        self.state = 1
 
+    def transport_stop(self):
+        self.proc_cmd("stop")
+        self.state = 0
 
-	# Common Transport commands
+    def transport_toggle(self):
+        if self.state:
+            self.transport_stop()
+        else:
+            self.transport_play()
 
-	def transport_play(self):
-		self.proc_cmd("play")
-		self.state = 1
+    def locate(self, pos_frames=0):
+        self.proc_cmd("locate {}".format(pos_frames))
 
+    def set_tempo(self, bpm):
+        self.proc_cmd("tempo {}".format(bpm))
+        self.tempo = bpm
 
-	def transport_stop(self):
-		self.proc_cmd("stop")
-		self.state = 0
+    def get_tempo(self):
+        return self.tempo
 
-
-	def transport_toggle(self):
-		if self.state:
-			self.transport_stop()
-		else:
-			self.transport_play()
-
-
-	def locate(self, pos_frames=0):
-		self.proc_cmd("locate {}".format(pos_frames))
-
-
-	def set_tempo(self, bpm):
-		self.proc_cmd("tempo {}".format(bpm))
-		self.tempo = bpm
-
-
-	def get_tempo(self):
-		return self.tempo
+    def get_state(self):
+        return self.state
 
 
-	def get_state(self):
-		return self.state
-
-
-#******************************************************************************
+# ******************************************************************************
