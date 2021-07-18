@@ -13,10 +13,8 @@ Event::Event(uint32_t nTime, uint8_t nType, uint8_t nSubtype, uint32_t nSize, ui
     m_pData = pData;
     m_bDebug = bDebug;
 
-    if(nType == EVENT_TYPE_META)
-    {
-    	switch(nSubtype)
-    	{
+    if (nType == EVENT_TYPE_META) {
+    	switch (nSubtype) {
     		case 0x00:
     			DPRINTF("Meta Sequence Number: %u\n", *pData << 8 | *(pData + 1));
     			break;
@@ -78,7 +76,7 @@ Event::Event(uint32_t nTime, uint8_t nType, uint8_t nSubtype, uint32_t nSize, ui
     			DPRINTF("Meta Key Signature: %04x\n", *pData << 8 | *(pData + 1));
     			break;
     		case 0x7F:
-    			if(nSize == 0)
+    			if (nSize == 0)
     				DPRINTF("Meta Sequencer Specific Event, Manufacturer ID: %u\n", *(pData + 1) << 8 | *(pData + 2));
     			else
     				DPRINTF("Meta Sequencer Specific Event, Manufacturer ID: %u\n", *pData);
@@ -118,13 +116,10 @@ Event::Event(uint32_t nTime, uint8_t nType, uint8_t nSubtype, uint32_t nSize, ui
     			fseek(pFile, nMessageLength, SEEK_CUR);
     		*/
     	}
-    }
-    else if(nType == EVENT_TYPE_MIDI)
-    {
+    } else if (nType == EVENT_TYPE_MIDI) {
     	uint8_t nChannel = nSubtype & 0x0F;
     	uint8_t nStatus = nSubtype & 0xF0;
-    	switch(nStatus)
-    	{
+    	switch (nStatus) {
     		case 0x80:
     			DPRINTF("MIDI Note Off Channel:%u Note: %u Velocity: %u\n", nChannel, *(pData), *(pData + 1));
     			// Convert note off to zero velocity note on (used elsewhere, e.g. to silence hanging notes and may offer running status)
@@ -163,9 +158,8 @@ Event::~Event()
 uint32_t Event::getInt32()
 {
     uint32_t nValue = 0;
-    for(int i = 0; i < 4; ++i)
-    {
-    	if(i >= m_nSize)
+    for (int i = 0; i < 4; ++i) {
+    	if (i >= m_nSize)
     		break;
     	nValue <<= 8;
     	nValue |= *(m_pData + i);

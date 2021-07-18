@@ -36,7 +36,7 @@ uint8_t Smf::fileRead8(FILE* pFile)
 
 int Smf::fileWrite16(uint16_t nValue, FILE *pFile)
 {
-    for(int i = 1; i >=0; --i)
+    for (int i = 1; i >=0; --i)
     	fileWrite8((nValue >> i * 8), pFile);
     return 2;
 }
@@ -44,8 +44,7 @@ int Smf::fileWrite16(uint16_t nValue, FILE *pFile)
 uint16_t Smf::fileRead16(FILE* pFile)
 {
     uint16_t nResult = 0;
-    for(int i = 1; i >=0; --i)
-    {
+    for (int i = 1; i >=0; --i) {
     	uint8_t nValue;
     	fread(&nValue, 1, 1, pFile);
     	nResult |= nValue << (i * 8);
@@ -55,7 +54,7 @@ uint16_t Smf::fileRead16(FILE* pFile)
 
 int Smf::fileWrite32(uint32_t nValue, FILE *pFile)
 {
-    for(int i = 3; i >=0; --i)
+    for (int i = 3; i >=0; --i)
     	fileWrite8((nValue >> i * 8), pFile);
     return 4;
 }
@@ -63,8 +62,7 @@ int Smf::fileWrite32(uint32_t nValue, FILE *pFile)
 uint32_t Smf::fileRead32(FILE* pFile)
 {
     uint32_t nResult = 0;
-    for(int i = 3; i >=0; --i)
-    {
+    for (int i = 3; i >=0; --i) {
     	uint8_t nValue;
     	fread(&nValue, 1, 1, pFile);
     	nResult |= nValue << (i * 8);
@@ -76,22 +74,19 @@ int Smf::fileWriteVar(uint32_t nValue, FILE* pFile)
 {
     uint8_t aVal[] = {0,0,0,0};
     int nLen = 0;
-    for(int i = 3; i >= 0; --i)
-    {
+    for (int i = 3; i >= 0; --i) {
     	aVal[i] |= nValue & 0x7F;
     	if(nValue >0x7F && i)
     			aVal[i-1] = 0x80;
     	nValue >>= 7;
     }
-    for(int i = 0; i< 4; ++i)
-    {
-    	if(aVal[i] || nLen)
-    	{
+    for (int i = 0; i< 4; ++i) {
+    	if (aVal[i] || nLen) {
     		fileWrite8(aVal[i], pFile);
     		++nLen;
     	}
     }
-    if(!nLen)
+    if (!nLen)
     	return fileWrite8(0, pFile);
     return nLen;
 }
@@ -99,12 +94,11 @@ int Smf::fileWriteVar(uint32_t nValue, FILE* pFile)
 uint32_t Smf::fileReadVar(FILE* pFile)
 {
     uint32_t nValue = 0;
-    for(int i = 0; i < 4; ++i)
-    {
+    for (int i = 0; i < 4; ++i) {
     	uint8_t nByte = fileRead8(pFile);
     	nValue <<= 7;
     	nValue |= (nByte & 0x7F);
-    	if((nByte & 0x80) == 0)
+    	if ((nByte & 0x80) == 0)
     		break;
     }
     return nValue;
@@ -124,9 +118,8 @@ size_t Smf::fileReadString(char* pString, size_t nSize, FILE *pFile)
 
 uint32_t Smf::getMicrosecondsPerQuarterNote(uint32_t nTime)
 {
-    for(auto it = m_mTempoMap.begin(); it != m_mTempoMap.end(); ++it)
-    {
-    	if(it->first < nTime)
+    for (auto it = m_mTempoMap.begin(); it != m_mTempoMap.end(); ++it) {
+    	if (it->first < nTime)
     		continue;
     	return it->second;
     }
@@ -135,14 +128,14 @@ uint32_t Smf::getMicrosecondsPerQuarterNote(uint32_t nTime)
 
 void Smf::muteTrack(size_t nTrack, bool bMute)
 {
-    if(nTrack >= m_vTracks.size())
+    if (nTrack >= m_vTracks.size())
     	return;
     m_vTracks[nTrack]->mute(bMute);
 }
 
 bool Smf::isTrackMuted(size_t nTrack)
 {
-    if(nTrack >= m_vTracks.size())
+    if (nTrack >= m_vTracks.size())
     	return false;
     return m_vTracks[nTrack]->isMuted();
 }
@@ -156,8 +149,7 @@ bool Smf::load(char* sFilename)
 
     FILE *pFile;
     pFile = fopen(sFilename, "r");
-    if(pFile == NULL)
-    {
+    if (pFile == NULL) {
     	DPRINTF("Failed to open file '%s'\n", sFilename);
     	return false;
     }
@@ -165,21 +157,18 @@ bool Smf::load(char* sFilename)
     
     
     // Iterate each block within IFF file
-    while(fread(sHeader, 4, 1, pFile) == 1)
-    {
+    while (fread(sHeader, 4, 1, pFile) == 1) {
     	uint32_t nPosition = 0;
     	double fPosition = 0.0;
     	uint32_t nBlockSize = fileRead32(pFile);
-    	if(memcmp(sHeader, "MThd", 4) == 0)
-    	{
+    	if (memcmp(sHeader, "MThd", 4) == 0) {
     		// SMF file header
     		DPRINTF("Found MThd block of size %u\n", nBlockSize);
     		m_nFormat = fileRead16(pFile);
     		m_nTracks = fileRead16(pFile);
     		uint16_t nDivision = fileRead16(pFile);
     		m_bTimecodeBased = ((nDivision & 0x8000) == 0x8000);
-    		if(m_bTimecodeBased)
-    		{
+    		if (m_bTimecodeBased) {
     			m_nSmpteFps = -(int8_t(nDivision & 0xFF00) >> 8);
     			m_nSmpteResolution = nDivision & 0x00FF;
     			DPRINTF("Standard MIDI File - Format: %u, Tracks: %u, SMPTE fps: %u, SMPTE subframe resolution: %u\n", m_nFormat, m_nTracks, m_nSmpteFps, m_nSmpteResolution);
@@ -187,33 +176,27 @@ bool Smf::load(char* sFilename)
     			printf("zynsmf does not support SMPTE timebase SMF\n");
     			//!@todo Add support for SMPTE timebase
     			return false;
-    		}
-    		else
-    		{
+    		} else {
     			m_nTicksPerQuarterNote = nDivision & 0x7FFF;
     			DPRINTF("Standard MIDI File - Format: %u, Tracks: %u, Ticks per quarter note: %u\n", m_nFormat, m_nTracks, m_nTicksPerQuarterNote);
     		}
     		DPRINTF("\n");
-    		for(size_t i = 0; i < nBlockSize - 6; ++i)
+    		for (size_t i = 0; i < nBlockSize - 6; ++i)
     			fileRead8(pFile); // Eat any extra header bytes which might be added in later version of SMF standard
-    	}
-    	else if(memcmp(sHeader, "MTrk", 4) == 0)
-    	{
+    	} else if (memcmp(sHeader, "MTrk", 4) == 0) {
     		// SMF track header
     		DPRINTF("Found MTrk block of size %u\n", nBlockSize);
     		Track* pTrack = new Track();
     		m_vTracks.push_back(pTrack);
     		uint8_t nRunningStatus = 0;
     		long nEnd = ftell(pFile) + nBlockSize;
-    		while(ftell(pFile) < nEnd)
-    		{
+    		while (ftell(pFile) < nEnd) {
     			uint32_t nDelta = fileReadVar(pFile);
     			nPosition += nDelta;
     			fPosition += double(getMicrosecondsPerQuarterNote(nPosition)) * nDelta / m_nTicksPerQuarterNote;
     			uint8_t nStatus = fileRead8(pFile);
     			DPRINTF("Abs: %u Delta: %u ", nPosition, nDelta);
-    			if((nStatus & 0x80) == 0)
-    			{
+    			if ((nStatus & 0x80) == 0) {
     				nStatus = nRunningStatus;
     				fseek(pFile, -1, SEEK_CUR);
     			}
@@ -222,8 +205,7 @@ bool Smf::load(char* sFilename)
     			uint8_t nChannel;
     			uint8_t* pData;
     			Event* pEvent = NULL;
-    			switch(nStatus)
-    			{
+    			switch (nStatus) {
     				case 0xFF:
     					// Meta event
     					nMetaType = fileRead8(pFile);
@@ -232,9 +214,9 @@ bool Smf::load(char* sFilename)
     					fread(pData, nMessageLength, 1, pFile);
     					pEvent = new Event(nPosition, EVENT_TYPE_META, nMetaType, nMessageLength, pData);
     					pTrack->addEvent(pEvent);
-    					if(nMetaType == 0x51)
+    					if (nMetaType == 0x51)
     						m_mTempoMap[nPosition] = pEvent->getInt32();
-    					else if(nMetaType == 0x7F) // Manufacturer
+    					else if (nMetaType == 0x7F) // Manufacturer
     						m_nManufacturerId = pEvent->getInt32();
     					nRunningStatus = 0;
     					break;
@@ -243,8 +225,7 @@ bool Smf::load(char* sFilename)
     					//!@todo Store SysEx messages
     					nMessageLength = fileReadVar(pFile);
     					DPRINTF("SysEx %u bytes\n", nMessageLength);
-    					if(nMessageLength > 0)
-    					{
+    					if (nMessageLength > 0) {
     						fseek(pFile, nMessageLength - 1, SEEK_CUR);
     						if (fileRead8(pFile) == 0xF7)
     							nRunningStatus = 0xF0;
@@ -257,20 +238,15 @@ bool Smf::load(char* sFilename)
     				case 0xF7:
     					// End of SysEx or Escape sequence
     					nMessageLength = fileReadVar(pFile);
-    					if(nRunningStatus == 0xF0)
-    					{
+    					if (nRunningStatus == 0xF0) {
     						DPRINTF("SysEx continuation %u bytes\n", nMessageLength);
-    						if(nMessageLength > 0)
-    						{
+    						if (nMessageLength > 0) {
     							fseek(pFile, nMessageLength - 1, SEEK_CUR);
-    							if(fileRead8(pFile) == 0xF7)
+    							if (fileRead8(pFile) == 0xF7)
     								nRunningStatus = 0;
-    						}
-    						else
+    						} else
     							nRunningStatus = 0;
-    					}
-    					else
-    					{
+    					} else {
     						DPRINTF("Escape sequence %u bytes\n", nMessageLength);
     						pData = new uint8_t[nMessageLength];
     						fread(pData, nMessageLength, 1, pFile);
@@ -284,8 +260,7 @@ bool Smf::load(char* sFilename)
     					nChannel = nStatus & 0x0F;
 //    					nStatus = nStatus & 0xF0;
     					nRunningStatus = nStatus;
-    					switch(nStatus & 0xF0)
-    					{
+    					switch (nStatus & 0xF0) {
     						case 0x80: // Note Off
     						case 0x90: // Note On
     						case 0xA0: // Polyphonic Pressure
@@ -310,16 +285,14 @@ bool Smf::load(char* sFilename)
     					}
     			}
     		}
-    	}
-    	else
-    	{
+    	} else {
     		// Ignore unknown block
     		DPRINTF("Found unsupported %c%c%c%c block of size %u\n", sHeader[0], sHeader[1], sHeader[2], sHeader[3], nBlockSize);
     		fseek(pFile, nBlockSize, SEEK_CUR);
     	}
-    	if(nPosition > m_nDurationInTicks)
+    	if (nPosition > m_nDurationInTicks)
     		m_nDurationInTicks = nPosition;
-    	if(fPosition > m_fDuration * 1000000)
+    	if (fPosition > m_fDuration * 1000000)
     		m_fDuration = fPosition / 1000000;
     }
 
@@ -331,12 +304,11 @@ bool Smf::load(char* sFilename)
 
 bool Smf::save(char* sFilename)
 {
-    if(getEvents() == 0)
+    if (getEvents() == 0)
     	return true; // Don't save if empty
     FILE *pFile;
     pFile = fopen(sFilename, "w");
-    if(pFile == NULL)
-    {
+    if (pFile == NULL) {
         DPRINTF("Failed to open file '%s'\n", sFilename);
     	return false;
     }
@@ -346,14 +318,13 @@ bool Smf::save(char* sFilename)
     fileWrite32(6, pFile);
     fileWrite16(m_nFormat, pFile);
     fileWrite16(getTracks(), pFile);
-    if(m_bTimecodeBased)
+    if (m_bTimecodeBased)
     	fileWrite16(m_nTicksPerQuarterNote | 0x8000, pFile);
     else
     	fileWrite16(m_nTicksPerQuarterNote, pFile);
 
     // Write each track
-    for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
-    {
+    for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it) {
     	fileWriteString("MTrk", 4, pFile);
     	uint32_t nSizePos = ftell(pFile); // Position of chunk size value within file
     	fileWrite32(0, pFile); // Placeholder for chunk size
@@ -363,15 +334,13 @@ bool Smf::save(char* sFilename)
     	pTrack->setPosition(0);
     	uint32_t nTime = 0;
     	uint8_t nRunningStatus = 0x00;
-    	while(Event* pEvent = pTrack->getEvent(true))
-    	{
+    	while (Event* pEvent = pTrack->getEvent(true)) {
     		fileWriteVar(pEvent->getTime() - nTime, pFile);
     		nTime = pEvent->getTime();
-    		switch(pEvent->getType())
-    		{
+    		switch (pEvent->getType()) {
     			case EVENT_TYPE_MIDI:
-//    				if(nRunningStatus != pEvent->getSubtype()) // Running status is more complex - need to consider if event from other track will interfere
-    				{
+//    				if (nRunningStatus != pEvent->getSubtype()) // Running status is more complex - need to consider if event from other track will interfere
+                    {
     					fileWrite8(pEvent->getSubtype(), pFile);
     					nRunningStatus = pEvent->getSubtype();
     				}
@@ -404,7 +373,7 @@ bool Smf::save(char* sFilename)
 
 void Smf::unload()
 {
-    for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
+    for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
     	delete (*it);
     m_vTracks.clear();
     m_bTimecodeBased = false;
@@ -426,40 +395,37 @@ double Smf::getDuration()
 Event* Smf::getEvent(bool bAdvance)
 {
     size_t nPosition = -1;
-    for(size_t nTrack = 0; nTrack < m_vTracks.size(); ++nTrack)
-    {
+    for (size_t nTrack = 0; nTrack < m_vTracks.size(); ++nTrack) {
     	// Iterate through tracks and find earilest next event
     	Event* pEvent = m_vTracks[nTrack]->getEvent(false);
-    	if(!m_vTracks[nTrack]->isMuted() && pEvent && pEvent->getTime() < nPosition)
-    	{
+    	if (!m_vTracks[nTrack]->isMuted() && pEvent && pEvent->getTime() < nPosition) {
     		nPosition = pEvent->getTime();
     		m_nCurrentTrack = nTrack;
     	}
     }
-    if(nPosition == -1)
+    if (nPosition == -1)
     	return NULL;
-    if(bAdvance)
+    if (bAdvance)
     	m_nPosition = nPosition;
     return m_vTracks[m_nCurrentTrack]->getEvent(bAdvance);
 }
 
 void Smf::addEvent(size_t nTrack, Event* pEvent)
 {
-    if(nTrack >= m_vTracks.size())
-    {
-    	if(nTrack > MAX_TRACKS)
+    if (nTrack >= m_vTracks.size()) {
+    	if (nTrack > MAX_TRACKS)
     	return;
-    	while(m_vTracks.size() <= nTrack)
+    	while (m_vTracks.size() <= nTrack)
     		addTrack();
     }
     m_vTracks[nTrack]->addEvent(pEvent);
-    if(pEvent->getTime() > m_nDurationInTicks)
+    if (pEvent->getTime() > m_nDurationInTicks)
     	m_nDurationInTicks = pEvent->getTime();
 }
 
 void Smf::setPosition(size_t nTime)
 {
-    for(auto it = m_vTracks.begin(); it!= m_vTracks.end(); ++it)
+    for (auto it = m_vTracks.begin(); it!= m_vTracks.end(); ++it)
     	(*it)->setPosition(nTime);
     m_nPosition = nTime;
 }
@@ -477,7 +443,7 @@ size_t Smf::addTrack()
 
 bool Smf::removeTrack(size_t nTrack)
 {
-    if(nTrack >= m_vTracks.size())
+    if (nTrack >= m_vTracks.size())
     	return false;
     delete m_vTracks[nTrack];
     m_vTracks.erase(m_vTracks.begin() + nTrack);
@@ -491,14 +457,13 @@ uint8_t Smf::getFormat()
 
 uint32_t Smf::getEvents(size_t nTrack)
 {
-    if(nTrack == -1)
-    {
+    if (nTrack == -1) {
     	uint32_t nCount = 0;
-    	for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
+    	for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
     		nCount += (*it)->getEvents();
     	return nCount;
     }
-    if(nTrack >= m_vTracks.size())
+    if (nTrack >= m_vTracks.size())
     	return 0;
     return m_vTracks[nTrack]->getEvents();
 }
