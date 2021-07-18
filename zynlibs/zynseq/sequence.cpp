@@ -12,7 +12,7 @@ uint8_t Sequence::getGroup()
 
 void Sequence::setGroup(uint8_t group)
 {
-    if(m_nGroup == group)
+    if (m_nGroup == group)
         return;
     m_nGroup = group;
     m_bChanged = true;
@@ -22,7 +22,7 @@ uint32_t Sequence::addTrack(uint32_t track)
 {
     auto it = m_vTracks.begin();
     uint32_t nReturn = ++track;
-    if(track == -1 || track >= m_vTracks.size()) {
+    if (track == -1 || track >= m_vTracks.size()) {
         m_vTracks.emplace_back();
         nReturn = m_vTracks.size() - 1;
     }
@@ -34,9 +34,9 @@ uint32_t Sequence::addTrack(uint32_t track)
 
 bool Sequence::removeTrack(size_t track)
 {
-    if(track >= m_vTracks.size())
+    if (track >= m_vTracks.size())
         return false;
-    if(m_vTracks.size() < 2)
+    if (m_vTracks.size() < 2)
         return false;
     m_vTracks.erase(m_vTracks.begin() + track);
     m_bChanged = true;
@@ -50,7 +50,7 @@ size_t Sequence::getTracks()
 
 void Sequence::clear()
 {
-    if(m_vTracks.size())
+    if (m_vTracks.size())
         m_bChanged = true;
     m_vTracks.clear();
     addTrack();
@@ -59,7 +59,7 @@ void Sequence::clear()
 
 Track* Sequence::getTrack(size_t index)
 {
-    if(index < m_vTracks.size())
+    if (index < m_vTracks.size())
         return &(m_vTracks[index]);
     return NULL;
 }
@@ -77,7 +77,7 @@ uint16_t Sequence::getTempo(uint16_t bar, uint16_t tick)
 
 void Sequence::addTimeSig(uint16_t beatsPerBar, uint16_t bar)
 {
-    if(bar < 1)
+    if (bar < 1)
         bar = 1;
     m_timebase.addTimebaseEvent(bar, 0, TIMEBASE_TYPE_TIMESIG, beatsPerBar);
     m_bChanged = true;
@@ -85,10 +85,10 @@ void Sequence::addTimeSig(uint16_t beatsPerBar, uint16_t bar)
 
 uint16_t Sequence::getTimeSig(uint16_t bar)
 {
-    if(bar < 1)
+    if (bar < 1)
         bar = 1;
     TimebaseEvent* pEvent = m_timebase.getPreviousTimebaseEvent(bar, 1, TIMEBASE_TYPE_TIMESIG);
-    if(pEvent)
+    if (pEvent)
         return pEvent->value;
     return 4;
 }
@@ -106,10 +106,10 @@ uint8_t Sequence::getPlayMode()
 
 void Sequence::setPlayMode(uint8_t mode)
 {
-    if(mode > LASTPLAYMODE)
+    if (mode > LASTPLAYMODE)
         return;
     m_nMode = mode; 
-    if(m_nMode == DISABLED)
+    if (m_nMode == DISABLED)
         m_nState = STOPPED;
     m_bChanged = true;
 }
@@ -122,17 +122,17 @@ uint8_t Sequence::getPlayState()
 void Sequence::setPlayState(uint8_t state)
 {
     uint8_t nState = m_nState;
-    if(m_nMode == DISABLED)
+    if (m_nMode == DISABLED)
         state = STOPPED;
-    if(state == m_nState)
+    if (state == m_nState)
         return;
-    if(m_nMode == ONESHOT && state == STOPPING)
+    if (m_nMode == ONESHOT && state == STOPPING)
         state = STOPPED;
     m_nState = state;
-    if(m_nState == STOPPED)
-        if(m_nMode == ONESHOT) {
+    if (m_nState == STOPPED)
+        if (m_nMode == ONESHOT) {
             m_nPosition = m_nLastSyncPos;
-            for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
+            for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
                 (*it).setPosition(m_nPosition);
         }
         else
@@ -147,32 +147,32 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
     uint8_t nReturn = 0;
     uint8_t nState = m_nState;
     if(bSync) {
-        if(m_nMode == ONESHOTSYNC && m_nState != STARTING)
+        if (m_nMode == ONESHOTSYNC && m_nState != STARTING)
             m_nState = STOPPED;
-        if(m_nState == STARTING)
+        if (m_nState == STARTING)
             m_nState = PLAYING;
-        if(m_nState == RESTARTING) {
+        if (m_nState == RESTARTING) {
             m_nState = PLAYING;
             nState = PLAYING;
         }
-        if(m_nState == STOPPING && m_nMode == LOOPSYNC)
+        if (m_nState == STOPPING && m_nMode == LOOPSYNC)
             m_nState = STOPPED;
-        if(m_nMode == ONESHOTSYNC || m_nMode == LOOPSYNC)
+        if (m_nMode == ONESHOTSYNC || m_nMode == LOOPSYNC)
             m_nPosition = 0;
         m_nLastSyncPos = m_nPosition;
     }
     else if(m_nState == RESTARTING)
         m_nState = STARTING;
 
-    if(m_nState == PLAYING || m_nState == STOPPING) {
+    if (m_nState == PLAYING || m_nState == STOPPING) {
         // Still playing so iterate through tracks
-        for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
+        for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
             nReturn |= (*it).clock(nTime, m_nPosition, dSamplesPerClock, bSync);
         ++m_nPosition;
     }
-    if(m_nPosition >= m_nLength) {
+    if (m_nPosition >= m_nLength) {
         // End of sequence
-        switch(m_nMode) {
+        switch (m_nMode) {
             case ONESHOT:
             case ONESHOTALL:
             case ONESHOTSYNC:
@@ -180,12 +180,12 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
                 break;
             case LOOPSYNC:
             case LOOPALL:
-                if(m_nState == PLAYING) {
+                if (m_nState == PLAYING) {
                     m_nState = RESTARTING;
                     nState = RESTARTING;
                 }
             case LOOP:
-                if(m_nState == STOPPING)
+                if (m_nState == STOPPING)
                     setPlayState(STOPPED);
         }
         m_nPosition = 0;
@@ -193,7 +193,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
     }
 
     m_bStateChanged |= (nState != m_nState);
-    if(m_bStateChanged) {
+    if (m_bStateChanged) {
         m_bChanged |= true;
         m_bStateChanged = false;
         return nReturn | 2;
@@ -204,13 +204,13 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 SEQ_EVENT* Sequence::getEvent()
 {
     // This function is called repeatedly for each clock period until no more events are available to populate JACK MIDI output schedule
-    if(m_nState == STOPPED || m_nState == STARTING)
+    if (m_nState == STOPPED || m_nState == STARTING)
         return NULL; //!@todo Can we stop between note on and note off being processed resulting in stuck note?
 
     SEQ_EVENT* pEvent;
-    while(m_nCurrentTrack < m_vTracks.size()) {
+    while (m_nCurrentTrack < m_vTracks.size()) {
         pEvent = m_vTracks[m_nCurrentTrack].getEvent();
-        if(pEvent)
+        if (pEvent)
             return pEvent;
         ++m_nCurrentTrack;
     }
@@ -221,9 +221,9 @@ void Sequence::updateLength()
 {
     m_nLength = 0;
     m_bEmpty = true;
-    for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it) {
+    for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it) {
         uint32_t nTrackLength = (*it).updateLength();
-        if(nTrackLength > m_nLength)
+        if (nTrackLength > m_nLength)
             m_nLength = nTrackLength;
         m_bEmpty &= (*it).isEmpty();
     }
@@ -252,7 +252,7 @@ uint32_t Sequence::getPlayPosition()
 bool Sequence::hasChanged()
 {
     bool bChanged = m_bChanged;
-    for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
+    for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
         bChanged |= (*it).hasChanged();
     m_bChanged = false;
     return bChanged;

@@ -37,7 +37,7 @@
 
 #define FILE_VERSION 6
 
-#define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
+#define DPRINTF(fmt, args...) if (g_bDebug) printf(fmt, ## args)
 
 SequenceManager g_seqMan; // Instance of sequence manager
 Pattern* g_pPattern = 0; // Currently selected pattern
@@ -140,15 +140,15 @@ void updateBBT(jack_position_t* position)
 
     // Iterate through events, calculating quantity of frames between each event
     /*
-    if(g_pTimebase) {
-        for(size_t nIndex = 0; nIndex < g_pTimebase->getEventQuant(); ++nIndex) {
+    if (g_pTimebase) {
+        for (size_t nIndex = 0; nIndex < g_pTimebase->getEventQuant(); ++nIndex) {
             // Get next event
             TimebaseEvent* pEvent = g_pTimebase->getEvent(nIndex);
             // Calculate quantity of ticks between events and frames between events
             nTicksInSection = (pEvent->bar * nTicksPerBar + pEvent->clock * g_dFramesPerClock - nTicksFromStart);
             dFramesInSection = nTicksInSection * dFramesPerTick;
             // Break if next event is beyond requested position
-            if(dFrames + dFramesInSection > position->frame)
+            if (dFrames + dFramesInSection > position->frame)
                 break;
             // Update frame counter, bar and tick from which to count last section
             dFrames += dFramesInSection;
@@ -156,9 +156,9 @@ void updateBBT(jack_position_t* position)
             nTick = pEvent->clock * g_dTicksPerClock;
             nTicksFromStart += nTicksInSection;
             // Update tempo and time signature from event
-            if(pEvent->type == TIMEBASE_TYPE_TEMPO)
+            if (pEvent->type == TIMEBASE_TYPE_TEMPO)
                 dFramesPerTick = getFramesPerTick(pEvent->value);
-            else if(pEvent->type == TIMEBASE_TYPE_TIMESIG) {
+            else if (pEvent->type == TIMEBASE_TYPE_TIMESIG) {
                 nBeatsPerBar = pEvent->value >> 8;
                 nBeatsType = pEvent->value & 0x00FF;
                 nTicksPerBar = g_dTicksPerBeat * nBeatsPerBar;
@@ -202,15 +202,14 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
 {
     // Process timebase events
     /* Disabled timebase events until linear song implemented
-    while(g_pTimebase && g_pNextTimebaseEvent && (g_pNextTimebaseEvent->bar <= g_nBar)) // || g_pNextTimebaseEvent->bar == g_nBar && g_pNextTimebaseEvent->clock <= g_nClock)) {
-        if(g_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO) {
+    while (g_pTimebase && g_pNextTimebaseEvent && (g_pNextTimebaseEvent->bar <= g_nBar)) // || g_pNextTimebaseEvent->bar == g_nBar && g_pNextTimebaseEvent->clock <= g_nClock)) {
+        if (g_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO) {
             g_dTempo = g_pNextTimebaseEvent->value;
             g_dFramesPerClock = getFramesPerClock(g_dTempo);
             pPosition->beats_per_minute = g_dTempo;
             g_bTimebaseChanged = true;
             DPRINTF("Tempo change to %0.0fbpm frames/clk: %f\n", g_dTempo, g_dFramesPerClock);
-        }
-        else if(g_pNextTimebaseEvent->type == TIMEBASE_TYPE_TIMESIG) {
+        } else if (g_pNextTimebaseEvent->type == TIMEBASE_TYPE_TIMESIG) {
             g_nBeatsPerBar = g_pNextTimebaseEvent->value >> 8;
             g_fBeatType = g_pNextTimebaseEvent->value & 0x0F;
             pPosition->beats_per_bar = float(g_nBeatsPerBar);
@@ -222,15 +221,15 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
     */
 
     // Calculate BBT at start of next period if transport starting, locating or change in tempo or timebase (although latter is commented out)
-    if(bUpdate || g_bTimebaseChanged) {
+    if (bUpdate || g_bTimebaseChanged) {
         /*
-        if(g_pTimebase) {
+        if (g_pTimebase) {
             g_dTempo = g_pTimebase->getTempo(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick));
             g_nBeatsPerBar = g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick)) >> 8;
         }
         */
         // Update position based on parameters passed
-        if(pPosition->valid & JackPositionBBT) {
+        if (pPosition->valid & JackPositionBBT) {
             // Set position from BBT
             DPRINTF("bUpdate: %s, g_bTimebaseChanged: %s, Position valid flags: %u\n", bUpdate?"True":"False", g_bTimebaseChanged?"True":"False", pPosition->valid);
             DPRINTF("PreSet position from BBT Bar: %u Beat: %u Tick: %u Clock: %u\n", pPosition->bar, pPosition->beat, pPosition->tick, g_nClock);
@@ -248,7 +247,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
             g_nBeat = pPosition->beat;
             g_nTick = pPosition->tick;
             DPRINTF("Set position from BBT Bar: %u Beat: %u Tick: %u Clock: %u\n", pPosition->bar, pPosition->beat, pPosition->tick, g_nClock);
-        } else { // if(!bUpdate) //!@todo I have masked bUpdate because I don't see why we would be reaching here but we do and need to figure out why
+        } else { // if (!bUpdate) //!@todo I have masked bUpdate because I don't see why we would be reaching here but we do and need to figure out why
             updateBBT(pPosition);
             DPRINTF("Set position from frame %u\n", pPosition->frame);
         }
@@ -270,7 +269,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         pPosition->ticks_per_beat = g_dTicksPerBeat;
         pPosition->beats_per_minute = g_dTempo;
         // Loop frame if not playing song
-//        if(!g_nBeat && isSongPlaying())
+//        if (!g_nBeat && isSongPlaying())
 //            pPosition->frame = transportGetLocation(pPosition->bar, pPosition->beat, pPosition->tick); //!@todo Does this work? (yes). Are there any discontinuity or impact on other clients? Can it be optimsed?
     }
 }
@@ -311,7 +310,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     void* pInputBuffer = jack_port_get_buffer(g_pInputPort, nFrames);
     jack_midi_event_t midiEvent;
     jack_nframes_t nCount = jack_midi_get_event_count(pInputBuffer);
-    for(jack_nframes_t i = 0; i < nCount; i++) {
+    for (jack_nframes_t i = 0; i < nCount; i++) {
         jack_midi_event_get(&midiEvent, pInputBuffer, i);
         /*  Not using MIDI transport control or clock
         switch(midiEvent.buffer[0]) {
@@ -343,48 +342,46 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         */
 
         // Handle MIDI Note On events to trigger seqeuences
-        if((midiEvent.buffer[0] == g_nTriggerStatusByte) && midiEvent.buffer[2]) {
+        if ((midiEvent.buffer[0] == g_nTriggerStatusByte) && midiEvent.buffer[2]) {
             uint8_t nNote = midiEvent.buffer[1];
-            if(g_nTriggerLearning) {
+            if (g_nTriggerLearning) {
                 setTriggerNote((g_nTriggerLearning >> 8) & 0xFF, g_nTriggerLearning & 0xFF, nNote);
-            }
-            else {
+            } else {
                 uint16_t nSeq = g_seqMan.getTriggerSequence(nNote);
-                if(nSeq)
+                if (nSeq)
                     togglePlayState(nSeq >> 8, nSeq & 0xFF);
             }
         }
 
         // Handle MIDI events for programming patterns from MIDI input
-        if(g_bInputEnabled && g_pTrack && g_pPattern && g_nInputChannel == (midiEvent.buffer[0] & 0x0F)) {
+        if (g_bInputEnabled && g_pTrack && g_pPattern && g_nInputChannel == (midiEvent.buffer[0] & 0x0F)) {
             uint32_t nStep = g_pTrack->getPatternPlayhead();
             bool bAdvance = false;
-            if(((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64) {
+            if (((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64) {
                 // Sustain pedal event
-                if(midiEvent.buffer[2])
+                if (midiEvent.buffer[2])
                     g_bSustain = true;
                 else {
                     g_bSustain = false;
                     bAdvance = true;
                 }
-            }
-            else if(((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2]) {
+            } else if (((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2]) {
                 // Note on event
                 g_bPatternModified = true;
                 uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
-                if(g_bSustain)
+                if (g_bSustain)
                     g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
                 else {
                     bAdvance = true;
-                    if(nDuration)
+                    if (nDuration)
                         g_pPattern->removeNote(nStep, midiEvent.buffer[1]);
-                    else if(midiEvent.buffer[1] != g_nInputRest)
+                    else if (midiEvent.buffer[1] != g_nInputRest)
                         g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
                 }
             }
-            if(bAdvance && transportGetPlayStatus() != JackTransportRolling) {
+            if (bAdvance && transportGetPlayStatus() != JackTransportRolling) {
                 g_pTrack->setPosition(0);
-                if(++nStep >= g_pPattern->getSteps())
+                if (++nStep >= g_pPattern->getSteps())
                     nStep = 0;
                 g_pTrack->setPatternPlayhead(nStep);
             }
@@ -393,16 +390,16 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
     // Send MIDI output aligned with first sample of frame resulting in similar latency to audio
     //!@todo Interpolate events across frame, e.g. CC variations
-    while(g_bMutex)
+    while (g_bMutex)
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     g_bMutex = true;
 
     // Iterate through clocks in this period, adding any events and handling any timebase changes
-    if(nState == JackTransportRolling) {
+    if (nState == JackTransportRolling) {
         bool bSync = false; // True if at start of bar
-        while(g_dFramesToNextClock < nFrames) {
+        while (g_dFramesToNextClock < nFrames) {
             bSync = false;
-            if(g_nClock == 0) {
+            if (g_nClock == 0) {
                 // Clock zero so on beat
                 bSync = (g_nBeat == 1);
                 g_nTick = 0; //!@todo ticks are not updated under normal rolling condition
@@ -411,11 +408,11 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can synchronise its sequences, e.g. start zynpad sequences
             g_nPlayingSequences = g_seqMan.clock(nNow + g_dFramesToNextClock, &g_mSchedule, bSync, g_dFramesPerClock); //!@todo Optimise to reduce rate calling clock especialy if we increase the clock rate from 24 to 96 or above. Maybe return the time until next check
             // Advance clock
-            if(++g_nClock >= g_nPulsePerQuarterNote) {
+            if (++g_nClock >= g_nPulsePerQuarterNote) {
                 g_nClock = 0;
-                if(++g_nBeat > g_nBeatsPerBar) {
+                if (++g_nBeat > g_nBeatsPerBar) {
                     g_nBeat = 1;
-                    if(g_bClientPlaying) //!@todo This will advance bar and stop manual beats per bar changes working when other clients are playing
+                    if (g_bClientPlaying) //!@todo This will advance bar and stop manual beats per bar changes working when other clients are playing
                         ++g_nBar;
                 }
                 DPRINTF("Beat %u of %u\n", g_nBeat, g_nBeatsPerBar);
@@ -425,7 +422,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         g_dFramesToNextClock -= nFrames;
         //g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
         
-        if(bSync && g_nPlayingSequences == 0) {
+        if (bSync && g_nPlayingSequences == 0) {
             //!@todo bSync might have been reset by second clock within period - this should go within g_dFramesToNextClock loop
             //!@todo We stop at end of bar to encourage previous block of code to run but we may prefer to stop more promptly
             DPRINTF("Stopping transport because no sequences playing clock: %u beat: %u tick: %u\n", g_nClock, g_nBeat, g_nTick);
@@ -434,22 +431,21 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     }
 
     // Process events scheduled to be sent to MIDI output
-    if(g_mSchedule.size()) {
+    if (g_mSchedule.size()) {
         auto it = g_mSchedule.begin();
         jack_nframes_t nTime, nNextTime = 0;
-        while(it != g_mSchedule.end()) {
-            if(it->first >= nNow + nFrames)
+        while (it != g_mSchedule.end()) {
+            if (it->first >= nNow + nFrames)
                 break; // Event scheduled beyond this buffer
-            if(it->first < nNow) {
+            if (it->first < nNow) {
                 nTime = nNextTime; // This event is in the past so send as soon as possible
                 // If lots of events are added in past then they may be sent out of order because frame boundary may be hit and existing events will be left in their previous position, e.g. at time 57 then up to 56 events could be inserted before this. Low risk and only for immediate events so unlikely to have significant impact.
                 DPRINTF("Sending event from past (Scheduled:%u Now:%u Diff:%d samples)\n", it->first, nNow, nNow - it->first);
-            }
-            else
+            } else
                 nTime = it->first - nNow; // Schedule event at scheduled time sequence
-            if(nTime < nNextTime)
+            if (nTime < nNextTime)
                 nTime = nNextTime; // Ensure we send events in order - this may bump events slightly later than scheduled (by individual frames (samples) so not much)
-            if(nTime >= nFrames) {
+            if (nTime >= nFrames) {
                 g_bMutex = false;
                 return 0; // Must have bumped beyond end of this frame time so must wait until next frame - earlier events were processed and pointer nulled so will not trigger in next period
             }
@@ -457,9 +453,9 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             // Get a pointer to the next 3 available bytes in the output buffer
             //!@todo Should we use correct buffer size based on MIDI message size, e.g. 1 byte for realtime messages?
             pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, 3);
-            if(pBuffer == NULL)
+            if (pBuffer == NULL)
                 break; // Exceeded buffer size (or other issue)
-            if(it->second) {
+            if (it->second) {
                 pBuffer[0] = it->second->command;
                 pBuffer[1] = it->second->value1;
                 pBuffer[2] = it->second->value2;
@@ -494,7 +490,7 @@ void end()
 {
     DPRINTF("zynseq exit\n");
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    for(auto it : g_mSchedule) {
+    for (auto it : g_mSchedule) {
         delete it.second;
     }
 }
@@ -514,24 +510,24 @@ void init(char* name)
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
     
-    if(g_pJackClient) {
+    if (g_pJackClient) {
         fprintf(stderr, "libzynseq already initialised\n");
         return; // Already initialised
     }
 
-    if((g_pJackClient = jack_client_open(name, nOptions, &nStatus, sServerName)) == 0) {
+    if ((g_pJackClient = jack_client_open(name, nOptions, &nStatus, sServerName)) == 0) {
         fprintf(stderr, "libzynseq failed to start jack client: %d\n", nStatus);
         return;
     }
 
     // Create input port
-    if(!(g_pInputPort = jack_port_register(g_pJackClient, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0))) {
+    if (!(g_pInputPort = jack_port_register(g_pJackClient, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0))) {
         fprintf(stderr, "libzynseq cannot register input port\n");
         return;
     }
 
     // Create output port
-    if(!(g_pOutputPort = jack_port_register(g_pJackClient, "output", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0))) {
+    if (!(g_pOutputPort = jack_port_register(g_pJackClient, "output", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0))) {
         fprintf(stderr, "libzynseq cannot register output port\n");
         return;
     }
@@ -544,7 +540,7 @@ void init(char* name)
     jack_set_sample_rate_callback(g_pJackClient, onJackSampleRateChange, 0);
     jack_set_xrun_callback(g_pJackClient, onJackXrun, 0); //!@todo Remove xrun handler (just for debug)
 
-    if(jack_activate(g_pJackClient)) {
+    if (jack_activate(g_pJackClient)) {
         fprintf(stderr, "libzynseq cannot activate client\n");
         return;
     }
@@ -570,14 +566,14 @@ int fileWrite8(uint8_t value, FILE *pFile)
 
 int fileWrite32(uint32_t value, FILE *pFile)
 {
-    for(int i = 3; i >=0; --i)
+    for (int i = 3; i >=0; --i)
         fileWrite8((value >> i * 8), pFile);
     return 4;
 }
 
 int fileWrite16(uint16_t value, FILE *pFile)
 {
-    for(int i = 1; i >=0; --i)
+    for (int i = 1; i >=0; --i)
         fileWrite8((value >> i * 8), pFile);
     return 2;
 }
@@ -592,7 +588,7 @@ uint8_t fileRead8(FILE* pFile)
 uint16_t fileRead16(FILE* pFile)
 {
     uint16_t nResult = 0;
-    for(int i = 1; i >=0; --i) {
+    for (int i = 1; i >=0; --i) {
         uint8_t nValue;
         fread(&nValue, 1, 1, pFile);
         nResult |= nValue << (i * 8);
@@ -603,7 +599,7 @@ uint16_t fileRead16(FILE* pFile)
 uint32_t fileRead32(FILE* pFile)
 {
     uint32_t nResult = 0;
-    for(int i = 3; i >=0; --i) {
+    for (int i = 3; i >=0; --i) {
         uint8_t nValue;
         fread(&nValue, 1, 1, pFile);
         nResult |= nValue << (i * 8);
@@ -613,8 +609,8 @@ uint32_t fileRead32(FILE* pFile)
 
 bool checkBlock(FILE* pFile, uint32_t nActualSize,  uint32_t nExpectedSize)
 {
-    if(nActualSize < nExpectedSize) {
-        for(size_t i = 0; i < nActualSize; ++i)
+    if (nActualSize < nExpectedSize) {
+        for (size_t i = 0; i < nActualSize; ++i)
             fileRead8(pFile);
         return true;
     }
@@ -628,20 +624,20 @@ bool load(const char* filename)
     uint32_t nVersion = 0;
     FILE *pFile;
     pFile = fopen(filename, "r");
-    if(pFile == NULL)
+    if (pFile == NULL)
         return false;
     char sHeader[4];
     // Iterate each block within IFF file
-    while(fread(sHeader, 4, 1, pFile) == 1) {
+    while (fread(sHeader, 4, 1, pFile) == 1) {
         uint32_t nBlockSize = fileRead32(pFile);
-        if(memcmp(sHeader, "vers", 4) == 0) {
-            if(nBlockSize != 16) {
+        if (memcmp(sHeader, "vers", 4) == 0) {
+            if (nBlockSize != 16) {
                 fclose(pFile);
                 //printf("Error reading vers block from sequence file\n");
                 return false;
             }
             nVersion = fileRead32(pFile);
-            if(nVersion < 4 || nVersion > FILE_VERSION) {
+            if (nVersion < 4 || nVersion > FILE_VERSION) {
                 fclose(pFile);
                 DPRINTF("Unsupported sequence file version %d. Not loading file.\n", nVersion);
                 return false;
@@ -657,13 +653,12 @@ bool load(const char* filename)
             g_nHorizontalZoom = fileRead16(pFile);
             //printf("Version:%u Tempo:%0.2lf Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_dTempo, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
         }
-        if(memcmp(sHeader, "patn", 4) == 0) {
-            if(nVersion == 4) {
-            if(checkBlock(pFile, nBlockSize, 12))
+        if (memcmp(sHeader, "patn", 4) == 0) {
+            if (nVersion == 4) {
+            if (checkBlock(pFile, nBlockSize, 12))
                 continue;
-            }
-            else {
-                if(checkBlock(pFile, nBlockSize, 14))
+            } else {
+                if (checkBlock(pFile, nBlockSize, 14))
                     continue;
             }
             uint32_t nPattern = fileRead32(pFile);
@@ -672,15 +667,15 @@ bool load(const char* filename)
             pPattern->setStepsPerBeat(fileRead16(pFile));
             pPattern->setScale(fileRead8(pFile));
             pPattern->setTonic(fileRead8(pFile));
-            if(nVersion >=5) {
+            if (nVersion >=5) {
                 pPattern->setRefNote(fileRead8(pFile));
                 fileRead8(pFile);
                 nBlockSize -= 2;
             }
             nBlockSize -= 12;
             //printf("Pattern:%u Beats:%u StepsPerBeat:%u Scale:%u Tonic:%u\n", nPattern, pPattern->getBeatsInPattern(), pPattern->getStepsPerBeat(), pPattern->getScale(), pPattern->getTonic());
-            while(nBlockSize) {
-                if(checkBlock(pFile, nBlockSize, 14))
+            while (nBlockSize) {
+                if (checkBlock(pFile, nBlockSize, 14))
                     break;
                 uint32_t nStep = fileRead32(pFile);
                 uint32_t nDuration = fileRead32(pFile);
@@ -697,19 +692,19 @@ bool load(const char* filename)
                 //printf(" Step:%u Duration:%u Command:%02X, Value1:%u..%u, Value2:%u..%u\n", nTime, nDuration, nCommand, nValue1start, nValue2end, nValue2start, nValue2end);
             }
         }
-        else if(memcmp(sHeader, "bank", 4) == 0) {
+        else if (memcmp(sHeader, "bank", 4) == 0) {
             // Load banks
-            if(checkBlock(pFile, nBlockSize, 6))
+            if (checkBlock(pFile, nBlockSize, 6))
                 continue;
             uint8_t nBank = fileRead8(pFile);
             fileRead8(pFile); // Padding
             uint32_t nSequences = fileRead32(pFile);
             nBlockSize -= 6;
             //printf("Bank %u with %u sequences\n", nBank, nSequences);
-            for(uint32_t nSequence = 0; nSequence < nSequences; ++nSequence) {
-                if(checkBlock(pFile, nBlockSize, 8))
+            for (uint32_t nSequence = 0; nSequence < nSequences; ++nSequence) {
+                if (checkBlock(pFile, nBlockSize, 8))
                     continue;
-                if(nVersion >= 6 && checkBlock(pFile, nBlockSize, 24))
+                if (nVersion >= 6 && checkBlock(pFile, nBlockSize, 24))
                     continue;
                 Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
                 pSequence->setPlayMode(fileRead8(pFile));
@@ -719,25 +714,24 @@ bool load(const char* filename)
                 fileRead8(pFile); //Padding
                 char sName[17];
                 memset(sName, '\0', 17);
-                if(nVersion >= 6) {
-                    if(checkBlock(pFile, nBlockSize, 24))
+                if (nVersion >= 6) {
+                    if (checkBlock(pFile, nBlockSize, 24))
                         continue;
-                    for(size_t nIndex = 0; nIndex < 16; ++nIndex)
+                    for (size_t nIndex = 0; nIndex < 16; ++nIndex)
                         sName[nIndex] = fileRead8(pFile);
                     sName[16] = '\0';
                     nBlockSize -= 16;
-                }
-                else {
+                } else {
                     sprintf(sName, "%d", nSequence + 1);
                 }
                 pSequence->setName(std::string(sName));
                 uint32_t nTracks = fileRead32(pFile);
                 nBlockSize -= 8;
                 //printf("  Mode:%u Group:%u Tracks:%u\n", pSequence->getPlayMode(), pSequence->getGroup(), nTracks);
-                for(uint32_t nTrack = 0; nTrack < nTracks; ++nTrack) {
-                    if(checkBlock(pFile, nBlockSize, 6))
+                for (uint32_t nTrack = 0; nTrack < nTracks; ++nTrack) {
+                    if (checkBlock(pFile, nBlockSize, 6))
                         break;
-                    if(pSequence->getTracks() <= nTrack)
+                    if (pSequence->getTracks() <= nTrack)
                         pSequence->addTrack(nTrack);
                     Track* pTrack = pSequence->getTrack(nTrack);
                     pTrack->setChannel(fileRead8(pFile));
@@ -747,8 +741,8 @@ bool load(const char* filename)
                     uint16_t nPatterns = fileRead16(pFile);
                     nBlockSize -= 6;
                     //printf("    Track:%u Channel:%u Output:%u Map:%u\n", nTrack, pTrack->getChannel(), pTrack->getOutput(), pTrack->getMap());
-                    for(uint16_t nPattern = 0; nPattern < nPatterns; ++nPattern) {
-                        if(checkBlock(pFile, nBlockSize, 8))
+                    for (uint16_t nPattern = 0; nPattern < nPatterns; ++nPattern) {
+                        if (checkBlock(pFile, nBlockSize, 8))
                             break;
                         uint32_t nTime = fileRead32(pFile);
                         uint32_t nPatternId = fileRead32(pFile);
@@ -757,12 +751,12 @@ bool load(const char* filename)
                         //printf("      Pattern:%u at time:%u\n", nPatternId, nTime);
                     }
                 }
-                if(checkBlock(pFile, nBlockSize, 4))
+                if (checkBlock(pFile, nBlockSize, 4))
                     break;
                 uint32_t nTimebaseEvents = fileRead32(pFile);
                 nBlockSize -= 4;
-                for(uint32_t nEvent = 0; nEvent < nTimebaseEvents; ++nEvent) {
-                    if(checkBlock(pFile, nBlockSize, 8))
+                for (uint32_t nEvent = 0; nEvent < nTimebaseEvents; ++nEvent) {
+                    if (checkBlock(pFile, nBlockSize, 8))
                         break;
                     pSequence->getTimebase()->addTimebaseEvent(fileRead16(pFile), fileRead16(pFile), fileRead16(pFile), fileRead16(pFile));
                     nBlockSize -= 8;
@@ -786,7 +780,7 @@ void save(const char* filename)
     FILE *pFile;
     int nPos = 0;
     pFile = fopen(filename, "w");
-    if(pFile == NULL) {
+    if (pFile == NULL) {
         fprintf(stderr, "ERROR: SequenceManager failed to open file %s\n", filename);
         return;
     }
@@ -809,7 +803,7 @@ void save(const char* filename)
     do {
         Pattern* pPattern = g_seqMan.getPattern(nPattern);
         // Only save patterns with content
-        if(pPattern->getEventAt(0)) {
+        if (pPattern->getEventAt(0)) {
             fwrite("patnxxxx", 8, 1, pFile);
             nPos += 8;
             uint32_t nStartOfBlock = nPos;
@@ -821,7 +815,7 @@ void save(const char* filename)
             nPos += fileWrite8(pPattern->getRefNote(), pFile);
             nPos += fileWrite8('\0', pFile);
             uint32_t nEvent = 0;
-            while(StepEvent* pEvent = pPattern->getEventAt(nEvent++)) {
+            while (StepEvent* pEvent = pPattern->getEventAt(nEvent++)) {
                 nPos += fileWrite32(pEvent->getPosition(), pFile);
                 nPos += fileWrite32(pEvent->getDuration(), pFile);
                 nPos += fileWrite8(pEvent->getCommand(), pFile);
@@ -837,12 +831,12 @@ void save(const char* filename)
             fseek(pFile, 0, SEEK_END);
         }
         nPattern = g_seqMan.getNextPattern(nPattern);
-    } while(nPattern != -1);
+    } while (nPattern != -1);
     
     // Iterate through banks
-    for(uint32_t nBank = 1; nBank < g_seqMan.getBanks(); ++nBank) {
+    for (uint32_t nBank = 1; nBank < g_seqMan.getBanks(); ++nBank) {
         uint32_t nSequences = g_seqMan.getSequencesInBank(nBank);
-        if(nSequences == 0)
+        if (nSequences == 0)
             continue;
         fwrite("bankxxxx", 8, 1, pFile);
         nPos += 8;
@@ -850,27 +844,27 @@ void save(const char* filename)
         nPos += fileWrite8(nBank, pFile);
         nPos += fileWrite8(0, pFile);
         nPos += fileWrite32(nSequences, pFile);
-        for(uint32_t nSequence = 0; nSequence < nSequences; ++nSequence) {
+        for (uint32_t nSequence = 0; nSequence < nSequences; ++nSequence) {
             Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
             nPos += fileWrite8(pSequence->getPlayMode(), pFile);
             nPos += fileWrite8(pSequence->getGroup(), pFile);
             nPos += fileWrite8(g_seqMan.getTriggerNote(nBank, nSequence), pFile);
             nPos += fileWrite8('\0', pFile);
             std::string sName = pSequence->getName();
-            for(size_t nIndex = 0; nIndex < sName.size(); ++nIndex)
+            for (size_t nIndex = 0; nIndex < sName.size(); ++nIndex)
                 nPos += fileWrite8(sName[nIndex], pFile);
-            for(size_t nIndex = sName.size(); nIndex < 16; ++nIndex)
+            for (size_t nIndex = sName.size(); nIndex < 16; ++nIndex)
                 nPos += fileWrite8('\0', pFile);
             nPos += fileWrite32(pSequence->getTracks(), pFile);
-            for(size_t nTrack = 0; nTrack < pSequence->getTracks(); ++nTrack) {
+            for (size_t nTrack = 0; nTrack < pSequence->getTracks(); ++nTrack) {
                 Track* pTrack = pSequence->getTrack(nTrack);
-                if(pTrack) {
+                if (pTrack) {
                     nPos += fileWrite8(pTrack->getChannel(), pFile);
                     nPos += fileWrite8(pTrack->getOutput(), pFile);
                     nPos += fileWrite8(pTrack->getMap(), pFile);
                     nPos += fileWrite8('\0', pFile);
                     nPos += fileWrite16(pTrack->getPatterns(), pFile);
-                    for(uint16_t nPattern = 0; nPattern < pTrack->getPatterns(); ++nPattern) {
+                    for (uint16_t nPattern = 0; nPattern < pTrack->getPatterns(); ++nPattern) {
                         nPos += fileWrite32(pTrack->getPatternPositionByIndex(nPattern), pFile);
                         Pattern* pPattern = pTrack->getPatternByIndex(nPattern);
                         uint32_t nPatternId = g_seqMan.getPatternIndex(pPattern);
@@ -884,17 +878,16 @@ void save(const char* filename)
                 }
             }
             Timebase* pTimebase = pSequence->getTimebase();
-            if(pTimebase) {
+            if (pTimebase) {
                 nPos += fileWrite32(pTimebase->getEventQuant(), pFile);
-                for(uint32_t nIndex = 0; nIndex < pTimebase->getEventQuant(); ++nIndex) {
+                for (uint32_t nIndex = 0; nIndex < pTimebase->getEventQuant(); ++nIndex) {
                     TimebaseEvent* pEvent = pTimebase->getEvent(nIndex);
                     nPos += fileWrite16(pEvent->bar, pFile);
                     nPos += fileWrite16(pEvent->clock, pFile);
                     nPos += fileWrite16(pEvent->type, pFile);
                     nPos += fileWrite16(pEvent->value, pFile);
                 }
-            }
-            else {
+            } else {
                 nPos += fileWrite32(0, pFile);
             }            
         }
@@ -903,7 +896,6 @@ void save(const char* filename)
         fileWrite32(nBlockSize, pFile);
         fseek(pFile, 0, SEEK_END);
     }
-
     fclose(pFile);
     g_bDirty = false;
 }
@@ -935,10 +927,10 @@ void sendMidiMsg(MIDI_MESSAGE* pMsg)
 {
     // Find first available time slot
     uint32_t time = jack_frames_since_cycle_start(g_pJackClient);
-    while(g_bMutex)
+    while (g_bMutex)
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     g_bMutex = true;
-    while(g_mSchedule.find(time) != g_mSchedule.end())
+    while (g_mSchedule.find(time) != g_mSchedule.end())
         ++time;
     g_mSchedule[time] = pMsg;
     g_bMutex = false;
@@ -957,14 +949,14 @@ void noteOffTimer(uint8_t note, uint8_t channel, uint32_t duration)
 
 void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration)
 {
-    if(note>127 || velocity > 127 || channel > 15 || duration >60000)
+    if (note>127 || velocity > 127 || channel > 15 || duration >60000)
         return;
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
     pMsg->command = MIDI_NOTE_ON | channel;
     pMsg->value1 = note;
     pMsg->value2 = velocity;
     sendMidiMsg(pMsg);
-    if(duration) {
+    if (duration) {
         std::thread noteOffThread(noteOffTimer, note, channel, duration);
         noteOffThread.detach();
     }
@@ -1005,7 +997,7 @@ void sendMidiSongPos(uint16_t pos)
 
 void sendMidiSong(uint32_t pos)
 {
-    if(pos > 127)
+    if (pos > 127)
         return;
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
     pMsg->command = MIDI_SONG;
@@ -1036,7 +1028,7 @@ uint8_t getTriggerChannel()
 
 void setTriggerChannel(uint8_t channel)
 {
-    if(channel > 15)
+    if (channel > 15)
         channel = 0xFF;
     g_seqMan.setTriggerChannel(channel);
     g_nTriggerStatusByte = MIDI_NOTE_ON | g_seqMan.getTriggerChannel();
@@ -1069,14 +1061,14 @@ void cleanPatterns()
 void toggleMute(uint8_t bank, uint8_t sequence, uint32_t track)
 {
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
-    if(pTrack)
+    if (pTrack)
     	pTrack->mute(!pTrack->isMuted());
 }
 
 bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track)
 {
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
-    if(pTrack)
+    if (pTrack)
     	return pTrack->isMuted();
     return false;
 }    
@@ -1089,7 +1081,7 @@ void enableMidiInput(bool enable)
 void selectPattern(uint32_t pattern)
 {
     g_pPattern = g_seqMan.getPattern(pattern);
-    if(g_pPattern)
+    if (g_pPattern)
         g_nPattern = pattern;
     g_bPatternModified = true;
 }
@@ -1101,7 +1093,7 @@ uint32_t getPatternIndex()
 
 uint32_t getSteps()
 {
-    if(g_pPattern)
+    if (g_pPattern)
         return g_pPattern->getSteps();
     return 0;
 }
@@ -1109,21 +1101,21 @@ uint32_t getSteps()
 uint32_t getPatternLength(uint32_t pattern)
 {
     Pattern* pPattern = g_seqMan.getPattern(pattern);
-    if(pPattern)
+    if (pPattern)
         return pPattern->getLength();
     return 0;
 }
 
 uint32_t getBeatsInPattern()
 {
-    if(g_pPattern)
+    if (g_pPattern)
         return g_pPattern->getBeatsInPattern();
     return 0;
 }
 
 void setBeatsInPattern(uint32_t beats)
 {
-    if(!g_pPattern)
+    if (!g_pPattern)
         return;
     g_pPattern->setBeatsInPattern(beats);
     g_seqMan.updateAllSequenceLengths();
@@ -1133,21 +1125,21 @@ void setBeatsInPattern(uint32_t beats)
 
 uint32_t getClocksPerStep()
 {
-    if(g_pPattern)
+    if (g_pPattern)
         return g_pPattern->getClocksPerStep();
     return 6;
 }
 
 uint32_t getStepsPerBeat()
 {
-    if(g_pPattern)
+    if (g_pPattern)
         return g_pPattern->getStepsPerBeat();
     return 4;
 }
 
 void setStepsPerBeat(uint32_t steps)
 {
-    if(!g_pPattern)
+    if (!g_pPattern)
         return;
     g_pPattern->setStepsPerBeat(steps);
     g_bPatternModified = true;
@@ -1156,7 +1148,7 @@ void setStepsPerBeat(uint32_t steps)
 
 bool addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
 {
-    if(!g_pPattern)
+    if (!g_pPattern)
         return false;
     g_bPatternModified = true;
     g_bDirty = true;
@@ -1165,7 +1157,7 @@ bool addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
 
 void removeNote(uint32_t step, uint8_t note)
 {
-    if(!g_pPattern)
+    if (!g_pPattern)
         return;
     g_bPatternModified = true;
     g_pPattern->removeNote(step, note);
@@ -1174,14 +1166,14 @@ void removeNote(uint32_t step, uint8_t note)
 
 uint8_t getNoteVelocity(uint32_t step, uint8_t note)
 {
-    if(g_pPattern)
+    if (g_pPattern)
         return g_pPattern->getNoteVelocity(step, note);
     return 0;
 }
 
 void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
 {
-    if(!g_pPattern)
+    if (!g_pPattern)
         return;
     g_bPatternModified = true;
     g_pPattern->setNoteVelocity(step, note, velocity);
@@ -1190,14 +1182,14 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
 
 uint32_t getNoteDuration(uint32_t step, uint8_t note)
 {
-    if(g_pPattern)
+    if (g_pPattern)
         return g_pPattern->getNoteDuration(step, note);
     return 0;
 }
 
 void transpose(int8_t value)
 {
-    if(!g_pPattern)
+    if (!g_pPattern)
         return;
     g_bPatternModified = true;
     g_pPattern->transpose(value);
@@ -1206,7 +1198,7 @@ void transpose(int8_t value)
 
 void clear()
 {
-    if(!g_pPattern)
+    if (!g_pPattern)
         return;
     g_bPatternModified = true;
     g_pPattern->clear();
@@ -1221,7 +1213,7 @@ void copyPattern(uint32_t source, uint32_t destination)
 
 void setInputChannel(uint8_t channel)
 {
-    if(channel > 15)
+    if (channel > 15)
         g_nInputChannel = 0xFF;
     g_nInputChannel = channel;
     g_bDirty = true;
@@ -1234,7 +1226,7 @@ uint8_t getInputChannel()
 
 void setInputRest(uint8_t note)
 {
-    if(note > 127)
+    if (note > 127)
         g_nInputRest = 0xFF;
     g_nInputRest = note;
     g_bDirty = true;
@@ -1247,23 +1239,23 @@ uint8_t getInputRest()
 
 void setScale(uint32_t scale)
 {
-    if(!g_pPattern)
+    if (!g_pPattern)
         return;
-    if(scale != g_pPattern->getScale())
+    if (scale != g_pPattern->getScale())
         g_bDirty = true;
     g_pPattern->setScale(scale);
 }
 
 uint32_t getScale()
 {
-    if(g_pPattern)
+    if (g_pPattern)
         return g_pPattern->getScale();
     return 0;
 }
 
 void setTonic(uint8_t tonic)
 {
-    if(!g_pPattern)
+    if (!g_pPattern)
         return;
     g_pPattern->setTonic(tonic);
     g_bDirty = true;
@@ -1271,14 +1263,14 @@ void setTonic(uint8_t tonic)
 
 uint8_t getTonic()
 {
-    if(g_pPattern)
+    if (g_pPattern)
         return g_pPattern->getTonic();
     return 0;
 }
 
 bool isPatternModified()
 {
-    if(g_bPatternModified) {
+    if (g_bPatternModified) {
         g_bPatternModified = false;
         return true;
     }
@@ -1287,20 +1279,20 @@ bool isPatternModified()
 
 uint8_t getRefNote()
 {
-    if(g_pPattern)
+    if (g_pPattern)
         return g_pPattern->getRefNote();
     return 60;
 }
 
 void setRefNote(uint8_t note)
 {
-    if(g_pPattern)
+    if (g_pPattern)
         g_pPattern->setRefNote(note);
 }
 
 uint32_t getLastStep()
 {
-    if(!g_pPattern)
+    if (!g_pPattern)
         return -1;
     return g_pPattern->getLastStep();
 }
@@ -1310,7 +1302,7 @@ uint32_t getLastStep()
 uint32_t getPatternPlayhead(uint8_t bank, uint8_t sequence, uint32_t track)
 {
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
-    if(!pTrack)
+    if (!pTrack)
         return 0;
     return pTrack->getPatternPlayhead();
 }
@@ -1318,7 +1310,7 @@ uint32_t getPatternPlayhead(uint8_t bank, uint8_t sequence, uint32_t track)
 bool addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force)
 {
     bool bUpdated = g_seqMan.addPattern(bank, sequence, track, position, pattern, force);
-    if(bank + sequence)
+    if (bank + sequence)
         g_bDirty |= bUpdated;
     return bUpdated;
 }
@@ -1333,7 +1325,7 @@ uint32_t getPattern(uint8_t bank, uint8_t sequence, uint32_t track,  uint32_t po
 {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
     Track* pTrack = pSequence->getTrack(track);
-    if(!pTrack)
+    if (!pTrack)
         return -1;
     Pattern* pPattern = pTrack->getPattern(position);
     return g_seqMan.getPatternIndex(pPattern);
@@ -1343,10 +1335,10 @@ uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track,  uint32_t 
 {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
     Track* pTrack = pSequence->getTrack(track);
-    if(!pTrack)
+    if (!pTrack)
         return -1;
     Pattern* pPattern = pTrack->getPatternAt(position);
-    if(!pPattern)
+    if (!pPattern)
         return -1;
     return g_seqMan.getPatternIndex(pPattern);
 }
@@ -1361,7 +1353,7 @@ void setPlayMode(uint8_t bank, uint8_t sequence, uint8_t mode)
 {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
     pSequence->setPlayMode(mode);
-    if(bank + sequence)
+    if (bank + sequence)
         g_bDirty = true;
 }
 
@@ -1377,12 +1369,11 @@ bool isEmpty(uint8_t bank, uint8_t sequence)
 
 void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
 {
-    if(transportGetPlayStatus() != JackTransportRolling) {
-        if(state == STARTING) {
+    if (transportGetPlayStatus() != JackTransportRolling) {
+        if (state == STARTING) {
             setTransportToStartOfBar();
             transportStart("zynseq");
-        }
-        else if(state == STOPPING)
+        } else if (state == STOPPING)
             state = STOPPED;
     }
     g_seqMan.setSequencePlayState(bank, sequence, state);
@@ -1391,7 +1382,7 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
 void togglePlayState(uint8_t bank, uint8_t sequence)
 {
     uint8_t nState = g_seqMan.getSequence(bank, sequence)->getPlayState();
-    switch(nState) {
+    switch (nState) {
         case STOPPED:
             nState = STARTING;
             break;
@@ -1440,7 +1431,7 @@ void clearSequence(uint8_t bank, uint8_t sequence)
 
 void setSequencesInBank(uint8_t bank, uint8_t sequences)
 {
-    while(g_bMutex)
+    while (g_bMutex)
             std::this_thread::sleep_for(std::chrono::microseconds(10));
     g_bMutex = true;
     g_seqMan.setSequencesInBank(bank, sequences);
@@ -1487,7 +1478,7 @@ uint32_t addTrackToSequence(uint8_t bank, uint8_t sequence, uint32_t track)
 void removeTrackFromSequence(uint8_t bank, uint8_t sequence, uint32_t track)
 {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    if(!pSequence->removeTrack(track))
+    if (!pSequence->removeTrack(track))
         return;
     pSequence->updateLength();
     g_bDirty = true;
@@ -1507,7 +1498,7 @@ uint32_t getTempoAt(uint8_t bank, uint8_t sequence, uint16_t bar, uint16_t tick)
 
 void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type, uint16_t bar)
 {
-    if(bar < 1)
+    if (bar < 1)
         bar = 1;
     g_seqMan.getSequence(bank, sequence)->addTimeSig((beats << 8) | type, bar);
     g_bDirty = true;
@@ -1579,7 +1570,7 @@ void updateSequenceInfo()
 size_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track)
 {
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
-    if(!pTrack)
+    if (!pTrack)
         return 0;
     return pTrack->getPatterns();
 }
@@ -1588,17 +1579,17 @@ void setChannel(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t channel)
 {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
     Track* pTrack = pSequence->getTrack(track);
-    if(!pTrack)
+    if (!pTrack)
         return;
     pTrack->setChannel(channel);
-    if(bank + sequence)
+    if (bank + sequence)
         g_bDirty = true;
 }
 
 uint8_t getChannel(uint8_t bank, uint8_t sequence, uint32_t track)
 {
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
-    if(!pTrack)
+    if (!pTrack)
         return 0xFF;
     return pTrack->getChannel(); 
 }
@@ -1606,7 +1597,7 @@ uint8_t getChannel(uint8_t bank, uint8_t sequence, uint32_t track)
 void solo(uint8_t bank, uint8_t sequence, uint32_t track, bool solo)
 {
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
-    if(!pTrack)
+    if (!pTrack)
         return;
     pTrack->solo();
 }
@@ -1614,7 +1605,7 @@ void solo(uint8_t bank, uint8_t sequence, uint32_t track, bool solo)
 bool isSolo(uint8_t bank, uint8_t sequence, uint32_t track)
 {
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
-    if(!pTrack)
+    if (!pTrack)
         return false;
     return pTrack->isSolo();
 }
@@ -1642,9 +1633,9 @@ void transportLocate(uint32_t frame)
 jack_nframes_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick)
 {
     // Convert one-based bars and beats to zero-based 
-    if(bar > 0)
+    if (bar > 0)
         --bar;
-    if(beat > 0)
+    if (beat > 0)
         --beat;    
     uint32_t nTicksToPrev = 0;
     uint32_t nTicksToEvent = 0;
@@ -1654,18 +1645,18 @@ jack_nframes_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick)
     double dFramesPerTick = getFramesPerTick(g_dTempo);
     double dFrames = 0; // Frames to position
     /*
-    if(g_pTimebase) {
-        for(size_t nIndex = 0; nIndex < g_pTimebase->getEventQuant(); ++nIndex) {
+    if (g_pTimebase) {
+        for (size_t nIndex = 0; nIndex < g_pTimebase->getEventQuant(); ++nIndex) {
             TimebaseEvent* pEvent = g_pTimebase->getEvent(nIndex);
-            if(pEvent->bar > bar || pEvent->bar == bar && pEvent->clock > (g_dTicksPerBeat * beat + tick) / g_dTicksPerBeat / g_nPulsePerQuarterNote)
+            if (pEvent->bar > bar || pEvent->bar == bar && pEvent->clock > (g_dTicksPerBeat * beat + tick) / g_dTicksPerBeat / g_nPulsePerQuarterNote)
                 break; // Ignore events later than new position
             nTicksToEvent = pEvent->bar * nTicksPerBar + pEvent->clock * g_dTicksPerBeat / g_nPulsePerQuarterNote;
             uint32_t nTicksInBlock = nTicksToEvent - nTicksToPrev;
             dFrames += dFramesPerTick * nTicksInBlock;
             nTicksToPrev = nTicksToEvent;
-            if(pEvent->type == TIMEBASE_TYPE_TEMPO)
+            if (pEvent->type == TIMEBASE_TYPE_TEMPO)
                 dFramesPerTick = getFramesPerTick(pEvent->value);
-            else if(pEvent->type == TIMEBASE_TYPE_TIMESIG)
+            else if (pEvent->type == TIMEBASE_TYPE_TIMESIG)
                 nTicksPerBar = g_dTicksPerBeat * (pEvent->value >> 8);
         }
     }
@@ -1676,7 +1667,7 @@ jack_nframes_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick)
 
 bool transportRequestTimebase()
 {
-    if(jack_set_timebase_callback(g_pJackClient, 0, onJackTimebase, NULL))
+    if (jack_set_timebase_callback(g_pJackClient, 0, onJackTimebase, NULL))
         return false;
     return true;
 }
@@ -1688,13 +1679,13 @@ void transportReleaseTimebase()
 
 void transportStart(const char* client)
 {
-    if(strcmp("zynseq", client)) {
+    if (strcmp("zynseq", client)) {
         // Not zynseq so flag other client(s) playing
         g_bClientPlaying = true;
         g_setTransportClient.emplace(client);
     }
     jack_position_t pos;
-    if(jack_transport_query(g_pJackClient, &pos) == JackTransportStopped) {
+    if (jack_transport_query(g_pJackClient, &pos) == JackTransportStopped) {
         g_dFramesToNextClock = 0.0;
         jack_transport_start(g_pJackClient);
     }
@@ -1703,16 +1694,16 @@ void transportStart(const char* client)
 void transportStop(const char* client)
 {
     auto itClient = g_setTransportClient.find(std::string(client));
-    if(itClient != g_setTransportClient.end())
+    if (itClient != g_setTransportClient.end())
         g_setTransportClient.erase(itClient);
     g_bClientPlaying = (g_setTransportClient.size() != 0);
-    if(!g_bClientPlaying && g_nPlayingSequences == 0)
+    if (!g_bClientPlaying && g_nPlayingSequences == 0)
         jack_transport_stop(g_pJackClient);
 }
 
 void transportToggle(const char* client)
 {
-    if(transportGetPlayStatus() == JackTransportRolling)
+    if (transportGetPlayStatus() == JackTransportRolling)
         transportStop(client);
     else
         transportStart(client);
@@ -1727,7 +1718,7 @@ uint8_t transportGetPlayStatus()
 
 void setTempo(double tempo)
 {
-    if(tempo > 0.0 && tempo < 500.0) {
+    if (tempo > 0.0 && tempo < 500.0) {
         g_dTempo = tempo;
         g_dFramesPerClock = getFramesPerClock(tempo);
     }
@@ -1740,7 +1731,7 @@ double getTempo()
 
 void setBeatsPerBar(uint32_t beats)
 {
-    if(beats > 0)
+    if (beats > 0)
         g_nBeatsPerBar = beats;
 }
 
