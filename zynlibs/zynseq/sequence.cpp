@@ -22,8 +22,7 @@ uint32_t Sequence::addTrack(uint32_t track)
 {
     auto it = m_vTracks.begin();
     uint32_t nReturn = ++track;
-    if(track == -1 || track >= m_vTracks.size())
-    {
+    if(track == -1 || track >= m_vTracks.size()) {
         m_vTracks.emplace_back();
         nReturn = m_vTracks.size() - 1;
     }
@@ -131,8 +130,7 @@ void Sequence::setPlayState(uint8_t state)
         state = STOPPED;
     m_nState = state;
     if(m_nState == STOPPED)
-        if(m_nMode == ONESHOT)
-        {
+        if(m_nMode == ONESHOT) {
             m_nPosition = m_nLastSyncPos;
             for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
                 (*it).setPosition(m_nPosition);
@@ -148,14 +146,12 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
     m_nCurrentTrack = 0;
     uint8_t nReturn = 0;
     uint8_t nState = m_nState;
-    if(bSync)
-    {
+    if(bSync) {
         if(m_nMode == ONESHOTSYNC && m_nState != STARTING)
             m_nState = STOPPED;
         if(m_nState == STARTING)
             m_nState = PLAYING;
-        if(m_nState == RESTARTING)
-        {
+        if(m_nState == RESTARTING) {
             m_nState = PLAYING;
             nState = PLAYING;
         }
@@ -168,18 +164,15 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
     else if(m_nState == RESTARTING)
         m_nState = STARTING;
 
-    if(m_nState == PLAYING || m_nState == STOPPING)
-    {
+    if(m_nState == PLAYING || m_nState == STOPPING) {
         // Still playing so iterate through tracks
         for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
             nReturn |= (*it).clock(nTime, m_nPosition, dSamplesPerClock, bSync);
         ++m_nPosition;
     }
-    if(m_nPosition >= m_nLength)
-    {
+    if(m_nPosition >= m_nLength) {
         // End of sequence
-        switch(m_nMode)
-        {
+        switch(m_nMode) {
             case ONESHOT:
             case ONESHOTALL:
             case ONESHOTSYNC:
@@ -187,8 +180,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
                 break;
             case LOOPSYNC:
             case LOOPALL:
-                if(m_nState == PLAYING)
-                {
+                if(m_nState == PLAYING) {
                     m_nState = RESTARTING;
                     nState = RESTARTING;
                 }
@@ -201,8 +193,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
     }
 
     m_bStateChanged |= (nState != m_nState);
-    if(m_bStateChanged)
-    {
+    if(m_bStateChanged) {
         m_bChanged |= true;
         m_bStateChanged = false;
         return nReturn | 2;
@@ -217,8 +208,7 @@ SEQ_EVENT* Sequence::getEvent()
         return NULL; //!@todo Can we stop between note on and note off being processed resulting in stuck note?
 
     SEQ_EVENT* pEvent;
-    while(m_nCurrentTrack < m_vTracks.size())
-    {
+    while(m_nCurrentTrack < m_vTracks.size()) {
         pEvent = m_vTracks[m_nCurrentTrack].getEvent();
         if(pEvent)
             return pEvent;
@@ -231,8 +221,7 @@ void Sequence::updateLength()
 {
     m_nLength = 0;
     m_bEmpty = true;
-    for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
-    {
+    for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it) {
         uint32_t nTrackLength = (*it).updateLength();
         if(nTrackLength > m_nLength)
             m_nLength = nTrackLength;
@@ -247,7 +236,7 @@ uint32_t Sequence::getLength()
 
 bool Sequence::isEmpty()
 {
-	return m_bEmpty;
+    return m_bEmpty;
 }
 
 void Sequence::setPlayPosition(uint32_t position)

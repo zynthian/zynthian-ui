@@ -132,11 +132,11 @@ class Sequence
         *   @retval uint32_t Length of sequence (longest track) in clock cycles
         */
         uint32_t getLength();
-		
-		/**	@brief	Check if sequence is empty
-		*	@retval bool True if empty. False if any patterns have any events)
-		*/
-		bool isEmpty();
+    	
+    	/**	@brief	Check if sequence is empty
+    	*	@retval bool True if empty. False if any patterns have any events)
+    	*/
+    	bool isEmpty();
 
         /** @brief  Set position of playback within sequence
         *   @param  position Postion in clock cycles from start of sequence

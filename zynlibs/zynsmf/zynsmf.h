@@ -103,7 +103,7 @@ bool getEvent(Smf* pSmf, bool bAdvance=false);
 /** @brief  Add MIDI note event
 *   @param  pSmf Pointer to the SMF
 *   @param  nTrack Index of track to add event
-*	@param	nTime Position of note in ticks since start of song
+*    @param	nTime Position of note in ticks since start of song
 *   @param  nDuration Duration of note in ticks
 *   @param  nChannel MIDI channel
 *   @param  nNote MIDI note
@@ -113,7 +113,7 @@ void addNote(Smf* pSmf, uint32_t nTrack, uint32_t nTime, uint32_t nDuration, uin
 
 /** @brief  Add tempo event
 *   @param  pSmf Pointer to the SMF
-*	@param	nTime Position of tempo change in ticks since start of song
+*    @param	nTime Position of tempo change in ticks since start of song
 *   @param  dTempo Tempo in BPM
 */
 void addTempo(Smf* pSmf, uint32_t nTime, double dTempo);
@@ -121,7 +121,7 @@ void addTempo(Smf* pSmf, uint32_t nTime, double dTempo);
 /** @brief  Set end of track time (required for loop playback)
 *   @param  pSmf Pointer to the SMF
 *   @param  nTrack Index of track to add event
-*	@param	nTime Position of end of track in ticks since start of song
+*    @param	nTime Position of end of track in ticks since start of song
 */
 void setEndOfTrack(Smf* pSmf, uint32_t nTrack, uint32_t nTime);
 

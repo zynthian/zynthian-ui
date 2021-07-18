@@ -415,18 +415,18 @@ void removePattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t posi
 */
 void cleanPatterns();
 
-/**	@brief	Toggle mute of track
+/**    @brief	Toggle mute of track
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
 *   @param  track Index of track
 */
 void toggleMute(uint8_t bank, uint8_t sequence, uint32_t track);
 
-/**	@brief	Get track mute state
+/**    @brief	Get track mute state
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
 *   @param  track Index of track
-*	@retval	bool True if muted
+*    @retval	bool True if muted
 */
 bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track);
 
@@ -470,10 +470,10 @@ void setPlayMode(uint8_t bank, uint8_t sequence, uint8_t mode);
 */
 uint8_t getPlayState(uint8_t bank, uint8_t sequence);
 
-/**	@brief	Check if sequence is empty (all patterns have no events)
+/**    @brief	Check if sequence is empty (all patterns have no events)
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
-*	@retval bool True if sequence empty else false if any pattern in sequence has any events
+*    @retval bool True if sequence empty else false if any pattern in sequence has any events
 */
 bool isEmpty(uint8_t bank, uint8_t sequence);
 

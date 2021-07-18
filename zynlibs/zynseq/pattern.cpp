@@ -15,15 +15,13 @@ Pattern::~Pattern()
 StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1, uint8_t value2, uint32_t duration)
 {
     //Delete overlapping events
-    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
-    {
+    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it) {
         uint32_t nEventStart = position;
         uint32_t nEventEnd = nEventStart + duration;
         uint32_t nCheckStart = (*it).getPosition();
         uint32_t nCheckEnd = nCheckStart + (*it).getDuration();
         bool bOverlap = (nCheckStart >= nEventStart && nCheckStart < nEventEnd) || (nCheckEnd > nEventStart && nCheckEnd <= nEventEnd);
-        if(bOverlap && (*it).getCommand() == command && (*it).getValue1start() == value1)
-        {
+        if(bOverlap && (*it).getCommand() == command && (*it).getValue1start() == value1) {
             it = m_vEvents.erase(it) - 1;
             if(it == m_vEvents.end())
                 break;
@@ -31,8 +29,7 @@ StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1,
     }
     uint32_t nTime = position % (m_nBeats * m_nStepsPerBeat);
     auto it = m_vEvents.begin();
-    for(; it != m_vEvents.end(); ++it)
-    {
+    for(; it != m_vEvents.end(); ++it) {
         if((*it).getPosition() > position)
             break;
     }
@@ -50,10 +47,8 @@ StepEvent* Pattern::addEvent(StepEvent* pEvent)
 
 void Pattern::deleteEvent(uint32_t position, uint8_t command, uint8_t value1)
 {
-    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
-    {
-        if((*it).getPosition() == position && (*it).getCommand() == command && (*it).getValue1start() == value1)
-        {
+    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it) {
+        if((*it).getPosition() == position && (*it).getCommand() == command && (*it).getValue1start() == value1) {
             m_vEvents.erase(it);
             return;
         }
@@ -76,8 +71,7 @@ void Pattern::removeNote(uint32_t step, uint8_t note)
 
 uint8_t Pattern::getNoteVelocity(uint32_t step, uint8_t note)
 {
-    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
-    {
+    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it) {
         if((*it).getPosition() == step && (*it).getCommand() == MIDI_NOTE_ON && (*it).getValue1start() == note)
         return (*it).getValue2start();
     }
@@ -88,8 +82,7 @@ void Pattern::setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
 {
     if(velocity > 127)
         return;
-    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
-    {
+    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it) {
         if((*it).getPosition() == step && (*it).getCommand() == MIDI_NOTE_ON && (*it).getValue1start() == note)
             (*it).setValue2start(velocity);
     }
@@ -99,8 +92,7 @@ uint8_t Pattern::getNoteDuration(uint32_t step, uint8_t note)
 {
     if(step >= (m_nBeats * m_nStepsPerBeat))
         return 0;
-    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
-    {
+    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it) {
         if((*it).getPosition() != step || (*it).getCommand() != MIDI_NOTE_ON || (*it).getValue1start() != note)
             continue;
         return (*it).getDuration();
@@ -149,8 +141,7 @@ uint32_t Pattern::getClocksPerStep()
 bool Pattern::setStepsPerBeat(uint32_t value)
 {
     float fScale = float(value) / m_nStepsPerBeat;
-    switch(value)
-    {
+    switch(value) {
         case 1:
         case 2:
         case 3:
@@ -165,8 +156,7 @@ bool Pattern::setStepsPerBeat(uint32_t value)
             return false;
     }
     // Move events
-    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
-    {
+    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it) {
         it->setPosition(it->getPosition() * fScale);
         it->setDuration(it->getDuration() * fScale);
     }
@@ -218,8 +208,7 @@ uint8_t Pattern::getTonic()
 void Pattern::transpose(int value)
 {
     // Check if any notes will be transposed out of MIDI note range (0..127)
-    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
-    {
+    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it) {
         if((*it).getCommand() != MIDI_NOTE_ON)
             continue;
         int note = (*it).getValue1start() + value;
@@ -227,19 +216,16 @@ void Pattern::transpose(int value)
             return;
     }
 
-    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
-    {
+    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it) {
         if((*it).getCommand() != MIDI_NOTE_ON)
             continue;
         int note = (*it).getValue1start() + value;
-        if(note > 127 || note < 0)
-        {
+        if(note > 127 || note < 0) {
             // Delete notes that have been pushed out of range
             //!@todo Should we squash notes that are out of range back in at ends? I don't think so.
             m_vEvents.erase(it);
         }
-        else
-        {
+        else {
             (*it).setValue1start(note);
             (*it).setValue1end(note);
         }
@@ -280,8 +266,7 @@ uint32_t Pattern::getLastStep()
     if(m_vEvents.size() == 0)
         return -1;
     uint32_t nStep = 0;
-    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
-    {
+    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it) {
         if((*it).getPosition() > nStep)
             nStep = (*it).getPosition();
     }

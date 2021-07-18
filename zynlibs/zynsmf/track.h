@@ -59,6 +59,6 @@ class Track
     private:
         bool m_bMute = false;
         uint32_t m_nPosition;
-    	std::vector<Event*> m_vSchedule;
+        std::vector<Event*> m_vSchedule;
         size_t m_nNextEvent = 0; // Index of the next event
 };
