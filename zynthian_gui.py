@@ -142,7 +142,7 @@ class zynthian_gui:
 		"72": "SWITCH_SNAPSHOT_BOLD",
 		"73": "SWITCH_SNAPSHOT_LONG",
 
-		"80": "SCREEN_ADMIN",
+		"80": "SCREEN_MAIN",
 		"81": "SCREEN_LAYER",
 		"82": "SCREEN_BANK",
 		"83": "SCREEN_PRESET",
@@ -152,7 +152,8 @@ class zynthian_gui:
 		"92": "MODAL_AUDIO_RECORDER",
 		"93": "MODAL_MIDI_RECORDER",
 		"94": "MODAL_ALSA_MIXER",
-		"95": "MODAL_STEPSEQ"
+		"95": "MODAL_STEPSEQ",
+		"96": "MODAL_ADMIN"
 	}
 
 	def __init__(self):
@@ -822,8 +823,8 @@ class zynthian_gui:
 		elif cuia == "SWITCH_SELECT_LONG":
 			self.zynswitch_long(3)
 
-		elif cuia == "SCREEN_ADMIN":
-			self.show_screen("admin")
+		elif cuia == "SCREEN_MAIN":
+			self.show_screen("main")
 
 		elif cuia == "SCREEN_LAYER":
 			self.show_screen("layer")
@@ -840,6 +841,9 @@ class zynthian_gui:
 		elif cuia == "MODAL_SNAPSHOT":
 			self.toggle_modal("snapshot")
 
+		elif cuia == "MODAL_ADMIN":
+			self.toggle_modal("admin")
+
 		elif cuia == "MODAL_AUDIO_RECORDER":
 			self.toggle_modal("audio_recorder")
 
@@ -851,6 +855,12 @@ class zynthian_gui:
 
 		elif cuia == "MODAL_STEPSEQ":
 			self.toggle_modal("stepseq")
+
+		elif cuia == "LAYER_CONTROL":
+			try:
+				self.layer_control(self.screens['layer'].root_layers[params[0]-1])
+			except:
+				logging.warning("Can't change to layer {}!".format(params[0]))
 
 
 	def custom_switch_ui_action(self, i, t):
