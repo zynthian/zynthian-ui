@@ -37,7 +37,7 @@ from tkinter import font as tkFont
 # Zynthian specific modules
 from zyncoder import *
 from zyngine import zynthian_controller
-from . import zynthian_gui_config
+from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
 # Controller GUI Class

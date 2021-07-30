@@ -35,9 +35,9 @@ from json import JSONEncoder, JSONDecoder
 
 # Zynthian specific modules
 from zyncoder import *
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
 from zyngine import zynthian_layer
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 # ------------------------------------------------------------------------------
 # Zynthian Layer Selection GUI Class

@@ -31,17 +31,16 @@ from ctypes import c_ubyte, c_byte
 # Zynthian specific modules
 from zyncoder import *
 from zyngine import zynthian_controller
-from . import zynthian_gui_config
-from . import zynthian_gui_base
-from . import zynthian_gui_config
-from . import zynthian_gui_controller
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_base import zynthian_gui_base
+from zyngui.zynthian_gui_selector import zynthian_gui_controller
 
 # ------------------------------------------------------------------------------
 # Zynthian MIDI key-range GUI Class
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_midi_key_range(zynthian_gui_base.zynthian_gui_base):
+class zynthian_gui_midi_key_range(zynthian_gui_base):
 
     black_keys_pattern = (1, 0, 1, 1, 0, 1, 1)
 

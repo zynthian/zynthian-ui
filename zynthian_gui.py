@@ -42,15 +42,18 @@ from ctypes import c_float, c_double, CDLL
 # Zynthian specific modules
 import zynconf
 import zynautoconnect
+
 from zynlibs.jackpeak import lib_jackpeak, lib_jackpeak_init
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
+
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
-#from zyngine import zynthian_engine_transport
+
 from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_controller import zynthian_gui_controller
-from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui import zynthian_gui_keyboard
+#from zyngui.zynthian_gui_controller import zynthian_gui_controller
+#from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
@@ -73,7 +76,6 @@ from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
-from zyngui import zynthian_gui_keyboard
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
@@ -82,8 +84,6 @@ from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 if "autoeq" in zynthian_gui_config.experimental_features:
     from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
-
-#from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
 # -------------------------------------------------------------------------------
 # Zynthian Main GUI Class

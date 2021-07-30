@@ -30,8 +30,8 @@ from os.path import isfile, isdir, join, basename
 from shutil import copy
 
 # Zynthian specific modules
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 # ------------------------------------------------------------------------------
 # Zynthian Load/Save Snapshot GUI Class
