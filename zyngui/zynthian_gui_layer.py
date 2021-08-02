@@ -176,8 +176,27 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.select(self.index)
 
 
+	def get_layer_index(self, layer):
+		try:
+			return self.layers.index(layer)
+		except:
+			return None
+
+
 	def get_num_layers(self):
 		return len(self.layers)
+
+
+	def get_root_layers(self):
+		self.root_layers=self.get_fxchain_roots()
+		return self.root_layers
+
+
+	def get_root_layer_index(self, layer):
+		try:
+			return self.root_layers.index(layer)
+		except:
+			return None
 
 
 	def get_num_root_layers(self):
@@ -236,6 +255,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.zyngui.show_modal('engine')
 
 
+	def replace_layer(self, i):
+		self.add_layer_eng = None
+		self.replace_layer_index = i
+		self.layer_chain_parallel = False
+		self.zyngui.screens['engine'].set_engine_type(self.layers[i].engine.type, self.layers[i].midi_chan)
+		self.zyngui.show_modal('engine')
+
+
 	def add_fxchain_layer(self, midi_chan):
 		self.add_layer_eng = None
 		self.replace_layer_index = None
@@ -248,11 +275,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def replace_fxchain_layer(self, i):
-		self.add_layer_eng = None
-		self.replace_layer_index = i
-		self.layer_chain_parallel = False
-		self.zyngui.screens['engine'].set_fxchain_mode(self.layers[i].midi_chan)
-		self.zyngui.show_modal('engine')
+		self.replace_layer(i)
 
 
 	def add_midichain_layer(self, midi_chan):
@@ -267,11 +290,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def replace_midichain_layer(self, i):
-		self.add_layer_eng = None
-		self.replace_layer_index = i
-		self.layer_chain_parallel = False
-		self.zyngui.screens['engine'].set_midichain_mode(self.layers[i].midi_chan)
-		self.zyngui.show_modal('engine')
+		self.replace_layer(i)
 
 
 	def add_layer_engine(self, eng, midi_chan=None):
@@ -300,24 +319,31 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def add_layer_midich(self, midich, select=True):
 		if self.add_layer_eng:
+			# Create layer node ...
 			zyngine = self.zyngui.screens['engine'].start_engine(self.add_layer_eng)
 			layer=zynthian_layer(zyngine, midich, self.zyngui)
 
-			# Try to connect Audio Effects ...
+			# add/replace Audio Effects ...
 			if len(self.layers)>0 and layer.engine.type=="Audio Effect":
 				if self.replace_layer_index is not None:
 					self.replace_on_fxchain(layer)
 				else:
 					self.add_to_fxchain(layer, self.layer_chain_parallel)
 					self.layers.append(layer)
-			# Try to connect MIDI tools ...
+			# add/replace MIDI Effects ...
 			elif len(self.layers)>0 and layer.engine.type=="MIDI Tool":
 				if self.replace_layer_index is not None:
 					self.replace_on_midichain(layer)
 				else:
 					self.add_to_midichain(layer, self.layer_chain_parallel)
 					self.layers.append(layer)
-			# New root layer
+			# replace Synth ...
+			elif len(self.layers)>0 and layer.engine.type=="MIDI Synth":
+				if self.replace_layer_index is not None:
+					self.replace_synth(layer)
+				else:
+					self.layers.append(layer)
+			# new root layer
 			else:
 				self.layers.append(layer)
 
@@ -656,6 +682,39 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if layer.jackname is not None and layer.jackname.startswith(jackname):
 				count += 1
 		return count
+
+	# ---------------------------------------------------------------------------
+	# Synth node
+	# ---------------------------------------------------------------------------
+
+
+	def replace_synth(self, layer):
+		try:
+			rlayer = self.layers[self.replace_layer_index]
+			logging.debug("Replacing Synth {} => {}".format(rlayer.get_jackname(), layer.get_jackname()))
+			
+			# Re-route audio
+			layer.set_audio_out(rlayer.get_audio_out())
+			rlayer.mute_audio_out()
+
+			# Re-route MIDI
+			for uslayer in self.get_midichain_upstream(rlayer):
+				uslayer.del_midi_out(rlayer.get_midi_jackname())
+				uslayer.add_midi_out(layer.get_midi_jackname())
+
+			# Replace layer in list
+			self.layers[self.replace_layer_index] = layer
+
+			# Remove old layer and stop unused engines
+			self.zyngui.zynautoconnect_acquire_lock()
+			rlayer.reset()
+			self.zyngui.zynautoconnect_release_lock()
+			self.zyngui.screens['engine'].stop_unused_engines()
+
+			self.replace_layer_index = None
+
+		except Exception as e:
+			logging.error("Error replacing Synth ({})".format(e))
 
 
 	# ---------------------------------------------------------------------------
@@ -1004,7 +1063,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			rlayer = self.layers[self.replace_layer_index]
 			logging.debug("Replacing on MIDI-chain {} => {}".format(rlayer.get_midi_jackname(), layer.get_midi_jackname()))
 			
-			# Re-route audio
+			# Re-route MIDI
 			layer.set_midi_out(rlayer.get_midi_out())
 			rlayer.mute_midi_out()
 			for uslayer in self.get_midichain_upstream(rlayer):

@@ -87,7 +87,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		midichain_layers = self.zyngui.screens['layer'].get_midichain_layers()
 		if midichain_layers is not None and len(midichain_layers)>1:
-			midichain_layers.remove(self.zyngui.curlayer)
+			try:
+				midichain_layers.remove(self.zyngui.curlayer)
+			except:
+				pass
 			self.layers += midichain_layers
 
 		i = 0

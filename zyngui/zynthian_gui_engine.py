@@ -89,23 +89,22 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		super().__init__('Engine', True)
 
 
-	def set_engine_type(self, etype):
+	def set_engine_type(self, etype, midi_chan=None):
 		self.engine_type = etype
-		self.midi_chan = None
+		self.midi_chan = midi_chan
 		self.reset_index = True
+
+
+	def set_synth_mode(self, midi_chan):
+		self.set_engine_type("MIDI Synth", midi_chan)
 
 
 	def set_fxchain_mode(self, midi_chan):
-		self.engine_type = "Audio Effect"
-		self.midi_chan = midi_chan
-		self.reset_index = True
+		self.set_engine_type("Audio Effect", midi_chan)
 
 
 	def set_midichain_mode(self, midi_chan):
-		self.engine_type = "MIDI Tool"
-		self.midi_chan = midi_chan
-		self.reset_index = True
-		self.init_engine_info()
+		self.set_engine_type("MIDI Tool", midi_chan)
 
 
 	def filtered_engines_by_cat(self):

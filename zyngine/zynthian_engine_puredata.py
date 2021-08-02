@@ -81,6 +81,7 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.jackname = "pure_data"
 
 		self.options['midi_route'] = True
+		self.options['replace'] = False
 
 		self.preset = ""
 		self.preset_config = None

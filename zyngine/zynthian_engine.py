@@ -176,6 +176,7 @@ class zynthian_engine(zynthian_basic_engine):
 			'note_range': True,
 			'audio_route': True,
 			'midi_chan': True,
+			'replace': True,
 			'drop_pc': False
 		}
 
