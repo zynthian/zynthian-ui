@@ -153,7 +153,9 @@ class zynthian_gui:
 		"93": "MODAL_MIDI_RECORDER",
 		"94": "MODAL_ALSA_MIXER",
 		"95": "MODAL_STEPSEQ",
-		"96": "MODAL_ADMIN"
+		"96": "MODAL_ADMIN",
+	
+		"100": "LAYER_CONTROL"
 	}
 
 	def __init__(self):
