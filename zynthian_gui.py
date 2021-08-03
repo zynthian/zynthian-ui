@@ -1034,6 +1034,7 @@ class zynthian_gui:
 
 		elif i==2:
 			if self.active_screen=='control':
+				self.zyngui.screens['layer_options'].reset()
 				self.show_modal('layer_options')
 			else:
 				self.show_modal('snapshot')
