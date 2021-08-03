@@ -679,6 +679,9 @@ class zynthian_gui:
 		elif cuia == "RESTART_UI":
 			self.screens['admin'].restart_gui()
 
+		elif cuia == "EXIT_UI":
+			self.screens['admin'].exit_to_console()
+
 		elif cuia == "RELOAD_MIDI_CONFIG":
 			self.reload_midi_config()
 
