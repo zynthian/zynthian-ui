@@ -90,7 +90,7 @@ function splash_zynthian_error() {
 		pos_x=$(expr $img_w \* 100 / 266)
 		pos_y=$(expr $img_h \* 100 / 110)
 		font_size=$(expr $img_w / 24)
-		convert -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"IP: $zynthian_ip\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
+		convert -strip -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"IP: $zynthian_ip\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
 		
 		#Display error image
 		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
@@ -140,7 +140,7 @@ while true; do
 			splash_zynthian_error
 			sleep 3
 		;;
-	esac  
+	esac
 done
 
 #------------------------------------------------------------------------------
