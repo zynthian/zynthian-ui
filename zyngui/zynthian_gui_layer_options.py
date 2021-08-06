@@ -91,11 +91,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.layer = self.zyngui.screens['layer'].get_root_layers()[self.layer_index]
 
 			self.audiofx_layers = self.zyngui.screens['layer'].get_fxchain_layers(self.layer)
-			if self.audiofx_layers and len(self.audiofx_layers)>0 and self.layer.engine.type=="MIDI Synth":
+			if self.audiofx_layers and len(self.audiofx_layers)>0 and self.layer.engine.type!="Audio Effect":
 				self.audiofx_layers.remove(self.layer)
 
 			self.midifx_layers = self.zyngui.screens['layer'].get_midichain_layers(self.layer)
-			if self.midifx_layers and len(self.midifx_layers)>0 and self.layer.engine.type=="MIDI Synth":
+			if self.midifx_layers and len(self.midifx_layers)>0 and self.layer.engine.type!="MIDI Tool":
 				self.midifx_layers.remove(self.layer)
 
 			# Add root layer options
