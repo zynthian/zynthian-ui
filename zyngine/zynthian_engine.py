@@ -214,6 +214,19 @@ class zynthian_engine(zynthian_basic_engine):
 			return True
 
 
+	def get_next_jackname(self, jname, sanitize=False):
+		try:
+			# Jack, when listing ports, accepts regular expressions as the jack name.
+			# So, for avoiding problems, jack names shouldn't contain regex characters.
+			if sanitize:
+				jname = re.sub("[\_]{2,}","_",re.sub("[\'\*\(\)\[\]\s]","_",jname))
+			jname_count = self.zyngui.screens['layer'].get_jackname_count(jname)
+		except Exception as e:
+			jname_count = 0
+
+		return "{}-{:02d}".format(jname, jname_count)
+
+
 	# ---------------------------------------------------------------------------
 	# Loading GUI signalization
 	# ---------------------------------------------------------------------------

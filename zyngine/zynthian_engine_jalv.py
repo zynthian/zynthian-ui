@@ -228,16 +228,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.reset()
 
 
-	# Jack, when listing ports, accepts regular expressions as the jack name.
-	# So, for avoiding problems, jack names shouldn't contain regex characters.
 	def get_jalv_jackname(self):
-		try:
-			jname = re.sub("[\_]{2,}","_",re.sub("[\'\*\(\)\[\]\s]","_",self.plugin_name))
-			jname_count = self.zyngui.screens['layer'].get_jackname_count(jname)
-		except:
-			jname_count = 0
+		return self.get_next_jackname(self.plugin_name, True)
 
-		return "{}-{:02d}".format(jname, jname_count)
 
 	# ---------------------------------------------------------------------------
 	# Layer Management

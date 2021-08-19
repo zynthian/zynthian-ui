@@ -282,7 +282,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 						filename = filename[len(preset_dpath)+1:]
 						title=filename.replace('_', ' ')
 						engine=filext[1:].lower()
-						preset_list.append([f,i,title,engine,"{}.{}".format(filename,filext)])
+						preset_list.append([f,i,title,engine,"{}{}".format(filename,filext)])
 						i=i+1
 		return preset_list
 

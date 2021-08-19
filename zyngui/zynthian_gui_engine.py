@@ -60,6 +60,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			["MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_mixer, True)],
 			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", None, zynthian_engine_zynaddsubfx, True)],
 			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", None, zynthian_engine_fluidsynth, True)],
+			["SF", ("Sfizz", "Sfizz - SFZ Player", "MIDI Synth", None, zynthian_engine_sfizz, True)],
 			["LS", ("LinuxSampler", "LinuxSampler - SFZ/GIG Player", "MIDI Synth", None, zynthian_engine_linuxsampler, True)],
 			["BF", ("setBfree", "setBfree - Hammond Emulator", "MIDI Synth", None, zynthian_engine_setbfree, True)],
 			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", None, zynthian_engine_aeolus, True)],
@@ -176,6 +177,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				eng="JV/{}".format(self.zyngine_counter)
 				self.zyngines[eng]=zynthian_engine_class(info[0], info[2], self.zyngui)
 			else:
+				if eng=="SF":
+					eng="SF/{}".format(self.zyngine_counter)
 				self.zyngines[eng]=zynthian_engine_class(self.zyngui)
 
 		self.zyngine_counter+=1
