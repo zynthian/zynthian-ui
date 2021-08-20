@@ -81,26 +81,17 @@ class zynthian_engine_sfizz(zynthian_engine):
 		super().__init__(zyngui)
 		self.name = "Sfizz"
 		self.nickname = "SF"
-		self.jackname = None
+		self.jackname = self.get_next_jackname("sfizz")
 
 		self.preload_size = 32768 #8192, 16384, 32768, 65536
-		self.num_voices = 32
-
-		self.base_command = "sfizz_jack --client_name '{}' --preload_size {} --num_voices {} \"{}\""
-		self.command_prompt = "Unknown opcodes:"
-
+		self.num_voices = 64
 		self.sfzpath = None
 
+		self.command = "sfizz_jack --client_name '{}' --preload_size {} --num_voices {}".format(self.jackname, self.preload_size, self.num_voices, self.sfzpath)
+		self.command_prompt = "> "
+
 		self.reset()
-
-	# ---------------------------------------------------------------------------
-	# Layer Management
-	# ---------------------------------------------------------------------------
-
-	def add_layer(self, layer):
-		layer.jackname = self.jackname = self.get_next_jackname("sfizz")
-		self.layers.append(layer)
-		#layer.refresh_flag=True
+		self.start()
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
@@ -148,16 +139,8 @@ class zynthian_engine_sfizz(zynthian_engine):
 	def set_preset(self, layer, preset, preload=False):
 		try:
 			self.sfzpath = preset[0]
-			self.command = self.base_command.format(self.jackname, self.preload_size, self.num_voices, self.sfzpath)
-			self.stop()
-			self.start()
-			self.refresh_all()
-			sleep(0.5)
-			self.zyngui.zynautoconnect_midi(True)
-			self.zyngui.zynautoconnect_audio(False)
-			layer.send_ctrl_midi_cc()
-			return True
-
+			return self.proc_cmd("load_instrument {}".format(self.sfzpath))
+			#layer.send_ctrl_midi_cc()
 		except:
 			return False
 
