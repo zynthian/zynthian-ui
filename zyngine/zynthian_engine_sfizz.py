@@ -139,7 +139,7 @@ class zynthian_engine_sfizz(zynthian_engine):
 	def set_preset(self, layer, preset, preload=False):
 		try:
 			self.sfzpath = preset[0]
-			return self.proc_cmd("load_instrument {}".format(self.sfzpath))
+			return self.proc_cmd("load_instrument \"{}\"".format(self.sfzpath))
 			#layer.send_ctrl_midi_cc()
 		except:
 			return False
