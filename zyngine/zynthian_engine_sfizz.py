@@ -84,7 +84,7 @@ class zynthian_engine_sfizz(zynthian_engine):
 		self.jackname = self.get_next_jackname("sfizz")
 
 		self.preload_size = 32768 #8192, 16384, 32768, 65536
-		self.num_voices = 64
+		self.num_voices = 40
 		self.sfzpath = None
 
 		self.command = "sfizz_jack --client_name '{}' --preload_size {} --num_voices {}".format(self.jackname, self.preload_size, self.num_voices, self.sfzpath)
@@ -92,6 +92,17 @@ class zynthian_engine_sfizz(zynthian_engine):
 
 		self.reset()
 		self.start()
+
+	# ---------------------------------------------------------------------------
+	# Subproccess Management & IPC
+	# ---------------------------------------------------------------------------
+
+	def stop(self):
+		try:
+			self.proc.sendline("quit")
+			self.proc.expect("Closing...")
+		except:
+			super().stop()
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
