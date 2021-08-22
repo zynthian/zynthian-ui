@@ -353,7 +353,8 @@ class zynthian_layer:
 			
 		#Set active the first screen
 		if len(self.ctrl_screens_dict)>0:
-			self.active_screen_index=0
+			if self.active_screen_index==-1:
+				self.active_screen_index=0
 		else:
 			self.active_screen_index=-1
 

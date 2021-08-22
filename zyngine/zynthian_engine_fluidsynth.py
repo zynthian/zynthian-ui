@@ -27,6 +27,8 @@ import re
 import copy
 import shutil
 import logging
+import oyaml as yaml
+from collections import OrderedDict
 from subprocess import check_output
 from . import zynthian_engine
 from . import zynthian_controller
@@ -59,7 +61,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	]
 
 	# Controller Screens
-	_ctrl_screens=[
+	default_ctrl_screens=[
 		['main',['volume','sostenuto','pan','sustain']],
 		['effects',['expression','modulation','reverb','chorus']],
 		['portamento',['legato on/off','portamento on/off','portamento time-coarse','portamento time-fine']],
@@ -96,6 +98,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 		self.fs_options += " -o synth.effects-groups={}".format(n_fxgrp)
 
+		self.bank_config = OrderedDict()
+		
 		self.command = "fluidsynth -a jack -m jack -g 1 -j {}".format(self.fs_options)
 		self.command_prompt = "\n> "
 
@@ -153,18 +157,36 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 
 	def set_bank(self, layer, bank):
-		return self.load_bank(bank[0])
+		if self.load_bank(bank[0]):
+			layer.refresh_controllers()
+			return True
+		else:
+			return False
 
 
 	def load_bank(self, bank_fpath, unload_unused_sf=True):
 		if bank_fpath in self.soundfont_index:
 			return True
 		elif self.load_soundfont(bank_fpath):
+			self.load_bank_config(bank_fpath)
 			if unload_unused_sf:
 				self.unload_unused_soundfonts()
 			self.set_all_presets()
 			return True
 		else:
+			return False
+
+
+	def load_bank_config(self, bank_fpath):
+		config_fpath = bank_fpath[0:-3] + "yml"
+		try:
+			with open(config_fpath,"r") as fh:
+				yml = fh.read()
+				logging.info("Loading bank config file %s => \n%s" % (config_fpath,yml))
+				self.bank_config[bank_fpath] = yaml.load(yml, Loader=yaml.SafeLoader)
+				return True
+		except Exception as e:
+			logging.info("Can't load bank config file '%s': %s" % (config_fpath,e))
 			return False
 
 	# ---------------------------------------------------------------------------
@@ -221,6 +243,54 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				return False
 		except:
 			return False
+
+
+	#----------------------------------------------------------------------------
+	# Controllers Managament
+	#----------------------------------------------------------------------------
+
+	def get_controllers_dict(self, layer):
+		zctrls=super().get_controllers_dict(layer)
+
+		try:
+			sf = layer.bank_info[0]
+			ctrl_items=self.bank_config[sf]['midi_controllers'].items()
+		except:
+			pass
+
+		c=1
+		ctrl_set=[]
+		zctrls_extra = OrderedDict()
+		self._ctrl_screens = copy.copy(self.default_ctrl_screens)
+		logging.debug("Generating extra controllers config ...")
+		try:
+			for name, options in ctrl_items:
+				try:
+					if isinstance(options,int):
+						options={ 'midi_cc': options }
+					if 'midi_chan' not in options:
+						options['midi_chan']=layer.midi_chan
+					midi_cc=options['midi_cc']
+					logging.debug("CTRL %s: %s" % (midi_cc, name))
+					title=str.replace(name, '_', ' ')
+					zctrls_extra[name]=zynthian_controller(self,name,title,options)
+					ctrl_set.append(name)
+					if len(ctrl_set)>=4:
+						logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+						self._ctrl_screens.append(['Extended#'+str(c),ctrl_set])
+						ctrl_set=[]
+						c=c+1
+				except Exception as err:
+					logging.error("Generating extra controller screens: %s" % err)
+			if len(ctrl_set)>=1:
+				logging.debug("ADDING EXTRA CONTROLLER SCREEN #"+str(c))
+				self._ctrl_screens.append(['Extended#'+str(c),ctrl_set])
+		except Exception as err:
+			logging.error("Generating extra controllers config: %s" % err)
+
+		zctrls.update(zctrls_extra)
+		return zctrls
+
 
 	# ---------------------------------------------------------------------------
 	# Specific functions
