@@ -333,17 +333,18 @@ class zynthian_engine(zynthian_basic_engine):
 			dn=dpd[0]
 			try:
 				for f in sorted(os.listdir(dp)):
-					if exclude_empty and next(os.scandir(join(dp,f)), None) is None:
+					dpath = join(dp,f)
+					if not os.path.isdir(dpath) or (exclude_empty and next(os.scandir(dpath), None) is None):
 						continue
-					if not f.startswith('.') and isdir(join(dp,f)):
+					if not f.startswith('.') and isdir(dpath):
 						title,ext=os.path.splitext(f)
 						title=str.replace(title, '_', ' ')
 						if dn!='_': title=dn+'/'+title
-						#print("dirlist => "+title)
-						res.append([join(dp,f),i,title,dn,f])
+						res.append([dpath,i,title,dn,f])
 						i=i+1
-			except:
-				pass
+			except Exception as e:
+				logging.error("Parsing soundfont directory '{}' => {}".format(f,e))
+
 
 		return res
 
