@@ -251,44 +251,48 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def get_controllers_dict(self, layer):
 		zctrls=super().get_controllers_dict(layer)
+		self._ctrl_screens = copy.copy(self.default_ctrl_screens)
 
 		try:
 			sf = layer.bank_info[0]
-			ctrl_items=self.bank_config[sf]['midi_controllers'].items()
+			ctrl_items = self.bank_config[sf]['midi_controllers'].items()
 		except:
-			pass
+			ctrl_items = None
 
-		c=1
-		ctrl_set=[]
-		zctrls_extra = OrderedDict()
-		self._ctrl_screens = copy.copy(self.default_ctrl_screens)
-		logging.debug("Generating extra controllers config ...")
-		try:
-			for name, options in ctrl_items:
-				try:
-					if isinstance(options,int):
-						options={ 'midi_cc': options }
-					if 'midi_chan' not in options:
-						options['midi_chan']=layer.midi_chan
-					midi_cc=options['midi_cc']
-					logging.debug("CTRL %s: %s" % (midi_cc, name))
-					title=str.replace(name, '_', ' ')
-					zctrls_extra[name]=zynthian_controller(self,name,title,options)
-					ctrl_set.append(name)
-					if len(ctrl_set)>=4:
-						logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-						self._ctrl_screens.append(['Extended#'+str(c),ctrl_set])
-						ctrl_set=[]
-						c=c+1
-				except Exception as err:
-					logging.error("Generating extra controller screens: %s" % err)
-			if len(ctrl_set)>=1:
-				logging.debug("ADDING EXTRA CONTROLLER SCREEN #"+str(c))
-				self._ctrl_screens.append(['Extended#'+str(c),ctrl_set])
-		except Exception as err:
-			logging.error("Generating extra controllers config: %s" % err)
+		if ctrl_items:
+			logging.debug("Generating extra controllers config ...")
+			try:
+				c=1
+				ctrl_set=[]
+				zctrls_extra = OrderedDict()
+				for name, options in ctrl_items:
+					try:
+						if isinstance(options,int):
+							options={ 'midi_cc': options }
+						if 'midi_chan' not in options:
+							options['midi_chan']=layer.midi_chan
+						midi_cc=options['midi_cc']
+						logging.debug("CTRL %s: %s" % (midi_cc, name))
+						title=str.replace(name, '_', ' ')
+						zctrls_extra[name]=zynthian_controller(self,name,title,options)
+						ctrl_set.append(name)
+						if len(ctrl_set)>=4:
+							logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+							self._ctrl_screens.append(['Extended#'+str(c),ctrl_set])
+							ctrl_set=[]
+							c=c+1
+					except Exception as err:
+						logging.error("Generating extra controller screens: %s" % err)
 
-		zctrls.update(zctrls_extra)
+				if len(ctrl_set)>=1:
+					logging.debug("ADDING EXTRA CONTROLLER SCREEN #"+str(c))
+					self._ctrl_screens.append(['Extended#'+str(c),ctrl_set])
+
+				zctrls.update(zctrls_extra)
+
+			except Exception as err:
+				logging.error("Generating extra controllers config: %s" % err)
+
 		return zctrls
 
 
