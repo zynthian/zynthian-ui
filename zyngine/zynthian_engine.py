@@ -177,7 +177,8 @@ class zynthian_engine(zynthian_basic_engine):
 			'audio_route': True,
 			'midi_chan': True,
 			'replace': True,
-			'drop_pc': False
+			'drop_pc': False,
+			'layer_audio_out': True
 		}
 
 		self.osc_target = None

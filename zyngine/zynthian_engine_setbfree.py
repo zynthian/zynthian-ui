@@ -188,6 +188,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.options['midi_chan']=False
 		self.options['replace'] = False
 		self.options['drop_pc']=True
+		self.options['layer_audio_out']=False
 
 		self.manuals_config = None
 		self.tonewheel_model = None

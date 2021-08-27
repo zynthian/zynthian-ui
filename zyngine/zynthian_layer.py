@@ -657,6 +657,7 @@ class zynthian_layer:
 			self.audio_out.remove("system")
 			self.audio_out += ["system:playback_1", "system:playback_2"]
 
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -668,6 +669,7 @@ class zynthian_layer:
 			self.audio_out.append(jackname)
 			logging.debug("Connecting Audio Output {} => {}".format(self.get_audio_jackname(), jackname))
 
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -681,6 +683,7 @@ class zynthian_layer:
 		except:
 			pass
 
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -693,17 +696,28 @@ class zynthian_layer:
 		else:
 			self.audio_out.remove(jackname)
 
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
 	def reset_audio_out(self):
 		self.audio_out = ["system:playback_1", "system:playback_2"]
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
 	def mute_audio_out(self):
 		self.audio_out = []
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
+
+
+	def pair_audio_out(self):
+		if not self.engine.options['layer_audio_out']:
+			for l in self.engine.layers:
+				if l!=self:
+					l.audio_out = self.audio_out
+					#logging.debug("Pairing CH#{} => {}".format(l.midi_chan,l.audio_out))
 
 
 	# ---------------------------------------------------------------------------
