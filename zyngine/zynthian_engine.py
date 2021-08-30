@@ -318,7 +318,8 @@ class zynthian_engine(zynthian_basic_engine):
 						#print("filelist => "+title)
 						res.append([join(dp,f),i,title,dn,f])
 						i=i+1
-			except:
+			except Exception as e:
+				#logging.warning("Can't access directory '{}' => {}".format(dp,e))
 				pass
 
 		return res
@@ -344,8 +345,8 @@ class zynthian_engine(zynthian_basic_engine):
 						res.append([dpath,i,title,dn,f])
 						i=i+1
 			except Exception as e:
-				logging.error("Parsing soundfont directory '{}' => {}".format(f,e))
-
+				#logging.warning("Can't access directory '{}' => {}".format(dp,e))
+				pass
 
 		return res
 
