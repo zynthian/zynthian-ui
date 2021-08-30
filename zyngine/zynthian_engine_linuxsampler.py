@@ -522,7 +522,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		fname, ext = os.path.splitext(fullpath)
-		if ext[0]=='.':
+		if ext and ext[0]=='.':
 			head, tail = os.path.split(fullpath)
 			return head
 		else:
