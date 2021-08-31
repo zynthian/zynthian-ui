@@ -482,13 +482,14 @@ class zynthian_engine_jalv(zynthian_engine):
 	def zynapi_get_banks(cls):
 		banks=[]
 		for b in cls.zynapi_instance.get_bank_list():
-			banks.append({
-				'text': b[2],
-				'name': b[2],
-				'fullpath': b[0],
-				'raw': b,
-				'readonly': False if not b[0] or b[0].startswith("file:///") else True
-			})
+			if b[2]:
+				banks.append({
+					'text': b[2],
+					'name': b[2],
+					'fullpath': b[0],
+					'raw': b,
+					'readonly': False if not b[0] or b[0].startswith("file:///") else True
+				})
 		return banks
 
 
@@ -496,13 +497,14 @@ class zynthian_engine_jalv(zynthian_engine):
 	def zynapi_get_presets(cls, bank):
 		presets=[]
 		for p in cls.zynapi_instance.get_preset_list(bank['raw']):
-			presets.append({
-				'text': p[2],
-				'name': p[2],
-				'fullpath': p[0],
-				'raw': p,
-				'readonly': False if not p[0] or p[0].startswith("file:///") else True
-			})
+			if p[2]:
+				presets.append({
+					'text': p[2],
+					'name': p[2],
+					'fullpath': p[0],
+					'raw': p,
+					'readonly': False if not p[0] or p[0].startswith("file:///") else True
+				})
 		return presets
 
 
