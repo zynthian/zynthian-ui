@@ -185,10 +185,14 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		if not dryrun:
 			if self.config_remote_display() and self.ui:
-				self.command = ("jalv.gtk --jack-name {} {}".format(self.get_jalv_jackname(), self.plugin_url))
+				if self.ui=="Qt5UI":
+					jalv_bin = "jalv.qt5"
+				else: #  elif self.ui=="X11UI":
+					jalv_bin = "jalv.gtk"
+				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.get_jalv_jackname(), self.plugin_url))
 			else:
-				self.command_env['DISPLAY'] = "X"
 				self.command = ("jalv -n {} {}".format(self.get_jalv_jackname(), self.plugin_url))
+				self.command_env['DISPLAY'] = "X"
 
 			self.command_prompt = "\n> "
 

@@ -121,12 +121,15 @@ def	is_plugin_ui(plugin):
 	for uri in plugin.get_data_uris():
 		try:
 			with open(urllib.parse.unquote(str(uri)[7:])) as f:
-				if f.read().find("a ui:X11UI") > 0:
-					return True
+				ttl = f.read()
+				if ttl.find("a ui:Qt5UI")>0 or ttl.find("a lv2ui:Qt5UI")>0:
+					return "Qt5UI"
+				if ttl.find("a ui:X11UI")>0 or ttl.find("a lv2ui:X11UI")>0:
+					return "X11UI"
 		except:
-			logging.error("Failed to get UI for plugin %s", str(plugin.get_name()))
-			pass
-	return False
+			logging.info("Can't find UI for plugin %s", str(plugin.get_name()))
+
+	return None
 
 
 def generate_plugins_config_file(refresh=True):
@@ -140,7 +143,6 @@ def generate_plugins_config_file(refresh=True):
 
 		for plugin in world.get_all_plugins():
 			name = str(plugin.get_name())
-			logging.info("Plugin '{}'".format(name))
 			genplugins[name] = {
 				'URL': str(plugin.get_uri()),
 				'TYPE': get_plugin_type(plugin).value,
@@ -148,6 +150,7 @@ def generate_plugins_config_file(refresh=True):
 				'ENABLED': is_plugin_enabled(name),
 				'UI': is_plugin_ui(plugin)
 			}
+			logging.debug("Plugin '{}' => {}".format(name, genplugins[name]))
 
 		plugins = OrderedDict(sorted(genplugins.items()))
 
@@ -425,7 +428,7 @@ def get_plugin_ports(plugin_url):
 			is_enumeration = port.has_property(world.ns.lv2.enumeration)
 			is_logarithmic = port.has_property(world.ns.portprops.logarithmic)
 
-			#logging.debug("PORT {} propierties =>".format(port.get_symbol()))
+			#logging.debug("PORT {} properties =>".format(port.get_symbol()))
 			#for node in port.get_properties():
 			#	logging.debug("    => {}".format(get_node_value(node)))
 
