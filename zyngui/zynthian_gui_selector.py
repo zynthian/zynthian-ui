@@ -202,15 +202,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def select_listbox(self,index):
-		n = len(self.list_data)
-		if index>=0 and index<n:
-			# Skip separator items ...
-			if self.list_data[index][0] is None:
-				if self.index<index:
-					self.select_listbox(index+1)
-				elif self.index>index:
-					self.select_listbox(index-1)
-			else:
+		if index>=0 and index<len(self.list_data):
+			if not self.skip_separators(index):
 				# Set selection
 				self.listbox.selection_clear(0,tkinter.END)
 				self.listbox.selection_set(index)
@@ -221,6 +214,18 @@ class zynthian_gui_selector(zynthian_gui_base):
 				# Set index value
 				self.index=index
 				self.last_index_change_ts=datetime.now()
+
+
+	def skip_separators(self, index):
+		# Skip separator items ...
+		if self.list_data[index][0] is None:
+			if self.index<=index:
+				self.select_listbox(index+1)
+			elif self.index>index:
+				self.select_listbox(index-1)
+			return True
+		else:
+			return False
 
 
 	def select(self, index=None):
@@ -242,7 +247,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if index is not None:
 			self.select(index)
 		else:
-			self.index=self.get_cursel()
+			self.skip_separators(self.get_cursel())
 
 		self.select_action(self.index, t)
 

@@ -46,6 +46,7 @@ def init_lilv():
 	world.ns.ev = lilv.Namespace(world, "http://lv2plug.in/ns/ext/event#")
 	world.ns.presets = lilv.Namespace(world, "http://lv2plug.in/ns/ext/presets#")
 	world.ns.portprops = lilv.Namespace(world, "http://lv2plug.in/ns/ext/port-props#")
+	world.ns.portgroups = lilv.Namespace(world, "http://lv2plug.in/ns/ext/port-groups#")
 
 
 #------------------------------------------------------------------------------
@@ -413,16 +414,20 @@ def sanitize_fname(s):
 # LV2 Port management
 #------------------------------------------------------------------------------
 
+
 def get_plugin_ports(plugin_url):
 	global world
 
 	plugins = world.get_all_plugins()
 	plugin = plugins[plugin_url]
 
-	ports_info = {}
+	ports_info = OrderedDict()
 	for i in range(plugin.get_num_ports()):
 		port = plugin.get_port_by_index(i)
 		if port.is_a(lilv.LILV_URI_INPUT_PORT) and port.is_a(lilv.LILV_URI_CONTROL_PORT):
+			port_symbol = str(port.get_symbol())
+			port_name = str(port.get_name())
+			
 			is_toggled = port.has_property(world.ns.lv2.toggled)
 			is_integer = port.has_property(world.ns.lv2.integer)
 			is_enumeration = port.has_property(world.ns.lv2.enumeration)
@@ -431,6 +436,22 @@ def get_plugin_ports(plugin_url):
 			#logging.debug("PORT {} properties =>".format(port.get_symbol()))
 			#for node in port.get_properties():
 			#	logging.debug("    => {}".format(get_node_value(node)))
+
+			pgroup_name = None
+			pgroup_symbol = None
+			pgroup = port.get(world.ns.portgroups.group)
+			if pgroup is not None:
+				#pgroup_key = str(pgroup).split("#")[-1]
+				pgroup_name = world.get(pgroup, world.ns.lv2.name, None)
+				if pgroup_name is not None:
+					pgroup_name = str(pgroup_name)
+					#logging.warning("Port group <{}> has not name.".format(pgroup_key))
+				pgroup_symbol = world.get(pgroup, world.ns.lv2.symbol, None)
+				if pgroup_symbol is not None:
+					pgroup_symbol = str(pgroup_symbol)
+					#logging.warning("Port group <{}> has not symbol.".format(pgroup_key))
+			#else:
+				#logging.debug("Port <{}> has no group.".format(port_symbol))
 
 			sp = []
 			for p in port.get_scale_points():
@@ -456,8 +477,10 @@ def get_plugin_ports(plugin_url):
 
 			info = {
 				'index': i,
-				'symbol': str(port.get_symbol()),
-				'label': str(port.get_name()),
+				'symbol': port_symbol,
+				'name': port_name,
+				'group_name': pgroup_name,
+				'group_symbol': pgroup_symbol,
 				'value': vdef,
 				'range': {
 					'default': vdef,
@@ -471,7 +494,7 @@ def get_plugin_ports(plugin_url):
 				'scale_points': sp
 			}
 			ports_info[i] = info
-			#logging.debug("\nPORT {} => {}".format(i, info))
+			#logging.debug("PORT {} => {}".format(i, info))
 
 	return ports_info
 
@@ -489,10 +512,6 @@ def get_node_value(node):
 world = lilv.World()
 init_lilv()
 load_plugins()
-#generate_plugin_presets_cache("http://code.google.com/p/amsynth/amsynth")
-#print(get_plugin_presets("Dexed"))
-#get_plugin_ports("https://github.com/dcoredump/dexed.lv2")
-#get_plugin_ports("http://code.google.com/p/amsynth/amsynth")
 
 if __name__ == '__main__':
 
@@ -503,5 +522,15 @@ if __name__ == '__main__':
 
 	generate_plugins_config_file(False)
 	generate_all_presets_cache(False)
+	
+	#get_plugin_ports("https://github.com/dcoredump/dexed.lv2")
+	#get_plugin_ports("http://code.google.com/p/amsynth/amsynth")
+	#get_plugin_ports("https://obxd.wordpress.com")
+	#get_plugin_ports("http://kunz.corrupt.ch/products/tal-noisemaker")
+	#get_plugin_ports("http://synthv1.sourceforge.net/lv2")
+	#get_plugin_ports("http://drumkv1.sourceforge.net/lv2")
+
+	#generate_plugin_presets_cache("http://code.google.com/p/amsynth/amsynth")
+	#print(get_plugin_presets("Dexed"))
 
 #------------------------------------------------------------------------------

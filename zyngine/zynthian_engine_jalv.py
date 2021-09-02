@@ -327,7 +327,9 @@ class zynthian_engine_jalv(zynthian_engine):
 						labels.append(p['label'])
 						values.append(p['value'])
 
-					zctrls[symbol] = zynthian_controller(self, symbol, info['label'], {
+					zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
+						'group_symbol': info['group_symbol'],
+						'group_name': info['group_name'],
 						'graph_path': info['index'],
 						'value': info['value'],
 						'labels': labels,
@@ -348,7 +350,9 @@ class zynthian_engine_jalv(zynthian_engine):
 							else:
 								val = 'on'
 
-							zctrls[symbol] = zynthian_controller(self, symbol, info['label'], {
+							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
+								'group_symbol': info['group_symbol'],
+								'group_name': info['group_name'],
 								'graph_path': info['index'],
 								'value': val,
 								'labels': ['off','on'],
@@ -359,7 +363,9 @@ class zynthian_engine_jalv(zynthian_engine):
 								'is_integer': True
 							})
 						else:
-							zctrls[symbol] = zynthian_controller(self, symbol, info['label'], {
+							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
+								'group_symbol': info['group_symbol'],
+								'group_name': info['group_name'],
 								'graph_path': info['index'],
 								'value': int(info['value']),
 								'value_default': int(info['range']['default']),
@@ -376,7 +382,9 @@ class zynthian_engine_jalv(zynthian_engine):
 							else:
 								val = 'on'
 
-							zctrls[symbol] = zynthian_controller(self, symbol, info['label'], {
+							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
+								'group_symbol': info['group_symbol'],
+								'group_name': info['group_name'],
 								'graph_path': info['index'],
 								'value': val,
 								'labels': ['off','on'],
@@ -387,7 +395,9 @@ class zynthian_engine_jalv(zynthian_engine):
 								'is_integer': False
 							})
 						else:
-							zctrls[symbol] = zynthian_controller(self, symbol, info['label'], {
+							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
+								'group_symbol': info['group_symbol'],
+								'group_name': info['group_name'],
 								'graph_path': info['index'],
 								'value': info['value'],
 								'value_default': info['range']['default'],
@@ -418,6 +428,13 @@ class zynthian_engine_jalv(zynthian_engine):
 		return self.lv2_monitors_dict
 
 
+	def get_ctrl_screen_name(self, gname, i):
+		if gname==None:
+			return "#{}".format(i)
+		else: 
+			return "{}#{}".format(gname,i)
+
+
 	def generate_ctrl_screens(self, zctrl_dict=None):
 		if zctrl_dict is None:
 			zctrl_dict=self.zctrl_dict
@@ -425,23 +442,35 @@ class zynthian_engine_jalv(zynthian_engine):
 		if self._ctrl_screens is None:
 			self._ctrl_screens=[]
 
-		c=1
-		ctrl_set=[]
+		# Get zctrls by group
+		zctrl_group = OrderedDict()
 		for symbol, zctrl in zctrl_dict.items():
-			try:
-				#logging.debug("CTRL {}".format(symbol))
-				ctrl_set.append(symbol)
-				if len(ctrl_set)>=4:
-					#logging.debug("ADDING CONTROLLER SCREEN {}#{}".format(self.plugin_name,c))
-					self._ctrl_screens.append(["{}#{}".format(self.plugin_name,c),ctrl_set])
-					ctrl_set=[]
-					c=c+1
-			except Exception as err:
-				logging.error("Generating Controller Screens => {}".format(err))
+			gsymbol = zctrl.group_symbol
+			if gsymbol is None:
+				gsymbol = "_"
+			if gsymbol not in zctrl_group:
+				zctrl_group[gsymbol] = [zctrl.group_name, OrderedDict()]
+			zctrl_group[gsymbol][1][symbol] = zctrl
 
-		if len(ctrl_set)>=1:
-			#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-			self._ctrl_screens.append(["{}#{}".format(self.plugin_name,c),ctrl_set])
+		for gsymbol, gdata in zctrl_group.items():
+			c=1
+			ctrl_set=[]
+			gname = gdata[0]
+			for symbol, zctrl in gdata[1].items():
+				try:
+					#logging.debug("CTRL {}".format(symbol))
+					ctrl_set.append(symbol)
+					if len(ctrl_set)>=4:
+						#logging.debug("ADDING CONTROLLER SCREEN {}".format(self.get_ctrl_screen_name(gname,c)))
+						self._ctrl_screens.append([self.get_ctrl_screen_name(gname,c),ctrl_set])
+						ctrl_set=[]
+						c=c+1
+				except Exception as err:
+					logging.error("Generating Controller Screens => {}".format(err))
+
+			if len(ctrl_set)>=1:
+				#logging.debug("ADDING CONTROLLER SCREEN {}",format(self.get_ctrl_screen_name(gname,c)))
+				self._ctrl_screens.append([self.get_ctrl_screen_name(gname,c),ctrl_set])
 
 
 	def get_controllers_dict(self, layer):

@@ -96,12 +96,22 @@ class zynthian_gui_control(zynthian_gui_selector):
 		i = 0
 		for layer in self.layers:
 			j = 0
+			if len(self.layers)>1:
+				self.list_data.append((None,None,"> {}".format(layer.engine.nickname)))
 			for cscr in layer.get_ctrl_screens():
 				self.list_data.append((cscr,i,cscr,layer,j))
 				i += 1
 				j += 1
 		self.index = self.zyngui.curlayer.get_active_screen_index()
 		super().fill_list()
+
+
+	def fill_listbox(self):
+		super().fill_listbox()
+		for i, val in enumerate(self.list_data):
+			if val[0]==None:
+				#self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_off,'fg':zynthian_gui_config.color_tx_off})
+				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
 
 
 	def set_selector(self, zs_hiden=True):
@@ -196,12 +206,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def set_mode_select(self):
 		self.mode='select'
 		self.set_selector_screen()
-		#self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
+		#self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
 		#	selectforeground=zynthian_gui_config.color_ctrl_tx,
-		#	fg=zynthian_gui_config.color_ctrl_tx)
-		self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
-			selectforeground=zynthian_gui_config.color_ctrl_tx,
-			fg=zynthian_gui_config.color_ctrl_tx_off)
+		#	fg=zynthian_gui_config.color_ctrl_tx_off)
 		self.select(self.index)
 		self.set_select_path()
 
@@ -210,9 +217,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.mode='control'
 		if self.zselector: self.zselector.hide()
 		self.set_controller_screen()
-		self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
-			selectforeground=zynthian_gui_config.color_ctrl_tx,
-			fg=zynthian_gui_config.color_ctrl_tx)
+		#self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
+		#	selectforeground=zynthian_gui_config.color_ctrl_tx,
+		#	fg=zynthian_gui_config.color_ctrl_tx)
 		self.set_select_path()
 
 
