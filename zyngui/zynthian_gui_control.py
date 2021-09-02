@@ -97,7 +97,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		for layer in self.layers:
 			j = 0
 			if len(self.layers)>1:
-				self.list_data.append((None,None,"> {}".format(layer.engine.nickname)))
+				self.list_data.append((None,None,"> {}".format(layer.engine.name.split("/")[-1])))
 			for cscr in layer.get_ctrl_screens():
 				self.list_data.append((cscr,i,cscr,layer,j))
 				i += 1
