@@ -987,7 +987,7 @@ class zynthian_gui:
 
 		elif i==1:
 			#self.callable_ui_action("ALL_OFF")
-			self.show_modal("admin")
+			self.show_modal("main")
 
 		elif i==2:
 			self.show_modal("alsa_mixer")
