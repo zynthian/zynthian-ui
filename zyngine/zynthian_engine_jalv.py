@@ -429,10 +429,9 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def get_ctrl_screen_name(self, gname, i):
-		if gname==None:
-			return "#{}".format(i)
-		else: 
-			return "{}#{}".format(gname,i)
+		if i>0:
+			gname = "{}#{}".format(gname, i)
+		return gname
 
 
 	def generate_ctrl_screens(self, zctrl_dict=None):
@@ -451,11 +450,22 @@ class zynthian_engine_jalv(zynthian_engine):
 			if gsymbol not in zctrl_group:
 				zctrl_group[gsymbol] = [zctrl.group_name, OrderedDict()]
 			zctrl_group[gsymbol][1][symbol] = zctrl
-
+		if "_" in zctrl_group:
+			last_group = zctrl_group["_"]
+			del zctrl_group["_"]
+			if len(zctrl_group)==0:
+				last_group[0] = "Ctrls"
+			else:
+				last_group[0] = "Ungroup"
+			zctrl_group["_"] = last_group
+			
 		for gsymbol, gdata in zctrl_group.items():
-			c=1
 			ctrl_set=[]
 			gname = gdata[0]
+			if len(gdata[1])<=4:
+				c=0
+			else:
+				c=1
 			for symbol, zctrl in gdata[1].items():
 				try:
 					#logging.debug("CTRL {}".format(symbol))
