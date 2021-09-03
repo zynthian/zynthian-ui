@@ -1021,13 +1021,15 @@ class zynthian_gui:
 				self.show_screen('layer')
 
 		elif i==1:
+			screen_back=None
 			if self.modal_screen:
 				logging.debug("CLOSE MODAL => " + self.modal_screen)
-				self.show_screen('main')
+				screen_back = self.screens[self.modal_screen].back_action('B')
+				self.show_screen(screen_back)
 
-			elif self.active_screen=='preset':
+			elif self.active_screen=='control':
 				self.screens['preset'].restore_preset()
-				self.show_screen('control')
+				self.show_screen('preset')
 
 			elif self.active_screen in ['main', 'admin'] and len(self.screens['layer'].layers)>0:
 				self.show_control()
@@ -1093,7 +1095,7 @@ class zynthian_gui:
 
 				# Try to call modal back_action method:
 				try:
-					screen_back = self.screens[self.modal_screen].back_action()
+					screen_back = self.screens[self.modal_screen].back_action('S')
 					logging.debug("SCREEN BACK => " + screen_back)
 				except:
 					pass
@@ -1107,7 +1109,7 @@ class zynthian_gui:
 
 			else:
 				try:
-					screen_back = self.screens[self.active_screen].back_action()
+					screen_back = self.screens[self.active_screen].back_action('S')
 				except:
 					pass
 

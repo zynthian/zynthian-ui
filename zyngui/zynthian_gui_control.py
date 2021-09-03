@@ -261,28 +261,31 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		self.set_mode_control()
 
+	def prev(self):
+		self.index-=1
+		if self.index<0:
+			self.index=0
+		self.select(self.index)
+		self.click_listbox()
+		return True
 
-	def back_action(self):
+	def back_action(self,t='S'):
 		# If in controller map selection, back to instrument control
-		if self.mode=='select':
-			self.set_mode_control()
-			return ''
-
-		# If control xyselect mode active, disable xyselect mode
+		if self.mode=='select':f
 		elif self.xyselect_mode:
 			logging.debug("DISABLE XYSELECT MODE")
 			self.unset_xyselect_mode()
 			return 'control'
-
 		# If in MIDI-learn mode, back to instrument control
 		elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
 			self.zyngui.exit_midi_learn_mode()
 			return ''
-
-		else:
-			self.zyngui.screens['layer'].restore_curlayer()
-			return None
-
+		elif t=='S':
+			self.prev()
+			return ''
+		elif t=='B':
+			#self.zyngui.screens['layer'].restore_curlayer()
+			return 'preset'
 
 	def next(self):
 		self.index+=1
@@ -291,7 +294,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.select(self.index)
 		self.click_listbox()
 		return True
-
 
 	def switch_select(self, t='S'):
 		if t=='S':
@@ -307,7 +309,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.set_mode_select()
 			elif self.mode=='select':
 				self.click_listbox()
-
 
 	def select(self, index=None):
 		super().select(index)
