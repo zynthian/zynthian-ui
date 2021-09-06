@@ -293,20 +293,24 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return True
 
 
+	def prev(self):
+		self.index-=1
+		if self.index<0:
+			self.index=len(self.list_data)-1
+		self.select(self.index)
+		self.click_listbox()
+		return True
+
+
 	def switch_select(self, t='S'):
 		if t=='S':
-			if self.mode in ('control','xyselect'):
-				self.next()
-				logging.info("Next Control Screen")
-			elif self.mode=='select':
-				self.click_listbox()
-
-		elif t=='B':
-			#if self.mode=='control':
 			if self.mode in ('control','xyselect'):
 				self.set_mode_select()
 			elif self.mode=='select':
 				self.click_listbox()
+		elif t=='B':
+			self.zyngui.screens['layer_options'].reset()
+			self.zyngui.show_modal('layer_options')
 
 
 	def select(self, index=None):
