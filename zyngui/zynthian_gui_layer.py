@@ -1223,119 +1223,20 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return True
 
 
-	def load_snapshot(self, fpath, quiet=False):
+	def load_snapshot(self, fpath, quiet=False, load_sequences=True):
 		try:
 			with open(fpath,"r") as fh:
 				json=fh.read()
 				logging.info("Loading snapshot %s => \n%s" % (fpath,json))
-
 		except Exception as e:
 			logging.error("Can't load snapshot '%s': %s" % (fpath,e))
 			return False
 
 		try:
 			snapshot=JSONDecoder().decode(json)
-
-			#Clean all layers, but don't stop unused engines
-			self.remove_all_layers(False)
-
-			# Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
-			# so we stop Jalv engines!
-			self.zyngui.screens['engine'].stop_unused_jalv_engines()
-
-			#Create new layers, starting engines when needed
-			for i, lss in enumerate(snapshot['layers']):
-				if lss['engine_nick']=="MX":
-					if zynthian_gui_config.snapshot_mixer_settings:
-						snapshot['amixer_layer'] = lss
-					del snapshot['layers'][i]
-				else:
-					engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
-					self.layers.append(zynthian_layer(engine,lss['midi_chan'], self.zyngui))
-
-			# Finally, stop all unused engines
-			self.zyngui.screens['engine'].stop_unused_engines()
-
-			#Restore MIDI profile state
-			if 'midi_profile_state' in snapshot:
-				self.set_midi_profile_state(snapshot['midi_profile_state'])
-
-			#Set MIDI Routing
-			if 'midi_routing' in snapshot:
-				self.set_midi_routing(snapshot['midi_routing'])
-			else:
-				self.reset_midi_routing()
-
-			#Autoconnect MIDI
-			self.zyngui.zynautoconnect_midi(True)
-
-			#Set extended config
-			if 'extended_config' in snapshot:
-				self.set_extended_config(snapshot['extended_config'])
-
-			# Restore layer state, step 1 => Restore Bank & Preset Status
-			for i, lss in enumerate(snapshot['layers']):
-				self.layers[i].restore_snapshot_1(lss)
-
-			# Restore layer state, step 2 => Restore Controllers Status
-			for i, lss in enumerate(snapshot['layers']):
-				self.layers[i].restore_snapshot_2(lss)
-
-			#Set Audio Routing
-			if 'audio_routing' in snapshot:
-				self.set_audio_routing(snapshot['audio_routing'])
-			else:
-				self.reset_audio_routing()
-
-			#Set Audio Capture
-			if 'audio_capture' in snapshot:
-				self.set_audio_capture(snapshot['audio_capture'])
-			else:
-				self.reset_audio_routing()
-
-			#Autoconnect Audio
-			self.zyngui.zynautoconnect_audio()
-
-			# Restore ALSA Mixer settings
-			if self.amixer_layer and 'amixer_layer' in snapshot:
-				self.amixer_layer.restore_snapshot_1(snapshot['amixer_layer'])
-				self.amixer_layer.restore_snapshot_2(snapshot['amixer_layer'])
-
-			#Fill layer list
-			self.fill_list()
-
-			#Set active layer
-			if snapshot['index']<len(self.layers):
-				self.index = snapshot['index']
-				self.zyngui.set_curlayer(self.layers[self.index])
-			elif len(self.layers)>0:
-				self.index = 0
-				self.zyngui.set_curlayer(self.layers[self.index])
-
-			#Set Clone
-			if 'clone' in snapshot:
-				self.set_clone(snapshot['clone'])
-			else:
-				self.reset_clone()
-
-			# Note-range & Tranpose
-			self.reset_note_range()
-			if 'note_range' in snapshot:
-				self.set_note_range(snapshot['note_range'])
-			#BW compat.
-			elif 'transpose' in snapshot:
-				self.set_transpose(snapshot['transpose'])
-
-			#Zynseq RIFF data
-			if 'zynseq_riff_b64' in snapshot and 'stepseq' in self.zyngui.screens:
-				b64_bytes = snapshot['zynseq_riff_b64'].encode('utf-8')
-				binary_riff_data = base64.decodebytes(b64_bytes)
-				self.zyngui.screens['stepseq'].restore_riff_data(binary_riff_data)
-
-			#Audio Recorder Out
-			if 'audio_recorder_out' in snapshot:
-				self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out'] 
-
+			self._load_snapshot_layers(snapshot)
+			if load_sequences:
+				self._load_snapshot_sequences(snapshot)
 			#Post action
 			if not quiet:
 				if self.index<len(self.root_layers):
@@ -1343,7 +1244,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				else:
 					self.index = 0
 					self.zyngui.show_screen('layer')
-
 		except Exception as e:
 			self.zyngui.reset_loading()
 			logging.exception("Invalid snapshot: %s" % e)
@@ -1351,6 +1251,138 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		self.last_snapshot_fpath = fpath
 		return True
+
+
+	def load_snapshot_layers(self, fpath, quiet=False):
+		return self.load_snapshot(fpath, quiet, False)
+
+
+	def load_snapshot_sequences(self, fpath, quiet=False):
+		try:
+			with open(fpath,"r") as fh:
+				json=fh.read()
+				logging.info("Loading snapshot %s => \n%s" % (fpath,json))
+		except Exception as e:
+			logging.error("Can't load snapshot '%s': %s" % (fpath,e))
+			return False
+
+		try:
+			snapshot=JSONDecoder().decode(json)
+			self._load_snapshot_sequences(snapshot)
+			#Post action
+			if not quiet:
+				self.zyngui.show_screen('stepseq')
+		except Exception as e:
+			self.zyngui.reset_loading()
+			logging.exception("Invalid snapshot: %s" % e)
+			return False
+
+		#self.last_snapshot_fpath = fpath
+		return True
+
+
+	def _load_snapshot_layers(self, snapshot):
+		#Clean all layers, but don't stop unused engines
+		self.remove_all_layers(False)
+
+		# Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
+		# so we stop Jalv engines!
+		self.zyngui.screens['engine'].stop_unused_jalv_engines()
+
+		#Create new layers, starting engines when needed
+		for i, lss in enumerate(snapshot['layers']):
+			if lss['engine_nick']=="MX":
+				if zynthian_gui_config.snapshot_mixer_settings:
+					snapshot['amixer_layer'] = lss
+				del snapshot['layers'][i]
+			else:
+				engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
+				self.layers.append(zynthian_layer(engine,lss['midi_chan'], self.zyngui))
+
+		# Finally, stop all unused engines
+		self.zyngui.screens['engine'].stop_unused_engines()
+
+		#Restore MIDI profile state
+		if 'midi_profile_state' in snapshot:
+			self.set_midi_profile_state(snapshot['midi_profile_state'])
+
+		#Set MIDI Routing
+		if 'midi_routing' in snapshot:
+			self.set_midi_routing(snapshot['midi_routing'])
+		else:
+			self.reset_midi_routing()
+
+		#Autoconnect MIDI
+		self.zyngui.zynautoconnect_midi(True)
+
+		#Set extended config
+		if 'extended_config' in snapshot:
+			self.set_extended_config(snapshot['extended_config'])
+
+		# Restore layer state, step 1 => Restore Bank & Preset Status
+		for i, lss in enumerate(snapshot['layers']):
+			self.layers[i].restore_snapshot_1(lss)
+
+		# Restore layer state, step 2 => Restore Controllers Status
+		for i, lss in enumerate(snapshot['layers']):
+			self.layers[i].restore_snapshot_2(lss)
+
+		#Set Audio Routing
+		if 'audio_routing' in snapshot:
+			self.set_audio_routing(snapshot['audio_routing'])
+		else:
+			self.reset_audio_routing()
+
+		#Set Audio Capture
+		if 'audio_capture' in snapshot:
+			self.set_audio_capture(snapshot['audio_capture'])
+		else:
+			self.reset_audio_routing()
+
+		#Autoconnect Audio
+		self.zyngui.zynautoconnect_audio()
+
+		# Restore ALSA Mixer settings
+		if self.amixer_layer and 'amixer_layer' in snapshot:
+			self.amixer_layer.restore_snapshot_1(snapshot['amixer_layer'])
+			self.amixer_layer.restore_snapshot_2(snapshot['amixer_layer'])
+
+		#Fill layer list
+		self.fill_list()
+
+		#Set active layer
+		if snapshot['index']<len(self.layers):
+			self.index = snapshot['index']
+			self.zyngui.set_curlayer(self.layers[self.index])
+		elif len(self.layers)>0:
+			self.index = 0
+			self.zyngui.set_curlayer(self.layers[self.index])
+
+		#Set Clone
+		if 'clone' in snapshot:
+			self.set_clone(snapshot['clone'])
+		else:
+			self.reset_clone()
+
+		# Note-range & Tranpose
+		self.reset_note_range()
+		if 'note_range' in snapshot:
+			self.set_note_range(snapshot['note_range'])
+		#BW compat.
+		elif 'transpose' in snapshot:
+			self.set_transpose(snapshot['transpose'])
+
+		#Audio Recorder Out
+		if 'audio_recorder_out' in snapshot:
+			self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out'] 
+
+
+	def _load_snapshot_sequences(self, snapshot):
+		#Zynseq RIFF data
+		if 'zynseq_riff_b64' in snapshot and 'stepseq' in self.zyngui.screens:
+			b64_bytes = snapshot['zynseq_riff_b64'].encode('utf-8')
+			binary_riff_data = base64.decodebytes(b64_bytes)
+			self.zyngui.screens['stepseq'].restore_riff_data(binary_riff_data)
 
 
 	def get_midi_profile_state(self):

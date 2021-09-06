@@ -280,8 +280,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def show_options(self, i):
 		fpath=self.list_data[i][0]
 		fname=self.list_data[i][2]
-
-		options = {"Load": fpath, "Save":fname, "Rename":fname, "Create copy":fname, "Set program":fname, "Delete":fname}
+		options = {
+			"Load": fpath,
+			"Load Layers": fpath,
+			"Load Sequences": fpath,
+			"Save": fname,
+			"Rename": fname,
+			"Create Copy": fname, 
+			"Set Program": fname,
+			"Delete": fname
+		}
 		self.zyngui.screens['option'].config(fname, options, self.options_cb)
 		self.zyngui.show_modal('option')
 
@@ -296,6 +304,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 		if option == "Load":
 			self.zyngui.screens['layer'].load_snapshot(fpath)
+		elif option == "Load Layers":
+			self.zyngui.screens['layer'].load_snapshot_layers(fpath)
+		elif option == "Load Sequences":
+			self.zyngui.screens['layer'].load_snapshot_sequences(fpath)
 		elif option == "Save":
 			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
 		elif option == "Rename":
