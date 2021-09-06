@@ -1271,7 +1271,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self._load_snapshot_sequences(snapshot)
 			#Post action
 			if not quiet:
-				self.zyngui.show_screen('stepseq')
+				self.zyngui.show_modal('stepseq')
 		except Exception as e:
 			self.zyngui.reset_loading()
 			logging.exception("Invalid snapshot: %s" % e)
