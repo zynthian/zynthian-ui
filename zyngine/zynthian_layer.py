@@ -330,6 +330,18 @@ class zynthian_layer:
 		else:
 			self.show_fav_presets = False
 
+
+	def get_show_fav_presets(self):
+		return self.show_fav_presets
+
+
+	def toggle_show_fav_presets(self):
+		if self.show_fav_presets:
+			self.set_show_fav_presets(False)
+		else:
+			self.set_show_fav_presets(True)
+		return self.show_fav_presets
+
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------

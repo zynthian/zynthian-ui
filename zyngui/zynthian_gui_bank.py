@@ -53,6 +53,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if not self.zyngui.curlayer:
 			logging.error("Can't show bank list for None layer!")
 			return
+		self.zyngui.curlayer.set_show_fav_presets(False)
 		self.index=self.zyngui.curlayer.get_bank_index()
 		logging.debug("BANK INDEX => %s" % self.index)
 		super().show()
@@ -62,10 +63,11 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if self.list_data[i][0]=='*FAVS*':
 			self.zyngui.curlayer.set_show_fav_presets(True)
 		else:
-			self.zyngui.curlayer.set_show_fav_presets(False)
 			if not self.zyngui.curlayer.set_bank(i):
 				self.show()
 				return
+			else:
+				self.zyngui.curlayer.set_show_fav_presets(False)
 	
 		if self.zyngui.modal_screen=="preset":
 			self.zyngui.show_modal('preset')

@@ -162,6 +162,7 @@ class zynthian_gui:
 		self.zynmidi = None
 		self.screens = {}
 		self.active_screen = None
+		self.fav_prev_screen = None
 		self.modal_screen = None
 		self.modal_screen_back = None
 		self.modal_timer_id = None
@@ -495,6 +496,13 @@ class zynthian_gui:
 			return self.screens[self.active_screen]
 
 
+	def refresh_current_screen(self):
+		if self.modal_screen:
+			self.screens[self.modal_screen].show()
+		else:
+			self.screens[self.active_screen].show()
+
+
 	def show_confirm(self, text, callback=None, cb_params=None):
 		self.modal_screen_back = self.modal_screen
 		self.modal_screen='confirm'
@@ -606,6 +614,19 @@ class zynthian_gui:
 		self.active_screen='control'
 		self.screens['control'].set_mode_control()
 		logging.debug("SHOW CONTROL-XY => %s, %s" % (xctrl.symbol, yctrl.symbol))
+
+
+	def toggle_favorites(self):
+		if self.curlayer:
+			favshow = self.curlayer.toggle_show_fav_presets()
+			if favshow:
+				self.fav_prev_screen = self.active_screen
+				self.show_screen("preset")
+			elif self.fav_prev_screen:
+					self.show_screen(self.fav_prev_screen)
+					self.fav_prev_screen = None
+			else:
+				self.show_screen("preset")
 
 
 	def set_curlayer(self, layer, save=False):
@@ -1155,6 +1176,9 @@ class zynthian_gui:
 
 			elif self.active_screen=='layer':
 				self.screens['layer'].switch_select('B')
+
+			elif self.active_screen=='preset' or self.active_screen=='bank':
+				self.toggle_favorites()
 
 			else:
 				self.show_modal("snapshot")
