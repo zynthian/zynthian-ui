@@ -383,7 +383,10 @@ class zynthian_layer:
 
 
 	def get_active_screen_index(self):
+		if self.active_screen_index>=len(self.ctrl_screens_dict):
+			self.active_screen_index = len(self.ctrl_screens_dict)-1
 		return self.active_screen_index
+			
 
 
 	def set_active_screen_index(self, i):
