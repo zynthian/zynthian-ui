@@ -759,9 +759,33 @@ class zynthian_gui:
 		elif cuia == "TOGGLE_MIDI_PLAY":
 			self.screens['midi_recorder'].toggle_playing()
 
+		elif cuia == "START_STEP_SEQ":
+			self.screens['stepseq'].start()
+
+		elif cuia == "PAUSE_STEP_SEQ":
+			self.screens['stepseq'].pause()
+
+		elif cuia == "STOP_STEP_SEQ":
+			self.screens['stepseq'].stop()
+
+		elif cuia == "TOGGLE_STEP_SEQ":
+			self.screens['stepseq'].toggle_transport()
+
 		elif cuia == "SELECT":
 			try:
 				self.get_current_screen().select(params[0])
+			except:
+				pass
+
+		elif cuia == "NEXT":
+			try:
+				self.get_current_screen().next()
+			except:
+				pass
+
+		elif cuia == "PREV":
+			try:
+				self.get_current_screen().prev()
 			except:
 				pass
 
