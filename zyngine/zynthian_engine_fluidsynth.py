@@ -47,31 +47,29 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	_ctrls=[
 		['volume',7,96],
 		['modulation',1,0],
-		['pan',10,64],
+		['panning',10,64],
 		['expression',11,127],
 		['sustain',64,'off',['off','on']],
-		['reverb',91,64],
-		['chorus',93,2],
+		['sostenuto',66,'off',['off','on']],
+#		['reverb',91,64],
+#		['chorus',93,2],
 		['portamento on/off',65,'off',['off','on']],
 		['portamento time-coarse',5,0],
 		['portamento time-fine',37,0],
 		['portamento control',84,0],
-		['sostenuto',66,'off',['off','on']],
 		['legato on/off',68,'off',['off','on']]
 	]
 
 	# Controller Screens
 	default_ctrl_screens=[
-		['main',['volume','sostenuto','pan','sustain']],
-		['effects',['expression','modulation','reverb','chorus']],
+		['main',['volume','panning','expression','modulation']],
 		['portamento',['legato on/off','portamento on/off','portamento time-coarse','portamento time-fine']],
+		['sustain',['sustain','sostenuto']],
 	]
 
 	# ---------------------------------------------------------------------------
 	# Config variables
 	# ---------------------------------------------------------------------------
-
-	fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 -o midi.jack.id='fluidsynth' -o audio.jack.id='fluidsynth' -o audio.jack.multi='yes' -o synth.audio-groups=8  -o synth.audio-channels=8"
 
 	soundfont_dirs=[
 		('EX', zynthian_engine.ex_data_dir + "/soundfonts/sf2"),
@@ -91,15 +89,10 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 		self.options['drop_pc']=True
 
-		if "Pi 4" in os.environ.get("RBPI_VERSION"):
-			n_fxgrp = 8
-		else:
-			n_fxgrp = 2
-
-		self.fs_options += " -o synth.effects-groups={}".format(n_fxgrp)
-
 		self.bank_config = OrderedDict()
-		
+
+		self.fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 -o midi.jack.id='{}' -o audio.jack.id='{}' -o audio.jack.autoconnect=0 -o audio.jack.multi='yes' -o synth.audio-groups=16 -o synth.audio-channels=16 -o synth.effects-groups=1 -o synth.chorus.active=0 -o synth.reverb.active=0".format(self.jackname,self.jackname)
+
 		self.command = "fluidsynth -a jack -m jack -g 1 -j {}".format(self.fs_options)
 		self.command_prompt = "\n> "
 
@@ -112,6 +105,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.soundfont_index={}
 		self.clear_midi_routes()
 		self.unload_unused_soundfonts()
+
 
 	# ---------------------------------------------------------------------------
 	# Subproccess Management & IPC
@@ -369,7 +363,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			try:
 				i = self.get_free_parts()[0]
 				layer.part_i = i
-				layer.jackname = "{}:((l|r)_{:02d}|fx_(l|r)_({:02d}|{:02d}))".format(self.jackname,i,i*2,i*2+1)
+				#layer.jackname = "{}:((l|r)_{:02d}|fx_(l|r)_({:02d}|{:02d}))".format(self.jackname,i,i*2,i*2+1)
+				layer.jackname = "{}\:(l|r)_{:02d}".format(self.jackname,i)
 				self.zyngui.zynautoconnect_audio()
 				logging.debug("Add part {} => {}".format(i, layer.jackname))
 			except Exception as e:
