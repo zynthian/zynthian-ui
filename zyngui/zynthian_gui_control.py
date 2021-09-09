@@ -285,19 +285,19 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def next(self):
-		self.index+=1
-		if self.index>=len(self.list_data):
-			self.index=0
-		self.select(self.index)
+		i = self.index + 1
+		if i>=len(self.list_data):
+			i = 0
+		self.select(i)
 		self.click_listbox()
 		return True
 
 
 	def prev(self):
-		self.index-=1
-		if self.index<0:
-			self.index=len(self.list_data)-1
-		self.select(self.index)
+		i = self.index - 1
+		if i<0:
+			i = 0
+		self.select(i)
 		self.click_listbox()
 		return True
 
