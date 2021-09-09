@@ -433,15 +433,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def cb_listbox_release(self, event):
 		if self.xyselect_mode:
 			return
-		if self.mode=='select':
-			super().cb_listbox_release(event)
-		elif self.listbox_push_ts:
-			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
-			#logging.debug("LISTBOX RELEASE => %s" % dts)
-			if dts<0.3:
-				self.zyngui.start_loading()
-				self.click_listbox()
-				self.zyngui.stop_loading()
+		else:
+			self.select(self.get_cursel())
+			self.click_listbox()
 
 
 	def cb_listbox_motion(self, event):
@@ -454,10 +448,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 			if dts>0.1:
 				index=self.get_cursel()
 				if index!=self.index:
-					#logging.debug("LISTBOX MOTION => %d" % self.index)
-					self.zyngui.start_loading()
-					self.select_listbox(self.get_cursel())
-					self.zyngui.stop_loading()
+					#logging.debug("LISTBOX MOTION => %d" % index)
+					self.select_listbox(index)
 					sleep(0.04)
 
 
@@ -468,9 +460,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if (event.num == 4 or event.delta == 120) and self.index < (len(self.list_data)-1):
 			index += 1
 		if index!=self.index:
-			self.zyngui.start_loading()
 			self.select_listbox(index)
-			self.zyngui.stop_loading()
 
 
 	def set_select_path(self):
