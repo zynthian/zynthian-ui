@@ -47,7 +47,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	_ctrls=[
 		['volume',7,96],
 		['modulation',1,0],
-		['panning',10,64],
+		['pan',10,64],
 		['expression',11,127],
 		['sustain',64,'off',['off','on']],
 		['sostenuto',66,'off',['off','on']],
@@ -62,9 +62,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	# Controller Screens
 	default_ctrl_screens=[
-		['main',['volume','panning','expression','modulation']],
+		['main',['volume','pan','expression','modulation']],
 		['portamento',['legato on/off','portamento on/off','portamento time-coarse','portamento time-fine']],
-		['sustain',['sustain','sostenuto']],
+		['sustain',['sostenuto','sustain']],
 	]
 
 	# ---------------------------------------------------------------------------

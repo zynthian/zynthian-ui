@@ -59,7 +59,7 @@ class zynthian_engine_sfizz(zynthian_engine):
 
 	# Controller Screens
 	_ctrl_screens=[
-		['main',['volume','sostenuto','pan','sustain']],
+		['main',['volume','pan','sostenuto','sustain']],
 		['portamento',['legato on/off','portamento on/off','portamento time-coarse','portamento time-fine']]
 	]
 
