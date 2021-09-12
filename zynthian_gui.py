@@ -456,12 +456,13 @@ class zynthian_gui:
 
 
 	def close_modal(self):
-		self.cancel_modal_timer()
-		if self.modal_screen_back:
-			self.show_modal(self.modal_screen_back)
-			self.modal_screen_back = None
-		else:
-			self.show_screen()
+		if self.modal_screen:
+			self.cancel_modal_timer()
+			if self.modal_screen_back:
+				self.show_modal(self.modal_screen_back)
+				self.modal_screen_back = None
+			else:
+				self.show_screen()
 
 
 	def close_modal_timer(self, tms=3000):
@@ -1460,6 +1461,10 @@ class zynthian_gui:
 					# Try layer's zctrls
 					else:
 						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
+
+				# Pitch Bending ...
+				elif evtype==0xE:
+					pass
 
 		except Exception as err:
 			self.reset_loading()
