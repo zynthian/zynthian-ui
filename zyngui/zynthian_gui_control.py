@@ -305,7 +305,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def switch_select(self, t='S'):
 		if t=='S':
 			if self.mode in ('control','xyselect'):
-				self.set_mode_select()
+				if len(self.list_data)>3:
+					self.set_mode_select()
+				else:
+					self.next()
 			elif self.mode=='select':
 				self.click_listbox()
 		elif t=='B':
