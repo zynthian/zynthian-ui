@@ -1328,15 +1328,16 @@ class zynthian_gui:
 				ev=lib_zyncoder.read_zynmidi()
 				if ev==0: break
 
-				evtype = (ev & 0xF00000) >> 20
-				chan = (ev & 0x0F0000) >> 16
+				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
 
-				if evtype==0xF and chan==0x8:
+				if (ev & 0xFF0000)==0xF80000:
 					self.status_info['midi_clock'] = True
 				else:
 					self.status_info['midi'] = True
 
-				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
+				evtype = (ev & 0xF00000) >> 20
+				chan = (ev & 0x0F0000) >> 16
+
 				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
 				# System Messages
@@ -1436,19 +1437,6 @@ class zynthian_gui:
 						#if not self.modal_screen and self.curlayer and chan==self.curlayer.get_midi_chan():
 						#	self.show_screen('control')
 
-				# Note-On ...
-				elif evtype==0x9:
-					self.screens['midi_chan'].midi_chan_activity(chan)
-					#Preload preset (note-on)
-					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
-						self.start_loading()
-						self.screens['preset'].preselect_action()
-						self.stop_loading()
-					#Note Range Learn
-					if self.modal_screen=='midi_key_range':
-						note = (ev & 0x7F00)>>8
-						self.screens['midi_key_range'].learn_note_range(note)
-
 				# Control Change ...
 				elif evtype==0xB:
 					self.screens['midi_chan'].midi_chan_activity(chan)
@@ -1461,6 +1449,19 @@ class zynthian_gui:
 					# Try layer's zctrls
 					else:
 						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
+
+				# Note-On ...
+				elif evtype==0x9:
+					self.screens['midi_chan'].midi_chan_activity(chan)
+					#Preload preset (note-on)
+					if zynthian_gui_config.preset_preload_noteon and self.active_screen=='preset' and chan==self.curlayer.get_midi_chan():
+						self.start_loading()
+						self.screens['preset'].preselect_action()
+						self.stop_loading()
+					#Note Range Learn
+					if self.modal_screen=='midi_key_range':
+						note = (ev & 0x7F00)>>8
+						self.screens['midi_key_range'].learn_note_range(note)
 
 				# Pitch Bending ...
 				elif evtype==0xE:
