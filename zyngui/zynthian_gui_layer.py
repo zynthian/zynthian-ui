@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Layer Selector Class
-# 
+#
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 
@@ -56,7 +56,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
 		super().__init__('Layer', True)
 		self.create_amixer_layer()
-		
+
 
 	def reset(self):
 		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
@@ -507,8 +507,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					continue
 				if layer.set_preset(preset_index,True) and not selected:
 					try:
-						if not self.zyngui.modal_screen and self.zyngui.active_screen in ('control'):
-							self.select_action(self.root_layers.index(layer))
+						#following conditional statement removed to omit issue with not updating the screen
+						#if not self.zyngui.modal_screen and self.zyngui.active_screen in ('control'):
+						self.select_action(self.root_layers.index(layer))
 						selected = True
 					except Exception as e:
 						logging.error("Can't select layer => {}".format(e))
@@ -781,7 +782,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			rlayer = self.layers[self.replace_layer_index]
 			logging.debug("Replacing on FX-chain {} => {}".format(rlayer.get_jackname(), layer.get_jackname()))
-			
+
 			# Re-route audio
 			layer.set_audio_out(rlayer.get_audio_out())
 			rlayer.mute_audio_out()
@@ -1003,7 +1004,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			rlayer = self.layers[self.replace_layer_index]
 			logging.debug("Replacing on MIDI-chain {} => {}".format(rlayer.get_midi_jackname(), layer.get_midi_jackname()))
-			
+
 			# Re-route audio
 			layer.set_midi_out(rlayer.get_midi_out())
 			rlayer.mute_midi_out()

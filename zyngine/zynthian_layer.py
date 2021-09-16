@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Layer (zynthian_layer)
-# 
+#
 # zynthian layer
-# 
+#
 # Copyright (C) 2015-2017 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -19,7 +19,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import logging
@@ -213,7 +213,7 @@ class zynthian_layer:
 		if i < len(self.preset_list):
 			last_preset_index=self.preset_index
 			last_preset_name=self.preset_name
-			
+
 			preset_id = str(self.preset_list[i][0])
 			preset_name = self.preset_list[i][2]
 
@@ -339,7 +339,7 @@ class zynthian_layer:
 		self.ctrl_screens_dict=OrderedDict()
 		for cscr in self.engine._ctrl_screens:
 			self.ctrl_screens_dict[cscr[0]]=self.build_ctrl_screen(cscr[1])
-			
+
 		#Set active the first screen
 		if len(self.ctrl_screens_dict)>0:
 			self.active_screen_index=0
@@ -395,8 +395,16 @@ class zynthian_layer:
 
 
 	def midi_control_change(self, chan, ccnum, ccval):
-		if self.engine:
-			#logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
+		if ccnum==0:
+			logging.debug("Setting Bank: Receiving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
+			self.set_bank(ccval)
+			self.load_preset_list()
+		elif ccnum==32:
+			#since preset is the same as program change, lsb needs to be ignored
+			#logging.debug("Setting Preset: Receiving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
+			pass
+		elif self.engine:
+			#logging.debug("Receiving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
 
 			# Engine MIDI-Learn zctrls
 			try:
@@ -476,7 +484,7 @@ class zynthian_layer:
 			logging.warning("Invalid Bank on layer {}: {}".format(self.get_basepath(), e))
 
 		self.wait_stop_loading()
-	
+
 		#Load preset list and set preset
 		#try:
 		self.load_preset_list()
@@ -503,7 +511,7 @@ class zynthian_layer:
 
 	def restore_snapshot_2(self, snapshot):
 
-		# Wait a little bit if a preset has been loaded 
+		# Wait a little bit if a preset has been loaded
 		if self.preset_loaded:
 			sleep(0.2)
 
@@ -591,7 +599,7 @@ class zynthian_layer:
 			if self.refresh_flag:
 				self.refresh_flag=False
 				self.refresh_controllers()
-			
+
 			# For non-LV2 engines, bank and preset can affect what controllers do.
 			# In case of LV2, just restoring the controllers ought to be enough, which is nice
 			# since it saves the 0.3 second delay between setting a preset and updating controllers.
@@ -639,7 +647,7 @@ class zynthian_layer:
 		if "system" in ao:
 			ao.remove("system")
 			ao += ["system:playback_1", "system:playback_2"]
-			
+
 		self.audio_out=ao
 		self.zyngui.zynautoconnect_audio()
 
@@ -699,7 +707,7 @@ class zynthian_layer:
 		return self.audio_in
 
 
-	def set_audio_in(self, ai):		
+	def set_audio_in(self, ai):
 		self.audio_in=ai
 		self.zyngui.zynautoconnect_audio()
 
