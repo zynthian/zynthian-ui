@@ -1227,7 +1227,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			with open(fpath,"r") as fh:
 				json=fh.read()
-				logging.info("Loading snapshot %s => \n%s" % (fpath,json))
+				logging.debug("Loading snapshot %s => \n%s" % (fpath,json))
 		except Exception as e:
 			logging.error("Can't load snapshot '%s': %s" % (fpath,e))
 			return False
