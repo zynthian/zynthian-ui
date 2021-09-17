@@ -525,19 +525,22 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def set_midi_chan_preset(self, midich, preset_index):
 		selected = False
-		for layer in self.layers:
+		for i,layer in enumerate(self.root_layers):
 			mch=layer.get_midi_chan()
 			if mch is None or mch==midich:
 				# Fluidsynth engine => ignore Program Change on channel 9
 				if layer.engine.nickname=="FS" and mch==9:
 					continue
 				if layer.set_preset(preset_index,True) and not selected:
+					selected = True
 					try:
-						if not self.zyngui.modal_screen and self.zyngui.active_screen in ('control'):
-							self.select_action(self.root_layers.index(layer))
-						selected = True
+						if not self.zyngui.modal_screen:
+							if self.shown:
+								self.show()
+							elif self.zyngui.active_screen in ('bank','preset','control'):
+								self.select_action(i)
 					except Exception as e:
-						logging.error("Can't select layer => {}".format(e))
+						logging.error("Can't refresh GUI! => {}".format(e))
 
 
 	def set_midi_chan_zs3(self, midich, zs3_index):
@@ -594,8 +597,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def midi_control_change(self, chan, ccnum, ccval):
-		for layer in self.layers + [self.amixer_layer]:
-			layer.midi_control_change(chan, ccnum, ccval)
+		if ccnum==0:
+			for layer in self.root_layers:
+				if layer.midi_chan==chan:
+					layer.midi_bank_msb(ccval)
+		elif ccnum==32:
+			for layer in self.root_layers:
+				if layer.midi_chan==chan:
+					layer.midi_bank_lsb(ccval)
+		else:
+			for layer in self.layers:
+				layer.midi_control_change(chan, ccnum, ccval)
+			self.amixer_layer.midi_control_change(chan, ccnum, ccval)
 
 
 	#----------------------------------------------------------------------------

@@ -22,8 +22,9 @@
 # 
 #******************************************************************************
 
-import logging
+import os
 import copy
+import logging
 from time import sleep
 import collections
 from collections import OrderedDict
@@ -33,6 +34,15 @@ from zyncoder import *
 
 
 class zynthian_layer:
+
+	# ---------------------------------------------------------------------------
+	# Data dirs 
+	# ---------------------------------------------------------------------------
+
+	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
+	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
+	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
+	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 
 	# ---------------------------------------------------------------------------
 	# Initialization
@@ -53,6 +63,8 @@ class zynthian_layer:
 		self.bank_index = 0
 		self.bank_name = None
 		self.bank_info = None
+		self.bank_msb = 0
+		self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
 
 		self.show_fav_presets = False
 		self.preset_list = []
@@ -125,12 +137,34 @@ class zynthian_layer:
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-
 	def load_bank_list(self):
 		self.bank_list = self.engine.get_bank_list(self)
+
+		# Calculate info for bank_msb
+		i = 0
+		self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
+		for bank in self.bank_list:
+			if bank[0].startswith(self.ex_data_dir):
+				self.bank_msb_info[0][0] += 1
+				self.bank_msb_info[1][0] += 1
+				self.bank_msb_info[2][1] += 1
+				i += 1
+			elif bank[0].startswith(self.my_data_dir):
+				self.bank_msb_info[0][0] += 1
+				self.bank_msb_info[1][1] += 1
+				i += 1
+			else:
+				break;
+		self.bank_msb_info[0][1] = len(self.bank_list)-i
+
+		# Add favourites virtual bank if there is some preset marked as favourite
 		if len(self.engine.get_preset_favs(self))>0:
 			self.bank_list = [["*FAVS*",0,"*** Favorites ***"]] + self.bank_list
+			for i in range(3):
+				self.bank_msb_info[i][0] += 1
+
 		logging.debug("BANK LIST => \n%s" % str(self.bank_list))
+		logging.debug("BANK MSB INFO => \n{}".format(self.bank_msb_info))
 
 
 	def reset_bank(self):
@@ -417,9 +451,8 @@ class zynthian_layer:
 
 
 	#----------------------------------------------------------------------------
-	# MIDI CC processing
+	# MIDI processing
 	#----------------------------------------------------------------------------
-
 
 	def midi_control_change(self, chan, ccnum, ccval):
 		if self.engine:
@@ -460,6 +493,24 @@ class zynthian_layer:
 									self.engine.midi_zctrl_change(zctrl, ccval)
 						except:
 							pass
+
+
+	def midi_bank_msb(self, i):
+		logging.debug("Received Bank MSB for CH#{}: {}".format(self.midi_chan, i))
+		if i>=0 and i<=2:
+			self.bank_msb = i
+
+
+	def midi_bank_lsb(self, i):
+		info = self.bank_msb_info[self.bank_msb]
+		logging.debug("Received Bank LSB for CH#{}: {} => {}".format(self.midi_chan, i, info))
+		if i<info[1]:
+			logging.debug("MSB offset for CH#{}: {}".format(self.midi_chan, info[0]))
+			self.set_show_fav_presets(False)
+			self.set_bank(info[0] + i)
+			self.load_preset_list()
+		else:
+			logging.warning("Bank index {} doesn't exist for MSB {} on CH#{}".format(i, self.bank_msb, self.midi_chan))
 
 
 	# ---------------------------------------------------------------------------
