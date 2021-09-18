@@ -449,14 +449,16 @@ class zynthian_layer:
 
 	def midi_control_change(self, chan, ccnum, ccval):
 		if ccnum==0x00: #MSB message
-			logging.debug("Setting System (0) | User (1) | Favorites (2) Bank: Receiving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
+			logging.debug("Setting System (0) | User (1) | External USB (2) | Favorites (3) Bank: Receiving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
 			if ccval < 0:
 				ccval = 0
-			elif ccval > 2:
-				ccval = 2
+			elif ccval > 3:
+				ccval = 3
 			self.bank_msb = ccval
 		elif ccnum==0x20: #LSB message
 			logging.info("Setting Bank: Receiving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
+			logging.info("value of MSB var: "+str(self.bank_msb))
+			logging.info("value of favs available: "+str(self.favs_available))
 			if self.bank_msb == 0: #select system bank
 				self.set_bank(self.first_systembank_index + ccval)
 				self.load_preset_list()
@@ -467,6 +469,7 @@ class zynthian_layer:
 				self.set_bank(self.first_extbank_index + ccval)
 				self.load_preset_list()
 			elif self.bank_msb == 3 and self.favs_available: #select favorite bank
+				logging.info("doe maar gek")
 				self.set_bank(0)
 				self.load_preset_list()
 			else:
