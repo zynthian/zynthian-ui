@@ -469,7 +469,7 @@ class zynthian_layer:
 			elif self.bank_msb == 3 and self.favs_available: #select favorite bank
 				self.set_bank(0)
 				self.load_preset_list()
-			else
+			else:
 				logging.warning("Invalid LSB command")
 		elif self.engine:
 			#logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
