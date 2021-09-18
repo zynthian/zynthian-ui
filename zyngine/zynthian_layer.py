@@ -153,9 +153,9 @@ class zynthian_layer:
 			elif self.bank_list[i][3] == "MY":
 				self.first_systembank_index = i + 1
 		logging.info("favorites available: "+str(self.favs_available))
-		logging.info("first external bank: "+str(self.first_extbank_index))
-		logging.info("first user bank: "+str(self.first_userbank_index))
-		logging.info("first system bank: "+str(self.first_systembank_index))
+		logging.info("first external bank index: "+str(self.first_extbank_index))
+		logging.info("first user bank index: "+str(self.first_userbank_index))
+		logging.info("first system bank index: "+str(self.first_systembank_index))
 		logging.debug("BANK LIST => \n%s" % str(self.bank_list))
 
 
@@ -457,8 +457,8 @@ class zynthian_layer:
 			self.bank_msb = ccval
 		elif ccnum==0x20: #LSB message
 			logging.info("Setting Bank: Receiving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
-			logging.info("value of MSB var: "+str(self.bank_msb))
-			logging.info("value of favs available: "+str(self.favs_available))
+			logging.debug("value of MSB var: "+str(self.bank_msb))
+			logging.debug("value of favs available: "+str(self.favs_available))
 			if self.bank_msb == 0: #select system bank
 				self.set_bank(self.first_systembank_index + ccval)
 				self.load_preset_list()
@@ -469,7 +469,6 @@ class zynthian_layer:
 				self.set_bank(self.first_extbank_index + ccval)
 				self.load_preset_list()
 			elif self.bank_msb == 3 and self.favs_available: #select favorite bank
-				logging.info("doe maar gek")
 				self.set_bank(0)
 				self.load_preset_list()
 			else:
