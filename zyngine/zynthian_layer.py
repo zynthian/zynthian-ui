@@ -45,8 +45,8 @@ class zynthian_layer:
 		self.midi_chan = midi_chan
 		self.bank_msb = 0
 		self.favs_available = False
-		self.first_extbank_index = 0
-		self.first_userbank_index = 0
+		self.first_extbank_index = -1
+		self.first_userbank_index = -1
 		self.first_systembank_index = 0
 
 		self.jackname = None
@@ -132,6 +132,10 @@ class zynthian_layer:
 
 
 	def load_bank_list(self):
+		self.favs_available = False
+		self.first_extbank_index = -1
+		self.first_userbank_index = -1
+		self.first_systembank_index = 0
 		self.bank_list = self.engine.get_bank_list(self)
 		if len(self.engine.get_preset_favs(self))>0:
 			self.bank_list = [["*FAVS*",0,"*** Favorites ***"]] + self.bank_list
@@ -139,7 +143,6 @@ class zynthian_layer:
 			start_index = 1
 			self.first_userbank_index = self.first_extbank_index = 1
 		else:
-			self.favorites = False
 			start_index = 0
 		logging.debug("start value: "+str(start_index))
 		logging.debug("length list: "+str(len(self.bank_list)))
@@ -457,15 +460,17 @@ class zynthian_layer:
 			if self.bank_msb == 0: #select system bank
 				self.set_bank(self.first_systembank_index + ccval)
 				self.load_preset_list()
-			elif self.bank_msb == 1: #select user bank
+			elif self.bank_msb == 1 and self.first_userbank_index != -1: #select user bank
 				self.set_bank(self.first_userbank_index + ccval)
 				self.load_preset_list()
-			elif self.bank_msb == 2: #select external bank
+			elif self.bank_msb == 2 and self.first_extbank_index != -1 : #select external bank
 				self.set_bank(self.first_extbank_index + ccval)
 				self.load_preset_list()
-			elif self.bank_msb == 3: #select favorite bank
-				self.set_bank(self.favs_available + ccval)
+			elif self.bank_msb == 3 and self.favs_available: #select favorite bank
+				self.set_bank(0)
 				self.load_preset_list()
+			else
+				logging.warning("Invalid LSB command")
 		elif self.engine:
 			#logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
 
