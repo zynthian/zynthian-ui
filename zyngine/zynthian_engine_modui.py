@@ -72,7 +72,8 @@ class zynthian_engine_modui(zynthian_engine):
 			'audio_route': False,
 			'midi_chan': False,
 			'replace': False,
-			'drop_pc': False
+			'drop_pc': False,
+			'layer_audio_out': True
 		}
 
 		self.websocket = None
