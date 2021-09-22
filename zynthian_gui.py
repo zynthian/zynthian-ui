@@ -934,8 +934,11 @@ class zynthian_gui:
 			logging.info("SWITCHES INIT...")
 			for i,pin in enumerate(zynthian_gui_config.zynswitch_pin):
 				self.dtsw.append(ts)
-				lib_zyncoder.setup_zynswitch(i,pin)
-				logging.info("SETUP ZYNSWITCH {} => wpGPIO {}".format(i, pin))
+				if pin>=0:
+					lib_zyncoder.setup_zynswitch(i,pin)
+					logging.info("SETUP ZYNSWITCH {} => wpGPIO {}".format(i, pin))
+				else:
+					logging.info("SKIP ZYNSWITCH {} => Not configured".format(i))
 
 
 	def zynswitches_midi_setup(self, curlayer_chan=None):
