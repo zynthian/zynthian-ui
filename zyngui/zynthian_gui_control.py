@@ -32,9 +32,9 @@ from datetime import datetime
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
-from . import zynthian_gui_config
-from . import zynthian_gui_controller
-from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_controller import zynthian_gui_controller
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian Instrument Controller GUI Class
@@ -87,18 +87,31 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		midichain_layers = self.zyngui.screens['layer'].get_midichain_layers()
 		if midichain_layers is not None and len(midichain_layers)>1:
-			midichain_layers.remove(self.zyngui.curlayer)
+			try:
+				midichain_layers.remove(self.zyngui.curlayer)
+			except:
+				pass
 			self.layers += midichain_layers
 
 		i = 0
 		for layer in self.layers:
 			j = 0
+			if len(self.layers)>1:
+				self.list_data.append((None,None,"> {}".format(layer.engine.name.split("/")[-1])))
 			for cscr in layer.get_ctrl_screens():
 				self.list_data.append((cscr,i,cscr,layer,j))
 				i += 1
 				j += 1
 		self.index = self.zyngui.curlayer.get_active_screen_index()
 		super().fill_list()
+
+
+	def fill_listbox(self):
+		super().fill_listbox()
+		for i, val in enumerate(self.list_data):
+			if val[0]==None:
+				#self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_off,'fg':zynthian_gui_config.color_tx_off})
+				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
 
 
 	def set_selector(self, zs_hiden=True):
@@ -193,9 +206,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def set_mode_select(self):
 		self.mode='select'
 		self.set_selector_screen()
-		#self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
-		#	selectforeground=zynthian_gui_config.color_ctrl_tx,
-		#	fg=zynthian_gui_config.color_ctrl_tx)
 		self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
 			selectforeground=zynthian_gui_config.color_ctrl_tx,
 			fg=zynthian_gui_config.color_ctrl_tx_off)
@@ -275,10 +285,19 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def next(self):
-		self.index+=1
-		if self.index>=len(self.list_data):
-			self.index=0
-		self.select(self.index)
+		i = self.index + 1
+		if i>=len(self.list_data):
+			i = 0
+		self.select(i)
+		self.click_listbox()
+		return True
+
+
+	def prev(self):
+		i = self.index - 1
+		if i<0:
+			i = 0
+		self.select(i)
 		self.click_listbox()
 		return True
 
@@ -286,17 +305,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def switch_select(self, t='S'):
 		if t=='S':
 			if self.mode in ('control','xyselect'):
-				self.next()
-				logging.info("Next Control Screen")
+				if len(self.list_data)>3:
+					self.set_mode_select()
+				else:
+					self.next()
 			elif self.mode=='select':
 				self.click_listbox()
-
 		elif t=='B':
-			#if self.mode=='control':
-			if self.mode in ('control','xyselect'):
-				self.set_mode_select()
-			elif self.mode=='select':
-				self.click_listbox()
+			self.zyngui.screens['layer_options'].reset()
+			self.zyngui.show_modal('layer_options')
 
 
 	def select(self, index=None):
@@ -419,15 +436,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def cb_listbox_release(self, event):
 		if self.xyselect_mode:
 			return
-		if self.mode=='select':
-			super().cb_listbox_release(event)
-		elif self.listbox_push_ts:
-			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
-			#logging.debug("LISTBOX RELEASE => %s" % dts)
-			if dts<0.3:
-				self.zyngui.start_loading()
-				self.click_listbox()
-				self.zyngui.stop_loading()
+		else:
+			self.select(self.get_cursel())
+			self.click_listbox()
 
 
 	def cb_listbox_motion(self, event):
@@ -440,10 +451,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 			if dts>0.1:
 				index=self.get_cursel()
 				if index!=self.index:
-					#logging.debug("LISTBOX MOTION => %d" % self.index)
-					self.zyngui.start_loading()
-					self.select_listbox(self.get_cursel())
-					self.zyngui.stop_loading()
+					#logging.debug("LISTBOX MOTION => %d" % index)
+					self.select_listbox(index)
 					sleep(0.04)
 
 
@@ -454,9 +463,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if (event.num == 4 or event.delta == 120) and self.index < (len(self.list_data)-1):
 			index += 1
 		if index!=self.index:
-			self.zyngui.start_loading()
 			self.select_listbox(index)
-			self.zyngui.stop_loading()
 
 
 	def set_select_path(self):

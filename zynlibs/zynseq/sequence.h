@@ -39,7 +39,7 @@ class Sequence
         void setPlayMode(uint8_t mode);
 
         /** @brief  Get sequence's play state
-        *   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING]
+        *   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING | EMPTY]
         */
         uint8_t getPlayState();
 
@@ -52,7 +52,7 @@ class Sequence
         *   @param  track Index of track afterwhich to add new track (Optional - default: add to end of sequence)
         *   @retval uint32_t Index of track added
         */
-        uint32_t  addTrack(uint32_t track = -1);
+        uint32_t addTrack(uint32_t track = -1);
         
         /** @brief  Remove a track from the sequence
         *   @param  track Index of track within sequence
@@ -132,6 +132,11 @@ class Sequence
         *   @retval uint32_t Length of sequence (longest track) in clock cycles
         */
         uint32_t getLength();
+		
+		/**	@brief	Check if sequence is empty
+		*	@retval bool True if empty. False if any patterns have any events)
+		*/
+		bool isEmpty();
 
         /** @brief  Set position of playback within sequence
         *   @param  position Postion in clock cycles from start of sequence
@@ -172,5 +177,7 @@ class Sequence
         uint16_t m_nTempo = 120; // Default tempo (overriden by tempo events in timebase map)
         bool m_bChanged = false; // True if sequence content changed
         bool m_bStateChanged = false; // True if state changed since last clock cycle
+        bool m_bEmpty = true; // True if all patterns are emtpy (no events)
         std::string m_sName; // Sequence name
 };
+

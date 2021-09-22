@@ -34,7 +34,7 @@ from select import select
 import os
 
 # Zynthian specific modules
-from . import zynthian_gui_config
+from zyngui import zynthian_gui_config
 
 # Little class to represent x,y coordinates
 class point:

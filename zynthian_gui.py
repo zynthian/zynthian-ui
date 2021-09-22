@@ -42,15 +42,18 @@ from ctypes import c_float, c_double, CDLL
 # Zynthian specific modules
 import zynconf
 import zynautoconnect
+
 from zynlibs.jackpeak import lib_jackpeak, lib_jackpeak_init
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
+
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
-#from zyngine import zynthian_engine_transport
+
 from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_controller import zynthian_gui_controller
-from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui import zynthian_gui_keyboard
+#from zyngui.zynthian_gui_controller import zynthian_gui_controller
+#from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
@@ -60,6 +63,7 @@ from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
+from zyngui.zynthian_gui_midi_prog import zynthian_gui_midi_prog
 from zyngui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
 from zyngui.zynthian_gui_midi_out import zynthian_gui_midi_out
@@ -72,18 +76,14 @@ from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
-from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
+from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
+from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 if "autoeq" in zynthian_gui_config.experimental_features:
 	from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
-if "zynseq" in zynthian_gui_config.experimental_features:
-	from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
-from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
-
-#from zyngui.zynthian_gui_control_osc_browser import zynthian_gui_osc_browser
 
 #-------------------------------------------------------------------------------
 # Zynthian Main GUI Class
@@ -142,24 +142,27 @@ class zynthian_gui:
 		"72": "SWITCH_SNAPSHOT_BOLD",
 		"73": "SWITCH_SNAPSHOT_LONG",
 
-		"80": "SCREEN_ADMIN",
+		"80": "SCREEN_MAIN",
 		"81": "SCREEN_LAYER",
 		"82": "SCREEN_BANK",
 		"83": "SCREEN_PRESET",
 		"84": "SCREEN_CONTROL",
 
-		"90": "MODAL_SNAPSHOT_LOAD",
-		"91": "MODAL_SNAPSHOT_SAVE",
+		"90": "MODAL_SNAPSHOT",
 		"92": "MODAL_AUDIO_RECORDER",
 		"93": "MODAL_MIDI_RECORDER",
 		"94": "MODAL_ALSA_MIXER",
-		"95": "MODAL_STEPSEQ"
+		"95": "MODAL_STEPSEQ",
+		"96": "MODAL_ADMIN",
+	
+		"100": "LAYER_CONTROL"
 	}
 
 	def __init__(self):
 		self.zynmidi = None
 		self.screens = {}
 		self.active_screen = None
+		self.fav_prev_screen = None
 		self.modal_screen = None
 		self.modal_screen_back = None
 		self.modal_timer_id = None
@@ -219,9 +222,8 @@ class zynthian_gui:
 		except Exception as e:
 			logging.error("ERROR initializing Controllers & MIDI-router: %s" % e)
 
-		if "zynseq" in zynthian_gui_config.experimental_features:
-			self.libseq = CDLL("/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
-			self.libseq.init(True)
+		except Exception as e:
+			logging.error("ERROR initializing Sequencer: %s" % e)
 
 	# ---------------------------------------------------------------------------
 	# MIDI Router Init & Config
@@ -236,7 +238,9 @@ class zynthian_gui:
 			#Set MIDI Master Channel
 			lib_zyncoder.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
 			#Set MIDI CC automode
-			lib_zyncoder.set_midi_ctrl_automode(zynthian_gui_config.midi_cc_automode)
+			lib_zyncoder.set_midi_filter_cc_automode(zynthian_gui_config.midi_cc_automode)
+			#Set MIDI System Messages flag
+			lib_zyncoder.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
 			#Setup MIDI filter rules
 			if self.midi_filter_script:
 				self.midi_filter_script.clean()
@@ -324,7 +328,7 @@ class zynthian_gui:
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
 		self.screens['confirm'] = zynthian_gui_confirm()
-		self.screens['keyboard'] = zynthian_gui_keyboard()
+		self.screens['keyboard'] = zynthian_gui_keyboard.zynthian_gui_keyboard()
 		self.screens['option'] = zynthian_gui_option()
 		self.screens['engine'] = zynthian_gui_engine()
 		self.screens['layer'] = zynthian_gui_layer()
@@ -332,6 +336,7 @@ class zynthian_gui:
 		self.screens['snapshot'] = zynthian_gui_snapshot()
 		self.screens['midi_chan'] = zynthian_gui_midi_chan()
 		self.screens['midi_cc'] = zynthian_gui_midi_cc()
+		self.screens['midi_prog'] = zynthian_gui_midi_prog()
 		self.screens['midi_key_range'] = zynthian_gui_midi_key_range()
 		self.screens['audio_out'] = zynthian_gui_audio_out()
 		self.screens['midi_out'] = zynthian_gui_midi_out()
@@ -351,10 +356,9 @@ class zynthian_gui:
 		self.screens['alsa_mixer'] = self.screens['control']
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
+		self.screens['stepseq'] = zynthian_gui_stepsequencer()
 		if "autoeq" in zynthian_gui_config.experimental_features:
 			self.screens['autoeq'] = zynthian_gui_autoeq()
-		if "zynseq" in zynthian_gui_config.experimental_features:
-			self.screens['stepseq'] = zynthian_gui_stepsequencer()
 
 		# Init Auto-connector
 		zynautoconnect.start()
@@ -435,7 +439,7 @@ class zynthian_gui:
 		self.show_screen()
 
 
-	def show_modal(self, screen, mode=None):
+	def show_modal(self, screen):
 		if screen=="alsa_mixer":
 			if self.modal_screen!=screen and self.screens['layer'].amixer_layer:
 				self._curlayer = self.curlayer
@@ -444,12 +448,7 @@ class zynthian_gui:
 			else:
 				return
 
-		elif screen=="snapshot":
-			if mode is None:
-				mode = "LOAD"
-			self.screens['snapshot'].set_action(mode)
-
-		if self.modal_screen!=screen and self.modal_screen not in ("info","confirm"):
+		if self.modal_screen!=screen and self.modal_screen not in ("info","confirm","keyboard"):
 			self.modal_screen_back = self.modal_screen
 		self.modal_screen=screen
 		self.screens[screen].show()
@@ -457,12 +456,13 @@ class zynthian_gui:
 
 
 	def close_modal(self):
-		self.cancel_modal_timer()
-		if self.modal_screen_back:
-			self.show_modal(self.modal_screen_back)
-			self.modal_screen_back = None
-		else:
-			self.show_screen()
+		if self.modal_screen:
+			self.cancel_modal_timer()
+			if self.modal_screen_back:
+				self.show_modal(self.modal_screen_back)
+				self.modal_screen_back = None
+			else:
+				self.show_screen()
 
 
 	def close_modal_timer(self, tms=3000):
@@ -476,9 +476,9 @@ class zynthian_gui:
 			self.modal_timer_id = None
 
 
-	def toggle_modal(self, screen, mode=None):
+	def toggle_modal(self, screen):
 		if self.modal_screen!=screen:
-			self.show_modal(screen, mode)
+			self.show_modal(screen)
 		else:
 			self.close_modal()
 
@@ -497,6 +497,13 @@ class zynthian_gui:
 			return self.screens[self.active_screen]
 
 
+	def refresh_current_screen(self):
+		if self.modal_screen:
+			self.screens[self.modal_screen].show()
+		else:
+			self.screens[self.active_screen].show()
+
+
 	def show_confirm(self, text, callback=None, cb_params=None):
 		self.modal_screen_back = self.modal_screen
 		self.modal_screen='confirm'
@@ -507,6 +514,15 @@ class zynthian_gui:
 	def show_keyboard(self, callback, text="", max_chars=None):
 		self.modal_screen_back = self.modal_screen
 		self.modal_screen="keyboard"
+		self.screens['keyboard'].set_mode(zynthian_gui_keyboard.OSK_QWERTY)
+		self.screens['keyboard'].show(callback, text, max_chars)
+		self.hide_screens(exclude='keyboard')
+
+
+	def show_numpad(self, callback, text="", max_chars=None):
+		self.modal_screen_back = self.modal_screen
+		self.modal_screen="keyboard"
+		self.screens['keyboard'].set_mode(zynthian_gui_keyboard.OSK_NUMPAD)
 		self.screens['keyboard'].show(callback, text, max_chars)
 		self.hide_screens(exclude='keyboard')
 
@@ -541,14 +557,6 @@ class zynthian_gui:
 
 	def calibrate_touchscreen(self):
 		self.show_modal('touchscreen_calibration')
-
-
-	def load_snapshot(self):
-		self.show_modal("snapshot","LOAD")
-
-
-	def save_snapshot(self):
-		self.show_modal("snapshot","SAVE")
 
 
 	def layer_control(self, layer=None):
@@ -607,6 +615,19 @@ class zynthian_gui:
 		self.active_screen='control'
 		self.screens['control'].set_mode_control()
 		logging.debug("SHOW CONTROL-XY => %s, %s" % (xctrl.symbol, yctrl.symbol))
+
+
+	def toggle_favorites(self):
+		if self.curlayer:
+			favshow = self.curlayer.toggle_show_fav_presets()
+			if favshow:
+				self.fav_prev_screen = self.active_screen
+				self.show_screen("preset")
+			elif self.fav_prev_screen:
+					self.show_screen(self.fav_prev_screen)
+					self.fav_prev_screen = None
+			else:
+				self.show_screen("preset")
 
 
 	def set_curlayer(self, layer, save=False):
@@ -680,6 +701,9 @@ class zynthian_gui:
 		elif cuia == "RESTART_UI":
 			self.screens['admin'].restart_gui()
 
+		elif cuia == "EXIT_UI":
+			self.screens['admin'].exit_to_console()
+
 		elif cuia == "RELOAD_MIDI_CONFIG":
 			self.reload_midi_config()
 
@@ -736,9 +760,33 @@ class zynthian_gui:
 		elif cuia == "TOGGLE_MIDI_PLAY":
 			self.screens['midi_recorder'].toggle_playing()
 
+		elif cuia == "START_STEP_SEQ":
+			self.screens['stepseq'].start()
+
+		elif cuia == "PAUSE_STEP_SEQ":
+			self.screens['stepseq'].pause()
+
+		elif cuia == "STOP_STEP_SEQ":
+			self.screens['stepseq'].stop()
+
+		elif cuia == "TOGGLE_STEP_SEQ":
+			self.screens['stepseq'].toggle_transport()
+
 		elif cuia == "SELECT":
 			try:
 				self.get_current_screen().select(params[0])
+			except:
+				pass
+
+		elif cuia == "NEXT":
+			try:
+				self.get_current_screen().next()
+			except:
+				pass
+
+		elif cuia == "PREV":
+			try:
+				self.get_current_screen().prev()
 			except:
 				pass
 
@@ -826,8 +874,8 @@ class zynthian_gui:
 		elif cuia == "SWITCH_SELECT_LONG":
 			self.zynswitch_long(3)
 
-		elif cuia == "SCREEN_ADMIN":
-			self.show_screen("admin")
+		elif cuia == "SCREEN_MAIN":
+			self.show_screen("main")
 
 		elif cuia == "SCREEN_LAYER":
 			self.show_screen("layer")
@@ -841,11 +889,11 @@ class zynthian_gui:
 		elif cuia == "SCREEN_CONTROL":
 			self.show_screen("control")
 
-		elif cuia == "MODAL_SNAPSHOT_LOAD":
-			self.toggle_modal("snapshot", "LOAD")
+		elif cuia == "MODAL_SNAPSHOT":
+			self.toggle_modal("snapshot")
 
-		elif cuia == "MODAL_SNAPSHOT_SAVE":
-			self.toggle_modal("snapshot", "SAVE")
+		elif cuia == "MODAL_ADMIN":
+			self.toggle_modal("admin")
 
 		elif cuia == "MODAL_AUDIO_RECORDER":
 			self.toggle_modal("audio_recorder")
@@ -856,8 +904,14 @@ class zynthian_gui:
 		elif cuia == "MODAL_ALSA_MIXER":
 			self.toggle_modal("alsa_mixer")
 
-		elif cuia == "MODAL_STEPSEQ" and "zynseq" in zynthian_gui_config.experimental_features:
+		elif cuia == "MODAL_STEPSEQ":
 			self.toggle_modal("stepseq")
+
+		elif cuia == "LAYER_CONTROL":
+			try:
+				self.layer_control(self.screens['layer'].root_layers[params[0]-1])
+			except:
+				logging.warning("Can't change to layer {}!".format(params[0]))
 
 
 	def custom_switch_ui_action(self, i, t):
@@ -880,8 +934,11 @@ class zynthian_gui:
 			logging.info("SWITCHES INIT...")
 			for i,pin in enumerate(zynthian_gui_config.zynswitch_pin):
 				self.dtsw.append(ts)
-				lib_zyncoder.setup_zynswitch(i,pin)
-				logging.info("SETUP ZYNSWITCH {} => wpGPIO {}".format(i, pin))
+				if pin>=0:
+					lib_zyncoder.setup_zynswitch(i,pin)
+					logging.info("SETUP ZYNSWITCH {} => wpGPIO {}".format(i, pin))
+				else:
+					logging.info("SKIP ZYNSWITCH {} => Not configured".format(i))
 
 
 	def zynswitches_midi_setup(self, curlayer_chan=None):
@@ -898,10 +955,10 @@ class zynthian_gui:
 					midi_chan = curlayer_chan
 
 				if midi_chan is not None:
-					lib_zyncoder.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'])
-					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}".format(swi, event['type'], midi_chan, event['num']))
+					lib_zyncoder.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
+					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
 				else:
-					lib_zyncoder.setup_zynswitch_midi(swi, 0, 0, 0)
+					lib_zyncoder.setup_zynswitch_midi(swi, 0, 0, 0, 0)
 					logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
 
 		# Configure Zynaptik Analog Inputs (CV-IN)
@@ -918,6 +975,21 @@ class zynthian_gui:
 				else:
 					lib_zyncoder.disable_zynaptik_cvin(i)
 					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
+
+		# Configure Zynaptik Analog Outputs (CV-OUT)
+		for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
+				if midi_chan is not None:
+					lib_zyncoder.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
+					logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncoder.disable_zynaptik_cvout(i)
+					logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
 
 		# Configure Zyntof Inputs (Distance Sensor)
 		for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
@@ -938,19 +1010,20 @@ class zynthian_gui:
 	def zynswitches(self):
 		if lib_zyncoder:
 			for i in range(len(zynthian_gui_config.zynswitch_pin)):
-				dtus=lib_zyncoder.get_zynswitch_dtus(i, zynthian_gui_config.zynswitch_long_us)
-				if dtus>zynthian_gui_config.zynswitch_long_us:
-					self.zynswitch_long(i)
-					return
-				if dtus>zynthian_gui_config.zynswitch_bold_us:
-					# Double switches must be bold!!! => by now ...
-					if self.zynswitch_double(i):
+				if i<4 or zynthian_gui_config.custom_switch_ui_actions[i-4]:
+					dtus=lib_zyncoder.get_zynswitch_dtus(i, zynthian_gui_config.zynswitch_long_us)
+					if dtus>zynthian_gui_config.zynswitch_long_us:
+						self.zynswitch_long(i)
 						return
-					self.zynswitch_bold(i)
-					return
-				if dtus>0:
-					#print("Switch "+str(i)+" dtus="+str(dtus))
-					self.zynswitch_short(i)
+					if dtus>zynthian_gui_config.zynswitch_bold_us:
+						# Double switches must be bold!!! => by now ...
+						if self.zynswitch_double(i):
+							return
+						self.zynswitch_bold(i)
+						return
+					if dtus>0:
+						#print("Switch "+str(i)+" dtus="+str(dtus))
+						self.zynswitch_short(i)
 
 
 	def zynswitch_long(self,i):
@@ -958,7 +1031,7 @@ class zynthian_gui:
 		self.start_loading()
 
 		# Standard 4 ZynSwitches
-		if i==0 and "zynseq" in zynthian_gui_config.experimental_features:
+		if i==0:
 			self.toggle_modal("stepseq")
 
 		elif i==1:
@@ -1012,7 +1085,7 @@ class zynthian_gui:
 				self.show_screen('main')
 
 		elif i==2:
-			self.load_snapshot()
+			self.show_modal('snapshot')
 
 		elif i==3:
 			if self.modal_screen:
@@ -1110,10 +1183,7 @@ class zynthian_gui:
 					self.modal_screen_back = None
 
 		elif i==2:
-			if self.modal_screen=='snapshot':
-				self.screens['snapshot'].next()
-
-			elif self.modal_screen=='audio_recorder':
+			if self.modal_screen=='audio_recorder':
 				self.show_modal('midi_recorder')
 
 			elif self.modal_screen=='midi_recorder':
@@ -1128,19 +1198,14 @@ class zynthian_gui:
 				else:
 					self.enter_midi_learn_mode()
 
-			elif self.active_screen=='bank':
-				self.screens['preset'].enable_only_favs()
-				self.show_screen('preset')
+			elif self.active_screen=='layer':
+				self.screens['layer'].switch_select('B')
 
-			elif self.active_screen=='preset':
-				self.screens['preset'].toggle_only_favs()
-
-			elif len(self.screens['layer'].layers)>0:
-				self.enter_midi_learn_mode()
-				self.show_modal("zs3_learn")
+			elif self.active_screen=='preset' or self.active_screen=='bank':
+				self.toggle_favorites()
 
 			else:
-				self.load_snapshot()
+				self.show_modal("snapshot")
 
 		elif i==3:
 			if self.modal_screen:
@@ -1266,15 +1331,16 @@ class zynthian_gui:
 				ev=lib_zyncoder.read_zynmidi()
 				if ev==0: break
 
-				evtype = (ev & 0xF00000) >> 20
-				chan = (ev & 0x0F0000) >> 16
+				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
 
-				if evtype==0xF and chan==0x8:
+				if (ev & 0xFF0000)==0xF80000:
 					self.status_info['midi_clock'] = True
 				else:
 					self.status_info['midi'] = True
 
-				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
+				evtype = (ev & 0xF00000) >> 20
+				chan = (ev & 0x0F0000) >> 16
+
 				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
 				# System Messages
@@ -1374,6 +1440,19 @@ class zynthian_gui:
 						#if not self.modal_screen and self.curlayer and chan==self.curlayer.get_midi_chan():
 						#	self.show_screen('control')
 
+				# Control Change ...
+				elif evtype==0xB:
+					self.screens['midi_chan'].midi_chan_activity(chan)
+					ccnum=(ev & 0x7F00)>>8
+					ccval=(ev & 0x007F)
+					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
+					# If MIDI learn pending ...
+					if self.midi_learn_zctrl:
+						self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
+					# Try layer's zctrls
+					else:
+						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
+
 				# Note-On ...
 				elif evtype==0x9:
 					self.screens['midi_chan'].midi_chan_activity(chan)
@@ -1387,18 +1466,9 @@ class zynthian_gui:
 						note = (ev & 0x7F00)>>8
 						self.screens['midi_key_range'].learn_note_range(note)
 
-				# Control Change ...
-				elif evtype==0xB:
-					self.screens['midi_chan'].midi_chan_activity(chan)
-					ccnum=(ev & 0x7F00)>>8
-					ccval=(ev & 0x007F)
-					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
-					# If MIDI learn pending ...
-					if self.midi_learn_zctrl:
-						self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
-					# Try layer's zctrls
-					else:
-						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
+				# Pitch Bending ...
+				elif evtype==0xE:
+					pass
 
 		except Exception as err:
 			self.reset_loading()

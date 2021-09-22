@@ -27,21 +27,14 @@ import sys
 import logging
 
 # Zynthian specific modules
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian Bank Selection GUI Class
 #------------------------------------------------------------------------------
 
 class zynthian_gui_bank(zynthian_gui_selector):
-
-	buttonbar_config = [
-		(1, 'BACK'),
-		(0, 'LAYER'),
-		(2, 'FAVS'),
-		(3, 'SELECT')
-	]
 
 	def __init__(self):
 		super().__init__('Bank', True)
@@ -60,23 +53,34 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if not self.zyngui.curlayer:
 			logging.error("Can't show bank list for None layer!")
 			return
+		self.zyngui.curlayer.set_show_fav_presets(False)
 		self.index=self.zyngui.curlayer.get_bank_index()
 		logging.debug("BANK INDEX => %s" % self.index)
 		super().show()
 
 
 	def select_action(self, i, t='S'):
-		if self.zyngui.curlayer.set_bank(i):
-			self.zyngui.screens['preset'].disable_only_favs()
-			if self.zyngui.modal_screen=="preset":
-				self.zyngui.show_modal('preset')
-			else:
-				self.zyngui.show_screen('preset')
-			# If there is only one preset, jump to instrument control
-			if len(self.zyngui.curlayer.preset_list)<=1:
-				self.zyngui.screens['preset'].select_action(0)
+		if self.list_data[i][0]=='*FAVS*':
+			self.zyngui.curlayer.set_show_fav_presets(True)
 		else:
-			self.show()
+			if not self.zyngui.curlayer.set_bank(i):
+				self.show()
+				return
+			else:
+				self.zyngui.curlayer.set_show_fav_presets(False)
+	
+		if self.zyngui.modal_screen=="preset":
+			self.zyngui.show_modal('preset')
+		else:
+			self.zyngui.show_screen('preset')
+
+		# If there is only one preset, jump to instrument control
+		if len(self.zyngui.curlayer.preset_list)<=1:
+			self.zyngui.screens['preset'].select_action(0)
+
+
+	def set_selector(self, zs_hiden=False):
+		super().set_selector(zs_hiden)
 
 
 	def set_select_path(self):

@@ -78,6 +78,7 @@ class zynthian_engine_mixer(zynthian_engine):
 			'note_range': False,
 			'audio_route': False,
 			'midi_chan': False,
+			'replace': False,
 			'drop_pc': False
 		}
 

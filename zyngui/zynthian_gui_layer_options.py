@@ -27,8 +27,8 @@ import sys
 import logging
 
 # Zynthian specific modules
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian Layer Options GUI Class
@@ -60,9 +60,9 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		# Effect Layer Options
 		if self.audiofx_layer:
 			if len(self.audiofx_layer.preset_list)>1:
-				self.list_data.append((self.audiofx_presets, None, "Audio-FX Presets"))
+				self.list_data.append((self.audiofx_presets, None, "Presets"))
 
-			self.list_data.append((self.audiofx_replace, None, "Replace Audio-FX"))
+			self.list_data.append((self.audiofx_replace, None, "Replace"))
 
 			if self.audiofx_can_move_upchain():
 				self.list_data.append((self.audiofx_move_upchain, None, "Move Upchain"))
@@ -70,13 +70,13 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if self.audiofx_can_move_downchain():
 				self.list_data.append((self.audiofx_move_downchain, None, "Move Downchain"))
 
-			self.list_data.append((self.audiofx_remove, None, "Remove Audio-FX"))
+			self.list_data.append((self.audiofx_remove, None, "Remove"))
 
 		elif self.midifx_layer:
 			if len(self.midifx_layer.preset_list)>1:
-				self.list_data.append((self.midifx_presets, None, "MIDI-FX Presets"))
+				self.list_data.append((self.midifx_presets, None, "Presets"))
 
-			self.list_data.append((self.midifx_replace, None, "Replace MIDI-FX"))
+			self.list_data.append((self.midifx_replace, None, "Replace"))
 
 			if self.midifx_can_move_upchain():
 				self.list_data.append((self.midifx_move_upchain, None, "Move Upchain"))
@@ -84,18 +84,18 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if self.midifx_can_move_downchain():
 				self.list_data.append((self.midifx_move_downchain, None, "Move Downchain"))
 
-			self.list_data.append((self.midifx_remove, None, "Remove MIDI-FX"))
+			self.list_data.append((self.midifx_remove, None, "Remove"))
 
 		# Root Layer Options
 		else:
-			self.layer = self.zyngui.screens['layer'].root_layers[self.layer_index]
+			self.layer = self.zyngui.screens['layer'].get_root_layers()[self.layer_index]
 
 			self.audiofx_layers = self.zyngui.screens['layer'].get_fxchain_layers(self.layer)
-			if self.audiofx_layers and len(self.audiofx_layers)>0:
+			if self.audiofx_layers and len(self.audiofx_layers)>0 and self.layer.engine.type!="Audio Effect":
 				self.audiofx_layers.remove(self.layer)
 
 			self.midifx_layers = self.zyngui.screens['layer'].get_midichain_layers(self.layer)
-			if self.midifx_layers and len(self.midifx_layers)>0:
+			if self.midifx_layers and len(self.midifx_layers)>0 and self.layer.engine.type!="MIDI Tool":
 				self.midifx_layers.remove(self.layer)
 
 			# Add root layer options
@@ -124,6 +124,9 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 			self.list_data.append((self.layer_midi_unlearn, None, "Clean MIDI-Learn"))
 
+			if self.layer.engine.type=="MIDI Synth" and 'replace' in eng_options and eng_options['midi_chan']:
+				self.list_data.append((self.layer_replace, None, "Replace Synth"))
+
 			if 'indelible' not in eng_options or not eng_options['indelible']:
 				self.list_data.append((self.layer_remove, None, "Remove Layer"))
 
@@ -136,7 +139,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 					self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
 
 				if len(self.audiofx_layers)>0:
-					self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
+					if self.layer.engine.type=="MIDI Synth":
+						self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
 					# Add Audio-FX layers
 					sl0 = None
 					for sl in self.audiofx_layers:
@@ -156,7 +160,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 					self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 
 				if len(self.midifx_layers)>0:
-					self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
+					if self.layer.engine.type=="MIDI Synth":
+						self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
 					# Add MIDI-FX layers
 					sl0 = None
 					for sl in self.midifx_layers:
@@ -282,6 +287,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.zyngui.show_modal('audio_in')
 
 
+	def layer_replace(self):
+		self.zyngui.screens['layer'].replace_layer(self.zyngui.screens['layer'].get_layer_index(self.layer))
+
+
 	def layer_remove(self):
 		self.zyngui.show_confirm("Do you really want to remove this layer?", self.layer_remove_confirmed)
 
@@ -302,8 +311,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	# FX-Chain management
 
 	def audiofx_add(self):
-		midi_chan=self.layer.midi_chan
-		self.zyngui.screens['layer'].add_fxchain_layer(midi_chan)
+		self.zyngui.screens['layer'].add_fxchain_layer(self.layer.midi_chan)
 
 
 	def audiofx_reset(self):
@@ -330,7 +338,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def audiofx_can_move_upchain(self):
 		ups = self.zyngui.screens['layer'].get_fxchain_upstream(self.audiofx_layer)
-		if len(ups)>0 and self.layer not in ups:
+		if len(ups)>0 and (self.layer.engine.type!="MIDI Synth" or self.layer not in ups):
 			return True
 
 
@@ -342,7 +350,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def audiofx_can_move_downchain(self):
 		downs = self.zyngui.screens['layer'].get_fxchain_downstream(self.audiofx_layer)
-		if len(downs)>0 and self.layer not in downs:
+		if len(downs)>0 and (self.layer.engine.type!="MIDI Synth" or self.layer not in downs):
 			return True
 
 
@@ -353,7 +361,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def audiofx_replace(self):
-		midi_chan=self.layer.midi_chan
 		self.zyngui.screens['layer'].replace_fxchain_layer(self.audiofx_layer_index)
 
 
@@ -365,8 +372,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	# MIDI-Chain management
 
 	def midifx_add(self):
-		midi_chan=self.layer.midi_chan
-		self.zyngui.screens['layer'].add_midichain_layer(midi_chan)
+		self.zyngui.screens['layer'].add_midichain_layer(self.layer.midi_chan)
 
 
 	def midifx_reset(self):
@@ -393,7 +399,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def midifx_can_move_upchain(self):
 		ups = self.zyngui.screens['layer'].get_midichain_upstream(self.midifx_layer)
-		if len(ups)>0 and self.layer not in ups:
+		if len(ups)>0 and (self.layer.engine.type!="MIDI Synth" or self.layer not in ups):
 			return True
 
 
@@ -405,7 +411,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def midifx_can_move_downchain(self):
 		downs = self.zyngui.screens['layer'].get_midichain_downstream(self.midifx_layer)
-		if len(downs)>0 and self.layer not in downs:
+		if len(downs)>0 and (self.layer.engine.type!="MIDI Synth" or self.layer not in downs):
 			return True
 
 
@@ -416,7 +422,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def midifx_replace(self):
-		midi_chan=self.layer.midi_chan
 		self.zyngui.screens['layer'].replace_midichain_layer(self.midifx_layer_index)
 
 
@@ -429,11 +434,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.audiofx_layer:
-			self.select_path.set("{} > Options".format(self.audiofx_layer.get_basepath()))
-		elif self.audiofx_layer:
-			self.select_path.set("{} > Options".format(self.midifx_layer.get_basepath()))
+			self.select_path.set("{} > Audio-FX Options".format(self.audiofx_layer.get_basepath()))
+		elif self.midifx_layer:
+			self.select_path.set("{} > MIDI-FX Options".format(self.midifx_layer.get_basepath()))
 		elif self.layer:
-			self.select_path.set("{} > Options".format(self.layer.get_basepath()))
+			self.select_path.set("{} > Layer Options".format(self.layer.get_basepath()))
 		else:
 			self.select_path.set("Layer Options")
 

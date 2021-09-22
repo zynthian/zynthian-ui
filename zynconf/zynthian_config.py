@@ -48,7 +48,9 @@ CustomSwitchActionType = [
 	"UI_ACTION",
 	"MIDI_CC",
 	"MIDI_NOTE",
-	"MIDI_PROG_CHANGE"
+	"MIDI_PROG_CHANGE",
+	"CVGATE_IN",
+	"CVGATE_OUT"
 ];
 
 ZynSensorActionType = [
@@ -63,6 +65,11 @@ CustomUiAction = [
 	"POWER_OFF",
 	"REBOOT",
 	"RESTART_UI",
+	"EXIT_UI",
+
+	"LAST_STATE_ACTION",
+	"RELOAD_MIDI_CONFIG",
+	"RELOAD_KEY_BINDING",
 
 	"ALL_NOTES_OFF",
 	"ALL_SOUNDS_OFF",
@@ -83,10 +90,20 @@ CustomUiAction = [
 	"TOGGLE_MIDI_PLAY",
 
 	"START_STEP_SEQ",
-	"CONTINUE_STEP_SEQ",
+	"PAUSE_STEP_SEQ",
 	"STOP_STEP_SEQ",
+	"TOGGLE_STEP_SEQ",
 
 	"SELECT",
+	"NEXT",
+	"PREV",
+	
+	"LAYER_UP",
+	"LAYER_DOWN",
+	"BACK_UP",
+	"BACK_DOWN",
+	"SNAPSHOT_UP",
+	"SNAPSHOT_DOWN",
 	"SELECT_UP",
 	"SELECT_DOWN",
 
@@ -103,18 +120,20 @@ CustomUiAction = [
 	"SWITCH_SELECT_BOLD",
 	"SWITCH_SELECT_LONG",
 	
-	"SCREEN_ADMIN",
+	"SCREEN_MAIN",
 	"SCREEN_LAYER",
 	"SCREEN_BANK",
 	"SCREEN_PRESET",
 	"SCREEN_CONTROL",
 
-	"MODAL_SNAPSHOT_LOAD",
-	"MODAL_SNAPSHOT_SAVE",
+	"MODAL_SNAPSHOT",
+	"MODAL_ADMIN",
 	"MODAL_AUDIO_RECORDER",
 	"MODAL_MIDI_RECORDER",
 	"MODAL_ALSA_MIXER",
-	"MODAL_STEPSEQ"
+	"MODAL_STEPSEQ",
+
+	"LAYER_CONTROL"
 ];
 
 #-------------------------------------------------------------------------------

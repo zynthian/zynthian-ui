@@ -30,8 +30,8 @@ from datetime import datetime
 
 # Zynthian specific modules
 from zyncoder import *
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian MIDI Channel Selection GUI Class
@@ -72,8 +72,6 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		elif self.mode=='CLONE':
 			for i in self.chan_list:
 				if i in (self.midi_chan, zynthian_gui_config.master_midi_channel):
-					continue
-
 					continue
 				elif zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, i):
 					cc_to_clone = zyncoder.lib_zyncoder.get_midi_filter_clone_cc(self.midi_chan, i).nonzero()[0]
@@ -122,7 +120,8 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 				logging.info("LAYER {} -> MIDI CHANNEL = {}".format(layer.get_path(), selchan))
 
 			self.zyngui.zynautoconnect_midi()
-			self.zyngui.show_modal('layer_options')
+			self.zyngui.set_active_channel()
+			self.zyngui.close_modal()
 
 		elif self.mode=='CLONE':
 
@@ -130,11 +129,10 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 				if t=='S':
 					if zyncoder.lib_zyncoder.get_midi_filter_clone(self.midi_chan, selchan):
 						zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, selchan, 0)
-						self.update_list()
 					else:
 						zyncoder.lib_zyncoder.set_midi_filter_clone(self.midi_chan, selchan, 1)
-						self.update_list()
-
+						
+					self.update_list()
 					logging.info("CLONE MIDI CHANNEL {} => {}".format(self.midi_chan, selchan))
 
 				elif t=='B':

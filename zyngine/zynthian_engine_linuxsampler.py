@@ -67,7 +67,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	# Controller Screens
 	_ctrl_screens=[
-		['main',['volume','sostenuto','pan','sustain']],
+		['main',['volume','pan','sostenuto','sustain']],
 		['portamento',['legato on/off','portamento on/off','portamento time-coarse','portamento time-fine']]
 	]
 
@@ -282,7 +282,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 						filename = filename[len(preset_dpath)+1:]
 						title=filename.replace('_', ' ')
 						engine=filext[1:].lower()
-						preset_list.append([f,i,title,engine,"{}.{}".format(filename,filext)])
+						preset_list.append([f,i,title,engine,"{}{}".format(filename,filext)])
 						i=i+1
 		return preset_list
 
@@ -522,7 +522,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		fname, ext = os.path.splitext(fullpath)
-		if ext[0]=='.':
+		if ext and ext[0]=='.':
 			head, tail = os.path.split(fullpath)
 			return head
 		else:
@@ -537,18 +537,19 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		if os.path.isdir(dpath):
 			# Locate sfz files and move all them to first level directory
 			try:
-				sfz_files = check_output("find \"{}\" -type f -iname *.sfz".format(dpath), shell=True).decode("utf-8").split("\n")
+				cmd = "find \"{}\" -type f -iname *.sfz".format(dpath)
+				sfz_files = check_output(cmd, shell=True).decode("utf-8").split("\n")
 				# Find the "shallower" SFZ file 
 				shallower_sfz_file = sfz_files[0]
 				for f in sfz_files:
-					if len(f)<len(shallower_sfz_file):
+					if f and (f.count('/') < shallower_sfz_file.count('/')):
 						shallower_sfz_file = f
 				head, tail = os.path.split(shallower_sfz_file)
 				# Move SFZ stuff to the top level
-				if head!=dpath:
+				if head and head!=dpath:
 					for f in glob.glob(head + "/*"):
 						shutil.move(f, dpath)
-					#shutil.rmtree(head)
+					shutil.rmtree(head)
 			except:
 				raise Exception("Directory doesn't contain any SFZ file")
 

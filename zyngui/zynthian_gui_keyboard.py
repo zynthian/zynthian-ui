@@ -42,6 +42,8 @@ ENC_LAYER			= 0
 ENC_BACK			= 1
 ENC_SNAPSHOT		= 2
 ENC_SELECT			= 3
+OSK_NUMPAD			= 0
+OSK_QWERTY			= 1
 
 # Class implements renaming dialog
 class zynthian_gui_keyboard():
@@ -49,19 +51,19 @@ class zynthian_gui_keyboard():
 	# Function to initialise class
 	#	function: Callback function called when <Enter> pressed
 	def __init__(self):
+
 		self.zyncoder = get_lib_zyncoder()
 		self.zyngui = zynthian_gui_config.zyngui
 		self.columns = 10 # Quantity of columns in keyboard grid
 		self.rows = 5 # Quantity of rows in keyboard grid
 		self.shift = 0 # 0=Normal, 1=Shift, 2=Shift lock
-		self.buttons = [] # Array of buttons in keyboard layout
+		self.buttons = [] # Array of [rectangle id, label id] for buttons in keyboard layout
 		self.selected_button = 44 # Index of highlighted button
+		self.mode = OSK_QWERTY # Keyboard layout mode
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
-		self.key_width = (self.width - 2) / self.columns
-		self.key_height = (self.height - 2) / self.rows
 
 		# Create main frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
@@ -82,28 +84,56 @@ class zynthian_gui_keyboard():
 		self.key_canvas = tkinter.Canvas(self.main_frame, width=self.width, height = self.height, bg="grey")
 		self.key_canvas.grid_propagate(False)
 		self.key_canvas.grid(column=0, row=1, sticky="nesw")
-		for row in range(self.rows - 1):
-			for col in range(self.columns):
-				self.add_button("", col, row)
-		row = row + 1
-		# Add special keys
-		self.btn_cancel = self.add_button('Cancel', 0, row, 2)
-		self.btn_shift = self.add_button('Shift', 2, row, 1)
-		self.btn_space = self.add_button(' ', 3, row, 4)
-		self.btn_delete = self.add_button('Delete', 7, row, 1)
-		self.btn_enter = self.add_button('Enter', 8, row, 2)
+		self.set_mode(OSK_QWERTY)
 
-		self.refresh_keys()
-
-		self.highlight_box = self.key_canvas.create_rectangle(0, 0, self.key_width, self.key_height, outline="red", width=2)
 		self.highlight(self.selected_button)
 		self.hold_timer = Timer(0.8, self.bold_press)
 		self.shown = False
 
 
+	# Function to populate keyboard with keys for requested mode
+	#	mode: OSK mode [OSK_NUMPAD | OSK_QWERTY]
+	def set_mode(self, mode):
+		self.mode = mode
+		self.key_canvas.delete('all')
+		self.buttons = []
+		if mode == OSK_NUMPAD:
+			self.columns = 6
+			self.rows = 4
+			span = 2
+		else:
+			self.columns = 10
+			self.rows = 5
+			span = 1
+		self.key_width = (self.width - 2) / self.columns
+		self.key_height = (self.height - 2) / self.rows
+		for row in range(self.rows - 1):
+			for col in range(0, self.columns, span):
+				self.add_button("", col, row, span)
+		row = row + 1
+		# Add special keys
+		self.btn_cancel = self.add_button('Cancel', 0, row, 2)
+		if mode != OSK_NUMPAD:
+			self.btn_shift = self.add_button('Shift', 2, row, 1)
+		if mode == OSK_NUMPAD:
+			self.btn_space = self.add_button('0', 2, row, span)
+			self.btn_delete = self.add_button('Delete', 4, row, 1)
+			self.btn_enter = self.add_button('Enter', 5, row, 1)
+		else:
+			self.btn_space = self.add_button(' ', 3, row, 4)
+			self.btn_delete = self.add_button('Delete', 7, row, 1)
+			self.btn_enter = self.add_button('Enter', 8, row, 2)
+		self.highlight_box = self.key_canvas.create_rectangle(0, 0, self.key_width, self.key_height, outline="red", width=2)
+		self.refresh_keys()
+
+
 	# Function to draw keyboard
 	def refresh_keys(self):
-		if self.shift:
+		if self.mode == OSK_NUMPAD:
+			self.keys = ['1','2','3',
+						'4','5','6',
+						'7','8','9']
+		elif self.shift:
 			self.keys = ['!','£','$','€','%','*','(',')','+','-',
 						'Q','W','E','R','T','Y','U','I','O','P',
 						'A','S','D','F','G','H','J','K','L','[',
@@ -167,22 +197,25 @@ class zynthian_gui_keyboard():
 		#TODO: Use button ID for special function to allow localisation
 		self.selected_button = key
 		shift = self.shift
-		if key == self.btn_enter:
+		if key < len(self.keys):
+			self.text= self.text+ self.keys[key]
+		elif key == self.btn_enter:
+			self.zyngui.close_modal()
 			self.function(self.text)
+			return
+		elif key == self.btn_cancel:
 			self.zyngui.zynswitch_defered('S', ENC_BACK)
 			return
-		if key == self.btn_cancel:
-			self.zyngui.zynswitch_defered('S', ENC_BACK)
-			return
-		if key == self.btn_delete:
+		elif key == self.btn_delete:
 			if bold:
 				self.text= ""
 			else:
 				self.text= self.text[:-1]
 		elif key == self.btn_space:
-			self.text= self.text+ " "
-		elif key < len(self.keys):
-			self.text= self.text+ self.keys[key]
+			if self.mode == OSK_NUMPAD:
+				self.text= self.text+ "0"
+			else:
+				self.text= self.text+ " "
 		if key == self.btn_shift:
 			self.shift += 1
 			if self.shift > 2:
@@ -208,8 +241,9 @@ class zynthian_gui_keyboard():
 		if key >= len(self.buttons):
 			return
 		box = self.key_canvas.bbox(self.buttons[key][0])
-		self.key_canvas.coords(self.highlight_box, box[0]+1, box[1]+1, box[2], box[3])
-		self.selected_button = key
+		if box:
+			self.key_canvas.coords(self.highlight_box, box[0]+1, box[1]+1, box[2], box[3])
+			self.selected_button = key
 
 
 	# Function to hide dialog
@@ -230,7 +264,8 @@ class zynthian_gui_keyboard():
 		self.max_len = max_len
 		self.text_canvas.itemconfig(self.text_label, text=self.text)
 		if not self.shown:
-			self.selected_button = 44
+			self.selected_button = self.btn_enter
+			self.highlight(self.selected_button)
 			self.setup_encoders()
 			self.main_frame.grid()
 			self.shown=True
@@ -260,34 +295,40 @@ class zynthian_gui_keyboard():
 				self.selected_button = 0
 			self.highlight(self.selected_button)
 		elif encoder == ENC_BACK:
-			selection = self.selected_button + value * self.columns
-			if value < 0:
-				if self.selected_button == self.btn_shift:
-					selection = 32
-				elif self.selected_button == self.btn_space:
-					selection = 33
-				elif self.selected_button == self.btn_delete:
-					selection = 37
-				elif self.selected_button == self.btn_enter:
-					selection = 38
-			elif value > 0:
-				if self.selected_button in [30,31]:
+			selection = self.selected_button + value * int(len(self.keys) / (self.rows - 1))
+			if self.mode == OSK_NUMPAD:
+				if value < 0 and self.selected_button == self.btn_enter:
+					selection = 8
+				elif value > 0 and self.selected_button == self.btn_cancel:
 					selection = self.btn_cancel
-				elif self.selected_button in [32]:
-					selection = self.btn_shift
-				elif self.selected_button in [33,34,35,36]:
-					selection = self.btn_space
-				elif self.selected_button in [37]:
-					selection = self.btn_delete
-				elif self.selected_button in [38,39]:
-					selection = self.btn_enter
+			else:
+				if value < 0:
+					if self.selected_button == self.btn_shift:
+						selection = 32
+					elif self.selected_button == self.btn_space:
+						selection = 33
+					elif self.selected_button == self.btn_delete:
+						selection = 37
+					elif self.selected_button == self.btn_enter:
+						selection = 38
+				elif value > 0:
+					if self.selected_button in [30,31]:
+						selection = self.btn_cancel
+					elif self.selected_button in [32]:
+						selection = self.btn_shift
+					elif self.selected_button in [33,34,35,36]:
+						selection = self.btn_space
+					elif self.selected_button in [37]:
+						selection = self.btn_delete
+					elif self.selected_button in [38,39]:
+						selection = self.btn_enter
 			if selection < 0 or selection >= self.columns * (self.rows):
 				return
 			self.highlight(selection)
 
 
 	# Function to handle zyncoder polling
-	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +1 and calculate offset
+	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at +64 and calculate offset
 	def zyncoder_read(self):
 		if not self.shown:
 			return

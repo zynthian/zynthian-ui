@@ -37,7 +37,7 @@ from tkinter import font as tkFont
 # Zynthian specific modules
 from zyncoder import *
 from zyngine import zynthian_controller
-from . import zynthian_gui_config
+from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # Controller GUI Class
@@ -650,7 +650,9 @@ class zynthian_gui_controller:
 				else:
 					pin_a=zynthian_gui_config.zyncoder_pin_a[self.index]
 					pin_b=zynthian_gui_config.zyncoder_pin_b[self.index]
-				zyncoder.lib_zyncoder.setup_zyncoder(self.index,pin_a,pin_b,self.zctrl.midi_chan,midi_cc,osc_path_char,int(self.mult*self.value),int(self.mult*(self.max_value-self.val0)),self.step)
+				if pin_a<0 or pin_b<0:
+					pin_a = pin_b = 0
+				zyncoder.lib_zyncoder.setup_zyncoder(self.index, pin_a, pin_b, self.zctrl.midi_chan, midi_cc, osc_path_char, int(self.mult*self.value), int(self.mult*(self.max_value-self.val0)), self.step)
 		except Exception as err:
 			logging.error("%s" % err)
 
@@ -714,9 +716,9 @@ class zynthian_gui_controller:
 					self.zyngui.zynswitch_defered('B',self.index)
 				elif dts>=2:
 					self.zyngui.zynswitch_defered('L',self.index)
-			elif self.canvas_motion_dx>20:
+			elif self.canvas_motion_dx>self.width//2:
 				self.zyngui.zynswitch_defered('X',self.index)
-			elif self.canvas_motion_dx<-20:
+			elif self.canvas_motion_dx<-self.width//2:
 				self.zyngui.zynswitch_defered('Y',self.index)
 
 
@@ -725,7 +727,8 @@ class zynthian_gui_controller:
 			dts=(datetime.now()-self.canvas_push_ts).total_seconds()
 			if dts>0.1:
 				dy=self.canvas_motion_y0-event.y
-				if dy!=0:
+				dx=event.x-self.canvas_motion_x0
+				if abs(dy)>abs(dx):
 					#logging.debug("CONTROL %d MOTION Y => %d, %d: %d" % (self.index, event.y, dy, self.value+dy))
 					if self.inverted:
 						self.set_value(self.value-dy, True)
@@ -735,8 +738,7 @@ class zynthian_gui_controller:
 					if self.canvas_motion_dy+dy!=0:
 						self.canvas_motion_count=self.canvas_motion_count+1
 					self.canvas_motion_dy=dy
-				dx=event.x-self.canvas_motion_x0
-				if dx!=0:
+				elif dx!=0:
 					#logging.debug("CONTROL %d MOTION X => %d, %d" % (self.index, event.x, dx))
 					if abs(self.canvas_motion_dx-dx)>0:
 						self.canvas_motion_count=self.canvas_motion_count+1

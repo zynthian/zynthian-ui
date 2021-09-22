@@ -54,6 +54,7 @@ class zynthian_layer:
 		self.bank_name = None
 		self.bank_info = None
 
+		self.show_fav_presets = False
 		self.preset_list = []
 		self.preset_index = 0
 		self.preset_name = None
@@ -126,7 +127,9 @@ class zynthian_layer:
 
 
 	def load_bank_list(self):
-		self.bank_list=self.engine.get_bank_list(self)
+		self.bank_list = self.engine.get_bank_list(self)
+		if len(self.engine.get_preset_favs(self))>0:
+			self.bank_list = [["*FAVS*",0,"*** Favorites ***"]] + self.bank_list
 		logging.debug("BANK LIST => \n%s" % str(self.bank_list))
 
 
@@ -182,10 +185,10 @@ class zynthian_layer:
 	# ---------------------------------------------------------------------------
 
 
-	def load_preset_list(self, only_favs=False):
+	def load_preset_list(self):
 		preset_list = []
 
-		if only_favs:
+		if self.show_fav_presets:
 			for v in self.get_preset_favs().values():
 				preset_list.append(v[1])
 
@@ -319,6 +322,26 @@ class zynthian_layer:
 	def get_preset_favs(self):
 		return self.engine.get_preset_favs(self)
 
+
+	def set_show_fav_presets(self, flag=True):
+		if flag:
+			self.show_fav_presets = True
+			self.reset_preset()
+		else:
+			self.show_fav_presets = False
+
+
+	def get_show_fav_presets(self):
+		return self.show_fav_presets
+
+
+	def toggle_show_fav_presets(self):
+		if self.show_fav_presets:
+			self.set_show_fav_presets(False)
+		else:
+			self.set_show_fav_presets(True)
+		return self.show_fav_presets
+
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
@@ -342,7 +365,8 @@ class zynthian_layer:
 			
 		#Set active the first screen
 		if len(self.ctrl_screens_dict)>0:
-			self.active_screen_index=0
+			if self.active_screen_index==-1:
+				self.active_screen_index=0
 		else:
 			self.active_screen_index=-1
 
@@ -359,7 +383,10 @@ class zynthian_layer:
 
 
 	def get_active_screen_index(self):
+		if self.active_screen_index>=len(self.ctrl_screens_dict):
+			self.active_screen_index = len(self.ctrl_screens_dict)-1
 		return self.active_screen_index
+			
 
 
 	def set_active_screen_index(self, i):
@@ -451,6 +478,7 @@ class zynthian_layer:
 			'preset_index': self.preset_index,
 			'preset_name': self.preset_name,
 			'preset_info': self.preset_info,
+			'show_fav_presets': self.show_fav_presets,
 			'controllers_dict': {},
 			'zs3_list': self.zs3_list,
 			'active_screen_index': self.active_screen_index
@@ -465,6 +493,9 @@ class zynthian_layer:
 
 		self.wait_stop_loading()
 
+		if 'show_fav_presets' in snapshot:
+			self.set_show_fav_presets(snapshot['show_fav_presets'])
+
 		#Load bank list and set bank
 		try:
 			self.bank_name=snapshot['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
@@ -478,12 +509,11 @@ class zynthian_layer:
 		self.wait_stop_loading()
 	
 		#Load preset list and set preset
-		#try:
-		self.load_preset_list()
-		self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
-
-		#except Exception as e:
-			#logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
+		try:
+			self.load_preset_list()
+			self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
+		except Exception as e:
+			logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
 
 		self.wait_stop_loading()
 
@@ -499,7 +529,7 @@ class zynthian_layer:
 		#Set active screen
 		if 'active_screen_index' in snapshot:
 			self.active_screen_index=snapshot['active_screen_index']
-
+			
 
 	def restore_snapshot_2(self, snapshot):
 
@@ -635,12 +665,14 @@ class zynthian_layer:
 
 
 	def set_audio_out(self, ao):
+		self.audio_out = copy.copy(ao)
+
 		#Fix legacy routing (backward compatibility with old snapshots)
-		if "system" in ao:
-			ao.remove("system")
-			ao += ["system:playback_1", "system:playback_2"]
-			
-		self.audio_out=ao
+		if "system" in self.audio_out:
+			self.audio_out.remove("system")
+			self.audio_out += ["system:playback_1", "system:playback_2"]
+
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -652,6 +684,7 @@ class zynthian_layer:
 			self.audio_out.append(jackname)
 			logging.debug("Connecting Audio Output {} => {}".format(self.get_audio_jackname(), jackname))
 
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -665,6 +698,7 @@ class zynthian_layer:
 		except:
 			pass
 
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -677,17 +711,28 @@ class zynthian_layer:
 		else:
 			self.audio_out.remove(jackname)
 
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
 	def reset_audio_out(self):
-		self.audio_out=["system:playback_1", "system:playback_2"]
+		self.audio_out = ["system:playback_1", "system:playback_2"]
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
 	def mute_audio_out(self):
-		self.audio_out=[]
+		self.audio_out = []
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
+
+
+	def pair_audio_out(self):
+		if not self.engine.options['layer_audio_out']:
+			for l in self.engine.layers:
+				if l!=self:
+					l.audio_out = self.audio_out
+					#logging.debug("Pairing CH#{} => {}".format(l.midi_chan,l.audio_out))
 
 
 	# ---------------------------------------------------------------------------
@@ -699,8 +744,8 @@ class zynthian_layer:
 		return self.audio_in
 
 
-	def set_audio_in(self, ai):		
-		self.audio_in=ai
+	def set_audio_in(self, ai):
+		self.audio_in = copy.copy(ai)
 		self.zyngui.zynautoconnect_audio()
 
 

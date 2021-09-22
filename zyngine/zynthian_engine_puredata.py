@@ -81,6 +81,7 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.jackname = "pure_data"
 
 		self.options['midi_route'] = True
+		self.options['replace'] = False
 
 		self.preset = ""
 		self.preset_config = None
@@ -279,6 +280,8 @@ class zynthian_engine_puredata(zynthian_engine):
 
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
+		if not bank_path:
+			raise Exception("You must select a destiny bank folder!")
 		if os.path.isdir(dpath):
 			shutil.move(dpath, bank_path)
 			#TODO Test if it's a PD bundle

@@ -30,8 +30,8 @@ from ctypes import c_ubyte
 
 # Zynthian specific modules
 from zyncoder import *
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian MIDI Channel Selection GUI Class

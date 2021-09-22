@@ -32,10 +32,10 @@ import ctypes
 
 # Zynthian specific modules
 import zynconf
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
-from . import zynthian_gui_controller
 from zyngine import zynthian_controller
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
 from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)

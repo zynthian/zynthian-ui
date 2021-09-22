@@ -113,7 +113,7 @@ def transport_stop(client):
 
 #	Toggle JACK transport
 #	client: Nameto register or was previously registered with transport when started
-def transport_togle(client):
+def transport_toggle(client):
 	if libseq:
 		libseq.transportToggle(bytes(client, "utf-8"))
 

@@ -43,8 +43,6 @@
             A collection of tracks which will play synchronously
         Bank:
             A collection of sequences
-
-    Call init() to initialise JACK client
 */
 
 #include "constants.h"
@@ -62,17 +60,16 @@ extern "C"
 
 // ** Library management functions **
 
+/** @brief  Initialise library and connect to jackd server
+*   @param  name Client name
+*   @note   Call init() before any other functions will work
+*/
+void init(char* name);
+
 /** @brief  Check if any changes have occured since last save
 *   @retval bool True if changed since last save
 */
 bool isModified();
-
-/** @brief  Initialise JACK client
-*   @param  bTimebaseMaster True to become timebase master (optional - Default: false)
-*   @note   Call init() before using other library methods
-*   @retval bool True on success
-*/
-bool init(bool bTimebaseMaster = false);
 
 /** @brief  Enable debug output
 *   @param  bEnable True to enable debug output
@@ -473,6 +470,13 @@ void setPlayMode(uint8_t bank, uint8_t sequence, uint8_t mode);
 */
 uint8_t getPlayState(uint8_t bank, uint8_t sequence);
 
+/**	@brief	Check if sequence is empty (all patterns have no events)
+*   @param  bank Index of bank containing sequence
+*   @param  sequence Index (sequence) of sequence within bank
+*	@retval bool True if sequence empty else false if any pattern in sequence has any events
+*/
+bool isEmpty(uint8_t bank, uint8_t sequence);
+
 /** @brief  Set play state
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
@@ -651,6 +655,10 @@ void insertSequence(uint8_t bank, uint8_t sequence);
 *   @note   Sequences after remove point are moved down by one. Bank grows if sequence is higher than size of bank
 */
 void removeSequence(uint8_t bank, uint8_t sequence);
+
+/** @brief Update all sequence lengths and empty status
+*/
+void updateSequenceInfo();
 
 
 // ** Bank management functions **

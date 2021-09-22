@@ -34,8 +34,9 @@ from subprocess import check_output, Popen, PIPE, STDOUT
 
 # Zynthian specific modules
 import zynconf
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
+from zyncoder import *
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #-------------------------------------------------------------------------------
 # Zynthian Admin GUI Class
@@ -90,9 +91,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Audio Levels on Snapshots"))
 
 		if zynthian_gui_config.midi_filter_output:
-			self.list_data.append((self.toggle_midi_filter_output,0,"[x] MIDI Filter Ouput"))
+			self.list_data.append((self.toggle_midi_filter_output,0,"[x] Route MIDI to Output"))
 		else:
-			self.list_data.append((self.toggle_midi_filter_output,0,"[  ] MIDI Filter Output"))
+			self.list_data.append((self.toggle_midi_filter_output,0,"[  ] Route MIDI to Output"))
 
 		if zynthian_gui_config.midi_sys_enabled:
 			self.list_data.append((self.toggle_midi_sys,0,"[x] MIDI System Messages"))
@@ -133,7 +134,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.start_wifi,0,"[  ] Wi-Fi"))
 			self.list_data.append((self.start_wifi_hotspot,0,"[  ] Wi-Fi Hotspot"))
 
-		if zynconf.is_service_active("vncserver@:1"):
+		if zynconf.is_service_active("vncserver0"):
 			self.list_data.append((self.stop_vncserver,0,"[x] VNC Server"))
 		else:
 			self.list_data.append((self.start_vncserver,0,"[  ] VNC Server"))
@@ -357,6 +358,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_SYS_ENABLED": str(int(zynthian_gui_config.midi_sys_enabled))
 		})
 
+		zyncoder.lib_zyncoder.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
 		self.fill_list()
 
 
@@ -644,6 +646,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def start_vncserver(self, save_config=True):
 		logging.info("STARTING VNC SERVICES")
 
+		self.zyngui.start_loading()
 		# Save state and stop engines
 		if len(self.zyngui.screens['layer'].layers)>0:
 			self.zyngui.screens['snapshot'].save_last_state_snapshot()
@@ -653,7 +656,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			restore_state = False
 
 		try:
-			check_output("systemctl start vncserver@:1; systemctl start novnc", shell=True)
+			check_output("systemctl start novnc0", shell=True)
+			check_output("systemctl start novnc1", shell=True)
 			zynthian_gui_config.vncserver_enabled = 1
 			# Update Config
 			if save_config:
@@ -666,6 +670,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		# Restore state
 		if restore_state:
 			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+		self.zyngui.stop_loading()
 
 		self.fill_list()
 
@@ -673,6 +678,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def stop_vncserver(self, save_config=True):
 		logging.info("STOPPING VNC SERVICES")
 
+		self.zyngui.start_loading()
 		# Save state and stop engines
 		if len(self.zyngui.screens['layer'].layers)>0:
 			self.zyngui.screens['snapshot'].save_last_state_snapshot()
@@ -682,7 +688,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			restore_state = False
 
 		try:
-			check_output("systemctl stop novnc; systemctl stop vncserver@:1", shell=True)
+			check_output("systemctl stop vncserver0", shell=True)
+			check_output("systemctl stop vncserver1", shell=True)
 			zynthian_gui_config.vncserver_enabled = 0
 			# Update Config
 			if save_config:
@@ -695,6 +702,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		# Restore state
 		if restore_state:
 			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+		self.zyngui.stop_loading()
 
 		self.fill_list()
 
@@ -784,7 +792,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def last_state_action(self):
-		if zynthian_gui_config.restore_last_state and len(self.zyngui.screens['layer'].layers)>0:
+		if zynthian_gui_config.restore_last_state:
 			self.zyngui.screens['snapshot'].save_last_state_snapshot()
 		else:
 			self.zyngui.screens['snapshot'].delete_last_state_snapshot()

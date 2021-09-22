@@ -26,8 +26,8 @@
 import logging
 
 # Zynthian specific modules
-from . import zynthian_gui_selector
 from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zynlibs.zynseq import zynseq
 
 #------------------------------------------------------------------------------
@@ -45,8 +45,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 		# Main Apps
 		self.list_data.append((self.layers,0,"Layers"))
-		if "zynseq" in zynthian_gui_config.experimental_features:
-			self.list_data.append((self.step_sequencer,0,"Sequencer"))
+		self.list_data.append((self.step_sequencer,0,"Sequencer"))
 		self.list_data.append((self.alsa_mixer,0,"Audio Levels"))
 		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
@@ -55,10 +54,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 		# Snapshot Management
 		self.list_data.append((None,0,"-----------------------------"))
-		self.list_data.append((self.load_snapshot,0,"Load Snapshot"))
-		if len(self.zyngui.screens['layer'].layers)>0:
-			self.list_data.append((self.save_snapshot,0,"Save Snapshot"))
-			self.list_data.append((self.clean_all,0,"CLEAN ALL"))
+		self.list_data.append((self.snapshots,0,"Snapshots"))
+		self.list_data.append((self.clean_all,0,"Clean All"))
 
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.admin,0,"Admin"))
@@ -69,25 +66,20 @@ class zynthian_gui_main(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		if self.list_data[i][0]:
 			self.last_action=self.list_data[i][0]
-			self.last_action()
+			self.last_action(t)
 
 
-	def layers(self):
+	def layers(self, t='S'):
 		logging.info("Layers")
 		self.zyngui.show_screen("layer")
 
 
-	def load_snapshot(self):
-		logging.info("Load Snapshot")
-		self.zyngui.load_snapshot()
+	def snapshots(self, t='S'):
+		logging.info("Snapshots")
+		self.zyngui.show_modal("snapshot")
 
 
-	def save_snapshot(self):
-		logging.info("Save Snapshot")
-		self.zyngui.save_snapshot()
-
-
-	def clean_all(self):
+	def clean_all(self, t='S'):
 		self.zyngui.show_confirm("Do you really want to clean all?", self.clean_all_confirmed)
 
 
@@ -97,34 +89,38 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.zyngui.screens['layer'].reset()
 		if zynseq.libseq:
 			zynseq.load("")
-		self.zyngui.show_screen('layer')
 
 
-	def audio_recorder(self):
-		logging.info("Audio Recorder")
-		self.zyngui.show_modal("audio_recorder")
+	def audio_recorder(self, t='S'):
+		if t=='B':
+			logging.info("Audio Recorder Output")
+			self.zyngui.screens['audio_out'].set_audio_player()
+			self.zyngui.show_modal("audio_out")
+		else:
+			logging.info("Audio Recorder")
+			self.zyngui.show_modal("audio_recorder")
 
 
-	def midi_recorder(self):
+	def midi_recorder(self, t='S'):
 		logging.info("MIDI Recorder")
 		self.zyngui.show_modal("midi_recorder")
 
 
-	def alsa_mixer(self):
+	def alsa_mixer(self, t='S'):
 		logging.info("ALSA Mixer")
 		self.zyngui.show_modal("alsa_mixer")
 
 
-	def auto_eq(self):
+	def auto_eq(self, t='S'):
 		logging.info("Auto EQ")
 		self.zyngui.show_modal('autoeq')
 
-	def step_sequencer(self):
+	def step_sequencer(self, t='S'):
 		logging.info("Step Sequencer")
 		self.zyngui.show_modal('stepseq')
 
 
-	def admin(self):
+	def admin(self, t='S'):
 		logging.info("Admin")
 		self.zyngui.show_modal("admin")
 

@@ -41,6 +41,9 @@ class zynthian_controller:
 		else:
 			self.name=self.short_name=symbol
 
+		self.group_symbol = None
+		self.group_name = None
+
 		self.value=0
 		self.value_default=0
 		self.value_min=0
@@ -76,6 +79,10 @@ class zynthian_controller:
 			self.name=options['name']
 		if 'short_name' in options:
 			self.short_name=options['short_name']
+		if 'group_name' in options:
+			self.group_name=options['group_name']
+		if 'group_symbol' in options:
+			self.group_symbol=options['group_symbol']
 		if 'value' in options:
 			self.value=options['value']
 		if 'value_default' in options:

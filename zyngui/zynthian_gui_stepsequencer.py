@@ -51,6 +51,7 @@ from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
 from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
+libseq.init(bytes("zynthstep", "utf-8"))
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer GUI Class
@@ -307,7 +308,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.add_menu({'Tempo':{'method':self.show_param_editor, 'params':{'min':1.0, 'max':500.0, 'get_value':libseq.getTempo, 'on_change':self.on_menu_change}}})
 		self.add_menu({'Beats per bar':{'method':self.show_param_editor, 'params':{'min':1, 'max':64, 'get_value':libseq.getBeatsPerBar, 'on_change':self.on_menu_change}}})
 		#self.add_menu({'Load':{'method':self.select_filename, 'params':self.filename}})
-		#self.add_menu({'Save':{'method':self.save_as, 'params':self.filename}})
 		self.add_menu({'-------------------':{}})
 
 
@@ -735,16 +735,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# ---------------------------------------------------------------------------
 	# ZynSeq File Management
 	# ---------------------------------------------------------------------------
-
-
-	# Function to name file before saving
-	#	filename: Starting filename
-	def	save_as(self, filename):
-		rename_ui = zynthian_gui_keyboard(self, self.save, filename)
-		if rename_ui.ok:
-			self.filename = filename
-		del rename_ui
-
 
 	# Function to save to RIFF file
 	#	filename: Filename without path or extension
