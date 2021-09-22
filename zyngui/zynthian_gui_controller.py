@@ -650,7 +650,9 @@ class zynthian_gui_controller:
 				else:
 					pin_a=zynthian_gui_config.zyncoder_pin_a[self.index]
 					pin_b=zynthian_gui_config.zyncoder_pin_b[self.index]
-				zyncoder.lib_zyncoder.setup_zyncoder(self.index,pin_a,pin_b,self.zctrl.midi_chan,midi_cc,osc_path_char,int(self.mult*self.value),int(self.mult*(self.max_value-self.val0)),self.step)
+				if pin_a<0 or pin_b<0:
+					pin_a = pin_b = 0
+				zyncoder.lib_zyncoder.setup_zyncoder(self.index, pin_a, pin_b, self.zctrl.midi_chan, midi_cc, osc_path_char, int(self.mult*self.value), int(self.mult*(self.max_value-self.val0)), self.step)
 		except Exception as err:
 			logging.error("%s" % err)
 
