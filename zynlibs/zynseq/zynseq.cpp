@@ -594,6 +594,8 @@ void init(char* name) {
     transportRequestTimebase();        
     transportStop("zynseq");
     transportLocate(0);
+    Sequence* pSequence = g_seqMan.getSequence(0, 0);
+    g_pTrack = pSequence->getTrack(0);
 }
 
 bool isModified()
