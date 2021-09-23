@@ -52,7 +52,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def get_snapshot_fpath(self,f):
-		return join(self.base_dir,self.bank_dir,f)
+		if self.bank_dir:
+			return join(self.base_dir,self.bank_dir,f)
+		else:
+			return join(self.base_dir,f)
 
 
 	#	Get the next available program number
@@ -318,7 +321,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.zyngui.screens['midi_prog'].config(parts[0], self.set_program)
 			self.zyngui.show_modal('midi_prog')
 		elif option == "Delete":
-			self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, self.get_snapshot_fpath(fpath))
+			self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, fpath)
 
 
 	def rename_snapshot(self, new_name):
