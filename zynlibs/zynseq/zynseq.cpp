@@ -594,6 +594,7 @@ void init(char* name) {
     transportRequestTimebase();        
     transportStop("zynseq");
     transportLocate(0);
+    g_pTrack = g_seqMan.getSequence(0, 0)->getTrack(0);
 }
 
 bool isModified()
@@ -833,8 +834,7 @@ bool load(const char* filename)
     fclose(pFile);
     //printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu banks from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mBanks.size(), filename);
     g_bDirty = false;
-    Sequence* pSequence = g_seqMan.getSequence(0, 0);
-    g_pTrack = pSequence->getTrack(0);
+    g_pTrack = g_seqMan.getSequence(0, 0)->getTrack(0);
     return true;
 }
 
