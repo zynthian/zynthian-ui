@@ -142,6 +142,7 @@ class zynthian_engine_mixer(zynthian_engine):
 		else:
 			return False
 
+
 	def get_controllers_dict(self, layer, ctrl_list=None):
 		if ctrl_list=="*":
 			ctrl_list = None
