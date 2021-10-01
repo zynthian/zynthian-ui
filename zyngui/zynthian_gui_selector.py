@@ -269,6 +269,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if self.listbox_push_ts:
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
+			self.zselector.set_value(self.get_cursel(), True, False)
 			if dts < 0.3:
 				self.zyngui.zynswitch_defered('S',3)
 			elif dts>=0.3 and dts<2:
