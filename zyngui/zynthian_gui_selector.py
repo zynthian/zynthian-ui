@@ -218,7 +218,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def skip_separators(self, index):
 		# Skip separator items ...
-		if self.list_data[index][0] is None:
+		if 0 <= index < len(self.list_data) and self.list_data[index][0] is None:
 			if self.index<=index:
 				self.select_listbox(index+1)
 			elif self.index>index:

@@ -131,7 +131,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		#self.zyngui.lock.acquire()
 
 		#Get screen info
-		if self.index < len(self.list_data):
+		if 0 <= self.index < len(self.list_data):
 			screen_info = self.list_data[self.index]
 			screen_title = screen_info[2]
 			screen_layer = screen_info[3]

@@ -354,7 +354,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				root_layer = self.get_fxchain_root(layer)
 				try:
 					self.index = self.root_layers.index(root_layer)
-					self.layer_control(layer)
+					self.layer_control(root_layer)
 				except Exception as e:
 					logging.error(e)
 					self.zyngui.show_screen('layer')
