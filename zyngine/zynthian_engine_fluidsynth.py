@@ -364,7 +364,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				i = self.get_free_parts()[0]
 				layer.part_i = i
 				#layer.jackname = "{}:((l|r)_{:02d}|fx_(l|r)_({:02d}|{:02d}))".format(self.jackname,i,i*2,i*2+1)
-				layer.jackname = "{}\:(l|r)_{:02d}".format(self.jackname,i)
+				layer.jackname = "{}:(l|r)_{:02d}".format(self.jackname,i)
 				self.zyngui.zynautoconnect_audio()
 				logging.debug("Add part {} => {}".format(i, layer.jackname))
 			except Exception as e:
