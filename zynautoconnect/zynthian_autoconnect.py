@@ -39,7 +39,7 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = logging.WARNING
+log_level=int(os.environ.get('ZYNTHIAN_LOG_LEVEL',logging.WARNING))
 
 logger=logging.getLogger(__name__)
 logger.setLevel(log_level)
