@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Controller Class
-# 
+#
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import sys
@@ -99,6 +99,7 @@ class zynthian_gui_controller:
 		self.canvas.bind("<B1-Motion>",self.cb_canvas_motion)
 		self.canvas.bind("<Button-4>",self.cb_canvas_wheel)
 		self.canvas.bind("<Button-5>",self.cb_canvas_wheel)
+		self.canvas_motion_set_value = False
 		# Setup Controller and Zyncoder
 		self.config(zctrl)
 		# Show Controller
@@ -142,7 +143,7 @@ class zynthian_gui_controller:
 	def calculate_plot_values(self):
 		if self.hiden:
 			return
-			
+
 		if self.value>self.max_value:
 			self.value=self.max_value
 
@@ -153,7 +154,7 @@ class zynthian_gui_controller:
 			valplot=None
 			val=self.value
 
-			#DIRTY HACK => It should be improved!! 
+			#DIRTY HACK => It should be improved!!
 			#if self.zctrl.value_min<0:
 			#	val=self.zctrl.value_min+self.value
 
@@ -327,7 +328,7 @@ class zynthian_gui_controller:
 		if self.arc:
 			self.canvas.itemconfig(self.arc, extent=degd)
 		elif self.zctrl.midi_cc!=0:
-			self.arc=self.canvas.create_arc(x1, y1, x2, y2, 
+			self.arc=self.canvas.create_arc(x1, y1, x2, y2,
 				style=tkinter.ARC,
 				outline=zynthian_gui_config.color_ctrl_bg_on,
 				width=thickness,
@@ -701,25 +702,26 @@ class zynthian_gui_controller:
 		self.canvas_motion_dy=0
 		self.canvas_motion_dx=0
 		self.canvas_motion_count=0
+		self.canvas_motion_set_value = False
 		#logging.debug("CONTROL %d PUSH => %s" % (self.index, self.canvas_push_ts))
 
 
 	def cb_canvas_release(self,event):
 		if self.canvas_push_ts:
 			dts=(datetime.now()-self.canvas_push_ts).total_seconds()
-			motion_rate=self.canvas_motion_count/dts
-			logging.debug("CONTROL %d RELEASE => %s, %s" % (self.index, dts, motion_rate))
-			if motion_rate<10:
-				if dts<0.3:
-					self.zyngui.zynswitch_defered('S',self.index)
-				elif dts>=0.3 and dts<2:
-					self.zyngui.zynswitch_defered('B',self.index)
-				elif dts>=2:
-					self.zyngui.zynswitch_defered('L',self.index)
-			elif self.canvas_motion_dx>self.width//2:
-				self.zyngui.zynswitch_defered('X',self.index)
-			elif self.canvas_motion_dx<-self.width//2:
-				self.zyngui.zynswitch_defered('Y',self.index)
+			logging.debug("CONTROL %d RELEASE => %s" % (self.index, dts))
+			if not self.motion_set_value:
+				if not zynthian_gui_config.enable_onscreen_buttons:
+					if dts<0.3:
+						self.zyngui.zynswitch_defered('S',self.index)
+					elif dts>=0.3 and dts<2:
+						self.zyngui.zynswitch_defered('B',self.index)
+					elif dts>=2:
+						self.zyngui.zynswitch_defered('L',self.index)
+				elif self.canvas_motion_dx>self.width//2:
+					self.zyngui.zynswitch_defered('X',self.index)
+				elif self.canvas_motion_dx<-self.width//2:
+					self.zyngui.zynswitch_defered('Y',self.index)
 
 
 	def cb_canvas_motion(self,event):
@@ -734,14 +736,11 @@ class zynthian_gui_controller:
 						self.set_value(self.value-dy, True)
 					else:
 						self.set_value(self.value+dy, True)
+					self.canvas_motion_set_value = True
 					self.canvas_motion_y0=event.y
-					if self.canvas_motion_dy+dy!=0:
-						self.canvas_motion_count=self.canvas_motion_count+1
 					self.canvas_motion_dy=dy
 				elif dx!=0:
 					#logging.debug("CONTROL %d MOTION X => %d, %d" % (self.index, event.x, dx))
-					if abs(self.canvas_motion_dx-dx)>0:
-						self.canvas_motion_count=self.canvas_motion_count+1
 					self.canvas_motion_dx=dx
 
 
