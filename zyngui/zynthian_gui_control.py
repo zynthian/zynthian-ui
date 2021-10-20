@@ -128,7 +128,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_controller_screen(self):
 		#Get Mutex Lock 
-		#self.zyngui.lock.acquire()
+		self.zyngui.lock.acquire()
 
 		#Get screen info
 		if 0 <= self.index < len(self.list_data):
@@ -172,7 +172,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.lock_controllers()
 
 		#Release Mutex Lock
-		#self.zyngui.lock.release()
+		self.zyngui.lock.release()
 
 
 	def set_zcontroller(self, i, ctrl):
@@ -330,15 +330,14 @@ class zynthian_gui_control(zynthian_gui_selector):
 				#print('Read Control ' + str(self.zgui_controllers[i].title))
 
 				if not zcnums or i in zcnums: 
-					res=self.zgui_controllers[i].read_zyncoder()
-					
-					if res and self.zyngui.midi_learn_mode:
-						logging.debug("MIDI-learn ZController {}".format(i))
-						self.zyngui.midi_learn_mode = False
-						self.midi_learn(i)
+					if self.zgui_controllers[i].read_zyncoder():
+						if self.zyngui.midi_learn_mode:
+							logging.debug("MIDI-learn ZController {}".format(i))
+							self.zyngui.midi_learn_mode = False
+							self.midi_learn(i)
 
-					if res and self.xyselect_mode:
-						self.zyncoder_read_xyselect(zctrl, i)
+						if self.xyselect_mode:
+							self.zyncoder_read_xyselect(zctrl, i)
 
 		elif self.mode=='select':
 			super().zyncoder_read()

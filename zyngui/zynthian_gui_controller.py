@@ -682,6 +682,8 @@ class zynthian_gui_controller:
 
 
 	def read_zyncoder(self):
+		#if self.canvas_push_ts:
+		#	return
 		if zyncoder.lib_zyncoder:
 			val=zyncoder.lib_zyncoder.get_value_zyncoder(self.index)
 			#logging.debug("ZYNCODER %d (%s), RAW VALUE => %s" % (self.index,self.title,val))
@@ -695,12 +697,12 @@ class zynthian_gui_controller:
 
 
 	def cb_canvas_push(self,event):
-		self.canvas_push_ts=datetime.now()
-		self.canvas_motion_y0=event.y
-		self.canvas_motion_x0=event.x
-		self.canvas_motion_dy=0
-		self.canvas_motion_dx=0
-		self.canvas_motion_count=0
+		self.canvas_push_ts = datetime.now()
+		self.canvas_motion_y0 = event.y
+		self.canvas_motion_x0 = event.x
+		self.canvas_motion_dy = 0
+		self.canvas_motion_dx = 0
+		self.canvas_motion_count = 0
 		#logging.debug("CONTROL {} PUSH => {} ({},{})".format(self.index, self.canvas_push_ts, self.canvas_motion_x0, self.canvas_motion_y0))
 
 
@@ -721,6 +723,7 @@ class zynthian_gui_controller:
 				self.zyngui.zynswitch_defered('X',self.index)
 			elif self.canvas_motion_dx<-self.width//2:
 				self.zyngui.zynswitch_defered('Y',self.index)
+			self.canvas_push_ts = None
 
 
 	def cb_canvas_motion(self,event):

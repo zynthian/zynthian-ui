@@ -426,13 +426,13 @@ class zynthian_gui:
 		if screen=="control":
 			self.restore_curlayer()
 
-		self.lock.acquire()
+		#self.lock.acquire()
 		self.hide_screens(exclude=screen)
 		self.screens[screen].show()
 		self.active_screen = screen
 		self.modal_screen = None
 		self.modal_screen_back = None
-		self.lock.release()
+		#self.lock.release()
 
 
 	def show_active_screen(self):
@@ -1303,6 +1303,7 @@ class zynthian_gui:
 			try:
 				#Read Zyncoders
 				self.lock.acquire()
+
 				if self.modal_screen:
 					free_zyncoders = self.screens[self.modal_screen].zyncoder_read()
 				else:
