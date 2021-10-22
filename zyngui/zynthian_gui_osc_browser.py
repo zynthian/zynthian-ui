@@ -28,8 +28,8 @@ import liblo
 import logging
 
 # Zynthian specific modules
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian OSC Browser GUI Class

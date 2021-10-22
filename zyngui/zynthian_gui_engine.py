@@ -36,8 +36,8 @@ import zynautoconnect
 from zyngine import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_jalv import *
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian Engine Selection GUI Class
@@ -60,11 +60,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			["MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_mixer, True)],
 			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", None, zynthian_engine_zynaddsubfx, True)],
 			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", None, zynthian_engine_fluidsynth, True)],
+			["SF", ("Sfizz", "Sfizz - SFZ Player", "MIDI Synth", None, zynthian_engine_sfizz, True)],
 			["LS", ("LinuxSampler", "LinuxSampler - SFZ/GIG Player", "MIDI Synth", None, zynthian_engine_linuxsampler, True)],
 			["BF", ("setBfree", "setBfree - Hammond Emulator", "MIDI Synth", None, zynthian_engine_setbfree, True)],
 			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", None, zynthian_engine_aeolus, True)],
 			['PD', ("PureData", "PureData - Visual Programming", "Special", None, zynthian_engine_puredata, True)],
-			['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
+			#['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
 			['MD', ("MOD-UI", "MOD-UI - Plugin Host", "Special", None, zynthian_engine_modui, True)]
 		])
 
@@ -89,23 +90,22 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		super().__init__('Engine', True)
 
 
-	def set_engine_type(self, etype):
+	def set_engine_type(self, etype, midi_chan=None):
 		self.engine_type = etype
-		self.midi_chan = None
+		self.midi_chan = midi_chan
 		self.reset_index = True
+
+
+	def set_synth_mode(self, midi_chan):
+		self.set_engine_type("MIDI Synth", midi_chan)
 
 
 	def set_fxchain_mode(self, midi_chan):
-		self.engine_type = "Audio Effect"
-		self.midi_chan = midi_chan
-		self.reset_index = True
+		self.set_engine_type("Audio Effect", midi_chan)
 
 
 	def set_midichain_mode(self, midi_chan):
-		self.engine_type = "MIDI Tool"
-		self.midi_chan = midi_chan
-		self.reset_index = True
-		self.init_engine_info()
+		self.set_engine_type("MIDI Tool", midi_chan)
 
 
 	def filtered_engines_by_cat(self):
@@ -161,7 +161,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		super().fill_listbox()
 		for i, val in enumerate(self.list_data):
 			if val[0]==None:
-				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_off,'fg':zynthian_gui_config.color_tx_off})
+				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
 
 
 	def select_action(self, i, t='S'):
@@ -177,6 +177,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				eng="JV/{}".format(self.zyngine_counter)
 				self.zyngines[eng]=zynthian_engine_class(info[0], info[2], self.zyngui)
 			else:
+				if eng=="SF":
+					eng="SF/{}".format(self.zyngine_counter)
 				self.zyngines[eng]=zynthian_engine_class(self.zyngui)
 
 		self.zyngine_counter+=1

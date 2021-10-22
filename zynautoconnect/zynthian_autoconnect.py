@@ -39,7 +39,7 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = logging.WARNING
+log_level=int(os.environ.get('ZYNTHIAN_LOG_LEVEL',logging.WARNING))
 
 logger=logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -458,7 +458,7 @@ def audio_autoconnect(force=False):
 		ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
 		if len(ports)>0:
 			#logger.debug("Connecting Layer {} ...".format(layer.get_jackname()))
-			np = min(len(ports), 2)
+			np = len(ports)
 			#logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), np))
 
 			#Connect layer to routed playback ports and disconnect from the rest ...
@@ -489,20 +489,26 @@ def audio_autoconnect(force=False):
 
 			#Connect to routed layer input ports and disconnect from the rest ...
 			for ao in input_ports:
-				nip = min(len(input_ports[ao]), 2)
+				nip = len(input_ports[ao])
 				jrange = list(range(max(np, nip)))
 				if ao in layer.get_audio_out():
-					#logger.debug(" => Connecting to {} : {}".format(ao,jrange))
+					#logger.debug("Connecting to {} : {}".format(ao,jrange))
 					for j in jrange:
 						try:
-							jclient.connect(ports[j%np],input_ports[ao][j%nip])
+							psrc = ports[j%np]
+							pdest = input_ports[ao][j%nip]
+							#logger.debug("   ... {} => {}".format(psrc.name, pdest.name))
+							jclient.connect(psrc, pdest)
 						except:
 							pass
 				else:
-					#logger.debug(" => Disconnecting from {} : {}".format(ao,jrange))
+					#logger.debug("Disconnecting from {} : {}".format(ao,jrange))
 					for j in jrange:
 						try:
-							jclient.disconnect(ports[j%np],input_ports[ao][j%nip])
+							psrc = ports[j%np]
+							pdest = input_ports[ao][j%nip]
+							#logger.debug("   ... {} => {}".format(psrc.name, pdest.name))
+							jclient.disconnect(psrc, pdest)
 						except:
 							pass
 
@@ -584,7 +590,7 @@ def audio_autoconnect(force=False):
 			#Get Aubio Input ports ...
 			aubio_in = jclient.get_ports("aubio", is_input=True, is_audio=True)
 			if len(aubio_in)>0:
-				nip = max(len(aubio_in), 2)
+				nip = len(aubio_in)
 				#Connect System Capture to Aubio ports
 				j=0
 				for scp in capture_ports:
@@ -624,7 +630,7 @@ def get_audio_input_ports(exclude_system_playback=False):
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
 			parts=aip.name.split(':')
 			client_name=parts[0]
-			if client_name=="jack_capture" or client_name=="jackpeak" or client_name[:7]=="effect_":
+			if client_name in ["jack_capture","jackpeak","Headphones"] or client_name[:7]=="effect_":
 				continue
 			if client_name=="system" or client_name=="zynmixer":
 				if exclude_system_playback:

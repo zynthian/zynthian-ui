@@ -22,8 +22,9 @@
 # 
 #******************************************************************************
 
-import logging
+import os
 import copy
+import logging
 from time import sleep
 import collections
 from collections import OrderedDict
@@ -33,6 +34,15 @@ from zyncoder import *
 
 
 class zynthian_layer:
+
+	# ---------------------------------------------------------------------------
+	# Data dirs 
+	# ---------------------------------------------------------------------------
+
+	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
+	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
+	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
+	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 
 	# ---------------------------------------------------------------------------
 	# Initialization
@@ -55,6 +65,8 @@ class zynthian_layer:
 		self.bank_index = 0
 		self.bank_name = None
 		self.bank_info = None
+		self.bank_msb = 0
+		self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
 
 		self.show_fav_presets = False
 		self.preset_list = []
@@ -130,12 +142,34 @@ class zynthian_layer:
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-
 	def load_bank_list(self):
 		self.bank_list = self.engine.get_bank_list(self)
+
+		# Calculate info for bank_msb
+		i = 0
+		self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
+		for bank in self.bank_list:
+			if bank[0].startswith(self.ex_data_dir):
+				self.bank_msb_info[0][0] += 1
+				self.bank_msb_info[1][0] += 1
+				self.bank_msb_info[2][1] += 1
+				i += 1
+			elif bank[0].startswith(self.my_data_dir):
+				self.bank_msb_info[0][0] += 1
+				self.bank_msb_info[1][1] += 1
+				i += 1
+			else:
+				break;
+		self.bank_msb_info[0][1] = len(self.bank_list)-i
+
+		# Add favourites virtual bank if there is some preset marked as favourite
 		if len(self.engine.get_preset_favs(self))>0:
 			self.bank_list = [["*FAVS*",0,"*** Favorites ***"]] + self.bank_list
+			for i in range(3):
+				self.bank_msb_info[i][0] += 1
+
 		logging.debug("BANK LIST => \n%s" % str(self.bank_list))
+		logging.debug("BANK MSB INFO => \n{}".format(self.bank_msb_info))
 
 
 	def reset_bank(self):
@@ -186,7 +220,7 @@ class zynthian_layer:
 
 
 	# ---------------------------------------------------------------------------
-	# Presest Management
+	# Preset Management
 	# ---------------------------------------------------------------------------
 
 
@@ -335,6 +369,18 @@ class zynthian_layer:
 		else:
 			self.show_fav_presets = False
 
+
+	def get_show_fav_presets(self):
+		return self.show_fav_presets
+
+
+	def toggle_show_fav_presets(self):
+		if self.show_fav_presets:
+			self.set_show_fav_presets(False)
+		else:
+			self.set_show_fav_presets(True)
+		return self.show_fav_presets
+
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
@@ -358,7 +404,8 @@ class zynthian_layer:
 			
 		#Set active the first screen
 		if len(self.ctrl_screens_dict)>0:
-			self.active_screen_index=0
+			if self.active_screen_index==-1:
+				self.active_screen_index=0
 		else:
 			self.active_screen_index=-1
 
@@ -375,7 +422,10 @@ class zynthian_layer:
 
 
 	def get_active_screen_index(self):
+		if self.active_screen_index>=len(self.ctrl_screens_dict):
+			self.active_screen_index = len(self.ctrl_screens_dict)-1
 		return self.active_screen_index
+			
 
 
 	def set_active_screen_index(self, i):
@@ -406,9 +456,8 @@ class zynthian_layer:
 
 
 	#----------------------------------------------------------------------------
-	# MIDI CC processing
+	# MIDI processing
 	#----------------------------------------------------------------------------
-
 
 	def midi_control_change(self, chan, ccnum, ccval):
 		if self.engine:
@@ -449,6 +498,24 @@ class zynthian_layer:
 									self.engine.midi_zctrl_change(zctrl, ccval)
 						except:
 							pass
+
+
+	def midi_bank_msb(self, i):
+		logging.debug("Received Bank MSB for CH#{}: {}".format(self.midi_chan, i))
+		if i>=0 and i<=2:
+			self.bank_msb = i
+
+
+	def midi_bank_lsb(self, i):
+		info = self.bank_msb_info[self.bank_msb]
+		logging.debug("Received Bank LSB for CH#{}: {} => {}".format(self.midi_chan, i, info))
+		if i<info[1]:
+			logging.debug("MSB offset for CH#{}: {}".format(self.midi_chan, info[0]))
+			self.set_show_fav_presets(False)
+			self.set_bank(info[0] + i)
+			self.load_preset_list()
+		else:
+			logging.warning("Bank index {} doesn't exist for MSB {} on CH#{}".format(i, self.bank_msb, self.midi_chan))
 
 
 	# ---------------------------------------------------------------------------
@@ -661,6 +728,7 @@ class zynthian_layer:
 			self.audio_out.remove("system")
 			self.audio_out += ["system:playback_1", "system:playback_2"]
 
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -672,6 +740,7 @@ class zynthian_layer:
 			self.audio_out.append(jackname)
 			logging.debug("Connecting Audio Output {} => {}".format(self.get_audio_jackname(), jackname))
 
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -685,6 +754,7 @@ class zynthian_layer:
 		except:
 			pass
 
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -697,6 +767,7 @@ class zynthian_layer:
 		else:
 			self.audio_out.remove(jackname)
 
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -704,12 +775,22 @@ class zynthian_layer:
 		self.audio_out=["system:playback_1", "system:playback_2"]
 		if self.midi_chan != None:
 			self.audio_out = ["zynmixer:input_%02da"%(self.midi_chan + 1), "zynmixer:input_%02db"%(self.midi_chan + 1)]
+		#self.pair_audio_out() #TODO: This was previously removed - is it required?
 		self.zyngui.zynautoconnect_audio()
 
 
 	def mute_audio_out(self):
 		self.audio_out = []
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
+
+
+	def pair_audio_out(self):
+		if not self.engine.options['layer_audio_out']:
+			for l in self.engine.layers:
+				if l!=self:
+					l.audio_out = self.audio_out
+					#logging.debug("Pairing CH#{} => {}".format(l.midi_chan,l.audio_out))
 
 
 	# ---------------------------------------------------------------------------

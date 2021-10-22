@@ -91,6 +91,7 @@ class zynthian_gui_zynpad():
 		# Icons
 		self.mode_icon = [tkinter.PhotoImage() for i in range(7)]
 		self.state_icon = [tkinter.PhotoImage() for i in range(4)]
+		self.empty_icon = tkinter.PhotoImage()
 
 		# Selection highlight
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
@@ -112,6 +113,7 @@ class zynthian_gui_zynpad():
 	# Function to show GUI
 	#   params: Misc parameters
 	def show(self, params):
+		libseq.updateSequenceInfo()
 		self.main_frame.tkraise()
 		self.setup_encoders()
 		self.parent.select_bank(self.parent.bank)
@@ -181,7 +183,6 @@ class zynthian_gui_zynpad():
 			# Shrinking grid so remove excess sequences
 			libseq.setSequencesInBank(bank, new_size * self.columns) # Lose excess columns
 			for offset in range(new_size, new_size * new_size + 1, new_size):
-				logging.warning("offset: %d", offset)
 				for pad in range(-delta):
 					libseq.removeSequence(bank, offset)
 		self.columns = new_size
@@ -318,6 +319,8 @@ class zynthian_gui_zynpad():
 		self.mode_icon[6] = ImageTk.PhotoImage(img)
 
 		iconsize = (int(self.row_height * 0.2), int(self.row_height * 0.2))
+		img = (Image.open("/zynthian/zynthian-ui/icons/stopped.png").resize(iconsize))
+		self.state_icon[zynthian_gui_stepsequencer.SEQ_STOPPED] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/starting.png").resize(iconsize))
 		self.state_icon[zynthian_gui_stepsequencer.SEQ_STARTING] = ImageTk.PhotoImage(img)
 		img = (Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
@@ -380,7 +383,10 @@ class zynthian_gui_zynpad():
 				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text=zynseq.get_sequence_name(self.parent.bank, pad), fill=foreground)
 				self.grid_canvas.itemconfig("group:%s"%(pad), text=chr(65 + libseq.getGroup(self.parent.bank, pad)), fill=foreground)
 				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
-				self.grid_canvas.itemconfig("state:%d"%pad, image=self.state_icon[state])
+				if state == 0 and libseq.isEmpty(self.parent.bank, pad):
+					self.grid_canvas.itemconfig("state:%d"%pad, image=self.empty_icon)
+				else:
+					self.grid_canvas.itemconfig("state:%d"%pad, image=self.state_icon[state])
 
 
 	# Function to move selection cursor

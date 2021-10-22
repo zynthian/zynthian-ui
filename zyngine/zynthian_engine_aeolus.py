@@ -175,8 +175,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.nickname = "AE"
 		self.jackname = "aeolus"
 
-		self.options['midi_chan']=False
-		self.options['drop_pc']=True
+		self.options['midi_chan'] = False
+		self.options['replace'] = False
+		self.options['drop_pc'] = True
+		self.options['layer_audio_out']=False
 
 		if self.config_remote_display():
 			self.proc_start_sleep = 3

@@ -27,8 +27,8 @@ import sys
 import logging
 
 # Zynthian specific modules
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian Bank Selection GUI Class
@@ -53,6 +53,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if not self.zyngui.curlayer:
 			logging.error("Can't show bank list for None layer!")
 			return
+		self.zyngui.curlayer.set_show_fav_presets(False)
 		self.index=self.zyngui.curlayer.get_bank_index()
 		logging.debug("BANK INDEX => %s" % self.index)
 		super().show()
@@ -62,15 +63,17 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if self.list_data[i][0]=='*FAVS*':
 			self.zyngui.curlayer.set_show_fav_presets(True)
 		else:
-			self.zyngui.curlayer.set_show_fav_presets(False)
 			if not self.zyngui.curlayer.set_bank(i):
 				self.show()
 				return
+			else:
+				self.zyngui.curlayer.set_show_fav_presets(False)
 	
 		if self.zyngui.modal_screen=="preset":
 			self.zyngui.show_modal('preset')
 		else:
 			self.zyngui.show_screen('preset')
+
 		# If there is only one preset, jump to instrument control
 		if len(self.zyngui.curlayer.preset_list)<=1:
 			self.zyngui.screens['preset'].select_action(0)

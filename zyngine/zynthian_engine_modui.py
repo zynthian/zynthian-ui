@@ -71,7 +71,9 @@ class zynthian_engine_modui(zynthian_engine):
 			'note_range': False,
 			'audio_route': False,
 			'midi_chan': False,
-			'drop_pc': False
+			'replace': False,
+			'drop_pc': False,
+			'layer_audio_out': True
 		}
 
 		self.websocket = None
@@ -105,8 +107,8 @@ class zynthian_engine_modui(zynthian_engine):
 		#self.stop_websocket()
 		if self.is_service_active("mod-ui"):
 			logging.info("STOPPING MOD-HOST & MOD-UI services...")
-			check_output(("systemctl stop mod-host && systemctl stop browsepy && systemctl stop mod-ui"),shell=True)
-			#check_output(("systemctl stop mod-ui"),shell=True)
+			#check_output(("systemctl stop mod-host && systemctl stop browsepy && systemctl stop mod-ui"),shell=True)
+			check_output(("systemctl stop browsepy && systemctl stop mod-ui"),shell=True)
 		self.ws_bundle_loaded = False
 
 

@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Controller Class
-# 
+#
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import sys
@@ -37,7 +37,7 @@ from tkinter import font as tkFont
 # Zynthian specific modules
 from zyncoder import *
 from zyngine import zynthian_controller
-from . import zynthian_gui_config
+from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # Controller GUI Class
@@ -142,7 +142,7 @@ class zynthian_gui_controller:
 	def calculate_plot_values(self):
 		if self.hiden:
 			return
-			
+
 		if self.value>self.max_value:
 			self.value=self.max_value
 
@@ -153,7 +153,7 @@ class zynthian_gui_controller:
 			valplot=None
 			val=self.value
 
-			#DIRTY HACK => It should be improved!! 
+			#DIRTY HACK => It should be improved!!
 			#if self.zctrl.value_min<0:
 			#	val=self.zctrl.value_min+self.value
 
@@ -327,7 +327,7 @@ class zynthian_gui_controller:
 		if self.arc:
 			self.canvas.itemconfig(self.arc, extent=degd)
 		elif self.zctrl.midi_cc!=0:
-			self.arc=self.canvas.create_arc(x1, y1, x2, y2, 
+			self.arc=self.canvas.create_arc(x1, y1, x2, y2,
 				style=tkinter.ARC,
 				outline=zynthian_gui_config.color_ctrl_bg_on,
 				width=thickness,
@@ -650,7 +650,9 @@ class zynthian_gui_controller:
 				else:
 					pin_a=zynthian_gui_config.zyncoder_pin_a[self.index]
 					pin_b=zynthian_gui_config.zyncoder_pin_b[self.index]
-				zyncoder.lib_zyncoder.setup_zyncoder(self.index,pin_a,pin_b,self.zctrl.midi_chan,midi_cc,osc_path_char,int(self.mult*self.value),int(self.mult*(self.max_value-self.val0)),self.step)
+				if pin_a<0 or pin_b<0:
+					pin_a = pin_b = 0
+				zyncoder.lib_zyncoder.setup_zyncoder(self.index, pin_a, pin_b, self.zctrl.midi_chan, midi_cc, osc_path_char, int(self.mult*self.value), int(self.mult*(self.max_value-self.val0)), self.step)
 		except Exception as err:
 			logging.error("%s" % err)
 
@@ -680,6 +682,8 @@ class zynthian_gui_controller:
 
 
 	def read_zyncoder(self):
+		#if self.canvas_push_ts:
+		#	return
 		if zyncoder.lib_zyncoder:
 			val=zyncoder.lib_zyncoder.get_value_zyncoder(self.index)
 			#logging.debug("ZYNCODER %d (%s), RAW VALUE => %s" % (self.index,self.title,val))
@@ -693,31 +697,33 @@ class zynthian_gui_controller:
 
 
 	def cb_canvas_push(self,event):
-		self.canvas_push_ts=datetime.now()
-		self.canvas_motion_y0=event.y
-		self.canvas_motion_x0=event.x
-		self.canvas_motion_dy=0
-		self.canvas_motion_dx=0
-		self.canvas_motion_count=0
-		#logging.debug("CONTROL %d PUSH => %s" % (self.index, self.canvas_push_ts))
+		self.canvas_push_ts = datetime.now()
+		self.canvas_motion_y0 = event.y
+		self.canvas_motion_x0 = event.x
+		self.canvas_motion_dy = 0
+		self.canvas_motion_dx = 0
+		self.canvas_motion_count = 0
+		#logging.debug("CONTROL {} PUSH => {} ({},{})".format(self.index, self.canvas_push_ts, self.canvas_motion_x0, self.canvas_motion_y0))
 
 
 	def cb_canvas_release(self,event):
 		if self.canvas_push_ts:
 			dts=(datetime.now()-self.canvas_push_ts).total_seconds()
 			motion_rate=self.canvas_motion_count/dts
-			logging.debug("CONTROL %d RELEASE => %s, %s" % (self.index, dts, motion_rate))
-			if motion_rate<10:
-				if dts<0.3:
-					self.zyngui.zynswitch_defered('S',self.index)
-				elif dts>=0.3 and dts<2:
-					self.zyngui.zynswitch_defered('B',self.index)
-				elif dts>=2:
-					self.zyngui.zynswitch_defered('L',self.index)
-			elif self.canvas_motion_dx>20:
+			#logging.debug("CONTROL {} RELEASE => {}, {}".format(self.index, dts, motion_rate))
+			if not zynthian_gui_config.enable_onscreen_buttons:
+				if motion_rate<10:
+					if dts<0.3:
+						self.zyngui.zynswitch_defered('S',self.index)
+					elif dts>=0.3 and dts<2:
+						self.zyngui.zynswitch_defered('B',self.index)
+					elif dts>=2:
+						self.zyngui.zynswitch_defered('L',self.index)
+			elif self.canvas_motion_dx>self.width//2:
 				self.zyngui.zynswitch_defered('X',self.index)
-			elif self.canvas_motion_dx<-20:
+			elif self.canvas_motion_dx<-self.width//2:
 				self.zyngui.zynswitch_defered('Y',self.index)
+			self.canvas_push_ts = None
 
 
 	def cb_canvas_motion(self,event):
@@ -725,8 +731,9 @@ class zynthian_gui_controller:
 			dts=(datetime.now()-self.canvas_push_ts).total_seconds()
 			if dts>0.1:
 				dy=self.canvas_motion_y0-event.y
-				if dy!=0:
-					#logging.debug("CONTROL %d MOTION Y => %d, %d: %d" % (self.index, event.y, dy, self.value+dy))
+				dx=event.x-self.canvas_motion_x0
+				if abs(dy)>abs(dx):
+					#logging.debug("CONTROL {} MOTION Y => {}-{}={} => {}".format(self.index, self.canvas_motion_y0, event.y, dy, self.value+dy))
 					if self.inverted:
 						self.set_value(self.value-dy, True)
 					else:
@@ -735,9 +742,8 @@ class zynthian_gui_controller:
 					if self.canvas_motion_dy+dy!=0:
 						self.canvas_motion_count=self.canvas_motion_count+1
 					self.canvas_motion_dy=dy
-				dx=event.x-self.canvas_motion_x0
-				if dx!=0:
-					#logging.debug("CONTROL %d MOTION X => %d, %d" % (self.index, event.x, dx))
+				elif dx!=0:
+					#logging.debug("CONTROL {} MOTION X => {}-{}={}".format(self.index, event.x, self.canvas_motion_x0, dx))
 					if abs(self.canvas_motion_dx-dx)>0:
 						self.canvas_motion_count=self.canvas_motion_count+1
 					self.canvas_motion_dx=dx

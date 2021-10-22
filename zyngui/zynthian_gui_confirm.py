@@ -29,7 +29,7 @@ import tkinter
 import logging
 
 # Zynthian specific modules
-from . import zynthian_gui_config
+from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # Zynthian Info GUI Class

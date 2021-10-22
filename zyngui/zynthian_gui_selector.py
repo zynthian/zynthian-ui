@@ -32,15 +32,15 @@ from PIL import Image, ImageTk
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
-from . import zynthian_gui_base
-from . import zynthian_gui_config
-from . import zynthian_gui_controller
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_base import zynthian_gui_base
+from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
 #------------------------------------------------------------------------------
 # Zynthian Listbox Selector GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
+class zynthian_gui_selector(zynthian_gui_base):
 
 	def __init__(self, selcap='Select', wide=False):
 		super().__init__()
@@ -202,15 +202,8 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 
 
 	def select_listbox(self,index):
-		n = len(self.list_data)
-		if index>=0 and index<n:
-			# Skip separator items ...
-			if self.list_data[index][0] is None:
-				if self.index<index:
-					self.select_listbox(index+1)
-				elif self.index>index:
-					self.select_listbox(index-1)
-			else:
+		if index>=0 and index<len(self.list_data):
+			if not self.skip_separators(index):
 				# Set selection
 				self.listbox.selection_clear(0,tkinter.END)
 				self.listbox.selection_set(index)
@@ -221,6 +214,18 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 				# Set index value
 				self.index=index
 				self.last_index_change_ts=datetime.now()
+
+
+	def skip_separators(self, index):
+		# Skip separator items ...
+		if 0 <= index < len(self.list_data) and self.list_data[index][0] is None:
+			if self.index<=index:
+				self.select_listbox(index+1)
+			elif self.index>index:
+				self.select_listbox(index-1)
+			return True
+		else:
+			return False
 
 
 	def select(self, index=None):
@@ -242,7 +247,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		if index is not None:
 			self.select(index)
 		else:
-			self.index=self.get_cursel()
+			self.skip_separators(self.get_cursel())
 
 		self.select_action(self.index, t)
 
@@ -264,6 +269,7 @@ class zynthian_gui_selector(zynthian_gui_base.zynthian_gui_base):
 		if self.listbox_push_ts:
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
+			self.zselector.set_value(self.get_cursel(), True, False)
 			if dts < 0.3:
 				self.zyngui.zynswitch_defered('S',3)
 			elif dts>=0.3 and dts<2:
