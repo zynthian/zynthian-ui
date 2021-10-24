@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Audio Mixer
-# 
+#
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
 # Copyright (C) 2015-2021 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -21,7 +21,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import sys
@@ -82,7 +82,7 @@ class zynthian_gui_mixer_channel():
 		self.edit_height = self.height * 0.1
 		self.balance_height = self.edit_height * 0.2
 		self.balance_top = self.edit_height - self.balance_height
-		self.balance_control_centre = self.width / 2 
+		self.balance_control_centre = self.width / 2
 		self.balance_control_width = self.width / 4 # Width of each half of balance control
 		self.fader_height = self.height - self.edit_height - self.legend_height
 		self.fader_bottom = self.height - self.legend_height
@@ -290,16 +290,16 @@ class zynthian_gui_mixer_channel():
 		balance = zynmixer.get_balance(self.channel)
 		if balance > 0:
 			self.main_canvas.coords(self.balance_left,
-				self.x + balance * self.width / 2, self.balance_top, 
+				self.x + balance * self.width / 2, self.balance_top,
 				self.x + self.width / 2, self.balance_top + self.balance_height)
-			self.main_canvas.coords(self.balance_right, 
-				self.x + self.width / 2, self.balance_top, 
+			self.main_canvas.coords(self.balance_right,
+				self.x + self.width / 2, self.balance_top,
 				self.x + self.width, self.balance_top + self.balance_height)
 		else:
-			self.main_canvas.coords(self.balance_left, 
+			self.main_canvas.coords(self.balance_left,
 				self.x, self.balance_top,
 				self.x + self.width / 2, self.balance_top + self. balance_height)
-			self.main_canvas.coords(self.balance_right, 
+			self.main_canvas.coords(self.balance_right,
 				self.x + self.width / 2, self.balance_top,
 				self.x + self.width * balance / 2 + self.width, self.balance_top + self.balance_height)
 
@@ -529,6 +529,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def highlight_channel(self, channel):
 		#TODO: Scroll channels
 		if channel < self.number_layers:
+			if channel < self.channel_offset:
+				self.channel_offset = channel
+			if channel >= self.channel_offset + self.max_channels:
+				self.channel_offset = channel - self.max_channels + 1
 			chan_strip = self.channels[channel - self.channel_offset]
 		else:
 			chan_strip = self.main_channel
@@ -608,7 +612,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.draw_balance_edit()
 
 
-	# Function to refresh (redraw) balance edit control 
+	# Function to refresh (redraw) balance edit control
 	def draw_balance_edit(self):
 		balance = zynmixer.get_balance(self.get_midi_channel(self.selected_channel))
 		if balance > 0:
