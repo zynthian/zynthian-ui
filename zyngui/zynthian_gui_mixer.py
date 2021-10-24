@@ -527,12 +527,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to display selected channel highlight border
 	# channel: Index of channel to highlight
 	def highlight_channel(self, channel):
-		#TODO: Scroll channels
+		if channel < 0:
+			return
 		if channel < self.number_layers:
-			if channel < self.channel_offset:
-				self.channel_offset = channel
-			if channel >= self.channel_offset + self.max_channels:
-				self.channel_offset = channel - self.max_channels + 1
 			chan_strip = self.channels[channel - self.channel_offset]
 		else:
 			chan_strip = self.main_channel
@@ -561,7 +558,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if self.selected_channel < self.channel_offset:
 			self.channel_offset = channel
 			self.set_mixer_mode()
-		elif self.selected_channel >= self.max_channels and self.selected_channel != self.number_layers:
+		elif self.selected_channel >= self.channel_offset + self.max_channels and self.selected_channel != self.number_layers:
 			self.channel_offset = self.selected_channel - self.max_channels + 1
 			self.set_mixer_mode()
 
@@ -718,6 +715,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.set_mixer_mode()
 		zynmixer.enable_dpm(True)
 		self.main_channel.set_channel(16)
+		if self.selected_channel > self.number_layers and self.selected_channel != self.main_channel:
+			self.selected_channel = self.number_layers
+
 		self.highlight_channel(self.selected_channel)
 		super().show()
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_BACK, zynthian_gui_config.zyncoder_pin_a[ENC_BACK], zynthian_gui_config.zyncoder_pin_b[ENC_BACK], 0, 0, None, self.selected_channel, self.number_layers, 0)
