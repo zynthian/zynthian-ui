@@ -97,17 +97,24 @@ def get_pianoteq_binary_info():
 						res['product'] = "PRO"
 					else:
 						res['product'] = "STANDARD"
+		if res['product'] == "STANDARD":
+			lkey = get_pianoteq_config_value('LKey')
+			if len(lkey) > 0:
+				lkey_product_pattern = re.compile(" Pianoteq \d* (\w*)")
+				m = lkey_product_pattern.search(lkey[0])
+				if m:
+					res['product'] = m.group(1).upper()
 	return res
 
 
-def get_pianoteq_subl():
-	subl = []
+def get_pianoteq_config_value(key):
+	values = []
 	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
 		root = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
 		for xml_value in root.iter("VALUE"):
-			if xml_value.attrib['name'] == 'subl':
-				subl = xml_value.attrib['val'].split(';')
-	return subl
+			if xml_value.attrib['name'] == key:
+				values = xml_value.attrib['val'].split(';')
+	return values
 
 
 def fix_pianoteq_config(samplerate):
@@ -494,7 +501,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.bank_list = sorted(self.bank_list, key=lambda x: x[2])
 		if not PIANOTEQ_TRIAL:
 			# Separate Licensed from Free and Demo
-			subl = get_pianoteq_subl()
+			subl = get_pianoteq_config_value('subl')
 			if subl:
 				free_banks = []
 				licensed_banks = []
