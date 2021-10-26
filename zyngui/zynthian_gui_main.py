@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Main Menu Class
-# 
+#
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import logging
@@ -45,6 +45,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 		# Main Apps
 		self.list_data.append((self.layers,0,"Layers"))
+		# Add list of Apps
+		self.list_data.append((self.audio_mixer,0,"Audio Mixer"))
 		self.list_data.append((self.step_sequencer,0,"Sequencer"))
 		self.list_data.append((self.alsa_mixer,0,"Audio Levels"))
 		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
@@ -115,9 +117,15 @@ class zynthian_gui_main(zynthian_gui_selector):
 		logging.info("Auto EQ")
 		self.zyngui.show_modal('autoeq')
 
+
 	def step_sequencer(self, t='S'):
-		logging.info("Step Sequencer")
+		logging.warning("Step Sequencer")
 		self.zyngui.show_modal('stepseq')
+
+
+	def audio_mixer(self, t='S'):
+		logging.warning("Audio Mixer")
+		self.zyngui.show_modal('audio_mixer')
 
 
 	def admin(self, t='S'):

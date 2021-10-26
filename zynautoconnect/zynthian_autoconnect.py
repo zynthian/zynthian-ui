@@ -433,7 +433,7 @@ def audio_autoconnect(force=False):
 	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
 	input_ports=get_audio_input_ports(True)
 
-	#Get System Playbak Ports
+	#Get System Playback Ports
 	playback_ports = get_audio_playback_ports()
 
 	#Disconnect Monitor from System Output
@@ -448,13 +448,13 @@ def audio_autoconnect(force=False):
 	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 
 	#Connect Synth Engines to assigned outputs
-	for i, layer in enumerate(layers_list):
+	for layer_index, layer in enumerate(layers_list):
 		if not layer.get_audio_jackname() or layer.engine.type=="MIDI Tool":
 			continue
 
-		layer_playback = [jn for jn in layer.get_audio_out() if jn.startswith("system:playback_")]
+		layer_playback = [jn for jn in layer.get_audio_out() if jn.startswith("zynmixer:input_") or jn.startswith("system:playback_")]
 		nlpb = len(layer_playback)
-
+		
 		ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
 		if len(ports)>0:
 			#logger.debug("Connecting Layer {} ...".format(layer.get_jackname()))
@@ -521,76 +521,27 @@ def audio_autoconnect(force=False):
 				except:
 					pass
 
-	headphones_out = jclient.get_ports("Headphones", is_input=True, is_audio=True)
 
-	if len(headphones_out)==2 or not zynthian_gui_config.show_cpu_status:
-		sysout_conports_1 = jclient.get_all_connections("system:playback_1")
-		sysout_conports_2 = jclient.get_all_connections("system:playback_2")
+	# Connect mixer to main output
+	try:
+		jclient.connect("zynmixer:output_a", "system:playback_1")
+		jclient.connect("zynmixer:output_b", "system:playback_2")
+	except:
+		pass
+	# Connect mixer to headphones
+	try:
+		jclient.connect("zynmixer:output_a", "Headphones:playback_1")
+		jclient.connect("zynmixer:output_b", "Headphones:playback_2")
+	except:
+		pass
 
-		#Setup headphones connections if enabled ...
-		if len(headphones_out)==2:
-			#Prepare for setup headphones connections
-			headphones_conports_1=jclient.get_all_connections("Headphones:playback_1")
-			headphones_conports_2=jclient.get_all_connections("Headphones:playback_2")
-
-			#Disconnect ports from headphones (those that are not connected to System Out, if any ...)
-			for cp in headphones_conports_1:
-				if cp not in sysout_conports_1:
-					try:
-						jclient.disconnect(cp,headphones_out[0])
-					except:
-						pass
-			for cp in headphones_conports_2:
-				if cp not in sysout_conports_2:
-					try:
-						jclient.disconnect(cp,headphones_out[1])
-					except:
-						pass
-
-			#Connect ports to headphones (those currently connected to System Out)
-			for cp in sysout_conports_1:
-				try:
-					jclient.connect(cp,headphones_out[0])
-				except:
-					pass
-			for cp in sysout_conports_2:
-				try:
-					jclient.connect(cp,headphones_out[1])
-				except:
-					pass
-
-		#Setup dpmeter connections if enabled ...
-		if not zynthian_gui_config.show_cpu_status:
-			#Prepare for setup dpmeter connections
-			dpmeter_out = jclient.get_ports("jackpeak", is_input=True, is_audio=True)
-			dpmeter_conports_1=jclient.get_all_connections("jackpeak:input_a")
-			dpmeter_conports_2=jclient.get_all_connections("jackpeak:input_b")
-
-			#Disconnect ports from dpmeter (those that are not connected to System Out, if any ...)
-			for cp in dpmeter_conports_1:
-				if cp not in sysout_conports_1:
-					try:
-						jclient.disconnect(cp,dpmeter_out[0])
-					except:
-						pass
-			for cp in dpmeter_conports_2:
-				if cp not in sysout_conports_2:
-					try:
-						jclient.disconnect(cp,dpmeter_out[1])
-					except:
-						pass
-
-			#Connect ports to dpmeter (those currently connected to System Out)
-			for cp in sysout_conports_1:
-				try:
-					jclient.connect(cp,dpmeter_out[0])
-				except:
-					pass
-			for cp in sysout_conports_2:
-				try:
-					jclient.connect(cp,dpmeter_out[1])
-				except:
-					pass
+	# Connect mixer to dpm
+	if not zynthian_gui_config.show_cpu_status:
+		try:
+			jclient.connect("zynmixer:output_a", "jackpeak:input_a")
+			jclient.connect("zynmixer:output_b", "jackpeak:input_b")
+		except:
+			pass
 
 	#Get System Capture ports => jack output ports!!
 	capture_ports = get_audio_capture_ports()
@@ -669,7 +620,8 @@ def get_audio_capture_ports():
 
 
 def get_audio_playback_ports():
-	return jclient.get_ports("system", is_input=True, is_audio=True, is_physical=True)
+	ports = jclient.get_ports("zynmixer", is_input=True, is_audio=True, is_physical=False)
+	return ports + jclient.get_ports("system", is_input=True, is_audio=True, is_physical=True)
 
 
 def get_audio_input_ports(exclude_system_playback=False):
@@ -680,7 +632,7 @@ def get_audio_input_ports(exclude_system_playback=False):
 			client_name=parts[0]
 			if client_name in ["jack_capture","jackpeak","Headphones"] or client_name[:7]=="effect_":
 				continue
-			if client_name=="system":
+			if client_name=="system" or client_name=="zynmixer":
 				if exclude_system_playback:
 					continue
 				else:

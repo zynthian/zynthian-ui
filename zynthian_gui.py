@@ -37,13 +37,16 @@ from os.path import isfile
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
-from ctypes import c_float, c_double, CDLL
+from ctypes import c_float, c_double, CDLL,c_char_p
+from time import monotonic
 
 # Zynthian specific modules
 import zynconf
 import zynautoconnect
-
-from zynlibs.jackpeak import lib_jackpeak, lib_jackpeak_init
+#from jackpeak import *
+#from jackpeak.jackpeak import lib_jackpeak, lib_jackpeak_init
+from zynlibs.zynmixer import zynmixer
+from zynlibs.zynmixer.zynmixer import lib_zynmixer
 from zyncoder import *
 from zyncoder.zyncoder import lib_zyncoder, lib_zyncoder_init
 
@@ -81,6 +84,7 @@ from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
+from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 if "autoeq" in zynthian_gui_config.experimental_features:
 	from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
@@ -199,15 +203,19 @@ class zynthian_gui:
 		# Get Jackd Options
 		self.jackd_options = zynconf.get_jackd_options()
 
+		# Dictionary of {OSC clients, last heartbeat} registered for mixer feedback
+		self.osc_clients = {}
+		self.osc_timer = 12
+
 		# Initialize peakmeter audio monitor if needed
-		if not zynthian_gui_config.show_cpu_status:
-			try:
-				global lib_jackpeak
-				lib_jackpeak = lib_jackpeak_init()
-				lib_jackpeak.setDecay(c_float(0.2))
-				lib_jackpeak.setHoldCount(10)
-			except Exception as e:
-				logging.error("ERROR initializing jackpeak: %s" % e)
+#		if not zynthian_gui_config.show_cpu_status:
+#			try:
+#				global lib_jackpeak
+#				lib_jackpeak = lib_jackpeak_init()
+#				lib_jackpeak.setDecay(c_float(0.2))
+#				lib_jackpeak.setHoldCount(10)
+#			except Exception as e:
+#				logging.error("ERROR initializing jackpeak: %s" % e)
 
 		# Initialize Controllers (Rotary & Switches) & MIDI-router
 		try:
@@ -310,6 +318,16 @@ class zynthian_gui:
 			self.callable_ui_action(parts[2].upper(), args)
 			#Run autoconnect if needed
 			self.zynautoconnect_do()
+		elif parts[1]=="mixer" or parts[1] == "dawosc":
+			if parts[2]=="heartbeat" or parts[2] == "setup":
+				if src.hostname not in self.osc_clients:
+					try:
+						lib_zynmixer.addOscClient(c_char_p(src.hostname.encode('utf-8')))
+					except:
+						logging.warning("Failed to add OSC client registration %s", src.hostname)
+				self.osc_clients[src.hostname] = monotonic()
+			else:
+				self.screens['audio_mixer'].osc(parts[2], args, types, src)
 		else:
 			logging.warning("Not supported OSC call '{}'".format(path))
 
@@ -357,6 +375,7 @@ class zynthian_gui:
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['stepseq'] = zynthian_gui_stepsequencer()
+		self.screens['audio_mixer'] = zynthian_gui_mixer()
 		if "autoeq" in zynthian_gui_config.experimental_features:
 			self.screens['autoeq'] = zynthian_gui_autoeq()
 
@@ -1103,7 +1122,7 @@ class zynthian_gui:
 	def zynswitch_short(self,i):
 		logging.info('Short Switch '+str(i))
 
-		if self.modal_screen in ['stepseq']:
+		if self.modal_screen in ['stepseq', 'audio_mixer']:
 			if self.screens[self.modal_screen].switch(i, 'S'):
 				return
 
@@ -1552,6 +1571,7 @@ class zynthian_gui:
 		self.polling=True
 		self.zyngine_refresh()
 		self.refresh_status()
+		self.osc_timeout()
 
 
 	def stop_polling(self):
@@ -1595,10 +1615,11 @@ class zynthian_gui:
 				self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
 			else:
 				# Get audio peak level
-				self.status_info['peakA'] = lib_jackpeak.getPeak(0)
-				self.status_info['peakB'] = lib_jackpeak.getPeak(1)
-				self.status_info['holdA'] = lib_jackpeak.getHold(0)
-				self.status_info['holdB'] = lib_jackpeak.getHold(1)
+				MIXER_MAIN = 16 #TODO This constant should go somewhere else
+				self.status_info['peakA'] = lib_zynmixer.getDpm(MIXER_MAIN, 0)
+				self.status_info['peakB'] = lib_zynmixer.getDpm(MIXER_MAIN, 1)
+				self.status_info['holdA'] = lib_zynmixer.getDpmHold(MIXER_MAIN, 0)
+				self.status_info['holdB'] = lib_zynmixer.getDpmHold(MIXER_MAIN, 1)
 
 			# Get Status Flags (once each 5 refreshes)
 			if self.status_counter>5:
@@ -1649,6 +1670,20 @@ class zynthian_gui:
 		# Poll
 		if self.polling:
 			zynthian_gui_config.top.after(200, self.refresh_status)
+
+
+	def osc_timeout(self):
+		self.watchdog_last_check = monotonic()
+		for client in list(self.osc_clients):
+			if self.osc_clients[client] < self.watchdog_last_check - self.osc_timer:
+				self.osc_clients.pop(client)
+				try:
+					lib_zynmixer.removeOscClient(c_char_p(client.encode('utf-8')))
+				except:
+					pass
+		# Poll
+		if self.polling:
+			zynthian_gui_config.top.after(self.osc_timer * 1000, self.osc_timeout)
 
 
 	#------------------------------------------------------------------

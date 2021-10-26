@@ -56,6 +56,8 @@ class zynthian_layer:
 
 		self.jackname = None
 		self.audio_out = ["system:playback_1", "system:playback_2"]
+		if midi_chan != None:
+			self.audio_out = ["zynmixer:input_%02da"%(midi_chan + 1), "zynmixer:input_%02db"%(midi_chan + 1)]
 		self.audio_in = ["system:capture_1", "system:capture_2"]
 		self.midi_out = ["MIDI-OUT", "NET-OUT"]
 
@@ -127,7 +129,10 @@ class zynthian_layer:
 		self.engine.set_midi_chan(self)
 		for zctrl in self.controllers_dict.values():
 			zctrl.set_midi_chan(midi_chan)
-
+		for index, output in enumerate(self.audio_out):
+			if output.startswith("zynmixer:input_"):
+				self.audio_out[index] = "zynmixer:input_%02d%s"%(midi_chan + 1, output[-1:])
+		self.zyngui.zynautoconnect_audio()
 
 	def get_midi_chan(self):
 		return self.midi_chan
@@ -767,8 +772,10 @@ class zynthian_layer:
 
 
 	def reset_audio_out(self):
-		self.audio_out = ["system:playback_1", "system:playback_2"]
-		self.pair_audio_out()
+		self.audio_out=["system:playback_1", "system:playback_2"]
+		if self.midi_chan != None:
+			self.audio_out = ["zynmixer:input_%02da"%(self.midi_chan + 1), "zynmixer:input_%02db"%(self.midi_chan + 1)]
+		#self.pair_audio_out() #TODO: This was previously removed - is it required?
 		self.zyngui.zynautoconnect_audio()
 
 
