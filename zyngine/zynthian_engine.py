@@ -24,6 +24,7 @@
 
 #import sys
 import os
+import re
 import copy
 import json
 import liblo
@@ -176,7 +177,9 @@ class zynthian_engine(zynthian_basic_engine):
 			'note_range': True,
 			'audio_route': True,
 			'midi_chan': True,
-			'drop_pc': False
+			'replace': True,
+			'drop_pc': False,
+			'layer_audio_out': True
 		}
 
 		self.osc_target = None
@@ -211,6 +214,20 @@ class zynthian_engine(zynthian_basic_engine):
 		else:
 			self.command_env['DISPLAY'] = ':1'
 			return True
+
+
+	def get_next_jackname(self, jname, sanitize=False):
+		try:
+			# Jack, when listing ports, accepts regular expressions as the jack name.
+			# So, for avoiding problems, jack names shouldn't contain regex characters.
+			if sanitize:
+				jname = re.sub("[\_]{2,}","_",re.sub("[\s\'\*\(\)\[\]]","_",jname))
+			jname_count = self.zyngui.screens['layer'].get_jackname_count(jname)
+		except Exception as e:
+			jname_count = 0
+			logging.error(e)
+
+		return "{}-{:02d}".format(jname, jname_count)
 
 
 	# ---------------------------------------------------------------------------
@@ -303,7 +320,8 @@ class zynthian_engine(zynthian_basic_engine):
 						#print("filelist => "+title)
 						res.append([join(dp,f),i,title,dn,f])
 						i=i+1
-			except:
+			except Exception as e:
+				#logging.warning("Can't access directory '{}' => {}".format(dp,e))
 				pass
 
 		return res
@@ -319,16 +337,17 @@ class zynthian_engine(zynthian_basic_engine):
 			dn=dpd[0]
 			try:
 				for f in sorted(os.listdir(dp)):
-					if exclude_empty and next(os.scandir(join(dp,f)), None) is None:
+					dpath = join(dp,f)
+					if not os.path.isdir(dpath) or (exclude_empty and next(os.scandir(dpath), None) is None):
 						continue
-					if not f.startswith('.') and isdir(join(dp,f)):
+					if not f.startswith('.') and isdir(dpath):
 						title,ext=os.path.splitext(f)
 						title=str.replace(title, '_', ' ')
 						if dn!='_': title=dn+'/'+title
-						#print("dirlist => "+title)
-						res.append([join(dp,f),i,title,dn,f])
+						res.append([dpath,i,title,dn,f])
 						i=i+1
-			except:
+			except Exception as e:
+				#logging.warning("Can't access directory '{}' => {}".format(dp,e))
 				pass
 
 		return res

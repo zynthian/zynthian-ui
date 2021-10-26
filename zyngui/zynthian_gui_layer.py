@@ -35,9 +35,9 @@ from json import JSONEncoder, JSONDecoder
 
 # Zynthian specific modules
 from zyncoder import *
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
 from zyngine import zynthian_layer
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian Layer Selection GUI Class
@@ -176,8 +176,27 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.select(self.index)
 
 
+	def get_layer_index(self, layer):
+		try:
+			return self.layers.index(layer)
+		except:
+			return None
+
+
 	def get_num_layers(self):
 		return len(self.layers)
+
+
+	def get_root_layers(self):
+		self.root_layers=self.get_fxchain_roots()
+		return self.root_layers
+
+
+	def get_root_layer_index(self, layer):
+		try:
+			return self.root_layers.index(layer)
+		except:
+			return None
 
 
 	def get_num_root_layers(self):
@@ -236,6 +255,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.zyngui.show_modal('engine')
 
 
+	def replace_layer(self, i):
+		self.add_layer_eng = None
+		self.replace_layer_index = i
+		self.layer_chain_parallel = False
+		self.zyngui.screens['engine'].set_engine_type(self.layers[i].engine.type, self.layers[i].midi_chan)
+		self.zyngui.show_modal('engine')
+
+
 	def add_fxchain_layer(self, midi_chan):
 		self.add_layer_eng = None
 		self.replace_layer_index = None
@@ -248,11 +275,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def replace_fxchain_layer(self, i):
-		self.add_layer_eng = None
-		self.replace_layer_index = i
-		self.layer_chain_parallel = False
-		self.zyngui.screens['engine'].set_fxchain_mode(self.layers[i].midi_chan)
-		self.zyngui.show_modal('engine')
+		self.replace_layer(i)
 
 
 	def add_midichain_layer(self, midi_chan):
@@ -267,11 +290,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def replace_midichain_layer(self, i):
-		self.add_layer_eng = None
-		self.replace_layer_index = i
-		self.layer_chain_parallel = False
-		self.zyngui.screens['engine'].set_midichain_mode(self.layers[i].midi_chan)
-		self.zyngui.show_modal('engine')
+		self.replace_layer(i)
 
 
 	def add_layer_engine(self, eng, midi_chan=None):
@@ -300,24 +319,31 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def add_layer_midich(self, midich, select=True):
 		if self.add_layer_eng:
+			# Create layer node ...
 			zyngine = self.zyngui.screens['engine'].start_engine(self.add_layer_eng)
 			layer=zynthian_layer(zyngine, midich, self.zyngui)
 
-			# Try to connect Audio Effects ...
+			# add/replace Audio Effects ...
 			if len(self.layers)>0 and layer.engine.type=="Audio Effect":
 				if self.replace_layer_index is not None:
 					self.replace_on_fxchain(layer)
 				else:
 					self.add_to_fxchain(layer, self.layer_chain_parallel)
 					self.layers.append(layer)
-			# Try to connect MIDI tools ...
+			# add/replace MIDI Effects ...
 			elif len(self.layers)>0 and layer.engine.type=="MIDI Tool":
 				if self.replace_layer_index is not None:
 					self.replace_on_midichain(layer)
 				else:
 					self.add_to_midichain(layer, self.layer_chain_parallel)
 					self.layers.append(layer)
-			# New root layer
+			# replace Synth ...
+			elif len(self.layers)>0 and layer.engine.type=="MIDI Synth":
+				if self.replace_layer_index is not None:
+					self.replace_synth(layer)
+				else:
+					self.layers.append(layer)
+			# new root layer
 			else:
 				self.layers.append(layer)
 
@@ -328,7 +354,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				root_layer = self.get_fxchain_root(layer)
 				try:
 					self.index = self.root_layers.index(root_layer)
-					self.layer_control(layer)
+					self.layer_control(root_layer)
 				except Exception as e:
 					logging.error(e)
 					self.zyngui.show_screen('layer')
@@ -499,19 +525,22 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def set_midi_chan_preset(self, midich, preset_index):
 		selected = False
-		for layer in self.layers:
+		for i,layer in enumerate(self.root_layers):
 			mch=layer.get_midi_chan()
 			if mch is None or mch==midich:
 				# Fluidsynth engine => ignore Program Change on channel 9
 				if layer.engine.nickname=="FS" and mch==9:
 					continue
 				if layer.set_preset(preset_index,True) and not selected:
+					selected = True
 					try:
-						if not self.zyngui.modal_screen and self.zyngui.active_screen in ('control'):
-							self.select_action(self.root_layers.index(layer))
-						selected = True
+						if not self.zyngui.modal_screen:
+							if self.shown:
+								self.show()
+							elif self.zyngui.active_screen in ('bank','preset','control'):
+								self.select_action(i)
 					except Exception as e:
-						logging.error("Can't select layer => {}".format(e))
+						logging.error("Can't refresh GUI! => {}".format(e))
 
 
 	def set_midi_chan_zs3(self, midich, zs3_index):
@@ -568,8 +597,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def midi_control_change(self, chan, ccnum, ccval):
-		for layer in self.layers + [self.amixer_layer]:
-			layer.midi_control_change(chan, ccnum, ccval)
+		if ccnum==0:
+			for layer in self.root_layers:
+				if layer.midi_chan==chan:
+					layer.midi_bank_msb(ccval)
+		elif ccnum==32:
+			for layer in self.root_layers:
+				if layer.midi_chan==chan:
+					layer.midi_bank_lsb(ccval)
+		else:
+			for layer in self.layers:
+				layer.midi_control_change(chan, ccnum, ccval)
+			self.amixer_layer.midi_control_change(chan, ccnum, ccval)
 
 
 	#----------------------------------------------------------------------------
@@ -656,6 +695,39 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if layer.jackname is not None and layer.jackname.startswith(jackname):
 				count += 1
 		return count
+
+	# ---------------------------------------------------------------------------
+	# Synth node
+	# ---------------------------------------------------------------------------
+
+
+	def replace_synth(self, layer):
+		try:
+			rlayer = self.layers[self.replace_layer_index]
+			logging.debug("Replacing Synth {} => {}".format(rlayer.get_jackname(), layer.get_jackname()))
+			
+			# Re-route audio
+			layer.set_audio_out(rlayer.get_audio_out())
+			rlayer.mute_audio_out()
+
+			# Re-route MIDI
+			for uslayer in self.get_midichain_upstream(rlayer):
+				uslayer.del_midi_out(rlayer.get_midi_jackname())
+				uslayer.add_midi_out(layer.get_midi_jackname())
+
+			# Replace layer in list
+			self.layers[self.replace_layer_index] = layer
+
+			# Remove old layer and stop unused engines
+			self.zyngui.zynautoconnect_acquire_lock()
+			rlayer.reset()
+			self.zyngui.zynautoconnect_release_lock()
+			self.zyngui.screens['engine'].stop_unused_engines()
+
+			self.replace_layer_index = None
+
+		except Exception as e:
+			logging.error("Error replacing Synth ({})".format(e))
 
 
 	# ---------------------------------------------------------------------------
@@ -1004,7 +1076,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			rlayer = self.layers[self.replace_layer_index]
 			logging.debug("Replacing on MIDI-chain {} => {}".format(rlayer.get_midi_jackname(), layer.get_midi_jackname()))
 			
-			# Re-route audio
+			# Re-route MIDI
 			layer.set_midi_out(rlayer.get_midi_out())
 			rlayer.mute_midi_out()
 			for uslayer in self.get_midichain_upstream(rlayer):
@@ -1139,6 +1211,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				b64_data = base64_encoded_data = base64.b64encode(binary_riff_data)
 				snapshot['zynseq_riff_b64'] = b64_data.decode('utf-8')
 
+			#Audio Recorder out
+			snapshot['audio_recorder_out'] = self.zyngui.screens['audio_recorder'].get_audio_out()
+
 			#JSON Encode
 			json=JSONEncoder().encode(snapshot)
 			logging.info("Saving snapshot %s => \n%s" % (fpath,json))
@@ -1161,115 +1236,20 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return True
 
 
-	def load_snapshot(self, fpath, quiet=False):
+	def load_snapshot(self, fpath, quiet=False, load_sequences=True):
 		try:
 			with open(fpath,"r") as fh:
 				json=fh.read()
 				logging.info("Loading snapshot %s => \n%s" % (fpath,json))
-
 		except Exception as e:
 			logging.error("Can't load snapshot '%s': %s" % (fpath,e))
 			return False
 
 		try:
 			snapshot=JSONDecoder().decode(json)
-
-			#Clean all layers, but don't stop unused engines
-			self.remove_all_layers(False)
-
-			# Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
-			# so we stop Jalv engines!
-			self.zyngui.screens['engine'].stop_unused_jalv_engines()
-
-			#Create new layers, starting engines when needed
-			for i, lss in enumerate(snapshot['layers']):
-				if lss['engine_nick']=="MX":
-					if zynthian_gui_config.snapshot_mixer_settings:
-						snapshot['amixer_layer'] = lss
-					del snapshot['layers'][i]
-				else:
-					engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
-					self.layers.append(zynthian_layer(engine,lss['midi_chan'], self.zyngui))
-
-			# Finally, stop all unused engines
-			self.zyngui.screens['engine'].stop_unused_engines()
-
-			#Restore MIDI profile state
-			if 'midi_profile_state' in snapshot:
-				self.set_midi_profile_state(snapshot['midi_profile_state'])
-
-			#Set MIDI Routing
-			if 'midi_routing' in snapshot:
-				self.set_midi_routing(snapshot['midi_routing'])
-			else:
-				self.reset_midi_routing()
-
-			#Autoconnect MIDI
-			self.zyngui.zynautoconnect_midi(True)
-
-			#Set extended config
-			if 'extended_config' in snapshot:
-				self.set_extended_config(snapshot['extended_config'])
-
-			# Restore layer state, step 1 => Restore Bank & Preset Status
-			for i, lss in enumerate(snapshot['layers']):
-				self.layers[i].restore_snapshot_1(lss)
-
-			# Restore layer state, step 2 => Restore Controllers Status
-			for i, lss in enumerate(snapshot['layers']):
-				self.layers[i].restore_snapshot_2(lss)
-
-			#Set Audio Routing
-			if 'audio_routing' in snapshot:
-				self.set_audio_routing(snapshot['audio_routing'])
-			else:
-				self.reset_audio_routing()
-
-			#Set Audio Capture
-			if 'audio_capture' in snapshot:
-				self.set_audio_capture(snapshot['audio_capture'])
-			else:
-				self.reset_audio_routing()
-
-			#Autoconnect Audio
-			self.zyngui.zynautoconnect_audio()
-
-			# Restore ALSA Mixer settings
-			if self.amixer_layer and 'amixer_layer' in snapshot:
-				self.amixer_layer.restore_snapshot_1(snapshot['amixer_layer'])
-				self.amixer_layer.restore_snapshot_2(snapshot['amixer_layer'])
-
-			#Fill layer list
-			self.fill_list()
-
-			#Set active layer
-			if snapshot['index']<len(self.layers):
-				self.index = snapshot['index']
-				self.zyngui.set_curlayer(self.layers[self.index])
-			elif len(self.layers)>0:
-				self.index = 0
-				self.zyngui.set_curlayer(self.layers[self.index])
-
-			#Set Clone
-			if 'clone' in snapshot:
-				self.set_clone(snapshot['clone'])
-			else:
-				self.reset_clone()
-
-			# Note-range & Tranpose
-			self.reset_note_range()
-			if 'note_range' in snapshot:
-				self.set_note_range(snapshot['note_range'])
-			#BW compat.
-			elif 'transpose' in snapshot:
-				self.set_transpose(snapshot['transpose'])
-
-			#Zynseq RIFF data
-			if 'zynseq_riff_b64' in snapshot and 'stepseq' in self.zyngui.screens:
-				b64_bytes = snapshot['zynseq_riff_b64'].encode('utf-8')
-				binary_riff_data = base64.decodebytes(b64_bytes)
-				self.zyngui.screens['stepseq'].restore_riff_data(binary_riff_data)
-
+			self._load_snapshot_layers(snapshot)
+			if load_sequences:
+				self._load_snapshot_sequences(snapshot)
 			#Post action
 			if not quiet:
 				if self.index<len(self.root_layers):
@@ -1277,7 +1257,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				else:
 					self.index = 0
 					self.zyngui.show_screen('layer')
-
 		except Exception as e:
 			self.zyngui.reset_loading()
 			logging.exception("Invalid snapshot: %s" % e)
@@ -1285,6 +1264,138 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		self.last_snapshot_fpath = fpath
 		return True
+
+
+	def load_snapshot_layers(self, fpath, quiet=False):
+		return self.load_snapshot(fpath, quiet, False)
+
+
+	def load_snapshot_sequences(self, fpath, quiet=False):
+		try:
+			with open(fpath,"r") as fh:
+				json=fh.read()
+				logging.info("Loading snapshot %s => \n%s" % (fpath,json))
+		except Exception as e:
+			logging.error("Can't load snapshot '%s': %s" % (fpath,e))
+			return False
+
+		try:
+			snapshot=JSONDecoder().decode(json)
+			self._load_snapshot_sequences(snapshot)
+			#Post action
+			if not quiet:
+				self.zyngui.show_modal('stepseq')
+		except Exception as e:
+			self.zyngui.reset_loading()
+			logging.exception("Invalid snapshot: %s" % e)
+			return False
+
+		#self.last_snapshot_fpath = fpath
+		return True
+
+
+	def _load_snapshot_layers(self, snapshot):
+		#Clean all layers, but don't stop unused engines
+		self.remove_all_layers(False)
+
+		# Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
+		# so we stop Jalv engines!
+		self.zyngui.screens['engine'].stop_unused_jalv_engines()
+
+		#Create new layers, starting engines when needed
+		for i, lss in enumerate(snapshot['layers']):
+			if lss['engine_nick']=="MX":
+				if zynthian_gui_config.snapshot_mixer_settings:
+					snapshot['amixer_layer'] = lss
+				del snapshot['layers'][i]
+			else:
+				engine=self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
+				self.layers.append(zynthian_layer(engine,lss['midi_chan'], self.zyngui))
+
+		# Finally, stop all unused engines
+		self.zyngui.screens['engine'].stop_unused_engines()
+
+		#Restore MIDI profile state
+		if 'midi_profile_state' in snapshot:
+			self.set_midi_profile_state(snapshot['midi_profile_state'])
+
+		#Set MIDI Routing
+		if 'midi_routing' in snapshot:
+			self.set_midi_routing(snapshot['midi_routing'])
+		else:
+			self.reset_midi_routing()
+
+		#Autoconnect MIDI
+		self.zyngui.zynautoconnect_midi(True)
+
+		#Set extended config
+		if 'extended_config' in snapshot:
+			self.set_extended_config(snapshot['extended_config'])
+
+		# Restore layer state, step 1 => Restore Bank & Preset Status
+		for i, lss in enumerate(snapshot['layers']):
+			self.layers[i].restore_snapshot_1(lss)
+
+		# Restore layer state, step 2 => Restore Controllers Status
+		for i, lss in enumerate(snapshot['layers']):
+			self.layers[i].restore_snapshot_2(lss)
+
+		#Set Audio Routing
+		if 'audio_routing' in snapshot:
+			self.set_audio_routing(snapshot['audio_routing'])
+		else:
+			self.reset_audio_routing()
+
+		#Set Audio Capture
+		if 'audio_capture' in snapshot:
+			self.set_audio_capture(snapshot['audio_capture'])
+		else:
+			self.reset_audio_routing()
+
+		#Autoconnect Audio
+		self.zyngui.zynautoconnect_audio()
+
+		# Restore ALSA Mixer settings
+		if self.amixer_layer and 'amixer_layer' in snapshot:
+			self.amixer_layer.restore_snapshot_1(snapshot['amixer_layer'])
+			self.amixer_layer.restore_snapshot_2(snapshot['amixer_layer'])
+
+		#Fill layer list
+		self.fill_list()
+
+		#Set active layer
+		if snapshot['index']<len(self.layers):
+			self.index = snapshot['index']
+			self.zyngui.set_curlayer(self.layers[self.index])
+		elif len(self.layers)>0:
+			self.index = 0
+			self.zyngui.set_curlayer(self.layers[self.index])
+
+		#Set Clone
+		if 'clone' in snapshot:
+			self.set_clone(snapshot['clone'])
+		else:
+			self.reset_clone()
+
+		# Note-range & Tranpose
+		self.reset_note_range()
+		if 'note_range' in snapshot:
+			self.set_note_range(snapshot['note_range'])
+		#BW compat.
+		elif 'transpose' in snapshot:
+			self.set_transpose(snapshot['transpose'])
+
+		#Audio Recorder Out
+		if 'audio_recorder_out' in snapshot:
+			self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out'] 
+
+
+	def _load_snapshot_sequences(self, snapshot):
+		#Zynseq RIFF data
+		if 'zynseq_riff_b64' in snapshot and 'stepseq' in self.zyngui.screens:
+			b64_bytes = snapshot['zynseq_riff_b64'].encode('utf-8')
+			binary_riff_data = base64.decodebytes(b64_bytes)
+			self.zyngui.screens['stepseq'].restore_riff_data(binary_riff_data)
 
 
 	def get_midi_profile_state(self):

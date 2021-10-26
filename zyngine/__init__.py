@@ -15,9 +15,10 @@ __all__ = [
 	"zynthian_engine_puredata",
 	"zynthian_engine_aeolus",
 	"zynthian_engine_jalv",
-	"zynthian_engine_csound",
+	"zynthian_engine_sfizz",
 	"zynthian_engine_mixer",
-	"zynthian_engine_transport"
+	#"zynthian_engine_csound",
+	#"zynthian_engine_transport"
 ]
 #from zyngine.zynthian_midi import *
 from zyngine.zynthian_zcmidi import *
@@ -35,6 +36,7 @@ from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_puredata import *
 from zyngine.zynthian_engine_aeolus import *
 from zyngine.zynthian_engine_jalv import *
-from zyngine.zynthian_engine_csound import *
+from zyngine.zynthian_engine_sfizz import *
 from zyngine.zynthian_engine_mixer import *
-from zyngine.zynthian_engine_transport import *
+#from zyngine.zynthian_engine_csound import *
+#from zyngine.zynthian_engine_transport import *

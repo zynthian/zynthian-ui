@@ -78,6 +78,7 @@ class zynthian_engine_csound(zynthian_engine):
 		self.jackname = "csound6"
 
 		#self.options['midi_chan']=False
+		self.options['replace']=False
 
 		self.preset = ""
 		self.preset_config = None

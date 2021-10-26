@@ -30,9 +30,8 @@ from os.path import isfile, isdir, join, basename
 from shutil import copy
 
 # Zynthian specific modules
-from . import zynthian_gui_config
-from . import zynthian_gui_selector
-from zynlibs.zynseq import zynseq
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian Load/Save Snapshot GUI Class
@@ -53,7 +52,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def get_snapshot_fpath(self,f):
-		return join(self.base_dir,self.bank_dir,f)
+		if self.bank_dir:
+			return join(self.base_dir,self.bank_dir,f)
+		else:
+			return join(self.base_dir,f)
 
 
 	#	Get the next available program number
@@ -281,8 +283,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def show_options(self, i):
 		fpath=self.list_data[i][0]
 		fname=self.list_data[i][2]
-
-		options = {"Load": fpath, "Save":fname, "Rename":fname, "Create copy":fname, "Set program":fname, "Delete":fname}
+		options = {
+			"Load": fpath,
+			"Load Layers": fpath,
+			"Load Sequences": fpath,
+			"Save": fname,
+			"Rename": fname,
+			"Create Copy": fname, 
+			"Set Program": fname,
+			"Delete": fname
+		}
 		self.zyngui.screens['option'].config(fname, options, self.options_cb)
 		self.zyngui.show_modal('option')
 
@@ -297,6 +307,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 		if option == "Load":
 			self.zyngui.screens['layer'].load_snapshot(fpath)
+		elif option == "Load Layers":
+			self.zyngui.screens['layer'].load_snapshot_layers(fpath)
+		elif option == "Load Sequences":
+			self.zyngui.screens['layer'].load_snapshot_sequences(fpath)
 		elif option == "Save":
 			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
 		elif option == "Rename":
@@ -307,7 +321,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.zyngui.screens['midi_prog'].config(parts[0], self.set_program)
 			self.zyngui.show_modal('midi_prog')
 		elif option == "Delete":
-			self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, self.get_snapshot_fpath(fpath))
+			self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, fpath)
 
 
 	def rename_snapshot(self, new_name):

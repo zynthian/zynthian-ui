@@ -27,8 +27,6 @@ import os
 import re
 import sys
 import logging
-import tkinter
-from PIL import Image, ImageTk
 
 # Zynthian specific modules
 import zynconf
@@ -284,6 +282,7 @@ color_hl=os.environ.get('ZYNTHIAN_UI_COLOR_HL',"#00b000")
 color_ml=os.environ.get('ZYNTHIAN_UI_COLOR_ML',"#f0f000")
 color_low_on=os.environ.get('ZYNTHIAN_UI_COLOR_LOW_ON',"#b00000")
 color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG',"#3a424d")
+color_panel_hl=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_HL',"#2a323d")
 color_info=os.environ.get('ZYNTHIAN_UI_COLOR_INFO',"#8080ff")
 color_error=os.environ.get('ZYNTHIAN_UI_COLOR_ERROR',"#ff0000")
 
@@ -450,6 +449,9 @@ experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES',"").spli
 #------------------------------------------------------------------------------
 
 if "zynthian_gui.py" in sys.argv[0]:
+	import tkinter
+	from PIL import Image, ImageTk
+
 	try:
 		#------------------------------------------------------------------------------
 		# Create & Configure Top Level window 

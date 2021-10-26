@@ -54,7 +54,7 @@ bool g_bPatternModified = false; // True if pattern has changed since last check
 size_t g_nPlayingSequences = 0; // Quantity of playing sequences
 uint32_t g_nXruns = 0;
 bool g_bDirty = false; // True if anything has been modified
-std::set<std::string> g_setTransportClient; // Set of timebase clients having requested transport play 
+std::set<std::string> g_setTransportClient; // Set of timebase clients having requested transport play
 bool g_bClientPlaying = false; // True if any external client has requested transport play
 bool g_bInputEnabled = false; // True to add notes to current pattern from MIDI input
 
@@ -190,7 +190,7 @@ void updateBBT(jack_position_t* position)
     pPosition: Pointer to position structure for the next cycle
     bUpdate: True (non-zero) to request position be updated to position defined in pPosition (also true on first callback)
     pArgs: Pointer to argument supplied by jack_set_timebase_callback (not used here)
-    
+
     [Info]
     If bUpdate is false then calculate BBT from pPosition->frame: quantity of frames from start of song.
     If bUpdate is true then calculate pPostion-frame from BBT info
@@ -312,7 +312,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     static double dBeatsPerBar; // Store so that we can check for change and do less maths
     static jack_nframes_t nFramerate; // Store so that we can check for change and do less maths
     static uint32_t nFramesPerPulse;
-    
+
     // Get output buffer that will be processed in this process cycle
     void* pOutputBuffer = jack_port_get_buffer(g_pOutputPort, nFrames);
     unsigned char* pBuffer;
@@ -454,7 +454,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         }
         g_dFramesToNextClock -= nFrames;
         //g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
-        
+
         if(bSync && g_nPlayingSequences == 0)
         {
             //!@todo bSync might have been reset by second clock within period - this should go within g_dFramesToNextClock loop
@@ -538,36 +538,43 @@ void end()
 
 // ** Library management functions **
 
-bool init(bool bTimebaseMaster)
-{
+__attribute__((constructor)) void zynseq(void) {
+    printf("New instance of zynseq\n");
+}
+
+void init(char* name) {
     // Register with Jack server
+    printf("**zynseq initialising as %s**\n", name);
     char *sServerName = NULL;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
-    
-    if(g_pJackClient)
-        return false; // Already initialised
 
-    if((g_pJackClient = jack_client_open("zynthstep", nOptions, &nStatus, sServerName)) == 0)
+    if(g_pJackClient)
+    {
+        fprintf(stderr, "libzynseq already initialised\n");
+        return; // Already initialised
+    }
+
+    if((g_pJackClient = jack_client_open(name, nOptions, &nStatus, sServerName)) == 0)
     {
         fprintf(stderr, "libzynseq failed to start jack client: %d\n", nStatus);
-        return false;
+        return;
     }
 
     // Create input port
     if(!(g_pInputPort = jack_port_register(g_pJackClient, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0)))
     {
         fprintf(stderr, "libzynseq cannot register input port\n");
-        return false;
+        return;
     }
 
     // Create output port
     if(!(g_pOutputPort = jack_port_register(g_pJackClient, "output", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0)))
     {
         fprintf(stderr, "libzynseq cannot register output port\n");
-        return false;
+        return;
     }
-    
+
     g_nSampleRate = jack_get_sample_rate(g_pJackClient);
     g_dFramesPerClock = getFramesPerClock(g_dTempo);
 
@@ -578,21 +585,16 @@ bool init(bool bTimebaseMaster)
 
     if(jack_activate(g_pJackClient)) {
         fprintf(stderr, "libzynseq cannot activate client\n");
-        return false;
+        return;
     }
-
-    if(bTimebaseMaster)
-        if(transportRequestTimebase())
-            DPRINTF("Registered as timebase master\n");
-        else
-            DPRINTF("Failed to register as timebase master\n");
 
     // Register the cleanup function to be called when program exits
     atexit(end);
-        
+
+    transportRequestTimebase();
     transportStop("zynseq");
     transportLocate(0);
-    return true; //!@todo If library loaded and initialised by Python then methods called too early (soon) it segfaults
+    g_pTrack = g_seqMan.getSequence(0, 0)->getTrack(0);
 }
 
 bool isModified()
@@ -832,8 +834,7 @@ bool load(const char* filename)
     fclose(pFile);
     //printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu banks from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mBanks.size(), filename);
     g_bDirty = false;
-    Sequence* pSequence = g_seqMan.getSequence(0, 0);
-    g_pTrack = pSequence->getTrack(0);
+    g_pTrack = g_seqMan.getSequence(0, 0)->getTrack(0);
     return true;
 }
 
@@ -899,7 +900,7 @@ void save(const char* filename)
         }
         nPattern = g_seqMan.getNextPattern(nPattern);
     } while(nPattern != -1);
-    
+
     // Iterate through banks
     for(uint32_t nBank = 1; nBank < g_seqMan.getBanks(); ++nBank)
     {
@@ -949,7 +950,7 @@ void save(const char* filename)
                     nPos += fileWrite32(0, pFile);
                     nPos += fileWrite16(0, pFile);
                 }
-                
+
             }
             Timebase* pTimebase = pSequence->getTimebase();
             if(pTimebase)
@@ -967,7 +968,7 @@ void save(const char* filename)
             else
             {
                 nPos += fileWrite32(0, pFile);
-            }            
+            }
         }
         nBlockSize = nPos - nStartOfBlock;
         fseek(pFile, nStartOfBlock - 4, SEEK_SET);
@@ -1151,7 +1152,7 @@ bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track)
 	if(pTrack)
 		return pTrack->isMuted();
 	return false;
-}	
+}
 
 void enableMidiInput(bool enable)
 {
@@ -1443,6 +1444,11 @@ uint8_t getPlayState(uint8_t bank, uint8_t sequence)
     return g_seqMan.getSequence(bank, sequence)->getPlayState();
 }
 
+bool isEmpty(uint8_t bank, uint8_t sequence)
+{
+    return g_seqMan.getSequence(bank, sequence)->isEmpty();
+}
+
 void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
 {
     if(transportGetPlayStatus() != JackTransportRolling)
@@ -1460,6 +1466,8 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
 
 void togglePlayState(uint8_t bank, uint8_t sequence)
 {
+    if(g_seqMan.getSequence(bank, sequence)->getPlayMode() == DISABLED)
+        return;
     uint8_t nState = g_seqMan.getSequence(bank, sequence)->getPlayState();
     switch(nState)
     {
@@ -1640,6 +1648,11 @@ void removeSequence(uint8_t bank, uint8_t sequence)
     g_seqMan.removeSequence(bank, sequence);
 }
 
+void updateSequenceInfo()
+{
+    g_seqMan.updateAllSequenceLengths();
+}
+
 // ** Track management **
 
 size_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track)
@@ -1666,7 +1679,7 @@ uint8_t getChannel(uint8_t bank, uint8_t sequence, uint32_t track)
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
     if(!pTrack)
         return 0xFF;
-    return pTrack->getChannel(); 
+    return pTrack->getChannel();
 }
 
 void solo(uint8_t bank, uint8_t sequence, uint32_t track, bool solo)
@@ -1685,7 +1698,7 @@ bool isSolo(uint8_t bank, uint8_t sequence, uint32_t track)
     return pTrack->isSolo();
 }
 
-// ** Transport management **/ 
+// ** Transport management **/
 
 void setTransportToStartOfBar()
 {
@@ -1707,11 +1720,11 @@ void transportLocate(uint32_t frame)
 */
 jack_nframes_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick)
 {
-    // Convert one-based bars and beats to zero-based 
+    // Convert one-based bars and beats to zero-based
     if(bar > 0)
         --bar;
     if(beat > 0)
-        --beat;    
+        --beat;
     uint32_t nTicksToPrev = 0;
     uint32_t nTicksToEvent = 0;
     uint32_t nTicksPerBar = g_dTicksPerBeat * g_nBeatsPerBar;
@@ -1824,4 +1837,3 @@ void transportSetSyncTimeout(uint32_t timeout)
 {
     jack_set_sync_timeout(g_pJackClient, timeout);
 }
-

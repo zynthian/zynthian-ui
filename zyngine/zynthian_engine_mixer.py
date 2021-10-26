@@ -78,6 +78,7 @@ class zynthian_engine_mixer(zynthian_engine):
 			'note_range': False,
 			'audio_route': False,
 			'midi_chan': False,
+			'replace': False,
 			'drop_pc': False
 		}
 
@@ -140,6 +141,7 @@ class zynthian_engine_mixer(zynthian_engine):
 			return True
 		else:
 			return False
+
 
 	def get_controllers_dict(self, layer, ctrl_list=None):
 		if ctrl_list=="*":
