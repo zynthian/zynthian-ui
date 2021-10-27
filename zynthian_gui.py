@@ -153,12 +153,13 @@ class zynthian_gui:
 		"84": "SCREEN_CONTROL",
 
 		"90": "MODAL_SNAPSHOT",
+		"91": "MODAL_AUDIO_MIXER",
 		"92": "MODAL_AUDIO_RECORDER",
 		"93": "MODAL_MIDI_RECORDER",
 		"94": "MODAL_ALSA_MIXER",
 		"95": "MODAL_STEPSEQ",
 		"96": "MODAL_ADMIN",
-	
+
 		"100": "LAYER_CONTROL"
 	}
 
@@ -679,7 +680,7 @@ class zynthian_gui:
 				return
 			curlayer_chan = self.curlayer.get_midi_chan()
 			if curlayer_chan is not None and zynthian_gui_config.midi_single_active_channel:
-				active_chan = curlayer_chan 
+				active_chan = curlayer_chan
 				cur_active_chan = lib_zyncoder.get_midi_active_chan()
 				if cur_active_chan==active_chan:
 					return
@@ -710,7 +711,7 @@ class zynthian_gui:
 
 	def callable_ui_action(self, cuia, params=None):
 		logging.debug("CUIA '{}' => {}".format(cuia,params))
-		
+
 		if cuia == "POWER_OFF":
 			self.screens['admin'].power_off_confirmed()
 
@@ -925,6 +926,9 @@ class zynthian_gui:
 
 		elif cuia == "MODAL_STEPSEQ":
 			self.toggle_modal("stepseq")
+
+		elif cuia == "MODAL_AUDIO_MIXER":
+			self.toggle_modal("audio_mixer")
 
 		elif cuia == "LAYER_CONTROL":
 			try:
@@ -1178,7 +1182,7 @@ class zynthian_gui:
 				# Back to screen-1 by default ...
 				if screen_back is None:
 					j = self.screens_sequence.index(self.active_screen)-1
-					if j<0: 
+					if j<0:
 						if len(self.screens['layer'].layers)>0 and self.curlayer:
 							j = len(self.screens_sequence)-1
 						else:
@@ -1332,7 +1336,7 @@ class zynthian_gui:
 					self.screens["control"].zyncoder_read(free_zyncoders)
 
 				self.lock.release()
-				
+
 				#Zynswitches
 				self.zynswitch_defered_exec()
 				self.zynswitches()
@@ -1443,7 +1447,7 @@ class zynthian_gui:
 				elif evtype==0xC:
 					pgm = (ev & 0x7F00)>>8
 					logging.info("MIDI PROGRAM CHANGE: CH{} => {}".format(chan,pgm))
-	
+
 					# SubSnapShot (ZS3) MIDI learn ...
 					if self.midi_learn_mode and self.modal_screen=='zs3_learn':
 						if self.screens['layer'].save_midi_chan_zs3(chan, pgm):
@@ -1687,7 +1691,7 @@ class zynthian_gui:
 
 
 	#------------------------------------------------------------------
-	# Engine OSC callbacks => No concurrency!! 
+	# Engine OSC callbacks => No concurrency!!
 	#------------------------------------------------------------------
 
 
@@ -1743,7 +1747,7 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def init_mpe_zones(self, lower_n_chans, upper_n_chans):
-		# Configure Lower Zone 
+		# Configure Lower Zone
 		if not isinstance(lower_n_chans, int) or lower_n_chans<0 or lower_n_chans>0xF:
 			logging.error("Can't initialize MPE Lower Zone. Incorrect num of channels ({})".format(lower_n_chans))
 		else:
@@ -1752,7 +1756,7 @@ class zynthian_gui:
 			lib_zyncoder.ctrlfb_send_ccontrol_change(0x0, 0x65, 0x0)
 			lib_zyncoder.ctrlfb_send_ccontrol_change(0x0, 0x06, lower_n_chans)
 
-		# Configure Upper Zone 
+		# Configure Upper Zone
 		if not isinstance(upper_n_chans, int) or upper_n_chans<0 or upper_n_chans>0xF:
 			logging.error("Can't initialize MPE Upper Zone. Incorrect num of channels ({})".format(upper_n_chans))
 		else:
