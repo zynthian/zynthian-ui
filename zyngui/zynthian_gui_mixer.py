@@ -308,6 +308,18 @@ class zynthian_gui_mixer_channel():
 				self.x + self.width / 2, self.balance_top,
 				self.x + self.width * balance / 2 + self.width, self.balance_top + self.balance_height)
 
+
+	# Function to indicate channel is selected
+	# select: True to select
+	def select(self, select):
+		if select:
+			self.main_canvas.itemconfig(self.legend_strip, fill="black")
+#			self.set_fader_color(self.fader_color_hl)
+		else:
+			self.main_canvas.itemconfig(self.legend_strip, fill="white")
+#			self.set_fader_color(self.fader_color)
+
+
 	# Function to set fader colors
 	# fg: Fader foreground color
 	# bg: Fader background color (optional - Default: Do not change background color)
@@ -403,7 +415,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.fader_width = (self.width - 6 ) / (self.max_channels + 1)
 		self.legend_height = self.height * 0.05
 		self.edit_height = self.height * 0.1
-		self.selection_border_width = int(self.height / 200)
 
 		self.fader_height = self.height - self.edit_height - self.legend_height - 2
 		self.fader_bottom = self.height - self.legend_height
@@ -431,6 +442,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			bd=0, highlightthickness=0,
 			bg = zynthian_gui_config.color_panel_bg)
 		self.main_canvas.grid()
+
+		# Channel selection highlight
+		self.selection_highlight = self.main_canvas.create_rectangle(0,0,0,0, fill="white", width=0)
 
 		# Channel strips
 		for channel in range(self.max_channels):
@@ -488,9 +502,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.tag_bind("reset_balance_button", "<ButtonRelease-1>", self.on_reset_balance_release)
 		self.main_canvas.tag_bind("cancel_button", "<ButtonPress-1>", self.on_cancel_press)
 
-		# Selection border
-		self.selection_border = self.main_canvas.create_rectangle(0,0,0,0, width=self.selection_border_width, outline=zynthian_gui_config.color_on)
-
 		zynmixer.enable_dpm(False) # Disable DPM by default - they get enabled when mixer is shown
 
 		# Init touchbar
@@ -539,13 +550,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		else:
 			chan_strip = self.main_channel
 
-		if hl:
-			chan_strip.set_fader_color(chan_strip.fader_color_hl)
-		else:
-			chan_strip.set_fader_color(chan_strip.fader_color)
-
-		#self.main_canvas.itemconfig()
-		#self.main_canvas.coords(self.selection_border, chan_strip.x, chan_strip.y + chan_strip.height * 0.95 + self.selection_border_width, chan_strip.x + chan_strip.width, chan_strip.y + chan_strip.height - self.selection_border_width)
+		chan_strip.select(hl)
+		self.main_canvas.coords(self.selection_highlight, chan_strip.x, chan_strip.y + chan_strip.height, chan_strip.x + chan_strip.width, chan_strip.y - chan_strip.height)
 
 
 	# Function to select channel by MIDI channel
@@ -641,7 +647,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		for channel in self.channels:
 			channel.hide()
 		channel = self.max_channels - 1
-		self.main_canvas.itemconfig(self.selection_border, state="hidden")
+		self.main_canvas.itemconfig(self.selection_highlight, state="hidden")
 		self.channels[channel].set_channel(self.get_midi_channel(self.selected_channel))
 		self.channels[channel].show()
 		self.main_canvas.itemconfig("edit_control", state="normal")
@@ -664,7 +670,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					self.channels[count].set_channel(channel)
 					count += 1
 				self.number_layers += 1
-		self.main_canvas.itemconfig(self.selection_border, state="normal")
+		self.main_canvas.itemconfig(self.selection_highlight, state="normal")
 		self.mode = 1
 		self.edit_channel = None
 		self.set_title("Mixer")
