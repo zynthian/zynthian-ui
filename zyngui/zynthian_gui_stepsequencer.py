@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Step-Sequencer Class
-# 
+#
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
 # Copyright (C) 2015-2020 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -21,7 +21,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import inspect
@@ -136,68 +136,13 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.filename = "default"
 		#self.load(self.filename)
 
-		iconsize = (zynthian_gui_config.topbar_height - 4, zynthian_gui_config.topbar_height - 4)
-		self.image_play = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
-		self.image_playing = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
-		self.image_back = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/back.png").resize(iconsize))
-		self.image_forward = ImageTk.PhotoImage(Image.open("/zynthian/zynthian-ui/icons/tick.png").resize(iconsize))
-		img = (Image.open("/zynthian/zynthian-ui/icons/arrow.png").resize(iconsize))
-		self.image_up = ImageTk.PhotoImage(img)
-		self.image_down = ImageTk.PhotoImage(img.rotate(180))
-
-		# Parameter value editor
-		self.param_editor_item = None
-		self.menu_items = {} # Dictionary of menu items
-		self.param_editor_canvas = tkinter.Canvas(self.tb_frame,
-			height=zynthian_gui_config.topbar_height,
-			bd=0, highlightthickness=0)
-		self.param_editor_canvas.grid_propagate(False)
-		self.param_editor_canvas.bind('<Button-1>', self.hide_param_editor)
-
-		if zynthian_gui_config.enable_touch_widgets:
-			# Parameter editor cancel button
-			self.button_param_cancel = tkinter.Button(self.param_editor_canvas, command=self.hide_param_editor,
-				image=self.image_back,
-				bd=0, highlightthickness=0,
-				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.button_param_cancel.grid(column=0, row=0, padx=1)
-			# Parameter editor decrement button
-			self.button_param_down = tkinter.Button(self.param_editor_canvas, command=self.decrement_param,
-				image=self.image_down,
-				bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
-				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.button_param_down.grid(column=1, row=0, padx=1)
-			# Parameter editor increment button
-			self.button_param_up = tkinter.Button(self.param_editor_canvas, command=self.increment_param,
-				image=self.image_up,
-				bd=0, highlightthickness=0, repeatdelay=500, repeatinterval=100,
-				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.button_param_up.grid(column=2, row=0, padx=1)
-			# Parameter editor assert button
-			self.button_param_assert = tkinter.Button(self.param_editor_canvas, command=self.param_editor_assert,
-				image=self.image_forward,
-				bd=0, highlightthickness=0,
-				relief=tkinter.FLAT, activebackground=zynthian_gui_config.color_header_bg, bg=zynthian_gui_config.color_header_bg)
-			self.button_param_assert.grid(column=3, row=0, padx=1)
-		# Parameter editor value text
-		self.param_title_canvas = tkinter.Canvas(self.param_editor_canvas, height=zynthian_gui_config.topbar_height, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_header_bg)
-		self.param_title_canvas.create_text(3, zynthian_gui_config.topbar_height / 2,
-			anchor='w',
-			font=zynthian_gui_config.font_topbar,
-#			font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-#				size=int(self.height * 0.05)),
-			fill=zynthian_gui_config.color_panel_tx,
-			tags="lbl_param_editor_value",
-			text="VALUE...")
-		self.param_title_canvas.grid(column=4, row=0, sticky='ew')
-		self.param_editor_canvas.grid_columnconfigure(4, weight=1)
-		self.param_title_canvas.bind('<Button-1>', self.hide_param_editor)
-
 		#TODO: Consolidate menu to base class
 		self.status_canvas.bind('<Button-1>', self.toggle_status_menu)
 
 		self.status_menu_frame = tkinter.Frame(self.main_frame)
 
+		#TODO: Do we need status menu and if so, should be implemented in base class
+		iconsize = (zynthian_gui_config.topbar_height - 4, zynthian_gui_config.topbar_height - 4)
 		img = (Image.open("/zynthian/zynthian-ui/icons/recue.png").resize(iconsize))
 		self.image_stop = ImageTk.PhotoImage(img)
 		self.button_stop = tkinter.Button(self.status_menu_frame, command=self.stop,
@@ -217,7 +162,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.zynpad = zynthian_gui_zynpad(self)
 		self.child = None # Pointer to instance of child panel
 		self.last_child = self.zynpad # Pointer to instance of last child shown - used to return to same screen
-		
+
 		# Init touchbar
 		self.init_buttonbar()
 
@@ -344,7 +289,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to refresh parameter editor display
 	def refreshParamEditor(self):
-		self.param_title_canvas.itemconfig("lbl_param_editor_value", 
+		self.param_title_canvas.itemconfig("lbl_param_editor_value",
 			text=self.menu_items[self.param_editor_item]['params']['on_change'](self.menu_items[self.param_editor_item]['params']))
 
 
@@ -369,7 +314,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.param_editor_canvas.grid_propagate(False)
 		self.param_editor_canvas.grid(column=0, row=0, sticky='nsew')
 		# Get the value to display in the param editor
-		self.param_title_canvas.itemconfig("lbl_param_editor_value", 
+		self.param_title_canvas.itemconfig("lbl_param_editor_value",
 			text=self.menu_items[menu_item]['params']['on_change'](self.menu_items[menu_item]['params'])
 			)
 		if 'on_assert' in self.menu_items[menu_item]['params']:
@@ -586,7 +531,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 
 	# ---------------------------------------------------------------------------
-	# Encoder & Switch management 
+	# Encoder & Switch management
 	# ---------------------------------------------------------------------------
 
 	# Function to handle zyncoder value change
