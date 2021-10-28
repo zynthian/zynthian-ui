@@ -418,7 +418,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.height=zynthian_gui_config.body_height
 
 		self.number_layers = 0 # Quantity of layers (routed channels)
-		self.max_channels = MAX_NUM_CHANNELS # Maximum quantiy of faders to display (Defines fader width. Main always displayed.) 
+		self.max_channels = MAX_NUM_CHANNELS # Maximum quantiy of faders to display (Defines fader width. Main always displayed.)
 		#TODO: Get from config and estimate initial value if not in config
 		if self.width < 600: self.max_channels = 8
 		if self.width < 400: self.max_channels = 4
@@ -557,9 +557,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.highlight_channel(self.selected_channel, False)
 		self.selected_channel = channel
-		self.highlight_channel(self.selected_channel, True)
-
-		self.update_zyncoders()
 
 		if self.selected_channel < self.channel_offset:
 			self.channel_offset = channel
@@ -567,6 +564,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		elif self.selected_channel >= self.channel_offset + self.max_channels and self.selected_channel != self.number_layers:
 			self.channel_offset = self.selected_channel - self.max_channels + 1
 			self.set_mixer_mode()
+		self.highlight_channel(self.selected_channel, True)
+
+		self.update_zyncoders()
 
 		self.selected_layer = None
 		if channel == self.number_layers:
@@ -581,7 +581,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to get MIDI channel (and hence mixer channel) from gui channel
 	#	channel: Index of GUI channel
-	#	returns: MIDI channel
+	#	returns: MIDI channel, MAX_NUM_CHANNELS if main bus or None for invalide channel
 	def get_midi_channel(self, channel):
 		if channel == self.number_layers:
 			return MAX_NUM_CHANNELS
@@ -723,7 +723,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if self.selected_channel > self.number_layers and self.selected_channel != self.main_channel:
 			self.selected_channel = self.number_layers
 		self.highlight_channel(self.selected_channel)
-		
+
 		self.setup_zyncoders()
 
 		zynmixer.enable_dpm(True)
@@ -773,7 +773,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Decrement by dec the zyncoder's value
 	def zyncoder_down(self, num, dec = 1):
-		zyncoder.lib_zyncoder.set_value_zyncoder(num, zyncoder.lib_zyncoder.get_value_zyncoder(num) - dec, 0)
+		value = zyncoder.lib_zyncoder.get_value_zyncoder(num) - dec
+		if value < 0:
+			value = 0 #TODO: This should be handled by zyncoder
+		zyncoder.lib_zyncoder.set_value_zyncoder(num, value, 0)
 
 
 	# Function to handle CUIA SELECT_UP command
