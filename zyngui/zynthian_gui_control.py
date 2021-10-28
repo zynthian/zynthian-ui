@@ -128,7 +128,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_controller_screen(self):
 		#Get Mutex Lock 
-		self.zyngui.lock.acquire()
+		#self.zyngui.lock.acquire()
 
 		#Get screen info
 		if 0 <= self.index < len(self.list_data):
@@ -172,7 +172,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.lock_controllers()
 
 		#Release Mutex Lock
-		self.zyngui.lock.release()
+		#self.zyngui.lock.release()
 
 
 	def set_zcontroller(self, i, ctrl):
