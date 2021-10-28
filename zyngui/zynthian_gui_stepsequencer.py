@@ -126,7 +126,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.zyncoder_owner = [None, None, None, None] # Object that currently "owns" encoder, indexed by encoder
 		self.zyncoder_step = [1, 1, 1, 1] # Zyncoder step. 0 for dynamic step (speed variable).
 		self.switch_owner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
-		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 		self.bank = 1 # Currently displayed bank of sequences
 		self.layers = [None for i in range(16)] # Root layer indexed by MIDI channel
 

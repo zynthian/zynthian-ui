@@ -852,25 +852,40 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			return ''
 		return None
 
+
 	# Function to handle SELECT switch
-	# 	mode: Switch mode ("S"|"B"|"L")
-	def switch_select(self, mode):
-		if self.lst_menu.winfo_viewable():
-			self.on_menu_select()
+	# 	type: Switch type ("S"|"B"|"L")
+	def switch_select(self, type):
+		if type == "S":
+			# Layer Control
+			self.zyngui.layer_control(self.selected_layer)
 			return True
-		if mode == "S":
-			zynmixer.toggle_mute(self.get_midi_channel(self.selected_channel))
-		elif mode == "B":
-			self.set_edit_mode()
+		elif type == "B":
+			# Layer Options
+			self.zyngui.screens['layer'].select(self.selected_channel)
+			self.zyngui.screens['layer_options'].reset()
+			self.zyngui.show_modal('layer_options')
+			return True
+		return None
 
 	# Function to handle switches press
 	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, type):
-		if swi == ENC_SNAPSHOT and type == "S":
-			zynmixer.toggle_solo(self.get_midi_channel(self.selected_channel))
-			return True
+		if swi == ENC_LAYER:
+			if type == "S":
+				zynmixer.toggle_mute(self.get_midi_channel(self.selected_channel))
+				return True
+			elif type == "B":
+				self.set_edit_mode()
+				return True
+
+		elif swi == ENC_SNAPSHOT:
+			if type == "S":
+				zynmixer.toggle_solo(self.get_midi_channel(self.selected_channel))
+				return True
+
 		return False
 
 
