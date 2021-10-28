@@ -444,7 +444,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.grid()
 
 		# Channel selection highlight
-		self.selection_highlight = self.main_canvas.create_rectangle(0,0,0,0, fill="white", width=0)
+		self.selection_highlight = self.main_canvas.create_rectangle(0,0,0,0, fill=zynthian_gui_config.color_low_on, width=0)
 
 		# Channel strips
 		for channel in range(self.max_channels):
@@ -550,7 +550,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		else:
 			chan_strip = self.main_channel
 
-		chan_strip.select(hl)
+#		chan_strip.select(hl)
 		self.main_canvas.coords(self.selection_highlight, chan_strip.x, chan_strip.y + chan_strip.height, chan_strip.x + chan_strip.width, chan_strip.y - chan_strip.height)
 
 
