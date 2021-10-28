@@ -1076,12 +1076,12 @@ class zynthian_gui:
 
 	def zynswitch_bold(self,i):
 		logging.info('Bold Switch '+str(i))
-		self.start_loading()
 
-		if self.modal_screen in ['stepseq', 'keyboard']:
-			self.stop_loading()
+		if self.modal_screen in ['stepseq', 'keyboard', 'audio_mixer']:
 			if self.screens[self.modal_screen].switch(i, 'B'):
 				return
+
+		self.start_loading()
 
 		# Standard 4 ZynSwitches
 		if i==0:
