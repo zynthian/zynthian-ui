@@ -1318,31 +1318,32 @@ class zynthian_gui:
 
 
 	def zyncoder_read(self):
-		if not self.loading: #TODO Es necesario???
-			try:
-				#Read Zyncoders
-				self.lock.acquire()
+		#if not self.loading: #TODO Es necesario???
+		try:
+			#Read Zyncoders
+			self.lock.acquire()
 
-				if self.modal_screen:
-					free_zyncoders = self.screens[self.modal_screen].zyncoder_read()
-				else:
-					free_zyncoders = self.screens[self.active_screen].zyncoder_read()
+			if self.modal_screen:
+				free_zyncoders = self.screens[self.modal_screen].zyncoder_read()
+			else:
+				free_zyncoders = self.screens[self.active_screen].zyncoder_read()
 
-				if free_zyncoders:
-					self.screens["control"].zyncoder_read(free_zyncoders)
+			if free_zyncoders:
+				self.screens["control"].zyncoder_read(free_zyncoders)
 
-				self.lock.release()
-				
-				#Zynswitches
-				self.zynswitch_defered_exec()
-				self.zynswitches()
+			self.lock.release()
+			
+			#Zynswitches
+			self.zynswitch_defered_exec()
+			self.zynswitches()
 
-			except Exception as err:
-				self.reset_loading()
-				logging.exception(err)
+		except Exception as err:
+			self.lock.release()
+			#self.reset_loading()
+			logging.exception(err)
 
-			#Run autoconnect if needed
-			self.zynautoconnect_do()
+		#Run autoconnect if needed
+		self.zynautoconnect_do()
 
 
 	def zynmidi_read(self):
