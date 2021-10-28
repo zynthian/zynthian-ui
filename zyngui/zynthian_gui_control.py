@@ -379,7 +379,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def plot_zctrls(self):
 		if self.mode=='select':
 			super().plot_zctrls()
-		if self.zgui_controllers:
+		elif self.zgui_controllers:
 			for zgui_ctrl in self.zgui_controllers:
 				zgui_ctrl.plot_value()
 
