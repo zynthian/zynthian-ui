@@ -548,15 +548,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					index = self.lst_menu.curselection()[0]
 				except:
 					logging.error("Problem detecting menu selection")
-				index = index + value
-				if index < 0:
-					index = 0
-				if index >= self.lst_menu.size():
-					index = self.lst_menu.size() - 1
-				self.lst_menu.selection_clear(0,tkinter.END)
-				self.lst_menu.selection_set(index)
-				self.lst_menu.activate(index)
-				self.lst_menu.see(index)
+				self.highlight_menu(index + value)
 				return
 		elif self.param_editor_item:
 			# Parameter change
@@ -606,22 +598,34 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
-		self.on_cuia_encoder(ENC_SELECT, 1)
+		if self.lst_menu.winfo_viewable():
+			self.on_cuia_encoder(ENC_LAYER, -1)
+		else:
+			self.on_cuia_encoder(ENC_LAYER, 1)
 
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		self.on_cuia_encoder(ENC_SELECT, -1)
+		if self.lst_menu.winfo_viewable():
+			self.on_cuia_encoder(ENC_LAYER, 1)
+		else:
+			self.on_cuia_encoder(ENC_LAYER, -1)
 
 
 	# Function to handle CUIA LAYER_UP command
 	def layer_up(self):
-		self.on_cuia_encoder(ENC_LAYER, 1)
+		if self.lst_menu.winfo_viewable():
+			self.on_cuia_encoder(ENC_LAYER, -1)
+		else:
+			self.on_cuia_encoder(ENC_LAYER, 1)
 
 
 	# Function to handle CUIA LAYER_DOWN command
 	def layer_down(self):
-		self.on_cuia_encoder(ENC_LAYER, -1)
+		if self.lst_menu.winfo_viewable():
+			self.on_cuia_encoder(ENC_LAYER, 1)
+		else:
+			self.on_cuia_encoder(ENC_LAYER, -1)
 
 
 	# Function to handle CUIA SNAPSHOT_UP command
@@ -658,7 +662,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			if switch == ENC_BACK:
 				if self.lst_menu.winfo_viewable():
 					# Close menu
-					self.hide_menu()
+					self.hide_menu() #TODO: This should be abstracted to base class
 					return True
 				if self.param_editor_item:
 					# Close parameter editor

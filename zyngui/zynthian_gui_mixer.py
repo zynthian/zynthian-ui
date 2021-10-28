@@ -521,35 +521,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.set_title("Audio Mixer")
 
 
-	# Function to populate menu with global entries
-	def populate_menu(self):
-		super().populate_menu()
-		self.add_menu({'Edit channel':{'method':self.set_edit_mode}})
-		self.add_menu({'-------------------':{}})
-		self.add_menu({'Add Synth channel':{'method':self.add_channel, 'params':'MIDI Synth'}})
-		self.add_menu({'Add Audio channel':{'method':self.add_channel, 'params':'NEW_AUDIO_FX'}})
-		self.add_menu({'Add Generator channel':{'method':self.add_channel, 'params':'NEW_GENERATOR'}})
-		self.add_menu({'-------------------':{}})
-		self.add_menu({'REMOVE All channels':{'method':self.remove_all}})
-		self.add_menu({'PANIC! All Notes Off':{'method':self.panic}})
-
-
-	# Function to add a channel
-	def add_channel(self, type):
-		self.zyngui.screens['layer'].add_layer(type)
-
-
-	# Function to remove all channels
-	def remove_all(self, params=None):
-		self.zyngui.show_confirm("Do you really want to remove all channels?", self.zyngui.screens['layer'].reset_confirmed)
-		self.show()
-
-
-	# Function to silence all engines
-	def panic(self, params=None):
-		self.zyngui.callable_ui_action("ALL_OFF")
-
-
 	# Function to display selected channel highlight border
 	# channel: Index of channel to highlight
 	# hl: Boolean: True => Highlight / False => Restore to normal
@@ -686,7 +657,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.itemconfig(self.selection_highlight, state="normal")
 		self.mode = 1
 		self.edit_channel = None
-		self.set_title("Mixer")
+		self.set_title("Audio Mixer")
 
 
 	# Function to handle mute button release
@@ -884,6 +855,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT switch
 	# 	mode: Switch mode ("S"|"B"|"L")
 	def switch_select(self, mode):
+		if self.lst_menu.winfo_viewable():
+			self.on_menu_select()
+			return True
 		if mode == "S":
 			zynmixer.toggle_mute(self.get_midi_channel(self.selected_channel))
 		elif mode == "B":
@@ -936,3 +910,4 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				zynmixer.set_solo(int(path[4:]), int(args[0]))
 			except:
 				pass
+
