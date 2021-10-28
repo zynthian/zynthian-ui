@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Layer Selector Class
-# 
+#
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 
@@ -56,7 +56,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
 		super().__init__('Layer', True)
 		self.create_amixer_layer()
-		
+
 
 	def reset(self):
 		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
@@ -705,7 +705,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			rlayer = self.layers[self.replace_layer_index]
 			logging.debug("Replacing Synth {} => {}".format(rlayer.get_jackname(), layer.get_jackname()))
-			
+
 			# Re-route audio
 			layer.set_audio_out(rlayer.get_audio_out())
 			rlayer.mute_audio_out()
@@ -853,7 +853,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			rlayer = self.layers[self.replace_layer_index]
 			logging.debug("Replacing on FX-chain {} => {}".format(rlayer.get_jackname(), layer.get_jackname()))
-			
+
 			# Re-route audio
 			layer.set_audio_out(rlayer.get_audio_out())
 			rlayer.mute_audio_out()
@@ -1075,7 +1075,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			rlayer = self.layers[self.replace_layer_index]
 			logging.debug("Replacing on MIDI-chain {} => {}".format(rlayer.get_midi_jackname(), layer.get_midi_jackname()))
-			
+
 			# Re-route MIDI
 			layer.set_midi_out(rlayer.get_midi_out())
 			rlayer.mute_midi_out()
@@ -1176,6 +1176,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				'midi_routing': self.get_midi_routing(),
 				'extended_config': self.get_extended_config(),
 				'midi_profile_state': self.get_midi_profile_state(),
+				'mixer':[]
 			}
 
 			#Layers info
@@ -1214,6 +1215,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			#Audio Recorder out
 			snapshot['audio_recorder_out'] = self.zyngui.screens['audio_recorder'].get_audio_out()
 
+			#Mixer
+			try:
+				snapshot['mixer'] = self.zyngui.screens['audio_mixer'].get_state()
+			except Exception as e:
+				pass
+
 			#JSON Encode
 			json=JSONEncoder().encode(snapshot)
 			logging.info("Saving snapshot %s => \n%s" % (fpath,json))
@@ -1250,6 +1257,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self._load_snapshot_layers(snapshot)
 			if load_sequences:
 				self._load_snapshot_sequences(snapshot)
+			#Mixer
+			try:
+				self.zyngui.screens['audio_mixer'].reset_state()
+				self.zyngui.screens['audio_mixer'].set_state(snapshot['mixer'])
+			except Exception as e:
+				pass
+
 			#Post action
 			if not quiet:
 				if self.index<len(self.root_layers):
@@ -1387,7 +1401,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		#Audio Recorder Out
 		if 'audio_recorder_out' in snapshot:
-			self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out'] 
+			self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out']
 
 
 	def _load_snapshot_sequences(self, snapshot):

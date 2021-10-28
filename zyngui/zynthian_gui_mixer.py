@@ -929,3 +929,40 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			except:
 				pass
 
+
+	# Get full mixer state
+	# Returns: List of channels containing dictionary of each state value
+	def get_state(self):
+		state = []
+		for channel in range(MAX_NUM_CHANNELS + 1):
+			state.append({
+				'level':zynmixer.get_level(channel),
+				'balance':zynmixer.get_balance(channel),
+				'mute':zynmixer.get_mute(channel),
+				'solo':zynmixer.get_solo(channel),
+				'mono':zynmixer.get_mono(channel)
+				})
+		return state
+
+
+	# Set full mixer state
+	# state: List of channels containing dictionary of each state value
+	def set_state(self, state):
+		for channel in range(MAX_NUM_CHANNELS + 1):
+			zynmixer.set_level(channel, state[channel]['level'])
+			zynmixer.set_balance(channel, state[channel]['balance'])
+			zynmixer.set_mute(channel, state[channel]['mute'])
+			if channel != MAX_NUM_CHANNELS:
+				zynmixer.set_solo(channel, state[channel]['solo'])
+			zynmixer.set_mono(channel, state[channel]['mono'])
+
+
+	# Reset mixer to default state
+	def reset_state(self):
+		for channel in range(MAX_NUM_CHANNELS + 1):
+			zynmixer.set_level(channel, 0.8)
+			zynmixer.set_balance(channel, 0)
+			zynmixer.set_mute(channel, 0)
+			zynmixer.set_solo(channel, 0)
+			zynmixer.set_mono(channel, 0)
+

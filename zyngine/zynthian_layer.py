@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Layer (zynthian_layer)
-# 
+#
 # zynthian layer
-# 
+#
 # Copyright (C) 2015-2017 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -19,7 +19,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import os
@@ -36,7 +36,7 @@ from zyncoder import *
 class zynthian_layer:
 
 	# ---------------------------------------------------------------------------
-	# Data dirs 
+	# Data dirs
 	# ---------------------------------------------------------------------------
 
 	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
@@ -74,6 +74,7 @@ class zynthian_layer:
 		self.preset_name = None
 		self.preset_info = None
 		self.preset_bank_index = None
+		self.preset_loaded = None
 
 		self.preload_index = None
 		self.preload_name = None
@@ -255,7 +256,7 @@ class zynthian_layer:
 		if i < len(self.preset_list):
 			last_preset_index=self.preset_index
 			last_preset_name=self.preset_name
-			
+
 			preset_id = str(self.preset_list[i][0])
 			preset_name = self.preset_list[i][2]
 
@@ -401,7 +402,7 @@ class zynthian_layer:
 		self.ctrl_screens_dict=OrderedDict()
 		for cscr in self.engine._ctrl_screens:
 			self.ctrl_screens_dict[cscr[0]]=self.build_ctrl_screen(cscr[1])
-			
+
 		#Set active the first screen
 		if len(self.ctrl_screens_dict)>0:
 			if self.active_screen_index==-1:
@@ -425,7 +426,7 @@ class zynthian_layer:
 		if self.active_screen_index>=len(self.ctrl_screens_dict):
 			self.active_screen_index = len(self.ctrl_screens_dict)-1
 		return self.active_screen_index
-			
+
 
 
 	def set_active_screen_index(self, i):
@@ -563,7 +564,7 @@ class zynthian_layer:
 			logging.warning("Invalid Bank on layer {}: {}".format(self.get_basepath(), e))
 
 		self.wait_stop_loading()
-	
+
 		#Load preset list and set preset
 		try:
 			self.load_preset_list()
@@ -585,11 +586,11 @@ class zynthian_layer:
 		#Set active screen
 		if 'active_screen_index' in snapshot:
 			self.active_screen_index=snapshot['active_screen_index']
-			
+
 
 	def restore_snapshot_2(self, snapshot):
 
-		# Wait a little bit if a preset has been loaded 
+		# Wait a little bit if a preset has been loaded
 		if self.preset_loaded:
 			sleep(0.2)
 
@@ -677,7 +678,7 @@ class zynthian_layer:
 			if self.refresh_flag:
 				self.refresh_flag=False
 				self.refresh_controllers()
-			
+
 			# For non-LV2 engines, bank and preset can affect what controllers do.
 			# In case of LV2, just restoring the controllers ought to be enough, which is nice
 			# since it saves the 0.3 second delay between setting a preset and updating controllers.

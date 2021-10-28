@@ -89,6 +89,10 @@ class zynthian_gui_main(zynthian_gui_selector):
 		if len(self.zyngui.screens['layer'].layers)>0:
 			self.zyngui.screens['snapshot'].save_last_state_snapshot()
 		self.zyngui.screens['layer'].reset()
+		try:
+			self.zyngui.screens['audio_mixer'].reset_state()
+		except Exception as e:
+				pass
 		if zynseq.libseq:
 			zynseq.load("")
 
@@ -119,12 +123,12 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 
 	def step_sequencer(self, t='S'):
-		logging.warning("Step Sequencer")
+		logging.info("Step Sequencer")
 		self.zyngui.show_modal('stepseq')
 
 
 	def audio_mixer(self, t='S'):
-		logging.warning("Audio Mixer")
+		logging.info("Audio Mixer")
 		self.zyngui.show_modal('audio_mixer')
 
 
