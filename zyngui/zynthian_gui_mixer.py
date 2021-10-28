@@ -516,8 +516,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.add_menu({'Edit channel':{'method':self.set_edit_mode}})
 		self.add_menu({'-------------------':{}})
 		self.add_menu({'Add Synth channel':{'method':self.add_channel, 'params':'MIDI Synth'}})
-		self.add_menu({'Add Audio channel':{'method':self.add_channel, 'params':'NEW_AUDIO_FX'}})
-		self.add_menu({'Add Generator channel':{'method':self.add_channel, 'params':'NEW_GENERATOR'}})
+		self.add_menu({'Add Audio channel':{'method':self.add_channel, 'params':'Audio Effect'}})
+		self.add_menu({'Add Generator channel':{'method':self.add_channel, 'params':'Audio Generator'}})
 		self.add_menu({'-------------------':{}})
 		self.add_menu({'REMOVE All channels':{'method':self.remove_all}})
 		self.add_menu({'PANIC! All Notes Off':{'method':self.panic}})
@@ -673,7 +673,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.itemconfig(self.selection_highlight, state="normal")
 		self.mode = 1
 		self.edit_channel = None
-		self.set_title("Mixer")
+		self.set_title("Audio Mixer")
 
 
 	# Function to handle mute button release
@@ -775,12 +775,24 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA LAYER_UP command
 	def layer_up(self):
-		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 65, 0)
+		if self.lst_menu.winfo_viewable():
+			value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER)
+			if value > 0:
+				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, value - 1, 0)
+				self.highlight_menu(value - 1)
+		else:
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 65, 0)
 
 
 	# Function to handle CUIA LAYER_DOWN command
 	def layer_down(self):
-		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 63, 0)
+		if self.lst_menu.winfo_viewable():
+			value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER) + 1
+			if value < self.lst_menu.size():
+				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, value, 0)
+				self.highlight_menu(value)
+		else:
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 63, 0)
 
 
 	# Function to handle CUIA SNAPSHOT_UP command
@@ -798,6 +810,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def zyncoder_read(self):
 		if not self.shown:
 			return
+		if self.lst_menu.winfo_viewable():
+			if self.lst_menu.size() < 1:
+				return
+			index = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER)
+			self.highlight_menu(index)
+			return
+
 		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_BACK)
 		if(self.mode and value != self.selected_channel):
 			self.select_channel(value)
@@ -816,20 +835,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if balance > 1: balance = 1
 			if balance < -1: balance = -1
 			zynmixer.set_balance(self.get_midi_channel(self.selected_channel), balance)
-		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER)
 		# Main output
+		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER)
 		if(value != 64):
 			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, 64, 0)
 			level = zynmixer.get_level(self.number_layers) + (value - 64) * 0.01
 			if level > 1: level = 1
 			if level < 0: level = 0
 			zynmixer.set_level(self.number_layers, level)
-		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER)
 
 
 	# Function to handle SELECT switch
 	# mode: Switch mode ("S"|"B"|"L")
 	def switch_select(self, mode):
+		if self.lst_menu.winfo_viewable():
+			self.on_menu_select()
+			return True
 		if mode == "S":
 			zynmixer.toggle_mute(self.get_midi_channel(self.selected_channel))
 		elif mode == "B":
@@ -841,13 +862,24 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
-		if type == "S" and switch == ENC_BACK:
-			if self.mode == 0:
-				self.set_mixer_mode()
+		if type == "S":
+			if switch == ENC_BACK:
+				if self.lst_menu.winfo_viewable():
+					# Close menu
+					self.hide_menu() #TODO: This should be abstracted to base class
+					return True
+				if self.mode == 0:
+					self.set_mixer_mode()
+					return True
+			elif switch == ENC_LAYER: # and not self.lst_menu.winfo_viewable():
+				if self.lst_menu.winfo_viewable():
+					self.on_menu_select()
+				else:
+					self.toggle_menu()
 				return True
-		elif type == "S" and switch == ENC_SNAPSHOT:
-			zynmixer.toggle_solo(self.get_midi_channel(self.selected_channel))
-			return True
+			elif switch == ENC_SNAPSHOT:
+				zynmixer.toggle_solo(self.get_midi_channel(self.selected_channel))
+				return True
 		return False
 
 
@@ -887,3 +919,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				zynmixer.set_solo(int(path[4:]), int(args[0]))
 			except:
 				pass
+
+
+	def show_menu(self):
+		super().show_menu()
+		if self.lst_menu.size() > 0:
+			zyncoder.lib_zyncoder.setup_zyncoder(ENC_LAYER, zynthian_gui_config.zyncoder_pin_a[ENC_LAYER], zynthian_gui_config.zyncoder_pin_b[ENC_LAYER], 0, 0, None, 0, self.lst_menu.size() - 1, 0)
+
+
+	def hide_menu(self):
+		super().hide_menu()
+		zyncoder.lib_zyncoder.setup_zyncoder(ENC_LAYER, zynthian_gui_config.zyncoder_pin_a[ENC_LAYER], zynthian_gui_config.zyncoder_pin_b[ENC_LAYER], 0, 0, None, 64, 127, 0)
+

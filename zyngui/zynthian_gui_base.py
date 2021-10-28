@@ -590,6 +590,18 @@ class zynthian_gui_base:
 			self.menu_items[self.param_editor_item]['params']['on_reset']()
 
 
+	# Highlight a menu entry
+	def highlight_menu(self, index):
+		if index < 0:
+			index = 0
+		if index >= self.lst_menu.size():
+			index = self.lst_menu.size() - 1
+		self.lst_menu.selection_clear(0,tkinter.END)
+		self.lst_menu.selection_set(index)
+		self.lst_menu.activate(index)
+		self.lst_menu.see(index)
+
+
 	def show(self):
 		if not self.shown:
 			self.shown=True
