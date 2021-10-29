@@ -182,7 +182,7 @@ class zynthian_gui_patterneditor():
 
 	def play_note(self, note):
 		if libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
-			libseq.playNote(note, 100, self.channel, 200)
+			libseq.playNote(note, self.velocity, self.channel, int(200 * self.duration))
 
 
 	#Function to set values of encoders
