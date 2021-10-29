@@ -1281,6 +1281,25 @@ void transpose(int8_t value)
     g_bDirty = true;
 }
 
+void changeVelocityAll(int value)
+{
+    if(!g_pPattern)
+        return;
+    g_bPatternModified = true;
+    g_pPattern->changeVelocityAll(value);
+    g_bDirty = true;
+}
+
+void changeDurationAll(float value)
+{
+    if(!g_pPattern)
+        return;
+    g_bPatternModified = true;
+    g_pPattern->changeDurationAll(value);
+    g_bDirty = true;
+}
+
+
 void clear()
 {
     if(!g_pPattern)

@@ -14,7 +14,6 @@ Pattern::~Pattern()
 
 StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1, uint8_t value2, float duration)
 {
-    printf("Pattern::addEvent duration=%f\n", duration);
     //Delete overlapping events
     for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
     {
@@ -244,6 +243,36 @@ void Pattern::transpose(int value)
             (*it).setValue1start(note);
             (*it).setValue1end(note);
         }
+    }
+}
+
+void Pattern::changeVelocityAll(int value)
+{
+    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
+    {
+        if((*it).getCommand() != MIDI_NOTE_ON)
+            continue;
+        int vel = (*it).getValue2start() + value;
+        if(vel > 127)
+            vel = 127;
+        if(vel < 1)
+            vel = 1;
+        (*it).setValue2start(vel);
+    }
+}
+
+void Pattern::changeDurationAll(float value)
+{
+    for(auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it)
+    {
+        if((*it).getCommand() != MIDI_NOTE_ON)
+            continue;
+        float duration = (*it).getDuration() + value;
+        if(duration <= 0)
+            return; // Don't allow jump larger than current value
+        if(duration < 0.1) //!@todo How short should we allow duration change?
+            duration = 0.1;
+        (*it).setDuration(duration);
     }
 }
 

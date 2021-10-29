@@ -223,6 +223,16 @@ class Pattern
         */
         void transpose(int value);
 
+        /** @brief  Change velocity of all notes in patterm
+        *   @param  value Offset to adjust +/-127
+        */
+        void changeVelocityAll(int value);
+
+        /** @brief  Change duration of all notes in patterm
+        *   @param  value Offset to adjust +/-100.0 or whatever
+        */
+        void changeDurationAll(float value);
+
         /** @brief  Clear all events from pattern
         */
         void clear();

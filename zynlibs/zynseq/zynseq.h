@@ -306,6 +306,16 @@ float getNoteDuration(uint32_t step, uint8_t note);
 */
 void transpose(int8_t value);
 
+/** @brief  Change velocity of all notes in patterm
+*   @param  value Offset to adjust +/-127
+*/
+void changeVelocityAll(int value);
+
+/** @brief  Change duration of all notes in patterm
+*   @param  value Offset to adjust +/-100.0 or whatever
+*/
+void changeDurationAll(float value);
+
 /** @brief  Clears events from selected pattern
 *   @note   Does not change other parameters such as pattern length
 */

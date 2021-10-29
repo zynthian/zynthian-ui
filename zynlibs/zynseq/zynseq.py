@@ -51,6 +51,7 @@ def init():
 		libseq.getTempo.restype = ctypes.c_double
 		libseq.getNoteDuration.restype = ctypes.c_float
 		libseq.addNote.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_float]
+		libseq.changeDurationAll.argtypes = [ctypes.c_float]
 	except Exception as e:
 		libseq=None
 		print("Can't initialise zynseq library: %s" % str(e))

@@ -687,7 +687,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					self.param_editor_reset()
 					return True
 
-		return False # Tell parent that handle the rest of short and bold key presses
+		return False # Tell parent to handle the rest of short and bold key presses
 
 
 	# Function to manage switch press
