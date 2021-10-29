@@ -171,6 +171,7 @@ class zynthian_gui_mixer_channel():
 		self.main_canvas.tag_bind("fader:%d"%(self.fader_bg), "<B1-Motion>", self.on_fader_motion)
 		self.main_canvas.tag_bind("mute_button:%d"%(self.edit_bg), "<ButtonPress-1>", self.on_edit_press)
 		self.main_canvas.tag_bind("mute_button:%d"%(self.edit_bg), "<ButtonRelease-1>", self.on_edit_release)
+		self.main_canvas.tag_bind("solo_button:%d"%(self.edit_bg), "<ButtonPress-1>", self.on_edit_press)
 		self.main_canvas.tag_bind("solo_button:%d"%(self.edit_bg), "<ButtonRelease-1>", self.on_solo_release)
 
 		self.draw(True)
@@ -396,9 +397,15 @@ class zynthian_gui_mixer_channel():
 	# Function to handle solo button release
 	#	event: Mouse event
 	def on_solo_release(self, event):
+		if self.press_time:
+			delta = monotonic() - self.press_time
+			self.press_time = None
+			if delta > 0.4:
+				self.on_edit_cb()
+				return
 		if self.channel != None:
 			zynmixer.toggle_solo(self.channel)
-			self.on_select_cb(self.channel)
+			#self.on_select_cb(self.channel)
 
 
 #------------------------------------------------------------------------------
