@@ -272,7 +272,7 @@ void setStepsPerBeat(uint32_t steps);
 *   @param  duration Quantity of steps note should play for
 *   @retval bool True on success
 */
-bool addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration);
+bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration);
 
 /** @brief  Removes note from selected pattern
 *   @param  step Index of step at which to remove note
@@ -283,6 +283,7 @@ void removeNote(uint32_t step, uint8_t note);
 /** @brief  Get velocity of note in selected pattern
 *   @param  step Index of step at which note resides
 *   @param  note MIDI note number
+*   @retval uint8_t Note velocity (0..127)
 */
 uint8_t getNoteVelocity(uint32_t step, uint8_t note);
 
@@ -296,9 +297,9 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity);
 /** @brief  Get duration of note in selected pattern
 *   @param  position Index of step at which note starts
 *   @note   note MIDI note number
-*   @retval uint32_t Duration in steps or 0 if note does not exist
+*   @retval float Duration in steps or 0.0 if note does not exist
 */
-uint32_t getNoteDuration(uint32_t step, uint8_t note);
+float getNoteDuration(uint32_t step, uint8_t note);
 
 /** @brief  Transpose selected pattern
 *   @param  value +/- quantity of notes to transpose
@@ -398,7 +399,7 @@ uint32_t getPatternPlayhead(uint8_t bank, uint8_t sequence, uint32_t track);
 *   @param  track Index of track
 *   @param  position Quantity of clock cycles from start of track at which to add pattern
 *   @param  pattern Index of pattern
-*   @param  force True to remove overlapping patterns, false to fail if overlapping patterns 
+*   @param  force True to remove overlapping patterns, false to fail if overlapping patterns
 *   @retval True if pattern inserted
 */
 bool addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force);

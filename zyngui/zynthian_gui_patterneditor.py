@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Step-Sequencer Class
-# 
+#
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
 # Copyright (C) 2015-2020 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -21,7 +21,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import inspect
@@ -39,7 +39,7 @@ import time
 import ctypes
 from os.path import dirname, realpath, basename
 from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)
-from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library 
+from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -86,7 +86,7 @@ class zynthian_gui_patterneditor():
 
 		self.edit_mode = False # True to enable encoders to adjust duration and velocity
 		self.zoom = 16 # Quantity of rows (notes) displayed in grid
-		self.duration = 1 # Current note entry duration
+		self.duration = 1.0 # Current note entry duration
 		self.velocity = 100 # Current note entry velocity
 		self.copy_source = 1 # Index of pattern to copy
 		self.bank = 0 # Bank used for pattern editor sequence player
@@ -123,8 +123,8 @@ class zynthian_gui_patterneditor():
 		self.main_frame.grid(row=1, column=0, sticky="nsew")
 
 		# Create pattern grid canvas
-		self.grid_canvas = tkinter.Canvas(self.main_frame, 
-			width=self.grid_width, 
+		self.grid_canvas = tkinter.Canvas(self.main_frame,
+			width=self.grid_width,
 			height=self.grid_height,
 			bg=CANVAS_BACKGROUND,
 			bd=0,
@@ -156,7 +156,7 @@ class zynthian_gui_patterneditor():
 
 		# Create playhead canvas
 		self.play_canvas = tkinter.Canvas(self.main_frame,
-			width=self.grid_width, 
+			width=self.grid_width,
 			height=PLAYHEAD_HEIGHT,
 			bg=CANVAS_BACKGROUND,
 			bd=0,
@@ -257,7 +257,7 @@ class zynthian_gui_patterneditor():
 			time = int(step * ticks_per_step)
 			for note in range(128):
 				duration = libseq.getNoteDuration(step, note)
-				if duration == 0:
+				if duration == 0.0:
 					continue
 				duration = int(duration * ticks_per_step)
 				velocity = libseq.getNoteVelocity(step, note)
@@ -272,9 +272,14 @@ class zynthian_gui_patterneditor():
 			self.edit_mode = True
 			self.parent.register_switch(ENC_BACK, self)
 			self.parent.set_title("Note Parameters", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+			self.parent.register_zyncoder(ENC_SNAPSHOT, self)
+			self.parent.register_zyncoder(ENC_LAYER, self)
+
 		else:
 			self.edit_mode = False
 			self.parent.unregister_switch(ENC_BACK)
+			self.parent.unregister_zyncoder(ENC_SNAPSHOT)
+			self.parent.unregister_zyncoder(ENC_LAYER)
 			self.parent.set_title(self.title, zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
 
 
@@ -587,7 +592,7 @@ class zynthian_gui_patterneditor():
 	def get_cell(self, col, row, duration):
 		x1 = col * self.step_width + 1
 		y1 = (self.zoom - row - 1) * self.row_height + 1
-		x2 = x1 + self.step_width * duration - 1 
+		x2 = x1 + self.step_width * duration - 1
 		y2 = y1 + self.row_height - 1
 		return [x1, y1, x2, y2]
 
@@ -616,7 +621,7 @@ class zynthian_gui_patterneditor():
 				velocity_colour += 30
 		duration = libseq.getNoteDuration(step, note)
 		if not duration:
-			duration = 1
+			duration = 1.0
 		fill_colour = "#%02x%02x%02x" % (velocity_colour, velocity_colour, velocity_colour)
 		cell = self.cells[cellIndex]
 		coord = self.get_cell(step, row, duration)
@@ -977,14 +982,33 @@ class zynthian_gui_patterneditor():
 					self.add_event(self.selected_cell[0], note)
 				else:
 					self.select_cell()
-				self.parent.set_title("Duration: %d steps" % (self.duration), None, None, 2)
+				self.parent.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
 			else:
 				self.select_cell(self.selected_cell[0] + value, None)
 
-		elif encoder == ENC_LAYER and not self.parent.lst_menu.winfo_viewable():
+		elif encoder == ENC_SNAPSHOT:
+			if self.edit_mode:
+				if value > 0:
+					self.duration = self.duration + 0.1
+				if value < 0:
+					self.duration = self.duration - 0.1
+				if self.duration > libseq.getSteps():
+					self.duration = libseq.getSteps()
+					return
+				if self.duration < 0.1:
+					self.duration = 0.1
+					return
+				note = self.keymap[self.selected_cell[1]]["note"]
+				if libseq.getNoteDuration(self.selected_cell[0], note):
+					self.add_event(self.selected_cell[0], note)
+				else:
+					self.select_cell()
+				self.parent.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
+
+#		elif encoder == ENC_LAYER and not self.parent.lst_menu.winfo_viewable():
 			# Show menu
-			self.parent.toggle_menu()
-			return
+#			self.parent.toggle_menu()
+#			return
 
 
 	# Function to handle switch press

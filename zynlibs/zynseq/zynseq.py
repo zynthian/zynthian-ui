@@ -49,6 +49,8 @@ def init():
 		libseq=ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynseq.so")
 		libseq.getSequenceName.restype = ctypes.c_char_p
 		libseq.getTempo.restype = ctypes.c_double
+		libseq.getNoteDuration.restype = ctypes.c_float
+		libseq.addNote.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_float]
 	except Exception as e:
 		libseq=None
 		print("Can't initialise zynseq library: %s" % str(e))

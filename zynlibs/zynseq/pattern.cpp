@@ -12,16 +12,17 @@ Pattern::~Pattern()
 {
 }
 
-StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1, uint8_t value2, uint32_t duration)
+StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1, uint8_t value2, float duration)
 {
+    printf("Pattern::addEvent duration=%f\n", duration);
     //Delete overlapping events
     for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
     {
         uint32_t nEventStart = position;
-        uint32_t nEventEnd = nEventStart + duration;
+        float fEventEnd = nEventStart + duration;
         uint32_t nCheckStart = (*it).getPosition();
-        uint32_t nCheckEnd = nCheckStart + (*it).getDuration();
-        bool bOverlap = (nCheckStart >= nEventStart && nCheckStart < nEventEnd) || (nCheckEnd > nEventStart && nCheckEnd <= nEventEnd);
+        float fCheckEnd = nCheckStart + (*it).getDuration();
+        bool bOverlap = (nCheckStart >= nEventStart && nCheckStart < fEventEnd) || (fCheckEnd > nEventStart && fCheckEnd <= fEventEnd);
         if(bOverlap && (*it).getCommand() == command && (*it).getValue1start() == value1)
         {
             it = m_vEvents.erase(it) - 1;
@@ -38,7 +39,7 @@ StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1,
     }
     auto itInserted = m_vEvents.insert(it, StepEvent(position, command, value1, value2, duration));
     return &(*itInserted);
-};
+}
 
 StepEvent* Pattern::addEvent(StepEvent* pEvent)
 {
@@ -60,7 +61,7 @@ void Pattern::deleteEvent(uint32_t position, uint8_t command, uint8_t value1)
     }
 }
 
-bool Pattern::addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
+bool Pattern::addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration)
 {
     //!@todo Should we limit note length to size of pattern?
     if(step >= (m_nBeats * m_nStepsPerBeat) || note > 127 || velocity > 127) // || duration > (m_nBeats * m_nStepsPerBeat))
@@ -95,7 +96,7 @@ void Pattern::setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
     }
 }
 
-uint8_t Pattern::getNoteDuration(uint32_t step, uint8_t note)
+float Pattern::getNoteDuration(uint32_t step, uint8_t note)
 {
     if(step >= (m_nBeats * m_nStepsPerBeat))
         return 0;
@@ -105,17 +106,17 @@ uint8_t Pattern::getNoteDuration(uint32_t step, uint8_t note)
             continue;
         return (*it).getDuration();
     }
-    return 0;
+    return 0.0;
 }
 
-void Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, uint32_t duration)
+void Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration)
 {
-    uint32_t nDuration = duration;
-    if(step > (m_nBeats * m_nStepsPerBeat) || control > 127 || valueStart > 127|| valueEnd > 127 || nDuration > (m_nBeats * m_nStepsPerBeat))
+    float fDuration = duration;
+    if(step > (m_nBeats * m_nStepsPerBeat) || control > 127 || valueStart > 127|| valueEnd > 127 || fDuration > (m_nBeats * m_nStepsPerBeat))
         return;
-    StepEvent* pControl = new StepEvent(step, control, valueStart, nDuration);
+    StepEvent* pControl = new StepEvent(step, control, valueStart, fDuration);
     pControl->setValue2end(valueEnd);
-    StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, nDuration);
+    StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, fDuration);
     pEvent->setValue2end(valueEnd);
 }
 
@@ -124,10 +125,10 @@ void Pattern::removeControl(uint32_t step, uint8_t control)
     deleteEvent(step, MIDI_CONTROL, control);
 }
 
-uint8_t Pattern::getControlDuration(uint32_t step, uint8_t control)
+float Pattern::getControlDuration(uint32_t step, uint8_t control)
 {
     //!@todo Implement getControlDuration
-    return 0;
+    return 0.0;
 }
 
 uint32_t Pattern::getSteps()
@@ -181,7 +182,7 @@ uint32_t Pattern::getStepsPerBeat()
 void Pattern::setBeatsInPattern(uint32_t beats)
 {
     m_nBeats = beats;
-    
+
     // Remove steps if shrinking
     size_t nIndex = 0;
     for(; nIndex < m_vEvents.size(); ++nIndex)

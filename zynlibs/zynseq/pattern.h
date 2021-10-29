@@ -15,7 +15,7 @@ class StepEvent
         StepEvent()
         {
             m_nPosition = 0;
-            m_nDuration = 1;
+            m_fDuration = 1.0;
             m_nCommand = MIDI_NOTE_ON;
             m_nValue1start = 60;
             m_nValue2start = 100;
@@ -25,10 +25,10 @@ class StepEvent
 
         /** Constructor - create an instance of StepEvent object
         */
-        StepEvent(uint32_t position, uint8_t command, uint8_t value1 = 0, uint8_t value2 = 0, uint32_t duration = 1)
+        StepEvent(uint32_t position, uint8_t command, uint8_t value1 = 0, uint8_t value2 = 0, float duration = 1.0)
         {
             m_nPosition = position;
-            m_nDuration = duration;
+            m_fDuration = duration;
             m_nCommand = command;
             m_nValue1start = value1;
             m_nValue2start = value2;
@@ -43,7 +43,7 @@ class StepEvent
         StepEvent(StepEvent* pEvent)
         {
             m_nPosition = pEvent->getPosition();
-            m_nDuration = pEvent->getDuration();
+            m_fDuration = pEvent->getDuration();
             m_nCommand = pEvent->getCommand();
             m_nValue1start = pEvent->getValue1start();
             m_nValue2start = pEvent->getValue2start();
@@ -51,21 +51,21 @@ class StepEvent
             m_nValue2end = pEvent->getValue2end();
         };
         uint8_t getPosition() { return m_nPosition; };
-        uint8_t getDuration() { return m_nDuration; };
+        float getDuration() { return m_fDuration; };
         uint8_t getCommand() { return m_nCommand; };
         uint8_t getValue1start() { return m_nValue1start; };
         uint8_t getValue2start() { return m_nValue2start; };
         uint8_t getValue1end() { return m_nValue1end; };
         uint8_t getValue2end() { return m_nValue2end; };
         void setPosition(uint32_t position) { m_nPosition = position; };
-        void setDuration(uint32_t duration) { m_nDuration = duration; };
+        void setDuration(float duration) { m_fDuration = duration; };
         void setValue1start(uint8_t value) { m_nValue1start = value; };
         void setValue2start(uint8_t value) { m_nValue2start = value; };
         void setValue1end(uint8_t value) { m_nValue1end = value; };
         void setValue2end(uint8_t value) { m_nValue2end = value; };
     private:
         uint32_t m_nPosition; // Start position of event in steps
-        uint32_t m_nDuration; // Duration of event in steps
+        float m_fDuration; // Duration of event in steps
         uint8_t m_nCommand; // MIDI command without channel
         uint8_t m_nValue1start; // MIDI value 1 at start of event
         uint8_t m_nValue2start; // MIDI value 2 at start of event
@@ -84,7 +84,7 @@ class Pattern
         *   @param  stepsPerBeat Quantity of steps per beat [Optional - default: 4]
         */
         Pattern(uint32_t beats = 4, uint8_t stepsPerBeat = 4);
-        
+
         /** @brief  Destruct pattern object
         */
         ~Pattern();
@@ -96,7 +96,7 @@ class Pattern
         *   @param  value2 MIDI value 2
         *   @param  duration Event duration in steps cycles
         */
-        StepEvent* addEvent(uint32_t position, uint8_t command, uint8_t value1 = 0, uint8_t value2 = 0, uint32_t duration = 1);
+        StepEvent* addEvent(uint32_t position, uint8_t command, uint8_t value1 = 0, uint8_t value2 = 0, float duration = 1.0);
 
         /** @brief  Add event from existing event
         *   @param  pEvent Pointer to event to copy
@@ -111,7 +111,7 @@ class Pattern
         *   @param  duration Duration of note in steps
         *   @retval bool True on success
         */
-        bool addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration = 1);
+        bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration = 1.0);
 
         /** @brief  Remove note from pattern
         *   @param  position Quantity of steps from start of pattern at which to remove note
@@ -136,9 +136,9 @@ class Pattern
         /** @brief  Get duration of note
         *   @param  position Quantity of steps from start of pattern at which note starts
         *   @param  note MIDI note number
-        *   @retval uint32_t Duration of note or 0 if note does not exist
+        *   @retval float Duration of note or 0 if note does not exist
         */
-        uint8_t getNoteDuration(uint32_t step, uint8_t note);
+        float getNoteDuration(uint32_t step, uint8_t note);
 
         /** @brief  Add continuous controller to pattern
         *   @param  position Quantity of steps from start of pattern at which control starts
@@ -147,7 +147,7 @@ class Pattern
         *   @param  valueEnd Controller value at end of event
         *   @param  duration Duration of event in steps
         */
-        void addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, uint32_t duration = 1);
+        void addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration = 1.0);
 
         /** @brief  Remove continuous controller from pattern
         *   @param  position Quantity of steps from start of pattern at which control starts
@@ -158,9 +158,9 @@ class Pattern
         /** @brief  Get duration of controller event
         *   @param  position Quantity of steps from start of pattern at which control starts
         *   @param  control MIDI controller number
-        *   @retval uint32_t Duration of control or 0 if control does not exist
+        *   @retval float Duration of control or 0 if control does not exist
         */
-        uint8_t getControlDuration(uint32_t step, uint8_t control);
+        float getControlDuration(uint32_t step, uint8_t control);
 
         /** @brief  Get quantity of steps in pattern
         *   @retval uint32_t Quantity of steps
@@ -187,12 +187,12 @@ class Pattern
         *   @retval uint32_t Quantity of steps per beat
         */
         uint32_t getStepsPerBeat();
-        
+
         /** @brief  Set beats in pattern
         *   @param  beats Quantity of beats in pattern
         */
         void setBeatsInPattern(uint32_t beats);
-        
+
         /** @brief  Get beats in pattern
         *   @retval uint32_t Quantity of beats in pattern
         */
@@ -226,7 +226,7 @@ class Pattern
         /** @brief  Clear all events from pattern
         */
         void clear();
-        
+
         /** @brief  Get event at given index
         *   @param  index Index of event
         *   @retval StepEvent* Pointer to event or null if event does not existing
@@ -243,13 +243,13 @@ class Pattern
         *   @note   May be used for position within user interface
         */
         uint8_t getRefNote();
-        
+
         /** @brief  Set the reference note
         *   @param  MIDI note number
          May be used for position within user interface
         */
         void setRefNote(uint8_t note);
-        
+
         /** @brief  Get last populated step
         *   @retval uint32_t Index of last step that contains any events or -1 if pattern is empty
         */
