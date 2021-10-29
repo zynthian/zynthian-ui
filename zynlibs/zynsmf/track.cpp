@@ -15,20 +15,20 @@ void Track::clear()
         delete *it;
     m_vSchedule.clear();
 }
-#include <cstdio>
+
 void Track::addEvent(Event* pEvent)
 {
-    size_t nSize = m_vSchedule.size();
-    if(nSize && (m_vSchedule[nSize - 1]->getType() == 0x2F))
+    if(m_vSchedule.size() && (m_vSchedule.back()->getType() == 0x2F))
         m_vSchedule.pop_back(); // Remove end of track event
-    for(auto it = m_vSchedule.begin(); it != m_vSchedule.end(); ++it)
-    {
-        if((*it)->getTime() <= pEvent->getTime())
+    for(size_t index = m_vSchedule.size(); index > 0; --index) {
+        if(m_vSchedule[index-1]->getTime() > pEvent->getTime())
             continue;
+        auto it = m_vSchedule.begin();
+        it += index;
         m_vSchedule.insert(it, pEvent);
         return;
     }
-    m_vSchedule.push_back(pEvent);
+    m_vSchedule.insert(m_vSchedule.begin(), pEvent);
 }
 
 void Track::removeEvent(size_t nEvent)
