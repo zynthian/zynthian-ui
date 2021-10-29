@@ -95,7 +95,7 @@ if "autoeq" in zynthian_gui_config.experimental_features:
 
 class zynthian_gui:
 
-	screens_sequence = ("main","layer","bank","preset","control")
+	screens_sequence = ("main","audio_mixer","bank","preset","control")
 
 	note2cuia = {
 		"0": "POWER_OFF",
@@ -369,14 +369,14 @@ class zynthian_gui:
 		self.screens['zs3_options'] = zynthian_gui_zs3_options()
 		self.screens['main'] = zynthian_gui_main()
 		self.screens['admin'] = zynthian_gui_admin()
-		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
+		self.screens['audio_mixer'] = zynthian_gui_mixer()
 
 		# Create UI Apps Screens
 		self.screens['alsa_mixer'] = self.screens['control']
 		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['stepseq'] = zynthian_gui_stepsequencer()
-		self.screens['audio_mixer'] = zynthian_gui_mixer()
+		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
 		if "autoeq" in zynthian_gui_config.experimental_features:
 			self.screens['autoeq'] = zynthian_gui_autoeq()
 
@@ -1077,8 +1077,11 @@ class zynthian_gui:
 	def zynswitch_bold(self,i):
 		logging.info('Bold Switch '+str(i))
 
-		if self.modal_screen in ['stepseq', 'keyboard', 'audio_mixer']:
+		if self.modal_screen in ['stepseq', 'keyboard', ]:
 			if self.screens[self.modal_screen].switch(i, 'B'):
+				return
+		elif not self.modal_screen and self.active_screen=='audio_mixer':
+			if self.screens[self.active_screen].switch(i, 'B'):
 				return
 
 		self.start_loading()
@@ -1090,7 +1093,7 @@ class zynthian_gui:
 			else:
 				if self.active_screen=='preset':
 					self.screens['preset'].restore_preset()
-				self.show_screen('layer')
+				self.show_screen('audio_mixer')
 
 		elif i==1:
 			if self.modal_screen:
@@ -1126,8 +1129,11 @@ class zynthian_gui:
 	def zynswitch_short(self,i):
 		logging.info('Short Switch '+str(i))
 
-		if self.modal_screen in ['stepseq', 'audio_mixer']:
+		if self.modal_screen in ['stepseq']:
 			if self.screens[self.modal_screen].switch(i, 'S'):
+				return
+		elif not self.modal_screen and self.active_screen=='audio_mixer':
+			if self.screens[self.active_screen].switch(i, 'S'):
 				return
 
 		self.start_loading()
@@ -1139,7 +1145,7 @@ class zynthian_gui:
 					logging.info("Next layer")
 					self.screens['layer'].next(True)
 				else:
-					self.show_screen('layer')
+					self.show_screen('audio_mixer')
 
 			elif self.active_screen=='layer':
 				if self.modal_screen is not None:
@@ -1322,7 +1328,8 @@ class zynthian_gui:
 
 
 	def zyncoder_read(self):
-		#if not self.loading: #TODO Es necesario???
+		if self.loading:
+			return
 		try:
 			#Read Zyncoders
 			self.lock.acquire()
@@ -1336,16 +1343,20 @@ class zynthian_gui:
 				self.screens["control"].zyncoder_read(free_zyncoders)
 
 			self.lock.release()
-			
+
+		except Exception as err:
+			self.lock.release()
+			logging.exception(err)
+
+		try:
 			#Zynswitches
 			self.zynswitch_defered_exec()
 			self.zynswitches()
 
 		except Exception as err:
-			self.lock.release()
-			#self.reset_loading()
 			logging.exception(err)
 
+		self.reset_loading()
 		#Run autoconnect if needed
 		self.zynautoconnect_do()
 
