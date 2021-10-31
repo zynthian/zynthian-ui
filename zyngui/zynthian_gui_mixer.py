@@ -148,7 +148,8 @@ class zynthian_gui_mixer_channel():
 		self.legend = self.main_canvas.create_text(x + 1, self.fader_bottom - 2, fill=self.legend_txt_color, text="", tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg)), angle=90, anchor="nw", font=font_fader)
 
 		# Legend strip at bottom of screen
-		self.legend_strip = self.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-", tags=("strip:%s"%(self.fader_bg)), font=font)
+		self.legend_strip_bg = self.main_canvas.create_rectangle(x, self.height - self.legend_height, x + self.width, self.height, width=0, tags=("strip:%s"%(self.fader_bg)))
+		self.legend_strip_txt = self.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-", tags=("strip:%s"%(self.fader_bg)), font=font)
 
 		# DPM
 		self.dpm_h_a = self.main_canvas.create_rectangle(x + self.width - 8, self.fader_bottom, x + self.width - 5, self.fader_bottom, width=0, fill=self.high_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg)))
@@ -177,10 +178,12 @@ class zynthian_gui_mixer_channel():
 
 		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_fader_press)
 		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<B1-Motion>", self.on_fader_motion)
-		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_edit_press)
-		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_edit_release)
-		self.main_canvas.tag_bind("solo_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_edit_press)
+		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
+		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_mute_release)
+		self.main_canvas.tag_bind("solo_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
 		self.main_canvas.tag_bind("solo_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_solo_release)
+		self.main_canvas.tag_bind(self.legend_strip_bg, "<ButtonPress-1>", self.on_strip_press)
+		self.main_canvas.tag_bind(self.legend_strip_bg, "<ButtonRelease-1>", self.on_strip_release)
 
 		self.draw(True)
 
@@ -207,11 +210,11 @@ class zynthian_gui_mixer_channel():
 			self.main_canvas.itemconfig(self.legend, text="")
 			self.main_canvas.coords(self.fader_bg_color, self.x, self.fader_top, self.x + self.width, self.fader_bottom)
 			if self.channel == MAX_NUM_CHANNELS:
-				self.main_canvas.itemconfig(self.legend_strip, text="Main")
+				self.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
 				self.main_canvas.itemconfig(self.legend, text="Main")
 			else:
 				if zynmixer.is_channel_routed(self.channel):
-					self.main_canvas.itemconfig(self.legend_strip, text=self.channel+1)
+					self.main_canvas.itemconfig(self.legend_strip_txt, text=self.channel+1)
 					layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 					for layer in layers_list:
 						if layer.midi_chan == self.channel:
@@ -326,10 +329,8 @@ class zynthian_gui_mixer_channel():
 	# select: True to select
 	def select(self, select):
 		if select:
-			#self.main_canvas.itemconfig(self.legend_strip, fill="black")
 			self.set_fader_color(self.fader_color_hl)
 		else:
-			#self.main_canvas.itemconfig(self.legend_strip, fill="white")
 			self.set_fader_color(self.fader_color)
 
 
@@ -384,16 +385,18 @@ class zynthian_gui_mixer_channel():
 		self.drag_start = event
 		self.set_fader(level)
 
-	# Function to handle edit button press
+
+	# Function to handle channel strip press
 	#	event: Mouse event
-	def on_edit_press(self, event):
+	def on_strip_press(self, event):
+		logging.warning("zynthian_gui_mixer_channel::on_strip_press channel:%d", self.channel)
 		self.press_time = monotonic()
 		self.on_select_cb(self.channel)
 
 
-	# Function to handle edit button release
+	# Function to handle mute button release
 	#	event: Mouse event
-	def on_edit_release(self, event):
+	def on_mute_release(self, event):
 		if self.press_time:
 			delta = monotonic() - self.press_time
 			self.press_time = None
@@ -417,6 +420,17 @@ class zynthian_gui_mixer_channel():
 			zynmixer.toggle_solo(self.channel)
 			#self.on_select_cb(self.channel)
 
+
+	# Function to handle legend strip release
+	def on_strip_release(self, event):
+		if self.press_time:
+			delta = monotonic() - self.press_time
+			self.press_time = None
+			if delta > 0.4:
+				#TODO: Open XY view
+				return
+		if self.channel != None:
+			pass
 
 #------------------------------------------------------------------------------
 # Zynthian Mixer GUI Class
