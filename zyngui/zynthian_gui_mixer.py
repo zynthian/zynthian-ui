@@ -389,7 +389,6 @@ class zynthian_gui_mixer_channel():
 	# Function to handle channel strip press
 	#	event: Mouse event
 	def on_strip_press(self, event):
-		logging.warning("zynthian_gui_mixer_channel::on_strip_press channel:%d", self.channel)
 		self.press_time = monotonic()
 		self.on_select_cb(self.channel)
 
