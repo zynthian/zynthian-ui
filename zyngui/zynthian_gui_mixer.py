@@ -359,6 +359,10 @@ class zynthian_gui_mixer_channel():
 		if self.channel == None:
 			return
 		zynmixer.set_level(self.channel, value)
+		if self.channel == MAX_NUM_CHANNELS:
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, int(value * 100), 0)
+		else:
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, int(value * 100), 0)
 		self.draw()
 
 
