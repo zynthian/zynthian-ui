@@ -136,10 +136,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		#self.load(self.filename)
 
 		#TODO: Consolidate menu to base class
-		self.status_canvas.bind('<Button-1>', self.toggle_status_menu)
 		self.status_menu_frame = tkinter.Frame(self.main_frame)
-		self.title_canvas.bind('<Button-1>', self.toggle_menu)
-		self.label_select_path.bind('<Button-1>', self.toggle_menu)
 
 		#Menu parameters
 		iconsize = (zynthian_gui_config.topbar_height - 4, zynthian_gui_config.topbar_height - 4)
@@ -263,6 +260,16 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def debug_traceback(self):
 		for trace in inspect.stack():
 			print(trace.function)
+
+	# Function called when topbar clickde
+	def cb_topbar(self, params=None):
+		self.toggle_menu()
+
+
+	# Function to trigger BACK
+	def back(self, params=None):
+		self.zyngui.zynswitch_defered('S',1)
+
 
 	# Function to open menu or trigger BACK action if no menu configured
 	def show_menu(self):
@@ -951,12 +958,12 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA BACK_UP command
 	def back_up(self):
-		self.on_cuia_encoder(ENC_BACK, 1)
+		self.on_cuia_encoder(ENC_BACK, -1)
 
 
 	# Function to handle CUIA BACK_UP command
 	def back_down(self):
-		self.on_cuia_encoder(ENC_BACK, -1)
+		self.on_cuia_encoder(ENC_BACK, 1)
 
 
 	# Function to handle CUIA SELECT command

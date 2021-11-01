@@ -110,7 +110,7 @@ class zynthian_gui_base:
 		self.tb_frame.grid_propagate(False)
 		self.tb_frame.grid_columnconfigure(0, weight=1)
 		# Setup Topbar's Callback
-		self.tb_frame.bind("<Button-1>", self.back)
+		self.tb_frame.bind("<Button-1>", self.cb_topbar)
 
 		# Title
 #		font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
@@ -144,8 +144,8 @@ class zynthian_gui_base:
 			fg=zynthian_gui_config.color_header_tx)
 		self.label_select_path.place(x=0, y=0)
 		# Setup Topbar's Callback
-		self.label_select_path.bind('<Button-1>', self.back)
-		self.title_canvas.bind('<Button-1>', self.back)
+		self.label_select_path.bind('<Button-1>', self.cb_topbar)
+		self.title_canvas.bind('<Button-1>', self.cb_topbar)
 
 		# Canvas for displaying status: CPU, ...
 		self.status_canvas = tkinter.Canvas(self.tb_frame,
@@ -270,8 +270,8 @@ class zynthian_gui_base:
 		self.zyngui.zynswitch_defered(t,index)
 
 
-	# Function to trigger BACK button
-	def back(self, params=None):
+	# Default topbar touch callback
+	def cb_topbar(self, params=None):
 		self.zyngui.zynswitch_defered('S',1)
 
 
