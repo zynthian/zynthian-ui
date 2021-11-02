@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Layer Options Class
-# 
+#
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import sys
@@ -29,6 +29,7 @@ import logging
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zynlibs.zynmixer import *
 
 #------------------------------------------------------------------------------
 # Zynthian Layer Options GUI Class
@@ -119,6 +120,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if 'audio_route' in eng_options and eng_options['audio_route']:
 				self.list_data.append((self.layer_audio_routing, None, "Audio Output"))
 
+			if self.layer.midi_chan is not None:
+				if zynmixer.get_mono(self.layer.midi_chan):
+					self.list_data.append((self.layer_toggle_mono, None, "[X] Mono"))
+				else:
+					self.list_data.append((self.layer_toggle_mono, None, "[ ] Mono"))
+
 			if 'midi_chan' in eng_options and eng_options['midi_chan']:
 				self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
 
@@ -130,7 +137,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if 'indelible' not in eng_options or not eng_options['indelible']:
 				self.list_data.append((self.layer_remove, None, "Remove Layer"))
 
-			if self.layer.engine.type!='MIDI Tool': 
+			if self.layer.engine.type!='MIDI Tool':
 				# Add separator
 				self.list_data.append((None,None,"-----------------------------"))
 
@@ -280,6 +287,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def layer_audio_routing(self):
 		self.zyngui.screens['audio_out'].set_layer(self.layer)
 		self.zyngui.show_modal('audio_out')
+
+
+	def layer_toggle_mono(self):
+		zynmixer.toggle_mono(self.layer.midi_chan)
+		self.show()
 
 
 	def layer_audio_capture(self):

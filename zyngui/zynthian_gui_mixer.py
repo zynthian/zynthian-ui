@@ -363,7 +363,7 @@ class zynthian_gui_mixer_channel():
 		if self.channel == MAX_NUM_CHANNELS:
 			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, int(value * 100), 0)
 		else:
-			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, int(value * 100), 0)
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, int(value * 100), 0)
 		self.draw()
 
 
@@ -426,10 +426,18 @@ class zynthian_gui_mixer_channel():
 			delta = monotonic() - self.press_time
 			self.press_time = None
 			if delta > 0.4:
-				#TODO: Open XY view
+				zynthian_gui_config.zyngui.screens['layer'].select(self.channel)
+				zynthian_gui_config.zyngui.screens['layer_options'].reset()
+				zynthian_gui_config.zyngui.show_modal('layer_options')
 				return
 		if self.channel != None:
-			pass
+			if self.channel is not None and self.channel != MAX_NUM_CHANNELS:
+				for layer in zynthian_gui_config.zyngui.screens["layer"].layers:
+					if layer.midi_chan == self.channel:
+						zynthian_gui_config.zyngui.set_curlayer(layer)
+						zynthian_gui_config.zyngui.layer_control(layer)
+						break
+						#TODO: This iteration is wasteful - we may be able to link directly to layer via channel number
 
 #------------------------------------------------------------------------------
 # Zynthian Mixer GUI Class
@@ -784,10 +792,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def setup_zyncoders(self):
 		selected_midich = self.get_midi_channel(self.selected_channel)
 		value = 50 + int(zynmixer.get_balance(selected_midich) * 50)
-		zyncoder.lib_zyncoder.setup_zyncoder(ENC_LAYER, zynthian_gui_config.zyncoder_pin_a[ENC_LAYER], zynthian_gui_config.zyncoder_pin_b[ENC_LAYER], 0, 0, None, value, 100, 0)
+		zyncoder.lib_zyncoder.setup_zyncoder(ENC_BACK, zynthian_gui_config.zyncoder_pin_a[ENC_BACK], zynthian_gui_config.zyncoder_pin_b[ENC_BACK], 0, 0, None, value, 100, 0)
 
 		value = int(zynmixer.get_level(selected_midich) * 100)
-		zyncoder.lib_zyncoder.setup_zyncoder(ENC_BACK, zynthian_gui_config.zyncoder_pin_a[ENC_BACK], zynthian_gui_config.zyncoder_pin_b[ENC_BACK], 0, 0, None, value, 100, 0)
+		zyncoder.lib_zyncoder.setup_zyncoder(ENC_LAYER, zynthian_gui_config.zyncoder_pin_a[ENC_LAYER], zynthian_gui_config.zyncoder_pin_b[ENC_LAYER], 0, 0, None, value, 100, 0)
 
 		value = int(zynmixer.get_level(self.get_midi_channel(self.number_layers)) * 100)
 		zyncoder.lib_zyncoder.setup_zyncoder(ENC_SNAPSHOT, zynthian_gui_config.zyncoder_pin_a[ENC_SNAPSHOT], zynthian_gui_config.zyncoder_pin_b[ENC_SNAPSHOT], 0, 0, None, value, 100, 0)
@@ -800,9 +808,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Selected channel volume & balance
 		selected_midich = self.get_midi_channel(self.selected_channel)
 		value = 50 + int(zynmixer.get_balance(selected_midich) * 50)
-		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, value, 0)
-		value = int(zynmixer.get_level(selected_midich) * 100)
 		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, value, 0)
+		value = int(zynmixer.get_level(selected_midich) * 100)
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, value, 0)
 
 		# Master channel volume
 		value = int(zynmixer.get_level(self.get_midi_channel(self.number_layers)) * 100)
@@ -871,14 +879,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if not self.shown:
 			return
 
-		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER)
-		if value!=self.zyncoder_last_value[ENC_LAYER]:
-			self.zyncoder_last_value[ENC_LAYER] = value
-			zynmixer.set_balance(self.get_midi_channel(self.selected_channel), (value - 50) * 0.02)
-
 		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_BACK)
 		if value!=self.zyncoder_last_value[ENC_BACK]:
 			self.zyncoder_last_value[ENC_BACK] = value
+			zynmixer.set_balance(self.get_midi_channel(self.selected_channel), (value - 50) * 0.02)
+
+		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER)
+		if value!=self.zyncoder_last_value[ENC_LAYER]:
+			self.zyncoder_last_value[ENC_LAYER] = value
 			zynmixer.set_level(self.get_midi_channel(self.selected_channel), value * 0.01)
 
 		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_SNAPSHOT)
@@ -903,8 +911,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				zynmixer.toggle_mute(self.get_midi_channel(self.selected_channel))
 				return True
 			elif typ == "B":
-				#self.set_edit_mode()
-				self.reset_balance()
+				self.zyngui.show_screen('main')
 				return True
 
 		elif swi == ENC_BACK:
@@ -912,11 +919,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				if self.mode == 0:
 					self.set_mixer_mode()
 					return True
-				self.zyngui.show_screen('main')
 				return True
 			elif typ == "B":
-				self.zyngui.show_modal('stepseq')
 				#self.reset_volume()
+				self.reset_balance()
 				return True
 
 		elif swi == ENC_SNAPSHOT:
@@ -924,13 +930,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				zynmixer.toggle_solo(self.get_midi_channel(self.selected_channel))
 				return True
 			elif typ == "B":
-				pass
+				self.zyngui.show_modal('stepseq')
+				return True
 
 		elif swi == ENC_SELECT:
 			if typ == "S":
-				if self.selected_layer is None:
-					self.zyngui.show_screen('main')
-				else:
+				if self.selected_layer is not None:
 					self.zyngui.layer_control(self.selected_layer)
 				return True
 			elif typ == "B":

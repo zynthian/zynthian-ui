@@ -992,22 +992,26 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				if self.child != self.zynpad:
 					self.show_child(self.last_child, {})
 					return True
-			elif switch == ENC_LAYER and not self.lst_menu.winfo_viewable():
-				self.toggle_menu()
-				return True
-			elif switch == ENC_SELECT or switch == ENC_LAYER:
+			elif switch == ENC_SELECT:
 				if self.lst_menu.winfo_viewable():
 					self.on_menu_select()
 					return True
 				elif self.param_editor_item:
 					self.param_editor_assert()
 					return True
+			elif switch == ENC_LAYER:
+				if self.lst_menu.winfo_viewable():
+					self.on_menu_select()
+				return True
 		if type == 'B':
 			if switch == ENC_SELECT:
 				if self.param_editor_item:
 					# Close parameter editor
 					self.param_editor_reset()
 					return True
+			elif switch == ENC_LAYER and not self.lst_menu.winfo_viewable():
+				self.toggle_menu()
+				return True
 
 		return False # Tell parent that handle the rest of short and bold key presses
 
