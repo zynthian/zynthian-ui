@@ -866,6 +866,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		zynmixer.enable_dpm(True)
 		super().show()
+		title = self.zyngui.screens["layer"].last_snapshot_fpath[:-4]
+		self.set_title(title[title.rindex('/')+1:])
 
 
 	# Function to refresh loading animation
