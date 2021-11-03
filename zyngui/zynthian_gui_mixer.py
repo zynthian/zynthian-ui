@@ -395,7 +395,7 @@ class zynthian_gui_mixer_channel():
 	def on_fader_wheel_down(self, event):
 		if self.channel == None:
 			return
-		level = zynmixer.get_level(self.channel) - 0.05
+		level = zynmixer.get_level(self.channel) - 0.02
 		if level > 1: level = 1
 		if level < 0: level = 0
 		self.set_fader(level)
@@ -406,7 +406,7 @@ class zynthian_gui_mixer_channel():
 	def on_fader_wheel_up(self, event):
 		if self.channel == None:
 			return
-		level = zynmixer.get_level(self.channel) + 0.05
+		level = zynmixer.get_level(self.channel) + 0.02
 		if level > 1: level = 1
 		if level < 0: level = 0
 		self.set_fader(level)
@@ -798,7 +798,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if self.selected_channel == None:
 			return
 		channel = self.get_midi_channel(self.selected_channel)
-		level = zynmixer.get_level(channel) - 0.05
+		level = zynmixer.get_level(channel) - 0.02
 		if level > 1: level = 1
 		if level < 0: level = 0
 		zynmixer.set_level(channel, level)
@@ -810,7 +810,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if self.selected_channel == None:
 			return
 		channel = self.get_midi_channel(self.selected_channel)
-		level = zynmixer.get_level(channel) + 0.05
+		level = zynmixer.get_level(channel) + 0.02
 		if level > 1: level = 1
 		if level < 0: level = 0
 		zynmixer.set_level(channel, level)
