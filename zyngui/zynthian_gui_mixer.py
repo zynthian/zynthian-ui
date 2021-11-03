@@ -174,14 +174,18 @@ class zynthian_gui_mixer_channel():
 		self.legend_strip_txt = self.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-", tags=("strip:%s"%(self.fader_bg),"legend_strip:%s"%(self.fader_bg)), font=font)
 
 		# Balance indicator
-		self.balance_left = self.main_canvas.create_rectangle(x, self.fader_top, int(fader_centre - 0.5), self.fader_top + self.balance_height, fill=self.left_color, width=0, tags=("strip:%s"%(self.fader_bg)))
-		self.balance_right = self.main_canvas.create_rectangle(int(fader_centre + 0.5), self.fader_top, self.width, self.fader_top + self.balance_height , fill=self.right_color, width=0, tags=("strip:%s"%(self.fader_bg)))
+		self.balance_left = self.main_canvas.create_rectangle(x, self.fader_top, int(fader_centre - 0.5), self.fader_top + self.balance_height, fill=self.left_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg)))
+		self.balance_right = self.main_canvas.create_rectangle(int(fader_centre + 0.5), self.fader_top, self.width, self.fader_top + self.balance_height , fill=self.right_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg)))
 
 		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_fader_press)
 		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<B1-Motion>", self.on_fader_motion)
 		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "1":
-			self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-4>", self.on_fader_wheel_down)
-			self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-5>", self.on_fader_wheel_up)
+			self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-5>", self.on_fader_wheel_down)
+			self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-4>", self.on_fader_wheel_up)
+			self.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-4>", self.on_balance_wheel_up)
+			self.main_canvas.tag_bind("balance:%s"%(self.fader_bg), "<Button-4>", self.on_balance_wheel_up)
+			self.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-5>", self.on_balance_wheel_down)
+			self.main_canvas.tag_bind("balance:%s"%(self.fader_bg), "<Button-5>", self.on_balance_wheel_down)
 		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
 		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_mute_release)
 		self.main_canvas.tag_bind("solo_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
@@ -329,15 +333,6 @@ class zynthian_gui_mixer_channel():
 				self.x + self.width * balance / 2 + self.width, self.balance_top + self.balance_height)
 
 
-	# Function to indicate channel is selected
-	# select: True to select
-	def select(self, select):
-		if select:
-			self.set_fader_color(self.fader_color_hl)
-		else:
-			self.set_fader_color(self.fader_color)
-
-
 	# Function to set fader colors
 	# fg: Fader foreground color
 	# bg: Fader background color (optional - Default: Do not change background color)
@@ -363,11 +358,29 @@ class zynthian_gui_mixer_channel():
 	def set_fader(self, value):
 		if self.channel == None:
 			return
+		if value < 0:
+			value = 0
+		if value > 1:
+			value = 1
 		zynmixer.set_level(self.channel, value)
 		if self.channel == MAX_NUM_CHANNELS:
 			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, int(value * 100), 0)
 		else:
 			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, int(value * 100), 0)
+		self.draw()
+
+
+	# Function to set balance values
+	#	value: Balance value (-1..1)
+	def set_balance(self, value):
+		if self.channel == None:
+			return
+		if value < -1:
+			value = -1
+		if value > 1:
+			value = 1
+		zynmixer.set_balance(self.channel, value)
+		zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, 50 + int(value * 50), 0)
 		self.draw()
 
 
@@ -384,32 +397,46 @@ class zynthian_gui_mixer_channel():
 		if self.channel == None:
 			return
 		level = zynmixer.get_level(self.channel) + (self.drag_start.y - event.y) / self.fader_height
-		if level > 1: level = 1
-		if level < 0: level = 0
 		self.drag_start = event
 		self.set_fader(level)
 
 
-	# Function to handle mouse wheel down
+	# Function to handle mouse wheel down over fader
 	#	event: Mouse event
 	def on_fader_wheel_down(self, event):
 		if self.channel == None:
 			return
 		level = zynmixer.get_level(self.channel) - 0.02
-		if level > 1: level = 1
-		if level < 0: level = 0
+		self.on_select_cb(self.channel)
 		self.set_fader(level)
 
 
-	# Function to handle mouse wheel up
+	# Function to handle mouse wheel up over fader
 	#	event: Mouse event
 	def on_fader_wheel_up(self, event):
 		if self.channel == None:
 			return
 		level = zynmixer.get_level(self.channel) + 0.02
-		if level > 1: level = 1
-		if level < 0: level = 0
+		self.on_select_cb(self.channel)
 		self.set_fader(level)
+
+
+	# Function to handle mouse wheel down over balance
+	#	event: Mouse event
+	def on_balance_wheel_down(self, event):
+		if self.channel == None:
+			return
+		self.on_select_cb(self.channel)
+		self.set_balance(zynmixer.get_balance(self.channel) - 0.02)
+
+
+	# Function to handle mouse wheel up over balance
+	#	event: Mouse event
+	def on_balance_wheel_up(self, event):
+		if self.channel == None:
+			return
+		self.on_select_cb(self.channel)
+		self.set_balance(zynmixer.get_balance(self.channel) + 0.02)
 
 
 	# Function to handle channel strip press
@@ -570,8 +597,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="CANCEL", state="hidden", tags=("edit_control", "cancel_button"), font=font, justify='center')
 
 		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "0":
-			self.main_canvas.bind("<Button-4>", self.on_fader_wheel_down)
-			self.main_canvas.bind("<Button-5>", self.on_fader_wheel_up)
+			self.main_canvas.bind("<Button-5>", self.on_fader_wheel_down)
+			self.main_canvas.bind("<Button-4>", self.on_fader_wheel_up)
 
 		self.main_canvas.tag_bind("mute_button", "<ButtonRelease-1>", self.on_mute_release)
 		self.main_canvas.tag_bind("solo_button", "<ButtonRelease-1>", self.on_solo_release)
@@ -725,6 +752,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			zynmixer.set_balance(MAX_NUM_CHANNELS, 0)
 		else:
 			zynmixer.set_balance(ch, 0)
+		if ch == self.selected_channel:
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_BACK, 50, 0)
+
 
 
 	# Function to handle balance press
@@ -941,12 +971,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_LAYER)
 		if value!=self.zyncoder_last_value[ENC_LAYER]:
 			self.zyncoder_last_value[ENC_LAYER] = value
-			zynmixer.set_level(self.get_midi_channel(self.selected_channel), value * 0.01)
+			channel = self.get_midi_channel(self.selected_channel)
+			if channel == MAX_NUM_CHANNELS:
+				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, value, 0)
+			zynmixer.set_level(channel, value * 0.01)
 
 		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_SNAPSHOT)
 		if value!=self.zyncoder_last_value[ENC_SNAPSHOT]:
 			self.zyncoder_last_value[ENC_SNAPSHOT] = value
-			zynmixer.set_level(self.get_midi_channel(self.number_layers), value * 0.01)
+			channel = self.get_midi_channel(self.selected_channel)
+			if channel == MAX_NUM_CHANNELS:
+				zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, value, 0)
+			zynmixer.set_level(MAX_NUM_CHANNELS, value * 0.01)
 
 		value = zyncoder.lib_zyncoder.get_value_zyncoder(ENC_SELECT)
 		if value!=self.zyncoder_last_value[ENC_SELECT]:
