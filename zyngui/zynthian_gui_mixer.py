@@ -31,6 +31,7 @@ from time import monotonic
 from tkinter import font as tkFont
 from PIL import Image, ImageTk
 import liblo
+import os
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
@@ -178,8 +179,9 @@ class zynthian_gui_mixer_channel():
 
 		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_fader_press)
 		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<B1-Motion>", self.on_fader_motion)
-		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-4>", self.on_fader_wheel_down)
-		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-5>", self.on_fader_wheel_up)
+		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "1":
+			self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-4>", self.on_fader_wheel_down)
+			self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-5>", self.on_fader_wheel_up)
 		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
 		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_mute_release)
 		self.main_canvas.tag_bind("solo_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
@@ -567,6 +569,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill=zynthian_gui_config.color_bg, tags=("edit_control", "cancel_button"))
 		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="CANCEL", state="hidden", tags=("edit_control", "cancel_button"), font=font, justify='center')
 
+		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "0":
+			self.main_canvas.bind("<Button-4>", self.on_fader_wheel_down)
+			self.main_canvas.bind("<Button-5>", self.on_fader_wheel_up)
+
 		self.main_canvas.tag_bind("mute_button", "<ButtonRelease-1>", self.on_mute_release)
 		self.main_canvas.tag_bind("solo_button", "<ButtonRelease-1>", self.on_solo_release)
 		self.main_canvas.tag_bind("mono_button", "<ButtonRelease-1>", self.on_mono_release)
@@ -784,6 +790,30 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	event: Mouse event
 	def on_cancel_press(self, event):
 		self.set_mixer_mode()
+
+
+	# Function to handle global mouse wheel down
+	#	event: Mouse event
+	def on_fader_wheel_down(self, event):
+		if self.selected_channel == None:
+			return
+		channel = self.get_midi_channel(self.selected_channel)
+		level = zynmixer.get_level(channel) - 0.05
+		if level > 1: level = 1
+		if level < 0: level = 0
+		zynmixer.set_level(channel, level)
+
+
+	# Function to handle global mouse wheel up
+	#	event: Mouse event
+	def on_fader_wheel_up(self, event):
+		if self.selected_channel == None:
+			return
+		channel = self.get_midi_channel(self.selected_channel)
+		level = zynmixer.get_level(channel) + 0.05
+		if level > 1: level = 1
+		if level < 0: level = 0
+		zynmixer.set_level(channel, level)
 
 
 	# Function to handle hiding display
