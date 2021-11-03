@@ -178,6 +178,8 @@ class zynthian_gui_mixer_channel():
 
 		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_fader_press)
 		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<B1-Motion>", self.on_fader_motion)
+		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-4>", self.on_fader_wheel_down)
+		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-5>", self.on_fader_wheel_up)
 		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
 		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_mute_release)
 		self.main_canvas.tag_bind("solo_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
@@ -383,6 +385,28 @@ class zynthian_gui_mixer_channel():
 		if level > 1: level = 1
 		if level < 0: level = 0
 		self.drag_start = event
+		self.set_fader(level)
+
+
+	# Function to handle mouse wheel down
+	#	event: Mouse event
+	def on_fader_wheel_down(self, event):
+		if self.channel == None:
+			return
+		level = zynmixer.get_level(self.channel) - 0.05
+		if level > 1: level = 1
+		if level < 0: level = 0
+		self.set_fader(level)
+
+
+	# Function to handle mouse wheel up
+	#	event: Mouse event
+	def on_fader_wheel_up(self, event):
+		if self.channel == None:
+			return
+		level = zynmixer.get_level(self.channel) + 0.05
+		if level > 1: level = 1
+		if level < 0: level = 0
 		self.set_fader(level)
 
 
