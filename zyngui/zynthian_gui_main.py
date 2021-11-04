@@ -51,6 +51,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data.append((self.new_special_layer,0,"New Special Layer"))
 		#self.list_data.append(self.clean_layers,0,"Remove All Layers"))
 		self.list_data.append((self.clean_all,0,"Clean All"))
+		self.list_data.append((self.snapshots,0,"Snapshots"))
 
 		# Add list of Apps
 		self.list_data.append((None,0,"-----------------------------"))
@@ -63,7 +64,6 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.admin,0,"Admin"))
-		self.list_data.append((self.snapshots,0,"Snapshots"))
 		self.list_data.append((self.all_notes_off,0,"PANIC! All Notes Off"))
 
 		super().fill_list()
