@@ -365,6 +365,7 @@ class zynthian_gui_mixer_channel():
 		zynmixer.set_level(self.channel, value)
 		if self.channel == MAX_NUM_CHANNELS:
 			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_SNAPSHOT, int(value * 100), 0)
+			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, int(value * 100), 0)
 		else:
 			zyncoder.lib_zyncoder.set_value_zyncoder(ENC_LAYER, int(value * 100), 0)
 		self.draw()
@@ -612,8 +613,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Init touchbar
 		self.init_buttonbar()
-
-		self.set_title("Audio Mixer")
 
 
 	# Function to display selected channel highlight border
@@ -864,14 +863,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.selected_channel = index
 		if self.selected_channel > self.number_layers and self.selected_channel != self.main_channel:
 			self.selected_channel = self.number_layers
-		self.highlight_channel(self.selected_channel)
+		self.select_channel(self.selected_channel)
 
 		self.setup_zyncoders()
 
 		zynmixer.enable_dpm(True)
 		super().show()
-		title = self.zyngui.screens["layer"].last_snapshot_fpath[:-4]
-		self.set_title(title[title.rindex('/')+1:])
 
 
 	# Function to refresh loading animation
@@ -1027,15 +1024,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 
 		elif swi == ENC_SELECT:
-			if t == "S":
-				if self.selected_layer is not None:
-					self.zyngui.layer_control(self.selected_layer)
+			if typ == "S":
+				if self.selected_channel < self.number_layers:
+					if self.selected_layer is not None:
+						self.zyngui.layer_control(self.selected_layer)
 				return True
-			elif t == "B":
-				# Layer Options
-				self.zyngui.screens['layer'].select(self.selected_channel)
-				self.zyngui.screens['layer_options'].reset()
-				self.zyngui.show_modal('layer_options')
+			elif typ == "B":
+				if self.selected_channel < self.number_layers:
+					# Layer Options
+					self.zyngui.screens['layer'].select(self.selected_channel)
+					self.zyngui.screens['layer_options'].reset()
+					self.zyngui.show_modal('layer_options')
 				return True
 
 		return False
