@@ -1139,7 +1139,7 @@ class zynthian_gui:
 				# Try to call modal back_action method:
 				try:
 					screen_back = self.screens[self.modal_screen].back_action()
-					logging.debug("SCREEN BACK => " + screen_back)
+					logging.debug("SCREEN BACK => %s", screen_back)
 				except AttributeError as e:
 					pass
 
@@ -1165,7 +1165,7 @@ class zynthian_gui:
 					self.show_screen(screen_back)
 				else:
 					self.show_screen("audio_mixer")
-			
+
 			self.modal_screen_back = None
 
 		elif i==2:

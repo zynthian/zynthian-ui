@@ -857,7 +857,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.set_mixer_mode()
 		self.main_channel.set_channel(MAX_NUM_CHANNELS)
-		
+
 		for index, fader in enumerate(self.channels):
 			if fader.channel == self.zyngui.curlayer.midi_chan:
 				self.selected_channel = index
@@ -1024,12 +1024,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 
 		elif swi == ENC_SELECT:
-			if typ == "S":
+			if t == "S":
 				if self.selected_channel < self.number_layers:
 					if self.selected_layer is not None:
 						self.zyngui.layer_control(self.selected_layer)
 				return True
-			elif typ == "B":
+			elif t == "B":
 				if self.selected_channel < self.number_layers:
 					# Layer Options
 					self.zyngui.screens['layer'].select(self.selected_channel)
