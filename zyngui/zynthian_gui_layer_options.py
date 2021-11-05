@@ -243,10 +243,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.index = self.search_fx_index(sl)
 			self.select()
 
-			return ''
-
-		else:
-			return None
+		return False
 
 
 	def layer_presets(self):

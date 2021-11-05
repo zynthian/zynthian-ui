@@ -1264,19 +1264,22 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			except Exception as e:
 				pass
 
+			self.last_snapshot_fpath = fpath
+
 			#Post action
 			if not quiet:
-				if self.index<len(self.root_layers):
-					self.select_action(self.index)
-				else:
+				#if self.index<len(self.root_layers):
+				#	self.select_action(self.index)
+				#else:
+				if self.index>=len(self.root_layers):
 					self.index = 0
-					self.zyngui.show_screen('layer')
+				self.zyngui.show_screen('audio_mixer')
+
 		except Exception as e:
 			self.zyngui.reset_loading()
 			logging.exception("Invalid snapshot: %s" % e)
 			return False
 
-		self.last_snapshot_fpath = fpath
 		return True
 
 
@@ -1298,7 +1301,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self._load_snapshot_sequences(snapshot)
 			#Post action
 			if not quiet:
-				self.zyngui.show_modal('stepseq')
+				self.zyngui.show_screen('stepseq')
 		except Exception as e:
 			self.zyngui.reset_loading()
 			logging.exception("Invalid snapshot: %s" % e)
@@ -1366,13 +1369,17 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		else:
 			self.reset_audio_routing()
 
-		#Autoconnect Audio
-		self.zyngui.zynautoconnect_audio()
-
 		# Restore ALSA Mixer settings
 		if self.amixer_layer and 'amixer_layer' in snapshot:
 			self.amixer_layer.restore_snapshot_1(snapshot['amixer_layer'])
 			self.amixer_layer.restore_snapshot_2(snapshot['amixer_layer'])
+
+		#Audio Recorder Out
+		if 'audio_recorder_out' in snapshot:
+			self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out']
+
+		#Autoconnect Audio
+		self.zyngui.zynautoconnect_audio(True)
 
 		#Fill layer list
 		self.fill_list()
@@ -1398,10 +1405,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		#BW compat.
 		elif 'transpose' in snapshot:
 			self.set_transpose(snapshot['transpose'])
-
-		#Audio Recorder Out
-		if 'audio_recorder_out' in snapshot:
-			self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out']
 
 
 	def _load_snapshot_sequences(self, snapshot):

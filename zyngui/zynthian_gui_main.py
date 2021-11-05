@@ -125,7 +125,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def step_sequencer(self, t='S'):
 		logging.info("Step Sequencer")
-		self.zyngui.show_modal('stepseq')
+		self.zyngui.show_screen('stepseq')
 
 
 	def audio_recorder(self, t='S'):
@@ -135,12 +135,12 @@ class zynthian_gui_main(zynthian_gui_selector):
 			self.zyngui.show_modal("audio_out")
 		else:
 			logging.info("Audio Recorder")
-			self.zyngui.show_modal("audio_recorder")
+			self.zyngui.show_screen("audio_recorder")
 
 
 	def midi_recorder(self, t='S'):
 		logging.info("MIDI Recorder")
-		self.zyngui.show_modal("midi_recorder")
+		self.zyngui.show_screen("midi_recorder")
 
 
 	def alsa_mixer(self, t='S'):
@@ -161,11 +161,6 @@ class zynthian_gui_main(zynthian_gui_selector):
 	def all_notes_off(self, t='S'):
 		logging.info("All Notes Off")
 		self.zyngui.callable_ui_action("ALL_OFF")
-
-
-	def back_action(self):
-		self.zyngui.show_screen('audio_mixer')
-		return ''
 
 
 	def set_select_path(self):

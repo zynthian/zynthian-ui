@@ -262,28 +262,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.set_mode_control()
 
 
-	def back_action(self):
-		# If in controller map selection, back to instrument control
-		if self.mode=='select':
-			self.set_mode_control()
-			return ''
-
-		# If control xyselect mode active, disable xyselect mode
-		elif self.xyselect_mode:
-			logging.debug("DISABLE XYSELECT MODE")
-			self.unset_xyselect_mode()
-			return 'control'
-
-		# If in MIDI-learn mode, back to instrument control
-		elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
-			self.zyngui.exit_midi_learn_mode()
-			return ''
-
-		else:
-			self.zyngui.screens['layer'].restore_curlayer()
-			return None
-
-
 	def next(self):
 		i = self.index + 1
 		if i>=len(self.list_data):
@@ -302,18 +280,62 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return True
 
 
-	def switch_select(self, t='S'):
-		if t=='S':
-			if self.mode in ('control','xyselect'):
-				if len(self.list_data)>3:
-					self.set_mode_select()
+	# Function to handle *all* switch presses.
+	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#	returns True if action fully handled or False if parent action should be triggered
+	def switch(self, swi, t='S'):
+		if swi == 0:
+			if t == 'S':
+				if self.zyngui.screens['layer'].get_num_root_layers()>1:
+					logging.info("Next layer")
+					self.zyngui.screens['layer'].next(True)
+				return True
+
+		elif swi == 1:
+			if t == 'S':
+				if self.mode=='select':
+					self.set_mode_control()
+				# If control xyselect mode active, disable xyselect mode
+				elif self.xyselect_mode:
+					logging.debug("DISABLE XYSELECT MODE")
+					self.unset_xyselect_mode()
+					#self.show()??
+				# If in MIDI-learn mode, back to instrument control
+				elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
+					self.zyngui.exit_midi_learn_mode()
 				else:
-					self.next()
-			elif self.mode=='select':
-				self.click_listbox()
-		elif t=='B':
-			self.zyngui.screens['layer_options'].reset()
-			self.zyngui.show_modal('layer_options')
+					self.zyngui.screens['layer'].restore_curlayer()
+					self.zyngui.show_screen('audio_mixer')
+				return True
+
+		elif swi == 2:
+			if t == 'S':
+				if self.mode=='control':
+					if self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
+						if zynthian_gui_config.midi_prog_change_zs3:
+							self.zyngui.show_modal('zs3_learn')
+					else:
+						self.zyngui.show_modal('preset')
+
+			elif t == 'B':
+				self.zyngui.enter_midi_learn_mode()
+
+			return True
+
+		elif swi == 3:
+			if t=='S':
+				if self.mode in ('control','xyselect'):
+					if len(self.list_data)>3:
+						self.set_mode_select()
+					else:
+						self.next()
+				elif self.mode=='select':
+					self.click_listbox()
+			elif t=='B':
+				self.zyngui.screens['layer_options'].reset()
+				self.zyngui.show_modal('layer_options')
+			return True
 
 
 	def select(self, index=None):

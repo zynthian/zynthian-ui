@@ -223,7 +223,7 @@ class zynthian_gui_mixer_channel():
 			else:
 				if zynmixer.is_channel_routed(self.channel):
 					self.main_canvas.itemconfig(self.legend_strip_txt, text=self.channel+1)
-					layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
+					layers_list=zynthian_gui_config.zyngui.screens["layer"].root_layers
 					for layer in layers_list:
 						if layer.midi_chan == self.channel:
 							self.main_canvas.itemconfig(self.legend, text="%s\n%s"%(layer.engine.name, layer.preset_name), state="normal")
@@ -485,7 +485,7 @@ class zynthian_gui_mixer_channel():
 				return
 		if self.channel != None:
 			if self.channel is not None and self.channel != MAX_NUM_CHANNELS:
-				for layer in zynthian_gui_config.zyngui.screens["layer"].layers:
+				for layer in zynthian_gui_config.zyngui.screens["layer"].root_layers:
 					if layer.midi_chan == self.channel:
 						zynthian_gui_config.zyngui.set_curlayer(layer)
 						zynthian_gui_config.zyngui.layer_control(layer)
@@ -633,19 +633,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to select channel by MIDI channel
 	# channel: MIDI channel
-	def select_midi_channel(self, channel):
+	def select_midi_channel(self, channel, set_curlayer=True):
 		if channel == MAX_NUM_CHANNELS:
-			self.select_channel(self.number_layers)
+			self.select_channel(self.number_layers, set_curlayer)
 			return
 		for index, fader in enumerate(self.channels):
 			if fader.channel == channel:
-				self.select_channel(index)
+				self.select_channel(index, set_curlayer)
 				return
 
 
 	# Function to select channel by index
 	#	channel: Index of channel to select
-	def select_channel(self, channel):
+	def select_channel(self, channel, set_curlayer=True):
 		if self.mode == 0 or channel == None or channel < 0 or channel > self.number_layers:
 			return
 
@@ -667,10 +667,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			return # Main channel selected
 
 		selected_midich = self.get_midi_channel(self.selected_channel)
-		for layer in zynthian_gui_config.zyngui.screens["layer"].layers:
+		for layer in zynthian_gui_config.zyngui.screens["layer"].root_layers:
 			if layer.midi_chan == selected_midich:
 				self.selected_layer = layer
-				self.zyngui.set_curlayer(layer)
+				if set_curlayer:
+					self.zyngui.set_curlayer(layer)
 				break
 
 
@@ -715,7 +716,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function change to mixer mode
 	def set_mixer_mode(self):
 		self.main_canvas.itemconfig("edit_control", state="hidden")
-		layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 		for channel in range(self.max_channels):
 			self.channels[channel].set_channel(None)
 		self.number_layers = 0
@@ -858,6 +858,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.set_mixer_mode()
 		self.main_channel.set_channel(MAX_NUM_CHANNELS)
+		
+		for index, fader in enumerate(self.channels):
+			if fader.channel == self.zyngui.curlayer.midi_chan:
+				self.selected_channel = index
 		if self.selected_channel > self.number_layers and self.selected_channel != self.main_channel:
 			self.selected_channel = self.number_layers
 		self.highlight_channel(self.selected_channel)
@@ -997,43 +1001,37 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle switches press
 	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
-	def switch(self, swi, typ):
+	def switch(self, swi, t):
 		if swi == ENC_LAYER:
-			if typ == "S":
+			if t == "S":
 				zynmixer.toggle_mute(self.get_midi_channel(self.selected_channel))
-				return True
-			elif typ == "B":
-				#self.reset_volume()
-				self.zyngui.show_modal('stepseq')
 				return True
 
 		elif swi == ENC_BACK:
-			if typ == "S":
+			if t == "S":
 				if self.mode == 0:
 					self.set_mixer_mode()
 					return True
-				self.zyngui.show_screen('main')
-				return True
-			elif typ == "B":
-				self.reset_balance()
-				return True
+				else:
+					self.reset_balance()
+					return True
 
 		elif swi == ENC_SNAPSHOT:
-			if typ == "S":
+			if t == "S":
 				zynmixer.toggle_solo(self.get_midi_channel(self.selected_channel))
 				return True
-			elif typ == "B":
+			elif t == "B":
 				# MIDI learning!
 				return True
 
 		elif swi == ENC_SELECT:
-			if typ == "S":
+			if t == "S":
 				if self.selected_layer is not None:
 					self.zyngui.layer_control(self.selected_layer)
 				return True
-			elif typ == "B":
+			elif t == "B":
 				# Layer Options
 				self.zyngui.screens['layer'].select(self.selected_channel)
 				self.zyngui.screens['layer_options'].reset()
