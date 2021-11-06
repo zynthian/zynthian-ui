@@ -858,9 +858,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.set_mixer_mode()
 		self.main_channel.set_channel(MAX_NUM_CHANNELS)
 
-		for index, fader in enumerate(self.channels):
-			if fader.channel == self.zyngui.curlayer.midi_chan:
-				self.selected_channel = index
+		self.selected_channel = self.number_layers
+		if self.zyngui.curlayer:
+			for index, fader in enumerate(self.channels): #TODO: Can remove this iteration and just index directly from self.zyngui.curlayer.midi_chan
+				if fader.channel == self.zyngui.curlayer.midi_chan:
+					self.selected_channel = index
 		if self.selected_channel > self.number_layers and self.selected_channel != self.main_channel:
 			self.selected_channel = self.number_layers
 		self.select_channel(self.selected_channel)
