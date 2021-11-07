@@ -613,7 +613,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if zynthian_gui_config.show_cpu_status:
 			self.meter_mode = self.METER_CPU
 		else:
-			self.meter_mode = self.METER_CPU # Don't show meter in status bar
+			self.meter_mode = self.METER_NONE # Don't show meter in status bar
 
 		# Init touchbar
 		self.init_buttonbar()
