@@ -1025,6 +1025,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		elif swi == ENC_SELECT:
 			if t == "S":
 				if self.selected_channel < self.number_layers:
+					self.zyngui.screens['layer'].select(self.selected_channel)
 					if self.selected_layer is not None:
 						self.zyngui.layer_control(self.selected_layer)
 				return True
