@@ -617,8 +617,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to display selected channel highlight border
 	# channel: Index of channel to highlight
-	# hl: Boolean: True => Highlight / False => Restore to normal
-	def highlight_channel(self, channel, hl=True):
+	def highlight_channel(self, channel):
 		if channel < 0:
 			return
 		if channel < self.number_layers:
@@ -648,7 +647,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if self.mode == 0 or channel == None or channel < 0 or channel > self.number_layers:
 			return
 
-		self.highlight_channel(self.selected_channel, False)
 		self.selected_channel = channel
 
 		if self.selected_channel < self.channel_offset:
@@ -657,7 +655,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		elif self.selected_channel >= self.channel_offset + self.max_channels and self.selected_channel != self.number_layers:
 			self.channel_offset = self.selected_channel - self.max_channels + 1
 			self.set_mixer_mode()
-		self.highlight_channel(self.selected_channel, True)
+		self.highlight_channel(self.selected_channel)
 
 		self.update_zyncoders()
 
@@ -856,7 +854,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.zyngui.screens["control"].unlock_controllers()
 
 		self.set_mixer_mode()
-		self.main_channel.set_channel(MAX_NUM_CHANNELS)
 
 		self.selected_channel = self.number_layers
 		if self.zyngui.curlayer:

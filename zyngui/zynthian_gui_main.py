@@ -145,7 +145,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def alsa_mixer(self, t='S'):
 		logging.info("ALSA Mixer")
-		self.zyngui.show_modal("alsa_mixer")
+		self.zyngui.show_screen("alsa_mixer")
 
 
 	def auto_eq(self, t='S'):
