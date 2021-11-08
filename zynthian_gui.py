@@ -461,6 +461,10 @@ class zynthian_gui:
 		self.show_screen()
 
 
+	def is_shown_alsa_mixer(self):
+		return self.curlayer == self.screens['layer'].amixer_layer
+
+
 	def show_modal(self, screen):
 		if screen=="alsa_mixer":
 			if self.modal_screen!=screen and self.screens['layer'].amixer_layer:
