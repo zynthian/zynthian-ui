@@ -164,7 +164,7 @@ class zynthian_layer:
 		self.bank_msb_info[0][1] = len(self.bank_list)-i
 
 		# Add favourites virtual bank if there is some preset marked as favourite
-		if len(self.engine.get_preset_favs(self))>0:
+		if self.engine.show_favs_bank and len(self.engine.get_preset_favs(self))>0:
 			self.bank_list = [["*FAVS*",0,"*** Favorites ***"]] + self.bank_list
 			for i in range(3):
 				self.bank_msb_info[i][0] += 1
