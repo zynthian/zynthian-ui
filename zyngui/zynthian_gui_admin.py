@@ -159,7 +159,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def show(self):
 		super().show()
-		self.select(0)
 
 
 	def select_action(self, i, t='S'):

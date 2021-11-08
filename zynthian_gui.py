@@ -441,7 +441,7 @@ class zynthian_gui:
 		if screen=="control":
 			self.restore_curlayer()
 
-		if screen=="alsa_mixer":
+		elif screen=="alsa_mixer":
 			if self.screens['layer'].amixer_layer:
 				self.screens['layer'].amixer_layer.refresh_controllers()
 				self.set_curlayer(self.screens['layer'].amixer_layer, True)
@@ -470,7 +470,7 @@ class zynthian_gui:
 			else:
 				return
 
-		if self.modal_screen!=screen and self.modal_screen not in ("info","confirm","keyboard"):
+		if self.modal_screen!=screen and self.modal_screen not in ("info", "confirm", "keyboard"):
 			self.modal_screen_back = self.modal_screen
 		self.modal_screen=screen
 		self.screens[screen].show()
@@ -1061,15 +1061,13 @@ class zynthian_gui:
 			self.show_screen("stepseq")
 
 		elif i==1:
-			self.show_screen("audio_recorder")
+			self.show_modal("admin")
 
 		elif i==2:
 			self.callable_ui_action("ALL_OFF")
 
 		elif i==3:
-			self.show_screen("admin")
-			self.screens['admin'].select_listbox_by_name("Power Off")
-			#self.screens['admin'].power_off()
+			self.screens['admin'].power_off()
 
 		# Custom ZynSwitches
 		elif i>=4:
@@ -1100,8 +1098,7 @@ class zynthian_gui:
 			self.show_screen('stepseq')
 
 		elif i==1:
-			self.show_screen('main')
-			self.screens['main'].select(0)
+			self.show_modal('main')
 
 		elif i==2:
 			self.show_modal('snapshot')

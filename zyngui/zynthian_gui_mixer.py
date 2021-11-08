@@ -866,9 +866,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					self.selected_channel = index
 		if self.selected_channel > self.number_layers and self.selected_channel != self.main_channel:
 			self.selected_channel = self.number_layers
-		self.select_channel(self.selected_channel)
 
 		self.setup_zyncoders()
+		self.select_channel(self.selected_channel)
 
 		zynmixer.enable_dpm(True)
 		super().show()

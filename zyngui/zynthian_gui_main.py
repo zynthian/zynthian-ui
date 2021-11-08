@@ -150,7 +150,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def auto_eq(self, t='S'):
 		logging.info("Auto EQ")
-		self.zyngui.show_modal('autoeq')
+		self.zyngui.show_screen('autoeq')
 
 
 	def admin(self, t='S'):
