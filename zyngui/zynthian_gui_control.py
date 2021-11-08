@@ -311,7 +311,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		elif swi == 2:
 			if t == 'S':
-				if self.mode=='control':
+				if self.mode=='control' and self.zyngui.curlayer != self.screens['layer'].amixer_layer:
 					if self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
 						if zynthian_gui_config.midi_prog_change_zs3:
 							self.zyngui.show_modal('zs3_learn')
@@ -333,8 +333,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 				elif self.mode=='select':
 					self.click_listbox()
 			elif t=='B':
-				self.zyngui.screens['layer_options'].reset()
-				self.zyngui.show_modal('layer_options')
+				if self.zyngui.curlayer != self.screens['layer'].amixer_layer:
+					self.zyngui.screens['layer_options'].reset()
+					self.zyngui.show_modal('layer_options')
 			return True
 
 
