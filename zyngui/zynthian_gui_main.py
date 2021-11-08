@@ -49,9 +49,9 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data.append((self.new_midifx_layer,0,"New MIDI-FX Layer"))
 		self.list_data.append((self.new_generator_layer,0,"New Generator Layer"))
 		self.list_data.append((self.new_special_layer,0,"New Special Layer"))
+		self.list_data.append((self.snapshots,0,"Snapshots"))
 		#self.list_data.append(self.clean_layers,0,"Remove All Layers"))
 		self.list_data.append((self.clean_all,0,"Clean All"))
-		self.list_data.append((self.snapshots,0,"Snapshots"))
 
 		# Add list of Apps
 		self.list_data.append((None,0,"-----------------------------"))

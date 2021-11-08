@@ -1020,7 +1020,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				zynmixer.toggle_solo(self.get_midi_channel(self.selected_channel))
 				return True
 			elif t == "B":
-				# MIDI learning!
+				# Implement MIDI learning!
+				self.zyngui.show_modal('snapshots')
 				return True
 
 		elif swi == ENC_SELECT:
