@@ -37,6 +37,7 @@ from time import sleep
 from datetime import datetime
 import time
 import ctypes
+from math import ceil
 from os.path import dirname, realpath, basename
 from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)
 from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library
@@ -70,6 +71,10 @@ ENC_BACK            = 1
 ENC_SNAPSHOT        = 2
 ENC_SELECT          = 3
 
+EDIT_MODE_NONE		= 0 # Edit mode disabled
+EDIT_MODE_SINGLE	= 1 # Edit mode enabled for selected note
+EDIT_MODE_ALL		= 2 # Edit mode enabled for all notes
+
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1,2,3,4,6,8,12,24]
 
@@ -84,9 +89,9 @@ class zynthian_gui_patterneditor():
 
 		os.makedirs(CONFIG_ROOT, exist_ok=True)
 
-		self.edit_mode = False # True to enable encoders to adjust duration and velocity
+		self.edit_mode = EDIT_MODE_NONE # Enable encoders to adjust duration and velocity
 		self.zoom = 16 # Quantity of rows (notes) displayed in grid
-		self.duration = 1 # Current note entry duration
+		self.duration = 1.0 # Current note entry duration
 		self.velocity = 100 # Current note entry velocity
 		self.copy_source = 1 # Index of pattern to copy
 		self.bank = 0 # Bank used for pattern editor sequence player
@@ -182,7 +187,7 @@ class zynthian_gui_patterneditor():
 
 	def play_note(self, note):
 		if libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_stepsequencer.SEQ_STOPPED:
-			libseq.playNote(note, 100, self.channel, 200)
+			libseq.playNote(note, self.velocity, self.channel, int(200 * self.duration))
 
 
 	#Function to set values of encoders
@@ -225,7 +230,7 @@ class zynthian_gui_patterneditor():
 		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT, "SB")
 		libseq.setPlayState(self.bank, self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 		libseq.enableMidiInput(False)
-		self.enable_edit(False)
+		self.enable_edit(EDIT_MODE_NONE)
 		libseq.setRefNote(self.keymap_offset)
 
 
@@ -257,7 +262,7 @@ class zynthian_gui_patterneditor():
 			time = int(step * ticks_per_step)
 			for note in range(128):
 				duration = libseq.getNoteDuration(step, note)
-				if duration == 0:
+				if duration == 0.0:
 					continue
 				duration = int(duration * ticks_per_step)
 				velocity = libseq.getNoteVelocity(step, note)
@@ -267,15 +272,23 @@ class zynthian_gui_patterneditor():
 
 
 	# Function to set edit mode
-	def enable_edit(self, enable):
-		if enable:
-			self.edit_mode = True
-			self.parent.register_switch(ENC_BACK, self)
-			self.parent.set_title("Note Parameters", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
-		else:
-			self.edit_mode = False
-			self.parent.unregister_switch(ENC_BACK)
-			self.parent.set_title(self.title, zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+	def enable_edit(self, mode):
+		if mode <= EDIT_MODE_ALL:
+			self.edit_mode = mode
+			if mode:
+				self.parent.register_switch(ENC_BACK, self)
+				self.parent.register_zyncoder(ENC_SNAPSHOT, self)
+				self.parent.register_zyncoder(ENC_LAYER, self)
+				if mode == EDIT_MODE_SINGLE:
+					self.parent.set_title("Note Parameters", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+				else:
+					self.parent.set_title("Note Parameters ALL", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+
+			else:
+				self.parent.unregister_switch(ENC_BACK)
+				self.parent.unregister_zyncoder(ENC_SNAPSHOT)
+				self.parent.unregister_zyncoder(ENC_LAYER)
+				self.parent.set_title(self.title, zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
 
 
 	# Function to assert steps per beat
@@ -616,7 +629,7 @@ class zynthian_gui_patterneditor():
 				velocity_colour += 30
 		duration = libseq.getNoteDuration(step, note)
 		if not duration:
-			duration = 1
+			duration = 1.0
 		fill_colour = "#%02x%02x%02x" % (velocity_colour, velocity_colour, velocity_colour)
 		cell = self.cells[cellIndex]
 		coord = self.get_cell(step, row, duration)
@@ -735,8 +748,8 @@ class zynthian_gui_patterneditor():
 		row = index - self.keymap_offset
 		note = self.keymap[index]['note']
 		# Skip hidden (overlapping) cells
-		for previous in range(step - 1, -1, -1):
-			prev_duration = libseq.getNoteDuration(previous, note)
+		for previous in range(int(step) - 1, -1, -1):
+			prev_duration = ceil(libseq.getNoteDuration(previous, note))
 			if not prev_duration:
 				continue
 			if prev_duration > step - previous:
@@ -749,7 +762,7 @@ class zynthian_gui_patterneditor():
 			step = 0
 		if step >= libseq.getSteps():
 			step = libseq.getSteps() - 1
-		self.selected_cell = [step, index]
+		self.selected_cell = [int(step), index]
 		cell = self.grid_canvas.find_withtag("selection")
 		duration = libseq.getNoteDuration(step, row)
 		if not duration:
@@ -920,7 +933,7 @@ class zynthian_gui_patterneditor():
 		libseq.selectPattern(index)
 		libseq.addPattern(self.bank, self.sequence, 0, 0, index)
 		if self.selected_cell[0] >= libseq.getSteps():
-			self.selected_cell[0] = libseq.getSteps() - 1
+			self.selected_cell[0] = int(libseq.getSteps()) - 1
 		self.keymap_offset = libseq.getRefNote()
 		self.load_keymap()
 		self.redraw_pending = 2
@@ -943,7 +956,7 @@ class zynthian_gui_patterneditor():
 	#   value: Current value of zyncoder
 	def on_zyncoder(self, encoder, value):
 		if encoder == ENC_BACK:
-			if self.edit_mode:
+			if self.edit_mode == EDIT_MODE_SINGLE:
 				self.velocity = self.velocity + value
 				if self.velocity > 127:
 					self.velocity = 127
@@ -957,11 +970,14 @@ class zynthian_gui_patterneditor():
 					libseq.setNoteVelocity(self.selected_cell[0], note, self.velocity)
 					self.draw_cell(self.selected_cell[0], self.selected_cell[1])
 				self.parent.set_title("Velocity: %d" % (self.velocity), None, None, 2)
+			elif self.edit_mode == EDIT_MODE_ALL:
+				libseq.changeVelocityAll(value)
+				self.parent.set_title("ALL Velocity", None, None, 2)
 			else:
 				self.select_cell(None, self.selected_cell[1] - value)
 
 		elif encoder == ENC_SELECT:
-			if self.edit_mode:
+			if self.edit_mode == EDIT_MODE_SINGLE:
 				if value > 0:
 					self.duration = self.duration + 1
 				if value < 0:
@@ -977,14 +993,45 @@ class zynthian_gui_patterneditor():
 					self.add_event(self.selected_cell[0], note)
 				else:
 					self.select_cell()
-				self.parent.set_title("Duration: %d steps" % (self.duration), None, None, 2)
+				self.parent.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
+			elif self.edit_mode == EDIT_MODE_ALL:
+				if value > 0:
+					libseq.changeDurationAll(1)
+				if value < 0:
+					libseq.changeDurationAll(-1)
+				self.parent.set_title("ALL DURATION", None, None, 2)
 			else:
 				self.select_cell(self.selected_cell[0] + value, None)
 
-		elif encoder == ENC_LAYER and not self.parent.lst_menu.winfo_viewable():
+		elif encoder == ENC_SNAPSHOT:
+			if self.edit_mode == EDIT_MODE_SINGLE:
+				if value > 0:
+					self.duration = self.duration + 0.1
+				if value < 0:
+					self.duration = self.duration - 0.1
+				if self.duration > libseq.getSteps():
+					self.duration = libseq.getSteps()
+					return
+				if self.duration < 0.1:
+					self.duration = 0.1
+					return
+				note = self.keymap[self.selected_cell[1]]["note"]
+				if libseq.getNoteDuration(self.selected_cell[0], note):
+					self.add_event(self.selected_cell[0], note)
+				else:
+					self.select_cell()
+				self.parent.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
+			elif self.edit_mode == EDIT_MODE_ALL:
+				if value > 0:
+					libseq.changeDurationAll(0.1)
+				if value < 0:
+					libseq.changeDurationAll(-0.1)
+				self.parent.set_title("ALL DURATION", None, None, 2)
+
+#		elif encoder == ENC_LAYER and not self.parent.lst_menu.winfo_viewable():
 			# Show menu
-			self.parent.toggle_menu()
-			return
+#			self.parent.toggle_menu()
+#			return
 
 
 	# Function to handle switch press
@@ -997,15 +1044,18 @@ class zynthian_gui_patterneditor():
 		if self.parent.param_editor_item:
 			return False
 		if switch == ENC_SELECT:
-			if self.edit_mode:
-				self.enable_edit(False)
-				return True
 			if type == "S":
+				if self.edit_mode:
+					self.enable_edit(EDIT_MODE_NONE)
+					return True
 				note = self.toggle_event(self.selected_cell[0], self.selected_cell[1])
 				if note:
 					self.play_note(note)
-			else:
-				self.enable_edit(True)
+			elif type == "B":
+				if self.edit_mode == EDIT_MODE_NONE:
+					self.enable_edit(EDIT_MODE_SINGLE)
+				else:
+					self.enable_edit(EDIT_MODE_ALL)
 			return True
 		elif switch == ENC_SNAPSHOT:
 			if type == "B":
@@ -1017,7 +1067,7 @@ class zynthian_gui_patterneditor():
 				libseq.setPlayState(self.bank, self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 			return True
 		elif switch == ENC_BACK:
-			self.enable_edit(False)
+			self.enable_edit(EDIT_MODE_NONE)
 			return True
 		return False
 

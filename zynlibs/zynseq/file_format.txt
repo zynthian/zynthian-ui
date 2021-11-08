@@ -1,6 +1,6 @@
 zynseq file format (RIFF)
 =========================
-Version 6
+Version 7
 Pattern time is measured in steps.
 Sequence time is measured in MIDI clock cycles.
 
@@ -31,7 +31,7 @@ Block:
 	Padding [1] (Added in V5)
 	Events: (quantity deduced from block length)
 		Start step [4]
-		Duration [4]
+		Duration [4] (V7 change to BCD-LE e.g. 0x0408 is 8.4)
 		Command [1]
 		Value 1 start [1]
 		Value 2 start [1]
