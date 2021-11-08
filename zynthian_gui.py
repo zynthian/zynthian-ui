@@ -441,6 +441,13 @@ class zynthian_gui:
 		if screen=="control":
 			self.restore_curlayer()
 
+		if screen=="alsa_mixer":
+			if self.screens['layer'].amixer_layer:
+				self.screens['layer'].amixer_layer.refresh_controllers()
+				self.set_curlayer(self.screens['layer'].amixer_layer, True)
+			else:
+				return
+
 		#self.lock.acquire()
 		self.hide_screens(exclude=screen)
 		self.screens[screen].show()
@@ -1060,7 +1067,9 @@ class zynthian_gui:
 			self.callable_ui_action("ALL_OFF")
 
 		elif i==3:
-			self.screens['admin'].power_off()
+			self.show_screen("admin")
+			self.screens['admin'].select_listbox_by_name("Power Off")
+			#self.screens['admin'].power_off()
 
 		# Custom ZynSwitches
 		elif i>=4:
@@ -1092,6 +1101,7 @@ class zynthian_gui:
 
 		elif i==1:
 			self.show_screen('main')
+			self.screens['main'].select(0)
 
 		elif i==2:
 			self.show_modal('snapshot')

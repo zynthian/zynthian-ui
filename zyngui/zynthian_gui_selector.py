@@ -216,6 +216,15 @@ class zynthian_gui_selector(zynthian_gui_base):
 				self.last_index_change_ts=datetime.now()
 
 
+	def select_listbox_by_name(self, name):
+		names = self.listbox.get(0, self.listbox.size())
+		try:
+			index = names.index(name)
+			self.select(index)
+		except:
+			logging.debug("%s is not in listbox", name)
+
+
 	def skip_separators(self, index):
 		# Skip separator items ...
 		if 0 <= index < len(self.list_data) and self.list_data[index][0] is None:

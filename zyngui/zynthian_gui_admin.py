@@ -157,6 +157,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		super().fill_list()
 
 
+	def show(self):
+		super().show()
+		self.select(0)
+
+
 	def select_action(self, i, t='S'):
 		if self.list_data[i][0]:
 			self.last_action=self.list_data[i][0]

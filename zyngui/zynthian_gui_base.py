@@ -41,6 +41,10 @@ from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 
 class zynthian_gui_base:
 
+	METER_NONE	= 0
+	METER_DPM	= 1
+	METER_CPU	= 2
+
 	#Default buttonbar config (touchwidget)
 	buttonbar_config = [
 		(1, 'BACK'),
@@ -165,9 +169,15 @@ class zynthian_gui_base:
 
 		self.button_push_ts = 0
 
+		if zynthian_gui_config.show_cpu_status:
+			self.meter_mode = self.METER_CPU
+		else:
+			self.meter_mode = self.METER_DPM
+
 		# Update Title
 		self.set_select_path()
 		self.cb_scroll_select_path()
+
 
 	# Function to update title
 	#	title: Title to display in topbar
@@ -299,7 +309,7 @@ class zynthian_gui_base:
 
 	def refresh_status(self, status={}):
 		if self.shown:
-			if zynthian_gui_config.show_cpu_status:
+			if self.meter_mode == self.METER_CPU:
 				# Display CPU-load bar
 				l = int(status['cpu_load']*self.status_l/100)
 				cr = int(status['cpu_load']*255/100)
@@ -313,7 +323,7 @@ class zynthian_gui_base:
 						self.status_cpubar=self.status_canvas.create_rectangle((0, 0, l, self.status_rh), fill=color, width=0)
 				except Exception as e:
 					logging.error(e)
-			else:
+			elif self.meter_mode == self.METER_DPM:
 				# Display audio peak
 				signal = max(0, 1 + status['peakA'] / self.dpm_rangedB)
 				llA = int(min(signal, self.dpm_high) * self.status_l)

@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Preset Selector Class
-# 
+#
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import sys
@@ -38,8 +38,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def __init__(self):
 		super().__init__('Preset', True)
-      
-      
+
+
 	def fill_list(self):
 		if not self.zyngui.curlayer:
 			logging.error("Can't fill preset list for None layer!")
@@ -81,7 +81,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				return True
 		elif swi == 3:
 			if t == 'B':
-				self.zyngui.curlayer.toggle_preset_fav(self.list_data[i])
+				self.zyngui.curlayer.toggle_preset_fav(self.list_data[self.index])
 				self.update_list()
 				return True
 
