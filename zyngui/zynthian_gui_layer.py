@@ -163,8 +163,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def next(self, control=True):
 		self.zyngui.restore_curlayer()
 		if len(self.root_layers)>1:
-			if self.zyngui.curlayer in self.layers:
-				self.index += 1
+			if self.zyngui.curlayer in self.root_layers:
+				self.index = self.root_layers.index(self.zyngui.curlayer) + 1
 				if self.index>=len(self.root_layers):
 					self.index = 0
 
@@ -357,7 +357,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.layer_control(root_layer)
 				except Exception as e:
 					logging.error(e)
-					self.zyngui.show_screen('layer')
+					self.zyngui.show_screen('audio_mixer')
 
 
 	def remove_layer(self, i, stop_unused_engines=True):
