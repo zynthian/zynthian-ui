@@ -52,6 +52,7 @@ bool open(const char* filename) {
 double getFileDuration(const char* filename) {
     SF_INFO info;
     info.format = 0;
+    info.samplerate = 0;
     SNDFILE* pFile = sf_open(filename, SFM_READ, &info);
     sf_close(pFile);
     if(info.samplerate)

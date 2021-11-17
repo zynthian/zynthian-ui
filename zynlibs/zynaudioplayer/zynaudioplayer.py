@@ -56,6 +56,7 @@ def init():
 
 #	Destoy instance of shared library
 def destroy():
+	#TODO: This hangs
 	global libaudioplayer
 	if libaudioplayer:
 		dlclose(libaudioplayer._handle)
@@ -69,6 +70,7 @@ def open(filename):
 	if libaudioplayer:
 		return libaudioplayer.open(bytes(filename, "utf-8"))
 	return False
+
 
 #	Get duration of an audio file
 #	filename: Full path and filename
