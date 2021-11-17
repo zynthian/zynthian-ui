@@ -25,6 +25,12 @@ void enableDebug(bool bEnable);
 */
 bool open(const char* filename);
 
+/** @brief  Get duration of a file without loading it
+*   @param  filename Full path and name of file to load
+*   @retval double Duration is seconds. Zero if cannot open file.
+*/
+double getFileDuration(const char* filename);
+
 /** @brief  Save audio file
 *   @param  filename Full path and name of file to create or overwrite
 *   @retval bool True on success
@@ -83,6 +89,7 @@ int getFrames();
 *   @see    sndfile.h for supported formats
 */
 int getFormat();
+
 
 #ifdef __cplusplus
 }

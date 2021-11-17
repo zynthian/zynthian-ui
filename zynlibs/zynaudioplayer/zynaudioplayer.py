@@ -47,6 +47,7 @@ def init():
 	try:
 		libaudioplayer=ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynaudioplayer.so")
 		libaudioplayer.getDuration.restype = ctypes.c_double
+		libaudioplayer.getFileDuration.restype = ctypes.c_double
 		libaudioplayer.init()
 	except Exception as e:
 		libaudioplayer=None
@@ -68,6 +69,14 @@ def open(filename):
 	if libaudioplayer:
 		return libaudioplayer.open(bytes(filename, "utf-8"))
 	return False
+
+#	Get duration of an audio file
+#	filename: Full path and filename
+#	Returns: Duration in seconds or zero if file cannot be opened or invalid format
+def get_duration(filename):
+	if libaudioplayer:
+		return libaudioplayer.getFileDuration(bytes(filename, "utf-8"))
+	return 0.0
 
 
 #	Save an audio file

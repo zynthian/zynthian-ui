@@ -35,15 +35,13 @@ pthread_t g_threadFile; // Thread handling file reading
 
 /*** Public functions exposed as external C functions in header ***/
 
-void enableDebug(bool bEnable)
-{
+void enableDebug(bool bEnable) {
     printf("libaudioplayer setting debug mode %s\n", bEnable?"on":"off");
     g_bDebug = bEnable;
 }
 
 
-bool open(const char* filename)
-{
+bool open(const char* filename) {
     if(g_pFile)
         close();
     g_sf_info.format = 0; // This triggers open to populate info structure
@@ -51,8 +49,17 @@ bool open(const char* filename)
     return (g_pFile != NULL);
 }
 
-bool close()
-{
+double getFileDuration(const char* filename) {
+    SF_INFO info;
+    info.format = 0;
+    SNDFILE* pFile = sf_open(filename, SFM_READ, &info);
+    sf_close(pFile);
+    if(info.samplerate)
+        return static_cast<double>(info.frames) / info.samplerate;
+    return 0.0f;
+}
+
+bool close() {
     if(g_pFile) {
         if(sf_close(g_pFile) == 0) {
             g_pFile = NULL;
@@ -62,16 +69,14 @@ bool close()
     return false;
 }
 
-bool save(const char* filename)
-{
+bool save(const char* filename) {
     //!@todo Implement save
     if(!g_pFile)
         return false;
     return false;
 }
 
-double getDuration()
-{
+double getDuration() {
     //!@todo Implement getDuration
     if(g_sf_info.samplerate)
         return static_cast<double>(g_sf_info.frames) / g_sf_info.samplerate;
@@ -193,28 +198,3 @@ void init() {
         exit(1);
     }
 }
-
-void removeJackClient()
-{
-	if(g_pJackClient)
-		jack_client_close(g_pJackClient);
-	g_pJackClient = NULL;
-}
-
-bool createJackClient()
-{
-	if(!g_pJackClient)
-	{
-		// Initialise JACK client
-		g_pJackClient = jack_client_open("zynaudioplayer", JackNullOption, NULL);
-		if(g_pJackClient
-			&& !jack_set_process_callback(g_pJackClient, onJackProcess, 0)
-			&& !jack_set_sample_rate_callback(g_pJackClient, onJackSamplerate, 0)
-			&& !jack_activate(g_pJackClient))
-            return true;
-		removeJackClient();
-		return false;
-	}
-	return true;
-}
-
