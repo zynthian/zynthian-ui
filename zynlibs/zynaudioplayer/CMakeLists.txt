@@ -9,6 +9,6 @@ include(CheckLibraryExists)
 link_directories(/usr/local/lib)
 
 add_library(zynaudioplayer SHARED zynaudioplayer.cpp)
-	target_link_libraries(zynaudioplayer jack sndfile pthread)
+	target_link_libraries(zynaudioplayer jack sndfile pthread samplerate)
 
 install(TARGETS zynaudioplayer LIBRARY DESTINATION lib)

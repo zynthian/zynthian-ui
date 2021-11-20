@@ -39,7 +39,7 @@ bool save(const char* filename);
 
 /** @brief  Close audio file clearing all data
 */
-bool close_file();
+void close_file();
 
 /** @brief  Get duration of audio
 *   @retval double Duration in seconds
