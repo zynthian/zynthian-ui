@@ -758,7 +758,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				'name': b[2],
 				'fullpath': b[0],
 				'raw': b,
-				'readonly': True
+				'readonly': False
 			})
 		return banks
 
@@ -793,5 +793,22 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		return fullpath
+
+	@classmethod
+	def zynapi_get_formats(cls):
+		return "fxp"
+
+	@classmethod
+	def zynapi_martifact_formats(cls):
+		return "fxp"
+
+	@classmethod
+	def zynapi_install(cls, dpath, bank_path):
+		fname, ext = os.path.splitext(dpath)
+		if ext.lower() in ['.fxp']:
+			shutil.move(dpath, cls.user_presets_dpath + "/My Presets")
+		else:
+			raise Exception("File doesn't look like a FXP preset file")
+
 
 # ******************************************************************************
