@@ -109,7 +109,7 @@ void Sequence::setPlayMode(uint8_t mode)
 {
     if(mode > LASTPLAYMODE)
         return;
-    m_nMode = mode; 
+    m_nMode = mode;
     if(m_nMode == DISABLED)
         m_nState = STOPPED;
     m_bChanged = true;
@@ -127,7 +127,7 @@ void Sequence::setPlayState(uint8_t state)
         state = STOPPED;
     if(state == m_nState)
         return;
-    if(m_nMode == ONESHOT && state == STOPPING)
+    if(m_nMode == ONESHOT && (state == STOPPING || state == STOPPING_SYNC))
         state = STOPPED;
     m_nState = state;
     if(m_nState == STOPPED)
@@ -161,6 +161,10 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
         }
         if(m_nState == STOPPING && m_nMode == LOOPSYNC)
             m_nState = STOPPED;
+        if(m_nState == STOPPING_SYNC) {
+            m_nState = STOPPED;
+            m_nPosition = 0;
+        }
         if(m_nMode == ONESHOTSYNC || m_nMode == LOOPSYNC)
             m_nPosition = 0;
         m_nLastSyncPos = m_nPosition;
@@ -168,7 +172,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
     else if(m_nState == RESTARTING)
         m_nState = STARTING;
 
-    if(m_nState == PLAYING || m_nState == STOPPING)
+    if(m_nState == PLAYING || m_nState == STOPPING || m_nState == STOPPING_SYNC)
     {
         // Still playing so iterate through tracks
         for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
@@ -193,7 +197,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
                     nState = RESTARTING;
                 }
             case LOOP:
-                if(m_nState == STOPPING)
+                if(m_nState == STOPPING || m_nState == STOPPING_SYNC)
                     setPlayState(STOPPED);
         }
         m_nPosition = 0;
