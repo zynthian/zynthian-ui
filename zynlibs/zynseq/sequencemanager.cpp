@@ -221,6 +221,7 @@ size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* 
                         pEvent->value2 = 1;
                         break;
                     case STOPPING:
+                    case STOPPING_SYNC:
                         pEvent->value2 = 4;
                         break;
                     case STARTING:
@@ -243,7 +244,7 @@ size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* 
 void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8_t state)
 {
     Sequence* pSequence = getSequence(bank, sequence);
-    if(state == STARTING || state == PLAYING)
+    if(state == STARTING || state == PLAYING || state == RESTARTING)
     {
         bool bAddToList = true;
         // Stop other sequences in same group
@@ -255,10 +256,10 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
             else
                 if(pPlayingSequence->getGroup() == pSequence->getGroup())
                 {
-                    if(pPlayingSequence->getPlayState() == STARTING)
+                    if(pPlayingSequence->getPlayState() == STARTING || pPlayingSequence->getPlayState() == RESTARTING)
                         pPlayingSequence->setPlayState(STOPPED);
                     else if(pPlayingSequence->getPlayState() != STOPPED)
-                        pPlayingSequence->setPlayState(STOPPING);
+                        pPlayingSequence->setPlayState(STOPPING_SYNC);
                 }
         }
         if(bAddToList)
