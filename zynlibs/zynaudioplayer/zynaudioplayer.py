@@ -48,6 +48,9 @@ def init():
 		libaudioplayer=ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynaudioplayer.so")
 		libaudioplayer.getDuration.restype = ctypes.c_double
 		libaudioplayer.getFileDuration.restype = ctypes.c_double
+		libaudioplayer.getFileInfo.restype = ctypes.c_char_p
+		libaudioplayer.getFilename.restype = ctypes.c_char_p
+		libaudioplayer.setPosition.argtypes = [ctypes.c_float]
 		libaudioplayer.init()
 	except Exception as e:
 		libaudioplayer=None
@@ -63,13 +66,26 @@ def destroy():
 	libaudioplayer = None
 
 
-#	Open an audio file
+#	Load an audio file
 #	filename: Full path and filename
 #	Returns: True on success
-def open(filename):
+def load(filename):
 	if libaudioplayer:
 		return libaudioplayer.open(bytes(filename, "utf-8"))
 	return False
+
+
+#	Unload the currently loaded audio file
+def unload():
+	if libaudioplayer:
+		libaudioplayer.closeFile()
+
+
+#	Get the full path and name of the currently loaded file
+#	Returns: Filename
+def get_filename():
+	if libaudioplayer:
+		return libaudioplayer.getFilename().decode("utf-8")
 
 
 #	Get duration of an audio file
@@ -79,6 +95,40 @@ def get_duration(filename):
 	if libaudioplayer:
 		return libaudioplayer.getFileDuration(bytes(filename, "utf-8"))
 	return 0.0
+
+#	Get info from file metadata
+#	filename: Full path and filename
+#	type: Info type [1:Title, 2:Copyright, 3:Software, 4:Artist, 5:Comment, 6:Date, 7:Album, 8:License, 9:Track number, 10:Genre]
+#	Returns: Info
+def get_info(filename, type):
+	if libaudioplayer:
+		try:
+			return libaudioplayer.getFileInfo(bytes(filename, "utf-8"), type).decode("utf-8")
+		except:
+			print("get_info failed for type", type)
+			pass
+	return ""
+
+
+#	Get info from file metadata
+#	filename: Full path and filename
+#	Returns: Dictionary of info
+def get_file_info(filename):
+	data = {}
+	try:
+		data["Title"] = get_info(filename, 1)
+		data["Copyright"] = get_info(filename, 2)
+		data["Software"] = get_info(filename, 3)
+		data["Artist"] = get_info(filename, 4)
+		data["Comment"] = get_info(filename, 5)
+		data["Date"] = get_info(filename, 6)
+		data["Album"] = get_info(filename, 7)
+		data["License"] = get_info(filename, 8)
+		data["Track"] = get_info(filename, 9)
+		data["Genre"] = get_info(filename, 10)
+	except:
+		pass
+	return data
 
 
 #	Save an audio file

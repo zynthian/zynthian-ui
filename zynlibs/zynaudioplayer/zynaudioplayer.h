@@ -39,7 +39,12 @@ bool save(const char* filename);
 
 /** @brief  Close audio file clearing all data
 */
-void close_file();
+void closeFile();
+
+/** @brief  Get filename of currently loaded file
+*   @retval const char* Filename or emtpy string if no file loaded
+*/
+const char* getFilename();
 
 /** @brief  Get duration of audio
 *   @retval double Duration in seconds
@@ -47,9 +52,9 @@ void close_file();
 double getDuration();
 
 /** @brief  Set position to time
-*   @param  time Time in microseconds since start of audio
+*   @param  time Time in seconds since start of audio
 */
-void setPosition(uint32_t time);
+void setPosition(float time);
 
 /** @brief  Set loop mode
 *   @param  bLoop True to loop at end of audio
@@ -90,6 +95,12 @@ int getFrames();
 */
 int getFormat();
 
+/** @brief  Get info from file meta data
+*   @param  filename Full path and filename of audio file
+*   @param  type Info type to retrieve [SF_STR_TITLE | SF_STR_COPYRIGHT | SF_STR_SOFTWARE | SF_STR_ARTIST | SF_STR_COMMENT | SF_STR_DATE| SF_STR_ALBUM | SF_STR_LICENSE | SF_STR_TRACKNUMBER | SF_STR_GENRE]
+*   @retval const char Info value as c-string
+*/
+const char* getFileInfo(const char* filename, int type);
 
 #ifdef __cplusplus
 }
@@ -98,3 +109,4 @@ int getFormat();
 // Private functions not exposed to C library API
 
 void *fileThread(void*);
+int onJackXrun(void *pArgs);
