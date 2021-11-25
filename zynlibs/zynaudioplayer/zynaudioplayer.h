@@ -1,7 +1,7 @@
 /*  Audio file player library for Zynthian
-*
+    Copyright (C) 2021 Brian Walton <brian@riban.co.uk>
+    License: LGPL V3
 */
-//!@todo Add license
 
 #include <cstdint>
 
@@ -27,9 +27,9 @@ bool open(const char* filename);
 
 /** @brief  Get duration of a file without loading it
 *   @param  filename Full path and name of file to load
-*   @retval double Duration is seconds. Zero if cannot open file.
+*   @retval float Duration is seconds. Zero if cannot open file.
 */
-double getFileDuration(const char* filename);
+float getFileDuration(const char* filename);
 
 /** @brief  Save audio file
 *   @param  filename Full path and name of file to create or overwrite
@@ -47,14 +47,19 @@ void closeFile();
 const char* getFilename();
 
 /** @brief  Get duration of audio
-*   @retval double Duration in seconds
+*   @retval float Duration in seconds
 */
-double getDuration();
+float getDuration();
 
-/** @brief  Set position to time
+/** @brief  Set playhead position
 *   @param  time Time in seconds since start of audio
 */
 void setPosition(float time);
+
+/** @brief  Get playhead position
+*   @retval float Time in seconds since start of audio
+*/
+float getPosition();
 
 /** @brief  Set loop mode
 *   @param  bLoop True to loop at end of audio

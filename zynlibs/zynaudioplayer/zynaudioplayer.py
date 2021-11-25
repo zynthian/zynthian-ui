@@ -6,6 +6,7 @@
 # A Python wrapper for zynaudioplayer library
 #
 # Copyright (C) 2021 Brian Walton <brian@riban.co.uk>
+# License: LGPL V3
 #
 #********************************************************************
 #
@@ -46,8 +47,9 @@ def init():
 	global libaudioplayer
 	try:
 		libaudioplayer=ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynaudioplayer.so")
-		libaudioplayer.getDuration.restype = ctypes.c_double
-		libaudioplayer.getFileDuration.restype = ctypes.c_double
+		libaudioplayer.getDuration.restype = ctypes.c_float
+		libaudioplayer.getPosition.restype = ctypes.c_float
+		libaudioplayer.getFileDuration.restype = ctypes.c_float
 		libaudioplayer.getFileInfo.restype = ctypes.c_char_p
 		libaudioplayer.getFilename.restype = ctypes.c_char_p
 		libaudioplayer.setPosition.argtypes = [ctypes.c_float]

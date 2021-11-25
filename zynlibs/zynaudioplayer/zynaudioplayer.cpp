@@ -1,4 +1,6 @@
 /*  Audio file player library for Zynthian
+    Copyright (C) 2021 Brian Walton <brian@riban.co.uk>
+    License: LGPL V3
 */
 
 #include "zynaudioplayer.h"
@@ -29,7 +31,7 @@ enum seekState {
     LOADING     = 2
 };
 
-#define AUDIO_BUFFER_SIZE 1024 * 1024 // 4MB buffer (float is 4 bytes) is approx. 12s of stereo audio
+#define AUDIO_BUFFER_SIZE 200000 // 100000 is approx. 1s of audio
 struct AUDIO_BUFFER {
     size_t size = AUDIO_BUFFER_SIZE;
     size_t end = 0;
@@ -52,7 +54,6 @@ uint8_t g_nSeek = IDLE; //!@todo Can we conbine seek state with play state?// Se
 uint8_t g_nPlayState = STOPPED;
 bool g_bLoop = false; // True to loop at end of song
 jack_nframes_t g_nSamplerate = 44100;
-double g_dPosition = 0.0; // Position within audio in ms
 SF_INFO  g_sf_info; // Structure containing currently loaded file info
 pthread_t g_threadFile; // ID of file reader thread
 AUDIO_BUFFER g_audioBuffer[2]; // Double-buffer for transfering audio from file to player
@@ -85,14 +86,14 @@ bool open(const char* filename) {
     return true;
 }
 
-double getFileDuration(const char* filename) {
+float getFileDuration(const char* filename) {
     SF_INFO info;
     info.format = 0;
     info.samplerate = 0;
     SNDFILE* pFile = sf_open(filename, SFM_READ, &info);
     sf_close(pFile);
     if(info.samplerate)
-        return static_cast<double>(info.frames) / info.samplerate;
+        return static_cast<float>(info.frames) / info.samplerate;
     return 0.0f;
 }
 
@@ -113,18 +114,21 @@ const char* getFilename() {
     return g_sFilename.c_str();
 }
 
-double getDuration() {
+float getDuration() {
     if(g_sf_info.samplerate)
-        return static_cast<double>(g_sf_info.frames) / g_sf_info.samplerate;
+        return static_cast<float>(g_sf_info.frames) / g_sf_info.samplerate;
     return 0.0f;
 }
 
 void setPosition(float time) {
-//    stopPlayback(); //!@todo It may be advantageouse to avoid stopping playback when setting position
     g_nPlaybackPosFrames = time * g_nSamplerate;
     g_nPlaybackPosSeconds = time;
     g_nBufferPos = 0;
     g_nSeek = SEEKING;
+}
+
+float getPosition() {
+    return static_cast<float>(g_nPlaybackPosFrames) / g_nSamplerate;
 }
 
 void setLoop(bool bLoop) {
@@ -183,7 +187,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused) {
         // Silence period incase there is insufficient data to fill output buffers
         pOutA[nOffset] = 0.0;
         pOutB[nOffset] = 0.0;
-        if(g_nSeek == 0) { // Don't process any frames whilst seeking
+        if(g_nSeek == IDLE) { // Don't process any frames whilst seeking
             if(g_nPlayState == STARTING)
                 g_nPlayState = PLAYING;
             if(g_nPlayState == PLAYING) {
@@ -215,12 +219,14 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused) {
             }
         }
     }
+    /*
     if(g_nPlayState == PLAYING) {
         if(g_nPlaybackPosFrames / g_nSamplerate > g_nPlaybackPosSeconds) {
             g_nPlaybackPosSeconds = g_nPlaybackPosFrames / g_nSamplerate;
             DPRINTF("%02d:%02d\n", g_nPlaybackPosSeconds / 60, g_nPlaybackPosSeconds % 60);
         }
     }
+    */
 	return 0;
 }
 
@@ -242,6 +248,7 @@ void* fileThread(void*) {
     g_nChannelB = (g_sf_info.channels == 1)?0:1; // Mono or stereo based on first one or two channels
 
     g_bMore = true;
+    g_nSeek = SEEKING;
     g_nPlaybackPosFrames = 0;
     g_nPlaybackPosSeconds = 0;
     size_t nFramesSinceStart = 0;
@@ -250,16 +257,14 @@ void* fileThread(void*) {
     SRC_DATA srcData;
     float pBuffer[AUDIO_BUFFER_SIZE]; // Buffer used to read sample data from file
     srcData.data_in = pBuffer;
-    srcData.src_ratio = static_cast<double>(g_nSamplerate) / g_sf_info.samplerate;
+    srcData.src_ratio = static_cast<float>(g_nSamplerate) / g_sf_info.samplerate;
     srcData.output_frames = AUDIO_BUFFER_SIZE;
-    printf("srcData.src_ratio = %f\n", srcData.src_ratio);
-
     size_t nMaxRead = AUDIO_BUFFER_SIZE;
     if(srcData.src_ratio > 1.0)
-        nMaxRead = static_cast<double>(AUDIO_BUFFER_SIZE) / srcData.src_ratio;
+        nMaxRead = static_cast<float>(AUDIO_BUFFER_SIZE) / srcData.src_ratio;
     nMaxRead /= g_sf_info.channels;
     int nError;
-    SRC_STATE* pSrcState = src_new(SRC_SINC_MEDIUM_QUALITY, g_sf_info.channels, &nError);
+    SRC_STATE* pSrcState = src_new(SRC_SINC_FASTEST, g_sf_info.channels, &nError);
     // Only read quantity of frames that will fit into buffer
 
     while(g_bFileOpen) {
@@ -275,10 +280,12 @@ void* fileThread(void*) {
             sf_seek(pFile, nNewPos, SEEK_SET);
             g_nSeek = LOADING;
             src_reset(pSrcState);
+            srcData.end_of_input = 0;
         }
         if(g_bMore || g_nSeek == LOADING)
         {
-            for(int nDbuffer = 0; nDbuffer < 2; ++nDbuffer) {
+            uint8_t nDbuffer = g_nActiveBuffer;
+            for(int i = 0; i < 2; ++i) {
                 // Populate each empty double-buffer
                 srcData.data_out = g_audioBuffer[nDbuffer].data;
                 if(g_audioBuffer[nDbuffer].isEmpty) {
@@ -299,26 +306,30 @@ void* fileThread(void*) {
                     }
                     if(srcData.src_ratio == 1.0) {
                         g_audioBuffer[nDbuffer].end = nRead * g_sf_info.channels;
+                        DPRINTF("zynaudioplayer read %d samples at %d into double-buffer %d which is %0.1fs\n", nRead, g_nSamplerate, nDbuffer, static_cast<float>(nRead) / g_nSamplerate);
                     } else {
                         srcData.input_frames = nRead;
-                        DPRINTF("zynaudioplayer starting SRC on %d samples...\n", nRead);
+                        if(nRead < nMaxRead)
+                            srcData.end_of_input = 1;
+                        DPRINTF("About to start samplerate conversion on iteration %d with %d frames processing %ld frames\n", i, nRead, srcData.input_frames);
                         auto start = std::chrono::high_resolution_clock::now();
                         int rc = src_process(pSrcState, &srcData);
                         if(rc) {
-                            DPRINTF("Failed to convert samplerate - %s\n", src_strerror(rc));
+                            DPRINTF("Failed to samplerate convert - %s\n", src_strerror(rc));
                         }
                         else {
                             auto stop = std::chrono::high_resolution_clock::now();
                             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-                            DPRINTF("zynaudioplayer finished SRC with %ld samples which is %0.1fs after %ldms\n", srcData.output_frames_gen, static_cast<float>(srcData.output_frames_gen)/g_nSamplerate, duration);
+                            DPRINTF("Read %d frames at %d converting %ld frames to %ld frames at %d into double-buffer %d which is %0.1fs conversion took %ldms\n", nRead, g_sf_info.samplerate, srcData.input_frames_used, srcData.output_frames_gen, g_nSamplerate, nDbuffer, static_cast<float>(srcData.output_frames_gen)/g_nSamplerate, duration);
                         }
                         g_audioBuffer[nDbuffer].end = srcData.output_frames_gen * g_sf_info.channels;
                     }
                     nFramesSinceStart += g_audioBuffer[nDbuffer].end;
-                    DPRINTF("zynaudioplayer::fileThread read %d samples into double-buffer %d with end %d\n", nRead, nDbuffer, g_audioBuffer[nDbuffer].end);
                 }
-                if(g_nSeek == LOADING)
+                if(g_nSeek == LOADING) {
                     g_nSeek = IDLE;
+                }
+                nDbuffer = g_nActiveBuffer?0:1;
             }
         }
         usleep(1000);
@@ -380,7 +391,6 @@ const char* getFileInfo(const char* filename, int type) {
     const char* pValue = sf_get_string(pFile, type);
     if(pValue) {
         std::string sValue(pValue);
-        printf("  zynaudioplayer::getFileInfo %d: %s\n", type, pValue);
         sf_close(pFile);
         return sValue.c_str();
     }
