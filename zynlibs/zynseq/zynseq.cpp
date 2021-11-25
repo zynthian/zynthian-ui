@@ -35,7 +35,7 @@
 #include <string>
 #include <cstring> //provides strcmp
 
-#define FILE_VERSION 6
+#define FILE_VERSION 7
 
 #define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
 
@@ -735,14 +735,14 @@ bool load(const char* filename)
                 if(checkBlock(pFile, nBlockSize, 14))
                     break;
                 uint32_t nStep = fileRead32(pFile);
-                uint32_t nDuration = fileRead32(pFile);
+                float fDuration = float(fileRead16(pFile))/100 + fileRead16(pFile); // fractional + integral (BCD)
                 uint8_t nCommand = fileRead8(pFile);
                 uint8_t nValue1start = fileRead8(pFile);
                 uint8_t nValue2start = fileRead8(pFile);
                 uint8_t nValue1end = fileRead8(pFile);
                 uint8_t nValue2end = fileRead8(pFile);
                 fileRead8(pFile); // Padding
-                StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, nDuration);
+                StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration);
                 pEvent->setValue1end(nValue1end);
                 pEvent->setValue2end(nValue2end);
                 nBlockSize -= 14;
@@ -885,7 +885,11 @@ void save(const char* filename)
             while(StepEvent* pEvent = pPattern->getEventAt(nEvent++))
             {
                 nPos += fileWrite32(pEvent->getPosition(), pFile);
-                nPos += fileWrite32(pEvent->getDuration(), pFile);
+                float fDuration = pEvent->getDuration();
+                uint16_t nUnits = uint16_t(fDuration);
+                uint16_t nDecimal = uint16_t((fDuration - nUnits) * 100);
+                nPos += fileWrite16(nDecimal, pFile); // fractional (BCD)
+                nPos += fileWrite16(nUnits, pFile); // integral (BCD)
                 nPos += fileWrite8(pEvent->getCommand(), pFile);
                 nPos += fileWrite8(pEvent->getValue1start(), pFile);
                 nPos += fileWrite8(pEvent->getValue2start(), pFile);
@@ -1227,7 +1231,7 @@ void setStepsPerBeat(uint32_t steps)
     g_bDirty = true;
 }
 
-bool addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
+bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration)
 {
     if(!g_pPattern)
         return false;
@@ -1261,7 +1265,7 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
     g_bDirty = true;
 }
 
-uint32_t getNoteDuration(uint32_t step, uint8_t note)
+float getNoteDuration(uint32_t step, uint8_t note)
 {
     if(g_pPattern)
         return g_pPattern->getNoteDuration(step, note);
@@ -1276,6 +1280,25 @@ void transpose(int8_t value)
     g_pPattern->transpose(value);
     g_bDirty = true;
 }
+
+void changeVelocityAll(int value)
+{
+    if(!g_pPattern)
+        return;
+    g_bPatternModified = true;
+    g_pPattern->changeVelocityAll(value);
+    g_bDirty = true;
+}
+
+void changeDurationAll(float value)
+{
+    if(!g_pPattern)
+        return;
+    g_bPatternModified = true;
+    g_pPattern->changeDurationAll(value);
+    g_bDirty = true;
+}
+
 
 void clear()
 {
