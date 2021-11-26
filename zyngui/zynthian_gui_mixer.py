@@ -1024,7 +1024,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 			elif t == "B":
 				# Implement MIDI learning!
-				self.zyngui.show_modal('snapshots')
+				self.zyngui.show_modal('snapshot')
 				return True
 
 		elif swi == ENC_SELECT:
