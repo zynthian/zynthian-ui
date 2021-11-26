@@ -190,6 +190,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 		self.preset_favs = None
 		self.preset_favs_fpath = None
+		self.show_favs_bank = True
 
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
