@@ -179,8 +179,6 @@ void onExit() {
 
 // Handle JACK process callback
 static int onJackProcess(jack_nframes_t nFrames, void *notused) {
-	if(g_pJackOutA == NULL || g_pJackOutB == NULL)
-		return 0;
     jack_default_audio_sample_t *pOutA = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pJackOutA, nFrames);
     jack_default_audio_sample_t *pOutB = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pJackOutB, nFrames);
     for(size_t nOffset = 0; nOffset < nFrames; ++nOffset) {
@@ -332,7 +330,7 @@ void* fileThread(void*) {
                 nDbuffer = g_nActiveBuffer?0:1;
             }
         }
-        usleep(1000);
+        usleep(10000);
     }
     if(pFile) {
         int nError = sf_close(pFile);
