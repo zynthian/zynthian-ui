@@ -216,6 +216,15 @@ class zynthian_gui_selector(zynthian_gui_base):
 				self.last_index_change_ts=datetime.now()
 
 
+	def select_listbox_by_name(self, name):
+		names = self.listbox.get(0, self.listbox.size())
+		try:
+			index = names.index(name)
+			self.select(index)
+		except:
+			logging.debug("%s is not in listbox", name)
+
+
 	def skip_separators(self, index):
 		# Skip separator items ...
 		if 0 <= index < len(self.list_data) and self.list_data[index][0] is None:
@@ -252,6 +261,16 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.select_action(self.index, t)
 
 
+	# Function to handle *all* switch presses.
+	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#	typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#	returns True if action fully handled or False if parent action should be triggered
+	def switch(self, swi, t='S'):
+		return False
+
+
+	# Function to handle select switch press
+	#	typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, t='S'):
 		self.click_listbox(None, t)
 

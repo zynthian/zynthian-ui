@@ -192,6 +192,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		self.manuals_config = None
 		self.tonewheel_model = None
+		self.show_favs_bank = False
 
 		#Process command ...
 		if self.config_remote_display():
@@ -243,6 +244,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		elif not self.tonewheel_model:
 			return self.bank_twmodels_list
 		else:
+			#self.show_favs_bank = True
 			if layer.bank_name == "Upper":
 				return [[self.base_dir + "/pgm-banks/upper/most_popular.pgm",0, "Upper", "_"]]
 			elif layer.bank_name == "Lower":

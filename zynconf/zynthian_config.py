@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 #********************************************************************
 # ZYNTHIAN PROJECT: Zynthian Config Library
-# 
+#
 # Zynthian Config library and tools
-# 
+#
 # Copyright (C) 2015-2017 Fernando Moyano <jofemodo@zynthian.org>
 #
 #********************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -19,7 +19,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #********************************************************************
 
 import os
@@ -97,7 +97,7 @@ CustomUiAction = [
 	"SELECT",
 	"NEXT",
 	"PREV",
-	
+
 	"LAYER_UP",
 	"LAYER_DOWN",
 	"BACK_UP",
@@ -119,7 +119,7 @@ CustomUiAction = [
 	"SWITCH_SELECT_SHORT",
 	"SWITCH_SELECT_BOLD",
 	"SWITCH_SELECT_LONG",
-	
+
 	"SCREEN_MAIN",
 	"SCREEN_LAYER",
 	"SCREEN_BANK",
@@ -128,6 +128,7 @@ CustomUiAction = [
 
 	"MODAL_SNAPSHOT",
 	"MODAL_ADMIN",
+	"MODAL_AUDIO_MIXER",
 	"MODAL_AUDIO_RECORDER",
 	"MODAL_MIDI_RECORDER",
 	"MODAL_ALSA_MIXER",
@@ -387,7 +388,7 @@ def start_wifi():
 				break
 
 		if success:
-			save_config({ 
+			save_config({
 					"ZYNTHIAN_WIFI_MODE": 'on'
 			})
 			return True
@@ -415,7 +416,7 @@ def start_wifi_hotspot():
 				break
 
 		if success:
-			save_config({ 
+			save_config({
 					"ZYNTHIAN_WIFI_MODE": 'hotspot'
 			})
 			return True
@@ -443,7 +444,7 @@ def stop_wifi():
 				break
 
 		if success:
-			save_config({ 
+			save_config({
 					"ZYNTHIAN_WIFI_MODE": 'off'
 			})
 			return True

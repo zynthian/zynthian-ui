@@ -157,6 +157,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		super().fill_list()
 
 
+	def show(self):
+		super().show()
+
+
 	def select_action(self, i, t='S'):
 		if self.list_data[i][0]:
 			self.last_action=self.list_data[i][0]
@@ -796,11 +800,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.zyngui.screens['snapshot'].save_last_state_snapshot()
 		else:
 			self.zyngui.screens['snapshot'].delete_last_state_snapshot()
-
-
-	#def back_action(self):
-	#	self.zyngui.show_screen("main")
-	#	return ''
 
 
 #------------------------------------------------------------------------------

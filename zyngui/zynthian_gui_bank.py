@@ -69,14 +69,23 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			else:
 				self.zyngui.curlayer.set_show_fav_presets(False)
 	
-		if self.zyngui.modal_screen=="preset":
-			self.zyngui.show_modal('preset')
-		else:
-			self.zyngui.show_screen('preset')
+		self.zyngui.show_modal('preset')
 
 		# If there is only one preset, jump to instrument control
 		if len(self.zyngui.curlayer.preset_list)<=1:
 			self.zyngui.screens['preset'].select_action(0)
+
+
+	# Function to handle *all* switch presses.
+	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#	returns True if action fully handled or False if parent action should be triggered
+	def switch(self, swi, t='S'):
+		if swi == 2:
+			if t == 'S':
+				self.zyngui.toggle_favorites()
+				return True
+		return False
 
 
 	def set_selector(self, zs_hiden=False):
