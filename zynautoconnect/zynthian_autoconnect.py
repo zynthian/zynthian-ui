@@ -32,7 +32,7 @@ from threading  import Thread, Lock
 from collections import OrderedDict
 
 # Zynthian specific modules
-from zyncoder import *
+from zyncoder.zyncore import get_lib_zyncore
 from zyngui import zynthian_gui_config
 
 #-------------------------------------------------------------------------------
@@ -57,6 +57,8 @@ thread = None
 exit_flag = False
 
 last_hw_str = None
+
+lib_zyncore = get_lib_zyncore()
 
 #------------------------------------------------------------------------------
 
@@ -86,7 +88,7 @@ def midi_autoconnect(force=False):
 	#Get Mutex Lock 
 	acquire_lock()
 
-	logger.info("ZynAutoConnect: MIDI ...")
+	#logger.info("ZynAutoConnect: MIDI ...")
 
 	#------------------------------------
 	# Get Input/Output MIDI Ports: 
@@ -136,7 +138,7 @@ def midi_autoconnect(force=False):
 	if not force and hw_str==last_hw_str:
 		#Release Mutex Lock
 		release_lock()
-		logger.info("ZynAutoConnect: MIDI Shortened ...")
+		#logger.info("ZynAutoConnect: MIDI Shortened ...")
 		return
 	else:
 		last_hw_str = hw_str
@@ -343,7 +345,7 @@ def midi_autoconnect(force=False):
 	# Set "Drop Program Change" flag for each MIDI chan
 	for layer in zynthian_gui_config.zyngui.screens["layer"].root_layers:
 		if layer.midi_chan is not None:
-			zyncoder.lib_zyncoder.zmop_chan_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
+			lib_zyncore.zmop_chan_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
 
 
 	if zynthian_gui_config.midi_filter_output:
@@ -422,13 +424,13 @@ def midi_autoconnect(force=False):
 def audio_autoconnect(force=False):
 
 	if not force:
-		logger.info("ZynAutoConnect: Audio Escaped ...")
+		#logger.debug("ZynAutoConnect: Audio Escaped ...")
 		return
 
 	#Get Mutex Lock 
 	acquire_lock()
 
-	logger.info("ZynAutoConnect: Audio ...")
+	#logger.info("ZynAutoConnect: Audio ...")
 
 	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
 	input_ports=get_audio_input_ports(True)

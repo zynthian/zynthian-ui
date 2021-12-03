@@ -34,7 +34,7 @@ from collections import OrderedDict
 from json import JSONEncoder, JSONDecoder
 
 # Zynthian specific modules
-from zyncoder import *
+from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_layer
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -197,6 +197,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			return self.root_layers.index(layer)
 		except:
 			return None
+
+
+	def get_root_layer_by_midi_chan(self, mch):
+		for layer in self.root_layers:
+			if layer.midi_chan==mch:
+				return layer
+		return None
 
 
 	def get_num_root_layers(self):
@@ -492,31 +499,31 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for i in range(0,16):
 			for j in range(0,16):
 				if isinstance(clone_status[i][j],dict):
-					zyncoder.lib_zyncoder.set_midi_filter_clone(i,j,clone_status[i][j]['enabled'])
+					lib_zyncore.set_midi_filter_clone(i,j,clone_status[i][j]['enabled'])
 					self.zyngui.screens['midi_cc'].set_clone_cc(i,j,clone_status[i][j]['cc'])
 				else:
-					zyncoder.lib_zyncoder.set_midi_filter_clone(i,j,clone_status[i][j])
-					zyncoder.lib_zyncoder.reset_midi_filter_clone_cc(i,j)
+					lib_zyncore.set_midi_filter_clone(i,j,clone_status[i][j])
+					lib_zyncore.reset_midi_filter_clone_cc(i,j)
 
 
 	def reset_clone(self):
 		for i in range(0,16):
-			zyncoder.lib_zyncoder.reset_midi_filter_clone(i)
+			lib_zyncore.reset_midi_filter_clone(i)
 
 
 	def set_transpose(self, tr_status):
 		for i in range(0,16):
-			zyncoder.lib_zyncoder.set_midi_filter_halftone_trans(i, tr_status[i])
+			lib_zyncore.set_midi_filter_halftone_trans(i, tr_status[i])
 
 
 	def set_note_range(self, nr_status):
 		for i in range(0,16):
-			zyncoder.lib_zyncoder.set_midi_filter_note_range(i, nr_status[i]['note_low'], nr_status[i]['note_high'], nr_status[i]['octave_trans'], nr_status[i]['halftone_trans'])
+			lib_zyncore.set_midi_filter_note_range(i, nr_status[i]['note_low'], nr_status[i]['note_high'], nr_status[i]['octave_trans'], nr_status[i]['halftone_trans'])
 
 
 	def reset_note_range(self):
 		for i in range(0,16):
-			zyncoder.lib_zyncoder.reset_midi_filter_note_range(i)
+			lib_zyncore.reset_midi_filter_note_range(i)
 
 
 	#----------------------------------------------------------------------------
@@ -1191,18 +1198,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				snapshot['clone'].append([])
 				for j in range(0,16):
 					clone_info = {
-						'enabled': zyncoder.lib_zyncoder.get_midi_filter_clone(i,j),
-						'cc': list(map(int,zyncoder.lib_zyncoder.get_midi_filter_clone_cc(i,j).nonzero()[0]))
+						'enabled': lib_zyncore.get_midi_filter_clone(i,j),
+						'cc': list(map(int,lib_zyncore.get_midi_filter_clone_cc(i,j).nonzero()[0]))
 					}
 					snapshot['clone'][i].append(clone_info)
 
 			#Note-range info
 			for i in range(0,16):
 				info = {
-					'note_low': zyncoder.lib_zyncoder.get_midi_filter_note_low(i),
-					'note_high': zyncoder.lib_zyncoder.get_midi_filter_note_high(i),
-					'octave_trans': zyncoder.lib_zyncoder.get_midi_filter_octave_trans(i),
-					'halftone_trans': zyncoder.lib_zyncoder.get_midi_filter_halftone_trans(i)
+					'note_low': lib_zyncore.get_midi_filter_note_low(i),
+					'note_high': lib_zyncore.get_midi_filter_note_high(i),
+					'octave_trans': lib_zyncore.get_midi_filter_octave_trans(i),
+					'halftone_trans': lib_zyncore.get_midi_filter_halftone_trans(i)
 				}
 				snapshot['note_range'].append(info)
 

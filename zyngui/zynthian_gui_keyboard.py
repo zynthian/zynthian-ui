@@ -31,8 +31,8 @@ import tkinter.font as tkFont
 from threading import Timer
 
 # Zynthian specific modules
+from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
-from zyncoder import get_lib_zyncoder
 
 #------------------------------------------------------------------------------
 # Zynthian Onscreen Keyboard GUI Class
@@ -52,7 +52,6 @@ class zynthian_gui_keyboard():
 	#	function: Callback function called when <Enter> pressed
 	def __init__(self):
 
-		self.zyncoder = get_lib_zyncoder()
 		self.zyngui = zynthian_gui_config.zyngui
 		self.columns = 10 # Quantity of columns in keyboard grid
 		self.rows = 5 # Quantity of rows in keyboard grid
@@ -273,13 +272,9 @@ class zynthian_gui_keyboard():
 
 	# Function to register encoders
 	def setup_encoders(self):
-		if self.zyncoder:
-			pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_SELECT]
-			pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_SELECT]
-			self.zyncoder.setup_zyncoder(ENC_SELECT, pin_a, pin_b, 0, 0, None, 64, 127, 0)
-			pin_a=zynthian_gui_config.zyncoder_pin_a[ENC_BACK]
-			pin_b=zynthian_gui_config.zyncoder_pin_b[ENC_BACK]
-			self.zyncoder.setup_zyncoder(ENC_BACK, pin_a, pin_b, 0, 0, None, 64, 127, 0)
+		if lib_zyncore:
+			lib_zyncore.setup_rangescale_zynpot(ENC_SELECT, 0, 127, 64, 1)
+			lib_zyncore.setup_rangescale_zynpot(ENC_BACK, 0, 127, 64, 1)
 
 
 	# Function to handle zyncoder value change
@@ -332,25 +327,25 @@ class zynthian_gui_keyboard():
 	def zyncoder_read(self):
 		if not self.shown:
 			return
-		if self.zyncoder:
-			value = self.zyncoder.get_value_zyncoder(ENC_BACK)
+		if lib_zyncore:
+			value = lib_zyncore.get_value_zynpot(ENC_BACK)
 			if value != 64:
 				self.on_zyncoder(ENC_BACK, value - 64)
-				self.zyncoder.set_value_zyncoder(ENC_BACK, 64)
-			value = self.zyncoder.get_value_zyncoder(ENC_SELECT)
+				lib_zyncore.set_value_zynpot(ENC_BACK, 64)
+			value = lib_zyncore.get_value_zynpot(ENC_SELECT)
 			if value != 64:
 				self.on_zyncoder(ENC_SELECT, value - 64)
-				self.zyncoder.set_value_zyncoder(ENC_SELECT, 64)
+				lib_zyncore.set_value_zynpot(ENC_SELECT, 64)
 			return
 
-			value = self.zyncoder.get_value_zyncoder(ENC_SELECT)
+			value = lib_zyncore.get_value_zynpot(ENC_SELECT)
 			if self.selected_button == value:
 				return
 			if value >= len(self.buttons):
-				self.zyncoder.set_value_zyncoder(ENC_SELECT, 1)
+				lib_zyncore.set_value_zynpot(ENC_SELECT, 1)
 				return
 			elif value < 0:
-				self.zyncoder.set_value_zyncoder(ENC_SELECT, len(self.buttons))
+				lib_zyncore.set_value_zynpot(ENC_SELECT, len(self.buttons))
 				return
 			self.selected_button = value
 			self.highlight(value)
@@ -358,26 +353,26 @@ class zynthian_gui_keyboard():
 
 	# Function to handle CUIA BACK_UP command
 	def back_up(self):
-		if self.zyncoder:
-			self.zyncoder.set_value_zyncoder(ENC_BACK, self.zyncoder.get_value_zyncoder(ENC_BACK) + 1)
+		if lib_zyncore:
+			lib_zyncore.set_value_zynpot(ENC_BACK, lib_zyncore.get_value_zynpot(ENC_BACK) + 1)
 
 
 	# Function to handle CUIA BACK_DOWN command
 	def back_down(self):
-		if self.zyncoder:
-			self.zyncoder.set_value_zyncoder(ENC_BACK, self.zyncoder.get_value_zyncoder(ENC_BACK) - 1)
+		if lib_zyncore:
+			lib_zyncore.set_value_zynpot(ENC_BACK, lib_zyncore.get_value_zynpot(ENC_BACK) - 1)
 
 
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
-		if self.zyncoder:
-			self.zyncoder.set_value_zyncoder(ENC_SELECT, self.zyncoder.get_value_zyncoder(ENC_SELECT) + 1)
+		if lib_zyncore:
+			lib_zyncore.set_value_zynpot(ENC_SELECT, lib_zyncore.get_value_zynpot(ENC_SELECT) + 1)
 
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		if self.zyncoder:
-			self.zyncoder.set_value_zyncoder(ENC_SELECT, self.zyncoder.get_value_zyncoder(ENC_SELECT) - 1)
+		if lib_zyncore:
+			lib_zyncore.set_value_zynpot(ENC_SELECT, lib_zyncore.get_value_zynpot(ENC_SELECT) - 1)
 
 
 	def switch_select(self, type):

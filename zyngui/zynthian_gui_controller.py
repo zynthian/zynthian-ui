@@ -35,7 +35,7 @@ from datetime import datetime
 from tkinter import font as tkFont
 
 # Zynthian specific modules
-from zyncoder import *
+from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 
@@ -387,7 +387,7 @@ class zynthian_gui_controller:
 			self.plot_midi_bind(midi_cc)
 		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
 			#midi_cc = self.zctrl.midi_cc
-			swap_info= zyncoder.lib_zyncoder.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
+			swap_info= lib_zyncore.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
 			midi_chan = swap_info >> 8
 			midi_cc = swap_info & 0xFF
 			if not self.zyngui.is_single_active_channel():
@@ -604,7 +604,7 @@ class zynthian_gui_controller:
 		#logging.debug("value: "+str(self.value))
 
 
-	def zctrl_sync(self, set_zyncoder=True):
+	def zctrl_sync(self, set_zynpot=True):
 		#List of values (value selector)
 		if self.selmode:
 			val=self.zctrl.get_value2index()
@@ -620,14 +620,21 @@ class zynthian_gui_controller:
 				val = self.n_values*math.log(self.zctrl.value/self.zctrl.value_min)/self.log_scale_value
 			else:
 				val = (self.zctrl.value-self.zctrl.value_min)/self.scale_value
-		#Set value & Update zyncoder
-		self.set_value(val, set_zyncoder, False)
+		#Set value & Update zynpot
+		self.set_value(val, set_zynpot, False)
 		#logging.debug("ZCTRL SYNC {} => {}".format(self.title, val))
 
 
 	def setup_zyncoder(self):
 		self.init_value=None
+		if not lib_zyncore: return
 		try:
+			if self.inverted:
+				#TODO Fix inverted encoders!!
+				pass
+
+			lib_zyncore.setup_rangescale_zynpot(self.index, 0, int(self.mult*(self.max_value-self.val0)), int(self.mult*self.value), self.step)
+			
 			if isinstance(self.zctrl.osc_path,str):
 				#logging.debug("Setup zyncoder %d => %s" % (self.index,self.zctrl.osc_path))
 				midi_cc=None
@@ -643,21 +650,15 @@ class zynthian_gui_controller:
 				#logging.debug("Setup zyncoder %d => %s" % (self.index,self.zctrl.midi_cc))
 				midi_cc=self.zctrl.midi_cc
 				osc_path_char=None
-			if zyncoder.lib_zyncoder:
-				if self.inverted:
-					pin_a=zynthian_gui_config.zyncoder_pin_b[self.index]
-					pin_b=zynthian_gui_config.zyncoder_pin_a[self.index]
-				else:
-					pin_a=zynthian_gui_config.zyncoder_pin_a[self.index]
-					pin_b=zynthian_gui_config.zyncoder_pin_b[self.index]
-				if pin_a<0 or pin_b<0:
-					pin_a = pin_b = 0
-				zyncoder.lib_zyncoder.setup_zyncoder(self.index, pin_a, pin_b, self.zctrl.midi_chan, midi_cc, osc_path_char, int(self.mult*self.value), int(self.mult*(self.max_value-self.val0)), self.step)
+
+			lib_zyncore.setup_midi_zynpot(self.index, self.zctrl.midi_chan, midi_cc)
+			lib_zyncore.setup_osc_zynpot(self.index, osc_path_char)
+
 		except Exception as err:
 			logging.error("%s" % err)
 
 
-	def set_value(self, v, set_zyncoder=False, send_zyncoder=True):
+	def set_value(self, v, set_zynpot=False, send_zynpot=True):
 		if v>self.max_value:
 			v=self.max_value
 		elif v<0:
@@ -666,9 +667,9 @@ class zynthian_gui_controller:
 			self.value=v
 			#logging.debug("CONTROL %d VALUE => %s" % (self.index,self.value))
 			if self.shown:
-				if set_zyncoder and zyncoder.lib_zyncoder:
+				if set_zynpot and lib_zyncore:
 					if self.mult>1: v = self.mult*v
-					zyncoder.lib_zyncoder.set_value_zyncoder(self.index,ctypes.c_uint(int(v)),int(send_zyncoder))
+					lib_zyncore.set_value_zynpot(self.index,int(v),int(send_zynpot))
 					#logging.debug("set_value_zyncoder {} ({}, {}) => {}".format(self.index, self.zctrl.symbol,self.zctrl.midi_cc,v))
 				self.calculate_plot_values()
 			return True
@@ -684,16 +685,15 @@ class zynthian_gui_controller:
 	def read_zyncoder(self):
 		#if self.canvas_push_ts:
 		#	return
-		if zyncoder.lib_zyncoder:
-			val=zyncoder.lib_zyncoder.get_value_zyncoder(self.index)
+		if lib_zyncore and lib_zyncore.get_value_flag_zynpot(self.index):
+			val=lib_zyncore.get_value_zynpot(self.index)
 			#logging.debug("ZYNCODER %d (%s), RAW VALUE => %s" % (self.index,self.title,val))
+			if self.mult>1:
+				val = int((val+1)/self.mult)
+			return self.set_value(val)
+
 		else:
-			val=self.value*self.mult-self.val0
-
-		if self.mult>1:
-			val = int((val+1)/self.mult)
-
-		return self.set_value(val)
+			return False
 
 
 	def cb_canvas_push(self,event):

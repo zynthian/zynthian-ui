@@ -30,7 +30,7 @@ import collections
 from collections import OrderedDict
 
 # Zynthian specific modules
-from zyncoder import *
+from zyncoder.zyncore import lib_zyncore
 
 
 class zynthian_layer:
@@ -473,7 +473,7 @@ class zynthian_layer:
 			# MIDI-CC zctrls (also router MIDI-learn, aka CC-swaps)
 			#TODO => Optimize!! Use the MIDI learning mechanism for caching this ...
 			if self.listen_midi_cc:
-				swap_info = zyncoder.lib_zyncoder.get_midi_filter_cc_swap(chan, ccnum)
+				swap_info = lib_zyncore.get_midi_filter_cc_swap(chan, ccnum)
 				midi_chan = swap_info >> 8
 				midi_cc = swap_info & 0xFF
 
@@ -647,10 +647,10 @@ class zynthian_layer:
 
 			if self.midi_chan>=0:
 				zs3['note_range'] = {
-					'note_low': zyncoder.lib_zyncoder.get_midi_filter_note_low(self.midi_chan),
-					'note_high': zyncoder.lib_zyncoder.get_midi_filter_note_high(self.midi_chan),
-					'octave_trans': zyncoder.lib_zyncoder.get_midi_filter_octave_trans(self.midi_chan),
-					'halftone_trans': zyncoder.lib_zyncoder.get_midi_filter_halftone_trans(self.midi_chan)
+					'note_low': lib_zyncore.get_midi_filter_note_low(self.midi_chan),
+					'note_high': lib_zyncore.get_midi_filter_note_high(self.midi_chan),
+					'octave_trans': lib_zyncore.get_midi_filter_octave_trans(self.midi_chan),
+					'halftone_trans': lib_zyncore.get_midi_filter_halftone_trans(self.midi_chan)
 				}
 
 			self.zs3_list[i] = zs3
@@ -696,7 +696,7 @@ class zynthian_layer:
 			# Set Note Range
 			if self.midi_chan>=0 and 'note_range' in zs3:
 				nr = zs3['note_range']
-				zyncoder.lib_zyncoder.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
+				lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
 
 			return True
 

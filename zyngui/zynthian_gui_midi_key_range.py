@@ -29,7 +29,7 @@ import logging
 from ctypes import c_ubyte, c_byte
 
 # Zynthian specific modules
-from zyncoder import *
+from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
@@ -102,10 +102,10 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def config(self, chan):
 		self.chan = chan
-		self.note_low = zyncoder.lib_zyncoder.get_midi_filter_note_low(chan)
-		self.note_high = zyncoder.lib_zyncoder.get_midi_filter_note_high(chan)
-		self.octave_trans = zyncoder.lib_zyncoder.get_midi_filter_octave_trans(chan)
-		self.halftone_trans = zyncoder.lib_zyncoder.get_midi_filter_halftone_trans(chan)
+		self.note_low = lib_zyncore.get_midi_filter_note_low(chan)
+		self.note_high = lib_zyncore.get_midi_filter_note_high(chan)
+		self.octave_trans = lib_zyncore.get_midi_filter_octave_trans(chan)
+		self.halftone_trans = lib_zyncore.get_midi_filter_halftone_trans(chan)
 		self.set_select_path()
 
 
@@ -267,12 +267,12 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		super().show()
 		self.zyngui.screens["control"].unlock_controllers()
 		self.set_zctrls()
-		zyncoder.lib_zyncoder.set_midi_learning_mode(1)
+		lib_zyncore.set_midi_learning_mode(1)
 
 
 	def hide(self):
 		super().hide()
-		zyncoder.lib_zyncoder.set_midi_learning_mode(0)
+		lib_zyncore.set_midi_learning_mode(0)
 
 
 	def zyncoder_read(self, zcnums=None):
@@ -285,7 +285,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 				else:
 					self.note_low = self.nlow_zctrl.value
 					logging.debug("SETTING FILTER NOTE_LOW: {}".format(self.note_low))
-					zyncoder.lib_zyncoder.set_midi_filter_note_low(self.chan, self.note_low)
+					lib_zyncore.set_midi_filter_note_low(self.chan, self.note_low)
 					self.replot = True
 
 			self.nhigh_zctrl.read_zyncoder()
@@ -296,21 +296,21 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 				else:
 					self.note_high = self.nhigh_zctrl.value
 				logging.debug("SETTING FILTER NOTE_HIGH: {}".format(self.note_high))
-				zyncoder.lib_zyncoder.set_midi_filter_note_high(self.chan, self.note_high)
+				lib_zyncore.set_midi_filter_note_high(self.chan, self.note_high)
 				self.replot = True
 
 			self.octave_zctrl.read_zyncoder()
 			if (self.octave_trans+5)!=self.octave_zctrl.value:
 				self.octave_trans = self.octave_zctrl.value-5
 				logging.debug("SETTING FILTER OCTAVE TRANS.: {}".format(self.octave_trans))
-				zyncoder.lib_zyncoder.set_midi_filter_octave_trans(self.chan, self.octave_trans)
+				lib_zyncore.set_midi_filter_octave_trans(self.chan, self.octave_trans)
 				self.replot = True
 
 			self.halftone_zctrl.read_zyncoder()
 			if (self.halftone_trans+12)!=self.halftone_zctrl.value:
 				self.halftone_trans = self.halftone_zctrl.value-12
 				logging.debug("SETTING FILTER HALFTONE TRANS.: {}".format(self.halftone_trans))
-				zyncoder.lib_zyncoder.set_midi_filter_halftone_trans(self.chan, self.halftone_trans)
+				lib_zyncore.set_midi_filter_halftone_trans(self.chan, self.halftone_trans)
 				self.replot = True
 
 		return [0]

@@ -42,12 +42,13 @@ pil_logger.setLevel(logging.INFO)
 # Zynthian specific modules
 from zyngui import zynthian_gui_base
 from zyngui import zynthian_gui_config
-from zyncoder import get_lib_zyncoder
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
 from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
+
+from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
 libseq.init(bytes("zynthstep", "utf-8"))
@@ -886,12 +887,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def zyncoder_read(self):
 		if not self.shown:
 			return
-		zyncoder = get_lib_zyncoder()
-		if zyncoder:
+		if lib_zyncore:
 			for encoder in range(len(self.zyncoder_owner)):
 				if self.zyncoder_owner[encoder]:
 					# Found a registered zyncoder
-					value = zyncoder.get_value_zyncoder(encoder)
+					value = lib_zyncore.get_value_zynpot(encoder)
 					if self.zyncoder_step[encoder]==0:
 						step = value-64
 					else:
@@ -904,7 +904,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					if step:
 						#logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, step)
-						zyncoder.set_value_zyncoder(encoder, 64, 0)
+						lib_zyncore.set_value_zynpot(encoder, 64, 0)
 		return []
 
 
@@ -1084,11 +1084,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if encoder >= len(self.zyncoder_owner):
 			return
 		self.zyncoder_owner[encoder] = None
-		zyncoder = get_lib_zyncoder()
 		if self.shown and zyncoder:
-			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
-			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
-			zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, step)
+			lib_zyncore.setup_rangescale_zynpot(encoder, 0, 128, 64, step)
 			self.zyncoder_owner[encoder] = object
 			self.zyncoder_step[encoder] = step
 

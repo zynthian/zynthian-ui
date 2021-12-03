@@ -29,7 +29,7 @@ import logging
 from ctypes import c_ubyte
 
 # Zynthian specific modules
-from zyncoder import *
+from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
@@ -49,7 +49,7 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 	def config(self, chan_from, chan_to):
 		self.chan_from = chan_from
 		self.chan_to = chan_to
-		self.cc = zyncoder.lib_zyncoder.get_midi_filter_clone_cc(chan_from, chan_to).tolist()
+		self.cc = lib_zyncore.get_midi_filter_clone_cc(chan_from, chan_to).tolist()
 
 
 	@staticmethod
@@ -66,7 +66,7 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 				else:
 					cc_array[i] = 0
 
-		zyncoder.lib_zyncoder.set_midi_filter_clone_cc(chan_from, chan_to, cc_array)
+		lib_zyncore.set_midi_filter_clone_cc(chan_from, chan_to, cc_array)
 
 
 	def fill_list(self):
