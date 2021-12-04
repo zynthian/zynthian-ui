@@ -107,6 +107,13 @@ int getFormat();
 */
 const char* getFileInfo(const char* filename, int type);
 
+/** @brief  Set samplerate converter quality
+*   @param  quality Samplerate conversion quality [SRC_SINC_BEST_QUALITY | SRC_SINC_MEDIUM_QUALITY | SRC_SINC_FASTEST | SRC_ZERO_ORDER_HOLD | SRC_LINEAR]
+*   @retval bool True on success, i.e. the quality parameter is valid
+*   @note   Quality will apply to subsequently opened files, not currently open file
+*/
+bool setSrcQuality(unsigned int quality);
+
 #ifdef __cplusplus
 }
 #endif
