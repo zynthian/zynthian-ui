@@ -61,6 +61,7 @@ size_t g_nChannelB = 0; // Offset of samples for channel B (0 for mono source or
 jack_nframes_t g_nPlaybackPosSeconds = 0;
 jack_nframes_t g_nPlaybackPosFrames = 0; // Current playback position in frames since start of audio
 uint32_t g_nXruns = 0;
+unsigned int g_nSrcQuality = SRC_SINC_FASTEST;
 std::string g_sFilename;
 
 /*** Public functions exposed as external C functions in header ***/
@@ -179,8 +180,6 @@ void onExit() {
 
 // Handle JACK process callback
 static int onJackProcess(jack_nframes_t nFrames, void *notused) {
-	if(g_pJackOutA == NULL || g_pJackOutB == NULL)
-		return 0;
     jack_default_audio_sample_t *pOutA = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pJackOutA, nFrames);
     jack_default_audio_sample_t *pOutB = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pJackOutB, nFrames);
     for(size_t nOffset = 0; nOffset < nFrames; ++nOffset) {
@@ -264,7 +263,7 @@ void* fileThread(void*) {
         nMaxRead = static_cast<float>(AUDIO_BUFFER_SIZE) / srcData.src_ratio;
     nMaxRead /= g_sf_info.channels;
     int nError;
-    SRC_STATE* pSrcState = src_new(SRC_SINC_FASTEST, g_sf_info.channels, &nError);
+    SRC_STATE* pSrcState = src_new(g_nSrcQuality, g_sf_info.channels, &nError);
     // Only read quantity of frames that will fit into buffer
 
     while(g_bFileOpen) {
@@ -332,7 +331,7 @@ void* fileThread(void*) {
                 nDbuffer = g_nActiveBuffer?0:1;
             }
         }
-        usleep(1000);
+        usleep(10000);
     }
     if(pFile) {
         int nError = sf_close(pFile);
@@ -343,7 +342,7 @@ void* fileThread(void*) {
     g_audioBuffer[1].isEmpty = true;
     g_nPlaybackPosFrames = 0;
     g_nPlaybackPosSeconds = 0;
-    src_delete(pSrcState);
+    pSrcState = src_delete(pSrcState);
     pthread_exit(NULL);
 }
 
@@ -398,9 +397,15 @@ const char* getFileInfo(const char* filename, int type) {
     return "";
 }
 
-int onJackXrun(void *pArgs)
-{
+int onJackXrun(void *pArgs) {
     DPRINTF("zynseq detected XRUN %u\n", ++g_nXruns);
     //g_bTimebaseChanged = true; // Discontinuity so need to recalculate timebase parameters
     return 0;
+}
+
+bool setSrcQuality(unsigned int quality) {
+    if(quality > SRC_LINEAR)
+        return false;
+    g_nSrcQuality = quality;
+    return true;
 }
