@@ -55,7 +55,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		super().__init__('Action', True)
 
-		if self.zyngui.allow_headphones():
+		if self.zyngui.allow_rbpi_headphones():
 			self.default_rbpi_headphones()
 
 		self.default_vncserver()
@@ -64,7 +64,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 
-		if self.zyngui.allow_headphones():
+		if self.zyngui.allow_rbpi_headphones():
 			if zynthian_gui_config.rbpi_headphones:
 				self.list_data.append((self.stop_rbpi_headphones,0,"[x] RBPi Headphones"))
 			else:

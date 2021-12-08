@@ -1863,8 +1863,8 @@ class zynthian_gui:
 		return eval("zynthian_gui_config.{}".format(varname))
 
 
-	def allow_headphones(self):
-		return self.screens['layer'].amixer_layer.engine.allow_headphones()
+	def allow_rbpi_headphones(self):
+		return self.screens['layer'].amixer_layer.engine.allow_rbpi_headphones()
 
 
 #******************************************************************************
