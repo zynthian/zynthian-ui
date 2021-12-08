@@ -1061,7 +1061,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle OSC messages
 	def osc(self, path, args, types, src):
 #		print("zynthian_gui_mixer::osc", path, args, types)
-		if path[:5] == "volume":
+		if path[:5] == "fader":
 			try:
 				zynmixer.set_level(int(path[5:]), args[0])
 			except:
