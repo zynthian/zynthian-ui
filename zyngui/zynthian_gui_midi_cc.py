@@ -23,14 +23,11 @@
 # 
 #******************************************************************************
 
-import sys
-import tkinter
 import logging
 from ctypes import c_ubyte
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------

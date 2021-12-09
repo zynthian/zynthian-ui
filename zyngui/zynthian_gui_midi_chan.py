@@ -23,8 +23,6 @@
 # 
 #******************************************************************************
 
-import sys
-import tkinter
 import logging
 from datetime import datetime
 
