@@ -571,6 +571,7 @@ class zynthian_gui_mixer_channel():
 				return
 		self.toggle_solo()
 		self.redraw_controls()
+		#TODO Main channel "solo" should follow ...
 
 
 	# Function to handle legend strip release
@@ -843,7 +844,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	channel: Index of gui channel to select
 	def select_channel(self, channel, set_curlayer=True):
 		if self.mode == 0 or channel is None or channel < 0 or channel > self.number_layers:
-			loggin.warning("Bad channel index, or something like that => {}".format(channel))
+			logging.warning("Bad channel index, or something like that => {}".format(channel))
 			return
 
 		self.selected_channel = channel
