@@ -190,7 +190,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def show(self):
 		if self.layer_index is None:
-			self.layer_index = self.zyngui.screens['layer'].index
+			self.layer_index = self.zyngui.screens['layer'].get_root_layer_index()
 
 		if self.layer_index is not None:
 			super().show()

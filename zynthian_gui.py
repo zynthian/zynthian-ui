@@ -32,6 +32,7 @@ import signal
 #import alsaseq
 import logging
 import threading
+import rpi_ws281x
 from time import sleep
 from time import monotonic
 from os.path import isfile
@@ -197,6 +198,9 @@ class zynthian_gui:
 		# Create Lock object to avoid concurrence problems
 		self.lock = Lock()
 
+		# Init LEDs
+		self.init_wsleds()
+
 		# Create vcgencmd instance
 		#self.vcgencmd = Vcgencmd()
 
@@ -227,6 +231,152 @@ class zynthian_gui:
 			self.zynswitches_midi_setup()
 		except Exception as e:
 			logging.error("ERROR initializing MIDI & Switches: {}".format(e))
+
+
+	# ---------------------------------------------------------------------------
+	# WS281X LEDs
+	# ---------------------------------------------------------------------------
+
+	def init_wsleds(self):
+
+		if zynthian_gui_config.wiring_layout=="Z2_V1":
+			# LEDS with PWM1 (pin 13, channel 1)
+			pin = 13
+			chan = 1
+		elif zynthian_gui_config.wiring_layout=="Z2_V2":
+			# LEDS with SPI0 (pin 10, channel 0)
+			pin = 10
+			chan = 0
+		else:
+			self.wsleds = None
+			return 0
+
+		self.wsleds_num = 25
+		self.wsleds=rpi_ws281x.PixelStrip(self.wsleds_num, pin, dma=10, channel=chan, strip_type=rpi_ws281x.ws.WS2811_STRIP_GRB)
+		self.wsleds.begin()
+
+		self.wscolor_on = rpi_ws281x.Color(100,100,100)
+		self.wscolor_off = rpi_ws281x.Color(40,40,40)
+		self.wscolor_red = rpi_ws281x.Color(255,0,0)
+		self.wscolor_green = rpi_ws281x.Color(0,255,0)
+		self.wscolor_blue = rpi_ws281x.Color(0,0,255)
+		self.wscolor_orange = rpi_ws281x.Color(255,127,0)
+		self.wscolor_yellow = rpi_ws281x.Color(255,255,0)
+
+		# Light all LEDs
+		for i in range(0,24):
+			self.wsleds.setPixelColor(i,self.wscolor_off)
+		self.wsleds.show()
+
+		return self.wsleds_num
+
+
+	def update_wsleds(self):
+		try:
+			# Main/Admin menu
+			if self.modal_screen=="main":
+				self.wsleds.setPixelColor(0,self.wscolor_green)
+			elif self.modal_screen=="admin":
+				self.wsleds.setPixelColor(0,self.wscolor_red)
+			else:
+				self.wsleds.setPixelColor(0,self.wscolor_off)
+
+			# Active Layer
+			for i in range(6):
+				self.wsleds.setPixelColor(1+i,self.wscolor_off)
+			i = self.screens['layer'].get_root_layer_index()
+			if i<6:
+				if self.active_screen=="control" and not self.modal_screen:
+					self.wsleds.setPixelColor(1+i,self.wscolor_green)
+				else:
+					self.wsleds.setPixelColor(1+i,self.wscolor_blue)
+
+			if self.modal_screen=="layer_options":
+				self.wsleds.setPixelColor(7,self.wscolor_green)
+			else:
+				self.wsleds.setPixelColor(7,self.wscolor_off)
+
+			# Stepseq screen:
+			if self.modal_screen=="stepseq":
+				self.wsleds.setPixelColor(8,self.wscolor_green)
+			else:
+				self.wsleds.setPixelColor(8,self.wscolor_off)
+
+			# Audio Recorder screen:
+			if self.modal_screen=="audio_recorder":
+				self.wsleds.setPixelColor(9,self.wscolor_green)
+			else:
+				self.wsleds.setPixelColor(9,self.wscolor_off)
+
+			# MIDI Recorder screen:
+			if self.modal_screen=="midi_recorder":
+				self.wsleds.setPixelColor(10,self.wscolor_green)
+			else:
+				self.wsleds.setPixelColor(10,self.wscolor_off)
+
+			# Snapshot screen:
+			if self.modal_screen=="snapshot":
+				self.wsleds.setPixelColor(11,self.wscolor_green)
+			else:
+				self.wsleds.setPixelColor(11,self.wscolor_off)
+
+			# Presets screen:
+			if self.modal_screen=="preset":
+				self.wsleds.setPixelColor(12,self.wscolor_green)
+			else:
+				self.wsleds.setPixelColor(12,self.wscolor_off)
+
+			# Light ALT button
+			self.wsleds.setPixelColor(13+i,self.wscolor_off)
+
+			# REC/PLAY Audio buttons:
+			if self.status_info['audio_recorder']:
+				if "REC" in self.status_info['audio_recorder']:
+					self.wsleds.setPixelColor(14,self.wscolor_red)
+				else:
+					self.wsleds.setPixelColor(14,self.wscolor_off)
+
+				if "PLAY" in self.status_info['audio_recorder']:
+					self.wsleds.setPixelColor(15,self.wscolor_green)
+				else:
+					self.wsleds.setPixelColor(15,self.wscolor_off)
+			else:
+				self.wsleds.setPixelColor(14,self.wscolor_off)
+				self.wsleds.setPixelColor(15,self.wscolor_off)
+
+			# REC/PLAY MIDI buttons:
+			if self.status_info['midi_recorder']:
+				if "REC" in self.status_info['midi_recorder']:
+					self.wsleds.setPixelColor(16,self.wscolor_red)
+				else:
+					self.wsleds.setPixelColor(16,self.wscolor_off)
+
+				if "PLAY" in self.status_info['midi_recorder']:
+					self.wsleds.setPixelColor(17,self.wscolor_green)
+				else:
+					self.wsleds.setPixelColor(17,self.wscolor_off)
+			else:
+				self.wsleds.setPixelColor(16,self.wscolor_off)
+				self.wsleds.setPixelColor(17,self.wscolor_off)
+
+			# Light rest of LEDs
+			for i in range(6):
+				self.wsleds.setPixelColor(18+i,self.wscolor_off)
+
+			# Audio Mixer/Levels screen
+			if self.modal_screen=="audio_mixer" or (self.active_screen=="audio_mixer" and not self.modal_screen):
+				self.wsleds.setPixelColor(24,self.wscolor_green)
+			elif self.modal_screen=="alsa_mixer":
+				self.wsleds.setPixelColor(24,self.wscolor_red)
+			else:
+				self.wsleds.setPixelColor(24,self.wscolor_off)
+
+			# Refresh LEDs
+			self.wsleds.show()
+
+		except Exception as e:
+			logging.error(e)
+
 
 	# ---------------------------------------------------------------------------
 	# MIDI Router Init & Config
@@ -464,11 +614,14 @@ class zynthian_gui:
 	def show_modal(self, screen):
 		if screen=="alsa_mixer":
 			if self.modal_screen!=screen and self.screens['layer'].amixer_layer:
-				self._curlayer = self.curlayer
+				#self._curlayer = self.curlayer
 				self.screens['layer'].amixer_layer.refresh_controllers()
-				self.set_curlayer(self.screens['layer'].amixer_layer)
+				self.set_curlayer(self.screens['layer'].amixer_layer, True)
 			else:
 				return
+
+		elif self.is_shown_alsa_mixer():
+			self.restore_curlayer()
 
 		if self.modal_screen!=screen and self.modal_screen not in ("info", "confirm", "keyboard"):
 			self.modal_screen_back = self.modal_screen
@@ -654,7 +807,7 @@ class zynthian_gui:
 
 	def set_curlayer(self, layer, save=False):
 		if layer is not None:
-			if save:
+			if save and not self.is_shown_alsa_mixer():
 				self._curlayer = self.curlayer
 			self.curlayer = layer
 			self.screens['bank'].fill_list()
@@ -947,12 +1100,12 @@ class zynthian_gui:
 
 		elif cuia == "LAYER_OPTIONS":
 			try:
-				if len(params)>0:
+				if params:
 					self.screens['layer'].select(params[0]-1)
 				self.screens['layer_options'].reset()
-				self.show_modal('layer_options')
+				self.toggle_modal('layer_options')
 			except:
-				logging.warning("Can't show options for layer {}!".format(params[0]))
+				logging.warning("Can't show options for layer ({})!".format(params))
 
 
 	def custom_switch_ui_action(self, i, t):
@@ -1545,6 +1698,8 @@ class zynthian_gui:
 	def status_thread_task(self):
 		while not self.exit_flag:
 			self.refresh_status()
+			if self.wsleds:
+				self.update_wsleds()
 			sleep(0.2)
 
 
@@ -1582,20 +1737,17 @@ class zynthian_gui:
 					#	self.status_info['undervoltage'] = True
 					#elif res['1'] or res['2']:
 					#	self.status_info['overtemp'] = True
-
 				except Exception as e:
 					logging.error(e)
-
-				try:
-					# Get Recorder Status
-					self.status_info['audio_recorder'] = self.screens['audio_recorder'].get_status()
-					self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
-
-				except Exception as e:
-					logging.error(e)
-
 			else:
 				self.status_counter += 1
+
+			# Get Recorder Status
+			try:
+				self.status_info['audio_recorder'] = self.screens['audio_recorder'].get_status()
+				self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
+			except Exception as e:
+				logging.error(e)
 
 			# Refresh On-Screen Status
 			try:
