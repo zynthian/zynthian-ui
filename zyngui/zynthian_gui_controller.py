@@ -106,7 +106,6 @@ class zynthian_gui_controller:
 
 
 	def show(self):
-		#print("SHOW CONTROLLER "+str(self.ctrl)+" => "+str(self.shown))
 		if not self.shown:
 			self.shown=True
 			if not self.hiden:
@@ -115,8 +114,8 @@ class zynthian_gui_controller:
 				else:
 					pady = (0,0)
 				self.canvas.grid(row=self.row, column=self.col, sticky=self.sticky, pady=pady)
-				self.calculate_plot_values()
-				self.plot_value()
+		self.calculate_plot_values()
+		self.plot_value()
 
 
 	def hide(self):

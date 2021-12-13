@@ -162,7 +162,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.zgui_controllers[i].hide()
 
 			#Set/Restore XY controllers highlight
-			self.set_xyselect_controllers()
+			if self.mode=='control':
+				self.set_xyselect_controllers()
 
 		#Hide All GUI controllers
 		else:
