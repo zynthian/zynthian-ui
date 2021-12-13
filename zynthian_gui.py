@@ -255,121 +255,151 @@ class zynthian_gui:
 		self.wsleds=rpi_ws281x.PixelStrip(self.wsleds_num, pin, dma=10, channel=chan, strip_type=rpi_ws281x.ws.WS2811_STRIP_GRB)
 		self.wsleds.begin()
 
-		self.wscolor_on = rpi_ws281x.Color(100,100,100)
-		self.wscolor_off = rpi_ws281x.Color(40,40,40)
-		self.wscolor_red = rpi_ws281x.Color(255,0,0)
+		self.wscolor_off = rpi_ws281x.Color(0,0,0)
+		self.wscolor_light = rpi_ws281x.Color(0,0,255)
+		self.wscolor_active = rpi_ws281x.Color(0,255,0)
+		self.wscolor_admin = rpi_ws281x.Color(120,0,0)
+		self.wscolor_red = rpi_ws281x.Color(120,0,0)
 		self.wscolor_green = rpi_ws281x.Color(0,255,0)
-		self.wscolor_blue = rpi_ws281x.Color(0,0,255)
-		self.wscolor_orange = rpi_ws281x.Color(255,127,0)
-		self.wscolor_yellow = rpi_ws281x.Color(255,255,0)
 
 		# Light all LEDs
 		for i in range(0,24):
-			self.wsleds.setPixelColor(i,self.wscolor_off)
+			self.wsleds.setPixelColor(i,self.wscolor_light)
 		self.wsleds.show()
+
+		self.wsleds_blink_count = 0
 
 		return self.wsleds_num
 
 
+	def end_wsleds(self):
+		# Light-off all LEDs
+		for i in range(0,24):
+			self.wsleds.setPixelColor(i,self.wscolor_off)
+		self.wsleds.show()
+
+
+	def wsled_blink(self, i, color):
+		if self.wsleds_blink:
+			self.wsleds.setPixelColor(i, color)
+		else:
+			self.wsleds.setPixelColor(i, self.wscolor_light)
+
+
 	def update_wsleds(self):
+
+		if self.wsleds_blink_count % 6 > 2:
+			self.wsleds_blink = True
+		else:
+			self.wsleds_blink = False
+
 		try:
 			# Main/Admin menu
 			if self.modal_screen=="main":
-				self.wsleds.setPixelColor(0,self.wscolor_green)
+				self.wsleds.setPixelColor(0,self.wscolor_active)
 			elif self.modal_screen=="admin":
-				self.wsleds.setPixelColor(0,self.wscolor_red)
+				self.wsleds.setPixelColor(0,self.wscolor_admin)
 			else:
-				self.wsleds.setPixelColor(0,self.wscolor_off)
+				self.wsleds.setPixelColor(0,self.wscolor_light)
 
 			# Active Layer
 			for i in range(6):
-				self.wsleds.setPixelColor(1+i,self.wscolor_off)
+				self.wsleds.setPixelColor(1+i,self.wscolor_light)
 			i = self.screens['layer'].get_root_layer_index()
 			if i<6:
 				if self.active_screen=="control" and not self.modal_screen:
-					self.wsleds.setPixelColor(1+i,self.wscolor_green)
+					self.wsleds.setPixelColor(1+i,self.wscolor_active)
 				else:
-					self.wsleds.setPixelColor(1+i,self.wscolor_blue)
+					self.wsled_blink(1+i,self.wscolor_active)
 
 			if self.modal_screen=="layer_options":
-				self.wsleds.setPixelColor(7,self.wscolor_green)
+				self.wsleds.setPixelColor(7,self.wscolor_active)
 			else:
-				self.wsleds.setPixelColor(7,self.wscolor_off)
+				self.wsleds.setPixelColor(7,self.wscolor_light)
 
 			# Stepseq screen:
 			if self.modal_screen=="stepseq":
-				self.wsleds.setPixelColor(8,self.wscolor_green)
+				self.wsleds.setPixelColor(8,self.wscolor_active)
 			else:
-				self.wsleds.setPixelColor(8,self.wscolor_off)
+				self.wsleds.setPixelColor(8,self.wscolor_light)
 
 			# Audio Recorder screen:
 			if self.modal_screen=="audio_recorder":
-				self.wsleds.setPixelColor(9,self.wscolor_green)
+				self.wsleds.setPixelColor(9,self.wscolor_active)
 			else:
-				self.wsleds.setPixelColor(9,self.wscolor_off)
+				self.wsleds.setPixelColor(9,self.wscolor_light)
 
 			# MIDI Recorder screen:
 			if self.modal_screen=="midi_recorder":
-				self.wsleds.setPixelColor(10,self.wscolor_green)
+				self.wsleds.setPixelColor(10,self.wscolor_active)
 			else:
-				self.wsleds.setPixelColor(10,self.wscolor_off)
+				self.wsleds.setPixelColor(10,self.wscolor_light)
 
 			# Snapshot screen:
 			if self.modal_screen=="snapshot":
-				self.wsleds.setPixelColor(11,self.wscolor_green)
+				self.wsleds.setPixelColor(11,self.wscolor_active)
 			else:
-				self.wsleds.setPixelColor(11,self.wscolor_off)
+				self.wsleds.setPixelColor(11,self.wscolor_light)
 
 			# Presets screen:
 			if self.modal_screen=="preset":
-				self.wsleds.setPixelColor(12,self.wscolor_green)
+				self.wsleds.setPixelColor(12,self.wscolor_active)
 			else:
-				self.wsleds.setPixelColor(12,self.wscolor_off)
+				self.wsleds.setPixelColor(12,self.wscolor_light)
 
 			# Light ALT button
-			self.wsleds.setPixelColor(13+i,self.wscolor_off)
+			self.wsleds.setPixelColor(13+i,self.wscolor_light)
 
 			# REC/PLAY Audio buttons:
 			if self.status_info['audio_recorder']:
 				if "REC" in self.status_info['audio_recorder']:
 					self.wsleds.setPixelColor(14,self.wscolor_red)
 				else:
-					self.wsleds.setPixelColor(14,self.wscolor_off)
+					self.wsleds.setPixelColor(14,self.wscolor_light)
 
 				if "PLAY" in self.status_info['audio_recorder']:
-					self.wsleds.setPixelColor(15,self.wscolor_green)
+					self.wsleds.setPixelColor(15,self.wscolor_active)
 				else:
-					self.wsleds.setPixelColor(15,self.wscolor_off)
+					self.wsleds.setPixelColor(15,self.wscolor_light)
 			else:
-				self.wsleds.setPixelColor(14,self.wscolor_off)
-				self.wsleds.setPixelColor(15,self.wscolor_off)
+				self.wsleds.setPixelColor(14,self.wscolor_light)
+				self.wsleds.setPixelColor(15,self.wscolor_light)
 
 			# REC/PLAY MIDI buttons:
 			if self.status_info['midi_recorder']:
 				if "REC" in self.status_info['midi_recorder']:
 					self.wsleds.setPixelColor(16,self.wscolor_red)
 				else:
-					self.wsleds.setPixelColor(16,self.wscolor_off)
+					self.wsleds.setPixelColor(16,self.wscolor_light)
 
 				if "PLAY" in self.status_info['midi_recorder']:
-					self.wsleds.setPixelColor(17,self.wscolor_green)
+					self.wsleds.setPixelColor(17,self.wscolor_active)
 				else:
-					self.wsleds.setPixelColor(17,self.wscolor_off)
+					self.wsleds.setPixelColor(17,self.wscolor_light)
 			else:
-				self.wsleds.setPixelColor(16,self.wscolor_off)
-				self.wsleds.setPixelColor(17,self.wscolor_off)
+				self.wsleds.setPixelColor(16,self.wscolor_light)
+				self.wsleds.setPixelColor(17,self.wscolor_light)
 
-			# Light rest of LEDs
-			for i in range(6):
-				self.wsleds.setPixelColor(18+i,self.wscolor_off)
+			# Back/No button
+			self.wsleds.setPixelColor(18,self.wscolor_red)
+
+			# Up button
+			self.wsleds.setPixelColor(19,self.wscolor_light)
+
+			# Select/Yes button
+			self.wsleds.setPixelColor(20,self.wscolor_green)
+
+			# Left, Bottom, Right button
+			for i in range(3):
+				self.wsleds.setPixelColor(21+i,self.wscolor_light)
 
 			# Audio Mixer/Levels screen
 			if self.modal_screen=="audio_mixer" or (self.active_screen=="audio_mixer" and not self.modal_screen):
-				self.wsleds.setPixelColor(24,self.wscolor_green)
+				self.wsleds.setPixelColor(24,self.wscolor_active)
 			elif self.modal_screen=="alsa_mixer":
-				self.wsleds.setPixelColor(24,self.wscolor_red)
+				self.wsleds.setPixelColor(24,self.wscolor_admin)
 			else:
-				self.wsleds.setPixelColor(24,self.wscolor_off)
+				self.wsleds.setPixelColor(24,self.wscolor_light)
 
 			# Refresh LEDs
 			self.wsleds.show()
@@ -377,6 +407,8 @@ class zynthian_gui:
 		except Exception as e:
 			logging.error(e)
 
+		self.wsleds_blink_count += 1
+		
 
 	# ---------------------------------------------------------------------------
 	# MIDI Router Init & Config
@@ -1701,6 +1733,7 @@ class zynthian_gui:
 			if self.wsleds:
 				self.update_wsleds()
 			sleep(0.2)
+		self.end_wsleds()
 
 
 	def refresh_status(self):
