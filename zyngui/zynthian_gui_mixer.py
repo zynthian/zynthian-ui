@@ -1035,7 +1035,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 			elif t == "B":
 				# Implement MIDI learning!
-				self.zyngui.show_modal('snapshots')
+				self.zyngui.show_modal('snapshot')
 				return True
 
 		elif swi == ENC_SELECT:
@@ -1209,10 +1209,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# OSC message handling
 	#--------------------------------------------------------------------------
 
+
 	# Function to handle OSC messages
 	def osc(self, path, args, types, src):
 #		print("zynthian_gui_mixer::osc", path, args, types)
-		if path[:5] == "volume":
+		if path[:6] == "volume" or path[:5] == "fader":
 			try:
 				self.set_volume(args[0], int(path[5:]))
 			except:

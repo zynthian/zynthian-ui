@@ -958,12 +958,12 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA BACK_UP command
 	def back_up(self):
-		self.on_cuia_encoder(ENC_BACK, -1)
+		self.on_cuia_encoder(ENC_BACK, 1)
 
 
 	# Function to handle CUIA BACK_UP command
 	def back_down(self):
-		self.on_cuia_encoder(ENC_BACK, 1)
+		self.on_cuia_encoder(ENC_BACK, -1)
 
 
 	# Function to handle CUIA SELECT command
