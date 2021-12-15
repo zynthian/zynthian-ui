@@ -1243,21 +1243,20 @@ class zynthian_gui:
 	def zynswitches(self):
 		if not lib_zyncore: return
 		i = 0
-		while i>=0:
-			i = lib_zyncore.get_next_pending_zynswitch(i)
-			if i>=0:
-				#logging.debug("zynswitches_next => {}".format(i))
-				dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
-				if dtus>zynthian_gui_config.zynswitch_long_us:
-					self.zynswitch_long(i)
-				elif dtus>zynthian_gui_config.zynswitch_bold_us:
-					# Double switches must be bold!!! => by now ...
-					if not self.zynswitch_double(i):
-						self.zynswitch_bold(i)
-				elif dtus>0:
-					#print("Switch "+str(i)+" dtus="+str(dtus))
-					self.zynswitch_short(i)
-				i += 1;
+		while i<=zynthian_gui_config.last_zynswitch_index:
+			dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
+			if dtus == 0:
+				pass
+			elif dtus>zynthian_gui_config.zynswitch_long_us:
+				self.zynswitch_long(i)
+			elif dtus>zynthian_gui_config.zynswitch_bold_us:
+				# Double switches must be bold!!! => by now ...
+				if not self.zynswitch_double(i):
+					self.zynswitch_bold(i)
+			elif dtus>0:
+				#print("Switch "+str(i)+" dtus="+str(dtus))
+				self.zynswitch_short(i)
+			i += 1;
 
 
 	def zynswitch_long(self,i):

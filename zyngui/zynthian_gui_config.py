@@ -520,6 +520,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 
 	try:
 		num_zynswitches = lib_zyncore.get_num_zynswitches()
+		last_zynswitch_index = lib_zyncore.get_last_zynswitch_index()
 		num_zynpots = lib_zyncore.get_num_zynpots()
 		config_zynswitch_timing()
 		config_custom_switches()
