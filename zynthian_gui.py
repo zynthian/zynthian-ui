@@ -2114,6 +2114,13 @@ def delete_window():
 	zyngui.exit(exit_code)
 
 
+zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
+
+
+#------------------------------------------------------------------------------
+# Key Bindings
+#------------------------------------------------------------------------------
+
 #Function to handle computer keyboard key press
 #	event: Key event
 def cb_keybinding(event):
@@ -2140,7 +2147,7 @@ def cb_keybinding(event):
 
 
 zynthian_gui_config.top.bind("<Key>", cb_keybinding)
-zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
+
 
 #------------------------------------------------------------------------------
 # TKinter Main Loop
@@ -2150,6 +2157,10 @@ zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
 #cProfile.run('zynthian_gui_config.top.mainloop()')
 
 zynthian_gui_config.top.mainloop()
+
+#------------------------------------------------------------------------------
+# Exit
+#------------------------------------------------------------------------------
 
 logging.info("Exit with code {} ...\n\n".format(zyngui.exit_code))
 exit(zyngui.exit_code)
