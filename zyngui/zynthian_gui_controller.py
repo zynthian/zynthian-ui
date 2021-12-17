@@ -92,6 +92,9 @@ class zynthian_gui_controller:
 		self.col=zynthian_gui_config.ctrl_pos[indx][1]
 		self.sticky=zynthian_gui_config.ctrl_pos[indx][2]
 
+		# Configure row height
+		self.main_frame.rowconfigure(self.row, weight=self.row*10, minsize=self.height)
+
 		# Create Canvas
 		self.canvas=tkinter.Canvas(self.main_frame,
 			width=self.width,

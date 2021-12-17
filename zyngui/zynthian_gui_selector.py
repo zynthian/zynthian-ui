@@ -65,14 +65,14 @@ class zynthian_gui_selector(zynthian_gui_base):
 			bg=zynthian_gui_config.color_bg)
 		if self.wide:
 			if zynthian_gui_config.select_ctrl>1:
-				self.lb_frame.grid(row=1, column=0, rowspan=4, columnspan=2, padx=(0,2), sticky="w")
+				self.lb_frame.grid(row=1, column=0, rowspan=4, columnspan=2, padx=(0,2), sticky="wn")
 			else:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, columnspan=2, padx=(2,0), sticky="e")
+				self.lb_frame.grid(row=1, column=1, rowspan=4, columnspan=2, padx=(2,0), sticky="en")
 		else:
 			if zynthian_gui_config.select_ctrl>1:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="w")
+				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="wn")
 			else:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="e")
+				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="en")
 
 		self.lb_frame.columnconfigure(0, weight=10)
 		self.lb_frame.rowconfigure(0, weight=10)
