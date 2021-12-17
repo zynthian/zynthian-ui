@@ -63,14 +63,6 @@ if wiring_layout=="PROTOTYPE-1":
 else:
 	select_ctrl=3
 
-# Controller Positions
-ctrl_pos=[
-	(1,0,"nw"),
-	(2,0,"sw"),
-	(1,2,"ne"),
-	(2,2,"se")
-]
-
 # Zynswitches timing
 zynswitch_bold_us = 1000 * 300 
 zynswitch_long_us = 1000 * 2000
@@ -449,16 +441,38 @@ if "zynthian_gui.py" in sys.argv[0]:
 				logging.warning("Can't get screen height. Using default 240!")
 				display_height=240
 
-		ctrl_width = display_width//4
-		button_width = display_width//4
-		topbar_height = display_height//10
-		buttonbar_height = enable_onscreen_buttons and display_height//7 or 0
-		body_height = display_height-topbar_height-buttonbar_height
-		ctrl_height = body_height//2
+		# Geometric params
+		button_width = display_width // 4
+		topbar_height = display_height // 10
+		buttonbar_height = enable_onscreen_buttons and display_height // 7 or 0
+		body_height = display_height - topbar_height - buttonbar_height
+
+		# Controllers position and size
+		if wiring_layout.startswith("Z2"):
+			font_size = 14
+			ctrl_both_sides = False
+			ctrl_width = display_width // 4
+			ctrl_height = (body_height // 4) -1
+			ctrl_pos=[
+				(1,2,"ne"),
+				(2,2,"ne"),
+				(3,2,"se"),
+				(4,2,"se")
+			]
+		else:
+			ctrl_both_sides = True
+			ctrl_width = display_width // 4
+			ctrl_height = body_height // 2
+			ctrl_pos=[
+				(1,0,"nw"),
+				(2,0,"sw"),
+				(1,2,"ne"),
+				(2,2,"se")
+			]
 
 		# Adjust font size, if not defined
 		if not font_size:
-			font_size = int(display_width/32)
+			font_size = int(display_width / 32)
 
 		# Adjust Root Window Geometry
 		top.geometry(str(display_width)+'x'+str(display_height))

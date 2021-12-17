@@ -46,11 +46,6 @@ from zyngui import zynthian_gui_config
 class zynthian_gui_controller:
 
 	def __init__(self, indx, frm, zctrl, hiden=False):
-		self.width=zynthian_gui_config.ctrl_width
-		self.height=zynthian_gui_config.ctrl_height
-		self.trw=zynthian_gui_config.ctrl_width-6
-		self.trh=int(0.1*zynthian_gui_config.ctrl_height)
-
 		self.zyngui=zynthian_gui_config.zyngui
 		self.zctrl=None
 		self.n_values=127
@@ -66,7 +61,7 @@ class zynthian_gui_controller:
 		self.scale_value=1
 		self.value_plot=0
 		self.value_print=None
-		self.value_font_size=14
+		self.value_font_size=zynthian_gui_config.font_size
 
 		self.hiden=hiden
 		self.shown=False
@@ -77,6 +72,19 @@ class zynthian_gui_controller:
 		self.label_title=None
 		self.midi_bind=None
 		self.refresh_plot_value = False
+
+		self.width=zynthian_gui_config.ctrl_width
+		self.height=zynthian_gui_config.ctrl_height
+
+		if zynthian_gui_config.ctrl_both_sides:
+			self.trw = zynthian_gui_config.ctrl_width-6
+			self.trh = int(0.1*zynthian_gui_config.ctrl_height)
+		else:
+			self.trw = 0.8 * (zynthian_gui_config.ctrl_width / 2)
+			self.trh = 1.06 * self.trw
+
+		self.plot_value_func = self.plot_value_arc
+		self.erase_value_func = self.erase_value_arc
 
 		self.index=indx
 		self.main_frame=frm
@@ -109,10 +117,13 @@ class zynthian_gui_controller:
 		if not self.shown:
 			self.shown=True
 			if not self.hiden:
-				if self.index%2==0:
-					pady = (0,2)
+				if zynthian_gui_config.ctrl_both_sides:
+					if self.index%2==0:
+						pady = (0,2)
+					else:
+						pady = (0,0)
 				else:
-					pady = (0,0)
+					pady = (0,2)
 				self.canvas.grid(row=self.row, column=self.col, sticky=self.sticky, pady=pady)
 		self.calculate_plot_values()
 		self.plot_value()
@@ -218,13 +229,13 @@ class zynthian_gui_controller:
 
 	def plot_value(self):
 		if not self.hiden and self.refresh_plot_value:
-			self.plot_value_arc()
+			self.plot_value_func()
 			self.refresh_plot_value = False
 
 
 	def erase_value(self):
 		if not self.hiden:
-			self.erase_value_arc()
+			self.erase_value_func()
 
 
 	def plot_value_rectangle(self):
@@ -308,20 +319,27 @@ class zynthian_gui_controller:
 
 
 	def plot_value_arc(self):
-		thickness=1.1*zynthian_gui_config.font_size
-		degmax=300
-		deg0=90+degmax/2
+		#thickness = 1.1 * zynthian_gui_config.font_size
+		thickness = self.height / 10
+		degmax = 300
+		deg0 = 90 + degmax / 2
 
 		if self.max_value!=0:
-			degd=-degmax*self.value_plot/self.max_value
+			degd = -degmax*self.value_plot/self.max_value
 		else:
-			degd=0
+			degd = 0
 
 		if (not self.arc and self.zctrl.midi_cc!=0) or not self.value_text:
-			x1=0.18*self.trw
-			y1=self.height-int(0.7*self.trw)-6
-			x2=x1+int(0.7*self.trw)
-			y2=self.height-6
+			if zynthian_gui_config.ctrl_both_sides:
+				x1 = 0.18*self.trw
+				y1 = self.height - int(0.7*self.trw) - 6
+				x2 = x1 + int(0.7*self.trw)
+				y2 = self.height - 6
+			else:
+				x1 = self.width/2 + 0.1*self.trw
+				y1 = 0.7*(self.height - self.trh)
+				x2 = x1 + self.trw
+				y2 = y1 + self.trh
 
 		if self.arc:
 			self.canvas.itemconfig(self.arc, extent=degd)
@@ -629,11 +647,10 @@ class zynthian_gui_controller:
 		if not lib_zyncore: return
 		try:
 			if self.inverted:
-				#TODO Fix inverted encoders!!
-				pass
+				lib_zyncore.setup_rangescale_zynpot(self.index, int(self.mult*(self.max_value-self.val0)), 0, int(self.mult*self.value), self.step)
+			else:
+				lib_zyncore.setup_rangescale_zynpot(self.index, 0, int(self.mult*(self.max_value-self.val0)), int(self.mult*self.value), self.step)
 
-			lib_zyncore.setup_rangescale_zynpot(self.index, 0, int(self.mult*(self.max_value-self.val0)), int(self.mult*self.value), self.step)
-			
 			if isinstance(self.zctrl.osc_path,str):
 				#logging.debug("Setup zyncoder %d => %s" % (self.index,self.zctrl.osc_path))
 				midi_cc=None
