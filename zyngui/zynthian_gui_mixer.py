@@ -860,7 +860,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.update_zyncoders()
 
 		self.selected_layer = None
-		
+
 		# Main channel selected
 		if channel == self.number_layers:
 			return
@@ -1154,7 +1154,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Increment by inc the zyncoder's value
 	def zyncoder_up(self, num, inc = 1):
-		lib_zyncore.set_value_zynpot(num, lib_zyncore.get_value_pot(num) + inc, 0)
+		lib_zyncore.set_value_zynpot(num, lib_zyncore.get_value_zynpot(num) + inc, 0)
 
 
 	# Decrement by dec the zyncoder's value
