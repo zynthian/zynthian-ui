@@ -17,7 +17,7 @@ class Sequence
         /** @brief  Create Sequence object
         */
         Sequence();
-        
+
         /** @brief  Get sequence's mutually excusive group
         *   @retval uint32_t sequence's group
         */
@@ -39,7 +39,7 @@ class Sequence
         void setPlayMode(uint8_t mode);
 
         /** @brief  Get sequence's play state
-        *   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING | EMPTY]
+        *   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING | STARTING | RESTARTING | STOPPING_SYNC]
         */
         uint8_t getPlayState();
 
@@ -53,13 +53,13 @@ class Sequence
         *   @retval uint32_t Index of track added
         */
         uint32_t addTrack(uint32_t track = -1);
-        
+
         /** @brief  Remove a track from the sequence
         *   @param  track Index of track within sequence
         *   @retval bool True on success
         */
         bool removeTrack(size_t track);
-        
+
         /** @brief  Get quantity of tracks in sequence
         *   @retval size_t  Quantity of tracks
         */
@@ -74,7 +74,7 @@ class Sequence
         *   @retval Track* Pointer to track or NULL if bad index
         */
         Track* getTrack(size_t index);
-    
+
         /** @brief  Add tempo event to timebase track
         *   @param  tempo Tempo in BPM
         *   @param  bar Bar (measure) at which to set tempo
@@ -82,7 +82,7 @@ class Sequence
         *   @note   Removes tempo if same as previous tempo
         */
         void addTempo(uint16_t tempo, uint16_t bar, uint16_t tick=0);
-        
+
         /** @brief  Get tempo from timebase track
         *   @param  bar Bar (measure) at which to get tempo
         *   @param  beat Tick at which to get tempo [Optional - default: 0]
@@ -132,7 +132,7 @@ class Sequence
         *   @retval uint32_t Length of sequence (longest track) in clock cycles
         */
         uint32_t getLength();
-		
+
 		/**	@brief	Check if sequence is empty
 		*	@retval bool True if empty. False if any patterns have any events)
 		*/
@@ -150,7 +150,7 @@ class Sequence
 
         /** @brief  Check if sequence state has changed since last call
         *   @retval bool True if changed
-        *   @note   Monitors group, mode, tracks, playstate 
+        *   @note   Monitors group, mode, tracks, playstate
         */
         bool hasChanged();
 

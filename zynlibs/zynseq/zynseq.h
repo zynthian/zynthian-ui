@@ -477,7 +477,7 @@ void setPlayMode(uint8_t bank, uint8_t sequence, uint8_t mode);
 /** @brief  Get play state
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
-*   @retval uint8_t Play state [STOPPED | STARTING | PLAYING | STOPPING]
+*   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING | STARTING | RESTARTING | STOPPING_SYNC]
 */
 uint8_t getPlayState(uint8_t bank, uint8_t sequence);
 

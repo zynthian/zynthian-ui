@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Step-Sequencer Class
-# 
+#
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
 # Copyright (C) 2015-2020 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -21,7 +21,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 # Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
@@ -59,7 +59,7 @@ class zynthian_gui_zynpad():
 	# Function to initialise class
 	def __init__(self, parent):
 		self.parent = parent
-		
+
 		self.zyngui = zynthian_gui_config.zyngui # Zynthian GUI configuration
 
 		self.columns = 4 # Quantity of columns in grid
@@ -79,7 +79,7 @@ class zynthian_gui_zynpad():
 
 		# Pad grid
 		self.grid_canvas = tkinter.Canvas(self.main_frame,
-			width=self.width, 
+			width=self.width,
 			height=self.height,
 			bd=0,
 			highlightthickness=0,
@@ -370,6 +370,8 @@ class zynthian_gui_zynpad():
 				state = libseq.getPlayState(self.parent.bank, pad)
 				if state == zynthian_gui_stepsequencer.SEQ_RESTARTING:
 					state = zynthian_gui_stepsequencer.SEQ_PLAYING
+				if state == zynthian_gui_stepsequencer.SEQ_STOPPINGSYNC:
+					state = zynthian_gui_stepsequencer.SEQ_STOPPING
 				group = libseq.getGroup(self.parent.bank, pad)
 				foreground = "white"
 				if libseq.getSequenceLength(self.parent.bank, pad) == 0 or mode == zynthian_gui_stepsequencer.SEQ_DISABLED:
@@ -459,7 +461,7 @@ class zynthian_gui_zynpad():
 			if old_value != value:
 				if value < 128:
 					self.parent.set_param("Trigger note", "value", value)
-					self.parent.param_title_canvas.itemconfig("lbl_param_editor_value", 
+					self.parent.param_title_canvas.itemconfig("lbl_param_editor_value",
 						text="Trigger note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value))
 
 
