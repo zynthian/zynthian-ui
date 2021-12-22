@@ -248,6 +248,7 @@ class zynthian_gui_patterneditor():
 		self.parent.add_menu({'Scale':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':self.get_scales(), 'get_value':libseq.getScale, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Tonic':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':12, 'get_value':libseq.getTonic, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Rest note':{'method':self.parent.show_param_editor, 'params':{'min':-1, 'max':128, 'get_value':libseq.getInputRest, 'on_change':self.on_menu_change}}})
+		self.parent.add_menu({'Program change':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':128, 'get_value':self.get_program_change, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Input channel':{'method':self.parent.show_param_editor, 'params':{'min':0, 'max':16, 'get_value':self.get_input_channel, 'on_change':self.on_menu_change}}})
 		self.parent.add_menu({'Export to SMF':{'method':self.export_smf}})
 
@@ -832,7 +833,17 @@ class zynthian_gui_patterneditor():
 		return self.pattern
 
 
-	# Function to get pattern index
+	# Function to get program change at start of pattern
+	# returns: Program change number (1..128) or 0 for none
+	def get_program_change(self):
+		program = libseq.getProgramChange(0) + 1
+		if program > 128:
+			program = 0
+		return program
+
+
+	# Function to get MIDI channel listening
+	# returns: MIDI channel ((1..16) or 0 for none
 	def get_input_channel(self):
 		channel = libseq.getInputChannel() + 1
 		if channel > 16:
@@ -909,6 +920,12 @@ class zynthian_gui_patterneditor():
 			self.load_keymap()
 			self.redraw_pending = 1
 			return "Tonic: %s" % (self.notes[value])
+		elif menu_item == 'Program change':
+			if value == 0:
+				libseq.removeProgramChange(0)
+				return 'Program change: None'
+			else:
+				libseq.addProgramChange(0, value - 1)
 		elif menu_item == 'Input channel':
 			if value == 0:
 				libseq.setInputChannel(0xFF)

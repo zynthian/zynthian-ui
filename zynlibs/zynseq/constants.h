@@ -33,6 +33,7 @@
 #define MIDI_NOTE_OFF   0x80
 #define MIDI_NOTE_ON    0x90
 #define MIDI_CONTROL    0xB0
+#define MIDI_PROGRAM    0xC0
 
 struct MIDI_MESSAGE {
     uint8_t command = 0;

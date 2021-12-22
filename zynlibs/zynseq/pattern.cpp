@@ -108,6 +108,39 @@ float Pattern::getNoteDuration(uint32_t step, uint8_t note)
     return 0.0;
 }
 
+bool Pattern::addProgramChange(uint32_t step, uint8_t program)
+{
+    if(step >= (m_nBeats * m_nStepsPerBeat) || program > 127)
+        return false;
+    removeProgramChange(step); // Only one PC per step
+    addEvent(step, MIDI_PROGRAM, program);
+    return true;
+}
+
+bool Pattern::removeProgramChange(uint32_t step)
+{
+    if(step >= (m_nBeats * m_nStepsPerBeat))
+        return false;
+    uint8_t program = getProgramChange(step);
+    if(program == 0xFF)
+        return false;
+    deleteEvent(step, MIDI_PROGRAM, program);
+    return true;
+}
+
+uint8_t Pattern::getProgramChange(uint32_t step)
+{
+    if(step >= (m_nBeats * m_nStepsPerBeat))
+        return 0xFF;
+    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
+    {
+        if((*it).getPosition() != step || (*it).getCommand() != MIDI_PROGRAM)
+            continue;
+        return (*it).getValue1start();
+    }
+    return 0xFF;
+}
+
 void Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration)
 {
     float fDuration = duration;

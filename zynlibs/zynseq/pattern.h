@@ -140,6 +140,25 @@ class Pattern
         */
         float getNoteDuration(uint32_t step, uint8_t note);
 
+        /** @brief  Add program change to pattern
+        *   @param  position Quantity of steps from start of pattern at which to add program change
+        *   @param  program MIDI program change number
+        *   @retval bool True on success
+        */
+        bool addProgramChange(uint32_t step, uint8_t program);
+
+        /** @brief  Remove program change from pattern
+        *   @param  position Quantity of steps from start of pattern at which to remove program change
+        *   @retval bool True on success
+        */
+        bool removeProgramChange(uint32_t step);
+
+        /** @brief  Get program change at a step
+        *   @param  position Quantity of steps from start of pattern at which program change resides
+        *   @retval uint8_t Program change (0..127, 0xFF if no program change at this step)
+        */
+        uint8_t getProgramChange(uint32_t step);
+
         /** @brief  Add continuous controller to pattern
         *   @param  position Quantity of steps from start of pattern at which control starts
         *   @param  control MIDI controller number
