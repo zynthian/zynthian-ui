@@ -696,7 +696,7 @@ def start(rt=2):
 
 	# Start Autoconnect Thread
 	thread=Thread(target=autoconnect_thread, args=())
-	#thread.daemon = True # thread dies with the program
+	thread.daemon = True # thread dies with the program
 	thread.start()
 
 

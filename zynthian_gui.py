@@ -31,6 +31,7 @@ import signal
 #import psutil
 #import alsaseq
 import logging
+import importlib
 import threading
 import rpi_ws281x
 from time import sleep
@@ -778,17 +779,32 @@ class zynthian_gui:
 			self.set_curlayer(layer)
 
 		if self.curlayer:
-			# If there is a preset selection for the active layer ...
-			if self.curlayer.get_preset_name():
-				self.show_screen('control')
+			custom_ctrl_screen = self.curlayer.engine.custom_zyngui_screen
+			if custom_ctrl_screen:
+				if custom_ctrl_screen not in self.screens:
+					try:
+						module_name = "zynthian_gui_{}".format(custom_ctrl_screen)
+						spec = importlib.util.spec_from_file_location(module_name, "/zynthian/zynthian-ui/zyngui/{}.py".format(module_name))
+						module = importlib.util.module_from_spec(spec)
+						spec.loader.exec_module(module)
+						#module = importlib.import_module("zyngui.{}".format(module_name))
+						class_ = getattr(module, module_name)
+						self.screens[custom_ctrl_screen] = class_()
+					except Exception as e:
+						logging.error("Can't load custom control screen {} => {}".format(custom_ctrl_screen, e))
+				self.show_screen(custom_ctrl_screen)
 			else:
-				if modal:
-					self.show_modal('bank')
+				# If there is a preset selection for the active layer ...
+				if self.curlayer.get_preset_name():
+					self.show_screen('control')
 				else:
-					self.show_screen('bank')
-				# If there is only one bank, jump to preset selection
-				if len(self.curlayer.bank_list)<=1:
-					self.screens['bank'].select_action(0)
+					if modal:
+						self.show_modal('bank')
+					else:
+						self.show_screen('bank')
+					# If there is only one bank, jump to preset selection
+					if len(self.curlayer.bank_list)<=1:
+						self.screens['bank'].select_action(0)
 
 
 	def show_control(self):
