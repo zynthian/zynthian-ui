@@ -134,7 +134,8 @@ CustomUiAction = [
 	"MODAL_ALSA_MIXER",
 	"MODAL_STEPSEQ",
 
-	"LAYER_CONTROL"
+	"LAYER_CONTROL",
+	"LAYER_OPTIONS"
 ];
 
 #-------------------------------------------------------------------------------
