@@ -769,7 +769,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.select_channel(self.selected_channel)
 
 		zynmixer.enable_dpm(True)
-		super().show()
+		if not self.shown:
+			super().show()
 
 
 	# Function to refresh loading animation

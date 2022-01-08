@@ -536,37 +536,33 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	#----------------------------------------------------------------------------
 
 	def set_midi_chan_preset(self, midich, preset_index):
-		selected = False
+		changed = False
 		for i,layer in enumerate(self.root_layers):
 			mch=layer.get_midi_chan()
 			if mch is None or mch==midich:
 				# Fluidsynth engine => ignore Program Change on channel 9
 				if layer.engine.nickname=="FS" and mch==9:
 					continue
-				if layer.set_preset(preset_index,True) and not selected:
-					selected = True
-					try:
-						if not self.zyngui.modal_screen:
-							if self.shown:
-								self.show()
-							elif self.zyngui.active_screen in ('bank','preset','control'):
-								self.select_action(i)
-					except Exception as e:
-						logging.error("Can't refresh GUI! => {}".format(e))
+			changed |= layer.set_preset(preset_index, True)
+		if changed and self.zyngui.active_screen in ['control','audio_mixer']:
+			try:
+				self.zyngui.screens[self.zyngui.active_screen].show() # Refresh preset labels
+			except Exception as e:
+				logging.error("Can't refresh GUI! => %s", e)
 
 
 	def set_midi_chan_zs3(self, midich, zs3_index):
-		selected = False
+		changed = False
 		for layer in self.layers:
 			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
-				if layer.restore_zs3(zs3_index) and not selected:
+				if layer.restore_zs3(zs3_index):
 					self.last_zs3_index[midich] = zs3_index
-					try:
-						if not self.zyngui.modal_screen and self.zyngui.active_screen not in ('main','layer'):
-							self.select_action(self.root_layers.index(layer))
-						selected = True
-					except Exception as e:
-						logging.error("Can't select layer => {}".format(e))
+					changed = True
+		if changed and self.zyngui.active_screen in ['control','audio_mixer']:
+			try:
+				self.zyngui.screens[self.zyngui.active_screen].show() # Refresh preset labels
+			except Exception as e:
+				logging.error("Can't refresh GUI! => %s", e)
 
 
 	def get_last_zs3_index(self, midich):
