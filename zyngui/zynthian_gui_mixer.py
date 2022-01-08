@@ -1111,7 +1111,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			#self.zyncoder_last_value[ENC_LAYER] = value
 			channel = self.get_midi_chan(self.selected_channel)
 			if channel == MAX_NUM_CHANNELS:
-				lib_zyncore.set_value_zynpot(ENC_SNAPSHOT, value, 0)
+				lib_zyncore.set_value_noflag_zynpot(ENC_SNAPSHOT, value)
 			zynmixer.set_level(channel, value * 0.01)
 			if self.selected_channel == self.number_layers:
 				redraw_channels.append(self.main_channel)
@@ -1137,7 +1137,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			#self.zyncoder_last_value[ENC_SNAPSHOT] = value
 			channel = self.get_midi_chan(self.number_layers)
 			if self.get_midi_chan(self.selected_channel) == MAX_NUM_CHANNELS:
-				lib_zyncore.set_value_zynpot(ENC_LAYER, value, 0)
+				lib_zyncore.set_value_noflag_zynpot(ENC_LAYER, value)
 			zynmixer.set_level(channel, value * 0.01)
 			redraw_channels.append(self.main_channel)
 
