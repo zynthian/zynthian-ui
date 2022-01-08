@@ -81,20 +81,14 @@ class zynthian_basic_engine:
 			logging.info("Starting Engine {}".format(self.name))
 			try:
 				logging.debug("Command: {}".format(self.command))
-				# Turns out that environment's PWD is not set
-				# automatically when cwd is specified for
-				# pexpect.spawn(), so do it here.
-				# This is done for zynaddsubfx which uses
-				# PWD as the root for presets, due to the fltk
-				# toolkit used for the gui file browser.
+				# Turns out that environment's PWD is not set automatically 
+				# when cwd is specified for pexpect.spawn(), so do it here.
 				if (self.command_cwd):
 					self.command_env['PWD'] = self.command_cwd
 
-				# Setting cwd is because we've set PWD above;
-				# zynaddsubfx for whom this is implemented
-				# doesn't actually care about the process's
-				# cwd, but it is more consistent to set cwd
-				# when PWD has been set.
+				# Setting cwd is because we've set PWD above. Some engines doesn't
+				# care about the process's cwd, but it is more consistent to set 
+				# cwd when PWD has been set.
 				self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
 
 				self.proc.delaybeforesend = 0

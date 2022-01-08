@@ -94,8 +94,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	bank_dirs = [
-		('EX', zynthian_engine.ex_data_dir + "/presets/zynaddsubfx"),
-		('MY', zynthian_engine.my_data_dir + "/presets/zynaddsubfx"),
+		('EX', zynthian_engine.ex_data_dir + "/presets/zynaddsubfx/banks"),
+		('MY', zynthian_engine.my_data_dir + "/presets/zynaddsubfx/banks"),
 		('_', zynthian_engine.data_dir + "/zynbanks")
 	]
 
@@ -130,6 +130,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		else:
 			self.command = "zynaddsubfx -r {} -b {} -O jack-multi -I jack -P {} -a -U".format(self.sr, self.bs, self.osc_target_port)
 
+		# Zynaddsubfx which uses PWD as the root for presets, due to the fltk
+		# toolkit used for the gui file browser.
 		self.command_cwd = zynthian_engine.my_data_dir + "/presets/zynaddsubfx"
 
 		self.command_prompt = "\n\\[INFO] Main Loop..."
@@ -515,7 +517,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	@classmethod
 	def zynapi_new_bank(cls, bank_name):
-		os.mkdir(zynthian_engine.my_data_dir + "/presets/zynaddsubfx/" + bank_name)
+		os.mkdir(zynthian_engine.my_data_dir + "/presets/zynaddsubfx/banks/" + bank_name)
 
 
 	@classmethod
@@ -561,7 +563,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				head, xiz_fname = os.path.split(f)
 				head, dbank = os.path.split(head)
 				if dbank:
-					dest_dir = zynthian_engine.my_data_dir + "/presets/zynaddsubfx/" + dbank
+					dest_dir = zynthian_engine.my_data_dir + "/presets/zynaddsubfx/banks/" + dbank
 					os.makedirs(dest_dir, exist_ok=True)
 					shutil.move(f, dest_dir + "/" + xiz_fname)
 					count += 1
