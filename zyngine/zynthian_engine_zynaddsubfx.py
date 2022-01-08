@@ -130,6 +130,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		else:
 			self.command = "zynaddsubfx -r {} -b {} -O jack-multi -I jack -P {} -a -U".format(self.sr, self.bs, self.osc_target_port)
 
+		self.command_cwd = zynthian_engine.my_data_dir + "/presets/zynaddsubfx"
+
 		self.command_prompt = "\n\\[INFO] Main Loop..."
 
 		self.osc_paths_data = []
