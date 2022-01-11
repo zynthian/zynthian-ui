@@ -56,7 +56,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.controllers_lock=False
 
 		self.zgui_controllers=[]
-		self.zgui_controllers_map={}
 
 		# xyselect mode vars
 		self.xyselect_mode=False
@@ -154,24 +153,24 @@ class zynthian_gui_control(zynthian_gui_selector):
 			for ctrl in self.zcontrollers:
 				try:
 					#logging.debug("CONTROLLER ARRAY {} => {} ({})".format(i, ctrl.symbol, ctrl.short_name))
-					self.set_zcontroller(i,ctrl)
-					i=i+1
+					self.set_zcontroller(i, ctrl)
+					i += 1
 				except Exception as e:
-					logging.exception("Controller %s (%d) => %s" % (ctrl.short_name,i,e))
+					logging.exception("Controller %s (%d) => %s" % (ctrl.short_name, i, e))
 					self.zgui_controllers[i].hide()
 
-			#Hide rest of GUI controllers
+			# Empty rest of GUI controllers
 			for i in range(i,len(self.zgui_controllers)):
-				self.zgui_controllers[i].hide()
+				self.set_zcontroller(i, None)
 
 			#Set/Restore XY controllers highlight
 			if self.mode=='control':
 				self.set_xyselect_controllers()
 
-		#Hide All GUI controllers
+		# Empty All GUI controllers
 		else:
-			for zgui_controller in self.zgui_controllers:
-				zgui_controller.hide()
+			for i in range(4):
+				self.set_zcontroller(i, None)
 
 		self.lock_controllers()
 
@@ -185,7 +184,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zgui_controllers[i].show()
 		else:
 			self.zgui_controllers.append(zynthian_gui_controller(i,self.main_frame,ctrl))
-		self.zgui_controllers_map[ctrl]=self.zgui_controllers[i]
 
 
 	def set_xyselect_controllers(self):
