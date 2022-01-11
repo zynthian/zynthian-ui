@@ -1882,20 +1882,6 @@ class zynthian_gui:
 
 
 	#------------------------------------------------------------------
-	# Engine OSC callbacks => No concurrency!!
-	#------------------------------------------------------------------
-
-	def cb_osc_bank_view(self, path, args):
-		pass
-
-
-	def cb_osc_ctrl(self, path, args):
-		#print ("OSC CTRL: " + path + " => "+str(args[0]))
-		if path in self.screens['control'].zgui_controllers_map.keys():
-			self.screens['control'].zgui_controllers_map[path].set_init_value(args[0])
-
-
-	#------------------------------------------------------------------
 	# All Notes/Sounds Off => PANIC!
 	#------------------------------------------------------------------
 
