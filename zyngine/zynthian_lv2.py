@@ -520,9 +520,30 @@ if __name__ == '__main__':
 	logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
 	logging.getLogger().setLevel(level=log_level)
 
-	generate_plugins_config_file(False)
-	generate_all_presets_cache(False)
-	
+	if len(sys.argv)>1:
+		if sys.argv[1]=="plugins":
+			generate_plugins_config_file(False)
+
+		elif sys.argv[1]=="presets":
+			if len(sys.argv)>2:
+				generate_plugin_presets_cache(sys.argv[2])
+			else:
+				generate_all_presets_cache(False)
+
+		elif sys.argv[1]=="ports":
+			if len(sys.argv)>2:
+				get_plugin_ports(sys.argv[2])
+			else:
+				pass
+
+		elif sys.argv[1]=="all":
+			generate_plugins_config_file(False)
+			generate_all_presets_cache(False)
+
+	else:
+		generate_plugins_config_file(False)
+		generate_all_presets_cache(False)
+
 	#get_plugin_ports("https://github.com/dcoredump/dexed.lv2")
 	#get_plugin_ports("http://code.google.com/p/amsynth/amsynth")
 	#get_plugin_ports("https://obxd.wordpress.com")
