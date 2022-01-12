@@ -1075,7 +1075,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		lib_zyncore.setup_midi_zynpot(ENC_SNAPSHOT, 0, 0)
 		lib_zyncore.setup_osc_zynpot(ENC_SNAPSHOT, None)
 
-		lib_zyncore.setup_rangescale_zynpot(ENC_SELECT, 0, self.number_layers, self.selected_channel, 1)
+		lib_zyncore.setup_rangescale_zynpot(ENC_SELECT, 0, 4 * self.number_layers, 4 * self.selected_channel, 1)
 		lib_zyncore.setup_midi_zynpot(ENC_SELECT, 0, 0)
 		lib_zyncore.setup_osc_zynpot(ENC_SELECT, None)
 
@@ -1094,7 +1094,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		lib_zyncore.set_value_zynpot(ENC_SNAPSHOT, value, 0)
 
 		# Selector encoder
-		lib_zyncore.set_value_zynpot(ENC_SELECT, self.selected_channel, 0)
+		lib_zyncore.set_value_zynpot(ENC_SELECT, 4 * self.selected_channel, 0)
 
 
 	# Function to handle zyncoder polling.
@@ -1143,7 +1143,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		#if value!=self.zyncoder_last_value[ENC_SELECT]:
 		if lib_zyncore.get_value_flag_zynpot(ENC_SELECT):
-			value = lib_zyncore.get_value_zynpot(ENC_SELECT)
+			value = int((1+lib_zyncore.get_value_zynpot(ENC_SELECT))/4)
 			#logging.debug("Value SELECT: {}".format(value))
 			#self.zyncoder_last_value[ENC_SELECT] = value
 			if (self.mode and value != self.selected_channel):
