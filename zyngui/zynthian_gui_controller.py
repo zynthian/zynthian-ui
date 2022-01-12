@@ -711,8 +711,8 @@ class zynthian_gui_controller:
 
 
 	def read_zyncoder(self):
-		if self.canvas_push_ts:
-			return
+		#if self.canvas_push_ts:
+		#	return
 		if self.zctrl and lib_zyncore.get_value_flag_zynpot(self.index):
 			val=lib_zyncore.get_value_zynpot(self.index)
 			#logging.debug("ZYNCODER %d (%s), RAW VALUE => %s" % (self.index,self.title,val))
@@ -737,11 +737,11 @@ class zynthian_gui_controller:
 
 	def cb_canvas_release(self,event):
 		if self.canvas_push_ts:
-			dts=(datetime.now()-self.canvas_push_ts).total_seconds()
-			motion_rate=self.canvas_motion_count/dts
+			dts = (datetime.now()-self.canvas_push_ts).total_seconds()
+			motion_rate = self.canvas_motion_count/dts
 			#logging.debug("CONTROL {} RELEASE => {}, {}".format(self.index, dts, motion_rate))
-			if not zynthian_gui_config.enable_onscreen_buttons:
-				if motion_rate<10:
+			if motion_rate<10:
+				if not zynthian_gui_config.enable_onscreen_buttons:
 					if dts<0.3:
 						self.zyngui.zynswitch_defered('S',self.index)
 					elif dts>=0.3 and dts<2:
@@ -757,25 +757,26 @@ class zynthian_gui_controller:
 
 	def cb_canvas_motion(self,event):
 		if self.canvas_push_ts:
-			dts=(datetime.now()-self.canvas_push_ts).total_seconds()
+			dts = (datetime.now()-self.canvas_push_ts).total_seconds()
 			if dts>0.1:
-				dy=self.canvas_motion_y0-event.y
-				dx=event.x-self.canvas_motion_x0
+				dy = self.canvas_motion_y0-event.y
+				dx = event.x-self.canvas_motion_x0
 				if abs(dy)>abs(dx):
 					#logging.debug("CONTROL {} MOTION Y => {}-{}={} => {}".format(self.index, self.canvas_motion_y0, event.y, dy, self.value+dy))
 					if self.inverted:
-						self.set_value(self.value-dy, True)
+						self.set_value(self.value - dy, True)
 					else:
-						self.set_value(self.value+dy, True)
-					self.canvas_motion_y0=event.y
-					if self.canvas_motion_dy+dy!=0:
-						self.canvas_motion_count=self.canvas_motion_count+1
-					self.canvas_motion_dy=dy
+						self.set_value(self.value + dy, True)
+					self.canvas_motion_y0 = event.y
+					self.canvas_motion_dy += dy
+					if abs(self.canvas_motion_dy)>4:
+						self.canvas_motion_count = self.canvas_motion_count + 1
 				elif dx!=0:
 					#logging.debug("CONTROL {} MOTION X => {}-{}={}".format(self.index, event.x, self.canvas_motion_x0, dx))
-					if abs(self.canvas_motion_dx-dx)>0:
-						self.canvas_motion_count=self.canvas_motion_count+1
-					self.canvas_motion_dx=dx
+					self.canvas_motion_x0 = event.x
+					self.canvas_motion_dx += dx
+					if abs(self.canvas_motion_dx)>4:
+						self.canvas_motion_count = self.canvas_motion_count + 1
 
 
 	def cb_canvas_wheel(self,event):
