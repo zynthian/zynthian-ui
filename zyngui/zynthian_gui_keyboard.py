@@ -274,7 +274,13 @@ class zynthian_gui_keyboard():
 	def setup_encoders(self):
 		if lib_zyncore:
 			lib_zyncore.setup_rangescale_zynpot(ENC_SELECT, 0, 127, 64, 1)
+			lib_zyncore.setup_midi_zynpot(ENC_SELECT, 0, 0)
+			lib_zyncore.setup_osc_zynpot(ENC_SELECT, None)
+
 			lib_zyncore.setup_rangescale_zynpot(ENC_BACK, 0, 127, 64, 1)
+			lib_zyncore.setup_midi_zynpot(ENC_BACK, 0, 0)
+			lib_zyncore.setup_osc_zynpot(ENC_BACK, None)
+
 
 
 	# Function to handle zyncoder value change

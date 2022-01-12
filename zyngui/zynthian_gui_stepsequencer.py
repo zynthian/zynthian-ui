@@ -1087,6 +1087,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.zyncoder_owner[encoder] = None
 		if self.shown and lib_zyncore:
 			lib_zyncore.setup_rangescale_zynpot(encoder, 0, 128, 64, step)
+			lib_zyncore.setup_midi_zynpot(encoder, 0, 0)
+			lib_zyncore.setup_osc_zynpot(encoder, None)
 			self.zyncoder_owner[encoder] = object
 			self.zyncoder_step[encoder] = step
 
