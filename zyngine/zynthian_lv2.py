@@ -149,8 +149,8 @@ def generate_plugins_config_file(refresh=True):
 				'TYPE': get_plugin_type(plugin).value,
 				'CLASS': re.sub(' Plugin', '', str(plugin.get_class().get_label())),
 				'ENABLED': is_plugin_enabled(name),
-				#'UI': is_plugin_ui(plugin)
-				'UI': plugin.get_uis()
+				'UI': is_plugin_ui(plugin)
+				#'UI': plugin.get_uis()
 				# get_binary_uri()
 			}
 			logging.debug("Plugin '{}' => {}".format(name, genplugins[name]))
@@ -509,8 +509,8 @@ load_plugins()
 
 if __name__ == '__main__':
 
-	log_level=logging.DEBUG
-	#log_level=logging.WARNING
+	#log_level=logging.DEBUG
+	log_level=logging.WARNING
 	logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
 	logging.getLogger().setLevel(level=log_level)
 
