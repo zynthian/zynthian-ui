@@ -116,7 +116,7 @@ class zynthian_gui_touchscreen_calibration:
 			self.height / 2 + self.crosshair_size + 2 + zynthian_gui_config.font_size * 2,
 			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size, "normal"),
 			fill="white",
-			text="Touch each crosshair")
+			text="Touch crosshairs using a stylus")
 		self.device_text = self.canvas.create_text(self.width / 2,
 			self.height - zynthian_gui_config.font_size * 2,
 			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size, "normal"),
