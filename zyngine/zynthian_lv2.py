@@ -149,7 +149,9 @@ def generate_plugins_config_file(refresh=True):
 				'TYPE': get_plugin_type(plugin).value,
 				'CLASS': re.sub(' Plugin', '', str(plugin.get_class().get_label())),
 				'ENABLED': is_plugin_enabled(name),
-				'UI': is_plugin_ui(plugin)
+				#'UI': is_plugin_ui(plugin)
+				'UI': plugin.get_uis()
+				# get_binary_uri()
 			}
 			logging.debug("Plugin '{}' => {}".format(name, genplugins[name]))
 
@@ -248,14 +250,6 @@ def get_plugin_type(plugin):
 	n_midi_out = plugin.get_num_ports_of_class(world.ns.lv2.OutputPort, world.ns.ev.EventPort)
 	n_midi_in += plugin.get_num_ports_of_class(world.ns.lv2.InputPort, world.ns.atom.AtomPort)
 	n_midi_out += plugin.get_num_ports_of_class(world.ns.lv2.OutputPort, world.ns.atom.AtomPort)
-
-	# Really DIRTY => Should be fixed ASAP!!! TODO!!
-	#plugin_name=str(plugin.get_name())
-	#if plugin_name[-2:]=="v1":
-	#	return PluginType.MIDI_SYNTH
-
-	#if plugin_name[:2]=="EQ":
-	#	return PluginType.AUDIO_EFFECT
 
 	if n_audio_out>0 and n_audio_in==0:
 		if n_midi_in>0:
@@ -515,8 +509,8 @@ load_plugins()
 
 if __name__ == '__main__':
 
-	#log_level=logging.DEBUG
-	log_level=logging.WARNING
+	log_level=logging.DEBUG
+	#log_level=logging.WARNING
 	logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
 	logging.getLogger().setLevel(level=log_level)
 

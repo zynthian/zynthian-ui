@@ -173,7 +173,7 @@ class zynthian_engine(zynthian_basic_engine):
 		super().__init__()
 
 		self.zyngui = zyngui
-		self.custom_zyngui_screen = None
+		self.custom_zyngui_fpath = None
 
 		self.type = "MIDI Synth"
 		self.nickname = ""
