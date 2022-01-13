@@ -220,8 +220,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.generate_ctrl_screens(self.lv2_zctrl_dict)
 
 			if self.jackname.startswith('1/3_Octave'):
-				self.custom_zyngui_screen = "autoeq"
-
+				self.custom_zyngui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_gui_autoeq.py"
 
 		# Get bank & presets info
 		self.preset_info = zynthian_lv2.get_plugin_presets(plugin_name)
