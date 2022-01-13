@@ -172,9 +172,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
-		self.ui = False
+		self.native_gui = False
 		if self.plugin_url not in self.broken_ui and 'UI' in self.plugins_dict[plugin_name]:
-			self.ui = self.plugins_dict[plugin_name]['UI']
+			self.native_gui = self.plugins_dict[plugin_name]['UI']
 
 		if plugin_type=="MIDI Tool":
 			self.options['midi_route'] = True
@@ -184,10 +184,10 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.options['note_range'] = False
 
 		if not dryrun:
-			if self.config_remote_display() and self.ui:
-				if self.ui=="Qt5UI":
+			if self.config_remote_display() and self.native_gui:
+				if self.native_gui=="Qt5UI":
 					jalv_bin = "jalv.qt5"
-				else: #  elif self.ui=="X11UI":
+				else: #  elif self.native_gui=="X11UI":
 					jalv_bin = "jalv.gtk"
 				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.get_jalv_jackname(), self.plugin_url))
 			else:
@@ -218,6 +218,10 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.lv2_monitors_dict = OrderedDict()
 			self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
 			self.generate_ctrl_screens(self.lv2_zctrl_dict)
+
+			if self.jackname.startswith('1/3_Octave'):
+				self.custom_zyngui_screen = "autoeq"
+
 
 		# Get bank & presets info
 		self.preset_info = zynthian_lv2.get_plugin_presets(plugin_name)
