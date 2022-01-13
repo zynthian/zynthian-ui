@@ -54,8 +54,11 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		['filter.cutoff depth','/part$i/ctl/filtercutoff.depth',64],
 		['filter.Q depth','/part$i/ctl/filterq.depth',64],
 		['drum on/off','/part$i/Pdrummode','off','off|on'],
-		['legato on/off','/part$i/Plegatomode','off','off|on'],
-		['poly on/off','/part$i/Ppolymode','on','off|on'],
+		# We need to specify the scale points explicitly, or else the infrastructure will map to [0, 32, 64, 96].
+		['assign mode','/part$i/polyType','poly',[ [ 'poly', 'mono', 'legato', 'latch'], [0, 1, 2, 3 ] ] ],
+		['voice limit','/part$i/Pvoicelimit',0,60],
+		#['legato on/off','/part$i/Plegatomode','off','off|on'],
+		#['poly on/off','/part$i/Ppolymode','on','off|on'],
 		['sustain on/off',64,'off','off|on'],
 		['portamento on/off',65,'off','off|on'],
 		#['portamento receive','/part$i/ctl/portamento.receive','off','off|on'],
@@ -80,7 +83,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# Controller Screens
 	_ctrl_screens=[
 		['main',['volume','panning','filter cutoff','filter resonance']],
-		['mode',['drum on/off','sustain on/off','legato on/off','poly on/off']],
+		['mode',['drum on/off','sustain on/off','assign mode','voice limit']],
 		['portamento',['portamento on/off','portamento time','portamento up/down','portamento thresh']],
 		['modulation',['modulation','modulation amplitude','modulation depth','modulation exp']],
 		['resonance',['resonance center','res.center depth','resonance bandwidth','res.bw depth']],
