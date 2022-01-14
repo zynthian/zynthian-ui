@@ -326,12 +326,17 @@ class zynthian_gui_controller:
 		#thickness = 1.1 * zynthian_gui_config.font_size
 		thickness = self.height / 10
 		degmax = 300
-		deg0 = 90 + degmax / 2
 
 		if self.max_value!=0:
 			degd = -degmax*self.value_plot/self.max_value
 		else:
 			degd = 0
+
+		deg0 = 90 + degmax / 2
+		if isinstance(self.zctrl.labels,list) and self.n_values>2:
+			d = max(5, 180/self.n_values)
+			deg0 += degd + d
+			degd = -2 * d
 
 		if (not self.arc and self.zctrl.midi_cc!=0) or not self.value_text:
 			if zynthian_gui_config.ctrl_both_sides:
@@ -346,7 +351,7 @@ class zynthian_gui_controller:
 				y2 = y1 + self.trh
 
 		if self.arc:
-			self.canvas.itemconfig(self.arc, extent=degd)
+			self.canvas.itemconfig(self.arc, start=deg0, extent=degd)
 		elif self.zctrl.midi_cc!=0:
 			self.arc=self.canvas.create_arc(x1, y1, x2, y2,
 				style=tkinter.ARC,
@@ -733,6 +738,7 @@ class zynthian_gui_controller:
 			self.canvas_motion_dy = 0
 			self.canvas_motion_dx = 0
 			self.canvas_motion_count = 0
+			self.canvas_motion_val0 = self.value
 			#logging.debug("CONTROL {} PUSH => {} ({},{})".format(self.index, self.canvas_push_ts, self.canvas_motion_x0, self.canvas_motion_y0))
 
 
@@ -764,12 +770,13 @@ class zynthian_gui_controller:
 				dx = event.x-self.canvas_motion_x0
 				if abs(dy)>abs(dx):
 					#logging.debug("CONTROL {} MOTION Y => {}-{}={} => {}".format(self.index, self.canvas_motion_y0, event.y, dy, self.value+dy))
-					if self.inverted:
-						self.set_value(self.value - dy, True)
-					else:
-						self.set_value(self.value + dy, True)
 					self.canvas_motion_y0 = event.y
 					self.canvas_motion_dy += dy
+					dv = int(2*self.canvas_motion_dy*self.max_value/self.height)
+					if self.inverted:
+						self.set_value(self.canvas_motion_val0 - dv, True)
+					else:
+						self.set_value(self.canvas_motion_val0 + dv, True)
 					if abs(self.canvas_motion_dy)>4:
 						self.canvas_motion_count = self.canvas_motion_count + 1
 				elif dx!=0:
