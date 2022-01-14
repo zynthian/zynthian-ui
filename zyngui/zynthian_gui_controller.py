@@ -571,7 +571,6 @@ class zynthian_gui_controller:
 				#If many values => use adaptative step size based on rotary speed
 				if self.n_values>=64:
 					self.step=0
-					self.mult=1
 				else:
 					self.mult=4
 
@@ -582,6 +581,12 @@ class zynthian_gui_controller:
 						self.max_value=self.n_values=zctrl.value_range
 						self.mult=max(1,int(128/self.n_values))
 						val=zctrl.value-zctrl.value_min
+						#If many values => use adaptative step size based on rotary speed
+						if self.n_values>48:
+							self.step=0 
+						else:
+							self.mult=4
+
 					#Integer > 127
 					else:
 						#Not MIDI controller
@@ -594,6 +599,8 @@ class zynthian_gui_controller:
 							self.max_value=self.n_values=127
 							self.scale_value=r/self.max_value
 							val=(zctrl.value-zctrl.value_min)/self.scale_value
+						# Use adaptative step size based on rotary speed
+						self.step=0 
 				#Float
 				else:
 					self.max_value=self.n_values=200
@@ -605,10 +612,9 @@ class zynthian_gui_controller:
 					else:
 						self.scale_value = zctrl.value_range/self.max_value
 						val = (zctrl.value-zctrl.value_min)/self.scale_value
-
-				#If many values => use adaptative step size based on rotary speed
-				if self.n_values>=64:
-					self.step=0
+					# Use adaptative step size based on rotary speed
+					self.step=0 
+					
 
 		#Calculate scale parameter for plotting
 		if self.selmode:
