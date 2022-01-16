@@ -43,12 +43,12 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_control(zynthian_gui_selector):
 
 	def __init__(self, selcap='Controllers'):
+		self.mode=None
+
 		if zynthian_gui_config.ctrl_both_sides:
 			super().__init__(selcap, False, False)
 		else:
 			super().__init__(selcap, True, False)
-
-		self.mode=None
 
 		self.ctrl_screens={}
 		self.zcontrollers=[]

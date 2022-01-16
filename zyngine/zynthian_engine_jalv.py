@@ -219,8 +219,8 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
 			self.generate_ctrl_screens(self.lv2_zctrl_dict)
 
-			if self.jackname.startswith('1/3_Octave'):
-				self.custom_zyngui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_gui_autoeq.py"
+			if self.plugin_url.startswith('http://gareus.org/oss/lv2/meters#spectr30'):
+				self.custom_zyngui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_gui_spectr30.py"
 
 		# Get bank & presets info
 		self.preset_info = zynthian_lv2.get_plugin_presets(plugin_name)
