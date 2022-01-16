@@ -49,11 +49,17 @@ class zynthian_gui_spectr30(zynthian_gui_control.zynthian_gui_control):
 		self.mon_thread = None
 
 		# Geometry vars
-		self.bar_width = int(self.lb_width/self.n_bands)
-		self.spec_padx = int((self.lb_width%self.n_bands)/2)
+		if self.wide:
+			lbw = self.lb_width
+		else:
+			lbw = self.lb_width + 2
+		self.bar_width = int(lbw/self.n_bands)
+		self.spec_padx = int((lbw%self.n_bands)/2)
 		self.spec_pady=0
 		self.spec_width=self.lb_width-2*self.spec_padx
 		self.spec_height=self.lb_height-2*self.spec_pady
+		
+		#logging.debug("LB WIDTH = {}, BAR WIDTH = {}, SPEC PADX = {}".format(lbw, self.bar_width, self.spec_padx))
 		
 		# Create Canvas
 		self.spec_canvas= tkinter.Canvas(self.lb_frame,
