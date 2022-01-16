@@ -541,23 +541,20 @@ class zynthian_gui_controller:
 					self.inverted=True
 				if (isinstance(zctrl.midi_cc, int) and zctrl.midi_cc>0):
 					self.max_value=127
-					self.step=max(1,int(16/self.n_values))
+					#self.step=max(1,int(16/self.n_values))
+					self.step = 1
 					val=zctrl.value-zctrl.value_min
 				else:
 					self.selmode = True
 					self.max_value = self.n_values-1
-					self.mult = max(4,int(32/self.n_values))
+					#self.mult = max(4,int(32/self.n_values))
+					self.mult = 4
 					val=zctrl.get_value2index()
 
-					#if zctrl.value_range>32:
-						#self.step = max(4,int(zctrl.value_range/(self.n_values*4)))
-						#self.max_value = zctrl.value_range + self.step*4
-					#else:
-					#	self.mult=max(4,int(32/self.n_values))
-					#	self.max_value = zctrl.value_range + 1
 			else:
 				self.max_value=127;
-				self.step=max(1,int(16/self.n_values))
+				#self.step=max(1,int(16/self.n_values))
+				self.step = 1
 				val=zctrl.value-zctrl.value_min
 
 		#Numeric value
@@ -569,7 +566,7 @@ class zynthian_gui_controller:
 				val=zctrl.value
 
 				#If many values => use adaptative step size based on rotary speed
-				if self.n_values>=64:
+				if self.n_values>=32:
 					self.step=0
 				else:
 					self.mult=4
@@ -579,11 +576,11 @@ class zynthian_gui_controller:
 					#Integer < 127
 					if zctrl.value_range<=127:
 						self.max_value=self.n_values=zctrl.value_range
-						self.mult=max(1,int(128/self.n_values))
 						val=zctrl.value-zctrl.value_min
 						#If many values => use adaptative step size based on rotary speed
-						if self.n_values>48:
+						if self.n_values>32:
 							self.step=0 
+							self.mult=1
 						else:
 							self.mult=4
 
