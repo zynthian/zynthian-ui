@@ -420,7 +420,6 @@ def get_plugin_ports(plugin_url):
 	for i in range(plugin.get_num_ports()):
 		port = plugin.get_port_by_index(i)
 		if port.is_a(lilv.LILV_URI_INPUT_PORT) and port.is_a(lilv.LILV_URI_CONTROL_PORT):
-			port_index = str(port.get_index())
 			port_name = str(port.get_name())
 			port_symbol = str(port.get_symbol())
 
@@ -477,7 +476,7 @@ def get_plugin_ports(plugin_url):
 				vdef = vmin
 
 			info = {
-				'index': port_index,
+				'index': i,
 				'symbol': port_symbol,
 				'name': port_name,
 				'group_index': pgroup_index,
