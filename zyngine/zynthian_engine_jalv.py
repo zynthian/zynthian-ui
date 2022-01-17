@@ -76,6 +76,12 @@ class zynthian_engine_jalv(zynthian_engine):
 	if "Raspberry Pi 4" not in os.environ.get('RBPI_VERSION'):
 		broken_ui.append('http://tytel.org/helm')
 
+	plugins_custom_gui = {
+		'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_gui_spectr30.py",
+		'http://gareus.org/oss/lv2/meters#spectr30stereo': "/zynthian/zynthian-ui/zyngui/zynthian_gui_spectr30.py",
+		'http://gareus.org/oss/lv2/tuna#one': "/zynthian/zynthian-ui/zyngui/zynthian_gui_tunaone.py"
+	}
+
 	#------------------------------------------------------------------------------
 	# Native formats configuration (used by zynapi_install, preset converter, etc.)
 	#------------------------------------------------------------------------------
@@ -219,8 +225,11 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
 			self.generate_ctrl_screens(self.lv2_zctrl_dict)
 
-			if self.plugin_url.startswith('http://gareus.org/oss/lv2/meters#spectr30'):
-				self.custom_zyngui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_gui_spectr30.py"
+			# Look for a custom GUI
+			try:
+				self.custom_zyngui_fpath = self.plugins_custom_gui[self.plugin_url]
+			except:
+				self.custom_zyngui_fpath = None
 
 		# Get bank & presets info
 		self.preset_info = zynthian_lv2.get_plugin_presets(plugin_name)
