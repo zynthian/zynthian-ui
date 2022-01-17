@@ -42,7 +42,7 @@ class zynthian_widget_base():
 		self.zyngui = zynthian_gui_config.zyngui
 		self.zyngui_control = self.zyngui.screens['control']
 		self.width = self.zyngui_control.lb_width
-		self.height = self.zyngui_control.lb_width
+		self.height = self.zyngui_control.lb_height
 		self.wide = self.zyngui_control.wide
 		self.shown = False
 
