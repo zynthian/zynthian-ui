@@ -348,7 +348,7 @@ class zynthian_gui:
 				self.wsleds.setPixelColor(12,self.wscolor_light)
 
 			# Light ALT button
-			self.wsleds.setPixelColor(13+i,self.wscolor_light)
+			self.wsleds.setPixelColor(13,self.wscolor_light)
 
 			# REC/PLAY Audio buttons:
 			if self.status_info['audio_recorder']:
