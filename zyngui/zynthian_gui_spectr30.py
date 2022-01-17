@@ -35,7 +35,7 @@ from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_control
 
 #------------------------------------------------------------------------------
-# Zynthian Auto-EQ GUI Class
+# Zynthian 1/3 Octave Spectrum GUI Class
 #------------------------------------------------------------------------------
 
 class zynthian_gui_spectr30(zynthian_gui_control.zynthian_gui_control):
@@ -47,7 +47,6 @@ class zynthian_gui_spectr30(zynthian_gui_control.zynthian_gui_control):
 		super().__init__('1/3 Octave Spectrum')
 
 		self.n_bands = len(self.band_freqs)
-		self.mon_layer = None
 		self.mon_bars = []
 		self.mon_ticks = []
 		self.mon_thread = None
@@ -77,7 +76,7 @@ class zynthian_gui_spectr30(zynthian_gui_control.zynthian_gui_control):
 		self.listbox.grid_forget()
 		self.spec_canvas.grid(sticky="wens", padx=(self.spec_padx, self.spec_padx), pady=(self.spec_pady, self.spec_pady))
 
-		# Create bars & ticks
+		# Create custom GUI elements: bars & ticks
 		x0 = 0
 		for i in range(self.n_bands):
 			self.mon_bars.append(self.spec_canvas.create_rectangle(x0, self.spec_height, x0 + self.bar_width, self.spec_height, fill=zynthian_gui_config.color_hl))
@@ -97,15 +96,18 @@ class zynthian_gui_spectr30(zynthian_gui_control.zynthian_gui_control):
 	def mon_thread_task(self):
 		while not self.zyngui.exit_flag:
 			if self.shown:
-				self.refresh_bars()
+				self.refresh_monitors()
 			sleep(0.04)
 
 
-	def refresh_bars(self):
+	def refresh_monitors(self):
 		i = 0
 		x0 = 0
+		try:
+			scale = (12.0 + self.zyngui.curlayer.controllers_dict['UIgain'].value) / 12.0
+		except:
+			scale = 1.0
 		monitors = self.zyngui.curlayer.engine.get_lv2_monitors_dict()
-		scale = (12.0 + self.zyngui.curlayer.controllers_dict['UIgain'].value) / 12.0
 		for freq in self.band_freqs:
 			try:
 				bar_y = int(scale * (100 + monitors["band{}".format(freq)]) * self.spec_height / 100)
@@ -116,7 +118,7 @@ class zynthian_gui_spectr30(zynthian_gui_control.zynthian_gui_control):
 			except:
 				tick_y = 0
 
-			#logging.error("MON {}: {}, {}".format(i,bar_y,tick_y))
+			#logging.debug("MON {}: {}, {}".format(i,bar_y,tick_y))
 			self.spec_canvas.coords(self.mon_bars[i], x0, self.spec_height, x0 + self.bar_width, self.spec_height - bar_y)
 			self.spec_canvas.coords(self.mon_ticks[i], x0, self.spec_height - tick_y, x0 + self.bar_width, self.spec_height - tick_y - self.tick_height)
 
