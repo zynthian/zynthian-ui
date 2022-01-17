@@ -240,7 +240,6 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def init_wsleds(self):
-
 		if zynthian_gui_config.wiring_layout=="Z2_V1":
 			# LEDS with PWM1 (pin 13, channel 1)
 			pin = 13
@@ -289,7 +288,6 @@ class zynthian_gui:
 
 
 	def update_wsleds(self):
-
 		if self.wsleds_blink_count % 6 > 2:
 			self.wsleds_blink = True
 		else:
@@ -308,7 +306,7 @@ class zynthian_gui:
 			for i in range(6):
 				self.wsleds.setPixelColor(1+i,self.wscolor_light)
 			i = self.screens['layer'].get_root_layer_index()
-			if i<6:
+			if i is not None and i<6:
 				if self.active_screen=="control" and not self.modal_screen:
 					self.wsleds.setPixelColor(1+i,self.wscolor_active)
 				else:
@@ -780,32 +778,36 @@ class zynthian_gui:
 			self.set_curlayer(layer)
 
 		if self.curlayer:
-			module_path = self.curlayer.engine.custom_zyngui_fpath
+			module_path = self.curlayer.engine.custom_gui_fpath
 			if module_path:
 				module_name = Path(module_path).stem
-				screen_name = module_name[len("zynthian_gui_"):]
-				if screen_name not in self.screens:
-					try:
-						spec = importlib.util.spec_from_file_location(module_name, module_path)
-						module = importlib.util.module_from_spec(spec)
-						spec.loader.exec_module(module)
-						class_ = getattr(module, module_name)
-						self.screens[screen_name] = class_()
-					except Exception as e:
-						logging.error("Can't load custom control screen {} => {}".format(screen_name, e))
-				self.show_screen(screen_name)
+				if module_name.startswith("zynthian_gui_"):
+					screen_name = module_name[len("zynthian_gui_"):]
+					if screen_name not in self.screens:
+						try:
+							spec = importlib.util.spec_from_file_location(module_name, module_path)
+							module = importlib.util.module_from_spec(spec)
+							spec.loader.exec_module(module)
+							class_ = getattr(module, module_name)
+							self.screens[screen_name] = class_()
+						except Exception as e:
+							logging.error("Can't load custom control screen {} => {}".format(screen_name, e))
+
+					if screen_name in self.screens:
+						self.show_screen(screen_name)
+						return
+
+			# If there is a preset selection for the active layer ...
+			if self.curlayer.get_preset_name():
+				self.show_screen('control')
 			else:
-				# If there is a preset selection for the active layer ...
-				if self.curlayer.get_preset_name():
-					self.show_screen('control')
+				if modal:
+					self.show_modal('bank')
 				else:
-					if modal:
-						self.show_modal('bank')
-					else:
-						self.show_screen('bank')
-					# If there is only one bank, jump to preset selection
-					if len(self.curlayer.bank_list)<=1:
-						self.screens['bank'].select_action(0)
+					self.show_screen('bank')
+				# If there is only one bank, jump to preset selection
+				if len(self.curlayer.bank_list)<=1:
+					self.screens['bank'].select_action(0)
 
 
 	def show_control(self):

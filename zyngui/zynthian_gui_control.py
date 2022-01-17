@@ -26,7 +26,9 @@
 import sys
 import logging
 import tkinter
+import importlib
 from time import sleep
+from pathlib import Path
 from string import Template
 from datetime import datetime
 
@@ -50,6 +52,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		else:
 			super().__init__(selcap, True, False)
 
+		self.widgets = {}
 		self.ctrl_screens={}
 		self.zcontrollers=[]
 		self.screen_name=None
@@ -128,27 +131,66 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.controllers_lock = False
 
 
+	def show_widget(self, layer):
+		module_path = layer.engine.custom_gui_fpath
+		if module_path:
+			module_name = Path(module_path).stem
+			if module_name.startswith("zynthian_widget_"):
+				widget_name = module_name[len("zynthian_widget_"):]
+				if widget_name not in self.widgets:
+					try:
+						spec = importlib.util.spec_from_file_location(module_name, module_path)
+						module = importlib.util.module_from_spec(spec)
+						spec.loader.exec_module(module)
+						class_ = getattr(module, module_name)
+						self.widgets[widget_name] = class_()
+					except Exception as e:
+						logging.error("Can't load custom widget {} => {}".format(widget_name, e))
+
+				if widget_name in self.widgets:
+					self.widgets[widget_name].set_layer(layer)
+				else:
+					widget_name = None
+
+				for k, widget in self.widgets.items():
+					if k==widget_name:
+						widget.show()
+					else:
+						widget.hide()
+				return
+		self.hide_widgets()
+
+
+	def hide_widgets(self):
+		for k, widget in self.widgets.items():
+			widget.hide()
+
+
 	def set_controller_screen(self):
-		#Get Mutex Lock 
+		# Get Mutex Lock 
 		#self.zyngui.lock.acquire()
 
-		#Get screen info
+		# Get screen info
 		if 0 <= self.index < len(self.list_data):
 			screen_info = self.list_data[self.index]
 			screen_title = screen_info[2]
 			screen_layer = screen_info[3]
 
-			#Get controllers for the current screen
+			# Show the widget for the current sublayer
+			if self.mode=='control':
+				self.show_widget(screen_layer)
+
+			# Get controllers for the current screen
 			self.zyngui.curlayer.set_active_screen_index(self.index)
 			self.zcontrollers = screen_layer.get_ctrl_screen(screen_title)
 
 		else:
 			self.zcontrollers = None
 
-		#Setup GUI Controllers
+		# Setup GUI Controllers
 		if self.zcontrollers:
 			logging.debug("SET CONTROLLER SCREEN {}".format(screen_title))
-			#Configure zgui_controllers
+			# Configure zgui_controllers
 			i=0
 			for ctrl in self.zcontrollers:
 				try:
@@ -163,7 +205,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			for i in range(i,len(self.zgui_controllers)):
 				self.set_zcontroller(i, None)
 
-			#Set/Restore XY controllers highlight
+			# Set/Restore XY controllers highlight
 			if self.mode=='control':
 				self.set_xyselect_controllers()
 
@@ -174,7 +216,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		self.lock_controllers()
 
-		#Release Mutex Lock
+		# Release Mutex Lock
 		#self.zyngui.lock.release()
 
 
@@ -207,6 +249,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_mode_select(self):
 		self.mode='select'
+		self.hide_widgets()
 		self.set_selector_screen()
 		self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
 			selectforeground=zynthian_gui_config.color_ctrl_tx,

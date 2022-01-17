@@ -77,9 +77,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		broken_ui.append('http://tytel.org/helm')
 
 	plugins_custom_gui = {
-		'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_gui_spectr30.py",
-		'http://gareus.org/oss/lv2/meters#spectr30stereo': "/zynthian/zynthian-ui/zyngui/zynthian_gui_spectr30.py",
-		'http://gareus.org/oss/lv2/tuna#one': "/zynthian/zynthian-ui/zyngui/zynthian_gui_tunaone.py"
+		'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
+		'http://gareus.org/oss/lv2/meters#spectr30stereo': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
+		'http://gareus.org/oss/lv2/tuna#one': "/zynthian/zynthian-ui/zyngui/zynthian_widget_tunaone.py"
 	}
 
 	#------------------------------------------------------------------------------
@@ -227,9 +227,9 @@ class zynthian_engine_jalv(zynthian_engine):
 
 			# Look for a custom GUI
 			try:
-				self.custom_zyngui_fpath = self.plugins_custom_gui[self.plugin_url]
+				self.custom_gui_fpath = self.plugins_custom_gui[self.plugin_url]
 			except:
-				self.custom_zyngui_fpath = None
+				self.custom_gui_fpath = None
 
 		# Get bank & presets info
 		self.preset_info = zynthian_lv2.get_plugin_presets(plugin_name)
