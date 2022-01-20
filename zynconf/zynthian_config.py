@@ -135,7 +135,11 @@ CustomUiAction = [
 	"MODAL_STEPSEQ",
 
 	"LAYER_CONTROL",
-	"LAYER_OPTIONS"
+	"LAYER_OPTIONS",
+	"MENU",
+	"PRESETS",
+	"PRESET_FAVS",
+	"ZYNPAD"
 ];
 
 #-------------------------------------------------------------------------------
@@ -200,7 +204,7 @@ def load_config(set_env=True, fpath=None):
 			if vn in varnames:
 				val=res.group(2)
 				config[vn]=val
-				logging.debug("CONFIG VAR: %s=%s" % (vn,val))
+				#logging.debug("CONFIG VAR: %s=%s" % (vn,val))
 				# Set local environment
 				if set_env:
 					os.environ[vn]=val
@@ -230,7 +234,7 @@ def save_config(config, update_sys=False, fpath=None):
 				os.environ[varname]=value
 				lines[i]="export %s=\"%s\"\n" % (varname,value)
 				updated.append(varname)
-				logging.debug(lines[i])
+				#logging.debug(lines[i])
 
 		if line.startswith("# Directory Paths"):
 			add_row = i-1
@@ -245,7 +249,7 @@ def save_config(config, update_sys=False, fpath=None):
 		value=value.replace("\r", "")
 		os.environ[varname]=value
 		lines.insert(add_row,"export %s=\"%s\"\n" % (varname,value))
-		logging.info(lines[add_row])
+		#logging.info(lines[add_row])
 
 	# Write updated config file
 	with open(fpath,'w') as f:
