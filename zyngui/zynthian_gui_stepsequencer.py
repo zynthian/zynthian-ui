@@ -318,10 +318,16 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.child.setup_encoders()
 
 
+	# Function to know if menu is shown
+	# 	returns: boolean
+	def is_shown_menu(self):
+		return self.lst_menu.winfo_viewable()
+
+
 	# Function to handle title bar click
 	#	event: Mouse event (not used)
 	def toggle_menu(self, event=None):
-		if self.lst_menu.winfo_viewable():
+		if self.is_shown_menu():
 			self.hide_menu()
 		else:
 			self.show_menu()
@@ -523,6 +529,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to populate menu with global entries
 	def populate_menu(self):
+
 		self.lst_menu.delete(0, tkinter.END)
 		self.menu_items = {} # Dictionary of menu items
 		self.add_menu({'BACK':{'method':self.back}})
@@ -979,7 +986,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def on_switch(self, switch, type):
 		if type == 'S':
 			if switch == ENC_BACK:
-				if self.lst_menu.winfo_viewable():
+				if self.is_shown_menu():
 					# Close menu
 					self.hide_menu() #TODO: This should be abstracted to base class
 					return True
@@ -994,15 +1001,17 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					self.show_child(self.last_child, {})
 					return True
 			elif switch == ENC_SELECT:
-				if self.lst_menu.winfo_viewable():
+				if self.is_shown_menu():
 					self.on_menu_select()
 					return True
 				elif self.param_editor_item:
 					self.param_editor_assert()
 					return True
 			elif switch == ENC_LAYER:
-				if self.lst_menu.winfo_viewable():
+				if self.is_shown_menu():
 					self.on_menu_select()
+				else:
+					self.show_menu()
 				return True
 		if type == 'B':
 			if switch == ENC_SELECT:
@@ -1010,7 +1019,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					# Close parameter editor
 					self.param_editor_reset()
 					return True
-			elif switch == ENC_LAYER and not self.lst_menu.winfo_viewable():
+			elif switch == ENC_LAYER and not self.is_shown_menu():
 				self.toggle_menu()
 				return True
 

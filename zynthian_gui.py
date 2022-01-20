@@ -161,7 +161,13 @@ class zynthian_gui:
 		"95": "MODAL_STEPSEQ",
 		"96": "MODAL_ADMIN",
 
-		"100": "LAYER_CONTROL"
+		"100": "LAYER_CONTROL",
+		"101": "LAYER_OPTIONS",
+		"102": "MENU",
+		"103": "PRESET",
+		"104": "FAVS",
+		"105": "ZYNPAD"
+
 	}
 
 	def __init__(self):
@@ -294,8 +300,10 @@ class zynthian_gui:
 			self.wsleds_blink = False
 
 		try:
-			# Main/Admin menu
+			# Menu
 			if self.modal_screen=="main":
+				self.wsleds.setPixelColor(0,self.wscolor_active)
+			elif self.modal_screen=="stepseq" and self.screens['stepseq'].is_shown_menu():
 				self.wsleds.setPixelColor(0,self.wscolor_active)
 			elif self.modal_screen=="admin":
 				self.wsleds.setPixelColor(0,self.wscolor_admin)
@@ -342,7 +350,7 @@ class zynthian_gui:
 				self.wsleds.setPixelColor(11,self.wscolor_light)
 
 			# Presets screen:
-			if self.modal_screen=="preset":
+			if self.modal_screen=="preset" or self.modal_screen=="bank":
 				self.wsleds.setPixelColor(12,self.wscolor_active)
 			else:
 				self.wsleds.setPixelColor(12,self.wscolor_light)
@@ -1157,6 +1165,25 @@ class zynthian_gui:
 				self.toggle_modal('layer_options')
 			except:
 				logging.warning("Can't show options for layer ({})!".format(params))
+				
+		elif cuia == "MENU":
+			if self.modal_screen=='stepseq':
+				self.screens['stepseq'].toggle_menu()
+			else:
+				self.toggle_modal("main")
+
+		elif cuia == "PRESET":
+			if self.modal_screen=='preset':
+				self.toggle_modal('bank')
+			else:
+				self.toggle_modal('preset')
+
+		elif cuia == "PRESET_FAVS":
+			self.toggle_favorites()
+
+		elif cuia == "ZYNPAD":
+			self.show_modal('stepseq')
+			self.screens['stepseq'].show_child(self.screens['stepseq'].zynpad)
 
 
 	def custom_switch_ui_action(self, i, t):
@@ -1321,10 +1348,11 @@ class zynthian_gui:
 
 		# Default actions for the 4 standard ZynSwitches
 		if i==0:
-			self.show_screen('stepseq')
+			self.show_modal('main')
 
 		elif i==1:
-			self.show_modal('main')
+			self.restore_curlayer()
+			self.show_modal('audio_mixer')
 
 		elif i==2:
 			self.show_modal('snapshot')
@@ -1361,7 +1389,7 @@ class zynthian_gui:
 
 		# Default actions for the standard 4 ZynSwitches
 		if i==0:
-			pass
+			self.show_modal("main")
 
 		elif i==1:
 			screen_back = None

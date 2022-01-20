@@ -350,23 +350,18 @@ class zynthian_gui_control(zynthian_gui_selector):
 				elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
 					self.zyngui.exit_midi_learn_mode()
 				else:
-					self.zyngui.screens['layer'].restore_curlayer()
-					self.zyngui.show_screen('audio_mixer')
+					self.zyngui.show_modal('preset')
 				return True
 
 		elif swi == 2:
 			if t == 'S':
-				if self.mode=='control' and not self.zyngui.is_shown_alsa_mixer():
+				if self.mode=='control':
 					if self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
-						if zynthian_gui_config.midi_prog_change_zs3:
+						if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
 							self.zyngui.show_modal('zs3_learn')
 					else:
-						self.zyngui.show_modal('preset')
-
-			elif t == 'B':
-				self.zyngui.enter_midi_learn_mode()
-
-			return True
+						self.zyngui.enter_midi_learn_mode()
+				return True
 
 		elif swi == 3:
 			if t=='S':

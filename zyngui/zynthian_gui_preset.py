@@ -70,7 +70,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
-		if swi == 0:
+		if swi == 1:
 			if t == 'S':
 				if len(self.zyngui.curlayer.bank_list)>1:
 					self.zyngui.show_modal('bank')

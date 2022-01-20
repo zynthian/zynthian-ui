@@ -88,6 +88,10 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		return False
 
 
+	def back_action(self):
+		self.zyngui.close_modal()
+
+
 	def set_selector(self, zs_hiden=False):
 		super().set_selector(zs_hiden)
 
