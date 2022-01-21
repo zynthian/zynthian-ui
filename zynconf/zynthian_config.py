@@ -50,7 +50,8 @@ CustomSwitchActionType = [
 	"MIDI_NOTE",
 	"MIDI_PROG_CHANGE",
 	"CVGATE_IN",
-	"CVGATE_OUT"
+	"CVGATE_OUT",
+	"GATE_OUT"
 ];
 
 ZynSensorActionType = [
