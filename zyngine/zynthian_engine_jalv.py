@@ -202,6 +202,9 @@ class zynthian_engine_jalv(zynthian_engine):
 
 			self.command_prompt = "\n> "
 
+			# Jalv which uses PWD as the root for presets
+			self.command_cwd = zynthian_engine.my_data_dir + "/presets/lv2"
+
 			output = self.start()
 
 			# Get Plugin & Jack names from Jalv starting text ...
