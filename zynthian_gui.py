@@ -270,7 +270,7 @@ class zynthian_gui:
 		self.wscolor_green = rpi_ws281x.Color(0,255,0)
 
 		# Light all LEDs
-		for i in range(0,24):
+		for i in range(0,25):
 			self.wsleds.setPixelColor(i,self.wscolor_light)
 		self.wsleds.show()
 
@@ -281,7 +281,7 @@ class zynthian_gui:
 
 	def end_wsleds(self):
 		# Light-off all LEDs
-		for i in range(0,24):
+		for i in range(0,25):
 			self.wsleds.setPixelColor(i,self.wscolor_off)
 		self.wsleds.show()
 
