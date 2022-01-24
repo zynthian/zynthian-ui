@@ -1061,13 +1061,13 @@ class zynthian_gui:
 			except:
 				pass
 
-		elif cuia == "SNAPSHOT_UP":
+		elif cuia in ("SNAPSHOT_UP", "LEARN_UP"):
 			try:
 				self.get_current_screen().snapshot_up()
 			except:
 				pass
 
-		elif cuia == "SNAPSHOT_DOWN":
+		elif cuia in ("SNAPSHOT_DOWN", "LEARN_DOWN"):
 			try:
 				self.get_current_screen().snapshot_down()
 			except:
@@ -1152,10 +1152,13 @@ class zynthian_gui:
 			self.toggle_modal("preset")
 
 		elif cuia == "LAYER_CONTROL":
-			try:
-				self.layer_control(self.screens['layer'].root_layers[params[0]-1])
-			except:
-				logging.warning("Can't change to layer {}!".format(params[0]))
+			if params:
+				try:
+					self.layer_control(self.screens['layer'].root_layers[params[0]-1])
+				except:
+					logging.warning("Can't change to layer {}!".format(params[0]))
+			else:
+				self.layer_control()
 
 		elif cuia == "LAYER_OPTIONS":
 			try:
@@ -1184,6 +1187,26 @@ class zynthian_gui:
 		elif cuia == "ZYNPAD":
 			self.show_modal('stepseq')
 			self.screens['stepseq'].show_child(self.screens['stepseq'].zynpad)
+
+		elif cuia == "ZCTRL_TOUCH":
+			if params:
+				self.screens['control'].midi_learn_zctrl(params[0])
+
+		elif cuia == "LEARN":
+			self.cuia_learn(params)
+
+
+	def cuia_learn(self, params=None):
+		if not self.is_shown_alsa_mixer():
+			if (self.modal_screen or self.active_screen != "control"):
+				self.show_screen("control")
+
+			elif self.active_screen == "control":
+				if zynthian_gui_config.midi_prog_change_zs3 and (self.midi_learn_mode or self.midi_learn_zctrl):
+					self.show_modal('zs3_learn')
+					return
+
+		self.enter_midi_learn_mode()
 
 
 	def custom_switch_ui_action(self, i, t):

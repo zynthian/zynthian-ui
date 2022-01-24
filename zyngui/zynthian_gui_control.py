@@ -356,11 +356,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		elif swi == 2:
 			if t == 'S':
 				if self.mode=='control':
-					if self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
-						if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
-							self.zyngui.show_modal('zs3_learn')
-					else:
-						self.zyngui.enter_midi_learn_mode()
+					self.zyngui.cuia_learn()
 				return True
 
 		elif swi == 3:
@@ -390,15 +386,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 		#Read Controller
 		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
 			for i, zctrl in enumerate(self.zcontrollers):
-				#print('Read Control ' + str(self.zgui_controllers[i].title))
-
 				if not zcnums or i in zcnums: 
 					if self.zgui_controllers[i].read_zyncoder():
-						if self.zyngui.midi_learn_mode:
-							logging.debug("MIDI-learn ZController {}".format(i))
-							self.zyngui.midi_learn_mode = False
-							self.midi_learn(i)
-
+						self.midi_learn_zctrl(i)
 						if self.xyselect_mode:
 							self.zyncoder_read_xyselect(zctrl, i)
 
@@ -473,8 +463,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 			if self.zgui_controllers[i].zctrl==zctrl:
 				return zctrl.get_value()
 
+
 	def get_controller_value_by_index(self, i):
 		return self.zgui_controllers[i].zctrl.get_value()
+
+
+	def midi_learn_zctrl(self, i):
+		if self.zyngui.midi_learn_mode:
+			logging.debug("MIDI-learn ZController {}".format(i))
+			self.zyngui.midi_learn_mode = False
+			self.midi_learn(i)
 
 
 	def midi_learn(self, i):
