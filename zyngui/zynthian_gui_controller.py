@@ -176,31 +176,31 @@ class zynthian_gui_controller:
 			try:
 				if self.zctrl.ticks:
 					if self.selmode:
-						i = val
-						valplot=self.scale_plot*val
-						val=self.zctrl.ticks[i]
+						i = int(val)
+						valplot = self.scale_plot*val
+						val = self.zctrl.ticks[i]
 					elif self.inverted:
 						for i in reversed(range(self.n_values)):
 							if val<=self.zctrl.ticks[i]:
 								break
-						valplot=self.scale_plot*(self.max_value-self.zctrl.ticks[i])
-						val=self.zctrl.ticks[i]
+						valplot = self.scale_plot*(self.max_value-self.zctrl.ticks[i])
+						val = self.zctrl.ticks[i]
 					else:
 						for i in range(self.n_values-1):
 							if val<self.zctrl.ticks[i+1]:
-								valplot=self.scale_plot*(self.zctrl.ticks[i]-self.zctrl.ticks[0])
+								valplot = self.scale_plot*(self.zctrl.ticks[i]-self.zctrl.ticks[0])
 								break
 						if valplot==None:
-							i+=1
-							valplot=self.scale_plot*(self.zctrl.ticks[i]-self.zctrl.ticks[0])
-						val=self.zctrl.ticks[i]
+							i += 1
+							valplot = self.scale_plot*(self.zctrl.ticks[i]-self.zctrl.ticks[0])
+						val = self.zctrl.ticks[i]
 				else:
-					i=int(self.n_values*val/(self.max_value+self.step))
+					i = int(self.n_values*val/(self.max_value+self.step))
 					#logging.debug("i => %s=int(%s*%s/(%s+%s))" % (i,self.n_values,val,self.max_value,self.step))
-					valplot=self.scale_plot*i
+					valplot = self.scale_plot*i
 
-				self.value_plot=valplot
-				self.value_print=self.zctrl.labels[i]
+				self.value_plot = valplot
+				self.value_print = self.zctrl.labels[i]
 				#self.zctrl.set_value(self.value)
 				self.zctrl.set_value(val)
 
