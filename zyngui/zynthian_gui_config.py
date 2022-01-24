@@ -367,6 +367,8 @@ font_family=os.environ.get('ZYNTHIAN_UI_FONT_FAMILY',"Audiowide")
 #font_family="Abel" #=> Quite interesting, also "Strait"
 
 font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
+if not font_size:
+	font_size = int(display_width / 40)
 
 #------------------------------------------------------------------------------
 # Touch Options
@@ -445,13 +447,19 @@ if "zynthian_gui.py" in sys.argv[0]:
 
 		# Geometric params
 		button_width = display_width // 4
-		topbar_height = display_height // 10
 		buttonbar_height = enable_onscreen_buttons and display_height // 7 or 0
+		if display_width>=800:
+			topbar_height = display_height // 12
+			topbar_fs = int(1.5*font_size)
+			title_y = int(0.1 * topbar_height)
+		else:
+			topbar_height = display_height // 10
+			topbar_fs = int(1.1*font_size)
+			title_y = int(0.05 * topbar_height)
 		body_height = display_height - topbar_height - buttonbar_height
 
 		# Controllers position and size
 		if wiring_layout.startswith("Z2"):
-			font_size = 14
 			ctrl_both_sides = False
 			ctrl_width = display_width // 4
 			ctrl_height = (body_height // 4) -1
@@ -472,10 +480,6 @@ if "zynthian_gui.py" in sys.argv[0]:
 				(2,2,"se")
 			]
 
-		# Adjust font size, if not defined
-		if not font_size:
-			font_size = int(display_width / 32)
-
 		# Adjust Root Window Geometry
 		top.geometry(str(display_width)+'x'+str(display_height))
 		top.maxsize(display_width,display_height)
@@ -493,7 +497,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 
 		# Fonts
 		font_listbox = (font_family,int(1.0*font_size))
-		font_topbar = (font_family,int(1.1*font_size))
+		font_topbar = (font_family,topbar_fs)
 		font_buttonbar = (font_family,int(0.8*font_size))
 
 		# Loading Logo Animation

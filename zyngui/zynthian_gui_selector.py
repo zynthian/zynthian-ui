@@ -103,7 +103,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			if zynthian_gui_config.ctrl_both_sides:
 				h = zynthian_gui_config.ctrl_height - 1
 			else:
-				h = (2 * zynthian_gui_config.ctrl_height) - 1
+				h = 3 * zynthian_gui_config.ctrl_height + 1
 			self.loading_canvas = tkinter.Canvas(self.main_frame,
 				width = zynthian_gui_config.ctrl_width,
 				height = h,
