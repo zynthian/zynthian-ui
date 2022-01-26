@@ -105,6 +105,7 @@ class zynthian_gui:
 		"3": "RELOAD_MIDI_CONFIG",
 		"4": "RELOAD_KEY_BINDING",
 		"5": "LAST_STATE_ACTION",
+		"6": "EXIT_UI",
 
 		"10": "ALL_NOTES_OFF",
 		"11": "ALL_SOUNDS_OFF",
