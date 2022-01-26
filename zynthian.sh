@@ -52,14 +52,18 @@ function backlight_on() {
 	# Turn On Display Backlight
 	#echo 0 > /sys/class/backlight/soc:backlight/bl_power
 	#echo 0 > /sys/class/backlight/fb_ili9486/bl_power
-	echo 0 > /sys/class/backlight/*/bl_power
+	if [ -f /sys/class/backlight/*/bl_power ]; then
+		echo 0 > /sys/class/backlight/*/bl_power
+	fi
 }
 
 function backlight_off() {
 	# Turn Off Display Backlight
 	#echo 1 > /sys/class/backlight/soc:backlight/bl_power
 	#echo 1 > /sys/class/backlight/fb_ili9486/bl_power
-	echo 1 > /sys/class/backlight/*/bl_power
+	if [ -f /sys/class/backlight/*/bl_power ]; then
+		echo 1 > /sys/class/backlight/*/bl_power
+	fi
 }
 
 function screensaver_off() {
