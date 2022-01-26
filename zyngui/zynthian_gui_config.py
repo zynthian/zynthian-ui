@@ -98,11 +98,16 @@ def config_custom_switches():
 		root_varname = "ZYNTHIAN_WIRING_CUSTOM_SWITCH_{:02d}".format(i+1)
 		custom_type = os.environ.get(root_varname, "")
 
-		if custom_type == "UI_ACTION":
-			cuias['S'] = os.environ.get(root_varname + "__UI_SHORT")
-			cuias['B'] = os.environ.get(root_varname + "__UI_BOLD")
-			cuias['L'] = os.environ.get(root_varname + "__UI_LONG")
-
+		if custom_type == "UI_ACTION_PUSH":
+			cuias['P'] = os.environ.get(root_varname + "__UI_PUSH", "")
+			cuias['S'] = ""
+			cuias['B'] = ""
+			cuias['L'] = ""
+		elif custom_type == "UI_ACTION" or custom_type == "UI_ACTION_RELEASE":
+			cuias['P'] = ""
+			cuias['S'] = os.environ.get(root_varname + "__UI_SHORT", "")
+			cuias['B'] = os.environ.get(root_varname + "__UI_BOLD", "")
+			cuias['L'] = os.environ.get(root_varname + "__UI_LONG", "")
 		elif custom_type != "":
 			evtype = None
 			if custom_type=="MIDI_CC":

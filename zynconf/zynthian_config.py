@@ -45,7 +45,8 @@ from collections import OrderedDict
 
 CustomSwitchActionType = [
 	"NONE",
-	"UI_ACTION",
+	"UI_ACTION_PUSH",
+	"UI_ACTION_RELEASE",
 	"MIDI_CC",
 	"MIDI_NOTE",
 	"MIDI_PROG_CHANGE",

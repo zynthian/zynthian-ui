@@ -1212,20 +1212,23 @@ class zynthian_gui:
 
 	def custom_switch_ui_action(self, i, t):
 		try:
-			if t in zynthian_gui_config.custom_switch_ui_actions[i]:
-				parts = zynthian_gui_config.custom_switch_ui_actions[i][t].split(" ", 2)
-				cmd = parts[0]
-				if len(parts)>1:
-					params = []
-					for i,p in enumerate(parts[1].split(",")):
-						try:
-							params.append(int(p))
-						except:
-							params.append(p.strip())
-				else:
-					params = None
+			action_config = zynthian_gui_config.custom_switch_ui_actions[i]
+			if t in action_config:
+				cuia = action_config[t]
+				if cuia and cuia!="NONE":
+					parts = cuia.split(" ", 2)
+					cmd = parts[0]
+					if len(parts)>1:
+						params = []
+						for i,p in enumerate(parts[1].split(",")):
+							try:
+								params.append(int(p))
+							except:
+								params.append(p.strip())
+					else:
+						params = None
 
-				self.callable_ui_action(cmd, params)
+					self.callable_ui_action(cmd, params)
 
 		except Exception as e:
 			logging.warning(e)
@@ -1315,8 +1318,10 @@ class zynthian_gui:
 		i = 0
 		while i<=zynthian_gui_config.last_zynswitch_index:
 			dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
-			if dtus == 0:
+			if dtus < 0:
 				pass
+			elif dtus == 0:
+				self.zynswitch_push(i)
 			elif dtus>zynthian_gui_config.zynswitch_long_us:
 				self.zynswitch_long(i)
 			elif dtus>zynthian_gui_config.zynswitch_bold_us:
@@ -1470,6 +1475,21 @@ class zynthian_gui:
 		self.stop_loading()
 
 
+	def zynswitch_push(self,i):
+		logging.info('Push Switch '+str(i))
+		self.start_loading()
+
+		# Standard 4 ZynSwitches
+		if i>=0 and i<=3:
+			pass
+
+		# Custom ZynSwitches
+		elif i>=4:
+			self.custom_switch_ui_action(i-4, "P")
+
+		self.stop_loading()
+
+
 	def zynswitch_double(self,i):
 		self.dtsw[i]=datetime.now()
 		for j in range(4):
@@ -1512,7 +1532,9 @@ class zynthian_gui:
 			event=copy.deepcopy(self.zynswitch_defered_event)
 			self.zynswitch_defered_event=None
 			#Process event
-			if event[0]=='S':
+			if event[0]=='P':
+				self.zynswitch_push(event[1])
+			elif event[0]=='S':
 				self.zynswitch_short(event[1])
 			elif event[0]=='B':
 				self.zynswitch_bold(event[1])
