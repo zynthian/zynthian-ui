@@ -262,6 +262,7 @@ def save_config(config, update_sys=False, fpath=None):
 	# Update System Configuration
 	if update_sys:
 		try:
+			os.environ['ZYNTHIAN_FLAG_MASTER'] = "NONE"
 			check_output(os.environ.get('ZYNTHIAN_SYS_DIR')+"/scripts/update_zynthian_sys.sh", shell=True)
 		except Exception as e:
 			logging.error("Updating Sytem Config: %s" % e)
