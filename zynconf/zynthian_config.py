@@ -214,7 +214,7 @@ def load_config(set_env=True, fpath=None):
 	return config
 
 
-def save_config(config, update_sys=False, fpath=None):
+def save_config(config, updsys=False, fpath=None):
 	if not fpath:
 		fpath = get_config_fpath()
 
@@ -260,13 +260,16 @@ def save_config(config, update_sys=False, fpath=None):
 		os.fsync(f.fileno())
 
 	# Update System Configuration
-	if update_sys:
-		try:
-			os.environ['ZYNTHIAN_FLAG_MASTER'] = "NONE"
-			check_output(os.environ.get('ZYNTHIAN_SYS_DIR')+"/scripts/update_zynthian_sys.sh", shell=True)
-		except Exception as e:
-			logging.error("Updating Sytem Config: %s" % e)
+	if updsys:
+		update_sys()
 
+
+def update_sys():
+	try:
+		os.environ['ZYNTHIAN_FLAG_MASTER'] = "NONE"
+		check_output(os.environ.get('ZYNTHIAN_SYS_DIR')+"/scripts/update_zynthian_sys.sh", shell=True)
+	except Exception as e:
+		logging.error("Updating Sytem Config: %s" % e)
 
 #-------------------------------------------------------------------------------
 # MIDI Config related functions
