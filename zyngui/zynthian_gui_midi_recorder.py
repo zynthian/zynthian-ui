@@ -46,15 +46,12 @@ from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library
 #------------------------------------------------------------------------------
 
 class zynthian_gui_midi_recorder(zynthian_gui_selector):
-	
-	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
-
-	jack_record_port = "ZynMidiRouter:main_out"
 
 	def __init__(self):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
 		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 		self.current_playback_fpath = None # Filename of currently playing SMF
+
 		self.smf_player = None # Pointer to SMF player
 		self.smf_recorder = None # Pointer to SMF recorder
 		self.smf_timer = None # 1s timer used to check end of SMF playback
@@ -69,6 +66,19 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			'is_integer': True
 		})
 		self.bpm_zgui_ctrl = None
+
+		try:
+			self.smf_player = libsmf.addSmf()
+			libsmf.attachPlayer(self.smf_player)
+		except Exception as e:
+			logging.error(e)
+
+		try:
+			self.smf_recorder = libsmf.addSmf()
+			libsmf.attachRecorder(self.smf_recorder)
+		except Exception as e:
+			logging.error(e)
+
 		logging.info("midi recorder created")
 
 
@@ -94,30 +104,16 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		return status
 
+
 	def show(self):
 		super().show()
-		try:
-			if self.smf_player == None:
-				self.smf_player = libsmf.addSmf()
-				libsmf.attachPlayer(self.smf_player)
-				self.zyngui.zynautoconnect()
-		except:
-			pass
+		if libsmf.getPlayState():
+			self.show_playing_bpm()
 
 
 	def hide(self):
+		self.hide_playing_bpm()
 		super().hide()
-		if self.bpm_zgui_ctrl:
-			self.bpm_zgui_ctrl.hide()
-		# Remove player / recorder if not in use which reduces load on JACK
-		if libsmf.getPlayState() == 0:
-			libsmf.removePlayer()
-			libsmf.removeSmf(self.smf_player)
-			self.smf_player = None
-		if not libsmf.isRecording():
-			libsmf.removeRecorder()
-			libsmf.removeSmf(self.smf_recorder)
-			self.smf_recorder = None
 
 
 	def fill_list(self):
@@ -142,47 +138,50 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		self.list_data.append((None,0,"-----------------------------"))
 
+		# Add file list, sorted by mtime
+		flist = self.get_filelist(self.capture_dir_sdc, "SD")
+		flist += self.get_filelist(self.capture_dir_usb, "USB")
 		i=1
-		# Files on SD-Card
-		for fname, finfo in self.get_filelist(self.capture_dir_sdc).items():
-			l = finfo['length']
-			title="SD[{}:{:02d}] {}".format(int(l/60), int(l%60),fname.replace(";",">",1).replace(";","/"))
-			self.list_data.append((finfo['fpath'],i,title))
-			i+=1
-
-		# Files on USB-Pendrive
-		for fname, finfo in self.get_filelist(self.capture_dir_usb).items():
-			l = finfo['length']
-			title="USB[{}:{:02d}] {}".format(int(l/60), int(l%60),fname.replace(";",">",1).replace(";","/"))
-			self.list_data.append((finfo['fpath'],i,title))
+		for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True) :
+			self.list_data.append((finfo['fpath'], i, finfo['title']))
 			i+=1
 
 		super().fill_list()
 
 
-	def get_filelist(self, src_dir):
-		res = {}
-		for f in sorted(os.listdir(src_dir)):
+	def get_filelist(self, src_dir, src_name):
+		res = []
+		smf = libsmf.addSmf()
+
+		for f in os.listdir(src_dir):
 			fpath = join(src_dir, f)
 			fname = f[:-4]
 			fext = f[-4:].lower()
 			if isfile(fpath) and fext in ('.mid'):
-				res[fname] = {
+				# Get mtime
+				mtime = os.path.getmtime(fpath)
+
+				# Get duration
+				try:
+					zynsmf.load(smf, fpath)
+					length = libsmf.getDuration(smf)
+				except Exception as e:
+					length = 0
+					logging.warning(e)
+
+				# Generate title
+				title = "{}[{}:{:02d}] {}".format(src_name, int(length/60), int(length%60), fname.replace(";",">",1).replace(";","/"))
+
+				res.append({
 					'fpath': fpath,
-					'ext': fext
-				}
+					'fname': fname,
+					'ext': fext,
+					'length' : length,
+					'mtime' : mtime,
+					'title': title
+				})
 
-		smf = libsmf.addSmf()
-		for fname in res:
-			try:
-				zynsmf.load(smf, res[fname]['fpath'])
-				res[fname]['length'] = libsmf.getDuration(smf)
-			except Exception as e:
-				res[fname]['length'] = 0
-				logging.warning(e)
-		
 		libsmf.removeSmf(smf)
-
 		return res
 
 
@@ -193,14 +192,13 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	# Highlight command and current record played, if any ...
 	def highlight(self):
-		logging.info("Play state: %d", libsmf.getPlayState())
 		if libsmf.getPlayState() == 0:
 			self.current_playback_fpath=None
 		for i, row in enumerate(self.list_data):
 			if row[0] is not None and row[0]==self.current_playback_fpath:
-				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_hl})
+				self.listbox.itemconfig(i, { 'bg': zynthian_gui_config.color_hl })
 			else:
-				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
+				self.listbox.itemconfig(i, { 'bg': zynthian_gui_config.color_panel_bg })
 
 
 	def select_action(self, i, t='S'):
@@ -262,16 +260,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def start_recording(self):
 		if not libsmf.isRecording():
 			logging.info("STARTING NEW MIDI RECORD ...")
-			if self.smf_recorder == None:
-				self.smf_recorder = libsmf.addSmf()
-				libsmf.attachRecorder(self.smf_recorder)
-				self.zyngui.zynautoconnect()
-				sleep(0.1)
 			libsmf.unload(self.smf_recorder)
 			libsmf.startRecording()
 			self.update_list()
 			return True
-
 		else:
 			return False
 
@@ -280,12 +272,13 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if libsmf.isRecording():
 			logging.info("STOPPING MIDI RECORDING ...")
 			libsmf.stopRecording()
-			if os.path.ismount("/media/usb0"):
-				filename = "/media/usb0/%s" % self.get_new_filename()
+			if os.path.ismount(self.capture_dir_usb):
+				filename = "{}/{}".format(self.capture_dir_usb, self.get_new_filename())
 			else:
-				filename = "/zynthian/zynthian-my-data/capture/%s" % self.get_new_filename()
+				filename = "{}/{}".format(self.capture_dir_sdc, self.get_new_filename())
 			zynsmf.save(self.smf_recorder, filename)
 			self.update_list()
+			self.index = self.get_first_track_index()
 			return True
 
 		else:
@@ -317,8 +310,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			libsmf.startPlayback()
 			zynseq.transport_start("zynsmf")
 #			libseq.transportLocate(0)
-			self.show_playing_bpm()
 			self.current_playback_fpath=fpath
+			self.show_playing_bpm()
 			self.smf_timer = Timer(interval = 1, function=self.check_playback)
 			self.smf_timer.start()
 		except Exception as e:
@@ -326,7 +319,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.zyngui.show_info("ERROR STARTING MIDI PLAY:\n %s" % e)
 			self.zyngui.hide_info_timer(5000)
 
-		self.update_list()
+		#self.update_list()
+		self.highlight()
 		return True
 
 
@@ -337,9 +331,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.smf_timer.cancel()
 			self.smf_timer = None
 		self.current_playback_fpath=None
-		if self.bpm_zgui_ctrl:
-			self.bpm_zgui_ctrl.hide()
-		self.update_list()
+		self.hide_playing_bpm()
+		#self.update_list()
+		self.highlight()
 
 
 	def stop_playing(self):
@@ -356,10 +350,15 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def toggle_playing(self, fpath=None):
 		logging.info("TOGGLING MIDI PLAY ...")
+		
+		if fpath is None:
+			fpath = self.get_current_track_fpath()
+
 		if fpath and fpath!=self.current_playback_fpath:
 			self.start_playing(fpath)
 		else:
 			self.stop_playing()
+
 
 	def show_playing_bpm(self):
 		self.bpm_zctrl.set_value(libseq.getTempo())
@@ -368,6 +367,11 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.bpm_zgui_ctrl.show()
 		else:
 			self.bpm_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.bpm_zctrl)
+
+
+	def hide_playing_bpm(self):
+		if self.bpm_zgui_ctrl:
+			self.bpm_zgui_ctrl.hide()
 
 
 	# Implement engine's method
@@ -396,12 +400,20 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		#if selected track ...
 		if self.list_data[self.index][1]>0:
 			return self.list_data[self.index][0]
-		#return last track if there is one ...
-		elif self.list_data[-1][1]>0:
-			return self.list_data[-1][0]
+		#return first track in list if there is one ...
+		fti = self.get_first_track_index()
+		if fti is not None:
+			return self.list_data[fti][0]
 		#else return None
 		else:
 			return None
+
+
+	def get_first_track_index(self):
+		for i, row in enumerate(self.list_data):
+			if row[1]>0:
+				return i
+		return None
 
 
 	def toggle_loop(self):
