@@ -99,20 +99,11 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		#self.index=0
 		self.list_data=[]
 
-		status=self.get_status()
-		if status=="REC" or status=="PLAY+REC":
-			self.list_data.append(("STOP_RECORDING",0,"Stop Recording"))
-		else:
-			self.list_data.append(("START_RECORDING",0,"Start Recording"))
+		self.list_data.append(None)
+		self.update_status_recording()
 
-		#if status=="PLAY" or status=="PLAY+REC":
-		#	self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
-		#	self.show_playing_volume()
-
-		if zynthian_gui_config.audio_play_loop:
-			self.list_data.append(("LOOP",0,"[x] Loop Play"))
-		else:
-			self.list_data.append(("LOOP",0,"[  ] Loop Play"))
+		self.list_data.append(None)
+		self.update_status_loop()
 
 		self.list_data.append((None,0,"-----------------------------"))
 
@@ -183,6 +174,25 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 				self.listbox.itemconfig(i, { 'bg' : zynthian_gui_config.color_hl })
 			else:
 				self.listbox.itemconfig(i, { 'bg': zynthian_gui_config.color_panel_bg })
+
+
+	def update_status_recording(self, fill=False):
+		status=self.get_status()
+		if status=="REC" or status=="PLAY+REC":
+			self.list_data[0] = ("STOP_RECORDING",0,"Stop Recording")
+		else:
+			self.list_data[0] = ("START_RECORDING",0,"Start Recording")
+		if fill:
+			super().fill_list()
+
+
+	def update_status_loop(self, fill=False):
+		if zynthian_gui_config.audio_play_loop:
+			self.list_data[1] = ("LOOP",0,"[x] Loop Play")
+		else:
+			self.list_data[1] = ("LOOP",0,"[  ] Loop Play")
+		if fill:
+			super().fill_list()
 
 
 	def select_action(self, i, t='S'):
@@ -256,7 +266,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 				self.zyngui.show_info("ERROR STARTING AUDIO RECORD:\n %s" % e)
 				self.zyngui.hide_info_timer(5000)
 
-			self.update_list()
+			self.update_status_recording(True)
 			return True
 
 		else:
@@ -275,7 +285,6 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 				self.zyngui.hide_info_timer(5000)
 
 			self.update_list()
-			self.index = self.get_first_track_index()
 			return True
 
 		else:
@@ -453,7 +462,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			logging.info("Audio play loop ON")
 			zynthian_gui_config.audio_play_loop=True
 		zynconf.save_config({"ZYNTHIAN_AUDIO_PLAY_LOOP": str(int(zynthian_gui_config.audio_play_loop))})
-		self.update_list()
+		self.update_status_loop(True)
 
 
 	def get_audio_out(self):

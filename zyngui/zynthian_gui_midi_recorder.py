@@ -60,7 +60,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		self.bpm_zctrl = zynthian_controller(self, "bpm", "BPM", {
 			'value': 120,
-			'value_min': 10,
+			'value_min': 20,
 			'value_max': 400,
 			'is_toggle': False,
 			'is_integer': True
@@ -120,21 +120,11 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		#self.index = 0
 		self.list_data = []
 
-		if libsmf.isRecording():
-			self.list_data.append(("STOP_RECORDING",0,"Stop Recording"))
-		else:
-			self.list_data.append(("START_RECORDING",0,"Start Recording"))
+		self.list_data.append(None)
+		self.update_status_recording()
 
-		#if libsmf.getPlayState():
-		#	self.list_data.append(("STOP_PLAYING",0,"Stop Playing"))
-		#	self.show_playing_bpm()
-
-		if zynthian_gui_config.midi_play_loop:
-			self.list_data.append(("LOOP",0,"[x] Loop Play"))
-			libsmf.setLoop(True)
-		else:
-			self.list_data.append(("LOOP",0,"[  ] Loop Play"))
-			libsmf.setLoop(False)
+		self.list_data.append(None)
+		self.update_status_loop()
 
 		self.list_data.append((None,0,"-----------------------------"))
 
@@ -194,11 +184,31 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def highlight(self):
 		if libsmf.getPlayState() == 0:
 			self.current_playback_fpath=None
+
 		for i, row in enumerate(self.list_data):
 			if row[0] is not None and row[0]==self.current_playback_fpath:
 				self.listbox.itemconfig(i, { 'bg': zynthian_gui_config.color_hl })
 			else:
 				self.listbox.itemconfig(i, { 'bg': zynthian_gui_config.color_panel_bg })
+
+
+	def update_status_recording(self, fill=False):
+		if libsmf.isRecording():
+			self.list_data[0] = ("STOP_RECORDING",0,"Stop Recording")
+		else:
+			self.list_data[0] = ("START_RECORDING",0,"Start Recording")
+		if fill:
+			super().fill_list()
+
+	def update_status_loop(self, fill=False):
+		if zynthian_gui_config.midi_play_loop:
+			self.list_data[1] = ("LOOP",0,"[x] Loop Play")
+			libsmf.setLoop(True)
+		else:
+			self.list_data[1] = ("LOOP",0,"[  ] Loop Play")
+			libsmf.setLoop(False)
+		if fill:
+			super().fill_list()
 
 
 	def select_action(self, i, t='S'):
@@ -262,7 +272,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			logging.info("STARTING NEW MIDI RECORD ...")
 			libsmf.unload(self.smf_recorder)
 			libsmf.startRecording()
-			self.update_list()
+			self.update_status_recording(True)
 			return True
 		else:
 			return False
@@ -277,8 +287,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			else:
 				filename = "{}/{}".format(self.capture_dir_sdc, self.get_new_filename())
 			zynsmf.save(self.smf_recorder, filename)
+
 			self.update_list()
-			self.index = self.get_first_track_index()
 			return True
 
 		else:
@@ -301,12 +311,11 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			logging.info("No track to play!")
 			return
 
-		logging.info("STARTING MIDI PLAY '{}' ...".format(fpath))
-
 		try:
 			zynsmf.load(self.smf_player,fpath)
 			tempo = libsmf.getTempo(self.smf_player, 0)
-			libseq.setTempo(ctypes.c_double(tempo)) #TODO: This isn't working
+			logging.info("STARTING MIDI PLAY '{}' => {}BPM".format(fpath, tempo))
+			libseq.setTempo(ctypes.c_double(tempo)) # TODO This doesn't work!!
 			libsmf.startPlayback()
 			zynseq.transport_start("zynsmf")
 #			libseq.transportLocate(0)
@@ -365,6 +374,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.config(self.bpm_zctrl)
 			self.bpm_zgui_ctrl.show()
+			self.bpm_zgui_ctrl.zctrl_sync(True)
 		else:
 			self.bpm_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.bpm_zctrl)
 
@@ -424,7 +434,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			logging.info("MIDI play loop ON")
 			zynthian_gui_config.midi_play_loop=True
 		zynconf.save_config({"ZYNTHIAN_MIDI_PLAY_LOOP": str(int(zynthian_gui_config.midi_play_loop))})
-		self.update_list()
+		self.update_status_loop(True)
 
 
 	def set_select_path(self):

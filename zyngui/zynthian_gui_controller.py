@@ -563,7 +563,7 @@ class zynthian_gui_controller:
 			if zctrl.midi_cc==0:
 				self.max_value=self.n_values=zctrl.value_max
 				self.val0=1
-				val=zctrl.value
+				val=zctrl.value-zctrl.value_min
 
 				#If many values => use adaptative step size based on rotary speed
 				if self.n_values>=32:
@@ -583,14 +583,13 @@ class zynthian_gui_controller:
 							self.mult=1
 						else:
 							self.mult=4
-
 					#Integer > 127
 					else:
 						#Not MIDI controller
 						if zctrl.midi_cc is None:
 							self.max_value=self.n_values=zctrl.value_range
 							self.scale_value=1
-							val=(zctrl.value-zctrl.value_min)
+							val=zctrl.value-zctrl.value_min
 						#MIDI controller
 						else:
 							self.max_value=self.n_values=127
