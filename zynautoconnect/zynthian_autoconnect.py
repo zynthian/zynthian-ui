@@ -56,9 +56,11 @@ jclient = None
 thread = None
 exit_flag = False
 
-last_hw_str = None
-
 lib_zyncore = get_lib_zyncore()
+
+last_hw_str = None
+max_num_devs = 16
+devices_in = [None for i in range(max_num_devs)]
 
 #------------------------------------------------------------------------------
 
@@ -219,14 +221,30 @@ def midi_autoconnect(force=False):
 	# Auto-Connect MIDI Ports
 	#------------------------------------
 
-	#Connect "Not Disabled" Input Device Ports to ZynMidiRouter:main_in
+	#Connect MIDI Input Devices
 	for hw in hw_out:
+		devnum = None
+		port_alias_id = get_port_alias_id(hw)
 		#logger.debug("Connecting MIDI Input {} => {}".format(hw,zmr_in['main_in']))
 		try:
-			if get_port_alias_id(hw) in zynthian_gui_config.disabled_midi_in_ports:
-				jclient.disconnect(hw,zmr_in['main_in'])
+			#If the device is marked as disabled, disconnect from all dev ports
+			if port_alias_id in zynthian_gui_config.disabled_midi_in_ports:
+				for i in range(16):
+					jclient.disconnect(hw,zmr_in['dev{}_in'.format(i)])
+			 #else ...
 			else:
-				jclient.connect(hw,zmr_in['main_in'])
+				#if the device already is registered, takes the number
+				if port_alias_id in devices_in:
+					devnum = devices_in.index(port_alias_id)
+				#else registers it, taking the first free port
+				else:
+					for i in range(16):
+						if devices_in[i] is None:
+							devnum = i
+							devices_in[devnum] = port_alias_id
+							break
+				if devnum is not None:
+					jclient.connect(hw,zmr_in['dev{}_in'.format(devnum)])
 		except Exception as e:
 			#logger.debug("Exception {}".format(e))
 			pass
@@ -345,7 +363,7 @@ def midi_autoconnect(force=False):
 	# Set "Drop Program Change" flag for each MIDI chan
 	for layer in zynthian_gui_config.zyngui.screens["layer"].root_layers:
 		if layer.midi_chan is not None:
-			lib_zyncore.zmop_chan_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
+			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
 
 
 	if zynthian_gui_config.midi_filter_output:
