@@ -48,6 +48,7 @@ CustomSwitchActionType = [
 	"UI_ACTION_PUSH",
 	"UI_ACTION_RELEASE",
 	"MIDI_CC",
+	"MIDI_CC_SWITCH",
 	"MIDI_NOTE",
 	"MIDI_PROG_CHANGE",
 	"CVGATE_IN",

@@ -122,6 +122,8 @@ def config_custom_switches():
 				evtype = -5
 			elif custom_type=="GATE_OUT":
 				evtype = -6
+			elif custom_type=="MIDI_CC_SWITCH":
+				evtype = -7
 
 			if evtype:
 				chan = os.environ.get(root_varname + "__MIDI_CHAN")
@@ -132,10 +134,10 @@ def config_custom_switches():
 				except:
 					chan = None
 
-				if evtype>0 or evtype==-6:
-					num = os.environ.get(root_varname + "__MIDI_NUM")
-				else:
+				if evtype in (-4, -5):
 					num = os.environ.get(root_varname + "__CV_CHAN")
+				else:
+					num = os.environ.get(root_varname + "__MIDI_NUM")
 
 				try:
 					val = int(os.environ.get(root_varname + "__MIDI_VAL"))
