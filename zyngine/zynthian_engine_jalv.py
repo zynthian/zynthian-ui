@@ -79,7 +79,8 @@ class zynthian_engine_jalv(zynthian_engine):
 	plugins_custom_gui = {
 		'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
 		'http://gareus.org/oss/lv2/meters#spectr30stereo': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
-		'http://gareus.org/oss/lv2/tuna#one': "/zynthian/zynthian-ui/zyngui/zynthian_widget_tunaone.py"
+		'http://gareus.org/oss/lv2/tuna#one': "/zynthian/zynthian-ui/zyngui/zynthian_widget_tunaone.py",
+		'http://looperlative.com/plugins/lp3-basic': "/zynthian/zynthian-ui/zyngui/zynthian_widget_looper.py"
 	}
 
 	#------------------------------------------------------------------------------
@@ -473,7 +474,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			else:
 				last_group[0] = "Ungroup"
 			zctrl_group["_"] = last_group
-			
+
 		for gsymbol, gdata in zctrl_group.items():
 			ctrl_set=[]
 			gname = gdata[0]
@@ -790,13 +791,13 @@ class zynthian_engine_jalv(zynthian_engine):
 	def sanitize_text(text):
 		# Remove bad chars
 		bad_chars = ['.', ',', ';', ':', '!', '*', '+', '?', '@', '&', '$', '%', '=', '"', '\'', '`', '/', '\\', '^', '<', '>', '[', ']', '(', ')', '{', '}']
-		for i in bad_chars: 
+		for i in bad_chars:
 			text = text.replace(i, ' ')
-			
+
 		# Strip and replace (multi)spaces by single underscore
 		text = '_'.join(text.split())
 		text = '_'.join(filter(None,text.split('_')))
-	
+
 		return text
 
 
