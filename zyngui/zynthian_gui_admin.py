@@ -648,65 +648,89 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def start_vncserver(self, save_config=True):
-		logging.info("STARTING VNC SERVICES")
+		# Start VNC for Zynthian-UI
+		if not zynconf.is_service_active("vncserver0"):
+			try:
+				logging.info("STARTING VNC-UI SERVICE")
+				check_output("systemctl start novnc0", shell=True)
+				zynthian_gui_config.vncserver_enabled = 1
+			except Exception as e:
+				logging.error(e)
 
-		self.zyngui.start_loading()
-		# Save state and stop engines
-		if len(self.zyngui.screens['layer'].layers)>0:
-			self.zyngui.screens['snapshot'].save_last_state_snapshot()
-			self.zyngui.screens['layer'].reset()
-			restore_state = True
-		else:
-			restore_state = False
+		# Start VNC for Engine's native GUIs
+		if not zynconf.is_service_active("vncserver1"):
+			self.zyngui.start_loading()
 
-		try:
-			check_output("systemctl start novnc0", shell=True)
-			check_output("systemctl start novnc1", shell=True)
-			zynthian_gui_config.vncserver_enabled = 1
-			# Update Config
-			if save_config:
-				zynconf.save_config({ 
-					"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
-				})
-		except Exception as e:
-			logging.error(e)
+			# Save state and stop engines
+			if len(self.zyngui.screens['layer'].layers)>0:
+				self.zyngui.screens['snapshot'].save_last_state_snapshot()
+				self.zyngui.screens['layer'].reset()
+				restore_state = True
+			else:
+				restore_state = False
 
-		# Restore state
-		if restore_state:
-			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
-		self.zyngui.stop_loading()
+			try:
+				logging.info("STARTING VNC-ENGINES SERVICE")
+				check_output("systemctl start novnc1", shell=True)
+				zynthian_gui_config.vncserver_enabled = 1
+			except Exception as e:
+				logging.error(e)
+
+			# Restore state
+			if restore_state:
+				self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+
+			self.zyngui.stop_loading()
+
+		# Update Config
+		if save_config:
+			zynconf.save_config({ 
+				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
+			})
 
 		self.fill_list()
 
 
 	def stop_vncserver(self, save_config=True):
-		logging.info("STOPPING VNC SERVICES")
+		# Stop VNC for Zynthian-UI
+		if zynconf.is_service_active("vncserver0"):
+			try:
+				logging.info("STOPPING VNC-UI SERVICE")
+				check_output("systemctl stop vncserver0", shell=True)
+				zynthian_gui_config.vncserver_enabled = 0
+			except Exception as e:
+				logging.error(e)
 
-		self.zyngui.start_loading()
-		# Save state and stop engines
-		if len(self.zyngui.screens['layer'].layers)>0:
-			self.zyngui.screens['snapshot'].save_last_state_snapshot()
-			self.zyngui.screens['layer'].reset()
-			restore_state = True
-		else:
-			restore_state = False
+		# Start VNC for Engine's native GUIs
+		if not zynconf.is_service_active("vncserver1"):
+			self.zyngui.start_loading()
 
-		try:
-			check_output("systemctl stop vncserver0", shell=True)
-			check_output("systemctl stop vncserver1", shell=True)
-			zynthian_gui_config.vncserver_enabled = 0
-			# Update Config
-			if save_config:
-				zynconf.save_config({ 
-					"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
-				})
-		except Exception as e:
-			logging.error(e)
+			# Save state and stop engines
+			if len(self.zyngui.screens['layer'].layers)>0:
+				self.zyngui.screens['snapshot'].save_last_state_snapshot()
+				self.zyngui.screens['layer'].reset()
+				restore_state = True
+			else:
+				restore_state = False
 
-		# Restore state
-		if restore_state:
-			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
-		self.zyngui.stop_loading()
+			try:
+				logging.info("STOPPING VNC-ENGINES SERVICE")
+				check_output("systemctl stop vncserver1", shell=True)
+				zynthian_gui_config.vncserver_enabled = 0
+			except Exception as e:
+				logging.error(e)
+
+			# Restore state
+			if restore_state:
+				self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+				
+			self.zyngui.stop_loading()
+
+		# Update Config
+		if save_config:
+			zynconf.save_config({ 
+				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
+			})
 
 		self.fill_list()
 
