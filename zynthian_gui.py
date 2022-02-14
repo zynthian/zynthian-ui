@@ -623,7 +623,7 @@ class zynthian_gui:
 			if self.active_screen:
 				screen = self.active_screen
 			else:
-				screen = "main"
+				screen = "audio_mixer"
 
 		if screen=="control":
 			self.restore_curlayer()
@@ -877,6 +877,10 @@ class zynthian_gui:
 			self.set_active_channel()
 		else:
 			self.curlayer = None
+			if self.active_screen in ('control', 'bank', 'preset'):
+				self.active_screen = None
+			if self.modal_screen in ('layer_options', 'bank', 'preset'):
+				self.modal_screen = None
 
 
 	def restore_curlayer(self):
