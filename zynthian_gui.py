@@ -1833,7 +1833,8 @@ class zynthian_gui:
 			if self.wsleds:
 				self.update_wsleds()
 			sleep(0.2)
-		self.end_wsleds()
+		if self.wsleds:
+			self.end_wsleds()
 
 
 	def refresh_status(self):
