@@ -587,8 +587,8 @@ class zynthian_gui:
 		# Start polling threads
 		self.start_polling()
 		self.start_loading_thread()
-		self.start_status_thread()
 		self.start_control_thread()
+		self.start_status_thread()
 
 		# Run autoconnect if needed
 		self.zynautoconnect_do()
