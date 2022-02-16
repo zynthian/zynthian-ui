@@ -66,7 +66,7 @@ class zynthian_gui_mixer_channel():
 	mute_color = zynthian_gui_config.color_on
 	solo_color = "dark green"
 
-	def __init__(self, canvas, x, y, width, height, channel, on_select_cb, on_edit_cb):
+	def __init__(self, canvas, x, y, width, height, channel, on_select_cb, on_edit_cb, on_fader_cb):
 		#logging.warning("zynthian_gui_mixer_channel (%d,%d %dx%d) channel %s", x,y,width,height, channel)
 		self.main_canvas = canvas
 		self.x = x
@@ -85,6 +85,7 @@ class zynthian_gui_mixer_channel():
 
 		self.on_select_cb = on_select_cb
 		self.on_edit_cb = on_edit_cb
+		self.on_fader_cb = on_fader_cb
 
 		self.button_height = int(self.height * 0.1)
 		self.legend_height = int(self.height * 0.08)
@@ -498,6 +499,7 @@ class zynthian_gui_mixer_channel():
 		self.drag_start = event
 		self.set_volume(level)
 		self.redraw_controls()
+		self.on_fader_cb()
 
 
 	# Function to handle mouse wheel down over fader
@@ -508,6 +510,7 @@ class zynthian_gui_mixer_channel():
 		self.on_select_cb(self.channel)
 		self.set_volume(zynmixer.get_level(self.channel) - 0.02)
 		self.redraw_controls()
+		self.on_fader_cb()
 
 
 	# Function to handle mouse wheel up over fader
@@ -518,6 +521,7 @@ class zynthian_gui_mixer_channel():
 		self.on_select_cb(self.channel)
 		self.set_volume(zynmixer.get_level(self.channel) + 0.02)
 		self.redraw_controls()
+		self.on_fader_cb()
 
 
 	# Function to handle mouse wheel down over balance
@@ -653,9 +657,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Channel strips
 		for channel in range(self.max_channels):
-			self.channels[channel] = zynthian_gui_mixer_channel(self.main_canvas, 1 + self.fader_width * channel, 0, self.fader_width - 1, self.height, channel, self.select_midi_chan, self.set_edit_mode)
+			self.channels[channel] = zynthian_gui_mixer_channel(self.main_canvas, 1 + self.fader_width * channel, 0, self.fader_width - 1, self.height, channel, self.select_midi_chan, self.set_edit_mode, self.update_zyncoders)
 
-		self.main_channel = zynthian_gui_mixer_channel(self.main_canvas, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, MAX_NUM_CHANNELS, self.select_midi_chan, self.set_edit_mode)
+		self.main_channel = zynthian_gui_mixer_channel(self.main_canvas, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, MAX_NUM_CHANNELS, self.select_midi_chan, self.set_edit_mode, self.update_zyncoders)
 
 		# Edit widgets
 		font=(zynthian_gui_config.font_family, int(self.edit_height / 4))
