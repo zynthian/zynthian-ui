@@ -71,7 +71,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		['modulation exp','/part$i/ctl/modwheel.exponential','off','off|on'],
 		['bandwidth',75,64],
 		['bandwidth depth','/part$i/ctl/bandwidth.depth',64],
-		['bandwidth exp','/part$i/ctl/modwheel.exponential','off','off|on'],
+		['bandwidth exp','/part$i/ctl/bandwith.exponential','off','off|on'],
 		['resonance center',77,64],
 		['resonance bandwidth',78,64],
 		['res.center depth','/part$i/ctl/resonancecenter.depth',64],
