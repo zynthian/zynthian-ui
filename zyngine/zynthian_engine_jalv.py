@@ -71,7 +71,8 @@ class zynthian_engine_jalv(zynthian_engine):
 			'http://calf.sourceforge.net/plugins/Monosynth',
 			'http://calf.sourceforge.net/plugins/Organ',
 			'http://nickbailey.co.nr/triceratops',
-			'http://code.google.com/p/amsynth/amsynth'
+			'http://code.google.com/p/amsynth/amsynth',
+			'http://gareus.org/oss/lv2/tuna#one'
 		]
 	if "Raspberry Pi 4" not in os.environ.get('RBPI_VERSION'):
 		broken_ui.append('http://tytel.org/helm')
