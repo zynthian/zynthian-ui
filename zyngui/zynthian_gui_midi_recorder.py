@@ -83,7 +83,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def check_playback(self):
-		if self.shown and libsmf.getPlayState() == 0:
+		if libsmf.getPlayState() == 0:
 			self.end_playing()
 		else:
 			self.smf_timer = Timer(interval = 1, function=self.check_playback)

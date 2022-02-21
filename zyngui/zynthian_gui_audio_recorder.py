@@ -142,7 +142,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 				# Get duration
 				try:
-					length = mutagen.File(res[fname]['fpath']).info.length
+					length = mutagen.File(fpath).info.length
 				except Exception as e:
 					length = 0
 					logging.warning(e)
