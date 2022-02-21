@@ -1172,12 +1172,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
-		self.zyncoder_up(ENC_SELECT)
+		self.select_channel(self.selected_channel+1)
 
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		self.zyncoder_down(ENC_SELECT)
+		self.select_channel(self.selected_channel-1)
 
 
 	# Function to handle CUIA BACK_UP command
