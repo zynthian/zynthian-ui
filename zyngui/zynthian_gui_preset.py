@@ -65,6 +65,76 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.zyngui.show_screen('control')
 
 
+	def show_options(self):
+		fname = self.list_data[self.index][2]
+		fav = "Favourite [  ]"
+		if fname[0] == '*': fav = "Favourite [x]"
+		options = {
+			fav: True,
+			"Save": True,
+			"Rename": True,
+			"Delete": True
+		}
+		self.zyngui.screens['option'].config("Preset %s" % fname, options, self.options_cb)
+		self.zyngui.show_modal('option')
+
+
+	def options_cb(self, option, param):
+		fpath=self.list_data[self.index][0]
+		fname=self.list_data[self.index][2]
+
+		if option[:9] == "Favourite":
+			self.zyngui.curlayer.toggle_preset_fav(self.list_data[self.index])
+		elif option == "Save":
+			self.zyngui.show_keyboard(self.save_preset, fname)
+		elif option == "Rename":
+			self.zyngui.show_keyboard(self.rename_preset, fname)
+		elif option == "Delete":
+			self.delete_preset()
+			pass
+
+		self.update_list()
+
+
+	def save_preset(self, name):
+		#TODO Imnplement save preset (check if name changed and save / save as)
+		fpath=self.list_data[self.index][0]
+		fname=self.list_data[self.index][2]
+		name = name.rstrip()
+		if name == fname: #TODO Check bank
+			#TODO Imnplement save
+			pass
+		else:
+			#TODO Imnplement save as, show confirmation if overwritting
+			pass
+
+
+	def rename_preset(self, name):
+		fpath=self.list_data[self.index][0]
+		fname=self.list_data[self.index][2]
+		name = name.rstrip()
+		if name == fname:
+			return
+		try:
+			self.zyngui.curlayer.engine.zynapi_rename_preset(fpath, fname)
+			#TODO Reload presets which might mean updating cache, etc.
+		except e as Exception:
+			logging.warning("Failed to rename preset: %s", e)
+
+
+	def delete_preset(self):
+		fpath=self.list_data[self.index][0]
+		fname=self.list_data[self.index][2]
+		self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, fpath)
+
+
+	def delete_confirmed(self, fpath):
+		try:
+			self.zyngui.curlayer.engine.zynapi_remove_preset(fpath)
+		except e as Exception:
+			logging.warning("Failed to delete preset: %s", e)
+
+
 	# Function to handle *all* switch presses.
 	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
@@ -81,8 +151,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				return True
 		elif swi == 3:
 			if t == 'B':
-				self.zyngui.curlayer.toggle_preset_fav(self.list_data[self.index])
-				self.update_list()
+				self.show_options()
 				return True
 
 		self.restore_preset()
