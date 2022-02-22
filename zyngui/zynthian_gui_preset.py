@@ -67,8 +67,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def show_options(self):
 		fname = self.list_data[self.index][2]
-		fav = "Favourite [  ]"
-		if fname[0] == '*': fav = "Favourite [x]"
+		fav = "[  ] Favourite"
+		if fname[0] == '*': fav = "[x] Favourite"
 		options = {
 			fav: True,
 			"Save": True,
@@ -83,7 +83,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		fpath=self.list_data[self.index][0]
 		fname=self.list_data[self.index][2]
 
-		if option[:9] == "Favourite":
+		if option[-9:] == "Favourite":
 			self.zyngui.curlayer.toggle_preset_fav(self.list_data[self.index])
 		elif option == "Save":
 			self.zyngui.show_keyboard(self.save_preset, fname)
