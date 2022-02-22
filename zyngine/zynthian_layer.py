@@ -189,7 +189,6 @@ class zynthian_layer:
 			logging.info("Bank Selected: %s (%d)" % (self.bank_name,i))
 
 			if set_engine and (last_bank_index!=i or not last_bank_name):
-				self.reset_preset()
 				return self.engine.set_bank(self, self.bank_info)
 
 			return True
@@ -213,7 +212,7 @@ class zynthian_layer:
 
 
 	def get_bank_name(self):
-		return self.preset_name
+		return self.bank_name
 
 
 	def get_bank_index(self):
@@ -273,7 +272,6 @@ class zynthian_layer:
 			self.preset_bank_index=self.bank_index
 
 			logging.info("Preset Selected: %s (%d)" % (self.preset_name,i))
-			#=> '+self.preset_list[i][3]
 
 			if self.preload_info:
 				if not self.engine.cmp_presets(self.preload_info,self.preset_info):
@@ -283,12 +281,8 @@ class zynthian_layer:
 					self.preload_info = None
 				else:
 					set_engine_needed = False
-
-			elif last_preset_index!=i or not last_preset_name:
-				set_engine_needed = True
-
 			else:
-				set_engine_needed = False
+				set_engine_needed = True
 
 			if set_engine and set_engine_needed:
 				#TODO => Review this!!
@@ -353,6 +347,17 @@ class zynthian_layer:
 
 	def get_preset_index(self):
 		return self.preset_index
+
+
+	def get_preset_bank_index(self):
+		return self.preset_bank_index
+
+
+	def get_preset_bank_name(self):
+		try:
+			return self.bank_list[self.preset_bank_index][2]
+		except:
+			return None
 
 
 	def toggle_preset_fav(self, preset):
@@ -927,9 +932,13 @@ class zynthian_layer:
 
 
 	def get_path(self):
-		path = self.bank_name
 		if self.preset_name:
-			path = path + "/" + self.preset_name
+			bank_name = self.get_preset_bank_name()
+			if not bank_name:
+				bank_name = "???"
+			path = bank_name + "/" + self.preset_name
+		else:
+			path = self.bank_name
 		return path
 
 
@@ -951,8 +960,9 @@ class zynthian_layer:
 		path = self.get_basepath()
 
 		subpath = None
-		if self.bank_name and self.bank_name!="None":
-			subpath = self.bank_name
+		bank_name = self.get_preset_bank_name()
+		if bank_name and bank_name!="None":
+			subpath = bank_name
 			if self.preset_name:
 				subpath += "/" + self.preset_name
 		elif self.preset_name:
