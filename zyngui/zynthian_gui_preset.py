@@ -66,25 +66,26 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def show_options(self):
-		fname = self.list_data[self.index][2]
+		preset = self.list_data[self.index]
+		fname = preset[2]
 		fav = "[  ] Favourite"
 		if fname[0] == '*': fav = "[x] Favourite"
 		options = {
-			fav: True,
-			"Save": True,
-			"Rename": True,
-			"Delete": True
+			fav: preset,
+			"Save": preset,
+			"Rename": preset,
+			"Delete": preset
 		}
 		self.zyngui.screens['option'].config("Preset %s" % fname, options, self.options_cb)
 		self.zyngui.show_modal('option')
 
 
-	def options_cb(self, option, param):
-		fpath=self.list_data[self.index][0]
-		fname=self.list_data[self.index][2]
+	def options_cb(self, option, preset):
+		fpath=preset[0]
+		fname=preset[2]
 
 		if option[-9:] == "Favourite":
-			self.zyngui.curlayer.toggle_preset_fav(self.list_data[self.index])
+			self.zyngui.curlayer.toggle_preset_fav(preset)
 		elif option == "Save":
 			self.zyngui.show_keyboard(self.save_preset, fname)
 		elif option == "Rename":
