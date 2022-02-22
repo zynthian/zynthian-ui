@@ -1189,7 +1189,7 @@ class zynthian_gui:
 				self.toggle_modal("main")
 
 		elif cuia == "PRESET":
-			if self.modal_screen=='preset':
+			if self.modal_screen=='preset' and len(self.curlayer.bank_list)>1:
 				self.toggle_modal('bank')
 			else:
 				self.toggle_modal('preset')
