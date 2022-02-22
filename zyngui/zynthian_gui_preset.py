@@ -54,7 +54,6 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if not self.zyngui.curlayer:
 			logging.error("Can't show preset list for None layer!")
 			return
-
 		self.index=self.zyngui.curlayer.get_preset_index()
 		super().show()
 
@@ -119,7 +118,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		try:
 			self.zyngui.curlayer.engine.zynapi_rename_preset(fpath, fname)
 			#TODO Reload presets which might mean updating cache, etc.
-		except e as Exception:
+		except Exception as e:
 			logging.warning("Failed to rename preset: %s", e)
 
 
@@ -132,7 +131,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def delete_confirmed(self, fpath):
 		try:
 			self.zyngui.curlayer.engine.zynapi_remove_preset(fpath)
-		except e as Exception:
+		except Exception as e:
 			logging.warning("Failed to delete preset: %s", e)
 
 
