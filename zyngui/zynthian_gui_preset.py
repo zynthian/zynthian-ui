@@ -74,7 +74,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			if t == 'S':
 				if len(self.zyngui.curlayer.bank_list)>1:
 					self.zyngui.show_modal('bank')
-				return True
+					return True
 		elif swi == 2:
 			if t == 'S':
 				self.zyngui.toggle_favorites()
