@@ -54,7 +54,6 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if not self.zyngui.curlayer:
 			logging.error("Can't show preset list for None layer!")
 			return
-		self.index=self.zyngui.curlayer.get_preset_index()
 		super().show()
 
 

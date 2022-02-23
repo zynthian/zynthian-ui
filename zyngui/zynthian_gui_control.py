@@ -350,6 +350,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
 					self.zyngui.exit_midi_learn_mode()
 				else:
+					self.zyngui.screens['preset'].select_listbox(self.zyngui.curlayer.get_preset_index())
 					self.zyngui.show_modal('preset')
 				return True
 
