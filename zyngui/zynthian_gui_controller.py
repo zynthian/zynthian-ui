@@ -600,7 +600,7 @@ class zynthian_gui_controller:
 				#Float
 				else:
 					self.max_value=self.n_values=200
-					self.format_print="{0:.3g}"
+					self.format_print="{0:.3f}"
 					if self.logarithmic:
 						self.scale_value = self.zctrl.value_max/self.zctrl.value_min
 						self.log_scale_value = math.log(self.scale_value)
