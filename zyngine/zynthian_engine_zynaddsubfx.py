@@ -42,6 +42,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
+	bend_ticks = [ [str(x) for x in range(-64,64)], [x for x in range(-6400,6400,100)] ]
+
 	# MIDI Controllers
 	_ctrls=[
 		['volume',7,115],
@@ -58,24 +60,27 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		['assign mode','/part$i/polyType','poly',[ [ 'poly', 'mono', 'legato', 'latch'], [0, 1, 2, 3 ] ] ],
 
 		#['portamento on/off',65,'off','off|on'],
-		['portamento on/off','/part$i/ctl/portamento.portamento','off','off|on'],
+		['portamento enable','/part$i/ctl/portamento.portamento','off','off|on'],
+		['portamento automode','/part$i/ctl/portamento.automode','on','off|on'],
+		['portamento receive','/part$i/ctl/portamento.receive','on','off|on'],
+
 		['portamento time','/part$i/ctl/portamento.time',64],
-		['portamento updown','/part$i/ctl/portamento.updowntimestretch',64],
+		['portamento updown time','/part$i/ctl/portamento.updowntimestretch',64],
+		['portamento thresh type','/part$i/ctl/portamento.pitchthreshtype','on','off|on'],
 		['portamento thresh','/part$i/ctl/portamento.pitchthresh',3],
 
 		['portaprop on/off','/part$i/ctl/portamento.proportional','off','off|on'],
-		['portaprop rate','/part$i/ctl/portamento.propRate',64],
-		['portaprop depth','/part$i/ctl/portamento.propDepth',64],
-		['portathresh type','/part$i/ctl/portamento.pitchthreshtype','off','off|on'],
+		['portaprop rate','/part$i/ctl/portamento.propRate',80],
+		['portaprop depth','/part$i/ctl/portamento.propDepth',90],
 
 		['modulation',1,0],
 		['modulation amplitude',76,127],
-		['modwheel depth','/part$i/ctl/modwheel.depth',64],
+		['modwheel depth','/part$i/ctl/modwheel.depth',80],
 		['modwheel exp','/part$i/ctl/modwheel.exponential','off','off|on'],
 
 		['pitchwheel split','/part$i/ctl/pitchwheel.is_split','off','off|on'],
-		['bendrange up','/part$i/ctl/pitchwheel.bendrange',127],
-		['bendrange down','/part$i/ctl/pitchwheel.bendrange_down',127],
+		['bendrange','/part$i/ctl/pitchwheel.bendrange','2',bend_ticks],
+		['bendrange down','/part$i/ctl/pitchwheel.bendrange_down',0,127],
 
 		['resonance center',77,64],
 		['resonance bandwidth',78,64],
@@ -98,10 +103,11 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	_ctrl_screens=[
 		['main',['volume','panning','filter cutoff','filter resonance']],
 		['mode',['drum mode','sustain','assign mode','voice limit']],
-		['portamento',['portamento on/off','portamento time','portamento updown','portamento thresh']],
-		['portamento prop',['portaprop on/off','portaprop rate','portaprop depth','portathresh type']],
+		['portamento',['portamento enable','portamento automode','portamento receive']],
+		['portamento time',['portamento time','portamento updown time','portamento thresh','portamento thresh type']],
+		['portamento prop',['portaprop on/off','portaprop rate','portaprop depth']],
 		['modulation',['modulation','modulation amplitude','modwheel depth','modwheel exp']],
-		['pitchwheel',['pitchwheel split','bendrange up','bendrange down']],
+		['pitchwheel',['pitchwheel split','bendrange','bendrange down']],
 		['resonance',['resonance center','rescenter depth','resonance bandwidth','resbw depth']],
 		['bandwidth',['bandwidth','bandwidth depth','bandwidth exp']],
 		['depth',['panning depth','filter.cutoff depth','filter.Q depth']],
