@@ -61,11 +61,11 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 		#['portamento on/off',65,'off','off|on'],
 		['portamento enable','/part$i/ctl/portamento.portamento','off','off|on'],
-		['portamento automode','/part$i/ctl/portamento.automode','on','off|on'],
+		['portamento auto','/part$i/ctl/portamento.automode','on','off|on'],
 		['portamento receive','/part$i/ctl/portamento.receive','on','off|on'],
 
 		['portamento time','/part$i/ctl/portamento.time',64],
-		['portamento updown time','/part$i/ctl/portamento.updowntimestretch',64],
+		['portamento up/down','/part$i/ctl/portamento.updowntimestretch',64],
 		['portamento thresh type','/part$i/ctl/portamento.pitchthreshtype','on','off|on'],
 		['portamento thresh','/part$i/ctl/portamento.pitchthresh',3],
 
@@ -78,9 +78,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		['modwheel depth','/part$i/ctl/modwheel.depth',80],
 		['modwheel exp','/part$i/ctl/modwheel.exponential','off','off|on'],
 
-		['pitchwheel split','/part$i/ctl/pitchwheel.is_split','off','off|on'],
 		['bendrange','/part$i/ctl/pitchwheel.bendrange','2',bend_ticks],
-		['bendrange down','/part$i/ctl/pitchwheel.bendrange_down',0,127],
+		['bendrange split','/part$i/ctl/pitchwheel.is_split','off','off|on'],
+		['bendrange down','/part$i/ctl/pitchwheel.bendrange_down',0,bend_ticks],
 
 		['resonance center',77,64],
 		['resonance bandwidth',78,64],
@@ -103,11 +103,11 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	_ctrl_screens=[
 		['main',['volume','panning','filter cutoff','filter resonance']],
 		['mode',['drum mode','sustain','assign mode','voice limit']],
-		['portamento',['portamento enable','portamento automode','portamento receive']],
-		['portamento time',['portamento time','portamento updown time','portamento thresh','portamento thresh type']],
+		['portamento',['portamento enable','portamento auto','portamento receive']],
+		['portamento time',['portamento time','portamento up/down','portamento thresh','portamento thresh type']],
 		['portamento prop',['portaprop on/off','portaprop rate','portaprop depth']],
 		['modulation',['modulation','modulation amplitude','modwheel depth','modwheel exp']],
-		['pitchwheel',['pitchwheel split','bendrange','bendrange down']],
+		['pitchwheel',['bendrange split','bendrange down','bendrange']],
 		['resonance',['resonance center','rescenter depth','resonance bandwidth','resbw depth']],
 		['bandwidth',['bandwidth','bandwidth depth','bandwidth exp']],
 		['depth',['panning depth','filter.cutoff depth','filter.Q depth']],
