@@ -272,7 +272,7 @@ def get_plugin_type(plugin):
 # LV2 Bank/Preset management
 #------------------------------------------------------------------------------
 
-def generate_all_presets_cache(refresh=True, workaround=False):
+def generate_all_presets_cache(refresh=True):
 	global world
 
 	if refresh:
@@ -282,7 +282,7 @@ def generate_all_presets_cache(refresh=True, workaround=False):
 		_generate_plugin_presets_cache(plugin)
 
 
-def generate_plugin_presets_cache(plugin_url, refresh=True, workaround=False):
+def generate_plugin_presets_cache(plugin_url, refresh=True):
 	global world
 
 	if refresh:
@@ -590,9 +590,9 @@ if __name__ == '__main__':
 
 			if len(sys.argv)>2:
 				plugin_url = sys.argv[2]
-				generate_plugin_presets_cache(plugin_url, False, True)
+				generate_plugin_presets_cache(plugin_url, False)
 			else:
-				generate_all_presets_cache(False, True)
+				generate_all_presets_cache(False)
 
 		elif sys.argv[1]=="ports":
 			if len(sys.argv)>2:
