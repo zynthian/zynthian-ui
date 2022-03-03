@@ -650,12 +650,16 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def start_vncserver(self, save_config=True):
 		# Start VNC for Zynthian-UI
 		if not zynconf.is_service_active("vncserver0"):
+			self.zyngui.start_loading()
+
 			try:
 				logging.info("STARTING VNC-UI SERVICE")
 				check_output("systemctl start novnc0", shell=True)
 				zynthian_gui_config.vncserver_enabled = 1
 			except Exception as e:
 				logging.error(e)
+
+			self.zyngui.stop_loading()
 
 		# Start VNC for Engine's native GUIs
 		if not zynconf.is_service_active("vncserver1"):
@@ -694,6 +698,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def stop_vncserver(self, save_config=True):
 		# Stop VNC for Zynthian-UI
 		if zynconf.is_service_active("vncserver0"):
+			self.zyngui.start_loading()
+
 			try:
 				logging.info("STOPPING VNC-UI SERVICE")
 				check_output("systemctl stop vncserver0", shell=True)
@@ -701,8 +707,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			except Exception as e:
 				logging.error(e)
 
+			self.zyngui.stop_loading()
+
 		# Start VNC for Engine's native GUIs
-		if not zynconf.is_service_active("vncserver1"):
+		if zynconf.is_service_active("vncserver1"):
 			self.zyngui.start_loading()
 
 			# Save state and stop engines

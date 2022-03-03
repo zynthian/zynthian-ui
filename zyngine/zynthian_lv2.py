@@ -91,7 +91,7 @@ def load_plugins():
 		convert_from_all_plugins()
 
 	except Exception as e:
-		logging.warning('Loading list of LV2-Plugins failed: {}'.format(e))
+		logging.debug('Loading list of LV2-Plugins failed: {}'.format(e))
 		generate_plugins_config_file()
 
 	get_plugins_by_type()
@@ -129,7 +129,7 @@ def	is_plugin_ui(plugin):
 				if ttl.find("a ui:X11UI")>0 or ttl.find("a lv2ui:X11UI")>0:
 					return "X11UI"
 		except:
-			logging.info("Can't find UI for plugin %s", str(plugin.get_name()))
+			logging.debug("Can't find UI for plugin %s", str(plugin.get_name()))
 
 	return None
 
@@ -138,7 +138,7 @@ def generate_plugins_config_file(refresh=True):
 	global world, plugins, plugins_mtime
 	genplugins = OrderedDict()
 
-	start = int(round(time.time() * 1000))
+	start = int(round(time.time()))
 	try:
 		if refresh:
 			init_lilv()
@@ -166,8 +166,8 @@ def generate_plugins_config_file(refresh=True):
 	except Exception as e:
 		logging.error('Generating list of LV2-Plugins failed: {}'.format(e))
 
-	end = int(round(time.time() * 1000))
-	logging.info('LV2 plugin list generation took {}s'.format(end-start))
+	dt = int(round(time.time())) - start
+	logging.debug('LV2 plugin list generation took {}s'.format(dt))
 
 
 def get_plugins_by_type():
@@ -194,7 +194,7 @@ def convert_from_all_plugins():
 			except:
 				generate_plugins_config_file()
 
-			logging.info("Converting LV2 config files ...")
+			logging.debug("Converting LV2 config files ...")
 
 			for name, properties in plugins.items():
 				if name in enplugins:
@@ -278,8 +278,7 @@ def generate_all_presets_cache(refresh=True):
 	if refresh:
 		init_lilv()
 
-	plugins = world.get_all_plugins()
-	for plugin in plugins:
+	for plugin in world.get_all_plugins():
 		_generate_plugin_presets_cache(plugin)
 
 
@@ -289,8 +288,12 @@ def generate_plugin_presets_cache(plugin_url, refresh=True):
 	if refresh:
 		init_lilv()
 
-	plugins = world.get_all_plugins()
-	return _generate_plugin_presets_cache(plugins[plugin_url])
+	wplugins = world.get_all_plugins()
+	return _generate_plugin_presets_cache(wplugins[plugin_url])
+
+
+def _get_plugin_preset_cache_fpath(plugin_name):
+	return  "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), sanitize_fname(plugin_name))
 
 
 def _generate_plugin_presets_cache(plugin):
@@ -308,7 +311,7 @@ def _generate_plugin_presets_cache(plugin):
 	for bank in banks:
 		label = world.get(bank, world.ns.rdfs.label, None)
 		if label is None:
-			logging.warning("Bank <{}> has no label!".format(bank))
+			logging.debug("Bank <{}> has no label!".format(bank))
 
 		banks_dict[str(bank)] = str(label)
 		presets_info[str(label)] = {
@@ -330,16 +333,16 @@ def _generate_plugin_presets_cache(plugin):
 
 		label = world.get(preset, world.ns.rdfs.label, None)
 		if label is None:
-			logging.warning("Preset <{}> has no label!".format(preset))
+			logging.debug("Preset <{}> has no label!".format(preset))
 
 		bank = world.get(preset, world.ns.presets.bank, None)
 		if bank is None:
-			logging.info("Preset <{}> has no bank!".format(preset))
+			logging.debug("Preset <{}> has no bank!".format(preset))
 		else:
 			try:
 				bank = banks_dict[str(bank)]
 			except:
-				logging.warning("Bank <{}> doesn't exist!".format(bank))
+				logging.debug("Bank <{}> doesn't exist!".format(bank))
 				bank = None
 
 		presets_info[str(bank)]['presets'].append({
@@ -359,7 +362,7 @@ def _generate_plugin_presets_cache(plugin):
 			presets_info[k]['presets'] = sorted(presets_info[k]['presets'], key=lambda k: k['label'])
 
 	# Save cache file
-	fpath_cache = "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), sanitize_fname(plugin_name))
+	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
 	try:
 		with open(fpath_cache,'w') as f:
 			json.dump(presets_info, f)
@@ -370,7 +373,7 @@ def _generate_plugin_presets_cache(plugin):
 
 
 def get_plugin_presets(plugin_name):
-	fpath_cache = "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), sanitize_fname(plugin_name))
+	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
 	try:
 		with open(fpath_cache) as f:
 			presets_info = json.load(f, object_pairs_hook=OrderedDict)
@@ -384,6 +387,55 @@ def get_plugin_presets(plugin_name):
 			presets_info = OrderedDict()
 
 	return presets_info
+
+
+def add_plugin_preset_to_cache(plugin_name, bank_label, preset_label, preset_uri):
+	# Load current presets cache
+	presets_info = get_plugin_presets(plugin_name)
+
+	# Check that bank does exist
+	if bank_label not in presets_info:
+		logging.error("Bank doesn't exist")
+		
+	# Insert new preset
+	presets_info[bank_label]['presets'].append({
+		'label': prest_label,
+		'url': preset_uri
+	})
+
+	# Re-sort bank presets
+	presets_info[bank_label]['presets'] = sorted(presets_info[bank_label]['presets'], key=lambda k: k['label'])
+
+	# Save preset cache to file
+	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
+	try:
+		with open(fpath_cache,'w') as f:
+			json.dump(presets_info, f)
+	except Exception as e:
+		logging.error("Can't save presets cache file '{}': {}".format(fpath_cache, e))
+
+
+def remove_plugin_preset_from_cache(plugin_name, bank_label, preset_uri):
+	# Load current presets cache
+	presets_info = get_plugin_presets(plugin_name)
+
+	# Check that bank does exist
+	if bank_label not in presets_info:
+		logging.error("Bank doesn't exist")
+		
+	# Insert new preset
+	for i in range(len(presets_info[bank_label]['presets'])):
+		if preset_uri==presets_info[bank_label]['presets'][i]['preset_url']:
+			del(presets_info[bank_label]['presets'][i])
+			break
+
+	# Save preset cache to file
+	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
+	try:
+		with open(fpath_cache,'w') as f:
+			json.dump(presets_info, f)
+	except Exception as e:
+		logging.error("Can't save presets cache file '{}': {}".format(fpath_cache, e))
 
 
 def sanitize_fname(s):
@@ -411,8 +463,8 @@ def sanitize_fname(s):
 def get_plugin_ports(plugin_url):
 	global world
 
-	plugins = world.get_all_plugins()
-	plugin = plugins[plugin_url]
+	wplugins = world.get_all_plugins()
+	plugin = wplugins[plugin_url]
 
 	ports_info = OrderedDict()
 	for i in range(plugin.get_num_ports()):
@@ -493,7 +545,7 @@ def get_plugin_ports(plugin_url):
 				'scale_points': sp
 			}
 			ports_info[i] = info
-			#logging.debug("PORT {} => {}".format(i, info))
+			logging.debug("PORT {} => {}".format(i, info))
 
 	return ports_info
 
@@ -508,24 +560,35 @@ def get_node_value(node):
 
 #------------------------------------------------------------------------------
 
+# Init Lilv
 world = lilv.World()
 init_lilv()
+
+# Load presets from cache
 load_plugins()
 
 if __name__ == '__main__':
 
 	#log_level=logging.DEBUG
-	log_level=logging.WARNING
+	#log_level=logging.WARNING
+	log_level=logging.INFO
 	logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
 	logging.getLogger().setLevel(level=log_level)
 
+	start = int(round(time.time()))
 	if len(sys.argv)>1:
 		if sys.argv[1]=="plugins":
 			generate_plugins_config_file(False)
 
 		elif sys.argv[1]=="presets":
+			#workaround to fix segfault:
+			for plugin in world.get_all_plugins():
+				plugin.get_name()
+			logging.info('Workaround took {}s'.format(int(round(time.time())) - start))
+
 			if len(sys.argv)>2:
-				generate_plugin_presets_cache(sys.argv[2])
+				plugin_url = sys.argv[2]
+				generate_plugin_presets_cache(plugin_url, False)
 			else:
 				generate_all_presets_cache(False)
 
@@ -552,5 +615,7 @@ if __name__ == '__main__':
 
 	#generate_plugin_presets_cache("http://code.google.com/p/amsynth/amsynth")
 	#print(get_plugin_presets("Dexed"))
+
+	logging.info('Command took {}s'.format(int(round(time.time())) - start))
 
 #------------------------------------------------------------------------------

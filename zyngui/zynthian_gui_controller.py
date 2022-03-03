@@ -445,20 +445,20 @@ class zynthian_gui_controller:
 			maxlen=max([rfont.measure(w) for w in [words[0]+' '+words[1], words[2]+' '+words[3]]])
 			max_fs=max_fs-1
 		fs=int((zynthian_gui_config.ctrl_width-6)*max_fs/maxlen)
-		fs=min(max_fs,max(int(0.7*zynthian_gui_config.font_size),fs))
+		fs=min(max_fs,max(int(0.8*zynthian_gui_config.font_size),fs))
 		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,fs))
 		#Set title label
 		if not self.label_title:
 			self.label_title = self.canvas.create_text(3, 4,
 				anchor=tkinter.NW,
 				justify=tkinter.LEFT,
-				width=maxlen,
+				width=zynthian_gui_config.ctrl_width-6,
 				text=self.title,
 				font=(zynthian_gui_config.font_family,fs),
 				fill=zynthian_gui_config.color_panel_tx)
 		else:
 			self.canvas.itemconfigure(self.label_title,
-				width=maxlen,
+				width=zynthian_gui_config.ctrl_width-6,
 				text=self.title,
 				font=(zynthian_gui_config.font_family,fs))
 
@@ -600,7 +600,7 @@ class zynthian_gui_controller:
 				#Float
 				else:
 					self.max_value=self.n_values=200
-					self.format_print="{0:.3g}"
+					self.format_print="{0:.3f}"
 					if self.logarithmic:
 						self.scale_value = self.zctrl.value_max/self.zctrl.value_min
 						self.log_scale_value = math.log(self.scale_value)
