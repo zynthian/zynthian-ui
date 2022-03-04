@@ -191,7 +191,7 @@ class zynthian_controller:
 				self.labels = maxval
 
 		# Detect toggle (on/off)
-		if self.labels and len(self.labels)==2 and self.labels[0].lower() in ("off","on") and self.labels[1].lower() in ("off","on"):
+		if self.labels and len(self.labels)==2:
 			self.is_toggle = True
 
 		self._configure()
@@ -380,7 +380,7 @@ class zynthian_controller:
 
 	def get_ctrl_osc_val(self):
 		if self.is_toggle:
-			if self.get_value2label().lower()=='on':
+			if self.value>0:
 				return True
 			else:
 				return False

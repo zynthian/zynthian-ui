@@ -66,7 +66,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 		['portamento time','/part$i/ctl/portamento.time',64],
 		['portamento up/down','/part$i/ctl/portamento.updowntimestretch',64],
-		['threshold type','/part$i/ctl/portamento.pitchthreshtype','<=',[ ['>=', '<='], [0, 127]]],
+		['threshold type','/part$i/ctl/portamento.pitchthreshtype','<=',['<=','>=']],
 		['threshold','/part$i/ctl/portamento.pitchthresh',3],
 
 		['portaprop on/off','/part$i/ctl/portamento.proportional','off','off|on'],
