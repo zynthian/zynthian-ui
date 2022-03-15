@@ -1170,14 +1170,28 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		lib_zyncore.set_value_zynpot(num, value, 0)
 
 
+	# Function to handle CUIA NEXT command
+	def next(self):
+		self.select_channel(self.selected_channel+1)
+
+
+	# Function to handle CUIA PREV command
+	def prev(self):
+		self.select_channel(self.selected_channel-1)
+
+
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
-		self.select_channel(self.selected_channel+1)
+		#self.select_channel(self.selected_channel+1)
+		self.toggle_solo()
+		self.redraw_mixer_controls()
 
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		self.select_channel(self.selected_channel-1)
+		#self.select_channel(self.selected_channel-1)
+		self.toggle_mute()
+		self.redraw_mixer_controls()
 
 
 	# Function to handle CUIA BACK_UP command
@@ -1218,22 +1232,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle OSC messages
 	def osc(self, path, args, types, src):
 #		print("zynthian_gui_mixer::osc", path, args, types)
-		if path[:6] == "volume" or path[:5] == "fader":
+		if path[:6] == "VOLUME" or path[:5] == "FADER":
 			try:
 				self.set_volume(args[0], int(path[5:]))
 			except:
 				pass
-		elif path[:7] == "balance":
+		elif path[:7] == "BALANCE":
 			try:
 				self.set_balance(args[0], int(path[7:]))
 			except:
 				pass
-		elif path[:4] == "mute":
+		elif path[:4] == "MUTE":
 			try:
 				self.set_mute(int(args[0]), int(path[4:]))
 			except:
 				pass
-		elif path[:4] == "solo":
+		elif path[:4] == "SOLO":
 			try:
 				self.set_solo(int(args[0]), int(path[4:]))
 			except:

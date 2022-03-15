@@ -263,7 +263,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_clone(self):
 		self.zyngui.screens['midi_chan'].set_mode("CLONE", self.layer.midi_chan)
-		self.zyngui.show_modal('midi_chan')
+		self.zyngui.show_screen('midi_chan')
 
 
 	def layer_note_range(self):
@@ -305,7 +305,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_remove_confirmed(self, params=None):
 		self.zyngui.screens['layer'].remove_root_layer(self.layer_index)
-		self.zyngui.show_active_screen()
+		self.zyngui.close_screen()
 
 
 	def layer_midi_unlearn(self):
@@ -338,7 +338,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def audiofx_presets(self):
 		self.zyngui.set_curlayer(self.audiofx_layer, True)
-		self.zyngui.show_modal('bank')
+		self.zyngui.show_screen('bank')
 		# If there is only one bank, jump to preset selection
 		if len(self.audiofx_layer.bank_list)<=1:
 			self.zyngui.screens['bank'].select_action(0)
