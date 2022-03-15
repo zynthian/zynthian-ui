@@ -671,7 +671,7 @@ class zynthian_engine(zynthian_basic_engine):
 				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
 
 				#Refresh GUI controller in screen when needed ...
-				if (self.zyngui.active_screen=='control' and not self.zyngui.modal_screen) or self.zyngui.modal_screen=='alsa_mixer':
+				if self.zyngui.current_screen in ('control', 'alsa_mixer'):
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 
 		except Exception as e:
