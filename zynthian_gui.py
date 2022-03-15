@@ -66,6 +66,7 @@ from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_layer import zynthian_gui_layer
 from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
+from zyngui.zynthian_gui_sublayer_options import zynthian_gui_sublayer_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
@@ -542,6 +543,7 @@ class zynthian_gui:
 		self.screens['engine'] = zynthian_gui_engine()
 		self.screens['layer'] = zynthian_gui_layer()
 		self.screens['layer_options'] = zynthian_gui_layer_options()
+		self.screens['sublayer_options'] = zynthian_gui_sublayer_options()
 		self.screens['snapshot'] = zynthian_gui_snapshot()
 		self.screens['midi_chan'] = zynthian_gui_midi_chan()
 		self.screens['midi_cc'] = zynthian_gui_midi_cc()
@@ -627,6 +629,8 @@ class zynthian_gui:
 
 
 	def show_screen(self, screen=None, hmode=SCREEN_HMODE_ADD):
+		self.cancel_screen_timer()
+
 		if screen is None:
 			if self.current_screen:
 				screen = self.current_screen
@@ -679,15 +683,28 @@ class zynthian_gui:
 				last_screen = "audio_mixer"
 				break
 
-		self.cancel_screen_timer()
 		if back:
 			self.show_screen(last_screen)
 		else:
+			self.cancel_screen_timer()
 			self.screens[self.current_screen].hide()
 
 
 	def close_modal(self):
 		self.close_screen()
+
+
+	def back_screen(self):
+		try:
+			screen_back = self.screens[self.current_screen].back_action()
+		except AttributeError as e:
+			screen_back = None
+
+		if screen_back:
+			logging.debug("SCREEN BACK => %s", screen_back)
+			self.replace_screen(screen_back)
+		else:
+			self.close_screen(back=True)
 
 
 	def close_screen_timer(self, tms=3000):
@@ -1400,17 +1417,7 @@ class zynthian_gui:
 			self.show_screen("main")
 
 		elif i==1:
-			try:
-				screen_back = self.screens[self.current_screen].back_action()
-			except AttributeError as e:
-				screen_back = None
-
-			if screen_back:
-				logging.debug("SCREEN BACK => %s", screen_back)
-				self.close_screen(back=False)
-				self.show_screen(screen_back)
-			else:
-				self.close_screen(back=True)
+			self.back_screen()
 
 		elif i==2:
 			# MIDI Learning
