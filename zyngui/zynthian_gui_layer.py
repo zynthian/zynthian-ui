@@ -251,12 +251,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			"Parallel": True
 		}
 		self.zyngui.screens['option'].config("Chain Mode", chain_modes, self.cb_chain_options_modal)
-		self.zyngui.show_modal('option')
+		self.zyngui.show_screen('option')
 
 
 	def cb_chain_options_modal(self, option, chain_parallel):
 		self.layer_chain_parallel = chain_parallel
-		self.zyngui.show_modal('engine')
+		self.zyngui.show_screen('engine')
 
 
 	def add_layer(self, etype):
@@ -264,7 +264,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.replace_layer_index = None
 		self.layer_chain_parallel = False
 		self.zyngui.screens['engine'].set_engine_type(etype)
-		self.zyngui.show_modal('engine')
+		self.zyngui.show_screen('engine')
 
 
 	def replace_layer(self, i):
@@ -272,7 +272,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.replace_layer_index = i
 		self.layer_chain_parallel = False
 		self.zyngui.screens['engine'].set_engine_type(self.layers[i].engine.type, self.layers[i].midi_chan)
-		self.zyngui.show_modal('engine')
+		self.zyngui.show_screen('engine')
 
 
 	def add_fxchain_layer(self, midi_chan):
@@ -283,7 +283,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if self.get_fxchain_count(midi_chan)>0:
 			self.show_chain_options_modal()
 		else:
-			self.zyngui.show_modal('engine')
+			self.zyngui.show_screen('engine')
 
 
 	def replace_fxchain_layer(self, i):
@@ -298,7 +298,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if self.get_midichain_count(midi_chan)>0:
 			self.show_chain_options_modal()
 		else:
-			self.zyngui.show_modal('engine')
+			self.zyngui.show_screen('engine')
 
 
 	def replace_midichain_layer(self, i):
@@ -323,7 +323,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		elif midi_chan is None:
 			self.replace_layer_index=None
 			self.zyngui.screens['midi_chan'].set_mode("ADD", 0, self.get_free_midi_chans())
-			self.zyngui.show_modal('midi_chan')
+			self.zyngui.show_screen('midi_chan')
 
 		else:
 			self.add_layer_midich(midi_chan)

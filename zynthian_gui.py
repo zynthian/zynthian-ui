@@ -770,7 +770,7 @@ class zynthian_gui:
 
 
 	def calibrate_touchscreen(self):
-		self.show_modal('touchscreen_calibration')
+		self.show_screen('touchscreen_calibration')
 
 
 	def layer_control(self, layer=None):

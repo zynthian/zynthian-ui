@@ -258,7 +258,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		chan_list = self.zyngui.screens['layer'].get_free_midi_chans() + [self.layer.midi_chan]
 		chan_list.sort()
 		self.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan, chan_list)
-		self.zyngui.show_modal('midi_chan')
+		self.zyngui.show_screen('midi_chan')
 
 
 	def layer_clone(self):
@@ -268,21 +268,21 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_note_range(self):
 		self.zyngui.screens['midi_key_range'].config(self.layer.midi_chan)
-		self.zyngui.show_modal('midi_key_range')
+		self.zyngui.show_screen('midi_key_range')
 
 
 	def layer_transpose(self):
-		self.zyngui.show_modal('transpose')
+		self.zyngui.show_screen('transpose')
 
 
 	def layer_midi_routing(self):
 		self.zyngui.screens['midi_out'].set_layer(self.layer)
-		self.zyngui.show_modal('midi_out')
+		self.zyngui.show_screen('midi_out')
 
 
 	def layer_audio_routing(self):
 		self.zyngui.screens['audio_out'].set_layer(self.layer)
-		self.zyngui.show_modal('audio_out')
+		self.zyngui.show_screen('audio_out')
 
 
 	def layer_toggle_mono(self):
@@ -292,7 +292,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_audio_capture(self):
 		self.zyngui.screens['audio_in'].set_layer(self.layer)
-		self.zyngui.show_modal('audio_in')
+		self.zyngui.show_screen('audio_in')
 
 
 	def layer_replace(self):
@@ -399,7 +399,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def midifx_presets(self):
 		self.zyngui.set_curlayer(self.midifx_layer, True)
-		self.zyngui.show_modal('bank')
+		self.zyngui.show_screen('bank')
 		# If there is only one bank, jump to preset selection
 		if len(self.midifx_layer.bank_list)<=1:
 			self.zyngui.screens['bank'].select_action(0)
