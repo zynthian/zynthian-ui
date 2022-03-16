@@ -1089,16 +1089,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Selected channel volume & balance
 		selected_midich = self.get_midi_chan(self.selected_channel)
 		value = int(zynmixer.get_level(selected_midich) * 100)
-		lib_zyncore.set_value_zynpot(ENC_LAYER, value, 0)
+		lib_zyncore.set_value_noflag_zynpot(ENC_LAYER, value, 0)
 		value = 50 + int(zynmixer.get_balance(selected_midich) * 50)
-		lib_zyncore.set_value_zynpot(ENC_BACK, value, 0)
+		lib_zyncore.set_value_noflag_zynpot(ENC_BACK, value, 0)
 
 		# Master channel volume
 		value = int(zynmixer.get_level(self.get_midi_chan(self.number_layers)) * 100)
-		lib_zyncore.set_value_zynpot(ENC_SNAPSHOT, value, 0)
+		lib_zyncore.set_value_noflag_zynpot(ENC_SNAPSHOT, value, 0)
 
 		# Selector encoder
-		lib_zyncore.set_value_zynpot(ENC_SELECT, 4 * self.selected_channel, 0)
+		lib_zyncore.set_value_noflag_zynpot(ENC_SELECT, 4 * self.selected_channel, 0)
 
 
 	# Function to handle zyncoder polling.
