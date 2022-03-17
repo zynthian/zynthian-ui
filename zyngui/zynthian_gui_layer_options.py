@@ -37,7 +37,6 @@ from zynlibs.zynmixer import *
 
 class zynthian_gui_layer_options(zynthian_gui_selector):
 
-
 	def __init__(self):
 		self.reset()
 		super().__init__('Option', True)
