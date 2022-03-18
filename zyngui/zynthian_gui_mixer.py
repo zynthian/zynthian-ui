@@ -523,7 +523,7 @@ class zynthian_gui_mixer_strip():
 	def on_fader_wheel_down(self, event):
 		if self.layer is None:
 			return
-		self.on_select_cb(self.layer)
+#		self.on_select_cb(self.layer)
 		self.set_volume(zynmixer.get_level(self.layer.midi_chan) - 0.02)
 		self.redraw_controls()
 		self.on_fader_cb()
@@ -534,7 +534,7 @@ class zynthian_gui_mixer_strip():
 	def on_fader_wheel_up(self, event):
 		if self.layer is None:
 			return
-		self.on_select_cb(self.layer)
+#		self.on_select_cb(self.layer)
 		self.set_volume(zynmixer.get_level(self.layer.midi_chan) + 0.02)
 		self.redraw_controls()
 		self.on_fader_cb()
@@ -545,7 +545,7 @@ class zynthian_gui_mixer_strip():
 	def on_balance_wheel_down(self, event):
 		if self.layer is None:
 			return
-		self.on_select_cb(self.layer)
+#		self.on_select_cb(self.layer)
 		self.set_balance(zynmixer.get_balance(self.layer.midi_chan) - 0.02)
 		self.redraw_controls()
 
@@ -555,7 +555,7 @@ class zynthian_gui_mixer_strip():
 	def on_balance_wheel_up(self, event):
 		if self.layer is None:
 			return
-		self.on_select_cb(self.layer)
+#		self.on_select_cb(self.layer)
 		self.set_balance(zynmixer.get_balance(self.layer.midi_chan) + 0.02)
 		self.redraw_controls()
 
@@ -717,10 +717,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		edit_button_y += self.edit_height
 		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill=zynthian_gui_config.color_bg, tags=("edit_control", "cancel_button"))
 		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="CANCEL", state="hidden", tags=("edit_control", "cancel_button"), font=font, justify='center')
-
-		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "0":
-			self.main_canvas.bind("<Button-5>", self.on_fader_wheel_down)
-			self.main_canvas.bind("<Button-4>", self.on_fader_wheel_up)
 
 		self.main_canvas.tag_bind("mute_button", "<ButtonRelease-1>", self.on_mute_release)
 		self.main_canvas.tag_bind("solo_button", "<ButtonRelease-1>", self.on_solo_release)
@@ -1372,27 +1368,3 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	event: Mouse event
 	def on_cancel_press(self, event):
 		self.set_mixer_mode()
-
-
-	# Function to handle global mouse wheel down
-	#	event: Mouse event
-	def on_fader_wheel_down(self, event):
-		if self.selected_chain_index is None:
-			return
-		level = zynmixer.get_level(self.selected_layer.midi_chan) - 0.02
-		if level > 1: level = 1
-		if level < 0: level = 0
-		self.set_volume(level)
-		self.redraw_mixer_controls()
-
-
-	# Function to handle global mouse wheel up
-	#	event: Mouse event
-	def on_fader_wheel_up(self, event):
-		if self.selected_chain_index is None:
-			return
-		level = zynmixer.get_level(self.selected_layer.midi_chan) + 0.02
-		if level > 1: level = 1
-		if level < 0: level = 0
-		self.set_volume(level)
-		self.redraw_mixer_controls()
