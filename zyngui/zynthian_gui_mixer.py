@@ -895,7 +895,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function change to mixer mode
 	def set_mixer_mode(self):
 		self.main_canvas.itemconfig("edit_control", state="hidden")
-		layers = self.zyngui.screens['layer'].root_layers
+		layers = self.zyngui.screens['layer'].get_root_layers()
 		self.number_layers = len(layers)
 		for offset in range(len(self.visible_mixer_strips)):
 			index = self.mixer_strip_offset + offset
