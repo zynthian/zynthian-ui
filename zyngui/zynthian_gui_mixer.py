@@ -727,11 +727,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.tag_bind("cancel_button", "<ButtonPress-1>", self.on_cancel_press)
 
 		# Horizontal scroll (via mouse wheel) area
+		'''
 		legend_height = self.visible_mixer_strips[0].legend_height 
 		self.horiz_scroll_bg = self.main_canvas.create_rectangle(0, self.height - self.legend_height, self.width, self.height, width=0)
 		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "1":
 			self.main_canvas.tag_bind(self.horiz_scroll_bg, "<Button-4>", self.on_fader_wheel_up)
 			self.main_canvas.tag_bind(self.horiz_scroll_bg, "<Button-5>", self.on_fader_wheel_down)
+		'''
 
 		zynmixer.enable_dpm(False) # Disable DPM by default - they get enabled when mixer is shown
 		if zynthian_gui_config.show_cpu_status:
