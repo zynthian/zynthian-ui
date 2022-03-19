@@ -71,13 +71,13 @@ class zynthian_gui_mixer_strip():
 	#	width: Width of fader
 	#	height: Height of fader
 	#	layer: Layer object associated with strip (None to disable strip)
-	#	on_select_cb: Function to call when fader is selected (must accept layer object as parameter)
+	#	on_fader_cb: Function to call when fader is moved (used to update zyncoder values)
 	#	refresh_all_pending_cb: Function to set flag indicating refresh all mixer strips required
 
 	mute_color = zynthian_gui_config.color_on
 	solo_color = "dark green"
 
-	def __init__(self, canvas, x, y, width, height, layer, on_select_cb, on_fader_cb, refresh_all_pending_cb):
+	def __init__(self, canvas, x, y, width, height, layer, on_fader_cb, refresh_all_pending_cb):
 		self.main_canvas = canvas
 		self.x = x
 		self.y = y
@@ -90,7 +90,6 @@ class zynthian_gui_mixer_strip():
 		if not layer:
 			self.hidden = True
 
-		self.on_select_cb = on_select_cb
 		self.on_fader_cb = on_fader_cb
 		self.refresh_all_pending_cb = refresh_all_pending_cb
 
@@ -499,7 +498,7 @@ class zynthian_gui_mixer_strip():
 	#	event: Mouse event
 	def on_fader_press(self, event):
 		self.drag_start = event
-		self.on_select_cb(self.layer)
+		zynthian_gui_config.zyngui.screens['audio_mixer'].select_chain_by_layer(self.layer)
 
 
 	# Function to handle fader drag
@@ -558,7 +557,6 @@ class zynthian_gui_mixer_strip():
 		if self.layer is None:
 			return
 		self.press_time = monotonic()
-		self.on_select_cb(self.layer)
 
 
 	# Function to handle mute button release
@@ -576,19 +574,17 @@ class zynthian_gui_mixer_strip():
 
 	# Function to handle legend strip release
 	def on_strip_release(self, event):
+		zynthian_gui_config.zyngui.screens['audio_mixer'].select_chain_by_layer(self.layer)
+		if isinstance(self.layer, zynthian_gui_mixer_main_layer):
+			return
 		if self.press_time:
 			delta = monotonic() - self.press_time
 			self.press_time = None
-			if delta > 0.4 and not isinstance(self.layer, zynthian_gui_mixer_main_layer):
-				zynthian_gui_config.zyngui.screens['layer'].select(self.layer.midi_chan)
+			if delta > 0.4:
 				zynthian_gui_config.zyngui.screens['layer_options'].reset()
 				zynthian_gui_config.zyngui.show_modal('layer_options')
 				return
-		if self.layer is not None and not isinstance(self.layer, zynthian_gui_mixer_main_layer):
-			layer = zynthian_gui_config.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.layer.midi_chan)
-			if layer:
-				zynthian_gui_config.zyngui.set_curlayer(layer)
-				zynthian_gui_config.zyngui.layer_control(layer)
+		zynthian_gui_config.zyngui.layer_control(self.layer)
 
 
 #------------------------------------------------------------------------------
@@ -651,10 +647,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Create mixer strip UI objects
 		for chain in range(len(self.visible_mixer_strips)):
-			self.visible_mixer_strips[chain] = zynthian_gui_mixer_strip(self.main_canvas, 1 + self.fader_width * chain, 0, self.fader_width - 1, self.height, None, self.select_chain_by_layer, self.update_zyncoders, self.set_redraw_pending)
+			self.visible_mixer_strips[chain] = zynthian_gui_mixer_strip(self.main_canvas, 1 + self.fader_width * chain, 0, self.fader_width - 1, self.height, None, self.update_zyncoders, self.set_redraw_pending)
 
 		self.main_layer = zynthian_gui_mixer_main_layer()
-		self.main_mixbus_strip = zynthian_gui_mixer_strip(self.main_canvas, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, self.main_layer, self.select_chain_by_layer, self.update_zyncoders, self.set_redraw_pending)
+		self.main_mixbus_strip = zynthian_gui_mixer_strip(self.main_canvas, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, self.main_layer, self.update_zyncoders, self.set_redraw_pending)
 
 		# Horizontal scroll (via mouse wheel) area
 		#legend_height = self.visible_mixer_strips[0].legend_height 
@@ -738,13 +734,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to get a mixer strip object from a layer index
 	# layer_index: Index of layer to get. If None, currently selected layer is used.
-	def get_mixer_strip_from_layer_index(self, chi=None):
-		if chi is None:
-			chi = self.selected_chain_index
-		if chi is None or chi < 0:
+	def get_mixer_strip_from_layer_index(self, layer_index=None):
+		if layer_index is None:
+			layer_index = self.selected_chain_index
+		if layer_index is None or layer_index < 0:
 			return None
-		if chi < self.number_layers:
-			return self.visible_mixer_strips[chi - self.mixer_strip_offset]
+		if layer_index < self.number_layers:
+			return self.visible_mixer_strips[layer_index - self.mixer_strip_offset]
 		else:
 			return self.main_mixbus_strip
 
@@ -954,7 +950,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					self.zyngui.layer_control(self.selected_layer)
 				return True
 			elif t == "B":
-				if self.selected_chain_index < self.number_layers:
+				if self.selected_layer != self.main_layer:
 					# Layer Options
 					self.zyngui.screens['layer'].select(self.selected_chain_index)
 					self.zyngui.screens['layer_options'].reset()
