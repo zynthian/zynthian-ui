@@ -192,12 +192,12 @@ class zynthian_gui_mixer_strip():
 		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_fader_press)
 		self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<B1-Motion>", self.on_fader_motion)
 		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "1":
-			self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-5>", self.on_fader_wheel_down)
 			self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-4>", self.on_fader_wheel_up)
-			self.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-4>", self.on_balance_wheel_up)
+			self.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-5>", self.on_fader_wheel_down)
 			self.main_canvas.tag_bind("balance:%s"%(self.fader_bg), "<Button-4>", self.on_balance_wheel_up)
-			self.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-5>", self.on_balance_wheel_down)
 			self.main_canvas.tag_bind("balance:%s"%(self.fader_bg), "<Button-5>", self.on_balance_wheel_down)
+			#self.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-4>", self.on_balance_wheel_up)
+			#self.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-5>", self.on_balance_wheel_down)
 		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
 		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_mute_release)
 		self.main_canvas.tag_bind("solo_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
@@ -523,7 +523,6 @@ class zynthian_gui_mixer_strip():
 	def on_fader_wheel_down(self, event):
 		if self.layer is None:
 			return
-#		self.on_select_cb(self.layer)
 		self.set_volume(zynmixer.get_level(self.layer.midi_chan) - 0.02)
 		self.redraw_controls()
 		self.on_fader_cb()
@@ -534,7 +533,6 @@ class zynthian_gui_mixer_strip():
 	def on_fader_wheel_up(self, event):
 		if self.layer is None:
 			return
-#		self.on_select_cb(self.layer)
 		self.set_volume(zynmixer.get_level(self.layer.midi_chan) + 0.02)
 		self.redraw_controls()
 		self.on_fader_cb()
@@ -625,13 +623,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.height=zynthian_gui_config.body_height
 
 		self.number_layers = 0 # Quantity of layers
-		visible_chains = MAX_NUM_CHANNELS # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
-		#TODO: Get from config and estimate initial value if not in config
-		if self.width <= 400: visible_chains = 4
-		elif self.width <= 600: visible_chains = 8
-		elif self.width <= 800: visible_chains = 10
-		elif self.width <= 1024: visible_chains = 12
-		elif self.width <= 1280: visible_chains = 14
+		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
+		if visible_chains < 1:
+			# Automatic sizing if not defined in config 
+			if self.width <= 400: visible_chains = 4
+			elif self.width <= 600: visible_chains = 8
+			elif self.width <= 800: visible_chains = 10
+			elif self.width <= 1024: visible_chains = 12
+			elif self.width <= 1280: visible_chains = 14
+			else: visible_chains = 16
 
 		self.fader_width = (self.width - 6 ) / (visible_chains + 1)
 		self.legend_height = self.height * 0.05
@@ -725,6 +725,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.tag_bind("reset_gain_button", "<ButtonRelease-1>", self.on_reset_volume_release)
 		self.main_canvas.tag_bind("reset_balance_button", "<ButtonRelease-1>", self.on_reset_balance_release)
 		self.main_canvas.tag_bind("cancel_button", "<ButtonPress-1>", self.on_cancel_press)
+
+		# Horizontal scroll (via mouse wheel) area
+		legend_height = self.visible_mixer_strips[0].legend_height 
+		self.horiz_scroll_bg = self.main_canvas.create_rectangle(0, self.height - self.legend_height, self.width, self.height, width=0)
+		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "1":
+			self.main_canvas.tag_bind(self.horiz_scroll_bg, "<Button-4>", self.on_fader_wheel_up)
+			self.main_canvas.tag_bind(self.horiz_scroll_bg, "<Button-5>", self.on_fader_wheel_down)
 
 		zynmixer.enable_dpm(False) # Disable DPM by default - they get enabled when mixer is shown
 		if zynthian_gui_config.show_cpu_status:
@@ -1368,3 +1375,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	event: Mouse event
 	def on_cancel_press(self, event):
 		self.set_mixer_mode()
+
+
+	# Function to handle mouse wheel down when not over fader
+	#	event: Mouse event
+	def on_fader_wheel_down(self, event):
+		if self.mixer_strip_offset < 1:
+			return
+		self.mixer_strip_offset -= 1
+		self.set_mixer_mode()
+
+
+	# Function to handle mouse wheel up when not over fader
+	#	event: Mouse event
+	def on_fader_wheel_up(self, event):
+		if self.mixer_strip_offset +  len(self.visible_mixer_strips) >= self.number_layers:
+			return
+		self.mixer_strip_offset += 1
+		self.set_mixer_mode()
+
