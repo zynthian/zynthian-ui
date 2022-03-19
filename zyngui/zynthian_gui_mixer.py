@@ -196,9 +196,7 @@ class zynthian_gui_mixer_strip():
 			self.main_canvas.tag_bind("balance:%s"%(self.fader_bg), "<Button-5>", self.on_balance_wheel_down)
 			#self.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-4>", self.on_balance_wheel_up)
 			#self.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-5>", self.on_balance_wheel_down)
-		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
 		self.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_mute_release)
-		self.main_canvas.tag_bind("solo_button:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
 		self.main_canvas.tag_bind("solo_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_solo_release)
 		self.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
 		self.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_strip_release)
@@ -541,7 +539,6 @@ class zynthian_gui_mixer_strip():
 	def on_balance_wheel_down(self, event):
 		if self.layer is None:
 			return
-#		self.on_select_cb(self.layer)
 		self.set_balance(zynmixer.get_balance(self.layer.midi_chan) - 0.02)
 		self.redraw_controls()
 
@@ -551,7 +548,6 @@ class zynthian_gui_mixer_strip():
 	def on_balance_wheel_up(self, event):
 		if self.layer is None:
 			return
-#		self.on_select_cb(self.layer)
 		self.set_balance(zynmixer.get_balance(self.layer.midi_chan) + 0.02)
 		self.redraw_controls()
 
@@ -568,11 +564,6 @@ class zynthian_gui_mixer_strip():
 	# Function to handle mute button release
 	#	event: Mouse event
 	def on_mute_release(self, event):
-		if self.press_time:
-			delta = monotonic() - self.press_time
-			self.press_time = None
-			if delta > 0.4:
-				pass #TODO Do we still want a bold press mute event?
 		self.toggle_mute()
 		self.redraw_controls()
 
@@ -580,11 +571,6 @@ class zynthian_gui_mixer_strip():
 	# Function to handle solo button release
 	#	event: Mouse event
 	def on_solo_release(self, event):
-		if self.press_time:
-			delta = monotonic() - self.press_time
-			self.press_time = None
-			if delta > 0.4:
-				pass #TODO Do we still want a bold press mute event?
 		self.toggle_solo()
 
 
@@ -1086,22 +1072,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA NEXT command
 	def next(self):
-		self.select_chain_by_index(self.selected_chain_index+1)
+		self.select_chain_by_index(self.selected_chain_index + 1)
 
 
 	# Function to handle CUIA PREV command
 	def prev(self):
-		self.select_chain_by_index(self.selected_chain_index-1)
+		self.select_chain_by_index(self.selected_chain_index - 1)
 
 
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
-		self.select_chain_by_index(self.selected_chain_index+1)
+		self.select_chain_by_index(self.selected_chain_index + 1)
 
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		self.select_chain_by_index(self.selected_chain_index-1)
+		self.select_chain_by_index(self.selected_chain_index - 1)
 
 
 	# Function to handle CUIA BACK_UP command
