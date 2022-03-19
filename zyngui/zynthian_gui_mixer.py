@@ -72,13 +72,12 @@ class zynthian_gui_mixer_strip():
 	#	height: Height of fader
 	#	layer: Layer object associated with strip (None to disable strip)
 	#	on_select_cb: Function to call when fader is selected (must accept layer object as parameter)
-	#	on_edit_cb: Function to call when mixer strip edit is requested
 	#	refresh_all_pending_cb: Function to set flag indicating refresh all mixer strips required
 
 	mute_color = zynthian_gui_config.color_on
 	solo_color = "dark green"
 
-	def __init__(self, canvas, x, y, width, height, layer, on_select_cb, on_edit_cb, on_fader_cb, refresh_all_pending_cb):
+	def __init__(self, canvas, x, y, width, height, layer, on_select_cb, on_fader_cb, refresh_all_pending_cb):
 		self.main_canvas = canvas
 		self.x = x
 		self.y = y
@@ -92,7 +91,6 @@ class zynthian_gui_mixer_strip():
 			self.hidden = True
 
 		self.on_select_cb = on_select_cb
-		self.on_edit_cb = on_edit_cb
 		self.on_fader_cb = on_fader_cb
 		self.refresh_all_pending_cb = refresh_all_pending_cb
 
@@ -522,22 +520,20 @@ class zynthian_gui_mixer_strip():
 	#	event: Mouse event
 	def on_fader_wheel_down(self, event):
 		if self.layer is None:
-			return "break"
+			return
 		self.set_volume(zynmixer.get_level(self.layer.midi_chan) - 0.02)
 		self.redraw_controls()
 		self.on_fader_cb()
-		return "break"
 
 
 	# Function to handle mouse wheel up over fader
 	#	event: Mouse event
 	def on_fader_wheel_up(self, event):
 		if self.layer is None:
-			return "break"
+			return
 		self.set_volume(zynmixer.get_level(self.layer.midi_chan) + 0.02)
 		self.redraw_controls()
 		self.on_fader_cb()
-		return "break"
 
 
 	# Function to handle mouse wheel down over balance
@@ -576,8 +572,7 @@ class zynthian_gui_mixer_strip():
 			delta = monotonic() - self.press_time
 			self.press_time = None
 			if delta > 0.4:
-				self.on_edit_cb()
-				return
+				pass #TODO Do we still want a bold press mute event?
 		self.toggle_mute()
 		self.redraw_controls()
 
@@ -589,8 +584,7 @@ class zynthian_gui_mixer_strip():
 			delta = monotonic() - self.press_time
 			self.press_time = None
 			if delta > 0.4:
-				self.on_edit_cb()
-				return
+				pass #TODO Do we still want a bold press mute event?
 		self.toggle_solo()
 
 
@@ -638,7 +632,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.fader_width = (self.width - 6 ) / (visible_chains + 1)
 		self.legend_height = self.height * 0.05
 		self.edit_height = self.height * 0.1
-
+		
 		self.fader_height = self.height - self.edit_height - self.legend_height - 2
 		self.fader_bottom = self.height - self.legend_height
 		self.fader_top = self.fader_bottom - self.fader_height
@@ -657,9 +651,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.press_time = None
 
-		self.edit_chain_index = None # Index of the chain being edited in edit mode
-		self.mode = 1 # 1:Mixer, 0:Edit #TODO: Is there a better way to implement touchscreen editing?
-
 		# Fader Canvas
 		self.main_canvas = tkinter.Canvas(self.main_frame,
 			height=self.height,
@@ -674,59 +665,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Create mixer strip UI objects
 		for chain in range(len(self.visible_mixer_strips)):
-			self.visible_mixer_strips[chain] = zynthian_gui_mixer_strip(self.main_canvas, 1 + self.fader_width * chain, 0, self.fader_width - 1, self.height, None, self.select_chain_by_layer, self.set_edit_mode, self.update_zyncoders, self.set_redraw_pending)
+			self.visible_mixer_strips[chain] = zynthian_gui_mixer_strip(self.main_canvas, 1 + self.fader_width * chain, 0, self.fader_width - 1, self.height, None, self.select_chain_by_layer, self.update_zyncoders, self.set_redraw_pending)
 
 		self.main_layer = zynthian_gui_mixer_main_layer()
-		self.main_mixbus_strip = zynthian_gui_mixer_strip(self.main_canvas, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, self.main_layer, self.select_chain_by_layer, self.set_edit_mode, self.update_zyncoders, self.set_redraw_pending)
-
-		# Edit widgets
-		font=(zynthian_gui_config.font_family, int(self.edit_height / 4))
-		f=tkFont.Font(family=zynthian_gui_config.font_family, size=int(self.edit_height / 4))
-		button_width = f.measure(" BALANCE ") # Width of widest text on edit buttons
-		balance_control_bg = self.main_canvas.create_rectangle(self.balance_control_centre - self.balance_control_width, 0, self.balance_control_centre + self.balance_control_width, self.balance_control_height, fill=zynthian_gui_config.color_bg, width=0, state="hidden", tags=("edit_control","balance_control"))
-		self.balance_control_left = self.main_canvas.create_rectangle(int(self.balance_control_centre - self.balance_control_width), 0, self.balance_control_centre, self.balance_control_height, fill="dark red", width=0, state="hidden", tags=("edit_control","balance_control"))
-		self.balance_control_right = self.main_canvas.create_rectangle(self.balance_control_centre, 0, self.balance_control_centre + self.balance_control_width, self.balance_control_height, fill="dark green", width=0, state="hidden", tags=("edit_control","balance_control"))
-		self.main_canvas.tag_bind("balance_control", "<ButtonPress-1>", self.on_balance_press)
-		self.main_canvas.tag_bind("balance_control", "<ButtonRelease-1>", self.on_balance_release)
-		self.main_canvas.tag_bind("balance_control", "<B1-Motion>", self.on_balance_motion)
-
-		edit_button_x = 1 + int(self.fader_width)
-		edit_button_y = self.balance_control_height + 1
-		# Solo button
-		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill=zynthian_gui_mixer_strip.solo_color, tags=("edit_control", "solo_button"))
-		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="SOLO", state="hidden", tags=("edit_control", "solo_button"), font=font, justify='center')
-		# Mute button
-		edit_button_y += self.edit_height
-		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill=zynthian_gui_mixer_strip.mute_color, tags=("edit_control", "mono_button"))
-		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="MONO", state="hidden", tags=("edit_control", "mono_button"), font=font, justify='center')
-		# Mute button
-		edit_button_y += self.edit_height
-		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill=zynthian_gui_mixer_strip.mute_color, tags=("edit_control", "mute_button"))
-		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="MUTE", state="hidden", tags=("edit_control", "mute_button"), font=font, justify='center')
-		# Layer button
-		edit_button_y += self.edit_height
-		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill="dark orange", tags=("edit_control", "layer_button"))
-		self.layer_button_text = self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="LAYER", state="hidden", tags=("edit_control", "layer_button"), font=font, justify='center')
-		# Reset gain button
-		edit_button_y += self.edit_height
-		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill="dark blue", tags=("edit_control", "reset_gain_button"))
-		self.reset_gain_button_text = self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="RESET\nGAIN", state="hidden", tags=("edit_control", "reset_gain_button"), font=font, justify='center')
-		# Reset balance button
-		edit_button_y += self.edit_height
-		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill="dark blue", tags=("edit_control", "reset_balance_button"))
-		self.reset_balance_button_text = self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="RESET\nBALANCE", state="hidden", tags=("edit_control", "reset_balance_button"), font=font, justify='center')
-		# Cancel button
-		edit_button_y += self.edit_height
-		self.main_canvas.create_rectangle(edit_button_x, edit_button_y, edit_button_x + button_width, edit_button_y + self.edit_height, state="hidden", fill=zynthian_gui_config.color_bg, tags=("edit_control", "cancel_button"))
-		self.main_canvas.create_text(edit_button_x + int(button_width / 2), edit_button_y + int(self.edit_height / 2), fill="white", text="CANCEL", state="hidden", tags=("edit_control", "cancel_button"), font=font, justify='center')
-
-		self.main_canvas.tag_bind("mute_button", "<ButtonRelease-1>", self.on_mute_release)
-		self.main_canvas.tag_bind("solo_button", "<ButtonRelease-1>", self.on_solo_release)
-		self.main_canvas.tag_bind("mono_button", "<ButtonRelease-1>", self.on_mono_release)
-		self.main_canvas.tag_bind("layer_button", "<ButtonRelease-1>", self.on_layer_release)
-		self.main_canvas.tag_bind("reset_gain_button", "<ButtonRelease-1>", self.on_reset_volume_release)
-		self.main_canvas.tag_bind("reset_balance_button", "<ButtonRelease-1>", self.on_reset_balance_release)
-		self.main_canvas.tag_bind("cancel_button", "<ButtonPress-1>", self.on_cancel_press)
+		self.main_mixbus_strip = zynthian_gui_mixer_strip(self.main_canvas, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, self.main_layer, self.select_chain_by_layer, self.update_zyncoders, self.set_redraw_pending)
 
 		# Horizontal scroll (via mouse wheel) area
 		#legend_height = self.visible_mixer_strips[0].legend_height 
@@ -744,16 +686,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Init touchbar
 		self.init_buttonbar()
 
-
-	# Function to refresh (redraw) balance edit control
-	def draw_balance_edit(self):
-		balance = zynmixer.get_balance(self.selected_layer.midi_chan)
-		if balance > 0:
-			self.main_canvas.coords(self.balance_control_left, self.balance_control_centre - (1-balance) * self.balance_control_width, 0, self.balance_control_centre, self.balance_control_height)
-			self.main_canvas.coords(self.balance_control_right, self.balance_control_centre, 0, self.balance_control_centre + self.balance_control_width, self.balance_control_height)
-		else:
-			self.main_canvas.coords(self.balance_control_left, self.balance_control_centre - self.balance_control_width, 0, self.balance_control_centre, self.balance_control_height)
-			self.main_canvas.coords(self.balance_control_right, self.balance_control_centre, 0, self.balance_control_centre + self.balance_control_width + self.balance_control_width * balance, self.balance_control_height)
+		self.set_title("Audio Mixer")
 
 
 	# Function to force the redrawing of UI controls for all mixer strips
@@ -781,7 +714,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if self.shown:
 			return
 		self.zyngui.screens["control"].unlock_controllers()
-		self.set_mixer_mode()
+		self.refresh_visible_strips()
 		if self.selected_chain_index == None:
 			self.select_chain_by_index(0)
 		else:
@@ -806,12 +739,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if self.shown:
 			super().refresh_status(status)
 			self.main_mixbus_strip.draw_dpm()
-			if self.edit_chain_index is None:
-				for strip in range(len(self.visible_mixer_strips)):
-					self.visible_mixer_strips[strip].draw_dpm()
-			else:
-				self.visible_mixer_strips[0].draw_dpm()
-				self.draw_balance_edit()
+			for strip in self.visible_mixer_strips:
+				strip.draw_dpm()
 			if self.redraw_pending:
 				self.redraw_mixer_controls(True)
 				self.redraw_pending = False
@@ -860,7 +789,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to select chain by index
 	#	chain_index: Index of chain to select
 	def select_chain_by_index(self, chain_index, set_curlayer=True):
-		if self.mode == 0 or chain_index is None or chain_index < 0 or chain_index == self.selected_chain_index or self.number_layers == 0:
+		if chain_index is None or chain_index < 0 or chain_index == self.selected_chain_index or self.number_layers == 0:
 			return
 
 		if chain_index > self.number_layers:
@@ -869,10 +798,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		if self.selected_chain_index < self.mixer_strip_offset:
 			self.mixer_strip_offset = chain_index
-			self.set_mixer_mode()
+			self.refresh_visible_strips()
 		elif self.selected_chain_index >= self.mixer_strip_offset + len(self.visible_mixer_strips) and self.selected_chain_index != self.number_layers:
 			self.mixer_strip_offset = self.selected_chain_index - len(self.visible_mixer_strips) + 1
-			self.set_mixer_mode()
+			self.refresh_visible_strips()
 		if self.selected_chain_index < self.number_layers:
 			self.selected_layer = self.visible_mixer_strips[self.selected_chain_index - self.mixer_strip_offset].layer
 		else:
@@ -885,25 +814,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.set_curlayer(self.selected_layer) #TODO: Lose this re-entrant loop
 
 
-	# Function to select edit mode
-	def set_edit_mode(self, params=None):
-		self.mode = 0
-		self.edit_chain_index = self.selected_chain_index
-		for strip in self.visible_mixer_strips:
-			strip.hide()
-		strip = len(self.visible_mixer_strips) - 1
-		self.main_canvas.itemconfig(self.selection_highlight, state="hidden")
-		self.visible_mixer_strips[strip].set_layer(self.selected_layer)
-		self.visible_mixer_strips[strip].show()
-		self.main_canvas.itemconfig("edit_control", state="normal")
-		self.visible_mixer_strips[strip].draw()
-		self.draw_balance_edit()
-		self.set_title("Edit chain %d" % (self.selected_chain_index + 1))
-
-
-	# Function change to mixer mode
-	def set_mixer_mode(self):
-		self.main_canvas.itemconfig("edit_control", state="hidden")
+	# Function refresh and populate visible mixer strips
+	def refresh_visible_strips(self):
 		layers = self.zyngui.screens['layer'].get_root_layers()
 		self.number_layers = len(layers)
 		for offset in range(len(self.visible_mixer_strips)):
@@ -912,11 +824,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.visible_mixer_strips[offset].set_layer(None)
 			else:
 				self.visible_mixer_strips[offset].set_layer(layers[index])
-		self.main_canvas.itemconfig(self.selection_highlight, state="normal")
-		self.mode = 1
-		self.edit_chain_index = None
-		self.set_title("Audio Mixer")
-
+		
 
 	# Function to detect if a layer is audio
 	#	layer: Layer object
@@ -1041,14 +949,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		elif swi == ENC_BACK:
 			if t == "S":
-				if self.mode == 0:
-					self.set_mixer_mode()
-					return True
-				else:
-					self.reset_balance()
-					self.redraw_mixer_controls()
-					return True
-
+				self.refresh_visible_strips()
+				return True
+				
 		elif swi == ENC_SNAPSHOT:
 			if t == "S":
 				self.toggle_solo()
@@ -1159,7 +1062,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if lib_zyncore.get_value_flag_zynpot(ENC_SELECT):
 			value = int((1+lib_zyncore.get_value_zynpot(ENC_SELECT))/4)
 			#logging.debug("Value SELECT: {}".format(value))
-			if (self.mode and value != self.selected_chain_index):
+			if value != self.selected_chain_index:
 				self.select_chain_by_index(value)
 
 		if redraw_main_fader:
@@ -1309,92 +1212,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# GUI Event Management
 	#--------------------------------------------------------------------------
 
-	# Function to handle balance press
-	#	event: Mouse event
-	def on_balance_press(self, event):
-		self.balance_drag_start = event
-
-
-	# Function to handle balance release
-	#	event: Mouse event
-	def on_balance_release(self, event):
-		pass
-
-
-	# Function to balance fader drag
-	#	event: Mouse event
-	def on_balance_motion(self, event):
-		balance = zynmixer.get_balance(self.selected_layer.midi_chan) + (event.x - self.balance_drag_start.x) / self.balance_control_width
-		if balance > 1: balance = 1
-		if balance < -1: balance = -1
-		self.balance_drag_start = event
-		zynmixer.set_balance(self.selected_layer.midi_chan, balance)
-		self.draw_balance_edit()
-
-
-	# Function to handle mute button release
-	#	event: Mouse event
-	def on_mute_release(self, event):
-		self.toggle_mute()
-		self.redraw_mixer_controls()
-
-
-	# Function to handle solo button release
-	#	event: Mouse event
-	def on_solo_release(self, event):
-		self.toggle_solo()
-		self.redraw_mixer_controls()
-
-
-	# Function to handle mono button release
-	#	event: Mouse event
-	def on_mono_release(self, event):
-		self.toggle_mono()
-		self.redraw_mixer_controls()
-
-
-	# Function to handle layer button release
-	#	event: Mouse event
-	def on_layer_release(self, event):
-		self.zyngui.layer_control(self.selected_layer)
-
-
-	# Function to handle reset volume button release
-	#	event: Mouse event
-	def on_reset_volume_release(self, event):
-		self.reset_volume()
-		self.redraw_mixer_controls()
-
-
-	# Function to handle reset balance button release
-	#	event: Mouse event
-	def on_reset_balance_release(self, event):
-		self.reset_balance()
-		self.redraw_controls()
-
-
-	# Function to handle cancel edit button release
-	#	event: Mouse event
-	def on_cancel_press(self, event):
-		self.set_mixer_mode()
-
-
 	# Function to handle mouse wheel down when not over fader
 	#	event: Mouse event
 	def on_fader_wheel_down(self, event):
 		if self.mixer_strip_offset < 1:
-			return 'break'
+			return
 		self.mixer_strip_offset -= 1
-		self.set_mixer_mode()
-		return 'break'
+		self.refresh_visible_strips()
 
 
 	# Function to handle mouse wheel up when not over fader
 	#	event: Mouse event
 	def on_fader_wheel_up(self, event):
 		if self.mixer_strip_offset +  len(self.visible_mixer_strips) >= self.number_layers:
-			return "break"
+			return
 		self.mixer_strip_offset += 1
-		self.set_mixer_mode()
-		return 'break'
+		self.refresh_visible_strips()
 
