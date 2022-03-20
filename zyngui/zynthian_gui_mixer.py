@@ -666,13 +666,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.set_title("Audio Mixer")
 
 
-	# Function to force the redrawing of UI controls for all mixer strips
-	def draw_mixer_controls(self):
-		for strip in range(len(self.visible_mixer_strips)):
-			self.visible_mixer_strips[strip].draw_controls()
-		self.main_mixbus_strip.draw_controls()
-
-
 	# Function to redraw, if needed, the UI controls for all mixer strips
 	def redraw_mixer_controls(self, force=False):
 		for strip in self.visible_mixer_strips:
@@ -766,7 +759,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to select chain by index
 	#	chain_index: Index of chain to select
 	def select_chain_by_index(self, chain_index, set_curlayer=True):
-		if chain_index is None or chain_index < 0 or chain_index == self.selected_chain_index or self.number_layers == 0:
+		if chain_index is None or chain_index < 0 :
 			return
 
 		if chain_index > self.number_layers:
@@ -1171,7 +1164,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if strip != MAX_NUM_CHANNELS:
 				zynmixer.set_solo(strip, state[strip]['solo'])
 			zynmixer.set_mono(strip, state[strip]['mono'])
-		self.draw_mixer_controls()
+		self.refresh_visible_strips()
 
 
 	# Reset mixer to default state
@@ -1182,7 +1175,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			zynmixer.set_mute(strip, 0)
 			zynmixer.set_solo(strip, 0)
 			zynmixer.set_mono(strip, 0)
-		self.draw_mixer_controls()
+		self.refresh_visible_strips()
 
 
 	#--------------------------------------------------------------------------
