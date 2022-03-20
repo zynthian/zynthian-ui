@@ -794,6 +794,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.visible_mixer_strips[offset].set_layer(None)
 			else:
 				self.visible_mixer_strips[offset].set_layer(layers[index])
+		self.main_mixbus_strip.redraw_controls(True)
 		
 
 	# Function to detect if a layer is audio
