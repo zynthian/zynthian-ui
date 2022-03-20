@@ -116,7 +116,9 @@ class zynthian_gui_mixer_strip():
 		self.dpm_zero_y = self.fader_bottom - self.fader_height * self.dpm_high
 		self.fader_width = self.width - self.dpm_width * 2 - 2
 
-		self.drag_start = None
+		self.fader_drag_start = None
+		self.strip_drag_start = None
+
 
 		# Default style
 		self.fader_bg_color = zynthian_gui_config.color_bg
@@ -194,6 +196,7 @@ class zynthian_gui_mixer_strip():
 		self.parent.main_canvas.tag_bind("solo_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_solo_release)
 		self.parent.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
 		self.parent.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_strip_release)
+		self.parent.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Motion>", self.on_strip_motion)
 
 		self.draw()
 
@@ -492,7 +495,7 @@ class zynthian_gui_mixer_strip():
 	# Function to handle fader press
 	#	event: Mouse event
 	def on_fader_press(self, event):
-		self.drag_start = event
+		self.fader_drag_start = event
 		self.parent.select_chain_by_layer(self.layer)
 
 
@@ -501,8 +504,8 @@ class zynthian_gui_mixer_strip():
 	def on_fader_motion(self, event):
 		if self.layer is None:
 			return
-		level = zynmixer.get_level(self.layer.midi_chan) + (self.drag_start.y - event.y) / self.fader_height
-		self.drag_start = event
+		level = zynmixer.get_level(self.layer.midi_chan) + (self.fader_drag_start.y - event.y) / self.fader_height
+		self.fader_drag_start = event
 		self.set_volume(level)
 		self.redraw_controls()
 		self.parent.update_zyncoders()
@@ -551,7 +554,47 @@ class zynthian_gui_mixer_strip():
 	def on_strip_press(self, event):
 		if self.layer is None:
 			return
-		self.press_time = monotonic()
+		if not isinstance(self.layer, zynthian_gui_mixer_main_layer):
+			self.strip_drag_start = event
+		self.dragging = False
+
+
+	# Function to handle legend strip release
+	def on_strip_release(self, event):
+		if not self.dragging:
+			self.parent.select_chain_by_layer(self.layer)
+		if isinstance(self.layer, zynthian_gui_mixer_main_layer):
+			return
+		if self.strip_drag_start:
+			delta = event.time - self.strip_drag_start.time
+			self.strip_drag_start = None
+			if self.dragging:
+				self.dragging = False
+				return
+			if delta > 400:
+				zynthian_gui_config.zyngui.screens['layer_options'].reset()
+				zynthian_gui_config.zyngui.show_modal('layer_options')
+				return
+			else:
+				zynthian_gui_config.zyngui.layer_control(self.layer)
+
+
+	# Function to handle legend strip drag
+	def on_strip_motion(self, event):
+		if self.strip_drag_start:
+			delta = event.x - self.strip_drag_start.x
+			if delta < -self.width and self.parent.mixer_strip_offset + len(self.parent.visible_mixer_strips) < self.parent.number_layers:
+				# Dragged more than one strip width to left
+				self.parent.mixer_strip_offset += 1
+				self.parent.refresh_visible_strips()
+				self.dragging = True
+				self.strip_drag_start.x = event.x
+			elif delta > self.width and self.parent.mixer_strip_offset > 0:
+				# Dragged more than one strip width to right
+				self.parent.mixer_strip_offset -= 1
+				self.parent.refresh_visible_strips()
+				self.dragging = True
+				self.strip_drag_start.x = event.x
 
 
 	# Function to handle mute button release
@@ -565,21 +608,6 @@ class zynthian_gui_mixer_strip():
 	#	event: Mouse event
 	def on_solo_release(self, event):
 		self.toggle_solo()
-
-
-	# Function to handle legend strip release
-	def on_strip_release(self, event):
-		self.parent.select_chain_by_layer(self.layer)
-		if isinstance(self.layer, zynthian_gui_mixer_main_layer):
-			return
-		if self.press_time:
-			delta = monotonic() - self.press_time
-			self.press_time = None
-			if delta > 0.4:
-				zynthian_gui_config.zyngui.screens['layer_options'].reset()
-				zynthian_gui_config.zyngui.show_modal('layer_options')
-				return
-		zynthian_gui_config.zyngui.layer_control(self.layer)
 
 
 #------------------------------------------------------------------------------
@@ -625,8 +653,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.selected_layer = None
 
 		self.redraw_pending = False
-
-		self.press_time = None
 
 		# Fader Canvas
 		self.main_canvas = tkinter.Canvas(self.main_frame,
@@ -725,20 +751,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def get_mixer_strip_from_layer_index(self, layer_index=None):
 		if layer_index is None:
 			layer_index = self.selected_chain_index
-		if layer_index is None or layer_index < 0:
+		if layer_index is None or layer_index < self.mixer_strip_offset:
 			return None
 		if layer_index < self.number_layers:
 			return self.visible_mixer_strips[layer_index - self.mixer_strip_offset]
 		else:
 			return self.main_mixbus_strip
-
-
-	# Function to highlight the selected mixer strip
-	# layer_index: Index of layer to highlight. If None, selected layer is used.
-	def highlight_mixer_strip(self, layer_index):
-		chan_strip = self.get_mixer_strip_from_layer_index(layer_index)
-		if chan_strip:
-			self.main_canvas.coords(self.selection_highlight, chan_strip.x, chan_strip.height - chan_strip.legend_height, chan_strip.x + chan_strip.width + 1, chan_strip.height)
 
 
 	# Function to select mixer strip associated with the specified layer
@@ -773,10 +791,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.mixer_strip_offset = self.selected_chain_index - len(self.visible_mixer_strips) + 1
 			self.refresh_visible_strips()
 		if self.selected_chain_index < self.number_layers:
-			self.selected_layer = self.visible_mixer_strips[self.selected_chain_index - self.mixer_strip_offset].layer
+			self.selected_layer = self.zyngui.screens['layer'].get_root_layers()[self.selected_chain_index]
 		else:
 			self.selected_layer = self.main_layer
-		self.highlight_mixer_strip(self.selected_chain_index)
+		self.highlight_selected_strip()
 
 		self.update_zyncoders()
 
@@ -795,7 +813,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			else:
 				self.visible_mixer_strips[offset].set_layer(layers[index])
 		self.main_mixbus_strip.redraw_controls(True)
-		
+		self.highlight_selected_strip()
+
+
+	# Function to highlight the selected strip
+	def highlight_selected_strip(self):
+		chan_strip = self.get_mixer_strip_from_layer_index()
+		if chan_strip:
+			self.main_canvas.coords(self.selection_highlight, chan_strip.x, chan_strip.height - chan_strip.legend_height, chan_strip.x + chan_strip.width + 1, chan_strip.height)
+			self.main_canvas.itemconfig(self.selection_highlight, state="normal")
+		else:
+			self.main_canvas.itemconfig(self.selection_highlight, state="hidden")
+
 
 	# Function to detect if a layer is audio
 	#	layer: Layer object
@@ -920,7 +949,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		elif swi == ENC_BACK:
 			if t == "S":
-				self.refresh_visible_strips()
+				#self.refresh_visible_strips()
 				return True
 				
 		elif swi == ENC_SNAPSHOT:
