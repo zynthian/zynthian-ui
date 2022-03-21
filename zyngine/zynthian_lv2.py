@@ -425,7 +425,7 @@ def remove_plugin_preset_from_cache(plugin_name, bank_label, preset_uri):
 		
 	# Insert new preset
 	for i in range(len(presets_info[bank_label]['presets'])):
-		if preset_uri==presets_info[bank_label]['presets'][i]['preset_url']:
+		if preset_uri==presets_info[bank_label]['presets'][i]['url']:
 			del(presets_info[bank_label]['presets'][i])
 			break
 

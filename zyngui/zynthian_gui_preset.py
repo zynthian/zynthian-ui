@@ -67,14 +67,15 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		preset = self.list_data[self.index]
 		fname = preset[2]
 		fav = "[  ] Favourite"
-		if fname[0] == '*': fav = "[x] Favourite"
+		if self.zyngui.curlayer.engine.is_preset_fav(preset): fav = "[x] Favourite"
 		options = {
 			fav: preset,
-			"Save": preset,
-			"Rename": preset,
-			"Delete": preset
+			"Save as...": preset,
 		}
-		self.zyngui.screens['option'].config("Preset %s" % fname, options, self.options_cb)
+		if self.zyngui.curlayer.engine.is_preset_user(preset):
+			options["Rename..."] = preset
+			options["Delete"] = preset
+		self.zyngui.screens['option'].config("Preset: %s" % fname, options, self.options_cb)
 		self.zyngui.show_modal('option')
 
 
@@ -89,7 +90,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_preset, fname)
 		elif option == "Delete":
-			self.delete_preset()
+			self.request_delete_preset(preset)
 			pass
 
 		self.update_list()
@@ -121,15 +122,14 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			logging.warning("Failed to rename preset: %s", e)
 
 
-	def delete_preset(self):
-		fpath=self.list_data[self.index][0]
-		fname=self.list_data[self.index][2]
-		self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, fpath)
+	def request_delete_preset(self, preset):
+		self.zyngui.show_confirm("Do you really want to delete %s" % (preset[2]), self.delete_confirmed, preset)
 
 
-	def delete_confirmed(self, fpath):
+	def delete_confirmed(self, preset):
 		try:
-			self.zyngui.curlayer.engine.zynapi_remove_preset(fpath)
+			if self.zyngui.curlayer.engine.delete_preset(self.zyngui.curlayer.bank_info[2], preset):
+				self.fill_list()
 		except Exception as e:
 			logging.warning("Failed to delete preset: %s", e)
 

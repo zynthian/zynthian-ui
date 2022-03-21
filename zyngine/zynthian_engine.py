@@ -454,6 +454,15 @@ class zynthian_engine(zynthian_basic_engine):
 			return False
 
 
+	def is_preset_user(self, preset):
+		return isinstance(preset[0], str) and preset[0][:42] == 'file:///zynthian/zynthian-my-data/presets/'
+
+
+	# Override in derived class
+	def delete_preset(self, preset):
+		pass
+
+
 	# ---------------------------------------------------------------------------
 	# Preset Favorites Management
 	# ---------------------------------------------------------------------------
