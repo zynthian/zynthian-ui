@@ -544,9 +544,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				if layer.engine.nickname=="FS" and mch==9:
 					continue
 			changed |= layer.set_preset(preset_index, True)
-		if changed and self.zyngui.active_screen in ['control','audio_mixer']:
+		if changed and self.zyngui.current_screen in ['control','audio_mixer']:
 			try:
-				self.zyngui.screens[self.zyngui.active_screen].show() # Refresh preset labels
+				self.zyngui.screens[self.zyngui.current_screen].show() # Refresh preset labels
 			except Exception as e:
 				logging.error("Can't refresh GUI! => %s", e)
 
@@ -558,9 +558,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				if layer.restore_zs3(zs3_index):
 					self.last_zs3_index[midich] = zs3_index
 					changed = True
-		if changed and self.zyngui.active_screen in ['control','audio_mixer']:
+		if changed and self.zyngui.current_screen in ['control','audio_mixer']:
 			try:
-				self.zyngui.screens[self.zyngui.active_screen].show() # Refresh preset labels
+				self.zyngui.screens[self.zyngui.current_screen].show() # Refresh preset labels
 			except Exception as e:
 				logging.error("Can't refresh GUI! => %s", e)
 

@@ -403,28 +403,29 @@ class zynthian_gui_controller:
 
 
 	def set_midi_bind(self):
-		if self.zctrl.midi_cc==0:
-			#self.erase_midi_bind()
-			self.plot_midi_bind("/{}".format(self.zctrl.value_range))
-		elif self.zyngui.midi_learn_mode:
-			self.plot_midi_bind("??",zynthian_gui_config.color_ml)
-		elif self.zyngui.midi_learn_zctrl and self.zctrl==self.zyngui.midi_learn_zctrl:
-			self.plot_midi_bind("??",zynthian_gui_config.color_hl)
-		elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
-			midi_cc = self.zctrl.midi_learn_cc
-			if not self.zyngui.is_single_active_channel():
-				midi_cc = "{}#{}".format(self.zctrl.midi_learn_chan+1,midi_cc)
-			self.plot_midi_bind(midi_cc)
-		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
-			#midi_cc = self.zctrl.midi_cc
-			swap_info= lib_zyncore.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
-			midi_chan = swap_info >> 8
-			midi_cc = swap_info & 0xFF
-			if not self.zyngui.is_single_active_channel():
-				midi_cc = "{}#{}".format(midi_chan+1,midi_cc)
-			self.plot_midi_bind(midi_cc)
-		else:
-			self.erase_midi_bind()
+		if self.zctrl:
+			if self.zctrl.midi_cc==0:
+				#self.erase_midi_bind()
+				self.plot_midi_bind("/{}".format(self.zctrl.value_range))
+			elif self.zyngui.midi_learn_mode:
+				self.plot_midi_bind("??",zynthian_gui_config.color_ml)
+			elif self.zyngui.midi_learn_zctrl and self.zctrl==self.zyngui.midi_learn_zctrl:
+				self.plot_midi_bind("??",zynthian_gui_config.color_hl)
+			elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
+				midi_cc = self.zctrl.midi_learn_cc
+				if not self.zyngui.is_single_active_channel():
+					midi_cc = "{}#{}".format(self.zctrl.midi_learn_chan+1,midi_cc)
+				self.plot_midi_bind(midi_cc)
+			elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
+				#midi_cc = self.zctrl.midi_cc
+				swap_info= lib_zyncore.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
+				midi_chan = swap_info >> 8
+				midi_cc = swap_info & 0xFF
+				if not self.zyngui.is_single_active_channel():
+					midi_cc = "{}#{}".format(midi_chan+1,midi_cc)
+				self.plot_midi_bind(midi_cc)
+			else:
+				self.erase_midi_bind()
 
 
 	def set_title(self, tit):
