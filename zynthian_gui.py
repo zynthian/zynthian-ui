@@ -678,7 +678,7 @@ class zynthian_gui:
 			try:
 				last_screen = self.screen_history.pop()
 				if last_screen != self.current_screen:
-					break;
+					break
 			except:
 				last_screen = "audio_mixer"
 				break
@@ -878,7 +878,7 @@ class zynthian_gui:
 			self.screens['bank'].fill_list()
 			self.screens['preset'].fill_list()
 			self.screens['control'].fill_list()
-			self.screens['audio_mixer'].select_midi_chan(layer.midi_chan, set_curlayer=False)
+			self.screens['audio_mixer'].select_chain_by_layer(layer, set_curlayer=False)
 			self.set_active_channel()
 		else:
 			self.curlayer = None
