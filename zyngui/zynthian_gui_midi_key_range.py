@@ -59,21 +59,29 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		self.octave_zctrl=None
 		self.halftone_zctrl=None
 
-		self.space_frame_width = zynthian_gui_config.display_width-2*zynthian_gui_config.ctrl_width
-		self.space_frame_height = zynthian_gui_config.ctrl_height - 2
-
-		self.piano_canvas_width = zynthian_gui_config.display_width
-		self.piano_canvas_height = int(0.2*zynthian_gui_config.body_height)
-
-		self.note_info_canvas_height = zynthian_gui_config.ctrl_height - self.piano_canvas_height
-
-		self.replot = True
+		if zynthian_gui_config.ctrl_both_sides:
+			self.space_frame_width = zynthian_gui_config.display_width-2*zynthian_gui_config.ctrl_width
+			self.space_frame_height = zynthian_gui_config.ctrl_height - 2
+			self.piano_canvas_width = zynthian_gui_config.display_width
+			self.piano_canvas_height = int(zynthian_gui_config.ctrl_height/2)
+			self.note_info_canvas_height = zynthian_gui_config.ctrl_height - self.piano_canvas_height
+			self.zctrl_pos = [0, 2, 1, 3]
+		else:
+			self.space_frame_width = zynthian_gui_config.display_width-zynthian_gui_config.ctrl_width
+			self.space_frame_height = 2 * zynthian_gui_config.ctrl_height - 1
+			self.piano_canvas_width = zynthian_gui_config.display_width
+			self.piano_canvas_height = zynthian_gui_config.ctrl_height
+			self.note_info_canvas_height = zynthian_gui_config.ctrl_height
+			self.zctrl_pos = [0, 1, 3, 2]
 
 		self.space_frame = tkinter.Frame(self.main_frame,
 			width=self.space_frame_width,
 			height=self.space_frame_height,
 			bg=zynthian_gui_config.color_panel_bg)
-		self.space_frame.grid(row=1, column=1, rowspan=1, columnspan=1, padx=(2,2), pady=(0,2), sticky="wens")
+		if zynthian_gui_config.ctrl_both_sides:
+			self.space_frame.grid(row=1, column=1, rowspan=1, columnspan=1, padx=(2,2), pady=(0,2), sticky="wens")
+		else:
+			self.space_frame.grid(row=1, column=0, rowspan=2, columnspan=1, padx=(0,2), pady=(0,2), sticky="wens")
 
 		self.note_info_canvas = tkinter.Canvas(self.main_frame,
 			width=self.piano_canvas_width,
@@ -82,7 +90,10 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			highlightthickness=0,
 			relief='flat',
 			bg=zynthian_gui_config.color_panel_bg)
-		self.note_info_canvas.grid(row=2, column=0, rowspan=1, columnspan=3, sticky="wens")
+		if zynthian_gui_config.ctrl_both_sides:
+			self.note_info_canvas.grid(row=2, column=0, rowspan=1, columnspan=3, sticky="wens")
+		else:
+			self.note_info_canvas.grid(row=3, column=0, rowspan=1, columnspan=3, sticky="wens")
 
 		# Piano canvas
 		self.piano_canvas = tkinter.Canvas(self.main_frame,
@@ -92,10 +103,15 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			highlightthickness=0,
 			relief='flat',
 			bg = "#000000")
-		self.piano_canvas.grid(row=3, column=0, rowspan=1, columnspan=3, sticky="ws")
+		if zynthian_gui_config.ctrl_both_sides:
+			self.piano_canvas.grid(row=2, column=0, rowspan=1, columnspan=3, sticky="ws")
+		else:
+			self.piano_canvas.grid(row=4, column=0, rowspan=1, columnspan=3, sticky="ws")
+
 		# Setup Piano's Callback
 		self.piano_canvas.bind("<Button-1>", self.cb_piano_canvas)
 
+		self.replot = True
 		self.plot_piano()
 		self.plot_text()
 
@@ -216,11 +232,31 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def set_zctrls(self):
 		if self.shown:
+			if self.halftone_zctrl:
+				self.halftone_zctrl.setup_zyncoder()
+			else:
+				self.halftone_ctrl=zynthian_controller(None, 'semitone transpose', 'semitone transpose', { 'midi_cc':0, 'value_max':25 })
+				self.halftone_zctrl=zynthian_gui_controller(self.zctrl_pos[0], self.main_frame, self.halftone_ctrl, False)
+			self.halftone_zctrl.val0=-12
+			self.halftone_zctrl.erase_midi_bind()
+			self.halftone_zctrl.set_value(self.halftone_trans+12, True)
+			self.halftone_zctrl.show()
+
+			if self.octave_zctrl:
+				self.octave_zctrl.setup_zyncoder()
+			else:
+				self.octave_ctrl=zynthian_controller(None, 'octave transpose', 'octave transpose', { 'midi_cc':0, 'value_max':11 })
+				self.octave_zctrl=zynthian_gui_controller(self.zctrl_pos[1], self.main_frame, self.octave_ctrl, False)
+			self.octave_zctrl.val0=-5
+			self.octave_zctrl.erase_midi_bind()
+			self.octave_zctrl.set_value(self.octave_trans+5, True)
+			self.octave_zctrl.show()
+
 			if self.nlow_zctrl:
 				self.nlow_zctrl.setup_zyncoder()
 			else:
 				self.nlow_ctrl=zynthian_controller(None, 'note_low', 'note_low', { 'midi_cc':0, 'value_max':127 })
-				self.nlow_zctrl=zynthian_gui_controller(1, self.main_frame, self.nlow_ctrl, True)
+				self.nlow_zctrl=zynthian_gui_controller(self.zctrl_pos[2], self.main_frame, self.nlow_ctrl, True)
 			self.nlow_zctrl.val0=0
 			self.nlow_zctrl.set_value(self.note_low, True)
 			self.nlow_zctrl.show()
@@ -229,30 +265,10 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 				self.nhigh_zctrl.setup_zyncoder()
 			else:
 				self.nhigh_ctrl=zynthian_controller(None, 'note_high', 'note_high', { 'midi_cc':0, 'value_max':127 })
-				self.nhigh_zctrl=zynthian_gui_controller(3, self.main_frame, self.nhigh_ctrl, True)
+				self.nhigh_zctrl=zynthian_gui_controller(self.zctrl_pos[3], self.main_frame, self.nhigh_ctrl, True)
 			self.nhigh_zctrl.val0=0
 			self.nhigh_zctrl.set_value(self.note_high, True)
 			self.nhigh_zctrl.show()
-
-			if self.octave_zctrl:
-				self.octave_zctrl.setup_zyncoder()
-			else:
-				self.octave_ctrl=zynthian_controller(None, 'octave transpose', 'octave transpose', { 'midi_cc':0, 'value_max':11 })
-				self.octave_zctrl=zynthian_gui_controller(2, self.main_frame, self.octave_ctrl, False)
-			self.octave_zctrl.val0=-5
-			self.octave_zctrl.erase_midi_bind()
-			self.octave_zctrl.set_value(self.octave_trans+5, True)
-			self.octave_zctrl.show()
-
-			if self.halftone_zctrl:
-				self.halftone_zctrl.setup_zyncoder()
-			else:
-				self.halftone_ctrl=zynthian_controller(None, 'semitone transpose', 'semitone transpose', { 'midi_cc':0, 'value_max':25 })
-				self.halftone_zctrl=zynthian_gui_controller(0, self.main_frame, self.halftone_ctrl, False)
-			self.halftone_zctrl.val0=-12
-			self.halftone_zctrl.erase_midi_bind()
-			self.halftone_zctrl.set_value(self.halftone_trans+12, True)
-			self.halftone_zctrl.show()
 
 
 	def plot_zctrls(self):

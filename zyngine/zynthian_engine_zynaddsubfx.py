@@ -66,8 +66,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 		['portamento time','/part$i/ctl/portamento.time',64],
 		['portamento up/down','/part$i/ctl/portamento.updowntimestretch',64],
-		['portamento thresh type','/part$i/ctl/portamento.pitchthreshtype','on','off|on'],
-		['portamento thresh','/part$i/ctl/portamento.pitchthresh',3],
+		['threshold type','/part$i/ctl/portamento.pitchthreshtype','<=',['<=','>=']],
+		['threshold','/part$i/ctl/portamento.pitchthresh',3],
 
 		['portaprop on/off','/part$i/ctl/portamento.proportional','off','off|on'],
 		['portaprop rate','/part$i/ctl/portamento.propRate',80],
@@ -104,7 +104,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		['main',['volume','panning','filter cutoff','filter resonance']],
 		['mode',['drum mode','sustain','assign mode','voice limit']],
 		['portamento',['portamento enable','portamento auto','portamento receive']],
-		['portamento time',['portamento time','portamento up/down','portamento thresh','portamento thresh type']],
+		['portamento time',['portamento time','portamento up/down','threshold','threshold type']],
 		['portamento prop',['portaprop on/off','portaprop rate','portaprop depth']],
 		['modulation',['modulation','modulation amplitude','modwheel depth','modwheel exp']],
 		['pitchwheel',['bendrange split','bendrange down','bendrange']],
@@ -425,7 +425,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				zctrl.set_value(args[0])
 
 				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.active_screen=='control' and not self.zyngui.modal_screen:
+				if self.zyngui.current_screen=='control':
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 			except:
 				pass

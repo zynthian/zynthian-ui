@@ -111,12 +111,11 @@ class zynthian_gui_confirm():
 
 	def switch_select(self, t='S'):
 		logging.info("callback %s" % self.callback_params)
-		
+
 		try:
 			self.callback(self.callback_params)
 		except:
 			pass
-
 		self.zyngui.close_modal()
 
 

@@ -107,7 +107,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.list_data.append((cscr,i,cscr,layer,j))
 				i += 1
 				j += 1
-		self.index = self.zyngui.curlayer.get_active_screen_index()
+		self.index = self.zyngui.curlayer.get_current_screen_index()
 		super().fill_list()
 
 
@@ -181,7 +181,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.show_widget(screen_layer)
 
 			# Get controllers for the current screen
-			self.zyngui.curlayer.set_active_screen_index(self.index)
+			self.zyngui.curlayer.set_current_screen_index(self.index)
 			self.zcontrollers = screen_layer.get_ctrl_screen(screen_title)
 
 		else:
@@ -202,7 +202,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					self.zgui_controllers[i].hide()
 
 			# Empty rest of GUI controllers
-			for i in range(i,len(self.zgui_controllers)):
+			for i in range(i, 4):
 				self.set_zcontroller(i, None)
 
 			# Set/Restore XY controllers highlight

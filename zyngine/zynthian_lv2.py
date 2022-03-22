@@ -545,7 +545,7 @@ def get_plugin_ports(plugin_url):
 				'scale_points': sp
 			}
 			ports_info[i] = info
-			logging.debug("PORT {} => {}".format(i, info))
+			#logging.debug("PORT {} => {}".format(i, info))
 
 	return ports_info
 

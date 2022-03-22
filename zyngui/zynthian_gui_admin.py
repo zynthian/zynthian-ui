@@ -71,7 +71,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				self.list_data.append((self.start_rbpi_headphones,0,"[  ] RBPi Headphones"))
 
 		if zynthian_gui_config.midi_single_active_channel:
-			self.list_data.append((self.toggle_single_channel,0,"->  Stage Mode"))
+			self.list_data.append((self.toggle_single_channel,0,"->  Stage Mode (Omni-On)"))
 		else:
 			self.list_data.append((self.toggle_single_channel,0,"=>  Multi-timbral Mode"))
 

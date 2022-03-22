@@ -77,7 +77,7 @@ class zynthian_gui_midi_profile(zynthian_gui_selector):
 				"ZYNTHIAN_SCRIPT_MIDI_PROFILE": self.list_data[i][0]
 			})
 			self.zyngui.reload_midi_config()
-		self.zyngui.show_active_screen()
+		self.zyngui.show_current_screen()
 
 
 	def set_select_path(self):

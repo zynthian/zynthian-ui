@@ -79,9 +79,11 @@ class zynthian_gui_controller:
 		if zynthian_gui_config.ctrl_both_sides:
 			self.trw = zynthian_gui_config.ctrl_width-6
 			self.trh = int(0.1*zynthian_gui_config.ctrl_height)
+			self.titw = self.trw
 		else:
 			self.trw = 0.8 * (zynthian_gui_config.ctrl_width / 2)
 			self.trh = 1.06 * self.trw
+			self.titw = 0.6 * zynthian_gui_config.ctrl_width
 
 		self.plot_value_func = self.plot_value_arc
 		self.erase_value_func = self.erase_value_arc
@@ -401,28 +403,29 @@ class zynthian_gui_controller:
 
 
 	def set_midi_bind(self):
-		if self.zctrl.midi_cc==0:
-			#self.erase_midi_bind()
-			self.plot_midi_bind("/{}".format(self.zctrl.value_range))
-		elif self.zyngui.midi_learn_mode:
-			self.plot_midi_bind("??",zynthian_gui_config.color_ml)
-		elif self.zyngui.midi_learn_zctrl and self.zctrl==self.zyngui.midi_learn_zctrl:
-			self.plot_midi_bind("??",zynthian_gui_config.color_hl)
-		elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
-			midi_cc = self.zctrl.midi_learn_cc
-			if not self.zyngui.is_single_active_channel():
-				midi_cc = "{}#{}".format(self.zctrl.midi_learn_chan+1,midi_cc)
-			self.plot_midi_bind(midi_cc)
-		elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
-			#midi_cc = self.zctrl.midi_cc
-			swap_info= lib_zyncore.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
-			midi_chan = swap_info >> 8
-			midi_cc = swap_info & 0xFF
-			if not self.zyngui.is_single_active_channel():
-				midi_cc = "{}#{}".format(midi_chan+1,midi_cc)
-			self.plot_midi_bind(midi_cc)
-		else:
-			self.erase_midi_bind()
+		if self.zctrl:
+			if self.zctrl.midi_cc==0:
+				#self.erase_midi_bind()
+				self.plot_midi_bind("/{}".format(self.zctrl.value_range))
+			elif self.zyngui.midi_learn_mode:
+				self.plot_midi_bind("??",zynthian_gui_config.color_ml)
+			elif self.zyngui.midi_learn_zctrl and self.zctrl==self.zyngui.midi_learn_zctrl:
+				self.plot_midi_bind("??",zynthian_gui_config.color_hl)
+			elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
+				midi_cc = self.zctrl.midi_learn_cc
+				if not self.zyngui.is_single_active_channel():
+					midi_cc = "{}#{}".format(self.zctrl.midi_learn_chan+1,midi_cc)
+				self.plot_midi_bind(midi_cc)
+			elif self.zctrl.midi_cc and self.zctrl.midi_cc>0:
+				#midi_cc = self.zctrl.midi_cc
+				swap_info= lib_zyncore.get_midi_filter_cc_swap(self.zctrl.midi_chan, self.zctrl.midi_cc)
+				midi_chan = swap_info >> 8
+				midi_cc = swap_info & 0xFF
+				if not self.zyngui.is_single_active_channel():
+					midi_cc = "{}#{}".format(midi_chan+1,midi_cc)
+				self.plot_midi_bind(midi_cc)
+			else:
+				self.erase_midi_bind()
 
 
 	def set_title(self, tit):
@@ -444,7 +447,7 @@ class zynthian_gui_controller:
 		elif n_words>=4:
 			maxlen=max([rfont.measure(w) for w in [words[0]+' '+words[1], words[2]+' '+words[3]]])
 			max_fs=max_fs-1
-		fs=int((zynthian_gui_config.ctrl_width-6)*max_fs/maxlen)
+		fs=int(self.titw*max_fs/maxlen)
 		fs=min(max_fs,max(int(0.8*zynthian_gui_config.font_size),fs))
 		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,fs))
 		#Set title label
@@ -452,13 +455,13 @@ class zynthian_gui_controller:
 			self.label_title = self.canvas.create_text(3, 4,
 				anchor=tkinter.NW,
 				justify=tkinter.LEFT,
-				width=zynthian_gui_config.ctrl_width-6,
+				width=self.titw,
 				text=self.title,
 				font=(zynthian_gui_config.font_family,fs),
 				fill=zynthian_gui_config.color_panel_tx)
 		else:
 			self.canvas.itemconfigure(self.label_title,
-				width=zynthian_gui_config.ctrl_width-6,
+				width=self.titw,
 				text=self.title,
 				font=(zynthian_gui_config.font_family,fs))
 

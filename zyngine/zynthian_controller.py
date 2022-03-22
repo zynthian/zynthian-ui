@@ -153,7 +153,11 @@ class zynthian_controller:
 			self.value_mid = self.value_min+self.value_range/2
 
 		if self.is_logarithmic:
-			self.powbase = self.value_max/self.value_min
+			if self.value_min==0:
+				self.powbase = 10000
+				self.value_min = self.value_max/self.powbase
+			else:
+				self.powbase = self.value_max/self.value_min
 			self.log_powbase = math.log(self.powbase)
 
 		self._set_value(self.value)
@@ -191,7 +195,7 @@ class zynthian_controller:
 				self.labels = maxval
 
 		# Detect toggle (on/off)
-		if self.labels and len(self.labels)==2 and self.labels[0].lower() in ("off","on") and self.labels[1].lower() in ("off","on"):
+		if self.labels and len(self.labels)==2:
 			self.is_toggle = True
 
 		self._configure()
@@ -380,7 +384,7 @@ class zynthian_controller:
 
 	def get_ctrl_osc_val(self):
 		if self.is_toggle:
-			if self.get_value2label().lower()=='on':
+			if self.value>0:
 				return True
 			else:
 				return False
@@ -591,7 +595,7 @@ class zynthian_controller:
 	def refresh_gui(self):
 		#Refresh GUI controller in screen when needed ...
 		try:
-			if (self.engine.zyngui.active_screen=='control' and not self.engine.zyngui.modal_screen) or self.engine.zyngui.modal_screen=='alsa_mixer':
+			if self.engine.zyngui.current_screen in ('control', 'alsa_mixer'):
 				self.engine.zyngui.screens['control'].set_controller_value(self)
 		except Exception as e:
 			logging.debug(e)

@@ -173,39 +173,49 @@ class zynthian_engine_puredata(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, layer):
-		try:
-			ctrl_items=self.preset_config['midi_controllers'].items()
-		except:
-			return super().get_controllers_dict(layer)
-		c=1
-		ctrl_set=[]
-		zctrls=OrderedDict()
-		self._ctrl_screens=[]
-		logging.debug("Generating Controller Config ...")
-		try:
-			for name, options in ctrl_items:
-				try:
-					if isinstance(options,int):
-						options={ 'midi_cc': options }
-					if 'midi_chan' not in options:
-						options['midi_chan']=layer.midi_chan
-					midi_cc=options['midi_cc']
-					logging.debug("CTRL %s: %s" % (midi_cc, name))
-					title=str.replace(name, '_', ' ')
-					zctrls[name]=zynthian_controller(self,name,title,options)
-					ctrl_set.append(name)
-					if len(ctrl_set)>=4:
-						logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-						self._ctrl_screens.append(['Controllers#'+str(c),ctrl_set])
-						ctrl_set=[]
-						c=c+1
-				except Exception as err:
-					logging.error("Generating Controller Screens: %s" % err)
-			if len(ctrl_set)>=1:
-				logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-				self._ctrl_screens.append(['Controllers#'+str(c),ctrl_set])
-		except Exception as err:
-			logging.error("Generating Controller List: %s" % err)
+		zctrls = OrderedDict()
+		self._ctrl_screens = []
+		if self.preset_config:
+			for ctrl_group, ctrl_dict in self.preset_config.items():
+				if isinstance(ctrl_dict, dict):
+					c = 1
+					ctrl_set = []
+					if ctrl_group == 'midi_controllers':
+						ctrl_group = 'Controllers'
+					logging.debug("Generating Controller Screens for '{}' ...".format(ctrl_group))
+					try:
+						for name, options in ctrl_dict.items():
+							try:
+								if len(ctrl_set)>=4:
+									logging.debug("Adding Controller Screen {}#{}".format(ctrl_group, c))
+									self._ctrl_screens.append(["{}#{}".format(ctrl_group,c),ctrl_set])
+									ctrl_set = []
+									c = c+1
+
+								if isinstance(options,int):
+									options = { 'midi_cc': options }
+								if 'midi_chan' not in options:
+									options['midi_chan'] = layer.midi_chan
+								midi_cc = options['midi_cc']
+								logging.debug("CTRL %s: %s" % (midi_cc, name))
+								title = str.replace(name, '_', ' ')
+								zctrls[name] = zynthian_controller(self,name,title,options)
+								ctrl_set.append(name)
+							except Exception as err:
+								logging.error("Generating Controller Screens: %s" % err)
+						if len(ctrl_set)>=1:
+							if c>1:
+								logging.debug("Adding Controller Screen {}#{}".format(ctrl_group, c))
+								self._ctrl_screens.append(["{}#{}".format(ctrl_group,c),ctrl_set])
+							else:
+								logging.debug("Adding Controller Screen {}".format(ctrl_group))
+								self._ctrl_screens.append([ctrl_group,ctrl_set])
+					except Exception as err:
+						logging.error(err)
+				
+		if len(zctrls)==0:
+			zctrls = super().get_controllers_dict(layer)
+
 		return zctrls
 
 	#--------------------------------------------------------------------------
