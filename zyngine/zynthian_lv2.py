@@ -423,7 +423,7 @@ def remove_plugin_preset_from_cache(plugin_name, bank_label, preset_uri):
 	if bank_label not in presets_info:
 		logging.error("Bank doesn't exist")
 		
-	# Insert new preset
+	# Find and remove preset
 	for i in range(len(presets_info[bank_label]['presets'])):
 		if preset_uri==presets_info[bank_label]['presets'][i]['url']:
 			del(presets_info[bank_label]['presets'][i])

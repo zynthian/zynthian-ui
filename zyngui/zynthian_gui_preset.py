@@ -66,8 +66,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def show_options(self):
 		preset = self.list_data[self.index]
 		fname = preset[2]
-		fav = "[  ] Favourite"
-		if self.zyngui.curlayer.engine.is_preset_fav(preset): fav = "[x] Favourite"
+		fav = "Add to favourites"
+		if self.zyngui.curlayer.engine.is_preset_fav(preset): fav = "Remove from favourites"
 		options = {
 			fav: preset,
 			"Save as...": preset,
@@ -83,8 +83,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		fpath=preset[0]
 		fname=preset[2]
 
-		if option[-9:] == "Favourite":
+		if option[-10:] == "favourites":
 			self.zyngui.curlayer.toggle_preset_fav(preset)
+			self.zyngui.close_modal()
 		elif option == "Save":
 			self.zyngui.show_keyboard(self.save_preset, fname)
 		elif option == "Rename":
@@ -128,8 +129,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def delete_confirmed(self, preset):
 		try:
-			if self.zyngui.curlayer.engine.delete_preset(self.zyngui.curlayer.bank_info[2], preset):
-				self.fill_list()
+			self.zyngui.curlayer.engine.delete_preset(self.zyngui.curlayer.bank_info[2], preset)
+			self.zyngui.curlayer.remove_preset_fav(preset)
+			self.fill_list()
 		except Exception as e:
 			logging.warning("Failed to delete preset: %s", e)
 
@@ -142,7 +144,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if swi == 1:
 			if t == 'S':
 				if len(self.zyngui.curlayer.bank_list)>1:
-					self.zyngui.show_modal('bank')
+					self.zyngui.replace_screen('bank')
 					return True
 		elif swi == 2:
 			if t == 'S':

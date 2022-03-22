@@ -327,19 +327,17 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def delete_preset(self, bank_name, preset):
 		if not self.is_preset_user(preset):
-			return False
+			return
 		
 		try:
-			zynthian_engine_jalv.lv2_remove_preset(preset[0]) # Remove from disk
 			zynthian_lv2.remove_plugin_preset_from_cache(self.plugin_name, bank_name, preset[0]) # Remove from cache
 			for i,p in enumerate(self.preset_info[bank_name]['presets']):
-				if p['label'] == preset[2]:
+				if p['url'] == preset[0]:
 					del self.preset_info[bank_name]['presets'][i]
 					break; # Remove from memory-resident list
-			return True
+			zynthian_engine_jalv.lv2_remove_preset(preset[0]) # Remove from disk
 		except Exception as e:
 			logging.error(e)
-			return False
 
 
 	#----------------------------------------------------------------------------

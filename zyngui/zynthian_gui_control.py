@@ -350,8 +350,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
 					self.zyngui.exit_midi_learn_mode()
 				else:
-					self.zyngui.screens['preset'].select_listbox(self.zyngui.curlayer.get_preset_index())
-					self.zyngui.show_modal('preset')
+					self.zyngui.show_screen('preset')
 				return True
 
 		elif swi == 2:
@@ -372,7 +371,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			elif t=='B':
 				if not self.zyngui.is_shown_alsa_mixer():
 					self.zyngui.screens['layer_options'].reset()
-					self.zyngui.show_modal('layer_options')
+					self.zyngui.show_screen('layer_options')
 			return True
 
 

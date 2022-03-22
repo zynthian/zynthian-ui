@@ -487,6 +487,17 @@ class zynthian_engine(zynthian_basic_engine):
 		return fav_status
 
 
+	def remove_preset_fav(self, preset):
+		if self.preset_favs is None:
+			self.load_preset_favs()
+		try:
+			del self.preset_favs[str(preset[0])]
+			with open(self.preset_favs_path, 'w') as f:
+				json.dump(self.preset_favs, f)
+		except:
+			pass # Don't care if preset not in favs
+
+
 	def get_preset_favs(self, layer):
 		if self.preset_favs is None:
 			self.load_preset_favs()
@@ -515,6 +526,8 @@ class zynthian_engine(zynthian_basic_engine):
 					self.preset_favs = json.load(f, object_pairs_hook=OrderedDict)
 			except:
 				self.preset_favs = OrderedDict()
+
+			#TODO: Remove invalid presets from favourite's list
 
 		else:
 			logging.warning("Can't load preset favorites until the engine have a nickname!")
