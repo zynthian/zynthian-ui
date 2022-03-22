@@ -1648,7 +1648,6 @@ class zynthian_gui:
 					# SubSnapShot (ZS3) MIDI learn ...
 					if self.midi_learn_mode and self.current_screen=='zs3_learn':
 						if self.screens['layer'].save_midi_chan_zs3(chan, pgm):
-							logging.info("ZS3 Saved: CH{} => {}".format(chan,pgm))
 							self.close_screen()
 							self.exit_midi_learn_mode()
 
