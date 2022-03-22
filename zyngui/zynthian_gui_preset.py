@@ -73,7 +73,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if swi == 1:
 			if t == 'S':
 				if len(self.zyngui.curlayer.bank_list)>1:
-					self.zyngui.show_modal('bank')
+					self.zyngui.replace_screen('bank')
 					return True
 		elif swi == 2:
 			if t == 'S':

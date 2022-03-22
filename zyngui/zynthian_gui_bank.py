@@ -68,7 +68,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			else:
 				self.zyngui.curlayer.set_show_fav_presets(False)
 	
-		self.zyngui.show_modal('preset')
+		self.zyngui.show_screen('preset')
 
 		# If there is only one preset, jump to instrument control
 		if len(self.zyngui.curlayer.preset_list)<=1:
@@ -80,7 +80,11 @@ class zynthian_gui_bank(zynthian_gui_selector):
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
-		if swi == 2:
+		if swi == 1:
+			if t == 'S':
+				self.zyngui.close_screen()
+				return True
+		elif swi == 2:
 			if t == 'S':
 				self.zyngui.toggle_favorites()
 				return True

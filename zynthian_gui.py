@@ -100,6 +100,7 @@ if "autoeq" in zynthian_gui_config.experimental_features:
 SCREEN_HMODE_NONE = 0
 SCREEN_HMODE_ADD = 1
 SCREEN_HMODE_REPLACE = 2
+SCREEN_HMODE_RESET = 3
 
 class zynthian_gui:
 
@@ -655,7 +656,8 @@ class zynthian_gui:
 		elif hmode==SCREEN_HMODE_REPLACE:
 			self.screen_history.pop()
 			self.screen_history.append(screen)
-
+		elif hmode==SCREEN_HMODE_RESET:
+			self.screen_history = [screen]
 
 	def show_modal(self, screen=None):
 		self.show_screen(screen, hmode=SCREEN_HMODE_NONE)
@@ -718,9 +720,9 @@ class zynthian_gui:
 			self.screen_timer_id = None
 
 
-	def toggle_screen(self, screen):
+	def toggle_screen(self, screen, hmode=SCREEN_HMODE_RESET):
 		if self.current_screen!=screen:
-			self.show_screen(screen)
+			self.show_screen(screen, hmode)
 		else:
 			self.close_screen()
 
@@ -816,14 +818,14 @@ class zynthian_gui:
 							logging.error("Can't load custom control screen {} => {}".format(screen_name, e))
 
 					if screen_name in self.screens:
-						self.show_screen(screen_name)
+						self.show_screen(screen_name, hmode=SCREEN_HMODE_RESET)
 						return
 
 			# If there is a preset selection for the active layer ...
 			if self.curlayer.get_preset_name():
-				self.show_screen('control')
+				self.show_screen('control', hmode=SCREEN_HMODE_RESET)
 			else:
-				self.show_screen('bank')
+				self.show_screen('bank', hmode=SCREEN_HMODE_RESET)
 				# If there is only one bank, jump to preset selection
 				if len(self.curlayer.bank_list)<=1:
 					self.screens['bank'].select_action(0)
@@ -1130,13 +1132,13 @@ class zynthian_gui:
 			self.zynswitch_long(3)
 
 		elif cuia in ("MODAL_MAIN", "SCREEN_MAIN"):
-			self.toggle_screen("main")
+			self.toggle_screen("main", hmode=SCREEN_HMODE_ADD)
 
 		elif cuia in ("MODAL_ADMIN", "SCREEN_ADMIN"):
-			self.toggle_screen("admin")
+			self.toggle_screen("admin", hmode=SCREEN_HMODE_ADD)
 
 		elif cuia in ("MODAL_AUDIO_MIXER", "SCREEN_AUDIO_MIXER"):
-			self.show_screen("audio_mixer")
+			self.toggle_screen("audio_mixer", hmode=SCREEN_HMODE_ADD)
 
 		elif cuia in ("MODAL_SNAPSHOT", "SCREEN_SNAPSHOT"):
 			self.toggle_screen("snapshot")
@@ -1173,7 +1175,7 @@ class zynthian_gui:
 				if params:
 					self.screens['layer'].select(params[0]-1)
 				self.screens['layer_options'].reset()
-				self.toggle_screen('layer_options')
+				self.toggle_screen('layer_options', hmode=SCREEN_HMODE_ADD)
 			except:
 				logging.warning("Can't show options for layer ({})!".format(params))
 				
@@ -1181,15 +1183,19 @@ class zynthian_gui:
 			if self.current_screen=='stepseq':
 				self.screens['stepseq'].toggle_menu()
 			else:
-				self.toggle_screen("main")
+				self.toggle_screen("main", hmode=SCREEN_HMODE_ADD)
 
 		elif cuia == "PRESET":
-			if self.current_screen=='preset' and len(self.curlayer.bank_list)>1:
-				self.replace_screen('bank')
+			if self.current_screen=='preset':
+				if len(self.curlayer.bank_list)>1:
+					self.replace_screen('bank')
+				else:
+					self.close_screen()
 			elif self.current_screen=='bank':
-				self.replace_screen('preset')
+				#self.replace_screen('preset')
+				self.close_screen()
 			else:
-				self.show_screen('preset')
+				self.show_screen('preset', hmode=SCREEN_HMODE_ADD)
 
 		elif cuia == "PRESET_FAVS":
 			self.toggle_favorites()
