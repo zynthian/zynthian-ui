@@ -48,23 +48,25 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		self.list_data=[]
 
 		#Add "Waiting for Program Change" message
-		self.list_data.append(('None',len(self.list_data),"Waiting for Program Change ..."))
-		self.list_data.append((None,len(self.list_data),"-----------------------------"))
+		self.list_data.append(('None',None,"Waiting for Program Change ..."))
+		self.list_data.append((None,None,"-----------------------------"))
 
 		#Add list of programs
 		try:
 			midich = self.zyngui.curlayer.get_midi_chan()
 			zs3_indexes = self.zyngui.screens['layer'].get_midi_chan_zs3_used_indexes(midich)
-			select_zs3_idx = self.zyngui.screens['layer'].get_last_zs3_index(midich)
-			for zs3_index in range(128):
-				if zs3_index in zs3_indexes:
-					zs3_title = "Program %d" % (zs3_index + 1)
+			#select_zs3_idx = self.zyngui.screens['layer'].get_last_zs3_index(midich)
+			for i in range(128):
+				if i in zs3_indexes:
+					zs3_index = i
+					label = "used"
 				else:
-					zs3_title = "Program %d (empty)" % (zs3_index + 1)
-				self.list_data.append((zs3_index,len(self.list_data),zs3_title))
+					zs3_index = None
+					label = "free"
+				zs3_title = "Program {}: {}".format(i + 1, label)
+				self.list_data.append((i,zs3_index,zs3_title))
 		except Exception as e:
 			logging.error(e)
-
 
 		super().fill_list()
 
@@ -85,16 +87,23 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		self.index=i
-		zs3_index=self.list_data[self.index][0]
+		self.index = i
+		zs3_index = self.list_data[self.index][1]
+		midi_prog = self.list_data[self.index][0]
 		if isinstance(zs3_index, int):
-			midich=self.zyngui.curlayer.get_midi_chan()
+			midich = self.zyngui.curlayer.get_midi_chan()
 			if t=='S':
 				self.zyngui.screens['layer'].set_midi_chan_zs3(midich, zs3_index)
+				self.zyngui.close_screen()
 				self.zyngui.exit_midi_learn_mode()
 			elif t=='B':
 				self.zyngui.screens['zs3_options'].config(midich, zs3_index)
-				self.zyngui.show_modal('zs3_options')
+				self.zyngui.show_screen('zs3_options')
+		elif isinstance(midi_prog, int):
+			midich = self.zyngui.curlayer.get_midi_chan()
+			self.zyngui.screens['layer'].save_midi_chan_zs3(midich, midi_prog)
+			self.zyngui.close_screen()
+			self.zyngui.exit_midi_learn_mode()
 
 
 	# Function to handle *all* switch presses.
@@ -104,7 +113,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 	def switch(self, swi, t='S'):
 		if swi == 2:
 			if t == 'S':
-				self.zyngui.show_screen('control')
+				self.zyngui.close_screen()
 				return True
 
 

@@ -549,6 +549,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.zyngui.screens[self.zyngui.current_screen].show() # Refresh preset labels
 			except Exception as e:
 				logging.error("Can't refresh GUI! => %s", e)
+		return changed
 
 
 	def set_midi_chan_zs3(self, midich, zs3_index):
@@ -563,6 +564,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.zyngui.screens[self.zyngui.current_screen].show() # Refresh preset labels
 			except Exception as e:
 				logging.error("Can't refresh GUI! => %s", e)
+		return changed
 
 
 	def get_last_zs3_index(self, midich):
@@ -578,7 +580,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				result = True
 			elif zynthian_gui_config.midi_single_active_channel:
 				layer.delete_zs3(zs3_index)
-
 		return result
 
 

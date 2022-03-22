@@ -633,6 +633,7 @@ class zynthian_layer:
 
 
 	def save_zs3(self, i):
+		logging.info("Save ZS3: CH{} => {}".format(self.midi_chan, i))
 		try:
 			zs3 = {
 				'bank_index': self.bank_index,
