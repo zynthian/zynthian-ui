@@ -350,7 +350,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
 					self.zyngui.exit_midi_learn_mode()
 				else:
-					self.zyngui.show_screen('preset')
+					self.zyngui.cuia_bank_preset()
 				return True
 
 		elif swi == 2:

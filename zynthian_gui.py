@@ -1025,7 +1025,7 @@ class zynthian_gui:
 
 		elif cuia == "BACK":
 			try:
-				self.close_screen(back=True)
+				self.back_screen()
 			except:
 				pass
 
@@ -1186,16 +1186,7 @@ class zynthian_gui:
 				self.toggle_screen("main", hmode=SCREEN_HMODE_ADD)
 
 		elif cuia == "PRESET":
-			if self.current_screen=='preset':
-				if len(self.curlayer.bank_list)>1:
-					self.replace_screen('bank')
-				else:
-					self.close_screen()
-			elif self.current_screen=='bank':
-				#self.replace_screen('preset')
-				self.close_screen()
-			else:
-				self.show_screen('preset', hmode=SCREEN_HMODE_ADD)
+			self.cuia_bank_preset()
 
 		elif cuia == "PRESET_FAVS":
 			self.toggle_favorites()
@@ -1223,6 +1214,22 @@ class zynthian_gui:
 					return
 
 		self.enter_midi_learn_mode()
+
+
+	def cuia_bank_preset(self, params=None):
+		if self.current_screen=='preset':
+			if len(self.curlayer.bank_list)>1:
+				self.replace_screen('bank')
+			else:
+				self.close_screen()
+		elif self.current_screen=='bank':
+			#self.replace_screen('preset')
+			self.close_screen()
+		else:
+			if len(self.curlayer.preset_list)>1:
+				self.show_screen('preset', hmode=SCREEN_HMODE_ADD)
+			elif len(self.curlayer.bank_list)>1:
+				self.show_screen('bank', hmode=SCREEN_HMODE_ADD)
 
 
 	def custom_switch_ui_action(self, i, t):
