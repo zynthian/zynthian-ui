@@ -340,6 +340,11 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				if bi[2] and bi[0] in sf_unload:
 					#print("Skip "+bi[0]+"("+str(sf_unload[bi[0]])+")")
 					del sf_unload[bi[0]]
+			pi=layer.preset_info
+			if pi is not None:
+				if pi[2] and pi[3] in sf_unload:
+					#print("Skip "+pi[0]+"("+str(sf_unload[pi[3]])+")")
+					del sf_unload[pi[3]]
 		#Then, remove the remaining ;-)
 		for sf,sfi in sf_unload.items():
 			logging.info("Unload SoundFont => {}".format(sfi))

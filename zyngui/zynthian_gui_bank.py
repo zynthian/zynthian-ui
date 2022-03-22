@@ -67,7 +67,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 				return
 			else:
 				self.zyngui.curlayer.set_show_fav_presets(False)
-	
+
 		self.zyngui.show_screen('preset')
 
 		# If there is only one preset, jump to instrument control
