@@ -51,10 +51,11 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def show(self):
-		if not self.zyngui.curlayer:
-			logging.error("Can't show preset list for None layer!")
-			return
-		super().show()
+		if self.zyngui.curlayer:
+			self.index=self.zyngui.curlayer.get_preset_index()
+			super().show()
+		else:
+			self.zyngui.close_screen()
 
 
 	def select_action(self, i, t='S'):
@@ -70,10 +71,10 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if self.zyngui.curlayer.engine.is_preset_fav(preset): fav = "Remove from favourites"
 		options = {
 			fav: preset,
-			"Save as...": preset,
+			"Save as": preset,
 		}
 		if self.zyngui.curlayer.engine.is_preset_user(preset):
-			options["Rename..."] = preset
+			options["Rename"] = preset
 			options["Delete"] = preset
 		self.zyngui.screens['option'].config("Preset: %s" % fname, options, self.options_cb)
 		self.zyngui.show_modal('option')
@@ -86,7 +87,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if option[-10:] == "favourites":
 			self.zyngui.curlayer.toggle_preset_fav(preset)
 			self.zyngui.close_modal()
-		elif option == "Save":
+		elif option == "Save as":
 			self.zyngui.show_keyboard(self.save_preset, fname)
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_preset, fname)
@@ -110,15 +111,14 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			pass
 
 
-	def rename_preset(self, name):
-		fpath=self.list_data[self.index][0]
-		fname=self.list_data[self.index][2]
-		name = name.rstrip()
-		if name == fname:
-			return
+	def rename_preset(self, new_name):
+		preset = self.list_data[self.index]
+		new_name = new_name.rstrip()
+		if new_name == preset[2]:
+			return # Don't do anything if name not changed
 		try:
-			self.zyngui.curlayer.engine.zynapi_rename_preset(fpath, fname)
-			#TODO Reload presets which might mean updating cache, etc.
+			self.zyngui.curlayer.engine.rename_preset(self.zyngui.curlayer.bank_info[2], preset, new_name)
+			self.fill_list()
 		except Exception as e:
 			logging.warning("Failed to rename preset: %s", e)
 

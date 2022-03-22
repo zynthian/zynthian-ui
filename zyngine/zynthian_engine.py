@@ -459,8 +459,13 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	# Override in derived class
+	def rename_preset(self, preset, new_name):
+		raise Exception("Rename preset not implemented for engine %s"%(self.name))
+
+
+	# Override in derived class
 	def delete_preset(self, preset):
-		pass
+		raise Exception("Delete preset not implemented for engine %s"%(self.name))
 
 
 	# ---------------------------------------------------------------------------

@@ -399,7 +399,7 @@ def add_plugin_preset_to_cache(plugin_name, bank_label, preset_label, preset_uri
 		
 	# Insert new preset
 	presets_info[bank_label]['presets'].append({
-		'label': prest_label,
+		'label': preset_label,
 		'url': preset_uri
 	})
 

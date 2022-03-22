@@ -325,17 +325,31 @@ class zynthian_engine_jalv(zynthian_engine):
 			return False
 
 
+	def rename_preset(self, bank_name, preset, new_name):
+		if not self.is_preset_user(preset):
+			return		
+		try:
+			zynthian_lv2.remove_plugin_preset_from_cache(self.plugin_name, bank_name, preset[0]) # Remove from cache
+			zynthian_lv2.add_plugin_preset_to_cache(self.plugin_name, bank_name, new_name, preset[0]) # Add back into cache
+			for i,p in enumerate(self.preset_info[bank_name]['presets']):
+				if p['url'] == preset[0]:
+					self.preset_info[bank_name]['presets'][i]['label'] = new_name # Change memory resident name
+					break;
+			zynthian_engine_jalv.lv2_rename_preset(preset[0], new_name) # Update LV2 ttl
+		except Exception as e:
+			logging.error(e)
+
+
 	def delete_preset(self, bank_name, preset):
 		if not self.is_preset_user(preset):
 			return
-		
 		try:
 			zynthian_lv2.remove_plugin_preset_from_cache(self.plugin_name, bank_name, preset[0]) # Remove from cache
 			for i,p in enumerate(self.preset_info[bank_name]['presets']):
 				if p['url'] == preset[0]:
 					del self.preset_info[bank_name]['presets'][i]
 					break; # Remove from memory-resident list
-			zynthian_engine_jalv.lv2_remove_preset(preset[0]) # Remove from disk
+			zynthian_engine_jalv.lv2_remove_preset(preset[0]) # Remove from LV2 ttl
 		except Exception as e:
 			logging.error(e)
 
@@ -771,7 +785,8 @@ class zynthian_engine_jalv(zynthian_engine):
 				new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
 				man_parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
 				zynthian_engine_jalv.ttl_write_parts(man_fpath, man_parts)
-				renamed = True
+				renamed = True #TODO: This overrides subsequent assertion in prs_parts
+				break
 
 		for i,p in enumerate(prs_parts):
 			if bmre2.search(p):
@@ -779,6 +794,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				prs_parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
 				zynthian_engine_jalv.ttl_write_parts(preset_path, prs_parts)
 				renamed = True
+				break
 
 		if not renamed:
 			raise Exception("Format doesn't match!")
