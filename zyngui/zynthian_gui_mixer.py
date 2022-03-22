@@ -573,7 +573,7 @@ class zynthian_gui_mixer_strip():
 				return
 			if delta > 400:
 				zynthian_gui_config.zyngui.screens['layer_options'].reset()
-				zynthian_gui_config.zyngui.show_modal('layer_options')
+				zynthian_gui_config.zyngui.show_screen('layer_options')
 				return
 			else:
 				zynthian_gui_config.zyngui.layer_control(self.layer)
@@ -959,7 +959,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 			elif t == "B":
 				# Implement MIDI learning!
-				self.zyngui.show_modal('snapshot')
+				self.zyngui.show_screen('snapshot')
 				return True
 
 		elif swi == ENC_SELECT:
@@ -972,7 +972,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					# Layer Options
 					self.zyngui.screens['layer'].select(self.selected_chain_index)
 					self.zyngui.screens['layer_options'].reset()
-					self.zyngui.show_modal('layer_options')
+					self.zyngui.show_screen('layer_options')
 				return True
 
 		return False
