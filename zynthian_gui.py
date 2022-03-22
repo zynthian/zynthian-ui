@@ -648,8 +648,6 @@ class zynthian_gui:
 			else:
 				return
 
-		self.screens[screen].show()
-		self.current_screen = screen
 		self.hide_screens(exclude = screen)
 		if hmode==SCREEN_HMODE_ADD:
 			self.screen_history.append(screen)
@@ -658,6 +656,9 @@ class zynthian_gui:
 			self.screen_history.append(screen)
 		elif hmode==SCREEN_HMODE_RESET:
 			self.screen_history = [screen]
+
+		self.current_screen = screen
+		self.screens[screen].show()
 
 	def show_modal(self, screen=None):
 		self.show_screen(screen, hmode=SCREEN_HMODE_NONE)
@@ -675,7 +676,7 @@ class zynthian_gui:
 		return self.curlayer == self.screens['layer'].amixer_layer
 
 
-	def close_screen(self, back=True):
+	def close_screen(self):
 		while True:
 			try:
 				last_screen = self.screen_history.pop()
@@ -685,11 +686,8 @@ class zynthian_gui:
 				last_screen = "audio_mixer"
 				break
 
-		if back:
-			self.show_screen(last_screen)
-		else:
-			self.cancel_screen_timer()
-			self.screens[self.current_screen].hide()
+		logging.debug("CLOSE SCREEN '{}' => Back to '{}'".format(self.current_screen, last_screen))
+		self.show_screen(last_screen)
 
 
 	def close_modal(self):
@@ -706,7 +704,7 @@ class zynthian_gui:
 			logging.debug("SCREEN BACK => %s", screen_back)
 			self.replace_screen(screen_back)
 		else:
-			self.close_screen(back=True)
+			self.close_screen()
 
 
 	def close_screen_timer(self, tms=3000):

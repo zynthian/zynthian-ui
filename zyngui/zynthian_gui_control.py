@@ -67,8 +67,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def show(self):
-		super().show()
-		self.click_listbox()
+		if self.zyngui.curlayer:
+			super().show()
+			self.click_listbox()
+		else:
+			self.zyngui.close_screen()
 
 
 	def hide(self):

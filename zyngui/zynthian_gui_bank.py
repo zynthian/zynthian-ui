@@ -50,12 +50,11 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 
 	def show(self):
-		if not self.zyngui.curlayer:
-			logging.error("Can't show bank list for None layer!")
-			return
-		self.index=self.zyngui.curlayer.get_bank_index()
-		logging.debug("BANK INDEX => %s" % self.index)
-		super().show()
+		if self.zyngui.curlayer:
+			self.index=self.zyngui.curlayer.get_bank_index()
+			super().show()
+		else:
+			self.zyngui.close_screen()
 
 
 	def select_action(self, i, t='S'):
