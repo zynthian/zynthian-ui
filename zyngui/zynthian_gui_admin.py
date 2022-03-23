@@ -603,7 +603,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def midi_profile(self):
 		logging.info("MIDI Profile")
-		self.zyngui.show_modal("midi_profile")
+		self.zyngui.show_screen("midi_profile")
 
 #------------------------------------------------------------------------------
 # NETWORK FEATURES

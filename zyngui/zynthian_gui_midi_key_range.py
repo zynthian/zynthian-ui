@@ -344,7 +344,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 
 	def switch_select(self, t='S'):
-		self.zyngui.show_modal('layer_options')
+		self.zyngui.close_screen()
 
 
 	def set_select_path(self):

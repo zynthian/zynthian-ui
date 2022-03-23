@@ -157,7 +157,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		i = self.get_layer_selected()
 		if i is not None and self.root_layers[i].engine.nickname!='MX':
 			self.zyngui.screens['layer_options'].reset()
-			self.zyngui.show_modal('layer_options')
+			self.zyngui.show_screen('layer_options')
 
 
 	def next(self, control=True):

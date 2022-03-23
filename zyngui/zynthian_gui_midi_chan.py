@@ -119,7 +119,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 			self.zyngui.zynautoconnect_midi()
 			self.zyngui.set_active_channel()
-			self.zyngui.close_modal()
+			self.zyngui.close_screen()
 
 		elif self.mode=='CLONE':
 
@@ -139,7 +139,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 	def clone_config_cc(self):
 		self.zyngui.screens['midi_cc'].config(self.midi_chan, self.midi_chan_sel)
-		self.zyngui.show_modal('midi_cc')
+		self.zyngui.show_screen('midi_cc')
 
 
 	def midi_chan_activity(self, chan):

@@ -199,7 +199,7 @@ class zynthian_gui_keyboard():
 		if key < len(self.keys):
 			self.text= self.text+ self.keys[key]
 		elif key == self.btn_enter:
-			self.zyngui.close_modal()
+			self.zyngui.close_screen()
 			self.function(self.text)
 			return
 		elif key == self.btn_cancel:
@@ -252,7 +252,7 @@ class zynthian_gui_keyboard():
 			self.main_frame.grid_forget()
 
 
-	# Function to show keyboard as modal screen
+	# Function to show keyboard screen
 	#	text: Text to display (Default: empty)
 	#	max_len: Maximum quantity of characters in text (Default: no limit)
 	def show(self,  function, text="", max_len=None):
