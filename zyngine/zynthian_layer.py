@@ -362,7 +362,7 @@ class zynthian_layer:
 
 	def toggle_preset_fav(self, preset):
 		self.engine.toggle_preset_fav(self, preset)
-		if not len(self.get_preset_favs()):
+		if self.show_fav_presets and not len(self.get_preset_favs()):
 			self.set_show_fav_presets(False)
 
 
