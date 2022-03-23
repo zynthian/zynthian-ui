@@ -253,9 +253,10 @@ class zynthian_gui_keyboard():
 
 
 	# Function to show keyboard as modal screen
+	#	function: Function to call when "Enter" selected
 	#	text: Text to display (Default: empty)
 	#	max_len: Maximum quantity of characters in text (Default: no limit)
-	def show(self,  function, text="", max_len=None):
+	def show(self, function, text="", max_len=None):
 		self.function = function
 		self.text= text
 		if max_len:

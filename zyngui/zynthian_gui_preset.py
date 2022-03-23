@@ -67,12 +67,11 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def show_options(self):
 		preset = self.list_data[self.index]
 		fname = preset[2]
-		fav = "Add to favourites"
-		if self.zyngui.curlayer.engine.is_preset_fav(preset): fav = "Remove from favourites"
-		options = {
-			fav: preset,
-			"Save as": preset,
-		}
+		options = {}
+		if self.zyngui.curlayer.engine.is_preset_fav(preset):
+			options["Remove from favourites"] = preset
+		else:
+			options["Add to favourites"] = preset
 		if self.zyngui.curlayer.engine.is_preset_user(preset):
 			options["Rename"] = preset
 			options["Delete"] = preset
@@ -87,8 +86,6 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if option[-10:] == "favourites":
 			self.zyngui.curlayer.toggle_preset_fav(preset)
 			self.zyngui.close_modal()
-		elif option == "Save as":
-			self.zyngui.show_keyboard(self.save_preset, fname)
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_preset, fname)
 		elif option == "Delete":
@@ -96,19 +93,6 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			pass
 
 		self.update_list()
-
-
-	def save_preset(self, name):
-		#TODO Imnplement save preset (check if name changed and save / save as)
-		fpath=self.list_data[self.index][0]
-		fname=self.list_data[self.index][2]
-		name = name.rstrip()
-		if name == fname: #TODO Check bank
-			#TODO Imnplement save
-			pass
-		else:
-			#TODO Imnplement save as, show confirmation if overwritting
-			pass
 
 
 	def rename_preset(self, new_name):

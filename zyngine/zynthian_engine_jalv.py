@@ -334,7 +334,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			for i,p in enumerate(self.preset_info[bank_name]['presets']):
 				if p['url'] == preset[0]:
 					self.preset_info[bank_name]['presets'][i]['label'] = new_name # Change memory resident name
-					break;
+					break
 			zynthian_engine_jalv.lv2_rename_preset(preset[0], new_name) # Update LV2 ttl
 		except Exception as e:
 			logging.error(e)
@@ -348,10 +348,27 @@ class zynthian_engine_jalv(zynthian_engine):
 			for i,p in enumerate(self.preset_info[bank_name]['presets']):
 				if p['url'] == preset[0]:
 					del self.preset_info[bank_name]['presets'][i]
-					break; # Remove from memory-resident list
+					break # Remove from memory-resident list
 			zynthian_engine_jalv.lv2_remove_preset(preset[0]) # Remove from LV2 ttl
 		except Exception as e:
 			logging.error(e)
+
+
+	def save_preset(self, bank_name, preset_name):
+		bank_uri = 'file:///zynthian/zynthian-my-data/presets/lv2/%s-%s.lv2/%s-%s' % (self.plugin_name, bank_name, self.plugin_name, bank_name)
+		preset = ['file:///zynthian/zynthian-my-data/presets/lv2/%s-%s.lv2/%s.ttl' % (self.plugin_name, bank_name, preset_name), None, preset_name, bank_uri]
+		self.delete_preset(bank_name, preset) # Remove if exists (clumsy but simple)
+		try:
+			self.preset_info[bank_name]['presets'].append({'label': preset_name,  "url": preset[0]})# Add to memory resident cache
+		except Exception as e:
+			self.bank_list.append((bank_uri, None, bank_name, None))
+			self.preset_info[bank_name] = OrderedDict({'bank_url': bank_uri, 'presets': {'label': preset_name, 'url': preset[0]}})
+		try:
+			zynthian_lv2.add_plugin_preset_to_cache(self.plugin_name, bank_name, preset_name, preset[0]) # Add to persistent cache
+		except Exception as e:
+			logging.error(e)
+		test = "pause"
+		#TODO: Add to LV2 ttl
 
 
 	#----------------------------------------------------------------------------

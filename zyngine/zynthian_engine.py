@@ -468,6 +468,11 @@ class zynthian_engine(zynthian_basic_engine):
 		raise Exception("Delete preset not implemented for engine %s"%(self.name))
 
 
+	# Override in derived class
+	def save_preset(self, bank_name, preset_name):
+		raise Exception("Save preset not implemented for engine %s"%(self.name))
+
+
 	# ---------------------------------------------------------------------------
 	# Preset Favorites Management
 	# ---------------------------------------------------------------------------

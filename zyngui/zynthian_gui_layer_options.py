@@ -69,6 +69,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		#self.list_data.append((self.layer_presets, None, "Presets"))
 
 		if self.layer.midi_chan is not None:
+			if self.layer.engine.nickname[:2] in ("JV", "AE"):
+				self.list_data.append((self.save_preset_select_bank, None, "Save Preset"))
 			if 'note_range' in eng_options and eng_options['note_range']:
 				self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
 
@@ -177,6 +179,47 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def sublayer_options(self, sublayer, t='S'):
 		self.zyngui.screens['sublayer_options'].setup(self.layer, sublayer)
 		self.zyngui.show_screen("sublayer_options")
+
+
+	def save_preset_select_bank(self):
+		if self.zyngui.curlayer:
+			index=self.zyngui.curlayer.get_bank_index()
+			self.zyngui.curlayer.load_bank_list()
+			list_data=self.zyngui.curlayer.bank_list
+			options = {"New bank": ""}
+			for bank in list_data:
+				if self.zyngui.curlayer.engine.is_preset_user(bank):
+					options[bank[2]] = bank[0]
+			self.zyngui.screens['option'].config("Select bank", options, self.save_preset_name_bank)
+			self.zyngui.screens['option'].select(0)
+			self.zyngui.show_modal('option')
+
+
+	def save_preset_name_bank(self, bank_name, bank_uri):
+		self.save_preset_bank_uri = bank_uri
+		if bank_uri == "":
+			self.zyngui.show_keyboard(self.save_preset_name_preset, "New bank")
+		else:
+			self.save_preset_name_preset(bank_name)
+
+
+	def save_preset_name_preset(self, bank_name):
+		self.save_preset_bank_name = bank_name
+		self.zyngui.show_keyboard(self.save_preset, "New preset")
+
+
+	def save_preset(self, preset_name):
+		preset_name = preset_name.rstrip()
+		if self.save_preset_bank_uri == '':
+			# Create new bank URI
+			engine_name = self.layer.engine.nickname[3:]
+		logging.warning("Save preset with name '%s' to bank '%s'", preset_name, self.save_preset_bank_name)
+		try:
+			self.layer.engine.save_preset(self.save_preset_bank_name, preset_name)
+			#TODO: Select preset after saving
+		except Exception as e:
+			logging.error(e)
+		self.zyngui.close_modal()
 
 
 	def layer_presets(self):
