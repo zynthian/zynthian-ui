@@ -543,7 +543,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				# Fluidsynth engine => ignore Program Change on channel 9
 				if layer.engine.nickname=="FS" and mch==9:
 					continue
-			changed |= layer.set_preset(preset_index, True)
+				changed |= layer.set_preset(preset_index, True)
 		if changed and self.zyngui.current_screen in ['control','audio_mixer']:
 			try:
 				self.zyngui.screens[self.zyngui.current_screen].show() # Refresh preset labels
