@@ -867,7 +867,7 @@ class zynthian_gui:
 			if favshow:
 				self.show_screen("preset")
 			else:
-				self.close_screen("preset")
+				self.close_screen()
 
 
 	def set_curlayer(self, layer, save=False):
