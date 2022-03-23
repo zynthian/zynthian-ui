@@ -707,8 +707,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle showing display
 	def show(self):
-		if self.shown:
-			return
 		self.zyngui.screens["control"].unlock_controllers()
 		self.refresh_visible_strips()
 		if self.selected_chain_index == None:
