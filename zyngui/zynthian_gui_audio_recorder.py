@@ -220,7 +220,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
-				self.zyngui.show_screen('midi_recorder')
+				self.zyngui.replace_screen('midi_recorder')
 				return True
 
 
@@ -249,7 +249,6 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			except Exception as e:
 				#logging.error(e)
 				pass
-		self.zyngui.show_modal("audio_recorder")
 
 
 	def start_recording(self):

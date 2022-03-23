@@ -66,7 +66,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def show_options(self):
 		preset = self.list_data[self.index]
-		fname = preset[2]
+		preset_name = preset[2]
+		if preset_name[0] == "❤": preset_name = preset_name[1:]
 		options = {}
 		if self.zyngui.curlayer.engine.is_preset_fav(preset):
 			options["Remove from favourites"] = preset
@@ -75,19 +76,15 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if self.zyngui.curlayer.engine.is_preset_user(preset):
 			options["Rename"] = preset
 			options["Delete"] = preset
-		self.zyngui.screens['option'].config("Preset: %s" % fname, options, self.options_cb)
+		self.zyngui.screens['option'].config("Preset: %s" % preset_name, options, self.options_cb)
 		self.zyngui.show_modal('option')
 
 
 	def options_cb(self, option, preset):
-		fpath=preset[0]
-		fname=preset[2]
-
 		if option[-10:] == "favourites":
 			self.zyngui.curlayer.toggle_preset_fav(preset)
-			self.zyngui.close_modal()
 		elif option == "Rename":
-			self.zyngui.show_keyboard(self.rename_preset, fname)
+			self.zyngui.show_keyboard(self.rename_preset, preset[2])
 		elif option == "Delete":
 			self.request_delete_preset(preset)
 			pass

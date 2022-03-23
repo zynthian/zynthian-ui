@@ -97,12 +97,12 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def layers(self, t='S'):
 		logging.info("Layers")
-		self.zyngui.show_modal("layer")
+		self.zyngui.show_screen("layer")
 
 
 	def snapshots(self, t='S'):
 		logging.info("Snapshots")
-		self.zyngui.show_modal("snapshot")
+		self.zyngui.show_screen("snapshot")
 
 
 	def clean_all(self, t='S'):
@@ -132,7 +132,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 		if t=='B':
 			logging.info("Audio Recorder Output")
 			self.zyngui.screens['audio_out'].set_audio_player()
-			self.zyngui.show_modal("audio_out")
+			self.zyngui.show_screen("audio_out")
 		else:
 			logging.info("Audio Recorder")
 			self.zyngui.show_screen("audio_recorder")
@@ -155,7 +155,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def admin(self, t='S'):
 		logging.info("Admin")
-		self.zyngui.show_modal("admin")
+		self.zyngui.show_screen("admin")
 
 
 	def all_notes_off(self, t='S'):

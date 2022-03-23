@@ -80,6 +80,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_prog_change_zs3,0,"[  ] Program Change ZS3"))
 
+		if zynthian_gui_config.midi_bank_change:
+			self.list_data.append((self.toggle_bank_change,0,"[x] MIDI Bank Change"))
+		else:
+			self.list_data.append((self.toggle_bank_change,0,"[  ] MIDI Bank Change"))
+
 		if zynthian_gui_config.preset_preload_noteon:
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[x] Preset Preload"))
 		else:
@@ -400,6 +405,22 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.fill_list()
 
 
+	def toggle_bank_change(self):
+		if zynthian_gui_config.midi_bank_change:
+			logging.info("MIDI Bank Change OFF")
+			zynthian_gui_config.midi_bank_change=False
+		else:
+			logging.info("MIDI Bank Change ON")
+			zynthian_gui_config.midi_bank_change=True
+
+		# Save config
+		zynconf.update_midi_profile({ 
+			"ZYNTHIAN_MIDI_BANK_CHANGE": str(int(zynthian_gui_config.midi_bank_change))
+		})
+
+		self.fill_list()
+
+
 	def toggle_preset_preload_noteon(self):
 		if zynthian_gui_config.preset_preload_noteon:
 			logging.info("Preset Preload OFF")
@@ -603,7 +624,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def midi_profile(self):
 		logging.info("MIDI Profile")
-		self.zyngui.show_modal("midi_profile")
+		self.zyngui.show_screen("midi_profile")
 
 #------------------------------------------------------------------------------
 # NETWORK FEATURES

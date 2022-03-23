@@ -234,7 +234,7 @@ class zynthian_layer:
 		elif self.bank_info:
 			for preset in self.engine.get_preset_list(self.bank_info):
 				if self.engine.is_preset_fav(preset):
-					preset[2] = "*" + preset[2]
+					preset[2] = "❤" + preset[2]
 				preset_list.append(preset)
 
 		else:
@@ -260,7 +260,7 @@ class zynthian_layer:
 			preset_name = self.preset_list[i][2]
 
 			if preset_id in self.engine.preset_favs:
-				if preset_name[0]=='*':
+				if preset_name[0]=='❤':
 					preset_name=preset_name[1:]
 				bank_name = self.engine.preset_favs[preset_id][0][2]
 				if bank_name!=self.bank_name:
@@ -298,7 +298,7 @@ class zynthian_layer:
 		for i in range(len(self.preset_list)):
 			name_i=self.preset_list[i][2]
 			try:
-				if name_i[0]=='*':
+				if name_i[0]=='❤':
 					name_i=name_i[1:]
 				if preset_name==name_i:
 					return self.set_preset(i,set_engine)
@@ -362,13 +362,13 @@ class zynthian_layer:
 
 	def toggle_preset_fav(self, preset):
 		self.engine.toggle_preset_fav(self, preset)
-		if not len(self.get_preset_favs()):
+		if self.show_fav_presets and not len(self.get_preset_favs()):
 			self.set_show_fav_presets(False)
 
 
 	def remove_preset_fav(self, preset):
 		self.engine.remove_preset_fav(preset)
-		if not len(self.get_preset_favs()):
+		if self.show_fav_presets and not len(self.get_preset_favs()):
 			self.set_show_fav_presets(False)
 
 

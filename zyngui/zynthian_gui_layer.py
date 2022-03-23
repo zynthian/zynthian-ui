@@ -157,7 +157,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		i = self.get_layer_selected()
 		if i is not None and self.root_layers[i].engine.nickname!='MX':
 			self.zyngui.screens['layer_options'].reset()
-			self.zyngui.show_modal('layer_options')
+			self.zyngui.show_screen('layer_options')
 
 
 	def next(self, control=True):
@@ -543,7 +543,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				# Fluidsynth engine => ignore Program Change on channel 9
 				if layer.engine.nickname=="FS" and mch==9:
 					continue
-			changed |= layer.set_preset(preset_index, True)
+				changed |= layer.set_preset(preset_index, True)
 		if changed and self.zyngui.current_screen in ['control','audio_mixer']:
 			try:
 				self.zyngui.screens[self.zyngui.current_screen].show() # Refresh preset labels
@@ -606,11 +606,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def midi_control_change(self, chan, ccnum, ccval):
-		if ccnum==0:
+		if zynthian_gui_config.midi_bank_change and ccnum==0:
 			for layer in self.root_layers:
 				if layer.midi_chan==chan:
 					layer.midi_bank_msb(ccval)
-		elif ccnum==32:
+		elif zynthian_gui_config.midi_bank_change and ccnum==32:
 			for layer in self.root_layers:
 				if layer.midi_chan==chan:
 					layer.midi_bank_lsb(ccval)
