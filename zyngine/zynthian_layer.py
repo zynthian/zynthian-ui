@@ -366,12 +366,6 @@ class zynthian_layer:
 			self.set_show_fav_presets(False)
 
 
-	def remove_preset_fav(self, preset):
-		self.engine.remove_preset_fav(preset)
-		if not len(self.get_preset_favs()):
-			self.set_show_fav_presets(False)
-
-
 	def get_preset_favs(self):
 		return self.engine.get_preset_favs(self)
 
