@@ -606,11 +606,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def midi_control_change(self, chan, ccnum, ccval):
-		if ccnum==0:
+		if zynthian_gui_config.midi_bank_change and ccnum==0:
 			for layer in self.root_layers:
 				if layer.midi_chan==chan:
 					layer.midi_bank_msb(ccval)
-		elif ccnum==32:
+		elif zynthian_gui_config.midi_bank_change and ccnum==32:
 			for layer in self.root_layers:
 				if layer.midi_chan==chan:
 					layer.midi_bank_lsb(ccval)
