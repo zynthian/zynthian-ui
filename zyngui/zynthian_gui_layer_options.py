@@ -53,7 +53,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data = []
 
-		self.layer = self.zyngui.screens['layer'].get_root_layers()[self.layer_index]
+		try:
+			self.layer = self.zyngui.screens['layer'].get_root_layers()[self.layer_index]
+		except Exception as e:
+			logging.error(e)
 
 		self.audiofx_layers = self.zyngui.screens['layer'].get_fxchain_layers(self.layer)
 		if self.audiofx_layers and len(self.audiofx_layers)>0 and self.layer.engine.type!="Audio Effect":
