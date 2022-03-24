@@ -113,12 +113,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 					self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
 				# Add Audio-FX layers
 				sl0 = None
-				for sl in self.audiofx_layers:
-					if sl.is_parallel_audio_routed(sl0):
-						bullet = " || "
-					else:
-						bullet = " -> "
-					self.list_data.append((self.sublayer_options, sl, bullet + sl.engine.get_path(sl)))
+				indent = "⤷"
+				for i,sl in enumerate(self.audiofx_layers):
+					if i and not sl.is_parallel_audio_routed(sl0):
+						indent = "  " + indent
+					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.plugin_name))
 					sl0 = sl
 
 		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.engine.nickname!='MD':
@@ -134,12 +133,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 					self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
 				# Add MIDI-FX layers
 				sl0 = None
-				for sl in self.midifx_layers:
-					if sl.is_parallel_midi_routed(sl0):
-						bullet = " || "
-					else:
-						bullet = " -> "
-					self.list_data.append((self.sublayer_options, sl, bullet + sl.engine.get_path(sl)))
+				indent = "⤷"
+				for i,sl in enumerate(self.midifx_layers):
+					if i and not sl.is_parallel_midi_routed(sl0):
+						indent = "  " + indent
+					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.plugin_name))
 					sl0 = sl
 
 		super().fill_list()
