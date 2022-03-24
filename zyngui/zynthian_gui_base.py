@@ -173,6 +173,9 @@ class zynthian_gui_base:
 		else:
 			self.meter_mode = self.METER_DPM
 
+		self.topbar_touch_action = lambda: self.zyngui.zynswitch_defered('S',1)
+		self.topbar_bold_touch_action = lambda: self.zyngui.zynswitch_defered('B',0)
+
 		# Update Title
 		self.set_select_path()
 		self.cb_scroll_select_path()
@@ -290,7 +293,7 @@ class zynthian_gui_base:
 		if self.topbar_timer:
 			self.topbar_timer.cancel()
 			self.topbar_timer = None
-			self.zyngui.zynswitch_defered('S',1)
+			self.topbar_touch_action()
 
 
 	# Default topbar bold press callback
@@ -298,7 +301,7 @@ class zynthian_gui_base:
 		if self.topbar_timer:
 			self.topbar_timer.cancel()
 			self.topbar_timer = None
-			self.zyngui.zynswitch_defered('B',0)
+			self.topbar_bold_touch_action()
 
 
 	def show(self):

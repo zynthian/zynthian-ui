@@ -65,6 +65,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.x_zctrl=None
 		self.y_zctrl=None
 
+		self.topbar_bold_touch_action = lambda: self.zyngui.zynswitch_defered('B',1)
+
 
 	def show(self):
 		if self.zyngui.curlayer:
