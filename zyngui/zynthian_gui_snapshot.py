@@ -315,9 +315,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
-		elif option == "Create copy":
+		elif option == "Create Copy":
 			self.zyngui.show_keyboard(self.copy_snapshot, parts[1] + ' (copy)')
-		elif option == "Set program":
+		elif option == "Set Program":
 			self.zyngui.screens['midi_prog'].config(parts[0], self.set_program)
 			self.zyngui.show_screen('midi_prog')
 		elif option == "Delete":
