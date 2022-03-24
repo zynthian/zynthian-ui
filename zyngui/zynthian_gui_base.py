@@ -115,6 +115,8 @@ class zynthian_gui_base:
 		self.tb_frame.grid_columnconfigure(0, weight=1)
 		# Setup Topbar's Callback
 		self.tb_frame.bind("<Button-1>", self.cb_topbar)
+		self.tb_frame.bind("<ButtonRelease-1>", self.cb_topbar_release)
+		self.topbar_timer = None
 
 		# Title
 #		font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
@@ -144,7 +146,9 @@ class zynthian_gui_base:
 		self.label_select_path.place(x=0, y=self.title_y)
 		# Setup Topbar's Callback
 		self.label_select_path.bind('<Button-1>', self.cb_topbar)
+		self.label_select_path.bind('<ButtonRelease-1>', self.cb_topbar_release)
 		self.title_canvas.bind('<Button-1>', self.cb_topbar)
+		self.title_canvas.bind('<ButtonRelease-1>', self.cb_topbar_release)
 
 		# Canvas for displaying status: CPU, ...
 		self.status_canvas = tkinter.Canvas(self.tb_frame,
@@ -277,7 +281,24 @@ class zynthian_gui_base:
 
 	# Default topbar touch callback
 	def cb_topbar(self, params=None):
-		self.zyngui.zynswitch_defered('S',1)
+		self.topbar_timer = Timer(0.4, self.cb_topbar_bold)
+		self.topbar_timer.start()
+
+
+	# Default topbar release callback
+	def cb_topbar_release(self, params=None):
+		if self.topbar_timer:
+			self.topbar_timer.cancel()
+			self.topbar_timer = None
+			self.zyngui.zynswitch_defered('S',1)
+
+
+	# Default topbar bold press callback
+	def cb_topbar_bold(self, params=None):
+		if self.topbar_timer:
+			self.topbar_timer.cancel()
+			self.topbar_timer = None
+			self.zyngui.zynswitch_defered('B',0)
 
 
 	def show(self):
