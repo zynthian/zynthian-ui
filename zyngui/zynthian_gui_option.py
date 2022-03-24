@@ -61,7 +61,7 @@ class zynthian_gui_option(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		if self.cb_select:
 			self.cb_select(self.list_data[i][2], self.list_data[i][0])
-		self.zyngui.close_screen()
+		#self.zyngui.close_screen()
 
 
 	def set_select_path(self):
