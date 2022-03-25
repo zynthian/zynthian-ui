@@ -94,11 +94,6 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector):
 			self.list_data[i][0]()
 
 
-	def back_action(self):
-		if self.zyngui.current_screen=="sublayer_options":
-			self.zyngui.close_screen()
-
-
 	def setup(self, root_layer, sublayer):
 		try:
 			self.root_layer = root_layer
@@ -120,7 +115,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector):
 
 	def sublayer_remove(self):
 		self.zyngui.screens['layer'].remove_layer(self.sublayer_index)
-		self.back_action()
+		self.zyngui.close_screen()
 
 
 	# FX-Chain management
@@ -134,7 +129,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector):
 	def audiofx_move_upchain(self):
 		ups = self.zyngui.screens['layer'].get_fxchain_upstream(self.sublayer)
 		self.zyngui.screens['layer'].swap_fxchain(ups[0], self.sublayer)
-		self.back_action()
+		self.zyngui.close_screen()
 
 
 	def audiofx_can_move_downchain(self):
@@ -146,7 +141,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector):
 	def audiofx_move_downchain(self):
 		downs = self.zyngui.screens['layer'].get_fxchain_downstream(self.sublayer)
 		self.zyngui.screens['layer'].swap_fxchain(self.sublayer, downs[0])
-		self.back_action()
+		self.zyngui.close_screen()
 
 
 	def audiofx_replace(self):
@@ -164,7 +159,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector):
 	def midifx_move_upchain(self):
 		ups = self.zyngui.screens['layer'].get_midichain_upstream(self.sublayer)
 		self.zyngui.screens['layer'].swap_midichain(ups[0], self.sublayer)
-		self.back_action()
+		self.zyngui.close_screen()
 
 
 	def midifx_can_move_downchain(self):
@@ -176,7 +171,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector):
 	def midifx_move_downchain(self):
 		downs = self.zyngui.screens['layer'].get_midichain_downstream(self.sublayer)
 		self.zyngui.screens['layer'].swap_midichain(self.sublayer, downs[0])
-		self.back_action()
+		self.zyngui.close_screen()
 
 
 	def midifx_replace(self):
