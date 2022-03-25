@@ -359,7 +359,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		preset = ['file:///zynthian/zynthian-my-data/presets/lv2/%s-%s.lv2/%s.ttl' % (self.plugin_name, bank_name, preset_name), None, preset_name, bank_uri]
 		self.delete_preset(bank_name, preset) # Remove if exists (clumsy but simple)
 		try:
-			self.preset_info[bank_name]['presets'].append({'label': preset_name,  "url": preset[0]})# Add to memory resident cache
+			self.preset_info[bank_name]['presets'].append(OrderedDict({'label': preset_name,  "url": preset[0]}))# Add to memory resident cache
 		except Exception as e:
 			self.bank_list.append((bank_uri, None, bank_name, None))
 			self.preset_info[bank_name] = OrderedDict({'bank_url': bank_uri, 'presets': {'label': preset_name, 'url': preset[0]}})
@@ -367,8 +367,8 @@ class zynthian_engine_jalv(zynthian_engine):
 			zynthian_lv2.add_plugin_preset_to_cache(self.plugin_name, bank_name, preset_name, preset[0]) # Add to persistent cache
 		except Exception as e:
 			logging.error(e)
-		test = "pause"
-		#TODO: Add to LV2 ttl
+
+		output=self.proc_cmd("save preset %s" % (zynthian_engine_jalv.sanitize_text(preset_name)))
 
 
 	#----------------------------------------------------------------------------
