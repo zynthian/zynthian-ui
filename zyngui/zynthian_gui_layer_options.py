@@ -105,47 +105,48 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if 'indelible' not in eng_options or not eng_options['indelible']:
 			self.list_data.append((self.layer_remove, None, "Remove Layer"))
 
-		if self.layer.engine.type!='MIDI Tool':
-			# Add separator
-			self.list_data.append((None,None,"-----------------------------"))
-
-			# Add Audio-FX options
-			if self.layer.midi_chan is not None:
-				self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
-
-			if len(self.audiofx_layers)>0:
-				if self.layer.engine.type=="MIDI Synth":
-					self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
-				# Add Audio-FX layers
-				sl0 = None
-				for sl in self.audiofx_layers:
-					if sl.is_parallel_audio_routed(sl0):
-						bullet = " || "
-					else:
-						bullet = " -> "
-					self.list_data.append((self.sublayer_options, sl, bullet + sl.engine.get_path(sl)))
-					sl0 = sl
-
 		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.engine.nickname!='MD':
 			# Add separator
-			self.list_data.append((None,None,"-----------------------------"))
+			self.list_data.append((None,None,"> MIDI Chain ----------------"))
+
+			# Add MIDI-FX chain list
+			if len(self.midifx_layers)>0:
+				sl0 = None
+				indent = "⤷"
+				for i,sl in enumerate(self.midifx_layers):
+					if i and not sl.is_parallel_midi_routed(sl0):
+						indent = "  " + indent
+					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.plugin_name))
+					sl0 = sl
 
 			# Add MIDI-FX options
 			if self.layer.midi_chan is not None:
 				self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 
-			if len(self.midifx_layers)>0:
-				if self.layer.engine.type=="MIDI Synth":
-					self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
-				# Add MIDI-FX layers
+			if len(self.midifx_layers)>0 and self.layer.engine.type=="MIDI Synth":
+				self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
+
+		if self.layer.engine.type!='MIDI Tool':
+			# Add separator
+			self.list_data.append((None,None,"> Audio Chain ---------------"))
+
+			# Add Audio-FX chain list
+			if len(self.audiofx_layers)>0:
+				# Add Audio-FX layers
 				sl0 = None
-				for sl in self.midifx_layers:
-					if sl.is_parallel_midi_routed(sl0):
-						bullet = " || "
-					else:
-						bullet = " -> "
-					self.list_data.append((self.sublayer_options, sl, bullet + sl.engine.get_path(sl)))
+				indent = "⤷"
+				for i,sl in enumerate(self.audiofx_layers):
+					if i and not sl.is_parallel_audio_routed(sl0):
+						indent = "  " + indent
+					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.plugin_name))
 					sl0 = sl
+
+			# Add Audio-FX options
+			if self.layer.midi_chan is not None:
+				self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
+
+			if len(self.audiofx_layers)>0 and self.layer.engine.type=="MIDI Synth":
+				self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
 
 		super().fill_list()
 
@@ -155,6 +156,13 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if row[1]==sl:
 				return i
 		return 0
+
+
+	def fill_listbox(self):
+		super().fill_listbox()
+		for i, val in enumerate(self.list_data):
+			if val[0]==None:
+				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
 
 
 	def show(self):
