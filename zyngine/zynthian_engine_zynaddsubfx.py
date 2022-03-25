@@ -157,7 +157,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 		# Zynaddsubfx which uses PWD as the root for presets, due to the fltk
 		# toolkit used for the gui file browser.
-		self.command_cwd = zynthian_engine.my_data_dir + "/presets/zynaddsubfx"
+		self.command_cwd = zynthian_engine.my_data_dir + "/presets"
 
 		self.command_prompt = "\n\\[INFO] Main Loop..."
 
