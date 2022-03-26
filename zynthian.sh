@@ -96,6 +96,9 @@ function splash_zynthian() {
 
 
 function splash_zynthian_error() {
+	#Grab exit code if set
+	zynthian_error=$1
+	[ "$zynthian_error" ] || zynthian_error="Unknown"
 	#Get the IP
 	#zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
 	zynthian_ip=`ip route get 1 | sed 's/^.*src \([^ ]*\).*$/\1/;q'`
@@ -104,10 +107,10 @@ function splash_zynthian_error() {
 	img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
 	img_w=`identify -format '%w' $img_fpath`
 	img_h=`identify -format '%h' $img_fpath`
-	pos_x=$(expr $img_w \* 100 / 266)
+	pos_x=$(expr $img_w \* 100 / 500)
 	pos_y=$(expr $img_h \* 100 / 110)
 	font_size=$(expr $img_w / 24)
-	convert -strip -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"IP: $zynthian_ip\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
+	convert -strip -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"Exit code:$zynthian_error IP:$zynthian_ip\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
 	
 	#Display error image
 	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
@@ -153,7 +156,7 @@ while true; do
 			sleep 1
 		;;
 		*)
-			splash_zynthian_error
+			splash_zynthian_error $status
 			sleep 3
 		;;
 	esac
