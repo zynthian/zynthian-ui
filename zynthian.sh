@@ -126,9 +126,6 @@ backlight_on
 splash_zynthian
 screensaver_off
 
-splash_zynthian_error "2"
-exit
-
 while true; do
 	#Load Config Environment
 	load_config_env
