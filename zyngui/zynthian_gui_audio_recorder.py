@@ -337,6 +337,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 				return
 
 			thread = threading.Thread(target=runInThread, args=(self.end_playing, cmd), daemon=True)
+			thread.name = "audio recorder"
 			thread.start()
 			sleep(0.5)
 			self.zyngui.zynautoconnect_audio()

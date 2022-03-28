@@ -83,6 +83,7 @@ class zynthian_widget_base():
 
 	def start_mon_thread(self):
 		self.mon_thread=Thread(target=self.mon_thread_task, args=())
+		self.mon_thread.name = "widget monitor"
 		self.mon_thread.daemon = True # thread dies with the program
 		self.mon_thread.start()
 

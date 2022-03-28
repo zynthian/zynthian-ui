@@ -105,6 +105,7 @@ class zynthian_gui_autoeq():
 
 	def start_autoeq_thread(self):
 		self.autoeq_thread=Thread(target=self.autoeq_thread_task, args=())
+		self.autoeq_thread.name = "autoeq"
 		self.autoeq_thread.daemon = True # thread dies with the program
 		self.autoeq_thread.start()
 

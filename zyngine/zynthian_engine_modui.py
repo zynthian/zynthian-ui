@@ -307,6 +307,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 		if i<100:
 			self.ws_thread=Thread(target=self.task_websocket, args=())
+			self.ws_thread.name = "modui"
 			self.ws_thread.daemon = True # thread dies with the program
 			self.ws_thread.start()
 			
