@@ -378,6 +378,7 @@ class zynthian_gui_touchscreen_calibration:
 			self.main_frame.grid()
 			self.onTimer()
 			self.detect_thread = Thread(target=self.detectDevice, args=(), daemon=True)
+			self.detect_thread.name = "touchscreen calibrate"
 			self.detect_thread.start()
 
 

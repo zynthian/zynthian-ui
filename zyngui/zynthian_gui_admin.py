@@ -220,6 +220,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			logging.info("Starting Command Sequence ...")
 			self.commands=cmds
 			self.thread=Thread(target=self.execute_commands, args=())
+			self.thread.name = "command sequence"
 			self.thread.daemon = True # thread dies with the program
 			self.thread.start()
 
@@ -258,6 +259,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			logging.info("Starting Command Sequence ...")
 			self.commands=cmds
 			self.thread=Thread(target=self.killable_execute_commands, args=())
+			self.thread.name = "killable command sequence"
 			self.thread.daemon = True # thread dies with the program
 			self.thread.start()
 

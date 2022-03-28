@@ -1707,6 +1707,7 @@ class zynthian_gui:
 
 	def start_control_thread(self):
 		self.control_thread=Thread(target=self.control_thread_task, args=())
+		self.control_thread.name = "control"
 		self.control_thread.daemon = True # thread dies with the program
 		self.control_thread.start()
 
@@ -1738,6 +1739,7 @@ class zynthian_gui:
 
 	def start_loading_thread(self):
 		self.loading_thread=Thread(target=self.loading_refresh, args=())
+		self.loading_thread.name = "loading"
 		self.loading_thread.daemon = True # thread dies with the program
 		self.loading_thread.start()
 
@@ -1772,6 +1774,7 @@ class zynthian_gui:
 
 	def start_status_thread(self):
 		self.status_thread=Thread(target=self.status_thread_task, args=())
+		self.status_thread.name = "status"
 		self.status_thread.daemon = True # thread dies with the program
 		self.status_thread.start()
 
