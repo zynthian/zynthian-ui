@@ -239,26 +239,57 @@ class zynthian_gui_touchscreen_calibration:
 			if abs(self.touch_points[0].x - self.touch_points[1].x) < self.debounce and abs(self.touch_points[0].y - self.touch_points[1].y) < self.debounce:
 				self.index = 0
 			else:
-				min_x = self.touch_points[0].x
-				max_x = self.touch_points[1].x
-				min_y = self.touch_points[0].y
-				max_y = self.touch_points[1].y
-				if min_x == max_x or min_y == max_y:
+				x0 = self.touch_points[0].x
+				x1 = self.touch_points[1].x
+				y0 = self.touch_points[0].y
+				y1 = self.touch_points[1].y
+				if x0 == x1 or y0 == y1:
 					self.index = 0
 					self.drawCross()
 					return
 				# Acquisition complete - calculate calibration data
-				a = self.width * 0.7 / (max_x - min_x)
-				if min_x < max_x:
-					c = (self.width * 0.15 - a * min_x) / self.width
+				min_x = min(x0, x1)
+				max_x = max(x0, x1)
+				min_y = min(y0, y1)
+				max_y = max(y0, y1)
+				dx = max_x - min_x
+				dy = max_y - min_y
+				if x0 < x1:
+					if y0 < y1:
+						# No rotation
+						a = self.width * 0.7 / dx # Scaling factor of x-axis from pointer x coord
+						b = 0 # Scaling factor of y-axis from pointer x coord
+						c = (0.15 * self.width  * a - min_x) / dx # Offset to add to x-axis
+						d = 0 # Scaling factor of x-axis from pointer y coord
+						e = self.height * 0.7 / dy # Scaling factor of y-axis from pointer y coord
+						f = (0.15 * self.height  * e - min_y) / dy # Offset to add to y-axis
+					else:
+						# Rotated 90 CW
+						a = 0
+						b = -self.width * 0.7 / dx
+						c = 1 - ((self.height * 0.15 * b + min_y) / dy)
+						d = self.height * 0.7 / dy
+						e = 0
+						f = (0.15 * self.width * d - min_x) / dx
 				else:
-					c = (self.width * 0.15 - a * min_x) / self.width
-				e = self.height * 0.7 / (max_y - min_y)
-				if min_y < max_y:
-					f = (self.height * 0.15 - e * min_y) / self.height
-				else:
-					f = (self.height * 0.15 - e * min_y) / self.height
-				self.setCalibration(self.device_name, [a, 0, c, 0, e, f, 0, 0, 1], True)
+					if y0 < y1:
+						# Rotated 90 CCW (270 CW)
+						a = 0
+						b = self.width * 0.7 / dx
+						c = (self.width * 0.15 * b - min_x) / dx
+						d = -self.height * 0.7 / dy
+						e = 0
+						f = 1 - (0.15 * self.height  * d + min_y) / dy
+					else:
+						# Rotated 180
+						a = -self.width * 0.7 / dx
+						b = 0
+						c = 1 - (0.15 * self.width * a + min_x) / self.width
+						d = 0
+						e = -self.height * 0.7 / dy
+						f = 1 - (0.15 * self.height * e + min_y) / self.height
+
+				self.setCalibration(self.device_name, [a, b, c, d, e, f, 0, 0, 1], True)
 
 				#TODO: Allow user to check calibration
 
@@ -352,12 +383,9 @@ class zynthian_gui_touchscreen_calibration:
 
 
 	#	Hide display
-	#	reset: True to reset calibration (default: True)
-	def hide(self, reset=True):
+	def hide(self):
 		if self.shown:
 			self.timer.cancel()
-			if reset and self.device_name and self.ctm:
-				self.setCalibration(self.device_name, self.ctm)
 			self.main_frame.grid_forget()
 			self.shown=False
 
