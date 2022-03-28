@@ -725,6 +725,7 @@ def stop():
 	acquire_lock()
 	audio_disconnect_sysout()
 	release_lock()
+	jclient.deactivate()
 
 
 def is_running():
