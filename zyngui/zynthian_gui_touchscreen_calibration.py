@@ -259,35 +259,35 @@ class zynthian_gui_touchscreen_calibration:
 						# No rotation
 						a = self.width * 0.7 / dx # Scaling factor of x-axis from pointer x coord
 						b = 0 # Scaling factor of y-axis from pointer x coord
-						c = (0.15 * self.width  * a - min_x) / dx # Offset to add to x-axis
+						c = (0.15 * self.width / a - min_x) / self.width # Offset to add to x-axis
 						d = 0 # Scaling factor of x-axis from pointer y coord
 						e = self.height * 0.7 / dy # Scaling factor of y-axis from pointer y coord
-						f = (0.15 * self.height  * e - min_y) / dy # Offset to add to y-axis
+						f = (0.15 * self.height / e - min_y) / self.width # Offset to add to y-axis
 					else:
 						# Rotated 90 CW
 						a = 0
-						b = -self.width * 0.7 / dx
-						c = 1 - ((self.height * 0.15 * b + min_y) / dy)
-						d = self.height * 0.7 / dy
+						b = -self.height * 0.7 / dy
+						c = 1 + (0.15 * self.height / b + min_y) / self.height
+						d = self.width * 0.7 / dx
 						e = 0
-						f = (0.15 * self.width * d - min_x) / dx
+						f = (0.15 * self.width / d - min_x) / self.width
 				else:
 					if y0 < y1:
 						# Rotated 90 CCW (270 CW)
 						a = 0
-						b = self.width * 0.7 / dx
-						c = (self.width * 0.15 * b - min_x) / dx
-						d = -self.height * 0.7 / dy
+						b = self.height * 0.7 / dy
+						c = (0.15 * self.height / b - min_y) / self.height
+						d = -self.width * 0.7 / dx
 						e = 0
-						f = 1 - (0.15 * self.height  * d + min_y) / dy
+						f = 1 + (0.15 * self.width / d + min_x) / self.width
 					else:
 						# Rotated 180
 						a = -self.width * 0.7 / dx
 						b = 0
-						c = 1 - (0.15 * self.width * a + min_x) / self.width
+						c = 1 + (0.15 * self.width / a + min_x) / self.width
 						d = 0
 						e = -self.height * 0.7 / dy
-						f = 1 - (0.15 * self.height * e + min_y) / self.height
+						f = 1 + (0.15 * self.height / e + min_y) / self.height
 
 				self.setCalibration(self.device_name, [a, b, c, d, e, f, 0, 0, 1], True)
 
