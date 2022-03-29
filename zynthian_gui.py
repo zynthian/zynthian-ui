@@ -39,7 +39,6 @@ from pathlib import Path
 from time import monotonic
 from os.path import isfile
 from datetime import datetime
-#from vcgencmd import Vcgencmd
 from threading  import Thread, Lock
 from subprocess import check_output
 from ctypes import c_float, c_double, CDLL,c_char_p
@@ -209,14 +208,13 @@ class zynthian_gui:
 		self.zynautoconnect_audio_flag = False
 		self.zynautoconnect_midi_flag = False
 
+		self.get_throttled_file = None
+
 		# Create Lock object to avoid concurrence problems
 		self.lock = Lock()
 
 		# Init LEDs
 		self.init_wsleds()
-
-		# Create vcgencmd instance
-		#self.vcgencmd = Vcgencmd()
 
 		# Load keyboard binding map
 		zynthian_gui_keybinding.getInstance().load()
@@ -1810,19 +1808,14 @@ class zynthian_gui:
 				self.status_info['undervoltage'] = False
 				self.status_info['overtemp'] = False
 				try:
-					# Get ARM flags
-					res = check_output(("vcgencmd", "get_throttled")).decode('utf-8','ignore')
-					thr = int(res[12:],16)
+					if not self.get_throttled_file:
+						self.get_throttled_file = open('/sys/devices/platform/soc/soc:firmware/get_throttled')
+					self.get_throttled_file.seek(0)
+					thr = int('0x%s' % self.get_throttled_file.read(), 16)
 					if thr & 0x1:
 						self.status_info['undervoltage'] = True
 					elif thr & (0x4 | 0x2):
 						self.status_info['overtemp'] = True
-
-					#res = self.vcgencmd.get_throttled()['breakdown']
-					#if res['0']:
-					#	self.status_info['undervoltage'] = True
-					#elif res['1'] or res['2']:
-					#	self.status_info['overtemp'] = True
 				except Exception as e:
 					logging.error(e)
 			else:
