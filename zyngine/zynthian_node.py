@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
-# ZYNTHIAN PROJECT: Zynthian Layer (zynthian_layer)
+# ZYNTHIAN PROJECT: Zynthian Node (zynthian_node)
 #
-# zynthian layer
+# a zynthian node is an engine instance inside a chain
 #
-# Copyright (C) 2015-2017 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -33,7 +33,7 @@ from collections import OrderedDict
 from zyncoder.zyncore import lib_zyncore
 
 
-class zynthian_layer:
+class zynthian_node:
 
 	# ---------------------------------------------------------------------------
 	# Data dirs
@@ -82,7 +82,7 @@ class zynthian_layer:
 
 		self.controllers_dict = None
 		self.ctrl_screens_dict = None
-		self.current_screen_index = -1
+		self.active_screen_index = -1
 
 		self.listen_midi_cc = True
 		self.refresh_flag = False
@@ -101,7 +101,7 @@ class zynthian_layer:
 			#TODO: Improve this Dirty Hack!!
 			if self.engine.nickname=='MD':
 				self.zyngui.screens['preset'].fill_list()
-				if self.zyngui.current_screen=='bank':
+				if self.zyngui.active_screen=='bank':
 					if self.preset_name:
 						self.zyngui.show_screen('control')
 					else:
@@ -160,7 +160,7 @@ class zynthian_layer:
 				self.bank_msb_info[1][1] += 1
 				i += 1
 			else:
-				break
+				break;
 		self.bank_msb_info[0][1] = len(self.bank_list)-i
 
 		# Add favourites virtual bank if there is some preset marked as favourite
@@ -189,6 +189,7 @@ class zynthian_layer:
 			logging.info("Bank Selected: %s (%d)" % (self.bank_name,i))
 
 			if set_engine and (last_bank_index!=i or not last_bank_name):
+				self.reset_preset()
 				return self.engine.set_bank(self, self.bank_info)
 
 			return True
@@ -212,7 +213,7 @@ class zynthian_layer:
 
 
 	def get_bank_name(self):
-		return self.bank_name
+		return self.preset_name
 
 
 	def get_bank_index(self):
@@ -234,7 +235,7 @@ class zynthian_layer:
 		elif self.bank_info:
 			for preset in self.engine.get_preset_list(self.bank_info):
 				if self.engine.is_preset_fav(preset):
-					preset[2] = "❤" + preset[2]
+					preset[2] = "*" + preset[2]
 				preset_list.append(preset)
 
 		else:
@@ -260,7 +261,7 @@ class zynthian_layer:
 			preset_name = self.preset_list[i][2]
 
 			if preset_id in self.engine.preset_favs:
-				if preset_name[0]=='❤':
+				if preset_name[0]=='*':
 					preset_name=preset_name[1:]
 				bank_name = self.engine.preset_favs[preset_id][0][2]
 				if bank_name!=self.bank_name:
@@ -272,6 +273,7 @@ class zynthian_layer:
 			self.preset_bank_index=self.bank_index
 
 			logging.info("Preset Selected: %s (%d)" % (self.preset_name,i))
+			#=> '+self.preset_list[i][3]
 
 			if self.preload_info:
 				if not self.engine.cmp_presets(self.preload_info,self.preset_info):
@@ -281,8 +283,12 @@ class zynthian_layer:
 					self.preload_info = None
 				else:
 					set_engine_needed = False
-			else:
+
+			elif last_preset_index!=i or not last_preset_name:
 				set_engine_needed = True
+
+			else:
+				set_engine_needed = False
 
 			if set_engine and set_engine_needed:
 				#TODO => Review this!!
@@ -298,7 +304,7 @@ class zynthian_layer:
 		for i in range(len(self.preset_list)):
 			name_i=self.preset_list[i][2]
 			try:
-				if name_i[0]=='❤':
+				if name_i[0]=='*':
 					name_i=name_i[1:]
 				if preset_name==name_i:
 					return self.set_preset(i,set_engine)
@@ -349,21 +355,8 @@ class zynthian_layer:
 		return self.preset_index
 
 
-	def get_preset_bank_index(self):
-		return self.preset_bank_index
-
-
-	def get_preset_bank_name(self):
-		try:
-			return self.bank_list[self.preset_bank_index][2]
-		except:
-			return None
-
-
 	def toggle_preset_fav(self, preset):
 		self.engine.toggle_preset_fav(self, preset)
-		if self.show_fav_presets and not len(self.get_preset_favs()):
-			self.set_show_fav_presets(False)
 
 
 	def get_preset_favs(self):
@@ -412,10 +405,10 @@ class zynthian_layer:
 
 		#Set active the first screen
 		if len(self.ctrl_screens_dict)>0:
-			if self.current_screen_index==-1:
-				self.current_screen_index=0
+			if self.active_screen_index==-1:
+				self.active_screen_index=0
 		else:
-			self.current_screen_index=-1
+			self.active_screen_index=-1
 
 
 	def get_ctrl_screens(self):
@@ -429,15 +422,15 @@ class zynthian_layer:
 			return None
 
 
-	def get_current_screen_index(self):
-		if self.current_screen_index>=len(self.ctrl_screens_dict):
-			self.current_screen_index = len(self.ctrl_screens_dict)-1
-		return self.current_screen_index
+	def get_active_screen_index(self):
+		if self.active_screen_index>=len(self.ctrl_screens_dict):
+			self.active_screen_index = len(self.ctrl_screens_dict)-1
+		return self.active_screen_index
 
 
 
-	def set_current_screen_index(self, i):
-		self.current_screen_index = i
+	def set_active_screen_index(self, i):
+		self.active_screen_index = i
 
 
 	# Build array of zynthian_controllers from list of keys
@@ -545,7 +538,7 @@ class zynthian_layer:
 			'show_fav_presets': self.show_fav_presets,
 			'controllers_dict': {},
 			'zs3_list': self.zs3_list,
-			'current_screen_index': self.current_screen_index
+			'active_screen_index': self.active_screen_index
 		}
 		for k in self.controllers_dict:
 			snapshot['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
@@ -591,8 +584,8 @@ class zynthian_layer:
 			self.zs3_list = snapshot['zs3_list']
 
 		#Set active screen
-		if 'current_screen_index' in snapshot:
-			self.current_screen_index=snapshot['current_screen_index']
+		if 'active_screen_index' in snapshot:
+			self.active_screen_index=snapshot['active_screen_index']
 
 
 	def restore_snapshot_2(self, snapshot):
@@ -635,7 +628,6 @@ class zynthian_layer:
 
 
 	def save_zs3(self, i):
-		logging.info("Save ZS3: CH{} => {}".format(self.midi_chan, i))
 		try:
 			zs3 = {
 				'bank_index': self.bank_index,
@@ -644,7 +636,7 @@ class zynthian_layer:
 				'preset_index': self.preset_index,
 				'preset_name': self.preset_name,
 				'preset_info': self.preset_info,
-				'current_screen_index': self.current_screen_index,
+				'active_screen_index': self.active_screen_index,
 				'controllers_dict': {},
 				'note_range': {}
 			}
@@ -694,8 +686,8 @@ class zynthian_layer:
 				sleep(0.3)
 
 			# Set active screen
-			if 'current_screen_index' in zs3:
-				self.current_screen_index=zs3['current_screen_index']
+			if 'active_screen_index' in zs3:
+				self.active_screen_index=zs3['active_screen_index']
 
 			# Set controller values
 			for k in zs3['controllers_dict']:
@@ -935,13 +927,9 @@ class zynthian_layer:
 
 
 	def get_path(self):
+		path = self.bank_name
 		if self.preset_name:
-			bank_name = self.get_preset_bank_name()
-			if not bank_name:
-				bank_name = "???"
-			path = bank_name + "/" + self.preset_name
-		else:
-			path = self.bank_name
+			path = path + "/" + self.preset_name
 		return path
 
 
@@ -963,9 +951,8 @@ class zynthian_layer:
 		path = self.get_basepath()
 
 		subpath = None
-		bank_name = self.get_preset_bank_name()
-		if bank_name and bank_name!="None":
-			subpath = bank_name
+		if self.bank_name and self.bank_name!="None":
+			subpath = self.bank_name
 			if self.preset_name:
 				subpath += "/" + self.preset_name
 		elif self.preset_name:

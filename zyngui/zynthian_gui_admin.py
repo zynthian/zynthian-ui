@@ -34,7 +34,7 @@ from subprocess import check_output, Popen, PIPE, STDOUT
 
 # Zynthian specific modules
 import zynconf
-from zyncoder import *
+from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
@@ -55,7 +55,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		super().__init__('Action', True)
 
-		if self.zyngui.allow_headphones():
+		if self.zyngui.allow_rbpi_headphones():
 			self.default_rbpi_headphones()
 
 		self.default_vncserver()
@@ -64,14 +64,14 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 
-		if self.zyngui.allow_headphones():
+		if self.zyngui.allow_rbpi_headphones():
 			if zynthian_gui_config.rbpi_headphones:
 				self.list_data.append((self.stop_rbpi_headphones,0,"[x] RBPi Headphones"))
 			else:
 				self.list_data.append((self.start_rbpi_headphones,0,"[  ] RBPi Headphones"))
 
 		if zynthian_gui_config.midi_single_active_channel:
-			self.list_data.append((self.toggle_single_channel,0,"->  Stage Mode"))
+			self.list_data.append((self.toggle_single_channel,0,"->  Stage Mode (Omni-On)"))
 		else:
 			self.list_data.append((self.toggle_single_channel,0,"=>  Multi-timbral Mode"))
 
@@ -79,6 +79,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_prog_change_zs3,0,"[x] Program Change ZS3"))
 		else:
 			self.list_data.append((self.toggle_prog_change_zs3,0,"[  ] Program Change ZS3"))
+
+		if zynthian_gui_config.midi_bank_change:
+			self.list_data.append((self.toggle_bank_change,0,"[x] MIDI Bank Change"))
+		else:
+			self.list_data.append((self.toggle_bank_change,0,"[  ] MIDI Bank Change"))
 
 		if zynthian_gui_config.preset_preload_noteon:
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[x] Preset Preload"))
@@ -157,6 +162,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		super().fill_list()
 
 
+	def show(self):
+		super().show()
+
+
 	def select_action(self, i, t='S'):
 		if self.list_data[i][0]:
 			self.last_action=self.list_data[i][0]
@@ -211,6 +220,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			logging.info("Starting Command Sequence ...")
 			self.commands=cmds
 			self.thread=Thread(target=self.execute_commands, args=())
+			self.thread.name = "command sequence"
 			self.thread.daemon = True # thread dies with the program
 			self.thread.start()
 
@@ -249,6 +259,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			logging.info("Starting Command Sequence ...")
 			self.commands=cmds
 			self.thread=Thread(target=self.killable_execute_commands, args=())
+			self.thread.name = "killable command sequence"
 			self.thread.daemon = True # thread dies with the program
 			self.thread.start()
 
@@ -358,7 +369,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_SYS_ENABLED": str(int(zynthian_gui_config.midi_sys_enabled))
 		})
 
-		zyncoder.lib_zyncoder.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
+		lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
 		self.fill_list()
 
 
@@ -391,6 +402,22 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		# Save config
 		zynconf.update_midi_profile({ 
 			"ZYNTHIAN_MIDI_PROG_CHANGE_ZS3": str(int(zynthian_gui_config.midi_prog_change_zs3))
+		})
+
+		self.fill_list()
+
+
+	def toggle_bank_change(self):
+		if zynthian_gui_config.midi_bank_change:
+			logging.info("MIDI Bank Change OFF")
+			zynthian_gui_config.midi_bank_change=False
+		else:
+			logging.info("MIDI Bank Change ON")
+			zynthian_gui_config.midi_bank_change=True
+
+		# Save config
+		zynconf.update_midi_profile({ 
+			"ZYNTHIAN_MIDI_BANK_CHANGE": str(int(zynthian_gui_config.midi_bank_change))
 		})
 
 		self.fill_list()
@@ -599,7 +626,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def midi_profile(self):
 		logging.info("MIDI Profile")
-		self.zyngui.show_modal("midi_profile")
+		self.zyngui.show_screen("midi_profile")
 
 #------------------------------------------------------------------------------
 # NETWORK FEATURES
@@ -644,65 +671,97 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def start_vncserver(self, save_config=True):
-		logging.info("STARTING VNC SERVICES")
+		# Start VNC for Zynthian-UI
+		if not zynconf.is_service_active("vncserver0"):
+			self.zyngui.start_loading()
 
-		self.zyngui.start_loading()
-		# Save state and stop engines
-		if len(self.zyngui.screens['layer'].layers)>0:
-			self.zyngui.screens['snapshot'].save_last_state_snapshot()
-			self.zyngui.screens['layer'].reset()
-			restore_state = True
-		else:
-			restore_state = False
+			try:
+				logging.info("STARTING VNC-UI SERVICE")
+				check_output("systemctl start novnc0", shell=True)
+				zynthian_gui_config.vncserver_enabled = 1
+			except Exception as e:
+				logging.error(e)
 
-		try:
-			check_output("systemctl start novnc0", shell=True)
-			check_output("systemctl start novnc1", shell=True)
-			zynthian_gui_config.vncserver_enabled = 1
-			# Update Config
-			if save_config:
-				zynconf.save_config({ 
-					"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
-				})
-		except Exception as e:
-			logging.error(e)
+			self.zyngui.stop_loading()
 
-		# Restore state
-		if restore_state:
-			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
-		self.zyngui.stop_loading()
+		# Start VNC for Engine's native GUIs
+		if not zynconf.is_service_active("vncserver1"):
+			self.zyngui.start_loading()
+
+			# Save state and stop engines
+			if len(self.zyngui.screens['layer'].layers)>0:
+				self.zyngui.screens['snapshot'].save_last_state_snapshot()
+				self.zyngui.screens['layer'].reset()
+				restore_state = True
+			else:
+				restore_state = False
+
+			try:
+				logging.info("STARTING VNC-ENGINES SERVICE")
+				check_output("systemctl start novnc1", shell=True)
+				zynthian_gui_config.vncserver_enabled = 1
+			except Exception as e:
+				logging.error(e)
+
+			# Restore state
+			if restore_state:
+				self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+
+			self.zyngui.stop_loading()
+
+		# Update Config
+		if save_config:
+			zynconf.save_config({ 
+				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
+			})
 
 		self.fill_list()
 
 
 	def stop_vncserver(self, save_config=True):
-		logging.info("STOPPING VNC SERVICES")
+		# Stop VNC for Zynthian-UI
+		if zynconf.is_service_active("vncserver0"):
+			self.zyngui.start_loading()
 
-		self.zyngui.start_loading()
-		# Save state and stop engines
-		if len(self.zyngui.screens['layer'].layers)>0:
-			self.zyngui.screens['snapshot'].save_last_state_snapshot()
-			self.zyngui.screens['layer'].reset()
-			restore_state = True
-		else:
-			restore_state = False
+			try:
+				logging.info("STOPPING VNC-UI SERVICE")
+				check_output("systemctl stop vncserver0", shell=True)
+				zynthian_gui_config.vncserver_enabled = 0
+			except Exception as e:
+				logging.error(e)
 
-		try:
-			check_output("systemctl stop vncserver0", shell=True)
-			check_output("systemctl stop vncserver1", shell=True)
-			zynthian_gui_config.vncserver_enabled = 0
-			# Update Config
-			if save_config:
-				zynconf.save_config({ 
-					"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
-				})
-		except Exception as e:
-			logging.error(e)
+			self.zyngui.stop_loading()
 
-		# Restore state
-		if restore_state:
-			self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
-		self.zyngui.stop_loading()
+		# Start VNC for Engine's native GUIs
+		if zynconf.is_service_active("vncserver1"):
+			self.zyngui.start_loading()
+
+			# Save state and stop engines
+			if len(self.zyngui.screens['layer'].layers)>0:
+				self.zyngui.screens['snapshot'].save_last_state_snapshot()
+				self.zyngui.screens['layer'].reset()
+				restore_state = True
+			else:
+				restore_state = False
+
+			try:
+				logging.info("STOPPING VNC-ENGINES SERVICE")
+				check_output("systemctl stop vncserver1", shell=True)
+				zynthian_gui_config.vncserver_enabled = 0
+			except Exception as e:
+				logging.error(e)
+
+			# Restore state
+			if restore_state:
+				self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+				
+			self.zyngui.stop_loading()
+
+		# Update Config
+		if save_config:
+			zynconf.save_config({ 
+				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
+			})
 
 		self.fill_list()
 
@@ -796,11 +855,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.zyngui.screens['snapshot'].save_last_state_snapshot()
 		else:
 			self.zyngui.screens['snapshot'].delete_last_state_snapshot()
-
-
-	#def back_action(self):
-	#	self.zyngui.show_screen("main")
-	#	return ''
 
 
 #------------------------------------------------------------------------------

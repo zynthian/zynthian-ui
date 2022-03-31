@@ -19,8 +19,9 @@
 #define PLAYING         1 // Sequence is playing
 #define STOPPING        2 // Sequence is playing waiting to stop
 #define STARTING        3 // Sequence is paused waiting to start
-#define RESTARTING      4 // Sequence is paused waiting to start or play (on next clock cycle)
-#define LASTPLAYSTATUS  4
+#define RESTARTING      4 // Sequence is restarting after hitting end of loop
+#define STOPPING_SYNC   5 // Sequence is playing waiting to stop at next sync point
+#define LASTPLAYSTATUS  5
 
 // MIDI commands
 #define MIDI_POSITION   0xF2
@@ -32,6 +33,7 @@
 #define MIDI_NOTE_OFF   0x80
 #define MIDI_NOTE_ON    0x90
 #define MIDI_CONTROL    0xB0
+#define MIDI_PROGRAM    0xC0
 
 struct MIDI_MESSAGE {
     uint8_t command = 0;

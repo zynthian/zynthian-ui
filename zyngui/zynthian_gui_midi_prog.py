@@ -23,13 +23,9 @@
 # 
 #******************************************************************************
 
-import sys
-import tkinter
 import logging
 
 # Zynthian specific modules
-from zyncoder import *
-from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------

@@ -272,7 +272,7 @@ void setStepsPerBeat(uint32_t steps);
 *   @param  duration Quantity of steps note should play for
 *   @retval bool True on success
 */
-bool addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration);
+bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration);
 
 /** @brief  Removes note from selected pattern
 *   @param  step Index of step at which to remove note
@@ -283,6 +283,7 @@ void removeNote(uint32_t step, uint8_t note);
 /** @brief  Get velocity of note in selected pattern
 *   @param  step Index of step at which note resides
 *   @param  note MIDI note number
+*   @retval uint8_t Note velocity (0..127)
 */
 uint8_t getNoteVelocity(uint32_t step, uint8_t note);
 
@@ -296,14 +297,42 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity);
 /** @brief  Get duration of note in selected pattern
 *   @param  position Index of step at which note starts
 *   @note   note MIDI note number
-*   @retval uint32_t Duration in steps or 0 if note does not exist
+*   @retval float Duration in steps or 0.0 if note does not exist
 */
-uint32_t getNoteDuration(uint32_t step, uint8_t note);
+float getNoteDuration(uint32_t step, uint8_t note);
+
+/** @brief  Add programme change to selected pattern
+*   @param  step Index of step at which to add program change
+*   @param  program MIDI program change number
+*   @retval bool True on success
+*/
+bool addProgramChange(uint32_t step, uint8_t program);
+
+/** @brief  Removes program change from selected pattern
+*   @param  step Index of step at which to remove program change
+*/
+void removeProgramChange(uint32_t step, uint8_t program);
+
+/** @brief  Get program change in selected pattern
+*   @param  step Index of step at which program change resides
+*   @retval uint8_t Program change (0..127, 0xFF if no program change at this step)
+*/
+uint8_t getProgramChange(uint32_t step);
 
 /** @brief  Transpose selected pattern
 *   @param  value +/- quantity of notes to transpose
 */
 void transpose(int8_t value);
+
+/** @brief  Change velocity of all notes in patterm
+*   @param  value Offset to adjust +/-127
+*/
+void changeVelocityAll(int value);
+
+/** @brief  Change duration of all notes in patterm
+*   @param  value Offset to adjust +/-100.0 or whatever
+*/
+void changeDurationAll(float value);
 
 /** @brief  Clears events from selected pattern
 *   @note   Does not change other parameters such as pattern length
@@ -398,7 +427,7 @@ uint32_t getPatternPlayhead(uint8_t bank, uint8_t sequence, uint32_t track);
 *   @param  track Index of track
 *   @param  position Quantity of clock cycles from start of track at which to add pattern
 *   @param  pattern Index of pattern
-*   @param  force True to remove overlapping patterns, false to fail if overlapping patterns 
+*   @param  force True to remove overlapping patterns, false to fail if overlapping patterns
 *   @retval True if pattern inserted
 */
 bool addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force);
@@ -466,7 +495,7 @@ void setPlayMode(uint8_t bank, uint8_t sequence, uint8_t mode);
 /** @brief  Get play state
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
-*   @retval uint8_t Play state [STOPPED | STARTING | PLAYING | STOPPING]
+*   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING | STARTING | RESTARTING | STOPPING_SYNC]
 */
 uint8_t getPlayState(uint8_t bank, uint8_t sequence);
 

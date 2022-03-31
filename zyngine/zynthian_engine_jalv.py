@@ -71,10 +71,18 @@ class zynthian_engine_jalv(zynthian_engine):
 			'http://calf.sourceforge.net/plugins/Monosynth',
 			'http://calf.sourceforge.net/plugins/Organ',
 			'http://nickbailey.co.nr/triceratops',
-			'http://code.google.com/p/amsynth/amsynth'
+			'http://code.google.com/p/amsynth/amsynth',
+			'http://gareus.org/oss/lv2/tuna#one'
 		]
 	if "Raspberry Pi 4" not in os.environ.get('RBPI_VERSION'):
 		broken_ui.append('http://tytel.org/helm')
+
+	plugins_custom_gui = {
+		'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
+		'http://gareus.org/oss/lv2/meters#spectr30stereo': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
+		'http://gareus.org/oss/lv2/tuna#one': "/zynthian/zynthian-ui/zyngui/zynthian_widget_tunaone.py",
+		'http://looperlative.com/plugins/lp3-basic': "/zynthian/zynthian-ui/zyngui/zynthian_widget_looper.py"
+	}
 
 	#------------------------------------------------------------------------------
 	# Native formats configuration (used by zynapi_install, preset converter, etc.)
@@ -172,9 +180,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
-		self.ui = False
+		self.native_gui = False
 		if self.plugin_url not in self.broken_ui and 'UI' in self.plugins_dict[plugin_name]:
-			self.ui = self.plugins_dict[plugin_name]['UI']
+			self.native_gui = self.plugins_dict[plugin_name]['UI']
 
 		if plugin_type=="MIDI Tool":
 			self.options['midi_route'] = True
@@ -184,10 +192,10 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.options['note_range'] = False
 
 		if not dryrun:
-			if self.config_remote_display() and self.ui:
-				if self.ui=="Qt5UI":
+			if self.config_remote_display() and self.native_gui:
+				if self.native_gui=="Qt5UI":
 					jalv_bin = "jalv.qt5"
-				else: #  elif self.ui=="X11UI":
+				else: #  elif self.native_gui=="X11UI":
 					jalv_bin = "jalv.gtk"
 				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.get_jalv_jackname(), self.plugin_url))
 			else:
@@ -195,6 +203,9 @@ class zynthian_engine_jalv(zynthian_engine):
 				self.command_env['DISPLAY'] = "X"
 
 			self.command_prompt = "\n> "
+
+			# Jalv which uses PWD as the root for presets
+			self.command_cwd = zynthian_engine.my_data_dir + "/presets/lv2"
 
 			output = self.start()
 
@@ -218,6 +229,12 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.lv2_monitors_dict = OrderedDict()
 			self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
 			self.generate_ctrl_screens(self.lv2_zctrl_dict)
+
+			# Look for a custom GUI
+			try:
+				self.custom_gui_fpath = self.plugins_custom_gui[self.plugin_url]
+			except:
+				self.custom_gui_fpath = None
 
 		# Get bank & presets info
 		self.preset_info = zynthian_lv2.get_plugin_presets(plugin_name)
@@ -458,7 +475,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			else:
 				last_group[0] = "Ungroup"
 			zctrl_group["_"] = last_group
-			
+
 		for gsymbol, gdata in zctrl_group.items():
 			ctrl_set=[]
 			gname = gdata[0]
@@ -775,13 +792,13 @@ class zynthian_engine_jalv(zynthian_engine):
 	def sanitize_text(text):
 		# Remove bad chars
 		bad_chars = ['.', ',', ';', ':', '!', '*', '+', '?', '@', '&', '$', '%', '=', '"', '\'', '`', '/', '\\', '^', '<', '>', '[', ']', '(', ')', '{', '}']
-		for i in bad_chars: 
+		for i in bad_chars:
 			text = text.replace(i, ' ')
-			
+
 		# Strip and replace (multi)spaces by single underscore
 		text = '_'.join(text.split())
 		text = '_'.join(filter(None,text.split('_')))
-	
+
 		return text
 
 

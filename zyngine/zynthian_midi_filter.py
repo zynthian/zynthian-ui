@@ -53,7 +53,7 @@ import logging
 sys.path.append(os.environ.get('ZYNTHIAN_UI_DIR'))
 
 # Zynthian specific modules
-from zyncoder import *
+from zyncoder.zyncore import lib_zyncore
 
 #------------------------------------------------------------------------------
 # Parser related classes
@@ -231,9 +231,9 @@ class MidiFilterRule:
 						logging.debug("%s CH#%s %s#%s" % (self.rule_type,ch,ev_type,ev_num))
 						if set_rules:
 							if self.rule_type=="IGNORE":
-								zyncoder.lib_zyncoder.set_midi_filter_event_ignore(ev_type, ch, ev_num)
+								lib_zyncore.set_midi_filter_event_ignore(ev_type, ch, ev_num)
 							elif self.rule_type=="CLEAN":
-								zyncoder.lib_zyncoder.del_midi_filter_event_map(ev_type, ch, ev_num)
+								lib_zyncore.del_midi_filter_event_map(ev_type, ch, ev_num)
 
 		elif self.rule_type=="MAP":
 			if self.args[0].ev_type and self.args[1].ev_type:
@@ -264,7 +264,7 @@ class MidiFilterRule:
 						n_rules += 1
 						logging.debug("MAP CH#%s %s#%s => CH#%s %s#%s" % (ch1,ev1_type,ev1_num,ch2,ev2_type,ev2_num))
 						if set_rules:
-							zyncoder.lib_zyncoder.set_midi_filter_event_map(ev1_type, ch1, ev1_num, ev2_type, ch2, ev2_num)
+							lib_zyncore.set_midi_filter_event_map(ev1_type, ch1, ev1_num, ev2_type, ch2, ev2_num)
 
 		return n_rules
 
@@ -290,7 +290,7 @@ class MidiFilterRule:
 					n_rules += 1
 					logging.debug("CLEAN CH#%s %s#%s" % (ch,ev_type,ev_num))
 					if del_rules:
-						zyncoder.lib_zyncoder.del_midi_filter_event_map(ev_type, ch, ev_num)
+						lib_zyncore.del_midi_filter_event_map(ev_type, ch, ev_num)
 
 		return n_rules
 
@@ -328,7 +328,7 @@ class MidiFilterScript:
 
 
 	def clean_all(self):
-		zyncoder.lib_zyncoder.reset_midi_filter_event_map()
+		lib_zyncore.reset_midi_filter_event_map()
 
 
 #------------------------------------------------------------------------------
@@ -400,5 +400,5 @@ if __name__ == '__main__':
 	logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 	logging.getLogger().setLevel(level=logging.DEBUG)
 
-	zyncoder.lib_zyncoder_init()
+	lib_zyncore_init()
 	unittest.main()

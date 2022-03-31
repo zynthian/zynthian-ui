@@ -307,6 +307,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 		if i<100:
 			self.ws_thread=Thread(target=self.task_websocket, args=())
+			self.ws_thread.name = "modui"
 			self.ws_thread.daemon = True # thread dies with the program
 			self.ws_thread.start()
 			
@@ -697,7 +698,7 @@ class zynthian_engine_modui(zynthian_engine):
 			zctrl.value=float(val)
 
 			#Refresh GUI controller in screen when needed ...
-			if self.zyngui.active_screen=='control' and not self.zyngui.modal_screen:
+			if self.zyngui.current_screen=='control':
 				self.zyngui.screens['control'].set_controller_value(zctrl)
 
 		except Exception as err:

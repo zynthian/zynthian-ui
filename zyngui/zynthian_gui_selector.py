@@ -42,7 +42,7 @@ from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
 class zynthian_gui_selector(zynthian_gui_base):
 
-	def __init__(self, selcap='Select', wide=False):
+	def __init__(self, selcap='Select', wide=False, loading_anim=True):
 		super().__init__()
 
 		self.index = 0
@@ -65,14 +65,15 @@ class zynthian_gui_selector(zynthian_gui_base):
 			bg=zynthian_gui_config.color_bg)
 		if self.wide:
 			if zynthian_gui_config.select_ctrl>1:
-				self.lb_frame.grid(row=1, column=0, rowspan=2, columnspan=2, padx=(0,2), sticky="w")
+				self.lb_frame.grid(row=1, column=0, rowspan=4, columnspan=2, padx=(0,2), sticky="wn")
 			else:
-				self.lb_frame.grid(row=1, column=1, rowspan=2, columnspan=2, padx=(2,0), sticky="e")
+				self.lb_frame.grid(row=1, column=1, rowspan=4, columnspan=2, padx=(2,0), sticky="en")
 		else:
 			if zynthian_gui_config.select_ctrl>1:
-				self.lb_frame.grid(row=1, column=1, rowspan=2, padx=(2,2), sticky="w")
+				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="wn")
 			else:
-				self.lb_frame.grid(row=1, column=1, rowspan=2, padx=(2,2), sticky="e")
+				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="en")
+
 		self.lb_frame.columnconfigure(0, weight=10)
 		self.lb_frame.rowconfigure(0, weight=10)
 		self.lb_frame.grid_propagate(False)
@@ -97,25 +98,34 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.listbox.bind("<Button-4>",self.cb_listbox_wheel)
 		self.listbox.bind("<Button-5>",self.cb_listbox_wheel)
 
-		# Canvas for loading image animation
-		self.loading_canvas = tkinter.Canvas(self.main_frame,
-			width=zynthian_gui_config.ctrl_width,
-			height=zynthian_gui_config.ctrl_height-1,
-			bd=0,
-			highlightthickness=0,
-			relief='flat',
-			bg = zynthian_gui_config.color_bg)
-		self.loading_canvas.grid(row=1,column=2,sticky="ne")
-		self.loading_push_ts = None
-		self.loading_canvas.bind("<Button-1>",self.cb_loading_push)
-		self.loading_canvas.bind("<ButtonRelease-1>",self.cb_loading_release)
+		if loading_anim:
+			# Canvas for loading image animation
+			if zynthian_gui_config.ctrl_both_sides:
+				h = zynthian_gui_config.ctrl_height - 1
+			else:
+				h = 3 * zynthian_gui_config.ctrl_height + 1
+			self.loading_canvas = tkinter.Canvas(self.main_frame,
+				width = zynthian_gui_config.ctrl_width,
+				height = h,
+				bd=0,
+				highlightthickness=0,
+				relief='flat',
+				bg = zynthian_gui_config.color_bg)
+			self.loading_canvas.grid(row=1,column=2,sticky="ne")
+			self.loading_push_ts = None
+			self.loading_canvas.bind("<Button-1>",self.cb_loading_push)
+			self.loading_canvas.bind("<ButtonRelease-1>",self.cb_loading_release)
+
+			# Setup Loading Logo Animation
+			self.loading_index = 0
+			self.loading_item = self.loading_canvas.create_image(3, 3, image = zynthian_gui_config.loading_imgs[0], anchor=tkinter.NW)
+		else:
+			self.loading_canvas = None
+			self.loading_index = 0
+			self.loading_item = None
 
 		# Init touchbar
 		self.init_buttonbar()
-
-		# Setup Loading Logo Animation
-		self.loading_index=0
-		self.loading_item=self.loading_canvas.create_image(3, 3, image = zynthian_gui_config.loading_imgs[0], anchor=tkinter.NW)
 
 		# Selector Controller Caption
 		self.selector_caption=selcap
@@ -129,7 +139,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def refresh_loading(self):
-		if self.shown:
+		if self.shown and self.loading_canvas:
 			try:
 				if self.zyngui.loading:
 					self.loading_index=self.loading_index+1
@@ -142,7 +152,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def reset_loading(self, force=False):
-		if self.loading_index>0 or force:
+		if self.loading_canvas and (self.loading_index>0 or force):
 			self.loading_index=0
 			self.loading_canvas.itemconfig(self.loading_item, image=zynthian_gui_config.loading_imgs[0])
 
@@ -216,9 +226,18 @@ class zynthian_gui_selector(zynthian_gui_base):
 				self.last_index_change_ts=datetime.now()
 
 
+	def select_listbox_by_name(self, name):
+		names = self.listbox.get(0, self.listbox.size())
+		try:
+			index = names.index(name)
+			self.select(index)
+		except:
+			logging.debug("%s is not in listbox", name)
+
+
 	def skip_separators(self, index):
 		# Skip separator items ...
-		if self.list_data[index][0] is None:
+		if index>=0 and index<len(self.list_data) and self.list_data[index][0] is None:
 			if self.index<=index:
 				self.select_listbox(index+1)
 			elif self.index>index:
@@ -252,6 +271,16 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.select_action(self.index, t)
 
 
+	# Function to handle *all* switch presses.
+	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#	typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#	returns True if action fully handled or False if parent action should be triggered
+	def switch(self, swi, t='S'):
+		return False
+
+
+	# Function to handle select switch press
+	#	typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, t='S'):
 		self.click_listbox(None, t)
 

@@ -32,14 +32,14 @@ from threading  import Thread, Lock
 from collections import OrderedDict
 
 # Zynthian specific modules
-from zyncoder import *
+from zyncoder.zyncore import get_lib_zyncore
 from zyngui import zynthian_gui_config
 
 #-------------------------------------------------------------------------------
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = logging.WARNING
+log_level=int(os.environ.get('ZYNTHIAN_LOG_LEVEL',logging.WARNING))
 
 logger=logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -56,7 +56,11 @@ jclient = None
 thread = None
 exit_flag = False
 
+lib_zyncore = get_lib_zyncore()
+
 last_hw_str = None
+max_num_devs = 16
+devices_in = [None for i in range(max_num_devs)]
 
 #------------------------------------------------------------------------------
 
@@ -86,7 +90,7 @@ def midi_autoconnect(force=False):
 	#Get Mutex Lock 
 	acquire_lock()
 
-	logger.info("ZynAutoConnect: MIDI ...")
+	#logger.info("ZynAutoConnect: MIDI ...")
 
 	#------------------------------------
 	# Get Input/Output MIDI Ports: 
@@ -136,7 +140,7 @@ def midi_autoconnect(force=False):
 	if not force and hw_str==last_hw_str:
 		#Release Mutex Lock
 		release_lock()
-		logger.info("ZynAutoConnect: MIDI Shortened ...")
+		#logger.info("ZynAutoConnect: MIDI Shortened ...")
 		return
 	else:
 		last_hw_str = hw_str
@@ -217,14 +221,30 @@ def midi_autoconnect(force=False):
 	# Auto-Connect MIDI Ports
 	#------------------------------------
 
-	#Connect "Not Disabled" Input Device Ports to ZynMidiRouter:main_in
+	#Connect MIDI Input Devices
 	for hw in hw_out:
+		devnum = None
+		port_alias_id = get_port_alias_id(hw)
 		#logger.debug("Connecting MIDI Input {} => {}".format(hw,zmr_in['main_in']))
 		try:
-			if get_port_alias_id(hw) in zynthian_gui_config.disabled_midi_in_ports:
-				jclient.disconnect(hw,zmr_in['main_in'])
+			#If the device is marked as disabled, disconnect from all dev ports
+			if port_alias_id in zynthian_gui_config.disabled_midi_in_ports:
+				for i in range(16):
+					jclient.disconnect(hw,zmr_in['dev{}_in'.format(i)])
+			 #else ...
 			else:
-				jclient.connect(hw,zmr_in['main_in'])
+				#if the device already is registered, takes the number
+				if port_alias_id in devices_in:
+					devnum = devices_in.index(port_alias_id)
+				#else registers it, taking the first free port
+				else:
+					for i in range(16):
+						if devices_in[i] is None:
+							devnum = i
+							devices_in[devnum] = port_alias_id
+							break
+				if devnum is not None:
+					jclient.connect(hw,zmr_in['dev{}_in'.format(devnum)])
 		except Exception as e:
 			#logger.debug("Exception {}".format(e))
 			pass
@@ -343,7 +363,7 @@ def midi_autoconnect(force=False):
 	# Set "Drop Program Change" flag for each MIDI chan
 	for layer in zynthian_gui_config.zyngui.screens["layer"].root_layers:
 		if layer.midi_chan is not None:
-			zyncoder.lib_zyncoder.zmop_chan_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
+			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
 
 
 	if zynthian_gui_config.midi_filter_output:
@@ -422,18 +442,18 @@ def midi_autoconnect(force=False):
 def audio_autoconnect(force=False):
 
 	if not force:
-		logger.info("ZynAutoConnect: Audio Escaped ...")
+		#logger.debug("ZynAutoConnect: Audio Escaped ...")
 		return
 
 	#Get Mutex Lock 
 	acquire_lock()
 
-	logger.info("ZynAutoConnect: Audio ...")
+	#logger.info("ZynAutoConnect: Audio ...")
 
 	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
 	input_ports=get_audio_input_ports(True)
 
-	#Get System Playbak Ports
+	#Get System Playback Ports
 	playback_ports = get_audio_playback_ports()
 
 	#Disconnect Monitor from System Output
@@ -448,13 +468,13 @@ def audio_autoconnect(force=False):
 	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
 
 	#Connect Synth Engines to assigned outputs
-	for i, layer in enumerate(layers_list):
+	for layer_index, layer in enumerate(layers_list):
 		if not layer.get_audio_jackname() or layer.engine.type=="MIDI Tool":
 			continue
 
-		layer_playback = [jn for jn in layer.get_audio_out() if jn.startswith("system:playback_")]
+		layer_playback = [jn for jn in layer.get_audio_out() if jn.startswith("zynmixer:input_") or jn.startswith("system:playback_")]
 		nlpb = len(layer_playback)
-
+		
 		ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
 		if len(ports)>0:
 			#logger.debug("Connecting Layer {} ...".format(layer.get_jackname()))
@@ -521,76 +541,27 @@ def audio_autoconnect(force=False):
 				except:
 					pass
 
-	headphones_out = jclient.get_ports("Headphones", is_input=True, is_audio=True)
 
-	if len(headphones_out)==2 or not zynthian_gui_config.show_cpu_status:
-		sysout_conports_1 = jclient.get_all_connections("system:playback_1")
-		sysout_conports_2 = jclient.get_all_connections("system:playback_2")
+	# Connect mixer to main output
+	try:
+		jclient.connect("zynmixer:output_a", "system:playback_1")
+		jclient.connect("zynmixer:output_b", "system:playback_2")
+	except:
+		pass
+	# Connect mixer to headphones
+	try:
+		jclient.connect("zynmixer:output_a", "Headphones:playback_1")
+		jclient.connect("zynmixer:output_b", "Headphones:playback_2")
+	except:
+		pass
 
-		#Setup headphones connections if enabled ...
-		if len(headphones_out)==2:
-			#Prepare for setup headphones connections
-			headphones_conports_1=jclient.get_all_connections("Headphones:playback_1")
-			headphones_conports_2=jclient.get_all_connections("Headphones:playback_2")
-
-			#Disconnect ports from headphones (those that are not connected to System Out, if any ...)
-			for cp in headphones_conports_1:
-				if cp not in sysout_conports_1:
-					try:
-						jclient.disconnect(cp,headphones_out[0])
-					except:
-						pass
-			for cp in headphones_conports_2:
-				if cp not in sysout_conports_2:
-					try:
-						jclient.disconnect(cp,headphones_out[1])
-					except:
-						pass
-
-			#Connect ports to headphones (those currently connected to System Out)
-			for cp in sysout_conports_1:
-				try:
-					jclient.connect(cp,headphones_out[0])
-				except:
-					pass
-			for cp in sysout_conports_2:
-				try:
-					jclient.connect(cp,headphones_out[1])
-				except:
-					pass
-
-		#Setup dpmeter connections if enabled ...
-		if not zynthian_gui_config.show_cpu_status:
-			#Prepare for setup dpmeter connections
-			dpmeter_out = jclient.get_ports("jackpeak", is_input=True, is_audio=True)
-			dpmeter_conports_1=jclient.get_all_connections("jackpeak:input_a")
-			dpmeter_conports_2=jclient.get_all_connections("jackpeak:input_b")
-
-			#Disconnect ports from dpmeter (those that are not connected to System Out, if any ...)
-			for cp in dpmeter_conports_1:
-				if cp not in sysout_conports_1:
-					try:
-						jclient.disconnect(cp,dpmeter_out[0])
-					except:
-						pass
-			for cp in dpmeter_conports_2:
-				if cp not in sysout_conports_2:
-					try:
-						jclient.disconnect(cp,dpmeter_out[1])
-					except:
-						pass
-
-			#Connect ports to dpmeter (those currently connected to System Out)
-			for cp in sysout_conports_1:
-				try:
-					jclient.connect(cp,dpmeter_out[0])
-				except:
-					pass
-			for cp in sysout_conports_2:
-				try:
-					jclient.connect(cp,dpmeter_out[1])
-				except:
-					pass
+	# Connect mixer to dpm
+	if not zynthian_gui_config.show_cpu_status:
+		try:
+			jclient.connect("zynmixer:output_a", "jackpeak:input_a")
+			jclient.connect("zynmixer:output_b", "jackpeak:input_b")
+		except:
+			pass
 
 	#Get System Capture ports => jack output ports!!
 	capture_ports = get_audio_capture_ports()
@@ -669,7 +640,8 @@ def get_audio_capture_ports():
 
 
 def get_audio_playback_ports():
-	return jclient.get_ports("system", is_input=True, is_audio=True, is_physical=True)
+	ports = jclient.get_ports("zynmixer", is_input=True, is_audio=True, is_physical=False)
+	return ports + jclient.get_ports("system", is_input=True, is_audio=True, is_physical=True)
 
 
 def get_audio_input_ports(exclude_system_playback=False):
@@ -680,7 +652,7 @@ def get_audio_input_ports(exclude_system_playback=False):
 			client_name=parts[0]
 			if client_name in ["jack_capture","jackpeak","Headphones"] or client_name[:7]=="effect_":
 				continue
-			if client_name=="system":
+			if client_name=="system" or client_name=="zynmixer":
 				if exclude_system_playback:
 					continue
 				else:
@@ -743,6 +715,7 @@ def start(rt=2):
 	# Start Autoconnect Thread
 	thread=Thread(target=autoconnect_thread, args=())
 	thread.daemon = True # thread dies with the program
+	thread.name = "autoconnect"
 	thread.start()
 
 
@@ -752,6 +725,7 @@ def stop():
 	acquire_lock()
 	audio_disconnect_sysout()
 	release_lock()
+	jclient.deactivate()
 
 
 def is_running():

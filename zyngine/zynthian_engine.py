@@ -56,7 +56,7 @@ class zynthian_basic_engine:
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, name=None, command=None, prompt=None):
+	def __init__(self, name=None, command=None, prompt=None, cwd=None):
 		self.name = name
 
 		self.proc = None
@@ -65,6 +65,7 @@ class zynthian_basic_engine:
 		self.command = command
 		self.command_env = os.environ.copy()
 		self.command_prompt = prompt
+		self.command_cwd = cwd
 
 
 	def __del__(self):
@@ -80,7 +81,15 @@ class zynthian_basic_engine:
 			logging.info("Starting Engine {}".format(self.name))
 			try:
 				logging.debug("Command: {}".format(self.command))
-				self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
+				# Turns out that environment's PWD is not set automatically 
+				# when cwd is specified for pexpect.spawn(), so do it here.
+				if (self.command_cwd):
+					self.command_env['PWD'] = self.command_cwd
+
+				# Setting cwd is because we've set PWD above. Some engines doesn't
+				# care about the process's cwd, but it is more consistent to set 
+				# cwd when PWD has been set.
+				self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
 
 				self.proc.delaybeforesend = 0
 
@@ -163,7 +172,8 @@ class zynthian_engine(zynthian_basic_engine):
 	def __init__(self, zyngui=None):
 		super().__init__()
 
-		self.zyngui=zyngui
+		self.zyngui = zyngui
+		self.custom_gui_fpath = None
 
 		self.type = "MIDI Synth"
 		self.nickname = ""
@@ -190,6 +200,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 		self.preset_favs = None
 		self.preset_favs_fpath = None
+		self.show_favs_bank = True
 
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
@@ -660,7 +671,7 @@ class zynthian_engine(zynthian_basic_engine):
 				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
 
 				#Refresh GUI controller in screen when needed ...
-				if (self.zyngui.active_screen=='control' and not self.zyngui.modal_screen) or self.zyngui.modal_screen=='alsa_mixer':
+				if self.zyngui.current_screen in ('control', 'alsa_mixer'):
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 
 		except Exception as e:

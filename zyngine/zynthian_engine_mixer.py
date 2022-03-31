@@ -32,6 +32,7 @@ from time import sleep
 from subprocess import check_output
 from collections import OrderedDict
 
+from zyncoder.zyncore import lib_zyncore
 from . import zynthian_engine
 from . import zynthian_controller
 
@@ -136,11 +137,12 @@ class zynthian_engine_mixer(zynthian_engine):
 	# Controllers Managament
 	#----------------------------------------------------------------------------
 
-	def allow_headphones(self):
+	def allow_rbpi_headphones(self):
 		if self.rbpi_device_name and self.device_name!=self.rbpi_device_name:
 			return True
 		else:
 			return False
+
 
 	def get_controllers_dict(self, layer, ctrl_list=None):
 		if ctrl_list=="*":
@@ -153,7 +155,26 @@ class zynthian_engine_mixer(zynthian_engine):
 		self.stop_sender_poll()
 
 		zctrls = self.get_mixer_zctrls(self.device_name, ctrl_list)
-		if self.allow_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
+
+		# Add HP amplifier interface if available
+		try:
+			if callable(lib_zyncore.set_hpvol):
+				hp_zctrl = zynthian_controller(self, "Headphones", "Headphones", {
+					'graph_path': lib_zyncore.set_hpvol,
+					'value': lib_zyncore.get_hpvol(),
+					'value_min': 0,
+					'value_max': lib_zyncore.get_hpvol_max(),
+					'is_integer': True
+				})
+				hp_zctrl.last_value_sent = None
+				zctrls["Headphones"] = hp_zctrl
+				ctrl_list.insert(0, "Headphones")
+				logging.debug("Added Headphones Amplifier volume control")
+		except:
+			pass
+
+		# Add RBPi headphones if enabled and available... 
+		if self.allow_rbpi_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
 			try:
 				zctrls_headphones = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone","PCM"])
 				if "Headphone" in zctrls_headphones:
@@ -162,11 +183,11 @@ class zynthian_engine_mixer(zynthian_engine):
 					hp_zctrl = zctrls_headphones["PCM"]
 					hp_zctrl.symbol = hp_zctrl.name = hp_zctrl.short_name = "Headphone"
 				else:
-					raise Exception("Headphone volume control not found!")
+					raise Exception("RBPi Headphone volume control not found!")
 
 				zctrls["Headphone"] = hp_zctrl
 				ctrl_list.insert(0, "Headphone")
-				logging.debug("Added Headphone Volume Control")
+				logging.debug("Added RBPi Headphone volume control")
 
 			except Exception as e:
 				logging.error("Can't configure headphones volume control: {}".format(e))
@@ -338,34 +359,38 @@ class zynthian_engine_mixer(zynthian_engine):
 
 	def _send_controller_value(self, zctrl):
 		try:
-			if zctrl.labels:
-				if zctrl.graph_path[1]=="VToggle":
-					amixer_command = "amixer -M -c {} set '{}' '{}%'".format(self.device_name, zctrl.graph_path[0], zctrl.value)
-				else:
-					amixer_command = "amixer -M -c {} set '{}' '{}'".format(self.device_name, zctrl.graph_path[0], zctrl.get_value2label())
+			if callable(zctrl.graph_path):
+				zctrl.graph_path(zctrl.value)
 			else:
-				if zctrl.symbol=="Headphone" and self.allow_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
-					devname = self.rbpi_device_name
+				if zctrl.labels:
+					if zctrl.graph_path[1]=="VToggle":
+						amixer_command = "amixer -M -c {} set '{}' '{}%'".format(self.device_name, zctrl.graph_path[0], zctrl.value)
+					else:
+						amixer_command = "amixer -M -c {} set '{}' '{}'".format(self.device_name, zctrl.graph_path[0], zctrl.get_value2label())
 				else:
-					devname = self.device_name
+					if zctrl.symbol=="Headphone" and self.allow_rbpi_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
+						devname = self.rbpi_device_name
+					else:
+						devname = self.device_name
 
-				values=[]
-				if len(zctrl.graph_path)>2:
-					nchans = zctrl.graph_path[3]
-					symbol_prefix = zctrl.symbol[:-1]
-					for i in range(0, nchans):
-						symbol_i = symbol_prefix + str(i)
-						if symbol_i in self.zctrls:
-							values.append("{}%".format(self.zctrls[symbol_i].value))
-						else:
-							values.append("0%")
-				else:
-					values.append("{}%".format(zctrl.value))
+					values=[]
+					if len(zctrl.graph_path)>2:
+						nchans = zctrl.graph_path[3]
+						symbol_prefix = zctrl.symbol[:-1]
+						for i in range(0, nchans):
+							symbol_i = symbol_prefix + str(i)
+							if symbol_i in self.zctrls:
+								values.append("{}%".format(self.zctrls[symbol_i].value))
+							else:
+								values.append("0%")
+					else:
+						values.append("{}%".format(zctrl.value))
 
-				amixer_command = "amixer -M -c {} set '{}' '{}' {} unmute".format(devname, zctrl.graph_path[0], zctrl.graph_path[1], ','.join(values))
+					amixer_command = "amixer -M -c {} set '{}' '{}' {} unmute".format(devname, zctrl.graph_path[0], zctrl.graph_path[1], ','.join(values))
 
-			logging.debug(amixer_command)
-			check_output(shlex.split(amixer_command))
+				logging.debug(amixer_command)
+				check_output(shlex.split(amixer_command))
+
 			sleep(0.05)
 
 		except Exception as err:
@@ -390,6 +415,7 @@ class zynthian_engine_mixer(zynthian_engine):
 
 		self.sender_poll_enabled = True
 		thread = threading.Thread(target=runInThread, daemon=True)
+		thread.name = "engine mixer"
 		thread.start()
 
 

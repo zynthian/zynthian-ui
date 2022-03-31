@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI ZS3 learn screen
-# 
+#
 # Copyright (C) 2018 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 #******************************************************************************
 
 import sys
@@ -41,69 +41,85 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 	def __init__(self):
 		super().__init__('Program', True)
-		self.num_programs = 0
+		self.index = 0
 
 
 	def fill_list(self):
 		self.list_data=[]
 
+		#Add "Waiting for Program Change" message
+		self.list_data.append(('None',None,"Waiting for Program Change ..."))
+		self.list_data.append((None,None,"-----------------------------"))
+
 		#Add list of programs
 		try:
-			midich=self.zyngui.curlayer.get_midi_chan()
-			zs3_indexes=self.zyngui.screens['layer'].get_midi_chan_zs3_used_indexes(midich)
-			select_zs3_idx = self.zyngui.screens['layer'].get_last_zs3_index(midich)
-			self.num_programs=len(zs3_indexes)
-			for i, zs3_index in enumerate(zs3_indexes):
-				zs3_title="Program {}".format(zs3_index)
-				self.list_data.append((zs3_index,len(self.list_data),zs3_title))
-				if zs3_index == select_zs3_idx:
-					self.index = len(self.list_data) - 1
+			midich = self.zyngui.curlayer.get_midi_chan()
+			zs3_indexes = self.zyngui.screens['layer'].get_midi_chan_zs3_used_indexes(midich)
+			#select_zs3_idx = self.zyngui.screens['layer'].get_last_zs3_index(midich)
+			for i in range(128):
+				if i in zs3_indexes:
+					zs3_index = i
+					label = "used"
+				else:
+					zs3_index = None
+					label = "free"
+				zs3_title = "Program {}: {}".format(i + 1, label)
+				self.list_data.append((i,zs3_index,zs3_title))
 		except Exception as e:
 			logging.error(e)
-
-		#Add "Waiting for Program Change" message
-		if len(self.list_data)>0:
-			self.list_data.append((None,len(self.list_data),"-----------------------------"))
-		self.list_data.append(('None',len(self.list_data),"Waiting for Program Change ..."))
 
 		super().fill_list()
 
 
 	def fill_listbox(self):
 		super().fill_listbox()
-		if self.num_programs>0:
-			i = self.num_programs + 1
-		else:
-			i=0
-		self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_hl})
+		self.listbox.itemconfig(0, {'fg':zynthian_gui_config.color_hl})
 
 
 	def set_selector(self):
 		if self.zselector:
-			self.zselector_ctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'midi_cc':0, 'value_max':self.num_programs, 'value':self.index })
+			self.zselector_ctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'midi_cc':0, 'value_max':130, 'value':self.index })
 			self.zselector.config(self.zselector_ctrl)
 			self.zselector.show()
 		else:
-			self.zselector_ctrl=zynthian_controller(None,self.selector_caption,self.selector_caption,{ 'midi_cc':0, 'value_max':self.num_programs, 'value':self.index })
+			self.zselector_ctrl=zynthian_controller(None,self.selector_caption,self.selector_caption,{ 'midi_cc':0, 'value_max':130, 'value':self.index })
 			self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.main_frame,self.zselector_ctrl)
 
 
 	def select_action(self, i, t='S'):
-		self.index=i
-		zs3_index=self.list_data[self.index][0]
+		self.index = i
+		zs3_index = self.list_data[self.index][1]
+		midi_prog = self.list_data[self.index][0]
 		if isinstance(zs3_index, int):
-			midich=self.zyngui.curlayer.get_midi_chan()
+			midich = self.zyngui.curlayer.get_midi_chan()
 			if t=='S':
 				self.zyngui.screens['layer'].set_midi_chan_zs3(midich, zs3_index)
+				self.zyngui.close_screen()
 				self.zyngui.exit_midi_learn_mode()
 			elif t=='B':
 				self.zyngui.screens['zs3_options'].config(midich, zs3_index)
-				self.zyngui.show_modal('zs3_options')
+				self.zyngui.show_screen('zs3_options')
+		elif isinstance(midi_prog, int):
+			midich = self.zyngui.curlayer.get_midi_chan()
+			self.zyngui.screens['layer'].save_midi_chan_zs3(midich, midi_prog)
+			self.zyngui.close_screen()
+			self.zyngui.exit_midi_learn_mode()
+
+
+	# Function to handle *all* switch presses.
+	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#	returns True if action fully handled or False if parent action should be triggered
+	def switch(self, swi, t='S'):
+		if swi == 2:
+			if t == 'S':
+				self.zyngui.close_screen()
+				return True
 
 
 	def back_action(self):
 		self.zyngui.exit_midi_learn_mode()
-		return ''
+		return False
 
 
 	def set_select_path(self):

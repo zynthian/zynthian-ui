@@ -52,14 +52,18 @@ function backlight_on() {
 	# Turn On Display Backlight
 	#echo 0 > /sys/class/backlight/soc:backlight/bl_power
 	#echo 0 > /sys/class/backlight/fb_ili9486/bl_power
-	echo 0 > /sys/class/backlight/*/bl_power
+	if [ -f /sys/class/backlight/*/bl_power ]; then
+		echo 0 > /sys/class/backlight/*/bl_power
+	fi
 }
 
 function backlight_off() {
 	# Turn Off Display Backlight
 	#echo 1 > /sys/class/backlight/soc:backlight/bl_power
 	#echo 1 > /sys/class/backlight/fb_ili9486/bl_power
-	echo 1 > /sys/class/backlight/*/bl_power
+	if [ -f /sys/class/backlight/*/bl_power ]; then
+		echo 1 > /sys/class/backlight/*/bl_power
+	fi
 }
 
 function screensaver_off() {
@@ -92,6 +96,9 @@ function splash_zynthian() {
 
 
 function splash_zynthian_error() {
+	#Grab exit code if set
+	zynthian_error=$1
+	[ "$zynthian_error" ] || zynthian_error="???"
 	#Get the IP
 	#zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
 	zynthian_ip=`ip route get 1 | sed 's/^.*src \([^ ]*\).*$/\1/;q'`
@@ -100,10 +107,10 @@ function splash_zynthian_error() {
 	img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
 	img_w=`identify -format '%w' $img_fpath`
 	img_h=`identify -format '%h' $img_fpath`
-	pos_x=$(expr $img_w \* 100 / 266)
+	pos_x=$(expr $img_w \* 100 / 350)
 	pos_y=$(expr $img_h \* 100 / 110)
 	font_size=$(expr $img_w / 24)
-	convert -strip -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"IP: $zynthian_ip\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
+	convert -strip -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"Exit:$zynthian_error     IP:$zynthian_ip\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
 	
 	#Display error image
 	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
@@ -149,7 +156,7 @@ while true; do
 			sleep 1
 		;;
 		*)
-			splash_zynthian_error
+			splash_zynthian_error $status
 			sleep 3
 		;;
 	esac

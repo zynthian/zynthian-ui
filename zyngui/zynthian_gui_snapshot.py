@@ -294,7 +294,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			"Delete": fname
 		}
 		self.zyngui.screens['option'].config(fname, options, self.options_cb)
-		self.zyngui.show_modal('option')
+		self.zyngui.show_screen('option')
 
 
 	def options_cb(self, option, param):
@@ -315,11 +315,11 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
-		elif option == "Create copy":
+		elif option == "Create Copy":
 			self.zyngui.show_keyboard(self.copy_snapshot, parts[1] + ' (copy)')
-		elif option == "Set program":
+		elif option == "Set Program":
 			self.zyngui.screens['midi_prog'].config(parts[0], self.set_program)
-			self.zyngui.show_modal('midi_prog')
+			self.zyngui.show_screen('midi_prog')
 		elif option == "Delete":
 			self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, fpath)
 
@@ -349,7 +349,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		except Exception as e:
 			logging.warning("Failed to rename snapshot {} to {} => {}".format(data[0], data[1], e))
 
-		self.zyngui.show_modal('snapshot')
+		self.zyngui.show_screen('snapshot')
 
 
 	def copy_snapshot(self, new_name):
@@ -379,7 +379,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		except Exception as e:
 			logging.warning("Failed to copy snapshot {} to {} => {}".format(data[0], data[1], e))
 
-		self.zyngui.show_modal('snapshot')
+		self.zyngui.show_screen('snapshot')
 
 
 	def set_program(self, value):
@@ -404,7 +404,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		except Exception as e:
 			logging.warning("Failed to set program for snapshot {} to {} => {}".format(fpath, program, e))
 
-		self.zyngui.show_modal('snapshot')
+		self.zyngui.show_screen('snapshot')
 
 
 	def save_snapshot_by_name(self, name):
@@ -413,12 +413,12 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			name = format(program, "03") + "-" + name
 		path = self.get_snapshot_fpath(name.replace('>',';').replace('/',';')) + '.zss'
 		self.save_snapshot(path)
-		self.zyngui.show_modal('snapshot')
+		self.zyngui.show_screen('snapshot')
 
 
 	def save_snapshot(self, path):
 		self.zyngui.screens['layer'].save_snapshot(path)
-		self.zyngui.show_modal('snapshot')
+		self.zyngui.show_screen('snapshot')
 
 
 	def save_default_snapshot(self):
@@ -505,7 +505,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if pn in self.midi_programs:
 			fpath=self.list_data[self.midi_programs[pn]][0]
 			logging.debug("Snapshot Program Change %s: %s" % (pn,fpath))
-			self.zyngui.show_modal("snapshot")
+			self.zyngui.show_screen("snapshot")
 			self.zyngui.screens['layer'].load_snapshot(fpath)
 			return True
 		else:

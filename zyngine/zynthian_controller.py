@@ -28,7 +28,7 @@ import ctypes
 import logging
 
 # Zynthian specific modules
-from zyncoder import *
+from zyncoder.zyncore import lib_zyncore
 
 
 class zynthian_controller:
@@ -153,7 +153,11 @@ class zynthian_controller:
 			self.value_mid = self.value_min+self.value_range/2
 
 		if self.is_logarithmic:
-			self.powbase = self.value_max/self.value_min
+			if self.value_min==0:
+				self.powbase = 10000
+				self.value_min = self.value_max/self.powbase
+			else:
+				self.powbase = self.value_max/self.value_min
 			self.log_powbase = math.log(self.powbase)
 
 		self._set_value(self.value)
@@ -189,6 +193,10 @@ class zynthian_controller:
 				self.ticks = maxval[1]
 			else:
 				self.labels = maxval
+
+		# Detect toggle (on/off)
+		if self.labels and len(self.labels)==2:
+			self.is_toggle = True
 
 		self._configure()
 
@@ -289,7 +297,7 @@ class zynthian_controller:
 							logging.debug("Sending OSC controller '{}' value => {}".format(self.symbol, val))
 
 						elif self.midi_cc:
-							zyncoder.lib_zyncoder.ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
+							lib_zyncore.ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
 							logging.debug("Sending MIDI controller '{}' value => {} ({})".format(self.symbol, val, mval))
 
 					except Exception as e:
@@ -298,10 +306,10 @@ class zynthian_controller:
 			# Send feedback to MIDI controllers
 			try:
 				if self.midi_learn_cc:
-					zyncoder.lib_zyncoder.ctrlfb_send_ccontrol_change(self.midi_learn_chan,self.midi_learn_cc,mval)
+					lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_learn_chan,self.midi_learn_cc,mval)
 					#logging.debug("Controller feedback '{}' (learn) => CH{}, CC{}, Val={}".format(self.symbol,self.midi_learn_chan,self.midi_learn_cc,mval))
 				elif self.midi_cc:
-					zyncoder.lib_zyncoder.ctrlfb_send_ccontrol_change(self.midi_chan,self.midi_cc,mval)
+					lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_chan,self.midi_cc,mval)
 					#logging.debug("Controller feedback '{}' => CH{}, CC{}, Val={}".format(self.symbol,self.midi_chan,self.midi_cc,mval))
 
 			except Exception as e:
@@ -375,9 +383,11 @@ class zynthian_controller:
 
 
 	def get_ctrl_osc_val(self):
-		if self.labels and len(self.labels)==2:
-			if self.value=='on': return True
-			elif self.value=='off': return False
+		if self.is_toggle:
+			if self.value>0:
+				return True
+			else:
+				return False
 		return self.value
 
 
@@ -547,7 +557,7 @@ class zynthian_controller:
 
 	def midi_learn_zyncoder(self, chan, cc):
 		try:
-			if zyncoder.lib_zyncoder.set_midi_filter_cc_swap(ctypes.c_ubyte(chan), ctypes.c_ubyte(cc), ctypes.c_ubyte(self.midi_chan), ctypes.c_ubyte(self.midi_cc)):
+			if lib_zyncore.set_midi_filter_cc_swap(ctypes.c_ubyte(chan), ctypes.c_ubyte(cc), ctypes.c_ubyte(self.midi_chan), ctypes.c_ubyte(self.midi_cc)):
 				logging.info("Set MIDI filter CC map: (%s, %s) => (%s, %s)" % (chan, cc, self.midi_chan, self.midi_cc))
 				return self._set_midi_learn(chan, cc)
 			else:
@@ -559,7 +569,7 @@ class zynthian_controller:
 
 	def midi_unlearn_zyncoder(self):
 		try:
-			if zyncoder.lib_zyncoder.del_midi_filter_cc_swap(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc)):
+			if lib_zyncore.del_midi_filter_cc_swap(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc)):
 				logging.info("Deleted MIDI filter CC map: {}, {}".format(self.midi_learn_chan, self.midi_learn_cc))
 				return self._unset_midi_learn()
 			else:
@@ -585,7 +595,7 @@ class zynthian_controller:
 	def refresh_gui(self):
 		#Refresh GUI controller in screen when needed ...
 		try:
-			if (self.engine.zyngui.active_screen=='control' and not self.engine.zyngui.modal_screen) or self.engine.zyngui.modal_screen=='alsa_mixer':
+			if self.engine.zyngui.current_screen in ('control', 'alsa_mixer'):
 				self.engine.zyngui.screens['control'].set_controller_value(self)
 		except Exception as e:
 			logging.debug(e)

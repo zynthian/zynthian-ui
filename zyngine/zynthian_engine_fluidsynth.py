@@ -93,7 +93,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 		self.fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 -o midi.jack.id='{}' -o audio.jack.id='{}' -o audio.jack.autoconnect=0 -o audio.jack.multi='yes' -o synth.audio-groups=16 -o synth.audio-channels=16 -o synth.effects-groups=1 -o synth.chorus.active=0 -o synth.reverb.active=0".format(self.jackname,self.jackname)
 
-		self.command = "fluidsynth -a jack -m jack -g 1 -j {}".format(self.fs_options)
+		self.command = "fluidsynth -a jack -m jack -g 1 {}".format(self.fs_options)
 		self.command_prompt = "\n> "
 
 		self.start()
@@ -340,6 +340,11 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				if bi[2] and bi[0] in sf_unload:
 					#print("Skip "+bi[0]+"("+str(sf_unload[bi[0]])+")")
 					del sf_unload[bi[0]]
+			pi=layer.preset_info
+			if pi is not None:
+				if pi[2] and pi[3] in sf_unload:
+					#print("Skip "+pi[0]+"("+str(sf_unload[pi[3]])+")")
+					del sf_unload[pi[3]]
 		#Then, remove the remaining ;-)
 		for sf,sfi in sf_unload.items():
 			logging.info("Unload SoundFont => {}".format(sfi))
@@ -364,7 +369,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				i = self.get_free_parts()[0]
 				layer.part_i = i
 				#layer.jackname = "{}:((l|r)_{:02d}|fx_(l|r)_({:02d}|{:02d}))".format(self.jackname,i,i*2,i*2+1)
-				layer.jackname = "{}\:(l|r)_{:02d}".format(self.jackname,i)
+				layer.jackname = "{}:(l|r)_{:02d}".format(self.jackname,i)
 				self.zyngui.zynautoconnect_audio()
 				logging.debug("Add part {} => {}".format(i, layer.jackname))
 			except Exception as e:

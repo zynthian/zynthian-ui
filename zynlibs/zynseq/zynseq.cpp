@@ -35,7 +35,7 @@
 #include <string>
 #include <cstring> //provides strcmp
 
-#define FILE_VERSION 6
+#define FILE_VERSION 7
 
 #define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
 
@@ -54,7 +54,7 @@ bool g_bPatternModified = false; // True if pattern has changed since last check
 size_t g_nPlayingSequences = 0; // Quantity of playing sequences
 uint32_t g_nXruns = 0;
 bool g_bDirty = false; // True if anything has been modified
-std::set<std::string> g_setTransportClient; // Set of timebase clients having requested transport play 
+std::set<std::string> g_setTransportClient; // Set of timebase clients having requested transport play
 bool g_bClientPlaying = false; // True if any external client has requested transport play
 bool g_bInputEnabled = false; // True to add notes to current pattern from MIDI input
 
@@ -190,7 +190,7 @@ void updateBBT(jack_position_t* position)
     pPosition: Pointer to position structure for the next cycle
     bUpdate: True (non-zero) to request position be updated to position defined in pPosition (also true on first callback)
     pArgs: Pointer to argument supplied by jack_set_timebase_callback (not used here)
-    
+
     [Info]
     If bUpdate is false then calculate BBT from pPosition->frame: quantity of frames from start of song.
     If bUpdate is true then calculate pPostion-frame from BBT info
@@ -312,7 +312,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     static double dBeatsPerBar; // Store so that we can check for change and do less maths
     static jack_nframes_t nFramerate; // Store so that we can check for change and do less maths
     static uint32_t nFramesPerPulse;
-    
+
     // Get output buffer that will be processed in this process cycle
     void* pOutputBuffer = jack_port_get_buffer(g_pOutputPort, nFrames);
     unsigned char* pBuffer;
@@ -454,7 +454,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         }
         g_dFramesToNextClock -= nFrames;
         //g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
-        
+
         if(bSync && g_nPlayingSequences == 0)
         {
             //!@todo bSync might have been reset by second clock within period - this should go within g_dFramesToNextClock loop
@@ -491,14 +491,24 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             nNextTime = nTime + 1;
             // Get a pointer to the next 3 available bytes in the output buffer
             //!@todo Should we use correct buffer size based on MIDI message size, e.g. 1 byte for realtime messages?
-            pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, 3);
+            int nSize;
+            switch(it->second->command & 0xF0) {
+                case 0xC0:
+                    nSize = 2;
+                    break;
+                default:
+                    nSize = 3;
+            }
+            pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, nSize);
             if(pBuffer == NULL)
                 break; // Exceeded buffer size (or other issue)
             if(it->second)
             {
                 pBuffer[0] = it->second->command;
-                pBuffer[1] = it->second->value1;
-                pBuffer[2] = it->second->value2;
+                if(nSize > 1)
+                    pBuffer[1] = it->second->value1;
+                if(nSize > 2)
+                    pBuffer[2] = it->second->value2;
                 delete it->second;
                 it->second = NULL;
             }
@@ -543,12 +553,14 @@ __attribute__((constructor)) void zynseq(void) {
 }
 
 void init(char* name) {
+    //!@todo Invalid name triggers seg fault
+
     // Register with Jack server
     printf("**zynseq initialising as %s**\n", name);
     char *sServerName = NULL;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
-    
+
     if(g_pJackClient)
     {
         fprintf(stderr, "libzynseq already initialised\n");
@@ -574,7 +586,7 @@ void init(char* name) {
         fprintf(stderr, "libzynseq cannot register output port\n");
         return;
     }
-    
+
     g_nSampleRate = jack_get_sample_rate(g_pJackClient);
     g_dFramesPerClock = getFramesPerClock(g_dTempo);
 
@@ -591,9 +603,10 @@ void init(char* name) {
     // Register the cleanup function to be called when program exits
     atexit(end);
 
-    transportRequestTimebase();        
+    transportRequestTimebase();
     transportStop("zynseq");
     transportLocate(0);
+    g_pTrack = g_seqMan.getSequence(0, 0)->getTrack(0);
 }
 
 bool isModified()
@@ -734,14 +747,14 @@ bool load(const char* filename)
                 if(checkBlock(pFile, nBlockSize, 14))
                     break;
                 uint32_t nStep = fileRead32(pFile);
-                uint32_t nDuration = fileRead32(pFile);
+                float fDuration = float(fileRead16(pFile))/100 + fileRead16(pFile); // fractional + integral (BCD)
                 uint8_t nCommand = fileRead8(pFile);
                 uint8_t nValue1start = fileRead8(pFile);
                 uint8_t nValue2start = fileRead8(pFile);
                 uint8_t nValue1end = fileRead8(pFile);
                 uint8_t nValue2end = fileRead8(pFile);
                 fileRead8(pFile); // Padding
-                StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, nDuration);
+                StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration);
                 pEvent->setValue1end(nValue1end);
                 pEvent->setValue2end(nValue2end);
                 nBlockSize -= 14;
@@ -833,8 +846,7 @@ bool load(const char* filename)
     fclose(pFile);
     //printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu banks from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mBanks.size(), filename);
     g_bDirty = false;
-    Sequence* pSequence = g_seqMan.getSequence(0, 0);
-    g_pTrack = pSequence->getTrack(0);
+    g_pTrack = g_seqMan.getSequence(0, 0)->getTrack(0);
     return true;
 }
 
@@ -885,7 +897,11 @@ void save(const char* filename)
             while(StepEvent* pEvent = pPattern->getEventAt(nEvent++))
             {
                 nPos += fileWrite32(pEvent->getPosition(), pFile);
-                nPos += fileWrite32(pEvent->getDuration(), pFile);
+                float fDuration = pEvent->getDuration();
+                uint16_t nUnits = uint16_t(fDuration);
+                uint16_t nDecimal = uint16_t((fDuration - nUnits) * 100);
+                nPos += fileWrite16(nDecimal, pFile); // fractional (BCD)
+                nPos += fileWrite16(nUnits, pFile); // integral (BCD)
                 nPos += fileWrite8(pEvent->getCommand(), pFile);
                 nPos += fileWrite8(pEvent->getValue1start(), pFile);
                 nPos += fileWrite8(pEvent->getValue2start(), pFile);
@@ -900,7 +916,7 @@ void save(const char* filename)
         }
         nPattern = g_seqMan.getNextPattern(nPattern);
     } while(nPattern != -1);
-    
+
     // Iterate through banks
     for(uint32_t nBank = 1; nBank < g_seqMan.getBanks(); ++nBank)
     {
@@ -950,7 +966,7 @@ void save(const char* filename)
                     nPos += fileWrite32(0, pFile);
                     nPos += fileWrite16(0, pFile);
                 }
-                
+
             }
             Timebase* pTimebase = pSequence->getTimebase();
             if(pTimebase)
@@ -968,7 +984,7 @@ void save(const char* filename)
             else
             {
                 nPos += fileWrite32(0, pFile);
-            }            
+            }
         }
         nBlockSize = nPos - nStartOfBlock;
         fseek(pFile, nStartOfBlock - 4, SEEK_SET);
@@ -1152,7 +1168,7 @@ bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track)
 	if(pTrack)
 		return pTrack->isMuted();
 	return false;
-}	
+}
 
 void enableMidiInput(bool enable)
 {
@@ -1227,13 +1243,16 @@ void setStepsPerBeat(uint32_t steps)
     g_bDirty = true;
 }
 
-bool addNote(uint32_t step, uint8_t note, uint8_t velocity, uint32_t duration)
+bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration)
 {
     if(!g_pPattern)
         return false;
-    g_bPatternModified = true;
-    g_bDirty = true;
-    return g_pPattern->addNote(step, note, velocity, duration);
+    if(g_pPattern->addNote(step, note, velocity, duration)) {
+        g_bPatternModified = true;
+        g_bDirty = true;
+        return true;
+    }
+    return false;
 }
 
 void removeNote(uint32_t step, uint8_t note)
@@ -1261,11 +1280,40 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
     g_bDirty = true;
 }
 
-uint32_t getNoteDuration(uint32_t step, uint8_t note)
+float getNoteDuration(uint32_t step, uint8_t note)
 {
     if(g_pPattern)
         return g_pPattern->getNoteDuration(step, note);
     return 0;
+}
+
+bool addProgramChange(uint32_t step, uint8_t program)
+{
+    if(!g_pPattern)
+        return false;
+    if(g_pPattern->addProgramChange(step, program)) {
+        g_bPatternModified = true;
+        g_bDirty = true;
+        return true;
+    }
+    return false;
+}
+
+void removeProgramChange(uint32_t step, uint8_t program)
+{
+    if(!g_pPattern)
+        return;
+    if(g_pPattern->removeProgramChange(step))
+        return;
+    g_bPatternModified = true;
+    g_bDirty = true;
+}
+
+uint8_t getProgramChange(uint32_t step)
+{
+    if(g_pPattern)
+        return g_pPattern->getProgramChange(step);
+    return 0xFF;
 }
 
 void transpose(int8_t value)
@@ -1276,6 +1324,25 @@ void transpose(int8_t value)
     g_pPattern->transpose(value);
     g_bDirty = true;
 }
+
+void changeVelocityAll(int value)
+{
+    if(!g_pPattern)
+        return;
+    g_bPatternModified = true;
+    g_pPattern->changeVelocityAll(value);
+    g_bDirty = true;
+}
+
+void changeDurationAll(float value)
+{
+    if(!g_pPattern)
+        return;
+    g_bPatternModified = true;
+    g_pPattern->changeDurationAll(value);
+    g_bDirty = true;
+}
+
 
 void clear()
 {
@@ -1466,6 +1533,8 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
 
 void togglePlayState(uint8_t bank, uint8_t sequence)
 {
+    if(g_seqMan.getSequence(bank, sequence)->getPlayMode() == DISABLED)
+        return;
     uint8_t nState = g_seqMan.getSequence(bank, sequence)->getPlayState();
     switch(nState)
     {
@@ -1677,7 +1746,7 @@ uint8_t getChannel(uint8_t bank, uint8_t sequence, uint32_t track)
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
     if(!pTrack)
         return 0xFF;
-    return pTrack->getChannel(); 
+    return pTrack->getChannel();
 }
 
 void solo(uint8_t bank, uint8_t sequence, uint32_t track, bool solo)
@@ -1696,7 +1765,7 @@ bool isSolo(uint8_t bank, uint8_t sequence, uint32_t track)
     return pTrack->isSolo();
 }
 
-// ** Transport management **/ 
+// ** Transport management **/
 
 void setTransportToStartOfBar()
 {
@@ -1718,11 +1787,11 @@ void transportLocate(uint32_t frame)
 */
 jack_nframes_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick)
 {
-    // Convert one-based bars and beats to zero-based 
+    // Convert one-based bars and beats to zero-based
     if(bar > 0)
         --bar;
     if(beat > 0)
-        --beat;    
+        --beat;
     uint32_t nTicksToPrev = 0;
     uint32_t nTicksToEvent = 0;
     uint32_t nTicksPerBar = g_dTicksPerBeat * g_nBeatsPerBar;
