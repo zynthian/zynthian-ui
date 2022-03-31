@@ -209,6 +209,8 @@ class zynthian_gui:
 		self.zynautoconnect_audio_flag = False
 		self.zynautoconnect_midi_flag = False
 
+		self.get_throttled_file = None
+
 		# Create Lock object to avoid concurrence problems
 		self.lock = Lock()
 
@@ -1790,6 +1792,9 @@ class zynthian_gui:
 
 
 	def refresh_status(self):
+		if self.exit_flag:
+			return
+
 		try:
 			if zynthian_gui_config.show_cpu_status:
 				# Get CPU Load
@@ -1797,11 +1802,10 @@ class zynthian_gui:
 				self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
 			else:
 				# Get audio peak level
-				MIXER_MAIN = 16 #TODO This constant should go somewhere else
-				self.status_info['peakA'] = lib_zynmixer.getDpm(MIXER_MAIN, 0)
-				self.status_info['peakB'] = lib_zynmixer.getDpm(MIXER_MAIN, 1)
-				self.status_info['holdA'] = lib_zynmixer.getDpmHold(MIXER_MAIN, 0)
-				self.status_info['holdB'] = lib_zynmixer.getDpmHold(MIXER_MAIN, 1)
+				self.status_info['peakA'] = lib_jackpeak.getPeak(0)
+				self.status_info['peakB'] = lib_jackpeak.getPeak(1)
+				self.status_info['holdA'] = lib_jackpeak.getHold(0)
+				self.status_info['holdB'] = lib_jackpeak.getHold(1)
 
 			# Get Status Flags (once each 5 refreshes)
 			if self.status_counter>5:
@@ -1810,21 +1814,18 @@ class zynthian_gui:
 				self.status_info['undervoltage'] = False
 				self.status_info['overtemp'] = False
 				try:
-					# Get ARM flags
-					res = check_output(("vcgencmd", "get_throttled")).decode('utf-8','ignore')
-					thr = int(res[12:],16)
+					if not self.get_throttled_file:
+						self.get_throttled_file = open('/sys/devices/platform/soc/soc:firmware/get_throttled')
+					self.get_throttled_file.seek(0)
+					thr = int('0x%s' % self.get_throttled_file.read(), 16)
 					if thr & 0x1:
 						self.status_info['undervoltage'] = True
 					elif thr & (0x4 | 0x2):
 						self.status_info['overtemp'] = True
 
-					#res = self.vcgencmd.get_throttled()['breakdown']
-					#if res['0']:
-					#	self.status_info['undervoltage'] = True
-					#elif res['1'] or res['2']:
-					#	self.status_info['overtemp'] = True
 				except Exception as e:
 					logging.error(e)
+
 			else:
 				self.status_counter += 1
 
