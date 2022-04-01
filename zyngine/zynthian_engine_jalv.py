@@ -355,8 +355,8 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def save_preset(self, bank_name, preset_name):
-		bank_uri = 'file:///zynthian/zynthian-my-data/presets/lv2/%s-%s.lv2/%s-%s' % (self.plugin_name, bank_name, self.plugin_name, bank_name)
-		preset = ['file:///zynthian/zynthian-my-data/presets/lv2/%s-%s.lv2/%s.ttl' % (self.plugin_name, bank_name, preset_name), None, preset_name, bank_uri]
+		bank_uri = 'file:///zynthian/zynthian-my-data/presets/lv2/%s_%s.lv2/%s_%s' % (self.plugin_name, bank_name, self.plugin_name, bank_name)
+		preset = ['file:///zynthian/zynthian-my-data/presets/lv2/%s_%s.lv2/%s.ttl' % (self.plugin_name, bank_name, preset_name), None, preset_name, bank_uri]
 		self.delete_preset(bank_name, preset) # Remove if exists (clumsy but simple)
 		try:
 			self.preset_info[bank_name]['presets'].append(OrderedDict({'label': preset_name,  "url": preset[0]}))# Add to memory resident cache
@@ -368,7 +368,8 @@ class zynthian_engine_jalv(zynthian_engine):
 		except Exception as e:
 			logging.error(e)
 
-		output=self.proc_cmd("save preset %s" % (zynthian_engine_jalv.sanitize_text(preset_name)))
+		output=self.proc_cmd("save preset %s/%s" % (bank_name, preset_name))
+		#TODO: Add bank to manifest.ttl
 
 
 	#----------------------------------------------------------------------------
