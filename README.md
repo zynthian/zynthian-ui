@@ -2,7 +2,7 @@
 
 [Zynthian](http://zynthian.org) is an Open Synth Platform based in Raspberry Pi, Linux (Raspbian) and some Open Software Synthesizers.
 
-![Image of Zynthian Box Design](http://zynthian.org/img/github/zynthian_v3_backside.jpg)
+![Image of Zynthian Box Design](http://zynthian.org/img/github/zynthian_v4_alzado_planta_nomargin.png)
 
 Zynthian is a multi-engine platform and at the present time can run the next Synth Engines:
 
@@ -13,7 +13,7 @@ Zynthian is a multi-engine platform and at the present time can run the next Syn
 + [MOD-HOST + MOD-UI](https://github.com/moddevices) (Plugin Host & Web GUI by [ModDevices](http://moddevices.com))
 + [And more ...](http://wiki.zynthian.org/index.php/Zynthian_Supported_Synth_Engines)
 
-![Image of Zynthian Software Architecture](http://zynthian.org/img/github/zynthian_software_amidi_scheme.png)
+![Image of Zynthian Software Architecture](http://zynthian.org/img/github/sourcecode_scheme.png)
 
 The [Zynthian Distribution](http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/) includes a good amount of sound libraries and presets, but can be extended by the user.
 
@@ -26,7 +26,7 @@ A [Zynthian Box](http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthi
 + GPIO expander (MCP23008) => you need it because the RBPi GPIOs are not enough
 + MIDI-IN using RBPi UART (optional)
 
-![Image of Zynthian Hardware Architecture](http://zynthian.org/img/github/zynthian_hardware_scheme_v2.png)
+![Image of Zynthian Hardware Architecture](http://zynthian.org/img/github/zynthian_hardware_scheme_v4.png)
 
 This repository contains the specific software used by a Zynthian Box. It includes the "User Interface software" and some "setup scripts".
 
