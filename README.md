@@ -41,6 +41,6 @@ You can learn more about the Zynthian Project in any of our sites:
 + [blog](https://blog.zynthian.org)
 + [forum](https://discourse.zynthian.org) => Join the conversation!!
 
-Also, you can buy official kits in the zynthian shop:
+You can buy official kits in the zynthian shop:
 
 + [shop](https://shop.zynthian.org)
