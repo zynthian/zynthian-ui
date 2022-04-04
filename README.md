@@ -23,7 +23,7 @@ The list of supported synth engines is quite long and includes, among others:
 
 ![Image of Zynthian Software Architecture](http://zynthian.org/img/github/sourcecode_scheme.png)
 
-A [Zynthian Box](http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/) is a hardware device that complains the [Zynthian Hardware Specification](http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthian-box/):
+A [Zynthian Box](https://wiki.zynthian.org/index.php/Zynthian_Wiki_Home) is a hardware device that runs the zynthian's software stack. Although it's not a closed hardware specification, there is a (more or less) cannonical recomendation:
 
 + Raspberry Pi 3/4
 + Supported Soundcard (ZynADAC, HifiBerry, etc.)
@@ -34,4 +34,13 @@ A [Zynthian Box](http://blog.zynthian.org/index.php/2015/11/22/building-a-zynthi
 
 ![Image of Zynthian Hardware Architecture](http://zynthian.org/img/github/zynthian_hardware_scheme_v4.png)
 
-You can learn more about the Zynthian Project reading [the wiki](https://wiki.zynthian.org), [the blog](https://blog.zynthian.org) or visiting [the website](https://zynthian.org). Also, you can join the conversation in [the forum](https://discourse.zynthian.org).
+You can learn more about the Zynthian Project in any of our sites: 
+
++ [website](https://zynthian.org)
++ [wiki](https://wiki.zynthian.org)
++ [blog](https://blog.zynthian.org)
++ [forum](https://discourse.zynthian.org) => Join the conversations!!
+
+Also, you can buy official kits in the zynthian shop:
+
++ [shop](https://shop.zynthian.org)
