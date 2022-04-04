@@ -39,7 +39,7 @@ You can learn more about the Zynthian Project in any of our sites:
 + [website](https://zynthian.org)
 + [wiki](https://wiki.zynthian.org)
 + [blog](https://blog.zynthian.org)
-+ [forum](https://discourse.zynthian.org) => Join the conversations!!
++ [forum](https://discourse.zynthian.org) => Join the conversation!!
 
 Also, you can buy official kits in the zynthian shop:
 
