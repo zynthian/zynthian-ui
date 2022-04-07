@@ -326,7 +326,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def is_preset_user(self, preset):
-		return isinstance(preset[0], str) and preset[0].startswith("file:///{}/presets/lv2/".format(self.my_data_dir))
+		return isinstance(preset[0], str) and preset[0].startswith("file://{}/presets/lv2/".format(self.my_data_dir))
 
 
 	def save_preset(self, bank, preset_name):
