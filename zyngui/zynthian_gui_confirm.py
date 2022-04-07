@@ -111,9 +111,9 @@ class zynthian_gui_confirm():
 
 	def switch_select(self, t='S'):
 		logging.info("callback %s" % self.callback_params)
+		self.zyngui.close_screen()
 		if self.callback:
 			self.callback(self.callback_params)
-		self.zyngui.close_screen()
 
 
 	def cb_yes_push(self, event):

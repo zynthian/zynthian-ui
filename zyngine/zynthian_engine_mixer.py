@@ -415,6 +415,7 @@ class zynthian_engine_mixer(zynthian_engine):
 
 		self.sender_poll_enabled = True
 		thread = threading.Thread(target=runInThread, daemon=True)
+		thread.name = "engine mixer"
 		thread.start()
 
 
