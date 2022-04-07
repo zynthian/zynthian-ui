@@ -325,51 +325,68 @@ class zynthian_engine_jalv(zynthian_engine):
 			return False
 
 
-	def rename_preset(self, bank_name, preset, new_name):
-		if not self.is_preset_user(preset):
-			return		
-		try:
-			zynthian_lv2.remove_plugin_preset_from_cache(self.plugin_name, bank_name, preset[0]) # Remove from cache
-			zynthian_lv2.add_plugin_preset_to_cache(self.plugin_name, bank_name, new_name, preset[0]) # Add back into cache
-			for i,p in enumerate(self.preset_info[bank_name]['presets']):
-				if p['url'] == preset[0]:
-					self.preset_info[bank_name]['presets'][i]['label'] = new_name # Change memory resident name
-					break
-			zynthian_engine_jalv.lv2_rename_preset(preset[0], new_name) # Update LV2 ttl
-		except Exception as e:
-			logging.error(e)
+	def is_preset_user(self, preset):
+		return isinstance(preset[0], str) and preset[0].startswith("file:///{}/presets/lv2/".format(self.my_data_dir))
 
 
-	def delete_preset(self, bank_name, preset):
-		if not self.is_preset_user(preset):
-			return
-		try:
-			zynthian_lv2.remove_plugin_preset_from_cache(self.plugin_name, bank_name, preset[0]) # Remove from cache
-			for i,p in enumerate(self.preset_info[bank_name]['presets']):
-				if p['url'] == preset[0]:
-					del self.preset_info[bank_name]['presets'][i]
-					break # Remove from memory-resident list
-			zynthian_engine_jalv.lv2_remove_preset(preset[0]) # Remove from LV2 ttl
-		except Exception as e:
-			logging.error(e)
+	def save_preset(self, bank, preset_name):
+		# Save preset (jalv)
+		res = self.proc_cmd("save preset %s,%s" % (bank[0], preset_name))
+		if res.startswith("ERROR"):
+			logging.error("Can't save preset => {}".format(res))
+		else:
+			preset_uri = res
+
+			# Add to memory-resident cache
+			try:
+				self.preset_info[bank[2]]['presets'].append(OrderedDict({'label': preset_name,  "url": preset_uri}))
+			except Exception as e:
+				logging.error(e)
+
+			# Add to persistent cache
+			try:
+				zynthian_lv2.add_plugin_preset_to_cache(self.plugin_name, bank[2], preset_name, preset_uri)
+			except Exception as e:
+				logging.error(e)
 
 
-	def save_preset(self, bank_name, preset_name):
-		bank_uri = 'file:///zynthian/zynthian-my-data/presets/lv2/%s_%s.lv2/%s_%s' % (self.plugin_name, bank_name, self.plugin_name, bank_name)
-		preset = ['file:///zynthian/zynthian-my-data/presets/lv2/%s_%s.lv2/%s.ttl' % (self.plugin_name, bank_name, preset_name), None, preset_name, bank_uri]
-		self.delete_preset(bank_name, preset) # Remove if exists (clumsy but simple)
-		try:
-			self.preset_info[bank_name]['presets'].append(OrderedDict({'label': preset_name,  "url": preset[0]}))# Add to memory resident cache
-		except Exception as e:
-			self.bank_list.append((bank_uri, None, bank_name, None))
-			self.preset_info[bank_name] = OrderedDict({'bank_url': bank_uri, 'presets': {'label': preset_name, 'url': preset[0]}})
-		try:
-			zynthian_lv2.add_plugin_preset_to_cache(self.plugin_name, bank_name, preset_name, preset[0]) # Add to persistent cache
-		except Exception as e:
-			logging.error(e)
+	def delete_preset(self, bank, preset):
+		if self.is_preset_user(preset):
+			try:
+				# Remove from LV2 ttl
+				zynthian_engine_jalv.lv2_remove_preset(preset[0])
 
-		output=self.proc_cmd("save preset %s/%s" % (bank_name, preset_name))
-		#TODO: Add bank to manifest.ttl
+				# Remove from persistent cache
+				zynthian_lv2.remove_plugin_preset_from_cache(self.plugin_name, bank[2], preset[0])
+
+				# Remove from memory-resident cache
+				for i,p in enumerate(self.preset_info[bank[2]]['presets']):
+					if p['url'] == preset[0]:
+						del self.preset_info[bank[2]]['presets'][i]
+						break 
+
+			except Exception as e:
+				logging.error(e)
+
+
+	def rename_preset(self, bank, preset, new_preset_name):
+		if self.is_preset_user(preset):
+			try:
+				# Update LV2 ttl
+				zynthian_engine_jalv.lv2_rename_preset(preset[0], new_preset_name)
+
+				# Update persistent cache
+				zynthian_lv2.remove_plugin_preset_from_cache(self.plugin_name, bank[2], preset[0])
+				zynthian_lv2.add_plugin_preset_to_cache(self.plugin_name, bank[2], new_preset_name, preset[0])
+
+				# Update memory-resident cache
+				for i,p in enumerate(self.preset_info[bank[2]]['presets']):
+					if p['url'] == preset[0]:
+						self.preset_info[bank[2]]['presets'][i]['label'] = new_preset_name
+						break
+
+			except Exception as e:
+				logging.error(e)
 
 
 	#----------------------------------------------------------------------------

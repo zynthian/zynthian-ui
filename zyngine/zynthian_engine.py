@@ -453,25 +453,13 @@ class zynthian_engine(zynthian_basic_engine):
 		except:
 			return False
 
-
 	def is_preset_user(self, preset):
-		return isinstance(preset[0], str) and preset[0][:42] == 'file:///zynthian/zynthian-my-data/presets/'
+		return isinstance(preset[0], str) and preset[0].startswith("/{}/presets/".format(self.my_data_dir))
 
-
-	# Override in derived class
-	def rename_preset(self, preset, new_name):
-		raise Exception("Rename preset not implemented for engine %s"%(self.name))
-
-
-	# Override in derived class
-	def delete_preset(self, preset):
-		raise Exception("Delete preset not implemented for engine %s"%(self.name))
-
-
-	# Override in derived class
-	def save_preset(self, bank_name, preset_name):
-		raise Exception("Save preset not implemented for engine %s"%(self.name))
-
+	# To implement in derived classes
+	#def save_preset(self, bank_name, preset_name):
+	#def delete_preset(self, preset):
+	#def rename_preset(self, preset, new_name):
 
 	# ---------------------------------------------------------------------------
 	# Preset Favorites Management
