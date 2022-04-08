@@ -212,18 +212,21 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def select_listbox(self,index):
-		if index>=0 and index<len(self.list_data):
-			if not self.skip_separators(index):
-				# Set selection
-				self.listbox.selection_clear(0,tkinter.END)
-				self.listbox.selection_set(index)
-				# Set window
-				if index>self.index: self.listbox.see(index+1)
-				elif index<self.index: self.listbox.see(index-1)
-				else: self.listbox.see(index)
-				# Set index value
-				self.index=index
-				self.last_index_change_ts=datetime.now()
+		if index<0:
+			index = 0
+		elif index>=len(self.list_data):
+			index = len(self.list_data)-1
+		if not self.skip_separators(index):
+			# Set selection
+			self.listbox.selection_clear(0,tkinter.END)
+			self.listbox.selection_set(index)
+			# Set window
+			if index>self.index: self.listbox.see(index+1)
+			elif index<self.index: self.listbox.see(index-1)
+			else: self.listbox.see(index)
+			# Set index value
+			self.index=index
+			self.last_index_change_ts=datetime.now()
 
 
 	def select_listbox_by_name(self, name):
