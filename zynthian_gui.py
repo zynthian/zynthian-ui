@@ -1227,6 +1227,7 @@ class zynthian_gui:
 			self.close_screen()
 		else:
 			if len(self.curlayer.preset_list)>1:
+				self.screens['preset'].index=self.curlayer.get_preset_index()
 				self.show_screen('preset', hmode=SCREEN_HMODE_ADD)
 			elif len(self.curlayer.bank_list)>1:
 				self.show_screen('bank', hmode=SCREEN_HMODE_ADD)
