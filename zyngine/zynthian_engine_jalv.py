@@ -344,6 +344,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			# Add to memory-resident cache
 			try:
 				self.preset_info[bank[2]]['presets'].append(OrderedDict({'label': preset_name,  "url": preset_uri}))
+				self.sort_preset_info(bank[2])
 			except Exception as e:
 				logging.error(e)
 
@@ -387,11 +388,16 @@ class zynthian_engine_jalv(zynthian_engine):
 				for i,p in enumerate(self.preset_info[bank[2]]['presets']):
 					if p['url'] == preset[0]:
 						self.preset_info[bank[2]]['presets'][i]['label'] = new_preset_name
+						self.sort_preset_info(bank[2])
 						break
 
 			except Exception as e:
 				logging.error(e)
 
+
+	def sort_preset_info(self, bank_name):
+		self.preset_info[bank_name]['presets'] = sorted(self.preset_info[bank_name]['presets'], key=lambda d: d['label']) 
+		
 
 	#----------------------------------------------------------------------------
 	# Controllers Managament
