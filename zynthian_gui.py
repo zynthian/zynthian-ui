@@ -1357,7 +1357,7 @@ class zynthian_gui:
 
 
 	def zynswitch_long(self,i):
-		logging.info('Looooooooong Switch '+str(i))
+		logging.debug('Looooooooong Switch '+str(i))
 		self.start_loading()
 
 		# Standard 4 ZynSwitches
@@ -1381,7 +1381,7 @@ class zynthian_gui:
 
 
 	def zynswitch_bold(self,i):
-		logging.info('Bold Switch '+str(i))
+		logging.debug('Bold Switch '+str(i))
 
 		self.start_loading()
 
@@ -1414,7 +1414,7 @@ class zynthian_gui:
 
 
 	def zynswitch_short(self,i):
-		logging.info('Short Switch '+str(i))
+		logging.debug('Short Switch '+str(i))
 
 		self.start_loading()
 
@@ -1447,7 +1447,7 @@ class zynthian_gui:
 
 
 	def zynswitch_push(self,i):
-		logging.info('Push Switch '+str(i))
+		logging.debug('Push Switch '+str(i))
 		self.start_loading()
 
 		# Standard 4 ZynSwitches
@@ -1468,7 +1468,7 @@ class zynthian_gui:
 			if abs((self.dtsw[i]-self.dtsw[j]).total_seconds())<0.3:
 				self.start_loading()
 				dswstr=str(i)+'+'+str(j)
-				logging.info('Double Switch '+dswstr)
+				logging.debug('Double Switch '+dswstr)
 				#self.show_control_xy(i,j)
 				self.show_screen('control')
 				self.screens['control'].set_xyselect_mode(i,j)
@@ -1477,13 +1477,13 @@ class zynthian_gui:
 
 
 	def zynswitch_X(self,i):
-		logging.info('X Switch %d' % i)
+		logging.debug('X Switch %d' % i)
 		if self.current_screen=='control' and self.screens['control'].mode=='control':
 			self.screens['control'].midi_learn(i)
 
 
 	def zynswitch_Y(self,i):
-		logging.info('Y Switch %d' % i)
+		logging.debug('Y Switch %d' % i)
 		if self.current_screen=='control' and self.screens['control'].mode=='control':
 			self.screens['control'].midi_unlearn(i)
 
