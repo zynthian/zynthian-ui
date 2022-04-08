@@ -337,6 +337,8 @@ class zynthian_engine_jalv(zynthian_engine):
 			logging.error("Can't save preset => {}".format(res))
 		else:
 			preset_uri = res[-1].strip()
+			# Dirty hack for fixing the dirpath that is changed by lilv. The soft-link to /home/pi/zynthian is bitting here!
+			preset_uri = preset_uri.replace("/home/pi/", "/zynthian/")
 			logging.info("Saved preset '{}' => {}".format(preset_name, preset_uri))
 
 			# Add to memory-resident cache
