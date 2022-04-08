@@ -213,9 +213,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if self.layer:
 			self.layer.load_bank_list()
 			options = {}
-			options["***Create new bank***"] = None
+			#options["***New bank***"] = "NEW_BANK"
 			for bank in self.layer.bank_list:
-				options[bank[2]] = bank
+				if bank[0]!="*FAVS*":
+					options[bank[2]] = bank
 			self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)
 			self.zyngui.screens['option'].select(self.layer.get_bank_index())
 			self.zyngui.show_screen('option')
@@ -223,30 +224,32 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def save_preset_select_bank_cb(self, bank_name, bank_info):
 		self.save_preset_bank_info = bank_info
-		if bank_info is None:
+		if bank_info is "NEW_BANK":
 			self.zyngui.show_keyboard(self.save_preset_select_name_cb, "Create bank...")
 		else:
 			self.save_preset_select_name_cb()
 
 
 	def save_preset_select_name_cb(self, create_bank_name=None):
+		if create_bank_name is not None:
+			create_bank_name = create_bank_name.strip()
 		self.save_preset_create_bank_name = create_bank_name
 		self.zyngui.show_keyboard(self.save_preset_cb, self.layer.preset_name + " COPY")
 
 
 	def save_preset_cb(self, preset_name):
-		preset_name = preset_name.rstrip()
+		preset_name = preset_name.strip()
 
 		if self.save_preset_create_bank_name:
 			# TODO: Create new bank URI
 			self.save_preset_bank_info = (None, None, self.save_preset_create_bank_name, None)
-			logging.info("Created new bank '%s'", self.save_preset_create_bank_name)
+			logging.info("Created new bank '{}'".format(self.save_preset_create_bank_name))
 			self.layer.load_bank_list()
 			self.save_preset_create_bank_name = None
 
 		try:
 			self.layer.engine.save_preset(self.save_preset_bank_info, preset_name)
-			logging.info("Saved preset with name '%s' to bank '%s'", preset_name, self.save_preset_bank_info[2])
+			logging.info("Saved preset with name '{}' to bank '{}'".format(preset_name, self.save_preset_bank_info[2]))
 			self.layer.load_preset_list()
 			self.layer.set_bank_by_name(self.save_preset_bank_info[0])
 			self.layer.set_preset_by_name(preset_name)
@@ -254,6 +257,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		except Exception as e:
 			logging.error(e)
 
+		self.zyngui.close_screen()
 		self.zyngui.close_screen()
 
 
