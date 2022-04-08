@@ -50,13 +50,29 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.midifx_layers = None
 
 
+	def setup(self, layer_index=None):
+		if layer_index is not None:
+			self.layer_index = layer_index
+
+		if self.layer_index is None:
+			self.layer_index = self.zyngui.screens['layer'].get_root_layer_index()
+
+		if self.layer_index is not None:
+			try:
+				self.layer = self.zyngui.screens['layer'].get_root_layers()[self.layer_index]
+				return True
+			except Exception as e:
+				self.layer = None
+				logging.error("Bad layer index '{}'! => {}".format(self.layer_index, e))
+		else:
+			self.layer = None
+			logging.error("No layer index!")
+
+		return False
+
+
 	def fill_list(self):
 		self.list_data = []
-
-		try:
-			self.layer = self.zyngui.screens['layer'].get_root_layers()[self.layer_index]
-		except Exception as e:
-			logging.error(e)
 
 		self.audiofx_layers = self.zyngui.screens['layer'].get_fxchain_layers(self.layer)
 		if self.audiofx_layers and len(self.audiofx_layers)>0 and self.layer.engine.type!="Audio Effect":
@@ -72,8 +88,9 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		#self.list_data.append((self.layer_presets, None, "Presets"))
 
 		if self.layer.midi_chan is not None:
-			if self.layer.engine.nickname[:2] in ("JV", "AE"):
-				self.list_data.append((self.save_preset_select_bank, None, "Save Preset"))
+			if hasattr(self.layer.engine, "save_preset"):
+				self.list_data.append((self.save_preset, None, "Save Preset"))
+
 			if 'note_range' in eng_options and eng_options['note_range']:
 				self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
 
@@ -166,10 +183,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def show(self):
-		if self.layer_index is None:
-			self.layer_index = self.zyngui.screens['layer'].get_root_layer_index()
+		if self.layer is None:
+			self.setup()
 
-		if self.layer_index is not None:
+		if self.layer is not None:
 			super().show()
 			if self.index>=len(self.list_data):
 				self.index = len(self.list_data)-1
@@ -192,45 +209,52 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.zyngui.show_screen("sublayer_options")
 
 
-	def save_preset_select_bank(self):
-		if self.zyngui.curlayer:
-			index=self.zyngui.curlayer.get_bank_index()
-			self.zyngui.curlayer.load_bank_list()
-			list_data=self.zyngui.curlayer.bank_list
-			options = {"***Create new bank***": ""}
-			for bank in list_data:
-				if self.zyngui.curlayer.engine.is_preset_user(bank):
-					options[bank[2]] = bank[0]
-			self.zyngui.screens['option'].config("Bank to save preset within...", options, self.save_preset_name_bank)
-			self.zyngui.screens['option'].select(0)
-			self.zyngui.show_modal('option')
+	def save_preset(self):
+		if self.layer:
+			self.layer.load_bank_list()
+			options = {}
+			options["***Create new bank***"] = None
+			for bank in self.layer.bank_list:
+				options[bank[2]] = bank
+			self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)
+			self.zyngui.screens['option'].select(self.layer.get_bank_index())
+			self.zyngui.show_screen('option')
 
 
-	def save_preset_name_bank(self, bank_name, bank_uri):
-		self.save_preset_bank_uri = bank_uri
-		if bank_uri == "":
-			self.zyngui.show_keyboard(self.save_preset_name_preset, "User bank")
+	def save_preset_select_bank_cb(self, bank_name, bank_info):
+		self.save_preset_bank_info = bank_info
+		if bank_info is None:
+			self.zyngui.show_keyboard(self.save_preset_select_name_cb, "Create bank...")
 		else:
-			self.save_preset_name_preset(bank_name)
+			self.save_preset_select_name_cb()
 
 
-	def save_preset_name_preset(self, bank_name):
-		self.save_preset_bank_name = bank_name
-		self.zyngui.show_keyboard(self.save_preset, self.layer.preset_name + " COPY")
+	def save_preset_select_name_cb(self, create_bank_name=None):
+		self.save_preset_create_bank_name = create_bank_name
+		self.zyngui.show_keyboard(self.save_preset_cb, self.layer.preset_name + " COPY")
 
 
-	def save_preset(self, preset_name):
+	def save_preset_cb(self, preset_name):
 		preset_name = preset_name.rstrip()
-		if self.save_preset_bank_uri == '':
-			# Create new bank URI
-			engine_name = self.layer.plugin_name
-		logging.warning("Save preset with name '%s' to bank '%s'", preset_name, self.save_preset_bank_name)
+
+		if self.save_preset_create_bank_name:
+			# TODO: Create new bank URI
+			self.save_preset_bank_info = (None, None, self.save_preset_create_bank_name, None)
+			logging.info("Created new bank '%s'", self.save_preset_create_bank_name)
+			self.layer.load_bank_list()
+			self.save_preset_create_bank_name = None
+
 		try:
-			self.layer.engine.save_preset(self.save_preset_bank_name, preset_name)
-			#TODO: Select preset after saving
+			self.layer.engine.save_preset(self.save_preset_bank_info, preset_name)
+			logging.info("Saved preset with name '%s' to bank '%s'", preset_name, self.save_preset_bank_info[2])
+			self.layer.load_preset_list()
+			self.layer.set_bank_by_name(self.save_preset_bank_info[0])
+			self.layer.set_preset_by_name(preset_name)
+
 		except Exception as e:
 			logging.error(e)
-		self.zyngui.close_modal()
+
+		self.zyngui.close_screen()
 
 
 	def layer_presets(self):

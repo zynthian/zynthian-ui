@@ -331,11 +331,13 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def save_preset(self, bank, preset_name):
 		# Save preset (jalv)
-		res = self.proc_cmd("save preset %s,%s" % (bank[0], preset_name))
-		if res.startswith("ERROR"):
+		res = self.proc_cmd("save preset %s,%s" % (bank[0], preset_name)).split("\n")
+		
+		if res[-1].startswith("ERROR"):
 			logging.error("Can't save preset => {}".format(res))
 		else:
-			preset_uri = res
+			preset_uri = res[-1].strip()
+			logging.info("Saved preset '{}' => {}".format(preset_name, preset_uri))
 
 			# Add to memory-resident cache
 			try:
