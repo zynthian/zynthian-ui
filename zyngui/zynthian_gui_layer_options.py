@@ -212,13 +212,16 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def save_preset(self):
 		if self.layer:
 			self.layer.load_bank_list()
+			index = self.layer.get_bank_index()
 			options = {}
 			#options["***New bank***"] = "NEW_BANK"
 			for bank in self.layer.bank_list:
-				if bank[0]!="*FAVS*":
+				if bank[0]="*FAVS*":
+					index -= 1;
+				else:
 					options[bank[2]] = bank
 			self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)
-			self.zyngui.screens['option'].select(self.layer.get_bank_index())
+			self.zyngui.screens['option'].select(index)
 			self.zyngui.show_screen('option')
 
 
