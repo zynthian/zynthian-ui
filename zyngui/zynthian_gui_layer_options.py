@@ -216,7 +216,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			options = {}
 			#options["***New bank***"] = "NEW_BANK"
 			for bank in self.layer.bank_list:
-				if bank[0]="*FAVS*":
+				if bank[0]=="*FAVS*":
 					index -= 1;
 				else:
 					options[bank[2]] = bank
