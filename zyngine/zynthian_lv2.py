@@ -351,6 +351,8 @@ def _generate_plugin_presets_cache(plugin):
 		})
 
 		logging.debug("Preset {} <{}> => <{}>".format(label, bank, preset))
+		
+	for preset in presets:
 		world.unload_resource(preset)
 
 	# Sort and Remove empty banks 
