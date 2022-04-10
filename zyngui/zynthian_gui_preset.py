@@ -74,8 +74,10 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		else:
 			options["[  ] Favourite"] = preset
 		if self.zyngui.curlayer.engine.is_preset_user(preset):
-			options["Rename"] = preset
-			options["Delete"] = preset
+			if hasattr(self.zyngui.curlayer.engine, "rename_preset"):
+				options["Rename"] = preset
+			if hasattr(self.zyngui.curlayer.engine, "delete_preset"):
+				options["Delete"] = preset
 		self.zyngui.screens['option'].config("Preset: {}".format(preset_name), options, self.preset_options_cb)
 		self.zyngui.show_screen('option')
 
