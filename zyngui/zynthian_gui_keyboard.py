@@ -65,7 +65,7 @@ class zynthian_gui_keyboard():
 		self.height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
 
 		# Fonts
-		self.font_button = (zynthian_gui_config.font_family, int(1.5*zynthian_gui_config.font_size))
+		self.font_button = (zynthian_gui_config.font_family, int(1.2*zynthian_gui_config.font_size))
 
 		# Create main frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
@@ -115,13 +115,12 @@ class zynthian_gui_keyboard():
 		row = row + 1
 		# Add special keys
 		self.btn_cancel = self.add_button('Cancel', 0, row, 2)
-		if mode != OSK_NUMPAD:
-			self.btn_shift = self.add_button('Shift', 2, row, 1)
 		if mode == OSK_NUMPAD:
 			self.btn_space = self.add_button('0', 2, row, span)
-			self.btn_delete = self.add_button('Del', 4, row, 1)
+			self.btn_delete = self.add_button('Del', 4, row, 2)
 			self.btn_enter = self.add_button('Enter', 5, row, 1)
 		else:
+			self.btn_shift = self.add_button('⬆️', 2, row, 1)
 			self.btn_space = self.add_button(' ', 3, row, 4)
 			self.btn_delete = self.add_button('Del', 7, row, 1)
 			self.btn_enter = self.add_button('Enter', 8, row, 2)
