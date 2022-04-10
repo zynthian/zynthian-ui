@@ -283,11 +283,11 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def get_user_bank_urid(self, bank_name):
-		return "file://{}/presets/lv2/{}.presets.lv2/{}".format(self.my_data_dir, self.plugin_name, zynthian_engine_jalv.sanitize_text(bank_name))
+		return "file://{}/presets/lv2/{}.presets.lv2/{}".format(self.my_data_dir, zynthian_engine_jalv.sanitize_text(self.plugin_name), zynthian_engine_jalv.sanitize_text(bank_name))
 
 
 	def create_user_bank(self, bank_name):
-		bundle_path = "{}/presets/lv2/{}.presets.lv2".format(self.my_data_dir, self.plugin_name)
+		bundle_path = "{}/presets/lv2/{}.presets.lv2".format(self.my_data_dir, zynthian_engine_jalv.sanitize_text(self.plugin_name))
 		fpath = bundle_path + "/manifest.ttl"
 
 		bank_id = zynthian_engine_jalv.sanitize_text(bank_name)
