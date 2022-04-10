@@ -212,9 +212,9 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def save_preset(self):
 		if self.layer:
 			self.layer.load_bank_list()
-			index = self.layer.get_bank_index()
 			options = {}
-			#options["***New bank***"] = "NEW_BANK"
+			options["***New bank***"] = "NEW_BANK"
+			index = self.layer.get_bank_index() + 1
 			for bank in self.layer.bank_list:
 				if bank[0]=="*FAVS*":
 					index -= 1;
@@ -228,7 +228,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def save_preset_select_bank_cb(self, bank_name, bank_info):
 		self.save_preset_bank_info = bank_info
 		if bank_info is "NEW_BANK":
-			self.zyngui.show_keyboard(self.save_preset_select_name_cb, "Create bank...")
+			self.zyngui.show_keyboard(self.save_preset_select_name_cb, "NewBank")
 		else:
 			self.save_preset_select_name_cb()
 
@@ -243,19 +243,29 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def save_preset_cb(self, preset_name):
 		preset_name = preset_name.strip()
 
-		if self.save_preset_create_bank_name:
-			# TODO: Create new bank URI
-			self.save_preset_bank_info = (None, None, self.save_preset_create_bank_name, None)
-			logging.info("Created new bank '{}'".format(self.save_preset_create_bank_name))
-			self.layer.load_bank_list()
-			self.save_preset_create_bank_name = None
-
 		try:
-			self.layer.engine.save_preset(self.save_preset_bank_info, preset_name)
-			logging.info("Saved preset with name '{}' to bank '{}'".format(preset_name, self.save_preset_bank_info[2]))
-			self.layer.load_preset_list()
-			self.layer.set_bank_by_name(self.save_preset_bank_info[0])
-			self.layer.set_preset_by_name(preset_name)
+			#If must create new bank, calculate URID
+			if self.save_preset_create_bank_name:
+				create_bank_urid = self.layer.engine.get_user_bank_urid(self.save_preset_create_bank_name)
+				self.save_preset_bank_info = (create_bank_urid, None, self.save_preset_create_bank_name, None)
+
+			# Save preset
+			preset_uri = self.layer.engine.save_preset(self.save_preset_bank_info, preset_name)
+			logging.info("Saved preset with name '{}' to bank '{}' => {}".format(preset_name, self.save_preset_bank_info[2], preset_uri))
+
+			if preset_uri:
+				#If must create new bank, do it!
+				if self.save_preset_create_bank_name:
+					self.layer.engine.create_user_bank(self.save_preset_create_bank_name)
+					logging.info("Created new bank '{}' => {}".format(self.save_preset_create_bank_name, create_bank_urid))
+					self.save_preset_create_bank_name = None
+					self.layer.load_bank_list()
+
+				self.layer.set_bank_by_id(self.save_preset_bank_info[0])
+				self.layer.load_preset_list()
+				self.layer.set_preset_by_id(preset_uri)
+			else:
+				logging.error("Can't save preset '{}' to bank '{}'".format(preset_name, self.save_preset_bank_info[2]))
 
 		except Exception as e:
 			logging.error(e)

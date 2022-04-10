@@ -24,6 +24,7 @@
 #******************************************************************************
 
 import sys
+import copy
 import logging
 
 # Zynthian specific modules
@@ -64,9 +65,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def show_preset_options(self):
-		preset = self.list_data[self.index]
+		preset = copy.deepcopy(self.list_data[self.index])
+		if preset[2][0] == "❤": preset[2] = preset[2][1:]
 		preset_name = preset[2]
-		if preset_name[0] == "❤": preset_name = preset_name[1:]
 		options = {}
 		if self.zyngui.curlayer.engine.is_preset_fav(preset):
 			options["[x] Favourite"] = preset
@@ -100,7 +101,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				if preset[0]==self.zyngui.curlayer.preset_info[0]:
 					self.zyngui.curlayer.set_preset_by_id(preset[0])
 			except Exception as e:
-				logging.warning("Failed to rename preset => {}".format(e))
+				logging.error("Failed to rename preset => {}".format(e))
 
 
 	def delete_preset(self, preset):
@@ -113,7 +114,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.zyngui.curlayer.remove_preset_fav(preset)
 			self.zyngui.close_screen()
 		except Exception as e:
-			logging.warning("Failed to delete preset => {}".format(e))
+			logging.error("Failed to delete preset => {}".format(e))
 
 
 	# Function to handle *all* switch presses.

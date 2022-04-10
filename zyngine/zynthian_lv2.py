@@ -355,26 +355,13 @@ def _generate_plugin_presets_cache(plugin):
 	for preset in presets:
 		world.unload_resource(preset)
 
-	# Sort and Remove empty banks 
-	keys = list(presets_info.keys())
-	for k in keys:
-		if len(presets_info[k]['presets'])==0:
-			del(presets_info[k])
-		else:
-			presets_info[k]['presets'] = sorted(presets_info[k]['presets'], key=lambda k: k['label'])
-
 	# Save cache file
-	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
-	try:
-		with open(fpath_cache,'w') as f:
-			json.dump(presets_info, f)
-	except Exception as e:
-		logging.error("Can't save presets cache file '{}': {}".format(fpath_cache, e))
+	save_plugin_presets_cache(plugin_name, presets_info)
 
 	return presets_info
 
 
-def get_plugin_presets(plugin_name):
+def get_plugin_presets_cache(plugin_name):
 	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
 	try:
 		with open(fpath_cache) as f:
@@ -391,47 +378,20 @@ def get_plugin_presets(plugin_name):
 	return presets_info
 
 
-def add_plugin_preset_to_cache(plugin_name, bank_label, preset_label, preset_uri):
-	# Load current presets cache
-	presets_info = get_plugin_presets(plugin_name)
-
-	# Check that bank does exist
-	if bank_label not in presets_info:
-		logging.error("Bank doesn't exist")
-		
-	# Insert new preset
-	presets_info[bank_label]['presets'].append({
-		'label': preset_label,
-		'url': preset_uri
-	})
-
-	# Re-sort bank presets
-	presets_info[bank_label]['presets'] = sorted(presets_info[bank_label]['presets'], key=lambda k: k['label'])
-
-	# Save preset cache to file
-	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
-	try:
-		with open(fpath_cache,'w') as f:
-			json.dump(presets_info, f)
-	except Exception as e:
-		logging.error("Can't save presets cache file '{}': {}".format(fpath_cache, e))
+def get_plugin_presets(plugin_name):
+	return get_plugin_presets_cache(plugin_name)
 
 
-def remove_plugin_preset_from_cache(plugin_name, bank_label, preset_uri):
-	# Load current presets cache
-	presets_info = get_plugin_presets(plugin_name)
+def save_plugin_presets_cache(plugin_name, presets_info):
+	# Sort and Remove empty banks 
+	keys = list(presets_info.keys())
+	for k in keys:
+		if len(presets_info[k]['presets'])==0:
+			del(presets_info[k])
+		else:
+			presets_info[k]['presets'] = sorted(presets_info[k]['presets'], key=lambda k: k['label'])
 
-	# Check that bank does exist
-	if bank_label not in presets_info:
-		logging.error("Bank doesn't exist")
-		
-	# Find and remove preset
-	for i in range(len(presets_info[bank_label]['presets'])):
-		if preset_uri==presets_info[bank_label]['presets'][i]['url']:
-			del(presets_info[bank_label]['presets'][i])
-			break
-
-	# Save preset cache to file
+	# Dump json to file
 	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
 	try:
 		with open(fpath_cache,'w') as f:

@@ -237,14 +237,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				self.custom_gui_fpath = None
 
 		# Get bank & presets info
-		self.preset_info = zynthian_lv2.get_plugin_presets(plugin_name)
-
-		self.bank_list = []
-		for bank_label, info in self.preset_info.items():
-			self.bank_list.append((str(info['bank_url']), None, bank_label, None))
-
-		if len(self.bank_list)==0:
-			self.bank_list.append(("", None, "", None))
+		self.preset_info = zynthian_lv2.get_plugin_presets_cache(plugin_name)
 
 		self.reset()
 
@@ -277,11 +270,55 @@ class zynthian_engine_jalv(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_bank_list(self, layer=None):
-		return self.bank_list
+		bank_list = []
+		for bank_label, info in self.preset_info.items():
+			bank_list.append((str(info['bank_url']), None, bank_label, None))
+		if len(bank_list)==0:
+			bank_list.append(("", None, "", None))
+		return bank_list
 
 
 	def set_bank(self, layer, bank):
 		return True
+
+
+	def get_user_bank_urid(self, bank_name):
+		return "file://{}/presets/lv2/{}.presets.lv2/{}".format(self.my_data_dir, self.plugin_name, zynthian_engine_jalv.sanitize_text(bank_name))
+
+
+	def create_user_bank(self, bank_name):
+		bundle_path = "{}/presets/lv2/{}.presets.lv2".format(self.my_data_dir, self.plugin_name)
+		fpath = bundle_path + "/manifest.ttl"
+
+		bank_id = zynthian_engine_jalv.sanitize_text(bank_name)
+		bank_ttl = "\n<{}>\n".format(bank_id)
+		bank_ttl += "\ta pset:Bank ;\n"
+		bank_ttl += "\tlv2:appliesTo <{}> ;\n".format(self.plugin_url)
+		bank_ttl += "\trdfs:label \"{}\" .\n".format(bank_name)
+
+		with open(fpath, 'a+') as f:
+			f.write(bank_ttl)
+			f.close()
+			
+		# Cache is updated when saving the preset
+
+
+	def rename_user_bank(bank, new_bank_name):
+		if self.is_preset_user(bank[0]):
+			try:
+				zynthian_engine_jalv.lv2_rename_bank(bank[0], new_bank_name)
+			except Exception as e:
+				logging.error(e)
+
+			# Update cache
+			try:
+				self.preset_info[new_bank_name] = presets_info[bank[2]]
+				del(self.preset_info[bank[2]])
+				zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+			except Exception as e:
+				logging.error(e)
+
+
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
@@ -330,6 +367,8 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def save_preset(self, bank, preset_name):
+		# TODO: Check it's not repeated => same name!
+
 		# Save preset (jalv)
 		res = self.proc_cmd("save preset %s,%s" % (bank[0], preset_name)).split("\n")
 		
@@ -339,16 +378,20 @@ class zynthian_engine_jalv(zynthian_engine):
 			preset_uri = res[-1].strip()
 			logging.info("Saved preset '{}' => {}".format(preset_name, preset_uri))
 
-			# Add to memory-resident cache
+			# Add to cache
 			try:
+				# Add bank if needed
+				if bank[2] not in self.preset_info:
+					self.preset_info[bank[2]] = {
+						'bank_url': bank[0],
+						'presets': []
+					}
+				# Add preset
 				self.preset_info[bank[2]]['presets'].append(OrderedDict({'label': preset_name,  "url": preset_uri}))
-				self.sort_preset_info(bank[2])
-			except Exception as e:
-				logging.error(e)
-
-			# Add to persistent cache
-			try:
-				zynthian_lv2.add_plugin_preset_to_cache(self.plugin_name, bank[2], preset_name, preset_uri)
+				# Save presets cache
+				zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+				# Return preset uri
+				return preset_uri
 			except Exception as e:
 				logging.error(e)
 
@@ -359,13 +402,11 @@ class zynthian_engine_jalv(zynthian_engine):
 				# Remove from LV2 ttl
 				zynthian_engine_jalv.lv2_remove_preset(preset[0])
 
-				# Remove from persistent cache
-				zynthian_lv2.remove_plugin_preset_from_cache(self.plugin_name, bank[2], preset[0])
-
-				# Remove from memory-resident cache
+				# Remove from  cache
 				for i,p in enumerate(self.preset_info[bank[2]]['presets']):
 					if p['url'] == preset[0]:
 						del self.preset_info[bank[2]]['presets'][i]
+						zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
 						break 
 
 			except Exception as e:
@@ -378,24 +419,15 @@ class zynthian_engine_jalv(zynthian_engine):
 				# Update LV2 ttl
 				zynthian_engine_jalv.lv2_rename_preset(preset[0], new_preset_name)
 
-				# Update persistent cache
-				zynthian_lv2.remove_plugin_preset_from_cache(self.plugin_name, bank[2], preset[0])
-				zynthian_lv2.add_plugin_preset_to_cache(self.plugin_name, bank[2], new_preset_name, preset[0])
-
-				# Update memory-resident cache
+				# Update cache
 				for i,p in enumerate(self.preset_info[bank[2]]['presets']):
 					if p['url'] == preset[0]:
 						self.preset_info[bank[2]]['presets'][i]['label'] = new_preset_name
-						self.sort_preset_info(bank[2])
+						zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
 						break
 
 			except Exception as e:
 				logging.error(e)
-
-
-	def sort_preset_info(self, bank_name):
-		self.preset_info[bank_name]['presets'] = sorted(self.preset_info[bank_name]['presets'], key=lambda d: d['label']) 
-		
 
 	#----------------------------------------------------------------------------
 	# Controllers Managament

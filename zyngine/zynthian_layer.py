@@ -258,10 +258,10 @@ class zynthian_layer:
 
 			preset_id = str(self.preset_list[i][0])
 			preset_name = self.preset_list[i][2]
+			if preset_name[0]=='❤':
+				preset_name=preset_name[1:]
 
 			if preset_id in self.engine.preset_favs:
-				if preset_name[0]=='❤':
-					preset_name=preset_name[1:]
 				bank_name = self.engine.preset_favs[preset_id][0][2]
 				if bank_name!=self.bank_name:
 					self.set_bank_by_name(bank_name)
