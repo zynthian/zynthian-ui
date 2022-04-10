@@ -64,6 +64,9 @@ class zynthian_gui_keyboard():
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
 
+		# Fonts
+		self.font_button = (zynthian_gui_config.font_family, int(1.5*zynthian_gui_config.font_size))
+
 		# Create main frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
 			width=zynthian_gui_config.display_width,
@@ -116,11 +119,11 @@ class zynthian_gui_keyboard():
 			self.btn_shift = self.add_button('Shift', 2, row, 1)
 		if mode == OSK_NUMPAD:
 			self.btn_space = self.add_button('0', 2, row, span)
-			self.btn_delete = self.add_button('Delete', 4, row, 1)
+			self.btn_delete = self.add_button('Del', 4, row, 1)
 			self.btn_enter = self.add_button('Enter', 5, row, 1)
 		else:
 			self.btn_space = self.add_button(' ', 3, row, 4)
-			self.btn_delete = self.add_button('Delete', 7, row, 1)
+			self.btn_delete = self.add_button('Del', 7, row, 1)
 			self.btn_enter = self.add_button('Enter', 8, row, 2)
 		self.highlight_box = self.key_canvas.create_rectangle(0, 0, self.key_width, self.key_height, outline="red", width=2)
 		self.refresh_keys()
@@ -157,7 +160,12 @@ class zynthian_gui_keyboard():
 		index = len(self.buttons)
 		tag = "key:%d"%(index)
 		r = self.key_canvas.create_rectangle(1 + self.key_width * col, 1 + self.key_height * row, self.key_width * (col + colspan) - 1, self.key_height * (row + 1) - 1, tags=(tag), fill="black")
-		l = self.key_canvas.create_text(1 + self.key_width * (col + colspan / 2), 1 + self.key_height * (row + 0.5), text=label, fill="white", tags=(tag))
+		l = self.key_canvas.create_text(1 + self.key_width * (col + colspan / 2), 1 + self.key_height * (row + 0.5),
+			text = label,
+			fill = "white",
+			font = self.font_button,
+			tags = (tag)
+		)
 		self.key_canvas.tag_bind(tag, "<Button-1>", self.on_key_press)
 		self.key_canvas.tag_bind(tag, "<ButtonRelease-1>", self.on_key_release)
 		self.buttons.append([r,l])
