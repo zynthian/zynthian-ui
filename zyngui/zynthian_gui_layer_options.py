@@ -217,7 +217,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			index = self.layer.get_bank_index() + 1
 			for bank in self.layer.bank_list:
 				if bank[0]=="*FAVS*":
-					index -= 1;
+					index -= 1
 				else:
 					options[bank[2]] = bank
 			self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)

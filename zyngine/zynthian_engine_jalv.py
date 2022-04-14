@@ -865,7 +865,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		for i,p in enumerate(prs_parts):
 			if bmre2.search(p):
-				new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
+				#new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
 				prs_parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
 				zynthian_engine_jalv.ttl_write_parts(preset_path, prs_parts)
 				renamed = True
