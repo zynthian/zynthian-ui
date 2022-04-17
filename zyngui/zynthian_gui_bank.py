@@ -25,6 +25,7 @@
 
 import sys
 import logging
+import copy
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -74,6 +75,45 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			self.zyngui.screens['preset'].select_action(0)
 
 
+	def show_bank_options(self):
+		bank = copy.deepcopy(self.list_data[self.index])
+		bank_name = bank[2]
+		options = {}
+		if self.zyngui.curlayer.engine.is_preset_user(bank):
+			if hasattr(self.zyngui.curlayer.engine, "rename_user_bank"):
+				options["Rename"] = bank
+			if hasattr(self.zyngui.curlayer.engine, "remove_user_bank"):
+				options["Remove"] = bank
+			if hasattr(self.zyngui.curlayer.engine, "delete_user_bank"):
+				options["Delete"] = bank
+		self.zyngui.screens['option'].config("Bank: {}".format(bank_name), options, self.bank_options_cb)
+		if len(options):
+			self.zyngui.show_screen('option')
+
+
+	def bank_options_cb(self, option, bank):
+		if option == "Rename":
+			self.zyngui.show_keyboard(self.rename_bank, bank[2])
+			self.zyngui.close_screen()
+		elif option == "Remove":
+			self.remove_bank(bank)
+			self.zyngui.close_screen()
+		elif option == "Delete":
+			self.zyngui.show_confirm("Do you really want to remove bank '{}' and delete all of its presets?".format(bank[2]), self.delete_bank, bank)
+
+
+	def rename_bank(self, bank_name):
+		self.zyngui.curlayer.engine.rename_user_bank(self.list_data[self.index], bank_name)
+
+
+	def remove_bank(self, bank):
+		self.zyngui.curlayer.engine.remove_user_bank(bank)
+
+
+	def delete_bank(self, bank):
+		self.zyngui.curlayer.engine.delete_user_bank(bank)
+
+
 	# Function to handle *all* switch presses.
 	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
@@ -86,6 +126,10 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		elif swi == 2:
 			if t == 'S':
 				self.zyngui.toggle_favorites()
+				return True
+		elif swi == 3:
+			if t == 'B':
+				self.show_bank_options()
 				return True
 		return False
 

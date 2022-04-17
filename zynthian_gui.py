@@ -1354,7 +1354,7 @@ class zynthian_gui:
 			elif dtus>0:
 				#print("Switch "+str(i)+" dtus="+str(dtus))
 				self.zynswitch_short(i)
-			i += 1;
+			i += 1
 
 
 	def zynswitch_long(self,i):

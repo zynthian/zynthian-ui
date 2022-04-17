@@ -45,7 +45,7 @@ class zynthian_gui_midi_profile(zynthian_gui_selector):
 
 
 	def get_profile_fpath(self,f):
-		return join(self.midi_profiles_dir,f);
+		return join(self.midi_profiles_dir,f)
 
 
 	def fill_list(self):

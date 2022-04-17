@@ -554,7 +554,7 @@ class zynthian_gui_controller:
 					val=zctrl.get_value2index()
 
 			else:
-				self.max_value=127;
+				self.max_value=127
 				self.step = max(1, int(32/self.n_values))
 				val=zctrl.value-zctrl.value_min
 

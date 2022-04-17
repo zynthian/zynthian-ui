@@ -237,7 +237,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if create_bank_name is not None:
 			create_bank_name = create_bank_name.strip()
 		self.save_preset_create_bank_name = create_bank_name
-		self.zyngui.show_keyboard(self.save_preset_cb, self.layer.preset_name + " COPY")
+		if self.layer.preset_name:
+			self.zyngui.show_keyboard(self.save_preset_cb, self.layer.preset_name + " COPY")
+		else:
+			self.zyngui.show_keyboard(self.save_preset_cb, "New Preset")
 
 
 	def save_preset_cb(self, preset_name):
@@ -258,7 +261,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				if self.save_preset_create_bank_name:
 					self.layer.engine.create_user_bank(self.save_preset_create_bank_name)
 					logging.info("Created new bank '{}' => {}".format(self.save_preset_create_bank_name, create_bank_urid))
-					self.save_preset_create_bank_name = None
 					self.layer.load_bank_list()
 
 				self.layer.set_bank_by_id(self.save_preset_bank_info[0])
@@ -270,6 +272,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		except Exception as e:
 			logging.error(e)
 
+		self.save_preset_create_bank_name = None
 		self.zyngui.close_screen()
 		self.zyngui.close_screen()
 

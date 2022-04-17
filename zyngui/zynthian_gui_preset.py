@@ -85,8 +85,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def preset_options_cb(self, option, preset):
 		if option.endswith("Favourite"):
 			self.zyngui.curlayer.toggle_preset_fav(preset)
-			self.zyngui.screens['option'].update_list()
+			# Clumsey way to repopulate screen by hide then show
 			self.zyngui.close_screen()
+			self.show_preset_options()
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_preset, preset[2])
 		elif option == "Delete":

@@ -731,4 +731,16 @@ class zynthian_engine(zynthian_basic_engine):
 		#callable(f) and
 
 
+	# Remove double spacing
+	@classmethod
+	def remove_double_spacing(cls, lines):
+		double_line = []
+		for index,line in enumerate(lines):
+			if line.strip() == "" and index > 0 and lines[index - 1].strip() == "":
+				double_line.append(index)
+		double_line.sort(reverse=True)
+		for line in double_line:
+			del lines[line]
+
+
 #******************************************************************************
