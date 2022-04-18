@@ -46,7 +46,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			logging.error("Can't fill bank list for None layer!")
 			return
 		self.zyngui.curlayer.load_bank_list()
-		self.list_data=self.zyngui.curlayer.bank_list
+		self.list_data = self.zyngui.curlayer.bank_list
 		super().fill_list()
 
 
@@ -59,7 +59,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		if self.list_data[i][0]=='*FAVS*':
+		if self.list_data[i][0] == '*FAVS*':
 			self.zyngui.curlayer.set_show_fav_presets(True)
 		else:
 			if not self.zyngui.curlayer.set_bank(i):
@@ -71,7 +71,8 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		self.zyngui.show_screen('preset')
 
 		# If there is only one preset, jump to instrument control
-		if len(self.zyngui.curlayer.preset_list)<=1 and self.zyngui.curlayer.preset_list[0][0]=="":
+		#TODO: This is inconsistent behaviour which may confuse users
+		if len(self.zyngui.curlayer.preset_list) <= 1 and self.zyngui.curlayer.preset_list[0][0] == "":
 			self.zyngui.screens['preset'].select_action(0)
 
 
