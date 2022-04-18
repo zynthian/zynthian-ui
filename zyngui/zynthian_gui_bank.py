@@ -52,7 +52,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 	def show(self):
 		if self.zyngui.curlayer:
-			self.index=self.zyngui.curlayer.get_bank_index()
+			self.index = self.zyngui.curlayer.get_bank_index()
 			super().show()
 		else:
 			self.zyngui.close_screen()
@@ -92,9 +92,9 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 
 	def bank_options_cb(self, option, bank):
+		self.options_bank_index = self.index
 		if option == "Rename":
 			self.zyngui.show_keyboard(self.rename_bank, bank[2])
-			self.zyngui.close_screen()
 		elif option == "Remove":
 			self.remove_bank(bank)
 			self.zyngui.close_screen()
@@ -103,7 +103,8 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 
 	def rename_bank(self, bank_name):
-		self.zyngui.curlayer.engine.rename_user_bank(self.list_data[self.index], bank_name)
+		self.zyngui.curlayer.engine.rename_user_bank(self.list_data[self.options_bank_index], bank_name)
+		self.zyngui.close_screen()
 
 
 	def remove_bank(self, bank):
@@ -112,6 +113,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 	def delete_bank(self, bank):
 		self.zyngui.curlayer.engine.delete_user_bank(bank)
+		self.zyngui.close_screen()
 
 
 	# Function to handle *all* switch presses.
