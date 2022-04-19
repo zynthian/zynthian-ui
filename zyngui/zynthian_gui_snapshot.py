@@ -79,23 +79,28 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	#	Rename files to ensure unique MIDI program numbers - renames files moving each conflicting file to next program
 	#	program: Index of first program to validate - will move this index if it exists
+	#	Returns True on success
 	def fix_program_numbers(self, program):
-		if program is None:
-			return
+		if not isinstance(program, int) or program < 0 or program > 127:
+			return False
 		path = self.get_snapshot_fpath('')
 		files = os.listdir(path)
 		files.sort()
+		files_to_change = []
+		first_gap = program
 		for filename in files:
 			parts = self.get_parts_from_path(path + filename)
-			if parts[0] is None or parts[0] < program:
+			if parts == None or parts[0] is None or parts[0] < program:
 				continue
-			if parts[0] == program:
-				if program > 127:
-					parts[0] = None
-				else:
-					parts[0] += 1
-				fullname = self.get_path_from_parts(parts)
-				os.rename(parts[3], fullname)
+			if parts[0] > first_gap:
+				break # Found a gap above required program so don't move any more files
+			parts[0] += 1
+			first_gap = parts[0]
+			fullname = self.get_path_from_parts(parts)
+			files_to_change.append([parts[3], fullname])
+		files_to_change.sort(reverse=True)
+		for files in files_to_change:
+			os.rename(files[0], files[1])
 
 
 	#	Get an list of parts of a snapshot filename
@@ -307,12 +312,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 		if option == "Load":
 			self.zyngui.screens['layer'].load_snapshot(fpath)
+			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Load Layers":
 			self.zyngui.screens['layer'].load_snapshot_layers(fpath)
+			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Load Sequences":
 			self.zyngui.screens['layer'].load_snapshot_sequences(fpath)
+			self.zyngui.show_screen('stepseq', hmode=self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Save":
 			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
+			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
 		elif option == "Create Copy":
@@ -349,8 +358,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		except Exception as e:
 			logging.warning("Failed to rename snapshot {} to {} => {}".format(data[0], data[1], e))
 
-		self.zyngui.show_screen('snapshot')
-
 
 	def copy_snapshot(self, new_name):
 		fpath = self.list_data[self.index][0]
@@ -360,7 +367,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			return
 
 		if type(parts[0])==int:
-			parts[0] = self.get_next_program(parts[0])
+			parts[0] = self.get_next_program(parts[0]) #TODO: Why is this repeated?
 		if type(parts[0])==int and parts[0]<128:
 			parts[0] = self.get_next_program(parts[0])
 			new_name = format(parts[0], "03") + '-' + new_name
@@ -371,6 +378,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_copy,[parts[3],new_path])
 		else:
 			self.do_copy([parts[3], new_path])
+		
+		self.zyngui.close_screen()
 
 
 	def do_copy(self, data):
@@ -378,8 +387,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			copy(data[0], data[1])
 		except Exception as e:
 			logging.warning("Failed to copy snapshot {} to {} => {}".format(data[0], data[1], e))
-
-		self.zyngui.show_screen('snapshot')
 
 
 	def set_program(self, value):
@@ -403,8 +410,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			os.rename(fpath, dfpath)
 		except Exception as e:
 			logging.warning("Failed to set program for snapshot {} to {} => {}".format(fpath, program, e))
-
-		self.zyngui.show_screen('snapshot')
+		
+		self.zyngui.close_screen()
+		self.zyngui.close_screen()
 
 
 	def save_snapshot_by_name(self, name):
@@ -413,12 +421,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			name = format(program, "03") + "-" + name
 		path = self.get_snapshot_fpath(name.replace('>',';').replace('/',';')) + '.zss'
 		self.save_snapshot(path)
-		self.zyngui.show_screen('snapshot')
 
 
 	def save_snapshot(self, path):
 		self.zyngui.screens['layer'].save_snapshot(path)
-		self.zyngui.show_screen('snapshot')
 
 
 	def save_default_snapshot(self):
@@ -452,6 +458,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			os.remove(fpath)
 		except Exception as e:
 			logging.error(e)
+		self.zyngui.close_screen()
 
 
 	def get_midi_number(self, f):
@@ -505,7 +512,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if pn in self.midi_programs:
 			fpath=self.list_data[self.midi_programs[pn]][0]
 			logging.debug("Snapshot Program Change %s: %s" % (pn,fpath))
-			self.zyngui.show_screen("snapshot")
+#TODO: Show screen?			self.zyngui.show_screen("snapshot")
 			self.zyngui.screens['layer'].load_snapshot(fpath)
 			return True
 		else:
