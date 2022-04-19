@@ -258,6 +258,8 @@ class zynthian_layer:
 
 			preset_id = str(self.preset_list[i][0])
 			preset_name = self.preset_list[i][2]
+			if not preset_name:
+				return False
 			if preset_name[0]=='❤':
 				preset_name=preset_name[1:]
 
