@@ -262,7 +262,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 		else:
 			return False
 
-
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
@@ -274,6 +273,17 @@ class zynthian_engine_aeolus(zynthian_engine):
 	def del_layer(self, layer):
 		super().del_layer(layer)
 
+
+	def get_path(self, layer):
+		path = self.name
+		if not self.tuning_temp:
+			path += "/Temperament"
+		else:
+			chan_name = self.get_chan_name(layer.get_midi_chan())
+			if chan_name:
+				path = path + '/' + chan_name
+		return path
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
@@ -284,6 +294,12 @@ class zynthian_engine_aeolus(zynthian_engine):
 		for manual in cls.instrument:
 			chans.append(manual['chan'])
 		return chans
+
+
+	def get_chan_name(self, chan):
+		for group in self.instrument:
+			if group['chan']==chan:
+				return group['name']
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
@@ -458,12 +474,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# Special
 	#--------------------------------------------------------------------------
 
-	def get_chan_name(self, chan):
-		for group in self.instrument:
-			if group['chan']==chan:
-				return group['name']
-
-
 	@classmethod
 	def read_presets_file(cls):
 
@@ -544,19 +554,5 @@ class zynthian_engine_aeolus(zynthian_engine):
 		except Exception as e:
 			logging.error("Can't setup extended config => {}".format(e))
 
-
-	# ---------------------------------------------------------------------------
-	# Layer "Path" String
-	# ---------------------------------------------------------------------------
-
-	def get_path(self, layer):
-		path=self.nickname
-		if not self.tuning_temp:
-			path += "/Temperament"
-		else:
-			chan_name=self.get_chan_name(layer.get_midi_chan())
-			if chan_name:
-				path=path+'/'+chan_name
-		return path
 
 #******************************************************************************

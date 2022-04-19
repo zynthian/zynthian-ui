@@ -396,6 +396,13 @@ class zynthian_engine(zynthian_basic_engine):
 			self.del_layer(layer)
 
 
+	def get_name(self, layer):
+		return self.name
+
+
+	def get_path(self, layer):
+		return self.name
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
@@ -696,14 +703,6 @@ class zynthian_engine(zynthian_basic_engine):
 
 		except Exception as e:
 			logging.debug(e)
-
-
-	# ---------------------------------------------------------------------------
-	# Layer "Path" String
-	# ---------------------------------------------------------------------------
-
-	def get_path(self, layer):
-		return self.nickname
 
 
 	# ---------------------------------------------------------------------------

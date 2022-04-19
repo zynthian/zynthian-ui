@@ -102,6 +102,10 @@ class zynthian_engine_mixer(zynthian_engine):
 		layer.listen_midi_cc = False
 		super().add_layer(layer)
 
+
+	def get_path(self, layer):
+		return self.name
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
@@ -439,14 +443,6 @@ class zynthian_engine_mixer(zynthian_engine):
 				self.learned_cc[chan][ccnum].midi_control_change(val)
 			except:
 				pass
-
-	# ---------------------------------------------------------------------------
-	# Layer "Path" String
-	# ---------------------------------------------------------------------------
-
-	def get_path(self, layer):
-		return self.name
-
 
 	#--------------------------------------------------------------------------
 	# Special
