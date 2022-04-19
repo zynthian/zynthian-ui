@@ -369,7 +369,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.layer_control(layer)
 				except Exception as e:
 					logging.error(e)
-					self.zyngui.show_screen('audio_mixer', hmode=SCREEN_HMODE_RESET)
+# SCREEN_HMODE_RESET is not in scope					self.zyngui.show_screen('audio_mixer', hmode=SCREEN_HMODE_RESET)
 
 
 	def remove_layer(self, i, stop_unused_engines=True):
