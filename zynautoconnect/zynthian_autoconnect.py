@@ -233,7 +233,7 @@ def midi_autoconnect(force=False):
 					jclient.disconnect(hw,zmr_in['dev{}_in'.format(i)])
 			 #else ...
 			else:
-				#if the device already is registered, takes the number
+				#if the device is already registered, takes the number
 				if port_alias_id in devices_in:
 					devnum = devices_in.index(port_alias_id)
 				#else registers it, taking the first free port
@@ -472,9 +472,10 @@ def audio_autoconnect(force=False):
 		if not layer.get_audio_jackname() or layer.engine.type=="MIDI Tool":
 			continue
 
-		layer_playback = [jn for jn in layer.get_audio_out() if jn.startswith("zynmixer:input_") or jn.startswith("system:playback_")]
-		nlpb = len(layer_playback)
-		
+		layer_aout_ports = layer.get_audio_out_ports()
+		layer_playback_ports = [jn for jn in layer_aout_ports if jn.startswith("zynmixer:input_") or jn.startswith("system:playback_")]
+		nlpb = len(layer_playback_ports)
+
 		ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
 		if len(ports)>0:
 			#logger.debug("Connecting Layer {} ...".format(layer.get_jackname()))
@@ -485,7 +486,7 @@ def audio_autoconnect(force=False):
 			if len(playback_ports)>0:
 				npb = min(nlpb,len(ports))
 				for j, pbp in enumerate(playback_ports):
-					if pbp.name in layer_playback:
+					if pbp.name in layer_playback_ports:
 						for k, lop in enumerate(ports):
 							if k%npb==j%npb:
 								#logger.debug("Connecting {} to {} ...".format(lop.name, pbp.name))
@@ -511,7 +512,7 @@ def audio_autoconnect(force=False):
 			for ao in input_ports:
 				nip = len(input_ports[ao])
 				jrange = list(range(max(np, nip)))
-				if ao in layer.get_audio_out():
+				if ao in layer_aout_ports:
 					#logger.debug("Connecting to {} : {}".format(ao,jrange))
 					for j in jrange:
 						try:
@@ -645,11 +646,11 @@ def get_audio_playback_ports():
 
 
 def get_audio_input_ports(exclude_system_playback=False):
-	res=OrderedDict()
+	res = OrderedDict()
 	try:
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
-			parts=aip.name.split(':')
-			client_name=parts[0]
+			parts = aip.name.split(':')
+			client_name = parts[0]
 			if client_name in ["jack_capture","jackpeak","Headphones"] or client_name[:7]=="effect_":
 				continue
 			if client_name=="system" or client_name=="zynmixer":
@@ -658,7 +659,7 @@ def get_audio_input_ports(exclude_system_playback=False):
 				else:
 					client_name = aip.name
 			if client_name not in res:
-				res[client_name]=[aip]
+				res[client_name] = [aip]
 				#logger.debug("AUDIO INPUT PORT: {}".format(client_name))
 			else:
 				res[client_name].append(aip)
