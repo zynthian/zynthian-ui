@@ -665,12 +665,17 @@ class zynthian_layer:
 
 
 	def set_audio_out(self, ao):
-		self.audio_out = copy.copy(ao)
+		self.audio_out = []
 
-		#Fix legacy routing (backward compatibility with old snapshots)
-		if "system" in self.audio_out:
-			self.audio_out.remove("system")
-			self.audio_out += ["system:playback_1", "system:playback_2"]
+		for p in ao:
+			#Fix audio routing for compatibility with older/newer snapshot versions
+			if p=="system" or p=="mixer" or p.startswith("zynmixer:"):
+				self.audio_out += ["system:playback_1", "system:playback_2"]
+			else:
+				self.audio_out.append(p)
+
+		#Remove duplicated ports
+		self.audio_output = list(set(self.audio_output))
 
 		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
