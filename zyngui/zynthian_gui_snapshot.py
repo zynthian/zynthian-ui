@@ -349,6 +349,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_rename,[parts[3], new_path])
 		else:
 			self.do_rename([parts[3], new_path])
+		self.zyngui.close_screen()
+		self.select_listbox_by_name(parts[2])
 
 
 	def do_rename(self, data):
@@ -366,11 +368,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			logging.warning("Wrong snapshot {} => {}".format(self.index, fpath))
 			return
 
-		if type(parts[0])==int:
-			parts[0] = self.get_next_program(parts[0]) #TODO: Why is this repeated?
-		if type(parts[0])==int and parts[0]<128:
-			parts[0] = self.get_next_program(parts[0])
-			new_name = format(parts[0], "03") + '-' + new_name
+		if type(parts[0]) == int and parts[0] < 128:
+			parts[0] = self.get_next_program(parts[0]) #TODO: Check for None
+			if parts[0]:
+				new_name = format(parts[0], "03") + '-' + new_name
 		new_path = self.get_snapshot_fpath(new_name.replace('>',';').replace('/',';'))
 		if new_path[-4:].lower() != '.zss':
 			new_path += '.zss'
@@ -378,8 +379,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_copy,[parts[3],new_path])
 		else:
 			self.do_copy([parts[3], new_path])
-		
-		self.zyngui.close_screen()
 
 
 	def do_copy(self, data):
@@ -387,6 +386,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			copy(data[0], data[1])
 		except Exception as e:
 			logging.warning("Failed to copy snapshot {} to {} => {}".format(data[0], data[1], e))
+		self.zyngui.close_screen()
+		new_name = (data[1][data[1].rfind("/")+1:-4])
+		self.select_listbox_by_name(new_name)
 
 
 	def set_program(self, value):
@@ -413,6 +415,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		
 		self.zyngui.close_screen()
 		self.zyngui.close_screen()
+		self.select_listbox_by_name(parts[2])
 
 
 	def save_snapshot_by_name(self, name):
@@ -421,6 +424,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			name = format(program, "03") + "-" + name
 		path = self.get_snapshot_fpath(name.replace('>',';').replace('/',';')) + '.zss'
 		self.save_snapshot(path)
+		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def save_snapshot(self, path):
@@ -537,9 +541,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		title=("snapshots").title()
+		title = ("snapshots").title()
 		if not self.bankless_mode and self.bank_dir:
-			title=title+": "+self.bank_dir
+			title = title + ": " + self.bank_dir
 		self.select_path.set(title)
 
 
