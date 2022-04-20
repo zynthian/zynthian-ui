@@ -77,32 +77,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		return offset
 
 
-	#	Rename files to ensure unique MIDI program numbers - renames files moving each conflicting file to next program
-	#	program: Index of first program to validate - will move this index if it exists
-	#	Returns True on success
-	def fix_program_numbers(self, program):
-		if not isinstance(program, int) or program < 0 or program > 127:
-			return False
-		path = self.get_snapshot_fpath('')
-		files = os.listdir(path)
-		files.sort()
-		files_to_change = []
-		first_gap = program
-		for filename in files:
-			parts = self.get_parts_from_path(path + filename)
-			if parts == None or parts[0] is None or parts[0] < program:
-				continue
-			if parts[0] > first_gap:
-				break # Found a gap above required program so don't move any more files
-			parts[0] += 1
-			first_gap = parts[0]
-			fullname = self.get_path_from_parts(parts)
-			files_to_change.append([parts[3], fullname])
-		files_to_change.sort(reverse=True)
-		for files in files_to_change:
-			os.rename(files[0], files[1])
-
-
 	#	Get an list of parts of a snapshot filename
 	#	path: Full path and filename of snapshot file
 	#	returns: List of parts: [program, display name, filename, path] or None for invalid path
@@ -346,11 +320,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if new_path[-4:].lower() != '.zss':
 			new_path += '.zss'
 		if isfile(new_path):
-			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_rename,[parts[3], new_path])
+			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_rename, [parts[3], new_path])
 		else:
 			self.do_rename([parts[3], new_path])
-		self.zyngui.close_screen()
-		self.select_listbox_by_name(parts[2])
+		self.select_listbox_by_name(parts[2][:-4])
 
 
 	def do_rename(self, data):
@@ -359,6 +332,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.fill_list()
 		except Exception as e:
 			logging.warning("Failed to rename snapshot {} to {} => {}".format(data[0], data[1], e))
+		self.zyngui.close_screen()
 
 
 	def copy_snapshot(self, new_name):
@@ -405,17 +379,52 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		except:
 			program = None
 
+		parts[0] = program
+		dfpath = self.get_path_from_parts(parts)
+
 		try:
-			self.fix_program_numbers(program)
-			parts[0] = program
-			dfpath = self.get_path_from_parts(parts)
-			os.rename(fpath, dfpath)
+			if isinstance(program, int):
+				path = self.get_snapshot_fpath('')
+				files = os.listdir(path)
+				files.sort()
+				files_to_change = []
+				first_gap = program
+				for filename in files:
+					dparts = self.get_parts_from_path(path + filename)
+					if dparts == None or dparts[0] is None or dparts[0] < program or dparts[3] == parts[3]:
+						continue
+					if dparts[0] > first_gap:
+						break # Found a gap above required program so don't move any more files
+					dparts[0] += 1
+					first_gap = dparts[0]
+					fullname = self.get_path_from_parts(dparts)
+					files_to_change.append([dparts[3], fullname])
+				if len(files_to_change):
+					self.zyngui.show_confirm("Do you want to move {} snapshots up to next available program?".format(len(files_to_change)), self.do_set_program_number, (fpath, dfpath, files_to_change))
+				else:
+					self.do_set_program_number((fpath, dfpath, files_to_change))
 		except Exception as e:
 			logging.warning("Failed to set program for snapshot {} to {} => {}".format(fpath, program, e))
+
+
+	def do_set_program_number(self, params):
+		try:
+			fpath = params[0]
+			dfpath = params[1]
+			files_to_change = params[2]
+		except Exception as e:
+			logging.error(e)
+			return
+		files_to_change.sort(reverse=True)
+		for files in files_to_change:
+			os.rename(files[0], files[1])
+
+		os.rename(fpath, dfpath)
+		parts = self.get_parts_from_path(dfpath)
 		
 		self.zyngui.close_screen()
 		self.zyngui.close_screen()
-		self.select_listbox_by_name(parts[2])
+		self.select_listbox_by_name(parts[2][:-4])
 
 
 	def save_snapshot_by_name(self, name):
