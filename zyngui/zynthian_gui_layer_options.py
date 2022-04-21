@@ -86,7 +86,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if self.layer.midi_chan==16:
 			eng_options = {
 				'audio_capture': True,
-				'audio_route': True
 			}
 		else:
 			eng_options = self.layer.engine.get_options()
