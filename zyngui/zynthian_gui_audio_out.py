@@ -61,7 +61,8 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			if isinstance(self.end_layer, zynthian_gui_selector):
 				port_names = ["system"] + list(zynautoconnect.get_audio_input_ports(True).keys())
 			else:
-				port_names = zynautoconnect.get_audio_input_ports().keys()
+				#port_names = zynautoconnect.get_audio_input_ports().keys()
+				port_names = ["mixer"] + list(zynautoconnect.get_audio_input_ports(True).keys())
 
 			for k in port_names:
 				try:

@@ -366,10 +366,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				root_layer = self.get_fxchain_root(layer)
 				try:
 					self.index = self.root_layers.index(root_layer)
+					self.zyngui.show_screen_reset('audio_mixer')
 					self.layer_control(layer)
 				except Exception as e:
 					logging.error(e)
-					self.zyngui.show_screen('audio_mixer', hmode=SCREEN_HMODE_RESET)
+					self.zyngui.show_screen_reset('audio_mixer')
 
 
 	def remove_layer(self, i, stop_unused_engines=True):

@@ -231,7 +231,7 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.legend, text="Main")
 		else:
 			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=self.layer.midi_chan + 1)
-			self.parent.main_canvas.itemconfig(self.legend, text="%s\n%s"%(self.layer.engine.name, self.layer.preset_name), state="normal")
+			self.parent.main_canvas.itemconfig(self.legend, text="%s\n%s"%(self.layer.engine.get_name(self.layer), self.layer.preset_name), state="normal")
 
 		try:
 			if self.layer.engine.type == "MIDI Tool":

@@ -133,7 +133,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				for i,sl in enumerate(self.midifx_layers):
 					if i and not sl.is_parallel_midi_routed(sl0):
 						indent = "  " + indent
-					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.plugin_name))
+					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.get_name(sl)))
 					sl0 = sl
 
 			# Add MIDI-FX options
@@ -155,7 +155,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				for i,sl in enumerate(self.audiofx_layers):
 					if i and not sl.is_parallel_audio_routed(sl0):
 						indent = "  " + indent
-					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.plugin_name))
+					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.get_name(sl)))
 					sl0 = sl
 
 			# Add Audio-FX options

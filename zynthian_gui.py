@@ -671,6 +671,10 @@ class zynthian_gui:
 		self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_REPLACE)
 
 
+	def show_screen_reset(self, screen=None):
+		self.show_screen(screen, hmode=SCREEN_HMODE_RESET)
+
+
 	def show_current_screen(self):
 		self.show_screen(self.current_screen)
 
