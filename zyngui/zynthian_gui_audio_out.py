@@ -58,11 +58,11 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 		self.list_data = []
 
 		if self.end_layer:
-			if isinstance(self.end_layer, zynthian_gui_selector):
-				port_names = ["system"] + list(zynautoconnect.get_audio_input_ports(True).keys())
+			port_names = list(zynautoconnect.get_audio_input_ports(True).keys())
+			if isinstance(self.end_layer, zynthian_gui_selector) or self.end_layer.midi_chan>=16:
+				port_names = ["system"] + port_names
 			else:
-				#port_names = zynautoconnect.get_audio_input_ports().keys()
-				port_names = ["mixer"] + list(zynautoconnect.get_audio_input_ports(True).keys())
+				port_names = ["mixer"] + port_names
 
 			for k in port_names:
 				try:

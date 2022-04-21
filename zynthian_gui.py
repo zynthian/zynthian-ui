@@ -906,15 +906,16 @@ class zynthian_gui:
 			if self.curlayer.engine.nickname=='MX':
 				return
 			curlayer_chan = self.curlayer.get_midi_chan()
-			if curlayer_chan is not None and zynthian_gui_config.midi_single_active_channel:
+			if zynthian_gui_config.midi_single_active_channel and curlayer_chan is not None:
+				if curlayer_chan>=16:
+					return
 				active_chan = curlayer_chan
 				cur_active_chan = lib_zyncore.get_midi_active_chan()
 				if cur_active_chan==active_chan:
 					return
-				else:
-					logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan, active_chan))
-					#if cur_active_chan>=0:
-					#	self.all_notes_off_chan(cur_active_chan)
+				logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan, active_chan))
+				#if cur_active_chan>=0:
+				#	self.all_notes_off_chan(cur_active_chan)
 
 		lib_zyncore.set_midi_active_chan(active_chan)
 		self.zynswitches_midi_setup(curlayer_chan)

@@ -56,7 +56,7 @@ class zynthian_layer:
 
 		self.jackname = None
 		
-		if midi_chan is None:
+		if midi_chan is None or midi_chan>=16:
 			self.audio_out = ["system"]	
 		else:
 			self.audio_out = ["mixer"]
@@ -138,10 +138,8 @@ class zynthian_layer:
 		self.engine.set_midi_chan(self)
 		for zctrl in self.controllers_dict.values():
 			zctrl.set_midi_chan(midi_chan)
-		for index, output in enumerate(self.audio_out):
-			if output.startswith("zynmixer:input_"):
-				self.audio_out[index] = "zynmixer:input_%02d%s"%(midi_chan + 1, output[-1:])
 		self.zyngui.zynautoconnect_audio()
+
 
 	def get_midi_chan(self):
 		return self.midi_chan
@@ -819,7 +817,7 @@ class zynthian_layer:
 
 
 	def reset_audio_out(self):
-		if self.midi_chan == None:
+		if self.midi_chan is None or self.midi_chan >= 16:
 			self.audio_out = ["system"]
 		else:
 			self.audio_out = ["mixer"]

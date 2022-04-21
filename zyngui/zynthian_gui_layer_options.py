@@ -83,7 +83,13 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.midifx_layers.remove(self.layer)
 
 		# Add root layer options
-		eng_options = self.layer.engine.get_options()
+		if self.layer.midi_chan==16:
+			eng_options = {
+				'audio_capture': True,
+				'audio_route': True
+			}
+		else:
+			eng_options = self.layer.engine.get_options()
 
 		#self.list_data.append((self.layer_presets, None, "Presets"))
 
