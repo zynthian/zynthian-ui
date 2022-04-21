@@ -652,7 +652,7 @@ class zynthian_gui:
 				return
 
 		self.hide_screens(exclude = screen)
-		if hmode == zyngui.SCREEN_HMODE_ADD:
+		if hmode == zynthian_gui.SCREEN_HMODE_ADD:
 			self.screen_history.append(screen)
 		elif hmode == zynthian_gui.SCREEN_HMODE_REPLACE:
 			self.screen_history.pop()
@@ -672,7 +672,7 @@ class zynthian_gui:
 
 
 	def show_screen_reset(self, screen=None):
-		self.show_screen(screen, hmode=SCREEN_HMODE_RESET)
+		self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_RESET)
 
 
 	def show_current_screen(self):
