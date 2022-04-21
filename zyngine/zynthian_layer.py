@@ -50,14 +50,16 @@ class zynthian_layer:
 
 
 	def __init__(self, engine, midi_chan, zyngui=None):
-		self.zyngui = zyngui
-		self.engine = engine
+		self.engine = None
 		self.midi_chan = midi_chan
+		self.zyngui = zyngui
 
 		self.jackname = None
-		self.audio_out = ["system:playback_1", "system:playback_2"]
-		if midi_chan != None:
-			self.audio_out = ["zynmixer:input_%02da"%(midi_chan + 1), "zynmixer:input_%02db"%(midi_chan + 1)]
+		
+		if midi_chan is None:
+			self.audio_out = ["system"]	
+		else:
+			self.audio_out = ["mixer"]
 		self.audio_in = ["system:capture_1", "system:capture_2"]
 		self.midi_out = ["MIDI-OUT", "NET-OUT"]
 
@@ -89,6 +91,12 @@ class zynthian_layer:
 
 		self.reset_zs3()
 
+		if engine is not None:
+			self.set_engine(engine)
+
+
+	def set_engine(self, engine):
+		self.engine = engine
 		self.engine.add_layer(self)
 		self.refresh_controllers()
 
@@ -258,6 +266,8 @@ class zynthian_layer:
 
 			preset_id = str(self.preset_list[i][0])
 			preset_name = self.preset_list[i][2]
+			if not preset_name:
+				return False
 			if preset_name[0]=='❤':
 				preset_name=preset_name[1:]
 
@@ -735,13 +745,33 @@ class zynthian_layer:
 		return self.audio_out
 
 
-	def set_audio_out(self, ao):
-		self.audio_out = copy.copy(ao)
+	def get_audio_out_ports(self):
+		aout_ports = []
+		for p in self.audio_out:
+			if p=="system":
+				aout_ports += ["system:playback_1", "system:playback_2"]
+			elif p=="mixer":
+				aout_ports += ["zynmixer:input_%02da"%(self.midi_chan + 1), "zynmixer:input_%02db"%(self.midi_chan + 1)]
+			else:
+				aout_ports.append(p)
+		return set(aout_ports)
 
-		#Fix legacy routing (backward compatibility with old snapshots)
-		if "system" in self.audio_out:
-			self.audio_out.remove("system")
-			self.audio_out += ["system:playback_1", "system:playback_2"]
+
+	def set_audio_out(self, ao):
+		self.audio_out = []
+
+		# Sanitize audio out list. It should avoid audio routing snapshot version issues.
+		for p in ao:
+			if p.startswith("system") or p.startswith("zynmixer"):
+				if self.midi_chan is None:
+					self.audio_out.append("system")
+				else:
+					self.audio_out.append("mixer")
+			else:
+				self.audio_out.append(p)
+
+		# Remove duplicates
+		self.audio_out = list(set(self.audio_out))
 
 		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
@@ -749,7 +779,7 @@ class zynthian_layer:
 
 	def add_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
-			jackname=jackname.get_audio_jackname()
+			jackname = jackname.get_audio_jackname()
 
 		if jackname not in self.audio_out:
 			self.audio_out.append(jackname)
@@ -761,7 +791,7 @@ class zynthian_layer:
 
 	def del_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
-			jackname=jackname.get_audio_jackname()
+			jackname = jackname.get_audio_jackname()
 
 		try:
 			self.audio_out.remove(jackname)
@@ -775,22 +805,26 @@ class zynthian_layer:
 
 	def toggle_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
-			jackname=jackname.get_audio_jackname()
+			jackname = jackname.get_audio_jackname()
 
 		if jackname not in self.audio_out:
 			self.audio_out.append(jackname)
 		else:
 			self.audio_out.remove(jackname)
 
+		logging.debug("Toggling Audio Output: {}".format(jackname))
+
 		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
 	def reset_audio_out(self):
-		self.audio_out=["system:playback_1", "system:playback_2"]
-		if self.midi_chan != None:
-			self.audio_out = ["zynmixer:input_%02da"%(self.midi_chan + 1), "zynmixer:input_%02db"%(self.midi_chan + 1)]
-		#self.pair_audio_out() #TODO: This was previously removed - is it required?
+		if self.midi_chan == None:
+			self.audio_out = ["system"]
+		else:
+			self.audio_out = ["mixer"]
+			
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -936,7 +970,7 @@ class zynthian_layer:
 
 
 	# ---------------------------------------------------------------------------
-	# Channel "Path" String
+	# Path/Breadcrumb Strings
 	# ---------------------------------------------------------------------------
 
 

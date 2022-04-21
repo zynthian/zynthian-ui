@@ -255,6 +255,14 @@ class zynthian_engine_jalv(zynthian_engine):
 		super().add_layer(layer)
 		self.set_midi_chan(layer)
 
+
+	def get_name(self, layer):
+		return self.plugin_name
+
+
+	def get_path(self, layer):
+		return self.plugin_name
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
