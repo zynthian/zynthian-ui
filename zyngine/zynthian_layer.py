@@ -55,9 +55,11 @@ class zynthian_layer:
 		self.midi_chan = midi_chan
 
 		self.jackname = None
-		self.audio_out = ["system:playback_1", "system:playback_2"]
-		if midi_chan != None:
-			self.audio_out = ["zynmixer:input_%02da"%(midi_chan + 1), "zynmixer:input_%02db"%(midi_chan + 1)]
+		
+		if midi_chan is None:
+			self.audio_out = ["system"]	
+		else:
+			self.audio_out = ["mixer"]
 		self.audio_in = ["system:capture_1", "system:capture_2"]
 		self.midi_out = ["MIDI-OUT", "NET-OUT"]
 
@@ -755,7 +757,7 @@ class zynthian_layer:
 		# Sanitize audio out list. It should avoid audio routing snapshot version issues.
 		for p in ao:
 			if p.startswith("system") or p.startswith("zynmixer"):
-				if self.midi_chan == None:
+				if self.midi_chan is None:
 					aout_ports.append("system")
 				else:
 					aout_ports.append("mixer")
