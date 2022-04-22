@@ -401,7 +401,7 @@ def midi_autoconnect(force=False):
 
 	# Set "Drop Program Change" flag for each MIDI chan
 	for layer in zynthian_gui_config.zyngui.screens["layer"].root_layers:
-		if layer.midi_chan is not None:
+		if layer.midi_chan is not None and layer.midi_chan<16:
 			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
 
 
@@ -691,7 +691,7 @@ def get_audio_input_ports(exclude_system_playback=False):
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
 			parts = aip.name.split(':')
 			client_name = parts[0]
-			if client_name in ["jack_capture","jackpeak","Headphones"] or client_name[:7]=="effect_":
+			if client_name in ["jack_capture","Headphones"] or client_name[:7]=="effect_":
 				continue
 			if client_name=="system" or client_name=="zynmixer":
 				if exclude_system_playback:
