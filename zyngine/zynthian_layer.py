@@ -761,7 +761,7 @@ class zynthian_layer:
 		# Sanitize audio out list. It should avoid audio routing snapshot version issues.
 		for p in ao:
 			if p.startswith("system") or p.startswith("zynmixer"):
-				if self.midi_chan is None:
+				if self.midi_chan is None or self.midi_chan>=16:
 					self.audio_out.append("system")
 				else:
 					self.audio_out.append("mixer")
