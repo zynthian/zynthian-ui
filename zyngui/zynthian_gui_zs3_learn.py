@@ -98,23 +98,12 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 				self.zyngui.exit_midi_learn_mode()
 			elif t=='B':
 				self.zyngui.screens['zs3_options'].config(midich, zs3_index)
-				self.zyngui.show_screen('zs3_options')
+				self.zyngui.show_modal('zs3_options')
 		elif isinstance(midi_prog, int):
 			midich = self.zyngui.curlayer.get_midi_chan()
 			self.zyngui.screens['layer'].save_midi_chan_zs3(midich, midi_prog)
 			self.zyngui.close_screen()
 			self.zyngui.exit_midi_learn_mode()
-
-
-	# Function to handle *all* switch presses.
-	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#	returns True if action fully handled or False if parent action should be triggered
-	def switch(self, swi, t='S'):
-		if swi == 2:
-			if t == 'S':
-				self.zyngui.close_screen()
-				return True
 
 
 	def back_action(self):

@@ -405,7 +405,7 @@ class zynthian_gui_mixer_strip():
 			self.show()
 
 
-	# Function to set volume values
+	# Function to set volume value
 	#	value: Volume value (0..1)
 	def set_volume(self, value):
 		if self.layer is None:
@@ -418,7 +418,14 @@ class zynthian_gui_mixer_strip():
 		self.redraw_controls_flag = True
 
 
-	# Function to set balance values
+	# Function to get volume value
+	def get_volume(self):
+		if self.layer is None:
+			return -1
+		return zynmixer.get_level(self.layer.midi_chan)
+
+
+	# Function to set balance value
 	#	value: Balance value (-1..1)
 	def set_balance(self, value):
 		if self.layer is None:
@@ -429,6 +436,13 @@ class zynthian_gui_mixer_strip():
 			value = 1
 		zynmixer.set_balance(self.layer.midi_chan, value)
 		self.redraw_controls_flag = True
+
+
+	# Function to get balance value
+	def get_balance(self):
+		if self.layer is None:
+			return -1
+		return zynmixer.get_balance(self.layer.midi_chan)
 
 
 	# Function to reset volume
@@ -866,7 +880,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.update_zyncoders()
 
 
-	# Function to set volume
+	# Function to get volume
+	#	layer_index: Index of layer to get volume. If None, selected layer is used
+	def get_volume(self, layer_index=None):
+		chan_strip = self.get_mixer_strip_from_layer_index(layer_index)
+		if chan_strip:
+			return chan_strip.get_volume()
+		else:
+			return -1
+
+
+	# Function to set balance
 	#	value: Balance value (0..1)
 	#	layer_index: Index of layer to set volume. If None, selected layer is used
 	def set_balance(self, value, layer_index=None):
@@ -875,6 +899,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			chan_strip.set_balance(value)
 			if layer_index == self.selected_chain_index:
 				self.update_zyncoders()
+
+
+	# Function to get balance
+	#	layer_index: Index of layer to set volume. If None, selected layer is used
+	def get_balance(self, layer_index=None):
+		chan_strip = self.get_mixer_strip_from_layer_index(layer_index)
+		if chan_strip and self.is_audio_layer(chan_strip.layer):
+			return chan_strip.get_balance()
+		else:
+			return -1
 
 
 	# Function to reset volume
@@ -1120,12 +1154,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
-		self.select_chain_by_index(self.selected_chain_index + 1)
+		self.set_volume(self.get_volume() + 0.1)
+		self.redraw_mixer_controls()
 
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		self.select_chain_by_index(self.selected_chain_index - 1)
+		self.set_volume(self.get_volume() - 0.1)
+		self.redraw_mixer_controls()
 
 
 	# Function to handle CUIA BACK_UP command

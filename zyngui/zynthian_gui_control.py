@@ -312,7 +312,25 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.set_mode_control()
 
 
-	def next(self):
+	def back_action(self):
+		if self.mode=='select':
+			self.set_mode_control()
+			return True
+		# If control xyselect mode active, disable xyselect mode
+		elif self.xyselect_mode:
+			logging.debug("DISABLE XYSELECT MODE")
+			self.unset_xyselect_mode()
+			#self.show()??
+			return True
+		# If in MIDI-learn mode, back to instrument control
+		elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
+			self.zyngui.exit_midi_learn_mode()
+			return True
+		else:
+			return False
+
+
+	def select_down(self):
 		i = self.index + 1
 		if i>=len(self.list_data):
 			i = 0
@@ -321,13 +339,23 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return True
 
 
-	def prev(self):
+	def select_up(self):
 		i = self.index - 1
 		if i<0:
 			i = 0
 		self.select(i)
 		self.click_listbox()
 		return True
+
+
+	def next(self):
+		if self.zyngui.screens['layer'].get_num_root_layers()>1:
+			self.zyngui.screens['layer'].next(True)
+
+
+	def prev(self):
+		if self.zyngui.screens['layer'].get_num_root_layers()>1:
+			self.zyngui.screens['layer'].prev(True)
 
 
 	# Function to handle *all* switch presses.
@@ -344,17 +372,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		elif swi == 1:
 			if t == 'S':
-				if self.mode=='select':
-					self.set_mode_control()
-				# If control xyselect mode active, disable xyselect mode
-				elif self.xyselect_mode:
-					logging.debug("DISABLE XYSELECT MODE")
-					self.unset_xyselect_mode()
-					#self.show()??
-				# If in MIDI-learn mode, back to instrument control
-				elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
-					self.zyngui.exit_midi_learn_mode()
-				else:
+				if not self.back_action():
 					self.zyngui.cuia_bank_preset()
 				return True
 

@@ -61,7 +61,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		if t=='S':
 			self.zyngui.curlayer.set_preset(i)
-			self.zyngui.show_screen('control')
+			self.zyngui.show_screen_reset('control')
 
 
 	def show_preset_options(self):
