@@ -752,7 +752,7 @@ class zynthian_layer:
 				aout_ports += ["zynmixer:input_%02da"%(self.midi_chan + 1), "zynmixer:input_%02db"%(self.midi_chan + 1)]
 			else:
 				aout_ports.append(p)
-		return set(aout_ports)
+		return list(dict.fromkeys(aout_ports).keys()) 
 
 
 	def set_audio_out(self, ao):
@@ -769,7 +769,7 @@ class zynthian_layer:
 				self.audio_out.append(p)
 
 		# Remove duplicates
-		self.audio_out = list(set(self.audio_out))
+		self.audio_out = list(dict.fromkeys(self.audio_out).keys())
 
 		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
