@@ -675,7 +675,7 @@ class zynthian_layer:
 				self.audio_out.append(p)
 
 		#Remove duplicated ports
-		self.audio_output = list(set(self.audio_output))
+		self.audio_out = list(dict.fromkeys(self.audio_out).keys())
 
 		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
