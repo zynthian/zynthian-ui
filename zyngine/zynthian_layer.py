@@ -50,9 +50,9 @@ class zynthian_layer:
 
 
 	def __init__(self, engine, midi_chan, zyngui=None):
-		self.zyngui = zyngui
-		self.engine = engine
+		self.engine = None
 		self.midi_chan = midi_chan
+		self.zyngui = zyngui
 
 		self.jackname = None
 		
@@ -91,6 +91,12 @@ class zynthian_layer:
 
 		self.reset_zs3()
 
+		if engine is not None:
+			self.set_engine(engine)
+
+
+	def set_engine(self, engine):
+		self.engine = engine
 		self.engine.add_layer(self)
 		self.refresh_controllers()
 
@@ -758,14 +764,14 @@ class zynthian_layer:
 		for p in ao:
 			if p.startswith("system") or p.startswith("zynmixer"):
 				if self.midi_chan is None:
-					aout_ports.append("system")
+					self.audio_out.append("system")
 				else:
-					aout_ports.append("mixer")
+					self.audio_out.append("mixer")
 			else:
-				aout_ports.append(p)
+				self.audio_out.append(p)
 
 		# Remove duplicates
-		self.audio_out = list(set(ao))
+		self.audio_out = list(set(self.audio_out))
 
 		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
