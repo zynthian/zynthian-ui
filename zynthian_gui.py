@@ -589,9 +589,12 @@ class zynthian_gui:
 		# Try to load "default" snapshot ...
 		if not snapshot_loaded:
 			snapshot_loaded=self.screens['snapshot'].load_default_snapshot()
-		self.show_screen('audio_mixer')
-		# Set empty state
-		if not snapshot_loaded:
+
+		# Show mixer
+		if snapshot_loaded:
+			self.show_screen('audio_mixer')
+		# or set empty state & show main menu
+		else:
 			# Init MIDI Subsystem => MIDI Profile
 			self.init_midi()
 			self.init_midi_services()
