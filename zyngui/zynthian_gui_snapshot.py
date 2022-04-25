@@ -253,25 +253,28 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		else:
 			if fpath:
 				if fpath == "SAVE":
-					parts = self.get_parts_from_path(self.get_new_snapshot())
-					self.zyngui.show_keyboard(self.save_snapshot_by_name, parts[1])
+					self.zyngui.show_keyboard(self.save_snapshot_by_name, "New Snapshot")
 				else:
-					self.show_options(i)
+					self.show_options(i, self.list_data[i][2] == "Last State")
 
 
-	def show_options(self, i):
+	def show_options(self, i, restrict_options):
 		fpath=self.list_data[i][0]
 		fname=self.list_data[i][2]
 		options = {
 			"Load": fpath,
 			"Load Layers": fpath,
 			"Load Sequences": fpath,
-			"Save": fname,
-			"Rename": fname,
-			"Create Copy": fname, 
-			"Set Program": fname,
-			"Delete": fname
+			"Save": fname
 		}
+		if not restrict_options:
+			options.update(
+				{
+				"Rename": fname,
+				"Set Program": fname,
+				"Delete": fname
+				}
+			)
 		self.zyngui.screens['option'].config(fname, options, self.options_cb)
 		self.zyngui.show_screen('option')
 
@@ -295,11 +298,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.zyngui.show_screen('stepseq', hmode=self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Save":
 			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
-			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
-		elif option == "Create Copy":
-			self.zyngui.show_keyboard(self.copy_snapshot, parts[1] + ' (copy)')
 		elif option == "Set Program":
 			self.zyngui.screens['midi_prog'].config(parts[0], self.set_program)
 			self.zyngui.show_screen('midi_prog')
@@ -313,7 +313,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if parts is None:
 			logging.warning("Wrong snapshot {} => {}".format(self.index, fpath))
 			return
-		
+		if parts[1] == new_name:
+			self.zyngui.close_screen()
+			return
 		if type(parts[0])==int and parts[0]<128:
 			new_name = format(parts[0], "03") + '-' + new_name
 		new_path = self.get_snapshot_fpath(new_name.replace('>',';').replace('/',';'))
@@ -333,36 +335,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		except Exception as e:
 			logging.warning("Failed to rename snapshot {} to {} => {}".format(data[0], data[1], e))
 		self.zyngui.close_screen()
-
-
-	def copy_snapshot(self, new_name):
-		fpath = self.list_data[self.index][0]
-		parts = self.get_parts_from_path(fpath)
-		if parts is None:
-			logging.warning("Wrong snapshot {} => {}".format(self.index, fpath))
-			return
-
-		if type(parts[0]) == int and parts[0] < 128:
-			parts[0] = self.get_next_program(parts[0]) #TODO: Check for None
-			if parts[0]:
-				new_name = format(parts[0], "03") + '-' + new_name
-		new_path = self.get_snapshot_fpath(new_name.replace('>',';').replace('/',';'))
-		if new_path[-4:].lower() != '.zss':
-			new_path += '.zss'
-		if isfile(new_path):
-			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_copy,[parts[3],new_path])
-		else:
-			self.do_copy([parts[3], new_path])
-
-
-	def do_copy(self, data):
-		try:
-			copy(data[0], data[1])
-		except Exception as e:
-			logging.warning("Failed to copy snapshot {} to {} => {}".format(data[0], data[1], e))
-		self.zyngui.close_screen()
-		new_name = (data[1][data[1].rfind("/")+1:-4])
-		self.select_listbox_by_name(new_name)
 
 
 	def set_program(self, value):
@@ -433,11 +405,11 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			name = format(program, "03") + "-" + name
 		path = self.get_snapshot_fpath(name.replace('>',';').replace('/',';')) + '.zss'
 		self.save_snapshot(path)
-		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def save_snapshot(self, path):
 		self.zyngui.screens['layer'].save_snapshot(path)
+		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def save_default_snapshot(self):
