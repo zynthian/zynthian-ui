@@ -63,8 +63,8 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 				else:
 					zs3_index = None
 					label = "free"
-				zs3_title = "Program {}: {}".format(i + 1, label)
-				self.list_data.append((i,zs3_index,zs3_title))
+				zs3_title = "Program {:03d}: {}".format(i, label)
+				self.list_data.append((i ,zs3_index, zs3_title))
 		except Exception as e:
 			logging.error(e)
 
