@@ -28,8 +28,6 @@ import sys
 import copy
 import liblo
 import signal
-#import psutil
-#import alsaseq
 import logging
 import importlib
 import threading
@@ -39,7 +37,6 @@ from pathlib import Path
 from time import monotonic
 from os.path import isfile
 from datetime import datetime
-#from vcgencmd import Vcgencmd
 from threading  import Thread, Lock
 from subprocess import check_output
 from ctypes import c_float, c_double, CDLL,c_char_p
@@ -48,8 +45,6 @@ from ctypes import c_float, c_double, CDLL,c_char_p
 import zynconf
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
-#from jackpeak import *
-#from jackpeak.jackpeak import lib_jackpeak, lib_jackpeak_init
 from zynlibs.zynmixer import zynmixer
 from zynlibs.zynmixer.zynmixer import lib_zynmixer
 
@@ -58,8 +53,6 @@ from zyngine import zynthian_midi_filter
 
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
-#from zyngui.zynthian_gui_controller import zynthian_gui_controller
-#from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
@@ -90,8 +83,6 @@ from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
-if "autoeq" in zynthian_gui_config.experimental_features:
-	from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
 
 #-------------------------------------------------------------------------------
 # Zynthian Main GUI Class
@@ -302,7 +293,7 @@ class zynthian_gui:
 
 
 	def update_wsleds(self):
-		if self.wsleds_blink_count % 6 > 2:
+		if self.wsleds_blink_count % 4 > 1:
 			self.wsleds_blink = True
 		else:
 			self.wsleds_blink = False
@@ -310,116 +301,127 @@ class zynthian_gui:
 		try:
 			# Menu
 			if self.current_screen=="main":
-				self.wsleds.setPixelColor(0,self.wscolor_active)
+				self.wsleds.setPixelColor(0, self.wscolor_active)
 			elif self.current_screen=="stepseq" and self.screens['stepseq'].is_shown_menu():
-				self.wsleds.setPixelColor(0,self.wscolor_active)
+				self.wsleds.setPixelColor(0, self.wscolor_active)
 			elif self.current_screen=="admin":
-				self.wsleds.setPixelColor(0,self.wscolor_admin)
+				self.wsleds.setPixelColor(0, self.wscolor_admin)
 			else:
-				self.wsleds.setPixelColor(0,self.wscolor_light)
+				self.wsleds.setPixelColor(0, self.wscolor_light)
 
 			# Active Layer
+			# => Light non-empty layers
 			n = self.screens['layer'].get_num_root_layers()
+			master_fxchain = self.screens['layer'].get_master_fxchain_root_layer()
+			if master_fxchain:
+				n -= 1
 			for i in range(6):
 				if i<n:
-					self.wsleds.setPixelColor(1+i,self.wscolor_light)
+					self.wsleds.setPixelColor(1+i, self.wscolor_light)
 				else:
-					self.wsleds.setPixelColor(1+i,self.wscolor_off)
-			i = self.screens['layer'].get_root_layer_index()
-			if i is not None and i<6:
-				if self.current_screen=="control":
-					self.wsleds.setPixelColor(1+i,self.wscolor_active)
-				else:
-					self.wsled_blink(1+i,self.wscolor_active)
-
-			if self.current_screen=="layer_options":
-				self.wsleds.setPixelColor(7,self.wscolor_active)
+					self.wsleds.setPixelColor(1+i, self.wscolor_off)
+			# => Light FX layer if not empty
+			if master_fxchain:
+				self.wsleds.setPixelColor(7, self.wscolor_light)
 			else:
-				self.wsleds.setPixelColor(7,self.wscolor_light)
+				self.wsleds.setPixelColor(7, self.wscolor_off)
+			# => Light active layer
+			i = self.screens['layer'].get_root_layer_index()
+			if i is not None:
+				if master_fxchain and i==n:
+					if self.current_screen=="control":
+						self.wsleds.setPixelColor(7, self.wscolor_active)
+					else:
+						self.wsled_blink(7, self.wscolor_active)
+				elif i<6:
+					if self.current_screen=="control":
+						self.wsleds.setPixelColor(1+i, self.wscolor_active)
+					else:
+						self.wsled_blink(1+i, self.wscolor_active)
 
 			# Stepseq screen:
 			if self.current_screen=="stepseq":
-				self.wsleds.setPixelColor(8,self.wscolor_active)
+				self.wsleds.setPixelColor(8, self.wscolor_active)
 			else:
-				self.wsleds.setPixelColor(8,self.wscolor_light)
+				self.wsleds.setPixelColor(8, self.wscolor_light)
 
 			# Audio Recorder screen:
 			if self.current_screen=="audio_recorder":
-				self.wsleds.setPixelColor(9,self.wscolor_active)
+				self.wsleds.setPixelColor(9, self.wscolor_active)
 			else:
-				self.wsleds.setPixelColor(9,self.wscolor_light)
+				self.wsleds.setPixelColor(9, self.wscolor_light)
 
 			# MIDI Recorder screen:
 			if self.current_screen=="midi_recorder":
-				self.wsleds.setPixelColor(10,self.wscolor_active)
+				self.wsleds.setPixelColor(10, self.wscolor_active)
 			else:
-				self.wsleds.setPixelColor(10,self.wscolor_light)
+				self.wsleds.setPixelColor(10, self.wscolor_light)
 
 			# Snapshot screen:
 			if self.current_screen=="snapshot":
-				self.wsleds.setPixelColor(11,self.wscolor_active)
+				self.wsleds.setPixelColor(11, self.wscolor_active)
 			else:
-				self.wsleds.setPixelColor(11,self.wscolor_light)
+				self.wsleds.setPixelColor(11, self.wscolor_light)
 
 			# Presets screen:
 			if self.current_screen in ("preset", "bank"):
-				self.wsleds.setPixelColor(12,self.wscolor_active)
+				self.wsleds.setPixelColor(12, self.wscolor_active)
 			else:
-				self.wsleds.setPixelColor(12,self.wscolor_light)
+				self.wsleds.setPixelColor(12, self.wscolor_light)
 
 			# Light ALT button
-			self.wsleds.setPixelColor(13,self.wscolor_light)
+			self.wsleds.setPixelColor(13, self.wscolor_light)
 
 			# REC/PLAY Audio buttons:
 			if self.status_info['audio_recorder']:
 				if "REC" in self.status_info['audio_recorder']:
-					self.wsleds.setPixelColor(14,self.wscolor_red)
+					self.wsleds.setPixelColor(14, self.wscolor_red)
 				else:
-					self.wsleds.setPixelColor(14,self.wscolor_light)
+					self.wsleds.setPixelColor(14, self.wscolor_light)
 
 				if "PLAY" in self.status_info['audio_recorder']:
-					self.wsleds.setPixelColor(15,self.wscolor_active)
+					self.wsleds.setPixelColor(15, self.wscolor_active)
 				else:
-					self.wsleds.setPixelColor(15,self.wscolor_light)
+					self.wsleds.setPixelColor(15, self.wscolor_light)
 			else:
-				self.wsleds.setPixelColor(14,self.wscolor_light)
-				self.wsleds.setPixelColor(15,self.wscolor_light)
+				self.wsleds.setPixelColor(14, self.wscolor_light)
+				self.wsleds.setPixelColor(15, self.wscolor_light)
 
 			# REC/PLAY MIDI buttons:
 			if self.status_info['midi_recorder']:
 				if "REC" in self.status_info['midi_recorder']:
-					self.wsleds.setPixelColor(16,self.wscolor_red)
+					self.wsleds.setPixelColor(16, self.wscolor_red)
 				else:
-					self.wsleds.setPixelColor(16,self.wscolor_light)
+					self.wsleds.setPixelColor(16, self.wscolor_light)
 
 				if "PLAY" in self.status_info['midi_recorder']:
-					self.wsleds.setPixelColor(17,self.wscolor_active)
+					self.wsleds.setPixelColor(17, self.wscolor_active)
 				else:
-					self.wsleds.setPixelColor(17,self.wscolor_light)
+					self.wsleds.setPixelColor(17, self.wscolor_light)
 			else:
-				self.wsleds.setPixelColor(16,self.wscolor_light)
-				self.wsleds.setPixelColor(17,self.wscolor_light)
+				self.wsleds.setPixelColor(16, self.wscolor_light)
+				self.wsleds.setPixelColor(17, self.wscolor_light)
 
 			# Back/No button
-			self.wsleds.setPixelColor(18,self.wscolor_red)
+			self.wsleds.setPixelColor(18, self.wscolor_red)
 
 			# Up button
-			self.wsleds.setPixelColor(19,self.wscolor_light)
+			self.wsleds.setPixelColor(19, self.wscolor_light)
 
 			# Select/Yes button
-			self.wsleds.setPixelColor(20,self.wscolor_green)
+			self.wsleds.setPixelColor(20, self.wscolor_green)
 
 			# Left, Bottom, Right button
 			for i in range(3):
-				self.wsleds.setPixelColor(21+i,self.wscolor_light)
+				self.wsleds.setPixelColor(21+i, self.wscolor_light)
 
 			# Audio Mixer/Levels screen
 			if self.current_screen=="audio_mixer":
-				self.wsleds.setPixelColor(24,self.wscolor_active)
+				self.wsleds.setPixelColor(24, self.wscolor_active)
 			elif self.current_screen=="alsa_mixer":
-				self.wsleds.setPixelColor(24,self.wscolor_admin)
+				self.wsleds.setPixelColor(24, self.wscolor_admin)
 			else:
-				self.wsleds.setPixelColor(24,self.wscolor_light)
+				self.wsleds.setPixelColor(24, self.wscolor_light)
 
 			# Refresh LEDs
 			self.wsleds.show()
@@ -656,7 +658,8 @@ class zynthian_gui:
 
 		self.hide_screens(exclude = screen)
 		if hmode == zynthian_gui.SCREEN_HMODE_ADD:
-			self.screen_history.append(screen)
+			if len(self.screen_history)==0 or self.screen_history[-1]!=screen:
+				self.screen_history.append(screen)
 		elif hmode == zynthian_gui.SCREEN_HMODE_REPLACE:
 			self.screen_history.pop()
 			self.screen_history.append(screen)
@@ -665,6 +668,7 @@ class zynthian_gui:
 
 		self.current_screen = screen
 		self.screens[screen].show()
+
 
 	def show_modal(self, screen=None):
 		self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_NONE)
@@ -687,6 +691,7 @@ class zynthian_gui:
 
 
 	def close_screen(self):
+		logging.debug("SCREEN HISTORY => {}".format(self.screen_history))
 		while True:
 			try:
 				last_screen = self.screen_history.pop()
@@ -706,14 +711,11 @@ class zynthian_gui:
 
 	def back_screen(self):
 		try:
-			screen_back = self.screens[self.current_screen].back_action()
+			res = self.screens[self.current_screen].back_action()
 		except AttributeError as e:
-			screen_back = None
+			res = False
 
-		if screen_back:
-			logging.debug("SCREEN BACK => %s", screen_back)
-			self.replace_screen(screen_back)
-		else:
+		if not res:
 			self.close_screen()
 
 
@@ -826,14 +828,14 @@ class zynthian_gui:
 							logging.error("Can't load custom control screen {} => {}".format(screen_name, e))
 
 					if screen_name in self.screens:
-						self.show_screen(screen_name, hmode=zynthian_gui.SCREEN_HMODE_RESET)
+						self.show_screen_reset(screen_name)
 						return
 
 			# If there is a preset selection for the active layer ...
 			if self.curlayer.get_preset_name():
-				self.show_screen('control', hmode=zynthian_gui.SCREEN_HMODE_RESET)
+				self.show_screen_reset('control')
 			else:
-				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_RESET)
+				self.show_screen_reset('bank')
 				# If there is only one bank, jump to preset selection
 				if len(self.curlayer.bank_list)<=1:
 					self.screens['bank'].select_action(0)
@@ -910,15 +912,16 @@ class zynthian_gui:
 			if self.curlayer.engine.nickname=='MX':
 				return
 			curlayer_chan = self.curlayer.get_midi_chan()
-			if curlayer_chan is not None and zynthian_gui_config.midi_single_active_channel:
+			if zynthian_gui_config.midi_single_active_channel and curlayer_chan is not None:
+				if curlayer_chan>=16:
+					return
 				active_chan = curlayer_chan
 				cur_active_chan = lib_zyncore.get_midi_active_chan()
 				if cur_active_chan==active_chan:
 					return
-				else:
-					logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan, active_chan))
-					#if cur_active_chan>=0:
-					#	self.all_notes_off_chan(cur_active_chan)
+				logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan, active_chan))
+				#if cur_active_chan>=0:
+				#	self.all_notes_off_chan(cur_active_chan)
 
 		lib_zyncore.set_midi_active_chan(active_chan)
 		self.zynswitches_midi_setup(curlayer_chan)
@@ -1172,7 +1175,18 @@ class zynthian_gui:
 		elif cuia in ("LAYER_CONTROL", "SCREEN_CONTROL"):
 			if params:
 				try:
-					self.layer_control(self.screens['layer'].root_layers[params[0]-1])
+					i = params[0]-1
+					n = self.screens['layer'].get_num_root_layers()
+					master_fxchain = self.screens['layer'].get_master_fxchain_root_layer()
+					if master_fxchain:
+						n -= 1
+					if i>=0 and i<n:
+						self.layer_control(self.screens['layer'].root_layers[i])
+					elif i<0:
+						if master_fxchain:
+							self.layer_control(master_fxchain)
+						else:
+							self.zyngui.screens['layer'].add_fxchain_layer(16)
 				except:
 					logging.warning("Can't change to layer {}!".format(params[0]))
 			else:
@@ -1181,7 +1195,19 @@ class zynthian_gui:
 		elif cuia == "LAYER_OPTIONS":
 			try:
 				if params:
-					self.screens['layer'].select(params[0]-1)
+					i = params[0]-1
+					n = self.screens['layer'].get_num_root_layers()
+					master_fxchain = self.screens['layer'].get_master_fxchain_root_layer()
+					if master_fxchain:
+						n -= 1
+					if i>=0 and i<n:
+						self.screens['layer'].select(i)
+					elif i<0:
+						if master_fxchain:
+							self.screens['layer'].select(n)
+						else:
+							self.zyngui.screens['layer'].add_fxchain_layer(16)
+							return
 				self.screens['layer_options'].reset()
 				self.toggle_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 			except:
@@ -1214,11 +1240,13 @@ class zynthian_gui:
 	def cuia_learn(self, params=None):
 		#if not self.is_shown_alsa_mixer():
 		if self.current_screen != "ALSA_MIXER":
-			if self.current_screen != "control":
-				self.show_screen("control")
+			if self.current_screen == "zs3_learn":
+				self.close_screen()
+			elif self.current_screen != "control":
+				self.show_screen_reset("control")
 			else:
 				if zynthian_gui_config.midi_prog_change_zs3 and (self.midi_learn_mode or self.midi_learn_zctrl):
-					self.show_screen('zs3_learn')
+					self.show_screen("zs3_learn")
 					return
 
 		self.enter_midi_learn_mode()
@@ -1407,7 +1435,7 @@ class zynthian_gui:
 
 		elif i==1:
 			self.restore_curlayer()
-			self.show_screen('audio_mixer', zynthian_gui.SCREEN_HMODE_RESET)
+			self.show_screen_reset('audio_mixer')
 
 		elif i==2:
 			self.show_screen('snapshot')

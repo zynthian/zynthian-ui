@@ -82,6 +82,45 @@ def get_fixed_midi_port_name(port_name):
 
 	return port_name
 
+
+def get_all_connections_by_name(name):
+	try:
+		return jclient.get_all_connections(jclient.get_port_by_name(name))
+	except:
+		return []
+
+
+def connect_only(port_from, port_to):
+	if isinstance(port_from, str):
+		port_from = jclient.get_port_by_name(port_from)
+	if isinstance(port_to, str):
+		port_to = jclient.get_port_by_name(port_to)
+	already_connected = False
+	for p in jclient.get_all_connections(port_from):
+		if p==port_to:
+			already_connected = True
+		else:
+			jclient.disconnect(port_from, p)
+	if not already_connected:
+		jclient.connect(port_from, port_to)
+
+
+def replicate_connections_to(port1, port2):
+	if isinstance(port1, str):
+		port1 = jclient.get_port_by_name(port1)
+	if isinstance(port2, str):
+		port2 = jclient.get_port_by_name(port2)
+	con1 = jclient.get_all_connections(port1)
+	con2 = jclient.get_all_connections(port2)
+	for p in con1:
+		if p not in con2:
+			jclient.connect(p, port2)
+		else:
+			con2.remove(p)
+	for p in con2:
+			jclient.disconnect(p, port2)
+
+
 #------------------------------------------------------------------------------
 
 def midi_autoconnect(force=False):
@@ -362,7 +401,7 @@ def midi_autoconnect(force=False):
 
 	# Set "Drop Program Change" flag for each MIDI chan
 	for layer in zynthian_gui_config.zyngui.screens["layer"].root_layers:
-		if layer.midi_chan is not None:
+		if layer.midi_chan is not None and layer.midi_chan<16:
 			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
 
 
@@ -543,31 +582,32 @@ def audio_autoconnect(force=False):
 					pass
 
 
-	# Connect mixer to main output
+	# Connect mixer to the Master FX-chain or System Output
+	system_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
+	master_fxchain_layer = zynthian_gui_config.zyngui.screens["layer"].get_master_fxchain_root_layer()
+	if master_fxchain_layer:
+		master_fxchain_ports = jclient.get_ports(master_fxchain_layer.get_audio_jackname())
+	else:
+		master_fxchain_ports = []
+	if len(master_fxchain_ports)<1:
+		master_fxchain_ports = system_ports
+	elif len(master_fxchain_ports)==1:
+		master_fxchain_ports.append(master_fxchain_ports[0])
 	try:
-		jclient.connect("zynmixer:output_a", "system:playback_1")
-		jclient.connect("zynmixer:output_b", "system:playback_2")
-	except:
-		pass
-	# Connect mixer to headphones
-	try:
-		jclient.connect("zynmixer:output_a", "Headphones:playback_1")
-		jclient.connect("zynmixer:output_b", "Headphones:playback_2")
-	except:
-		pass
+		connect_only("zynmixer:output_a", master_fxchain_ports[0])
+		connect_only("zynmixer:output_b", master_fxchain_ports[1])
+	except Exception as e:
+		logging.error(e)
 
-	# Connect mixer to dpm
-	if not zynthian_gui_config.show_cpu_status:
-		try:
-			jclient.connect("zynmixer:output_a", "jackpeak:input_a")
-			jclient.connect("zynmixer:output_b", "jackpeak:input_b")
-		except:
-			pass
+	# Replicate System Output connections to Headphones
+	hp_ports = jclient.get_ports("Headphones:playback", is_input=True, is_audio=True)
+	if len(hp_ports)==2:
+		replicate_connections_to(system_ports[0], hp_ports[0])
+		replicate_connections_to(system_ports[1], hp_ports[1])
 
 	#Get System Capture ports => jack output ports!!
 	capture_ports = get_audio_capture_ports()
 	if len(capture_ports)>0:
-
 		root_layers = zynthian_gui_config.zyngui.screens["layer"].get_fxchain_roots()
 		#Connect system capture ports to FX-layers root ...
 		for rl in root_layers:
@@ -651,7 +691,7 @@ def get_audio_input_ports(exclude_system_playback=False):
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
 			parts = aip.name.split(':')
 			client_name = parts[0]
-			if client_name in ["jack_capture","jackpeak","Headphones"] or client_name[:7]=="effect_":
+			if client_name in ["jack_capture","Headphones"] or client_name[:7]=="effect_":
 				continue
 			if client_name=="system" or client_name=="zynmixer":
 				if exclude_system_playback:

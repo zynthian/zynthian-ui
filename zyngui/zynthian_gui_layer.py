@@ -176,6 +176,22 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.select(self.index)
 
 
+	def prev(self, control=True):
+		self.zyngui.restore_curlayer()
+		if len(self.root_layers)>1:
+			if self.zyngui.curlayer in self.root_layers:
+				self.index = self.root_layers.index(self.zyngui.curlayer) - 1
+				if self.index<0:
+					self.index = len(self.root_layers)-1
+
+			if control:
+				self.select_listbox(self.index)
+				self.layer_control()
+			else:
+				self.zyngui.set_curlayer(self.root_layers[self.index])
+				self.select(self.index)
+
+
 	def get_layer_index(self, layer):
 		try:
 			return self.layers.index(layer)
@@ -198,6 +214,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				layer = self.zyngui._curlayer
 			else:
 				layer = self.zyngui.curlayer
+
 		try:
 			return self.root_layers.index(layer)
 		except:
@@ -208,6 +225,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for layer in self.root_layers:
 			if layer.midi_chan==mch:
 				return layer
+		return None
+
+
+	def get_master_fxchain_root_layer(self):
+		#return self.get_root_layer_by_midi_chan(16)
+		try:
+			if self.root_layers[-1].midi_chan==16:
+				return self.root_layers[-1]
+		except:
+			pass
 		return None
 
 
@@ -748,10 +775,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		roots = []
 
 		for layer in self.layers:
-			if layer.midi_chan==None and layer.engine.type in ("Special"):
+			if layer.midi_chan is None and layer.engine.type in ("Special"):
 				roots.append(layer)
 
-		for chan in range(16):
+		for chan in range(16+1):
 			for layer in self.layers:
 				if layer.midi_chan==chan:
 					roots.append(layer)

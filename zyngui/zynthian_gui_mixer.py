@@ -27,6 +27,7 @@
 import sys
 import logging
 import tkinter
+import copy
 from time import monotonic
 from tkinter import font as tkFont
 from PIL import Image, ImageTk
@@ -53,8 +54,10 @@ MAX_NUM_CHANNELS = 16
 # Zynthian Main Mixbus Layer Class
 # This is a dummy class to provide a stub for the main mixbus strip's layer
 #------------------------------------------------------------------------------
+
 class zynthian_gui_mixer_main_layer():
 	def __init__(self):
+		self.engine = None
 		self.midi_chan = MAX_NUM_CHANNELS
 
 
@@ -219,6 +222,15 @@ class zynthian_gui_mixer_strip():
 		self.draw()
 
 
+	def get_legend_text(self, default_text=None):
+		if self.layer.engine is not None:
+			res = self.layer.engine.get_name(self.layer)
+			if self.layer.preset_name:
+				res += "\n{}".format(self.layer.preset_name)
+			return res
+		return default_text
+
+
 	# Function to draw mixer strip
 	def draw(self):
 		if self.hidden or self.layer is None:
@@ -226,12 +238,12 @@ class zynthian_gui_mixer_strip():
 
 		self.parent.main_canvas.itemconfig(self.legend, text="")
 		self.parent.main_canvas.coords(self.fader_bg_color, self.x, self.fader_top, self.x + self.width, self.fader_bottom)
-		if isinstance(self.layer,  zynthian_gui_mixer_main_layer):
+		if self.layer.midi_chan==MAX_NUM_CHANNELS:
 			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
-			self.parent.main_canvas.itemconfig(self.legend, text="Main")
+			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("NoFX"), state="normal")
 		else:
 			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=self.layer.midi_chan + 1)
-			self.parent.main_canvas.itemconfig(self.legend, text="%s\n%s"%(self.layer.engine.get_name(self.layer), self.layer.preset_name), state="normal")
+			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("None"), state="normal")
 
 		try:
 			if self.layer.engine.type == "MIDI Tool":
@@ -393,7 +405,7 @@ class zynthian_gui_mixer_strip():
 			self.show()
 
 
-	# Function to set volume values
+	# Function to set volume value
 	#	value: Volume value (0..1)
 	def set_volume(self, value):
 		if self.layer is None:
@@ -406,7 +418,14 @@ class zynthian_gui_mixer_strip():
 		self.redraw_controls_flag = True
 
 
-	# Function to set balance values
+	# Function to get volume value
+	def get_volume(self):
+		if self.layer is None:
+			return -1
+		return zynmixer.get_level(self.layer.midi_chan)
+
+
+	# Function to set balance value
 	#	value: Balance value (-1..1)
 	def set_balance(self, value):
 		if self.layer is None:
@@ -417,6 +436,13 @@ class zynthian_gui_mixer_strip():
 			value = 1
 		zynmixer.set_balance(self.layer.midi_chan, value)
 		self.redraw_controls_flag = True
+
+
+	# Function to get balance value
+	def get_balance(self):
+		if self.layer is None:
+			return -1
+		return zynmixer.get_balance(self.layer.midi_chan)
 
 
 	# Function to reset volume
@@ -554,7 +580,7 @@ class zynthian_gui_mixer_strip():
 	def on_strip_press(self, event):
 		if self.layer is None:
 			return
-		if not isinstance(self.layer, zynthian_gui_mixer_main_layer):
+		if self.layer.engine is not None:
 			self.strip_drag_start = event
 		self.dragging = False
 
@@ -563,7 +589,7 @@ class zynthian_gui_mixer_strip():
 	def on_strip_release(self, event):
 		if not self.dragging:
 			self.parent.select_chain_by_layer(self.layer)
-		if isinstance(self.layer, zynthian_gui_mixer_main_layer):
+		if self.layer.engine is not None:
 			return
 		if self.strip_drag_start:
 			delta = event.time - self.strip_drag_start.time
@@ -670,8 +696,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		for chain in range(len(self.visible_mixer_strips)):
 			self.visible_mixer_strips[chain] = zynthian_gui_mixer_strip(self, 1 + self.fader_width * chain, 0, self.fader_width - 1, self.height, None)
 
-		self.main_layer = zynthian_gui_mixer_main_layer()
-		self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, self.main_layer)
+		self.nofx_main_layer = zynthian_gui_mixer_main_layer()
+		self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, self.nofx_main_layer)
 
 		# Horizontal scroll (via mouse wheel) area
 		#legend_height = self.visible_mixer_strips[0].legend_height 
@@ -761,15 +787,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# layer: Layer object
 	# set_curlayer: True to select the layer
 	def select_chain_by_layer(self, layer, set_curlayer=True):
-		index = 0
-		if layer == self.main_layer:
-			self.select_chain_by_index(self.number_layers)
+		if layer.midi_chan==MAX_NUM_CHANNELS:
+			self.select_chain_by_index(self.number_layers, set_curlayer)
 			return
-		for search_layer in self.zyngui.screens['layer'].root_layers:
-			if layer == search_layer:
-				self.select_chain_by_index(index, set_curlayer)
+
+		i = 0
+		for rl in self.zyngui.screens['layer'].root_layers:
+			if rl == layer:
+				self.select_chain_by_index(i, set_curlayer)
 				return
-			index += 1
+			i += 1
 
 
 	# Function to select chain by index
@@ -788,21 +815,31 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		elif self.selected_chain_index >= self.mixer_strip_offset + len(self.visible_mixer_strips) and self.selected_chain_index != self.number_layers:
 			self.mixer_strip_offset = self.selected_chain_index - len(self.visible_mixer_strips) + 1
 			self.refresh_visible_strips()
-		if self.selected_chain_index < self.number_layers:
-			self.selected_layer = self.zyngui.screens['layer'].get_root_layers()[self.selected_chain_index]
-		else:
-			self.selected_layer = self.main_layer
-		self.highlight_selected_strip()
 
+		if self.selected_chain_index < self.number_layers:
+			self.selected_layer = self.zyngui.screens['layer'].root_layers[self.selected_chain_index]
+		else:
+			self.selected_layer = self.main_mixbus_strip.layer
+
+		self.highlight_selected_strip()
 		self.update_zyncoders()
 
-		if set_curlayer and self.selected_layer != self.main_layer:
+		if set_curlayer and self.selected_layer.engine:
 			self.zyngui.set_curlayer(self.selected_layer) #TODO: Lose this re-entrant loop
 
 
 	# Function refresh and populate visible mixer strips
 	def refresh_visible_strips(self):
-		layers = self.zyngui.screens['layer'].get_root_layers()
+		layers = copy.copy(self.zyngui.screens['layer'].get_root_layers())
+
+		# Get Global-FX layer if it exists...
+		main_fx_layer = self.zyngui.screens['layer'].get_master_fxchain_root_layer()
+		if main_fx_layer:
+			self.main_mixbus_strip.set_layer(main_fx_layer)
+			layers.remove(main_fx_layer)
+		else:
+			self.main_mixbus_strip.set_layer(self.nofx_main_layer)
+
 		self.number_layers = len(layers)
 		for offset in range(len(self.visible_mixer_strips)):
 			index = self.mixer_strip_offset + offset
@@ -810,6 +847,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.visible_mixer_strips[offset].set_layer(None)
 			else:
 				self.visible_mixer_strips[offset].set_layer(layers[index])
+
 		self.main_mixbus_strip.redraw_controls(True)
 		self.highlight_selected_strip()
 
@@ -842,7 +880,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.update_zyncoders()
 
 
-	# Function to set volume
+	# Function to get volume
+	#	layer_index: Index of layer to get volume. If None, selected layer is used
+	def get_volume(self, layer_index=None):
+		chan_strip = self.get_mixer_strip_from_layer_index(layer_index)
+		if chan_strip:
+			return chan_strip.get_volume()
+		else:
+			return -1
+
+
+	# Function to set balance
 	#	value: Balance value (0..1)
 	#	layer_index: Index of layer to set volume. If None, selected layer is used
 	def set_balance(self, value, layer_index=None):
@@ -851,6 +899,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			chan_strip.set_balance(value)
 			if layer_index == self.selected_chain_index:
 				self.update_zyncoders()
+
+
+	# Function to get balance
+	#	layer_index: Index of layer to set volume. If None, selected layer is used
+	def get_balance(self, layer_index=None):
+		chan_strip = self.get_mixer_strip_from_layer_index(layer_index)
+		if chan_strip and self.is_audio_layer(chan_strip.layer):
+			return chan_strip.get_balance()
+		else:
+			return -1
 
 
 	# Function to reset volume
@@ -964,9 +1022,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if t == "S":
 				if isinstance(self.selected_layer, zyngine.zynthian_layer):
 					self.zyngui.layer_control(self.selected_layer)
+				else:
+					self.zyngui.screens['layer'].add_fxchain_layer(MAX_NUM_CHANNELS)
 				return True
 			elif t == "B":
-				if self.selected_layer != self.main_layer:
+				if isinstance(self.selected_layer, zyngine.zynthian_layer):
 					# Layer Options
 					self.zyngui.screens['layer'].select(self.selected_chain_index)
 					self.zyngui.screens['layer_options'].reset()
@@ -989,7 +1049,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		lib_zyncore.setup_midi_zynpot(ENC_BACK, 0, 0)
 		lib_zyncore.setup_osc_zynpot(ENC_BACK, None)
 
-		value = int(zynmixer.get_level(self.main_layer.midi_chan) * 100)
+		value = int(zynmixer.get_level(MAX_NUM_CHANNELS) * 100)
 		lib_zyncore.setup_rangescale_zynpot(ENC_SNAPSHOT, 0, 100, value, 0)
 		lib_zyncore.setup_midi_zynpot(ENC_SNAPSHOT, 0, 0)
 		lib_zyncore.setup_osc_zynpot(ENC_SNAPSHOT, None)
@@ -1009,7 +1069,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			lib_zyncore.set_value_noflag_zynpot(ENC_BACK, value, 0)
 
 			# Main mixbus volume
-			value = int(zynmixer.get_level(self.main_layer.midi_chan) * 100)
+			value = int(zynmixer.get_level(MAX_NUM_CHANNELS) * 100)
 			lib_zyncore.set_value_noflag_zynpot(ENC_SNAPSHOT, value, 0)
 
 		# Selector encoder
@@ -1029,10 +1089,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if lib_zyncore.get_value_flag_zynpot(ENC_LAYER):
 				value = lib_zyncore.get_value_zynpot(ENC_LAYER)
 				#logging.debug("Value LAYER: {}".format(value))
-				if self.selected_layer == self.main_layer:
+				if self.selected_layer.midi_chan == MAX_NUM_CHANNELS:
 					lib_zyncore.set_value_noflag_zynpot(ENC_SNAPSHOT, value)
 				zynmixer.set_level(self.selected_layer.midi_chan, value * 0.01)
-				if self.selected_layer == self.main_layer:
+				if self.selected_layer.midi_chan == MAX_NUM_CHANNELS:
 					redraw_main_fader = True
 				else:
 					redraw_fader_offset = self.selected_chain_index - self.mixer_strip_offset
@@ -1042,7 +1102,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				value = lib_zyncore.get_value_zynpot(ENC_BACK)
 				#logging.debug("Value BACK: {}".format(value))
 				zynmixer.set_balance(self.selected_layer.midi_chan, (value - 50) * 0.02)
-				if self.selected_layer == self.main_layer:
+				if self.selected_layer.midi_chan == MAX_NUM_CHANNELS:
 					redraw_main_fader = True
 				else:
 					redraw_fader_offset = self.selected_chain_index - self.mixer_strip_offset
@@ -1051,9 +1111,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if lib_zyncore.get_value_flag_zynpot(ENC_SNAPSHOT):
 				value = lib_zyncore.get_value_zynpot(ENC_SNAPSHOT)
 				#logging.debug("Value SHOT: {}".format(value))
-				if self.selected_layer == self.main_layer:
+				if self.selected_layer.midi_chan == MAX_NUM_CHANNELS:
 					lib_zyncore.set_value_noflag_zynpot(ENC_LAYER, value)
-				zynmixer.set_level(self.main_layer.midi_chan, value * 0.01)
+				zynmixer.set_level(MAX_NUM_CHANNELS, value * 0.01)
 				redraw_main_fader = True
 
 		# SELECT encoder moves chain selection
@@ -1094,12 +1154,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
-		self.select_chain_by_index(self.selected_chain_index + 1)
+		self.set_volume(self.get_volume() + 0.1)
+		self.redraw_mixer_controls()
 
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		self.select_chain_by_index(self.selected_chain_index - 1)
+		self.set_volume(self.get_volume() - 0.1)
+		self.redraw_mixer_controls()
 
 
 	# Function to handle CUIA BACK_UP command

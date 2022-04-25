@@ -59,8 +59,6 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
 		self.list_data.append((self.alsa_mixer,0,"Audio Levels"))
-		if "autoeq" in zynthian_gui_config.experimental_features:
-			self.list_data.append((self.auto_eq,0,"Auto EQ (alpha)"))
 
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.admin,0,"Admin"))
@@ -116,6 +114,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.zyngui.screens['audio_mixer'].reset_state()
 		if zynseq.libseq:
 			zynseq.load("")
+		self.index = 0
+		self.zyngui.show_screen_reset('main')
 
 
 	def audio_mixer(self, t='S'):

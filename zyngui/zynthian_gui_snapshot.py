@@ -353,13 +353,13 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 		parts[0] = program
 		dfpath = self.get_path_from_parts(parts)
+		files_to_change = []
 
 		try:
 			if isinstance(program, int):
 				path = self.get_snapshot_fpath('')
 				files = os.listdir(path)
 				files.sort()
-				files_to_change = []
 				first_gap = program
 				for filename in files:
 					dparts = self.get_parts_from_path(path + filename)
@@ -373,8 +373,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 					files_to_change.append([dparts[3], fullname])
 				if len(files_to_change):
 					self.zyngui.show_confirm("Do you want to move {} snapshots up to next available program?".format(len(files_to_change)), self.do_set_program_number, (fpath, dfpath, files_to_change))
-				else:
-					self.do_set_program_number((fpath, dfpath, files_to_change))
+					return
+			self.do_set_program_number((fpath, dfpath, files_to_change))
 		except Exception as e:
 			logging.warning("Failed to set program for snapshot {} to {} => {}".format(fpath, program, e))
 
