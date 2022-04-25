@@ -440,7 +440,7 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name),'PD'
+		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!', self.name)
 
 
 	def set_preset(self, layer, preset, preload=False):

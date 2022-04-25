@@ -334,28 +334,23 @@ class zynthian_engine_jalv(zynthian_engine):
 				logging.error(e)
 			
 			# Update cache
-			try:
-				self.preset_info.pop(bank[2])
-				zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
-			except Exception as e:
-				logging.error(e)
+			if bank[2] in self.preset_info:
+				try:
+					self.preset_info.pop(bank[2])
+					zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+				except Exception as e:
+					logging.error(e)
 
 
 	def delete_user_bank(self, bank):
 		if self.is_preset_user(bank):
 			try:
-				for preset in self.preset_info[bank[2]]['presets']:
+				for preset in list(self.preset_info[bank[2]]['presets']):
 					self.delete_preset(bank, preset['url'])
-#				zynthian_engine_jalv.lv2_delete_bank(bank)
+				self.remove_user_bank(bank)
 			except Exception as e:
 				logging.error(e)
-			
-			# Update cache
-			try:
-				self.preset_info.pop(bank[2])
-				zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
-			except Exception as e:
-				logging.error(e)
+
 
 
 	#----------------------------------------------------------------------------
@@ -434,15 +429,15 @@ class zynthian_engine_jalv(zynthian_engine):
 				logging.error(e)
 
 
-	def delete_preset(self, bank, preset):
-		if self.is_preset_user(preset):
+	def delete_preset(self, bank, preset_uri):
+		if self.is_preset_user([preset_uri]):
 			try:
 				# Remove from LV2 ttl
-				zynthian_engine_jalv.lv2_remove_preset(preset[0])
+				zynthian_engine_jalv.lv2_remove_preset(preset_uri)
 
 				# Remove from  cache
 				for i,p in enumerate(self.preset_info[bank[2]]['presets']):
-					if p['url'] == preset[0]:
+					if p['url'] == preset_uri:
 						del self.preset_info[bank[2]]['presets'][i]
 						zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
 						break 
@@ -947,7 +942,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		bank_first_line = None
 		bank_last_line = None
-		for index,line in enumerate(lines):
+		for index,line in enumerate(lines): #TODO: Use regexp to parse file
 			if line.strip() == "<{}>".format(bank[2]):
 				bank_first_line = index
 			if bank_first_line != None and line.strip()[-1:] == ".":
@@ -979,6 +974,8 @@ class zynthian_engine_jalv(zynthian_engine):
 					with open("{}/{}".format(path,file), "w") as ttl:
 						ttl.writelines(lines)
 
+		zynthian_engine_jalv.lv2_get_presets_not_in_bank(path)
+
 		return True
 
 
@@ -987,7 +984,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	#   bank_uri: URI of bank to update
 	#   bank_label: New label
 	#   Returns: True on success
-	#   TODO: Implement delete_bank
+	#   TODO: This is no longer used
 	@staticmethod
 	def lv2_delete_bank(bank):
 		try:
@@ -1005,6 +1002,18 @@ class zynthian_engine_jalv(zynthian_engine):
 					os.remove("{}/{}".format(path,file))
 
 		zynthian_engine_jalv.lv2_remove_bank(bank)
+
+
+	#   Get list of presets that are not in any bank
+	#	path: Full path to LV2 bundlej
+	#   Returns: List of banks
+	@staticmethod
+	def lv2_get_presets_not_in_bank(path):
+		fpath = path + "/manifest.ttl"
+		with open(fpath) as file:
+			manifest = file.read()
+		tags = re.search(manifest, "^\s<(.|\s)*?\.\s*$")
+		print(tags)
 
 
 	@staticmethod
