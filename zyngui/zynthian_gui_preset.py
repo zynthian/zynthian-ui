@@ -114,9 +114,11 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def delete_preset_confirmed(self, preset):
 		try:
-			self.zyngui.curlayer.engine.delete_preset(self.zyngui.curlayer.bank_info, preset)
+			count = self.zyngui.curlayer.engine.delete_preset(self.zyngui.curlayer.bank_info, preset)
 			self.zyngui.curlayer.remove_preset_fav(preset)
 			self.zyngui.close_screen()
+			if count == 0:
+				self.zyngui.close_screen()
 		except Exception as e:
 			logging.error("Failed to delete preset => {}".format(e))
 

@@ -429,22 +429,26 @@ class zynthian_engine_jalv(zynthian_engine):
 				logging.error(e)
 
 
-	def delete_preset(self, bank, preset_uri):
-		if self.is_preset_user([preset_uri]):
+	def delete_preset(self, bank, preset):
+		if self.is_preset_user(preset):
 			try:
 				# Remove from LV2 ttl
-				zynthian_engine_jalv.lv2_remove_preset(preset_uri)
+				zynthian_engine_jalv.lv2_remove_preset(preset[0])
 
 				# Remove from  cache
 				for i,p in enumerate(self.preset_info[bank[2]]['presets']):
-					if p['url'] == preset_uri:
+					if p['url'] == preset[0]:
 						del self.preset_info[bank[2]]['presets'][i]
 						zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
 						break 
 
 			except Exception as e:
 				logging.error(e)
-
+		
+		try:
+			return len(self.preset_info[bank[2]]['presets'])
+		except:
+			return 0
 
 	def rename_preset(self, bank, preset, new_preset_name):
 		if self.is_preset_user(preset):

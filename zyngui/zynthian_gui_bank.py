@@ -70,9 +70,8 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 		self.zyngui.show_screen('preset')
 
-		# If there is only one preset, jump to instrument control
-		#TODO: This is inconsistent behaviour which may confuse users
-		if len(self.zyngui.curlayer.preset_list) <= 1 and self.zyngui.curlayer.preset_list[0][0] == "":
+		# If bank is empty (no presets), jump to instrument control
+		if len(self.zyngui.curlayer.preset_list) == 0 or self.zyngui.curlayer.preset_list[0][0] == "":
 			self.zyngui.screens['preset'].select_action(0)
 
 
