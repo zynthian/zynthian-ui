@@ -28,8 +28,6 @@ import sys
 import copy
 import liblo
 import signal
-#import psutil
-#import alsaseq
 import logging
 import importlib
 import threading
@@ -39,7 +37,6 @@ from pathlib import Path
 from time import monotonic
 from os.path import isfile
 from datetime import datetime
-#from vcgencmd import Vcgencmd
 from threading  import Thread, Lock
 from subprocess import check_output
 from ctypes import c_float, c_double, CDLL,c_char_p
@@ -48,8 +45,6 @@ from ctypes import c_float, c_double, CDLL,c_char_p
 import zynconf
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
-#from jackpeak import *
-#from jackpeak.jackpeak import lib_jackpeak, lib_jackpeak_init
 from zynlibs.zynmixer import zynmixer
 from zynlibs.zynmixer.zynmixer import lib_zynmixer
 
@@ -58,8 +53,6 @@ from zyngine import zynthian_midi_filter
 
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
-#from zyngui.zynthian_gui_controller import zynthian_gui_controller
-#from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
@@ -90,19 +83,17 @@ from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
-if "autoeq" in zynthian_gui_config.experimental_features:
-	from zyngui.zynthian_gui_autoeq import zynthian_gui_autoeq
 
 #-------------------------------------------------------------------------------
 # Zynthian Main GUI Class
 #-------------------------------------------------------------------------------
 
-SCREEN_HMODE_NONE = 0
-SCREEN_HMODE_ADD = 1
-SCREEN_HMODE_REPLACE = 2
-SCREEN_HMODE_RESET = 3
-
 class zynthian_gui:
+
+	SCREEN_HMODE_NONE = 0
+	SCREEN_HMODE_ADD = 1
+	SCREEN_HMODE_REPLACE = 2
+	SCREEN_HMODE_RESET = 3
 
 	note2cuia = {
 		"0": "POWER_OFF",
@@ -600,8 +591,12 @@ class zynthian_gui:
 		# Try to load "default" snapshot ...
 		if not snapshot_loaded:
 			snapshot_loaded=self.screens['snapshot'].load_default_snapshot()
-		# Set empty state
-		if not snapshot_loaded:
+
+		# Show mixer
+		if snapshot_loaded:
+			self.show_screen('audio_mixer')
+		# or set empty state & show main menu
+		else:
 			# Init MIDI Subsystem => MIDI Profile
 			self.init_midi()
 			self.init_midi_services()
@@ -662,28 +657,29 @@ class zynthian_gui:
 				return
 
 		self.hide_screens(exclude = screen)
-		if hmode==SCREEN_HMODE_ADD:
+		if hmode == zynthian_gui.SCREEN_HMODE_ADD:
 			if len(self.screen_history)==0 or self.screen_history[-1]!=screen:
 				self.screen_history.append(screen)
-		elif hmode==SCREEN_HMODE_REPLACE:
+		elif hmode == zynthian_gui.SCREEN_HMODE_REPLACE:
 			self.screen_history.pop()
 			self.screen_history.append(screen)
-		elif hmode==SCREEN_HMODE_RESET:
+		elif hmode == zynthian_gui.SCREEN_HMODE_RESET:
 			self.screen_history = [screen]
 
 		self.current_screen = screen
 		self.screens[screen].show()
 
+
 	def show_modal(self, screen=None):
-		self.show_screen(screen, hmode=SCREEN_HMODE_NONE)
+		self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_NONE)
 
 
 	def replace_screen(self, screen=None):
-		self.show_screen(screen, hmode=SCREEN_HMODE_REPLACE)
+		self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_REPLACE)
 
 
 	def show_screen_reset(self, screen=None):
-		self.show_screen(screen, hmode=SCREEN_HMODE_RESET)
+		self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_RESET)
 
 
 	def show_current_screen(self):
@@ -832,7 +828,7 @@ class zynthian_gui:
 							logging.error("Can't load custom control screen {} => {}".format(screen_name, e))
 
 					if screen_name in self.screens:
-						self.show_screen(screen_name, hmode=SCREEN_HMODE_RESET)
+						self.show_screen_reset(screen_name)
 						return
 
 			# If there is a preset selection for the active layer ...
@@ -1147,13 +1143,13 @@ class zynthian_gui:
 			self.zynswitch_long(3)
 
 		elif cuia in ("MODAL_MAIN", "SCREEN_MAIN"):
-			self.toggle_screen("main", hmode=SCREEN_HMODE_ADD)
+			self.toggle_screen("main", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 		elif cuia in ("MODAL_ADMIN", "SCREEN_ADMIN"):
-			self.toggle_screen("admin", hmode=SCREEN_HMODE_ADD)
+			self.toggle_screen("admin", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 		elif cuia in ("MODAL_AUDIO_MIXER", "SCREEN_AUDIO_MIXER"):
-			self.toggle_screen("audio_mixer", hmode=SCREEN_HMODE_ADD)
+			self.toggle_screen("audio_mixer", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 		elif cuia in ("MODAL_SNAPSHOT", "SCREEN_SNAPSHOT"):
 			self.toggle_screen("snapshot")
@@ -1213,7 +1209,7 @@ class zynthian_gui:
 							self.zyngui.screens['layer'].add_fxchain_layer(16)
 							return
 				self.screens['layer_options'].reset()
-				self.toggle_screen('layer_options', hmode=SCREEN_HMODE_ADD)
+				self.toggle_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 			except:
 				logging.warning("Can't show options for layer ({})!".format(params))
 				
@@ -1221,7 +1217,7 @@ class zynthian_gui:
 			if self.current_screen=='stepseq':
 				self.screens['stepseq'].toggle_menu()
 			else:
-				self.toggle_screen("main", hmode=SCREEN_HMODE_ADD)
+				self.toggle_screen("main", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 		elif cuia == "PRESET":
 			self.cuia_bank_preset()
@@ -1268,9 +1264,9 @@ class zynthian_gui:
 		else:
 			if len(self.curlayer.preset_list)>1:
 				self.screens['preset'].index=self.curlayer.get_preset_index()
-				self.show_screen('preset', hmode=SCREEN_HMODE_ADD)
+				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 			elif len(self.curlayer.bank_list)>1:
-				self.show_screen('bank', hmode=SCREEN_HMODE_ADD)
+				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 
 	def custom_switch_ui_action(self, i, t):
@@ -1439,7 +1435,7 @@ class zynthian_gui:
 
 		elif i==1:
 			self.restore_curlayer()
-			self.show_screen('audio_mixer')
+			self.show_screen_reset('audio_mixer')
 
 		elif i==2:
 			self.show_screen('snapshot')
