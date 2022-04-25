@@ -221,8 +221,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				else:
 					options[bank[2]] = bank
 			self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)
-			self.zyngui.screens['option'].select(index)
 			self.zyngui.show_screen('option')
+			self.zyngui.screens['option'].select(index)
 
 
 	def save_preset_select_bank_cb(self, bank_name, bank_info):

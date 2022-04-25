@@ -83,8 +83,9 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if self.zyngui.curlayer.engine.is_preset_user(bank):
 			if hasattr(self.zyngui.curlayer.engine, "rename_user_bank"):
 				options["Rename"] = bank
-			if hasattr(self.zyngui.curlayer.engine, "remove_user_bank"):
-				options["Remove"] = bank
+# May enable remove if move to tag based mechanism for bank management
+#			if hasattr(self.zyngui.curlayer.engine, "remove_user_bank"):
+#				options["Remove"] = bank
 			if hasattr(self.zyngui.curlayer.engine, "delete_user_bank"):
 				options["Delete"] = bank
 		self.zyngui.screens['option'].config("Bank: {}".format(bank_name), options, self.bank_options_cb)
