@@ -1253,7 +1253,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return True
 
 
-	def load_snapshot(self, fpath, quiet=False, load_sequences=True):
+	def load_snapshot(self, fpath, load_sequences=True):
 		try:
 			with open(fpath,"r") as fh:
 				json=fh.read()
@@ -1276,15 +1276,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 			self.last_snapshot_fpath = fpath
 
-			#Post action
-			if not quiet:
-				#if self.index<len(self.root_layers):
-				#	self.select_action(self.index)
-				#else:
-				if self.index>=len(self.root_layers):
-					self.index = 0
-				self.zyngui.show_screen('audio_mixer')
-
 		except Exception as e:
 			self.zyngui.reset_loading()
 			logging.exception("Invalid snapshot: %s" % e)
@@ -1293,11 +1284,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return True
 
 
-	def load_snapshot_layers(self, fpath, quiet=False):
-		return self.load_snapshot(fpath, quiet, False)
+	def load_snapshot_layers(self, fpath):
+		return self.load_snapshot(fpath, False)
 
 
-	def load_snapshot_sequences(self, fpath, quiet=False):
+	def load_snapshot_sequences(self, fpath):
 		try:
 			with open(fpath,"r") as fh:
 				json=fh.read()
@@ -1309,9 +1300,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			snapshot=JSONDecoder().decode(json)
 			self._load_snapshot_sequences(snapshot)
-			#Post action
-			if not quiet:
-				self.zyngui.show_screen('stepseq')
 		except Exception as e:
 			self.zyngui.reset_loading()
 			logging.exception("Invalid snapshot: %s" % e)
