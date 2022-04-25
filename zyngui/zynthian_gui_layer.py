@@ -176,6 +176,22 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.select(self.index)
 
 
+	def prev(self, control=True):
+		self.zyngui.restore_curlayer()
+		if len(self.root_layers)>1:
+			if self.zyngui.curlayer in self.root_layers:
+				self.index = self.root_layers.index(self.zyngui.curlayer) - 1
+				if self.index<0:
+					self.index = len(self.root_layers)-1
+
+			if control:
+				self.select_listbox(self.index)
+				self.layer_control()
+			else:
+				self.zyngui.set_curlayer(self.root_layers[self.index])
+				self.select(self.index)
+
+
 	def get_layer_index(self, layer):
 		try:
 			return self.layers.index(layer)
@@ -198,6 +214,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				layer = self.zyngui._curlayer
 			else:
 				layer = self.zyngui.curlayer
+
 		try:
 			return self.root_layers.index(layer)
 		except:
@@ -208,6 +225,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for layer in self.root_layers:
 			if layer.midi_chan==mch:
 				return layer
+		return None
+
+
+	def get_master_fxchain_root_layer(self):
+		#return self.get_root_layer_by_midi_chan(16)
+		try:
+			if self.root_layers[-1].midi_chan==16:
+				return self.root_layers[-1]
+		except:
+			pass
 		return None
 
 
@@ -366,10 +393,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				root_layer = self.get_fxchain_root(layer)
 				try:
 					self.index = self.root_layers.index(root_layer)
+					self.zyngui.show_screen_reset('audio_mixer')
 					self.layer_control(layer)
 				except Exception as e:
 					logging.error(e)
-					self.zyngui.show_screen('audio_mixer', hmode=SCREEN_HMODE_RESET)
+					self.zyngui.show_screen_reset('audio_mixer')
 
 
 	def remove_layer(self, i, stop_unused_engines=True):
@@ -747,10 +775,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		roots = []
 
 		for layer in self.layers:
-			if layer.midi_chan==None and layer.engine.type in ("Special"):
+			if layer.midi_chan is None and layer.engine.type in ("Special"):
 				roots.append(layer)
 
-		for chan in range(16):
+		for chan in range(16+1):
 			for layer in self.layers:
 				if layer.midi_chan==chan:
 					roots.append(layer)
@@ -1252,7 +1280,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return True
 
 
-	def load_snapshot(self, fpath, quiet=False, load_sequences=True):
+	def load_snapshot(self, fpath, load_sequences=True):
 		try:
 			with open(fpath,"r") as fh:
 				json=fh.read()
@@ -1275,15 +1303,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 			self.last_snapshot_fpath = fpath
 
-			#Post action
-			if not quiet:
-				#if self.index<len(self.root_layers):
-				#	self.select_action(self.index)
-				#else:
-				if self.index>=len(self.root_layers):
-					self.index = 0
-				self.zyngui.show_screen('audio_mixer')
-
 		except Exception as e:
 			self.zyngui.reset_loading()
 			logging.exception("Invalid snapshot: %s" % e)
@@ -1292,11 +1311,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return True
 
 
-	def load_snapshot_layers(self, fpath, quiet=False):
-		return self.load_snapshot(fpath, quiet, False)
+	def load_snapshot_layers(self, fpath):
+		return self.load_snapshot(fpath, False)
 
 
-	def load_snapshot_sequences(self, fpath, quiet=False):
+	def load_snapshot_sequences(self, fpath):
 		try:
 			with open(fpath,"r") as fh:
 				json=fh.read()
@@ -1308,9 +1327,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			snapshot=JSONDecoder().decode(json)
 			self._load_snapshot_sequences(snapshot)
-			#Post action
-			if not quiet:
-				self.zyngui.show_screen('stepseq')
 		except Exception as e:
 			self.zyngui.reset_loading()
 			logging.exception("Invalid snapshot: %s" % e)
