@@ -233,7 +233,6 @@ def midi_autoconnect(force=False):
 	#logger.debug("ZynMidiRouter Input Ports: {}".format(zmr_out))
 	#logger.debug("ZynMidiRouter Output Ports: {}".format(zmr_in))
 
-
 	# MIDI-Input-routed ports: engines_in
 	routed_in = {}
 	for pn, port in engines_in.items():
@@ -331,8 +330,11 @@ def midi_autoconnect(force=False):
 
 	#logger.debug("Connecting ZynMidiRouter to engines ...")
 
+	# Get zynthian layer manager object
+	zynguilayer = zynthian_gui_config.zyngui.screens["layer"]
+
 	#Get layers list from UI
-	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
+	layers_list = zynguilayer.layers
 
 	#Connect MIDI chain elements
 	for i, layer in enumerate(layers_list):
@@ -363,12 +365,12 @@ def midi_autoconnect(force=False):
 
 
 	#Connect ZynMidiRouter to MIDI-chain roots
-	midichain_roots = zynthian_gui_config.zyngui.screens["layer"].get_midichain_roots()
+	midichain_roots = zynguilayer.get_midichain_roots()
 
 	# => Get Root-engines info
 	root_engine_info = {}
 	for mcrl in midichain_roots:
-		for mcprl in zynthian_gui_config.zyngui.screens["layer"].get_midichain_pars(mcrl):
+		for mcprl in zynguilayer.get_midichain_pars(mcrl):
 			if mcprl.get_midi_jackname():
 				jackname = mcprl.get_midi_jackname()
 				if jackname in root_engine_info:
@@ -400,7 +402,7 @@ def midi_autoconnect(force=False):
 					pass
 
 	# Set "Drop Program Change" flag for each MIDI chan
-	for layer in zynthian_gui_config.zyngui.screens["layer"].root_layers:
+	for layer in zynguilayer.root_layers:
 		if layer.midi_chan is not None and layer.midi_chan<16:
 			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
 
@@ -489,6 +491,9 @@ def audio_autoconnect(force=False):
 
 	#logger.info("ZynAutoConnect: Audio ...")
 
+	# Get zynthian layer manager object
+	zynguilayer = zynthian_gui_config.zyngui.screens["layer"]
+
 	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
 	input_ports=get_audio_input_ports(True)
 
@@ -504,15 +509,15 @@ def audio_autoconnect(force=False):
 		pass
 
 	#Get layers list from UI
-	layers_list=zynthian_gui_config.zyngui.screens["layer"].layers
+	layers_list = zynguilayer.layers
 
 	#Connect Synth Engines to assigned outputs
 	for layer_index, layer in enumerate(layers_list):
 		if not layer.get_audio_jackname() or layer.engine.type=="MIDI Tool":
 			continue
 
-		layer_aout_ports = layer.get_audio_out_ports()
-		layer_playback_ports = [jn for jn in layer_aout_ports if jn.startswith("zynmixer:input_") or jn.startswith("system:playback_")]
+		layer_aout_ports = get_layer_audio_out_ports(layer)
+		layer_playback_ports = [jn for jn in layer_aout_ports if jn.startswith("zynmixer") or jn.startswith("system:playback_")]
 		nlpb = len(layer_playback_ports)
 
 		ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
@@ -581,23 +586,28 @@ def audio_autoconnect(force=False):
 				except:
 					pass
 
-
-	# Connect mixer to the Master FX-chain or System Output
-	system_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
-	master_fxchain_layer = zynthian_gui_config.zyngui.screens["layer"].get_master_fxchain_root_layer()
-	if master_fxchain_layer:
-		master_fxchain_ports = jclient.get_ports(master_fxchain_layer.get_audio_jackname())
+	# Connect zynmixer "send" to the Master FX-chain or zynmixer "return"
+	master_fxchain_root_layer = zynguilayer.get_master_fxchain_root_layer()
+	if master_fxchain_root_layer:
+		master_fxchain_input_ports = jclient.get_ports(master_fxchain_root_layer.get_audio_jackname(), is_input=True, is_audio=True)
 	else:
-		master_fxchain_ports = []
-	if len(master_fxchain_ports)<1:
-		master_fxchain_ports = system_ports
-	elif len(master_fxchain_ports)==1:
-		master_fxchain_ports.append(master_fxchain_ports[0])
+		master_fxchain_input_ports = []
+	if len(master_fxchain_input_ports)<1:
+		master_fxchain_input_ports = jclient.get_ports("zynmixer:return", is_input=True, is_audio=True)
+	elif len(master_fxchain_input_ports)==1:
+		master_fxchain_input_ports.append(master_fxchain_input_ports[0])
 	try:
-		connect_only("zynmixer:output_a", master_fxchain_ports[0])
-		connect_only("zynmixer:output_b", master_fxchain_ports[1])
+		connect_only("zynmixer:send_a", master_fxchain_input_ports[0])
+		connect_only("zynmixer:send_b", master_fxchain_input_ports[1])
 	except Exception as e:
 		logging.error(e)
+
+	# Connect mixer to the System Output
+	try:
+		jclient.connect("zynmixer:output_a", "system:playback_1")
+		jclient.connect("zynmixer:output_b", "system:playback_2")
+	except:
+		pass
 
 	# Replicate System Output connections to Headphones
 	hp_ports = jclient.get_ports("Headphones:playback", is_input=True, is_audio=True)
@@ -605,17 +615,20 @@ def audio_autoconnect(force=False):
 		replicate_connections_to(system_ports[0], hp_ports[0])
 		replicate_connections_to(system_ports[1], hp_ports[1])
 
+	# Connect Audio Recorder
+	audio_autoconnect_mplayer()
+
 	#Get System Capture ports => jack output ports!!
 	capture_ports = get_audio_capture_ports()
 	if len(capture_ports)>0:
-		root_layers = zynthian_gui_config.zyngui.screens["layer"].get_fxchain_roots()
+		root_layers = zynguilayer.get_fxchain_roots()
 		#Connect system capture ports to FX-layers root ...
 		for rl in root_layers:
 			if not rl.get_audio_jackname() or layer.engine.type!="Audio Effect":
 				continue
 
 			# Connect to FX-layers roots and their "pars" (parallel layers)
-			for rlp in zynthian_gui_config.zyngui.screens["layer"].get_fxchain_pars(rl):
+			for rlp in zynguilayer.get_fxchain_pars(rl):
 				#Get Root Layer Input ports ...
 				rlp_in = jclient.get_ports(rlp.get_audio_jackname(), is_input=True, is_audio=True)
 				if len(rlp_in)>0:
@@ -665,6 +678,20 @@ def audio_autoconnect(force=False):
 	release_lock()
 
 
+def audio_autoconnect_mplayer():
+	mplayer_ports = jclient.get_ports("MPlayer", is_output=True, is_audio=True)
+	if mplayer_ports and len(mplayer_ports)>1:
+		try:
+			pb_ports = get_layer_audio_out_ports(zynthian_gui_config.zyngui.screens["audio_recorder"])
+			if len(pb_ports)==1:
+				pb_ports = jclient.get_ports(pb_ports[0], is_input=True, is_audio=True)
+			connect_only(mplayer_ports[0], pb_ports[0])
+			connect_only(mplayer_ports[1], pb_ports[1])
+			logging.error("Connecting Mplayer ports to {}".format(pb_ports))
+		except Exception as e:
+			logging.error("Can't connect Mplayer ports to {} => {}".format(pb_ports, e))
+
+
 def audio_disconnect_sysout():
 	sysout_ports=jclient.get_ports("system", is_input=True, is_audio=True)
 	for sop in sysout_ports:
@@ -674,6 +701,21 @@ def audio_disconnect_sysout():
 				jclient.disconnect(cp, sop)
 			except:
 				pass
+
+
+def get_layer_audio_out_ports(layer):
+	aout_ports = []
+	for p in layer.get_audio_out():
+		if p=="system":
+			aout_ports += ["system:playback_1", "system:playback_2"]
+		elif p=="mixer":
+			if layer.midi_chan>=16:
+				aout_ports += ["zynmixer:return_a", "zynmixer:return_b"]
+			else:
+				aout_ports += ["zynmixer:input_%02da"%(layer.midi_chan + 1), "zynmixer:input_%02db"%(layer.midi_chan + 1)]
+		else:
+			aout_ports.append(p)
+	return list(dict.fromkeys(aout_ports).keys()) 
 
 
 def get_audio_capture_ports():
