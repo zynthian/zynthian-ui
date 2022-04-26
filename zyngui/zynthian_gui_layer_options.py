@@ -250,12 +250,20 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def save_preset_cb(self, preset_name):
 		preset_name = preset_name.strip()
+		#If must create new bank, calculate URID
+		if self.save_preset_create_bank_name:
+			create_bank_urid = self.layer.engine.get_user_bank_urid(self.save_preset_create_bank_name)
+			self.save_preset_bank_info = (create_bank_urid, None, self.save_preset_create_bank_name, None)
+		if self.layer.engine.preset_exists(self.save_preset_bank_info, preset_name):
+			self.zyngui.show_confirm("Do you want to overwrite preset '{}'?".format(preset_name), self.do_save_preset, preset_name)
+		else:
+			self.do_save_preset(preset_name)
+
+
+	def do_save_preset(self, preset_name):
+		preset_name = preset_name.strip()
 
 		try:
-			#If must create new bank, calculate URID
-			if self.save_preset_create_bank_name:
-				create_bank_urid = self.layer.engine.get_user_bank_urid(self.save_preset_create_bank_name)
-				self.save_preset_bank_info = (create_bank_urid, None, self.save_preset_create_bank_name, None)
 
 			# Save preset
 			preset_uri = self.layer.engine.save_preset(self.save_preset_bank_info, preset_name)
@@ -265,7 +273,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				#If must create new bank, do it!
 				if self.save_preset_create_bank_name:
 					self.layer.engine.create_user_bank(self.save_preset_create_bank_name)
-					logging.info("Created new bank '{}' => {}".format(self.save_preset_create_bank_name, create_bank_urid))
+					logging.info("Created new bank '{}' => {}".format(self.save_preset_create_bank_name, self.save_preset_bank_info[0]))
 					self.layer.load_bank_list()
 
 				self.layer.set_bank_by_id(self.save_preset_bank_info[0])

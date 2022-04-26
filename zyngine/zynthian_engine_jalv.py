@@ -348,6 +348,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				for preset in list(self.preset_info[bank[2]]['presets']):
 					self.delete_preset(bank, preset['url'])
 				self.remove_user_bank(bank)
+				self.zyngui.curlayer.load_preset_list()
 			except Exception as e:
 				logging.error(e)
 
@@ -399,9 +400,20 @@ class zynthian_engine_jalv(zynthian_engine):
 		return isinstance(preset[0], str) and preset[0].startswith("file://{}/presets/lv2/".format(self.my_data_dir))
 
 
-	def save_preset(self, bank, preset_name):
-		# TODO: Check it's not repeated => same name!
+	def preset_exists(self, bank, preset_name):
+		#TODO: This would be more robust using URI but that is created dynamically by save_preset()
+		if bank[2] not in self.preset_info:
+			return False
+		try:
+			for preset in self.preset_info[bank[2]]['presets']:
+				if preset['label'] == preset_name:
+					return True
+		except Exception as e:
+			logging.error(e)
+		return False
 
+
+	def save_preset(self, bank, preset_name):
 		# Save preset (jalv)
 		res = self.proc_cmd("save preset %s,%s" % (bank[0], preset_name)).split("\n")
 		
@@ -420,9 +432,10 @@ class zynthian_engine_jalv(zynthian_engine):
 						'presets': []
 					}
 				# Add preset
-				self.preset_info[bank[2]]['presets'].append(OrderedDict({'label': preset_name,  "url": preset_uri}))
-				# Save presets cache
-				zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+				if not self.preset_exists(bank, preset_name):
+					self.preset_info[bank[2]]['presets'].append(OrderedDict({'label': preset_name,  "url": preset_uri}))
+					# Save presets cache
+					zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
 				# Return preset uri
 				return preset_uri
 			except Exception as e:
@@ -447,8 +460,10 @@ class zynthian_engine_jalv(zynthian_engine):
 		
 		try:
 			return len(self.preset_info[bank[2]]['presets'])
-		except:
-			return 0
+		except Exception as e:
+			pass
+		zynthian_engine_jalv.lv2_remove_bank(bank)
+		return 0
 
 	def rename_preset(self, bank, preset, new_preset_name):
 		if self.is_preset_user(preset):
@@ -978,46 +993,7 @@ class zynthian_engine_jalv(zynthian_engine):
 					with open("{}/{}".format(path,file), "w") as ttl:
 						ttl.writelines(lines)
 
-		zynthian_engine_jalv.lv2_get_presets_not_in_bank(path)
-
 		return True
-
-
-	#   Remove bank and delete all presets
-	#   plugin_uri: URI of related plugin
-	#   bank_uri: URI of bank to update
-	#   bank_label: New label
-	#   Returns: True on success
-	#   TODO: This is no longer used
-	@staticmethod
-	def lv2_delete_bank(bank):
-		try:
-			path = bank[0][7:bank[0].rfind("/")]
-		except Exception as e:
-			return False
-
-		# Delete ttl files
-		for file in os.listdir(path):
-			if(file[-4:] == ".ttl" and file != "manifest.ttl"):
-				with open("{}/{}".format(path, file)) as ttl:
-					text = ttl.read()
-				if re.search("pset:bank\s*<{}>".format(bank[2]), text):
-					logging.info("Delete this file {}".format(file))
-					os.remove("{}/{}".format(path,file))
-
-		zynthian_engine_jalv.lv2_remove_bank(bank)
-
-
-	#   Get list of presets that are not in any bank
-	#	path: Full path to LV2 bundlej
-	#   Returns: List of banks
-	@staticmethod
-	def lv2_get_presets_not_in_bank(path):
-		fpath = path + "/manifest.ttl"
-		with open(fpath) as file:
-			manifest = file.read()
-		tags = re.search(manifest, "^\s<(.|\s)*?\.\s*$")
-		print(tags)
 
 
 	@staticmethod
