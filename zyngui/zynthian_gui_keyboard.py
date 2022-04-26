@@ -204,7 +204,7 @@ class zynthian_gui_keyboard():
 		self.selected_button = key
 		shift = self.shift
 		if key < len(self.keys):
-			self.text= self.text+ self.keys[key]
+			self.text= self.text + self.keys[key]
 		elif key == self.btn_enter:
 			self.zyngui.close_screen()
 			self.function(self.text)

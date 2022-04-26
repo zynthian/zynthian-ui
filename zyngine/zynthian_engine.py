@@ -440,7 +440,7 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name),'PD'
+		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!', self.name)
 
 
 	def set_preset(self, layer, preset, preload=False):
@@ -728,6 +728,18 @@ class zynthian_engine(zynthian_basic_engine):
 	def get_zynapi_methods(cls):
 		return [f for f in dir(cls) if f.startswith('zynapi_')]
 		#callable(f) and
+
+
+	# Remove double spacing
+	@classmethod
+	def remove_double_spacing(cls, lines):
+		double_line = []
+		for index,line in enumerate(lines):
+			if line.strip() == "" and index > 0 and lines[index - 1].strip() == "":
+				double_line.append(index)
+		double_line.sort(reverse=True)
+		for line in double_line:
+			del lines[line]
 
 
 #******************************************************************************

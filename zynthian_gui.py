@@ -739,7 +739,7 @@ class zynthian_gui:
 
 	def refresh_screen(self):
 		screen = self.current_screen
-		if screen=='preset' and len(self.curlayer.preset_list)<=1:
+		if screen=='preset' and len(self.curlayer.preset_list) <= 1:
 			screen='control'
 		self.show_screen(screen)
 
@@ -1262,10 +1262,10 @@ class zynthian_gui:
 			#self.replace_screen('preset')
 			self.close_screen()
 		else:
-			if len(self.curlayer.preset_list)>1:
+			if len(self.curlayer.preset_list) > 0 and self.curlayer.preset_list[0][0] != '':
 				self.screens['preset'].index=self.curlayer.get_preset_index()
 				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
-			elif len(self.curlayer.bank_list)>1:
+			elif len(self.curlayer.bank_list) > 0 and self.curlayer.bank_list[0][0] != '':
 				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 
@@ -1390,7 +1390,7 @@ class zynthian_gui:
 			elif dtus>0:
 				#print("Switch "+str(i)+" dtus="+str(dtus))
 				self.zynswitch_short(i)
-			i += 1;
+			i += 1
 
 
 	def zynswitch_long(self,i):

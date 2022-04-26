@@ -1019,18 +1019,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 
 		elif swi == ENC_SELECT:
-			if t == "S":
-				if isinstance(self.selected_layer, zyngine.zynthian_layer):
+			if isinstance(self.selected_layer, zyngine.zynthian_layer):
+				if t == "S":
 					self.zyngui.layer_control(self.selected_layer)
-				else:
-					self.zyngui.screens['layer'].add_fxchain_layer(MAX_NUM_CHANNELS)
-				return True
-			elif t == "B":
-				if isinstance(self.selected_layer, zyngine.zynthian_layer):
+					return True
+				elif t == "B":
 					# Layer Options
 					self.zyngui.screens['layer'].select(self.selected_chain_index)
 					self.zyngui.screens['layer_options'].reset()
 					self.zyngui.show_screen('layer_options')
+					return True
+			else:
+				self.zyngui.screens['layer'].add_fxchain_layer(MAX_NUM_CHANNELS)
 				return True
 
 		return False
