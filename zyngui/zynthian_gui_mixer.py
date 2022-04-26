@@ -1154,15 +1154,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
-		self.set_volume(self.get_volume() + 0.1)
-		self.redraw_mixer_controls()
+		self.select_chain_by_index(self.selected_chain_index + 1)
 
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		self.set_volume(self.get_volume() - 0.1)
-		self.redraw_mixer_controls()
-
+		self.select_chain_by_index(self.selected_chain_index - 1)
 
 	# Function to handle CUIA BACK_UP command
 	def back_up(self):
