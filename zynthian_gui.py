@@ -574,8 +574,6 @@ class zynthian_gui:
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['stepseq'] = zynthian_gui_stepsequencer()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
-		if "autoeq" in zynthian_gui_config.experimental_features:
-			self.screens['autoeq'] = zynthian_gui_autoeq()
 
 		# Init Auto-connector
 		zynautoconnect.start()
