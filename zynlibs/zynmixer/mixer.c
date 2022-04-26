@@ -69,7 +69,8 @@ jack_port_t * g_mainSendA;
 jack_port_t * g_mainSendB;
 jack_port_t * g_mainReturnA;
 jack_port_t * g_mainReturnB;
-int g_mainReturnRouted = 0;
+int g_mainReturnRoutedA = 0;
+int g_mainReturnRoutedB = 0;
 int g_bDpm = 1;
 unsigned int g_nDampingCount = 0;
 unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
@@ -287,13 +288,15 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             pSendA[frame] = fSampleM;
             pSendB[frame] = fSampleM;
         }
-        if(g_mainReturnRouted) {
+        if(g_mainReturnRoutedA)
             pOutA[frame] = pReturnA[frame];
-            pOutB[frame] = pReturnB[frame];
-        } else {
+        else
             pOutA[frame] = pSendA[frame];
+        if(g_mainReturnRoutedB)
+            pOutB[frame] = pReturnB[frame];
+        else
             pOutB[frame] = pSendB[frame];
-        }
+       
         pOutA[frame] *= curLevelA;
         pOutB[frame] *= curLevelB;
         curLevelA += fDeltaA;
@@ -342,7 +345,8 @@ void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void
         else
             g_dynamic[chan].routed = 0;
     }
-    g_mainReturnRouted = (jack_port_connected(g_mainReturnA) > 0 || jack_port_connected(g_mainReturnB) > 0);
+    g_mainReturnRoutedA = jack_port_connected(g_mainReturnA) > 0;
+    g_mainReturnRoutedB = jack_port_connected(g_mainReturnB) > 0;
 }
 
 int onJackSamplerate(jack_nframes_t nSamplerate, void *arg)
