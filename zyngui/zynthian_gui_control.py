@@ -372,9 +372,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		elif swi == 1:
 			if t == 'S':
-				if not self.back_action():
+				if self.back_action():
+					return True
+				elif not self.zyngui.is_shown_alsa_mixer():
 					self.zyngui.cuia_bank_preset()
-				return True
+					return True
 
 		elif swi == 2:
 			if t == 'S':
