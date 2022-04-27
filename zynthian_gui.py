@@ -873,11 +873,8 @@ class zynthian_gui:
 
 	def toggle_favorites(self):
 		if self.curlayer:
-			favshow = self.curlayer.toggle_show_fav_presets()
-			if favshow:
-				self.show_screen("preset")
-			else:
-				self.close_screen()
+			self.curlayer.toggle_show_fav_presets()
+			self.show_screen("preset")
 
 
 	def show_favorites(self):
@@ -1468,7 +1465,7 @@ class zynthian_gui:
 
 		# Default actions for the standard 4 ZynSwitches
 		if i==0:
-			self.show_screen("main")
+			pass
 
 		elif i==1:
 			self.back_screen()
