@@ -365,9 +365,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
-				if self.zyngui.screens['layer'].get_num_root_layers()>1:
-					logging.info("Next layer")
-					self.zyngui.screens['layer'].next(True)
+				self.next()
 				return True
 
 		elif swi == 1:
@@ -386,11 +384,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		elif swi == 3:
 			if t=='S':
-				if self.mode in ('control','xyselect'):
+				if self.mode in ('control', 'xyselect'):
 					if len(self.list_data)>3:
 						self.set_mode_select()
 					else:
-						self.next()
+						self.select_down()
 				elif self.mode=='select':
 					self.click_listbox()
 			elif t=='B':
