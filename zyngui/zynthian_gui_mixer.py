@@ -242,7 +242,11 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
 			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("NoFX"), state="normal")
 		else:
-			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=self.layer.midi_chan + 1)
+			if isinstance(self.layer.midi_chan, int):
+				strip_txt = str(self.layer.midi_chan + 1)
+			else:
+				strip_txt = "X"
+			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt)
 			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("None"), state="normal")
 
 		try:
