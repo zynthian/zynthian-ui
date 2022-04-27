@@ -587,6 +587,7 @@ def audio_autoconnect(force=False):
 					pass
 
 	# Connect zynmixer "send" to the Master FX-chain or zynmixer "return"
+	system_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
 	master_fxchain_root_layer = zynguilayer.get_master_fxchain_root_layer()
 	if master_fxchain_root_layer:
 		master_fxchain_input_ports = jclient.get_ports(master_fxchain_root_layer.get_audio_jackname(), is_input=True, is_audio=True)
