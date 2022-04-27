@@ -44,13 +44,12 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data=[]
 
 		# Main Apps
-		self.list_data.append((self.new_synth_layer,0,"New Synth Layer"))
-		self.list_data.append((self.new_audiofx_layer,0,"New Audio-FX Layer"))
-		self.list_data.append((self.new_midifx_layer,0,"New MIDI-FX Layer"))
-		self.list_data.append((self.new_generator_layer,0,"New Generator Layer"))
-		self.list_data.append((self.new_special_layer,0,"New Special Layer"))
+		self.list_data.append((self.new_synth_layer,0,"New Synth Chain"))
+		self.list_data.append((self.new_audiofx_layer,0,"New Audio-FX Chain"))
+		self.list_data.append((self.new_midifx_layer,0,"New MIDI-FX Chain"))
+		self.list_data.append((self.new_generator_layer,0,"New Generator Chain"))
+		self.list_data.append((self.new_special_layer,0,"New Special Chain"))
 		self.list_data.append((self.snapshots,0,"Snapshots"))
-		#self.list_data.append(self.clean_layers,0,"Remove All Layers"))
 		self.list_data.append((self.clean_all,0,"Clean All"))
 
 		# Add list of Apps
@@ -93,14 +92,9 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.zyngui.screens['layer'].add_layer("Special")
 
 
-	def layers(self, t='S'):
-		logging.info("Layers")
-		self.zyngui.show_screen("layer")
-
-
 	def snapshots(self, t='S'):
 		logging.info("Snapshots")
-		self.zyngui.show_screen("snapshot")
+		self.zyngui.show_screen_reset("snapshot")
 
 
 	def clean_all(self, t='S'):
@@ -120,12 +114,12 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def audio_mixer(self, t='S'):
 		logging.info("Audio Mixer")
-		self.zyngui.show_screen('audio_mixer')
+		self.zyngui.show_screen_reset('audio_mixer')
 
 
 	def step_sequencer(self, t='S'):
 		logging.info("Step Sequencer")
-		self.zyngui.show_screen('stepseq')
+		self.zyngui.show_screen_reset('stepseq')
 
 
 	def audio_recorder(self, t='S'):
@@ -135,27 +129,22 @@ class zynthian_gui_main(zynthian_gui_selector):
 			self.zyngui.show_screen("audio_out")
 		else:
 			logging.info("Audio Recorder")
-			self.zyngui.show_screen("audio_recorder")
+			self.zyngui.show_screen_reset("audio_recorder")
 
 
 	def midi_recorder(self, t='S'):
 		logging.info("MIDI Recorder")
-		self.zyngui.show_screen("midi_recorder")
+		self.zyngui.show_screen_reset("midi_recorder")
 
 
 	def alsa_mixer(self, t='S'):
 		logging.info("ALSA Mixer")
-		self.zyngui.show_screen("alsa_mixer")
-
-
-	def auto_eq(self, t='S'):
-		logging.info("Auto EQ")
-		self.zyngui.show_screen('autoeq')
+		self.zyngui.show_screen_reset("alsa_mixer")
 
 
 	def admin(self, t='S'):
 		logging.info("Admin")
-		self.zyngui.show_screen("admin")
+		self.zyngui.show_screen_reset("admin")
 
 
 	def all_notes_off(self, t='S'):
