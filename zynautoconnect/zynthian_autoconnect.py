@@ -635,7 +635,7 @@ def audio_autoconnect(force=False):
 		replicate_connections_to(system_playback_ports[1], hp_ports[1])
 
 	#Get System Capture ports => jack output ports!!
-	capture_ports = jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
+	capture_ports = get_audio_capture_ports()
 	if len(capture_ports)>0:
 		root_layers = zynguilayer.get_fxchain_roots()
 		#Connect system capture ports to FX-layers root ...
@@ -754,6 +754,15 @@ def get_audio_input_ports(exclude_system_playback=False):
 	except:
 		pass
 	return res
+
+
+def get_audio_capture_ports():
+	return jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
+
+
+def get_audio_playback_ports():
+	ports = jclient.get_ports("zynmixer", is_input=True, is_audio=True, is_physical=False)
+	return ports + jclient.get_ports("system", is_input=True, is_audio=True, is_physical=True)
 
 
 def autoconnect(force=False):
