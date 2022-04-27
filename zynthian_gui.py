@@ -880,6 +880,12 @@ class zynthian_gui:
 				self.close_screen()
 
 
+	def show_favorites(self):
+		if self.curlayer:
+			self.curlayer.set_show_fav_presets(True)
+			self.show_screen("preset")
+
+
 	def set_curlayer(self, layer, save=False):
 		if layer is not None:
 			if save and not self.is_shown_alsa_mixer():
@@ -1221,7 +1227,7 @@ class zynthian_gui:
 			self.cuia_bank_preset()
 
 		elif cuia == "PRESET_FAVS":
-			self.toggle_favorites()
+			self.show_favorites()
 
 		elif cuia == "ZYNPAD":
 			self.show_screen('stepseq')
