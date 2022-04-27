@@ -1239,8 +1239,7 @@ class zynthian_gui:
 
 
 	def cuia_learn(self, params=None):
-		#if not self.is_shown_alsa_mixer():
-		if self.current_screen != "ALSA_MIXER":
+		if not self.is_shown_alsa_mixer():
 			if self.current_screen == "zs3_learn":
 				self.close_screen()
 			elif self.current_screen != "control":
