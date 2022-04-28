@@ -159,6 +159,7 @@ class zynthian_gui:
 		"87": "SCREEN_STEPSEQ",
 		"88": "SCREEN_BANK",
 		"89": "SCREEN_PRESET",
+		"90": "SCREEN_CALIBRATE",
 
 		"100": "LAYER_CONTROL",
 		"101": "LAYER_OPTIONS",
@@ -1171,6 +1172,9 @@ class zynthian_gui:
 
 		elif cuia in ("MODAL_PRESET", "SCREEN_PRESET"):
 			self.toggle_screen("preset")
+
+		elif cuia in ("MODAL_CALIBRATE", "SCREEN_CALIBRATE"):
+			self.calibrate_touchscreen()
 
 		elif cuia in ("LAYER_CONTROL", "SCREEN_CONTROL"):
 			if params:

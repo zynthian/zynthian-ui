@@ -148,29 +148,30 @@ class zynthian_gui_touchscreen_calibration:
 				if ecodes.EV_ABS in device.capabilities().keys():
 					devices.append(device)
 		# Loop until we get a touch button event or the view hides
-		running = True
-		while running and self.shown:
+		self.running = True
+		while self.running and self.shown:
 			r, w, x = select(devices, [], []) # Wait for any of the devices to trigger an event
-			for device in r: # Iterate through all devices that have triggered events
-				for event in device.read(): # Iterate through all events from each device
-					if event.code == ecodes.BTN_TOUCH:
-						if event.value:
-							self.canvas.itemconfig("crosshairs_lines", fill="red")
-							self.canvas.itemconfig("crosshairs_circles", outline="red")
-							self.pressed = True
-							self.countdown = self.timeout
-							self.setDevice(device.name, device.path)
-						else:
-							self.canvas.itemconfig("crosshairs_lines", fill="white")
-							self.canvas.itemconfig("crosshairs_circles", outline="white")
-							self.pressed = False
-							self.countdown = self.timeout
-							if self.device_name:
-								self.index = 0
-								self.drawCross()
-								self.canvas.bind('<Button-1>', self.onPress)
-								self.canvas.bind('<ButtonRelease-1>', self.onRelease)
-								running = False
+			if self.running:
+				for device in r: # Iterate through all devices that have triggered events
+					for event in device.read(): # Iterate through all events from each device
+						if event.code == ecodes.BTN_TOUCH:
+							if event.value:
+								self.canvas.itemconfig("crosshairs_lines", fill="red")
+								self.canvas.itemconfig("crosshairs_circles", outline="red")
+								self.pressed = True
+								self.countdown = self.timeout
+								self.setDevice(device.name, device.path)
+							else:
+								self.canvas.itemconfig("crosshairs_lines", fill="white")
+								self.canvas.itemconfig("crosshairs_circles", outline="white")
+								self.pressed = False
+								self.countdown = self.timeout
+								if self.device_name:
+									self.index = 0
+									self.drawCross()
+									self.canvas.bind('<Button-1>', self.onPress)
+									self.canvas.bind('<ButtonRelease-1>', self.onRelease)
+									self.running = False
 
 
 	#	Set the device to configure
@@ -289,7 +290,8 @@ class zynthian_gui_touchscreen_calibration:
 						e = -self.height * 0.7 / dy
 						f = 1 + (0.15 * self.height / e + min_y) / self.height
 
-				self.setCalibration(self.device_name, [a, b, c, d, e, f, 0, 0, 1], True)
+				self.ctm = [a, b, c, d, e, f, 0, 0, 1]
+				self.setCalibration(self.device_name, self.ctm, True)
 
 				#TODO: Allow user to check calibration
 
@@ -386,6 +388,8 @@ class zynthian_gui_touchscreen_calibration:
 	def hide(self):
 		if self.shown:
 			self.timer.cancel()
+			self.running = False
+			self.setCalibration(self.device_name, self.ctm)
 			self.main_frame.grid_forget()
 			self.shown=False
 
@@ -395,7 +399,7 @@ class zynthian_gui_touchscreen_calibration:
 		if not self.shown:
 			self.shown=True
 			self.device_name = None
-			self.ctm = None
+			self.ctm = [1,0,0,0,1,0,0,0,1]
 			self.canvas.unbind('<Button-1>')
 			self.canvas.unbind('<ButtonRelease-1>')
 			self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.timeout))
