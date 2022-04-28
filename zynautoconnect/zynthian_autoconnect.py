@@ -512,11 +512,16 @@ def audio_autoconnect(force=False):
 	#Get Zynmixer Playback Ports
 	playback_ports = zynmixer_playback_ports + system_playback_ports
 
-	#Disconnect Monitor from System Output
+	# Disconnect Monitor from System Output and Reconnect to Zynmixer return
 	mon_in=jclient.get_ports("mod-monitor", is_output=True, is_audio=True)
 	try:
 		jclient.disconnect(mon_in[0],'system:playback_1')
 		jclient.disconnect(mon_in[1],'system:playback_2')
+	except:
+		pass
+	try:
+		jclient.connect(mon_in[0],'zynmixer:return_a')
+		jclient.connect(mon_in[1],'zynmixer:return_b')
 	except:
 		pass
 

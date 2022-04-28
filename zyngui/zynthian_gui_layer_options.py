@@ -128,7 +128,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if 'indelible' not in eng_options or not eng_options['indelible']:
 			self.list_data.append((self.layer_remove, None, "Remove Chain"))
 
-		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.engine.nickname!='MD':
+		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.midi_chan is not None:
 			# Add separator
 			self.list_data.append((None,None,"> MIDI Chain ----------------"))
 
@@ -143,13 +143,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 					sl0 = sl
 
 			# Add MIDI-FX options
-			if self.layer.midi_chan is not None:
-				self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
+			self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 
 			if len(self.midifx_layers)>0 and self.layer.engine.type=="MIDI Synth":
 				self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
 
-		if self.layer.engine.type!='MIDI Tool':
+		if self.layer.engine.type!='MIDI Tool' and self.layer.midi_chan is not None:
 			# Add separator
 			self.list_data.append((None,None,"> Audio Chain ---------------"))
 
@@ -165,8 +164,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 					sl0 = sl
 
 			# Add Audio-FX options
-			if self.layer.midi_chan is not None:
-				self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
+			self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
 
 			if len(self.audiofx_layers)>0 and (self.layer.engine.type=="MIDI Synth" or self.layer.midi_chan>=16):
 				self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))

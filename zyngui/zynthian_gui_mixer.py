@@ -226,7 +226,12 @@ class zynthian_gui_mixer_strip():
 	def get_legend_text(self, default_text=None):
 		if self.layer.engine is not None:
 			res = self.layer.engine.get_name(self.layer)
-			if self.layer.preset_name:
+			# MOD-UI
+			if self.layer.midi_chan is None:
+				if self.layer.bank_name:
+					res += "\n{}".format(self.layer.bank_name)
+			# Rest of chains
+			elif self.layer.preset_name:
 				res += "\n{}".format(self.layer.preset_name)
 			return res
 		return default_text
@@ -251,10 +256,10 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("None"), state="normal")
 
 		try:
-			if self.layer.engine.type == "MIDI Tool":
+			if self.layer.engine.type == "MIDI Tool" or self.layer.midi_chan is None:
 				return
-		except:
-			pass
+		except Exception as e:
+			logging.error(e)
 
 		self.draw_dpm()
 		self.draw_controls()
