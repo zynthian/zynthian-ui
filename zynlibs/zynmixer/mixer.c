@@ -601,6 +601,17 @@ int getMono(int channel)
     return g_dynamic[channel].mono;
 }
 
+void reset(int channel)
+{
+    if(channel >= MAX_CHANNELS)
+        return;
+    setLevel(channel, 0.8);
+    setBalance(channel, 0.0);
+    setMute(channel, 0);
+    setMono(channel, 0);
+    setSolo(channel, 0);
+}
+
 int isChannelRouted(int channel)
 {
     if(channel >= MAX_CHANNELS)

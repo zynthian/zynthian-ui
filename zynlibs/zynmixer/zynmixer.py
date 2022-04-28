@@ -156,6 +156,11 @@ def toggle_mono(channel):
 		else:
 			set_mono(channel, True)
 
+#	Function to reset parameters of a channel to default
+#	channel: Index of channel
+def reset(channel):
+	if lib_zynmixer:
+		lib_zynmixer.reset(channel)
 
 #	Function to check if channel has audio routed to its input
 #	channel: Index of channel
