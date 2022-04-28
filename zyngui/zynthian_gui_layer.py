@@ -410,11 +410,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			else:
 				root_layers_to_delete = [self.root_layers[i]]
 
-			# Mute Audio Layers & build list of layers to delete
+			# Mute Audio Layers & build list of layers/midi_chans to delete
 			layers_to_delete = []
-			root_midi_chans = []
+			chans_to_reset = []
 			for root_layer in root_layers_to_delete:
-				root_midi_chans.append(root_layer.midi_chan)
+				chans_to_reset.append(root_layer.midi_chan)
 				zynmixer.set_mute(root_layer.midi_chan, True)
 				# Midichain layers
 				midichain_layers = self.get_midichain_layers(root_layer)
@@ -456,8 +456,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if stop_unused_engines:
 				self.zyngui.screens['engine'].stop_unused_engines()
 
-			for chan in root_midi_chans:
+			for chan in chans_to_reset:
 				zynmixer.reset(chan)
+
 			self.refresh()
 
 

@@ -24,19 +24,20 @@
 #
 #******************************************************************************
 
-import sys
-import logging
-import tkinter
-import copy
-from time import monotonic
-from tkinter import font as tkFont
-from PIL import Image, ImageTk
-import liblo
 import os
+import sys
+import copy
+import liblo
+import tkinter
+import logging
+from time import monotonic
+from PIL import Image, ImageTk
+from tkinter import font as tkFont
+from collections import OrderedDict
 
 # Zynthian specific modules
-from zyngine import zynthian_controller
 import zyngine
+from zyngine import zynthian_controller
 from . import zynthian_gui_base
 from . import zynthian_gui_config
 from . import zynthian_gui_controller
@@ -1027,15 +1028,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					self.zyngui.screens['layer_options'].reset()
 					self.zyngui.show_screen('layer_options')
 			elif t == "B":
-				if zynmixer.get_mono(self.selected_layer.midi_chan):
-					options = {"[x] Audio Mono":"Mono", "> Audio Chain ---------------":None, "Add Audio-FX":"Add"}
-				else:
-					options = {"[  ] Audio Mono":"Mono", "> Audio Chain ---------------":None, "Add Audio-FX":"Add"}
-				self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
-				self.zyngui.show_screen('option')
+				self.show_mainfx_options()
 			return True
 
 		return False
+
+
+	def show_mainfx_options(self):
+		options = OrderedDict()
+		if zynmixer.get_mono(self.selected_layer.midi_chan):
+			options["[x] Audio Mono"] = "Mono"
+		else:
+			options["[  ] Audio Mono"] = "Mono"
+		options["> Audio Chain ---------------"] = None
+		options["Add Audio-FX"] = "Add"
+		self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
+		self.zyngui.show_screen('option')
 
 
 	def mainfx_options_cb(self, option, param):
@@ -1043,12 +1051,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.screens['layer'].add_fxchain_layer(MAX_NUM_CHANNELS)
 		elif param == "Mono":
 			zynmixer.toggle_mono(self.selected_layer.midi_chan)
-			if zynmixer.get_mono(self.selected_layer.midi_chan):
-				options = {"[x] Audio Mono":"Mono", "> Audio Chain ---------------":None, "Add Audio-FX":"Add"}
-			else:
-				options = {"[  ] Audio Mono":"Mono", "> Audio Chain ---------------":None, "Add Audio-FX":"Add"}
-			self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
-			self.zyngui.show_screen('option', hmode=self.zyngui.SCREEN_HMODE_REPLACE)
+			self.show_mainfx_options()
 
 
 	def setup_zyncoders(self):

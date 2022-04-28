@@ -57,6 +57,10 @@ class zynthian_gui_option(zynthian_gui_selector):
 			self.list_data.append((v,i,k))
 			i += 1
 		super().fill_list()
+
+
+	def fill_listbox(self):
+		super().fill_listbox()
 		for i, val in enumerate(self.list_data):
 			if val[0]==None:
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
