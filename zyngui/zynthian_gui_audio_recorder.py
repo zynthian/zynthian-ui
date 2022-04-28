@@ -55,7 +55,8 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 		self.rec_proc = None
 		self.play_proc = None
 
-		self.audio_out = ["system"]
+		self.midi_chan = 17
+		self.audio_out = ["mixer"]
 
 		super().__init__('Audio Recorder', True)
 
@@ -320,10 +321,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			if zynthian_gui_config.audio_play_loop:
 				mplayer_options += " -loop 0"
 
-			try:
-				mplayer_options += " -ao jack:port=\"{}\"".format(self.audio_out[0])
-			except:
-				mplayer_options += " -ao jack"
+			mplayer_options += " -ao jack noconnect"
 
 			mplayer_options += " -input file=\"{}\"".format(self.mplayer_ctrl_fifo_path)
 			cmd="/usr/bin/mplayer {} \"{}\"".format(mplayer_options, fpath)
@@ -339,7 +337,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 			thread = threading.Thread(target=runInThread, args=(self.end_playing, cmd), daemon=True)
 			thread.name = "audio recorder"
 			thread.start()
-			sleep(0.5)
+			sleep(0.3)
 			self.zyngui.zynautoconnect_audio()
 			self.show_playing_volume()
 			self.send_controller_value(self.volume_zctrl)
@@ -471,6 +469,7 @@ class zynthian_gui_audio_recorder(zynthian_gui_selector):
 
 	def toggle_audio_out(self, aout):
 		self.audio_out = [aout]
+		self.zyngui.zynautoconnect_audio()
 
 
 	def set_select_path(self):

@@ -313,8 +313,8 @@ class zynthian_gui:
 			# Active Layer
 			# => Light non-empty layers
 			n = self.screens['layer'].get_num_root_layers()
-			master_fxchain = self.screens['layer'].get_master_fxchain_root_layer()
-			if master_fxchain:
+			main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
+			if main_fxchain:
 				n -= 1
 			for i in range(6):
 				if i<n:
@@ -322,14 +322,14 @@ class zynthian_gui:
 				else:
 					self.wsleds.setPixelColor(1+i, self.wscolor_off)
 			# => Light FX layer if not empty
-			if master_fxchain:
+			if main_fxchain:
 				self.wsleds.setPixelColor(7, self.wscolor_light)
 			else:
 				self.wsleds.setPixelColor(7, self.wscolor_off)
 			# => Light active layer
 			i = self.screens['layer'].get_root_layer_index()
 			if i is not None:
-				if master_fxchain and i==n:
+				if main_fxchain and i==n:
 					if self.current_screen=="control":
 						self.wsleds.setPixelColor(7, self.wscolor_active)
 					else:
@@ -575,8 +575,6 @@ class zynthian_gui:
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['stepseq'] = zynthian_gui_stepsequencer()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
-		if "autoeq" in zynthian_gui_config.experimental_features:
-			self.screens['autoeq'] = zynthian_gui_autoeq()
 
 		# Init Auto-connector
 		zynautoconnect.start()
@@ -876,11 +874,14 @@ class zynthian_gui:
 
 	def toggle_favorites(self):
 		if self.curlayer:
-			favshow = self.curlayer.toggle_show_fav_presets()
-			if favshow:
-				self.show_screen("preset")
-			else:
-				self.close_screen()
+			self.curlayer.toggle_show_fav_presets()
+			self.show_screen("preset")
+
+
+	def show_favorites(self):
+		if self.curlayer:
+			self.curlayer.set_show_fav_presets(True)
+			self.show_screen("preset")
 
 
 	def set_curlayer(self, layer, save=False):
@@ -1181,14 +1182,14 @@ class zynthian_gui:
 				try:
 					i = params[0]-1
 					n = self.screens['layer'].get_num_root_layers()
-					master_fxchain = self.screens['layer'].get_master_fxchain_root_layer()
-					if master_fxchain:
+					main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
+					if main_fxchain:
 						n -= 1
 					if i>=0 and i<n:
 						self.layer_control(self.screens['layer'].root_layers[i])
 					elif i<0:
-						if master_fxchain:
-							self.layer_control(master_fxchain)
+						if main_fxchain:
+							self.layer_control(main_fxchain)
 						else:
 							self.zyngui.screens['layer'].add_fxchain_layer(16)
 				except:
@@ -1201,13 +1202,13 @@ class zynthian_gui:
 				if params:
 					i = params[0]-1
 					n = self.screens['layer'].get_num_root_layers()
-					master_fxchain = self.screens['layer'].get_master_fxchain_root_layer()
-					if master_fxchain:
+					main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
+					if main_fxchain:
 						n -= 1
 					if i>=0 and i<n:
 						self.screens['layer'].select(i)
 					elif i<0:
-						if master_fxchain:
+						if main_fxchain:
 							self.screens['layer'].select(n)
 						else:
 							self.zyngui.screens['layer'].add_fxchain_layer(16)
@@ -1227,7 +1228,7 @@ class zynthian_gui:
 			self.cuia_bank_preset()
 
 		elif cuia == "PRESET_FAVS":
-			self.toggle_favorites()
+			self.show_favorites()
 
 		elif cuia == "ZYNPAD":
 			self.show_screen('stepseq')
@@ -1242,8 +1243,7 @@ class zynthian_gui:
 
 
 	def cuia_learn(self, params=None):
-		#if not self.is_shown_alsa_mixer():
-		if self.current_screen != "ALSA_MIXER":
+		if not self.is_shown_alsa_mixer():
 			if self.current_screen == "zs3_learn":
 				self.close_screen()
 			elif self.current_screen != "control":
@@ -1468,7 +1468,7 @@ class zynthian_gui:
 
 		# Default actions for the standard 4 ZynSwitches
 		if i==0:
-			self.show_screen("main")
+			pass
 
 		elif i==1:
 			self.back_screen()

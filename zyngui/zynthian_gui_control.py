@@ -365,16 +365,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
-				if self.zyngui.screens['layer'].get_num_root_layers()>1:
-					logging.info("Next layer")
-					self.zyngui.screens['layer'].next(True)
+				self.next()
 				return True
 
 		elif swi == 1:
 			if t == 'S':
-				if not self.back_action():
+				if self.back_action():
+					return True
+				elif not self.zyngui.is_shown_alsa_mixer():
 					self.zyngui.cuia_bank_preset()
-				return True
+					return True
 
 		elif swi == 2:
 			if t == 'S':
@@ -384,11 +384,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		elif swi == 3:
 			if t=='S':
-				if self.mode in ('control','xyselect'):
+				if self.mode in ('control', 'xyselect'):
 					if len(self.list_data)>3:
 						self.set_mode_select()
 					else:
-						self.next()
+						self.select_down()
 				elif self.mode=='select':
 					self.click_listbox()
 			elif t=='B':

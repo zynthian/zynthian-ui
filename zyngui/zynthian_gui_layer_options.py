@@ -86,6 +86,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if self.layer.midi_chan==16:
 			eng_options = {
 				'audio_capture': True,
+				'indelible': True
 			}
 		else:
 			eng_options = self.layer.engine.get_options()
@@ -125,7 +126,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.list_data.append((self.layer_replace, None, "Replace Synth"))
 
 		if 'indelible' not in eng_options or not eng_options['indelible']:
-			self.list_data.append((self.layer_remove, None, "Remove Layer"))
+			self.list_data.append((self.layer_remove, None, "Remove Chain"))
 
 		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.engine.nickname!='MD':
 			# Add separator
@@ -167,7 +168,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if self.layer.midi_chan is not None:
 				self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
 
-			if len(self.audiofx_layers)>0 and self.layer.engine.type=="MIDI Synth":
+			if len(self.audiofx_layers)>0 and (self.layer.engine.type=="MIDI Synth" or self.layer.midi_chan>=16):
 				self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
 
 		super().fill_list()
@@ -191,7 +192,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if self.layer is None:
 			self.setup()
 
-		if self.layer is not None:
+		if self.layer is not None and self.layer in self.zyngui.screens['layer'].root_layers:
 			super().show()
 			if self.index>=len(self.list_data):
 				self.index = len(self.list_data)-1
@@ -264,7 +265,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		preset_name = preset_name.strip()
 
 		try:
-
 			# Save preset
 			preset_uri = self.layer.engine.save_preset(self.save_preset_bank_info, preset_name)
 			logging.info("Saved preset with name '{}' to bank '{}' => {}".format(preset_name, self.save_preset_bank_info[2], preset_uri))
@@ -344,7 +344,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def layer_remove(self):
-		self.zyngui.show_confirm("Do you really want to remove this layer?", self.layer_remove_confirmed)
+		self.zyngui.show_confirm("Do you really want to remove this chain?", self.layer_remove_confirmed)
 
 
 	def layer_remove_confirmed(self, params=None):
@@ -353,7 +353,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def layer_midi_unlearn(self):
-		self.zyngui.show_confirm("Do you really want to clean MIDI-learn for this layer?", self.layer_midi_unlearn_confirmed)
+		self.zyngui.show_confirm("Do you really want to clean MIDI-learn for this chain?", self.layer_midi_unlearn_confirmed)
 
 
 	def layer_midi_unlearn_confirmed(self, params=None):
@@ -367,7 +367,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def audiofx_reset(self):
-		self.zyngui.show_confirm("Do you really want to remove all audio-FXs for this layer?", self.audiofx_reset_confirmed)
+		self.zyngui.show_confirm("Do you really want to remove all audio-FXs for this chain?", self.audiofx_reset_confirmed)
 
 
 	def audiofx_reset_confirmed(self, params=None):
@@ -376,8 +376,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			i = self.zyngui.screens['layer'].layers.index(sl)
 			self.zyngui.screens['layer'].remove_layer(i)
 
-		self.reset()
-		self.show()
+		if self.layer in self.zyngui.screens['layer'].root_layers:
+			self.show()
+		else:
+			self.zyngui.close_screen()
 
 
 	# MIDI-Chain management
@@ -387,7 +389,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def midifx_reset(self):
-		self.zyngui.show_confirm("Do you really want to remove all MIDI-FXs for this layer?", self.midifx_reset_confirmed)
+		self.zyngui.show_confirm("Do you really want to remove all MIDI-FXs for this chain?", self.midifx_reset_confirmed)
 
 
 	def midifx_reset_confirmed(self, params=None):
@@ -396,17 +398,22 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			i = self.zyngui.screens['layer'].layers.index(sl)
 			self.zyngui.screens['layer'].remove_layer(i)
 
-		self.reset()
-		self.show()
+		if self.layer in self.zyngui.screens['layer'].root_layers:
+			self.show()
+		else:
+			self.zyngui.close_screen()
 
 
 	# Select Path
 
 	def set_select_path(self):
 		if self.layer:
-			self.select_path.set("{} > Layer Options".format(self.layer.get_basepath()))
+			if self.layer.midi_chan is None or self.layer.midi_chan<16:
+				self.select_path.set("{} > Chain Options".format(self.layer.get_basepath()))
+			else:
+				self.select_path.set("Master FX > Chain Options")
 		else:
-			self.select_path.set("Layer Options")
+			self.select_path.set("Chain Options")
 
 
 #------------------------------------------------------------------------------

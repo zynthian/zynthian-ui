@@ -56,11 +56,16 @@ class zynthian_layer:
 
 		self.jackname = None
 		
-		if midi_chan is None or midi_chan>=16:
+		if self.midi_chan is None:
 			self.audio_out = ["system"]	
 		else:
 			self.audio_out = ["mixer"]
-		self.audio_in = ["system:capture_1", "system:capture_2"]
+
+		if self.midi_chan is None or self.midi_chan<16:
+			self.audio_in = ["system:capture_1", "system:capture_2"]
+		else:
+			self.audio_in = []
+
 		self.midi_out = ["MIDI-OUT", "NET-OUT"]
 
 		self.bank_list = []
@@ -387,7 +392,7 @@ class zynthian_layer:
 	def set_show_fav_presets(self, flag=True):
 		if flag:
 			self.show_fav_presets = True
-			self.reset_preset()
+			#self.reset_preset()
 		else:
 			self.show_fav_presets = False
 
@@ -743,25 +748,13 @@ class zynthian_layer:
 		return self.audio_out
 
 
-	def get_audio_out_ports(self):
-		aout_ports = []
-		for p in self.audio_out:
-			if p=="system":
-				aout_ports += ["system:playback_1", "system:playback_2"]
-			elif p=="mixer":
-				aout_ports += ["zynmixer:input_%02da"%(self.midi_chan + 1), "zynmixer:input_%02db"%(self.midi_chan + 1)]
-			else:
-				aout_ports.append(p)
-		return list(dict.fromkeys(aout_ports).keys()) 
-
-
 	def set_audio_out(self, ao):
 		self.audio_out = []
 
 		# Sanitize audio out list. It should avoid audio routing snapshot version issues.
 		for p in ao:
 			if p.startswith("system") or p.startswith("zynmixer"):
-				if self.midi_chan is None or self.midi_chan>=16:
+				if self.midi_chan is None:
 					self.audio_out.append("system")
 				else:
 					self.audio_out.append("mixer")
@@ -817,7 +810,7 @@ class zynthian_layer:
 
 
 	def reset_audio_out(self):
-		if self.midi_chan is None or self.midi_chan >= 16:
+		if self.midi_chan is None:
 			self.audio_out = ["system"]
 		else:
 			self.audio_out = ["mixer"]
@@ -884,7 +877,10 @@ class zynthian_layer:
 
 
 	def reset_audio_in(self):
-		self.audio_in=["system:capture_1", "system:capture_2"]
+		if self.midi_chan is None or self.midi_chan<16:
+			self.audio_in = ["system:capture_1", "system:capture_2"]
+		else:
+			self.audio_in = []
 		self.zyngui.zynautoconnect_audio()
 
 

@@ -65,6 +65,12 @@ struct dynamic
 jack_client_t * g_pJackClient;
 struct dynamic g_dynamic[MAX_CHANNELS];
 struct dynamic g_mainOutput;
+jack_port_t * g_mainSendA;
+jack_port_t * g_mainSendB;
+jack_port_t * g_mainReturnA;
+jack_port_t * g_mainReturnB;
+int g_mainReturnRoutedA = 0;
+int g_mainReturnRoutedB = 0;
 int g_bDpm = 1;
 unsigned int g_nDampingCount = 0;
 unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
@@ -111,12 +117,17 @@ void sendOscInt(const char* path, int value)
 
 static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 {
-    jack_default_audio_sample_t *pInA, *pInB, *pOutA, *pOutB;
+    jack_default_audio_sample_t *pInA, *pInB, *pOutA, *pOutB, *pSendA, *pSendB, *pReturnA, *pReturnB;
 
     pOutA = jack_port_get_buffer(g_mainOutput.portA, nFrames);
     pOutB = jack_port_get_buffer(g_mainOutput.portB, nFrames);
     memset(pOutA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
     memset(pOutB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
+
+    pSendA = jack_port_get_buffer(g_mainSendA, nFrames);
+    pSendB = jack_port_get_buffer(g_mainSendB, nFrames);
+    memset(pSendA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
+    memset(pSendB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
 
     unsigned int frame, chan;
     float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB, fSampleA, fSampleB, fSampleM;
@@ -170,8 +181,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     fSampleM += pInB[frame];
                     fSampleA = fSampleM * curLevelA / 2;
                     fSampleB = fSampleM * curLevelB / 2;
-                    pOutA[frame] += fSampleA;
-                    pOutB[frame] += fSampleB;
+                    pSendA[frame] += fSampleA;
+                    pSendB[frame] += fSampleB;
                     curLevelA += fDeltaA;
                     curLevelB += fDeltaB;
                     if(g_bDpm || g_bOsc)
@@ -190,9 +201,9 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 for(frame = 0; frame < nFrames; frame++)
                 {
                     fSampleA = pInA[frame] * curLevelA;
-                    pOutA[frame] += fSampleA;
+                    pSendA[frame] += fSampleA;
                     fSampleB = pInB[frame] * curLevelB;
-                    pOutB[frame] += fSampleB;
+                    pSendB[frame] += fSampleB;
                     curLevelA += fDeltaA;
                     curLevelB += fDeltaB;
                     if(g_bDpm || g_bOsc)
@@ -265,8 +276,21 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
     fDeltaA = (reqLevelA - curLevelA) / nFrames;
     fDeltaB = (reqLevelB - curLevelB) / nFrames;
+
+    pReturnA = jack_port_get_buffer(g_mainReturnA, nFrames);
+    pReturnB = jack_port_get_buffer(g_mainReturnB, nFrames);
+
     for(frame = 0; frame < nFrames; frame++)
     {
+        if(g_mainReturnRoutedA)
+            pOutA[frame] = pReturnA[frame];
+        else
+            pOutA[frame] = pSendA[frame];
+        if(g_mainReturnRoutedB)
+            pOutB[frame] = pReturnB[frame];
+        else
+            pOutB[frame] = pSendB[frame];
+       
         if(g_mainOutput.mono)
         {
             fSampleM = (pOutA[frame] + pOutB[frame]) / 2;
@@ -316,11 +340,13 @@ void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void
     unsigned int chan;
     for(chan = 0; chan < MAX_CHANNELS; chan++)
     {
-        if(jack_port_connected(g_dynamic[chan].portA) > 0 && (jack_port_connected(g_dynamic[chan].portA) > 0))
+        if(jack_port_connected(g_dynamic[chan].portA) > 0 || (jack_port_connected(g_dynamic[chan].portB) > 0))
             g_dynamic[chan].routed = 1;
         else
             g_dynamic[chan].routed = 0;
     }
+    g_mainReturnRoutedA = jack_port_connected(g_mainReturnA) > 0;
+    g_mainReturnRoutedB = jack_port_connected(g_mainReturnB) > 0;
 }
 
 int onJackSamplerate(jack_nframes_t nSamplerate, void *arg)
@@ -382,6 +408,17 @@ int init()
             exit(1);
         }
     }
+    if (!(g_mainReturnA = jack_port_register(g_pJackClient, "return_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
+    {
+        fprintf(stderr, "libzynmixer: Cannot register return_a\n");
+        exit(1);
+    }
+    if (!(g_mainReturnB = jack_port_register(g_pJackClient, "return_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
+    {
+        fprintf(stderr, "libzynmixer: Cannot register return_b\n");
+        exit(1);
+    }
+
     #ifdef DEBUG
     fprintf(stderr,"libzynmixer: Created input ports\n");
     #endif
@@ -395,6 +432,16 @@ int init()
     if(!(g_mainOutput.portB = jack_port_register(g_pJackClient, "output_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0)))
     {
         fprintf(stderr, "libzynmixer: Cannot register output B\n");
+        exit(1);
+    }
+    if(!(g_mainSendA = jack_port_register(g_pJackClient, "send_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0)))
+    {
+        fprintf(stderr, "libzynmixer: Cannot register send A\n");
+        exit(1);
+    }
+    if(!(g_mainSendB = jack_port_register(g_pJackClient, "send_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0)))
+    {
+        fprintf(stderr, "libzynmixer: Cannot register send B\n");
         exit(1);
     }
     g_mainOutput.level = 0.0;
@@ -552,6 +599,17 @@ int getMono(int channel)
     if(channel >= MAX_CHANNELS)
         return g_mainOutput.mono;
     return g_dynamic[channel].mono;
+}
+
+void reset(int channel)
+{
+    if(channel >= MAX_CHANNELS)
+        return;
+    setLevel(channel, 0.8);
+    setBalance(channel, 0.0);
+    setMute(channel, 0);
+    setMono(channel, 0);
+    setSolo(channel, 0);
 }
 
 int isChannelRouted(int channel)

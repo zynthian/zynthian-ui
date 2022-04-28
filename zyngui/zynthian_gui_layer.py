@@ -38,6 +38,7 @@ from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_layer
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zynlibs.zynmixer import *
 
 #------------------------------------------------------------------------------
 # Zynthian Layer Selection GUI Class
@@ -78,63 +79,33 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for i,layer in enumerate(self.root_layers):
 			self.list_data.append((str(i+1),i,layer.get_presetpath()))
 
-		# Add separator
-		if len(self.root_layers)>0:
-			self.list_data.append((None,len(self.list_data),"-----------------------------"))
-
-		# Add fixed entries
-		self.list_data.append(('NEW_SYNTH',len(self.list_data),"NEW Synth Layer"))
-		self.list_data.append(('NEW_AUDIO_FX',len(self.list_data),"NEW Audio-FX Layer"))
-		self.list_data.append(('NEW_MIDI_FX',len(self.list_data),"NEW MIDI-FX Layer"))
-		self.list_data.append(('NEW_GENERATOR',len(self.list_data),"NEW Generator Layer"))
-		self.list_data.append(('NEW_SPECIAL',len(self.list_data),"NEW Special Layer"))
-		self.list_data.append(('RESET',len(self.list_data),"REMOVE All Layers"))
-		self.list_data.append((None,len(self.list_data),"-----------------------------"))
-		self.list_data.append(('ALL_OFF',len(self.list_data),"PANIC! All Notes Off"))
-
 		super().fill_list()
+
+
+	# Recalculate selector and root_layers list
+	def refresh(self):
+		self.fill_list()
+
+		try:
+			self.index = self.root_layers.index(self.zyngui.curlayer)
+		except:
+			self.index=0
+			try:
+				self.zyngui.set_curlayer(self.root_layers[self.index])
+			except:
+				self.zyngui.set_curlayer(None)
+
+		self.set_selector()
 
 
 	def select_action(self, i, t='S'):
 		self.index = i
 
-		if self.list_data[i][0] is None:
-			pass
+		if t=='S':
+			self.layer_control()
 
-		elif self.list_data[i][0]=='NEW_SYNTH':
-			self.add_layer("MIDI Synth")
-
-		elif self.list_data[i][0]=='NEW_AUDIO_FX':
-			self.add_layer("Audio Effect")
-
-		elif self.list_data[i][0]=='NEW_MIDI_FX':
-			self.add_layer("MIDI Tool")
-
-		elif self.list_data[i][0]=='NEW_GENERATOR':
-			self.add_layer("Audio Generator")
-
-		elif self.list_data[i][0]=='NEW_SPECIAL':
-			self.add_layer("Special")
-
-		elif self.list_data[i][0]=='RESET':
-			self.zyngui.show_confirm("Do you really want to remove all layers?", self.reset_confirmed)
-
-		elif self.list_data[i][0]=='ALL_OFF':
-			self.zyngui.callable_ui_action("ALL_OFF")
-
-		else:
-			if t=='S':
-				self.layer_control()
-
-			elif t=='B':
-				self.layer_options()
-
-
-	def reset_confirmed(self, params=None):
-		if len(self.zyngui.screens['layer'].layers)>0:
-			self.zyngui.screens['snapshot'].save_last_state_snapshot()
-		self.reset()
-		self.zyngui.show_screen('layer')
+		elif t=='B':
+			self.layer_options()
 
 
 	def create_amixer_layer(self):
@@ -228,7 +199,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return None
 
 
-	def get_master_fxchain_root_layer(self):
+	def get_main_fxchain_root_layer(self):
 		#return self.get_root_layer_by_midi_chan(16)
 		try:
 			if self.root_layers[-1].midi_chan==16:
@@ -404,6 +375,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if i>=0 and i<len(self.layers):
 			logging.debug("Removing layer {} => {} ...".format(i, self.layers[i].get_basepath()))
 
+			if self.layers[i] in self.root_layers:
+				refresh = True
+			else:
+				refresh = False
+
 			if self.layers[i].engine.type == "MIDI Tool":
 				self.drop_from_midichain(self.layers[i])
 				self.layers[i].mute_midi_out()
@@ -422,6 +398,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if stop_unused_engines:
 				self.zyngui.screens['engine'].stop_unused_engines()
 
+			if refresh:
+				self.refresh()
+
 
 	def remove_root_layer(self, i, stop_unused_engines=True):
 		if i>=0 and i<len(self.root_layers):
@@ -431,9 +410,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			else:
 				root_layers_to_delete = [self.root_layers[i]]
 
-			# Mute Audio Layers & build list of layers to delete
+			# Mute Audio Layers & build list of layers/midi_chans to delete
 			layers_to_delete = []
+			chans_to_reset = []
 			for root_layer in root_layers_to_delete:
+				chans_to_reset.append(root_layer.midi_chan)
+				zynmixer.set_mute(root_layer.midi_chan, True)
 				# Midichain layers
 				midichain_layers = self.get_midichain_layers(root_layer)
 				if len(midichain_layers)>0:
@@ -474,19 +456,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if stop_unused_engines:
 				self.zyngui.screens['engine'].stop_unused_engines()
 
-			# Recalculate selector and root_layers list
-			self.fill_list()
+			for chan in chans_to_reset:
+				zynmixer.reset(chan)
 
-			try:
-				self.index = self.root_layers.index(self.zyngui.curlayer)
-			except:
-				self.index=0
-				try:
-					self.zyngui.set_curlayer(self.root_layers[self.index])
-				except:
-					self.zyngui.set_curlayer(None)
-
-			self.set_selector()
+			self.refresh()
 
 
 	def remove_all_layers(self, stop_engines=True):

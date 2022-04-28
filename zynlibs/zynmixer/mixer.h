@@ -107,6 +107,11 @@ void setMono(int channel, int mono);
 */
 int  getMono(int channel);
 
+/** @brief  Reset a channel to default settings
+*   @param  channel Index of channel
+*/
+void reset(int channel);
+
 /** @brief  Check if channel has source routed
 *   @param  channel Index of channel
 *   @retval int 1 if channel has source routed. 0 if no source routed to channel.

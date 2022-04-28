@@ -1019,9 +1019,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					# Close parameter editor
 					self.param_editor_reset()
 					return True
-			elif switch == ENC_LAYER and not self.is_shown_menu():
-				self.toggle_menu()
-				return True
 
 		return False # Tell parent to handle the rest of short and bold key presses
 
