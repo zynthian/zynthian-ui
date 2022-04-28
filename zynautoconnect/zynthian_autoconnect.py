@@ -640,7 +640,7 @@ def audio_autoconnect(force=False):
 		root_layers = zynguilayer.get_fxchain_roots()
 		#Connect system capture ports to FX-layers root ...
 		for rl in root_layers:
-			if not rl.get_audio_jackname() or layer.engine.type!="Audio Effect":
+			if not rl.get_audio_jackname() or rl.engine.type!="Audio Effect":
 				continue
 
 			# Connect to FX-layers roots and their "pars" (parallel layers)
