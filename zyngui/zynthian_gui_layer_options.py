@@ -408,10 +408,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.layer:
-			if self.layer.midi_chan>=16:
-				self.select_path.set("Master FX > Chain Options")
-			else:
+			if self.layer.midi_chan is None or self.layer.midi_chan<16:
 				self.select_path.set("{} > Chain Options".format(self.layer.get_basepath()))
+			else:
+				self.select_path.set("Master FX > Chain Options")
 		else:
 			self.select_path.set("Chain Options")
 
