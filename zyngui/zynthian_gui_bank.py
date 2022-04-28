@@ -53,6 +53,11 @@ class zynthian_gui_bank(zynthian_gui_selector):
 	def show(self):
 		if self.zyngui.curlayer:
 			self.index = self.zyngui.curlayer.get_bank_index()
+			if self.zyngui.curlayer.get_show_fav_presets():
+				if len(self.zyngui.curlayer.get_preset_favs())>0:
+					self.index = 0
+				else:
+					self.curlayer.set_show_fav_presets(False)
 			super().show()
 		else:
 			self.zyngui.close_screen()
@@ -112,13 +117,9 @@ class zynthian_gui_bank(zynthian_gui_selector):
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
-		if swi == 1:
+		if swi == 2:
 			if t == 'S':
-				self.zyngui.close_screen()
-				return True
-		elif swi == 2:
-			if t == 'S':
-				self.zyngui.toggle_favorites()
+				self.zyngui.show_favorites()
 				return True
 		elif swi == 3:
 			if t == 'B':
