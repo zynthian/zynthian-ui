@@ -312,8 +312,8 @@ class zynthian_gui:
 			# Active Layer
 			# => Light non-empty layers
 			n = self.screens['layer'].get_num_root_layers()
-			master_fxchain = self.screens['layer'].get_master_fxchain_root_layer()
-			if master_fxchain:
+			main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
+			if main_fxchain:
 				n -= 1
 			for i in range(6):
 				if i<n:
@@ -321,14 +321,14 @@ class zynthian_gui:
 				else:
 					self.wsleds.setPixelColor(1+i, self.wscolor_off)
 			# => Light FX layer if not empty
-			if master_fxchain:
+			if main_fxchain:
 				self.wsleds.setPixelColor(7, self.wscolor_light)
 			else:
 				self.wsleds.setPixelColor(7, self.wscolor_off)
 			# => Light active layer
 			i = self.screens['layer'].get_root_layer_index()
 			if i is not None:
-				if master_fxchain and i==n:
+				if main_fxchain and i==n:
 					if self.current_screen=="control":
 						self.wsleds.setPixelColor(7, self.wscolor_active)
 					else:
@@ -1178,14 +1178,14 @@ class zynthian_gui:
 				try:
 					i = params[0]-1
 					n = self.screens['layer'].get_num_root_layers()
-					master_fxchain = self.screens['layer'].get_master_fxchain_root_layer()
-					if master_fxchain:
+					main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
+					if main_fxchain:
 						n -= 1
 					if i>=0 and i<n:
 						self.layer_control(self.screens['layer'].root_layers[i])
 					elif i<0:
-						if master_fxchain:
-							self.layer_control(master_fxchain)
+						if main_fxchain:
+							self.layer_control(main_fxchain)
 						else:
 							self.zyngui.screens['layer'].add_fxchain_layer(16)
 				except:
@@ -1198,13 +1198,13 @@ class zynthian_gui:
 				if params:
 					i = params[0]-1
 					n = self.screens['layer'].get_num_root_layers()
-					master_fxchain = self.screens['layer'].get_master_fxchain_root_layer()
-					if master_fxchain:
+					main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
+					if main_fxchain:
 						n -= 1
 					if i>=0 and i<n:
 						self.screens['layer'].select(i)
 					elif i<0:
-						if master_fxchain:
+						if main_fxchain:
 							self.screens['layer'].select(n)
 						else:
 							self.zyngui.screens['layer'].add_fxchain_layer(16)

@@ -601,10 +601,10 @@ def audio_autoconnect(force=False):
 	# Connect Audio Recorder
 	audio_autoconnect_mplayer()
 
-	# Connect zynmixer "send" to the Master FX-chain root layer and its "pars" (parallel layers)
-	mfx_root_layer = zynguilayer.get_master_fxchain_root_layer()
+	# Connect zynmixer "send" to the Main FX-chain root layer and its "pars" (parallel layers)
+	mfx_root_layer = zynguilayer.get_main_fxchain_root_layer()
 	if mfx_root_layer:
-		# Calculate the list of Master FX-chain input ports
+		# Calculate the list of Main FX-chain input ports
 		mfx_iports_a = []
 		mfx_iports_b = []
 		for rlp in zynguilayer.get_fxchain_pars(mfx_root_layer):

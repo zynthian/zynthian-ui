@@ -198,7 +198,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return None
 
 
-	def get_master_fxchain_root_layer(self):
+	def get_main_fxchain_root_layer(self):
 		#return self.get_root_layer_by_midi_chan(16)
 		try:
 			if self.root_layers[-1].midi_chan==16:

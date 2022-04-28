@@ -5,8 +5,8 @@
 #
 # Zynthian GUI Audio Mixer
 #
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2021 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 #
@@ -584,29 +584,24 @@ class zynthian_gui_mixer_strip():
 	def on_strip_press(self, event):
 		if self.layer is None:
 			return
-		if self.layer.engine is not None:
-			self.strip_drag_start = event
+		self.strip_drag_start = event
 		self.dragging = False
 
 
 	# Function to handle legend strip release
 	def on_strip_release(self, event):
-		if not self.dragging:
+		if self.dragging:
+			self.dragging = None
+		else:
 			self.parent.select_chain_by_layer(self.layer)
-		if self.layer.engine is not None:
-			return
-		if self.strip_drag_start:
-			delta = event.time - self.strip_drag_start.time
-			self.strip_drag_start = None
-			if self.dragging:
-				self.dragging = False
-				return
-			if delta > 400:
-				zynthian_gui_config.zyngui.screens['layer_options'].reset()
-				zynthian_gui_config.zyngui.show_screen('layer_options')
-				return
-			else:
-				zynthian_gui_config.zyngui.layer_control(self.layer)
+			if self.strip_drag_start:
+				delta = event.time - self.strip_drag_start.time
+				self.strip_drag_start = None
+				if delta > 400:
+					zynthian_gui_config.zyngui.screens['layer_options'].reset()
+					zynthian_gui_config.zyngui.show_screen('layer_options')
+				elif self.layer.engine:
+					zynthian_gui_config.zyngui.layer_control(self.layer)
 
 
 	# Function to handle legend strip drag
@@ -837,7 +832,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		layers = copy.copy(self.zyngui.screens['layer'].get_root_layers())
 
 		# Get Global-FX layer if it exists...
-		main_fx_layer = self.zyngui.screens['layer'].get_master_fxchain_root_layer()
+		main_fx_layer = self.zyngui.screens['layer'].get_main_fxchain_root_layer()
 		if main_fx_layer:
 			self.main_mixbus_strip.set_layer(main_fx_layer)
 			layers.remove(main_fx_layer)
@@ -1026,18 +1021,34 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if isinstance(self.selected_layer, zyngine.zynthian_layer):
 				if t == "S":
 					self.zyngui.layer_control(self.selected_layer)
-					return True
 				elif t == "B":
 					# Layer Options
 					self.zyngui.screens['layer'].select(self.selected_chain_index)
 					self.zyngui.screens['layer_options'].reset()
 					self.zyngui.show_screen('layer_options')
-					return True
-			else:
-				self.zyngui.screens['layer'].add_fxchain_layer(MAX_NUM_CHANNELS)
-				return True
+			elif t == "B":
+				if zynmixer.get_mono(self.selected_layer.midi_chan):
+					options = {"[x] Audio Mono":"Mono", "> Audio Chain ---------------":None, "Add Audio-FX":"Add"}
+				else:
+					options = {"[  ] Audio Mono":"Mono", "> Audio Chain ---------------":None, "Add Audio-FX":"Add"}
+				self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
+				self.zyngui.show_screen('option')
+			return True
 
 		return False
+
+
+	def mainfx_options_cb(self, option, param):
+		if param == "Add":
+			self.zyngui.screens['layer'].add_fxchain_layer(MAX_NUM_CHANNELS)
+		elif param == "Mono":
+			zynmixer.toggle_mono(self.selected_layer.midi_chan)
+			if zynmixer.get_mono(self.selected_layer.midi_chan):
+				options = {"[x] Audio Mono":"Mono", "> Audio Chain ---------------":None, "Add Audio-FX":"Add"}
+			else:
+				options = {"[  ] Audio Mono":"Mono", "> Audio Chain ---------------":None, "Add Audio-FX":"Add"}
+			self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
+			self.zyngui.show_screen('option', hmode=self.zyngui.SCREEN_HMODE_REPLACE)
 
 
 	def setup_zyncoders(self):

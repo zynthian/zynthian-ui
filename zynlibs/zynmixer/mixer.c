@@ -282,12 +282,6 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
     for(frame = 0; frame < nFrames; frame++)
     {
-        if(g_mainOutput.mono)
-        {
-            fSampleM = (pSendA[frame] + pSendB[frame]) / 2;
-            pSendA[frame] = fSampleM;
-            pSendB[frame] = fSampleM;
-        }
         if(g_mainReturnRoutedA)
             pOutA[frame] = pReturnA[frame];
         else
@@ -297,6 +291,12 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         else
             pOutB[frame] = pSendB[frame];
        
+        if(g_mainOutput.mono)
+        {
+            fSampleM = (pOutA[frame] + pOutB[frame]) / 2;
+            pOutA[frame] = fSampleM;
+            pOutB[frame] = fSampleM;
+        }
         pOutA[frame] *= curLevelA;
         pOutB[frame] *= curLevelB;
         curLevelA += fDeltaA;
