@@ -282,12 +282,6 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
     for(frame = 0; frame < nFrames; frame++)
     {
-        if(g_mainOutput.mono)
-        {
-            fSampleM = (pSendA[frame] + pSendB[frame]) / 2;
-            pSendA[frame] = fSampleM;
-            pSendB[frame] = fSampleM;
-        }
         if(g_mainReturnRoutedA)
             pOutA[frame] = pReturnA[frame];
         else
@@ -297,6 +291,12 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         else
             pOutB[frame] = pSendB[frame];
        
+        if(g_mainOutput.mono)
+        {
+            fSampleM = (pOutA[frame] + pOutB[frame]) / 2;
+            pOutA[frame] = fSampleM;
+            pOutB[frame] = fSampleM;
+        }
         pOutA[frame] *= curLevelA;
         pOutB[frame] *= curLevelB;
         curLevelA += fDeltaA;
@@ -599,6 +599,17 @@ int getMono(int channel)
     if(channel >= MAX_CHANNELS)
         return g_mainOutput.mono;
     return g_dynamic[channel].mono;
+}
+
+void reset(int channel)
+{
+    if(channel >= MAX_CHANNELS)
+        return;
+    setLevel(channel, 0.8);
+    setBalance(channel, 0.0);
+    setMute(channel, 0);
+    setMono(channel, 0);
+    setSolo(channel, 0);
 }
 
 int isChannelRouted(int channel)
