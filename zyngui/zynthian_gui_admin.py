@@ -691,7 +691,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			# Save state and stop engines
 			if len(self.zyngui.screens['layer'].layers)>0:
 				self.zyngui.screens['snapshot'].save_last_state_snapshot()
-				self.zyngui.screens['layer'].reset()
 				restore_state = True
 			else:
 				restore_state = False
@@ -705,7 +704,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 			# Restore state
 			if restore_state:
-				self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+				self.zyngui.screens['snapshot'].load_last_state_snapshot()
 
 			self.zyngui.stop_loading()
 
@@ -739,7 +738,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			# Save state and stop engines
 			if len(self.zyngui.screens['layer'].layers)>0:
 				self.zyngui.screens['snapshot'].save_last_state_snapshot()
-				self.zyngui.screens['layer'].reset()
 				restore_state = True
 			else:
 				restore_state = False
@@ -753,7 +751,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 			# Restore state
 			if restore_state:
-				self.zyngui.screens['snapshot'].load_last_state_snapshot(True)
+				self.zyngui.screens['snapshot'].load_last_state_snapshot()
 				
 			self.zyngui.stop_loading()
 
