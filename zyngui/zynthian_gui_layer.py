@@ -748,10 +748,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if layer.midi_chan is None and layer.engine.type in ("Special"):
 				roots.append(layer)
 
-		for layer in self.layers:
-			if layer.midi_chan in range(16) or layer.midi_chan == 256:
-				roots.append(layer)
-				break
+		for chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
+			for layer in self.layers:
+				if layer.midi_chan == chan:
+					roots.append(layer)
+					break
 
 		return roots
 
