@@ -49,7 +49,8 @@ ENC_BACK		= 1
 ENC_SNAPSHOT	= 2
 ENC_SELECT		= 3
 
-MAX_NUM_CHANNELS = 16
+MAX_NUM_CHANNELS = 17
+MAIN_CHANNEL_INDEX = 256
 
 #------------------------------------------------------------------------------
 # Zynthian Main Mixbus Layer Class
@@ -59,7 +60,7 @@ MAX_NUM_CHANNELS = 16
 class zynthian_gui_mixer_main_layer():
 	def __init__(self):
 		self.engine = None
-		self.midi_chan = MAX_NUM_CHANNELS
+		self.midi_chan = MAIN_CHANNEL_INDEX
 
 
 #------------------------------------------------------------------------------
@@ -244,7 +245,7 @@ class zynthian_gui_mixer_strip():
 
 		self.parent.main_canvas.itemconfig(self.legend, text="")
 		self.parent.main_canvas.coords(self.fader_bg_color, self.x, self.fader_top, self.x + self.width, self.fader_bottom)
-		if self.layer.midi_chan==MAX_NUM_CHANNELS:
+		if self.layer.midi_chan==MAIN_CHANNEL_INDEX:
 			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
 			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("NoFX"), state="normal")
 		else:
@@ -256,7 +257,7 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("None"), state="normal")
 
 		try:
-			if self.layer.engine.type == "MIDI Tool" or self.layer.midi_chan is None:
+			if self.layer.engine and self.layer.engine.type == "MIDI Tool" or self.layer.midi_chan is None:
 				return
 		except Exception as e:
 			logging.error(e)
@@ -604,9 +605,12 @@ class zynthian_gui_mixer_strip():
 				delta = event.time - self.strip_drag_start.time
 				self.strip_drag_start = None
 				if delta > 400:
-					zynthian_gui_config.zyngui.screens['layer_options'].reset()
-					zynthian_gui_config.zyngui.show_screen('layer_options')
-				elif self.layer.engine:
+					if isinstance(self.parent.selected_layer, zyngine.zynthian_layer):
+						zynthian_gui_config.zyngui.screens['layer_options'].reset()
+						zynthian_gui_config.zyngui.show_screen('layer_options')
+					else:
+						self.parent.show_mainfx_options()
+				elif isinstance(self.parent.selected_layer, zyngine.zynthian_layer):
 					zynthian_gui_config.zyngui.layer_control(self.layer)
 
 
@@ -792,7 +796,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# layer: Layer object
 	# set_curlayer: True to select the layer
 	def select_chain_by_layer(self, layer, set_curlayer=True):
-		if layer.midi_chan==MAX_NUM_CHANNELS:
+		if layer.midi_chan == MAIN_CHANNEL_INDEX:
 			self.select_chain_by_index(self.number_layers, set_curlayer)
 			return
 
@@ -1053,7 +1057,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	def mainfx_options_cb(self, option, param):
 		if param == "Add":
-			self.zyngui.screens['layer'].add_fxchain_layer(MAX_NUM_CHANNELS)
+			self.zyngui.screens['layer'].add_fxchain_layer(MAIN_CHANNEL_INDEX)
 		elif param == "Mono":
 			zynmixer.toggle_mono(self.selected_layer.midi_chan)
 			self.show_mainfx_options()
@@ -1072,7 +1076,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		lib_zyncore.setup_midi_zynpot(ENC_BACK, 0, 0)
 		lib_zyncore.setup_osc_zynpot(ENC_BACK, None)
 
-		value = int(zynmixer.get_level(MAX_NUM_CHANNELS) * 100)
+		value = int(zynmixer.get_level(MAIN_CHANNEL_INDEX) * 100)
 		lib_zyncore.setup_rangescale_zynpot(ENC_SNAPSHOT, 0, 100, value, 0)
 		lib_zyncore.setup_midi_zynpot(ENC_SNAPSHOT, 0, 0)
 		lib_zyncore.setup_osc_zynpot(ENC_SNAPSHOT, None)
@@ -1092,7 +1096,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			lib_zyncore.set_value_noflag_zynpot(ENC_BACK, value, 0)
 
 			# Main mixbus volume
-			value = int(zynmixer.get_level(MAX_NUM_CHANNELS) * 100)
+			value = int(zynmixer.get_level(MAIN_CHANNEL_INDEX) * 100)
 			lib_zyncore.set_value_noflag_zynpot(ENC_SNAPSHOT, value, 0)
 
 		# Selector encoder
@@ -1112,10 +1116,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if lib_zyncore.get_value_flag_zynpot(ENC_LAYER):
 				value = lib_zyncore.get_value_zynpot(ENC_LAYER)
 				#logging.debug("Value LAYER: {}".format(value))
-				if self.selected_layer.midi_chan == MAX_NUM_CHANNELS:
+				if self.selected_layer.midi_chan == MAIN_CHANNEL_INDEX:
 					lib_zyncore.set_value_noflag_zynpot(ENC_SNAPSHOT, value)
 				zynmixer.set_level(self.selected_layer.midi_chan, value * 0.01)
-				if self.selected_layer.midi_chan == MAX_NUM_CHANNELS:
+				if self.selected_layer.midi_chan == MAIN_CHANNEL_INDEX:
 					redraw_main_fader = True
 				else:
 					redraw_fader_offset = self.selected_chain_index - self.mixer_strip_offset
@@ -1125,7 +1129,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				value = lib_zyncore.get_value_zynpot(ENC_BACK)
 				#logging.debug("Value BACK: {}".format(value))
 				zynmixer.set_balance(self.selected_layer.midi_chan, (value - 50) * 0.02)
-				if self.selected_layer.midi_chan == MAX_NUM_CHANNELS:
+				if self.selected_layer.midi_chan == MAIN_CHANNEL_INDEX:
 					redraw_main_fader = True
 				else:
 					redraw_fader_offset = self.selected_chain_index - self.mixer_strip_offset
@@ -1134,9 +1138,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if lib_zyncore.get_value_flag_zynpot(ENC_SNAPSHOT):
 				value = lib_zyncore.get_value_zynpot(ENC_SNAPSHOT)
 				#logging.debug("Value SHOT: {}".format(value))
-				if self.selected_layer.midi_chan == MAX_NUM_CHANNELS:
+				if self.selected_layer.midi_chan == MAIN_CHANNEL_INDEX:
 					lib_zyncore.set_value_noflag_zynpot(ENC_LAYER, value)
-				zynmixer.set_level(MAX_NUM_CHANNELS, value * 0.01)
+				zynmixer.set_level(MAIN_CHANNEL_INDEX, value * 0.01)
 				redraw_main_fader = True
 
 		# SELECT encoder moves chain selection

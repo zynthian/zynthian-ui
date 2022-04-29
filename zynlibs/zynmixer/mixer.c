@@ -41,7 +41,8 @@ int g_bOsc = 0; // True if OSC client subscribed
 
 #define DEBUG
 
-#define MAX_CHANNELS 16
+#define MAX_CHANNELS 17
+#define MAIN_CHANNEL 256
 #define MAX_OSC_CLIENTS 5
 
 struct dynamic
@@ -480,7 +481,7 @@ void end() {
     if(g_pJackClient)
     {
         // Mute output and wait for soft mute to occur before closing link with jack server
-        setLevel(MAX_CHANNELS, 0.0);
+        setLevel(MAIN_CHANNEL, 0.0);
         usleep(100000);
         jack_client_close(g_pJackClient);
     }
@@ -560,7 +561,7 @@ void setSolo(int channel, int solo)
     g_mainOutput.solo = 0;
     for(int nChannel = 0; nChannel < MAX_CHANNELS; ++ nChannel)
         g_mainOutput.solo |= g_dynamic[nChannel].solo;
-    sprintf(g_oscpath, "/mixer/solo%d", MAX_CHANNELS);
+    sprintf(g_oscpath, "/mixer/solo%d", MAIN_CHANNEL);
     sendOscInt(g_oscpath, g_mainOutput.solo);
 }
 
@@ -673,7 +674,7 @@ int addOscClient(const char* client)
             return -1;
         }
         fprintf(stderr, "libzynmixer: Added OSC client %d: %s\n", i, client);
-        for(int nChannel = 0; nChannel <= MAX_CHANNELS; ++nChannel)
+        for(int nChannel = 0; nChannel < MAX_CHANNELS; ++nChannel)
         {
             setBalance(nChannel, getBalance(nChannel));
             setLevel(nChannel, getLevel(nChannel));
@@ -681,6 +682,11 @@ int addOscClient(const char* client)
             setMute(nChannel, getMute(nChannel));
             setSolo(nChannel, getSolo(nChannel));
         }
+        setBalance(MAIN_CHANNEL, getBalance(MAIN_CHANNEL));
+        setLevel(MAIN_CHANNEL, getLevel(MAIN_CHANNEL));
+        setMono(MAIN_CHANNEL, getMono(MAIN_CHANNEL));
+        setMute(MAIN_CHANNEL, getMute(MAIN_CHANNEL));
+        setSolo(MAIN_CHANNEL, getSolo(MAIN_CHANNEL));
         g_bOsc = 1;
         return i;
     }

@@ -520,8 +520,8 @@ def audio_autoconnect(force=False):
 	except:
 		pass
 	try:
-		jclient.connect(mon_in[0],'zynmixer:return_a')
-		jclient.connect(mon_in[1],'zynmixer:return_b')
+		jclient.connect(mon_in[0],'zynmixer:input_17a')
+		jclient.connect(mon_in[1],'zynmixer:input_17b')
 	except:
 		pass
 
@@ -729,7 +729,7 @@ def get_layer_audio_out_ports(layer):
 		if p=="system":
 			aout_ports += ["system:playback_1", "system:playback_2"]
 		elif p=="mixer":
-			if layer.midi_chan>=16:
+			if layer.midi_chan >= 17:
 				aout_ports += ["zynmixer:return_a", "zynmixer:return_b"]
 			else:
 				aout_ports += ["zynmixer:input_%02da"%(layer.midi_chan + 1), "zynmixer:input_%02db"%(layer.midi_chan + 1)]

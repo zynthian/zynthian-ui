@@ -200,12 +200,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_main_fxchain_root_layer(self):
-		#return self.get_root_layer_by_midi_chan(16)
-		try:
-			if self.root_layers[-1].midi_chan==16:
-				return self.root_layers[-1]
-		except:
-			pass
+		for layer in self.root_layers:
+			if layer.midi_chan == 256:
+				return layer
 		return None
 
 
@@ -751,11 +748,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if layer.midi_chan is None and layer.engine.type in ("Special"):
 				roots.append(layer)
 
-		for chan in range(16+1):
-			for layer in self.layers:
-				if layer.midi_chan==chan:
-					roots.append(layer)
-					break
+		for layer in self.layers:
+			if layer.midi_chan in range(16) or layer.midi_chan == 256:
+				roots.append(layer)
+				break
 
 		return roots
 
@@ -1374,7 +1370,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		#Audio Recorder Out
 		if 'audio_recorder_out' in snapshot:
-			self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out']
+			if snapshot['audio_recorder_out'] == ['system']:
+				# Migration fix 2205
+				self.zyngui.screens['audio_recorder'].audio_out = ['mixer']
+			else:
+				self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out']
 
 		#Autoconnect Audio
 		self.zyngui.zynautoconnect_audio(True)
