@@ -266,7 +266,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.add_layer_eng = None
 		self.replace_layer_index = i
 		self.layer_chain_parallel = False
-		self.zyngui.screens['engine'].set_engine_type(self.layers[i].engine.type, self.layers[i].midi_chan)
+		seleng = self.zyngui.screens['engine'].get_zyngine_eng(self.layers[i].engine)
+		self.zyngui.screens['engine'].set_engine_type(self.layers[i].engine.type, self.layers[i].midi_chan, seleng)
 		self.zyngui.show_screen('engine')
 
 

@@ -84,28 +84,34 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def __init__(self):
 		self.reset_index = True
+		self.selected_eng = None
 		self.zyngine_counter = 0
 		self.zyngines = OrderedDict()
 		self.set_engine_type("MIDI Synth")
 		super().__init__('Engine', True)
 
 
-	def set_engine_type(self, etype, midi_chan=None):
+	def set_engine_type(self, etype, midi_chan=None, selected_eng=None):
 		self.engine_type = etype
 		self.midi_chan = midi_chan
-		self.reset_index = True
+		if not selected_eng:
+			self.reset_index = True
+			self.selected_eng = None
+		else:
+			self.reset_index = False
+			self.selected_eng = selected_eng
 
 
-	def set_synth_mode(self, midi_chan):
-		self.set_engine_type("MIDI Synth", midi_chan)
+	def set_synth_mode(self, midi_chan, selected_eng=None):
+		self.set_engine_type("MIDI Synth", midi_chan, selected_eng)
 
 
-	def set_fxchain_mode(self, midi_chan):
-		self.set_engine_type("Audio Effect", midi_chan)
+	def set_fxchain_mode(self, midi_chan, selected_eng=None):
+		self.set_engine_type("Audio Effect", midi_chan, selected_eng)
 
 
-	def set_midichain_mode(self, midi_chan):
-		self.set_engine_type("MIDI Tool", midi_chan)
+	def set_midichain_mode(self, midi_chan, selected_eng=None):
+		self.set_engine_type("MIDI Tool", midi_chan, selected_eng)
 
 
 	def filtered_engines_by_cat(self):
@@ -126,7 +132,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.list_data=[]
 
 		# Sort category headings, but headings starting with "Zynthian" are shown first
-		
+
+		seleng_index = -1
 		for cat, infos in sorted(self.filtered_engines_by_cat().items(), key = lambda kv:"!" if kv[0] is None else kv[0]):
 			# Add category header...
 			if cat:
@@ -139,19 +146,21 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			for eng, info in infos.items():
 				# For some engines, check if needed channels are free ...
 				if eng not in self.check_channels_engines or all(chan in self.zyngui.screens['layer'].get_free_midi_chans() for chan in info[4].get_needed_channels()):
-					self.list_data.append((eng,len(self.list_data),info[1],info[0]))
+					i = len(self.list_data)
+					self.list_data.append((eng, i, info[1], info[0]))
+					if self.selected_eng and eng==self.selected_eng:
+						seleng_index = i
 
 		# Display help if no engines are enabled ...
 		if len(self.list_data)==0:
 			self.list_data.append((None,len(self.list_data),"Enable LV2-plugins on webconf".format(os.uname().nodename)))
 
-		# Select the first element that is not a category heading
-		if self.reset_index:
+		# Select "selected_engine" ...
+		if seleng_index>=0:
+			self.index = seleng_index
+		# or select the first engine if reset_index flag is True
+		elif self.reset_index:
 			self.index = 0
-			for i, val in enumerate(self.list_data):
-				if val[0] != None:
-					self.index = i
-					break
 			self.reset_index = False
 
 		super().fill_list()
@@ -206,6 +215,17 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			if len(self.zyngines[eng].layers)==0 and eng[0:3]=="JV/":
 				self.zyngines[eng].stop()
 				del self.zyngines[eng]
+
+
+	def get_zyngine_eng(self, zyngine):
+		try:
+			eng = list(self.zyngines.keys())[list(self.zyngines.values()).index(zyngine)]
+			if eng.startswith("JV/"):
+				eng = "JV/{}".format(zyngine.plugin_name)
+			return eng
+		except Exception as e:
+			logging.error("Engine '{}' not found!! => {}".format(zyngine, e))
+			return None
 
 
 	def get_engine_info(self, eng):
