@@ -250,7 +250,7 @@ class zynthian_gui:
 			# LEDS with PWM1 (pin 13, channel 1)
 			pin = 13
 			chan = 1
-		elif zynthian_gui_config.wiring_layout=="Z2_V2":
+		elif zynthian_gui_config.wiring_layout in ("Z2_V2", "Z2_V3"):
 			# LEDS with SPI0 (pin 10, channel 0)
 			pin = 10
 			chan = 0
