@@ -52,6 +52,8 @@ def init():
 		libaudioplayer.getFileDuration.restype = ctypes.c_float
 		libaudioplayer.getFileInfo.restype = ctypes.c_char_p
 		libaudioplayer.getFilename.restype = ctypes.c_char_p
+		libaudioplayer.getVolume.restype = ctypes.c_float
+		libaudioplayer.setVolume.argtypes = [ctypes.c_float]
 		libaudioplayer.setPosition.argtypes = [ctypes.c_float]
 		libaudioplayer.init()
 	except Exception as e:

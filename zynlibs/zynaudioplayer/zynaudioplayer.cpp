@@ -63,6 +63,7 @@ jack_nframes_t g_nPlaybackPosFrames = 0; // Current playback position in frames 
 uint32_t g_nXruns = 0;
 unsigned int g_nSrcQuality = SRC_SINC_FASTEST;
 std::string g_sFilename;
+float g_fLevel = 1.0; // Audio level (volume) 0..1
 
 /*** Public functions exposed as external C functions in header ***/
 
@@ -211,8 +212,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused) {
                         break;
                     }
                 }
-                pOutA[nOffset] = g_audioBuffer[g_nActiveBuffer].data[g_nBufferPos];
-                pOutB[nOffset] = g_audioBuffer[g_nActiveBuffer].data[g_nBufferPos + g_nChannelB];
+                pOutA[nOffset] = g_fLevel * g_audioBuffer[g_nActiveBuffer].data[g_nBufferPos];
+                pOutB[nOffset] = g_fLevel * g_audioBuffer[g_nActiveBuffer].data[g_nBufferPos + g_nChannelB];
                 g_nBufferPos += g_sf_info.channels;
                 ++g_nPlaybackPosFrames;
             }
@@ -408,4 +409,14 @@ bool setSrcQuality(unsigned int quality) {
         return false;
     g_nSrcQuality = quality;
     return true;
+}
+
+void setVolume(float level) {
+    if(level < 0 || level > 2)
+        return;
+    g_fLevel = level;
+}
+
+float getVolume() {
+    return g_fLevel;
 }

@@ -114,6 +114,16 @@ const char* getFileInfo(const char* filename, int type);
 */
 bool setSrcQuality(unsigned int quality);
 
+/** @brief  Set audio level (volume)
+*   @param  level Audio level (0..2)
+*/
+void setVolume(float level);
+
+/** @brief  Get audio level (volume)
+*   @retval float Audio level
+*/
+float getVolume();
+
 #ifdef __cplusplus
 }
 #endif
