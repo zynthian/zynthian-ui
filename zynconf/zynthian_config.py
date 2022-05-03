@@ -45,12 +45,15 @@ from collections import OrderedDict
 
 CustomSwitchActionType = [
 	"NONE",
-	"UI_ACTION",
+	"UI_ACTION_PUSH",
+	"UI_ACTION_RELEASE",
 	"MIDI_CC",
+	"MIDI_CC_SWITCH",
 	"MIDI_NOTE",
 	"MIDI_PROG_CHANGE",
 	"CVGATE_IN",
-	"CVGATE_OUT"
+	"CVGATE_OUT",
+	"GATE_OUT"
 ];
 
 ZynSensorActionType = [
@@ -94,16 +97,17 @@ CustomUiAction = [
 	"STOP_STEP_SEQ",
 	"TOGGLE_STEP_SEQ",
 
-	"SELECT",
+	"BACK",
 	"NEXT",
 	"PREV",
+	"SELECT",
 
 	"LAYER_UP",
 	"LAYER_DOWN",
 	"BACK_UP",
 	"BACK_DOWN",
-	"SNAPSHOT_UP",
-	"SNAPSHOT_DOWN",
+	"LEARN_UP",
+	"LEARN_DOWN",
 	"SELECT_UP",
 	"SELECT_DOWN",
 
@@ -113,28 +117,32 @@ CustomUiAction = [
 	"SWITCH_BACK_SHORT",
 	"SWITCH_BACK_BOLD",
 	"SWITCH_BACK_LONG",
-	"SWITCH_SNAPSHOT_SHORT",
-	"SWITCH_SNAPSHOT_BOLD",
-	"SWITCH_SNAPSHOT_LONG",
+	"SWITCH_LEARN_SHORT",
+	"SWITCH_LEARN_BOLD",
+	"SWITCH_LEARN_LONG",
 	"SWITCH_SELECT_SHORT",
 	"SWITCH_SELECT_BOLD",
 	"SWITCH_SELECT_LONG",
 
 	"SCREEN_MAIN",
-	"SCREEN_LAYER",
+	"SCREEN_ADMIN",
+	"SCREEN_AUDIO_MIXER",
+	"SCREEN_SNAPSHOT",
+	"SCREEN_AUDIO_RECORDER",
+	"SCREEN_MIDI_RECORDER",
+	"SCREEN_ALSA_MIXER",
+	"SCREEN_STEPSEQ",
 	"SCREEN_BANK",
 	"SCREEN_PRESET",
-	"SCREEN_CONTROL",
 
-	"MODAL_SNAPSHOT",
-	"MODAL_ADMIN",
-	"MODAL_AUDIO_MIXER",
-	"MODAL_AUDIO_RECORDER",
-	"MODAL_MIDI_RECORDER",
-	"MODAL_ALSA_MIXER",
-	"MODAL_STEPSEQ",
-
-	"LAYER_CONTROL"
+	"LAYER_CONTROL",
+	"LAYER_OPTIONS",
+	"MENU",
+	"PRESETS",
+	"PRESET_FAVS",
+	"ZYNPAD",
+	"ZCTRL_TOUCH",
+	"LEARN"
 ];
 
 #-------------------------------------------------------------------------------
@@ -199,7 +207,7 @@ def load_config(set_env=True, fpath=None):
 			if vn in varnames:
 				val=res.group(2)
 				config[vn]=val
-				logging.debug("CONFIG VAR: %s=%s" % (vn,val))
+				#logging.debug("CONFIG VAR: %s=%s" % (vn,val))
 				# Set local environment
 				if set_env:
 					os.environ[vn]=val
@@ -207,7 +215,7 @@ def load_config(set_env=True, fpath=None):
 	return config
 
 
-def save_config(config, update_sys=False, fpath=None):
+def save_config(config, updsys=False, fpath=None):
 	if not fpath:
 		fpath = get_config_fpath()
 
@@ -229,7 +237,7 @@ def save_config(config, update_sys=False, fpath=None):
 				os.environ[varname]=value
 				lines[i]="export %s=\"%s\"\n" % (varname,value)
 				updated.append(varname)
-				logging.debug(lines[i])
+				#logging.debug(lines[i])
 
 		if line.startswith("# Directory Paths"):
 			add_row = i-1
@@ -244,7 +252,7 @@ def save_config(config, update_sys=False, fpath=None):
 		value=value.replace("\r", "")
 		os.environ[varname]=value
 		lines.insert(add_row,"export %s=\"%s\"\n" % (varname,value))
-		logging.info(lines[add_row])
+		#logging.info(lines[add_row])
 
 	# Write updated config file
 	with open(fpath,'w') as f:
@@ -253,12 +261,16 @@ def save_config(config, update_sys=False, fpath=None):
 		os.fsync(f.fileno())
 
 	# Update System Configuration
-	if update_sys:
-		try:
-			check_output(os.environ.get('ZYNTHIAN_SYS_DIR')+"/scripts/update_zynthian_sys.sh", shell=True)
-		except Exception as e:
-			logging.error("Updating Sytem Config: %s" % e)
+	if updsys:
+		update_sys()
 
+
+def update_sys():
+	try:
+		os.environ['ZYNTHIAN_FLAG_MASTER'] = "NONE"
+		check_output(os.environ.get('ZYNTHIAN_SYS_DIR')+"/scripts/update_zynthian_sys.sh", shell=True)
+	except Exception as e:
+		logging.error("Updating Sytem Config: %s" % e)
 
 #-------------------------------------------------------------------------------
 # MIDI Config related functions

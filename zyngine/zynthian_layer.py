@@ -30,7 +30,7 @@ import collections
 from collections import OrderedDict
 
 # Zynthian specific modules
-from zyncoder import *
+from zyncoder.zyncore import lib_zyncore
 
 
 class zynthian_layer:
@@ -50,15 +50,22 @@ class zynthian_layer:
 
 
 	def __init__(self, engine, midi_chan, zyngui=None):
-		self.zyngui = zyngui
-		self.engine = engine
+		self.engine = None
 		self.midi_chan = midi_chan
+		self.zyngui = zyngui
 
 		self.jackname = None
-		self.audio_out = ["system:playback_1", "system:playback_2"]
-		if midi_chan != None:
-			self.audio_out = ["zynmixer:input_%02da"%(midi_chan + 1), "zynmixer:input_%02db"%(midi_chan + 1)]
-		self.audio_in = ["system:capture_1", "system:capture_2"]
+		
+		if self.midi_chan is None:
+			self.audio_out = ["system"]	
+		else:
+			self.audio_out = ["mixer"]
+
+		if self.midi_chan is None or self.midi_chan<16:
+			self.audio_in = ["system:capture_1", "system:capture_2"]
+		else:
+			self.audio_in = []
+
 		self.midi_out = ["MIDI-OUT", "NET-OUT"]
 
 		self.bank_list = []
@@ -82,13 +89,19 @@ class zynthian_layer:
 
 		self.controllers_dict = None
 		self.ctrl_screens_dict = None
-		self.active_screen_index = -1
+		self.current_screen_index = -1
 
 		self.listen_midi_cc = True
 		self.refresh_flag = False
 
 		self.reset_zs3()
 
+		if engine is not None:
+			self.set_engine(engine)
+
+
+	def set_engine(self, engine):
+		self.engine = engine
 		self.engine.add_layer(self)
 		self.refresh_controllers()
 
@@ -101,7 +114,7 @@ class zynthian_layer:
 			#TODO: Improve this Dirty Hack!!
 			if self.engine.nickname=='MD':
 				self.zyngui.screens['preset'].fill_list()
-				if self.zyngui.active_screen=='bank':
+				if self.zyngui.current_screen=='bank':
 					if self.preset_name:
 						self.zyngui.show_screen('control')
 					else:
@@ -130,10 +143,8 @@ class zynthian_layer:
 		self.engine.set_midi_chan(self)
 		for zctrl in self.controllers_dict.values():
 			zctrl.set_midi_chan(midi_chan)
-		for index, output in enumerate(self.audio_out):
-			if output.startswith("zynmixer:input_"):
-				self.audio_out[index] = "zynmixer:input_%02d%s"%(midi_chan + 1, output[-1:])
 		self.zyngui.zynautoconnect_audio()
+
 
 	def get_midi_chan(self):
 		return self.midi_chan
@@ -160,7 +171,7 @@ class zynthian_layer:
 				self.bank_msb_info[1][1] += 1
 				i += 1
 			else:
-				break;
+				break
 		self.bank_msb_info[0][1] = len(self.bank_list)-i
 
 		# Add favourites virtual bank if there is some preset marked as favourite
@@ -189,7 +200,6 @@ class zynthian_layer:
 			logging.info("Bank Selected: %s (%d)" % (self.bank_name,i))
 
 			if set_engine and (last_bank_index!=i or not last_bank_name):
-				self.reset_preset()
 				return self.engine.set_bank(self, self.bank_info)
 
 			return True
@@ -213,7 +223,7 @@ class zynthian_layer:
 
 
 	def get_bank_name(self):
-		return self.preset_name
+		return self.bank_name
 
 
 	def get_bank_index(self):
@@ -235,7 +245,7 @@ class zynthian_layer:
 		elif self.bank_info:
 			for preset in self.engine.get_preset_list(self.bank_info):
 				if self.engine.is_preset_fav(preset):
-					preset[2] = "*" + preset[2]
+					preset[2] = "❤" + preset[2]
 				preset_list.append(preset)
 
 		else:
@@ -259,10 +269,12 @@ class zynthian_layer:
 
 			preset_id = str(self.preset_list[i][0])
 			preset_name = self.preset_list[i][2]
+			if not preset_name:
+				return False
+			if preset_name[0]=='❤':
+				preset_name=preset_name[1:]
 
 			if preset_id in self.engine.preset_favs:
-				if preset_name[0]=='*':
-					preset_name=preset_name[1:]
 				bank_name = self.engine.preset_favs[preset_id][0][2]
 				if bank_name!=self.bank_name:
 					self.set_bank_by_name(bank_name)
@@ -273,7 +285,6 @@ class zynthian_layer:
 			self.preset_bank_index=self.bank_index
 
 			logging.info("Preset Selected: %s (%d)" % (self.preset_name,i))
-			#=> '+self.preset_list[i][3]
 
 			if self.preload_info:
 				if not self.engine.cmp_presets(self.preload_info,self.preset_info):
@@ -283,12 +294,8 @@ class zynthian_layer:
 					self.preload_info = None
 				else:
 					set_engine_needed = False
-
-			elif last_preset_index!=i or not last_preset_name:
-				set_engine_needed = True
-
 			else:
-				set_engine_needed = False
+				set_engine_needed = True
 
 			if set_engine and set_engine_needed:
 				#TODO => Review this!!
@@ -304,7 +311,7 @@ class zynthian_layer:
 		for i in range(len(self.preset_list)):
 			name_i=self.preset_list[i][2]
 			try:
-				if name_i[0]=='*':
+				if name_i[0]=='❤':
 					name_i=name_i[1:]
 				if preset_name==name_i:
 					return self.set_preset(i,set_engine)
@@ -355,8 +362,27 @@ class zynthian_layer:
 		return self.preset_index
 
 
+	def get_preset_bank_index(self):
+		return self.preset_bank_index
+
+
+	def get_preset_bank_name(self):
+		try:
+			return self.bank_list[self.preset_bank_index][2]
+		except:
+			return None
+
+
 	def toggle_preset_fav(self, preset):
 		self.engine.toggle_preset_fav(self, preset)
+		if self.show_fav_presets and not len(self.get_preset_favs()):
+			self.set_show_fav_presets(False)
+
+
+	def remove_preset_fav(self, preset):
+		self.engine.remove_preset_fav(preset)
+		if self.show_fav_presets and not len(self.get_preset_favs()):
+			self.set_show_fav_presets(False)
 
 
 	def get_preset_favs(self):
@@ -366,7 +392,7 @@ class zynthian_layer:
 	def set_show_fav_presets(self, flag=True):
 		if flag:
 			self.show_fav_presets = True
-			self.reset_preset()
+			#self.reset_preset()
 		else:
 			self.show_fav_presets = False
 
@@ -405,10 +431,10 @@ class zynthian_layer:
 
 		#Set active the first screen
 		if len(self.ctrl_screens_dict)>0:
-			if self.active_screen_index==-1:
-				self.active_screen_index=0
+			if self.current_screen_index==-1:
+				self.current_screen_index=0
 		else:
-			self.active_screen_index=-1
+			self.current_screen_index=-1
 
 
 	def get_ctrl_screens(self):
@@ -422,15 +448,15 @@ class zynthian_layer:
 			return None
 
 
-	def get_active_screen_index(self):
-		if self.active_screen_index>=len(self.ctrl_screens_dict):
-			self.active_screen_index = len(self.ctrl_screens_dict)-1
-		return self.active_screen_index
+	def get_current_screen_index(self):
+		if self.current_screen_index>=len(self.ctrl_screens_dict):
+			self.current_screen_index = len(self.ctrl_screens_dict)-1
+		return self.current_screen_index
 
 
 
-	def set_active_screen_index(self, i):
-		self.active_screen_index = i
+	def set_current_screen_index(self, i):
+		self.current_screen_index = i
 
 
 	# Build array of zynthian_controllers from list of keys
@@ -473,7 +499,7 @@ class zynthian_layer:
 			# MIDI-CC zctrls (also router MIDI-learn, aka CC-swaps)
 			#TODO => Optimize!! Use the MIDI learning mechanism for caching this ...
 			if self.listen_midi_cc:
-				swap_info = zyncoder.lib_zyncoder.get_midi_filter_cc_swap(chan, ccnum)
+				swap_info = lib_zyncore.get_midi_filter_cc_swap(chan, ccnum)
 				midi_chan = swap_info >> 8
 				midi_cc = swap_info & 0xFF
 
@@ -538,7 +564,7 @@ class zynthian_layer:
 			'show_fav_presets': self.show_fav_presets,
 			'controllers_dict': {},
 			'zs3_list': self.zs3_list,
-			'active_screen_index': self.active_screen_index
+			'current_screen_index': self.current_screen_index
 		}
 		for k in self.controllers_dict:
 			snapshot['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
@@ -584,8 +610,8 @@ class zynthian_layer:
 			self.zs3_list = snapshot['zs3_list']
 
 		#Set active screen
-		if 'active_screen_index' in snapshot:
-			self.active_screen_index=snapshot['active_screen_index']
+		if 'current_screen_index' in snapshot:
+			self.current_screen_index=snapshot['current_screen_index']
 
 
 	def restore_snapshot_2(self, snapshot):
@@ -628,6 +654,7 @@ class zynthian_layer:
 
 
 	def save_zs3(self, i):
+		logging.info("Save ZS3: CH{} => {}".format(self.midi_chan, i))
 		try:
 			zs3 = {
 				'bank_index': self.bank_index,
@@ -636,7 +663,7 @@ class zynthian_layer:
 				'preset_index': self.preset_index,
 				'preset_name': self.preset_name,
 				'preset_info': self.preset_info,
-				'active_screen_index': self.active_screen_index,
+				'current_screen_index': self.current_screen_index,
 				'controllers_dict': {},
 				'note_range': {}
 			}
@@ -647,10 +674,10 @@ class zynthian_layer:
 
 			if self.midi_chan>=0:
 				zs3['note_range'] = {
-					'note_low': zyncoder.lib_zyncoder.get_midi_filter_note_low(self.midi_chan),
-					'note_high': zyncoder.lib_zyncoder.get_midi_filter_note_high(self.midi_chan),
-					'octave_trans': zyncoder.lib_zyncoder.get_midi_filter_octave_trans(self.midi_chan),
-					'halftone_trans': zyncoder.lib_zyncoder.get_midi_filter_halftone_trans(self.midi_chan)
+					'note_low': lib_zyncore.get_midi_filter_note_low(self.midi_chan),
+					'note_high': lib_zyncore.get_midi_filter_note_high(self.midi_chan),
+					'octave_trans': lib_zyncore.get_midi_filter_octave_trans(self.midi_chan),
+					'halftone_trans': lib_zyncore.get_midi_filter_halftone_trans(self.midi_chan)
 				}
 
 			self.zs3_list[i] = zs3
@@ -686,8 +713,8 @@ class zynthian_layer:
 				sleep(0.3)
 
 			# Set active screen
-			if 'active_screen_index' in zs3:
-				self.active_screen_index=zs3['active_screen_index']
+			if 'current_screen_index' in zs3:
+				self.current_screen_index=zs3['current_screen_index']
 
 			# Set controller values
 			for k in zs3['controllers_dict']:
@@ -696,7 +723,7 @@ class zynthian_layer:
 			# Set Note Range
 			if self.midi_chan>=0 and 'note_range' in zs3:
 				nr = zs3['note_range']
-				zyncoder.lib_zyncoder.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
+				lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
 
 			return True
 
@@ -722,12 +749,20 @@ class zynthian_layer:
 
 
 	def set_audio_out(self, ao):
-		self.audio_out = copy.copy(ao)
+		self.audio_out = []
 
-		#Fix legacy routing (backward compatibility with old snapshots)
-		if "system" in self.audio_out:
-			self.audio_out.remove("system")
-			self.audio_out += ["system:playback_1", "system:playback_2"]
+		# Sanitize audio out list. It should avoid audio routing snapshot version issues.
+		for p in ao:
+			if p.startswith("system") or p.startswith("zynmixer"):
+				if self.midi_chan is None:
+					self.audio_out.append("system")
+				else:
+					self.audio_out.append("mixer")
+			else:
+				self.audio_out.append(p)
+
+		# Remove duplicates
+		self.audio_out = list(dict.fromkeys(self.audio_out).keys())
 
 		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
@@ -735,7 +770,7 @@ class zynthian_layer:
 
 	def add_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
-			jackname=jackname.get_audio_jackname()
+			jackname = jackname.get_audio_jackname()
 
 		if jackname not in self.audio_out:
 			self.audio_out.append(jackname)
@@ -747,7 +782,7 @@ class zynthian_layer:
 
 	def del_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
-			jackname=jackname.get_audio_jackname()
+			jackname = jackname.get_audio_jackname()
 
 		try:
 			self.audio_out.remove(jackname)
@@ -761,22 +796,26 @@ class zynthian_layer:
 
 	def toggle_audio_out(self, jackname):
 		if isinstance(jackname, zynthian_layer):
-			jackname=jackname.get_audio_jackname()
+			jackname = jackname.get_audio_jackname()
 
 		if jackname not in self.audio_out:
 			self.audio_out.append(jackname)
 		else:
 			self.audio_out.remove(jackname)
 
+		logging.debug("Toggling Audio Output: {}".format(jackname))
+
 		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
 	def reset_audio_out(self):
-		self.audio_out=["system:playback_1", "system:playback_2"]
-		if self.midi_chan != None:
-			self.audio_out = ["zynmixer:input_%02da"%(self.midi_chan + 1), "zynmixer:input_%02db"%(self.midi_chan + 1)]
-		#self.pair_audio_out() #TODO: This was previously removed - is it required?
+		if self.midi_chan is None:
+			self.audio_out = ["system"]
+		else:
+			self.audio_out = ["mixer"]
+			
+		self.pair_audio_out()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -838,7 +877,10 @@ class zynthian_layer:
 
 
 	def reset_audio_in(self):
-		self.audio_in=["system:capture_1", "system:capture_2"]
+		if self.midi_chan is None or self.midi_chan<16:
+			self.audio_in = ["system:capture_1", "system:capture_2"]
+		else:
+			self.audio_in = []
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -922,14 +964,18 @@ class zynthian_layer:
 
 
 	# ---------------------------------------------------------------------------
-	# Channel "Path" String
+	# Path/Breadcrumb Strings
 	# ---------------------------------------------------------------------------
 
 
 	def get_path(self):
-		path = self.bank_name
 		if self.preset_name:
-			path = path + "/" + self.preset_name
+			bank_name = self.get_preset_bank_name()
+			if not bank_name:
+				bank_name = "???"
+			path = bank_name + "/" + self.preset_name
+		else:
+			path = self.bank_name
 		return path
 
 
@@ -951,8 +997,9 @@ class zynthian_layer:
 		path = self.get_basepath()
 
 		subpath = None
-		if self.bank_name and self.bank_name!="None":
-			subpath = self.bank_name
+		bank_name = self.get_preset_bank_name()
+		if bank_name and bank_name!="None":
+			subpath = bank_name
 			if self.preset_name:
 				subpath += "/" + self.preset_name
 		elif self.preset_name:

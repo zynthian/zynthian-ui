@@ -105,6 +105,7 @@ class zynthian_gui_autoeq():
 
 	def start_autoeq_thread(self):
 		self.autoeq_thread=Thread(target=self.autoeq_thread_task, args=())
+		self.autoeq_thread.name = "autoeq"
 		self.autoeq_thread.daemon = True # thread dies with the program
 		self.autoeq_thread.start()
 
@@ -117,11 +118,11 @@ class zynthian_gui_autoeq():
 
 
 	def refresh_bars(self):
-		self.mon_layer = self.zyngui.screens['layer'].get_layer_by_jackname('1/3')
 		x0 = 0
-		if self.mon_layer:
+		items = self.zyngui.curlayer.engine.get_lv2_monitors_dict().items()
+		if len(items)>0:
 			i = 0
-			for k, v in self.mon_layer.engine.get_lv2_monitors_dict().items():
+			for k, v in items:
 				mon_y = int((100 + v) * self.height / 100)
 				#logging.error("MON {}: {} => {}".format(i,k,mon_y))
 				self.canvas.coords(self.mon_bars[i], x0, self.height, x0 + self.bar_width, self.height - mon_y)
@@ -134,15 +135,15 @@ class zynthian_gui_autoeq():
 				self.canvas.coords(self.mon_bars[i], x0, self.height, x0 + self.bar_width, self.height)
 				x0 += self.bar_width
 
-		self.eq_layer = self.zyngui.screens['layer'].get_layer_by_jackname('ZamGEQ31-01')
-		x0 = 0
-		if self.eq_layer:
+		#self.eq_layer = self.zyngui.screens['layer'].get_layer_by_jackname('ZamGEQ31-01')
+		#x0 = 0
+		#if self.eq_layer:
 			#TODO: To implement!!
-			pass
-		else:
-			for i in range(self.n_bands):
-				self.canvas.coords(self.eq_bars[i], x0, 60, x0 + self.bar_width, 60)
-				x0 += self.bar_width
+		#	pass
+		#else:
+		#	for i in range(self.n_bands):
+		#		self.canvas.coords(self.eq_bars[i], x0, 60, x0 + self.bar_width, 60)
+		#		x0 += self.bar_width
 
 
 	def refresh_loading(self):

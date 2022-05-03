@@ -24,6 +24,7 @@
 #******************************************************************************
 
 import sys
+import copy
 import logging
 
 # Zynthian specific modules
@@ -51,18 +52,75 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def show(self):
-		if not self.zyngui.curlayer:
-			logging.error("Can't show preset list for None layer!")
-			return
-
-		self.index=self.zyngui.curlayer.get_preset_index()
-		super().show()
+		if self.zyngui.curlayer:
+			super().show()
+		else:
+			self.zyngui.close_screen()
 
 
 	def select_action(self, i, t='S'):
 		if t=='S':
 			self.zyngui.curlayer.set_preset(i)
-			self.zyngui.show_screen('control')
+			self.zyngui.show_screen_reset('control')
+
+
+	def show_preset_options(self):
+		preset = copy.deepcopy(self.list_data[self.index])
+		if preset[2][0] == "❤": preset[2] = preset[2][1:]
+		preset_name = preset[2]
+		options = {}
+		if self.zyngui.curlayer.engine.is_preset_fav(preset):
+			options["[x] Favourite"] = preset
+		else:
+			options["[  ] Favourite"] = preset
+		if self.zyngui.curlayer.engine.is_preset_user(preset):
+			if hasattr(self.zyngui.curlayer.engine, "rename_preset"):
+				options["Rename"] = preset
+			if hasattr(self.zyngui.curlayer.engine, "delete_preset"):
+				options["Delete"] = preset
+		self.zyngui.screens['option'].config("Preset: {}".format(preset_name), options, self.preset_options_cb)
+		self.zyngui.show_screen('option')
+
+
+	def preset_options_cb(self, option, preset):
+		if option.endswith("Favourite"):
+			self.zyngui.curlayer.toggle_preset_fav(preset)
+			self.zyngui.curlayer.load_preset_list()
+			# Clumsey way to repopulate options screen by hide then show
+			self.zyngui.close_screen()
+			self.show_preset_options()
+		elif option == "Rename":
+			self.zyngui.show_keyboard(self.rename_preset, preset[2])
+		elif option == "Delete":
+			self.delete_preset(preset)
+
+
+	def rename_preset(self, new_name):
+		preset = self.list_data[self.index]
+		new_name = new_name.strip()
+		if new_name != preset[2]:
+			try:
+				self.zyngui.curlayer.engine.rename_preset(self.zyngui.curlayer.bank_info, preset, new_name)
+				self.zyngui.close_screen()
+				if preset[0]==self.zyngui.curlayer.preset_info[0]:
+					self.zyngui.curlayer.set_preset_by_id(preset[0])
+			except Exception as e:
+				logging.error("Failed to rename preset => {}".format(e))
+
+
+	def delete_preset(self, preset):
+		self.zyngui.show_confirm("Do you really want to delete '{}'?".format(preset[2]), self.delete_preset_confirmed, preset)
+
+
+	def delete_preset_confirmed(self, preset):
+		try:
+			count = self.zyngui.curlayer.engine.delete_preset(self.zyngui.curlayer.bank_info, preset)
+			self.zyngui.curlayer.remove_preset_fav(preset)
+			self.zyngui.close_screen()
+			if count == 0:
+				self.zyngui.close_screen()
+		except Exception as e:
+			logging.error("Failed to delete preset => {}".format(e))
 
 
 	# Function to handle *all* switch presses.
@@ -70,19 +128,18 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
-		if swi == 0:
+		if swi == 1:
 			if t == 'S':
-				if len(self.zyngui.curlayer.bank_list)>1:
-					self.zyngui.show_modal('bank')
-				return True
+				if len(self.zyngui.curlayer.bank_list) > 1:
+					self.zyngui.replace_screen('bank')
+					return True
 		elif swi == 2:
 			if t == 'S':
 				self.zyngui.toggle_favorites()
 				return True
 		elif swi == 3:
 			if t == 'B':
-				self.zyngui.curlayer.toggle_preset_fav(self.list_data[self.index])
-				self.update_list()
+				self.show_preset_options()
 				return True
 
 		self.restore_preset()

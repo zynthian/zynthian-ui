@@ -225,14 +225,41 @@ class zynthian_engine_setbfree(zynthian_engine):
 			with open(self.config_autogen_fpath, 'w+') as cfg_file:
 				cfg_file.write(cfg_data)
 
-
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
 
+	def get_name(self, layer):
+		res = self.name
+		chan_name = self.get_chan_name(layer.get_midi_chan())
+		if chan_name:
+			res = res + '/' + chan_name
+		return res
+
+
+	def get_path(self, layer):
+		path = self.name
+		if not self.manuals_config:
+			path += "/Manuals"
+		elif not self.tonewheel_model:
+			path += "/Tonewheel"
+		else:
+			#chan_name = self.get_chan_name(layer.get_midi_chan())
+			#if chan_name:
+			#	path = path + '/' + chan_name
+			pass
+			#path += "/" + self.tonewheel_model
+		return path
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
+
+	def get_chan_name(self, chan):
+		try:
+			return self.chan_names[str(chan)]
+		except:
+			return None
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
@@ -267,9 +294,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		if not self.proc:
 			ch = self.layers[0].get_midi_chan()
-			midi_chans = [ch, 15, 15]
+			self.midi_chans = [ch, 15, 15]
+			self.chan_names = {
+				str(ch): 'Upper'
+			}
 
-			logging.info("Upper Layer in chan {}".format(midi_chans[0]))
+			logging.info("Upper Layer in chan {}".format(ch))
 			i = 0
 			self.layers[i].bank_name = "Upper"
 			self.layers[i].load_bank_list()
@@ -280,38 +310,44 @@ class zynthian_engine_setbfree(zynthian_engine):
 				i += 1
 				if len(self.layers)==i:
 					try:
-						ch = midi_chans[1] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
-						logging.info("Lower Manual Layer in chan {}".format(midi_chans[1]))
-						self.zyngui.screens['layer'].add_layer_midich(midi_chans[1], False)
+						ch = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
+						logging.info("Lower Manual Layer in chan {}".format(ch))
+						self.zyngui.screens['layer'].add_layer_midich(ch, False)
 						self.layers[i].bank_name = "Lower"
 						self.layers[i].load_bank_list()
 						self.layers[i].set_bank(0)
-
+						self.midi_chans[1] = ch
+						self.chan_names[str(ch)] = "Lower"
 					except Exception as e:
 						logging.error("Lower Manual Layer can't be added! => {}".format(e))
 				else:
-					midi_chans[1] = self.layers[i].midi_chan
+					ch = self.layers[i].get_midi_chan()
+					self.midi_chans[1] = ch
+					self.chan_names[str(ch)] = "Lower"
 
 			if self.manuals_config[4][1]:
 				i += 1
 				if len(self.layers)==i:
 					try:
 						# Adding Pedal Layer
-						midi_chans[2] = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
-						logging.info("Pedal Layer in chan {}".format(midi_chans[2]))
-						self.zyngui.screens['layer'].add_layer_midich(midi_chans[2], False)
+						ch = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
+						logging.info("Pedal Layer in chan {}".format(ch))
+						self.zyngui.screens['layer'].add_layer_midich(ch, False)
 						self.layers[i].bank_name = "Pedals"
 						self.layers[i].load_bank_list()
 						self.layers[i].set_bank(0)
-
+						self.midi_chans[2] = ch
+						self.chan_names[str(ch)] = "Pedals"
 					except Exception as e:
 						logging.error("Pedal Layer can't be added! => {}".format(e))
 				else:
-					midi_chans[2] = self.layers[i].midi_chan
+					ch = self.layers[i].get_midi_chan()
+					self.midi_chans[2] = ch
+					self.chan_names[str(ch)] = "Pedals"
 
 			# Start engine
 			logging.debug("STARTING SETBFREE!!")
-			self.generate_config_file(midi_chans)
+			self.generate_config_file(self.midi_chans)
 			self.start()
 			self.zyngui.zynautoconnect_midi(True)
 			self.zyngui.zynautoconnect_audio()
@@ -319,7 +355,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			midi_prog = self.manuals_config[4][2]
 			if midi_prog and isinstance(midi_prog, int):
 				logging.debug("Loading manuals configuration program: {}".format(midi_prog))
-				self.zyngui.zynmidi.set_midi_prg(midi_chans[0], midi_prog)
+				self.zyngui.zynmidi.set_midi_prg(self.midi_chans[0], midi_prog)
 
 			#self.zyngui.screens['layer'].fill_list()
 
@@ -379,7 +415,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 				zctrl.set_value(v, True)
 
 				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.active_screen=='control' and not self.zyngui.modal_screen:
+				if self.zyngui.current_screen=='control':
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 
 			except Exception as e:
@@ -393,7 +429,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
 
 				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.active_screen=='control' and not self.zyngui.modal_screen:
+				if self.zyngui.current_screen=='control':
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 
 		except Exception as e:
@@ -402,13 +438,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 	#----------------------------------------------------------------------------
 	# Specific functionality
 	#----------------------------------------------------------------------------
-
-	def get_chan_name(self, chan):
-		try:
-			return self.chan_names[chan]
-		except:
-			return None
-
 
 	def get_bank_dir(self, layer):
 		bank_dir=self.base_dir+"/pgm-banks"
@@ -497,20 +526,5 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.tonewheel_model = xconfig['tonewheel_model']
 		except Exception as e:
 			logging.error("Can't setup extended config => {}".format(e))
-
-	# ---------------------------------------------------------------------------
-	# Layer "Path" String
-	# ---------------------------------------------------------------------------
-
-	def get_path(self, layer):
-		path = self.nickname
-		if not self.manuals_config:
-			path += "/Manuals"
-		elif not self.tonewheel_model:
-			path += "/Tonewheel"
-		else:
-			path += "/" + self.tonewheel_model
-		return path
-
 
 #******************************************************************************

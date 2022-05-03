@@ -56,7 +56,7 @@ class zynthian_basic_engine:
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, name=None, command=None, prompt=None):
+	def __init__(self, name=None, command=None, prompt=None, cwd=None):
 		self.name = name
 
 		self.proc = None
@@ -65,6 +65,7 @@ class zynthian_basic_engine:
 		self.command = command
 		self.command_env = os.environ.copy()
 		self.command_prompt = prompt
+		self.command_cwd = cwd
 
 
 	def __del__(self):
@@ -80,7 +81,15 @@ class zynthian_basic_engine:
 			logging.info("Starting Engine {}".format(self.name))
 			try:
 				logging.debug("Command: {}".format(self.command))
-				self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env)
+				# Turns out that environment's PWD is not set automatically 
+				# when cwd is specified for pexpect.spawn(), so do it here.
+				if (self.command_cwd):
+					self.command_env['PWD'] = self.command_cwd
+
+				# Setting cwd is because we've set PWD above. Some engines doesn't
+				# care about the process's cwd, but it is more consistent to set 
+				# cwd when PWD has been set.
+				self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
 
 				self.proc.delaybeforesend = 0
 
@@ -163,7 +172,8 @@ class zynthian_engine(zynthian_basic_engine):
 	def __init__(self, zyngui=None):
 		super().__init__()
 
-		self.zyngui=zyngui
+		self.zyngui = zyngui
+		self.custom_gui_fpath = None
 
 		self.type = "MIDI Synth"
 		self.nickname = ""
@@ -386,6 +396,13 @@ class zynthian_engine(zynthian_basic_engine):
 			self.del_layer(layer)
 
 
+	def get_name(self, layer):
+		return self.name
+
+
+	def get_path(self, layer):
+		return self.name
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
@@ -423,7 +440,7 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!' % self.name),'PD'
+		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!', self.name)
 
 
 	def set_preset(self, layer, preset, preload=False):
@@ -443,6 +460,13 @@ class zynthian_engine(zynthian_basic_engine):
 		except:
 			return False
 
+	def is_preset_user(self, preset):
+		return isinstance(preset[0], str) and preset[0].startswith("/{}/presets/".format(self.my_data_dir))
+
+	# To implement in derived classes
+	#def save_preset(self, bank_name, preset_name):
+	#def delete_preset(self, preset):
+	#def rename_preset(self, preset, new_name):
 
 	# ---------------------------------------------------------------------------
 	# Preset Favorites Management
@@ -466,6 +490,17 @@ class zynthian_engine(zynthian_basic_engine):
 			logging.error("Can't save preset favorites! => {}".format(e))
 
 		return fav_status
+
+
+	def remove_preset_fav(self, preset):
+		if self.preset_favs is None:
+			self.load_preset_favs()
+		try:
+			del self.preset_favs[str(preset[0])]
+			with open(self.preset_favs_path, 'w') as f:
+				json.dump(self.preset_favs, f)
+		except:
+			pass # Don't care if preset not in favs
 
 
 	def get_preset_favs(self, layer):
@@ -496,6 +531,8 @@ class zynthian_engine(zynthian_basic_engine):
 					self.preset_favs = json.load(f, object_pairs_hook=OrderedDict)
 			except:
 				self.preset_favs = OrderedDict()
+
+			#TODO: Remove invalid presets from favourite's list
 
 		else:
 			logging.warning("Can't load preset favorites until the engine have a nickname!")
@@ -661,19 +698,11 @@ class zynthian_engine(zynthian_basic_engine):
 				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
 
 				#Refresh GUI controller in screen when needed ...
-				if (self.zyngui.active_screen=='control' and not self.zyngui.modal_screen) or self.zyngui.modal_screen=='alsa_mixer':
+				if self.zyngui.current_screen in ('control', 'alsa_mixer'):
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 
 		except Exception as e:
 			logging.debug(e)
-
-
-	# ---------------------------------------------------------------------------
-	# Layer "Path" String
-	# ---------------------------------------------------------------------------
-
-	def get_path(self, layer):
-		return self.nickname
 
 
 	# ---------------------------------------------------------------------------
@@ -699,6 +728,18 @@ class zynthian_engine(zynthian_basic_engine):
 	def get_zynapi_methods(cls):
 		return [f for f in dir(cls) if f.startswith('zynapi_')]
 		#callable(f) and
+
+
+	# Remove double spacing
+	@classmethod
+	def remove_double_spacing(cls, lines):
+		double_line = []
+		for index,line in enumerate(lines):
+			if line.strip() == "" and index > 0 and lines[index - 1].strip() == "":
+				double_line.append(index)
+		double_line.sort(reverse=True)
+		for line in double_line:
+			del lines[line]
 
 
 #******************************************************************************

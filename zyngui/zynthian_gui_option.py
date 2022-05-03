@@ -29,6 +29,7 @@ import logging
 
 # Zynthian specific modules
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from . import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # Zynthian Option Selection GUI Class
@@ -58,10 +59,17 @@ class zynthian_gui_option(zynthian_gui_selector):
 		super().fill_list()
 
 
+	def fill_listbox(self):
+		super().fill_listbox()
+		for i, val in enumerate(self.list_data):
+			if val[0]==None:
+				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
+
+
 	def select_action(self, i, t='S'):
 		if self.cb_select:
-			self.zyngui.close_modal()
 			self.cb_select(self.list_data[i][2], self.list_data[i][0])
+		#self.zyngui.close_screen()
 
 
 	def set_select_path(self):

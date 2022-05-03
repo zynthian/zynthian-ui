@@ -37,7 +37,6 @@ from zynlibs.zynmixer import *
 
 class zynthian_gui_layer_options(zynthian_gui_selector):
 
-
 	def __init__(self):
 		self.reset()
 		super().__init__('Option', True)
@@ -48,135 +47,127 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.layer_index = None
 		self.layer = None
 		self.audiofx_layers = None
-		self.audiofx_layer_index = None
-		self.audiofx_layer = None
 		self.midifx_layers = None
-		self.midifx_layer_index = None
-		self.midifx_layer = None
+
+
+	def setup(self, layer_index=None):
+		if layer_index is not None:
+			self.layer_index = layer_index
+
+		if self.layer_index is None:
+			self.layer_index = self.zyngui.screens['layer'].get_root_layer_index()
+
+		if self.layer_index is not None:
+			try:
+				self.layer = self.zyngui.screens['layer'].get_root_layers()[self.layer_index]
+				return True
+			except Exception as e:
+				self.layer = None
+				logging.error("Bad layer index '{}'! => {}".format(self.layer_index, e))
+		else:
+			self.layer = None
+			logging.error("No layer index!")
+
+		return False
 
 
 	def fill_list(self):
 		self.list_data = []
 
-		# Effect Layer Options
-		if self.audiofx_layer:
-			if len(self.audiofx_layer.preset_list)>1:
-				self.list_data.append((self.audiofx_presets, None, "Presets"))
+		self.audiofx_layers = self.zyngui.screens['layer'].get_fxchain_layers(self.layer)
+		if self.audiofx_layers and len(self.audiofx_layers)>0 and self.layer.engine.type!="Audio Effect":
+			self.audiofx_layers.remove(self.layer)
 
-			self.list_data.append((self.audiofx_replace, None, "Replace"))
+		self.midifx_layers = self.zyngui.screens['layer'].get_midichain_layers(self.layer)
+		if self.midifx_layers and len(self.midifx_layers)>0 and self.layer.engine.type!="MIDI Tool":
+			self.midifx_layers.remove(self.layer)
 
-			if self.audiofx_can_move_upchain():
-				self.list_data.append((self.audiofx_move_upchain, None, "Move Upchain"))
-
-			if self.audiofx_can_move_downchain():
-				self.list_data.append((self.audiofx_move_downchain, None, "Move Downchain"))
-
-			self.list_data.append((self.audiofx_remove, None, "Remove"))
-
-		elif self.midifx_layer:
-			if len(self.midifx_layer.preset_list)>1:
-				self.list_data.append((self.midifx_presets, None, "Presets"))
-
-			self.list_data.append((self.midifx_replace, None, "Replace"))
-
-			if self.midifx_can_move_upchain():
-				self.list_data.append((self.midifx_move_upchain, None, "Move Upchain"))
-
-			if self.midifx_can_move_downchain():
-				self.list_data.append((self.midifx_move_downchain, None, "Move Downchain"))
-
-			self.list_data.append((self.midifx_remove, None, "Remove"))
-
-		# Root Layer Options
+		# Add root layer options
+		if self.layer.midi_chan==16:
+			eng_options = {
+				'audio_capture': True,
+				'indelible': True
+			}
 		else:
-			self.layer = self.zyngui.screens['layer'].get_root_layers()[self.layer_index]
-
-			self.audiofx_layers = self.zyngui.screens['layer'].get_fxchain_layers(self.layer)
-			if self.audiofx_layers and len(self.audiofx_layers)>0 and self.layer.engine.type!="Audio Effect":
-				self.audiofx_layers.remove(self.layer)
-
-			self.midifx_layers = self.zyngui.screens['layer'].get_midichain_layers(self.layer)
-			if self.midifx_layers and len(self.midifx_layers)>0 and self.layer.engine.type!="MIDI Tool":
-				self.midifx_layers.remove(self.layer)
-
-			# Add root layer options
 			eng_options = self.layer.engine.get_options()
 
-			#self.list_data.append((self.layer_presets, None, "Presets"))
+		#self.list_data.append((self.layer_presets, None, "Presets"))
 
-			if self.layer.midi_chan is not None:
-				if 'note_range' in eng_options and eng_options['note_range']:
-					self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
+		if self.layer.midi_chan is not None:
+			if hasattr(self.layer.engine, "save_preset"):
+				self.list_data.append((self.save_preset, None, "Save Preset"))
 
-				if 'clone' in eng_options and eng_options['clone'] and self.layer.midi_chan is not None:
-					self.list_data.append((self.layer_clone, None, "Clone MIDI to ..."))
+			if 'note_range' in eng_options and eng_options['note_range']:
+				self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
 
-				if zynmixer.get_mono(self.layer.midi_chan):
-					self.list_data.append((self.layer_toggle_mono, None, "[x] Audio Mono"))
-				else:
-					self.list_data.append((self.layer_toggle_mono, None, "[  ] Audio Mono"))
+			if 'clone' in eng_options and eng_options['clone'] and self.layer.midi_chan is not None:
+				self.list_data.append((self.layer_clone, None, "Clone MIDI to ..."))
 
-			if 'audio_capture' in eng_options and eng_options['audio_capture']:
-				self.list_data.append((self.layer_audio_capture, None, "Audio Capture"))
+			if zynmixer.get_mono(self.layer.midi_chan):
+				self.list_data.append((self.layer_toggle_mono, None, "[x] Audio Mono"))
+			else:
+				self.list_data.append((self.layer_toggle_mono, None, "[  ] Audio Mono"))
 
-			if 'audio_route' in eng_options and eng_options['audio_route']:
-				self.list_data.append((self.layer_audio_routing, None, "Audio Output"))
+		if 'audio_capture' in eng_options and eng_options['audio_capture']:
+			self.list_data.append((self.layer_audio_capture, None, "Audio Capture"))
 
-			if 'midi_route' in eng_options and eng_options['midi_route']:
-				self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
+		if 'audio_route' in eng_options and eng_options['audio_route']:
+			self.list_data.append((self.layer_audio_routing, None, "Audio Output"))
 
-			if 'midi_chan' in eng_options and eng_options['midi_chan']:
-				self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
+		if 'midi_route' in eng_options and eng_options['midi_route']:
+			self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
 
-			self.list_data.append((self.layer_midi_unlearn, None, "Clean MIDI-Learn"))
+		if 'midi_chan' in eng_options and eng_options['midi_chan']:
+			self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
 
-			if self.layer.engine.type=="MIDI Synth" and 'replace' in eng_options and eng_options['midi_chan']:
-				self.list_data.append((self.layer_replace, None, "Replace Synth"))
+		self.list_data.append((self.layer_midi_unlearn, None, "Clean MIDI-Learn"))
 
-			if 'indelible' not in eng_options or not eng_options['indelible']:
-				self.list_data.append((self.layer_remove, None, "Remove Layer"))
+		if self.layer.engine.type=="MIDI Synth" and 'replace' in eng_options and eng_options['midi_chan']:
+			self.list_data.append((self.layer_replace, None, "Replace Synth"))
 
-			if self.layer.engine.type!='MIDI Tool':
-				# Add separator
-				self.list_data.append((None,None,"-----------------------------"))
+		if 'indelible' not in eng_options or not eng_options['indelible']:
+			self.list_data.append((self.layer_remove, None, "Remove Chain"))
 
-				# Add Audio-FX options
-				if self.layer.midi_chan is not None:
-					self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
+		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.midi_chan is not None:
+			# Add separator
+			self.list_data.append((None,None,"> MIDI Chain ----------------"))
 
-				if len(self.audiofx_layers)>0:
-					if self.layer.engine.type=="MIDI Synth":
-						self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
-					# Add Audio-FX layers
-					sl0 = None
-					for sl in self.audiofx_layers:
-						if sl.is_parallel_audio_routed(sl0):
-							bullet = " || "
-						else:
-							bullet = " -> "
-						self.list_data.append((self.audiofx_layer_action, sl, bullet + sl.engine.get_path(sl)))
-						sl0 = sl
+			# Add MIDI-FX chain list
+			if len(self.midifx_layers)>0:
+				sl0 = None
+				indent = "⤷"
+				for i,sl in enumerate(self.midifx_layers):
+					if i and not sl.is_parallel_midi_routed(sl0):
+						indent = "  " + indent
+					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.get_name(sl)))
+					sl0 = sl
 
-			if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.engine.nickname!='MD':
-				# Add separator
-				self.list_data.append((None,None,"-----------------------------"))
+			# Add MIDI-FX options
+			self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 
-				# Add MIDI-FX options
-				if self.layer.midi_chan is not None:
-					self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
+			if len(self.midifx_layers)>0 and self.layer.engine.type=="MIDI Synth":
+				self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
 
-				if len(self.midifx_layers)>0:
-					if self.layer.engine.type=="MIDI Synth":
-						self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
-					# Add MIDI-FX layers
-					sl0 = None
-					for sl in self.midifx_layers:
-						if sl.is_parallel_midi_routed(sl0):
-							bullet = " || "
-						else:
-							bullet = " -> "
-						self.list_data.append((self.midifx_layer_action, sl, bullet + sl.engine.get_path(sl)))
-						sl0 = sl
+		if self.layer.engine.type!='MIDI Tool' and self.layer.midi_chan is not None:
+			# Add separator
+			self.list_data.append((None,None,"> Audio Chain ---------------"))
+
+			# Add Audio-FX chain list
+			if len(self.audiofx_layers)>0:
+				# Add Audio-FX layers
+				sl0 = None
+				indent = "⤷"
+				for i,sl in enumerate(self.audiofx_layers):
+					if i and not sl.is_parallel_audio_routed(sl0):
+						indent = "  " + indent
+					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.get_name(sl)))
+					sl0 = sl
+
+			# Add Audio-FX options
+			self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
+
+			if len(self.audiofx_layers)>0 and (self.layer.engine.type=="MIDI Synth" or self.layer.midi_chan>=16):
+				self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
 
 		super().fill_list()
 
@@ -188,62 +179,113 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		return 0
 
 
-	def show(self):
-		if self.layer_index is None:
-			self.layer_index = self.zyngui.screens['layer'].index
+	def fill_listbox(self):
+		super().fill_listbox()
+		for i, val in enumerate(self.list_data):
+			if val[0]==None:
+				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
 
-		if self.layer_index is not None:
+
+	def show(self):
+		if self.layer is None:
+			self.setup()
+
+		if self.layer is not None and self.layer in self.zyngui.screens['layer'].root_layers:
 			super().show()
 			if self.index>=len(self.list_data):
 				self.index = len(self.list_data)-1
-
 		else:
-			self.zyngui.show_active_screen()
+			self.zyngui.close_screen()
 
 
 	def select_action(self, i, t='S'):
 		self.index = i
-
 		if self.list_data[i][0] is None:
 			pass
-
 		elif self.list_data[i][1] is None:
 			self.list_data[i][0]()
-
 		else:
 			self.list_data[i][0](self.list_data[i][1], t)
 
 
-	def audiofx_layer_action(self, layer, t='S'):
-		self.index = 0
-		self.audiofx_layer = layer
-		self.audiofx_layer_index = self.zyngui.screens['layer'].layers.index(layer)
-		self.show()
+	def sublayer_options(self, sublayer, t='S'):
+		self.zyngui.screens['sublayer_options'].setup(self.layer, sublayer)
+		self.zyngui.show_screen("sublayer_options")
 
 
-	def midifx_layer_action(self, layer, t='S'):
-		self.index = 0
-		self.midifx_layer = layer
-		self.midifx_layer_index = self.zyngui.screens['layer'].layers.index(layer)
-		self.show()
+	def save_preset(self):
+		if self.layer:
+			self.layer.load_bank_list()
+			options = {}
+			options["***New bank***"] = "NEW_BANK"
+			index = self.layer.get_bank_index() + 1
+			for bank in self.layer.bank_list:
+				if bank[0]=="*FAVS*":
+					index -= 1
+				else:
+					options[bank[2]] = bank
+			self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)
+			self.zyngui.show_screen('option')
+			self.zyngui.screens['option'].select(index)
 
 
-	def back_action(self):
-		if self.audiofx_layer or self.midifx_layer:
-			if self.audiofx_layer:
-				sl = self.audiofx_layer
+	def save_preset_select_bank_cb(self, bank_name, bank_info):
+		self.save_preset_bank_info = bank_info
+		if bank_info is "NEW_BANK":
+			self.zyngui.show_keyboard(self.save_preset_select_name_cb, "NewBank")
+		else:
+			self.save_preset_select_name_cb()
+
+
+	def save_preset_select_name_cb(self, create_bank_name=None):
+		if create_bank_name is not None:
+			create_bank_name = create_bank_name.strip()
+		self.save_preset_create_bank_name = create_bank_name
+		if self.layer.preset_name:
+			self.zyngui.show_keyboard(self.save_preset_cb, self.layer.preset_name + " COPY")
+		else:
+			self.zyngui.show_keyboard(self.save_preset_cb, "New Preset")
+
+
+	def save_preset_cb(self, preset_name):
+		preset_name = preset_name.strip()
+		#If must create new bank, calculate URID
+		if self.save_preset_create_bank_name:
+			create_bank_urid = self.layer.engine.get_user_bank_urid(self.save_preset_create_bank_name)
+			self.save_preset_bank_info = (create_bank_urid, None, self.save_preset_create_bank_name, None)
+		if self.layer.engine.preset_exists(self.save_preset_bank_info, preset_name):
+			self.zyngui.show_confirm("Do you want to overwrite preset '{}'?".format(preset_name), self.do_save_preset, preset_name)
+		else:
+			self.do_save_preset(preset_name)
+
+
+	def do_save_preset(self, preset_name):
+		preset_name = preset_name.strip()
+
+		try:
+			# Save preset
+			preset_uri = self.layer.engine.save_preset(self.save_preset_bank_info, preset_name)
+			logging.info("Saved preset with name '{}' to bank '{}' => {}".format(preset_name, self.save_preset_bank_info[2], preset_uri))
+
+			if preset_uri:
+				#If must create new bank, do it!
+				if self.save_preset_create_bank_name:
+					self.layer.engine.create_user_bank(self.save_preset_create_bank_name)
+					logging.info("Created new bank '{}' => {}".format(self.save_preset_create_bank_name, self.save_preset_bank_info[0]))
+					self.layer.load_bank_list()
+
+				self.layer.set_bank_by_id(self.save_preset_bank_info[0])
+				self.layer.load_preset_list()
+				self.layer.set_preset_by_id(preset_uri)
 			else:
-				sl = self.midifx_layer
+				logging.error("Can't save preset '{}' to bank '{}'".format(preset_name, self.save_preset_bank_info[2]))
 
-			# Back to layer options
-			self.reset()
-			self.show()
+		except Exception as e:
+			logging.error(e)
 
-			# Recover cursor position
-			self.index = self.search_fx_index(sl)
-			self.select()
-
-		return False
+		self.save_preset_create_bank_name = None
+		self.zyngui.close_screen()
+		self.zyngui.close_screen()
 
 
 	def layer_presets(self):
@@ -258,31 +300,31 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		chan_list = self.zyngui.screens['layer'].get_free_midi_chans() + [self.layer.midi_chan]
 		chan_list.sort()
 		self.zyngui.screens['midi_chan'].set_mode("SET", self.layer.midi_chan, chan_list)
-		self.zyngui.show_modal('midi_chan')
+		self.zyngui.show_screen('midi_chan')
 
 
 	def layer_clone(self):
 		self.zyngui.screens['midi_chan'].set_mode("CLONE", self.layer.midi_chan)
-		self.zyngui.show_modal('midi_chan')
+		self.zyngui.show_screen('midi_chan')
 
 
 	def layer_note_range(self):
 		self.zyngui.screens['midi_key_range'].config(self.layer.midi_chan)
-		self.zyngui.show_modal('midi_key_range')
+		self.zyngui.show_screen('midi_key_range')
 
 
 	def layer_transpose(self):
-		self.zyngui.show_modal('transpose')
+		self.zyngui.show_screen('transpose')
 
 
 	def layer_midi_routing(self):
 		self.zyngui.screens['midi_out'].set_layer(self.layer)
-		self.zyngui.show_modal('midi_out')
+		self.zyngui.show_screen('midi_out')
 
 
 	def layer_audio_routing(self):
 		self.zyngui.screens['audio_out'].set_layer(self.layer)
-		self.zyngui.show_modal('audio_out')
+		self.zyngui.show_screen('audio_out')
 
 
 	def layer_toggle_mono(self):
@@ -292,7 +334,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_audio_capture(self):
 		self.zyngui.screens['audio_in'].set_layer(self.layer)
-		self.zyngui.show_modal('audio_in')
+		self.zyngui.show_screen('audio_in')
 
 
 	def layer_replace(self):
@@ -300,16 +342,16 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def layer_remove(self):
-		self.zyngui.show_confirm("Do you really want to remove this layer?", self.layer_remove_confirmed)
+		self.zyngui.show_confirm("Do you really want to remove this chain?", self.layer_remove_confirmed)
 
 
 	def layer_remove_confirmed(self, params=None):
 		self.zyngui.screens['layer'].remove_root_layer(self.layer_index)
-		self.zyngui.show_active_screen()
+		self.zyngui.close_screen()
 
 
 	def layer_midi_unlearn(self):
-		self.zyngui.show_confirm("Do you really want to clean MIDI-learn for this layer?", self.layer_midi_unlearn_confirmed)
+		self.zyngui.show_confirm("Do you really want to clean MIDI-learn for this chain?", self.layer_midi_unlearn_confirmed)
 
 
 	def layer_midi_unlearn_confirmed(self, params=None):
@@ -323,7 +365,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def audiofx_reset(self):
-		self.zyngui.show_confirm("Do you really want to remove all audio-FXs for this layer?", self.audiofx_reset_confirmed)
+		self.zyngui.show_confirm("Do you really want to remove all audio-FXs for this chain?", self.audiofx_reset_confirmed)
 
 
 	def audiofx_reset_confirmed(self, params=None):
@@ -332,49 +374,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			i = self.zyngui.screens['layer'].layers.index(sl)
 			self.zyngui.screens['layer'].remove_layer(i)
 
-		self.reset()
-		self.show()
-
-
-	def audiofx_presets(self):
-		self.zyngui.set_curlayer(self.audiofx_layer, True)
-		self.zyngui.show_modal('bank')
-		# If there is only one bank, jump to preset selection
-		if len(self.audiofx_layer.bank_list)<=1:
-			self.zyngui.screens['bank'].select_action(0)
-
-
-	def audiofx_can_move_upchain(self):
-		ups = self.zyngui.screens['layer'].get_fxchain_upstream(self.audiofx_layer)
-		if len(ups)>0 and (self.layer.engine.type!="MIDI Synth" or self.layer not in ups):
-			return True
-
-
-	def audiofx_move_upchain(self):
-		ups = self.zyngui.screens['layer'].get_fxchain_upstream(self.audiofx_layer)
-		self.zyngui.screens['layer'].swap_fxchain(ups[0], self.audiofx_layer)
-		self.back_action()
-
-
-	def audiofx_can_move_downchain(self):
-		downs = self.zyngui.screens['layer'].get_fxchain_downstream(self.audiofx_layer)
-		if len(downs)>0 and (self.layer.engine.type!="MIDI Synth" or self.layer not in downs):
-			return True
-
-
-	def audiofx_move_downchain(self):
-		downs = self.zyngui.screens['layer'].get_fxchain_downstream(self.audiofx_layer)
-		self.zyngui.screens['layer'].swap_fxchain(self.audiofx_layer, downs[0])
-		self.back_action()
-
-
-	def audiofx_replace(self):
-		self.zyngui.screens['layer'].replace_fxchain_layer(self.audiofx_layer_index)
-
-
-	def audiofx_remove(self):
-		self.zyngui.screens['layer'].remove_layer(self.audiofx_layer_index)
-		self.back_action()
+		if self.layer in self.zyngui.screens['layer'].root_layers:
+			self.show()
+		else:
+			self.zyngui.close_screen()
 
 
 	# MIDI-Chain management
@@ -384,7 +387,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def midifx_reset(self):
-		self.zyngui.show_confirm("Do you really want to remove all MIDI-FXs for this layer?", self.midifx_reset_confirmed)
+		self.zyngui.show_confirm("Do you really want to remove all MIDI-FXs for this chain?", self.midifx_reset_confirmed)
 
 
 	def midifx_reset_confirmed(self, params=None):
@@ -393,62 +396,22 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			i = self.zyngui.screens['layer'].layers.index(sl)
 			self.zyngui.screens['layer'].remove_layer(i)
 
-		self.reset()
-		self.show()
-
-
-	def midifx_presets(self):
-		self.zyngui.set_curlayer(self.midifx_layer, True)
-		self.zyngui.show_modal('bank')
-		# If there is only one bank, jump to preset selection
-		if len(self.midifx_layer.bank_list)<=1:
-			self.zyngui.screens['bank'].select_action(0)
-
-
-	def midifx_can_move_upchain(self):
-		ups = self.zyngui.screens['layer'].get_midichain_upstream(self.midifx_layer)
-		if len(ups)>0 and (self.layer.engine.type!="MIDI Synth" or self.layer not in ups):
-			return True
-
-
-	def midifx_move_upchain(self):
-		ups = self.zyngui.screens['layer'].get_midichain_upstream(self.midifx_layer)
-		self.zyngui.screens['layer'].swap_midichain(ups[0], self.midifx_layer)
-		self.back_action()
-
-
-	def midifx_can_move_downchain(self):
-		downs = self.zyngui.screens['layer'].get_midichain_downstream(self.midifx_layer)
-		if len(downs)>0 and (self.layer.engine.type!="MIDI Synth" or self.layer not in downs):
-			return True
-
-
-	def midifx_move_downchain(self):
-		downs = self.zyngui.screens['layer'].get_midichain_downstream(self.midifx_layer)
-		self.zyngui.screens['layer'].swap_midichain(self.midifx_layer, downs[0])
-		self.back_action()
-
-
-	def midifx_replace(self):
-		self.zyngui.screens['layer'].replace_midichain_layer(self.midifx_layer_index)
-
-
-	def midifx_remove(self):
-		self.zyngui.screens['layer'].remove_layer(self.midifx_layer_index)
-		self.back_action()
+		if self.layer in self.zyngui.screens['layer'].root_layers:
+			self.show()
+		else:
+			self.zyngui.close_screen()
 
 
 	# Select Path
 
 	def set_select_path(self):
-		if self.audiofx_layer:
-			self.select_path.set("{} > Audio-FX Options".format(self.audiofx_layer.get_basepath()))
-		elif self.midifx_layer:
-			self.select_path.set("{} > MIDI-FX Options".format(self.midifx_layer.get_basepath()))
-		elif self.layer:
-			self.select_path.set("{} > Layer Options".format(self.layer.get_basepath()))
+		if self.layer:
+			if self.layer.midi_chan is None or self.layer.midi_chan<16:
+				self.select_path.set("{} > Chain Options".format(self.layer.get_basepath()))
+			else:
+				self.select_path.set("Master FX > Chain Options")
 		else:
-			self.select_path.set("Layer Options")
+			self.select_path.set("Chain Options")
 
 
 #------------------------------------------------------------------------------

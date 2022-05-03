@@ -115,6 +115,8 @@ class zynthian_gui_base:
 		self.tb_frame.grid_columnconfigure(0, weight=1)
 		# Setup Topbar's Callback
 		self.tb_frame.bind("<Button-1>", self.cb_topbar)
+		self.tb_frame.bind("<ButtonRelease-1>", self.cb_topbar_release)
+		self.topbar_timer = None
 
 		# Title
 #		font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
@@ -126,30 +128,27 @@ class zynthian_gui_base:
 			bd=0,
 			highlightthickness=0,
 			bg = self.title_bg)
-		self.title_canvas.grid_propagate(False)
-		self.title_canvas.create_text(0, zynthian_gui_config.topbar_height / 2,
-			font=font,
-			anchor="w",
-			fill=self.title_fg,
-			tags="lblTitle",
-			text="")
 		self.title_canvas.grid(row=0, column=0, sticky='ew')
+		self.title_canvas.grid_propagate(False)
 		self.path_canvas = self.title_canvas
 		self.title_timer = None
 
 		# Topbar's Select Path
+		self.title_y = zynthian_gui_config.title_y
 		self.select_path = tkinter.StringVar()
-		self.select_path.trace("w", self.cb_select_path)
+		self.select_path.trace(tkinter.W, self.cb_select_path)
 		self.label_select_path = tkinter.Label(self.title_canvas,
 			font=zynthian_gui_config.font_topbar,
 			textvariable=self.select_path,
 			justify=tkinter.LEFT,
 			bg=zynthian_gui_config.color_header_bg,
 			fg=zynthian_gui_config.color_header_tx)
-		self.label_select_path.place(x=0, y=0)
+		self.label_select_path.place(x=0, y=self.title_y)
 		# Setup Topbar's Callback
 		self.label_select_path.bind('<Button-1>', self.cb_topbar)
+		self.label_select_path.bind('<ButtonRelease-1>', self.cb_topbar_release)
 		self.title_canvas.bind('<Button-1>', self.cb_topbar)
+		self.title_canvas.bind('<ButtonRelease-1>', self.cb_topbar_release)
 
 		# Canvas for displaying status: CPU, ...
 		self.status_canvas = tkinter.Canvas(self.tb_frame,
@@ -173,6 +172,9 @@ class zynthian_gui_base:
 			self.meter_mode = self.METER_CPU
 		else:
 			self.meter_mode = self.METER_DPM
+
+		self.topbar_touch_action = lambda: self.zyngui.zynswitch_defered('S',1)
+		self.topbar_bold_touch_action = lambda: self.zyngui.zynswitch_defered('B',0)
 
 		# Update Title
 		self.set_select_path()
@@ -282,7 +284,24 @@ class zynthian_gui_base:
 
 	# Default topbar touch callback
 	def cb_topbar(self, params=None):
-		self.zyngui.zynswitch_defered('S',1)
+		self.topbar_timer = Timer(0.4, self.cb_topbar_bold)
+		self.topbar_timer.start()
+
+
+	# Default topbar release callback
+	def cb_topbar_release(self, params=None):
+		if self.topbar_timer:
+			self.topbar_timer.cancel()
+			self.topbar_timer = None
+			self.topbar_touch_action()
+
+
+	# Default topbar bold press callback
+	def cb_topbar_bold(self, params=None):
+		if self.topbar_timer:
+			self.topbar_timer.cancel()
+			self.topbar_timer = None
+			self.topbar_bold_touch_action()
 
 
 	def show(self):
@@ -340,14 +359,14 @@ class zynthian_gui_base:
 				try:
 					# Channel A (left)
 					if self.status_peak_lA:
-						self.status_canvas.coords(self.status_peak_lA,(0, 0, llA, self.status_rh/2))
+						self.status_canvas.coords(self.status_peak_lA,(0, 0, llA, self.status_rh-2))
 						self.status_canvas.itemconfig(self.status_peak_lA, state='normal')
 					else:
 						self.status_peak_lA=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#00C000", width=0, state='hidden')
 
 					if self.status_peak_mA:
 						if lmA >= self.dpm_scale_lm:
-							self.status_canvas.coords(self.status_peak_mA,(self.dpm_scale_lm, 0, lmA, self.status_rh/2))
+							self.status_canvas.coords(self.status_peak_mA,(self.dpm_scale_lm, 0, lmA, self.status_rh-2))
 							self.status_canvas.itemconfig(self.status_peak_mA, state="normal")
 						else:
 							self.status_canvas.itemconfig(self.status_peak_mA, state="hidden")
@@ -356,7 +375,7 @@ class zynthian_gui_base:
 
 					if self.status_peak_hA:
 						if lhA >= self.dpm_scale_lh:
-							self.status_canvas.coords(self.status_peak_hA,(self.dpm_scale_lh, 0, lhA, self.status_rh/2))
+							self.status_canvas.coords(self.status_peak_hA,(self.dpm_scale_lh, 0, lhA, self.status_rh-2))
 							self.status_canvas.itemconfig(self.status_peak_hA, state="normal")
 						else:
 							self.status_canvas.itemconfig(self.status_peak_hA, state="hidden")
@@ -364,7 +383,7 @@ class zynthian_gui_base:
 						self.status_peak_hA=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C00000", width=0, state='hidden')
 
 					if self.status_hold_A:
-						self.status_canvas.coords(self.status_hold_A,(lholdA, 0, lholdA, self.status_rh/2))
+						self.status_canvas.coords(self.status_hold_A,(lholdA, 0, lholdA, self.status_rh-2))
 						if lholdA >= self.dpm_scale_lh:
 							self.status_canvas.itemconfig(self.status_hold_A, state="normal", fill="#FF0000")
 						elif lholdA >= self.dpm_scale_lm:
@@ -378,14 +397,14 @@ class zynthian_gui_base:
 
 					# Channel B (right)
 					if self.status_peak_lB:
-						self.status_canvas.coords(self.status_peak_lB,(0, self.status_rh/2 + 1, llB, self.status_rh + 1))
+						self.status_canvas.coords(self.status_peak_lB,(0, self.status_rh-1, llB, 2 * self.status_rh-3))
 						self.status_canvas.itemconfig(self.status_peak_lB, state='normal')
 					else:
 						self.status_peak_lB=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#00C000", width=0, state='hidden')
 
 					if self.status_peak_mB:
 						if lmB >= self.dpm_scale_lm:
-							self.status_canvas.coords(self.status_peak_mB,(self.dpm_scale_lm, self.status_rh/2 + 1, lmB, self.status_rh + 1))
+							self.status_canvas.coords(self.status_peak_mB,(self.dpm_scale_lm, self.status_rh-1, lmB, 2 * self.status_rh - 3))
 							self.status_canvas.itemconfig(self.status_peak_mB, state="normal")
 						else:
 							self.status_canvas.itemconfig(self.status_peak_mB, state="hidden")
@@ -394,7 +413,7 @@ class zynthian_gui_base:
 
 					if self.status_peak_hB:
 						if lhB >= self.dpm_scale_lh:
-							self.status_canvas.coords(self.status_peak_hB,(self.dpm_scale_lh, self.status_rh/2 + 1, lhB, self.status_rh + 1))
+							self.status_canvas.coords(self.status_peak_hB,(self.dpm_scale_lh, self.status_rh-1, lhB, 2 * self.status_rh - 3))
 							self.status_canvas.itemconfig(self.status_peak_hB, state="normal")
 						else:
 							self.status_canvas.itemconfig(self.status_peak_hB, state="hidden")
@@ -402,7 +421,7 @@ class zynthian_gui_base:
 						self.status_peak_hB=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C00000", width=0, state='hidden')
 
 					if self.status_hold_B:
-						self.status_canvas.coords(self.status_hold_B,(lholdB, self.status_rh/2 + 1, lholdB, self.status_rh + 1))
+						self.status_canvas.coords(self.status_hold_B,(lholdB, self.status_rh-1, lholdB, 2 * self.status_rh - 3))
 						if lholdB >= self.dpm_scale_lh:
 							self.status_canvas.itemconfig(self.status_hold_B, state="normal", fill="#FF0000")
 						elif lholdB >= self.dpm_scale_lm:
@@ -471,7 +490,7 @@ class zynthian_gui_base:
 			if not self.status_recplay:
 				self.status_recplay = self.status_canvas.create_text(
 					int(self.status_fs*2.6),
-					int(self.status_h*0.6),
+					int(self.status_h*0.7),
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
 					fill=color,
@@ -489,7 +508,7 @@ class zynthian_gui_base:
 			if not self.status_midi:
 				self.status_midi = self.status_canvas.create_text(
 					int(self.status_l-self.status_fs+1),
-					int(self.status_h*0.6),
+					int(self.status_h*0.7),
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
 					fill=zynthian_gui_config.color_status_midi,
@@ -508,9 +527,9 @@ class zynthian_gui_base:
 			if not self.status_midi_clock:
 				self.status_midi_clock = self.status_canvas.create_line(
 					int(self.status_l-self.status_fs*1.7+1),
-					int(self.status_h*0.85),
+					int(self.status_h*0.9),
 					int(self.status_l-2),
-					int(self.status_h*0.85),
+					int(self.status_h*0.9),
 					fill=zynthian_gui_config.color_status_midi,
 					state=mcstate)
 			else:
@@ -551,7 +570,7 @@ class zynthian_gui_base:
 		self.select_path_width=self.select_path_font.measure(self.select_path.get())
 		self.select_path_offset = 0
 		self.select_path_dir = 2
-		self.label_select_path.place(x=0, y=0)
+		self.label_select_path.place(x=0, y=self.title_y)
 
 
 	def cb_scroll_select_path(self):
@@ -567,7 +586,7 @@ class zynthian_gui_base:
 		if self.select_path_width>self.title_canvas_width:
 			#Scroll label
 			self.select_path_offset += self.select_path_dir
-			self.label_select_path.place(x=-self.select_path_offset, y=0)
+			self.label_select_path.place(x=-self.select_path_offset, y=self.title_y)
 
 			#Change direction ...
 			if self.select_path_offset > (self.select_path_width-self.title_canvas_width):
@@ -580,7 +599,7 @@ class zynthian_gui_base:
 		elif self.select_path_offset!=0:
 			self.select_path_offset = 0
 			self.select_path_dir = 2
-			self.label_select_path.place(x=0, y=0)
+			self.label_select_path.place(x=0, y=self.title_y)
 
 		return False
 

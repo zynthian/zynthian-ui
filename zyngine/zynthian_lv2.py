@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian LV2-plugin management
@@ -90,7 +91,7 @@ def load_plugins():
 		convert_from_all_plugins()
 
 	except Exception as e:
-		logging.warning('Loading list of LV2-Plugins failed: {}'.format(e))
+		logging.debug('Loading list of LV2-Plugins failed: {}'.format(e))
 		generate_plugins_config_file()
 
 	get_plugins_by_type()
@@ -128,7 +129,7 @@ def	is_plugin_ui(plugin):
 				if ttl.find("a ui:X11UI")>0 or ttl.find("a lv2ui:X11UI")>0:
 					return "X11UI"
 		except:
-			logging.info("Can't find UI for plugin %s", str(plugin.get_name()))
+			logging.debug("Can't find UI for plugin %s", str(plugin.get_name()))
 
 	return None
 
@@ -137,7 +138,7 @@ def generate_plugins_config_file(refresh=True):
 	global world, plugins, plugins_mtime
 	genplugins = OrderedDict()
 
-	start = int(round(time.time() * 1000))
+	start = int(round(time.time()))
 	try:
 		if refresh:
 			init_lilv()
@@ -150,6 +151,8 @@ def generate_plugins_config_file(refresh=True):
 				'CLASS': re.sub(' Plugin', '', str(plugin.get_class().get_label())),
 				'ENABLED': is_plugin_enabled(name),
 				'UI': is_plugin_ui(plugin)
+				#'UI': plugin.get_uis()
+				# get_binary_uri()
 			}
 			logging.debug("Plugin '{}' => {}".format(name, genplugins[name]))
 
@@ -163,8 +166,8 @@ def generate_plugins_config_file(refresh=True):
 	except Exception as e:
 		logging.error('Generating list of LV2-Plugins failed: {}'.format(e))
 
-	end = int(round(time.time() * 1000))
-	logging.info('LV2 plugin list generation took {}s'.format(end-start))
+	dt = int(round(time.time())) - start
+	logging.debug('LV2 plugin list generation took {}s'.format(dt))
 
 
 def get_plugins_by_type():
@@ -191,7 +194,7 @@ def convert_from_all_plugins():
 			except:
 				generate_plugins_config_file()
 
-			logging.info("Converting LV2 config files ...")
+			logging.debug("Converting LV2 config files ...")
 
 			for name, properties in plugins.items():
 				if name in enplugins:
@@ -249,14 +252,6 @@ def get_plugin_type(plugin):
 	n_midi_in += plugin.get_num_ports_of_class(world.ns.lv2.InputPort, world.ns.atom.AtomPort)
 	n_midi_out += plugin.get_num_ports_of_class(world.ns.lv2.OutputPort, world.ns.atom.AtomPort)
 
-	# Really DIRTY => Should be fixed ASAP!!! TODO!!
-	#plugin_name=str(plugin.get_name())
-	#if plugin_name[-2:]=="v1":
-	#	return PluginType.MIDI_SYNTH
-
-	#if plugin_name[:2]=="EQ":
-	#	return PluginType.AUDIO_EFFECT
-
 	if n_audio_out>0 and n_audio_in==0:
 		if n_midi_in>0:
 			return PluginType.MIDI_SYNTH
@@ -283,8 +278,7 @@ def generate_all_presets_cache(refresh=True):
 	if refresh:
 		init_lilv()
 
-	plugins = world.get_all_plugins()
-	for plugin in plugins:
+	for plugin in world.get_all_plugins():
 		_generate_plugin_presets_cache(plugin)
 
 
@@ -294,8 +288,12 @@ def generate_plugin_presets_cache(plugin_url, refresh=True):
 	if refresh:
 		init_lilv()
 
-	plugins = world.get_all_plugins()
-	return _generate_plugin_presets_cache(plugins[plugin_url])
+	wplugins = world.get_all_plugins()
+	return _generate_plugin_presets_cache(wplugins[plugin_url])
+
+
+def _get_plugin_preset_cache_fpath(plugin_name):
+	return  "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), sanitize_fname(plugin_name))
 
 
 def _generate_plugin_presets_cache(plugin):
@@ -313,7 +311,7 @@ def _generate_plugin_presets_cache(plugin):
 	for bank in banks:
 		label = world.get(bank, world.ns.rdfs.label, None)
 		if label is None:
-			logging.warning("Bank <{}> has no label!".format(bank))
+			logging.debug("Bank <{}> has no label!".format(bank))
 
 		banks_dict[str(bank)] = str(label)
 		presets_info[str(label)] = {
@@ -335,16 +333,16 @@ def _generate_plugin_presets_cache(plugin):
 
 		label = world.get(preset, world.ns.rdfs.label, None)
 		if label is None:
-			logging.warning("Preset <{}> has no label!".format(preset))
+			logging.debug("Preset <{}> has no label!".format(preset))
 
 		bank = world.get(preset, world.ns.presets.bank, None)
 		if bank is None:
-			logging.info("Preset <{}> has no bank!".format(preset))
+			logging.debug("Preset <{}> has no bank!".format(preset))
 		else:
 			try:
 				bank = banks_dict[str(bank)]
 			except:
-				logging.warning("Bank <{}> doesn't exist!".format(bank))
+				logging.debug("Bank <{}> doesn't exist!".format(bank))
 				bank = None
 
 		presets_info[str(bank)]['presets'].append({
@@ -353,31 +351,18 @@ def _generate_plugin_presets_cache(plugin):
 		})
 
 		logging.debug("Preset {} <{}> => <{}>".format(label, bank, preset))
-
+		
 	for preset in presets:
 		world.unload_resource(preset)
 
-	# Sort and Remove empty banks 
-	keys = list(presets_info.keys())
-	for k in keys:
-		if len(presets_info[k]['presets'])==0:
-			del(presets_info[k])
-		else:
-			presets_info[k]['presets'] = sorted(presets_info[k]['presets'], key=lambda k: k['label'])
-
 	# Save cache file
-	fpath_cache = "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), sanitize_fname(plugin_name))
-	try:
-		with open(fpath_cache,'w') as f:
-			json.dump(presets_info, f)
-	except Exception as e:
-		logging.error("Can't save presets cache file '{}': {}".format(fpath_cache, e))
+	save_plugin_presets_cache(plugin_name, presets_info)
 
 	return presets_info
 
 
-def get_plugin_presets(plugin_name):
-	fpath_cache = "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), sanitize_fname(plugin_name))
+def get_plugin_presets_cache(plugin_name):
+	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
 	try:
 		with open(fpath_cache) as f:
 			presets_info = json.load(f, object_pairs_hook=OrderedDict)
@@ -391,6 +376,28 @@ def get_plugin_presets(plugin_name):
 			presets_info = OrderedDict()
 
 	return presets_info
+
+
+def get_plugin_presets(plugin_name):
+	return get_plugin_presets_cache(plugin_name)
+
+
+def save_plugin_presets_cache(plugin_name, presets_info):
+	# Sort and Remove empty banks 
+	keys = list(presets_info.keys())
+	for k in keys:
+		if len(presets_info[k]['presets'])==0:
+			del(presets_info[k])
+		else:
+			presets_info[k]['presets'] = sorted(presets_info[k]['presets'], key=lambda k: k['label'])
+
+	# Dump json to file
+	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
+	try:
+		with open(fpath_cache,'w') as f:
+			json.dump(presets_info, f)
+	except Exception as e:
+		logging.error("Can't save presets cache file '{}': {}".format(fpath_cache, e))
 
 
 def sanitize_fname(s):
@@ -418,16 +425,16 @@ def sanitize_fname(s):
 def get_plugin_ports(plugin_url):
 	global world
 
-	plugins = world.get_all_plugins()
-	plugin = plugins[plugin_url]
+	wplugins = world.get_all_plugins()
+	plugin = wplugins[plugin_url]
 
 	ports_info = OrderedDict()
 	for i in range(plugin.get_num_ports()):
 		port = plugin.get_port_by_index(i)
 		if port.is_a(lilv.LILV_URI_INPUT_PORT) and port.is_a(lilv.LILV_URI_CONTROL_PORT):
-			port_symbol = str(port.get_symbol())
 			port_name = str(port.get_name())
-			
+			port_symbol = str(port.get_symbol())
+
 			is_toggled = port.has_property(world.ns.lv2.toggled)
 			is_integer = port.has_property(world.ns.lv2.integer)
 			is_enumeration = port.has_property(world.ns.lv2.enumeration)
@@ -437,11 +444,16 @@ def get_plugin_ports(plugin_url):
 			#for node in port.get_properties():
 			#	logging.debug("    => {}".format(get_node_value(node)))
 
+			pgroup_index = None
 			pgroup_name = None
 			pgroup_symbol = None
 			pgroup = port.get(world.ns.portgroups.group)
 			if pgroup is not None:
 				#pgroup_key = str(pgroup).split("#")[-1]
+				pgroup_index = world.get(pgroup, world.ns.lv2.index, None)
+				if pgroup_index is not None:
+					pgroup_index = int(pgroup_index)
+					#logging.warning("Port group <{}> has not index.".format(pgroup_key))
 				pgroup_name = world.get(pgroup, world.ns.lv2.name, None)
 				if pgroup_name is not None:
 					pgroup_name = str(pgroup_name)
@@ -479,6 +491,7 @@ def get_plugin_ports(plugin_url):
 				'index': i,
 				'symbol': port_symbol,
 				'name': port_name,
+				'group_index': pgroup_index,
 				'group_name': pgroup_name,
 				'group_symbol': pgroup_symbol,
 				'value': vdef,
@@ -509,20 +522,52 @@ def get_node_value(node):
 
 #------------------------------------------------------------------------------
 
+# Init Lilv
 world = lilv.World()
 init_lilv()
+
+# Load presets from cache
 load_plugins()
 
 if __name__ == '__main__':
 
 	#log_level=logging.DEBUG
-	log_level=logging.WARNING
+	#log_level=logging.WARNING
+	log_level=logging.INFO
 	logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
 	logging.getLogger().setLevel(level=log_level)
 
-	generate_plugins_config_file(False)
-	generate_all_presets_cache(False)
-	
+	start = int(round(time.time()))
+	if len(sys.argv)>1:
+		if sys.argv[1]=="plugins":
+			generate_plugins_config_file(False)
+
+		elif sys.argv[1]=="presets":
+			#workaround to fix segfault:
+			for plugin in world.get_all_plugins():
+				plugin.get_name()
+			logging.info('Workaround took {}s'.format(int(round(time.time())) - start))
+
+			if len(sys.argv)>2:
+				plugin_url = sys.argv[2]
+				generate_plugin_presets_cache(plugin_url, False)
+			else:
+				generate_all_presets_cache(False)
+
+		elif sys.argv[1]=="ports":
+			if len(sys.argv)>2:
+				print(get_plugin_ports(sys.argv[2]))
+			else:
+				pass
+
+		elif sys.argv[1]=="all":
+			generate_plugins_config_file(False)
+			generate_all_presets_cache(False)
+
+	else:
+		generate_plugins_config_file(False)
+		generate_all_presets_cache(False)
+
 	#get_plugin_ports("https://github.com/dcoredump/dexed.lv2")
 	#get_plugin_ports("http://code.google.com/p/amsynth/amsynth")
 	#get_plugin_ports("https://obxd.wordpress.com")
@@ -532,5 +577,7 @@ if __name__ == '__main__':
 
 	#generate_plugin_presets_cache("http://code.google.com/p/amsynth/amsynth")
 	#print(get_plugin_presets("Dexed"))
+
+	logging.info('Command took {}s'.format(int(round(time.time())) - start))
 
 #------------------------------------------------------------------------------

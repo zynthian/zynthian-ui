@@ -491,14 +491,24 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             nNextTime = nTime + 1;
             // Get a pointer to the next 3 available bytes in the output buffer
             //!@todo Should we use correct buffer size based on MIDI message size, e.g. 1 byte for realtime messages?
-            pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, 3);
+            int nSize;
+            switch(it->second->command & 0xF0) {
+                case 0xC0:
+                    nSize = 2;
+                    break;
+                default:
+                    nSize = 3;
+            }
+            pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, nSize);
             if(pBuffer == NULL)
                 break; // Exceeded buffer size (or other issue)
             if(it->second)
             {
                 pBuffer[0] = it->second->command;
-                pBuffer[1] = it->second->value1;
-                pBuffer[2] = it->second->value2;
+                if(nSize > 1)
+                    pBuffer[1] = it->second->value1;
+                if(nSize > 2)
+                    pBuffer[2] = it->second->value2;
                 delete it->second;
                 it->second = NULL;
             }
@@ -543,6 +553,8 @@ __attribute__((constructor)) void zynseq(void) {
 }
 
 void init(char* name) {
+    //!@todo Invalid name triggers seg fault
+
     // Register with Jack server
     printf("**zynseq initialising as %s**\n", name);
     char *sServerName = NULL;
@@ -1235,9 +1247,12 @@ bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration)
 {
     if(!g_pPattern)
         return false;
-    g_bPatternModified = true;
-    g_bDirty = true;
-    return g_pPattern->addNote(step, note, velocity, duration);
+    if(g_pPattern->addNote(step, note, velocity, duration)) {
+        g_bPatternModified = true;
+        g_bDirty = true;
+        return true;
+    }
+    return false;
 }
 
 void removeNote(uint32_t step, uint8_t note)
@@ -1270,6 +1285,35 @@ float getNoteDuration(uint32_t step, uint8_t note)
     if(g_pPattern)
         return g_pPattern->getNoteDuration(step, note);
     return 0;
+}
+
+bool addProgramChange(uint32_t step, uint8_t program)
+{
+    if(!g_pPattern)
+        return false;
+    if(g_pPattern->addProgramChange(step, program)) {
+        g_bPatternModified = true;
+        g_bDirty = true;
+        return true;
+    }
+    return false;
+}
+
+void removeProgramChange(uint32_t step, uint8_t program)
+{
+    if(!g_pPattern)
+        return;
+    if(g_pPattern->removeProgramChange(step))
+        return;
+    g_bPatternModified = true;
+    g_bDirty = true;
+}
+
+uint8_t getProgramChange(uint32_t step)
+{
+    if(g_pPattern)
+        return g_pPattern->getProgramChange(step);
+    return 0xFF;
 }
 
 void transpose(int8_t value)

@@ -108,7 +108,7 @@ class zynthian_gui_info:
 
 
 	def back_action(self):
-		self.zyngui.cancel_modal_timer()
+		self.zyngui.cancel_screen_timer()
 		self.zyngui.screens['admin'].kill_command()
 		return False
 

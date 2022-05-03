@@ -42,37 +42,59 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
+	bend_ticks = [ [str(x) for x in range(-64,64)], [x for x in range(-6400,6400,100)] ]
+
 	# MIDI Controllers
 	_ctrls=[
-		#['volume','/part$i/Pvolume',96],
 		['volume',7,115],
-		['panning',10,64],
+		#['panning',10,64],
 		#['expression',11,127],
+		#['volume','/part$i/Pvolume',96],
+		['panning','/part$i/Ppanning',64],
 		['filter cutoff',74,64],
 		['filter resonance',71,64],
+
+		['voice limit','/part$i/Pvoicelimit',0,60],
+		['drum mode','/part$i/Pdrummode','off','off|on'],
+		['sustain',64,'off','off|on'],
+		['assign mode','/part$i/polyType','poly',[ [ 'poly', 'mono', 'legato', 'latch'], [0, 1, 2, 3 ] ] ],
+
+		#['portamento on/off',65,'off','off|on'],
+		['portamento enable','/part$i/ctl/portamento.portamento','off','off|on'],
+		['portamento auto','/part$i/ctl/portamento.automode','on','off|on'],
+		['portamento receive','/part$i/ctl/portamento.receive','on','off|on'],
+
+		['portamento time','/part$i/ctl/portamento.time',64],
+		['portamento up/down','/part$i/ctl/portamento.updowntimestretch',64],
+		['threshold type','/part$i/ctl/portamento.pitchthreshtype','<=',['<=','>=']],
+		['threshold','/part$i/ctl/portamento.pitchthresh',3],
+
+		['portaprop on/off','/part$i/ctl/portamento.proportional','off','off|on'],
+		['portaprop rate','/part$i/ctl/portamento.propRate',80],
+		['portaprop depth','/part$i/ctl/portamento.propDepth',90],
+
+		['modulation',1,0],
+		['modulation amplitude',76,127],
+		['modwheel depth','/part$i/ctl/modwheel.depth',80],
+		['modwheel exp','/part$i/ctl/modwheel.exponential','off','off|on'],
+
+		['bendrange','/part$i/ctl/pitchwheel.bendrange','2',bend_ticks],
+		['bendrange split','/part$i/ctl/pitchwheel.is_split','off','off|on'],
+		['bendrange down','/part$i/ctl/pitchwheel.bendrange_down',0,bend_ticks],
+
+		['resonance center',77,64],
+		['resonance bandwidth',78,64],
+		['rescenter depth','/part$i/ctl/resonancecenter.depth',64],
+		['resbw depth','/part$i/ctl/resonancebandwidth.depth',64],
+
+		['bandwidth',75,64],
+		['bandwidth depth','/part$i/ctl/bandwidth.depth',64],
+		['bandwidth exp','/part$i/ctl/bandwidth.exponential','off','off|on'],
+
 		['panning depth','/part$i/ctl/panning.depth',64],
 		['filter.cutoff depth','/part$i/ctl/filtercutoff.depth',64],
 		['filter.Q depth','/part$i/ctl/filterq.depth',64],
-		['drum on/off','/part$i/Pdrummode','off','off|on'],
-		['legato on/off','/part$i/Plegatomode','off','off|on'],
-		['poly on/off','/part$i/Ppolymode','on','off|on'],
-		['sustain on/off',64,'off','off|on'],
-		['portamento on/off',65,'off','off|on'],
-		#['portamento receive','/part$i/ctl/portamento.receive','off','off|on'],
-		['portamento time','/part$i/ctl/portamento.time',64],
-		['portamento up/down','/part$i/ctl/portamento.updowntimestretch',64],
-		['portamento thresh','/part$i/ctl/portamento.pitchthresh',3],
-		['modulation',1,0],
-		['modulation amplitude',76,127],
-		['modulation depth','/part$i/ctl/modwheel.depth',64],
-		['modulation exp','/part$i/ctl/modwheel.exponential','off','off|on'],
-		['bandwidth',75,64],
-		['bandwidth depth','/part$i/ctl/bandwidth.depth',64],
-		['bandwidth exp','/part$i/ctl/modwheel.exponential','off','off|on'],
-		['resonance center',77,64],
-		['resonance bandwidth',78,64],
-		['res.center depth','/part$i/ctl/resonancecenter.depth',64],
-		['res.bw depth','/part$i/ctl/resonancebandwidth.depth',64],
+
 		['velocity sens.','/part$i/Pvelsns',64],
 		['velocity offs.','/part$i/Pveloffs',64]
 	]
@@ -80,13 +102,16 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# Controller Screens
 	_ctrl_screens=[
 		['main',['volume','panning','filter cutoff','filter resonance']],
-		['mode',['drum on/off','sustain on/off','legato on/off','poly on/off']],
-		['portamento',['portamento on/off','portamento time','portamento up/down','portamento thresh']],
-		['modulation',['modulation','modulation amplitude','modulation depth','modulation exp']],
-		['resonance',['resonance center','res.center depth','resonance bandwidth','res.bw depth']],
-		['bandwidth',['volume','bandwidth','bandwidth depth','bandwidth exp']],
-		['velocity',['volume','panning','velocity sens.','velocity offs.']],
-		['depth',['volume','panning depth','filter.cutoff depth','filter.Q depth']]
+		['mode',['drum mode','sustain','assign mode','voice limit']],
+		['portamento',['portamento enable','portamento auto','portamento receive']],
+		['portamento time',['portamento time','portamento up/down','threshold','threshold type']],
+		['portamento prop',['portaprop on/off','portaprop rate','portaprop depth']],
+		['modulation',['modulation','modulation amplitude','modwheel depth','modwheel exp']],
+		['pitchwheel',['bendrange split','bendrange down','bendrange']],
+		['resonance',['resonance center','rescenter depth','resonance bandwidth','resbw depth']],
+		['bandwidth',['bandwidth','bandwidth depth','bandwidth exp']],
+		['depth',['panning depth','filter.cutoff depth','filter.Q depth']],
+		['velocity',['velocity sens.','velocity offs.']]
 	]
 
 	#----------------------------------------------------------------------------
@@ -94,8 +119,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	bank_dirs = [
-		('EX', zynthian_engine.ex_data_dir + "/presets/zynaddsubfx"),
-		('MY', zynthian_engine.my_data_dir + "/presets/zynaddsubfx"),
+		('EX', zynthian_engine.ex_data_dir + "/presets/zynaddsubfx/banks"),
+		('MY', zynthian_engine.my_data_dir + "/presets/zynaddsubfx/banks"),
 		('_', zynthian_engine.data_dir + "/zynbanks")
 	]
 
@@ -129,6 +154,10 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			self.command = "zynaddsubfx -r {} -b {} -O jack-multi -I jack -P {} -a".format(self.sr, self.bs, self.osc_target_port)
 		else:
 			self.command = "zynaddsubfx -r {} -b {} -O jack-multi -I jack -P {} -a -U".format(self.sr, self.bs, self.osc_target_port)
+
+		# Zynaddsubfx which uses PWD as the root for presets, due to the fltk
+		# toolkit used for the gui file browser.
+		self.command_cwd = zynthian_engine.my_data_dir + "/presets"
 
 		self.command_prompt = "\n\\[INFO] Main Loop..."
 
@@ -396,7 +425,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				zctrl.set_value(args[0])
 
 				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.active_screen=='control' and not self.zyngui.modal_screen:
+				if self.zyngui.current_screen=='control':
 					self.zyngui.screens['control'].set_controller_value(zctrl)
 			except:
 				pass
@@ -513,7 +542,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	@classmethod
 	def zynapi_new_bank(cls, bank_name):
-		os.mkdir(zynthian_engine.my_data_dir + "/presets/zynaddsubfx/" + bank_name)
+		os.mkdir(zynthian_engine.my_data_dir + "/presets/zynaddsubfx/banks/" + bank_name)
 
 
 	@classmethod
@@ -559,7 +588,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				head, xiz_fname = os.path.split(f)
 				head, dbank = os.path.split(head)
 				if dbank:
-					dest_dir = zynthian_engine.my_data_dir + "/presets/zynaddsubfx/" + dbank
+					dest_dir = zynthian_engine.my_data_dir + "/presets/zynaddsubfx/banks/" + dbank
 					os.makedirs(dest_dir, exist_ok=True)
 					shutil.move(f, dest_dir + "/" + xiz_fname)
 					count += 1

@@ -63,14 +63,14 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 	def zs3_update(self):
 		logging.info("Updating ZS3 CH#{}".format(self.midi_chan, self.zs3_index))
 		self.zyngui.screens['layer'].save_midi_chan_zs3(self.midi_chan, self.zs3_index)
-		self.zyngui.show_screen("control")
+		self.zyngui.close_screen()
 		self.zyngui.exit_midi_learn_mode()
 
 
 	def zs3_delete(self):
 		logging.info("Deleting ZS3 CH#{} {}".format(self.midi_chan, self.zs3_index))
 		self.zyngui.screens['layer'].delete_midi_chan_zs3(self.midi_chan, self.zs3_index)
-		self.zyngui.show_modal("zs3_learn")
+		self.zyngui.close_screen()
 
 
 	def set_select_path(self):

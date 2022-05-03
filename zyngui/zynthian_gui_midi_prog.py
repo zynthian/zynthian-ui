@@ -23,13 +23,9 @@
 # 
 #******************************************************************************
 
-import sys
-import tkinter
 import logging
 
 # Zynthian specific modules
-from zyncoder import *
-from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
@@ -45,7 +41,7 @@ class zynthian_gui_midi_prog(zynthian_gui_selector):
 
 	def config(self, prg_num, cb_action):
 		try:
-			self.index = int(prg_num)
+			self.index = int(prg_num) + 1
 		except:
 			self.index = 0
 		self.cb_action = cb_action

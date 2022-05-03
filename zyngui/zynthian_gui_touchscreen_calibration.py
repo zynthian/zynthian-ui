@@ -116,7 +116,7 @@ class zynthian_gui_touchscreen_calibration:
 			self.height / 2 + self.crosshair_size + 2 + zynthian_gui_config.font_size * 2,
 			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size, "normal"),
 			fill="white",
-			text="Touch each crosshair")
+			text="Touch crosshairs using a stylus")
 		self.device_text = self.canvas.create_text(self.width / 2,
 			self.height - zynthian_gui_config.font_size * 2,
 			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size, "normal"),
@@ -148,29 +148,30 @@ class zynthian_gui_touchscreen_calibration:
 				if ecodes.EV_ABS in device.capabilities().keys():
 					devices.append(device)
 		# Loop until we get a touch button event or the view hides
-		running = True
-		while running and self.shown:
+		self.running = True
+		while self.running and self.shown:
 			r, w, x = select(devices, [], []) # Wait for any of the devices to trigger an event
-			for device in r: # Iterate through all devices that have triggered events
-				for event in device.read(): # Iterate through all events from each device
-					if event.code == ecodes.BTN_TOUCH:
-						if event.value:
-							self.canvas.itemconfig("crosshairs_lines", fill="red")
-							self.canvas.itemconfig("crosshairs_circles", outline="red")
-							self.pressed = True
-							self.countdown = self.timeout
-							self.setDevice(device.name, device.path)
-						else:
-							self.canvas.itemconfig("crosshairs_lines", fill="white")
-							self.canvas.itemconfig("crosshairs_circles", outline="white")
-							self.pressed = False
-							self.countdown = self.timeout
-							if self.device_name:
-								self.index = 0
-								self.drawCross()
-								self.canvas.bind('<Button-1>', self.onPress)
-								self.canvas.bind('<ButtonRelease-1>', self.onRelease)
-								running = False
+			if self.running:
+				for device in r: # Iterate through all devices that have triggered events
+					for event in device.read(): # Iterate through all events from each device
+						if event.code == ecodes.BTN_TOUCH:
+							if event.value:
+								self.canvas.itemconfig("crosshairs_lines", fill="red")
+								self.canvas.itemconfig("crosshairs_circles", outline="red")
+								self.pressed = True
+								self.countdown = self.timeout
+								self.setDevice(device.name, device.path)
+							else:
+								self.canvas.itemconfig("crosshairs_lines", fill="white")
+								self.canvas.itemconfig("crosshairs_circles", outline="white")
+								self.pressed = False
+								self.countdown = self.timeout
+								if self.device_name:
+									self.index = 0
+									self.drawCross()
+									self.canvas.bind('<Button-1>', self.onPress)
+									self.canvas.bind('<ButtonRelease-1>', self.onRelease)
+									self.running = False
 
 
 	#	Set the device to configure
@@ -239,26 +240,58 @@ class zynthian_gui_touchscreen_calibration:
 			if abs(self.touch_points[0].x - self.touch_points[1].x) < self.debounce and abs(self.touch_points[0].y - self.touch_points[1].y) < self.debounce:
 				self.index = 0
 			else:
-				min_x = self.touch_points[0].x
-				max_x = self.touch_points[1].x
-				min_y = self.touch_points[0].y
-				max_y = self.touch_points[1].y
-				if min_x == max_x or min_y == max_y:
+				x0 = self.touch_points[0].x
+				x1 = self.touch_points[1].x
+				y0 = self.touch_points[0].y
+				y1 = self.touch_points[1].y
+				if x0 == x1 or y0 == y1:
 					self.index = 0
 					self.drawCross()
 					return
 				# Acquisition complete - calculate calibration data
-				a = self.width * 0.7 / (max_x - min_x)
-				if min_x < max_x:
-					c = (self.width * 0.15 - a * min_x) / self.width
+				min_x = min(x0, x1)
+				max_x = max(x0, x1)
+				min_y = min(y0, y1)
+				max_y = max(y0, y1)
+				dx = max_x - min_x
+				dy = max_y - min_y
+				if x0 < x1:
+					if y0 < y1:
+						# No rotation
+						a = self.width * 0.7 / dx # Scaling factor of x-axis from pointer x coord
+						b = 0 # Scaling factor of y-axis from pointer x coord
+						c = (0.15 * self.width / a - min_x) / self.width # Offset to add to x-axis
+						d = 0 # Scaling factor of x-axis from pointer y coord
+						e = self.height * 0.7 / dy # Scaling factor of y-axis from pointer y coord
+						f = (0.15 * self.height / e - min_y) / self.width # Offset to add to y-axis
+					else:
+						# Rotated 90 CW
+						a = 0
+						b = -self.height * 0.7 / dy
+						c = 1 + (0.15 * self.height / b + min_y) / self.height
+						d = self.width * 0.7 / dx
+						e = 0
+						f = (0.15 * self.width / d - min_x) / self.width
 				else:
-					c = (self.width * 0.15 - a * min_x) / self.width
-				e = self.height * 0.7 / (max_y - min_y)
-				if min_y < max_y:
-					f = (self.height * 0.15 - e * min_y) / self.height
-				else:
-					f = (self.height * 0.15 - e * min_y) / self.height
-				self.setCalibration(self.device_name, [a, 0, c, 0, e, f, 0, 0, 1], True)
+					if y0 < y1:
+						# Rotated 90 CCW (270 CW)
+						a = 0
+						b = self.height * 0.7 / dy
+						c = (0.15 * self.height / b - min_y) / self.height
+						d = -self.width * 0.7 / dx
+						e = 0
+						f = 1 + (0.15 * self.width / d + min_x) / self.width
+					else:
+						# Rotated 180
+						a = -self.width * 0.7 / dx
+						b = 0
+						c = 1 + (0.15 * self.width / a + min_x) / self.width
+						d = 0
+						e = -self.height * 0.7 / dy
+						f = 1 + (0.15 * self.height / e + min_y) / self.height
+
+				self.ctm = [a, b, c, d, e, f, 0, 0, 1]
+				self.setCalibration(self.device_name, self.ctm, True)
 
 				#TODO: Allow user to check calibration
 
@@ -352,12 +385,11 @@ class zynthian_gui_touchscreen_calibration:
 
 
 	#	Hide display
-	#	reset: True to reset calibration (default: True)
-	def hide(self, reset=True):
+	def hide(self):
 		if self.shown:
 			self.timer.cancel()
-			if reset and self.device_name and self.ctm:
-				self.setCalibration(self.device_name, self.ctm)
+			self.running = False
+			self.setCalibration(self.device_name, self.ctm)
 			self.main_frame.grid_forget()
 			self.shown=False
 
@@ -367,7 +399,7 @@ class zynthian_gui_touchscreen_calibration:
 		if not self.shown:
 			self.shown=True
 			self.device_name = None
-			self.ctm = None
+			self.ctm = [1,0,0,0,1,0,0,0,1]
 			self.canvas.unbind('<Button-1>')
 			self.canvas.unbind('<ButtonRelease-1>')
 			self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.timeout))
@@ -378,6 +410,7 @@ class zynthian_gui_touchscreen_calibration:
 			self.main_frame.grid()
 			self.onTimer()
 			self.detect_thread = Thread(target=self.detectDevice, args=(), daemon=True)
+			self.detect_thread.name = "touchscreen calibrate"
 			self.detect_thread.start()
 
 

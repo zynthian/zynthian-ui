@@ -301,6 +301,24 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity);
 */
 float getNoteDuration(uint32_t step, uint8_t note);
 
+/** @brief  Add programme change to selected pattern
+*   @param  step Index of step at which to add program change
+*   @param  program MIDI program change number
+*   @retval bool True on success
+*/
+bool addProgramChange(uint32_t step, uint8_t program);
+
+/** @brief  Removes program change from selected pattern
+*   @param  step Index of step at which to remove program change
+*/
+void removeProgramChange(uint32_t step, uint8_t program);
+
+/** @brief  Get program change in selected pattern
+*   @param  step Index of step at which program change resides
+*   @retval uint8_t Program change (0..127, 0xFF if no program change at this step)
+*/
+uint8_t getProgramChange(uint32_t step);
+
 /** @brief  Transpose selected pattern
 *   @param  value +/- quantity of notes to transpose
 */
@@ -477,7 +495,7 @@ void setPlayMode(uint8_t bank, uint8_t sequence, uint8_t mode);
 /** @brief  Get play state
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
-*   @retval uint8_t Play state [STOPPED | STARTING | PLAYING | STOPPING]
+*   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING | STARTING | RESTARTING | STOPPING_SYNC]
 */
 uint8_t getPlayState(uint8_t bank, uint8_t sequence);
 

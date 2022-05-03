@@ -71,10 +71,18 @@ class zynthian_engine_jalv(zynthian_engine):
 			'http://calf.sourceforge.net/plugins/Monosynth',
 			'http://calf.sourceforge.net/plugins/Organ',
 			'http://nickbailey.co.nr/triceratops',
-			'http://code.google.com/p/amsynth/amsynth'
+			'http://code.google.com/p/amsynth/amsynth',
+			'http://gareus.org/oss/lv2/tuna#one'
 		]
 	if "Raspberry Pi 4" not in os.environ.get('RBPI_VERSION'):
 		broken_ui.append('http://tytel.org/helm')
+
+	plugins_custom_gui = {
+		'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
+		'http://gareus.org/oss/lv2/meters#spectr30stereo': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
+		'http://gareus.org/oss/lv2/tuna#one': "/zynthian/zynthian-ui/zyngui/zynthian_widget_tunaone.py",
+		'http://looperlative.com/plugins/lp3-basic': "/zynthian/zynthian-ui/zyngui/zynthian_widget_looper.py"
+	}
 
 	#------------------------------------------------------------------------------
 	# Native formats configuration (used by zynapi_install, preset converter, etc.)
@@ -172,9 +180,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
-		self.ui = False
+		self.native_gui = False
 		if self.plugin_url not in self.broken_ui and 'UI' in self.plugins_dict[plugin_name]:
-			self.ui = self.plugins_dict[plugin_name]['UI']
+			self.native_gui = self.plugins_dict[plugin_name]['UI']
 
 		if plugin_type=="MIDI Tool":
 			self.options['midi_route'] = True
@@ -184,10 +192,10 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.options['note_range'] = False
 
 		if not dryrun:
-			if self.config_remote_display() and self.ui:
-				if self.ui=="Qt5UI":
+			if self.config_remote_display() and self.native_gui:
+				if self.native_gui=="Qt5UI":
 					jalv_bin = "jalv.qt5"
-				else: #  elif self.ui=="X11UI":
+				else: #  elif self.native_gui=="X11UI":
 					jalv_bin = "jalv.gtk"
 				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.get_jalv_jackname(), self.plugin_url))
 			else:
@@ -195,6 +203,9 @@ class zynthian_engine_jalv(zynthian_engine):
 				self.command_env['DISPLAY'] = "X"
 
 			self.command_prompt = "\n> "
+
+			# Jalv which uses PWD as the root for presets
+			self.command_cwd = zynthian_engine.my_data_dir + "/presets/lv2"
 
 			output = self.start()
 
@@ -219,15 +230,14 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
 			self.generate_ctrl_screens(self.lv2_zctrl_dict)
 
+			# Look for a custom GUI
+			try:
+				self.custom_gui_fpath = self.plugins_custom_gui[self.plugin_url]
+			except:
+				self.custom_gui_fpath = None
+
 		# Get bank & presets info
-		self.preset_info = zynthian_lv2.get_plugin_presets(plugin_name)
-
-		self.bank_list = []
-		for bank_label, info in self.preset_info.items():
-			self.bank_list.append((str(info['bank_url']), None, bank_label, None))
-
-		if len(self.bank_list)==0:
-			self.bank_list.append(("", None, "", None))
+		self.preset_info = zynthian_lv2.get_plugin_presets_cache(plugin_name)
 
 		self.reset()
 
@@ -245,6 +255,14 @@ class zynthian_engine_jalv(zynthian_engine):
 		super().add_layer(layer)
 		self.set_midi_chan(layer)
 
+
+	def get_name(self, layer):
+		return self.plugin_name
+
+
+	def get_path(self, layer):
+		return self.plugin_name
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
@@ -260,11 +278,81 @@ class zynthian_engine_jalv(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_bank_list(self, layer=None):
-		return self.bank_list
+		bank_list = []
+		for bank_label, info in self.preset_info.items():
+			bank_list.append((str(info['bank_url']), None, bank_label, None))
+		if len(bank_list)==0:
+			bank_list.append(("", None, "", None))
+		return bank_list
 
 
 	def set_bank(self, layer, bank):
 		return True
+
+
+	def get_user_bank_urid(self, bank_name):
+		return "file://{}/presets/lv2/{}.presets.lv2/{}".format(self.my_data_dir, zynthian_engine_jalv.sanitize_text(self.plugin_name), zynthian_engine_jalv.sanitize_text(bank_name))
+
+
+	def create_user_bank(self, bank_name):
+		bundle_path = "{}/presets/lv2/{}.presets.lv2".format(self.my_data_dir, zynthian_engine_jalv.sanitize_text(self.plugin_name))
+		fpath = bundle_path + "/manifest.ttl"
+
+		bank_id = zynthian_engine_jalv.sanitize_text(bank_name)
+		bank_ttl = "\n<{}>\n".format(bank_id)
+		bank_ttl += "\ta pset:Bank ;\n"
+		bank_ttl += "\tlv2:appliesTo <{}> ;\n".format(self.plugin_url)
+		bank_ttl += "\trdfs:label \"{}\" .\n".format(bank_name)
+
+		with open(fpath, 'a+') as f:
+			f.write(bank_ttl)
+			
+		# Cache is updated when saving the preset
+
+
+	def rename_user_bank(self, bank, new_bank_name):
+		if self.is_preset_user(bank):
+			try:
+				#TODO: This changes position of bank in list - Suggest using bank URI as key in preset_info
+				zynthian_engine_jalv.lv2_rename_bank(bank[0], new_bank_name)
+			except Exception as e:
+				logging.error(e)
+
+			# Update cache
+			try:
+				self.preset_info[new_bank_name] = self.preset_info.pop(bank[2])
+				zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+			except Exception as e:
+				logging.error(e)
+
+
+	def remove_user_bank(self, bank):
+		if self.is_preset_user(bank):
+			try:
+				zynthian_engine_jalv.lv2_remove_bank(bank)
+			except Exception as e:
+				logging.error(e)
+			
+			# Update cache
+			if bank[2] in self.preset_info:
+				try:
+					self.preset_info.pop(bank[2])
+					zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+				except Exception as e:
+					logging.error(e)
+
+
+	def delete_user_bank(self, bank):
+		if self.is_preset_user(bank):
+			try:
+				for preset in list(self.preset_info[bank[2]]['presets']):
+					self.delete_preset(bank, preset['url'])
+				self.remove_user_bank(bank)
+				self.zyngui.curlayer.load_preset_list()
+			except Exception as e:
+				logging.error(e)
+
+
 
 	#----------------------------------------------------------------------------
 	# Preset Managament
@@ -306,6 +394,92 @@ class zynthian_engine_jalv(zynthian_engine):
 				return False
 		except:
 			return False
+
+
+	def is_preset_user(self, preset):
+		return isinstance(preset[0], str) and preset[0].startswith("file://{}/presets/lv2/".format(self.my_data_dir))
+
+
+	def preset_exists(self, bank, preset_name):
+		#TODO: This would be more robust using URI but that is created dynamically by save_preset()
+		if bank[2] not in self.preset_info:
+			return False
+		try:
+			for preset in self.preset_info[bank[2]]['presets']:
+				if preset['label'] == preset_name:
+					return True
+		except Exception as e:
+			logging.error(e)
+		return False
+
+
+	def save_preset(self, bank, preset_name):
+		# Save preset (jalv)
+		res = self.proc_cmd("save preset %s,%s" % (bank[0], preset_name)).split("\n")
+		
+		if res[-1].startswith("ERROR"):
+			logging.error("Can't save preset => {}".format(res))
+		else:
+			preset_uri = res[-1].strip()
+			logging.info("Saved preset '{}' => {}".format(preset_name, preset_uri))
+
+			# Add to cache
+			try:
+				# Add bank if needed
+				if bank[2] not in self.preset_info:
+					self.preset_info[bank[2]] = {
+						'bank_url': bank[0],
+						'presets': []
+					}
+				# Add preset
+				if not self.preset_exists(bank, preset_name):
+					self.preset_info[bank[2]]['presets'].append(OrderedDict({'label': preset_name,  "url": preset_uri}))
+					# Save presets cache
+					zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+				# Return preset uri
+				return preset_uri
+			except Exception as e:
+				logging.error(e)
+
+
+	def delete_preset(self, bank, preset):
+		if self.is_preset_user(preset):
+			try:
+				# Remove from LV2 ttl
+				zynthian_engine_jalv.lv2_remove_preset(preset[0])
+
+				# Remove from  cache
+				for i,p in enumerate(self.preset_info[bank[2]]['presets']):
+					if p['url'] == preset[0]:
+						del self.preset_info[bank[2]]['presets'][i]
+						zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+						break 
+
+			except Exception as e:
+				logging.error(e)
+		
+		try:
+			return len(self.preset_info[bank[2]]['presets'])
+		except Exception as e:
+			pass
+		zynthian_engine_jalv.lv2_remove_bank(bank)
+		return 0
+
+	def rename_preset(self, bank, preset, new_preset_name):
+		if self.is_preset_user(preset):
+			try:
+				# Update LV2 ttl
+				zynthian_engine_jalv.lv2_rename_preset(preset[0], new_preset_name)
+
+				# Update cache
+				for i,p in enumerate(self.preset_info[bank[2]]['presets']):
+					if p['url'] == preset[0]:
+						self.preset_info[bank[2]]['presets'][i]['label'] = new_preset_name
+						zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+						break
+
+			except Exception as e:
+				logging.error(e)
 
 	#----------------------------------------------------------------------------
 	# Controllers Managament
@@ -458,7 +632,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			else:
 				last_group[0] = "Ungroup"
 			zctrl_group["_"] = last_group
-			
+
 		for gsymbol, gdata in zctrl_group.items():
 			ctrl_set=[]
 			gname = gdata[0]
@@ -685,8 +859,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		with open(fpath, 'r') as f:
 			data = f.read()
 			parts = data.split(".\n")
-			f.close()
-			return parts
+		return parts
 
 
 	@staticmethod
@@ -695,7 +868,6 @@ class zynthian_engine_jalv(zynthian_engine):
 			data = ".\n".join(parts)
 			f.write(data)
 			#logging.debug(data)
-			f.close()
 
 
 	@staticmethod
@@ -738,14 +910,16 @@ class zynthian_engine_jalv(zynthian_engine):
 				new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
 				man_parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
 				zynthian_engine_jalv.ttl_write_parts(man_fpath, man_parts)
-				renamed = True
+				renamed = True #TODO: This overrides subsequent assertion in prs_parts
+				break
 
 		for i,p in enumerate(prs_parts):
 			if bmre2.search(p):
-				new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
+				#new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
 				prs_parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
 				zynthian_engine_jalv.ttl_write_parts(preset_path, prs_parts)
 				renamed = True
+				break
 
 		if not renamed:
 			raise Exception("Format doesn't match!")
@@ -768,20 +942,71 @@ class zynthian_engine_jalv(zynthian_engine):
 				os.remove(preset_path)
 				return
 
-		raise Exception("Format doesn't match!")
+
+	@staticmethod
+	#   Remove a preset bank
+	#   bank: Bank object to remove
+	#   Returns: True on success
+	def lv2_remove_bank(bank):
+		try:
+			path = bank[0][7:bank[0].rfind("/")]
+		except Exception as e:
+			return False
+
+		try:
+			with open("{}/manifest.ttl".format(path), "r") as manifest:
+				lines = manifest.readlines()
+		except Exception as e:
+			return False
+
+		bank_first_line = None
+		bank_last_line = None
+		for index,line in enumerate(lines): #TODO: Use regexp to parse file
+			if line.strip() == "<{}>".format(bank[2]):
+				bank_first_line = index
+			if bank_first_line != None and line.strip()[-1:] == ".":
+				bank_last_line = index
+			if bank_last_line != None:
+				del lines[bank_first_line:bank_last_line + 1]
+				break
+		zynthian_engine.remove_double_spacing(lines)
+		try:
+			with open("{}/manifest.ttl".format(path), "w") as manifest:
+				manifest.writelines(lines)
+		except Exception as e:
+			logging.error(e)
+
+		# Remove bank reference from presets
+		for file in os.listdir(path):
+			if(file[-4:] == ".ttl" and file != "manifest.ttl"):
+				bank_lines = []
+				with open("{}/{}".format(path, file)) as ttl:
+					lines = ttl.readlines()
+				for index,line in enumerate(lines):
+					if line.strip().startswith("pset:bank") and line.find("<{}>".format(bank[2])) > 0:
+						bank_lines.append(index)
+				if len(bank_lines):
+					bank_lines.sort(reverse=True)
+					for line in bank_lines:
+						del lines[line]
+					zynthian_engine.remove_double_spacing(lines)
+					with open("{}/{}".format(path,file), "w") as ttl:
+						ttl.writelines(lines)
+
+		return True
 
 
 	@staticmethod
 	def sanitize_text(text):
 		# Remove bad chars
 		bad_chars = ['.', ',', ';', ':', '!', '*', '+', '?', '@', '&', '$', '%', '=', '"', '\'', '`', '/', '\\', '^', '<', '>', '[', ']', '(', ')', '{', '}']
-		for i in bad_chars: 
+		for i in bad_chars:
 			text = text.replace(i, ' ')
-			
+
 		# Strip and replace (multi)spaces by single underscore
 		text = '_'.join(text.split())
 		text = '_'.join(filter(None,text.split('_')))
-	
+
 		return text
 
 

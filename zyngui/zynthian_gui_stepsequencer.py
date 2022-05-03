@@ -42,12 +42,13 @@ pil_logger.setLevel(logging.INFO)
 # Zynthian specific modules
 from zyngui import zynthian_gui_base
 from zyngui import zynthian_gui_config
-from zyncoder import get_lib_zyncoder
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_fileselector import zynthian_gui_fileselector
 from zyngui.zynthian_gui_keyboard import zynthian_gui_keyboard
+
+from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 from zynlibs.zynseq.zynseq import libseq
 libseq.init(bytes("zynthstep", "utf-8"))
@@ -80,7 +81,8 @@ SEQ_PLAYING			= 1
 SEQ_STOPPING		= 2
 SEQ_STARTING		= 3
 SEQ_RESTARTING		= 4
-SEQ_LASTPLAYSTATUS	= 4
+SEQ_STOPPINGSYNC	= 5
+SEQ_LASTPLAYSTATUS	= 5
 
 USER_PATH			= "/zynthian/zynthian-my-data/zynseq"
 
@@ -316,10 +318,16 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.child.setup_encoders()
 
 
+	# Function to know if menu is shown
+	# 	returns: boolean
+	def is_shown_menu(self):
+		return self.lst_menu.winfo_viewable()
+
+
 	# Function to handle title bar click
 	#	event: Mouse event (not used)
 	def toggle_menu(self, event=None):
-		if self.lst_menu.winfo_viewable():
+		if self.is_shown_menu():
 			self.hide_menu()
 		else:
 			self.show_menu()
@@ -521,6 +529,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to populate menu with global entries
 	def populate_menu(self):
+
 		self.lst_menu.delete(0, tkinter.END)
 		self.menu_items = {} # Dictionary of menu items
 		self.add_menu({'BACK':{'method':self.back}})
@@ -886,12 +895,11 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def zyncoder_read(self):
 		if not self.shown:
 			return
-		zyncoder = get_lib_zyncoder()
-		if zyncoder:
+		if lib_zyncore:
 			for encoder in range(len(self.zyncoder_owner)):
 				if self.zyncoder_owner[encoder]:
 					# Found a registered zyncoder
-					value = zyncoder.get_value_zyncoder(encoder)
+					value = lib_zyncore.get_value_zynpot(encoder)
 					if self.zyncoder_step[encoder]==0:
 						step = value-64
 					else:
@@ -904,7 +912,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					if step:
 						#logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, step)
-						zyncoder.set_value_zyncoder(encoder, 64, 0)
+						lib_zyncore.set_value_zynpot(encoder, 64, 0)
 		return []
 
 
@@ -958,12 +966,12 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA BACK_UP command
 	def back_up(self):
-		self.on_cuia_encoder(ENC_BACK, -1)
+		self.on_cuia_encoder(ENC_BACK, 1)
 
 
 	# Function to handle CUIA BACK_UP command
 	def back_down(self):
-		self.on_cuia_encoder(ENC_BACK, 1)
+		self.on_cuia_encoder(ENC_BACK, -1)
 
 
 	# Function to handle CUIA SELECT command
@@ -978,7 +986,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def on_switch(self, switch, type):
 		if type == 'S':
 			if switch == ENC_BACK:
-				if self.lst_menu.winfo_viewable():
+				if self.is_shown_menu():
 					# Close menu
 					self.hide_menu() #TODO: This should be abstracted to base class
 					return True
@@ -993,15 +1001,17 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					self.show_child(self.last_child, {})
 					return True
 			elif switch == ENC_SELECT:
-				if self.lst_menu.winfo_viewable():
+				if self.is_shown_menu():
 					self.on_menu_select()
 					return True
 				elif self.param_editor_item:
 					self.param_editor_assert()
 					return True
 			elif switch == ENC_LAYER:
-				if self.lst_menu.winfo_viewable():
+				if self.is_shown_menu():
 					self.on_menu_select()
+				else:
+					self.show_menu()
 				return True
 		if type == 'B':
 			if switch == ENC_SELECT:
@@ -1009,9 +1019,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					# Close parameter editor
 					self.param_editor_reset()
 					return True
-			elif switch == ENC_LAYER and not self.lst_menu.winfo_viewable():
-				self.toggle_menu()
-				return True
 
 		return False # Tell parent to handle the rest of short and bold key presses
 
@@ -1084,11 +1091,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		if encoder >= len(self.zyncoder_owner):
 			return
 		self.zyncoder_owner[encoder] = None
-		zyncoder = get_lib_zyncoder()
-		if self.shown and zyncoder:
-			pin_a=zynthian_gui_config.zyncoder_pin_a[encoder]
-			pin_b=zynthian_gui_config.zyncoder_pin_b[encoder]
-			zyncoder.setup_zyncoder(encoder, pin_a, pin_b, 0, 0, None, 64, 128, step)
+		if self.shown and lib_zyncore:
+			lib_zyncore.setup_rangescale_zynpot(encoder, 0, 128, 64, step)
+			lib_zyncore.setup_midi_zynpot(encoder, 0, 0)
+			lib_zyncore.setup_osc_zynpot(encoder, None)
 			self.zyncoder_owner[encoder] = object
 			self.zyncoder_step[encoder] = step
 
