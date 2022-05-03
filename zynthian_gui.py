@@ -1191,9 +1191,10 @@ class zynthian_gui:
 						if main_fxchain:
 							self.layer_control(main_fxchain)
 						else:
-							self.zyngui.screens['layer'].add_fxchain_layer(16)
-				except:
-					logging.warning("Can't change to layer {}!".format(params[0]))
+							#self.screens['layer'].add_fxchain_layer(16)
+							self.screens['audio_mixer'].show_mainfx_options()
+				except Exception as e:
+					logging.warning("Can't change to layer {}! => {}".format(params[0],e))
 			else:
 				self.layer_control()
 
@@ -1211,12 +1212,13 @@ class zynthian_gui:
 						if main_fxchain:
 							self.screens['layer'].select(n)
 						else:
-							self.zyngui.screens['layer'].add_fxchain_layer(16)
+							#self.screens['layer'].add_fxchain_layer(16)
+							self.screens['audio_mixer'].show_mainfx_options()
 							return
 				self.screens['layer_options'].reset()
 				self.toggle_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
-			except:
-				logging.warning("Can't show options for layer ({})!".format(params))
+			except Exception as e:
+				logging.warning("Can't show options for layer ({})! => {}".format(params,e))
 				
 		elif cuia == "MENU":
 			if self.current_screen=='stepseq':
