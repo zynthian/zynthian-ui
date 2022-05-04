@@ -232,6 +232,9 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused) {
         {
             switch(midiEvent.buffer[1])
             {
+                case 1:
+                    setPosition(midiEvent.buffer[2] * getDuration() / 127);
+                    break;
                 case 7:
                     g_fLevel = (float)midiEvent.buffer[2] / 100.0;
                     break;

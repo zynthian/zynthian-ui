@@ -66,12 +66,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self._ctrls=[
 			['volume',7,100],
 			['loop',69,'one-shot',['one-shot','looping']],
-			['play',68,'stopped',['stopped','playing']]
+			['play',68,'stopped',['stopped','playing']],
+			['position',1,0]
 		]
 
 		# Controller Screens
 		self._ctrl_screens=[
-			['main',['volume','loop','play']]
+			['main',['volume','loop','play','position']]
 		]
 
 		self.start()
