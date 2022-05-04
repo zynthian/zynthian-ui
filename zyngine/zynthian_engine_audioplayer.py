@@ -137,6 +137,32 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		zynaudioplayer.libaudioplayer.setPosition(0)
 
 
+	def delete_preset(self, bank, preset):
+		try:
+			os.remove(preset[0])
+		except Exception as e:
+			logging.error(e)
+
+
+	def rename_preset(self, bank, preset, new_preset_name):
+		src_ext = None
+		dest_ext = None
+		for ext in ('.wav','.ogg','.flac'):
+			if preset[0].endswith(ext):
+				src_ext = ext
+			if new_preset_name.endswith(ext):
+				dest_ext = ext
+			if src_ext and dest_ext:
+				break
+		if src_ext != dest_ext:
+			new_preset_name += src_ext
+		try:
+			os.rename(preset[0], "{}/{}".format(bank[0], new_preset_name))
+		except Exception as e:
+			logging.error(e)
+
+		
+
 	#----------------------------------------------------------------------------
 	# Controllers Management
 	#----------------------------------------------------------------------------
