@@ -240,7 +240,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 
 	#----------------------------------------------------------------------------
-	# Controllers Managament
+	# Controllers Management
 	#----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, layer):

@@ -28,7 +28,7 @@ import ctypes
 from _ctypes import dlclose
 from os.path import dirname, realpath
 
-zynaudioplayer = None
+libaudioplayer = None
 
 #-------------------------------------------------------------------------------
 # Zynthian audio file player Library Wrapper
@@ -63,10 +63,12 @@ def init():
 
 #	Destoy instance of shared library
 def destroy():
-	#TODO: This hangs
 	global libaudioplayer
 	if libaudioplayer:
-		dlclose(libaudioplayer._handle)
+		libaudioplayer.end()
+		handle = libaudioplayer._handle
+#		del libaudioplayer 
+		dlclose(handle)
 	libaudioplayer = None
 
 

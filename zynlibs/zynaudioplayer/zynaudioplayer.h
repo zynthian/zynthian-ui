@@ -3,7 +3,7 @@
     License: LGPL V3
 */
 
-#include <cstdint>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -17,13 +17,13 @@ void init();
 /** @brief  Enable debug output
 *   @param  bEnable True to enable, false to disable
 */
-void enableDebug(bool bEnable);
+void enableDebug(uint8_t bEnable);
 
 /** @brief  Open audio file
 *   @param  filename Full path and name of file to load
-*   @retval bool True on success
+*   @retval uint8_t True on success
 */
-bool open(const char* filename);
+uint8_t open(const char* filename);
 
 /** @brief  Get duration of a file without loading it
 *   @param  filename Full path and name of file to load
@@ -33,9 +33,9 @@ float getFileDuration(const char* filename);
 
 /** @brief  Save audio file
 *   @param  filename Full path and name of file to create or overwrite
-*   @retval bool True on success
+*   @retval uint8_t True on success
 */
-bool save(const char* filename);
+uint8_t save(const char* filename);
 
 /** @brief  Close audio file clearing all data
 */
@@ -64,7 +64,7 @@ float getPosition();
 /** @brief  Set loop mode
 *   @param  bLoop True to loop at end of audio
 */
-void setLoop(bool bLoop);
+void setLoop(uint8_t bLoop);
 
 /** @brief  Start playback
 */
@@ -109,10 +109,10 @@ const char* getFileInfo(const char* filename, int type);
 
 /** @brief  Set samplerate converter quality
 *   @param  quality Samplerate conversion quality [SRC_SINC_BEST_QUALITY | SRC_SINC_MEDIUM_QUALITY | SRC_SINC_FASTEST | SRC_ZERO_ORDER_HOLD | SRC_LINEAR]
-*   @retval bool True on success, i.e. the quality parameter is valid
+*   @retval uint8_t True on success, i.e. the quality parameter is valid
 *   @note   Quality will apply to subsequently opened files, not currently open file
 */
-bool setSrcQuality(unsigned int quality);
+uint8_t setSrcQuality(unsigned int quality);
 
 /** @brief  Set audio level (volume)
 *   @param  level Audio level (0..2)

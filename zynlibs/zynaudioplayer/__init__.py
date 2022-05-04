@@ -1,3 +1,3 @@
 from . import zynaudioplayer
 
-zynaudioplayer.init()
+# zynaudioplayer.init()

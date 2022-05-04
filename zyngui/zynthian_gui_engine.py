@@ -50,7 +50,7 @@ def initializator(cls):
 @initializator
 class zynthian_gui_engine(zynthian_gui_selector):
 
-	single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS"]
+	single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "AP"]
 	check_channels_engines = ["AE"]
 
 	@classmethod
@@ -66,6 +66,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", None, zynthian_engine_aeolus, True)],
 			['PD', ("PureData", "PureData - Visual Programming", "Special", None, zynthian_engine_puredata, True)],
 			#['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
+			["AP", ("AudioPlayer", "Audio Player", "Audio Generator", None, zynthian_engine_audioplayer, True)],
 			['MD', ("MOD-UI", "MOD-UI - Plugin Host", "Special", None, zynthian_engine_modui, True)]
 		])
 
