@@ -78,11 +78,13 @@ from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
-from zyngui.zynthian_gui_audio_recorder import zynthian_gui_audio_recorder
+from zyngui.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
+
+MIXER_MAIN_CHANNEL = 256 #TODO This constant should go somewhere else
 
 #-------------------------------------------------------------------------------
 # Zynthian Main GUI Class
@@ -153,7 +155,7 @@ class zynthian_gui:
 		"81": "SCREEN_ADMIN",
 		"82": "SCREEN_AUDIO_MIXER",
 		"83": "SCREEN_SNAPSHOT",
-		"84": "SCREEN_AUDIO_RECORDER",
+
 		"85": "SCREEN_MIDI_RECORDER",
 		"86": "SCREEN_ALSA_MIXER",
 		"87": "SCREEN_STEPSEQ",
@@ -345,12 +347,6 @@ class zynthian_gui:
 				self.wsleds.setPixelColor(8, self.wscolor_active)
 			else:
 				self.wsleds.setPixelColor(8, self.wscolor_light)
-
-			# Audio Recorder screen:
-			if self.current_screen=="audio_recorder":
-				self.wsleds.setPixelColor(9, self.wscolor_active)
-			else:
-				self.wsleds.setPixelColor(9, self.wscolor_light)
 
 			# MIDI Recorder screen:
 			if self.current_screen=="midi_recorder":
@@ -571,10 +567,11 @@ class zynthian_gui:
 
 		# Create UI Apps Screens
 		self.screens['alsa_mixer'] = self.screens['control']
-		self.screens['audio_recorder'] = zynthian_gui_audio_recorder()
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['stepseq'] = zynthian_gui_stepsequencer()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
+
+		self.audio_recorder = zynthian_audio_recorder()
 
 		# Init Auto-connector
 		zynautoconnect.start()
@@ -981,26 +978,19 @@ class zynthian_gui:
 			self.raw_all_notes_off()
 
 		elif cuia == "START_AUDIO_RECORD":
-			self.screens['audio_recorder'].start_recording()
+			self.audio_recorder.start_recording()
 
 		elif cuia == "STOP_AUDIO_RECORD":
-			self.screens['audio_recorder'].stop_recording()
-			if self.current_screen=="audio_recorder":
-				self.screens['audio_recorder'].select()
+			self.audio_recorder.stop_recording()
 
 		elif cuia == "TOGGLE_AUDIO_RECORD":
-			self.screens['audio_recorder'].toggle_recording()
-			if self.current_screen=="audio_recorder":
-				self.screens['audio_recorder'].select()
+			self.audio_recorder.toggle_recording()
 
-		elif cuia == "START_AUDIO_PLAY":
-			self.screens['audio_recorder'].start_playing()
+		#TODO: Handle CUIA audio playback
+		#elif cuia == "START_AUDIO_PLAY":
+		#elif cuia == "STOP_AUDIO_PLAY":
+		#elif cuia == "TOGGLE_AUDIO_PLAY":
 
-		elif cuia == "STOP_AUDIO_PLAY":
-			self.screens['audio_recorder'].stop_playing()
-
-		elif cuia == "TOGGLE_AUDIO_PLAY":
-			self.screens['audio_recorder'].toggle_playing()
 
 		elif cuia == "START_MIDI_RECORD":
 			self.screens['midi_recorder'].start_recording()
@@ -1155,9 +1145,6 @@ class zynthian_gui:
 
 		elif cuia in ("MODAL_SNAPSHOT", "SCREEN_SNAPSHOT"):
 			self.toggle_screen("snapshot")
-
-		elif cuia in ("MODAL_AUDIO_RECORDER", "SCREEN_AUDIO_RECORDER"):
-			self.toggle_screen("audio_recorder")
 
 		elif cuia in ("MODAL_MIDI_RECORDER", "SCREEN_MIDI_RECORDER"):
 			self.toggle_screen("midi_recorder")
@@ -1842,11 +1829,10 @@ class zynthian_gui:
 				self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
 			else:
 				# Get audio peak level
-				MIXER_MAIN = 16 #TODO This constant should go somewhere else
-				self.status_info['peakA'] = lib_zynmixer.getDpm(MIXER_MAIN, 0)
-				self.status_info['peakB'] = lib_zynmixer.getDpm(MIXER_MAIN, 1)
-				self.status_info['holdA'] = lib_zynmixer.getDpmHold(MIXER_MAIN, 0)
-				self.status_info['holdB'] = lib_zynmixer.getDpmHold(MIXER_MAIN, 1)
+				self.status_info['peakA'] = lib_zynmixer.getDpm(MIXER_MAIN_CHANNEL, 0)
+				self.status_info['peakB'] = lib_zynmixer.getDpm(MIXER_MAIN_CHANNEL, 1)
+				self.status_info['holdA'] = lib_zynmixer.getDpmHold(MIXER_MAIN_CHANNEL, 0)
+				self.status_info['holdB'] = lib_zynmixer.getDpmHold(MIXER_MAIN_CHANNEL, 1)
 
 			# Get Status Flags (once each 5 refreshes)
 			if self.status_counter>5:
@@ -1872,7 +1858,7 @@ class zynthian_gui:
 
 			# Get Recorder Status
 			try:
-				self.status_info['audio_recorder'] = self.screens['audio_recorder'].get_status()
+				self.status_info['audio_recorder'] = self.audio_recorder.get_status()
 				self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
 			except Exception as e:
 				logging.error(e)

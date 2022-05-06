@@ -1049,6 +1049,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			options["[x] Audio Mono"] = "Mono"
 		else:
 			options["[  ] Audio Mono"] = "Mono"
+		if self.zyngui.audio_recorder.get_status():
+			options["[x] Audio Recording"] = "AudioRec"
+		else:
+			options["[  ] Audio Recording"] = "AudioRec"
+		if self.zyngui.audio_recorder.is_primed(256):
+			options["[x] Recording Primed"] = "Primed"
+		else:
+			options["[  ] Recording Primed"] = "Primed"
 		options["> Audio Chain ---------------"] = None
 		options["Add Audio-FX"] = "Add"
 		self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
@@ -1059,7 +1067,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if param == "Add":
 			self.zyngui.screens['layer'].add_fxchain_layer(MAIN_CHANNEL_INDEX)
 		elif param == "Mono":
-			zynmixer.toggle_mono(self.selected_layer.midi_chan)
+			zynmixer.toggle_mono(MAIN_CHANNEL_INDEX)
+			self.show_mainfx_options()
+		elif param == "AudioRec":
+			self.zyngui.audio_recorder.toggle_recording()
+			self.show_mainfx_options()
+		elif param == "Primed":
+			self.zyngui.audio_recorder.toggle_prime(MAIN_CHANNEL_INDEX)
 			self.show_mainfx_options()
 
 

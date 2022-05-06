@@ -1371,12 +1371,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.amixer_layer.restore_snapshot_2(snapshot['amixer_layer'])
 
 		#Audio Recorder Out
-		if 'audio_recorder_out' in snapshot:
-			if snapshot['audio_recorder_out'] == ['system']:
-				# Migration fix 2205
-				self.zyngui.screens['audio_recorder'].audio_out = ['mixer']
-			else:
-				self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out']
+		#TODO: Handle audio recorder routing
+		#if 'audio_recorder_out' in snapshot:
+		#	if snapshot['audio_recorder_out'] == ['system']:
+		#		# Migration fix 2205
+		#		self.zyngui.screens['audio_recorder'].audio_out = ['mixer']
+		#	else:
+		#		self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out']
 
 		#Autoconnect Audio
 		self.zyngui.zynautoconnect_audio(True)

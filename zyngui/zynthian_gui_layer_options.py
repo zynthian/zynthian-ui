@@ -83,7 +83,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.midifx_layers.remove(self.layer)
 
 		# Add root layer options
-		if self.layer.midi_chan==16:
+		if self.layer.midi_chan==256:
 			eng_options = {
 				'audio_capture': True,
 				'indelible': True
@@ -107,6 +107,22 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				self.list_data.append((self.layer_toggle_mono, None, "[x] Audio Mono"))
 			else:
 				self.list_data.append((self.layer_toggle_mono, None, "[  ] Audio Mono"))
+
+
+		if self.layer.midi_chan is not None:
+			if self.zyngui.audio_recorder.get_status():
+				self.list_data.append((self.layer_toggle_record, None, "[x] Audio Recording"))
+				# Recording so don't allow change of primed state
+				if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
+					self.list_data.append((None, None, "[x] Recording Primed"))
+				else:
+					self.list_data.append((None, None, "[  ] Recording Primed"))
+			else:
+				self.list_data.append((self.layer_toggle_record, None, "[  ] Audio Recording"))
+				if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
+					self.list_data.append((self.layer_toggle_primed, None, "[x] Recording Primed"))
+				else:
+					self.list_data.append((self.layer_toggle_primed, None, "[  ] Recording Primed"))
 
 		if 'audio_capture' in eng_options and eng_options['audio_capture']:
 			self.list_data.append((self.layer_audio_capture, None, "Audio Capture"))
@@ -329,6 +345,16 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_toggle_mono(self):
 		zynmixer.toggle_mono(self.layer.midi_chan)
+		self.show()
+
+
+	def layer_toggle_record(self):
+		self.zyngui.audio_recorder.toggle_record()
+		self.show()
+
+
+	def layer_toggle_primed(self):
+		self.zyngui.audio_recorder.toggle_prime(self.layer.midi_chan)
 		self.show()
 
 
