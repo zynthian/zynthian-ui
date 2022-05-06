@@ -463,6 +463,7 @@ class zynthian_engine(zynthian_basic_engine):
 	def is_preset_user(self, preset):
 		return isinstance(preset[0], str) and preset[0].startswith(self.my_data_dir)
 
+
 	# To implement in derived classes
 	#def save_preset(self, bank_name, preset_name):
 	#def delete_preset(self, preset):
