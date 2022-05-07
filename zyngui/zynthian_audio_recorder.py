@@ -43,7 +43,7 @@ class zynthian_audio_recorder():
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
 		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 		self.rec_proc = None
-		self.primed = set([256])
+		self.primed = set() # List of chains primed to record
 		self.zyngui = zynthian_gui_config.zyngui
 
 
@@ -61,15 +61,15 @@ class zynthian_audio_recorder():
 			path = self.capture_dir_sdc
 		try:
 			self.zyngui.get_snapshot_name() #TODO: Implement get_snapshot_name()
-			#parts = self.zyngui.curlayer.get_presetpath().split('#',2)
-			file_name = parts[1].replace("/",";").replace(">",";").replace(" ; ",";")
 		except:
-			file_name = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+			filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+		filename = filename.replace("/",";").replace(">",";").replace(" ; ",";")
+		# Append index to file to make unique
 		index = 1
 		files = os.listdir(path)
-		while "{}.{:03d}.wav".format(file_name, index) in files:
+		while "{}.{:03d}.wav".format(filename, index) in files:
 			index += 1
-		return "{}/{}.{:03d}.wav".format(path, file_name, index)
+		return "{}/{}.{:03d}.wav".format(path, filename, index)
 
 
 	def prime(self, channel):

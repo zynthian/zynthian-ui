@@ -1051,12 +1051,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			options["[  ] Audio Mono"] = "Mono"
 		if self.zyngui.audio_recorder.get_status():
 			options["[x] Audio Recording"] = "AudioRec"
+			primed_option = None
 		else:
 			options["[  ] Audio Recording"] = "AudioRec"
-		if self.zyngui.audio_recorder.is_primed(256):
-			options["[x] Recording Primed"] = "Primed"
+			primed_option = "Primed"
+		if self.zyngui.audio_recorder.is_primed(MAIN_CHANNEL_INDEX):
+			options["[x] Recording Primed"] = primed_option
 		else:
-			options["[  ] Recording Primed"] = "Primed"
+			options["[  ] Recording Primed"] = primed_option
 		options["> Audio Chain ---------------"] = None
 		options["Add Audio-FX"] = "Add"
 		self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)

@@ -349,7 +349,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def layer_toggle_record(self):
-		self.zyngui.audio_recorder.toggle_record()
+		self.zyngui.audio_recorder.toggle_recording()
 		self.show()
 
 

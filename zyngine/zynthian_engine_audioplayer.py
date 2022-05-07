@@ -49,6 +49,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def __init__(self, zyngui=None):
+		#TODO: Allow multiple instances of audioplayer
 		super().__init__(zyngui)
 		self.name = "AudioPlayer"
 		self.nickname = "AP"
