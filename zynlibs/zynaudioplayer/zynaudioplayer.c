@@ -488,6 +488,8 @@ void init() {
 		exit(1);
 	}
 
+    g_nSamplerate = jack_get_sample_rate(g_pJackClient);
+
 	// Create audio output ports
 	if (!(g_pJackOutA = jack_port_register(g_pJackClient, "output_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
 		fprintf(stderr, "libaudioplayer cannot register audio output port A\n");
