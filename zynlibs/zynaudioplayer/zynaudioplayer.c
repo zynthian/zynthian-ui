@@ -60,8 +60,8 @@ struct RING_BUFFER {
     size_t front; // Offset within buffer for next read
     size_t back; // Offset within buffer for next write
     size_t size; // Quantity of elements in buffer
-    float dataA[RING_BUFFER_SIZE * 2];
-    float dataB[RING_BUFFER_SIZE * 2];
+    float dataA[RING_BUFFER_SIZE];
+    float dataB[RING_BUFFER_SIZE];
 };
 
 /*  @brief  Initialise ring buffer
@@ -71,8 +71,8 @@ void ringBufferInit(struct RING_BUFFER * buffer) {
     buffer->front = 0;
     buffer->back = 0;
     buffer->size = RING_BUFFER_SIZE;
-    memset(buffer->dataA, 0, RING_BUFFER_SIZE * sizeof(buffer->dataA[0]));
-    memset(buffer->dataB, 0, RING_BUFFER_SIZE * sizeof(buffer->dataB[0]));
+    memset(buffer->dataA, 0, RING_BUFFER_SIZE * sizeof(float));
+    memset(buffer->dataB, 0, RING_BUFFER_SIZE * sizeof(float));
 }
 
 /*  @brief  Push data to back of ring buffer
@@ -144,8 +144,8 @@ size_t ringBufferPop(struct RING_BUFFER * buffer, float* dataA, float* dataB, si
             for(buffer->front = 0; buffer->front <= buffer->back; ++buffer->front) {
                 if(count >= size)
                     break;
-                *(dataA + count) = buffer->dataA[buffer->back];
-                *(dataB + count++) = buffer->dataB[buffer->back];
+                *(dataA + count) = buffer->dataA[buffer->front];
+                *(dataB + count++) = buffer->dataB[buffer->front];
             }
         }
     }
@@ -380,10 +380,8 @@ void* fileThread(void* param) {
     srcData.data_out = pBufferOut;
     srcData.src_ratio = (float)g_nSamplerate / g_sf_info.samplerate;
     srcData.output_frames = AUDIO_BUFFER_SIZE;
-    size_t nMaxRead = AUDIO_BUFFER_SIZE;
-    if(srcData.src_ratio > 1.0)
-        nMaxRead = (float)AUDIO_BUFFER_SIZE / srcData.src_ratio;
-    nMaxRead /= g_sf_info.channels;
+    size_t nUnusedFrames = 0; // Quantity of samples in input buffer not used by SRC
+    size_t nMaxFrames = AUDIO_BUFFER_SIZE / g_sf_info.channels;
     int nError;
     SRC_STATE* pSrcState = src_new(g_nSrcQuality, g_sf_info.channels, &nError);
 
@@ -397,29 +395,34 @@ void* fileThread(void* param) {
             sf_seek(pFile, nNewPos, SEEK_SET);
             g_nSeek = LOADING;
             src_reset(pSrcState);
+            nUnusedFrames = 0;
+            nMaxFrames = AUDIO_BUFFER_SIZE / g_sf_info.channels;
             srcData.end_of_input = 0;
         }
         if(g_bMore || g_nSeek == LOADING)
         {
+            //!@todo Do we need separate g_bMore and g_nSeek variables?
             // Load block of data from file to SRC buffer
-            int nRead;
+            int nFramesRead;
             if(srcData.src_ratio == 1.0) {
                 // No SRC required so populate SRC output buffer directly
-                nRead = sf_readf_float(pFile, pBufferOut, nMaxRead);
+                nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames);
             } else {
                 // Populate SRC input buffer before SRC process
-                nRead = sf_readf_float(pFile, pBufferIn, nMaxRead);
+                nMaxFrames -= nUnusedFrames;
+                nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * g_sf_info.channels, nMaxFrames);
             }
-            if(nRead == nMaxRead) {
+            if(nFramesRead == nMaxFrames) {
                 // Filled buffer from file so probably more data to read
                 g_bMore = 1;
                 srcData.end_of_input = 0;
             }
             else if(g_bLoop) {
                 // Short read - looping so flag to seek to start
+                //!@todo Is it advantageous to fill the input buffer or just process this chunk on this iteration?
                 sf_seek(pFile, 0, SEEK_SET);
                 g_bMore = 1;
-                srcData.end_of_input = 1;
+                srcData.end_of_input = 0;
             } else {
                 // Short read - assume at end of file
                 g_bMore = 0;
@@ -428,28 +431,31 @@ void* fileThread(void* param) {
             }
             if(srcData.src_ratio != 1.0) {
                 // We need to perform SRC on this block of code
-                srcData.input_frames = nRead;
+                srcData.input_frames = nFramesRead;
                 int rc = src_process(pSrcState, &srcData);
-                nRead = srcData.output_frames_gen;
+                nFramesRead = srcData.output_frames_gen;
+                nUnusedFrames = nMaxFrames - srcData.input_frames_used;
                 if(rc) {
-                    DPRINTF("SRC failed with error %d, %u frames generated\n", nRead, srcData.output_frames_gen);
+                    DPRINTF("SRC failed with error %d, %u frames generated\n", nFramesRead, srcData.output_frames_gen);
                 } else {
-                    DPRINTF("SRC suceeded - %u frames generated\n", srcData.output_frames_gen);
+                    DPRINTF("SRC suceeded - %u frames generated, %u frames unused\n", srcData.output_frames_gen, nUnusedFrames);
                 }
+                // Shift unused samples to start of buffer
+                memcpy(pBufferIn, pBufferIn + (nFramesRead - nUnusedFrames) * sizeof(float), nUnusedFrames * sizeof(float));
             } else {
-                DPRINTF("srcData.src_ratio=%f\n", srcData.src_ratio);
+                DPRINTF("No SRC, read %u frames\n", nFramesRead);
             }
-            while(ringBufferGetFree(&g_ringBuffer) < nRead) {
+            while(ringBufferGetFree(&g_ringBuffer) < nFramesRead) {
                 // Wait until there is sufficient space in ring buffer to add new sample data
                 usleep(1000);
                 if(g_nSeek == SEEKING || g_bFileOpen == 0)
                     break;
             }
             if(g_nSeek != SEEKING && g_bFileOpen) {
-                // De-interpolate samples
-                for(size_t offset = 0; offset < nRead; offset += g_sf_info.channels) {
+                // Demux samples and populate playback ring buffers
+                for(size_t frame = 0; frame < nFramesRead; ++frame) {
                     //!@todo Sum odd/even channels to A/B output or mono to both from single channel file
-                    if(0 == ringBufferPush(&g_ringBuffer, pBufferOut + offset, pBufferOut + offset + g_nChannelB, 1))
+                    if(0 == ringBufferPush(&g_ringBuffer, pBufferOut + frame * g_sf_info.channels, pBufferOut + frame * g_sf_info.channels + g_nChannelB, 1))
                         break; // Shouldn't underun due to previous wait for space but just in case...
                 }
             }
