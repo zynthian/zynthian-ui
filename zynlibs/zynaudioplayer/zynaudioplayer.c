@@ -27,7 +27,8 @@ enum playState {
 enum seekState {
     IDLE        = 0, // Not seeking
     SEEKING     = 1, // Seeking within file
-    LOADING     = 2  // Seek complete, loading data from file
+    LOADING     = 2, // Seek complete, loading data from file
+    LOOPING     = 3 // Reached end of file, need to load from start
 };
 
 #define AUDIO_BUFFER_SIZE 50000 // 50000 is approx. 1s of audio
@@ -40,15 +41,13 @@ jack_port_t * g_pJackMidiIn = NULL;
 
 uint8_t g_bDebug = 0;
 uint8_t g_bFileOpen = 0; // 1 whilst file is open - used to flag thread to close file
-uint8_t g_bMore = 0; // 1 if there is more data to read from file, i.e. not at end of file or looping
-uint8_t g_nSeek = IDLE; //!@todo Can we conbine seek state with play state?// Seek state
+uint8_t g_nFileReadStatus = IDLE; // File reading status (IDLE|SEEKING|LOADING)
 uint8_t g_nPlayState = STOPPED; // Current playback state (STOPPED|STARTING|PLAYING|STOPPING)
 uint8_t g_bLoop = 0; // 1 to loop at end of song
 jack_nframes_t g_nSamplerate = 44100; // Playback samplerate set by jackd
 struct SF_INFO  g_sf_info; // Structure containing currently loaded file info
 pthread_t g_threadFile; // ID of file reader thread
 struct RING_BUFFER g_ringBuffer; // Used to pass data from file reader to jack process
-//!@todo Replace g_nChannelB with tracks mix down feature
 size_t g_nChannelB = 0; // Offset of samples for channel B (0 for mono source or 1 for multi-channel)
 jack_nframes_t g_nPlaybackPosFrames = 0; // Current playback position in frames since start of audio
 size_t g_nLastFrame = -1; // Position within ring buffer of last frame or -1 if not playing last buffer iteration
@@ -189,7 +188,7 @@ uint8_t open(const char* filename) {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     if(pthread_create(&g_threadFile, &attr, fileThread, NULL)) {
-        fprintf(stderr, "Failed to create file reading thread\n");
+        fprintf(stderr, "zynaudioplayer error: failed to create file reading thread\n");
         closeFile();
         return 0;
     }
@@ -232,7 +231,8 @@ float getDuration() {
 
 void setPosition(float time) {
     g_nPlaybackPosFrames = time * g_nSamplerate;
-    g_nSeek = SEEKING;
+    g_nFileReadStatus = SEEKING;
+    DPRINTF("New position requested, setting loading status to SEEKING\n");
 }
 
 float getPosition() {
@@ -241,7 +241,10 @@ float getPosition() {
 
 void setLoop(uint8_t bLoop) {
 	g_bLoop = bLoop;
-	g_bMore = 1;
+    if(bLoop) {
+        g_nFileReadStatus = LOOPING;
+        DPRINTF("Looping requested, setting loading status to SEEKING\n");
+    }
 }
 
 void startPlayback() {
@@ -300,26 +303,30 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused) {
     jack_default_audio_sample_t *pOutB = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pJackOutB, nFrames);
     count = 0;
 
-    if(g_nPlayState == STARTING && g_nSeek == IDLE)
+    if(g_nPlayState == STARTING && g_nFileReadStatus != SEEKING)
         g_nPlayState = PLAYING;
 
-    if(g_nPlayState == PLAYING || g_nPlayState == STOPPING) {
+    if(g_nPlayState == PLAYING || g_nPlayState == STOPPING)
         count = ringBufferPop(&g_ringBuffer, pOutA, pOutB, nFrames);
-        if(g_nPlayState == STOPPING || g_nLastFrame == g_ringBuffer.front) {
-            g_nPlayState = STOPPED;
-            g_nLastFrame = -1;
-            DPRINTF("onJackProcess: Stopped\n");
-        }
-        //if(count) DPRINTF("jack process count=%u, g_nLastFrame=%u front=%u\n", count, g_nLastFrame,  g_ringBuffer.front);
-    }
     for(size_t offset = 0; offset < count; ++offset) {
+        // Set volume / gain / level
         pOutA[offset] *= g_fLevel;
         pOutB[offset] *= g_fLevel;
     }
-    //!@todo Soft mute during STOPPING
+    if(g_nPlayState == STOPPING || g_nPlayState == PLAYING && g_nLastFrame == g_ringBuffer.front) {
+        // Soft mute (not perfect for short last period of file but better than nowt)
+        for(size_t offset = 0; offset < count; ++offset) {
+            pOutA[offset] *= 1.0 - ((float)offset / count);
+            pOutB[offset] *= 1.0 - ((float)offset / count);
+        }
+        g_nPlayState = STOPPED;
+        g_nLastFrame = -1;
+        DPRINTF("zynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", count, nFrames, nFrames - count, (nFrames - count) * sizeof(jack_default_audio_sample_t));
+    }
+
     // Silence remainder of frame
-    memset(pOutA + count * sizeof(jack_default_audio_sample_t), 0, (nFrames - count) * sizeof(jack_default_audio_sample_t));
-    memset(pOutB + count * sizeof(jack_default_audio_sample_t), 0, (nFrames - count) * sizeof(jack_default_audio_sample_t));
+    memset(pOutA + count, 0, (nFrames - count) * sizeof(jack_default_audio_sample_t));
+    memset(pOutB + count, 0, (nFrames - count) * sizeof(jack_default_audio_sample_t));
 
     // Process MIDI input
     void* pMidiBuffer = jack_port_get_buffer(g_pJackMidiIn, nFrames);
@@ -364,12 +371,25 @@ void* fileThread(void* param) {
     g_sf_info.format = 0; // This triggers sf_open to populate info structure
     SNDFILE* pFile = sf_open(g_sFilename, SFM_READ, &g_sf_info);
     if(!pFile || g_sf_info.channels < 1) {
-        fprintf(stderr, "libaudioplayer failed to open file %s: %s\n", g_sFilename, sf_strerror(pFile));
+        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", g_sFilename, sf_strerror(pFile));
+        pthread_exit(NULL);
+    }
+    if(g_sf_info.channels < 0) {
+        fprintf(stderr, "libaudioplayer error: file %s has no tracks\n", g_sFilename);
+        int nError = sf_close(pFile);
+        if(nError != 0)
+            fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
+        pthread_exit(NULL);
+    }
+    if(g_sf_info.frames < 100) {
+        fprintf(stderr, "libaudioplayer error: file %s too short (%u frames)\n", g_sFilename, g_sf_info.frames);
+        int nError = sf_close(pFile);
+        if(nError != 0)
+            fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
         pthread_exit(NULL);
     }
     g_bFileOpen = 1;
-    g_bMore = 1;
-    g_nSeek = SEEKING;
+    g_nFileReadStatus = SEEKING;
     g_nPlaybackPosFrames = 0;
 
     // Initialise samplerate converter
@@ -386,48 +406,54 @@ void* fileThread(void* param) {
     SRC_STATE* pSrcState = src_new(g_nSrcQuality, g_sf_info.channels, &nError);
 
     while(g_bFileOpen) {
-        if(g_nSeek) {
+        if(g_nFileReadStatus == SEEKING) {
             // Main thread has signalled seek within file
             ringBufferInit(&g_ringBuffer);
             size_t nNewPos = g_nPlaybackPosFrames;
             if(srcData.src_ratio)
                 nNewPos = g_nPlaybackPosFrames / srcData.src_ratio;
             sf_seek(pFile, nNewPos, SEEK_SET);
-            g_nSeek = LOADING;
+            g_nFileReadStatus = LOADING;
             src_reset(pSrcState);
             nUnusedFrames = 0;
             nMaxFrames = AUDIO_BUFFER_SIZE / g_sf_info.channels;
             srcData.end_of_input = 0;
+        } else if(g_nFileReadStatus == LOOPING) {
+            // Reached end of file and need to read from start
+            sf_seek(pFile, 0, SEEK_SET);
+            g_nFileReadStatus = LOADING;
+            src_reset(pSrcState);
+            srcData.end_of_input = 0;
+            nMaxFrames = AUDIO_BUFFER_SIZE / g_sf_info.channels;
+            nUnusedFrames = 0;
         }
-        if(g_bMore || g_nSeek == LOADING)
+        if(g_nFileReadStatus == LOADING)
         {
-            //!@todo Do we need separate g_bMore and g_nSeek variables?
-            // Load block of data from file to SRC buffer
+            g_nLastFrame = -1;
+            // Load block of data from file to SRC or output buffer
             int nFramesRead;
             if(srcData.src_ratio == 1.0) {
                 // No SRC required so populate SRC output buffer directly
                 nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames);
             } else {
                 // Populate SRC input buffer before SRC process
-                nMaxFrames -= nUnusedFrames;
+                nMaxFrames = (AUDIO_BUFFER_SIZE / g_sf_info.channels) - nUnusedFrames;
                 nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * g_sf_info.channels, nMaxFrames);
             }
             if(nFramesRead == nMaxFrames) {
                 // Filled buffer from file so probably more data to read
-                g_bMore = 1;
                 srcData.end_of_input = 0;
             }
             else if(g_bLoop) {
-                // Short read - looping so flag to seek to start
-                //!@todo Is it advantageous to fill the input buffer or just process this chunk on this iteration?
-                sf_seek(pFile, 0, SEEK_SET);
-                g_bMore = 1;
-                srcData.end_of_input = 0;
+                // Short read - looping so fill from start of file
+                g_nFileReadStatus = LOOPING;
+                srcData.end_of_input = 1;
+                DPRINTF("zynaudioplayer read to end of input file - setting loading status to looping\n");
             } else {
                 // Short read - assume at end of file
-                g_bMore = 0;
+                g_nFileReadStatus = IDLE;
                 srcData.end_of_input = 1;
-                DPRINTF("zynaudioplayer read to end of input file\n");
+                DPRINTF("zynaudioplayer read to end of input file - setting loading status to IDLE\n");
             }
             if(srcData.src_ratio != 1.0) {
                 // We need to perform SRC on this block of code
@@ -445,13 +471,15 @@ void* fileThread(void* param) {
             } else {
                 DPRINTF("No SRC, read %u frames\n", nFramesRead);
             }
+            
             while(ringBufferGetFree(&g_ringBuffer) < nFramesRead) {
                 // Wait until there is sufficient space in ring buffer to add new sample data
                 usleep(1000);
-                if(g_nSeek == SEEKING || g_bFileOpen == 0)
+                if(g_nFileReadStatus == SEEKING || g_bFileOpen == 0)
                     break;
             }
-            if(g_nSeek != SEEKING && g_bFileOpen && g_sf_info.channels > g_nPlaybackTrack) {
+
+            if(g_bFileOpen && g_sf_info.channels > g_nPlaybackTrack) {
                 // Demux samples and populate playback ring buffers
                 for(size_t frame = 0; frame < nFramesRead; ++frame) {
                     float fA = 0.0, fB = 0.0;
@@ -480,18 +508,15 @@ void* fileThread(void* param) {
                         break; // Shouldn't underun due to previous wait for space but just in case...
                 }
             }
-            if(g_bMore == 0)
+            if(g_nFileReadStatus == IDLE)
                 g_nLastFrame = g_ringBuffer.back;
-
-            if(g_nSeek == LOADING)
-                g_nSeek = IDLE;
         }
         usleep(10000);
     }
     if(pFile) {
         int nError = sf_close(pFile);
         if(nError != 0)
-            fprintf(stderr, "libaudioplayer failed to close file with error code %d\n", nError);
+            fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
     }
     ringBufferInit(&g_ringBuffer); // Don't want audio playing from closed file
     g_nPlaybackPosFrames = 0;
@@ -511,7 +536,7 @@ void init() {
 	jack_options_t nOptions = JackNoStartServer;
 
 	if ((g_pJackClient = jack_client_open("zynaudioplayer", nOptions, &nStatus, sServerName)) == 0) {
-		fprintf(stderr, "libaudioplayer failed to start jack client: %d\n", nStatus);
+		fprintf(stderr, "libaudioplayer error: failed to start jack client: %d\n", nStatus);
 		exit(1);
 	}
 
@@ -519,18 +544,18 @@ void init() {
 
 	// Create audio output ports
 	if (!(g_pJackOutA = jack_port_register(g_pJackClient, "output_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
-		fprintf(stderr, "libaudioplayer cannot register audio output port A\n");
+		fprintf(stderr, "libaudioplayer error: cannot register audio output port A\n");
 		exit(1);
 	}
 	if (!(g_pJackOutB = jack_port_register(g_pJackClient, "output_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
-		fprintf(stderr, "libaudioplayer cannot register audio output port B\n");
+		fprintf(stderr, "libaudioplayer error: cannot register audio output port B\n");
 		exit(1);
 	}
 
     // Create MIDI input port
     if(!(g_pJackMidiIn = jack_port_register(g_pJackClient, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0)))
     {
-        fprintf(stderr, "libzynaudioplayer cannot register MIDI input port\n");
+        fprintf(stderr, "libzynaudioplayer error: cannot register MIDI input port\n");
         exit(1);
     }
 
@@ -541,7 +566,7 @@ void init() {
 	jack_set_process_callback(g_pJackClient, onJackProcess, 0);
 
 	if (jack_activate(g_pJackClient)) {
-		fprintf(stderr, "libaudioplayer cannot activate client\n");
+		fprintf(stderr, "libaudioplayer error: cannot activate client\n");
 		exit(1);
 	}
 }
