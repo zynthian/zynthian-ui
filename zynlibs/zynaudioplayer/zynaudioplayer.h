@@ -11,8 +11,9 @@ extern "C"
 #endif
 
 /** @brief  Initialise library
+*   @param  jackName Jack client name
 */
-void init();
+void init(const char* jackName);
 
 /** @brief  Enable debug output
 *   @param  bEnable True to enable, false to disable

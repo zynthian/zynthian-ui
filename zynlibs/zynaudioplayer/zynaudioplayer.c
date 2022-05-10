@@ -531,7 +531,7 @@ void* fileThread(void* param) {
     pthread_exit(NULL);
 }
 
-void init() {
+void init(const char* jackName) {
     printf("zynaudioplayer init\n");
     ringBufferInit(&g_ringBuffer);
 
@@ -540,7 +540,7 @@ void init() {
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
 
-    if ((g_pJackClient = jack_client_open("zynaudioplayer", nOptions, &nStatus, sServerName)) == 0) {
+    if ((g_pJackClient = jack_client_open(jackName, nOptions, &nStatus, sServerName)) == 0) {
         fprintf(stderr, "libaudioplayer error: failed to start jack client: %d\n", nStatus);
         exit(1);
     }

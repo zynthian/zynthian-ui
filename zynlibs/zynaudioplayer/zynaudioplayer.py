@@ -43,7 +43,7 @@ libaudioplayer = None
 #-------------------------------------------------------------------------------
 
 #	Initiate library - performed by zynaudioplayer module
-def init():
+def init(jack_name = "zynaudioplayer"):
 	global libaudioplayer
 	try:
 		libaudioplayer=ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynaudioplayer.so")
@@ -55,7 +55,7 @@ def init():
 		libaudioplayer.getVolume.restype = ctypes.c_float
 		libaudioplayer.setVolume.argtypes = [ctypes.c_float]
 		libaudioplayer.setPosition.argtypes = [ctypes.c_float]
-		libaudioplayer.init()
+		libaudioplayer.init(bytes(jack_name, "utf-8"))
 	except Exception as e:
 		libaudioplayer=None
 		print("Can't initialise zynaudioplayer library: %s" % str(e))
