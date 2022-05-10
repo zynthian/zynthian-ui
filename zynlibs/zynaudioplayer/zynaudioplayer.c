@@ -18,10 +18,10 @@
 #define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
 
 enum playState {
-	STOPPED		= 0,
-	STARTING	= 1,
-	PLAYING		= 2,
-	STOPPING	= 3
+    STOPPED		= 0,
+    STARTING	= 1,
+    PLAYING		= 2,
+    STOPPING	= 3
 };
 
 enum seekState {
@@ -240,7 +240,7 @@ float getPosition() {
 }
 
 void setLoop(uint8_t bLoop) {
-	g_bLoop = bLoop;
+    g_bLoop = bLoop;
     if(bLoop) {
         g_nFileReadStatus = LOOPING;
         DPRINTF("Looping requested, setting loading status to SEEKING\n");
@@ -248,19 +248,21 @@ void setLoop(uint8_t bLoop) {
 }
 
 void startPlayback() {
-	if(!g_pJackClient)
-		return;
-	g_nPlayState = STARTING;
+    if(!g_pJackClient)
+        return;
+    if(g_bFileOpen && g_nPlayState != PLAYING)
+        g_nPlayState = STARTING;
 }
 
 void stopPlayback() {
-	if(g_nPlayState == STOPPED)
-		return;
-	g_nPlayState = STOPPING;
+    if(g_nPlayState == STOPPED)
+        return;
+    if(g_bFileOpen && g_nPlayState != STOPPED)
+        g_nPlayState = STOPPING;
 }
 
 uint8_t getPlayState() {
-	return g_nPlayState;
+    return g_nPlayState;
 }
 
 int getSamplerate() {
@@ -321,6 +323,9 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused) {
         }
         g_nPlayState = STOPPED;
         g_nLastFrame = -1;
+        g_nPlaybackPosFrames = 0;
+        g_nFileReadStatus = SEEKING;
+
         DPRINTF("zynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", count, nFrames, nFrames - count, (nFrames - count) * sizeof(jack_default_audio_sample_t));
     }
 
@@ -357,7 +362,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused) {
             }
         }
     }
-	return 0;
+    return 0;
 }
 
 // Handle JACK process callback
@@ -530,27 +535,27 @@ void init() {
     printf("zynaudioplayer init\n");
     ringBufferInit(&g_ringBuffer);
 
-	// Register with Jack server
-	char *sServerName = NULL;
-	jack_status_t nStatus;
-	jack_options_t nOptions = JackNoStartServer;
+    // Register with Jack server
+    char *sServerName = NULL;
+    jack_status_t nStatus;
+    jack_options_t nOptions = JackNoStartServer;
 
-	if ((g_pJackClient = jack_client_open("zynaudioplayer", nOptions, &nStatus, sServerName)) == 0) {
-		fprintf(stderr, "libaudioplayer error: failed to start jack client: %d\n", nStatus);
-		exit(1);
-	}
+    if ((g_pJackClient = jack_client_open("zynaudioplayer", nOptions, &nStatus, sServerName)) == 0) {
+        fprintf(stderr, "libaudioplayer error: failed to start jack client: %d\n", nStatus);
+        exit(1);
+    }
 
     g_nSamplerate = jack_get_sample_rate(g_pJackClient);
 
-	// Create audio output ports
-	if (!(g_pJackOutA = jack_port_register(g_pJackClient, "output_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
-		fprintf(stderr, "libaudioplayer error: cannot register audio output port A\n");
-		exit(1);
-	}
-	if (!(g_pJackOutB = jack_port_register(g_pJackClient, "output_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
-		fprintf(stderr, "libaudioplayer error: cannot register audio output port B\n");
-		exit(1);
-	}
+    // Create audio output ports
+    if (!(g_pJackOutA = jack_port_register(g_pJackClient, "output_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
+        fprintf(stderr, "libaudioplayer error: cannot register audio output port A\n");
+        exit(1);
+    }
+    if (!(g_pJackOutB = jack_port_register(g_pJackClient, "output_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
+        fprintf(stderr, "libaudioplayer error: cannot register audio output port B\n");
+        exit(1);
+    }
 
     // Create MIDI input port
     if(!(g_pJackMidiIn = jack_port_register(g_pJackClient, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0)))
@@ -559,16 +564,16 @@ void init() {
         exit(1);
     }
 
-	// Register the cleanup function to be called when program exits
-	//atexit(end);
+    // Register the cleanup function to be called when program exits
+    //atexit(end);
 
-	// Register the callback to process audio and MIDI
-	jack_set_process_callback(g_pJackClient, onJackProcess, 0);
+    // Register the callback to process audio and MIDI
+    jack_set_process_callback(g_pJackClient, onJackProcess, 0);
 
-	if (jack_activate(g_pJackClient)) {
-		fprintf(stderr, "libaudioplayer error: cannot activate client\n");
-		exit(1);
-	}
+    if (jack_activate(g_pJackClient)) {
+        fprintf(stderr, "libaudioplayer error: cannot activate client\n");
+        exit(1);
+    }
 }
 
 const char* getFileInfo(const char* filename, int type) {
