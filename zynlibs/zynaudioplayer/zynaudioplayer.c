@@ -55,6 +55,7 @@ size_t g_nLastFrame = -1; // Position within ring buffer of last frame or -1 if 
 unsigned int g_nSrcQuality = SRC_SINC_FASTEST;
 char g_sFilename[128];
 float g_fLevel = 1.0; // Audio level (volume) 0..1
+int g_nPlaybackTrack = 0; // Which stereo pair of tracks to playback (-1 to mix all stero pairs)
 
 struct RING_BUFFER {
     size_t front; // Offset within buffer for next read
@@ -181,6 +182,7 @@ void enableDebug(uint8_t bEnable) {
 
 uint8_t open(const char* filename) {
     closeFile();
+    g_nPlaybackTrack = 0;
     strcpy(g_sFilename, filename);
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -361,13 +363,11 @@ int onJackSamplerate(jack_nframes_t nFrames, void *pArgs) {
 void* fileThread(void* param) {
     g_sf_info.format = 0; // This triggers sf_open to populate info structure
     SNDFILE* pFile = sf_open(g_sFilename, SFM_READ, &g_sf_info);
-    if(!pFile) {
+    if(!pFile || g_sf_info.channels < 1) {
         fprintf(stderr, "libaudioplayer failed to open file %s: %s\n", g_sFilename, sf_strerror(pFile));
         pthread_exit(NULL);
     }
     g_bFileOpen = 1;
-    g_nChannelB = (g_sf_info.channels == 1)?0:1; // Mono or stereo based on first one or two channels
-
     g_bMore = 1;
     g_nSeek = SEEKING;
     g_nPlaybackPosFrames = 0;
@@ -451,11 +451,32 @@ void* fileThread(void* param) {
                 if(g_nSeek == SEEKING || g_bFileOpen == 0)
                     break;
             }
-            if(g_nSeek != SEEKING && g_bFileOpen) {
+            if(g_nSeek != SEEKING && g_bFileOpen && g_sf_info.channels > g_nPlaybackTrack) {
                 // Demux samples and populate playback ring buffers
                 for(size_t frame = 0; frame < nFramesRead; ++frame) {
-                    //!@todo Sum odd/even channels to A/B output or mono to both from single channel file
-                    if(0 == ringBufferPush(&g_ringBuffer, pBufferOut + frame * g_sf_info.channels, pBufferOut + frame * g_sf_info.channels + g_nChannelB, 1))
+                    float fA = 0.0, fB = 0.0;
+                    size_t sample = frame * g_sf_info.channels;
+                    if(g_sf_info.channels == 1) {
+                        // Mono source so send to both outputs
+                        fA = pBufferOut[sample] / 2;
+                        fB = pBufferOut[sample] / 2;
+                    } else if(g_nPlaybackTrack < 0) {
+                        // Send sum of odd channels to A and even channels to B
+                        for(int track = 0; track < g_sf_info.channels; ++track) {
+                            if(track % 2)
+                                fB += pBufferOut[sample + track] / (g_sf_info.channels / 2);
+                            else
+                                fA += pBufferOut[sample + track] / (g_sf_info.channels / 2);
+                        }
+                    } else {
+                        // Send g_nPlaybackTrack to A and g_nPlaybackTrack + 1 to B
+                        fA = pBufferOut[sample];
+                        if(g_nPlaybackTrack + 1 < g_sf_info.channels)
+                            fB = pBufferOut[sample + 1];
+                        else
+                            fB = pBufferOut[sample];
+                    }
+                    if(0 == ringBufferPush(&g_ringBuffer, &fA, &fB, 1))
                         break; // Shouldn't underun due to previous wait for space but just in case...
                 }
             }
@@ -554,4 +575,17 @@ void setVolume(float level) {
 
 float getVolume() {
     return g_fLevel;
+}
+
+void setPlaybackTrack(int track) {
+    if(g_bFileOpen && track < g_sf_info.channels) {
+        if(g_sf_info.channels == 1)
+            g_nPlaybackTrack = 0;
+        else
+            g_nPlaybackTrack = track;
+    }
+}
+
+int getPlaybackTrack() {
+    return g_nPlaybackTrack;
 }
