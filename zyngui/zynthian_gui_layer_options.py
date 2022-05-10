@@ -111,14 +111,14 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if self.layer.midi_chan is not None:
 			if self.zyngui.audio_recorder.get_status():
-				self.list_data.append((self.layer_toggle_record, None, "[x] Audio Recording"))
+				self.list_data.append((self.layer_toggle_record, None, "\uf111 Audio Recording"))
 				# Recording so don't allow change of primed state
 				if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
 					self.list_data.append((None, None, "[x] Recording Primed"))
 				else:
 					self.list_data.append((None, None, "[  ] Recording Primed"))
 			else:
-				self.list_data.append((self.layer_toggle_record, None, "[  ] Audio Recording"))
+				self.list_data.append((self.layer_toggle_record, None, "■ Audio Recording"))
 				if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
 					self.list_data.append((self.layer_toggle_primed, None, "[x] Recording Primed"))
 				else:

@@ -1050,10 +1050,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		else:
 			options["[  ] Audio Mono"] = "Mono"
 		if self.zyngui.audio_recorder.get_status():
-			options["[x] Audio Recording"] = "AudioRec"
+			options["\uf111 Audio Recording"] = "AudioRec"
 			primed_option = None
 		else:
-			options["[  ] Audio Recording"] = "AudioRec"
+			options["■ Audio Recording"] = "AudioRec"
 			primed_option = "Primed"
 		if self.zyngui.audio_recorder.is_primed(MAIN_CHANNEL_INDEX):
 			options["[x] Recording Primed"] = primed_option

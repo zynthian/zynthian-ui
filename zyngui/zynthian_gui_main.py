@@ -55,7 +55,6 @@ class zynthian_gui_main(zynthian_gui_selector):
 		# Add list of Apps
 		self.list_data.append((None,0,"-----------------------------"))
 		self.list_data.append((self.step_sequencer,0,"Sequencer"))
-		self.list_data.append((self.audio_recorder,0,"Audio Recorder"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
 		self.list_data.append((self.alsa_mixer,0,"Audio Levels"))
 
@@ -120,16 +119,6 @@ class zynthian_gui_main(zynthian_gui_selector):
 	def step_sequencer(self, t='S'):
 		logging.info("Step Sequencer")
 		self.zyngui.show_screen_reset('stepseq')
-
-
-	def audio_recorder(self, t='S'):
-		if t=='B':
-			logging.info("Audio Recorder Output")
-			self.zyngui.screens['audio_out'].set_audio_player()
-			self.zyngui.show_screen("audio_out")
-		else:
-			logging.info("Audio Recorder")
-			self.zyngui.show_screen_reset("audio_recorder")
 
 
 	def midi_recorder(self, t='S'):
