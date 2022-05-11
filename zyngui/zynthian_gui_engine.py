@@ -50,7 +50,7 @@ def initializator(cls):
 @initializator
 class zynthian_gui_engine(zynthian_gui_selector):
 
-	single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "AP"]
+	single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS"]
 	check_channels_engines = ["AE"]
 
 	@classmethod
@@ -184,11 +184,11 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			info=self.engine_info[eng]
 			zynthian_engine_class=info[4]
 			if eng[0:3]=="JV/":
-				eng="JV/{}".format(self.zyngine_counter)
+				eng = "JV/{}".format(self.zyngine_counter)
 				self.zyngines[eng]=zynthian_engine_class(info[0], info[2], self.zyngui)
 			else:
-				if eng=="SF":
-					eng="SF/{}".format(self.zyngine_counter)
+				if eng in ["SF","AP"]:
+					eng = "{}/{}".format(eng, self.zyngine_counter)
 				self.zyngines[eng]=zynthian_engine_class(self.zyngui)
 
 		self.zyngine_counter+=1

@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for audio player
 #
-# Copyright (C) 2021 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2021-2022 Brian Walton <riban@zynthian.org>
 #
 #******************************************************************************
 #
@@ -23,16 +23,10 @@
 #******************************************************************************
 
 import os
-import re
-import copy
-import shutil
 import logging
-import oyaml as yaml
-from collections import OrderedDict
-from subprocess import check_output
 from . import zynthian_engine
 from . import zynthian_controller
-from zynlibs.zynaudioplayer import *
+from zynlibs.zynaudioplayer import zynaudioplayer
 
 #------------------------------------------------------------------------------
 # Audio Player Engine Class
@@ -85,12 +79,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def start(self):
-		zynaudioplayer.init()
+		self.player = zynaudioplayer.zynaudioplayer()
+		self.jackname = self.player.get_jack_client_name()
+		#self.jackname = "{}/{:03d}".format(self.player.get_jack_client_name(), self.player.handle)
 
 
 	def stop(self):
 		try:
-			zynaudioplayer.destroy()
+			self.player.remove_player()
 		except Exception as e:
 			logging.error("Failed to close audio player: %s", e)
 
@@ -126,16 +122,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		presets = self.get_filelist(bank[0],"wav") + self.get_filelist(bank[0],"ogg") + self.get_filelist(bank[0],"flac")
 		for preset in presets:
 			name = preset[4]
-			duration = zynaudioplayer.get_duration(preset[0])
+			duration = self.player.get_file_duration(preset[0])
 			preset[2] = "{} ({:02d}:{:02d})".format(name, int(duration/60), round(duration)%60)
 		return presets
 
 
 	def set_preset(self, layer, preset, preload=False):
-		if zynaudioplayer.get_filename() == preset[0] and zynaudioplayer.get_duration(preset[0]) == zynaudioplayer.libaudioplayer.getDuration():
+		if self.player.get_filename() == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration():
 			return
-		zynaudioplayer.load(preset[0])
-		zynaudioplayer.libaudioplayer.setPosition(0)
+		self.player.load(preset[0])
+		self.player.set_position(0)
 
 
 	def delete_preset(self, bank, preset):

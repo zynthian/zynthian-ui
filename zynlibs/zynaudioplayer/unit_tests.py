@@ -7,8 +7,7 @@ import unittest
 import jack
 from time import sleep
 
-from zynlibs.zynaudioplayer import zynaudioplayer
-from zynlibs.zynaudioplayer.zynaudioplayer import libaudioplayer
+import zynaudioplayer
 
 client = jack.Client("zynaudioplayer_unittest")
 
