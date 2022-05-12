@@ -503,7 +503,7 @@ int init() {
     pPlayer->play_state = STOPPED;
     pPlayer->loop = 0;
     pPlayer->play_pos_frames = 0;
-    pPlayer->src_quality = SRC_SINC_BEST_QUALITY;
+    pPlayer->src_quality = SRC_SINC_FASTEST;
     pPlayer->gain = 1.0;
     pPlayer->playback_track = 0;
     pPlayer->handle = player_handle;
