@@ -10,6 +10,9 @@ extern "C"
 {
 #endif
 
+/** @brief  Library constructor (initalisation) */
+static void __attribute__ ((constructor)) lib_init(void);
+
 /** @brief  Initialise a player instance
 *   @retval int Player handle or -1 on failure
 */
@@ -157,7 +160,7 @@ int get_playback_track(int player_handle);
 
 /** @brief  Set size of file read buffers
 *   @param  size Size of buffers in frames
-*   @note   Cannot change size whilst file is open
+*   @note   Cannot change size whilsts file is open
 */
 void set_buffer_size(int player_handle, unsigned int size);
 

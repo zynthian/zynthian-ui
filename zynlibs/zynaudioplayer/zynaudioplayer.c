@@ -15,8 +15,11 @@
 #include <pthread.h> //provides multithreading
 #include <unistd.h> //provides usleep
 #include <stdlib.h> //provides exit
+#include "tinyosc.h" //provides OSC interface
+#include <arpa/inet.h> // provides inet_pton
 
 #define MAX_PLAYERS 16 // Maximum quanity of audio players the library can host
+#define MAX_OSC_CLIENTS 5 // Maximum quantity of OSC clients
 
 enum playState {
     STOPPED		= 0,
@@ -49,6 +52,7 @@ struct AUDIO_PLAYER {
     jack_ringbuffer_t * ringbuffer_a; // Used to pass A samples from file reader to jack process
     jack_ringbuffer_t * ringbuffer_b; // Used to pass B samples from file reader to jack process
     jack_nframes_t play_pos_frames; // Current playback position in frames since start of audio
+    size_t frames; // Quanity of frames after samplerate conversion
     unsigned int src_quality;
     char filename[128];
     float gain; // Audio level (volume) 0..1
@@ -61,10 +65,99 @@ struct AUDIO_PLAYER {
 struct AUDIO_PLAYER * g_players[MAX_PLAYERS];
 jack_nframes_t g_samplerate = 44100; // Playback samplerate set by jackd
 uint8_t g_debug = 0;
+char g_oscbuffer[1024]; // Used to send OSC messages
+char g_oscpath[32]; // OSC path
+int g_oscfd = -1; // File descriptor for OSC socket
+int g_bOsc = 0; // True if OSC client subscribed
+struct sockaddr_in g_oscClient[MAX_OSC_CLIENTS]; // Array of registered OSC clients
 
 #define DPRINTF(fmt, args...) if(g_debug) printf(fmt, ## args)
     
 // **** Internal (non-public) functions ****
+
+//!@todo Abstract OSC to separate library to allow reuse (used in mixer too)
+
+void sendOscFloat(const char* path, float value) {
+    if(g_oscfd == -1)
+        return;
+    int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "f", value);
+    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
+        if(g_oscClient[i].sin_addr.s_addr == 0)
+            continue;
+        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM|MSG_DONTWAIT, (const struct sockaddr *) &g_oscClient[i], sizeof(g_oscClient[i]));
+    }
+}
+
+void sendOscInt(const char* path, int value) {
+    if(g_oscfd == -1)
+        return;
+    int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "i", value);
+    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
+        if(g_oscClient[i].sin_addr.s_addr == 0)
+            continue;
+        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM|MSG_DONTWAIT, (const struct sockaddr *) &g_oscClient[i], sizeof(g_oscClient[i]));
+    }
+}
+
+void sendOscString(const char* path, const char* value) {
+    if(g_oscfd == -1)
+        return;
+    if(strlen(value) >= sizeof(g_oscbuffer))
+        return;
+    int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "s", value);
+    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
+        if(g_oscClient[i].sin_addr.s_addr == 0)
+            continue;
+        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM|MSG_DONTWAIT, (const struct sockaddr *) &g_oscClient[i], sizeof(g_oscClient[i]));
+    }
+}
+
+int addOscClient(const char* client) {
+    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
+        if(g_oscClient[i].sin_addr.s_addr != 0)
+            continue;
+        if(inet_pton(AF_INET, client, &(g_oscClient[i].sin_addr)) != 1) {
+            g_oscClient[i].sin_addr.s_addr = 0;
+            fprintf(stderr, "libzynaudioplayer: Failed to register client %s\n", client);
+            return -1;
+        }
+        fprintf(stderr, "libzynaudioplayer: Added OSC client %d: %s\n", i, client);
+        for(int player_handle = 0; player_handle < MAX_PLAYERS; ++player_handle) {
+            struct AUDIO_PLAYER * pPlayer = g_players[player_handle];
+            if(!pPlayer)
+                continue;
+            sprintf(g_oscpath, "/player%d/open", pPlayer->handle);
+            sendOscString(g_oscpath, pPlayer->filename);
+            sprintf(g_oscpath, "/player%d/gain", pPlayer->handle);
+            sendOscFloat(g_oscpath, pPlayer->gain);
+            sprintf(g_oscpath, "/player%d/position", pPlayer->handle);
+            sendOscInt(g_oscpath, (int)(get_position(pPlayer->handle)));
+            sprintf(g_oscpath, "/player%d/duration", pPlayer->handle);
+            sendOscFloat(g_oscpath, get_duration(pPlayer->handle));
+            sprintf(g_oscpath, "/player%d/loop", pPlayer->handle);
+            sendOscInt(g_oscpath, pPlayer->loop);
+        }
+        g_bOsc = 1;
+        return i;
+    }
+    fprintf(stderr, "libzynmixer: Not adding OSC client %s - Maximum client count reached [%d]\n", client, MAX_OSC_CLIENTS);
+    return -1;
+}
+
+void removeOscClient(const char* client) {
+    char pClient[sizeof(struct in_addr)];
+    if(inet_pton(AF_INET, client, pClient) != 1)
+        return;
+    g_bOsc = 0;
+    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
+        if(memcmp(pClient, &g_oscClient[i].sin_addr.s_addr, 4) == 0) {
+            g_oscClient[i].sin_addr.s_addr = 0;
+            fprintf(stderr, "libzynaudioplayer: Removed OSC client %d: %s\n", i, client);
+        }
+        if(g_oscClient[i].sin_addr.s_addr != 0)
+            g_bOsc = 1;
+    }
+}
 
 static inline struct AUDIO_PLAYER * get_player(int player_handle) {
     if(player_handle > MAX_PLAYERS || player_handle < 0)
@@ -73,7 +166,6 @@ static inline struct AUDIO_PLAYER * get_player(int player_handle) {
 }
 
 void* file_thread_fn(void * param) {
-
     struct AUDIO_PLAYER * pPlayer = (struct AUDIO_PLAYER *) (param);
     pPlayer->sf_info.format = 0; // This triggers sf_open to populate info structure
     SNDFILE* pFile = sf_open(pPlayer->filename, SFM_READ, &pPlayer->sf_info);
@@ -104,8 +196,22 @@ void* file_thread_fn(void * param) {
     srcData.output_frames = pPlayer->buffer_size / pPlayer->sf_info.channels;
     size_t nUnusedFrames = 0; // Quantity of samples in input buffer not used by SRC
     size_t nMaxFrames = pPlayer->buffer_size / pPlayer->sf_info.channels;
+    if(pPlayer->sf_info.samplerate)
+        pPlayer->frames = pPlayer->sf_info.frames * g_samplerate / pPlayer->sf_info.samplerate;
+    else
+        pPlayer->frames = pPlayer->sf_info.frames;
     int nError;
     SRC_STATE* pSrcState = src_new(pPlayer->src_quality, pPlayer->sf_info.channels, &nError);
+    sprintf(g_oscpath, "/player%d/load", pPlayer->handle);
+    sendOscString(g_oscpath, pPlayer->filename);
+    sprintf(g_oscpath, "/player%d/position", pPlayer->handle);
+    size_t position = get_position(pPlayer->handle);
+    sendOscInt(g_oscpath, position);
+    sprintf(g_oscpath, "/player%d/duration", pPlayer->handle);
+    sendOscFloat(g_oscpath, get_duration(pPlayer->handle));
+    uint8_t play_state = pPlayer->play_state;
+    sprintf(g_oscpath, "/player%d/transport", pPlayer->handle);
+    sendOscInt(g_oscpath, play_state);
 
     while(pPlayer->file_open) {
         if(pPlayer->file_read_status == SEEKING) {
@@ -175,8 +281,19 @@ void* file_thread_fn(void * param) {
                 //DPRINTF("No SRC, read %u frames\n", nFramesRead);
             }
             
+            // Wait until there is sufficient space in ring buffer to add new sample data
             while(jack_ringbuffer_write_space(pPlayer->ringbuffer_a) < nFramesRead * sizeof(float)) {
-                // Wait until there is sufficient space in ring buffer to add new sample data
+                // Send dynamic OSC notifications within this thread, not jack process
+                if(pPlayer->play_state != play_state) {
+                    play_state = pPlayer->play_state;
+                    sprintf(g_oscpath, "/player%d/transport", pPlayer->handle);
+                    sendOscInt(g_oscpath, play_state);
+                }
+                if((int)(get_position(pPlayer->handle)) != position) {
+                    position = get_position(pPlayer->handle);
+                    sprintf(g_oscpath, "/player%d/position", pPlayer->handle);
+                    sendOscInt(g_oscpath, position);
+                }
                 usleep(1000);
                 if(pPlayer->file_read_status == SEEKING || pPlayer->file_open == 0)
                     break;
@@ -218,16 +335,20 @@ void* file_thread_fn(void * param) {
         }
         usleep(10000);
     }
-pPlayer->play_state = STOPPED; // Already stopped when clearing file_open but let's be sure!
+    pPlayer->play_state = STOPPED; // Already stopped when clearing file_open but let's be sure!
     if(pFile) {
         int nError = sf_close(pFile);
         if(nError != 0)
             fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
+        else
+            pPlayer->filename[0] = '\0';
     }
     pPlayer->play_pos_frames = 0;
     jack_ringbuffer_free(pPlayer->ringbuffer_a);
     jack_ringbuffer_free(pPlayer->ringbuffer_b);
     pSrcState = src_delete(pSrcState);
+    sprintf(g_oscpath, "/player%d/load", pPlayer->handle);
+    sendOscString(g_oscpath, pPlayer->filename);
     DPRINTF("File reader thread ended\n");
     pthread_exit(NULL);
 }
@@ -284,9 +405,7 @@ const char* get_filename(int player_handle) {
 
 float get_duration(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer == NULL)
-        return 0.0;
-    if(pPlayer->sf_info.samplerate)
+    if(pPlayer && pPlayer->file_open && pPlayer->sf_info.samplerate)
         return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate;
     return 0.0f;
 }
@@ -298,6 +417,8 @@ void set_position(int player_handle, float time) {
     pPlayer->play_pos_frames = time * g_samplerate;
     pPlayer->file_read_status = SEEKING;
     DPRINTF("New position requested, setting loading status to SEEKING\n");
+    sprintf(g_oscpath, "/player%d/position", player_handle);
+    sendOscFloat(g_oscpath, (int)time);
 }
 
 float get_position(int player_handle) {
@@ -316,6 +437,8 @@ void enable_loop(int player_handle, uint8_t bLoop) {
         pPlayer->file_read_status = LOOPING;
         DPRINTF("Looping requested, setting loading status to SEEKING\n");
     }
+    sprintf(g_oscpath, "/player%d/loop", player_handle);
+    sendOscInt(g_oscpath, bLoop);
 }
 
 uint8_t is_loop(int player_handle) {
@@ -425,8 +548,10 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         pOutB[offset] *= pPlayer->gain;
     }
     pPlayer->play_pos_frames += count;
+    if(pPlayer->play_pos_frames > pPlayer->frames)
+        pPlayer->play_pos_frames %= pPlayer->frames;
 
-if(pPlayer->play_state == STOPPING || pPlayer->play_state == PLAYING && eof) {
+    if(pPlayer->play_state == STOPPING || pPlayer->play_state == PLAYING && eof) {
         // Soft mute (not perfect for short last period of file but better than nowt)
         for(size_t offset = 0; offset < count; ++offset) {
             pOutA[offset] *= 1.0 - ((float)offset / count);
@@ -484,6 +609,18 @@ int on_jack_samplerate(jack_nframes_t nFrames, void *pArgs) {
     g_samplerate = nFrames;
     return 0;
 }
+ 
+static void lib_init(void) { 
+    // Initialsize OSC
+    g_oscfd = socket(AF_INET, SOCK_DGRAM, 0);
+    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
+        memset(g_oscClient[i].sin_zero, '\0', sizeof g_oscClient[i].sin_zero);
+        g_oscClient[i].sin_family = AF_INET;
+        g_oscClient[i].sin_port = htons(9999);
+        g_oscClient[i].sin_addr.s_addr = 0;
+    }
+    printf("zynaudioplayer initialised\n");
+}
 
 int init() {
     int player_handle;
@@ -511,6 +648,7 @@ int init() {
     pPlayer->handle = player_handle;
     pPlayer->buffer_size = 48000;
     pPlayer->buffer_count = 5;
+    pPlayer->frames = 0;
 
     char *sServerName = NULL;
     jack_status_t nStatus;
@@ -582,6 +720,8 @@ void set_gain(int player_handle, float gain) {
     if(gain < 0 || gain > 2)
         return;
     pPlayer->gain = gain;
+    sprintf(g_oscpath, "/player%d/gain", player_handle);
+    sendOscFloat(g_oscpath, gain);
 }
 
 float get_gain(int player_handle) {

@@ -34,7 +34,7 @@
 #include "tinyosc.h"
 #include <arpa/inet.h> // provides inet_pton
 
-char g_oscbuffer[1024];
+char g_oscbuffer[1024]; // Used to send OSC messages
 char g_oscpath[20]; //!@todo Ensure path length is sufficient for all paths, e.g. /mixer/faderxxx
 int g_oscfd = -1; // File descriptor for OSC socket
 int g_bOsc = 0; // True if OSC client subscribed
@@ -236,6 +236,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     // Only update damping release each g_nDampingCount cycles
                     g_dynamic[chan].dpmA *= g_fDpmDecay;
                     g_dynamic[chan].dpmB *= g_fDpmDecay;
+                    //!@todo Move OSC send out of jack process thread
                     sprintf(g_oscdpm, "/mixer/dpm%da", chan);
                     sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdA));
                     sprintf(g_oscdpm, "/mixer/dpm%db", chan);
@@ -325,6 +326,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         g_mainOutput.dpmA *= g_fDpmDecay;
         g_mainOutput.dpmB *= g_fDpmDecay;
         g_nDampingCount = g_nDampingPeriod;
+        //!@todo Move OSC send out of jack process thread
         sendOscFloat("/mixer/dpmA", convertToDBFS(g_mainOutput.holdA));
         sendOscFloat("/mixer/dpmB", convertToDBFS(g_mainOutput.holdB));
     }
