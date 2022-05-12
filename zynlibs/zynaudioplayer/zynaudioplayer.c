@@ -311,7 +311,7 @@ void enable_loop(int player_handle, uint8_t bLoop) {
     if(pPlayer == NULL)
         return;
     pPlayer->loop = bLoop;
-    if(bLoop) {
+    if(bLoop && pPlayer->file_read_status == IDLE) {
         pPlayer->file_read_status = LOOPING;
         DPRINTF("Looping requested, setting loading status to SEEKING\n");
     }
@@ -503,7 +503,7 @@ int init() {
     pPlayer->play_state = STOPPED;
     pPlayer->loop = 0;
     pPlayer->play_pos_frames = 0;
-    pPlayer->src_quality = SRC_SINC_FASTEST;
+    pPlayer->src_quality = SRC_SINC_BEST_QUALITY;
     pPlayer->gain = 1.0;
     pPlayer->playback_track = 0;
     pPlayer->handle = player_handle;
