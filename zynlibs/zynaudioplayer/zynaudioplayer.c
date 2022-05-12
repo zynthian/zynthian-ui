@@ -504,6 +504,7 @@ int init() {
     pPlayer->loop = 0;
     pPlayer->play_pos_frames = 0;
     pPlayer->src_quality = SRC_SINC_FASTEST;
+    pPlayer->filename[0] = '\0';
     pPlayer->gain = 1.0;
     pPlayer->playback_track = 0;
     pPlayer->handle = player_handle;
