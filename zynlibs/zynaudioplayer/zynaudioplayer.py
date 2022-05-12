@@ -255,6 +255,39 @@ class zynaudioplayer():
 		return self.libaudioplayer.get_playback_track(self.handle)
 
 
+	#	Set file read buffer size
+	#	count: Buffer size in frames
+	#	Cannot change size whilst file is open
+	def set_buffer_size(self, size):
+		if self.handle is None:
+			return
+		self.libaudioplayer.set_buffer_size(self.handle, size)
+
+
+	#	Get file read buffer size
+	#	Returns: Buffers size in frames
+	def get_buffer_size(self):
+		if self.handle is None:
+			return 0
+		return self.libaudioplayer.get_buffer_size(self.handle)
+
+
+	#	Set quantity of file read buffers
+	#	count: Quantity of buffers
+	def set_buffer_count(self, count):
+		if self.handle is None:
+			return
+		self.libaudioplayer.set_buffer_count(self.handle, count)
+
+
+	#	Get quantity of file read buffers
+	#	Returns: Quantity of buffers
+	def get_buffer_count(self):
+		if self.handle is None:
+			return 0
+		return self.libaudioplayer.get_buffer_count(self.handle)
+
+
  	#	Enable debug output
 	#	enable: True to enable debug
 	def enable_debug(self, enable=True):

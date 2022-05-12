@@ -155,6 +155,28 @@ void set_playback_track(int player_handle, int track);
 */
 int get_playback_track(int player_handle);
 
+/** @brief  Set size of file read buffers
+*   @param  size Size of buffers in frames
+*   @note   Cannot change size whilst file is open
+*/
+void set_buffer_size(int player_handle, unsigned int size);
+
+/** @brief  Get size of file read buffers
+*   @retval unsigned int Size of buffers in frames
+*/
+unsigned int get_buffer_size(int player_handle);
+
+/** @brief  Set factor by which ring buffer is larger than file read buffers
+*   @param  count Quantity of buffers
+*   @note   Cannot change count whilst file is open
+*/
+void set_buffer_count(int player_handle, unsigned int count);
+
+/** @brief  Get factor by which ring buffer is larger than file read buffers
+*   @retval unsigned int Quantity of buffers
+*/
+unsigned int get_buffer_count(int player_handle);
+
 /**** Global functions ****/
 
 /** @brief  Enable debug output
@@ -185,6 +207,7 @@ const char* get_file_info(const char* filename, int type);
 *   @retval unsigned int Quantity of players
 */
 unsigned int get_player_count();
+
 
 #ifdef __cplusplus
 }

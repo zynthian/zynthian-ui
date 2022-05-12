@@ -16,8 +16,6 @@
 #include <unistd.h> //provides usleep
 #include <stdlib.h> //provides exit
 
-#define AUDIO_BUFFER_SIZE 50000 // 50000 is approx. 1s of audio
-#define RING_BUFFER_SIZE AUDIO_BUFFER_SIZE * 2 * sizeof(float)
 #define MAX_PLAYERS 16 // Maximum quanity of audio players the library can host
 
 enum playState {
@@ -55,6 +53,8 @@ struct AUDIO_PLAYER {
     char filename[128];
     float gain; // Audio level (volume) 0..1
     int playback_track; // Which stereo pair of tracks to playback (-1 to mix all stero pairs)
+    unsigned int buffer_size; // Quantity of frames read from file
+    unsigned int buffer_count; // Factor by which ring buffer is larger than buffer
 };
 
 // **** Global variables ****
@@ -73,6 +73,7 @@ static inline struct AUDIO_PLAYER * get_player(int player_handle) {
 }
 
 void* file_thread_fn(void * param) {
+
     struct AUDIO_PLAYER * pPlayer = (struct AUDIO_PLAYER *) (param);
     pPlayer->sf_info.format = 0; // This triggers sf_open to populate info structure
     SNDFILE* pFile = sf_open(pPlayer->filename, SFM_READ, &pPlayer->sf_info);
@@ -90,19 +91,19 @@ void* file_thread_fn(void * param) {
     pPlayer->file_open = 1;
     pPlayer->play_pos_frames = 0;
     pPlayer->file_read_status = SEEKING;
-    pPlayer->ringbuffer_a = jack_ringbuffer_create(RING_BUFFER_SIZE);
-    pPlayer->ringbuffer_b = jack_ringbuffer_create(RING_BUFFER_SIZE);
+    pPlayer->ringbuffer_a = jack_ringbuffer_create(pPlayer->buffer_size * pPlayer->buffer_count * sizeof(float));
+    pPlayer->ringbuffer_b = jack_ringbuffer_create(pPlayer->buffer_size * pPlayer->buffer_count * sizeof(float));
 
     // Initialise samplerate converter
     SRC_DATA srcData;
-    float pBufferOut[AUDIO_BUFFER_SIZE]; // Buffer used to write converted sample data to
-    float pBufferIn[AUDIO_BUFFER_SIZE]; // Buffer used to read sample data from file
+    float pBufferOut[pPlayer->buffer_size]; // Buffer used to write converted sample data to
+    float pBufferIn[pPlayer->buffer_size]; // Buffer used to read sample data from file
     srcData.data_in = pBufferIn;
     srcData.data_out = pBufferOut;
     srcData.src_ratio = (float)g_samplerate / pPlayer->sf_info.samplerate;
-    srcData.output_frames = AUDIO_BUFFER_SIZE / pPlayer->sf_info.channels;
+    srcData.output_frames = pPlayer->buffer_size / pPlayer->sf_info.channels;
     size_t nUnusedFrames = 0; // Quantity of samples in input buffer not used by SRC
-    size_t nMaxFrames = AUDIO_BUFFER_SIZE / pPlayer->sf_info.channels;
+    size_t nMaxFrames = pPlayer->buffer_size / pPlayer->sf_info.channels;
     int nError;
     SRC_STATE* pSrcState = src_new(pPlayer->src_quality, pPlayer->sf_info.channels, &nError);
 
@@ -118,7 +119,7 @@ void* file_thread_fn(void * param) {
             pPlayer->file_read_status = LOADING;
             src_reset(pSrcState);
             nUnusedFrames = 0;
-            nMaxFrames = AUDIO_BUFFER_SIZE / pPlayer->sf_info.channels;
+            nMaxFrames = pPlayer->buffer_size / pPlayer->sf_info.channels;
             srcData.end_of_input = 0;
         } else if(pPlayer->file_read_status == LOOPING) {
             // Reached end of file and need to read from start
@@ -126,7 +127,7 @@ void* file_thread_fn(void * param) {
             pPlayer->file_read_status = LOADING;
             src_reset(pSrcState);
             srcData.end_of_input = 0;
-            nMaxFrames = AUDIO_BUFFER_SIZE / pPlayer->sf_info.channels;
+            nMaxFrames = pPlayer->buffer_size / pPlayer->sf_info.channels;
             nUnusedFrames = 0;
         }
         if(pPlayer->file_read_status == LOADING)
@@ -138,7 +139,7 @@ void* file_thread_fn(void * param) {
                 nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames);
             } else {
                 // Populate SRC input buffer before SRC process
-                nMaxFrames = (AUDIO_BUFFER_SIZE / pPlayer->sf_info.channels) - nUnusedFrames;
+                nMaxFrames = (pPlayer->buffer_size / pPlayer->sf_info.channels) - nUnusedFrames;
                 nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * pPlayer->sf_info.channels, nMaxFrames);
             }
             if(nFramesRead == nMaxFrames) {
@@ -508,6 +509,8 @@ int init() {
     pPlayer->gain = 1.0;
     pPlayer->playback_track = 0;
     pPlayer->handle = player_handle;
+    pPlayer->buffer_size = 48000;
+    pPlayer->buffer_count = 5;
 
     char *sServerName = NULL;
     jack_status_t nStatus;
@@ -607,6 +610,31 @@ int get_playback_track(int player_handle) {
     return pPlayer->playback_track;
 }
 
+void set_buffer_size(int player_handle, unsigned int size) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(pPlayer && pPlayer->file_open == 0)
+        pPlayer->buffer_size = size;
+}
+
+unsigned int get_buffer_size(int player_handle) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(pPlayer)
+        return pPlayer->buffer_size;
+    return 0;
+}
+
+void set_buffer_count(int player_handle, unsigned int count) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(pPlayer && pPlayer->file_open == 0 && count > 1)
+        pPlayer->buffer_count = count;
+}
+
+unsigned int get_buffer_count(int player_handle) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(pPlayer)
+        return pPlayer->buffer_count;
+    return 0;
+}
 
 /**** Global functions ***/
 
