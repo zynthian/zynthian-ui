@@ -18,7 +18,6 @@
 
 #define AUDIO_BUFFER_SIZE 50000 // 50000 is approx. 1s of audio
 #define RING_BUFFER_SIZE AUDIO_BUFFER_SIZE * 2 * sizeof(float)
-#define MIN_FRAMES_IN_FILE 10 // Just in case very short files break things - can reduce to 0 and test
 #define MAX_PLAYERS 16 // Maximum quanity of audio players the library can host
 
 enum playState {
@@ -83,13 +82,6 @@ void* file_thread_fn(void * param) {
     }
     if(pPlayer->sf_info.channels < 0) {
         fprintf(stderr, "libaudioplayer error: file %s has no tracks\n", pPlayer->filename);
-        int nError = sf_close(pFile);
-        if(nError != 0)
-            fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
-        pthread_exit(NULL);
-    }
-    if(pPlayer->sf_info.frames < MIN_FRAMES_IN_FILE) {
-        fprintf(stderr, "libaudioplayer error: file %s too short (%u frames)\n", pPlayer->filename, pPlayer->sf_info.frames);
         int nError = sf_close(pFile);
         if(nError != 0)
             fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
@@ -300,7 +292,7 @@ float get_duration(int player_handle) {
 
 void set_position(int player_handle, float time) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer == NULL)
+    if(pPlayer == NULL || time >= get_duration(player_handle))
         return;
     pPlayer->play_pos_frames = time * g_samplerate;
     pPlayer->file_read_status = SEEKING;
