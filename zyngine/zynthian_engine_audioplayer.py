@@ -23,6 +23,7 @@
 #******************************************************************************
 
 import os
+from collections import OrderedDict
 import logging
 from . import zynthian_engine
 from . import zynthian_controller
@@ -69,6 +70,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['main',['volume','loop','play','position']]
 		]
 
+		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
 		self.start()
 		self.reset()
 
@@ -136,6 +138,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def delete_preset(self, bank, preset):
 		try:
 			os.remove(preset[0])
+			os.remove("{}.png".format(preset[0]))
 		except Exception as e:
 			logging.error(e)
 
@@ -162,6 +165,18 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	#----------------------------------------------------------------------------
 	# Controllers Management
 	#----------------------------------------------------------------------------
+
+	def get_monitors_dict(self):
+		self.monitors_dict = OrderedDict()
+		try:
+			self.monitors_dict["state"] = self.player.get_playback_state()
+			self.monitors_dict["pos"] = self.player.get_position()
+			self.monitors_dict["duration"] = self.player.get_duration()
+			self.monitors_dict["filename"] = self.player.get_filename()
+		except Exception as e:
+			logging.error(e)
+
+		return self.monitors_dict
 
 
 	# ---------------------------------------------------------------------------

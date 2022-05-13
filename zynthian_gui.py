@@ -222,7 +222,7 @@ class zynthian_gui:
 
 		# Dictionary of {OSC clients, last heartbeat} registered for mixer feedback
 		self.osc_clients = {}
-		self.osc_timer = 12
+		self.osc_heartbeat_timeout = 120 # Heartbeat timeout period
 
 		# Initialize peakmeter audio monitor if needed
 #		if not zynthian_gui_config.show_cpu_status:
@@ -1947,7 +1947,7 @@ class zynthian_gui:
 	def osc_timeout(self):
 		self.watchdog_last_check = monotonic()
 		for client in list(self.osc_clients):
-			if self.osc_clients[client] < self.watchdog_last_check - self.osc_timer:
+			if self.osc_clients[client] < self.watchdog_last_check - self.osc_heartbeat_timeout:
 				self.osc_clients.pop(client)
 				try:
 					lib_zynmixer.removeOscClient(c_char_p(client.encode('utf-8')))
@@ -1955,7 +1955,7 @@ class zynthian_gui:
 					pass
 		# Poll
 		if self.polling:
-			zynthian_gui_config.top.after(self.osc_timer * 1000, self.osc_timeout)
+			zynthian_gui_config.top.after(self.osc_heartbeat_timeout * 1000, self.osc_timeout)
 
 
 	#------------------------------------------------------------------

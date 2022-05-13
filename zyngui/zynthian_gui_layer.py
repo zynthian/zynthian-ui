@@ -68,6 +68,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.reset_note_range()
 		self.remove_all_layers(True)
 		self.reset_midi_profile()
+		self.reset_audio_recorder_prime()
 
 
 	def fill_list(self):
@@ -687,6 +688,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def reset_midi_routing(self):
 		self.set_midi_routing()
 
+
+	def reset_audio_recorder_prime(self):
+		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
+			self.zyngui.audio_recorder.unprime(midi_chan)
+
+
 	#----------------------------------------------------------------------------
 	# Jackname managing
 	#----------------------------------------------------------------------------
@@ -1220,8 +1227,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				b64_data = base64_encoded_data = base64.b64encode(binary_riff_data)
 				snapshot['zynseq_riff_b64'] = b64_data.decode('utf-8')
 
-			#Audio Recorder out
-			snapshot['audio_recorder_out'] = self.zyngui.screens['audio_recorder'].get_audio_out()
+			#Audio Recorder Primed
+			snapshot['audio_recorder_primed'] = []
+			for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
+				if self.zyngui.audio_recorder.is_primed(midi_chan):
+					snapshot['audio_recorder_primed'].append(midi_chan)
 
 			#Mixer
 			try:
@@ -1370,14 +1380,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.amixer_layer.restore_snapshot_1(snapshot['amixer_layer'])
 			self.amixer_layer.restore_snapshot_2(snapshot['amixer_layer'])
 
-		#Audio Recorder Out
-		#TODO: Handle audio recorder routing
-		#if 'audio_recorder_out' in snapshot:
-		#	if snapshot['audio_recorder_out'] == ['system']:
-		#		# Migration fix 2205
-		#		self.zyngui.screens['audio_recorder'].audio_out = ['mixer']
-		#	else:
-		#		self.zyngui.screens['audio_recorder'].audio_out = snapshot['audio_recorder_out']
+		#Audio Recorder Primed
+		if 'audio_recorder_primed' not in snapshot:
+			snapshot['audio_recorder_primed'] = []
+		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
+			if midi_chan in snapshot['audio_recorder_primed']:
+				self.zyngui.audio_recorder.prime(midi_chan)
+			else:
+				self.zyngui.audio_recorder.unprime(midi_chan)
 
 		#Autoconnect Audio
 		self.zyngui.zynautoconnect_audio(True)

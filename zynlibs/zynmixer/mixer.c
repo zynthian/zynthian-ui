@@ -4,7 +4,7 @@
  *
  * Library to mix channels to stereo output
  *
- * Copyright (C) 2019 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2019-2022 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -28,6 +28,7 @@
 #include <string.h> // provides memset
 #include <math.h> //provides fabs
 #include <unistd.h> // provides sleep
+#include <pthread.h> //provides multithreading
 
 #include "mixer.h"
 
@@ -38,6 +39,8 @@ char g_oscbuffer[1024]; // Used to send OSC messages
 char g_oscpath[20]; //!@todo Ensure path length is sufficient for all paths, e.g. /mixer/faderxxx
 int g_oscfd = -1; // File descriptor for OSC socket
 int g_bOsc = 0; // True if OSC client subscribed
+pthread_t g_eventThread; // ID of low priority event thread
+int g_sendEvents = 1; // Set to 0 to exit event thread
 
 #define DEBUG
 
@@ -114,6 +117,23 @@ void sendOscInt(const char* path, int value)
         int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "i", value);
         sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM|MSG_DONTWAIT, (const struct sockaddr *) &g_oscClient[i], sizeof(g_oscClient[i]));
     }
+}
+
+void* eventThreadFn(void * param) {
+    while(g_sendEvents) {
+        if(g_nDampingCount == 0) {
+            for(unsigned int chan = 0; chan < MAX_CHANNELS; chan++) {
+                sprintf(g_oscdpm, "/mixer/dpm%da", chan);
+                sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdA));
+                sprintf(g_oscdpm, "/mixer/dpm%db", chan);
+                sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdB));
+                sendOscFloat("/mixer/dpmA", convertToDBFS(g_mainOutput.holdA));
+                sendOscFloat("/mixer/dpmB", convertToDBFS(g_mainOutput.holdB));
+            }
+        }
+        usleep(10000);
+    }
+    pthread_exit(NULL);
 }
 
 static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
@@ -236,11 +256,6 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     // Only update damping release each g_nDampingCount cycles
                     g_dynamic[chan].dpmA *= g_fDpmDecay;
                     g_dynamic[chan].dpmB *= g_fDpmDecay;
-                    //!@todo Move OSC send out of jack process thread
-                    sprintf(g_oscdpm, "/mixer/dpm%da", chan);
-                    sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdA));
-                    sprintf(g_oscdpm, "/mixer/dpm%db", chan);
-                    sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdB));
                 }
             }
         }
@@ -326,9 +341,6 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         g_mainOutput.dpmA *= g_fDpmDecay;
         g_mainOutput.dpmB *= g_fDpmDecay;
         g_nDampingCount = g_nDampingPeriod;
-        //!@todo Move OSC send out of jack process thread
-        sendOscFloat("/mixer/dpmA", convertToDBFS(g_mainOutput.holdA));
-        sendOscFloat("/mixer/dpmB", convertToDBFS(g_mainOutput.holdB));
     }
 
     // Damping and hold counts are used throughout cycle so update at end of cycle
@@ -476,6 +488,15 @@ int init()
     fprintf(stderr,"libzynmixer: Activated client\n");
     #endif
 
+    // Configure and start event thread
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    if(pthread_create(&g_eventThread, &attr, eventThreadFn, NULL)) {
+        fprintf(stderr, "zynmixer error: failed to create event thread\n");
+        return 0;
+    }
+
     return 1;
 }
 
@@ -487,6 +508,9 @@ void end() {
         usleep(100000);
         jack_client_close(g_pJackClient);
     }
+    g_sendEvents = 0;
+    void* status;
+    pthread_join(g_eventThread, &status);
 }
 
 void setLevel(int channel, float level)
