@@ -17,9 +17,11 @@
 #include <stdlib.h> //provides exit
 #include "tinyosc.h" //provides OSC interface
 #include <arpa/inet.h> // provides inet_pton
+#include <fcntl.h> //provides fcntl
 
 #define MAX_PLAYERS 16 // Maximum quanity of audio players the library can host
 #define MAX_OSC_CLIENTS 5 // Maximum quantity of OSC clients
+#define OSC_PORT 9000 // UDP/IP port for OSC communication
 
 enum playState {
     STOPPED		= 0,
@@ -70,6 +72,8 @@ char g_oscpath[32]; // OSC path
 int g_oscfd = -1; // File descriptor for OSC socket
 int g_bOsc = 0; // True if OSC client subscribed
 struct sockaddr_in g_oscClient[MAX_OSC_CLIENTS]; // Array of registered OSC clients
+pthread_t g_osc_thread; // ID of OSC listener thread
+uint8_t g_run_osc = 1; // 1 to keep OSC listening thread running
 
 #define DPRINTF(fmt, args...) if(g_debug) printf(fmt, ## args)
     
@@ -163,6 +167,89 @@ static inline struct AUDIO_PLAYER * get_player(int player_handle) {
     if(player_handle > MAX_PLAYERS || player_handle < 0)
         return NULL;
     return g_players[player_handle];
+}
+
+void* osc_thread_fn(void * param) {
+    char buffer[2048]; // declare a 2Kb buffer to read packet data into
+    int len = 0;
+    const int osc_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    struct sockaddr_in sin;
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(OSC_PORT);
+    sin.sin_addr.s_addr = INADDR_ANY;
+    bind(osc_fd, (struct sockaddr *) &sin, sizeof(struct sockaddr_in));
+    printf("OSC server listening on port %d\n", OSC_PORT);
+    tosc_message osc_msg;
+
+    while(g_run_osc) {
+        fd_set readSet;
+        FD_ZERO(&readSet);
+        FD_SET(osc_fd, &readSet);
+        struct timeval timeout = {1, 0}; // select times out after 1 second
+        if (select(osc_fd + 1, &readSet, NULL, NULL, &timeout) > 0) {
+            struct sockaddr sa; // can be safely cast to sockaddr_in
+            socklen_t sa_len = sizeof(struct sockaddr_in);
+            int len = 0;
+            const char* path;
+            size_t player;
+            while ((len = (int) recvfrom(osc_fd, buffer, sizeof(buffer), 0, &sa, &sa_len)) > 0) {
+                if(!tosc_parseMessage(&osc_msg, buffer, len)) {
+                    path = tosc_getAddress(&osc_msg);
+                    if(!strncmp(path, "/player", 7)) {
+                        path += 7;
+                        player = atoi(path);
+                        while(path[0] != '\0' && path[0] != '/')
+                            ++path;
+                        if(path[0] == '/') {
+                            if(!strcmp(path, "/play")) {
+                                if(osc_msg.format[0] == 'i')
+                                    if(tosc_getNextInt32(&osc_msg))
+                                        start_playback(player);
+                                    else
+                                        stop_playback(player);
+                            } else if(!strcmp(path, "/load")) {
+                                if(osc_msg.format[0] == 's')
+                                    load(player, tosc_getNextString(&osc_msg));
+                            } else if(!strcmp(path, "/save")) {
+                                if(osc_msg.format[0] == 's')
+                                    save(player, tosc_getNextString(&osc_msg));
+                            } else if(!strcmp(path, "/unload")) {
+                                unload(player);
+                            } else if(!strncmp(path, "/position", 9)) {
+                                printf("POSITION '%c'\n", osc_msg.format[0]);
+                                if(osc_msg.format[0] == 'f')
+                                    set_position(player, tosc_getNextFloat(&osc_msg));
+                            }
+                            else if(!strcmp(path, "/loop")) {
+                                if(osc_msg.format[0] == 'i')
+                                    enable_loop(player, tosc_getNextInt32(&osc_msg));
+                            }
+                            else if(!strcmp(path, "/quality")) {
+                                if(osc_msg.format[0] == 'i')
+                                    set_src_quality(player, tosc_getNextInt32(&osc_msg));
+                            } else if(!strcmp(path, "/gain")) {
+                                if(osc_msg.format[0] == 'f')
+                                    set_gain(player, tosc_getNextFloat(&osc_msg));
+                            } else if(!strcmp(path, "/track")) {
+                                if(osc_msg.format[0] == 'i')
+                                    set_playback_track(player, tosc_getNextInt32(&osc_msg));
+                            } else if(!strcmp(path, "/buffersize")) {
+                                if(osc_msg.format[0] == 'i')
+                                    set_buffer_size(player, tosc_getNextInt32(&osc_msg));
+                            } else if(!strcmp(path, "/buffercount")) {
+                                if(osc_msg.format[0] == 'i')
+                                    set_buffer_count(player, tosc_getNextInt32(&osc_msg));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        usleep(100000);
+    }
+    close(osc_fd);
+    printf("OSC server stopped\n");
+    pthread_exit(NULL);
 }
 
 void* file_thread_fn(void * param) {
@@ -356,11 +443,11 @@ void* file_thread_fn(void * param) {
 
 /**** player instance functions take handle param to identify player instance****/
 
-uint8_t open(int player_handle, const char* filename) {
+uint8_t load(int player_handle, const char* filename) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(pPlayer == NULL)
         return 0;
-    close_file(player_handle);
+    unload(player_handle);
     pPlayer->playback_track = 0;
     strcpy(pPlayer->filename, filename);
     pthread_attr_t attr;
@@ -369,13 +456,13 @@ uint8_t open(int player_handle, const char* filename) {
 
     if(pthread_create(&pPlayer->file_thread, &attr, file_thread_fn, pPlayer)) {
         fprintf(stderr, "zynaudioplayer error: failed to create file reading thread\n");
-        close_file(player_handle);
+        unload(player_handle);
         return 0;
     }
     return 1;
 }
 
-void close_file(int player_handle) {
+void unload(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(pPlayer == NULL)
         return;
@@ -501,13 +588,16 @@ int get_format(int player_handle) {
 void end() {
     for(int player_handle = 0; player_handle < MAX_PLAYERS; ++player_handle)
         remove_player(player_handle);
+    g_run_osc = 0;
+    void* status;
+    pthread_join(g_osc_thread, &status);
 }
 
 void remove_player(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(pPlayer == NULL)
         return;
-    close_file(player_handle);
+    unload(player_handle);
     jack_client_close(pPlayer->jack_client);
 
     unsigned int count = 0;
@@ -611,14 +701,23 @@ int on_jack_samplerate(jack_nframes_t nFrames, void *pArgs) {
 }
  
 static void lib_init(void) { 
-    // Initialsize OSC
+    // Initialsize OSC clients
     g_oscfd = socket(AF_INET, SOCK_DGRAM, 0);
     for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
         memset(g_oscClient[i].sin_zero, '\0', sizeof g_oscClient[i].sin_zero);
         g_oscClient[i].sin_family = AF_INET;
-        g_oscClient[i].sin_port = htons(9999);
+        g_oscClient[i].sin_port = htons(OSC_PORT);
         g_oscClient[i].sin_addr.s_addr = 0;
     }
+    fcntl(g_oscfd, F_SETFL, O_NONBLOCK); // set the socket to non-blocking
+
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+    if(pthread_create(&g_osc_thread, &attr, osc_thread_fn, NULL))
+        fprintf(stderr, "zynaudioplayer error: failed to create OSC listening thread\n");
+
     printf("zynaudioplayer initialised\n");
 }
 

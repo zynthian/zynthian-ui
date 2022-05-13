@@ -34,7 +34,7 @@ const char* get_jack_client_name(int player_handle);
 *   @param  filename Full path and name of file to load
 *   @retval uint8_t True on success
 */
-uint8_t open(int player_handle, const char* filename);
+uint8_t load(int player_handle, const char* filename);
 
 /** @brief  Save audio file
 *   @param  player_handle Handle of player provided by init_player()
@@ -46,7 +46,7 @@ uint8_t save(int player_handle, const char* filename);
 /** @brief  Close audio file clearing all data
 *   @param  player_handle Handle of player provided by init_player()
 */
-void close_file(int player_handle);
+void unload(int player_handle);
 
 /** @brief  Get filename of currently loaded file
 *   @param  player_handle Handle of player provided by init_player()

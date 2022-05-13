@@ -46,6 +46,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.refreshing = False
 		self.play_pos = 0.0
 		self.filename = ""
+		self.bg_color = "000000"
+		self.waveform_color = "86fcc7" # Audition
+		#self.waveform_color = "3f4d9b" # Audacity
 
 
 	def get_monitors(self):
@@ -101,11 +104,13 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				waveform_png = "{}.png".format(self.monitors["filename"])
 				self.filename = self.monitors["filename"]
 				if not os.path.exists(waveform_png) or os.path.getmtime(self.filename) > os.path.getmtime(waveform_png):
-					os.system('audiowaveform -i "{}" -o "{}" --split-channels -w {} -h {} --zoom auto --no-axis-labels > /dev/null 2>&1'.format(
+					os.system('audiowaveform -i "{}" -o "{}" --split-channels -w {} -h {} --zoom auto --background-color {} --waveform-color {} --no-axis-labels > /dev/null 2>&1'.format(
 						self.filename,
 						waveform_png,
 						self.width,
-						self.height
+						self.height,
+						self.bg_color,
+						self.waveform_color
 					))
 				if os.path.exists(waveform_png):
 					self.img=ImageTk.PhotoImage(file=waveform_png)

@@ -48,6 +48,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.name = "AudioPlayer"
 		self.nickname = "AP"
 		self.jackname = "audioplayer"
+		self.type = "MIDI Synth" # TODO: Should we override this? With what value?
 
 		self.options['clone'] = False
 		self.options['note_range'] = False
@@ -62,17 +63,21 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['volume',7,100],
 			['loop',69,'one-shot',['one-shot','looping']],
 			['play',68,'stopped',['stopped','playing']],
-			['position',1,0]
+			['position',1,0],
+			['quality',2,'best',['best','medium','fastest','zero order','linear']],
+			['track',3,0]
 		]
 
 		# Controller Screens
 		self._ctrl_screens=[
-			['main',['volume','loop','play','position']]
+			['main',['volume','loop','play','position']],
+			['config',['quality','track']]
 		]
 
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
 		self.start()
 		self.reset()
+		self.osc_server_port = 9000
 
 
 	# ---------------------------------------------------------------------------
@@ -166,7 +171,33 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Controllers Management
 	#----------------------------------------------------------------------------
 
+	"""
+	def get_controllers_dict(self, layer):
+		midi_chan=layer.get_midi_chan()
+		zctrls=OrderedDict()
+
+		zctrl=zynthian_controller(self, 'gain')
+		zctrl.setup_controller(midi_chan, '/player{:03d}/gain'.format(self.player.handle), 1.0, 2.0)
+		zctrl=zynthian_controller(self, 'loop')
+		zctrl.setup_controller(midi_chan, '/player{:03d}/loop'.format(self.player.handle), 0, 1)
+		zctrl=zynthian_controller(self, 'play')
+		zctrl.setup_controller(midi_chan, '/player{:03d}/play'.format(self.player.handle), 0, 1)
+		zctrl=zynthian_controller(self, 'position')
+		zctrl.setup_controller(midi_chan, '/player{:03d}/position'.format(self.player.handle), 0.0, self.player.get_duration())
+		zctrl=zynthian_controller(self, 'quality')
+		zctrl.setup_controller(midi_chan, '/player{:03d}/quality'.format(self.player.handle), [
+			'best',
+			'medium',
+			'fastest',
+			'zero order',
+			'linear'], 4)
+		zctrl=zynthian_controller(self, 'track')
+		zctrl.setup_controller(midi_chan, '/player{:03d}/track'.format(self.player.handle), 0, self.player.get_channels())
+		"""
+
+
 	def get_monitors_dict(self):
+		#TODO: Optimise
 		self.monitors_dict = OrderedDict()
 		try:
 			self.monitors_dict["state"] = self.player.get_playback_state()

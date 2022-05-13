@@ -99,14 +99,14 @@ class zynaudioplayer():
 	def load(self, filename):
 		if self.handle is None:
 			return False
-		return self.libaudioplayer.open(self.handle, bytes(filename, "utf-8"))
+		return self.libaudioplayer.load(self.handle, bytes(filename, "utf-8"))
 
 
 	#	Unload the currently loaded audio file
 	def unload(self):
 		if self.handle is None:
 			return
-		self.libaudioplayer.close_file(self.handle)
+		self.libaudioplayer.unload(self.handle)
 
 
 	#	Get the full path and name of the currently loaded file
