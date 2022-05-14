@@ -3,7 +3,7 @@
     License: LGPL V3
 */
 
-#include "zynaudioplayer.h"
+#include "player.h"
 
 #include <stdio.h> //provides printf
 #include <string.h> //provides strcmp, memset
@@ -144,7 +144,7 @@ int addOscClient(const char* client) {
         g_bOsc = 1;
         return i;
     }
-    fprintf(stderr, "libzynmixer: Not adding OSC client %s - Maximum client count reached [%d]\n", client, MAX_OSC_CLIENTS);
+    fprintf(stderr, "libzynaudioplayer: Not adding OSC client %s - Maximum client count reached [%d]\n", client, MAX_OSC_CLIENTS);
     return -1;
 }
 
@@ -201,7 +201,7 @@ void* osc_thread_fn(void * param) {
                         while(path[0] != '\0' && path[0] != '/')
                             ++path;
                         if(path[0] == '/') {
-                            if(!strcmp(path, "/play")) {
+                            if(!strcmp(path, "/transport")) {
                                 if(osc_msg.format[0] == 'i')
                                     if(tosc_getNextInt32(&osc_msg))
                                         start_playback(player);
@@ -338,18 +338,18 @@ void* file_thread_fn(void * param) {
             if(nFramesRead == nMaxFrames) {
                 // Filled buffer from file so probably more data to read
                 srcData.end_of_input = 0;
-                DPRINTF("zynaudioplayer read %u frames into ring buffer\n", nFramesRead);
+                DPRINTF("libzynaudioplayer read %u frames into ring buffer\n", nFramesRead);
             }
             else if(pPlayer->loop) {
                 // Short read - looping so fill from start of file
                 pPlayer->file_read_status = LOOPING;
                 srcData.end_of_input = 1;
-                DPRINTF("zynaudioplayer read to end of input file - setting loading status to looping\n");
+                DPRINTF("libzynaudioplayer read to end of input file - setting loading status to looping\n");
             } else {
                 // Short read - assume at end of file
                 pPlayer->file_read_status = IDLE;
                 srcData.end_of_input = 1;
-                DPRINTF("zynaudioplayer read to end of input file - setting loading status to IDLE\n");
+                DPRINTF("libzynaudioplayer read to end of input file - setting loading status to IDLE\n");
             }
             if(srcData.src_ratio != 1.0) {
                 // We need to perform SRC on this block of code
@@ -455,7 +455,7 @@ uint8_t load(int player_handle, const char* filename) {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     if(pthread_create(&pPlayer->file_thread, &attr, file_thread_fn, pPlayer)) {
-        fprintf(stderr, "zynaudioplayer error: failed to create file reading thread\n");
+        fprintf(stderr, "libzynaudioplayer error: failed to create file reading thread\n");
         unload(player_handle);
         return 0;
     }
@@ -505,7 +505,7 @@ void set_position(int player_handle, float time) {
     pPlayer->file_read_status = SEEKING;
     DPRINTF("New position requested, setting loading status to SEEKING\n");
     sprintf(g_oscpath, "/player%d/position", player_handle);
-    sendOscFloat(g_oscpath, (int)time);
+    sendOscInt(g_oscpath, (int)time);
 }
 
 float get_position(int player_handle) {
@@ -654,7 +654,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
             pPlayer->file_read_status = SEEKING;
         }
 
-        DPRINTF("zynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", count, nFrames, nFrames - count, (nFrames - count) * sizeof(jack_default_audio_sample_t));
+        DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", count, nFrames, nFrames - count, (nFrames - count) * sizeof(jack_default_audio_sample_t));
     }
 
     // Silence remainder of frame
@@ -695,7 +695,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
 
 // Handle JACK process callback
 int on_jack_samplerate(jack_nframes_t nFrames, void *pArgs) {
-    DPRINTF("zynaudioplayer: Jack sample rate: %u\n", nFrames);
+    DPRINTF("libzynaudioplayer: Jack sample rate: %u\n", nFrames);
     g_samplerate = nFrames;
     return 0;
 }
@@ -716,9 +716,9 @@ static void lib_init(void) {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     if(pthread_create(&g_osc_thread, &attr, osc_thread_fn, NULL))
-        fprintf(stderr, "zynaudioplayer error: failed to create OSC listening thread\n");
+        fprintf(stderr, "libzynaudioplayer error: failed to create OSC listening thread\n");
 
-    printf("zynaudioplayer initialised\n");
+    printf("libzynaudioplayer initialised\n");
 }
 
 int init() {

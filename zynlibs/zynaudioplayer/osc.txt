@@ -1,0 +1,32 @@
+zynaudioplayer OSC implementation
+
+Listens on UDP port 9000
+Sends notifications to up to 5 registered clients via UDP on whichever port they registered
+
+Control messages (recieved):
+    All prefixed with /player<x> where <x> is the index of the player
+    /transport [i=mode] Set transport play mode [0=stop, 1=play]
+    /load [s=filename] Load file into player
+    /unload Unload file from player
+    /save [s=filename] Save file currently in player with (new) filename (not yet implemented)
+    /position [f=position] Move playhead to position in seconds from start of file
+    /loop [i=mode] Set loop mode [0=one-shot, 1=loop at end of file]
+    /gain [f=gain] Set gain factor [0..2]
+    /track [i=track] Select base track for playback [-1=stereo mix-down of all pairs of tracks, 0..quantity of tracks=stereo from 2 consecutive tracks]
+        Note mono files always present as mono on both outputs
+    /quality [i=quality] Set samplerate conversion quality [0=best, 1=medium, 2=fastest, 3=zero order hold, 4=linear]
+        Note change of quality only occurs after reloading file and only affects files with non-naitive samplerate
+    /buffersize [i=size] Sets the quantity of frames in the input buffer
+        Note change of buffer size only occurs after reloading file and may be used to optimise resource usage / performance
+    /buffercount [i=count] Sets the quantity of buffers used
+        Note change of buffer count only occurs after reloading file and may be used to optimise resource usage / performance
+
+Notification messages (transmitted on change of value)
+    All prefixed with /player<x> where <x> is the index of the player
+    /transport [i=mode] Transport play mode [0=stopped, 1=playing]
+    /load [s=filename] New file loaded (empty if file unloaded)
+    /position [i=position] Playhead position in whole seconds from start of file
+    /loop [i=mode] Loop mode [0=one-shot, 1=loop at end of file]
+    /gain [f=gain] Gain factor [0..2]
+    /duration [f=duration] Duration of loaded file
+
