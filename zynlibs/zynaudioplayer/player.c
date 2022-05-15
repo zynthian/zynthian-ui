@@ -44,7 +44,7 @@ struct AUDIO_PLAYER {
     jack_client_t * jack_client;
     unsigned int handle;
 
-    uint8_t file_open; // 1 whilst file is open - used to flag thread to close file
+    uint8_t file_open; // 0=file closed, 1=file opening, 2=file open - used to flag thread to close file or thread to flag file failed to open
     uint8_t file_read_status; // File reading status (IDLE|SEEKING|LOADING)
     uint8_t play_state; // Current playback state (STOPPED|STARTING|PLAYING|STOPPING)
     uint8_t loop; // 1 to loop at end of song
@@ -216,7 +216,6 @@ void* osc_thread_fn(void * param) {
                             } else if(!strcmp(path, "/unload")) {
                                 unload(player);
                             } else if(!strncmp(path, "/position", 9)) {
-                                printf("POSITION '%c'\n", osc_msg.format[0]);
                                 if(osc_msg.format[0] == 'f')
                                     set_position(player, tosc_getNextFloat(&osc_msg));
                             }
@@ -257,17 +256,20 @@ void* file_thread_fn(void * param) {
     pPlayer->sf_info.format = 0; // This triggers sf_open to populate info structure
     SNDFILE* pFile = sf_open(pPlayer->filename, SFM_READ, &pPlayer->sf_info);
     if(!pFile || pPlayer->sf_info.channels < 1) {
+        pPlayer->file_open = 0;
         fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", pPlayer->filename, sf_strerror(pFile));
         pthread_exit(NULL);
     }
     if(pPlayer->sf_info.channels < 0) {
+        pPlayer->file_open = 0;
         fprintf(stderr, "libaudioplayer error: file %s has no tracks\n", pPlayer->filename);
         int nError = sf_close(pFile);
         if(nError != 0)
             fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
         pthread_exit(NULL);
     }
-    pPlayer->file_open = 1;
+    pPlayer->file_open = 2;
+    printf("Opened file '%s' with samplerate %u, duration: %f\n", pPlayer->filename, pPlayer->sf_info.samplerate, get_duration(pPlayer->handle));
     pPlayer->play_pos_frames = 0;
     pPlayer->file_read_status = SEEKING;
     pPlayer->ringbuffer_a = jack_ringbuffer_create(pPlayer->buffer_size * pPlayer->buffer_count * sizeof(float));
@@ -300,7 +302,7 @@ void* file_thread_fn(void * param) {
     sprintf(g_oscpath, "/player%d/transport", pPlayer->handle);
     sendOscInt(g_oscpath, play_state);
 
-    while(pPlayer->file_open) {
+    while(pPlayer->file_open == 2) {
         if(pPlayer->file_read_status == SEEKING) {
             // Main thread has signalled seek within file
             jack_ringbuffer_reset(pPlayer->ringbuffer_a);
@@ -386,7 +388,7 @@ void* file_thread_fn(void * param) {
                     break;
             }
 
-            if(pPlayer->file_open && pPlayer->sf_info.channels > pPlayer->playback_track) {
+            if(pPlayer->file_open == 2 && pPlayer->sf_info.channels > pPlayer->playback_track) {
                 // Demux samples and populate playback ring buffers
                 for(size_t frame = 0; frame < nFramesRead; ++frame) {
                     float fA = 0.0, fB = 0.0;
@@ -454,19 +456,21 @@ uint8_t load(int player_handle, const char* filename) {
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+    pPlayer->file_open = 1;
     if(pthread_create(&pPlayer->file_thread, &attr, file_thread_fn, pPlayer)) {
         fprintf(stderr, "libzynaudioplayer error: failed to create file reading thread\n");
         unload(player_handle);
         return 0;
     }
-    return 1;
+    while(pPlayer->file_open == 1) {
+        usleep(10000); //!@todo Optimise wait for file open
+    }
+    return (pPlayer->file_open == 2);
 }
 
 void unload(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer == NULL)
-        return;
-    if(pPlayer->file_open == 0)
+    if(pPlayer == NULL || pPlayer->file_open == 0)
         return;
     stop_playback(player_handle);
     pPlayer->file_open = 0;
@@ -492,7 +496,7 @@ const char* get_filename(int player_handle) {
 
 float get_duration(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer && pPlayer->file_open && pPlayer->sf_info.samplerate)
+    if(pPlayer && pPlayer->file_open == 2 && pPlayer->sf_info.samplerate)
         return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate;
     return 0.0f;
 }
@@ -537,7 +541,7 @@ uint8_t is_loop(int player_handle) {
 
 void start_playback(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer && pPlayer->jack_client && pPlayer->file_open && pPlayer->play_state != PLAYING)
+    if(pPlayer && pPlayer->jack_client && pPlayer->file_open == 2 && pPlayer->play_state != PLAYING)
         pPlayer->play_state = STARTING;
 }
 
@@ -701,7 +705,7 @@ int on_jack_samplerate(jack_nframes_t nFrames, void *pArgs) {
 }
  
 static void lib_init(void) { 
-    // Initialsize OSC clients
+    // Initialise OSC clients
     g_oscfd = socket(AF_INET, SOCK_DGRAM, 0);
     for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
         memset(g_oscClient[i].sin_zero, '\0', sizeof g_oscClient[i].sin_zero);
@@ -711,10 +715,10 @@ static void lib_init(void) {
     }
     fcntl(g_oscfd, F_SETFL, O_NONBLOCK); // set the socket to non-blocking
 
+    // Initialise OSC server
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
     if(pthread_create(&g_osc_thread, &attr, osc_thread_fn, NULL))
         fprintf(stderr, "libzynaudioplayer error: failed to create OSC listening thread\n");
 
@@ -812,6 +816,13 @@ uint8_t set_src_quality(int player_handle, unsigned int quality) {
     return 1;
 }
 
+unsigned int get_src_quality(int player_handle) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(pPlayer)
+        return pPlayer->src_quality;
+    return 2;
+}
+
 void set_gain(int player_handle, float gain) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(pPlayer == NULL)
@@ -834,7 +845,7 @@ void set_playback_track(int player_handle, int track) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(pPlayer == NULL)
         return;
-    if(pPlayer->file_open && track < pPlayer->sf_info.channels) {
+    if(pPlayer->file_open == 2 && track < pPlayer->sf_info.channels) {
         if(pPlayer->sf_info.channels == 1)
             pPlayer->playback_track = 0;
         else

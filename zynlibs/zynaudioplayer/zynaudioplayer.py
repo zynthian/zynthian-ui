@@ -212,6 +212,7 @@ class zynaudioplayer():
 			return 0
 		return self.libaudioplayer.get_format(self.handle)
 
+
  	#	Set quality of samplerate converion
 	#	quality: Samplerate conversion quality [SRC_SINC_BEST_QUALITY | SRC_SINC_MEDIUM_QUALITY | SRC_SINC_FASTEST | SRC_ZERO_ORDER_HOLD | SRC_LINEAR]
 	#	Returns: True on success, i.e. the quality parameter is valid
@@ -219,6 +220,14 @@ class zynaudioplayer():
 		if self.handle is None:
 			return False
 		return (self.libaudioplayer.set_src_quality(self.handle, quality) == 1)
+
+
+ 	#	Get quality of samplerate converion
+	#	Returns: Samplerate conversion quality [SRC_SINC_BEST_QUALITY | SRC_SINC_MEDIUM_QUALITY | SRC_SINC_FASTEST | SRC_ZERO_ORDER_HOLD | SRC_LINEAR]
+	def get_src_quality(self):
+		if self.handle is None:
+			return 2
+		return self.libaudioplayer.get_src_quality(self.handle)
 
 
  	#	Set playback gain

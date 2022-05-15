@@ -184,6 +184,9 @@ class zynthian_controller:
 		# Numeric
 		if isinstance(maxval,int):
 			self.value_max = maxval
+		elif isinstance(maxval,float):
+			self.value_max = maxval
+			self.is_integer = False
 		# Selector
 		elif isinstance(maxval,str):
 			self.labels=maxval.split('|')
@@ -207,7 +210,7 @@ class zynthian_controller:
 		elif self.graph_path:
 			return str(self.graph_path)
 		elif self.midi_chan is not None and self.midi_cc is not None:
-			return "{}#{}".format(self_midi_chan,self.midi_cc)
+			return "{}#{}".format(self.midi_chan,self.midi_cc)
 		else:
 			return None
 

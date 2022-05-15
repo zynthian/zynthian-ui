@@ -133,6 +133,13 @@ int get_format(int player_handle);
 */
 uint8_t set_src_quality(int player_handle, unsigned int quality);
 
+/** @brief  Get samplerate converter quality
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval unsigned int Samplerate conversion quality [SRC_SINC_BEST_QUALITY | SRC_SINC_MEDIUM_QUALITY | SRC_SINC_FASTEST | SRC_ZERO_ORDER_HOLD | SRC_LINEAR]
+*   @note   Quality applied to subsequently opened files, not necessarily currently open file
+*/
+unsigned int get_src_quality(int player_handle);
+
 /** @brief  Set gain
 *   @param  player_handle Handle of player provided by init_player()
 *   @param  gain Gain factor (0..2)

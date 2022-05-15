@@ -267,10 +267,10 @@ class zynthian_gui_controller:
 			self.canvas.tag_lower(self.rectangle)
 
 		if self.value_text:
-			self.canvas.itemconfig(self.value_text, text=value_print)
+			self.canvas.itemconfig(self.value_text, text=self.value_print)
 		else:
 			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh, width=self.trw,
-				justify=CENTER,
+				justify=tkinter.CENTER,
 				fill=zynthian_gui_config.color_ctrl_tx,
 				font=(zynthian_gui_config.font_family,self.value_font_size),
 				text=self.value_print)
@@ -309,7 +309,7 @@ class zynthian_gui_controller:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)
 		else:
 			self.value_text=self.canvas.create_text(x1+self.trw/2-1, y1-self.trh-8, width=self.trw,
-				justify=CENTER,
+				justify=tkinter.CENTER,
 				fill=zynthian_gui_config.color_ctrl_tx,
 				font=(zynthian_gui_config.font_family,self.value_font_size),
 				text=self.value_print)
@@ -594,7 +594,7 @@ class zynthian_gui_controller:
 						#MIDI controller
 						else:
 							self.max_value=self.n_values=127
-							self.scale_value=r/self.max_value
+							self.scale_value=r/self.max_value #TODO: r is not
 							val=(zctrl.value-zctrl.value_min)/self.scale_value
 						# Use adaptative step size based on rotary speed
 						self.step=0 

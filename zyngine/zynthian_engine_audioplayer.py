@@ -58,26 +58,26 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.options['drop_pc'] = True
 		self.options['layer_audio_out'] = True
 
+		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
+		self.start()
+
 		# MIDI Controllers
 		self._ctrls=[
-			['volume',7,100],
-			['loop',69,'one-shot',['one-shot','looping']],
-			['play',68,'stopped',['stopped','playing']],
-			['position',1,0],
-			['quality',2,'best',['best','medium','fastest','zero order','linear']],
-			['track',3,0]
+			['gain',None,1.0,2.0],
+			['loop',None,'one-shot',['one-shot','looping']],
+			['play',None,'stopped',['stopped','playing']],
+			['position',None,0.0,1.0],
+			['quality',None,'fastest',[['best','medium','fastest','zero order','linear'],[0,1,2,3,4]]],
+			['track',None,0,[['mixdown','1+2'],[-1,0]]]
 		]
 
 		# Controller Screens
 		self._ctrl_screens=[
-			['main',['volume','loop','play','position']],
+			['main',['gain','loop','play','position']],
 			['config',['quality','track']]
 		]
 
-		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
-		self.start()
 		self.reset()
-		self.osc_server_port = 9000
 
 
 	# ---------------------------------------------------------------------------
@@ -87,7 +87,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def start(self):
 		self.player = zynaudioplayer.zynaudioplayer()
 		self.jackname = self.player.get_jack_client_name()
-		#self.jackname = "{}/{:03d}".format(self.player.get_jack_client_name(), self.player.handle)
 
 
 	def stop(self):
@@ -136,8 +135,46 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def set_preset(self, layer, preset, preload=False):
 		if self.player.get_filename() == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration():
 			return
+
 		self.player.load(preset[0])
+		dur = self.player.get_duration()
 		self.player.set_position(0)
+		if self.player.is_loop():
+			loop = 'looping'
+		else:
+			loop = 'one-shot'
+		if self.player.get_playback_state():
+			transport = 'playing'
+		else:
+			transport = 'stopped'
+		gain = self.player.get_gain()
+		quals = ['best','medium','fastest','zero order','linear']
+		qual = quals[self.player.get_src_quality()]
+		#TODO: Set gain control as logarithmic
+		#TODO: Player jumps to postition when preset window cancelled
+		if dur:
+			self._ctrls=[
+				['gain',None,gain,2.0],
+				['loop',None,loop,['one-shot','looping']],
+				['play',None,transport,['stopped','playing']],
+				['position',None,0.0,dur],
+				['quality',None,qual,[quals,[0,1,2,3,4]]],
+				['track',None,0,[['mixdown','1+2'],[-1,0]]]
+			]
+			self._ctrl_screens=[
+				['main',['gain','loop','play','position']],
+				['config',['quality','track']]
+			]
+		else:
+			self._ctrls=[
+				['gain',None,gain,2.0],
+				['quality',None,qual,[quals,[0,1,2,3,4]]],
+			]
+			self._ctrl_screens=[
+				['main',['gain']],
+				['config',['quality']]
+		]
+		layer.refresh_controllers()
 
 
 	def delete_preset(self, bank, preset):
@@ -171,33 +208,26 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Controllers Management
 	#----------------------------------------------------------------------------
 
-	"""
-	def get_controllers_dict(self, layer):
-		midi_chan=layer.get_midi_chan()
-		zctrls=OrderedDict()
-
-		zctrl=zynthian_controller(self, 'gain')
-		zctrl.setup_controller(midi_chan, '/player{:03d}/gain'.format(self.player.handle), 1.0, 2.0)
-		zctrl=zynthian_controller(self, 'loop')
-		zctrl.setup_controller(midi_chan, '/player{:03d}/loop'.format(self.player.handle), 0, 1)
-		zctrl=zynthian_controller(self, 'play')
-		zctrl.setup_controller(midi_chan, '/player{:03d}/play'.format(self.player.handle), 0, 1)
-		zctrl=zynthian_controller(self, 'position')
-		zctrl.setup_controller(midi_chan, '/player{:03d}/position'.format(self.player.handle), 0.0, self.player.get_duration())
-		zctrl=zynthian_controller(self, 'quality')
-		zctrl.setup_controller(midi_chan, '/player{:03d}/quality'.format(self.player.handle), [
-			'best',
-			'medium',
-			'fastest',
-			'zero order',
-			'linear'], 4)
-		zctrl=zynthian_controller(self, 'track')
-		zctrl.setup_controller(midi_chan, '/player{:03d}/track'.format(self.player.handle), 0, self.player.get_channels())
-		"""
+	def send_controller_value(self, zctrl):
+		if zctrl.symbol == "position":
+			self.player.set_position(zctrl.value)
+		elif zctrl.symbol == "gain":
+			self.player.set_gain(zctrl.value)
+		elif zctrl.symbol == "loop":
+			self.player.enable_loop(zctrl.value)
+		elif zctrl.symbol == "play":
+			if zctrl.value:
+				self.player.start_playback()
+			else:
+				self.player.stop_playback()
+		elif zctrl.symbol == "quality":
+			self.player.set_quality(zctrl.value)
+		elif zctrl.symbol == "track":
+			self.player.set_track(zctrl.value)
 
 
 	def get_monitors_dict(self):
-		#TODO: Optimise
+		#TODO: Optimise - maybe register for notification events
 		self.monitors_dict = OrderedDict()
 		try:
 			self.monitors_dict["state"] = self.player.get_playback_state()

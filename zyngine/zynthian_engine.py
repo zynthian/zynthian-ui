@@ -368,7 +368,7 @@ class zynthian_engine(zynthian_basic_engine):
 	def get_cmdlist(cmd):
 		res=[]
 		i=0
-		output=check_output(cmd, shell=True)
+		output=check_output(cmd, shell=True) #TODO: check_output is not defined
 		lines=output.decode('utf8').split('\n')
 		for f in lines:
 			title=str.replace(f, '_', ' ')
