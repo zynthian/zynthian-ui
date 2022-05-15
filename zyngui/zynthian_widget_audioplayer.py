@@ -46,13 +46,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.refreshing = False
 		self.play_pos = 0.0
 		self.filename = ""
+		self.duration = 0.0
 		self.bg_color = "000000"
 		self.waveform_color = "86fcc7" # Audition
 		#self.waveform_color = "3f4d9b" # Audacity
-
-
-	def get_monitors(self):
-		self.monitors = self.layer.engine.get_monitors_dict()
 
 
 	def create_gui(self):
@@ -80,6 +77,18 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.height,
 			fill=zynthian_gui_config.color_on
 		)
+
+		self.info_text = self.mon_canvas.create_text(
+			int(self.width / 2),
+			self.height,
+			anchor = tkinter.S,
+			text="00:00",
+			justify=tkinter.CENTER,
+			width=self.width,
+			font=(zynthian_gui_config.font_family, int(self.width/16)),
+			fill=zynthian_gui_config.color_panel_tx
+		)
+
 
 	def refresh_gui(self):
 		if self.refreshing:
@@ -117,6 +126,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					self.mon_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
 				else:
 					self.mon_canvas.itemconfigure(self.loading_text, text="Cannot display waveform")
+			if self.duration != self.monitors["duration"]:
+				self.duration = self.monitors["duration"]
+				self.mon_canvas.itemconfigure(self.info_text, text="{:02d}:{:02d}".format(int(self.duration / 60), int(self.duration % 60)), state=tkinter.NORMAL)
 
 		except Exception as e:
 			logging.error(e)

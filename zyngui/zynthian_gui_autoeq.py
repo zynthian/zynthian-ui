@@ -119,7 +119,7 @@ class zynthian_gui_autoeq():
 
 	def refresh_bars(self):
 		x0 = 0
-		items = self.zyngui.curlayer.engine.get_lv2_monitors_dict().items()
+		items = self.zyngui.curlayer.engine.get_monitors_dict().items()
 		if len(items)>0:
 			i = 0
 			for k, v in items:

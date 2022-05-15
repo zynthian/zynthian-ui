@@ -589,7 +589,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		return zctrls
 
 
-	def get_lv2_monitors_dict(self):
+	def get_monitors_dict(self):
 		self.lv2_monitors_dict = OrderedDict()
 		for line in self.proc_cmd("monitors").split("\n"):
 			try:

@@ -101,7 +101,7 @@ class zynthian_widget_base():
 
 
 	def get_monitors(self):
-		self.monitors = self.layer.engine.get_lv2_monitors_dict()
+		self.monitors = self.layer.engine.get_monitors_dict()
 
 
 	def refresh_gui(self):

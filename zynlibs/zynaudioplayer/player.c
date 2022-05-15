@@ -269,7 +269,7 @@ void* file_thread_fn(void * param) {
         pthread_exit(NULL);
     }
     pPlayer->file_open = 2;
-    printf("Opened file '%s' with samplerate %u, duration: %f\n", pPlayer->filename, pPlayer->sf_info.samplerate, get_duration(pPlayer->handle));
+    DPRINTF("Opened file '%s' with samplerate %u, duration: %f\n", pPlayer->filename, pPlayer->sf_info.samplerate, get_duration(pPlayer->handle));
     pPlayer->play_pos_frames = 0;
     pPlayer->file_read_status = SEEKING;
     pPlayer->ringbuffer_a = jack_ringbuffer_create(pPlayer->buffer_size * pPlayer->buffer_count * sizeof(float));
