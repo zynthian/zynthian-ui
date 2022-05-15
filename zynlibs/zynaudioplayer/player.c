@@ -61,6 +61,7 @@ struct AUDIO_PLAYER {
     int playback_track; // Which stereo pair of tracks to playback (-1 to mix all stero pairs)
     unsigned int buffer_size; // Quantity of frames read from file
     unsigned int buffer_count; // Factor by which ring buffer is larger than buffer
+    uint8_t last_note_played; // MIDI note number of last note that triggered playback
 };
 
 // **** Global variables ****
@@ -673,13 +674,16 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
     {
         jack_midi_event_get(&midiEvent, pMidiBuffer, i);
         uint8_t cmd = midiEvent.buffer[0] & 0xF0;
-        if(cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) {
+        if((cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) && pPlayer->last_note_played == midiEvent.buffer[1]) {
             // Note off
-            stop_playback(midiEvent.buffer[1] - 60);
-            set_position(midiEvent.buffer[1] - 60, 0);
+            stop_playback(pPlayer->handle);
+            pPlayer->last_note_played = 0;
         } else if(cmd == 0x90) {
             // Note on
-            start_playback(midiEvent.buffer[1] - 60);
+                stop_playback(pPlayer->handle);
+                set_position(pPlayer->handle, 0);
+                start_playback(pPlayer->handle);
+                pPlayer->last_note_played = midiEvent.buffer[1];
         } else if(cmd == 0xB0) {
             // CC
             switch(midiEvent.buffer[1])
@@ -760,6 +764,7 @@ int init() {
     pPlayer->buffer_size = 48000;
     pPlayer->buffer_count = 5;
     pPlayer->frames = 0;
+    pPlayer->last_note_played = 0;
 
     char *sServerName = NULL;
     jack_status_t nStatus;
