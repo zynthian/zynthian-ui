@@ -18,6 +18,7 @@
 #include "tinyosc.h" //provides OSC interface
 #include <arpa/inet.h> // provides inet_pton
 #include <fcntl.h> //provides fcntl
+#include <math.h> // provides pow
 
 #define MAX_PLAYERS 16 // Maximum quanity of audio players the library can host
 #define MAX_OSC_CLIENTS 5 // Maximum quantity of OSC clients
@@ -62,6 +63,8 @@ struct AUDIO_PLAYER {
     unsigned int buffer_size; // Quantity of frames read from file
     unsigned int buffer_count; // Factor by which ring buffer is larger than buffer
     uint8_t last_note_played; // MIDI note number of last note that triggered playback
+    double src_ratio; // Samplerate ratio of file
+    double pitch_shift; // Factor of pitch shift
 };
 
 // **** Global variables ****
@@ -282,7 +285,9 @@ void* file_thread_fn(void * param) {
     float pBufferIn[pPlayer->buffer_size]; // Buffer used to read sample data from file
     srcData.data_in = pBufferIn;
     srcData.data_out = pBufferOut;
-    srcData.src_ratio = (float)g_samplerate / pPlayer->sf_info.samplerate;
+    pPlayer->src_ratio = (float)g_samplerate / pPlayer->sf_info.samplerate;
+    srcData.src_ratio = pPlayer->src_ratio;
+    pPlayer->pitch_shift = 1.0;
     srcData.output_frames = pPlayer->buffer_size / pPlayer->sf_info.channels;
     size_t nUnusedFrames = 0; // Quantity of samples in input buffer not used by SRC
     size_t nMaxFrames = pPlayer->buffer_size / pPlayer->sf_info.channels;
@@ -308,6 +313,7 @@ void* file_thread_fn(void * param) {
             // Main thread has signalled seek within file
             jack_ringbuffer_reset(pPlayer->ringbuffer_a);
             jack_ringbuffer_reset(pPlayer->ringbuffer_b);
+            srcData.src_ratio = pPlayer->src_ratio * pPlayer->pitch_shift;
             size_t nNewPos = pPlayer->play_pos_frames;
             if(srcData.src_ratio)
                 nNewPos = pPlayer->play_pos_frames / srcData.src_ratio;
@@ -677,10 +683,12 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         if((cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) && pPlayer->last_note_played == midiEvent.buffer[1]) {
             // Note off
             stop_playback(pPlayer->handle);
+            pPlayer->pitch_shift = 1.0;
             pPlayer->last_note_played = 0;
         } else if(cmd == 0x90) {
             // Note on
                 stop_playback(pPlayer->handle);
+                pPlayer->pitch_shift = pow(1.059463094359, (60 - midiEvent.buffer[1]));
                 set_position(pPlayer->handle, 0);
                 start_playback(pPlayer->handle);
                 pPlayer->last_note_played = midiEvent.buffer[1];
