@@ -672,8 +672,16 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
     for(jack_nframes_t i = 0; i < nCount; i++)
     {
         jack_midi_event_get(&midiEvent, pMidiBuffer, i);
-        if((midiEvent.buffer[0] & 0xF0) == 0xB0)
-        {
+        uint8_t cmd = midiEvent.buffer[0] & 0xF0;
+        if(cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) {
+            // Note off
+            stop_playback(midiEvent.buffer[1] - 60);
+            set_position(midiEvent.buffer[1] - 60, 0);
+        } else if(cmd == 0x90) {
+            // Note on
+            start_playback(midiEvent.buffer[1] - 60);
+        } else if(cmd == 0xB0) {
+            // CC
             switch(midiEvent.buffer[1])
             {
                 case 1:
