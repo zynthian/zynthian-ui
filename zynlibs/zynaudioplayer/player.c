@@ -64,7 +64,9 @@ struct AUDIO_PLAYER {
     unsigned int buffer_count; // Factor by which ring buffer is larger than buffer
     uint8_t last_note_played; // MIDI note number of last note that triggered playback
     double src_ratio; // Samplerate ratio of file
-    double pitch_shift; // Factor of pitch shift
+    double src_ratio_inv; // Samplerate ratio inverted used for playback position updates
+    int pitch_shift; // Factor of pitch shift
+    unsigned int pitch_bend; // Amount of MIDI pitch bend applied (0..16383, centre=8192 (0x2000))
 };
 
 // **** Global variables ****
@@ -286,8 +288,11 @@ void* file_thread_fn(void * param) {
     srcData.data_in = pBufferIn;
     srcData.data_out = pBufferOut;
     pPlayer->src_ratio = (float)g_samplerate / pPlayer->sf_info.samplerate;
+    if(pPlayer->src_ratio)
+        pPlayer->src_ratio_inv = 1 / pPlayer->src_ratio;
     srcData.src_ratio = pPlayer->src_ratio;
-    pPlayer->pitch_shift = 1.0;
+    pPlayer->pitch_shift = 0;
+    pPlayer->pitch_bend = 0x2000;
     srcData.output_frames = pPlayer->buffer_size / pPlayer->sf_info.channels;
     size_t nUnusedFrames = 0; // Quantity of samples in input buffer not used by SRC
     size_t nMaxFrames = pPlayer->buffer_size / pPlayer->sf_info.channels;
@@ -313,11 +318,14 @@ void* file_thread_fn(void * param) {
             // Main thread has signalled seek within file
             jack_ringbuffer_reset(pPlayer->ringbuffer_a);
             jack_ringbuffer_reset(pPlayer->ringbuffer_b);
-            srcData.src_ratio = pPlayer->src_ratio * pPlayer->pitch_shift;
+            srcData.src_ratio = pPlayer->src_ratio * pow(1.059463094359, pPlayer->pitch_shift);
             size_t nNewPos = pPlayer->play_pos_frames;
-            if(srcData.src_ratio)
+            if(srcData.src_ratio) {
                 nNewPos = pPlayer->play_pos_frames / srcData.src_ratio;
+                pPlayer->src_ratio_inv = 1 / srcData.src_ratio;
+            }
             sf_seek(pFile, nNewPos, SEEK_SET);
+            DPRINTF("Seeking to %u frames (%fs) src ratio=%f\n", nNewPos, get_position(pPlayer->handle), srcData.src_ratio);
             pPlayer->file_read_status = LOADING;
             src_reset(pSrcState);
             nUnusedFrames = 0;
@@ -648,7 +656,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         pOutA[offset] *= pPlayer->gain;
         pOutB[offset] *= pPlayer->gain;
     }
-    pPlayer->play_pos_frames += count;
+    pPlayer->play_pos_frames += (count * pPlayer->src_ratio_inv);
     if(pPlayer->play_pos_frames > pPlayer->frames)
         pPlayer->play_pos_frames %= pPlayer->frames;
 
@@ -683,15 +691,19 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         if((cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) && pPlayer->last_note_played == midiEvent.buffer[1]) {
             // Note off
             stop_playback(pPlayer->handle);
-            pPlayer->pitch_shift = 1.0;
+            pPlayer->pitch_shift = 0;
             pPlayer->last_note_played = 0;
         } else if(cmd == 0x90) {
             // Note on
                 stop_playback(pPlayer->handle);
-                pPlayer->pitch_shift = pow(1.059463094359, (60 - midiEvent.buffer[1]));
+                pPlayer->pitch_shift = 60 - midiEvent.buffer[1];
                 set_position(pPlayer->handle, 0);
                 start_playback(pPlayer->handle);
                 pPlayer->last_note_played = midiEvent.buffer[1];
+        } else if(cmd == 0xE0) {
+            // Pitchbend
+            //!@todo Pitchbend does nothing - want it to affect live playback (different to note-on that affects whole file)
+            pPlayer->pitch_bend = midiEvent.buffer[1] + 128 * midiEvent.buffer[2];
         } else if(cmd == 0xB0) {
             // CC
             switch(midiEvent.buffer[1])

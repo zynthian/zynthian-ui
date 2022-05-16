@@ -157,7 +157,8 @@ class zynthian_gui_controller:
 			pass
 
 
-	def calculate_plot_values(self):
+	def calculate_plot_values(self, send=False):
+		val = None
 		if self.hiden or self.zctrl is None:
 			return
 
@@ -203,8 +204,6 @@ class zynthian_gui_controller:
 
 				self.value_plot = valplot
 				self.value_print = self.zctrl.labels[i]
-				#self.zctrl.set_value(self.value)
-				self.zctrl.set_value(val)
 
 			except Exception as err:
 				logging.error("Calc Error => %s" % (err))
@@ -215,20 +214,20 @@ class zynthian_gui_controller:
 			self.value_plot=self.value
 			if self.zctrl.midi_cc==0:
 				val = self.val0+self.value
-				self.zctrl.set_value(val)
 				self.value_print = str(val)
 			else:
 				if self.logarithmic:
 					val = self.zctrl.value_min*pow(self.scale_value, self.value/self.n_values)
 				else:
 					val = self.zctrl.value_min+self.value*self.scale_value
-				self.zctrl.set_value(val)
 				if self.format_print and val<1000 and val>-1000:
 					self.value_print = self.format_print.format(val)
 				else:
 					self.value_print = str(int(val))
 
 		self.refresh_plot_value = True
+		if val != None:
+			self.zctrl.set_value(val, send)
 
 		#print("VALUE: %s" % self.value)
 		#print("VALUE PLOT: %s" % self.value_plot)
@@ -624,7 +623,7 @@ class zynthian_gui_controller:
 			self.scale_plot=self.max_value
 
 		self.calculate_value_font_size()
-		self.set_value(val)
+		self.set_value(val, False, False)
 		self.setup_zyncoder()
 
 		#logging.debug("labels: "+str(zctrl.labels))
@@ -708,7 +707,7 @@ class zynthian_gui_controller:
 					if self.mult>1: v = self.mult*v
 					lib_zyncore.set_value_zynpot(self.index,int(v),int(send_zynpot))
 					#logging.debug("set_value_zyncoder {} ({}, {}) => {}".format(self.index, self.zctrl.symbol,self.zctrl.midi_cc,v))
-				self.calculate_plot_values()
+				self.calculate_plot_values(send_zynpot)
 			return True
 
 

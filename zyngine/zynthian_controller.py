@@ -288,11 +288,11 @@ class zynthian_controller:
 			if self.midi_learn_cc or self.midi_cc:
 				mval=self.get_ctrl_midi_val()
 
-			try:
+			if force_sending:
+				try:
 				# Send value using engine method...
-				self.engine.send_controller_value(self)
-			except:
-				if force_sending:
+					self.engine.send_controller_value(self)
+				except:
 					try:
 						# Send value using OSC/MIDI ...
 						if self.osc_path:

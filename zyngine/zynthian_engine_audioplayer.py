@@ -159,11 +159,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['play',None,transport,['stopped','playing']],
 				['position',None,0.0,dur],
 				['quality',None,qual,[quals,[0,1,2,3,4]]],
-				['track',None,0,[['mixdown','1+2'],[-1,0]]]
+				['track',None,0,[['mixdown','1+2'],[-1,0]]],
+				['buffer size',None,48000,[48000,96000,144000,192000,240000,288000,336000,384000,432000]],
+				['buffer count',None,5,10],
+				['debug',None,0,1]
 			]
 			self._ctrl_screens=[
 				['main',['gain','loop','play','position']],
-				['config',['quality','track']]
+				['config',['quality','track','debug']]
 			]
 		else:
 			self._ctrls=[
@@ -224,6 +227,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_quality(zctrl.value)
 		elif zctrl.symbol == "track":
 			self.player.set_track(zctrl.value)
+		elif zctrl.symbol == "buffer size" and zctrl.value > 32000:
+			self.player.set_buffer_size(zctrl.value)
+		elif zctrl.symbol == "buffer count" and zctrl.value > 0:
+			self.player.set_buffer_count(zctrl.value)
+		elif zctrl.symbol == 'debug':
+			self.player.enable_debug(zctrl.value == 1)
 
 
 	def get_monitors_dict(self):
