@@ -48,19 +48,19 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.filename = ""
 		self.duration = 0.0
 		self.bg_color = "000000"
-		self.waveform_color = "86fcc7" # Audition
-		#self.waveform_color = "3f4d9b" # Audacity
+		self.waveform_color = "6070B0"
 
 
 	def create_gui(self):
 		super().create_gui()
 
 		self.loading_text = self.mon_canvas.create_text(
-			self.width / 2,
-			self.height / 2,
+			int(self.width / 2),
+			int(self.height / 2),
 			anchor=tkinter.CENTER,
-			text="Creating waveform...",
-			fill=zynthian_gui_config.color_tx_off
+			font=(zynthian_gui_config.font_family, int(1.5 * zynthian_gui_config.font_size)),
+			fill=zynthian_gui_config.color_tx_off,
+			text="Creating waveform..."
 		)
 		
 		self.waveform = self.mon_canvas.create_image(
@@ -79,14 +79,14 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		)
 
 		self.info_text = self.mon_canvas.create_text(
-			int(self.width / 2),
+			self.width-int(0.5 * zynthian_gui_config.font_size),
 			self.height,
-			anchor = tkinter.S,
-			text="00:00",
-			justify=tkinter.CENTER,
+			anchor = tkinter.SE,
+			justify=tkinter.RIGHT,
 			width=self.width,
-			font=(zynthian_gui_config.font_family, int(self.width/16)),
-			fill=zynthian_gui_config.color_panel_tx
+			font=(zynthian_gui_config.font_family, int(1.5 * zynthian_gui_config.font_size)),
+			fill=zynthian_gui_config.color_panel_tx,
+			text="00:00"
 		)
 
 
@@ -107,6 +107,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					x,
 					self.height
 				)
+			if self.duration != self.monitors["duration"]:
+				self.duration = self.monitors["duration"]
+				self.mon_canvas.itemconfigure(self.info_text, text="{:02d}:{:02d}".format(int(self.duration / 60), int(self.duration % 60)), state=tkinter.NORMAL)
 			if dur and self.filename != self.monitors["filename"]:
 				self.mon_canvas.itemconfigure(self.waveform, state=tkinter.HIDDEN)
 				self.mon_canvas.itemconfigure(self.loading_text, text="Creating waveform...")
@@ -126,9 +129,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					self.mon_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
 				else:
 					self.mon_canvas.itemconfigure(self.loading_text, text="Cannot display waveform")
-			if self.duration != self.monitors["duration"]:
-				self.duration = self.monitors["duration"]
-				self.mon_canvas.itemconfigure(self.info_text, text="{:02d}:{:02d}".format(int(self.duration / 60), int(self.duration % 60)), state=tkinter.NORMAL)
 
 		except Exception as e:
 			logging.error(e)
