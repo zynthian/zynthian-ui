@@ -152,18 +152,29 @@ void set_gain(int player_handle, float gain);
 */
 float get_gain(int player_handle);
 
-/** @brief  Set track(s) to playback
+/** @brief  Set track to playback to left output
 *   @param  player_handle Handle of player provided by init_player()
-*   @param  track Index of first track to play or -1 for mix of all tracks
-*   @note   Alternate tracks are sent to each output as stereo mix
+*   @param  track Index of track to play to left output or -1 for mix of all odd tracks
 */
-void set_playback_track(int player_handle, int track);
+void set_track_a(int player_handle, int track);
 
-/** @brief  Get track(s) to playback
+/** @brief  Set track to playback to right output
 *   @param  player_handle Handle of player provided by init_player()
-*   @retval int Index of first track to play or -1 for mix of all tracks
+*   @param  track Index of track to play to right output or -1 for mix of all even tracks
 */
-int get_playback_track(int player_handle);
+void set_track_b(int player_handle, int track);
+
+/** @brief  Get track to playback to left output
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval int Index of track to play or -1 for mix of all tracks
+*/
+int get_track_a(int player_handle);
+
+/** @brief  Get track to playback to right output
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval int Index of track to play or -1 for mix of all tracks
+*/
+int get_track_b(int player_handle);
 
 /** @brief  Set size of file read buffers
 *   @param  size Size of buffers in frames

@@ -59,7 +59,8 @@ struct AUDIO_PLAYER {
     unsigned int src_quality;
     char filename[128];
     float gain; // Audio level (volume) 0..1
-    int playback_track; // Which stereo pair of tracks to playback (-1 to mix all stero pairs)
+    int track_a; // Which track to playback to left output (-1 to mix all stereo pairs)
+    int track_b; // Which track to playback to right output (-1 to mix all stereo pairs)
     unsigned int buffer_size; // Quantity of frames read from file
     unsigned int buffer_count; // Factor by which ring buffer is larger than buffer
     uint8_t last_note_played; // MIDI note number of last note that triggered playback
@@ -235,9 +236,12 @@ void* osc_thread_fn(void * param) {
                             } else if(!strcmp(path, "/gain")) {
                                 if(osc_msg.format[0] == 'f')
                                     set_gain(player, tosc_getNextFloat(&osc_msg));
-                            } else if(!strcmp(path, "/track")) {
+                            } else if(!strcmp(path, "/track_a")) {
                                 if(osc_msg.format[0] == 'i')
-                                    set_playback_track(player, tosc_getNextInt32(&osc_msg));
+                                    set_track_a(player, tosc_getNextInt32(&osc_msg));
+                            } else if(!strcmp(path, "/track_b")) {
+                                if(osc_msg.format[0] == 'i')
+                                    set_track_b(player, tosc_getNextInt32(&osc_msg));
                             } else if(!strcmp(path, "/buffersize")) {
                                 if(osc_msg.format[0] == 'i')
                                     set_buffer_size(player, tosc_getNextInt32(&osc_msg));
@@ -297,7 +301,7 @@ void* file_thread_fn(void * param) {
     size_t nUnusedFrames = 0; // Quantity of samples in input buffer not used by SRC
     size_t nMaxFrames = pPlayer->buffer_size / pPlayer->sf_info.channels;
     if(pPlayer->sf_info.samplerate)
-        pPlayer->frames = pPlayer->sf_info.frames * g_samplerate / pPlayer->sf_info.samplerate;
+        pPlayer->frames = pPlayer->sf_info.frames * pPlayer->src_ratio;
     else
         pPlayer->frames = pPlayer->sf_info.frames;
     int nError;
@@ -305,8 +309,8 @@ void* file_thread_fn(void * param) {
     sprintf(g_oscpath, "/player%d/load", pPlayer->handle);
     sendOscString(g_oscpath, pPlayer->filename);
     sprintf(g_oscpath, "/player%d/position", pPlayer->handle);
-    size_t position = get_position(pPlayer->handle);
-    sendOscInt(g_oscpath, position);
+    size_t nPosition = get_position(pPlayer->handle);
+    sendOscInt(g_oscpath, nPosition);
     sprintf(g_oscpath, "/player%d/duration", pPlayer->handle);
     sendOscFloat(g_oscpath, get_duration(pPlayer->handle));
     uint8_t play_state = pPlayer->play_state;
@@ -393,40 +397,42 @@ void* file_thread_fn(void * param) {
                     sprintf(g_oscpath, "/player%d/transport", pPlayer->handle);
                     sendOscInt(g_oscpath, play_state);
                 }
-                if((int)(get_position(pPlayer->handle)) != position) {
-                    position = get_position(pPlayer->handle);
+                if((int)(get_position(pPlayer->handle)) != nPosition) {
+                    nPosition = get_position(pPlayer->handle);
                     sprintf(g_oscpath, "/player%d/position", pPlayer->handle);
-                    sendOscInt(g_oscpath, position);
+                    sendOscInt(g_oscpath, nPosition);
                 }
                 usleep(1000);
-                if(pPlayer->file_read_status == SEEKING || pPlayer->file_open == 0)
+                if(pPlayer->file_open == 0)
                     break;
             }
 
-            if(pPlayer->file_open == 2 && pPlayer->sf_info.channels > pPlayer->playback_track) {
+            if(pPlayer->file_open == 2 && pPlayer->file_read_status == LOADING) {
                 // Demux samples and populate playback ring buffers
                 for(size_t frame = 0; frame < nFramesRead; ++frame) {
                     float fA = 0.0, fB = 0.0;
                     size_t sample = frame * pPlayer->sf_info.channels;
-                    if(pPlayer->sf_info.channels == 1) {
+                    if(pPlayer->sf_info.channels > 1) {
+                        if(pPlayer->track_a < 0) {
+                            // Send sum of odd channels to A
+                            for(int track = 0; track < pPlayer->sf_info.channels; track += 2)
+                                fA += pBufferOut[sample + track] / (pPlayer->sf_info.channels / 2);
+                        } else {
+                            // Send pPlayer->track to A
+                            fA = pBufferOut[sample + pPlayer->track_a];
+                        }
+                        if(pPlayer->track_b < 0) {
+                            // Send sum of odd channels to B
+                            for(int track = 0; track + 1 < pPlayer->sf_info.channels; track += 2)
+                                fB += pBufferOut[sample + track + 1] / (pPlayer->sf_info.channels / 2);
+                        } else {
+                            // Send pPlayer->track to B
+                            fB = pBufferOut[sample + pPlayer->track_b];
+                        }
+                    } else {
                         // Mono source so send to both outputs
                         fA = pBufferOut[sample] / 2;
                         fB = pBufferOut[sample] / 2;
-                    } else if(pPlayer->playback_track < 0) {
-                        // Send sum of odd channels to A and even channels to B
-                        for(int track = 0; track < pPlayer->sf_info.channels; ++track) {
-                            if(track % 2)
-                                fB += pBufferOut[sample + track] / (pPlayer->sf_info.channels / 2);
-                            else
-                                fA += pBufferOut[sample + track] / (pPlayer->sf_info.channels / 2);
-                        }
-                    } else {
-                        // Send pPlayer->playback_track to A and pPlayer->playback_track + 1 to B
-                        fA = pBufferOut[sample];
-                        if(pPlayer->playback_track + 1 < pPlayer->sf_info.channels)
-                            fB = pBufferOut[sample + 1];
-                        else
-                            fB = pBufferOut[sample];
                     }
                     jack_ringbuffer_write(pPlayer->ringbuffer_b, (const char*)(&fB), sizeof(float));
                     if(sizeof(float) < jack_ringbuffer_write(pPlayer->ringbuffer_a, (const char*)(&fA), sizeof(float))) {
@@ -465,7 +471,8 @@ uint8_t load(int player_handle, const char* filename) {
     if(pPlayer == NULL)
         return 0;
     unload(player_handle);
-    pPlayer->playback_track = 0;
+    pPlayer->track_a = 0;
+    pPlayer->track_b = 0;
     strcpy(pPlayer->filename, filename);
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -518,10 +525,17 @@ float get_duration(int player_handle) {
 
 void set_position(int player_handle, float time) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer == NULL || time >= get_duration(player_handle))
+    if(pPlayer == NULL)
         return;
-    pPlayer->play_pos_frames = time * g_samplerate;
+    if(time >= get_duration(player_handle))
+        time = get_duration(player_handle);
+    double frames = pPlayer->src_ratio * time * pPlayer->sf_info.samplerate;
+    if(frames >= pPlayer->frames)
+        frames = pPlayer->frames -1;
+    pPlayer->play_pos_frames = frames;
     pPlayer->file_read_status = SEEKING;
+    jack_ringbuffer_reset(pPlayer->ringbuffer_b);
+    jack_ringbuffer_reset(pPlayer->ringbuffer_a);
     DPRINTF("New position requested, setting loading status to SEEKING\n");
     sprintf(g_oscpath, "/player%d/position", player_handle);
     sendOscInt(g_oscpath, (int)time);
@@ -529,9 +543,9 @@ void set_position(int player_handle, float time) {
 
 float get_position(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer == NULL)
-        return 0.0;
-    return (float)pPlayer->play_pos_frames / g_samplerate;
+    if(pPlayer && pPlayer->sf_info.samplerate)
+        return pPlayer->src_ratio_inv * pPlayer->play_pos_frames / pPlayer->sf_info.samplerate;
+    return 0.0;
 }
 
 void enable_loop(int player_handle, uint8_t bLoop) {
@@ -656,8 +670,8 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         pOutA[offset] *= pPlayer->gain;
         pOutB[offset] *= pPlayer->gain;
     }
-    pPlayer->play_pos_frames += (count * pPlayer->src_ratio_inv);
-    if(pPlayer->play_pos_frames > pPlayer->frames)
+    pPlayer->play_pos_frames += count;
+    if(pPlayer->play_pos_frames >= pPlayer->frames)
         pPlayer->play_pos_frames %= pPlayer->frames;
 
     if(pPlayer->play_state == STOPPING || pPlayer->play_state == PLAYING && eof) {
@@ -779,7 +793,8 @@ int init() {
     pPlayer->src_quality = SRC_SINC_FASTEST;
     pPlayer->filename[0] = '\0';
     pPlayer->gain = 1.0;
-    pPlayer->playback_track = 0;
+    pPlayer->track_a = 0;
+    pPlayer->track_b = 0;
     pPlayer->handle = player_handle;
     pPlayer->buffer_size = 48000;
     pPlayer->buffer_count = 5;
@@ -874,23 +889,44 @@ float get_gain(int player_handle) {
     return pPlayer->gain;
 }
 
-void set_playback_track(int player_handle, int track) {
+void set_track_a(int player_handle, int track) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(pPlayer == NULL)
         return;
     if(pPlayer->file_open == 2 && track < pPlayer->sf_info.channels) {
         if(pPlayer->sf_info.channels == 1)
-            pPlayer->playback_track = 0;
+            pPlayer->track_a = 0;
         else
-            pPlayer->playback_track = track;
+            pPlayer->track_a = track;
     }
+    set_position(player_handle, get_position(player_handle));
 }
 
-int get_playback_track(int player_handle) {
+void set_track_b(int player_handle, int track) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(pPlayer == NULL)
+        return;
+    if(pPlayer->file_open == 2 && track < pPlayer->sf_info.channels) {
+        if(pPlayer->sf_info.channels == 1)
+            pPlayer->track_b = 0;
+        else
+            pPlayer->track_b = track;
+    }
+    set_position(player_handle, get_position(player_handle));
+}
+
+int get_track_a(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(pPlayer == NULL)
         return 0;
-    return pPlayer->playback_track;
+    return pPlayer->track_a;
+}
+
+int get_track_b(int player_handle) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(pPlayer == NULL)
+        return 0;
+    return pPlayer->track_b;
 }
 
 void set_buffer_size(int player_handle, unsigned int size) {

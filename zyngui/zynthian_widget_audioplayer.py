@@ -47,6 +47,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.play_pos = 0.0
 		self.filename = ""
 		self.duration = 0.0
+		self.samplerate = 44100
 		self.bg_color = "000000"
 		self.waveform_color = "6070B0"
 
@@ -58,9 +59,13 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			int(self.width / 2),
 			int(self.height / 2),
 			anchor=tkinter.CENTER,
-			font=(zynthian_gui_config.font_family, int(1.5 * zynthian_gui_config.font_size)),
+			font=(
+				zynthian_gui_config.font_family,
+				int(1.5 * zynthian_gui_config.font_size)
+			),
+			justify=tkinter.CENTER,
 			fill=zynthian_gui_config.color_tx_off,
-			text="Creating waveform..."
+			text="Creating\nwaveform..."
 		)
 		
 		self.waveform = self.mon_canvas.create_image(
@@ -96,7 +101,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.refreshing = True
 		try:
 			pos = self.monitors["pos"]
-			dur = int(self.monitors["duration"])
+			dur = self.monitors["duration"]
 			if dur and self.play_pos != pos:
 				self.play_pos = pos
 				x =  int(pos / dur * self.width)
@@ -107,28 +112,29 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					x,
 					self.height
 				)
-			if self.duration != self.monitors["duration"]:
-				self.duration = self.monitors["duration"]
-				self.mon_canvas.itemconfigure(self.info_text, text="{:02d}:{:02d}".format(int(self.duration / 60), int(self.duration % 60)), state=tkinter.NORMAL)
+			if self.duration != dur:
+				self.duration = dur
+				self.mon_canvas.itemconfigure(self.info_text, text="{:02d}:{:02d}".format(int(dur / 60), int(dur % 60)), state=tkinter.NORMAL)
 			if dur and self.filename != self.monitors["filename"]:
 				self.mon_canvas.itemconfigure(self.waveform, state=tkinter.HIDDEN)
-				self.mon_canvas.itemconfigure(self.loading_text, text="Creating waveform...")
+				self.mon_canvas.itemconfigure(self.loading_text, text="Creating\nwaveform...")
 				waveform_png = "{}.png".format(self.monitors["filename"])
 				self.filename = self.monitors["filename"]
 				if not os.path.exists(waveform_png) or os.path.getmtime(self.filename) > os.path.getmtime(waveform_png):
-					os.system('audiowaveform -i "{}" -o "{}" --split-channels -w {} -h {} --zoom auto --background-color {} --waveform-color {} --no-axis-labels > /dev/null 2>&1'.format(
+					cmd = 'audiowaveform -i "{}" -o "{}" --split-channels -w {} -h {} --zoom auto --background-color {} --waveform-color {} --no-axis-labels > /dev/null 2>&1'.format(
 						self.filename,
 						waveform_png,
 						self.width,
 						self.height,
 						self.bg_color,
 						self.waveform_color
-					))
+					)
+					os.system(cmd)
 				if os.path.exists(waveform_png):
 					self.img=ImageTk.PhotoImage(file=waveform_png)
 					self.mon_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
 				else:
-					self.mon_canvas.itemconfigure(self.loading_text, text="Cannot display waveform")
+					self.mon_canvas.itemconfigure(self.loading_text, text="Cannot\ndisplay\nwaveform")
 
 		except Exception as e:
 			logging.error(e)

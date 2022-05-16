@@ -12,7 +12,9 @@ Control messages (recieved):
     /position [f=position] Move playhead to position in seconds from start of file
     /loop [i=mode] Set loop mode [0=one-shot, 1=loop at end of file]
     /gain [f=gain] Set gain factor [0..2]
-    /track [i=track] Select base track for playback [-1=stereo mix-down of all pairs of tracks, 0..quantity of tracks=stereo from 2 consecutive tracks]
+    /track_a [i=track] Select track for playback to left [-1..quantity of tracks, -1 for mix of odd tracks]
+        Note mono files always present as mono on both outputs
+    /track_b [i=track] Select track for playback to right [-1..quantity of track, -1 for mix of even tracks]
         Note mono files always present as mono on both outputs
     /quality [i=quality] Set samplerate conversion quality [0=best, 1=medium, 2=fastest, 3=zero order hold, 4=linear]
         Note change of quality only occurs after reloading file and only affects files with non-naitive samplerate

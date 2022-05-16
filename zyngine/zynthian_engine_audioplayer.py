@@ -68,13 +68,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['play',None,'stopped',['stopped','playing']],
 			['position',None,0.0,1.0],
 			['quality',None,'fastest',[['best','medium','fastest','zero order','linear'],[0,1,2,3,4]]],
-			['track',None,0,[['mixdown','1+2'],[-1,0]]]
+			['left track',None,0,[['mixdown','1','2'],[-1,0,1]]],
+			['right track',None,0,[['mixdown','2','2'],[-1,0,1]]]
 		]
 
 		# Controller Screens
 		self._ctrl_screens=[
 			['main',['gain','loop','play','position']],
-			['config',['quality','track']]
+			['config',['left track','quality','right track']]
 		]
 
 		self.reset()
@@ -153,20 +154,31 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		#TODO: Set gain control as logarithmic
 		#TODO: Player jumps to postition when preset window cancelled
 		if dur:
+			track_labels = ['mixdown']
+			track_values = [-1]
+			channels = self.player.get_channels()
+			if channels > 1:
+				default_b = 1
+			else:
+				default_b = 0
+			for track in range(channels):
+				track_labels.append('{}'.format(track + 1))
+				track_values.append(track)
 			self._ctrls=[
 				['gain',None,gain,2.0],
 				['loop',None,loop,['one-shot','looping']],
 				['play',None,transport,['stopped','playing']],
 				['position',None,0.0,dur],
 				['quality',None,qual,[quals,[0,1,2,3,4]]],
-				['track',None,0,[['mixdown','1+2'],[-1,0]]],
+				['left track',None,0,[track_labels,track_values]],
+				['right track',None,default_b,[track_labels,track_values]],
 				['buffer size',None,48000,[48000,96000,144000,192000,240000,288000,336000,384000,432000]],
 				['buffer count',None,5,10],
 				['debug',None,0,1]
 			]
 			self._ctrl_screens=[
 				['main',['gain','loop','play','position']],
-				['config',['quality','track','debug']]
+				['config',['left track','quality','right track','debug']]
 			]
 		else:
 			self._ctrls=[
@@ -225,8 +237,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				self.player.stop_playback()
 		elif zctrl.symbol == "quality":
 			self.player.set_quality(zctrl.value)
-		elif zctrl.symbol == "track":
-			self.player.set_track(zctrl.value)
+		elif zctrl.symbol == "left track":
+			self.player.set_track_a(zctrl.value)
+		elif zctrl.symbol == "right track":
+			self.player.set_track_b(zctrl.value)
 		elif zctrl.symbol == "buffer size" and zctrl.value > 32000:
 			self.player.set_buffer_size(zctrl.value)
 		elif zctrl.symbol == "buffer count" and zctrl.value > 0:
@@ -242,6 +256,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.monitors_dict["state"] = self.player.get_playback_state()
 			self.monitors_dict["pos"] = self.player.get_position()
 			self.monitors_dict["duration"] = self.player.get_duration()
+			self.monitors_dict["samplerate"] = self.player.get_samplerate()
 			self.monitors_dict["filename"] = self.player.get_filename()
 		except Exception as e:
 			logging.error(e)

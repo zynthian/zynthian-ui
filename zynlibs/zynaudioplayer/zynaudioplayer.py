@@ -247,21 +247,38 @@ class zynaudioplayer():
 		return self.libaudioplayer.get_gain(self.handle)
 
 
- 	#	Set playback base track
-	#	track: Index of track to playback to left channel (next track is played to righ channel), -1 to mix odd to left and even to right
+	#	Set playback track for left output
+	#	track: Index of track to playback to left channel, -1 to mix odd tracks
 	#	Mono files are played to both outputs
-	def set_playback_track(self, track):
+	def set_track_a(self, track):
 		if self.handle is None:
 			return
-		self.libaudioplayer.set_playback_track(self.handle, track)
+		self.libaudioplayer.set_track_a(self.handle, track)
 
 
- 	#	Get playback base track
-	#	Returns: Index of track to playback to left channel (next track is played to righ channel), -1 to mix odd to left and even to right
-	def get_playback_track(self):
+	#	Set playback track for right output
+	#	track: Index of track to playback to right channel, -1 to mix even tracks
+	#	Mono files are played to both outputs
+	def set_track_b(self, track):
+		if self.handle is None:
+			return
+		self.libaudioplayer.set_track_b(self.handle, track)
+
+
+	#	Get playback track for left output
+	#	Returns: Index of track to playback to left channel, -1 to mix odd to left
+	def get_track_a(self):
 		if self.handle is None:
 			return 0
-		return self.libaudioplayer.get_playback_track(self.handle)
+		return self.libaudioplayer.get_track_a(self.handle)
+
+
+	#	Get playback track for right output
+	#	Returns: Index of track to playback to right channel, -1 to mix even to left
+	def get_track_b(self):
+		if self.handle is None:
+			return 0
+		return self.libaudioplayer.get_track_b(self.handle)
 
 
 	#	Set file read buffer size
