@@ -15,14 +15,15 @@
 #include <pthread.h> //provides multithreading
 #include <unistd.h> //provides usleep
 #include <stdlib.h> //provides exit
-#include "tinyosc.h" //provides OSC interface
 #include <arpa/inet.h> // provides inet_pton
 #include <fcntl.h> //provides fcntl
 #include <math.h> // provides pow
 
+#ifdef ENABLE_OSC
+#include "osc.h"
+#endif //ENABLE_OSC
+
 #define MAX_PLAYERS 16 // Maximum quanity of audio players the library can host
-#define MAX_OSC_CLIENTS 5 // Maximum quantity of OSC clients
-#define OSC_PORT 9000 // UDP/IP port for OSC communication
 
 enum playState {
     STOPPED		= 0,
@@ -74,101 +75,11 @@ struct AUDIO_PLAYER {
 struct AUDIO_PLAYER * g_players[MAX_PLAYERS];
 jack_nframes_t g_samplerate = 44100; // Playback samplerate set by jackd
 uint8_t g_debug = 0;
-char g_oscbuffer[1024]; // Used to send OSC messages
-char g_oscpath[32]; // OSC path
-int g_oscfd = -1; // File descriptor for OSC socket
-int g_bOsc = 0; // True if OSC client subscribed
-struct sockaddr_in g_oscClient[MAX_OSC_CLIENTS]; // Array of registered OSC clients
-pthread_t g_osc_thread; // ID of OSC listener thread
-uint8_t g_run_osc = 1; // 1 to keep OSC listening thread running
 
 #define DPRINTF(fmt, args...) if(g_debug) printf(fmt, ## args)
     
 // **** Internal (non-public) functions ****
 
-//!@todo Abstract OSC to separate library to allow reuse (used in mixer too)
-
-void sendOscFloat(const char* path, float value) {
-    if(g_oscfd == -1)
-        return;
-    int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "f", value);
-    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        if(g_oscClient[i].sin_addr.s_addr == 0)
-            continue;
-        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM|MSG_DONTWAIT, (const struct sockaddr *) &g_oscClient[i], sizeof(g_oscClient[i]));
-    }
-}
-
-void sendOscInt(const char* path, int value) {
-    if(g_oscfd == -1)
-        return;
-    int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "i", value);
-    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        if(g_oscClient[i].sin_addr.s_addr == 0)
-            continue;
-        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM|MSG_DONTWAIT, (const struct sockaddr *) &g_oscClient[i], sizeof(g_oscClient[i]));
-    }
-}
-
-void sendOscString(const char* path, const char* value) {
-    if(g_oscfd == -1)
-        return;
-    if(strlen(value) >= sizeof(g_oscbuffer))
-        return;
-    int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "s", value);
-    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        if(g_oscClient[i].sin_addr.s_addr == 0)
-            continue;
-        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM|MSG_DONTWAIT, (const struct sockaddr *) &g_oscClient[i], sizeof(g_oscClient[i]));
-    }
-}
-
-int addOscClient(const char* client) {
-    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        if(g_oscClient[i].sin_addr.s_addr != 0)
-            continue;
-        if(inet_pton(AF_INET, client, &(g_oscClient[i].sin_addr)) != 1) {
-            g_oscClient[i].sin_addr.s_addr = 0;
-            fprintf(stderr, "libzynaudioplayer: Failed to register client %s\n", client);
-            return -1;
-        }
-        fprintf(stderr, "libzynaudioplayer: Added OSC client %d: %s\n", i, client);
-        for(int player_handle = 0; player_handle < MAX_PLAYERS; ++player_handle) {
-            struct AUDIO_PLAYER * pPlayer = g_players[player_handle];
-            if(!pPlayer)
-                continue;
-            sprintf(g_oscpath, "/player%d/open", pPlayer->handle);
-            sendOscString(g_oscpath, pPlayer->filename);
-            sprintf(g_oscpath, "/player%d/gain", pPlayer->handle);
-            sendOscFloat(g_oscpath, pPlayer->gain);
-            sprintf(g_oscpath, "/player%d/position", pPlayer->handle);
-            sendOscInt(g_oscpath, (int)(get_position(pPlayer->handle)));
-            sprintf(g_oscpath, "/player%d/duration", pPlayer->handle);
-            sendOscFloat(g_oscpath, get_duration(pPlayer->handle));
-            sprintf(g_oscpath, "/player%d/loop", pPlayer->handle);
-            sendOscInt(g_oscpath, pPlayer->loop);
-        }
-        g_bOsc = 1;
-        return i;
-    }
-    fprintf(stderr, "libzynaudioplayer: Not adding OSC client %s - Maximum client count reached [%d]\n", client, MAX_OSC_CLIENTS);
-    return -1;
-}
-
-void removeOscClient(const char* client) {
-    char pClient[sizeof(struct in_addr)];
-    if(inet_pton(AF_INET, client, pClient) != 1)
-        return;
-    g_bOsc = 0;
-    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        if(memcmp(pClient, &g_oscClient[i].sin_addr.s_addr, 4) == 0) {
-            g_oscClient[i].sin_addr.s_addr = 0;
-            fprintf(stderr, "libzynaudioplayer: Removed OSC client %d: %s\n", i, client);
-        }
-        if(g_oscClient[i].sin_addr.s_addr != 0)
-            g_bOsc = 1;
-    }
-}
 
 static inline struct AUDIO_PLAYER * get_player(int player_handle) {
     if(player_handle > MAX_PLAYERS || player_handle < 0)
@@ -176,6 +87,7 @@ static inline struct AUDIO_PLAYER * get_player(int player_handle) {
     return g_players[player_handle];
 }
 
+#ifdef ENABLE_OSC
 void* osc_thread_fn(void * param) {
     char buffer[2048]; // declare a 2Kb buffer to read packet data into
     int len = 0;
@@ -260,6 +172,8 @@ void* osc_thread_fn(void * param) {
     printf("OSC server stopped\n");
     pthread_exit(NULL);
 }
+#endif //ENABLE_OSC
+
 
 void* file_thread_fn(void * param) {
     struct AUDIO_PLAYER * pPlayer = (struct AUDIO_PLAYER *) (param);
@@ -306,6 +220,8 @@ void* file_thread_fn(void * param) {
         pPlayer->frames = pPlayer->sf_info.frames;
     int nError;
     SRC_STATE* pSrcState = src_new(pPlayer->src_quality, pPlayer->sf_info.channels, &nError);
+
+#ifdef ENABLE_OSC
     sprintf(g_oscpath, "/player%d/load", pPlayer->handle);
     sendOscString(g_oscpath, pPlayer->filename);
     sprintf(g_oscpath, "/player%d/position", pPlayer->handle);
@@ -316,6 +232,7 @@ void* file_thread_fn(void * param) {
     uint8_t play_state = pPlayer->play_state;
     sprintf(g_oscpath, "/player%d/transport", pPlayer->handle);
     sendOscInt(g_oscpath, play_state);
+#endif //ENABLE_OSC
 
     while(pPlayer->file_open == 2) {
         if(pPlayer->file_read_status == SEEKING) {
@@ -391,6 +308,7 @@ void* file_thread_fn(void * param) {
             
             // Wait until there is sufficient space in ring buffer to add new sample data
             while(jack_ringbuffer_write_space(pPlayer->ringbuffer_a) < nFramesRead * sizeof(float)) {
+#ifdef ENABLE_OSC
                 // Send dynamic OSC notifications within this thread, not jack process
                 if(pPlayer->play_state != play_state) {
                     play_state = pPlayer->play_state;
@@ -402,6 +320,8 @@ void* file_thread_fn(void * param) {
                     sprintf(g_oscpath, "/player%d/position", pPlayer->handle);
                     sendOscInt(g_oscpath, nPosition);
                 }
+#endif //ENABLE_OSC
+
                 usleep(1000);
                 if(pPlayer->file_open == 0)
                     break;
@@ -457,8 +377,12 @@ void* file_thread_fn(void * param) {
     jack_ringbuffer_free(pPlayer->ringbuffer_a);
     jack_ringbuffer_free(pPlayer->ringbuffer_b);
     pSrcState = src_delete(pSrcState);
+
+#ifdef ENABLE_OSC
     sprintf(g_oscpath, "/player%d/load", pPlayer->handle);
     sendOscString(g_oscpath, pPlayer->filename);
+#endif //ENABLE_OSC
+
     DPRINTF("File reader thread ended\n");
     pthread_exit(NULL);
 }
@@ -537,8 +461,11 @@ void set_position(int player_handle, float time) {
     jack_ringbuffer_reset(pPlayer->ringbuffer_b);
     jack_ringbuffer_reset(pPlayer->ringbuffer_a);
     DPRINTF("New position requested, setting loading status to SEEKING\n");
+
+#ifdef ENABLE_OSC
     sprintf(g_oscpath, "/player%d/position", player_handle);
     sendOscInt(g_oscpath, (int)time);
+#endif //ENABLE_OSC
 }
 
 float get_position(int player_handle) {
@@ -557,8 +484,11 @@ void enable_loop(int player_handle, uint8_t bLoop) {
         pPlayer->file_read_status = LOOPING;
         DPRINTF("Looping requested, setting loading status to SEEKING\n");
     }
+
+#ifdef ENABLE_OSC
     sprintf(g_oscpath, "/player%d/loop", player_handle);
     sendOscInt(g_oscpath, bLoop);
+#endif //ENABLE_OSC
 }
 
 uint8_t is_loop(int player_handle) {
@@ -621,9 +551,12 @@ int get_format(int player_handle) {
 void end() {
     for(int player_handle = 0; player_handle < MAX_PLAYERS; ++player_handle)
         remove_player(player_handle);
+
+#ifdef ENABLE_OSC
     g_run_osc = 0;
     void* status;
     pthread_join(g_osc_thread, &status);
+#endif //ENABLE_OSC
 }
 
 void remove_player(int player_handle) {
@@ -751,6 +684,7 @@ int on_jack_samplerate(jack_nframes_t nFrames, void *pArgs) {
 }
  
 static void lib_init(void) { 
+#ifdef ENABLE_OSC
     // Initialise OSC clients
     g_oscfd = socket(AF_INET, SOCK_DGRAM, 0);
     for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
@@ -767,6 +701,7 @@ static void lib_init(void) {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     if(pthread_create(&g_osc_thread, &attr, osc_thread_fn, NULL))
         fprintf(stderr, "libzynaudioplayer error: failed to create OSC listening thread\n");
+#endif //ENABLE_OSC
 
     printf("libzynaudioplayer initialised\n");
 }
@@ -878,8 +813,11 @@ void set_gain(int player_handle, float gain) {
     if(gain < 0 || gain > 2)
         return;
     pPlayer->gain = gain;
+
+#ifdef ENABLE_OSC
     sprintf(g_oscpath, "/player%d/gain", player_handle);
     sendOscFloat(g_oscpath, gain);
+#endif //ENABLE_OSC
 }
 
 float get_gain(int player_handle) {
@@ -998,3 +936,27 @@ unsigned int get_player_count() {
             ++count;
     return count;
 }
+
+#ifdef ENABLE_OSC
+int addOscClient(const char* client) {
+    int index = _addOscClient(client);
+    if(index != -1) {
+        for(int player_handle = 0; player_handle < MAX_PLAYERS; ++player_handle) {
+            struct AUDIO_PLAYER * pPlayer = g_players[player_handle];
+            if(!pPlayer)
+                continue;
+            sprintf(g_oscpath, "/player%d/open", pPlayer->handle);
+            sendOscString(g_oscpath, pPlayer->filename);
+            sprintf(g_oscpath, "/player%d/gain", pPlayer->handle);
+            sendOscFloat(g_oscpath, pPlayer->gain);
+            sprintf(g_oscpath, "/player%d/position", pPlayer->handle);
+            sendOscInt(g_oscpath, (int)(get_position(pPlayer->handle)));
+            sprintf(g_oscpath, "/player%d/duration", pPlayer->handle);
+            sendOscFloat(g_oscpath, get_duration(pPlayer->handle));
+            sprintf(g_oscpath, "/player%d/loop", pPlayer->handle);
+            sendOscInt(g_oscpath, pPlayer->loop);
+        }
+    }
+    return index;
+}
+#endif //ENABLE_OSC
