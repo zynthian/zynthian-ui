@@ -7,7 +7,7 @@ pushd $DIR
 		mkdir build
 	fi
 	pushd build
-		cmake -D CMAKE_CXX_FLAGS="-Wno-psabi" ..
+		cmake -D CMAKE_CXX_FLAGS="-Wno-psabi" -D ENABLE_OSC=0 ..
 		make
 		success=$?
 	popd
