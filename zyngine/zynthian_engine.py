@@ -58,6 +58,7 @@ class zynthian_basic_engine:
 
 	def __init__(self, name=None, command=None, prompt=None, cwd=None):
 		self.name = name
+		self.layer_cb = None
 
 		self.proc = None
 		self.proc_timeout = 20
@@ -542,6 +543,10 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
+
+	def set_ctrl_update_cb(self, cb):
+		self.layer_cb = cb
+
 
 	# Get zynthian controllers dictionary:
 	# + Default implementation uses a static controller definition array

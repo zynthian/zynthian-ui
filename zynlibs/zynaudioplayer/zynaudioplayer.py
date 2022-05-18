@@ -63,6 +63,7 @@ class zynaudioplayer():
 			self.libaudioplayer.get_gain.restype = ctypes.c_float
 			self.libaudioplayer.set_gain.argtypes = [ctypes.c_int, ctypes.c_float]
 			self.libaudioplayer.set_position.argtypes = [ctypes.c_int, ctypes.c_float]
+			self.control_cb = None
 		except Exception as e:
 			self.libaudioplayer=None
 			print("Can't initialise zynaudioplayer library: %s" % str(e))
@@ -99,7 +100,7 @@ class zynaudioplayer():
 	def load(self, filename):
 		if self.handle is None:
 			return False
-		return self.libaudioplayer.load(self.handle, bytes(filename, "utf-8"))
+		return self.libaudioplayer.load(self.handle, bytes(filename, "utf-8"), ctypes.py_object(self), self.value_cb)
 
 
 	#	Unload the currently loaded audio file
@@ -107,6 +108,16 @@ class zynaudioplayer():
 		if self.handle is None:
 			return
 		self.libaudioplayer.unload(self.handle)
+
+
+	def set_control_cb(self, cb):
+		self.control_cb = cb
+
+
+	@ctypes.CFUNCTYPE(None, ctypes.py_object, ctypes.c_int, ctypes.c_float)
+	def value_cb(self, type, value):
+		if self.control_cb:
+			self.control_cb(type, value)
 
 
 	#	Get the full path and name of the currently loaded file

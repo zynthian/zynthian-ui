@@ -25,6 +25,7 @@
 import os
 from collections import OrderedDict
 import logging
+from glob import glob
 from . import zynthian_engine
 from . import zynthian_controller
 from zynlibs.zynaudioplayer import zynaudioplayer
@@ -49,6 +50,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.nickname = "AP"
 		self.jackname = "audioplayer"
 		self.type = "MIDI Synth" # TODO: Should we override this? With what value?
+		self.file_exts = ["wav","WAV","ogg","OGG","flac","FLAC"]
 
 		self.options['clone'] = False
 		self.options['note_range'] = False
@@ -65,7 +67,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self._ctrls=[
 			['gain',None,1.0,2.0],
 			['loop',None,'one-shot',['one-shot','looping']],
-			['play',None,'stopped',['stopped','playing']],
+			['transport',None,'stopped',['stopped','playing']],
 			['position',None,0.0,1.0],
 			['quality',None,'fastest',[['best','medium','fastest','zero order','linear'],[0,1,2,3,4]]],
 			['left track',None,0,[['mixdown','1','2'],[-1,0,1]]],
@@ -74,10 +76,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		# Controller Screens
 		self._ctrl_screens=[
-			['main',['gain','loop','play','position']],
+			['main',['gain','loop','transport','position']],
 			['config',['left track','quality','right track']]
 		]
 
+		self.monitors_dict = OrderedDict()
+		self.monitors_dict["state"] = self.player.get_playback_state()
+		self.monitors_dict["pos"] = self.player.get_position()
+		self.monitors_dict["duration"] = self.player.get_duration()
+		self.monitors_dict["samplerate"] = self.player.get_samplerate()
+		self.monitors_dict["filename"] = self.player.get_filename()
 		self.reset()
 
 
@@ -88,6 +96,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def start(self):
 		self.player = zynaudioplayer.zynaudioplayer()
 		self.jackname = self.player.get_jack_client_name()
+		self.player.set_control_cb(self.control_cb)
 
 
 	def stop(self):
@@ -113,8 +122,24 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def get_bank_list(self, layer=None):
 		banks = [[self.my_data_dir + "/capture", None, "Internal", None]]
 		try:
-			if os.listdir(self.ex_data_dir):
-				banks.append([self.ex_data_dir, None, "USB", None])
+			walk = next(os.walk(self.my_data_dir + "/capture"))
+			walk[1].sort()
+			for dir in walk[1]:
+				for ext in self.file_exts:
+					if glob(walk[0] + "/" + dir + "/*." + ext):
+						banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
+						break
+			for ext in self.file_exts:
+				if glob(self.ex_data_dir + "/*." + ext) or glob(self.ex_data_dir + "/*/*." + ext):
+					banks.append([self.ex_data_dir, None, "USB", None])
+					walk = next(os.walk(self.ex_data_dir))
+					walk[1].sort()
+					for dir in walk[1]:
+						for ext in self.file_exts:
+							if glob(walk[0] + "/" + dir + "/*." + ext):
+								banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
+								break
+					break
 		except:
 			pass
 		return banks
@@ -125,7 +150,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		presets = self.get_filelist(bank[0],"wav") + self.get_filelist(bank[0],"ogg") + self.get_filelist(bank[0],"flac")
+		presets = []
+		for ext in self.file_exts:
+			presets += self.get_filelist(bank[0], ext)
 		for preset in presets:
 			name = preset[4]
 			duration = self.player.get_file_duration(preset[0])
@@ -151,8 +178,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		gain = self.player.get_gain()
 		quals = ['best','medium','fastest','zero order','linear']
 		qual = quals[self.player.get_src_quality()]
-		#TODO: Set gain control as logarithmic
-		#TODO: Player jumps to postition when preset window cancelled
 		if dur:
 			track_labels = ['mixdown']
 			track_values = [-1]
@@ -167,17 +192,15 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self._ctrls=[
 				['gain',None,gain,2.0],
 				['loop',None,loop,['one-shot','looping']],
-				['play',None,transport,['stopped','playing']],
+				['transport',None,transport,['stopped','playing']],
 				['position',None,0.0,dur],
 				['quality',None,qual,[quals,[0,1,2,3,4]]],
 				['left track',None,0,[track_labels,track_values]],
 				['right track',None,default_b,[track_labels,track_values]],
-				['buffer size',None,48000,[48000,96000,144000,192000,240000,288000,336000,384000,432000]],
-				['buffer count',None,5,10],
 				['debug',None,0,1]
 			]
 			self._ctrl_screens=[
-				['main',['gain','loop','play','position']],
+				['main',['gain','loop','transport','position']],
 				['config',['left track','quality','right track','debug']]
 			]
 		else:
@@ -190,6 +213,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['config',['quality']]
 		]
 		layer.refresh_controllers()
+		self.monitors_dict["state"] = self.player.get_playback_state()
+		self.monitors_dict["pos"] = self.player.get_position()
+		self.monitors_dict["duration"] = self.player.get_duration()
+		self.monitors_dict["samplerate"] = self.player.get_samplerate()
+		self.monitors_dict["filename"] = self.player.get_filename()
 
 
 	def delete_preset(self, bank, preset):
@@ -197,13 +225,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			os.remove(preset[0])
 			os.remove("{}.png".format(preset[0]))
 		except Exception as e:
-			logging.error(e)
+			logging.debug(e)
 
 
 	def rename_preset(self, bank, preset, new_preset_name):
 		src_ext = None
 		dest_ext = None
-		for ext in ('.wav','.ogg','.flac'):
+		for ext in self.file_exts:
 			if preset[0].endswith(ext):
 				src_ext = ext
 			if new_preset_name.endswith(ext):
@@ -211,17 +239,63 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			if src_ext and dest_ext:
 				break
 		if src_ext != dest_ext:
-			new_preset_name += src_ext
+			new_preset_name += "." + src_ext
 		try:
 			os.rename(preset[0], "{}/{}".format(bank[0], new_preset_name))
 		except Exception as e:
-			logging.error(e)
+			logging.debug(e)
 
 		
+	def is_preset_user(self, preset):
+		return True
 
 	#----------------------------------------------------------------------------
 	# Controllers Management
 	#----------------------------------------------------------------------------
+
+	def get_controllers_dict(self, layer):
+		dict = super().get_controllers_dict(layer)
+		return dict
+
+
+	def control_cb(self, id, value):
+		try:
+			for layer in self.layers:
+				ctrl_dict = layer.controllers_dict
+				if id == 1: #Transport
+					print("Transport: {}".format(int(value)))
+					ctrl_dict['transport'].set_value(int(value), False)
+				elif id == 2: #Position
+					print("Position: {:02d}:{:02d}.{:02d}".format(int(value/60), int(value%60), int(value%60 *100)%100))
+					self.monitors_dict["pos"] = value
+					ctrl_dict['position'].set_value(value)
+				elif id == 3: #Gain
+					print("Gain: {:.2f}".format(value))
+					ctrl_dict['gain'].set_value(value)
+				elif id == 4: #Loop
+					if value:
+						print("Looping")
+					else:
+						print("Oneshot")
+					ctrl_dict['loop'].set_value(int(value))
+				elif id == 5: #Track A
+					print("Track A: {}".format(int(value)))
+					ctrl_dict['track_a'].set_value(int(value))
+				elif id == 6: #Track B
+					print("Track B: {}".format(int(value)))
+					ctrl_dict['track_b'].set_value(int(value))
+				elif id == 7: # SRC Quality
+					print("SRC quality: {}".format(int(value)))
+					ctrl_dict['quality'].set_value(int(value))
+				elif id == 10: #Debug
+					if value == 1:
+						print("Debug enabled")
+					else:
+						print("Debug disabled")
+					ctrl_dict['debug'].set_value(int(value))
+		except Exception as e:
+			return
+
 
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == "position":
@@ -230,37 +304,22 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_gain(zctrl.value)
 		elif zctrl.symbol == "loop":
 			self.player.enable_loop(zctrl.value)
-		elif zctrl.symbol == "play":
+		elif zctrl.symbol == "transport":
 			if zctrl.value:
 				self.player.start_playback()
 			else:
 				self.player.stop_playback()
 		elif zctrl.symbol == "quality":
-			self.player.set_quality(zctrl.value)
+			self.player.set_src_quality(zctrl.value)
 		elif zctrl.symbol == "left track":
 			self.player.set_track_a(zctrl.value)
 		elif zctrl.symbol == "right track":
 			self.player.set_track_b(zctrl.value)
-		elif zctrl.symbol == "buffer size" and zctrl.value > 32000:
-			self.player.set_buffer_size(zctrl.value)
-		elif zctrl.symbol == "buffer count" and zctrl.value > 0:
-			self.player.set_buffer_count(zctrl.value)
 		elif zctrl.symbol == 'debug':
 			self.player.enable_debug(zctrl.value == 1)
 
 
 	def get_monitors_dict(self):
-		#TODO: Optimise - maybe register for notification events
-		self.monitors_dict = OrderedDict()
-		try:
-			self.monitors_dict["state"] = self.player.get_playback_state()
-			self.monitors_dict["pos"] = self.player.get_position()
-			self.monitors_dict["duration"] = self.player.get_duration()
-			self.monitors_dict["samplerate"] = self.player.get_samplerate()
-			self.monitors_dict["filename"] = self.player.get_filename()
-		except Exception as e:
-			logging.error(e)
-
 		return self.monitors_dict
 
 
