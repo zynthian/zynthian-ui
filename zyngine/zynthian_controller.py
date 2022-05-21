@@ -264,7 +264,7 @@ class zynthian_controller:
 
 	def nudge(self, val, send=True):
 		if self.nudge_factor is None:
-			return
+			return False
 		if self.ticks:
 			index = self.get_value2index() + val
 			if index < 0: index = 0
@@ -272,6 +272,7 @@ class zynthian_controller:
 			self.set_value(self.ticks[index])
 		else:
 			self.set_value(self.value + val * self.nudge_factor, send)
+		return True
 
 
 	def _set_value(self, val):
@@ -612,11 +613,14 @@ class zynthian_controller:
 	#----------------------------------------------------------------------------
 
 	def midi_control_change(self, val):
+		#if self.ticks:
+		#	self.set_value(val)
 		if self.is_logarithmic:
 			value = self.value_min*pow(self.powbase, val / 127)
 		else:
-			value = self.value_min+val*self.value_range / 127
+			value = self.value_min + val * self.value_range / 127
 		self.set_value(value)
+
 
 
 #******************************************************************************

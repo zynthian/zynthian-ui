@@ -607,7 +607,7 @@ class zynthian_gui_controller:
 	def read_zyncoder(self):
 		#TODO: Implement relative mode in zyncoder
 		if self.zctrl and lib_zyncore.get_value_flag_zynpot(self.index):
-			val=lib_zyncore.get_value_zynpot(self.index)
+			val = lib_zyncore.get_value_zynpot(self.index)
 			if val:
 				lib_zyncore.set_value_zynpot(self.index, 0, False) #TODO: Workaround: no zynpot relative mode
 				if self.step:

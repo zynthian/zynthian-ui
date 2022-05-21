@@ -698,17 +698,11 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def midi_zctrl_change(self, zctrl, val):
-		try:
-			if val!=zctrl.get_value():
-				zctrl.set_value(val)
-				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
-
-				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.current_screen in ('control', 'alsa_mixer'):
-					self.zyngui.screens['control'].set_controller_value(zctrl)
-
-		except Exception as e:
-			logging.debug(e)
+		if val != zctrl.get_ctrl_midi_val():
+			try:
+				zctrl.midi_control_change(val)
+			except Exception as e:
+				logging.debug(e)
 
 
 	# ---------------------------------------------------------------------------
