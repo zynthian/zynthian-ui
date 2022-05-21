@@ -4,7 +4,7 @@
 # 
 # zynthian controller
 # 
-# Copyright (C) 2015-2017 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -44,29 +44,32 @@ class zynthian_controller:
 		self.group_symbol = None
 		self.group_name = None
 
-		self.value=0
-		self.value_default=0
-		self.value_min=0
-		self.value_mid=64
-		self.value_max=127
-		self.value_range=127
-		self.labels=None
-		self.ticks=None
-		self.is_toggle=False
-		self.is_integer=True
-		self.is_logarithmic=False
+		self.value=0 # Absolute value of the control
+		self.value_default=0 # Default value to use when reset control
+		self.value_min=0 # Minimum value of control range
+		self.value_mid=64 # Mid-point value of control range (used for toggle controls)
+		self.value_max=127 # Maximum value of control range
+		self.value_range=127 # Span of permissible values 
+		self.nudge_factor = 1 # Factor to scale each up/down nudge
+		self.labels=None # List of discrete value labels
+		self.ticks=None # List of discrete value labels
+		self.is_toggle=False # True if control is Boolean toggle
+		self.is_integer=True # True if control is Integer
+		self.is_logarithmic=False # True if control uses logarithmic scale
+		self.is_dirty=True # True if control value changed since last UI update
 
-		self.midi_chan=None
+		# Parameters to send values if dedciated engine send method not available
+		self.midi_chan=None # MIDI channel to send CC messages from control
 		self.midi_cc=None
-		self.osc_port=None
-		self.osc_path=None
-		self.graph_path=None
+		self.osc_port=None # OSC destination port
+		self.osc_path=None # OSC path to send value to
+		self.graph_path=None # Complex map of control to engine parameter
 
-		self.midi_learn_chan=None
-		self.midi_learn_cc=None
+		self.midi_learn_chan=None # MIDI channel to send MIDI learn value
+		self.midi_learn_cc=None # MIDI CC to send MIDI learn value
 
-		self.label2value=None
-		self.value2label=None
+		self.label2value=None # Dictionary for fast conversion from discrete label to value 
+		self.value2label=None # Dictionary for fast conversion from discrete value to label 
 
 		if options:
 			self.set_options(options)
@@ -99,6 +102,8 @@ class zynthian_controller:
 			self.is_toggle=options['is_toggle']
 		if 'is_integer' in options:
 			self.is_integer=options['is_integer']
+		if 'nudge_factor' in options:
+			self.nudge_factor=options['nudge_factor']
 		if 'is_logarithmic' in options:
 			self.is_logarithmic=options['is_logarithmic']
 		if 'midi_chan' in options:
@@ -117,20 +122,19 @@ class zynthian_controller:
 	def _configure(self):
 		#Configure Selector Controller
 		if self.labels:
-
 			if not self.ticks:
 				#Generate ticks ...
 				n = len(self.labels)
 				self.ticks = []
 				if self.is_integer:
 					for i in range(n):
-						self.ticks.append(self.value_min+int(i*(self.value_max+1)/n))
+						self.ticks.append(self.value_min + int(i * (self.value_max + 1) / n))
 				else:
 					for i in range(n):
-						self.ticks.append(self.value_min+i*self.value_max/n)
+						self.ticks.append(self.value_min + i * self.value_max / n)
 
 			#Calculate min, max
-			if self.ticks[0]<=self.ticks[-1]:
+			if self.ticks[0] <= self.ticks[-1]:
 				self.value_min = self.ticks[0]
 				self.value_max = self.ticks[-1]
 			else:
@@ -145,24 +149,27 @@ class zynthian_controller:
 				self.value2label[str(self.ticks[i])] = self.labels[i]
 
 		#Common configuration
-		self.value_range = self.value_max-self.value_min
+		self.value_range = self.value_max - self.value_min
 
 		if self.is_integer:
-			self.value_mid = self.value_min+int(self.value_range/2)
+			self.value_mid = self.value_min + int(self.value_range / 2)
 		else:
-			self.value_mid = self.value_min+self.value_range/2
+			self.value_mid = self.value_min + self.value_range / 2
 
 		if self.is_logarithmic:
-			if self.value_min==0:
+			if self.value_min ==0 :
 				self.powbase = 10000
-				self.value_min = self.value_max/self.powbase
+				self.value_min = self.value_max / self.powbase
 			else:
-				self.powbase = self.value_max/self.value_min
+				self.powbase = self.value_max / self.value_min
 			self.log_powbase = math.log(self.powbase)
 
 		self._set_value(self.value)
 		if self.value_default is None:
-			self.value_default=self.value
+			self.value_default = self.value
+
+		if not self.is_integer and not self.is_toggle and self.nudge_factor == 1:
+			self.nudge_factor = 0.05 # This overrides specified nudge_factor but mostly okay
 
 
 	def setup_controller(self, chan, cc, val, maxval=127):
@@ -176,6 +183,7 @@ class zynthian_controller:
 
 		self.value_min = 0
 		self.value_max = 127
+		self.nudge_factor = 1
 		self.value = val
 		self.is_toggle = False
 		self.is_integer = True
@@ -200,6 +208,7 @@ class zynthian_controller:
 		# Detect toggle (on/off)
 		if self.labels and len(self.labels)==2:
 			self.is_toggle = True
+			self.value_max = 127
 
 		self._configure()
 
@@ -219,8 +228,9 @@ class zynthian_controller:
 		self.midi_chan = chan
 
 
+	#TODO: I think get_ctrl_array is an unused function
 	def get_ctrl_array(self):
-		tit = self.short_name
+		title = self.short_name
 		if self.midi_chan:
 			chan = self.midi_chan
 		else:
@@ -244,11 +254,21 @@ class zynthian_controller:
 			val = self.value
 			minval = self.value_min
 			maxval = self.value_max
-		return [tit,chan,ctrl,val,minval,maxval]
+		return [title, chan, ctrl,val, minval, maxval]
 
 
 	def get_value(self):
 		return self.value
+
+
+	def nudge(self, val, send=True):
+		if self.ticks:
+			index = self.get_value2index() + val
+			if index < 0: index = 0
+			if index >= len(self.ticks) : index = len(self.ticks) - 1
+			self.set_value(self.ticks[index])
+		else:
+			self.set_value(self.value + val * self.nudge_factor, send)
 
 
 	def _set_value(self, val):
@@ -273,20 +293,23 @@ class zynthian_controller:
 		elif self.is_integer:
 			val = int(val)
 
-		if val>self.value_max:
-			self.value=self.value_max
-		elif val<self.value_min:
-			self.value=self.value_min
+		if val > self.value_max:
+			self.value = self.value_max
+		elif val < self.value_min:
+			self.value = self.value_min
 		else:
-			self.value=val
+			self.value = val
 
 
-	def set_value(self, val, force_sending=False):
+	def set_value(self, val, force_sending=True):
+		old_val = self.value
 		self._set_value(val)
+		if old_val == self.value:
+			return
 
 		if self.engine:
 			if self.midi_learn_cc or self.midi_cc:
-				mval=self.get_ctrl_midi_val()
+				mval = self.get_ctrl_midi_val()
 
 			if force_sending:
 				try:
@@ -317,28 +340,27 @@ class zynthian_controller:
 
 			except Exception as e:
 				logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol,e))
+			
+		self.is_dirty = True
 
 
+	# Get index of list entry closest to given value
 	def get_value2index(self, val=None):
 		if val is None:
-			val=self.value
+			val = self.value
 		try:
 			if self.ticks:
-				if self.ticks[0]>self.ticks[-1]:
-					for i in reversed(range(len(self.labels))):
-						if val<=self.ticks[i]:
-							return i
-					return 0
-				else:
-					for i in range(len(self.labels)-1):
-						#logging.debug("V2L testing range {} => {} in {}-{}".format(i,val,self.ticks[i],self.ticks[i+1]))
-						if val<self.ticks[i+1]:
-							return i
-					return i+1
+				index = 0
+				d_val = abs(self.ticks[0] - val)
+				for i, value in enumerate(self.ticks):
+					if abs(value - val) < d_val:
+						d_val = abs(value - val)
+						index = i
+				return index
 			elif self.labels:
-				i=min(int((val-self.value_min)*len(self.labels)/self.value_range), len(self.labels)-1)
+				index = min(int((val - self.value_min) * len(self.labels) / self.value_range), len(self.labels) - 1)
 				#logging.debug("V2L => {} has index {}".format(val,i))
-				return i
+				return index
 			else:
 				return None
 		except Exception as e:
@@ -358,13 +380,14 @@ class zynthian_controller:
 			if self.ticks:
 				return self.label2value[str(label)]
 			elif self.labels:
-				i=self.labels.index(label)
-				if i>=0:
+				i = self.labels.index(label)
+				if i >= 0:
 					#logging.debug("L2V => {} has index {}".format(label,i))
-					if self.is_integer and self.value_range==127:
-						return self.value_min+i*128/len(self.labels)
+					if self.is_integer and self.value_range == 127:
+						#TODO: This looks wrong! Why have different function for one specific value?
+						return self.value_min + i * 128 / len(self.labels)
 					else:
-						return self.value_min+i*self.value_range/len(self.labels)
+						return self.value_min + i * self.value_range / len(self.labels)
 			else:
 				logging.error("No labels defined")
 
@@ -373,29 +396,28 @@ class zynthian_controller:
 
 
 	def get_ctrl_midi_val(self):
-		try:
+		try: #TODOD: Handle scaled ticks
+			if self.ticks:
+				return self.value
 			if self.is_logarithmic:
-				val = int(127*math.log(self.value/self.value_min)/self.log_powbase)
+				val = int(127 * math.log(self.value / self.value_min) / self.log_powbase)
 			else:
-				val = min(127, int(127*(self.value-self.value_min)/self.value_range))
+				val = min(127, int(127 * (self.value - self.value_min) / self.value_range))
 		except Exception as e:
 			logging.error(e)
-			val=0
+			val = 0
 
 		return val
 
 
 	def get_ctrl_osc_val(self):
 		if self.is_toggle:
-			if self.value>0:
-				return True
-			else:
-				return False
+			return self.value > 0
 		return self.value
 
 
 	#--------------------------------------------------------------------------
-	# Snapshots
+	# Snapshot helper functions
 	#--------------------------------------------------------------------------
 
 
@@ -432,7 +454,6 @@ class zynthian_controller:
 				self.set_midi_learn(int(snapshot['midi_learn_chan']), int(snapshot['midi_learn_cc']))
 		else:
 			self.set_value(snapshot,True)
-		self.refresh_gui()
 
 
 	#--------------------------------------------------------------------------
@@ -558,6 +579,7 @@ class zynthian_controller:
 	#--------------------------------------------------------------------------
 
 
+	#TODO: riban recommends removing naitive zyncoder MIDI/OSC to match MVC model
 	def midi_learn_zyncoder(self, chan, cc):
 		try:
 			if lib_zyncore.set_midi_filter_cc_swap(ctypes.c_ubyte(chan), ctypes.c_ubyte(cc), ctypes.c_ubyte(self.midi_chan), ctypes.c_ubyte(self.midi_cc)):
@@ -588,20 +610,10 @@ class zynthian_controller:
 
 	def midi_control_change(self, val):
 		if self.is_logarithmic:
-			value = self.value_min*pow(self.powbase, val/127)
+			value = self.value_min*pow(self.powbase, val / 127)
 		else:
-			value = self.value_min+val*self.value_range/127
+			value = self.value_min+val*self.value_range / 127
 		self.set_value(value)
-		self.refresh_gui()
-
-
-	def refresh_gui(self):
-		#Refresh GUI controller in screen when needed ...
-		try:
-			if self.engine.zyngui.current_screen in ('control', 'alsa_mixer'):
-				self.engine.zyngui.screens['control'].set_controller_value(self)
-		except Exception as e:
-			logging.debug(e)
 
 
 #******************************************************************************

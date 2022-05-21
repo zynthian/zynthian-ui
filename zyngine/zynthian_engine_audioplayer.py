@@ -263,36 +263,22 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			for layer in self.layers:
 				ctrl_dict = layer.controllers_dict
 				if id == 1: #Transport
-					print("Transport: {}".format(int(value)))
-					ctrl_dict['transport'].set_value(int(value), False)
+					ctrl_dict['transport'].set_value(int(value) * 64, False)
 				elif id == 2: #Position
-					print("Position: {:02d}:{:02d}.{:02d}".format(int(value/60), int(value%60), int(value%60 *100)%100))
 					self.monitors_dict["pos"] = value
-					ctrl_dict['position'].set_value(value)
+					ctrl_dict['position'].set_value(value, False)
 				elif id == 3: #Gain
-					print("Gain: {:.2f}".format(value))
-					ctrl_dict['gain'].set_value(value)
+					ctrl_dict['gain'].set_value(value, False)
 				elif id == 4: #Loop
-					if value:
-						print("Looping")
-					else:
-						print("Oneshot")
-					ctrl_dict['loop'].set_value(int(value))
+					ctrl_dict['loop'].set_value(int(value) * 64, False)
 				elif id == 5: #Track A
-					print("Track A: {}".format(int(value)))
-					ctrl_dict['track_a'].set_value(int(value))
+					ctrl_dict['left track'].set_value(int(value), False)
 				elif id == 6: #Track B
-					print("Track B: {}".format(int(value)))
-					ctrl_dict['track_b'].set_value(int(value))
+					ctrl_dict['right track'].set_value(int(value), False)
 				elif id == 7: # SRC Quality
-					print("SRC quality: {}".format(int(value)))
-					ctrl_dict['quality'].set_value(int(value))
+					ctrl_dict['quality'].set_value(int(value), False)
 				elif id == 10: #Debug
-					if value == 1:
-						print("Debug enabled")
-					else:
-						print("Debug disabled")
-					ctrl_dict['debug'].set_value(int(value))
+					ctrl_dict['debug'].set_value(int(value) * 64, False)
 		except Exception as e:
 			return
 

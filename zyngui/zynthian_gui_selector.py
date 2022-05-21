@@ -168,12 +168,12 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def set_selector(self, zs_hiden=True):
 		if self.shown:
 			if self.zselector:
-				self.zselector_ctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
-				self.zselector.config(self.zselector_ctrl)
+				self.zselector.zctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
+				self.zselector.config(self.zselector.zctrl)
 				self.zselector.show()
 			else:
-				self.zselector_ctrl=zynthian_controller(None,self.selector_caption,self.selector_caption,{ 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
-				self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl,self.main_frame,self.zselector_ctrl,zs_hiden)
+				zselector_ctrl=zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
+				self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hiden)
 
 
 	def plot_zctrls(self):
@@ -206,27 +206,30 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def zyncoder_read(self):
 		if self.shown and self.zselector:
 			self.zselector.read_zyncoder()
-			if self.index!=self.zselector.value:
-				self.select(self.zselector.value)
+			if self.index != self.zselector.zctrl.value:
+				self.select(self.zselector.zctrl.value)
 		return [0,1,2]
 
 
-	def select_listbox(self,index):
-		if index<0:
+	def select_listbox(self, index):
+		if index < 0:
 			index = 0
-		elif index>=len(self.list_data):
-			index = len(self.list_data)-1
+		elif index >= len(self.list_data):
+			index = len(self.list_data) - 1
 		if not self.skip_separators(index):
 			# Set selection
-			self.listbox.selection_clear(0,tkinter.END)
+			self.listbox.selection_clear(0 ,tkinter.END)
 			self.listbox.selection_set(index)
 			# Set window
-			if index>self.index: self.listbox.see(index+1)
-			elif index<self.index: self.listbox.see(index-1)
-			else: self.listbox.see(index)
+			if index > self.index:
+				self.listbox.see(index + 1)
+			elif index < self.index:
+				self.listbox.see(index - 1)
+			else:
+				self.listbox.see(index)
 			# Set index value
-			self.index=index
-			self.last_index_change_ts=datetime.now()
+			self.index = index
+			self.last_index_change_ts = datetime.now()
 
 
 	def select_listbox_by_name(self, name):
@@ -257,10 +260,10 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def select(self, index=None):
-		if index is None: index=self.index
+		if index is None: index = self.index
 		self.select_listbox(index)
-		if self.shown and self.zselector and self.zselector.value!=self.index:
-			self.zselector.set_value(self.index, True, False)
+		if self.shown and self.zselector and self.zselector.zctrl.value != self.index:
+			self.zselector.zctrl.set_value(self.index, False)
 
 
 	def select_up(self, n=1):
@@ -307,7 +310,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if self.listbox_push_ts:
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
-			self.zselector.set_value(self.get_cursel(), True, False)
+			self.zselector.zctrl.set_value(self.get_cursel(), True)
 			if dts < 0.3:
 				self.zyngui.zynswitch_defered('S',3)
 			elif dts>=0.3 and dts<2:
@@ -319,21 +322,19 @@ class zynthian_gui_selector(zynthian_gui_base):
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			if dts > 0.1:
 				#logging.debug("LISTBOX MOTION => %d" % self.index)
-				self.zselector.set_value(self.get_cursel(), True, False)
+				self.zselector.zctrl.set_value(self.get_cursel(), True)
 
 
-	def cb_listbox_wheel(self,event):
-		index = self.index
-		if (event.num == 5 or event.delta == -120) and self.index>0:
-			index -= 1
-		if (event.num == 4 or event.delta == 120) and self.index < (len(self.list_data)-1):
-			index += 1
-		if index!=self.index:
-			self.zselector.set_value(index, True, False)
+	def cb_listbox_wheel(self, event):
+		if (event.num == 5 or event.delta == -120):
+			self.zselector.zctrl.nudge(1)
+		elif (event.num == 4 or event.delta == 120):
+			self.zselector.zctrl.nudge(-1)
+		return "break" # Consume event to stop scrolling of listbox
 
 
-	def cb_loading_push(self,event):
-		self.loading_push_ts=datetime.now()
+	def cb_loading_push(self, event):
+		self.loading_push_ts = datetime.now()
 		#logging.debug("LOADING PUSH => %s" % self.canvas_push_ts)
 
 

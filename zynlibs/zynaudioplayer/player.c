@@ -597,12 +597,14 @@ void start_playback(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(pPlayer && pPlayer->jack_client && pPlayer->file_open == 2 && pPlayer->play_state != PLAYING)
         pPlayer->play_state = STARTING;
+    send_notifications(pPlayer, NOTIFY_TRANSPORT);
 }
 
 void stop_playback(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(pPlayer && pPlayer->play_state != STOPPED)
         pPlayer->play_state = STOPPING;
+    send_notifications(pPlayer, NOTIFY_TRANSPORT);
 }
 
 uint8_t get_playback_state(int player_handle) {

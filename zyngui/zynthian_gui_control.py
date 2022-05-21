@@ -330,21 +330,79 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return False
 
 
+	def layer_down(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[0].nudge(-1)
+			except:
+				pass
+		return True
+
+
+	def layer_up(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[0].nudge(1)
+			except:
+				pass
+		return True
+
+
+	def back_down(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[1].nudge(-1)
+			except:
+				pass
+		return True
+
+
+	def back_up(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[1].nudge(1)
+			except:
+				pass
+		return True
+
+
+	def snapshot_down(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[2].nudge(-1)
+			except:
+				pass
+		return True
+
+
+	def snapshot_up(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[2].nudge(1)
+			except:
+				pass
+		return True
+
+
 	def select_down(self):
-		i = self.index + 1
-		if i>=len(self.list_data):
-			i = 0
-		self.select(i)
-		self.click_listbox()
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[3].nudge(-1)
+			except:
+				pass
+		else:
+			super().select_down()
 		return True
 
 
 	def select_up(self):
-		i = self.index - 1
-		if i<0:
-			i = 0
-		self.select(i)
-		self.click_listbox()
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[3].nudge(1)
+			except:
+				pass
+		else:
+			super().select_up()
 		return True
 
 
@@ -388,7 +446,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 					if len(self.list_data)>3:
 						self.set_mode_select()
 					else:
-						self.select_down()
+						i = self.index + 1
+						if i >= len(self.list_data):
+							i = 0
+						self.select(i)
+						self.click_listbox()
+						return True
 				elif self.mode=='select':
 					self.click_listbox()
 			elif t=='B':
@@ -452,11 +515,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 			zgui_controller.set_midi_bind()
 
 
-	def plot_zctrls(self):
+	def plot_zctrls(self, force=False):
 		if self.mode=='select':
 			super().plot_zctrls()
 		elif self.zgui_controllers:
 			for zgui_ctrl in self.zgui_controllers:
+				if zgui_ctrl.zctrl.is_dirty or force:
+					zgui_ctrl.calculate_plot_values()
 				zgui_ctrl.plot_value()
 
 
@@ -541,12 +606,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def cb_listbox_wheel(self, event):
 		index = self.index
-		if (event.num == 5 or event.delta == -120) and self.index>0:
+		if (event.num == 4 or event.delta == 120) and self.index>0:
 			index -= 1
-		if (event.num == 4 or event.delta == 120) and self.index < (len(self.list_data)-1):
+		if (event.num == 5 or event.delta == -120) and self.index < (len(self.list_data) - 1):
 			index += 1
-		if index!=self.index:
+		if index != self.index:
 			self.select_listbox(index)
+		return "break" # Consume event to stop scrolling of listbox
 
 
 	def set_select_path(self):
