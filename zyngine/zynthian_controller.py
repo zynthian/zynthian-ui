@@ -50,7 +50,7 @@ class zynthian_controller:
 		self.value_mid=64 # Mid-point value of control range (used for toggle controls)
 		self.value_max=127 # Maximum value of control range
 		self.value_range=127 # Span of permissible values 
-		self.nudge_factor = 1 # Factor to scale each up/down nudge
+		self.nudge_factor = None # Factor to scale each up/down nudge
 		self.labels=None # List of discrete value labels
 		self.ticks=None # List of discrete value labels
 		self.is_toggle=False # True if control is Boolean toggle
@@ -168,8 +168,10 @@ class zynthian_controller:
 		if self.value_default is None:
 			self.value_default = self.value
 
-		if not self.is_integer and not self.is_toggle and self.nudge_factor == 1:
-			self.nudge_factor = 0.05 # This overrides specified nudge_factor but mostly okay
+		if not self.is_integer and not self.is_toggle and self.nudge_factor is None:
+			self.nudge_factor = self.value_range * 0.005 # This overrides specified nudge_factor but mostly okay
+		if self.nudge_factor is None:
+			self.nudge_factor = 1
 
 
 	def setup_controller(self, chan, cc, val, maxval=127):
@@ -183,7 +185,6 @@ class zynthian_controller:
 
 		self.value_min = 0
 		self.value_max = 127
-		self.nudge_factor = 1
 		self.value = val
 		self.is_toggle = False
 		self.is_integer = True
@@ -262,6 +263,8 @@ class zynthian_controller:
 
 
 	def nudge(self, val, send=True):
+		if self.nudge_factor is None:
+			return
 		if self.ticks:
 			index = self.get_value2index() + val
 			if index < 0: index = 0
