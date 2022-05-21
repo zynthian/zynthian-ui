@@ -114,11 +114,11 @@ class zynthian_gui_mixer_strip():
 		self.dpm_scale_lh = int(self.dpm_over * self.fader_height)
 
 		self.dpm_width = int(self.width / 10)
-		self.dpm_a_x = x + self.width - self.dpm_width * 2 - 2
+		self.dpm_a_x = int(x + self.width - self.dpm_width * 2 - 2)
 		self.dpm_a_y = self.fader_bottom
 		self.dpm_b_x = x + self.width - self.dpm_width - 1
 		self.dpm_b_y = self.fader_bottom
-		self.dpm_zero_y = self.fader_bottom - self.fader_height * self.dpm_high
+		self.dpm_zero_y = int(self.fader_bottom - self.fader_height * self.dpm_high)
 		self.fader_width = self.width - self.dpm_width * 2 - 2
 
 		self.fader_drag_start = None
@@ -160,12 +160,14 @@ class zynthian_gui_mixer_strip():
 		self.legend = self.parent.main_canvas.create_text(x, self.fader_bottom - 2, fill=self.legend_txt_color, text="", tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg)), angle=90, anchor="nw", font=font_fader)
 
 		# DPM
-		self.dpm_h_a = self.parent.main_canvas.create_rectangle(x + self.width - 8, self.fader_bottom, x + self.width - 5, self.fader_bottom, width=0, fill=self.high_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-		self.dpm_m_a = self.parent.main_canvas.create_rectangle(x + self.width - 8, self.fader_bottom, x + self.width - 5, self.fader_bottom, width=0, fill=self.medium_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-		self.dpm_l_a = self.parent.main_canvas.create_rectangle(x + self.width - 8, self.fader_bottom, x + self.width - 5, self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-		self.dpm_h_b = self.parent.main_canvas.create_rectangle(x + self.width - 4, self.fader_bottom, x + self.width - 1, self.fader_bottom, width=0, fill=self.high_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-		self.dpm_m_b = self.parent.main_canvas.create_rectangle(x + self.width - 4, self.fader_bottom, x + self.width - 1, self.fader_bottom, width=0, fill=self.medium_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-		self.dpm_l_b = self.parent.main_canvas.create_rectangle(x + self.width - 4, self.fader_bottom, x + self.width - 1, self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
+		self.dpm_h_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.fader_top, self.dpm_a_x + self.dpm_width, self.dpm_a_y - self.dpm_scale_lh, width=0, fill=self.high_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
+		self.dpm_m_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.dpm_a_y - self.dpm_scale_lh, self.dpm_a_x + self.dpm_width, self.dpm_a_y - self.dpm_scale_lm, width=0, fill=self.medium_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
+		self.dpm_l_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.dpm_a_y - self.dpm_scale_lm, self.dpm_a_x + self.dpm_width,  self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
+		self.dpm_b_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.fader_bottom, self.dpm_a_x + self.dpm_width, self.fader_top, width=0, fill=self.fader_bg_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
+		self.dpm_h_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.fader_top, self.dpm_b_x + self.dpm_width, self.dpm_b_y - self.dpm_scale_lh, width=0, fill=self.high_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
+		self.dpm_m_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.dpm_b_y - self.dpm_scale_lh, self.dpm_b_x + self.dpm_width, self.dpm_b_y - self.dpm_scale_lm, width=0, fill=self.medium_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
+		self.dpm_l_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.dpm_b_y - self.dpm_scale_lm, self.dpm_b_x + self.dpm_width,  self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
+		self.dpm_b_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.fader_bottom, self.dpm_b_x + self.dpm_width, self.fader_top, width=0, fill=self.fader_bg_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
 		self.dpm_hold_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.fader_bottom, self.dpm_a_x + self.dpm_width, self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), state="hidden")
 		self.dpm_hold_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.fader_bottom, self.dpm_b_x + self.dpm_width, self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), state="hidden")
 
@@ -280,66 +282,34 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.low_color)
 		# Get audio peaks from zynmixer
 		signal = max(0, 1 + zynmixer.get_dpm(self.layer.midi_chan,0) / self.dpm_rangedB)
-		llA = int(min(signal, self.dpm_high) * self.fader_height)
-		lmA = int(min(signal, self.dpm_over) * self.fader_height)
-		lhA = int(min(signal, 1) * self.fader_height)
+		level_a = int((1 - signal) * self.fader_height)
 		signal = max(0, 1 + zynmixer.get_dpm(self.layer.midi_chan,1) / self.dpm_rangedB)
-		llB = int(min(signal, self.dpm_high) * self.fader_height)
-		lmB = int(min(signal, self.dpm_over) * self.fader_height)
-		lhB = int(min(signal, 1) * self.fader_height)
+		level_b = int((1 - signal) * self.fader_height)
 		signal = max(0, 1 + zynmixer.get_dpm_hold(self.layer.midi_chan,0) / self.dpm_rangedB)
-		lholdA = int(min(signal, 1) * self.fader_height)
+		hold_a = int(min(signal, 1) * self.fader_height)
 		signal = max(0, 1 + zynmixer.get_dpm_hold(self.layer.midi_chan,1) / self.dpm_rangedB)
-		lholdB = int(min(signal, 1) * self.fader_height)
+		hold_b = int(min(signal, 1) * self.fader_height)
 
 		# Draw left meter
-		self.parent.main_canvas.coords(self.dpm_l_a,(self.dpm_a_x, self.dpm_a_y, self.dpm_a_x + self.dpm_width, self.dpm_a_y - llA))
-		self.parent.main_canvas.itemconfig(self.dpm_l_a, state='normal')
-
-		if lmA >= self.dpm_scale_lm:
-			self.parent.main_canvas.coords(self.dpm_m_a,(self.dpm_a_x, self.dpm_a_y - self.dpm_scale_lm, self.dpm_a_x + self.dpm_width, self.dpm_a_y - lmA))
-			self.parent.main_canvas.itemconfig(self.dpm_m_a, state="normal")
-		else:
-			self.parent.main_canvas.itemconfig(self.dpm_m_a, state="hidden")
-
-		if lhA >= self.dpm_scale_lh:
-			self.parent.main_canvas.coords(self.dpm_h_a,(self.dpm_a_x, self.dpm_a_y - self.dpm_scale_lh, self.dpm_a_x + self.dpm_width, self.dpm_a_y - lhA))
-			self.parent.main_canvas.itemconfig(self.dpm_h_a, state="normal")
-		else:
-			self.parent.main_canvas.itemconfig(self.dpm_h_a, state="hidden")
-
-		self.parent.main_canvas.coords(self.dpm_hold_a,(self.dpm_a_x, self.dpm_a_y - lholdA, self.dpm_a_x + self.dpm_width, self.dpm_a_y - lholdA - 1))
-		if lholdA >= self.dpm_scale_lh:
+		self.parent.main_canvas.coords(self.dpm_b_a, (self.dpm_a_x, self.fader_top, self.dpm_a_x + self.dpm_width, self.fader_top + level_a))
+		self.parent.main_canvas.coords(self.dpm_hold_a, (self.dpm_a_x, self.dpm_a_y - hold_a, self.dpm_a_x + self.dpm_width, self.dpm_a_y - hold_a - 1))
+		if hold_a >= self.dpm_scale_lh:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="normal", fill="#FF0000")
-		elif lholdA >= self.dpm_scale_lm:
+		elif hold_a >= self.dpm_scale_lm:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="normal", fill="#FFFF00")
-		elif lholdA > 0:
+		elif hold_a > 0:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="normal", fill="#00FF00")
 		else:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="hidden")
 
 		# Draw right meter
-		self.parent.main_canvas.coords(self.dpm_l_b,(self.dpm_b_x, self.dpm_b_y, self.dpm_b_x + self.dpm_width, self.dpm_b_y - llB))
-		self.parent.main_canvas.itemconfig(self.dpm_l_b, state='normal')
-
-		if lmB >= self.dpm_scale_lm:
-			self.parent.main_canvas.coords(self.dpm_m_b,(self.dpm_b_x, self.dpm_b_y - self.dpm_scale_lm, self.dpm_b_x + self.dpm_width, self.dpm_b_y - lmB))
-			self.parent.main_canvas.itemconfig(self.dpm_m_b, state="normal")
-		else:
-			self.parent.main_canvas.itemconfig(self.dpm_m_b, state="hidden")
-
-		if lhB >= self.dpm_scale_lh:
-			self.parent.main_canvas.coords(self.dpm_h_b,(self.dpm_b_x, self.dpm_b_y - self.dpm_scale_lh, self.dpm_b_x + self.dpm_width, self.dpm_b_y - lhB))
-			self.parent.main_canvas.itemconfig(self.dpm_h_b, state="normal")
-		else:
-			self.parent.main_canvas.itemconfig(self.dpm_h_b, state="hidden")
-
-		self.parent.main_canvas.coords(self.dpm_hold_b,(self.dpm_b_x, self.dpm_b_y - lholdB, self.dpm_b_x + self.dpm_width, self.dpm_b_y - lholdB - 1))
-		if lholdB >= self.dpm_scale_lh:
+		self.parent.main_canvas.coords(self.dpm_b_b, (self.dpm_b_x, self.fader_top, self.dpm_b_x + self.dpm_width, self.fader_top + level_b))
+		self.parent.main_canvas.coords(self.dpm_hold_b, (self.dpm_b_x, self.dpm_b_y - hold_b, self.dpm_b_x + self.dpm_width, self.dpm_b_y - hold_b - 1))
+		if hold_b >= self.dpm_scale_lh:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="normal", fill="#FF0000")
-		elif lholdB >= self.dpm_scale_lm:
+		elif hold_b >= self.dpm_scale_lm:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="normal", fill="#FFFF00")
-		elif lholdB > 0:
+		elif hold_b > 0:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="normal", fill="#00FF00")
 		else:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="hidden")
