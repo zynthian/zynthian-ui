@@ -48,11 +48,7 @@ class zynthian_widget_base():
 
 		self.layer = None
 		self.mon_canvas = None
-		self.mon_thread = None
-		self.mon_thread_sleep = 0.04
 		self.monitors = None
-
-		self.start_mon_thread()
 
 
 	def create_gui(self):
@@ -81,19 +77,10 @@ class zynthian_widget_base():
 			self.shown = False
 
 
-	def start_mon_thread(self):
-		self.mon_thread=Thread(target=self.mon_thread_task, args=())
-		self.mon_thread.name = "widget monitor"
-		self.mon_thread.daemon = True # thread dies with the program
-		self.mon_thread.start()
-
-
-	def mon_thread_task(self):
-		while not self.zyngui.exit_flag:
-			if self.shown and self.zyngui_control.shown:
-				self.get_monitors()
-				self.refresh_gui()
-			sleep(self.mon_thread_sleep)
+	def update(self):
+		if self.shown and self.zyngui_control.shown:
+			self.get_monitors()
+			self.refresh_gui()
 
 
 	def set_layer(self, layer):

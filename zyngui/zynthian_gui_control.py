@@ -158,7 +158,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					widget_name = None
 
 				for k, widget in self.widgets.items():
-					if k==widget_name:
+					if k == widget_name:
 						widget.show()
 					else:
 						widget.hide()
@@ -516,13 +516,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def plot_zctrls(self, force=False):
-		if self.mode=='select':
+		if self.mode == 'select':
 			super().plot_zctrls()
 		elif self.zgui_controllers:
 			for zgui_ctrl in self.zgui_controllers:
 				if zgui_ctrl.zctrl.is_dirty or force:
 					zgui_ctrl.calculate_plot_values()
 				zgui_ctrl.plot_value()
+		for k, widget in self.widgets.items():
+			widget.update()
 
 
 	def set_controller_value(self, zctrl, val=None):
