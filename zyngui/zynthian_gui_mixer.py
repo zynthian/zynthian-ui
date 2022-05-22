@@ -1235,6 +1235,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.set_solo(int(args[0]), int(path[4:]))
 			except:
 				pass
+		elif path[:4] == "MONO":
+			try:
+				self.set_mono(int(args[0]), int(path[4:]))
+			except:
+				pass
 		self.redraw_mixer_controls()
 
 

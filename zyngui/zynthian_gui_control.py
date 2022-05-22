@@ -219,7 +219,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			for i in range(4):
 				self.set_zcontroller(i, None)
 
-		self.lock_controllers()
+		self.lock_controllers() #TODO: Is mutex (fully) implemented
 
 		# Release Mutex Lock
 		#self.zyngui.lock.release()
