@@ -139,6 +139,7 @@ class zynthian_gui_mixer_strip():
 		self.low_color = "dark green"
 		self.medium_color = "#AAAA00" # yellow
 		self.high_color = "dark red"
+		self.dpm_hold_color = self.low_color
 
 		#font_size = int(0.5 * self.legend_height)
 		font_size = int(0.25 * self.width)
@@ -273,13 +274,6 @@ class zynthian_gui_mixer_strip():
 		if self.hidden or self.layer.midi_chan is None:
 			return
 
-		# Set color
-		if zynmixer.get_mono(self.layer.midi_chan):
-			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill="gray80")
-			self.parent.main_canvas.itemconfig(self.dpm_l_b, fill="gray80")
-		else:
-			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.low_color)
-			self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.low_color)
 		# Get audio peaks from zynmixer
 		signal = max(0, 1 + zynmixer.get_dpm(self.layer.midi_chan,0) / self.dpm_rangedB)
 		level_a = int((1 - signal) * self.fader_height)
@@ -298,7 +292,7 @@ class zynthian_gui_mixer_strip():
 		elif hold_a >= self.dpm_scale_lm:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="normal", fill="#FFFF00")
 		elif hold_a > 0:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="normal", fill="#00FF00")
+			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="normal", fill=self.dpm_hold_color)
 		else:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="hidden")
 
@@ -310,7 +304,7 @@ class zynthian_gui_mixer_strip():
 		elif hold_b >= self.dpm_scale_lm:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="normal", fill="#FFFF00")
 		elif hold_b > 0:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="normal", fill="#00FF00")
+			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="normal", fill=self.dpm_hold_color)
 		else:
 			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="hidden")
 
@@ -330,6 +324,15 @@ class zynthian_gui_mixer_strip():
 		if zynmixer.get_solo(self.layer.midi_chan):
 			color = self.solo_color
 		self.parent.main_canvas.itemconfig(self.solo, fill=color)
+
+		if zynmixer.get_mono(self.layer.midi_chan):
+			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill="#B0B0B0")
+			self.parent.main_canvas.itemconfig(self.dpm_l_b, fill="#B0B0B0")
+			self.dpm_hold_color = "#FFFFFF"
+		else:
+			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.low_color)
+			self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.low_color)
+			self.dpm_hold_color = "#00FF00"
 
 		balance = zynmixer.get_balance(self.layer.midi_chan)
 		if balance > 0:
