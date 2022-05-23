@@ -330,12 +330,101 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return False
 
 
+	def arrow_up(self):
+		i = self.index - 1
+		if i<0:
+			i = 0
+		self.select(i)
+		self.click_listbox()
+		return True
+
+
+	def arrow_down(self):
+		i = self.index + 1
+		if i>=len(self.list_data):
+			i = 0
+		self.select(i)
+		self.click_listbox()
+		return True
+
+
+	def arrow_right(self):
+		if self.zyngui.screens['layer'].get_num_root_layers()>1:
+			self.zyngui.screens['layer'].next(True)
+
+
+	def arrow_left(self):
+		if self.zyngui.screens['layer'].get_num_root_layers()>1:
+			self.zyngui.screens['layer'].prev(True)
+
+
+	def layer_down(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[0].nudge(-1)
+			except:
+				pass
+		return True
+
+
+	def layer_up(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[0].nudge(1)
+			except:
+				pass
+		return True
+
+
+	def back_down(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[1].nudge(-1)
+			except:
+				pass
+		return True
+
+
+	def back_up(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[1].nudge(1)
+			except:
+				pass
+		return True
+
+
+	def snapshot_down(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[2].nudge(-1)
+			except:
+				pass
+		return True
+
+
+	def snapshot_up(self):
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[2].nudge(1)
+			except:
+				pass
+		return True
+
+
 	def select_down(self):
 		i = self.index + 1
 		if i>=len(self.list_data):
 			i = 0
 		self.select(i)
 		self.click_listbox()
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[3].nudge(-1)
+			except:
+				pass
+		else:
+			super().select_down()
 		return True
 
 
@@ -345,17 +434,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 			i = 0
 		self.select(i)
 		self.click_listbox()
-		return True
-
-
-	def next(self):
-		if self.zyngui.screens['layer'].get_num_root_layers()>1:
-			self.zyngui.screens['layer'].next(True)
-
-
-	def prev(self):
-		if self.zyngui.screens['layer'].get_num_root_layers()>1:
-			self.zyngui.screens['layer'].prev(True)
+		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
+			try:
+				self.zcontrollers[3].nudge(1)
+			except:
+				pass
+		else:
+			super().select_up()
 
 
 	# Function to handle *all* switch presses.
@@ -365,7 +450,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
-				self.next()
+				self.arrow_right()
 				return True
 
 		elif swi == 1:
@@ -388,7 +473,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					if len(self.list_data)>3:
 						self.set_mode_select()
 					else:
-						self.select_down()
+						self.arrow_down()
 				elif self.mode=='select':
 					self.click_listbox()
 			elif t=='B':

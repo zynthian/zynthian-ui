@@ -945,6 +945,9 @@ class zynthian_gui:
 	def callable_ui_action(self, cuia, params=None):
 		logging.debug("CUIA '{}' => {}".format(cuia,params))
 
+		#----------------------------------------------------------------
+		# System actions
+		#----------------------------------------------------------------
 		if cuia == "POWER_OFF":
 			self.screens['admin'].power_off_confirmed()
 
@@ -966,17 +969,20 @@ class zynthian_gui:
 		elif cuia == "LAST_STATE_ACTION":
 			self.screens['admin'].last_state_action()
 
+		# Panic Actions
 		elif cuia == "ALL_NOTES_OFF":
 			self.all_notes_off()
 			sleep(0.1)
 			self.raw_all_notes_off()
-
 		elif cuia == "ALL_SOUNDS_OFF" or cuia == "ALL_OFF":
 			self.all_notes_off()
 			self.all_sounds_off()
 			sleep(0.1)
 			self.raw_all_notes_off()
 
+		#----------------------------------------------------------------
+		# Audio & MIDI Recording/Playback actions
+		#----------------------------------------------------------------
 		elif cuia == "START_AUDIO_RECORD":
 			self.audio_recorder.start_recording()
 
@@ -990,7 +996,6 @@ class zynthian_gui:
 		#elif cuia == "START_AUDIO_PLAY":
 		#elif cuia == "STOP_AUDIO_PLAY":
 		#elif cuia == "TOGGLE_AUDIO_PLAY":
-
 
 		elif cuia == "START_MIDI_RECORD":
 			self.screens['midi_recorder'].start_recording()
@@ -1026,114 +1031,131 @@ class zynthian_gui:
 		elif cuia == "TOGGLE_STEP_SEQ":
 			self.screens['stepseq'].toggle_transport()
 
+		#----------------------------------------------------------------
+		# Basic UI-Control CUIAs
+		#----------------------------------------------------------------
 		elif cuia == "BACK":
 			try:
 				self.back_screen()
 			except:
 				pass
-
-		elif cuia == "NEXT":
-			try:
-				self.get_current_screen_obj().next()
-			except:
-				pass
-
-		elif cuia == "PREV":
-			try:
-				self.get_current_screen_obj().prev()
-			except:
-				pass
-
+		# Select element in list => it receives an integer parameter!
 		elif cuia == "SELECT":
 			try:
 				self.get_current_screen_obj().select(params[0])
 			except:
 				pass
+		# 4 x Arrows
+		elif cuia == "ARROW_UP":
+			try:
+				self.get_current_screen_obj().arrow_up()
+			except:
+				pass
 
+		elif cuia == "ARROW_DOWN" or cuia == "PREV":
+			try:
+				self.get_current_screen_obj().arrow_down()
+			except:
+				pass
+
+		elif cuia == "ARROW_RIGHT" or cuia == "NEXT":
+			try:
+				self.get_current_screen_obj().arrow_right()
+			except:
+				pass
+
+		elif cuia == "ARROW_LEFT":
+			try:
+				self.get_current_screen_obj().arrow_left()
+			except:
+				pass
+
+		#----------------------------------------------------------------
+		# Rotary Control => it receives the zynpot number as paramter
+		#----------------------------------------------------------------
+		elif cuia == "ZYNPOT_UP":
+			#TODO
+			pass
+
+		elif cuia == "ZYNPOT_DOWN":
+			#TODO
+			pass
+
+		#----------------------------------------------------------------
+		# Legacy "4 x rotaries" CUIAs
+		#----------------------------------------------------------------
 		elif cuia == "SELECT_UP":
 			try:
 				self.get_current_screen_obj().select_up()
 			except:
 				pass
-
 		elif cuia == "SELECT_DOWN":
 			try:
 				self.get_current_screen_obj().select_down()
 			except:
 				pass
-
 		elif cuia == "BACK_UP":
 			try:
 				self.get_current_screen_obj().back_up()
 			except:
 				pass
-
 		elif cuia == "BACK_DOWN":
 			try:
 				self.get_current_screen_obj().back_down()
 			except:
 				pass
-
 		elif cuia == "LAYER_UP":
 			try:
 				self.get_current_screen_obj().layer_up()
 			except:
 				pass
-
 		elif cuia == "LAYER_DOWN":
 			try:
 				self.get_current_screen_obj().layer_down()
 			except:
 				pass
-
 		elif cuia in ("SNAPSHOT_UP", "LEARN_UP"):
 			try:
 				self.get_current_screen_obj().snapshot_up()
 			except:
 				pass
-
 		elif cuia in ("SNAPSHOT_DOWN", "LEARN_DOWN"):
 			try:
 				self.get_current_screen_obj().snapshot_down()
 			except:
 				pass
 
+		#----------------------------------------------------------------
+		# Legacy "4 x switches" CUIAs (4 * 3 = 12 CUIAS!)
+		#----------------------------------------------------------------
 		elif cuia == "SWITCH_LAYER_SHORT":
 			self.zynswitch_short(0)
-
 		elif cuia == "SWITCH_LAYER_BOLD":
 			self.zynswitch_bold(0)
-
 		elif cuia == "SWITCH_LAYER_LONG":
 			self.zynswitch_long(0)
-
 		elif cuia == "SWITCH_BACK_SHORT":
 			self.zynswitch_short(1)
-
 		elif cuia == "SWITCH_BACK_BOLD":
 			self.zynswitch_bold(1)
-
 		elif cuia == "SWITCH_BACK_LONG":
 			self.zynswitch_long(1)
-
 		elif cuia == "SWITCH_SNAPSHOT_SHORT":
 			self.zynswitch_short(2)
-
 		elif cuia == "SWITCH_SNAPSHOT_BOLD":
 			self.zynswitch_bold(2)
-
 		elif cuia == "SWITCH_SNAPSHOT_LONG":
 			self.zynswitch_long(2)
-
 		elif cuia == "SWITCH_SELECT_SHORT":
 			self.zynswitch_short(3)
-
 		elif cuia == "SWITCH_SELECT_BOLD":
 			self.zynswitch_bold(3)
-
 		elif cuia == "SWITCH_SELECT_LONG":
 			self.zynswitch_long(3)
 
+		#----------------------------------------------------------------
+		# Screen/Mode management CUIAs
+		#----------------------------------------------------------------
 		elif cuia in ("MODAL_MAIN", "SCREEN_MAIN"):
 			self.toggle_screen("main", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 

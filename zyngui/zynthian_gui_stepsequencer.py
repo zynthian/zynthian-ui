@@ -922,51 +922,54 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.zyncoder_owner[encoder].on_zyncoder(encoder, value)
 
 
-	# Function to handle CUIA PREV
-
-	# Function to handle CUIA NEXT
-	def next(self):
-		self.on_cuia_encoder(ENC_SELECT, 1)
-
-
-	def prev(self):
-		self.on_cuia_encoder(ENC_SELECT, -1)
-
-
-	# Function to handle CUIA SELECT_UP command
-	def select_up(self):
+	# Function to handle CUIA ARROW_UP
+	def arrow_up(self):
 		if self.lst_menu.winfo_viewable():
 			self.on_cuia_encoder(ENC_SELECT, -1)
 		elif self.child in (self.zynpad, self.pattern_editor):
 			self.on_cuia_encoder(ENC_BACK, -1)
 		else:
-			self.on_cuia_encoder(ENC_SELECT, 1)
+			self.on_cuia_encoder(ENC_SELECT, -1)
 
 
-	# Function to handle CUIA SELECT_DOWN command
-	def select_down(self):
+	# Function to handle CUIA ARROW_DOWN
+	def arrow_down(self):
 		if self.lst_menu.winfo_viewable():
 			self.on_cuia_encoder(ENC_SELECT, 1)
 		elif self.child in (self.zynpad, self.pattern_editor):
 			self.on_cuia_encoder(ENC_BACK, 1)
 		else:
-			self.on_cuia_encoder(ENC_SELECT, -1)
+			self.on_cuia_encoder(ENC_SELECT, 1)
+
+
+	# Function to handle CUIA ARROW_RIGHT
+	def arrow_right(self):
+		self.on_cuia_encoder(ENC_SELECT, 1)
+
+
+	# Function to handle CUIA ARROW_LEFT
+	def arrow_left(self):
+		self.on_cuia_encoder(ENC_SELECT, -1)
+
+
+	# Function to handle CUIA SELECT_UP command
+	def select_up(self):
+		self.on_cuia_encoder(ENC_SELECT, 1)
+
+
+	# Function to handle CUIA SELECT_DOWN command
+	def select_down(self):
+		self.on_cuia_encoder(ENC_SELECT, -1)
 
 
 	# Function to handle CUIA LAYER_UP command
 	def layer_up(self):
-		if self.lst_menu.winfo_viewable():
-			self.on_cuia_encoder(ENC_LAYER, -1)
-		else:
-			self.on_cuia_encoder(ENC_LAYER, 1)
+		self.on_cuia_encoder(ENC_LAYER, 1)
 
 
 	# Function to handle CUIA LAYER_DOWN command
 	def layer_down(self):
-		if self.lst_menu.winfo_viewable():
-			self.on_cuia_encoder(ENC_LAYER, 1)
-		else:
-			self.on_cuia_encoder(ENC_LAYER, -1)
+		self.on_cuia_encoder(ENC_LAYER, -1)
 
 
 	# Function to handle CUIA SNAPSHOT_UP command
