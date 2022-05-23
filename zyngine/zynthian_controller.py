@@ -269,7 +269,7 @@ class zynthian_controller:
 			index = self.get_value2index() + val
 			if index < 0: index = 0
 			if index >= len(self.ticks) : index = len(self.ticks) - 1
-			self.set_value(self.ticks[index])
+			self.set_value(self.ticks[index], send)
 		else:
 			self.set_value(self.value + val * self.nudge_factor, send)
 		return True
@@ -305,7 +305,7 @@ class zynthian_controller:
 			self.value = val
 
 
-	def set_value(self, val, force_sending=True):
+	def set_value(self, val, send=True):
 		old_val = self.value
 		self._set_value(val)
 		if old_val == self.value:
@@ -315,7 +315,7 @@ class zynthian_controller:
 			if self.midi_learn_cc or self.midi_cc:
 				mval = self.get_ctrl_midi_val()
 
-			if force_sending:
+			if send:
 				try:
 				# Send value using engine method...
 					self.engine.send_controller_value(self)

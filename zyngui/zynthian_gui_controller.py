@@ -45,28 +45,28 @@ from zyngui import zynthian_gui_config
 
 class zynthian_gui_controller:
 
-	def __init__(self, indx, frm, zctrl, hiden=False):
+	def __init__(self, indx, frm, zctrl, hidden=False):
 		self.zyngui=zynthian_gui_config.zyngui
-		self.zctrl=None
-		self.n_values=127
-		self.inverted=False
+		self.zctrl = None
+		self.n_values = 127
+		self.inverted = False
 		self.selmode = False #TODO: Do we still need selmode?
 		self.logarithmic = False
-		self.step=0 #TODO: Fix steps / non-accelerated mode
-		self.val0=0 # Display offset from data minimum value
-		self.scale_plot=1 # Factor to normalise plot scale to 0..1
-		self.value_plot=0 # Normalised position of plot start point
-		self.value_print=None
-		self.value_font_size=zynthian_gui_config.font_size
+		self.step = 0 #TODO: Fix steps / non-accelerated mode
+		self.val0 = 0 # Display offset from data minimum value
+		self.scale_plot = 1 # Factor to normalise plot scale to 0..1
+		self.value_plot = 0 # Normalised position of plot start point
+		self.value_print = None
+		self.value_font_size = zynthian_gui_config.font_size
 
-		self.hiden=hiden
-		self.shown=False
-		self.rectangle=None
-		self.triangle=None
-		self.arc=None
-		self.value_text=None
-		self.label_title=None
-		self.midi_bind=None
+		self.hidden = hidden # Always hidden, i.e. self.shown does not indicate actually shown
+		self.shown = False # Currently shown
+		self.rectangle = None
+		self.triangle = None
+		self.arc = None
+		self.value_text = None
+		self.label_title = None
+		self.midi_bind = None
 		self.refresh_plot_value = False
 
 		self.width=zynthian_gui_config.ctrl_width
@@ -88,17 +88,17 @@ class zynthian_gui_controller:
 		self.plot_value_func = self.plot_value_arc
 		self.erase_value_func = self.erase_value_arc
 
-		self.index=indx
-		self.main_frame=frm
-		self.row=zynthian_gui_config.ctrl_pos[indx][0]
-		self.col=zynthian_gui_config.ctrl_pos[indx][1]
-		self.sticky=zynthian_gui_config.ctrl_pos[indx][2]
+		self.index = indx
+		self.main_frame = frm
+		self.row = zynthian_gui_config.ctrl_pos[indx][0]
+		self.col = zynthian_gui_config.ctrl_pos[indx][1]
+		self.sticky = zynthian_gui_config.ctrl_pos[indx][2]
 
 		# Configure row height
 		self.main_frame.rowconfigure(self.row, weight=self.row*10, minsize=self.height)
 
 		# Create Canvas
-		self.canvas=tkinter.Canvas(self.main_frame,
+		self.canvas = tkinter.Canvas(self.main_frame,
 			width=self.width,
 			height=self.height,
 			bd=0,
@@ -121,7 +121,7 @@ class zynthian_gui_controller:
 	def show(self):
 		if not self.shown:
 			self.shown=True
-			if not self.hiden:
+			if not self.hidden:
 				if zynthian_gui_config.ctrl_both_sides:
 					if self.index%2==0:
 						pady = (0,2)
@@ -159,7 +159,7 @@ class zynthian_gui_controller:
 
 	def calculate_plot_values(self):
 		val = None
-		if self.hiden or self.zctrl is None:
+		if self.hidden or self.zctrl is None:
 			return
 
 		if self.zctrl.labels:
@@ -189,8 +189,8 @@ class zynthian_gui_controller:
 
 		else:
 			self.value_plot = (self.zctrl.value - self.zctrl.value_min) / self.zctrl.value_range
-			if self.zctrl.midi_cc==0:
-				val = self.val0+self.zctrl.value
+			if self.zctrl.midi_cc == 0: #TODO: Do we define selector as CC0?
+				val = self.val0 + self.zctrl.value
 				self.value_print = str(val)
 			else:
 				if self.logarithmic:
@@ -206,14 +206,14 @@ class zynthian_gui_controller:
 
 
 	def plot_value(self):
-		if not self.hiden and self.zctrl and self.refresh_plot_value:
+		if self.shown and self.zctrl and self.zctrl.is_dirty:
 			self.plot_value_func()
 			self.refresh_plot_value = False
 			self.zctrl.is_dirty = False
 
 
 	def erase_value(self):
-		if not self.hiden:
+		if self.shown:
 			self.erase_value_func()
 
 
@@ -241,6 +241,8 @@ class zynthian_gui_controller:
 			)
 			self.canvas.tag_lower(self.rectangle)
 			self.canvas.tag_lower(self.rectangle_bg)
+		else:
+			self.value_print = "{}".format(self.zctrl.value + 1)
 
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)
@@ -288,6 +290,8 @@ class zynthian_gui_controller:
 			)
 			self.canvas.tag_lower(self.triangle)
 			self.canvas.tag_lower(self.triangle_bg)
+		else:
+			self.value_print = "{}".format(self.zctrl.value + 1)
 
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)
@@ -346,6 +350,8 @@ class zynthian_gui_controller:
 				start=deg0,
 				extent=degd)
 			self.canvas.tag_lower(self.arc)
+		else:
+			self.value_print = "{}".format(self.zctrl.value + 1)
 
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)

@@ -291,7 +291,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		elif zctrl.symbol == "loop":
 			self.player.enable_loop(zctrl.value)
 		elif zctrl.symbol == "transport":
-			if zctrl.value:
+			if zctrl.value > 63:
 				self.player.start_playback()
 			else:
 				self.player.stop_playback()
