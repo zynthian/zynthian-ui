@@ -93,6 +93,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			fill=zynthian_gui_config.color_panel_tx,
 			text="00:00"
 		)
+		self.mon_canvas.bind("<Button-4>",self.cb_canvas_wheel)
+		self.mon_canvas.bind("<Button-5>",self.cb_canvas_wheel)
 
 
 	def refresh_gui(self):
@@ -148,5 +150,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.refreshing = False
 
 
+	def cb_canvas_wheel(self, event):
+		if len(self.zyngui_control.zcontrollers) > 3:
+			if event.num == 5 or event.delta == -120:
+				self.zyngui_control.zcontrollers[3].nudge(-1)
+			if event.num == 4 or event.delta == 120:
+				self.zyngui_control.zcontrollers[3].nudge(1)
 
 #------------------------------------------------------------------------------
