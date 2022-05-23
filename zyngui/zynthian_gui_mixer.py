@@ -1187,7 +1187,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA BACK_DOWN command
 	def back_down(self):
-		self.zyncoder_back(ENC_BACK)
+		self.zyncoder_down(ENC_BACK)
 
 
 	# Function to handle CUIA LAYER_UP command
