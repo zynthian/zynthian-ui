@@ -207,7 +207,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if self.shown and self.zselector:
 			self.zselector.read_zyncoder()
 			if self.index != self.zselector.zctrl.value:
-				self.select(self.zselector.zctrl.value)
+				self.select_listbox(self.zselector.zctrl.value)
 		return [0,1,2]
 
 
@@ -264,6 +264,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.select_listbox(index)
 		if self.shown and self.zselector and self.zselector.zctrl.value != self.index:
 			self.zselector.zctrl.set_value(self.index, False)
+			self.last_index_change_ts = datetime.now()
 
 
 	def select_up(self, n=1):
