@@ -922,36 +922,54 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.zyncoder_owner[encoder].on_zyncoder(encoder, value)
 
 
-	# Function to handle CUIA SELECT_UP command
-	def select_up(self):
+	# Function to handle CUIA ARROW_UP
+	def arrow_up(self):
 		if self.lst_menu.winfo_viewable():
 			self.on_cuia_encoder(ENC_SELECT, -1)
+		elif self.child in (self.zynpad, self.pattern_editor):
+			self.on_cuia_encoder(ENC_BACK, -1)
+		else:
+			self.on_cuia_encoder(ENC_SELECT, -1)
+
+
+	# Function to handle CUIA ARROW_DOWN
+	def arrow_down(self):
+		if self.lst_menu.winfo_viewable():
+			self.on_cuia_encoder(ENC_SELECT, 1)
+		elif self.child in (self.zynpad, self.pattern_editor):
+			self.on_cuia_encoder(ENC_BACK, 1)
 		else:
 			self.on_cuia_encoder(ENC_SELECT, 1)
+
+
+	# Function to handle CUIA ARROW_RIGHT
+	def arrow_right(self):
+		self.on_cuia_encoder(ENC_SELECT, 1)
+
+
+	# Function to handle CUIA ARROW_LEFT
+	def arrow_left(self):
+		self.on_cuia_encoder(ENC_SELECT, -1)
+
+
+	# Function to handle CUIA SELECT_UP command
+	def select_up(self):
+		self.on_cuia_encoder(ENC_SELECT, 1)
 
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		if self.lst_menu.winfo_viewable():
-			self.on_cuia_encoder(ENC_SELECT, 1)
-		else:
-			self.on_cuia_encoder(ENC_SELECT, -1)
+		self.on_cuia_encoder(ENC_SELECT, -1)
 
 
 	# Function to handle CUIA LAYER_UP command
 	def layer_up(self):
-		if self.lst_menu.winfo_viewable():
-			self.on_cuia_encoder(ENC_LAYER, -1)
-		else:
-			self.on_cuia_encoder(ENC_LAYER, 1)
+		self.on_cuia_encoder(ENC_LAYER, 1)
 
 
 	# Function to handle CUIA LAYER_DOWN command
 	def layer_down(self):
-		if self.lst_menu.winfo_viewable():
-			self.on_cuia_encoder(ENC_LAYER, 1)
-		else:
-			self.on_cuia_encoder(ENC_LAYER, -1)
+		self.on_cuia_encoder(ENC_LAYER, -1)
 
 
 	# Function to handle CUIA SNAPSHOT_UP command
@@ -979,6 +997,24 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 		self.switch(ENC_SELECT, t)
 
 
+	def back_action(self):
+		if self.is_shown_menu():
+			# Close menu
+			self.hide_menu()
+			return True
+		if self.param_editor_item:
+			# Close parameter editor
+			self.param_editor_cancel()
+			return True
+		if self.child == self.arranger:
+			self.show_child(self.zynpad)
+			return True
+		if self.child != self.zynpad:
+			self.show_child(self.last_child, {})
+			return True
+		return False
+
+
 	# Function to handle switch presses
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
@@ -986,20 +1022,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def on_switch(self, switch, type):
 		if type == 'S':
 			if switch == ENC_BACK:
-				if self.is_shown_menu():
-					# Close menu
-					self.hide_menu() #TODO: This should be abstracted to base class
-					return True
-				if self.param_editor_item:
-					# Close parameter editor
-					self.param_editor_cancel()
-					return True
-				if self.child == self.arranger:
-					self.show_child(self.zynpad)
-					return True
-				if self.child != self.zynpad:
-					self.show_child(self.last_child, {})
-					return True
+				return self.back_action()
 			elif switch == ENC_SELECT:
 				if self.is_shown_menu():
 					self.on_menu_select()

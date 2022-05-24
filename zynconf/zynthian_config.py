@@ -97,11 +97,17 @@ CustomUiAction = [
 	"STOP_STEP_SEQ",
 	"TOGGLE_STEP_SEQ",
 
-	"BACK",
-	"NEXT",
-	"PREV",
-	"SELECT",
+	"ARROW_UP",
+	"ARROW_DOWN",
+	"ARROW_RIGHT",
+	"ARROW_LEFT",
 
+	"ZYNPOT_UP",
+	"ZYNPOT_DOWN",
+
+	"BACK",
+	"SELECT",
+	
 	"LAYER_UP",
 	"LAYER_DOWN",
 	"BACK_UP",

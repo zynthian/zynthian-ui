@@ -374,26 +374,26 @@ class zynthian_gui_keyboard():
 					self.highlight(key)
 
 
-	# Function to handle CUIA BACK_UP command
-	def back_up(self):
+	# Function to handle CUIA ARROW_UP
+	def arrow_up(self):
 		if lib_zyncore:
 			lib_zyncore.set_value_zynpot(ZYNPOT_BACK, 1)
 
 
-	# Function to handle CUIA BACK_DOWN command
-	def back_down(self):
+	# Function to handle CUIA ARROW_DOWN
+	def arrow_down(self):
 		if lib_zyncore:
 			lib_zyncore.set_value_zynpot(ZYNPOT_BACK, -1)
 
 
-	# Function to handle CUIA SELECT_UP command
-	def select_up(self):
+	# Function to handle CUIA ARROW_RIGHT
+	def arrow_right(self):
 		if lib_zyncore:
 			lib_zyncore.set_value_zynpot(ZYNPOT_SELECT, self.selected_button + 1)
 
 
-	# Function to handle CUIA SELECT_DOWN command
-	def select_down(self):
+	# Function to handle CUIA ARROW_LEFT
+	def arrow_left(self):
 		if lib_zyncore:
 			lib_zyncore.set_value_zynpot(ZYNPOT_SELECT, self.selected_button - 1)
 

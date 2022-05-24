@@ -330,6 +330,34 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return False
 
 
+	def arrow_up(self):
+		i = self.index - 1
+		if i<0:
+			i = 0
+		self.select(i)
+		self.click_listbox()
+		return True
+
+
+	def arrow_down(self):
+		i = self.index + 1
+		if i>=len(self.list_data):
+			i = 0
+		self.select(i)
+		self.click_listbox()
+		return True
+
+
+	def arrow_right(self):
+		if self.zyngui.screens['layer'].get_num_root_layers()>1:
+			self.zyngui.screens['layer'].next(True)
+
+
+	def arrow_left(self):
+		if self.zyngui.screens['layer'].get_num_root_layers()>1:
+			self.zyngui.screens['layer'].prev(True)
+
+
 	def layer_down(self):
 		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
 			try:
@@ -385,6 +413,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def select_down(self):
+		i = self.index + 1
+		if i>=len(self.list_data):
+			i = 0
+		self.select(i)
+		self.click_listbox()
 		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
 			try:
 				self.zcontrollers[3].nudge(-1)
@@ -396,6 +429,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def select_up(self):
+		i = self.index - 1
+		if i<0:
+			i = 0
+		self.select(i)
+		self.click_listbox()
 		if self.controllers_lock and self.mode=='control' and self.zcontrollers:
 			try:
 				self.zcontrollers[3].nudge(1)
@@ -403,17 +441,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 				pass
 		else:
 			super().select_up()
-		return True
-
-
-	def next(self):
-		if self.zyngui.screens['layer'].get_num_root_layers()>1:
-			self.zyngui.screens['layer'].next(True)
-
-
-	def prev(self):
-		if self.zyngui.screens['layer'].get_num_root_layers()>1:
-			self.zyngui.screens['layer'].prev(True)
 
 
 	# Function to handle *all* switch presses.
@@ -423,7 +450,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
-				self.next()
+				self.arrow_right()
 				return True
 
 		elif swi == 1:
@@ -446,12 +473,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					if len(self.list_data)>3:
 						self.set_mode_select()
 					else:
-						i = self.index + 1
-						if i >= len(self.list_data):
-							i = 0
-						self.select(i)
-						self.click_listbox()
-						return True
+						self.arrow_down()
 				elif self.mode=='select':
 					self.click_listbox()
 			elif t=='B':
