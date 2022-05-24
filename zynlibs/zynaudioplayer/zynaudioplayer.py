@@ -73,8 +73,7 @@ class zynaudioplayer():
 	def destroy(self):
 		if self.libaudioplayer:
 			self.libaudioplayer.end()
-			handle = self.libaudioplayer._handle
-			dlclose(handle)
+			dlclose(self.libaudioplayer._handle)
 		self.libaudioplayer = None
 
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
-# ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_audio_player)
+# ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_audioplayer)
 #
 # zynthian_engine implementation for audio player
 #
@@ -213,6 +213,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['config',['quality']]
 		]
 		layer.refresh_controllers()
+		self.player.set_track_a(0)
+		self.player.set_track_b(default_b)
+
 		self.monitors_dict["state"] = self.player.get_playback_state()
 		self.monitors_dict["pos"] = self.player.get_position()
 		self.monitors_dict["duration"] = self.player.get_duration()

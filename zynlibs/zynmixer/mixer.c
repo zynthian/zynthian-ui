@@ -63,6 +63,7 @@ struct dynamic
     int mute; // 1 if muted
     int solo; // 1 if solo
     int mono; // 1 if mono
+    int phase; // 1 if channel B phase reversed
     int routed; // 1 if source routed to channel
 };
 
@@ -199,7 +200,10 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 for(frame = 0; frame < nFrames; frame++)
                 {
                     fSampleM = pInA[frame];
-                    fSampleM += pInB[frame];
+                    if(g_dynamic[chan].phase)
+                        fSampleM -= pInB[frame];
+                    else
+                        fSampleM += pInB[frame];
                     fSampleA = fSampleM * curLevelA / 2;
                     fSampleB = fSampleM * curLevelB / 2;
                     pSendA[frame] += fSampleA;
@@ -223,7 +227,10 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 {
                     fSampleA = pInA[frame] * curLevelA;
                     pSendA[frame] += fSampleA;
-                    fSampleB = pInB[frame] * curLevelB;
+                    if(g_dynamic[chan].phase)
+                        fSampleB = -pInB[frame] * curLevelB;
+                    else
+                        fSampleB = pInB[frame] * curLevelB;
                     pSendB[frame] += fSampleB;
                     curLevelA += fDeltaA;
                     curLevelB += fDeltaB;
@@ -409,6 +416,7 @@ int init()
         g_dynamic[chan].balance = 0.0;
         g_dynamic[chan].reqbalance = 0.0;
         g_dynamic[chan].mute = 0;
+        g_dynamic[chan].phase = 0;
         char sName[10];
         sprintf(sName, "input_%02da", chan + 1);
         if (!(g_dynamic[chan].portA = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
@@ -464,6 +472,7 @@ int init()
     g_mainOutput.balance = 0.0;
     g_mainOutput.reqbalance = 0.0;
     g_mainOutput.mute = 0;
+    g_mainOutput.phase = 0;
     g_mainOutput.routed = 1;
 
     #ifdef DEBUG
@@ -515,8 +524,10 @@ void end() {
 
 void setLevel(int channel, float level)
 {
-    if(channel >= MAX_CHANNELS)
+    if(channel >= MAX_CHANNELS) {
+        channel = MAIN_CHANNEL;
         g_mainOutput.reqlevel = level;
+    }
     else
         g_dynamic[channel].reqlevel = level;
     sprintf(g_oscpath, "/mixer/fader%d", channel);
@@ -534,8 +545,10 @@ void setBalance(int channel, float balance)
 {
     if(fabs(balance) > 1)
         return;
-    if(channel >= MAX_CHANNELS)
+    if(channel >= MAX_CHANNELS) {
+        channel = MAIN_CHANNEL;
         g_mainOutput.reqbalance = balance;
+    }
     else
         g_dynamic[channel].reqbalance = balance;
     sprintf(g_oscpath, "/mixer/balance%d", channel);
@@ -551,8 +564,10 @@ float getBalance(int channel)
 
 void setMute(int channel, int mute)
 {
-    if(channel >= MAX_CHANNELS)
+    if(channel >= MAX_CHANNELS) {
+        channel = MAX_CHANNELS;
         g_mainOutput.mute = mute;
+    }
     else
         g_dynamic[channel].mute = mute;
     sprintf(g_oscpath, "/mixer/mute%d", channel);
@@ -564,6 +579,25 @@ int getMute(int channel)
     if(channel >= MAX_CHANNELS)
         return g_mainOutput.mute;
     return g_dynamic[channel].mute;
+}
+
+void setPhase(int channel, int phase)
+{
+    if(channel >= MAX_CHANNELS) {
+        channel = MAIN_CHANNEL;
+        g_mainOutput.phase = phase;
+    }
+    else
+        g_dynamic[channel].phase = phase;
+    sprintf(g_oscpath, "/mixer/phase%d", channel);
+    sendOscInt(g_oscpath, phase);
+}
+
+int getPhase(int channel)
+{
+    if(channel >= MAX_CHANNELS)
+        return g_mainOutput.phase;
+    return g_dynamic[channel].phase;
 }
 
 void setSolo(int channel, int solo)
@@ -611,10 +645,25 @@ void toggleMute(int channel)
         setMute(channel, 1);
 }
 
+void togglePhase(int channel)
+{
+    int phase;
+    if(channel >= MAX_CHANNELS)
+        phase = g_mainOutput.phase;
+    else
+        phase = g_dynamic[channel].phase;
+    if(phase)
+        setPhase(channel, 0);
+    else
+        setPhase(channel, 1);
+}
+
 
 void setMono(int channel, int mono){
-    if(channel >= MAX_CHANNELS)
+    if(channel >= MAX_CHANNELS) {
+        channel = MAIN_CHANNEL;
         g_mainOutput.mono = (mono != 0);
+    }
     else
         g_dynamic[channel].mono = (mono != 0);
     sprintf(g_oscpath, "/mixer/mono%d", channel);
@@ -631,11 +680,12 @@ int getMono(int channel)
 void reset(int channel)
 {
     if(channel >= MAX_CHANNELS)
-        return;
+        channel = MAIN_CHANNEL;
     setLevel(channel, 0.8);
     setBalance(channel, 0.0);
     setMute(channel, 0);
     setMono(channel, 0);
+    setPhase(channel, 0);
     setSolo(channel, 0);
 }
 
@@ -706,12 +756,14 @@ int addOscClient(const char* client)
             setLevel(nChannel, getLevel(nChannel));
             setMono(nChannel, getMono(nChannel));
             setMute(nChannel, getMute(nChannel));
+            setPhase(nChannel, getPhase(nChannel));
             setSolo(nChannel, getSolo(nChannel));
         }
         setBalance(MAIN_CHANNEL, getBalance(MAIN_CHANNEL));
         setLevel(MAIN_CHANNEL, getLevel(MAIN_CHANNEL));
         setMono(MAIN_CHANNEL, getMono(MAIN_CHANNEL));
         setMute(MAIN_CHANNEL, getMute(MAIN_CHANNEL));
+        setPhase(MAIN_CHANNEL, getPhase(MAIN_CHANNEL));
         setSolo(MAIN_CHANNEL, getSolo(MAIN_CHANNEL));
         g_bOsc = 1;
         return i;

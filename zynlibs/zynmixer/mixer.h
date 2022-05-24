@@ -107,6 +107,18 @@ void setMono(int channel, int mono);
 */
 int  getMono(int channel);
 
+/** @brief  Set phase state of channel
+*   @param  channel Index of channel
+*   @param  phase (0: in phase, 1: phase reversed)
+*/
+void setPhase(int channel, int phase);
+
+/** @brief  Get phase state of channel
+*   @param  channel Index of channel
+*   @retval int Channel phase state (0: in phase, 1: phase reversed)
+*/
+int  getPhase(int channel);
+
 /** @brief  Reset a channel to default settings
 *   @param  channel Index of channel
 */
