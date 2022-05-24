@@ -124,6 +124,14 @@ class zynthian_gui:
 		"39": "START_MIDI_PLAY",
 		"40": "STOP_MIDI_PLAY",
 
+		"41": "ARROW_UP",
+		"42": "ARROW_DOWN",
+		"43": "ARROW_RIGHT",
+		"44": "ARROW_LEFT",
+
+		"45": "ZYNPOT_UP",
+		"46": "ZYNPOT_DOWN",
+
 		"48": "BACK",
 		"49": "NEXT",
 		"50": "PREV",
@@ -1034,6 +1042,29 @@ class zynthian_gui:
 		#----------------------------------------------------------------
 		# Basic UI-Control CUIAs
 		#----------------------------------------------------------------
+		# 4 x Arrows
+		elif cuia == "ARROW_UP":
+			try:
+				self.get_current_screen_obj().arrow_up()
+			except:
+				pass
+		elif cuia == "ARROW_DOWN" or cuia == "PREV":
+			try:
+				self.get_current_screen_obj().arrow_down()
+			except:
+				pass
+		elif cuia == "ARROW_RIGHT" or cuia == "NEXT":
+			try:
+				self.get_current_screen_obj().arrow_right()
+			except:
+				pass
+		elif cuia == "ARROW_LEFT":
+			try:
+				self.get_current_screen_obj().arrow_left()
+			except:
+				pass
+
+		# Back action
 		elif cuia == "BACK":
 			try:
 				self.back_screen()
@@ -1045,30 +1076,6 @@ class zynthian_gui:
 				self.get_current_screen_obj().select(params[0])
 			except:
 				pass
-		# 4 x Arrows
-		elif cuia == "ARROW_UP":
-			try:
-				self.get_current_screen_obj().arrow_up()
-			except:
-				pass
-
-		elif cuia == "ARROW_DOWN" or cuia == "PREV":
-			try:
-				self.get_current_screen_obj().arrow_down()
-			except:
-				pass
-
-		elif cuia == "ARROW_RIGHT" or cuia == "NEXT":
-			try:
-				self.get_current_screen_obj().arrow_right()
-			except:
-				pass
-
-		elif cuia == "ARROW_LEFT":
-			try:
-				self.get_current_screen_obj().arrow_left()
-			except:
-				pass
 
 		#----------------------------------------------------------------
 		# Rotary Control => it receives the zynpot number as paramter
@@ -1076,7 +1083,6 @@ class zynthian_gui:
 		elif cuia == "ZYNPOT_UP":
 			#TODO
 			pass
-
 		elif cuia == "ZYNPOT_DOWN":
 			#TODO
 			pass
