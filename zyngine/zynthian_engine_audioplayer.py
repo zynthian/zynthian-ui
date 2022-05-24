@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
-# ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_audio_player)
+# ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_audioplayer)
 #
 # zynthian_engine implementation for audio player
 #

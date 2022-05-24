@@ -106,6 +106,28 @@ def toggle_mute(channel):
 	if lib_zynmixer:
 		lib_zynmixer.toggleMute(channel)
 
+#	Function to set phase reversal for a channel
+#	channel: Index of channel
+#	phase: Phase reversal state (True to reverse)
+def	set_phase(channel, phase):
+	if lib_zynmixer:
+		lib_zynmixer.setPhase(channel, phase)
+
+#	Function to get phase reversal for a channel
+#	channel: Index of channel
+#	returns: Phase reversal state (True if phase reversed)
+def	get_phase(channel):
+	if lib_zynmixer:
+		return lib_zynmixer.getPhase(channel)
+	else:
+		return True
+
+#	Function to toggle phase reversal of a channel
+#	channel: Index of channel
+def toggle_phase(channel):
+	if lib_zynmixer:
+		lib_zynmixer.togglePhase(channel)
+
 #	Function to set solo for a channel
 #	channel: Index of channel
 #	solo: Solo state (True to solo)

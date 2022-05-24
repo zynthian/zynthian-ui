@@ -206,7 +206,7 @@ class zynthian_gui_controller:
 
 
 	def plot_value(self):
-		if self.shown and self.zctrl and self.zctrl.is_dirty:
+		if self.shown and self.zctrl and self.zctrl.is_dirty or self.refresh_plot_value:
 			self.plot_value_func()
 			self.refresh_plot_value = False
 			self.zctrl.is_dirty = False
@@ -576,6 +576,7 @@ class zynthian_gui_controller:
 
 
 	def zctrl_sync(self, set_zynpot=True):
+		logging.warning("This function should be obsolete!")
 		#TODO: Should be able to remove this but currently still called by some functions
 		#List of values (value selector)
 		if self.selmode:

@@ -108,6 +108,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.layer_toggle_mono, None, "[  ] Audio Mono"))
 
+			if zynmixer.get_phase(self.layer.midi_chan):
+				self.list_data.append((self.layer_toggle_phase, None, "[x] Phase reverse B"))
+			else:
+				self.list_data.append((self.layer_toggle_phase, None, "[  ] Phase reverse B"))
+
 
 		if self.layer.midi_chan is not None:
 			if self.zyngui.audio_recorder.get_status():
@@ -345,6 +350,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_toggle_mono(self):
 		zynmixer.toggle_mono(self.layer.midi_chan)
+		self.show()
+
+
+	def layer_toggle_phase(self):
+		zynmixer.toggle_phase(self.layer.midi_chan)
 		self.show()
 
 
