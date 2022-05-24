@@ -91,8 +91,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		['rotary toggle',64,'off','off|on'],
 #		['rotary speed',1,64,127],
-		['rotary speed',1,'off','slow|off|fast'],
-#		['rotary speed',1,'off',[['slow','off','fast'],[0,43,86]]],
+#		['rotary speed',1,'off','slow|off|fast'],
+		['rotary speed',1,'off',[['slow','off','fast'],[0,43,86]]],
 #		['rotary select',67,0,127],
 #		['rotary select',67,'off/off','off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
 		['rotary select',67,'off/off',[['off/off','slow/off','fast/off','off/slow','slow/slow','fast/slow','off/fast','slow/fast','fast/fast'],[0,15,30,45,60,75,90,105,120]]],
