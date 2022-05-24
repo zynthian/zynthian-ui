@@ -603,9 +603,7 @@ def audio_autoconnect(force=False):
 				except:
 					pass
 
-	# Connect Audio Recorder
-	audio_autoconnect_mplayer()
-
+	
 	# Connect zynmixer "send" to the Main FX-chain root layer and its "pars" (parallel layers)
 	mfx_root_layer = zynguilayer.get_main_fxchain_root_layer()
 	if mfx_root_layer:
@@ -698,18 +696,18 @@ def audio_autoconnect(force=False):
 	release_lock()
 
 
-def audio_autoconnect_mplayer():
-	mplayer_ports = jclient.get_ports("MPlayer", is_output=True, is_audio=True)
-	if mplayer_ports and len(mplayer_ports)>1:
+def audio_connect_aux(source_name):
+	ports = jclient.get_ports(source_name, is_output=True, is_audio=True)
+	if ports:
 		try:
-			pb_ports = get_layer_audio_out_ports(zynthian_gui_config.zyngui.screens["audio_recorder"])
-			if len(pb_ports)==1:
-				pb_ports = jclient.get_ports(pb_ports[0], is_input=True, is_audio=True)
-			connect_only(mplayer_ports[0], [pb_ports[0]])
-			connect_only(mplayer_ports[1], [pb_ports[1]])
-			logging.error("Connecting Mplayer ports to {}".format(pb_ports))
+			if len(ports) > 1:
+				jclient.connect(ports[0], "zynmixer:input_17a")
+				jclient.connect(ports[1], "zynmixer:input_17b")
+			else:
+				jclient.connect(ports[0], "zynmixer:input_17a")
+				jclient.connect(ports[0], "zynmixer:input_17b")
 		except Exception as e:
-			logging.error("Can't connect Mplayer ports to {} => {}".format(pb_ports, e))
+			logging.error("Can't connect {} to audio aux ports".format(source_name), e)
 
 
 def audio_disconnect_sysout():

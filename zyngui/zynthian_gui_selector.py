@@ -207,7 +207,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if self.shown and self.zselector:
 			self.zselector.read_zyncoder()
 			if self.index != self.zselector.zctrl.value:
-				self.select_listbox(self.zselector.zctrl.value)
+				self.select(self.zselector.zctrl.value)
 		return [0,1,2]
 
 

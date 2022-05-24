@@ -81,6 +81,7 @@ class zynaudioplayer():
 	def remove_player(self):
 		if self.handle is None:
 			return
+		self.set_control_cb(None)
 		self.libaudioplayer.remove_player(self.handle)
 		self.libaudioplayer = None
 		self.handle = None

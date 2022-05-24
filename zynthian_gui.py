@@ -36,6 +36,7 @@ from time import sleep
 from pathlib import Path
 from time import monotonic
 from os.path import isfile
+from glob import glob
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
@@ -47,6 +48,7 @@ import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynmixer import zynmixer
 from zynlibs.zynmixer.zynmixer import lib_zynmixer
+from zynlibs.zynaudioplayer import zynaudioplayer
 
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
@@ -212,6 +214,8 @@ class zynthian_gui:
 		self.zynautoconnect_midi_flag = False
 
 		self.get_throttled_file = None
+
+		self.audio_player = None
 
 		# Create Lock object to avoid concurrence problems
 		self.lock = Lock()
@@ -946,6 +950,43 @@ class zynthian_gui:
 	def is_single_active_channel(self):
 		return zynthian_gui_config.midi_single_active_channel
 
+
+	def start_audio_player(self):
+		filename = self.audio_recorder.filename
+		if not filename:
+			if os.path.ismount(self.audio_recorder.capture_dir_usb):
+				path = self.audio_recorder.capture_dir_usb
+			else:
+				path = self.audio_recorder.capture_dir_sdc
+			files = glob('{}/*.wav'.format(path))
+			if files:
+				filename = max(files, key=os.path.getctime)
+			else:
+				return
+
+		if not self.audio_player:
+			try:
+				self.audio_player = zynaudioplayer.zynaudioplayer()
+				zynautoconnect.audio_connect_aux(self.audio_player.get_jack_client_name())
+			except Exception as e:
+				self.stop_audio_player()
+				return
+		self.audio_player.load(filename)
+		self.audio_player.set_control_cb(self.audio_player_cb)
+		self.audio_player.start_playback()
+
+
+	def audio_player_cb(self, id, value):
+		if id == 1 and value == 0:
+			self.stop_audio_player()
+
+
+	def stop_audio_player(self):
+		if self.audio_player:
+			self.audio_player.remove_player()
+			self.audio_player = None
+
+
 	# -------------------------------------------------------------------
 	# Callable UI Actions
 	# -------------------------------------------------------------------
@@ -1000,10 +1041,17 @@ class zynthian_gui:
 		elif cuia == "TOGGLE_AUDIO_RECORD":
 			self.audio_recorder.toggle_recording()
 
-		#TODO: Handle CUIA audio playback
-		#elif cuia == "START_AUDIO_PLAY":
-		#elif cuia == "STOP_AUDIO_PLAY":
-		#elif cuia == "TOGGLE_AUDIO_PLAY":
+		elif cuia == "START_AUDIO_PLAY":
+			self.start_audio_player()
+			
+		elif cuia == "STOP_AUDIO_PLAY":
+			self.stop_audio_player()
+
+		elif cuia == "TOGGLE_AUDIO_PLAY":
+			if self.audio_player and self.audio_player.get_playback_state():
+				self.stop_audio_player()
+			else:
+				self.start_audio_player()
 
 		elif cuia == "START_MIDI_RECORD":
 			self.screens['midi_recorder'].start_recording()
@@ -1888,6 +1936,8 @@ class zynthian_gui:
 			try:
 				self.status_info['audio_recorder'] = self.audio_recorder.get_status()
 				self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
+				if self.audio_player:
+					self.status_info['audio_player'] = self.audio_player.get_playback_state()
 			except Exception as e:
 				logging.error(e)
 

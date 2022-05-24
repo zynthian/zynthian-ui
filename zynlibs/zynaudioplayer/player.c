@@ -519,6 +519,7 @@ void unload(int player_handle) {
         return;
     stop_playback(player_handle);
     pPlayer->file_open = 0;
+    pPlayer->cb_fn = NULL;
     void* status;
     pthread_join(pPlayer->file_thread, &status);
     pPlayer->filename[0] = '\0';

@@ -45,6 +45,7 @@ class zynthian_audio_recorder():
 		self.rec_proc = None
 		self.primed = set() # List of chains primed to record
 		self.zyngui = zynthian_gui_config.zyngui
+		self.filename = None
 
 
 	def get_status(self):
@@ -112,7 +113,8 @@ class zynthian_audio_recorder():
 			else:
 				cmd.append("zynmixer:input_{:02d}b".format(port + 1))
 
-		cmd.append(self.get_new_filename())
+		self.filename = self.get_new_filename()
+		cmd.append(self.filename)
 
 		logging.info("STARTING NEW AUDIO RECORD ...")
 		try:

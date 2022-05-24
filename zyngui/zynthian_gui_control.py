@@ -619,14 +619,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def cb_listbox_wheel(self, event):
-		index = self.index
-		if (event.num == 4 or event.delta == 120) and self.index>0:
-			index -= 1
-		if (event.num == 5 or event.delta == -120) and self.index < (len(self.list_data) - 1):
-			index += 1
-		if index != self.index:
-			self.select_listbox(index)
-		return "break" # Consume event to stop scrolling of listbox
+		# Override with default listbox behaviour to allow scrolling of listbox without selection (expected UX)
+		return
 
 
 	def set_select_path(self):
