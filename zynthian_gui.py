@@ -734,7 +734,7 @@ class zynthian_gui:
 			self.screen_timer_id = None
 
 
-	def toggle_screen(self, screen, hmode=SCREEN_HMODE_RESET):
+	def toggle_screen(self, screen, hmode=SCREEN_HMODE_ADD):
 		if self.current_screen!=screen:
 			self.show_screen(screen, hmode)
 		else:
@@ -1163,13 +1163,13 @@ class zynthian_gui:
 		# Screen/Mode management CUIAs
 		#----------------------------------------------------------------
 		elif cuia in ("MODAL_MAIN", "SCREEN_MAIN"):
-			self.toggle_screen("main", hmode=zynthian_gui.SCREEN_HMODE_ADD)
+			self.toggle_screen("main")
 
 		elif cuia in ("MODAL_ADMIN", "SCREEN_ADMIN"):
-			self.toggle_screen("admin", hmode=zynthian_gui.SCREEN_HMODE_ADD)
+			self.toggle_screen("admin")
 
 		elif cuia in ("MODAL_AUDIO_MIXER", "SCREEN_AUDIO_MIXER"):
-			self.toggle_screen("audio_mixer", hmode=zynthian_gui.SCREEN_HMODE_ADD)
+			self.toggle_screen("audio_mixer")
 
 		elif cuia in ("MODAL_SNAPSHOT", "SCREEN_SNAPSHOT"):
 			self.toggle_screen("snapshot")
@@ -1178,7 +1178,7 @@ class zynthian_gui:
 			self.toggle_screen("midi_recorder")
 
 		elif cuia in ("MODAL_ALSA_MIXER", "SCREEN_ALSA_MIXER"):
-			self.toggle_screen("alsa_mixer")
+			self.toggle_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
 
 		elif cuia in ("MODAL_STEPSEQ", "SCREEN_STEPSEQ"):
 			self.toggle_screen("stepseq")
