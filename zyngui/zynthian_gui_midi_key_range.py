@@ -53,11 +53,12 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		self.halftone_trans = 0
 
 		self.learn_toggle = 0
+		self.learn_mode = True
 
-		self.nlow_zctrl=None
-		self.nhigh_zctrl=None
-		self.octave_zctrl=None
-		self.halftone_zctrl=None
+		self.nlow_zgui_ctrl=None
+		self.nhigh_zgui_ctrl=None
+		self.octave_zgui_ctrl=None
+		self.halftone_zgui_ctrl=None
 
 		if zynthian_gui_config.ctrl_both_sides:
 			self.space_frame_width = zynthian_gui_config.display_width-2*zynthian_gui_config.ctrl_width
@@ -225,6 +226,16 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			text=self.get_midi_note_name(self.note_high))
 
 
+		self.learn_text=self.note_info_canvas.create_text(
+			zynthian_gui_config.display_width  / 2,
+			int((self.note_info_canvas_height-fs) / 1.5),
+			width=5*fs,
+			justify=tkinter.CENTER,
+			fill=zynthian_gui_config.color_ml,
+			font=(zynthian_gui_config.font_family, int(fs * 0.7)),
+			text="learning...")
+
+
 	def update_text(self):
 		self.note_info_canvas.itemconfig(self.nlow_text, text=self.get_midi_note_name(self.note_low))
 		self.note_info_canvas.itemconfig(self.nhigh_text, text=self.get_midi_note_name(self.note_high))
@@ -232,58 +243,54 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def set_zctrls(self):
 		if self.shown:
-			if self.halftone_zctrl:
-				self.halftone_zctrl.setup_zyncoder()
-			else:
-				self.halftone_ctrl=zynthian_controller(None, 'semitone transpose', 'semitone transpose', { 'midi_cc':0, 'value_max':25 })
-				self.halftone_zctrl=zynthian_gui_controller(self.zctrl_pos[0], self.main_frame, self.halftone_ctrl, False)
-			self.halftone_zctrl.val0=-12
-			self.halftone_zctrl.erase_midi_bind()
-			self.halftone_zctrl.set_value(self.halftone_trans+12, True)
-			self.halftone_zctrl.show()
+			if not self.halftone_zgui_ctrl:
+				self.halftone_zctrl=zynthian_controller(self, 'semitone transpose', 'semitone transpose', { 'value_min':-12, 'value_max':12 })
+				self.halftone_zgui_ctrl=zynthian_gui_controller(self.zctrl_pos[0], self.main_frame, self.halftone_zctrl, False)
+			self.halftone_zgui_ctrl.setup_zyncoder()
+			self.halftone_zgui_ctrl.erase_midi_bind()
+			self.halftone_zctrl.set_value(self.halftone_trans)
+			self.halftone_zgui_ctrl.show()
 
-			if self.octave_zctrl:
-				self.octave_zctrl.setup_zyncoder()
-			else:
-				self.octave_ctrl=zynthian_controller(None, 'octave transpose', 'octave transpose', { 'midi_cc':0, 'value_max':11 })
-				self.octave_zctrl=zynthian_gui_controller(self.zctrl_pos[1], self.main_frame, self.octave_ctrl, False)
-			self.octave_zctrl.val0=-5
-			self.octave_zctrl.erase_midi_bind()
-			self.octave_zctrl.set_value(self.octave_trans+5, True)
-			self.octave_zctrl.show()
+			if not self.octave_zgui_ctrl:
+				self.octave_zctrl = zynthian_controller(self, 'octave transpose', 'octave transpose', { 'value_min':-5, 'value_max':6 })
+				self.octave_zgui_ctrl = zynthian_gui_controller(self.zctrl_pos[1], self.main_frame, self.octave_zctrl, False)
+			self.octave_zgui_ctrl.setup_zyncoder()
+			self.octave_zgui_ctrl.erase_midi_bind()
+			self.octave_zctrl.set_value(self.octave_trans)
+			self.octave_zgui_ctrl.show()
 
-			if self.nlow_zctrl:
-				self.nlow_zctrl.setup_zyncoder()
-			else:
-				self.nlow_ctrl=zynthian_controller(None, 'note_low', 'note_low', { 'midi_cc':0, 'value_max':127 })
-				self.nlow_zctrl=zynthian_gui_controller(self.zctrl_pos[2], self.main_frame, self.nlow_ctrl, True)
-			self.nlow_zctrl.val0=0
-			self.nlow_zctrl.set_value(self.note_low, True)
-			self.nlow_zctrl.show()
+			if not self.nlow_zgui_ctrl:
+				self.nlow_zctrl = zynthian_controller(self, 'note low', 'note low', {'nudge_factor':1})
+				self.nlow_zgui_ctrl = zynthian_gui_controller(self.zctrl_pos[2], self.main_frame, self.nlow_zctrl, True)
+			self.nlow_zgui_ctrl.setup_zyncoder()
+			self.nlow_zctrl.set_value(self.note_low)
+			self.nlow_zgui_ctrl.show()
 
-			if self.nhigh_zctrl:
-				self.nhigh_zctrl.setup_zyncoder()
-			else:
-				self.nhigh_ctrl=zynthian_controller(None, 'note_high', 'note_high', { 'midi_cc':0, 'value_max':127 })
-				self.nhigh_zctrl=zynthian_gui_controller(self.zctrl_pos[3], self.main_frame, self.nhigh_ctrl, True)
-			self.nhigh_zctrl.val0=0
-			self.nhigh_zctrl.set_value(self.note_high, True)
-			self.nhigh_zctrl.show()
+			if not self.nhigh_zgui_ctrl:
+				self.nhigh_zctrl = zynthian_controller(self, 'note high', 'note high', {'nudge_factor':1})
+				self.nhigh_zgui_ctrl = zynthian_gui_controller(self.zctrl_pos[3], self.main_frame, self.nhigh_zctrl, True)
+			self.nhigh_zgui_ctrl.setup_zyncoder()
+			self.nhigh_zctrl.set_value(self.note_high)
+			self.nhigh_zgui_ctrl.show()
 
 
 	def plot_zctrls(self):
 		if self.replot:
-			self.octave_zctrl.plot_value()
-			self.halftone_zctrl.plot_value()
+			for zgui_ctrl in [self.halftone_zgui_ctrl, self.octave_zgui_ctrl, self.nlow_zgui_ctrl, self.nhigh_zgui_ctrl]:
+				if zgui_ctrl.zctrl.is_dirty:
+					zgui_ctrl.calculate_plot_values()
+					zgui_ctrl.plot_value()
+					zgui_ctrl.zctrl.is_dirty = False
 			self.update_piano()
 			self.update_text()
+			self.replot = False
 
 
 	def show(self):
 		super().show()
 		self.zyngui.screens["control"].unlock_controllers()
 		self.set_zctrls()
-		lib_zyncore.set_midi_learning_mode(1)
+		lib_zyncore.set_midi_learning_mode(self.learn_mode)
 
 
 	def hide(self):
@@ -292,54 +299,70 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 
 	def zyncoder_read(self, zcnums=None):
+		self.halftone_zgui_ctrl.read_zyncoder()
+		self.octave_zgui_ctrl.read_zyncoder()
+		self.nlow_zgui_ctrl.read_zyncoder()
+		self.nhigh_zgui_ctrl.read_zyncoder()
+		return []
+
+	def switch(self, switch, type):
+		if switch == 2 and type == 'S':
+			if lib_zyncore.get_midi_learning_mode():
+				self.learn_mode = False
+				lib_zyncore.set_midi_learning_mode(0)
+				self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.HIDDEN)
+			else:
+				self.learn_mode = True
+				lib_zyncore.set_midi_learning_mode(1)
+				self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.NORMAL)
+			return True
+
+
+	def send_controller_value(self, zctrl):
 		if self.shown:
-			self.nlow_zctrl.read_zyncoder()
-			if self.note_low!=self.nlow_zctrl.value:
-				if self.nlow_zctrl.value>self.note_high:
-					self.nlow_zctrl.set_value(self.note_high-1, True)
-					self.note_low = self.note_high-1
+			if zctrl == self.nlow_zctrl:
+				self.note_low = zctrl.value #TODO: Try to loose these variables
+				if zctrl.value > self.nhigh_zctrl.value:
+					self.nlow_zctrl.set_value(self.nhigh_zctrl.value - 1)
 				else:
-					self.note_low = self.nlow_zctrl.value
-					logging.debug("SETTING FILTER NOTE_LOW: {}".format(self.note_low))
-					lib_zyncore.set_midi_filter_note_low(self.chan, self.note_low)
-					self.replot = True
+					logging.debug("SETTING FILTER NOTE_LOW: {}".format(zctrl.value))
+				lib_zyncore.set_midi_filter_note_low(self.chan, zctrl.value)
+				self.replot = True
 
-			self.nhigh_zctrl.read_zyncoder()
-			if self.note_high!=self.nhigh_zctrl.value:
-				if self.nhigh_zctrl.value<self.note_low:
-					self.nhigh_zctrl.set_value(self.note_low+1, True)
-					self.note_high = self.note_low+1
+			if zctrl == self.nhigh_zctrl:
+				self.note_high = zctrl.value #TODO: Try to loose these variables
+				if zctrl.value < self.nlow_zctrl.value:
+					self.nhigh_zctrl.set_value(self.nlow_zctrl.value + 1)
 				else:
-					self.note_high = self.nhigh_zctrl.value
-				logging.debug("SETTING FILTER NOTE_HIGH: {}".format(self.note_high))
-				lib_zyncore.set_midi_filter_note_high(self.chan, self.note_high)
+					logging.debug("SETTING FILTER NOTE_HIGH: {}".format(zctrl.value))
+				lib_zyncore.set_midi_filter_note_high(self.chan, zctrl.value)
 				self.replot = True
 
-			self.octave_zctrl.read_zyncoder()
-			if (self.octave_trans+5)!=self.octave_zctrl.value:
-				self.octave_trans = self.octave_zctrl.value-5
-				logging.debug("SETTING FILTER OCTAVE TRANS.: {}".format(self.octave_trans))
-				lib_zyncore.set_midi_filter_octave_trans(self.chan, self.octave_trans)
+			if zctrl == self.octave_zctrl:
+				self.octave_trans = zctrl.value #TODO: Try to loose these variables
+				logging.debug("SETTING FILTER OCTAVE TRANS.: {}".format(zctrl.value))
+				lib_zyncore.ui_send_ccontrol_change(self.chan, 120, 0)
+				lib_zyncore.set_midi_filter_octave_trans(self.chan, zctrl.value)
 				self.replot = True
 
-			self.halftone_zctrl.read_zyncoder()
-			if (self.halftone_trans+12)!=self.halftone_zctrl.value:
-				self.halftone_trans = self.halftone_zctrl.value-12
-				logging.debug("SETTING FILTER HALFTONE TRANS.: {}".format(self.halftone_trans))
-				lib_zyncore.set_midi_filter_halftone_trans(self.chan, self.halftone_trans)
+			if zctrl == self.halftone_zctrl:
+				self.halftone_trans = zctrl.value #TODO: Try to loose these variables
+				logging.debug("SETTING FILTER HALFTONE TRANS.: {}".format(zctrl.value))
+				lib_zyncore.ui_send_ccontrol_change(self.chan, 120, 0)
+				lib_zyncore.set_midi_filter_halftone_trans(self.chan, zctrl.value)
 				self.replot = True
-
-		return [0]
 
 
 	def learn_note_range(self, num):
-		if self.learn_toggle==0 or num<=self.note_low:
-			self.nlow_zctrl.set_value(num, True)
-			if self.note_low>self.note_high:
-				self.nhigh_zctrl.set_value(127, True)
+		if not self.learn_mode:
+			return
+		if self.learn_toggle == 0 or num <= self.note_low:
+			self.nlow_zctrl.set_value(num)
+			if self.note_low > self.note_high:
+				self.nhigh_zctrl.set_value(127)
 			self.learn_toggle = 1
 		else:
-			self.nhigh_zctrl.set_value(num, True)
+			self.nhigh_zctrl.set_value(num)
 			self.learn_toggle = 0
 
 

@@ -949,7 +949,7 @@ class zynthian_gui:
 
 	def start_audio_player(self):
 		filename = self.audio_recorder.filename
-		if not filename:
+		if not filename or not os.path.exists(filename):
 			if os.path.ismount(self.audio_recorder.capture_dir_usb):
 				path = self.audio_recorder.capture_dir_usb
 			else:
@@ -1204,6 +1204,7 @@ class zynthian_gui:
 		#----------------------------------------------------------------
 		# Screen/Mode management CUIAs
 		#----------------------------------------------------------------
+		#TODO: Toggle not necessarily desired action. Should we add set-screen options?
 		elif cuia in ("MODAL_MAIN", "SCREEN_MAIN"):
 			self.toggle_screen("main")
 

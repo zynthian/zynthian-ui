@@ -551,7 +551,10 @@ class zynthian_gui_controller:
 						self.step=0
 				#Float
 				else:
-					self.format_print="{0:.2f}" # Use zctrl.nudge_factor to decide format
+					if zctrl.nudge_factor < 0.1:
+						self.format_print="{0:.2f}"
+					else:
+						self.format_print="{0:.1f}"
 					# Use adaptative step size based on rotary speed
 					self.step=0
 					self.pixels_per_div = int(self.height * zctrl.nudge_factor / zctrl.value_range)
@@ -573,29 +576,6 @@ class zynthian_gui_controller:
 
 		self.calculate_value_font_size()
 		self.setup_zyncoder()
-
-
-	def zctrl_sync(self, set_zynpot=True):
-		logging.warning("This function should be obsolete!")
-		#TODO: Should be able to remove this but currently still called by some functions
-		#List of values (value selector)
-		if self.selmode:
-			val=self.zctrl.get_value2index()
-		if self.zctrl.labels:
-			#logging.debug("ZCTRL SYNC LABEL => {}".format(self.zctrl.get_value2label()))
-			val=self.zctrl.get_label2value(self.zctrl.get_value2label())
-		#Numeric value
-		else:
-			#"List Selection Controller" => step 1 element by rotary tick
-			if self.zctrl.midi_cc==0:
-				val=self.zctrl.value
-			elif self.logarithmic:
-				val = self.n_values*math.log(self.zctrl.value/self.zctrl.value_min)/self.log_scale_value
-			else:
-				val = (self.zctrl.value-self.zctrl.value_min)/self.scale_value
-		#Set value & Update zynpot
-		self.set_value(val, set_zynpot, False)
-		#logging.debug("ZCTRL SYNC {} => {}".format(self.title, val))
 
 
 	def setup_zyncoder(self):

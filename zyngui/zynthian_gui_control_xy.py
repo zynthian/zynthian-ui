@@ -141,7 +141,10 @@ class zynthian_gui_control_xy():
 		else:
 			xv = self.x_zctrl.value_min+ self.x*self.x_zctrl.value_range/self.width
 
-		if xv!=self.xvalue:
+		if self.x_zctrl.is_integer:
+			xv = int(xv)
+
+		if xv != self.xvalue:
 			self.xvalue = xv
 			self.x_zctrl.set_value(self.xvalue, True)
 
@@ -150,7 +153,10 @@ class zynthian_gui_control_xy():
 		else:	
 			yv = self.y_zctrl.value_min + self.y*self.y_zctrl.value_range/self.height
 
-		if yv!=self.yvalue:
+		if self.y_zctrl.is_integer:
+			yv = int(yv)
+
+		if yv != self.yvalue:
 			self.yvalue = yv
 			self.y_zctrl.set_value(self.yvalue, True)
 
@@ -164,13 +170,9 @@ class zynthian_gui_control_xy():
 
 
 	def zyncoder_read(self):
-		# Wait 0.3 seconds after last motion for start reading encoders again
-		if self.last_motion_ts is None or (datetime.now()-self.last_motion_ts).total_seconds()>0.1:
-			if self.last_motion_ts is not None:
-				self.last_motion_ts = None
-				self.zyngui.screens['control'].set_controller_value(self.x_zctrl)
-				self.zyngui.screens['control'].set_controller_value(self.y_zctrl)
-
+		# Wait 0.1 seconds after last motion for start reading encoders again
+		if self.last_motion_ts is None or (datetime.now() - self.last_motion_ts).total_seconds() > 0.1:
+			self.last_motion_ts = None
 			self.zyngui.screens['control'].zyncoder_read()
 			self.get_controller_values()
 

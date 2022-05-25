@@ -319,8 +319,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 		# If control xyselect mode active, disable xyselect mode
 		elif self.xyselect_mode:
 			logging.debug("DISABLE XYSELECT MODE")
-			self.unset_xyselect_mode()
-			#self.show()??
+			if self.zyngui.screens['control_xy'].shown:
+				self.zyngui.screens['control_xy'].hide()
+			else:
+				self.unset_xyselect_mode()
+			self.show()
 			return True
 		# If in MIDI-learn mode, back to instrument control
 		elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
@@ -547,27 +550,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 				zgui_ctrl.plot_value()
 		for k, widget in self.widgets.items():
 			widget.update()
-
-
-	def set_controller_value(self, zctrl, val=None):
-		if val is not None:
-			zctrl.set_value(val)
-		for i,zgui_controller in enumerate(self.zgui_controllers):
-			if zgui_controller.zctrl==zctrl:
-				if i==zynthian_gui_config.select_ctrl and self.mode=='select':
-					zgui_controller.zctrl_sync(False)
-				else:
-					zgui_controller.zctrl_sync(True)
-
-
-	def get_controller_value(self, zctrl):
-		for i in self.zgui_controllers:
-			if self.zgui_controllers[i].zctrl==zctrl:
-				return zctrl.get_value()
-
-
-	def get_controller_value_by_index(self, i):
-		return self.zgui_controllers[i].zctrl.get_value()
 
 
 	def midi_learn_zctrl(self, i):

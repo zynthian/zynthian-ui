@@ -50,7 +50,7 @@ class zynthian_controller:
 		self.value_mid=64 # Mid-point value of control range (used for toggle controls)
 		self.value_max=127 # Maximum value of control range
 		self.value_range=127 # Span of permissible values 
-		self.nudge_factor = None # Factor to scale each up/down nudge
+		self.nudge_factor = None # Factor to scale each up/down nudge #TODO: This is not set if configure is not called or options not passed
 		self.labels=None # List of discrete value labels
 		self.ticks=None # List of discrete value labels
 		self.is_toggle=False # True if control is Boolean toggle

@@ -388,7 +388,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 			return 0; // We don't have a SMF loaded or we are stopped so don't bother processing any data
 
 		// Handle change of play state
-		if(nPreviousPlayState != g_nPlayState | g_nPlayState == STOPPING)
+		if(nPreviousPlayState != g_nPlayState || g_nPlayState == STOPPING)
 		{
 			DPRINTF("zysmf::onJackProcess Previous play state: %u New play state: %u\n", nPreviousPlayState, g_nPlayState);
 			if(g_nPlayState == STOPPED || g_nPlayState == STOPPING)
