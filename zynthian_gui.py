@@ -382,18 +382,14 @@ class zynthian_gui:
 			self.wsleds.setPixelColor(13, self.wscolor_light)
 
 			# REC/PLAY Audio buttons:
-			if self.status_info['audio_recorder']:
-				if "REC" in self.status_info['audio_recorder']:
-					self.wsleds.setPixelColor(14, self.wscolor_red)
-				else:
-					self.wsleds.setPixelColor(14, self.wscolor_light)
-
-				if "PLAY" in self.status_info['audio_recorder']:
-					self.wsleds.setPixelColor(15, self.wscolor_active)
-				else:
-					self.wsleds.setPixelColor(15, self.wscolor_light)
+			if 'audio_recorder' in self.status_info:
+				self.wsleds.setPixelColor(14, self.wscolor_red)
 			else:
 				self.wsleds.setPixelColor(14, self.wscolor_light)
+
+			if 'audio_player' in self.status_info:
+				self.wsleds.setPixelColor(15, self.wscolor_active)
+			else:
 				self.wsleds.setPixelColor(15, self.wscolor_light)
 
 			# REC/PLAY MIDI buttons:
@@ -972,20 +968,18 @@ class zynthian_gui:
 				self.stop_audio_player()
 				return
 		self.audio_player.load(filename)
-		self.audio_player.set_control_cb(self.audio_player_cb)
+		self.audio_player.set_control_cb(lambda id,value:self.stop_audio_player() if id==1 and value==0 else None)
 		self.audio_player.start_playback()
-
-
-	def audio_player_cb(self, id, value):
-		if id == 1 and value == 0:
-			self.stop_audio_player()
+		if self.audio_player.get_playback_state():
+			self.status_info['audio_player'] = 'PLAY'
 
 
 	def stop_audio_player(self):
 		if self.audio_player:
 			self.audio_player.remove_player()
 			self.audio_player = None
-
+			if 'audio_player' in self.status_info:
+				self.status_info.pop('audio_player')
 
 	# -------------------------------------------------------------------
 	# Callable UI Actions
@@ -1934,10 +1928,7 @@ class zynthian_gui:
 
 			# Get Recorder Status
 			try:
-				self.status_info['audio_recorder'] = self.audio_recorder.get_status()
 				self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
-				if self.audio_player:
-					self.status_info['audio_player'] = self.audio_player.get_playback_state()
 			except Exception as e:
 				logging.error(e)
 

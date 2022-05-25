@@ -124,6 +124,7 @@ class zynthian_audio_recorder():
 			self.proc = None
 			return False
 
+		self.zyngui.status_info['audio_recorder'] = "REC"
 		return True
 
 
@@ -136,6 +137,8 @@ class zynthian_audio_recorder():
 			except Exception as e:
 				logging.error("ERROR STOPPING AUDIO RECORD: %s" % e)
 				return False
+			if 'audio_recorder' in self.zyngui.status_info:
+				self.zyngui.status_info.pop('audio_recorder')
 			return True
 
 		return False

@@ -150,6 +150,9 @@ class zynthian_controller:
 
 		#Common configuration
 		self.value_range = self.value_max - self.value_min
+		if self.value_range == 0:
+			self.value_range = 1 # Avoid divide by zero errors
+			logging.warning("Controller {} calculated range is zero!", self.symbol)
 
 		if self.is_integer:
 			self.value_mid = self.value_min + int(self.value_range / 2)
