@@ -65,19 +65,19 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		# MIDI Controllers
 		self._ctrls=[
+			['record',None,'stopped', ['stopped','recording']],
 			['gain',None,1.0,2.0],
 			['loop',None,'one-shot',['one-shot','looping']],
 			['transport',None,'stopped',['stopped','playing']],
 			['position',None,0.0,1.0],
-			['quality',None,'fastest',[['best','medium','fastest','zero order','linear'],[0,1,2,3,4]]],
 			['left track',None,0,[['mixdown','1','2'],[-1,0,1]]],
 			['right track',None,0,[['mixdown','2','2'],[-1,0,1]]]
 		]
 
 		# Controller Screens
 		self._ctrl_screens=[
-			['main',['gain','loop','transport','position']],
-			['config',['left track','quality','right track']]
+			['main',['record','loop','transport','position']],
+			['config',['left track','gain','right track',None]]
 		]
 
 		self.monitors_dict = OrderedDict()
@@ -175,9 +175,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			transport = 'playing'
 		else:
 			transport = 'stopped'
+		if self.zyngui.audio_recorder.get_status():
+			record = 'recording'
+		else:
+			record = 'stopped'
 		gain = self.player.get_gain()
-		quals = ['best','medium','fastest','zero order','linear']
-		qual = quals[self.player.get_src_quality()]
 		if dur:
 			track_labels = ['mixdown']
 			track_values = [-1]
@@ -191,26 +193,25 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				track_values.append(track)
 			self._ctrls=[
 				['gain',None,gain,2.0],
+				['record',None,record,['stopped','recording']],
 				['loop',None,loop,['one-shot','looping']],
 				['transport',None,transport,['stopped','playing']],
 				['position',None,0.0,dur],
-				['quality',None,qual,[quals,[0,1,2,3,4]]],
 				['left track',None,0,[track_labels,track_values]],
 				['right track',None,default_b,[track_labels,track_values]],
-				['debug',None,0,1]
 			]
 			self._ctrl_screens=[
-				['main',['gain','loop','transport','position']],
-				['config',['left track','quality','right track','debug']]
+				['main',['record','loop','transport','position']],
+				['config',['left track','gain','right track',None]]
 			]
 		else:
 			self._ctrls=[
 				['gain',None,gain,2.0],
-				['quality',None,qual,[quals,[0,1,2,3,4]]],
+				['record',None,record,['stopped','recording']]
 			]
 			self._ctrl_screens=[
-				['main',['gain']],
-				['config',['quality']]
+				['main',['record'],None,None],
+				['config',[None,'gain',None,None]]
 		]
 		layer.refresh_controllers()
 		self.player.set_track_a(0)
@@ -278,10 +279,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					ctrl_dict['left track'].set_value(int(value), False)
 				elif id == 6: #Track B
 					ctrl_dict['right track'].set_value(int(value), False)
-				elif id == 7: # SRC Quality
-					ctrl_dict['quality'].set_value(int(value), False)
-				elif id == 10: #Debug
-					ctrl_dict['debug'].set_value(int(value) * 64, False)
 		except Exception as e:
 			return
 
@@ -298,14 +295,15 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				self.player.start_playback()
 			else:
 				self.player.stop_playback()
-		elif zctrl.symbol == "quality":
-			self.player.set_src_quality(zctrl.value)
 		elif zctrl.symbol == "left track":
 			self.player.set_track_a(zctrl.value)
 		elif zctrl.symbol == "right track":
 			self.player.set_track_b(zctrl.value)
-		elif zctrl.symbol == 'debug':
-			self.player.enable_debug(zctrl.value == 1)
+		elif zctrl.symbol == "record":
+			if zctrl.value:
+				self.zyngui.audio_recorder.start_recording()
+			else:
+				self.zyngui.audio_recorder.stop_recording()
 
 
 	def get_monitors_dict(self):
