@@ -23,7 +23,9 @@ enum {
     NOTIFY_QUALITY,
     NOTIFY_BUFFER_SIZE,
     NOTIFY_BUFFER_COUNT,
-    NOTIFY_DEBUG
+    NOTIFY_DEBUG,
+    NOTIFY_LOOP_START,
+    NOTIFY_LOOP_END
 };
 
 /** @brief  Library constructor (initalisation) */
@@ -101,6 +103,30 @@ void enable_loop(int player_handle, uint8_t bLoop);
 *   @retval uint8_t 1 if looping, 0 if one-shot
 */
 uint8_t is_loop(int player_handle);
+
+/** @brief  Set start of loop
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  time Start of loop in seconds since start of file
+*/
+void set_loop_start_time(int player_handle, float time);
+
+/** @brief  Get start of loop
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval float Start of loop in seconds since start of file
+*/
+float get_loop_start_time(int player_handle);
+
+/** @brief  Set end of loop
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  time End of loop in seconds since end of file
+*/
+void set_loop_end_time(int player_handle, float time);
+
+/** @brief  Get end of loop
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval float End of loop in seconds since end of file
+*/
+float get_loop_end_time(int player_handle);
 
 /** @brief  Start playback
 *   @param  player_handle Handle of player provided by init_player()
@@ -195,26 +221,37 @@ int get_track_a(int player_handle);
 int get_track_b(int player_handle);
 
 /** @brief  Set size of file read buffers
+*   @param  player_handle Handle of player provided by init_player()
 *   @param  size Size of buffers in frames
 *   @note   Cannot change size whilsts file is open
 */
 void set_buffer_size(int player_handle, unsigned int size);
 
 /** @brief  Get size of file read buffers
+*   @param  player_handle Handle of player provided by init_player()
 *   @retval unsigned int Size of buffers in frames
 */
 unsigned int get_buffer_size(int player_handle);
 
 /** @brief  Set factor by which ring buffer is larger than file read buffers
+*   @param  player_handle Handle of player provided by init_player()
 *   @param  count Quantity of buffers
 *   @note   Cannot change count whilst file is open
 */
 void set_buffer_count(int player_handle, unsigned int count);
 
 /** @brief  Get factor by which ring buffer is larger than file read buffers
+*   @param  player_handle Handle of player provided by init_player()
 *   @retval unsigned int Quantity of buffers
 */
 unsigned int get_buffer_count(int player_handle);
+
+/** @brief Set difference in postion that will trigger notificaton 
+*   @param  player_handle Handle of player provided by init_player()
+*   @param time Time difference in seconds
+*/
+void set_pos_notify_delta(int player_handle, float time);
+
 
 /**** Global functions ****/
 

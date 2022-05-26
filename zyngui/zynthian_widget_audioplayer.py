@@ -151,13 +151,12 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def cb_canvas_wheel(self, event):
-		if len(self.zyngui_control.zcontrollers) > 3:
-			try:
-				if event.num == 5 or event.delta == -120:
-					self.zyngui_control.layers[0].controllers_dict['position'].nudge(-1)
-				if event.num == 4 or event.delta == 120:
-					self.zyngui_control.layers[0].controllers_dict['position'].nudge(1)
-			except Exception as e:
-				logging.debug("Failed to change value")
+		try:
+			if event.num == 5 or event.delta == -120:
+				self.zyngui_control.layers[0].controllers_dict['position'].nudge(-1)
+			if event.num == 4 or event.delta == 120:
+				self.zyngui_control.layers[0].controllers_dict['position'].nudge(1)
+		except Exception as e:
+			logging.debug("Failed to change value")
 
 #------------------------------------------------------------------------------

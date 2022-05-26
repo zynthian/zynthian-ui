@@ -75,9 +75,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		]
 
 		# Controller Screens
-		self._ctrl_screens=[
+		self._ctrl_screens = [
 			['main',['record','loop','transport','position']],
-			['config',['left track','gain','right track',None]]
+			['config',['gain','left track',None,'right track']]
 		]
 
 		self.monitors_dict = OrderedDict()
@@ -166,6 +166,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		self.player.load(preset[0])
 		dur = self.player.get_duration()
+		self.player.set_pos_notify_delta(dur / 2000)
 		self.player.set_position(0)
 		if self.player.is_loop():
 			loop = 'looping'
@@ -200,22 +201,22 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['left track',None,0,[track_labels,track_values]],
 				['right track',None,default_b,[track_labels,track_values]],
 			]
-			self._ctrl_screens=[
+			self._ctrl_screens = [
 				['main',['record','loop','transport','position']],
-				['config',['left track','gain','right track',None]]
+				['config',['gain','left track',None,'right track']]
 			]
+			self.player.set_track_a(0)
+			self.player.set_track_b(default_b)
 		else:
 			self._ctrls=[
 				['gain',None,gain,2.0],
 				['record',None,record,['stopped','recording']]
 			]
-			self._ctrl_screens=[
-				['main',['record'],None,None],
-				['config',[None,'gain',None,None]]
+			self._ctrl_screens = [
+				['main',['record']],
+				['config',['gain']]
 		]
 		layer.refresh_controllers()
-		self.player.set_track_a(0)
-		self.player.set_track_b(default_b)
 
 		self.monitors_dict["state"] = self.player.get_playback_state()
 		self.monitors_dict["pos"] = self.player.get_position()

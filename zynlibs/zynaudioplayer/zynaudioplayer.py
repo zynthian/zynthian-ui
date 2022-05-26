@@ -63,6 +63,7 @@ class zynaudioplayer():
 			self.libaudioplayer.get_gain.restype = ctypes.c_float
 			self.libaudioplayer.set_gain.argtypes = [ctypes.c_int, ctypes.c_float]
 			self.libaudioplayer.set_position.argtypes = [ctypes.c_int, ctypes.c_float]
+			self.libaudioplayer.set_pos_notify_delta.argtypes = [ctypes.c_int, ctypes.c_float]
 			self.control_cb = None
 		except Exception as e:
 			self.libaudioplayer=None
@@ -325,6 +326,14 @@ class zynaudioplayer():
 		return self.libaudioplayer.get_buffer_count(self.handle)
 
 
+	#	Set difference in postion that will trigger notificaton 
+	#	time: Time difference in seconds
+	def set_pos_notify_delta(self, time):
+		if self.handle is None:
+			return
+		self.libaudioplayer.set_pos_notify_delta(self.handle, time)
+
+
  	#	Enable debug output
 	#	enable: True to enable debug
 	def enable_debug(self, enable=True):
@@ -334,7 +343,7 @@ class zynaudioplayer():
  	#	Get debug state
 	#	Returns: True if debug enabled
 	def is_debug(self):
-		return(self.libaudioplayer.is_debug(self.handle) == 1);
+		return(self.libaudioplayer.is_debug() == 1);
 
 
 	#	Get duration of an audio file
