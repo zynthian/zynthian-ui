@@ -45,6 +45,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		super().__init__()
 		self.refreshing = False
 		self.play_pos = 0.0
+		self.loop_start = 0.0
+		self.loop_end = 1.0
 		self.filename = ""
 		self.duration = 0.0
 		self.samplerate = 44100
@@ -83,6 +85,22 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			fill=zynthian_gui_config.color_on
 		)
 
+		self.loop_start_line = self.mon_canvas.create_line(
+			0,
+			0,
+			0,
+			self.height,
+			fill=zynthian_gui_config.color_ml
+		)
+
+		self.loop_end_line = self.mon_canvas.create_line(
+			self.width,
+			0,
+			self.width,
+			self.height,
+			fill=zynthian_gui_config.color_ml
+		)
+
 		self.info_text = self.mon_canvas.create_text(
 			self.width-int(0.5 * zynthian_gui_config.font_size),
 			self.height,
@@ -110,13 +128,26 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					x =  int(pos / dur * self.width)
 				else:
 					x = 0
-				self.mon_canvas.coords(
-					self.play_line,
-					x,
-					0,
-					x,
-					self.height
-				)
+				self.mon_canvas.coords(self.play_line, x, 0, x, self.height)
+
+			loop_start = self.monitors["loop start"]
+			if self.loop_start != loop_start:
+				self.loop_start = loop_start
+				if dur:
+					x =  int(loop_start / dur * self.width)
+				else:
+					x = 0
+				self.mon_canvas.coords(self.loop_start_line, x, 0, x, self.height)
+
+			loop_end = self.monitors["loop end"]
+			if self.loop_end != loop_end:
+				self.loop_end = loop_end
+				if dur:
+					x =  int(loop_end / dur * self.width)
+				else:
+					x = 0
+				self.mon_canvas.coords(self.loop_end_line, x, 0, x, self.height)
+
 			if self.duration != dur:
 				self.duration = dur
 				self.mon_canvas.itemconfigure(self.info_text, text="{:02d}:{:02d}".format(int(dur / 60), int(dur % 60)), state=tkinter.NORMAL)

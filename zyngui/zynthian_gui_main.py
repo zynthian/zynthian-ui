@@ -45,8 +45,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 		# Main Apps
 		self.list_data.append((self.new_synth_layer,0,"New Synth Chain"))
-		self.list_data.append((self.new_audiofx_layer,0,"New Audio-FX Chain"))
-		self.list_data.append((self.new_midifx_layer,0,"New MIDI-FX Chain"))
+		self.list_data.append((self.new_audiofx_layer,0,"New Audio Chain"))
+		self.list_data.append((self.new_midifx_layer,0,"New MIDI Chain"))
 		self.list_data.append((self.new_generator_layer,0,"New Generator Chain"))
 		self.list_data.append((self.new_special_layer,0,"New Special Chain"))
 		self.list_data.append((self.snapshots,0,"Snapshots"))

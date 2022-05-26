@@ -113,21 +113,19 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.layer_toggle_phase, None, "[  ] Phase reverse B"))
 
-
-		if self.layer.midi_chan is not None:
-			if self.zyngui.audio_recorder.get_status():
-				self.list_data.append((self.layer_toggle_record, None, "\uf111 Audio Recording"))
-				# Recording so don't allow change of primed state
-				if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
-					self.list_data.append((None, None, "[x] Recording Primed"))
+		if zynthian_gui_config.multichannel_recorder:
+			if self.layer.midi_chan is not None:
+				if self.zyngui.audio_recorder.get_status():
+					# Recording so don't allow change of primed state
+					if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
+						self.list_data.append((None, None, "[x] Recording Primed"))
+					else:
+						self.list_data.append((None, None, "[  ] Recording Primed"))
 				else:
-					self.list_data.append((None, None, "[  ] Recording Primed"))
-			else:
-				self.list_data.append((self.layer_toggle_record, None, "■ Audio Recording"))
-				if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
-					self.list_data.append((self.layer_toggle_primed, None, "[x] Recording Primed"))
-				else:
-					self.list_data.append((self.layer_toggle_primed, None, "[  ] Recording Primed"))
+					if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
+						self.list_data.append((self.layer_toggle_primed, None, "[x] Recording Primed"))
+					else:
+						self.list_data.append((self.layer_toggle_primed, None, "[  ] Recording Primed"))
 
 		if 'audio_capture' in eng_options and eng_options['audio_capture']:
 			self.list_data.append((self.layer_audio_capture, None, "Audio Capture"))
@@ -355,11 +353,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_toggle_phase(self):
 		zynmixer.toggle_phase(self.layer.midi_chan)
-		self.show()
-
-
-	def layer_toggle_record(self):
-		self.zyngui.audio_recorder.toggle_recording()
 		self.show()
 
 

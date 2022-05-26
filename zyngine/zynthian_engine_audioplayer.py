@@ -64,21 +64,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.start()
 
 		# MIDI Controllers
-		self._ctrls=[
-			['record',None,'stopped', ['stopped','recording']],
-			['gain',None,1.0,2.0],
-			['loop',None,'one-shot',['one-shot','looping']],
-			['transport',None,'stopped',['stopped','playing']],
-			['position',None,0.0,1.0],
-			['left track',None,0,[['mixdown','1','2'],[-1,0,1]]],
-			['right track',None,0,[['mixdown','2','2'],[-1,0,1]]]
-		]
+		self._ctrls=[]
 
 		# Controller Screens
-		self._ctrl_screens = [
-			['main',['record','loop','transport','position']],
-			['config',['gain','left track',None,'right track']]
-		]
+		self._ctrl_screens =[]
 
 		self.monitors_dict = OrderedDict()
 		self.monitors_dict["state"] = self.player.get_playback_state()
@@ -86,6 +75,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict["duration"] = self.player.get_duration()
 		self.monitors_dict["samplerate"] = self.player.get_samplerate()
 		self.monitors_dict["filename"] = self.player.get_filename()
+		self.monitors_dict["loop start"] = self.player.get_loop_start()
+		self.monitors_dict["loop end"] = self.player.get_loop_end()
+
 		self.reset()
 
 
@@ -166,7 +158,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		self.player.load(preset[0])
 		dur = self.player.get_duration()
-		self.player.set_pos_notify_delta(dur / 2000)
 		self.player.set_position(0)
 		if self.player.is_loop():
 			loop = 'looping'
@@ -200,29 +191,29 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['position',None,0.0,dur],
 				['left track',None,0,[track_labels,track_values]],
 				['right track',None,default_b,[track_labels,track_values]],
+				['loop start',None,0.0,dur],
+				['loop end',None,dur,dur]
 			]
 			self._ctrl_screens = [
 				['main',['record','loop','transport','position']],
-				['config',['gain','left track',None,'right track']]
+				['edit',['loop start',None,'loop end']],
+				['config',['left track','gain','right track']]
 			]
-			self.player.set_track_a(0)
-			self.player.set_track_b(default_b)
 		else:
 			self._ctrls=[
 				['gain',None,gain,2.0],
 				['record',None,record,['stopped','recording']]
 			]
 			self._ctrl_screens = [
-				['main',['record']],
-				['config',['gain']]
+				['main',['record'],None,None],
+				['config',[None,'gain']]
 		]
 		layer.refresh_controllers()
-
-		self.monitors_dict["state"] = self.player.get_playback_state()
-		self.monitors_dict["pos"] = self.player.get_position()
-		self.monitors_dict["duration"] = self.player.get_duration()
-		self.monitors_dict["samplerate"] = self.player.get_samplerate()
-		self.monitors_dict["filename"] = self.player.get_filename()
+		self.player.set_track_a(0)
+		self.player.set_track_b(default_b)
+		self.monitors_dict['filename'] = self.player.get_filename()
+		self.monitors_dict['duration'] = self.player.get_duration()
+		self.monitors_dict['samplerate'] = self.player.get_samplerate()
 
 
 	def delete_preset(self, bank, preset):
@@ -267,19 +258,29 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		try:
 			for layer in self.layers:
 				ctrl_dict = layer.controllers_dict
-				if id == 1: #Transport
+				if id == 1:
 					ctrl_dict['transport'].set_value(int(value) * 64, False)
-				elif id == 2: #Position
-					self.monitors_dict["pos"] = value
+					if value:
+						self.layers[0].status = "\uf04b"
+					else:
+						self.layers[0].status = ""
+				elif id == 2:
 					ctrl_dict['position'].set_value(value, False)
-				elif id == 3: #Gain
+					self.monitors_dict['pos'] = value
+				elif id == 3:
 					ctrl_dict['gain'].set_value(value, False)
-				elif id == 4: #Loop
+				elif id == 4:
 					ctrl_dict['loop'].set_value(int(value) * 64, False)
-				elif id == 5: #Track A
+				elif id == 5:
 					ctrl_dict['left track'].set_value(int(value), False)
-				elif id == 6: #Track B
+				elif id == 6:
 					ctrl_dict['right track'].set_value(int(value), False)
+				elif id == 11:
+					ctrl_dict['loop start'].set_value(value, False)
+					self.monitors_dict['loop start'] = value
+				elif id == 12:
+					ctrl_dict['loop end'].set_value(value, False)
+					self.monitors_dict['loop end'] = value
 		except Exception as e:
 			return
 
@@ -305,6 +306,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				self.zyngui.audio_recorder.start_recording()
 			else:
 				self.zyngui.audio_recorder.stop_recording()
+		elif zctrl.symbol == "loop start":
+			self.player.set_loop_start(zctrl.value)
+		elif zctrl.symbol == "loop end":
+			self.player.set_loop_end(zctrl.value)
 
 
 	def get_monitors_dict(self):

@@ -13,19 +13,19 @@ extern "C"
 typedef void cb_fn_t(void*, int, float);
 
 enum {
-    NOTIFY_ALL,
-    NOTIFY_TRANSPORT,
-    NOTIFY_POSITION,
-    NOTIFY_GAIN,
-    NOTIFY_LOOP,
-    NOTIFY_TRACK_A,
-    NOTIFY_TRACK_B,
-    NOTIFY_QUALITY,
-    NOTIFY_BUFFER_SIZE,
-    NOTIFY_BUFFER_COUNT,
-    NOTIFY_DEBUG,
-    NOTIFY_LOOP_START,
-    NOTIFY_LOOP_END
+    NOTIFY_ALL          =  0,
+    NOTIFY_TRANSPORT    =  1,
+    NOTIFY_POSITION     =  2,
+    NOTIFY_GAIN         =  3,
+    NOTIFY_LOOP         =  4,
+    NOTIFY_TRACK_A      =  5,
+    NOTIFY_TRACK_B      =  6,
+    NOTIFY_QUALITY      =  7,
+    NOTIFY_BUFFER_SIZE  =  8,
+    NOTIFY_BUFFER_COUNT =  9,
+    NOTIFY_DEBUG        = 10,
+    NOTIFY_LOOP_START   = 11,
+    NOTIFY_LOOP_END     = 12
 };
 
 /** @brief  Library constructor (initalisation) */

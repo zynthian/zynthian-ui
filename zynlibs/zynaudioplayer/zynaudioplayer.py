@@ -56,6 +56,8 @@ class zynaudioplayer():
 
 			self.libaudioplayer.get_duration.restype = ctypes.c_float
 			self.libaudioplayer.get_position.restype = ctypes.c_float
+			self.libaudioplayer.get_loop_start_time.restype = ctypes.c_float
+			self.libaudioplayer.get_loop_end_time.restype = ctypes.c_float
 			self.libaudioplayer.get_file_duration.restype = ctypes.c_float
 			self.libaudioplayer.get_file_info.restype = ctypes.c_char_p
 			self.libaudioplayer.get_filename.restype = ctypes.c_char_p
@@ -63,6 +65,8 @@ class zynaudioplayer():
 			self.libaudioplayer.get_gain.restype = ctypes.c_float
 			self.libaudioplayer.set_gain.argtypes = [ctypes.c_int, ctypes.c_float]
 			self.libaudioplayer.set_position.argtypes = [ctypes.c_int, ctypes.c_float]
+			self.libaudioplayer.set_loop_start_time.argtypes = [ctypes.c_int, ctypes.c_float]
+			self.libaudioplayer.set_loop_end_time.argtypes = [ctypes.c_int, ctypes.c_float]
 			self.libaudioplayer.set_pos_notify_delta.argtypes = [ctypes.c_int, ctypes.c_float]
 			self.control_cb = None
 		except Exception as e:
@@ -173,7 +177,35 @@ class zynaudioplayer():
 		if self.handle is None:
 			return False
 		return (self.libaudioplayer.is_loop(self.handle) == 1)
-    	
+
+	#	Get start of loop in seconds from start of file
+	#	Returns: Loop start
+	def get_loop_start(self):
+		if self.handle is None:
+			return 0.0
+		return self.libaudioplayer.get_loop_start_time(self.handle)
+
+	#	Set start of loop in seconds from start of file
+	#	time: Loop start
+	def set_loop_start(self, time):
+		if self.handle is None:
+			return 
+		self.libaudioplayer.set_loop_start_time(self.handle, time)
+
+	#	Get end of loop in seconds from end of file
+	#	Returns: Loop end
+	def get_loop_end(self):
+		if self.handle is None:
+			return 0.0
+		return self.libaudioplayer.get_loop_end_time(self.handle)
+
+	#	Set end of loop in seconds from end of file
+	#	time: Loop end
+	def set_loop_end(self, time):
+		if self.handle is None:
+			return 
+		self.libaudioplayer.set_loop_end_time(self.handle, time)
+
 	#	Start playback
 	def start_playback(self):
 		if self.handle is None:

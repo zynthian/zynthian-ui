@@ -545,6 +545,10 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def start(self):
+
+		# Create global objects first
+		self.audio_recorder = zynthian_audio_recorder()
+
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
 		self.screens['confirm'] = zynthian_gui_confirm()
@@ -578,8 +582,6 @@ class zynthian_gui:
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['stepseq'] = zynthian_gui_stepsequencer()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
-
-		self.audio_recorder = zynthian_audio_recorder()
 
 		# Init Auto-connector
 		zynautoconnect.start()

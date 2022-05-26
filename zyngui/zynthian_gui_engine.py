@@ -57,6 +57,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def init_engine_info(cls):
 
 		cls.engine_info=OrderedDict([
+			["AP", ("AudioPlayer", "Audio Player", "Audio Effect", None, zynthian_engine_audioplayer, True)],
 			["MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_mixer, True)],
 			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", None, zynthian_engine_zynaddsubfx, True)],
 			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", None, zynthian_engine_fluidsynth, True)],
@@ -66,7 +67,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", None, zynthian_engine_aeolus, True)],
 			['PD', ("PureData", "PureData - Visual Programming", "Special", None, zynthian_engine_puredata, True)],
 			#['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
-			["AP", ("AudioPlayer", "Audio Player", "Audio Generator", None, zynthian_engine_audioplayer, True)],
 			['MD', ("MOD-UI", "MOD-UI - Plugin Host", "Special", None, zynthian_engine_modui, True)]
 		])
 

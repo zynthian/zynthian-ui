@@ -61,6 +61,7 @@ class zynthian_gui_mixer_main_layer():
 	def __init__(self):
 		self.engine = None
 		self.midi_chan = MAIN_CHANNEL_INDEX
+		self.status = ""
 
 
 #------------------------------------------------------------------------------
@@ -188,8 +189,11 @@ class zynthian_gui_mixer_strip():
 		self.legend_strip_txt = self.parent.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-", tags=("strip:%s"%(self.fader_bg),"legend_strip:%s"%(self.fader_bg)), font=font)
 
 		# Balance indicator
-		self.balance_left = self.parent.main_canvas.create_rectangle(x, self.fader_top, int(fader_centre - 0.5), self.fader_top + self.balance_height, fill=self.left_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-		self.balance_right = self.parent.main_canvas.create_rectangle(int(fader_centre + 0.5), self.fader_top, self.width, self.fader_top + self.balance_height , fill=self.right_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
+		self.balance_left = self.parent.main_canvas.create_rectangle(x, self.balance_top, int(fader_centre - 0.5), self.balance_top + self.balance_height, fill=self.left_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
+		self.balance_right = self.parent.main_canvas.create_rectangle(int(fader_centre + 0.5), self.balance_top, self.width, self.balance_top + self.balance_height , fill=self.right_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
+
+		# Fader indicators
+		self.indicator = self.parent.main_canvas.create_text(x + 2, self.fader_top + 2, fill="#009000", anchor="nw")
 
 		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_fader_press)
 		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<B1-Motion>", self.on_fader_motion)
@@ -268,6 +272,11 @@ class zynthian_gui_mixer_strip():
 		self.draw_dpm()
 		self.draw_controls()
 
+		if self.parent.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
+			self.parent.main_canvas.itemconfig(self.indicator, text="{}\uf111".format(self.layer.status), fill=self.high_color)
+		else:
+			self.parent.main_canvas.itemconfig(self.indicator, text=self.layer.status, fill="#009000")
+	
 
 	# Function to draw the DPM level meter for a mixer strip
 	def draw_dpm(self):
@@ -1022,16 +1031,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			options["[x] Audio Mono"] = "Mono"
 		else:
 			options["[  ] Audio Mono"] = "Mono"
-		if self.zyngui.audio_recorder.get_status():
-			options["\uf111 Audio Recording"] = "AudioRec"
-			primed_option = None
-		else:
-			options["■ Audio Recording"] = "AudioRec"
-			primed_option = "Primed"
-		if self.zyngui.audio_recorder.is_primed(MAIN_CHANNEL_INDEX):
-			options["[x] Recording Primed"] = primed_option
-		else:
-			options["[  ] Recording Primed"] = primed_option
+		if zynthian_gui_config.multichannel_recorder:
+			if self.zyngui.audio_recorder.get_status():
+				primed_option = None
+			else:
+				primed_option = "Primed"
+			if self.zyngui.audio_recorder.is_primed(MAIN_CHANNEL_INDEX):
+				options["[x] Recording Primed"] = primed_option
+			else:
+				options["[  ] Recording Primed"] = primed_option
 		options["> Audio Chain ---------------"] = None
 		options["Add Audio-FX"] = "Add"
 		self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
@@ -1043,9 +1051,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.screens['layer'].add_fxchain_layer(MAIN_CHANNEL_INDEX)
 		elif param == "Mono":
 			zynmixer.toggle_mono(MAIN_CHANNEL_INDEX)
-			self.show_mainfx_options()
-		elif param == "AudioRec":
-			self.zyngui.audio_recorder.toggle_recording()
 			self.show_mainfx_options()
 		elif param == "Primed":
 			self.zyngui.audio_recorder.toggle_prime(MAIN_CHANNEL_INDEX)

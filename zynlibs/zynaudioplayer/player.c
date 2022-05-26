@@ -66,8 +66,8 @@ struct AUDIO_PLAYER {
     // Value of data at last notification
     uint8_t last_play_state;
     uint8_t last_loop;
-    unsigned int last_loop_start;
-    unsigned int last_loop_end;
+    sf_count_t last_loop_start;
+    sf_count_t last_loop_end;
     float last_position;
     float last_gain;
     int last_track_a;
@@ -651,9 +651,9 @@ void set_loop_start_time(int player_handle, float time) {
     if(!pPlayer)
         return;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    if(frames > pPlayer->loop_end || time > get_duration(player_handle))
+    if(frames >= pPlayer->loop_end || time >= get_duration(player_handle))
         return;
-    pPlayer->loop_end = frames;
+    pPlayer->loop_start = frames;
 }
 
 float get_loop_start_time(int player_handle) {
@@ -668,7 +668,7 @@ void set_loop_end_time(int player_handle, float time) {
     if(!pPlayer)
         return;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    if(frames < pPlayer->loop_start || time < 0)
+    if(frames <= pPlayer->loop_start || frames >= pPlayer->frames)
         return;
     pPlayer->loop_end = frames;
 }
@@ -772,7 +772,6 @@ void remove_player(int player_handle) {
 // Handle JACK process callback
 int on_jack_process(jack_nframes_t nFrames, void * arg) {
     size_t count;
-    uint8_t eof = 0;
     struct AUDIO_PLAYER * pPlayer = (struct AUDIO_PLAYER *) (arg);
     if(!pPlayer || pPlayer->file_open != 2)
         return 0;
@@ -786,7 +785,6 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
     if(pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
         count = jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)pOutA, nFrames * sizeof(float));
         jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)pOutB, count);
-        eof = (pPlayer->file_read_status == IDLE && jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0);
     }
     count /= sizeof(float);
     for(size_t offset = 0; offset < count; ++offset) {
@@ -795,25 +793,29 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         pOutB[offset] *= pPlayer->gain;
     }
     pPlayer->play_pos_frames += count;
-    if(pPlayer->play_pos_frames >= pPlayer->frames) {
-        pPlayer->play_pos_frames %= pPlayer->frames;
-        pPlayer->loop_loaded = 0;
-        if(!pPlayer->loop)
+    //int eof = (pPlayer->file_read_status == IDLE && jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0);
+    if(pPlayer->loop) {
+        if(pPlayer->play_pos_frames >= pPlayer->loop_end) {
+            pPlayer->play_pos_frames %= pPlayer->loop_end;
+            pPlayer->play_pos_frames += pPlayer->loop_start;
+            pPlayer->loop_loaded = 0;
+            printf("Playback hit loop point so changed to %u\n", pPlayer->play_pos_frames);
+        }
+    } else {
+        if(pPlayer->play_pos_frames >= pPlayer->frames) {
+            pPlayer->play_pos_frames = 0;
             pPlayer->play_state = STOPPING;
+            pPlayer->file_read_status = SEEKING;
+        }
     }
 
-    if(pPlayer->play_state == STOPPING || (pPlayer->play_state == PLAYING && eof)) {
+    if(pPlayer->play_state == STOPPING) {
         // Soft mute (not perfect for short last period of file but better than nowt)
         for(size_t offset = 0; offset < count; ++offset) {
             pOutA[offset] *= 1.0 - ((float)offset / count);
             pOutB[offset] *= 1.0 - ((float)offset / count);
         }
         pPlayer->play_state = STOPPED;
-        if(eof) {
-            // Recue to start if played to end of file
-            pPlayer->play_pos_frames = 0;
-            pPlayer->file_read_status = SEEKING;
-        }
 
         DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", count, nFrames, nFrames - count, (nFrames - count) * sizeof(jack_default_audio_sample_t));
     }
@@ -928,8 +930,6 @@ int init() {
     pPlayer->file_read_status = IDLE;
     pPlayer->play_state = STOPPED;
     pPlayer->loop = 0;
-    pPlayer->loop_start = 0.0;
-    pPlayer->loop_end = 0.0;
     pPlayer->play_pos_frames = 0;
     pPlayer->src_quality = SRC_SINC_FASTEST;
     pPlayer->filename[0] = '\0';
@@ -942,6 +942,8 @@ int init() {
     pPlayer->buffer_size = 48000;
     pPlayer->buffer_count = 5;
     pPlayer->frames = 0;
+    pPlayer->loop_start = 0;
+    pPlayer->loop_end = pPlayer->buffer_size;
     pPlayer->last_note_played = 0;
 
     char *sServerName = NULL;

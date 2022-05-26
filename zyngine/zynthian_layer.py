@@ -94,6 +94,8 @@ class zynthian_layer:
 		self.listen_midi_cc = True
 		self.refresh_flag = False
 
+		self.status = "" # Allows indication of arbitary status text
+
 		self.reset_zs3()
 
 		if engine is not None:
