@@ -1067,6 +1067,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			dval = lib_zyncore.get_value_zynpot(ENC_LAYER)
 			if dval:
 				value = zynmixer.get_level(self.selected_layer.midi_chan) + dval * 0.01
+				value = max(min(1, value), 0)
 				#logging.debug("Value LAYER: {}".format(value))
 				zynmixer.set_level(self.selected_layer.midi_chan, value)
 				if self.selected_layer.midi_chan == MAIN_CHANNEL_INDEX:
@@ -1078,6 +1079,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			dval = lib_zyncore.get_value_zynpot(ENC_BACK)
 			if dval:
 				value = zynmixer.get_balance(self.selected_layer.midi_chan) + dval * 0.02
+				value = max(min(1, value), -1)
 				#logging.debug("Value BACK: {}".format(value))
 				zynmixer.set_balance(self.selected_layer.midi_chan, value)
 				if self.selected_layer.midi_chan == MAIN_CHANNEL_INDEX:
@@ -1089,6 +1091,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			dval = lib_zyncore.get_value_zynpot(ENC_SNAPSHOT)
 			if dval:
 				value = zynmixer.get_level(MAIN_CHANNEL_INDEX) + dval * 0.01
+				value = max(min(1, value), 0)
 				#logging.debug("Value SHOT: {}".format(value))
 				zynmixer.set_level(MAIN_CHANNEL_INDEX, value)
 				redraw_main_fader = True

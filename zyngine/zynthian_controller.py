@@ -160,7 +160,7 @@ class zynthian_controller:
 			self.value_mid = self.value_min + self.value_range / 2
 
 		if self.is_logarithmic:
-			if self.value_min ==0 :
+			if self.value_min==0 :
 				self.powbase = 10000
 				self.value_min = self.value_max / self.powbase
 			else:
