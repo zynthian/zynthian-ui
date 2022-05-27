@@ -168,12 +168,13 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def set_selector(self, zs_hiden=True):
 		if self.shown:
 			if self.zselector:
-				self.zselector.zctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
+				self.zselector.zctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'value_min':0, 'value_max':len(self.list_data), 'value':self.index })
 				self.zselector.config(self.zselector.zctrl)
 				self.zselector.show()
 			else:
-				zselector_ctrl=zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'midi_cc':0, 'value_max':len(self.list_data), 'value':self.index })
+				zselector_ctrl=zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
 				self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hiden)
+				self.zselector.selector_counter = True
 
 
 	def plot_zctrls(self):

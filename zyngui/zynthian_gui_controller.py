@@ -49,14 +49,12 @@ class zynthian_gui_controller:
 		self.zyngui=zynthian_gui_config.zyngui
 		self.zctrl = None
 		self.inverted = False
-		self.logarithmic = False
 		self.step = 0 #TODO: Fix steps / non-accelerated mode
 
 		self.value_plot = 0 # Normalised position of plot start point
 		self.value_print = None
 		self.value_font_size = zynthian_gui_config.font_size
 
-		self.text_only = False
 		self.hidden = hidden # Always hidden, i.e. self.shown does not indicate actually shown
 		self.shown = False # Currently shown
 		self.rectangle = None
@@ -65,6 +63,7 @@ class zynthian_gui_controller:
 		self.value_text = None
 		self.label_title = None
 		self.midi_bind = None
+		self.selector_counter = False
 		self.refresh_plot_value = False
 
 		self.width=zynthian_gui_config.ctrl_width
@@ -185,10 +184,14 @@ class zynthian_gui_controller:
 
 		else:
 			self.value_plot = (self.zctrl.value - self.zctrl.value_min) / self.zctrl.value_range
-			if self.logarithmic:
-				val = self.zctrl.value_min*pow(self.scale_value, self.zctrl.value/200) #TODO MUST BE IMPROVED!! => 200??
+
+			if self.selector_counter:
+				val = self.zctrl.value + 1
+			elif self.zctrl.is_logarithmic:
+				val = self.zctrl.value_min*pow(self.zctrl.powbase, self.zctrl.value*self.zctrl.nudge_factor)
 			else:
 				val = self.zctrl.value
+
 			if self.format_print and val<1000 and val>-1000:
 				self.value_print = self.format_print.format(val)
 			else:
@@ -220,7 +223,7 @@ class zynthian_gui_controller:
 
 		if self.rectangle:
 				self.canvas.coords(self.rectangle, (x1, y1, x2, y2))
-		elif not self.text_only:
+		elif not self.selector_counter:
 			self.rectangle_bg = self.canvas.create_rectangle(
 				(x1, y1, x1 + lx, y2),
 				fill = zynthian_gui_config.color_ctrl_bg_off,
@@ -271,7 +274,7 @@ class zynthian_gui_controller:
 					self.triangle,
 					(x1, y1, x2, y1, x2, y2)
 				)
-		elif not self.text_only:
+		elif not self.selector_counter:
 			self.triangle_bg = self.canvas.create_polygon(
 				(x1, y1, x1 + self.trw, y1, x1 + self.trw, y1 - self.trh),
 				fill = zynthian_gui_config.color_ctrl_bg_off
@@ -322,7 +325,7 @@ class zynthian_gui_controller:
 				deg0 += degd + arc_len
 				degd = -arc_len
 
-		if (not self.arc and not self.text_only) or not self.value_text:
+		if (not self.arc and not self.selector_counter) or not self.value_text:
 			if zynthian_gui_config.ctrl_both_sides:
 				x1 = 0.18*self.trw
 				y1 = self.height - int(0.7*self.trw) - 6
@@ -336,7 +339,7 @@ class zynthian_gui_controller:
 
 		if self.arc:
 			self.canvas.itemconfig(self.arc, start=deg0, extent=degd)
-		elif not self.text_only:
+		elif not self.selector_counter:
 			self.arc=self.canvas.create_arc(x1, y1, x2, y2,
 				style=tkinter.ARC,
 				outline=zynthian_gui_config.color_ctrl_bg_on,
@@ -388,7 +391,7 @@ class zynthian_gui_controller:
 
 	def set_midi_bind(self):
 		if self.zctrl:
-			if self.text_only:
+			if self.selector_counter:
 				#self.erase_midi_bind()
 				self.plot_midi_bind("/{}".format(self.zctrl.value_range))
 			elif self.zyngui.midi_learn_mode:
@@ -509,7 +512,6 @@ class zynthian_gui_controller:
 			self.erase_midi_bind()
 			return
 
-		self.logarithmic = zctrl.is_logarithmic
 		self.set_title(zctrl.short_name)
 		self.set_midi_bind()
 
