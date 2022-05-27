@@ -1305,17 +1305,20 @@ class zynthian_gui:
 
 
 	def cuia_learn(self, params=None):
-		if not self.is_shown_alsa_mixer():
-			if self.current_screen == "zs3_learn":
-				self.close_screen()
-			elif self.current_screen != "control":
-				self.show_screen_reset("control")
-			else:
-				if zynthian_gui_config.midi_prog_change_zs3 and (self.midi_learn_mode or self.midi_learn_zctrl):
-					self.show_screen("zs3_learn")
-					return
+		try:
+			self.screens[self.current_screen].toggle_midi_learn()
+		except:
+			if not self.is_shown_alsa_mixer():
+				if self.current_screen == "zs3_learn":
+					self.close_screen()
+				elif self.current_screen != "control":
+					self.show_screen_reset("control")
+				else:
+					if zynthian_gui_config.midi_prog_change_zs3 and (self.midi_learn_mode or self.midi_learn_zctrl):
+						self.show_screen("zs3_learn")
+						return
 
-		self.enter_midi_learn_mode()
+			self.enter_midi_learn_mode()
 
 
 	def cuia_bank_preset(self, params=None):
@@ -1536,8 +1539,7 @@ class zynthian_gui:
 			self.back_screen()
 
 		elif i==2:
-			# MIDI Learning
-			pass
+			self.cuia_learn()
 
 		elif i==3:
 			self.screens[self.current_screen].switch_select('S')
