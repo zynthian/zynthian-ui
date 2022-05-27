@@ -532,7 +532,7 @@ class zynthian_gui_controller:
 			if zctrl.is_integer:
 				self.pixels_per_div = self.height // zctrl.value_range
 				# If few values => use fixed step=1 (no adaptative step size!)
-				if n <= 32:
+				if zctrl.value_range <= 32:
 					self.step=1
 
 			#Float

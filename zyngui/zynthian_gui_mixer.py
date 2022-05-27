@@ -527,7 +527,6 @@ class zynthian_gui_mixer_strip():
 		self.fader_drag_start = event
 		self.set_volume(level)
 		self.redraw_controls()
-		self.parent.update_zyncoders()
 
 
 	# Function to handle mouse wheel down over fader
@@ -537,7 +536,6 @@ class zynthian_gui_mixer_strip():
 			return
 		self.set_volume(zynmixer.get_level(self.layer.midi_chan) - 0.02)
 		self.redraw_controls()
-		self.parent.update_zyncoders()
 
 
 	# Function to handle mouse wheel up over fader
@@ -547,7 +545,6 @@ class zynthian_gui_mixer_strip():
 			return
 		self.set_volume(zynmixer.get_level(self.layer.midi_chan) + 0.02)
 		self.redraw_controls()
-		self.parent.update_zyncoders()
 
 
 	# Function to handle mouse wheel down over balance
@@ -813,7 +810,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.selected_layer = self.main_mixbus_strip.layer
 
 		self.highlight_selected_strip()
-		self.update_zyncoders()
 
 		if set_curlayer and self.selected_layer.engine:
 			self.zyngui.set_curlayer(self.selected_layer) #TODO: Lose this re-entrant loop
@@ -867,8 +863,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		chan_strip = self.get_mixer_strip_from_layer_index(layer_index)
 		if chan_strip:
 			chan_strip.set_volume(value)
-			if layer_index == self.selected_chain_index:
-				self.update_zyncoders()
 
 
 	# Function to get volume
@@ -888,8 +882,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		chan_strip = self.get_mixer_strip_from_layer_index(layer_index)
 		if chan_strip and self.is_audio_layer(chan_strip.layer):
 			chan_strip.set_balance(value)
-			if layer_index == self.selected_chain_index:
-				self.update_zyncoders()
 
 
 	# Function to get balance
@@ -908,8 +900,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		chan_strip = self.get_mixer_strip_from_layer_index(layer_index)
 		if chan_strip and self.is_audio_layer(chan_strip.layer):
 			chan_strip.reset_volume()
-			if layer_index == self.selected_chain_index:
-				self.update_zyncoders()
 
 
 	# Function to reset balance
@@ -918,8 +908,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		chan_strip = self.get_mixer_strip_from_layer_index(layer_index)
 		if chan_strip and self.is_audio_layer(chan_strip.layer):
 			chan_strip.reset_balance()
-			if layer_index == self.selected_chain_index:
-				self.update_zyncoders()
 
 
 	# Function to set mute
@@ -1060,41 +1048,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def setup_zyncoders(self):
 		if not self.selected_layer:
 			return
-		value = int(zynmixer.get_level(self.selected_layer.midi_chan) * 100)
-		lib_zyncore.setup_rangescale_zynpot(ENC_LAYER, 0, 100, value, 0)
-		lib_zyncore.setup_midi_zynpot(ENC_LAYER, 0, 0)
-		lib_zyncore.setup_osc_zynpot(ENC_LAYER, None)
-
-		value = 50 + int(zynmixer.get_balance(self.selected_layer.midi_chan) * 50)
-		lib_zyncore.setup_rangescale_zynpot(ENC_BACK, 0, 100, value, 0)
-		lib_zyncore.setup_midi_zynpot(ENC_BACK, 0, 0)
-		lib_zyncore.setup_osc_zynpot(ENC_BACK, None)
-
-		value = int(zynmixer.get_level(MAIN_CHANNEL_INDEX) * 100)
-		lib_zyncore.setup_rangescale_zynpot(ENC_SNAPSHOT, 0, 100, value, 0)
-		lib_zyncore.setup_midi_zynpot(ENC_SNAPSHOT, 0, 0)
-		lib_zyncore.setup_osc_zynpot(ENC_SNAPSHOT, None)
-
-		lib_zyncore.setup_rangescale_zynpot(ENC_SELECT, 0, 4 * self.number_layers, 4 * self.selected_chain_index, 1)
-		lib_zyncore.setup_midi_zynpot(ENC_SELECT, 0, 0)
-		lib_zyncore.setup_osc_zynpot(ENC_SELECT, None)
-
-
-	# Update the zyncoders values
-	def update_zyncoders(self):
-		# Selected mixer strip volume & balance
-		if self.selected_layer:
-			value = int(zynmixer.get_level(self.selected_layer.midi_chan) * 100)
-			lib_zyncore.set_value_noflag_zynpot(ENC_LAYER, value, 0)
-			value = 50 + int(zynmixer.get_balance(self.selected_layer.midi_chan) * 50)
-			lib_zyncore.set_value_noflag_zynpot(ENC_BACK, value, 0)
-
-			# Main mixbus volume
-			value = int(zynmixer.get_level(MAIN_CHANNEL_INDEX) * 100)
-			lib_zyncore.set_value_noflag_zynpot(ENC_SNAPSHOT, value, 0)
-
-		# Selector encoder
-		lib_zyncore.set_value_noflag_zynpot(ENC_SELECT, 4 * self.selected_chain_index, 0)
+		lib_zyncore.setup_behaviour_zynpot(ENC_LAYER, 0, 0)
+		lib_zyncore.setup_behaviour_zynpot(ENC_BACK, 0, 0)
+		lib_zyncore.setup_behaviour_zynpot(ENC_SNAPSHOT, 0, 0)
+		lib_zyncore.setup_behaviour_zynpot(ENC_SELECT, 0, 1)
 
 
 	# Function to handle zyncoder polling.
@@ -1107,42 +1064,40 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		if self.selected_layer:
 			# LAYER encoder adjusts selected chain's level
-			if lib_zyncore.get_value_flag_zynpot(ENC_LAYER):
-				value = lib_zyncore.get_value_zynpot(ENC_LAYER)
+			dval = lib_zyncore.get_value_zynpot(ENC_LAYER)
+			if dval:
+				value = zynmixer.get_level(self.selected_layer.midi_chan) + dval * 0.01
 				#logging.debug("Value LAYER: {}".format(value))
-				if self.selected_layer.midi_chan == MAIN_CHANNEL_INDEX:
-					lib_zyncore.set_value_noflag_zynpot(ENC_SNAPSHOT, value)
-				zynmixer.set_level(self.selected_layer.midi_chan, value * 0.01)
+				zynmixer.set_level(self.selected_layer.midi_chan, value)
 				if self.selected_layer.midi_chan == MAIN_CHANNEL_INDEX:
 					redraw_main_fader = True
 				else:
 					redraw_fader_offset = self.selected_chain_index - self.mixer_strip_offset
 
 			# BACK encoder adjusts selected chain's balance/pan
-			if lib_zyncore.get_value_flag_zynpot(ENC_BACK):
-				value = lib_zyncore.get_value_zynpot(ENC_BACK)
+			dval = lib_zyncore.get_value_zynpot(ENC_BACK)
+			if dval:
+				value = zynmixer.get_balance(self.selected_layer.midi_chan) + dval * 0.02
 				#logging.debug("Value BACK: {}".format(value))
-				zynmixer.set_balance(self.selected_layer.midi_chan, (value - 50) * 0.02)
+				zynmixer.set_balance(self.selected_layer.midi_chan, value)
 				if self.selected_layer.midi_chan == MAIN_CHANNEL_INDEX:
 					redraw_main_fader = True
 				else:
 					redraw_fader_offset = self.selected_chain_index - self.mixer_strip_offset
 
 			# SNAPSHOT encoder adjusts main mixbus level
-			if lib_zyncore.get_value_flag_zynpot(ENC_SNAPSHOT):
-				value = lib_zyncore.get_value_zynpot(ENC_SNAPSHOT)
+			dval = lib_zyncore.get_value_zynpot(ENC_BACK)
+			if dval:
+				value = zynmixer.get_level(MAIN_CHANNEL_INDEX) + dval * 0.01
 				#logging.debug("Value SHOT: {}".format(value))
-				if self.selected_layer.midi_chan == MAIN_CHANNEL_INDEX:
-					lib_zyncore.set_value_noflag_zynpot(ENC_LAYER, value)
-				zynmixer.set_level(MAIN_CHANNEL_INDEX, value * 0.01)
+				zynmixer.set_level(MAIN_CHANNEL_INDEX, value)
 				redraw_main_fader = True
 
 		# SELECT encoder moves chain selection
-		if lib_zyncore.get_value_flag_zynpot(ENC_SELECT):
-			value = int((1+lib_zyncore.get_value_zynpot(ENC_SELECT))/4)
-			#logging.debug("Value SELECT: {}".format(value))
-			if value != self.selected_chain_index:
-				self.select_chain_by_index(value)
+		dval = lib_zyncore.get_value_zynpot(ENC_BACK)
+		if dval:
+			self.select_chain_by_index(self.selected_chain_index + dval)
+			#logging.debug("Value SELECT: {}".format(self.selected_chain_index))
 
 		if redraw_main_fader:
 			self.main_mixbus_strip.draw_controls()
@@ -1152,16 +1107,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Increment by inc the zyncoder's value
 	def zyncoder_up(self, num, inc = 1):
-		lib_zyncore.set_value_zynpot(num, lib_zyncore.get_value_zynpot(num) + inc, 0)
+		pass
+		#TODO Should we implement this without relying on zynpots?
 
 
 	# Decrement by dec the zyncoder's value
 	def zyncoder_down(self, num, dec = 1):
-		value = lib_zyncore.get_value_zynpot(num) - dec
-		if value < 0:
-			value = 0 #TODO: This should be handled by zyncoder
-		lib_zyncore.set_value_zynpot(num, value, 0)
-
+		pass
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
