@@ -45,25 +45,25 @@ from zyngui import zynthian_gui_config
 
 class zynthian_gui_controller:
 
-	def __init__(self, indx, frm, zctrl, hidden=False):
+	def __init__(self, indx, frm, zctrl, hidden=False, selcounter=False):
 		self.zyngui=zynthian_gui_config.zyngui
 		self.zctrl = None
 		self.inverted = False
-		self.step = 0 #TODO: Fix steps / non-accelerated mode
+		self.step = 0
 
 		self.value_plot = 0 # Normalised position of plot start point
 		self.value_print = None
 		self.value_font_size = zynthian_gui_config.font_size
 
-		self.hidden = hidden # Always hidden, i.e. self.shown does not indicate actually shown
-		self.shown = False # Currently shown
+		self.hidden = hidden # Always hidden => in such a case, self.shown means "enabled"
+		self.shown = False # Currently shown/enabled
 		self.rectangle = None
 		self.triangle = None
 		self.arc = None
 		self.value_text = None
 		self.label_title = None
 		self.midi_bind = None
-		self.selector_counter = False
+		self.selector_counter = selcounter
 		self.refresh_plot_value = False
 
 		self.width=zynthian_gui_config.ctrl_width
@@ -201,7 +201,7 @@ class zynthian_gui_controller:
 
 
 	def plot_value(self):
-		if self.shown and self.zctrl and self.zctrl.is_dirty or self.refresh_plot_value:
+		if self.shown and self.zctrl and (self.zctrl.is_dirty or self.refresh_plot_value):
 			self.plot_value_func()
 			self.refresh_plot_value = False
 			self.zctrl.is_dirty = False
@@ -221,23 +221,22 @@ class zynthian_gui_controller:
 
 		x2 = x1 + lx * self.value_plot
 
-		if self.rectangle:
-				self.canvas.coords(self.rectangle, (x1, y1, x2, y2))
-		elif not self.selector_counter:
-			self.rectangle_bg = self.canvas.create_rectangle(
-				(x1, y1, x1 + lx, y2),
-				fill = zynthian_gui_config.color_ctrl_bg_off,
-				width = 0
-			)
-			self.rectangle = self.canvas.create_rectangle(
-				(x1, y1, x2, y2),
-				fill = zynthian_gui_config.color_ctrl_bg_on,
-				width = 0
-			)
-			self.canvas.tag_lower(self.rectangle)
-			self.canvas.tag_lower(self.rectangle_bg)
-		else:
-			self.value_print = "{}".format(self.zctrl.value + 1)
+		if not self.selector_counter:
+			if self.rectangle:
+					self.canvas.coords(self.rectangle, (x1, y1, x2, y2))
+			else:
+				self.rectangle_bg = self.canvas.create_rectangle(
+					(x1, y1, x1 + lx, y2),
+					fill = zynthian_gui_config.color_ctrl_bg_off,
+					width = 0
+				)
+				self.rectangle = self.canvas.create_rectangle(
+					(x1, y1, x2, y2),
+					fill = zynthian_gui_config.color_ctrl_bg_on,
+					width = 0
+				)
+				self.canvas.tag_lower(self.rectangle)
+				self.canvas.tag_lower(self.rectangle_bg)
 
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)
@@ -268,25 +267,24 @@ class zynthian_gui_controller:
 		x2 = x1 + int(self.trw * self.value_plot)
 		y2 = y1 - int(self.trh * self.value_plot)
 
-		if self.triangle:
-				#self.canvas.coords(self.triangle_bg,(x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh))
-				self.canvas.coords(
-					self.triangle,
-					(x1, y1, x2, y1, x2, y2)
+		if not self.selector_counter:
+			if self.triangle:
+					#self.canvas.coords(self.triangle_bg,(x1, y1, x1+self.trw, y1, x1+self.trw, y1-self.trh))
+					self.canvas.coords(
+						self.triangle,
+						(x1, y1, x2, y1, x2, y2)
+					)
+			else:
+				self.triangle_bg = self.canvas.create_polygon(
+					(x1, y1, x1 + self.trw, y1, x1 + self.trw, y1 - self.trh),
+					fill = zynthian_gui_config.color_ctrl_bg_off
 				)
-		elif not self.selector_counter:
-			self.triangle_bg = self.canvas.create_polygon(
-				(x1, y1, x1 + self.trw, y1, x1 + self.trw, y1 - self.trh),
-				fill = zynthian_gui_config.color_ctrl_bg_off
-			)
-			self.triangle = self.canvas.create_polygon(
-				(x1, y1, x2, y1, x2, y2),
-				fill = zynthian_gui_config.color_ctrl_bg_on
-			)
-			self.canvas.tag_lower(self.triangle)
-			self.canvas.tag_lower(self.triangle_bg)
-		else:
-			self.value_print = "{}".format(self.zctrl.value + 1)
+				self.triangle = self.canvas.create_polygon(
+					(x1, y1, x2, y1, x2, y2),
+					fill = zynthian_gui_config.color_ctrl_bg_on
+				)
+				self.canvas.tag_lower(self.triangle)
+				self.canvas.tag_lower(self.triangle_bg)
 
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)
@@ -337,18 +335,17 @@ class zynthian_gui_controller:
 				x2 = x1 + self.trw
 				y2 = y1 + self.trh
 
-		if self.arc:
-			self.canvas.itemconfig(self.arc, start=deg0, extent=degd)
-		elif not self.selector_counter:
-			self.arc=self.canvas.create_arc(x1, y1, x2, y2,
-				style=tkinter.ARC,
-				outline=zynthian_gui_config.color_ctrl_bg_on,
-				width=thickness,
-				start=deg0,
-				extent=degd)
-			self.canvas.tag_lower(self.arc)
-		else:
-			self.value_print = "{}".format(self.zctrl.value + 1)
+		if not self.selector_counter:
+			if self.arc:
+				self.canvas.itemconfig(self.arc, start=deg0, extent=degd)
+			else:
+				self.arc=self.canvas.create_arc(x1, y1, x2, y2,
+					style=tkinter.ARC,
+					outline=zynthian_gui_config.color_ctrl_bg_on,
+					width=thickness,
+					start=deg0,
+					extent=degd)
+				self.canvas.tag_lower(self.arc)
 
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)

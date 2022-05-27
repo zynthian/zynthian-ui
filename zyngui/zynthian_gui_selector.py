@@ -173,11 +173,12 @@ class zynthian_gui_selector(zynthian_gui_base):
 				self.zselector.show()
 			else:
 				zselector_ctrl=zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
-				self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hiden)
-				self.zselector.selector_counter = True
+				self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hiden, selcounter=True)
 
 
 	def plot_zctrls(self):
+		if self.zselector.zctrl.is_dirty:
+			self.zselector.calculate_plot_values()
 		self.zselector.plot_value()
 
 
