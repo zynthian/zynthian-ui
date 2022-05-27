@@ -89,8 +89,7 @@ struct AUDIO_PLAYER {
     char filename[128];
     uint8_t last_note_played; // MIDI note number of last note that triggered playback
     double src_ratio; // Samplerate ratio of file
-    double src_ratio_inv; // Samplerate ratio inverted used for playback position updates
-    int pitch_shift; // Factor of pitch shift
+    float pitch_shift; // Factor of pitch shift
     unsigned int pitch_bend; // Amount of MIDI pitch bend applied (0..16383, centre=8192 (0x2000))
     void * cb_object; // Pointer to the object hosting the callback function
     cb_fn_t * cb_fn; // Pointer to function to receive notification of chage
@@ -355,13 +354,12 @@ void* file_thread_fn(void * param) {
         pPlayer->src_ratio = (float)g_samplerate / pPlayer->sf_info.samplerate;
         if (pPlayer->src_ratio == 0)
             pPlayer->src_ratio = 1;
-        pPlayer->src_ratio_inv = 1 / pPlayer->src_ratio;
         srcData.src_ratio = pPlayer->src_ratio;
-        pPlayer->pitch_shift = 0;
+        pPlayer->pitch_shift = 1.0;
         pPlayer->pitch_bend = 0x2000;
         srcData.output_frames = pPlayer->buffer_size / pPlayer->sf_info.channels;
         if(pPlayer->sf_info.samplerate)
-            pPlayer->frames = pPlayer->sf_info.frames * pPlayer->src_ratio;
+            pPlayer->frames = pPlayer->sf_info.frames * pPlayer->src_ratio; //!@todo Is this calc required?
         else
             pPlayer->frames = pPlayer->sf_info.frames;
         pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
@@ -379,8 +377,7 @@ void* file_thread_fn(void * param) {
             jack_ringbuffer_reset(pPlayer->ringbuffer_a);
             jack_ringbuffer_reset(pPlayer->ringbuffer_b);
             pPlayer->loop_loaded = 0;
-            srcData.src_ratio = pPlayer->src_ratio * pow(1.059463094359, pPlayer->pitch_shift);
-            size_t nNewPos = pPlayer->play_pos_frames * pPlayer->src_ratio_inv;
+            size_t nNewPos = pPlayer->play_pos_frames / pPlayer->src_ratio;
             sf_count_t pos = sf_seek(pFile, nNewPos, SEEK_SET);
             if(pos >= 0)
                 pPlayer->file_read_pos = pos;
@@ -610,8 +607,8 @@ void set_position(int player_handle, float time) {
     if(time >= get_duration(player_handle))
         time = get_duration(player_handle);
     sf_count_t frames = time * g_samplerate;
-    if(frames >= pPlayer->frames * pPlayer->src_ratio_inv)
-        frames = pPlayer->frames * pPlayer->src_ratio_inv -1;
+    if(frames >= pPlayer->frames / pPlayer->src_ratio)
+        frames = pPlayer->frames / pPlayer->src_ratio - 1;
     pPlayer->play_pos_frames = frames;
     pPlayer->file_read_status = SEEKING;
     jack_ringbuffer_reset(pPlayer->ringbuffer_b);
@@ -626,7 +623,7 @@ void set_position(int player_handle, float time) {
 
 float get_position(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer && pPlayer->file_open == 2 && pPlayer->sf_info.samplerate)
+    if(pPlayer && pPlayer->file_open == 2 && g_samplerate)
         return (float)(pPlayer->play_pos_frames) / g_samplerate;
     return 0.0;
 }
@@ -672,6 +669,7 @@ void set_loop_end_time(int player_handle, float time) {
         return;
     pPlayer->loop_end = frames;
     pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
+    set_position(player_handle, get_position(player_handle));
 }
 
 float get_loop_end_time(int player_handle) {
@@ -772,28 +770,54 @@ void remove_player(int player_handle) {
 
 // Handle JACK process callback
 int on_jack_process(jack_nframes_t nFrames, void * arg) {
-    size_t count;
+    size_t r_count = 0; // Quantity of samples removed from queue, i.e. how far advanced through the audio
+    size_t a_count = 0; // Quantity of samples added to jack buffer
+    float f_count = 0.0; // Amount moved through buffer when pitch shifting
+    float tmp;
     struct AUDIO_PLAYER * pPlayer = (struct AUDIO_PLAYER *) (arg);
     if(!pPlayer || pPlayer->file_open != 2)
         return 0;
     jack_default_audio_sample_t *pOutA = (jack_default_audio_sample_t*)jack_port_get_buffer(pPlayer->jack_out_a, nFrames);
     jack_default_audio_sample_t *pOutB = (jack_default_audio_sample_t*)jack_port_get_buffer(pPlayer->jack_out_b, nFrames);
-    count = 0;
 
     if(pPlayer->play_state == STARTING && pPlayer->file_read_status != SEEKING)
         pPlayer->play_state = PLAYING;
 
     if(pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
-        count = jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)pOutA, nFrames * sizeof(float));
-        jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)pOutB, count);
+        if(pPlayer->pitch_shift != 1.0) {
+            while(a_count < nFrames) {
+                if(
+                    (jack_ringbuffer_peek(pPlayer->ringbuffer_a, (char*)(&pOutA[a_count]), sizeof(float)) < sizeof(float)) ||
+                    (jack_ringbuffer_peek(pPlayer->ringbuffer_b, (char*)(&pOutB[a_count]), sizeof(float)) < sizeof(float))
+                )
+                    break;
+
+                while(f_count < a_count) {
+                    f_count += pPlayer->pitch_shift;
+                    jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)(&tmp), sizeof(float));
+                    jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)(&tmp), sizeof(float));
+                    ++r_count;
+                    if(jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0 || jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0)
+                        break; // Run out of data to read 
+                        //!@todo Should break out of outer loop
+                }
+                ++a_count;
+            }
+        } else {
+            r_count = jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)pOutA, nFrames * sizeof(float));
+            jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)pOutB, r_count);
+            r_count /= sizeof(float);
+            a_count = r_count;
+        }
     }
-    count /= sizeof(float);
-    for(size_t offset = 0; offset < count; ++offset) {
+    if(a_count > nFrames)
+        a_count = nFrames;
+    for(size_t offset = 0; offset < a_count; ++offset) {
         // Set volume / gain / level
         pOutA[offset] *= pPlayer->gain;
         pOutB[offset] *= pPlayer->gain;
     }
-    pPlayer->play_pos_frames += count;
+    pPlayer->play_pos_frames += r_count;
     //int eof = (pPlayer->file_read_status == IDLE && jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0);
     if(pPlayer->loop) {
         if(pPlayer->play_pos_frames >= pPlayer->loop_end_src) {
@@ -813,18 +837,18 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
 
     if(pPlayer->play_state == STOPPING) {
         // Soft mute (not perfect for short last period of file but better than nowt)
-        for(size_t offset = 0; offset < count; ++offset) {
-            pOutA[offset] *= 1.0 - ((float)offset / count);
-            pOutB[offset] *= 1.0 - ((float)offset / count);
+        for(size_t offset = 0; offset < a_count; ++offset) {
+            pOutA[offset] *= 1.0 - ((float)offset / a_count);
+            pOutB[offset] *= 1.0 - ((float)offset / a_count);
         }
         pPlayer->play_state = STOPPED;
 
-        DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", count, nFrames, nFrames - count, (nFrames - count) * sizeof(jack_default_audio_sample_t));
+        DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count, nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
     }
 
     // Silence remainder of frame
-    memset(pOutA + count, 0, (nFrames - count) * sizeof(jack_default_audio_sample_t));
-    memset(pOutB + count, 0, (nFrames - count) * sizeof(jack_default_audio_sample_t));
+    memset(pOutA + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
+    memset(pOutB + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
 
     // Process MIDI input
     void* pMidiBuffer = jack_port_get_buffer(pPlayer->jack_midi_in, nFrames);
@@ -837,15 +861,17 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         if((cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) && pPlayer->last_note_played == midiEvent.buffer[1]) {
             // Note off
             stop_playback(pPlayer->handle);
-            pPlayer->pitch_shift = 0;
+            pPlayer->pitch_shift = 1.0;
             pPlayer->last_note_played = 0;
         } else if(cmd == 0x90) {
             // Note on
-                stop_playback(pPlayer->handle);
-                pPlayer->pitch_shift = 60 - midiEvent.buffer[1];
-                set_position(pPlayer->handle, 0);
-                start_playback(pPlayer->handle);
-                pPlayer->last_note_played = midiEvent.buffer[1];
+            pPlayer->pitch_shift  = pow(1.059463094359, 60 - midiEvent.buffer[1]);
+            pPlayer->play_pos_frames = pPlayer->loop_start_src;
+            pPlayer->file_read_status = SEEKING;
+            jack_ringbuffer_reset(pPlayer->ringbuffer_a);
+            jack_ringbuffer_reset(pPlayer->ringbuffer_b);
+            pPlayer->last_note_played = midiEvent.buffer[1];
+            pPlayer->play_state = STARTING;
         } else if(cmd == 0xE0) {
             // Pitchbend
             //!@todo Pitchbend does nothing - want it to affect live playback (different to note-on that affects whole file)
@@ -947,6 +973,9 @@ int init() {
     pPlayer->loop_start = 0;
     pPlayer->loop_start_src = pPlayer->loop_start;
     pPlayer->loop_end = pPlayer->buffer_size;
+    pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
+    pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
+
     pPlayer->loop_end_src = pPlayer->loop_end;
     pPlayer->last_note_played = 0;
 
