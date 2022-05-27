@@ -174,7 +174,7 @@ class zynthian_controller:
 		if self.nudge_factor is None:
 			if not self.is_integer and not self.is_toggle:
 				self.nudge_factor = self.value_range * 0.005 # This overrides specified nudge_factor but mostly okay
-			else 
+			else:
 				self.nudge_factor = 1
 
 
