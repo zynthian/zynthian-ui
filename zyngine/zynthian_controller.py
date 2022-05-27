@@ -171,10 +171,11 @@ class zynthian_controller:
 		if self.value_default is None:
 			self.value_default = self.value
 
-		if not self.is_integer and not self.is_toggle and self.nudge_factor is None:
-			self.nudge_factor = self.value_range * 0.005 # This overrides specified nudge_factor but mostly okay
 		if self.nudge_factor is None:
-			self.nudge_factor = 1
+			if not self.is_integer and not self.is_toggle:
+				self.nudge_factor = self.value_range * 0.005 # This overrides specified nudge_factor but mostly okay
+			else 
+				self.nudge_factor = 1
 
 
 	def setup_controller(self, chan, cc, val, maxval=127):
