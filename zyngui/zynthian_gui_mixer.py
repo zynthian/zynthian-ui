@@ -1086,7 +1086,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					redraw_fader_offset = self.selected_chain_index - self.mixer_strip_offset
 
 			# SNAPSHOT encoder adjusts main mixbus level
-			dval = lib_zyncore.get_value_zynpot(ENC_BACK)
+			dval = lib_zyncore.get_value_zynpot(ENC_SNAPSHOT)
 			if dval:
 				value = zynmixer.get_level(MAIN_CHANNEL_INDEX) + dval * 0.01
 				#logging.debug("Value SHOT: {}".format(value))
@@ -1094,7 +1094,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				redraw_main_fader = True
 
 		# SELECT encoder moves chain selection
-		dval = lib_zyncore.get_value_zynpot(ENC_BACK)
+		dval = lib_zyncore.get_value_zynpot(ENC_SELECT)
 		if dval:
 			self.select_chain_by_index(self.selected_chain_index + dval)
 			#logging.debug("Value SELECT: {}".format(self.selected_chain_index))

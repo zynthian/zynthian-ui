@@ -1818,12 +1818,17 @@ class zynthian_gui:
 
 
 	def control_thread_task(self):
+		j = 0
 		while not self.exit_flag:
 			self.zyncoder_read()
 			self.zynmidi_read()
 			self.osc_receive()
-			self.plot_zctrls()
-			sleep(0.04)
+			if j>4:
+				j = 0
+				self.plot_zctrls()
+			else:
+				j += 1
+			sleep(0.01)
 			if self.zynread_wait_flag:
 				sleep(0.3)
 				self.zynread_wait_flag=False
