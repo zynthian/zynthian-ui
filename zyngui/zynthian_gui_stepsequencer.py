@@ -899,20 +899,10 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			for encoder in range(len(self.zyncoder_owner)):
 				if self.zyncoder_owner[encoder]:
 					# Found a registered zyncoder
-					value = lib_zyncore.get_value_zynpot(encoder)
-					if self.zyncoder_step[encoder]==0:
-						step = value-64
-					else:
-						if value>65+self.zyncoder_step[encoder]:
-							step = 1
-						elif value<63-self.zyncoder_step[encoder]:
-							step = -1
-						else:
-							step = 0
+					step = lib_zyncore.get_value_zynpot(encoder)
 					if step:
 						#logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
 						self.zyncoder_owner[encoder].on_zyncoder(encoder, step)
-						lib_zyncore.set_value_zynpot(encoder, 64, 0)
 		return []
 
 
@@ -1115,9 +1105,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			return
 		self.zyncoder_owner[encoder] = None
 		if self.shown and lib_zyncore:
-			lib_zyncore.setup_rangescale_zynpot(encoder, 0, 128, 64, step)
-			lib_zyncore.setup_midi_zynpot(encoder, 0, 0)
-			lib_zyncore.setup_osc_zynpot(encoder, None)
+			lib_zyncore.setup_behaviour_zynpot(encoder, step, 0)
 			self.zyncoder_owner[encoder] = object
 			self.zyncoder_step[encoder] = step
 
