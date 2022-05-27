@@ -246,7 +246,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			if not self.halftone_zgui_ctrl:
 				self.halftone_zctrl=zynthian_controller(self, 'semitone transpose', 'semitone transpose', { 'value_min':-12, 'value_max':12 })
 				self.halftone_zgui_ctrl=zynthian_gui_controller(self.zctrl_pos[0], self.main_frame, self.halftone_zctrl, False)
-			self.halftone_zgui_ctrl.setup_zyncoder()
+			self.halftone_zgui_ctrl.setup_zynpot()
 			self.halftone_zgui_ctrl.erase_midi_bind()
 			self.halftone_zctrl.set_value(self.halftone_trans)
 			self.halftone_zgui_ctrl.show()
@@ -254,7 +254,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			if not self.octave_zgui_ctrl:
 				self.octave_zctrl = zynthian_controller(self, 'octave transpose', 'octave transpose', { 'value_min':-5, 'value_max':6 })
 				self.octave_zgui_ctrl = zynthian_gui_controller(self.zctrl_pos[1], self.main_frame, self.octave_zctrl, False)
-			self.octave_zgui_ctrl.setup_zyncoder()
+			self.octave_zgui_ctrl.setup_zynpot()
 			self.octave_zgui_ctrl.erase_midi_bind()
 			self.octave_zctrl.set_value(self.octave_trans)
 			self.octave_zgui_ctrl.show()
@@ -262,14 +262,14 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			if not self.nlow_zgui_ctrl:
 				self.nlow_zctrl = zynthian_controller(self, 'note low', 'note low', {'nudge_factor':1})
 				self.nlow_zgui_ctrl = zynthian_gui_controller(self.zctrl_pos[2], self.main_frame, self.nlow_zctrl, True)
-			self.nlow_zgui_ctrl.setup_zyncoder()
+			self.nlow_zgui_ctrl.setup_zynpot()
 			self.nlow_zctrl.set_value(self.note_low)
 			self.nlow_zgui_ctrl.show()
 
 			if not self.nhigh_zgui_ctrl:
 				self.nhigh_zctrl = zynthian_controller(self, 'note high', 'note high', {'nudge_factor':1})
 				self.nhigh_zgui_ctrl = zynthian_gui_controller(self.zctrl_pos[3], self.main_frame, self.nhigh_zctrl, True)
-			self.nhigh_zgui_ctrl.setup_zyncoder()
+			self.nhigh_zgui_ctrl.setup_zynpot()
 			self.nhigh_zctrl.set_value(self.note_high)
 			self.nhigh_zgui_ctrl.show()
 
@@ -305,17 +305,16 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		self.nhigh_zgui_ctrl.read_zyncoder()
 		return []
 
-	def switch(self, switch, type):
-		if switch == 2 and type == 'S':
-			if lib_zyncore.get_midi_learning_mode():
-				self.learn_mode = False
-				lib_zyncore.set_midi_learning_mode(0)
-				self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.HIDDEN)
-			else:
-				self.learn_mode = True
-				lib_zyncore.set_midi_learning_mode(1)
-				self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.NORMAL)
-			return True
+
+	def toggle_midi_learn(self):
+		if self.learn_mode:
+			self.learn_mode = False
+			#lib_zyncore.set_midi_learning_mode(0)
+			self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.HIDDEN)
+		else:
+			self.learn_mode = True
+			#lib_zyncore.set_midi_learning_mode(1)
+			self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.NORMAL)
 
 
 	def send_controller_value(self, zctrl):

@@ -278,124 +278,117 @@ class zynthian_gui_keyboard():
 	# Function to register encoders
 	def setup_encoders(self):
 		if lib_zyncore:
-			lib_zyncore.setup_rangescale_zynpot(ZYNPOT_SELECT, -1, len(self.buttons), self.selected_button, 0)
-			lib_zyncore.setup_midi_zynpot(ZYNPOT_SELECT, 0, 0)
-			lib_zyncore.setup_osc_zynpot(ZYNPOT_SELECT, None)
-
-			lib_zyncore.setup_rangescale_zynpot(ZYNPOT_BACK, -1, 1, 0, 0)
-			lib_zyncore.setup_midi_zynpot(ZYNPOT_BACK, 0, 0)
-			lib_zyncore.setup_osc_zynpot(ZYNPOT_BACK, None)
+			lib_zyncore.setup_behaviour_zynpot(ZYNPOT_SELECT, 1, 0)
+			lib_zyncore.setup_behaviour_zynpot(ZYNPOT_BACK, 1, 0)
 
 
 	# Function to handle zyncoder polling
-	#	Note: Back zynpot provide positive integers. We need +/- 1 so we keep zyncoder at +64 and calculate offset
 	def zyncoder_read(self):
 		if not self.shown:
 			return
 		if lib_zyncore:
-			if lib_zyncore.get_value_flag_zynpot(ZYNPOT_SELECT):
-				key = lib_zyncore.get_value_zynpot(ZYNPOT_SELECT)
-				if key != self.selected_button:
-					if key >= len(self.buttons):
-						key = 0
-						lib_zyncore.set_value_noflag_zynpot(ZYNPOT_SELECT, key)
-					elif key < 0:
-						key = len(self.buttons) - 1
-						lib_zyncore.set_value_noflag_zynpot(ZYNPOT_SELECT, key)
-					self.selected_button = key
-					self.highlight(key)
-			if lib_zyncore.get_value_flag_zynpot(ZYNPOT_BACK):
-				value = lib_zyncore.get_value_zynpot(ZYNPOT_BACK)
-				if value:
-					lib_zyncore.set_value_noflag_zynpot(ZYNPOT_BACK, 0)
-					key = self.selected_button + self.columns * value
-					if self.mode == OSK_NUMPAD:
-						if value < 0 and self.selected_button < 3:
-							key = self.selected_button + 9
-						elif value > 0 and self.selected_button > 8:
-							if self.selected_button == self.btn_enter:
-								key = self.selected_button - 10
-							else:
-								key = self.selected_button - 9
-						else:
-							if self.selected_button == self.btn_enter:
-								key = self.selected_button - 4
-							else:
-								key = self.selected_button + 3 * value
-					else:
-						if value < 0:
-							# Check first row - wrap to last row
-							if self.selected_button in [0,1]:
-								key = self.btn_cancel
-							elif self.selected_button == 2:
-								key = self.btn_shift
-							elif self.selected_button in range(3, 7):
-								key = self.btn_space
-							elif self.selected_button == 7:
-								key = self.btn_delete
-							elif self.selected_button in [8,9]:
-								key = self.btn_enter
-							# Check last row
-							elif self.selected_button == self.btn_cancel:
-								key = (self.rows - 2) * self.columns
-							elif self.selected_button == self.btn_shift:
-								key = (self.rows - 2) * self.columns + 2
-							elif self.selected_button == self.btn_space:
-								key = (self.rows - 2) * self.columns + 3
-							elif self.selected_button == self.btn_delete:
-								key = (self.rows - 2) * self.columns + 7
-							elif self.selected_button == self.btn_enter:
-								key = (self.rows - 2) * self.columns + 8
-						elif value > 0:
-							# Check penultimate row
-							if self.selected_button in [30,31]:
-								key = self.btn_cancel
-							elif self.selected_button in [32]:
-								key = self.btn_shift
-							elif self.selected_button in [33,34,35,36]:
-								key = self.btn_space
-							elif self.selected_button in [37]:
-								key = self.btn_delete
-							elif self.selected_button in [38,39]:
-								key = self.btn_enter
-							# Check last row
-							elif self.selected_button == self.btn_cancel:
-								key = 0
-							elif self.selected_button == self.btn_shift:
-								key = 2
-							elif self.selected_button == self.btn_space:
-								key = 3
-							elif self.selected_button == self.btn_delete:
-								key = 7
-							elif self.selected_button == self.btn_enter:
-								key = 8
-					lib_zyncore.set_value_zynpot(ZYNPOT_SELECT, key)
-					self.selected_button = key
-					self.highlight(key)
+			dval = lib_zyncore.get_value_zynpot(ZYNPOT_SELECT)
+			if dval:
+				self.cursor_hmove(dval)
+			dval = lib_zyncore.get_value_zynpot(ZYNPOT_BACK)
+			if dval:
+				self.cursor_vmove(dval)
+
+
+	def cursor_hmove(self, dval):
+		key = self.selected_button + dval
+		if key >= len(self.buttons):
+			key = 0
+		elif key < 0:
+			key = len(self.buttons) - 1
+		self.selected_button = key
+		self.highlight(key)
+
+
+	def cursor_vmove(self, dval):
+		key = self.selected_button + self.columns * dval
+		if self.mode == OSK_NUMPAD:
+			if dval < 0 and self.selected_button < 3:
+				key = self.selected_button + 9
+			elif dval > 0 and self.selected_button > 8:
+				if self.selected_button == self.btn_enter:
+					key = self.selected_button - 10
+				else:
+					key = self.selected_button - 9
+			else:
+				if self.selected_button == self.btn_enter:
+					key = self.selected_button - 4
+				else:
+					key = self.selected_button + 3 * dval
+		else:
+			if dval < 0:
+				# Check first row - wrap to last row
+				if self.selected_button in [0,1]:
+					key = self.btn_cancel
+				elif self.selected_button == 2:
+					key = self.btn_shift
+				elif self.selected_button in range(3, 7):
+					key = self.btn_space
+				elif self.selected_button == 7:
+					key = self.btn_delete
+				elif self.selected_button in [8,9]:
+					key = self.btn_enter
+				# Check last row
+				elif self.selected_button == self.btn_cancel:
+					key = (self.rows - 2) * self.columns
+				elif self.selected_button == self.btn_shift:
+					key = (self.rows - 2) * self.columns + 2
+				elif self.selected_button == self.btn_space:
+					key = (self.rows - 2) * self.columns + 3
+				elif self.selected_button == self.btn_delete:
+					key = (self.rows - 2) * self.columns + 7
+				elif self.selected_button == self.btn_enter:
+					key = (self.rows - 2) * self.columns + 8
+			elif dval > 0:
+				# Check penultimate row
+				if self.selected_button in [30,31]:
+					key = self.btn_cancel
+				elif self.selected_button in [32]:
+					key = self.btn_shift
+				elif self.selected_button in [33,34,35,36]:
+					key = self.btn_space
+				elif self.selected_button in [37]:
+					key = self.btn_delete
+				elif self.selected_button in [38,39]:
+					key = self.btn_enter
+				# Check last row
+				elif self.selected_button == self.btn_cancel:
+					key = 0
+				elif self.selected_button == self.btn_shift:
+					key = 2
+				elif self.selected_button == self.btn_space:
+					key = 3
+				elif self.selected_button == self.btn_delete:
+					key = 7
+				elif self.selected_button == self.btn_enter:
+					key = 8
+		self.selected_button = key
+		self.highlight(key)
 
 
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
-		if lib_zyncore:
-			lib_zyncore.set_value_zynpot(ZYNPOT_BACK, 1)
+		self.cursor_vmove(-1)
 
 
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
-		if lib_zyncore:
-			lib_zyncore.set_value_zynpot(ZYNPOT_BACK, -1)
+		self.cursor_vmove(1)
 
 
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		if lib_zyncore:
-			lib_zyncore.set_value_zynpot(ZYNPOT_SELECT, self.selected_button + 1)
+		self.cursor_hmove(1)
 
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		if lib_zyncore:
-			lib_zyncore.set_value_zynpot(ZYNPOT_SELECT, self.selected_button - 1)
+		self.cursor_hmove(-1)
 
 
 	def switch_select(self, type):
