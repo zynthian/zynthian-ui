@@ -196,7 +196,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			]
 			self._ctrl_screens = [
 				['main',['record','loop','transport','position']],
-				['edit',['loop start',None,'loop end']],
 				['config',['left track','gain','right track']]
 			]
 		else:

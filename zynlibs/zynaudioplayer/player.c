@@ -1,6 +1,11 @@
 /*  Audio file player library for Zynthian
-    Copyright (C) 2021 Brian Walton <brian@riban.co.uk>
+    Copyright (C) 2021-2022 Brian Walton <brian@riban.co.uk>
     License: LGPL V3
+*/
+
+/** @todo   Resolve occasional segfault when adusting position
+    @todo   Add in/out markers including gradient, e.g. in_start, in_end, out_start, out_end
+    @todo   Add 'slate' markers- general purpose markers that can be jumpped to
 */
 
 #include "player.h"
@@ -606,8 +611,10 @@ void set_position(int player_handle, float time) {
         return;
     sf_count_t frames = time * g_samplerate;
     if(pPlayer->loop) {
-        if(frames >= pPlayer->loop_end_src)
-            frames = pPlayer->loop_end_src - 1;
+        if(frames > pPlayer->loop_end_src)
+            frames = pPlayer->loop_end_src;
+        if(frames < pPlayer->loop_start_src)
+            frames = pPlayer->loop_start_src;
     } else {
         if(frames >= pPlayer->frames / pPlayer->src_ratio)
             frames = pPlayer->frames / pPlayer->src_ratio - 1;
@@ -632,8 +639,15 @@ void enable_loop(int player_handle, uint8_t bLoop) {
     if(!pPlayer)
         return;
     pPlayer->loop = bLoop;
-    if(bLoop && pPlayer->file_read_status == IDLE) {
-        pPlayer->file_read_status = LOOPING;
+    if(bLoop) {
+        if(g_samplerate) {
+            if(pPlayer->play_pos_frames < pPlayer->loop_start_src)
+                set_position(player_handle, pPlayer->loop_start_src / g_samplerate);
+            if(pPlayer->play_pos_frames > pPlayer->loop_end_src)
+                set_position(player_handle, pPlayer->loop_end_src / g_samplerate);
+        }
+        if(pPlayer->file_read_status == IDLE)
+            pPlayer->file_read_status = LOOPING;
         DPRINTF("Looping requested, setting loading status to SEEKING\n");
     }
     send_notifications(pPlayer, NOTIFY_LOOP);
@@ -644,10 +658,12 @@ void set_loop_start_time(int player_handle, float time) {
     if(!pPlayer)
         return;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    if(frames >= pPlayer->loop_end || time >= get_duration(player_handle))
+    if(frames >= pPlayer->loop_end)
         return;
     pPlayer->loop_start = frames;
     pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
+    if(pPlayer->play_pos_frames < pPlayer->loop_start_src)
+        set_position(player_handle, get_position(player_handle));
 }
 
 float get_loop_start_time(int player_handle) {
@@ -666,7 +682,8 @@ void set_loop_end_time(int player_handle, float time) {
         return;
     pPlayer->loop_end = frames;
     pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
-    set_position(player_handle, get_position(player_handle));
+    if(pPlayer->play_pos_frames > pPlayer->loop_end_src)
+        set_position(player_handle, get_position(player_handle));
 }
 
 float get_loop_end_time(int player_handle) {
@@ -784,15 +801,15 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         if(pPlayer->pitch_shift != 1.0) {
             while(a_count < nFrames) {
                 if(
-                    (jack_ringbuffer_peek(pPlayer->ringbuffer_a, (char*)(&pOutA[a_count]), sizeof(float)) < sizeof(float)) ||
-                    (jack_ringbuffer_peek(pPlayer->ringbuffer_b, (char*)(&pOutB[a_count]), sizeof(float)) < sizeof(float))
+                    (jack_ringbuffer_peek(pPlayer->ringbuffer_a, (char*)(&pOutA[a_count]), sizeof(jack_default_audio_sample_t)) < sizeof(jack_default_audio_sample_t)) ||
+                    (jack_ringbuffer_peek(pPlayer->ringbuffer_b, (char*)(&pOutB[a_count]), sizeof(jack_default_audio_sample_t)) < sizeof(jack_default_audio_sample_t))
                 )
                     break;
 
                 while(f_count < a_count) {
                     f_count += pPlayer->pitch_shift;
-                    jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)(&tmp), sizeof(float));
-                    jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)(&tmp), sizeof(float));
+                    jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)(&tmp), sizeof(jack_default_audio_sample_t));
+                    jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)(&tmp), sizeof(jack_default_audio_sample_t));
                     ++r_count;
                     if(jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0 || jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0)
                         break; // Run out of data to read 
@@ -801,42 +818,43 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 ++a_count;
             }
         } else {
-            r_count = jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)pOutA, nFrames * sizeof(float));
+            r_count = jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)pOutA, nFrames * sizeof(jack_default_audio_sample_t));
             jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)pOutB, r_count);
-            r_count /= sizeof(float);
+            r_count /= sizeof(jack_default_audio_sample_t);
             a_count = r_count;
         }
-    }
-    if(a_count > nFrames)
-        a_count = nFrames;
-    for(size_t offset = 0; offset < a_count; ++offset) {
-        // Set volume / gain / level
-        pOutA[offset] *= pPlayer->gain;
-        pOutB[offset] *= pPlayer->gain;
-    }
-    pPlayer->play_pos_frames += r_count;
-    //int eof = (pPlayer->file_read_status == IDLE && jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0);
-    if(pPlayer->loop) {
-        if(pPlayer->play_pos_frames >= pPlayer->loop_end_src) {
-            pPlayer->play_pos_frames %= pPlayer->loop_end_src;
-            pPlayer->play_pos_frames += pPlayer->loop_start_src;
-            pPlayer->loop_loaded = 0;
-            pPlayer->file_read_status = LOOPING;
+
+        if(a_count > nFrames)
+            a_count = nFrames;
+        for(size_t offset = 0; offset < a_count; ++offset) {
+            // Set volume / gain / level
+            pOutA[offset] *= pPlayer->gain;
+            pOutB[offset] *= pPlayer->gain;
         }
-    } else {
-        if(pPlayer->play_pos_frames >= pPlayer->frames * pPlayer->src_ratio) {
-            // Reached end of file
-            pPlayer->play_pos_frames = 0;
-            pPlayer->play_state = STOPPING;
-            pPlayer->file_read_status = SEEKING;
+        pPlayer->play_pos_frames += r_count;
+        int eof = (pPlayer->file_read_status == IDLE && jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0);
+        if(pPlayer->loop) {
+            if(pPlayer->play_pos_frames >= pPlayer->loop_end_src || eof) {
+                pPlayer->play_pos_frames %= pPlayer->loop_end_src;
+                pPlayer->play_pos_frames += pPlayer->loop_start_src;
+                pPlayer->loop_loaded = 0;
+                pPlayer->file_read_status = LOOPING;
+            }
+        } else {
+            if(pPlayer->play_pos_frames >= pPlayer->frames * pPlayer->src_ratio || eof) {
+                // Reached end of file
+                pPlayer->play_pos_frames = 0;
+                pPlayer->play_state = STOPPING;
+                pPlayer->file_read_status = SEEKING;
+            }
         }
     }
 
     if(pPlayer->play_state == STOPPING) {
         // Soft mute (not perfect for short last period of file but better than nowt)
         for(size_t offset = 0; offset < a_count; ++offset) {
-            pOutA[offset] *= 1.0 - ((float)offset / a_count);
-            pOutB[offset] *= 1.0 - ((float)offset / a_count);
+            pOutA[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
+            pOutB[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
         }
         pPlayer->play_state = STOPPED;
 
