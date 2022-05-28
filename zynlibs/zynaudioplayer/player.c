@@ -604,21 +604,20 @@ void set_position(int player_handle, float time) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(!pPlayer || pPlayer->file_open != 2)
         return;
-    if(time >= get_duration(player_handle))
-        time = get_duration(player_handle);
     sf_count_t frames = time * g_samplerate;
-    if(frames >= pPlayer->frames / pPlayer->src_ratio)
-        frames = pPlayer->frames / pPlayer->src_ratio - 1;
+    if(pPlayer->loop) {
+        if(frames >= pPlayer->loop_end_src)
+            frames = pPlayer->loop_end_src - 1;
+    } else {
+        if(frames >= pPlayer->frames / pPlayer->src_ratio)
+            frames = pPlayer->frames / pPlayer->src_ratio - 1;
+    }
     pPlayer->play_pos_frames = frames;
     pPlayer->file_read_status = SEEKING;
     jack_ringbuffer_reset(pPlayer->ringbuffer_b);
     jack_ringbuffer_reset(pPlayer->ringbuffer_a);
     DPRINTF("New position requested, setting loading status to SEEKING\n");
-
-#ifdef ENABLE_OSC
-    sprintf(g_oscpath, "/player%d/position", player_handle);
-    sendOscInt(g_oscpath, (int)time);
-#endif //ENABLE_OSC
+    send_notifications(pPlayer, NOTIFY_POSITION);
 }
 
 float get_position(int player_handle) {
@@ -636,8 +635,6 @@ void enable_loop(int player_handle, uint8_t bLoop) {
     if(bLoop && pPlayer->file_read_status == IDLE) {
         pPlayer->file_read_status = LOOPING;
         DPRINTF("Looping requested, setting loading status to SEEKING\n");
-    } else {
-        //!@todo Clear buffer of excessive loops
     }
     send_notifications(pPlayer, NOTIFY_LOOP);
 }
