@@ -152,27 +152,21 @@ class zynthian_controller:
 		self.value_range = self.value_max - self.value_min
 		if self.value_range == 0:
 			self.value_range = 1 # Avoid divide by zero errors
-			logging.warning("Controller {} calculated range is zero!", self.symbol)
+			logging.warning("Controller %s calculated range is zero!", self.symbol)
 
 		if self.is_integer:
 			self.value_mid = self.value_min + int(self.value_range / 2)
 		else:
 			self.value_mid = self.value_min + self.value_range / 2
 
-		if self.is_logarithmic:
-			if self.value_min==0 :
-				self.powbase = 10000
-				self.value_min = self.value_max / self.powbase
-			else:
-				self.powbase = self.value_max / self.value_min
-			self.log_powbase = math.log(self.powbase)
-
 		self._set_value(self.value)
 		if self.value_default is None:
 			self.value_default = self.value
 
 		if self.nudge_factor is None:
-			if not self.is_integer and not self.is_toggle:
+			if self.is_logarithmic:
+				self.nudge_factor = 1 / 200 #TODO: Use number of divisions
+			elif not self.is_integer and not self.is_toggle:
 				self.nudge_factor = self.value_range * 0.005 # This overrides specified nudge_factor but mostly okay
 			else:
 				self.nudge_factor = 1
@@ -274,6 +268,10 @@ class zynthian_controller:
 			if index < 0: index = 0
 			if index >= len(self.ticks) : index = len(self.ticks) - 1
 			self.set_value(self.ticks[index], send)
+		elif self.is_logarithmic:
+			log_val = math.log10((9 * self.value - (10 * self.value_min - self.value_max)) / self.value_range)
+			log_val = min(1, max(0, log_val + val * self.nudge_factor))
+			self.set_value((math.pow(10, log_val) * self.value_range + (10 * self.value_min - self.value_max)) / 9)
 		else:
 			self.set_value(self.value + val * self.nudge_factor, send)
 		return True
@@ -408,7 +406,7 @@ class zynthian_controller:
 			if self.ticks:
 				return self.value
 			if self.is_logarithmic:
-				val = int(127 * math.log(self.value / self.value_min) / self.log_powbase)
+				val = int(127 * math.log10((9 * self.value - (10 * self.value_min - self.value_max)) / self.value_range))
 			else:
 				val = min(127, int(127 * (self.value - self.value_min) / self.value_range))
 		except Exception as e:

@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Controller Class
 #
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -81,7 +81,7 @@ class zynthian_gui_controller:
 			self.trh = 1.06 * self.trw
 			self.titw = 0.6 * zynthian_gui_config.ctrl_width
 
-		#TODO: Allow configuration of value widget
+		#TODO: Allow configuration of value widget style (arc, triangle, rectangle, etc.)
 		self.plot_value_func = self.plot_value_arc
 		self.erase_value_func = self.erase_value_arc
 
@@ -143,6 +143,8 @@ class zynthian_gui_controller:
 	def set_hl(self, color=zynthian_gui_config.color_hl):
 		try:
 			self.canvas.itemconfig(self.arc, outline=color)
+			self.canvas.itemconfig(self.label_title, fill=color)
+			self.canvas.itemconfig(self.value_text, fill=color)
 		except:
 			pass
 
@@ -150,6 +152,8 @@ class zynthian_gui_controller:
 	def unset_hl(self):
 		try:
 			self.canvas.itemconfig(self.arc, outline=zynthian_gui_config.color_ctrl_bg_on)
+			self.canvas.itemconfig(self.label_title, fill=zynthian_gui_config.color_panel_tx)
+			self.canvas.itemconfig(self.value_text, fill=zynthian_gui_config.color_panel_tx)
 		except:
 			pass
 
@@ -183,12 +187,13 @@ class zynthian_gui_controller:
 				self.value_print="ERR"
 
 		else:
-			self.value_plot = (self.zctrl.value - self.zctrl.value_min) / self.zctrl.value_range
+			if self.zctrl.is_logarithmic:
+				self.value_plot = math.log10((9 * self.zctrl.value - (10 * self.zctrl.value_min - self.zctrl.value_max)) / self.zctrl.value_range)
+			else:
+				self.value_plot = (self.zctrl.value - self.zctrl.value_min) / self.zctrl.value_range
 
 			if self.selector_counter:
 				val = self.zctrl.value + 1
-			elif self.zctrl.is_logarithmic:
-				val = self.zctrl.value_min*pow(self.zctrl.powbase, self.zctrl.value*self.zctrl.nudge_factor)
 			else:
 				val = self.zctrl.value
 

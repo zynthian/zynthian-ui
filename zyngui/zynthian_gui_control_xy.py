@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI XY-Controller Class
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -46,18 +46,18 @@ class zynthian_gui_control_xy():
 		self.zyngui = zynthian_gui_config.zyngui
 
 		# Init X vars
-		self.padx=24
-		self.width=zynthian_gui_config.display_width-2*self.padx
-		self.x=self.width/2
-		self.x_zctrl=None
-		self.xvalue=64
+		self.padx = 24
+		self.width = zynthian_gui_config.display_width - 2 * self.padx
+		self.x = self.width / 2
+		self.x_zctrl = None
+		self.xvalue = 64
 
-		# Init X vars
-		self.pady=18
-		self.height=zynthian_gui_config.display_height-2*self.pady
-		self.y=self.height/2
-		self.y_zctrl=None
-		self.yvalue=64
+		# Init Y vars
+		self.pady = 18
+		self.height = zynthian_gui_config.display_height - 2 * self.pady
+		self.y = self.height / 2
+		self.y_zctrl = None
+		self.yvalue = 64
 
 		self.last_motion_ts = None
 
@@ -75,71 +75,81 @@ class zynthian_gui_control_xy():
 			highlightthickness=0,
 			relief='flat',
 			bg=zynthian_gui_config.color_bg)
-		self.canvas.grid(padx=(self.padx,self.padx),pady=(self.pady,self.pady))
+		self.canvas.grid(padx=(self.padx, self.padx), pady=(self.pady, self.pady))
 
 		# Setup Canvas Callback
 		self.canvas.bind("<B1-Motion>", self.cb_canvas)
 
 		# Create Cursor
-		self.hline=self.canvas.create_line(0,self.y,zynthian_gui_config.display_width,self.y,fill=zynthian_gui_config.color_on)
-		self.vline=self.canvas.create_line(self.x,0,self.x,zynthian_gui_config.display_width,fill=zynthian_gui_config.color_on)
+		self.hline=self.canvas.create_line(
+			0,
+			self.y,
+			zynthian_gui_config.display_width,
+			self.y,
+			fill=zynthian_gui_config.color_on)
+		self.vline=self.canvas.create_line(
+			self.x,
+			0,
+			self.x,
+			zynthian_gui_config.display_width,
+			fill=zynthian_gui_config.color_on)
 
 
 	def show(self):
 		if not self.shown:
-			self.shown=True
+			self.shown= True
 			self.main_frame.grid()
 			self.refresh()
 
 
 	def hide(self):
 		if self.shown:
-			self.shown=False
+			self.shown = False
 			self.main_frame.grid_forget()
 
 
 	def set_controllers(self, x_zctrl, y_zctrl):
-		self.x_zctrl=x_zctrl
-		self.y_zctrl=y_zctrl
+		self.x_zctrl = x_zctrl
+		self.y_zctrl = y_zctrl
 		self.get_controller_values()
 
 
 	def set_x_controller(self, x_zctrl):
-		self.x_zctrl=x_zctrl
+		self.x_zctrl = x_zctrl
 		self.get_controller_values()
 
 
 	def set_y_controller(self, y_zctrl):
-		self.y_zctrl=y_zctrl
+		self.y_zctrl = y_zctrl
 		self.get_controller_values()
 
 
 	def get_controller_values(self):
-		if self.x_zctrl.value!=self.xvalue:
+		if self.x_zctrl.value != self.xvalue:
 			self.xvalue = self.x_zctrl.value
 			if self.x_zctrl.is_logarithmic:
-				self.x = int(self.width*math.log(self.xvalue/self.x_zctrl.value_min)/self.x_zctrl.log_powbase)
+				self.x = int(self.width * math.log10((9 * self.x_zctrl.value - (10 * self.x_zctrl.value_min - self.x_zctrl.value_max)) / self.x_zctrl.value_range))
 			else:
-				self.x = int(self.width*(self.xvalue-self.x_zctrl.value_min)/self.x_zctrl.value_range)
-			self.canvas.coords(self.vline,self.x,0,self.x,self.height)
+				self.x = int(self.width * (self.xvalue - self.x_zctrl.value_min) / self.x_zctrl.value_range)
+			self.canvas.coords(self.vline, self.x, 0, self.x, self.height)
 
-		if self.y_zctrl.value!=self.yvalue:
+		if self.y_zctrl.value != self.yvalue:
 			self.yvalue = self.y_zctrl.value
 			if self.y_zctrl.is_logarithmic:
-				self.y = int(self.height*math.log(self.yvalue/self.y_zctrl.value_min)/self.y_zctrl.log_powbase)
+				self.y = int(self.width * math.log10((9 * self.y_zctrl.value - (10 * self.y_zctrl.value_min - self.y_zctrl.value_max)) / self.y_zctrl.value_range))
 			else:
-				self.y = int(self.height*(self.yvalue-self.y_zctrl.value_min)/self.y_zctrl.value_range)
-			self.canvas.coords(self.hline,0,self.y,self.width,self.y)
+				self.y = int(self.height * (self.yvalue - self.y_zctrl.value_min) / self.y_zctrl.value_range)
+			self.canvas.coords(self.hline, 0, self.y, self.width, self.y)
 
 
 	def refresh(self):
-		self.canvas.coords(self.hline,0,self.y,self.width,self.y)
-		self.canvas.coords(self.vline,self.x,0,self.x,self.height)
+		self.canvas.coords(self.hline, 0, self.y, self.width, self.y)
+		self.canvas.coords(self.vline, self.x, 0, self.x, self.height)
 
 		if self.x_zctrl.is_logarithmic:
-			xv = self.x_zctrl.value_min*pow(self.x_zctrl.powbase, self.x/self.width)
+			xv = (math.pow(10, self.x / self.width) * self.x_zctrl.value_range + (10 * self.x_zctrl.value_min - self.x_zctrl.value_max)) / 9
 		else:
-			xv = self.x_zctrl.value_min+ self.x*self.x_zctrl.value_range/self.width
+			xv = self.x_zctrl.value_min + self.x * self.x_zctrl.value_range / self.width
 
 		if self.x_zctrl.is_integer:
 			xv = int(xv)
@@ -149,9 +159,9 @@ class zynthian_gui_control_xy():
 			self.x_zctrl.set_value(self.xvalue, True)
 
 		if self.y_zctrl.is_logarithmic:
-			yv = self.y_zctrl.value_min*pow(self.y_zctrl.powbase, self.y/self.height)
+			yv = (math.pow(10, self.y / self.height) * self.y_zctrl.value_range + (10 * self.y_zctrl.value_min - self.y_zctrl.value_max)) / 9
 		else:	
-			yv = self.y_zctrl.value_min + self.y*self.y_zctrl.value_range/self.height
+			yv = self.y_zctrl.value_min + self.y * self.y_zctrl.value_range / self.height
 
 		if self.y_zctrl.is_integer:
 			yv = int(yv)
