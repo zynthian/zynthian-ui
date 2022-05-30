@@ -138,8 +138,8 @@ class zynthian_gui_mixer_strip():
 		self.high_color = "#CC0000"
 		self.dpm_hold_color = self.low_color
 
-		self.mute_color = "#4080E0"
-		self.solo_color = "#B0B000"
+		self.mute_color = "#3090F0"
+		self.solo_color = "#D0D000"
 		self.mono_color = "#B0B0B0"
 
 		#font_size = int(0.5 * self.legend_height)
