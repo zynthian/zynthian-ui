@@ -299,7 +299,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 	#	typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
-		return False
+		if swi in [0,2]:
+			return True
 
 
 	# Function to handle select switch press
