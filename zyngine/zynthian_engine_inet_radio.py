@@ -111,8 +111,28 @@ class zynthian_engine_inet_radio(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_bank_list(self, layer=None):
-		with open(self.my_data_dir + "/presets/inet_radio/presets.json", "r") as f:
-			self.presets = json.load(f)
+		try:
+			with open(self.my_data_dir + "/presets/inet_radio/presets.json", "r") as f:
+				self.presets = json.load(f)
+		except:
+			# Preset file missing or corrupt
+			self.presets = {
+				"Music": [
+					["http://stream.radiotime.com/listen.m3u?streamId=10555650", 0, "FIP", "auto", ""],
+					["http://icecast.radiofrance.fr/fipgroove-hifi.aac", 0, "FIP Groove", "aac", ""],
+					["http://direct.fipradio.fr/live/fip-webradio4.mp3", 0, "FIP Radio 4", "auto", ""],
+					["http://jazzblues.ice.infomaniak.ch/jazzblues-high.mp3", 0, "Jazz Blues", "auto", ""],
+					["http://relax.stream.publicradio.org/relax.mp3", 0, "Relax", "auto", ""],
+					["http://icy.unitedradio.it/VirginRock70.mp3", 0, "Virgin Rock 70's", "auto", ""],
+					["https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac", 0, "Peaceful Piano", "aac", ""],
+					["https://chambermusic.stream.publicradio.org/chambermusic.aac", 0, "Chamber Music", "aac", ""],
+					["http://sc3.radiocaroline.net:8030/listen.m3u", 0, "Radio Caroline", "auto", ""]
+				],
+				"Speech": [
+					["http://direct.franceculture.fr/ts/franceculture-midfi.mp3", 0, "France Culture", "auto", ""],
+					["http://wsdownload.bbc.co.uk/worldservice/meta/live/shoutcast/mp3/eieuk.pls", 0, "BBC Radio World Service (English)", "auto", ""]
+				]
+			}
 		self.banks = []
 		for bank in self.presets:
 			self.banks.append([bank, None, bank, None])
