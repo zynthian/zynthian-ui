@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Engine Selector Class
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -50,7 +50,7 @@ def initializator(cls):
 @initializator
 class zynthian_gui_engine(zynthian_gui_selector):
 
-	single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS"]
+	single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "IR"]
 	check_channels_engines = ["AE"]
 
 	@classmethod
@@ -67,7 +67,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", None, zynthian_engine_aeolus, True)],
 			['PD', ("PureData", "PureData - Visual Programming", "Special", None, zynthian_engine_puredata, True)],
 			#['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
-			['MD', ("MOD-UI", "MOD-UI - Plugin Host", "Special", None, zynthian_engine_modui, True)]
+			['MD', ("MOD-UI", "MOD-UI - Plugin Host", "Special", None, zynthian_engine_modui, True)],
+			["IR", ("InternetRadio", "Internet Radio", "Audio Effect", None, zynthian_engine_inet_radio, True)]
 		])
 
 		if check_pianoteq_binary():
