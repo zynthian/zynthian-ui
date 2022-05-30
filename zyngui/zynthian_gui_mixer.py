@@ -138,8 +138,9 @@ class zynthian_gui_mixer_strip():
 		self.high_color = "#CC0000"
 		self.dpm_hold_color = self.low_color
 
-		self.mute_color = "#5090F0"
-		self.solo_color = "#E0E000"
+		self.mute_color = "#4080E0"
+		self.solo_color = "#B0B000"
+		self.mono_color = "#B0B0B0"
 
 		#font_size = int(0.5 * self.legend_height)
 		font_size = int(0.25 * self.width)
@@ -338,8 +339,8 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.solo, fill=self.button_bgcol)
 
 		if zynmixer.get_mono(self.layer.midi_chan):
-			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill="#B0B0B0")
-			self.parent.main_canvas.itemconfig(self.dpm_l_b, fill="#B0B0B0")
+			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.mono_color)
+			self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.mono_color)
 			self.dpm_hold_color = "#FFFFFF"
 		else:
 			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.low_color)
