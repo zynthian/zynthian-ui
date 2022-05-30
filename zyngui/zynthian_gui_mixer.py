@@ -71,9 +71,6 @@ class zynthian_gui_mixer_main_layer():
 
 class zynthian_gui_mixer_strip():
 
-	mute_color = zynthian_gui_config.color_on
-	solo_color = "dark green"
-
 	# Initialise mixer strip object
 	#	parent: Parent object
 	#	x: Horizontal coordinate of left of fader
@@ -94,7 +91,7 @@ class zynthian_gui_mixer_strip():
 		if not layer:
 			self.hidden = True
 
-		self.button_height = int(self.height * 0.1)
+		self.button_height = int(self.height * 0.07)
 		self.legend_height = int(self.height * 0.08)
 		self.balance_height = int(self.height * 0.03)
 		self.fader_height = self.height - self.balance_height - self.legend_height - 2 * self.button_height
@@ -125,7 +122,6 @@ class zynthian_gui_mixer_strip():
 		self.fader_drag_start = None
 		self.strip_drag_start = None
 
-
 		# Default style
 		self.fader_bg_color = zynthian_gui_config.color_bg
 		#self.fader_color = zynthian_gui_config.color_panel_hl
@@ -135,17 +131,21 @@ class zynthian_gui_mixer_strip():
 		self.legend_txt_color = zynthian_gui_config.color_tx
 		self.button_bgcol = zynthian_gui_config.color_panel_bg
 		self.button_txcol = zynthian_gui_config.color_tx
-		self.left_color = "red"
-		self.right_color = "dark green"
-		self.low_color = "dark green"
-		self.medium_color = "#AAAA00" # yellow
-		self.high_color = "dark red"
+		self.left_color = "#00AA00"
+		self.right_color = "#00EE00"
+		self.low_color = "#00AA00"
+		self.medium_color = "#CCCC00" # yellow
+		self.high_color = "#CC0000"
 		self.dpm_hold_color = self.low_color
+
+		self.mute_color = "#9090FF"
+		self.solo_color = "#F0F000"
 
 		#font_size = int(0.5 * self.legend_height)
 		font_size = int(0.25 * self.width)
 		font = (zynthian_gui_config.font_family, font_size)
-		font_fader = (zynthian_gui_config.font_family, font_size-1)
+		font_fader = (zynthian_gui_config.font_family, int(0.9 * font_size))
+		font_icons = ("forkawesome", int(0.3 * self.width))
 
 		'''
 		Create GUI elements
@@ -178,11 +178,11 @@ class zynthian_gui_mixer_strip():
 
 		# Solo button
 		self.solo = self.parent.main_canvas.create_rectangle(x, 0, x + self.width, self.button_height, fill=self.button_bgcol, width=0, tags=("solo_button:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-		self.parent.main_canvas.create_text(x + self.width / 2, self.button_height * 0.5, text="solo", fill=self.button_txcol, tags=("solo_button:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), font=font)
+		self.solo_text = self.parent.main_canvas.create_text(x + self.width / 2, self.button_height * 0.5, text="S", fill=self.button_txcol, tags=("solo_button:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), font=font)
 
 		# Mute button
 		self.mute = self.parent.main_canvas.create_rectangle(x, self.button_height, x + self.width, self.button_height * 2, fill=self.button_bgcol, width=0, tags=("mute_button:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-		self.parent.main_canvas.create_text(x + self.width / 2, self.button_height * 1.5, text="mute", fill=self.button_txcol, tags=("mute_button:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), font=font)
+		self.mute_text = self.parent.main_canvas.create_text(x + self.width / 2, self.button_height * 1.5, text="M", fill=self.button_txcol, tags=("mute_button:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), font=font_icons)
 
 		# Legend strip at bottom of screen
 		self.legend_strip_bg = self.parent.main_canvas.create_rectangle(x, self.height - self.legend_height, x + self.width, self.height, width=0, tags=("strip:%s"%(self.fader_bg),"legend_strip:%s"%(self.fader_bg)))
@@ -325,14 +325,15 @@ class zynthian_gui_mixer_strip():
 
 		self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - zynmixer.get_level(self.layer.midi_chan)), self.x + self.fader_width, self.fader_bottom)
 
-		color = self.button_bgcol
 		if zynmixer.get_mute(self.layer.midi_chan):
-			color = self.mute_color
-		self.parent.main_canvas.itemconfig(self.mute, fill=color)
-		color = self.button_bgcol
+			self.parent.main_canvas.itemconfig(self.mute_text, fill=self.mute_color, text="\uf32f") #f6a9
+		else:
+			self.parent.main_canvas.itemconfig(self.mute_text, fill=self.button_txcol, text="\uf028")
+			
 		if zynmixer.get_solo(self.layer.midi_chan):
-			color = self.solo_color
-		self.parent.main_canvas.itemconfig(self.solo, fill=color)
+			self.parent.main_canvas.itemconfig(self.solo_text, fill=self.solo_color, text="S")
+		else:
+			self.parent.main_canvas.itemconfig(self.solo_text, fill=self.button_txcol, text="S")
 
 		if zynmixer.get_mono(self.layer.midi_chan):
 			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill="#B0B0B0")

@@ -458,7 +458,7 @@ class zynthian_gui_base:
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
 					fill=color,
-					font=("FontAwesome", self.status_fs, "bold"),
+					font=("forkawesome", self.status_fs),
 					text=flags)
 			else:
 				self.status_canvas.itemconfig(self.status_error, text=flags, fill=color)
@@ -494,7 +494,7 @@ class zynthian_gui_base:
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
 					fill=color,
-					font=("FontAwesome", self.status_fs, "bold"),
+					font=("forkawesome", self.status_fs),
 					text=flags)
 			else:
 				self.status_canvas.itemconfig(self.status_recplay, text=flags, fill=color)
@@ -512,7 +512,7 @@ class zynthian_gui_base:
 					width=int(self.status_fs*1.2),
 					justify=tkinter.RIGHT,
 					fill=zynthian_gui_config.color_status_midi,
-					font=("FontAwesome", self.status_fs, "bold"),
+					font=("forkawesome", self.status_fs),
 					text="m",
 					state=mstate)
 			else:
