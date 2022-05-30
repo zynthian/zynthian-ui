@@ -46,16 +46,13 @@ class zynthian_gui_base:
 	METER_CPU	= 2
 
 	#Default buttonbar config (touchwidget)
-	buttonbar_config = [
-		(1, 'BACK'),
-		(0, 'LAYER'),
-		(2, 'LEARN'),
-		(3, 'SELECT')
-	]
+	buttonbar_config = []
 
 	def __init__(self):
 		self.shown = False
 		self.zyngui = zynthian_gui_config.zyngui
+
+		self.buttonbar_button = [None, None, None, None]
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -240,8 +237,14 @@ class zynthian_gui_base:
 			self.add_button(i, self.buttonbar_config[i][0], self.buttonbar_config[i][1])
 
 
+	def set_buttonbar_label(self, column, label):
+		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_button[column]:
+			self.buttonbar_button[column]['text'] = label
+
+
 	def add_button(self, column, index, label):
-		select_button = tkinter.Button(
+		# Touchbar frame
+		self.buttonbar_button[column] = select_button = tkinter.Button(
 			self.buttonbar_frame,
 			bg=zynthian_gui_config.color_panel_bg,
 			fg=zynthian_gui_config.color_header_tx,

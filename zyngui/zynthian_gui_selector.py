@@ -45,6 +45,15 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def __init__(self, selcap='Select', wide=False, loading_anim=True):
 		super().__init__()
 
+		if not self.buttonbar_config:
+			self.buttonbar_config = [
+				(1, 'BACK\n[mixer]'),
+				(0, ''),
+				(2, ''),
+				(3, 'SELECT\n[options]')
+			]
+
+
 		self.index = 0
 		self.list_data = []
 		self.zselector = None

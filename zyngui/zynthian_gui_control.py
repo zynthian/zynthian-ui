@@ -47,10 +47,18 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def __init__(self, selcap='Controllers'):
 		self.mode = None
 
+		self.buttonbar_config = [
+			(1, 'PRESETS\n[mixer]'),
+			(0, 'NEXT CHAIN\n[menu]'),
+			(2, 'LEARN\n[snapshot]'),
+			(3, 'PAGE\n[options]')
+		]
+
 		if zynthian_gui_config.ctrl_both_sides:
 			super().__init__(selcap, False, False)
 		else:
 			super().__init__(selcap, True, False)
+
 
 		self.widgets = {}
 		self.ctrl_screens = {}
@@ -463,6 +471,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 				elif not self.zyngui.is_shown_alsa_mixer():
 					self.zyngui.cuia_bank_preset()
 					return True
+			else:
+				self.back_action()
+				return False
 
 		elif swi == 2:
 			if t == 'S':
@@ -536,8 +547,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def refresh_midi_bind(self):
+		learning = False
 		for zgui_controller in self.zgui_controllers:
-			zgui_controller.set_midi_bind()
+			learning |= zgui_controller.set_midi_bind()
+		if learning:
+			self.set_buttonbar_label(0, "CANCEL")
+		else:
+			self.set_buttonbar_label(0, "PRESETS\n[mixer]")
 
 
 	def plot_zctrls(self, force=False):

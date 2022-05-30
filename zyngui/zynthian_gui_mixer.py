@@ -636,6 +636,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def __init__(self):
 		super().__init__()
 
+		self.buttonbar_config = [
+			(0, 'MUTE\n[menu]'),
+			(2, 'SOLO\n[snapshot]'),
+			(1, ''),
+			(3, 'CONTROL\n[options]')
+		]
+
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.body_height

@@ -172,14 +172,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		else:
 			record = 'stopped'
 		gain = self.player.get_gain()
+		default_b = 0
 		if dur:
 			track_labels = ['mixdown']
 			track_values = [-1]
 			channels = self.player.get_channels()
 			if channels > 1:
 				default_b = 1
-			else:
-				default_b = 0
 			for track in range(channels):
 				track_labels.append('{}'.format(track + 1))
 				track_values.append(track)

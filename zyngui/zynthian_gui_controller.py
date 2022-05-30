@@ -415,6 +415,9 @@ class zynthian_gui_controller:
 				self.plot_midi_bind(midi_cc)
 			else:
 				self.erase_midi_bind()
+				return False
+			return True
+		return False
 
 
 	def set_title(self, tit):
