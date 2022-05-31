@@ -22,12 +22,14 @@
 #
 #******************************************************************************
 
-import os
 from collections import OrderedDict
 import logging
-import subprocess
 import json
+import re
+import pexpect
+from threading  import Thread
 from time import sleep
+
 from . import zynthian_engine
 from . import zynthian_controller
 
@@ -51,6 +53,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
 		self.nickname = "IR"
 		self.jackname = "inetradio"
 		self.type = "MIDI Synth" # TODO: Should we override this? With what value?
+		self.uri = None
 
 		self.options['clone'] = False
 		self.options['note_range'] = False
@@ -60,19 +63,29 @@ class zynthian_engine_inet_radio(zynthian_engine):
 		self.options['drop_pc'] = True
 		self.options['layer_audio_out'] = True
 
-		self.cmd = "mplayer -nogui -nolirc -nojoystick -quiet -ao jack:noconnect:name={}".format(self.jackname)
+		self.monitors_dict = OrderedDict()
+		self.monitors_dict['info'] = ""
+		self.monitors_dict['audio'] = ""
+		self.monitors_dict['codec'] = ""
+		self.monitors_dict['bitrate'] = ""
+		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_inet_radio.py"
+
+		self.cmd = "mplayer -nogui -nolirc -nojoystick -quiet -slave"
 		self.command_prompt = "Starting playback..."
 		self.proc_timeout = 5
+		self.mon_thread = None
+		self.handle = 0
 		
 		# MIDI Controllers
 		self._ctrls=[
-			['volume',None,'up/down',[['down','up/down','up'],[-1,0,1]]],
-			['stream',None,'streaming',['stopped','streaming']]
+			['volume',None,50,100],
+			['stream',None,'streaming',['stopped','streaming']],
+			['wait for stream',None, 5, 15]
 		]
 
 		# Controller Screens
 		self._ctrl_screens=[
-			['main',['volume','stream']]
+			['main',['volume','stream','wait for stream']]
 		]
 
 		self.reset()
@@ -82,19 +95,98 @@ class zynthian_engine_inet_radio(zynthian_engine):
 	# Subproccess Management & IPC
 	# ---------------------------------------------------------------------------
 
-	def start(self):
-		res = super().start()
-		if res == None:
-			self.stop()
-		else:
+	def mon_thread_task(self, handle):
+		if self.proc and self.proc.isalive():
+			self.proc.sendline('q')
+			sleep(0.2)
+		if self.proc and self.proc.isalive():
+			self.proc.terminate()
+			sleep(0.2)
+		if self.proc and self.proc.isalive():
+			self.proc.terminate(True)
+			sleep(0.2)
+		self.proc = None
+
+		self.jackname = "inetradio_{}".format(handle)
+		self.command = "{} -ao jack:noconnect:name={}".format(self.command, self.jackname)
+		output = super().start()
+		if output:
+			self.monitors_dict['info'] = "no info"
+			self.update_info(output)
+			# Set streaming contoller value
+			for layer in self.layers:
+				ctrl_dict = layer.controllers_dict
+				ctrl_dict['stream'].set_value('streaming', False)
 			self.zyngui.zynautoconnect(True)
 
+			while self.handle == handle:
+				sleep(1)
+				try:
+					self.proc.expect("\n", timeout=1)
+					res = self.proc.before.decode()
+					self.update_info(res)
+				except pexpect.EOF:
+					handle = 0
+				except pexpect.TIMEOUT:
+					pass
+				except Exception as e:
+					pass
+		else:
+			self.monitors_dict['info'] = "stream unavailable"
+
+		if self.proc and self.proc.isalive():
+			self.proc.sendline('q')
+			sleep(0.2)
+		if self.proc and self.proc.isalive():
+			self.proc.terminate()
+			sleep(0.2)
+		if self.proc and self.proc.isalive():
+			self.proc.terminate(True)
+			sleep(0.2)
+		self.proc = None
+		# Set streaming contoller value
+		for layer in self.layers:
+			ctrl_dict = layer.controllers_dict
+			ctrl_dict['stream'].set_value('stopped', False)
+
+
+
+	def update_info(self, output):
+		info = re.search("StreamTitle='(.+?)';", output)
+		if info:
+			self.monitors_dict['info'] = info.group(1)
+		info = re.search("\nSelected audio codec: (.+?)\r", output)
+		if info:
+			self.monitors_dict['codec'] = info.group(1)
+		info = re.search("\nAUDIO: (.+?)\r", output)
+		if info:
+			self.monitors_dict['audio'] = info.group(1)
+		info = re.search("\nBitrate: (.+?)\r", output)
+		if info:
+			self.monitors_dict['bitrate'] = info.group(1)
+
+
+	def start(self):
+		self.handle += 1
+		self.monitors_dict['info'] = "waiting for stream..."
+		self.mon_thread = Thread(target=self.mon_thread_task, args=[self.handle])
+		self.mon_thread.name = "internet radio {}".format(self.handle)
+		self.mon_thread.daemon = True # thread dies with the program
+		self.monitors_dict['codec'] = ""
+		self.monitors_dict['audio'] = ""
+		self.monitors_dict['bitrate'] = ""
+		self.mon_thread.start()
+		
 
 	def stop(self):
-		if self.proc:
-			self.proc.send('q')
-			sleep(1)
-		super().stop()
+		self.handle += 1
+		self.mon_thread.join()
+
+		self.monitors_dict['info'] = ""
+		self.monitors_dict['codec'] = ""
+		self.monitors_dict['audio'] = ""
+		self.monitors_dict['bitrate'] = ""
+
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
@@ -150,18 +242,26 @@ class zynthian_engine_inet_radio(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):		
-		uri = preset[0]
-		demux = preset[3]
-		command = self.cmd
-		if uri.endswith("m3u") or uri.endswith("pls"):
-			command += " -playlist"
-		if demux and demux != 'auto':
-			command += " -demuxer {}".format(demux)
-		command += " {}".format(uri)
-		if self.proc and command == self.command:
+		if self.uri == preset[0]:
 			return
-		self.stop()
-		self.command = command
+		self.uri = preset[0]
+		demux = preset[3]
+		volume = None
+		for layer in self.layers:
+			try:
+				ctrl_dict = layer.controllers_dict
+				volume = ctrl_dict['volume'].value
+				break
+			except:
+				pass
+		if volume is None:
+			volume = 50
+		self.command = "{} -volume {}".format(self.cmd, volume)
+		if self.uri.endswith("m3u") or self.uri.endswith("pls"):
+			self.command += " -playlist"
+		if demux and demux != 'auto':
+			self.command += " -demuxer {}".format(demux)
+		self.command += " {}".format(self.uri)
 		self.start()
 
 
@@ -177,19 +277,18 @@ class zynthian_engine_inet_radio(zynthian_engine):
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == "volume":
 			if self.proc:
-				try:
-					if zctrl.value == -1:
-						self.proc.send('9')
-					elif zctrl.value == 1:
-						self.proc.send('0')
-				except Exception as e:
-					logging.warning(e)
-			zctrl.set_value(0)
+				self.proc.sendline("volume {} 1".format(zctrl.value))
 		elif zctrl.symbol == "stream":
 			if zctrl.value == 0:
 				self.stop()
-			else:
+			elif self.proc == None:
 				self.start()
+		elif zctrl.symbol == "wait for stream":
+			self.proc_timeout = zctrl.value
+
+
+	def get_monitors_dict(self):
+    		return self.monitors_dict
 
 	# ---------------------------------------------------------------------------
 	# Specific functions

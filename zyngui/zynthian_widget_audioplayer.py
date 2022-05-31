@@ -3,7 +3,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian Widget Class for "Zynthian Audio Player" (zynaudioplayer#one)
+# Zynthian Widget Class for "Zynthian Audio Player" (zynaudioplayer)
 # 
 # Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 # Copyright (C) 2015-2022 Brian Walton <riban@zynthian.org>

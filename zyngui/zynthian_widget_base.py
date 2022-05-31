@@ -27,7 +27,6 @@ import sys
 import tkinter
 import logging
 from time import sleep
-from threading  import Thread
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config

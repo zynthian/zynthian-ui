@@ -56,8 +56,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	@classmethod
 	def init_engine_info(cls):
 
+		# Dict of engines indexed by short code: (Display name, List selection name, Engine type, ?, class, Enabled)
 		cls.engine_info=OrderedDict([
-			["AP", ("AudioPlayer", "Audio Player", "Audio Effect", None, zynthian_engine_audioplayer, True)],
+			["AP", ("Audio Player", "Audio File Player", "Audio Effect", None, zynthian_engine_audioplayer, True)],
 			["MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_mixer, True)],
 			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", None, zynthian_engine_zynaddsubfx, True)],
 			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", None, zynthian_engine_fluidsynth, True)],
@@ -68,7 +69,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			['PD', ("PureData", "PureData - Visual Programming", "Special", None, zynthian_engine_puredata, True)],
 			#['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
 			['MD', ("MOD-UI", "MOD-UI - Plugin Host", "Special", None, zynthian_engine_modui, True)],
-			["IR", ("InternetRadio", "Internet Radio", "Audio Effect", None, zynthian_engine_inet_radio, True)]
+			["IR", ("Internet Radio", "Internet Radio Streamer", "Audio Effect", None, zynthian_engine_inet_radio, True)]
 		])
 
 		if check_pianoteq_binary():
