@@ -214,14 +214,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 		return index
 
 
-	def zyncoder_read(self):
-		if self.shown and self.zselector:
-			self.zselector.read_zyncoder()
-			if self.index != self.zselector.zctrl.value:
-				self.select(self.zselector.zctrl.value)
-		return [0,1,2]
-
-
 	def select_listbox(self, index):
 		if index < 0:
 			index = 0
@@ -278,22 +270,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.last_index_change_ts = datetime.now()
 
 
-	def arrow_up(self):
-		self.select(self.index - 1)
-
-
-	def arrow_down(self):
-		self.select(self.index + 1)
-
-
-	def select_up(self, n=1):
-		self.select(self.index - n)
-
-
-	def select_down(self, n=1):
-		self.select(self.index + n)
-
-
 	def click_listbox(self, index=None, t='S'):
 		if index is not None:
 			self.select(index)
@@ -321,6 +297,39 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def select_action(self, index, t='S'):
 		pass
 
+
+	#--------------------------------------------------------------------------
+	# Zynpot Callbacks (rotaries!)
+	#--------------------------------------------------------------------------
+
+	def zynpot_cb(self, i, dval):
+		if self.shown and self.zselector and self.zselector.index==i:
+			self.zselector.zynpot_cb(dval)
+			if self.index != self.zselector.zctrl.value:
+				self.select(self.zselector.zctrl.value)
+			return True
+		return False
+
+
+	def select_up(self):
+		self.select(self.index - 1)
+
+
+	def select_down(self):
+		self.select(self.index + 1)
+
+
+	def arrow_up(self):
+		self.select(self.index - 1)
+
+
+	def arrow_down(self):
+		self.select(self.index + 1)
+
+
+	#--------------------------------------------------------------------------
+	# Keyboard & Mouse/Touch Callbacks
+	#--------------------------------------------------------------------------
 
 	def cb_listbox_push(self,event):
 		self.listbox_push_ts=datetime.now()

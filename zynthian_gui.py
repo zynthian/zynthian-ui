@@ -27,6 +27,7 @@ import os
 import sys
 import copy
 import liblo
+import ctypes
 import signal
 import logging
 import importlib
@@ -40,7 +41,7 @@ from glob import glob
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
-from ctypes import c_float, c_double, CDLL,c_char_p
+
 
 # Zynthian specific modules
 import zynconf
@@ -241,7 +242,7 @@ class zynthian_gui:
 #			try:
 #				global lib_jackpeak
 #				lib_jackpeak = lib_jackpeak_init()
-#				lib_jackpeak.setDecay(c_float(0.2))
+#				lib_jackpeak.setDecay(ctypes.c_float(0.2))
 #				lib_jackpeak.setHoldCount(10)
 #			except Exception as e:
 #				logging.error("ERROR initializing jackpeak: %s" % e)
@@ -445,7 +446,7 @@ class zynthian_gui:
 		try:
 			#Set Global Tuning
 			self.fine_tuning_freq = zynthian_gui_config.midi_fine_tuning
-			lib_zyncore.set_midi_filter_tuning_freq(c_double(self.fine_tuning_freq))
+			lib_zyncore.set_midi_filter_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
 			#Set MIDI Master Channel
 			lib_zyncore.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
 			#Set MIDI CC automode
@@ -527,7 +528,7 @@ class zynthian_gui:
 			if part2 in ("HEARTBEAT", "SETUP"):
 				if src.hostname not in self.osc_clients:
 					try:
-						lib_zynmixer.addOscClient(c_char_p(src.hostname.encode('utf-8')))
+						lib_zynmixer.addOscClient(ctypes.c_char_p(src.hostname.encode('utf-8')))
 					except:
 						logging.warning("Failed to add OSC client registration %s", src.hostname)
 				self.osc_clients[src.hostname] = monotonic()
@@ -1552,18 +1553,16 @@ class zynthian_gui:
 
 
 	def zynswitch_push(self,i):
-		logging.debug('Push Switch '+str(i))
-		self.start_loading()
-
 		# Standard 4 ZynSwitches
 		if i>=0 and i<=3:
 			pass
 
 		# Custom ZynSwitches
-		elif i>=4:
+		elif i>= 4:
+			logging.debug('Push Switch '+str(i))
+			self.start_loading()
 			self.custom_switch_ui_action(i-4, "P")
-
-		self.stop_loading()
+			self.stop_loading()
 
 
 	def zynswitch_double(self,i):
@@ -1623,26 +1622,15 @@ class zynthian_gui:
 
 
 	#------------------------------------------------------------------
-	# Rotaries
+	# Read Physical Zynswitches
 	#------------------------------------------------------------------
 
-	def zyncoder_read(self):
+	def zynswitch_read(self):
 		if self.loading:
 			return
-		try:
-			#Read Zyncoders
-			self.lock.acquire()
-			free_zyncoders = self.screens[self.current_screen].zyncoder_read()
-			if free_zyncoders:
-				self.screens["control"].zyncoder_read(free_zyncoders)
-			self.lock.release()
 
-		except Exception as err:
-			self.lock.release()
-			logging.exception(err)
-
+		#Read Zynswitches
 		try:
-			#Zynswitches
 			self.zynswitch_defered_exec()
 			self.zynswitches()
 
@@ -1822,7 +1810,7 @@ class zynthian_gui:
 	def control_thread_task(self):
 		j = 0
 		while not self.exit_flag:
-			self.zyncoder_read()
+			self.zynswitch_read()
 			self.zynmidi_read()
 			self.osc_receive()
 			if j>4:
@@ -2029,7 +2017,7 @@ class zynthian_gui:
 			if self.osc_clients[client] < self.watchdog_last_check - self.osc_heartbeat_timeout:
 				self.osc_clients.pop(client)
 				try:
-					lib_zynmixer.removeOscClient(c_char_p(client.encode('utf-8')))
+					lib_zynmixer.removeOscClient(ctypes.c_char_p(client.encode('utf-8')))
 				except:
 					pass
 		# Poll
@@ -2202,6 +2190,26 @@ class zynthian_gui:
 logging.info("STARTING ZYNTHIAN-UI ...")
 zynthian_gui_config.zyngui=zyngui=zynthian_gui()
 zyngui.start()
+
+
+#------------------------------------------------------------------------------
+# Zynlib Callbacks
+#------------------------------------------------------------------------------
+
+@ctypes.CFUNCTYPE(None, ctypes.c_ubyte, ctypes.c_int)
+def zynpot_cb(i, dval):
+	#logging.debug("Zynpot {} Callback => {}".format(i, dval))
+	try:
+		#zyngui.lock.acquire()
+		zyngui.screens[zyngui.current_screen].zynpot_cb(i, dval)
+		#zyngui.lock.release()
+
+	except Exception as err:
+		#zyngui.lock.release()
+		logging.exception(err)
+
+
+lib_zyncore.setup_zynpot_cb(zynpot_cb)
 
 
 #------------------------------------------------------------------------------

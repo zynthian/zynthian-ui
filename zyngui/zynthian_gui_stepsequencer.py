@@ -125,7 +125,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def __init__(self):
 		super().__init__()
 		self.shown = False # True when GUI in view
-		self.zyncoder_owner = [None, None, None, None] # Object that currently "owns" encoder, indexed by encoder
+		self.zynpot_owner = [None, None, None, None] # Object that currently "owns" encoder, indexed by encoder
 		self.zyncoder_step = [1, 1, 1, 1] # Zyncoder step. 0 for dynamic step (speed variable).
 		self.switch_owner = [None] * 12 # Object that currently "owns" switch, indexed by (switch *3 + type)
 		self.bank = 1 # Currently displayed bank of sequences
@@ -862,12 +862,15 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# ---------------------------------------------------------------------------
 
 	# Function to handle zyncoder value change
-	#	encoder: Zyncoder index [0..4]
-	#	value: Value of zyncoder change since last read
-	def on_zyncoder(self, encoder, value):
+	#	i: Zynpot index [0..n]
+	#	dval: Value change since last event
+	def _zynpot_cb(self, i, dval):
+		if not self.shown:
+			return
+
 		if self.lst_menu.winfo_viewable():
 			# Menu browsing
-			if encoder == ENC_SELECT or encoder == ENC_LAYER:
+			if i == ENC_SELECT or i == ENC_LAYER:
 				if self.lst_menu.size() < 1:
 					return
 				index = 0
@@ -875,111 +878,60 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 					index = self.lst_menu.curselection()[0]
 				except:
 					logging.error("Problem detecting menu selection")
-				self.highlight_menu(index + value)
+				self.highlight_menu(index + dval)
 				return
 		elif self.param_editor_item:
 			# Parameter change
-			if encoder == ENC_SELECT or encoder == ENC_LAYER:
-				self.change_param(value)
-			elif encoder == ENC_SNAPSHOT:
-				self.change_param(value / 10)
-		elif encoder == ENC_SNAPSHOT:
-			libseq.setTempo(ctypes.c_double(libseq.getTempo() + 0.1*value))
+			if i == ENC_SELECT or i == ENC_LAYER:
+				self.change_param(dval)
+			elif i == ENC_SNAPSHOT:
+				self.change_param(dval / 10)
+		elif i == ENC_SNAPSHOT:
+			libseq.setTempo(ctypes.c_double(libseq.getTempo() + 0.1*dval))
 			self.set_title("Tempo: %0.1f BPM" % (libseq.getTempo()), None, None, 2)
-		elif encoder == ENC_LAYER:
+		elif i == ENC_LAYER:
 			self.select_bank(self.bank + value)
 
 
-	# Function to handle zyncoder polling
-	#	Note: Zyncoder provides positive integers. We need +/- 1 so we keep zyncoder at 64 and calculate offset
-	def zyncoder_read(self):
-		if not self.shown:
-			return
-		if lib_zyncore:
-			for encoder in range(len(self.zyncoder_owner)):
-				if self.zyncoder_owner[encoder]:
-					# Found a registered zyncoder
-					step = lib_zyncore.get_value_zynpot(encoder)
-					if step:
-						#logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
-						self.zyncoder_owner[encoder].on_zyncoder(encoder, step)
-		return []
-
-
-	# Function to handle CUIA encoder changes
-	def on_cuia_encoder(self, encoder, value):
-		if self.zyncoder_owner[encoder]:
-			self.zyncoder_owner[encoder].on_zyncoder(encoder, value)
+	# Function to dispatch zynpots events to children (owners) or handle by default
+	def zynpot_cb(self, i, dval):
+		if self.zynpot_owner[i]==self:
+			self._zynpot_cb(i, dval)
+			return True
+		elif self.zynpot_owner[i]:
+			#logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
+			self.zynpot_owner[i].zynpot_cb(i, dval)
+			return True
 
 
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
 		if self.lst_menu.winfo_viewable():
-			self.on_cuia_encoder(ENC_SELECT, -1)
+			self.zynpot_cb(ENC_SELECT, -1)
 		elif self.child in (self.zynpad, self.pattern_editor):
-			self.on_cuia_encoder(ENC_BACK, -1)
+			self.zynpot_cb(ENC_BACK, -1)
 		else:
-			self.on_cuia_encoder(ENC_SELECT, -1)
+			self.zynpot_cb(ENC_SELECT, -1)
 
 
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
 		if self.lst_menu.winfo_viewable():
-			self.on_cuia_encoder(ENC_SELECT, 1)
+			self.zynpot_cb(ENC_SELECT, 1)
 		elif self.child in (self.zynpad, self.pattern_editor):
-			self.on_cuia_encoder(ENC_BACK, 1)
+			self.zynpot_cb(ENC_BACK, 1)
 		else:
-			self.on_cuia_encoder(ENC_SELECT, 1)
+			self.zynpot_cb(ENC_SELECT, 1)
 
 
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		self.on_cuia_encoder(ENC_SELECT, 1)
+		self.zynpot_cb(ENC_SELECT, 1)
 
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		self.on_cuia_encoder(ENC_SELECT, -1)
-
-
-	# Function to handle CUIA SELECT_UP command
-	def select_up(self):
-		self.on_cuia_encoder(ENC_SELECT, 1)
-
-
-	# Function to handle CUIA SELECT_DOWN command
-	def select_down(self):
-		self.on_cuia_encoder(ENC_SELECT, -1)
-
-
-	# Function to handle CUIA LAYER_UP command
-	def layer_up(self):
-		self.on_cuia_encoder(ENC_LAYER, 1)
-
-
-	# Function to handle CUIA LAYER_DOWN command
-	def layer_down(self):
-		self.on_cuia_encoder(ENC_LAYER, -1)
-
-
-	# Function to handle CUIA SNAPSHOT_UP command
-	def snapshot_up(self):
-		self.on_cuia_encoder(ENC_SNAPSHOT, 1)
-
-
-	# Function to handle CUIA SNAPSHOT_DOWN command
-	def snapshot_down(self):
-		self.on_cuia_encoder(ENC_SNAPSHOT, -1)
-
-
-	# Function to handle CUIA BACK_UP command
-	def back_up(self):
-		self.on_cuia_encoder(ENC_BACK, 1)
-
-
-	# Function to handle CUIA BACK_UP command
-	def back_down(self):
-		self.on_cuia_encoder(ENC_BACK, -1)
+		self.zynpot_cb(ENC_SELECT, -1)
 
 
 	# Function to handle CUIA SELECT command
@@ -1101,19 +1053,19 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	#	object: Object to register as owner
 	#	Note: Registers an object to own the encoder which will trigger that object's onZyncoder method when encoder rotated passing it +/- value since last read
 	def register_zyncoder(self, encoder, object, step=1):
-		if encoder >= len(self.zyncoder_owner):
+		if encoder >= len(self.zynpot_owner):
 			return
-		self.zyncoder_owner[encoder] = None
+		self.zynpot_owner[encoder] = None
 		if self.shown and lib_zyncore:
 			lib_zyncore.setup_behaviour_zynpot(encoder, step, 0)
-			self.zyncoder_owner[encoder] = object
+			self.zynpot_owner[encoder] = object
 			self.zyncoder_step[encoder] = step
 
 
 	# Function to unregister ownership of an encoder from an object
 	#	encoder: Index of encoder to unregister
 	def unregister_zyncoder(self, encoder):
-		if encoder >= len(self.zyncoder_owner):
+		if encoder >= len(self.zynpot_owner):
 			return
 		if encoder==ENC_SNAPSHOT:
 			step = 0

@@ -428,7 +428,7 @@ class zynthian_gui_touchscreen_calibration:
 
 
 	#	Handle zyncoder read - called by parent when zyncoders updated
-	def zyncoder_read(self):
+	def zynpot_cb(self, i, dval):
 		pass
 
 

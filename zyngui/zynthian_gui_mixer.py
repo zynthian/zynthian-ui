@@ -738,7 +738,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.select_chain_by_index(0)
 		else:
 			self.select_chain_by_index(self.selected_chain_index)
-		self.setup_zyncoders()
+		self.setup_zynpots()
 		zynmixer.enable_dpm(True)
 		super().show()
 
@@ -978,9 +978,44 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	#--------------------------------------------------------------------------
-	# Physical UI Control Management: Pots & switches
+	# Main strip options menu
 	#--------------------------------------------------------------------------
 
+	def show_mainfx_options(self):
+		options = OrderedDict()
+		if zynmixer.get_mono(self.selected_layer.midi_chan):
+			options["[x] Audio Mono"] = "Mono"
+		else:
+			options["[  ] Audio Mono"] = "Mono"
+		if zynthian_gui_config.multichannel_recorder:
+			if self.zyngui.audio_recorder.get_status():
+				primed_option = None
+			else:
+				primed_option = "Primed"
+			if self.zyngui.audio_recorder.is_primed(MAIN_CHANNEL_INDEX):
+				options["[x] Recording Primed"] = primed_option
+			else:
+				options["[  ] Recording Primed"] = primed_option
+		options["> Audio Chain ---------------"] = None
+		options["Add Audio-FX"] = "Add"
+		self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
+		self.zyngui.show_screen('option')
+
+
+	def mainfx_options_cb(self, option, param):
+		if param == "Add":
+			self.zyngui.screens['layer'].add_fxchain_layer(MAIN_CHANNEL_INDEX)
+		elif param == "Mono":
+			zynmixer.toggle_mono(MAIN_CHANNEL_INDEX)
+			self.show_mainfx_options()
+		elif param == "Primed":
+			self.zyngui.audio_recorder.toggle_prime(MAIN_CHANNEL_INDEX)
+			self.show_mainfx_options()
+
+
+	#--------------------------------------------------------------------------
+	# Physical UI Control Management: Pots & switches
+	#--------------------------------------------------------------------------
 
 	# Function to handle switches press
 	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
@@ -1024,59 +1059,24 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		return False
 
 
-	def show_mainfx_options(self):
-		options = OrderedDict()
-		if zynmixer.get_mono(self.selected_layer.midi_chan):
-			options["[x] Audio Mono"] = "Mono"
-		else:
-			options["[  ] Audio Mono"] = "Mono"
-		if zynthian_gui_config.multichannel_recorder:
-			if self.zyngui.audio_recorder.get_status():
-				primed_option = None
-			else:
-				primed_option = "Primed"
-			if self.zyngui.audio_recorder.is_primed(MAIN_CHANNEL_INDEX):
-				options["[x] Recording Primed"] = primed_option
-			else:
-				options["[  ] Recording Primed"] = primed_option
-		options["> Audio Chain ---------------"] = None
-		options["Add Audio-FX"] = "Add"
-		self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
-		self.zyngui.show_screen('option')
-
-
-	def mainfx_options_cb(self, option, param):
-		if param == "Add":
-			self.zyngui.screens['layer'].add_fxchain_layer(MAIN_CHANNEL_INDEX)
-		elif param == "Mono":
-			zynmixer.toggle_mono(MAIN_CHANNEL_INDEX)
-			self.show_mainfx_options()
-		elif param == "Primed":
-			self.zyngui.audio_recorder.toggle_prime(MAIN_CHANNEL_INDEX)
-			self.show_mainfx_options()
-
-
-	def setup_zyncoders(self):
-		if not self.selected_layer:
-			return
+	def setup_zynpots(self):
 		lib_zyncore.setup_behaviour_zynpot(ENC_LAYER, 0, 0)
 		lib_zyncore.setup_behaviour_zynpot(ENC_BACK, 0, 0)
 		lib_zyncore.setup_behaviour_zynpot(ENC_SNAPSHOT, 0, 0)
 		lib_zyncore.setup_behaviour_zynpot(ENC_SELECT, 0, 1)
 
 
-	# Function to handle zyncoder polling.
-	def zyncoder_read(self):
+	# Function to handle zynpot CB
+	def zynpot_cb(self, i, dval):
 		if not self.shown:
 			return
 
 		redraw_fader_offset = None
 		redraw_main_fader = False
 
-		if self.selected_layer:
-			# LAYER encoder adjusts selected chain's level
-			dval = lib_zyncore.get_value_zynpot(ENC_LAYER)
-			if dval:
+		# LAYER encoder adjusts selected chain's level
+		if i == ENC_LAYER:
+			if self.selected_layer:
 				value = zynmixer.get_level(self.selected_layer.midi_chan) + dval * 0.01
 				value = max(min(1, value), 0)
 				#logging.debug("Value LAYER: {}".format(value))
@@ -1086,9 +1086,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				else:
 					redraw_fader_offset = self.selected_chain_index - self.mixer_strip_offset
 
-			# BACK encoder adjusts selected chain's balance/pan
-			dval = lib_zyncore.get_value_zynpot(ENC_BACK)
-			if dval:
+		# BACK encoder adjusts selected chain's balance/pan
+		elif i == ENC_BACK:
+			if self.selected_layer:
 				value = zynmixer.get_balance(self.selected_layer.midi_chan) + dval * 0.02
 				value = max(min(1, value), -1)
 				#logging.debug("Value BACK: {}".format(value))
@@ -1098,9 +1098,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				else:
 					redraw_fader_offset = self.selected_chain_index - self.mixer_strip_offset
 
-			# SNAPSHOT encoder adjusts main mixbus level
-			dval = lib_zyncore.get_value_zynpot(ENC_SNAPSHOT)
-			if dval:
+		# SNAPSHOT encoder adjusts main mixbus level
+		elif i == ENC_SNAPSHOT:
+			if self.selected_layer:
 				value = zynmixer.get_level(MAIN_CHANNEL_INDEX) + dval * 0.01
 				value = max(min(1, value), 0)
 				#logging.debug("Value SHOT: {}".format(value))
@@ -1108,8 +1108,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				redraw_main_fader = True
 
 		# SELECT encoder moves chain selection
-		dval = lib_zyncore.get_value_zynpot(ENC_SELECT)
-		if dval:
+		elif i == ENC_SELECT:
 			self.select_chain_by_index(self.selected_chain_index + dval)
 			#logging.debug("Value SELECT: {}".format(self.selected_chain_index))
 
@@ -1118,16 +1117,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if redraw_fader_offset != None:
 			self.visible_mixer_strips[redraw_fader_offset].draw_controls()
 
-
-	# Increment by inc the zyncoder's value
-	def zyncoder_up(self, num, inc = 1):
-		pass
-		#TODO Should we implement this without relying on zynpots?
-
-
-	# Decrement by dec the zyncoder's value
-	def zyncoder_down(self, num, dec = 1):
-		pass
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
@@ -1149,45 +1138,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def arrow_down(self):
 		self.set_volume(self.get_volume() - 0.1)
 		self.redraw_mixer_controls()
-
-
-	# Function to handle CUIA SELECT_UP command
-	def select_up(self):
-		self.zyncoder_up(ENC_SELECT)
-
-
-	# Function to handle CUIA SELECT_DOWN command
-		self.zyncoder_down(ENC_SELECT)
-
-
-	# Function to handle CUIA BACK_UP command
-	def back_up(self):
-		self.zyncoder_up(ENC_BACK)
-
-
-	# Function to handle CUIA BACK_DOWN command
-	def back_down(self):
-		self.zyncoder_down(ENC_BACK)
-
-
-	# Function to handle CUIA LAYER_UP command
-	def layer_up(self):
-		self.zyncoder_up(ENC_LAYER)
-
-
-	# Function to handle CUIA LAYER_DOWN command
-	def layer_down(self):
-		self.zyncoder_down(ENC_LAYER)
-
-
-	# Function to handle CUIA SNAPSHOT_UP command
-	def snapshot_up(self):
-		self.zyncoder_up(ENC_SNAPSHOT)
-
-
-	# Function to handle CUIA SNAPSHOT_DOWN command
-	def snapshot_down(self):
-		self.zyncoder_down(ENC_SNAPSHOT)
 
 
 	#--------------------------------------------------------------------------

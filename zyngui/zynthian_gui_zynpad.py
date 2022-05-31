@@ -465,13 +465,13 @@ class zynthian_gui_zynpad():
 						text="Trigger note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value))
 
 
-	# Function to handle zyncoder value change
-	#   encoder: Zyncoder index [0..4]
-	#   value: Current value of zyncoder
-	def on_zyncoder(self, encoder, value):
-		if encoder == ENC_SELECT:
+	# Function to handle zynpots value change
+	#   i: Zynpot index [0..n]
+	#   dval: Zynpot value change
+	def zynpot_cb(self, i, dval):
+		if i == ENC_SELECT:
 			# SELECT encoder adjusts horizontal pad selection
-			pad = self.selected_pad + self.columns * value
+			pad = self.selected_pad + self.columns * dval
 			col = int(pad / self.columns)
 			row = pad % self.columns
 			if col >= self.columns:
@@ -486,9 +486,9 @@ class zynthian_gui_zynpad():
 				return
 			self.selected_pad = pad
 			self.update_selection_cursor()
-		elif encoder == ENC_BACK:
+		elif i == ENC_BACK:
 			# BACK encoder adjusts vertical pad selection
-			pad = self.selected_pad + value
+			pad = self.selected_pad + dval
 			if pad < 0 or pad >= libseq.getSequencesInBank(self.parent.bank):
 				return
 			self.selected_pad = pad

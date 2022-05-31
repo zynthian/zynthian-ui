@@ -270,28 +270,26 @@ class zynthian_gui_keyboard():
 		if not self.shown:
 			self.selected_button = self.btn_enter
 			self.highlight(self.selected_button)
-			self.setup_encoders()
+			self.setup_zynpots()
 			self.main_frame.grid()
 			self.shown=True
 
 
 	# Function to register encoders
-	def setup_encoders(self):
+	def setup_zynpots(self):
 		if lib_zyncore:
 			lib_zyncore.setup_behaviour_zynpot(ZYNPOT_SELECT, 1, 0)
 			lib_zyncore.setup_behaviour_zynpot(ZYNPOT_BACK, 1, 0)
 
 
-	# Function to handle zyncoder polling
-	def zyncoder_read(self):
+	# Function to handle zynpots events
+	def zynpot_cb(self, i, dval):
 		if not self.shown:
 			return
 		if lib_zyncore:
-			dval = lib_zyncore.get_value_zynpot(ZYNPOT_SELECT)
-			if dval:
+			if i == ZYNPOT_SELECT:
 				self.cursor_hmove(dval)
-			dval = lib_zyncore.get_value_zynpot(ZYNPOT_BACK)
-			if dval:
+			elif i == ZYNPOT_BACK:
 				self.cursor_vmove(dval)
 
 
@@ -391,23 +389,17 @@ class zynthian_gui_keyboard():
 		self.cursor_hmove(-1)
 
 
+	# Function to handle select switch event
 	def switch_select(self, type):
 		self.execute_key_press(self.selected_button, type=="B")
 
 
-	# Function to handle switch press
+	# Function to handle switch events
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
 		return False
-		if switch == ZYNPOT_BACK:
-			pass
-#			self.zyngui.zynswitch_defered('S', ZYNPOT_BACK)
-#			self.hide()
-		elif switch == ZYNPOT_SELECT:
-			self.execute_key_press(self.selected_button, type=="B")
-		return True # Tell parent that we handled all short and bold key presses
 
 
 	# Function to refresh the loading screen (not used)

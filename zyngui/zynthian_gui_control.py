@@ -504,18 +504,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.set_selector_screen()
 		
 
-	def zyncoder_read(self, zcnums=None):
-		#Read Controller
-		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
-			for i, zctrl in enumerate(self.zcontrollers):
-				if not zcnums or i in zcnums: 
-					if self.zgui_controllers[i].read_zyncoder():
-						self.midi_learn_zctrl(i)
-						if self.xyselect_mode:
-							self.zyncoder_read_xyselect(zctrl, i)
+	def zynpot_cb(self, i, dval):
+		if self.mode == 'control' and self.zcontrollers:
+			if self.zgui_controllers[i].zynpot_cb(dval):
+				self.midi_learn_zctrl(i)
+				if self.xyselect_mode:
+					self.zyncoder_read_xyselect(zctrl, i)
 
 		elif self.mode == 'select':
-			super().zyncoder_read()
+			super().zynpot_cb(i, dval)
 
 
 	def zyncoder_read_xyselect(self, zctrl, i):

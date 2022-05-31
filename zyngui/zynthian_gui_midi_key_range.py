@@ -298,12 +298,18 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		lib_zyncore.set_midi_learning_mode(0)
 
 
-	def zyncoder_read(self, zcnums=None):
-		self.halftone_zgui_ctrl.read_zyncoder()
-		self.octave_zgui_ctrl.read_zyncoder()
-		self.nlow_zgui_ctrl.read_zyncoder()
-		self.nhigh_zgui_ctrl.read_zyncoder()
-		return []
+	def zynpot_cb(self, i, dval):
+		if i == 0:
+			self.halftone_zgui_ctrl.zynpot_cb(dval)
+		elif i ==1:
+			self.octave_zgui_ctrl.zynpot_cb(dval)
+		elif i ==2:
+			self.nlow_zgui_ctrl.zynpot_cb(dval)
+		elif i ==3:
+			self.nhigh_zgui_ctrl.zynpot_cb(dval)
+		else:
+			return False
+		return True
 
 
 	def toggle_midi_learn(self):
