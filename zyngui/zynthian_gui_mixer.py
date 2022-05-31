@@ -152,6 +152,8 @@ class zynthian_gui_mixer_strip():
 		font_fader = (zynthian_gui_config.font_family, int(0.9 * font_size))
 		font_icons = ("forkawesome", int(0.3 * self.width))
 
+		self.fader_text_len = int(0.9 * self.fader_height / font_size)
+
 		'''
 		Create GUI elements
 		Tags:
@@ -238,15 +240,18 @@ class zynthian_gui_mixer_strip():
 
 	def get_legend_text(self, default_text=None):
 		if self.layer.engine is not None:
-			res = self.layer.engine.get_name(self.layer)
+			res1 = self.layer.engine.get_name(self.layer) + "\n"
 			# MOD-UI
 			if self.layer.midi_chan is None:
 				if self.layer.bank_name:
-					res += "\n{}".format(self.layer.bank_name)
+					res2 = self.layer.bank_name
 			# Rest of chains
 			elif self.layer.preset_name:
-				res += "\n{}".format(self.layer.preset_name)
-			return res
+				res2 = self.layer.preset_name
+			# Limit text len
+			if len(res2)>self.fader_text_len:
+				res2 = res2[0:self.fader_text_len]
+			return res1+res2
 		return default_text
 
 
