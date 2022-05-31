@@ -143,8 +143,8 @@ class zynthian_gui_controller:
 	def set_hl(self, color=zynthian_gui_config.color_hl):
 		try:
 			self.canvas.itemconfig(self.arc, outline=color)
-			self.canvas.itemconfig(self.label_title, fill=color)
-			self.canvas.itemconfig(self.value_text, fill=color)
+			#self.canvas.itemconfig(self.label_title, fill=color)
+			#self.canvas.itemconfig(self.value_text, fill=color)
 		except:
 			pass
 
@@ -152,8 +152,8 @@ class zynthian_gui_controller:
 	def unset_hl(self):
 		try:
 			self.canvas.itemconfig(self.arc, outline=zynthian_gui_config.color_ctrl_bg_on)
-			self.canvas.itemconfig(self.label_title, fill=zynthian_gui_config.color_panel_tx)
-			self.canvas.itemconfig(self.value_text, fill=zynthian_gui_config.color_panel_tx)
+			#self.canvas.itemconfig(self.label_title, fill=zynthian_gui_config.color_panel_tx)
+			#self.canvas.itemconfig(self.value_text, fill=zynthian_gui_config.color_panel_tx)
 		except:
 			pass
 
@@ -415,6 +415,9 @@ class zynthian_gui_controller:
 				self.plot_midi_bind(midi_cc)
 			else:
 				self.erase_midi_bind()
+				return False
+			return True
+		return False
 
 
 	def set_title(self, tit):
@@ -556,6 +559,10 @@ class zynthian_gui_controller:
 		self.setup_zynpot()
 
 
+	#--------------------------------------------------------------------------
+	# Zynpot Callbacks (rotaries!)
+	#--------------------------------------------------------------------------
+
 	def setup_zynpot(self):
 		try:
 			lib_zyncore.setup_behaviour_zynpot(self.index, self.step, self.inverted)
@@ -563,14 +570,15 @@ class zynthian_gui_controller:
 			logging.error("%s" % err)
 
 
-	def read_zyncoder(self):
+	def zynpot_cb(self, dval):
 		if self.zctrl:
-			val = lib_zyncore.get_value_zynpot(self.index)
-			if val:
-				return self.zctrl.nudge(val)
+			return self.zctrl.nudge(dval)
 		else:
 			return False
 
+	#--------------------------------------------------------------------------
+	# Keyboard & Mouse/Touch Callbacks
+	#--------------------------------------------------------------------------
 
 	def cb_canvas_push(self,event):
 		if self.zctrl:

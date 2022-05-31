@@ -326,11 +326,11 @@ class zynthian_controller:
 						# Send value using OSC/MIDI ...
 						if self.osc_path:
 							liblo.send(self.engine.osc_target,self.osc_path, self.get_ctrl_osc_val())
-							logging.debug("Sending OSC controller '{}' value => {}".format(self.symbol, val))
+							#logging.debug("Sending OSC controller '{}' value => {}".format(self.symbol, val))
 
 						elif self.midi_cc:
 							lib_zyncore.ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
-							logging.debug("Sending MIDI controller '{}' value => {} ({})".format(self.symbol, val, mval))
+							#logging.debug("Sending MIDI controller '{}' value => {} ({})".format(self.symbol, val, mval))
 
 					except Exception as e:
 						logging.warning("Can't send controller '{}' value: {} => {}".format(self.symbol, val, e))

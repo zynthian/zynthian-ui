@@ -38,6 +38,12 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_bank(zynthian_gui_selector):
 
 	def __init__(self):
+		self.buttonbar_config = [
+			(1, 'CONTROL\n[mixer]'),
+			(0, '\n[menu]'),
+			(2, 'FAVORITES\n[snapshot]'),
+			(3, 'PRESETS\n[options]')
+		]
 		super().__init__('Bank', True)
 
     

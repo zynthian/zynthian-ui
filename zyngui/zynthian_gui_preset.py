@@ -38,6 +38,12 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_preset(zynthian_gui_selector):
 
 	def __init__(self):
+		self.buttonbar_config = [
+			(1, 'BANKS\n[mixer]'),
+			(0, '\n[menu]'),
+			(2, 'FAVORITES\n[snapshot]'),
+			(3, 'SELECT\n[options]')
+		]
 		super().__init__('Preset', True)
 
 
@@ -53,6 +59,10 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def show(self):
 		if self.zyngui.curlayer:
+			if len(self.zyngui.curlayer.bank_list) > 1:
+				self.set_buttonbar_label(0, 'BANKS\n[mixer]')
+			else:
+				self.set_buttonbar_label(0, 'CONTROL\n[mixer]')
 			super().show()
 		else:
 			self.zyngui.close_screen()

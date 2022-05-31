@@ -47,10 +47,18 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def __init__(self, selcap='Controllers'):
 		self.mode = None
 
+		self.buttonbar_config = [
+			(1, 'PRESETS\n[mixer]'),
+			(0, 'NEXT CHAIN\n[menu]'),
+			(2, 'LEARN\n[snapshot]'),
+			(3, 'PAGE\n[options]')
+		]
+
 		if zynthian_gui_config.ctrl_both_sides:
 			super().__init__(selcap, False, False)
 		else:
 			super().__init__(selcap, True, False)
+
 
 		self.widgets = {}
 		self.ctrl_screens = {}
@@ -463,6 +471,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 				elif not self.zyngui.is_shown_alsa_mixer():
 					self.zyngui.cuia_bank_preset()
 					return True
+			else:
+				self.back_action()
+				return False
 
 		elif swi == 2:
 			if t == 'S':
@@ -493,18 +504,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.set_selector_screen()
 		
 
-	def zyncoder_read(self, zcnums=None):
-		#Read Controller
-		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
-			for i, zctrl in enumerate(self.zcontrollers):
-				if not zcnums or i in zcnums: 
-					if self.zgui_controllers[i].read_zyncoder():
-						self.midi_learn_zctrl(i)
-						if self.xyselect_mode:
-							self.zyncoder_read_xyselect(zctrl, i)
+	def zynpot_cb(self, i, dval):
+		if self.mode == 'control' and self.zcontrollers:
+			if self.zgui_controllers[i].zynpot_cb(dval):
+				self.midi_learn_zctrl(i)
+				if self.xyselect_mode:
+					self.zyncoder_read_xyselect(zctrl, i)
 
 		elif self.mode == 'select':
-			super().zyncoder_read()
+			super().zynpot_cb(i, dval)
 
 
 	def zyncoder_read_xyselect(self, zctrl, i):
@@ -536,8 +544,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def refresh_midi_bind(self):
+		learning = False
 		for zgui_controller in self.zgui_controllers:
-			zgui_controller.set_midi_bind()
+			learning |= zgui_controller.set_midi_bind()
+		if learning:
+			self.set_buttonbar_label(0, "CANCEL")
+		else:
+			self.set_buttonbar_label(0, "PRESETS\n[mixer]")
 
 
 	def plot_zctrls(self, force=False):

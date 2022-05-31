@@ -45,6 +45,15 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def __init__(self, selcap='Select', wide=False, loading_anim=True):
 		super().__init__()
 
+		if not self.buttonbar_config:
+			self.buttonbar_config = [
+				(1, 'BACK\n[mixer]'),
+				(0, ''),
+				(2, ''),
+				(3, 'SELECT\n[options]')
+			]
+
+
 		self.index = 0
 		self.list_data = []
 		self.zselector = None
@@ -205,14 +214,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 		return index
 
 
-	def zyncoder_read(self):
-		if self.shown and self.zselector:
-			self.zselector.read_zyncoder()
-			if self.index != self.zselector.zctrl.value:
-				self.select(self.zselector.zctrl.value)
-		return [0,1,2]
-
-
 	def select_listbox(self, index):
 		if index < 0:
 			index = 0
@@ -269,22 +270,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.last_index_change_ts = datetime.now()
 
 
-	def arrow_up(self):
-		self.select(self.index - 1)
-
-
-	def arrow_down(self):
-		self.select(self.index + 1)
-
-
-	def select_up(self, n=1):
-		self.select(self.index - n)
-
-
-	def select_down(self, n=1):
-		self.select(self.index + n)
-
-
 	def click_listbox(self, index=None, t='S'):
 		if index is not None:
 			self.select(index)
@@ -299,7 +284,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 	#	typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
-		return False
+		if swi in [0,2]:
+			return True
 
 
 	# Function to handle select switch press
@@ -311,6 +297,39 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def select_action(self, index, t='S'):
 		pass
 
+
+	#--------------------------------------------------------------------------
+	# Zynpot Callbacks (rotaries!)
+	#--------------------------------------------------------------------------
+
+	def zynpot_cb(self, i, dval):
+		if self.shown and self.zselector and self.zselector.index==i:
+			self.zselector.zynpot_cb(dval)
+			if self.index != self.zselector.zctrl.value:
+				self.select(self.zselector.zctrl.value)
+			return True
+		return False
+
+
+	def select_up(self):
+		self.select(self.index - 1)
+
+
+	def select_down(self):
+		self.select(self.index + 1)
+
+
+	def arrow_up(self):
+		self.select(self.index - 1)
+
+
+	def arrow_down(self):
+		self.select(self.index + 1)
+
+
+	#--------------------------------------------------------------------------
+	# Keyboard & Mouse/Touch Callbacks
+	#--------------------------------------------------------------------------
 
 	def cb_listbox_push(self,event):
 		self.listbox_push_ts=datetime.now()

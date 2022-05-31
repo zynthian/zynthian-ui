@@ -389,11 +389,15 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
 
 
-	def zyncoder_read(self):
-		super().zyncoder_read()
-		if self.shown and self.bpm_zgui_ctrl:
-			self.bpm_zgui_ctrl.read_zyncoder()
-		return [0,1]
+	def zynpot_cb(self, i ,dval):
+		if not self.shown:
+			return False
+		
+		if self.bpm_zgui_ctrl and self.bpm_zgui_ctrl.index == i:
+			self.bpm_zgui_ctrl.zynpot_cb(dval)
+			return True
+		else:
+			return super().zynpot_cb(i, dval)
 
 
 	def plot_zctrls(self, force=False):

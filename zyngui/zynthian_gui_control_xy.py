@@ -179,11 +179,11 @@ class zynthian_gui_control_xy():
 		self.last_motion_ts = datetime.now()
 
 
-	def zyncoder_read(self):
+	def zynpot_cb(self, i, dval):
 		# Wait 0.1 seconds after last motion for start reading encoders again
 		if self.last_motion_ts is None or (datetime.now() - self.last_motion_ts).total_seconds() > 0.1:
 			self.last_motion_ts = None
-			self.zyngui.screens['control'].zyncoder_read()
+			self.zyngui.screens['control'].zynpot_cb(i, dval)
 			self.get_controller_values()
 
 

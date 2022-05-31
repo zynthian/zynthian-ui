@@ -170,7 +170,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 						)
 						os.system(cmd)
 					if os.path.exists(waveform_png):
-						self.img=ImageTk.PhotoImage(file=waveform_png)
+						image = Image.open(waveform_png)
+						self.img = ImageTk.PhotoImage(image.resize((self.width, self.height)))
 						self.mon_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
 					else:
 						self.mon_canvas.itemconfigure(self.loading_text, text="Cannot\ndisplay\nwaveform")

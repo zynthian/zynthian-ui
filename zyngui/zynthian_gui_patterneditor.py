@@ -968,13 +968,13 @@ class zynthian_gui_patterneditor():
 			self.draw_grid()
 
 
-	# Function to handle zyncoder value change
-	#   encoder: Zyncoder index [0..4]
-	#   value: Current value of zyncoder
-	def on_zyncoder(self, encoder, value):
-		if encoder == ENC_BACK:
+	# Function to handle zynpots value change
+	#   i: Zynpot index [0..n]
+	#   dval: Current value of zyncoder
+	def zynpot_cb(self, i, dval):
+		if i == ENC_BACK:
 			if self.edit_mode == EDIT_MODE_SINGLE:
-				self.velocity = self.velocity + value
+				self.velocity = self.velocity + dval
 				if self.velocity > 127:
 					self.velocity = 127
 					return
@@ -988,16 +988,16 @@ class zynthian_gui_patterneditor():
 					self.draw_cell(self.selected_cell[0], self.selected_cell[1])
 				self.parent.set_title("Velocity: %d" % (self.velocity), None, None, 2)
 			elif self.edit_mode == EDIT_MODE_ALL:
-				libseq.changeVelocityAll(value)
+				libseq.changeVelocityAll(dval)
 				self.parent.set_title("ALL Velocity", None, None, 2)
 			else:
-				self.select_cell(None, self.selected_cell[1] - value)
+				self.select_cell(None, self.selected_cell[1] - dval)
 
-		elif encoder == ENC_SELECT:
+		elif i == ENC_SELECT:
 			if self.edit_mode == EDIT_MODE_SINGLE:
-				if value > 0:
+				if dval > 0:
 					self.duration = self.duration + 1
-				if value < 0:
+				if dval < 0:
 					self.duration = self.duration - 1
 				if self.duration > libseq.getSteps():
 					self.duration = libseq.getSteps()
@@ -1012,19 +1012,19 @@ class zynthian_gui_patterneditor():
 					self.select_cell()
 				self.parent.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
 			elif self.edit_mode == EDIT_MODE_ALL:
-				if value > 0:
+				if dval > 0:
 					libseq.changeDurationAll(1)
-				if value < 0:
+				if dval < 0:
 					libseq.changeDurationAll(-1)
 				self.parent.set_title("ALL DURATION", None, None, 2)
 			else:
-				self.select_cell(self.selected_cell[0] + value, None)
+				self.select_cell(self.selected_cell[0] + dval, None)
 
-		elif encoder == ENC_SNAPSHOT:
+		elif i == ENC_SNAPSHOT:
 			if self.edit_mode == EDIT_MODE_SINGLE:
-				if value > 0:
+				if dval > 0:
 					self.duration = self.duration + 0.1
-				if value < 0:
+				if dval < 0:
 					self.duration = self.duration - 0.1
 				if self.duration > libseq.getSteps():
 					self.duration = libseq.getSteps()
@@ -1039,9 +1039,9 @@ class zynthian_gui_patterneditor():
 					self.select_cell()
 				self.parent.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
 			elif self.edit_mode == EDIT_MODE_ALL:
-				if value > 0:
+				if dval > 0:
 					libseq.changeDurationAll(0.1)
-				if value < 0:
+				if dval < 0:
 					libseq.changeDurationAll(-0.1)
 				self.parent.set_title("ALL DURATION", None, None, 2)
 
