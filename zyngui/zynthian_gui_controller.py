@@ -143,8 +143,8 @@ class zynthian_gui_controller:
 	def set_hl(self, color=zynthian_gui_config.color_hl):
 		try:
 			self.canvas.itemconfig(self.arc, outline=color)
-			self.canvas.itemconfig(self.label_title, fill=color)
-			self.canvas.itemconfig(self.value_text, fill=color)
+			#self.canvas.itemconfig(self.label_title, fill=color)
+			#self.canvas.itemconfig(self.value_text, fill=color)
 		except:
 			pass
 
@@ -152,8 +152,8 @@ class zynthian_gui_controller:
 	def unset_hl(self):
 		try:
 			self.canvas.itemconfig(self.arc, outline=zynthian_gui_config.color_ctrl_bg_on)
-			self.canvas.itemconfig(self.label_title, fill=zynthian_gui_config.color_panel_tx)
-			self.canvas.itemconfig(self.value_text, fill=zynthian_gui_config.color_panel_tx)
+			#self.canvas.itemconfig(self.label_title, fill=zynthian_gui_config.color_panel_tx)
+			#self.canvas.itemconfig(self.value_text, fill=zynthian_gui_config.color_panel_tx)
 		except:
 			pass
 
