@@ -689,7 +689,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Arrays of GUI elements for mixer strips - Chains + Main
 		self.visible_mixer_strips = [None] * visible_chains
 		self.selected_chain_index = None
-		self.highlighted_chain_index = None
+		self.highlighted_strip = None
 		self.mixer_strip_offset = 0 # Index of first mixer strip displayed on far left
 		self.selected_layer = None
 
@@ -812,19 +812,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to highlight the selected chain's strip
 	def highlight_selected_chain(self):
-		if self.selected_chain_index == self.highlighted_chain_index:
-			return
-		
-		if self.highlighted_chain_index is not None:
-			strip_off = self.get_mixer_strip_from_layer_index(self.highlighted_chain_index)
-			if strip_off:
-				strip_off.set_highlight(False)
-
 		if self.selected_chain_index is not None:
 			strip_on = self.get_mixer_strip_from_layer_index(self.selected_chain_index)
-			if strip_on:
-				self.highlighted_chain_index = self.selected_chain_index
+			if strip_on and strip_on!=self.highlighted_strip:
+				if self.highlighted_strip is not None:
+					self.highlighted_strip.set_highlight(False)
 				strip_on.set_highlight(True)
+				self.highlighted_strip = strip_on
 
 
 	# Function to select chain by index
