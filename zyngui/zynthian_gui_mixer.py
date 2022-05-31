@@ -123,12 +123,16 @@ class zynthian_gui_mixer_strip():
 		self.strip_drag_start = None
 
 		# Default style
-		self.fader_bg_color = zynthian_gui_config.color_bg
+		#self.fader_bg_color = zynthian_gui_config.color_bg
+		self.fader_bg_color = zynthian_gui_config.color_panel_bg
+		self.fader_bg_color_hl = "#109010"
 		#self.fader_color = zynthian_gui_config.color_panel_hl
 		#self.fader_color_hl = zynthian_gui_config.color_low_on
 		self.fader_color = zynthian_gui_config.color_off
 		self.fader_color_hl = zynthian_gui_config.color_on
 		self.legend_txt_color = zynthian_gui_config.color_tx
+		self.legend_bg_color = zynthian_gui_config.color_panel_bg
+		self.legend_bg_color_hl = self.fader_bg_color_hl
 		self.button_bgcol = zynthian_gui_config.color_panel_bg
 		self.button_txcol = zynthian_gui_config.color_tx
 		self.left_color = "#00AA00"
@@ -138,7 +142,7 @@ class zynthian_gui_mixer_strip():
 		self.high_color = "#CC0000"
 		self.dpm_hold_color = self.low_color
 
-		self.mute_color = "#3090F0"
+		self.mute_color = zynthian_gui_config.color_on #"#3090F0"
 		self.solo_color = "#D0D000"
 		self.mono_color = "#B0B0B0"
 
@@ -186,7 +190,7 @@ class zynthian_gui_mixer_strip():
 		self.mute_text = self.parent.main_canvas.create_text(x + self.width / 2, self.button_height * 1.5, text="M", fill=self.button_txcol, tags=("mute_button:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), font=font_icons)
 
 		# Legend strip at bottom of screen
-		self.legend_strip_bg = self.parent.main_canvas.create_rectangle(x, self.height - self.legend_height, x + self.width, self.height, width=0, tags=("strip:%s"%(self.fader_bg),"legend_strip:%s"%(self.fader_bg)))
+		self.legend_strip_bg = self.parent.main_canvas.create_rectangle(x, self.height - self.legend_height, x + self.width, self.height, width=0, tags=("strip:%s"%(self.fader_bg),"legend_strip:%s"%(self.fader_bg)), fill=self.legend_bg_color)
 		self.legend_strip_txt = self.parent.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-", tags=("strip:%s"%(self.fader_bg),"legend_strip:%s"%(self.fader_bg)), font=font)
 
 		# Balance indicator
@@ -382,6 +386,17 @@ class zynthian_gui_mixer_strip():
 	#--------------------------------------------------------------------------
 	# Mixer Strip functionality
 	#--------------------------------------------------------------------------
+
+	# Function to highlight/downlight the strip
+	# hl: Boolean => True=highlight, False=downlight
+	def set_highlight(self, hl=True):
+		if hl:
+			self.set_fader_color(self.fader_bg_color_hl)
+			self.parent.main_canvas.itemconfig(self.legend_strip_bg, fill=self.legend_bg_color_hl)
+		else:
+			self.set_fader_color(self.fader_color)
+			self.parent.main_canvas.itemconfig(self.legend_strip_bg, fill=self.fader_bg_color)
+
 
 	# Function to set fader colors
 	# fg: Fader foreground color
@@ -674,6 +689,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Arrays of GUI elements for mixer strips - Chains + Main
 		self.visible_mixer_strips = [None] * visible_chains
 		self.selected_chain_index = None
+		self.highlighted_chain_index = None
 		self.mixer_strip_offset = 0 # Index of first mixer strip displayed on far left
 		self.selected_layer = None
 
@@ -686,10 +702,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			bd=0, highlightthickness=0,
 			bg = zynthian_gui_config.color_panel_bg)
 		self.main_canvas.grid()
-
-		# Mixer strip selection highlight
-		color_selhl = zynthian_gui_config.color_on
-		self.selection_highlight = self.main_canvas.create_rectangle(0,0,0,0, outline=color_selhl, fill=color_selhl, width=1)
 
 		# Create mixer strip UI objects
 		for chain in range(len(self.visible_mixer_strips)):
@@ -798,6 +810,23 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			i += 1
 
 
+	# Function to highlight the selected chain's strip
+	def highlight_selected_chain(self):
+		if self.selected_chain_index == self.highlighted_chain_index:
+			return
+		
+		if self.highlighted_chain_index is not None:
+			strip_off = self.get_mixer_strip_from_layer_index(self.highlighted_chain_index)
+			if strip_off:
+				strip_off.set_highlight(False)
+
+		if self.selected_chain_index is not None:
+			strip_on = self.get_mixer_strip_from_layer_index(self.selected_chain_index)
+			if strip_on:
+				self.highlighted_chain_index = self.selected_chain_index
+				strip_on.set_highlight(True)
+
+
 	# Function to select chain by index
 	#	chain_index: Index of chain to select
 	def select_chain_by_index(self, chain_index, set_curlayer=True):
@@ -820,7 +849,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.selected_layer = self.main_mixbus_strip.layer
 
-		self.highlight_selected_strip()
+		self.highlight_selected_chain()
 
 		if set_curlayer and self.selected_layer.engine:
 			self.zyngui.set_curlayer(self.selected_layer) #TODO: Lose this re-entrant loop
@@ -828,10 +857,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function refresh and populate visible mixer strips
 	def refresh_visible_strips(self):
+
 		layers = copy.copy(self.zyngui.screens['layer'].get_root_layers())
+		main_fx_layer = self.zyngui.screens['layer'].get_main_fxchain_root_layer()
 
 		# Get Global-FX layer if it exists...
-		main_fx_layer = self.zyngui.screens['layer'].get_main_fxchain_root_layer()
 		if main_fx_layer:
 			self.main_mixbus_strip.set_layer(main_fx_layer)
 			layers.remove(main_fx_layer)
@@ -847,17 +877,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.visible_mixer_strips[offset].set_layer(layers[index])
 
 		self.main_mixbus_strip.redraw_controls(True)
-		self.highlight_selected_strip()
-
-
-	# Function to highlight the selected strip
-	def highlight_selected_strip(self):
-		chan_strip = self.get_mixer_strip_from_layer_index()
-		if chan_strip:
-			self.main_canvas.coords(self.selection_highlight, chan_strip.x, chan_strip.height - chan_strip.legend_height, chan_strip.x + chan_strip.width + 1, chan_strip.height)
-			self.main_canvas.itemconfig(self.selection_highlight, state="normal")
-		else:
-			self.main_canvas.itemconfig(self.selection_highlight, state="hidden")
+		self.highlight_selected_chain()
 
 
 	# Function to detect if a layer is audio
