@@ -310,14 +310,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 		return False
 
 
-	def select_up(self):
-		self.select(self.index - 1)
-
-
-	def select_down(self):
-		self.select(self.index + 1)
-
-
 	def arrow_up(self):
 		self.select(self.index - 1)
 
