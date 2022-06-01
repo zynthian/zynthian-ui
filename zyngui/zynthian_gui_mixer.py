@@ -241,6 +241,7 @@ class zynthian_gui_mixer_strip():
 	def get_legend_text(self, default_text=None):
 		if self.layer.engine is not None:
 			res1 = self.layer.engine.get_name(self.layer) + "\n"
+			res2 = ""
 			# MOD-UI
 			if self.layer.midi_chan is None:
 				if self.layer.bank_name:

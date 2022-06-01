@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Selector Base Class
 # 
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -146,6 +146,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.fill_list()
 		self.set_selector()
 		self.set_select_path()
+		self.select()
 
 
 	def refresh_loading(self):
@@ -194,8 +195,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def fill_list(self):
 		self.fill_listbox()
-		self.select()
-		#self.set_selector()
 		self.last_index_change_ts = datetime.min
 
 
@@ -338,16 +337,14 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def cb_listbox_select(self, event):
-		if self.zselector:
-			self.zselector.zctrl.set_value(self.get_cursel(), True)
-			self.select_listbox(self.zselector.zctrl.value)
+		if self.shown and self.index != self.get_cursel():
+			self.select(self.get_cursel())
 		
 
 	def cb_listbox_release(self,event):
 		if self.listbox_push_ts:
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
-			self.select(self.zselector.zctrl.value)
 			if dts < 0.3:
 				self.zyngui.zynswitch_defered('S',3)
 			elif dts>=0.3 and dts<2:
@@ -359,14 +356,15 @@ class zynthian_gui_selector(zynthian_gui_base):
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			if dts > 0.1:
 				#logging.debug("LISTBOX MOTION => %d" % self.index)
-				self.zselector.zctrl.set_value(self.get_cursel(), True)
+				if self.index != self.get_cursel():
+					self.select(self.get_cursel())
 
 
 	def cb_listbox_wheel(self, event):
 		if (event.num == 5 or event.delta == -120):
-			self.zselector.zctrl.nudge(1)
+			self.select(self.index + 1)
 		elif (event.num == 4 or event.delta == 120):
-			self.zselector.zctrl.nudge(-1)
+			self.select(self.index - 1)
 		return "break" # Consume event to stop scrolling of listbox
 
 
