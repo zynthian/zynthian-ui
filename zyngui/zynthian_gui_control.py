@@ -509,7 +509,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			if self.zgui_controllers[i].zynpot_cb(dval):
 				self.midi_learn_zctrl(i)
 				if self.xyselect_mode:
-					self.zyncoder_read_xyselect(zctrl, i)
+					self.zyncoder_read_xyselect(self.zgui_controllers[i].zctrl, i)
 
 		elif self.mode == 'select':
 			super().zynpot_cb(i, dval)
