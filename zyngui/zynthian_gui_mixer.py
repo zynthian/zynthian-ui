@@ -125,14 +125,14 @@ class zynthian_gui_mixer_strip():
 		# Default style
 		#self.fader_bg_color = zynthian_gui_config.color_bg
 		self.fader_bg_color = zynthian_gui_config.color_panel_bg
-		self.fader_bg_color_hl = "#109010"
+		self.fader_bg_color_hl = "#6a727d" #"#207024"
 		#self.fader_color = zynthian_gui_config.color_panel_hl
 		#self.fader_color_hl = zynthian_gui_config.color_low_on
 		self.fader_color = zynthian_gui_config.color_off
 		self.fader_color_hl = zynthian_gui_config.color_on
 		self.legend_txt_color = zynthian_gui_config.color_tx
 		self.legend_bg_color = zynthian_gui_config.color_panel_bg
-		self.legend_bg_color_hl = self.fader_bg_color_hl
+		self.legend_bg_color_hl = zynthian_gui_config.color_on
 		self.button_bgcol = zynthian_gui_config.color_panel_bg
 		self.button_txcol = zynthian_gui_config.color_tx
 		self.left_color = "#00AA00"
@@ -152,7 +152,7 @@ class zynthian_gui_mixer_strip():
 		font_fader = (zynthian_gui_config.font_family, int(0.9 * font_size))
 		font_icons = ("forkawesome", int(0.3 * self.width))
 
-		self.fader_text_len = int(0.9 * self.fader_height / font_size)
+		self.fader_text_len = int(1.1 * self.fader_height / font_size)
 
 		'''
 		Create GUI elements
