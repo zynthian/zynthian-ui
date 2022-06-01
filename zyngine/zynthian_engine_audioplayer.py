@@ -247,11 +247,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Controllers Management
 	#----------------------------------------------------------------------------
 
-	def get_controllers_dict(self, layer):
-		dict = super().get_controllers_dict(layer)
-		return dict
-
-
 	def control_cb(self, id, value):
 		try:
 			for layer in self.layers:
