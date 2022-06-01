@@ -424,11 +424,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def select_down(self):
-		i = self.index + 1
-		if i >= len(self.list_data):
-			i = 0
-		self.select(i)
-		self.click_listbox()
 		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
 			try:
 				self.zcontrollers[3].nudge(-1)
@@ -440,11 +435,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def select_up(self):
-		i = self.index - 1
-		if i < 0:
-			i = 0
-		self.select(i)
-		self.click_listbox()
 		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
 			try:
 				self.zcontrollers[3].nudge(1)
