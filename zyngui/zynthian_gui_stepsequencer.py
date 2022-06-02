@@ -5,8 +5,8 @@
 #
 # Zynthian GUI Step-Sequencer Class
 #
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2020 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 #
@@ -61,10 +61,7 @@ libseq.init(bytes("zynthstep", "utf-8"))
 CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bg
 HEADER_BACKGROUND	= zynthian_gui_config.color_header_bg
 # Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
-ENC_LAYER			= 0
-ENC_BACK			= 1
-ENC_SNAPSHOT		= 2
-ENC_SELECT			= 3
+
 
 #------------------------------------------------------------------------------
 # Sequence states
@@ -300,15 +297,15 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.menu_button_canvas.grid(column=0, row=0, sticky='nsew')
 		for encoder in range(4):
 			self.unregister_zyncoder(encoder)
-		self.register_switch(ENC_SELECT, self)
-		self.register_switch(ENC_BACK, self)
+		self.register_switch(zynthian_gui_config.ENC_SELECT, self)
+		self.register_switch(zynthian_gui_config.ENC_BACK, self)
 
 
 	# Function to close menu
 	#	event: Mouse event (not used)
 	def hide_menu(self, event=None):
 		self.hide_param_editor()
-		self.unregister_zyncoder(ENC_SELECT)
+		self.unregister_zyncoder(zynthian_gui_config.ENC_SELECT)
 		self.lst_menu.grid_forget()
 		if zynthian_gui_config.enable_touch_widgets:
 			self.menu_button_canvas.grid_forget()
@@ -428,8 +425,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='hidden')
 		for encoder in range(4):
 			self.unregister_zyncoder(encoder)
-		self.register_switch(ENC_SELECT, self, "SB")
-		self.register_switch(ENC_BACK, self)
+		self.register_switch(zynthian_gui_config.ENC_SELECT, self, "SB")
+		self.register_switch(zynthian_gui_config.ENC_BACK, self)
 
 
 	# Function to hide menu editor
@@ -650,8 +647,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			self.param_editor_canvas.itemconfig("btnparamEditorAssert", state='hidden')
 		for encoder in range(4):
 			self.unregister_zyncoder(encoder)
-		self.register_switch(ENC_SELECT, self, "SB")
-		self.register_switch(ENC_BACK, self)
+		self.register_switch(zynthian_gui_config.ENC_SELECT, self, "SB")
+		self.register_switch(zynthian_gui_config.ENC_BACK, self)
 
 
 	# Function to hide menu editor
@@ -870,7 +867,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 
 		if self.lst_menu.winfo_viewable():
 			# Menu browsing
-			if i == ENC_SELECT or i == ENC_LAYER:
+			if i == zynthian_gui_config.ENC_SELECT or i == zynthian_gui_config.ENC_LAYER:
 				if self.lst_menu.size() < 1:
 					return
 				index = 0
@@ -882,15 +879,15 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 				return
 		elif self.param_editor_item:
 			# Parameter change
-			if i == ENC_SELECT or i == ENC_LAYER:
+			if i == zynthian_gui_config.ENC_SELECT or i == zynthian_gui_config.ENC_LAYER:
 				self.change_param(dval)
-			elif i == ENC_SNAPSHOT:
+			elif i == zynthian_gui_config.ENC_SNAPSHOT:
 				self.change_param(dval / 10)
-		elif i == ENC_SNAPSHOT:
+		elif i == zynthian_gui_config.ENC_SNAPSHOT:
 			libseq.setTempo(ctypes.c_double(libseq.getTempo() + 0.1*dval))
 			self.set_title("Tempo: %0.1f BPM" % (libseq.getTempo()), None, None, 2)
-		elif i == ENC_LAYER:
-			self.select_bank(self.bank + value)
+		elif i == zynthian_gui_config.ENC_LAYER:
+			self.select_bank(self.bank + dval)
 
 
 	# Function to dispatch zynpots events to children (owners) or handle by default
@@ -904,39 +901,55 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			return True
 
 
+	# Function to handle CUIA SELECT_UP command (reversed to drive down screen with DOWN action)
+	def select_up(self):
+		if self.lst_menu.winfo_viewable():
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+		else:
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+
+
+	# Function to handle CUIA SELECT_DOWN command
+	def select_down(self):
+		if self.lst_menu.winfo_viewable():
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+		else:
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+
+
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
 		if self.lst_menu.winfo_viewable():
-			self.zynpot_cb(ENC_SELECT, -1)
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 		elif self.child in (self.zynpad, self.pattern_editor):
-			self.zynpot_cb(ENC_BACK, -1)
+			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 		else:
-			self.zynpot_cb(ENC_SELECT, -1)
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 
 
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
 		if self.lst_menu.winfo_viewable():
-			self.zynpot_cb(ENC_SELECT, 1)
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 		elif self.child in (self.zynpad, self.pattern_editor):
-			self.zynpot_cb(ENC_BACK, 1)
+			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 		else:
-			self.zynpot_cb(ENC_SELECT, 1)
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 
 
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		self.zynpot_cb(ENC_SELECT, 1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		self.zynpot_cb(ENC_SELECT, -1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 
 
 	# Function to handle CUIA SELECT command
 	def switch_select(self, t):
-		self.switch(ENC_SELECT, t)
+		self.switch(zynthian_gui_config.ENC_SELECT, t)
 
 
 	def back_action(self):
@@ -963,23 +976,23 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	#	returns True if action fully handled or False if parent action should be triggered
 	def on_switch(self, switch, type):
 		if type == 'S':
-			if switch == ENC_BACK:
+			if switch == zynthian_gui_config.ENC_BACK:
 				return self.back_action()
-			elif switch == ENC_SELECT:
+			elif switch == zynthian_gui_config.ENC_SELECT:
 				if self.is_shown_menu():
 					self.on_menu_select()
 					return True
 				elif self.param_editor_item:
 					self.param_editor_assert()
 					return True
-			elif switch == ENC_LAYER:
+			elif switch == zynthian_gui_config.ENC_LAYER:
 				if self.is_shown_menu():
 					self.on_menu_select()
 				else:
 					self.show_menu()
 				return True
 		if type == 'B':
-			if switch == ENC_SELECT:
+			if switch == zynthian_gui_config.ENC_SELECT:
 				if self.param_editor_item:
 					# Close parameter editor
 					self.param_editor_reset()
@@ -1067,7 +1080,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	def unregister_zyncoder(self, encoder):
 		if encoder >= len(self.zynpot_owner):
 			return
-		if encoder==ENC_SNAPSHOT:
+		if encoder==zynthian_gui_config.ENC_SNAPSHOT:
 			step = 0
 		else:
 			step = 1

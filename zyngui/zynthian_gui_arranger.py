@@ -5,8 +5,8 @@
 #
 # Zynthian GUI Step-Sequencer Class
 #
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2020-2021 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2020-2022 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 #
@@ -160,20 +160,20 @@ class zynthian_gui_arranger():
 
 	# Function to register encoders
 	def setup_encoders(self):
-		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_BACK, self)
-		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_SELECT, self)
-		self.parent.register_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER, self)
-		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SELECT, self, 'SB')
-		self.parent.register_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT, self, 'SB')
+		self.parent.register_zyncoder(zynthian_gui_config.ENC_BACK, self)
+		self.parent.register_zyncoder(zynthian_gui_config.ENC_SELECT, self)
+		self.parent.register_zyncoder(zynthian_gui_config.ENC_LAYER, self)
+		self.parent.register_switch(zynthian_gui_config.ENC_SELECT, self, 'SB')
+		self.parent.register_switch(zynthian_gui_config.ENC_SNAPSHOT, self, 'SB')
 
 
 	# Function to register encoders
 	def unregister_encoders(self):
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_BACK)
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_SELECT)
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER)
-		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SELECT)
-		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT)
+		self.parent.unregister_zyncoder(zynthian_gui_config.ENC_BACK)
+		self.parent.unregister_zyncoder(zynthian_gui_config.ENC_SELECT)
+		self.parent.unregister_zyncoder(zynthian_gui_config.ENC_LAYER)
+		self.parent.unregister_switch(zynthian_gui_config.ENC_SELECT)
+		self.parent.unregister_switch(zynthian_gui_config.ENC_SNAPSHOT)
 
 
 	# Function to populate menu
@@ -1061,14 +1061,14 @@ class zynthian_gui_arranger():
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
 	#	value: Current value of zyncoder
-	def on_zyncoder(self, encoder, value):
-		if encoder == zynthian_gui_stepsequencer.ENC_BACK:
+	def zynpot_cb(self, encoder, value):
+		if encoder == zynthian_gui_config.ENC_BACK:
 			# BACK encoder adjusts track selection
 			self.select_cell(self.selected_cell[0], self.selected_cell[1] + value)
-		elif encoder == zynthian_gui_stepsequencer.ENC_SELECT:
+		elif encoder == zynthian_gui_config.ENC_SELECT:
 			# SELECT encoder adjusts time selection
 			self.select_cell(self.selected_cell[0] + value, self.selected_cell[1])
-		elif encoder == zynthian_gui_stepsequencer.ENC_LAYER:
+		elif encoder == zynthian_gui_config.ENC_LAYER:
 			self.set_pattern(self.pattern + value)
 
 
@@ -1081,11 +1081,11 @@ class zynthian_gui_arranger():
 			return False
 		if self.parent.param_editor_item:
 			return False
-		if switch == zynthian_gui_stepsequencer.ENC_SELECT and type == 'B':
+		if switch == zynthian_gui_config.ENC_SELECT and type == 'B':
 			self.show_pattern_editor()
-		elif switch == zynthian_gui_stepsequencer.ENC_SELECT:
+		elif switch == zynthian_gui_config.ENC_SELECT:
 			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
-		elif switch == zynthian_gui_stepsequencer.ENC_SNAPSHOT:
+		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
 			if type == 'B':
 				self.toggle_mute()
 			else:
