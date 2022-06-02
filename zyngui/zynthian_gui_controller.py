@@ -163,23 +163,17 @@ class zynthian_gui_controller:
 		if self.hidden or self.zctrl is None:
 			return
 
-		if self.zctrl.labels:
+		if self.zctrl.ticks:
 			valplot=None
 			val=self.zctrl.value
-			n = len(self.zctrl.labels)
+			n = len(self.zctrl.ticks)
 			try:
-				if self.zctrl.ticks:
-					i = self.zctrl.get_value2index()
-					if n > 2:
-						valplot = (i + 1) / n
-					else:
-						valplot = i
-					val = self.zctrl.ticks[i]
-				else:
-					valplot = int((val - self.zctrl.min_value) / self.zctrl.value_range)
-
-				self.value_plot = valplot
+				i = self.zctrl.get_value2index()
 				self.value_print = self.zctrl.labels[i]
+				if n > 2:
+					self.value_plot = (i + 1) / n
+				else:
+					self.value_plot = i
 
 			except Exception as err:
 				logging.error("Calc Error => %s" % (err))
@@ -508,7 +502,6 @@ class zynthian_gui_controller:
 		#logging.debug("CONFIG CONTROLLER %s => %s" % (self.index,zctrl.name))
 		
 		self.step = 0				#By default, use adaptative step size based on rotary speed
-		self.inverted = False
 		self.format_print = None
 
 		self.zctrl = zctrl
@@ -523,11 +516,9 @@ class zynthian_gui_controller:
 		logging.debug("ZCTRL '%s': %s (%s -> %s), %s, %s" % (zctrl.short_name,zctrl.value,zctrl.value_min,zctrl.value_max,zctrl.labels,zctrl.ticks))
 
 		#List of values => Selector
-		if isinstance(zctrl.labels, list):
-			n = len(zctrl.labels)
-			if isinstance(zctrl.ticks, list) and n>=1:
-				if zctrl.ticks[0] > zctrl.ticks[-1]:
-					self.inverted=True
+		if isinstance(zctrl.ticks, list):
+			n = len(zctrl.ticks)
+			if n>0:
 				self.pixels_per_div = self.height // n
 			# If few values => use fixed step=1 (no adaptative step size!)
 			if n <= 32:
@@ -565,7 +556,7 @@ class zynthian_gui_controller:
 
 	def setup_zynpot(self):
 		try:
-			lib_zyncore.setup_behaviour_zynpot(self.index, self.step, self.inverted)
+			lib_zyncore.setup_behaviour_zynpot(self.index, self.step, self.zctrl.range_reversed)
 		except Exception as err:
 			logging.error("%s" % err)
 

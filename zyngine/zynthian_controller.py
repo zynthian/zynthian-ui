@@ -53,6 +53,7 @@ class zynthian_controller:
 		self.nudge_factor = None # Factor to scale each up/down nudge #TODO: This is not set if configure is not called or options not passed
 		self.labels=None # List of discrete value labels
 		self.ticks=None # List of discrete value labels
+		self.range_reversed = False # Flag if ticks order is reversed
 		self.is_toggle=False # True if control is Boolean toggle
 		self.is_integer=True # True if control is Integer
 		self.is_logarithmic=False # True if control uses logarithmic scale
@@ -122,8 +123,8 @@ class zynthian_controller:
 	def _configure(self):
 		#Configure Selector Controller
 		if self.labels:
+			#Generate ticks if needed ...
 			if not self.ticks:
-				#Generate ticks ...
 				n = len(self.labels)
 				self.ticks = []
 				if self.is_integer:
@@ -137,9 +138,11 @@ class zynthian_controller:
 			if self.ticks[0] <= self.ticks[-1]:
 				self.value_min = self.ticks[0]
 				self.value_max = self.ticks[-1]
+				self.range_reversed = False
 			else:
 				self.value_min = self.ticks[-1]
 				self.value_max = self.ticks[0]
+				self.range_reversed = True
 
 			#Generate dictionary for fast conversion labels=>values
 			self.label2value = {}
@@ -167,7 +170,7 @@ class zynthian_controller:
 			if self.is_logarithmic:
 				self.nudge_factor = 1 / 200 #TODO: Use number of divisions
 			elif not self.is_integer and not self.is_toggle:
-				self.nudge_factor = self.value_range * 0.005 # This overrides specified nudge_factor but mostly okay
+				self.nudge_factor = self.value_range / 200 # This overrides specified nudge_factor but mostly okay
 			else:
 				self.nudge_factor = 1
 
@@ -357,15 +360,14 @@ class zynthian_controller:
 		try:
 			if self.ticks:
 				index = 0
-				d_val = abs(self.ticks[0] - val)
-				for i, value in enumerate(self.ticks):
-					if abs(value - val) < d_val:
-						d_val = abs(value - val)
+				dval = abs(self.ticks[0] - val)
+				for i in range(1, len(self.ticks)):
+					ndval = abs(self.ticks[i] - val)
+					if  ndval < dval:
+						dval = ndval
 						index = i
-				return index
-			elif self.labels:
-				index = min(int((val - self.value_min) * len(self.labels) / self.value_range), len(self.labels) - 1)
-				#logging.debug("V2L => {} has index {}".format(val,i))
+					else:
+						break
 				return index
 			else:
 				return None
@@ -385,17 +387,8 @@ class zynthian_controller:
 		try:
 			if self.ticks:
 				return self.label2value[str(label)]
-			elif self.labels:
-				i = self.labels.index(label)
-				if i >= 0:
-					#logging.debug("L2V => {} has index {}".format(label,i))
-					if self.is_integer and self.value_range == 127:
-						#TODO: This looks wrong! Why have different function for one specific value?
-						return self.value_min + i * 128 / len(self.labels)
-					else:
-						return self.value_min + i * self.value_range / len(self.labels)
 			else:
-				logging.error("No labels defined")
+				logging.error("No labels/ticks defined")
 
 		except Exception as e:
 			logging.error(e)
@@ -452,14 +445,11 @@ class zynthian_controller:
 	def restore_snapshot(self, snapshot):
 		if isinstance(snapshot, dict):
 			self.set_value(snapshot['value'], True)
+			# Restore MIDI-learn
 			if 'midi_learn_chan' in snapshot and 'midi_learn_cc' in snapshot:
-				# Specific ZynAddSubFX slot info
-				if 'slot_i' in snapshot:
-					self.slot_i = snapshot['slot_i']
-				# Restore MIDI-learn
 				self.set_midi_learn(int(snapshot['midi_learn_chan']), int(snapshot['midi_learn_cc']))
 		else:
-			self.set_value(snapshot,True)
+			self.set_value(snapshot, True)
 
 
 	#--------------------------------------------------------------------------
