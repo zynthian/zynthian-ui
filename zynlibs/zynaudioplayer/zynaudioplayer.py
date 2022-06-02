@@ -41,7 +41,6 @@ from os.path import dirname, realpath
 #-------------------------------------------------------------------------------
 
 
-
 class zynaudioplayer():
 
 	#	Initiate library

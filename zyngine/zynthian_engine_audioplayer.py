@@ -27,7 +27,6 @@ from collections import OrderedDict
 import logging
 from glob import glob
 from . import zynthian_engine
-from . import zynthian_controller
 from zynlibs.zynaudioplayer import zynaudioplayer
 
 #------------------------------------------------------------------------------

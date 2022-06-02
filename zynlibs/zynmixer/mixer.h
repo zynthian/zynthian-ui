@@ -161,3 +161,9 @@ int addOscClient(const char* client);
 *   @param  client IP address of client
 */
 void removeOscClient(const char* client);
+
+
+/** @brief Get maximum quantity of channels
+*   @retval size_t Maximum quantity of channels
+*/
+size_t getMaxChannels();

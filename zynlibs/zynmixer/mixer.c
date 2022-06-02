@@ -790,3 +790,7 @@ void removeOscClient(const char* client)
     }
 }
 
+size_t getMaxChannels()
+{
+    return MAX_CHANNELS;
+}

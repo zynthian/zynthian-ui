@@ -29,7 +29,6 @@ import logging
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from zynlibs.zynmixer import *
 
 #------------------------------------------------------------------------------
 # Zynthian Layer Options GUI Class
@@ -103,12 +102,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if 'clone' in eng_options and eng_options['clone'] and self.layer.midi_chan is not None:
 				self.list_data.append((self.layer_clone, None, "Clone MIDI to ..."))
 
-			if zynmixer.get_mono(self.layer.midi_chan):
+			if self.zyngui.zynmixer.get_mono(self.layer.midi_chan):
 				self.list_data.append((self.layer_toggle_mono, None, "[x] Audio Mono"))
 			else:
 				self.list_data.append((self.layer_toggle_mono, None, "[  ] Audio Mono"))
 
-			if zynmixer.get_phase(self.layer.midi_chan):
+			if self.zyngui.zynmixer.get_phase(self.layer.midi_chan):
 				self.list_data.append((self.layer_toggle_phase, None, "[x] Phase reverse B"))
 			else:
 				self.list_data.append((self.layer_toggle_phase, None, "[  ] Phase reverse B"))
@@ -347,12 +346,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 
 	def layer_toggle_mono(self):
-		zynmixer.toggle_mono(self.layer.midi_chan)
+		self.zyngui.zynmixer.toggle_mono(self.layer.midi_chan)
 		self.show()
 
 
 	def layer_toggle_phase(self):
-		zynmixer.toggle_phase(self.layer.midi_chan)
+		self.zyngui.zynmixer.toggle_phase(self.layer.midi_chan)
 		self.show()
 
 

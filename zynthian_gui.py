@@ -48,7 +48,6 @@ import zynconf
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynmixer import zynmixer
-from zynlibs.zynmixer.zynmixer import lib_zynmixer
 from zynlibs.zynaudioplayer import zynaudioplayer
 
 from zyngine import zynthian_zcmidi
@@ -528,7 +527,7 @@ class zynthian_gui:
 			if part2 in ("HEARTBEAT", "SETUP"):
 				if src.hostname not in self.osc_clients:
 					try:
-						lib_zynmixer.addOscClient(ctypes.c_char_p(src.hostname.encode('utf-8')))
+						self.zynmixer.addOscClient(ctypes.c_char_p(src.hostname.encode('utf-8')))
 					except:
 						logging.warning("Failed to add OSC client registration %s", src.hostname)
 				self.osc_clients[src.hostname] = monotonic()
@@ -549,6 +548,7 @@ class zynthian_gui:
 
 		# Create global objects first
 		self.audio_recorder = zynthian_audio_recorder()
+		self.zynmixer = zynmixer.zynmixer()
 
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
@@ -583,7 +583,7 @@ class zynthian_gui:
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['stepseq'] = zynthian_gui_stepsequencer()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
-
+		
 		# Init Auto-connector
 		zynautoconnect.start()
 
@@ -1897,10 +1897,10 @@ class zynthian_gui:
 				self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
 			else:
 				# Get audio peak level
-				self.status_info['peakA'] = lib_zynmixer.getDpm(MIXER_MAIN_CHANNEL, 0)
-				self.status_info['peakB'] = lib_zynmixer.getDpm(MIXER_MAIN_CHANNEL, 1)
-				self.status_info['holdA'] = lib_zynmixer.getDpmHold(MIXER_MAIN_CHANNEL, 0)
-				self.status_info['holdB'] = lib_zynmixer.getDpmHold(MIXER_MAIN_CHANNEL, 1)
+				self.status_info['peakA'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 0)
+				self.status_info['peakB'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 1)
+				self.status_info['holdA'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 0)
+				self.status_info['holdB'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 1)
 
 			# Get Status Flags (once each 5 refreshes)
 			if self.status_counter>5:
@@ -2017,7 +2017,7 @@ class zynthian_gui:
 			if self.osc_clients[client] < self.watchdog_last_check - self.osc_heartbeat_timeout:
 				self.osc_clients.pop(client)
 				try:
-					lib_zynmixer.removeOscClient(ctypes.c_char_p(client.encode('utf-8')))
+					self.zynmixer.removeOscClient(ctypes.c_char_p(client.encode('utf-8')))
 				except:
 					pass
 		# Poll
