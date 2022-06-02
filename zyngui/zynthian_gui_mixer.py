@@ -1267,3 +1267,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.mixer_strip_offset += 1
 		self.refresh_visible_strips()
 
+
+	# Function to handle CUIA SELECT_UP command (reversed to drive down screen with DOWN action)
+	def select_up(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+
+
+	# Function to handle CUIA SELECT_DOWN command
+	def select_down(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)

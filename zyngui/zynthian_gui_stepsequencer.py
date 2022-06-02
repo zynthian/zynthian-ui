@@ -887,7 +887,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			libseq.setTempo(ctypes.c_double(libseq.getTempo() + 0.1*dval))
 			self.set_title("Tempo: %0.1f BPM" % (libseq.getTempo()), None, None, 2)
 		elif i == zynthian_gui_config.ENC_LAYER:
-			self.select_bank(self.bank + value)
+			self.select_bank(self.bank + dval)
 
 
 	# Function to dispatch zynpots events to children (owners) or handle by default
@@ -899,6 +899,22 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			#logging.debug("STEPSEQ ZYNCODER {} VALUE => {}".format(encoder,step))
 			self.zynpot_owner[i].zynpot_cb(i, dval)
 			return True
+
+
+	# Function to handle CUIA SELECT_UP command (reversed to drive down screen with DOWN action)
+	def select_up(self):
+		if self.lst_menu.winfo_viewable():
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+		else:
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+
+
+	# Function to handle CUIA SELECT_DOWN command
+	def select_down(self):
+		if self.lst_menu.winfo_viewable():
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+		else:
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 
 
 	# Function to handle CUIA ARROW_UP

@@ -550,14 +550,14 @@ class zynthian_gui_base:
 		pass
 
 
-	# Function to handle CUIA SELECT_UP command
+	# Function to handle CUIA SELECT_UP command (reversed to drive down screen with DOWN action)
 	def select_up(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 
 
 	# Function to handle CUIA BACK_UP command
