@@ -395,9 +395,7 @@ class zynthian_controller:
 
 
 	def get_ctrl_midi_val(self):
-		try: #TODOD: Handle scaled ticks
-			if self.ticks:
-				return self.value
+		try:
 			if self.is_logarithmic:
 				val = int(127 * math.log10((9 * self.value - (10 * self.value_min - self.value_max)) / self.value_range))
 			else:
