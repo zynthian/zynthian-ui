@@ -5,8 +5,8 @@
 #
 # Zynthian GUI Step-Sequencer Class
 #
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2020 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 #
@@ -23,12 +23,6 @@
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
 #******************************************************************************
-
-# Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
-ENC_LAYER           = 0
-ENC_BACK            = 1
-ENC_SNAPSHOT        = 2
-ENC_SELECT          = 3
 
 import inspect
 import tkinter
@@ -105,9 +99,9 @@ class zynthian_gui_zynpad():
 	#Function to set values of encoders
 	#	note: Call after other routine uses one or more encoders
 	def setup_encoders(self):
-		self.parent.register_zyncoder(ENC_BACK, self)
-		self.parent.register_zyncoder(ENC_SELECT, self)
-		self.parent.register_switch(ENC_SELECT, self, 'SB')
+		self.parent.register_zyncoder(zynthian_gui_config.ENC_BACK, self)
+		self.parent.register_zyncoder(zynthian_gui_config.ENC_SELECT, self)
+		self.parent.register_switch(zynthian_gui_config.ENC_SELECT, self, 'SB')
 
 
 	# Function to show GUI
@@ -137,9 +131,9 @@ class zynthian_gui_zynpad():
 
 	# Function to hide GUI
 	def hide(self):
-		self.parent.unregister_zyncoder(ENC_BACK)
-		self.parent.unregister_zyncoder(ENC_SELECT)
-		self.parent.unregister_switch(ENC_SELECT)
+		self.parent.unregister_zyncoder(zynthian_gui_config.ENC_BACK)
+		self.parent.unregister_zyncoder(zynthian_gui_config.ENC_SELECT)
+		self.parent.unregister_switch(zynthian_gui_config.ENC_SELECT)
 
 
 	# Function to set quantity of pads
@@ -469,7 +463,7 @@ class zynthian_gui_zynpad():
 	#   i: Zynpot index [0..n]
 	#   dval: Zynpot value change
 	def zynpot_cb(self, i, dval):
-		if i == ENC_SELECT:
+		if i == zynthian_gui_config.ENC_SELECT:
 			# SELECT encoder adjusts horizontal pad selection
 			pad = self.selected_pad + self.columns * dval
 			col = int(pad / self.columns)
@@ -486,7 +480,7 @@ class zynthian_gui_zynpad():
 				return
 			self.selected_pad = pad
 			self.update_selection_cursor()
-		elif i == ENC_BACK:
+		elif i == zynthian_gui_config.ENC_BACK:
 			# BACK encoder adjusts vertical pad selection
 			pad = self.selected_pad + dval
 			if pad < 0 or pad >= libseq.getSequencesInBank(self.parent.bank):
@@ -504,7 +498,7 @@ class zynthian_gui_zynpad():
 			return False
 		if self.parent.param_editor_item:
 			return False
-		if switch == ENC_SELECT:
+		if switch == zynthian_gui_config.ENC_SELECT:
 			if type == 'S':
 				self.toggle_pad()
 			elif type == "B":

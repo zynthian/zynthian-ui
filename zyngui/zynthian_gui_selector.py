@@ -102,7 +102,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 		# Bind listbox events
 		self.listbox_push_ts = None
 		self.listbox.bind("<Button-1>",self.cb_listbox_push)
-		self.listbox.bind("<<ListboxSelect>>",self.cb_listbox_select)
 		self.listbox.bind("<ButtonRelease-1>",self.cb_listbox_release)
 		self.listbox.bind("<B1-Motion>",self.cb_listbox_motion)
 		self.listbox.bind("<Button-4>",self.cb_listbox_wheel)
@@ -311,14 +310,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 		return False
 
 
-	def select_up(self):
-		self.select(self.index - 1)
-
-
-	def select_down(self):
-		self.select(self.index + 1)
-
-
 	def arrow_up(self):
 		self.select(self.index - 1)
 
@@ -336,15 +327,13 @@ class zynthian_gui_selector(zynthian_gui_base):
 		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
 
 
-	def cb_listbox_select(self, event):
-		if self.shown and self.index != self.get_cursel():
-			self.select(self.get_cursel())
-		
-
 	def cb_listbox_release(self,event):
 		if self.listbox_push_ts:
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
+			cursel = self.get_cursel()
+			if self.index != cursel:
+				self.select(cursel)
 			if dts < 0.3:
 				self.zyngui.zynswitch_defered('S',3)
 			elif dts>=0.3 and dts<2:
@@ -356,8 +345,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			if dts > 0.1:
 				#logging.debug("LISTBOX MOTION => %d" % self.index)
-				if self.index != self.get_cursel():
-					self.select(self.get_cursel())
+				cursel = self.get_cursel()
+				if self.index != cursel:
+					self.select(cursel)
 
 
 	def cb_listbox_wheel(self, event):

@@ -369,81 +369,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zyngui.screens['layer'].prev(True)
 
 
-	def layer_down(self):
-		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
-			try:
-				self.zcontrollers[0].nudge(-1)
-			except:
-				pass
-		return True
-
-
-	def layer_up(self):
-		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
-			try:
-				self.zcontrollers[0].nudge(1)
-			except:
-				pass
-		return True
-
-
-	def back_down(self):
-		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
-			try:
-				self.zcontrollers[1].nudge(-1)
-			except:
-				pass
-		return True
-
-
-	def back_up(self):
-		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
-			try:
-				self.zcontrollers[1].nudge(1)
-			except:
-				pass
-		return True
-
-
-	def snapshot_down(self):
-		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
-			try:
-				self.zcontrollers[2].nudge(-1)
-			except:
-				pass
-		return True
-
-
-	def snapshot_up(self):
-		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
-			try:
-				self.zcontrollers[2].nudge(1)
-			except:
-				pass
-		return True
-
-
-	def select_down(self):
-		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
-			try:
-				self.zcontrollers[3].nudge(-1)
-			except:
-				pass
-		else:
-			super().select_down()
-		return True
-
-
-	def select_up(self):
-		if self.controllers_lock and self.mode == 'control' and self.zcontrollers:
-			try:
-				self.zcontrollers[3].nudge(1)
-			except:
-				pass
-		else:
-			super().select_up()
-
-
 	# Function to handle *all* switch presses.
 	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
@@ -499,18 +424,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 			if self.zgui_controllers[i].zynpot_cb(dval):
 				self.midi_learn_zctrl(i)
 				if self.xyselect_mode:
-					self.zyncoder_read_xyselect(self.zgui_controllers[i].zctrl, i)
-
+					self.zynpot_read_xyselect(i)
 		elif self.mode == 'select':
 			super().zynpot_cb(i, dval)
 
 
-	def zyncoder_read_xyselect(self, zctrl, i):
+	def zynpot_read_xyselect(self, i):
 		#Detect a serie of changes in the same controller
-		if zctrl == self.xyselect_zread_last_zctrl:
+		if self.zgui_controllers[i].zctrl == self.xyselect_zread_last_zctrl:
 			self.xyselect_zread_counter += 1
 		else:
-			self.xyselect_zread_last_zctrl = zctrl
+			self.xyselect_zread_last_zctrl = self.zgui_controllers[i].zctrl
 			self.xyselect_zread_counter = 0
 
 		#If the change counter is major of ...

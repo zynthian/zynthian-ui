@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Base Class: Status Bar + Basic layout & events
 #
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -552,42 +552,42 @@ class zynthian_gui_base:
 
 	# Function to handle CUIA SELECT_UP command
 	def select_up(self):
-		self.zynpot_cb(ENC_SELECT, 1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 
 
 	# Function to handle CUIA SELECT_DOWN command
 	def select_down(self):
-		self.zynpot_cb(ENC_SELECT, -1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 
 
 	# Function to handle CUIA BACK_UP command
 	def back_up(self):
-		self.zynpot_cb(ENC_BACK, 1)
+		self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 
 
 	# Function to handle CUIA BACK_DOWN command
 	def back_down(self):
-		self.zynpot_cb(ENC_BACK, -1)
+		self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 
 
 	# Function to handle CUIA LAYER_UP command
 	def layer_up(self):
-		self.zynpot_cb(ENC_LAYER, 1)
+		self.zynpot_cb(zynthian_gui_config.ENC_LAYER, 1)
 
 
 	# Function to handle CUIA LAYER_DOWN command
 	def layer_down(self):
-		self.zynpot_cb(ENC_LAYER, -1)
+		self.zynpot_cb(zynthian_gui_config.ENC_LAYER, -1)
 
 
 	# Function to handle CUIA SNAPSHOT_UP command
 	def snapshot_up(self):
-		self.zynpot_cb(ENC_SNAPSHOT, 1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, 1)
 
 
 	# Function to handle CUIA SNAPSHOT_DOWN command
 	def snapshot_down(self):
-		self.zynpot_cb(ENC_SNAPSHOT, -1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, -1)
 
 	#--------------------------------------------------------------------------
 	# Keyboard & Mouse/Touch Callbacks
