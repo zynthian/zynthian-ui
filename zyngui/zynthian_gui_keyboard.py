@@ -278,8 +278,8 @@ class zynthian_gui_keyboard():
 	# Function to register encoders
 	def setup_zynpots(self):
 		if lib_zyncore:
-			lib_zyncore.setup_behaviour_zynpot(ZYNPOT_SELECT, 1, 0)
-			lib_zyncore.setup_behaviour_zynpot(ZYNPOT_BACK, 1, 0)
+			lib_zyncore.setup_behaviour_zynpot(ZYNPOT_SELECT, 1)
+			lib_zyncore.setup_behaviour_zynpot(ZYNPOT_BACK, 1)
 
 
 	# Function to handle zynpots events

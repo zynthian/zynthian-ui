@@ -48,7 +48,6 @@ class zynthian_gui_controller:
 	def __init__(self, indx, frm, zctrl, hidden=False, selcounter=False):
 		self.zyngui=zynthian_gui_config.zyngui
 		self.zctrl = None
-		self.inverted = False
 		self.step = 0
 
 		self.value_plot = 0 # Normalised position of plot start point
@@ -556,7 +555,7 @@ class zynthian_gui_controller:
 
 	def setup_zynpot(self):
 		try:
-			lib_zyncore.setup_behaviour_zynpot(self.index, self.step, self.zctrl.range_reversed)
+			lib_zyncore.setup_behaviour_zynpot(self.index, self.step)
 		except Exception as err:
 			logging.error("%s" % err)
 
@@ -622,7 +621,7 @@ class zynthian_gui_controller:
 				if self.active_motion_axis == 1:
 					# Y-axis drag active
 					if abs(dy) >= self.pixels_per_div:
-						if self.inverted: #TODO: Can we move inversion to controller class or do we need separate display inversion?
+						if self.zctrl.range_reversed:
 							self.zctrl.nudge(-dy // self.pixels_per_div)
 						else:
 							self.zctrl.nudge(dy // self.pixels_per_div)

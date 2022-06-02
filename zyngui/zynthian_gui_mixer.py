@@ -1080,10 +1080,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	def setup_zynpots(self):
-		lib_zyncore.setup_behaviour_zynpot(ENC_LAYER, 0, 0)
-		lib_zyncore.setup_behaviour_zynpot(ENC_BACK, 0, 0)
-		lib_zyncore.setup_behaviour_zynpot(ENC_SNAPSHOT, 0, 0)
-		lib_zyncore.setup_behaviour_zynpot(ENC_SELECT, 0, 1)
+		lib_zyncore.setup_behaviour_zynpot(ENC_LAYER, 0)
+		lib_zyncore.setup_behaviour_zynpot(ENC_BACK, 0)
+		lib_zyncore.setup_behaviour_zynpot(ENC_SNAPSHOT, 0)
+		lib_zyncore.setup_behaviour_zynpot(ENC_SELECT, 1)
 
 
 	# Function to handle zynpot CB
