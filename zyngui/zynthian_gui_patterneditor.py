@@ -5,8 +5,8 @@
 #
 # Zynthian GUI Step-Sequencer Class
 #
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2020 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 #
@@ -65,11 +65,6 @@ CELL_FOREGROUND     = zynthian_gui_config.color_panel_tx
 GRID_LINE           = zynthian_gui_config.color_tx_off
 PLAYHEAD_HEIGHT     = 5
 CONFIG_ROOT         = "/zynthian/zynthian-data/zynseq"
-# Define encoder use: 0=Layer, 1=Back, 2=Snapshot, 3=Select
-ENC_LAYER           = 0
-ENC_BACK            = 1
-ENC_SNAPSHOT        = 2
-ENC_SELECT          = 3
 
 EDIT_MODE_NONE		= 0 # Edit mode disabled
 EDIT_MODE_SINGLE	= 1 # Edit mode enabled for selected note
@@ -193,11 +188,11 @@ class zynthian_gui_patterneditor():
 	#Function to set values of encoders
 	#   note: Call after other routine uses one or more encoders
 	def setup_encoders(self):
-		self.parent.register_zyncoder(ENC_BACK, self)
-		self.parent.register_zyncoder(ENC_SELECT, self)
-		self.parent.register_zyncoder(ENC_LAYER, self)
-		self.parent.register_switch(ENC_SELECT, self, "SB")
-		self.parent.register_switch(ENC_SNAPSHOT, self, "SB")
+		self.parent.register_zyncoder(zynthian_gui_config.ENC_BACK, self)
+		self.parent.register_zyncoder(zynthian_gui_config.ENC_SELECT, self)
+		self.parent.register_zyncoder(zynthian_gui_config.ENC_LAYER, self)
+		self.parent.register_switch(zynthian_gui_config.ENC_SELECT, self, "SB")
+		self.parent.register_switch(zynthian_gui_config.ENC_SNAPSHOT, self, "SB")
 
 
 	# Function to show GUI
@@ -223,11 +218,11 @@ class zynthian_gui_patterneditor():
 	# Function to hide GUI
 	def hide(self):
 		self.shown=False
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_BACK)
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_SELECT)
-		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.ENC_LAYER)
-		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SELECT, "SB")
-		self.parent.unregister_switch(zynthian_gui_stepsequencer.ENC_SNAPSHOT, "SB")
+		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.zynthian_gui_config.ENC_BACK)
+		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.zynthian_gui_config.ENC_SELECT)
+		self.parent.unregister_zyncoder(zynthian_gui_stepsequencer.zynthian_gui_config.ENC_LAYER)
+		self.parent.unregister_switch(zynthian_gui_stepsequencer.zynthian_gui_config.ENC_SELECT, "SB")
+		self.parent.unregister_switch(zynthian_gui_stepsequencer.zynthian_gui_config.ENC_SNAPSHOT, "SB")
 		libseq.setPlayState(self.bank, self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 		libseq.enableMidiInput(False)
 		self.enable_edit(EDIT_MODE_NONE)
@@ -277,18 +272,18 @@ class zynthian_gui_patterneditor():
 		if mode <= EDIT_MODE_ALL:
 			self.edit_mode = mode
 			if mode:
-				self.parent.register_switch(ENC_BACK, self)
-				self.parent.register_zyncoder(ENC_SNAPSHOT, self)
-				self.parent.register_zyncoder(ENC_LAYER, self)
+				self.parent.register_switch(zynthian_gui_config.ENC_BACK, self)
+				self.parent.register_zyncoder(zynthian_gui_config.ENC_SNAPSHOT, self)
+				self.parent.register_zyncoder(zynthian_gui_config.ENC_LAYER, self)
 				if mode == EDIT_MODE_SINGLE:
 					self.parent.set_title("Note Parameters", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 				else:
 					self.parent.set_title("Note Parameters ALL", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 
 			else:
-				self.parent.unregister_switch(ENC_BACK)
-				self.parent.unregister_zyncoder(ENC_SNAPSHOT)
-				self.parent.unregister_zyncoder(ENC_LAYER)
+				self.parent.unregister_switch(zynthian_gui_config.ENC_BACK)
+				self.parent.unregister_zyncoder(zynthian_gui_config.ENC_SNAPSHOT)
+				self.parent.unregister_zyncoder(zynthian_gui_config.ENC_LAYER)
 				self.parent.set_title(self.title, zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
 
 
@@ -972,7 +967,7 @@ class zynthian_gui_patterneditor():
 	#   i: Zynpot index [0..n]
 	#   dval: Current value of zyncoder
 	def zynpot_cb(self, i, dval):
-		if i == ENC_BACK:
+		if i == zynthian_gui_config.ENC_BACK:
 			if self.edit_mode == EDIT_MODE_SINGLE:
 				self.velocity = self.velocity + dval
 				if self.velocity > 127:
@@ -993,7 +988,7 @@ class zynthian_gui_patterneditor():
 			else:
 				self.select_cell(None, self.selected_cell[1] - dval)
 
-		elif i == ENC_SELECT:
+		elif i == zynthian_gui_config.ENC_SELECT:
 			if self.edit_mode == EDIT_MODE_SINGLE:
 				if dval > 0:
 					self.duration = self.duration + 1
@@ -1020,7 +1015,7 @@ class zynthian_gui_patterneditor():
 			else:
 				self.select_cell(self.selected_cell[0] + dval, None)
 
-		elif i == ENC_SNAPSHOT:
+		elif i == zynthian_gui_config.ENC_SNAPSHOT:
 			if self.edit_mode == EDIT_MODE_SINGLE:
 				if dval > 0:
 					self.duration = self.duration + 0.1
@@ -1045,7 +1040,7 @@ class zynthian_gui_patterneditor():
 					libseq.changeDurationAll(-0.1)
 				self.parent.set_title("ALL DURATION", None, None, 2)
 
-#		elif encoder == ENC_LAYER and not self.parent.lst_menu.winfo_viewable():
+#		elif encoder == zynthian_gui_config.ENC_LAYER and not self.parent.lst_menu.winfo_viewable():
 			# Show menu
 #			self.parent.toggle_menu()
 #			return
@@ -1060,7 +1055,7 @@ class zynthian_gui_patterneditor():
 			return False
 		if self.parent.param_editor_item:
 			return False
-		if switch == ENC_SELECT:
+		if switch == zynthian_gui_config.ENC_SELECT:
 			if type == "S":
 				if self.edit_mode:
 					self.enable_edit(EDIT_MODE_NONE)
@@ -1074,7 +1069,7 @@ class zynthian_gui_patterneditor():
 				else:
 					self.enable_edit(EDIT_MODE_ALL)
 			return True
-		elif switch == ENC_SNAPSHOT:
+		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
 			if type == "B":
 				libseq.setTransportToStartOfBar()
 				return True
@@ -1083,7 +1078,7 @@ class zynthian_gui_patterneditor():
 			else:
 				libseq.setPlayState(self.bank, self.sequence, zynthian_gui_stepsequencer.SEQ_STOPPED)
 			return True
-		elif switch == ENC_BACK:
+		elif switch == zynthian_gui_config.ENC_BACK:
 			self.enable_edit(EDIT_MODE_NONE)
 			return True
 		return False

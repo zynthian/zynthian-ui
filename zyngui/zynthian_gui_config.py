@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI configuration
 # 
-# Copyright (C) 2015-2021 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -51,6 +51,11 @@ logging.info("ZYNTHIAN-UI CONFIG ...")
 #------------------------------------------------------------------------------
 # Wiring layout
 #------------------------------------------------------------------------------
+
+ENC_LAYER			= 0
+ENC_BACK			= 1
+ENC_SNAPSHOT		= 2
+ENC_SELECT			= 3
 
 wiring_layout=os.environ.get('ZYNTHIAN_WIRING_LAYOUT',"DUMMIES")
 if wiring_layout=="DUMMIES":
