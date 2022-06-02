@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Selector Base Class
 # 
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -145,6 +145,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.fill_list()
 		self.set_selector()
 		self.set_select_path()
+		self.select()
 
 
 	def refresh_loading(self):
@@ -193,8 +194,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def fill_list(self):
 		self.fill_listbox()
-		self.select()
-		#self.set_selector()
 		self.last_index_change_ts = datetime.min
 
 
@@ -311,14 +310,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 		return False
 
 
-	def select_up(self):
-		self.select(self.index - 1)
-
-
-	def select_down(self):
-		self.select(self.index + 1)
-
-
 	def arrow_up(self):
 		self.select(self.index - 1)
 
@@ -340,7 +331,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if self.listbox_push_ts:
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
-			self.zselector.zctrl.set_value(self.get_cursel(), True)
+			cursel = self.get_cursel()
+			if self.index != cursel:
+				self.select(cursel)
 			if dts < 0.3:
 				self.zyngui.zynswitch_defered('S',3)
 			elif dts>=0.3 and dts<2:
@@ -352,14 +345,16 @@ class zynthian_gui_selector(zynthian_gui_base):
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			if dts > 0.1:
 				#logging.debug("LISTBOX MOTION => %d" % self.index)
-				self.zselector.zctrl.set_value(self.get_cursel(), True)
+				cursel = self.get_cursel()
+				if self.index != cursel:
+					self.select(cursel)
 
 
 	def cb_listbox_wheel(self, event):
 		if (event.num == 5 or event.delta == -120):
-			self.zselector.zctrl.nudge(1)
+			self.select(self.index + 1)
 		elif (event.num == 4 or event.delta == 120):
-			self.zselector.zctrl.nudge(-1)
+			self.select(self.index - 1)
 		return "break" # Consume event to stop scrolling of listbox
 
 

@@ -5,8 +5,8 @@
 # 
 # Zynthian GUI File Selector Class
 # 
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2020 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 # 
@@ -38,11 +38,6 @@ from zyngui import zynthian_gui_config
 #------------------------------------------------------------------------------
 # Zynthian File-Selector GUI Class
 #------------------------------------------------------------------------------
-
-ENC_LAYER			= 0
-ENC_BACK			= 1
-ENC_SNAPSHOT		= 2
-ENC_SELECT			= 3
 
 # Class implements file selector dialog
 class zynthian_gui_fileselector():
@@ -153,9 +148,9 @@ class zynthian_gui_fileselector():
 
 	# Function to hide dialog
 	def hide(self):
-		self.parent.unregister_zyncoder(ENC_SELECT)
-		self.parent.unregister_switch(ENC_SELECT, "SB")
-		self.parent.unregister_switch(ENC_BACK)
+		self.parent.unregister_zyncoder(zynthian_gui_config.ENC_SELECT)
+		self.parent.unregister_switch(zynthian_gui_config.ENC_SELECT, "SB")
+		self.parent.unregister_switch(zynthian_gui_config.ENC_BACK)
 		self.file_list.destroy()
 #		self.btnCancel.destroy()
 		self.tb_panel.destroy()
@@ -164,16 +159,16 @@ class zynthian_gui_fileselector():
 
 	# Function to register encoders
 	def setup_encoders(self):
-		self.parent.register_zyncoder(ENC_SELECT, self)
-		self.parent.register_switch(ENC_SELECT, self, "SB")
-		self.parent.register_switch(ENC_BACK, self)
+		self.parent.register_zyncoder(zynthian_gui_config.ENC_SELECT, self)
+		self.parent.register_switch(zynthian_gui_config.ENC_SELECT, self, "SB")
+		self.parent.register_switch(zynthian_gui_config.ENC_BACK, self)
 
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
 	#	value: Current value of zyncoder
 	def on_zyncoder(self, encoder, value):
-		if encoder == ENC_SELECT:
+		if encoder == zynthian_gui_config.ENC_SELECT:
 			# SELECT encoder select file
 			try:
 				index = self.file_list.curselection()[0]
@@ -197,12 +192,12 @@ class zynthian_gui_fileselector():
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def on_switch(self, switch, type):
-		if switch == ENC_SELECT and type == 'B':
+		if switch == zynthian_gui_config.ENC_SELECT and type == 'B':
 			filename = self.file_list.get(self.file_list.curselection()[0])
 			self.parent.zyngui.show_confirm("Do you really want to delete %s?"%(filename), self.delete_confirmed, filename)
-		elif switch == ENC_BACK:
+		elif switch == zynthian_gui_config.ENC_BACK:
 			self.hide()
-		elif switch == ENC_SELECT:
+		elif switch == zynthian_gui_config.ENC_SELECT:
 			self.assert_selection()
 		return True # Tell parent that we handled all short and bold key presses
 #------------------------------------------------------------------------------
