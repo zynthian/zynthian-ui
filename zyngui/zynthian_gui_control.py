@@ -341,6 +341,23 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return False
 
 
+	# Function to handle CUIA SELECT_UP command (reversed to drive down screen with DOWN action)
+	def select_up(self):
+		if self.mode == 'control':
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+		else:
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+
+
+	# Function to handle CUIA SELECT_DOWN command
+	def select_down(self):
+		if self.mode == 'control':
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+		else:
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+
+
+
 	def arrow_up(self):
 		i = self.index - 1
 		if i < 0:
@@ -489,6 +506,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def midi_learn(self, i):
 		if self.mode == 'control':
 			self.zgui_controllers[i].zctrl.init_midi_learn()
+			self.refresh_midi_bind()
+			self.set_select_path()
 
 
 	def midi_unlearn(self, i):

@@ -2093,8 +2093,6 @@ class zynthian_gui:
 	def init_midi_learn(self, zctrl):
 		self.midi_learn_zctrl = zctrl
 		lib_zyncore.set_midi_learning_mode(1)
-		self.screens['control'].refresh_midi_bind()
-		self.screens['control'].set_select_path()
 
 
 	def end_midi_learn(self):

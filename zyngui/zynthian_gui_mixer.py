@@ -951,14 +951,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		redraw_fader_offset = None
 		redraw_main_fader = False
 		if self.selected_layer and self.selected_layer.midi_chan != None:
-			chan = self.selected_layer.midi_chan
+			chan = min(self.selected_layer.midi_chan, self.zynmixer.get_max_channels())
 		else:
 			return
 
 		# LAYER encoder adjusts selected chain's level
 		if i == ENC_LAYER:
 			self.zynmixer.zctrls[chan]['level'].nudge(dval)
-			if chan == MAIN_CHANNEL_INDEX:
+			if chan == self.zynmixer.get_max_channels():
 				redraw_main_fader = True
 			else:
 				self.pending_refresh_queue.add(self.selected_chain_index - self.mixer_strip_offset)
@@ -966,7 +966,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# BACK encoder adjusts selected chain's balance/pan
 		elif i == ENC_BACK:
 			self.zynmixer.zctrls[chan]['balance'].nudge(dval)
-			if self.selected_layer.midi_chan == MAIN_CHANNEL_INDEX:
+			if self.selected_layer.midi_chan == self.zynmixer.get_max_channels():
 				redraw_main_fader = True
 			else:
 				self.pending_refresh_queue.add(self.selected_chain_index - self.mixer_strip_offset)
@@ -1113,7 +1113,32 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.refresh_visible_strips()
 
 
+	# Function to handle CUIA SELECT_UP command (reversed to drive down screen with DOWN action)
+	def select_up(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+
+
+	# Function to handle CUIA SELECT_DOWN command
+	def select_down(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+
+
 	def toggle_midi_learn(self):
 		self.zynmixer.zctrls[self.zynmixer.get_max_channels()]['level'].init_midi_learn()
 		logging.warning("Not implemented")
+		pass
+
+
+	def init_midi_learn(self):
+		#TODO: Implement init_midi_learn
+		pass
+
+
+	def cb_midi_learn(self, zctrl, chan, cc):
+		#TODO: Implement cb_midi_learn
+		pass
+
+
+	def end_midi_learn(self):
+		#TODO: Implement end_midi_learn
 		pass
