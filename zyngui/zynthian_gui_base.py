@@ -234,7 +234,8 @@ class zynthian_gui_base:
 		for i in range(4):
 			self.buttonbar_frame.grid_columnconfigure(
 				i, minsize=zynthian_gui_config.button_width, pad=0)
-			self.add_button(i, self.buttonbar_config[i][0], self.buttonbar_config[i][1])
+			if self.buttonbar_config[i]:
+				self.add_button(i, self.buttonbar_config[i][0], self.buttonbar_config[i][1])
 
 
 	def set_buttonbar_label(self, column, label):

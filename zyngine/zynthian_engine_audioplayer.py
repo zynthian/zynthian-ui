@@ -51,14 +51,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.type = "MIDI Synth" # TODO: Should we override this? With what value?
 		self.file_exts = ["wav","WAV","ogg","OGG","flac","FLAC"]
 
-		self.options['clone'] = False
-		self.options['note_range'] = False
-		self.options['audio_route'] = True
-		self.options['midi_chan'] = True
-		self.options['replace'] = True
-		self.options['drop_pc'] = True
-		self.options['layer_audio_out'] = True
-
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
 		self.start()
 

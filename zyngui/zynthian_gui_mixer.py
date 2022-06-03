@@ -193,10 +193,10 @@ class zynthian_gui_mixer_strip():
 		# Balance indicator
 		self.balance_left = self.parent.main_canvas.create_rectangle(x, self.balance_top, int(fader_centre - 0.5), self.balance_top + self.balance_height, fill=self.left_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
 		self.balance_right = self.parent.main_canvas.create_rectangle(int(fader_centre + 0.5), self.balance_top, self.width, self.balance_top + self.balance_height , fill=self.right_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-		self.balance_text = self.parent.main_canvas.create_text(int(fader_centre), int(self.balance_top + self.balance_height / 2), text="?", state=tkinter.HIDDEN)
+		self.balance_text = self.parent.main_canvas.create_text(int(fader_centre), int(self.balance_top + self.balance_height / 2), text="?", state=tkinter.HIDDEN, tags=("strip:%s"%(self.fader_bg)))
 
 		# Fader indicators
-		self.indicator = self.parent.main_canvas.create_text(x + 2, self.fader_top + 2, fill="#009000", anchor="nw")
+		self.status_indicator = self.parent.main_canvas.create_text(x + 2, self.fader_top + 2, fill="#009000", anchor="nw", tags=("strip:%s"%(self.fader_bg)))
 
 		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_fader_press)
 		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<B1-Motion>", self.on_fader_motion)
@@ -278,11 +278,14 @@ class zynthian_gui_mixer_strip():
 
 		self.draw_dpm()
 		self.redraw_controls()
+		self.refresh_status()
 
+
+	def refresh_status(self):
 		if self.parent.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
-			self.parent.main_canvas.itemconfig(self.indicator, text="{}\uf111".format(self.layer.status), fill=self.high_color)
+			self.parent.main_canvas.itemconfig(self.status_indicator, text="{}\uf111".format(self.layer.status), fill=self.high_color)
 		else:
-			self.parent.main_canvas.itemconfig(self.indicator, text=self.layer.status, fill="#009000")
+			self.parent.main_canvas.itemconfig(self.status_indicator, text=self.layer.status, fill="#009000")
 	
 
 	# Function to draw the DPM level meter for a mixer strip
@@ -784,6 +787,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			for strip in self.visible_mixer_strips:
 				if not strip.hidden:
 					strip.draw_dpm()
+					strip.refresh_status()
 				# Redraw changed strips
 				'''
 				for strip in self.visible_mixer_strips:

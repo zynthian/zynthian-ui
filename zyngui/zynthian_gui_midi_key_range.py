@@ -46,6 +46,12 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def __init__(self):
 		super().__init__()
+		self.buttonbar_config = [
+			(1, 'BACK\n[mixer]'),
+			(2, 'LEARN\n[snapshot]'),
+			(None),
+			(None)
+		]
 		self.chan = None
 		self.note_low = 0
 		self.note_high = 127
@@ -109,11 +115,14 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			self.piano_canvas.grid(row=4, column=0, rowspan=1, columnspan=3, sticky="ws")
 
 		# Setup Piano's Callback
-		self.piano_canvas.bind("<Button-1>", self.cb_piano_canvas)
+		self.piano_canvas.bind("<Button-1>", self.cb_piano_press)
+		self.piano_canvas.bind("<B1-Motion>", self.on_piano_motion)
 
 		self.replot = True
 		self.plot_piano()
 		self.plot_text()
+
+		self.init_buttonbar()
 
 
 	def config(self, chan):
@@ -127,8 +136,8 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def plot_piano(self):
 		n_wkeys = 52
-		key_width = int(self.piano_canvas_width/n_wkeys)
-		black_height = int(0.65*self.piano_canvas_height)
+		key_width = int(self.piano_canvas_width / n_wkeys)
+		black_height = int(0.65 * self.piano_canvas_height)
 
 		self.midi_key0 = 21 #A1
 		self.piano_keys = []
@@ -326,6 +335,8 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def send_controller_value(self, zctrl):
 		if self.shown:
+			# Send ALL-OFF to avoid stuck notes
+			lib_zyncore.ui_send_ccontrol_change(self.chan, 120, 0)
 			if zctrl == self.nlow_zctrl:
 				self.note_low = zctrl.value #TODO: Try to loose these variables
 				if zctrl.value > self.nhigh_zctrl.value:
@@ -347,14 +358,12 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			if zctrl == self.octave_zctrl:
 				self.octave_trans = zctrl.value #TODO: Try to loose these variables
 				logging.debug("SETTING FILTER OCTAVE TRANS.: {}".format(zctrl.value))
-				lib_zyncore.ui_send_ccontrol_change(self.chan, 120, 0)
 				lib_zyncore.set_midi_filter_octave_trans(self.chan, zctrl.value)
 				self.replot = True
 
 			if zctrl == self.halftone_zctrl:
 				self.halftone_trans = zctrl.value #TODO: Try to loose these variables
 				logging.debug("SETTING FILTER HALFTONE TRANS.: {}".format(zctrl.value))
-				lib_zyncore.ui_send_ccontrol_change(self.chan, 120, 0)
 				lib_zyncore.set_midi_filter_halftone_trans(self.chan, zctrl.value)
 				self.replot = True
 
@@ -378,6 +387,12 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		if switch == zynthian_gui_config.ENC_BACK and self.learn_mode:
 			self.end_midi_learn()
 			return True
+		elif switch == zynthian_gui_config.ENC_SNAPSHOT and type == "S":
+			if self.learn_mode:
+				self.end_midi_learn()
+			else:
+				self.start_midi_learn()
+			return True
 
 
 	def set_select_path(self):
@@ -387,7 +402,27 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			self.select_path.set("Note Range & Transpose...")
 
 
-	def cb_piano_canvas(self,event):
-		logging.debug("PIANO CANVAS")
+	def cb_piano_press(self, event):
+		for key,rect in enumerate(self.piano_keys):
+			if event.x < event.widget.coords(rect)[2]:
+				self.clicked_key = self.midi_key0 + key
+				self.nlow_zctrl.set_value(self.clicked_key)
+				self.nhigh_zctrl.set_value(self.clicked_key)
+				self.nlow_zctrl.set_value(self.clicked_key)
+				self.update_piano()
+				return
+
+
+	def on_piano_motion(self, event):
+		for key,rect in enumerate(self.piano_keys):
+			if event.x < event.widget.coords(rect)[2]:
+				vis_key = self.midi_key0 + key
+				if vis_key > self.clicked_key and vis_key != self.nhigh_zctrl.value:
+					self.nhigh_zctrl.set_value(vis_key)
+					self.update_piano()
+				elif vis_key < self.clicked_key and vis_key != self.nlow_zctrl.value:
+					self.nlow_zctrl.set_value(vis_key)
+					self.update_piano()
+				return
 
 #------------------------------------------------------------------------------
