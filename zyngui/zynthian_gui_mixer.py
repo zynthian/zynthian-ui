@@ -171,8 +171,8 @@ class zynthian_gui_mixer_strip():
 		self.dpm_m_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.dpm_b_y - self.dpm_scale_lh, self.dpm_b_x + self.dpm_width, self.dpm_b_y - self.dpm_scale_lm, width=0, fill=self.medium_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
 		self.dpm_l_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.dpm_b_y - self.dpm_scale_lm, self.dpm_b_x + self.dpm_width,  self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
 		self.dpm_b_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.fader_bottom, self.dpm_b_x + self.dpm_width, self.fader_top, width=0, fill=self.fader_bg_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
-		self.dpm_hold_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.fader_bottom, self.dpm_a_x + self.dpm_width, self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), state="hidden")
-		self.dpm_hold_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.fader_bottom, self.dpm_b_x + self.dpm_width, self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), state="hidden")
+		self.dpm_hold_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.fader_bottom, self.dpm_a_x + self.dpm_width, self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), state=tkinter.HIDDEN)
+		self.dpm_hold_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.fader_bottom, self.dpm_b_x + self.dpm_width, self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), state=tkinter.HIDDEN)
 		self.mono_text = self.parent.main_canvas.create_text(int(self.dpm_b_x + self.dpm_width / 2), int(self.fader_top + self.fader_height / 2), text="?", state=tkinter.HIDDEN)
 
 		# 0dB line
@@ -193,7 +193,7 @@ class zynthian_gui_mixer_strip():
 		# Balance indicator
 		self.balance_left = self.parent.main_canvas.create_rectangle(x, self.balance_top, int(fader_centre - 0.5), self.balance_top + self.balance_height, fill=self.left_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
 		self.balance_right = self.parent.main_canvas.create_rectangle(int(fader_centre + 0.5), self.balance_top, self.width, self.balance_top + self.balance_height , fill=self.right_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-		self.balance_text = self.parent.main_canvas.create_text(int(fader_centre), int(self.balance_top + self.balance_height / 2), text="?", state=tkinter.HIDDEN, tags=("strip:%s"%(self.fader_bg)))
+		self.balance_text = self.parent.main_canvas.create_text(int(fader_centre), int(self.balance_top + self.balance_height / 2), text="?", state=tkinter.HIDDEN)
 
 		# Fader indicators
 		self.status_indicator = self.parent.main_canvas.create_text(x + 2, self.fader_top + 2, fill="#009000", anchor="nw", tags=("strip:%s"%(self.fader_bg)))
@@ -218,16 +218,16 @@ class zynthian_gui_mixer_strip():
 
 	# Function to hide mixer strip
 	def hide(self):
-		self.parent.main_canvas.itemconfig("strip:%s"%(self.fader_bg), state="hidden")
+		self.parent.main_canvas.itemconfig("strip:%s"%(self.fader_bg), state=tkinter.HIDDEN)
 		self.hidden = True
 
 
 	# Function to show mixer strip
 	def show(self):
-		self.parent.main_canvas.itemconfig("strip:%s"%(self.fader_bg), state="normal")
+		self.parent.main_canvas.itemconfig("strip:%s"%(self.fader_bg), state=tkinter.NORMAL)
 		try:
 			if self.layer.engine.type == "MIDI Tool":
-				self.parent.main_canvas.itemconfig("audio_strip:%s"%(self.fader_bg), state="hidden")
+				self.parent.main_canvas.itemconfig("audio_strip:%s"%(self.fader_bg), state=tkinter.HIDDEN)
 		except:
 			pass
 		self.hidden = False
@@ -261,14 +261,14 @@ class zynthian_gui_mixer_strip():
 		self.parent.main_canvas.coords(self.fader_bg_color, self.x, self.fader_top, self.x + self.width, self.fader_bottom)
 		if self.layer.midi_chan==self.MAIN_CHANNEL_INDEX:
 			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
-			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("NoFX"), state="normal")
+			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("NoFX"), state=tkinter.NORMAL)
 		else:
 			if isinstance(self.layer.midi_chan, int):
 				strip_txt = str(self.layer.midi_chan + 1)
 			else:
 				strip_txt = "X"
 			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt)
-			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("None"), state="normal")
+			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("None"), state=tkinter.NORMAL)
 
 		try:
 			if self.layer.engine and self.layer.engine.type == "MIDI Tool" or self.layer.midi_chan is None:
@@ -307,25 +307,25 @@ class zynthian_gui_mixer_strip():
 		self.parent.main_canvas.coords(self.dpm_b_a, (self.dpm_a_x, self.fader_top, self.dpm_a_x + self.dpm_width, self.fader_top + level_a))
 		self.parent.main_canvas.coords(self.dpm_hold_a, (self.dpm_a_x, self.dpm_a_y - hold_a, self.dpm_a_x + self.dpm_width, self.dpm_a_y - hold_a - 1))
 		if hold_a >= self.dpm_scale_lh:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="normal", fill="#FF0000")
+			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state=tkinter.NORMAL, fill="#FF0000")
 		elif hold_a >= self.dpm_scale_lm:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="normal", fill="#FFFF00")
+			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state=tkinter.NORMAL, fill="#FFFF00")
 		elif hold_a > 0:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="normal", fill=self.dpm_hold_color)
+			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state=tkinter.NORMAL, fill=self.dpm_hold_color)
 		else:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state="hidden")
+			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state=tkinter.HIDDEN)
 
 		# Draw right meter
 		self.parent.main_canvas.coords(self.dpm_b_b, (self.dpm_b_x, self.fader_top, self.dpm_b_x + self.dpm_width, self.fader_top + level_b))
 		self.parent.main_canvas.coords(self.dpm_hold_b, (self.dpm_b_x, self.dpm_b_y - hold_b, self.dpm_b_x + self.dpm_width, self.dpm_b_y - hold_b - 1))
 		if hold_b >= self.dpm_scale_lh:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="normal", fill="#FF0000")
+			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state=tkinter.NORMAL, fill="#FF0000")
 		elif hold_b >= self.dpm_scale_lm:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="normal", fill="#FFFF00")
+			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state=tkinter.NORMAL, fill="#FFFF00")
 		elif hold_b > 0:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="normal", fill=self.dpm_hold_color)
+			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state=tkinter.NORMAL, fill=self.dpm_hold_color)
 		else:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state="hidden")
+			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state=tkinter.HIDDEN)
 
 
 	def flag_redraw(self, all=False):
@@ -433,7 +433,7 @@ class zynthian_gui_mixer_strip():
 		elif self.midi_learning == False:
 			if self.zctrls:
 				self.zctrls['level'].set_value(value)
-		self.redraw_controls() #TODO: Set flag for next refresh
+		self.flag_redraw()
 
 
 	# Function to get volume value
@@ -449,7 +449,7 @@ class zynthian_gui_mixer_strip():
 		elif self.midi_learning == False:
 			if self.zctrls:
 				self.zctrls['level'].nudge(dval)
-		self.redraw_controls() #TODO: Set flag for next refresh
+		self.flag_redraw()
 
 
 	# Function to set balance value
@@ -460,7 +460,7 @@ class zynthian_gui_mixer_strip():
 		elif self.midi_learning == False:
 			if self.zctrls:
 				self.zctrls['balance'].set_value(value)
-		self.redraw_controls()
+		self.flag_redraw()
 
 
 	# Function to get balance value
@@ -476,7 +476,7 @@ class zynthian_gui_mixer_strip():
 		elif self.midi_learning == False:
 			if self.zctrls:
 				self.zctrls['balance'].nudge(dval)
-		self.flag_redraw() #TODO: Set flag for next refresh
+		self.flag_redraw()
 
 
 	# Function to reset volume
@@ -649,14 +649,22 @@ class zynthian_gui_mixer_strip():
 		if self.midi_learning == True:
 			self.parent.main_canvas.itemconfig(self.balance_text, state=tkinter.NORMAL)
 			self.parent.main_canvas.itemconfig(self.mono_text, state=tkinter.NORMAL)
-		else:
+		elif self.midi_learning == False:
 			self.parent.main_canvas.itemconfig(self.balance_text, state=tkinter.HIDDEN)
 			self.parent.main_canvas.itemconfig(self.mono_text, state=tkinter.HIDDEN)
-		if self.midi_learning != True and self.midi_learning != False:
-			self.parent.main_canvas.itemconfig(mode, state=tkinter.NORMAL)
-		if mode == self.legend:
+		elif mode == self.legend:
 			self.zctrls['level'].init_midi_learn()
-		
+		elif mode == self.balance_text:
+			self.zctrls['balance'].init_midi_learn()
+			self.parent.main_canvas.itemconfig(mode, state=tkinter.NORMAL)
+		elif mode == self.mute_text:
+			self.zctrls['mute'].init_midi_learn()
+		elif mode == solo_text:
+			self.zctrls['solo'].init_midi_learn()
+		elif mode == self.mono_text:
+			self.zctrls['mono'].init_midi_learn()
+			self.parent.main_canvas.itemconfig(mode, state=tkinter.NORMAL)
+
 		self.flag_redraw()
 
 
@@ -671,7 +679,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.zynmixer = self.zyngui.zynmixer
 		self.zynmixer.set_ctrl_update_cb(self.cb_ctrl_change)
 		self.MAIN_CHANNEL_INDEX = zynthian_gui_config.zyngui.zynmixer.get_max_channels() 
-		self.chan2strip = [None] * self.MAIN_CHANNEL_INDEX
+		self.chan2strip = [None] * (self.MAIN_CHANNEL_INDEX + 1)
 
 		self.buttonbar_config = [
 			(0, 'MUTE\n[menu]'),
@@ -876,8 +884,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function refresh and populate visible mixer strips
 	def refresh_visible_strips(self):
-
-		self.chan2strip = [None] * self.MAIN_CHANNEL_INDEX
+		for index in range(len(self.chan2strip)):
+			self.chan2strip[index] = None
 		layers = copy.copy(self.zyngui.screens['layer'].get_root_layers())
 		main_fx_layer = self.zyngui.screens['layer'].get_main_fxchain_root_layer()
 
@@ -902,7 +910,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				else:
 					self.visible_mixer_strips[offset].zctrls = None
 					
-
+		self.chan2strip[self.MAIN_CHANNEL_INDEX] = self.main_mixbus_strip
 		self.main_mixbus_strip.redraw_controls()
 		self.highlight_selected_chain()
 
