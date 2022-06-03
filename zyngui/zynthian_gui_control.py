@@ -474,6 +474,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return self.zgui_controllers[i]
 
 
+	def start_midi_learn(self):
+		self.refresh_midi_bind()
+		self.set_select_path()
+
+    	
 	def end_midi_learn(self):
 		self.refresh_midi_bind()
 		self.set_select_path()

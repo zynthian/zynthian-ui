@@ -659,7 +659,7 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(mode, state=tkinter.NORMAL)
 		elif mode == self.mute_text:
 			self.zctrls['mute'].init_midi_learn()
-		elif mode == solo_text:
+		elif mode == self.solo_text:
 			self.zctrls['solo'].init_midi_learn()
 		elif mode == self.mono_text:
 			self.zctrls['mono'].init_midi_learn()
@@ -943,6 +943,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				options["[  ] Recording Primed"] = primed_option
 		options["> Audio Chain ---------------"] = None
 		options["Add Audio-FX"] = "Add"
+		options["Clean MIDI-Learn"] = "Clean"
+
 		self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
 		self.zyngui.show_screen('option')
 
@@ -956,6 +958,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		elif param == "Primed":
 			self.zyngui.audio_recorder.toggle_prime(self.MAIN_CHANNEL_INDEX)
 			self.show_mainfx_options()
+		elif param == "Clean":
+			self.zyngui.show_confirm("Do you really want to clean MIDI-learn for this chain?", self.midi_unlearn_confirmed)
+
+
+	def midi_unlearn_confirmed(self, param):
+		self.zynmixer.midi_unlearn_chan(self.MAIN_CHANNEL_INDEX)
 
 
 	#--------------------------------------------------------------------------
@@ -976,7 +984,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		elif swi == zynthian_gui_config.ENC_BACK:
 			if t == "S":
 				if self.midi_learning:
-					self.end_midi_learn()
+					self.zyngui.exit_midi_learn_mode()
 					return False
 				return True
 			elif t == "B":
@@ -1105,13 +1113,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.visible_mixer_strips[self.selected_chain_index].enable_midi_learn(True)
 			self.midi_learning = True
 
-
+    
 	def end_midi_learn(self):
 		for strip in self.visible_mixer_strips:
 			strip.enable_midi_learn(False)
 		self.main_mixbus_strip.enable_midi_learn(False)
 		self.midi_learning = False
-		
+
 
 	def cb_ctrl_change(self, chan, ctrl, value):
 		self.pending_refresh_queue.add(self.chan2strip[chan])

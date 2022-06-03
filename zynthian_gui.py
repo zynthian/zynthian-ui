@@ -866,8 +866,7 @@ class zynthian_gui:
 		self.midi_learn_mode = True
 		self.midi_learn_zctrl = None
 		lib_zyncore.set_midi_learning_mode(1)
-		self.screens['control'].refresh_midi_bind()
-		self.screens['control'].set_select_path()
+		self.screens[self.current_screen].start_midi_learn()
 		#self.show_screen('zs3_learn')
 
 
@@ -875,9 +874,8 @@ class zynthian_gui:
 		self.midi_learn_mode = False
 		self.midi_learn_zctrl = None
 		lib_zyncore.set_midi_learning_mode(0)
-		self.screens['control'].refresh_midi_bind()
-		self.screens['control'].set_select_path()
-		self.show_current_screen()
+		self.screens[self.current_screen].end_midi_learn()
+		#self.show_current_screen()
 
 
 	def show_control_xy(self, xctrl, yctrl):

@@ -286,10 +286,13 @@ class zynthian_controller:
 			return
 
 		elif self.is_toggle:
-			if val==self.value_min or val==self.value_max:
-				self.value = val
+			if val == self.value_min or val == self.value_max:
+				if self.is_integer:
+					self.value = int(val)
+				else:
+					self.value = val
 			else:
-				if val<self.value_mid:
+				if val < self.value_mid:
 					self.value = self.value_min
 				else:
 					self.value = self.value_max

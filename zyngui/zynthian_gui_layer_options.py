@@ -384,6 +384,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_midi_unlearn_confirmed(self, params=None):
 		self.layer.midi_unlearn()
+		self.zyngui.zynmixer.midi_unlearn_chan(self.layer.midi_chan)
 
 
 	# FX-Chain management

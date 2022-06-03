@@ -405,8 +405,13 @@ class zynmixer(zynthian_engine):
 	# MIDI Learn
 	#--------------------------------------------------------------------------
 
-
 	def end_midi_learn(self, zctl):
 		logging.warning("Not implemented")
 		#TODO: Implement end_midi_learn
+
+
+	def midi_unlearn_chan(self, chan):
+		for symbol in self.zctrls[chan]:
+			self.midi_unlearn(self.zctrls[chan][symbol])
+
 #-------------------------------------------------------------------------------
