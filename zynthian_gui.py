@@ -1313,20 +1313,17 @@ class zynthian_gui:
 
 
 	def cuia_learn(self, params=None):
-		try:
-			self.screens[self.current_screen].start_midi_learn()
-		except:
-			if not self.is_shown_alsa_mixer():
-				if self.current_screen == "zs3_learn":
-					self.close_screen()
-				elif self.current_screen != "control":
-					self.show_screen_reset("control")
-				else:
-					if zynthian_gui_config.midi_prog_change_zs3 and (self.midi_learn_mode or self.midi_learn_zctrl):
-						self.show_screen("zs3_learn")
-						return
+		if not self.is_shown_alsa_mixer():
+			if self.current_screen == "zs3_learn":
+				self.close_screen()
+			elif self.current_screen != "control":
+				self.show_screen_reset("control")
+			else:
+				if zynthian_gui_config.midi_prog_change_zs3 and (self.midi_learn_mode or self.midi_learn_zctrl):
+					self.show_screen("zs3_learn")
+					return
 
-			self.enter_midi_learn_mode()
+		self.enter_midi_learn_mode()
 
 
 	def cuia_bank_preset(self, params=None):
