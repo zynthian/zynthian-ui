@@ -80,7 +80,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
-	drawbar_values = [ ['0','1','2','3','4','5','6','7','8'], [127,119,103,87,71,55,39,23,7] ]
+	drawbar_ticks = [ ['0','1','2','3','4','5','6','7','8'], [127,119,103,87,71,55,39,23,7] ]
 
 	# MIDI Controllers
 	_ctrls = [
@@ -97,15 +97,15 @@ class zynthian_engine_setbfree(zynthian_engine):
 #		['rotary select',67,'off/off','off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
 		['rotary select',67,'off/off',[['off/off','slow/off','fast/off','off/slow','slow/slow','fast/slow','off/fast','slow/fast','fast/fast'],[0,15,30,45,60,75,90,105,120]]],
 
-		['DB 16',70,'8',drawbar_values],
-		['DB 5 1/3',71,'8',drawbar_values],
-		['DB 8',72,'8',drawbar_values],
-		['DB 4',73,'0',drawbar_values],
-		['DB 2 2/3',74,'0',drawbar_values],
-		['DB 2',75,'0',drawbar_values],
-		['DB 1 3/5',76,'0',drawbar_values],
-		['DB 1 1/3',77,'0',drawbar_values],
-		['DB 1',78,'0',drawbar_values],
+		['DB 16',70,'8',drawbar_ticks],
+		['DB 5 1/3',71,'8',drawbar_ticks],
+		['DB 8',72,'8',drawbar_ticks],
+		['DB 4',73,'0',drawbar_ticks],
+		['DB 2 2/3',74,'0',drawbar_ticks],
+		['DB 2',75,'0',drawbar_ticks],
+		['DB 1 3/5',76,'0',drawbar_ticks],
+		['DB 1 1/3',77,'0',drawbar_ticks],
+		['DB 1',78,'0',drawbar_ticks],
 
 		['vibrato upper',31,'off','off|on'],
 		['vibrato lower',30,'off','off|on'],
@@ -128,14 +128,13 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Controller Screens
 	_ctrl_screens = [
 		['main',['volume','percussion','rotary speed','vibrato routing']],
-		['drawbars low',['volume','DB 16','DB 5 1/3','DB 8']],
-		['drawbars medium',['volume','DB 4','DB 2 2/3','DB 2']],
-		['drawbars high',['volume','DB 1 3/5','DB 1 1/3','DB 1']],
-		['rotary',['rotary toggle','rotary select','rotary speed','convol. mix']],
+		['drawbars 1',['DB 16','DB 5 1/3','DB 8','DB 4']],
+		['drawbars 2',['DB 2 2/3','DB 2','DB 1 3/5','DB 1 1/3']],
+		['drawbars 3 & reverb',['DB 1', 'reverb', 'convol. mix']],
+		['rotary',['rotary toggle','rotary select','rotary speed']],
 		['vibrato',['vibrato upper','vibrato lower','vibrato routing','vibrato selector']],
 		['percussion',['percussion','percussion decay','percussion harmonic','percussion volume']],
-		['overdrive',['overdrive','overdrive character','overdrive inputgain','overdrive outputgain']],
-		['reverb',['volume','convol. mix','reverb']],
+		['overdrive',['overdrive','overdrive character','overdrive inputgain','overdrive outputgain']]
 	]
 
 	# setBfree preset params => controllers

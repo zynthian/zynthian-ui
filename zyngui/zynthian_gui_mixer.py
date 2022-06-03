@@ -1103,3 +1103,4 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	def cb_ctrl_change(self, chan, ctrl, value):
 		self.pending_refresh_queue.add(self.chan2strip[chan])
+

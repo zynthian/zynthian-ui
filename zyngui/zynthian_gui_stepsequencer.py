@@ -1070,7 +1070,7 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			return
 		self.zynpot_owner[encoder] = None
 		if self.shown and lib_zyncore:
-			lib_zyncore.setup_behaviour_zynpot(encoder, step, 0)
+			lib_zyncore.setup_behaviour_zynpot(encoder, step)
 			self.zynpot_owner[encoder] = object
 			self.zyncoder_step[encoder] = step
 
