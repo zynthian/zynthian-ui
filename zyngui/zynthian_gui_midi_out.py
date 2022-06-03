@@ -51,7 +51,6 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 			self.end_layer = None
 
 
-
 	def fill_list(self):
 		self.list_data = []
 

@@ -901,22 +901,6 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 			return True
 
 
-	# Function to handle CUIA SELECT_UP command (reversed to drive down screen with DOWN action)
-	def select_up(self):
-		if self.lst_menu.winfo_viewable():
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
-		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
-
-
-	# Function to handle CUIA SELECT_DOWN command
-	def select_down(self):
-		if self.lst_menu.winfo_viewable():
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
-		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
-
-
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
 		if self.lst_menu.winfo_viewable():
