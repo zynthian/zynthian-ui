@@ -532,7 +532,16 @@ class zynthian_gui:
 						logging.warning("Failed to add OSC client registration %s", src.hostname)
 				self.osc_clients[src.hostname] = monotonic()
 			else:
-				self.screens['audio_mixer'].osc(part2, args, types, src)
+				if path[:6] == "VOLUME" or path[:5] == "FADER":
+					self.zynmixer.set_volume(args[0], int(path[5:]))
+				elif path[:7] == "BALANCE":
+					self.zynmixer.set_balance(args[0], int(path[7:]))
+				elif path[:4] == "MUTE":
+					self.zynmixer.set_mute(int(args[0]), int(path[4:]))
+				elif path[:4] == "SOLO":
+					self.zynmixer.set_solo(int(args[0]), int(path[4:]))
+				elif path[:4] == "MONO":
+					self.zynmixer.set_mono(int(args[0]), int(path[4:]))
 		else:
 			logging.warning("Not supported OSC call '{}'".format(path))
 
@@ -1307,7 +1316,7 @@ class zynthian_gui:
 
 	def cuia_learn(self, params=None):
 		try:
-			self.screens[self.current_screen].toggle_midi_learn()
+			self.screens[self.current_screen].start_midi_learn()
 		except:
 			if not self.is_shown_alsa_mixer():
 				if self.current_screen == "zs3_learn":
@@ -1772,7 +1781,8 @@ class zynthian_gui:
 						self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
 					# Try layer's zctrls
 					else:
-						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
+						self.screens['layer'].midi_control_change(chan, ccnum, ccval)
+						self.zynmixer.midi_control_change(chan, ccnum, ccval)
 
 				# Note-On ...
 				elif evtype==0x9:
@@ -2098,8 +2108,7 @@ class zynthian_gui:
 	def end_midi_learn(self):
 		self.midi_learn_zctrl = None
 		lib_zyncore.set_midi_learning_mode(0)
-		self.screens['control'].refresh_midi_bind()
-		self.screens['control'].set_select_path()
+		self.screens[self.current_screen].end_midi_learn()
 
 
 	def refresh_midi_learn(self):

@@ -28,16 +28,18 @@ import logging
 from os.path import dirname, realpath
 
 from zyngine import zynthian_controller
-from zyngui.zynthian_gui_mixer import MAX_NUM_CHANNELS
+from zyngine import zynthian_engine
+from zyngui import zynthian_gui_config
 
 #-------------------------------------------------------------------------------
 # Zynmixer Library Wrapper
 #-------------------------------------------------------------------------------
 
-class zynmixer():
+class zynmixer(zynthian_engine):
 	
 	#	Function to initialize library
 	def __init__(self):
+		super().__init__()
 		try:
 			self.lib_zynmixer = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+'/build/libzynmixer.so')
 			self.lib_zynmixer.init()
@@ -52,14 +54,18 @@ class zynmixer():
 		self.zctrls = []
 		for i in range(self.get_max_channels() + 1):
 			dict = {
-				'level': zynthian_controller(self, 'level', None, {'midi_chan':i,'is_integer':False,'value_max':1.0,'value':self.get_level(i)}),
-				'balance': zynthian_controller(self, 'balance', None, {'midi_chan':i,'is_integer':False,'value_min':-1.0,'value_max':1.0,'value':self.get_balance(i)}),
-				'mute': zynthian_controller(self, 'mute', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_mute(i)}),
-				'solo': zynthian_controller(self, 'solo', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_solo(i)}),
-				'mono': zynthian_controller(self, 'mono', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_mono(i)}),
-				'phase': zynthian_controller(self, 'phase', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_phase(i)})
+				'level': zynthian_controller(self, 'level', None, {'midi_chan':i,'is_integer':False,'value_max':1.0,'value':self.get_level(i),'graph_path':'level_{}'.format(i)}),
+				'balance': zynthian_controller(self, 'balance', None, {'midi_chan':i,'is_integer':False,'value_min':-1.0,'value_max':1.0,'value':self.get_balance(i),'graph_path':'balance_{}'.format(i)}),
+				'mute': zynthian_controller(self, 'mute', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_mute(i),'graph_path':'mute_{}'.format(i)}),
+				'solo': zynthian_controller(self, 'solo', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_solo(i),'graph_path':'solo_{}'.format(i)}),
+				'mono': zynthian_controller(self, 'mono', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_mono(i),'graph_path':'mono_{}'.format(i)}),
+				'phase': zynthian_controller(self, 'phase', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_phase(i),'graph_path':'phase_{}'.format(i)})
 			}
 			self.zctrls.append(dict)
+		
+		self.midi_learning = False
+		self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
+		self.zyngui = zynthian_gui_config.zyngui
 
 
 	def get_controllers_dict(self, layer):
@@ -76,7 +82,7 @@ class zynmixer():
 	#	Destoy instance of shared library
 	def destroy(self):
 		if self.lib_zynmixer:
-			self.lib_zynmixer.end() #TODO: Is end implemented in libzynmixer?
+			self.lib_zynmixer.end()
 			ctypes.dlclose(self.lib_zynmixer._handle)
 		self.lib_zynmixer = None
 
@@ -97,24 +103,26 @@ class zynmixer():
 #	level: Fader value (0..+1)
 	#	level: Fader value (0..+1)	
 	def set_level(self, channel, level, update=True):
-		if channel >= MAX_NUM_CHANNELS:
-			channel = MAX_NUM_CHANNELS
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			self.lib_zynmixer.setLevel(channel, ctypes.c_float(level))
 		if update:
 			self.zctrls[channel]['level'].set_value(level, False)
+		self.send_update(channel, 'level', level)
 
 
 	#	Function to set balance for a channel
 	#	channel: Index of channel
 	#	balance: Balance value (-1..+1)
 	def set_balance(self, channel, balance, update=True):
-		if channel >= MAX_NUM_CHANNELS:
-			channel = MAX_NUM_CHANNELS
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			self.lib_zynmixer.setBalance(channel, ctypes.c_float(balance))
 		if update:
 			self.zctrls[channel]['balance'].set_value(balance, False)
+		self.send_update(channel, 'balance', balance)
 
 
 	#	Function to get fader level for a channel
@@ -139,12 +147,13 @@ class zynmixer():
 	#	channel: Index of channel
 	#	mute: Mute state (True to mute)
 	def	set_mute(self, channel, mute, update=False):
-		if channel >= MAX_NUM_CHANNELS:
-			channel = MAX_NUM_CHANNELS
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			self.lib_zynmixer.setMute(channel, mute)
 		if update:
 			self.zctrls[channel]['mute'].set_value(mute, False)
+		self.send_update(channel, 'mute', mute)
 
 
 	#	Function to get mute for a channel
@@ -160,8 +169,8 @@ class zynmixer():
 	#	Function to toggle mute of a channel
 	#	channel: Index of channel
 	def toggle_mute(self, channel):
-		if channel >= MAX_NUM_CHANNELS:
-			channel = MAX_NUM_CHANNELS
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			self.lib_zynmixer.toggleMute(channel)
 
@@ -170,12 +179,13 @@ class zynmixer():
 	#	channel: Index of channel
 	#	phase: Phase reversal state (True to reverse)
 	def	set_phase(self, channel, phase, update=True):
-		if channel >= MAX_NUM_CHANNELS:
-			channel = MAX_NUM_CHANNELS
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			self.lib_zynmixer.setPhase(channel, phase)
 		if update:
 			self.zctrls[channel]['phase'].set_value(phase, False)
+		self.send_update(channel, 'phase', phase)
 
 
 	#	Function to get phase reversal for a channel
@@ -191,8 +201,8 @@ class zynmixer():
 	#	Function to toggle phase reversal of a channel
 	#	channel: Index of channel
 	def toggle_phase(self, channel, update=True):
-		if channel >= MAX_NUM_CHANNELS:
-			channel = MAX_NUM_CHANNELS
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			self.lib_zynmixer.togglePhase(channel)
 		if update:
@@ -203,12 +213,13 @@ class zynmixer():
 	#	channel: Index of channel
 	#	solo: Solo state (True to solo)
 	def	set_solo(self, channel, solo, update=True):
-		if channel >= MAX_NUM_CHANNELS:
-			channel = MAX_NUM_CHANNELS
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			self.lib_zynmixer.setSolo(channel, solo)
 		if update:
 			self.zctrls[channel]['solo'].set_value(solo, False)
+		self.send_update(channel, 'solo', solo)
 
 
 	#	Function to get solo for a channel
@@ -224,8 +235,8 @@ class zynmixer():
 	#	Function to toggle mute of a channel
 	#	channel: Index of channel
 	def toggle_solo(self, channel, update=True):
-		if channel >= MAX_NUM_CHANNELS:
-			channel = MAX_NUM_CHANNELS
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			if self.get_solo(channel):
 				self.set_solo(channel, False)
@@ -239,12 +250,13 @@ class zynmixer():
 	#	channel: Index of channel
 	#	mono: Mono state (True to solo)
 	def	set_mono(self, channel, mono, update=True):
-		if channel >= MAX_NUM_CHANNELS:
-			channel = MAX_NUM_CHANNELS
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			self.lib_zynmixer.setMono(channel, mono)
 		if update:
 			self.zctrls[channel]['mono'].set_value(mono, False)
+		self.send_update(channel, 'mono', mono)
 
 
 	#	Function to get mono for a channel
@@ -260,8 +272,8 @@ class zynmixer():
 	#	Function to toggle mono of a channel
 	#	channel: Index of channel
 	def toggle_mono(self, channel, update=True):
-		if channel >= MAX_NUM_CHANNELS:
-			channel = MAX_NUM_CHANNELS
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			if self.get_mono(channel):
 				self.set_mono(channel, False)
@@ -269,22 +281,6 @@ class zynmixer():
 				self.set_mono(channel, True)
 		if update:
 			self.zctrls[channel]['mono'].set_value(self.lib_zynmixer.getMono(channel), False)
-
-
-	#	Function to reset parameters of a channel to default
-	#	channel: Index of channel
-	def reset(self, channel, update=True):
-		if channel >= MAX_NUM_CHANNELS:
-			channel = MAX_NUM_CHANNELS
-		if self.lib_zynmixer:
-			self.lib_zynmixer.reset(channel)
-		if update:
-			self.zctrls[channel]['level'].set_value(self.lib_zynmixer.get_level(channel), False)
-			self.zctrls[channel]['balance'].set_value(self.lib_zynmixer.get_balance(channel), False)
-			self.zctrls[channel]['mute'].set_value(self.lib_zynmixer.get_mute(channel), False)
-			self.zctrls[channel]['mono'].set_value(self.lib_zynmixer.get_mono(channel), False)
-			self.zctrls[channel]['solo'].set_value(self.lib_zynmixer.get_solo(channel), False)
-			self.zctrls[channel]['phase'].set_value(self.lib_zynmixer.get_phase(channel), False)
 
 
 	#	Function to check if channel has audio routed to its input
@@ -340,4 +336,77 @@ class zynmixer():
 		if self.lib_zynmixer:
 			self.lib_zynmixer.removeOscClient(ctypes.c_char_p(client.encode('utf-8')))
 
+
+	#--------------------------------------------------------------------------
+	# State management (for snapshots)
+	#--------------------------------------------------------------------------
+
+	#	Function to reset parameters of a channel to default
+	#	channel: Index of channel
+	#	update: True to send state to controllers
+	def reset(self, channel, update=True):
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
+		if self.lib_zynmixer:
+			self.lib_zynmixer.reset(channel)
+		if update:
+			self.zctrls[channel]['level'].set_value(self.lib_zynmixer.getLevel(channel), False)
+			self.zctrls[channel]['balance'].set_value(self.lib_zynmixer.getBalance(channel), False)
+			self.zctrls[channel]['mute'].set_value(self.lib_zynmixer.getMute(channel), False)
+			self.zctrls[channel]['mono'].set_value(self.lib_zynmixer.getMono(channel), False)
+			self.zctrls[channel]['solo'].set_value(self.lib_zynmixer.getSolo(channel), False)
+			self.zctrls[channel]['phase'].set_value(self.lib_zynmixer.getPhase(channel), False)
+			for symbol in self.zctrls[channel]:
+				self.zctrls[channel][symbol].midi_unlearn()
+
+
+	# Reset mixer to default state
+	def reset_state(self):
+		for channel in range(self.get_max_channels() + 1):
+			self.reset(channel)
+
+	# Get full mixer state
+	# Returns: List of mixer channels containing dictionary of each state value
+	def get_state(self):
+		state = []
+		for channel in range(self.get_max_channels() + 1):
+			state.append({
+				'level':self.get_level(channel),
+				'balance':self.get_balance(channel),
+				'mute':self.get_mute(channel),
+				'solo':self.get_solo(channel),
+				'mono':self.get_mono(channel)
+				})
+		return state
+
+	# Set full mixer state
+	# state: List of mixer channels containing dictionary of each state value
+	def set_state(self, state):
+		for index, strip in enumerate(state):
+			if 'level' in strip:
+				self.set_level(index, strip['level'], True)
+			if 'balance' in strip:
+				self.set_balance(index, strip['balance'], True)
+			if 'mute' in strip:
+				self.set_mute(index, strip['mute'], True)
+			if 'phase' in strip:
+				self.set_phase(index, strip['phase'], True)
+			if 'solo' in strip and index < self.get_max_channels():
+					self.set_solo(index, strip['solo'], True)
+			if 'mono' in strip:
+				self.set_mono(index, strip['mono'], True)
+
+
+	def send_update(self, chan, ctrl, value):
+		if self.layer_cb:
+			self.layer_cb(chan, ctrl, value)
+			
+	#--------------------------------------------------------------------------
+	# MIDI Learn
+	#--------------------------------------------------------------------------
+
+
+	def end_midi_learn(self, zctl):
+		logging.warning("Not implemented")
+		#TODO: Implement end_midi_learn
 #-------------------------------------------------------------------------------

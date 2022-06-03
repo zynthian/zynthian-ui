@@ -1190,7 +1190,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				'midi_routing': self.get_midi_routing(),
 				'extended_config': self.get_extended_config(),
 				'midi_profile_state': self.get_midi_profile_state(),
-				'mixer':[]
+				'mixer': self.zyngui.zynmixer.get_state()
 			}
 
 			#Layers info
@@ -1232,12 +1232,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				if self.zyngui.audio_recorder.is_primed(midi_chan):
 					snapshot['audio_recorder_primed'].append(midi_chan)
 
-			#Mixer
-			try:
-				snapshot['mixer'] = self.zyngui.screens['audio_mixer'].get_state()
-			except Exception as e:
-				pass
-
 			#JSON Encode
 			json=JSONEncoder().encode(snapshot)
 			logging.info("Saving snapshot %s => \n%s" % (fpath,json))
@@ -1276,8 +1270,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self._load_snapshot_sequences(snapshot)
 			#Mixer
 			try:
-				self.zyngui.screens['audio_mixer'].reset_state()
-				self.zyngui.screens['audio_mixer'].set_state(snapshot['mixer'])
+				self.zyngui.zynmixer.reset_state()
+				self.zyngui.zynmixer.set_state(snapshot['mixer'])
 			except Exception as e:
 				pass
 

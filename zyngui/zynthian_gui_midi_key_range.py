@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI MIDI key-range config class
 # 
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -52,19 +52,18 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		self.octave_trans = 0
 		self.halftone_trans = 0
 
-		self.learn_toggle = 0
-		self.learn_mode = True
+		self.learn_mode = 0 # [0:Disabled, 1:Lower, 2:Upper]
 
-		self.nlow_zgui_ctrl=None
-		self.nhigh_zgui_ctrl=None
-		self.octave_zgui_ctrl=None
-		self.halftone_zgui_ctrl=None
+		self.nlow_zgui_ctrl = None
+		self.nhigh_zgui_ctrl = None
+		self.octave_zgui_ctrl = None
+		self.halftone_zgui_ctrl = None
 
 		if zynthian_gui_config.ctrl_both_sides:
-			self.space_frame_width = zynthian_gui_config.display_width-2*zynthian_gui_config.ctrl_width
+			self.space_frame_width = zynthian_gui_config.display_width - 2 * zynthian_gui_config.ctrl_width
 			self.space_frame_height = zynthian_gui_config.ctrl_height - 2
 			self.piano_canvas_width = zynthian_gui_config.display_width
-			self.piano_canvas_height = int(zynthian_gui_config.ctrl_height/2)
+			self.piano_canvas_height = int(zynthian_gui_config.ctrl_height / 2)
 			self.note_info_canvas_height = zynthian_gui_config.ctrl_height - self.piano_canvas_height
 			self.zctrl_pos = [0, 2, 1, 3]
 		else:
@@ -136,11 +135,11 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 		i = 0
 		x1 = 0
-		x2 = key_width-1
+		x2 = key_width - 1
 		midi_note = self.midi_key0
-		while x1<self.piano_canvas_width:
+		while x1 < self.piano_canvas_width:
 			# plot white-key
-			if self.note_low>midi_note or self.note_high<midi_note:
+			if self.note_low > midi_note or self.note_high < midi_note:
 				bgcolor = "#D0D0D0"
 			else:
 				bgcolor = "#FFFFFF"
@@ -155,10 +154,10 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 			# plot black key when needed ...
 			if self.black_keys_pattern[i % 7]:
-				x1b = x1-int(key_width/3)
-				x2b = x1b+int(2*key_width/3)
-				if x2b<self.piano_canvas_width:
-					if self.note_low>midi_note or self.note_high<midi_note:
+				x1b = x1 - int(key_width / 3)
+				x2b = x1b + int(2*key_width / 3)
+				if x2b < self.piano_canvas_width:
+					if self.note_low > midi_note or self.note_high < midi_note:
 						bgcolor = "#707070"
 					else:
 						bgcolor = "#000000"
@@ -174,8 +173,8 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		i = 0
 		j = 0
 		midi_note = self.midi_key0
-		while j<len(self.piano_keys):
-			if self.note_low>midi_note or self.note_high<midi_note:
+		while j < len(self.piano_keys):
+			if self.note_low > midi_note or self.note_high < midi_note:
 				bgcolor = "#D0D0D0"
 			else:
 				bgcolor = "#FFFFFF"
@@ -184,7 +183,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			midi_note += 1
 
 			if self.black_keys_pattern[i % 7]:
-				if self.note_low>midi_note or self.note_high<midi_note:
+				if self.note_low > midi_note or self.note_high < midi_note:
 					bgcolor = "#707070"
 				else:
 					bgcolor = "#000000"
@@ -199,41 +198,42 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 	@staticmethod
 	def get_midi_note_name(num):
 		note_names = ("C","C#","D","D#","E","F","F#","G","G#","A","A#","B")
-		scale = int(num/12)-2
-		num = int(num%12)
-		return "{}{}".format(note_names[num],scale)
+		scale = int(num / 12) - 2
+		num = int(num % 12)
+		return "{}{}".format(note_names[num], scale)
 
 
 	def plot_text(self):
-		fs = int(1.7*zynthian_gui_config.font_size)
+		fs = int(1.7 * zynthian_gui_config.font_size)
 
 		self.nlow_text=self.note_info_canvas.create_text(
-			int(zynthian_gui_config.ctrl_width/2),
-			int((self.note_info_canvas_height-fs)/1.5),
-			width=5*fs,
+			int(zynthian_gui_config.ctrl_width / 2),
+			int((self.note_info_canvas_height-fs) / 1.5),
+			width=5 * fs,
 			justify=tkinter.CENTER,
 			fill=zynthian_gui_config.color_ctrl_tx,
-			font=(zynthian_gui_config.font_family,fs),
+			font=(zynthian_gui_config.font_family, fs),
 			text=self.get_midi_note_name(self.note_low))
 
 		self.nhigh_text=self.note_info_canvas.create_text(
-			self.piano_canvas_width-int(zynthian_gui_config.ctrl_width/2),
-			int((self.note_info_canvas_height-fs)/1.5),
-			width=5*fs,
+			self.piano_canvas_width - int(zynthian_gui_config.ctrl_width / 2),
+			int((self.note_info_canvas_height-fs) / 1.5),
+			width=5 * fs,
 			justify=tkinter.CENTER,
 			fill=zynthian_gui_config.color_ctrl_tx,
-			font=(zynthian_gui_config.font_family,fs),
+			font=(zynthian_gui_config.font_family, fs),
 			text=self.get_midi_note_name(self.note_high))
 
 
 		self.learn_text=self.note_info_canvas.create_text(
 			zynthian_gui_config.display_width  / 2,
 			int((self.note_info_canvas_height-fs) / 1.5),
-			width=5*fs,
+			width=5 * fs,
 			justify=tkinter.CENTER,
 			fill=zynthian_gui_config.color_ml,
 			font=(zynthian_gui_config.font_family, int(fs * 0.7)),
-			text="learning...")
+			text="learning...",
+			state=tkinter.HIDDEN)
 
 
 	def update_text(self):
@@ -244,8 +244,8 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 	def set_zctrls(self):
 		if self.shown:
 			if not self.halftone_zgui_ctrl:
-				self.halftone_zctrl=zynthian_controller(self, 'semitone transpose', 'semitone transpose', { 'value_min':-12, 'value_max':12 })
-				self.halftone_zgui_ctrl=zynthian_gui_controller(self.zctrl_pos[0], self.main_frame, self.halftone_zctrl, False)
+				self.halftone_zctrl = zynthian_controller(self, 'semitone transpose', 'semitone transpose', { 'value_min':-12, 'value_max':12 })
+				self.halftone_zgui_ctrl = zynthian_gui_controller(self.zctrl_pos[0], self.main_frame, self.halftone_zctrl, False)
 			self.halftone_zgui_ctrl.setup_zynpot()
 			self.halftone_zgui_ctrl.erase_midi_bind()
 			self.halftone_zctrl.set_value(self.halftone_trans)
@@ -290,37 +290,38 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		super().show()
 		self.zyngui.screens["control"].unlock_controllers()
 		self.set_zctrls()
-		lib_zyncore.set_midi_learning_mode(self.learn_mode)
-
+		self.update_piano()
+		
 
 	def hide(self):
 		super().hide()
-		lib_zyncore.set_midi_learning_mode(0)
+		self.end_midi_learn()
 
 
 	def zynpot_cb(self, i, dval):
-		if i == 0:
+		if i == zynthian_gui_config.ENC_LAYER:
 			self.halftone_zgui_ctrl.zynpot_cb(dval)
-		elif i ==1:
+		elif i == zynthian_gui_config.ENC_SNAPSHOT:
 			self.octave_zgui_ctrl.zynpot_cb(dval)
-		elif i ==2:
+		elif i == zynthian_gui_config.ENC_BACK:
 			self.nlow_zgui_ctrl.zynpot_cb(dval)
-		elif i ==3:
+		elif i == zynthian_gui_config.ENC_SELECT:
 			self.nhigh_zgui_ctrl.zynpot_cb(dval)
 		else:
 			return False
 		return True
 
 
-	def toggle_midi_learn(self):
-		if self.learn_mode:
-			self.learn_mode = False
-			#lib_zyncore.set_midi_learning_mode(0)
-			self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.HIDDEN)
-		else:
-			self.learn_mode = True
-			#lib_zyncore.set_midi_learning_mode(1)
-			self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.NORMAL)
+	def start_midi_learn(self):
+		self.learn_mode = 1
+		self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.NORMAL)
+		lib_zyncore.set_midi_learning_mode(True)
+
+
+	def end_midi_learn(self):
+		self.learn_mode = 0
+		self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.HIDDEN)
+		lib_zyncore.set_midi_learning_mode(False)
 
 
 	def send_controller_value(self, zctrl):
@@ -359,20 +360,24 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 
 	def learn_note_range(self, num):
-		if not self.learn_mode:
-			return
-		if self.learn_toggle == 0 or num <= self.note_low:
+		if self.learn_mode == 1:
 			self.nlow_zctrl.set_value(num)
 			if self.note_low > self.note_high:
 				self.nhigh_zctrl.set_value(127)
-			self.learn_toggle = 1
-		else:
+			self.learn_mode = 2
+		elif self.learn_mode == 2:
 			self.nhigh_zctrl.set_value(num)
-			self.learn_toggle = 0
+			self.end_midi_learn()
 
 
 	def switch_select(self, t='S'):
 		self.zyngui.close_screen()
+
+
+	def switch(self, switch, type):
+		if switch == zynthian_gui_config.ENC_BACK and self.learn_mode:
+			self.end_midi_learn()
+			return True
 
 
 	def set_select_path(self):

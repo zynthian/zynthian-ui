@@ -585,7 +585,6 @@ class zynthian_controller:
 	#--------------------------------------------------------------------------
 
 
-	#TODO: riban recommends removing naitive zyncoder MIDI/OSC to match MVC model
 	def midi_learn_zyncoder(self, chan, cc):
 		try:
 			if lib_zyncore.set_midi_filter_cc_swap(ctypes.c_ubyte(chan), ctypes.c_ubyte(cc), ctypes.c_ubyte(self.midi_chan), ctypes.c_ubyte(self.midi_cc)):
