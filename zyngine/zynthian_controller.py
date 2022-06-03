@@ -153,9 +153,6 @@ class zynthian_controller:
 
 		#Common configuration
 		self.value_range = self.value_max - self.value_min
-		if self.value_range == 0:
-			self.value_range = 1 # Avoid divide by zero errors
-			logging.warning("Controller %s calculated range is zero!", self.symbol)
 
 		if self.is_integer:
 			self.value_mid = self.value_min + int(self.value_range / 2)
@@ -271,7 +268,7 @@ class zynthian_controller:
 			if index < 0: index = 0
 			if index >= len(self.ticks) : index = len(self.ticks) - 1
 			self.set_value(self.ticks[index], send)
-		elif self.is_logarithmic:
+		elif self.is_logarithmic and self.value_range:
 			log_val = math.log10((9 * self.value - (10 * self.value_min - self.value_max)) / self.value_range)
 			log_val = min(1, max(0, log_val + val * self.nudge_factor))
 			self.set_value((math.pow(10, log_val) * self.value_range + (10 * self.value_min - self.value_max)) / 9)
@@ -399,7 +396,9 @@ class zynthian_controller:
 
 	def get_ctrl_midi_val(self):
 		try:
-			if self.is_logarithmic:
+			if self.value_range == 0:
+				return 0
+			elif self.is_logarithmic:
 				val = int(127 * math.log10((9 * self.value - (10 * self.value_min - self.value_max)) / self.value_range))
 			else:
 				val = min(127, int(127 * (self.value - self.value_min) / self.value_range))

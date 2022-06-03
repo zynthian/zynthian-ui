@@ -180,7 +180,9 @@ class zynthian_gui_controller:
 				self.value_print="ERR"
 
 		else:
-			if self.zctrl.is_logarithmic:
+			if self.zctrl.value_range == 0:
+				self.value_plot = 0
+			elif self.zctrl.is_logarithmic:
 				self.value_plot = math.log10((9 * self.zctrl.value - (10 * self.zctrl.value_min - self.zctrl.value_max)) / self.zctrl.value_range)
 			else:
 				self.value_plot = (self.zctrl.value - self.zctrl.value_min) / self.zctrl.value_range
@@ -526,7 +528,10 @@ class zynthian_gui_controller:
 		#Numeric value
 		else:
 			#Integer
-			if zctrl.is_integer:
+			if zctrl.value_range == 0:
+				self.pixels_per_div = 1
+
+			elif zctrl.is_integer:
 				self.pixels_per_div = self.height // zctrl.value_range
 				# If few values => use fixed step=1 (no adaptative step size!)
 				if zctrl.value_range <= 32:

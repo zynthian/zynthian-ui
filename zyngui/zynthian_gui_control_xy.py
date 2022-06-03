@@ -127,7 +127,9 @@ class zynthian_gui_control_xy():
 	def get_controller_values(self):
 		if self.x_zctrl.value != self.xvalue:
 			self.xvalue = self.x_zctrl.value
-			if self.x_zctrl.is_logarithmic:
+			if self.x_zctrl.value_range == 0:
+				self.x = 0
+			elif self.x_zctrl.is_logarithmic:
 				self.x = int(self.width * math.log10((9 * self.x_zctrl.value - (10 * self.x_zctrl.value_min - self.x_zctrl.value_max)) / self.x_zctrl.value_range))
 			else:
 				self.x = int(self.width * (self.xvalue - self.x_zctrl.value_min) / self.x_zctrl.value_range)
@@ -135,7 +137,9 @@ class zynthian_gui_control_xy():
 
 		if self.y_zctrl.value != self.yvalue:
 			self.yvalue = self.y_zctrl.value
-			if self.y_zctrl.is_logarithmic:
+			if self.y_zctrl.value_range == 0:
+				self.y = 0
+			elif self.y_zctrl.is_logarithmic:
 				self.y = int(self.width * math.log10((9 * self.y_zctrl.value - (10 * self.y_zctrl.value_min - self.y_zctrl.value_max)) / self.y_zctrl.value_range))
 			else:
 				self.y = int(self.height * (self.yvalue - self.y_zctrl.value_min) / self.y_zctrl.value_range)

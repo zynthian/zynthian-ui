@@ -55,7 +55,17 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.start()
 
 		# MIDI Controllers
-		self._ctrls=[]
+		self._ctrls=[
+			['gain', None, 1.0, 2.0],
+			['record', None, 'stopped', ['stopped', 'recording']],
+			['loop', None, 'one-shot', ['one-shot', 'looping']],
+			['transport', None, 'stopped', ['stopped', 'playing']],
+			['position', None, 0.0, 0.0],
+			['left track', None, 0, [['mixdown'], [0]]],
+			['right track', None, 0, [['mixdown'], [0]]],
+			['loop start', None, 0.0, 0.0],
+			['loop end', None, 0.0, 0.0]
+		]		
 
 		# Controller Screens
 		self._ctrl_screens =[]
