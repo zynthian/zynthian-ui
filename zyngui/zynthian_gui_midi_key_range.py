@@ -215,7 +215,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 	def plot_text(self):
 		fs = int(1.7 * zynthian_gui_config.font_size)
 
-		self.nlow_text=self.note_info_canvas.create_text(
+		self.nlow_text = self.note_info_canvas.create_text(
 			int(zynthian_gui_config.ctrl_width / 2),
 			int((self.note_info_canvas_height-fs) / 1.5),
 			width=5 * fs,
@@ -223,8 +223,10 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			fill=zynthian_gui_config.color_ctrl_tx,
 			font=(zynthian_gui_config.font_family, fs),
 			text=self.get_midi_note_name(self.note_low))
+		self.note_info_canvas.tag_bind(self.nlow_text, "<Button-4>", self.cb_nlow_wheel_up)
+		self.note_info_canvas.tag_bind(self.nlow_text, "<Button-5>", self.cb_nlow_wheel_down)
 
-		self.nhigh_text=self.note_info_canvas.create_text(
+		self.nhigh_text = self.note_info_canvas.create_text(
 			self.piano_canvas_width - int(zynthian_gui_config.ctrl_width / 2),
 			int((self.note_info_canvas_height-fs) / 1.5),
 			width=5 * fs,
@@ -232,9 +234,11 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			fill=zynthian_gui_config.color_ctrl_tx,
 			font=(zynthian_gui_config.font_family, fs),
 			text=self.get_midi_note_name(self.note_high))
+		self.note_info_canvas.tag_bind(self.nhigh_text, "<Button-4>", self.cb_nhigh_wheel_up)
+		self.note_info_canvas.tag_bind(self.nhigh_text, "<Button-5>", self.cb_nhigh_wheel_down)
 
 
-		self.learn_text=self.note_info_canvas.create_text(
+		self.learn_text = self.note_info_canvas.create_text(
 			zynthian_gui_config.display_width  / 2,
 			int((self.note_info_canvas_height-fs) / 1.5),
 			width=5 * fs,
@@ -424,5 +428,21 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 					self.nlow_zctrl.set_value(vis_key)
 					self.update_piano()
 				return
+
+
+	def cb_nlow_wheel_up(self, event):
+		self.nlow_zgui_ctrl.zynpot_cb(1)
+
+
+	def cb_nlow_wheel_down(self, event):
+		self.nlow_zgui_ctrl.zynpot_cb(-1)
+
+
+	def cb_nhigh_wheel_up(self, event):
+		self.nhigh_zgui_ctrl.zynpot_cb(1)
+
+
+	def cb_nhigh_wheel_down(self, event):
+		self.nhigh_zgui_ctrl.zynpot_cb(-1)
 
 #------------------------------------------------------------------------------
