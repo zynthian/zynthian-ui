@@ -1192,7 +1192,7 @@ int is_debug() {
 unsigned int get_player_count() {
     int count = 0;
     for(int i = 0; i < MAX_PLAYERS; ++i)
-        if(g_players)
+        if(g_players[i])
             ++count;
     return count;
 }

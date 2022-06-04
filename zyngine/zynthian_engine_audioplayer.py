@@ -94,7 +94,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def stop(self):
 		try:
-			self.player.remove_player()
+			self.player = None
 		except Exception as e:
 			logging.error("Failed to close audio player: %s", e)
 

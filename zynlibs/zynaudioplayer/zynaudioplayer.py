@@ -47,6 +47,7 @@ class zynaudioplayer():
 	def __init__(self):
 		try:
 			self.handle = None
+			# Load or increment ref to lib
 			self.libaudioplayer = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynaudioplayer.so")
 			handle = self.libaudioplayer.init()
 			if handle == -1:
@@ -74,21 +75,12 @@ class zynaudioplayer():
 
 
 	#	Destoy instance of shared library
-	def destroy(self):
+	def __del__(self):
+		self.set_control_cb(None)
 		if self.libaudioplayer:
 			self.libaudioplayer.end()
+			# Decrement ref to lib - when all ref removed shared lib will be unloaded
 			dlclose(self.libaudioplayer._handle)
-		self.libaudioplayer = None
-
-
-	#	Remove player from library
-	def remove_player(self):
-		if self.handle is None:
-			return
-		self.set_control_cb(None)
-		self.libaudioplayer.remove_player(self.handle)
-		self.libaudioplayer = None
-		self.handle = None
 		
 
 	#	Get jack client name
