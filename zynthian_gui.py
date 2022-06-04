@@ -183,6 +183,7 @@ class zynthian_gui:
 	}
 
 	def __init__(self):
+		self.test_mode = False
 		self.screens = {}
 		self.screen_history = []
 		self.current_screen = None
@@ -1011,7 +1012,11 @@ class zynthian_gui:
 		#----------------------------------------------------------------
 		# System actions
 		#----------------------------------------------------------------
-		if cuia == "POWER_OFF":
+		if cuia == "TEST_MODE":
+			self.test_mode = params
+			logging.warning('TEST_MODE: {}'.format(params))
+
+		elif cuia == "POWER_OFF":
 			self.screens['admin'].power_off_confirmed()
 
 		elif cuia == "REBOOT":
@@ -1045,7 +1050,7 @@ class zynthian_gui:
 		
 		elif cuia == "CLEAN_ALL" and params == ['CONFIRM']:
 			self.clean_all()
-			self.show_screen_reset('Audio audio_mixer') #TODO: Should send signal so that UI can react
+			self.show_screen_reset('main') #TODO: Should send signal so that UI can react
 
 		#----------------------------------------------------------------
 		# Audio & MIDI Recording/Playback actions

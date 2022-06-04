@@ -6,7 +6,7 @@
 # Zynthian GUI Step-Sequencer Class
 #
 # Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2022 Brian Walton <brian@riban.co.uk>
+#                         Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 #
@@ -548,6 +548,8 @@ class zynthian_gui_stepsequencer(zynthian_gui_base.zynthian_gui_base):
 	# Function to show GUI
 	def show(self):
 		if not self.shown:
+			if self.zyngui.test_mode:
+				logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 			self.main_frame.grid_propagate(False)
 			self.main_frame.grid(column=0, row=0)
 			self.zyngui.screens["control"].unlock_controllers()

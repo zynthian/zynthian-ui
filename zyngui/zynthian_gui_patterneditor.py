@@ -6,7 +6,7 @@
 # Zynthian GUI Step-Sequencer Class
 #
 # Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2022 Brian Walton <brian@riban.co.uk>
+#                         Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 #
@@ -198,6 +198,8 @@ class zynthian_gui_patterneditor():
 	# Function to show GUI
 	#   params: Pattern parameters to edit {'pattern':x, 'channel':x, 'pad':x (optional)}
 	def show(self, params=None):
+		if self.zyngui.test_mode:
+			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 		try:
 			self.channel = params['channel']
 			self.load_pattern(params['pattern'])

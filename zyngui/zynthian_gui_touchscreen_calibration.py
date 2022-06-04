@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Touchscreen Calibration Class
 # 
-# Copyright (C) 2020 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2022 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 # 
@@ -397,6 +397,8 @@ class zynthian_gui_touchscreen_calibration:
 	# 	Show display
 	def show(self):
 		if not self.shown:
+			if self.zyngui.test_mode:
+				logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 			self.shown=True
 			self.device_name = None
 			self.ctm = [1,0,0,0,1,0,0,0,1]

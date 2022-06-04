@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Confirm Class
 # 
-# Copyright (C) 2018 Markus Heidt <markus@heidt-tech.com>
+# Copyright (C) 2022 Markus Heidt <markus@heidt-tech.com>
 #                    Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
@@ -93,6 +93,8 @@ class zynthian_gui_confirm():
 
 
 	def show(self, text, callback=None, cb_params=None):
+		if self.zyngui.test_mode:
+			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 		self.text.set(text)
 		self.callback = callback
 		self.callback_params = cb_params

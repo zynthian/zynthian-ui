@@ -5,8 +5,8 @@
 # 
 # Zynthian GUI keyboard Class
 # 
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2020-2021 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 # 
@@ -261,6 +261,8 @@ class zynthian_gui_keyboard():
 	#	text: Text to display (Default: empty)
 	#	max_len: Maximum quantity of characters in text (Default: no limit)
 	def show(self, function, text="", max_len=None):
+		if self.zyngui.test_mode:
+			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 		self.function = function
 		self.text= text
 		if max_len:

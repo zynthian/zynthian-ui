@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI MIDI Recorder Class
 # 
-# Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -237,7 +237,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
-				self.zyngui.replace_screen('audio_recorder')
 				return True
 
 

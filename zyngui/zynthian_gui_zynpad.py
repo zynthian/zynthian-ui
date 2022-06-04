@@ -6,7 +6,7 @@
 # Zynthian GUI Step-Sequencer Class
 #
 # Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2022 Brian Walton <brian@riban.co.uk>
+#                         Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 #
@@ -107,6 +107,8 @@ class zynthian_gui_zynpad():
 	# Function to show GUI
 	#   params: Misc parameters
 	def show(self, params):
+		if self.zyngui.test_mode:
+			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 		libseq.updateSequenceInfo()
 		self.main_frame.tkraise()
 		self.setup_encoders()

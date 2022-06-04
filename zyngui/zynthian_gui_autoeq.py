@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Auto-EQ Class
 # 
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -93,6 +93,8 @@ class zynthian_gui_autoeq():
 
 	def show(self):
 		if not self.shown:
+			if self.zyngui.test_mode:
+				logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 			self.shown=True
 			self.main_frame.grid()
 

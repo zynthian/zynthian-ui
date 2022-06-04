@@ -350,6 +350,8 @@ class zynthian_gui_arranger():
 	# Function to show GUI
 	#	params: Optional dictionary of configuration, e.g. "sequence":number
 	def show(self, params={}):
+		if self.zyngui.test_mode:
+			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 		self.main_frame.tkraise()
 		self.select_bank()
 		self.setup_encoders()
