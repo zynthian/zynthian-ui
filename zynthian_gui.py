@@ -1544,7 +1544,7 @@ class zynthian_gui:
 			self.back_screen()
 
 		elif i==2:
-			self.cuia_learn()
+			pass
 
 		elif i==3:
 			self.screens[self.current_screen].switch_select('S')

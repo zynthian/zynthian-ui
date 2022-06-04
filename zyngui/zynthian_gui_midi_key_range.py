@@ -391,11 +391,13 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		if switch == zynthian_gui_config.ENC_BACK and self.learn_mode:
 			self.end_midi_learn()
 			return True
-		elif switch == zynthian_gui_config.ENC_SNAPSHOT and type == "S":
+		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
 			if self.learn_mode:
 				self.end_midi_learn()
 			else:
 				self.start_midi_learn()
+			return True
+		elif switch == zynthian_gui_config.ENC_LAYER:
 			return True
 
 

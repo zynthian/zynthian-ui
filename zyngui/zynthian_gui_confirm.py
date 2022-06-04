@@ -116,6 +116,11 @@ class zynthian_gui_confirm():
 			self.callback(self.callback_params)
 
 
+	def switch(self, i, t):
+		if i in [0,2]:
+			return True
+
+
 	def cb_yes_push(self, event):
 		self.zyngui.zynswitch_defered('S',3)
 
