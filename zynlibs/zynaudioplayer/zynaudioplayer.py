@@ -42,7 +42,7 @@ from os.path import dirname, realpath
 
 
 class zynaudioplayer():
-
+    
 	#	Initiate library
 	def __init__(self):
 		try:

@@ -145,10 +145,11 @@ float getDpm(int channel, int leg);
 float getDpmHold(int channel, int leg);
 
 /** @brief  Enable / disable peak programme metering
+*   @param  channel Index of channel
 *   @param  enable 1 to enable, 0 to disable
 *   @note   DPM increase CPU processing so may be disabled if this causes issues (like xruns)
 */
-void enableDpm(int enable);
+void enableDpm(int channel, int enable);
 
 /** @brief  Adds client to list of registered OSC clients
 *   @param  client IP address of client

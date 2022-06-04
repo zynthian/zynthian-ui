@@ -313,14 +313,12 @@ class zynmixer(zynthian_engine):
 
 
 	#	Function to enable or disable digital peak meters
+	#	chan: Mixer channel (256 for main mix bus)
 	#	enable: True to enable
-	def enable_dpm(self, enable):
+	def enable_dpm(self, chan, enable):
 		if self.lib_zynmixer is None:
 			return
-		if enable:
-			self.lib_zynmixer.enableDpm(1)
-		else:
-			self.lib_zynmixer.enableDpm(0)
+		self.lib_zynmixer.enableDpm(chan, int(enable))
 
 
 	#	Function to add OSC client registration

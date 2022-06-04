@@ -750,7 +750,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.main_canvas.tag_bind(self.horiz_scroll_bg, "<Button-4>", self.on_fader_wheel_up)
 			self.main_canvas.tag_bind(self.horiz_scroll_bg, "<Button-5>", self.on_fader_wheel_down)
 
-		self.zynmixer.enable_dpm(False) # Disable DPM by default - they get enabled when mixer is shown
+		# Disable channel DPM by default - they get enabled when mixer is shown
+		for chan in range(self.zyngui.zynmixer.get_max_channels()):
+			self.zyngui.zynmixer.enable_dpm(chan, False)
+
 		if zynthian_gui_config.show_cpu_status:
 			self.meter_mode = self.METER_CPU
 		else:
@@ -764,13 +767,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle hiding display
 	def hide(self):
-		self.zynmixer.enable_dpm(False)
+		# Disable channel DPM when mixer not shown
+		for chan in range(self.zyngui.zynmixer.get_max_channels()):
+			self.zyngui.zynmixer.enable_dpm(chan, False)
 		self.end_midi_learn()
 		super().hide()
 
 
 	# Function to handle showing display
 	def show(self):
+		# Only enable channel DPM when mixer shown
+		for chan in range(self.zyngui.zynmixer.get_max_channels()):
+			self.zyngui.zynmixer.enable_dpm(chan, zynthian_gui_config.enable_dpm)
 		self.zyngui.screens["control"].unlock_controllers()
 		self.refresh_visible_strips()
 		if self.selected_chain_index == None:
@@ -778,7 +786,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.select_chain_by_index(self.selected_chain_index)
 		self.setup_zynpots()
-		self.zynmixer.enable_dpm(True)
 		super().show()
 
 
@@ -794,7 +801,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.main_mixbus_strip.draw_dpm()
 			for strip in self.visible_mixer_strips:
 				if not strip.hidden:
-					strip.draw_dpm()
+					if zynthian_gui_config.enable_dpm:
+						strip.draw_dpm()
 					strip.refresh_status()
 				# Redraw changed strips
 				'''

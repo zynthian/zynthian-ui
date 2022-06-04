@@ -65,6 +65,7 @@ struct dynamic
     int mono; // 1 if mono
     int phase; // 1 if channel B phase reversed
     int routed; // 1 if source routed to channel
+    int enable_dpm; // 1 to enable calculation of peak meter
 };
 
 jack_client_t * g_pJackClient;
@@ -76,7 +77,6 @@ jack_port_t * g_mainReturnA;
 jack_port_t * g_mainReturnB;
 int g_mainReturnRoutedA = 0;
 int g_mainReturnRoutedB = 0;
-int g_bDpm = 1;
 unsigned int g_nDampingCount = 0;
 unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
 unsigned int g_nHoldCount = 0;
@@ -210,7 +210,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     pSendB[frame] += fSampleB;
                     curLevelA += fDeltaA;
                     curLevelB += fDeltaB;
-                    if(g_bDpm || g_bOsc)
+                    if(g_dynamic[chan].enable_dpm)
                     {
                         fSampleA = fabs(fSampleA);
                         if(fSampleA > g_dynamic[chan].dpmA)
@@ -234,7 +234,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     pSendB[frame] += fSampleB;
                     curLevelA += fDeltaA;
                     curLevelB += fDeltaB;
-                    if(g_bDpm || g_bOsc)
+                    if(g_dynamic[chan].enable_dpm)
                     {
                         fSampleA = fabs(fSampleA);
                         if(fSampleA > g_dynamic[chan].dpmA)
@@ -246,7 +246,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 }
             }
             // Update peak hold and scale DPM for damped release
-            if(g_bDpm || g_bOsc)
+            if(g_dynamic[chan].enable_dpm)
             {
                 if(g_dynamic[chan].dpmA > g_dynamic[chan].holdA)
                     g_dynamic[chan].holdA = g_dynamic[chan].dpmA;
@@ -326,33 +326,39 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         curLevelA += fDeltaA;
         curLevelB += fDeltaB;
         fSampleA = fabs(pOutA[frame]);
-        if(fSampleA > g_mainOutput.dpmA)
-            g_mainOutput.dpmA = fSampleA;
-        fSampleB = fabs(pOutB[frame]);
-        if(fSampleB > g_mainOutput.dpmB)
-            g_mainOutput.dpmB = fSampleB;
+        if(g_mainOutput.enable_dpm)
+        {
+            if(fSampleA > g_mainOutput.dpmA)
+                g_mainOutput.dpmA = fSampleA;
+            fSampleB = fabs(pOutB[frame]);
+            if(fSampleB > g_mainOutput.dpmB)
+                g_mainOutput.dpmB = fSampleB;
+        }
     }
 
-    if(g_mainOutput.dpmA > g_mainOutput.holdA)
-        g_mainOutput.holdA = g_mainOutput.dpmA;
-    if(g_mainOutput.dpmB > g_mainOutput.holdB)
-        g_mainOutput.holdB = g_mainOutput.dpmB;
-    if(g_nHoldCount == 0)
+    if(g_mainOutput.enable_dpm)
     {
-        g_mainOutput.holdA = g_mainOutput.dpmA;
-        g_mainOutput.holdB = g_mainOutput.dpmB;
-        g_nHoldCount = g_nDampingPeriod * 20;
-    }
-    if(g_nDampingCount == 0)
-    {
-        g_mainOutput.dpmA *= g_fDpmDecay;
-        g_mainOutput.dpmB *= g_fDpmDecay;
-        g_nDampingCount = g_nDampingPeriod;
+        if(g_mainOutput.dpmA > g_mainOutput.holdA)
+            g_mainOutput.holdA = g_mainOutput.dpmA;
+        if(g_mainOutput.dpmB > g_mainOutput.holdB)
+            g_mainOutput.holdB = g_mainOutput.dpmB;
+        if(g_nHoldCount == 0)
+        {
+            g_mainOutput.holdA = g_mainOutput.dpmA;
+            g_mainOutput.holdB = g_mainOutput.dpmB;
+            g_nHoldCount = g_nDampingPeriod * 20;
+        }
+        if(g_nDampingCount == 0)
+        {
+            g_mainOutput.dpmA *= g_fDpmDecay;
+            g_mainOutput.dpmB *= g_fDpmDecay;
+            g_nDampingCount = g_nDampingPeriod;
+        }
     }
 
-    // Damping and hold counts are used throughout cycle so update at end of cycle
-    --g_nDampingCount;
-    --g_nHoldCount;
+        // Damping and hold counts are used throughout cycle so update at end of cycle
+        --g_nDampingCount;
+        --g_nHoldCount;
 
     return 0;
 }
@@ -417,6 +423,7 @@ int init()
         g_dynamic[chan].reqbalance = 0.0;
         g_dynamic[chan].mute = 0;
         g_dynamic[chan].phase = 0;
+        g_dynamic[chan].enable_dpm = 1;
         char sName[10];
         sprintf(sName, "input_%02da", chan + 1);
         if (!(g_dynamic[chan].portA = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
@@ -474,6 +481,7 @@ int init()
     g_mainOutput.mute = 0;
     g_mainOutput.phase = 0;
     g_mainOutput.routed = 1;
+    g_mainOutput.enable_dpm = 1;
 
     #ifdef DEBUG
     fprintf(stderr,"libzynmixer: Registered output ports\n");
@@ -722,18 +730,20 @@ float getDpmHold(int channel, int leg)
     return convertToDBFS(g_dynamic[channel].holdA);
 }
 
-void enableDpm(int enable)
+void enableDpm(int channel, int enable)
 {
-    g_bDpm = enable;
-    if(g_bDpm == 0)
+    struct dynamic * pChannel;
+    if(channel >= MAX_CHANNELS)
+        pChannel = &g_mainOutput;
+    else
+        pChannel = &(g_dynamic[channel]);
+    pChannel->enable_dpm = enable;
+    if(enable == 0)
     {
-        for(unsigned int chan = 0; chan < MAX_CHANNELS; ++chan)
-        {
-            g_dynamic[chan].dpmA = 0;
-            g_dynamic[chan].dpmB = 0;
-            g_dynamic[chan].holdA = 0;
-            g_dynamic[chan].holdB = 0;
-        }
+        pChannel->dpmA = 0;
+        pChannel->dpmB = 0;
+        pChannel->holdA = 0;
+        pChannel->holdB = 0;
     }
 }
 
@@ -765,7 +775,7 @@ int addOscClient(const char* client)
         setMute(MAIN_CHANNEL, getMute(MAIN_CHANNEL));
         setPhase(MAIN_CHANNEL, getPhase(MAIN_CHANNEL));
         setSolo(MAIN_CHANNEL, getSolo(MAIN_CHANNEL));
-        g_bOsc = 1;
+        g_bOsc = 0;
         return i;
     }
     fprintf(stderr, "libzynmixer: Not adding OSC client %s - Maximum client count reached [%d]\n", client, MAX_OSC_CLIENTS);

@@ -402,6 +402,7 @@ multichannel_recorder=int(os.environ.get('ZYNTHIAN_UI_MUKTICHANNEL_REC', 0))
 #------------------------------------------------------------------------------
 
 rbpi_headphones=int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES',False))
+enable_dpm=int(os.environ.get('ZYNTHIAN_DPM',True))
 
 #------------------------------------------------------------------------------
 # Networking Options

@@ -90,6 +90,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
 
+		if zynthian_gui_config.enable_dpm:
+			self.list_data.append((self.toggle_dpm,0,"[x] Mixer Peak Meters"))
+		else:
+			self.list_data.append((self.toggle_dpm,0,"[  ] Mixer Peak Meters"))
+
 		if zynthian_gui_config.snapshot_mixer_settings:
 			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[x] Audio Levels on Snapshots"))
 		else:
@@ -321,6 +326,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.start_rbpi_headphones(False)
 		else:
 			self.stop_rbpi_headphones(False)
+
+
+	def toggle_dpm(self):
+		zynthian_gui_config.enable_dpm = not zynthian_gui_config.enable_dpm
+		self.fill_list()
 
 
 	def toggle_snapshot_mixer_settings(self):

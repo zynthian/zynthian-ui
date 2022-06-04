@@ -421,10 +421,10 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		for key,rect in enumerate(self.piano_keys):
 			if event.x < event.widget.coords(rect)[2]:
 				vis_key = self.midi_key0 + key
-				if vis_key > self.clicked_key and vis_key != self.nhigh_zctrl.value:
+				if vis_key >= self.clicked_key and vis_key != self.nhigh_zctrl.value:
 					self.nhigh_zctrl.set_value(vis_key)
 					self.update_piano()
-				elif vis_key < self.clicked_key and vis_key != self.nlow_zctrl.value:
+				elif vis_key <= self.clicked_key and vis_key != self.nlow_zctrl.value:
 					self.nlow_zctrl.set_value(vis_key)
 					self.update_piano()
 				return
