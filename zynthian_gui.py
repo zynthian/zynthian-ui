@@ -5,7 +5,7 @@
 #
 # Main Class and Program for Zynthian GUI
 #
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -49,6 +49,7 @@ import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynmixer import zynmixer
 from zynlibs.zynaudioplayer import zynaudioplayer
+from zynlibs.zynseq import zynseq
 
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
@@ -957,6 +958,15 @@ class zynthian_gui:
 		return zynthian_gui_config.midi_single_active_channel
 
 
+	def clean_all(self):
+		if len(self.screens['layer'].layers) > 0:
+			self.screens['snapshot'].save_last_state_snapshot()
+		self.screens['layer'].reset()
+		self.zynmixer.reset_state()
+		zynseq.load("")
+		self.show_screen_reset('main')
+
+
 	def start_audio_player(self):
 		filename = self.audio_recorder.filename
 		if not filename or not os.path.exists(filename):
@@ -1032,6 +1042,10 @@ class zynthian_gui:
 			self.all_sounds_off()
 			sleep(0.1)
 			self.raw_all_notes_off()
+		
+		elif cuia == "CLEAN_ALL" and params == ['CONFIRM']:
+			self.clean_all()
+			self.show_screen_reset('Audio audio_mixer') #TODO: Should send signal so that UI can react
 
 		#----------------------------------------------------------------
 		# Audio & MIDI Recording/Playback actions

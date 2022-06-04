@@ -28,7 +28,6 @@ import logging
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from zynlibs.zynseq import zynseq
 
 #------------------------------------------------------------------------------
 # Zynthian App Selection GUI Class
@@ -101,14 +100,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 
 	def clean_all_confirmed(self, params=None):
-		if len(self.zyngui.screens['layer'].layers) > 0:
-			self.zyngui.screens['snapshot'].save_last_state_snapshot()
-		self.zyngui.screens['layer'].reset()
-		self.zyngui.zynmixer.reset_state()
-		if zynseq.libseq:
-			zynseq.load("")
 		self.index = 0
-		self.zyngui.show_screen_reset('main')
+		self.zyngui.clean_all()
 
 
 	def audio_mixer(self, t='S'):
