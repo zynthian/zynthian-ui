@@ -1234,6 +1234,13 @@ class zynthian_gui:
 		# Screen/Mode management CUIAs
 		#----------------------------------------------------------------
 		#TODO: Toggle not necessarily desired action. Should we add set-screen options?
+
+		elif cuia == "TOGGLE_VIEW" and params:
+			self.toggle_screen(params[0])
+
+		elif cuia == "SHOW_VIEW" and params:
+			self.show_screen_reset(params[0])
+		
 		elif cuia in ("MODAL_MAIN", "SCREEN_MAIN"):
 			self.toggle_screen("main")
 

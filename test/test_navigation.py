@@ -78,11 +78,48 @@ journal = pexpect.spawn('/bin/journalctl -fu zynthian', encoding='UTF-8')
 test('Enable test mode', '/cuia/test_mode', 1, 'TEST_MODE: \[1\]\r\n')
 
 # Show mixer then clean so we know where we are starting from
-if test('Navigate to mixer view', '/cuia/SCREEN_AUDIO_MIXER', None, 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n') == 'FAILED':
-    # May have toggled so let's try to recover
-    cuia('/cuia/SCREEN_AUDIO_MIXER')
-    flush()
+test('Navigate to mixer view', '/cuia/show_view', 'audio_mixer', 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
 
 test('Clean all', '/cuia/clean_all', 'CONFIRM', 'TEST_MODE: zyngui.zynthian_gui_main\r\n', 10)
 
-test('Bold back should go to mixer view', '/cuia/switch_back_bold', None, 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
+test('Main menu: select "New Synth Chain"', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_engine\r\n')
+
+cuia('/cuia/arrow_down')
+test('Engine: Select FluidSynth', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_midi_chan\r\n')
+
+test('Select MIDI channel', '/cuia/switch_select_short' , None, 'TEST_MODE: zyngui.zynthian_gui_bank\r\n')
+
+cuia('/cuia/arrow_down')
+test('Select Bank', '/cuia/switch_select_short' , None, 'TEST_MODE: zyngui.zynthian_gui_preset\r\n')
+
+test('Select Preset', '/cuia/switch_select_short' , None, 'TEST_MODE: zyngui.zynthian_gui_control\r\n', 5)
+
+test('Control bold back', '/cuia/switch_back_bold', None, 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
+
+test('Mixer short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_control\r\n')
+
+cuia('/cuia/show_view', 'audio_mixer')
+test('Mixer bold layer', '/cuia/switch_layer_bold', None, 'TEST_MODE: zyngui.zynthian_gui_main\r\n')
+
+cuia('/cuia/show_view', 'audio_mixer')
+test('Mixer bold snap/learn', '/cuia/switch_snapshot_bold', None, 'TEST_MODE: zyngui.zynthian_gui_snapshot\r\n')
+
+cuia('/cuia/show_view', 'audio_mixer')
+test('Mixer bold select', '/cuia/switch_select_bold', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
+
+test('Chain options short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
+
+cuia('/cuia/switch_select_bold')
+test('Chain options short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_midi_key_range\r\n')
+
+test('MIDI key range short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
+
+test('Chain options bold select', '/cuia/switch_select_bold', None, 'TEST_MODE: zyngui.zynthian_gui_midi_key_range\r\n')
+
+test('MIDI key range short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
+
+cuia('/cuia/switch_select_short')
+test('MIDI key range bold select', '/cuia/switch_select_bold', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
+
+cuia('/cuia/switch_select_short')
+test('Chain options bold back', '/cuia/switch_back_bold', None, 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
