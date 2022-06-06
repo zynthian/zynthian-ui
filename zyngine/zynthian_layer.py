@@ -392,7 +392,7 @@ class zynthian_layer:
 
 
 	def set_show_fav_presets(self, flag=True):
-		if flag:
+		if flag and len(self.engine.get_preset_favs(self)):
 			self.show_fav_presets = True
 			#self.reset_preset()
 		else:
