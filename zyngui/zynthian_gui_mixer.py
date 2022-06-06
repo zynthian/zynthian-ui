@@ -146,7 +146,7 @@ class zynthian_gui_mixer_strip():
 		font_fader = (zynthian_gui_config.font_family, int(0.9 * font_size))
 		font_icons = ("forkawesome", int(0.3 * self.width))
 
-		self.fader_text_len = int(1.1 * self.fader_height / font_size)
+		self.fader_text_limit = self.fader_top + int(0.1 * self.fader_height)
 
 		'''
 		Create GUI elements
@@ -245,9 +245,6 @@ class zynthian_gui_mixer_strip():
 			# Rest of chains
 			elif self.layer.preset_name:
 				res2 = self.layer.preset_name
-			# Limit text len
-			if len(res2)>self.fader_text_len:
-				res2 = res2[0:self.fader_text_len]
 			return res1+res2
 		return default_text
 
@@ -268,7 +265,16 @@ class zynthian_gui_mixer_strip():
 			else:
 				strip_txt = "X"
 			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt)
-			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("None"), state=tkinter.NORMAL)
+			label = self.get_legend_text("None")
+			self.parent.main_canvas.itemconfig(self.legend, text=label, state=tkinter.NORMAL)
+			bounds = self.parent.main_canvas.bbox(self.legend)
+			if bounds[1] < self.fader_text_limit:
+				while bounds and bounds[1] < self.fader_text_limit:
+					label = label[:-1]
+					self.parent.main_canvas.itemconfig(self.legend, text=label)
+					bounds = self.parent.main_canvas.bbox(self.legend)
+				label += "..."
+				self.parent.main_canvas.itemconfig(self.legend, text=label)
 
 		try:
 			if self.layer.engine and self.layer.engine.type == "MIDI Tool" or self.layer.midi_chan is None:

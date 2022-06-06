@@ -550,44 +550,6 @@ class zynthian_gui_base:
 		pass
 
 
-	def select_up(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
-
-
-	# Function to handle CUIA SELECT_DOWN command
-	def select_down(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
-
-
-	# Function to handle CUIA BACK_UP command
-	def back_up(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
-
-
-	# Function to handle CUIA BACK_DOWN command
-	def back_down(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
-
-
-	# Function to handle CUIA LAYER_UP command
-	def layer_up(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_LAYER, 1)
-
-
-	# Function to handle CUIA LAYER_DOWN command
-	def layer_down(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_LAYER, -1)
-
-
-	# Function to handle CUIA SNAPSHOT_UP command
-	def snapshot_up(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, 1)
-
-
-	# Function to handle CUIA SNAPSHOT_DOWN command
-	def snapshot_down(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, -1)
-
 	#--------------------------------------------------------------------------
 	# Keyboard & Mouse/Touch Callbacks
 	#--------------------------------------------------------------------------

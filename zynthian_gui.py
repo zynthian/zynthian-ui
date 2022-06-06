@@ -1152,53 +1152,57 @@ class zynthian_gui:
 		# Rotary Control => it receives the zynpot number as paramter
 		#----------------------------------------------------------------
 		elif cuia == "ZYNPOT_UP":
-			#TODO
-			pass
+			try:
+				self.get_current_screen_obj().zynpot_cb(params[0], 1)
+			except:
+				pass
 		elif cuia == "ZYNPOT_DOWN":
-			#TODO
-			pass
+			try:
+				self.get_current_screen_obj().zynpot_cb(params[0], -1)
+			except:
+				pass
 
 		#----------------------------------------------------------------
 		# Legacy "4 x rotaries" CUIAs
 		#----------------------------------------------------------------
 		elif cuia == "SELECT_UP":
 			try:
-				self.get_current_screen_obj().select_up()
+				self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 			except:
 				pass
 		elif cuia == "SELECT_DOWN":
 			try:
-				self.get_current_screen_obj().select_down()
+				self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 			except:
 				pass
 		elif cuia == "BACK_UP":
 			try:
-				self.get_current_screen_obj().back_up()
+				self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 			except:
 				pass
 		elif cuia == "BACK_DOWN":
 			try:
-				self.get_current_screen_obj().back_down()
+				self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 			except:
 				pass
 		elif cuia == "LAYER_UP":
 			try:
-				self.get_current_screen_obj().layer_up()
+				self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_LAYER, 1)
 			except:
 				pass
 		elif cuia == "LAYER_DOWN":
 			try:
-				self.get_current_screen_obj().layer_down()
+				self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_LAYER, -1)
 			except:
 				pass
 		elif cuia in ("SNAPSHOT_UP", "LEARN_UP"):
 			try:
-				self.get_current_screen_obj().snapshot_up()
+				self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, 1)
 			except:
 				pass
 		elif cuia in ("SNAPSHOT_DOWN", "LEARN_DOWN"):
 			try:
-				self.get_current_screen_obj().snapshot_down()
+				self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, -1)
 			except:
 				pass
 
