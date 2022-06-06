@@ -70,73 +70,119 @@ def test(title, cmd, params, response, timeout=1):
         print(e)
     flush()
     print("{}: {}".format(result, title))
-    return result
+    return result == "PASSED"
 
-#confirm('Start Zynthian regression testing?')
+overall_result = True
 journal = pexpect.spawn('/bin/journalctl -fu zynthian', encoding='UTF-8')
 
-test('Enable test mode', '/cuia/test_mode', 1, 'TEST_MODE: \[1\]\r\n')
+overall_result &= test('Enable test mode', '/cuia/test_mode', 1, 'TEST_MODE: \[1\]\r\n')
 
 # Show mixer then clean so we know where we are starting from
-test('Navigate to mixer view', '/cuia/show_view', 'audio_mixer', 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
+cuia('/cuia/show_view', 'audio_mixer')
 
-test('Clean all', '/cuia/clean_all', 'CONFIRM', 'TEST_MODE: zyngui.zynthian_gui_main\r\n', 10)
+overall_result &= test('Clean all', '/cuia/clean_all', 'CONFIRM', 'TEST_MODE: zyngui.zynthian_gui_main\r\n', 10)
 
 #Test E10
-test('Main menu: short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_engine\r\n')
+overall_result &= test('Main menu: short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_engine\r\n')
 
 #Test E11
 cuia('/cuia/arrow_down')
-test('Engine: short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_midi_chan\r\n')
+overall_result &= test('Engine: short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_midi_chan\r\n')
 
 #Test E12
-test('MIDI channel: short select', '/cuia/switch_select_short' , None, 'TEST_MODE: zyngui.zynthian_gui_bank\r\n')
+overall_result &= test('MIDI channel: short select', '/cuia/switch_select_short' , None, 'TEST_MODE: zyngui.zynthian_gui_bank\r\n')
 
 #Test E13
 cuia('/cuia/arrow_down')
-test('Bank: short select', '/cuia/switch_select_short' , None, 'TEST_MODE: zyngui.zynthian_gui_preset\r\n')
+overall_result &= test('Bank: short select', '/cuia/switch_select_short' , None, 'TEST_MODE: zyngui.zynthian_gui_preset\r\n')
 
 #Test E14
-test('Preset: short select', '/cuia/switch_select_short' , None, 'TEST_MODE: zyngui.zynthian_gui_control\r\n', 5)
+overall_result &= test('Preset: short select', '/cuia/switch_select_short' , None, 'TEST_MODE: zyngui.zynthian_gui_control\r\n', 5)
 
 #Test G5
-test('Control: bold back', '/cuia/switch_back_bold', None, 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
+overall_result &= test('Control: bold back', '/cuia/switch_back_bold', None, 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
 
 #Test E2
-test('Mixer: short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_control\r\n')
+overall_result &= test('Mixer: short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_control\r\n')
 
 #Test F2
 cuia('/cuia/show_view', 'audio_mixer')
-test('Mixer: bold layer', '/cuia/switch_layer_bold', None, 'TEST_MODE: zyngui.zynthian_gui_main\r\n')
+overall_result &= test('Mixer: bold layer', '/cuia/switch_layer_bold', None, 'TEST_MODE: zyngui.zynthian_gui_main\r\n')
 
 #Test H2
 cuia('/cuia/show_view', 'audio_mixer')
-test('Mixer: bold snap/learn', '/cuia/switch_snapshot_bold', None, 'TEST_MODE: zyngui.zynthian_gui_snapshot\r\n')
+overall_result &= test('Mixer: bold snap/learn', '/cuia/switch_snapshot_bold', None, 'TEST_MODE: zyngui.zynthian_gui_snapshot\r\n')
 
 #Test I2
 cuia('/cuia/show_view', 'audio_mixer')
-test('Mixer: bold select', '/cuia/switch_select_bold', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
+overall_result &= test('Mixer: bold select', '/cuia/switch_select_bold', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
 
 #Test C8
-test('Chain options: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
+overall_result &= test('Chain options: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
 
 #Test E8
 cuia('/cuia/switch_select_bold')
-test('Chain options: short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_midi_key_range\r\n')
+overall_result &= test('Chain options: short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_midi_key_range\r\n')
 
 #Test C9
-test('MIDI key range: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
+overall_result &= test('MIDI key range: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
 
 #Test I8
-test('Chain options: bold select', '/cuia/switch_select_bold', None, 'TEST_MODE: zyngui.zynthian_gui_midi_key_range\r\n')
+overall_result &= test('Chain options: bold select', '/cuia/switch_select_bold', None, 'TEST_MODE: zyngui.zynthian_gui_midi_key_range\r\n')
 
 #Test E9
-test('MIDI key range: short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
+overall_result &= test('MIDI key range: short select', '/cuia/switch_select_short', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
 
 #Test I9
 cuia('/cuia/switch_select_short')
-test('MIDI key range: bold select', '/cuia/switch_select_bold', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
+overall_result &= test('MIDI key range: bold select', '/cuia/switch_select_bold', None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
 
 #Test G8
 cuia('/cuia/switch_select_short')
-test('Chain options: bold back', '/cuia/switch_back_bold', None, 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
+overall_result &= test('Chain options: bold back', '/cuia/switch_back_bold', None, 'TEST_MODE: zyngui.zynthian_gui_mixer\r\n')
+
+#Test C5
+cuia('/cuia/show_view', 'control')
+overall_result &= test('Control: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_preset')
+
+#Test C10
+cuia('/cuia/show_view', 'control')
+cuia('/cuia/toggle_view', 'main')
+overall_result &= test('Main menu: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_control')
+
+#Test C11
+cuia('/cuia/toggle_view', 'engine')
+overall_result &= test('Engine: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_control')
+
+#Test C12
+cuia('/cuia/toggle_view', 'midi_chan')
+overall_result &= test('MIDI channel: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_control')
+
+#Test C13
+cuia('/cuia/toggle_view', 'bank')
+overall_result &= test('Bank: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_control')
+
+#Test C14
+cuia('/cuia/toggle_view', 'preset')
+overall_result &= test('Preset: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_bank')
+
+#Test C17
+cuia('/cuia/toggle_view', 'preset')
+cuia('/cuia/switch_bold_select')
+overall_result &= test('Preset options: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_preset')
+
+#Test C20
+cuia('/cuia/show_view', 'control')
+cuia('/cuia/toggle_view', 'admin')
+overall_result &= test('Preset: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_control')
+
+#Test C40
+cuia('/cuia/show_view', 'control')
+cuia('/cuia/switch_bold_snapshot')
+overall_result &= test('Snapshot: short back', '/cuia/switch_back_short', None, 'TEST_MODE: zyngui.zynthian_gui_control')
+
+
+if overall_result:
+    print("All tests passed")
+else:
+    print("SOME TESTS FAILED!")
