@@ -1245,10 +1245,10 @@ class zynthian_gui:
 			self.calibrate_touchscreen()
 
 		elif cuia in ("LAYER_CONTROL", "SCREEN_CONTROL"):
-			cuia_layer_control(params)
+			self.cuia_layer_control(params)
 
 		elif cuia == "LAYER_OPTIONS":
-			cuia_layer_options(params)
+			self.cuia_layer_options(params)
 
 		elif cuia == "MENU":
 			try:
@@ -1652,8 +1652,6 @@ class zynthian_gui:
 			logging.exception(err)
 
 		self.reset_loading()
-		#Run autoconnect if needed
-		self.zynautoconnect_do()
 
 
 	#------------------------------------------------------------------
@@ -1792,12 +1790,12 @@ class zynthian_gui:
 				elif evtype==0x9:
 					self.screens['midi_chan'].midi_chan_activity(chan)
 					#Preload preset (note-on)
-					if zynthian_gui_config.preset_preload_noteon and self.current_screen=='preset' and chan==self.curlayer.get_midi_chan():
+					if self.current_screen=='preset' and zynthian_gui_config.preset_preload_noteon and chan==self.curlayer.get_midi_chan():
 						self.start_loading()
 						self.screens['preset'].preselect_action()
 						self.stop_loading()
 					#Note Range Learn
-					if self.current_screen=='midi_key_range':
+					elif self.current_screen=='midi_key_range':
 						note = (ev & 0x7F00)>>8
 						self.screens['midi_key_range'].learn_note_range(note)
 
@@ -1824,14 +1822,22 @@ class zynthian_gui:
 	def control_thread_task(self):
 		j = 0
 		while not self.exit_flag:
+			# Read zynswitches, MIDI & OSC events
 			self.zynswitch_read()
 			self.zynmidi_read()
 			self.osc_receive()
+
+			# Run autoconnect if pending
+			self.zynautoconnect_do()
+
+			# Refresh GUI controllers every 4 cycles
 			if j>4:
 				j = 0
 				self.plot_zctrls()
 			else:
 				j += 1
+
+			# Wait a little bit ...
 			sleep(0.01)
 			if self.zynread_wait_flag:
 				sleep(0.3)
