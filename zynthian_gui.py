@@ -1123,18 +1123,23 @@ class zynthian_gui:
 				pass
 
 		#----------------------------------------------------------------
-		# Rotary Control => it receives the zynpot number as paramter
+		# Rotary Control => it receives the zynpot number as parameter
 		#----------------------------------------------------------------
 		elif cuia == "ZYNPOT_UP":
-			#TODO
-			pass
+			try:
+				self.screens[self.current_screen].zynpot_cb(params[0], +1)
+			except Exception as err:
+				logging.exception(err)
 		elif cuia == "ZYNPOT_DOWN":
-			#TODO
-			pass
+			try:
+				self.screens[self.current_screen].zynpot_cb(params[0], -1)
+			except Exception as err:
+				logging.exception(err)
 
 		#----------------------------------------------------------------
 		# Legacy "4 x rotaries" CUIAs
 		#----------------------------------------------------------------
+
 		elif cuia == "SELECT_UP":
 			try:
 				self.get_current_screen_obj().select_up()
@@ -1179,6 +1184,7 @@ class zynthian_gui:
 		#----------------------------------------------------------------
 		# Legacy "4 x switches" CUIAs (4 * 3 = 12 CUIAS!)
 		#----------------------------------------------------------------
+
 		elif cuia == "SWITCH_LAYER_SHORT":
 			self.zynswitch_short(0)
 		elif cuia == "SWITCH_LAYER_BOLD":
@@ -1207,7 +1213,7 @@ class zynthian_gui:
 		#----------------------------------------------------------------
 		# Screen/Mode management CUIAs
 		#----------------------------------------------------------------
-		#TODO: Toggle not necessarily desired action. Should we add set-screen options?
+
 		elif cuia in ("MODAL_MAIN", "SCREEN_MAIN"):
 			self.toggle_screen("main")
 
@@ -1239,52 +1245,15 @@ class zynthian_gui:
 			self.calibrate_touchscreen()
 
 		elif cuia in ("LAYER_CONTROL", "SCREEN_CONTROL"):
-			if params:
-				try:
-					i = params[0]-1
-					n = self.screens['layer'].get_num_root_layers()
-					main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
-					if main_fxchain:
-						n -= 1
-					if i>=0 and i<n:
-						self.layer_control(self.screens['layer'].root_layers[i])
-					elif i<0:
-						if main_fxchain:
-							self.layer_control(main_fxchain)
-						else:
-							#self.screens['layer'].add_fxchain_layer(16)
-							self.screens['audio_mixer'].show_mainfx_options()
-				except Exception as e:
-					logging.warning("Can't change to layer {}! => {}".format(params[0],e))
-			else:
-				self.layer_control()
+			cuia_layer_control(params)
 
 		elif cuia == "LAYER_OPTIONS":
-			try:
-				if params:
-					i = params[0]-1
-					n = self.screens['layer'].get_num_root_layers()
-					main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
-					if main_fxchain:
-						n -= 1
-					if i>=0 and i<n:
-						self.screens['layer'].select(i)
-					elif i<0:
-						if main_fxchain:
-							self.screens['layer'].select(n)
-						else:
-							#self.screens['layer'].add_fxchain_layer(16)
-							self.screens['audio_mixer'].show_mainfx_options()
-							return
-				self.screens['layer_options'].reset()
-				self.toggle_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
-			except Exception as e:
-				logging.warning("Can't show options for layer ({})! => {}".format(params,e))
-				
+			cuia_layer_options(params)
+
 		elif cuia == "MENU":
-			if self.current_screen=='stepseq':
-				self.screens['stepseq'].toggle_menu()
-			else:
+			try:
+				self.screens[self.current_screen].toggle_menu()
+			except:
 				self.toggle_screen("main", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 		elif cuia == "PRESET":
@@ -1303,6 +1272,51 @@ class zynthian_gui:
 
 		elif cuia == "LEARN":
 			self.cuia_learn(params)
+
+
+	def cuia_layer_control(self, params=None):
+		if params:
+			try:
+				i = params[0]-1
+				n = self.screens['layer'].get_num_root_layers()
+				main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
+				if main_fxchain:
+					n -= 1
+				if i>=0 and i<n:
+					self.layer_control(self.screens['layer'].root_layers[i])
+				elif i<0:
+					if main_fxchain:
+						self.layer_control(main_fxchain)
+					else:
+						#self.screens['layer'].add_fxchain_layer(16)
+						self.screens['audio_mixer'].show_mainfx_options()
+			except Exception as e:
+				logging.warning("Can't change to layer {}! => {}".format(params[0],e))
+		else:
+			self.layer_control()
+
+
+	def cuia_layer_options(self, params):
+		try:
+			if params:
+				i = params[0]-1
+				n = self.screens['layer'].get_num_root_layers()
+				main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
+				if main_fxchain:
+					n -= 1
+				if i>=0 and i<n:
+					self.screens['layer'].select(i)
+				elif i<0:
+					if main_fxchain:
+						self.screens['layer'].select(n)
+					else:
+						#self.screens['layer'].add_fxchain_layer(16)
+						self.screens['audio_mixer'].show_mainfx_options()
+						return
+			self.screens['layer_options'].reset()
+			self.toggle_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
+		except Exception as e:
+			logging.warning("Can't show options for layer ({})! => {}".format(params,e))
 
 
 	def cuia_learn(self, params=None):
