@@ -576,6 +576,49 @@ if "zynthian_gui.py" in sys.argv[0]:
 		logging.error("ERROR configuring MIDI: {}".format(e))
 
 
+	#------------------------------------------------------------------------------
+	# Sequence states
+	#------------------------------------------------------------------------------
+	SEQ_MAX_PATTERNS	= 64872
+
+	SEQ_DISABLED		= 0
+	SEQ_ONESHOT			= 1
+	SEQ_LOOP			= 2
+	SEQ_ONESHOTALL		= 3
+	SEQ_LOOPALL			= 4
+	SEQ_LASTPLAYMODE	= 4
+
+	SEQ_STOPPED			= 0
+	SEQ_PLAYING			= 1
+	SEQ_STOPPING		= 2
+	SEQ_STARTING		= 3
+	SEQ_RESTARTING		= 4
+	SEQ_STOPPINGSYNC	= 5
+	SEQ_LASTPLAYSTATUS	= 5
+
+	PLAY_MODES = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
+	PAD_COLOUR_DISABLED = '#2a2a2a'
+	PAD_COLOUR_STARTING = '#ffbb00'
+	PAD_COLOUR_PLAYING = '#00d000'
+	PAD_COLOUR_STOPPING = 'red'
+	PAD_COLOUR_STOPPED = [
+			'#000060',			#1 dark
+			'#048C8C',			#2 dark
+			'#996633',			#3 dark
+			'#0010A0',			#4 medium too similar to 12
+			'#BF9C7C',			#5 medium
+			'#999966',			#6 medium
+			'#FC6CB4',			#7 medium
+			'#CC8464',			#8 medium
+			'#4C94CC',			#9 medium
+			'#B454CC',			#10 medium
+			'#B08080',			#11 medium
+			'#0404FC', 			#12 light
+			'#9EBDAC',			#13 light
+			'#FF13FC',			#14 light
+			'#3080C0',			#15 light
+			'#9C7CEC'			#16 light
+			]
 
 #------------------------------------------------------------------------------
 # Zynthian GUI variable

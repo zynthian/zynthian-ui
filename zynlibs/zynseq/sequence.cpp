@@ -264,11 +264,16 @@ uint32_t Sequence::getPlayPosition()
     return m_nPosition;
 }
 
-bool Sequence::hasChanged()
+void Sequence::setModified()
+{
+    m_bChanged = true;
+}
+
+bool Sequence::isModified()
 {
     bool bChanged = m_bChanged;
     for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
-        bChanged |= (*it).hasChanged();
+        bChanged |= (*it).isModified();
     m_bChanged = false;
     return bChanged;
 }

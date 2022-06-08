@@ -148,11 +148,15 @@ class Track
         */
         bool isMuted();
 
+        /** @brief Flag track as modified
+        */
+        void setModified();
+
         /** @brief  Check if a parameter has changed since last call
         *   @retval bool True if changed
         *   @note    monitors: state, mode, group
         */
-        bool hasChanged();
+        bool isModified();
 
         /** @brief  Gets the pattern defined by index
         *   @param  index Index of pattern

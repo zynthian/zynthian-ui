@@ -148,11 +148,15 @@ class Sequence
         */
         uint32_t getPlayPosition();
 
+        /** @brief Flag sequence as modified
+        */
+        void setModified();
+
         /** @brief  Check if sequence state has changed since last call
         *   @retval bool True if changed
         *   @note   Monitors group, mode, tracks, playstate
         */
-        bool hasChanged();
+        bool isModified();
 
         /** @brief  Set sequence name
         *   @param  std::string Sequence name (will be truncated at 16 characters)

@@ -4,7 +4,7 @@
  *
  * Library providing step sequencer as a Jack connected device
  *
- * Copyright (C) 2020 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2020-2022 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -393,7 +393,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             else if(((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2])
             {
                 // Note on event
-                g_bPatternModified = true;
+                setPatternModified(g_pPattern, true);
                 uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
                 if(g_bSustain)
                     g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
@@ -1180,7 +1180,7 @@ void selectPattern(uint32_t pattern)
     g_pPattern = g_seqMan.getPattern(pattern);
     if(g_pPattern)
         g_nPattern = pattern;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
 }
 
 uint32_t getPatternIndex()
@@ -1216,7 +1216,7 @@ void setBeatsInPattern(uint32_t beats)
         return;
     g_pPattern->setBeatsInPattern(beats);
     g_seqMan.updateAllSequenceLengths();
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_bDirty = true;
 }
 
@@ -1239,7 +1239,7 @@ void setStepsPerBeat(uint32_t steps)
     if(!g_pPattern)
         return;
     g_pPattern->setStepsPerBeat(steps);
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_bDirty = true;
 }
 
@@ -1248,7 +1248,7 @@ bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration)
     if(!g_pPattern)
         return false;
     if(g_pPattern->addNote(step, note, velocity, duration)) {
-        g_bPatternModified = true;
+        setPatternModified(g_pPattern, true);
         g_bDirty = true;
         return true;
     }
@@ -1259,7 +1259,7 @@ void removeNote(uint32_t step, uint8_t note)
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->removeNote(step, note);
     g_bDirty = true;
 }
@@ -1275,7 +1275,7 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->setNoteVelocity(step, note, velocity);
     g_bDirty = true;
 }
@@ -1292,7 +1292,7 @@ bool addProgramChange(uint32_t step, uint8_t program)
     if(!g_pPattern)
         return false;
     if(g_pPattern->addProgramChange(step, program)) {
-        g_bPatternModified = true;
+        setPatternModified(g_pPattern, true);
         g_bDirty = true;
         return true;
     }
@@ -1305,7 +1305,7 @@ void removeProgramChange(uint32_t step, uint8_t program)
         return;
     if(g_pPattern->removeProgramChange(step))
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_bDirty = true;
 }
 
@@ -1320,7 +1320,7 @@ void transpose(int8_t value)
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->transpose(value);
     g_bDirty = true;
 }
@@ -1329,7 +1329,7 @@ void changeVelocityAll(int value)
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->changeVelocityAll(value);
     g_bDirty = true;
 }
@@ -1338,7 +1338,7 @@ void changeDurationAll(float value)
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->changeDurationAll(value);
     g_bDirty = true;
 }
@@ -1348,7 +1348,7 @@ void clear()
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->clear();
     g_bDirty = true;
 }
@@ -1414,6 +1414,37 @@ uint8_t getTonic()
     if(g_pPattern)
         return g_pPattern->getTonic();
     return 0;
+}
+
+void setPatternModified(Pattern* pPattern, bool bModified)
+{
+    if(bModified)
+    {
+        for(uint32_t nBank = 1; nBank < g_seqMan.getBanks(); ++nBank)
+        {
+            for(uint32_t nSequence = 0; nSequence < g_seqMan.getSequencesInBank(nBank); ++nSequence)
+            {
+                Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
+                if(!pSequence)
+                    continue;
+                bool bFound = false;
+                for(uint32_t nTrack = 0; nTrack < getTracksInSequence(nBank, nSequence) && !bFound; ++nTrack)
+                {
+                    Track* pTrack = g_seqMan.getSequence(nBank, nSequence)->getTrack(nTrack);
+                    for(uint32_t nPattern = 0; nPattern < pTrack->getPatterns() && !bFound; ++nPattern)
+                    {
+                        if(pTrack->getPatternByIndex(nPattern) == pPattern)
+                            bFound = true;
+                    }
+                    if(bFound) {
+                        pTrack->setModified();
+                        pSequence->setModified();
+                    }
+                }
+            }
+        }
+    }
+    g_bPatternModified = bModified;
 }
 
 bool isPatternModified()
@@ -1587,7 +1618,7 @@ void clearSequence(uint8_t bank, uint8_t sequence)
 void setSequencesInBank(uint8_t bank, uint8_t sequences)
 {
     while(g_bMutex)
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     g_bMutex = true;
     g_seqMan.setSequencesInBank(bank, sequences);
     g_bMutex = false;
@@ -1621,7 +1652,7 @@ void setGroup(uint8_t bank, uint8_t sequence, uint8_t group)
 
 bool hasSequenceChanged(uint8_t bank, uint8_t sequence)
 {
-    return g_seqMan.getSequence(bank, sequence)->hasChanged();
+    return g_seqMan.getSequence(bank, sequence)->isModified();
 }
 
 uint32_t addTrackToSequence(uint8_t bank, uint8_t sequence, uint32_t track)

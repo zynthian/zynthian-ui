@@ -33,6 +33,7 @@ from PIL import Image, ImageTk
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyngine import zynthian_controller
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 
 #------------------------------------------------------------------------------
@@ -57,6 +58,11 @@ class zynthian_gui_base:
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.display_height
+		if  zynthian_gui_config.enable_onscreen_buttons:
+			self.buttonbar_height = zynthian_gui_config.buttonbar_height
+		else:
+			self.buttonbar_height = 0
+
 
 		#Status Area Canvas Objects
 		self.status_cpubar = None
@@ -116,6 +122,7 @@ class zynthian_gui_base:
 		self.topbar_timer = None
 
 		# Title
+		self.title = ""
 #		font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
 		font=zynthian_gui_config.font_topbar
 		self.title_fg = zynthian_gui_config.color_panel_tx
@@ -160,6 +167,9 @@ class zynthian_gui_base:
 		# Configure Topbar's Frame column widths
 		self.tb_frame.grid_columnconfigure(0, minsize=self.title_canvas_width)
 
+		# Topbar parameter editor
+		self.param_editor_zctrl = None
+
 		# Init touchbar
 		#self.init_buttonbar()
 
@@ -176,6 +186,8 @@ class zynthian_gui_base:
 		# Update Title
 		self.set_select_path()
 		self.cb_scroll_select_path()
+
+		self.disable_param_editor() #TODO: Consolidate set_title and set_select_path, etc.
 
 
 	# Function to update title
@@ -547,7 +559,33 @@ class zynthian_gui_base:
 	#--------------------------------------------------------------------------
 
 	def zynpot_cb(self, i, dval):
-		pass
+		if self.param_editor_zctrl and i in [zynthian_gui_config.ENC_SELECT, zynthian_gui_config.ENC_LAYER]:
+			self.param_editor_zctrl.nudge(dval)
+			if self.param_editor_zctrl.labels:
+				self.select_path.set("{}: {}".format(self.param_editor_zctrl.name, self.param_editor_zctrl.get_value2label()))
+			else:
+				self.select_path.set("{}: {}".format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
+			return True
+
+
+	# Function to handle switch press
+	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#   returns True if action fully handled or False if parent action should be triggered
+	def switch(self, switch, type):
+		if self.param_editor_zctrl:
+			if switch == zynthian_gui_config.ENC_SELECT:
+				if type == 'S' and self.param_editor_assert_cb:
+					self.param_editor_assert_cb(self.param_editor_zctrl.value)
+				elif type == 'B':
+					self.param_editor_zctrl.set_value(self.param_editor_zctrl.value_default)
+				self.zynpot_cb(switch, 0)
+				self.disable_param_editor()
+				return True
+			
+			elif switch == zynthian_gui_config.ENC_BACK:
+				self.disable_param_editor()
+				return True
 
 
 	#--------------------------------------------------------------------------
@@ -618,4 +656,25 @@ class zynthian_gui_base:
 		pass
 
 
+	# Function to enable the top-bar parameter editor
+	#	engine: Object to recieve send_controller_value callback
+	#	symbol: String identifying the parameter
+	#	name: Parameter human-friendly name
+	#	options: zctrl options dictionary
+	#	assert_cb: Function to call when editor closed with assert: fn(self,value)
+	#TODO: Add GUI control widgets for up/down (or can we use the on-screen buttons?)
+	def enable_param_editor(self, engine, symbol, name, options, assert_cb=None):
+		self.disable_param_editor()
+		self.param_editor_zctrl = zynthian_controller(engine, symbol, name, options)
+		self.param_editor_assert_cb = assert_cb
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
+	
+
+	def disable_param_editor(self):
+		if self.param_editor_zctrl:
+			del self.param_editor_zctrl
+		self.param_editor_zctrl = None
+		self.param_editor_assert_cb = None
+		self.set_title(self.title)
+		
 #------------------------------------------------------------------------------

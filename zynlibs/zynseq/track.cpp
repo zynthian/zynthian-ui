@@ -29,6 +29,7 @@ bool Track::addPattern(uint32_t position, Pattern* pattern, bool force)
     m_mPatterns[position] = pattern;
     if(m_nTrackLength < position + pattern->getLength())
         m_nTrackLength = position + pattern->getLength(); //!@todo Does this shrink and stretch song?
+    m_bChanged = true;
     return true;
 }
 
@@ -38,6 +39,7 @@ void Track::removePattern(uint32_t position)
     if(m_nCurrentPatternPos == position)
         m_nCurrentPatternPos = -1;
     updateLength();
+    m_bChanged = true;
 }
 
 Pattern* Track::getPattern(uint32_t position)
@@ -68,6 +70,7 @@ void Track::setChannel(uint8_t channel)
     if(channel > 15)
         return;
     m_nChannel = channel;
+    m_bChanged = true;
 }
 
 uint8_t Track::getOutput()
@@ -78,6 +81,7 @@ uint8_t Track::getOutput()
 void Track::setOutput(uint8_t output)
 {
     m_nOutput = output;
+    m_bChanged = true;
 }
 
 uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock, bool bSync)
@@ -210,6 +214,7 @@ void Track::clear()
     m_nCurrentStep = 0;
     m_nClkPerStep = 1;
     m_nDivCount = 0;
+    m_bChanged = true;
 }
 
 uint32_t Track::getPatternPlayhead()
@@ -292,7 +297,12 @@ bool Track::isMuted()
     return m_bMute;
 }
 
-bool Track::hasChanged()
+void Track::setModified()
+{
+    m_bChanged = true;
+}
+
+bool Track::isModified()
 {
     bool bState = m_bChanged;
     m_bChanged = false;

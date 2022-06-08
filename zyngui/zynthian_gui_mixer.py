@@ -39,7 +39,6 @@ from collections import OrderedDict
 import zyngine
 from . import zynthian_gui_base
 from . import zynthian_gui_config
-from zyngine import zynthian_controller
 from zyncoder.zyncore import lib_zyncore
 
 #------------------------------------------------------------------------------

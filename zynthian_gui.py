@@ -83,7 +83,10 @@ from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
-from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
+#from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
+from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
+from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
+from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 
@@ -560,6 +563,7 @@ class zynthian_gui:
 		# Create global objects first
 		self.audio_recorder = zynthian_audio_recorder()
 		self.zynmixer = zynmixer.zynmixer()
+		self.zynseq = zynseq.zynseq()
 
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
@@ -592,7 +596,10 @@ class zynthian_gui:
 		# Create UI Apps Screens
 		self.screens['alsa_mixer'] = self.screens['control']
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
-		self.screens['stepseq'] = zynthian_gui_stepsequencer()
+		#self.screens['stepseq'] = zynthian_gui_stepsequencer()
+		self.screens['zynpad'] = zynthian_gui_zynpad()
+		self.screens['arranger'] = zynthian_gui_arranger()
+		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
 		
 		# Init Auto-connector
@@ -964,7 +971,7 @@ class zynthian_gui:
 			self.screens['snapshot'].save_last_state_snapshot()
 		self.screens['layer'].reset()
 		self.zynmixer.reset_state()
-		zynseq.load("")
+		self.zynseq.load("")
 		self.show_screen_reset('main')
 
 
@@ -1331,8 +1338,7 @@ class zynthian_gui:
 			self.show_favorites()
 
 		elif cuia == "ZYNPAD":
-			self.show_screen('stepseq')
-			self.screens['stepseq'].show_child(self.screens['stepseq'].zynpad)
+			self.show_screen('zynpad')
 
 		elif cuia == "ZCTRL_TOUCH":
 			if params:
@@ -1503,7 +1509,7 @@ class zynthian_gui:
 
 		# Standard 4 ZynSwitches
 		if i==0:
-			self.show_screen("stepseq")
+			self.show_screen("zynpad")
 
 		elif i==1:
 			self.show_screen("admin")

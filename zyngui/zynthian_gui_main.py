@@ -111,7 +111,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def step_sequencer(self, t='S'):
 		logging.info("Step Sequencer")
-		self.zyngui.show_screen_reset('stepseq')
+		self.zyngui.show_screen_reset('zynpad')
 
 
 	def midi_recorder(self, t='S'):

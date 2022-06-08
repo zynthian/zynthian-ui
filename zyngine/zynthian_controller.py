@@ -46,10 +46,10 @@ class zynthian_controller:
 
 		self.value=0 # Absolute value of the control
 		self.value_default=0 # Default value to use when reset control
-		self.value_min=0 # Minimum value of control range
-		self.value_mid=64 # Mid-point value of control range (used for toggle controls)
-		self.value_max=127 # Maximum value of control range
-		self.value_range=127 # Span of permissible values 
+		self.value_min=None # Minimum value of control range
+		self.value_mid=None # Mid-point value of control range (used for toggle controls)
+		self.value_max=None # Maximum value of control range
+		self.value_range=None # Span of permissible values 
 		self.nudge_factor = None # Factor to scale each up/down nudge #TODO: This is not set if configure is not called or options not passed
 		self.labels=None # List of discrete value labels
 		self.ticks=None # List of discrete value labels
@@ -127,12 +127,18 @@ class zynthian_controller:
 			if not self.ticks:
 				n = len(self.labels)
 				self.ticks = []
+				if self.value_min == None:
+					self.value_min = 0
+				if self.value_max == None:
+					self.value_max = n - 1
+				if self.value_range == None:
+					self.value_range = self.value_max - self.value_min + 1
 				if self.is_integer:
 					for i in range(n):
-						self.ticks.append(self.value_min + int(i * (self.value_max + 1) / n))
+						self.ticks.append(self.value_min + int(i * self.value_range / n))
 				else:
 					for i in range(n):
-						self.ticks.append(self.value_min + i * self.value_max / n)
+						self.ticks.append(self.value_min + i * self.value_range / n)
 
 			#Calculate min, max
 			if self.ticks[0] <= self.ticks[-1]:
@@ -152,12 +158,18 @@ class zynthian_controller:
 				self.value2label[str(self.ticks[i])] = self.labels[i]
 
 		#Common configuration
-		self.value_range = self.value_max - self.value_min
+		if self.value_min == None:
+			self.value_min = 0
+		if self.value_max == None:
+			self.value_max = 127
+		if self.value_range == None:
+			self.value_range = self.value_max - self.value_min
 
-		if self.is_integer:
-			self.value_mid = self.value_min + int(self.value_range / 2)
-		else:
-			self.value_mid = self.value_min + self.value_range / 2
+		if self.value_mid == None:
+			if self.is_integer:
+				self.value_mid = self.value_min + int(self.value_range / 2)
+			else:
+				self.value_mid = self.value_min + self.value_range / 2
 
 		self._set_value(self.value)
 		if self.value_default is None:
@@ -376,6 +388,8 @@ class zynthian_controller:
 
 
 	def get_value2label(self, val=None):
+		if val == None:
+			val = self.value
 		i = self.get_value2index(val)
 		if i is not None:
 			return self.labels[i]

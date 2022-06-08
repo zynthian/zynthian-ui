@@ -36,8 +36,6 @@ from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
-from zynlibs.zynseq import zynseq
-from zynlibs.zynseq.zynseq import libseq
 from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)
 from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library 
 
@@ -313,10 +311,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			zynsmf.load(self.smf_player,fpath)
 			tempo = libsmf.getTempo(self.smf_player, 0)
 			logging.info("STARTING MIDI PLAY '{}' => {}BPM".format(fpath, tempo))
-			libseq.setTempo(ctypes.c_double(tempo)) # TODO This doesn't work!!
+			self.zyngui.zynseq.libseq.setTempo(ctypes.c_double(tempo)) # TODO This doesn't work!!
 			libsmf.startPlayback()
-			zynseq.transport_start("zynsmf")
-#			libseq.transportLocate(0)
+			self.zyngui.zynseq.transport_start("zynsmf")
+#			self.zyngui.zynseq.libseq.transportLocate(0)
 			self.current_playback_fpath=fpath
 			self.show_playing_bpm()
 			self.smf_timer = Timer(interval = 1, function=self.check_playback)
@@ -333,7 +331,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def end_playing(self):
 		logging.info("ENDING MIDI PLAY ...")
-		zynseq.transport_stop("zynsmf")
+		self.zyngui.zynseq.transport_stop("zynsmf")
 		if self.smf_timer:
 			self.smf_timer.cancel()
 			self.smf_timer = None
@@ -368,7 +366,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def show_playing_bpm(self):
-		self.bpm_zctrl.set_value(libseq.getTempo())
+		self.bpm_zctrl.set_value(self.zyngui.zynseq.libseq.getTempo())
 		if self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.config(self.bpm_zctrl)
 			self.bpm_zgui_ctrl.show()
@@ -384,7 +382,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	# Implement engine's method
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol=="bpm":
-			libseq.setTempo(ctypes.c_double(zctrl.value))
+			self.zyngui.zynseq.libseq.setTempo(ctypes.c_double(zctrl.value))
 			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
 
 
