@@ -562,7 +562,8 @@ class zynthian_gui_mixer_strip():
 		if self.zctrls:
 			self.set_volume(self.zctrls['level'].value + (self.fader_drag_start.y - event.y) / self.fader_height)
 			self.fader_drag_start = event
-			self.flag_redraw()
+			#self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - self.zynmixer.get_level(self.layer.midi_chan)), self.x + self.fader_width, self.fader_bottom)
+			self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - self.zctrls['level'].value), self.x + self.fader_width, self.fader_bottom)
 
 
 	# Function to handle mouse wheel down over fader
