@@ -145,7 +145,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.fill_list()
 		self.set_selector()
 		self.set_select_path()
-		self.select()
 
 
 	def refresh_loading(self):
@@ -194,7 +193,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def fill_list(self):
 		self.fill_listbox()
+		self.select()
 		self.last_index_change_ts = datetime.min
+
 
 
 	def update_list(self):

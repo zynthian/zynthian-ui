@@ -559,12 +559,17 @@ class zynthian_gui_base:
 	#--------------------------------------------------------------------------
 
 	def zynpot_cb(self, i, dval):
-		if self.param_editor_zctrl and i in [zynthian_gui_config.ENC_SELECT, zynthian_gui_config.ENC_LAYER]:
-			self.param_editor_zctrl.nudge(dval)
+		if self.param_editor_zctrl:
+			if i == zynthian_gui_config.ENC_SELECT:
+				self.param_editor_zctrl.nudge(dval)
+			elif i == zynthian_gui_config.ENC_SNAPSHOT:
+				self.param_editor_zctrl.nudge(dval * 10)
+			else:
+				return True
 			if self.param_editor_zctrl.labels:
 				self.select_path.set("{}: {}".format(self.param_editor_zctrl.name, self.param_editor_zctrl.get_value2label()))
 			else:
-				self.select_path.set("{}: {}".format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
+				self.select_path.set(self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
 			return True
 
 
@@ -575,17 +580,19 @@ class zynthian_gui_base:
 	def switch(self, switch, type):
 		if self.param_editor_zctrl:
 			if switch == zynthian_gui_config.ENC_SELECT:
-				if type == 'S' and self.param_editor_assert_cb:
-					self.param_editor_assert_cb(self.param_editor_zctrl.value)
+				if type == 'S':
+					if self.param_editor_assert_cb:
+						self.param_editor_assert_cb(self.param_editor_zctrl.value)
+					self.disable_param_editor()
 				elif type == 'B':
 					self.param_editor_zctrl.set_value(self.param_editor_zctrl.value_default)
-				self.zynpot_cb(switch, 0)
-				self.disable_param_editor()
+				self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
 				return True
 			
 			elif switch == zynthian_gui_config.ENC_BACK:
 				self.disable_param_editor()
-				return True
+				if type == 'S':
+					return True
 
 
 	#--------------------------------------------------------------------------
@@ -661,15 +668,25 @@ class zynthian_gui_base:
 	#	symbol: String identifying the parameter
 	#	name: Parameter human-friendly name
 	#	options: zctrl options dictionary
-	#	assert_cb: Function to call when editor closed with assert: fn(self,value)
+	#	assert_cb: Optional function to call when editor closed with assert: fn(self,value)
 	#TODO: Add GUI control widgets for up/down (or can we use the on-screen buttons?)
 	def enable_param_editor(self, engine, symbol, name, options, assert_cb=None):
 		self.disable_param_editor()
 		self.param_editor_zctrl = zynthian_controller(engine, symbol, name, options)
 		self.param_editor_assert_cb = assert_cb
+		if not self.param_editor_zctrl.is_integer:
+			if self.param_editor_zctrl.nudge_factor < 0.1:
+				self.format_print = "{}: {:.2f}"
+			else:
+				self.format_print = "{}: {:.1f}"
+		else:
+			self.format_print = "{}: {}"
+
+		self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
 		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
 	
 
+	# Function to disable paramter editor
 	def disable_param_editor(self):
 		if self.param_editor_zctrl:
 			del self.param_editor_zctrl

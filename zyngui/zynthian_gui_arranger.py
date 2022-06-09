@@ -39,6 +39,7 @@ from zynlibs.zynsmf import zynsmf
 from . import zynthian_gui_base
 from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_engine
+from zynlibs.zynseq import zynseq
 
 
 #------------------------------------------------------------------------------
@@ -71,12 +72,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.sequence_tracks = [] # Array of [Sequence,Track] that are visible within bank
 		self.sequence = 0 # Index of selected sequence
 		self.track = 0 # Index of selected track
-		self.bank = 1 # Index of bank of selected sequence
 		self.layers = [None] * 16 # Root layer indexed by MIDI channel
 
 		self.vertical_zoom = self.zyngui.zynseq.libseq.getVerticalZoom() # Quantity of rows (tracks) displayed in grid
 		self.horizontal_zoom = self.zyngui.zynseq.libseq.getHorizontalZoom() # Quantity of columns (time divisions) displayed in grid
-		self.copy_source = 1 # Index of bank to copy (add 1000 for pad editor)
 		self.row_offset = 0 # Index of sequence_track at top row in grid
 		self.col_offset = 0 # Index of time division at left column in grid
 		self.selected_cell = [0, 0] # Location of selected cell (time div, row)
@@ -148,24 +147,49 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		# Init touchbar
 		self.init_buttonbar()
 
+		self.bank = self.zyngui.zynseq.bank # Local copy so we know if it has changed and grid needs redrawing
+		self.update_sequence_tracks()
 		self.redraw_pending = 2 # 0:No refresh, 1:Refresh grid content, 2:Clear and rebuild grid
+		self.zyngui.zynseq.add_event_cb(self.seq_cb)
 
 
-	#Function to set values of encoders
+	# Function to handle changes to sequencer
+	def seq_cb(self, event):
+		if event in [zynseq.SEQ_EVENT_BANK,
+					zynseq.SEQ_EVENT_GROUP]:
+			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
+			self.bank = self.zyngui.zynseq.bank
+			self.update_sequence_tracks()
+			self.redraw_pending = 2
+		elif event in [zynseq.SEQ_EVENT_BPB,
+					zynseq.SEQ_EVENT_CHANNEL,
+					zynseq.SEQ_EVENT_PLAYMODE,
+					zynseq.SEQ_EVENT_SEQUENCE]:
+			self.redraw_pending = 1
+		elif event == zynseq.SEQ_EVENT_LOAD:
+			self.vertical_zoom = self.zyngui.zynseq.libseq.getVerticalZoom()
+			self.horizontal_zoom = self.zyngui.zynseq.libseq.getHorizontalZoom()
+			self.update_cell_size()
+			self.redraw_pending = 2
+
+
+	# Function to set values of encoders
 	def setup_zynpots(self):
 		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0, 0)
 		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0, 0)
 		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0, 1)
+		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0, 0)
 
 
 	# Function to add menus
 	def show_menu(self):
+		self.disable_param_editor()
 		options = OrderedDict()
 		options['Bank'] = 1
+		options['Tempo'] = 1
 		options['Beats per bar'] = 1
 		options['-------------------'] = None
-		if self.zyngui.zynseq.libseq.isMuted(self.bank, self.sequence, self.track):
+		if self.zyngui.zynseq.libseq.isMuted(self.zyngui.zynseq.bank, self.sequence, self.track):
 			options['Unmute track'] = 1
 		else:
 			options['Mute track'] = 1
@@ -176,7 +200,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		options['Play mode'] = 1
 		options['Pattern'] = 1
 		options['Add track'] = 1
-		if self.zyngui.zynseq.libseq.getTracksInSequence(self.bank, self.sequence) > 1:
+		if self.zyngui.zynseq.libseq.getTracksInSequence(self.zyngui.zynseq.bank, self.sequence) > 1:
 			options['Remove track'] = 1
 		options['Clear sequence'] = 1
 		options['Clear bank'] = 1
@@ -187,23 +211,25 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	def menu_cb(self, option, params):
 		if option == 'Bank':
-			self.enable_param_editor(self, 'bank', 'Bank', {'value_min':1, 'value_max':64, 'value':self.bank})
+			self.enable_param_editor(self, 'bank', 'Bank', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
+		if option == 'Tempo':
+			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})
 		if option == 'Beats per bar':
-			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
+			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
 		if 'ute track' in option:
 			self.toggle_mute()
 		elif option == 'MIDI channel':
 			self.enable_param_editor(self, 'midichan', 'MIDI channel', {'value_min':1, 'value_max':16, 'value':self.get_track_channel()})
 		elif option == 'Play mode':
-			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynthian_gui_config.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.sequence)})
+			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynthian_gui_config.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad), 'value_default':zynthian_gui_config.SEQ_LOOPALL}, self.set_play_mode)
 		elif option == 'Vertical zoom':
-			self.enable_param_editor(self, 'vzoom', 'Vertical zoom', {'value_min':1, 'value_max':64, 'value':self.vertical_zoom})
+			self.enable_param_editor(self, 'vzoom', 'Vertical zoom', {'value_min':1, 'value_max':127, 'value_default':8, 'value':self.get_vertical_zoom()})
 		elif option == 'Horizontal zoom':
-			self.enable_param_editor(self, 'hzoom', 'Horizontal zoom', {'value_min':1, 'value_max':64, 'value':self.horizontal_zoom})
+			self.enable_param_editor(self, 'hzoom', 'Horizontal zoom', {'value_min':1, 'value_max':64, 'value_default':16, 'value':self.horizontal_zoom})
 		elif option == 'Group':
-			self.enable_param_editor(self, 'group', 'Group', {'labels':list(map(chr, range(65, 91))), 'value':self.get_group()})
+			self.enable_param_editor(self, 'group', 'Group', {'labels':list(map(chr, range(65, 91))), 'default': self.get_group(), 'value':self.get_group()})
 		elif option == 'Pattern':
-			self.enable_param_editor(self, 'pattern', 'Pattern', {'value_min':1, 'value_max':zynthian_gui_config.SEQ_MAX_PATTERNS, 'value':self.pattern})
+			self.enable_param_editor(self, 'pattern', 'Pattern', {'value_min':1, 'value_max':zynthian_gui_config.SEQ_MAX_PATTERNS, 'value_default':self.pattern, 'value':self.pattern})
 		elif option == 'Add track':
 			self.add_track()
 		elif option == 'Remove track':
@@ -211,23 +237,22 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		elif option == 'Clear sequence':
 			self.clear_sequence()
 		elif option == 'Clear bank':
-			self.clear_bank()
+			self.zyngui.show_confirm("Clear all sequences from bank %d and reset to 4x4 grid of new sequences?" % (self.zyngui.zynseq.bank), self.do_clear_bank)
 		elif option == 'Import SMF':
 			self.select_smf()
 
 
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == 'bank':
-			self.select_bank(zctrl.value)
+			self.zyngui.zynseq.select_bank(zctrl.value)
+		elif zctrl.symbol == 'tempo':
+			self.zyngui.zynseq.libseq.setTempo(zctrl.value)
 		elif zctrl.symbol == 'bpb':
-			self.zyngui.zynseq.libseq.setBeatsPerBar(zctrl.value)
-			self.redraw_pending = 1
+			self.zyngui.zynseq.set_beats_per_bar(zctrl.value)
 		elif zctrl.symbol == 'midichan':
-			self.zyngui.zynseq.libseq.setChannel(self.bank, self.sequence, self.track, zctrl.value - 1)
-			self.redraw_pending = 1
+			self.zyngui.zynseq.set_midi_channel(self.zyngui.zynseq.bank, self.sequence, self.track, zctrl.value - 1)
 		elif zctrl.symbol == 'playmode':
-			self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zctrl.value)
-			self.redraw_pending = 1
+			self.zyngui.zynseq.libseq.set_play_mode(self.zyngui.zynseq.bank, self.sequence, zctrl.value)
 		elif zctrl.symbol == 'vzoom':
 			self.vertical_zoom = zctrl.value
 			self.zyngui.zynseq.libseq.setVerticalZoom(zctrl.value)
@@ -239,35 +264,26 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.update_cell_size()
 			self.redraw_pending = 1
 		elif zctrl.symbol == 'group':
-			self.zyngui.zynseq.libseq.setGroup(self.bank, self.sequence, zctrl.value)
-			self.redraw_pending = 1
+			self.zyngui.zynseq.set_group(self.zyngui.zynseq.bank, self.sequence, zctrl.value)
 		elif zctrl.symbol == 'pattern':
 			self.set_pattern(zctrl.value)
 
 
 	# Function to toggle mute of selected track
 	def toggle_mute(self, params=None):
-		self.zyngui.zynseq.libseq.toggleMute(self.bank, self.sequence, self.track)
+		self.zyngui.zynseq.libseq.toggleMute(self.zyngui.zynseq.bank, self.sequence, self.track)
 		self.redraw_pending = 1
-
-
-	# Function to clear bank
-	def clear_bank(self, params=None):
-		self.zyngui.show_confirm("Clear all sequences from bank %d and reset to 4x4 grid of new sequences?" % (self.bank), self.do_clear_bank)
 
 
 	# Function to actually clear bank
 	def do_clear_bank(self, params=None):
-		self.zyngui.zynseq.libseq.clearBank(self.bank)
-		self.zyngui.screens['zynpad'].select_bank(self.bank)
-		self.select_bank(self.bank)
-		self.select_cell(0,0)
-		self.redraw_pending = 2
+		self.zyngui.zynseq.libseq.clearBank(self.zyngui.zynseq.bank)
+		self.zyngui.zynseq.select_bank()
 
 
 	# Function to clear sequence
 	def clear_sequence(self, params=None):
-		name = self.zyngui.zynseq.get_sequence_name(self.bank, self.sequence)
+		name = self.zyngui.zynseq.get_sequence_name(self.zyngui.zynseq.bank, self.sequence)
 		if len(name) == 0:
 			name = "%d" % (self.sequence + 1)
 		self.zyngui.show_confirm('Clear all patterns from sequence "%s"?' %(name), self.do_clear_sequence)
@@ -275,27 +291,25 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to actually clear selected sequence
 	def do_clear_sequence(self, params=None):
-		self.zyngui.zynseq.libseq.clearSequence(self.bank, self.sequence)
-		self.select_bank(self.bank)
-		self.select_cell(0,self.sequence)
-		self.redraw_pending = 2
+		self.zyngui.zynseq.libseq.clearSequence(self.zyngui.zynseq.bank, self.sequence)
+		self.zyngui.zynseq.select_bank()
 
 
 	# Function to add track to selected sequence immediately after selected track
 	def add_track(self, params=None):
-		self.zyngui.zynseq.libseq.addTrackToSequence(self.bank, self.sequence, self.track)
+		self.zyngui.zynseq.libseq.addTrackToSequence(self.zyngui.zynseq.bank, self.sequence, self.track)
 		self.update_sequence_tracks()
 		self.redraw_pending = 2
 
 
 	# Function to remove selected track
 	def remove_track(self, params=None):
-		self.zyngui.show_confirm("Remove track {} from sequence {}?".format(self.track, self.sequence), self.do_remove_track)
+		self.zyngui.show_confirm("Remove track {} from sequence {}?".format(self.track + 1, self.sequence + 1), self.do_remove_track)
 
 
 	# Function to actually remove selected track
 	def do_remove_track(self, params=None):
-		self.zyngui.zynseq.libseq.removeTrackFromSequence(self.bank, self.sequence, self.track)
+		self.zyngui.zynseq.libseq.removeTrackFromSequence(self.zyngui.zynseq.bank, self.sequence, self.track)
 		self.update_sequence_tracks()
 		self.redraw_pending = 2
 
@@ -314,8 +328,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	#	fname: Filename
 	#	fpath: Full file path of SMF to import
 	def smf_file_cb(self, fname, fpath):
-		logging.warning("Seq len:%d pos:%d", self.zyngui.zynseq.libseq.getSequenceLength(self.bank, self.sequence), self.selected_cell[0])
-		if self.zyngui.zynseq.libseq.getSequenceLength(self.bank, self.sequence) > self.selected_cell[0] * 24:
+		logging.warning("Seq len:%d pos:%d", self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, self.sequence), self.selected_cell[0])
+		if self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, self.sequence) > self.selected_cell[0] * 24:
 			self.zyngui.show_confirm("Import will overwrite part of existing sequence. Do you want to continue?", self.do_import_smf, fpath)
 		else:
 			self.do_import_smf(fpath)
@@ -327,7 +341,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if not zynsmf.load(smf, fpath):
 			logging.warning("Failed to load file %s", fpath)
 			return
-		bank = self.bank
+		bank = self.zyngui.zynseq.bank
 		sequence = self.sequence
 		ticks_per_beat = zynsmf.libsmf.getTicksPerQuarterNote(smf)
 		steps_per_beat = 24
@@ -412,8 +426,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def show(self, params={}):
 		super().show()
 		self.setup_zynpots()
-		if self.param_editor_zctrl == None:
-			self.set_title("Bank %d" % (self.bank))
+		if not self.param_editor_zctrl:
+			self.set_title("Bank %d" % (self.zyngui.zynseq.bank))
 
 			# Update list of layers
 			#TODO: Probably need to change this for chainification???
@@ -423,17 +437,15 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 						self.layers[chan] = layer
 						break
 
-			self.select_bank()
-
 
 	# Function to get group of selected sequence
 	def get_group(self):
-		return int(self.zyngui.zynseq.libseq.getGroup(self.bank, self.sequence))
+		return int(self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, self.sequence))
 
 
 	# Function to get play mode of selected sequence
 	def getMode(self):
-		return int(self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.sequence))
+		return int(self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.sequence))
 
 
 	# Function to get current pattern
@@ -457,7 +469,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to get quantity of sequences in bank
 	#	returns: Quantity of sequences in bank
 	def get_seqeuences(self):
-		return self.zyngui.zynseq.libseq.getSequencesInBank(self.bank)
+		return self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank)
 
 
 	# Function to handle start of sequence drag
@@ -465,7 +477,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if self.param_editor_zctrl:
 			self.disable_param_editor()
 			return
-		if self.zyngui.zynseq.libseq.getSequencesInBank(self.bank) > self.vertical_zoom:
+		if self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank) > self.vertical_zoom:
 			self.sequence_drag_start = event
 
 
@@ -480,8 +492,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		pos = self.row_offset - offset
 		if pos < 0:
 			pos = 0
-		if pos + self.vertical_zoom >= self.zyngui.zynseq.libseq.getSequencesInBank(self.bank):
-			pos = self.zyngui.zynseq.libseq.getSequencesInBank(self.bank) - self.vertical_zoom
+		if pos + self.vertical_zoom >= self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank):
+			pos = self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank) - self.vertical_zoom
 		if self.row_offset == pos:
 			return
 		self.row_offset = pos
@@ -555,7 +567,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.source_col = self.selected_cell[0]
 		self.source_seq = self.sequence
 		self.source_track = self.track
-		self.pattern_to_add = self.zyngui.zynseq.libseq.getPattern(self.bank, self.sequence, self.track, self.source_col * self.clocks_per_division)
+		self.pattern_to_add = self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, self.sequence, self.track, self.source_col * self.clocks_per_division)
 		if self.pattern_to_add == -1:
 			self.pattern_to_add = self.pattern
 
@@ -589,7 +601,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 				return # Haven't moved from original cell
 			self.grid_timer.cancel()
 			time = self.selected_cell[0] * self.clocks_per_division
-			self.pattern_to_add = self.zyngui.zynseq.libseq.getPattern(self.bank, self.sequence, self.track, time)
+			self.pattern_to_add = self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, self.sequence, self.track, time)
 			if self.pattern_to_add == -1:
 				self.pattern_to_add = self.pattern
 		if col != self.selected_cell[0] or row != self.selected_cell[1]:
@@ -605,10 +617,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to show pattern editor
 	def show_pattern_editor(self):
 		time = self.selected_cell[0] * self.clocks_per_division # time in clock cycles
-		pattern = self.zyngui.zynseq.libseq.getPattern(self.bank, self.sequence, self.track, time)
-		channel = self.zyngui.zynseq.libseq.getChannel(self.bank, self.sequence, self.track)
+		pattern = self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, self.sequence, self.track, time)
+		channel = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track)
 		if pattern > 0:
+			self.zyngui.screens['pattern_editor'].channel = channel
+			self.zyngui.screens['pattern_editor'].load_pattern(pattern)
 			self.zyngui.toggle_screen("pattern_editor")
+
 
 
 	# Function to handle pattern click
@@ -620,12 +635,12 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Toggle playback of selected sequence
 	def toggle_play(self):
-		if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:
+		if self.zyngui.zynseq.libseq.getPlayState(self.zyngui.zynseq.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:
 			bars = int(self.selected_cell[0] / self.zyngui.zynseq.libseq.getBeatsPerBar())
 			pos = bars * self.zyngui.zynseq.libseq.getBeatsPerBar() * self.clocks_per_division
-			if self.zyngui.zynseq.libseq.getSequenceLength(self.bank, self.sequence) > pos:
-				self.zyngui.zynseq.libseq.setPlayPosition(self.bank, self.sequence, pos)
-		self.zyngui.zynseq.libseq.togglePlayState(self.bank, self.sequence)
+			if self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, self.sequence) > pos:
+				self.zyngui.zynseq.libseq.setPlayPosition(self.zyngui.zynseq.bank, self.sequence, pos)
+		self.zyngui.zynseq.libseq.togglePlayState(self.zyngui.zynseq.bank, self.sequence)
 
 
 	# Function to toggle note event
@@ -633,7 +648,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	#	row: Grid row
 	def toggle_event(self, col, row):
 		time = col * self.clocks_per_division
-		if self.zyngui.zynseq.libseq.getPattern(self.bank, self.sequence, self.track, time) == -1:
+		if self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, self.sequence, self.track, time) == -1:
 			self.add_event(col, self.sequence, self.track)
 		else:
 			self.remove_event(col, self.sequence, self.track)
@@ -646,8 +661,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	#	track: Track within sequence
 	def remove_event(self, col, sequence, track):
 		time = col * self.clocks_per_division
-		self.zyngui.zynseq.libseq.removePattern(self.bank, sequence, track, time)
-		self.redraw_pending = 1 #TODO: Optimise redraw
+		self.zyngui.zynseq.remove_pattern(self.zyngui.zynseq.bank, sequence, track, time)
 
 
 	# Function to add an event
@@ -657,8 +671,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	#	returns: True on success
 	def add_event(self, col, sequence, track):
 		time = col * self.clocks_per_division
-		if self.zyngui.zynseq.libseq.addPattern(self.bank, sequence, track, time, self.pattern_to_add, False):
-			self.redraw_pending = 1 #TODO: Optimise redraw
+		if self.zyngui.zynseq.add_pattern(self.zyngui.zynseq.bank, sequence, track, time, self.pattern_to_add):
 			return True
 		return False
 
@@ -675,10 +688,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			return
 		sequence = self.sequence_tracks[row + self.row_offset][0]
 		track = self.sequence_tracks[row + self.row_offset][1]
-		group = self.zyngui.zynseq.libseq.getGroup(self.bank, sequence)
+		group = self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, sequence)
 		fill = zynthian_gui_config.PAD_COLOUR_STOPPED[group % 16]
 		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
-		channel = self.zyngui.zynseq.libseq.getChannel(self.bank, sequence, track)
+		channel = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, sequence, track)
 		if channel < 16 and self.layers[channel]:
 			track_name = self.layers[channel].preset_name
 		else:
@@ -691,7 +704,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			# Create sequence title label from first visible track of sequence
 			self.sequence_title_canvas.create_text((0, self.row_height * row + 1),
 					font=font, fill=CELL_FOREGROUND, tags=("rowtitle:%d" % (row), "sequence_title"), anchor="nw",
-					text=self.zyngui.zynseq.get_sequence_name(self.bank, sequence))
+					text=self.zyngui.zynseq.get_sequence_name(self.zyngui.zynseq.bank, sequence))
 			self.grid_canvas.delete('playheadline-%d'%(row))
 			self.grid_canvas.create_line(0, self.row_height * (row + 1), 0, self.row_height * (row), fill=PLAYHEAD_CURSOR, tags=('playheadline','playheadline-%d'%(row)), state='hidden')
 		else:
@@ -756,23 +769,23 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		track = self.sequence_tracks[row + self.row_offset][1]
 		time = (self.col_offset + col) * self.clocks_per_division # time in clock cycles
 
-		pattern = self.zyngui.zynseq.libseq.getPattern(self.bank, sequence, track, time)
+		pattern = self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, sequence, track, time)
 		if pattern == -1 and col == 0:
 			# Search for earlier pattern that extends into view
-			pattern = self.zyngui.zynseq.libseq.getPatternAt(self.bank, sequence, track, time)
+			pattern = self.zyngui.zynseq.libseq.getPatternAt(self.zyngui.zynseq.bank, sequence, track, time)
 			if pattern != -1:
 				duration = int(self.zyngui.zynseq.libseq.getPatternLength(pattern) / self.clocks_per_division)
 				while time > 0 and duration > 1:
 					time -= self.clocks_per_division
 					duration -= 1
-					if pattern == self.zyngui.zynseq.libseq.getPattern(self.bank, sequence, track, time):
+					if pattern == self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, sequence, track, time):
 						break
 		elif pattern != -1:
 				duration = int(self.zyngui.zynseq.libseq.getPatternLength(pattern) / self.clocks_per_division)
 		if pattern == -1:
 			duration = 1
 			fill = CANVAS_BACKGROUND
-		elif self.zyngui.zynseq.libseq.isMuted(self.bank, sequence, track):
+		elif self.zyngui.zynseq.libseq.isMuted(self.zyngui.zynseq.bank, sequence, track):
 			fill = zynthian_gui_config.PAD_COLOUR_DISABLED
 		else:
 			fill = CELL_BACKGROUND
@@ -844,18 +857,20 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 		# Timebase track
 		self.timebase_track_canvas.delete('bpm')
-		for event in range(self.zyngui.zynseq.libseq.getTimebaseEvents(self.bank)):
-			time = self.zyngui.zynseq.libseq.getTimebaseEventTime(self.bank, event) / self.clocks_per_division
+		'''
+		#TODO: Implement timebase events - not yet implemented in library
+		for event in range(self.zyngui.zynseq.libseq.getTimebaseEvents(self.zyngui.zynseq.bank)):
+			time = self.zyngui.zynseq.libseq.getTimebaseEventTime(self.zyngui.zynseq.bank, event) / self.clocks_per_division
 			if time >= self.col_offset and time <= self.col_offset + self.horizontal_zoom:
-				command = self.zyngui.zynseq.libseq.getTimebaseEventCommand(self.bank, event)
+				command = self.zyngui.zynseq.libseq.getTimebaseEventCommand(self.zyngui.zynseq.bank, event)
 				if command == 1: # Tempo
 					tempoX = (time - self.col_offset) * self.column_width
-					data = self.zyngui.zynseq.libseq.getTimebaseEventData(self.bank, event)
+					data = self.zyngui.zynseq.libseq.getTimebaseEventData(self.zyngui.zynseq.bank, event)
 					if tempoX:
 						self.timebase_track_canvas.create_text(tempoX, tempo_y, fill='red', text=data, anchor='n', tags='bpm')
 					else:
 						self.timebase_track_canvas.create_text(tempoX, tempo_y, fill='red', text=data, anchor='nw', tags='bpm')
-		
+		'''
 		self.grid_canvas.tag_lower('barlines')
 		self.select_cell()
 
@@ -877,7 +892,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		duration = int(self.zyngui.zynseq.libseq.getPatternLength(self.pattern_to_add) / self.clocks_per_division)
 		sequence = self.sequence_tracks[row][0]
 		track = self.sequence_tracks[row][1]
-		self.set_title("Bank %d %s%d-%d (%d) %s" % (self.bank, chr(65 + self.zyngui.zynseq.libseq.getGroup(self.bank,sequence)), sequence+1, track + 1, self.zyngui.zynseq.libseq.getChannel(self.bank,sequence, track) + 1, self.get_note(self.zyngui.zynseq.libseq.getTriggerNote(self.bank,sequence))))
 		if not duration:
 			duration = 1
 		forward = time > self.selected_cell[0]
@@ -891,7 +905,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			next_start = time
 			for previous in range(time - 1, -1, -1):
 				# Iterate time divs back to start
-				prev_pattern = self.zyngui.zynseq.libseq.getPattern(self.bank, sequence, track, previous * self.clocks_per_division)
+				prev_pattern = self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, sequence, track, previous * self.clocks_per_division)
 				if prev_pattern == -1:
 					continue
 				prev_duration = int(self.zyngui.zynseq.libseq.getPatternLength(prev_pattern) / self.clocks_per_division)
@@ -899,7 +913,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 				prev_end = prev_start + prev_duration
 				break
 			for next in range(time + 1, time + duration * 2):
-				next_pattern = self.zyngui.zynseq.libseq.getPattern(self.bank, sequence, track, next * self.clocks_per_division)
+				next_pattern = self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, sequence, track, next * self.clocks_per_division)
 				if next_pattern == -1:
 					continue
 				next_start = next
@@ -1001,36 +1015,18 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to get MIDI channel of selected track
 	#	returns: MIDI channel (1..16)
 	def get_track_channel(self):
-		channel = self.zyngui.zynseq.libseq.getChannel(self.bank, self.sequence, self.track) + 1
+		channel = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track) + 1
 		return channel
-
-
-	# Function to display bank
-	def select_bank(self, bank = None, update_copy_source = True):
-		if(bank != None):
-			self.bank = bank
-		if update_copy_source:
-			self.copy_source = self.bank
-		self.update_sequence_tracks()
-		self.redraw_pending = 2
 
 
 	# Function to update array of sequences, tracks
 	#	Returns: Quanity of tracks in bank
 	def update_sequence_tracks(self):
 		self.sequence_tracks.clear()
-		for sequence in range(self.zyngui.zynseq.libseq.getSequencesInBank(self.bank)):
-			for track in range(self.zyngui.zynseq.libseq.getTracksInSequence(self.bank, sequence)):
+		for sequence in range(self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank)):
+			for track in range(self.zyngui.zynseq.libseq.getTracksInSequence(self.zyngui.zynseq.bank, sequence)):
 				self.sequence_tracks.append((sequence, track))
 		return len(self.sequence_tracks)
-
-
-	# Function called when new file loaded from disk
-	def on_load(self):
-		self.vertical_zoom = self.zyngui.zynseq.libseq.getVerticalZoom()
-		self.horizontal_zoom = self.zyngui.zynseq.libseq.getHorizontalZoom()
-		self.update_cell_size()
-		self.redraw_pending = 2
 
 
 	# Function to refresh playhead
@@ -1050,7 +1046,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			if sequence != previous_sequence and sequence != -1:
 				self.grid_canvas.coords('playheadline-%d'%seq_row, x, y1, x, y2)
 				self.grid_canvas.itemconfig('playheadline-%d'%seq_row, state='normal')
-			pos = self.zyngui.zynseq.libseq.getPlayPosition(self.bank, sequence) / self.clocks_per_division
+			pos = self.zyngui.zynseq.libseq.getPlayPosition(self.zyngui.zynseq.bank, sequence) / self.clocks_per_division
 			x = (pos - self.col_offset) * self.column_width
 			if sequence == previous_sequence:
 				y2 = self.row_height * (row + 1)
@@ -1059,7 +1055,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 				y2 = self.row_height * (row + 1)
 				seq_row = row
 			previous_sequence = sequence
-			if sequence == self.sequence and self.zyngui.zynseq.libseq.getPlayState(self.bank, sequence) in [zynthian_gui_config.SEQ_PLAYING,zynthian_gui_config.SEQ_STOPPING]:
+			if sequence == self.sequence and self.zyngui.zynseq.libseq.getPlayState(self.zyngui.zynseq.bank, sequence) in [zynthian_gui_config.SEQ_PLAYING,zynthian_gui_config.SEQ_STOPPING]:
 				if x > self.grid_width:
 					self.select_cell(int(pos), self.selected_cell[1])
 				elif x < 0:
@@ -1070,18 +1066,21 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle zyncoder value change
 	#	encoder: Zyncoder index [0..4]
-	#	value: Current value of zyncoder
-	def zynpot_cb(self, encoder, value):
-		if super().zynpot_cb(encoder, value):
+	#	dval: Offset value of zyncoder
+	def zynpot_cb(self, encoder, dval):
+		if super().zynpot_cb(encoder, dval):
 			return
 		if encoder == zynthian_gui_config.ENC_BACK:
 			# BACK encoder adjusts track selection
-			self.select_cell(self.selected_cell[0], self.selected_cell[1] + value)
+			self.select_cell(self.selected_cell[0], self.selected_cell[1] + dval)
 		elif encoder == zynthian_gui_config.ENC_SELECT:
 			# SELECT encoder adjusts time selection
-			self.select_cell(self.selected_cell[0] + value, self.selected_cell[1])
+			self.select_cell(self.selected_cell[0] + dval, self.selected_cell[1])
 		elif encoder == zynthian_gui_config.ENC_LAYER:
-			self.set_pattern(self.pattern + value)
+			self.set_pattern(self.pattern + dval)
+		elif encoder == zynthian_gui_config.ENC_SNAPSHOT:
+			self.zyngui.zynseq.nudge_tempo(dval)
+			self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
 
 
 	# Function to handle switch press
@@ -1093,13 +1092,16 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			return True
 		if switch == zynthian_gui_config.ENC_SELECT and type == 'B':
 			self.show_pattern_editor()
+			return True
 		elif switch == zynthian_gui_config.ENC_SELECT:
 			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+			return True
 		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
 			if type == 'B':
 				self.toggle_mute()
 			else:
 				self.toggle_play()
+			return True
 		elif switch == zynthian_gui_config.ENC_LAYER and type == 'S':
 			self.show_menu()
 			return True

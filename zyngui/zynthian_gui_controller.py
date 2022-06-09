@@ -541,9 +541,9 @@ class zynthian_gui_controller:
 			else:
 				self.pixels_per_div = int(self.height * zctrl.nudge_factor / zctrl.value_range)
 				if zctrl.nudge_factor < 0.1:
-					self.format_print="{0:.2f}"
+					self.format_print="{:.2f}"
 				else:
-					self.format_print="{0:.1f}"
+					self.format_print="{:.1f}"
 
 		if zctrl.is_toggle:
 			self.pixels_per_div = 20
