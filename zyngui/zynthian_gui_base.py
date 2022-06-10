@@ -53,7 +53,7 @@ class zynthian_gui_base:
 		self.shown = False
 		self.zyngui = zynthian_gui_config.zyngui
 
-		self.buttonbar_button = [None, None, None, None]
+		self.buttonbar_button = []
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
@@ -232,31 +232,34 @@ class zynthian_gui_base:
 
 	def init_buttonbar(self):
 		# Touchbar frame
-		if not zynthian_gui_config.enable_onscreen_buttons:
+		if not zynthian_gui_config.enable_onscreen_buttons or not self.buttonbar_config:
 			return
 
 		self.buttonbar_frame = tkinter.Frame(self.main_frame,
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.buttonbar_height,
 			bg=zynthian_gui_config.color_bg)
-		self.buttonbar_frame.grid(row=3, column=0, columnspan=3, padx=(0,0), pady=(2,0))
+		self.buttonbar_frame.grid(row=3, column=0, columnspan=3, padx=(0,0), pady=(2,0), sticky=tkinter.S)
 		self.buttonbar_frame.grid_propagate(False)
 		self.buttonbar_frame.grid_rowconfigure(
 			0, minsize=zynthian_gui_config.buttonbar_height, pad=0)
-		for i in range(4):
+		for i,button_config in enumerate(self.buttonbar_config):
 			self.buttonbar_frame.grid_columnconfigure(
 				i, minsize=zynthian_gui_config.button_width, pad=0)
 			if self.buttonbar_config[i]:
-				self.add_button(i, self.buttonbar_config[i][0], self.buttonbar_config[i][1])
+				self.add_button(i, button_config[0], button_config[1])
 
 
 	def set_buttonbar_label(self, column, label):
-		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_button[column]:
+		if len(self.buttonbar_button) > column and self.buttonbar_button[column]:
 			self.buttonbar_button[column]['text'] = label
 
 
-	def add_button(self, column, index, label):
+	def add_button(self, column, cuia, label):
 		# Touchbar frame
+		for new_column in range(len(self.buttonbar_button), column + 1):
+				self.buttonbar_button.append(None)
+    		
 		self.buttonbar_button[column] = select_button = tkinter.Button(
 			self.buttonbar_frame,
 			bg=zynthian_gui_config.color_panel_bg,
@@ -277,25 +280,28 @@ class zynthian_gui_base:
 		else:
 			padx = (1,1)
 		select_button.grid(row=0, column=column, sticky='nswe', padx=padx)
-		select_button.bind('<ButtonPress-1>', lambda e: self.button_down(index, e))
-		select_button.bind('<ButtonRelease-1>', lambda e: self.button_up(index, e))
+		select_button.bind('<ButtonPress-1>', lambda e: self.button_down(e))
+		select_button.bind('<ButtonRelease-1>', lambda e: self.button_up(cuia, e))
 
 
-	def button_down(self, index, event):
+	def button_down(self, event):
 		self.button_push_ts=time.monotonic()
 
 
-	def button_up(self, index, event):
-		t = 'S'
-		if self.button_push_ts:
-			dts=(time.monotonic()-self.button_push_ts)
-			if dts<0.3:
-				t = 'S'
-			elif dts>=0.3 and dts<2:
-				t = 'B'
-			elif dts>=2:
-				t = 'L'
-		self.zyngui.zynswitch_defered(t,index)
+	def button_up(self, cuia, event):
+		if isinstance(cuia, int):
+			t = 'S'
+			if self.button_push_ts:
+				dts=(time.monotonic()-self.button_push_ts)
+				if dts<0.3:
+					t = 'S'
+				elif dts>=0.3 and dts<2:
+					t = 'B'
+				elif dts>=2:
+					t = 'L'
+			self.zyngui.zynswitch_defered(t, cuia)
+		else:
+			self.zyngui.callable_ui_action(cuia)
 
 
 	# Default topbar touch callback

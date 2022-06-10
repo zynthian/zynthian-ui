@@ -680,19 +680,20 @@ class zynthian_gui_mixer_strip():
 
 class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
-	def __init__(self):
+	def __init__(self):	
+		
+		self.buttonbar_config = [
+			(0, 'MUTE\n[menu]'),
+			(2, 'SOLO\n[snapshot]'),
+			(1, 'CANCEL\n(learn)'),
+			(3, 'CONTROL\n[options]')
+		]
 		super().__init__()
+
 		self.zynmixer = self.zyngui.zynmixer
 		self.zynmixer.set_ctrl_update_cb(self.cb_ctrl_change)
 		self.MAIN_CHANNEL_INDEX = zynthian_gui_config.zyngui.zynmixer.get_max_channels() 
 		self.chan2strip = [None] * (self.MAIN_CHANNEL_INDEX + 1)
-
-		self.buttonbar_config = [
-			(0, 'MUTE\n[menu]'),
-			(2, 'SOLO\n[snapshot]'),
-			(1, ''),
-			(3, 'CONTROL\n[options]')
-		]
 
 		self.pending_refresh_queue = set() # List of stips requiring gui refresh
 		self.midi_learning = False

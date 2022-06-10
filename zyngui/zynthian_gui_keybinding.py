@@ -165,6 +165,10 @@ class zynthian_gui_keybinding:
 			return self.rmap[rkey]
 
 		except:
+			if rkey == '0^down': return('ARROW_DOWN')
+			elif rkey == '0^up': return('ARROW_UP')
+			elif rkey == '0^left': return('ARROW_LEFT')
+			elif rkey == '0^right': return('ARROW_RIGHT')
 			logging.debug("Key not configured")
 
 

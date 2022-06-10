@@ -61,14 +61,16 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to initialise class
 	def __init__(self):
-		super().__init__()
+
 		self.buttonbar_config = [
-			(zynthian_gui_config.ENC_LAYER, 'MENU'),
-			(zynthian_gui_config.ENC_BACK, 'BACK'),
-			(zynthian_gui_config.ENC_SNAPSHOT, 'SNAPSHOT'),
-			(zynthian_gui_config.ENC_SELECT, 'TRIGGER')
+			(zynthian_gui_config.ENC_LAYER, 'MENU\n(main menu)'),
+			(zynthian_gui_config.ENC_BACK, 'BACK\n(mixer)'),
+			(zynthian_gui_config.ENC_SNAPSHOT, 'PLAY\n(mute track)'),
+			(zynthian_gui_config.ENC_SELECT, 'ADD/DEL\n(editor)')
 		]
-		
+
+		super().__init__()
+
 		self.sequence_tracks = [] # Array of [Sequence,Track] that are visible within bank
 		self.sequence = 0 # Index of selected sequence
 		self.track = 0 # Index of selected track
@@ -149,28 +151,31 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 		self.bank = self.zyngui.zynseq.bank # Local copy so we know if it has changed and grid needs redrawing
 		self.update_sequence_tracks()
-		self.redraw_pending = 2 # 0:No refresh, 1:Refresh grid content, 2:Clear and rebuild grid
+		self.redraw_pending = 4 # 0:No refresh, 1:Refresh grid content, 2:Clear and rebuild grid, 3 Refresh current row
+		#0:No refresh, 1:Refresh cell, 2:Refresh row, 3:Refresh grid, 4: Redraw grid
 		self.zyngui.zynseq.add_event_cb(self.seq_cb)
 
 
 	# Function to handle changes to sequencer
 	def seq_cb(self, event):
-		if event in [zynseq.SEQ_EVENT_BANK,
+		if self.redraw_pending < 4 and event in [zynseq.SEQ_EVENT_BANK,
 					zynseq.SEQ_EVENT_GROUP]:
 			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
 			self.bank = self.zyngui.zynseq.bank
 			self.update_sequence_tracks()
-			self.redraw_pending = 2
-		elif event in [zynseq.SEQ_EVENT_BPB,
+			self.redraw_pending = 4
+		elif self.redraw_pending < 3 and event in [zynseq.SEQ_EVENT_BPB]:
+			self.redraw_pending = 3
+		elif self.redraw_pending < 2 and event in [
 					zynseq.SEQ_EVENT_CHANNEL,
 					zynseq.SEQ_EVENT_PLAYMODE,
 					zynseq.SEQ_EVENT_SEQUENCE]:
-			self.redraw_pending = 1
+			self.redraw_pending = 2
 		elif event == zynseq.SEQ_EVENT_LOAD:
 			self.vertical_zoom = self.zyngui.zynseq.libseq.getVerticalZoom()
 			self.horizontal_zoom = self.zyngui.zynseq.libseq.getHorizontalZoom()
 			self.update_cell_size()
-			self.redraw_pending = 2
+			self.redraw_pending = 4
 
 
 	# Function to set values of encoders
@@ -257,12 +262,12 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.vertical_zoom = zctrl.value
 			self.zyngui.zynseq.libseq.setVerticalZoom(zctrl.value)
 			self.update_cell_size()
-			self.redraw_pending = 2
+			self.redraw_pending = 4
 		elif zctrl.symbol == 'hzoom':
 			self.horizontal_zoom = zctrl.value
 			self.zyngui.zynseq.libseq.setHorizontalZoom(zctrl.value)
 			self.update_cell_size()
-			self.redraw_pending = 1
+			self.redraw_pending = 3
 		elif zctrl.symbol == 'group':
 			self.zyngui.zynseq.set_group(self.zyngui.zynseq.bank, self.sequence, zctrl.value)
 		elif zctrl.symbol == 'pattern':
@@ -272,7 +277,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to toggle mute of selected track
 	def toggle_mute(self, params=None):
 		self.zyngui.zynseq.libseq.toggleMute(self.zyngui.zynseq.bank, self.sequence, self.track)
-		self.redraw_pending = 1
+		self.redraw_pending = 3
 
 
 	# Function to actually clear bank
@@ -299,7 +304,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def add_track(self, params=None):
 		self.zyngui.zynseq.libseq.addTrackToSequence(self.zyngui.zynseq.bank, self.sequence, self.track)
 		self.update_sequence_tracks()
-		self.redraw_pending = 2
+		self.redraw_pending = 4
 
 
 	# Function to remove selected track
@@ -311,7 +316,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def do_remove_track(self, params=None):
 		self.zyngui.zynseq.libseq.removeTrackFromSequence(self.zyngui.zynseq.bank, self.sequence, self.track)
 		self.update_sequence_tracks()
-		self.redraw_pending = 2
+		self.redraw_pending = 4
 
 
 	# Function to import SMF
@@ -418,7 +423,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		for track in range(15, -1, -1):
 			if empty_tracks[track]:
 				self.zyngui.zynseq.libseq.removeTrackFromSequence(bank, sequence, track)
-		self.redraw_pending = 2
+		self.redraw_pending = 4
 
 
 	# Function to show GUI
@@ -497,13 +502,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if self.row_offset == pos:
 			return
 		self.row_offset = pos
-		self.redraw_pending = 1
 		sequence = self.selected_cell[1]
 		if self.selected_cell[1] < self.row_offset:
 			sequence = self.row_offset
 		elif self.selected_cell[1] >= self.row_offset + self.vertical_zoom:
 			sequence = self.row_offset + self.vertical_zoom - 1
 		self.select_cell(self.selected_cell[0], sequence, False)
+		self.redraw_pending = 4
 
 
 	# Function to handle end of sequence drag
@@ -533,7 +538,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if self.col_offset == pos:
 			return
 		self.col_offset = pos
-		self.redraw_pending = 1
+		self.redraw_pending = 3
 		duration = int(self.zyngui.zynseq.libseq.getPatternLength(self.pattern_to_add) / self.clocks_per_division)
 		if self.selected_cell[0] < self.col_offset:
 			self.select_cell(self.col_offset, self.selected_cell[1])
@@ -584,6 +589,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if self.add_event(self.selected_cell[0], self.sequence, self.track):
 			if self.source_col != self.selected_cell[0] or self.source_row != self.selected_cell[1]:
 				self.remove_event(self.source_col, self.source_seq, self.source_track)
+				self.draw_row(self.source_seq - self.row_offset)
 		else:
 			self.select_cell(self.source_col, self.source_row) # Failed to add pattern so reselect original cells
 		self.pattern_to_add = self.pattern
@@ -823,11 +829,23 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to draw grid
 	def draw_grid(self):
-		if self.redraw_pending == 2:
+		if self.redraw_pending == 1:
+			self.redraw_pending = 0
+#			self.grid_canvas.itemconfig("{},{}".format(self.selected_cell[0], self.selected_cell[1]), fill=CANVAS_BACKGROUND)
+			self.draw_cell(self.selected_cell[0] - self.col_offset, self.selected_cell[1] - self.row_offset)
+			return
+		elif self.redraw_pending == 2:
+			self.redraw_pending = 0
+#			for column in range(self.horizontal_zoom):
+#				self.grid_canvas.itemconfig("{},{}".format(column, self.selected_cell[1]), fill=CANVAS_BACKGROUND)
+			self.draw_row(self.selected_cell[1] - self.row_offset, True)
+			return
+		elif self.redraw_pending == 4:
 			self.grid_canvas.delete(tkinter.ALL)
 			self.sequence_title_canvas.delete(tkinter.ALL)
 			self.column_width = self.grid_width / self.horizontal_zoom
 			self.cells = [[None] * 2 for _ in range(self.vertical_zoom * self.horizontal_zoom)]
+
 		self.redraw_pending = 0
 
 		# Draw rows of grid
@@ -952,21 +970,21 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			if time + duration > self.col_offset + self.horizontal_zoom:
 				# time is off right of display
 				self.col_offset = time + duration - self.horizontal_zoom
-				self.redraw_pending = 1
+				self.redraw_pending = 3
 			if time < self.col_offset:
 				# time is off left of display
 				self.col_offset = time
-				self.redraw_pending = 1
+				self.redraw_pending = 3
 			if row >= self.row_offset + self.vertical_zoom:
 				# row is off bottom of display
 				self.row_offset = row - self.vertical_zoom + 1
-				self.redraw_pending = 2
+				self.redraw_pending = 4
 			elif row < self.row_offset:
 				self.row_offset = row
-				self.redraw_pending = 2
+				self.redraw_pending = 4
 			if backward != None and self.col_offset > 0 and time > backward:
 				self.col_offset = self.col_offset - 1
-				self.redraw_pending = 1
+				self.redraw_pending = 3
 		self.selected_cell = [time, row]
 		self.sequence = self.sequence_tracks[row][0]
 		self.track = self.sequence_tracks[row][1]
@@ -982,13 +1000,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.grid_canvas.coords(selection_border, coord)
 		self.grid_canvas.itemconfig(selection_border, state='normal')
 		self.grid_canvas.tag_raise(selection_border)
-		if scroll:
+		if scroll and not self.redraw_pending:
 			if row < self.row_offset:
 				self.row_offset = row
-				self.redraw_pending = 1
+				self.redraw_pending = 3
 			if row > self.row_offset + self.vertical_zoom:
 				self.row_offset = row + self.vertical_zoom
-				self.redraw_pending = 1
+				self.redraw_pending = 3
 
 
 	# Function to calculate cell size
@@ -1106,5 +1124,24 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.show_menu()
 			return True
 
+
+	#	CUIA Actions
+	# Function to handle CUIA ARROW_RIGHT
+	def arrow_right(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+
+	# Function to handle CUIA ARROW_LEFT
+	def arrow_left(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+
+
+	# Function to handle CUIA ARROW_UP
+	def arrow_up(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
+
+
+	# Function to handle CUIA ARROW_DOWN
+	def arrow_down(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 
 #------------------------------------------------------------------------------

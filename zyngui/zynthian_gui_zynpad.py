@@ -53,14 +53,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to initialise class
 	def __init__(self):
-		super().__init__()
 
 		self.buttonbar_config = [
-			(zynthian_gui_config.ENC_LAYER, 'MENU'),
-			(zynthian_gui_config.ENC_BACK, 'BACK'),
-			(zynthian_gui_config.ENC_SNAPSHOT, 'SNAPSHOT'),
-			(zynthian_gui_config.ENC_SELECT, 'TRIGGER')
+			(zynthian_gui_config.ENC_LAYER, 'MENU\n(main menu)'),
+			(zynthian_gui_config.ENC_BACK, 'BACK\n(mixer)'),
+			(zynthian_gui_config.ENC_SNAPSHOT, '\n(snapshot)'),
+			(zynthian_gui_config.ENC_SELECT, 'TRIGGER\n(editor)')
 		]
+
+		super().__init__()
 
 		self.columns = 4 # Quantity of columns in grid
 		self.selected_pad = 0 # Index of selected pad
@@ -482,5 +483,26 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.show_menu()
 			return True
 		return False
+
+
+	#	CUIA Actions
+	# Function to handle CUIA ARROW_RIGHT
+	def arrow_right(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+
+	# Function to handle CUIA ARROW_LEFT
+	def arrow_left(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+
+
+	# Function to handle CUIA ARROW_UP
+	def arrow_up(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
+
+
+	# Function to handle CUIA ARROW_DOWN
+	def arrow_down(self):
+		self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+
 
 #------------------------------------------------------------------------------
