@@ -829,18 +829,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Mixer Functionality
 	#--------------------------------------------------------------------------
 
-	# Function to get a mixer strip object from a layer index
-	# layer_index: Index of layer to get. If None, currently selected layer is used.
-	def get_mixer_strip_from_layer_index(self, layer_index=None):
-		if layer_index is None:
-			layer_index = self.selected_chain_index
-		if layer_index is None or layer_index < self.mixer_strip_offset:
-			return None
-		if layer_index < self.number_layers:
-			return self.visible_mixer_strips[layer_index - self.mixer_strip_offset]
-		else:
-			return self.main_mixbus_strip
-
 
 	# Function to select mixer strip associated with the specified layer
 	# layer: Layer object
@@ -860,13 +848,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to highlight the selected chain's strip
 	def highlight_selected_chain(self):
-		if self.selected_chain_index is not None:
-			strip_on = self.get_mixer_strip_from_layer_index(self.selected_chain_index)
-			if strip_on and strip_on!=self.highlighted_strip:
-				if self.highlighted_strip is not None:
-					self.highlighted_strip.set_highlight(False)
-				strip_on.set_highlight(True)
-				self.highlighted_strip = strip_on
+		if self.selected_chain_index is None:
+			return
+		if self.selected_chain_index >= self.number_layers:
+			strip = self.main_mixbus_strip
+		elif self.selected_chain_index - self.mixer_strip_offset < 0 or self.selected_chain_index - self.mixer_strip_offset >= len(self.visible_mixer_strips):
+			return
+		else:
+			strip = self.visible_mixer_strips[self.selected_chain_index - self.mixer_strip_offset]
+
+		if self.highlighted_strip and self.highlighted_strip != strip:
+			self.highlighted_strip.set_highlight(False)
+
+		self.highlighted_strip = strip
+		self.highlighted_strip.set_highlight(True)
 
 
 	# Function to select chain by index
