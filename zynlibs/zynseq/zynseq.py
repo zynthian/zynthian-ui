@@ -207,6 +207,7 @@ class zynseq(zynthian_engine):
 	def set_sequence_name(self, bank, sequence, name):
 		if self.libseq:
 			self.libseq.setSequenceName(bank, sequence, bytes(name, "utf-8"))
+			self.send_event(SEQ_EVENT_SEQUENCE)
 
 
 	#	Get sequence name

@@ -103,7 +103,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def seq_cb(self, event):
 		if event in [zynseq.SEQ_EVENT_BANK,
 					zynseq.SEQ_EVENT_CHANNEL,
-					zynseq.SEQ_EVENT_GROUP]:
+					zynseq.SEQ_EVENT_GROUP,
+					zynseq.SEQ_EVENT_SEQUENCE]:
 			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
 			self.redraw_pending = 1
 		
