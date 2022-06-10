@@ -112,6 +112,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.sequence_title_canvas.bind("<ButtonPress-1>", self.on_sequence_drag_start)
 		self.sequence_title_canvas.bind("<ButtonRelease-1>", self.on_sequence_drag_end)
 		self.sequence_title_canvas.bind("<B1-Motion>", self.on_sequence_drag_motion)
+		self.sequence_title_canvas.bind("<Button-4>", self.on_seq_mouse_scroll)
+		self.sequence_title_canvas.bind("<Button-5>", self.on_seq_mouse_scroll)
 		self.sequence_title_canvas.grid(column=1, row=1)
 
 		# Create grid canvas
@@ -514,6 +516,25 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle end of sequence drag
 	def on_sequence_drag_end(self, event):
 		self.sequence_drag_start = None
+
+
+	# Function to handle mouse wheel on sequence titles
+	def on_seq_mouse_scroll(self, event):
+		if event.num == 4:
+			# Scroll up
+			#TODO: Need to validate vertical range of tracks, not sequences
+			if self.row_offset + self.vertical_zoom < self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank):
+				self.row_offset += 1
+				if self.selected_cell[1] < self.row_offset:
+					self.select_cell(self.selected_cell[0], self.row_offset)
+				self.redraw_pending = 4
+		else:
+			# Scroll down
+			if self.row_offset: 
+				self.row_offset -= 1
+				if self.selected_cell[1] >= self.row_offset + self.vertical_zoom:
+					self.select_cell(self.selected_cell[0], self.row_offset + self.vertical_zoom - 1)
+				self.redraw_pending = 4
 
 
 	# Function to handle start of time drag
