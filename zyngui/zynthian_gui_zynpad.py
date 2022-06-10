@@ -440,12 +440,12 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to handle zynpots value change
-	#   i: Zynpot index [0..n]
+	#   encoder: Zynpot index [0..n]
 	#   dval: Zynpot value change
-	def zynpot_cb(self, i, dval):
-		if super().zynpot_cb(i, dval):
+	def zynpot_cb(self, encoder, dval):
+		if super().zynpot_cb(encoder, dval):
 			return
-		if i == zynthian_gui_config.ENC_SELECT:
+		if encoder == zynthian_gui_config.ENC_SELECT:
 			# SELECT encoder adjusts horizontal pad selection
 			pad = self.selected_pad + self.columns * dval
 			col = int(pad / self.columns)
@@ -462,16 +462,19 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				return
 			self.selected_pad = pad
 			self.update_selection_cursor()
-		elif i == zynthian_gui_config.ENC_BACK:
+		elif encoder == zynthian_gui_config.ENC_BACK:
 			# BACK encoder adjusts vertical pad selection
 			pad = self.selected_pad + dval
 			if pad < 0 or pad >= self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank):
 				return
 			self.selected_pad = pad
 			self.update_selection_cursor()
-		elif i == zynthian_gui_config.ENC_SNAPSHOT:
+		elif encoder == zynthian_gui_config.ENC_SNAPSHOT:
 			self.zyngui.zynseq.nudge_tempo(dval)
 			self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
+		elif encoder == zynthian_gui_config.ENC_LAYER:
+			self.zyngui.zynseq.select_bank(self.zyngui.zynseq.bank + dval)
+			self.set_title("Bank {}".format(self.zyngui.zynseq.bank))
 
 
 	# Function to handle switch press

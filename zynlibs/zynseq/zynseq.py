@@ -80,6 +80,7 @@ class zynseq(zynthian_engine):
 			})
 		
 		self.event_cb_list = [] # List of callbacks registered for notification of change
+		self.bank = None
 		self.select_bank(1)
 
 
@@ -117,7 +118,9 @@ class zynseq(zynthian_engine):
 	#	Function to select a bank for edit / control
 	#	bank: Index of bank
 	def select_bank(self, bank=None):
-		if bank:
+		if isinstance(bank, int):
+			if bank < 1 or bank > 64 or bank == self.bank:
+				return
 			self.bank = bank
 		if self.libseq.getSequencesInBank(self.bank) == 0:
 			self.build_default_bank(self.bank)
