@@ -856,10 +856,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			return
 		else:
 			strip = self.visible_mixer_strips[self.selected_chain_index - self.mixer_strip_offset]
-
 		if self.highlighted_strip and self.highlighted_strip != strip:
 			self.highlighted_strip.set_highlight(False)
-
 		self.highlighted_strip = strip
 		self.highlighted_strip.set_highlight(True)
 

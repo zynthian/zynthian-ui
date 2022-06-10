@@ -144,6 +144,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.piano_roll.bind("<ButtonPress-1>", self.on_pianoroll_press)
 		self.piano_roll.bind("<ButtonRelease-1>", self.on_pianoroll_release)
 		self.piano_roll.bind("<B1-Motion>", self.on_pianoroll_motion)
+		self.piano_roll.bind("<Button-4>", self.on_pianoroll_wheel)
+		self.piano_roll.bind("<Button-5>", self.on_pianoroll_wheel)
 
 		# Create playhead canvas
 		self.play_canvas = tkinter.Canvas(self.seq_frame,
@@ -531,6 +533,24 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle end of pianoroll drag
 	def on_pianoroll_release(self, event):
 		self.piano_roll_drag_start = None
+
+
+	# Function to handle mouse wheel over pianoroll
+	def on_pianoroll_wheel(self, event):
+		if event.num == 4:
+			# Scroll up
+			if self.keymap_offset + self.zoom < len(self.keymap):
+				self.keymap_offset += 1
+				self.redraw_pending = 1
+				if self.selected_cell[1] < self.keymap_offset:
+					self.select_cell(self.selected_cell[0], self.keymap_offset)
+		else:
+			# Scroll down
+			if self.keymap_offset:
+				self.keymap_offset -= 1
+				self.redraw_pending = 1
+				if self.selected_cell[1] >= self.keymap_offset + self.zoom:
+					self.select_cell(self.selected_cell[0], self.keymap_offset + self.zoom - 1)
 
 
 	# Function to handle grid mouse down
