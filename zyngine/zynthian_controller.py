@@ -414,40 +414,39 @@ class zynthian_controller:
 
 
 	#--------------------------------------------------------------------------
-	# Snapshot helper functions
+	# State management functions
 	#--------------------------------------------------------------------------
 
-
-	def get_snapshot(self):
-		snapshot = {}
+	def get_state(self):
+		state = {}
 		
 		# Value
 		if math.isnan(self.value):
-			snapshot['value'] = None
+			state['value'] = None
 		else:
-			snapshot['value'] = self.value
+			state['value'] = self.value
 
 		# MIDI learning info
 		if self.midi_learn_chan is not None and self.midi_learn_cc is not None:
-			snapshot['midi_learn_chan'] = self.midi_learn_chan
-			snapshot['midi_learn_cc'] = self.midi_learn_cc
+			state['midi_learn_chan'] = self.midi_learn_chan
+			state['midi_learn_cc'] = self.midi_learn_cc
 			# Specific ZynAddSubFX slot info
 			try:
-				snapshot['slot_i'] = self.slot_i
+				state['slot_i'] = self.slot_i
 			except:
 				pass
 
-		return snapshot
+		return state
 
 
-	def restore_snapshot(self, snapshot):
-		if isinstance(snapshot, dict):
-			self.set_value(snapshot['value'], True)
+	def restore_state(self, state):
+		if isinstance(state, dict):
+			self.set_value(state['value'], True)
 			# Restore MIDI-learn
-			if 'midi_learn_chan' in snapshot and 'midi_learn_cc' in snapshot:
-				self.set_midi_learn(int(snapshot['midi_learn_chan']), int(snapshot['midi_learn_cc']))
+			if 'midi_learn_chan' in state and 'midi_learn_cc' in state:
+				self.set_midi_learn(int(state['midi_learn_chan']), int(state['midi_learn_cc']))
 		else:
-			self.set_value(snapshot, True)
+			self.set_value(state, True)
 
 
 	#--------------------------------------------------------------------------

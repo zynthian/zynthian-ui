@@ -35,19 +35,18 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_zs3_options(zynthian_gui_selector):
 
 	def __init__(self):
-		self.midi_chan = None
 		self.zs3_index = None
 		super().__init__('Option', True)
 
 
-	def config(self, midich, i):
-		self.midi_chan = midich
+	def config(self, i):
 		self.zs3_index = i
 
 
 	def fill_list(self):
 		self.list_data=[]
 
+		self.list_data.append((self.zs3_rename,0,"Rename"))
 		self.list_data.append((self.zs3_update,0,"Update"))
 		self.list_data.append((self.zs3_delete,0,"Delete"))
 
@@ -55,26 +54,37 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
+		self.index = i
 		if self.list_data[i][0]:
 			self.last_action=self.list_data[i][0]
 			self.last_action()
 
 
-	def zs3_update(self):
-		logging.info("Updating ZS3 CH#{}".format(self.midi_chan, self.zs3_index))
-		self.zyngui.screens['layer'].save_midi_chan_zs3(self.midi_chan, self.zs3_index)
+	def zs3_rename(self):
+		title = self.zyngui.screens['layer'].get_zs3_title(self.zs3_index)
+		self.zyngui.show_keyboard(self.zs3_rename_cb, title)
+
+
+	def zs3_rename_cb(self, title):
+		logging.info("Renaming ZS3#{}".format(self.zs3_index))
+		self.zyngui.screens['layer'].set_zs3_title(self.zs3_index, title)
 		self.zyngui.close_screen()
-		self.zyngui.exit_midi_learn_mode()
+
+
+	def zs3_update(self):
+		logging.info("Updating ZS3#{}".format(self.zs3_index))
+		self.zyngui.screens['layer'].save_zs3(self.zs3_index)
+		self.zyngui.close_screen()
 
 
 	def zs3_delete(self):
-		logging.info("Deleting ZS3 CH#{} {}".format(self.midi_chan, self.zs3_index))
-		self.zyngui.screens['layer'].delete_midi_chan_zs3(self.midi_chan, self.zs3_index)
+		logging.info("Deleting ZS3#{}".format(self.zs3_index))
+		self.zyngui.screens['layer'].delete_zs3(self.zs3_index)
 		self.zyngui.close_screen()
 
 
 	def set_select_path(self):
-		self.select_path.set("PROG Options")
+		self.select_path.set("ZS3 Options")
 
 
 #------------------------------------------------------------------------------

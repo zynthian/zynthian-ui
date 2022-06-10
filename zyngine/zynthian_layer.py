@@ -96,8 +96,6 @@ class zynthian_layer:
 
 		self.status = "" # Allows indication of arbitary status text
 
-		self.reset_zs3()
-
 		if engine is not None:
 			self.set_engine(engine)
 
@@ -550,12 +548,11 @@ class zynthian_layer:
 
 
 	# ---------------------------------------------------------------------------
-	# Snapshot Management
+	# State Management
 	# ---------------------------------------------------------------------------
 
-
-	def get_snapshot(self):
-		snapshot={
+	def get_state(self):
+		state = {
 			'engine_name': self.engine.name,
 			'engine_nick': self.engine.nickname,
 			'midi_chan': self.midi_chan,
@@ -567,71 +564,89 @@ class zynthian_layer:
 			'preset_info': self.preset_info,
 			'show_fav_presets': self.show_fav_presets,
 			'controllers_dict': {},
-			'zs3_list': self.zs3_list,
-			'current_screen_index': self.current_screen_index
+			'current_screen_index': self.current_screen_index,
 		}
+
 		for k in self.controllers_dict:
-			snapshot['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
-		return snapshot
+			state['controllers_dict'][k] = self.controllers_dict[k].get_state()
+
+		return state
 
 
-	def restore_snapshot_1(self, snapshot):
-		#Constructor, including engine and midi_chan info, is called before
+	def restore_state(self, state):
+		self.restore_0(state)
+		self.restore_1(state)
+		self.restore_2(state)
+
+
+	def restore_state_0(self, state):
+		# Load bank list
+		try:
+			self.bank_name=state['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
+			self.load_bank_list()
+			self.bank_name=None
+		except Exception as e:
+			logging.warning("Error loading bank list on layer {}: {}".format(self.get_basepath(), e))
+
+
+	def restore_state_1(self, state):
+		# Constructor, including engine and midi_chan info, is called before
 
 		self.wait_stop_loading()
 
-		if 'show_fav_presets' in snapshot:
-			self.set_show_fav_presets(snapshot['show_fav_presets'])
+		if 'show_fav_presets' in state:
+			self.set_show_fav_presets(state['show_fav_presets'])
 
-		#Load bank list and set bank
+		# Set bank and load preset_list
 		try:
-			self.bank_name=snapshot['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
-			self.load_bank_list()
-			self.bank_name=None
-			self.set_bank_by_name(snapshot['bank_name'])
-
+			self.set_bank_by_name(state['bank_name'])
+			self.wait_stop_loading()
+			self.load_preset_list()
 		except Exception as e:
 			logging.warning("Invalid Bank on layer {}: {}".format(self.get_basepath(), e))
 
-		self.wait_stop_loading()
-
-		#Load preset list and set preset
+		#  and set preset
 		try:
-			self.load_preset_list()
-			self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
+			self.preset_loaded=self.set_preset_by_name(state['preset_name'])
+			self.wait_stop_loading()
 		except Exception as e:
 			logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
 
-		self.wait_stop_loading()
-
-		#Refresh controller config
+		# Refresh controller config
 		if self.refresh_flag:
 			self.refresh_flag=False
 			self.refresh_controllers()
 
-		#Set zs3 list
-		if 'zs3_list' in snapshot:
-			self.zs3_list = snapshot['zs3_list']
+		# Set active controller page
+		if 'current_screen_index' in state:
+			self.current_screen_index=state['current_screen_index']
 
-		#Set active screen
-		if 'current_screen_index' in snapshot:
-			self.current_screen_index=snapshot['current_screen_index']
+		self.restore_state_legacy(state)
 
 
-	def restore_snapshot_2(self, snapshot):
+	def restore_state_2(self, state):
 
-		# Wait a little bit if a preset has been loaded
-		if self.preset_loaded:
-			sleep(0.2)
+		# For non-LV2 engines, bank and preset can affect what controllers do.
+		# In case of LV2, just restoring the controllers ought to be enough, which is nice
+		# since it saves the 0.2 second delay between setting a preset and updating controllers.
+		if self.preset_loaded and not self.engine.nickname.startswith('JV'):
+			sleep(0.3)
 
 		self.wait_stop_loading()
 
 		#Set controller values
-		for k in snapshot['controllers_dict']:
+		for k in state['controllers_dict']:
 			try:
-				self.controllers_dict[k].restore_snapshot(snapshot['controllers_dict'][k])
+				self.controllers_dict[k].restore_state(state['controllers_dict'][k])
 			except Exception as e:
 				logging.warning("Invalid Controller on layer {}: {}".format(self.get_basepath(), e))
+
+
+	def restore_state_legacy(self, state):
+		# Set legacy Note Range (BW compatibility)
+		if self.midi_chan>=0 and 'note_range' in state:
+			nr = state['note_range']
+			lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
 
 
 	def wait_stop_loading(self):
@@ -643,52 +658,6 @@ class zynthian_layer:
 	# ---------------------------------------------------------------------------
 	# ZS3 Management (Zynthian SubSnapShots)
 	# ---------------------------------------------------------------------------
-
-
-	def reset_zs3(self):
-		self.zs3_list = [None]*128
-
-
-	def delete_zs3(self, i):
-		self.zs3_list[i] = None
-
-
-	def get_zs3(self, i):
-		return self.zs3_list[i]
-
-
-	def save_zs3(self, i):
-		logging.info("Save ZS3: CH{} => {}".format(self.midi_chan, i))
-		try:
-			zs3 = {
-				'bank_index': self.bank_index,
-				'bank_name': self.bank_name,
-				'bank_info': self.bank_info,
-				'preset_index': self.preset_index,
-				'preset_name': self.preset_name,
-				'preset_info': self.preset_info,
-				'current_screen_index': self.current_screen_index,
-				'controllers_dict': {},
-				'note_range': {}
-			}
-
-			for k in self.controllers_dict:
-				logging.debug("Saving {}".format(k))
-				zs3['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
-
-			if self.midi_chan>=0:
-				zs3['note_range'] = {
-					'note_low': lib_zyncore.get_midi_filter_note_low(self.midi_chan),
-					'note_high': lib_zyncore.get_midi_filter_note_high(self.midi_chan),
-					'octave_trans': lib_zyncore.get_midi_filter_octave_trans(self.midi_chan),
-					'halftone_trans': lib_zyncore.get_midi_filter_halftone_trans(self.midi_chan)
-				}
-
-			self.zs3_list[i] = zs3
-
-		except Exception as e:
-			logging.error(e)
-
 
 	def restore_zs3(self, i):
 		zs3 = self.zs3_list[i]
@@ -702,7 +671,7 @@ class zynthian_layer:
 
 			# Set preset if needed
 			if zs3['preset_name'] and zs3['preset_name']!=self.preset_name:
-				self.set_preset_by_name(zs3['preset_name'])
+				self.preset_loaded = self.set_preset_by_name(zs3['preset_name'])
 				self.wait_stop_loading()
 
 			# Refresh controller config
@@ -713,7 +682,7 @@ class zynthian_layer:
 			# For non-LV2 engines, bank and preset can affect what controllers do.
 			# In case of LV2, just restoring the controllers ought to be enough, which is nice
 			# since it saves the 0.3 second delay between setting a preset and updating controllers.
-			if not self.engine.nickname.startswith('JV'):
+			if self.preset_loaded and not self.engine.nickname.startswith('JV'):
 				sleep(0.3)
 
 			# Set active screen
@@ -722,7 +691,7 @@ class zynthian_layer:
 
 			# Set controller values
 			for k in zs3['controllers_dict']:
-				self.controllers_dict[k].restore_snapshot(zs3['controllers_dict'][k])
+				self.controllers_dict[k].restore_state(zs3['controllers_dict'][k])
 
 			# Set Note Range
 			if self.midi_chan>=0 and 'note_range' in zs3:

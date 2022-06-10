@@ -54,13 +54,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.replace_layer_index = None
 		self.layer_chain_parallel = False
 		self.last_snapshot_fpath = None
-		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
+		self.reset_zs3()
+		
 		super().__init__('Layer', True)
 		self.create_amixer_layer()
 
 
 	def reset(self):
-		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
+		self.reset_zs3()
 		self.show_all_layers = False
 		self.add_layer_eng = None
 		self.last_snapshot_fpath = None
@@ -86,17 +87,19 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	# Recalculate selector and root_layers list
 	def refresh(self):
 		self.fill_list()
+		self.refresh_index()
+		self.set_selector()
 
+
+	def refresh_index(self):
 		try:
 			self.index = self.root_layers.index(self.zyngui.curlayer)
 		except:
 			self.index=0
 			try:
-				self.zyngui.set_curlayer(self.root_layers[self.index])
+				self.zyngui.set_curlayer(self.root_layers[0])
 			except:
 				self.zyngui.set_curlayer(None)
-
-		self.set_selector()
 
 
 	def select_action(self, i, t='S'):
@@ -532,77 +535,162 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	#----------------------------------------------------------------------------
-	# MIDI Control (ZS3 & PC)
+	# MIDI Control (ZS3 & PC) => TODO Refact this!!!!
 	#----------------------------------------------------------------------------
 
-	def set_midi_chan_preset(self, midich, preset_index):
+	def set_midi_prog_preset(self, midich, prognum):
 		changed = False
 		for i,layer in enumerate(self.root_layers):
-			mch=layer.get_midi_chan()
-			if mch is None or mch==midich:
-				# Fluidsynth engine => ignore Program Change on channel 9
-				if layer.engine.nickname=="FS" and mch==9:
-					continue
-				changed |= layer.set_preset(preset_index, True)
+			try:
+				mch=layer.get_midi_chan()
+				if mch is None or mch==midich:
+					# Fluidsynth engine => ignore Program Change on channel 9
+					if layer.engine.nickname=="FS" and mch==9:
+						continue
+					changed |= layer.set_preset(prognum, True)
+			except Exception as e:
+				logging.error("Can't set preset for CH#{}:PC#{} => {}".format(midich, prognum, e))
+
+		#TODO Implement proper GUI-refresh signaling
 		if changed and self.zyngui.current_screen in ['control','audio_mixer']:
 			try:
 				self.zyngui.screens[self.zyngui.current_screen].show() # Refresh preset labels
 			except Exception as e:
 				logging.error("Can't refresh GUI! => %s", e)
+
 		return changed
 
 
-	def set_midi_chan_zs3(self, midich, zs3_index):
+	def set_midi_prog_zs3(self, midich, prognum):
+		if zynthian_gui_config.midi_single_active_channel:
+			i = self.get_zs3_index_by_prognum(prognum)
+		else:
+			i = self.get_zs3_index_by_midich_prognum(midich, prognum)
+
+		if i is not None:
+			return self.restore_zs3(i)
+		else:
+			logging.debug("Can't find a ZS3 for CH#{}:PC#{}".format(midich, prognum))
+			return False
+
+
+	def save_midi_prog_zs3(self, midich, prognum):
+		# Look for a matching zs3 
+		if midich is not None and prognum is not None:
+			if zynthian_gui_config.midi_single_active_channel:
+				i = self.get_zs3_index_by_prognum(prognum)
+			else:
+				i = self.get_zs3_index_by_midich_prognum(midich, prognum)
+		else:
+			i = None
+		
+		# Get state and add MIDI-learn info
+		state = self.get_state()
+		state['zs3_title'] = "Noname"
+		state['midi_learn_chan'] = midich
+		state['midi_learn_prognum'] = prognum
+
+		# Save in ZS3 list, overwriting if already used
+		if i is None or i<0 or i>=len(self.learned_zs3):
+			self.learned_zs3.append(state)
+			i = len(self.learned_zs3) - 1
+		else:
+			self.learned_zs3[i] = state
+
+		self.last_zs3_index = i
+		logging.info("Saved ZS3#{} => CH#{}:PRG#{}".format(i, midich, prognum))
+
+		self.zyngui.exit_midi_learn_mode()
+		return i
+
+
+	def get_zs3_index_by_midich_prognum(self, midich, prognum):
+		for i, zs3 in enumerate(self.learned_zs3):
+			try:
+				if zs3['midi_learn_chan'] == midich and zs3['midi_learn_prognum'] == prognum:
+					return i;
+			except:
+				pass
+
+
+	def get_zs3_index_by_prognum(self, prognum):
+		for i, zs3 in enumerate(self.learned_zs3):
+			try:
+				if zs3['midi_learn_prognum'] == prognum:
+					return i;
+			except:
+				pass
+
+
+	def get_last_zs3_index(self):
+		return self.last_zs3_index
+
+
+	def get_zs3_title(self, i):
+		if i is not None and i>=0 and i<len(self.learned_zs3):
+			return self.learned_zs3[i]['zs3_title']
+
+
+	def set_zs3_title(self, i, title):
+		if i is not None and i>=0 and i<len(self.learned_zs3):
+			self.learned_zs3[i]['zs3_title'] = title
+
+
+	def restore_zs3(self, i):
 		changed = False
-		for layer in self.layers:
-			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
-				if layer.restore_zs3(zs3_index):
-					self.last_zs3_index[midich] = zs3_index
-					changed = True
+		try:
+			if i is not None and i>=0 and i<len(self.learned_zs3):
+				logging.info("Restoring ZS3#{}...".format(i))
+				self.restore_state(self.learned_zs3[i])
+				self.last_zs3_index = i
+				changed = True
+			else:
+				logging.debug("Can't find ZS3#{}".format(i))
+		except Exception as e:
+			logging.error("Can't restore ZS3 state => %s", e)
+
+		#TODO Implement proper GUI-refresh signaling
 		if changed and self.zyngui.current_screen in ['control','audio_mixer']:
 			try:
 				self.zyngui.screens[self.zyngui.current_screen].show() # Refresh preset labels
 			except Exception as e:
 				logging.error("Can't refresh GUI! => %s", e)
+
 		return changed
 
 
-	def get_last_zs3_index(self, midich):
-		return self.last_zs3_index[midich]
+	def save_zs3(self, i=None):
+		# Get state and add MIDI-learn info
+		state = self.get_state()
+		state['zs3_title'] = "NoName"
+
+		# Save in ZS3 list, overwriting if already used
+		if i is None or i<0 or i>=len(self.learned_zs3):
+			state['midi_learn_chan'] = None
+			state['midi_learn_prognum'] = None
+			self.learned_zs3.append(state)
+			i = len(self.learned_zs3) - 1
+		else:
+			state['midi_learn_chan'] = self.learned_zs3[i]['midi_learn_chan']
+			state['midi_learn_prognum'] =  self.learned_zs3[i]['midi_learn_prognum']
+			self.learned_zs3[i] = state
+
+		logging.info("Saved ZS3#{}".format(i))
+		self.last_zs3_index = i
+		return i
 
 
-	def save_midi_chan_zs3(self, midich, zs3_index):
-		result = False
-		for layer in self.layers:
-			mch=layer.get_midi_chan()
-			if mch is None or mch==midich:
-				layer.save_zs3(zs3_index)
-				result = True
-			elif zynthian_gui_config.midi_single_active_channel:
-				layer.delete_zs3(zs3_index)
-		return result
+	def delete_zs3(self, i):
+		del(self.learned_zs3[i])
+		if self.last_zs3_index == i:
+			self.last_zs3_index = None
 
 
-	def delete_midi_chan_zs3(self, midich, zs3_index):
-		for layer in self.layers:
-			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
-				layer.delete_zs3(zs3_index)
-
-
-	def get_midi_chan_zs3_status(self, midich, zs3_index):
-		for layer in self.layers:
-			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
-				if layer.get_zs3(zs3_index):
-					return True
-		return False
-
-
-	def get_midi_chan_zs3_used_indexes(self, midich):
-		res=[]
-		for i in range(128):
-			if self.get_midi_chan_zs3_status(midich,i):
-				res.append(i)
-		return res
+	def reset_zs3(self):
+		# ZS3 list (subsnapshots)
+		self.learned_zs3 = []
+		# Last selected ZS3 subsnapshot
+		self.last_zs3_index = None;
 
 
 	def midi_control_change(self, chan, ccnum, ccval):
@@ -1179,69 +1267,183 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	# Snapshot Save & Load
 	#----------------------------------------------------------------------------
 
+	def get_state(self):
+		state = {
+			'index':self.index,
+			'mixer':[],
+			'layers':[],
+			'clone':[],
+			'note_range':[],
+			'audio_capture': self.get_audio_capture(),
+			'audio_routing': self.get_audio_routing(),
+			'midi_routing': self.get_midi_routing(),
+			'audio_recorder_primed': []
+		}
+
+		# Layers info
+		for layer in self.layers:
+			state['layers'].append(layer.get_state())
+
+		# Add ALSA-Mixer setting as a layer
+		if zynthian_gui_config.snapshot_mixer_settings and self.amixer_layer:
+			state['layers'].append(self.amixer_layer.get_state())
+
+		# Clone info
+		for i in range(0,16):
+			state['clone'].append([])
+			for j in range(0,16):
+				clone_info = {
+					'enabled': lib_zyncore.get_midi_filter_clone(i,j),
+					'cc': list(map(int,lib_zyncore.get_midi_filter_clone_cc(i,j).nonzero()[0]))
+				}
+				state['clone'][i].append(clone_info)
+
+		# Note-range info
+		for i in range(0,16):
+			info = {
+				'note_low': lib_zyncore.get_midi_filter_note_low(i),
+				'note_high': lib_zyncore.get_midi_filter_note_high(i),
+				'octave_trans': lib_zyncore.get_midi_filter_octave_trans(i),
+				'halftone_trans': lib_zyncore.get_midi_filter_halftone_trans(i)
+			}
+			state['note_range'].append(info)
+
+		# Audio Recorder Primed
+		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
+			if self.zyngui.audio_recorder.is_primed(midi_chan):
+				state['audio_recorder_primed'].append(midi_chan)
+
+		# Mixer
+		try:
+			state['mixer'] = self.zyngui.screens['audio_mixer'].get_state()
+		except Exception as e:
+			pass
+
+		logging.debug("STATE index => {}".format(state['index']))
+
+		return state
+
+
+	def restore_state(self, state):
+		# Restore MIDI profile state
+		if 'midi_profile_state' in state:
+			self.set_midi_profile_state(state['midi_profile_state'])
+
+		# Restore Learned ZS3s (SubSnapShots)
+		if 'learned_zs3' in state:
+			self.learned_zs3 = state['learned_zs3']
+
+		# Set MIDI Routing
+		if 'midi_routing' in state:
+			self.set_midi_routing(state['midi_routing'])
+		else:
+			self.reset_midi_routing()
+
+		# Autoconnect MIDI
+		self.zyngui.zynautoconnect_midi(True)
+
+		# Set extended config and load bank list => when loading snapshots, not zs3!
+		if 'extended_config' in state:
+			# Extended settings (i.e. setBfree tonewheel model, aeolus tuning, etc.)
+			self.set_extended_config(state['extended_config'])
+
+			# Restore layer state, step 0 => bank list
+			for i, lss in enumerate(state['layers']):
+				self.layers[i].restore_state_0(lss)
+
+		# Restore layer state, step 1 => Restore Bank & Preset Status
+		for i, lss in enumerate(state['layers']):
+			self.layers[i].restore_state_1(lss)
+
+		# Restore layer state, step 2 => Restore Controllers Status
+		for i, lss in enumerate(state['layers']):
+			self.layers[i].restore_state_2(lss)
+
+		# Set Audio Routing
+		if 'audio_routing' in state:
+			self.set_audio_routing(state['audio_routing'])
+		else:
+			self.reset_audio_routing()
+
+		# Set Audio Capture
+		if 'audio_capture' in state:
+			self.set_audio_capture(state['audio_capture'])
+		else:
+			self.reset_audio_routing()
+
+		# Restore ALSA-Mixer settings
+		if self.amixer_layer and 'amixer_layer' in state:
+			self.amixer_layer.restore_state_1(state['amixer_layer'])
+			self.amixer_layer.restore_state_2(state['amixer_layer'])
+
+		# Audio Recorder Primed
+		if 'audio_recorder_primed' not in state:
+			state['audio_recorder_primed'] = []
+		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
+			if midi_chan in state['audio_recorder_primed']:
+				self.zyngui.audio_recorder.prime(midi_chan)
+			else:
+				self.zyngui.audio_recorder.unprime(midi_chan)
+
+		# Autoconnect Audio
+		self.zyngui.zynautoconnect_audio(True)
+
+		# Set Clone
+		if 'clone' in state:
+			self.set_clone(state['clone'])
+		else:
+			self.reset_clone()
+
+		# Note-range & Tranpose
+		if 'note_range' in state:
+			self.set_note_range(state['note_range'])
+		# BW compat.
+		elif 'transpose' in state:
+			self.reset_note_range()
+			self.set_transpose(state['transpose'])
+		else:
+			self.reset_note_range()
+
+		# Mixer
+		if 'mixer' in state:
+			self.zyngui.screens['audio_mixer'].set_state(state['mixer'])
+		else:
+			self.zyngui.screens['audio_mixer'].reset_state()
+
+		# Set active layer
+		if state['index']<len(self.root_layers):
+			self.index = state['index']
+		else:
+			self.index = 0
+		if self.index < len(self.root_layers):
+			self.zyngui.set_curlayer(self.root_layers[self.index])
+			logging.info("Setting curlayer to {}".format(self.index))
+
+		# Fill layer list
+		self.fill_list()
+
+
 	def save_snapshot(self, fpath):
 		try:
-			snapshot={
-				'index':self.index,
-				'layers':[],
-				'clone':[],
-				'note_range':[],
-				'audio_capture': self.get_audio_capture(),
-				'audio_routing': self.get_audio_routing(),
-				'midi_routing': self.get_midi_routing(),
-				'extended_config': self.get_extended_config(),
-				'midi_profile_state': self.get_midi_profile_state(),
-				'mixer':[]
-			}
+			# Get state
+			state = self.get_state()
 
-			#Layers info
-			for layer in self.layers:
-				snapshot['layers'].append(layer.get_snapshot())
+			# Extra engine state
+			state['extended_config'] = self.get_extended_config()
 
-			if zynthian_gui_config.snapshot_mixer_settings and self.amixer_layer:
-				snapshot['layers'].append(self.amixer_layer.get_snapshot())
+			# MIDI profile
+			state['midi_profile_state'] = self.get_midi_profile_state()
 
-			#Clone info
-			for i in range(0,16):
-				snapshot['clone'].append([])
-				for j in range(0,16):
-					clone_info = {
-						'enabled': lib_zyncore.get_midi_filter_clone(i,j),
-						'cc': list(map(int,lib_zyncore.get_midi_filter_clone_cc(i,j).nonzero()[0]))
-					}
-					snapshot['clone'][i].append(clone_info)
+			# Subsnapshots
+			state['learned_zs3'] = self.learned_zs3
 
-			#Note-range info
-			for i in range(0,16):
-				info = {
-					'note_low': lib_zyncore.get_midi_filter_note_low(i),
-					'note_high': lib_zyncore.get_midi_filter_note_high(i),
-					'octave_trans': lib_zyncore.get_midi_filter_octave_trans(i),
-					'halftone_trans': lib_zyncore.get_midi_filter_halftone_trans(i)
-				}
-				snapshot['note_range'].append(info)
+			# Zynseq RIFF data
+			binary_riff_data = self.zyngui.screens['stepseq'].get_riff_data()
+			b64_data = base64_encoded_data = base64.b64encode(binary_riff_data)
+			state['zynseq_riff_b64'] = b64_data.decode('utf-8')
 
-			#Zynseq RIFF data
-			if 'stepseq' in self.zyngui.screens:
-				binary_riff_data = self.zyngui.screens['stepseq'].get_riff_data()
-				b64_data = base64_encoded_data = base64.b64encode(binary_riff_data)
-				snapshot['zynseq_riff_b64'] = b64_data.decode('utf-8')
-
-			#Audio Recorder Primed
-			snapshot['audio_recorder_primed'] = []
-			for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-				if self.zyngui.audio_recorder.is_primed(midi_chan):
-					snapshot['audio_recorder_primed'].append(midi_chan)
-
-			#Mixer
-			try:
-				snapshot['mixer'] = self.zyngui.screens['audio_mixer'].get_state()
-			except Exception as e:
-				pass
-
-			#JSON Encode
-			json=JSONEncoder().encode(snapshot)
-			logging.info("Saving snapshot %s => \n%s" % (fpath,json))
+			# JSON Encode
+			json=JSONEncoder().encode(state)
 
 		except Exception as e:
 			logging.error("Can't generate snapshot: %s" %e)
@@ -1249,12 +1451,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		try:
 			with open(fpath,"w") as fh:
+				logging.info("Saving snapshot %s => \n%s" % (fpath, json))
 				fh.write(json)
 				fh.flush()
 				os.fsync(fh.fileno())
 
 		except Exception as e:
-			logging.error("Can't save snapshot '%s': %s" % (fpath,e))
+			logging.error("Can't save snapshot '%s': %s" % (fpath, e))
 			return False
 
 		self.last_snapshot_fpath = fpath
@@ -1272,15 +1475,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		try:
 			snapshot=JSONDecoder().decode(json)
+			# Layers
 			self._load_snapshot_layers(snapshot)
+			# Sequences
 			if load_sequences:
 				self._load_snapshot_sequences(snapshot)
-			#Mixer
-			try:
-				self.zyngui.screens['audio_mixer'].reset_state()
-				self.zyngui.screens['audio_mixer'].set_state(snapshot['mixer'])
-			except Exception as e:
-				pass
 
 			self.last_snapshot_fpath = fpath
 
@@ -1318,7 +1517,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def _load_snapshot_layers(self, snapshot):
-		#Clean all layers, but don't stop unused engines
+		# Clean all layers, but don't stop unused engines
 		self.remove_all_layers(False)
 
 		# Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
@@ -1338,85 +1537,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Finally, stop all unused engines
 		self.zyngui.screens['engine'].stop_unused_engines()
 
-		#Restore MIDI profile state
-		if 'midi_profile_state' in snapshot:
-			self.set_midi_profile_state(snapshot['midi_profile_state'])
+		self.restore_state(snapshot)
 
-		#Set MIDI Routing
-		if 'midi_routing' in snapshot:
-			self.set_midi_routing(snapshot['midi_routing'])
-		else:
-			self.reset_midi_routing()
-
-		#Autoconnect MIDI
-		self.zyngui.zynautoconnect_midi(True)
-
-		#Set extended config
-		if 'extended_config' in snapshot:
-			self.set_extended_config(snapshot['extended_config'])
-
-		# Restore layer state, step 1 => Restore Bank & Preset Status
-		for i, lss in enumerate(snapshot['layers']):
-			self.layers[i].restore_snapshot_1(lss)
-
-		# Restore layer state, step 2 => Restore Controllers Status
-		for i, lss in enumerate(snapshot['layers']):
-			self.layers[i].restore_snapshot_2(lss)
-
-		#Set Audio Routing
-		if 'audio_routing' in snapshot:
-			self.set_audio_routing(snapshot['audio_routing'])
-		else:
-			self.reset_audio_routing()
-
-		#Set Audio Capture
-		if 'audio_capture' in snapshot:
-			self.set_audio_capture(snapshot['audio_capture'])
-		else:
-			self.reset_audio_routing()
-
-		# Restore ALSA Mixer settings
-		if self.amixer_layer and 'amixer_layer' in snapshot:
-			self.amixer_layer.restore_snapshot_1(snapshot['amixer_layer'])
-			self.amixer_layer.restore_snapshot_2(snapshot['amixer_layer'])
-
-		#Audio Recorder Primed
-		if 'audio_recorder_primed' not in snapshot:
-			snapshot['audio_recorder_primed'] = []
-		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-			if midi_chan in snapshot['audio_recorder_primed']:
-				self.zyngui.audio_recorder.prime(midi_chan)
-			else:
-				self.zyngui.audio_recorder.unprime(midi_chan)
-
-		#Autoconnect Audio
-		self.zyngui.zynautoconnect_audio(True)
-
-		#Fill layer list
-		self.fill_list()
-
-		#Set active layer
-		if snapshot['index']<len(self.layers):
-			self.index = snapshot['index']
-		else:
-			self.index = 0
-
-		if len(self.layers)>0:		
-			self.zyngui.set_curlayer(self.layers[self.index])
-
-		#Set Clone
-		if 'clone' in snapshot:
-			self.set_clone(snapshot['clone'])
-		else:
-			self.reset_clone()
-
-		# Note-range & Tranpose
-		self.reset_note_range()
-		if 'note_range' in snapshot:
-			self.set_note_range(snapshot['note_range'])
-		#BW compat.
-		elif 'transpose' in snapshot:
-			self.set_transpose(snapshot['transpose'])
 
 
 	def _load_snapshot_sequences(self, snapshot):

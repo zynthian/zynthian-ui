@@ -678,7 +678,7 @@ class zynthian_gui:
 
 
 	def show_modal(self, screen=None):
-		self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_NONE)
+		self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 
 	def replace_screen(self, screen=None):
@@ -897,6 +897,7 @@ class zynthian_gui:
 			if save and not self.is_shown_alsa_mixer():
 				self._curlayer = self.curlayer
 			self.curlayer = layer
+			self.screens['layer'].refresh_index()
 			self.screens['bank'].fill_list()
 			self.screens['preset'].fill_list()
 			self.screens['control'].fill_list()
@@ -1759,16 +1760,16 @@ class zynthian_gui:
 
 					# SubSnapShot (ZS3) MIDI learn ...
 					if self.midi_learn_mode and self.current_screen=='zs3_learn':
-						if self.screens['layer'].save_midi_chan_zs3(chan, pgm):
+						if self.screens['layer'].save_midi_prog_zs3(chan, pgm):
 							self.close_screen()
 							self.exit_midi_learn_mode()
 
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
 						if zynthian_gui_config.midi_prog_change_zs3:
-							self.screens['layer'].set_midi_chan_zs3(chan, pgm)
+							self.screens['layer'].set_midi_prog_zs3(chan, pgm)
 						else:
-							self.screens['layer'].set_midi_chan_preset(chan, pgm)
+							self.screens['layer'].set_midi_prog_preset(chan, pgm)
 
 						#if self.curlayer and chan==self.curlayer.get_midi_chan():
 						#	self.show_screen('control')

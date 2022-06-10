@@ -480,7 +480,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def midi_learn_zctrl(self, i):
-		if self.zyngui.midi_learn_mode:
+		if self.shown and self.zyngui.midi_learn_mode:
 			logging.debug("MIDI-learn ZController {}".format(i))
 			self.zyngui.midi_learn_mode = False
 			self.midi_learn(i)

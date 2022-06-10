@@ -1220,17 +1220,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def set_state(self, state):
 		for index, strip in enumerate(state):
 			if 'level' in strip:
-				zynmixer.set_level(index, state['level'])
+				zynmixer.set_level(index, strip['level'])
 			if 'balance' in strip:
-				zynmixer.set_balance(index, state['balance'])
+				zynmixer.set_balance(index, strip['balance'])
 			if 'mute' in strip:
-				zynmixer.set_mute(index, state['mute'])
+				zynmixer.set_mute(index, strip['mute'])
 			if 'phase' in strip:
-				zynmixer.set_phase(index, state['phase'])
+				zynmixer.set_phase(index, strip['phase'])
 			if 'solo' in strip and index < MAX_NUM_CHANNELS:
-					zynmixer.set_solo(index, state['solo'])
+					zynmixer.set_solo(index, strip['solo'])
 			if 'mono' in strip:
-				zynmixer.set_mono(index, state['mono'])
+				zynmixer.set_mono(index, strip['mono'])
 		self.refresh_visible_strips()
 
 
