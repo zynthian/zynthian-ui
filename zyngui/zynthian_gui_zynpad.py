@@ -360,7 +360,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif option == 'Play mode':
 			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynthian_gui_config.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad), 'value_default':zynthian_gui_config.SEQ_LOOPALL}, self.set_play_mode)
 		elif option == 'MIDI channel':
-			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'value_min':1, 'value_max':16, 'value_default':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0) + 1, 'value':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0) + 1})
+			labels = []
+			for chan in range(16):
+				for layer in self.zyngui.screens['layer'].layers:
+					if layer.midi_chan == chan:
+						labels.append('{} ({})'.format(chan + 1, layer.preset_name))
+						break
+				if len(labels) <= chan:
+					labels.append('{}'.format(chan + 1))
+			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels':labels, 'value_default':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0), 'value':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0)})
 		elif option == 'Trigger channel':
 			self.enable_param_editor(self, 'trigger_chan', 'Trigger channel', {'labels':INPUT_CHANNEL_LABELS, 'value':self.get_trigger_channel()})
 		elif option == 'Trigger note':
@@ -388,8 +396,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif zctrl.symbol == 'playmode':
 			self.set_play_mode(zctrl.value)
 		elif zctrl.symbol == 'midi_chan':
-			self.zyngui.zynseq.set_channel(self.zyngui.zynseq.bank, self.selected_pad, 0, zctrl.value - 1)
-			self.zyngui.zynseq.set_group(self.zyngui.zynseq.bank, self.selected_pad, zctrl.value - 1)
+			self.zyngui.zynseq.set_midi_channel(self.zyngui.zynseq.bank, self.selected_pad, 0, zctrl.value)
+			self.zyngui.zynseq.set_group(self.zyngui.zynseq.bank, self.selected_pad, zctrl.value)
 		elif zctrl.symbol == 'trigger_chan':
 			if zctrl.value:
 				self.zyngui.zynseq.libseq.setTriggerChannel(zctrl.value - 1)

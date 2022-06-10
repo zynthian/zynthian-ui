@@ -226,7 +226,15 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if 'ute track' in option:
 			self.toggle_mute()
 		elif option == 'MIDI channel':
-			self.enable_param_editor(self, 'midichan', 'MIDI channel', {'value_min':1, 'value_max':16, 'value':self.get_track_channel()})
+			labels = []
+			for chan in range(16):
+				for layer in self.zyngui.screens['layer'].layers:
+					if layer.midi_chan == chan:
+						labels.append('{} ({})'.format(chan + 1, layer.preset_name))
+						break
+				if len(labels) <= chan:
+					labels.append('{}'.format(chan + 1))
+			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels':labels, 'value_default':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track), 'value':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track)})
 		elif option == 'Play mode':
 			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynthian_gui_config.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad), 'value_default':zynthian_gui_config.SEQ_LOOPALL}, self.set_play_mode)
 		elif option == 'Vertical zoom':
@@ -256,8 +264,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.zynseq.libseq.setTempo(zctrl.value)
 		elif zctrl.symbol == 'bpb':
 			self.zyngui.zynseq.set_beats_per_bar(zctrl.value)
-		elif zctrl.symbol == 'midichan':
-			self.zyngui.zynseq.set_midi_channel(self.zyngui.zynseq.bank, self.sequence, self.track, zctrl.value - 1)
+		elif zctrl.symbol == 'midi_chan':
+			self.zyngui.zynseq.set_midi_channel(self.zyngui.zynseq.bank, self.sequence, self.track, zctrl.value)
 		elif zctrl.symbol == 'playmode':
 			self.zyngui.zynseq.libseq.set_play_mode(self.zyngui.zynseq.bank, self.sequence, zctrl.value)
 		elif zctrl.symbol == 'vzoom':
@@ -1049,13 +1057,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		note_name = notes[note % 12]
 		octave = int(note / 12) - 1
 		return "%s%d" % (note_name, octave)
-
-
-	# Function to get MIDI channel of selected track
-	#	returns: MIDI channel (1..16)
-	def get_track_channel(self):
-		channel = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track) + 1
-		return channel
 
 
 	# Function to update array of sequences, tracks
