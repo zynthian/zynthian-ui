@@ -152,8 +152,12 @@ class zynseq(zynthian_engine):
 		channels = []
 		groups = []
 		for column in range(new_columns):
-			channels.append(self.libseq.getChannel(self.bank, column * old_columns, 0))
-			groups.append(self.libseq.getGroup(self.bank, column * old_columns))
+			if column < old_columns:
+				channels.append(self.libseq.getChannel(self.bank, column * old_columns, 0))
+				groups.append(self.libseq.getGroup(self.bank, column * old_columns))
+			else:
+				channels.append(column)
+				groups.append(column)
 		delta = new_columns - old_columns
 		if delta > 0:
 			# Growing grid so add extra sequences
@@ -161,17 +165,17 @@ class zynseq(zynthian_engine):
 				for row in range(old_columns, old_columns + delta):
 					pad = row + column * new_columns
 					self.libseq.insertSequence(self.bank, pad)
-					self.libseq.setChannel(self.bank, pad, channels[column])
+					self.libseq.setChannel(self.bank, pad, 0, channels[column])
 					self.libseq.setGroup(self.bank, pad, groups[column])
 					self.set_sequence_name(self.bank, pad, "%s"%(pad + 1))
 			for column in range(old_columns, new_columns):
 				for row in range(new_columns):
 					pad = row + column * new_columns
 					self.libseq.insertSequence(self.bank, pad)
-					self.libseq.setChannel(self.bank, pad, column)
+					self.libseq.setChannel(self.bank, pad, 0, column)
 					self.libseq.setGroup(self.bank, pad, column)
 					self.set_sequence_name(self.bank, pad, "{}".format(pad + 1))
-		if delta < 0:
+		elif delta < 0:
 			# Shrinking grid so remove excess sequences
 			self.set_sequences_in_bank(self.bank, new_columns * old_columns) # Lose excess columns
 			for offset in range(new_columns, new_columns * new_columns + 1, new_columns):
