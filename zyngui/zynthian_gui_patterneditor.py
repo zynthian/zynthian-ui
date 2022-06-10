@@ -268,12 +268,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif option == 'Rest note':
 			labels = ['None']
 			for note in range(128):
-				labels.append("{}{}".format(NOTE_NAMES[note % 12],int(note // 12)))
-			labels.append('None')
-			value = self.zyngui.zynseq.libseq.getInputRest()
+				labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
+			value = self.zyngui.zynseq.libseq.getInputRest() + 1
 			if value > 128:
-				value = -1
-			options = {'value_min':-1, 'value_max':128, 'labels':labels, 'value':value}
+				value = 0
+			options = {'labels':labels, 'value':value}
 			self.enable_param_editor(self, 'rest', 'Rest', options)
 		elif option == 'Add program change':
 			self.enable_param_editor(self, 'prog_change', 'Program', {'value_max':128, 'value':self.get_program_change()}, self.add_program_change)
@@ -300,7 +299,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif zctrl.symbol == 'tonic':
 			self.set_tonic(zctrl.value)
 		elif zctrl.symbol == 'rest':
-			self.set_rest_note(zctrl.value)
+			if zctrl.value == 0:
+				self.zyngui.zynseq.libseq.setInputRest(128)
+			else:
+				self.zyngui.zynseq.libseq.setInputRest(zctrl.value - 1)
 		elif zctrl.symbol == 'in_chan':
 			self.zyngui.zynseq.libseq.setInputChannel(zctrl.value - 1)
     			
@@ -341,18 +343,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.zyngui.zynseq.libseq.setTonic(tonic)
 		self.load_keymap()
 		self.redraw_pending = 1
-
-
-	# Function to set the MIDI note to use as a rest within a pattern
-	#	rest: MIDI note number
-	def set_rest_note(self, rest):
-		if value < 0 or value > 127:
-			value = 128
-		self.zyngui.zynseq.libseq.setInputRest(value)
-		if value > 127:
-			return "Rest note: None"
-		return "Rest note: %s%d(%d)" % (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][value%12],int(value/12)-1, value)
-
 
 
 	# Function to export pattern to SMF
@@ -473,7 +463,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					if key in (1,3,6,8,10): # Black notes
 						new_entry.update({"colour":"black"})
 					if key == 0: # 'C'
-						new_entry.update({"name":"C%d" % (note // 12 - 1)})
+						new_entry.update({"name":"C{}".format(note // 12 - 1)})
 					self.keymap.append(new_entry)
 					if note <= base_note:
 						self.keymap_offset = len(self.keymap) - 1
@@ -489,7 +479,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 						note = tonic + offset + octave * 12
 						if note > 127:
 							break
-						self.keymap.append({"note":note, "name":"%s%d"%(NOTE_NAMES[note % 12],note // 12 - 1)})
+						self.keymap.append({"note":note, "name":"{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1)})
 						if note <= base_note:
 							self.keymap_offset = len(self.keymap) - 1
 							self.selected_cell[1] = self.keymap_offset

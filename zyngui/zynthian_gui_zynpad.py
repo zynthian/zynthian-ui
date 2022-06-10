@@ -365,7 +365,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif option == 'Trigger note':
 			labels = ['None']
 			for note in range(128):
-				labels.append("{}{}".format(NOTE_NAMES[note % 12],int(note // 12)))
+				labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
 			labels.append('None')
 			self.enable_param_editor(self, 'trigger_note', 'Trigger note', {'labels':labels, 'value':self.get_trigger_note() + 1})
 		elif option == 'Grid size':
