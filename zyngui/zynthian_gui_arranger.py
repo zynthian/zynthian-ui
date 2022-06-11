@@ -159,7 +159,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle changes to sequencer
 	def seq_cb(self, event):
-		if self.redraw_pending < 4 and event in [zynseq.SEQ_EVENT_BANK]:
+		if event in [zynseq.SEQ_EVENT_BANK]:
 			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
 			self.bank = self.zyngui.zynseq.bank
 			self.update_sequence_tracks()

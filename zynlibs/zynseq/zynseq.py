@@ -24,6 +24,7 @@
 #********************************************************************
 
 import ctypes
+from hashlib import new
 from os.path import dirname, realpath
 import logging
 from math import sqrt
@@ -180,9 +181,12 @@ class zynseq(zynthian_engine):
 					self.set_sequence_name(self.bank, pad, "{}".format(pad + 1))
 		elif delta < 0:
 			# Shrinking grid so remove excess sequences
-			self.set_sequences_in_bank(self.bank, new_columns * old_columns) # Lose excess columns
-			for offset in range(new_columns, new_columns * new_columns + 1, new_columns):
-				for pad in range(-delta):
+			# Lose excess columns
+			self.libseq.setSequencesInBank(self.bank, new_columns * old_columns)
+			# Lose exess rows
+			for col in range(new_columns - 1, -1, -1):
+				for row in range(old_columns - 1, new_columns -1, -1):
+					offset = old_columns * col + row
 					self.libseq.removeSequence(self.bank, offset)
 		self.send_event(SEQ_EVENT_BANK)
 
