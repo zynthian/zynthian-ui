@@ -977,12 +977,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.keymap_offset = self.zyngui.zynseq.libseq.getRefNote()
 		keymap_len = len(self.keymap)
 		self.load_keymap()
-		if self.zyngui.zynseq.libseq.getSteps() != steps or len(self.keymap) != keymap_len:
-			self.redraw_pending = 4
-		else:
-			self.redraw_pending = 3
+		if self.redraw_pending < 4:
+			if self.zyngui.zynseq.libseq.getSteps() != steps or len(self.keymap) != keymap_len:
+				self.redraw_pending = 4
+			else:
+				self.redraw_pending = 3
 		if self.keymap_offset >= len(self.keymap):
 			self.keymap_offset = len(self.keymap) // 2 - self.zoom // 2
+		self.draw_grid()
 		self.select_cell(0, int(self.keymap_offset + self.zoom / 2))
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
 		self.set_title("Pattern {}".format(self.pattern))
