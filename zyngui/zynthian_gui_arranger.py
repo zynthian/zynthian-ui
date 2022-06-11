@@ -153,24 +153,23 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 		self.bank = self.zyngui.zynseq.bank # Local copy so we know if it has changed and grid needs redrawing
 		self.update_sequence_tracks()
-		self.redraw_pending = 4 # 0:No refresh, 1:Refresh grid content, 2:Clear and rebuild grid, 3 Refresh current row
-		#0:No refresh, 1:Refresh cell, 2:Refresh row, 3:Refresh grid, 4: Redraw grid
+		self.redraw_pending = 4 #0:No refresh, 1:Refresh cell, 2:Refresh row, 3:Refresh grid, 4: Redraw grid
 		self.zyngui.zynseq.add_event_cb(self.seq_cb)
 
 
 	# Function to handle changes to sequencer
 	def seq_cb(self, event):
-		if self.redraw_pending < 4 and event in [zynseq.SEQ_EVENT_BANK,
-					zynseq.SEQ_EVENT_GROUP]:
+		if self.redraw_pending < 4 and event in [zynseq.SEQ_EVENT_BANK]:
 			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
 			self.bank = self.zyngui.zynseq.bank
 			self.update_sequence_tracks()
 			self.redraw_pending = 4
 		elif self.redraw_pending < 3 and event in [zynseq.SEQ_EVENT_BPB]:
-			self.redraw_pending = 3
+			self.draw_vertical_lines()
 		elif self.redraw_pending < 2 and event in [
 					zynseq.SEQ_EVENT_CHANNEL,
 					zynseq.SEQ_EVENT_PLAYMODE,
+					zynseq.SEQ_EVENT_GROUP,
 					zynseq.SEQ_EVENT_SEQUENCE]:
 			self.redraw_pending = 2
 		elif event == zynseq.SEQ_EVENT_LOAD:
@@ -236,13 +235,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 					labels.append('{}'.format(chan + 1))
 			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels':labels, 'value_default':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track), 'value':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track)})
 		elif option == 'Play mode':
-			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynthian_gui_config.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad), 'value_default':zynthian_gui_config.SEQ_LOOPALL}, self.set_play_mode)
+			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynthian_gui_config.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.sequence), 'value_default':zynthian_gui_config.SEQ_LOOPALL})
 		elif option == 'Vertical zoom':
-			self.enable_param_editor(self, 'vzoom', 'Vertical zoom', {'value_min':1, 'value_max':127, 'value_default':8, 'value':self.get_vertical_zoom()})
+			self.enable_param_editor(self, 'vzoom', 'Vertical zoom', {'value_min':1, 'value_max':127, 'value_default':8, 'value':self.vertical_zoom})
 		elif option == 'Horizontal zoom':
 			self.enable_param_editor(self, 'hzoom', 'Horizontal zoom', {'value_min':1, 'value_max':64, 'value_default':16, 'value':self.horizontal_zoom})
 		elif option == 'Group':
-			self.enable_param_editor(self, 'group', 'Group', {'labels':list(map(chr, range(65, 91))), 'default': self.get_group(), 'value':self.get_group()})
+			self.enable_param_editor(self, 'group', 'Group', {'labels':list(map(chr, range(65, 91))), 'default':self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, self.sequence), 'value':self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, self.sequence)})
 		elif option == 'Pattern':
 			self.enable_param_editor(self, 'pattern', 'Pattern', {'value_min':1, 'value_max':zynthian_gui_config.SEQ_MAX_PATTERNS, 'value_default':self.pattern, 'value':self.pattern})
 		elif option == 'Add track':
@@ -267,7 +266,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		elif zctrl.symbol == 'midi_chan':
 			self.zyngui.zynseq.set_midi_channel(self.zyngui.zynseq.bank, self.sequence, self.track, zctrl.value)
 		elif zctrl.symbol == 'playmode':
-			self.zyngui.zynseq.libseq.set_play_mode(self.zyngui.zynseq.bank, self.sequence, zctrl.value)
+			self.zyngui.zynseq.set_play_mode(self.zyngui.zynseq.bank, self.sequence, zctrl.value)
 		elif zctrl.symbol == 'vzoom':
 			self.vertical_zoom = zctrl.value
 			self.zyngui.zynseq.libseq.setVerticalZoom(zctrl.value)
@@ -287,7 +286,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to toggle mute of selected track
 	def toggle_mute(self, params=None):
 		self.zyngui.zynseq.libseq.toggleMute(self.zyngui.zynseq.bank, self.sequence, self.track)
-		self.redraw_pending = 3
+		self.redraw_pending = 2
 
 
 	# Function to actually clear bank
@@ -439,7 +438,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to show GUI
 	#	params: Optional dictionary of configuration, e.g. "sequence":number
 	def show(self, params={}):
-		super().show()
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
 			self.set_title("Bank %d" % (self.zyngui.zynseq.bank))
@@ -451,21 +449,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 					if layer.midi_chan == chan:
 						self.layers[chan] = layer
 						break
-
-
-	# Function to get group of selected sequence
-	def get_group(self):
-		return int(self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, self.sequence))
-
-
-	# Function to get play mode of selected sequence
-	def getMode(self):
-		return int(self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.sequence))
-
-
-	# Function to get current pattern
-	def get_pattern(self):
-		return self.pattern
+		super().show()
 
 
 	# Function to set current pattern
@@ -859,17 +843,23 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to draw grid
 	def draw_grid(self):
 		if self.redraw_pending == 1:
+			# Refresh cell
 			self.redraw_pending = 0
 #			self.grid_canvas.itemconfig("{},{}".format(self.selected_cell[0], self.selected_cell[1]), fill=CANVAS_BACKGROUND)
 			self.draw_cell(self.selected_cell[0] - self.col_offset, self.selected_cell[1] - self.row_offset)
 			return
 		elif self.redraw_pending == 2:
+			# Refresh row
 			self.redraw_pending = 0
 #			for column in range(self.horizontal_zoom):
 #				self.grid_canvas.itemconfig("{},{}".format(column, self.selected_cell[1]), fill=CANVAS_BACKGROUND)
 			self.draw_row(self.selected_cell[1] - self.row_offset, True)
 			return
+		elif self.redraw_pending == 3:
+			# Refresh grid
+			pass
 		elif self.redraw_pending == 4:
+			# Redraw grid
 			self.grid_canvas.delete(tkinter.ALL)
 			self.sequence_title_canvas.delete(tkinter.ALL)
 			self.column_width = self.grid_width / self.horizontal_zoom
@@ -884,19 +874,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 				break
 			self.draw_row(row, True)
 
-
-		# Vertical (bar / sync) lines
-		self.grid_canvas.delete('barlines')
-		self.timebase_track_canvas.delete('barlines')
-		font = tkFont.Font(size=self.small_font_size)
-		tempo_y = font.metrics('linespace')
-		offset = 0 - int(self.col_offset % self.horizontal_zoom)
-		for bar in range(offset, self.horizontal_zoom, self.zyngui.zynseq.libseq.getBeatsPerBar()):
-			self.grid_canvas.create_line(bar * self.column_width, 0, bar * self.column_width, self.grid_height, fill='#808080', tags='barlines')
-			if bar:
-				self.timebase_track_canvas.create_text(bar * self.column_width, 0, fill='white', text="%d"%(bar+self.col_offset), anchor='n', tags='barlines')
-			else:
-				self.timebase_track_canvas.create_text(bar * self.column_width, 0, fill='white', text="%d"%(bar+self.col_offset), anchor='nw', tags='barlines')
+		self.draw_vertical_lines()
 
 		# Hide selection if not in view - #TODO: WHEN WOULD THAT BE???
 		if self.selected_cell[0] < self.col_offset or self.selected_cell[0] > self.col_offset + self.horizontal_zoom or self.selected_cell[1] < self.row_offset or self.selected_cell[1] > self.row_offset + self.vertical_zoom:
@@ -920,6 +898,21 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		'''
 		self.grid_canvas.tag_lower('barlines')
 		self.select_cell()
+
+
+	def draw_vertical_lines(self):
+		# Vertical (bar / sync) lines
+		self.grid_canvas.delete('barlines')
+		self.timebase_track_canvas.delete('barlines')
+		font = tkFont.Font(size=self.small_font_size)
+		tempo_y = font.metrics('linespace')
+		offset = 0 - int(self.col_offset % self.horizontal_zoom)
+		for bar in range(offset, self.horizontal_zoom, self.zyngui.zynseq.libseq.getBeatsPerBar()):
+			self.grid_canvas.create_line(bar * self.column_width, 0, bar * self.column_width, self.grid_height, fill='#808080', tags='barlines')
+			if bar:
+				self.timebase_track_canvas.create_text(bar * self.column_width, 0, fill='white', text="%d"%(bar+self.col_offset), anchor='n', tags='barlines')
+			else:
+				self.timebase_track_canvas.create_text(bar * self.column_width, 0, fill='white', text="%d"%(bar+self.col_offset), anchor='nw', tags='barlines')
 
 
 	# Function to select a cell within the grid

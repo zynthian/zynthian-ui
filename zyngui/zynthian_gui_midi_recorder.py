@@ -56,14 +56,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		super().__init__('MIDI Recorder', True)
 
-		self.bpm_zctrl = zynthian_controller(self, "bpm", "BPM", {
-			'value': 120,
-			'value_min': 20,
-			'value_max': 400,
-			'is_toggle': False,
-			'is_integer': False,
-			'nudge_factor': 0.1
-		})
 		self.bpm_zgui_ctrl = None
 
 		try:
@@ -311,7 +303,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			zynsmf.load(self.smf_player,fpath)
 			tempo = libsmf.getTempo(self.smf_player, 0)
 			logging.info("STARTING MIDI PLAY '{}' => {}BPM".format(fpath, tempo))
-			self.zyngui.zynseq.libseq.setTempo(ctypes.c_double(tempo)) # TODO This doesn't work!!
+			self.zyngui.zynseq.set_tempo(tempo)
 			libsmf.startPlayback()
 			self.zyngui.zynseq.transport_start("zynsmf")
 #			self.zyngui.zynseq.libseq.transportLocate(0)
@@ -366,12 +358,11 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def show_playing_bpm(self):
-		self.bpm_zctrl.set_value(self.zyngui.zynseq.libseq.getTempo())
 		if self.bpm_zgui_ctrl:
-			self.bpm_zgui_ctrl.config(self.bpm_zctrl)
+			self.bpm_zgui_ctrl.config(self.zyngui.zynseq.zctrl_tempo)
 			self.bpm_zgui_ctrl.show()
 		else:
-			self.bpm_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.bpm_zctrl)
+			self.bpm_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.zyngui.zynseq.zctrl_tempo)
 
 
 	def hide_playing_bpm(self):
@@ -382,7 +373,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	# Implement engine's method
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol=="bpm":
-			self.zyngui.zynseq.libseq.setTempo(ctypes.c_double(zctrl.value))
+			self.zyngui.zynseq.set_tempo(zctrl.value)
 			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
 
 
@@ -400,7 +391,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def plot_zctrls(self, force=False):
 		super().plot_zctrls()
 		if self.bpm_zgui_ctrl:
-			if self.bpm_zctrl.is_dirty or force:
+			if self.zyngui.zynseq.zctrl_tempo.is_dirty or force:
 				self.bpm_zgui_ctrl.calculate_plot_values()
 			self.bpm_zgui_ctrl.plot_value()
 

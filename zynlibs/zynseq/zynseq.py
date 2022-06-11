@@ -282,7 +282,7 @@ class zynseq(zynthian_engine):
 		self.send_event(SEQ_EVENT_BANK)
 
 	def set_beats_per_bar(self, bpb):
-		self.libseq.setBeatsPerBar(self, bpb)
+		self.libseq.setBeatsPerBar(bpb)
 		self.send_event(SEQ_EVENT_BPB)
 
 

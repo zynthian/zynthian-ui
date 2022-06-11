@@ -62,8 +62,8 @@ uint8_t g_nInputChannel = 0xFF; // MIDI channel for input (0xFF to disable)
 bool g_bSustain = false; // True if sustain pressed during note input
 uint8_t g_nInputRest = 0xFF; // MIDI note number that creates rest in pattern
 uint8_t g_nTriggerStatusByte = MIDI_NOTE_ON | 15; // MIDI status byte which triggers a sequence (optimisation)
-uint16_t g_nVerticalZoom = 8;
-uint16_t g_nHorizontalZoom = 16;
+uint16_t g_nVerticalZoom = 8; // Quantity of sequences to show in arranger view
+uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
 uint16_t g_nTriggerLearning = 0; // 2 word bank|sequence that is waiting for MIDI to learn trigger (0 if not learning)
 char g_sName[16]; // Buffer to hold sequence name so that it can be sent back for Python to parse
 
