@@ -55,10 +55,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def __init__(self):
 
 		self.buttonbar_config = [
-			(zynthian_gui_config.ENC_LAYER, 'MENU\n(main menu)'),
-			(zynthian_gui_config.ENC_BACK, 'BACK\n(mixer)'),
-			(zynthian_gui_config.ENC_SNAPSHOT, '\n(snapshot)'),
-			(zynthian_gui_config.ENC_SELECT, 'TRIGGER\n(editor)')
+			(zynthian_gui_config.ENC_LAYER, 'MENU\n(main menu)')
 		]
 
 		super().__init__()

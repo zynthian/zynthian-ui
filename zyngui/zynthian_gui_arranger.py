@@ -64,9 +64,9 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 		self.buttonbar_config = [
 			(zynthian_gui_config.ENC_LAYER, 'MENU\n(main menu)'),
-			(zynthian_gui_config.ENC_BACK, 'BACK\n(mixer)'),
-			(zynthian_gui_config.ENC_SNAPSHOT, 'PLAY\n(mute track)'),
-			(zynthian_gui_config.ENC_SELECT, 'ADD/DEL\n(editor)')
+			None,
+			None,
+			(zynthian_gui_config.ENC_SNAPSHOT, 'PLAY\n(goto 0)'),
 		]
 
 		super().__init__()
@@ -432,6 +432,9 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		for track in range(15, -1, -1):
 			if empty_tracks[track]:
 				self.zyngui.zynseq.libseq.removeTrackFromSequence(bank, sequence, track)
+		
+		zynsmf.libsmf.removeSmf(smf)
+		self.update_sequence_tracks()
 		self.redraw_pending = 4
 
 
@@ -654,11 +657,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Toggle playback of selected sequence
 	def toggle_play(self):
+		'''
 		if self.zyngui.zynseq.libseq.getPlayState(self.zyngui.zynseq.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:
 			bars = int(self.selected_cell[0] / self.zyngui.zynseq.libseq.getBeatsPerBar())
 			pos = bars * self.zyngui.zynseq.libseq.getBeatsPerBar() * self.clocks_per_division
 			if self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, self.sequence) > pos:
 				self.zyngui.zynseq.libseq.setPlayPosition(self.zyngui.zynseq.bank, self.sequence, pos)
+		'''
 		self.zyngui.zynseq.libseq.togglePlayState(self.zyngui.zynseq.bank, self.sequence)
 
 
@@ -1130,10 +1135,12 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
 			return True
 		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
-			if type == 'B':
-				self.toggle_mute()
+			if type == 'S':
+				self.zyngui.zynseq.libseq.togglePlayState(self.zyngui.zynseq.bank, self.sequence)
+			elif type == 'B':
+				self.zyngui.zynseq.libseq.setPlayPosition(self.zyngui.zynseq.bank, self.sequence, 0)
 			else:
-				self.toggle_play()
+				return False
 			return True
 		elif switch == zynthian_gui_config.ENC_LAYER and type == 'S':
 			self.show_menu()

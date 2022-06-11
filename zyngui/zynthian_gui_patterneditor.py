@@ -73,9 +73,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		self.buttonbar_config = [
 			(zynthian_gui_config.ENC_LAYER, 'MENU\n(main menu)'),
-			(zynthian_gui_config.ENC_BACK, 'BACK\n(mixer)'),
+			None,
+			None,
 			(zynthian_gui_config.ENC_SNAPSHOT, 'PLAY'),
-			(zynthian_gui_config.ENC_SELECT, 'NOTE\n(edit note)')
 		]
 		super().__init__()
 
@@ -852,7 +852,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.keymap_offset = index
 			redraw = True
 		if redraw and self.redraw_pending < 1:
-			self.redraw_pending = 1
+			self.redraw_pending = 3
 		row = index - self.keymap_offset
 		note = self.keymap[index]['note']
 		# Skip hidden (overlapping) cells
