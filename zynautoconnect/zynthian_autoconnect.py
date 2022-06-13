@@ -624,6 +624,13 @@ def audio_autoconnect(force=False):
 		except Exception as e:
 			logging.error(e)
 
+	# Connect metronome to aux
+	try:
+		jclient.connect("zynseq:metronome", "zynmixer:input_17a")
+		jclient.connect("zynseq:metronome", "zynmixer:input_17b")
+	except:
+		pass
+
 	# Connect mixer to the System Output
 	try:
 		jclient.connect("zynmixer:output_a", system_playback_ports[0])

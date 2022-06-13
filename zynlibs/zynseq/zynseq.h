@@ -804,6 +804,25 @@ uint32_t getBeatsPerBar();
 */
 void transportSetSyncTimeout(uint32_t timeout);
 
+/** @brief  Enable or disable metronome
+*   @param  enable True to enable [Default: true]
+*/
+void enableMetronome(bool enable = true);
+
+/** @brief  Check of metronome enabled
+*   @retval bool True if enabled
+*/
+bool isMetronomeEnabled();
+
+/** @brief  Set level of metronome
+*   @param  level Level [0.0 - 1.0]
+*/
+void setMetronomeVolume(float level);
+
+/** @brief  Set level of metronome
+*   @retval float Level [0.0 - 1.0]
+*/
+float getMetronomeVolume();
 
 #ifdef __cplusplus
 }

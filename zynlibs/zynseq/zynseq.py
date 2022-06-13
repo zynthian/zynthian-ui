@@ -67,6 +67,8 @@ class zynseq(zynthian_engine):
 			self.libseq.addNote.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_float]
 			self.libseq.changeDurationAll.argtypes = [ctypes.c_float]
 			self.libseq.setTempo.argtypes = [ctypes.c_double]
+			self.libseq.setMetronomeVolume.argtypes = [ctypes.c_float]
+			self.libseq.getMetronomeVolume.restype = ctypes.c_float
 			self.libseq.init(bytes("zynseq", "utf-8"))
 		except Exception as e:
 			self.libseq=None

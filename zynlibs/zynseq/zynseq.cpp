@@ -35,6 +35,8 @@
 #include <string>
 #include <cstring> //provides strcmp
 
+#include "metronome.h" // metronome wav data
+
 #define FILE_VERSION 7
 
 #define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
@@ -45,6 +47,8 @@ uint32_t g_nPattern = 0; // Index of currently selected pattern
 Track* g_pTrack = 0; // Pattern editor track
 jack_port_t * g_pInputPort; // Pointer to the JACK input port
 jack_port_t * g_pOutputPort; // Pointer to the JACK output port
+jack_port_t* g_pMetronomePort; // Pointer to the JACK metronome audio output port
+
 jack_client_t *g_pJackClient = NULL; // Pointer to the JACK client
 
 jack_nframes_t g_nSampleRate = 44100; // Quantity of samples per second
@@ -87,6 +91,11 @@ jack_nframes_t g_nTransportStartFrame = 0; // Quantity of frames from JACK epoch
 double g_dFramesToNextClock = 0.0; // Frames until next clock pulse
 double g_dFramesPerClock = 60 * g_nSampleRate / (g_dTempo *  g_dTicksPerBeat) * g_dTicksPerClock; //!@todo Change to integer will have 0.1% jitter at 1920 ppqn and much better jitter (0.01%) at current 24ppqn
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
+
+size_t g_nMetronomePtr = -1; // Position within metronome click wav data
+uint8_t g_nMetroTick = 1; // Factor to shift metronome pitch for tick/tock
+bool g_bMetronome = false; // True to enable metronome
+float g_fMetronomeLevel = 1.0; // Factor to scale metronome level (volume)
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
@@ -320,13 +329,18 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
     jack_transport_state_t nState = jack_transport_query(g_pJackClient, &transportPosition);
 
+    jack_default_audio_sample_t *pOutMetronome = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pMetronomePort, nFrames);
+    memset(pOutMetronome, 0, sizeof(jack_default_audio_sample_t) * nFrames);
+
+
     // Process MIDI input
     void* pInputBuffer = jack_port_get_buffer(g_pInputPort, nFrames);
     jack_midi_event_t midiEvent;
     jack_nframes_t nCount = jack_midi_get_event_count(pInputBuffer);
     for(jack_nframes_t i = 0; i < nCount; i++)
     {
-        jack_midi_event_get(&midiEvent, pInputBuffer, i);
+        if(jack_midi_event_get(&midiEvent, pInputBuffer, i))
+            continue;
         /*  Not using MIDI transport control or clock
         switch(midiEvent.buffer[0])
         {
@@ -382,7 +396,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             if(((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64)
             {
                 // Sustain pedal event
-                if(midiEvent.buffer[2])
+                if(midiEvent.buffer[2] > 63)
                     g_bSustain = true;
                 else
                 {
@@ -412,6 +426,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 if(++nStep >= g_pPattern->getSteps())
                     nStep = 0;
                 g_pTrack->setPatternPlayhead(nStep);
+                printf("libzynseq advancing to step %d\n", nStep);
             }
         }
     }
@@ -434,6 +449,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 // Clock zero so on beat
                 bSync = (g_nBeat == 1);
                 g_nTick = 0; //!@todo ticks are not updated under normal rolling condition
+                g_nMetronomePtr = 0;
+                g_nMetroTick = bSync?1:0;
             }
             // Schedule events in next period
             // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can synchronise its sequences, e.g. start zynpad sequences
@@ -461,6 +478,32 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             //!@todo We stop at end of bar to encourage previous block of code to run but we may prefer to stop more promptly
             DPRINTF("Stopping transport because no sequences playing clock: %u beat: %u tick: %u\n", g_nClock, g_nBeat, g_nTick);
             transportStop("zynseq");
+            g_nMetronomePtr = -1;
+        }
+        if(g_nMetroTick) {
+            if(g_bMetronome && g_nMetronomePtr < sizeof(metronome_peep) / sizeof(float)) {
+                for(int n = 0; n < nFrames; ++n) {
+                    if(g_nMetronomePtr < sizeof(metronome_peep) / sizeof(float)) {
+                        pOutMetronome[n] = metronome_peep[g_nMetronomePtr++] * g_fMetronomeLevel;
+                    }
+                    else {
+                        g_nMetronomePtr = -1;
+                        pOutMetronome[n] = 0.0;
+                    }
+                }
+            }
+        } else {
+            if(g_bMetronome && g_nMetronomePtr < sizeof(metronome_pip) / sizeof(float)) {
+                for(int n = 0; n < nFrames; ++n) {
+                    if(g_nMetronomePtr < sizeof(metronome_pip) / sizeof(float)) {
+                        pOutMetronome[n] = metronome_pip[g_nMetronomePtr++] * g_fMetronomeLevel;
+                    }
+                    else {
+                        g_nMetronomePtr = -1;
+                        pOutMetronome[n] = 0.0;
+                    }
+                }
+            }
         }
     }
 
@@ -584,6 +627,13 @@ void init(char* name) {
     if(!(g_pOutputPort = jack_port_register(g_pJackClient, "output", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0)))
     {
         fprintf(stderr, "libzynseq cannot register output port\n");
+        return;
+    }
+
+    // Create metronome output port
+    if(!(g_pMetronomePort = jack_port_register(g_pJackClient, "metronome", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0)))
+    {
+        fprintf(stderr, "linzynseq cannot register metronome port\n");
         return;
     }
 
@@ -1934,4 +1984,29 @@ uint32_t getBeatsPerBar()
 void transportSetSyncTimeout(uint32_t timeout)
 {
     jack_set_sync_timeout(g_pJackClient, timeout);
+}
+
+void enableMetronome(bool enable)
+{
+    g_bMetronome = enable;
+    g_nMetronomePtr = -1;
+}
+
+bool isMetronomeEnabled()
+{
+    return g_bMetronome;
+}
+
+void setMetronomeVolume(float level)
+{
+    if(level > 1.0)
+        level = 1.0;
+    if(level < 0.0)
+        level = 0.0;
+    g_fMetronomeLevel = level;
+}
+
+float getMetronomeVolume()
+{
+    return g_fMetronomeLevel;
 }

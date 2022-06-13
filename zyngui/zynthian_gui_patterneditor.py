@@ -230,6 +230,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		options = OrderedDict()
 		options['Tempo'] = 1
 		options['Beats per bar'] = 1
+		if self.zyngui.zynseq.libseq.isMetronomeEnabled():
+			options['[X] Metronome'] = 1
+		else:
+			options['[  ] Metronome'] = 1
+		options['Metronome volume'] = 1
 		options['Beats in pattern'] = 1
 		options['Steps per beat'] = 1
 		options['Copy pattern'] = 1
@@ -251,6 +256,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})
 		elif option == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
+		elif option == '[  ] Metronome':
+			self.zyngui.zynseq.libseq.enableMetronome(True)
+		elif option == '[X] Metronome':
+			self.zyngui.zynseq.libseq.enableMetronome(False)
+		elif option == 'Metronome volume':
+			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value':int(100*self.zyngui.zynseq.libseq.getMetronomeVolume())})
 		elif option == 'Beats in pattern':
 			self.enable_param_editor(self, 'bip', 'Beats in pattern', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsInPattern()}, self.assert_beats_in_pattern)
 		elif option == 'Steps per beat':
@@ -288,6 +299,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == 'tempo':
 			self.zyngui.zynseq.libseq.setTempo(zctrl.value)
+		if zctrl.symbol == 'metro_vol':
+			self.zyngui.zynseq.libseq.setMetronomeVolume(zctrl.value / 100.0)
 		if zctrl.symbol == 'bpb':
 			self.zyngui.zynseq.libseq.setBeatsPerBar(zctrl.value)
 		elif zctrl.symbol == 'copy':
