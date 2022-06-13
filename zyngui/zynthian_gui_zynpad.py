@@ -113,10 +113,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	#Function to set values of encoders
 	def setup_zynpots(self):
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0, 0)
+		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0)
+		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0)
+		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0)
+		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0)
 
 
 	# Function to show GUI

@@ -865,9 +865,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to select chain by index
 	#	chain_index: Index of chain to select
 	def select_chain_by_index(self, chain_index, set_curlayer=True):
-		if chain_index is None or chain_index < 0 :
+		if chain_index is None:
 			return
-
+		if chain_index < 0 :
+			chain_index = 0
 		if chain_index > self.number_layers:
 			chain_index = self.number_layers
 		self.selected_chain_index = chain_index
@@ -1028,10 +1029,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	def setup_zynpots(self):
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0, 1)
+		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0)
+		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0)
+		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0)
+		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0)
 
 
 	# Function to handle zynpot CB
