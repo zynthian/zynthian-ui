@@ -1004,7 +1004,7 @@ class zynthian_gui:
 
 	def stop_audio_player(self):
 		if self.audio_player:
-			self.audio_player.remove_player()
+			del self.audio_player
 			self.audio_player = None
 			if 'audio_player' in self.status_info:
 				self.status_info.pop('audio_player')

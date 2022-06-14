@@ -373,7 +373,8 @@ class zynmixer(zynthian_engine):
 				'balance':self.get_balance(channel),
 				'mute':self.get_mute(channel),
 				'solo':self.get_solo(channel),
-				'mono':self.get_mono(channel)
+				'mono':self.get_mono(channel),
+				'phase':self.get_phase(channel)
 				})
 		return state
 
