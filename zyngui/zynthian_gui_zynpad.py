@@ -98,7 +98,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	def seq_cb(self, event):
-		if event in [zynseq.SEQ_EVENT_BANK]:
+		if event == zynseq.SEQ_EVENT_LOAD:
+			self.redraw_pending = 2
+		elif event == zynseq.SEQ_EVENT_BANK:
 			if self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank) != self.columns ** 2:
 				self.redraw_pending = 2
 			else:
