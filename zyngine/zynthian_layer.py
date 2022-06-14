@@ -192,8 +192,12 @@ class zynthian_layer:
 
 	def set_bank(self, i, set_engine=True):
 		if i < len(self.bank_list):
+			bank_name = self.bank_list[i][2]
 
-			if i!=self.bank_index or self.bank_name!=self.bank_list[i][2]:
+			if not bank_name:
+				return False
+
+			if i!=self.bank_index or self.bank_name!=bank_name:
 				set_engine_needed = True
 				logging.info("Bank selected: %s (%d)" % (self.bank_name,i))
 			else:
@@ -203,7 +207,7 @@ class zynthian_layer:
 			last_bank_index = self.bank_index
 			last_bank_name = self.bank_name
 			self.bank_index = i
-			self.bank_name = self.bank_list[i][2]
+			self.bank_name = bank_name
 			self.bank_info = copy.deepcopy(self.bank_list[i])
 
 			if set_engine:

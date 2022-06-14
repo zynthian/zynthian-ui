@@ -73,11 +73,8 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if self.list_data[i][0] == '*FAVS*':
 			self.zyngui.curlayer.set_show_fav_presets(True)
 		else:
-			if not self.zyngui.curlayer.set_bank(i):
-				self.show()
-				return
-			else:
-				self.zyngui.curlayer.set_show_fav_presets(False)
+			self.zyngui.curlayer.set_bank(i)
+			self.zyngui.curlayer.set_show_fav_presets(False)
 
 		self.zyngui.show_screen('preset')
 
