@@ -425,7 +425,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			return
 		self.zyngui.screens['pattern_editor'].channel = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0)
 		self.zyngui.screens['pattern_editor'].load_pattern(pattern)
-		self.zyngui.toggle_screen("pattern_editor")
+		self.zyngui.show_screen("pattern_editor")
 
 
 	# Function to refresh status
