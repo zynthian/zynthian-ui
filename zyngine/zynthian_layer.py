@@ -595,12 +595,6 @@ class zynthian_layer:
 		return state
 
 
-	def restore_state(self, state):
-		self.restore_0(state)
-		self.restore_1(state)
-		self.restore_2(state)
-
-
 	def restore_state_0(self, state):
 		# Load bank list
 		try:
@@ -612,8 +606,6 @@ class zynthian_layer:
 
 
 	def restore_state_1(self, state):
-		# Constructor, including engine and midi_chan info, is called before
-
 		self.wait_stop_loading()
 
 		if 'show_fav_presets' in state:

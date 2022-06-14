@@ -61,7 +61,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def reset(self):
-		self.reset_zs3()
 		self.show_all_layers = False
 		self.add_layer_eng = None
 		self.last_snapshot_fpath = None
@@ -335,6 +334,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			zyngine = self.zyngui.screens['engine'].start_engine(self.add_layer_eng)
 			layer=zynthian_layer(zyngine, midich, self.zyngui)
 
+			# if replacing, clean zs3 state from the replaced layer
+			if self.replace_layer_index is not None:
+				self.clean_layer_state_from_zs3(self.replace_layer_index)
+
 			# add/replace Audio Effects ...
 			if len(self.layers)>0 and layer.engine.type=="Audio Effect":
 				if self.replace_layer_index is not None:
@@ -394,6 +397,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.zynautoconnect_acquire_lock()
 			self.layers[i].reset()
 			self.layers.pop(i)
+			self.delete_layer_state_from_zs3(i)
 			self.zyngui.zynautoconnect_release_lock()
 
 			# Stop unused engines
@@ -450,6 +454,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					i = self.layers.index(layer)
 					self.layers[i].reset()
 					self.layers.pop(i)
+					self.delete_layer_state_from_zs3(i)
 				except Exception as e:
 					logging.error("Can't delete layer {} => {}".format(i,e))
 			self.zyngui.zynautoconnect_release_lock()
@@ -486,6 +491,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.layers[i].reset()
 			self.layers.pop(i)
 		self.zyngui.zynautoconnect_release_lock()
+
+		# Remove all learned ZS3s
+		self.reset_zs3()
 
 		# Stop ALL engines
 		if stop_engines:
@@ -600,7 +608,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.last_zs3_index = i
 		logging.info("Saved ZS3#{} => CH#{}:PRG#{}".format(i, midich, prognum))
 
-		self.zyngui.exit_midi_learn_mode()
 		return i
 
 
@@ -691,6 +698,22 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.learned_zs3 = []
 		# Last selected ZS3 subsnapshot
 		self.last_zs3_index = None;
+
+
+	def delete_layer_state_from_zs3(self, j):
+		for state in self.learned_zs3:
+			try:
+				del state['layers'][j]
+			except:
+				pass
+
+
+	def clean_layer_state_from_zs3(self, j):
+		for state in self.learned_zs3:
+			try:
+				state['layers'][j] = None
+			except:
+				pass
 
 
 	def midi_control_change(self, chan, ccnum, ccval):
@@ -1275,8 +1298,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			'clone':[],
 			'note_range':[],
 			'audio_capture': self.get_audio_capture(),
-			'audio_routing': self.get_audio_routing(),
-			'midi_routing': self.get_midi_routing(),
 			'audio_recorder_primed': []
 		}
 
@@ -1426,24 +1447,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def restore_state_zs3(self, state):
-		# Set MIDI Routing
-		if 'midi_routing' in state:
-			self.set_midi_routing(state['midi_routing'])
-
-		# Autoconnect MIDI
-		self.zyngui.zynautoconnect_midi(True)
-
 		# Restore layer state, step 1 => Restore Bank & Preset Status
 		for i, lss in enumerate(state['layers']):
-			self.layers[i].restore_state_1(lss)
+			if lss:
+				self.layers[i].restore_state_1(lss)
 
 		# Restore layer state, step 2 => Restore Controllers Status
 		for i, lss in enumerate(state['layers']):
-			self.layers[i].restore_state_2(lss)
-
-		# Set Audio Routing
-		if 'audio_routing' in state:
-			self.set_audio_routing(state['audio_routing'])
+			if lss:
+				self.layers[i].restore_state_2(lss)
 
 		# Set Audio Capture
 		if 'audio_capture' in state:
@@ -1504,6 +1516,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 			# MIDI profile
 			state['midi_profile_state'] = self.get_midi_profile_state()
+
+			# Audio & MIDI routing
+			state['audio_routing'] = self.get_audio_routing()
+			state['midi_routing'] = self.get_midi_routing()
 
 			# Subsnapshots
 			state['learned_zs3'] = self.learned_zs3
