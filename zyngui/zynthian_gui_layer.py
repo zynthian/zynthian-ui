@@ -1297,8 +1297,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			'layers':[],
 			'clone':[],
 			'note_range':[],
-			'audio_capture': self.get_audio_capture(),
-			'audio_recorder_primed': []
+			'audio_capture': self.get_audio_capture()
 		}
 
 		# Layers info
@@ -1329,16 +1328,17 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			}
 			state['note_range'].append(info)
 
-		# Audio Recorder Primed
-		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-			if self.zyngui.audio_recorder.is_primed(midi_chan):
-				state['audio_recorder_primed'].append(midi_chan)
-
 		# Mixer
 		try:
 			state['mixer'] = self.zyngui.screens['audio_mixer'].get_state()
 		except Exception as e:
 			pass
+
+		# Audio Recorder Primed
+		#state['audio_recorder_primed'] = []
+		#for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
+		#	if self.zyngui.audio_recorder.is_primed(midi_chan):
+		#		state['audio_recorder_primed'].append(midi_chan)
 
 		logging.debug("STATE index => {}".format(state['index']))
 
