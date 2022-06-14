@@ -192,15 +192,25 @@ class zynthian_layer:
 
 	def set_bank(self, i, set_engine=True):
 		if i < len(self.bank_list):
-			last_bank_index=self.bank_index
-			last_bank_name=self.bank_name
-			self.bank_index=i
-			self.bank_name=self.bank_list[i][2]
-			self.bank_info=copy.deepcopy(self.bank_list[i])
-			logging.info("Bank Selected: %s (%d)" % (self.bank_name,i))
 
-			if set_engine and (last_bank_index!=i or not last_bank_name):
-				return self.engine.set_bank(self, self.bank_info)
+			if i!=self.bank_index or self.bank_name!=self.bank_list[i][2]:
+				set_engine_needed = True
+				logging.info("Bank selected: %s (%d)" % (self.bank_name,i))
+			else:
+				set_engine_needed = False
+				logging.info("Bank already selected: %s (%d)" % (self.bank_name,i))
+
+			last_bank_index = self.bank_index
+			last_bank_name = self.bank_name
+			self.bank_index = i
+			self.bank_name = self.bank_list[i][2]
+			self.bank_info = copy.deepcopy(self.bank_list[i])
+
+			if set_engine:
+				if set_engine_needed:
+					return self.engine.set_bank(self, self.bank_info)
+				else:
+					return False
 
 			return True
 		return False
@@ -262,59 +272,71 @@ class zynthian_layer:
 		self.preset_info=None
 
 
-	def set_preset(self, i, set_engine=True):
+	def set_preset(self, i, set_engine=True, force_set_engine=True):
 		if i < len(self.preset_list):
-			last_preset_index=self.preset_index
-			last_preset_name=self.preset_name
-
 			preset_id = str(self.preset_list[i][0])
 			preset_name = self.preset_list[i][2]
+			preset_info = copy.deepcopy(self.preset_list[i])
+
 			if not preset_name:
 				return False
+
+			# Remove favorite marker char
 			if preset_name[0]=='❤':
 				preset_name=preset_name[1:]
 
+			# Check if preset is in favorites pseudo-bank and set real bank if needed
 			if preset_id in self.engine.preset_favs:
 				bank_name = self.engine.preset_favs[preset_id][0][2]
 				if bank_name!=self.bank_name:
 					self.set_bank_by_name(bank_name)
 
-			self.preset_index=i
-			self.preset_name=preset_name
-			self.preset_info=copy.deepcopy(self.preset_list[i])
-			self.preset_bank_index=self.bank_index
-
-			logging.info("Preset Selected: %s (%d)" % (self.preset_name,i))
-
-			if self.preload_info:
-				if not self.engine.cmp_presets(self.preload_info,self.preset_info):
-					set_engine_needed = True
-					self.preload_index = None
-					self.preload_name = None
-					self.preload_info = None
-				else:
-					set_engine_needed = False
-			else:
+			# Check if force set engine
+			if force_set_engine:
 				set_engine_needed = True
+			# Check if preset isn't already loaded
+			elif not self.engine.cmp_presets(preset_info, self.preset_info):
+				set_engine_needed = True
+				logging.info("Preset selected: %s (%d)" % (self.preset_name,i))
+			else:
+				set_engine_needed = False
+				logging.info("Preset already selected: %s (%d)" % (self.preset_name,i))
+				# Check if some other preset is preloaded
+				if self.preload_info and not self.engine.cmp_presets(self.preload_info,self.preset_info):
+					set_engine_needed = True
 
-			if set_engine and set_engine_needed:
-				#TODO => Review this!!
-				#self.load_ctrl_config()
-				return self.engine.set_preset(self, self.preset_info)
+			last_preset_index = self.preset_index
+			last_preset_name = self.preset_name
+			self.preset_index = i
+			self.preset_name = preset_name
+			self.preset_info = preset_info
+			self.preset_bank_index = self.bank_index
+
+			# Clean preload info
+			self.preload_index = None
+			self.preload_name = None
+			self.preload_info = None
+
+			if set_engine:
+				if set_engine_needed:
+					#self.load_ctrl_config()
+					return self.engine.set_preset(self, self.preset_info)
+				else:
+					return False
 
 			return True
 		return False
 
 
 	#TODO Optimize search!!
-	def set_preset_by_name(self, preset_name, set_engine=True):
+	def set_preset_by_name(self, preset_name, set_engine=True, force_set_engine=True):
 		for i in range(len(self.preset_list)):
 			name_i=self.preset_list[i][2]
 			try:
 				if name_i[0]=='❤':
 					name_i=name_i[1:]
 				if preset_name==name_i:
-					return self.set_preset(i,set_engine)
+					return self.set_preset(i, set_engine, force_set_engine)
 			except:
 				pass
 
@@ -322,10 +344,10 @@ class zynthian_layer:
 
 
 	#TODO Optimize search!!
-	def set_preset_by_id(self, preset_id, set_engine=True):
+	def set_preset_by_id(self, preset_id, set_engine=True, force_set_engine=True):
 		for i in range(len(self.preset_list)):
 			if preset_id==self.preset_list[i][0]:
-				return self.set_preset(i,set_engine)
+				return self.set_preset(i, set_engine, force_set_engine)
 		return False
 
 
@@ -599,15 +621,15 @@ class zynthian_layer:
 
 		# Set bank and load preset_list
 		try:
-			self.set_bank_by_name(state['bank_name'])
-			self.wait_stop_loading()
-			self.load_preset_list()
+			if self.set_bank_by_name(state['bank_name']):
+				self.wait_stop_loading()
+				self.load_preset_list()
 		except Exception as e:
 			logging.warning("Invalid Bank on layer {}: {}".format(self.get_basepath(), e))
 
 		#  and set preset
 		try:
-			self.preset_loaded=self.set_preset_by_name(state['preset_name'])
+			self.preset_loaded=self.set_preset_by_name(state['preset_name'], True, False)
 			self.wait_stop_loading()
 		except Exception as e:
 			logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
@@ -653,55 +675,6 @@ class zynthian_layer:
 		while self.engine.loading>0:
 			logging.debug("WAITING FOR STOP LOADING ...")
 			sleep(0.1)
-
-
-	# ---------------------------------------------------------------------------
-	# ZS3 Management (Zynthian SubSnapShots)
-	# ---------------------------------------------------------------------------
-
-	def restore_zs3(self, i):
-		zs3 = self.zs3_list[i]
-
-		if zs3:
-			# Set bank and load preset list if needed
-			if zs3['bank_name'] and zs3['bank_name']!=self.bank_name:
-				self.set_bank_by_name(zs3['bank_name'])
-				self.load_preset_list()
-				self.wait_stop_loading()
-
-			# Set preset if needed
-			if zs3['preset_name'] and zs3['preset_name']!=self.preset_name:
-				self.preset_loaded = self.set_preset_by_name(zs3['preset_name'])
-				self.wait_stop_loading()
-
-			# Refresh controller config
-			if self.refresh_flag:
-				self.refresh_flag=False
-				self.refresh_controllers()
-
-			# For non-LV2 engines, bank and preset can affect what controllers do.
-			# In case of LV2, just restoring the controllers ought to be enough, which is nice
-			# since it saves the 0.3 second delay between setting a preset and updating controllers.
-			if self.preset_loaded and not self.engine.nickname.startswith('JV'):
-				sleep(0.3)
-
-			# Set active screen
-			if 'current_screen_index' in zs3:
-				self.current_screen_index=zs3['current_screen_index']
-
-			# Set controller values
-			for k in zs3['controllers_dict']:
-				self.controllers_dict[k].restore_state(zs3['controllers_dict'][k])
-
-			# Set Note Range
-			if self.midi_chan>=0 and 'note_range' in zs3:
-				nr = zs3['note_range']
-				lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
-
-			return True
-
-		else:
-			return False
 
 
 	# ---------------------------------------------------------------------------

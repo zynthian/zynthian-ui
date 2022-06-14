@@ -47,6 +47,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 
+		self.index = 0
 		save_title = "Save new ZS3"
 		if self.zyngui.midi_learn_mode:
 			save_title += " (waiting for MIDI ProgChange...)"
@@ -63,8 +64,8 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 			else:
 				title = state['zs3_title']
 			self.list_data.append((i, state, title))
-
-		self.index = self.zyngui.screens['layer'].get_last_zs3_index()
+			if i == self.zyngui.screens['layer'].get_last_zs3_index():
+				self.index = i
 
 		super().fill_list()
 

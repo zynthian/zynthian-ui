@@ -641,7 +641,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			if i is not None and i>=0 and i<len(self.learned_zs3):
 				logging.info("Restoring ZS3#{}...".format(i))
-				self.restore_state(self.learned_zs3[i])
+				self.restore_state_zs3(self.learned_zs3[i])
 				self.last_zs3_index = i
 				changed = True
 			else:
@@ -1324,7 +1324,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return state
 
 
-	def restore_state(self, state):
+	def restore_state_snapshot(self, state):
 		# Restore MIDI profile state
 		if 'midi_profile_state' in state:
 			self.set_midi_profile_state(state['midi_profile_state'])
@@ -1332,6 +1332,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Restore Learned ZS3s (SubSnapShots)
 		if 'learned_zs3' in state:
 			self.learned_zs3 = state['learned_zs3']
+		else:
+			self.reset_zs3()
 
 		# Set MIDI Routing
 		if 'midi_routing' in state:
@@ -1369,7 +1371,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if 'audio_capture' in state:
 			self.set_audio_capture(state['audio_capture'])
 		else:
-			self.reset_audio_routing()
+			self.reset_audio_capture()
 
 		# Restore ALSA-Mixer settings
 		if self.amixer_layer and 'amixer_layer' in state:
@@ -1409,6 +1411,75 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.screens['audio_mixer'].set_state(state['mixer'])
 		else:
 			self.zyngui.screens['audio_mixer'].reset_state()
+
+		# Set active layer
+		if state['index']<len(self.root_layers):
+			self.index = state['index']
+		else:
+			self.index = 0
+		if self.index < len(self.root_layers):
+			self.zyngui.set_curlayer(self.root_layers[self.index])
+			logging.info("Setting curlayer to {}".format(self.index))
+
+		# Fill layer list
+		self.fill_list()
+
+
+	def restore_state_zs3(self, state):
+		# Set MIDI Routing
+		if 'midi_routing' in state:
+			self.set_midi_routing(state['midi_routing'])
+
+		# Autoconnect MIDI
+		self.zyngui.zynautoconnect_midi(True)
+
+		# Restore layer state, step 1 => Restore Bank & Preset Status
+		for i, lss in enumerate(state['layers']):
+			self.layers[i].restore_state_1(lss)
+
+		# Restore layer state, step 2 => Restore Controllers Status
+		for i, lss in enumerate(state['layers']):
+			self.layers[i].restore_state_2(lss)
+
+		# Set Audio Routing
+		if 'audio_routing' in state:
+			self.set_audio_routing(state['audio_routing'])
+
+		# Set Audio Capture
+		if 'audio_capture' in state:
+			self.set_audio_capture(state['audio_capture'])
+
+		# Restore ALSA-Mixer settings
+		if self.amixer_layer and 'amixer_layer' in state:
+			self.amixer_layer.restore_state_1(state['amixer_layer'])
+			self.amixer_layer.restore_state_2(state['amixer_layer'])
+
+		# Audio Recorder Primed
+		if 'audio_recorder_primed' in state:
+			for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
+				if midi_chan in state['audio_recorder_primed']:
+					self.zyngui.audio_recorder.prime(midi_chan)
+				else:
+					self.zyngui.audio_recorder.unprime(midi_chan)
+
+		# Autoconnect Audio
+		self.zyngui.zynautoconnect_audio(True)
+
+		# Set Clone
+		if 'clone' in state:
+			self.set_clone(state['clone'])
+
+		# Note-range & Tranpose
+		if 'note_range' in state:
+			self.set_note_range(state['note_range'])
+		# BW compat.
+		elif 'transpose' in state:
+			self.reset_note_range()
+			self.set_transpose(state['transpose'])
+
+		# Mixer
+		if 'mixer' in state:
+			self.zyngui.screens['audio_mixer'].set_state(state['mixer'])
 
 		# Set active layer
 		if state['index']<len(self.root_layers):
@@ -1537,8 +1608,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Finally, stop all unused engines
 		self.zyngui.screens['engine'].stop_unused_engines()
 
-		self.restore_state(snapshot)
-
+		self.restore_state_snapshot(snapshot)
 
 
 	def _load_snapshot_sequences(self, snapshot):
