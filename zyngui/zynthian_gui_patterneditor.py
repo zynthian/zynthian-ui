@@ -765,8 +765,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.drawing = True
 		redraw_pending = self.redraw_pending
 		self.redraw_pending = 0
+		if len(self.cells) != self.zoom * self.zyngui.zynseq.libseq.getSteps():
+			redraw_pending = 4
 		if self.zyngui.zynseq.libseq.getSteps() == 0:
-			self.redraw_pending = 0
 			self.drawing = False
 			return #TODO: Should we clear grid?
 		if self.keymap_offset > len(self.keymap) - self.zoom:
