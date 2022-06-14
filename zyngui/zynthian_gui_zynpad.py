@@ -32,6 +32,7 @@ from PIL import Image, ImageTk
 from time import sleep
 from threading import Timer
 from collections import OrderedDict
+import ctypes
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -111,6 +112,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 					zynseq.SEQ_EVENT_SEQUENCE]:
 			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
 			self.redraw_pending = 1
+		elif event == zynseq.SEQ_EVENT_MIDI_LEARN:
+			if self.param_editor_zctrl:
+				self.disable_param_editor()
     		
 
 	#Function to set values of encoders
@@ -155,32 +159,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to rename selected sequence
 	def do_rename_sequence(self, name):
 		self.zyngui.zynseq.set_sequence_name(self.zyngui.zynseq.bank, self.selected_pad, name)
-
-
-	# Function to get the MIDI trigger note
-	#   returns: MIDI note
-	def get_trigger_note(self):
-		trigger = self.zyngui.zynseq.libseq.getTriggerNote(self.zyngui.zynseq.bank, self.selected_pad)
-		if trigger > 128:
-			trigger = 128
-		return trigger
-
-
-	# Function to reset trigger note to None
-	def reset_trigger_note(self):
-		self.zyngui.zynseq.trigger_note = 0xFF
-		self.refreshParamEditor()
-
-
-	# Function to get group of selected track
-	def get_group(self):
-		return self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, self.selected_pad)
-
-
-	# Function to get the mode of the currently selected pad
-	#   returns: Mode of selected pad
-	def get_selected_pad_mode(self):
-		return self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad)
 
 
 	# Function to get trigger MIDI channel
@@ -391,8 +369,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			labels = ['None']
 			for note in range(128):
 				labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
-			labels.append('None')
-			self.enable_param_editor(self, 'trigger_note', 'Trigger note', {'labels':labels, 'value':self.get_trigger_note() + 1})
+			value = self.zyngui.zynseq.libseq.getTriggerNote(self.zyngui.zynseq.bank, self.selected_pad) + 1
+			if value > 128:
+				value = 0
+			self.enable_param_editor(self, 'trigger_note', 'Trigger note', {'labels':labels, 'value':value})
+			self.zyngui.zynseq.enable_midi_learn(self.zyngui.zynseq.bank, self.selected_pad)
 		elif option == 'Grid size':
 			labels = []
 			for i in range(1, 9):
@@ -422,12 +403,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			else:
 				self.zyngui.zynseq.libseq.setTriggerChannel(0xFF)
 		elif zctrl.symbol == 'trigger_note':
-			if zctrl.value > 128 or zctrl.value <= 0:
-				zctrl.value = 128
+			if zctrl.value == 0:
+				value = 128
 			else:
-				zctrl.value -= 1
-			self.zyngui.zynseq.libseq.setTriggerNote(self.zyngui.zynseq.bank, self.selected_pad, zctrl.value)
-			self.zyngui.zynseq.libseq.enableMidiLearn(self.zyngui.zynseq.bank, self.selected_pad)
+				value = zctrl.value - 1
+			self.zyngui.zynseq.libseq.setTriggerNote(self.zyngui.zynseq.bank, self.selected_pad, value)
 
 
 	#	Function to set the playmode of the selected pad
@@ -500,7 +480,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
-		self.zyngui.zynseq.libseq.enableMidiLearn(0, 0)
+		self.zyngui.zynseq.disable_midi_learn()
 		if super().switch(switch, type):
 			return True
 		if switch == zynthian_gui_config.ENC_SELECT:

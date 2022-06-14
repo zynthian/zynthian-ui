@@ -69,6 +69,7 @@ uint8_t g_nTriggerStatusByte = MIDI_NOTE_ON | 15; // MIDI status byte which trig
 uint16_t g_nVerticalZoom = 8; // Quantity of sequences to show in arranger view
 uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
 uint16_t g_nTriggerLearning = 0; // 2 word bank|sequence that is waiting for MIDI to learn trigger (0 if not learning)
+void* g_pMidiLearnObj = NULL; // Object hosting midi learn function
 char g_sName[16]; // Buffer to hold sequence name so that it can be sent back for Python to parse
 
 bool g_bMutex = false; // Mutex lock for access to g_mSchedule
@@ -379,6 +380,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             if(g_nTriggerLearning)
             {
                 setTriggerNote((g_nTriggerLearning >> 8) & 0xFF, g_nTriggerLearning & 0xFF, nNote);
+                if(g_pMidiLearnCb)
+                    g_pMidiLearnCb(g_pMidiLearnObj, nNote);
             }
             else
             {
@@ -597,6 +600,8 @@ __attribute__((constructor)) void zynseq(void) {
 
 void init(char* name) {
     //!@todo Invalid name triggers seg fault
+
+    g_pMidiLearnCb = NULL;
 
     // Register with Jack server
     printf("**zynseq initialising as %s**\n", name);
@@ -1755,9 +1760,16 @@ uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence)
     return g_seqMan.getSequence(bank, sequence)->getTracks();
 }
 
-void enableMidiLearn(uint8_t bank, uint8_t sequence)
+void enableMidiLearn(uint8_t bank, uint8_t sequence, void* cb_object, void (*cbfunc)(void*, uint8_t))
 {
     g_nTriggerLearning = (bank << 8) | sequence;
+    if(g_nTriggerLearning) {
+        g_pMidiLearnObj = cb_object;
+        g_pMidiLearnCb = cbfunc;
+    } else {
+        g_pMidiLearnObj = NULL;
+        g_pMidiLearnCb = NULL;
+    }
 }
 
 uint8_t getMidiLearnBank()

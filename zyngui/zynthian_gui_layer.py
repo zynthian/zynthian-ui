@@ -1221,10 +1221,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				snapshot['note_range'].append(info)
 
 			#Zynseq RIFF data
-			if 'stepseq' in self.zyngui.screens:
-				binary_riff_data = self.zyngui.screens['stepseq'].get_riff_data()
-				b64_data = base64_encoded_data = base64.b64encode(binary_riff_data)
-				snapshot['zynseq_riff_b64'] = b64_data.decode('utf-8')
+			binary_riff_data = self.zyngui.zynseq.get_riff_data()
+			b64_data = base64_encoded_data = base64.b64encode(binary_riff_data)
+			snapshot['zynseq_riff_b64'] = b64_data.decode('utf-8')
 
 			#Audio Recorder Primed
 			snapshot['audio_recorder_primed'] = []
@@ -1414,10 +1413,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def _load_snapshot_sequences(self, snapshot):
 		#Zynseq RIFF data
-		if 'zynseq_riff_b64' in snapshot and 'stepseq' in self.zyngui.screens:
+		if 'zynseq_riff_b64' in snapshot:
 			b64_bytes = snapshot['zynseq_riff_b64'].encode('utf-8')
 			binary_riff_data = base64.decodebytes(b64_bytes)
-			self.zyngui.screens['stepseq'].restore_riff_data(binary_riff_data)
+			self.zyngui.zynseq.restore_riff_data(binary_riff_data)
 
 
 	def get_midi_profile_state(self):

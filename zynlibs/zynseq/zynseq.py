@@ -54,6 +54,7 @@ SEQ_EVENT_BPB		= 5
 SEQ_EVENT_PLAYMODE	= 6
 SEQ_EVENT_SEQUENCE	= 7
 SEQ_EVENT_LOAD		= 8
+SEQ_EVENT_MIDI_LEARN= 9
 
 class zynseq(zynthian_engine):
 
@@ -306,5 +307,58 @@ class zynseq(zynthian_engine):
 		if self.libseq.addPattern(bank, sequence, track, time, pattern, force):
 			self.send_event(SEQ_EVENT_SEQUENCE)
 			return True
+
+
+	def enable_midi_learn(self, bank, sequence):
+		try:
+			self.libseq.enableMidiLearn(bank, sequence, ctypes.py_object(self), self.midi_learn_cb)
+		except Exception as e:
+			logging.error(e)
+
+
+	def disable_midi_learn(self):
+		try:
+			self.libseq.enableMidiLearn(0, 0, ctypes.py_object(self), self.midi_learn_cb)
+		except Exception as e:
+			logging.error(e)
+
+
+	@ctypes.CFUNCTYPE(None, ctypes.py_object, ctypes.c_ubyte)
+	def midi_learn_cb(self, note):
+		self.disable_midi_learn()
+		self.send_event(SEQ_EVENT_MIDI_LEARN)
+
+
+	def get_riff_data(self):
+		fpath = "/tmp/snapshot.zynseq"
+		try:
+			# Save to tmp
+			self.save(fpath)
+			# Load binary data
+			with open(fpath,"rb") as fh:
+				riff_data=fh.read()
+				logging.info("Loading RIFF data...\n")
+			return riff_data
+
+		except Exception as e:
+			logging.error("Can't get RIFF data! => {}".format(e))
+			return None
+
+
+	def restore_riff_data(self, riff_data):
+		fpath = "/tmp/snapshot.zynseq"
+		try:
+			# Save RIFF data to tmp file
+			with open(fpath,"wb") as fh:
+				fh.write(riff_data)
+				logging.info("Restoring RIFF data...\n")
+			# Load from tmp file
+			if self.load(fpath):
+				self.filename = "snapshot"
+				return True
+
+		except Exception as e:
+			logging.error("Can't restore RIFF data! => {}".format(e))
+			return False
 
 #-------------------------------------------------------------------------------
