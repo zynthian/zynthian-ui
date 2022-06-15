@@ -134,6 +134,16 @@ class SequenceManager
         */
         void setTriggerChannel(uint8_t channel);
 
+        /** @brief  Get MIDI tally channel
+        *   @retval uint8_t MIDI channel
+        */
+        uint8_t getTallyChannel();
+
+        /** @brief  Set MIDI tally channel
+        *   @param  channel MIDI channel [0..15 or other to disable MIDI trigger]
+        */
+        void setTallyChannel(uint8_t channel);
+
         /** @brief  Get sequence triggered by MIDI note
         *   @param  note MIDI note number
         *   @retval uint16_t Bank (MSB) and Sequence (LSB) or 0 if not configured
@@ -218,7 +228,8 @@ class SequenceManager
         uint8_t fileRead8(FILE* pFile);
         bool checkBlock(FILE* pFile, uint32_t nActualSize,  uint32_t nExpectedSize);
 
-        uint8_t m_nTriggerChannel = 15; // MIDI channel to recieve sequence triggers (note-on)
+        uint8_t m_nTriggerChannel = 0xFF; // MIDI channel to recieve sequence triggers (note-on)
+        uint8_t m_nTallyChannel = 0xFF; // MIDI channel to send sequence state change tallies (note-on)
 
         // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
         std::map<uint32_t, Pattern> m_mPatterns; // Map of patterns indexed by pattern number

@@ -1187,6 +1187,19 @@ void setTriggerChannel(uint8_t channel)
     g_bDirty = true;
 }
 
+uint8_t getTallyChannel()
+{
+    return g_seqMan.getTallyChannel();
+}
+
+void setTallyChannel(uint8_t channel)
+{
+    if(channel > 15)
+        channel = 0xFF;
+    g_seqMan.setTallyChannel(channel);
+    g_bDirty = true;
+}
+
 uint8_t getTriggerNote(uint8_t bank, uint8_t sequence)
 {
     return g_seqMan.getTriggerNote(bank, sequence);

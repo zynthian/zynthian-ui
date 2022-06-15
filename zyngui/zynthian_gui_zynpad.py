@@ -168,6 +168,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		return self.zyngui.zynseq.libseq.getTriggerChannel() + 1
 
 
+	# Function to get tally MIDI channel
+	def get_tally_channel(self):
+		if(self.zyngui.zynseq.libseq.getTallyChannel() > 15):
+			return 0
+		return self.zyngui.zynseq.libseq.getTallyChannel() + 1
+
+
 	# Function to clear and calculate grid sizes
 	def update_grid(self):
 		pads = self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank)
@@ -329,6 +336,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		options['MIDI channel'] = 1
 		options['Trigger channel'] = 1
 		options['Trigger note'] = 1
+		if self.zyngui.zynseq.libseq.getTriggerNote(self.zyngui.zynseq.bank, self.selected_pad) < 128:
+			options['Tally channel'] = 1
 		options['--------------------'] = None
 		options['Grid size'] = 1
 		options['Rename sequence'] = 1
@@ -374,6 +383,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				value = 0
 			self.enable_param_editor(self, 'trigger_note', 'Trigger note', {'labels':labels, 'value':value})
 			self.zyngui.zynseq.enable_midi_learn(self.zyngui.zynseq.bank, self.selected_pad)
+		elif option == 'Tally channel':
+			self.enable_param_editor(self, 'tally_chan', 'Tally channel', {'labels':INPUT_CHANNEL_LABELS, 'value':self.get_tally_channel()})
 		elif option == 'Grid size':
 			labels = []
 			for i in range(1, 9):
@@ -408,7 +419,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			else:
 				value = zctrl.value - 1
 			self.zyngui.zynseq.libseq.setTriggerNote(self.zyngui.zynseq.bank, self.selected_pad, value)
-
+		elif zctrl.symbol == 'tally_chan':
+			if zctrl.value:
+				self.zyngui.zynseq.libseq.setTallyChannel(zctrl.value - 1)
+			else:
+				self.zyngui.zynseq.libseq.setTallyChannel(0xFF)
 
 	#	Function to set the playmode of the selected pad
 	def set_play_mode(self, mode):
