@@ -67,6 +67,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		else:
 			self.lb_width=zynthian_gui_config.display_width-2*zynthian_gui_config.ctrl_width-2
 
+		self.listbox_motion_last_dy = 0
 		self.motion_pixels = int(1.0 * zynthian_gui_config.font_size)
 
 		# ListBox's frame
@@ -348,7 +349,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
 		self.listbox_motion_y0 = event.y
 		self.listbox_motion_sumy = 0
-		self.listbox_motion_last_dy = 0
+		#self.listbox_motion_last_dy = 0
 		return "break"
 
 
