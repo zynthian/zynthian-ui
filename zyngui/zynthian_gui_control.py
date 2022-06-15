@@ -509,6 +509,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def cb_listbox_release(self, event):
 		if self.xyselect_mode:
 			return
+		else:
+			self.select_listbox(self.get_cursel(), False)
+			self.click_listbox()
 		return "break"
 
 
