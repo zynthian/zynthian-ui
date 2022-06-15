@@ -502,7 +502,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zyngui.show_control_xy(self.x_zctrl, self.y_zctrl)
 		else:
 			super().cb_listbox_push(event)
-			self.select(self.get_cursel())
+			self.select_listbox(self.get_cursel(), False)
 			self.click_listbox()
 
 
