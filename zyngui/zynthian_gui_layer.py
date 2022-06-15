@@ -576,7 +576,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			i = self.get_zs3_index_by_midich_prognum(midich, prognum)
 
 		if i is not None:
-			return self.restore_zs3(i)
+			changed = self.restore_zs3(i)
+
+			#TODO Implement proper GUI-refresh signaling
+			if changed:
+				try:
+					if self.zyngui.current_screen in ['control','audio_mixer']:
+						self.zyngui.screens[self.zyngui.current_screen].show()
+					elif self.zyngui.current_screen not in ['main', 'admin', 'stepseq', 'midi_recorder', 'midi_profile', 'touchscreen_calibration']:
+						self.zyngui.layer_control()
+				except Exception as e:
+					logging.error("Can't refresh GUI! => %s", e)
+
 		else:
 			logging.debug("Can't find a ZS3 for CH#{}:PC#{}".format(midich, prognum))
 			return False
@@ -655,13 +666,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				logging.debug("Can't find ZS3#{}".format(i))
 		except Exception as e:
 			logging.error("Can't restore ZS3 state => %s", e)
-
-		#TODO Implement proper GUI-refresh signaling
-		if changed and self.zyngui.current_screen in ['control','audio_mixer']:
-			try:
-				self.zyngui.screens[self.zyngui.current_screen].show() # Refresh preset labels
-			except Exception as e:
-				logging.error("Can't refresh GUI! => %s", e)
 
 		return changed
 
@@ -1447,14 +1451,35 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def restore_state_zs3(self, state):
+
+		# Get restored active layer index
+		if state['index']<len(self.root_layers):
+			index = state['index']
+			restore_midi_chan = self.root_layers[index].midi_chan
+		else:
+			index = None
+			restore_midi_chan = None
+
+		# Calculate the layers to restore, depending of mode OMNI/MULTI, etc
+		layer2restore = []
+		for i, lss in enumerate(state['layers']):
+			l2r = False
+			if lss:
+				if zynthian_gui_config.midi_single_active_channel:
+					if restore_midi_chan is not None and lss['midi_chan']==restore_midi_chan:
+						l2r = True
+				else:
+					l2r = True
+			layer2restore.append(l2r)
+
 		# Restore layer state, step 1 => Restore Bank & Preset Status
 		for i, lss in enumerate(state['layers']):
-			if lss:
+			if layer2restore[i]:
 				self.layers[i].restore_state_1(lss)
 
 		# Restore layer state, step 2 => Restore Controllers Status
 		for i, lss in enumerate(state['layers']):
-			if lss:
+			if layer2restore[i]:
 				self.layers[i].restore_state_2(lss)
 
 		# Set Audio Capture
@@ -1494,11 +1519,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.screens['audio_mixer'].set_state(state['mixer'])
 
 		# Set active layer
-		if state['index']<len(self.root_layers):
-			self.index = state['index']
-		else:
-			self.index = 0
-		if self.index < len(self.root_layers):
+		if index is not None and index!=self.index:
+			self.index = index
 			self.zyngui.set_curlayer(self.root_layers[self.index])
 			logging.info("Setting curlayer to {}".format(self.index))
 
