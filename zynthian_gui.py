@@ -868,12 +868,6 @@ class zynthian_gui:
 		lib_zyncore.set_midi_learning_mode(0)
 		self.screens['control'].refresh_midi_bind()
 		self.screens['control'].set_select_path()
-		if self.current_screen=="zs3_learn":
-			logging.debug("EXIT ZS3 LEARNING ...")
-			self.close_screen()
-		else:
-			logging.debug("EXIT MIDI LEARNING ...")
-			self.show_current_screen()
 
 
 	def show_control_xy(self, xctrl, yctrl):
@@ -1767,7 +1761,7 @@ class zynthian_gui:
 					if self.midi_learn_mode and self.current_screen=='zs3_learn':
 						if self.screens['layer'].save_midi_prog_zs3(chan, pgm) is not None:
 							self.exit_midi_learn_mode()
-
+							self.close_screen()
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
 						if zynthian_gui_config.midi_prog_change_zs3:
@@ -1787,6 +1781,7 @@ class zynthian_gui:
 					# If MIDI learn pending ...
 					if self.midi_learn_zctrl:
 						self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
+						self.show_current_screen()
 					# Try layer's zctrls
 					else:
 						self.screens['layer'].midi_control_change(chan,ccnum,ccval)
