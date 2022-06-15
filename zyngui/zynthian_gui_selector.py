@@ -100,7 +100,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			fg=zynthian_gui_config.color_panel_tx,
 			selectbackground=zynthian_gui_config.color_ctrl_bg_on,
 			selectforeground=zynthian_gui_config.color_ctrl_tx,
-			selectmode=tkinter.BROWSE)
+			selectmode=tkinter.SINGLE)
 		self.listbox.grid(sticky="wens")
 		# Bind listbox events
 		self.listbox_push_ts = None
@@ -237,25 +237,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.last_index_change_ts = datetime.now()
 
 
-	def see_listbox(self, index):
-		if index < 0:
-			index = 0
-		elif index >= len(self.list_data):
-			index = len(self.list_data) - 1
-
-		# Set window
-		if index > self.index:
-			self.listbox.see(index + 1)
-		elif index < self.index:
-			self.listbox.see(index - 1)
-		else:
-			self.listbox.see(index)
-
-		# Set index value
-		self.index = index
-		self.last_index_change_ts = datetime.now()
-
-
 	def select_listbox_by_name(self, name):
 		names = self.listbox.get(0, self.listbox.size())
 		try:
@@ -349,8 +330,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
 		self.listbox_motion_y0 = event.y
 		self.listbox_motion_sumy = 0
-		#self.listbox_motion_last_dy = 0
-		return "break"
 
 
 	def cb_listbox_release(self,event):
@@ -377,8 +356,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 						self.index += int((dy/abs(dy))*self.motion_pixels)
 					self.listbox_motion_last_dy = dy
 					self.listbox_motion_sumy += abs(dy)
-					self.see_listbox(self.index + dy // self.motion_pixels)
-					self.zselector.zctrl.set_value(self.index)
+					self.listbox.yview_scroll(dy // self.motion_pixels, tkinter.UNITS)
+					if self.zselector:
+						self.zselector.zctrl.set_value(self.index)
 					self.listbox_motion_y0 = event.y + dy % self.motion_pixels
 		return "break"
 

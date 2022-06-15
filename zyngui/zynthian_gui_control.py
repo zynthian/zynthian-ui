@@ -502,29 +502,20 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zyngui.show_control_xy(self.x_zctrl, self.y_zctrl)
 		else:
 			super().cb_listbox_push(event)
+			self.select(self.get_cursel())
+			self.click_listbox()
 
 
 	def cb_listbox_release(self, event):
 		if self.xyselect_mode:
 			return
-		else:
-			self.select(self.get_cursel())
-			self.click_listbox()
+		return "break"
 
 
 	def cb_listbox_motion(self, event):
 		if self.xyselect_mode:
 			return
-		if self.mode == 'select':
-			super().cb_listbox_motion(event)
-		elif self.listbox_push_ts:
-			dts = (datetime.now()-self.listbox_push_ts).total_seconds()
-			if dts > 0.1:
-				index = self.get_cursel()
-				if index != self.index:
-					#logging.debug("LISTBOX MOTION => %d" % index)
-					self.select_listbox(index)
-					sleep(0.04)
+		return super().cb_listbox_motion(event)
 
 
 	def cb_listbox_wheel(self, event):
