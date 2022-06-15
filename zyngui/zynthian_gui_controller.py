@@ -577,24 +577,20 @@ class zynthian_gui_controller:
 			self.canvas_motion_x0 = event.x
 			self.active_motion_axis = 0 # +1=dragging in y-axis, -1=dragging in x-axis
 			self.canvas_motion_dx = 0
-			self.canvas_motion_count = 0
-			self.canvas_motion_val0 = self.zctrl.value
-			self.motion_swipe_y = 0
 			#logging.debug("CONTROL {} PUSH => {} ({},{})".format(self.index, self.canvas_push_ts, self.canvas_motion_x0, self.canvas_motion_y0))
 
 
 	def cb_canvas_release(self,event):
 		if self.canvas_push_ts:
 			dts = (datetime.now()-self.canvas_push_ts).total_seconds()
-			motion_rate = self.canvas_motion_count / dts
 			#logging.debug("CONTROL {} RELEASE => {}, {}".format(self.index, dts, motion_rate))
 			if self.active_motion_axis == 0:
 				if not zynthian_gui_config.enable_onscreen_buttons:
-					if dts < 0.3:
+					if dts < zynthian_gui_config.zynswitch_bold_seconds:
 						self.zyngui.zynswitch_defered('S',self.index)
-					elif dts >= 0.3 and dts < 2:
+					elif dts >= zynthian_gui_config.zynswitch_bold_seconds and dts < zynthian_gui_config.zynswitch_long_seconds:
 						self.zyngui.zynswitch_defered('B',self.index)
-					elif dts >= 2:
+					elif dts >= zynthian_gui_config.zynswitch_long_seconds:
 						self.zyngui.zynswitch_defered('L',self.index)
 			elif self.canvas_motion_dx > self.width // 2:
 				self.zyngui.zynswitch_defered('X', self.index)
@@ -605,8 +601,7 @@ class zynthian_gui_controller:
 
 	def cb_canvas_motion(self,event):
 		if self.canvas_push_ts:
-			now = datetime.now()
-			dts = (now - self.canvas_push_ts).total_seconds()
+			dts = (datetime.now() - self.canvas_push_ts).total_seconds()
 			if dts > 0.1: # debounce initial touch
 				dy = self.canvas_motion_y0 - event.y
 				dx = event.x - self.canvas_motion_x0

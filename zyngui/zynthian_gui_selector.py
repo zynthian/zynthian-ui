@@ -67,6 +67,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 		else:
 			self.lb_width=zynthian_gui_config.display_width-2*zynthian_gui_config.ctrl_width-2
 
+		self.motion_pixels = int(1.0 * zynthian_gui_config.font_size)
+
 		# ListBox's frame
 		self.lb_frame = tkinter.Frame(self.main_frame,
 			width=self.lb_width,
@@ -234,6 +236,25 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.last_index_change_ts = datetime.now()
 
 
+	def see_listbox(self, index):
+		if index < 0:
+			index = 0
+		elif index >= len(self.list_data):
+			index = len(self.list_data) - 1
+
+		# Set window
+		if index > self.index:
+			self.listbox.see(index + 1)
+		elif index < self.index:
+			self.listbox.see(index - 1)
+		else:
+			self.listbox.see(index)
+
+		# Set index value
+		self.index = index
+		self.last_index_change_ts = datetime.now()
+
+
 	def select_listbox_by_name(self, name):
 		names = self.listbox.get(0, self.listbox.size())
 		try:
@@ -325,29 +346,40 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def cb_listbox_push(self,event):
 		self.listbox_push_ts=datetime.now()
 		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
+		self.listbox_motion_y0 = event.y
+		self.listbox_motion_sumy = 0
+		self.listbox_motion_last_dy = 0
+		return "break"
 
 
 	def cb_listbox_release(self,event):
-		if self.listbox_push_ts:
+		if self.listbox_push_ts and self.listbox_motion_sumy==0:
 			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
 			cursel = self.get_cursel()
 			if self.index != cursel:
 				self.select(cursel)
-			if dts < 0.3:
+			if dts < zynthian_gui_config.zynswitch_bold_seconds:
 				self.zyngui.zynswitch_defered('S',3)
-			elif dts>=0.3 and dts<2:
+			elif dts>=zynthian_gui_config.zynswitch_bold_seconds and dts<zynthian_gui_config.zynswitch_long_seconds:
 				self.zyngui.zynswitch_defered('B',3)
+		return "break"
 
 
 	def cb_listbox_motion(self,event):
 		if self.listbox_push_ts:
-			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
-			if dts > 0.1:
-				#logging.debug("LISTBOX MOTION => %d" % self.index)
-				cursel = self.get_cursel()
-				if self.index != cursel:
-					self.select(cursel)
+			dts = (datetime.now() - self.listbox_push_ts).total_seconds()
+			if dts > 0.1: # debounce initial touch
+				dy = self.listbox_motion_y0 - event.y
+				if abs(dy) >= self.motion_pixels:
+					if self.listbox_motion_last_dy==0 or dy * self.listbox_motion_last_dy < 0:
+						self.index += int((dy/abs(dy))*self.motion_pixels)
+					self.listbox_motion_last_dy = dy
+					self.listbox_motion_sumy += abs(dy)
+					self.see_listbox(self.index + dy // self.motion_pixels)
+					self.zselector.zctrl.set_value(self.index)
+					self.listbox_motion_y0 = event.y + dy % self.motion_pixels
+		return "break"
 
 
 	def cb_listbox_wheel(self, event):
@@ -360,18 +392,18 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def cb_loading_push(self, event):
 		self.loading_push_ts = datetime.now()
-		#logging.debug("LOADING PUSH => %s" % self.canvas_push_ts)
+		#logging.debug("LOADING PUSH => %s" % self.loading_push_ts)
 
 
 	def cb_loading_release(self,event):
 		if self.loading_push_ts:
 			dts=(datetime.now()-self.loading_push_ts).total_seconds()
 			logging.debug("LOADING RELEASE => %s" % dts)
-			if dts<0.3:
+			if dts<zynthian_gui_config.zynswitch_bold_seconds:
 				self.zyngui.zynswitch_defered('S',2)
-			elif dts>=0.3 and dts<2:
+			elif dts>=zynthian_gui_config.zynswitch_bold_seconds and dts<zynthian_gui_config.zynswitch_long_seconds:
 				self.zyngui.zynswitch_defered('B',2)
-			elif dts>=2:
+			elif dts>=zynthian_gui_config.zynswitch_long_seconds:
 				self.zyngui.zynswitch_defered('L',2)
 
 #------------------------------------------------------------------------------
