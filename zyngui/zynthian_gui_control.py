@@ -490,7 +490,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def midi_learn_zctrl(self, i):
-		if self.zyngui.midi_learn_mode:
+		if self.shown and self.zyngui.midi_learn_mode:
 			logging.debug("MIDI-learn ZController {}".format(i))
 			self.zyngui.midi_learn_mode = False
 			self.midi_learn(i)
@@ -514,29 +514,23 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zyngui.show_control_xy(self.x_zctrl, self.y_zctrl)
 		else:
 			super().cb_listbox_push(event)
+			self.select_listbox(self.get_cursel(), False)
+			self.click_listbox()
 
 
 	def cb_listbox_release(self, event):
 		if self.xyselect_mode:
 			return
 		else:
-			self.select(self.get_cursel())
+			self.select_listbox(self.get_cursel(), False)
 			self.click_listbox()
+		return "break"
 
 
 	def cb_listbox_motion(self, event):
 		if self.xyselect_mode:
 			return
-		if self.mode == 'select':
-			super().cb_listbox_motion(event)
-		elif self.listbox_push_ts:
-			dts = (datetime.now()-self.listbox_push_ts).total_seconds()
-			if dts > 0.1:
-				index = self.get_cursel()
-				if index != self.index:
-					#logging.debug("LISTBOX MOTION => %d" % index)
-					self.select_listbox(index)
-					sleep(0.04)
+		return super().cb_listbox_motion(event)
 
 
 	def cb_listbox_wheel(self, event):
