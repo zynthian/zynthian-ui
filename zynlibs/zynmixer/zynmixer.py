@@ -414,7 +414,7 @@ class zynmixer(zynthian_engine):
 
 	def midi_unlearn_chan(self, chan):
 		for symbol in self.zctrls[chan]:
-			self.zctrls[channel][symbol].midi_unlearn()
+			self.zctrls[chan][symbol].midi_unlearn()
 
 
 	def exit_midi_learn(self, zctl):
