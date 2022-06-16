@@ -335,7 +335,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return True
 		# If in MIDI-learn mode, back to instrument control
 		elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
-			self.zyngui.exit_midi_learn_mode()
+			self.zyngui.exit_midi_learn()
 			return True
 		else:
 			return False
@@ -462,8 +462,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.set_select_path()
 		if self.midi_learning:
 			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
+				self.midi_learning = False
 				self.zyngui.show_screen("zs3_learn")
-		self.midi_learning = True
+		else:
+			self.midi_learning = True
 
 
 	def exit_midi_learn(self):

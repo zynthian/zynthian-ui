@@ -991,7 +991,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 
 		elif swi == 1:
-			if t == "S":
+			# This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
+			# Moving the "learn" button to back is not an option. It's a labeled button on V4!!
+			if (t == "S" and not self.midi_learning) or t == "B":
 				if self.highlighted_strip is not None:
 					self.highlighted_strip.toggle_mute()
 				return True

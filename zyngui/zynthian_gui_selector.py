@@ -283,15 +283,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.select_action(self.index, t)
 
 
-	# Function to handle *all* switch presses.
-	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#	returns True if action fully handled or False if parent action should be triggered
-	def switch(self, swi, t='S'):
-		if swi in [0,2]:
-			return True
-
-
 	# Function to handle select switch press
 	#	typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, t='S'):

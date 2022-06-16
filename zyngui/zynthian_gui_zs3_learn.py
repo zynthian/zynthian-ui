@@ -94,6 +94,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 
 	def enter_midi_learn(self):
+		logging.debug("CLOSING ZS3 MIDI LEARN!!")
 		self.zyngui.close_screen()
 
 

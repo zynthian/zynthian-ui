@@ -405,8 +405,11 @@ class zynmixer(zynthian_engine):
 	#--------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		pass
-		#TODO: Implement??
+		for chi in range(0,16):
+			try:
+				self.learned_cc[chi][ccnum].midi_control_change(val)
+			except:
+				pass
 
 
 	def midi_unlearn_chan(self, chan):
@@ -415,8 +418,8 @@ class zynmixer(zynthian_engine):
 
 
 	def exit_midi_learn(self, zctl):
-		logging.warning("Not implemented")
-		#TODO: Implement!
+		pass
+		#TODO: Implement??
 
 
 #-------------------------------------------------------------------------------
