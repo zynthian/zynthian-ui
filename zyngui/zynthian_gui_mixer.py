@@ -777,7 +777,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Disable channel DPM when mixer not shown
 		for chan in range(self.zyngui.zynmixer.get_max_channels()):
 			self.zyngui.zynmixer.enable_dpm(chan, False)
-		self.end_midi_learn()
+		self.exit_midi_learn()
 		super().hide()
 
 
@@ -984,35 +984,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t):
-		if swi == zynthian_gui_config.ENC_LAYER:
+		if swi == 0:
+			if t == "S":
+				if self.highlighted_strip is not None:
+					self.highlighted_strip.toggle_solo()
+				return True
+
+		elif swi == 1:
 			if t == "S":
 				if self.highlighted_strip is not None:
 					self.highlighted_strip.toggle_mute()
 				return True
 
-		elif swi == zynthian_gui_config.ENC_BACK:
-			if t == "S":
-				if self.midi_learning:
-					self.zyngui.exit_midi_learn_mode()
-					return False
-				return True
-			elif t == "B":
-				#TODO: This should live on LEARN switch but that is used for snapshots
-				if self.midi_learning:
-					self.end_midi_learn()
-				else:
-					self.start_midi_learn()
-
-				
-		elif swi == zynthian_gui_config.ENC_SNAPSHOT:
-			if t == "S":
-				if self.highlighted_strip is not None:
-					self.highlighted_strip.toggle_solo()
-			elif t == "B":
-				self.zyngui.show_screen('snapshot')
-			return True
-
-		elif swi == zynthian_gui_config.ENC_SELECT:
+		elif swi == 3:
 			if isinstance(self.selected_layer, zyngine.zynthian_layer):
 				if t == "S":
 					self.zyngui.layer_control(self.selected_layer)
@@ -1029,10 +1013,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	def setup_zynpots(self):
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 1)
+		lib_zyncore.setup_behaviour_zynpot(0, 0)
+		lib_zyncore.setup_behaviour_zynpot(1, 0)
+		lib_zyncore.setup_behaviour_zynpot(2, 0)
+		lib_zyncore.setup_behaviour_zynpot(3, 1)
 
 
 	# Function to handle zynpot CB
@@ -1041,21 +1025,21 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			return
 
 		# LAYER encoder adjusts selected chain's level
-		if i == zynthian_gui_config.ENC_LAYER:
+		if i == 0:
 			if self.highlighted_strip is not None:
 				self.highlighted_strip.nudge_volume(dval)
 
 		# BACK encoder adjusts selected chain's balance/pan
-		if i == zynthian_gui_config.ENC_BACK:
+		if i == 1:
 			if self.highlighted_strip is not None:
 				self.highlighted_strip.nudge_balance(dval)
 
 		# SNAPSHOT encoder adjusts main mixbus level
-		elif i == zynthian_gui_config.ENC_SNAPSHOT:
+		elif i == 2:
 			self.main_mixbus_strip.nudge_volume(dval)
 
 		# SELECT encoder moves chain selection
-		elif i == zynthian_gui_config.ENC_SELECT:
+		elif i == 3:
 			self.select_chain_by_index(self.selected_chain_index + dval)
 
 
@@ -1104,7 +1088,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
-	def start_midi_learn(self):
+	def enter_midi_learn(self):
 		if self.selected_layer and self.selected_layer.midi_chan is not None:
 			if self.selected_layer.midi_chan >= self.zynmixer.MAX_NUM_CHANNELS:
 				self.main_mixbus_strip.enable_midi_learn(True)
@@ -1113,7 +1097,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.midi_learning = True
 
     
-	def end_midi_learn(self):
+	def exit_midi_learn(self):
 		for strip in self.visible_mixer_strips:
 			strip.enable_midi_learn(False)
 		self.main_mixbus_strip.enable_midi_learn(False)

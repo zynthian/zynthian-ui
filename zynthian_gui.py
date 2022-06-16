@@ -596,7 +596,6 @@ class zynthian_gui:
 		# Create UI Apps Screens
 		self.screens['alsa_mixer'] = self.screens['control']
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
-		#self.screens['stepseq'] = zynthian_gui_stepsequencer()
 		self.screens['zynpad'] = zynthian_gui_zynpad()
 		self.screens['arranger'] = zynthian_gui_arranger()
 		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
@@ -871,22 +870,6 @@ class zynthian_gui:
 		self.layer_control()
 
 
-	def enter_midi_learn_mode(self):
-		self.midi_learn_mode = True
-		self.midi_learn_zctrl = None
-		lib_zyncore.set_midi_learning_mode(1)
-		self.screens[self.current_screen].start_midi_learn()
-		#self.show_screen('zs3_learn')
-
-
-	def exit_midi_learn_mode(self):
-		self.midi_learn_mode = False
-		self.midi_learn_zctrl = None
-		lib_zyncore.set_midi_learning_mode(0)
-		self.screens[self.current_screen].end_midi_learn()
-		#self.show_current_screen()
-
-
 	def show_control_xy(self, xctrl, yctrl):
 		self.screens['control_xy'].set_controllers(xctrl, yctrl)
 		self.screens['control_xy'].show()
@@ -1010,6 +993,51 @@ class zynthian_gui:
 			if 'audio_player' in self.status_info:
 				self.status_info.pop('audio_player')
 
+
+	#------------------------------------------------------------------
+	# MIDI learning
+	#------------------------------------------------------------------
+
+	def enter_midi_learn(self):
+		logging.debug("ENTER LEARN")
+		self.midi_learn_mode = True
+		self.midi_learn_zctrl = None
+		lib_zyncore.set_midi_learning_mode(1)
+		try:
+			logging.debug("ENTER LEARN => {}".format(self.current_screen))
+			self.screens[self.current_screen].enter_midi_learn()
+		except Exception as e:
+			logging.debug(e)
+			pass
+
+
+	def exit_midi_learn(self):
+		self.midi_learn_mode = False
+		self.midi_learn_zctrl = None
+		lib_zyncore.set_midi_learning_mode(0)
+		try:
+			self.screens[self.current_screen].exit_midi_learn()
+		except:
+			pass
+
+
+	def toggle_midi_learn(self):
+		if self.midi_learn_mode:
+			self.exit_midi_learn()
+		else:
+			self.enter_midi_learn()
+
+
+	def init_midi_learn_zctrl(self, zctrl):
+		self.midi_learn_zctrl = zctrl
+		lib_zyncore.set_midi_learning_mode(1)
+
+
+	def refresh_midi_learn_zctrl(self):
+		self.screens['control'].refresh_midi_bind()
+		self.screens['control'].set_select_path()
+
+
 	# -------------------------------------------------------------------
 	# Callable UI Actions
 	# -------------------------------------------------------------------
@@ -1107,16 +1135,19 @@ class zynthian_gui:
 			self.screens['midi_recorder'].toggle_playing()
 
 		elif cuia == "START_STEP_SEQ":
-			self.screens['stepseq'].start()
-
-		elif cuia == "PAUSE_STEP_SEQ":
-			self.screens['stepseq'].pause()
+			#TODO Implement this correctly or remove CUIA
+			#self.zynseq.start_transport()
+			pass
 
 		elif cuia == "STOP_STEP_SEQ":
-			self.screens['stepseq'].stop()
+			#TODO Implement this correctly or remove CUIA
+			#self.zynseq.stop_transport()
+			pass
 
 		elif cuia == "TOGGLE_STEP_SEQ":
-			self.screens['stepseq'].toggle_transport()
+			#TODO Implement this correctly or remove CUIA
+			#self.zynseq.toggle_transport()
+			pass
 
 		#----------------------------------------------------------------
 		# Basic UI-Control CUIAs
@@ -1255,34 +1286,40 @@ class zynthian_gui:
 		elif cuia == "SHOW_VIEW" and params:
 			self.show_screen_reset(params[0])
 		
-		elif cuia in ("MODAL_MAIN", "SCREEN_MAIN"):
+		elif cuia == "SCREEN_MAIN":
 			self.toggle_screen("main")
 
-		elif cuia in ("MODAL_ADMIN", "SCREEN_ADMIN"):
+		elif cuia == "SCREEN_ADMIN":
 			self.toggle_screen("admin")
 
-		elif cuia in ("MODAL_AUDIO_MIXER", "SCREEN_AUDIO_MIXER"):
+		elif cuia == "SCREEN_AUDIO_MIXER":
 			self.toggle_screen("audio_mixer")
 
-		elif cuia in ("MODAL_SNAPSHOT", "SCREEN_SNAPSHOT"):
+		elif cuia == "SCREEN_SNAPSHOT":
 			self.toggle_screen("snapshot")
 
-		elif cuia in ("MODAL_MIDI_RECORDER", "SCREEN_MIDI_RECORDER"):
+		elif cuia == "SCREEN_MIDI_RECORDER":
 			self.toggle_screen("midi_recorder")
 
-		elif cuia in ("MODAL_ALSA_MIXER", "SCREEN_ALSA_MIXER"):
+		elif cuia == "SCREEN_ALSA_MIXER":
 			self.toggle_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
 
-		elif cuia in ("MODAL_STEPSEQ", "SCREEN_STEPSEQ"):
-			self.toggle_screen("stepseq")
+		elif cuia == "SCREEN_ZYNPAD":
+			self.toggle_screen("zynpad")
 
-		elif cuia in ("MODAL_BANK", "SCREEN_BANK"):
+		elif cuia == "SCREEN_PATED":
+			self.toggle_screen("pattern_editor")
+
+		elif cuia == "SCREEN_ARRANGER":
+			self.toggle_screen("arranger")
+
+		elif cuia == "SCREEN_BANK":
 			self.toggle_screen("bank")
 
-		elif cuia in ("MODAL_PRESET", "SCREEN_PRESET"):
+		elif cuia == "SCREEN_PRESET":
 			self.toggle_screen("preset")
 
-		elif cuia in ("MODAL_CALIBRATE", "SCREEN_CALIBRATE"):
+		elif cuia == "SCREEN_CALIBRATE":
 			self.calibrate_touchscreen()
 
 		elif cuia in ("LAYER_CONTROL", "SCREEN_CONTROL"):
@@ -1303,15 +1340,12 @@ class zynthian_gui:
 		elif cuia == "PRESET_FAVS":
 			self.show_favorites()
 
-		elif cuia == "ZYNPAD":
-			self.show_screen('zynpad')
-
 		elif cuia == "ZCTRL_TOUCH":
 			if params:
 				self.screens['control'].midi_learn_zctrl(params[0])
 
 		elif cuia == "LEARN":
-			self.cuia_learn(params)
+			self.enter_midi_learn()
 
 
 	def cuia_layer_control(self, params=None):
@@ -1357,20 +1391,6 @@ class zynthian_gui:
 			self.toggle_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 		except Exception as e:
 			logging.warning("Can't show options for layer ({})! => {}".format(params,e))
-
-
-	def cuia_learn(self, params=None):
-		if not self.is_shown_alsa_mixer():
-			if self.current_screen == "zs3_learn":
-				self.close_screen()
-			elif self.current_screen != "control":
-				self.show_screen_reset("control")
-			else:
-				if zynthian_gui_config.midi_prog_change_zs3 and (self.midi_learn_mode or self.midi_learn_zctrl):
-					self.show_screen("zs3_learn")
-					return
-
-		self.enter_midi_learn_mode()
 
 
 	def cuia_bank_preset(self, params=None):
@@ -1591,7 +1611,7 @@ class zynthian_gui:
 			self.back_screen()
 
 		elif i==2:
-			pass
+			self.cuia_learn()
 
 		elif i==3:
 			self.screens[self.current_screen].switch_select('S')
@@ -2142,26 +2162,6 @@ class zynthian_gui:
 			lib_zyncore.ctrlfb_send_ccontrol_change(0xF, 0x64, 0x6)
 			lib_zyncore.ctrlfb_send_ccontrol_change(0xF, 0x65, 0x0)
 			lib_zyncore.ctrlfb_send_ccontrol_change(0xF, 0x06, upper_n_chans)
-
-	#------------------------------------------------------------------
-	# MIDI learning
-	#------------------------------------------------------------------
-
-
-	def init_midi_learn(self, zctrl):
-		self.midi_learn_zctrl = zctrl
-		lib_zyncore.set_midi_learning_mode(1)
-
-
-	def end_midi_learn(self):
-		self.midi_learn_zctrl = None
-		lib_zyncore.set_midi_learning_mode(0)
-		self.screens[self.current_screen].end_midi_learn()
-
-
-	def refresh_midi_learn(self):
-		self.screens['control'].refresh_midi_bind()
-		self.screens['control'].set_select_path()
 
 
 	#------------------------------------------------------------------

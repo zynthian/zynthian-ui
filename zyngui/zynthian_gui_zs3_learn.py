@@ -77,7 +77,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 			if t=='S':
 				self.zyngui.screens['layer'].restore_zs3(zs3_index)
 				self.zyngui.close_screen()
-				self.zyngui.exit_midi_learn_mode()
+				self.zyngui.exit_midi_learn()
 			elif t=='B':
 				self.zyngui.screens['zs3_options'].config(zs3_index)
 				self.zyngui.show_screen('zs3_options')
@@ -85,12 +85,20 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 			if zs3_index == "SAVE_ZS3":
 				self.zyngui.screens['layer'].save_zs3()
 				self.zyngui.close_screen()
-				self.zyngui.exit_midi_learn_mode()
+				self.zyngui.exit_midi_learn()
 
 
 	def back_action(self):
-		self.zyngui.exit_midi_learn_mode()
+		self.zyngui.exit_midi_learn()
 		return False
+
+
+	def enter_midi_learn(self):
+		self.zyngui.close_screen()
+
+
+	def exit_midi_learn(self):
+		pass
 
 
 	def set_select_path(self):

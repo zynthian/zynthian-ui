@@ -65,7 +65,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.zcontrollers = []
 		self.screen_name = None
 		self.controllers_lock = False
-
+		self.midi_learning = False
 		self.zgui_controllers = []
 
 		# xyselect mode vars
@@ -393,7 +393,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		elif swi == 2:
 			if t == 'S':
 				if self.mode == 'control':
-					self.zyngui.cuia_learn()
+					self.zyngui.enter_midi_learn()
 				return True
 
 		elif swi == 3:
@@ -457,12 +457,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return self.zgui_controllers[i]
 
 
-	def start_midi_learn(self):
+	def enter_midi_learn(self):
 		self.refresh_midi_bind()
 		self.set_select_path()
+		if self.midi_learning:
+			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
+				self.zyngui.show_screen("zs3_learn")
+		self.midi_learning = True
 
-    	
-	def end_midi_learn(self):
+
+	def exit_midi_learn(self):
+		self.midi_learning = False
 		self.refresh_midi_bind()
 		self.set_select_path()
 

@@ -79,7 +79,7 @@ class zynmixer(zynthian_engine):
 			logging.warning(e)
 
 
-	#	Destoy instance of shared library
+	#	Destroy instance of shared library
 	def destroy(self):
 		if self.lib_zynmixer:
 			self.lib_zynmixer.end()
@@ -404,13 +404,19 @@ class zynmixer(zynthian_engine):
 	# MIDI Learn
 	#--------------------------------------------------------------------------
 
-	def end_midi_learn(self, zctl):
-		logging.warning("Not implemented")
-		#TODO: Implement end_midi_learn
+	def midi_control_change(self, chan, ccnum, val):
+		pass
+		#TODO: Implement??
 
 
 	def midi_unlearn_chan(self, chan):
 		for symbol in self.zctrls[chan]:
-			self.midi_unlearn(self.zctrls[chan][symbol])
+			self.zctrls[channel][symbol].midi_unlearn()
+
+
+	def exit_midi_learn(self, zctl):
+		logging.warning("Not implemented")
+		#TODO: Implement!
+
 
 #-------------------------------------------------------------------------------

@@ -479,15 +479,13 @@ class zynthian_controller:
 			if self.midi_learn_cc:
 				self.midi_unlearn()
 
-			# If not a CC-mapped controller, delegate to engine's MIDI-learning implementation
-			if not self.midi_cc:
-				try:
-					self.engine.init_midi_learn(self)
-				except Exception as e:
-					logging.error(e)
+			try:
+				self.engine.init_midi_learn(self)
+			except Exception as e:
+				logging.error(e)
 
 			# Call GUI method
-			self.engine.zyngui.init_midi_learn(self)
+			self.engine.zyngui.init_midi_learn_zctrl(self)
 
 
 	def midi_unlearn(self):
@@ -496,21 +494,14 @@ class zynthian_controller:
 			logging.info("MIDI Unlearn: %s" % self.symbol)
 			unlearned=False
 
-			# If standard MIDI-CC controller, delete MIDI router map
-			if self.midi_cc:
-				unlearned = self.midi_unlearn_zyncoder()
-
-			# Else delegate to engine's MIDI-learning implementation
-			else:
-				try:
-					unlearned = self.engine.midi_unlearn(self)
-				except Exception as e:
-					logging.error(e)
+			try:
+				unlearned = self.engine.midi_unlearn(self)
+			except Exception as e:
+				logging.error(e)
 
 			if unlearned:
-				# Call GUI method
-				self.engine.zyngui.refresh_midi_learn()
-				# Return success
+				# Call GUI method & Return success
+				self.engine.zyngui.refresh_midi_learn_zctrl()
 				return True
 			else:
 				return False
@@ -524,31 +515,23 @@ class zynthian_controller:
 		if self.engine:
 			self.midi_unlearn()
 
-			# If standard MIDI-CC controller, create zyncoder MIDI router map ...
-			if self.midi_cc:
-				return self.midi_learn_zyncoder(chan, cc)
-			else:
-				try:
-					return self.engine.set_midi_learn(self, chan, cc)
-				except Exception as e:
-					logging.error(e)
+			try:
+				return self.engine.set_midi_learn(self, chan, cc)
+			except Exception as e:
+				logging.error(e)
 
 
 	def _set_midi_learn(self, chan, cc):
 		logging.info("MIDI-CC SET '{}' => {}, {}".format(self.symbol, chan, cc))
-		
 		self.midi_learn_chan = chan
 		self.midi_learn_cc = cc
-
 		return True
 
 
 	def _unset_midi_learn(self):
 		logging.info("MIDI-CC UNSET '{}' => {}, {}".format(self.symbol, self.midi_learn_chan, self.midi_learn_cc))
-		
 		self.midi_learn_chan = None
 		self.midi_learn_cc = None
-
 		return True
 
 
@@ -557,19 +540,14 @@ class zynthian_controller:
 		if self.engine:
 			learned=False
 
-			# If standard MIDI-CC controller, create zyncoder MIDI router map ...
-			if self.midi_cc:
-				learned = self.midi_learn_zyncoder(chan, cc)
-			else:
-				try:
-					learned = self.engine.cb_midi_learn(self, chan, cc)
-				except Exception as e:
-					return False
+			try:
+				learned = self.engine.cb_midi_learn(self, chan, cc)
+			except Exception as e:
+				return False
 
 			if learned:
-				# Call GUI method
-				self.engine.zyngui.end_midi_learn()
-				# Return success
+				# Call GUI method & Return success
+				self.engine.zyngui.exit_midi_learn()
 				return True
 			else:
 				return False
@@ -579,37 +557,8 @@ class zynthian_controller:
 
 	def _cb_midi_learn(self, chan, cc):
 		if self._set_midi_learn(chan, cc):
-			self.engine.zyngui.end_midi_learn()
+			self.engine.zyngui.exit_midi_learn()
 			return True
-
-
-	#--------------------------------------------------------------------------
-	# MIDI Learning (Native Zyncoder CC-Map Implementation)
-	#--------------------------------------------------------------------------
-
-
-	def midi_learn_zyncoder(self, chan, cc):
-		try:
-			if lib_zyncore.set_midi_filter_cc_swap(ctypes.c_ubyte(chan), ctypes.c_ubyte(cc), ctypes.c_ubyte(self.midi_chan), ctypes.c_ubyte(self.midi_cc)):
-				logging.info("Set MIDI filter CC map: (%s, %s) => (%s, %s)" % (chan, cc, self.midi_chan, self.midi_cc))
-				return self._set_midi_learn(chan, cc)
-			else:
-				logging.error("Can't set MIDI filter CC swap map: call returned 0")
-
-		except Exception as e:
-			logging.error("Can't set MIDI filter CC swap map: (%s, %s) => (%s, %s) => %s" % (self.midi_learn_chan, self.midi_learn_cc, self.midi_chan, self.midi_cc, e))
-
-
-	def midi_unlearn_zyncoder(self):
-		try:
-			if lib_zyncore.del_midi_filter_cc_swap(ctypes.c_ubyte(self.midi_learn_chan), ctypes.c_ubyte(self.midi_learn_cc)):
-				logging.info("Deleted MIDI filter CC map: {}, {}".format(self.midi_learn_chan, self.midi_learn_cc))
-				return self._unset_midi_learn()
-			else:
-				logging.error("Can't delete MIDI filter CC swap map: Call returned 0")
-
-		except Exception as e:
-			logging.error("Can't delete MIDI filter CC swap map: {}, {} => {}".format(self.midi_learn_chan, self.midi_learn_cc,e))
 
 
 	#----------------------------------------------------------------------------
