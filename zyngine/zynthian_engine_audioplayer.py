@@ -174,38 +174,34 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			record = 'stopped'
 		gain = self.player.get_gain()
 		default_b = 0
+		track_labels = ['mixdown']
+		track_values = [-1]
 		if dur:
-			track_labels = ['mixdown']
-			track_values = [-1]
 			channels = self.player.get_channels()
 			if channels > 1:
 				default_b = 1
 			for track in range(channels):
 				track_labels.append('{}'.format(track + 1))
 				track_values.append(track)
-			self._ctrls=[
-				['gain',None,gain,2.0],
-				['record',None,record,['stopped','recording']],
-				['loop',None,loop,['one-shot','looping']],
-				['transport',None,transport,['stopped','playing']],
-				['position',None,0.0,dur],
-				['left track',None,0,[track_labels,track_values]],
-				['right track',None,default_b,[track_labels,track_values]],
-				['loop start',None,0.0,dur],
-				['loop end',None,dur,dur]
-			]
 			self._ctrl_screens = [
 				['main',['record','loop','transport','position']],
 				['config',['left track','gain','right track']]
 			]
 		else:
-			self._ctrls=[
-				['gain',None,gain,2.0],
-				['record',None,record,['stopped','recording']]
-			]
 			self._ctrl_screens = [
 				['main',['record'],None,None],
 				['config',[None,'gain']]
+		]
+		self._ctrls=[
+			['gain',None,gain,2.0],
+			['record',None,record,['stopped','recording']],
+			['loop',None,loop,['one-shot','looping']],
+			['transport',None,transport,['stopped','playing']],
+			['position',None,0.0,dur],
+			['left track',None,0,[track_labels,track_values]],
+			['right track',None,default_b,[track_labels,track_values]],
+			['loop start',None,0.0,dur],
+			['loop end',None,dur,dur]
 		]
 		layer.refresh_controllers()
 		self.player.set_track_a(0)

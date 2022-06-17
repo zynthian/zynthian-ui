@@ -891,15 +891,16 @@ class zynthian_gui:
 			self.show_screen("preset")
 
 
-	def set_curlayer(self, layer, save=False):
+	def set_curlayer(self, layer, save=False, populate_screens=True):
 		if layer is not None:
 			if save and not self.is_shown_alsa_mixer():
 				self._curlayer = self.curlayer
 			self.curlayer = layer
-			self.screens['layer'].refresh_index()
-			self.screens['bank'].fill_list()
-			self.screens['preset'].fill_list()
-			self.screens['control'].fill_list()
+			if populate_screens:
+				self.screens['layer'].refresh_index()
+				self.screens['bank'].fill_list()
+				self.screens['preset'].fill_list()
+				self.screens['control'].fill_list()
 			self.screens['audio_mixer'].select_chain_by_layer(layer, set_curlayer=False)
 			self.set_active_channel()
 		else:

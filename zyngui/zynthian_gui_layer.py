@@ -1430,12 +1430,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		else:
 			self.reset_note_range()
 
-		# Mixer
-		if 'mixer' in state:
-			self.zyngui.zynmixer.set_state(state['mixer'])
-		else:
-			self.zyngui.zynmixer.reset_state()
-
 		# Set active layer
 		if state['index']<len(self.root_layers):
 			self.index = state['index']
@@ -1447,6 +1441,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		# Fill layer list
 		self.fill_list()
+
+		# Mixer
+		self.zyngui.zynmixer.reset_state()
+		if 'mixer' in state:
+			self.zyngui.zynmixer.set_state(state['mixer'])
 
 
 	def restore_state_zs3(self, state):
@@ -1626,6 +1625,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def _load_snapshot_layers(self, snapshot):
+		# Mute output to avoid unwanted noises
+		self.zyngui.zynmixer.set_mute(0xFF, True);
+
 		# Clean all layers, but don't stop unused engines
 		self.remove_all_layers(False)
 

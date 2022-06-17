@@ -389,8 +389,6 @@ class zynmixer(zynthian_engine):
 			if key in state:
 				for symbol in self.zctrls[chan]:
 					self.zctrls[chan][symbol].restore_state(state[key][symbol])
-			else:
-				self.zctrls[chan][symbol].set_value(self.zctrls[chan][symbol].value_default)
 
 
 	def send_update(self, chan, ctrl, value):
