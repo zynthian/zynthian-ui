@@ -251,6 +251,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.zyngui.show_screen('option')
 
 
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen == "option":
+			self.close_screen()
+
+
 	def menu_cb(self, option, params):
 		if option == 'Tempo':
 			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})

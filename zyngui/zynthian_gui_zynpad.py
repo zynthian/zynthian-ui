@@ -345,6 +345,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.zyngui.show_screen('option')
 
 
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen == "option":
+			self.close_screen()
+
+
 	def menu_cb(self, option, params):
 		if option == 'Arranger':
 			self.zyngui.show_screen('arranger')

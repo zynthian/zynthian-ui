@@ -220,6 +220,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.zyngui.show_screen('option')
 
 
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen == "option":
+			self.close_screen()
+
+
 	def menu_cb(self, option, params):
 		if option == 'Bank':
 			self.enable_param_editor(self, 'bank', 'Bank', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
