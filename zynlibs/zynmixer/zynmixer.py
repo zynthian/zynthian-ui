@@ -366,34 +366,31 @@ class zynmixer(zynthian_engine):
 	# Get full mixer state
 	# Returns: List of mixer channels containing dictionary of each state value
 	def get_state(self):
-		state = []
-		for channel in range(self.get_max_channels() + 1):
-			state.append({
-				'level':self.get_level(channel),
-				'balance':self.get_balance(channel),
-				'mute':self.get_mute(channel),
-				'solo':self.get_solo(channel),
-				'mono':self.get_mono(channel),
-				'phase':self.get_phase(channel)
-				})
+		state = {}
+		for chan in range(self.get_max_channels() + 1):
+			if chan < self.get_max_channels():
+				key = 'chan_{:02d}'.format(chan)
+			else:
+				key = 'main'
+			state[key] = {}
+			for symbol in self.zctrls[chan]:
+				zctrl = self.zctrls[chan][symbol]
+				state[key][zctrl.symbol] = zctrl.get_state()
 		return state
 
 	# Set full mixer state
 	# state: List of mixer channels containing dictionary of each state value
 	def set_state(self, state):
-		for index, strip in enumerate(state):
-			if 'level' in strip:
-				self.set_level(index, strip['level'], True)
-			if 'balance' in strip:
-				self.set_balance(index, strip['balance'], True)
-			if 'mute' in strip:
-				self.set_mute(index, strip['mute'], True)
-			if 'phase' in strip:
-				self.set_phase(index, strip['phase'], True)
-			if 'solo' in strip and index < self.get_max_channels():
-					self.set_solo(index, strip['solo'], True)
-			if 'mono' in strip:
-				self.set_mono(index, strip['mono'], True)
+		for chan in range(self.get_max_channels() + 1):
+			if chan < self.get_max_channels():
+				key = 'chan_{:02d}'.format(chan)
+			else:
+				key = 'main'
+			if key in state:
+				for symbol in self.zctrls[chan]:
+					self.zctrls[chan][symbol].restore_state(state[key][symbol])
+			else:
+				self.zctrls[chan][symbol].set_value(self.zctrls[chan][symbol].value_default)
 
 
 	def send_update(self, chan, ctrl, value):
@@ -405,11 +402,10 @@ class zynmixer(zynthian_engine):
 	#--------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		for chi in range(0,16):
-			try:
-				self.learned_cc[chi][ccnum].midi_control_change(val)
-			except:
-				pass
+		try:
+			self.learned_cc[chan][ccnum].midi_control_change(val)
+		except:
+			pass
 
 
 	def midi_unlearn_chan(self, chan):
