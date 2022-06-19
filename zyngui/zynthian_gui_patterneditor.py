@@ -30,11 +30,9 @@ import logging
 import tkinter.font as tkFont
 import json
 from xml.dom import minidom
-from time import sleep
 from datetime import datetime
 from math import ceil
 from collections import OrderedDict
-from os.path import dirname, realpath, basename
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -199,7 +197,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.set_title("Pattern {}".format(self.pattern))
 		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynthian_gui_config.SEQ_LOOP)
 		self.zyngui.zynseq.libseq.enableMidiInput(True)
-		self.draw_grid()
 		super().show()
 
 
@@ -281,7 +278,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif option == 'Transpose pattern':
 			self.enable_param_editor(self, 'transpose', 'Transpose', {'value_min':-1, 'value_max':1, 'labels':['down','down/up','up'], 'value':0})
 		elif option == 'Vertical zoom':
-			self.enable_param_editor(self, 'vzoom', 'Vertical zoom', {'value_min':1, 'value_max':127, 'value_default':16, 'value':self.get_vertical_zoom()})
+			self.enable_param_editor(self, 'vzoom', 'Vertical zoom', {'value_min':1, 'value_max':127, 'value_default':16, 'value':self.zoom})
 		elif option == 'Scale':
 			self.enable_param_editor(self, 'scale', 'Scale', {'labels':self.get_scales(), 'value':self.zyngui.zynseq.libseq.getScale()})
 		elif option == 'Tonic':
@@ -992,11 +989,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if channel > 16:
 			channel = 0
 		return channel
-
-
-	# Function to get vertical zoom
-	def get_vertical_zoom(self):
-		return self.zoom
 
 
 	# Function to load new pattern

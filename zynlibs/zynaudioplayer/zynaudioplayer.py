@@ -78,7 +78,7 @@ class zynaudioplayer():
 	def __del__(self):
 		self.set_control_cb(None)
 		if self.libaudioplayer:
-			self.libaudioplayer.end()
+			self.libaudioplayer.remove_player(self.handle)
 			# Decrement ref to lib - when all ref removed shared lib will be unloaded
 			dlclose(self.libaudioplayer._handle)
 		

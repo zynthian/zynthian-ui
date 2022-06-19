@@ -888,7 +888,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.highlight_selected_chain()
 
 		if set_curlayer and self.selected_layer.engine:
-			self.zyngui.set_curlayer(self.selected_layer) #TODO: Lose this re-entrant loop
+			self.zyngui.set_curlayer(self.selected_layer, False, False) #TODO: Lose this re-entrant loop
 
 
 	# Function refresh and populate visible mixer strips
