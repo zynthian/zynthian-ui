@@ -98,7 +98,7 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock
         //printf("Start of pattern\n");
         // Playhead at start of pattern
         m_nCurrentPatternPos = nPosition;
-        m_nCurrentStep = 0;
+        m_nNextStep = 0;
         m_nNextEvent = 0;
         m_nClkPerStep = m_mPatterns[m_nCurrentPatternPos]->getClocksPerStep();
         if(m_nClkPerStep == 0)
@@ -113,7 +113,7 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock
         // At end of pattern
         m_nCurrentPatternPos = -1;
         m_nNextEvent = -1;
-        m_nCurrentStep = 0;
+        m_nNextStep = 0;
         m_nClkPerStep = 1;
         m_nEventValue = -1;
         m_nDivCount = 0;
@@ -141,7 +141,7 @@ SEQ_EVENT* Track::getEvent()
     // Track is being played and playhead is within a pattern
     Pattern* pPattern = m_mPatterns[m_nCurrentPatternPos];
     StepEvent* pEvent = pPattern->getEventAt(m_nNextEvent); // Don't advance event here because need to interpolate
-    if(pEvent && pEvent->getPosition() <= m_nCurrentStep)
+    if(pEvent && pEvent->getPosition() == m_nNextStep)
     {
         // Found event at (or before) this step
         if(m_nEventValue == pEvent->getValue2end())
@@ -149,11 +149,11 @@ SEQ_EVENT* Track::getEvent()
             // We have reached the end of interpolation so move on to next event
             m_nEventValue = -1;
             pEvent = pPattern->getEventAt(++m_nNextEvent);
-            if(!pEvent || pEvent->getPosition() != m_nCurrentStep)
+            if(!pEvent || pEvent->getPosition() != m_nNextStep)
             {
                 // No more events or next event is not this step so move to next step
-                if(++m_nCurrentStep >= pPattern->getSteps())
-                    m_nCurrentStep = 0;
+                if(++m_nNextStep >= pPattern->getSteps())
+                    m_nNextStep = 0;
                 return NULL;
             }
         }
@@ -174,8 +174,8 @@ SEQ_EVENT* Track::getEvent()
     else
     {
         m_nEventValue = -1;
-        if(++m_nCurrentStep >= pPattern->getSteps())
-            m_nCurrentStep = 0;
+        if(++m_nNextStep >= pPattern->getSteps())
+            m_nNextStep = 0;
         return NULL;
     }
     seqEvent.msg.command = pEvent->getCommand() | m_nChannel;
@@ -211,30 +211,16 @@ void Track::clear()
     m_nEventValue = -1;
     m_nCurrentPatternPos = -1;
     m_nNextEvent = -1;
-    m_nCurrentStep = 0;
+    m_nNextStep = 0;
     m_nClkPerStep = 1;
     m_nDivCount = 0;
     m_bChanged = true;
 }
 
-uint32_t Track::getPatternPlayhead()
-{
-    return m_nCurrentStep;
-}
-
-
-void Track::setPatternPlayhead(uint32_t step)
-{
-    if(m_nCurrentPatternPos >= 0 && step < m_mPatterns[m_nCurrentPatternPos]->getSteps())
-        m_nCurrentStep = step;
-//    printf("Track::setPatternPlayhead(step=%u) m_nCurrentPatternPos:%u steps in pattern: %u m_nCurrentStep:%u\n", step, m_nCurrentPatternPos, m_mPatterns[m_nCurrentPatternPos]->getSteps(),  m_nCurrentStep);
-}
-
-
 void Track::setPosition(uint32_t position)
 {
     m_nDivCount = m_nClkPerStep;
-    m_nCurrentStep = position / m_nClkPerStep;
+    m_nNextStep = position / m_nClkPerStep;
     m_nNextEvent = -1; // Avoid playing wrong pattern
     for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
     {

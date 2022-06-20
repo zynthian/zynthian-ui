@@ -1848,14 +1848,15 @@ class zynthian_gui:
 				elif evtype==0x9:
 					self.screens['midi_chan'].midi_chan_activity(chan)
 					#Preload preset (note-on)
-					if self.current_screen=='preset' and zynthian_gui_config.preset_preload_noteon and chan==self.curlayer.get_midi_chan():
+					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan==self.curlayer.get_midi_chan():
 						self.start_loading()
 						self.screens['preset'].preselect_action()
 						self.stop_loading()
 					#Note Range Learn
-					elif self.current_screen=='midi_key_range':
-						note = (ev & 0x7F00)>>8
-						self.screens['midi_key_range'].learn_note_range(note)
+					elif self.current_screen == 'midi_key_range':
+						self.screens['midi_key_range'].learn_note_range((ev & 0x7F00) >> 8)
+					elif self.current_screen == 'pattern_editor' and self.zynseq.libseq.getInputChannel() < 16:
+						self.screens['pattern_editor'].midi_note((ev & 0x7F00) >> 8)
 
 				# Pitch Bending ...
 				elif evtype==0xE:

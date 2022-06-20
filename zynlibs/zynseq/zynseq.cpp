@@ -44,7 +44,7 @@
 SequenceManager g_seqMan; // Instance of sequence manager
 Pattern* g_pPattern = 0; // Currently selected pattern
 uint32_t g_nPattern = 0; // Index of currently selected pattern
-Track* g_pTrack = 0; // Pattern editor track
+Sequence* g_pSequence = 0; // Pattern editor sequence
 jack_port_t * g_pInputPort; // Pointer to the JACK input port
 jack_port_t * g_pOutputPort; // Pointer to the JACK output port
 jack_port_t* g_pMetronomePort; // Pointer to the JACK metronome audio output port
@@ -392,9 +392,9 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         }
 
         // Handle MIDI events for programming patterns from MIDI input
-        if(g_bInputEnabled && g_pTrack && g_pPattern && g_nInputChannel == (midiEvent.buffer[0] & 0x0F))
+        if(g_bInputEnabled && g_pSequence && g_pPattern && g_nInputChannel == (midiEvent.buffer[0] & 0x0F))
         {
-            uint32_t nStep = g_pTrack->getPatternPlayhead();
+            uint32_t nStep = g_pSequence->getPlayPosition() / getClocksPerStep();
             bool bAdvance = false;
             if(((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64)
             {
@@ -425,11 +425,10 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             }
             if(bAdvance && transportGetPlayStatus() != JackTransportRolling)
             {
-                g_pTrack->setPosition(0);
                 if(++nStep >= g_pPattern->getSteps())
                     nStep = 0;
-                g_pTrack->setPatternPlayhead(nStep);
-                printf("libzynseq advancing to step %d\n", nStep);
+                g_pSequence->setPlayPosition(nStep * getClocksPerStep());
+                //printf("libzynseq advancing to step %d\n", nStep);
             }
         }
     }
@@ -475,7 +474,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         g_dFramesToNextClock -= nFrames;
         //g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
 
-        if(bSync && g_nPlayingSequences == 0)
+        if(g_nPlayingSequences == 0)
         {
             //!@todo bSync might have been reset by second clock within period - this should go within g_dFramesToNextClock loop
             //!@todo We stop at end of bar to encourage previous block of code to run but we may prefer to stop more promptly
@@ -661,7 +660,7 @@ void init(char* name) {
     transportRequestTimebase();
     transportStop("zynseq");
     transportLocate(0);
-    g_pTrack = g_seqMan.getSequence(0, 0)->getTrack(0);
+    g_pSequence = g_seqMan.getSequence(0, 0);
 }
 
 bool isModified()
@@ -733,7 +732,7 @@ bool checkBlock(FILE* pFile, uint32_t nActualSize,  uint32_t nExpectedSize)
 
 bool load(const char* filename)
 {
-    g_pTrack = NULL;
+    g_pSequence = NULL;
     g_seqMan.init();
     uint32_t nVersion = 0;
     FILE *pFile;
@@ -901,7 +900,7 @@ bool load(const char* filename)
     fclose(pFile);
     //printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu banks from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mBanks.size(), filename);
     g_bDirty = false;
-    g_pTrack = g_seqMan.getSequence(0, 0)->getTrack(0);
+    g_pSequence = g_seqMan.getSequence(0, 0);
     return true;
 }
 
@@ -1545,15 +1544,15 @@ uint32_t getLastStep()
     return g_pPattern->getLastStep();
 }
 
+uint32_t getPatternPlayhead()
+{
+    if(!g_pSequence)
+        return 0;
+    return g_pSequence->getPlayPosition() / getClocksPerStep();
+}
+
 // ** Sequence management functions **
 
-uint32_t getPatternPlayhead(uint8_t bank, uint8_t sequence, uint32_t track)
-{
-    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
-    if(!pTrack)
-        return 0;
-    return pTrack->getPatternPlayhead();
-}
 
 bool addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force)
 {

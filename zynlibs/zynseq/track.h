@@ -92,16 +92,6 @@ class Track
         */
         void clear();
 
-        /** @brief  Get position of playhead within currently playing pattern
-        *   @retval uint32_t Quantity of steps from start of pattern to playhead
-        */
-        uint32_t getPatternPlayhead();
-
-        /** @brief  Set position of playhead within currently playing pattern
-        *   @param  uint32_t Quantity of steps from start of pattern to playhead
-        */
-        void setPatternPlayhead(uint32_t step);
-
         /** @brief  Set position
         *   @param  position Quantity of clocks since start of track
         */
@@ -194,7 +184,7 @@ class Track
         int m_nNextEvent = -1; // Index of next event to process or -1 if no more events at this clock cycle
         int8_t m_nEventValue = -1; // Value of event at current interpolation point or -1 if no event
         uint32_t m_nLastClockTime = 0; // Time of last clock pulse (sample)
-        uint32_t m_nCurrentStep = 0; // Postion within pattern (step)
+        uint32_t m_nNextStep = 0; // Postion within pattern (step)
         uint32_t m_nTrackLength = 0; // Quantity of clock cycles in track (last pattern start + length)
         double m_dSamplesPerClock; // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
         bool m_bSolo = false; // True if track is solo

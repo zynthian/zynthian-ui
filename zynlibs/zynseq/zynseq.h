@@ -427,16 +427,12 @@ void setRefNote(uint8_t note);
 */
 uint32_t getLastStep();
 
-// ** Track management functions **
-
 /** @brief  Get position of playhead within pattern in steps
-*   @param  bank Index of bank
-*   @param  sequence Index of sequence
-*   @param  track Index of track
 *   @retval uint32_t Quantity of steps from start of pattern to playhead
-*   @todo   Function names confusing getPatternPlayhead / getStep (within Track)
 */
-uint32_t getPatternPlayhead(uint8_t bank, uint8_t sequence, uint32_t track);
+uint32_t getPatternPlayhead();
+
+// ** Track management functions **
 
 /** @brief  Add pattern to a track
 *   @param  bank Index of bank

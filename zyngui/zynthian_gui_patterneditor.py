@@ -25,6 +25,7 @@
 #******************************************************************************
 
 import os
+from queue import Queue
 import tkinter
 import logging
 import tkinter.font as tkFont
@@ -98,6 +99,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		#TODO: Get values from persistent storage
 		self.cells = [] # Array of cells indices
 		self.redraw_pending = 4 # What to redraw: 0=nothing, 1=selected cell, 2=selected row, 3=refresh grid, 4=rebuild grid
+		self.rows_pending = Queue()
 		self.title = "Pattern 0"
 		self.channel = 0
 		self.drawing = False # mutex to avoid mutliple concurrent] screen draws
@@ -1021,7 +1023,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to refresh status
 	def refresh_status(self, status):
 		super().refresh_status(status)
-		step = self.zyngui.zynseq.libseq.getPatternPlayhead(self.bank, self.sequence, 0)
+		step = self.zyngui.zynseq.libseq.getPatternPlayhead()
 		if self.playhead != step:
 			self.playhead = step
 			self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width, 0, 1 + self.playhead * self.step_width + self.step_width, PLAYHEAD_HEIGHT)
@@ -1029,6 +1031,17 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.redraw_pending = 3
 		if self.redraw_pending:
 			self.draw_grid()
+		pending_rows = set()
+		while not self.rows_pending.empty():
+			pending_rows.add(self.rows_pending.get_nowait())
+		while len(pending_rows):
+			self.draw_row(pending_rows.pop(), None)
+
+
+	# Function to handle MIDI notes (only used to refresh screen - actual MIDI input handled by lib)
+	def midi_note(self, note):
+		if note >= self.keymap_offset and note < self.keymap_offset + self.zoom:
+			self.rows_pending.put_nowait(note)
 
 
 	# Function to handle zynpots value change
