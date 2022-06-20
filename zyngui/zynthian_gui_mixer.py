@@ -671,6 +671,8 @@ class zynthian_gui_mixer_strip():
 			self.zctrls['mono'].init_midi_learn()
 			self.parent.main_canvas.itemconfig(mode, state=tkinter.NORMAL)
 
+		if mode != True and mode != False:
+			self.parent.update_learning(self)
 		self.flag_redraw()
 
 
@@ -1091,13 +1093,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
 	def enter_midi_learn(self):
-		if self.selected_layer and self.selected_layer.midi_chan is not None:
-			if self.selected_layer.midi_chan >= self.zynmixer.MAX_NUM_CHANNELS:
-				self.main_mixbus_strip.enable_midi_learn(True)
-			else:
-				self.visible_mixer_strips[self.selected_chain_index].enable_midi_learn(True)
-			self.midi_learning = True
+		for strip in self.visible_mixer_strips:
+			strip.enable_midi_learn(True)
+		self.main_mixbus_strip.enable_midi_learn(True)
+		self.midi_learning = True
 
+
+	# Respond to a strip being configured to midi learn
+	def update_learning(self, modified_strip):
+		for strip in self.visible_mixer_strips:
+			if strip != modified_strip:
+				strip.enable_midi_learn(False)
+		if modified_strip != self.main_mixbus_strip:
+			self.main_mixbus_strip.enable_midi_learn(False)
+		
     
 	def exit_midi_learn(self):
 		for strip in self.visible_mixer_strips:
