@@ -573,17 +573,15 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.param_editor_zctrl:
 			self.disable_param_editor()
 		self.grid_drag_start = event
-		try:
-			col,row = self.grid_canvas.gettags(self.grid_canvas.find_withtag(tkinter.CURRENT))[0].split(',')
-		except:
-			return
+		col = int(event.x / self.step_width)
+		row = self.zoom - int(event.y / self.row_height) - 1
 		note = self.keymap[self.keymap_offset + int(row)]["note"]
 		step = int(col)
 		if step < 0 or step >= self.zyngui.zynseq.libseq.getSteps():
 			return
 		self.drag_start_velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
 		self.drag_start_duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
-		self.drag_start_step = int(event.x / self.step_width)
+		self.drag_start_step = col
 		if not self.drag_start_velocity:
 			self.play_note(note)
 		self.select_cell(int(col), self.keymap_offset + int(row))
