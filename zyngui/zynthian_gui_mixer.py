@@ -1075,6 +1075,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# GUI Event Management
 	#--------------------------------------------------------------------------
 
+
+	# Function to override topbar touch action
+	def topbar_touch_action(self):
+		# Avoid toggle mute when touchbar pressed
+		self.topbar_bold_touch_action()
+
+
 	# Function to handle mouse wheel down when not over fader
 	#	event: Mouse event
 	def on_fader_wheel_down(self, event):
