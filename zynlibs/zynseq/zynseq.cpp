@@ -94,9 +94,11 @@ double g_dFramesPerClock = 60 * g_nSampleRate / (g_dTempo *  g_dTicksPerBeat) * 
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
 
 size_t g_nMetronomePtr = -1; // Position within metronome click wav data
-uint8_t g_nMetroTick = 1; // Factor to shift metronome pitch for tick/tock
-bool g_bMetronome = false; // True to enable metronome
 float g_fMetronomeLevel = 1.0; // Factor to scale metronome level (volume)
+bool g_bMetronome = false; // True to enable metronome
+struct metro_wav_t g_metro_pip;
+struct metro_wav_t g_metro_peep;
+struct metro_wav_t * g_pMetro = &g_metro_pip; // Pointer to the current metronome sound (pip/peep)
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
@@ -451,8 +453,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 // Clock zero so on beat
                 bSync = (g_nBeat == 1);
                 g_nTick = 0; //!@todo ticks are not updated under normal rolling condition
+                g_pMetro = bSync?&g_metro_pip:&g_metro_peep;
                 g_nMetronomePtr = 0;
-                g_nMetroTick = bSync?1:0;
             }
             // Schedule events in next period
             // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can synchronise its sequences, e.g. start zynpad sequences
@@ -476,34 +478,19 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
         if(g_nPlayingSequences == 0)
         {
-            //!@todo bSync might have been reset by second clock within period - this should go within g_dFramesToNextClock loop
-            //!@todo We stop at end of bar to encourage previous block of code to run but we may prefer to stop more promptly
             DPRINTF("Stopping transport because no sequences playing clock: %u beat: %u tick: %u\n", g_nClock, g_nBeat, g_nTick);
             transportStop("zynseq");
             g_nMetronomePtr = -1;
         }
-        if(g_nMetroTick) {
-            if(g_bMetronome && g_nMetronomePtr < sizeof(metronome_peep) / sizeof(float)) {
-                for(int n = 0; n < nFrames; ++n) {
-                    if(g_nMetronomePtr < sizeof(metronome_peep) / sizeof(float)) {
-                        pOutMetronome[n] = metronome_peep[g_nMetronomePtr++] * g_fMetronomeLevel;
-                    }
-                    else {
-                        g_nMetronomePtr = -1;
-                        pOutMetronome[n] = 0.0;
-                    }
+
+        if(g_bMetronome && g_nMetronomePtr >= 0) {
+            for(int n = 0; n < nFrames; ++n) {
+                if(g_nMetronomePtr < g_pMetro->size) {
+                    pOutMetronome[n] = g_pMetro->data[g_nMetronomePtr++] * g_fMetronomeLevel;
                 }
-            }
-        } else {
-            if(g_bMetronome && g_nMetronomePtr < sizeof(metronome_pip) / sizeof(float)) {
-                for(int n = 0; n < nFrames; ++n) {
-                    if(g_nMetronomePtr < sizeof(metronome_pip) / sizeof(float)) {
-                        pOutMetronome[n] = metronome_pip[g_nMetronomePtr++] * g_fMetronomeLevel;
-                    }
-                    else {
-                        g_nMetronomePtr = -1;
-                        pOutMetronome[n] = 0.0;
-                    }
+                else {
+                    g_nMetronomePtr = -1;
+                    pOutMetronome[n] = 0.0;
                 }
             }
         }
@@ -513,7 +500,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     if(g_mSchedule.size())
     {
         auto it = g_mSchedule.begin();
-        jack_nframes_t nTime, nNextTime = 0;
+        jack_nframes_t nTime = 0;
+        jack_nframes_t nNextTime = 0;
         while(it != g_mSchedule.end())
         {
             if(it->first >= nNow + nFrames)
@@ -602,6 +590,12 @@ void init(char* name) {
 
     g_pMidiLearnCb = NULL;
 
+    g_metro_pip.data = metronome_pip;
+    g_metro_pip.size = sizeof(metronome_pip) / sizeof(float);
+    g_metro_peep.data = metronome_peep;
+    g_metro_peep.size = sizeof(metronome_peep) / sizeof(float);
+
+
     // Register with Jack server
     printf("**zynseq initialising as %s**\n", name);
     char *sServerName = NULL;
@@ -647,7 +641,7 @@ void init(char* name) {
     // Register JACK callbacks
     jack_set_process_callback(g_pJackClient, onJackProcess, 0);
     jack_set_sample_rate_callback(g_pJackClient, onJackSampleRateChange, 0);
-    jack_set_xrun_callback(g_pJackClient, onJackXrun, 0); //!@todo Remove xrun handler (just for debug)
+//    jack_set_xrun_callback(g_pJackClient, onJackXrun, 0); //!@todo Remove xrun handler (just for debug)
 
     if(jack_activate(g_pJackClient)) {
         fprintf(stderr, "libzynseq cannot activate client\n");

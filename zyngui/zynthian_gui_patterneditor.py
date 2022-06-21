@@ -163,7 +163,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.play_canvas.grid(column=1, row=2)
 
 		self.playhead = 0
-#		self.startPlayheadHandler()
 
 		# Init touchbar
 		self.init_buttonbar()
@@ -1144,10 +1143,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					self.enable_edit(EDIT_MODE_ALL)
 			return True
 		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
-			if type == "B":
-				self.zyngui.zynseq.libseq.setTransportToStartOfBar()
-				return True
 			if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:
+				# Set to start of pattern - work around for timebase issue in library.
+				self.zyngui.zynseq.libseq.setPlayPosition(self.bank, self.sequence, 0)
 				self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STARTING)
 			else:
 				self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STOPPED)

@@ -262,6 +262,12 @@ class Pattern
         */
         StepEvent* getEventAt(uint32_t index);
 
+        /** @brief  Get index of first event at given time (step)
+        *   @param  step Index of step
+        *   @retval uint32_t Index of event or -1 if not found
+        */
+        int getFirstEventAtStep(uint32_t step);
+
         /** @brief  Get quantity of events in pattern
         *   @retval size_t Quantity of events
         */

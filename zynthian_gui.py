@@ -1149,6 +1149,12 @@ class zynthian_gui:
 			#self.zynseq.toggle_transport()
 			pass
 
+		elif cuia == "TEMPO":
+			try:
+				self.zynseq.set_tempo(params[0])
+			except:
+				pass
+
 		#----------------------------------------------------------------
 		# Basic UI-Control CUIAs
 		#----------------------------------------------------------------
