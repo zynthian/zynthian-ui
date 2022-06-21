@@ -356,7 +356,9 @@ class zynthian_gui_mixer_strip():
 				self.parent.main_canvas.itemconfig(ctrl, fill=zynthian_gui_config.color_ml)
 			else:
 				self.parent.main_canvas.itemconfig(ctrl, fill=self.button_txcol)
- 			
+				if ctrl == self.mono_text or ctrl == self.balance_text:
+					self.parent.main_canvas.itemconfig(ctrl, state=tkinter.HIDDEN)
+
 		if self.zynmixer.get_mute(self.layer.midi_chan):
 			self.parent.main_canvas.itemconfig(self.mute, fill=self.mute_color)
 			self.parent.main_canvas.itemconfig(self.mute_text, text="\uf32f") #f6a9
@@ -1094,7 +1096,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
 	def enter_midi_learn(self):
 		for strip in self.visible_mixer_strips:
-			strip.enable_midi_learn(True)
+			if strip.layer:
+				strip.enable_midi_learn(True)
 		self.main_mixbus_strip.enable_midi_learn(True)
 		self.midi_learning = True
 
