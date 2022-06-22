@@ -192,6 +192,8 @@ class zynthian_controller:
 			self.osc_path = cc
 		else:
 			self.midi_cc = cc
+			if self.midi_learn_cc is None:
+				self.set_midi_learn(chan, cc)
 
 		self.value_min = 0
 		self.value_max = 127

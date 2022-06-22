@@ -125,8 +125,7 @@ class zynthian_layer:
 
 	def reset(self):
 		# MIDI-unlearn all controllers
-		for k,zctrl in self.controllers_dict.items():
-			zctrl.midi_unlearn()
+		self.midi_unlearn()
 		# Delete layer from engine
 		self.engine.del_layer(self)
 		# Clear refresh flag
@@ -190,6 +189,10 @@ class zynthian_layer:
 		self.bank_info=None
 
 
+	# Set bank of layer's engine by index
+	# i: Index of the bank to select
+	# set_engine: True to set engine's bank
+	# returns: True if bank selected, None if more bank selection steps required or False on failure
 	def set_bank(self, i, set_engine=True):
 		if i < len(self.bank_list):
 			bank_name = self.bank_list[i][2]
@@ -197,12 +200,12 @@ class zynthian_layer:
 			if not bank_name:
 				return False
 
-			if i!=self.bank_index or self.bank_name!=bank_name:
+			if i != self.bank_index or self.bank_name != bank_name:
 				set_engine_needed = True
-				logging.info("Bank selected: %s (%d)" % (self.bank_name,i))
+				logging.info("Bank selected: %s (%d)" % (self.bank_name, i))
 			else:
 				set_engine_needed = False
-				logging.info("Bank already selected: %s (%d)" % (self.bank_name,i))
+				logging.info("Bank already selected: %s (%d)" % (self.bank_name, i))
 
 			last_bank_index = self.bank_index
 			last_bank_name = self.bank_name
@@ -210,29 +213,25 @@ class zynthian_layer:
 			self.bank_name = bank_name
 			self.bank_info = copy.deepcopy(self.bank_list[i])
 
-			if set_engine:
-				if set_engine_needed:
-					return self.engine.set_bank(self, self.bank_info)
-				else:
-					return False
+			if set_engine and set_engine_needed:
+				return self.engine.set_bank(self, self.bank_info)
 
-			return True
 		return False
 
 
 	#TODO Optimize search!!
 	def set_bank_by_name(self, bank_name, set_engine=True):
 		for i in range(len(self.bank_list)):
-			if bank_name==self.bank_list[i][2]:
-				return self.set_bank(i,set_engine)
+			if bank_name == self.bank_list[i][2]:
+				return self.set_bank(i, set_engine)
 		return False
 
 
 	#TODO Optimize search!!
 	def set_bank_by_id(self, bank_id, set_engine=True):
 		for i in range(len(self.bank_list)):
-			if bank_id==self.bank_list[i][0]:
-				return self.set_bank(i,set_engine)
+			if bank_id == self.bank_list[i][0]:
+				return self.set_bank(i, set_engine)
 		return False
 
 
@@ -369,13 +368,13 @@ class zynthian_layer:
 
 	def restore_preset(self):
 		if self.preset_name is not None and self.preload_info is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
-			if self.preset_bank_index is not None and self.bank_index!=self.preset_bank_index:
-				self.set_bank(self.preset_bank_index,False)
-			self.preload_index=None
-			self.preload_name=None
-			self.preload_info=None
-			logging.info("Restore Preset: %s (%d)" % (self.preset_name,self.preset_index))
-			self.engine.set_preset(self,self.preset_info)
+			if self.preset_bank_index is not None and self.bank_index != self.preset_bank_index:
+				self.set_bank(self.preset_bank_index, False)
+			self.preload_index = None
+			self.preload_name = None
+			self.preload_info = None
+			logging.info("Restore Preset: %s (%d)" % (self.preset_name, self.preset_index))
+			self.engine.set_preset(self, self.preset_info)
 			return True
 		return False
 
