@@ -142,8 +142,10 @@ class zynthian_controller:
 
 			#Calculate min, max
 			if self.ticks[0] <= self.ticks[-1]:
-				self.value_min = self.ticks[0]
-				self.value_max = self.ticks[-1]
+				if self.value_min == None:
+					self.value_min = self.ticks[0]
+				if self.value_max == None:
+					self.value_max = self.ticks[-1]
 				self.range_reversed = False
 			else:
 				self.value_min = self.ticks[-1]
