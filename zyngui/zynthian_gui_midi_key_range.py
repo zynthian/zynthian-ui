@@ -45,13 +45,15 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 
 	def __init__(self):
-		super().__init__()
+
 		self.buttonbar_config = [
-			(1, 'BACK\n[mixer]'),
-			(2, 'LEARN\n[snapshot]'),
-			(None),
-			(None)
+			None,
+			None,
+			None,
+			(2, 'LEARN\n[snapshot]')
 		]
+		super().__init__()
+
 		self.chan = None
 		self.note_low = 0
 		self.note_high = 127
@@ -121,8 +123,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		self.replot = True
 		self.plot_piano()
 		self.plot_text()
-
-		self.init_buttonbar()
 
 
 	def config(self, chan):

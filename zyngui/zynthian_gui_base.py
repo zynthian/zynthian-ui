@@ -171,7 +171,8 @@ class zynthian_gui_base:
 		self.param_editor_zctrl = None
 
 		# Init touchbar
-		#self.init_buttonbar()
+		self.buttonbar_frame = None
+		self.init_buttonbar()
 
 		self.button_push_ts = 0
 
@@ -227,11 +228,14 @@ class zynthian_gui_base:
 		self.set_title(self.title)
 
 
-	def init_buttonbar(self):
-		# Touchbar frame
-		if not zynthian_gui_config.enable_onscreen_buttons or not self.buttonbar_config:
+	def init_buttonbar(self, config=None):
+		if config is None:
+			config = self.buttonbar_config    			
+		if not zynthian_gui_config.enable_onscreen_buttons or not config:
 			return
 
+		if self.buttonbar_frame:
+			self.buttonbar_frame.grid_forget()
 		self.buttonbar_frame = tkinter.Frame(self.main_frame,
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.buttonbar_height,
@@ -240,10 +244,10 @@ class zynthian_gui_base:
 		self.buttonbar_frame.grid_propagate(False)
 		self.buttonbar_frame.grid_rowconfigure(
 			0, minsize=zynthian_gui_config.buttonbar_height, pad=0)
-		for i,button_config in enumerate(self.buttonbar_config):
+		for i,button_config in enumerate(config):
 			self.buttonbar_frame.grid_columnconfigure(
 				i, minsize=zynthian_gui_config.button_width, pad=0)
-			if self.buttonbar_config[i]:
+			if config[i]:
 				self.add_button(i, button_config[0], button_config[1])
 
 
@@ -682,7 +686,7 @@ class zynthian_gui_base:
 	#	name: Parameter human-friendly name
 	#	options: zctrl options dictionary
 	#	assert_cb: Optional function to call when editor closed with assert: fn(self,value)
-	#TODO: Add GUI control widgets for up/down (or can we use the on-screen buttons?)
+	#	Populates button bar with up/down buttons
 	def enable_param_editor(self, engine, symbol, name, options, assert_cb=None):
 		self.disable_param_editor()
 		self.param_editor_zctrl = zynthian_controller(engine, symbol, name, options)
@@ -696,6 +700,7 @@ class zynthian_gui_base:
 			self.format_print = "{}: {}"
 
 		self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
+		self.init_buttonbar([("SELECT_DOWN", "-1"),("SELECT_UP", "+1"),("SNAPSHOT_DOWN", "-10"),("SNAPSHOT_UP", "+10"),])
 		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
 	
 
@@ -705,6 +710,7 @@ class zynthian_gui_base:
 			del self.param_editor_zctrl
 		self.param_editor_zctrl = None
 		self.param_editor_assert_cb = None
+		self.init_buttonbar()
 		self.set_title(self.title)
 		
 #------------------------------------------------------------------------------

@@ -68,7 +68,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			None,
 			(zynthian_gui_config.ENC_SNAPSHOT, 'PLAY\n(goto 0)'),
 		]
-
 		super().__init__()
 
 		self.sequence_tracks = [] # Array of [Sequence,Track] that are visible within bank
@@ -147,9 +146,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.timebase_track_canvas.bind("<ButtonRelease-1>", self.on_time_drag_end)
 		self.timebase_track_canvas.bind("<B1-Motion>", self.on_time_drag_motion)
 		self.timebase_track_canvas.grid(column=2, row=2)
-
-		# Init touchbar
-		self.init_buttonbar()
 
 		self.bank = self.zyngui.zynseq.bank # Local copy so we know if it has changed and grid needs redrawing
 		self.update_sequence_tracks()
@@ -1129,11 +1125,11 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def zynpot_cb(self, encoder, dval):
 		if super().zynpot_cb(encoder, dval):
 			return
-		if encoder == zynthian_gui_config.ENC_BACK:
-			# BACK encoder adjusts track selection
+		if encoder == zynthian_gui_config.ENC_SELECT:
+			# SELECT encoder adjusts track selection
 			self.select_cell(self.selected_cell[0], self.selected_cell[1] + dval)
-		elif encoder == zynthian_gui_config.ENC_SELECT:
-			# SELECT encoder adjusts time selection
+		elif encoder == zynthian_gui_config.ENC_BACK:
+			# BACK encoder adjusts time selection
 			self.select_cell(self.selected_cell[0] + dval, self.selected_cell[1])
 		elif encoder == zynthian_gui_config.ENC_LAYER:
 			self.set_pattern(self.pattern + dval)
@@ -1171,20 +1167,26 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	#	CUIA Actions
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+		self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+		self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 
 
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
+		if self.param_editor_zctrl:
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+		else:
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 
 
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+		if self.param_editor_zctrl:
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+		else:
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 
 #------------------------------------------------------------------------------

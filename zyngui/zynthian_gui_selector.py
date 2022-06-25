@@ -43,7 +43,6 @@ from zyngui.zynthian_gui_controller import zynthian_gui_controller
 class zynthian_gui_selector(zynthian_gui_base):
 
 	def __init__(self, selcap='Select', wide=False, loading_anim=True):
-		super().__init__()
 
 		if not self.buttonbar_config:
 			self.buttonbar_config = [
@@ -52,7 +51,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 				(2, ''),
 				(3, 'SELECT\n[options]')
 			]
-
+		super().__init__()
 
 		self.index = 0
 		self.list_data = []
@@ -101,7 +100,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			selectbackground=zynthian_gui_config.color_ctrl_bg_on,
 			selectforeground=zynthian_gui_config.color_ctrl_tx,
 			selectmode=tkinter.SINGLE)
-		self.listbox.grid(sticky="wens")
+		self.listbox.grid(row=1, sticky="wens")
 		# Bind listbox events
 		self.listbox_push_ts = None
 		self.listbox.bind("<Button-1>",self.cb_listbox_push)
@@ -135,9 +134,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.loading_canvas = None
 			self.loading_index = 0
 			self.loading_item = None
-
-		# Init touchbar
-		self.init_buttonbar()
 
 		# Selector Controller Caption
 		self.selector_caption=selcap

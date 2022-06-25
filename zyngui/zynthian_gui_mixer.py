@@ -687,10 +687,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def __init__(self):	
 		
 		self.buttonbar_config = [
-			(0, 'MUTE\n[menu]'),
-			(2, 'SOLO\n[snapshot]'),
-			(1, 'CANCEL\n(learn)'),
-			(3, 'CONTROL\n[options]')
+			None,
+			None,
+			None,
+			(2, 'LEARN\n[snapshot]')
 		]
 		super().__init__()
 
@@ -744,7 +744,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			width=self.width,
 			bd=0, highlightthickness=0,
 			bg = zynthian_gui_config.color_panel_bg)
-		self.main_canvas.grid()
+		self.main_canvas.grid(row=1)
 
 		# Create mixer strip UI objects
 		for chain in range(len(self.visible_mixer_strips)):
@@ -769,9 +769,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.meter_mode = self.METER_CPU
 		else:
 			self.meter_mode = self.METER_NONE # Don't show meter in status bar
-
-		# Init touchbar
-		self.init_buttonbar()
 
 		self.set_title("Audio Mixer")
 
