@@ -712,5 +712,5 @@ class zynthian_gui_base:
 		self.param_editor_assert_cb = None
 		self.init_buttonbar()
 		self.set_title(self.title)
-		
+
 #------------------------------------------------------------------------------

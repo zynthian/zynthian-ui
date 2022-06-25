@@ -98,15 +98,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if event == zynseq.SEQ_EVENT_LOAD:
 			self.redraw_pending = 2
 		elif event == zynseq.SEQ_EVENT_BANK:
+			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
 			if self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank) != self.columns ** 2:
 				self.redraw_pending = 2
 			else:
 				self.redraw_pending = 1
-		elif self.redraw_pending < 2 and event in [zynseq.SEQ_EVENT_BANK,
+		elif self.redraw_pending < 2 and event in [
 					zynseq.SEQ_EVENT_CHANNEL,
 					zynseq.SEQ_EVENT_GROUP,
 					zynseq.SEQ_EVENT_SEQUENCE]:
-			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
 			self.redraw_pending = 1
 		elif event == zynseq.SEQ_EVENT_MIDI_LEARN:
 			if self.param_editor_zctrl:
