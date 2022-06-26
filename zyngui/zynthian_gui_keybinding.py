@@ -5,7 +5,7 @@
 # 
 # Zynthian Keyboard Binding Class
 # 
-# Copyright (C) 2019 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2019-2022 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 # 
@@ -169,6 +169,7 @@ class zynthian_gui_keybinding:
 			elif rkey == '0^up': return('ARROW_UP')
 			elif rkey == '0^left': return('ARROW_LEFT')
 			elif rkey == '0^right': return('ARROW_RIGHT')
+			elif rkey == '0^return': return('SELECT')
 			logging.debug("Key not configured")
 
 

@@ -1125,10 +1125,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def zynpot_cb(self, encoder, dval):
 		if super().zynpot_cb(encoder, dval):
 			return
-		if encoder == zynthian_gui_config.ENC_SELECT:
+		if encoder == zynthian_gui_config.ENC_BACK:
 			# SELECT encoder adjusts track selection
 			self.select_cell(self.selected_cell[0], self.selected_cell[1] + dval)
-		elif encoder == zynthian_gui_config.ENC_BACK:
+		elif encoder == zynthian_gui_config.ENC_SELECT:
 			# BACK encoder adjusts time selection
 			self.select_cell(self.selected_cell[0] + dval, self.selected_cell[1])
 		elif encoder == zynthian_gui_config.ENC_LAYER:
@@ -1167,26 +1167,26 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	#	CUIA Actions
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 
 
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 
 
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 
 #------------------------------------------------------------------------------

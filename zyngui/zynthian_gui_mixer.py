@@ -1103,6 +1103,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if strip.layer:
 				strip.enable_midi_learn(True)
 		self.main_mixbus_strip.enable_midi_learn(True)
+		self.init_buttonbar([(1, 'CANCEL')])
 		self.midi_learning = True
 
 
@@ -1120,6 +1121,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			strip.enable_midi_learn(False)
 		self.main_mixbus_strip.enable_midi_learn(False)
 		self.midi_learning = False
+		self.init_buttonbar()
 
 
 	def cb_ctrl_change(self, chan, ctrl, value):

@@ -1189,6 +1189,7 @@ class zynthian_gui:
 		# Select element in list => it receives an integer parameter!
 		elif cuia == "SELECT":
 			try:
+				#TODO: What is the correct screen function to call? "select()" seems to be obsolescent or rarely implemented 
 				self.get_current_screen_obj().select(params[0])
 			except:
 				pass
@@ -1313,7 +1314,15 @@ class zynthian_gui:
 		elif cuia == "SCREEN_ZYNPAD":
 			self.toggle_screen("zynpad")
 
-		elif cuia == "SCREEN_PATED":
+		elif cuia == "SCREEN_PATTERN_EDITOR":
+			pattern = self.screens["pattern_editor"].pattern
+			try:
+				pattern = params[0];
+			except:
+				pass
+			if pattern < 1:
+				pattern = 1
+			self.screens['pattern_editor'].load_pattern(pattern)
 			self.toggle_screen("pattern_editor")
 
 		elif cuia == "SCREEN_ARRANGER":

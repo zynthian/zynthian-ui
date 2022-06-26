@@ -461,7 +461,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def zynpot_cb(self, encoder, dval):
 		if super().zynpot_cb(encoder, dval):
 			return
-		if encoder == zynthian_gui_config.ENC_BACK:
+		if encoder == zynthian_gui_config.ENC_SELECT:
 			# BACK encoder adjusts horizontal pad selection
 			pad = self.selected_pad + self.columns * dval
 			col = int(pad / self.columns)
@@ -478,7 +478,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				return
 			self.selected_pad = pad
 			self.update_selection_cursor()
-		elif encoder == zynthian_gui_config.ENC_SELECT:
+		elif encoder == zynthian_gui_config.ENC_BACK:
 			# SELECT encoder adjusts vertical pad selection
 			pad = self.selected_pad + dval
 			if pad < 0 or pad >= self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank):
@@ -516,27 +516,27 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	#	CUIA Actions
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 
 
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 
 
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 
 
 #------------------------------------------------------------------------------
