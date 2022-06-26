@@ -349,36 +349,43 @@ class zynthian_gui_mixer_strip():
 
 		self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - self.zynmixer.get_level(self.layer.midi_chan)), self.x + self.fader_width, self.fader_bottom)
 
-		for ctrl in [self.mute_text, self.solo_text, self.legend, self.balance_text, self.mono_text]:
-			if self.midi_learning == ctrl:
-				self.parent.main_canvas.itemconfig(ctrl, fill=zynthian_gui_config.color_hl)
+		for ctrl in ([self.mute_text,'mute'], [self.solo_text,'solo'], [self.legend,'level'], [self.balance_text,'balance'], [self.mono_text,'mono']):
+			if self.midi_learning == ctrl[0]:
+				self.parent.main_canvas.itemconfig(ctrl[0], fill=zynthian_gui_config.color_hl)
 			elif self.midi_learning == True:
-				self.parent.main_canvas.itemconfig(ctrl, fill=zynthian_gui_config.color_ml)
+				if self.zctrls[ctrl[1]].midi_learn_cc:
+					lbl = '{}#{}'.format(self.zctrls[ctrl[1]].midi_learn_chan + 1, self.zctrls[ctrl[1]].midi_learn_cc)
+				else:
+					lbl = '??'
+				self.parent.main_canvas.itemconfig(ctrl[0], fill=zynthian_gui_config.color_ml, text=lbl)
+				if ctrl[0] == self.mono_text or ctrl[0] == self.balance_text:
+					self.parent.main_canvas.itemconfig(ctrl[0], state=tkinter.NORMAL)
 			else:
-				self.parent.main_canvas.itemconfig(ctrl, fill=self.button_txcol)
-				if ctrl == self.mono_text or ctrl == self.balance_text:
-					self.parent.main_canvas.itemconfig(ctrl, state=tkinter.HIDDEN)
+				self.parent.main_canvas.itemconfig(ctrl[0], fill=self.button_txcol)
+				if ctrl[0] == self.mono_text or ctrl[0] == self.balance_text:
+					self.parent.main_canvas.itemconfig(ctrl[0], state=tkinter.HIDDEN)
+		if not self.midi_learning:
+			self.parent.main_canvas.itemconfig(self.solo_text, text="S")
+			if self.zynmixer.get_mute(self.layer.midi_chan):
+				self.parent.main_canvas.itemconfig(self.mute, fill=self.mute_color)
+				self.parent.main_canvas.itemconfig(self.mute_text, text="\uf32f") #f6a9
+			else:
+				self.parent.main_canvas.itemconfig(self.mute, fill=self.button_bgcol)
+				self.parent.main_canvas.itemconfig(self.mute_text, text="\uf028")
+				
+			if self.zynmixer.get_solo(self.layer.midi_chan):
+				self.parent.main_canvas.itemconfig(self.solo, fill=self.solo_color)
+			else:
+				self.parent.main_canvas.itemconfig(self.solo, fill=self.button_bgcol)
 
-		if self.zynmixer.get_mute(self.layer.midi_chan):
-			self.parent.main_canvas.itemconfig(self.mute, fill=self.mute_color)
-			self.parent.main_canvas.itemconfig(self.mute_text, text="\uf32f") #f6a9
-		else:
-			self.parent.main_canvas.itemconfig(self.mute, fill=self.button_bgcol)
-			self.parent.main_canvas.itemconfig(self.mute_text, text="\uf028")
-			
-		if self.zynmixer.get_solo(self.layer.midi_chan):
-			self.parent.main_canvas.itemconfig(self.solo, fill=self.solo_color)
-		else:
-			self.parent.main_canvas.itemconfig(self.solo, fill=self.button_bgcol)
-
-		if self.zynmixer.get_mono(self.layer.midi_chan):
-			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.mono_color)
-			self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.mono_color)
-			self.dpm_hold_color = "#FFFFFF"
-		else:
-			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.low_color)
-			self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.low_color)
-			self.dpm_hold_color = "#00FF00"
+			if self.zynmixer.get_mono(self.layer.midi_chan):
+				self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.mono_color)
+				self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.mono_color)
+				self.dpm_hold_color = "#FFFFFF"
+			else:
+				self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.low_color)
+				self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.low_color)
+				self.dpm_hold_color = "#00FF00"
 
 		balance = self.zynmixer.get_balance(self.layer.midi_chan)
 		if balance > 0:
@@ -655,11 +662,9 @@ class zynthian_gui_mixer_strip():
 	def enable_midi_learn(self, mode):
 		self.midi_learning = mode
 		if self.midi_learning == True:
-			self.parent.main_canvas.itemconfig(self.balance_text, state=tkinter.NORMAL)
-			self.parent.main_canvas.itemconfig(self.mono_text, state=tkinter.NORMAL)
+			pass
 		elif self.midi_learning == False:
-			self.parent.main_canvas.itemconfig(self.balance_text, state=tkinter.HIDDEN)
-			self.parent.main_canvas.itemconfig(self.mono_text, state=tkinter.HIDDEN)
+			pass
 		elif mode == self.legend:
 			self.zctrls['level'].init_midi_learn()
 		elif mode == self.balance_text:
