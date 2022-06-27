@@ -466,22 +466,20 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.zyngui.show_screen("zs3_learn")
 		else:
 			self.midi_learning = True
+			self.set_buttonbar_label(0, "CANCEL")
 
 
 	def exit_midi_learn(self):
 		self.midi_learning = False
 		self.refresh_midi_bind()
 		self.set_select_path()
+		self.set_buttonbar_label(0, "PRESETS\n[mixer]")
 
 
 	def refresh_midi_bind(self):
 		learning = False
 		for zgui_controller in self.zgui_controllers:
-			learning |= zgui_controller.set_midi_bind()
-		if learning:
-			self.set_buttonbar_label(0, "CANCEL")
-		else:
-			self.set_buttonbar_label(0, "PRESETS\n[mixer]")
+			zgui_controller.set_midi_bind()
 
 
 	def plot_zctrls(self, force=False):

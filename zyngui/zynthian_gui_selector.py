@@ -59,12 +59,12 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.zselector_hiden = False
 
 		# Listbox Size
-		self.lb_height = zynthian_gui_config.body_height
+		self.lb_height = zynthian_gui_config.body_height + 1
 		self.wide=wide
 		if self.wide:
-			self.lb_width=zynthian_gui_config.display_width-zynthian_gui_config.ctrl_width
+			self.lb_width=zynthian_gui_config.display_width - zynthian_gui_config.ctrl_width
 		else:
-			self.lb_width=zynthian_gui_config.display_width-2*zynthian_gui_config.ctrl_width-2
+			self.lb_width=zynthian_gui_config.display_width - 2 * zynthian_gui_config.ctrl_width - 2
 
 		self.listbox_motion_last_dy = 0
 		self.motion_pixels = int(1.0 * zynthian_gui_config.font_size)

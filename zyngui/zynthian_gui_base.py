@@ -240,15 +240,20 @@ class zynthian_gui_base:
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.buttonbar_height,
 			bg=zynthian_gui_config.color_bg)
-		self.buttonbar_frame.grid(row=3, column=0, columnspan=3, padx=(0,0), pady=(2,0), sticky=tkinter.S)
+		self.buttonbar_frame.grid(row=3, column=0, columnspan=3, padx=(0,0), pady=(2,0), sticky="ESW")
 		self.buttonbar_frame.grid_propagate(False)
 		self.buttonbar_frame.grid_rowconfigure(
 			0, minsize=zynthian_gui_config.buttonbar_height, pad=0)
-		for i,button_config in enumerate(config):
+		for i in range(4):
 			self.buttonbar_frame.grid_columnconfigure(
-				i, minsize=zynthian_gui_config.button_width, pad=0)
-			if config[i]:
-				self.add_button(i, button_config[0], button_config[1])
+				i,
+				weight=1,
+				uniform='buttonbar',
+				pad=0)
+			try:
+				self.add_button(i, config[i][0], config[i][1])
+			except:
+				pass
 
 
 	def set_buttonbar_label(self, column, label):
@@ -274,12 +279,10 @@ class zynthian_gui_base:
 			relief='flat',
 			font=zynthian_gui_config.font_buttonbar,
 			text=label)
-		if column==0:
-			padx = (0,1)
-		elif column==3:
-			padx = (1,0)
+		if column == 0:
+			padx = (0,0)
 		else:
-			padx = (1,1)
+			padx = (2,0)
 		select_button.grid(row=0, column=column, sticky='nswe', padx=padx)
 		select_button.bind('<ButtonPress-1>', lambda e: self.button_down(e))
 		select_button.bind('<ButtonRelease-1>', lambda e: self.button_up(cuia, e))

@@ -119,7 +119,7 @@ class zynthian_gui_controller:
 			self.shown=True
 			if not self.hidden:
 				if zynthian_gui_config.ctrl_both_sides:
-					if self.index%2==0:
+					if self.index % 2 == 0:
 						pady = (0,2)
 					else:
 						pady = (0,0)
