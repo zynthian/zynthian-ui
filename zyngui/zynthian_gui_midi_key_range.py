@@ -325,21 +325,23 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		return True
 
 
+	# Function to back event
+	def back_action(self):
+		if self.learn_mode:
+			self.zyngui.exit_midi_learn()
+			return True
+
+
 	def enter_midi_learn(self):
 		self.learn_mode = 1
 		self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.NORMAL)
+		self.init_buttonbar([(1, 'CANCEL')])
 
 
 	def exit_midi_learn(self):
 		self.learn_mode = 0
 		self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.HIDDEN)
-
-
-	def toggle_midi_learn(self):
-		if self.learn_mode>0:
-			self.exit_midi_learn()
-		else:
-			self.enter_midi_learn()
+		self.init_buttonbar()
 		
 
 	def send_controller_value(self, zctrl):
