@@ -59,7 +59,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.zselector_hiden = False
 
 		# Listbox Size
-		self.lb_height=zynthian_gui_config.body_height+1
+		self.lb_height = zynthian_gui_config.body_height
 		self.wide=wide
 		if self.wide:
 			self.lb_width=zynthian_gui_config.display_width-zynthian_gui_config.ctrl_width
@@ -75,15 +75,15 @@ class zynthian_gui_selector(zynthian_gui_base):
 			height=self.lb_height,
 			bg=zynthian_gui_config.color_bg)
 		if self.wide:
-			if zynthian_gui_config.select_ctrl>1:
-				self.lb_frame.grid(row=1, column=0, rowspan=4, columnspan=2, padx=(0,2), sticky="wn")
+			if zynthian_gui_config.select_ctrl > 1:
+				self.lb_frame.grid(row=1, column=0, rowspan=2, columnspan=2, padx=(0,2), sticky="wn")
 			else:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, columnspan=2, padx=(2,0), sticky="en")
+				self.lb_frame.grid(row=1, column=1, rowspan=2, columnspan=2, padx=(2,0), sticky="en")
 		else:
-			if zynthian_gui_config.select_ctrl>1:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="wn")
+			if zynthian_gui_config.select_ctrl > 1:
+				self.lb_frame.grid(row=1, column=1, rowspan=2, padx=(2,2), sticky="wn")
 			else:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="en")
+				self.lb_frame.grid(row=1, column=1, rowspan=2, padx=(2,2), sticky="en")
 
 		self.lb_frame.columnconfigure(0, weight=10)
 		self.lb_frame.rowconfigure(0, weight=10)
@@ -100,7 +100,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			selectbackground=zynthian_gui_config.color_ctrl_bg_on,
 			selectforeground=zynthian_gui_config.color_ctrl_tx,
 			selectmode=tkinter.SINGLE)
-		self.listbox.grid(row=1, sticky="wens")
+		self.listbox.grid(sticky="wens")
 		# Bind listbox events
 		self.listbox_push_ts = None
 		self.listbox.bind("<Button-1>",self.cb_listbox_push)

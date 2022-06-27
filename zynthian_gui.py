@@ -1189,8 +1189,16 @@ class zynthian_gui:
 		# Select element in list => it receives an integer parameter!
 		elif cuia == "SELECT":
 			try:
-				#TODO: What is the correct screen function to call? "select()" seems to be obsolescent or rarely implemented 
 				self.get_current_screen_obj().select(params[0])
+			except:
+				pass
+		# Select switch action (optional press duration parameter: 'S', 'B', 'L')
+		elif cuia == "SWITCH_SELECT":
+			try:
+				if params:
+					self.get_current_screen_obj().switch_select(params[0])
+				else:
+					self.get_current_screen_obj().switch_select()
 			except:
 				pass
 

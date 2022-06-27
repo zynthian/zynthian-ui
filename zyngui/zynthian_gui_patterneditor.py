@@ -1121,6 +1121,20 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
 
 
+	# Function to handle SELECT button press
+	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
+	def switch_select(self, type='S'):
+		if type == "S":
+			note = self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+			if note:
+				self.play_note(note)
+		elif type == "B":
+			if self.edit_mode == EDIT_MODE_NONE:
+				self.enable_edit(EDIT_MODE_SINGLE)
+			else:
+				self.enable_edit(EDIT_MODE_ALL)
+
+
 	# Function to handle switch press
 	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
@@ -1129,15 +1143,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if super().switch(switch, type):
 			return True
 		if switch == zynthian_gui_config.ENC_SELECT:
-			if type == "S":
-				note = self.toggle_event(self.selected_cell[0], self.selected_cell[1])
-				if note:
-					self.play_note(note)
-			elif type == "B":
-				if self.edit_mode == EDIT_MODE_NONE:
-					self.enable_edit(EDIT_MODE_SINGLE)
-				else:
-					self.enable_edit(EDIT_MODE_ALL)
+			self.switch_select(type)
 			return True
 		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
 			if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:

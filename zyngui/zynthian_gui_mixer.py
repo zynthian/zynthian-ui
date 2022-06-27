@@ -708,8 +708,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.midi_learning = False
 
 		# Geometry vars
-		self.width=zynthian_gui_config.display_width
-		self.height=zynthian_gui_config.body_height
+		self.width = zynthian_gui_config.display_width
+		self.height = zynthian_gui_config.body_height
 
 		self.number_layers = 0 # Quantity of layers
 		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
@@ -985,6 +985,21 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Physical UI Control Management: Pots & switches
 	#--------------------------------------------------------------------------
 
+	# Function to handle SELECT button press
+	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
+	def switch_select(self, type='S'):
+		if isinstance(self.selected_layer, zyngine.zynthian_layer):
+			if type == "S":
+				self.zyngui.layer_control(self.selected_layer)
+			elif type == "B":
+				# Layer Options
+				self.zyngui.screens['layer'].select(self.selected_chain_index)
+				self.zyngui.screens['layer_options'].reset()
+				self.zyngui.show_screen('layer_options')
+			elif type == "B":
+				self.show_mainfx_options()
+
+
 	# Function to handle switches press
 	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
@@ -1005,16 +1020,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 
 		elif swi == 3:
-			if isinstance(self.selected_layer, zyngine.zynthian_layer):
-				if t == "S":
-					self.zyngui.layer_control(self.selected_layer)
-				elif t == "B":
-					# Layer Options
-					self.zyngui.screens['layer'].select(self.selected_chain_index)
-					self.zyngui.screens['layer_options'].reset()
-					self.zyngui.show_screen('layer_options')
-			elif t == "B":
-				self.show_mainfx_options()
+			self.switch_select(t)
 			return True
 
 		return False

@@ -58,7 +58,7 @@ class zynthian_gui_base:
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
 		self.height=zynthian_gui_config.display_height
-		if  zynthian_gui_config.enable_onscreen_buttons:
+		if zynthian_gui_config.enable_onscreen_buttons:
 			self.buttonbar_height = zynthian_gui_config.buttonbar_height
 		else:
 			self.buttonbar_height = 0

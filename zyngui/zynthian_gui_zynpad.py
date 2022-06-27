@@ -493,6 +493,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.set_title("Bank {}".format(self.zyngui.zynseq.bank))
 
 
+	# Function to handle SELECT button press
+	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
+	def switch_select(self, type='S'):
+		if type == 'S':
+			self.toggle_pad()
+		elif type == "B":
+			self.show_editor()
+
+
 	# Function to handle switch press
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
@@ -502,10 +511,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if super().switch(switch, type):
 			return True
 		if switch == zynthian_gui_config.ENC_SELECT:
-			if type == 'S':
-				self.toggle_pad()
-			elif type == "B":
-				self.show_editor()
+			self.switch_select(type)
 			return True
 		elif switch == zynthian_gui_config.ENC_LAYER and type == 'S':
 			self.show_menu()

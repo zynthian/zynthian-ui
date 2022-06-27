@@ -1138,6 +1138,12 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
 
 
+	# Function to handle SELECT button press
+	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
+	def switch_select(self, type='S'):
+		self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+
+
 	# Function to handle switch press
 	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
@@ -1149,7 +1155,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.show_pattern_editor()
 			return True
 		elif switch == zynthian_gui_config.ENC_SELECT:
-			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+			self.switch_select(type)
 			return True
 		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
 			if type == 'S':
