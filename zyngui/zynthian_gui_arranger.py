@@ -62,13 +62,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to initialise class
 	def __init__(self):
 
-		self.buttonbar_config = [
-			(zynthian_gui_config.ENC_LAYER, 'MENU\n(main menu)'),
-			None,
-			None,
-			(zynthian_gui_config.ENC_SNAPSHOT, 'PLAY\n(goto 0)'),
-		]
 		super().__init__()
+		self.status_canvas.bind("<ButtonRelease-1>", self.cb_status_release)
 
 		self.sequence_tracks = [] # Array of [Sequence,Track] that are visible within bank
 		self.sequence = 0 # Index of selected sequence
@@ -1165,7 +1160,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			else:
 				return False
 			return True
-		elif switch == zynthian_gui_config.ENC_LAYER and type == 'S':
+		elif switch == zynthian_gui_config.ENC_LAYER and type == 'B':
 			self.show_menu()
 			return True
 
@@ -1194,5 +1189,25 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 		else:
 			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+
+
+	def start_playback(self):
+		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STARTING)
+
+
+	def stop_playback(self):
+		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STOPPED)
+
+
+	def toggle_playback(self):
+		if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:
+			self.start_playback()
+		else:
+			self.stop_playback()
+
+
+	# Default status area release callback
+	def cb_status_release(self, params=None):
+		self.toggle_playback()
 
 #------------------------------------------------------------------------------

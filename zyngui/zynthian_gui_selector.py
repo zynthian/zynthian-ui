@@ -44,13 +44,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def __init__(self, selcap='Select', wide=False, loading_anim=True):
 
-		if not self.buttonbar_config:
-			self.buttonbar_config = [
-				(1, 'BACK\n[mixer]'),
-				(0, ''),
-				(2, ''),
-				(3, 'SELECT\n[options]')
-			]
 		super().__init__()
 
 		self.index = 0
@@ -59,7 +52,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.zselector_hiden = False
 
 		# Listbox Size
-		self.lb_height = zynthian_gui_config.body_height + 1
+		self.lb_height = zynthian_gui_config.get_body_height(self.buttonbar_height) + 1
 		self.wide=wide
 		if self.wide:
 			self.lb_width=zynthian_gui_config.display_width - zynthian_gui_config.ctrl_width
@@ -342,7 +335,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 				dy = self.listbox_motion_y0 - event.y
 				if abs(dy) >= self.motion_pixels:
 					if self.listbox_motion_last_dy==0 or dy * self.listbox_motion_last_dy < 0:
-						self.index += int((dy/abs(dy))*self.motion_pixels)
+						self.index += int((dy / abs(dy))*self.motion_pixels)
 					self.listbox_motion_last_dy = dy
 					self.listbox_motion_sumy += abs(dy)
 					self.listbox.yview_scroll(dy // self.motion_pixels, tkinter.UNITS)

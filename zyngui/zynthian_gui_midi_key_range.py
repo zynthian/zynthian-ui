@@ -46,12 +46,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def __init__(self):
 
-		self.buttonbar_config = [
-			None,
-			None,
-			None,
-			(2, 'LEARN\n[snapshot]')
-		]
 		super().__init__()
 
 		self.chan = None
@@ -70,17 +64,16 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		if zynthian_gui_config.ctrl_both_sides:
 			self.space_frame_width = zynthian_gui_config.display_width - 2 * zynthian_gui_config.ctrl_width
 			self.space_frame_height = zynthian_gui_config.ctrl_height - 2
-			self.piano_canvas_width = zynthian_gui_config.display_width
 			self.piano_canvas_height = int(zynthian_gui_config.ctrl_height / 2)
-			self.note_info_canvas_height = zynthian_gui_config.ctrl_height - self.piano_canvas_height
 			self.zctrl_pos = [0, 2, 1, 3]
 		else:
-			self.space_frame_width = zynthian_gui_config.display_width-zynthian_gui_config.ctrl_width
+			self.space_frame_width = zynthian_gui_config.display_width - zynthian_gui_config.ctrl_width
 			self.space_frame_height = 2 * zynthian_gui_config.ctrl_height - 1
-			self.piano_canvas_width = zynthian_gui_config.display_width
 			self.piano_canvas_height = zynthian_gui_config.ctrl_height
-			self.note_info_canvas_height = zynthian_gui_config.ctrl_height
 			self.zctrl_pos = [0, 1, 3, 2]
+		self.piano_canvas_width = zynthian_gui_config.display_width
+		self.note_info_canvas_height = zynthian_gui_config.get_body_height(self.buttonbar_height) - zynthian_gui_config.ctrl_height - self.piano_canvas_height
+
 
 		self.space_frame = tkinter.Frame(self.main_frame,
 			width=self.space_frame_width,
@@ -112,9 +105,9 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			relief='flat',
 			bg = "#000000")
 		if zynthian_gui_config.ctrl_both_sides:
-			self.piano_canvas.grid(row=2, column=0, rowspan=1, columnspan=3, sticky="ws")
+			self.piano_canvas.grid(row=3, column=0, rowspan=1, columnspan=3, sticky="wens")
 		else:
-			self.piano_canvas.grid(row=4, column=0, rowspan=1, columnspan=3, sticky="ws")
+			self.piano_canvas.grid(row=4, column=0, rowspan=1, columnspan=3, sticky="wens")
 
 		# Setup Piano's Callback
 		self.piano_canvas.bind("<Button-1>", self.cb_piano_press)
@@ -164,7 +157,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			# plot black key when needed ...
 			if self.black_keys_pattern[i % 7]:
 				x1b = x1 - int(key_width / 3)
-				x2b = x1b + int(2*key_width / 3)
+				x2b = x1b + int(2 * key_width / 3)
 				if x2b < self.piano_canvas_width:
 					if self.note_low > midi_note or self.note_high < midi_note:
 						bgcolor = "#707070"
@@ -243,10 +236,15 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			int((self.note_info_canvas_height-fs) / 1.5),
 			width=5 * fs,
 			justify=tkinter.CENTER,
-			fill=zynthian_gui_config.color_ml,
+			fill="Dark Grey",
 			font=(zynthian_gui_config.font_family, int(fs * 0.7)),
-			text="learning...",
-			state=tkinter.HIDDEN)
+			text="not learning",
+			)
+		self.note_info_canvas.tag_bind(self.learn_text, "<ButtonRelease-1>", self.toggle_midi_learn)
+
+
+	def toggle_midi_learn(self, event):
+		self.zyngui.toggle_midi_learn()
 
 
 	def update_text(self):
@@ -334,15 +332,13 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def enter_midi_learn(self):
 		self.learn_mode = 1
-		self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.NORMAL)
-		self.init_buttonbar([(1, 'CANCEL')])
+		self.note_info_canvas.itemconfig(self.learn_text, text="learning...", fill=zynthian_gui_config.color_ml)
 
 
 	def exit_midi_learn(self):
 		self.learn_mode = 0
-		self.note_info_canvas.itemconfig(self.learn_text, state=tkinter.HIDDEN)
-		self.init_buttonbar()
-		
+		self.note_info_canvas.itemconfig(self.learn_text, text="not learning", fill="Dark Grey")
+
 
 	def send_controller_value(self, zctrl):
 		if self.shown:

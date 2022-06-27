@@ -44,33 +44,33 @@ class zynthian_controller:
 		self.group_symbol = None
 		self.group_name = None
 
-		self.value=0 # Absolute value of the control
-		self.value_default=0 # Default value to use when reset control
-		self.value_min=None # Minimum value of control range
-		self.value_mid=None # Mid-point value of control range (used for toggle controls)
-		self.value_max=None # Maximum value of control range
-		self.value_range=None # Span of permissible values 
+		self.value = 0 # Absolute value of the control
+		self.value_default = 0 # Default value to use when reset control
+		self.value_min = None # Minimum value of control range
+		self.value_mid = None # Mid-point value of control range (used for toggle controls)
+		self.value_max = None # Maximum value of control range
+		self.value_range = None # Span of permissible values 
 		self.nudge_factor = None # Factor to scale each up/down nudge #TODO: This is not set if configure is not called or options not passed
-		self.labels=None # List of discrete value labels
-		self.ticks=None # List of discrete value labels
+		self.labels = None # List of discrete value labels
+		self.ticks = None # List of discrete value labels
 		self.range_reversed = False # Flag if ticks order is reversed
-		self.is_toggle=False # True if control is Boolean toggle
-		self.is_integer=True # True if control is Integer
-		self.is_logarithmic=False # True if control uses logarithmic scale
-		self.is_dirty=True # True if control value changed since last UI update
+		self.is_toggle = False # True if control is Boolean toggle
+		self.is_integer = True # True if control is Integer
+		self.is_logarithmic = False # True if control uses logarithmic scale
+		self.is_dirty = True # True if control value changed since last UI update
 
 		# Parameters to send values if dedciated engine send method not available
-		self.midi_chan=None # MIDI channel to send CC messages from control
-		self.midi_cc=None
-		self.osc_port=None # OSC destination port
-		self.osc_path=None # OSC path to send value to
-		self.graph_path=None # Complex map of control to engine parameter
+		self.midi_chan = None # MIDI channel to send CC messages from control
+		self.midi_cc = None
+		self.osc_port = None # OSC destination port
+		self.osc_path = None # OSC path to send value to
+		self.graph_path = None # Complex map of control to engine parameter
 
-		self.midi_learn_chan=None # MIDI channel to send MIDI learn value
-		self.midi_learn_cc=None # MIDI CC to send MIDI learn value
+		self.midi_learn_chan = None # MIDI channel to send MIDI learn value
+		self.midi_learn_cc = None # MIDI CC to send MIDI learn value
 
-		self.label2value=None # Dictionary for fast conversion from discrete label to value 
-		self.value2label=None # Dictionary for fast conversion from discrete value to label 
+		self.label2value = None # Dictionary for fast conversion from discrete label to value
+		self.value2label = None # Dictionary for fast conversion from discrete value to label
 
 		if options:
 			self.set_options(options)
@@ -78,50 +78,51 @@ class zynthian_controller:
 
 	def set_options(self, options):
 		if 'symbol' in options:
-			self.symbol=options['symbol']
+			self.symbol = options['symbol']
 		if 'name' in options:
-			self.name=options['name']
+			self.name = options['name']
 		if 'short_name' in options:
-			self.short_name=options['short_name']
+			self.short_name = options['short_name']
 		if 'group_name' in options:
-			self.group_name=options['group_name']
+			self.group_name = options['group_name']
 		if 'group_symbol' in options:
-			self.group_symbol=options['group_symbol']
+			self.group_symbol = options['group_symbol']
 		if 'value' in options:
-			self.value=options['value']
+			self.value = options['value']
 		if 'value_default' in options:
-			self.value_default=options['value_default']
+			self.value_default = options['value_default']
 		if 'value_min' in options:
-			self.value_min=options['value_min']
+			self.value_min = options['value_min']
 		if 'value_max' in options:
-			self.value_max=options['value_max']
+			self.value_max = options['value_max']
 		if 'labels' in options:
-			self.labels=options['labels']
+			self.labels = options['labels']
 		if 'ticks' in options:
-			self.ticks=options['ticks']
+			self.ticks = options['ticks']
 		if 'is_toggle' in options:
-			self.is_toggle=options['is_toggle']
+			self.is_toggle = options['is_toggle']
 		if 'is_integer' in options:
-			self.is_integer=options['is_integer']
+			self.is_integer = options['is_integer']
 		if 'nudge_factor' in options:
-			self.nudge_factor=options['nudge_factor']
+			self.nudge_factor = options['nudge_factor']
 		if 'is_logarithmic' in options:
-			self.is_logarithmic=options['is_logarithmic']
+			self.is_logarithmic = options['is_logarithmic']
 		if 'midi_chan' in options:
-			self.midi_chan=options['midi_chan']
+			self.midi_chan = options['midi_chan']
 		if 'midi_cc' in options:
-			self.midi_cc=options['midi_cc']
+			self.midi_cc = options['midi_cc']
 		if 'osc_port' in options:
-			self.osc_port=options['osc_port']
+			self.osc_port = options['osc_port']
 		if 'osc_path' in options:
-			self.osc_path=options['osc_path']
+			self.osc_path = options['osc_path']
 		if 'graph_path' in options:
-			self.graph_path=options['graph_path']
+			self.graph_path = options['graph_path']
 		self._configure()
 
 
 	def _configure(self):
 		#Configure Selector Controller
+		self.range = None
 		if self.labels:
 			#Generate ticks if needed ...
 			if not self.ticks:
@@ -131,8 +132,7 @@ class zynthian_controller:
 					self.value_min = 0
 				if self.value_max == None:
 					self.value_max = n - 1
-				if self.value_range == None:
-					self.value_range = self.value_max - self.value_min + 1
+				self.value_range = self.value_max - self.value_min + 1
 				if self.is_integer:
 					for i in range(n):
 						self.ticks.append(self.value_min + int(i * self.value_range / n))
@@ -164,8 +164,7 @@ class zynthian_controller:
 			self.value_min = 0
 		if self.value_max == None:
 			self.value_max = 127
-		if self.value_range == None:
-			self.value_range = self.value_max - self.value_min
+		self.value_range = self.value_max - self.value_min
 
 		if self.value_mid == None:
 			if self.is_integer:

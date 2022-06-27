@@ -432,6 +432,10 @@ experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES',"").spli
 # X11 Related Stuff
 #------------------------------------------------------------------------------
 
+def get_body_height(buttonbar_height):
+	return display_height - topbar_height - buttonbar_height
+
+
 if "zynthian_gui.py" in sys.argv[0]:
 	import tkinter
 	from PIL import Image, ImageTk
@@ -470,7 +474,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 		# Geometric params
 		button_width = display_width // 4
 		buttonbar_height = enable_onscreen_buttons and display_height // 7 or 0
-		if display_width>=800:
+		if display_width >= 800:
 			topbar_height = display_height // 12
 			topbar_fs = int(1.5*font_size)
 			title_y = int(0.1 * topbar_height)
@@ -478,6 +482,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 			topbar_height = display_height // 10
 			topbar_fs = int(1.1*font_size)
 			title_y = int(0.05 * topbar_height)
+
 		body_height = display_height - topbar_height - buttonbar_height
 
 		# Controllers position and size

@@ -34,6 +34,8 @@ from xml.dom import minidom
 from datetime import datetime
 from math import ceil
 from collections import OrderedDict
+from threading import Timer
+from PIL import Image, ImageTk
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -70,13 +72,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to initialise class
 	def __init__(self):
 
-		self.buttonbar_config = [
-			(zynthian_gui_config.ENC_LAYER, 'MENU\n(main menu)'),
-			None,
-			None,
-			(zynthian_gui_config.ENC_SNAPSHOT, 'PLAY'),
-		]
 		super().__init__()
+
+		self.status_canvas.bind("<ButtonRelease-1>", self.cb_status_release)
 
 		os.makedirs(CONFIG_ROOT, exist_ok=True) #TODO: Do we want/need these dirs?
 
@@ -1146,19 +1144,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.switch_select(type)
 			return True
 		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
-			if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:
-				# Set to start of pattern - work around for timebase issue in library.
-				self.zyngui.zynseq.libseq.setPlayPosition(self.bank, self.sequence, 0)
-				self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STARTING)
-			else:
-				self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STOPPED)
+			self.toggle_playback()
 			return True
 		elif switch == zynthian_gui_config.ENC_BACK:
 			if self.edit_mode:
 				self.enable_edit(EDIT_MODE_NONE)
 				if type == 'S':
 					return True
-		elif switch == zynthian_gui_config.ENC_LAYER and type == 'S':
+		elif switch == zynthian_gui_config.ENC_LAYER and type == 'B':
 			self.show_menu()
 			return True
 		return False
@@ -1188,6 +1181,28 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 		else:
 			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+
+
+	def start_playback(self):
+		# Set to start of pattern - work around for timebase issue in library.
+		self.zyngui.zynseq.libseq.setPlayPosition(self.bank, self.sequence, 0)
+		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STARTING)
+
+
+	def stop_playback(self):
+		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STOPPED)
+
+
+	def toggle_playback(self):
+		if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:
+			self.start_playback()
+		else:
+			self.stop_playback()
+
+
+	# Default status area release callback
+	def cb_status_release(self, params=None):
+		self.toggle_playback()
 
 
 #------------------------------------------------------------------------------

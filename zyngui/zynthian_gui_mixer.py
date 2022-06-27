@@ -691,12 +691,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	def __init__(self):	
 		
-		self.buttonbar_config = [
-			None,
-			None,
-			None,
-			(2, 'LEARN\n[snapshot]')
-		]
 		super().__init__()
 
 		self.zynmixer = self.zyngui.zynmixer
@@ -709,7 +703,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Geometry vars
 		self.width = zynthian_gui_config.display_width
-		self.height = zynthian_gui_config.body_height
+		self.height = zynthian_gui_config.get_body_height(self.buttonbar_height)
 
 		self.number_layers = 0 # Quantity of layers
 		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
@@ -828,7 +822,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 								break
 				'''
 				while self.pending_refresh_queue:
-					self.pending_refresh_queue.pop().redraw_controls()
+					self.pending_refresh_queue.pop().draw()
 
 
 	#--------------------------------------------------------------------------
@@ -956,6 +950,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				options["[x] Recording Primed"] = primed_option
 			else:
 				options["[  ] Recording Primed"] = primed_option
+		options["MIDI Learn"] = "midi_learn"
 		options["> Audio Chain ---------------"] = None
 		options["Add Audio-FX"] = "Add"
 		options["Clean MIDI-Learn"] = "Clean"
@@ -975,6 +970,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.show_mainfx_options()
 		elif param == "Clean":
 			self.zyngui.show_confirm("Do you really want to clean MIDI-learn for this chain?", self.midi_unlearn_confirmed)
+		elif param == "midi_learn":
+			self.zyngui.enter_midi_learn()
 
 
 	def midi_unlearn_confirmed(self, param):
@@ -998,6 +995,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.zyngui.show_screen('layer_options')
 			elif type == "B":
 				self.show_mainfx_options()
+
+
+	# Function to handle BACK action
+	def back_action(self):
+		if self.midi_learning:
+			self.zyngui.exit_midi_learn()
+			return True
 
 
 	# Function to handle switches press
@@ -1087,7 +1091,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to override topbar touch action
 	def topbar_touch_action(self):
 		# Avoid toggle mute when touchbar pressed
-		self.topbar_bold_touch_action()
+		if self.midi_learning:
+			super().topbar_touch_action()
+		else:
+			self.topbar_bold_touch_action()
 
 
 	# Function to handle mouse wheel down when not over fader
@@ -1114,7 +1121,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if strip.layer:
 				strip.enable_midi_learn(True)
 		self.main_mixbus_strip.enable_midi_learn(True)
-		self.init_buttonbar([(1, 'CANCEL')])
 		self.midi_learning = True
 
 
@@ -1132,7 +1138,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			strip.enable_midi_learn(False)
 		self.main_mixbus_strip.enable_midi_learn(False)
 		self.midi_learning = False
-		self.init_buttonbar()
 
 
 	def cb_ctrl_change(self, chan, ctrl, value):

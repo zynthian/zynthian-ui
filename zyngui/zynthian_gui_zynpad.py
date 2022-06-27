@@ -55,9 +55,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to initialise class
 	def __init__(self):
 
-		self.buttonbar_config = [
-			(zynthian_gui_config.ENC_LAYER, 'MENU\n(main menu)')
-		]
 		super().__init__()
 
 		self.columns = 4 # Quantity of columns in grid
@@ -66,7 +63,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 		# Geometry vars
 		self.width=zynthian_gui_config.display_width
-		self.height=zynthian_gui_config.body_height
+		self.height=zynthian_gui_config.get_body_height(self.buttonbar_height)
 		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen
 		self.column_width = self.width / self.columns
 		self.row_height = self.height / self.columns
@@ -513,7 +510,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if switch == zynthian_gui_config.ENC_SELECT:
 			self.switch_select(type)
 			return True
-		elif switch == zynthian_gui_config.ENC_LAYER and type == 'S':
+		elif switch == zynthian_gui_config.ENC_LAYER and type == 'B':
 			self.show_menu()
 			return True
 		return False

@@ -23,7 +23,6 @@
 #
 #******************************************************************************
 
-import sys
 import time
 import logging
 import tkinter
@@ -56,9 +55,9 @@ class zynthian_gui_base:
 		self.buttonbar_button = []
 
 		# Geometry vars
-		self.width=zynthian_gui_config.display_width
-		self.height=zynthian_gui_config.display_height
-		if zynthian_gui_config.enable_onscreen_buttons:
+		self.width = zynthian_gui_config.display_width
+		self.height = zynthian_gui_config.display_height
+		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
 			self.buttonbar_height = zynthian_gui_config.buttonbar_height
 		else:
 			self.buttonbar_height = 0
@@ -96,11 +95,11 @@ class zynthian_gui_base:
 		self.dpm_scale_lh = int(self.dpm_over * self.status_l)
 
 		#Title Area parameters
-		self.title_canvas_width=zynthian_gui_config.display_width-self.status_l-self.status_lpad-2
+		self.title_canvas_width = zynthian_gui_config.display_width - self.status_l - self.status_lpad - 2
 		self.select_path_font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=zynthian_gui_config.font_topbar[1])
-		self.select_path_width=0
-		self.select_path_offset=0
-		self.select_path_dir=2
+		self.select_path_width = 0
+		self.select_path_offset = 0
+		self.select_path_dir = 2
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
@@ -165,7 +164,7 @@ class zynthian_gui_base:
 		self.status_canvas.grid(row=0, column=1, sticky="ens", padx=(self.status_lpad,0))
 
 		# Configure Topbar's Frame column widths
-		self.tb_frame.grid_columnconfigure(0, minsize=self.title_canvas_width)
+		self.tb_frame.grid_columnconfigure(0, weight=1)
 
 		# Topbar parameter editor
 		self.param_editor_zctrl = None
@@ -240,7 +239,7 @@ class zynthian_gui_base:
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.buttonbar_height,
 			bg=zynthian_gui_config.color_bg)
-		self.buttonbar_frame.grid(row=3, column=0, columnspan=3, padx=(0,0), pady=(2,0), sticky="ESW")
+		self.buttonbar_frame.grid(row=5, column=0, columnspan=3, padx=(0,0), pady=(2,0), sticky="ESW")
 		self.buttonbar_frame.grid_propagate(False)
 		self.buttonbar_frame.grid_rowconfigure(
 			0, minsize=zynthian_gui_config.buttonbar_height, pad=0)
@@ -658,20 +657,20 @@ class zynthian_gui_base:
 
 
 	def dscroll_select_path(self):
-		if self.select_path_width>self.title_canvas_width:
+		if self.select_path_width > self.title_canvas_width:
 			#Scroll label
 			self.select_path_offset += self.select_path_dir
 			self.label_select_path.place(x=-self.select_path_offset, y=self.title_y)
 
 			#Change direction ...
-			if self.select_path_offset > (self.select_path_width-self.title_canvas_width):
+			if self.select_path_offset > (self.select_path_width - self.title_canvas_width):
 				self.select_path_dir = -2
 				return True
 			elif self.select_path_offset<=0:
 				self.select_path_dir = 2
 				return True
 
-		elif self.select_path_offset!=0:
+		elif self.select_path_offset != 0:
 			self.select_path_offset = 0
 			self.select_path_dir = 2
 			self.label_select_path.place(x=0, y=self.title_y)

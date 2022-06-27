@@ -326,11 +326,11 @@ class zynthian_gui_controller:
 		if (not self.arc and not self.selector_counter) or not self.value_text:
 			if zynthian_gui_config.ctrl_both_sides:
 				x1 = 0.18*self.trw
-				y1 = self.height - int(0.7*self.trw) - 6
-				x2 = x1 + int(0.7*self.trw)
+				y1 = self.height - int(0.7 * self.trw) - 6
+				x2 = x1 + int(0.7 * self.trw)
 				y2 = self.height - 6
 			else:
-				x1 = self.width/2 + 0.1*self.trw
+				x1 = self.width / 2 + 0.1 * self.trw
 				y1 = 0.7*(self.height - self.trh)
 				x2 = x1 + self.trw
 				y2 = y1 + self.trh
@@ -350,7 +350,7 @@ class zynthian_gui_controller:
 		if self.value_text:
 			self.canvas.itemconfig(self.value_text, text=self.value_print)
 		else:
-			self.value_text=self.canvas.create_text(x1+(x2-x1)/2-1, y1-(y1-y2)/2, width=x2-x1,
+			self.value_text=self.canvas.create_text(x1 + (x2 - x1) / 2 - 1, y1 - (y1 - y2) / 2, width=x2 - x1,
 				justify=tkinter.CENTER,
 				fill=zynthian_gui_config.color_ctrl_tx,
 				font=(zynthian_gui_config.font_family,self.value_font_size),
@@ -370,7 +370,7 @@ class zynthian_gui_controller:
 	def plot_midi_bind(self, midi_cc, color=zynthian_gui_config.color_ctrl_tx):
 		if not self.midi_bind:
 			self.midi_bind = self.canvas.create_text(
-				self.width/2,
+				self.width / 2,
 				self.height-8,
 				width=int(4*0.9*zynthian_gui_config.font_size),
 				justify=tkinter.CENTER,
@@ -426,7 +426,7 @@ class zynthian_gui_controller:
 		elif n_words>=4:
 			maxlen=max([rfont.measure(w) for w in [words[0]+' '+words[1], words[2]+' '+words[3]]])
 			max_fs=max_fs-1
-		fs=int(self.titw*max_fs/maxlen)
+		fs=int(self.titw*max_fs / maxlen)
 		fs=min(max_fs,max(int(0.8*zynthian_gui_config.font_size),fs))
 		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,fs))
 		#Set title label
@@ -511,7 +511,7 @@ class zynthian_gui_controller:
 		#List of values => Selector
 		if isinstance(zctrl.ticks, list):
 			n = len(zctrl.ticks)
-			if n>0:
+			if n > 0:
 				self.pixels_per_div = self.height // n
 			# If few values => use fixed step=1 (no adaptative step size!)
 			if n <= 32:
