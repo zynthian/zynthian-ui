@@ -140,7 +140,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def get_new_snapshot(self):
 		parts = self.zyngui.screens['layer'].layers[0].get_presetpath().split('#',2)
-		name = parts[1].replace("/",";").replace(">",";").replace(" ; ",";")
+		name = parts[-1].replace("/",";").replace(">",";").replace(" ; ",";")
 		return self.get_next_name() + '-' + name + '.zss'
 
 
