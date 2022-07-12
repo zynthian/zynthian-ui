@@ -1370,6 +1370,9 @@ class zynthian_gui:
 		elif cuia == "LEARN":
 			self.enter_midi_learn()
 
+		elif cuia == "TOGGLE_LEARN":
+			self.toggle_midi_learn()
+
 
 	def cuia_layer_control(self, params=None):
 		if params:
