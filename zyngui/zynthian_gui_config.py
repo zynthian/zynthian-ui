@@ -491,10 +491,10 @@ if "zynthian_gui.py" in sys.argv[0]:
 			ctrl_width = display_width // 4
 			ctrl_height = (body_height // 4) -1
 			ctrl_pos=[
-				(1,2,"ne"),
-				(2,2,"ne"),
-				(3,2,"ne"),
-				(4,2,"ne")
+				(1,2,"se"),
+				(2,2,"se"),
+				(3,2,"se"),
+				(4,2,"se")
 			]
 		else:
 			ctrl_both_sides = True
