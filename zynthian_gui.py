@@ -676,7 +676,7 @@ class zynthian_gui:
 		elif screen=="alsa_mixer":
 			if self.screens['layer'].amixer_layer:
 				self.screens['layer'].amixer_layer.refresh_controllers()
-				self.set_curlayer(self.screens['layer'].amixer_layer, True)
+				self.set_curlayer(self.screens['layer'].amixer_layer, save=True, populate_screens=False)
 			else:
 				return
 
