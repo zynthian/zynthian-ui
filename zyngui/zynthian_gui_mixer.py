@@ -364,28 +364,27 @@ class zynthian_gui_mixer_strip():
 				self.parent.main_canvas.itemconfig(ctrl[0], fill=self.button_txcol)
 				if ctrl[0] == self.mono_text or ctrl[0] == self.balance_text:
 					self.parent.main_canvas.itemconfig(ctrl[0], state=tkinter.HIDDEN)
-		if not self.midi_learning:
-			self.parent.main_canvas.itemconfig(self.solo_text, text="S")
-			if self.zynmixer.get_mute(self.layer.midi_chan):
-				self.parent.main_canvas.itemconfig(self.mute, fill=self.mute_color)
-				self.parent.main_canvas.itemconfig(self.mute_text, text="\uf32f") #f6a9
-			else:
-				self.parent.main_canvas.itemconfig(self.mute, fill=self.button_bgcol)
-				self.parent.main_canvas.itemconfig(self.mute_text, text="\uf028")
-				
-			if self.zynmixer.get_solo(self.layer.midi_chan):
-				self.parent.main_canvas.itemconfig(self.solo, fill=self.solo_color)
-			else:
-				self.parent.main_canvas.itemconfig(self.solo, fill=self.button_bgcol)
+				self.parent.main_canvas.itemconfig(self.solo_text, text="S")
+				if self.zynmixer.get_mute(self.layer.midi_chan):
+					self.parent.main_canvas.itemconfig(self.mute, fill=self.mute_color)
+					self.parent.main_canvas.itemconfig(self.mute_text, text="\uf32f") #f6a9
+				else:
+					self.parent.main_canvas.itemconfig(self.mute, fill=self.button_bgcol)
+					self.parent.main_canvas.itemconfig(self.mute_text, text="\uf028")
+					
+				if self.zynmixer.get_solo(self.layer.midi_chan):
+					self.parent.main_canvas.itemconfig(self.solo, fill=self.solo_color)
+				else:
+					self.parent.main_canvas.itemconfig(self.solo, fill=self.button_bgcol)
 
-			if self.zynmixer.get_mono(self.layer.midi_chan):
-				self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.mono_color)
-				self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.mono_color)
-				self.dpm_hold_color = "#FFFFFF"
-			else:
-				self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.low_color)
-				self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.low_color)
-				self.dpm_hold_color = "#00FF00"
+				if self.zynmixer.get_mono(self.layer.midi_chan):
+					self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.mono_color)
+					self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.mono_color)
+					self.dpm_hold_color = "#FFFFFF"
+				else:
+					self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.low_color)
+					self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.low_color)
+					self.dpm_hold_color = "#00FF00"
 
 		balance = self.zynmixer.get_balance(self.layer.midi_chan)
 		if balance > 0:
