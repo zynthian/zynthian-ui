@@ -360,10 +360,16 @@ class zynthian_gui:
 						self.wsled_blink(1+i, self.wscolor_active)
 
 			# Stepseq screen:
-			if self.current_screen=="stepseq":
+			if self.current_screen=="zynpad":
 				self.wsleds.setPixelColor(8, self.wscolor_active)
 			else:
 				self.wsleds.setPixelColor(8, self.wscolor_light)
+
+			# Pattern Editor screen:
+			if self.current_screen=="pattern_editor":
+				self.wsleds.setPixelColor(9, self.wscolor_active)
+			else:
+				self.wsleds.setPixelColor(9, self.wscolor_light)
 
 			# MIDI Recorder screen:
 			if self.current_screen=="midi_recorder":
@@ -384,7 +390,10 @@ class zynthian_gui:
 				self.wsleds.setPixelColor(12, self.wscolor_light)
 
 			# Light ALT button
-			self.wsleds.setPixelColor(13, self.wscolor_light)
+			if self.midi_learn_mode:
+				self.wsleds.setPixelColor(13, self.wscolor_active)
+			else:
+				self.wsleds.setPixelColor(13, self.wscolor_light)
 
 			# REC/PLAY Audio buttons:
 			if 'audio_recorder' in self.status_info:
@@ -1367,10 +1376,10 @@ class zynthian_gui:
 			if params:
 				self.screens['control'].midi_learn_zctrl(params[0])
 
-		elif cuia == "LEARN":
+		elif cuia == "ENTER_MIDI_LEARN":
 			self.enter_midi_learn()
 
-		elif cuia == "TOGGLE_LEARN":
+		elif cuia == "TOGGLE_MIDI_LEARN":
 			self.toggle_midi_learn()
 
 
