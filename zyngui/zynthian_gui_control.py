@@ -392,7 +392,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		elif swi == 2:
 			if t == 'S':
 				if self.mode == 'control':
-					self.zyngui.enter_midi_learn()
+					self.zyngui.toggle_midi_learn()
 				return True
 
 		elif swi == 3:

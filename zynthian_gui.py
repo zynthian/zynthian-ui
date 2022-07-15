@@ -1654,7 +1654,7 @@ class zynthian_gui:
 			self.back_screen()
 
 		elif i==2:
-			self.enter_midi_learn()
+			self.toggle_midi_learn()
 
 		elif i==3:
 			self.screens[self.current_screen].switch_select('S')
