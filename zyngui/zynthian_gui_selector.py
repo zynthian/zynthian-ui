@@ -44,7 +44,7 @@ from zyngui.zynthian_gui_controller import zynthian_gui_controller
 class zynthian_gui_selector(zynthian_gui_base):
 
 	# Scale for listbox swipe action after-roll
-	swipe_roll_scale = [1,0,1,0,1,0,1,0,1,0,1,1,1,1,4,4,4,4,4,4,4,4,4,4]
+	swipe_roll_scale = [1,0,1,1,1,1,4,4,4,4,4,4,4,4,4,4] #1,0,1,0,1,0,1,0,
 
 
 	def __init__(self, selcap='Select', wide=False, loading_anim=True):

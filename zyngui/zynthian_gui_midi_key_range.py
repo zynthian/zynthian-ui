@@ -305,8 +305,9 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		
 
 	def hide(self):
-		super().hide()
-		self.zyngui.exit_midi_learn()
+		if self.shown:
+			super().hide()
+			self.zyngui.exit_midi_learn()
 
 
 	def zynpot_cb(self, i, dval):

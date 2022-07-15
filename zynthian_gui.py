@@ -287,6 +287,7 @@ class zynthian_gui:
 		self.wscolor_admin = rpi_ws281x.Color(120,0,0)
 		self.wscolor_red = rpi_ws281x.Color(120,0,0)
 		self.wscolor_green = rpi_ws281x.Color(0,255,0)
+		self.wscolor_yellow = rpi_ws281x.Color(160,160,0)
 
 		# Light all LEDs
 		for i in range(0, self.wsleds_num):
@@ -389,9 +390,11 @@ class zynthian_gui:
 			else:
 				self.wsleds.setPixelColor(12, self.wscolor_light)
 
-			# Light ALT button
+			# Light ALT button => MIDI LEARN!
 			if self.midi_learn_mode:
 				self.wsleds.setPixelColor(13, self.wscolor_active)
+			elif self.midi_learn_zctrl:
+				self.wsleds.setPixelColor(13, self.wscolor_yellow)
 			else:
 				self.wsleds.setPixelColor(13, self.wscolor_light)
 
@@ -1008,33 +1011,38 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def enter_midi_learn(self):
-		logging.debug("ENTER LEARN")
-		self.midi_learn_mode = True
-		self.midi_learn_zctrl = None
-		lib_zyncore.set_midi_learning_mode(1)
-		try:
-			logging.debug("ENTER LEARN => {}".format(self.current_screen))
-			self.screens[self.current_screen].enter_midi_learn()
-		except Exception as e:
-			logging.debug(e)
-			pass
+		if not self.midi_learn_mode:
+			logging.debug("ENTER LEARN")
+			self.midi_learn_mode = True
+			self.midi_learn_zctrl = None
+			lib_zyncore.set_midi_learning_mode(1)
+			try:
+				logging.debug("ENTER LEARN => {}".format(self.current_screen))
+				self.screens[self.current_screen].enter_midi_learn()
+			except Exception as e:
+				logging.debug(e)
+				pass
 
 
 	def exit_midi_learn(self):
-		self.midi_learn_mode = False
-		self.midi_learn_zctrl = None
-		lib_zyncore.set_midi_learning_mode(0)
-		try:
-			self.screens[self.current_screen].exit_midi_learn()
-		except:
-			pass
+		if self.midi_learn_mode or self.midi_learn_zctrl:
+			self.midi_learn_mode = False
+			self.midi_learn_zctrl = None
+			lib_zyncore.set_midi_learning_mode(0)
+			try:
+				self.screens[self.current_screen].exit_midi_learn()
+			except:
+				pass
 
 
 	def toggle_midi_learn(self):
-		if self.midi_learn_mode:
-			self.exit_midi_learn()
-		else:
-			self.enter_midi_learn()
+		try:
+			self.screens[self.current_screen].toggle_midi_learn()
+		except:
+			if self.midi_learn_mode:
+				self.exit_midi_learn()
+			else:
+				self.enter_midi_learn()
 
 
 	def init_midi_learn_zctrl(self, zctrl):

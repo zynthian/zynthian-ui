@@ -44,6 +44,17 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		self.index = 0
 
 
+	def show(self):
+		super().show()
+		self.zyngui.enter_midi_learn()
+
+
+	def hide(self):
+		if self.shown:
+			super().hide()
+			self.zyngui.exit_midi_learn()
+
+
 	def fill_list(self):
 		self.list_data=[]
 
@@ -88,18 +99,13 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 				self.zyngui.exit_midi_learn()
 
 
-	def back_action(self):
-		self.zyngui.exit_midi_learn()
-		return False
-
-
 	def enter_midi_learn(self):
-		logging.debug("CLOSING ZS3 MIDI LEARN!!")
-		self.zyngui.close_screen()
+		pass
 
 
 	def exit_midi_learn(self):
-		pass
+		logging.debug("CLOSING ZS3 LEARN")
+		self.zyngui.close_screen()
 
 
 	def set_select_path(self):

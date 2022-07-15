@@ -65,7 +65,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.zcontrollers = []
 		self.screen_name = None
 		self.controllers_lock = False
-		self.midi_learning = False
 		self.zgui_controllers = []
 
 		# xyselect mode vars
@@ -457,25 +456,32 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return self.zgui_controllers[i]
 
 
-	def enter_midi_learn(self):
-		if self.midi_learning:
-			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
-				self.midi_learning = False
-				self.zyngui.show_screen("zs3_learn")
-				return
-		else:
-			self.midi_learning = True
-			self.set_buttonbar_label(0, "CANCEL")
+	def back_action(self):
+		if self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
+			self.zyngui.exit_midi_learn()
+			return True
+		return False
 
+
+	def enter_midi_learn(self):
+		self.set_buttonbar_label(0, "CANCEL")
 		self.refresh_midi_bind()
 		self.set_select_path()
 
 
 	def exit_midi_learn(self):
-		self.midi_learning = False
+		self.set_buttonbar_label(0, "PRESETS\n[mixer]")
 		self.refresh_midi_bind()
 		self.set_select_path()
-		self.set_buttonbar_label(0, "PRESETS\n[mixer]")
+
+
+	def toggle_midi_learn(self):
+		if self.zyngui.midi_learn_mode:
+			self.zyngui.exit_midi_learn()
+			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
+				self.zyngui.show_screen("zs3_learn")
+		else:
+			self.zyngui.enter_midi_learn()
 
 
 	def refresh_midi_bind(self):

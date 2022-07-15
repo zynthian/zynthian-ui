@@ -392,9 +392,9 @@ class zynthian_gui_controller:
 				#self.erase_midi_bind()
 				self.plot_midi_bind("/{}".format(self.zctrl.value_range))
 			elif self.zyngui.midi_learn_mode:
-				self.plot_midi_bind("??",zynthian_gui_config.color_ml)
-			elif self.zyngui.midi_learn_zctrl and self.zctrl==self.zyngui.midi_learn_zctrl:
 				self.plot_midi_bind("??",zynthian_gui_config.color_hl)
+			elif self.zyngui.midi_learn_zctrl and self.zctrl==self.zyngui.midi_learn_zctrl:
+				self.plot_midi_bind("??",zynthian_gui_config.color_ml)
 			elif self.zctrl.midi_learn_cc and self.zctrl.midi_learn_cc>0:
 				midi_cc = self.zctrl.midi_learn_cc
 				if not self.zyngui.is_single_active_channel():
