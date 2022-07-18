@@ -237,10 +237,10 @@ class zynthian_gui_base:
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.buttonbar_height,
 			bg=zynthian_gui_config.color_bg)
+
 		self.buttonbar_frame.grid(row=5, column=0, columnspan=3, padx=(0,0), pady=(2,0), sticky="ESW")
 		self.buttonbar_frame.grid_propagate(False)
-		self.buttonbar_frame.grid_rowconfigure(
-			0, minsize=zynthian_gui_config.buttonbar_height, pad=0)
+		self.buttonbar_frame.grid_rowconfigure(0, minsize=zynthian_gui_config.buttonbar_height, pad=0)
 		for i in range(4):
 			self.buttonbar_frame.grid_columnconfigure(
 				i,

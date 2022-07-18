@@ -74,7 +74,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 		self.piano_canvas_width = zynthian_gui_config.display_width
 		self.note_info_canvas_height = zynthian_gui_config.body_height - self.space_frame_height - self.piano_canvas_height
-		#logging.debug("NOTE INFO HEIGHT => {}".format(self.note_info_canvas_height))
 
 		self.space_frame = tkinter.Frame(self.main_frame,
 			width=self.space_frame_width,
@@ -285,6 +284,9 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			self.nhigh_zctrl.set_value(self.note_high)
 			self.nhigh_zgui_ctrl.show()
 
+			if zynthian_gui_config.ctrl_both_sides:
+				self.main_frame.rowconfigure(2, weight=20, minsize=self.note_info_canvas_height)
+
 
 	def plot_zctrls(self):
 		if self.replot:
@@ -312,13 +314,13 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 
 	def zynpot_cb(self, i, dval):
-		if i == 0:
+		if i == self.zctrl_pos[0]:
 			self.octave_zgui_ctrl.zynpot_cb(dval)
-		elif i == 1:
+		elif i == self.zctrl_pos[1]:
 			self.halftone_zgui_ctrl.zynpot_cb(dval)
-		elif i == 2:
+		elif i == self.zctrl_pos[2]:
 			self.nlow_zgui_ctrl.zynpot_cb(dval)
-		elif i == 3:
+		elif i == self.zctrl_pos[3]:
 			self.nhigh_zgui_ctrl.zynpot_cb(dval)
 		else:
 			return False
