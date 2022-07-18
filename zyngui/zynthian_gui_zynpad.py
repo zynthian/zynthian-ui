@@ -62,8 +62,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.redraw_pending = 2 # 0=no refresh pending, 1=update grid, 2=rebuild grid
 
 		# Geometry vars
-		self.width=zynthian_gui_config.display_width
-		self.height=zynthian_gui_config.get_body_height(self.buttonbar_height)
+		self.width = zynthian_gui_config.display_width
+		self.height = zynthian_gui_config.body_height
 		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen
 		self.column_width = self.width / self.columns
 		self.row_height = self.height / self.columns

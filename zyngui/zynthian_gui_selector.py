@@ -23,7 +23,6 @@
 # 
 #******************************************************************************
 
-from math import log10
 import sys
 import logging
 import tkinter
@@ -59,12 +58,12 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.list_entry_height = int(1.8 * zynthian_gui_config.font_size) # Set approx. here to avoid errors. Set accurately when list item selected
 
 		# Listbox Size
-		self.lb_height = zynthian_gui_config.get_body_height(self.buttonbar_height) + 1
-		self.wide=wide
+		self.lb_height = zynthian_gui_config.body_height + 1
+		self.wide = wide
 		if self.wide:
-			self.lb_width=zynthian_gui_config.display_width - zynthian_gui_config.ctrl_width
+			self.lb_width = zynthian_gui_config.display_width - zynthian_gui_config.ctrl_width
 		else:
-			self.lb_width=zynthian_gui_config.display_width - 2 * zynthian_gui_config.ctrl_width - 2
+			self.lb_width = zynthian_gui_config.display_width - 2 * zynthian_gui_config.ctrl_width - 2
 
 		self.listbox_motion_last_dy = 0
 

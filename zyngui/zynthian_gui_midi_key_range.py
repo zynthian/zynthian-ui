@@ -71,9 +71,10 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			self.space_frame_height = 2 * zynthian_gui_config.ctrl_height - 1
 			self.piano_canvas_height = zynthian_gui_config.ctrl_height
 			self.zctrl_pos = [0, 1, 3, 2]
-		self.piano_canvas_width = zynthian_gui_config.display_width
-		self.note_info_canvas_height = zynthian_gui_config.get_body_height(self.buttonbar_height) - zynthian_gui_config.ctrl_height - self.piano_canvas_height
 
+		self.piano_canvas_width = zynthian_gui_config.display_width
+		self.note_info_canvas_height = zynthian_gui_config.body_height - self.space_frame_height - self.piano_canvas_height
+		#logging.debug("NOTE INFO HEIGHT => {}".format(self.note_info_canvas_height))
 
 		self.space_frame = tkinter.Frame(self.main_frame,
 			width=self.space_frame_width,

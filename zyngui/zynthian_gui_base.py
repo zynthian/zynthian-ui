@@ -55,13 +55,11 @@ class zynthian_gui_base:
 		self.buttonbar_button = []
 
 		# Geometry vars
+		if not self.buttonbar_config:
+			zynthian_gui_config.set_buttonbar_height(0)
 		self.width = zynthian_gui_config.display_width
 		self.height = zynthian_gui_config.display_height
-		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
-			self.buttonbar_height = zynthian_gui_config.buttonbar_height
-		else:
-			self.buttonbar_height = 0
-
+		self.buttonbar_height = zynthian_gui_config.buttonbar_height
 
 		#Status Area Canvas Objects
 		self.status_cpubar = None

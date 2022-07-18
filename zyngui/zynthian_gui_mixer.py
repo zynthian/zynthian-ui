@@ -702,7 +702,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Geometry vars
 		self.width = zynthian_gui_config.display_width
-		self.height = zynthian_gui_config.get_body_height(self.buttonbar_height)
+		self.height = zynthian_gui_config.body_height
 
 		self.number_layers = 0 # Quantity of layers
 		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
