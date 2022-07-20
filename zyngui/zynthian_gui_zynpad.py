@@ -55,19 +55,16 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to initialise class
 	def __init__(self):
 
-		super().__init__()
-
 		self.columns = 4 # Quantity of columns in grid
 		self.selected_pad = 0 # Index of selected pad
 		self.redraw_pending = 2 # 0=no refresh pending, 1=update grid, 2=rebuild grid
 
+		super().__init__()
+
 		# Geometry vars
-		self.width = zynthian_gui_config.display_width
-		self.height = zynthian_gui_config.body_height
 		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen
 		self.column_width = self.width / self.columns
 		self.row_height = self.height / self.columns
-
 
 		# Pad grid
 		self.grid_canvas = tkinter.Canvas(self.main_frame,
@@ -75,9 +72,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			height=self.height,
 			bd=0,
 			highlightthickness=0,
-			relief='flat',
 			bg = zynthian_gui_config.color_bg)
-		self.grid_canvas.grid(row=1)
+		self.main_frame.columnconfigure(0, weight=1)
+		self.main_frame.rowconfigure(0, weight=1)
+		self.grid_canvas.grid()
 		self.grid_timer = Timer(1.4, self.on_grid_timer) # Grid press and hold timer
 
 		# Icons
@@ -166,6 +164,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if(self.zyngui.zynseq.libseq.getTallyChannel() > 15):
 			return 0
 		return self.zyngui.zynseq.libseq.getTallyChannel() + 1
+
+
+	def update_layout(self):
+		super().update_layout()
+		self.redraw_pending = 2
 
 
 	# Function to clear and calculate grid sizes
@@ -397,9 +400,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == 'bank':
 			self.zyngui.zynseq.select_bank(zctrl.value)
-		if zctrl.symbol == 'tempo':
+		elif zctrl.symbol == 'tempo':
 			self.zyngui.zynseq.set_tempo(zctrl.value)
-		if zctrl.symbol == 'metro_vol':
+		elif zctrl.symbol == 'metro_vol':
 			self.zyngui.zynseq.libseq.setMetronomeVolume(zctrl.value / 100.0)
 		elif zctrl.symbol == 'bpb':
 			self.zyngui.zynseq.libseq.setBeatsPerBar(zctrl.value)

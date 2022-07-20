@@ -700,10 +700,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.pending_refresh_queue = set() # List of stips requiring gui refresh
 		self.midi_learning = False
 
-		# Geometry vars
-		self.width = zynthian_gui_config.display_width
-		self.height = zynthian_gui_config.body_height
-
 		self.number_layers = 0 # Quantity of layers
 		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
 		if visible_chains < 1:
@@ -738,11 +734,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Fader Canvas
 		self.main_canvas = tkinter.Canvas(self.main_frame,
-			height=self.height,
-			width=self.width,
+			height=1,
+			width=1,
 			bd=0, highlightthickness=0,
 			bg = zynthian_gui_config.color_panel_bg)
-		self.main_canvas.grid(row=1)
+		self.main_frame.rowconfigure(0, weight=1)
+		self.main_frame.columnconfigure(0, weight=1)
+		self.main_canvas.grid(row=0, sticky='nsew')
 
 		# Create mixer strip UI objects
 		for chain in range(len(self.visible_mixer_strips)):
@@ -992,8 +990,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.zyngui.screens['layer'].select(self.selected_chain_index)
 				self.zyngui.screens['layer_options'].reset()
 				self.zyngui.show_screen('layer_options')
-			elif type == "B":
-				self.show_mainfx_options()
+		elif type == "B":
+			self.show_mainfx_options()
 
 
 	# Function to handle BACK action

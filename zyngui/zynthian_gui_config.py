@@ -401,6 +401,7 @@ snapshot_mixer_settings=int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS'
 show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
 visible_mixer_strips=int(os.environ.get('ZYNTHIAN_UI_VISIBLE_MIXER_STRIPS',0))
 multichannel_recorder=int(os.environ.get('ZYNTHIAN_UI_MULTICHANNEL_RECORDER', 0))
+ctrl_graph=int(os.environ.get('ZYNTHIAN_UI_CTRL_GRAPH', 1))
 
 #------------------------------------------------------------------------------
 # Audio Options
@@ -460,25 +461,25 @@ if "zynthian_gui.py" in sys.argv[0]:
 
 		# Screen Size => Autodetect if None
 		if os.environ.get('DISPLAY_WIDTH'):
-			display_width=int(os.environ.get('DISPLAY_WIDTH'))
+			display_width = int(os.environ.get('DISPLAY_WIDTH'))
 		else:
 			try:
 				display_width = top.winfo_screenwidth()
 			except:
 				logging.warning("Can't get screen width. Using default 320!")
-				display_width=320
+				display_width = 320
 
 		if os.environ.get('DISPLAY_HEIGHT'):
-			display_height=int(os.environ.get('DISPLAY_HEIGHT'))
+			display_height = int(os.environ.get('DISPLAY_HEIGHT'))
 		else:
 			try:
 				display_height = top.winfo_screenheight()
 			except:
 				logging.warning("Can't get screen height. Using default 240!")
-				display_height=240
+				display_height = 240
 
 		# Global font size
-		font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
+		font_size = int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 		if not font_size:
 			font_size = int(display_width / 40)
 
@@ -493,24 +494,26 @@ if "zynthian_gui.py" in sys.argv[0]:
 			topbar_fs = int(1.1*font_size)
 			title_y = int(0.05 * topbar_height)
 
+		body_height = display_height - topbar_height #- buttonbar_height
+
 		# Controllers position and size
 		if wiring_layout.startswith("Z2"):
 			ctrl_both_sides = False
 			ctrl_width = display_width // 4
 			ctrl_pos=[
-				(1,2,"se"),
-				(2,2,"se"),
-				(3,2,"se"),
-				(4,2,"se")
+				(0,2,"ne",(2,0),(0,1)),
+				(1,2,"ne",(2,0),(1,1)),
+				(2,2,"ne",(2,0),(1,1)),
+				(3,2,"ne",(2,0),(1,1))
 			]
 		else:
 			ctrl_both_sides = True
 			ctrl_width = display_width // 4
 			ctrl_pos=[
-				(1,0,"nw"),
-				(2,0,"sw"),
-				(1,2,"ne"),
-				(2,2,"se")
+				(0,0,"nw",(0,2),(0,1)),
+				(1,0,"sw",(0,2),(1,0)),
+				(0,2,"ne",(2,0),(0,1)),
+				(1,2,"se",(2,0),(1,0))
 			]
 
 		# Calculate geometry depending on buttonbar_height

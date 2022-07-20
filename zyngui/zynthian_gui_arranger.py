@@ -89,7 +89,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.timebase_track_height = int(self.height / 10)
 		self.small_font_size = int(self.timebase_track_height / 3)
 		self.select_thickness = 1 + int(self.width / 500) # Scale thickness of select border based on screen resolution
-		self.grid_height = self.height - self.timebase_track_height  - self.buttonbar_height - zynthian_gui_config.topbar_height
+		self.grid_height = self.height - self.timebase_track_height
 		self.grid_width = int(self.width * 0.9)
 		self.seq_track_title_width = self.width - self.grid_width
 		self.sequence_title_width = int(0.4 * self.seq_track_title_width)
@@ -108,7 +108,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.sequence_title_canvas.bind("<B1-Motion>", self.on_sequence_drag_motion)
 		self.sequence_title_canvas.bind("<Button-4>", self.on_seq_mouse_scroll)
 		self.sequence_title_canvas.bind("<Button-5>", self.on_seq_mouse_scroll)
-		self.sequence_title_canvas.grid(column=1, row=1)
+		self.sequence_title_canvas.grid(column=0, row=0)
 
 		# Create grid canvas
 		self.grid_canvas = tkinter.Canvas(self.main_frame, 
@@ -117,7 +117,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 				bg=CANVAS_BACKGROUND,
 				bd=0,
 				highlightthickness=0)
-		self.grid_canvas.grid(column=2, row=1)
+		self.grid_canvas.grid(column=1, row=0)
 
 		# Create pattern entry indicator
 		self.pattern_canvas = tkinter.Canvas(self.main_frame,
@@ -127,7 +127,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 				bd=0,
 				highlightthickness=0)
 		self.pattern_canvas.create_text(self.seq_track_title_width / 2, self.timebase_track_height / 2, tags="patternIndicator", fill='white', text='%d'%(self.pattern), font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(0.6 * self.timebase_track_height)))
-		self.pattern_canvas.grid(column=1, row=2)
+		self.pattern_canvas.grid(column=0, row=1)
 		self.pattern_canvas.bind('<ButtonPress-1>', self.on_pattern_click)
 
 		# Create timebase track canvas
@@ -140,7 +140,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.timebase_track_canvas.bind("<ButtonPress-1>", self.on_time_drag_start)
 		self.timebase_track_canvas.bind("<ButtonRelease-1>", self.on_time_drag_end)
 		self.timebase_track_canvas.bind("<B1-Motion>", self.on_time_drag_motion)
-		self.timebase_track_canvas.grid(column=2, row=2)
+		self.timebase_track_canvas.grid(column=1, row=1)
 
 		self.bank = self.zyngui.zynseq.bank # Local copy so we know if it has changed and grid needs redrawing
 		self.update_sequence_tracks()

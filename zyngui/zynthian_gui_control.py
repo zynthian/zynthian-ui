@@ -75,6 +75,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.topbar_bold_touch_action = lambda: self.zyngui.zynswitch_defered('B', 1)
 
 
+	def update_layout(self):
+		super().update_layout()
+		for ctrl in self.zgui_controllers:
+			if zynthian_gui_config.ctrl_both_sides:
+				ctrl.configure(width = self.width // 4 - 2, height = self.height // 2 - 1)
+			else:
+				ctrl.configure(width = self.width // 4 - 2, height = self.height // 4 - 1)
+
+
 	def show(self):
 		if self.zyngui.curlayer:
 			super().show()
@@ -189,7 +198,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			screen_layer = screen_info[3]
 
 			# Show the widget for the current sublayer
-			if self.mode=='control':
+			if self.mode == 'control':
 				self.show_widget(screen_layer)
 
 			# Get controllers for the current screen
@@ -208,10 +217,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 				try:
 					#logging.debug("CONTROLLER ARRAY {} => {} ({})".format(i, ctrl.symbol, ctrl.short_name))
 					self.set_zcontroller(i, ctrl)
-					i += 1
+					pos = zynthian_gui_config.ctrl_pos[i]
+					self.zgui_controllers[i].grid(row=pos[0], column=pos[1], pady=pos[4])
 				except Exception as e:
 					logging.exception("Controller %s (%d) => %s" % (ctrl.short_name, i, e))
 					self.zgui_controllers[i].hide()
+				i += 1
 
 			# Empty rest of GUI controllers
 			for i in range(i, 4):
@@ -230,6 +241,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		# Release Mutex Lock
 		#self.zyngui.lock.release()
+
+		self.update_layout()
 
 
 	def set_zcontroller(self, i, ctrl):

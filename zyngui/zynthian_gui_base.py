@@ -39,7 +39,7 @@ from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 # Zynthian Base GUI Class: Status Bar + Basic layout & events
 #------------------------------------------------------------------------------
 
-class zynthian_gui_base:
+class zynthian_gui_base(tkinter.Frame):
 
 	METER_NONE	= 0
 	METER_DPM	= 1
@@ -49,17 +49,27 @@ class zynthian_gui_base:
 	buttonbar_config = []
 
 	def __init__(self):
+		tkinter.Frame.__init__(self,
+			zynthian_gui_config.top,
+			width=zynthian_gui_config.display_width,
+			height=zynthian_gui_config.display_height)
+		self.grid_propagate(False)
+		self.rowconfigure(1, weight=1)
+		self.columnconfigure(0, weight=1)
 		self.shown = False
 		self.zyngui = zynthian_gui_config.zyngui
 
 		self.buttonbar_button = []
 
 		# Geometry vars
-		if not self.buttonbar_config:
-			zynthian_gui_config.set_buttonbar_height(0)
+		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
+			self.buttonbar_height = zynthian_gui_config.buttonbar_height
+		else:
+			self.buttonbar_height = 0
 		self.width = zynthian_gui_config.display_width
-		self.height = zynthian_gui_config.display_height
-		self.buttonbar_height = zynthian_gui_config.buttonbar_height
+		#TODO: Views should use current height if they need dynamic changes else grow rows to fill main_frame
+		self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height - self.buttonbar_height
+
 
 		#Status Area Canvas Objects
 		self.status_cpubar = None
@@ -99,20 +109,15 @@ class zynthian_gui_base:
 		self.select_path_offset = 0
 		self.select_path_dir = 2
 
-		# Main Frame
-		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.display_height,
-			bg=zynthian_gui_config.color_bg)
-
 		# Topbar's frame
-		self.tb_frame = tkinter.Frame(self.main_frame,
+		self.tb_frame = tkinter.Frame(self,
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.topbar_height,
 			bg=zynthian_gui_config.color_bg)
-		self.tb_frame.grid(row=0, column=0, columnspan=3)
 		self.tb_frame.grid_propagate(False)
+		self.tb_frame.grid(row=0)
 		self.tb_frame.grid_columnconfigure(0, weight=1)
+
 		# Setup Topbar's Callback
 		self.tb_frame.bind("<Button-1>", self.cb_topbar)
 		self.tb_frame.bind("<ButtonRelease-1>", self.cb_topbar_release)
@@ -161,11 +166,14 @@ class zynthian_gui_base:
 			bg = zynthian_gui_config.color_bg)
 		self.status_canvas.grid(row=0, column=1, sticky="ens", padx=(self.status_lpad,0))
 
-		# Configure Topbar's Frame column widths
-		self.tb_frame.grid_columnconfigure(0, weight=1)
-
 		# Topbar parameter editor
 		self.param_editor_zctrl = None
+
+		# Main Frame
+		self.main_frame = tkinter.Frame(self,
+			bg=zynthian_gui_config.color_bg)
+		self.main_frame.propagate(False)
+		self.main_frame.grid(row=1, sticky='news')
 
 		# Init touchbar
 		self.buttonbar_frame = None
@@ -226,19 +234,20 @@ class zynthian_gui_base:
 
 
 	def init_buttonbar(self, config=None):
+		if self.buttonbar_frame:
+			self.buttonbar_frame.grid_forget()
 		if config is None:
 			config = self.buttonbar_config    			
 		if not zynthian_gui_config.enable_onscreen_buttons or not config:
+			self.buttonbar_height = 0
 			return
 
-		if self.buttonbar_frame:
-			self.buttonbar_frame.grid_forget()
-		self.buttonbar_frame = tkinter.Frame(self.main_frame,
+		self.buttonbar_height = zynthian_gui_config.buttonbar_height
+		self.buttonbar_frame = tkinter.Frame(self,
 			width=zynthian_gui_config.display_width,
 			height=zynthian_gui_config.buttonbar_height,
 			bg=zynthian_gui_config.color_bg)
-
-		self.buttonbar_frame.grid(row=5, column=0, columnspan=3, padx=(0,0), pady=(2,0), sticky="ESW")
+		self.buttonbar_frame.grid(row=2, padx=(0,0), pady=(2,0))
 		self.buttonbar_frame.grid_propagate(False)
 		self.buttonbar_frame.grid_rowconfigure(0, minsize=zynthian_gui_config.buttonbar_height, pad=0)
 		for i in range(4):
@@ -341,24 +350,16 @@ class zynthian_gui_base:
 		if not self.shown:
 			if self.zyngui.test_mode:
 				logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
-			self.shown=True
-			self.main_frame.grid()
-
+			self.shown = True
+			self.grid(row=0, column=0, sticky='nsew')
+			self.propagate(False)
 		self.main_frame.focus()
 
 
 	def hide(self):
 		if self.shown:
 			self.shown=False
-			self.main_frame.grid_forget()
-
-
-	def is_shown(self):
-		try:
-			self.main_frame.grid_info()
-			return True
-		except:
-			return False
+			self.grid_remove()
 
 
 	def refresh_status(self, status={}):
@@ -680,6 +681,15 @@ class zynthian_gui_base:
 		pass
 
 
+	# Function to update display, e.g. after geometry changes
+	# Override if required
+	def update_layout(self):
+		if self.buttonbar_config:
+			self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height - self.buttonbar_height
+		else:
+			self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
+
+
 	# Function to enable the top-bar parameter editor
 	#	engine: Object to recieve send_controller_value callback
 	#	symbol: String identifying the parameter
@@ -702,15 +712,21 @@ class zynthian_gui_base:
 		self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
 		self.init_buttonbar([("SELECT_DOWN", "-1"),("SELECT_UP", "+1"),("SNAPSHOT_DOWN", "-10"),("SNAPSHOT_UP", "+10"),])
 		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
+		self.update_layout()
 	
 
 	# Function to disable paramter editor
 	def disable_param_editor(self):
-		if self.param_editor_zctrl:
-			del self.param_editor_zctrl
+		if not self.param_editor_zctrl:
+			return
+		del self.param_editor_zctrl
 		self.param_editor_zctrl = None
 		self.param_editor_assert_cb = None
 		self.init_buttonbar()
 		self.set_title(self.title)
+		try:
+			self.update_layout()
+		except:
+			pass
 
 #------------------------------------------------------------------------------

@@ -23,10 +23,8 @@
 # 
 #******************************************************************************
 
-import sys
 import tkinter
 import logging
-from ctypes import c_ubyte, c_byte
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -61,40 +59,30 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		self.octave_zgui_ctrl = None
 		self.halftone_zgui_ctrl = None
 
-		if zynthian_gui_config.ctrl_both_sides:
-			self.space_frame_width = zynthian_gui_config.display_width - 2 * zynthian_gui_config.ctrl_width
-			self.space_frame_height = zynthian_gui_config.ctrl_height - 2
-			self.piano_canvas_height = int(zynthian_gui_config.ctrl_height / 2)
-			self.zctrl_pos = [0, 2, 1, 3]
-		else:
-			self.space_frame_width = zynthian_gui_config.display_width - zynthian_gui_config.ctrl_width
-			self.space_frame_height = 2 * zynthian_gui_config.ctrl_height - 1
-			self.piano_canvas_height = zynthian_gui_config.ctrl_height
-			self.zctrl_pos = [0, 1, 3, 2]
-
-		self.piano_canvas_width = zynthian_gui_config.display_width
-		self.note_info_canvas_height = zynthian_gui_config.body_height - self.space_frame_height - self.piano_canvas_height
-
-		self.space_frame = tkinter.Frame(self.main_frame,
-			width=self.space_frame_width,
-			height=self.space_frame_height,
-			bg=zynthian_gui_config.color_panel_bg)
-		if zynthian_gui_config.ctrl_both_sides:
-			self.space_frame.grid(row=1, column=1, rowspan=1, columnspan=1, padx=(2,2), pady=(0,2), sticky="wens")
-		else:
-			self.space_frame.grid(row=1, column=0, rowspan=2, columnspan=1, padx=(0,2), pady=(0,2), sticky="wens")
-
-		self.note_info_canvas = tkinter.Canvas(self.main_frame,
-			width=self.piano_canvas_width,
-			height=self.note_info_canvas_height,
+		self.spacer = tkinter.Canvas(self.main_frame,
+			height=1,
+			width=1,
+			bg=zynthian_gui_config.color_panel_bg,
 			bd=0,
-			highlightthickness=0,
-			relief='flat',
-			bg=zynthian_gui_config.color_panel_bg)
+			highlightthickness=0)
+		self.piano_canvas_width = zynthian_gui_config.display_width
+
+		self.piano_canvas_height = self.height // 4
+		self.main_frame.rowconfigure(2, weight=1)
 		if zynthian_gui_config.ctrl_both_sides:
-			self.note_info_canvas.grid(row=2, column=0, rowspan=1, columnspan=3, sticky="wens")
+			self.ctrl_height = self.height // 2
+			self.spacer.grid(row=0, column=1, padx=(2,2), sticky='news')
+			self.zctrl_pos = [0, 2, 1, 3]
+			self.main_frame.columnconfigure(1, weight=1)
 		else:
-			self.note_info_canvas.grid(row=3, column=0, rowspan=1, columnspan=3, sticky="wens")
+			self.spacer.grid(row=0, column=0, rowspan=2, padx=(0,2), sticky='news')
+			self.zctrl_pos = [0, 1, 3, 2]
+			self.main_frame.columnconfigure(0, weight=1)
+
+		self.note_info_frame = tkinter.Frame(self.main_frame,
+			bg=zynthian_gui_config.color_panel_bg)
+		self.note_info_frame.columnconfigure(1, weight=1)
+		self.note_info_frame.grid(row=2, columnspan=3, sticky="nsew", pady=(2,2))
 
 		# Piano canvas
 		self.piano_canvas = tkinter.Canvas(self.main_frame,
@@ -102,12 +90,8 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			height=self.piano_canvas_height,
 			bd=0,
 			highlightthickness=0,
-			relief='flat',
-			bg = "#000000")
-		if zynthian_gui_config.ctrl_both_sides:
-			self.piano_canvas.grid(row=3, column=0, rowspan=1, columnspan=3, sticky="wens")
-		else:
-			self.piano_canvas.grid(row=4, column=0, rowspan=1, columnspan=3, sticky="wens")
+			bg = "#000099")
+		self.piano_canvas.grid(row=3, columnspan=3)
 
 		# Setup Piano's Callback
 		self.piano_canvas.bind("<Button-1>", self.cb_piano_press)
@@ -208,48 +192,39 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 	def plot_text(self):
 		fs = int(1.7 * zynthian_gui_config.font_size)
 
-		self.nlow_text = self.note_info_canvas.create_text(
-			int(zynthian_gui_config.ctrl_width / 2),
-			int((self.note_info_canvas_height-fs) / 1.5),
-			width=5 * fs,
-			justify=tkinter.CENTER,
-			fill=zynthian_gui_config.color_ctrl_tx,
+		self.nlow_text = tkinter.Label(self.note_info_frame,
+			fg=zynthian_gui_config.color_ctrl_tx,
+			bg=zynthian_gui_config.color_panel_bg,
 			font=(zynthian_gui_config.font_family, fs),
+			width=5,
 			text=self.get_midi_note_name(self.note_low))
-		self.note_info_canvas.tag_bind(self.nlow_text, "<Button-4>", self.cb_nlow_wheel_up)
-		self.note_info_canvas.tag_bind(self.nlow_text, "<Button-5>", self.cb_nlow_wheel_down)
+		self.nlow_text.grid(row=0, column=0, sticky='nsw')
+		self.nlow_text.bind("<Button-4>", self.cb_nlow_wheel_up)
+		self.nlow_text.bind("<Button-5>", self.cb_nlow_wheel_down)
 
-		self.nhigh_text = self.note_info_canvas.create_text(
-			self.piano_canvas_width - int(zynthian_gui_config.ctrl_width / 2),
-			int((self.note_info_canvas_height-fs) / 1.5),
-			width=5 * fs,
-			justify=tkinter.CENTER,
-			fill=zynthian_gui_config.color_ctrl_tx,
+		self.nhigh_text = tkinter.Label(self.note_info_frame,
+			fg=zynthian_gui_config.color_ctrl_tx,
+			bg=zynthian_gui_config.color_panel_bg,
 			font=(zynthian_gui_config.font_family, fs),
+			width=5,
 			text=self.get_midi_note_name(self.note_high))
-		self.note_info_canvas.tag_bind(self.nhigh_text, "<Button-4>", self.cb_nhigh_wheel_up)
-		self.note_info_canvas.tag_bind(self.nhigh_text, "<Button-5>", self.cb_nhigh_wheel_down)
+		self.nhigh_text.grid(row=0, column=2, sticky='sne')
+		self.nhigh_text.bind("<Button-4>", self.cb_nhigh_wheel_up)
+		self.nhigh_text.bind("<Button-5>", self.cb_nhigh_wheel_down)
 
-
-		self.learn_text = self.note_info_canvas.create_text(
-			zynthian_gui_config.display_width  / 2,
-			int((self.note_info_canvas_height-fs) / 1.5),
-			width=5 * fs,
-			justify=tkinter.CENTER,
-			fill="Dark Grey",
-			font=(zynthian_gui_config.font_family, int(fs * 0.7)),
-			text="not learning",
-			)
-		self.note_info_canvas.tag_bind(self.learn_text, "<ButtonRelease-1>", self.toggle_midi_learn)
-
-
-	def toggle_midi_learn(self, event):
-		self.zyngui.toggle_midi_learn()
+		self.learn_text = tkinter.Label(self.note_info_frame,
+			fg='Dark Grey',
+			bg=zynthian_gui_config.color_panel_bg,
+			font=(zynthian_gui_config.font_family, int(fs*0.6)),
+			text='not learning',
+			width=1)
+		self.learn_text.grid(row=0, column=1, sticky='nsew')
+		self.learn_text.bind("<ButtonRelease-1>", lambda e: self.zyngui.toggle_midi_learn())
 
 
 	def update_text(self):
-		self.note_info_canvas.itemconfig(self.nlow_text, text=self.get_midi_note_name(self.note_low))
-		self.note_info_canvas.itemconfig(self.nhigh_text, text=self.get_midi_note_name(self.note_high))
+		self.nlow_text['text'] = self.get_midi_note_name(self.note_low)
+		self.nhigh_text['text'] = self.get_midi_note_name(self.note_high)
 
 
 	def set_zctrls(self):
@@ -260,7 +235,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			self.octave_zgui_ctrl.setup_zynpot()
 			self.octave_zgui_ctrl.erase_midi_bind()
 			self.octave_zctrl.set_value(self.octave_trans)
-			self.octave_zgui_ctrl.show()
 
 			if not self.halftone_zgui_ctrl:
 				self.halftone_zctrl = zynthian_controller(self, 'semitone transpose', 'semitone transpose', { 'value_min':-12, 'value_max':12 })
@@ -268,24 +242,29 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			self.halftone_zgui_ctrl.setup_zynpot()
 			self.halftone_zgui_ctrl.erase_midi_bind()
 			self.halftone_zctrl.set_value(self.halftone_trans)
-			self.halftone_zgui_ctrl.show()
 
 			if not self.nlow_zgui_ctrl:
 				self.nlow_zctrl = zynthian_controller(self, 'note low', 'note low', {'nudge_factor':1})
 				self.nlow_zgui_ctrl = zynthian_gui_controller(self.zctrl_pos[2], self.main_frame, self.nlow_zctrl, True)
 			self.nlow_zgui_ctrl.setup_zynpot()
 			self.nlow_zctrl.set_value(self.note_low)
-			self.nlow_zgui_ctrl.show()
 
 			if not self.nhigh_zgui_ctrl:
 				self.nhigh_zctrl = zynthian_controller(self, 'note high', 'note high', {'nudge_factor':1})
 				self.nhigh_zgui_ctrl = zynthian_gui_controller(self.zctrl_pos[3], self.main_frame, self.nhigh_zctrl, True)
 			self.nhigh_zgui_ctrl.setup_zynpot()
 			self.nhigh_zctrl.set_value(self.note_high)
-			self.nhigh_zgui_ctrl.show()
 
 			if zynthian_gui_config.ctrl_both_sides:
-				self.main_frame.rowconfigure(2, weight=20, minsize=self.note_info_canvas_height)
+				self.octave_zgui_ctrl.configure(height=self.height // 2, width=self.width // 4)
+				self.halftone_zgui_ctrl.configure(height=self.height // 2, width=self.width // 4)
+				self.octave_zgui_ctrl.grid(row=0, column=0)
+				self.halftone_zgui_ctrl.grid(row=0, column=2)
+			else:
+				self.octave_zgui_ctrl.configure(height=self.height // 4, width=self.width // 3)
+				self.halftone_zgui_ctrl.configure(height=self.height // 4, width=self.width // 3)
+				self.octave_zgui_ctrl.grid(row=0, column=2, pady=(0,1))
+				self.halftone_zgui_ctrl.grid(row=1, column=2, pady=(1,0))
 
 
 	def plot_zctrls(self):
@@ -336,12 +315,14 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def enter_midi_learn(self):
 		self.learn_mode = 1
-		self.note_info_canvas.itemconfig(self.learn_text, text="learning...", fill=zynthian_gui_config.color_ml)
+		self.learn_text['text'] = "learning..."
+		self.learn_text['fg'] = zynthian_gui_config.color_ml
 
 
 	def exit_midi_learn(self):
 		self.learn_mode = 0
-		self.note_info_canvas.itemconfig(self.learn_text, text="not learning", fill="Dark Grey")
+		self.learn_text['text'] = "not learning"
+		self.learn_text['fg'] = 'Dark Grey'
 
 
 	def send_controller_value(self, zctrl):
@@ -387,6 +368,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		elif self.learn_mode == 2:
 			self.nhigh_zctrl.set_value(num)
 			self.zyngui.exit_midi_learn()
+		self.update_piano()
 
 
 	def switch_select(self, t='S'):

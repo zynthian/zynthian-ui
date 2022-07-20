@@ -622,6 +622,7 @@ class zynthian_gui:
 		# Initial snapshot...
 		snapshot_loaded=False
 		# Try to load "last_state" snapshot ...
+		#TODO: Move this to later (after display shown) and give indication of progress to avoid apparent hang during startup
 		if zynthian_gui_config.restore_last_state:
 			snapshot_loaded=self.screens['snapshot'].load_last_state_snapshot()
 		# Try to load "default" snapshot ...
@@ -1437,17 +1438,17 @@ class zynthian_gui:
 
 
 	def cuia_bank_preset(self, params=None):
-		if self.current_screen=='preset':
-			if len(self.curlayer.bank_list)>1:
+		if self.current_screen == 'preset':
+			if len(self.curlayer.bank_list) > 1:
 				self.replace_screen('bank')
 			else:
 				self.close_screen()
-		elif self.current_screen=='bank':
+		elif self.current_screen == 'bank':
 			#self.replace_screen('preset')
 			self.close_screen()
 		else:
 			if len(self.curlayer.preset_list) > 0 and self.curlayer.preset_list[0][0] != '':
-				self.screens['preset'].index=self.curlayer.get_preset_index()
+				self.screens['preset'].index = self.curlayer.get_preset_index()
 				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 			elif len(self.curlayer.bank_list) > 0 and self.curlayer.bank_list[0][0] != '':
 				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)

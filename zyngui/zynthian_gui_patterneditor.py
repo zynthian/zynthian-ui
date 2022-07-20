@@ -105,15 +105,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		# Geometry vars
 		self.select_thickness = 1 + int(self.width / 500) # Scale thickness of select border based on screen resolution
-		self.grid_height = self.height - PLAYHEAD_HEIGHT - self.buttonbar_height - zynthian_gui_config.topbar_height
+		self.grid_height = self.height - PLAYHEAD_HEIGHT
 		self.grid_width = int(self.width * 0.9)
 		self.piano_roll_width = self.width - self.grid_width
 		self.update_row_height()
 
-		self.seq_frame = tkinter.Frame(self.main_frame)
-		self.seq_frame.grid(row=1)
 		# Create pattern grid canvas
-		self.grid_canvas = tkinter.Canvas(self.seq_frame,
+		self.grid_canvas = tkinter.Canvas(self.main_frame,
 			width=self.grid_width,
 			height=self.grid_height,
 			bg=CANVAS_BACKGROUND,
@@ -122,7 +120,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.grid_canvas.grid(column=1, row=0)
 
 		# Create velocity level indicator canvas
-		self.velocity_canvas = tkinter.Canvas(self.seq_frame,
+		self.velocity_canvas = tkinter.Canvas(self.main_frame,
 			width=self.piano_roll_width,
 			height=PLAYHEAD_HEIGHT,
 			bg=CELL_BACKGROUND,
@@ -130,10 +128,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			highlightthickness=0,
 			)
 		self.velocity_canvas.create_rectangle(0, 0, self.piano_roll_width * self.velocity / 127, PLAYHEAD_HEIGHT, fill='yellow', tags="velocityIndicator", width=0)
-		self.velocity_canvas.grid(column=0, row=2)
+		self.velocity_canvas.grid(column=0, row=1)
 
 		# Create pianoroll canvas
-		self.piano_roll = tkinter.Canvas(self.seq_frame,
+		self.piano_roll = tkinter.Canvas(self.main_frame,
 			width=self.piano_roll_width,
 			height=self.grid_height,
 			bg=CANVAS_BACKGROUND,
@@ -147,7 +145,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.piano_roll.bind("<Button-5>", self.on_pianoroll_wheel)
 
 		# Create playhead canvas
-		self.play_canvas = tkinter.Canvas(self.seq_frame,
+		self.play_canvas = tkinter.Canvas(self.main_frame,
 			width=self.grid_width,
 			height=PLAYHEAD_HEIGHT,
 			bg=CANVAS_BACKGROUND,
@@ -158,7 +156,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			state="normal",
 			width=0,
 			tags="playCursor")
-		self.play_canvas.grid(column=1, row=2)
+		self.play_canvas.grid(column=1, row=1)
 
 		self.playhead = 0
 

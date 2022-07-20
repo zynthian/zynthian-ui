@@ -56,39 +56,10 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.zselector_hiden = False
 		self.swipe_speed = 0
 		self.list_entry_height = int(1.8 * zynthian_gui_config.font_size) # Set approx. here to avoid errors. Set accurately when list item selected
-
-		# Listbox Size
-		self.lb_height = zynthian_gui_config.body_height + 1
-		self.wide = wide
-		if self.wide:
-			self.lb_width = zynthian_gui_config.display_width - zynthian_gui_config.ctrl_width
-		else:
-			self.lb_width = zynthian_gui_config.display_width - 2 * zynthian_gui_config.ctrl_width - 2
-
 		self.listbox_motion_last_dy = 0
 
-		# ListBox's frame
-		self.lb_frame = tkinter.Frame(self.main_frame,
-			width=self.lb_width,
-			height=self.lb_height,
-			bg=zynthian_gui_config.color_bg)
-		if self.wide:
-			if zynthian_gui_config.select_ctrl > 1:
-				self.lb_frame.grid(row=1, column=0, rowspan=4, columnspan=2, padx=(0,2), sticky="wn")
-			else:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, columnspan=2, padx=(2,0), sticky="en")
-		else:
-			if zynthian_gui_config.select_ctrl > 1:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="wn")
-			else:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="en")
-
-		self.lb_frame.columnconfigure(0, weight=10)
-		self.lb_frame.rowconfigure(0, weight=10)
-		self.lb_frame.grid_propagate(False)
-
 		# ListBox
-		self.listbox = tkinter.Listbox(self.lb_frame,
+		self.listbox = tkinter.Listbox(self.main_frame,
 			font=zynthian_gui_config.font_listbox,
 			bd=7,
 			highlightthickness=0,
@@ -98,7 +69,22 @@ class zynthian_gui_selector(zynthian_gui_base):
 			selectbackground=zynthian_gui_config.color_ctrl_bg_on,
 			selectforeground=zynthian_gui_config.color_ctrl_tx,
 			selectmode=tkinter.SINGLE)
-		self.listbox.grid(sticky="wens")
+
+		# Columns 0 & 2 may contain zctrls. If not then they are empty and hence not visible
+		# Column 1 may contain listbox
+		self.main_frame.columnconfigure(1, weight=1)
+
+		# Rows 0 & 1 may contain zctrls. Rows 2 & 3 may contain zctrls, e.g. 4 controls on RHS.
+		# Row 0 contains list which spans all controller rows
+		self.main_frame.rowconfigure(0, weight=1)
+
+		if wide:
+			# Do not show controls in column 0
+			self.listbox.grid(row=0, column=1, rowspan=4, padx=(0,2), sticky="wens")
+		else:
+			self.listbox.grid(row=0, column=1, rowspan=4, padx=(2,2), sticky="wens")
+
+
 		# Bind listbox events
 		self.listbox_push_ts = datetime.now()
 		self.listbox.bind("<Button-1>",self.cb_listbox_push)
@@ -118,9 +104,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 				height = h,
 				bd=0,
 				highlightthickness=0,
-				relief='flat',
 				bg = zynthian_gui_config.color_bg)
-			self.loading_canvas.grid(row=1,column=2,sticky="ne")
+			self.loading_canvas.grid(row=0, column=2, sticky="nesw")
 			self.loading_push_ts = None
 			self.loading_canvas.bind("<Button-1>",self.cb_loading_push)
 			self.loading_canvas.bind("<ButtonRelease-1>",self.cb_loading_release)
@@ -134,7 +119,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.loading_item = None
 
 		# Selector Controller Caption
-		self.selector_caption=selcap
+		self.selector_caption = selcap
 
 
 	def show(self):
@@ -178,8 +163,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 				self.zselector.config(self.zselector.zctrl)
 				self.zselector.show()
 			else:
-				zselector_ctrl=zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
-				self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hiden, selcounter=True)
+				zselector_ctrl = zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
+				self.zselector = zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hiden, selcounter=True)
 
 
 	def plot_zctrls(self):
@@ -251,14 +236,14 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if index>=0 and index<len(self.list_data) and self.list_data[index][0] is None:
 			if self.index<=index:
 				if index<len(self.list_data)-1:
-					self.select_listbox(index+1)
+					self.select_listbox(index + 1)
 				else:
-					self.select_listbox(index-1)
+					self.select_listbox(index - 1)
 			elif self.index>index:
 				if index>0:
-					self.select_listbox(index-1)
+					self.select_listbox(index - 1)
 				else:
-					self.select_listbox(index+1)
+					self.select_listbox(index + 1)
 			return True
 		else:
 			return False

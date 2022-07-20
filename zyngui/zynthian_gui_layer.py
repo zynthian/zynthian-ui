@@ -74,10 +74,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.list_data=[]
 
 		# Get list of root layers
-		self.root_layers=self.get_fxchain_roots()
+		self.root_layers = self.get_fxchain_roots()
 
-		for i,layer in enumerate(self.root_layers):
-			self.list_data.append((str(i+1),i,layer.get_presetpath()))
+		for i, layer in enumerate(self.root_layers):
+			self.list_data.append((str(i + 1), i, layer.get_presetpath()))
 
 		super().fill_list()
 
@@ -331,28 +331,28 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if self.add_layer_eng:
 			# Create layer node ...
 			zyngine = self.zyngui.screens['engine'].start_engine(self.add_layer_eng)
-			layer=zynthian_layer(zyngine, midich, self.zyngui)
+			layer = zynthian_layer(zyngine, midich, self.zyngui)
 
 			# if replacing, clean zs3 state from the replaced layer
 			if self.replace_layer_index is not None:
 				self.clean_layer_state_from_zs3(self.replace_layer_index)
 
 			# add/replace Audio Effects ...
-			if len(self.layers)>0 and layer.engine.type=="Audio Effect":
+			if len(self.layers) > 0 and layer.engine.type == "Audio Effect":
 				if self.replace_layer_index is not None:
 					self.replace_on_fxchain(layer)
 				else:
 					self.add_to_fxchain(layer, self.layer_chain_parallel)
 					self.layers.append(layer)
 			# add/replace MIDI Effects ...
-			elif len(self.layers)>0 and layer.engine.type=="MIDI Tool":
+			elif len(self.layers) > 0 and layer.engine.type == "MIDI Tool":
 				if self.replace_layer_index is not None:
 					self.replace_on_midichain(layer)
 				else:
 					self.add_to_midichain(layer, self.layer_chain_parallel)
 					self.layers.append(layer)
 			# replace Synth ...
-			elif len(self.layers)>0 and layer.engine.type=="MIDI Synth":
+			elif len(self.layers) > 0 and layer.engine.type == "MIDI Synth":
 				if self.replace_layer_index is not None:
 					self.replace_synth(layer)
 				else:
