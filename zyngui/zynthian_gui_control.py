@@ -164,7 +164,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 						module = importlib.util.module_from_spec(spec)
 						spec.loader.exec_module(module)
 						class_ = getattr(module, module_name)
-						self.widgets[widget_name] = class_()
+						self.widgets[widget_name] = class_(self.main_frame)
 					except Exception as e:
 						logging.error("Can't load custom widget {} => {}".format(widget_name, e))
 
@@ -175,8 +175,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 				for k, widget in self.widgets.items():
 					if k == widget_name:
+						self.listbox.grid_remove()
+						widget.grid(row=0, column=1, rowspan=4, padx=(0,2), sticky="news")
 						widget.show()
 					else:
+						widget.grid_remove()
 						widget.hide()
 				return
 		self.hide_widgets()
@@ -184,7 +187,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def hide_widgets(self):
 		for k, widget in self.widgets.items():
+			widget.grid_remove()
 			widget.hide()
+		self.listbox.grid()
 
 
 	def set_controller_screen(self):
@@ -329,6 +334,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
+
 		self.set_mode_control()
 
 

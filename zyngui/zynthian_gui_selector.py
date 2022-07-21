@@ -23,12 +23,9 @@
 # 
 #******************************************************************************
 
-import sys
 import logging
 import tkinter
 from datetime import datetime
-from tkinter import font as tkFont
-from PIL import Image, ImageTk
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
@@ -78,11 +75,12 @@ class zynthian_gui_selector(zynthian_gui_base):
 		# Row 0 contains list which spans all controller rows
 		self.main_frame.rowconfigure(0, weight=1)
 
+		self.wide = wide
 		if wide:
 			# Do not show controls in column 0
-			self.listbox.grid(row=0, column=1, rowspan=4, padx=(0,2), sticky="wens")
+			self.listbox.grid(row=0, column=1, rowspan=4, padx=(0,2), sticky="news")
 		else:
-			self.listbox.grid(row=0, column=1, rowspan=4, padx=(2,2), sticky="wens")
+			self.listbox.grid(row=0, column=1, rowspan=4, padx=(2,2), sticky="news")
 
 
 		# Bind listbox events
@@ -95,13 +93,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 		if loading_anim:
 			# Canvas for loading image animation
-			if zynthian_gui_config.ctrl_both_sides:
-				h = zynthian_gui_config.ctrl_height - 1
-			else:
-				h = 3 * zynthian_gui_config.ctrl_height + 1
 			self.loading_canvas = tkinter.Canvas(self.main_frame,
-				width = zynthian_gui_config.ctrl_width,
-				height = h,
+				width=self.width // 4 - 2,
+				height=self.height // 2 - 1,
 				bd=0,
 				highlightthickness=0,
 				bg = zynthian_gui_config.color_bg)
@@ -120,6 +114,12 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 		# Selector Controller Caption
 		self.selector_caption = selcap
+
+
+	def update_layout(self):
+		super().update_layout()
+		if self.loading_canvas:
+			self.loading_canvas.configure(width = self.width // 4 - 2, height = self.height // 2 - 1)
 
 
 	def show(self):

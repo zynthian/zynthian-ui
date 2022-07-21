@@ -450,16 +450,16 @@ class zynthian_layer:
 	# Create controller screens from zynthian controller keys
 	def init_ctrl_screens(self):
 		#Build control screens ...
-		self.ctrl_screens_dict=OrderedDict()
+		self.ctrl_screens_dict = OrderedDict()
 		for cscr in self.engine._ctrl_screens:
 			self.ctrl_screens_dict[cscr[0]]=self.build_ctrl_screen(cscr[1])
 
 		#Set active the first screen
-		if len(self.ctrl_screens_dict)>0:
-			if self.current_screen_index==-1:
-				self.current_screen_index=0
+		if len(self.ctrl_screens_dict) > 0:
+			if self.current_screen_index == -1:
+				self.current_screen_index = 0
 		else:
-			self.current_screen_index=-1
+			self.current_screen_index = -1
 
 
 	def get_ctrl_screens(self):

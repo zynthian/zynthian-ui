@@ -542,8 +542,6 @@ class zynthian_engine(zynthian_basic_engine):
 
 		if self._ctrls is not None:
 			for ctrl in self._ctrls:
-				if ctrl[0] in self.zctrls:
-					continue
 				options={}
 
 				#OSC control =>

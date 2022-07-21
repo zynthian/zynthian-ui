@@ -28,7 +28,6 @@ import logging
 import tkinter
 from threading import Timer
 from tkinter import font as tkFont
-from PIL import Image, ImageTk
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config

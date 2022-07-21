@@ -51,12 +51,17 @@ from zyngui import zynthian_widget_base
 from math import trunc
 
 class zynthian_widget_looper(zynthian_widget_base.zynthian_widget_base):
-	def __init__(self):
-		super().__init__()
+	def __init__(self, parent):
+		super().__init__(parent)
 
-	def create_gui(self):
+		self.widget_canvas = tkinter.Canvas(self,
+			bd=0,
+			highlightthickness=0,
+			relief='flat',
+			bg=zynthian_gui_config.color_bg)
+		self.widget_canvas.grid(sticky='news')
+
 		self.get_monitors()
-		super().create_gui()
 
 		k = self.monitors.keys()
 		tracks = []
@@ -71,15 +76,15 @@ class zynthian_widget_looper(zynthian_widget_base.zynthian_widget_base):
 		l_offset = trunc((l_grid - l_shapes) / 2)
 		fsize = trunc(l_shapes * 0.8)
 
-		rv = self.mon_canvas.create_text(l_offset, self.height - l_grid, anchor="nw",
+		rv = self.widget_canvas.create_text(l_offset, self.height - l_grid, anchor="nw",
 										 font=('Audiowide', fsize), text="Tr ??:",
 										 fill="#fff")
 		self.current_track_indicator = rv
-		rv = self.mon_canvas.create_text(self.width - l_offset - 5 * fsize, self.height - l_grid,
+		rv = self.widget_canvas.create_text(self.width - l_offset - 5 * fsize, self.height - l_grid,
 										 anchor="ne", font=('Helvetica', fsize, 'bold'),
 										 text="0.0", fill="#fff")
 		self.current_pos_indicator = rv
-		rv = self.mon_canvas.create_text(self.width - l_offset, self.height - l_grid, anchor="ne",
+		rv = self.widget_canvas.create_text(self.width - l_offset, self.height - l_grid, anchor="ne",
 										 font=('Helvetica', fsize, 'bold'), text="0.0",
 										 fill="#fff")
 		self.current_len_indicator = rv
@@ -94,28 +99,41 @@ class zynthian_widget_looper(zynthian_widget_base.zynthian_widget_base):
 			yg = i * l_grid
 			x0 = xg + l_offset
 			y0 = yg + l_offset
-			rv = self.mon_canvas.create_oval(x0, y0, x0 + l_shapes, y0 + l_shapes,
+			rv = self.widget_canvas.create_oval(x0, y0, x0 + l_shapes, y0 + l_shapes,
 											 outline="#f00", fill="#f00", width = 1)
 			self.record_indicators.append(rv)
 
 			xg = xg + l_grid
 			x0 = xg + l_offset
 			triangle = [x0, y0, x0, y0 + l_shapes, x0 + l_shapes, y0 + trunc(l_shapes / 2)]
-			rv = self.mon_canvas.create_polygon(triangle, outline="#0f0", fill="#0f0", width = 1)
+			rv = self.widget_canvas.create_polygon(triangle, outline="#0f0", fill="#0f0", width = 1)
 			self.play_indicators.append(rv)
 
 			xg = xg + l_grid
 			x0 = xg + l_offset
-			rv = self.mon_canvas.create_rectangle(x0, y0, x0 + l_shapes, y0 + l_shapes,
+			rv = self.widget_canvas.create_rectangle(x0, y0, x0 + l_shapes, y0 + l_shapes,
 												  outline="#f00", fill="#f00", width = 1)
 			self.stop_indicators.append(rv)
 
 			x0 = l_offset
 			y0 = yg + trunc(l_grid / 2)
 			t = "Track " + self.tracks[i]
-			rv = self.mon_canvas.create_text(x0, y0, anchor="w",
+			rv = self.widget_canvas.create_text(x0, y0, anchor="w",
 											 font=('Audiowide', fsize), text=t, fill="#fff")
 			self.track_names.append(rv)
+
+
+	def on_size(self, event):
+		if event.width == self.width and event.height == self.height:
+			return
+		super().on_size(event)
+		self.widget_canvas.configure(width=self.width, height=self.height)
+
+		l_shapes = trunc(self.width / 12)
+		l_grid = trunc(l_shapes * 1.5)
+		l_offset = trunc((l_grid - l_shapes) / 2)
+		fsize = trunc(l_shapes * 0.8)
+
 
 	def refresh_gui(self):
 		try:
@@ -126,42 +144,42 @@ class zynthian_widget_looper(zynthian_widget_base.zynthian_widget_base):
 			tpos = self.monitors["position"]
 			tlen = self.monitors["length"]
 
-			self.mon_canvas.itemconfig(self.current_track_indicator, text="Tr {}:".format(curtrack))
-			self.mon_canvas.itemconfig(self.current_pos_indicator, text="{:5.1f}".format(tpos))
-			self.mon_canvas.itemconfig(self.current_len_indicator, text="{:5.1f}".format(tlen))
+			self.widget_canvas.itemconfig(self.current_track_indicator, text="Tr {}:".format(curtrack))
+			self.widget_canvas.itemconfig(self.current_pos_indicator, text="{:5.1f}".format(tpos))
+			self.widget_canvas.itemconfig(self.current_len_indicator, text="{:5.1f}".format(tlen))
 
 			i = 0
 			for t in self.tracks:
 				status = trunc(self.monitors["track_status_" + t])
 				if status == 1:
-					self.mon_canvas.itemconfig(self.record_indicators[i], fill="#000")
-					self.mon_canvas.itemconfig(self.play_indicators[i], fill="#000")
-					self.mon_canvas.itemconfig(self.stop_indicators[i], fill="#000")
+					self.widget_canvas.itemconfig(self.record_indicators[i], fill="#000")
+					self.widget_canvas.itemconfig(self.play_indicators[i], fill="#000")
+					self.widget_canvas.itemconfig(self.stop_indicators[i], fill="#000")
 				elif status == 2:
-					self.mon_canvas.itemconfig(self.record_indicators[i], fill="#f00")
-					self.mon_canvas.itemconfig(self.play_indicators[i], fill="#000")
-					self.mon_canvas.itemconfig(self.stop_indicators[i], fill="#000")
+					self.widget_canvas.itemconfig(self.record_indicators[i], fill="#f00")
+					self.widget_canvas.itemconfig(self.play_indicators[i], fill="#000")
+					self.widget_canvas.itemconfig(self.stop_indicators[i], fill="#000")
 				elif status == 3:
-					self.mon_canvas.itemconfig(self.record_indicators[i], fill="#f00")
-					self.mon_canvas.itemconfig(self.play_indicators[i], fill="#0f0")
-					self.mon_canvas.itemconfig(self.stop_indicators[i], fill="#000")
+					self.widget_canvas.itemconfig(self.record_indicators[i], fill="#f00")
+					self.widget_canvas.itemconfig(self.play_indicators[i], fill="#0f0")
+					self.widget_canvas.itemconfig(self.stop_indicators[i], fill="#000")
 				elif status == 4:
-					self.mon_canvas.itemconfig(self.record_indicators[i], fill="#000")
-					self.mon_canvas.itemconfig(self.play_indicators[i], fill="#0f0")
-					self.mon_canvas.itemconfig(self.stop_indicators[i], fill="#000")
+					self.widget_canvas.itemconfig(self.record_indicators[i], fill="#000")
+					self.widget_canvas.itemconfig(self.play_indicators[i], fill="#0f0")
+					self.widget_canvas.itemconfig(self.stop_indicators[i], fill="#000")
 				elif status == 5:
-					self.mon_canvas.itemconfig(self.record_indicators[i], fill="#000")
-					self.mon_canvas.itemconfig(self.play_indicators[i], fill="#000")
-					self.mon_canvas.itemconfig(self.stop_indicators[i], fill="#f00")
+					self.widget_canvas.itemconfig(self.record_indicators[i], fill="#000")
+					self.widget_canvas.itemconfig(self.play_indicators[i], fill="#000")
+					self.widget_canvas.itemconfig(self.stop_indicators[i], fill="#f00")
 				elif status == 6:
-					self.mon_canvas.itemconfig(self.record_indicators[i], fill="#f00")
-					self.mon_canvas.itemconfig(self.play_indicators[i], fill="#0f0")
-					self.mon_canvas.itemconfig(self.stop_indicators[i], fill="#000")
+					self.widget_canvas.itemconfig(self.record_indicators[i], fill="#f00")
+					self.widget_canvas.itemconfig(self.play_indicators[i], fill="#0f0")
+					self.widget_canvas.itemconfig(self.stop_indicators[i], fill="#000")
 
 				if t == curtrack:
-					self.mon_canvas.itemconfig(self.track_names[i], fill="#ff0")
+					self.widget_canvas.itemconfig(self.track_names[i], fill="#ff0")
 				else:
-					self.mon_canvas.itemconfig(self.track_names[i], fill="#fff")
+					self.widget_canvas.itemconfig(self.track_names[i], fill="#fff")
 
 				i = i + 1
 		except KeyError:

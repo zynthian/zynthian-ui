@@ -196,8 +196,8 @@ class zynthian_controller:
 			if cc is not None and chan is not None and self.midi_learn_cc is None:
 				self.set_midi_learn(chan, cc)
 
-		self.value_min = 0
-		self.value_max = 127
+		#self.value_min = 0
+		#self.value_max = 127
 		self.value = val
 		self.is_toggle = False
 		self.is_integer = True
@@ -572,7 +572,7 @@ class zynthian_controller:
 		#if self.ticks:
 		#	self.set_value(val)
 		if self.is_logarithmic:
-			value = self.value_min*pow(self.powbase, val / 127)
+			value = self.value_min * pow(self.powbase, val / 127)
 		else:
 			value = self.value_min + val * self.value_range / 127
 		self.set_value(value)

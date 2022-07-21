@@ -23,11 +23,9 @@
 # 
 #******************************************************************************
 
-import sys
 import tkinter
 import logging
 from time import sleep
-from threading  import Thread
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -36,44 +34,35 @@ from zyngui import zynthian_gui_config
 # Base Class for Control Widgets
 #------------------------------------------------------------------------------
 
-class zynthian_widget_base():
+class zynthian_widget_base(tkinter.Frame):
 
-	def __init__(self):
+	def __init__(self, parent):
+		super().__init__(parent, bg=zynthian_gui_config.color_bg)
 		self.zyngui = zynthian_gui_config.zyngui
 		self.zyngui_control = self.zyngui.screens['control']
-		self.width = self.zyngui_control.lb_width
-		self.height = self.zyngui_control.lb_height
+		self.width = 1
+		self.height = 1
 		self.wide = self.zyngui_control.wide
 		self.shown = False
 
 		self.layer = None
-		self.mon_canvas = None
+		self.widget_canvas = None
 		self.monitors = None
+		self.bind('<Configure>', self.on_size)
 
 
-	def create_gui(self):
-		self.mon_canvas = tkinter.Canvas(self.zyngui_control.lb_frame,
-			width=self.width,
-			height=self.height,
-			#bd=0,
-			highlightthickness=0,
-			relief='flat',
-			bg=zynthian_gui_config.color_bg)
+	def on_size(self, event):
+		self.width = event.width
+		self.height = event.height
 
 
 	def show(self):
 		if not self.shown:
-			if not self.mon_canvas:
-				self.create_gui()
-			self.zyngui_control.listbox.grid_forget()
-			self.mon_canvas.grid(sticky="wens")
 			self.shown = True
 
 
 	def hide(self):
 		if self.shown:
-			self.mon_canvas.grid_forget()
-			self.zyngui_control.listbox.grid(sticky="wens")
 			self.shown = False
 
 

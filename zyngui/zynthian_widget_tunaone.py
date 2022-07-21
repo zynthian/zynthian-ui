@@ -40,60 +40,71 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 	note_names = [ 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B' ]
 
 
-	def __init__(self):
-		super().__init__()
+	def __init__(self, parent):
+		super().__init__(parent)
 
 		self.note_label = []
 		self.cents_bar = []
 
-		# Geometry vars
-		self.note_fs = int(self.width/8)
-		self.bar_width = int(self.width/80)
-		self.bar_height = int(self.height/10)
+		# Geometry vars set accurately during resize
+		self.note_fs = 1
+		self.bar_width = 1
+		self.bar_height = 1
 
+		self.widget_canvas = tkinter.Canvas(self,
+			highlightthickness=0,
+			relief='flat',
+			bg=zynthian_gui_config.color_bg)
+		self.widget_canvas.grid(sticky='news')
 
-	def create_gui(self):
-		super().create_gui()
+		# Create custom GUI elements (position and size set when canvas is grid and size applied)
 
-		# Create custom GUI elements
-		x0 = self.width//2
-		y0 = self.height//4
-		self.note_label = self.mon_canvas.create_text(
-			x0,
-			self.height//2,
+		self.note_label = self.widget_canvas.create_text(
+			0,
+			0,
 			#anchor=tkinter.NW,
 			justify=tkinter.CENTER,
-			width=4*self.note_fs,
+			width=4 * self.note_fs,
 			text="??",
 			font=(zynthian_gui_config.font_family, self.note_fs),
 			fill=zynthian_gui_config.color_panel_tx)
-		self.cents_bar = self.mon_canvas.create_rectangle(
-			x0-self.bar_width,
-			y0,
-			x0 + self.bar_width,
-			y0 - self.bar_height,
-			fill=zynthian_gui_config.color_on)
+		self.cents_bar = self.widget_canvas.create_rectangle(
+			0, 0, 0, 0,
+			fill=zynthian_gui_config.color_off)
 		# Scale axis for cents
-		y0 -= self.bar_height//2
-		self.mon_canvas.create_line(
-			0,
-			y0,
-			self.width,
-			y0,
+		self.axis_y = self.widget_canvas.create_line(
+			0, 0, 0, 0,
 			fill=zynthian_gui_config.color_tx_off)
-		self.mon_canvas.create_line(
-			x0,
-			y0 + self.bar_height,
-			x0,
-			y0 - self.bar_height,
+		self.axis_x = self.widget_canvas.create_line(
+			0, 0, 0, 0,
 			fill=zynthian_gui_config.color_tx_off)
-		dx = self.width//20
-		dy = self.bar_height//2
-		for i in range(1,10):
-			x = x0 + i * dx
-			self.mon_canvas.create_line(x, y0 + dy, x, y0 - dy, fill=zynthian_gui_config.color_tx_off)
-			x = x0 - i * dx
-			self.mon_canvas.create_line(x, y0 + dy, x, y0 - dy, fill=zynthian_gui_config.color_tx_off)
+
+
+	def on_size(self, event):
+		if event.width == self.width and event.height == self.height:
+			return
+		super().on_size(event)
+		self.widget_canvas.configure(width=self.width, height=self.height)
+
+		self.note_fs = round(self.width / 8)
+		self.bar_width = round(self.width / 160)
+		self.bar_height = round(self.height / 20)
+		self.x0 = self.width // 2
+		self.y0 = self.height // 4
+		self.widget_canvas.coords(self.note_label, self.x0, self.height // 2)
+		self.widget_canvas.itemconfigure(self.note_label, width=4 * self.note_fs, font=(zynthian_gui_config.font_family, self.note_fs))
+		self.widget_canvas.coords(self.axis_x, 0, self.y0, self.width, self.y0)
+		self.widget_canvas.coords(self.axis_y, self.x0, self.y0 + self.bar_height * 2, self.x0, self.y0 - self.bar_height * 2)
+		self.widget_canvas.coords(self.cents_bar, self.x0 - self.bar_width, self.y0 + self.bar_height, self.x0 + self.bar_width, self.y0 - self.bar_height)
+		dx = self.width // 20
+		dy = self.bar_height
+		self.widget_canvas.delete('axis')
+		for i in range(1, 10):
+			x = self.x0 + i * dx
+			self.widget_canvas.create_line(x, self.y0 + dy, x, self.y0 - dy, fill=zynthian_gui_config.color_tx_off, tags='axis')
+			x = self.x0 - i * dx
+			self.widget_canvas.create_line(x, self.y0 + dy, x, self.y0 - dy, fill=zynthian_gui_config.color_tx_off, tags='axis')
+		self.widget_canvas.grid(row=0, column=0, sticky='news')
 
 
 	def refresh_gui(self):
@@ -105,23 +116,26 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 		#	logging.debug("MONITOR {} = {}".format(k,v))
 
 		#if monitors['rms']>-50.0 and monitors['accuracy']>0.0:
-		if self.monitors['rms']>-50.0:
+		if self.monitors['rms'] > -50.0:
 			try:
 				note_name = "{}{}".format(self.note_names[int(self.monitors["note"])], int(self.monitors["octave"]))
 			except:
 				note_name = "??"
 			try:
-				x = int(self.width//2 + self.monitors['cent'])
+				x = int(self.x0 + self.monitors['cent'])
 			except:
-				x = self.width//2
+				x = self.x0
 
-			y0 = self.height//4
-			self.mon_canvas.itemconfigure(self.note_label, text=note_name)
-			self.mon_canvas.coords(self.cents_bar,
+			self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL)
+			self.widget_canvas.itemconfigure(self.cents_bar, state=tkinter.NORMAL)
+			self.widget_canvas.coords(self.cents_bar,
 				x - self.bar_width,
-				y0,
+				self.y0 + self.bar_height,
 				x + self.bar_width,
-				y0 - self.bar_height)
+				self.y0 - self.bar_height)
+		else:
+			self.widget_canvas.itemconfigure(self.cents_bar, state=tkinter.HIDDEN)
+			self.widget_canvas.itemconfigure(self.note_label, state=tkinter.HIDDEN)
 
 
 #------------------------------------------------------------------------------

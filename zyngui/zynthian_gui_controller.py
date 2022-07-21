@@ -180,7 +180,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				else:
 					self.pixels_per_div = int(event.height * self.zctrl.nudge_factor / self.zctrl.value_range)
 			if self.zctrl.is_toggle:
-				self.pixels_per_div = self.height // 3
+				self.pixels_per_div = event.height // 3
 		if self.pixels_per_div == 0:
 			self.pixels_per_div = 1
 
@@ -228,7 +228,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.coords(self.label_title, event.width // 2, 2)
 		self.itemconfigure(self.label_title, width=self.title_width, anchor='n', justify=tkinter.CENTER)
 		self.coords(self.value_text, event.width // 2, event.height // 2)
-		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family,self.value_font_size), width=event.width // 3, anchor='w')
+		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family,self.value_font_size), width=event.width - 8)
 		self.coords(self.midi_bind, event.width // 2, self.winfo_height() - 2)
 
 
@@ -238,7 +238,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.coords(self.label_title, event.width // 2, 2)
 		self.itemconfigure(self.label_title, width=self.title_width, anchor='n', justify=tkinter.CENTER)
 		self.coords(self.value_text, 4, event.height // 2)
-		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family,self.value_font_size), width=event.width // 3, anchor='w')
+		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family,self.value_font_size), width=event.width - 8, anchor='w')
 		self.coords(self.midi_bind, event.width // 2, self.winfo_height() - 2)
 
 
