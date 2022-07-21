@@ -196,8 +196,6 @@ class zynthian_controller:
 			if cc is not None and chan is not None and self.midi_learn_cc is None:
 				self.set_midi_learn(chan, cc)
 
-		#self.value_min = 0
-		#self.value_max = 127
 		self.value = val
 		self.is_toggle = False
 		self.is_integer = True

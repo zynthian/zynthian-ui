@@ -61,13 +61,13 @@ class zynthian_gui_base(tkinter.Frame):
 		self.buttonbar_button = []
 
 		# Geometry vars
-		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
-			self.buttonbar_height = zynthian_gui_config.buttonbar_height
-		else:
-			self.buttonbar_height = 0
+		self.buttonbar_height = zynthian_gui_config.display_height // 7
 		self.width = zynthian_gui_config.display_width
 		#TODO: Views should use current height if they need dynamic changes else grow rows to fill main_frame
-		self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height - self.buttonbar_height
+		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
+			self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height - self.buttonbar_height
+		else:
+			self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
 
 
 		#Status Area Canvas Objects
@@ -238,17 +238,15 @@ class zynthian_gui_base(tkinter.Frame):
 		if config is None:
 			config = self.buttonbar_config    			
 		if not zynthian_gui_config.enable_onscreen_buttons or not config:
-			self.buttonbar_height = 0
 			return
 
-		self.buttonbar_height = zynthian_gui_config.buttonbar_height
 		self.buttonbar_frame = tkinter.Frame(self,
 			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.buttonbar_height,
+			height=self.buttonbar_height,
 			bg=zynthian_gui_config.color_bg)
 		self.buttonbar_frame.grid(row=2, padx=(0,0), pady=(2,0))
 		self.buttonbar_frame.grid_propagate(False)
-		self.buttonbar_frame.grid_rowconfigure(0, minsize=zynthian_gui_config.buttonbar_height, pad=0)
+		self.buttonbar_frame.grid_rowconfigure(0, minsize=self.buttonbar_height, pad=0)
 		for i in range(4):
 			self.buttonbar_frame.grid_columnconfigure(
 				i,
@@ -683,7 +681,7 @@ class zynthian_gui_base(tkinter.Frame):
 	# Function to update display, e.g. after geometry changes
 	# Override if required
 	def update_layout(self):
-		if self.buttonbar_config:
+		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
 			self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height - self.buttonbar_height
 		else:
 			self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height

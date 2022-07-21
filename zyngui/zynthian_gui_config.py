@@ -432,21 +432,6 @@ experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES',"").spli
 # X11 Related Stuff
 #------------------------------------------------------------------------------
 
-def set_buttonbar_height(bb_height):
-	global buttonbar_height, body_height, ctrl_height
-	
-	if enable_onscreen_buttons:
-		buttonbar_height = bb_height
-	else:
-		buttonbar_height = 0
-
-	body_height = display_height - topbar_height - buttonbar_height
-	if wiring_layout.startswith("Z2"):
-		ctrl_height = (body_height // 4) -1
-	else:
-		ctrl_height = body_height // 2
-
-
 if "zynthian_gui.py" in sys.argv[0]:
 	import tkinter
 	from PIL import Image, ImageTk
@@ -493,8 +478,6 @@ if "zynthian_gui.py" in sys.argv[0]:
 			topbar_fs = int(1.1*font_size)
 			title_y = int(0.05 * topbar_height)
 
-		body_height = display_height - topbar_height #- buttonbar_height
-
 		# Controllers position and size
 		if wiring_layout.startswith("Z2"):
 			ctrl_both_sides = False
@@ -515,8 +498,6 @@ if "zynthian_gui.py" in sys.argv[0]:
 				(1,2,"se",(2,0),(1,0))
 			]
 
-		# Calculate geometry depending on buttonbar_height
-		set_buttonbar_height(display_height // 7)
 
 		# Adjust Root Window Geometry
 		top.geometry(str(display_width)+'x'+str(display_height))

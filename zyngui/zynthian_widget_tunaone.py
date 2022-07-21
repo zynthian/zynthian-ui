@@ -23,7 +23,6 @@
 # 
 #******************************************************************************
 
-import sys
 import tkinter
 import logging
 
@@ -70,7 +69,7 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 			fill=zynthian_gui_config.color_panel_tx)
 		self.cents_bar = self.widget_canvas.create_rectangle(
 			0, 0, 0, 0,
-			fill=zynthian_gui_config.color_off)
+			fill=zynthian_gui_config.color_on)
 		# Scale axis for cents
 		self.axis_y = self.widget_canvas.create_line(
 			0, 0, 0, 0,
@@ -96,6 +95,7 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.coords(self.axis_x, 0, self.y0, self.width, self.y0)
 		self.widget_canvas.coords(self.axis_y, self.x0, self.y0 + self.bar_height * 2, self.x0, self.y0 - self.bar_height * 2)
 		self.widget_canvas.coords(self.cents_bar, self.x0 - self.bar_width, self.y0 + self.bar_height, self.x0 + self.bar_width, self.y0 - self.bar_height)
+		self.cent_dx = self.width / 100
 		dx = self.width // 20
 		dy = self.bar_height
 		self.widget_canvas.delete('axis')
@@ -122,11 +122,14 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 			except:
 				note_name = "??"
 			try:
-				x = int(self.x0 + self.monitors['cent'])
+				x = int(self.x0 + self.cent_dx * self.monitors['cent'])
 			except:
 				x = self.x0
 
-			self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL)
+			if int(self.monitors['cent']) == 0:
+				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=zynthian_gui_config.color_hl)
+			else:
+				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=zynthian_gui_config.color_panel_tx)
 			self.widget_canvas.itemconfigure(self.cents_bar, state=tkinter.NORMAL)
 			self.widget_canvas.coords(self.cents_bar,
 				x - self.bar_width,

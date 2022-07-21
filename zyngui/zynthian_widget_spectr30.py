@@ -46,17 +46,11 @@ class zynthian_widget_spectr30(zynthian_widget_base.zynthian_widget_base):
 		self.mon_bars = []
 		self.mon_ticks = []
 
-		# Geometry vars
-		if self.wide:
-			w = self.width
-		else:
-			w = self.width + 2
-		self.bar_width = int(w / self.n_bands)
-		self.tick_height = int(self.height / 80)
-		self.padx = int((w % self.n_bands) / 2)
+		# Geometry vars - set accurately by sizer
+		self.bar_width = 1
+		self.tick_height = 1
+		self.padx = 1
 		
-		#logging.debug("WIDTH = {}, BAR WIDTH = {}, PADX = {}".format(w, self.bar_width, self.padx))
-
 		self.widget_canvas = tkinter.Canvas(self,
 			bd=0,
 			highlightthickness=0,
@@ -65,11 +59,9 @@ class zynthian_widget_spectr30(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.grid(sticky='news')
 
 		# Create custom GUI elements: bars & ticks
-		x0 = self.padx
 		for i in range(self.n_bands):
-			self.mon_bars.append(self.widget_canvas.create_rectangle(x0, self.height, x0 + self.bar_width, self.height, fill=zynthian_gui_config.color_hl))
-			self.mon_ticks.append(self.widget_canvas.create_rectangle(x0, self.height, x0 + self.bar_width, self.height, fill=zynthian_gui_config.color_on))
-			x0 += self.bar_width 
+			self.mon_bars.append(self.widget_canvas.create_rectangle(0, 0 ,0 , 0, fill=zynthian_gui_config.color_hl))
+			self.mon_ticks.append(self.widget_canvas.create_rectangle(0, 0 ,0 , 0, fill=zynthian_gui_config.color_on))
 
 
 	def on_size(self, event):
@@ -83,9 +75,9 @@ class zynthian_widget_spectr30(zynthian_widget_base.zynthian_widget_base):
 			w = self.width
 		else:
 			w = self.width + 2
-		self.bar_width = int(w/self.n_bands)
-		self.tick_height = int(self.height/80)
-		self.padx = int((w%self.n_bands)/2)
+		self.bar_width = int(w / self.n_bands)
+		self.tick_height = int(self.height / 80)
+		self.padx = int((w % self.n_bands) / 2)
 		self.tick_height = int(self.height / 80)
 
 
