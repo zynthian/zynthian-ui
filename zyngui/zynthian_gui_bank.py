@@ -54,7 +54,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if self.zyngui.curlayer:
 			self.index = self.zyngui.curlayer.get_bank_index()
 			if self.zyngui.curlayer.get_show_fav_presets():
-				if len(self.zyngui.curlayer.get_preset_favs())>0:
+				if len(self.zyngui.curlayer.get_preset_favs()) > 0:
 					self.index = 0
 				else:
 					self.curlayer.set_show_fav_presets(False)
