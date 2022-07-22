@@ -93,7 +93,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		try:
 			self.index = self.root_layers.index(self.zyngui.curlayer)
 		except:
-			self.index=0
+			self.index = 0
 			try:
 				self.zyngui.set_curlayer(self.root_layers[0])
 			except:
@@ -112,7 +112,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def create_amixer_layer(self):
 		mixer_eng = self.zyngui.screens['engine'].start_engine('MX')
-		self.amixer_layer=zynthian_layer(mixer_eng, None, self.zyngui)
+		self.amixer_layer = zynthian_layer(mixer_eng, None, self.zyngui)
 
 
 	def remove_amixer_layer(self):
@@ -138,7 +138,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if len(self.root_layers)>1:
 			if self.zyngui.curlayer in self.root_layers:
 				self.index = self.root_layers.index(self.zyngui.curlayer) + 1
-				if self.index>=len(self.root_layers):
+				if self.index >= len(self.root_layers):
 					self.index = 0
 
 			if control:
@@ -151,11 +151,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def prev(self, control=True):
 		self.zyngui.restore_curlayer()
-		if len(self.root_layers)>1:
+		if len(self.root_layers) > 1:
 			if self.zyngui.curlayer in self.root_layers:
 				self.index = self.root_layers.index(self.zyngui.curlayer) - 1
-				if self.index<0:
-					self.index = len(self.root_layers)-1
+				if self.index < 0:
+					self.index = len(self.root_layers) - 1
 
 			if control:
 				self.select_listbox(self.index)
@@ -315,7 +315,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.add_layer_midich(2, False)
 			self.add_layer_midich(3, False)
 			self.fill_list()
-			self.index=len(self.layers)-4
+			self.index = len(self.layers) - 3
 			self.layer_control()
 
 		elif midi_chan is None:
@@ -498,7 +498,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if stop_engines:
 			self.zyngui.screens['engine'].stop_unused_engines()
 
-		self.index=0
+		self.index = 0
 		self.zyngui.set_curlayer(None)
 
 		# Refresh UI
@@ -1431,7 +1431,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.reset_note_range()
 
 		# Set active layer
-		if state['index']<len(self.root_layers):
+		if state['index'] < len(self.root_layers) and state['index'] > 0:
 			self.index = state['index']
 		else:
 			self.index = 0
