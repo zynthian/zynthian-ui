@@ -132,8 +132,15 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.coords(self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
 		self.widget_canvas.itemconfig(self.info_text, width=self.width)
 		if self.image:
-			self.img = ImageTk.PhotoImage(self.image.resize((self.width, self.height)))
-			self.widget_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
+			try:
+				self.img = ImageTk.PhotoImage(self.image.resize((self.width, self.height)))
+				self.widget_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
+			except:
+				if self.image:
+					self.image.close()
+					self.image = None
+				self.widget_canvas.itemconfigure(self.loading_text, text="Cannot\ndisplay\nwaveform")
+
 
 
 	def refresh_gui(self):
@@ -199,11 +206,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.waveform_color
 			)
 			os.system(cmd)
-		if os.path.exists(waveform_png):
+		try:
 			self.image = Image.open(waveform_png)
 			self.img = ImageTk.PhotoImage(self.image.resize((self.width, self.height)))
 			self.widget_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
-		else:
+		except:
 			if self.image:
 				self.image.close()
 				self.image = None
