@@ -49,7 +49,7 @@ from zyncoder.zyncore import lib_zyncore
 class zynthian_gui_mixer_main_layer():
 	def __init__(self):
 		self.engine = None
-		self.midi_chan = zynthian_gui_config.zyngui.zynmixer.get_max_channels()
+		self.midi_chan = zynthian_gui_mixer.MAIN_MIDI_CHANNEL
 		self.status = ""
 
 
@@ -255,7 +255,7 @@ class zynthian_gui_mixer_strip():
 
 		self.parent.main_canvas.itemconfig(self.legend, text="")
 		self.parent.main_canvas.coords(self.fader_bg_color, self.x, self.fader_top, self.x + self.width, self.fader_bottom)
-		if self.layer.midi_chan==self.MAIN_CHANNEL_INDEX:
+		if self.layer.midi_chan == zynthian_gui_mixer.MAIN_MIDI_CHANNEL:
 			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
 			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("NoFX"), state=tkinter.NORMAL)
 		else:
@@ -688,6 +688,8 @@ class zynthian_gui_mixer_strip():
 
 class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
+	MAIN_MIDI_CHANNEL = 256
+
 	def __init__(self):	
 		
 		super().__init__()
@@ -831,7 +833,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# layer: Layer object
 	# set_curlayer: True to select the layer
 	def select_chain_by_layer(self, layer, set_curlayer=True):
-		if layer.midi_chan == self.MAIN_CHANNEL_INDEX:
+		if layer.midi_chan == self.MAIN_MIDI_CHANNEL:
 			self.select_chain_by_index(self.number_layers, set_curlayer)
 			return
 
@@ -958,7 +960,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	def mainfx_options_cb(self, option, param):
 		if param == "Add":
-			self.zyngui.screens['layer'].add_fxchain_layer(self.MAIN_CHANNEL_INDEX)
+			self.zyngui.screens['layer'].add_fxchain_layer(self.MAIN_MIDI_CHANNEL)
 		elif param == "Mono":
 			self.zynmixer.toggle_mono(self.MAIN_CHANNEL_INDEX)
 			self.show_mainfx_options()
@@ -972,7 +974,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	def midi_unlearn_confirmed(self, param):
-		self.zynmixer.midi_unlearn_chan(self.MAIN_CHANNEL_INDEX)
+		self.zynmixer.midi_unlearn_chan(self.MAIN_MIDI_CHANNEL)
 
 
 	#--------------------------------------------------------------------------

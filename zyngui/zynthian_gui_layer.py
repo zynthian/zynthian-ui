@@ -196,7 +196,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def get_root_layer_by_midi_chan(self, mch):
 		for layer in self.root_layers:
-			if layer.midi_chan==mch:
+			if layer.midi_chan == mch:
 				return layer
 		return None
 
@@ -278,7 +278,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.replace_layer_index = None
 		self.layer_chain_parallel = False
 		self.zyngui.screens['engine'].set_fxchain_mode(midi_chan)
-		if self.get_fxchain_count(midi_chan)>0:
+		if self.get_fxchain_count(midi_chan) > 0:
 			self.show_chain_options_modal()
 		else:
 			self.zyngui.show_screen('engine')
