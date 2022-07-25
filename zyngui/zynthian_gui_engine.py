@@ -36,6 +36,7 @@ import zynautoconnect
 from zyngine import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_jalv import *
+from zyngine.zynthian_engine_sooperlooper import zynthian_engine_sooperlooper
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
@@ -58,6 +59,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 		cls.engine_info=OrderedDict([
 			["AP", ("AudioPlayer", "Audio Player", "Audio Effect", None, zynthian_engine_audioplayer, True)],
+			["SL", ("SooperLooper", "SooperLooper", "Audio Effect", None, zynthian_engine_sooperlooper, True)],
 			["MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_mixer, True)],
 			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", None, zynthian_engine_zynaddsubfx, True)],
 			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", None, zynthian_engine_fluidsynth, True)],
