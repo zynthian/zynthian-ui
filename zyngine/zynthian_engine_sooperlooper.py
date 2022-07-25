@@ -138,6 +138,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.options['note_range'] = False
 		self.options['midi_chan'] = False
 		self.options['drop_pc'] = True
+		self.options['clone'] = False
 
 		self.command = 'sooperlooper -q -D no -p {}'.format(self.SL_PORT)
 		self.command_prompt = ''
