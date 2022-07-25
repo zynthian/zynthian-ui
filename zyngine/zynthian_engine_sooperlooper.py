@@ -28,6 +28,8 @@ from . import zynthian_engine
 import liblo
 from time import sleep
 
+from . import zynthian_controller
+
 #------------------------------------------------------------------------------
 # Sooper Looper Engine Class
 #------------------------------------------------------------------------------
@@ -38,26 +40,27 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	# Config variables
 	# ---------------------------------------------------------------------------
 	SL_PORT = 9951
-	SL_CONTROLS = [
+	SL_LOOP_PARAMS = [
 		'rec_thresh',			# range 0 -> 1
 		'feedback',				# range 0 -> 1
-		'dry',					# range 0 -> 1
+	#	'dry',					# range 0 -> 1
 		'wet',					# range 0 -> 1
-		'input_gain',			# range 0 -> 1
+	#	'input_gain',			# range 0 -> 1
 		'rate',        			# range 0.25 -> 4.0
 		'scratch_pos',			# range 0 -> 1
-		'delay_trigger',		# any changes
+	#	'delay_trigger',		# any changes
 		'quantize',				# 0 = off, 1 = cycle, 2 = 8th, 3 = loop
 		'round',				# 0 = off,  not 0 = on
-		'redo_is_tap'			# 0 = off,  not 0 = on
+	#	'redo_is_tap'			# 0 = off,  not 0 = on
   		'sync',					# 0 = off,  not 0 = on
-  	#	'playback_sync',		# 0 = off,  not 0 = on
+  		'playback_sync',		# 0 = off,  not 0 = on
   	#	'use_rate',				# 0 = off,  not 0 = on
   	#	'fade_samples',			# 0 -> ...
-  	#	'use_feedback_play',	# 0 = off,  not 0 = on
+  		'use_feedback_play',	# 0 = off,  not 0 = on
   	#	'use_common_ins',		# 0 = off,  not 0 = on
   	#	'use_common_outs',		# 0 = off,  not 0 = on
-  	#	'relative_sync',		# 0 = off, not 0 = on
+  		'relative_sync',		# 0 = off, not 0 = on
+		'smart_eighths',		# 0 = off, not 0 = on (undocumented)
   	#	'use_safety_feedback',	# 0 = off, not 0 = on
   	#	'pan_1',				# range 0 -> 1
   	#	'pan_2',				# range 0 -> 1
@@ -69,6 +72,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
   	#	'autoset_latency',		# 0 = off, not 0 = on
   		'mute_quantized',		# 0 = off, not 0 = on
   		'overdub_quantized',	# 0 == off, not 0 = on
+  		'replace_quantized',	# 0 == off, not 0 = on (undocumented)
   	#	'discrete_prefader',	# 0 == off, not 0 = on
 	#	'next_state,'			# same as state
 		'loop_len',				# in seconds
@@ -76,10 +80,28 @@ class zynthian_engine_sooperlooper(zynthian_engine):
   		'cycle_len',			# in seconds
   		'free_time',			# in seconds
   		'total_time',			# in seconds
-  		'rate_output',
+  	#	'rate_output',			# Used to detect direction but must use register_auto_update
 	#	'in_peak_meter',		# absolute float sample value 0.0 -> 1.0 (or higher)
   	#	'out_peak_meter',		# absolute float sample value 0.0 -> 1.0 (or higher)
-  		'is_soloed'				# 1 if soloed, 0 if not
+  		'is_soloed',			# 1 if soloed, 0 if not
+		'stretch_ratio',		# 0.5 -> 4.0 (undocumented)
+		'pitch_shift'			# -12 -> 12 (undocumented)
+	]
+
+	SL_GLOBAL_PARAMS = [
+	#	'tempo',				# bpm
+		'eighth_per_cycle',
+		'dry',					# range 0 -> 1 affects common input passthru
+		'wet',					# range 0 -> 1  affects common output level
+		'input_gain',			# range 0 -> 1  affects common input gain
+		'sync_source',			# -3 = internal,  -2 = midi, -1 = jack, 0 = none, # > 0 = loop number (1 indexed) 
+		#'tap_tempo',			# any changes
+		'save_loop',			# any change triggers quick save, be careful
+		'auto_disable_latency',	# when 1, disables compensation when monitoring main inputs
+		'select_next_loop',		# any changes
+		'select_prev_loop',		# any changes
+		'select_all_loops',		# any changes
+		'selected_loop_num',	# -1 = all, 0->N selects loop instances (first loop is 0, etc) 
 	]
 
 	SL_STATES ={
@@ -98,7 +120,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		11: {'name': 'Scratching', 'symbol': 'scratch'},
 		12: {'name': 'OneShot', 'symbol': 'oneshot'},
 		13: {'name': 'Substitute', 'symbol': 'substitute'},
-		14: {'name': 'Paused', 'symbol': 'pause'}
+		14: {'name': 'Paused', 'symbol': 'pause'},
 	}
 
 	# ---------------------------------------------------------------------------
@@ -120,50 +142,52 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.command_prompt = ''
 
 		self.state = 0 # Current SL state - need to keep this synchonised with SL
+		self.selected_loop = 0
 
 		#self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_sooperlooper.py"
 		self.start()
 
 		# MIDI Controllers
 		self._ctrls=[
-			['record', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['overdub', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['multiply', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['replace', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['substitute', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['insert', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['delay', None, 'off', [['off', 'on'],[0, 1]]],
-			['undo/redo', None, '<>', ['<', '<>', '>']],
-			['redo', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['trigger', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['mute', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['oneshot', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['solo', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['pause', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['reverse', None, 'forward', [['forward', 'reverse'],[0.0, 1.0]]],
-			['scratch', None, 'normal', [['normal', 'scratch'],[0.0, 1.0]]],
-			['rate', None, 0.0, 4.0], #TODO: Set min val=0.25
-			['stretch_ratio', None, 0.0, 4.0], #TODO: Set min val=0.5
-			['position', None, 0.0, 0.0], #TODO: Set position max value (dynamic)
-			['pitch_shift', None, 0.0, 12], #TODO: Set min val=-12
-			['sync', None, 'None', [['None','Internal','MidiClock','Jack/Host','Loop1'],[0,0,1.0,2.0,3.0,4.0]]],
-            ['tempo', None, 120, 240],
-            ['8th/cycle', None, 16, 32], #TODO: Set min val=1
-            ['quantize', None, 'off', [['off', 'cycle', '8th', 'loop'],[0.0, 1.0, 2.0, 3.0]]],
-            ['mute_quantized', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-            ['overdub_quantized', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-            ['repl quant', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-            ['round', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-            ['ref sync', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-            ['auto 8th', None, 'on', [['off', 'on'],[0.0, 1.0]]],
-            ['sync', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-            ['play sync', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-            ['p.feedb', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-            ['t.stretch', None, 'off', [['off', 'on'],[0.0, 1.0]]],
-			['rec_thresh', None, 0.0, 1.0],
-			['feedback', None, 0.0, 1.0],
-			['dry', None, 0.0, 1.0],
-			['wet', None, 0.0, 1.0]
+			#symbol, name, options
+			['record', 'record', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True, 'is_toggle':True}],
+			['overdub', 'overdub', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['multiply', 'multiply', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['replace', 'replace', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['substitute', 'substitute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['insert', 'insert', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['delay', 'delay', {'value':0, 'value_max':1, 'labels':['off', 'on', 'on']}],
+			['undo/redo', 'undo/redo', {'value':1, 'labels':['<', '<>', '>']}],
+			['trigger', 'trigger;', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['mute', 'mute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['oneshot', 'once', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['solo', 'solo', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['pause', 'pause', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['reverse', 'direction', {'value':1, 'labels':['reverse', 'forward'], 'ticks':[1, 0], 'is_toggle':True}],
+			['scratch', 'scratch', {'value':0, 'value_max':1, 'labels':['normal', 'scratch']}],
+			['rate', 'speed', {'value':1.0, 'value_min':0.25, 'value_max':4.0, 'is_integer':False}],
+			['stretch_ratio', 'stretch', {'value':1.0, 'value_min':0.5, 'value_max':4.0, 'is_integer':False}],
+			['scratch_pos', 'position', {'value':0.0, 'value_max':1.0, 'is_integer':False}], #TODO: Set position max value (dynamic)
+			['pitch_shift', 'pitch', {'value':0.0, 'value_min':-12, 'value_max':12, 'is_integer':False}], #TODO: is pitch integer?
+			['sync_source', 'sync source', {'value':0, 'value_min':-3, 'value_max':1, 'labels':['Internal','MidiClock','Jack/Host','None','Loop1'], 'is_integer':True}], #TODO: Dynamically offer more loops
+			['sync', 'sync operations', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+            ['tempo', 'tempo', {'value':120, 'value_min':10, 'value_max':240}],
+            ['eighth_per_cycle', '8th/cycle', {'value':1, 'value_min':1, 'value_max':600}], #TODO: What makes sense for max val?
+            ['quantize', 'quantize', {'value':0, 'value_max':3, 'labels':['off', 'cycle', '8th', 'loop']}],
+            ['mute_quantized', 'mute quant', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+            ['overdub_quantized', 'overdub quant', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+            ['replace_quantized', 'replace quant', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+            ['round', 'round', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+            ['relative_sync', 'relative sync', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+            ['smart_eighths', 'auto 8ths', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+            ['playback_sync', 'playback sync', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+            ['use_feedback_play', 'play feedback', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+            ['tempo_stretch', 'tempo stretch', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['rec_thresh', 'threshold', {'value':0.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
+			['feedback', 'feedback', {'value':0.5, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
+			['dry', 'dry', {'value':0.5, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
+			['wet', 'wet', {'value':0.5, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
+			['input_gain', 'input gain', {'value':0.5, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}]
 		]
 
 		# Controller Screens
@@ -171,13 +195,13 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['Rec 1',['record','overdub','multiply','undo/redo']],
 			['Rec 2',['replace','substitute','insert','delay']],
 			['Play 1',['trigger','oneshot','mute','pause']],
-			['Play 2',['solo','reverse','scratch',None]],
-			['Play 3',['position','pitch_shift','rate','stretch_ratio']],
-			['Misc 1',['sync','tempo','8th/cycle',None]],
-			['Misc 2',['round','ref sync','auto 8th','sync']],
-			['Misc 3',['play sync','p.feedb','t.stretch',None]],
-			['Quantize',['quantize','mute quant','odub quant','repl quant']],
-			['Levels',['rec_thresh', 'feedback', 'dry', 'wet']]
+			['Play 2',['reverse','pitch_shift','rate','stretch_ratio']],
+			['Sync 1',['sync_source','sync','eighth_per_cycle',None]],
+			['Sync 2',['round','relative_sync','smart_eighths', None]],
+			['Sync 3',['play sync','use_feedback_play','tempo_stretch',None]],
+			['Quantize',['quantize','mute_quantized','overdub_quantized','replace_quantized']],
+			['Levels 1',['rec_thresh', 'feedback', 'dry', 'wet']],
+			['Levels 2',['input_gain', None, None, None]]
 		]
 
         #TODO: Monitors
@@ -191,12 +215,15 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	def start(self):
 		logging.warning("Starting SooperLooper")
 		self.osc_init(self.SL_PORT)
+		self.proc_start_sleep = 1 #TODO: Validate this delay is still required
 		super().start()
-		sleep(1)
 		liblo.send(self.osc_target, '/sl/0/register_auto_update', ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/state'))
-		for symbol in self.SL_CONTROLS:
+		liblo.send(self.osc_target, '/sl/0/register_auto_update', ('s', 'rate_output'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/control'))
+		for symbol in self.SL_LOOP_PARAMS:
 			liblo.send(self.osc_target, '/sl/0/register_update', ('s', symbol), ('s', self.osc_server_url), ('s', '/sl/control'))
-
+		for symbol in self.SL_GLOBAL_PARAMS:
+			liblo.send(self.osc_target, '/register_update', ('s', symbol), ('s', self.osc_server_url), ('s', '/sl/control'))
+		self.select_loop(0, True)
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
@@ -226,21 +253,34 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	# Controllers Management
 	#----------------------------------------------------------------------------
 
+	def get_controllers_dict(self, layer):
+		for ctrl in self._ctrls:
+			zctrl = zynthian_controller(self, ctrl[0], ctrl[1], ctrl[2])
+			#engine, symbol, name=None, options=None
+			self.zctrls[zctrl.symbol] = zctrl
+		return self.zctrls
+
+
 	def send_controller_value(self, zctrl):
-		logging.warning("{} {}".format(zctrl.symbol, zctrl.value))
-		if zctrl.symbol == 'delay':
-			if zctrl.value:
-				liblo.send(self.osc_target, '/sl/0/set', ('s', 'delay_trigger', ('f', 1.0)))
+		#logging.warning("{} {}".format(zctrl.symbol, zctrl.value))
+		if zctrl.symbol == 'oneshot' and zctrl.value == 0:
+			return
+		elif zctrl.symbol == 'delay':
+			liblo.send(self.osc_target, '/sl/-3/set', ('s', 'delay_trigger'), ('f', zctrl.value))
 		elif zctrl.is_toggle:
-			liblo.send(self.osc_target, '/sl/0/hit', ('s', zctrl.symbol))
+			liblo.send(self.osc_target, '/sl/-3/hit', ('s', zctrl.symbol))
+			if zctrl.symbol == 'trigger':
+				zctrl.set_value(0, False) # Make trigger a pulse
 		elif zctrl.symbol == 'undo/redo':
 			if zctrl.value == 0:
-				liblo.send(self.osc_target, '/sl/0/hit', ('s', 'undo'))
+				liblo.send(self.osc_target, '/sl/-3/hit', ('s', 'undo'))
 			elif zctrl.value == 2:
-				liblo.send(self.osc_target, '/sl/0/hit', ('s', 'redo'))
-			zctrl.set_value(1, False) #TODO: This should be triggered by redo_is_tap but does not seem to work
-		else:
-			liblo.send(self.osc_target, '/sl/0/set', ('s', zctrl.symbol), ('f', zctrl.value))
+				liblo.send(self.osc_target, '/sl/-3/hit', ('s', 'redo'))
+			zctrl.set_value(1, False)
+		elif zctrl.symbol in self.SL_LOOP_PARAMS:
+			liblo.send(self.osc_target, '/sl/-3/set', ('s', zctrl.symbol), ('f', zctrl.value))
+		elif zctrl.symbol in self.SL_GLOBAL_PARAMS:
+			liblo.send(self.osc_target, '/set', ('s', zctrl.symbol), ('f', zctrl.value))
 
 
 	def get_monitors_dict(self):
@@ -253,6 +293,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 	# Update each mutually exclusive 'state' controller to match current state
 	def update_state(self):
+		logging.warning("State: {}".format(self.state))
 		for state in self.SL_STATES:
 			if self.SL_STATES[state]['symbol']:
 				if state == self.state:
@@ -262,75 +303,41 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 
 	def cb_osc_all(self, path, args, types, src):
-		logging.warning(path)
+		logging.warning("Rx OSC: {} {}".format(path,args))
 		if path == '/sl/state':
 			# args: i:Loop index, s:control, f:value
 			self.state = int(args[2])
-			self.update_state()
-
-			if args[2] == 0:
-    				# Off
-				logging.warning("OFF")
-			elif args[2] == 1:
-				# WaitStart
-				logging.warning("WAIT START")
-			elif args[2] == 2:
-				# Recording
-				logging.warning("RECORDING")
-			elif args[2] == 3:
-				# WaitStop
-				logging.warning("WAIT STOP")
-			elif args[2] == 4:
-				# Playing
-				logging.warning("PLAYING")
-			elif args[2] == 5:
-				# Overdubbing
-				logging.warning("OVERDUBBING")
-			elif args[2] == 6:
-				# Multiplying
-				logging.warning("MULTIPLYING")
-			elif args[2] == 7:
-    				# Inserting
-				logging.warning("INSERTING")
-			elif args[2] == 8:
-    				# Replacing
-				logging.warning("REPLACING")
-			elif args[2] == 9:
-    				# Delay
-				logging.warning("DELAY")
-			elif args[2] == 10:
-    				# Muted
-				logging.warning("MUTED")
-			elif args[2] == 11:
-    				# Scratching
-				logging.warning("SCRATCHING")
-			elif args[2] == 12:
-    				# OneShot
-				logging.warning("ONE SHOT")
-			elif args[2] == 13:
-    				# Substitute
-				logging.warning("SUBSTITUTE")
-			elif args[2] == 14:
-    				# Paused
-				logging.warning("PAUSED")
+			try:
+				self.update_state()
+			except:
+				pass # May be called before zctrls are configured
 
 		elif path == '/sl/control':
 			if args[1] == 'rate_output':
 				logging.warning('rate: %f', args[2])
 				if args[2] < 0.0:
-					self.zctrls['reverse'].set_value(1.0, False)
+					self.zctrls['reverse'].set_value(1, False)
 				else:
-					self.zctrls['reverse'].set_value(0.0, False)
-			elif args[1] == 'delay_trigger':
-				self.zctrls['delay'].set_value(1.0, False)
-			elif args[1] in ['redo_is_tap', 'undo_is_tap']:
-				self.zctrls['undo/redo'].set_value(1, False)
-			elif args[1] in self.SL_CONTROLS:
+					self.zctrls['reverse'].set_value(0, False)
+			elif args[1] in self.SL_LOOP_PARAMS:
+				try:
+					self.zctrls[args[1]].set_value(args[2], False)
+				except Exception as e:
+					logging.warning("Unsupported tally %s (%f)", args[1], args[2])
+			elif args[1] in self.SL_GLOBAL_PARAMS:
+				if args[1] == 'selected_loop_num':
+					self.select_loop(args[2])
 				try:
 					self.zctrls[args[1]].set_value(args[2], False)
 				except Exception as e:
 					logging.warning("Unsupported tally %s (%f)", args[1], args[2])
 
+
+	def select_loop(self, loop, send=False):
+		#TODO: Validate loop < quant_loops
+		self.select_loop = loop
+		if send:
+			liblo.send(self.osc_target, '/set', ('s', 'selected_loop_num'), ('f', self.selected_loop))
 
 	# ---------------------------------------------------------------------------
 	# API methods

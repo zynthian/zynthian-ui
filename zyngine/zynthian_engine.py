@@ -538,7 +538,7 @@ class zynthian_engine(zynthian_basic_engine):
 	# Get zynthian controllers dictionary:
 	# + Default implementation uses a static controller definition array
 	def get_controllers_dict(self, layer):
-		midich=layer.get_midi_chan()
+		midich = layer.get_midi_chan()
 
 		if self._ctrls is not None:
 			for ctrl in self._ctrls:
