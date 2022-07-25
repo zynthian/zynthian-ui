@@ -106,22 +106,22 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	]
 
 	SL_STATES ={
-		-1: {'name': 'unknown', 'symbol': None},
-		0: {'name': 'Off','symbol': None},
-		1: {'name': 'WaitStart', 'symbol': None},
-		2: {'name': 'Recording', 'symbol': 'record'},
-		3: {'name': 'WaitStop', 'symbol': None},
-		4: {'name': 'Playing', 'symbol': None},
-		5: {'name': 'Overdubbing', 'symbol': 'overdub'},
-		6: {'name': 'Multiplying', 'symbol': 'multiply'},
-		7: {'name': 'Inserting', 'symbol': 'insert'},
-		8: {'name': 'Replacing', 'symbol': 'replace'},
-		9: {'name': 'Delay', 'symbol': None},
-		10: {'name': 'Muted', 'symbol': 'mute'},
-		11: {'name': 'Scratching', 'symbol': None},
-		12: {'name': 'OneShot', 'symbol': 'oneshot'},
-		13: {'name': 'Substitute', 'symbol': 'substitute'},
-		14: {'name': 'Paused', 'symbol': 'pause'},
+		-1: {'name': 'unknown', 'symbol': None, 'icon':''},
+		0: {'name': 'Off','symbol': None, 'icon':''},
+		1: {'name': 'WaitStart', 'symbol': None, 'icon':'\u23EF'},
+		2: {'name': 'Recording', 'symbol': 'record', 'icon':'\u26ab'},
+		3: {'name': 'WaitStop', 'symbol': None, 'icon':'\u23EF'},
+		4: {'name': 'Playing', 'symbol': None, 'icon':'\uf04b'},
+		5: {'name': 'Overdubbing', 'symbol': 'overdub', 'icon':'\u26ab'},
+		6: {'name': 'Multiplying', 'symbol': 'multiply', 'icon':'\u26abx'},
+		7: {'name': 'Inserting', 'symbol': 'insert', 'icon':'\u26ab'},
+		8: {'name': 'Replacing', 'symbol': 'replace', 'icon':'\u26ab'},
+		9: {'name': 'Delay', 'symbol': None, 'icon':'delay'},
+		10: {'name': 'Muted', 'symbol': 'mute', 'icon':'mute'},
+		11: {'name': 'Scratching', 'symbol': None, 'icon':'scratch'},
+		12: {'name': 'OneShot', 'symbol': 'oneshot', 'icon':'\uf04b'},
+		13: {'name': 'Substitute', 'symbol': 'substitute', 'icon':'\u26ab'},
+		14: {'name': 'Paused', 'symbol': 'pause', 'icon':'\u23F8'},
 	}
 
 	# ---------------------------------------------------------------------------
@@ -293,6 +293,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					self.zctrls[self.SL_STATES[state]['symbol']].set_value(1, False)
 				else:
 					self.zctrls[self.SL_STATES[state]['symbol']].set_value(0, False)
+		self.layers[0].status = self.SL_STATES[self.state]['icon']
 
 
 	def cb_osc_all(self, path, args, types, src):
