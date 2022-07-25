@@ -278,13 +278,13 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def osc_init(self, target_port=None, proto=liblo.UDP):
 		if target_port:
-			self.osc_target_port=target_port
+			self.osc_target_port = target_port
 		try:
-			self.osc_target=liblo.Address('localhost',self.osc_target_port,proto)
+			self.osc_target = liblo.Address('localhost', self.osc_target_port, proto)
 			logging.info("OSC target in port %s" % str(self.osc_target_port))
-			self.osc_server=liblo.ServerThread(None,proto)
-			self.osc_server_port=self.osc_server.get_port()
-			self.osc_server_url=liblo.Address('localhost',self.osc_server_port,proto).get_url()
+			self.osc_server = liblo.ServerThread(None, proto)
+			self.osc_server_port = self.osc_server.get_port()
+			self.osc_server_url = liblo.Address('localhost', self.osc_server_port,proto).get_url()
 			logging.info("OSC server running in port %s" % str(self.osc_server_port))
 			self.osc_add_methods()
 			self.osc_server.start()

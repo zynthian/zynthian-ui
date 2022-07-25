@@ -189,7 +189,7 @@ class zynthian_controller:
 		self.midi_chan = chan
 
 		# OSC Path / MIDI CC
-		if isinstance(cc,str):
+		if isinstance(cc, str):
 			self.osc_path = cc
 		else:
 			self.midi_cc = cc
@@ -202,25 +202,26 @@ class zynthian_controller:
 		self.is_logarithmic = False
 
 		# Numeric
-		if isinstance(maxval,int):
+		if isinstance(maxval, int):
 			self.value_max = maxval
-		elif isinstance(maxval,float):
+		elif isinstance(maxval, float):
 			self.value_max = maxval
 			self.is_integer = False
 		# Selector
-		elif isinstance(maxval,str):
+		elif isinstance(maxval, str):
 			self.labels=maxval.split('|')
-		elif isinstance(maxval,list):
-			if isinstance(maxval[0],list):
+		elif isinstance(maxval, list):
+			if isinstance(maxval[0], list):
 				self.labels = maxval[0]
 				self.ticks = maxval[1]
 			else:
 				self.labels = maxval
 
 		# Detect toggle (on/off)
-		if self.labels and len(self.labels)==2:
+		if self.labels and len(self.labels) == 2:
 			self.is_toggle = True
-			self.value_max = 127
+			if not self.ticks:
+				self.value_max = 127
 
 		self._configure()
 

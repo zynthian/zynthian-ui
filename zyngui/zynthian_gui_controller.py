@@ -248,6 +248,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			return
 		self.grid() #TODO: May not want to grid to arbritary position before setting row/column
 		if self.zctrl:
+			self.calculate_value_font_size()
 			self.calculate_plot_values()
 			self.plot_value()
 			self.itemconfig('gui', state=tkinter.NORMAL)
@@ -364,7 +365,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		deg0 = 90 + degmax / 2
 		if isinstance(self.zctrl.labels, list):
 			n = len(self.zctrl.labels)
-			if n>2:
+			if n > 2:
 				arc_len = max(5, degmax / n)
 				deg0 += degd + arc_len
 				degd = -arc_len
