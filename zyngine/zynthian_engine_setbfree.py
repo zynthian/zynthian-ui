@@ -117,12 +117,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 		['percussion',80,'off','off|on'],
 		['percussion volume',81,'soft','soft|hard'],
 		['percussion decay',82,'slow','slow|fast'],
-		['percussion harmonic',83,'3rd','2nd|3rd'],
+		['percussion harmonic',83,'2nd','2nd|3rd'],
 
 		['overdrive',65,'off','off|on'],
-		['overdrive character',93,64,127],
-		['overdrive inputgain',21,64,127],
-		['overdrive outputgain',22,64,127]
+		['overdrive character',93,0,127],
+		['overdrive inputgain',21,45,127],
+		['overdrive outputgain',22,10,127]
 	]
 
 	# Controller Screens
