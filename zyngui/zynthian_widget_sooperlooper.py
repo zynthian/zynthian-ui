@@ -148,7 +148,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 		self.available_label = tkinter.Label(self,
 			font=(zynthian_gui_config.font_family, int(0.7 * zynthian_gui_config.font_size)),
-			text='avail: 0.0',
+			text='avail: 00:00.00',
 			bg=zynthian_gui_config.color_bg,
 			fg=self.SLIDER_TEXT,
 			anchor='w'
@@ -156,11 +156,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 		self.loop_len_label = tkinter.Label(self,
 			font=(zynthian_gui_config.font_family, int(0.7 * zynthian_gui_config.font_size)),
-			text='len: 0.0',
+			text='len: 00:00.00',
 			bg=zynthian_gui_config.color_bg,
 			fg=self.SLIDER_TEXT,
 			anchor='e',
-			width=6
 		)
 
 		self.button_frame = tkinter.Frame(self, bg='#000')
@@ -170,7 +169,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		self.buttons = {}
 		for i,btn in enumerate(['record','overdub','multiply','replace','substitute','insert','undo','redo','trigger','oneshot','mute','pause']):
 			if btn == 'substitute':
-				fs = int(0.6 * zynthian_gui_config.font_size)
+				fs = int(0.5 * zynthian_gui_config.font_size)
 			else:
 				fs = int(0.7 * zynthian_gui_config.font_size)
 			command = partial(lambda a:self.on_button(a), btn)
@@ -210,8 +209,8 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 		self.state_label.grid(columnspan=4, sticky='ew')
 		self.button_frame.grid(columnspan=4, sticky='ew')
-		self.available_label.grid(row=2, column=0, columnspan=2, sticky='w')
-		self.loop_len_label.grid(row=2, column=2, columnspan=2, sticky='e', padx=(0,2))
+		self.loop_len_label.grid(row=2, column=0, columnspan=2, sticky='w')
+		self.available_label.grid(row=2, column=2, columnspan=2, sticky='w')
 		self.pos_canvas.grid(columnspan=3, sticky='ew', padx=(2,1))
 		self.canvas_reverse.grid(row=3, column=3, sticky='ew', padx=(1,2))
 		self.input_level_canvas.grid(columnspan=2,sticky='ew', padx=(2,1), pady=(2,2))
@@ -296,9 +295,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				self.state_label.configure(text = zynthian_engine_sooperlooper.SL_STATES[state]['name'], bg='#090')
 			loop_len = self.monitors['loop_len']
 			loop_pos = self.monitors['loop_pos']
-			self.pos_canvas.itemconfigure(self.pos_label, text='pos: {:.1f}'.format(loop_pos))
-			self.loop_len_label.configure(text='len: {:.1f}s'.format(loop_len))
-			self.available_label.configure(text='avail: {}s'.format(int(self.monitors['free_time'])))
+			self.pos_canvas.itemconfigure(self.pos_label, text='pos: {:02}:{:05.2f}'.format(int(loop_pos/60), loop_pos%60))
+			self.loop_len_label.configure(text='len: {:02}:{:05.2f}'.format(int(loop_len/60), loop_len%60))
+			free = self.monitors['free_time']
+			self.available_label.configure(text='avail: {:02}:{:05.2f}'.format(int(free/60), free%60))
 			if loop_len:
 				x = int(loop_pos / loop_len * self.pos_canvas.winfo_width())
 				self.pos_canvas.coords(self.pos_line, x, 0, x, 20)
