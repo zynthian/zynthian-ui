@@ -43,7 +43,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	SL_LOOP_PARAMS = [
 		'rec_thresh',			# range 0 -> 1
 		'feedback',				# range 0 -> 1
-	#	'dry',					# range 0 -> 1
+		'dry',					# range 0 -> 1
 		'wet',					# range 0 -> 1
 	#	'input_gain',			# range 0 -> 1
 		'rate',        			# range 0.25 -> 4.0
@@ -74,15 +74,6 @@ class zynthian_engine_sooperlooper(zynthian_engine):
   		'replace_quantized',	# 0 == off, not 0 = on (undocumented)
   	#	'discrete_prefader',	# 0 == off, not 0 = on
 	#	'next_state,'			# same as state
-		'loop_len',				# in seconds
-  		'loop_pos',				# in seconds
-  		'cycle_len',			# in seconds
-  		'free_time',			# in seconds
-  		'total_time',			# in seconds
-  	#	'rate_output',			# Used to detect direction but must use register_auto_update
-	#	'in_peak_meter',		# absolute float sample value 0.0 -> 1.0 (or higher)
-  	#	'out_peak_meter',		# absolute float sample value 0.0 -> 1.0 (or higher)
-  	#	'is_soloed',			# 1 if soloed, 0 if not
 		'stretch_ratio',		# 0.5 -> 4.0 (undocumented)
 	#	'tempo_stretch',		# 0 = off, not 0 = on (undocumented)
 		'pitch_shift'			# -12 -> 12 (undocumented)
@@ -92,35 +83,48 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	#	'tempo',				# bpm
 		'eighth_per_cycle',
 		'dry',					# range 0 -> 1 affects common input passthru
-		'wet',					# range 0 -> 1  affects common output level
+	#	'wet',					# range 0 -> 1  affects common output level
 		'input_gain',			# range 0 -> 1  affects common input gain
 		'sync_source',			# -3 = internal,  -2 = midi, -1 = jack, 0 = none, # > 0 = loop number (1 indexed) 
 	#	'tap_tempo',			# any changes
-		'save_loop',			# any change triggers quick save, be careful
-		'auto_disable_latency',	# when 1, disables compensation when monitoring main inputs
-		'select_next_loop',		# any changes
-		'select_prev_loop',		# any changes
-		'select_all_loops',		# any changes
+	#	'save_loop',			# any change triggers quick save, be careful
+	#	'auto_disable_latency',	# when 1, disables compensation when monitoring main inputs
+	#	'select_next_loop',		# any changes
+	#	'select_prev_loop',		# any changes
+	#	'select_all_loops',		# any changes
 		'selected_loop_num',	# -1 = all, 0->N selects loop instances (first loop is 0, etc) 
 		'smart_eighths',		# 0 = off, not 0 = on (undocumented)
 	]
 
-	SL_STATES ={
+	SL_MONITORS = [
+  		'rate_output',			# Used to detect direction but must use register_auto_update
+		'in_peak_meter',		# absolute float sample value 0.0 -> 1.0 (or higher)
+  	#	'out_peak_meter',		# absolute float sample value 0.0 -> 1.0 (or higher)
+		'loop_len',				# in seconds
+  		'loop_pos',				# in seconds
+  	#	'cycle_len',			# in seconds
+  		'free_time',			# in seconds
+  	#	'total_time',			# in seconds
+  	#	'is_soloed',			# 1 if soloed, 0 if not
+	]
+
+
+	SL_STATES = {
 		-1: {'name': 'unknown', 'symbol': None, 'icon':''},
 		0: {'name': 'Off','symbol': None, 'icon':''},
-		1: {'name': 'WaitStart', 'symbol': None, 'icon':'\u23EF'},
+		1: {'name': 'Waiting to start', 'symbol': None, 'icon':'\u23EF'},
 		2: {'name': 'Recording', 'symbol': 'record', 'icon':'\u26ab'},
-		3: {'name': 'WaitStop', 'symbol': None, 'icon':'\u23EF'},
+		3: {'name': 'Waiting to stop', 'symbol': None, 'icon':'\u23EF'},
 		4: {'name': 'Playing', 'symbol': None, 'icon':'\uf04b'},
 		5: {'name': 'Overdubbing', 'symbol': 'overdub', 'icon':'\u26ab'},
 		6: {'name': 'Multiplying', 'symbol': 'multiply', 'icon':'\u26abx'},
 		7: {'name': 'Inserting', 'symbol': 'insert', 'icon':'\u26ab'},
 		8: {'name': 'Replacing', 'symbol': 'replace', 'icon':'\u26ab'},
-		9: {'name': 'Delay', 'symbol': None, 'icon':'delay'},
+		9: {'name': 'Delaying', 'symbol': None, 'icon':'delay'},
 		10: {'name': 'Muted', 'symbol': 'mute', 'icon':'mute'},
 		11: {'name': 'Scratching', 'symbol': None, 'icon':'scratch'},
-		12: {'name': 'OneShot', 'symbol': 'oneshot', 'icon':'\uf04b'},
-		13: {'name': 'Substitute', 'symbol': 'substitute', 'icon':'\u26ab'},
+		12: {'name': 'Playing once', 'symbol': 'oneshot', 'icon':'\uf04b'},
+		13: {'name': 'Substituting', 'symbol': 'substitute', 'icon':'\u26ab'},
 		14: {'name': 'Paused', 'symbol': 'pause', 'icon':'\u23F8'},
 	}
 
@@ -146,7 +150,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.state = 0 # Current SL state - need to keep this synchonised with SL
 		self.selected_loop = 0
 
-		#self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_sooperlooper.py"
+		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_sooperlooper.py"
 		self.start()
 
 		# MIDI Controllers
@@ -163,7 +167,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['mute', 'mute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
 			['oneshot', 'once', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
 			['pause', 'pause', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
-			['reverse', 'direction', {'value':1, 'labels':['reverse', 'forward'], 'ticks':[1, 0], 'is_toggle':True}],
+			['reverse', 'direction', {'value':0, 'labels':['reverse', 'forward'], 'ticks':[1, 0], 'is_toggle':True}],
 			['rate', 'speed', {'value':1.0, 'value_min':0.25, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
 			['stretch_ratio', 'stretch', {'value':1.0, 'value_min':0.5, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
 			['pitch_shift', 'pitch', {'value':0.0, 'value_min':-12, 'value_max':12, 'is_integer':False, 'nudge_factor':0.1}],
@@ -195,7 +199,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['Sync 1',['sync_source','sync','eighth_per_cycle','playback_sync']],
 			['Sync 2',['round','relative_sync','smart_eighths', 'use_feedback_play']],
 			['Quantize',['quantize','mute_quantized','overdub_quantized','replace_quantized']],
-			['Levels 1',['rec_thresh', 'feedback', 'dry', 'wet']],
+			['Levels 1',['rec_thresh', 'feedback', 'wet', 'dry']],
 			['Levels 2',['input_gain', None, None, None]]
 		]
 
@@ -212,13 +216,20 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.osc_init(self.SL_PORT)
 		self.proc_start_sleep = 1 #TODO: Cludgy wait - maybe should perform periodic check for server until reachable
 		super().start()
-		liblo.send(self.osc_target, '/sl/0/register_auto_update', ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/state'))
-		liblo.send(self.osc_target, '/sl/0/register_auto_update', ('s', 'rate_output'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/control'))
-		for symbol in self.SL_LOOP_PARAMS:
-			liblo.send(self.osc_target, '/sl/0/register_update', ('s', symbol), ('s', self.osc_server_url), ('s', '/sl/control'))
-		for symbol in self.SL_GLOBAL_PARAMS:
-			liblo.send(self.osc_target, '/register_update', ('s', symbol), ('s', self.osc_server_url), ('s', '/sl/control'))
 		self.select_loop(0, True)
+		#TODO: Query all loops (currently only registering loop 0)
+		liblo.send(self.osc_target, '/sl/-3/register_auto_update', ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/state'))
+		liblo.send(self.osc_target, '/sl/-3/get', ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/state'))
+		for symbol in self.SL_MONITORS:
+			liblo.send(self.osc_target, '/sl/-3/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/monitor'))
+			#TODO: May not need to query because register_auto_update seems to auto send on registration 
+			#liblo.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/sl/monitor'))
+		for symbol in self.SL_LOOP_PARAMS:
+			liblo.send(self.osc_target, '/sl/-3/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/control'))
+			#liblo.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/sl/control'))
+		for symbol in self.SL_GLOBAL_PARAMS:
+			liblo.send(self.osc_target, '/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/control'))
+			#liblo.send(self.osc_target, '/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/sl/control'))
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
@@ -262,19 +273,22 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			# Ignore off signals
 			return
 		elif zctrl.is_toggle:
+			# Use is_toggle to indicate the SL function is a toggle, i.e. press to engage, press to release
 			liblo.send(self.osc_target, '/sl/-3/hit', ('s', zctrl.symbol))
 			if zctrl.symbol == 'trigger':
 				zctrl.set_value(0, False) # Make trigger a pulse
 		elif zctrl.symbol == 'undo/redo':
+			# Use single controller to perform undo (CCW) and redo (CW)
 			if zctrl.value == 0:
 				liblo.send(self.osc_target, '/sl/-3/hit', ('s', 'undo'))
 			elif zctrl.value == 2:
 				liblo.send(self.osc_target, '/sl/-3/hit', ('s', 'redo'))
 			zctrl.set_value(1, False)
-		elif zctrl.symbol in self.SL_LOOP_PARAMS:
-			liblo.send(self.osc_target, '/sl/-3/set', ('s', zctrl.symbol), ('f', zctrl.value))
-		elif zctrl.symbol in self.SL_GLOBAL_PARAMS:
-			liblo.send(self.osc_target, '/set', ('s', zctrl.symbol), ('f', zctrl.value))
+		else:
+			if zctrl.symbol in self.SL_LOOP_PARAMS:
+				liblo.send(self.osc_target, '/sl/-3/set', ('s', zctrl.symbol), ('f', zctrl.value))
+			if zctrl.symbol in self.SL_GLOBAL_PARAMS:
+				liblo.send(self.osc_target, '/set', ('s', zctrl.symbol), ('f', zctrl.value))
 
 
 	def get_monitors_dict(self):
@@ -306,25 +320,28 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				self.update_state()
 			except:
 				pass # May be called before zctrls are configured
-
 		elif path == '/sl/control':
-			if args[1] == 'rate_output':
-				if args[2] < 0.0:
-					self.zctrls['reverse'].set_value(1, False)
-				else:
-					self.zctrls['reverse'].set_value(0, False)
-			elif args[1] in self.SL_LOOP_PARAMS or args[1] in self.SL_GLOBAL_PARAMS:
+			if args[1] in self.SL_LOOP_PARAMS or args[1] in self.SL_GLOBAL_PARAMS:
 				if args[1] == 'selected_loop_num':
 					self.select_loop(args[2])
 				try:
 					self.zctrls[args[1]].set_value(args[2], False)
 				except Exception as e:
 					logging.warning("Unsupported tally %s (%f)", args[1], args[2])
+		if args[1] == 'rate_output':
+			if args[2] < 0.0:
+				self.zctrls['reverse'].set_value(1, False)
+			else:
+				self.zctrls['reverse'].set_value(0, False)
+		try:
+			self.monitors_dict[args[1]] = args[2]
+		except Exception as e:
+			logging.warning('Bad monitor parameter: {} ({})'.format(args[1], e))
 
 
 	def select_loop(self, loop, send=False):
 		#TODO: Validate loop < quant_loops
-		self.select_loop = loop
+		self.selected_loop = loop
 		if send:
 			liblo.send(self.osc_target, '/set', ('s', 'selected_loop_num'), ('f', self.selected_loop))
 
