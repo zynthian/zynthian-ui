@@ -155,18 +155,18 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 		# MIDI Controllers
 		self._ctrls=[
-			#symbol, name, options
-			['record', 'record', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True, 'is_toggle':True}],
-			['overdub', 'overdub', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
-			['multiply', 'multiply', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
-			['replace', 'replace', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
-			['substitute', 'substitute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
-			['insert', 'insert', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			#symbol, name, {options}, midi_cc
+			['record', 'record', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True, 'is_toggle':True}, 102],
+			['overdub', 'overdub', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 103],
+			['multiply', 'multiply', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 104],
+			['replace', 'replace', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 105],
+			['substitute', 'substitute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 106],
+			['insert', 'insert', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 107],
 			['undo/redo', 'undo/redo', {'value':1, 'labels':['<', '<>', '>']}],
-			['trigger', 'trigger;', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
-			['mute', 'mute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
-			['oneshot', 'once', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
-			['pause', 'pause', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}],
+			['trigger', 'trigger;', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 108],
+			['mute', 'mute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 109],
+			['oneshot', 'once', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 110],
+			['pause', 'pause', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 111],
 			['reverse', 'direction', {'value':0, 'labels':['reverse', 'forward'], 'ticks':[1, 0], 'is_toggle':True}],
 			['rate', 'speed', {'value':1.0, 'value_min':0.25, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
 			['stretch_ratio', 'stretch', {'value':1.0, 'value_min':0.5, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
@@ -262,8 +262,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	def get_controllers_dict(self, layer):
 		for ctrl in self._ctrls:
 			zctrl = zynthian_controller(self, ctrl[0], ctrl[1], ctrl[2])
-			#engine, symbol, name=None, options=None
 			self.zctrls[zctrl.symbol] = zctrl
+			if len(ctrl) > 3:
+				zctrl.set_midi_learn(layer.midi_chan, ctrl[3])
 		return self.zctrls
 
 
