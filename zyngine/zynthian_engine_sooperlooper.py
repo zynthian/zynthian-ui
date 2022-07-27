@@ -44,7 +44,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	SL_LOOP_PARAMS = [
 		'rec_thresh',			# range 0 -> 1
 		'feedback',				# range 0 -> 1
-		'dry',					# range 0 -> 1
+	#	'dry',					# range 0 -> 1
 		'wet',					# range 0 -> 1
 	#	'input_gain',			# range 0 -> 1
 		'rate',        			# range 0.25 -> 4.0
@@ -112,21 +112,21 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 	SL_STATES = {
 		-1: {'name': 'unknown', 'symbol': None, 'icon':''},
-		0: {'name': 'Off','symbol': None, 'icon':''},
-		1: {'name': 'Waiting to start', 'symbol': None, 'icon':'\u23EF'},
-		2: {'name': 'Recording', 'symbol': 'record', 'icon':'\u26ab'},
-		3: {'name': 'Waiting to stop', 'symbol': None, 'icon':'\u23EF'},
-		4: {'name': 'Playing', 'symbol': None, 'icon':'\uf04b'},
-		5: {'name': 'Overdubbing', 'symbol': 'overdub', 'icon':'\u26ab'},
-		6: {'name': 'Multiplying', 'symbol': 'multiply', 'icon':'\u26abx'},
-		7: {'name': 'Inserting', 'symbol': 'insert', 'icon':'\u26ab'},
-		8: {'name': 'Replacing', 'symbol': 'replace', 'icon':'\u26ab'},
-		9: {'name': 'Delaying', 'symbol': None, 'icon':'delay'},
-		10: {'name': 'Muted', 'symbol': None, 'icon':'mute'},
-		11: {'name': 'Scratching', 'symbol': None, 'icon':'scratch'},
-		12: {'name': 'Playing once', 'symbol': 'oneshot', 'icon':'\uf04b'},
-		13: {'name': 'Substituting', 'symbol': 'substitute', 'icon':'\u26ab'},
-		14: {'name': 'Paused', 'symbol': 'pause', 'icon':'\u23F8'},
+		0: {'name': 'off','symbol': None, 'icon':''},
+		1: {'name': 'waiting to start', 'symbol': None, 'icon':'\u23EF'},
+		2: {'name': 'recording', 'symbol': 'record', 'icon':'\u26ab'},
+		3: {'name': 'waiting to stop', 'symbol': None, 'icon':'\u23EF'},
+		4: {'name': 'playing', 'symbol': None, 'icon':'\uf04b'},
+		5: {'name': 'overdubbing', 'symbol': 'overdub', 'icon':'\u26ab'},
+		6: {'name': 'multiplying', 'symbol': 'multiply', 'icon':'\u26abx'},
+		7: {'name': 'inserting', 'symbol': 'insert', 'icon':'\u26ab'},
+		8: {'name': 'replacing', 'symbol': 'replace', 'icon':'\u26ab'},
+		9: {'name': 'delaying', 'symbol': None, 'icon':'delay'},
+		10: {'name': 'muted', 'symbol': None, 'icon':'mute'},
+		11: {'name': 'scratching', 'symbol': None, 'icon':'scratch'},
+		12: {'name': 'playing once', 'symbol': 'oneshot', 'icon':'\uf04b'},
+		13: {'name': 'substituting', 'symbol': 'substitute', 'icon':'\u26ab'},
+		14: {'name': 'paused', 'symbol': 'pause', 'icon':'\u23F8'},
 	}
 
 	# ---------------------------------------------------------------------------
@@ -191,7 +191,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
             ['use_feedback_play', 'play feedback', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
             ['rec_thresh', 'threshold', {'value':0.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
 			['feedback', 'feedback', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
-			['dry', 'dry', {'value':0.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
+			['dry', 'dry', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
 			['wet', 'wet', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
 			['input_gain', 'input gain', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
 			['selected_loop_num', 'selected loop', {'value':0, 'value_max':self.MAX_LOOPS - 1, 'labels':loop_labels}]
@@ -238,6 +238,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			#liblo.send(self.osc_target, '/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/sl/control'))
 		liblo.send(self.osc_target, '/register', ('s', self.osc_server_url), ('s', '/sl/info'))
 		liblo.send(self.osc_target, '/ping', ('s', self.osc_server_url), ('s', '/sl/info'))
+		# Set default values
+		liblo.send(self.osc_target, '/set', ('s', 'dry'), ('f', 1.0))
 
 
 	# ---------------------------------------------------------------------------

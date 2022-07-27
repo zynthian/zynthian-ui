@@ -49,6 +49,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		self.state = 0
 		self.selected_loop = 0
 		self.loop_count = 0
+		self.click_timer = None
 
 		self.input_level_canvas = tkinter.Canvas(self,
 			height = 20,
@@ -100,8 +101,8 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				highlightthickness=0,
 				bg=self.SLIDER_BG
 			)
-			mute_label = mute_canvas.create_text(
-				1, 10,
+			mute_canvas.create_text(
+				4, 10,
 				anchor = 'w',
 				text='mute',
 				fill=self.SLIDER_TEXT,
@@ -111,6 +112,22 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			pos_canvas.bind("<ButtonPress-1>", self.on_loop_click)
 			pos_canvas.bind("<ButtonRelease-1>", self.on_loop_release)
 			mute_canvas.bind("<ButtonPress-1>", self.on_loop_click)
+
+
+		self.add_canvas = tkinter.Canvas( self,
+			height=20,
+			bd=0,
+			highlightthickness=0,
+			bg=self.SLIDER_BG
+		)
+		self.add_canvas.create_text(
+			1, 10,
+			anchor = 'w',
+			text='add loop',
+			fill=self.SLIDER_TEXT,
+			font=(zynthian_gui_config.font_family, int(0.7 * zynthian_gui_config.font_size))
+		)
+		self.add_canvas.bind('<ButtonPress-1>', self.on_add_click)
 
 		self.wet_canvas = tkinter.Canvas(self,
 			height = 20,
@@ -160,21 +177,6 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			anchor='w'
 		)
 
-		self.threshold_canvas = tkinter.Canvas(self,
-			height = 20,
-			bd=0,
-			highlightthickness=0,
-			bg=self.SLIDER_BG)
-		self.threshold_fg = self.threshold_canvas.create_rectangle(
-			0, 0, 0, 20,
-			fill = self.SLIDER_FG
-		)
-		self.threshold_label = self.threshold_canvas.create_text(
-			1, 10,
-			fill = self.SLIDER_TEXT,
-			text = 'threshold',
-			anchor='w'
-		)
 
 		self.available_label = tkinter.Label(self,
 			font=(zynthian_gui_config.font_family, int(0.7 * zynthian_gui_config.font_size)),
@@ -213,27 +215,26 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 		for col in range(4):
 			self.columnconfigure(col, weight=1, uniform='col')
-		self.rowconfigure(zynthian_engine_sooperlooper.MAX_LOOPS + 2, weight=1)
+		self.rowconfigure(zynthian_engine_sooperlooper.MAX_LOOPS + 1, weight=1)
 
 		self.button_frame.grid(columnspan=4, sticky='ew') #1
 		for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
-			self.pos_canvas[loop]['canvas'].grid(row=2 + loop, columnspan=3, sticky='ew', padx=(1,1), pady=(1,0))
-			self.pos_canvas[loop]['mute'].grid(row=2 + loop, column=3, sticky='ew', padx=(1,1), pady=(1,0))
+			self.pos_canvas[loop]['canvas'].grid(row=1 + loop, columnspan=3, sticky='ew', padx=(1,1), pady=(1,0))
+			self.pos_canvas[loop]['mute'].grid(row=1 + loop, column=3, sticky='ew', padx=(1,1), pady=(1,0))
 			self.pos_canvas[loop]['canvas'].grid_remove()
 			self.pos_canvas[loop]['mute'].grid_remove()
 
-		self.input_level_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
-		self.threshold_canvas.grid(row=4 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
-		self.feedback_canvas.grid(row=4 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
-		self.wet_canvas.grid(row=5 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
-		self.dry_canvas.grid(row=5 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
+		self.add_canvas.grid(row=1 + zynthian_engine_sooperlooper.MAX_LOOPS, sticky='nw', padx=(1,1), pady=(1,1))
+		self.input_level_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
+		self.feedback_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
+		self.wet_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
+		self.dry_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
 
 		self.symbol_map = {
 			self.dry_canvas:'dry',
 			self.wet_canvas:'wet',
 			self.feedback_canvas:'feedback',
-			self.input_level_canvas:'input_gain',
-			self.threshold_canvas:'rec_thresh'
+			self.input_level_canvas:'rec_thresh',
 		}
 
 		for slider in self.symbol_map:
@@ -256,13 +257,17 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 
 	def on_loop_release(self, event):
-		if self.click_timer.isAlive():
+		if self.click_timer and self.click_timer.isAlive():
 			self.click_timer.cancel()
 
 
 	def on_click_timer(self):
 		if self.monitors['loop_count'] > 1:
 			self.zyngui.show_confirm("Remove loop {}?".format(self.selected_loop + 1), self.remove_loop)
+
+
+	def on_add_click(self, event):
+		liblo.send('osc.udp://zynthian1:9951', '/loop_add', ('i', 2), ('f', 30))
 
 
 	def remove_loop(self, params):
@@ -386,6 +391,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				for loop in range(self.loop_count, zynthian_engine_sooperlooper.MAX_LOOPS):
 					self.pos_canvas[loop]['canvas'].grid_remove()
 					self.pos_canvas[loop]['mute'].grid_remove()
+				if self.loop_count < zynthian_engine_sooperlooper.MAX_LOOPS:
+					self.add_canvas.grid()
+				else:
+					self.add_canvas.grid_remove()
 
 		except KeyError:
 			logging.debug("KeyError ignored")
