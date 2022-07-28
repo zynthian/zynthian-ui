@@ -267,7 +267,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 
 	def on_add_click(self, event):
-		liblo.send('osc.udp://zynthian1:9951', '/loop_add', ('i', 2), ('f', 30))
+		liblo.send('osc.udp://zynthian1:9951', '/loop_add', ('i', 2), ('f', 30), ('i', 0))
 
 
 	def remove_loop(self, params):

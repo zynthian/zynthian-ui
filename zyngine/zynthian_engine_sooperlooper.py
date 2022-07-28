@@ -41,6 +41,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	SL_PORT = 9951
 	MAX_LOOPS = 6
+
+	# SL_LOOP_PARAMS act on individual loops - sent with osc command /sl/#/set
 	SL_LOOP_PARAMS = [
 		'rec_thresh',			# range 0 -> 1
 		'feedback',				# range 0 -> 1
@@ -50,8 +52,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		'rate',        			# range 0.25 -> 4.0
 	#	'scratch_pos',			# range 0 -> 1
 	#	'delay_trigger',		# any changes
-		'quantize',				# 0 = off, 1 = cycle, 2 = 8th, 3 = loop
-		'round',				# 0 = off,  not 0 = on
+	#	'quantize',				# 0 = off, 1 = cycle, 2 = 8th, 3 = loop
+	#	'round',				# 0 = off,  not 0 = on
 	#	'redo_is_tap'			# 0 = off,  not 0 = on
   		'sync',					# 0 = off,  not 0 = on
   		'playback_sync',		# 0 = off,  not 0 = on
@@ -60,7 +62,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
   		'use_feedback_play',	# 0 = off,  not 0 = on
   	#	'use_common_ins',		# 0 = off,  not 0 = on
   	#	'use_common_outs',		# 0 = off,  not 0 = on
-  		'relative_sync',		# 0 = off, not 0 = on
+  	#	'relative_sync',		# 0 = off, not 0 = on
   	#	'use_safety_feedback',	# 0 = off, not 0 = on
   	#	'pan_1',				# range 0 -> 1
   	#	'pan_2',				# range 0 -> 1
@@ -70,9 +72,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
   	#	'output_latency',		# range 0 -> ...
   	#	'trigger_latency',		# range 0 -> ...
   	#	'autoset_latency',		# 0 = off, not 0 = on
-  		'mute_quantized',		# 0 = off, not 0 = on
-  		'overdub_quantized',	# 0 == off, not 0 = on
-  		'replace_quantized',	# 0 == off, not 0 = on (undocumented)
+  	#	'mute_quantized',		# 0 = off, not 0 = on
+  	#	'overdub_quantized',	# 0 == off, not 0 = on
+  	#	'replace_quantized',	# 0 == off, not 0 = on (undocumented)
   	#	'discrete_prefader',	# 0 == off, not 0 = on
 	#	'next_state,'			# same as state
 		'stretch_ratio',		# 0.5 -> 4.0 (undocumented)
@@ -80,6 +82,17 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		'pitch_shift'			# -12 -> 12 (undocumented)
 	]
 
+	# SL_LOOP_GLOBAL_PARAMS act on all loops - sent with osc command /sl/-1/set
+	SL_LOOP_GLOBAL_PARAMS = [
+		'round',				# 0 = off,  not 0 = on
+  		'relative_sync',		# 0 = off, not 0 = on
+		'quantize',				# 0 = off, 1 = cycle, 2 = 8th, 3 = loop
+  		'mute_quantized',		# 0 = off, not 0 = on
+  		'overdub_quantized',	# 0 == off, not 0 = on
+  		'replace_quantized',	# 0 == off, not 0 = on (undocumented)
+	]
+
+	# SL_GLOBAL_PARAMS act on whole engine - sent with osc command /set
 	SL_GLOBAL_PARAMS = [
 	#	'tempo',				# bpm
 		'eighth_per_cycle',
@@ -177,7 +190,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['rate', 'speed', {'value':1.0, 'value_min':0.25, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
 			['stretch_ratio', 'stretch', {'value':1.0, 'value_min':0.5, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
 			['pitch_shift', 'pitch', {'value':0.0, 'value_min':-12, 'value_max':12, 'is_integer':False, 'nudge_factor':0.1}],
-			['sync_source', 'sync source', {'value':1, 'value_min':-3, 'value_max':1, 'labels':['Internal','MidiClock','Jack/Host','None','Loop1'], 'is_integer':True}], #TODO: Dynamically offer more loops
+			['sync_source', 'sync source', {'value':1, 'value_min':-3, 'value_max':1, 'labels':['Internal','MidiClock','Jack/Host','None','Loop1'], 'is_integer':True}],
 			['sync', 'sync operations', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
             ['eighth_per_cycle', '8th/cycle', {'value':16, 'value_min':1, 'value_max':600}], #TODO: What makes sense for max val?
             ['quantize', 'quantize', {'value':0, 'value_max':3, 'labels':['off', 'cycle', '8th', 'loop']}],
@@ -203,11 +216,11 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['Rec 2',['replace','substitute','insert','undo/redo']],
 			['Play 1',['trigger','oneshot','mute','pause']],
 			['Play 2',['reverse','pitch_shift','rate','stretch_ratio']],
-			['Sync 1',['sync_source','sync','eighth_per_cycle','playback_sync']],
-			['Sync 2',['round','relative_sync','smart_eighths', 'use_feedback_play']],
+			['Sync 1',['sync_source','sync','playback_sync','relative_sync']],
+			['Sync 2',['round', 'use_feedback_play']],
 			['Quantize',['quantize','mute_quantized','overdub_quantized','replace_quantized']],
 			['Levels 1',['rec_thresh', 'feedback', 'wet', 'dry']],
-			['Levels 2',['input_gain', None, None, 'selected_loop_num']]
+			['Levels 2',['input_gain', 'selected_loop_num']]
 		]
 
 		self.start()
@@ -232,10 +245,11 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			#liblo.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/sl/monitor'))
 		for symbol in self.SL_LOOP_PARAMS:
 			liblo.send(self.osc_target, '/sl/-3/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/control'))
-			#liblo.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/sl/control'))
+		for symbol in self.SL_LOOP_GLOBAL_PARAMS:
+			# Register for tallies of commands sent to all channels - register for channel 0 because that should always be there
+			liblo.send(self.osc_target, '/sl/0/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/control'))
 		for symbol in self.SL_GLOBAL_PARAMS:
 			liblo.send(self.osc_target, '/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/control'))
-			#liblo.send(self.osc_target, '/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/sl/control'))
 		liblo.send(self.osc_target, '/register', ('s', self.osc_server_url), ('s', '/sl/info'))
 		liblo.send(self.osc_target, '/ping', ('s', self.osc_server_url), ('s', '/sl/info'))
 		# Set default values
@@ -297,11 +311,13 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				liblo.send(self.osc_target, '/sl/-3/hit', ('s', 'redo'))
 			zctrl.set_value(1, False)
 		elif zctrl.symbol == 'selected_loop_num' and zctrl.value + 1 > self.loop_count and zctrl.value < self.MAX_LOOPS:
-			liblo.send(self.osc_target, '/loop_add', ('i', self.channels), ('f', 30))
+			liblo.send(self.osc_target, '/loop_add', ('i', self.channels), ('f', 30), ('i', 0))
 		else:
-			if zctrl.symbol in self.SL_LOOP_PARAMS:
+			if zctrl.symbol in self.SL_LOOP_PARAMS: # Selected loop
 				liblo.send(self.osc_target, '/sl/-3/set', ('s', zctrl.symbol), ('f', zctrl.value))
-			if zctrl.symbol in self.SL_GLOBAL_PARAMS:
+			if zctrl.symbol in self.SL_LOOP_GLOBAL_PARAMS: # All loops
+				liblo.send(self.osc_target, '/sl/-1/set', ('s', zctrl.symbol), ('f', zctrl.value))
+			if zctrl.symbol in self.SL_GLOBAL_PARAMS: # Global params
 				liblo.send(self.osc_target, '/set', ('s', zctrl.symbol), ('f', zctrl.value))
 
 
@@ -344,28 +360,33 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			loop_count_changed = self.loop_count != int(args[2])
 			self.loop_count = int(args[2])
 			if loop_count_changed:
+				labels = ['Internal','MidiClock','Jack/Host','None']
 				for loop in range(self.loop_count):
 					liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(loop), ('s', 'loop_pos'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/monitor'))
 					liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(loop), ('s', 'loop_len'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/monitor'))
 					liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(loop), ('s', 'mute'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/monitor'))
 					liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(loop), ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/state'))
+					labels.append('Loop {}'.format(loop + 1))
 				for loop in range(self.loop_count, self.MAX_LOOPS):
 					liblo.send(self.osc_target, '/sl/{}/unregister_auto_update'.format(loop), ('s', 'loop_pos'), ('s', self.osc_server_url), ('s', '/sl/monitor'))
 					liblo.send(self.osc_target, '/sl/{}/unregister_auto_update'.format(loop), ('s', 'loop_len'), ('s', self.osc_server_url), ('s', '/sl/monitor'))
 					liblo.send(self.osc_target, '/sl/{}/unregister_auto_update'.format(loop), ('s', 'mute'), ('s', self.osc_server_url), ('s', '/sl/monitor'))
 					liblo.send(self.osc_target, '/sl/{}/unregister_auto_update'.format(loop), ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/state'))
 				self.select_loop(self.loop_count - 1, True)
+				sync_source = self.zctrls['sync_source'].value
+				self.zctrls['sync_source'].set_options({'labels':labels, 'ticks':[], 'value_max':self.loop_count})
+				if sync_source > self.loop_count:
+					self.zctrls['sync_source'].set_value(0)
 			self.monitors_dict['loop_count'] = self.loop_count
 			self.monitors_dict['version'] = self.sl_version
 			return
 		elif path == '/sl/control':
-			if args[1] in self.SL_LOOP_PARAMS or args[1] in self.SL_GLOBAL_PARAMS:
-				if args[1] == 'selected_loop_num':
-					self.select_loop(args[2])
-				try:
-					self.zctrls[args[1]].set_value(args[2], False)
-				except Exception as e:
-					logging.warning("Unsupported tally %s (%f)", args[1], args[2])
+			if args[1] == 'selected_loop_num':
+				self.select_loop(args[2])
+			try:
+				self.zctrls[args[1]].set_value(args[2], False)
+			except Exception as e:
+				logging.warning("Unsupported tally %s (%f)", args[1], args[2])
 		if args[1] == 'rate_output':
 			if args[2] < 0.0:
 				self.zctrls['reverse'].set_value(1, False)
