@@ -58,7 +58,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.zyngui = zynthian_gui_config.zyngui
 		self.zctrl = None
 		self.step = 0
-		self.vertical = zynthian_gui_config.ctrl_both_sides #TODO: Do we need different method to configure oriention?
+		self.vertical = zynthian_gui_config.layout['ctrl_orientation'] == 'vertical' #TODO: Do we need different method to configure oriention?
 
 		self.value_plot = 0 # Normalised position of plot start point
 		self.value_print = None
@@ -246,12 +246,13 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.shown = True
 		if self.hidden:
 			return
-		self.grid() #TODO: May not want to grid to arbritary position before setting row/column
 		if self.zctrl:
 			self.calculate_value_font_size()
 			self.calculate_plot_values()
 			self.plot_value()
 			self.itemconfig('gui', state=tkinter.NORMAL)
+			if self.selector_counter:
+				self.itemconfig(self.graph, state=tkinter.HIDDEN)			
 		else:
 			self.itemconfig('gui', state=tkinter.HIDDEN)
 
@@ -260,7 +261,6 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.shown = False
 		if self.hidden:
 			return
-		self.grid_remove()
 
 
 	def set_hl(self, color=zynthian_gui_config.color_hl):

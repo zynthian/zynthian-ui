@@ -47,6 +47,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def __init__(self, selcap='Controllers'):
 		self.mode = None
 
+		self.widgets = {}
+		self.ctrl_screens = {}
+		self.zcontrollers = []
+		self.screen_name = None
+		self.controllers_lock = False
+		self.zgui_controllers = []
+
 		self.buttonbar_config = [
 			(1, 'PRESETS\n[mixer]'),
 			(0, 'NEXT CHAIN\n[menu]'),
@@ -54,18 +61,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 			(3, 'PAGE\n[options]')
 		]
 
-		if zynthian_gui_config.ctrl_both_sides:
+		if zynthian_gui_config.layout['columns'] == 3:
 			super().__init__(selcap, False, False)
 		else:
 			super().__init__(selcap, True, False)
 
-
-		self.widgets = {}
-		self.ctrl_screens = {}
-		self.zcontrollers = []
-		self.screen_name = None
-		self.controllers_lock = False
-		self.zgui_controllers = []
 
 		# xyselect mode vars
 		self.xyselect_mode = False
@@ -74,15 +74,18 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		self.topbar_bold_touch_action = lambda: self.zyngui.zynswitch_defered('B', 1)
 
+		# Configure layout
+		for ctrl_pos in zynthian_gui_config.layout['ctrl_pos']:
+			self.main_frame.columnconfigure(ctrl_pos[1], weight=1, uniform='ctrl_col')
+			self.main_frame.rowconfigure(ctrl_pos[0], weight=1, uniform='ctrl_row')
+		self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], weight=2)
+
 
 	def update_layout(self):
 		super().update_layout()
-		for ctrl in self.zgui_controllers:
-			if zynthian_gui_config.ctrl_both_sides:
-				ctrl.configure(width = self.width // 4 - 2, height = self.height // 2 - 1)
-			else:
-				ctrl.configure(width = self.width // 4 - 2, height = self.height // 4 - 1)
-
+		for pos in zynthian_gui_config.layout['ctrl_pos']:
+			self.main_frame.columnconfigure(pos[1], minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
+		
 
 	def show(self):
 		if self.zyngui.curlayer:
@@ -97,6 +100,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 		#if self.shown:
 		#	for zc in self.zgui_controllers: zc.hide()
 		#	if self.zselector: self.zselector.hide()
+
+
+	def show_sidebar(self, show):
+		self.sidebar_shown = show
+		for zctrl in self.zgui_controllers:
+			if self.sidebar_shown:
+				zctrl.grid()
+			else:
+				zctrl.grid_remove()
+		self.update_layout()
 
 
 	def fill_list(self):
@@ -176,7 +189,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				for k, widget in self.widgets.items():
 					if k == widget_name:
 						self.listbox.grid_remove()
-						widget.grid(row=0, column=1, rowspan=4, padx=(0,2), sticky="news")
+						widget.grid(row=0, column=1, rowspan=5, padx=(0,2), sticky="news")
 						widget.show()
 					else:
 						widget.grid_remove()
@@ -211,36 +224,28 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zcontrollers = screen_layer.get_ctrl_screen(screen_title)
 
 		else:
-			self.zcontrollers = None
+			self.zcontrollers = []
 
 		# Setup GUI Controllers
-		if self.zcontrollers:
-			logging.debug("SET CONTROLLER SCREEN {}".format(screen_title))
-			# Configure zgui_controllers
-			i = 0
-			for ctrl in self.zcontrollers:
+		logging.debug("SET CONTROLLER SCREEN {}".format(screen_title))
+		# Configure zgui_controllers
+		for i in range(4):
+			if i < len(self.zcontrollers):
 				try:
+					ctrl = self.zcontrollers[i]
 					#logging.debug("CONTROLLER ARRAY {} => {} ({})".format(i, ctrl.symbol, ctrl.short_name))
 					self.set_zcontroller(i, ctrl)
-					pos = zynthian_gui_config.ctrl_pos[i]
-					self.zgui_controllers[i].grid(row=pos[0], column=pos[1], pady=pos[4])
 				except Exception as e:
 					logging.exception("Controller %s (%d) => %s" % (ctrl.short_name, i, e))
 					self.zgui_controllers[i].hide()
-				i += 1
-
-			# Empty rest of GUI controllers
-			for i in range(i, 4):
+			else:
 				self.set_zcontroller(i, None)
+			pos = zynthian_gui_config.layout['ctrl_pos'][i]
+			self.zgui_controllers[i].grid(row=pos[0], column=pos[1], pady=(0,1), sticky='news')
 
-			# Set/Restore XY controllers highlight
-			if self.mode == 'control':
-				self.set_xyselect_controllers()
-
-		# Empty All GUI controllers
-		else:
-			for i in range(4):
-				self.set_zcontroller(i, None)
+		# Set/Restore XY controllers highlight
+		if self.mode == 'control':
+			self.set_xyselect_controllers() #TODO: Check this is safe with no controllers (BW)
 
 		self.lock_controllers() #TODO: Is mutex (fully) implemented
 
@@ -371,7 +376,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def arrow_down(self):
 		i = self.index + 1
 		if i >= len(self.list_data):
-			i = 0
+			i = len(self.list_data) - 1
 		self.select(i)
 		self.click_listbox()
 		return True

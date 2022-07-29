@@ -795,12 +795,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		super().show()
 
 
-	# Function to refresh loading animation
-	def refresh_loading(self):
-		pass
+	# Function to update display, e.g. after geometry changes
+	def update_layout(self):
+		super().update_layout()
+		#TODO: Update mixer layout
 
 
-	# Function to refresh screen
+	# Function to refresh screen;
 	def refresh_status(self, status={}):
 		if self.shown:
 			super().refresh_status(status)

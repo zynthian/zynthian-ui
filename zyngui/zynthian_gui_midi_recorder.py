@@ -29,6 +29,7 @@ from threading import Timer
 from time import sleep
 from os.path import isfile, join, basename
 import ctypes
+import tkinter
 
 # Zynthian specific modules
 import zynconf
@@ -361,13 +362,27 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.config(self.zyngui.zynseq.zctrl_tempo)
 			self.bpm_zgui_ctrl.show()
+			self.bpm_zgui_ctrl.grid()
+			self.loading_canvas.grid_remove()
 		else:
-			self.bpm_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.zyngui.zynseq.zctrl_tempo)
+			if zynthian_gui_config.layout['name'] == 'Z2':
+				bmp_ctrl_index = 0
+			else:
+				bmp_ctrl_index = 2
+			self.bpm_zgui_ctrl = zynthian_gui_controller(bmp_ctrl_index, self.main_frame, self.zyngui.zynseq.zctrl_tempo)
+			self.loading_canvas.grid_remove()
+			self.bpm_zgui_ctrl.grid(
+				row    = zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][0],
+				column = zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][1],
+				sticky = 'news'
+			)
 
 
 	def hide_playing_bpm(self):
 		if self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.hide()
+			self.bpm_zgui_ctrl.grid_remove()
+			self.loading_canvas.grid()
 
 
 	# Implement engine's method

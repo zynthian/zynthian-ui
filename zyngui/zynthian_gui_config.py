@@ -479,24 +479,35 @@ if "zynthian_gui.py" in sys.argv[0]:
 			title_y = int(0.05 * topbar_height)
 
 		# Controllers position and size
+		# pos(row,col)
 		if wiring_layout.startswith("Z2"):
-			ctrl_both_sides = False
-			ctrl_width = display_width // 4
-			ctrl_pos=[
-				(0,2,"ne",(2,0),(0,1)),
-				(1,2,"ne",(2,0),(1,1)),
-				(2,2,"ne",(2,0),(1,1)),
-				(3,2,"ne",(2,0),(1,1))
-			]
+			layout = {
+				'name': 'Z2',
+				'columns': 2,
+				'rows': 4,
+				'ctrl_pos': [
+					(0,1),
+					(1,1),
+					(2,1),
+					(3,1)
+				],
+				'list_pos': (0,0),
+				'ctrl_orientation': 'horizontal'
+			}
 		else:
-			ctrl_both_sides = True
-			ctrl_width = display_width // 4
-			ctrl_pos=[
-				(0,0,"nw",(0,2),(0,1)),
-				(1,0,"sw",(0,2),(1,0)),
-				(0,2,"ne",(2,0),(0,1)),
-				(1,2,"se",(2,0),(1,0))
-			]
+			layout = {
+				'name': 'V4',
+				'columns': 3,
+				'rows': 2,
+				'ctrl_pos': [
+					(0,0),
+					(1,0),
+					(0,2),
+					(1,2)
+				],
+				'list_pos': (0,1),
+				'ctrl_orientation': 'vertical'
+			}
 
 
 		# Adjust Root Window Geometry
@@ -523,8 +534,8 @@ if "zynthian_gui.py" in sys.argv[0]:
 		loading_imgs=[]
 		pil_frame = Image.open("./img/zynthian_gui_loading.gif")
 		fw, fh = pil_frame.size
-		fw2=ctrl_width-8
-		fh2=int(fh*fw2/fw)
+		fw2 = display_width // 4 - 8
+		fh2 = int(fh * fw2 / fw)
 		nframes = 0
 		while pil_frame:
 			pil_frame2 = pil_frame.resize((fw2, fh2), Image.ANTIALIAS)
