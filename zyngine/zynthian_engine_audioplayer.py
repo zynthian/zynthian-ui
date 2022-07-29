@@ -157,7 +157,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		if self.player.get_filename() == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration():
 			return
 
-		self.player.load(preset[0])
+		good_file = self.player.load(preset[0])
 		dur = self.player.get_duration()
 		self.player.set_position(0)
 		if self.player.is_loop():

@@ -785,7 +785,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Only enable channel DPM when mixer shown
 		for chan in range(self.zyngui.zynmixer.get_max_channels()):
 			self.zyngui.zynmixer.enable_dpm(chan, zynthian_gui_config.enable_dpm)
-		self.zyngui.screens["control"].unlock_controllers()
 		self.refresh_visible_strips()
 		if self.selected_chain_index == None:
 			self.select_chain_by_index(0)

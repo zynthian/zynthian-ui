@@ -23,9 +23,7 @@
 # 
 #******************************************************************************
 
-import sys
 import logging
-import tkinter
 import importlib
 from time import sleep
 from pathlib import Path
@@ -51,8 +49,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.ctrl_screens = {}
 		self.zcontrollers = []
 		self.screen_name = None
-		self.controllers_lock = False
 		self.zgui_controllers = []
+		self.midi_learning = False
 
 		self.buttonbar_config = [
 			(1, 'PRESETS\n[mixer]'),
@@ -157,14 +155,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.mode=='select': super().set_selector(zs_hiden)
 
 
-	def lock_controllers(self):
-		self.controllers_lock = True
-
-
-	def unlock_controllers(self):
-		self.controllers_lock = False
-
-
 	def show_widget(self, layer):
 		module_path = layer.engine.custom_gui_fpath
 		if module_path:
@@ -186,10 +176,14 @@ class zynthian_gui_control(zynthian_gui_selector):
 				else:
 					widget_name = None
 
+				if self.wide:
+					padx = (0,2)
+				else:
+					padx = (2,2)
 				for k, widget in self.widgets.items():
 					if k == widget_name:
 						self.listbox.grid_remove()
-						widget.grid(row=0, column=1, rowspan=5, padx=(0,2), sticky="news")
+						widget.grid(row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=4, padx=padx, sticky="news")
 						widget.show()
 					else:
 						widget.grid_remove()
@@ -206,9 +200,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def set_controller_screen(self):
-		# Get Mutex Lock 
-		#self.zyngui.lock.acquire()
-
 		# Get screen info
 		if 0 <= self.index < len(self.list_data):
 			screen_info = self.list_data[self.index]
@@ -245,12 +236,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		# Set/Restore XY controllers highlight
 		if self.mode == 'control':
-			self.set_xyselect_controllers() #TODO: Check this is safe with no controllers (BW)
-
-		self.lock_controllers() #TODO: Is mutex (fully) implemented
-
-		# Release Mutex Lock
-		#self.zyngui.lock.release()
+			self.set_xyselect_controllers()
 
 		self.update_layout()
 
@@ -338,6 +324,25 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return True
 
 
+	def previous_page(self, wrap=False):
+		i = self.index - 1
+		if i < 0:
+			i = 0
+		self.select(i)
+		self.click_listbox()
+
+
+	def next_page(self, wrap=False):
+		i = self.index + 1
+		if i >= len(self.list_data):
+			if wrap:
+				i = 0
+			else:
+				i = len(self.list_data) - 1
+		self.select(i)
+		self.click_listbox()
+
+
 	def select_action(self, i, t='S'):
 
 		self.set_mode_control()
@@ -365,20 +370,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def arrow_up(self):
-		i = self.index - 1
-		if i < 0:
-			i = 0
-		self.select(i)
-		self.click_listbox()
+		self.previous_page()
 		return True
 
 
 	def arrow_down(self):
-		i = self.index + 1
-		if i >= len(self.list_data):
-			i = len(self.list_data) - 1
-		self.select(i)
-		self.click_listbox()
+		self.next_page()
 		return True
 
 
@@ -425,7 +422,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					if len(self.list_data) > 3:
 						self.set_mode_select()
 					else:
-						self.arrow_down()
+						self.next_page(True)
 				elif self.mode == 'select':
 					self.click_listbox()
 			elif t == 'B':

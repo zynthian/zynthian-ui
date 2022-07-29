@@ -76,12 +76,15 @@ class zynthian_gui_selector(zynthian_gui_base):
 		# Row 4 expands to fill unused space
 		#self.main_frame.rowconfigure(4, weight=1) #TODO: Validate row 4 is still required after chagnes to layout implementation (BW)
 
-		self.wide = wide
-		if wide:
+		if zynthian_gui_config.layout['columns'] == 3:
+			self.wide = wide
+		else:
+			self.wide = True
+		if self.wide:
 			padx = (0,2)
 		else:
 			padx = (2,2)
-		self.listbox.grid(row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=5, padx=padx, sticky="news")
+		self.listbox.grid(row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=4, padx=padx, sticky="news")
 
 		# Bind listbox events
 		self.listbox_push_ts = datetime.now()

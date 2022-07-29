@@ -281,7 +281,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def show(self):
 		super().show()
-		self.zyngui.screens["control"].unlock_controllers()
 		self.set_zctrls()
 		self.update_piano()
 		
