@@ -50,14 +50,15 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		self.selected_loop = 0
 		self.loop_count = 0
 		self.click_timer = None
+		self.row_height = 20
 
 		self.input_level_canvas = tkinter.Canvas(self,
-			height = 20,
+			height = 1,
 			bd=0,
 			highlightthickness=0,
 			bg=self.SLIDER_BG)
 		self.input_level_fg = self.input_level_canvas.create_rectangle(
-			0, 0, 0, 20,
+			0, 0, 0, self.row_height,
 			fill = '#0a0')
 		self.input_level_label = self.input_level_canvas.create_text(
 			1, 10,
@@ -66,7 +67,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			anchor='w'
 		)
 		self.threshold_line = self.input_level_canvas.create_line(
-			0, 0, 0, 20,
+			0, 0, 0, self.row_height,
 			fill = '#ff0',
 			width = 2
 		)
@@ -80,7 +81,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		self.pos_canvas = []
 		for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
 			pos_canvas = tkinter.Canvas(self,
-				height=20,
+				height=1,
 				bd=0,
 				highlightthickness=0,
 				bg=self.SLIDER_BG)
@@ -91,12 +92,12 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				anchor = 'w'
 			)
 			pos_line = pos_canvas.create_line(
-				0, 0, 0, 20,
+				0, 0, 0, self.row_height,
 				fill='#ff0',
 				width = 2
 			)
 			mute_canvas = tkinter.Canvas( self,
-				height=20,
+				height=self.row_height,
 				bd=0,
 				highlightthickness=0,
 				bg=self.SLIDER_BG
@@ -115,7 +116,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 
 		self.add_canvas = tkinter.Canvas( self,
-			height=20,
+			height=self.row_height,
 			bd=0,
 			highlightthickness=0,
 			bg=self.SLIDER_BG
@@ -130,12 +131,12 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		self.add_canvas.bind('<ButtonPress-1>', self.on_add_click)
 
 		self.wet_canvas = tkinter.Canvas(self,
-			height = 20,
+			height = 1,
 			bd=0,
 			highlightthickness=0,
 			bg=self.SLIDER_BG)
 		self.wet_fg = self.wet_canvas.create_rectangle(
-			0, 0, 0, 20,
+			0, 0, 0, self.row_height,
 			fill = self.SLIDER_FG
 		)
 		self.wet_label = self.wet_canvas.create_text(
@@ -146,12 +147,12 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		)
 
 		self.dry_canvas = tkinter.Canvas(self,
-			height = 20,
+			height = 1,
 			bd=0,
 			highlightthickness=0,
 			bg=self.SLIDER_BG)
 		self.dry_fg = self.dry_canvas.create_rectangle(
-			0, 0, 0, 20,
+			0, 0, 0, self.row_height,
 			fill = self.SLIDER_FG
 		)
 		self.dry_label = self.dry_canvas.create_text(
@@ -162,12 +163,12 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		)
 
 		self.feedback_canvas = tkinter.Canvas(self,
-			height = 20,
+			height = 1,
 			bd=0,
 			highlightthickness=0,
 			bg=self.SLIDER_BG)
 		self.feedback_fg = self.feedback_canvas.create_rectangle(
-			0, 0, 0, 20,
+			0, 0, 0, self.row_height,
 			fill = self.SLIDER_FG
 		)
 		self.feedback_label = self.feedback_canvas.create_text(
@@ -211,24 +212,28 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				font=(zynthian_gui_config.font_family, fs),
 				command=command
 			)
-			self.buttons[btn].grid(row=int(i/4), column=i%4, sticky='nsew', padx=(0,1), pady=(0,1))
+			row = int(i / 4)
+			col = i % 4
+			self.buttons[btn].grid(row=row, column=col, sticky='news', padx=(0,1), pady=(0,1))
+			self.button_frame.rowconfigure(row, weight=1, uniform='btn_row')
+			self.button_frame.columnconfigure(col, weight=1, uniform='btn_col')
 
 		for col in range(4):
 			self.columnconfigure(col, weight=1, uniform='col')
 		self.rowconfigure(zynthian_engine_sooperlooper.MAX_LOOPS + 1, weight=1)
 
-		self.button_frame.grid(columnspan=4, sticky='ew') #1
+		self.button_frame.grid(columnspan=4, sticky='news', padx=(1,1)) #1
 		for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
-			self.pos_canvas[loop]['canvas'].grid(row=1 + loop, columnspan=3, sticky='ew', padx=(1,1), pady=(1,0))
-			self.pos_canvas[loop]['mute'].grid(row=1 + loop, column=3, sticky='ew', padx=(1,1), pady=(1,0))
+			self.pos_canvas[loop]['canvas'].grid(row=1 + loop, columnspan=3, sticky='news', padx=(1,1), pady=(1,0))
+			self.pos_canvas[loop]['mute'].grid(row=1 + loop, column=3, sticky='news', padx=(1,1), pady=(1,0))
 			self.pos_canvas[loop]['canvas'].grid_remove()
 			self.pos_canvas[loop]['mute'].grid_remove()
 
-		self.add_canvas.grid(row=1 + zynthian_engine_sooperlooper.MAX_LOOPS, sticky='nw', padx=(1,1), pady=(1,1))
-		self.input_level_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
-		self.feedback_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
-		self.wet_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
-		self.dry_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='ew', padx=(1,1), pady=(1,1))
+		self.add_canvas.grid(row=zynthian_engine_sooperlooper.MAX_LOOPS, sticky='news', padx=(1,1), pady=(1,1))
+		self.input_level_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(1,1), pady=(1,1))
+		self.feedback_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', padx=(1,1), pady=(1,1))
+		self.wet_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(1,1), pady=(1,1))
+		self.dry_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', padx=(1,1), pady=(1,1))
 
 		self.symbol_map = {
 			self.dry_canvas:'dry',
@@ -243,6 +248,16 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			slider.bind("<ButtonPress-1>", self.on_slider_press)
 			slider.bind("<ButtonRelease-1>", self.on_slider_release)
 			slider.bind("<B1-Motion>", self.on_slider_motion)
+
+
+	def on_size(self, event):
+		super().on_size(event)
+		self.row_height = self.height  // (zynthian_engine_sooperlooper.MAX_LOOPS + 5)
+		self.rowconfigure(0, minsize=self.row_height * 3)
+		for row in range(1, zynthian_engine_sooperlooper.MAX_LOOPS + 1):
+			self.rowconfigure(row, minsize=self.row_height)
+		self.rowconfigure(row + 2, minsize=self.row_height)
+		self.rowconfigure(row + 3, minsize=self.row_height)
 
 
 	def on_loop_click(self, event):
@@ -334,7 +349,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 					x = 0
 					if len:
 						x = int(pos / len * self.pos_canvas[loop]['canvas'].winfo_width())
-					self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, 20)
+					self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
 					self.pos_canvas[loop]['canvas'].configure(bg=bg)
 					self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text='{}{:.2f} / {:.2f} {}'.format(prefix, pos, len, zynthian_engine_sooperlooper.SL_STATES[state]['name']))
 					if state == 10:
@@ -343,15 +358,15 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 						self.pos_canvas[loop]['mute']['bg'] = self.SLIDER_BG
 			free = self.monitors['free_time']
 			self.available_label.configure(text='avail: {:02}:{:05.2f}'.format(int(free / 60), free % 60))
-			self.input_level_canvas.coords(self.input_level_fg, 0, 0, int(self.width * self.monitors['in_peak_meter']), 20)
+			self.input_level_canvas.coords(self.input_level_fg, 0, 0, int(self.width * self.monitors['in_peak_meter']), self.row_height)
 			thresh_x = int(self.monitors['rec_thresh'] * self.input_level_canvas.winfo_width())
-			self.input_level_canvas.coords(self.threshold_line, thresh_x, 0, thresh_x, 20)
+			self.input_level_canvas.coords(self.threshold_line, thresh_x, 0, thresh_x, self.row_height)
 			x = int(self.monitors['dry'] * self.dry_canvas.winfo_width())
-			self.dry_canvas.coords(self.dry_fg, 0, 0, x, 20)
+			self.dry_canvas.coords(self.dry_fg, 0, 0, x, self.row_height)
 			x = int(self.monitors['wet'] * self.wet_canvas.winfo_width())
-			self.wet_canvas.coords(self.wet_fg, 0, 0, x, 20)
+			self.wet_canvas.coords(self.wet_fg, 0, 0, x, self.row_height)
 			x = int(self.monitors['feedback'] * self.feedback_canvas.winfo_width())
-			self.feedback_canvas.coords(self.feedback_fg, 0, 0, x, 20)
+			self.feedback_canvas.coords(self.feedback_fg, 0, 0, x, self.row_height)
 			x = int(self.monitors['input_gain'] * self.input_level_canvas.winfo_width())
 			self.input_level_canvas.coords(self.in_gain_marker, x-self.tri_size, 0, x+self.tri_size, 0, x, self.tri_size)
 			if self.monitors['rate_output'] < 0:
