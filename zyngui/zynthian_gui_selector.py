@@ -125,7 +125,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def update_layout(self):
 		super().update_layout()
 		if zynthian_gui_config.layout['columns'] == 2:
-			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], minsize=int(self.width * 0.75))
+			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], minsize=int(self.width * 0.75), weight=3)
 			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1] + 1, minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
 		else:
 			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], minsize=int(self.width * 0.50), weight=2)
