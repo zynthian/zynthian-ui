@@ -254,7 +254,7 @@ class zynthian_gui_mixer_strip():
 			return
 
 		self.parent.main_canvas.itemconfig(self.legend, text="")
-		self.parent.main_canvas.coords(self.fader_bg_color, self.x, self.fader_top, self.x + self.width, self.fader_bottom)
+		self.draw_fader()
 		if self.layer.midi_chan == zynthian_gui_mixer.MAIN_MIDI_CHANNEL:
 			self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
 			self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("NoFX"), state=tkinter.NORMAL)
@@ -342,12 +342,34 @@ class zynthian_gui_mixer_strip():
 			self.parent.pending_refresh_queue.add(self)
 
 
+	def draw_balance(self):
+		balance = self.zynmixer.get_balance(self.layer.midi_chan)
+		if balance > 0:
+			self.parent.main_canvas.coords(self.balance_left,
+				self.x + balance * self.width / 2, self.balance_top,
+				self.x + self.width / 2, self.balance_top + self.balance_height)
+			self.parent.main_canvas.coords(self.balance_right,
+				self.x + self.width / 2, self.balance_top,
+				self.x + self.width, self.balance_top + self.balance_height)
+		else:
+			self.parent.main_canvas.coords(self.balance_left,
+				self.x, self.balance_top,
+				self.x + self.width / 2, self.balance_top + self. balance_height)
+			self.parent.main_canvas.coords(self.balance_right,
+				self.x + self.width / 2, self.balance_top,
+				self.x + self.width * balance / 2 + self.width, self.balance_top + self.balance_height)
+
+
+	def draw_fader(self):
+		self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - self.zynmixer.get_level(self.layer.midi_chan)), self.x + self.fader_width, self.fader_bottom)
+
+
 	# Function to draw the UI controls for a mixer strip
 	def redraw_controls(self):
 		if self.hidden or self.layer.midi_chan is None:
 			return
 
-		self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - self.zynmixer.get_level(self.layer.midi_chan)), self.x + self.fader_width, self.fader_bottom)
+		self.draw_fader()
 
 		for ctrl in ([self.mute_text,'mute'], [self.solo_text,'solo'], [self.legend,'level'], [self.balance_text,'balance'], [self.mono_text,'mono']):
 			if self.midi_learning == ctrl[0]:
@@ -386,21 +408,7 @@ class zynthian_gui_mixer_strip():
 					self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.low_color)
 					self.dpm_hold_color = "#00FF00"
 
-		balance = self.zynmixer.get_balance(self.layer.midi_chan)
-		if balance > 0:
-			self.parent.main_canvas.coords(self.balance_left,
-				self.x + balance * self.width / 2, self.balance_top,
-				self.x + self.width / 2, self.balance_top + self.balance_height)
-			self.parent.main_canvas.coords(self.balance_right,
-				self.x + self.width / 2, self.balance_top,
-				self.x + self.width, self.balance_top + self.balance_height)
-		else:
-			self.parent.main_canvas.coords(self.balance_left,
-				self.x, self.balance_top,
-				self.x + self.width / 2, self.balance_top + self. balance_height)
-			self.parent.main_canvas.coords(self.balance_right,
-				self.x + self.width / 2, self.balance_top,
-				self.x + self.width * balance / 2 + self.width, self.balance_top + self.balance_height)
+		self.draw_balance()
 
 
 
@@ -462,7 +470,7 @@ class zynthian_gui_mixer_strip():
 		elif self.midi_learning == False:
 			if self.zctrls:
 				self.zctrls['level'].nudge(dval)
-		self.flag_redraw()
+		self.draw_fader()
 
 
 	# Function to set balance value
@@ -473,7 +481,7 @@ class zynthian_gui_mixer_strip():
 		elif self.midi_learning == False:
 			if self.zctrls:
 				self.zctrls['balance'].set_value(value)
-		self.flag_redraw()
+		self.draw_balance()
 
 
 	# Function to get balance value
@@ -570,8 +578,7 @@ class zynthian_gui_mixer_strip():
 		if self.zctrls:
 			self.set_volume(self.zctrls['level'].value + (self.fader_drag_start.y - event.y) / self.fader_height)
 			self.fader_drag_start = event
-			#self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - self.zynmixer.get_level(self.layer.midi_chan)), self.x + self.fader_width, self.fader_bottom)
-			self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - self.zctrls['level'].value), self.x + self.fader_width, self.fader_bottom)
+			self.draw_fader()
 
 
 	# Function to handle mouse wheel down over fader
@@ -785,7 +792,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		# Only enable channel DPM when mixer shown
 		for chan in range(self.zyngui.zynmixer.get_max_channels()):
 			self.zyngui.zynmixer.enable_dpm(chan, zynthian_gui_config.enable_dpm)
-		self.zyngui.screens["control"].unlock_controllers()
 		self.refresh_visible_strips()
 		if self.selected_chain_index == None:
 			self.select_chain_by_index(0)
@@ -795,12 +801,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		super().show()
 
 
-	# Function to refresh loading animation
-	def refresh_loading(self):
-		pass
+	# Function to update display, e.g. after geometry changes
+	def update_layout(self):
+		super().update_layout()
+		#TODO: Update mixer layout
 
 
-	# Function to refresh screen
+	# Function to refresh screen;
 	def refresh_status(self, status={}):
 		if self.shown:
 			super().refresh_status(status)

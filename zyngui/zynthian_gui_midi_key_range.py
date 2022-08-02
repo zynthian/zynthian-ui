@@ -69,7 +69,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 		self.piano_canvas_height = self.height // 4
 		self.main_frame.rowconfigure(2, weight=1)
-		if zynthian_gui_config.ctrl_both_sides:
+		if zynthian_gui_config.layout['name'] == 'V4':
 			self.ctrl_height = self.height // 2
 			self.spacer.grid(row=0, column=1, padx=(2,2), sticky='news')
 			self.zctrl_pos = [0, 2, 1, 3]
@@ -255,7 +255,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			self.nhigh_zgui_ctrl.setup_zynpot()
 			self.nhigh_zctrl.set_value(self.note_high)
 
-			if zynthian_gui_config.ctrl_both_sides:
+			if zynthian_gui_config.layout['name'] == 'V4':
 				self.octave_zgui_ctrl.configure(height=self.height // 2, width=self.width // 4)
 				self.halftone_zgui_ctrl.configure(height=self.height // 2, width=self.width // 4)
 				self.octave_zgui_ctrl.grid(row=0, column=0)
@@ -281,7 +281,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def show(self):
 		super().show()
-		self.zyngui.screens["control"].unlock_controllers()
 		self.set_zctrls()
 		self.update_piano()
 		

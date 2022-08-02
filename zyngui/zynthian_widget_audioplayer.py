@@ -184,6 +184,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					self.load_image()
 				else:
 					self.widget_canvas.itemconfigure(self.loading_text, text="No\nfile\nloaded")
+					self.widget_canvas.itemconfigure(self.waveform, state=tkinter.HIDDEN)
 	
 		except Exception as e:
 			logging.error(e)

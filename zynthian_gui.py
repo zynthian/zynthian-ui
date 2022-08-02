@@ -47,6 +47,7 @@ from subprocess import check_output
 import zynconf
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
+from zyngui.zynthian_gui_base import zynthian_gui_base
 from zynlibs.zynmixer import zynmixer
 from zynlibs.zynaudioplayer import zynaudioplayer
 from zynlibs.zynseq import zynseq
@@ -1390,6 +1391,26 @@ class zynthian_gui:
 
 		elif cuia == "TOGGLE_MIDI_LEARN":
 			self.toggle_midi_learn()
+
+		# Common methods to control views derived from zynthian_gui_base
+		elif isinstance(self.screens[self.current_screen], zynthian_gui_base):
+			if cuia == "SHOW_TOPBAR":
+				self.screens[self.current_screen].show_topbar(True)
+
+			elif cuia == "HIDE_TOPBAR":
+				self.screens[self.current_screen].show_topbar(False)
+
+			elif cuia == "SHOW_BUTTONBAR":
+				self.screens[self.current_screen].show_buttonbar(True)
+
+			elif cuia == "HIDE_BUTTONBAR":
+				self.screens[self.current_screen].show_buttonbar(False)
+
+			elif cuia == "SHOW_SIDEBAR":
+				self.screens[self.current_screen].show_sidebar(True)
+
+			elif cuia == "HIDE_SIDEBAR":
+				self.screens[self.current_screen].show_sidebar(False)
 
 
 	def cuia_layer_control(self, params=None):

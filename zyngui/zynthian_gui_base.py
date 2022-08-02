@@ -58,6 +58,9 @@ class zynthian_gui_base(tkinter.Frame):
 		self.shown = False
 		self.zyngui = zynthian_gui_config.zyngui
 
+		self.topbar_allowed = True
+		self.topbar_height = zynthian_gui_config.topbar_height
+		self.sidebar_shown = True
 		self.buttonbar_button = []
 
 		# Geometry vars
@@ -65,9 +68,9 @@ class zynthian_gui_base(tkinter.Frame):
 		self.width = zynthian_gui_config.display_width
 		#TODO: Views should use current height if they need dynamic changes else grow rows to fill main_frame
 		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
-			self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height - self.buttonbar_height
+			self.height = zynthian_gui_config.display_height - self.topbar_height - self.buttonbar_height
 		else:
-			self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
+			self.height = zynthian_gui_config.display_height - self.topbar_height
 
 
 		#Status Area Canvas Objects
@@ -86,8 +89,8 @@ class zynthian_gui_base(tkinter.Frame):
 		self.status_midi_clock = None
 
 		#Status Area Parameters
-		self.status_h = zynthian_gui_config.topbar_height
-		self.status_l = int(1.8*zynthian_gui_config.topbar_height)
+		self.status_h = self.topbar_height
+		self.status_l = int(1.8*self.topbar_height)
 		self.status_rh = max(2,int(self.status_h/4))
 		self.status_fs = int(self.status_h/3)
 		self.status_lpad = self.status_fs
@@ -111,7 +114,7 @@ class zynthian_gui_base(tkinter.Frame):
 		# Topbar's frame
 		self.tb_frame = tkinter.Frame(self,
 			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.topbar_height,
+			height=self.topbar_height,
 			bg=zynthian_gui_config.color_bg)
 		self.tb_frame.grid_propagate(False)
 		self.tb_frame.grid(row=0)
@@ -129,7 +132,7 @@ class zynthian_gui_base(tkinter.Frame):
 		self.title_fg = zynthian_gui_config.color_panel_tx
 		self.title_bg = zynthian_gui_config.color_header_bg
 		self.title_canvas = tkinter.Canvas(self.tb_frame,
-			height=zynthian_gui_config.topbar_height,
+			height=self.topbar_height,
 			bd=0,
 			highlightthickness=0,
 			bg = self.title_bg)
@@ -190,6 +193,7 @@ class zynthian_gui_base(tkinter.Frame):
 		self.cb_scroll_select_path()
 
 		self.disable_param_editor() #TODO: Consolidate set_title and set_select_path, etc.
+		self.bind("<Configure>", self.on_size)
 
 
 	# Function to update title
@@ -224,6 +228,14 @@ class zynthian_gui_base(tkinter.Frame):
 			self.label_select_path.config(bg=self.title_bg)
 
 
+	# Function called when frame resized
+	def on_size(self, event):
+		self.update_layout()
+		return
+		self.width = self.main_frame.winfo_width()
+		self.height = self.main_frame.winfo_height()
+
+
 	# Function to revert title after toast
 	def on_title_timeout(self):
 		if self.title_timer:
@@ -232,6 +244,8 @@ class zynthian_gui_base(tkinter.Frame):
 		self.set_title(self.title)
 
 
+	# Initialise button bar
+	#	config: Buttonbar config (default is None to use default configuration hardcoded per view)
 	def init_buttonbar(self, config=None):
 		if self.buttonbar_frame:
 			self.buttonbar_frame.grid_forget()
@@ -259,11 +273,18 @@ class zynthian_gui_base(tkinter.Frame):
 				pass
 
 
+	# Set the label for a button in the buttonbar
+	#	column: Column / button index
+	#	label: Text to show on label
 	def set_buttonbar_label(self, column, label):
 		if len(self.buttonbar_button) > column and self.buttonbar_button[column]:
 			self.buttonbar_button[column]['text'] = label
 
 
+	# Add a button to the buttonbar
+	#	column: Column / button index
+	#	cuia: Action to trigger when button pressed
+	#	label: Text to show on button
 	def add_button(self, column, cuia, label):
 		# Touchbar frame
 		for new_column in range(len(self.buttonbar_button), column + 1):
@@ -291,10 +312,15 @@ class zynthian_gui_base(tkinter.Frame):
 		select_button.bind('<ButtonRelease-1>', lambda e: self.button_up(cuia, e))
 
 
+	# Handle buttonbar button press
+	#	event: Button event (not used)
 	def button_down(self, event):
 		self.button_push_ts=time.monotonic()
 
 
+	# Handle buttonbar button release
+	#	cuia: Action to trigger
+	#	event: Button event (not used)
 	def button_up(self, cuia, event):
 		if isinstance(cuia, int):
 			t = 'S'
@@ -343,6 +369,7 @@ class zynthian_gui_base(tkinter.Frame):
 			self.topbar_bold_touch_action()
 
 
+	# Show the view
 	def show(self):
 		if not self.shown:
 			if self.zyngui.test_mode:
@@ -353,10 +380,40 @@ class zynthian_gui_base(tkinter.Frame):
 		self.main_frame.focus()
 
 
+	# Hide the view
 	def hide(self):
 		if self.shown:
 			self.shown=False
 			self.grid_remove()
+
+
+	# Show topbar (if allowed)
+	# show: True to show, False to hide
+	def show_topbar(self, show):
+		if self.topbar_allowed:
+			if show:
+				self.topbar_height = zynthian_gui_config.topbar_height
+				self.tb_frame.grid()
+			else:
+				self.topbar_height = 0
+				self.tb_frame.grid_remove()
+			self.update_layout()
+
+
+	# Show buttonbar (if configured)
+	# show: True to show, False to hide
+	def show_buttonbar(self, show):
+		if show:
+			self.init_buttonbar()
+		elif self.buttonbar_frame:
+			self.buttonbar_frame.grid_remove()
+		self.update_layout()
+
+
+	# Show sidebar (override in derived classes if required)
+	# show: True to show, False to hide
+	def show_sidebar(self, show):
+		pass
 
 
 	def refresh_status(self, status={}):
@@ -682,9 +739,9 @@ class zynthian_gui_base(tkinter.Frame):
 	# Override if required
 	def update_layout(self):
 		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
-			self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height - self.buttonbar_height
+			self.height = zynthian_gui_config.display_height - self.topbar_height - self.buttonbar_height
 		else:
-			self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
+			self.height = zynthian_gui_config.display_height - self.topbar_height
 
 
 	# Function to enable the top-bar parameter editor

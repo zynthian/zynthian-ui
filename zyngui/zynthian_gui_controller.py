@@ -58,7 +58,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.zyngui = zynthian_gui_config.zyngui
 		self.zctrl = None
 		self.step = 0
-		self.vertical = zynthian_gui_config.ctrl_both_sides #TODO: Do we need different method to configure oriention?
+		self.vertical = zynthian_gui_config.layout['ctrl_orientation'] == 'vertical' #TODO: Do we need different method to configure oriention?
 
 		self.value_plot = 0 # Normalised position of plot start point
 		self.value_print = None
@@ -163,24 +163,27 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.zctrl:
 			self.calculate_value_font_size()
 			self.calculate_plot_values()
+			self.set_drag_scale()
 
-		self.pixels_per_div = event.height // 20
+
+	def set_drag_scale(self):
+		self.pixels_per_div = self.winfo_height() // 20
 		if self.zctrl:
 			if isinstance(self.zctrl.ticks, list):
 				n = len(self.zctrl.ticks)
 				if n > 0:
-					self.pixels_per_div = event.height // n
+					self.pixels_per_div = self.winfo_height() // n
 			else:
 				#Integer
 				if self.zctrl.value_range == 0:
 					self.pixels_per_div = 1
 				elif self.zctrl.is_integer:
-					self.pixels_per_div = event.height // self.zctrl.value_range
+					self.pixels_per_div = self.winfo_height() // self.zctrl.value_range
 				#Float
 				else:
-					self.pixels_per_div = int(event.height * self.zctrl.nudge_factor / self.zctrl.value_range)
+					self.pixels_per_div = int(self.winfo_height() * self.zctrl.nudge_factor / self.zctrl.value_range)
 			if self.zctrl.is_toggle:
-				self.pixels_per_div = event.height // 3
+				self.pixels_per_div = self.winfo_height() // 3
 		if self.pixels_per_div == 0:
 			self.pixels_per_div = 1
 
@@ -202,8 +205,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 			x2 = x0 + radius
 			y2 = y0 + radius
 			self.title_width = self.winfo_width() - 6
-			self.coords(self.label_title, x0, 2)
-			self.itemconfigure(self.label_title, width=self.title_width, anchor='n', justify=tkinter.CENTER)
+			self.coords(self.label_title, 4, 2)
+			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 		else:
 			x0 = self.winfo_width() - radius - 2
 			y0 = self.winfo_height() // 2
@@ -212,8 +215,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 			x2 = x0 + radius
 			y2 = y0 + radius
 			self.title_width = self.winfo_width() - radius * 2 - 8
-			self.coords(self.label_title, x1 - 4, y0)
-			self.itemconfigure(self.label_title, width=self.title_width, anchor='e', justify=tkinter.RIGHT)
+			self.coords(self.label_title, 4, 4)
+			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 			
 		self.coords(self.value_text, x0, y0)
 		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family,self.value_font_size), width=radius*2)
@@ -246,12 +249,15 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.shown = True
 		if self.hidden:
 			return
-		self.grid() #TODO: May not want to grid to arbritary position before setting row/column
 		if self.zctrl:
 			self.calculate_value_font_size()
 			self.calculate_plot_values()
 			self.plot_value()
+			self.set_drag_scale()
+			#TODO: calculate_value_font_size, calculate_plot_values, set_drag_scale always called together - optimse to single function?
 			self.itemconfig('gui', state=tkinter.NORMAL)
+			if self.selector_counter:
+				self.itemconfig(self.graph, state=tkinter.HIDDEN)			
 		else:
 			self.itemconfig('gui', state=tkinter.HIDDEN)
 
@@ -260,7 +266,6 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.shown = False
 		if self.hidden:
 			return
-		self.grid_remove()
 
 
 	def set_hl(self, color=zynthian_gui_config.color_hl):
