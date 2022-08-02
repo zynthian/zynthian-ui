@@ -167,54 +167,58 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 
 	def set_drag_scale(self):
-		self.pixels_per_div = self.winfo_height() // 20
+		hh = self.winfo_height()
+		self.pixels_per_div =  hh // 20
 		if self.zctrl:
 			if isinstance(self.zctrl.ticks, list):
 				n = len(self.zctrl.ticks)
 				if n > 0:
-					self.pixels_per_div = self.winfo_height() // n
+					self.pixels_per_div = hh // n
 			else:
 				#Integer
 				if self.zctrl.value_range == 0:
 					self.pixels_per_div = 1
 				elif self.zctrl.is_integer:
-					self.pixels_per_div = self.winfo_height() // self.zctrl.value_range
+					self.pixels_per_div = hh // self.zctrl.value_range
 				#Float
 				else:
-					self.pixels_per_div = int(self.winfo_height() * self.zctrl.nudge_factor / self.zctrl.value_range)
+					self.pixels_per_div = int(hh * self.zctrl.nudge_factor / self.zctrl.value_range)
 			if self.zctrl.is_toggle:
-				self.pixels_per_div = self.winfo_height() // 3
+				self.pixels_per_div = hh // 3
 		if self.pixels_per_div == 0:
 			self.pixels_per_div = 1
 
 
 	# Handle resize of arc graph
 	def on_size_arc(self, event):
-		# x0, y0 center of arc
-		# x1,y1 top left of arc
-		# x2,y2 bottom right of arc
-		radius = min(self.winfo_width(), self.winfo_height()) // 2
+		ww = self.winfo_width()
+		hh = self.winfo_height()
+		radius = min(ww, hh) // 2
 		if radius > 4:
 			radius -= 4
 		arc_width = radius // 4
+
+		# x0, y0 center of arc
+		# x1,y1 top left of arc
+		# x2,y2 bottom right of arc
 		if self.vertical:
-			x0 = self.winfo_width() // 2
-			y0 = self.winfo_height() - radius + arc_width - 4
+			x0 = ww // 2
+			y0 = hh - radius + arc_width - 4
 			x1 = x0 - radius
 			y1 = y0 - radius
 			x2 = x0 + radius
 			y2 = y0 + radius
-			self.title_width = self.winfo_width() - 6
+			self.title_width = ww - 4
 			self.coords(self.label_title, 4, 2)
 			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 		else:
-			x0 = self.winfo_width() - radius - 2
-			y0 = self.winfo_height() // 2
+			x0 = ww - radius - 2
+			y0 = hh // 2
 			x1 = x0 - radius
 			y1 = y0 - radius
 			x2 = x0 + radius
 			y2 = y0 + radius
-			self.title_width = self.winfo_width() - radius * 2 - 8
+			self.title_width = ww - radius * 2 - 8
 			self.coords(self.label_title, 4, 4)
 			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 			
@@ -222,27 +226,45 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family,self.value_font_size), width=radius*2)
 		self.coords(self.graph, x1 + arc_width, y1 + arc_width, x2 - arc_width, y2 - arc_width)
 		self.itemconfigure(self.graph, width=arc_width)
-		self.coords(self.midi_bind, x0, self.winfo_height() - 2)
+		self.coords(self.midi_bind, x0, hh - 2)
 
 
 	# Handle resize of rectangle graph
 	def on_size_rectangle(self, event):
-		self.title_width = self.winfo_width() - 6
-		self.coords(self.label_title, event.width // 2, 2)
-		self.itemconfigure(self.label_title, width=self.title_width, anchor='n', justify=tkinter.CENTER)
-		self.coords(self.value_text, event.width // 2, event.height // 2)
-		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family,self.value_font_size), width=event.width - 8)
-		self.coords(self.midi_bind, event.width // 2, self.winfo_height() - 2)
+		ww = self.winfo_width()
+		hh = self.winfo_height()
+		hrect = int(0.35 * hh)
+
+		self.title_width = ww - 4
+		self.coords(self.label_title, 2, 2)
+		self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
+
+		vty = hh // 2 - hrect // 4 + self.value_font_size + 4
+		vtx = ww // 2
+		self.coords(self.value_text, vtx, vty)
+		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family,self.value_font_size), width=ww - 8)
+
+		self.coords(self.midi_bind, ww // 2, hh - 2)
+		self.plot_value_rectangle()
 
 
 	# Handle resize of triangle graph
 	def on_size_triangle(self, event):
-		self.title_width = self.winfo_width() - 6
-		self.coords(self.label_title, event.width // 2, 2)
-		self.itemconfigure(self.label_title, width=self.title_width, anchor='n', justify=tkinter.CENTER)
-		self.coords(self.value_text, 4, event.height // 2)
-		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family,self.value_font_size), width=event.width - 8, anchor='w')
-		self.coords(self.midi_bind, event.width // 2, self.winfo_height() - 2)
+		ww = self.winfo_width()
+		hh = self.winfo_height()
+		htri = int(0.4 * hh)
+		
+		self.title_width = ww - 4
+		self.coords(self.label_title, 2, 2)
+		self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
+
+		vty = hh // 2 - htri // 4 + self.value_font_size + 4
+		vtx = ww // 2
+		self.coords(self.value_text, vtx, vty)
+		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family,self.value_font_size), width=ww - 8)
+
+		self.coords(self.midi_bind, ww // 2, hh - 2)
+		self.plot_value_triangle()
 
 
 	def show(self):
@@ -337,45 +359,44 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 
 	def plot_value_rectangle(self):
-		x1 = 4
-		y1 = self.winfo_height() - 4
-		x2 = int((self.winfo_width() - 8) * self.value_plot)  + 4
-		y2 = 4
-
 		if not self.selector_counter:
+			ww = self.winfo_width()
+			hh = self.winfo_height()
+			hrect = int(0.35 * hh)
+			x1 = 4
+			y1 = hh // 2 - hrect // 4
+			x2 = 4 + int((ww - 8) * self.value_plot)
+			y2 = y1 + hrect
 			self.coords(self.rectangle, (x1, y1, x2, y2))
 
 		self.itemconfig(self.value_text, text=self.value_print)
 
 
 	def plot_value_triangle(self):
-		x1 = 4
-		y1 = int(0.8 * self.winfo_height())
-		x2 = int((self.winfo_width() - 8) * self.value_plot) + 4
-		y2 = int(y1 - 0.6 * self.winfo_height() * self.value_plot)
-
 		if not self.selector_counter:
-			self.coords(
-						self.triangle,
-						(x1, y1, x2, y1, x2, y2)
-					)
+			ww = self.winfo_width()
+			hh = self.winfo_height()
+			htri = int(0.4 * hh)
+			x1 = 4
+			y1 = hh // 2 + 3 * htri // 4
+			x2 = 4 + int((ww - 8) * self.value_plot)
+			y2 = y1 - int(htri * self.value_plot)
+			self.coords(self.triangle, (x1, y1, x2, y1, x2, y2))
+
 		self.itemconfig(self.value_text, text=self.value_print)
 
 
 	def plot_value_arc(self):
-		if self.zctrl is None or self.hidden:
-			return
-		degmax = 300
-		degd = -degmax * self.value_plot
-		deg0 = 90 + degmax / 2
-		if isinstance(self.zctrl.labels, list):
-			n = len(self.zctrl.labels)
-			if n > 2:
-				arc_len = max(5, degmax / n)
-				deg0 += degd + arc_len
-				degd = -arc_len
-
 		if not self.selector_counter:
+			degmax = 300
+			degd = -degmax * self.value_plot
+			deg0 = 90 + degmax / 2
+			if isinstance(self.zctrl.labels, list):
+				n = len(self.zctrl.labels)
+				if n > 2:
+					arc_len = max(5, degmax / n)
+					deg0 += degd + arc_len
+					degd = -arc_len
 			self.itemconfig(self.graph, start=deg0, extent=degd)
 
 		self.itemconfig(self.value_text, text=self.value_print)
