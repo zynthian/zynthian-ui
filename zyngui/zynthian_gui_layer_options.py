@@ -183,12 +183,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
 
 
-	def show(self):
+	def build_view(self):
 		if self.layer is None:
 			self.setup()
 
 		if self.layer is not None and self.layer in self.zyngui.screens['layer'].root_layers:
-			super().show()
+			super().build_view()
 			if self.index>=len(self.list_data):
 				self.index = len(self.list_data)-1
 		else:
@@ -406,6 +406,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.zyngui.screens['layer'].remove_layer(i)
 
 		if self.layer in self.zyngui.screens['layer'].root_layers:
+			self.build_view()
 			self.show()
 		else:
 			self.zyngui.close_screen()
@@ -428,6 +429,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.zyngui.screens['layer'].remove_layer(i)
 
 		if self.layer in self.zyngui.screens['layer'].root_layers:
+			self.build_view()
 			self.show()
 		else:
 			self.zyngui.close_screen()

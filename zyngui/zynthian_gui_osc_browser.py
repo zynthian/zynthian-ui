@@ -50,8 +50,8 @@ class zynthian_gui_osc_browser(zynthian_gui_selector):
 		pass
 
 	def show(self):
-		self.index=1
-		super().show()
+		self.index = 1
+		super().build_view()
 
 	def select_action(self, i):
 		pass

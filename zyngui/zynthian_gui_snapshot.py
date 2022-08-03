@@ -232,10 +232,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		super().fill_list()
 
 
-	def show(self):
-		super().show()
-
-
 	def select_action(self, i, t='S'):
 		fpath=self.list_data[i][0]
 

@@ -450,9 +450,15 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.redraw_pending = 4
 
 
+	# Handle resize event
+	def update_layout(self):
+		super().update_layout()
+		self.redraw_pending = 4
+		self.draw_grid()
+
+
 	# Function to show GUI
-	#	params: Optional dictionary of configuration, e.g. "sequence":number
-	def show(self, params={}):
+	def build_view(self):
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
 			self.set_title("Bank %d" % (self.zyngui.zynseq.bank))
@@ -464,7 +470,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 					if layer.midi_chan == chan:
 						self.layers[chan] = layer
 						break
-		super().show()
 
 
 	# Function to set current pattern

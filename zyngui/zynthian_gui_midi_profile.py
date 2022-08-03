@@ -63,9 +63,6 @@ class zynthian_gui_midi_profile(zynthian_gui_selector):
 				i+=1
 		super().fill_list()
 
-	def show(self):
-		super().show()
-
 
 	def select_action(self, i, t='S'):
 		profile_fpath=self.list_data[i][0]

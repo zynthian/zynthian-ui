@@ -183,7 +183,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to show GUI
-	def show(self):
+	def build_view(self):
 		self.zyngui.zynseq.libseq.setGroup(self.bank, self.sequence, 0xFF)
 		self.copy_source = self.pattern
 		self.setup_zynpots()
@@ -191,7 +191,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.set_title("Pattern {}".format(self.pattern))
 		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynthian_gui_config.SEQ_LOOP)
 		self.zyngui.zynseq.libseq.enableMidiInput(True)
-		super().show()
 
 
 	# Function to enable note duration/velocity direct edit mode

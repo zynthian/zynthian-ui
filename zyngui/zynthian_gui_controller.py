@@ -391,7 +391,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			degmax = 300
 			degd = -degmax * self.value_plot
 			deg0 = 90 + degmax / 2
-			if isinstance(self.zctrl.labels, list):
+			if self.zctrl and isinstance(self.zctrl.labels, list):
 				n = len(self.zctrl.labels)
 				if n > 2:
 					arc_len = max(5, degmax / n)

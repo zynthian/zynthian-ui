@@ -37,6 +37,7 @@ from zyngui import zynthian_gui_config
 # Zynthian Auto-EQ GUI Class
 #------------------------------------------------------------------------------
 
+#TODO: Derive autoeq from base gui class
 class zynthian_gui_autoeq():
 
 	def __init__(self):
@@ -89,6 +90,10 @@ class zynthian_gui_autoeq():
 
 		# Start Thread
 		self.start_autoeq_thread()
+
+
+	def build_view(self):
+		pass
 
 
 	def show(self):

@@ -44,8 +44,8 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		self.index = 0
 
 
-	def show(self):
-		super().show()
+	def build_view(self):
+		super().build_view()
 		self.zyngui.enter_midi_learn()
 
 

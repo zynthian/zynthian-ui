@@ -694,6 +694,7 @@ class zynthian_gui:
 			else:
 				return
 
+		self.screens[screen].build_view()
 		self.hide_screens(exclude = screen)
 		if hmode == zynthian_gui.SCREEN_HMODE_ADD:
 			if len(self.screen_history)==0 or self.screen_history[-1]!=screen:
@@ -704,8 +705,9 @@ class zynthian_gui:
 		elif hmode == zynthian_gui.SCREEN_HMODE_RESET:
 			self.screen_history = [screen]
 
-		self.current_screen = screen
-		self.screens[screen].show()
+		if self.current_screen != screen:
+			self.current_screen = screen
+			self.screens[screen].show()
 
 
 	def show_modal(self, screen=None):
@@ -873,11 +875,16 @@ class zynthian_gui:
 			if self.curlayer.get_preset_name():
 				self.show_screen_reset('control')
 			else:
-				self.show_screen_reset('bank')
-				# If there is only one bank, jump to preset selection
-				if len(self.curlayer.bank_list) <= 1:
-					self.screens['bank'].select_action(0)
-
+				self.curlayer.load_bank_list()
+				if len(zyngui.curlayer.bank_list) > 1:
+					self.show_screen_reset('bank')
+					return
+				self.curlayer.load_preset_list()
+				if len(zyngui.curlayer.preset_list) > 0:
+					self.show_screen_reset('preset')
+					return
+			self.show_screen_reset('control')
+		
 
 	def show_control(self):
 		self.restore_curlayer()

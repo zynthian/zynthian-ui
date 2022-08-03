@@ -35,6 +35,8 @@ from zyngui import zynthian_gui_config
 # Zynthian Info GUI Class
 #------------------------------------------------------------------------------
 
+#TODO: Derive confirm from gui base class
+
 class zynthian_gui_confirm():
 
 	def __init__(self):
@@ -91,6 +93,9 @@ class zynthian_gui_confirm():
 			self.shown=False
 			self.main_frame.grid_forget()
 
+
+	def build_view(self):
+		pass
 
 	def show(self, text, callback=None, cb_params=None):
 		if self.zyngui.test_mode:

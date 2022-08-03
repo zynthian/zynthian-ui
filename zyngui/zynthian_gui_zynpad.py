@@ -118,12 +118,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to show GUI
 	#   params: Misc parameters
-	def show(self):
+	def build_view(self):
 		self.zyngui.zynseq.libseq.updateSequenceInfo()
 		self.setup_zynpots()
 		if self.param_editor_zctrl == None:
 			self.set_title("Bank {}".format(self.zyngui.zynseq.bank))
-		super().show()
 
 
 	# Function to hide GUI
@@ -169,6 +168,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def update_layout(self):
 		super().update_layout()
 		self.redraw_pending = 2
+		self.update_grid()
 
 
 	# Function to clear and calculate grid sizes

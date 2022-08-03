@@ -369,6 +369,11 @@ class zynthian_gui_base(tkinter.Frame):
 			self.topbar_bold_touch_action()
 
 
+	# Draw screen ready to display (like double buffer) - Override in subclass
+	def build_view(self):
+		pass
+
+
 	# Show the view
 	def show(self):
 		if not self.shown:
