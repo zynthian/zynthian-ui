@@ -434,7 +434,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	#	Function to set the playmode of the selected pad
 	def set_play_mode(self, mode):
-		self.zyngui.zynseq.libseq.setPlayMode(self.zyngui.zynseq.bank, self.selected_pad, mode)
+		self.zyngui.zynseq.set_play_mode(self.zyngui.zynseq.bank, self.selected_pad, mode)
 
 
 	# Function to show the editor (pattern or arranger based on sequence content)
