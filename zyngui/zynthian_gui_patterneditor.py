@@ -42,6 +42,8 @@ from zyngui import zynthian_gui_config
 from zynlibs.zynsmf import zynsmf
 from . import zynthian_gui_base
 from zyncoder.zyncore import lib_zyncore
+from zynlibs.zynseq import zynseq
+
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer Pattern Editor GUI Class
@@ -170,7 +172,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	def play_note(self, note):
-		if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:
+		if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynseq.SEQ_STOPPED:
 			self.zyngui.zynseq.libseq.playNote(note, self.velocity, self.channel, int(200 * self.duration))
 
 
@@ -189,7 +191,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
 			self.set_title("Pattern {}".format(self.pattern))
-		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynthian_gui_config.SEQ_LOOP)
+		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
 		self.zyngui.zynseq.libseq.enableMidiInput(True)
 
 
@@ -208,7 +210,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to hide GUI
 	def hide(self):
 		super().hide()
-		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STOPPED)
+		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
 		self.zyngui.zynseq.libseq.enableMidiInput(False)
 		self.enable_edit(EDIT_MODE_NONE)
 		self.zyngui.zynseq.libseq.setRefNote(self.keymap_offset)
@@ -265,7 +267,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.enable_param_editor(self, 'spb', 'Steps per beat', {'ticks':STEPS_PER_BEAT, 'value_default':3, 'value':self.zyngui.zynseq.libseq.getStepsPerBeat()}, self.assert_steps_per_beat)
 		elif option == 'Copy pattern':
 			self.copy_source = self.pattern
-			self.enable_param_editor(self, 'copy', 'Copy pattern to', {'value_min':1, 'value_max':zynthian_gui_config.SEQ_MAX_PATTERNS, 'value':self.pattern}, self.copy_pattern)
+			self.enable_param_editor(self, 'copy', 'Copy pattern to', {'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value':self.pattern}, self.copy_pattern)
 		elif option == 'Clear pattern':
 			self.clear_pattern()
 		elif option == 'Transpose pattern':
@@ -929,7 +931,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.zyngui.zynseq.libseq.clear()
 		self.redraw_pending = 3
 		self.select_cell()
-		if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence, 0) != zynthian_gui_config.SEQ_STOPPED:
+		if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence, 0) != zynseq.SEQ_STOPPED:
 			self.zyngui.zynseq.libseq.sendMidiCommand(0xB0 | self.channel, 123, 0) # All notes off
 
 
@@ -1119,6 +1121,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
+		if super().switch(3, type):
+			return True
 		if type == "S":
 			note = self.toggle_event(self.selected_cell[0], self.selected_cell[1])
 			if note:
@@ -1167,7 +1171,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 		else:
 			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 
@@ -1175,7 +1179,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 		else:
 			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 
@@ -1183,15 +1187,15 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def start_playback(self):
 		# Set to start of pattern - work around for timebase issue in library.
 		self.zyngui.zynseq.libseq.setPlayPosition(self.bank, self.sequence, 0)
-		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STARTING)
+		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STARTING)
 
 
 	def stop_playback(self):
-		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STOPPED)
+		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
 
 
 	def toggle_playback(self):
-		if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:
+		if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynseq.SEQ_STOPPED:
 			self.start_playback()
 		else:
 			self.stop_playback()

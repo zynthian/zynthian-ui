@@ -32,7 +32,6 @@ from PIL import Image, ImageTk
 from time import sleep
 from threading import Timer
 from collections import OrderedDict
-import ctypes
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -58,6 +57,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.columns = 4 # Quantity of columns in grid
 		self.selected_pad = 0 # Index of selected pad
 		self.redraw_pending = 2 # 0=no refresh pending, 1=update grid, 2=rebuild grid
+		self.redrawing = False # True to block further redraws until complete
 
 		super().__init__()
 
@@ -173,10 +173,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to clear and calculate grid sizes
 	def update_grid(self):
+		if self.redrawing:
+			return
 		pads = self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank)
 		if pads < 1:
 			return
 		
+		self.redrawing = True
 		if self.redraw_pending == 2:
 			self.columns = int(sqrt(pads))
 			self.grid_canvas.delete(tkinter.ALL)
@@ -200,13 +203,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 			iconsize = (int(self.row_height * 0.2), int(self.row_height * 0.2))
 			img = (Image.open("/zynthian/zynthian-ui/icons/stopped.png").resize(iconsize))
-			self.state_icon[zynthian_gui_config.SEQ_STOPPED] = ImageTk.PhotoImage(img)
+			self.state_icon[zynseq.SEQ_STOPPED] = ImageTk.PhotoImage(img)
 			img = (Image.open("/zynthian/zynthian-ui/icons/starting.png").resize(iconsize))
-			self.state_icon[zynthian_gui_config.SEQ_STARTING] = ImageTk.PhotoImage(img)
+			self.state_icon[zynseq.SEQ_STARTING] = ImageTk.PhotoImage(img)
 			img = (Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
-			self.state_icon[zynthian_gui_config.SEQ_PLAYING] = ImageTk.PhotoImage(img)
+			self.state_icon[zynseq.SEQ_PLAYING] = ImageTk.PhotoImage(img)
 			img = (Image.open("/zynthian/zynthian-ui/icons/stopping.png").resize(iconsize))
-			self.state_icon[zynthian_gui_config.SEQ_STOPPING] = ImageTk.PhotoImage(img)
+			self.state_icon[zynseq.SEQ_STOPPING] = ImageTk.PhotoImage(img)
 
 		# Draw pads
 		for pad in range(self.columns**2):
@@ -236,6 +239,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.update_selection_cursor()
 
 		self.redraw_pending = 0
+		self.redrawing = False
 
 
 	# Function to refresh pad if it has changed
@@ -249,13 +253,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			if force or self.zyngui.zynseq.libseq.hasSequenceChanged(self.zyngui.zynseq.bank, pad):
 				mode = self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, pad)
 				state = self.zyngui.zynseq.libseq.getPlayState(self.zyngui.zynseq.bank, pad)
-				if state == zynthian_gui_config.SEQ_RESTARTING:
-					state = zynthian_gui_config.SEQ_PLAYING
-				if state == zynthian_gui_config.SEQ_STOPPINGSYNC:
-					state = zynthian_gui_config.SEQ_STOPPING
+				if state == zynseq.SEQ_RESTARTING:
+					state = zynseq.SEQ_PLAYING
+				if state == zynseq.SEQ_STOPPINGSYNC:
+					state = zynseq.SEQ_STOPPING
 				group = self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, pad)
 				foreground = "white"
-				if self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, pad) == 0 or mode == zynthian_gui_config.SEQ_DISABLED:
+				if self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, pad) == 0 or mode == zynseq.SEQ_DISABLED:
 					self.grid_canvas.itemconfig(cell, fill=zynthian_gui_config.PAD_COLOUR_DISABLED)
 				else:
 					self.grid_canvas.itemconfig(cell, fill=zynthian_gui_config.PAD_COLOUR_STOPPED[group%16])
@@ -364,7 +368,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif option == 'Metronome volume':
 			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value':int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume())})
 		elif option == 'Play mode':
-			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynthian_gui_config.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad), 'value_default':zynthian_gui_config.SEQ_LOOPALL}, self.set_play_mode)
+			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
 		elif option == 'MIDI channel':
 			labels = []
 			for chan in range(16):
@@ -496,6 +500,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
+		if super().switch(3, type):
+			return True
 		if type == 'S':
 			self.toggle_pad()
 		elif type == "B":
@@ -524,6 +530,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def arrow_right(self):
 		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 
+
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
 		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
@@ -532,7 +539,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 		else:
 			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 
@@ -540,7 +547,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 		else:
 			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 
