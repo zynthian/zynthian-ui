@@ -478,13 +478,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return self.zgui_controllers[i]
 
 
-	def back_action(self):
-		if self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
-			self.zyngui.exit_midi_learn()
-			return True
-		return False
-
-
 	def enter_midi_learn(self):
 		if self.midi_learning:
 			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
