@@ -62,6 +62,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		else:
 			self.zyngui.close_screen()
 
+
 	def show(self):
 		if len(self.list_data) > 0:
 			super().show()

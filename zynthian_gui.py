@@ -879,6 +879,7 @@ class zynthian_gui:
 				if len(zyngui.curlayer.bank_list) > 1:
 					self.show_screen_reset('bank')
 					return
+				self.curlayer.set_bank(0)
 				self.curlayer.load_preset_list()
 				if len(zyngui.curlayer.preset_list) > 0:
 					self.show_screen_reset('preset')
