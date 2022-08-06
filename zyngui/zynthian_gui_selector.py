@@ -226,6 +226,11 @@ class zynthian_gui_selector(zynthian_gui_base):
 		return index
 
 
+	def show(self):
+		self.select_listbox(self.index)
+		super().show()
+
+
 	def select_listbox(self, index, see=True):
 		if index < 0:
 			index = 0
