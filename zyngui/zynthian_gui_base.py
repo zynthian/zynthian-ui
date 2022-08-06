@@ -261,7 +261,7 @@ class zynthian_gui_base(tkinter.Frame):
 		self.buttonbar_frame.grid(row=2, padx=(0,0), pady=(2,0))
 		self.buttonbar_frame.grid_propagate(False)
 		self.buttonbar_frame.grid_rowconfigure(0, minsize=self.buttonbar_height, pad=0)
-		for i in range(4):
+		for i in range(max(4, len(config))):
 			self.buttonbar_frame.grid_columnconfigure(
 				i,
 				weight=1,
@@ -769,7 +769,7 @@ class zynthian_gui_base(tkinter.Frame):
 			self.format_print = "{}: {}"
 
 		self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
-		self.init_buttonbar([("SELECT_DOWN", "-1"),("SELECT_UP", "+1"),("SNAPSHOT_DOWN", "-10"),("SNAPSHOT_UP", "+10"),])
+		self.init_buttonbar([("SELECT_DOWN", "-1"),("SELECT_UP", "+1"),("SNAPSHOT_DOWN", "-10"),("SNAPSHOT_UP", "+10"),(3,"OK")])
 		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
 		self.update_layout()
 	
