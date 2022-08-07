@@ -51,11 +51,16 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		super().fill_list()
 
 
-	def show(self):
+	def build_view(self):
 		if self.zyngui.curlayer:
-			super().show()
+			super().build_view()
 		else:
 			self.zyngui.close_screen()
+
+
+	def show(self):
+		if len(self.list_data) > 0:
+			super().show()
 
 
 	def select_action(self, i, t='S'):

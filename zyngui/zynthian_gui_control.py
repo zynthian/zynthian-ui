@@ -85,9 +85,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.main_frame.columnconfigure(pos[1], minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
 		
 
-	def show(self):
+	def build_view(self):
 		if self.zyngui.curlayer:
-			super().show()
+			super().build_view()
 			self.click_listbox()
 		else:
 			self.zyngui.close_screen()
@@ -216,6 +216,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		else:
 			self.zcontrollers = []
+			screen_title = ""
 
 		# Setup GUI Controllers
 		logging.debug("SET CONTROLLER SCREEN {}".format(screen_title))
@@ -344,7 +345,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-
 		self.set_mode_control()
 
 
@@ -359,6 +359,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.zyngui.screens['control_xy'].hide()
 			else:
 				self.unset_xyselect_mode()
+			self.build_view()
 			self.show()
 			return True
 		# If in MIDI-learn mode, back to instrument control
@@ -475,13 +476,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def get_zgui_controller_by_index(self, i):
 		return self.zgui_controllers[i]
-
-
-	def back_action(self):
-		if self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
-			self.zyngui.exit_midi_learn()
-			return True
-		return False
 
 
 	def enter_midi_learn(self):

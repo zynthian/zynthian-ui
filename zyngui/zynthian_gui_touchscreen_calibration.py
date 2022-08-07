@@ -50,6 +50,9 @@ class point:
 
 
 # Class implements zynthian touchscreen calibration
+
+#TODO: Derive touchscreen calibration from gui base class
+
 class zynthian_gui_touchscreen_calibration:
 
 	# Function to initialise class
@@ -394,26 +397,29 @@ class zynthian_gui_touchscreen_calibration:
 			self.shown=False
 
 
-	# 	Show display
+	# 	Build display
+	def build_view(self):
+		if self.zyngui.test_mode:
+			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
+		self.shown=True
+		self.device_name = None
+		self.ctm = [1,0,0,0,1,0,0,0,1]
+		self.canvas.unbind('<Button-1>')
+		self.canvas.unbind('<ButtonRelease-1>')
+		self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.timeout))
+		self.canvas.itemconfig(self.device_text, text="")
+		self.countdown = self.timeout
+		self.index = 2
+		self.drawCross()
+
+
+	#	Show display
 	def show(self):
-		if not self.shown:
-			if self.zyngui.test_mode:
-				logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
-			self.shown=True
-			self.device_name = None
-			self.ctm = [1,0,0,0,1,0,0,0,1]
-			self.canvas.unbind('<Button-1>')
-			self.canvas.unbind('<ButtonRelease-1>')
-			self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.timeout))
-			self.canvas.itemconfig(self.device_text, text="")
-			self.countdown = self.timeout
-			self.index = 2
-			self.drawCross()
-			self.main_frame.grid()
-			self.onTimer()
-			self.detect_thread = Thread(target=self.detectDevice, args=(), daemon=True)
-			self.detect_thread.name = "touchscreen calibrate"
-			self.detect_thread.start()
+		self.main_frame.grid()
+		self.onTimer()
+		self.detect_thread = Thread(target=self.detectDevice, args=(), daemon=True)
+		self.detect_thread.name = "touchscreen calibrate"
+		self.detect_thread.start()
 
 
 	#	Handle one second timer trigger

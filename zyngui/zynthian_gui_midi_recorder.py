@@ -97,8 +97,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		return status
 
 
-	def show(self):
-		super().show()
+	def build_view(self):
+		super().build_view()
 		if libsmf.getPlayState():
 			self.show_playing_bpm()
 

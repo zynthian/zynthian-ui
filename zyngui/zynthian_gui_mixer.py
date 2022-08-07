@@ -788,7 +788,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to handle showing display
-	def show(self):
+	def build_view(self):
 		# Only enable channel DPM when mixer shown
 		for chan in range(self.zyngui.zynmixer.get_max_channels()):
 			self.zyngui.zynmixer.enable_dpm(chan, zynthian_gui_config.enable_dpm)
@@ -798,7 +798,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.select_chain_by_index(self.selected_chain_index)
 		self.setup_zynpots()
-		super().show()
 
 
 	# Function to update display, e.g. after geometry changes

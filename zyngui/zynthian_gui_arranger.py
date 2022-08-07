@@ -245,7 +245,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 					labels.append('{}'.format(chan + 1))
 			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels':labels, 'value_default':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track), 'value':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track)})
 		elif option == 'Play mode':
-			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynthian_gui_config.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.sequence), 'value_default':zynthian_gui_config.SEQ_LOOPALL})
+			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.sequence), 'value_default':zynseq.SEQ_LOOPALL})
 		elif option == 'Vertical zoom':
 			self.enable_param_editor(self, 'vzoom', 'Vertical zoom', {'value_min':1, 'value_max':127, 'value_default':8, 'value':self.vertical_zoom})
 		elif option == 'Horizontal zoom':
@@ -253,7 +253,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		elif option == 'Group':
 			self.enable_param_editor(self, 'group', 'Group', {'labels':list(map(chr, range(65, 91))), 'default':self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, self.sequence), 'value':self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, self.sequence)})
 		elif option == 'Pattern':
-			self.enable_param_editor(self, 'pattern', 'Pattern', {'value_min':1, 'value_max':zynthian_gui_config.SEQ_MAX_PATTERNS, 'value_default':self.pattern, 'value':self.pattern})
+			self.enable_param_editor(self, 'pattern', 'Pattern', {'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value_default':self.pattern, 'value':self.pattern})
 		elif option == 'Add track':
 			self.add_track()
 		elif option == 'Remove track':
@@ -450,9 +450,15 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.redraw_pending = 4
 
 
+	# Handle resize event
+	def update_layout(self):
+		super().update_layout()
+		self.redraw_pending = 4
+		self.draw_grid()
+
+
 	# Function to show GUI
-	#	params: Optional dictionary of configuration, e.g. "sequence":number
-	def show(self, params={}):
+	def build_view(self):
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
 			self.set_title("Bank %d" % (self.zyngui.zynseq.bank))
@@ -464,7 +470,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 					if layer.midi_chan == chan:
 						self.layers[chan] = layer
 						break
-		super().show()
 
 
 	# Function to set current pattern
@@ -670,7 +675,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Toggle playback of selected sequence
 	def toggle_play(self):
 		'''
-		if self.zyngui.zynseq.libseq.getPlayState(self.zyngui.zynseq.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:
+		if self.zyngui.zynseq.libseq.getPlayState(self.zyngui.zynseq.bank, self.sequence) == zynseq.SEQ_STOPPED:
 			bars = int(self.selected_cell[0] / self.zyngui.zynseq.libseq.getBeatsPerBar())
 			pos = bars * self.zyngui.zynseq.libseq.getBeatsPerBar() * self.clocks_per_division
 			if self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, self.sequence) > pos:
@@ -1105,7 +1110,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 				y2 = self.row_height * (row + 1)
 				seq_row = row
 			previous_sequence = sequence
-			if sequence == self.sequence and self.zyngui.zynseq.libseq.getPlayState(self.zyngui.zynseq.bank, sequence) in [zynthian_gui_config.SEQ_PLAYING,zynthian_gui_config.SEQ_STOPPING]:
+			if sequence == self.sequence and self.zyngui.zynseq.libseq.getPlayState(self.zyngui.zynseq.bank, sequence) in [zynseq.SEQ_PLAYING,zynseq.SEQ_STOPPING]:
 				if x > self.grid_width:
 					self.select_cell(int(pos), self.selected_cell[1])
 				elif x < 0:
@@ -1136,6 +1141,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
+		if super().switch(3, type):
+			return True
 		self.toggle_event(self.selected_cell[0], self.selected_cell[1])
 
 
@@ -1178,7 +1185,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 		else:
 			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
 
@@ -1186,21 +1193,21 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 		else:
 			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
 
 
 	def start_playback(self):
-		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STARTING)
+		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STARTING)
 
 
 	def stop_playback(self):
-		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynthian_gui_config.SEQ_STOPPED)
+		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
 
 
 	def toggle_playback(self):
-		if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynthian_gui_config.SEQ_STOPPED:
+		if self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynseq.SEQ_STOPPED:
 			self.start_playback()
 		else:
 			self.stop_playback()

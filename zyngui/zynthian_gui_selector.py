@@ -132,8 +132,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1] + 1, minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
 
 
-	def show(self):
-		super().show()
+	def build_view(self):
 		self.fill_list()
 		self.set_selector()
 		self.set_select_path()
@@ -182,17 +181,16 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def set_selector(self, zs_hidden=True):
-		if self.shown:
-			self.zselector_hidden = zs_hidden
-			if self.zselector:
-				self.zselector.zctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'value_min':0, 'value_max':len(self.list_data), 'value':self.index })
-				self.zselector.config(self.zselector.zctrl)
-				self.zselector.show()
-			else:
-				zselector_ctrl = zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
-				self.zselector = zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hidden, selcounter=True)
-			if not self.zselector_hidden:
-				self.zselector.grid(row=zynthian_gui_config.layout['ctrl_pos'][3][0], column=zynthian_gui_config.layout['ctrl_pos'][3][1], sticky="news")
+		self.zselector_hidden = zs_hidden
+		if self.zselector:
+			self.zselector.zctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'value_min':0, 'value_max':len(self.list_data), 'value':self.index })
+			self.zselector.config(self.zselector.zctrl)
+			self.zselector.show()
+		else:
+			zselector_ctrl = zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
+			self.zselector = zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hidden, selcounter=True)
+		if not self.zselector_hidden:
+			self.zselector.grid(row=zynthian_gui_config.layout['ctrl_pos'][3][0], column=zynthian_gui_config.layout['ctrl_pos'][3][1], sticky="news")
 
 
 	def plot_zctrls(self):
@@ -226,6 +224,11 @@ class zynthian_gui_selector(zynthian_gui_base):
 		else:
 			index=0
 		return index
+
+
+	def show(self):
+		self.select_listbox(self.index)
+		super().show()
 
 
 	def select_listbox(self, index, see=True):
@@ -311,7 +314,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 	#--------------------------------------------------------------------------
 
 	def zynpot_cb(self, i, dval):
-		if self.shown and self.zselector and self.zselector.index==i:
+		if self.shown and self.zselector and self.zselector.index == i:
 			self.zselector.zynpot_cb(dval)
 			if self.index != self.zselector.zctrl.value:
 				self.select(self.zselector.zctrl.value)

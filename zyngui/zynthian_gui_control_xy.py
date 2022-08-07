@@ -36,6 +36,8 @@ from zyngui import zynthian_gui_config
 # Zynthian X-Y Controller GUI Class
 #------------------------------------------------------------------------------
 
+#TODO: Derive control_xy from gui base class
+
 class zynthian_gui_control_xy():
 
 	def __init__(self):
@@ -94,6 +96,9 @@ class zynthian_gui_control_xy():
 			zynthian_gui_config.display_width,
 			fill=zynthian_gui_config.color_on)
 
+
+	def build_view(self):
+		pass
 
 	def show(self):
 		if not self.shown:

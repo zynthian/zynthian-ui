@@ -352,11 +352,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.add_to_midichain(layer, self.layer_chain_parallel)
 					self.layers.append(layer)
 			# replace Synth ...
-			elif len(self.layers) > 0 and layer.engine.type == "MIDI Synth":
-				if self.replace_layer_index is not None:
-					self.replace_synth(layer)
-				else:
-					self.layers.append(layer)
+			elif len(self.layers) > 0 and layer.engine.type == "MIDI Synth" and self.replace_layer_index is not None:
+				self.replace_synth(layer)
 			# new root layer
 			else:
 				self.layers.append(layer)

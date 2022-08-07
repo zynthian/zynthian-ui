@@ -50,7 +50,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		super().fill_list()
 
 
-	def show(self):
+	def build_view(self):
 		if self.zyngui.curlayer:
 			self.index = self.zyngui.curlayer.get_bank_index()
 			if self.zyngui.curlayer.get_show_fav_presets():
@@ -58,9 +58,14 @@ class zynthian_gui_bank(zynthian_gui_selector):
 					self.index = 0
 				else:
 					self.curlayer.set_show_fav_presets(False)
-			super().show()
+			super().build_view()
 		else:
 			self.zyngui.close_screen()
+
+
+	def show(self):
+		if len(self.list_data) > 0:
+			super().show()
 
 
 	def select_action(self, i, t='S'):
