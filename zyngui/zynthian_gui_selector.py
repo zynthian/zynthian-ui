@@ -136,6 +136,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.fill_list()
 		self.set_selector()
 		self.set_select_path()
+		self.select_listbox(self.index)
 
 
 	def show_sidebar(self, show):
@@ -225,10 +226,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 			index=0
 		return index
 
-
-	def show(self):
-		self.select_listbox(self.index)
-		super().show()
 
 
 	def select_listbox(self, index, see=True):

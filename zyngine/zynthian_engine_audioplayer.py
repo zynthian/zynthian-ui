@@ -48,7 +48,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.name = "AudioPlayer"
 		self.nickname = "AP"
 		self.jackname = "audioplayer"
-		self.type = "MIDI Synth" # TODO: Should we override this? With what value?
+		self.type = "MIDI Synth"
 		self.file_exts = ["wav","WAV","ogg","OGG","flac","FLAC"]
 
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
@@ -122,17 +122,18 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					if glob(walk[0] + "/" + dir + "/*." + ext):
 						banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
 						break
-			for ext in self.file_exts:
-				if glob(self.ex_data_dir + "/*." + ext) or glob(self.ex_data_dir + "/*/*." + ext):
-					banks.append([self.ex_data_dir, None, "USB", None])
-					walk = next(os.walk(self.ex_data_dir))
-					walk[1].sort()
-					for dir in walk[1]:
-						for ext in self.file_exts:
-							if glob(walk[0] + "/" + dir + "/*." + ext):
-								banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
-								break
-					break
+			if os.path.ismount(self.ex_data_dir):
+				for ext in self.file_exts:
+					if glob(self.ex_data_dir + "/*." + ext) or glob(self.ex_data_dir + "/*/*." + ext):
+						banks.append([self.ex_data_dir, None, "USB", None])
+						walk = next(os.walk(self.ex_data_dir))
+						walk[1].sort()
+						for dir in walk[1]:
+							for ext in self.file_exts:
+								if glob(walk[0] + "/" + dir + "/*." + ext):
+									banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
+									break
+						break
 		except:
 			pass
 		return banks
