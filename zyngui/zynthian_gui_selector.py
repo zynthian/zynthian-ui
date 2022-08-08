@@ -136,7 +136,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.fill_list()
 		self.set_selector()
 		self.set_select_path()
-		self.select_listbox(self.index)
+		#self.select_listbox(self.index)
 
 
 	def show_sidebar(self, show):
@@ -179,6 +179,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.list_data=[]
 		for i, item in enumerate(self.list_data):
 			self.listbox.insert(tkinter.END, item[2])
+			if item[0] is None:
+				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
 
 
 	def set_selector(self, zs_hidden=True):

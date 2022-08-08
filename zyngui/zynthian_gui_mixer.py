@@ -956,7 +956,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			else:
 				options["[  ] Recording Primed"] = primed_option
 		options["MIDI Learn"] = "midi_learn"
-		options["> Audio Chain ---------------"] = None
+		options["> Audio Chain"] = None
 		options["Add Audio-FX"] = "Add"
 		options["Clean MIDI-Learn"] = "Clean"
 

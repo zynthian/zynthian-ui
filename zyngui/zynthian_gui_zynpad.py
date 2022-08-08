@@ -331,14 +331,14 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		else:
 			options['[  ] Metronome'] = 1
 		options['Metronome volume'] = 1
-		options['-------------------'] = None
+		options['> PADS'] = None
 		options['Play mode'] = 1
 		options['MIDI channel'] = 1
 		options['Trigger channel'] = 1
 		options['Trigger note'] = 1
 		if self.zyngui.zynseq.libseq.getTriggerNote(self.zyngui.zynseq.bank, self.selected_pad) < 128:
 			options['Tally channel'] = 1
-		options['--------------------'] = None
+		options['> MISC'] = None
 		options['Grid size'] = 1
 		options['Rename sequence'] = 1
 		self.zyngui.screens['option'].config("ZynPad Menu", options, self.menu_cb)

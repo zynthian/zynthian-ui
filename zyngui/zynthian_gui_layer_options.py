@@ -127,7 +127,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.midi_chan is not None:
 			# Add separator
-			self.list_data.append((None,None,"> MIDI Chain ----------------"))
+			self.list_data.append((None,None,"> MIDI Chain"))
 
 			# Add MIDI-FX chain list
 			if len(self.midifx_layers)>0:
@@ -147,7 +147,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if self.layer.engine.type!='MIDI Tool' and self.layer.midi_chan is not None:
 			# Add separator
-			self.list_data.append((None,None,"> Audio Chain ---------------"))
+			self.list_data.append((None,None,"> Audio Chain"))
 
 			# Add Audio-FX chain list
 			if len(self.audiofx_layers)>0:
