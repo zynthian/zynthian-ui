@@ -48,15 +48,15 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		).grid(columnspan=3, sticky='ew')
 
 
-	def build_view(self):
+	def show(self):
 		self.zyngui.enter_midi_learn()
-		super().build_view()
+		super().show()
 
 
 	def hide(self):
 		if self.shown:
-			super().hide()
 			self.zyngui.exit_midi_learn()
+			super().hide()
 
 
 	def fill_list(self):
@@ -85,27 +85,20 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		zs3_index = self.list_data[self.index][0]
 		if isinstance(zs3_index, int):
 			if t  == 'S':
+				self.zyngui.exit_midi_learn()
 				self.zyngui.screens['layer'].restore_zs3(zs3_index)
 				self.zyngui.close_screen()
-				self.zyngui.exit_midi_learn()
 			elif t == 'B':
+				self.zyngui.exit_midi_learn()
 				self.zyngui.screens['zs3_options'].config(zs3_index)
 				self.zyngui.show_screen('zs3_options')
 				return True
 		elif isinstance(zs3_index, str):
 			if zs3_index == "SAVE_ZS3":
+				self.zyngui.exit_midi_learn()
 				self.zyngui.screens['layer'].save_zs3()
 				self.zyngui.close_screen()
-				self.zyngui.exit_midi_learn()
 				return True
-
-
-	def enter_midi_learn(self):
-		pass
-
-
-	def exit_midi_learn(self):
-		self.zyngui.screens['control'].exit_midi_learn()
 
 
 	def set_select_path(self):
@@ -113,6 +106,11 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 			self.select_path.set(self.zyngui.curlayer.get_basepath() + "/PROG MIDI-Learn")
 		else:
 			self.select_path.set("PROG MIDI-Learn")
+
+
+	def back_action(self):
+		self.zyngui.exit_midi_learn()
+		return False
 
 
 #-------------------------------------------------------------------------------

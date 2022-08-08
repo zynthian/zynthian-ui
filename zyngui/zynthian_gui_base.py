@@ -631,6 +631,7 @@ class zynthian_gui_base(tkinter.Frame):
 	def refresh_loading(self):
 		pass
 
+
 	#--------------------------------------------------------------------------
 	# Zynpot Callbacks (rotaries!) & CUIA
 	#--------------------------------------------------------------------------

@@ -479,16 +479,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def enter_midi_learn(self):
-		if self.midi_learning:
-			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
-				self.midi_learning = False
-				self.zyngui.screen['zs3_learn'].index = 0
-				self.zyngui.show_screen("zs3_learn")
-				return
-		else:
-			self.midi_learning = True
-			self.set_buttonbar_label(0, "CANCEL")
-
+		self.midi_learning = True
+		self.set_buttonbar_label(0, "CANCEL")
 		self.refresh_midi_bind()
 		self.set_select_path()
 
@@ -504,6 +496,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.zyngui.midi_learn_mode:
 			self.zyngui.exit_midi_learn()
 			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
+				self.zyngui.screens['zs3_learn'].index = 0
 				self.zyngui.show_screen("zs3_learn")
 		else:
 			self.zyngui.enter_midi_learn()
