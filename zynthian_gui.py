@@ -1862,7 +1862,8 @@ class zynthian_gui:
 						self.screens['snapshot'].midi_program_change(pgm)
 					# Control Change ...
 					elif evtype == 0xB:
-						ccnum=(ev & 0x7F00) >> 8
+						ccnum = (ev & 0x7F00) >> 8
+						ccval = (ev & 0x007F)
 						if ccnum == zynthian_gui_config.master_midi_bank_change_ccnum:
 							bnk = (ev & 0x7F)
 							logging.debug("BANK CHANGE %d" % bnk)
@@ -1871,6 +1872,11 @@ class zynthian_gui:
 							self.all_sounds_off()
 						elif ccnum == 123:
 							self.all_notes_off()
+						if self.midi_learn_zctrl:
+							self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
+							self.show_current_screen()
+						else:
+							self.zynmixer.midi_control_change(chan, ccnum, ccval)
 					# Note-on => CUIA
 					elif evtype == 0x9:
 						note = str((ev & 0x7F00) >> 8)
