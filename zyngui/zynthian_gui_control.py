@@ -527,14 +527,14 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def midi_learn(self, i):
-		if self.mode == 'control':
+		if self.mode == 'control' and self.zgui_controllers[i].zctrl:
 			self.zgui_controllers[i].zctrl.init_midi_learn()
 			self.refresh_midi_bind()
 			self.set_select_path()
 
 
 	def midi_unlearn(self, i):
-		if self.mode == 'control':
+		if self.mode == 'control' and self.zgui_controllers[i].zctrl:
 			self.zgui_controllers[i].zctrl.midi_unlearn()
 
 
