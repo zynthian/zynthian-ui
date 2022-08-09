@@ -94,6 +94,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def hide(self):
+		self.zyngui.exit_midi_learn()
 		super().hide()
 		#if self.shown:
 		#	for zc in self.zgui_controllers: zc.hide()
