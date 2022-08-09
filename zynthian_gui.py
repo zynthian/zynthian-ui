@@ -219,8 +219,6 @@ class zynthian_gui:
 		self.zynautoconnect_audio_flag = False
 		self.zynautoconnect_midi_flag = False
 
-		self.get_throttled_file = None
-
 		self.audio_player = None
 
 		# Create Lock object to avoid concurrence problems
@@ -259,6 +257,23 @@ class zynthian_gui:
 			self.zynswitches_midi_setup()
 		except Exception as e:
 			logging.error("ERROR initializing MIDI & Switches: {}".format(e))
+
+		# Initialize SOC sensors monitoring
+		try:
+			self.hwmon_thermal_file = open('/sys/class/hwmon/hwmon0/temp1_input')
+			self.hwmon_undervolt_file = open('/sys/class/hwmon/hwmon1/in0_lcrit_alarm')
+			self.overtemp_warning = 75.0
+			self.get_throttled_file = None
+		except:
+			logging.warning("Can't access sensors. Trying legacy interface...")
+			self.hwmon_thermal_file = None
+			self.hwmon_undervolt_file = None
+			self.overtemp_warning = None
+			try:
+				self.get_throttled_file = open('/sys/devices/platform/soc/soc:firmware/get_throttled')
+				logging.debug("Accessing sensors using legacy interface!")
+			except Exception as e:
+				logging.error("Can't access monitoring sensors at all!")
 
 
 	# ---------------------------------------------------------------------------
@@ -2053,24 +2068,45 @@ class zynthian_gui:
 				self.status_info['holdA'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 0)
 				self.status_info['holdB'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 1)
 
-			# Get Status Flags (once each 5 refreshes)
+			# Get SOC sensors (once each 5 refreshes)
 			if self.status_counter>5:
 				self.status_counter = 0
 
-				self.status_info['undervoltage'] = False
 				self.status_info['overtemp'] = False
-				try:
-					if not self.get_throttled_file:
-						self.get_throttled_file = open('/sys/devices/platform/soc/soc:firmware/get_throttled')
-					self.get_throttled_file.seek(0)
-					thr = int('0x%s' % self.get_throttled_file.read(), 16)
-					if thr & 0x1:
-						self.status_info['undervoltage'] = True
-					elif thr & (0x4 | 0x2):
-						self.status_info['overtemp'] = True
+				self.status_info['undervoltage'] = False
 
-				except Exception as e:
-					logging.error(e)
+				if self.hwmon_thermal_file and self.hwmon_undervolt_file:
+					try:
+						self.hwmon_thermal_file.seek(0)
+						res = int(self.hwmon_thermal_file.read())/1000
+						#logging.debug("CPU Temperature => {}".format(res))
+						if res > self.overtemp_warning:
+							self.status_info['overtemp'] = True
+					except Exception as e:
+						logging.error(e)
+
+					try:
+						self.hwmon_undervolt_file.seek(0)
+						res = self.hwmon_undervolt_file.read()
+						if res == "1":
+							self.status_info['undervoltage'] = True
+					except Exception as e:
+						logging.error(e)
+
+				elif self.get_throttled_file:
+					try:
+						self.get_throttled_file.seek(0)
+						thr = int('0x%s' % self.get_throttled_file.read(), 16)
+						if thr & 0x1:
+							self.status_info['undervoltage'] = True
+						elif thr & (0x4 | 0x2):
+							self.status_info['overtemp'] = True
+					except Exception as e:
+						logging.error(e)
+
+				else:
+					self.status_info['overtemp'] = True
+					self.status_info['undervoltage'] = True
 
 			else:
 				self.status_counter += 1
