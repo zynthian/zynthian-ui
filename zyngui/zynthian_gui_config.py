@@ -295,11 +295,11 @@ def set_midi_config():
 	enabled_midi_fb_ports=zynconf.get_enabled_midi_fb_ports(midi_ports)
 
 	# Master Channel Features
-	master_midi_channel = int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
+	master_midi_channel = int(os. environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL', 16))
 	master_midi_channel -= 1
-	if master_midi_channel>15:
+	if master_midi_channel > 15:
 		master_midi_channel = 15
-	if master_midi_channel>=0: 
+	if master_midi_channel >= 0:
 		mmc_hex = hex(master_midi_channel)[2]
 	else:
 		mmc_hex = None
@@ -431,24 +431,7 @@ experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES',"").spli
 #------------------------------------------------------------------------------
 # Sequence states
 #------------------------------------------------------------------------------
-SEQ_MAX_PATTERNS	= 64872
 
-SEQ_DISABLED		= 0
-SEQ_ONESHOT			= 1
-SEQ_LOOP			= 2
-SEQ_ONESHOTALL		= 3
-SEQ_LOOPALL			= 4
-SEQ_LASTPLAYMODE	= 4
-
-SEQ_STOPPED			= 0
-SEQ_PLAYING			= 1
-SEQ_STOPPING		= 2
-SEQ_STARTING		= 3
-SEQ_RESTARTING		= 4
-SEQ_STOPPINGSYNC	= 5
-SEQ_LASTPLAYSTATUS	= 5
-
-PLAY_MODES = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
 PAD_COLOUR_DISABLED = '#2a2a2a'
 PAD_COLOUR_STARTING = '#ffbb00'
 PAD_COLOUR_PLAYING = '#00d000'

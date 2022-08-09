@@ -83,10 +83,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.midifx_layers.remove(self.layer)
 
 		# Add root layer options
-		if self.layer.midi_chan==256:
+		if self.layer.midi_chan == 256:
 			eng_options = {
 				'audio_capture': True,
-				'indelible': True
+				'indelible': True,
+				'audio_rec': True
 			}
 		else:
 			eng_options = self.layer.engine.get_options()
@@ -111,6 +112,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if 'audio_route' in eng_options and eng_options['audio_route']:
 			self.list_data.append((self.layer_audio_routing, None, "Audio Output"))
 
+		if 'audio_rec' in eng_options:
+			if self.zyngui.audio_recorder.get_status():
+				self.list_data.append((self.toggle_recording, None, "[x] Record Audio"))
+			else:
+				self.list_data.append((self.toggle_recording, None, "[  ] Record Audio"))
+
 		if 'midi_route' in eng_options and eng_options['midi_route']:
 			self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
 
@@ -127,7 +134,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.midi_chan is not None:
 			# Add separator
-			self.list_data.append((None,None,"> MIDI Chain ----------------"))
+			self.list_data.append((None,None,"> MIDI Chain"))
 
 			# Add MIDI-FX chain list
 			if len(self.midifx_layers)>0:
@@ -147,7 +154,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if self.layer.engine.type!='MIDI Tool' and self.layer.midi_chan is not None:
 			# Add separator
-			self.list_data.append((None,None,"> Audio Chain ---------------"))
+			self.list_data.append((None,None,"> Audio Chain"))
 
 			# Add Audio-FX chain list
 			if len(self.audiofx_layers)>0:
@@ -365,6 +372,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def layer_audio_capture(self):
 		self.zyngui.screens['audio_in'].set_layer(self.layer)
 		self.zyngui.show_screen('audio_in')
+
+
+	def toggle_recording(self):
+		self.zyngui.audio_recorder.toggle_recording()
+		self.fill_list()
 
 
 	def layer_replace(self):

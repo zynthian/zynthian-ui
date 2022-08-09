@@ -127,7 +127,7 @@ void Sequence::setPlayState(uint8_t state)
         state = STOPPED;
     if(state == m_nState)
         return;
-    if(m_nMode == ONESHOT && (state == STOPPING || state == STOPPING_SYNC))
+    if((m_nMode == ONESHOT || m_nMode == LOOP) && (state == STOPPING || state == STOPPING_SYNC))
         state = STOPPED;
     m_nState = state;
     if(m_nState == STOPPED)

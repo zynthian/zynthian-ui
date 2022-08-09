@@ -955,8 +955,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				options["[x] Recording Primed"] = primed_option
 			else:
 				options["[  ] Recording Primed"] = primed_option
+		if self.zyngui.audio_recorder.get_status():
+			options["[x] Record Audio"] = "RecordAudio"
+		else:
+			options["[  ] Record Audio"] = "RecordAudio"
 		options["MIDI Learn"] = "midi_learn"
-		options["> Audio Chain ---------------"] = None
+		options["> Audio Chain"] = None
 		options["Add Audio-FX"] = "Add"
 		options["Clean MIDI-Learn"] = "Clean"
 
@@ -972,6 +976,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.show_mainfx_options()
 		elif param == "Primed":
 			self.zyngui.audio_recorder.toggle_prime(self.MAIN_CHANNEL_INDEX)
+			self.show_mainfx_options()
+		elif param == "RecordAudio":
+			self.zyngui.audio_recorder.toggle_recording()
 			self.show_mainfx_options()
 		elif param == "Clean":
 			self.zyngui.show_confirm("Do you really want to clean MIDI-learn for this chain?", self.midi_unlearn_confirmed)

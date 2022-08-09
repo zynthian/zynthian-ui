@@ -31,7 +31,6 @@ from math import sqrt
 
 from zyngine import zynthian_engine
 from zyngine import zynthian_controller
-from zyngui import zynthian_gui_config
 
 
 #-------------------------------------------------------------------------------
@@ -55,6 +54,26 @@ SEQ_EVENT_PLAYMODE	= 6
 SEQ_EVENT_SEQUENCE	= 7
 SEQ_EVENT_LOAD		= 8
 SEQ_EVENT_MIDI_LEARN= 9
+
+SEQ_MAX_PATTERNS	= 64872
+
+SEQ_DISABLED		= 0
+SEQ_ONESHOT			= 1
+SEQ_LOOP			= 2
+SEQ_ONESHOTALL		= 3
+SEQ_LOOPALL			= 4
+SEQ_LASTPLAYMODE	= 4
+
+SEQ_STOPPED			= 0
+SEQ_PLAYING			= 1
+SEQ_STOPPING		= 2
+SEQ_STARTING		= 3
+SEQ_RESTARTING		= 4
+SEQ_STOPPINGSYNC	= 5
+SEQ_LASTPLAYSTATUS	= 5
+
+PLAY_MODES = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
+
 
 class zynseq(zynthian_engine):
 
@@ -155,7 +174,7 @@ class zynseq(zynthian_engine):
 		old_columns = int(sqrt(self.libseq.getSequencesInBank(self.bank)))
 		# To avoid odd behaviour we stop all sequences from playing before changing grid size (blunt but effective!)
 		for seq in range(self.libseq.getSequencesInBank(self.bank)):
-			self.libseq.setPlayState(self.bank, seq, zynthian_gui_config.SEQ_STOPPED)
+			self.libseq.setPlayState(self.bank, seq, SEQ_STOPPED)
 		channels = []
 		groups = []
 		for column in range(new_columns):

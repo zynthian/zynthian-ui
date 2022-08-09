@@ -178,6 +178,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.list_data=[]
 		for i, item in enumerate(self.list_data):
 			self.listbox.insert(tkinter.END, item[2])
+			if item[0] is None:
+				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
 
 
 	def set_selector(self, zs_hidden=True):
@@ -226,6 +228,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		return index
 
 
+
 	def select_listbox(self, index, see=True):
 		if index < 0:
 			index = 0
@@ -237,7 +240,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.listbox.selection_set(index)
 			# Set window
 			if see:
-				if index > self.index:
+				if index and index > self.index:
 					self.listbox.see(index + 1)
 				elif index < self.index:
 					self.listbox.see(index - 1)
@@ -261,7 +264,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def skip_separators(self, index):
 		# Skip separator items ...
-		if index>=0 and index<len(self.list_data) and self.list_data[index][0] is None:
+		if index >= 0 and index < len(self.list_data) and self.list_data[index][0] is None:
 			if self.index<=index:
 				if index<len(self.list_data)-1:
 					self.select_listbox(index + 1)

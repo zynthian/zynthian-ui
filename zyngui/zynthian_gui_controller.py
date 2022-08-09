@@ -577,32 +577,31 @@ class zynthian_gui_controller(tkinter.Canvas):
 	#--------------------------------------------------------------------------
 
 	def cb_canvas_push(self,event):
-		if self.zctrl:
-			self.canvas_push_ts = datetime.now()
-			self.canvas_motion_y0 = event.y
-			self.canvas_motion_x0 = event.x
-			self.active_motion_axis = 0 # +1=dragging in y-axis, -1=dragging in x-axis
-			self.canvas_motion_dx = 0
-			#logging.debug("CONTROL {} PUSH => {} ({},{})".format(self.index, self.canvas_push_ts, self.canvas_motion_x0, self.canvas_motion_y0))
+		self.canvas_push_ts = datetime.now()
+		self.active_motion_axis = 0 # +1=dragging in y-axis, -1=dragging in x-axis
+		self.canvas_motion_y0 = event.y
+		self.canvas_motion_x0 = event.x
+		self.canvas_motion_dx = 0
+		#logging.debug("CONTROL {} PUSH => {} ({},{})".format(self.index, self.canvas_push_ts, self.canvas_motion_x0, self.canvas_motion_y0))
 
 
 	def cb_canvas_release(self,event):
 		if self.canvas_push_ts:
 			dts = (datetime.now()-self.canvas_push_ts).total_seconds()
+			self.canvas_push_ts = None
 			#logging.debug("CONTROL {} RELEASE => {}, {}".format(self.index, dts, motion_rate))
 			if self.active_motion_axis == 0:
 				if not zynthian_gui_config.enable_onscreen_buttons:
 					if dts < zynthian_gui_config.zynswitch_bold_seconds:
-						self.zyngui.zynswitch_defered('S',self.index)
+						self.zyngui.zynswitch_defered('S', self.index)
 					elif dts >= zynthian_gui_config.zynswitch_bold_seconds and dts < zynthian_gui_config.zynswitch_long_seconds:
-						self.zyngui.zynswitch_defered('B',self.index)
+						self.zyngui.zynswitch_defered('B', self.index)
 					elif dts >= zynthian_gui_config.zynswitch_long_seconds:
-						self.zyngui.zynswitch_defered('L',self.index)
+						self.zyngui.zynswitch_defered('L', self.index)
 			elif self.canvas_motion_dx > self.winfo_width() // 2:
 				self.zyngui.zynswitch_defered('X', self.index)
 			elif self.canvas_motion_dx < -self.winfo_width() // 2:
 				self.zyngui.zynswitch_defered('Y', self.index)
-			self.canvas_push_ts = None
 
 
 	def cb_canvas_motion(self,event):
@@ -619,7 +618,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 					elif abs(dx) > self.pixels_per_div:
 						self.active_motion_axis = -1
 
-				if self.active_motion_axis == 1:
+				if self.zctrl and self.active_motion_axis == 1:
 					# Y-axis drag active
 					if abs(dy) >= self.pixels_per_div:
 						if self.zctrl.range_reversed:
