@@ -240,7 +240,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.listbox.selection_set(index)
 			# Set window
 			if see:
-				if index > self.index:
+				if index and index > self.index:
 					self.listbox.see(index + 1)
 				elif index < self.index:
 					self.listbox.see(index - 1)
@@ -264,7 +264,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def skip_separators(self, index):
 		# Skip separator items ...
-		if index>=0 and index<len(self.list_data) and self.list_data[index][0] is None:
+		if index >= 0 and index < len(self.list_data) and self.list_data[index][0] is None:
 			if self.index<=index:
 				if index<len(self.list_data)-1:
 					self.select_listbox(index + 1)
