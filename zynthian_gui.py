@@ -2371,13 +2371,11 @@ zyngui.start()
 def zynpot_cb(i, dval):
 	#logging.debug("Zynpot {} Callback => {}".format(i, dval))
 	try:
-		#zyngui.lock.acquire()
 		zyngui.screens[zyngui.current_screen].zynpot_cb(i, dval)
-		#zyngui.lock.release()
 
 	except Exception as err:
-		#zyngui.lock.release()
-		logging.exception(err)
+		pass # Some screens don't use controllers
+		#logging.exception(err)
 
 
 lib_zyncore.setup_zynpot_cb(zynpot_cb)
