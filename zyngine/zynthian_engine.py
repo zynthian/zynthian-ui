@@ -67,7 +67,6 @@ class zynthian_basic_engine:
 		self.command_env = os.environ.copy()
 		self.command_prompt = prompt
 		self.command_cwd = cwd
-		self.zctrls = OrderedDict()
 
 
 	def __del__(self):
@@ -234,7 +233,7 @@ class zynthian_engine(zynthian_basic_engine):
 			# Jack, when listing ports, accepts regular expressions as the jack name.
 			# So, for avoiding problems, jack names shouldn't contain regex characters.
 			if sanitize:
-				jname = re.sub("[\_]{2,}","_",re.sub("[\s\'\*\(\)\[\]]","_",jname))
+				jname = re.sub("[\_]{2,}", "_", re.sub("[\s\'\*\(\)\[\]]", "_", jname))
 			jname_count = self.zyngui.screens['layer'].get_jackname_count(jname)
 		except Exception as e:
 			jname_count = 0
@@ -248,19 +247,19 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	def start_loading(self):
-		self.loading=self.loading+1
-		if self.loading<1: self.loading=1
+		self.loading = self.loading + 1
+		if self.loading < 1: self.loading = 1
 		if self.zyngui:
 			self.zyngui.start_loading()
 
 	def stop_loading(self):
-		self.loading=self.loading-1
-		if self.loading<0: self.loading=0
+		self.loading = self.loading - 1
+		if self.loading<0: self.loading = 0
 		if self.zyngui:
 			self.zyngui.stop_loading()
 
 	def reset_loading(self):
-		self.loading=0
+		self.loading = 0
 		if self.zyngui:
 			self.zyngui.stop_loading()
 
@@ -270,7 +269,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def refresh_all(self, refresh=True):
 		for layer in self.layers:
-			layer.refresh_flag=refresh
+			layer.refresh_flag = refresh
 
 	# ---------------------------------------------------------------------------
 	# OSC Management
@@ -284,7 +283,7 @@ class zynthian_engine(zynthian_basic_engine):
 			logging.info("OSC target in port %s" % str(self.osc_target_port))
 			self.osc_server = liblo.ServerThread(None, proto)
 			self.osc_server_port = self.osc_server.get_port()
-			self.osc_server_url = liblo.Address('localhost', self.osc_server_port,proto).get_url()
+			self.osc_server_url = liblo.Address('localhost', self.osc_server_port, proto).get_url()
 			logging.info("OSC server running in port %s" % str(self.osc_server_port))
 			self.osc_add_methods()
 			self.osc_server.start()
@@ -317,22 +316,22 @@ class zynthian_engine(zynthian_basic_engine):
 
 	@staticmethod
 	def get_filelist(dpath, fext):
-		res=[]
-		if isinstance(dpath, str): dpath=[('_', dpath)]
-		fext='.'+fext
-		xlen=len(fext)
-		i=0
+		res = []
+		if isinstance(dpath, str): dpath = [('_', dpath)]
+		fext = '.' + fext
+		xlen = len(fext)
+		i = 0
 		for dpd in dpath:
-			dp=dpd[1]
-			dn=dpd[0]
+			dp = dpd[1]
+			dn = dpd[0]
 			try:
 				for f in sorted(os.listdir(dp)):
-					if not f.startswith('.') and isfile(join(dp,f)) and f[-xlen:].lower()==fext:
-						title=str.replace(f[:-xlen], '_', ' ')
-						if dn!='_': title=dn+'/'+title
-						#print("filelist => "+title)
-						res.append([join(dp,f),i,title,dn,f])
-						i=i+1
+					if not f.startswith('.') and isfile(join(dp, f)) and f[-xlen:].lower() == fext:
+						title = str.replace(f[:-xlen], '_', ' ')
+						if dn != '_': title = dn + '/' + title
+						#print("filelist => " + title)
+						res.append([join(dp, f), i, title, dn, f])
+						i = i + 1
 			except Exception as e:
 				#logging.warning("Can't access directory '{}' => {}".format(dp,e))
 				pass
@@ -342,23 +341,23 @@ class zynthian_engine(zynthian_basic_engine):
 
 	@staticmethod
 	def get_dirlist(dpath, exclude_empty=True):
-		res=[]
-		if isinstance(dpath, str): dpath=[('_', dpath)]
-		i=0
+		res = []
+		if isinstance(dpath, str): dpath = [('_', dpath)]
+		i = 0
 		for dpd in dpath:
-			dp=dpd[1]
-			dn=dpd[0]
+			dp = dpd[1]
+			dn = dpd[0]
 			try:
 				for f in sorted(os.listdir(dp)):
 					dpath = join(dp,f)
 					if not os.path.isdir(dpath) or (exclude_empty and next(os.scandir(dpath), None) is None):
 						continue
 					if not f.startswith('.') and isdir(dpath):
-						title,ext=os.path.splitext(f)
-						title=str.replace(title, '_', ' ')
-						if dn!='_': title=dn+'/'+title
-						res.append([dpath,i,title,dn,f])
-						i=i+1
+						title, ext = os.path.splitext(f)
+						title = str.replace(title, '_', ' ')
+						if dn != '_': title = dn + '/' + title
+						res.append([dpath, i, title, dn, f])
+						i = i + 1
 			except Exception as e:
 				#logging.warning("Can't access directory '{}' => {}".format(dp,e))
 				pass
@@ -400,11 +399,11 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def get_active_midi_channels(self):
-		chans=[]
+		chans = []
 		for layer in self.layers:
 			if layer.midi_chan is None:
 				return None
-			elif layer.midi_chan>=0 and layer.midi_chan<=15:
+			elif layer.midi_chan >= 0 and layer.midi_chan <= 15:
 				chans.append(layer.midi_chan)
 		return chans
 
@@ -432,7 +431,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		if isinstance(preset[1],int):
+		if isinstance(preset[1], int):
 			self.zyngui.zynmidi.set_midi_prg(layer.get_midi_chan(), preset[1])
 		else:
 			self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
@@ -441,7 +440,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def cmp_presets(self, preset1, preset2):
 		try:
-			if preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
+			if preset1[1][0] == preset2[1][0] and preset1[1][1] == preset2[1][1] and preset1[1][2] == preset2[1][2]:
 				return True
 			else:
 				return False
@@ -469,7 +468,7 @@ class zynthian_engine(zynthian_basic_engine):
 			del self.preset_favs[str(preset[0])]
 			fav_status = False
 		except:
-			self.preset_favs[str(preset[0])]=[layer.bank_info, preset]
+			self.preset_favs[str(preset[0])] = [layer.bank_info, preset]
 			fav_status = True
 
 		try:
@@ -538,11 +537,12 @@ class zynthian_engine(zynthian_basic_engine):
 	# Get zynthian controllers dictionary:
 	# + Default implementation uses a static controller definition array
 	def get_controllers_dict(self, layer):
-		midich=layer.get_midi_chan()
+		midich = layer.get_midi_chan()
+		zctrls = OrderedDict()
 
 		if self._ctrls is not None:
 			for ctrl in self._ctrls:
-				options={}
+				options = {}
 
 				#OSC control =>
 				if isinstance(ctrl[1], str):
@@ -581,34 +581,31 @@ class zynthian_engine(zynthian_basic_engine):
 				if len(options) > 0:
 					zctrl.set_options(options)
 
-				self.zctrls[zctrl.symbol] = zctrl
-		return self.zctrls
+				zctrls[zctrl.symbol] = zctrl
+		return zctrls
 
 
-	def generate_ctrl_screens(self, zctrl_dict=None):
-		if zctrl_dict is None:
-			zctrl_dict=self.zctrl_dict
-
+	def generate_ctrl_screens(self, zctrl_dict):
 		if self._ctrl_screens is None:
-			self._ctrl_screens=[]
+			self._ctrl_screens = []
 
-		c=1
-		ctrl_set=[]
+		c = 1
+		ctrl_set = []
 		for symbol, zctrl in zctrl_dict.items():
 			try:
 				#logging.debug("CTRL {}".format(symbol))
 				ctrl_set.append(symbol)
-				if len(ctrl_set)>=4:
+				if len(ctrl_set) >= 4:
 					#logging.debug("ADDING CONTROLLER SCREEN {}#{}".format(self.nickname,c))
-					self._ctrl_screens.append(["{}#{}".format(self.nickname,c),ctrl_set])
+					self._ctrl_screens.append(["{}#{}".format(self.nickname, c), ctrl_set])
 					ctrl_set=[]
-					c=c+1
+					c = c + 1
 			except Exception as err:
 				logging.error("Generating Controller Screens => {}".format(err))
 
-		if len(ctrl_set)>=1:
+		if len(ctrl_set) >= 1:
 			#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-			self._ctrl_screens.append(["{}#{}".format(self.nickname,c),ctrl_set])
+			self._ctrl_screens.append(["{}#{}".format(self.nickname, c), ctrl_set])
 
 
 	def send_controller_value(self, zctrl):
@@ -620,7 +617,7 @@ class zynthian_engine(zynthian_basic_engine):
 	#----------------------------------------------------------------------------
 
 	def init_midi_learn(self, zctrl):
-		logging.info("Learning '{}' ({}) ...".format(zctrl.symbol,zctrl.get_path()))
+		logging.info("Learning '{}' ({}) ...".format(zctrl.symbol, zctrl.get_path()))
 
 
 	def midi_unlearn(self, zctrl):
