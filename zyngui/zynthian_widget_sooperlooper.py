@@ -264,11 +264,11 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		for loop,slider in enumerate(self.pos_canvas):
 			if event.widget == slider['canvas']:
 				self.selected_loop = loop
-				liblo.send('osc.udp://zynthian1:9951', '/set', ('s', 'selected_loop_num'), ('f', loop))
+				liblo.send('osc.udp://localhost:9951', '/set', ('s', 'selected_loop_num'), ('f', loop))
 				self.click_timer = Timer(1.4, self.on_click_timer)
 				self.click_timer.start()
 			if event.widget == slider['mute']:
-				liblo.send('osc.udp://zynthian1:9951', '/sl/{}/hit'.format(loop), ('s', 'mute'))
+				liblo.send('osc.udp://localhost:9951', '/sl/{}/hit'.format(loop), ('s', 'mute'))
 
 
 	def on_loop_release(self, event):
@@ -282,15 +282,15 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 
 	def on_add_click(self, event):
-		liblo.send('osc.udp://zynthian1:9951', '/loop_add', ('i', 2), ('f', 30), ('i', 0))
+		liblo.send('osc.udp://localhost:9951', '/loop_add', ('i', 2), ('f', 30), ('i', 0))
 
 
 	def remove_loop(self, params):
-		liblo.send('osc.udp://zynthian1:9951', '/loop_del', ('i', self.selected_loop))
+		liblo.send('osc.udp://localhost:9951', '/loop_del', ('i', self.selected_loop))
 
 
 	def on_button(self, btn):
-		liblo.send('osc.udp://zynthian1:9951', '/sl/-3/hit', ('s', btn))
+		liblo.send('osc.udp://localhost:9951', '/sl/-3/hit', ('s', btn))
 
 
 	def on_slider_wheel(self, event):
