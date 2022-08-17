@@ -345,6 +345,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		#logging.warning("Rx OSC: {} {}".format(path,args))
 		# args: i:Loop index, s:control, f:value
 		if path == '/sl/state':
+			#logging.warning("State: %0.0f Loop: %d", args[2], args[0])
 			if args[0] < 0:
 				return
 			self.monitors_dict['state_{}'.format(args[0])] = args[2]
@@ -368,11 +369,6 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(loop), ('s', 'mute'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/monitor'))
 					liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(loop), ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/state'))
 					labels.append('Loop {}'.format(loop + 1))
-				for loop in range(self.loop_count, self.MAX_LOOPS):
-					liblo.send(self.osc_target, '/sl/{}/unregister_auto_update'.format(loop), ('s', 'loop_pos'), ('s', self.osc_server_url), ('s', '/sl/monitor'))
-					liblo.send(self.osc_target, '/sl/{}/unregister_auto_update'.format(loop), ('s', 'loop_len'), ('s', self.osc_server_url), ('s', '/sl/monitor'))
-					liblo.send(self.osc_target, '/sl/{}/unregister_auto_update'.format(loop), ('s', 'mute'), ('s', self.osc_server_url), ('s', '/sl/monitor'))
-					liblo.send(self.osc_target, '/sl/{}/unregister_auto_update'.format(loop), ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/state'))
 				self.select_loop(self.loop_count - 1, True)
 				sync_source = self.zctrls['sync_source'].value
 				self.zctrls['sync_source'].set_options({'labels':labels, 'ticks':[], 'value_max':self.loop_count})
@@ -387,6 +383,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			if args[1] == 'selected_loop_num':
 				self.select_loop(args[2])
 			try:
+				#logging.warning("Loop %d: setting control %s to value %0.2f", args[0],  args[1], args[2])
 				self.zctrls[args[1]].set_value(args[2], False)
 			except Exception as e:
 				logging.warning("Unsupported tally %s (%f)", args[1], args[2])

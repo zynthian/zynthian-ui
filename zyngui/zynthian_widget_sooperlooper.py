@@ -260,12 +260,13 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 	def on_loop_click(self, event):
 		for loop,slider in enumerate(self.pos_canvas):
 			if event.widget == slider['canvas']:
-				self.selected_loop = loop
 				liblo.send('osc.udp://localhost:9951', '/set', ('s', 'selected_loop_num'), ('f', loop))
 				self.click_timer = Timer(1.4, self.on_click_timer)
 				self.click_timer.start()
+				break
 			if event.widget == slider['mute']:
 				liblo.send('osc.udp://localhost:9951', '/sl/{}/hit'.format(loop), ('s', 'mute'))
+				break
 
 
 	def on_loop_release(self, event):
