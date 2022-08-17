@@ -301,6 +301,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			return
 		elif zctrl.is_toggle:
 			# Use is_toggle to indicate the SL function is a toggle, i.e. press to engage, press to release
+			if zctrl.symbol == 'record' and zctrl.value == 0 and self.state[self.selected_loop] == 1:
+				liblo.send(self.osc_target, '/sl/-3/hit', ('s', 'undo'))
+				return
 			liblo.send(self.osc_target, '/sl/-3/hit', ('s', zctrl.symbol))
 			if zctrl.symbol == 'trigger':
 				zctrl.set_value(0, False) # Make trigger a pulse
@@ -383,7 +386,6 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			if args[1] == 'selected_loop_num':
 				self.select_loop(args[2])
 			try:
-				#logging.warning("Loop %d: setting control %s to value %0.2f", args[0],  args[1], args[2])
 				self.zctrls[args[1]].set_value(args[2], False)
 			except Exception as e:
 				logging.warning("Unsupported tally %s (%f)", args[1], args[2])
