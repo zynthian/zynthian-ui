@@ -86,16 +86,22 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				highlightthickness=0,
 				bg=self.SLIDER_BG)
 			pos_label = pos_canvas.create_text(
-				0, 10,
+				0, 4,
 				fill = self.SLIDER_TEXT,
 				text = ' 0.00 / 0.00',
-				anchor = 'w'
+				anchor = 'nw'
 			)
 			pos_line = pos_canvas.create_line(
 				0, 0, 0, self.row_height,
 				fill='#ff0',
 				width = 2
 			)
+			pos_border = pos_canvas.create_rectangle(
+				2,2,2,2,
+				width = 2,
+				outline = zynthian_gui_config.color_on,
+				state = tkinter.HIDDEN)
+
 			mute_canvas = tkinter.Canvas( self,
 				height=self.row_height,
 				bd=0,
@@ -103,17 +109,16 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				bg=self.SLIDER_BG
 			)
 			mute_canvas.create_text(
-				4, 10,
-				anchor = 'w',
+				4, 4,
+				anchor = 'nw',
 				text='mute',
 				fill=self.SLIDER_TEXT,
 				font=(zynthian_gui_config.font_family, int(0.7 * zynthian_gui_config.font_size))
 			)
-			self.pos_canvas.append({'canvas':pos_canvas, 'label':pos_label, 'line':pos_line, 'mute':mute_canvas})
+			self.pos_canvas.append({'canvas':pos_canvas, 'border':pos_border, 'label':pos_label, 'line':pos_line, 'mute':mute_canvas})
 			pos_canvas.bind("<ButtonPress-1>", self.on_loop_click)
 			pos_canvas.bind("<ButtonRelease-1>", self.on_loop_release)
 			mute_canvas.bind("<ButtonPress-1>", self.on_loop_click)
-
 
 		self.add_canvas = tkinter.Canvas( self,
 			height=self.row_height,
@@ -122,8 +127,8 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			bg=self.SLIDER_BG
 		)
 		self.add_canvas.create_text(
-			1, 10,
-			anchor = 'w',
+			1, 2,
+			anchor = 'nw',
 			text='add loop',
 			fill=self.SLIDER_TEXT,
 			font=(zynthian_gui_config.font_family, int(0.7 * zynthian_gui_config.font_size))
@@ -140,10 +145,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			fill = self.SLIDER_FG
 		)
 		self.wet_label = self.wet_canvas.create_text(
-			1, 10,
+			1, 2,
 			fill = self.SLIDER_TEXT,
 			text = 'wet',
-			anchor='w'
+			anchor='nw'
 		)
 
 		self.dry_canvas = tkinter.Canvas(self,
@@ -156,10 +161,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			fill = self.SLIDER_FG
 		)
 		self.dry_label = self.dry_canvas.create_text(
-			1, 10,
+			1, 2,
 			fill = self.SLIDER_TEXT,
 			text = 'dry (monitor)',
-			anchor='w'
+			anchor='nw'
 		)
 
 		self.feedback_canvas = tkinter.Canvas(self,
@@ -172,20 +177,12 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			fill = self.SLIDER_FG
 		)
 		self.feedback_label = self.feedback_canvas.create_text(
-			1, 10,
+			1, 2,
 			fill = self.SLIDER_TEXT,
 			text = 'feedback',
-			anchor='w'
+			anchor='nw'
 		)
 
-
-		self.available_label = tkinter.Label(self,
-			font=(zynthian_gui_config.font_family, int(0.7 * zynthian_gui_config.font_size)),
-			text='avail: 00:00.00',
-			bg=zynthian_gui_config.color_bg,
-			fg=self.SLIDER_TEXT,
-			anchor='w'
-		)
 
 		self.button_frame = tkinter.Frame(self, bg='#000')
 		for col in range(4):
@@ -325,39 +322,39 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 	def refresh_gui(self):
 		#TODO: Change GUI on event, not on periodic refresh
+		for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
+			loop_pos_symbol = 'loop_pos_{}'.format(loop)
+			loop_len_symbol = 'loop_len_{}'.format(loop)
+			state_symbol = 'state_{}'.format(loop)
+			if loop_pos_symbol in self.monitors and loop_len_symbol in self.monitors and state_symbol in self.monitors:
+				len = self.monitors[loop_len_symbol]
+				pos = self.monitors[loop_pos_symbol]
+				state = self.monitors[state_symbol]
+				if state in [2, 5, 6, 7, 8, 9, 13]:
+					bg = self.BUTTON_ASSERTED
+				elif state in [1, 3]:
+					bg='#c90'
+				elif state in [0, 10 , 14, 20]:
+					bg = '#444'
+				else:
+					bg = '#090'
+				self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['border'], 2, 2, self.pos_canvas[loop]['canvas'].winfo_width() - 2, self.row_height - 2)
+				if loop == self.selected_loop:
+					self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['border'], state=tkinter.NORMAL)
+				else:
+					self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['border'], state=tkinter.HIDDEN)
+				x = 0
+				if len:
+					x = int(pos / len * self.pos_canvas[loop]['canvas'].winfo_width())
+				self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
+				self.pos_canvas[loop]['canvas'].configure(bg=bg)
+				self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text=' {:.2f} / {:.2f} {}'.format(pos, len, zynthian_engine_sooperlooper.SL_STATES[state]['name']))
+				if state == 10:
+					self.pos_canvas[loop]['mute']['bg'] = self.BUTTON_ASSERTED
+				else:
+					self.pos_canvas[loop]['mute']['bg'] = self.SLIDER_BG
 		try:
-			for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
-				loop_pos_symbol = 'loop_pos_{}'.format(loop)
-				loop_len_symbol = 'loop_len_{}'.format(loop)
-				state_symbol = 'state_{}'.format(loop)
-				if loop_pos_symbol in self.monitors and loop_len_symbol in self.monitors and state_symbol in self.monitors:
-					len = self.monitors[loop_len_symbol]
-					pos = self.monitors[loop_pos_symbol]
-					state = self.monitors[state_symbol]
-					if state in [2, 5, 6, 7, 8, 9, 13]:
-						bg = self.BUTTON_ASSERTED
-					elif state in [1, 3]:
-						bg='#c90'
-					elif state in [0, 10 , 14]:
-						bg = '#444'
-					else:
-						bg = '#090'
-					if loop == self.selected_loop:
-						prefix = '>'
-					else:
-						prefix = ' '
-					x = 0
-					if len:
-						x = int(pos / len * self.pos_canvas[loop]['canvas'].winfo_width())
-					self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
-					self.pos_canvas[loop]['canvas'].configure(bg=bg)
-					self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text='{}{:.2f} / {:.2f} {}'.format(prefix, pos, len, zynthian_engine_sooperlooper.SL_STATES[state]['name']))
-					if state == 10:
-						self.pos_canvas[loop]['mute']['bg'] = self.BUTTON_ASSERTED
-					else:
-						self.pos_canvas[loop]['mute']['bg'] = self.SLIDER_BG
 			free = self.monitors['free_time']
-			self.available_label.configure(text='avail: {:02}:{:05.2f}'.format(int(free / 60), free % 60))
 			self.input_level_canvas.coords(self.input_level_fg, 0, 0, int(self.width * self.monitors['in_peak_meter']), self.row_height)
 			thresh_x = int(self.monitors['rec_thresh'] * self.input_level_canvas.winfo_width())
 			self.input_level_canvas.coords(self.threshold_line, thresh_x, 0, thresh_x, self.row_height)
@@ -415,3 +412,4 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			logging.debug("KeyError ignored")
 		except Exception as e:
 			logging.warning(e)
+

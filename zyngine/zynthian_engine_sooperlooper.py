@@ -126,9 +126,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	SL_STATES = {
 		-1: {'name': 'unknown', 'symbol': None, 'icon':''},
 		0: {'name': 'off','symbol': None, 'icon':''},
-		1: {'name': 'waiting to start', 'symbol': None, 'icon':'\u23EF'},
+		1: {'name': 'starting...', 'symbol': None, 'icon':'\u23EF'},
 		2: {'name': 'recording', 'symbol': 'record', 'icon':'\u26ab'},
-		3: {'name': 'waiting to stop', 'symbol': None, 'icon':'\u23EF'},
+		3: {'name': 'stopping...', 'symbol': None, 'icon':'\u23EF'},
 		4: {'name': 'playing', 'symbol': None, 'icon':'\uf04b'},
 		5: {'name': 'overdubbing', 'symbol': 'overdub', 'icon':'\u26ab'},
 		6: {'name': 'multiplying', 'symbol': 'multiply', 'icon':'\u26abx'},
@@ -140,6 +140,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		12: {'name': 'playing once', 'symbol': 'oneshot', 'icon':'\uf04b'},
 		13: {'name': 'substituting', 'symbol': 'substitute', 'icon':'\u26ab'},
 		14: {'name': 'paused', 'symbol': 'pause', 'icon':'\u23F8'},
+		20: {'name': 'off muted', 'symbol': None, 'icon':'mute'},
 	}
 
 	# ---------------------------------------------------------------------------
@@ -184,16 +185,16 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['undo/redo', 'undo/redo', {'value':1, 'labels':['<', '<>', '>']}],
 			['trigger', 'trigger;', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 108],
 			['mute', 'mute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 109],
-			['oneshot', 'once', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 110],
+			['oneshot', 'oneshot', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 110],
 			['pause', 'pause', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 111],
 			['reverse', 'direction', {'value':0, 'labels':['reverse', 'forward'], 'ticks':[1, 0], 'is_toggle':True}],
 			['rate', 'speed', {'value':1.0, 'value_min':0.25, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
 			['stretch_ratio', 'stretch', {'value':1.0, 'value_min':0.5, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
 			['pitch_shift', 'pitch', {'value':0.0, 'value_min':-12, 'value_max':12, 'is_integer':False, 'nudge_factor':0.1}],
 			['sync_source', 'sync source', {'value':1, 'value_min':-3, 'value_max':1, 'labels':['Internal','MidiClock','Jack/Host','None','Loop1'], 'is_integer':True}],
-			['sync', 'sync operations', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
+			['sync', 'enable sync', {'value':1, 'value_max':1, 'labels':['off', 'on']}],
             ['eighth_per_cycle', '8th/cycle', {'value':16, 'value_min':1, 'value_max':600}], #TODO: What makes sense for max val?
-            ['quantize', 'quantize', {'value':0, 'value_max':3, 'labels':['off', 'cycle', '8th', 'loop']}],
+            ['quantize', 'quantize', {'value':1, 'value_max':3, 'labels':['off', 'cycle', '8th', 'loop']}],
             ['mute_quantized', 'mute quant', {'value':0, 'value_max':1, 'labels':['off', 'on'],}],
             ['overdub_quantized', 'overdub quant', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
             ['replace_quantized', 'replace quant', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
@@ -295,7 +296,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 	def send_controller_value(self, zctrl):
 		#logging.warning("{} {}".format(zctrl.symbol, zctrl.value))
-		if zctrl.symbol in ['oneshot', 'once', 'trigger'] and zctrl.value == 0:
+		if zctrl.symbol in ['oneshot', 'oneshot', 'trigger'] and zctrl.value == 0:
 			# Ignore off signals
 			return
 		elif zctrl.is_toggle:
@@ -349,15 +350,15 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			self.monitors_dict['state_{}'.format(args[0])] = args[2]
 			self.state[args[0]] = int(args[2])
 			if self.selected_loop == args[0]:
-				self.monitors_dict['state'] = self.state[self.selected_loop]
 				try:
+					self.monitors_dict['state'] = self.state[self.selected_loop]
 					self.update_state()
 				except:
 					pass # May be called before zctrls are configured
 			return
 		elif path == '/sl/info':
 			self.sl_version = args[1]
-			loop_count_changed = self.loop_count != int(args[2])
+			loop_count_changed = int(args[2]) - self.loop_count
 			self.loop_count = int(args[2])
 			if loop_count_changed:
 				labels = ['Internal','MidiClock','Jack/Host','None']
@@ -377,6 +378,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				self.zctrls['sync_source'].set_options({'labels':labels, 'ticks':[], 'value_max':self.loop_count})
 				if sync_source > self.loop_count:
 					self.zctrls['sync_source'].set_value(0)
+				if loop_count_changed > 0:
+					liblo.send(self.osc_target, '/sl/{}/set'.format(self.loop_count - 1), ('s', 'sync'), ('f', 1))
 			self.monitors_dict['loop_count'] = self.loop_count
 			self.monitors_dict['version'] = self.sl_version
 			return
