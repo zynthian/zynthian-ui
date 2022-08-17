@@ -154,7 +154,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.type = "Audio Effect"
 
 		self.options['note_range'] = False
-		self.options['midi_chan'] = False
+		self.options['audio_capture'] = True
 		self.options['drop_pc'] = True
 		self.options['clone'] = False
 
