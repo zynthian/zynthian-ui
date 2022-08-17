@@ -349,7 +349,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
 				self.pos_canvas[loop]['canvas'].configure(bg=bg)
 				self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text=' {:.2f} / {:.2f} {}'.format(pos, len, zynthian_engine_sooperlooper.SL_STATES[state]['name']))
-				if state == 10:
+				if state in [10,20]:
 					self.pos_canvas[loop]['mute']['bg'] = self.BUTTON_ASSERTED
 				else:
 					self.pos_canvas[loop]['mute']['bg'] = self.SLIDER_BG
