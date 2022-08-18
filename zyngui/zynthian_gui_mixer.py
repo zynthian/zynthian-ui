@@ -497,7 +497,7 @@ class zynthian_gui_mixer_strip():
 		elif self.midi_learning == False:
 			if self.zctrls:
 				self.zctrls['balance'].nudge(dval)
-		self.flag_redraw()
+		self.draw_balance()
 
 
 	# Function to reset volume

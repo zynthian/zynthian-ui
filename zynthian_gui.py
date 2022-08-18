@@ -565,7 +565,9 @@ class zynthian_gui:
 						logging.warning("Failed to add OSC client registration %s", src.hostname)
 				self.osc_clients[src.hostname] = monotonic()
 			else:
-				if path[:6] == "VOLUME" or path[:5] == "FADER":
+				if path[:6] == "VOLUME":
+					self.zynmixer.set_volume(args[0], int(path[6:]))
+				if  path[:5] == "FADER":
 					self.zynmixer.set_volume(args[0], int(path[5:]))
 				elif path[:7] == "BALANCE":
 					self.zynmixer.set_balance(args[0], int(path[7:]))
