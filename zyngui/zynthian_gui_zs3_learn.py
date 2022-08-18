@@ -40,12 +40,18 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 	def __init__(self):
 		super().__init__('Program', True)
 		self.index = 0
-		tkinter.Label(self.main_frame,
+
+		self.zs3_waiting_label = tkinter.Label(self.main_frame,
 			text = 'Waiting for MIDI Program Change...',
-			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size),
+			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size-2),
 			fg = zynthian_gui_config.color_ml,
-			bg = zynthian_gui_config.color_bg
-		).grid(columnspan=3, sticky='ew')
+			bg = zynthian_gui_config.color_panel_bg
+		)
+		if self.wide:
+			padx = (0,2)
+		else:
+			padx = (2,2)
+		self.zs3_waiting_label.grid(row=zynthian_gui_config.layout['list_pos'][0] + 4, column=zynthian_gui_config.layout['list_pos'][1], padx=padx, sticky='ew')
 
 
 	def show(self):
@@ -62,9 +68,10 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 		self.list_data.append(('SAVE_ZS3', None, "Save as new ZS3"))
-		self.list_data.append((None, None, "> SAVED ZS3s"))
 
 		#Add list of programs
+		if len(self.zyngui.screens['layer'].learned_zs3)>0:
+			self.list_data.append((None, None, "> SAVED ZS3s"))
 		for i, state in enumerate(self.zyngui.screens['layer'].learned_zs3):
 			if state['midi_learn_prognum'] is not None:
 				if zynthian_gui_config.midi_single_active_channel:
