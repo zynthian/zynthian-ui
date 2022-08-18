@@ -806,7 +806,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		#TODO: Update mixer layout
 
 
-	# Function to refresh screen;
+	# Function to refresh screen (slow)
 	def refresh_status(self, status={}):
 		if self.shown:
 			super().refresh_status(status)
@@ -816,18 +816,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					if zynthian_gui_config.enable_dpm:
 						strip.draw_dpm()
 					strip.refresh_status()
-				# Redraw changed strips
-				'''
-				for strip in self.visible_mixer_strips:
-					if strip.zctrls:
-						for symbol in strip.zctrls:
-							if strip.zctrls[symbol].is_dirty:
-								strip.zctrls[symbol].is_dirty = False
-								self.pending_refresh_queue.add(strip)
-								break
-				'''
-				while self.pending_refresh_queue:
-					self.pending_refresh_queue.pop().draw()
+
+
+	# Function to refresh display (fast)
+	def plot_zctrls(self):
+		while self.pending_refresh_queue:
+			self.pending_refresh_queue.pop().draw()
 
 
 	#--------------------------------------------------------------------------
