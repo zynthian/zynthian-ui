@@ -73,7 +73,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			self.zyngui.curlayer.set_show_fav_presets(True)
 		else:
 			if self.zyngui.curlayer.set_bank(i) is None:
-				self.show()
+				self.build_view()
 				return
 			self.zyngui.curlayer.set_show_fav_presets(False)
 

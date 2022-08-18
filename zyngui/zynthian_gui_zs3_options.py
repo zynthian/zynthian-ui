@@ -46,9 +46,9 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 
-		self.list_data.append((self.zs3_rename,0,"Rename"))
-		self.list_data.append((self.zs3_update,0,"Update"))
-		self.list_data.append((self.zs3_delete,0,"Delete"))
+		self.list_data.append((self.zs3_rename,0, "Rename"))
+		self.list_data.append((self.zs3_update,0, "Update"))
+		self.list_data.append((self.zs3_delete,0, "Delete"))
 
 		super().fill_list()
 

@@ -544,12 +544,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def set_midi_prog_preset(self, midich, prognum):
 		changed = False
-		for i,layer in enumerate(self.root_layers):
+		for i, layer in enumerate(self.root_layers):
 			try:
-				mch=layer.get_midi_chan()
-				if mch is None or mch==midich:
+				mch = layer.get_midi_chan()
+				if mch is None or mch == midich:
 					# Fluidsynth engine => ignore Program Change on channel 9
-					if layer.engine.nickname=="FS" and mch==9:
+					if layer.engine.nickname == "FS" and mch == 9:
 						continue
 					changed |= layer.set_preset(prognum, True)
 			except Exception as e:
@@ -601,12 +601,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		
 		# Get state and add MIDI-learn info
 		state = self.get_state()
-		state['zs3_title'] = "Noname"
+		state['zs3_title'] = "New ZS3"
 		state['midi_learn_chan'] = midich
 		state['midi_learn_prognum'] = prognum
 
 		# Save in ZS3 list, overwriting if already used
-		if i is None or i<0 or i>=len(self.learned_zs3):
+		if i is None or i < 0 or i >= len(self.learned_zs3):
 			self.learned_zs3.append(state)
 			i = len(self.learned_zs3) - 1
 		else:
@@ -641,19 +641,19 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_zs3_title(self, i):
-		if i is not None and i>=0 and i<len(self.learned_zs3):
+		if i is not None and i >= 0 and i < len(self.learned_zs3):
 			return self.learned_zs3[i]['zs3_title']
 
 
 	def set_zs3_title(self, i, title):
-		if i is not None and i>=0 and i<len(self.learned_zs3):
+		if i is not None and i >= 0 and i < len(self.learned_zs3):
 			self.learned_zs3[i]['zs3_title'] = title
 
 
 	def restore_zs3(self, i):
 		changed = False
 		try:
-			if i is not None and i>=0 and i<len(self.learned_zs3):
+			if i is not None and i >= 0 and i < len(self.learned_zs3):
 				logging.info("Restoring ZS3#{}...".format(i))
 				self.restore_state_zs3(self.learned_zs3[i])
 				self.last_zs3_index = i
@@ -669,10 +669,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def save_zs3(self, i=None):
 		# Get state and add MIDI-learn info
 		state = self.get_state()
-		state['zs3_title'] = "NoName"
+		state['zs3_title'] = "New ZS3"
 
 		# Save in ZS3 list, overwriting if already used
-		if i is None or i<0 or i>=len(self.learned_zs3):
+		if i is None or i < 0 or i >= len(self.learned_zs3):
 			state['midi_learn_chan'] = None
 			state['midi_learn_prognum'] = None
 			self.learned_zs3.append(state)
@@ -680,6 +680,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		else:
 			state['midi_learn_chan'] = self.learned_zs3[i]['midi_learn_chan']
 			state['midi_learn_prognum'] =  self.learned_zs3[i]['midi_learn_prognum']
+			state['zs3_title'] =  self.learned_zs3[i]['zs3_title']
 			self.learned_zs3[i] = state
 
 		logging.info("Saved ZS3#{}".format(i))

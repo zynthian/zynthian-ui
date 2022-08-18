@@ -255,6 +255,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		liblo.send(self.osc_target, '/ping', ('s', self.osc_server_url), ('s', '/sl/info'))
 		# Set default values
 		liblo.send(self.osc_target, '/set', ('s', 'dry'), ('f', 1.0))
+		liblo.send(self.osc_target, '/sl/-1/set', ('s', 'quantize'), ('f', 3.0))
 
 
 	# ---------------------------------------------------------------------------
@@ -286,12 +287,13 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, layer):
+		zctrls = OrderedDict()
 		for ctrl in self._ctrls:
 			zctrl = zynthian_controller(self, ctrl[0], ctrl[1], ctrl[2])
-			self.zctrls[zctrl.symbol] = zctrl
+			zctrls[zctrl.symbol] = zctrl
 			if len(ctrl) > 3:
 				zctrl.set_midi_learn(layer.midi_chan, ctrl[3])
-		return self.zctrls
+		return zctrls
 
 
 	def send_controller_value(self, zctrl):
@@ -335,18 +337,20 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 	# Update each mutually exclusive 'state' controller to match state of selected loop
 	def update_state(self):
+		zctrls = self.layers[0].controllers_dict
 		for state in self.SL_STATES:
 			if self.SL_STATES[state]['symbol']:
 				if state == self.state[self.selected_loop]:
-					self.zctrls[self.SL_STATES[state]['symbol']].set_value(1, False)
+					zctrls[self.SL_STATES[state]['symbol']].set_value(1, False)
 				else:
-					self.zctrls[self.SL_STATES[state]['symbol']].set_value(0, False)
+					zctrls[self.SL_STATES[state]['symbol']].set_value(0, False)
 		#self.layers[0].status = self.SL_STATES[self.state]['icon']
 
 
 	def cb_osc_all(self, path, args, types, src):
 		#logging.warning("Rx OSC: {} {}".format(path,args))
 		# args: i:Loop index, s:control, f:value
+		zctrls = self.layers[0].controllers_dict
 		if path == '/sl/state':
 			#logging.warning("State: %0.0f Loop: %d", args[2], args[0])
 			if args[0] < 0:
@@ -373,10 +377,10 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(loop), ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/sl/state'))
 					labels.append('Loop {}'.format(loop + 1))
 				self.select_loop(self.loop_count - 1, True)
-				sync_source = self.zctrls['sync_source'].value
-				self.zctrls['sync_source'].set_options({'labels':labels, 'ticks':[], 'value_max':self.loop_count})
+				sync_source = zctrls['sync_source'].value
+				zctrls['sync_source'].set_options({'labels':labels, 'ticks':[], 'value_max':self.loop_count})
 				if sync_source > self.loop_count:
-					self.zctrls['sync_source'].set_value(0)
+					zctrls['sync_source'].set_value(0)
 				if loop_count_changed > 0:
 					liblo.send(self.osc_target, '/sl/{}/set'.format(self.loop_count - 1), ('s', 'sync'), ('f', 1))
 			self.monitors_dict['loop_count'] = self.loop_count
@@ -386,14 +390,14 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			if args[1] == 'selected_loop_num':
 				self.select_loop(args[2])
 			try:
-				self.zctrls[args[1]].set_value(args[2], False)
+				zctrls[args[1]].set_value(args[2], False)
 			except Exception as e:
 				logging.warning("Unsupported tally %s (%f)", args[1], args[2])
 		if args[1] == 'rate_output':
 			if args[2] < 0.0:
-				self.zctrls['reverse'].set_value(1, False)
+				zctrls['reverse'].set_value(1, False)
 			else:
-				self.zctrls['reverse'].set_value(0, False)
+				zctrls['reverse'].set_value(0, False)
 		try:
 			if args[1] == 'loop_pos':
 				self.monitors_dict['loop_pos_{}'.format(args[0])] = args[2]

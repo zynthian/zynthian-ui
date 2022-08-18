@@ -190,7 +190,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		else:
 			options['[  ] Metronome'] = 1
 		options['Metronome volume'] = 1
-		options['-------------------'] = None
+		options['> ARRANGER'] = None
 		if self.zyngui.zynseq.libseq.isMuted(self.zyngui.zynseq.bank, self.sequence, self.track):
 			options['Unmute track'] = 1
 		else:

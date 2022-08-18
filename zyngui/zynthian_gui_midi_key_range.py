@@ -52,7 +52,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		self.octave_trans = 0
 		self.halftone_trans = 0
 
-		self.learn_mode = 0 # [0:Disabled, 1:Lower, 2:Upper]
+		self.learn_mode = 0 # [0:Disabled, -1:Awaiting first key, 1-127:Awaiting second key]
 
 		self.nlow_zgui_ctrl = None
 		self.nhigh_zgui_ctrl = None
@@ -311,7 +311,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 
 	def enter_midi_learn(self):
-		self.learn_mode = 1
+		self.learn_mode = -1
 		self.learn_text['text'] = "learning..."
 		self.learn_text['fg'] = zynthian_gui_config.color_ml
 
@@ -357,13 +357,19 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 
 	def learn_note_range(self, num):
-		if self.learn_mode == 1:
-			self.nlow_zctrl.set_value(num)
-			if self.note_low > self.note_high:
-				self.nhigh_zctrl.set_value(127)
-			self.learn_mode = 2
-		elif self.learn_mode == 2:
-			self.nhigh_zctrl.set_value(num)
+		if self.learn_mode == -1:
+			if num < self.nhigh_zctrl.value:
+				self.nlow_zctrl.set_value(num)
+			else:
+				self.nhigh_zctrl.set_value(num)
+			self.learn_mode = num
+		else:
+			if num < self.learn_mode:
+				self.nlow_zctrl.set_value(num)
+				self.nhigh_zctrl.set_value(self.learn_mode)
+			else:
+				self.nlow_zctrl.set_value(self.learn_mode)
+				self.nhigh_zctrl.set_value(num)
 			self.zyngui.exit_midi_learn()
 		self.update_piano()
 
