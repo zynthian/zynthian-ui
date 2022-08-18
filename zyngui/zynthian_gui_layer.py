@@ -53,13 +53,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.replace_layer_index = None
 		self.layer_chain_parallel = False
 		self.last_snapshot_fpath = None
-		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
+		self.last_zs3_index = [0] * 17; # Last selected ZS3 snapshot, per MIDI channel, last item for no MIDI channel
 		super().__init__('Layer', True)
 		self.create_amixer_layer()
-		
+
 
 	def reset(self):
-		self.last_zs3_index = [0] * 16; # Last selected ZS3 snapshot, per MIDI channel
+		self.last_zs3_index = [0] * 17; # Last selected ZS3 snapshot, per MIDI channel, last item for no MIDI channel
 		self.show_all_layers = False
 		self.add_layer_eng = None
 		self.last_snapshot_fpath = None
@@ -545,7 +545,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for layer in self.layers:
 			if zynthian_gui_config.midi_single_active_channel or midich==layer.get_midi_chan():
 				if layer.restore_zs3(zs3_index) and not selected:
-					self.last_zs3_index[midich] = zs3_index
+					self.last_zs3_index[midich is None and 16 or midich] = zs3_index
 					try:
 						if not self.zyngui.modal_screen and self.zyngui.active_screen not in ('main','layer'):
 							self.select_action(self.root_layers.index(layer))
@@ -555,7 +555,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_last_zs3_index(self, midich):
-		return self.last_zs3_index[midich]
+		return self.last_zs3_index[midich is None and 16 or midich]
 
 
 	def save_midi_chan_zs3(self, midich, zs3_index):
