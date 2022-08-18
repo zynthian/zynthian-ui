@@ -1988,24 +1988,21 @@ class zynthian_gui:
 			# Refresh GUI controllers every 4 cycles
 			if j>4:
 				j = 0
-				self.plot_zctrls()
+				try:
+					self.screens[self.current_screen].plot_zctrls()
+				except AttributeError:
+					pass
+				except Exception as e:
+					logging.error(e)
 			else:
 				j += 1
 
 			# Wait a little bit ...
-			sleep(0.01)
 			if self.zynread_wait_flag:
-				sleep(0.3)
+				sleep(0.4)
 				self.zynread_wait_flag=False
-
-
-	def plot_zctrls(self):
-		try:
-			self.screens[self.current_screen].plot_zctrls()
-		except AttributeError:
-			pass
-		except Exception as e:
-			logging.error(e)
+			else:
+				sleep(0.01)
 
 
 	#------------------------------------------------------------------
