@@ -41,6 +41,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		self.set_mode('ADD')
 		super().__init__('Channel', True)
 
+
 	def set_mode(self, mode, chan=None, chan_list=None):
 		self.mode = mode
 

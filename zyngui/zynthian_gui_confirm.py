@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Confirm Class
 # 
-# Copyright (C) 2018 Markus Heidt <markus@heidt-tech.com>
+# Copyright (C) 2022 Markus Heidt <markus@heidt-tech.com>
 #                    Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
@@ -34,6 +34,8 @@ from zyngui import zynthian_gui_config
 #------------------------------------------------------------------------------
 # Zynthian Info GUI Class
 #------------------------------------------------------------------------------
+
+#TODO: Derive confirm from gui base class
 
 class zynthian_gui_confirm():
 
@@ -92,7 +94,12 @@ class zynthian_gui_confirm():
 			self.main_frame.grid_forget()
 
 
+	def build_view(self):
+		pass
+
 	def show(self, text, callback=None, cb_params=None):
+		if self.zyngui.test_mode:
+			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 		self.text.set(text)
 		self.callback = callback
 		self.callback_params = cb_params
@@ -114,6 +121,11 @@ class zynthian_gui_confirm():
 		self.zyngui.close_screen()
 		if self.callback:
 			self.callback(self.callback_params)
+
+
+	def switch(self, i, t):
+		if i in [0,2]:
+			return True
 
 
 	def cb_yes_push(self, event):

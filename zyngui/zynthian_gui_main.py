@@ -28,7 +28,6 @@ import logging
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from zynlibs.zynseq import zynseq
 
 #------------------------------------------------------------------------------
 # Zynthian App Selection GUI Class
@@ -53,12 +52,12 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data.append((self.clean_all,0,"Clean All"))
 
 		# Add list of Apps
-		self.list_data.append((None,0,"-----------------------------"))
+		self.list_data.append((None,0,"> APPS"))
 		self.list_data.append((self.step_sequencer,0,"Sequencer"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
 		self.list_data.append((self.alsa_mixer,0,"Audio Levels"))
 
-		self.list_data.append((None,0,"-----------------------------"))
+		self.list_data.append((None,0,"> SYSTEM"))
 		self.list_data.append((self.admin,0,"Admin"))
 		self.list_data.append((self.all_notes_off,0,"PANIC! All Notes Off"))
 
@@ -101,14 +100,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 
 	def clean_all_confirmed(self, params=None):
-		if len(self.zyngui.screens['layer'].layers)>0:
-			self.zyngui.screens['snapshot'].save_last_state_snapshot()
-		self.zyngui.screens['layer'].reset()
-		self.zyngui.screens['audio_mixer'].reset_state()
-		if zynseq.libseq:
-			zynseq.load("")
 		self.index = 0
-		self.zyngui.show_screen_reset('main')
+		self.zyngui.clean_all()
 
 
 	def audio_mixer(self, t='S'):
@@ -118,7 +111,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def step_sequencer(self, t='S'):
 		logging.info("Step Sequencer")
-		self.zyngui.show_screen_reset('stepseq')
+		self.zyngui.show_screen_reset('zynpad')
 
 
 	def midi_recorder(self, t='S'):

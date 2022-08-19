@@ -60,6 +60,9 @@ extern "C"
 
 // ** Library management functions **
 
+// MIDI learn callback function
+void (*g_pMidiLearnCb)(void*, uint8_t);
+
 /** @brief  Initialise library and connect to jackd server
 *   @param  name Client name
 *   @note   Call init() before any other functions will work
@@ -152,6 +155,16 @@ void sendMidiClock();
 void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2);
 
 // ** Status **
+/** @brief  Get MIDI channel used to send tally of sequence state change
+*   @retval uint8_t MIDI channel
+*/
+uint8_t getTallyChannel();
+
+/** @brief  Set MIDI channel used to send tally of sequence state change
+*   @param channel MIDI channel [0..15 or other value to disable MIDI tally]
+*/
+void setTallyChannel(uint8_t channel);
+
 /** @brief  Get MIDI channel used for external trigger of sequences
 *   @retval uint8_t MIDI channel
 */
@@ -387,6 +400,10 @@ void setTonic(uint8_t tonic);
 */
 uint8_t getTonic();
 
+/** @brief  Flag pattern as modified - also sets flags in relevant sequences and tracks
+*/
+void setPatternModified(Pattern* pPattern, bool bModified = true);
+
 /** @brief  Check if selected pattern has changed since last check
 *   @retval bool True if pattern has changed
 */
@@ -410,16 +427,12 @@ void setRefNote(uint8_t note);
 */
 uint32_t getLastStep();
 
-// ** Track management functions **
-
 /** @brief  Get position of playhead within pattern in steps
-*   @param  bank Index of bank
-*   @param  sequence Index of sequence
-*   @param  track Index of track
 *   @retval uint32_t Quantity of steps from start of pattern to playhead
-*   @todo   Function names confusing getPatternPlayhead / getStep (within Track)
 */
-uint32_t getPatternPlayhead(uint8_t bank, uint8_t sequence, uint32_t track);
+uint32_t getPatternPlayhead();
+
+// ** Track management functions **
 
 /** @brief  Add pattern to a track
 *   @param  bank Index of bank
@@ -634,9 +647,11 @@ uint16_t getTimeSigAt(uint8_t bank, uint8_t sequence, uint16_t bar);
 /** @brief  Enable MIDI learn for a sequence trigger
 *   @param  bank Index of bank or 0 to disable learning
 *   @param  sequence Sequence index or 0 to disable learning
+*   @param  cb_object Pointer to the object hosting the callback function (allows Python class access) [Default: NULL for none]
+*   @param  cbfunc Pointer to callback function to call when MIDI learn completes [Default: NULL for none]
 *   @note   Whilst in learn mode the next MIDI note-on event received on trigger channel will set the pad's trigger note
 */
-void enableMidiLearn(uint8_t bank, uint8_t sequence);
+void enableMidiLearn(uint8_t bank, uint8_t sequence, void* cb_object, void (*cbfunc)(void*, uint8_t));
 
 /** @brief  Get bank currently in MIDI learn mode
 *   @retval uint8_t Bank index or 0 if disabled
@@ -800,6 +815,25 @@ uint32_t getBeatsPerBar();
 */
 void transportSetSyncTimeout(uint32_t timeout);
 
+/** @brief  Enable or disable metronome
+*   @param  enable True to enable [Default: true]
+*/
+void enableMetronome(bool enable = true);
+
+/** @brief  Check of metronome enabled
+*   @retval bool True if enabled
+*/
+bool isMetronomeEnabled();
+
+/** @brief  Set level of metronome
+*   @param  level Level [0.0 - 1.0]
+*/
+void setMetronomeVolume(float level);
+
+/** @brief  Set level of metronome
+*   @retval float Level [0.0 - 1.0]
+*/
+float getMetronomeVolume();
 
 #ifdef __cplusplus
 }

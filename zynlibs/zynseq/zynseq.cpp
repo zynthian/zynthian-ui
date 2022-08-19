@@ -4,7 +4,7 @@
  *
  * Library providing step sequencer as a Jack connected device
  *
- * Copyright (C) 2020 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2020-2022 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -35,6 +35,8 @@
 #include <string>
 #include <cstring> //provides strcmp
 
+#include "metronome.h" // metronome wav data
+
 #define FILE_VERSION 7
 
 #define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
@@ -42,9 +44,11 @@
 SequenceManager g_seqMan; // Instance of sequence manager
 Pattern* g_pPattern = 0; // Currently selected pattern
 uint32_t g_nPattern = 0; // Index of currently selected pattern
-Track* g_pTrack = 0; // Pattern editor track
+Sequence* g_pSequence = 0; // Pattern editor sequence
 jack_port_t * g_pInputPort; // Pointer to the JACK input port
 jack_port_t * g_pOutputPort; // Pointer to the JACK output port
+jack_port_t* g_pMetronomePort; // Pointer to the JACK metronome audio output port
+
 jack_client_t *g_pJackClient = NULL; // Pointer to the JACK client
 
 jack_nframes_t g_nSampleRate = 44100; // Quantity of samples per second
@@ -62,9 +66,10 @@ uint8_t g_nInputChannel = 0xFF; // MIDI channel for input (0xFF to disable)
 bool g_bSustain = false; // True if sustain pressed during note input
 uint8_t g_nInputRest = 0xFF; // MIDI note number that creates rest in pattern
 uint8_t g_nTriggerStatusByte = MIDI_NOTE_ON | 15; // MIDI status byte which triggers a sequence (optimisation)
-uint16_t g_nVerticalZoom = 8;
-uint16_t g_nHorizontalZoom = 16;
+uint16_t g_nVerticalZoom = 8; // Quantity of sequences to show in arranger view
+uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
 uint16_t g_nTriggerLearning = 0; // 2 word bank|sequence that is waiting for MIDI to learn trigger (0 if not learning)
+void* g_pMidiLearnObj = NULL; // Object hosting midi learn function
 char g_sName[16]; // Buffer to hold sequence name so that it can be sent back for Python to parse
 
 bool g_bMutex = false; // Mutex lock for access to g_mSchedule
@@ -87,6 +92,13 @@ jack_nframes_t g_nTransportStartFrame = 0; // Quantity of frames from JACK epoch
 double g_dFramesToNextClock = 0.0; // Frames until next clock pulse
 double g_dFramesPerClock = 60 * g_nSampleRate / (g_dTempo *  g_dTicksPerBeat) * g_dTicksPerClock; //!@todo Change to integer will have 0.1% jitter at 1920 ppqn and much better jitter (0.01%) at current 24ppqn
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
+
+size_t g_nMetronomePtr = -1; // Position within metronome click wav data
+float g_fMetronomeLevel = 1.0; // Factor to scale metronome level (volume)
+bool g_bMetronome = false; // True to enable metronome
+struct metro_wav_t g_metro_pip;
+struct metro_wav_t g_metro_peep;
+struct metro_wav_t * g_pMetro = &g_metro_pip; // Pointer to the current metronome sound (pip/peep)
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
@@ -320,13 +332,18 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
     jack_transport_state_t nState = jack_transport_query(g_pJackClient, &transportPosition);
 
+    jack_default_audio_sample_t *pOutMetronome = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pMetronomePort, nFrames);
+    memset(pOutMetronome, 0, sizeof(jack_default_audio_sample_t) * nFrames);
+
+
     // Process MIDI input
     void* pInputBuffer = jack_port_get_buffer(g_pInputPort, nFrames);
     jack_midi_event_t midiEvent;
     jack_nframes_t nCount = jack_midi_get_event_count(pInputBuffer);
     for(jack_nframes_t i = 0; i < nCount; i++)
     {
-        jack_midi_event_get(&midiEvent, pInputBuffer, i);
+        if(jack_midi_event_get(&midiEvent, pInputBuffer, i))
+            continue;
         /*  Not using MIDI transport control or clock
         switch(midiEvent.buffer[0])
         {
@@ -365,6 +382,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             if(g_nTriggerLearning)
             {
                 setTriggerNote((g_nTriggerLearning >> 8) & 0xFF, g_nTriggerLearning & 0xFF, nNote);
+                if(g_pMidiLearnCb)
+                    g_pMidiLearnCb(g_pMidiLearnObj, nNote);
             }
             else
             {
@@ -375,14 +394,14 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         }
 
         // Handle MIDI events for programming patterns from MIDI input
-        if(g_bInputEnabled && g_pTrack && g_pPattern && g_nInputChannel == (midiEvent.buffer[0] & 0x0F))
+        if(g_bInputEnabled && g_pSequence && g_pPattern && g_nInputChannel == (midiEvent.buffer[0] & 0x0F))
         {
-            uint32_t nStep = g_pTrack->getPatternPlayhead();
+            uint32_t nStep = g_pSequence->getPlayPosition() / getClocksPerStep();
             bool bAdvance = false;
             if(((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64)
             {
                 // Sustain pedal event
-                if(midiEvent.buffer[2])
+                if(midiEvent.buffer[2] > 63)
                     g_bSustain = true;
                 else
                 {
@@ -393,7 +412,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             else if(((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2])
             {
                 // Note on event
-                g_bPatternModified = true;
+                setPatternModified(g_pPattern, true);
                 uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
                 if(g_bSustain)
                     g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
@@ -408,10 +427,10 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             }
             if(bAdvance && transportGetPlayStatus() != JackTransportRolling)
             {
-                g_pTrack->setPosition(0);
                 if(++nStep >= g_pPattern->getSteps())
                     nStep = 0;
-                g_pTrack->setPatternPlayhead(nStep);
+                g_pSequence->setPlayPosition(nStep * getClocksPerStep());
+                //printf("libzynseq advancing to step %d\n", nStep);
             }
         }
     }
@@ -434,6 +453,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 // Clock zero so on beat
                 bSync = (g_nBeat == 1);
                 g_nTick = 0; //!@todo ticks are not updated under normal rolling condition
+                g_pMetro = bSync?&g_metro_pip:&g_metro_peep;
+                g_nMetronomePtr = 0;
             }
             // Schedule events in next period
             // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can synchronise its sequences, e.g. start zynpad sequences
@@ -455,12 +476,23 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         g_dFramesToNextClock -= nFrames;
         //g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
 
-        if(bSync && g_nPlayingSequences == 0)
+        if(g_nPlayingSequences == 0)
         {
-            //!@todo bSync might have been reset by second clock within period - this should go within g_dFramesToNextClock loop
-            //!@todo We stop at end of bar to encourage previous block of code to run but we may prefer to stop more promptly
             DPRINTF("Stopping transport because no sequences playing clock: %u beat: %u tick: %u\n", g_nClock, g_nBeat, g_nTick);
             transportStop("zynseq");
+            g_nMetronomePtr = -1;
+        }
+
+        if(g_bMetronome && g_nMetronomePtr >= 0) {
+            for(int n = 0; n < nFrames; ++n) {
+                if(g_nMetronomePtr < g_pMetro->size) {
+                    pOutMetronome[n] = g_pMetro->data[g_nMetronomePtr++] * g_fMetronomeLevel;
+                }
+                else {
+                    g_nMetronomePtr = -1;
+                    pOutMetronome[n] = 0.0;
+                }
+            }
         }
     }
 
@@ -468,7 +500,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     if(g_mSchedule.size())
     {
         auto it = g_mSchedule.begin();
-        jack_nframes_t nTime, nNextTime = 0;
+        jack_nframes_t nTime = 0;
+        jack_nframes_t nNextTime = 0;
         while(it != g_mSchedule.end())
         {
             if(it->first >= nNow + nFrames)
@@ -555,6 +588,14 @@ __attribute__((constructor)) void zynseq(void) {
 void init(char* name) {
     //!@todo Invalid name triggers seg fault
 
+    g_pMidiLearnCb = NULL;
+
+    g_metro_pip.data = metronome_pip;
+    g_metro_pip.size = sizeof(metronome_pip) / sizeof(float);
+    g_metro_peep.data = metronome_peep;
+    g_metro_peep.size = sizeof(metronome_peep) / sizeof(float);
+
+
     // Register with Jack server
     printf("**zynseq initialising as %s**\n", name);
     char *sServerName = NULL;
@@ -587,13 +628,20 @@ void init(char* name) {
         return;
     }
 
+    // Create metronome output port
+    if(!(g_pMetronomePort = jack_port_register(g_pJackClient, "metronome", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0)))
+    {
+        fprintf(stderr, "linzynseq cannot register metronome port\n");
+        return;
+    }
+
     g_nSampleRate = jack_get_sample_rate(g_pJackClient);
     g_dFramesPerClock = getFramesPerClock(g_dTempo);
 
     // Register JACK callbacks
     jack_set_process_callback(g_pJackClient, onJackProcess, 0);
     jack_set_sample_rate_callback(g_pJackClient, onJackSampleRateChange, 0);
-    jack_set_xrun_callback(g_pJackClient, onJackXrun, 0); //!@todo Remove xrun handler (just for debug)
+//    jack_set_xrun_callback(g_pJackClient, onJackXrun, 0); //!@todo Remove xrun handler (just for debug)
 
     if(jack_activate(g_pJackClient)) {
         fprintf(stderr, "libzynseq cannot activate client\n");
@@ -606,7 +654,7 @@ void init(char* name) {
     transportRequestTimebase();
     transportStop("zynseq");
     transportLocate(0);
-    g_pTrack = g_seqMan.getSequence(0, 0)->getTrack(0);
+    g_pSequence = g_seqMan.getSequence(0, 0);
 }
 
 bool isModified()
@@ -678,7 +726,7 @@ bool checkBlock(FILE* pFile, uint32_t nActualSize,  uint32_t nExpectedSize)
 
 bool load(const char* filename)
 {
-    g_pTrack = NULL;
+    g_pSequence = NULL;
     g_seqMan.init();
     uint32_t nVersion = 0;
     FILE *pFile;
@@ -846,7 +894,7 @@ bool load(const char* filename)
     fclose(pFile);
     //printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu banks from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mBanks.size(), filename);
     g_bDirty = false;
-    g_pTrack = g_seqMan.getSequence(0, 0)->getTrack(0);
+    g_pSequence = g_seqMan.getSequence(0, 0);
     return true;
 }
 
@@ -1132,6 +1180,19 @@ void setTriggerChannel(uint8_t channel)
     g_bDirty = true;
 }
 
+uint8_t getTallyChannel()
+{
+    return g_seqMan.getTallyChannel();
+}
+
+void setTallyChannel(uint8_t channel)
+{
+    if(channel > 15)
+        channel = 0xFF;
+    g_seqMan.setTallyChannel(channel);
+    g_bDirty = true;
+}
+
 uint8_t getTriggerNote(uint8_t bank, uint8_t sequence)
 {
     return g_seqMan.getTriggerNote(bank, sequence);
@@ -1180,7 +1241,7 @@ void selectPattern(uint32_t pattern)
     g_pPattern = g_seqMan.getPattern(pattern);
     if(g_pPattern)
         g_nPattern = pattern;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
 }
 
 uint32_t getPatternIndex()
@@ -1216,7 +1277,7 @@ void setBeatsInPattern(uint32_t beats)
         return;
     g_pPattern->setBeatsInPattern(beats);
     g_seqMan.updateAllSequenceLengths();
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_bDirty = true;
 }
 
@@ -1239,7 +1300,7 @@ void setStepsPerBeat(uint32_t steps)
     if(!g_pPattern)
         return;
     g_pPattern->setStepsPerBeat(steps);
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_bDirty = true;
 }
 
@@ -1248,7 +1309,7 @@ bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration)
     if(!g_pPattern)
         return false;
     if(g_pPattern->addNote(step, note, velocity, duration)) {
-        g_bPatternModified = true;
+        setPatternModified(g_pPattern, true);
         g_bDirty = true;
         return true;
     }
@@ -1259,7 +1320,7 @@ void removeNote(uint32_t step, uint8_t note)
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->removeNote(step, note);
     g_bDirty = true;
 }
@@ -1275,7 +1336,7 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->setNoteVelocity(step, note, velocity);
     g_bDirty = true;
 }
@@ -1292,7 +1353,7 @@ bool addProgramChange(uint32_t step, uint8_t program)
     if(!g_pPattern)
         return false;
     if(g_pPattern->addProgramChange(step, program)) {
-        g_bPatternModified = true;
+        setPatternModified(g_pPattern, true);
         g_bDirty = true;
         return true;
     }
@@ -1305,7 +1366,7 @@ void removeProgramChange(uint32_t step, uint8_t program)
         return;
     if(g_pPattern->removeProgramChange(step))
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_bDirty = true;
 }
 
@@ -1320,7 +1381,7 @@ void transpose(int8_t value)
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->transpose(value);
     g_bDirty = true;
 }
@@ -1329,7 +1390,7 @@ void changeVelocityAll(int value)
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->changeVelocityAll(value);
     g_bDirty = true;
 }
@@ -1338,7 +1399,7 @@ void changeDurationAll(float value)
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->changeDurationAll(value);
     g_bDirty = true;
 }
@@ -1348,7 +1409,7 @@ void clear()
 {
     if(!g_pPattern)
         return;
-    g_bPatternModified = true;
+    setPatternModified(g_pPattern, true);
     g_pPattern->clear();
     g_bDirty = true;
 }
@@ -1416,6 +1477,37 @@ uint8_t getTonic()
     return 0;
 }
 
+void setPatternModified(Pattern* pPattern, bool bModified)
+{
+    if(bModified)
+    {
+        for(uint32_t nBank = 1; nBank < g_seqMan.getBanks(); ++nBank)
+        {
+            for(uint32_t nSequence = 0; nSequence < g_seqMan.getSequencesInBank(nBank); ++nSequence)
+            {
+                Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
+                if(!pSequence)
+                    continue;
+                bool bFound = false;
+                for(uint32_t nTrack = 0; nTrack < getTracksInSequence(nBank, nSequence) && !bFound; ++nTrack)
+                {
+                    Track* pTrack = g_seqMan.getSequence(nBank, nSequence)->getTrack(nTrack);
+                    for(uint32_t nPattern = 0; nPattern < pTrack->getPatterns() && !bFound; ++nPattern)
+                    {
+                        if(pTrack->getPatternByIndex(nPattern) == pPattern)
+                            bFound = true;
+                    }
+                    if(bFound) {
+                        pTrack->setModified();
+                        pSequence->setModified();
+                    }
+                }
+            }
+        }
+    }
+    g_bPatternModified = bModified;
+}
+
 bool isPatternModified()
 {
     if(g_bPatternModified)
@@ -1446,15 +1538,15 @@ uint32_t getLastStep()
     return g_pPattern->getLastStep();
 }
 
+uint32_t getPatternPlayhead()
+{
+    if(!g_pSequence)
+        return 0;
+    return g_pSequence->getPlayPosition() / getClocksPerStep();
+}
+
 // ** Sequence management functions **
 
-uint32_t getPatternPlayhead(uint8_t bank, uint8_t sequence, uint32_t track)
-{
-    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
-    if(!pTrack)
-        return 0;
-    return pTrack->getPatternPlayhead();
-}
 
 bool addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force)
 {
@@ -1587,7 +1679,7 @@ void clearSequence(uint8_t bank, uint8_t sequence)
 void setSequencesInBank(uint8_t bank, uint8_t sequences)
 {
     while(g_bMutex)
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     g_bMutex = true;
     g_seqMan.setSequencesInBank(bank, sequences);
     g_bMutex = false;
@@ -1621,7 +1713,7 @@ void setGroup(uint8_t bank, uint8_t sequence, uint8_t group)
 
 bool hasSequenceChanged(uint8_t bank, uint8_t sequence)
 {
-    return g_seqMan.getSequence(bank, sequence)->hasChanged();
+    return g_seqMan.getSequence(bank, sequence)->isModified();
 }
 
 uint32_t addTrackToSequence(uint8_t bank, uint8_t sequence, uint32_t track)
@@ -1674,9 +1766,16 @@ uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence)
     return g_seqMan.getSequence(bank, sequence)->getTracks();
 }
 
-void enableMidiLearn(uint8_t bank, uint8_t sequence)
+void enableMidiLearn(uint8_t bank, uint8_t sequence, void* cb_object, void (*cbfunc)(void*, uint8_t))
 {
     g_nTriggerLearning = (bank << 8) | sequence;
+    if(g_nTriggerLearning) {
+        g_pMidiLearnObj = cb_object;
+        g_pMidiLearnCb = cbfunc;
+    } else {
+        g_pMidiLearnObj = NULL;
+        g_pMidiLearnCb = NULL;
+    }
 }
 
 uint8_t getMidiLearnBank()
@@ -1903,4 +2002,29 @@ uint32_t getBeatsPerBar()
 void transportSetSyncTimeout(uint32_t timeout)
 {
     jack_set_sync_timeout(g_pJackClient, timeout);
+}
+
+void enableMetronome(bool enable)
+{
+    g_bMetronome = enable;
+    g_nMetronomePtr = -1;
+}
+
+bool isMetronomeEnabled()
+{
+    return g_bMetronome;
+}
+
+void setMetronomeVolume(float level)
+{
+    if(level > 1.0)
+        level = 1.0;
+    if(level < 0.0)
+        level = 0.0;
+    g_fMetronomeLevel = level;
+}
+
+float getMetronomeVolume()
+{
+    return g_fMetronomeLevel;
 }

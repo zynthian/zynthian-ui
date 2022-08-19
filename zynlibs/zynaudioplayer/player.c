@@ -357,16 +357,13 @@ void* file_thread_fn(void * param) {
         srcData.data_in = pBufferIn;
         srcData.data_out = pBufferOut;
         pPlayer->src_ratio = (float)g_samplerate / pPlayer->sf_info.samplerate;
-        if (pPlayer->src_ratio == 0)
+        if(pPlayer->src_ratio == 0)
             pPlayer->src_ratio = 1;
         srcData.src_ratio = pPlayer->src_ratio;
         pPlayer->pitch_shift = 1.0;
         pPlayer->pitch_bend = 0x2000;
         srcData.output_frames = pPlayer->buffer_size / pPlayer->sf_info.channels;
-        if(pPlayer->sf_info.samplerate)
-            pPlayer->frames = pPlayer->sf_info.frames * pPlayer->src_ratio; //!@todo Is this calc required?
-        else
-            pPlayer->frames = pPlayer->sf_info.frames;
+        pPlayer->frames = pPlayer->sf_info.frames * pPlayer->src_ratio;
         pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
         pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
         int nError;
@@ -616,8 +613,8 @@ void set_position(int player_handle, float time) {
         if(frames < pPlayer->loop_start_src)
             frames = pPlayer->loop_start_src;
     } else {
-        if(frames >= pPlayer->frames / pPlayer->src_ratio)
-            frames = pPlayer->frames / pPlayer->src_ratio - 1;
+        if(frames >= pPlayer->frames)
+            frames = pPlayer->frames - 1;
     }
     pPlayer->play_pos_frames = frames;
     pPlayer->file_read_status = SEEKING;
@@ -841,7 +838,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 pPlayer->file_read_status = LOOPING;
             }
         } else {
-            if(pPlayer->play_pos_frames >= pPlayer->frames * pPlayer->src_ratio || eof) {
+            if(pPlayer->play_pos_frames >= pPlayer->frames || eof) {
                 // Reached end of file
                 pPlayer->play_pos_frames = 0;
                 pPlayer->play_state = STOPPING;
@@ -1195,7 +1192,7 @@ int is_debug() {
 unsigned int get_player_count() {
     int count = 0;
     for(int i = 0; i < MAX_PLAYERS; ++i)
-        if(g_players)
+        if(g_players[i])
             ++count;
     return count;
 }

@@ -5,8 +5,8 @@
 # 
 # Zynthian GUI keyboard Class
 # 
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2020-2021 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 # 
@@ -26,7 +26,6 @@
 
 import tkinter
 import logging
-import math
 import tkinter.font as tkFont
 from threading import Timer
 
@@ -37,11 +36,6 @@ from zyngui import zynthian_gui_config
 #------------------------------------------------------------------------------
 # Zynthian Onscreen Keyboard GUI Class
 #------------------------------------------------------------------------------
-
-ZYNPOT_LAYER		= 0
-ZYNPOT_BACK			= 1
-ZYNPOT_SNAPSHOT		= 2
-ZYNPOT_SELECT		= 3
 
 OSK_NUMPAD			= 0
 OSK_QWERTY			= 1
@@ -210,7 +204,7 @@ class zynthian_gui_keyboard():
 			self.function(self.text)
 			return
 		elif key == self.btn_cancel:
-			self.zyngui.zynswitch_defered('S', ZYNPOT_BACK)
+			self.zyngui.zynswitch_defered('S', zynthian_gui_config.ENC_BACK)
 			return
 		elif key == self.btn_delete:
 			if bold:
@@ -261,6 +255,8 @@ class zynthian_gui_keyboard():
 	#	text: Text to display (Default: empty)
 	#	max_len: Maximum quantity of characters in text (Default: no limit)
 	def show(self, function, text="", max_len=None):
+		if self.zyngui.test_mode:
+			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 		self.function = function
 		self.text= text
 		if max_len:
@@ -278,8 +274,8 @@ class zynthian_gui_keyboard():
 	# Function to register encoders
 	def setup_zynpots(self):
 		if lib_zyncore:
-			lib_zyncore.setup_behaviour_zynpot(ZYNPOT_SELECT, 1)
-			lib_zyncore.setup_behaviour_zynpot(ZYNPOT_BACK, 1)
+			lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 1)
+			lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 1)
 
 
 	# Function to handle zynpots events
@@ -287,9 +283,9 @@ class zynthian_gui_keyboard():
 		if not self.shown:
 			return
 		if lib_zyncore:
-			if i == ZYNPOT_SELECT:
+			if i == zynthian_gui_config.ENC_SELECT:
 				self.cursor_hmove(dval)
-			elif i == ZYNPOT_BACK:
+			elif i == zynthian_gui_config.ENC_BACK:
 				self.cursor_vmove(dval)
 
 

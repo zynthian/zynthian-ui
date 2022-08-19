@@ -24,7 +24,6 @@
 #******************************************************************************
 
 import os
-import re
 import sys
 import logging
 
@@ -296,11 +295,11 @@ def set_midi_config():
 	enabled_midi_fb_ports=zynconf.get_enabled_midi_fb_ports(midi_ports)
 
 	# Master Channel Features
-	master_midi_channel = int(os.environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL',16))
+	master_midi_channel = int(os. environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL', 16))
 	master_midi_channel -= 1
-	if master_midi_channel>15:
+	if master_midi_channel > 15:
 		master_midi_channel = 15
-	if master_midi_channel>=0: 
+	if master_midi_channel >= 0:
 		mmc_hex = hex(master_midi_channel)[2]
 	else:
 		mmc_hex = None
@@ -400,13 +399,15 @@ restore_last_state=int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE',False))
 snapshot_mixer_settings=int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS',False))
 show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
 visible_mixer_strips=int(os.environ.get('ZYNTHIAN_UI_VISIBLE_MIXER_STRIPS',0))
-multichannel_recorder=int(os.environ.get('ZYNTHIAN_UI_MUKTICHANNEL_REC', 0))
+multichannel_recorder=int(os.environ.get('ZYNTHIAN_UI_MULTICHANNEL_RECORDER', 0))
+ctrl_graph=int(os.environ.get('ZYNTHIAN_UI_CTRL_GRAPH', 1))
 
 #------------------------------------------------------------------------------
 # Audio Options
 #------------------------------------------------------------------------------
 
 rbpi_headphones=int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES',False))
+enable_dpm=int(os.environ.get('ZYNTHIAN_DPM',True))
 
 #------------------------------------------------------------------------------
 # Networking Options
@@ -428,6 +429,34 @@ audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
 experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES',"").split(',')
 
 #------------------------------------------------------------------------------
+# Sequence states
+#------------------------------------------------------------------------------
+
+PAD_COLOUR_DISABLED = '#2a2a2a'
+PAD_COLOUR_STARTING = '#ffbb00'
+PAD_COLOUR_PLAYING = '#00d000'
+PAD_COLOUR_STOPPING = 'red'
+PAD_COLOUR_STOPPED = [
+	'#000060',			#1 dark
+	'#048C8C',			#2 dark
+	'#996633',			#3 dark
+	'#0010A0',			#4 medium too similar to 12
+	'#BF9C7C',			#5 medium
+	'#999966',			#6 medium
+	'#FC6CB4',			#7 medium
+	'#CC8464',			#8 medium
+	'#4C94CC',			#9 medium
+	'#B454CC',			#10 medium
+	'#B08080',			#11 medium
+	'#0404FC', 			#12 light
+	'#9EBDAC',			#13 light
+	'#FF13FC',			#14 light
+	'#3080C0',			#15 light
+	'#9C7CEC'			#16 light
+]
+
+
+#------------------------------------------------------------------------------
 # X11 Related Stuff
 #------------------------------------------------------------------------------
 
@@ -444,32 +473,31 @@ if "zynthian_gui.py" in sys.argv[0]:
 
 		# Screen Size => Autodetect if None
 		if os.environ.get('DISPLAY_WIDTH'):
-			display_width=int(os.environ.get('DISPLAY_WIDTH'))
+			display_width = int(os.environ.get('DISPLAY_WIDTH'))
 		else:
 			try:
 				display_width = top.winfo_screenwidth()
 			except:
 				logging.warning("Can't get screen width. Using default 320!")
-				display_width=320
+				display_width = 320
 
 		if os.environ.get('DISPLAY_HEIGHT'):
-			display_height=int(os.environ.get('DISPLAY_HEIGHT'))
+			display_height = int(os.environ.get('DISPLAY_HEIGHT'))
 		else:
 			try:
 				display_height = top.winfo_screenheight()
 			except:
 				logging.warning("Can't get screen height. Using default 240!")
-				display_height=240
+				display_height = 240
 
 		# Global font size
-		font_size=int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
+		font_size = int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
 		if not font_size:
 			font_size = int(display_width / 40)
 
 		# Geometric params
 		button_width = display_width // 4
-		buttonbar_height = enable_onscreen_buttons and display_height // 7 or 0
-		if display_width>=800:
+		if display_width >= 800:
 			topbar_height = display_height // 12
 			topbar_fs = int(1.5*font_size)
 			title_y = int(0.1 * topbar_height)
@@ -477,34 +505,43 @@ if "zynthian_gui.py" in sys.argv[0]:
 			topbar_height = display_height // 10
 			topbar_fs = int(1.1*font_size)
 			title_y = int(0.05 * topbar_height)
-		body_height = display_height - topbar_height - buttonbar_height
 
 		# Controllers position and size
+		# pos(row,col)
 		if wiring_layout.startswith("Z2"):
-			ctrl_both_sides = False
-			ctrl_width = display_width // 4
-			ctrl_height = (body_height // 4) -1
-			ctrl_pos=[
-				(1,2,"ne"),
-				(2,2,"ne"),
-				(3,2,"ne"),
-				(4,2,"ne")
-			]
+			layout = {
+				'name': 'Z2',
+				'columns': 2,
+				'rows': 4,
+				'ctrl_pos': [
+					(0,1),
+					(1,1),
+					(2,1),
+					(3,1)
+				],
+				'list_pos': (0,0),
+				'ctrl_orientation': 'horizontal'
+			}
 		else:
-			ctrl_both_sides = True
-			ctrl_width = display_width // 4
-			ctrl_height = body_height // 2
-			ctrl_pos=[
-				(1,0,"nw"),
-				(2,0,"sw"),
-				(1,2,"ne"),
-				(2,2,"se")
-			]
+			layout = {
+				'name': 'V4',
+				'columns': 3,
+				'rows': 2,
+				'ctrl_pos': [
+					(0,0),
+					(1,0),
+					(0,2),
+					(1,2)
+				],
+				'list_pos': (0,1),
+				'ctrl_orientation': 'vertical'
+			}
+
 
 		# Adjust Root Window Geometry
 		top.geometry(str(display_width)+'x'+str(display_height))
-		top.maxsize(display_width,display_height)
-		top.minsize(display_width,display_height)
+		top.maxsize(display_width, display_height)
+		top.minsize(display_width, display_height)
 
 		# Disable cursor for real Zynthian Boxes
 		if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES" and not force_enable_cursor:
@@ -525,8 +562,8 @@ if "zynthian_gui.py" in sys.argv[0]:
 		loading_imgs=[]
 		pil_frame = Image.open("./img/zynthian_gui_loading.gif")
 		fw, fh = pil_frame.size
-		fw2=ctrl_width-8
-		fh2=int(fh*fw2/fw)
+		fw2 = display_width // 4 - 8
+		fh2 = int(fh * fw2 / fw)
 		nframes = 0
 		while pil_frame:
 			pil_frame2 = pil_frame.resize((fw2, fh2), Image.ANTIALIAS)
@@ -578,8 +615,6 @@ if "zynthian_gui.py" in sys.argv[0]:
 		set_midi_config()
 	except Exception as e:
 		logging.error("ERROR configuring MIDI: {}".format(e))
-
-
 
 #------------------------------------------------------------------------------
 # Zynthian GUI variable

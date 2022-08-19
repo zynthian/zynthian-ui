@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Audio-Out Selector Class
 # 
-# Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -48,10 +48,6 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			self.end_layer = self.zyngui.screens['layer'].get_fxchain_ends(layer)[0]
 		except:
 			self.end_layer = None
-
-
-	def set_audio_player(self):
-		self.end_layer = self.zyngui.screens['audio_recorder']
 
 
 	def fill_list(self):

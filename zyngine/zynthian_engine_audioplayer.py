@@ -27,7 +27,6 @@ from collections import OrderedDict
 import logging
 from glob import glob
 from . import zynthian_engine
-from . import zynthian_controller
 from zynlibs.zynaudioplayer import zynaudioplayer
 
 #------------------------------------------------------------------------------
@@ -49,22 +48,24 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.name = "AudioPlayer"
 		self.nickname = "AP"
 		self.jackname = "audioplayer"
-		self.type = "MIDI Synth" # TODO: Should we override this? With what value?
+		self.type = "MIDI Synth"
 		self.file_exts = ["wav","WAV","ogg","OGG","flac","FLAC"]
-
-		self.options['clone'] = False
-		self.options['note_range'] = False
-		self.options['audio_route'] = True
-		self.options['midi_chan'] = True
-		self.options['replace'] = True
-		self.options['drop_pc'] = True
-		self.options['layer_audio_out'] = True
 
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
 		self.start()
 
 		# MIDI Controllers
-		self._ctrls=[]
+		self._ctrls=[
+			['gain', None, 1.0, 2.0],
+			['record', None, 'stopped', ['stopped', 'recording']],
+			['loop', None, 'one-shot', ['one-shot', 'looping']],
+			['transport', None, 'stopped', ['stopped', 'playing']],
+			['position', None, 0.0, 0.0],
+			['left track', None, 0, [['mixdown'], [0]]],
+			['right track', None, 0, [['mixdown'], [0]]],
+			['loop start', None, 0.0, 0.0],
+			['loop end', None, 0.0, 0.0]
+		]		
 
 		# Controller Screens
 		self._ctrl_screens =[]
@@ -93,7 +94,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def stop(self):
 		try:
-			self.player.remove_player()
+			self.player = None
 		except Exception as e:
 			logging.error("Failed to close audio player: %s", e)
 
@@ -121,17 +122,18 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					if glob(walk[0] + "/" + dir + "/*." + ext):
 						banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
 						break
-			for ext in self.file_exts:
-				if glob(self.ex_data_dir + "/*." + ext) or glob(self.ex_data_dir + "/*/*." + ext):
-					banks.append([self.ex_data_dir, None, "USB", None])
-					walk = next(os.walk(self.ex_data_dir))
-					walk[1].sort()
-					for dir in walk[1]:
-						for ext in self.file_exts:
-							if glob(walk[0] + "/" + dir + "/*." + ext):
-								banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
-								break
-					break
+			if os.path.ismount(self.ex_data_dir):
+				for ext in self.file_exts:
+					if glob(self.ex_data_dir + "/*." + ext) or glob(self.ex_data_dir + "/*/*." + ext):
+						banks.append([self.ex_data_dir, None, "USB", None])
+						walk = next(os.walk(self.ex_data_dir))
+						walk[1].sort()
+						for dir in walk[1]:
+							for ext in self.file_exts:
+								if glob(walk[0] + "/" + dir + "/*." + ext):
+									banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
+									break
+						break
 		except:
 			pass
 		return banks
@@ -156,7 +158,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		if self.player.get_filename() == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration():
 			return
 
-		self.player.load(preset[0])
+		good_file = self.player.load(preset[0])
 		dur = self.player.get_duration()
 		self.player.set_position(0)
 		if self.player.is_loop():
@@ -173,38 +175,34 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			record = 'stopped'
 		gain = self.player.get_gain()
 		default_b = 0
+		track_labels = ['mixdown']
+		track_values = [-1]
 		if dur:
-			track_labels = ['mixdown']
-			track_values = [-1]
 			channels = self.player.get_channels()
 			if channels > 1:
 				default_b = 1
 			for track in range(channels):
 				track_labels.append('{}'.format(track + 1))
 				track_values.append(track)
-			self._ctrls=[
-				['gain',None,gain,2.0],
-				['record',None,record,['stopped','recording']],
-				['loop',None,loop,['one-shot','looping']],
-				['transport',None,transport,['stopped','playing']],
-				['position',None,0.0,dur],
-				['left track',None,0,[track_labels,track_values]],
-				['right track',None,default_b,[track_labels,track_values]],
-				['loop start',None,0.0,dur],
-				['loop end',None,dur,dur]
-			]
 			self._ctrl_screens = [
 				['main',['record','loop','transport','position']],
 				['config',['left track','gain','right track']]
 			]
 		else:
-			self._ctrls=[
-				['gain',None,gain,2.0],
-				['record',None,record,['stopped','recording']]
-			]
 			self._ctrl_screens = [
 				['main',['record'],None,None],
 				['config',[None,'gain']]
+		]
+		self._ctrls=[
+			['gain',None,gain,2.0],
+			['record',None,record,['stopped','recording']],
+			['loop',None,loop,['one-shot','looping']],
+			['transport',None,transport,['stopped','playing']],
+			['position',None,0.0,dur],
+			['left track',None,0,[track_labels,track_values]],
+			['right track',None,default_b,[track_labels,track_values]],
+			['loop start',None,0.0,dur],
+			['loop end',None,dur,dur]
 		]
 		layer.refresh_controllers()
 		self.player.set_track_a(0)

@@ -23,12 +23,9 @@
 # 
 #******************************************************************************
 
-import sys
 import logging
 import tkinter
 from datetime import datetime
-from tkinter import font as tkFont
-from PIL import Image, ImageTk
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
@@ -42,56 +39,24 @@ from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
 class zynthian_gui_selector(zynthian_gui_base):
 
+	# Scale for listbox swipe action after-roll
+	swipe_roll_scale = [1,0,1,1,1,1,4,4,4,4,4,4,4,4,4,4] #1,0,1,0,1,0,1,0,
+
+
 	def __init__(self, selcap='Select', wide=False, loading_anim=True):
+
 		super().__init__()
-
-		if not self.buttonbar_config:
-			self.buttonbar_config = [
-				(1, 'BACK\n[mixer]'),
-				(0, ''),
-				(2, ''),
-				(3, 'SELECT\n[options]')
-			]
-
 
 		self.index = 0
 		self.list_data = []
 		self.zselector = None
-		self.zselector_hiden = False
-
-		# Listbox Size
-		self.lb_height=zynthian_gui_config.body_height+1
-		self.wide=wide
-		if self.wide:
-			self.lb_width=zynthian_gui_config.display_width-zynthian_gui_config.ctrl_width
-		else:
-			self.lb_width=zynthian_gui_config.display_width-2*zynthian_gui_config.ctrl_width-2
-
+		self.zselector_hidden = False
+		self.swipe_speed = 0
+		self.list_entry_height = int(1.8 * zynthian_gui_config.font_size) # Set approx. here to avoid errors. Set accurately when list item selected
 		self.listbox_motion_last_dy = 0
-		self.motion_pixels = int(1.0 * zynthian_gui_config.font_size)
-
-		# ListBox's frame
-		self.lb_frame = tkinter.Frame(self.main_frame,
-			width=self.lb_width,
-			height=self.lb_height,
-			bg=zynthian_gui_config.color_bg)
-		if self.wide:
-			if zynthian_gui_config.select_ctrl>1:
-				self.lb_frame.grid(row=1, column=0, rowspan=4, columnspan=2, padx=(0,2), sticky="wn")
-			else:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, columnspan=2, padx=(2,0), sticky="en")
-		else:
-			if zynthian_gui_config.select_ctrl>1:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="wn")
-			else:
-				self.lb_frame.grid(row=1, column=1, rowspan=4, padx=(2,2), sticky="en")
-
-		self.lb_frame.columnconfigure(0, weight=10)
-		self.lb_frame.rowconfigure(0, weight=10)
-		self.lb_frame.grid_propagate(False)
 
 		# ListBox
-		self.listbox = tkinter.Listbox(self.lb_frame,
+		self.listbox = tkinter.Listbox(self.main_frame,
 			font=zynthian_gui_config.font_listbox,
 			bd=7,
 			highlightthickness=0,
@@ -101,9 +66,28 @@ class zynthian_gui_selector(zynthian_gui_base):
 			selectbackground=zynthian_gui_config.color_ctrl_bg_on,
 			selectforeground=zynthian_gui_config.color_ctrl_tx,
 			selectmode=tkinter.SINGLE)
-		self.listbox.grid(sticky="wens")
+
+		# Configure layout
+		for ctrl_pos in zynthian_gui_config.layout['ctrl_pos']:
+			self.main_frame.rowconfigure(ctrl_pos[0], weight=1, uniform='btn_row')
+		self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], weight=3)
+		self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1] + 1, weight=1)
+
+		# Row 4 expands to fill unused space
+		#self.main_frame.rowconfigure(4, weight=1) #TODO: Validate row 4 is still required after chagnes to layout implementation (BW)
+
+		if zynthian_gui_config.layout['columns'] == 3:
+			self.wide = wide
+		else:
+			self.wide = True
+		if self.wide:
+			padx = (0,2)
+		else:
+			padx = (2,2)
+		self.listbox.grid(row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=4, padx=padx, sticky="news")
+
 		# Bind listbox events
-		self.listbox_push_ts = None
+		self.listbox_push_ts = datetime.now()
 		self.listbox.bind("<Button-1>",self.cb_listbox_push)
 		self.listbox.bind("<ButtonRelease-1>",self.cb_listbox_release)
 		self.listbox.bind("<B1-Motion>",self.cb_listbox_motion)
@@ -112,18 +96,14 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 		if loading_anim:
 			# Canvas for loading image animation
-			if zynthian_gui_config.ctrl_both_sides:
-				h = zynthian_gui_config.ctrl_height - 1
-			else:
-				h = 3 * zynthian_gui_config.ctrl_height + 1
 			self.loading_canvas = tkinter.Canvas(self.main_frame,
-				width = zynthian_gui_config.ctrl_width,
-				height = h,
+				width=1, #zynthian_gui_config.fw2, #self.width // 4 - 2,
+				height=1, #zynthian_gui_config.fh2, #self.height // 2 - 1,
 				bd=0,
 				highlightthickness=0,
-				relief='flat',
 				bg = zynthian_gui_config.color_bg)
-			self.loading_canvas.grid(row=1,column=2,sticky="ne")
+			# Position at top of column containing selector
+			self.loading_canvas.grid(row=0, column=zynthian_gui_config.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
 			self.loading_push_ts = None
 			self.loading_canvas.bind("<Button-1>",self.cb_loading_push)
 			self.loading_canvas.bind("<ButtonRelease-1>",self.cb_loading_release)
@@ -136,19 +116,41 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.loading_index = 0
 			self.loading_item = None
 
-		# Init touchbar
-		self.init_buttonbar()
-
 		# Selector Controller Caption
-		self.selector_caption=selcap
+		self.selector_caption = selcap
+
+		self.show_sidebar(True)
 
 
-	def show(self):
-		super().show()
+	def update_layout(self):
+		super().update_layout()
+		if zynthian_gui_config.layout['columns'] == 2:
+			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], minsize=int(self.width * 0.75), weight=3)
+			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1] + 1, minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
+		else:
+			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], minsize=int(self.width * 0.50), weight=2)
+			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1] + 1, minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
+
+
+	def build_view(self):
 		self.fill_list()
 		self.set_selector()
 		self.set_select_path()
-		self.select()
+
+
+	def show_sidebar(self, show):
+		self.sidebar_shown = show
+		if show:
+			if self.zselector and not self.zselector_hidden:
+				self.zselector.grid()
+			if self.loading_canvas:
+				self.loading_canvas.grid()
+		else:
+			if self.zselector and not self.zselector_hidden:
+				self.zselector.grid_remove()
+			if self.loading_canvas:
+				self.loading_canvas.grid_remove()
+		self.update_layout()
 
 
 	def refresh_loading(self):
@@ -176,27 +178,37 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.list_data=[]
 		for i, item in enumerate(self.list_data):
 			self.listbox.insert(tkinter.END, item[2])
+			if item[0] is None:
+				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
 
 
-	def set_selector(self, zs_hiden=True):
-		if self.shown:
-			if self.zselector:
-				self.zselector.zctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'value_min':0, 'value_max':len(self.list_data), 'value':self.index })
-				self.zselector.config(self.zselector.zctrl)
-				self.zselector.show()
-			else:
-				zselector_ctrl=zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
-				self.zselector=zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hiden, selcounter=True)
+	def set_selector(self, zs_hidden=True):
+		self.zselector_hidden = zs_hidden
+		if self.zselector:
+			self.zselector.zctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'value_min':0, 'value_max':len(self.list_data), 'value':self.index })
+			self.zselector.config(self.zselector.zctrl)
+			self.zselector.show()
+		else:
+			zselector_ctrl = zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
+			self.zselector = zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hidden, selcounter=True)
+		if not self.zselector_hidden:
+			self.zselector.grid(row=zynthian_gui_config.layout['ctrl_pos'][3][0], column=zynthian_gui_config.layout['ctrl_pos'][3][1], sticky="news")
 
 
 	def plot_zctrls(self):
+		if self.zselector_hidden:
+			return
 		if self.zselector.zctrl.is_dirty:
 			self.zselector.calculate_plot_values()
 		self.zselector.plot_value()
+		if self.swipe_speed > 0:
+			self.swipe_speed -= 1
+			self.listbox.yview_scroll(self.swipe_dir * self.swipe_roll_scale[self.swipe_speed], tkinter.UNITS)
 
 
 	def fill_list(self):
 		self.fill_listbox()
+		self.select()
 		self.last_index_change_ts = datetime.min
 
 
@@ -208,12 +220,13 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def get_cursel(self):
-		cursel=self.listbox.curselection()
-		if (len(cursel)>0):
-			index=int(cursel[0])
+		cursel = self.listbox.curselection()
+		if (len(cursel) > 0):
+			index = int(cursel[0])
 		else:
 			index=0
 		return index
+
 
 
 	def select_listbox(self, index, see=True):
@@ -227,12 +240,14 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.listbox.selection_set(index)
 			# Set window
 			if see:
-				if index > self.index:
+				if index and index > self.index:
 					self.listbox.see(index + 1)
 				elif index < self.index:
 					self.listbox.see(index - 1)
 				else:
 					self.listbox.see(index)
+				if self.listbox.bbox(index):
+					self.list_entry_height = self.listbox.bbox(index)[3]
 			# Set index value
 			self.index = index
 			self.last_index_change_ts = datetime.now()
@@ -249,17 +264,17 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def skip_separators(self, index):
 		# Skip separator items ...
-		if index>=0 and index<len(self.list_data) and self.list_data[index][0] is None:
+		if index >= 0 and index < len(self.list_data) and self.list_data[index][0] is None:
 			if self.index<=index:
 				if index<len(self.list_data)-1:
-					self.select_listbox(index+1)
+					self.select_listbox(index + 1)
 				else:
-					self.select_listbox(index-1)
+					self.select_listbox(index - 1)
 			elif self.index>index:
 				if index>0:
-					self.select_listbox(index-1)
+					self.select_listbox(index - 1)
 				else:
-					self.select_listbox(index+1)
+					self.select_listbox(index + 1)
 			return True
 		else:
 			return False
@@ -282,15 +297,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.select_action(self.index, t)
 
 
-	# Function to handle *all* switch presses.
-	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#	returns True if action fully handled or False if parent action should be triggered
-	def switch(self, swi, t='S'):
-		if swi in [0,2]:
-			return True
-
-
 	# Function to handle select switch press
 	#	typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, t='S'):
@@ -306,7 +312,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 	#--------------------------------------------------------------------------
 
 	def zynpot_cb(self, i, dval):
-		if self.shown and self.zselector and self.zselector.index==i:
+		if self.shown and self.zselector and self.zselector.index == i:
 			self.zselector.zynpot_cb(dval)
 			if self.index != self.zselector.zctrl.value:
 				self.select(self.zselector.zctrl.value)
@@ -327,41 +333,42 @@ class zynthian_gui_selector(zynthian_gui_base):
 	#--------------------------------------------------------------------------
 
 	def cb_listbox_push(self,event):
-		self.listbox_push_ts=datetime.now()
+		self.listbox_push_ts = datetime.now() # Timestamp of initial touch
 		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
-		self.listbox_motion_y0 = event.y
-		self.listbox_motion_sumy = 0
+		self.listbox_y0 = event.y # Touch y-coord of initial touch
+		self.swiping = False # True if swipe action in progress (disables press action)
+		self.swipe_speed = 0 # Speed of swipe used for rolling after release
+		return "break" # Don't select entry on push
 
 
-	def cb_listbox_release(self,event):
-		if self.listbox_push_ts and self.listbox_motion_sumy==0:
-			dts=(datetime.now()-self.listbox_push_ts).total_seconds()
+	def cb_listbox_release(self, event):
+		dts = (datetime.now() - self.listbox_push_ts).total_seconds()
+		if self.swiping:
+			self.swipe_speed = int(len(self.swipe_roll_scale) - ((dts - 0.02) / 0.06) * len(self.swipe_roll_scale))
+			self.swipe_speed = min(self.swipe_speed, len(self.swipe_roll_scale) - 1)
+			self.swipe_speed = max(self.swipe_speed, 0)
+		else:
+			if dts < 0.03:
+				return # Debounce
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
-			cursel = self.get_cursel()
+			cursel = self.listbox.nearest(event.y)
 			if self.index != cursel:
 				self.select(cursel)
 			if dts < zynthian_gui_config.zynswitch_bold_seconds:
 				self.zyngui.zynswitch_defered('S',3)
-			elif dts>=zynthian_gui_config.zynswitch_bold_seconds and dts<zynthian_gui_config.zynswitch_long_seconds:
+			elif dts >= zynthian_gui_config.zynswitch_bold_seconds and dts < zynthian_gui_config.zynswitch_long_seconds:
 				self.zyngui.zynswitch_defered('B',3)
-		return "break"
 
 
-	def cb_listbox_motion(self,event):
-		if self.listbox_push_ts:
-			dts = (datetime.now() - self.listbox_push_ts).total_seconds()
-			if dts > 0.1: # debounce initial touch
-				dy = self.listbox_motion_y0 - event.y
-				if abs(dy) >= self.motion_pixels:
-					if self.listbox_motion_last_dy==0 or dy * self.listbox_motion_last_dy < 0:
-						self.index += int((dy/abs(dy))*self.motion_pixels)
-					self.listbox_motion_last_dy = dy
-					self.listbox_motion_sumy += abs(dy)
-					self.listbox.yview_scroll(dy // self.motion_pixels, tkinter.UNITS)
-					if self.zselector:
-						self.zselector.zctrl.set_value(self.index)
-					self.listbox_motion_y0 = event.y + dy % self.motion_pixels
-		return "break"
+	def cb_listbox_motion(self, event):
+			dy = self.listbox_y0 - event.y
+			offset = int(dy / self.list_entry_height)
+			if offset:
+				self.swiping = True
+				self.listbox.yview_scroll(offset, tkinter.UNITS)
+				self.swipe_dir = abs(dy) // dy
+				self.listbox_y0 = event.y + self.swipe_dir * (abs(dy) % self.list_entry_height)
+				self.listbox_push_ts = datetime.now() # Use time delta between last motion and release to determine speed of swipe
 
 
 	def cb_listbox_wheel(self, event):

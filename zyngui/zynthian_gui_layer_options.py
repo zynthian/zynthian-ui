@@ -23,13 +23,13 @@
 #
 #******************************************************************************
 
+from collections import OrderedDict
 import sys
 import logging
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from zynlibs.zynmixer import *
 
 #------------------------------------------------------------------------------
 # Zynthian Layer Options GUI Class
@@ -83,10 +83,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.midifx_layers.remove(self.layer)
 
 		# Add root layer options
-		if self.layer.midi_chan==256:
+		if self.layer.midi_chan == 256:
 			eng_options = {
 				'audio_capture': True,
-				'indelible': True
+				'indelible': True,
+				'audio_rec': True
 			}
 		else:
 			eng_options = self.layer.engine.get_options()
@@ -101,37 +102,21 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
 
 			if 'clone' in eng_options and eng_options['clone'] and self.layer.midi_chan is not None:
-				self.list_data.append((self.layer_clone, None, "Clone MIDI to ..."))
+				self.list_data.append((self.layer_clone, None, "Clone MIDI to..."))
 
-			if zynmixer.get_mono(self.layer.midi_chan):
-				self.list_data.append((self.layer_toggle_mono, None, "[x] Audio Mono"))
-			else:
-				self.list_data.append((self.layer_toggle_mono, None, "[  ] Audio Mono"))
-
-			if zynmixer.get_phase(self.layer.midi_chan):
-				self.list_data.append((self.layer_toggle_phase, None, "[x] Phase reverse B"))
-			else:
-				self.list_data.append((self.layer_toggle_phase, None, "[  ] Phase reverse B"))
-
-		if zynthian_gui_config.multichannel_recorder:
-			if self.layer.midi_chan is not None:
-				if self.zyngui.audio_recorder.get_status():
-					# Recording so don't allow change of primed state
-					if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
-						self.list_data.append((None, None, "[x] Recording Primed"))
-					else:
-						self.list_data.append((None, None, "[  ] Recording Primed"))
-				else:
-					if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
-						self.list_data.append((self.layer_toggle_primed, None, "[x] Recording Primed"))
-					else:
-						self.list_data.append((self.layer_toggle_primed, None, "[  ] Recording Primed"))
+			self.list_data.append((self.audio_options, None, "Audio Options..."))
 
 		if 'audio_capture' in eng_options and eng_options['audio_capture']:
 			self.list_data.append((self.layer_audio_capture, None, "Audio Capture"))
 
 		if 'audio_route' in eng_options and eng_options['audio_route']:
 			self.list_data.append((self.layer_audio_routing, None, "Audio Output"))
+
+		if 'audio_rec' in eng_options:
+			if self.zyngui.audio_recorder.get_status():
+				self.list_data.append((self.toggle_recording, None, "[x] Record Audio"))
+			else:
+				self.list_data.append((self.toggle_recording, None, "[  ] Record Audio"))
 
 		if 'midi_route' in eng_options and eng_options['midi_route']:
 			self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
@@ -149,7 +134,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.midi_chan is not None:
 			# Add separator
-			self.list_data.append((None,None,"> MIDI Chain ----------------"))
+			self.list_data.append((None,None,"> MIDI Chain"))
 
 			# Add MIDI-FX chain list
 			if len(self.midifx_layers)>0:
@@ -169,7 +154,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if self.layer.engine.type!='MIDI Tool' and self.layer.midi_chan is not None:
 			# Add separator
-			self.list_data.append((None,None,"> Audio Chain ---------------"))
+			self.list_data.append((None,None,"> Audio Chain"))
 
 			# Add Audio-FX chain list
 			if len(self.audiofx_layers)>0:
@@ -205,12 +190,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
 
 
-	def show(self):
+	def build_view(self):
 		if self.layer is None:
 			self.setup()
 
 		if self.layer is not None and self.layer in self.zyngui.screens['layer'].root_layers:
-			super().show()
+			super().build_view()
 			if self.index>=len(self.list_data):
 				self.index = len(self.list_data)-1
 		else:
@@ -346,24 +331,52 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.zyngui.show_screen('audio_out')
 
 
-	def layer_toggle_mono(self):
-		zynmixer.toggle_mono(self.layer.midi_chan)
-		self.show()
+	def audio_options(self):
+		options = OrderedDict()
+		if self.zyngui.zynmixer.get_mono(self.layer.midi_chan):
+			options['[x] Mono'] = 'mono'
+		else:
+			options['[  ] Mono'] = 'mono'
+		if self.zyngui.zynmixer.get_phase(self.layer.midi_chan):
+			options['[x] Phase reverse'] = 'phase'
+		else:
+			options['[  ] Phase reverse'] = 'phase'
+		if zynthian_gui_config.multichannel_recorder:
+			if self.layer.midi_chan is not None:
+				if self.zyngui.audio_recorder.get_status():
+					# Recording so don't allow change of primed state
+					if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
+						options['[x] Recording Primed'] = None
+					else:
+						options['[  ] Recording Primed'] = None
+				else:
+					if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
+						options['[x] Recording Primed'] = 'prime'
+					else:
+						options['[  ] Recording Primed'] = 'prime'
+
+		self.zyngui.screens['option'].config("Audio options", options, self.audio_menu_cb)
+		self.zyngui.show_screen('option')
 
 
-	def layer_toggle_phase(self):
-		zynmixer.toggle_phase(self.layer.midi_chan)
-		self.show()
-
-
-	def layer_toggle_primed(self):
-		self.zyngui.audio_recorder.toggle_prime(self.layer.midi_chan)
-		self.show()
+	def audio_menu_cb(self, options, params):
+		if params == 'mono':
+			self.zyngui.zynmixer.toggle_mono(self.layer.midi_chan)
+		elif params == 'phase':
+			self.zyngui.zynmixer.toggle_phase(self.layer.midi_chan)
+		elif params == 'prime':
+			self.zyngui.audio_recorder.toggle_prime(self.layer.midi_chan)
+		self.audio_options()
 
 
 	def layer_audio_capture(self):
 		self.zyngui.screens['audio_in'].set_layer(self.layer)
 		self.zyngui.show_screen('audio_in')
+
+
+	def toggle_recording(self):
+		self.zyngui.audio_recorder.toggle_recording()
+		self.fill_list()
 
 
 	def layer_replace(self):
@@ -376,7 +389,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_remove_confirmed(self, params=None):
 		self.zyngui.screens['layer'].remove_root_layer(self.layer_index)
-		self.zyngui.close_screen()
+		self.zyngui.show_screen_reset('audio_mixer')
 
 
 	def layer_midi_unlearn(self):
@@ -385,6 +398,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_midi_unlearn_confirmed(self, params=None):
 		self.layer.midi_unlearn()
+		self.zyngui.zynmixer.midi_unlearn_chan(self.layer.midi_chan)
 
 
 	# FX-Chain management
@@ -404,6 +418,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.zyngui.screens['layer'].remove_layer(i)
 
 		if self.layer in self.zyngui.screens['layer'].root_layers:
+			self.build_view()
 			self.show()
 		else:
 			self.zyngui.close_screen()
@@ -426,6 +441,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.zyngui.screens['layer'].remove_layer(i)
 
 		if self.layer in self.zyngui.screens['layer'].root_layers:
+			self.build_view()
 			self.show()
 		else:
 			self.zyngui.close_screen()

@@ -1,3 +1,1 @@
-from . import zynmixer
-
-zynmixer.init()
+#from . import zynmixer

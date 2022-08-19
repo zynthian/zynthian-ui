@@ -76,9 +76,9 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector):
 		super().fill_list()
 
 
-	def show(self):
+	def build_view(self):
 		if self.sublayer_index is not None:
-			super().show()
+			super().build_view()
 			if self.index>=len(self.list_data):
 				self.index = len(self.list_data)-1
 		else:

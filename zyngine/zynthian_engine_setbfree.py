@@ -286,7 +286,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.manuals_config = bank
 			self.layers[0].load_bank_list()
 			self.layers[0].reset_bank()
-			return False
+			return None
 
 		elif not self.tonewheel_model:
 			self.tonewheel_model = bank[0]

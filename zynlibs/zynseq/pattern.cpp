@@ -321,6 +321,17 @@ StepEvent* Pattern::getEventAt(uint32_t index)
     return &(m_vEvents[index]);
 }
 
+int Pattern::getFirstEventAtStep(uint32_t step)
+{
+    int index;
+    for(index = 0; index < m_vEvents.size(); ++index)
+    {
+        if(m_vEvents[index].getPosition() == step)
+            return index;
+    }
+    return -1;
+}
+
 size_t Pattern::getEvents()
 {
     return m_vEvents.size();

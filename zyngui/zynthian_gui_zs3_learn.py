@@ -28,10 +28,8 @@ import tkinter
 import logging
 
 # Zynthian specific modules
-from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
 #------------------------------------------------------------------------------
 # Zynthian Sub-SnapShot (ZS3) MIDI-learn GUI Class
@@ -43,18 +41,37 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		super().__init__('Program', True)
 		self.index = 0
 
+		self.zs3_waiting_label = tkinter.Label(self.main_frame,
+			text = 'Waiting for MIDI Program Change...',
+			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size-2),
+			fg = zynthian_gui_config.color_ml,
+			bg = zynthian_gui_config.color_panel_bg
+		)
+		if self.wide:
+			padx = (0,2)
+		else:
+			padx = (2,2)
+		self.zs3_waiting_label.grid(row=zynthian_gui_config.layout['list_pos'][0] + 4, column=zynthian_gui_config.layout['list_pos'][1], padx=padx, sticky='ew')
+
+
+	def show(self):
+		self.zyngui.enter_midi_learn()
+		super().show()
+
+
+	def hide(self):
+		if self.shown:
+			self.zyngui.exit_midi_learn()
+			super().hide()
+
 
 	def fill_list(self):
 		self.list_data=[]
-
-		self.index = 0
-		save_title = "Save new ZS3"
-		if self.zyngui.midi_learn_mode:
-			save_title += " (waiting for MIDI ProgChange...)"
-		self.list_data.append(('SAVE_ZS3', None, save_title))
-		self.list_data.append((None, None, "-----------------------------"))
+		self.list_data.append(('SAVE_ZS3', None, "Save as new ZS3"))
 
 		#Add list of programs
+		if len(self.zyngui.screens['layer'].learned_zs3)>0:
+			self.list_data.append((None, None, "> SAVED ZS3s"))
 		for i, state in enumerate(self.zyngui.screens['layer'].learned_zs3):
 			if state['midi_learn_prognum'] is not None:
 				if zynthian_gui_config.midi_single_active_channel:
@@ -64,8 +81,8 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 			else:
 				title = state['zs3_title']
 			self.list_data.append((i, state, title))
-			if i == self.zyngui.screens['layer'].get_last_zs3_index():
-				self.index = i
+			if self.index == 0 and i == self.zyngui.screens['layer'].get_last_zs3_index():
+				self.index = i + 2 # Skip "Save" and separator 
 
 		super().fill_list()
 
@@ -74,30 +91,33 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		self.index = i
 		zs3_index = self.list_data[self.index][0]
 		if isinstance(zs3_index, int):
-			if t=='S':
+			if t  == 'S':
+				self.zyngui.exit_midi_learn()
 				self.zyngui.screens['layer'].restore_zs3(zs3_index)
 				self.zyngui.close_screen()
-				self.zyngui.exit_midi_learn_mode()
-			elif t=='B':
+			elif t == 'B':
+				self.zyngui.exit_midi_learn()
 				self.zyngui.screens['zs3_options'].config(zs3_index)
 				self.zyngui.show_screen('zs3_options')
+				return True
 		elif isinstance(zs3_index, str):
 			if zs3_index == "SAVE_ZS3":
+				self.zyngui.exit_midi_learn()
 				self.zyngui.screens['layer'].save_zs3()
 				self.zyngui.close_screen()
-				self.zyngui.exit_midi_learn_mode()
-
-
-	def back_action(self):
-		self.zyngui.exit_midi_learn_mode()
-		return False
+				return True
 
 
 	def set_select_path(self):
 		if self.zyngui.curlayer:
-			self.select_path.set(self.zyngui.curlayer.get_basepath() + " /PROG MIDI-Learn")
+			self.select_path.set(self.zyngui.curlayer.get_basepath() + "/PROG MIDI-Learn")
 		else:
 			self.select_path.set("PROG MIDI-Learn")
+
+
+	def back_action(self):
+		self.zyngui.exit_midi_learn()
+		return False
 
 
 #-------------------------------------------------------------------------------

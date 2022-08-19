@@ -311,7 +311,7 @@ def midi_autoconnect(force=False):
 
 	#Connect ZynthStep output to ZynMidiRouter:step_in
 	try:
-		jclient.connect("zynthstep:output", zmr_in['step_in'])
+		jclient.connect("zynseq:output", zmr_in['step_in'])
 	except:
 		pass
 
@@ -468,7 +468,7 @@ def midi_autoconnect(force=False):
 
 	#Connect ZynMidiRouter:step_out to ZynthStep input
 	try:
-		jclient.connect(zmr_out['step_out'], "zynthstep:input")
+		jclient.connect(zmr_out['step_out'], "zynseq:input")
 	except:
 		pass
 
@@ -623,6 +623,13 @@ def audio_autoconnect(force=False):
 			connect_only("zynmixer:send_b", mfx_iports_b)
 		except Exception as e:
 			logging.error(e)
+
+	# Connect metronome to aux
+	try:
+		jclient.connect("zynseq:metronome", "zynmixer:input_17a")
+		jclient.connect("zynseq:metronome", "zynmixer:input_17b")
+	except:
+		pass
 
 	# Connect mixer to the System Output
 	try:

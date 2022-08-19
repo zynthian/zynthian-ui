@@ -6,7 +6,7 @@
 # Zynthian Audio Recorder Class
 # 
 # Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2022 Brian Walton <riban@zynthian.org>
+#                         Brian Walton <riban@zynthian.org>
 #
 #******************************************************************************
 # 

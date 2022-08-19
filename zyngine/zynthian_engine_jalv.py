@@ -608,10 +608,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		return gname
 
 
-	def generate_ctrl_screens(self, zctrl_dict=None):
-		if zctrl_dict is None:
-			zctrl_dict=self.zctrl_dict
-
+	def generate_ctrl_screens(self, zctrl_dict):
 		if self._ctrl_screens is None:
 			self._ctrl_screens=[]
 

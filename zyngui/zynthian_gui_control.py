@@ -23,9 +23,7 @@
 # 
 #******************************************************************************
 
-import sys
 import logging
-import tkinter
 import importlib
 from time import sleep
 from pathlib import Path
@@ -47,6 +45,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def __init__(self, selcap='Controllers'):
 		self.mode = None
 
+		self.widgets = {}
+		self.ctrl_screens = {}
+		self.zcontrollers = []
+		self.screen_name = None
+		self.zgui_controllers = []
+		self.midi_learning = False
+
 		self.buttonbar_config = [
 			(1, 'PRESETS\n[mixer]'),
 			(0, 'NEXT CHAIN\n[menu]'),
@@ -54,19 +59,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 			(3, 'PAGE\n[options]')
 		]
 
-		if zynthian_gui_config.ctrl_both_sides:
+		if zynthian_gui_config.layout['columns'] == 3:
 			super().__init__(selcap, False, False)
 		else:
 			super().__init__(selcap, True, False)
 
-
-		self.widgets = {}
-		self.ctrl_screens = {}
-		self.zcontrollers = []
-		self.screen_name = None
-		self.controllers_lock = False
-
-		self.zgui_controllers = []
 
 		# xyselect mode vars
 		self.xyselect_mode = False
@@ -75,20 +72,43 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		self.topbar_bold_touch_action = lambda: self.zyngui.zynswitch_defered('B', 1)
 
+		# Configure layout
+		for ctrl_pos in zynthian_gui_config.layout['ctrl_pos']:
+			self.main_frame.columnconfigure(ctrl_pos[1], weight=1, uniform='ctrl_col')
+			self.main_frame.rowconfigure(ctrl_pos[0], weight=1, uniform='ctrl_row')
+		self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], weight=2)
 
-	def show(self):
+
+	def update_layout(self):
+		super().update_layout()
+		for pos in zynthian_gui_config.layout['ctrl_pos']:
+			self.main_frame.columnconfigure(pos[1], minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
+		
+
+	def build_view(self):
 		if self.zyngui.curlayer:
-			super().show()
+			super().build_view()
 			self.click_listbox()
 		else:
 			self.zyngui.close_screen()
 
 
 	def hide(self):
+		self.zyngui.exit_midi_learn()
 		super().hide()
 		#if self.shown:
 		#	for zc in self.zgui_controllers: zc.hide()
 		#	if self.zselector: self.zselector.hide()
+
+
+	def show_sidebar(self, show):
+		self.sidebar_shown = show
+		for zctrl in self.zgui_controllers:
+			if self.sidebar_shown:
+				zctrl.grid()
+			else:
+				zctrl.grid_remove()
+		self.update_layout()
 
 
 	def fill_list(self):
@@ -136,14 +156,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.mode=='select': super().set_selector(zs_hiden)
 
 
-	def lock_controllers(self):
-		self.controllers_lock = True
-
-
-	def unlock_controllers(self):
-		self.controllers_lock = False
-
-
 	def show_widget(self, layer):
 		module_path = layer.engine.custom_gui_fpath
 		if module_path:
@@ -156,7 +168,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 						module = importlib.util.module_from_spec(spec)
 						spec.loader.exec_module(module)
 						class_ = getattr(module, module_name)
-						self.widgets[widget_name] = class_()
+						self.widgets[widget_name] = class_(self.main_frame)
 					except Exception as e:
 						logging.error("Can't load custom widget {} => {}".format(widget_name, e))
 
@@ -165,10 +177,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 				else:
 					widget_name = None
 
+				if self.wide:
+					padx = (0,2)
+				else:
+					padx = (2,2)
 				for k, widget in self.widgets.items():
 					if k == widget_name:
+						self.listbox.grid_remove()
+						widget.grid(row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=4, padx=padx, sticky="news")
 						widget.show()
 					else:
+						widget.grid_remove()
 						widget.hide()
 				return
 		self.hide_widgets()
@@ -176,13 +195,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def hide_widgets(self):
 		for k, widget in self.widgets.items():
+			widget.grid_remove()
 			widget.hide()
+		self.listbox.grid()
 
 
 	def set_controller_screen(self):
-		# Get Mutex Lock 
-		#self.zyngui.lock.acquire()
-
 		# Get screen info
 		if 0 <= self.index < len(self.list_data):
 			screen_info = self.list_data[self.index]
@@ -190,7 +208,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			screen_layer = screen_info[3]
 
 			# Show the widget for the current sublayer
-			if self.mode=='control':
+			if self.mode == 'control':
 				self.show_widget(screen_layer)
 
 			# Get controllers for the current screen
@@ -198,39 +216,31 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zcontrollers = screen_layer.get_ctrl_screen(screen_title)
 
 		else:
-			self.zcontrollers = None
+			self.zcontrollers = []
+			screen_title = ""
 
 		# Setup GUI Controllers
-		if self.zcontrollers:
-			logging.debug("SET CONTROLLER SCREEN {}".format(screen_title))
-			# Configure zgui_controllers
-			i = 0
-			for ctrl in self.zcontrollers:
+		logging.debug("SET CONTROLLER SCREEN {}".format(screen_title))
+		# Configure zgui_controllers
+		for i in range(4):
+			if i < len(self.zcontrollers):
 				try:
+					ctrl = self.zcontrollers[i]
 					#logging.debug("CONTROLLER ARRAY {} => {} ({})".format(i, ctrl.symbol, ctrl.short_name))
 					self.set_zcontroller(i, ctrl)
-					i += 1
 				except Exception as e:
 					logging.exception("Controller %s (%d) => %s" % (ctrl.short_name, i, e))
 					self.zgui_controllers[i].hide()
-
-			# Empty rest of GUI controllers
-			for i in range(i, 4):
+			else:
 				self.set_zcontroller(i, None)
+			pos = zynthian_gui_config.layout['ctrl_pos'][i]
+			self.zgui_controllers[i].grid(row=pos[0], column=pos[1], pady=(0,1), sticky='news')
 
-			# Set/Restore XY controllers highlight
-			if self.mode == 'control':
-				self.set_xyselect_controllers()
+		# Set/Restore XY controllers highlight
+		if self.mode == 'control':
+			self.set_xyselect_controllers()
 
-		# Empty All GUI controllers
-		else:
-			for i in range(4):
-				self.set_zcontroller(i, None)
-
-		self.lock_controllers() #TODO: Is mutex (fully) implemented
-
-		# Release Mutex Lock
-		#self.zyngui.lock.release()
+		self.update_layout()
 
 
 	def set_zcontroller(self, i, ctrl):
@@ -316,6 +326,25 @@ class zynthian_gui_control(zynthian_gui_selector):
 			return True
 
 
+	def previous_page(self, wrap=False):
+		i = self.index - 1
+		if i < 0:
+			i = 0
+		self.select(i)
+		self.click_listbox()
+
+
+	def next_page(self, wrap=False):
+		i = self.index + 1
+		if i >= len(self.list_data):
+			if wrap:
+				i = 0
+			else:
+				i = len(self.list_data) - 1
+		self.select(i)
+		self.click_listbox()
+
+
 	def select_action(self, i, t='S'):
 		self.set_mode_control()
 
@@ -331,31 +360,24 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.zyngui.screens['control_xy'].hide()
 			else:
 				self.unset_xyselect_mode()
+			self.build_view()
 			self.show()
 			return True
 		# If in MIDI-learn mode, back to instrument control
 		elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
-			self.zyngui.exit_midi_learn_mode()
+			self.zyngui.exit_midi_learn()
 			return True
 		else:
 			return False
 
 
 	def arrow_up(self):
-		i = self.index - 1
-		if i < 0:
-			i = 0
-		self.select(i)
-		self.click_listbox()
+		self.previous_page()
 		return True
 
 
 	def arrow_down(self):
-		i = self.index + 1
-		if i >= len(self.list_data):
-			i = 0
-		self.select(i)
-		self.click_listbox()
+		self.next_page()
 		return True
 
 
@@ -393,7 +415,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		elif swi == 2:
 			if t == 'S':
 				if self.mode == 'control':
-					self.zyngui.cuia_learn()
+					self.zyngui.toggle_midi_learn()
 				return True
 
 		elif swi == 3:
@@ -402,7 +424,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					if len(self.list_data) > 3:
 						self.set_mode_select()
 					else:
-						self.arrow_down()
+						self.next_page(True)
 				elif self.mode == 'select':
 					self.click_listbox()
 			elif t == 'B':
@@ -457,14 +479,33 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return self.zgui_controllers[i]
 
 
-	def refresh_midi_bind(self):
-		learning = False
-		for zgui_controller in self.zgui_controllers:
-			learning |= zgui_controller.set_midi_bind()
-		if learning:
-			self.set_buttonbar_label(0, "CANCEL")
+	def enter_midi_learn(self):
+		self.midi_learning = True
+		self.set_buttonbar_label(0, "CANCEL")
+		self.refresh_midi_bind()
+		self.set_select_path()
+
+
+	def exit_midi_learn(self):
+		self.midi_learning = False
+		self.refresh_midi_bind()
+		self.set_select_path()
+		self.set_buttonbar_label(0, "PRESETS\n[mixer]")
+
+
+	def toggle_midi_learn(self):
+		if self.zyngui.midi_learn_mode:
+			self.zyngui.exit_midi_learn()
+			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
+				self.zyngui.screens['zs3_learn'].index = 0
+				self.zyngui.show_screen("zs3_learn")
 		else:
-			self.set_buttonbar_label(0, "PRESETS\n[mixer]")
+			self.zyngui.enter_midi_learn()
+
+
+	def refresh_midi_bind(self):
+		for zgui_controller in self.zgui_controllers:
+			zgui_controller.set_midi_bind()
 
 
 	def plot_zctrls(self, force=False):
@@ -487,12 +528,14 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def midi_learn(self, i):
-		if self.mode == 'control':
+		if self.mode == 'control' and self.zgui_controllers[i].zctrl:
 			self.zgui_controllers[i].zctrl.init_midi_learn()
+			self.refresh_midi_bind()
+			self.set_select_path()
 
 
 	def midi_unlearn(self, i):
-		if self.mode == 'control':
+		if self.mode == 'control' and self.zgui_controllers[i].zctrl:
 			self.zgui_controllers[i].zctrl.midi_unlearn()
 
 

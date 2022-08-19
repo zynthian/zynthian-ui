@@ -204,12 +204,11 @@ size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* 
         if(nEventType & 2)
         {
             // Change of state
-            uint8_t nTallyChannel = getTriggerChannel();
             uint8_t nTrigger = getTriggerNote(it->first, it->second);
-            if(nTallyChannel < 16 && nTrigger < 128)
+            if(m_nTallyChannel < 16 && nTrigger < 128)
             {
                 MIDI_MESSAGE* pEvent = new MIDI_MESSAGE();
-                pEvent->command = MIDI_NOTE_ON | nTallyChannel;
+                pEvent->command = MIDI_NOTE_ON | m_nTallyChannel;
                 pEvent->value1 = nTrigger;
                 switch(pSequence->getPlayState())
                 {
@@ -295,6 +294,19 @@ void SequenceManager::setTriggerChannel(uint8_t channel)
         m_nTriggerChannel = 0xFF;
     else
         m_nTriggerChannel = channel;
+}
+
+uint8_t SequenceManager::getTallyChannel()
+{
+    return m_nTallyChannel;
+}
+
+void SequenceManager::setTallyChannel(uint8_t channel)
+{
+    if(channel > 15)
+        m_nTallyChannel = 0xFF;
+    else
+        m_nTallyChannel = channel;
 }
 
 uint16_t SequenceManager::getTriggerSequence(uint8_t note)

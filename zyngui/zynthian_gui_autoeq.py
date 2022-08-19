@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Auto-EQ Class
 # 
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -37,6 +37,7 @@ from zyngui import zynthian_gui_config
 # Zynthian Auto-EQ GUI Class
 #------------------------------------------------------------------------------
 
+#TODO: Derive autoeq from base gui class
 class zynthian_gui_autoeq():
 
 	def __init__(self):
@@ -91,8 +92,14 @@ class zynthian_gui_autoeq():
 		self.start_autoeq_thread()
 
 
+	def build_view(self):
+		pass
+
+
 	def show(self):
 		if not self.shown:
+			if self.zyngui.test_mode:
+				logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 			self.shown=True
 			self.main_frame.grid()
 

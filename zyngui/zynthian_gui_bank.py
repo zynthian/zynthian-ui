@@ -38,12 +38,6 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_bank(zynthian_gui_selector):
 
 	def __init__(self):
-		self.buttonbar_config = [
-			(1, 'CONTROL\n[mixer]'),
-			(0, '\n[menu]'),
-			(2, 'FAVORITES\n[snapshot]'),
-			(3, 'PRESETS\n[options]')
-		]
 		super().__init__('Bank', True)
 
     
@@ -56,24 +50,31 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		super().fill_list()
 
 
-	def show(self):
+	def build_view(self):
 		if self.zyngui.curlayer:
 			self.index = self.zyngui.curlayer.get_bank_index()
 			if self.zyngui.curlayer.get_show_fav_presets():
-				if len(self.zyngui.curlayer.get_preset_favs())>0:
+				if len(self.zyngui.curlayer.get_preset_favs()) > 0:
 					self.index = 0
 				else:
 					self.curlayer.set_show_fav_presets(False)
-			super().show()
+			super().build_view()
 		else:
 			self.zyngui.close_screen()
 
 
+	def show(self):
+		if len(self.list_data) > 0:
+			super().show()
+
+
 	def select_action(self, i, t='S'):
-		if self.list_data[i][0] == '*FAVS*':
+		if self.list_data and self.list_data[i][0] == '*FAVS*':
 			self.zyngui.curlayer.set_show_fav_presets(True)
 		else:
-			self.zyngui.curlayer.set_bank(i)
+			if self.zyngui.curlayer.set_bank(i) is None:
+				self.build_view()
+				return
 			self.zyngui.curlayer.set_show_fav_presets(False)
 
 		self.zyngui.show_screen('preset')

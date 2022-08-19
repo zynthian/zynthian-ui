@@ -23,23 +23,22 @@
 #
 #******************************************************************************
 
-import sys
 import time
 import logging
 import tkinter
 from threading import Timer
 from tkinter import font as tkFont
-from PIL import Image, ImageTk
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyngine import zynthian_controller
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 
 #------------------------------------------------------------------------------
 # Zynthian Base GUI Class: Status Bar + Basic layout & events
 #------------------------------------------------------------------------------
 
-class zynthian_gui_base:
+class zynthian_gui_base(tkinter.Frame):
 
 	METER_NONE	= 0
 	METER_DPM	= 1
@@ -49,14 +48,30 @@ class zynthian_gui_base:
 	buttonbar_config = []
 
 	def __init__(self):
+		tkinter.Frame.__init__(self,
+			zynthian_gui_config.top,
+			width=zynthian_gui_config.display_width,
+			height=zynthian_gui_config.display_height)
+		self.grid_propagate(False)
+		self.rowconfigure(1, weight=1)
+		self.columnconfigure(0, weight=1)
 		self.shown = False
 		self.zyngui = zynthian_gui_config.zyngui
 
-		self.buttonbar_button = [None, None, None, None]
+		self.topbar_allowed = True
+		self.topbar_height = zynthian_gui_config.topbar_height
+		self.sidebar_shown = True
+		self.buttonbar_button = []
 
 		# Geometry vars
-		self.width=zynthian_gui_config.display_width
-		self.height=zynthian_gui_config.display_height
+		self.buttonbar_height = zynthian_gui_config.display_height // 7
+		self.width = zynthian_gui_config.display_width
+		#TODO: Views should use current height if they need dynamic changes else grow rows to fill main_frame
+		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
+			self.height = zynthian_gui_config.display_height - self.topbar_height - self.buttonbar_height
+		else:
+			self.height = zynthian_gui_config.display_height - self.topbar_height
+
 
 		#Status Area Canvas Objects
 		self.status_cpubar = None
@@ -74,8 +89,8 @@ class zynthian_gui_base:
 		self.status_midi_clock = None
 
 		#Status Area Parameters
-		self.status_h = zynthian_gui_config.topbar_height
-		self.status_l = int(1.8*zynthian_gui_config.topbar_height)
+		self.status_h = self.topbar_height
+		self.status_l = int(1.8*self.topbar_height)
 		self.status_rh = max(2,int(self.status_h/4))
 		self.status_fs = int(self.status_h/3)
 		self.status_lpad = self.status_fs
@@ -90,38 +105,34 @@ class zynthian_gui_base:
 		self.dpm_scale_lh = int(self.dpm_over * self.status_l)
 
 		#Title Area parameters
-		self.title_canvas_width=zynthian_gui_config.display_width-self.status_l-self.status_lpad-2
+		self.title_canvas_width = zynthian_gui_config.display_width - self.status_l - self.status_lpad - 2
 		self.select_path_font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=zynthian_gui_config.font_topbar[1])
-		self.select_path_width=0
-		self.select_path_offset=0
-		self.select_path_dir=2
-
-		# Main Frame
-		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.display_height,
-			bg=zynthian_gui_config.color_bg)
+		self.select_path_width = 0
+		self.select_path_offset = 0
+		self.select_path_dir = 2
 
 		# Topbar's frame
-		self.tb_frame = tkinter.Frame(self.main_frame,
+		self.tb_frame = tkinter.Frame(self,
 			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.topbar_height,
+			height=self.topbar_height,
 			bg=zynthian_gui_config.color_bg)
-		self.tb_frame.grid(row=0, column=0, columnspan=3)
 		self.tb_frame.grid_propagate(False)
+		self.tb_frame.grid(row=0)
 		self.tb_frame.grid_columnconfigure(0, weight=1)
+
 		# Setup Topbar's Callback
 		self.tb_frame.bind("<Button-1>", self.cb_topbar)
 		self.tb_frame.bind("<ButtonRelease-1>", self.cb_topbar_release)
 		self.topbar_timer = None
 
 		# Title
+		self.title = ""
 #		font=tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
 		font=zynthian_gui_config.font_topbar
 		self.title_fg = zynthian_gui_config.color_panel_tx
 		self.title_bg = zynthian_gui_config.color_header_bg
 		self.title_canvas = tkinter.Canvas(self.tb_frame,
-			height=zynthian_gui_config.topbar_height,
+			height=self.topbar_height,
 			bd=0,
 			highlightthickness=0,
 			bg = self.title_bg)
@@ -157,11 +168,18 @@ class zynthian_gui_base:
 			bg = zynthian_gui_config.color_bg)
 		self.status_canvas.grid(row=0, column=1, sticky="ens", padx=(self.status_lpad,0))
 
-		# Configure Topbar's Frame column widths
-		self.tb_frame.grid_columnconfigure(0, minsize=self.title_canvas_width)
+		# Topbar parameter editor
+		self.param_editor_zctrl = None
+
+		# Main Frame
+		self.main_frame = tkinter.Frame(self,
+			bg=zynthian_gui_config.color_bg)
+		self.main_frame.propagate(False)
+		self.main_frame.grid(row=1, sticky='news')
 
 		# Init touchbar
-		#self.init_buttonbar()
+		self.buttonbar_frame = None
+		self.init_buttonbar()
 
 		self.button_push_ts = 0
 
@@ -170,12 +188,12 @@ class zynthian_gui_base:
 		else:
 			self.meter_mode = self.METER_DPM
 
-		self.topbar_touch_action = lambda: self.zyngui.zynswitch_defered('S',1)
-		self.topbar_bold_touch_action = lambda: self.zyngui.zynswitch_defered('B',0)
-
 		# Update Title
 		self.set_select_path()
 		self.cb_scroll_select_path()
+
+		self.disable_param_editor() #TODO: Consolidate set_title and set_select_path, etc.
+		self.bind("<Configure>", self.on_size)
 
 
 	# Function to update title
@@ -210,6 +228,14 @@ class zynthian_gui_base:
 			self.label_select_path.config(bg=self.title_bg)
 
 
+	# Function called when frame resized
+	def on_size(self, event):
+		self.update_layout()
+		return
+		self.width = self.main_frame.winfo_width()
+		self.height = self.main_frame.winfo_height()
+
+
 	# Function to revert title after toast
 	def on_title_timeout(self):
 		if self.title_timer:
@@ -218,32 +244,52 @@ class zynthian_gui_base:
 		self.set_title(self.title)
 
 
-	def init_buttonbar(self):
-		# Touchbar frame
-		if not zynthian_gui_config.enable_onscreen_buttons:
+	# Initialise button bar
+	#	config: Buttonbar config (default is None to use default configuration hardcoded per view)
+	def init_buttonbar(self, config=None):
+		if self.buttonbar_frame:
+			self.buttonbar_frame.grid_forget()
+		if config is None:
+			config = self.buttonbar_config    			
+		if not zynthian_gui_config.enable_onscreen_buttons or not config:
 			return
 
-		self.buttonbar_frame = tkinter.Frame(self.main_frame,
+		self.buttonbar_frame = tkinter.Frame(self,
 			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.buttonbar_height,
+			height=self.buttonbar_height,
 			bg=zynthian_gui_config.color_bg)
-		self.buttonbar_frame.grid(row=3, column=0, columnspan=3, padx=(0,0), pady=(2,0))
+		self.buttonbar_frame.grid(row=2, padx=(0,0), pady=(2,0))
 		self.buttonbar_frame.grid_propagate(False)
-		self.buttonbar_frame.grid_rowconfigure(
-			0, minsize=zynthian_gui_config.buttonbar_height, pad=0)
-		for i in range(4):
+		self.buttonbar_frame.grid_rowconfigure(0, minsize=self.buttonbar_height, pad=0)
+		for i in range(max(4, len(config))):
 			self.buttonbar_frame.grid_columnconfigure(
-				i, minsize=zynthian_gui_config.button_width, pad=0)
-			self.add_button(i, self.buttonbar_config[i][0], self.buttonbar_config[i][1])
+				i,
+				weight=1,
+				uniform='buttonbar',
+				pad=0)
+			try:
+				self.add_button(i, config[i][0], config[i][1])
+			except:
+				pass
 
 
+	# Set the label for a button in the buttonbar
+	#	column: Column / button index
+	#	label: Text to show on label
 	def set_buttonbar_label(self, column, label):
-		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_button[column]:
+		if len(self.buttonbar_button) > column and self.buttonbar_button[column]:
 			self.buttonbar_button[column]['text'] = label
 
 
-	def add_button(self, column, index, label):
+	# Add a button to the buttonbar
+	#	column: Column / button index
+	#	cuia: Action to trigger when button pressed
+	#	label: Text to show on button
+	def add_button(self, column, cuia, label):
 		# Touchbar frame
+		for new_column in range(len(self.buttonbar_button), column + 1):
+				self.buttonbar_button.append(None)
+    		
 		self.buttonbar_button[column] = select_button = tkinter.Button(
 			self.buttonbar_frame,
 			bg=zynthian_gui_config.color_panel_bg,
@@ -257,32 +303,38 @@ class zynthian_gui_base:
 			relief='flat',
 			font=zynthian_gui_config.font_buttonbar,
 			text=label)
-		if column==0:
-			padx = (0,1)
-		elif column==3:
-			padx = (1,0)
+		if column == 0:
+			padx = (0,0)
 		else:
-			padx = (1,1)
+			padx = (2,0)
 		select_button.grid(row=0, column=column, sticky='nswe', padx=padx)
-		select_button.bind('<ButtonPress-1>', lambda e: self.button_down(index, e))
-		select_button.bind('<ButtonRelease-1>', lambda e: self.button_up(index, e))
+		select_button.bind('<ButtonPress-1>', lambda e: self.button_down(e))
+		select_button.bind('<ButtonRelease-1>', lambda e: self.button_up(cuia, e))
 
 
-	def button_down(self, index, event):
+	# Handle buttonbar button press
+	#	event: Button event (not used)
+	def button_down(self, event):
 		self.button_push_ts=time.monotonic()
 
 
-	def button_up(self, index, event):
-		t = 'S'
-		if self.button_push_ts:
-			dts=(time.monotonic()-self.button_push_ts)
-			if dts<0.3:
-				t = 'S'
-			elif dts>=0.3 and dts<2:
-				t = 'B'
-			elif dts>=2:
-				t = 'L'
-		self.zyngui.zynswitch_defered(t,index)
+	# Handle buttonbar button release
+	#	cuia: Action to trigger
+	#	event: Button event (not used)
+	def button_up(self, cuia, event):
+		if isinstance(cuia, int):
+			t = 'S'
+			if self.button_push_ts:
+				dts=(time.monotonic()-self.button_push_ts)
+				if dts<0.3:
+					t = 'S'
+				elif dts>=0.3 and dts<2:
+					t = 'B'
+				elif dts>=2:
+					t = 'L'
+			self.zyngui.zynswitch_defered(t, cuia)
+		else:
+			self.zyngui.callable_ui_action(cuia)
 
 
 	# Default topbar touch callback
@@ -299,6 +351,16 @@ class zynthian_gui_base:
 			self.topbar_touch_action()
 
 
+	# Default topbar short touch action
+	def topbar_touch_action(self):
+		self.zyngui.zynswitch_defered('S', 1)
+
+
+	# Default topbar bold touch action
+	def topbar_bold_touch_action(self):
+		self.zyngui.zynswitch_defered('B', 0)
+
+
 	# Default topbar bold press callback
 	def cb_topbar_bold(self, params=None):
 		if self.topbar_timer:
@@ -307,26 +369,56 @@ class zynthian_gui_base:
 			self.topbar_bold_touch_action()
 
 
+	# Draw screen ready to display (like double buffer) - Override in subclass
+	def build_view(self):
+		pass
+
+
+	# Show the view
 	def show(self):
 		if not self.shown:
-			self.shown=True
-			self.main_frame.grid()
-
+			if self.zyngui.test_mode:
+				logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
+			self.shown = True
+			self.grid(row=0, column=0, sticky='nsew')
+			self.propagate(False)
 		self.main_frame.focus()
 
 
+	# Hide the view
 	def hide(self):
 		if self.shown:
 			self.shown=False
-			self.main_frame.grid_forget()
+			self.grid_remove()
 
 
-	def is_shown(self):
-		try:
-			self.main_frame.grid_info()
-			return True
-		except:
-			return False
+	# Show topbar (if allowed)
+	# show: True to show, False to hide
+	def show_topbar(self, show):
+		if self.topbar_allowed:
+			if show:
+				self.topbar_height = zynthian_gui_config.topbar_height
+				self.tb_frame.grid()
+			else:
+				self.topbar_height = 0
+				self.tb_frame.grid_remove()
+			self.update_layout()
+
+
+	# Show buttonbar (if configured)
+	# show: True to show, False to hide
+	def show_buttonbar(self, show):
+		if show:
+			self.init_buttonbar()
+		elif self.buttonbar_frame:
+			self.buttonbar_frame.grid_remove()
+		self.update_layout()
+
+
+	# Show sidebar (override in derived classes if required)
+	# show: True to show, False to hide
+	def show_sidebar(self, show):
+		pass
 
 
 	def refresh_status(self, status={}):
@@ -439,9 +531,6 @@ class zynthian_gui_base:
 				except Exception as e:
 					logging.error("%s" % e)
 
-			#status['xrun']=True
-			#status['audio_recorder']='PLAY'
-
 			# Display error flags
 			flags = ""
 			color = zynthian_gui_config.color_status_error
@@ -542,52 +631,47 @@ class zynthian_gui_base:
 	def refresh_loading(self):
 		pass
 
+
 	#--------------------------------------------------------------------------
 	# Zynpot Callbacks (rotaries!) & CUIA
 	#--------------------------------------------------------------------------
 
 	def zynpot_cb(self, i, dval):
-		pass
+		if self.param_editor_zctrl:
+			if i == zynthian_gui_config.ENC_SELECT:
+				self.param_editor_zctrl.nudge(dval)
+			elif i == zynthian_gui_config.ENC_SNAPSHOT:
+				self.param_editor_zctrl.nudge(dval * 10)
+			else:
+				return True
+			if self.param_editor_zctrl.labels:
+				self.select_path.set("{}: {}".format(self.param_editor_zctrl.name, self.param_editor_zctrl.get_value2label()))
+			else:
+				self.select_path.set(self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
+			return True
 
 
-	# Function to handle CUIA SELECT_UP command (reversed to drive down screen with DOWN action)
-	def select_up(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+	# Function to handle switch press
+	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#   returns True if action fully handled or False if parent action should be triggered
+	def switch(self, switch, type):
+		if self.param_editor_zctrl:
+			if switch == zynthian_gui_config.ENC_SELECT:
+				if type == 'S':
+					if self.param_editor_assert_cb:
+						self.param_editor_assert_cb(self.param_editor_zctrl.value)
+					self.disable_param_editor()
+				elif type == 'B':
+					self.param_editor_zctrl.set_value(self.param_editor_zctrl.value_default)
+				self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
+				return True
+			
+			elif switch == zynthian_gui_config.ENC_BACK:
+				self.disable_param_editor()
+				if type == 'S':
+					return True
 
-
-	# Function to handle CUIA SELECT_DOWN command
-	def select_down(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
-
-
-	# Function to handle CUIA BACK_UP command
-	def back_up(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
-
-
-	# Function to handle CUIA BACK_DOWN command
-	def back_down(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
-
-
-	# Function to handle CUIA LAYER_UP command
-	def layer_up(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_LAYER, 1)
-
-
-	# Function to handle CUIA LAYER_DOWN command
-	def layer_down(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_LAYER, -1)
-
-
-	# Function to handle CUIA SNAPSHOT_UP command
-	def snapshot_up(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, 1)
-
-
-	# Function to handle CUIA SNAPSHOT_DOWN command
-	def snapshot_down(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, -1)
 
 	#--------------------------------------------------------------------------
 	# Keyboard & Mouse/Touch Callbacks
@@ -632,20 +716,20 @@ class zynthian_gui_base:
 
 
 	def dscroll_select_path(self):
-		if self.select_path_width>self.title_canvas_width:
+		if self.select_path_width > self.title_canvas_width:
 			#Scroll label
 			self.select_path_offset += self.select_path_dir
 			self.label_select_path.place(x=-self.select_path_offset, y=self.title_y)
 
 			#Change direction ...
-			if self.select_path_offset > (self.select_path_width-self.title_canvas_width):
+			if self.select_path_offset > (self.select_path_width - self.title_canvas_width):
 				self.select_path_dir = -2
 				return True
 			elif self.select_path_offset<=0:
 				self.select_path_dir = 2
 				return True
 
-		elif self.select_path_offset!=0:
+		elif self.select_path_offset != 0:
 			self.select_path_offset = 0
 			self.select_path_dir = 2
 			self.label_select_path.place(x=0, y=self.title_y)
@@ -656,5 +740,53 @@ class zynthian_gui_base:
 	def set_select_path(self):
 		pass
 
+
+	# Function to update display, e.g. after geometry changes
+	# Override if required
+	def update_layout(self):
+		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
+			self.height = zynthian_gui_config.display_height - self.topbar_height - self.buttonbar_height
+		else:
+			self.height = zynthian_gui_config.display_height - self.topbar_height
+
+
+	# Function to enable the top-bar parameter editor
+	#	engine: Object to recieve send_controller_value callback
+	#	symbol: String identifying the parameter
+	#	name: Parameter human-friendly name
+	#	options: zctrl options dictionary
+	#	assert_cb: Optional function to call when editor closed with assert: fn(self,value)
+	#	Populates button bar with up/down buttons
+	def enable_param_editor(self, engine, symbol, name, options, assert_cb=None):
+		self.disable_param_editor()
+		self.param_editor_zctrl = zynthian_controller(engine, symbol, name, options)
+		self.param_editor_assert_cb = assert_cb
+		if not self.param_editor_zctrl.is_integer:
+			if self.param_editor_zctrl.nudge_factor < 0.1:
+				self.format_print = "{}: {:.2f}"
+			else:
+				self.format_print = "{}: {:.1f}"
+		else:
+			self.format_print = "{}: {}"
+
+		self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
+		self.init_buttonbar([("SELECT_DOWN", "-1"),("SELECT_UP", "+1"),("SNAPSHOT_DOWN", "-10"),("SNAPSHOT_UP", "+10"),(3,"OK")])
+		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
+		self.update_layout()
+	
+
+	# Function to disable paramter editor
+	def disable_param_editor(self):
+		if not self.param_editor_zctrl:
+			return
+		del self.param_editor_zctrl
+		self.param_editor_zctrl = None
+		self.param_editor_assert_cb = None
+		self.init_buttonbar()
+		self.set_title(self.title)
+		try:
+			self.update_layout()
+		except:
+			pass
 
 #------------------------------------------------------------------------------

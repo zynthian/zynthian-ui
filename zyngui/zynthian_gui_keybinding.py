@@ -5,7 +5,7 @@
 # 
 # Zynthian Keyboard Binding Class
 # 
-# Copyright (C) 2019 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2019-2022 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 # 
@@ -165,6 +165,12 @@ class zynthian_gui_keybinding:
 			return self.rmap[rkey]
 
 		except:
+			if rkey == '0^down': return('ARROW_DOWN')
+			elif rkey == '0^up': return('ARROW_UP')
+			elif rkey == '0^left': return('ARROW_LEFT')
+			elif rkey == '0^right': return('ARROW_RIGHT')
+			elif rkey == '0^return': return('SWITCH_SELECT')
+			elif rkey == '0^escape': return('BACK')
 			logging.debug("Key not configured")
 
 

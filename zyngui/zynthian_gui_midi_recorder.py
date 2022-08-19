@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI MIDI Recorder Class
 # 
-# Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -29,6 +29,7 @@ from threading import Timer
 from time import sleep
 from os.path import isfile, join, basename
 import ctypes
+import tkinter
 
 # Zynthian specific modules
 import zynconf
@@ -36,8 +37,6 @@ from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
-from zynlibs.zynseq import zynseq
-from zynlibs.zynseq.zynseq import libseq
 from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)
 from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library 
 
@@ -58,14 +57,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		super().__init__('MIDI Recorder', True)
 
-		self.bpm_zctrl = zynthian_controller(self, "bpm", "BPM", {
-			'value': 120,
-			'value_min': 20,
-			'value_max': 400,
-			'is_toggle': False,
-			'is_integer': False,
-			'nudge_factor': 0.1
-		})
 		self.bpm_zgui_ctrl = None
 
 		try:
@@ -106,8 +97,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		return status
 
 
-	def show(self):
-		super().show()
+	def build_view(self):
+		super().build_view()
 		if libsmf.getPlayState():
 			self.show_playing_bpm()
 
@@ -237,7 +228,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
-				self.zyngui.replace_screen('audio_recorder')
 				return True
 
 
@@ -314,10 +304,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			zynsmf.load(self.smf_player,fpath)
 			tempo = libsmf.getTempo(self.smf_player, 0)
 			logging.info("STARTING MIDI PLAY '{}' => {}BPM".format(fpath, tempo))
-			libseq.setTempo(ctypes.c_double(tempo)) # TODO This doesn't work!!
+			self.zyngui.zynseq.set_tempo(tempo)
 			libsmf.startPlayback()
-			zynseq.transport_start("zynsmf")
-#			libseq.transportLocate(0)
+			self.zyngui.zynseq.transport_start("zynsmf")
+#			self.zyngui.zynseq.libseq.transportLocate(0)
 			self.current_playback_fpath=fpath
 			self.show_playing_bpm()
 			self.smf_timer = Timer(interval = 1, function=self.check_playback)
@@ -334,7 +324,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def end_playing(self):
 		logging.info("ENDING MIDI PLAY ...")
-		zynseq.transport_stop("zynsmf")
+		self.zyngui.zynseq.transport_stop("zynsmf")
 		if self.smf_timer:
 			self.smf_timer.cancel()
 			self.smf_timer = None
@@ -369,23 +359,36 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def show_playing_bpm(self):
-		self.bpm_zctrl.set_value(libseq.getTempo())
 		if self.bpm_zgui_ctrl:
-			self.bpm_zgui_ctrl.config(self.bpm_zctrl)
+			self.bpm_zgui_ctrl.config(self.zyngui.zynseq.zctrl_tempo)
 			self.bpm_zgui_ctrl.show()
+			self.bpm_zgui_ctrl.grid()
+			self.loading_canvas.grid_remove()
 		else:
-			self.bpm_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.bpm_zctrl)
+			if zynthian_gui_config.layout['name'] == 'Z2':
+				bmp_ctrl_index = 0
+			else:
+				bmp_ctrl_index = 2
+			self.bpm_zgui_ctrl = zynthian_gui_controller(bmp_ctrl_index, self.main_frame, self.zyngui.zynseq.zctrl_tempo)
+			self.loading_canvas.grid_remove()
+			self.bpm_zgui_ctrl.grid(
+				row    = zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][0],
+				column = zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][1],
+				sticky = 'news'
+			)
 
 
 	def hide_playing_bpm(self):
 		if self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.hide()
+			self.bpm_zgui_ctrl.grid_remove()
+			self.loading_canvas.grid()
 
 
 	# Implement engine's method
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol=="bpm":
-			libseq.setTempo(ctypes.c_double(zctrl.value))
+			self.zyngui.zynseq.set_tempo(zctrl.value)
 			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
 
 
@@ -403,7 +406,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def plot_zctrls(self, force=False):
 		super().plot_zctrls()
 		if self.bpm_zgui_ctrl:
-			if self.bpm_zctrl.is_dirty or force:
+			if self.zyngui.zynseq.zctrl_tempo.is_dirty or force:
 				self.bpm_zgui_ctrl.calculate_plot_values()
 			self.bpm_zgui_ctrl.plot_value()
 
