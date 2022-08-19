@@ -1998,11 +1998,7 @@ class zynthian_gui:
 				j += 1
 
 			# Wait a little bit ...
-			if self.zynread_wait_flag:
-				sleep(0.4)
-				self.zynread_wait_flag=False
-			else:
-				sleep(0.01)
+			sleep(0.01)
 
 
 	#------------------------------------------------------------------
