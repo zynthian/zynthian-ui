@@ -98,7 +98,11 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				fill = self.SLIDER_TEXT,
 				text = ' 0.00 / 0.00',
 				anchor = 'nw',
-				font = ("office-code-pro", self.font_size_sl, 'bold')
+				#font = ("office code pro", self.font_size_sl, 'bold')
+				#font = ("source code pro", self.font_size_sl, 'bold')
+				font = ("monoid", self.font_size_sl ,'bold')
+				#font = ("share tech mono", self.font_size_sl)
+
 			)
 			pos_line = pos_canvas.create_line(
 				0, 0, 0, self.row_height,
