@@ -247,6 +247,11 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			slider.bind("<B1-Motion>", self.on_slider_motion)
 
 
+	def set_layer(self, layer):
+		super().set_layer(layer)
+		self.osc_url = 'osc.udp://localhost:{}'.format(self.layer.engine.SL_PORT)
+
+
 	def on_size(self, event):
 		super().on_size(event)
 		self.row_height = self.height  // (zynthian_engine_sooperlooper.MAX_LOOPS + 5)
@@ -260,12 +265,12 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 	def on_loop_click(self, event):
 		for loop,slider in enumerate(self.pos_canvas):
 			if event.widget == slider['canvas']:
-				liblo.send('osc.udp://localhost:9951', '/set', ('s', 'selected_loop_num'), ('f', loop))
+				liblo.send(self.osc_url, '/set', ('s', 'selected_loop_num'), ('f', loop))
 				self.click_timer = Timer(1.4, self.on_click_timer)
 				self.click_timer.start()
 				break
 			if event.widget == slider['mute']:
-				liblo.send('osc.udp://localhost:9951', '/sl/{}/hit'.format(loop), ('s', 'mute'))
+				liblo.send(self.osc_url, '/sl/{}/hit'.format(loop), ('s', 'mute'))
 				break
 
 
@@ -280,15 +285,15 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 
 	def on_add_click(self, event):
-		liblo.send('osc.udp://localhost:9951', '/loop_add', ('i', 2), ('f', 30), ('i', 0))
+		liblo.send(self.osc_url, '/loop_add', ('i', 2), ('f', 30), ('i', 0))
 
 
 	def remove_loop(self, params):
-		liblo.send('osc.udp://localhost:9951', '/loop_del', ('i', self.selected_loop))
+		liblo.send(self.osc_url, '/loop_del', ('i', self.selected_loop))
 
 
 	def on_button(self, btn):
-		liblo.send('osc.udp://localhost:9951', '/sl/-3/hit', ('s', btn))
+		liblo.send(self.osc_url, '/sl/-3/hit', ('s', btn))
 
 
 	def on_slider_wheel(self, event):

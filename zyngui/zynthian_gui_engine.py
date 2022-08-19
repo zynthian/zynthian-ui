@@ -51,7 +51,7 @@ def initializator(cls):
 @initializator
 class zynthian_gui_engine(zynthian_gui_selector):
 
-	single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS"]
+	single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "SL"]
 	check_channels_engines = ["AE"]
 
 	@classmethod

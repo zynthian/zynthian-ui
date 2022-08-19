@@ -159,13 +159,13 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.options['drop_pc'] = True
 		self.options['clone'] = False
 
-		self.command = 'sooperlooper -q -D no -p {}'.format(self.SL_PORT)
+		self.command = 'sooperlooper -q -D no -p {} -j {}'.format(self.SL_PORT, self.jackname)
 		self.command_prompt = ''
 
 		self.state = [0] * self.MAX_LOOPS # Current SL state for each loop
 		self.selected_loop = 0
 		self.loop_count = 1
-		self.channels = 2 #TODO: Allow mono looper
+		self.channels = 2
 
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_sooperlooper.py"
 		self.monitors_dict = OrderedDict()
