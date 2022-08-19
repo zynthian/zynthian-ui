@@ -216,7 +216,7 @@ class zynthian_gui_mixer_strip():
 		self.parent.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_strip_release)
 		self.parent.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Motion>", self.on_strip_motion)
 
-		self.draw()
+		self.draw_control()
 
 
 	# Function to hide mixer strip
@@ -234,7 +234,7 @@ class zynthian_gui_mixer_strip():
 		except:
 			pass
 		self.hidden = False
-		self.draw()
+		self.draw_control()
 
 
 	def get_legend_text(self, default_text=None):
@@ -257,49 +257,6 @@ class zynthian_gui_mixer_strip():
 			return '{}#{}'.format(self.zctrls[ctrl].midi_learn_chan + 1, self.zctrls[ctrl].midi_learn_cc)
 		else:
 			return '??'
-
-
-	# Function to draw mixer strip control
-	#	control: Name of control to redraw or None for all controls in mixer strip
-	def draw(self, control=None):
-		if self.hidden or self.layer is None:
-			return
-
-#		if control in [None, 'level']:
-#			self.draw_fader() #TODO: This is done in redraw controls
-		if control == None:
-			self.parent.main_canvas.itemconfig(self.legend, text="")
-			if self.layer.midi_chan == zynthian_gui_mixer.MAIN_MIDI_CHANNEL:
-				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
-				self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("NoFX"), state=tkinter.NORMAL)
-			else:
-				if isinstance(self.layer.midi_chan, int):
-					strip_txt = str(self.layer.midi_chan + 1)
-				else:
-					strip_txt = "X"
-				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt)
-				label = self.get_legend_text("None")
-				self.parent.main_canvas.itemconfig(self.legend, text=label, state=tkinter.NORMAL)
-				bounds = self.parent.main_canvas.bbox(self.legend)
-				if bounds[1] < self.fader_text_limit:
-					while bounds and bounds[1] < self.fader_text_limit:
-						label = label[:-1]
-						self.parent.main_canvas.itemconfig(self.legend, text=label)
-						bounds = self.parent.main_canvas.bbox(self.legend)
-					label += "..."
-					self.parent.main_canvas.itemconfig(self.legend, text=label)
-
-		try:
-			if self.layer.engine and self.layer.engine.type == "MIDI Tool" or self.layer.midi_chan is None:
-				return
-		except Exception as e:
-			logging.error(e)
-
-		if control == None:
-			self.draw_dpm()
-			self.refresh_status()
-
-		self.redraw_control(control)
 
 
 	def refresh_status(self):
@@ -465,9 +422,41 @@ class zynthian_gui_mixer_strip():
 
 	# Function to draw a mixer strip UI control
 	#	control: Name of control or None to redraw all controls in the strip
-	def redraw_control(self, control=None):
-		if self.hidden or self.layer.midi_chan is None:
+	def draw_control(self, control=None):
+		if self.hidden or self.layer is None or self.layer.midi_chan is None:
 			return
+
+		if control == None:
+			self.parent.main_canvas.itemconfig(self.legend, text="")
+			if self.layer.midi_chan == zynthian_gui_mixer.MAIN_MIDI_CHANNEL:
+				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
+				self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("NoFX"), state=tkinter.NORMAL)
+			else:
+				if isinstance(self.layer.midi_chan, int):
+					strip_txt = str(self.layer.midi_chan + 1)
+				else:
+					strip_txt = "X"
+				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt)
+				label = self.get_legend_text("None")
+				self.parent.main_canvas.itemconfig(self.legend, text=label, state=tkinter.NORMAL)
+				bounds = self.parent.main_canvas.bbox(self.legend)
+				if bounds[1] < self.fader_text_limit:
+					while bounds and bounds[1] < self.fader_text_limit:
+						label = label[:-1]
+						self.parent.main_canvas.itemconfig(self.legend, text=label)
+						bounds = self.parent.main_canvas.bbox(self.legend)
+					label += "..."
+					self.parent.main_canvas.itemconfig(self.legend, text=label)
+
+		try:
+			if self.layer.engine and self.layer.engine.type == "MIDI Tool" or self.layer.midi_chan is None:
+				return
+		except Exception as e:
+			logging.error(e)
+
+		if control == None:
+			self.draw_dpm()
+			#self.refresh_status()
 
 		if control in [None, 'level']:
 			self.draw_level()
@@ -690,6 +679,8 @@ class zynthian_gui_mixer_strip():
 	def on_strip_release(self, event):
 		if self.dragging:
 			self.dragging = False
+		elif self.midi_learning:
+			return
 		else:
 			self.parent.select_chain_by_layer(self.layer)
 			if self.strip_drag_start:
@@ -887,7 +878,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def plot_zctrls(self):
 		while self.pending_refresh_queue:
 			ctrl = self.pending_refresh_queue.pop()
-			ctrl[0].draw(ctrl[1])
+			ctrl[0].draw_control(ctrl[1])
 
 
 	#--------------------------------------------------------------------------
@@ -985,7 +976,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					self.visible_mixer_strips[offset].zctrls = None
 					
 		self.chan2strip[self.MAIN_CHANNEL_INDEX] = self.main_mixbus_strip
-		self.main_mixbus_strip.redraw_control()
+		self.main_mixbus_strip.draw_control()
 		self.highlight_selected_chain()
 
 
