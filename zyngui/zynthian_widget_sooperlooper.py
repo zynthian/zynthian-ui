@@ -50,21 +50,29 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		self.selected_loop = 0
 		self.loop_count = 0
 		self.click_timer = None
+
 		self.row_height = 20
+		self.col_width = int(self.winfo_width() / 4)
+
+		if zynthian_gui_config.layout['columns'] <= 2:
+			self.font_size_sl = zynthian_gui_config.font_size
+		else:
+			self.font_size_sl = int(0.7 * zynthian_gui_config.font_size)
 
 		self.input_level_canvas = tkinter.Canvas(self,
 			height = 1,
-			bd=0,
-			highlightthickness=0,
-			bg=self.SLIDER_BG)
+			bd = 0,
+			highlightthickness = 0,
+			bg = self.SLIDER_BG)
 		self.input_level_fg = self.input_level_canvas.create_rectangle(
 			0, 0, 0, self.row_height,
 			fill = '#0a0')
 		self.input_level_label = self.input_level_canvas.create_text(
-			1, 10,
+			4, int(self.row_height / 2),
 			fill = self.SLIDER_TEXT,
 			text = 'input level',
-			anchor='w'
+			anchor = 'nw',
+			font = (zynthian_gui_config.font_family, self.font_size_sl)
 		)
 		self.threshold_line = self.input_level_canvas.create_line(
 			0, 0, 0, self.row_height,
@@ -72,48 +80,49 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			width = 2
 		)
 		self.in_gain_marker = self.input_level_canvas.create_polygon(
-			-self.tri_size,0,
-			self.tri_size,0,
-			0,self.tri_size,
-			fill='#d00'
+			-self.tri_size, 0,
+			self.tri_size, 0,
+			0, self.tri_size,
+			fill = '#d00'
 		)
 
 		self.pos_canvas = []
 		for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
 			pos_canvas = tkinter.Canvas(self,
-				height=1,
-				bd=0,
-				highlightthickness=0,
-				bg=self.SLIDER_BG)
+				height = 1,
+				bd = 0,
+				highlightthickness = 0,
+				bg = self.SLIDER_BG)
 			pos_label = pos_canvas.create_text(
-				0, 4,
+				0, int(self.row_height / 2),
 				fill = self.SLIDER_TEXT,
 				text = ' 0.00 / 0.00',
-				anchor = 'nw'
+				anchor = 'nw',
+				font = ("office-code-pro", self.font_size_sl, 'bold')
 			)
 			pos_line = pos_canvas.create_line(
 				0, 0, 0, self.row_height,
-				fill='#ff0',
+				fill = '#ff0',
 				width = 2
 			)
 			pos_border = pos_canvas.create_rectangle(
-				2,2,2,2,
+				2, 2, 2, 2,
 				width = 2,
 				outline = zynthian_gui_config.color_on,
 				state = tkinter.HIDDEN)
 
 			mute_canvas = tkinter.Canvas( self,
-				height=self.row_height,
-				bd=0,
-				highlightthickness=0,
-				bg=self.SLIDER_BG
+				height = self.row_height,
+				bd = 0,
+				highlightthickness = 0,
+				bg = self.SLIDER_BG
 			)
 			mute_canvas.create_text(
-				4, 4,
+				4, int(self.row_height / 2),
 				anchor = 'nw',
-				text='mute',
-				fill=self.SLIDER_TEXT,
-				font=(zynthian_gui_config.font_family, int(0.7 * zynthian_gui_config.font_size))
+				text = 'mute',
+				fill = self.SLIDER_TEXT,
+				font = (zynthian_gui_config.font_family, self.font_size_sl)
 			)
 			self.pos_canvas.append({'canvas':pos_canvas, 'border':pos_border, 'label':pos_label, 'line':pos_line, 'mute':mute_canvas})
 			pos_canvas.bind("<ButtonPress-1>", self.on_loop_click)
@@ -121,68 +130,70 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			mute_canvas.bind("<ButtonPress-1>", self.on_loop_click)
 
 		self.add_canvas = tkinter.Canvas( self,
-			height=self.row_height,
-			bd=0,
-			highlightthickness=0,
-			bg=self.SLIDER_BG
+			height = self.row_height,
+			bd = 0,
+			highlightthickness = 0,
+			bg = self.SLIDER_BG
 		)
 		self.add_canvas.create_text(
-			1, 2,
+			4, int(self.row_height / 2),
 			anchor = 'nw',
-			text='add loop',
-			fill=self.SLIDER_TEXT,
-			font=(zynthian_gui_config.font_family, int(0.7 * zynthian_gui_config.font_size))
+			text = 'add loop',
+			fill = self.SLIDER_TEXT,
+			font = (zynthian_gui_config.font_family, self.font_size_sl)
 		)
 		self.add_canvas.bind('<ButtonPress-1>', self.on_add_click)
 
 		self.wet_canvas = tkinter.Canvas(self,
 			height = 1,
-			bd=0,
-			highlightthickness=0,
-			bg=self.SLIDER_BG)
+			bd = 0,
+			highlightthickness = 0,
+			bg = self.SLIDER_BG)
 		self.wet_fg = self.wet_canvas.create_rectangle(
 			0, 0, 0, self.row_height,
 			fill = self.SLIDER_FG
 		)
 		self.wet_label = self.wet_canvas.create_text(
-			1, 2,
+			4, int(self.row_height / 2),
 			fill = self.SLIDER_TEXT,
 			text = 'wet',
-			anchor='nw'
+			anchor ='nw',
+			font = (zynthian_gui_config.font_family, self.font_size_sl)
 		)
 
 		self.dry_canvas = tkinter.Canvas(self,
 			height = 1,
-			bd=0,
-			highlightthickness=0,
-			bg=self.SLIDER_BG)
+			bd = 0,
+			highlightthickness = 0,
+			bg = self.SLIDER_BG)
 		self.dry_fg = self.dry_canvas.create_rectangle(
 			0, 0, 0, self.row_height,
 			fill = self.SLIDER_FG
 		)
 		self.dry_label = self.dry_canvas.create_text(
-			1, 2,
+			4, int(self.row_height / 2),
 			fill = self.SLIDER_TEXT,
 			text = 'dry (monitor)',
-			anchor='nw'
+			anchor = 'nw',
+			font = (zynthian_gui_config.font_family, self.font_size_sl)
 		)
 
 		self.feedback_canvas = tkinter.Canvas(self,
 			height = 1,
-			bd=0,
-			highlightthickness=0,
-			bg=self.SLIDER_BG)
+			bd = 0,
+			highlightthickness = 0,
+			bg = self.SLIDER_BG)
 		self.feedback_fg = self.feedback_canvas.create_rectangle(
 			0, 0, 0, self.row_height,
 			fill = self.SLIDER_FG
 		)
 		self.feedback_label = self.feedback_canvas.create_text(
-			1, 2,
+			4, int(self.row_height / 2),
 			fill = self.SLIDER_TEXT,
 			text = 'feedback',
-			anchor='nw'
+			anchor = 'nw',
+			font = (zynthian_gui_config.font_family, self.font_size_sl)
 		)
-
 
 		self.button_frame = tkinter.Frame(self, bg='#000')
 		for col in range(4):
@@ -191,23 +202,24 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		self.buttons = {}
 		for i,btn in enumerate(['record','overdub','multiply','replace','substitute','insert','undo','redo','trigger','oneshot','reverse','pause']):
 			if btn == 'substitute':
-				fs = int(0.5 * zynthian_gui_config.font_size)
+				fs = int(0.8 * self.font_size_sl)
 			else:
-				fs = int(0.7 * zynthian_gui_config.font_size)
+				fs = int(self.font_size_sl)
+				
 			command = partial(lambda a:self.on_button(a), btn)
 			self.buttons[btn] = tkinter.Button(self.button_frame,
-				text=btn,
-				background=self.SLIDER_BG,
-				activebackground=self.SLIDER_BG,
-				highlightbackground=self.SLIDER_BG,
-				foreground=self.SLIDER_TEXT,
-				activeforeground=self.SLIDER_TEXT,
-				highlightcolor=self.SLIDER_TEXT,
-				bd=0,
-				relief=tkinter.FLAT,
-				overrelief=tkinter.FLAT,
-				font=(zynthian_gui_config.font_family, fs),
-				command=command
+				text = btn,
+				background = self.SLIDER_BG,
+				activebackground = self.SLIDER_BG,
+				highlightbackground = self.SLIDER_BG,
+				foreground = self.SLIDER_TEXT,
+				activeforeground = self.SLIDER_TEXT,
+				highlightcolor = self.SLIDER_TEXT,
+				bd = 0,
+				relief = tkinter.FLAT,
+				overrelief = tkinter.FLAT,
+				font = (zynthian_gui_config.font_family, fs),
+				command = command
 			)
 			row = int(i / 4)
 			col = i % 4
