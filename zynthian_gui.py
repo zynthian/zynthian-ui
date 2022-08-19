@@ -407,10 +407,10 @@ class zynthian_gui:
 				self.wsleds.setPixelColor(12, self.wscolor_light)
 
 			# Light ALT button => MIDI LEARN!
-			if self.midi_learn_mode:
-				self.wsleds.setPixelColor(13, self.wscolor_active)
-			elif self.midi_learn_zctrl:
+			if self.midi_learn_zctrl or self.current_screen=="zs3_learn":
 				self.wsleds.setPixelColor(13, self.wscolor_yellow)
+			elif self.midi_learn_mode:
+				self.wsleds.setPixelColor(13, self.wscolor_active)
 			else:
 				self.wsleds.setPixelColor(13, self.wscolor_light)
 
@@ -565,7 +565,9 @@ class zynthian_gui:
 						logging.warning("Failed to add OSC client registration %s", src.hostname)
 				self.osc_clients[src.hostname] = monotonic()
 			else:
-				if path[:6] == "VOLUME" or path[:5] == "FADER":
+				if path[:6] == "VOLUME":
+					self.zynmixer.set_volume(args[0], int(path[6:]))
+				if  path[:5] == "FADER":
 					self.zynmixer.set_volume(args[0], int(path[5:]))
 				elif path[:7] == "BALANCE":
 					self.zynmixer.set_balance(args[0], int(path[7:]))
@@ -1986,24 +1988,17 @@ class zynthian_gui:
 			# Refresh GUI controllers every 4 cycles
 			if j>4:
 				j = 0
-				self.plot_zctrls()
+				try:
+					self.screens[self.current_screen].plot_zctrls()
+				except AttributeError:
+					pass
+				except Exception as e:
+					logging.error(e)
 			else:
 				j += 1
 
 			# Wait a little bit ...
 			sleep(0.01)
-			if self.zynread_wait_flag:
-				sleep(0.3)
-				self.zynread_wait_flag=False
-
-
-	def plot_zctrls(self):
-		try:
-			self.screens[self.current_screen].plot_zctrls()
-		except AttributeError:
-			pass
-		except Exception as e:
-			logging.error(e)
 
 
 	#------------------------------------------------------------------
