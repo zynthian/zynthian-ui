@@ -36,15 +36,14 @@ from functools import partial
 
 class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 	
-	SLIDER_BG = '#444'
+	SLIDER_BG = zynthian_gui_config.color_panel_bg
 	SLIDER_FG = '#26b'
-	SLIDER_TEXT = '#ccc'
-	BUTTON_ASSERTED = '#900'
+	SLIDER_TEXT = zynthian_gui_config.color_tx_off
+	BUTTON_ASSERTED = zynthian_gui_config.color_low_on
 
 	def __init__(self, parent):
 		super().__init__(parent)
 
-		self.tri_size = 5
 		self.slider_press_event = None
 		self.state = 0
 		self.selected_loop = 0
@@ -52,39 +51,15 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		self.click_timer = None
 
 		self.row_height = 20
-		self.col_width = int(self.winfo_width() / 4)
 
 		if zynthian_gui_config.layout['columns'] <= 2:
 			self.font_size_sl = zynthian_gui_config.font_size
 		else:
 			self.font_size_sl = int(0.7 * zynthian_gui_config.font_size)
 
-		self.input_level_canvas = tkinter.Canvas(self,
-			height = 1,
-			bd = 0,
-			highlightthickness = 0,
-			bg = self.SLIDER_BG)
-		self.input_level_fg = self.input_level_canvas.create_rectangle(
-			0, 0, 0, self.row_height,
-			fill = '#0a0')
-		self.input_level_label = self.input_level_canvas.create_text(
-			4, int(self.row_height / 2),
-			fill = self.SLIDER_TEXT,
-			text = 'input level',
-			anchor = 'nw',
-			font = (zynthian_gui_config.font_family, self.font_size_sl)
-		)
-		self.threshold_line = self.input_level_canvas.create_line(
-			0, 0, 0, self.row_height,
-			fill = '#ff0',
-			width = 2
-		)
-		self.in_gain_marker = self.input_level_canvas.create_polygon(
-			-self.tri_size, 0,
-			self.tri_size, 0,
-			0, self.tri_size,
-			fill = '#d00'
-		)
+		self.tri_size = int(0.5 * zynthian_gui_config.font_size)
+		self.txt_y = int(0.75 * self.font_size_sl)
+		self.txt_x = 2
 
 		self.pos_canvas = []
 		for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
@@ -94,15 +69,14 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				highlightthickness = 0,
 				bg = self.SLIDER_BG)
 			pos_label = pos_canvas.create_text(
-				0, int(self.row_height / 2),
+				self.txt_x, self.txt_y,
 				fill = self.SLIDER_TEXT,
-				text = ' 0.00 / 0.00',
+				text = '0.00 / 0.00',
 				anchor = 'nw',
+				font = ("source code pro", self.font_size_sl, 'bold')
 				#font = ("office code pro", self.font_size_sl, 'bold')
-				#font = ("source code pro", self.font_size_sl, 'bold')
-				font = ("monoid", self.font_size_sl ,'bold')
+				#font = ("monoid", self.font_size_sl ,'bold')
 				#font = ("share tech mono", self.font_size_sl)
-
 			)
 			pos_line = pos_canvas.create_line(
 				0, 0, 0, self.row_height,
@@ -121,14 +95,14 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				highlightthickness = 0,
 				bg = self.SLIDER_BG
 			)
-			mute_canvas.create_text(
-				4, int(self.row_height / 2),
-				anchor = 'nw',
-				text = 'mute',
+			mute_text = mute_canvas.create_text(
+				self.txt_x, self.txt_y,
 				fill = self.SLIDER_TEXT,
+				text = 'mute',
+				anchor = 'n',
 				font = (zynthian_gui_config.font_family, self.font_size_sl)
 			)
-			self.pos_canvas.append({'canvas':pos_canvas, 'border':pos_border, 'label':pos_label, 'line':pos_line, 'mute':mute_canvas})
+			self.pos_canvas.append({'canvas':pos_canvas, 'border':pos_border, 'label':pos_label, 'line':pos_line, 'mute':mute_canvas, 'mute_text':mute_text })
 			pos_canvas.bind("<ButtonPress-1>", self.on_loop_click)
 			pos_canvas.bind("<ButtonRelease-1>", self.on_loop_release)
 			mute_canvas.bind("<ButtonPress-1>", self.on_loop_click)
@@ -139,14 +113,41 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			highlightthickness = 0,
 			bg = self.SLIDER_BG
 		)
-		self.add_canvas.create_text(
-			4, int(self.row_height / 2),
-			anchor = 'nw',
-			text = 'add loop',
+		self.add_text = self.add_canvas.create_text(
+			self.txt_x, self.txt_y,
 			fill = self.SLIDER_TEXT,
+			text = 'add loop',
+			anchor = 'nw',
 			font = (zynthian_gui_config.font_family, self.font_size_sl)
 		)
 		self.add_canvas.bind('<ButtonPress-1>', self.on_add_click)
+
+		self.input_level_canvas = tkinter.Canvas(self,
+			height = 1,
+			bd = 0,
+			highlightthickness = 0,
+			bg = self.SLIDER_BG)
+		self.input_level_fg = self.input_level_canvas.create_rectangle(
+			0, 0, 0, self.row_height,
+			fill = '#0a0')
+		self.input_level_label = self.input_level_canvas.create_text(
+			self.txt_x, self.txt_y,
+			fill = self.SLIDER_TEXT,
+			text = 'input level',
+			anchor = 'nw',
+			font = (zynthian_gui_config.font_family, self.font_size_sl)
+		)
+		self.threshold_line = self.input_level_canvas.create_line(
+			0, 0, 0, self.row_height,
+			fill = '#ff0',
+			width = 2
+		)
+		self.in_gain_marker = self.input_level_canvas.create_polygon(
+			-self.tri_size, 0,
+			self.tri_size, 0,
+			0, self.tri_size,
+			fill = '#d00'
+		)
 
 		self.wet_canvas = tkinter.Canvas(self,
 			height = 1,
@@ -158,7 +159,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			fill = self.SLIDER_FG
 		)
 		self.wet_label = self.wet_canvas.create_text(
-			4, int(self.row_height / 2),
+			self.txt_x, self.txt_y,
 			fill = self.SLIDER_TEXT,
 			text = 'wet',
 			anchor ='nw',
@@ -175,7 +176,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			fill = self.SLIDER_FG
 		)
 		self.dry_label = self.dry_canvas.create_text(
-			4, int(self.row_height / 2),
+			self.txt_x, self.txt_y,
 			fill = self.SLIDER_TEXT,
 			text = 'dry (monitor)',
 			anchor = 'nw',
@@ -192,7 +193,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			fill = self.SLIDER_FG
 		)
 		self.feedback_label = self.feedback_canvas.create_text(
-			4, int(self.row_height / 2),
+			self.txt_x, self.txt_y,
 			fill = self.SLIDER_TEXT,
 			text = 'feedback',
 			anchor = 'nw',
@@ -235,18 +236,19 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			self.columnconfigure(col, weight=1, uniform='col')
 		self.rowconfigure(zynthian_engine_sooperlooper.MAX_LOOPS + 1, weight=1)
 
-		self.button_frame.grid(columnspan=4, sticky='news', padx=(1,1)) #1
+		self.button_frame.grid(columnspan=4, sticky='news', padx=(1,1))
+
 		for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
-			self.pos_canvas[loop]['canvas'].grid(row=1 + loop, columnspan=3, sticky='news', padx=(1,1), pady=(1,0))
-			self.pos_canvas[loop]['mute'].grid(row=1 + loop, column=3, sticky='news', padx=(1,1), pady=(1,0))
+			self.pos_canvas[loop]['canvas'].grid(row=1 + loop, columnspan=3, sticky='news', padx=(1,1), pady=(1,1))
+			self.pos_canvas[loop]['mute'].grid(row=1 + loop, column=3, sticky='news', padx=(0,2), pady=(1,1))
 			self.pos_canvas[loop]['canvas'].grid_remove()
 			self.pos_canvas[loop]['mute'].grid_remove()
 
 		self.add_canvas.grid(row=zynthian_engine_sooperlooper.MAX_LOOPS, sticky='news', padx=(1,1), pady=(1,1))
-		self.input_level_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(1,1), pady=(1,1))
-		self.feedback_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', padx=(1,1), pady=(1,1))
-		self.wet_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(1,1), pady=(1,1))
-		self.dry_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', padx=(1,1), pady=(1,1))
+		self.input_level_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(1,1), pady=(0,1))
+		self.feedback_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', padx=(0,2), pady=(0,1))
+		self.wet_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(1,1), pady=(0,1))
+		self.dry_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', padx=(0,2), pady=(0,1))
 
 		self.symbol_map = {
 			self.dry_canvas:'dry',
@@ -270,12 +272,17 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 	def on_size(self, event):
 		super().on_size(event)
+
 		self.row_height = self.height  // (zynthian_engine_sooperlooper.MAX_LOOPS + 5)
 		self.rowconfigure(0, minsize=self.row_height * 3)
 		for row in range(1, zynthian_engine_sooperlooper.MAX_LOOPS + 1):
 			self.rowconfigure(row, minsize=self.row_height)
 		self.rowconfigure(row + 2, minsize=self.row_height)
 		self.rowconfigure(row + 3, minsize=self.row_height)
+
+		txt_xc = (self.width // 8) - 1
+		for pc in self.pos_canvas:
+			pc['mute'].coords(pc['mute_text'], txt_xc, self.txt_y)
 
 
 	def on_loop_click(self, event):
@@ -370,7 +377,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 					x = int(pos / len * self.pos_canvas[loop]['canvas'].winfo_width())
 				self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
 				self.pos_canvas[loop]['canvas'].configure(bg=bg)
-				self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text=' {:.2f} / {:.2f} {}'.format(pos, len, zynthian_engine_sooperlooper.SL_STATES[state]['name']))
+				self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text='{:.2f} / {:.2f} {}'.format(pos, len, zynthian_engine_sooperlooper.SL_STATES[state]['name']))
 				if state in [10,20]:
 					self.pos_canvas[loop]['mute']['bg'] = self.BUTTON_ASSERTED
 				else:
@@ -388,7 +395,8 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			self.feedback_canvas.coords(self.feedback_fg, 0, 0, x, self.row_height)
 			x = int(self.monitors['input_gain'] * self.input_level_canvas.winfo_width())
 			self.input_level_canvas.coords(self.in_gain_marker, x-self.tri_size, 0, x+self.tri_size, 0, x, self.tri_size)
-			if self.monitors['rate_output'] < 0:
+			x = int(self.monitors['rate_output'])
+			if x < 0:
 				self.buttons['reverse'].configure(bg=self.BUTTON_ASSERTED, highlightbackground=self.BUTTON_ASSERTED, activebackground=self.BUTTON_ASSERTED)
 			else:
 				self.buttons['reverse'].configure(bg=self.SLIDER_BG, highlightbackground=self.SLIDER_BG, activebackground=self.SLIDER_BG)
