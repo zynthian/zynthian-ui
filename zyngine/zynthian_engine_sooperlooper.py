@@ -139,7 +139,11 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		12: {'name': 'playing once', 'symbol': 'oneshot', 'icon':'\uf04b'},
 		13: {'name': 'substituting', 'symbol': 'substitute', 'icon':'\u26ab'},
 		14: {'name': 'paused', 'symbol': 'pause', 'icon':'\u23F8'},
-		16: {'name': 'play...', 'symbol': None, 'icon':''},
+		15: {'name': 'undo all', 'symbol': None, 'icon':''},
+		16: {'name': 'trigger play...', 'symbol': None, 'icon':''},
+		17: {'name': 'undo', 'symbol': None, 'icon':''},
+		18: {'name': 'redo', 'symbol': None, 'icon':''},
+		19: {'name': 'redo all', 'symbol': None, 'icon':''},
 		20: {'name': 'off muted', 'symbol': None, 'icon':'mute'},
 	}
 
@@ -369,7 +373,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			#logging.warning("Rx OSC: {} {}".format(path,args))
 			if path == '/state':
 				# args: i:Loop index, s:control, f:value
-				#logging.warning("%s: Loop: %d state=%0.1f", args[1], args[0], args[2])
+				#logging.warning("Loop: %d %s=%0.1f", args[0], args[1], args[2])
 				if args[0] < 0 or args[0] >= self.MAX_LOOPS:
 					return
 				state = int(args[2])
@@ -378,6 +382,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					self.next_state[loop] = state
 				else:
 					self.state[loop] = state
+					if state in [0, 4]:
+						self.next_state[loop] = -1
 
 				if self.next_state[loop] == self.state[loop]:
 					self.next_state[loop] = -1
