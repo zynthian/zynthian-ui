@@ -383,6 +383,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			loop_len_symbol = 'loop_len_{}'.format(loop)
 			state_symbol = 'state_{}'.format(loop)
 			next_state_symbol = 'next_state_{}'.format(loop)
+			waiting_symbol = 'waiting_{}'.format(loop)
 			if loop_pos_symbol in self.monitors:
 				pos = self.monitors[loop_pos_symbol]
 			else:
@@ -399,7 +400,11 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				next_state = self.monitors[next_state_symbol]
 			else:
 				next_state = -1
-			if next_state >= 0 or state in [1, 3]:
+			if waiting_symbol in self.monitors:
+				waiting = self.monitors[waiting_symbol]
+			else:
+				waiting = 0
+			if waiting or state in [1, 3]:
 				# Pending states
 				#TODO: Split to pending rec, pending play, etc.
 				bg='#c90'
@@ -423,7 +428,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
 			self.pos_canvas[loop]['canvas'].configure(bg=bg)
 			self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text=' {} / {} {}'.format(f'{pos:.2f}'.zfill(5), f'{len:.2f}'.zfill(5), zynthian_engine_sooperlooper.SL_STATES[state]['name']))
-			if next_state in [10, 20] or next_state != -1 and state in [10, 20]:
+			if waiting and (next_state in [10,20] or state in [10, 20]):
 				if self.flash_count > 3:
 					self.pos_canvas[loop]['mute']['bg'] = self.BUTTON_ASSERTED
 				else:
@@ -458,6 +463,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			# Update state indication - next_state != -1 indicates waiting for pending operation
 			state = self.monitors['state']
 			next_state = self.monitors['next_state']
+			waiting = self.monitors['waiting']
 			if state != self.state or self.selected_loop != self.monitors['selected_loop_num']:
 				for b in self.buttons:
 					if b != 'reverse':
@@ -481,7 +487,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 					self.buttons['pause'].configure(bg=self.BUTTON_ASSERTED, highlightbackground=self.BUTTON_ASSERTED, activebackground=self.BUTTON_ASSERTED)
 				self.state = state
 				self.selected_loop = int(self.monitors['selected_loop_num'])
-			if next_state != -1 or state in [1,3]:
+			if waiting or state in [1,3]:
 				if state in [1, 2, 3] or next_state == 2:
 					btn = 'record'
 				elif state == 5 or next_state == 5:
