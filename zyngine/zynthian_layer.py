@@ -171,7 +171,7 @@ class zynthian_layer:
 				i += 1
 			else:
 				break
-		self.bank_msb_info[0][1] = len(self.bank_list)-i
+		self.bank_msb_info[0][1] = len(self.bank_list) - i
 
 		# Add favourites virtual bank if there is some preset marked as favourite
 		if self.engine.show_favs_bank and len(self.engine.get_preset_favs(self))>0:
@@ -197,7 +197,7 @@ class zynthian_layer:
 		if i < len(self.bank_list):
 			bank_name = self.bank_list[i][2]
 
-			if not bank_name:
+			if bank_name is None:
 				return False
 
 			if i != self.bank_index or self.bank_name != bank_name:
@@ -334,11 +334,11 @@ class zynthian_layer:
 	#TODO Optimize search!!
 	def set_preset_by_name(self, preset_name, set_engine=True, force_set_engine=True):
 		for i in range(len(self.preset_list)):
-			name_i=self.preset_list[i][2]
+			name_i = self.preset_list[i][2]
 			try:
 				if name_i[0]=='❤':
 					name_i=name_i[1:]
-				if preset_name==name_i:
+				if preset_name == name_i:
 					return self.set_preset(i, set_engine, force_set_engine)
 			except:
 				pass
@@ -568,9 +568,9 @@ class zynthian_layer:
 	def restore_state_0(self, state):
 		# Load bank list
 		try:
-			self.bank_name=state['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
+			self.bank_name = state['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
 			self.load_bank_list()
-			self.bank_name=None
+			self.bank_name = None
 		except Exception as e:
 			logging.warning("Error loading bank list on layer {}: {}".format(self.get_basepath(), e))
 
@@ -591,7 +591,7 @@ class zynthian_layer:
 
 		#  and set preset
 		try:
-			self.preset_loaded=self.set_preset_by_name(state['preset_name'], True, False)
+			self.preset_loaded = self.set_preset_by_name(state['preset_name'], True, False)
 			self.wait_stop_loading()
 		except Exception as e:
 			logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))

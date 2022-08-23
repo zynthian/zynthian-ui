@@ -36,6 +36,7 @@ import zynautoconnect
 from zyngine import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_jalv import *
+from zyngine.zynthian_engine_sooperlooper import zynthian_engine_sooperlooper
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
@@ -50,13 +51,14 @@ def initializator(cls):
 @initializator
 class zynthian_gui_engine(zynthian_gui_selector):
 
-	single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS"]
+	single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "SL"]
 	check_channels_engines = ["AE"]
 
 	@classmethod
 	def init_engine_info(cls):
 
 		cls.engine_info=OrderedDict([
+			["SL", ("SooperLooper", "SooperLooper", "Audio Effect", None, zynthian_engine_sooperlooper, True)],
 			["MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_mixer, True)],
 			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", None, zynthian_engine_zynaddsubfx, True)],
 			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", None, zynthian_engine_fluidsynth, True)],
@@ -181,9 +183,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def start_engine(self, eng):
 		if eng not in self.zyngines:
-			info=self.engine_info[eng]
+			info = self.engine_info[eng]
 			zynthian_engine_class=info[4]
-			if eng[0:3]=="JV/":
+			if eng[0:3] == "JV/":
 				eng = "JV/{}".format(self.zyngine_counter)
 				self.zyngines[eng]=zynthian_engine_class(info[0], info[2], self.zyngui)
 			else:
@@ -191,7 +193,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 					eng = "{}/{}".format(eng, self.zyngine_counter)
 				self.zyngines[eng]=zynthian_engine_class(self.zyngui)
 
-		self.zyngine_counter+=1
+		self.zyngine_counter += 1
 		return self.zyngines[eng]
 
 

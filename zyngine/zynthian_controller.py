@@ -34,12 +34,12 @@ from zyncoder.zyncore import lib_zyncore
 class zynthian_controller:
 
 	def __init__(self, engine, symbol, name=None, options=None):
-		self.engine=engine
-		self.symbol=symbol
+		self.engine = engine
+		self.symbol = symbol
 		if name:
-			self.name=self.short_name=name
+			self.name = self.short_name = name
 		else:
-			self.name=self.short_name=symbol
+			self.name = self.short_name = symbol
 
 		self.group_symbol = None
 		self.group_name = None
@@ -132,13 +132,13 @@ class zynthian_controller:
 					self.value_min = 0
 				if self.value_max == None:
 					self.value_max = n - 1
-				self.value_range = self.value_max - self.value_min + 1
+				value_range = self.value_max - self.value_min + 1
 				if self.is_integer:
 					for i in range(n):
-						self.ticks.append(self.value_min + int(i * self.value_range / n))
+						self.ticks.append(self.value_min + int(i * value_range / n))
 				else:
 					for i in range(n):
-						self.ticks.append(self.value_min + i * self.value_range / n)
+						self.ticks.append(self.value_min + i * value_range / n)
 
 			#Calculate min, max
 			if self.ticks[0] <= self.ticks[-1]:

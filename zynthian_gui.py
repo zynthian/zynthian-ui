@@ -1986,7 +1986,7 @@ class zynthian_gui:
 			self.zynautoconnect_do()
 
 			# Refresh GUI controllers every 4 cycles
-			if j>4:
+			if j > 4:
 				j = 0
 				try:
 					self.screens[self.current_screen].plot_zctrls()
