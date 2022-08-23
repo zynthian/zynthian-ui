@@ -27,6 +27,7 @@ import logging
 from . import zynthian_engine
 import liblo
 import os
+from glob import glob
 from  subprocess import Popen,DEVNULL
 from time import sleep
 
@@ -337,13 +338,16 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			except Exception as e:
 				logging.warning("Failed to create SooperLooper user preset directory: {}".format(e))
 		uri = '{}/{}.slsess'.format(path, preset_name)
-		liblo.send(self.osc_target, '/save_session', ('s', uri),  ('s', self.osc_server_url), ('s', '/error'))
+		liblo.send(self.osc_target, '/save_session', ('s', uri),  ('s', self.osc_server_url), ('s', '/error'), ('i', 1))
 		return uri
 
 
 	def delete_preset(self, bank, preset):
 		try:
 			os.remove(preset[0])
+			wavs = glob('{}_loop*.wav'.format(preset[0]))
+			for file in wavs:
+				os.remove(file)
 		except Exception as e:
 			logging.debug(e)
 
