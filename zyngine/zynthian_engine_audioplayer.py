@@ -68,7 +68,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		]		
 
 		# Controller Screens
-		self._ctrl_screens =[]
+		self._ctrl_screens = [
+				['main', ['record'], None, None],
+				['config', [None, 'gain']]
+		]
 
 		self.monitors_dict = OrderedDict()
 		self.monitors_dict["state"] = self.player.get_playback_state()
@@ -190,8 +193,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			]
 		else:
 			self._ctrl_screens = [
-				['main',['record'],None,None],
-				['config',[None,'gain']]
+				['main', ['record'], None, None],
+				['config', [None, 'gain']]
 		]
 		self._ctrls=[
 			['gain',None,gain,2.0],

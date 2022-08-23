@@ -47,7 +47,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.play_pos = 0.0
 		self.loop_start = 0.0
 		self.loop_end = 1.0
-		self.filename = ""
+		self.filename = "?"
 		self.duration = 0.0
 		self.samplerate = 44100
 		self.bg_color = "000000"
