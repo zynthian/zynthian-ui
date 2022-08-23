@@ -183,9 +183,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def start_engine(self, eng):
 		if eng not in self.zyngines:
-			info=self.engine_info[eng]
+			info = self.engine_info[eng]
 			zynthian_engine_class=info[4]
-			if eng[0:3]=="JV/":
+			if eng[0:3] == "JV/":
 				eng = "JV/{}".format(self.zyngine_counter)
 				self.zyngines[eng]=zynthian_engine_class(info[0], info[2], self.zyngui)
 			else:
@@ -193,7 +193,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 					eng = "{}/{}".format(eng, self.zyngine_counter)
 				self.zyngines[eng]=zynthian_engine_class(self.zyngui)
 
-		self.zyngine_counter+=1
+		self.zyngine_counter += 1
 		return self.zyngines[eng]
 
 

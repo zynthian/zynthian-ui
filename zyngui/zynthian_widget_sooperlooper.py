@@ -357,53 +357,85 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 	def refresh_gui(self):
 		#TODO: Change GUI on event, not on periodic refresh
+
+		# Update counter used to flash/blink buttons
 		self.flash_count -= 1
 		if self.flash_count < 0:
 			self.flash_count = 7
-		for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
+
+		# Update quantity of loops
+		if self.loop_count != self.monitors['loop_count']:
+			self.loop_count = self.monitors['loop_count']
+			for loop in range(self.loop_count):
+				self.pos_canvas[loop]['canvas'].grid()
+				self.pos_canvas[loop]['mute'].grid()
+			for loop in range(self.loop_count, zynthian_engine_sooperlooper.MAX_LOOPS):
+				self.pos_canvas[loop]['canvas'].grid_remove()
+				self.pos_canvas[loop]['mute'].grid_remove()
+			if self.loop_count < zynthian_engine_sooperlooper.MAX_LOOPS:
+				self.add_canvas.grid()
+			else:
+				self.add_canvas.grid_remove()
+
+		# Update loop specific parameters
+		for loop in range(self.loop_count):
 			loop_pos_symbol = 'loop_pos_{}'.format(loop)
 			loop_len_symbol = 'loop_len_{}'.format(loop)
 			state_symbol = 'state_{}'.format(loop)
 			next_state_symbol = 'next_state_{}'.format(loop)
-			if loop_pos_symbol in self.monitors and loop_len_symbol in self.monitors and state_symbol in self.monitors:
-				len = self.monitors[loop_len_symbol]
+			if loop_pos_symbol in self.monitors:
 				pos = self.monitors[loop_pos_symbol]
+			else:
+				pos = 0
+			if loop_len_symbol in self.monitors:
+				len = self.monitors[loop_len_symbol]
+			else:
+				len = 0
+			if state_symbol in self.monitors:
 				state = self.monitors[state_symbol]
+			else:
+				state = 0
+			if next_state_symbol in self.monitors:
 				next_state = self.monitors[next_state_symbol]
-				if next_state >= 0 or state in [1, 3]:
-					# Pending states
-					#TODO: Split to pending rec, pending play, etc.
-					bg='#c90'
-				elif state in [2, 5, 6, 7, 8, 9, 13]:
-					# Record states
-					bg = self.BUTTON_ASSERTED
-				elif state in [0, 10 , 14, 20]:
-					# Disabled / off states
-					bg = '#444'
-					# Play states
-				else:
-					bg = '#090'
-				self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['border'], 2, 2, self.pos_canvas[loop]['canvas'].winfo_width() - 2, self.row_height - 2)
-				if loop == self.selected_loop:
-					self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['border'], state=tkinter.NORMAL)
-				else:
-					self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['border'], state=tkinter.HIDDEN)
-				x = 0
-				if len:
-					x = int(pos / len * self.pos_canvas[loop]['canvas'].winfo_width())
-				self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
-				self.pos_canvas[loop]['canvas'].configure(bg=bg)
-				self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text=' {} / {} {}'.format(f'{pos:.2f}'.zfill(5), f'{len:.2f}'.zfill(5), zynthian_engine_sooperlooper.SL_STATES[state]['name']))
-				if next_state in [10, 20] or next_state != -1 and state in [10, 20]:
-					if self.flash_count > 3:
-						self.pos_canvas[loop]['mute']['bg'] = self.BUTTON_ASSERTED
-					else:
-						self.pos_canvas[loop]['mute']['bg'] = self.SLIDER_BG
-				elif state in [10,20]:
+			else:
+				next_state = -1
+			if next_state >= 0 or state in [1, 3]:
+				# Pending states
+				#TODO: Split to pending rec, pending play, etc.
+				bg='#c90'
+			elif state in [2, 5, 6, 7, 8, 9, 13]:
+				# Record states
+				bg = self.BUTTON_ASSERTED
+			elif state in [0, 10 , 14, 20]:
+				# Disabled / off states
+				bg = '#444'
+				# Play states
+			else:
+				bg = '#090'
+			self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['border'], 2, 2, self.pos_canvas[loop]['canvas'].winfo_width() - 2, self.row_height - 2)
+			if loop == self.selected_loop:
+				self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['border'], state=tkinter.NORMAL)
+			else:
+				self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['border'], state=tkinter.HIDDEN)
+			x = 0
+			if len:
+				x = int(pos / len * self.pos_canvas[loop]['canvas'].winfo_width())
+			self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
+			self.pos_canvas[loop]['canvas'].configure(bg=bg)
+			self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text=' {} / {} {}'.format(f'{pos:.2f}'.zfill(5), f'{len:.2f}'.zfill(5), zynthian_engine_sooperlooper.SL_STATES[state]['name']))
+			if next_state in [10, 20] or next_state != -1 and state in [10, 20]:
+				if self.flash_count > 3:
 					self.pos_canvas[loop]['mute']['bg'] = self.BUTTON_ASSERTED
 				else:
 					self.pos_canvas[loop]['mute']['bg'] = self.SLIDER_BG
+			elif state in [10,20]:
+				self.pos_canvas[loop]['mute']['bg'] = self.BUTTON_ASSERTED
+			else:
+				self.pos_canvas[loop]['mute']['bg'] = self.SLIDER_BG
+
+		# Update selected loop's parameters
 		try:
+			# Update input meters - needs to looks smooth so rapid update
 			self.input_level_canvas.coords(self.input_level_fg, 0, 0, int(self.width * self.monitors['in_peak_meter']), self.row_height)
 			thresh_x = int(self.monitors['rec_thresh'] * self.input_level_canvas.winfo_width())
 			self.input_level_canvas.coords(self.threshold_line, thresh_x, 0, thresh_x, self.row_height)
@@ -415,11 +447,15 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			self.feedback_canvas.coords(self.feedback_fg, 0, 0, x, self.row_height)
 			x = int(self.monitors['input_gain'] * self.input_level_canvas.winfo_width())
 			self.input_level_canvas.coords(self.in_gain_marker, x-self.tri_size, 0, x+self.tri_size, 0, x, self.tri_size)
+
+			# Calculate direction of play
 			x = int(self.monitors['rate_output'])
 			if x < 0:
 				self.buttons['reverse'].configure(bg=self.BUTTON_ASSERTED, highlightbackground=self.BUTTON_ASSERTED, activebackground=self.BUTTON_ASSERTED)
 			else:
 				self.buttons['reverse'].configure(bg=self.SLIDER_BG, highlightbackground=self.SLIDER_BG, activebackground=self.SLIDER_BG)
+
+			# Update state indication - next_state != -1 indicates waiting for pending operation
 			state = self.monitors['state']
 			next_state = self.monitors['next_state']
 			if state != self.state or self.selected_loop != self.monitors['selected_loop_num']:
@@ -468,21 +504,12 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 					self.buttons[btn].configure(bg=self.BUTTON_ASSERTED, highlightbackground=self.BUTTON_ASSERTED, activebackground=self.BUTTON_ASSERTED)
 				else:
 					self.buttons[btn].configure(bg=self.SLIDER_BG, highlightbackground=self.SLIDER_BG, activebackground=self.SLIDER_BG)
-			if self.loop_count != self.monitors['loop_count']:
-				self.loop_count = self.monitors['loop_count']
-				for loop in range(self.loop_count):
-					self.pos_canvas[loop]['canvas'].grid()
-					self.pos_canvas[loop]['mute'].grid()
-				for loop in range(self.loop_count, zynthian_engine_sooperlooper.MAX_LOOPS):
-					self.pos_canvas[loop]['canvas'].grid_remove()
-					self.pos_canvas[loop]['mute'].grid_remove()
-				if self.loop_count < zynthian_engine_sooperlooper.MAX_LOOPS:
-					self.add_canvas.grid()
-				else:
-					self.add_canvas.grid_remove()
+
+			# Check of request to remove a loop
 			if 'loop_del' in self.monitors:
 				self.layer.engine.monitors_dict.pop('loop_del')
 				self.zyngui.show_confirm("Remove loop {}?".format(self.selected_loop + 1), self.remove_loop)
+				#TODO: This probably removes selected loop rather than last loop which might be expected behaviour
 
 #		except KeyError:
 #			logging.debug("KeyError ignored")

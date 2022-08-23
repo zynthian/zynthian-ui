@@ -90,7 +90,7 @@ class zynthian_basic_engine:
 				# Setting cwd is because we've set PWD above. Some engines doesn't
 				# care about the process's cwd, but it is more consistent to set 
 				# cwd when PWD has been set.
-				self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
+				self.proc = pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
 
 				self.proc.delaybeforesend = 0
 
@@ -112,7 +112,7 @@ class zynthian_basic_engine:
 				self.proc.terminate()
 				sleep(0.2)
 				self.proc.terminate(True)
-				self.proc=None
+				self.proc = None
 			except Exception as err:
 				logging.error("Can't stop engine {} => {}".format(self.name, err))
 
@@ -415,6 +415,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def get_bank_list(self, layer=None):
 		logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
+		return []
 
 
 	def set_bank(self, layer, bank):
@@ -447,14 +448,19 @@ class zynthian_engine(zynthian_basic_engine):
 		except:
 			return False
 
+
 	def is_preset_user(self, preset):
 		return isinstance(preset[0], str) and preset[0].startswith(self.my_data_dir)
 
 
-	# To implement in derived classes
+	def preset_exists(self, bank_info, preset_name):
+		logging.error("Not implemented!!!")
+
+
+	# Implement in derived classes to enable features in GUI
 	#def save_preset(self, bank_name, preset_name):
 	#def delete_preset(self, preset):
-	#def rename_preset(self, preset, new_name):
+	#def rename_preset(self, bank_info, preset, new_name):
 
 	# ---------------------------------------------------------------------------
 	# Preset Favorites Management

@@ -468,7 +468,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def remove_all_layers(self, stop_engines=True):
 		# Remove all layers: Step 1 => Drop from FX chain and mute
 		i = len(self.layers)
-		while i>0:
+		while i > 0:
 			i -= 1
 			logging.debug("Mute layer {} => {} ...".format(i, self.layers[i].get_basepath()))
 			self.drop_from_midichain(self.layers[i])

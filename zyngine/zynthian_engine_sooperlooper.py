@@ -26,6 +26,9 @@ from collections import OrderedDict
 import logging
 from . import zynthian_engine
 import liblo
+import os
+from  subprocess import Popen,DEVNULL
+from time import sleep
 
 from . import zynthian_controller
 
@@ -163,8 +166,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.options['drop_pc'] = True
 		self.options['clone'] = False
 
-		self.command = 'sooperlooper -l 0 -q -D no -p {} -j {}'.format(self.SL_PORT, self.jackname)
-		self.command_prompt = ''
+		self.command = ['sooperlooper', '-q', '-l 0', '-D no', '-p {}'.format(self.SL_PORT), '-j {}'.format(self.jackname)]
 
 		self.state = [-1] * self.MAX_LOOPS # Current SL state for each loop
 		self.next_state = [-1] * self.MAX_LOOPS # Next SL state for each loop (-1 if no state change pending)
@@ -173,7 +175,11 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.channels = 2
 
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_sooperlooper.py"
-		self.monitors_dict = OrderedDict()
+		self.monitors_dict = OrderedDict({
+			'state':0,
+			'next_state':-1,
+			'loop_count':0
+		})
 
 		# MIDI Controllers
 		loop_labels = []
@@ -196,7 +202,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['rate', 'speed', {'value':1.0, 'value_min':0.25, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
 			['stretch_ratio', 'stretch', {'value':1.0, 'value_min':0.5, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
 			['pitch_shift', 'pitch', {'value':0.0, 'value_min':-12, 'value_max':12, 'is_integer':False, 'nudge_factor':0.1}],
-			['sync_source', 'sync source', {'value':1, 'value_min':-3, 'value_max':1, 'labels':['Internal','MidiClock','Jack/Host','None','Loop1'], 'is_integer':True}],
+			['sync_source', 'sync to', {'value':1, 'value_min':-3, 'value_max':1, 'labels':['Internal','MidiClock','Jack/Host','None','Loop1'], 'is_integer':True}],
 			['sync', 'enable sync', {'value':1, 'value_max':1, 'labels':['off', 'on']}],
             ['eighth_per_cycle', '8th/cycle', {'value':16, 'value_min':1, 'value_max':600}], #TODO: What makes sense for max val?
             ['quantize', 'quantize', {'value':1, 'value_max':3, 'labels':['off', 'cycle', '8th', 'loop']}],
@@ -241,8 +247,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	def start(self):
 		#logging.warning("Starting SooperLooper")
 		self.osc_init(self.SL_PORT)
-		self.proc_start_sleep = 1 #TODO: Cludgy wait - maybe should perform periodic check for server until reachable
-		super().start()
+		self.proc = Popen(self.command, stdout=DEVNULL, stderr=DEVNULL)
+		sleep(1) #TODO: Cludgy wait - maybe should perform periodic check for server until reachable
 
 		# Register for common events from sooperlooper server - request changes to the currently selected loop
 		for symbol in self.SL_MONITORS:
@@ -261,13 +267,17 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		# Request current quantity of loops
 		liblo.send(self.osc_target, '/ping', ('s', self.osc_server_url), ('s', '/info'))
 
-		# Set global default values
-		liblo.send(self.osc_target, '/set', ('s', 'dry'), ('f', 1.0))
-		liblo.send(self.osc_target, '/set', ('s', 'sync_source'), ('f', 1))
 
-		# Add a loop (stereo, 30s min, disable individual output)
-		liblo.send(self.osc_target, '/loop_add', ('i', self.channels), ('f', 30), ('i', 0))
-		self.select_loop(0, True) #TODO: Do we need to explicitly select loop 0 at startup?
+	def stop(self):
+		if self.proc:
+			try:
+				logging.info("Stoping Engine " + self.name)
+				self.proc.terminate()
+				sleep(0.2)
+				self.proc.kill()
+				self.proc = None
+			except Exception as err:
+				logging.error("Can't stop engine {} => {}".format(self.name, err))
 
 
 	# ---------------------------------------------------------------------------
@@ -284,15 +294,68 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
+	# No bank support for sooperlooper
 	def get_bank_list(self, layer=None):
-		return []
+		return [("", None, "", None)]
+
 
 	# ---------------------------------------------------------------------------
 	# Preset Management
 	# ---------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		return []
+		presets = self.get_filelist('{}/presets/sooperlooper'.format(self.data_dir), 'slsess')
+		presets += self.get_filelist('{}/presets/sooperlooper'.format(self.my_data_dir), 'slsess')
+		return presets
+
+
+	def set_preset(self, layer, preset, preload=False):
+		liblo.send(self.osc_target, '/load_session', ('s', preset[0]),  ('s', self.osc_server_url), ('s', '/error'))
+		sleep(0.3) # Wait for session to load to avoid consequent controller change conflicts
+		liblo.send(self.osc_target, '/ping', ('s', self.osc_server_url), ('s', '/info'))
+
+		for symbol in self.SL_MONITORS:
+			liblo.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/monitor'))
+		for symbol in self.SL_LOOP_PARAMS:
+			liblo.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
+		for symbol in self.SL_LOOP_GLOBAL_PARAMS:
+			liblo.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
+		for symbol in self.SL_GLOBAL_PARAMS:
+			liblo.send(self.osc_target, '/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
+		sleep(0.3) # Wait for session to load to avoid consequent controller change conflicts
+
+
+	def preset_exists(self, bank_info, preset_name):
+		return os.path.exists('{}/presets/sooperlooper/{}.slsess'.format(self.my_data_dir, preset_name))
+
+
+	def save_preset(self, bank_name, preset_name):
+		path = '{}/presets/sooperlooper'.format(self.my_data_dir)
+		if not os.path.exists(path):
+			try:
+				os.mkdir(path)
+			except Exception as e:
+				logging.warning("Failed to create SooperLooper user preset directory: {}".format(e))
+		uri = '{}/{}.slsess'.format(path, preset_name)
+		liblo.send(self.osc_target, '/save_session', ('s', uri),  ('s', self.osc_server_url), ('s', '/error'))
+		return uri
+
+
+	def delete_preset(self, bank, preset):
+		try:
+			os.remove(preset[0])
+		except Exception as e:
+			logging.debug(e)
+
+
+	def rename_preset(self, bank_info, preset, new_name):
+		try:
+			os.rename(preset[0], '{}/presets/sooperlooper/{}.slsess'.format(self.my_data_dir, new_name))
+			return True
+		except Exception as e:
+			logging.debug(e)
+			return False
+
 
 	#----------------------------------------------------------------------------
 	# Controllers Management
@@ -406,34 +469,27 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					for loop in range(self.loop_count):
 						labels.append('Loop {}'.format(loop + 1))
 					try:
-						sync_source = self.zctrls['sync_source'].value
-						self.zctrls['sync_source'].set_options({'labels':labels, 'ticks':[], 'value_max':self.loop_count})
-						if sync_source > self.loop_count:
-							self.zctrls['sync_source'].set_value(self.loop_count)
-						self.zctrls['loop_count'].set_value(self.loop_count, False)
-						self.zctrls['selected_loop_num'].value_max = self.loop_count
+							self.zctrls['sync_source'].set_options({'labels':labels, 'ticks':[], 'value_max':self.loop_count})
+							self.zctrls['loop_count'].set_value(self.loop_count, False)
+							self.zctrls['selected_loop_num'].value_max = self.loop_count
 					except:
-						# zctrls may not yet be initialised
-						pass
+						pass # zctrls may not yet be initialised
 					if loop_count_changed > 0:
-						liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1), ('s', 'loop_pos'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
-						liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1), ('s', 'loop_len'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
-						liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1), ('s', 'mute'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
-						liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1), ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
-						liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1), ('s', 'next_state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
-						quantize = 1
-						try:
-							quantize = self.zctrls['quantize'].value
-						except:
-							pass
-						liblo.send(self.osc_target, '/sl/-1/set', ('s', 'quantize'), ('f', quantize))
-						if self.loop_count == 1:
-							# Set first loop defaults
-							liblo.send(self.osc_target, '/set', ('s', 'sync_source'), ('f', 1))
-						else:
-							# Set loop 2+ defaults
-							liblo.send(self.osc_target, '/sl/{}/set'.format(self.loop_count - 1), ('s', 'sync'), ('f', 1))
-					self.select_loop(self.loop_count - 1, True)
+						for i in range(loop_count_changed):
+							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'loop_pos'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
+							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'loop_len'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
+							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'mute'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
+							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
+							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'next_state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
+							if self.loop_count > 1:
+								# Set defaults for new loops
+								liblo.send(self.osc_target, '/sl/{}/set'.format(self.loop_count - 1 - i), ('s', 'sync'), ('f', 1))
+						if self.loop_count > 1:
+							self.select_loop(self.loop_count - 1, True)
+
+					liblo.send(self.osc_target, '/get', ('s', 'sync_source'), ('s', self.osc_server_url), ('s', '/control'))
+					if self.selected_loop > self.loop_count:
+						self.select_loop(self.loop_count - 1, True)
 
 				self.monitors_dict['loop_count'] = self.loop_count
 				self.monitors_dict['version'] = self.sl_version
@@ -447,7 +503,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				try:
 					self.zctrls[args[1]].set_value(args[2], False)
 				except Exception as e:
-					logging.warning("Unsupported tally %s (%f)", args[1], args[2])
+					logging.warning("Unsupported tally (or zctrl not yet configured) %s (%f)", args[1], args[2])
 			elif path == '/monitor':
 				# args: i:Loop index, s:control, f:value
 				# Handle events registered for selected loop
@@ -465,6 +521,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					self.monitors_dict['{}_{}'.format(args[1], args[0])] = args[2]
 					#if args[1] in ['loop_len', 'rate_output', 'mute']:
 					#	logging.warning("Monitor: Loop %d %s=%0.2f", args[0], args[1], args[2])
+			elif path == 'error':
+				logging.warning("SooperLooper daemon error: {}".format(args[0]))
 		except Exception as e:
 			logging.warning(e)
 

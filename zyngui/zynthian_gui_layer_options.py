@@ -219,7 +219,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def save_preset(self):
 		if self.layer:
+			self.save_preset_create_bank_name = None
+			self.save_preset_bank_info = None
 			self.layer.load_bank_list()
+			if not self.layer.bank_list or not self.layer.bank_list[0][0]:
+				self.save_preset_select_name_cb()
+				return
 			options = {}
 			options["***New bank***"] = "NEW_BANK"
 			index = self.layer.get_bank_index() + 1
@@ -269,7 +274,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		try:
 			# Save preset
 			preset_uri = self.layer.engine.save_preset(self.save_preset_bank_info, preset_name)
-			logging.info("Saved preset with name '{}' to bank '{}' => {}".format(preset_name, self.save_preset_bank_info[2], preset_uri))
 
 			if preset_uri:
 				#If must create new bank, do it!
@@ -277,8 +281,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 					self.layer.engine.create_user_bank(self.save_preset_create_bank_name)
 					logging.info("Created new bank '{}' => {}".format(self.save_preset_create_bank_name, self.save_preset_bank_info[0]))
 					self.layer.load_bank_list()
-
-				self.layer.set_bank_by_id(self.save_preset_bank_info[0])
+				if self.save_preset_bank_info:
+					self.layer.set_bank_by_id(self.save_preset_bank_info[0])
 				self.layer.load_preset_list()
 				self.layer.set_preset_by_id(preset_uri)
 			else:
@@ -288,7 +292,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			logging.error(e)
 
 		self.save_preset_create_bank_name = None
-		self.zyngui.close_screen()
 		self.zyngui.close_screen()
 
 
