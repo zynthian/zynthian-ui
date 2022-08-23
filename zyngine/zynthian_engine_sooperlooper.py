@@ -339,6 +339,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			except Exception as e:
 				logging.warning("Failed to create SooperLooper user preset directory: {}".format(e))
 		uri = '{}/{}.slsess'.format(path, preset_name)
+		# Undocumented feature: set 4th (int) parameter to 1 to save loop audio
 		liblo.send(self.osc_target, '/save_session', ('s', uri),  ('s', self.osc_server_url), ('s', '/error'), ('i', 1))
 		return uri
 
