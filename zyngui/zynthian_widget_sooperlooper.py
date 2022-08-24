@@ -26,6 +26,7 @@
 import tkinter
 import logging
 from turtle import pos
+from zyngine.zynthian_engine import zynthian_engine
 from zyngine.zynthian_engine_sooperlooper import zynthian_engine_sooperlooper
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
@@ -60,8 +61,8 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			self.font_size_sl = int(0.7 * zynthian_gui_config.font_size)
 
 		self.tri_size = int(0.5 * zynthian_gui_config.font_size)
-		self.txt_y = int(0.70 * self.font_size_sl)
-		self.txt_x = 2
+		txt_y = zynthian_gui_config.display_height // 22 #int(0.70 * self.font_size_sl)
+		self.txt_x = 4
 
 		self.pos_canvas = []
 		for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
@@ -71,10 +72,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				highlightthickness = 0,
 				bg = self.SLIDER_BG)
 			pos_label = pos_canvas.create_text(
-				self.txt_x, self.txt_y,
+				self.txt_x, txt_y,
 				fill = self.SLIDER_TEXT,
 				text = '0.00 / 0.00',
-				anchor = 'nw',
+				anchor = 'w',
 				#font = ("source code pro", self.font_size_sl, 'bold')
 				#font = ("office code pro", self.font_size_sl, 'bold')
 				font = ("monoid", self.font_size_sl)
@@ -98,10 +99,9 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				bg = self.SLIDER_BG
 			)
 			mute_text = mute_canvas.create_text(
-				self.txt_x, self.txt_y,
+				self.txt_x, txt_y,
 				fill = self.SLIDER_TEXT,
 				text = 'mute',
-				anchor = 'n',
 				font = (zynthian_gui_config.font_family, self.font_size_sl)
 			)
 			self.pos_canvas.append({'canvas':pos_canvas, 'border':pos_border, 'label':pos_label, 'line':pos_line, 'mute':mute_canvas, 'mute_text':mute_text })
@@ -116,10 +116,9 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			bg = self.SLIDER_BG
 		)
 		self.add_text = self.add_canvas.create_text(
-			self.txt_x, self.txt_y,
+			self.txt_x, txt_y,
 			fill = self.SLIDER_TEXT,
 			text = 'add loop',
-			anchor = 'nw',
 			font = (zynthian_gui_config.font_family, self.font_size_sl)
 		)
 		self.add_canvas.bind('<ButtonPress-1>', self.on_add_click)
@@ -133,10 +132,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			0, 0, 0, self.row_height,
 			fill = '#0a0')
 		self.input_level_label = self.input_level_canvas.create_text(
-			self.txt_x, self.txt_y,
+			self.txt_x, txt_y,
 			fill = self.SLIDER_TEXT,
 			text = 'input level',
-			anchor = 'nw',
+			anchor = 'w',
 			font = (zynthian_gui_config.font_family, self.font_size_sl)
 		)
 		self.threshold_line = self.input_level_canvas.create_line(
@@ -161,10 +160,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			fill = self.SLIDER_FG
 		)
 		self.wet_label = self.wet_canvas.create_text(
-			self.txt_x, self.txt_y,
+			self.txt_x, txt_y,
 			fill = self.SLIDER_TEXT,
 			text = 'wet',
-			anchor ='nw',
+			anchor ='w',
 			font = (zynthian_gui_config.font_family, self.font_size_sl)
 		)
 
@@ -178,10 +177,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			fill = self.SLIDER_FG
 		)
 		self.dry_label = self.dry_canvas.create_text(
-			self.txt_x, self.txt_y,
+			self.txt_x, txt_y,
 			fill = self.SLIDER_TEXT,
 			text = 'dry (monitor)',
-			anchor = 'nw',
+			anchor = 'w',
 			font = (zynthian_gui_config.font_family, self.font_size_sl)
 		)
 
@@ -195,10 +194,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			fill = self.SLIDER_FG
 		)
 		self.feedback_label = self.feedback_canvas.create_text(
-			self.txt_x, self.txt_y,
+			self.txt_x, txt_y,
 			fill = self.SLIDER_TEXT,
 			text = 'feedback',
-			anchor = 'nw',
+			anchor = 'w',
 			font = (zynthian_gui_config.font_family, self.font_size_sl)
 		)
 
@@ -241,12 +240,12 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		self.button_frame.grid(columnspan=4, sticky='news', padx=(1,1))
 
 		for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
-			self.pos_canvas[loop]['canvas'].grid(row=1 + loop, columnspan=3, sticky='news', padx=(1,1), pady=(1,1))
-			self.pos_canvas[loop]['mute'].grid(row=1 + loop, column=3, sticky='news', padx=(0,2), pady=(1,1))
+			self.pos_canvas[loop]['canvas'].grid(row=1 + loop, columnspan=3, sticky='news', padx=(1,1), pady=(0,1))
+			self.pos_canvas[loop]['mute'].grid(row=1 + loop, column=3, sticky='news', padx=(0,2), pady=(0,1))
 			self.pos_canvas[loop]['canvas'].grid_remove()
 			self.pos_canvas[loop]['mute'].grid_remove()
 
-		self.add_canvas.grid(row=zynthian_engine_sooperlooper.MAX_LOOPS, sticky='news', padx=(1,1), pady=(1,1))
+		self.add_canvas.grid(row=zynthian_engine_sooperlooper.MAX_LOOPS, columnspan = 2, sticky='news', padx=(1,1), pady=(0,1))
 		self.input_level_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(1,1), pady=(0,1))
 		self.feedback_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', padx=(0,2), pady=(0,1))
 		self.wet_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(1,1), pady=(0,1))
@@ -275,7 +274,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 	def on_size(self, event):
 		super().on_size(event)
 
-		self.row_height = self.height  // (zynthian_engine_sooperlooper.MAX_LOOPS + 5)
+		self.row_height = (self.height - zynthian_engine_sooperlooper.MAX_LOOPS - 5)  // (zynthian_engine_sooperlooper.MAX_LOOPS + 5)
 		self.rowconfigure(0, minsize=self.row_height * 3)
 		for row in range(1, zynthian_engine_sooperlooper.MAX_LOOPS + 1):
 			self.rowconfigure(row, minsize=self.row_height)
@@ -283,8 +282,15 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		self.rowconfigure(row + 3, minsize=self.row_height)
 
 		txt_xc = (self.width // 8) - 1
+		txt_y = self.height // (2 * zynthian_engine_sooperlooper.MAX_LOOPS + 10)
 		for pc in self.pos_canvas:
-			pc['mute'].coords(pc['mute_text'], txt_xc, self.txt_y)
+			pc['mute'].coords(pc['mute_text'], txt_xc, txt_y)
+			pc['canvas'].coords(pc['label'], self.txt_x, txt_y)
+		self.add_canvas.coords(self.add_text, txt_xc * 2, txt_y)
+		self.input_level_canvas.coords(self.input_level_label, self.txt_x, txt_y)
+		self.wet_canvas.coords(self.wet_label, self.txt_x, txt_y)
+		self.dry_canvas.coords(self.dry_label, self.txt_x, txt_y)
+		self.feedback_canvas.coords(self.feedback_label, self.txt_x, txt_y)
 
 
 	def on_loop_click(self, event):
@@ -383,6 +389,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			loop_len_symbol = 'loop_len_{}'.format(loop)
 			state_symbol = 'state_{}'.format(loop)
 			next_state_symbol = 'next_state_{}'.format(loop)
+			waiting_symbol = 'waiting_{}'.format(loop)
 			if loop_pos_symbol in self.monitors:
 				pos = self.monitors[loop_pos_symbol]
 			else:
@@ -399,7 +406,11 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				next_state = self.monitors[next_state_symbol]
 			else:
 				next_state = -1
-			if next_state >= 0 or state in [1, 3]:
+			if waiting_symbol in self.monitors:
+				waiting = self.monitors[waiting_symbol]
+			else:
+				waiting = 0
+			if waiting or state in [1, 3]:
 				# Pending states
 				#TODO: Split to pending rec, pending play, etc.
 				bg='#c90'
@@ -423,7 +434,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
 			self.pos_canvas[loop]['canvas'].configure(bg=bg)
 			self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text=' {} / {} {}'.format(f'{pos:.2f}'.zfill(5), f'{len:.2f}'.zfill(5), zynthian_engine_sooperlooper.SL_STATES[state]['name']))
-			if next_state in [10, 20] or next_state != -1 and state in [10, 20]:
+			if waiting and (next_state in [10,20] or state in [10, 20]):
 				if self.flash_count > 3:
 					self.pos_canvas[loop]['mute']['bg'] = self.BUTTON_ASSERTED
 				else:
@@ -458,6 +469,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			# Update state indication - next_state != -1 indicates waiting for pending operation
 			state = self.monitors['state']
 			next_state = self.monitors['next_state']
+			waiting = self.monitors['waiting']
 			if state != self.state or self.selected_loop != self.monitors['selected_loop_num']:
 				for b in self.buttons:
 					if b != 'reverse':
@@ -481,7 +493,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 					self.buttons['pause'].configure(bg=self.BUTTON_ASSERTED, highlightbackground=self.BUTTON_ASSERTED, activebackground=self.BUTTON_ASSERTED)
 				self.state = state
 				self.selected_loop = int(self.monitors['selected_loop_num'])
-			if next_state != -1 or state in [1,3]:
+			if waiting or state in [1,3]:
 				if state in [1, 2, 3] or next_state == 2:
 					btn = 'record'
 				elif state == 5 or next_state == 5:

@@ -171,6 +171,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 		self.state = [-1] * self.MAX_LOOPS # Current SL state for each loop
 		self.next_state = [-1] * self.MAX_LOOPS # Next SL state for each loop (-1 if no state change pending)
+		self.waiting = [0] * self.MAX_LOOPS # 1 if a change of state is pending
 		self.selected_loop = 0
 		self.loop_count = 1
 		self.channels = 2
@@ -338,6 +339,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			except Exception as e:
 				logging.warning("Failed to create SooperLooper user preset directory: {}".format(e))
 		uri = '{}/{}.slsess'.format(path, preset_name)
+		# Undocumented feature: set 4th (int) parameter to 1 to save loop audio
 		liblo.send(self.osc_target, '/save_session', ('s', uri),  ('s', self.osc_server_url), ('s', '/error'), ('i', 1))
 		return uri
 
@@ -447,19 +449,23 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				loop = args[0]
 				if args[1] == 'next_state':
 					self.next_state[loop] = state
-				else:
+				elif args[1] == 'state':
 					self.state[loop] = state
 					if state in [0, 4]:
 						self.next_state[loop] = -1
+				elif args[1] == 'waiting':
+					self.waiting[loop] = state
 
 				if self.next_state[loop] == self.state[loop]:
 					self.next_state[loop] = -1
 
 				self.monitors_dict['state_{}'.format(loop)] = self.state[loop]
 				self.monitors_dict['next_state_{}'.format(loop)] = self.next_state[loop]
+				self.monitors_dict['waiting_{}'.format(loop)] = self.waiting[loop]
 				if self.selected_loop == loop:
 					self.monitors_dict['state'] = self.state[loop]
 					self.monitors_dict['next_state'] = self.next_state[loop]
+					self.monitors_dict['waiting'] = self.waiting[loop]
 					self.update_state()
 
 			elif path == '/info':
@@ -485,6 +491,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'mute'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
 							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
 							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'next_state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
+							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'waiting'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
 							if self.loop_count > 1:
 								# Set defaults for new loops
 								liblo.send(self.osc_target, '/sl/{}/set'.format(self.loop_count - 1 - i), ('s', 'sync'), ('f', 1))
@@ -537,6 +544,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.selected_loop = int(loop)
 		self.monitors_dict['state'] = self.state[self.selected_loop]
 		self.monitors_dict['next_state'] = self.next_state[self.selected_loop]
+		self.monitors_dict['waiting'] = self.waiting[self.selected_loop]
 		try:
 			self.zctrls['selected_loop_num'].set_value(loop + 1, False)
 		except:

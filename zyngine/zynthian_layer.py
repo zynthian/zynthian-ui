@@ -444,7 +444,7 @@ class zynthian_layer:
 
 
 	def init_controllers(self):
-		self.controllers_dict=self.engine.get_controllers_dict(self)
+		self.controllers_dict = self.engine.get_controllers_dict(self)
 
 
 	# Create controller screens from zynthian controller keys
