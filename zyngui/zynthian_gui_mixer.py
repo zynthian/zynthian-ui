@@ -1049,7 +1049,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
 		if isinstance(self.selected_layer, zyngine.zynthian_layer):
-			if type == "S":
+			if type == "S" and not self.midi_learning:
 				self.zyngui.layer_control(self.selected_layer)
 			elif type == "B":
 				# Layer Options
