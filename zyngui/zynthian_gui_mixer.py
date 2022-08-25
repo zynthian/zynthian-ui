@@ -1013,7 +1013,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		options["MIDI Learn"] = "midi_learn"
 		options["> Audio Chain"] = None
 		options["Add Audio-FX"] = "Add"
-		options["Clean MIDI-Learn"] = "Clean"
 
 		self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
 		self.zyngui.show_screen('option')
@@ -1031,14 +1030,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		elif param == "RecordAudio":
 			self.zyngui.audio_recorder.toggle_recording()
 			self.show_mainfx_options()
-		elif param == "Clean":
-			self.zyngui.show_confirm("Do you really want to clean MIDI-learn for this chain?", self.midi_unlearn_confirmed)
 		elif param == "midi_learn":
 			self.zyngui.enter_midi_learn()
 
 
-	def midi_unlearn_confirmed(self, param):
-		self.zynmixer.midi_unlearn_chan(self.MAIN_MIDI_CHANNEL)
+	def midi_unlearn_confirmed(self, zctrl):
+		if zctrl:
+			zctrl.midi_unlearn()
+		else:
+			self.unlearn_all()
+		self.zyngui.exit_midi_learn()
 
 
 	#--------------------------------------------------------------------------
@@ -1085,6 +1086,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				if self.highlighted_strip is not None:
 					self.highlighted_strip.toggle_mute()
 				return True
+
+		elif swi == 2:
+			if t == 'B':
+				if self.midi_learning:
+					if self.zyngui.midi_learn_zctrl:
+						self.zyngui.show_confirm("Do you want to clear MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn_confirmed, self.zyngui.midi_learn_zctrl)
+					else:
+						self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL mixer controls?", self.midi_unlearn_confirmed)
+					return True
 
 		elif swi == 3:
 			self.switch_select(t)
@@ -1201,6 +1211,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			strip.enable_midi_learn(False)
 		self.main_mixbus_strip.enable_midi_learn(False)
 		self.midi_learning = False
+
+
+	def unlearn_all(self):
+		for ctrls in self.zyngui.zynmixer.zctrls:
+			for key in ctrls:
+				ctrls[key].midi_unlearn()
 
 
 	def cb_ctrl_change(self, chan, ctrl, value):

@@ -476,10 +476,6 @@ class zynthian_controller:
 		# Learn only if there is a working engine ...
 		if self.engine:
 			logging.info("Init MIDI-learn: %s" % self.symbol)
-			
-			# If already learned, unlearn
-			if self.midi_learn_cc:
-				self.midi_unlearn()
 
 			try:
 				self.engine.init_midi_learn(self)
@@ -515,8 +511,6 @@ class zynthian_controller:
 	def set_midi_learn(self, chan, cc):
 		# Learn only if there is a working engine ...
 		if self.engine:
-			self.midi_unlearn()
-
 			try:
 				return self.engine.set_midi_learn(self, chan, cc)
 			except Exception as e:

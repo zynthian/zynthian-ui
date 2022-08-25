@@ -1414,8 +1414,29 @@ class zynthian_gui:
 		elif cuia == "ENTER_MIDI_LEARN":
 			self.enter_midi_learn()
 
+		elif cuia == "EXIT_MIDI_LEARN":
+			self.exit_midi_learn()
+
 		elif cuia == "TOGGLE_MIDI_LEARN":
 			self.toggle_midi_learn()
+
+		elif cuia == "MIDI_UNLEARN_CONTROL":
+			# Unlearn from currently selected (learning) control
+			if self.midi_learn_zctrl:
+				self.midi_learn_zctrl.unlearn_midi()
+				self.exit_midi_learn()
+
+		elif cuia == "MIDI_UNLEARN_MIXER":
+			# Unlearn all mixer controls
+			self.screens['audio_mixer'].unlearn_all()
+
+		elif cuia == "MIDI_UNLEARN_ENGINE":
+			#TODO: Implement MIDI_UNLEARN_ENGINE
+			pass
+
+		elif cuia == "MIDI_UNLEARN_CHAIN":
+			#TODO: Implement MIDI_UNLEARN_CHAIN
+			pass
 
 		# Common methods to control views derived from zynthian_gui_base
 		elif isinstance(self.screens[self.current_screen], zynthian_gui_base):

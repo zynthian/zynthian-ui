@@ -124,8 +124,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if 'midi_chan' in eng_options and eng_options['midi_chan']:
 			self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
 
-		self.list_data.append((self.layer_midi_unlearn, None, "Clean MIDI-Learn"))
-
 		if self.layer.engine.type=="MIDI Synth" and 'replace' in eng_options and eng_options['midi_chan']:
 			self.list_data.append((self.layer_replace, None, "Replace Synth"))
 
@@ -393,15 +391,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def layer_remove_confirmed(self, params=None):
 		self.zyngui.screens['layer'].remove_root_layer(self.layer_index)
 		self.zyngui.show_screen_reset('audio_mixer')
-
-
-	def layer_midi_unlearn(self):
-		self.zyngui.show_confirm("Do you really want to clean MIDI-learn for this chain?", self.layer_midi_unlearn_confirmed)
-
-
-	def layer_midi_unlearn_confirmed(self, params=None):
-		self.layer.midi_unlearn()
-		self.zyngui.zynmixer.midi_unlearn_chan(self.layer.midi_chan)
 
 
 	# FX-Chain management

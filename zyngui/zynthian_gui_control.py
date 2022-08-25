@@ -417,6 +417,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 				if self.mode == 'control':
 					self.zyngui.toggle_midi_learn()
 				return True
+			elif t == 'B':
+				if self.midi_learning:
+					if self.zyngui.midi_learn_zctrl:
+						self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.midi_learn_zctrl)
+					elif self.zyngui.curlayer:
+						self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in this chain?", self.midi_unlearn)
+					self.exit_midi_learn()
+				return True
+
 
 		elif swi == 3:
 			if t == 'S':
@@ -534,9 +543,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.set_select_path()
 
 
-	def midi_unlearn(self, i):
-		if self.mode == 'control' and self.zgui_controllers[i].zctrl:
-			self.zgui_controllers[i].zctrl.midi_unlearn()
+	def midi_unlearn(self, zctrl=None):
+		if zctrl:
+			zctrl.midi_unlearn()
+		elif self.zyngui.curlayer:
+			#TODO: This only clears the first engine, not the whole chain
+			self.zyngui.curlayer.midi_unlearn()
+		self.zyngui.exit_midi_learn()
 
 
 	def cb_listbox_push(self, event):
