@@ -305,6 +305,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def do_clear_bank(self, params=None):
 		self.zyngui.zynseq.libseq.clearBank(self.zyngui.zynseq.bank)
 		self.zyngui.zynseq.select_bank()
+		self.zyngui.zynseq.libseq.setPlayPosition(self.zyngui.zynseq.bank, self.sequence, 0)
 
 
 	# Function to clear sequence
@@ -354,7 +355,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	#	fname: Filename
 	#	fpath: Full file path of SMF to import
 	def smf_file_cb(self, fname, fpath):
-		logging.warning("Seq len:%d pos:%d", self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, self.sequence), self.selected_cell[0])
+		#logging.warning("Seq len:%d pos:%d", self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, self.sequence), self.selected_cell[0])
 		if self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, self.sequence) > self.selected_cell[0] * 24:
 			self.zyngui.show_confirm("Import will overwrite part of existing sequence. Do you want to continue?", self.do_import_smf, fpath)
 		else:
@@ -367,6 +368,16 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if not zynsmf.load(smf, fpath):
 			logging.warning("Failed to load file %s", fpath)
 			return
+		event_count = zynsmf.libsmf.getEvents(smf, -1)
+		if event_count == 0:
+			return
+		self.zyngui.show_info("Importing SMF...")
+		event_index = 0
+		event_next_update = 0
+		event_inc = event_count // 100 + 1
+		progress = 0
+		progress_step = event_inc * 100 / event_count
+		pattern_count = 0
 		bank = self.zyngui.zynseq.bank
 		sequence = self.sequence
 		ticks_per_beat = zynsmf.libsmf.getTicksPerQuarterNote(smf)
@@ -387,58 +398,67 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 				empty_tracks[track] = True
 
 		# Do import
-		for channel in range(16):
-			# Iterate through each MIDI channel
-			zynsmf.libsmf.setPosition(smf, 0)
-			pattern = None
-			note_on = 0x90 | channel
-			note_off = 0x80 | channel
-			note_on_info = [[None,None,None,None] for i in range(127)] # Array of [pattern,time,velocity,step] indicating time that note on event received for matching note off and deriving duration
-			pattern_position = self.selected_cell[0] * ticks_per_beat # Position of current pattern within track in ticks
+		zynsmf.libsmf.setPosition(smf, 0)
+		# Create arrays to hold currently processing element for each MIDI channel
+		pattern = [None for i in range(16)]
+		note_on = [0x90 | channel for channel in range(16)]
+		note_off = [0x80 | channel for channel in range(16)]
+		note_on_info = [[[None,None,None,None] for i in range(127)] for i in range(16)] # Array of [pattern,time,velocity,step] indicating time that note on event received for matching note off and deriving duration
+		pattern_position = [self.selected_cell[0] * ticks_per_beat for i in range(16)] # Position of current pattern within track in ticks
 
-			while zynsmf.libsmf.getEvent(smf, True):
-				type = zynsmf.libsmf.getEventType()
-				time = zynsmf.libsmf.getEventTime()
-				status = zynsmf.libsmf.getEventStatus()
-				if type == 0x01:
-					# MIDI event
-					if channel != zynsmf.libsmf.getEventChannel():
-						continue
-					note = zynsmf.libsmf.getEventValue1()
-					velocity = zynsmf.libsmf.getEventValue2()
-					if status == note_on and velocity:
-						# Found note-on event
-						if time >= pattern_position + ticks_in_pattern or pattern == None:
-							while time >= pattern_position + ticks_in_pattern:
-								pattern_position += ticks_in_pattern
-							pattern = self.zyngui.zynseq.libseq.createPattern()
-							self.zyngui.zynseq.libseq.selectPattern(pattern)
-							self.zyngui.zynseq.libseq.setBeatsInPattern(beats_in_pattern)
-							self.zyngui.zynseq.libseq.setStepsPerBeat(steps_per_beat)
-							position = int(pattern_position / ticks_per_clock)
-							self.zyngui.zynseq.libseq.addPattern(bank, sequence, channel, position, pattern, True)
-						step = int((time - pattern_position) / ticks_per_step)
-						note_on_info[note] = [pattern,time,velocity,step]
-						self.zyngui.zynseq.libseq.addNote(step, note, velocity, 1) # Add short event, may overwrite later when note-off detected
-					elif status == note_off or status == note_on and velocity == 0:
-						# Found note-off event
-						if note_on_info[note][0] == None:
-							continue # Do not have corresponding note-on for this note-off event
-						current_pattern = pattern
-						old_pattern = note_on_info[note][0]
-						trigger_time = note_on_info[note][1]
-						velocity = note_on_info[note][2]
-						step = note_on_info[note][3]
-						self.zyngui.zynseq.libseq.selectPattern(old_pattern)
-						duration = int((time - trigger_time) / ticks_per_step)
-						if duration < 1:
-							duration = 1
-						self.zyngui.zynseq.libseq.addNote(step, note, velocity, duration)
-						note_on_info[note] = [None,None,None,None]
-						pattern = current_pattern
-						self.zyngui.zynseq.libseq.selectPattern(pattern)
-					if(empty_tracks[channel]):
-						empty_tracks[channel] = False
+		while zynsmf.libsmf.getEvent(smf, True):
+			event_index += 1
+			if event_index > event_next_update:
+				progress += progress_step
+				self.zyngui.add_info("\nImporting SMF - {}%".format(int(progress)))
+				event_next_update += event_inc
+			type = zynsmf.libsmf.getEventType()
+			time = zynsmf.libsmf.getEventTime()
+			status = zynsmf.libsmf.getEventStatus()
+			if type == 0x01:
+				# MIDI event
+				channel = zynsmf.libsmf.getEventChannel()
+				note = zynsmf.libsmf.getEventValue1()
+				velocity = zynsmf.libsmf.getEventValue2()
+				if status in note_on and velocity:
+					# Found note-on event
+					if time >= pattern_position[channel] + ticks_in_pattern or pattern[channel] is None:
+						# Create new pattern
+						while time >= pattern_position[channel] + ticks_in_pattern:
+							pattern_position[channel] += ticks_in_pattern
+						pattern[channel] = self.zyngui.zynseq.libseq.createPattern()
+						self.zyngui.zynseq.libseq.selectPattern(pattern[channel])
+						self.zyngui.zynseq.libseq.setBeatsInPattern(beats_in_pattern)
+						self.zyngui.zynseq.libseq.setStepsPerBeat(steps_per_beat)
+						position = int(pattern_position[channel] / ticks_per_clock)
+						self.zyngui.zynseq.libseq.addPattern(bank, sequence, channel, position, pattern[channel], True)
+						pattern_count += 1
+					step = int((time - pattern_position[channel]) / ticks_per_step)
+					note_on_info[channel][note] = [pattern[channel], time, velocity, step]
+					self.zyngui.zynseq.libseq.selectPattern(pattern[channel])
+					self.zyngui.zynseq.libseq.addNote(step, note, velocity, 1) # Add short event, may overwrite later when note-off detected
+				elif status in note_off or status in note_on and velocity == 0:
+					# Found note-off event
+					if note_on_info[channel][note][0] == None:
+						continue # Do not have corresponding note-on for this note-off event
+					current_pattern = pattern[channel]
+					old_pattern = note_on_info[channel][note][0]
+					trigger_time = note_on_info[channel][note][1]
+					velocity = note_on_info[channel][note][2]
+					step = note_on_info[channel][note][3]
+					self.zyngui.zynseq.libseq.selectPattern(old_pattern)
+					duration = int((time - trigger_time) / ticks_per_step)
+					if duration < 1:
+						duration = 1
+					self.zyngui.zynseq.libseq.addNote(step, note, velocity, duration)
+					note_on_info[channel][note] = [None,None,None,None]
+					pattern[channel] = current_pattern
+					self.zyngui.zynseq.libseq.selectPattern(pattern[channel])
+				if(empty_tracks[channel]):
+					empty_tracks[channel] = False
+
+
+		self.zyngui.add_info("\n\nSMF import complete - {} patterns added\n\n".format(pattern_count))
 
 		# Remove empty tracks
 		for track in range(15, -1, -1):
@@ -448,6 +468,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		zynsmf.libsmf.removeSmf(smf)
 		self.update_sequence_tracks()
 		self.redraw_pending = 4
+		self.zyngui.hide_info_timer()
 
 
 	# Handle resize event
