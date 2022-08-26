@@ -827,9 +827,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.zynmixer.enable_dpm(chan, False)
 
 		if zynthian_gui_config.show_cpu_status:
-			self.meter_mode = self.METER_CPU
+			self.set_meter_mode(self.METER_CPU)
 		else:
-			self.meter_mode = self.METER_NONE # Don't show meter in status bar
+			self.set_meter_mode(self.METER_NONE) # Don't show meter in status bar
 
 		self.set_title("Audio Mixer")
 

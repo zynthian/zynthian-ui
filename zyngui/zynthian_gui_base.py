@@ -57,6 +57,7 @@ class zynthian_gui_base(tkinter.Frame):
 		self.columnconfigure(0, weight=1)
 		self.shown = False
 		self.zyngui = zynthian_gui_config.zyngui
+		self.meter_mode = self.METER_NONE
 
 		self.topbar_allowed = True
 		self.topbar_height = zynthian_gui_config.topbar_height
@@ -72,27 +73,11 @@ class zynthian_gui_base(tkinter.Frame):
 		else:
 			self.height = zynthian_gui_config.display_height - self.topbar_height
 
-
-		#Status Area Canvas Objects
-		self.status_cpubar = None
-		self.status_peak_lA = None
-		self.status_peak_mA = None
-		self.status_peak_hA = None
-		self.status_hold_A = None
-		self.status_peak_lB = None
-		self.status_peak_mB = None
-		self.status_peak_hB = None
-		self.status_hold_B = None
-		self.status_error = None
-		self.status_recplay = None
-		self.status_midi = None
-		self.status_midi_clock = None
-
 		#Status Area Parameters
 		self.status_h = self.topbar_height
-		self.status_l = int(1.8*self.topbar_height)
-		self.status_rh = max(2,int(self.status_h/4))
-		self.status_fs = int(self.status_h/3)
+		self.status_l = int(1.8 * self.topbar_height)
+		self.status_rh = max(2, int(self.status_h / 4))
+		self.status_fs = int(self.status_h / 3)
 		self.status_lpad = self.status_fs
 
 		#Digital Peak Meter (DPM) parameters
@@ -110,6 +95,11 @@ class zynthian_gui_base(tkinter.Frame):
 		self.select_path_width = 0
 		self.select_path_offset = 0
 		self.select_path_dir = 2
+
+		self.status_error = None
+		self.status_recplay = None
+		self.status_midi = None
+		self.status_midi_clock = None
 
 		# Topbar's frame
 		self.tb_frame = tkinter.Frame(self,
@@ -184,9 +174,9 @@ class zynthian_gui_base(tkinter.Frame):
 		self.button_push_ts = 0
 
 		if zynthian_gui_config.show_cpu_status:
-			self.meter_mode = self.METER_CPU
+			self.set_meter_mode(self.METER_CPU)
 		else:
-			self.meter_mode = self.METER_DPM
+			self.set_meter_mode(self.METER_DPM)
 
 		# Update Title
 		self.set_select_path()
@@ -421,115 +411,74 @@ class zynthian_gui_base(tkinter.Frame):
 		pass
 
 
+	def set_meter_mode(self, mode):
+		self.status_canvas.itemconfigure('meters', state=tkinter.HIDDEN)
+		if mode == self.METER_CPU:
+			try:
+				self.status_canvas.itemconfigure(self.status_cpubar, state=tkinter.NORMAL)
+			except:
+				self.status_cpubar = self.status_canvas.create_rectangle((0, 0, 0, self.status_rh), fill='#0f0', width=0, tags=('meters'))
+		elif mode == self.METER_DPM:
+			try:
+				self.status_peak_lA
+			except:
+				self.status_peak_lA = self.status_canvas.create_rectangle((0, 0, self.dpm_high * self.status_l, self.status_rh - 2), fill="#00C000", width=0, tags=('meters', 'dpm'))
+				self.status_peak_lB = self.status_canvas.create_rectangle((0, self.status_rh - 1, self.dpm_high * self.status_l, 2 * self.status_rh - 3), fill="#00C000", width=0, tags=('meters', 'dpm'))
+				self.status_peak_mA = self.status_canvas.create_rectangle((self.dpm_high * self.status_l, 0, self.dpm_over * self.status_l, self.status_rh - 2), fill="#C0C000", width=0, tags=('meters', 'dpm'))
+				self.status_peak_mB = self.status_canvas.create_rectangle((self.dpm_high * self.status_l, self.status_rh - 1, self.dpm_over * self.status_l, 2 * self.status_rh - 3), fill="#C0C000", width=0, tags=('meters', 'dpm'))
+				self.status_peak_hA = self.status_canvas.create_rectangle((self.dpm_over * self.status_l, 0, self.status_l, self.status_rh - 2), fill="#C00000", width=0, tags=('meters', 'dpm'))
+				self.status_peak_hB = self.status_canvas.create_rectangle((self.dpm_over * self.status_l, self.status_rh - 1, self.status_l, 2 * self.status_rh - 3), fill="#C00000", width=0, tags=('meters', 'dpm'))
+				self.status_peak_bA = self.status_canvas.create_rectangle(0, 0, self.status_l, self.status_rh - 2, width=0, fill='#333', tags=('meters', 'dpm'))
+				self.status_peak_bB = self.status_canvas.create_rectangle(0, self.status_rh - 1, self.status_l, 2 * self.status_rh - 3, width=0, fill='#333', tags=('meters', 'dpm'))
+				self.status_hold_A = self.status_canvas.create_rectangle((0, 0, 0, self.status_rh - 2), width=0, state=tkinter.HIDDEN, tags=('meters'))
+				self.status_hold_B = self.status_canvas.create_rectangle((0, self.status_rh - 1, 0, self.status_rh - 3), width=0, state=tkinter.HIDDEN, tags=('meters'))
+			self.status_canvas.itemconfigure('dpm', state=tkinter.NORMAL)
+		self.meter_mode = mode
+
+
 	def refresh_status(self, status={}):
 		if self.shown:
 			if self.meter_mode == self.METER_CPU:
 				# Display CPU-load bar
-				l = int(status['cpu_load']*self.status_l/100)
-				cr = int(status['cpu_load']*255/100)
-				cg = 255-cr
-				color = "#%02x%02x%02x" % (cr,cg,0)
-				try:
-					if self.status_cpubar:
-						self.status_canvas.coords(self.status_cpubar,(0, 0, l, self.status_rh))
-						self.status_canvas.itemconfig(self.status_cpubar, fill=color)
-					else:
-						self.status_cpubar=self.status_canvas.create_rectangle((0, 0, l, self.status_rh), fill=color, width=0)
-				except Exception as e:
-					logging.error(e)
+				l = int(status['cpu_load'] * self.status_l / 100)
+				cr = int(status['cpu_load'] * 255 / 100)
+				cg = 255 - cr
+				color = "#%02x%02x%02x" % (cr, cg, 0)
+				if self.status_cpubar:
+					self.status_canvas.coords(self.status_cpubar,(0, 0, l, self.status_rh))
+					self.status_canvas.itemconfig(self.status_cpubar, fill=color)
+				else:
+					self.status_cpubar=self.status_canvas.create_rectangle((0, 0, l, self.status_rh), fill=color, width=0)
 			elif self.meter_mode == self.METER_DPM:
 				# Display audio peak
-				signal = max(0, 1 + status['peakA'] / self.dpm_rangedB)
-				llA = int(min(signal, self.dpm_high) * self.status_l)
-				lmA = int(min(signal, self.dpm_over) * self.status_l)
-				lhA = int(min(signal, 1) * self.status_l)
-				signal = max(0, 1 + status['peakB'] / self.dpm_rangedB)
-				llB = int(min(signal, self.dpm_high) * self.status_l)
-				lmB = int(min(signal, self.dpm_over) * self.status_l)
-				lhB = int(min(signal, 1) * self.status_l)
-				signal = max(0, 1 + status['holdA'] / self.dpm_rangedB)
-				lholdA = int(min(signal, 1) * self.status_l)
-				signal = max(0, 1 + status['holdB'] / self.dpm_rangedB)
-				lholdB = int(min(signal, 1) * self.status_l)
-				try:
-					# Channel A (left)
-					if self.status_peak_lA:
-						self.status_canvas.coords(self.status_peak_lA,(0, 0, llA, self.status_rh-2))
-						self.status_canvas.itemconfig(self.status_peak_lA, state='normal')
-					else:
-						self.status_peak_lA=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#00C000", width=0, state='hidden')
+				lA = int((max(0, 1 + status['peakA'] / self.dpm_rangedB)) * self.status_l)
+				lB = int((max(0, 1 + status['peakB'] / self.dpm_rangedB)) * self.status_l)
+				lholdA = int(min(max(0, 1 + status['holdA'] / self.dpm_rangedB), 1) * self.status_l)
+				lholdB = int(min(max(0, 1 + status['holdB'] / self.dpm_rangedB), 1) * self.status_l)
+				# Channel A (left)
+				self.status_canvas.coords(self.status_peak_bA, (lA, 0, self.status_l, self.status_rh - 2))
+				self.status_canvas.coords(self.status_peak_bB, (lB, self.status_rh - 1, self.status_l, 2 * self.status_rh - 3))
 
-					if self.status_peak_mA:
-						if lmA >= self.dpm_scale_lm:
-							self.status_canvas.coords(self.status_peak_mA,(self.dpm_scale_lm, 0, lmA, self.status_rh-2))
-							self.status_canvas.itemconfig(self.status_peak_mA, state="normal")
-						else:
-							self.status_canvas.itemconfig(self.status_peak_mA, state="hidden")
-					else:
-						self.status_peak_mA=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C0C000", width=0, state='hidden')
+				self.status_canvas.coords(self.status_hold_A,(lholdA, 0, lholdA, self.status_rh-2))
+				if lholdA >= self.dpm_scale_lh:
+					self.status_canvas.itemconfig(self.status_hold_A, state=tkinter.NORMAL, fill="#FF0000")
+				elif lholdA >= self.dpm_scale_lm:
+					self.status_canvas.itemconfig(self.status_hold_A, state=tkinter.NORMAL, fill="#FFFF00")
+				elif lholdA > 0:
+					self.status_canvas.itemconfig(self.status_hold_A, state=tkinter.NORMAL, fill="#00FF00")
+				else:
+					self.status_canvas.itemconfig(self.status_hold_A, state=tkinter.HIDDEN)
 
-					if self.status_peak_hA:
-						if lhA >= self.dpm_scale_lh:
-							self.status_canvas.coords(self.status_peak_hA,(self.dpm_scale_lh, 0, lhA, self.status_rh-2))
-							self.status_canvas.itemconfig(self.status_peak_hA, state="normal")
-						else:
-							self.status_canvas.itemconfig(self.status_peak_hA, state="hidden")
-					else:
-						self.status_peak_hA=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C00000", width=0, state='hidden')
+				self.status_canvas.coords(self.status_hold_B,(lholdB, self.status_rh-1, lholdB, 2 * self.status_rh - 3))
+				if lholdB >= self.dpm_scale_lh:
+					self.status_canvas.itemconfig(self.status_hold_B, state=tkinter.NORMAL, fill="#FF0000")
+				elif lholdB >= self.dpm_scale_lm:
+					self.status_canvas.itemconfig(self.status_hold_B, state=tkinter.NORMAL, fill="#FFFF00")
+				elif lholdB > 0:
+					self.status_canvas.itemconfig(self.status_hold_B, state=tkinter.NORMAL, fill="#00FF00")
+				else:
+					self.status_canvas.itemconfig(self.status_hold_B, state=tkinter.HIDDEN)
 
-					if self.status_hold_A:
-						self.status_canvas.coords(self.status_hold_A,(lholdA, 0, lholdA, self.status_rh-2))
-						if lholdA >= self.dpm_scale_lh:
-							self.status_canvas.itemconfig(self.status_hold_A, state="normal", fill="#FF0000")
-						elif lholdA >= self.dpm_scale_lm:
-							self.status_canvas.itemconfig(self.status_hold_A, state="normal", fill="#FFFF00")
-						elif lholdA > 0:
-							self.status_canvas.itemconfig(self.status_hold_A, state="normal", fill="#00FF00")
-						else:
-							self.status_canvas.itemconfig(self.status_hold_A, state="hidden")
-					else:
-						self.status_hold_A=self.status_canvas.create_rectangle((0, 0, 0, 0), width=0, state='hidden')
-
-					# Channel B (right)
-					if self.status_peak_lB:
-						self.status_canvas.coords(self.status_peak_lB,(0, self.status_rh-1, llB, 2 * self.status_rh-3))
-						self.status_canvas.itemconfig(self.status_peak_lB, state='normal')
-					else:
-						self.status_peak_lB=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#00C000", width=0, state='hidden')
-
-					if self.status_peak_mB:
-						if lmB >= self.dpm_scale_lm:
-							self.status_canvas.coords(self.status_peak_mB,(self.dpm_scale_lm, self.status_rh-1, lmB, 2 * self.status_rh - 3))
-							self.status_canvas.itemconfig(self.status_peak_mB, state="normal")
-						else:
-							self.status_canvas.itemconfig(self.status_peak_mB, state="hidden")
-					else:
-						self.status_peak_mB=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C0C000", width=0, state='hidden')
-
-					if self.status_peak_hB:
-						if lhB >= self.dpm_scale_lh:
-							self.status_canvas.coords(self.status_peak_hB,(self.dpm_scale_lh, self.status_rh-1, lhB, 2 * self.status_rh - 3))
-							self.status_canvas.itemconfig(self.status_peak_hB, state="normal")
-						else:
-							self.status_canvas.itemconfig(self.status_peak_hB, state="hidden")
-					else:
-						self.status_peak_hB=self.status_canvas.create_rectangle((0, 0, 0, 0), fill="#C00000", width=0, state='hidden')
-
-					if self.status_hold_B:
-						self.status_canvas.coords(self.status_hold_B,(lholdB, self.status_rh-1, lholdB, 2 * self.status_rh - 3))
-						if lholdB >= self.dpm_scale_lh:
-							self.status_canvas.itemconfig(self.status_hold_B, state="normal", fill="#FF0000")
-						elif lholdB >= self.dpm_scale_lm:
-							self.status_canvas.itemconfig(self.status_hold_B, state="normal", fill="#FFFF00")
-						elif lholdB > 0:
-							self.status_canvas.itemconfig(self.status_hold_B, state="normal", fill="#00FF00")
-						else:
-							self.status_canvas.itemconfig(self.status_hold_B, state="hidden")
-					else:
-						self.status_hold_B=self.status_canvas.create_rectangle((0, 0, 0, 0), width=0, state='hidden')
-
-				except Exception as e:
-					logging.error("%s" % e)
 
 			# Display error flags
 			flags = ""
@@ -593,9 +542,9 @@ class zynthian_gui_base(tkinter.Frame):
 
 			# Display MIDI flag
 			if 'midi' in status and status['midi']:
-				mstate = "normal"
+				mstate = tkinter.NORMAL
 			else:
-				mstate = "hidden"
+				mstate = tkinter.HIDDEN
 
 			if not self.status_midi:
 				self.status_midi = self.status_canvas.create_text(
@@ -612,9 +561,9 @@ class zynthian_gui_base(tkinter.Frame):
 
 			# Display MIDI clock flag
 			if 'midi_clock' in status and status['midi_clock']:
-				mcstate = "normal"
+				mcstate = tkinter.NORMAL
 			else:
-				mcstate = "hidden"
+				mcstate = tkinter.HIDDEN
 
 			if not self.status_midi_clock:
 				self.status_midi_clock = self.status_canvas.create_line(
