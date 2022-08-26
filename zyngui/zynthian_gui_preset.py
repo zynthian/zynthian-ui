@@ -69,6 +69,10 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.zyngui.show_screen_reset('control')
 
 
+	def topbar_bold_touch_action(self):
+		self.zyngui.zynswitch_defered('B', 1)
+
+
 	def show_preset_options(self):
 		preset = copy.deepcopy(self.list_data[self.index])
 		if preset[2][0] == "❤": preset[2] = preset[2][1:]

@@ -84,6 +84,10 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			self.zyngui.screens['preset'].select_action(0)
 
 
+	def topbar_bold_touch_action(self):
+		self.zyngui.zynswitch_defered('B', 1)
+
+
 	def show_bank_options(self):
 		bank = copy.deepcopy(self.list_data[self.index])
 		bank_name = bank[2]
