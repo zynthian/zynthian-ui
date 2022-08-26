@@ -116,9 +116,9 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if 'audio_rec' in eng_options:
 			if self.zyngui.audio_recorder.get_status():
-				self.list_data.append((self.toggle_recording, None, "[x] Record Audio"))
+				self.list_data.append((self.toggle_recording, None, "[x] Recording Audio"))
 			else:
-				self.list_data.append((self.toggle_recording, None, "[  ] Record Audio"))
+				self.list_data.append((self.toggle_recording, None, "[  ] Not Recording Audio"))
 
 		if 'midi_learn' in eng_options:
 			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
