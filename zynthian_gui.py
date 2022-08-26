@@ -1771,7 +1771,11 @@ class zynthian_gui:
 	def zynswitch_Y(self,i):
 		logging.debug('Y Switch %d' % i)
 		if self.current_screen == 'control' and self.screens['control'].mode == 'control':
-			self.screens['control'].midi_unlearn(i)
+			try:
+				zctrl = self.screens['control'].zgui_controllers[i].zctrl
+				self.screens['control'].midi_unlearn(zctrl)
+			except:
+				pass
 
 
 	#------------------------------------------------------------------

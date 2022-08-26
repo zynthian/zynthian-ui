@@ -424,7 +424,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					elif self.zyngui.curlayer:
 						self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in this chain?", self.midi_unlearn)
 					self.exit_midi_learn()
-				return True
+					return True
 
 
 		elif swi == 3:
