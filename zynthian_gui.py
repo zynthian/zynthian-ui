@@ -1773,9 +1773,18 @@ class zynthian_gui:
 		if self.current_screen == 'control' and self.screens['control'].mode == 'control':
 			try:
 				zctrl = self.screens['control'].zgui_controllers[i].zctrl
-				self.screens['control'].midi_unlearn(zctrl)
+				options = {
+					"Unlearn '{}' control".format(zctrl.name): zctrl,
+					"Unlearn all controls": 0
+				}
+				self.screens['option'].config("MIDI Unlearn", options, self.midi_unlearn_options_cb)
+				self.show_screen('option')
 			except:
 				pass
+
+
+	def midi_unlearn_options_cb(self, option, param):
+		self.screens['control'].midi_unlearn(param)
 
 
 	#------------------------------------------------------------------
