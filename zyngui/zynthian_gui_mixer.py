@@ -1001,7 +1001,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			options["[x] Record Audio"] = "RecordAudio"
 		else:
 			options["[  ] Record Audio"] = "RecordAudio"
-		options["MIDI Learn"] = "midi_learn"
+		if zynthian_gui_config.enable_onscreen_buttons:
+			options["MIDI Learn"] = "midi_learn"
 		options["> Audio Chain"] = None
 		options["Add Audio-FX"] = "Add"
 

@@ -89,6 +89,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				'indelible': True,
 				'audio_rec': True
 			}
+			if zynthian_gui_config.enable_onscreen_buttons:
+				eng_options['midi_learn'] = True
 		else:
 			eng_options = self.layer.engine.get_options()
 
@@ -117,6 +119,9 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				self.list_data.append((self.toggle_recording, None, "[x] Record Audio"))
 			else:
 				self.list_data.append((self.toggle_recording, None, "[  ] Record Audio"))
+
+		if 'midi_learn' in eng_options:
+			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
 
 		if 'midi_route' in eng_options and eng_options['midi_route']:
 			self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
@@ -320,6 +325,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def layer_transpose(self):
 		self.zyngui.show_screen('transpose')
+
+
+	def midi_learn(self):
+		self.zyngui.close_screen()
+		self.zyngui.enter_midi_learn()
 
 
 	def layer_midi_routing(self):
