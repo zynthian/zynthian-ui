@@ -144,7 +144,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 
 	def midi_chan_activity(self, chan):
-		if self.shown and self.mode!='CLONE' and not zynthian_gui_config.midi_single_active_channel:
+		if self.shown and self.mode!='CLONE' and not zynthian_gui_config.midi_single_active_channel and not self.zyngui.zynseq.libseq.transportGetPlayStatus():
 			i = self.get_midi_chan_index(chan)
 			if i is not None and i!=self.index:
 				dts = (datetime.now()-self.last_index_change_ts).total_seconds()
