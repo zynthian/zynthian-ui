@@ -24,6 +24,8 @@
 
 from collections import OrderedDict
 import logging
+
+from zyngui import zynthian_gui_config
 from . import zynthian_engine
 import liblo
 import os
@@ -369,11 +371,16 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 	def get_controllers_dict(self, layer):
 		if not self.zctrls:
+			midi_chan = layer.midi_chan
+			if midi_chan < 0 or midi_chan > 15:
+				midi_chan = zynthian_gui_config.master_midi_channel
+			if midi_chan < 0 or midi_chan > 15:
+				midi_chan = None
 			for ctrl in self._ctrls:
 				zctrl = zynthian_controller(self, ctrl[0], ctrl[1], ctrl[2])
 				self.zctrls[zctrl.symbol] = zctrl
-				if len(ctrl) > 3:
-					zctrl.set_midi_learn(layer.midi_chan, ctrl[3])
+				if midi_chan is not None and len(ctrl) > 3:
+					zctrl.set_midi_learn(midi_chan, ctrl[3])
 		return self.zctrls
 
 
@@ -514,7 +521,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				try:
 					self.zctrls[args[1]].set_value(args[2], False)
 				except Exception as e:
-					logging.warning("Unsupported tally (or zctrl not yet configured) %s (%f)", args[1], args[2])
+					pass
+					#logging.warning("Unsupported tally (or zctrl not yet configured) %s (%f)", args[1], args[2])
 			elif path == '/monitor':
 				# args: i:Loop index, s:control, f:value
 				# Handle events registered for selected loop
