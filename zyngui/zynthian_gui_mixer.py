@@ -730,18 +730,9 @@ class zynthian_gui_mixer_strip():
 	#	mode: True for learning [False|True|zctrl_name]
 	def enable_midi_learn(self, mode):
 		self.midi_learning = mode
-		if mode == 'level':
-			self.zctrls['level'].init_midi_learn()
-			self.parent.update_learning(self)
-		elif mode == 'balance':
-			self.zctrls['balance'].init_midi_learn()
-			self.parent.update_learning(self)
-		elif mode == 'mute':
-			self.zctrls['mute'].init_midi_learn()
-			self.parent.update_learning(self)
-		elif mode == 'solo':
-			self.zctrls['solo'].init_midi_learn()
-			self.parent.update_learning(self)
+		if mode in ['level', 'balance', 'mute', 'solo']:
+			self.zctrls[mode].init_midi_learn()
+			self.parent.update_learning(self, mode)
 		self.parent.pending_refresh_queue.add((self, None))
 
 
@@ -1194,29 +1185,50 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if strip.layer:
 				strip.enable_midi_learn(True)
 		self.main_mixbus_strip.enable_midi_learn(True)
+		#TODO: Only show unlearn button if gui controls
+		if zynthian_gui_config.enable_onscreen_buttons:
+			self.unlearn_btn = tkinter.Button(self.tb_frame, text='Unlearn ALL mixer controls', relief=tkinter.FLAT, bg=zynthian_gui_config.color_bg, fg=zynthian_gui_config.color_tx, command=self.unlearn_btn_cb)
+			self.unlearn_btn.grid(row=0, column=1, sticky='news')
 		self.midi_learning = True
 
 
 	# Respond to a strip being configured to midi learn
-	def update_learning(self, modified_strip):
+	def update_learning(self, modified_strip, control):
 		for strip in self.visible_mixer_strips:
 			if strip != modified_strip:
 				strip.enable_midi_learn(False)
 		if modified_strip != self.main_mixbus_strip:
 			self.main_mixbus_strip.enable_midi_learn(False)
-		
+		if zynthian_gui_config.enable_onscreen_buttons:
+			try:
+				self.unlearn_btn['text'] = "Unlearn '{}' control".format(control)
+			except:
+				pass
+
     
 	def exit_midi_learn(self):
 		for strip in self.visible_mixer_strips:
 			strip.enable_midi_learn(False)
 		self.main_mixbus_strip.enable_midi_learn(False)
 		self.midi_learning = False
+		if zynthian_gui_config.enable_onscreen_buttons:
+			try:
+				self.unlearn_btn.grid_forget()
+			except:
+				pass
 
 
 	def unlearn_all(self):
 		for ctrls in self.zyngui.zynmixer.zctrls:
 			for key in ctrls:
 				ctrls[key].midi_unlearn()
+
+
+	def unlearn_btn_cb(self):
+		if self.zyngui.midi_learn_zctrl:
+			self.zyngui.show_confirm("Do you want to clear MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn_confirmed, self.zyngui.midi_learn_zctrl)
+		else:
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL mixer controls?", self.midi_unlearn_confirmed)
 
 
 	def cb_ctrl_change(self, chan, ctrl, value):
