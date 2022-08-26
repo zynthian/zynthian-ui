@@ -315,7 +315,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 	def set_preset(self, layer, preset, preload=False):
 		liblo.send(self.osc_target, '/load_session', ('s', preset[0]),  ('s', self.osc_server_url), ('s', '/error'))
-		sleep(0.3) # Wait for session to load to avoid consequent controller change conflicts
+		sleep(0.5) # Wait for session to load to avoid consequent controller change conflicts
+
+		# Request quantity of loops in session
 		liblo.send(self.osc_target, '/ping', ('s', self.osc_server_url), ('s', '/info'))
 
 		for symbol in self.SL_MONITORS:
@@ -326,7 +328,11 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			liblo.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
 		for symbol in self.SL_GLOBAL_PARAMS:
 			liblo.send(self.osc_target, '/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
-		sleep(0.3) # Wait for session to load to avoid consequent controller change conflicts
+
+		sleep(0.5) # Wait for controls to update
+
+		# Start loops (muted) to synchronise
+		liblo.send(self.osc_target, '/sl/-1/hit', ('s', 'mute'))
 
 
 	def preset_exists(self, bank_info, preset_name):

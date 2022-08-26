@@ -197,6 +197,8 @@ class zynthian_gui_mixer_strip():
 		self.balance_left = self.parent.main_canvas.create_rectangle(x, self.balance_top, int(fader_centre - 0.5), self.balance_top + self.balance_height, fill=self.left_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
 		self.balance_right = self.parent.main_canvas.create_rectangle(int(fader_centre + 0.5), self.balance_top, self.width, self.balance_top + self.balance_height , fill=self.right_color, width=0, tags=("strip:%s"%(self.fader_bg), "balance:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
 		self.balance_text = self.parent.main_canvas.create_text(int(fader_centre), int(self.balance_top + self.balance_height / 2) - 1, text="??", font=self.font_learn, state=tkinter.HIDDEN)
+		self.parent.main_canvas.tag_bind("balance:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_balance_press)
+
 
 		# Fader indicators
 		self.status_indicator = self.parent.main_canvas.create_text(x + 2, self.fader_top + 2, fill="#009000", anchor="nw", tags=("strip:%s"%(self.fader_bg)))
@@ -329,6 +331,7 @@ class zynthian_gui_mixer_strip():
 			txcolor = zynthian_gui_config.color_hl
 			txstate = tkinter.NORMAL
 			text = self.get_ctrl_learn_text('balance')
+
 		elif self.midi_learning == 'balance':
 			lcolor = self.left_color_learn
 			rcolor = self.right_color_learn
@@ -629,6 +632,8 @@ class zynthian_gui_mixer_strip():
 	# Function to handle fader press
 	#	event: Mouse event
 	def on_fader_press(self, event):
+		if self.midi_learning is True:
+			self.enable_midi_learn('level')
 		self.fader_drag_start = event
 		self.parent.select_chain_by_layer(self.layer)
 
@@ -652,6 +657,13 @@ class zynthian_gui_mixer_strip():
 	#	event: Mouse event
 	def on_fader_wheel_up(self, event):
 		self.nudge_volume(1)
+
+
+	# Function to handle mouse click / touch of balance
+	#	event: Mouse event
+	def on_balance_press(self, event):
+		if self.midi_learning is True:
+			self.enable_midi_learn('balance')
 
 
 	# Function to handle mouse wheel down over balance
