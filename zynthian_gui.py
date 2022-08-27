@@ -898,7 +898,7 @@ class zynthian_gui:
 					return
 				self.curlayer.set_bank(0)
 				self.curlayer.load_preset_list()
-				if len(zyngui.curlayer.preset_list) > 0:
+				if len(zyngui.curlayer.preset_list) > 1:
 					self.show_screen_reset('preset')
 					return
 			self.show_screen_reset('control')
