@@ -343,12 +343,14 @@ class zynthian_gui_base(tkinter.Frame):
 
 	# Default topbar short touch action
 	def topbar_touch_action(self):
-		self.zyngui.zynswitch_defered('S', 1)
+		if zynthian_gui_config.enable_touch_controller_switchs:
+			self.zyngui.zynswitch_defered('S', 1)
 
 
 	# Default topbar bold touch action
 	def topbar_bold_touch_action(self):
-		self.zyngui.zynswitch_defered('B', 0)
+		if zynthian_gui_config.enable_touch_controller_switchs:
+			self.zyngui.zynswitch_defered('B', 0)
 
 
 	# Default topbar bold press callback

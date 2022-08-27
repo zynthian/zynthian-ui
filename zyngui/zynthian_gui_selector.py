@@ -386,13 +386,14 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def cb_loading_release(self,event):
 		if self.loading_push_ts:
-			dts=(datetime.now()-self.loading_push_ts).total_seconds()
-			logging.debug("LOADING RELEASE => %s" % dts)
-			if dts<zynthian_gui_config.zynswitch_bold_seconds:
-				self.zyngui.zynswitch_defered('S',2)
-			elif dts>=zynthian_gui_config.zynswitch_bold_seconds and dts<zynthian_gui_config.zynswitch_long_seconds:
-				self.zyngui.zynswitch_defered('B',2)
-			elif dts>=zynthian_gui_config.zynswitch_long_seconds:
-				self.zyngui.zynswitch_defered('L',2)
+			if zynthian_gui_config.enable_touch_controller_switchs:
+				dts=(datetime.now()-self.loading_push_ts).total_seconds()
+				logging.debug("LOADING RELEASE => %s" % dts)
+				if dts<zynthian_gui_config.zynswitch_bold_seconds:
+					self.zyngui.zynswitch_defered('S',2)
+				elif dts>=zynthian_gui_config.zynswitch_bold_seconds and dts<zynthian_gui_config.zynswitch_long_seconds:
+					self.zyngui.zynswitch_defered('B',2)
+				elif dts>=zynthian_gui_config.zynswitch_long_seconds:
+					self.zyngui.zynswitch_defered('L',2)
 
 #------------------------------------------------------------------------------
