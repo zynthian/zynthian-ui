@@ -42,22 +42,23 @@ class zynthian_gui_main(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 
-		# Main Apps
+		# Main Views
 		self.list_data.append((self.new_synth_layer,0,"New Synth Chain"))
 		self.list_data.append((self.new_audiofx_layer,0,"New Audio Chain"))
 		self.list_data.append((self.new_midifx_layer,0,"New MIDI Chain"))
 		self.list_data.append((self.new_generator_layer,0,"New Generator Chain"))
 		self.list_data.append((self.new_special_layer,0,"New Special Chain"))
 		self.list_data.append((self.snapshots,0,"Snapshots"))
-		self.list_data.append((self.clean_all,0,"Clean All"))
 
 		# Add list of Apps
 		self.list_data.append((None,0,"> APPS"))
 		self.list_data.append((self.step_sequencer,0,"Sequencer"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
-		self.list_data.append((self.alsa_mixer,0,"Audio Levels"))
 
+		# Add list of System / configuration views
 		self.list_data.append((None,0,"> SYSTEM"))
+		self.list_data.append((self.clean_all,0,"Clean All"))
+		self.list_data.append((self.alsa_mixer,0,"Audio Levels"))
 		self.list_data.append((self.admin,0,"Admin"))
 		self.list_data.append((self.all_notes_off,0,"PANIC! All Notes Off"))
 
