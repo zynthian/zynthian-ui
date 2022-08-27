@@ -382,7 +382,9 @@ class zynthian_gui_mixer_strip():
 			bgcolor = self.button_bgcol
 			txcolor = zynthian_gui_config.color_hl
 			font = self.font_learn
-			text = "S {}".format(self.get_ctrl_learn_text('solo'))
+			text = self.get_ctrl_learn_text('solo')
+			if text == '??':
+				text = "S {}".format(text)
 		elif self.midi_learning == 'solo':
 			txcolor = zynthian_gui_config.color_ml
 
@@ -404,7 +406,9 @@ class zynthian_gui_mixer_strip():
 			bgcolor = self.button_bgcol
 			txcolor = zynthian_gui_config.color_hl
 			font = self.font_learn
-			text = "\uf32f {}".format(self.get_ctrl_learn_text('mute'))
+			text = self.get_ctrl_learn_text('mute')
+			if text == '??':
+				text = "\uf32f {}".format(text)
 		elif self.midi_learning == 'mute':
 			txcolor = zynthian_gui_config.color_ml
 
