@@ -1137,12 +1137,15 @@ class zynthian_gui:
 		#----------------------------------------------------------------
 		elif cuia == "START_AUDIO_RECORD":
 			self.audio_recorder.start_recording()
+			self.refresh_signal("AUDIO_RECORD")
 
 		elif cuia == "STOP_AUDIO_RECORD":
 			self.audio_recorder.stop_recording()
+			self.refresh_signal("AUDIO_RECORD")
 
 		elif cuia == "TOGGLE_AUDIO_RECORD":
 			self.audio_recorder.toggle_recording()
+			self.refresh_signal("AUDIO_RECORD")
 
 		elif cuia == "START_AUDIO_PLAY":
 			self.start_audio_player()
@@ -1457,6 +1460,13 @@ class zynthian_gui:
 
 			elif cuia == "HIDE_SIDEBAR":
 				self.screens[self.current_screen].show_sidebar(False)
+
+
+	def refresh_signal(self, sname):
+		try:
+			self.screens[self.current_screen].refresh_signal(sname)
+		except:
+			pass
 
 
 	def cuia_layer_control(self, params=None):

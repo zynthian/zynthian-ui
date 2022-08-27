@@ -116,9 +116,9 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if 'audio_rec' in eng_options:
 			if self.zyngui.audio_recorder.get_status():
-				self.list_data.append((self.toggle_recording, None, "[x] Recording Audio"))
+				self.list_data.append((self.toggle_recording, None, "■ Stop Audio Recording"))
 			else:
-				self.list_data.append((self.toggle_recording, None, "[  ] Not Recording Audio"))
+				self.list_data.append((self.toggle_recording, None, "⬤ Start Audio Recording"))
 
 		if 'midi_learn' in eng_options:
 			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
@@ -177,6 +177,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
 
 		super().fill_list()
+
+
+	def refresh_signal(self, sname):
+		if sname=="AUDIO_RECORD":
+			self.fill_list()
 
 
 	def search_fx_index(self, sl):

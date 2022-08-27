@@ -192,6 +192,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if fill:
 			super().fill_list()
 
+
 	def update_status_loop(self, fill=False):
 		if zynthian_gui_config.midi_play_loop:
 			self.list_data[1] = ("LOOP",0,"[x] Loop Play")
