@@ -391,7 +391,7 @@ enable_touch_widgets=int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS',False))
 enable_onscreen_buttons=int(os.environ.get('ZYNTHIAN_UI_ONSCREEN_BUTTONS',False))
 force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
 
-if wiring_layout.startswith("Z2") or zynthian_gui_config.enable_onscreen_buttons:
+if wiring_layout.startswith("Z2") or enable_onscreen_buttons:
 	enable_touch_controller_switchs = 0
 else:
 	enable_touch_controller_switchs = 1
