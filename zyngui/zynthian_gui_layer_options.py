@@ -465,7 +465,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if self.layer.midi_chan is None or self.layer.midi_chan<16:
 				self.select_path.set("{} > Chain Options".format(self.layer.get_basepath()))
 			else:
-				self.select_path.set("Master FX > Chain Options")
+				self.select_path.set("Main > Chain Options")
 		else:
 			self.select_path.set("Chain Options")
 
