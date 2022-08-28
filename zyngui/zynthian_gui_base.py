@@ -248,7 +248,7 @@ class zynthian_gui_base(tkinter.Frame):
 			width=zynthian_gui_config.display_width,
 			height=self.buttonbar_height,
 			bg=zynthian_gui_config.color_bg)
-		self.buttonbar_frame.grid(row=2, padx=(0,0), pady=(2,0))
+		self.buttonbar_frame.grid(row=2, padx=(0,0), pady=(0,0))
 		self.buttonbar_frame.grid_propagate(False)
 		self.buttonbar_frame.grid_rowconfigure(0, minsize=self.buttonbar_height, pad=0)
 		for i in range(max(4, len(config))):
@@ -277,9 +277,14 @@ class zynthian_gui_base(tkinter.Frame):
 	#	label: Text to show on button
 	def add_button(self, column, cuia, label):
 		# Touchbar frame
-		for new_column in range(len(self.buttonbar_button), column + 1):
-				self.buttonbar_button.append(None)
-    		
+		padx = (0,0)
+		for col in range(column):
+			if col == 0:
+				self.buttonbar_button[col].grid(row=0, column=col, padx=(0,1))
+			elif col < len(self.buttonbar_button):
+				self.buttonbar_button[col].grid(row=0, column=col, padx=(1,1))
+			padx = (1,0)
+		self.buttonbar_button.append(None)
 		self.buttonbar_button[column] = select_button = tkinter.Button(
 			self.buttonbar_frame,
 			bg=zynthian_gui_config.color_panel_bg,
@@ -293,10 +298,6 @@ class zynthian_gui_base(tkinter.Frame):
 			relief='flat',
 			font=zynthian_gui_config.font_buttonbar,
 			text=label)
-		if column == 0:
-			padx = (0,0)
-		else:
-			padx = (2,0)
 		select_button.grid(row=0, column=column, sticky='nswe', padx=padx)
 		select_button.bind('<ButtonPress-1>', lambda e: self.button_down(e))
 		select_button.bind('<ButtonRelease-1>', lambda e: self.button_up(cuia, e))

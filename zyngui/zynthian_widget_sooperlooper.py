@@ -74,11 +74,11 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			pos_label = pos_canvas.create_text(
 				self.txt_x, txt_y,
 				fill = self.SLIDER_TEXT,
-				text = '0.00 / 0.00',
+				text = '0.0/0.0',
 				anchor = 'w',
 				#font = ("source code pro", self.font_size_sl, 'bold')
 				#font = ("office code pro", self.font_size_sl, 'bold')
-				font = ("monoid", self.font_size_sl)
+				font = ("monoid", int(0.9 * self.font_size_sl))
 				#font = ("share tech mono", self.font_size_sl)
 			)
 			pos_line = pos_canvas.create_line(
@@ -225,31 +225,37 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				relief = tkinter.FLAT,
 				overrelief = tkinter.FLAT,
 				font = (zynthian_gui_config.font_family, fs),
-				command = command
+				command = command,
+				height = 1,
+				pady = 0
 			)
 			row = int(i / 4)
 			col = i % 4
-			self.buttons[btn].grid(row=row, column=col, sticky='news', padx=(0,1), pady=(0,1))
+			if col == 3:
+				padx = (0,0)
+			else:
+				padx = (0,1)
+			self.buttons[btn].grid(row=row, column=col, sticky='news', padx=padx, pady=(0,1))
 			self.button_frame.rowconfigure(row, weight=1, uniform='btn_row')
 			self.button_frame.columnconfigure(col, weight=1, uniform='btn_col')
 
 		for col in range(4):
 			self.columnconfigure(col, weight=1, uniform='col')
-		self.rowconfigure(zynthian_engine_sooperlooper.MAX_LOOPS + 1, weight=1)
+		self.rowconfigure(0, weight=1)
 
-		self.button_frame.grid(columnspan=4, sticky='news', padx=(1,1))
+		self.button_frame.grid(columnspan=4, sticky='news')
 
 		for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
-			self.pos_canvas[loop]['canvas'].grid(row=1 + loop, columnspan=3, sticky='news', padx=(1,1), pady=(0,1))
-			self.pos_canvas[loop]['mute'].grid(row=1 + loop, column=3, sticky='news', padx=(0,2), pady=(0,1))
+			self.pos_canvas[loop]['canvas'].grid(row=1 + loop, columnspan=3, sticky='news', padx=(0,1), pady=(0,1))
+			self.pos_canvas[loop]['mute'].grid(row=1 + loop, column=3, sticky='news', pady=(0,1))
 			self.pos_canvas[loop]['canvas'].grid_remove()
 			self.pos_canvas[loop]['mute'].grid_remove()
 
-		self.add_canvas.grid(row=zynthian_engine_sooperlooper.MAX_LOOPS, columnspan = 2, sticky='news', padx=(1,1), pady=(0,1))
-		self.input_level_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(1,1), pady=(0,1))
-		self.feedback_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', padx=(0,2), pady=(0,1))
-		self.wet_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(1,1), pady=(0,1))
-		self.dry_canvas.grid(row=3 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', padx=(0,2), pady=(0,1))
+		self.add_canvas.grid(row=zynthian_engine_sooperlooper.MAX_LOOPS, columnspan = 2, sticky='news', padx=(0,1), pady=(0,1))
+		self.input_level_canvas.grid(row=1 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(0,1), pady=(0,1))
+		self.feedback_canvas.grid(row=1 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', pady=(0,1))
+		self.wet_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(0,1), pady=(0,1))
+		self.dry_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', pady=(0,1))
 
 		self.symbol_map = {
 			self.dry_canvas:'dry',
@@ -275,11 +281,9 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		super().on_size(event)
 
 		self.row_height = (self.height - zynthian_engine_sooperlooper.MAX_LOOPS - 5)  // (zynthian_engine_sooperlooper.MAX_LOOPS + 5)
-		self.rowconfigure(0, minsize=self.row_height * 3)
-		for row in range(1, zynthian_engine_sooperlooper.MAX_LOOPS + 1):
+		self.rowconfigure(0, minsize=(self.row_height + 1) * 3)
+		for row in range(1, zynthian_engine_sooperlooper.MAX_LOOPS + 3):
 			self.rowconfigure(row, minsize=self.row_height)
-		self.rowconfigure(row + 2, minsize=self.row_height)
-		self.rowconfigure(row + 3, minsize=self.row_height)
 
 		txt_xc = (self.width // 8) - 1
 		txt_y = self.height // (2 * zynthian_engine_sooperlooper.MAX_LOOPS + 10)
@@ -433,7 +437,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 				x = int(pos / len * self.pos_canvas[loop]['canvas'].winfo_width())
 			self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
 			self.pos_canvas[loop]['canvas'].configure(bg=bg)
-			self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text=' {} / {} {}'.format(f'{pos:.2f}'.zfill(5), f'{len:.2f}'.zfill(5), zynthian_engine_sooperlooper.SL_STATES[state]['name']))
+			self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text='{}/{} {}'.format(f'{pos:.1f}'.zfill(4), f'{len:.1f}'.zfill(4), zynthian_engine_sooperlooper.SL_STATES[state]['name']))
 			if waiting and (next_state in [10,20] or state in [10, 20]):
 				if self.flash_count > 3:
 					self.pos_canvas[loop]['mute']['bg'] = self.BUTTON_ASSERTED

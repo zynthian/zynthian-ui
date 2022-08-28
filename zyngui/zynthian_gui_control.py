@@ -82,7 +82,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def update_layout(self):
 		super().update_layout()
 		for pos in zynthian_gui_config.layout['ctrl_pos']:
-			self.main_frame.columnconfigure(pos[1], minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
+			self.main_frame.columnconfigure(pos[1], minsize=int((self.width * 0.25 - 1) * self.sidebar_shown), weight=self.sidebar_shown)
 		
 
 	def build_view(self):

@@ -84,7 +84,11 @@ class zynthian_gui_selector(zynthian_gui_base):
 			padx = (0,2)
 		else:
 			padx = (2,2)
-		self.listbox.grid(row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=4, padx=padx, sticky="news")
+		if self.buttonbar_config:
+			pady = (0,1)
+		else:
+			pady = (0,0)
+		self.listbox.grid(row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=4, padx=padx, pady=pady, sticky="news")
 
 		# Bind listbox events
 		self.listbox_push_ts = datetime.now()
