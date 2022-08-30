@@ -70,15 +70,19 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	# Plugins that required different GUI toolkit to that advertised or cannot run native GUI on Zynthian
 	broken_ui = {
-			'http://calf.sourceforge.net/plugins/Monosynth': False,
-			'http://calf.sourceforge.net/plugins/Organ': False,
-			'http://nickbailey.co.nr/triceratops': False,
-			'http://code.google.com/p/amsynth/amsynth': False,
-			'http://gareus.org/oss/lv2/tuna#one': False,
-			"http://tytel.org/helm": "Qt4UI"
+			'http://calf.sourceforge.net/plugins/Monosynth': {"RPi4:":True, "RPi3": False, "RPi2": False},
+			'http://calf.sourceforge.net/plugins/Organ': {"RPi4:":True, "RPi3": False, "RPi2": False},
+			'http://nickbailey.co.nr/triceratops': {"RPi4:":True, "RPi3": False, "RPi2": False},
+			'http://code.google.com/p/amsynth/amsynth': {"RPi4:":True, "RPi3": False, "RPi2": False},
+			'http://gareus.org/oss/lv2/tuna#one': {"RPi4": False, "RPi3": False, "RPi2": False}, # Disable because CPU usage and widget implemented in main UI
+			"http://tytel.org/helm": {"RPi4": "Qt4UI", "RPi3": True, "RPi2": False} #Better CPU with gtk but only qt4 works on RPi4
 	}
-	if "Raspberry Pi 4" not in os.environ.get('RBPI_VERSION'):
-		broken_ui['http://tytel.org/helm'] = False
+	if "Raspberry Pi 4" in os.environ.get('RBPI_VERSION'):
+		rpi = "RPi4"
+	elif "Raspberry Pi 3" in os.environ.get('RBPI_VERSION'):
+		rpi = "RPi3"
+	else:
+		rpi = "Rpi2"
 
 	plugins_custom_gui = {
 		'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
@@ -188,7 +192,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		if 'UI' in self.plugins_dict[plugin_name]:
 			self.native_gui = self.plugins_dict[plugin_name]['UI']
 			if self.plugin_url in self.broken_ui:
-				self.native_gui = self.broken_ui[self.plugin_url]
+				self.native_gui = self.broken_ui[self.plugin_url][self.rpi]
 
 		if plugin_type=="MIDI Tool":
 			self.options['midi_route'] = True
