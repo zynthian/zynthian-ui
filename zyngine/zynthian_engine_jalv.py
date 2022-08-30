@@ -67,15 +67,18 @@ class zynthian_engine_jalv(zynthian_engine):
 		("Raffo MiniMoog", {'TYPE': "MIDI Synth",'URL': "http://example.org/raffo"})
 	])
 
-	broken_ui = [
-			'http://calf.sourceforge.net/plugins/Monosynth',
-			'http://calf.sourceforge.net/plugins/Organ',
-			'http://nickbailey.co.nr/triceratops',
-			'http://code.google.com/p/amsynth/amsynth',
-			'http://gareus.org/oss/lv2/tuna#one'
-		]
+
+	# Plugins that required different GUI toolkit to that advertised or cannot run native GUI on Zynthian
+	broken_ui = {
+			'http://calf.sourceforge.net/plugins/Monosynth': False,
+			'http://calf.sourceforge.net/plugins/Organ': False,
+			'http://nickbailey.co.nr/triceratops': False,
+			'http://code.google.com/p/amsynth/amsynth': False,
+			'http://gareus.org/oss/lv2/tuna#one': False,
+			"http://tytel.org/helm": "Qt4UI"
+	}
 	if "Raspberry Pi 4" not in os.environ.get('RBPI_VERSION'):
-		broken_ui.append('http://tytel.org/helm')
+		broken_ui['http://tytel.org/helm'] = False
 
 	plugins_custom_gui = {
 		'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
@@ -103,6 +106,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		"Obxd": "obxdfxb"
 		#"Helm": "helm"
 	}
+
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
@@ -181,8 +185,10 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
 		self.native_gui = False
-		if self.plugin_url not in self.broken_ui and 'UI' in self.plugins_dict[plugin_name]:
+		if 'UI' in self.plugins_dict[plugin_name]:
 			self.native_gui = self.plugins_dict[plugin_name]['UI']
+			if self.plugin_url in self.broken_ui:
+				self.native_gui = self.broken_ui[self.plugin_url]
 
 		if plugin_type=="MIDI Tool":
 			self.options['midi_route'] = True
@@ -193,8 +199,10 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		if not dryrun:
 			if self.config_remote_display() and self.native_gui:
-				if self.native_gui=="Qt5UI":
+				if self.native_gui == "Qt5UI":
 					jalv_bin = "jalv.qt5"
+				elif self.native_gui == "Qt4UI":
+					jalv_bin = "jalv.qt4"
 				else: #  elif self.native_gui=="X11UI":
 					jalv_bin = "jalv.gtk"
 				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.get_jalv_jackname(), self.plugin_url))
@@ -213,7 +221,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.jackname = None
 			if output:
 				for line in output.split("\n"):
-					if line[0:10]=="JACK Name:":
+					if line[0:10] == "JACK Name:":
 						self.jackname = line[11:].strip()
 						logging.debug("Jack Name => {}".format(self.jackname))
 						break
@@ -494,7 +502,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			#logging.debug("Controller {} info =>\n{}!".format(symbol, info))
 			try:
 				#If there is points info ...
-				if len(info['scale_points'])>1:
+				if len(info['scale_points']) > 1:
 					labels = []
 					values = []
 					for p in info['scale_points']:
@@ -511,7 +519,9 @@ class zynthian_engine_jalv(zynthian_engine):
 						'value_min': values[0],
 						'value_max': values[-1],
 						'is_toggle': info['is_toggled'],
-						'is_integer': info['is_integer']
+						'is_integer': info['is_integer'],
+						'not_on_gui': info['not_on_gui'],
+						'display_priority': info['display_priority']
 					})
 
 				#If it's a numeric controller ...
@@ -519,7 +529,7 @@ class zynthian_engine_jalv(zynthian_engine):
 					r = info['range']['max'] - info['range']['min']
 					if info['is_integer']:
 						if info['is_toggled']:
-							if info['value']==0:
+							if info['value'] == 0:
 								val = 'off'
 							else:
 								val = 'on'
@@ -534,7 +544,9 @@ class zynthian_engine_jalv(zynthian_engine):
 								'value_min': int(info['range']['min']),
 								'value_max': int(info['range']['max']),
 								'is_toggle': True,
-								'is_integer': True
+								'is_integer': True,
+								'not_on_gui': info['not_on_gui'],
+								'display_priority': info['display_priority']
 							})
 						else:
 							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
@@ -547,11 +559,13 @@ class zynthian_engine_jalv(zynthian_engine):
 								'value_max': int(info['range']['max']),
 								'is_toggle': False,
 								'is_integer': True,
-								'is_logarithmic': info['is_logarithmic']
+								'is_logarithmic': info['is_logarithmic'],
+								'not_on_gui': info['not_on_gui'],
+								'display_priority': info['display_priority']
 							})
 					else:
 						if info['is_toggled']:
-							if info['value']==0:
+							if info['value'] == 0:
 								val = 'off'
 							else:
 								val = 'on'
@@ -566,7 +580,9 @@ class zynthian_engine_jalv(zynthian_engine):
 								'value_min': info['range']['min'],
 								'value_max': info['range']['max'],
 								'is_toggle': True,
-								'is_integer': False
+								'is_integer': False,
+								'not_on_gui': info['not_on_gui'],
+								'display_priority': info['display_priority']
 							})
 						else:
 							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
@@ -579,12 +595,18 @@ class zynthian_engine_jalv(zynthian_engine):
 								'value_max': info['range']['max'],
 								'is_toggle': False,
 								'is_integer': False,
-								'is_logarithmic': info['is_logarithmic']
+								'is_logarithmic': info['is_logarithmic'],
+								'not_on_gui': info['not_on_gui'],
+								'display_priority': info['display_priority']
 							})
 
 			#If control info is not OK
 			except Exception as e:
 				logging.error(e)
+
+		# Sort by suggested display_priority
+		new_index = sorted(zctrls, key=lambda x: zctrls[x].display_priority, reverse=True)
+		zctrls = {k: zctrls[k] for k in new_index}
 
 		return zctrls
 
@@ -594,7 +616,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		for line in self.proc_cmd("monitors").split("\n"):
 			try:
 				parts=line.split(" = ")
-				if len(parts)==2:
+				if len(parts) == 2:
 					self.lv2_monitors_dict[parts[0]] = float(parts[1])
 			except Exception as e:
 				logging.error(e)
@@ -603,14 +625,14 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	def get_ctrl_screen_name(self, gname, i):
-		if i>0:
+		if i > 0:
 			gname = "{}#{}".format(gname, i)
 		return gname
 
 
 	def generate_ctrl_screens(self, zctrl_dict):
 		if self._ctrl_screens is None:
-			self._ctrl_screens=[]
+			self._ctrl_screens = []
 
 		# Get zctrls by group
 		zctrl_group = OrderedDict()
@@ -624,39 +646,41 @@ class zynthian_engine_jalv(zynthian_engine):
 		if "_" in zctrl_group:
 			last_group = zctrl_group["_"]
 			del zctrl_group["_"]
-			if len(zctrl_group)==0:
+			if len(zctrl_group) == 0:
 				last_group[0] = "Ctrls"
 			else:
-				last_group[0] = "Ungroup"
+				last_group[0] = "Uncategorised"
 			zctrl_group["_"] = last_group
 
 		for gsymbol, gdata in zctrl_group.items():
-			ctrl_set=[]
+			ctrl_set = []
 			gname = gdata[0]
-			if len(gdata[1])<=4:
-				c=0
+			if len(gdata[1]) <= 4:
+				c = 0
 			else:
-				c=1
+				c = 1
 			for symbol, zctrl in gdata[1].items():
 				try:
+					if zctrl.not_on_gui:
+						continue
 					#logging.debug("CTRL {}".format(symbol))
 					ctrl_set.append(symbol)
-					if len(ctrl_set)>=4:
+					if len(ctrl_set) >= 4:
 						#logging.debug("ADDING CONTROLLER SCREEN {}".format(self.get_ctrl_screen_name(gname,c)))
 						self._ctrl_screens.append([self.get_ctrl_screen_name(gname,c),ctrl_set])
-						ctrl_set=[]
-						c=c+1
+						ctrl_set = []
+						c = c + 1
 				except Exception as err:
 					logging.error("Generating Controller Screens => {}".format(err))
 
-			if len(ctrl_set)>=1:
+			if len(ctrl_set) >= 1:
 				#logging.debug("ADDING CONTROLLER SCREEN {}",format(self.get_ctrl_screen_name(gname,c)))
 				self._ctrl_screens.append([self.get_ctrl_screen_name(gname,c),ctrl_set])
 
 
 	def get_controllers_dict(self, layer):
 		# Get plugin static controllers
-		zctrls=super().get_controllers_dict(layer)
+		zctrls = super().get_controllers_dict(layer)
 		# Add plugin native controllers
 		zctrls.update(self.lv2_zctrl_dict)
 		return zctrls
@@ -694,7 +718,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_banks(cls):
-		banks=[]
+		banks = []
 		for b in cls.zynapi_instance.get_bank_list():
 			if b[2]:
 				banks.append({
@@ -709,7 +733,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_presets(cls, bank):
-		presets=[]
+		presets = []
 		for p in cls.zynapi_instance.get_preset_list(bank['raw']):
 			if p[2]:
 				presets.append({

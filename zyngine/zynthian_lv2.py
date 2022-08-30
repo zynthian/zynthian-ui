@@ -126,6 +126,8 @@ def	is_plugin_ui(plugin):
 				ttl = f.read()
 				if ttl.find("a ui:Qt5UI")>0 or ttl.find("a lv2ui:Qt5UI")>0:
 					return "Qt5UI"
+				if ttl.find("a ui:Qt4UI")>0 or ttl.find("a lv2ui:Qt4UI")>0:
+					return "Qt4UI"
 				if ttl.find("a ui:X11UI")>0 or ttl.find("a lv2ui:X11UI")>0:
 					return "X11UI"
 		except:
@@ -439,6 +441,12 @@ def get_plugin_ports(plugin_url):
 			is_integer = port.has_property(world.ns.lv2.integer)
 			is_enumeration = port.has_property(world.ns.lv2.enumeration)
 			is_logarithmic = port.has_property(world.ns.portprops.logarithmic)
+			not_on_gui = port.has_property(world.ns.portprops.notOnGUI)
+			display_priority = port.get(world.ns.lv2.displayPriority)
+			if display_priority is None:
+				display_priority = 0
+			else:
+				display_priority = int(display_priority)
 
 			#logging.debug("PORT {} properties =>".format(port.get_symbol()))
 			#for node in port.get_properties():
@@ -453,15 +461,15 @@ def get_plugin_ports(plugin_url):
 				pgroup_index = world.get(pgroup, world.ns.lv2.index, None)
 				if pgroup_index is not None:
 					pgroup_index = int(pgroup_index)
-					#logging.warning("Port group <{}> has not index.".format(pgroup_key))
+					#logging.warning("Port group <{}> has no index.".format(pgroup_key))
 				pgroup_name = world.get(pgroup, world.ns.lv2.name, None)
 				if pgroup_name is not None:
 					pgroup_name = str(pgroup_name)
-					#logging.warning("Port group <{}> has not name.".format(pgroup_key))
+					#logging.warning("Port group <{}> has no name.".format(pgroup_key))
 				pgroup_symbol = world.get(pgroup, world.ns.lv2.symbol, None)
 				if pgroup_symbol is not None:
 					pgroup_symbol = str(pgroup_symbol)
-					#logging.warning("Port group <{}> has not symbol.".format(pgroup_key))
+					#logging.warning("Port group <{}> has no symbol.".format(pgroup_key))
 			#else:
 				#logging.debug("Port <{}> has no group.".format(port_symbol))
 
@@ -504,6 +512,8 @@ def get_plugin_ports(plugin_url):
 				'is_integer': is_integer,
 				'is_enumeration': is_enumeration,
 				'is_logarithmic': is_logarithmic,
+				'not_on_gui': not_on_gui,
+				'display_priority': display_priority,
 				'scale_points': sp
 			}
 			ports_info[i] = info

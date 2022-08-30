@@ -58,6 +58,8 @@ class zynthian_controller:
 		self.is_integer = True # True if control is Integer
 		self.is_logarithmic = False # True if control uses logarithmic scale
 		self.is_dirty = True # True if control value changed since last UI update
+		self.not_on_gui = True # True to hint to GUI to show control
+		self.display_priority = 0 # Hint of order in which to display control (higher comes first)
 
 		# Parameters to send values if dedciated engine send method not available
 		self.midi_chan = None # MIDI channel to send CC messages from control
@@ -117,6 +119,10 @@ class zynthian_controller:
 			self.osc_path = options['osc_path']
 		if 'graph_path' in options:
 			self.graph_path = options['graph_path']
+		if 'not_on_gui' in options:
+			self.not_on_gui = options['not_on_gui']
+		if 'display_priority' in options:
+			self.display_priority = options['display_priority']
 		self._configure()
 
 
