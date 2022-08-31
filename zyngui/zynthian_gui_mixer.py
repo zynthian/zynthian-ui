@@ -1002,9 +1002,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		options = OrderedDict()
 		options["Audio Options..."] = "AudioOptions"
 		if self.zyngui.audio_recorder.get_status():
-			options["[x] Recording Audio"] = "RecordAudio"
+			options["■ Stop Audio Recording"] = "RecordAudio"
 		else:
-			options["[  ] Not Recording Audio"] = "RecordAudio"
+			options["⬤ Start Audio Recording"] = "RecordAudio"
 		if zynthian_gui_config.enable_onscreen_buttons:
 			options["MIDI Learn"] = "midi_learn"
 		options["> Audio Chain"] = None
