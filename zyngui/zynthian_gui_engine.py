@@ -66,7 +66,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			["LS", ("LinuxSampler", "LinuxSampler - SFZ/GIG Player", "MIDI Synth", None, zynthian_engine_linuxsampler, True)],
 			["BF", ("setBfree", "setBfree - Hammond Emulator", "MIDI Synth", None, zynthian_engine_setbfree, True)],
 			["AE", ("Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", None, zynthian_engine_aeolus, True)],
-			["AP", ("AudioPlayer", "Audio File Player", "MIDI Synth", None, zynthian_engine_audioplayer, True)],
+			["AP", ("AudioPlayer", "Audio File Player", "Special", None, zynthian_engine_audioplayer, True)],
 			['PD', ("PureData", "PureData - Visual Programming", "Special", None, zynthian_engine_puredata, True)],
 			#['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
 			['MD', ("MOD-UI", "MOD-UI - Plugin Host", "Special", None, zynthian_engine_modui, True)]
