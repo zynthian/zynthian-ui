@@ -60,16 +60,16 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector):
 		if self.sublayer_type=="Audio Effect":
 			self.list_data.append((self.audiofx_replace, None, "Replace"))
 			if self.audiofx_can_move_upchain():
-				self.list_data.append((self.audiofx_move_upchain, None, "Move Upchain"))
+				self.list_data.append((self.audiofx_move_upchain, None, "Move up chain"))
 			if self.audiofx_can_move_downchain():
-				self.list_data.append((self.audiofx_move_downchain, None, "Move Downchain"))
+				self.list_data.append((self.audiofx_move_downchain, None, "Move down chain"))
 
 		elif self.sublayer_type=="MIDI Tool":
 			self.list_data.append((self.midifx_replace, None, "Replace"))
 			if self.midifx_can_move_upchain():
-				self.list_data.append((self.midifx_move_upchain, None, "Move Upchain"))
+				self.list_data.append((self.midifx_move_upchain, None, "Move up chain"))
 			if self.midifx_can_move_downchain():
-				self.list_data.append((self.midifx_move_downchain, None, "Move Downchain"))
+				self.list_data.append((self.midifx_move_downchain, None, "Move down chain"))
 
 		self.list_data.append((self.sublayer_remove, None, "Remove"))
 
