@@ -36,11 +36,9 @@ import rpi_ws281x
 from time import sleep
 from pathlib import Path
 from time import monotonic
-from os.path import isfile
 from glob import glob
 from datetime import datetime
 from threading  import Thread, Lock
-from subprocess import check_output
 
 
 # Zynthian specific modules
@@ -48,7 +46,7 @@ import zynconf
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
 from zyngui.zynthian_gui_base import zynthian_gui_base
-from zynlibs.zynmixer import zynmixer
+from zyngine import zynthian_engine_audio_mixer
 from zynlibs.zynaudioplayer import zynaudioplayer
 from zynlibs.zynseq import zynseq
 
@@ -454,9 +452,9 @@ class zynthian_gui:
 				self.wsleds.setPixelColor(21 + i, self.wscolor_light)
 
 			# Audio Mixer/Levels screen
-			if self.current_screen=="audio_mixer":
+			if self.current_screen == "audio_mixer":
 				self.wsleds.setPixelColor(24, self.wscolor_active)
-			elif self.current_screen=="alsa_mixer":
+			elif self.current_screen == "alsa_mixer":
 				self.wsleds.setPixelColor(24, self.wscolor_admin)
 			else:
 				self.wsleds.setPixelColor(24, self.wscolor_light)
@@ -592,7 +590,7 @@ class zynthian_gui:
 
 		# Create global objects first
 		self.audio_recorder = zynthian_audio_recorder()
-		self.zynmixer = zynmixer.zynmixer()
+		self.zynmixer = zynthian_engine_audio_mixer.zynmixer()
 		self.zynseq = zynseq.zynseq()
 
 		# Create Core UI Screens

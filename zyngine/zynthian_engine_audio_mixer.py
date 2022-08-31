@@ -25,7 +25,6 @@
 
 import ctypes
 import logging
-from os.path import dirname, realpath
 
 from zyngine import zynthian_controller
 from zyngine import zynthian_engine
@@ -41,7 +40,7 @@ class zynmixer(zynthian_engine):
 	def __init__(self):
 		super().__init__()
 		try:
-			self.lib_zynmixer = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+'/build/libzynmixer.so')
+			self.lib_zynmixer = ctypes.cdll.LoadLibrary('/zynthian/zynthian-ui/zynlibs/zynmixer/build/libzynmixer.so')
 			self.lib_zynmixer.init()
 			self.lib_zynmixer.getLevel.restype = ctypes.c_float
 			self.lib_zynmixer.getBalance.restype = ctypes.c_float

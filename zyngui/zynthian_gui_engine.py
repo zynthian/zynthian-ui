@@ -24,15 +24,11 @@
 #******************************************************************************
 
 import os
-import re
-import sys
 import logging
-import subprocess
 from time import sleep
 from collections import OrderedDict
 
 # Zynthian specific modules
-import zynautoconnect
 from zyngine import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_jalv import *
@@ -59,7 +55,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 		cls.engine_info=OrderedDict([
 			["SL", ("SooperLooper", "SooperLooper", "Audio Effect", None, zynthian_engine_sooperlooper, True)],
-			["MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_mixer, True)],
+			["MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_alsa_mixer, True)],
 			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", None, zynthian_engine_zynaddsubfx, True)],
 			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", None, zynthian_engine_fluidsynth, True)],
 			["SF", ("Sfizz", "Sfizz - SFZ Player", "MIDI Synth", None, zynthian_engine_sfizz, True)],

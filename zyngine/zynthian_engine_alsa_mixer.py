@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #******************************************************************************
-# ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_mixer)
+# ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_alsa_mixer)
 #
 # zynthian_engine implementation for Alsa Mixer
 #
@@ -37,10 +37,10 @@ from . import zynthian_engine
 from . import zynthian_controller
 
 #------------------------------------------------------------------------------
-# Mixer Engine Class
+# ALSA Mixer Engine Class
 #------------------------------------------------------------------------------
 
-class zynthian_engine_mixer(zynthian_engine):
+class zynthian_engine_alsa_mixer(zynthian_engine):
 
 	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
 
@@ -419,7 +419,7 @@ class zynthian_engine_mixer(zynthian_engine):
 
 		self.sender_poll_enabled = True
 		thread = threading.Thread(target=runInThread, daemon=True)
-		thread.name = "engine mixer"
+		thread.name = "ALSA mixer engine"
 		thread.start()
 
 
