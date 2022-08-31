@@ -354,8 +354,8 @@ class zynmixer(zynthian_engine):
 			self.zctrls[channel]['mono'].set_value(self.lib_zynmixer.getMono(channel), False)
 			self.zctrls[channel]['solo'].set_value(self.lib_zynmixer.getSolo(channel), False)
 			self.zctrls[channel]['phase'].set_value(self.lib_zynmixer.getPhase(channel), False)
-			for symbol in self.zctrls[channel]:
-				self.zctrls[channel][symbol].midi_unlearn()
+			#for symbol in self.zctrls[channel]:
+			#	self.zctrls[channel][symbol].midi_unlearn()
 
 
 	# Reset mixer to default state

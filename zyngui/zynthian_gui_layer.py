@@ -405,7 +405,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def remove_root_layer(self, i, stop_unused_engines=True):
-		if i>=0 and i<len(self.root_layers):
+		if i >= 0 and i < len(self.root_layers):
 			# For some engines (Aeolus, setBfree), delete all layers from the same engine
 			if self.root_layers[i].engine.nickname in ['BF', 'AE']:
 				root_layers_to_delete = copy.copy(self.root_layers[i].engine.layers)
@@ -420,7 +420,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.zyngui.zynmixer.set_mute(root_layer.midi_chan, True)
 				# Midichain layers
 				midichain_layers = self.get_midichain_layers(root_layer)
-				if len(midichain_layers)>0:
+				if len(midichain_layers) > 0:
 					midichain_layers.remove(root_layer)
 				layers_to_delete += midichain_layers
 				for layer in reversed(midichain_layers):
@@ -429,7 +429,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					layer.mute_midi_out()
 				# Fxchain layers => Mute!
 				fxchain_layers = self.get_fxchain_layers(root_layer)
-				if len(fxchain_layers)>0:
+				if len(fxchain_layers) > 0:
 					fxchain_layers.remove(root_layer)
 				layers_to_delete += fxchain_layers
 				for layer in reversed(fxchain_layers):

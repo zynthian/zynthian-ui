@@ -71,7 +71,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 		#Add list of programs
 		if len(self.zyngui.screens['layer'].learned_zs3)>0:
-			self.list_data.append((None, None, "> SAVED ZS3s"))
+			self.list_data.append((None, None, "  SAVED ZS3s"))
 		for i, state in enumerate(self.zyngui.screens['layer'].learned_zs3):
 			if state['midi_learn_prognum'] is not None:
 				if zynthian_gui_config.midi_single_active_channel:

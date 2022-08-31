@@ -1007,7 +1007,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			options["⬤ Start Audio Recording"] = "RecordAudio"
 		if zynthian_gui_config.enable_onscreen_buttons:
 			options["MIDI Learn"] = "midi_learn"
-		options["> Audio Chain"] = None
+		options["  Audio Chain"] = None
 		options["Add Audio-FX"] = "Add"
 
 		self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
@@ -1223,7 +1223,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if strip.layer:
 				strip.enable_midi_learn(True)
 		self.main_mixbus_strip.enable_midi_learn(True)
-		#TODO: Only show unlearn button if gui controls
 		if zynthian_gui_config.enable_onscreen_buttons:
 			self.unlearn_btn = tkinter.Button(self.tb_frame, text='Unlearn ALL mixer controls', relief=tkinter.FLAT, bg=zynthian_gui_config.color_bg, fg=zynthian_gui_config.color_tx, command=self.unlearn_btn_cb)
 			self.unlearn_btn.grid(row=0, column=1, sticky='news')
