@@ -424,13 +424,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 				return True
 			elif t == 'B':
 				if self.midi_learning:
-					if self.zyngui.midi_learn_zctrl:
-						self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.midi_learn_zctrl)
-					elif self.zyngui.curlayer:
-						self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in this chain?", self.midi_unlearn)
-					self.exit_midi_learn()
+					self.midi_unlearn_action()
 					return True
-
 
 		elif swi == 3:
 			if t == 'S':
@@ -493,6 +488,27 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return self.zgui_controllers[i]
 
 
+	def refresh_midi_bind(self):
+		for zgui_controller in self.zgui_controllers:
+			zgui_controller.set_midi_bind()
+
+
+	def plot_zctrls(self, force=False):
+		if self.mode == 'select':
+			super().plot_zctrls()
+		elif self.zgui_controllers:
+			for zgui_ctrl in self.zgui_controllers:
+				if zgui_ctrl.zctrl and zgui_ctrl.zctrl.is_dirty or force:
+					zgui_ctrl.calculate_plot_values()
+				zgui_ctrl.plot_value()
+		for k, widget in self.widgets.items():
+			widget.update()
+
+
+	#--------------------------------------------------------------------------
+	# MIDI learn management
+	#--------------------------------------------------------------------------
+
 	def enter_midi_learn(self):
 		self.midi_learning = True
 		self.set_buttonbar_label(0, "CANCEL")
@@ -517,23 +533,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zyngui.enter_midi_learn()
 
 
-	def refresh_midi_bind(self):
-		for zgui_controller in self.zgui_controllers:
-			zgui_controller.set_midi_bind()
-
-
-	def plot_zctrls(self, force=False):
-		if self.mode == 'select':
-			super().plot_zctrls()
-		elif self.zgui_controllers:
-			for zgui_ctrl in self.zgui_controllers:
-				if zgui_ctrl.zctrl and zgui_ctrl.zctrl.is_dirty or force:
-					zgui_ctrl.calculate_plot_values()
-				zgui_ctrl.plot_value()
-		for k, widget in self.widgets.items():
-			widget.update()
-
-
 	def midi_learn_zctrl(self, i):
 		if self.shown and self.zyngui.midi_learn_mode:
 			logging.debug("MIDI-learn ZController {}".format(i))
@@ -552,10 +551,21 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if zctrl:
 			zctrl.midi_unlearn()
 		elif self.zyngui.curlayer:
-			#TODO: This only clears the first engine, not the whole chain
-			self.zyngui.curlayer.midi_unlearn()
+			self.zyngui.screens['layer'].midi_unlearn()
 		self.zyngui.exit_midi_learn()
 
+
+	def midi_unlearn_action(self):
+		if self.zyngui.midi_learn_zctrl:
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.midi_learn_zctrl)
+		elif self.zyngui.curlayer:
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in this chain?", self.midi_unlearn)
+		self.exit_midi_learn()
+
+
+	#--------------------------------------------------------------------------
+	# GUI Callback function
+	#--------------------------------------------------------------------------
 
 	def cb_listbox_push(self, event):
 		if self.xyselect_mode:

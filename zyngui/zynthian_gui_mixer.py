@@ -765,7 +765,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		super().__init__()
 
 		self.zynmixer = self.zyngui.zynmixer
-		self.zynmixer.set_ctrl_update_cb(self.cb_ctrl_change)
+		self.zynmixer.set_ctrl_update_cb(self.ctrl_change_cb)
 		self.MAIN_CHANNEL_INDEX = zynthian_gui_config.zyngui.zynmixer.get_max_channels() 
 		self.chan2strip = [None] * (self.MAIN_CHANNEL_INDEX + 1)
 
@@ -1063,14 +1063,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.audio_options()
 
 
-	def midi_unlearn_confirmed(self, zctrl):
-		if zctrl:
-			zctrl.midi_unlearn()
-		else:
-			self.unlearn_all()
-		self.zyngui.exit_midi_learn()
-
-
 	#--------------------------------------------------------------------------
 	# Physical UI Control Management: Pots & switches
 	#--------------------------------------------------------------------------
@@ -1119,10 +1111,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		elif swi == 2:
 			if t == 'B':
 				if self.midi_learning:
-					if self.zyngui.midi_learn_zctrl:
-						self.zyngui.show_confirm("Do you want to clear MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn_confirmed, self.zyngui.midi_learn_zctrl)
-					else:
-						self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL mixer controls?", self.midi_unlearn_confirmed)
+					self.midi_unlearn_action()
 					return True
 
 		elif swi == 3:
@@ -1217,6 +1206,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.parent.pending_refresh_queue.add((self, 'level'))
 
 
+
+	def ctrl_change_cb(self, chan, ctrl, value):
+		self.pending_refresh_queue.add((self.chan2strip[chan], ctrl))
+
+
+	#--------------------------------------------------------------------------
+	# MIDI learning management
+	#--------------------------------------------------------------------------
+
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
 	def enter_midi_learn(self):
 		for strip in self.visible_mixer_strips:
@@ -1224,7 +1222,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				strip.enable_midi_learn(True)
 		self.main_mixbus_strip.enable_midi_learn(True)
 		if zynthian_gui_config.enable_onscreen_buttons:
-			self.unlearn_btn = tkinter.Button(self.tb_frame, text='Unlearn ALL mixer controls', relief=tkinter.FLAT, bg=zynthian_gui_config.color_bg, fg=zynthian_gui_config.color_tx, command=self.unlearn_btn_cb)
+			self.unlearn_btn = tkinter.Button(self.tb_frame, text='Unlearn ALL mixer controls', relief=tkinter.FLAT, bg=zynthian_gui_config.color_bg, fg=zynthian_gui_config.color_tx, command=self.midi_unlearn_action)
 			self.unlearn_btn.grid(row=0, column=1, sticky='news')
 		self.midi_learning = True
 
@@ -1255,19 +1253,25 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				pass
 
 
-	def unlearn_all(self):
+	def midi_unlearn_all(self):
 		for ctrls in self.zyngui.zynmixer.zctrls:
 			for key in ctrls:
 				ctrls[key].midi_unlearn()
 
 
-	def unlearn_btn_cb(self):
+	def midi_unlearn_action(self):
 		if self.zyngui.midi_learn_zctrl:
-			self.zyngui.show_confirm("Do you want to clear MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn_confirmed, self.zyngui.midi_learn_zctrl)
+			self.zyngui.show_confirm("Do you want to clear MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.midi_learn_zctrl)
 		else:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL mixer controls?", self.midi_unlearn_confirmed)
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL mixer controls?", self.midi_unlearn)
 
 
-	def cb_ctrl_change(self, chan, ctrl, value):
-		self.pending_refresh_queue.add((self.chan2strip[chan], ctrl))
+	def midi_unlearn(self, zctrl=None):
+		if zctrl:
+			zctrl.midi_unlearn()
+		else:
+			self.midi_unlearn_all()
+		self.zyngui.exit_midi_learn()
 
+
+#--------------------------------------------------------------------------

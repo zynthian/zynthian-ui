@@ -1404,7 +1404,7 @@ class zynthian_gui:
 				self.toggle_screen("main", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 		elif cuia == "PRESET":
-			self.cuia_bank_preset()
+			self.cuia_bank_preset(params)
 
 		elif cuia == "PRESET_FAVS":
 			self.show_favorites()
@@ -1422,23 +1422,35 @@ class zynthian_gui:
 		elif cuia == "TOGGLE_MIDI_LEARN":
 			self.toggle_midi_learn()
 
+		elif cuia == "ACTION_MIDI_UNLEARN":
+			try:
+				self.screens[self.current_screen].midi_unlearn_action()
+			except:
+				pass
+
 		elif cuia == "MIDI_UNLEARN_CONTROL":
 			# Unlearn from currently selected (learning) control
 			if self.midi_learn_zctrl:
-				self.midi_learn_zctrl.unlearn_midi()
-				self.exit_midi_learn()
+				self.midi_learn_zctrl.midi_unlearn()
 
 		elif cuia == "MIDI_UNLEARN_MIXER":
 			# Unlearn all mixer controls
-			self.screens['audio_mixer'].unlearn_all()
+			try:
+				self.screens['audio_mixer'].midi_unlearn_all()
+			except Exception as e:
+				logging.error(e)
 
-		elif cuia == "MIDI_UNLEARN_ENGINE":
-			#TODO: Implement MIDI_UNLEARN_ENGINE
-			pass
+		elif cuia == "MIDI_UNLEARN_NODE":
+			try:
+				self.screens['control'].screen_layer.midi_unlearn()
+			except Exception as e:
+				logging.error(e)
 
 		elif cuia == "MIDI_UNLEARN_CHAIN":
-			#TODO: Implement MIDI_UNLEARN_CHAIN
-			pass
+			try:
+				self.screens['layer'].midi_unlearn()
+			except Exception as e:
+				logging.error(e)
 
 		# Common methods to control views derived from zynthian_gui_base
 		elif isinstance(self.screens[self.current_screen], zynthian_gui_base):
@@ -1514,7 +1526,7 @@ class zynthian_gui:
 	def cuia_bank_preset(self, params=None):
 		if params:
 			try:
-				self.set_curlayer(params[0], True)
+				self.set_curlayer(params, True)
 			except:
 				logging.error("Can't set layer passed as CUIA parameter!")
 		else:
@@ -1532,7 +1544,6 @@ class zynthian_gui:
 			#self.replace_screen('preset')
 			self.close_screen()
 		else:
-			
 			if len(self.curlayer.preset_list) > 0 and self.curlayer.preset_list[0][0] != '':
 				self.screens['preset'].index = self.curlayer.get_preset_index()
 				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)

@@ -117,7 +117,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 	# Preset management
 
 	def preset_list(self):
-		self.zyngui.cuia_bank_preset((self.sublayer))
+		self.zyngui.cuia_bank_preset(self.sublayer)
 
 
 	def save_preset(self):

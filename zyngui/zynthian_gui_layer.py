@@ -540,8 +540,35 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	#----------------------------------------------------------------------------
-	# MIDI Control (ZS3 & PC)
+	# MIDI learn management
 	#----------------------------------------------------------------------------
+
+	def midi_unlearn(self, root_layer=None):
+		if root_layer is None:
+			root_layer = self.zyngui.curlayer
+		if root_layer:
+			for layer in self.get_chain_layers(root_layer):
+				layer.midi_unlearn()
+
+
+	#----------------------------------------------------------------------------
+	# MIDI CC & Program Change (when ZS3 is disabled!)
+	#----------------------------------------------------------------------------
+
+	def midi_control_change(self, chan, ccnum, ccval):
+		if zynthian_gui_config.midi_bank_change and ccnum==0:
+			for layer in self.root_layers:
+				if layer.midi_chan==chan:
+					layer.midi_bank_msb(ccval)
+		elif zynthian_gui_config.midi_bank_change and ccnum==32:
+			for layer in self.root_layers:
+				if layer.midi_chan==chan:
+					layer.midi_bank_lsb(ccval)
+		else:
+			for layer in self.layers:
+				layer.midi_control_change(chan, ccnum, ccval)
+			self.amixer_layer.midi_control_change(chan, ccnum, ccval)
+
 
 	def set_midi_prog_preset(self, midich, prognum):
 		changed = False
@@ -565,6 +592,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				logging.error("Can't refresh GUI! => %s", e)
 
 		return changed
+
+
+	#----------------------------------------------------------------------------
+	# ZS3 management
+	#----------------------------------------------------------------------------
 
 
 	def set_midi_prog_zs3(self, midich, prognum):
@@ -719,21 +751,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				pass
 
 
-	def midi_control_change(self, chan, ccnum, ccval):
-		if zynthian_gui_config.midi_bank_change and ccnum==0:
-			for layer in self.root_layers:
-				if layer.midi_chan==chan:
-					layer.midi_bank_msb(ccval)
-		elif zynthian_gui_config.midi_bank_change and ccnum==32:
-			for layer in self.root_layers:
-				if layer.midi_chan==chan:
-					layer.midi_bank_lsb(ccval)
-		else:
-			for layer in self.layers:
-				layer.midi_control_change(chan, ccnum, ccval)
-			self.amixer_layer.midi_control_change(chan, ccnum, ccval)
-
-
 	#----------------------------------------------------------------------------
 	# Audio Routing
 	#----------------------------------------------------------------------------
@@ -836,6 +853,17 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for l in self.layers:
 			if l.midi_chan==layer.midi_chan:
 				return l
+
+
+	def get_chain_layers(self, layer):
+		layers = []
+		if layer.midi_chan is None:
+			layers.append(layer)
+		else:
+			for l in self.layers:
+				if l.midi_chan==layer.midi_chan:
+					layers.append(l)
+		return layers
 
 
 	# ---------------------------------------------------------------------------

@@ -239,7 +239,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector, zynthian_gui_save_preset
 
 
 	def preset_list(self):
-		self.zyngui.cuia_bank_preset((self.layer))
+		self.zyngui.cuia_bank_preset(self.layer)
 
 
 	def layer_midi_chan(self):
@@ -264,8 +264,19 @@ class zynthian_gui_layer_options(zynthian_gui_selector, zynthian_gui_save_preset
 
 
 	def midi_learn(self):
-		self.zyngui.close_screen()
-		self.zyngui.enter_midi_learn()
+		options = OrderedDict()
+		options['Enter MIDI-learn'] = "enter"
+		options['Clean MIDI-learn'] = "clean"
+		self.zyngui.screens['option'].config("MIDI-learn", options, self.midi_learn_menu_cb)
+		self.zyngui.show_screen('option')
+
+
+	def midi_learn_menu_cb(self, options, params):
+		if params == 'enter':
+			self.zyngui.close_screen()
+			self.zyngui.enter_midi_learn()
+		elif params == 'clean':
+			self.zyngui.screens['layer'].midi_unlearn(self.layer)
 
 
 	def layer_midi_routing(self):
