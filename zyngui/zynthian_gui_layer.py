@@ -540,7 +540,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	#----------------------------------------------------------------------------
-	# MIDI Control (ZS3 & PC) => TODO Refact this!!!!
+	# MIDI Control (ZS3 & PC)
 	#----------------------------------------------------------------------------
 
 	def set_midi_prog_preset(self, midich, prognum):
@@ -549,6 +549,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			try:
 				mch = layer.get_midi_chan()
 				if mch is None or mch == midich:
+					# TODO This is really DIRTY!!
 					# Fluidsynth engine => ignore Program Change on channel 9
 					if layer.engine.nickname == "FS" and mch == 9:
 						continue
