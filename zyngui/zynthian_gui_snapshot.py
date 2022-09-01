@@ -266,7 +266,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		fname=self.list_data[i][2]
 		options = {
 			"Load": fpath,
-			"Load Layers": fpath,
+			"Load Chains": fpath,
 			"Load Sequences": fpath,
 			"Save": fname
 		}
@@ -293,7 +293,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if option == "Load":
 			self.zyngui.screens['layer'].load_snapshot(fpath)
 			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
-		elif option == "Load Layers":
+		elif option == "Load Chains":
 			self.zyngui.screens['layer'].load_snapshot_layers(fpath)
 			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Load Sequences":
