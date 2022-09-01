@@ -169,7 +169,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.options['drop_pc'] = True
 		self.options['clone'] = False
 
-		self.command = ['sooperlooper', '-q', '-l 0', '-D no', '-p {}'.format(self.SL_PORT), '-j {}'.format(self.jackname)]
+		self.command = ['sooperlooper', '-q', '-l 0', '-D no', '-p {}'.format(self.SL_PORT), '-j{}'.format(self.jackname)]
 
 		self.state = [-1] * self.MAX_LOOPS # Current SL state for each loop
 		self.next_state = [-1] * self.MAX_LOOPS # Next SL state for each loop (-1 if no state change pending)
