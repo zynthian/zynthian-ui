@@ -45,6 +45,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def __init__(self, selcap='Controllers'):
 		self.mode = None
 
+		self.screen_info = None
+		self.screen_title = None
+		self.screen_layer = None
+
 		self.widgets = {}
 		self.ctrl_screens = {}
 		self.zcontrollers = []
@@ -140,6 +144,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.list_data.append((cscr, i, cscr, layer, j))
 				i += 1
 				j += 1
+
 		self.index = self.zyngui.curlayer.get_current_screen_index()
 		super().fill_list()
 
@@ -203,24 +208,24 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def set_controller_screen(self):
 		# Get screen info
 		if 0 <= self.index < len(self.list_data):
-			screen_info = self.list_data[self.index]
-			screen_title = screen_info[2]
-			screen_layer = screen_info[3]
+			self.screen_info = self.list_data[self.index]
+			self.screen_title = self.screen_info[2]
+			self.screen_layer = self.screen_info[3]
 
 			# Show the widget for the current sublayer
 			if self.mode == 'control':
-				self.show_widget(screen_layer)
+				self.show_widget(self.screen_layer)
 
 			# Get controllers for the current screen
 			self.zyngui.curlayer.set_current_screen_index(self.index)
-			self.zcontrollers = screen_layer.get_ctrl_screen(screen_title)
+			self.zcontrollers = self.screen_layer.get_ctrl_screen(self.screen_title)
 
 		else:
 			self.zcontrollers = []
-			screen_title = ""
+			self.screen_title = ""
 
 		# Setup GUI Controllers
-		logging.debug("SET CONTROLLER SCREEN {}".format(screen_title))
+		logging.debug("SET CONTROLLER SCREEN {}".format(self.screen_title))
 		# Configure zgui_controllers
 		for i in range(4):
 			if i < len(self.zcontrollers):

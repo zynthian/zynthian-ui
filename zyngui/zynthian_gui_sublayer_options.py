@@ -29,12 +29,13 @@ import logging
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_save_preset import zynthian_gui_save_preset
 
 #------------------------------------------------------------------------------
 # Zynthian Sublayer Options GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_sublayer_options(zynthian_gui_selector):
+class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_preset):
 
 	def __init__(self):
 		self.reset()
@@ -53,8 +54,11 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data = []
 
-		if len(self.sublayer.preset_list)>1:
-			self.list_data.append((self.sublayer_presets, None, "Presets"))
+		if len(self.sublayer.bank_list)>1 or len(self.sublayer.preset_list)>1:
+			self.list_data.append((self.preset_list, None, "Preset List"))
+
+		if hasattr(self.sublayer.engine, "save_preset"):
+			self.list_data.append((self.save_preset, None, "Save Preset"))
 
 		# Effect Layer Options
 		if self.sublayer_type=="Audio Effect":
@@ -105,17 +109,20 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector):
 			logging.error(e)
 
 
-	def sublayer_presets(self):
-		self.zyngui.set_curlayer(self.sublayer, True)
-		self.zyngui.show_screen('bank')
-		# If there is only one bank, jump to preset selection
-		if len(self.sublayer.bank_list)<=1:
-			self.zyngui.screens['bank'].select_action(0)
-
-
 	def sublayer_remove(self):
 		self.zyngui.screens['layer'].remove_layer(self.sublayer_index)
 		self.zyngui.close_screen()
+
+
+	# Preset management
+
+	def preset_list(self):
+		self.zyngui.cuia_bank_preset((self.sublayer))
+
+
+	def save_preset(self):
+		self.layer = self.sublayer
+		super().save_preset()
 
 
 	# FX-Chain management

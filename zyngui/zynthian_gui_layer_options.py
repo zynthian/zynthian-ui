@@ -30,12 +30,13 @@ import logging
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_save_preset import zynthian_gui_save_preset
 
 #------------------------------------------------------------------------------
 # Zynthian Layer Options GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_layer_options(zynthian_gui_selector):
+class zynthian_gui_layer_options(zynthian_gui_selector, zynthian_gui_save_preset):
 
 	def __init__(self):
 		self.reset()
@@ -94,12 +95,9 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		else:
 			eng_options = self.layer.engine.get_options()
 
-		#self.list_data.append((self.layer_presets, None, "Presets"))
+		eng_options['midi_learn'] = True
 
 		if self.layer.midi_chan is not None:
-			if hasattr(self.layer.engine, "save_preset"):
-				self.list_data.append((self.save_preset, None, "Save Preset"))
-
 			if 'note_range' in eng_options and eng_options['note_range']:
 				self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
 
@@ -129,9 +127,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if 'midi_chan' in eng_options and eng_options['midi_chan']:
 			self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
 
-		if self.layer.engine.type=="MIDI Synth" and 'replace' in eng_options and eng_options['midi_chan']:
-			self.list_data.append((self.layer_replace, None, "Replace Synth"))
-
 		if 'indelible' not in eng_options or not eng_options['indelible']:
 			self.list_data.append((self.layer_remove, None, "Remove Chain"))
 
@@ -154,6 +149,20 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 			if len(self.midifx_layers)>0 and self.layer.engine.type=="MIDI Synth":
 				self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
+
+		if self.layer.engine.type in ('MIDI Synth') and self.layer.midi_chan is not None:
+			# Add separator
+			self.list_data.append((None,None,"  Synth Chain"))
+
+			if len(self.layer.bank_list)>1 or len(self.layer.preset_list)>1:
+				self.list_data.append((self.preset_list, None, "Preset List"))
+
+			if hasattr(self.layer.engine, "save_preset"):
+				self.list_data.append((self.save_preset, None, "Save Preset"))
+
+			if 'replace' in eng_options and eng_options['replace'] and 'midi_chan' in eng_options and eng_options['midi_chan']:
+				self.list_data.append((self.layer_replace, None, "Replace Synth"))
+
 
 		if self.layer.engine.type!='MIDI Tool' and self.layer.midi_chan is not None:
 			# Add separator
@@ -229,90 +238,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.zyngui.show_screen("sublayer_options")
 
 
-	def save_preset(self):
-		if self.layer:
-			self.save_preset_create_bank_name = None
-			self.save_preset_bank_info = None
-			self.layer.load_bank_list()
-			if not self.layer.bank_list or not self.layer.bank_list[0][0]:
-				self.save_preset_select_name_cb()
-				return
-			options = {}
-			options["***New bank***"] = "NEW_BANK"
-			index = self.layer.get_bank_index() + 1
-			for bank in self.layer.bank_list:
-				if bank[0]=="*FAVS*":
-					index -= 1
-				else:
-					options[bank[2]] = bank
-			self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)
-			self.zyngui.show_screen('option')
-			self.zyngui.screens['option'].select(index)
-
-
-	def save_preset_select_bank_cb(self, bank_name, bank_info):
-		self.save_preset_bank_info = bank_info
-		if bank_info is "NEW_BANK":
-			self.zyngui.show_keyboard(self.save_preset_select_name_cb, "NewBank")
-		else:
-			self.save_preset_select_name_cb()
-
-
-	def save_preset_select_name_cb(self, create_bank_name=None):
-		if create_bank_name is not None:
-			create_bank_name = create_bank_name.strip()
-		self.save_preset_create_bank_name = create_bank_name
-		if self.layer.preset_name:
-			self.zyngui.show_keyboard(self.save_preset_cb, self.layer.preset_name + " COPY")
-		else:
-			self.zyngui.show_keyboard(self.save_preset_cb, "New Preset")
-
-
-	def save_preset_cb(self, preset_name):
-		preset_name = preset_name.strip()
-		#If must create new bank, calculate URID
-		if self.save_preset_create_bank_name:
-			create_bank_urid = self.layer.engine.get_user_bank_urid(self.save_preset_create_bank_name)
-			self.save_preset_bank_info = (create_bank_urid, None, self.save_preset_create_bank_name, None)
-		if self.layer.engine.preset_exists(self.save_preset_bank_info, preset_name):
-			self.zyngui.show_confirm("Do you want to overwrite preset '{}'?".format(preset_name), self.do_save_preset, preset_name)
-		else:
-			self.do_save_preset(preset_name)
-
-
-	def do_save_preset(self, preset_name):
-		preset_name = preset_name.strip()
-
-		try:
-			# Save preset
-			preset_uri = self.layer.engine.save_preset(self.save_preset_bank_info, preset_name)
-
-			if preset_uri:
-				#If must create new bank, do it!
-				if self.save_preset_create_bank_name:
-					self.layer.engine.create_user_bank(self.save_preset_create_bank_name)
-					logging.info("Created new bank '{}' => {}".format(self.save_preset_create_bank_name, self.save_preset_bank_info[0]))
-					self.layer.load_bank_list()
-				if self.save_preset_bank_info:
-					self.layer.set_bank_by_id(self.save_preset_bank_info[0])
-				self.layer.load_preset_list()
-				self.layer.set_preset_by_id(preset_uri)
-			else:
-				logging.error("Can't save preset '{}' to bank '{}'".format(preset_name, self.save_preset_bank_info[2]))
-
-		except Exception as e:
-			logging.error(e)
-
-		self.save_preset_create_bank_name = None
-		self.zyngui.close_screen()
-
-
-	def layer_presets(self):
-		self.zyngui.set_curlayer(self.layer)
-		self.zyngui.show_screen('bank')
-		# If there is only one bank, jump to preset selection
-		if len(self.layer.bank_list)<=1:
-			self.zyngui.screens['bank'].select_action(0)
+	def preset_list(self):
+		self.zyngui.cuia_bank_preset((self.layer))
 
 
 	def layer_midi_chan(self):

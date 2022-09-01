@@ -861,7 +861,7 @@ class zynthian_gui:
 		if layer is not None:
 			if layer in self.screens['layer'].root_layers:
 				self._curlayer = None
-			else:
+			elif self.curlayer!=layer:
 				self._curlayer = self.curlayer
 
 			self.set_curlayer(layer)
@@ -930,9 +930,10 @@ class zynthian_gui:
 
 	def set_curlayer(self, layer, save=False, populate_screens=True):
 		if layer is not None:
-			if save and not self.is_shown_alsa_mixer():
-				self._curlayer = self.curlayer
-			self.curlayer = layer
+			if self.curlayer!=layer:
+				if save and not self.is_shown_alsa_mixer():
+					self._curlayer = self.curlayer
+				self.curlayer = layer
 			if populate_screens:
 				self.screens['layer'].refresh_index()
 				self.screens['bank'].fill_list()
@@ -1511,6 +1512,17 @@ class zynthian_gui:
 
 
 	def cuia_bank_preset(self, params=None):
+		if params:
+			try:
+				self.set_curlayer(params[0], True)
+			except:
+				logging.error("Can't set layer passed as CUIA parameter!")
+		else:
+			try:
+				self.set_curlayer(self.screens['control'].screen_layer, True)
+			except:
+				logging.warning("Can't set control screen layer! ")
+
 		if self.current_screen == 'preset':
 			if len(self.curlayer.bank_list) > 1:
 				self.replace_screen('bank')
@@ -1520,6 +1532,7 @@ class zynthian_gui:
 			#self.replace_screen('preset')
 			self.close_screen()
 		else:
+			
 			if len(self.curlayer.preset_list) > 0 and self.curlayer.preset_list[0][0] != '':
 				self.screens['preset'].index = self.curlayer.get_preset_index()
 				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)

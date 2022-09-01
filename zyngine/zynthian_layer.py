@@ -474,10 +474,7 @@ class zynthian_layer:
 
 
 	def get_current_screen_index(self):
-		if self.current_screen_index>=len(self.ctrl_screens_dict):
-			self.current_screen_index = len(self.ctrl_screens_dict)-1
 		return self.current_screen_index
-
 
 
 	def set_current_screen_index(self, i):
