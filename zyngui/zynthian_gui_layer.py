@@ -89,9 +89,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.set_selector()
 
 
-	def refresh_index(self):
+	def refresh_index(self, layer=None):
+		if layer is None:
+			layer = self.zyngui.curlayer
+
 		try:
-			self.index = self.root_layers.index(self.zyngui.curlayer)
+			self.index = self.root_layers.index(self.get_chain_root(layer))
 		except:
 			self.index = 0
 			try:
@@ -362,10 +365,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 			if select:
 				self.fill_list()
-				root_layer = self.get_fxchain_root(layer)
+				self.refresh_index()
 				try:
-					self.index = self.root_layers.index(root_layer)
-					self.zyngui.show_screen_reset('audio_mixer')
 					self.layer_control(layer)
 				except Exception as e:
 					logging.error(e)
@@ -823,10 +824,22 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				count += 1
 		return count
 
+
+	# ---------------------------------------------------------------------------
+	# Chain management
+	# ---------------------------------------------------------------------------
+
+	def get_chain_root(self, layer):
+		if layer.midi_chan is None:
+			return layer
+		for l in self.layers:
+			if l.midi_chan==layer.midi_chan:
+				return l
+
+
 	# ---------------------------------------------------------------------------
 	# Synth node
 	# ---------------------------------------------------------------------------
-
 
 	def replace_synth(self, layer):
 		try:
@@ -905,14 +918,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				if l.engine.type in ("Audio Effect") and l.midi_chan==midi_chan:
 						count += 1
 		return count
-
-
-	def get_fxchain_root(self, layer):
-		if layer.midi_chan is None:
-			return layer
-		for l in self.layers:
-			if l.midi_chan==layer.midi_chan:
-				return l
 
 
 	# Returns FX-chain layers routed to extra-chain ports or not routed at all.

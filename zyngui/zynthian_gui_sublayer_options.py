@@ -109,7 +109,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector):
 		self.zyngui.set_curlayer(self.sublayer, True)
 		self.zyngui.show_screen('bank')
 		# If there is only one bank, jump to preset selection
-		if len(self.layer.bank_list)<=1:
+		if len(self.sublayer.bank_list)<=1:
 			self.zyngui.screens['bank'].select_action(0)
 
 

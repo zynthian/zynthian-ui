@@ -77,7 +77,10 @@ class zynthian_gui_bank(zynthian_gui_selector):
 				return
 			self.zyngui.curlayer.set_show_fav_presets(False)
 
-		self.zyngui.show_screen('preset')
+		if len(self.list_data) <= 1:
+			self.zyngui.replace_screen('preset')
+		else:
+			self.zyngui.show_screen('preset')
 
 		# If bank is empty (no presets), jump to instrument control
 		if len(self.zyngui.curlayer.preset_list) == 0 or self.zyngui.curlayer.preset_list[0][0] == "":

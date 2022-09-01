@@ -1481,7 +1481,6 @@ class zynthian_gui:
 					if main_fxchain:
 						self.layer_control(main_fxchain)
 					else:
-						#self.screens['layer'].add_fxchain_layer(16)
 						self.screens['audio_mixer'].show_mainfx_options()
 			except Exception as e:
 				logging.warning("Can't change to layer {}! => {}".format(params[0],e))
@@ -1503,7 +1502,6 @@ class zynthian_gui:
 					if main_fxchain:
 						self.screens['layer'].select(n)
 					else:
-						#self.screens['layer'].add_fxchain_layer(16)
 						self.screens['audio_mixer'].show_mainfx_options()
 						return
 			self.screens['layer_options'].reset()
