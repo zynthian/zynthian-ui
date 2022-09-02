@@ -224,7 +224,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['wet', 'wet', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
 			['input_gain', 'input gain', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
 			['loop_count', 'loop count', {'value':1, 'value_min':1, 'value_max':self.MAX_LOOPS}],
-			['selected_loop_num', 'selected loop', {'value':1, 'value_min':1, 'value_max': 1}]
+			['selected_loop_num', 'selected loop', {'value':1, 'value_min':1, 'value_max': 6}]
 		]
 
 		# Controller Screens
