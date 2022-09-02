@@ -61,7 +61,7 @@ class zynthian_layer:
 		else:
 			self.audio_out = ["mixer"]
 
-		if self.midi_chan is None or self.midi_chan<16:
+		if self.midi_chan is None or self.midi_chan < 16:
 			self.audio_in = ["system:capture_1", "system:capture_2"]
 		else:
 			self.audio_in = []

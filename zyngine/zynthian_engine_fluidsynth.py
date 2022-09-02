@@ -87,7 +87,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.nickname = "FS"
 		self.jackname = "fluidsynth"
 
-		self.options['drop_pc']=True
+		self.options['drop_pc'] = True
 
 		self.bank_config = OrderedDict()
 
@@ -125,7 +125,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def add_layer(self, layer):
 		self.layers.append(layer)
 		layer.jackname = None
-		layer.part_i=None
+		layer.part_i = None
 		self.setup_router(layer)
 
 
@@ -244,7 +244,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, layer):
-		zctrls=super().get_controllers_dict(layer)
+		zctrls = super().get_controllers_dict(layer)
 		self._ctrl_screens = copy.copy(self.default_ctrl_screens)
 
 		try:
