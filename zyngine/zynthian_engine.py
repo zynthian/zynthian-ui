@@ -680,10 +680,11 @@ class zynthian_engine(zynthian_basic_engine):
 	#----------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		try:
+		if self.learned_cc[chan][ccnum]:
 			self.learned_cc[chan][ccnum].midi_control_change(val)
-		except:
-			pass
+		else:
+			# If CC not consumed by MIDI learn then send to engine for native MIDI CC handler
+			self.zyngui.zynmidi.set_midi_control(chan, ccnum, val)
 
 
 	def midi_zctrl_change(self, zctrl, val):
