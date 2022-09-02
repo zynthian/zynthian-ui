@@ -654,12 +654,16 @@ class zynthian_gui_mixer_strip():
 	# Function to handle mouse wheel down over fader
 	#	event: Mouse event
 	def on_fader_wheel_down(self, event):
+		if self.midi_learning is True:
+			self.enable_midi_learn('level')
 		self.nudge_volume(-1)
 
 
 	# Function to handle mouse wheel up over fader
 	#	event: Mouse event
 	def on_fader_wheel_up(self, event):
+		if self.midi_learning is True:
+			self.enable_midi_learn('level')
 		self.nudge_volume(1)
 
 
@@ -673,12 +677,16 @@ class zynthian_gui_mixer_strip():
 	# Function to handle mouse wheel down over balance
 	#	event: Mouse event
 	def on_balance_wheel_down(self, event):
+		if self.midi_learning is True:
+			self.enable_midi_learn('balance')
 		self.nudge_balance(-1)
 
 
 	# Function to handle mouse wheel up over balance
 	#	event: Mouse event
 	def on_balance_wheel_up(self, event):
+		if self.midi_learning is True:
+			self.enable_midi_learn('balance')
 		self.nudge_balance(1)
 
 
@@ -1016,7 +1024,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.audio_recorder.toggle_recording()
 			self.show_mainfx_options()
 		elif param == "midi_learn":
+			options = OrderedDict()
+			options['Enter MIDI-learn'] = "enter"
+			options['Clean MIDI-learn'] = "clean"
+			self.zyngui.screens['option'].config("MIDI-learn", options, self.midi_learn_menu_cb)
+			self.zyngui.show_screen('option')
+
+
+	def midi_learn_menu_cb(self, options, params):
+		if params == 'enter':
+			self.zyngui.close_screen()
 			self.zyngui.enter_midi_learn()
+		elif params == 'clean':
+			self.midi_unlearn_action()
 
 
 	def audio_options(self):
@@ -1210,9 +1230,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if strip.layer:
 				strip.enable_midi_learn(True)
 		self.main_mixbus_strip.enable_midi_learn(True)
-		if zynthian_gui_config.enable_onscreen_buttons:
-			self.unlearn_btn = tkinter.Button(self.tb_frame, text='Unlearn ALL mixer controls', relief=tkinter.FLAT, bg=zynthian_gui_config.color_bg, fg=zynthian_gui_config.color_tx, command=self.midi_unlearn_action)
-			self.unlearn_btn.grid(row=0, column=1, sticky='news')
 		self.midi_learning = True
 
 
@@ -1223,11 +1240,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				strip.enable_midi_learn(False)
 		if modified_strip != self.main_mixbus_strip:
 			self.main_mixbus_strip.enable_midi_learn(False)
-		if zynthian_gui_config.enable_onscreen_buttons:
-			try:
-				self.unlearn_btn['text'] = "Unlearn '{}' control".format(control)
-			except:
-				pass
 
     
 	def exit_midi_learn(self):
@@ -1235,11 +1247,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			strip.enable_midi_learn(False)
 		self.main_mixbus_strip.enable_midi_learn(False)
 		self.midi_learning = False
-		if zynthian_gui_config.enable_onscreen_buttons:
-			try:
-				self.unlearn_btn.grid_forget()
-			except:
-				pass
 
 
 	def midi_unlearn_all(self):

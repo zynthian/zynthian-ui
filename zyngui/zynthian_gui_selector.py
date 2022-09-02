@@ -54,6 +54,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.swipe_speed = 0
 		self.list_entry_height = int(1.8 * zynthian_gui_config.font_size) # Set approx. here to avoid errors. Set accurately when list item selected
 		self.listbox_motion_last_dy = 0
+		self.swiping = False
 
 		# ListBox
 		self.listbox = tkinter.Listbox(self.main_frame,
@@ -232,7 +233,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 		return index
 
 
-
 	def select_listbox(self, index, see=True):
 		if index < 0:
 			index = 0
@@ -269,13 +269,16 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def skip_separators(self, index):
 		# Skip separator items ...
 		if index >= 0 and index < len(self.list_data) and self.list_data[index][0] is None:
-			if self.index<=index:
-				if index<len(self.list_data)-1:
+			if self.index <= index:
+				if index < len(self.list_data) - 1:
 					self.select_listbox(index + 1)
 				else:
 					self.select_listbox(index - 1)
-			elif self.index>index:
-				if index>0:
+			elif self.index > index:
+				if index <= 1 and self.list_data[0][0] is None:
+					self.index = 1
+					return
+				if index > 0:
 					self.select_listbox(index - 1)
 				else:
 					self.select_listbox(index + 1)

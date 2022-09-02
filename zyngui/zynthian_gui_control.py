@@ -122,18 +122,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 			logging.error("Can't fill control screen list for None layer!")
 			return
 
-		self.layers = self.zyngui.screens['layer'].get_fxchain_layers()
-		# If no FXChain layers, then use the curlayer itself
-		if self.layers is None or len(self.layers) == 0:
-			self.layers = [self.zyngui.curlayer]
-
-		midichain_layers = self.zyngui.screens['layer'].get_midichain_layers()
-		if midichain_layers is not None and len(midichain_layers) > 1:
-			try:
-				midichain_layers.remove(self.zyngui.curlayer)
-			except:
-				pass
-			self.layers += midichain_layers
+		# Get MIDI effects not including root
+		self.layers = self.zyngui.screens['layer'].get_midichain_layers()
+		# Get root
+		self.layers.append(self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.zyngui.curlayer.midi_chan))
+		# Get audio effects not including root
+		self.layers += self.zyngui.screens['layer'].get_fxchain_layers()
 
 		i = 0
 		for layer in self.layers:
@@ -558,8 +552,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def midi_unlearn_action(self):
 		if self.zyngui.midi_learn_zctrl:
 			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.midi_learn_zctrl)
-		elif self.zyngui.curlayer:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in this chain?", self.midi_unlearn)
+		elif self.zyngui.curlayer and self.zyngui.curlayer.engine:
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.zyngui.curlayer.engine.name, self.zyngui.curlayer.midi_chan + 1), self.midi_unlearn)
 		self.exit_midi_learn()
 
 

@@ -414,7 +414,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def preset_exists(self, bank, preset_name):
 		#TODO: This would be more robust using URI but that is created dynamically by save_preset()
-		if bank[2] not in self.preset_info:
+		if not bank or bank[2] not in self.preset_info:
 			return False
 		try:
 			for preset in self.preset_info[bank[2]]['presets']:
@@ -427,6 +427,8 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def save_preset(self, bank, preset_name):
 		# Save preset (jalv)
+		if not bank:
+			bank = ["", None, "", None]
 		res = self.proc_cmd("save preset %s,%s" % (bank[0], preset_name)).split("\n")
 		
 		if res[-1].startswith("ERROR"):

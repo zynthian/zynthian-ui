@@ -421,8 +421,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.zyngui.zynmixer.set_mute(root_layer.midi_chan, True)
 				# Midichain layers
 				midichain_layers = self.get_midichain_layers(root_layer)
-				if len(midichain_layers) > 0:
-					midichain_layers.remove(root_layer)
 				layers_to_delete += midichain_layers
 				for layer in reversed(midichain_layers):
 					logging.debug("Mute MIDI layer '{}' ...".format(i, layer.get_basepath()))
@@ -430,8 +428,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					layer.mute_midi_out()
 				# Fxchain layers => Mute!
 				fxchain_layers = self.get_fxchain_layers(root_layer)
-				if len(fxchain_layers) > 0:
-					fxchain_layers.remove(root_layer)
 				layers_to_delete += fxchain_layers
 				for layer in reversed(fxchain_layers):
 					logging.debug("Mute Audio layer '{}' ...".format(i, layer.get_basepath()))
@@ -482,7 +478,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Remove all layers: Step 2 => Delete layers
 		i = len(self.layers)
 		self.zyngui.zynautoconnect_acquire_lock()
-		while i>0:
+		while i > 0:
 			i -= 1
 			logging.debug("Remove layer {} => {} ...".format(i, self.layers[i].get_basepath()))
 			self.layers[i].reset()
@@ -928,11 +924,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 			if layer.midi_chan is not None:
 				for l in self.layers:
-					if l.engine.type!="MIDI Tool" and l not in fxchain_layers and l.midi_chan==layer.midi_chan:
+					if l.engine.type == "Audio Effect" and l not in fxchain_layers and l.midi_chan == layer.midi_chan and l not in self.root_layers:
 						fxchain_layers.append(l)
 
 			elif layer in self.layers:
-					fxchain_layers.append(layer)
+				fxchain_layers.append(layer)
 
 			return fxchain_layers
 
@@ -944,8 +940,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		count = 0
 		if midi_chan is not None:
 			for l in self.layers:
-				if l.engine.type in ("Audio Effect") and l.midi_chan==midi_chan:
-						count += 1
+				if l.engine.type in ("Audio Effect") and l.midi_chan == midi_chan:
+					count += 1
 		return count
 
 
@@ -1109,7 +1105,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 			if layer.midi_chan is not None:
 				for l in self.layers:
-					if l.engine.type in ("MIDI Synth", "MIDI Tool", "Special") and l not in midichain_layers and l.midi_chan==layer.midi_chan:
+					if l.engine.type in ("MIDI Synth", "MIDI Tool", "Special") and l not in midichain_layers and l.midi_chan == layer.midi_chan and l not in self.root_layers:
 						midichain_layers.append(l)
 
 			return midichain_layers
@@ -1122,7 +1118,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		count = 0
 		if midi_chan is not None:
 			for l in self.layers:
-				if l.engine.type in ("MIDI Tool") and l.midi_chan==midi_chan:
+				if l.engine.type in ("MIDI Tool") and l.midi_chan == midi_chan:
 						count += 1
 		return count
 
@@ -1132,11 +1128,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			return layer
 
 		for l in self.layers:
-			if l.engine.type=="MIDI Tool" and l.midi_chan==layer.midi_chan:
+			if l.engine.type == "MIDI Tool" and l.midi_chan == layer.midi_chan:
 				return l
 
 		for l in self.layers:
-			if l.engine.type in ("MIDI Synth", "Special") and l.midi_chan==layer.midi_chan:
+			if l.engine.type in ("MIDI Synth", "Special") and l.midi_chan == layer.midi_chan:
 				return l
 
 		return None
@@ -1208,7 +1204,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def add_to_midichain(self, layer, chain_parallel=False):
 		try:
 			for end in self.get_midichain_ends(layer):
-				if end!=layer:
+				if end != layer:
 					logging.debug("Adding to MIDI-chain {} => {}".format(end.get_midi_jackname(), layer.get_midi_jackname()))
 					if end.engine.type=="MIDI Tool":
 						layer.set_midi_out(end.get_midi_out())

@@ -30,13 +30,12 @@ import logging
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from zyngui.zynthian_gui_save_preset import zynthian_gui_save_preset
 
 #------------------------------------------------------------------------------
 # Zynthian Layer Options GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_layer_options(zynthian_gui_selector, zynthian_gui_save_preset):
+class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def __init__(self):
 		self.reset()
@@ -76,12 +75,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector, zynthian_gui_save_preset
 		self.list_data = []
 
 		self.audiofx_layers = self.zyngui.screens['layer'].get_fxchain_layers(self.layer)
-		if self.audiofx_layers and len(self.audiofx_layers)>0 and self.layer.engine.type!="Audio Effect":
-			self.audiofx_layers.remove(self.layer)
 
 		self.midifx_layers = self.zyngui.screens['layer'].get_midichain_layers(self.layer)
-		if self.midifx_layers and len(self.midifx_layers)>0 and self.layer.engine.type!="MIDI Tool":
-			self.midifx_layers.remove(self.layer)
 
 		# Add root layer options
 		if self.layer.midi_chan == 256:
@@ -128,55 +123,56 @@ class zynthian_gui_layer_options(zynthian_gui_selector, zynthian_gui_save_preset
 			self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
 
 		if 'indelible' not in eng_options or not eng_options['indelible']:
-			self.list_data.append((self.layer_remove, None, "Remove Chain"))
+			self.list_data.append((self.chain_remove, None, "Remove Chain"))
+
+		indent = 0
+		in_str = ""
 
 		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.midi_chan is not None:
 			# Add separator
-			self.list_data.append((None,None,"  MIDI Chain"))
-
-			# Add MIDI-FX chain list
-			if len(self.midifx_layers)>0:
-				sl0 = None
-				indent = "⤷"
-				for i,sl in enumerate(self.midifx_layers):
-					if i and not sl.is_parallel_midi_routed(sl0):
-						indent = "  " + indent
-					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.get_name(sl)))
-					sl0 = sl
+			self.list_data.append((None,None,"  MIDI Effects"))
 
 			# Add MIDI-FX options
 			self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 
-			if len(self.midifx_layers)>0 and self.layer.engine.type=="MIDI Synth":
+			if len(self.midifx_layers) > 0 and self.layer.engine.type == "MIDI Synth":
 				self.list_data.append((self.midifx_reset, None, "Remove All MIDI-FX"))
 
-		if self.layer.engine.type in ('MIDI Synth') and self.layer.midi_chan is not None:
+			# Add MIDI-FX chain list
+			if len(self.midifx_layers) > 0:
+				sl0 = None
+				for i, sl in enumerate(self.midifx_layers):
+					if i and not sl.is_parallel_midi_routed(sl0):
+						indent += 1
+					if indent:
+						in_str = "  " * indent + "⤷"
+					self.list_data.append((self.sublayer_options, sl, in_str + sl.engine.get_name(sl)))
+					sl0 = sl
+				indent += 1
+
+		# Root
+		# Add separator
+		self.list_data.append((None,None,"  Root"))
+		if indent:
+			in_str = "  " * indent +  "⤷"
+		self.list_data.append((self.sublayer_options, self.layer, in_str + self.layer.engine.get_name(self.layer)))
+		if self.layer.engine.type in ('MIDI Synth'):
+			indent += 1
+
+		if self.layer.engine.type != 'MIDI Tool' and self.layer.midi_chan is not None:
 			# Add separator
-			self.list_data.append((None,None,"  Synth Chain"))
-
-			if len(self.layer.bank_list)>1 or len(self.layer.preset_list)>1:
-				self.list_data.append((self.preset_list, None, "Preset List"))
-
-			if hasattr(self.layer.engine, "save_preset"):
-				self.list_data.append((self.save_preset, None, "Save Preset"))
-
-			if 'replace' in eng_options and eng_options['replace'] and 'midi_chan' in eng_options and eng_options['midi_chan']:
-				self.list_data.append((self.layer_replace, None, "Replace Synth"))
-
-
-		if self.layer.engine.type!='MIDI Tool' and self.layer.midi_chan is not None:
-			# Add separator
-			self.list_data.append((None,None,"  Audio Chain"))
+			self.list_data.append((None,None,"  Audio Effects"))
 
 			# Add Audio-FX chain list
-			if len(self.audiofx_layers)>0:
+			if len(self.audiofx_layers) > 0:
 				# Add Audio-FX layers
 				sl0 = None
-				indent = "⤷"
 				for i,sl in enumerate(self.audiofx_layers):
 					if i and not sl.is_parallel_audio_routed(sl0):
-						indent = "  " + indent
-					self.list_data.append((self.sublayer_options, sl, indent + sl.engine.get_name(sl)))
+						indent += 1
+					if indent:
+						in_str = "  " * indent + "⤷"
+					self.list_data.append((self.sublayer_options, sl, in_str + sl.engine.get_name(sl)))
 					sl0 = sl
 
 			# Add Audio-FX options
@@ -238,10 +234,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector, zynthian_gui_save_preset
 		self.zyngui.show_screen("sublayer_options")
 
 
-	def preset_list(self):
-		self.zyngui.cuia_bank_preset(self.layer)
-
-
 	def layer_midi_chan(self):
 		chan_list = self.zyngui.screens['layer'].get_free_midi_chans() + [self.layer.midi_chan]
 		chan_list.sort()
@@ -276,7 +268,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector, zynthian_gui_save_preset
 			self.zyngui.close_screen()
 			self.zyngui.enter_midi_learn()
 		elif params == 'clean':
-			self.zyngui.screens['layer'].midi_unlearn(self.layer)
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in all engines in the whole chain?", self.zyngui.screens['layer'].midi_unlearn, self.layer)
 
 
 	def layer_midi_routing(self):
@@ -337,15 +329,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector, zynthian_gui_save_preset
 		self.fill_list()
 
 
-	def layer_replace(self):
-		self.zyngui.screens['layer'].replace_layer(self.zyngui.screens['layer'].get_layer_index(self.layer))
+	def chain_remove(self):
+		self.zyngui.show_confirm("Do you really want to remove this chain?", self.chain_remove_confirmed)
 
 
-	def layer_remove(self):
-		self.zyngui.show_confirm("Do you really want to remove this chain?", self.layer_remove_confirmed)
-
-
-	def layer_remove_confirmed(self, params=None):
+	def chain_remove_confirmed(self, params=None):
 		self.zyngui.screens['layer'].remove_root_layer(self.layer_index)
 		self.zyngui.show_screen_reset('audio_mixer')
 

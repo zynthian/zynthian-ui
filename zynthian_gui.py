@@ -930,7 +930,7 @@ class zynthian_gui:
 
 	def set_curlayer(self, layer, save=False, populate_screens=True):
 		if layer is not None:
-			if self.curlayer!=layer:
+			if self.curlayer != layer:
 				if save and not self.is_shown_alsa_mixer():
 					self._curlayer = self.curlayer
 				self.curlayer = layer

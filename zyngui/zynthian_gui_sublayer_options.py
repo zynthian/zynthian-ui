@@ -54,7 +54,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 	def fill_list(self):
 		self.list_data = []
 
-		if len(self.sublayer.bank_list)>1 or len(self.sublayer.preset_list)>1:
+		if len(self.sublayer.bank_list) > 1 or len(self.sublayer.preset_list) > 0 and self.sublayer.preset_list[0][0] != '':
 			self.list_data.append((self.preset_list, None, "Preset List"))
 
 		if hasattr(self.sublayer.engine, "save_preset"):
@@ -75,7 +75,15 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 			if self.midifx_can_move_downchain():
 				self.list_data.append((self.midifx_move_downchain, None, "Move down chain"))
 
-		self.list_data.append((self.sublayer_remove, None, "Remove"))
+		elif self.sublayer_type=="MIDI Synth":
+			eng_options = self.sublayer.engine.get_options()
+			if 'replace' in eng_options and eng_options['midi_chan']:
+				self.list_data.append((self.synth_replace, None, "Replace"))
+
+		self.list_data.append((self.midi_clean, None, "Clean MIDI-learn"))
+
+		if self.sublayer != self.root_layer:
+			self.list_data.append((self.sublayer_remove, None, "Remove"))
 
 		super().fill_list()
 
@@ -110,6 +118,10 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 
 
 	def sublayer_remove(self):
+		self.zyngui.show_confirm("Do you want to remove {} engine from chain?".format(self.sublayer.engine.name), self.do_remove)
+
+
+	def do_remove(self, unused=None):
 		self.zyngui.screens['layer'].remove_layer(self.sublayer_index)
 		self.zyngui.close_screen()
 
@@ -125,11 +137,16 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 		super().save_preset()
 
 
+	def midi_clean(self):
+		if self.sublayer and self.sublayer.engine:
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.sublayer.engine.name, self.sublayer.midi_chan + 1), self.sublayer.midi_unlearn)
+
+
 	# FX-Chain management
 
 	def audiofx_can_move_upchain(self):
 		ups = self.zyngui.screens['layer'].get_fxchain_upstream(self.sublayer)
-		if len(ups)>0 and (self.root_layer.engine.type!="MIDI Synth" or self.root_layer not in ups):
+		if len(ups) > 0 and self.root_layer not in ups:
 			return True
 
 
@@ -141,7 +158,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 
 	def audiofx_can_move_downchain(self):
 		downs = self.zyngui.screens['layer'].get_fxchain_downstream(self.sublayer)
-		if len(downs)>0 and (self.root_layer.engine.type!="MIDI Synth" or self.root_layer not in downs):
+		if len(downs) > 0 and self.root_layer not in downs:
 			return True
 
 
@@ -159,7 +176,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 
 	def midifx_can_move_upchain(self):
 		ups = self.zyngui.screens['layer'].get_midichain_upstream(self.sublayer)
-		if len(ups)>0 and (self.root_layer.engine.type!="MIDI Synth" or self.root_layer not in ups):
+		if len(ups) > 0 and self.root_layer not in ups:
 			return True
 
 
@@ -171,7 +188,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 
 	def midifx_can_move_downchain(self):
 		downs = self.zyngui.screens['layer'].get_midichain_downstream(self.sublayer)
-		if len(downs)>0 and (self.root_layer.engine.type!="MIDI Synth" or self.root_layer not in downs):
+		if len(downs) > 0 and self.root_layer not in downs:
 			return True
 
 
@@ -185,6 +202,10 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 		self.zyngui.screens['layer'].replace_midichain_layer(self.sublayer_index)
 
 
+	def synth_replace(self):
+		self.zyngui.screens['layer'].replace_layer(self.zyngui.screens['layer'].get_layer_index(self.sublayer))
+
+
 	# Select Path
 
 	def set_select_path(self):
@@ -192,6 +213,8 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 			self.select_path.set("{} > Audio-FX Options".format(self.sublayer.get_basepath()))
 		elif self.sublayer_type=="MIDI Tool":
 			self.select_path.set("{} > MIDI-FX Options".format(self.sublayer.get_basepath()))
+		elif self.sublayer_type=="MIDI Synth":
+			self.select_path.set("{} > MIDI-Synth Options".format(self.sublayer.get_basepath()))
 		else:
 			return "FX Options"
 
