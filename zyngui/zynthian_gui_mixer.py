@@ -210,8 +210,8 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-5>", self.on_fader_wheel_down)
 			self.parent.main_canvas.tag_bind("balance:%s"%(self.fader_bg), "<Button-4>", self.on_balance_wheel_up)
 			self.parent.main_canvas.tag_bind("balance:%s"%(self.fader_bg), "<Button-5>", self.on_balance_wheel_down)
-			#self.parent.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-4>", self.on_balance_wheel_up)
-			#self.parent.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-5>", self.on_balance_wheel_down)
+			self.parent.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-4>", self.parent.on_wheel)
+			self.parent.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<Button-5>", self.parent.on_wheel)
 		self.parent.main_canvas.tag_bind("mute_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_mute_release)
 		self.parent.main_canvas.tag_bind("solo_button:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_solo_release)
 		self.parent.main_canvas.tag_bind("legend_strip:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_strip_press)
@@ -822,13 +822,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, self.nofx_main_layer)
 		self.main_mixbus_strip.zctrls = self.zyngui.zynmixer.zctrls[self.zyngui.zynmixer.get_max_channels()]
 
-		# Horizontal scroll (via mouse wheel) area
-		#legend_height = self.visible_mixer_strips[0].legend_height 
-		self.horiz_scroll_bg = self.main_canvas.create_rectangle(0, self.height - 1, self.width, self.height, width=0)
-		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "1":
-			self.main_canvas.tag_bind(self.horiz_scroll_bg, "<Button-4>", self.on_fader_wheel_up)
-			self.main_canvas.tag_bind(self.horiz_scroll_bg, "<Button-5>", self.on_fader_wheel_down)
-
 		# Disable channel DPM by default - they get enabled when mixer is shown
 		for chan in range(self.zyngui.zynmixer.get_max_channels()):
 			self.zyngui.zynmixer.enable_dpm(chan, False)
@@ -1188,23 +1181,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.topbar_bold_touch_action()
 
 
-	# Function to handle mouse wheel down when not over fader
+	# Function to handle mouse wheel event when not over fader strip
 	#	event: Mouse event
-	def on_fader_wheel_down(self, event):
-		if self.mixer_strip_offset < 1:
-			return
-		self.mixer_strip_offset -= 1
-		self.parent.pending_refresh_queue.add((self, 'level'))
-
-
-	# Function to handle mouse wheel up when not over fader
-	#	event: Mouse event
-	def on_fader_wheel_up(self, event):
-		if self.mixer_strip_offset +  len(self.visible_mixer_strips) >= self.number_layers:
-			return
-		self.mixer_strip_offset += 1
-		self.parent.pending_refresh_queue.add((self, 'level'))
-
+	def on_wheel(self, event):
+		if event.num == 5:
+			if self.mixer_strip_offset < 1:
+				return
+			self.mixer_strip_offset -= 1
+		elif event.num == 4:
+			if self.mixer_strip_offset +  len(self.visible_mixer_strips) >= self.number_layers:
+				return
+			self.mixer_strip_offset += 1
+		self.refresh_visible_strips()
 
 
 	def ctrl_change_cb(self, chan, ctrl, value):
