@@ -146,7 +146,7 @@ class zynmixer(zynthian_engine):
 	#	channel: Index of channel
 	#	mute: Mute state (True to mute)
 	def	set_mute(self, channel, mute, update=False):
-		if channel >= self.MAX_NUM_CHANNELS:
+		if channel is not None and channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			self.lib_zynmixer.setMute(channel, mute)
@@ -342,6 +342,8 @@ class zynmixer(zynthian_engine):
 	#	channel: Index of channel
 	#	update: True to send state to controllers
 	def reset(self, channel, update=True):
+		if not isinstance(channel, int):
+			return
 		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:

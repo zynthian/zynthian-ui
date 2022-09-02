@@ -1208,7 +1208,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	def ctrl_change_cb(self, chan, ctrl, value):
-		self.pending_refresh_queue.add((self.chan2strip[chan], ctrl))
+		if chan is not None:
+			self.pending_refresh_queue.add((self.chan2strip[chan], ctrl))
 
 
 	#--------------------------------------------------------------------------

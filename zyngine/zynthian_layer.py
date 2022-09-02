@@ -138,7 +138,7 @@ class zynthian_layer:
 
 
 	def set_midi_chan(self, midi_chan):
-		self.midi_chan=midi_chan
+		self.midi_chan = midi_chan
 		self.engine.set_midi_chan(self)
 		for zctrl in self.controllers_dict.values():
 			zctrl.set_midi_chan(midi_chan)
@@ -625,7 +625,7 @@ class zynthian_layer:
 
 	def restore_state_legacy(self, state):
 		# Set legacy Note Range (BW compatibility)
-		if self.midi_chan>=0 and 'note_range' in state:
+		if self.midi_chan is not None and self.midi_chan >= 0 and 'note_range' in state:
 			nr = state['note_range']
 			lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
 
@@ -782,7 +782,7 @@ class zynthian_layer:
 
 
 	def reset_audio_in(self):
-		if self.midi_chan is None or self.midi_chan<16:
+		if self.midi_chan is None or self.midi_chan < 16:
 			self.audio_in = ["system:capture_1", "system:capture_2"]
 		else:
 			self.audio_in = []
@@ -795,7 +795,7 @@ class zynthian_layer:
 
 
 	def is_parallel_audio_routed(self, layer):
-		if isinstance(layer, zynthian_layer) and layer!=self and layer.midi_chan==self.midi_chan and collections.Counter(layer.audio_out)==collections.Counter(self.audio_out):
+		if isinstance(layer, zynthian_layer) and layer != self and layer.midi_chan == self.midi_chan and collections.Counter(layer.audio_out) == collections.Counter(self.audio_out):
 			return True
 		else:
 			return False
@@ -862,7 +862,7 @@ class zynthian_layer:
 
 
 	def is_parallel_midi_routed(self, layer):
-		if isinstance(layer, zynthian_layer) and layer!=self and layer.midi_chan==self.midi_chan and collections.Counter(layer.midi_out)==collections.Counter(self.midi_out):
+		if isinstance(layer, zynthian_layer) and layer != self and layer.midi_chan == self.midi_chan and collections.Counter(layer.midi_out) == collections.Counter(self.midi_out):
 			return True
 		else:
 			return False
