@@ -331,7 +331,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		if btn in ['undo', 'redo']:
 			liblo.send(self.osc_url, '/sl/-3/hit', ('s', btn))
 		else:
-			zctrl = self.zyngui_control.layers[0].controllers_dict[btn]
+			zctrl = self.layer.controllers_dict[btn]
 			zctrl.set_value(not zctrl.value)
 
 
@@ -339,9 +339,9 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		try:
 			symbol = self.symbol_map[event.widget]
 			if event.num == 5 or event.delta == -120:
-				self.zyngui_control.layers[0].controllers_dict[symbol].nudge(-1)
+				self.layer.controllers_dict[symbol].nudge(-1)
 			if event.num == 4 or event.delta == 120:
-				self.zyngui_control.layers[0].controllers_dict[symbol].nudge(1)
+				self.layer.controllers_dict[symbol].nudge(1)
 		except Exception as e:
 			logging.warning(e)
 
@@ -358,7 +358,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		if self.slider_press_event:
 			try:
 				symbol = self.symbol_map[event.widget]
-				zctrl = self.zyngui_control.layers[0].controllers_dict[symbol]
+				zctrl = self.layer.controllers_dict[symbol]
 				zctrl.set_value(zctrl.value + (event.x - self.slider_press_event.x) / event.widget.winfo_width())
 				self.slider_press_event = event
 			except Exception as e:
