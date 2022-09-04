@@ -563,18 +563,18 @@ class zynthian_gui:
 						logging.warning("Failed to add OSC client registration %s", src.hostname)
 				self.osc_clients[src.hostname] = monotonic()
 			else:
-				if path[:6] == "VOLUME":
-					self.zynmixer.set_volume(args[0], int(path[6:]))
-				if  path[:5] == "FADER":
-					self.zynmixer.set_volume(args[0], int(path[5:]))
-				elif path[:7] == "BALANCE":
-					self.zynmixer.set_balance(args[0], int(path[7:]))
-				elif path[:4] == "MUTE":
-					self.zynmixer.set_mute(int(args[0]), int(path[4:]))
-				elif path[:4] == "SOLO":
-					self.zynmixer.set_solo(int(args[0]), int(path[4:]))
-				elif path[:4] == "MONO":
-					self.zynmixer.set_mono(int(args[0]), int(path[4:]))
+				if part2[:6] == "VOLUME":
+					self.zynmixer.set_volume(int(part2[6:]), int(args[0]))
+				if  part2[:5] == "FADER":
+					self.zynmixer.set_volume(int(part2[5:]), int(args[0]))
+				elif part2[:7] == "BALANCE":
+					self.zynmixer.set_balance(int(part2[7:]), int(args[0]))
+				elif part2[:4] == "MUTE":
+					self.zynmixer.set_mute(int(part2[4:]), int(args[0]))
+				elif part2[:4] == "SOLO":
+					self.zynmixer.set_solo(int(part2[4:]), int(args[0]))
+				elif part2[:4] == "MONO":
+					self.zynmixer.set_mono(int(part2[4:]), int(args[0]))
 		else:
 			logging.warning("Not supported OSC call '{}'".format(path))
 
@@ -636,14 +636,14 @@ class zynthian_gui:
 		self.osc_init()
 
 		# Initial snapshot...
-		snapshot_loaded=False
+		snapshot_loaded = False
 		# Try to load "last_state" snapshot ...
 		#TODO: Move this to later (after display shown) and give indication of progress to avoid apparent hang during startup
 		if zynthian_gui_config.restore_last_state:
-			snapshot_loaded=self.screens['snapshot'].load_last_state_snapshot()
+			snapshot_loaded = self.screens['snapshot'].load_last_state_snapshot()
 		# Try to load "default" snapshot ...
 		if not snapshot_loaded:
-			snapshot_loaded=self.screens['snapshot'].load_default_snapshot()
+			snapshot_loaded = self.screens['snapshot'].load_default_snapshot()
 
 		# Show mixer
 		if snapshot_loaded:
