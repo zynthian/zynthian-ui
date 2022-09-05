@@ -1693,6 +1693,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 						layer.audio_in = [ai_layer.get_audio_jackname()]
 						self.layers.append(ai_layer)
 						self.layers.append(layer)
+						root_layers[chain] = ai_layer
 					else:
 						self.layers.append(zynthian_layer(engine, lss['midi_chan'], self.zyngui))
 				except:
