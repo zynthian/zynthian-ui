@@ -1698,6 +1698,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				except:
 					self.layers.append(zynthian_layer(engine, lss['midi_chan'], self.zyngui))
 
+		# Check there is a main mixbus root layer
+		if root_layers[16] is None:
+			ai_engine = self.zyngui.screens['engine'].start_engine('AI')
+			self.layers.append(zynthian_layer(ai_engine, 256, self.zyngui))
 
 		# Finally, stop all unused engines
 		self.zyngui.screens['engine'].stop_unused_engines()
