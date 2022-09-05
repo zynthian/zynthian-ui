@@ -121,6 +121,16 @@ class zynthian_engine_modui(zynthian_engine):
 		if result.strip()=='active': return True
 		else: return False
 
+
+	def refresh(self):
+		self.zyngui.screens['preset'].fill_list()
+		if self.zyngui.current_screen=='bank':
+			if self.preset_name:
+				self.zyngui.show_screen('control')
+			else:
+				self.zyngui.show_screen('preset')
+
+
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
@@ -262,23 +272,23 @@ class zynthian_engine_modui(zynthian_engine):
 		self._ctrl_screens=[]
 		try:
 			for pgraph in sorted(self.plugin_info, key=lambda k: self.plugin_info[k]['posx']):
-				#logging.debug("PLUGIN %s => X=%s" % (pgraph,self.plugin_info[pgraph]['posx']))
+				logging.debug("PLUGIN %s => X=%s" % (pgraph,self.plugin_info[pgraph]['posx']))
 				c=1
 				ctrl_set=[]
 				for param in self.plugin_info[pgraph]['ports']['control']['input']:
 					try:
-						#logging.debug("CTRL LIST PLUGIN %s PARAM %s" % (pgraph,ctrl))
+						logging.debug("CTRL LIST PLUGIN %s PARAM %s" % (pgraph,param['ctrl']))
 						zctrls[param['ctrl'].graph_path]=param['ctrl']
 						ctrl_set.append(param['ctrl'].graph_path)
 						if len(ctrl_set)>=4:
-							#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+							logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
 							self._ctrl_screens.append([self.plugin_info[pgraph]['name']+'#'+str(c),ctrl_set])
 							ctrl_set=[]
 							c=c+1
 					except Exception as err:
 						logging.error("Generating Controller Screens: %s => %s" % (pgraph, err))
 				if len(ctrl_set)>=1:
-					#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+					logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
 					self._ctrl_screens.append([self.plugin_info[pgraph]['name']+'#'+str(c),ctrl_set])
 		except Exception as err:
 			logging.error("Generating Controller List: %s" % err)
@@ -667,13 +677,13 @@ class zynthian_engine_modui(zynthian_engine):
 						self.api_get_request("/effect/connect/"+src+","+dest)
 
 
-	def enable_midi_devices(self):
+	def enable_midi_devices(self, aggregated_mode=False):
 		self.midi_dev_info=self.api_get_request("/jack/get_midi_devices")
 
 		# detect whether to use the old or new data format for set_midi_devices
 		# based on the reponse for get_midi_devices
 		old_set_midi_devices = 'midiAggregatedMode' not in self.midi_dev_info
-		#logging.debug("API /jack/get_midi_devices => {}".format(res))
+		#logging.debug("API /jack/get_midi_devices => {}".format(self.midi_dev_info))
 		if 'devList' in self.midi_dev_info:
 			devs=[]
 			for dev in self.midi_dev_info['devList']: 
@@ -684,7 +694,8 @@ class zynthian_engine_modui(zynthian_engine):
 			else:
 				data = {
 					"devs": devs,
-					"midiAggregatedMode": False
+					"midiAggregatedMode": aggregated_mode,
+					"midiLoopback": False
 				}
 			if len(data)>0:
 				res = self.api_post_request("/jack/set_midi_devices",json=data)

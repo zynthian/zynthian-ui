@@ -271,6 +271,11 @@ class zynthian_engine(zynthian_basic_engine):
 		for layer in self.layers:
 			layer.refresh_flag = refresh
 
+
+	def refresh(self):
+		raise NotImplementedError
+
+
 	# ---------------------------------------------------------------------------
 	# OSC Management
 	# ---------------------------------------------------------------------------

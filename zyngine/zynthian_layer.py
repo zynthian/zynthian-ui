@@ -113,14 +113,10 @@ class zynthian_layer:
 			self.refresh_flag=False
 			self.refresh_controllers()
 
-			#TODO: Improve this Dirty Hack!!
-			if self.engine.nickname=='MD':
-				self.zyngui.screens['preset'].fill_list()
-				if self.zyngui.current_screen=='bank':
-					if self.preset_name:
-						self.zyngui.show_screen('control')
-					else:
-						self.zyngui.show_screen('preset')
+			try:
+				self.engine.refresh()
+			except NotImplementedError:
+				pass
 
 			self.zyngui.refresh_screen()
 

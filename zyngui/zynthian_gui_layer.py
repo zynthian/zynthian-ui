@@ -928,21 +928,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if layer is None:
 			layer = self.zyngui.curlayer
 
-		if layer is not None:
-			fxchain_layers = []
+		fxchain_layers = []
+		if layer is not None and layer.midi_chan is not None:
+			for l in self.layers:
+				if l.engine.type == "Audio Effect" and l not in fxchain_layers and l.midi_chan == layer.midi_chan and l not in self.root_layers:
+					fxchain_layers.append(l)
 
-			if layer.midi_chan is not None:
-				for l in self.layers:
-					if l.engine.type == "Audio Effect" and l not in fxchain_layers and l.midi_chan == layer.midi_chan and l not in self.root_layers:
-						fxchain_layers.append(l)
+		return fxchain_layers
 
-			elif layer in self.layers:
-				fxchain_layers.append(layer)
-
-			return fxchain_layers
-
-		else:
-			return None
 
 
 	def get_fxchain_count(self, layer):
