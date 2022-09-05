@@ -76,7 +76,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 
 	def new_audiofx_layer(self, t='S'):
-		self.zyngui.screens['layer'].add_layer("Audio Effect")
+		self.zyngui.screens['layer'].add_layer_engine("AI")
 
 
 	def new_midifx_layer(self, t='S'):
@@ -97,7 +97,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 
 	def clean_all(self, t='S'):
-		self.zyngui.show_confirm("Do you really want to clean all?", self.clean_all_confirmed)
+		self.zyngui.show_confirm("Do you really want to remove all chains?", self.clean_all_confirmed)
 
 
 	def clean_all_confirmed(self, params=None):

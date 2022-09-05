@@ -2,7 +2,7 @@
  * ******************************************************************
  * ZYNTHIAN PROJECT: Audio Mixer Library
  *
- * Library to mix channels to stereo output
+ * Library providing stereo audio summing mixer
  *
  * Copyright (C) 2019-2022 Brian Walton <brian@riban.co.uk>
  *

@@ -17,7 +17,8 @@ __all__ = [
 	"zynthian_engine_jalv",
 	"zynthian_engine_sfizz",
 	"zynthian_engine_alsa_mixer",
-	"zynthian_engine_audioplayer"
+	"zynthian_engine_audioplayer",
+	"zynthian_engine_audio_in",
 	#"zynthian_engine_csound",
 	#"zynthian_engine_transport"
 ]
@@ -40,5 +41,6 @@ from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_engine_sfizz import *
 from zyngine.zynthian_engine_alsa_mixer import *
 from zyngine.zynthian_engine_audioplayer import *
+from zyngine.zynthian_engine_audio_in import *
 #from zyngine.zynthian_engine_csound import *
 #from zyngine.zynthian_engine_transport import *

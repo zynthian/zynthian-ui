@@ -42,18 +42,6 @@ from . import zynthian_gui_config
 from zyncoder.zyncore import lib_zyncore
 
 #------------------------------------------------------------------------------
-# Zynthian Main Mixbus Layer Class
-# This is a dummy class to provide a stub for the main mixbus strip's layer
-#------------------------------------------------------------------------------
-
-class zynthian_gui_mixer_main_layer():
-	def __init__(self):
-		self.engine = None
-		self.midi_chan = zynthian_gui_mixer.MAIN_MIDI_CHANNEL
-		self.status = ""
-
-
-#------------------------------------------------------------------------------
 # Zynthian Mixer Strip Class
 # This provides a UI element that represents a mixer strip, one used per chain
 #------------------------------------------------------------------------------
@@ -78,7 +66,7 @@ class zynthian_gui_mixer_strip():
 		self.hidden = False
 		self.layer = layer
 		self.midi_learning = False # False: Not learning, True: Preselection, gui_control: Learning
-		self.MAIN_CHANNEL_INDEX = zynthian_gui_config.zyngui.zynmixer.get_max_channels()
+		self.MAIN_MIXBUS_STRIP_INDEX = zynthian_gui_config.zyngui.zynmixer.get_max_channels()
 
 		if not layer:
 			self.hidden = True
@@ -231,7 +219,7 @@ class zynthian_gui_mixer_strip():
 	def show(self):
 		self.parent.main_canvas.itemconfig("strip:%s"%(self.fader_bg), state=tkinter.NORMAL)
 		try:
-			if self.layer.engine.type == "MIDI Tool":
+			if self.layer.engine.type in ("MIDI Tool", "Special"):
 				self.parent.main_canvas.itemconfig("audio_strip:%s"%(self.fader_bg), state=tkinter.HIDDEN)
 		except:
 			pass
@@ -430,12 +418,12 @@ class zynthian_gui_mixer_strip():
 	# Function to draw a mixer strip UI control
 	#	control: Name of control or None to redraw all controls in the strip
 	def draw_control(self, control=None):
-		if self.hidden or self.layer is None or self.layer.midi_chan is None:
+		if self.hidden or self.layer is None: # or self.layer.midi_chan is None:
 			return
 
 		if control == None:
 			self.parent.main_canvas.itemconfig(self.legend, text="")
-			if self.layer.midi_chan == zynthian_gui_mixer.MAIN_MIDI_CHANNEL:
+			if self.layer.midi_chan == zynthian_gui_mixer.MAIN_MIXBUS_MIDI_CHANNEL:
 				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
 				self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("NoFX"), state=tkinter.NORMAL)
 			else:
@@ -766,7 +754,7 @@ class zynthian_gui_mixer_strip():
 
 class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
-	MAIN_MIDI_CHANNEL = 256
+	MAIN_MIXBUS_MIDI_CHANNEL = 256
 
 	def __init__(self):	
 		
@@ -774,16 +762,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.zynmixer = self.zyngui.zynmixer
 		self.zynmixer.set_ctrl_update_cb(self.ctrl_change_cb)
-		self.MAIN_CHANNEL_INDEX = zynthian_gui_config.zyngui.zynmixer.get_max_channels() 
-		self.chan2strip = [None] * (self.MAIN_CHANNEL_INDEX + 1)
+		self.MAIN_MIXBUS_STRIP_INDEX = zynthian_gui_config.zyngui.zynmixer.get_max_channels()
+		self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1)
 
 		self.pending_refresh_queue = set() # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
 		self.midi_learning = False
 
-		self.number_layers = 0 # Quantity of layers
+		self.number_chains = 0 # Quantity of layers
 		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
 		if visible_chains < 1:
-			# Automatic sizing if not defined in config 
+			# Automatic sizing if not defined in config
 			if self.width <= 400: visible_chains = 4
 			elif self.width <= 600: visible_chains = 8
 			elif self.width <= 800: visible_chains = 10
@@ -804,7 +792,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.balance_control_centre = self.fader_width + self.balance_control_width
 
 		# Arrays of GUI elements for mixer strips - Chains + Main
-		self.visible_mixer_strips = [None] * visible_chains
+		self.visible_mixer_strips = [None] * visible_chains # List of mixer strip objects indexed by horizontal position on screen
 		self.selected_chain_index = None
 		self.highlighted_strip = None
 		self.mixer_strip_offset = 0 # Index of first mixer strip displayed on far left
@@ -826,8 +814,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		for chain in range(len(self.visible_mixer_strips)):
 			self.visible_mixer_strips[chain] = zynthian_gui_mixer_strip(self, 1 + self.fader_width * chain, 0, self.fader_width - 1, self.height, None)
 
-		self.nofx_main_layer = zynthian_gui_mixer_main_layer()
-		self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, self.nofx_main_layer)
+		self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, None)
 		self.main_mixbus_strip.zctrls = self.zyngui.zynmixer.zctrls[self.zyngui.zynmixer.get_max_channels()]
 
 		# Disable channel DPM by default - they get enabled when mixer is shown
@@ -837,7 +824,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if zynthian_gui_config.show_cpu_status:
 			self.set_meter_mode(self.METER_CPU)
 		else:
-			self.set_meter_mode(self.METER_NONE) # Don't show meter in status bar
+			self.set_meter_mode(self.METER_NONE) # Don't show meter in status bar (there are meters all over the mixer)
 
 		self.set_title("Audio Mixer")
 
@@ -898,8 +885,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# layer: Layer object
 	# set_curlayer: True to select the layer
 	def select_chain_by_layer(self, layer, set_curlayer=True):
-		if layer.midi_chan == self.MAIN_MIDI_CHANNEL:
-			self.select_chain_by_index(self.number_layers, set_curlayer)
+		if layer.midi_chan == self.MAIN_MIXBUS_MIDI_CHANNEL:
+			self.select_chain_by_index(self.number_chains, set_curlayer)
 			return
 
 		i = 0
@@ -914,7 +901,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def highlight_selected_chain(self):
 		if self.selected_chain_index is None:
 			return
-		if self.selected_chain_index >= self.number_layers:
+		if self.selected_chain_index >= self.number_chains:
 			strip = self.main_mixbus_strip
 		elif self.selected_chain_index - self.mixer_strip_offset < 0 or self.selected_chain_index - self.mixer_strip_offset >= len(self.visible_mixer_strips):
 			return
@@ -933,18 +920,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			return
 		if chain_index < 0 :
 			chain_index = 0
-		if chain_index > self.number_layers:
-			chain_index = self.number_layers
+		if chain_index > self.number_chains:
+			chain_index = self.number_chains
 		self.selected_chain_index = chain_index
 
 		if self.selected_chain_index < self.mixer_strip_offset:
 			self.mixer_strip_offset = chain_index
 			self.refresh_visible_strips()
-		elif self.selected_chain_index >= self.mixer_strip_offset + len(self.visible_mixer_strips) and self.selected_chain_index != self.number_layers:
+		elif self.selected_chain_index >= self.mixer_strip_offset + len(self.visible_mixer_strips) and self.selected_chain_index != self.number_chains:
 			self.mixer_strip_offset = self.selected_chain_index - len(self.visible_mixer_strips) + 1
 			self.refresh_visible_strips()
 
-		if self.selected_chain_index < self.number_layers:
+		if self.selected_chain_index < self.number_chains:
 			self.selected_layer = self.zyngui.screens['layer'].root_layers[self.selected_chain_index]
 		else:
 			self.selected_layer = self.main_mixbus_strip.layer
@@ -959,20 +946,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def refresh_visible_strips(self):
 		for index in range(len(self.chan2strip)):
 			self.chan2strip[index] = None
-		layers = copy.copy(self.zyngui.screens['layer'].get_root_layers())
-		main_fx_layer = self.zyngui.screens['layer'].get_main_fxchain_root_layer()
+		layers = copy.copy(self.zyngui.screens['layer'].root_layers)
+		self.main_mixbus_strip.set_layer(self.zyngui.screens['layer'].get_main_fxchain_root_layer())
+		# Remove main mixbus chain
+		for layer in layers:
+			if layer.midi_chan == self.MAIN_MIXBUS_MIDI_CHANNEL:
+				layers.remove(layer)
+				break
 
-		# Get Global-FX layer if it exists...
-		if main_fx_layer:
-			self.main_mixbus_strip.set_layer(main_fx_layer)
-			layers.remove(main_fx_layer)
-		else:
-			self.main_mixbus_strip.set_layer(self.nofx_main_layer)
-
-		self.number_layers = len(layers)
+		self.number_chains = len(layers)
 		for offset in range(len(self.visible_mixer_strips)):
 			index = self.mixer_strip_offset + offset
-			if index >= self.number_layers:
+			if index >= self.number_chains:
 				self.visible_mixer_strips[offset].set_layer(None)
 				self.visible_mixer_strips[offset].zctrls = None
 			else:
@@ -983,7 +968,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				else:
 					self.visible_mixer_strips[offset].zctrls = None
 					
-		self.chan2strip[self.MAIN_CHANNEL_INDEX] = self.main_mixbus_strip
+		self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX] = self.main_mixbus_strip
 		self.main_mixbus_strip.draw_control()
 		self.highlight_selected_chain()
 
@@ -992,7 +977,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	layer: Layer object
 	#	returns: True if audio layer
 	def is_audio_layer(self, layer):
-		return isinstance(layer, zynthian_gui_mixer_main_layer) or isinstance(layer, zyngine.zynthian_layer) and layer.engine.type != 'MIDI Tool'
+		return isinstance(layer, zyngine.zynthian_layer) and layer.engine.type != 'MIDI Tool'
 
 
 	#--------------------------------------------------------------------------
@@ -1017,7 +1002,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	def mainfx_options_cb(self, option, param):
 		if param == "Add":
-			self.zyngui.screens['layer'].add_fxchain_layer(self.MAIN_MIDI_CHANNEL)
+			self.zyngui.screens['layer'].add_fxchain_layer(self.MAIN_MIXBUS_MIDI_CHANNEL) #TODO: This will error - need to add an audio pass engine to the mixbus chain
 		elif param == "AudioOptions":
 			self.audio_options()
 		elif param == "RecordAudio":
@@ -1041,23 +1026,23 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	def audio_options(self):
 		options = OrderedDict()
-		if self.zyngui.zynmixer.get_mono(self.MAIN_MIDI_CHANNEL):
+		if self.zyngui.zynmixer.get_mono(self.MAIN_MIXBUS_MIDI_CHANNEL):
 			options['[x] Mono'] = 'mono'
 		else:
 			options['[  ] Mono'] = 'mono'
-		if self.zyngui.zynmixer.get_phase(self.MAIN_MIDI_CHANNEL):
+		if self.zyngui.zynmixer.get_phase(self.MAIN_MIXBUS_MIDI_CHANNEL):
 			options['[x] Phase reverse'] = 'phase'
 		else:
 			options['[  ] Phase reverse'] = 'phase'
 		if zynthian_gui_config.multichannel_recorder:
 			if self.zyngui.audio_recorder.get_status():
 				# Recording so don't allow change of primed state
-				if self.zyngui.audio_recorder.is_primed(self.MAIN_MIDI_CHANNEL):
+				if self.zyngui.audio_recorder.is_primed(self.MAIN_MIXBUS_MIDI_CHANNEL):
 					options['[x] Recording Primed'] = None
 				else:
 					options['[  ] Recording Primed'] = None
 			else:
-				if self.zyngui.audio_recorder.is_primed(self.MAIN_MIDI_CHANNEL):
+				if self.zyngui.audio_recorder.is_primed(self.MAIN_MIXBUS_MIDI_CHANNEL):
 					options['[x] Recording Primed'] = 'prime'
 				else:
 					options['[  ] Recording Primed'] = 'prime'
@@ -1068,11 +1053,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	def audio_menu_cb(self, options, params):
 		if params == 'mono':
-			self.zyngui.zynmixer.toggle_mono(self.MAIN_MIDI_CHANNEL)
+			self.zyngui.zynmixer.toggle_mono(self.MAIN_MIXBUS_MIDI_CHANNEL)
 		elif params == 'phase':
-			self.zyngui.zynmixer.toggle_phase(self.MAIN_MIDI_CHANNEL)
+			self.zyngui.zynmixer.toggle_phase(self.MAIN_MIXBUS_MIDI_CHANNEL)
 		elif params == 'prime':
-			self.zyngui.audio_recorder.toggle_prime(self.MAIN_MIDI_CHANNEL)
+			self.zyngui.audio_recorder.toggle_prime(self.MAIN_MIXBUS_MIDI_CHANNEL)
 		self.audio_options()
 
 
@@ -1209,7 +1194,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return
 			self.mixer_strip_offset -= 1
 		elif event.num == 4:
-			if self.mixer_strip_offset +  len(self.visible_mixer_strips) >= self.number_layers:
+			if self.mixer_strip_offset +  len(self.visible_mixer_strips) >= self.number_chains:
 				return
 			self.mixer_strip_offset += 1
 		self.refresh_visible_strips()

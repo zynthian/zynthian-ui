@@ -217,6 +217,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		else:
 			self.zcontrollers = []
 			self.screen_title = ""
+			self.hide_widgets()
 
 		# Setup GUI Controllers
 		logging.debug("SET CONTROLLER SCREEN {}".format(self.screen_title))

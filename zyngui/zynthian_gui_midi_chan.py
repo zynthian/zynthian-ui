@@ -112,8 +112,9 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 			self.zyngui.screens['layer'].add_layer_midich(selchan)
 
 		elif self.mode=='SET':
-			root_layer=self.zyngui.screens['layer_options'].layer
+			root_layer = self.zyngui.screens['layer_options'].layer
 			sublayers = self.zyngui.screens['layer'].get_fxchain_layers(root_layer) + self.zyngui.screens['layer'].get_midichain_layers(root_layer)
+			root_layer.set_midi_chan(selchan)
 			for layer in sublayers:
 				layer.set_midi_chan(selchan)
 				logging.info("LAYER {} -> MIDI CHANNEL = {}".format(layer.get_path(), selchan))

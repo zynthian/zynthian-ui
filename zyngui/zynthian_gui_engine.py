@@ -55,6 +55,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 		cls.engine_info=OrderedDict([
 			["SL", ("SooperLooper", "SooperLooper", "Audio Effect", None, zynthian_engine_sooperlooper, True)],
+			["AI", ("AudioInput", "Audio Input", "Audio Effect", None, zynthian_engine_audio_in, False)],
 			["MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_alsa_mixer, True)],
 			["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", None, zynthian_engine_zynaddsubfx, True)],
 			["FS", ("FluidSynth", "FluidSynth - SF2 Player", "MIDI Synth", None, zynthian_engine_fluidsynth, True)],
@@ -180,14 +181,14 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def start_engine(self, eng):
 		if eng not in self.zyngines:
 			info = self.engine_info[eng]
-			zynthian_engine_class=info[4]
+			zynthian_engine_class = info[4]
 			if eng[0:3] == "JV/":
 				eng = "JV/{}".format(self.zyngine_counter)
-				self.zyngines[eng]=zynthian_engine_class(info[0], info[2], self.zyngui)
+				self.zyngines[eng] = zynthian_engine_class(info[0], info[2], self.zyngui)
 			else:
-				if eng in ["SF","AP"]:
+				if eng in ["SF","AP","AI"]:
 					eng = "{}/{}".format(eng, self.zyngine_counter)
-				self.zyngines[eng]=zynthian_engine_class(self.zyngui)
+				self.zyngines[eng] = zynthian_engine_class(self.zyngui)
 
 		self.zyngine_counter += 1
 		return self.zyngines[eng]

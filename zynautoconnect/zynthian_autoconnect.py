@@ -144,19 +144,19 @@ def midi_autoconnect(force=False):
 	#------------------------------------
 
 	#Get Physical MIDI input ports ...
-	hw_out=jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
-	if len(hw_out)==0:
-		hw_out=[]
+	hw_out = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
+	if len(hw_out) == 0:
+		hw_out = []
 
 	#Get Physical MIDI output ports ...
 	hw_in=jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
-	if len(hw_in)==0:
-		hw_in=[]
+	if len(hw_in) == 0:
+		hw_in = []
 
 
 	#Add Aubio MIDI out port ...
 	if zynthian_gui_config.midi_aubionotes_enabled:
-		aubio_out=jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
+		aubio_out = jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
 			hw_out.append(aubio_out[0])
 		except:
@@ -164,7 +164,7 @@ def midi_autoconnect(force=False):
 
 	#Add TouchOSC out ports ...
 	if zynthian_gui_config.midi_touchosc_enabled:
-		rtmidi_out=jclient.get_ports("TouchOSC Bridge", is_output=True, is_physical=False, is_midi=True)
+		rtmidi_out = jclient.get_ports("TouchOSC Bridge", is_output=True, is_physical=False, is_midi=True)
 		for port in rtmidi_out:
 			try:
 				hw_out.append(port)
@@ -175,14 +175,14 @@ def midi_autoconnect(force=False):
 	#logger.debug("Output Device Ports: {}".format(hw_in))
 
 	#Calculate device list fingerprint (HW & virtual)
-	hw_str=""
+	hw_str = ""
 	for hw in hw_out:
 		hw_str += hw.name + "\n"
 	for hw in hw_in:
 		hw_str += hw.name + "\n"
 
 	#Check for new devices (HW and virtual)...
-	if not force and hw_str==last_hw_str:
+	if not force and hw_str == last_hw_str:
 		#Release Mutex Lock
 		release_lock()
 		#logger.info("ZynAutoConnect: MIDI Shortened ...")
@@ -191,14 +191,14 @@ def midi_autoconnect(force=False):
 		last_hw_str = hw_str
 
 	#Get Engines list from UI
-	zyngine_list=zynthian_gui_config.zyngui.screens["engine"].zyngines
+	zyngine_list = zynthian_gui_config.zyngui.screens["engine"].zyngines
 
 	#Get Engines MIDI input, output & feedback ports:
 	engines_in={}
 	engines_out=[]
 	engines_fb=[]
 	for k, zyngine in zyngine_list.items():
-		if not zyngine.jackname or zyngine.nickname=="MD":
+		if not zyngine.jackname or zyngine.nickname == "MD":
 			continue
 
 		if zyngine.type in ("MIDI Synth", "MIDI Tool", "Special"):
@@ -208,7 +208,7 @@ def midi_autoconnect(force=False):
 			ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
 			try:
 				#logger.debug("Engine {}:{} found".format(zyngine.jackname,ports[0].short_name))
-				engines_in[zyngine.jackname]=ports[0]
+				engines_in[zyngine.jackname] = ports[0]
 			except:
 				#logger.warning("Engine {} is not present".format(zyngine.jackname))
 				pass
@@ -216,7 +216,7 @@ def midi_autoconnect(force=False):
 			ports = jclient.get_ports(port_name, is_output=True, is_midi=True, is_physical=False)
 			try:
 				#logger.debug("Engine {}:{} found".format(zyngine.jackname,ports[0].short_name))
-				if zyngine.type=="MIDI Synth":
+				if zyngine.type == "MIDI Synth":
 					engines_fb.append(ports[0])
 				else:
 					engines_out.append(ports[0])
@@ -229,12 +229,12 @@ def midi_autoconnect(force=False):
 	#logger.debug("Synth Engine Feedback Ports: {}".format(engines_fb))
 
 	#Get Zynthian Midi Router MIDI ports
-	zmr_out=OrderedDict()
+	zmr_out = OrderedDict()
 	for p in jclient.get_ports("ZynMidiRouter", is_output=True, is_midi=True):
-		zmr_out[p.shortname]=p
-	zmr_in=OrderedDict()
+		zmr_out[p.shortname] = p
+	zmr_in = OrderedDict()
 	for p in jclient.get_ports("ZynMidiRouter", is_input=True, is_midi=True):
-		zmr_in[p.shortname]=p
+		zmr_in[p.shortname] = p
 
 	#logger.debug("ZynMidiRouter Input Ports: {}".format(zmr_out))
 	#logger.debug("ZynMidiRouter Output Ports: {}".format(zmr_in))
@@ -346,10 +346,10 @@ def midi_autoconnect(force=False):
 	for i, layer in enumerate(layers_list):
 		if layer.get_midi_jackname() and layer.engine.type in ("MIDI Tool", "Special"):
 			sport_name = get_fixed_midi_port_name(layer.get_midi_jackname())
-			sports=jclient.get_ports(sport_name, is_output=True, is_midi=True, is_physical=False)
+			sports = jclient.get_ports(sport_name, is_output=True, is_midi=True, is_physical=False)
 			if sports:
 				#Connect to assigned ports and disconnect from the rest ...
-				for mi,dports in routed_in.items():
+				for mi, dports in routed_in.items():
 					#logger.debug(" => Probing {} => {}".format(sport_name, mi))
 					if mi in layer.get_midi_out():
 						for dport in dports:
@@ -383,7 +383,7 @@ def midi_autoconnect(force=False):
 					root_engine_info[jackname]['chans'].append(mcprl.midi_chan)
 				else:
 					port_name = get_fixed_midi_port_name(jackname)
-					ports=jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
+					ports = jclient.get_ports(port_name, is_input=True, is_midi=True, is_physical=False)
 					if ports:
 						root_engine_info[jackname] = {
 							'port': ports[0],
@@ -409,60 +409,60 @@ def midi_autoconnect(force=False):
 
 	# Set "Drop Program Change" flag for each MIDI chan
 	for layer in zynguilayer.root_layers:
-		if layer.midi_chan is not None and layer.midi_chan<16:
+		if layer.midi_chan is not None and layer.midi_chan < 16:
 			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
 
 
 	if zynthian_gui_config.midi_filter_output:
 		
 		#Connect ZynMidiRouter:midi_out to enabled Hardware MIDI Output Ports
-		for paid,hwport in enabled_hw_ports.items():
+		for paid, hwport in enabled_hw_ports.items():
 			try:
-				jclient.connect(zmr_out['midi_out'],hwport)
+				jclient.connect(zmr_out['midi_out'], hwport)
 			except:
 				pass
 
 		#Connect ZynMidiRouter:midi_out to ZynMaster:midi_in
 		try:
-			jclient.connect(zmr_out['midi_out'],"ZynMaster:midi_in")
+			jclient.connect(zmr_out['midi_out'], "ZynMaster:midi_in")
 		except:
 			pass
 
 		#Connect ZynMidiRouter:net_out to QMidiNet input
 		if zynthian_gui_config.midi_network_enabled:
 			try:
-				jclient.connect(zmr_out['net_out'],"QmidiNet:in_1")
+				jclient.connect(zmr_out['net_out'], "QmidiNet:in_1")
 			except:
 				pass
 		#Connect ZynMidiRouter:net_out to RTP-MIDI input
 		if zynthian_gui_config.midi_rtpmidi_enabled:
 			try:
-				jclient.connect(zmr_out['net_out'],"jackrtpmidid:rtpmidi_in")
+				jclient.connect(zmr_out['net_out'], "jackrtpmidid:rtpmidi_in")
 			except:
 				pass
 	else:
 		#Connect ZynMidiRouter:midi_out to enabled Hardware MIDI Output Ports
-		for paid,hwport in enabled_hw_ports.items():
+		for paid, hwport in enabled_hw_ports.items():
 			try:
-				jclient.disconnect(zmr_out['midi_out'],hwport)
+				jclient.disconnect(zmr_out['midi_out'], hwport)
 			except:
 				pass
 
 		#Disconnect ZynMidiRouter:midi_out from ZynMaster:midi_in
 		try:
-			jclient.disconnect(zmr_out['midi_out'],"ZynMaster:midi_in")
+			jclient.disconnect(zmr_out['midi_out'], "ZynMaster:midi_in")
 		except:
 			pass
 		#Disconnect ZynMidiRouter:net_out from QMidiNet input
 		if zynthian_gui_config.midi_network_enabled:
 			try:
-				jclient.disconnect(zmr_out['net_out'],"QmidiNet:in_1")
+				jclient.disconnect(zmr_out['net_out'], "QmidiNet:in_1")
 			except:
 				pass
 		#Disconnect ZynMidiRouter:net_out from RTP-MIDI input
 		if zynthian_gui_config.midi_rtpmidi_enabled:
 			try:
-				jclient.disconnect(zmr_out['net_out'],"jackrtpmidid:rtpmidi_in")
+				jclient.disconnect(zmr_out['net_out'], "jackrtpmidid:rtpmidi_in")
 			except:
 				pass
 
@@ -476,9 +476,9 @@ def midi_autoconnect(force=False):
 	for hw in hw_in:
 		try:
 			if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_fb_ports:
-				jclient.connect(zmr_out['ctrl_out'],hw)
+				jclient.connect(zmr_out['ctrl_out'], hw)
 			else:
-				jclient.disconnect(zmr_out['ctrl_out'],hw)
+				jclient.disconnect(zmr_out['ctrl_out'], hw)
 		except:
 			pass
 
@@ -501,7 +501,7 @@ def audio_autoconnect(force=False):
 	zynguilayer = zynthian_gui_config.zyngui.screens["layer"]
 
 	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
-	input_ports=get_audio_input_ports(True)
+	input_ports = get_audio_input_ports(True)
 
 	# Get System Playback Ports
 	system_playback_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
@@ -515,41 +515,41 @@ def audio_autoconnect(force=False):
 	# Disconnect Monitor from System Output and Reconnect to Zynmixer return
 	mon_in=jclient.get_ports("mod-monitor", is_output=True, is_audio=True)
 	try:
-		jclient.disconnect(mon_in[0],'system:playback_1')
-		jclient.disconnect(mon_in[1],'system:playback_2')
+		jclient.disconnect(mon_in[0], 'system:playback_1')
+		jclient.disconnect(mon_in[1], 'system:playback_2')
 	except:
 		pass
 	try:
-		jclient.connect(mon_in[0],'zynmixer:input_17a')
-		jclient.connect(mon_in[1],'zynmixer:input_17b')
+		jclient.connect(mon_in[0], 'zynmixer:input_17a')
+		jclient.connect(mon_in[1], 'zynmixer:input_17b')
 	except:
 		pass
 
 	#Get layers list from UI
 	layers_list = zynguilayer.layers
 
-	#Connect Synth Engines to assigned outputs
+	#Connect Engines to assigned outputs
 	for layer_index, layer in enumerate(layers_list):
-		if not layer.get_audio_jackname() or layer.engine.type=="MIDI Tool":
+		if not layer.get_audio_jackname() or layer.engine.type == "MIDI Tool":
 			continue
 
 		layer_aout_ports = get_layer_audio_out_ports(layer)
 		layer_playback_ports = [jn for jn in layer_aout_ports if jn.startswith("zynmixer") or jn.startswith("system:playback")]
 		nlpb = len(layer_playback_ports)
 
-		ports=jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
-		if len(ports)>0:
+		ports = jclient.get_ports(layer.get_audio_jackname(), is_output=True, is_audio=True, is_physical=False)
+		if len(ports) > 0:
 			#logger.debug("Connecting Layer {} ...".format(layer.get_jackname()))
 			np = len(ports)
 			#logger.debug("Num of {} Audio Ports: {}".format(layer.get_jackname(), np))
 
 			#Connect layer to routed playback ports and disconnect from the rest ...
-			if len(playback_ports)>0:
-				npb = min(nlpb,len(ports))
+			if len(playback_ports) > 0:
+				npb = min(nlpb, len(ports))
 				for j, pbp in enumerate(playback_ports):
 					if pbp.name in layer_playback_ports:
 						for k, lop in enumerate(ports):
-							if k%npb==j%npb:
+							if k % npb == j % npb:
 								#logger.debug("Connecting {} to {} ...".format(lop.name, pbp.name))
 								try:
 									jclient.connect(lop, pbp)
@@ -595,13 +595,14 @@ def audio_autoconnect(force=False):
 							pass
 
 		# Connect MIDI to audio-FXs, if a MIDI input port exist (i.e. x42 AutoTune, MDA Vocoder)
-		if layer.engine.type=="Audio Effect":
-			midi_ports=jclient.get_ports(layer.get_midi_jackname(), is_input=True, is_midi=True, is_physical=False)
-			if len(midi_ports)>0:
+		if layer.engine.type == "Audio Effect":
+			midi_ports = jclient.get_ports(layer.get_midi_jackname(), is_input=True, is_midi=True, is_physical=False)
+			if len(midi_ports) > 0:
 				try:
 					jclient.connect("ZynMidiRouter:ch{}_out".format(layer.midi_chan), midi_ports[0])
 				except:
 					pass
+
 
 	
 	# Connect zynmixer "send" to the Main FX-chain root layer and its "pars" (parallel layers)
@@ -646,44 +647,66 @@ def audio_autoconnect(force=False):
 
 	#Get System Capture ports => jack output ports!!
 	capture_ports = get_audio_capture_ports()
-	if len(capture_ports)>0:
+	if len(capture_ports) > 0:
+		capture_to_mixer = []
 		root_layers = zynguilayer.get_fxchain_roots()
+		# Connect capture ports to audio_in layer's output ports
 		#Connect system capture ports to FX-layers root ...
 		for rl in root_layers:
-			if not rl.get_audio_jackname() or rl.engine.type!="Audio Effect":
+			if rl.engine.nickname != "AI":
 				continue
 
-			# Connect to FX-layers roots and their "pars" (parallel layers)
-			for rlp in zynguilayer.get_fxchain_pars(rl):
-				#Get Root Layer Input ports ...
-				rlp_in = jclient.get_ports(rlp.get_audio_jackname(), is_input=True, is_audio=True)
-				if len(rlp_in)>0:
-					nsc = min(len(rlp.get_audio_in()),len(rlp_in))
-		
-					#Connect System Capture to Root Layer ports
-					for j, scp in enumerate(capture_ports):
-						if scp.name in rlp.get_audio_in():
-							for k, rlp_inp in enumerate(rlp_in):
-								if k%nsc==j%nsc:
-									#logger.debug("Connecting {} to {} ...".format(scp.name, layer.get_audio_jackname()))
-									try:
-										jclient.connect(scp, rlp_inp)
-									except:
-										pass
-								else:
-									try:
-										jclient.disconnect(scp, rlp_inp)
-									except:
-										pass
-								# Limit to 2 input ports 
-								#if k>=1:
-								#	break
-						else:
-							for rlp_inp in rlp_in:
+			rlp = get_layer_audio_out_ports(rl)
+			rlp_ports = []
+			for l in rlp:
+				rlp_ports += jclient.get_ports(l, is_input=True, is_audio=True, is_physical=False)
+			if len(rlp_ports) > 0:
+				rl_in = rl.get_audio_in()
+				nsc = min(len(rl_in), len(rlp_ports))
+	
+				#Connect System Capture to Root Layer ports
+				for j, scp in enumerate(rl_in):
+					if scp in rl.get_audio_in():
+						for k, rlp_inp in enumerate(rlp_ports):
+							if rlp_inp.name.startswith("zynmixer:return"):
+								continue
+							if k % nsc == j % nsc:
+								#logger.debug("Connecting {} to {} ...".format(scp.name, layer.get_audio_jackname()))
+								try:
+									jclient.connect(scp, rlp_inp)
+								except:
+									pass
+							else:
 								try:
 									jclient.disconnect(scp, rlp_inp)
 								except:
 									pass
+							# Limit to 2 input ports 
+								# Limit to 2 input ports 
+							# Limit to 2 input ports 
+							#if k>=1:
+							#	break
+					else:
+						for rlp_inp in rlp_ports:
+							try:
+								jclient.disconnect(scp, rlp_inp)
+							except:
+								pass
+			if "mixer" in rl.get_audio_out():
+				capture_to_mixer.append(rl.midi_chan)
+
+		# Clear unused direct connection from audio inputs to mixer
+		for midi_chan in range(16):
+			if midi_chan not in capture_to_mixer:
+				for ip in capture_ports:
+					try:
+						jclient.disconnect(ip, "zynmixer:input_{:02d}a".format(midi_chan + 1))
+					except:
+						pass
+					try:
+						jclient.disconnect(ip, "zynmixer:input_{:02d}b".format(midi_chan + 1))
+					except:
+						pass
 
 		if zynthian_gui_config.midi_aubionotes_enabled:
 			#Get Aubio Input ports ...
@@ -691,10 +714,10 @@ def audio_autoconnect(force=False):
 			if len(aubio_in)>0:
 				nip = len(aubio_in)
 				#Connect System Capture to Aubio ports
-				j=0
+				j = 0
 				for scp in capture_ports:
 					try:
-						jclient.connect(scp, aubio_in[j%nip])
+						jclient.connect(scp, aubio_in[j % nip])
 					except:
 						pass
 					j += 1
@@ -731,13 +754,13 @@ def audio_disconnect_sysout():
 def get_layer_audio_out_ports(layer):
 	aout_ports = []
 	for p in layer.get_audio_out():
-		if p=="system":
+		if p == "system":
 			aout_ports += ["system:playback_1", "system:playback_2"]
-		elif p=="mixer":
+		elif p == "mixer":
 			if layer.midi_chan >= 17:
 				aout_ports += ["zynmixer:return_a", "zynmixer:return_b"]
 			else:
-				aout_ports += ["zynmixer:input_%02da"%(layer.midi_chan + 1), "zynmixer:input_%02db"%(layer.midi_chan + 1)]
+				aout_ports += ["zynmixer:input_{:02d}a".format(layer.midi_chan + 1), "zynmixer:input_{:02d}b".format(layer.midi_chan + 1)]
 		else:
 			aout_ports.append(p)
 	return list(dict.fromkeys(aout_ports).keys()) 
@@ -749,9 +772,9 @@ def get_audio_input_ports(exclude_system_playback=False):
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
 			parts = aip.name.split(':')
 			client_name = parts[0]
-			if client_name in ["jack_capture","Headphones"] or client_name[:7]=="effect_":
+			if client_name in ["jack_capture","Headphones"] or client_name[:7] == "effect_":
 				continue
-			if client_name=="system" or client_name=="zynmixer":
+			if client_name == "system" or client_name == "zynmixer":
 				if exclude_system_playback:
 					continue
 				else:

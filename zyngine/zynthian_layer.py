@@ -63,6 +63,8 @@ class zynthian_layer:
 
 		if self.midi_chan is None or self.midi_chan < 16:
 			self.audio_in = ["system:capture_1", "system:capture_2"]
+		elif self.midi_chan == 256 and engine.nickname == "AI":
+			self.audio_in = ["zynmixer:send_a", "zynmixer:send_b"]
 		else:
 			self.audio_in = []
 
@@ -733,7 +735,7 @@ class zynthian_layer:
 	def pair_audio_out(self):
 		if not self.engine.options['layer_audio_out']:
 			for l in self.engine.layers:
-				if l!=self:
+				if l != self:
 					l.audio_out = self.audio_out
 					#logging.debug("Pairing CH#{} => {}".format(l.midi_chan,l.audio_out))
 

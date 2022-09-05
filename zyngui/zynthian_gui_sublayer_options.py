@@ -82,7 +82,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 
 		self.list_data.append((self.midi_clean, None, "Clean MIDI-learn"))
 
-		if self.sublayer != self.root_layer:
+		if self.sublayer != self.root_layer or (self.sublayer.engine.type == "MIDI Tool" and len(self.zyngui.screens['layer'].get_midichain_layers()) > 1):
 			self.list_data.append((self.sublayer_remove, None, "Remove"))
 
 		super().fill_list()

@@ -993,6 +993,7 @@ class zynthian_gui:
 		if len(self.screens['layer'].layers) > 0:
 			self.screens['snapshot'].save_last_state_snapshot()
 		self.screens['layer'].reset()
+		self.screens['layer'].add_layer_engine("AI", 256)
 		self.zynmixer.reset_state()
 		self.zynseq.load("")
 		self.show_screen_reset('main')

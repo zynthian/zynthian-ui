@@ -81,7 +81,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		# Add root layer options
 		if self.layer.midi_chan == 256:
 			eng_options = {
-				'audio_capture': True,
+				'audio_capture': False,
 				'indelible': True,
 				'audio_rec': True
 			}
@@ -150,13 +150,12 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 					sl0 = sl
 				indent += 1
 
-		# Root
-		# Add separator
-		self.list_data.append((None,None,"  Root"))
-		if indent:
-			in_str = "  " * indent +  "⤷"
-		self.list_data.append((self.sublayer_options, self.layer, in_str + self.layer.engine.get_name(self.layer)))
-		if self.layer.engine.type in ('MIDI Synth'):
+		if self.layer.engine.type in ("MIDI Synth", "Special"):
+			# Add separator
+			self.list_data.append((None,None,"  {}".format(self.layer.engine.type)))
+			if indent:
+				in_str = "  " * indent +  "⤷"
+			self.list_data.append((self.sublayer_options, self.layer, in_str + self.layer.engine.get_name(self.layer)))
 			indent += 1
 
 		if self.layer.engine.type != 'MIDI Tool' and self.layer.midi_chan is not None:
@@ -178,7 +177,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			# Add Audio-FX options
 			self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
 
-			if len(self.audiofx_layers)>0 and (self.layer.engine.type=="MIDI Synth" or self.layer.midi_chan>=16):
+			if len(self.audiofx_layers) > 0:
 				self.list_data.append((self.audiofx_reset, None, "Remove All Audio-FX"))
 
 		super().fill_list()
@@ -341,7 +340,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	# FX-Chain management
 
 	def audiofx_add(self):
-		self.zyngui.screens['layer'].add_fxchain_layer(self.layer.midi_chan)
+		self.zyngui.screens['layer'].add_fxchain_layer(self.layer)
 
 
 	def audiofx_reset(self):

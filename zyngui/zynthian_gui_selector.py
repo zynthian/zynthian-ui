@@ -269,20 +269,21 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def skip_separators(self, index):
 		# Skip separator items ...
 		if index >= 0 and index < len(self.list_data) and self.list_data[index][0] is None:
+			# Request to select a blank list entry
 			if self.index <= index:
-				if index < len(self.list_data) - 1:
-					self.select_listbox(index + 1)
-				else:
-					self.select_listbox(index - 1)
+				# Request is higher than current entry so try to move down list
+				for i in range(index, len(self.list_data)):
+					if self.list_data[i][0] is not None:
+						# Found a valid entry so select and return
+						self.select_listbox(i)
+						return True
 			elif self.index > index:
-				if index <= 1 and self.list_data[0][0] is None:
-					self.index = 1
-					return
-				if index > 0:
-					self.select_listbox(index - 1)
-				else:
-					self.select_listbox(index + 1)
-			return True
+				# Request is lower than current entry so try to move up list
+				for i in range(index, -1, -1):
+					if self.list_data[i][0] is not None:
+						# Found a valid entry so select and return
+						self.select_listbox(i)
+						return True
 		else:
 			return False
 

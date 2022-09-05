@@ -1,10 +1,10 @@
 /*
  * ******************************************************************
- * ZYNTHIAN PROJECT: Jackpeak Library
+ * ZYNTHIAN PROJECT: Audio Mixer Library
  *
- * Library to monitor for peak audio level from a Jack connected source
+ * Library providing stereo audio summing mixer
  *
- * Copyright (C) 2019 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2019-2022 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
