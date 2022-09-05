@@ -227,10 +227,16 @@ class zynthian_gui_mixer_strip():
 		self.draw_control()
 
 
-	def get_legend_text(self, default_text=None):
+	def get_legend_text(self):
 		if self.layer.engine is not None:
 			res1 = self.layer.engine.get_name(self.layer) + "\n"
 			res2 = ""
+			if self.layer.engine.nickname == "AI":
+				ds = self.parent.zyngui.screens['layer'].get_fxchain_downstream(self.layer)
+				if ds:
+					res1 = ds[0].engine.get_name(self.layer) + "\n"
+				elif self.layer.midi_chan == 256:
+					res1 = "No FX"
 			# MOD-UI
 			if self.layer.midi_chan is None:
 				if self.layer.bank_name:
@@ -239,7 +245,7 @@ class zynthian_gui_mixer_strip():
 			elif self.layer.preset_name:
 				res2 = self.layer.preset_name
 			return res1+res2
-		return default_text
+		return "No info"
 
 
 	def get_ctrl_learn_text(self, ctrl):
@@ -425,14 +431,14 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.legend, text="")
 			if self.layer.midi_chan == zynthian_gui_mixer.MAIN_MIXBUS_MIDI_CHANNEL:
 				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
-				self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text("NoFX"), state=tkinter.NORMAL)
+				self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text(), state=tkinter.NORMAL)
 			else:
 				if isinstance(self.layer.midi_chan, int):
 					strip_txt = str(self.layer.midi_chan + 1)
 				else:
 					strip_txt = "X"
 				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt)
-				label = self.get_legend_text("None")
+				label = self.get_legend_text()
 				self.parent.main_canvas.itemconfig(self.legend, text=label, state=tkinter.NORMAL)
 				bounds = self.parent.main_canvas.bbox(self.legend)
 				if bounds[1] < self.fader_text_limit:
