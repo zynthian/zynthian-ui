@@ -185,6 +185,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.listbox.insert(tkinter.END, item[2])
 			if item[0] is None:
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
+			last_param = item[len(item) - 1]
+			if isinstance(last_param, dict) and 'format' in last_param:
+				self.listbox.itemconfig(i, last_param['format'])
 
 
 	def set_selector(self, zs_hidden=True):

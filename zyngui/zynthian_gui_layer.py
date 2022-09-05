@@ -247,7 +247,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def show_chain_options_modal(self):
 		chain_modes = {
-			"Serial": False,
+			"Series": False,
 			"Parallel": True
 		}
 		self.zyngui.screens['option'].config("Chain Mode", chain_modes, self.cb_chain_options_modal)

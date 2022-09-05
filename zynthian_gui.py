@@ -861,7 +861,7 @@ class zynthian_gui:
 		if layer is not None:
 			if layer in self.screens['layer'].root_layers:
 				self._curlayer = None
-			elif self.curlayer!=layer:
+			elif self.curlayer != layer:
 				self._curlayer = self.curlayer
 
 			self.set_curlayer(layer)
@@ -899,7 +899,11 @@ class zynthian_gui:
 				if len(zyngui.curlayer.preset_list) > 1:
 					self.show_screen_reset('preset')
 					return
-			self.show_screen_reset('control')
+			if self.curlayer.engine.nickname == "AI" and not self.screens['layer'].get_fxchain_downstream(self.curlayer):
+				self.show_screen_reset('audio_mixer')
+				self.screens['layer'].add_fxchain_layer(self.curlayer)
+			else:
+				self.show_screen_reset('control')
 		
 
 	def show_control(self):
@@ -990,6 +994,7 @@ class zynthian_gui:
 
 
 	def clean_all(self):
+		self.zynmixer.set_mute(256, 1)
 		if len(self.screens['layer'].layers) > 0:
 			self.screens['snapshot'].save_last_state_snapshot()
 		self.screens['layer'].reset()
@@ -997,6 +1002,7 @@ class zynthian_gui:
 		self.zynmixer.reset_state()
 		self.zynseq.load("")
 		self.show_screen_reset('main')
+		self.zynmixer.set_mute(256, 0)
 
 
 	def start_audio_player(self):
