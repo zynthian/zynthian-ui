@@ -179,7 +179,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, plugin_name, plugin_type, zyngui=None, dryrun=False):
+	def __init__(self, plugin_name, plugin_type, zyngui=None, dryrun=False, jackname=None):
 		super().__init__(zyngui)
 
 		self.type = plugin_type
@@ -202,6 +202,13 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.options['note_range'] = False
 
 		if not dryrun:
+			if jackname:
+				self.jackname = jackname
+			else:
+				self.jackname = self.get_next_jackname(self.plugin_name, True)
+
+			logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
+
 			if self.config_remote_display() and self.native_gui:
 				if self.native_gui == "Qt5UI":
 					jalv_bin = "jalv.qt5"
@@ -209,9 +216,9 @@ class zynthian_engine_jalv(zynthian_engine):
 					jalv_bin = "jalv.qt4"
 				else: #  elif self.native_gui=="X11UI":
 					jalv_bin = "jalv.gtk"
-				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.get_jalv_jackname(), self.plugin_url))
+				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.jackname, self.plugin_url))
 			else:
-				self.command = ("jalv -n {} {}".format(self.get_jalv_jackname(), self.plugin_url))
+				self.command = ("jalv -n {} {}".format(self.jackname, self.plugin_url))
 				self.command_env['DISPLAY'] = "X"
 
 			self.command_prompt = "\n> "
@@ -222,7 +229,6 @@ class zynthian_engine_jalv(zynthian_engine):
 			output = self.start()
 
 			# Get Plugin & Jack names from Jalv starting text ...
-			self.jackname = None
 			if output:
 				for line in output.split("\n"):
 					if line[0:10] == "JACK Name:":
@@ -252,10 +258,6 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.preset_info = zynthian_lv2.get_plugin_presets_cache(plugin_name)
 
 		self.reset()
-
-
-	def get_jalv_jackname(self):
-		return self.get_next_jackname(self.plugin_name, True)
 
 
 	# ---------------------------------------------------------------------------

@@ -1681,7 +1681,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					snapshot['amixer_layer'] = lss
 				del snapshot['layers'][i]
 			else:
-				engine = self.zyngui.screens['engine'].start_engine(lss['engine_nick'])
+				if 'engine_jackname' in lss:
+					jackname = lss['engine_jackname']
+				else:
+					jackname = None
+				engine = self.zyngui.screens['engine'].start_engine(lss['engine_nick'], jackname)
 				try:
 					chain = int(lss['midi_chan'])
 					if chain > 16:

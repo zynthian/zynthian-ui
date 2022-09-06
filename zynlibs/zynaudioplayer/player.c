@@ -952,7 +952,7 @@ static void lib_init(void) {
     printf("libzynaudioplayer initialised\n");
 }
 
-int init() {
+int init(int jackclient_index) {
     int player_handle;
     struct AUDIO_PLAYER * pPlayer = NULL;
     for(player_handle = 0; player_handle < MAX_PLAYERS; ++player_handle) {
@@ -994,8 +994,10 @@ int init() {
     char *sServerName = NULL;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
+
     char client_name[] = "audioplayer_xxx";
-    sprintf(client_name, "audio_player_%03d", player_handle);
+    if (jackclient_index<0) jackclient_index = player_handle;
+    sprintf(client_name, "audioplayer_%03d", jackclient_index);
 
     if((pPlayer->jack_client = jack_client_open(client_name, nOptions, &nStatus, sServerName)) == 0) {
         fprintf(stderr, "libaudioplayer error: failed to start jack client: %d\n", nStatus);

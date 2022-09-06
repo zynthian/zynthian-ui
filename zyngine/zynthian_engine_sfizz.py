@@ -77,11 +77,14 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
+	def __init__(self, zyngui=None, jackname=None):
 		super().__init__(zyngui)
 		self.name = "Sfizz"
 		self.nickname = "SF"
-		self.jackname = self.get_next_jackname("sfizz")
+		if jackname:
+			self.jackname = jackname
+		else:
+			self.jackname = self.get_next_jackname("sfizz")
 
 		self.preload_size = 32768 #8192, 16384, 32768, 65536
 		self.num_voices = 40

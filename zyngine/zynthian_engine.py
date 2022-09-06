@@ -108,7 +108,7 @@ class zynthian_basic_engine:
 	def stop(self):
 		if self.proc:
 			try:
-				logging.info("Stoping Engine " + self.name)
+				logging.info("Stopping Engine " + self.name)
 				self.proc.terminate()
 				sleep(0.2)
 				self.proc.terminate(True)
@@ -150,17 +150,10 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	# Standard MIDI Controllers
-	_ctrls=[
-		['volume',7,96],
-		['modulation',1,0],
-		['pan',10,64],
-		['sustain',64,'off',['off','on']]
-	]
+	_ctrls=[]
 
 	# Controller Screens
-	_ctrl_screens=[
-		['main',['volume','modulation','pan','sustain']]
-	]
+	_ctrl_screens=[]
 
 	# ---------------------------------------------------------------------------
 	# Config variables

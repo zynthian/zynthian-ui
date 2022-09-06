@@ -542,6 +542,7 @@ class zynthian_layer:
 		state = {
 			'engine_name': self.engine.name,
 			'engine_nick': self.engine.nickname,
+			'engine_jackname': self.engine.jackname,
 			'midi_chan': self.midi_chan,
 			'bank_index': self.bank_index,
 			'bank_name': self.bank_name,

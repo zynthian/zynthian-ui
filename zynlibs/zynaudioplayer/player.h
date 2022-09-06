@@ -34,7 +34,7 @@ static void __attribute__ ((constructor)) lib_init(void);
 /** @brief  Initialise a player instance
 *   @retval int Player handle or -1 on failure
 */
-int init();
+int init(int jackclient_index);
 
 /** @brief  Remove player from library
 *   @param  player_handle Handle of player provided by init_player()

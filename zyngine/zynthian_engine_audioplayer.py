@@ -43,15 +43,20 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
+	def __init__(self, zyngui=None, jackname=None):
 		super().__init__(zyngui)
 		self.name = "AudioPlayer"
 		self.nickname = "AP"
-		self.jackname = "audioplayer"
 		self.type = "MIDI Synth"
-		self.file_exts = ["wav","WAV","ogg","OGG","flac","FLAC"]
+		
+		if jackname:
+			self.jackname = jackname
+		else:
+			self.jackname = self.get_next_jackname("audioin")
 
+		self.file_exts = ["wav","WAV","ogg","OGG","flac","FLAC"]
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
+
 		self.start()
 
 		# MIDI Controllers
@@ -90,7 +95,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def start(self):
-		self.player = zynaudioplayer.zynaudioplayer()
+		self.player = zynaudioplayer.zynaudioplayer(self.jackname)
 		self.jackname = self.player.get_jack_client_name()
 		self.player.set_control_cb(self.control_cb)
 

@@ -32,8 +32,6 @@ from . import zynthian_engine
 #------------------------------------------------------------------------------
 
 class zynthian_engine_audio_in(zynthian_engine):
-	_ai_count = count(1)
-
 	# ---------------------------------------------------------------------------
 	# Config variables
 	# ---------------------------------------------------------------------------
@@ -42,26 +40,23 @@ class zynthian_engine_audio_in(zynthian_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
+	def __init__(self, zyngui=None, jackname=None):
 		super().__init__(zyngui)
 		self.name = "Audio Input"
 		self.nickname = "AI"
-		self.jackname = "audioin_{:03d}".format(next(self._ai_count))
 		self.type = "Audio Effect"
+
+		if jackname:
+			self.jackname = jackname
+		else:
+			self.jackname = self.get_next_jackname("audioin")
 
 		self.options['audio_capture'] = True
 		self.options['note_range'] = False
-		self.options['clone'] = False
-		
-		self.start()
-
-		# MIDI Controllers
-		self._ctrls = []
-
-		# Controller Screens
-		self._ctrl_screens = []
+		self.options['clone'] = True
 
 		self.reset()
+		self.start()
 
 
 	# ---------------------------------------------------------------------------
@@ -79,7 +74,6 @@ class zynthian_engine_audio_in(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
-
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
@@ -101,7 +95,6 @@ class zynthian_engine_audio_in(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Specific functions
 	# ---------------------------------------------------------------------------
-
 
 	# ---------------------------------------------------------------------------
 	# API methods

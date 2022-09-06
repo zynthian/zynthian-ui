@@ -178,16 +178,17 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			self.zyngui.screens['layer'].add_layer_engine(self.list_data[i][0], self.midi_chan)
 
 
-	def start_engine(self, eng):
+	def start_engine(self, eng, jackname = None):
 		if eng not in self.zyngines:
 			info = self.engine_info[eng]
 			zynthian_engine_class = info[4]
 			if eng[0:3] == "JV/":
 				eng = "JV/{}".format(self.zyngine_counter)
-				self.zyngines[eng] = zynthian_engine_class(info[0], info[2], self.zyngui)
+				self.zyngines[eng] = zynthian_engine_class(info[0], info[2], self.zyngui, False, jackname)
+			elif eng in ["SF","AP","AI"]:
+				eng = "{}/{}".format(eng, self.zyngine_counter)
+				self.zyngines[eng] = zynthian_engine_class(self.zyngui, jackname)
 			else:
-				if eng in ["SF","AP","AI"]:
-					eng = "{}/{}".format(eng, self.zyngine_counter)
 				self.zyngines[eng] = zynthian_engine_class(self.zyngui)
 
 		self.zyngine_counter += 1

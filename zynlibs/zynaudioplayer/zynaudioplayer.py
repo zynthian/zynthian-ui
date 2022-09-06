@@ -44,12 +44,16 @@ from os.path import dirname, realpath
 class zynaudioplayer():
     
 	#	Initiate library
-	def __init__(self):
+	def __init__(self, jackname = None):
 		try:
 			self.handle = None
 			# Load or increment ref to lib
 			self.libaudioplayer = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynaudioplayer.so")
-			handle = self.libaudioplayer.init()
+			try:
+				jackclient_index = int(jackname[len("audioplayer_"):])
+			except:
+				jackclient_index = -1
+			handle = self.libaudioplayer.init(jackclient_index)
 			if handle == -1:
 				return
 			self.handle = handle
