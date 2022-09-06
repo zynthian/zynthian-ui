@@ -197,7 +197,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.list_data[0] = ("START_RECORDING",0,"Start Recording")
 		if fill:
 			self.listbox.delete(0)
-			self.listbox.insert(0, self.list_data[0])
+			self.listbox.insert(0, self.list_data[0][2])
 			self.select_listbox(self.index)
 
 
@@ -210,7 +210,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			libsmf.setLoop(False)
 		if fill:
 			self.listbox.delete(1)
-			self.listbox.insert(1, self.list_data[1])
+			self.listbox.insert(1, self.list_data[1][2])
 			self.select_listbox(self.index)
 
 
