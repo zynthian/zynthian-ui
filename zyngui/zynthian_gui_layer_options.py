@@ -124,58 +124,65 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if 'midi_chan' in eng_options and eng_options['midi_chan']:
 			self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
 
-		# Show chain tree
+
 		self.list_data.append((None, None, "Chain"))
 
 		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.midi_chan is not None:
+			# Add MIDI-FX options
 			self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 
-		in_str = "⤷"
-		front = True
-
-		# Add MIDI-FX chains
-		prev_layer = None
-		for layer in list(dict.fromkeys(self.midifx_layers + [self.layer] + self.audiofx_layers)):
-			bg = None
-			name = layer.engine.get_name(layer)
-			if prev_layer and layer.engine.type != prev_layer.engine.type:
-				prev_layer = None
-			if layer.engine.type == "MIDI Tool":
-				if layer == prev_layer:
-					# Must be at end of MIDI only chain
-					break
-				if not front and not layer.is_parallel_midi_routed(prev_layer):
-					in_str = "  " + in_str
-			elif layer.engine.type == "Audio Effect":
-				if layer.engine.nickname == "AI":
-					continue
-				if not front and not layer.is_parallel_audio_routed(prev_layer):
-					in_str = "  " + in_str
-			else:
-				#bg = zynthian_gui_config.color_panel_hl
-				if not front:
-					in_str = "  " + in_str
-			if bg:
-				self.list_data.append((self.sublayer_options, layer, in_str + name, {'format':{'bg':bg}}))
-			else:
-				self.list_data.append((self.sublayer_options, layer, in_str + name))
-			prev_layer = layer
-			front = False
+		self.list_data += self.generate_chaintree_menu()
 
 		if self.layer.engine.type != 'MIDI Tool' and self.layer.midi_chan is not None:
+			# Add Audio-FX options
 			self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
 
 		if self.layer.midi_chan == 256:
 			if self.audiofx_layers:
 				self.list_data.append((self.remove_all_audiofx, None, "Remove All Audio-FXs"))
 		elif self.layer.engine.type == 'MIDI Tool' and len(self.midifx_layers) > 1:
-			self.list_data.append((self.remove_all, None, "Remove..."))
+			self.list_data.append((self.remove_all, None, "Remove ..."))
 		elif self.layer.engine.type != 'MIDI Tool' and len(self.midifx_layers) + len(self.audiofx_layers) > 0:
-			self.list_data.append((self.remove_all, None, "Remove..."))
+			self.list_data.append((self.remove_all, None, "Remove ..."))
 		else:
 			self.list_data.append((self.remove_chain, None, "Remove Chain"))
 
 		super().fill_list()
+
+
+	# Generate chain tree menu
+	def generate_chaintree_menu(self):
+		res = []
+		in_str = ""
+		front = True
+		prev_layer = None
+		for layer in list(dict.fromkeys(self.midifx_layers + [self.layer] + self.audiofx_layers)):
+			name = layer.engine.get_name(layer)
+			if prev_layer and layer.engine.type != prev_layer.engine.type:
+				prev_layer = None
+			if layer.engine.type == "MIDI Tool":
+				flowchar = "└─ "
+				if layer == prev_layer:
+					# Must be at end of MIDI only chain
+					break
+				if not front and not layer.is_parallel_midi_routed(prev_layer):
+					in_str = "  " + in_str
+			elif layer.engine.type == "Audio Effect":
+				flowchar = "╚═ "
+				if layer.engine.nickname == "AI":
+					continue
+				if not front and not layer.is_parallel_audio_routed(prev_layer):
+					in_str = "  " + in_str
+			else:
+				flowchar = "┕━ "
+				if not front:
+					in_str = "  " + in_str
+			#@riban's rounded style => @jofemodo prefer the table-border chars!!!
+			flowchar = "⤷"
+			res.append((self.sublayer_options, layer, in_str + flowchar + name))
+			prev_layer = layer
+			front = False
+		return res
 
 
 	def refresh_signal(self, sname):
