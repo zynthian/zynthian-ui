@@ -192,9 +192,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def update_status_recording(self, fill=False):
 		if libsmf.isRecording():
-			self.list_data[0] = ("STOP_RECORDING",0,"Stop Recording")
+			self.list_data[0] = ("STOP_RECORDING",0,"■ Stop MIDI Recording")
 		else:
-			self.list_data[0] = ("START_RECORDING",0,"Start Recording")
+			self.list_data[0] = ("START_RECORDING",0,"⬤ Start MIDI Recording")
 		if fill:
 			self.listbox.delete(0)
 			self.listbox.insert(0, self.list_data[0][2])
