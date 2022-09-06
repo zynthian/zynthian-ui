@@ -65,10 +65,16 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 				except:
 					title = k
 
+				logging.debug("AUDIO OUTPUT PORT {} => {}".format(k,title))
+
 				try:
-					ch = int(title.split('#')[0])-1
-					if ch==self.end_layer.midi_chan:
+					chan = title.split('#')[0]
+					if chan == "Main":
 						continue
+					else:
+						ch = int(chan)-1
+						if ch==self.end_layer.midi_chan or ch>15:
+							continue
 				except Exception as e:
 					#logging.debug("Can't get layer's midi chan => {}".format(e))
 					pass

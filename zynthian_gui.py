@@ -82,7 +82,6 @@ from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
-#from zyngui.zynthian_gui_stepsequencer import zynthian_gui_stepsequencer
 from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor

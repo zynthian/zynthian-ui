@@ -122,12 +122,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 			logging.error("Can't fill control screen list for None layer!")
 			return
 
-		# Get MIDI effects not including root
-		self.layers = self.zyngui.screens['layer'].get_midichain_layers()
-		# Get root
-		self.layers.append(self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.zyngui.curlayer.midi_chan))
-		# Get audio effects not including root
-		self.layers += self.zyngui.screens['layer'].get_fxchain_layers()
+		if self.zyngui.curlayer.engine.nickname=="MX":
+			self.layers = [self.zyngui.curlayer]
+		else:
+			# Get MIDI effects not including root
+			self.layers = self.zyngui.screens['layer'].get_midichain_layers()
+			# Get root
+			#self.layers.append(self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.zyngui.curlayer.midi_chan))
+			self.layers.append(self.zyngui.curlayer)
+			# Get audio effects not including root
+			self.layers += self.zyngui.screens['layer'].get_fxchain_layers()
 
 		i = 0
 		for layer in self.layers:
@@ -596,11 +600,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.zyngui.curlayer:
+			path_layer = None
 			if self.zyngui.curlayer.engine.nickname == "AI":
 				try:
 					path_layer = self.zyngui.screens['layer'].get_fxchain_downstream(self.zyngui.curlayer)[0]
 				except:
-					path_layer = None
+					pass
 			if not path_layer:
 				path_layer = self.zyngui.curlayer
 			if self.mode == 'control' and self.zyngui.midi_learn_mode:
