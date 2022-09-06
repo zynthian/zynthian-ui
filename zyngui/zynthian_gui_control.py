@@ -132,12 +132,14 @@ class zynthian_gui_control(zynthian_gui_selector):
 		i = 0
 		for layer in self.layers:
 			j = 0
-			if len(self.layers) > 1:
-				self.list_data.append((None, None, "  {}".format(layer.engine.name.split("/")[-1])))
-			for cscr in layer.get_ctrl_screens():
-				self.list_data.append((cscr, i, cscr, layer, j))
-				i += 1
-				j += 1
+			screen_list = layer.get_ctrl_screens()
+			if len(screen_list)>0:
+				if len(self.layers) > 1:
+					self.list_data.append((None, None, "  {}".format(layer.engine.name.split("/")[-1])))
+				for cscr in screen_list:
+					self.list_data.append((cscr, i, cscr, layer, j))
+					i += 1
+					j += 1
 
 		self.index = self.zyngui.curlayer.get_current_screen_index()
 		super().fill_list()
