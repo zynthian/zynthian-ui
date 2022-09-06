@@ -153,18 +153,18 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.midi_chan is not None:
 			# Add MIDI-FX options
-			self.list_data.append((self.midifx_add, None, "Add MIDI effect"))
+			self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 		if self.layer.engine.type != 'MIDI Tool' and self.layer.midi_chan is not None:
 			# Add Audio-FX options
-			self.list_data.append((self.audiofx_add, None, "Add audio effect"))
+			self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
 
 		if self.layer.midi_chan == 256:
 			if self.audiofx_layers:
-				self.list_data.append((self.remove_all_audio, None, "Remove all audio effects"))
+				self.list_data.append((self.remove_all_audiofx, None, "Remove All Audio-FXs"))
 		elif self.layer.engine.type == 'MIDI Tool' and len(self.midifx_layers) > 1:
-			self.list_data.append((self.remove_all, None, "Remove All"))
+			self.list_data.append((self.remove_all, None, "Remove ..."))
 		elif self.layer.engine.type != 'MIDI Tool' and len(self.midifx_layers) + len(self.audiofx_layers) > 0:
-			self.list_data.append((self.remove_all, None, "Remove All"))
+			self.list_data.append((self.remove_all, None, "Remove ..."))
 		else:
 			self.list_data.append((self.remove_chain, None, "Remove Chain"))
 
@@ -316,29 +316,27 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.fill_list()
 
 
+	# Remove submenu
+
 	def remove_all(self):
 		options = OrderedDict()
 		if self.layer.engine.type == "MIDI Synth" and len(self.midifx_layers) > 0 or len(self.midifx_layers) > 1:
-			options['Remove all MIDI effects'] = "midi"
+			options['Remove All MIDI-FXs'] = "midifx"
 		if self.audiofx_layers:
-			options['Remove all audio effects'] = "audio"
+			options['Remove All Audio-FXs'] = "audiofx"
 		if self.layer.midi_chan != 256:
-			options['Remove chain'] = "chain"
-		self.zyngui.screens['option'].config("MIDI-learn", options, self.remove_all_cb)
+			options['Remove Chain'] = "chain"
+		self.zyngui.screens['option'].config("Remove ...", options, self.remove_all_cb)
 		self.zyngui.show_screen('option')
 
 
 	def remove_all_cb(self, options, params):
-		if params == 'midi':
-			self.zyngui.show_confirm("Do you really want to remove all MIDI effects from this chain?", self.midifx_reset_confirmed)
-		elif params == 'audio':
-			self.remove_all_audio()
+		if params == 'midifx':
+			self.remove_all_midifx()
+		elif params == 'audiofx':
+			self.remove_all_audiofx()
 		elif params == 'chain':
 			self.remove_chain()
-
-
-	def remove_all_audio(self):
-		self.zyngui.show_confirm("Do you really want to remove all audio effects from this chain?", self.audiofx_reset_confirmed)
 
 
 	def remove_chain(self, params=None):
@@ -354,6 +352,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def audiofx_add(self):
 		self.zyngui.screens['layer'].add_fxchain_layer(self.layer)
+
+
+	def remove_all_audiofx(self):
+		self.zyngui.show_confirm("Do you really want to remove all audio effects from this chain?", self.audiofx_reset_confirmed)
 
 
 	def audiofx_reset_confirmed(self, params=None):
@@ -373,6 +375,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def midifx_add(self):
 		self.zyngui.screens['layer'].add_midichain_layer(self.layer.midi_chan)
+
+
+	def remove_all_midifx(self):
+		self.zyngui.show_confirm("Do you really want to remove all MIDI effects from this chain?", self.midifx_reset_confirmed)
 
 
 	def midifx_reset_confirmed(self, params=None):
