@@ -1203,7 +1203,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		pars = [layer]
 		#logging.error("MIDI ROOT LAYER => {}".format(layer.get_basepath()))
 		for l in self.layers:
-			if l!=layer and l.engine.type=="MIDI Tool" and l.midi_chan==layer.midi_chan and collections.Counter(l.midi_out)==collections.Counter(layer.midi_out):
+			if l != layer and l.engine.type == "MIDI Tool" and l.midi_chan == layer.midi_chan and collections.Counter(l.midi_out) == collections.Counter(layer.midi_out):
 				pars.append(l)
 				#logging.error("PARALLEL LAYER => {}".format(l.get_midi_jackname()))
 		return pars

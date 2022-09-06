@@ -141,9 +141,9 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if self.audiofx_layers:
 				self.list_data.append((self.remove_all_audiofx, None, "Remove All Audio-FXs"))
 		elif self.layer.engine.type == 'MIDI Tool' and len(self.midifx_layers) > 1:
-			self.list_data.append((self.remove_all, None, "Remove ..."))
+			self.list_data.append((self.remove_all, None, "Remove..."))
 		elif self.layer.engine.type != 'MIDI Tool' and len(self.midifx_layers) + len(self.audiofx_layers) > 0:
-			self.list_data.append((self.remove_all, None, "Remove ..."))
+			self.list_data.append((self.remove_all, None, "Remove..."))
 		else:
 			self.list_data.append((self.remove_chain, None, "Remove Chain"))
 
@@ -153,7 +153,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	# Generate chain tree menu
 	def generate_chaintree_menu(self):
 		res = []
-		in_str = ""
+		indent = 0
 		front = True
 		prev_layer = None
 		for layer in list(dict.fromkeys(self.midifx_layers + [self.layer] + self.audiofx_layers)):
@@ -161,25 +161,33 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			if prev_layer and layer.engine.type != prev_layer.engine.type:
 				prev_layer = None
 			if layer.engine.type == "MIDI Tool":
-				flowchar = "└─ "
+				flowchar = "╰─ "
 				if layer == prev_layer:
 					# Must be at end of MIDI only chain
 					break
-				if not front and not layer.is_parallel_midi_routed(prev_layer):
-					in_str = "  " + in_str
+				if not layer.is_parallel_midi_routed(prev_layer):
+					if not front:
+						indent += 1
+				else:
+					last_entry = list(res.pop())
+					last_entry[2] = last_entry[2].replace('╰', '├')
+					res.append(tuple(last_entry))
 			elif layer.engine.type == "Audio Effect":
-				flowchar = "╚═ "
+				flowchar = "┗━ "
 				if layer.engine.nickname == "AI":
 					continue
-				if not front and not layer.is_parallel_audio_routed(prev_layer):
-					in_str = "  " + in_str
+				if not layer.is_parallel_audio_routed(prev_layer):
+					if not front:
+						indent += 1
+				else:
+					last_entry = list(res.pop())
+					last_entry[2] = last_entry[2].replace('┗', '┣')
+					res.append(tuple(last_entry))
 			else:
-				flowchar = "┕━ "
+				flowchar = "╰━ "
 				if not front:
-					in_str = "  " + in_str
-			#@riban's rounded style => @jofemodo prefer the table-border chars!!!
-			flowchar = "⤷"
-			res.append((self.sublayer_options, layer, in_str + flowchar + name))
+					indent += 1
+			res.append((self.sublayer_options, layer, "  " * indent + flowchar + name))
 			prev_layer = layer
 			front = False
 		return res
@@ -340,7 +348,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			options['Remove All Audio-FXs'] = "audiofx"
 		if self.layer.midi_chan != 256:
 			options['Remove Chain'] = "chain"
-		self.zyngui.screens['option'].config("Remove ...", options, self.remove_all_cb)
+		self.zyngui.screens['option'].config("Remove...", options, self.remove_all_cb)
 		self.zyngui.show_screen('option')
 
 
