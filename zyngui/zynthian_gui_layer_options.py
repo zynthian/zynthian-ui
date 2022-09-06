@@ -83,14 +83,16 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			eng_options = {
 				'audio_capture': False,
 				'indelible': True,
-				'audio_rec': True
+				'audio_rec': True,
+				'midi_learn': True
 			}
-			if zynthian_gui_config.enable_onscreen_buttons:
-				eng_options['midi_learn'] = True
 		else:
 			eng_options = self.layer.engine.get_options()
-
-		eng_options['midi_learn'] = True
+			# MIDI-learn option is only shown when there is some "real" engine in the chain
+			if self.layer.engine.type == "Audio Effect" and len(self.audiofx_layers) <= 1:
+				eng_options['midi_learn'] = False
+			else:
+				eng_options['midi_learn'] = True
 
 		if self.layer.midi_chan is not None:
 			if 'note_range' in eng_options and eng_options['note_range']:
