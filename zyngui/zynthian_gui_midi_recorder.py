@@ -169,19 +169,25 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def fill_listbox(self):
 		super().fill_listbox()
-		self.highlight()
+		self.update_status_playback()
 
 
-	# Highlight command and current record played, if any ...
-	def highlight(self):
+	def update_status_playback(self):
 		if libsmf.getPlayState() == 0:
 			self.current_playback_fpath=None
 
+		item_labels = self.listbox.get(0, tkinter.END)
 		for i, row in enumerate(self.list_data):
-			if row[0] is not None and row[0]==self.current_playback_fpath:
-				self.listbox.itemconfig(i, { 'bg': zynthian_gui_config.color_hl })
+			if row[0] and row[0] == self.current_playback_fpath:
+				item_label = '▶ ' + row[2]
 			else:
-				self.listbox.itemconfig(i, { 'bg': zynthian_gui_config.color_panel_bg })
+				item_label = row[2]
+
+			if item_labels[i] != item_label:
+				self.listbox.delete(i)
+				self.listbox.insert(i, item_label)
+
+		self.select_listbox(self.index)
 
 
 	def update_status_recording(self, fill=False):
@@ -190,7 +196,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		else:
 			self.list_data[0] = ("START_RECORDING",0,"Start Recording")
 		if fill:
-			super().fill_list()
+			self.listbox.delete(0)
+			self.listbox.insert(0, self.list_data[0])
+			self.select_listbox(self.index)
 
 
 	def update_status_loop(self, fill=False):
@@ -201,7 +209,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.list_data[1] = ("LOOP",0,"[  ] Loop Play")
 			libsmf.setLoop(False)
 		if fill:
-			super().fill_list()
+			self.listbox.delete(1)
+			self.listbox.insert(1, self.list_data[1])
+			self.select_listbox(self.index)
 
 
 	def select_action(self, i, t='S'):
@@ -319,7 +329,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.zyngui.hide_info_timer(5000)
 
 		#self.update_list()
-		self.highlight()
+		self.update_status_playback()
 		return True
 
 
@@ -332,7 +342,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.current_playback_fpath=None
 		self.hide_playing_bpm()
 		#self.update_list()
-		self.highlight()
+		self.update_status_playback()
 
 
 	def stop_playing(self):
