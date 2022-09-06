@@ -52,7 +52,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		if jackname:
 			self.jackname = jackname
 		else:
-			self.jackname = self.get_next_jackname("audioin")
+			self.jackname = self.get_next_jackname("audioplayer")
 
 		self.file_exts = ["wav","WAV","ogg","OGG","flac","FLAC"]
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
