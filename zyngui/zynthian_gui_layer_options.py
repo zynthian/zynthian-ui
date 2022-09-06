@@ -124,11 +124,17 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		# Show chain tree
 		self.list_data.append((None, None, "Chain"))
+
+		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.midi_chan is not None:
+			self.list_data.append((self.midifx_add, None, "Add MIDI effect"))
+
 		in_str = "⤷"
 		front = True
+
 		# Add MIDI-FX chains
 		prev_layer = None
 		for layer in (self.midifx_layers + [self.layer] + self.audiofx_layers):
+			bg = None
 			name = layer.engine.get_name(layer)
 			if prev_layer and layer.engine.type != prev_layer.engine.type:
 				prev_layer = None
@@ -144,18 +150,19 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				if not front and not layer.is_parallel_audio_routed(prev_layer):
 					in_str = "  " + in_str
 			else:
+				bg = '#044680'
+				bg = zynthian_gui_config.color_panel_hl
 				if not front:
 					in_str = "  " + in_str
 			#self.list_data.append((self.sublayer_options, layer, in_str + name, {'format': {'bg':bg, 'fg':fg, 'selectforeground':sfg}}))
-			self.list_data.append((self.sublayer_options, layer, in_str + name))
+			if bg:
+				self.list_data.append((self.sublayer_options, layer, in_str + name, {'format':{'bg':bg}}))
+			else:
+				self.list_data.append((self.sublayer_options, layer, in_str + name))
 			prev_layer = layer
 			front = False
 
-		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.midi_chan is not None:
-			# Add MIDI-FX options
-			self.list_data.append((self.midifx_add, None, "Add MIDI effect"))
 		if self.layer.engine.type != 'MIDI Tool' and self.layer.midi_chan is not None:
-			# Add Audio-FX options
 			self.list_data.append((self.audiofx_add, None, "Add audio effect"))
 
 		if self.layer.midi_chan == 256:

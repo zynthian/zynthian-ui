@@ -25,11 +25,11 @@
 
 
 import os
-import sys
 import copy
 import base64
 import logging
 import collections
+from uuid import uuid4
 from collections import OrderedDict
 from json import JSONEncoder, JSONDecoder
 
@@ -46,6 +46,7 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_layer(zynthian_gui_selector):
 
 	def __init__(self):
+		self.uuids = {} # A map of layers indexed by uuid - will change name of this after we move away from "layers"
 		self.layers = []
 		self.root_layers = []
 		self.amixer_layer = None
@@ -57,6 +58,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		
 		super().__init__('Layer', True)
 		self.create_amixer_layer()
+
+
+	def get_uuid(self, layer):
+		while True:
+			uuid = uuid4().hex
+			if uuid not in self.uuids:
+				self.uuids[uuid] = layer
+				return uuid
 
 
 	def reset(self):
