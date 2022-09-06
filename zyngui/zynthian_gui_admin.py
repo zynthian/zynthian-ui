@@ -110,21 +110,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_midi_sys,0,"[  ] MIDI System Messages"))
 
-		if zynconf.is_service_active("jackrtpmidid"):
-			self.list_data.append((self.stop_rtpmidi,0,"[x] RTP-MIDI"))
-		else:
-			self.list_data.append((self.start_rtpmidi,0,"[  ] RTP-MIDI"))
-
-		if zynconf.is_service_active("qmidinet"):
-			self.list_data.append((self.stop_qmidinet,0,"[x] QmidiNet (IP Multicast)"))
-		else:
-			self.list_data.append((self.start_qmidinet,0,"[  ] QmidiNet (IP Multicast)"))
-
-		if zynconf.is_service_active("touchosc2midi"):
-			self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC MIDI Bridge"))
-		else:
-			self.list_data.append((self.start_touchosc2midi,0,"[  ] TouchOSC MIDI Bridge"))
-
 		if zynconf.is_service_active("aubionotes"):
 			self.list_data.append((self.stop_aubionotes,0,"[x] AubioNotes (Audio2MIDI)"))
 		else:
@@ -132,7 +117,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
 
-		self.list_data.append((None,0,"  NETWORK"))
+		self.list_data.append((None,0,"> NETWORK"))
 		self.list_data.append((self.network_info,0,"Network Info"))
 
 		if zynconf.is_wifi_active():
@@ -149,17 +134,32 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.start_vncserver,0,"[  ] VNC Server"))
 
-		self.list_data.append((None,0,"  TEST"))
+		if zynconf.is_service_active("jackrtpmidid"):
+			self.list_data.append((self.stop_rtpmidi,0,"[x] RTP-MIDI"))
+		else:
+			self.list_data.append((self.start_rtpmidi,0,"[  ] RTP-MIDI"))
+
+		if zynconf.is_service_active("qmidinet"):
+			self.list_data.append((self.stop_qmidinet,0,"[x] QmidiNet (IP Multicast)"))
+		else:
+			self.list_data.append((self.start_qmidinet,0,"[  ] QmidiNet (IP Multicast)"))
+
+		if zynconf.is_service_active("touchosc2midi"):
+			self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC MIDI Bridge"))
+		else:
+			self.list_data.append((self.start_touchosc2midi,0,"[  ] TouchOSC MIDI Bridge"))
+
+		self.list_data.append((None,0,"> TEST"))
 		self.list_data.append((self.test_audio,0,"Test Audio"))
 		self.list_data.append((self.test_midi,0,"Test MIDI"))
-		self.list_data.append((None,0,"  SYSTEM"))
+		self.list_data.append((None,0,"> SYSTEM"))
 		self.list_data.append((self.zyngui.calibrate_touchscreen,0,"Calibrate Touchscreen"))
 		if self.is_update_available():
 			self.list_data.append((self.update_software,0,"Update Software"))
 		else:
 			self.list_data.append((self.check_for_updates,0,"Check for software updates"))
 		#self.list_data.append((self.update_system,0,"Update Operating System"))
-		self.list_data.append((None,0,"  POWER"))
+		self.list_data.append((None,0,"> POWER"))
 		self.list_data.append((self.restart_gui,0,"Restart UI"))
 		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
 		self.list_data.append((self.reboot,0,"Reboot"))

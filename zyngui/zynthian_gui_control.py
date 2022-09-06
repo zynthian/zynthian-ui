@@ -135,7 +135,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			screen_list = layer.get_ctrl_screens()
 			if len(screen_list)>0:
 				if len(self.layers) > 1:
-					self.list_data.append((None, None, "  {}".format(layer.engine.name.split("/")[-1])))
+					self.list_data.append((None, None, "> {}".format(layer.engine.name.split("/")[-1])))
 				for cscr in screen_list:
 					self.list_data.append((cscr, i, cscr, layer, j))
 					i += 1
@@ -596,10 +596,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_select_path(self):
 		if self.zyngui.curlayer:
+			if self.zyngui.curlayer.engine.nickname == "AI":
+				try:
+					path_layer = self.zyngui.screens['layer'].get_fxchain_downstream(self.zyngui.curlayer)[0]
+				except:
+					path_layer = None
+			if not path_layer:
+				path_layer = self.zyngui.curlayer
 			if self.mode == 'control' and self.zyngui.midi_learn_mode:
-				self.select_path.set(self.zyngui.curlayer.get_basepath() + "/CTRL MIDI-Learn")
+				self.select_path.set(path_layer.get_basepath() + "/CTRL MIDI-Learn")
 			else:
-				self.select_path.set(self.zyngui.curlayer.get_presetpath())
+				self.select_path.set(path_layer.get_presetpath())
 
 
 #------------------------------------------------------------------------------

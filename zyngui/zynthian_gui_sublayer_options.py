@@ -209,13 +209,9 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 	# Select Path
 
 	def set_select_path(self):
-		if self.sublayer_type=="Audio Effect":
-			self.select_path.set("{} > Audio-FX Options".format(self.sublayer.get_basepath()))
-		elif self.sublayer_type=="MIDI Tool":
-			self.select_path.set("{} > MIDI-FX Options".format(self.sublayer.get_basepath()))
-		elif self.sublayer_type=="MIDI Synth":
-			self.select_path.set("{} > MIDI-Synth Options".format(self.sublayer.get_basepath()))
+		if self.sublayer:
+			self.select_path.set("{} > Unit Options".format(self.sublayer.get_basepath()))
 		else:
-			return "FX Options"
+			self.select_path.set("Unit Options")
 
 #------------------------------------------------------------------------------

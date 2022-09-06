@@ -118,7 +118,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.list_data.append(None)
 		self.update_status_loop()
 
-		self.list_data.append((None,0,"-----------------------------"))
+		self.list_data.append((None, 0, "> MIDI Tracks"))
 
 		# Add file list, sorted by mtime
 		flist = self.get_filelist(self.capture_dir_sdc, "SD")

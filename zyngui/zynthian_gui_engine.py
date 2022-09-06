@@ -138,9 +138,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			# Add category header...
 			if cat:
 				if self.engine_type=="MIDI Synth":
-					self.list_data.append((None,len(self.list_data),"  LV2 {}".format(cat)))
+					self.list_data.append((None,len(self.list_data),"> LV2 {}".format(cat)))
 				else:
-					self.list_data.append((None,len(self.list_data),"  {}".format(cat)))
+					self.list_data.append((None,len(self.list_data),"> {}".format(cat)))
 
 			# Add engines on this category...
 			for eng, info in infos.items():

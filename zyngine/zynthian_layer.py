@@ -886,7 +886,10 @@ class zynthian_layer:
 	def get_basepath(self):
 		path = self.engine.get_path(self)
 		if self.midi_chan is not None:
-			path = "{}#{}".format(self.midi_chan+1, path)
+			if self.midi_chan<16:
+				path = "{}#{}".format(self.midi_chan+1, path)
+			elif self.midi_chan==256:
+				path = "Main#{}".format(path)
 		return path
 
 

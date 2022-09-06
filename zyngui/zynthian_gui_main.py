@@ -52,12 +52,12 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data.append((self.clean_all,0,"Clean All"))
 
 		# Add list of Apps
-		self.list_data.append((None,0,"  APPS"))
+		self.list_data.append((None,0,"> APPS"))
 		self.list_data.append((self.step_sequencer,0,"Sequencer"))
 		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
 
 		# Add list of System / configuration views
-		self.list_data.append((None,0,"  SYSTEM"))
+		self.list_data.append((None,0,"> SYSTEM"))
 		self.list_data.append((self.alsa_mixer,0,"Audio Levels"))
 		self.list_data.append((self.admin,0,"Admin"))
 		self.list_data.append((self.all_notes_off,0,"PANIC! All Notes Off"))

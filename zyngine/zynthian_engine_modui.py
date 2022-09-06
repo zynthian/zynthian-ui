@@ -190,28 +190,27 @@ class zynthian_engine_modui(zynthian_engine):
 			self.api_post_request('/%s/enable' % self.pedal_preset_noun)
 			presets = self.api_get_request('/%s/list' % self.pedal_preset_noun)
 
+		preset_list = []
 		if presets:
+			preset_list.append((None, 0, "> Pedalboard Snapshots"))
 			for pid in sorted(presets):
 				title = presets[pid]
-				logging.debug("Add pedalboard preset " + title)
+				#logging.debug("Add pedalboard preset " + title)
 				preset_entry = [pid, [0,0,0], title, '']
 				self.pedal_presets[pid] = preset_entry
-
-			preset_list = list(self.pedal_presets.values())
-			preset_list.append([None,[0,0,0],"-----------------------------", ''])
-
-		else:
-			preset_list = list()
+			preset_list += list(self.pedal_presets.values())
 
 		# Get Plugins Presets ...
 		for pgraph in self.plugin_info:
-			preset_dict = OrderedDict()
-			for prs in self.plugin_info[pgraph]['presets']:
-				title = self.plugin_info[pgraph]['name'] + '/' + prs['label']
-				logging.debug("Add effect preset " + title)
-				preset_dict[prs['uri']] = len(preset_list)
-				preset_list.append([prs['uri'], [0,0,0], title, pgraph])
-				self.plugin_info[pgraph]['presets_dict'] = preset_dict
+			if len(self.plugin_info[pgraph]['presets'])>0:
+				preset_dict = OrderedDict()
+				preset_list.append((None, 0, "> {}".format(self.plugin_info[pgraph]['name'])))
+				for prs in self.plugin_info[pgraph]['presets']:
+					title =  prs['label']
+					#logging.debug("Add effect preset " + title)
+					preset_dict[prs['uri']] = len(preset_list)
+					preset_list.append([prs['uri'], [0,0,0], title, pgraph])
+					self.plugin_info[pgraph]['presets_dict'] = preset_dict
 
 		return preset_list
 
