@@ -176,7 +176,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 
 	def midifx_can_move_upchain(self):
 		ups = self.zyngui.screens['layer'].get_midichain_upstream(self.sublayer)
-		if len(ups) > 0 and self.root_layer not in ups:
+		if len(ups) > 0 and (self.root_layer.engine.type == "MIDI Tool" or self.root_layer not in ups):
 			return True
 
 
@@ -188,7 +188,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 
 	def midifx_can_move_downchain(self):
 		downs = self.zyngui.screens['layer'].get_midichain_downstream(self.sublayer)
-		if len(downs) > 0 and self.root_layer not in downs:
+		if len(downs) > 0 and (self.root_layer.engine.type == "MIDI Tool" or self.root_layer not in downs):
 			return True
 
 

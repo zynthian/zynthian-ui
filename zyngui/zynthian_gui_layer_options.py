@@ -135,7 +135,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		# Add MIDI-FX chains
 		prev_layer = None
-		for layer in (self.midifx_layers + [self.layer] + self.audiofx_layers):
+		for layer in list(dict.fromkeys(self.midifx_layers + [self.layer] + self.audiofx_layers)):
 			bg = None
 			name = layer.engine.get_name(layer)
 			if prev_layer and layer.engine.type != prev_layer.engine.type:
