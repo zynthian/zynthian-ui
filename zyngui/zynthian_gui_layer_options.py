@@ -83,14 +83,16 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			eng_options = {
 				'audio_capture': False,
 				'indelible': True,
-				'audio_rec': True
+				'audio_rec': True,
+				'midi_learn': True
 			}
-			if zynthian_gui_config.enable_onscreen_buttons:
-				eng_options['midi_learn'] = True
 		else:
 			eng_options = self.layer.engine.get_options()
-
-		eng_options['midi_learn'] = True
+			# MIDI-learn option is only shown when there is some "real" engine in the chain
+			if self.layer.engine.type == "Audio Effect" and len(self.audiofx_layers) <= 1:
+				eng_options['midi_learn'] = False
+			else:
+				eng_options['midi_learn'] = True
 
 		if self.layer.midi_chan is not None:
 			if 'note_range' in eng_options and eng_options['note_range']:
@@ -126,7 +128,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.list_data.append((None, None, "Chain"))
 		in_str = "⤷"
 		front = True
-		# Add MIDI-FX chains
 		prev_layer = None
 		for layer in (self.midifx_layers + [self.layer] + self.audiofx_layers):
 			name = layer.engine.get_name(layer)
@@ -144,6 +145,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				if not front and not layer.is_parallel_audio_routed(prev_layer):
 					in_str = "  " + in_str
 			else:
+				name = "*" + name
 				if not front:
 					in_str = "  " + in_str
 			#self.list_data.append((self.sublayer_options, layer, in_str + name, {'format': {'bg':bg, 'fg':fg, 'selectforeground':sfg}}))
