@@ -140,8 +140,8 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if self.layer.midi_chan == 256:
 			if self.audiofx_layers:
 				self.list_data.append((self.remove_all_audiofx, None, "Remove All Audio-FXs"))
-		elif self.layer.engine.type == 'MIDI Tool' and len(self.midifx_layers) > 1:
-			self.list_data.append((self.remove_all, None, "Remove..."))
+#		elif self.layer.engine.type == 'MIDI Tool' and len(self.midifx_layers) > 1:
+#			self.list_data.append((self.remove_all, None, "Remove..."))
 		elif self.layer.engine.type != 'MIDI Tool' and len(self.midifx_layers) + len(self.audiofx_layers) > 0:
 			self.list_data.append((self.remove_all, None, "Remove..."))
 		else:
