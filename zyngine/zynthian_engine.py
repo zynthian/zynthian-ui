@@ -68,7 +68,6 @@ class zynthian_basic_engine:
 		self.command_prompt = prompt
 		self.command_cwd = cwd
 
-
 	def __del__(self):
 		self.stop()
 
@@ -679,9 +678,6 @@ class zynthian_engine(zynthian_basic_engine):
 	def midi_control_change(self, chan, ccnum, val):
 		if self.learned_cc[chan][ccnum]:
 			self.learned_cc[chan][ccnum].midi_control_change(val)
-		else:
-			# If CC not consumed by MIDI learn then send to engine for native MIDI CC handler
-			self.zyngui.zynmidi.set_midi_control(chan, ccnum, val)
 
 
 	def midi_zctrl_change(self, zctrl, val):

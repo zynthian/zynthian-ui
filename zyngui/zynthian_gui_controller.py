@@ -26,14 +26,11 @@
 import math
 import tkinter
 import logging
-from time import sleep
-from string import Template
 from datetime import datetime
 from tkinter import font as tkFont
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------

@@ -22,9 +22,9 @@
 #
 #******************************************************************************
 
+import copy
 import os
 import re
-import json
 import shutil
 import logging
 from os.path import isfile
@@ -117,52 +117,16 @@ class zynthian_engine_jalv(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	plugin_ctrl_info = {
-		"Dexed": {
-		},
-		"Helm": {
-		},
-		"MDA DX10": {
+		"default_synth": {
 			"ctrls": [
-				['volume',7,96],
-				['mod-wheel',1,0],
-				['sustain on/off',64,'off','off|on']
+				['modulation wheel', 1, 0],
+				['sustain pedal', 64, 'off', 'off|on']
 			],
-			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
+			"ctrl_screens": [['MIDI Controllers',['modulation wheel','sustain pedal']]]
 		},
-		"MDA JX10": {
-			"ctrls": [
-				['volume',7,96],
-				['mod-wheel',1,0],
-			],
-			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel']]]
-		},
-		"MDA ePiano": {
-			"ctrls": [
-				['volume',7,96],
-				['mod-wheel',1,0],
-				['sustain on/off',64,'off','off|on']
-			],
-			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
-		},
-		"MDA Piano": {
-			"ctrls": [
-				['volume',7,96],
-				['mod-wheel',1,0],
-				['sustain on/off',64,'off','off|on']
-			],
-			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
-		},
-		"Noize Mak3r": {
-		},
-		"Obxd": {
-		},
-		"synthv1": {
-		},
-		"reMID": {
-			"ctrls": [
-				['volume',7,96],
-			],
-			"ctrl_screens": [['MIDI Controllers',['volume']]]
+		"Raffo Synth": {
+			"ctrls": [],
+			"ctrl_screens": []
 		}
 	}
 
@@ -241,6 +205,10 @@ class zynthian_engine_jalv(zynthian_engine):
 				self._ctrls = self.plugin_ctrl_info[self.plugin_name]['ctrls']
 				self._ctrl_screens = self.plugin_ctrl_info[self.plugin_name]['ctrl_screens']
 			except:
+				if self.type == "MIDI Synth":
+					# Set default MIDI controllers for MIDI synths
+					self._ctrls = copy.copy(self.plugin_ctrl_info['default_synth']['ctrls'])
+					self._ctrl_screens = copy.copy(self.plugin_ctrl_info['default_synth']['ctrl_screens'])
 				logging.info("No defined MIDI controllers for '{}'.".format(self.plugin_name))
 
 			# Generate LV2-Plugin Controllers
