@@ -1007,7 +1007,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def add_to_fxchain(self, layer, chain_parallel=False):
 		try:
 			for end in self.get_fxchain_ends(layer):
-				if end != layer:
+				if end and end != layer:
 					logging.debug("Adding to FX-chain {} => {}".format(end.get_audio_jackname(), layer.get_audio_jackname()))
 					layer.set_audio_out(end.get_audio_out())
 					if chain_parallel:
