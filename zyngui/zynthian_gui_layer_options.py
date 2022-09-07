@@ -238,6 +238,13 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.list_data[i][0](self.list_data[i][1], t)
 
 
+	def back_action(self):
+		if self.layer.engine.type in ("Audio Effect", "MIDI Tool") and len(self.midifx_layers) + len(self.audiofx_layers) == 0:
+			self.zyngui.show_screen_reset('audio_mixer')
+			return True
+		return False
+
+
 	def sublayer_options(self, sublayer, t='S'):
 		self.zyngui.screens['sublayer_options'].setup(self.layer, sublayer)
 		self.zyngui.show_screen("sublayer_options")
