@@ -357,7 +357,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				if self.replace_layer_index is not None:
 					self.replace_on_fxchain(layer)
 				else:
-					self.add_to_fxchain(layer, self.layer_chain_parallel)
+					if layer.engine.nickname != "AI":
+						self.add_to_fxchain(layer, self.layer_chain_parallel)
 					self.layers.append(layer)
 			# add/replace MIDI Effects ...
 			elif len(self.layers) > 0 and layer.engine.type == "MIDI Tool":

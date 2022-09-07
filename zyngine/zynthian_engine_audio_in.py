@@ -49,7 +49,7 @@ class zynthian_engine_audio_in(zynthian_engine):
 		if jackname:
 			self.jackname = jackname
 		else:
-			self.jackname = self.get_next_jackname("audioin")
+			self.jackname = self.get_next_jackname("audioin") # Should never be here
 
 		self.options['audio_capture'] = True
 		self.options['note_range'] = False
