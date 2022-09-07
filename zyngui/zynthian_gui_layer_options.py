@@ -349,7 +349,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def remove_all(self):
 		options = OrderedDict()
-		if self.layer.engine.type == "MIDI Synth" and len(self.midifx_layers) > 0 or len(self.midifx_layers) > 1:
+		if self.midifx_layers:
 			options['Remove All MIDI-FXs'] = "midifx"
 		if self.audiofx_layers:
 			options['Remove All Audio-FXs'] = "audiofx"

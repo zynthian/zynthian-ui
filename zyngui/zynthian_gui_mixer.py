@@ -219,7 +219,7 @@ class zynthian_gui_mixer_strip():
 	def show(self):
 		self.parent.main_canvas.itemconfig("strip:%s"%(self.fader_bg), state=tkinter.NORMAL)
 		try:
-			if self.layer.engine.type in ("MIDI Tool", "Special"):
+			if self.layer.engine.type in ("MIDI Tool"):
 				self.parent.main_canvas.itemconfig("audio_strip:%s"%(self.fader_bg), state=tkinter.HIDDEN)
 		except:
 			pass
@@ -237,7 +237,7 @@ class zynthian_gui_mixer_strip():
 					res1 = ds[0].engine.get_name(self.layer) + "\n"
 				elif self.layer.midi_chan == 256:
 					res1 = "No FX"
-			# MOD-UI
+
 			if self.layer.midi_chan is None:
 				if self.layer.bank_name:
 					res2 = self.layer.bank_name

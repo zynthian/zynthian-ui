@@ -80,6 +80,9 @@ def get_fixed_midi_port_name(port_name):
 	elif port_name=="csound6":
 		port_name = "Csound"
 
+	elif port_name == "mod-monitor":
+		port_name = "mod-host"
+
 	return port_name
 
 
@@ -198,7 +201,7 @@ def midi_autoconnect(force=False):
 	engines_out=[]
 	engines_fb=[]
 	for k, zyngine in zyngine_list.items():
-		if not zyngine.jackname or zyngine.nickname == "MD":
+		if not zyngine.jackname:
 			continue
 
 		if zyngine.type in ("MIDI Synth", "MIDI Tool", "Special"):
@@ -482,6 +485,14 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
+	# Disconnect hardware inputs from mod-ui
+	for sport in hw_out:
+		try:
+			jclient.disconnect(sport, 'mod-host:midi_in')
+		except:
+			pass
+
+
 	#Release Mutex Lock
 	release_lock()
 
@@ -513,17 +524,17 @@ def audio_autoconnect(force=False):
 	playback_ports = zynmixer_playback_ports + system_playback_ports
 
 	# Disconnect Monitor from System Output and Reconnect to Zynmixer return
-	mon_in=jclient.get_ports("mod-monitor", is_output=True, is_audio=True)
+	mon_in = jclient.get_ports("mod-monitor", is_output=True, is_audio=True)
 	try:
 		jclient.disconnect(mon_in[0], 'system:playback_1')
 		jclient.disconnect(mon_in[1], 'system:playback_2')
 	except:
 		pass
-	try:
-		jclient.connect(mon_in[0], 'zynmixer:input_17a')
-		jclient.connect(mon_in[1], 'zynmixer:input_17b')
-	except:
-		pass
+#	try:
+#		jclient.connect(mon_in[0], 'zynmixer:input_17a')
+#		jclient.connect(mon_in[1], 'zynmixer:input_17b')
+#	except:
+#		pass
 
 	#Get layers list from UI
 	layers_list = zynguilayer.layers

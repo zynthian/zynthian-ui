@@ -318,10 +318,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def add_layer_engine(self, eng, midi_chan=None):
 		self.add_layer_eng=eng
 
-		if eng=='MD':
-			self.add_layer_midich(None)
+		#if eng=='MD':
+		#	self.add_layer_midich(None)
 
-		elif eng=='AE':
+		if eng=='AE':
 			self.add_layer_midich(0, False)
 			self.add_layer_midich(1, False)
 			self.add_layer_midich(2, False)

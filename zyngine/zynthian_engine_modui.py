@@ -63,18 +63,10 @@ class zynthian_engine_modui(zynthian_engine):
 		self.type = "Special"
 		self.name = "MOD-UI"
 		self.nickname = "MD"
-		self.jackname = "mod-host"
+		self.jackname = "mod-monitor"
 
-		self.audio_out = []
-		self.options= {
-			'clone': False,
-			'note_range': False,
-			'audio_route': False,
-			'midi_chan': False,
-			'replace': False,
-			'drop_pc': False,
-			'layer_audio_out': True
-		}
+		#self.audio_out = []
+		self.options['note_range'] = False
 
 		self.websocket = None
 		self.ws_thread = None
