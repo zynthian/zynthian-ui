@@ -342,7 +342,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def add_layer_midich(self, midich, select=True):
 		if self.add_layer_eng:
 			# Create layer node ...
-			zyngine = self.zyngui.screens['engine'].start_engine(self.add_layer_eng)
+			if self.add_layer_eng == "AI":
+				zyngine = self.zyngui.screens['engine'].start_engine(self.add_layer_eng, "audioin-{:02d}".format(midich))
+			else:
+				zyngine = self.zyngui.screens['engine'].start_engine(self.add_layer_eng)
 			layer = zynthian_layer(zyngine, midich, self.zyngui)
 
 			# if replacing, clean zs3 state from the replaced layer
@@ -849,12 +852,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				return layer
 
 
-	def get_jackname_count(self, jackname):
-		count = 0
+	def get_next_jackname(self, jackname):
+		names = set()
 		for layer in self.layers:
 			if layer.jackname is not None and layer.jackname.startswith(jackname):
-				count += 1
-		return count
+				names.add(layer.jackname)
+		i = 0
+		while "{}-{:02d}".format(jackname, i) in names:
+			i += 1
+		return "{}-{:02d}".format(jackname, i)
 
 
 	# ---------------------------------------------------------------------------
@@ -1683,6 +1689,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			else:
 				if 'engine_jackname' in lss:
 					jackname = lss['engine_jackname']
+				elif lss['engine_nick'] == "AI":
+					# There must be only one AI per audio mixer input
+					jackname = "audioin-{:02d}".format(lss['midi_chan'])
 				else:
 					jackname = None
 				engine = self.zyngui.screens['engine'].start_engine(lss['engine_nick'], jackname)
@@ -1691,7 +1700,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					if chain > 16:
 						chain = 16
 					if root_layers[chain] is None and engine.type == "Audio Effect" and engine.nickname != "AI":
-						ai_engine =  self.zyngui.screens['engine'].start_engine('AI')
+						ai_engine =  self.zyngui.screens['engine'].start_engine("AI", "audioin-{:02d}".format(lss['midi_chan']))
 						ai_layer = zynthian_layer(ai_engine, lss['midi_chan'], self.zyngui)
 						layer = zynthian_layer(engine, lss['midi_chan'], self.zyngui)
 						ai_layer.audio_in = layer.audio_in
@@ -1707,7 +1716,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		# Check there is a main mixbus root layer
 		if root_layers[16] is None:
-			ai_engine = self.zyngui.screens['engine'].start_engine('AI')
+			ai_engine = self.zyngui.screens['engine'].start_engine("AI", "audioin-256")
 			self.layers.append(zynthian_layer(ai_engine, 256, self.zyngui))
 
 		# Finally, stop all unused engines

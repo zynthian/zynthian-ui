@@ -50,7 +50,7 @@ class zynaudioplayer():
 			# Load or increment ref to lib
 			self.libaudioplayer = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynaudioplayer.so")
 			try:
-				jackclient_index = int(jackname[len("audioplayer_"):])
+				jackclient_index = int(jackname[len("audioplayer-"):])
 			except:
 				jackclient_index = -1
 			handle = self.libaudioplayer.init(jackclient_index)

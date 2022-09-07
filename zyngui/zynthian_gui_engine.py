@@ -213,7 +213,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def stop_unused_jalv_engines(self):
 		for eng in list(self.zyngines.keys()):
-			if len(self.zyngines[eng].layers)==0 and eng[0:3]=="JV/":
+			if len(self.zyngines[eng].layers) == 0 and eng[0:3] in ("JV/", "AP/"):
 				self.zyngines[eng].stop()
 				del self.zyngines[eng]
 

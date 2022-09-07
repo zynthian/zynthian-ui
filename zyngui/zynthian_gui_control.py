@@ -128,7 +128,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 			# Get MIDI effects not including root
 			self.layers = self.zyngui.screens['layer'].get_midichain_layers()
 			# Get root
-			#self.layers.append(self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.zyngui.curlayer.midi_chan))
 			self.layers.append(self.zyngui.curlayer)
 			# Get audio effects not including root
 			self.layers += self.zyngui.screens['layer'].get_fxchain_layers()

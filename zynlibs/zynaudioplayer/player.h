@@ -32,9 +32,11 @@ enum {
 static void __attribute__ ((constructor)) lib_init(void);
 
 /** @brief  Initialise a player instance
+*   @param  player_handle Index of player to initialise or -1 for next available
 *   @retval int Player handle or -1 on failure
+*   @note   If requested player is already initialised a new player is started with a different handle
 */
-int init(int jackclient_index);
+int init(int player_handle);
 
 /** @brief  Remove player from library
 *   @param  player_handle Handle of player provided by init_player()

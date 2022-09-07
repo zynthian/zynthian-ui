@@ -227,12 +227,11 @@ class zynthian_engine(zynthian_basic_engine):
 			# So, for avoiding problems, jack names shouldn't contain regex characters.
 			if sanitize:
 				jname = re.sub("[\_]{2,}", "_", re.sub("[\s\'\*\(\)\[\]]", "_", jname))
-			jname_count = self.zyngui.screens['layer'].get_jackname_count(jname)
+			jname = self.zyngui.screens['layer'].get_next_jackname(jname)
 		except Exception as e:
-			jname_count = 0
 			logging.error(e)
-
-		return "{}-{:02d}".format(jname, jname_count)
+			return "{}-00".format(jname)
+		return jname
 
 
 	# ---------------------------------------------------------------------------
