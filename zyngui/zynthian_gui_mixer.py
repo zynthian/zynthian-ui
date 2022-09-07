@@ -987,103 +987,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	#--------------------------------------------------------------------------
-	# Main strip options menu
-	#--------------------------------------------------------------------------
-
-	def show_mainfx_options(self):
-		options = OrderedDict()
-		options["Audio Options..."] = "AudioOptions"
-		if self.zyngui.audio_recorder.get_status():
-			options["■ Stop Audio Recording"] = "RecordAudio"
-		else:
-			options["⬤ Start Audio Recording"] = "RecordAudio"
-		if zynthian_gui_config.enable_onscreen_buttons:
-			options["MIDI Learn"] = "midi_learn"
-		options["  Audio Chain"] = None
-		options["Add Audio-FX"] = "Add"
-
-		self.zyngui.screens['option'].config("Main Chain Options", options, self.mainfx_options_cb)
-		self.zyngui.show_screen('option')
-
-
-	def mainfx_options_cb(self, option, param):
-		if param == "Add":
-			self.zyngui.screens['layer'].add_fxchain_layer(self.MAIN_MIXBUS_MIDI_CHANNEL) #TODO: This will error - need to add an audio pass engine to the mixbus chain
-		elif param == "AudioOptions":
-			self.audio_options()
-		elif param == "RecordAudio":
-			self.zyngui.audio_recorder.toggle_recording()
-			self.show_mainfx_options()
-		elif param == "midi_learn":
-			options = OrderedDict()
-			options['Enter MIDI-learn'] = "enter"
-			options['Clean MIDI-learn'] = "clean"
-			self.zyngui.screens['option'].config("MIDI-learn", options, self.midi_learn_menu_cb)
-			self.zyngui.show_screen('option')
-
-
-	def midi_learn_menu_cb(self, options, params):
-		if params == 'enter':
-			self.zyngui.close_screen()
-			self.zyngui.enter_midi_learn()
-		elif params == 'clean':
-			self.midi_unlearn_action()
-
-
-	def audio_options(self):
-		options = OrderedDict()
-		if self.zyngui.zynmixer.get_mono(self.MAIN_MIXBUS_MIDI_CHANNEL):
-			options['[x] Mono'] = 'mono'
-		else:
-			options['[  ] Mono'] = 'mono'
-		if self.zyngui.zynmixer.get_phase(self.MAIN_MIXBUS_MIDI_CHANNEL):
-			options['[x] Phase reverse'] = 'phase'
-		else:
-			options['[  ] Phase reverse'] = 'phase'
-		if zynthian_gui_config.multichannel_recorder:
-			if self.zyngui.audio_recorder.get_status():
-				# Recording so don't allow change of primed state
-				if self.zyngui.audio_recorder.is_primed(self.MAIN_MIXBUS_MIDI_CHANNEL):
-					options['[x] Recording Primed'] = None
-				else:
-					options['[  ] Recording Primed'] = None
-			else:
-				if self.zyngui.audio_recorder.is_primed(self.MAIN_MIXBUS_MIDI_CHANNEL):
-					options['[x] Recording Primed'] = 'prime'
-				else:
-					options['[  ] Recording Primed'] = 'prime'
-
-		self.zyngui.screens['option'].config("Audio options", options, self.audio_menu_cb)
-		self.zyngui.show_screen('option')
-
-
-	def audio_menu_cb(self, options, params):
-		if params == 'mono':
-			self.zyngui.zynmixer.toggle_mono(self.MAIN_MIXBUS_MIDI_CHANNEL)
-		elif params == 'phase':
-			self.zyngui.zynmixer.toggle_phase(self.MAIN_MIXBUS_MIDI_CHANNEL)
-		elif params == 'prime':
-			self.zyngui.audio_recorder.toggle_prime(self.MAIN_MIXBUS_MIDI_CHANNEL)
-		self.audio_options()
-
-
-	#--------------------------------------------------------------------------
 	# Physical UI Control Management: Pots & switches
 	#--------------------------------------------------------------------------
 
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
-		if isinstance(self.selected_layer, zyngine.zynthian_layer):
-			if type == "S" and not self.midi_learning:
-				self.zyngui.layer_control(self.selected_layer)
-			elif type == "B":
-				# Layer Options
-				self.zyngui.screens['layer'].select(self.selected_chain_index)
-				self.zyngui.screens['layer_options'].reset()
-				self.zyngui.show_screen('layer_options')
+		if type == "S" and not self.midi_learning:
+			self.zyngui.layer_control(self.selected_layer)
 		elif type == "B":
-			self.show_mainfx_options()
+			# Layer Options
+			self.zyngui.screens['layer'].select(self.selected_chain_index)
+			self.zyngui.screens['layer_options'].reset()
+			self.zyngui.show_screen('layer_options')
 
 
 	# Function to handle BACK action

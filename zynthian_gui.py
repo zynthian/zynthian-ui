@@ -866,43 +866,46 @@ class zynthian_gui:
 			self.set_curlayer(layer)
 
 		if self.curlayer:
+			control_screen_name = 'control'
+
+			# Check for a custom GUI (widget)
 			module_path = self.curlayer.engine.custom_gui_fpath
 			if module_path:
 				module_name = Path(module_path).stem
 				if module_name.startswith("zynthian_gui_"):
-					screen_name = module_name[len("zynthian_gui_"):]
-					if screen_name not in self.screens:
+					custom_screen_name = module_name[len("zynthian_gui_"):]
+					if custom_screen_name not in self.screens:
 						try:
 							spec = importlib.util.spec_from_file_location(module_name, module_path)
 							module = importlib.util.module_from_spec(spec)
 							spec.loader.exec_module(module)
 							class_ = getattr(module, module_name)
-							self.screens[screen_name] = class_()
+							self.screens[custom_screen_name] = class_()
 						except Exception as e:
-							logging.error("Can't load custom control screen {} => {}".format(screen_name, e))
+							logging.error("Can't load custom control screen {} => {}".format(custom_screen_name, e))
 
-					if screen_name in self.screens:
-						self.show_screen_reset(screen_name)
-						return
+					if custom_screen_name in self.screens:
+						control_screen_name = custom_screen_name
 
-			# If there is a preset selection for the active layer ...
-			if self.curlayer.get_preset_name():
-				self.show_screen_reset('control')
+			# If Empty Audio Input layer => Add Audio-FX
+			if self.curlayer.engine.nickname == "AI" and not self.screens['layer'].get_fxchain_downstream(self.curlayer):
+				self.show_screen_reset('audio_mixer')
+				self.screens['layer'].add_fxchain_layer(self.curlayer)
+			# If a preset is selected => control screen
+			elif self.curlayer.get_preset_name():
+				self.show_screen_reset(control_screen_name)
+			# If not => bank/preset selector screen
 			else:
 				self.curlayer.load_bank_list()
 				if len(zyngui.curlayer.bank_list) > 1:
 					self.show_screen_reset('bank')
-					return
-				self.curlayer.set_bank(0)
-				self.curlayer.load_preset_list()
-				if len(zyngui.curlayer.preset_list) > 1:
-					self.show_screen_reset('preset')
-					return
-			if self.curlayer.engine.nickname == "AI" and not self.screens['layer'].get_fxchain_downstream(self.curlayer):
-				self.show_screen_reset('audio_mixer')
-				self.screens['layer'].add_fxchain_layer(self.curlayer)
-			else:
-				self.show_screen_reset('control')
+				else:
+					self.curlayer.set_bank(0)
+					self.curlayer.load_preset_list()
+					if len(zyngui.curlayer.preset_list) > 1:
+						self.show_screen_reset('preset')
+					else:
+						self.show_screen_reset(control_screen_name)
 		
 
 	def show_control(self):
@@ -1489,18 +1492,15 @@ class zynthian_gui:
 	def cuia_layer_control(self, params=None):
 		if params:
 			try:
-				i = params[0]-1
+				i = params[0] - 1
 				n = self.screens['layer'].get_num_root_layers()
 				main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
 				if main_fxchain:
 					n -= 1
-				if i>=0 and i<n:
+				if i >= 0 and i < n:
 					self.layer_control(self.screens['layer'].root_layers[i])
-				elif i < 0:
-					if main_fxchain:
-						self.layer_control(main_fxchain)
-					else:
-						self.screens['audio_mixer'].show_mainfx_options()
+				elif i < 0 and main_fxchain:
+					self.layer_control(main_fxchain)
 			except Exception as e:
 				logging.warning("Can't change to layer {}! => {}".format(params[0],e))
 		else:
@@ -1510,19 +1510,15 @@ class zynthian_gui:
 	def cuia_layer_options(self, params):
 		try:
 			if params:
-				i = params[0]-1
+				i = params[0] - 1
 				n = self.screens['layer'].get_num_root_layers()
 				main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
 				if main_fxchain:
 					n -= 1
 				if i >= 0 and i < n:
 					self.screens['layer'].select(i)
-				elif i < 0:
-					if main_fxchain:
-						self.screens['layer'].select(n)
-					else:
-						self.screens['audio_mixer'].show_mainfx_options()
-						return
+				elif i < 0 and main_fxchain:
+					self.screens['layer'].select(n)
 			self.screens['layer_options'].reset()
 			self.toggle_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 		except Exception as e:
@@ -1558,27 +1554,23 @@ class zynthian_gui:
 
 
 	def custom_switch_ui_action(self, i, t):
-		#try:
-			action_config = zynthian_gui_config.custom_switch_ui_actions[i]
-			if t in action_config:
-				cuia = action_config[t]
-				if cuia and cuia!="NONE":
-					parts = cuia.split(" ", 2)
-					cmd = parts[0]
-					if len(parts)>1:
-						params = []
-						for i,p in enumerate(parts[1].split(",")):
-							try:
-								params.append(int(p))
-							except:
-								params.append(p.strip())
-					else:
-						params = None
+		action_config = zynthian_gui_config.custom_switch_ui_actions[i]
+		if t in action_config:
+			cuia = action_config[t]
+			if cuia and cuia!="NONE":
+				parts = cuia.split(" ", 2)
+				cmd = parts[0]
+				if len(parts)>1:
+					params = []
+					for i,p in enumerate(parts[1].split(",")):
+						try:
+							params.append(int(p))
+						except:
+							params.append(p.strip())
+				else:
+					params = None
 
-					self.callable_ui_action(cmd, params)
-
-		#except Exception as e:
-		#	logging.warning(e)
+				self.callable_ui_action(cmd, params)
 
 
 	# -------------------------------------------------------------------
