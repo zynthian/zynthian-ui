@@ -178,6 +178,18 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			self.zyngui.screens['layer'].add_layer_engine(self.list_data[i][0], self.midi_chan)
 
 
+	def arrow_right(self):
+		if self.midi_chan is not None:
+			if self.zyngui.screens['layer'].get_num_root_layers() > 1:
+				self.zyngui.screens['layer'].next(True)
+
+
+	def arrow_left(self):
+		if self.midi_chan is not None:
+			if self.zyngui.screens['layer'].get_num_root_layers() > 1:
+				self.zyngui.screens['layer'].prev(True)
+
+
 	def start_engine(self, eng, jackname = None):
 		if eng not in self.zyngines:
 			info = self.engine_info[eng]
@@ -234,6 +246,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		self.select_path.set("Engine")
+		path = "{} Engine".format(self.engine_type)
+		if self.midi_chan is not None:
+			if self.midi_chan<16:
+				path = "{}#{}".format(self.midi_chan+1, path)
+			elif self.midi_chan==256:
+				path = "Main#{}".format(path)
+		self.select_path.set(path)
 
 #------------------------------------------------------------------------------

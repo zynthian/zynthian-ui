@@ -87,6 +87,16 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			self.zyngui.screens['preset'].select_action(0)
 
 
+	def arrow_right(self):
+		if self.zyngui.screens['layer'].get_num_root_layers() > 1:
+			self.zyngui.screens['layer'].next(True)
+
+
+	def arrow_left(self):
+		if self.zyngui.screens['layer'].get_num_root_layers() > 1:
+			self.zyngui.screens['layer'].prev(True)
+
+
 	def topbar_bold_touch_action(self):
 		self.zyngui.zynswitch_defered('B', 1)
 
