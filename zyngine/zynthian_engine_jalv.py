@@ -121,7 +121,6 @@ class zynthian_engine_jalv(zynthian_engine):
 			'volume': [7, 98],
 			'sustain pedal': [64, 'off', 'off|on']
 		},
-
 		"ctrl_screens": {
 			'_default_synth': ['modulation wheel', 'sustain pedal'],
 			'Calf Monosynth': ['modulation wheel'],
