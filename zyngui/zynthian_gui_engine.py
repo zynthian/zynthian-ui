@@ -252,12 +252,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		path = "{} Engine".format(self.engine_type)
+		path = self.engine_type
 		if self.midi_chan is not None:
-			if self.midi_chan<16:
+			if self.midi_chan < 16:
 				path = "{}#{}".format(self.midi_chan+1, path)
-			elif self.midi_chan==256:
-				path = "Main#{}".format(path)
+			elif self.midi_chan == 256:
+				path = "Main Mix#{}".format(path)
 		self.select_path.set(path)
 
 #------------------------------------------------------------------------------
