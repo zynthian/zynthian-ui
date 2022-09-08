@@ -138,7 +138,11 @@ class zynthian_gui_bank(zynthian_gui_selector):
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
-		if swi == 2:
+		if swi == 0:
+			if t == 'S':
+				self.arrow_right()
+				return True
+		elif swi == 2:
 			if t == 'S':
 				self.zyngui.show_favorites()
 				return True
