@@ -75,6 +75,10 @@ jack_port_t * g_mainSendA;
 jack_port_t * g_mainSendB;
 jack_port_t * g_mainReturnA;
 jack_port_t * g_mainReturnB;
+jack_port_t * g_moduiInA;
+jack_port_t * g_moduiInB;
+jack_port_t * g_moduiOutA;
+jack_port_t * g_moduiOutB;
 int g_mainReturnRoutedA = 0;
 int g_mainReturnRoutedB = 0;
 unsigned int g_nDampingCount = 0;
@@ -150,6 +154,14 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     pSendB = jack_port_get_buffer(g_mainSendB, nFrames);
     memset(pSendA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
     memset(pSendB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
+
+    // Pass through mod-ui
+    jack_default_audio_sample_t * pModUiIn = jack_port_get_buffer(g_moduiInA, nFrames);
+    jack_default_audio_sample_t * pModUiOut = jack_port_get_buffer(g_moduiOutA, nFrames);
+    memcpy(pModUiOut, pModUiIn, nFrames * sizeof(jack_default_audio_sample_t));
+    pModUiIn = jack_port_get_buffer(g_moduiInB, nFrames);
+    pModUiOut = jack_port_get_buffer(g_moduiOutB, nFrames);
+    memcpy(pModUiOut, pModUiIn, nFrames * sizeof(jack_default_audio_sample_t));
 
     unsigned int frame, chan;
     float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB, fSampleA, fSampleB, fSampleM;
@@ -415,6 +427,15 @@ int init()
     #endif
 
     // Create input ports
+    g_moduiInA = jack_port_register(g_pJackClient, "input_moduia", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
+    g_moduiInB = jack_port_register(g_pJackClient, "input_moduib", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
+    g_moduiOutA = jack_port_register(g_pJackClient, "output_moduia", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+    g_moduiOutB = jack_port_register(g_pJackClient, "output_moduib", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+    if(!(g_moduiInA) || !(g_moduiInB) || !(g_moduiOutA) | !(g_moduiOutB)) {
+        fprintf(stderr, "libzynmixer: Cannot register mod-ui ports\n");
+        exit(1);
+    }
+
     for(size_t chan = 0; chan < MAX_CHANNELS; ++chan)
     {
         g_dynamic[chan].level = 0.0;
