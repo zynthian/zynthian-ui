@@ -111,13 +111,87 @@ class zynthian_engine_jalv(zynthian_engine):
 		#"Helm": "helm"
 	}
 
-
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
 	plugin_ctrl_info = {
-		"default_synth": {
+		"_default_synth": {
+			"ctrls": [
+				['modulation wheel', 1, 0],
+				['sustain pedal', 64, 'off', 'off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers', ['volume', 'modulation wheel', 'sustain pedal']]]
+		},
+		"Calf Monosynth": {
+			"ctrls": [
+				['modulation wheel', 1, 0],
+			],
+			"ctrl_screens": [['MIDI Controllers', ['modulation wheel']]]
+		},
+		"Dexed": {
+			"ctrls": [
+				['sustain pedal', 64, 'off', 'off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers', ['sustain pedal']]]
+		},
+		"Fabla": {
+			"ctrls": [],
+			"ctrl_screens": []
+		},
+		"Foo YC20 Organ": {
+			"ctrls": [],
+			"ctrl_screens": []
+		},
+		"Helm": {
+			"ctrls": [
+				['sustain pedal', 64, 'off', 'off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers', ['sustain pedal']]]
+		},
+		"MDA DX10": {
+			"ctrls": [
+				['volume', 7, 96],
+				['mod-wheel', 1, 0],
+				['sustain on/off' ,64, 'off', 'off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers', ['volume', 'mod-wheel', 'sustain on/off']]]
+		},
+		"MDA JX10": {
+			"ctrls": [
+				['volume', 7, 96],
+				['mod-wheel', 1, 0],
+				['sustain on/off', 64, 'off', 'off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers', ['volume', 'mod-wheel', 'sustain on/off']]]
+		},
+		"MDA ePiano": {
+			"ctrls": [
+				['volume', 7, 96],
+				['mod-wheel', 1, 0],
+				['sustain on/off', 64, 'off', 'off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
+		},
+		"MDA Piano": {
+			"ctrls": [
+				['volume',7,96],
+				['mod-wheel',1,0],
+				['sustain on/off',64,'off','off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
+		},
+		"Nekobi": {
+			"ctrls": [
+				['sustain pedal', 64, 'off', 'off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers', ['sustain pedal']]]
+		},
+		"Noize Mak3r": {
+			"ctrls": [],
+			"ctrl_screens": []
+		},
+		"Obxd": {
 			"ctrls": [
 				['modulation wheel', 1, 0],
 				['sustain pedal', 64, 'off', 'off|on']
@@ -127,6 +201,46 @@ class zynthian_engine_jalv(zynthian_engine):
 		"Raffo Synth": {
 			"ctrls": [],
 			"ctrl_screens": []
+		},
+		"Red Zeppelin 5": {
+			"ctrls": [],
+			"ctrl_screens": []
+		},
+		"reMID": {
+			"ctrls": [
+				['volume',7,96],
+			],
+			"ctrl_screens": [['MIDI Controllers',['volume']]]
+		},
+		"String machine": {
+			"ctrls": [],
+			"ctrl_screens": []
+		},
+		"synthv1": {
+			"ctrls": [],
+			"ctrl_screens": []
+		},
+		"Surge": {
+			"ctrls": [
+				['modulation wheel', 1, 0],
+				['sustain pedal', 64, 'off', 'off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers',['modulation wheel','sustain pedal']]]
+		}
+		"padv1": {
+			"ctrls": [],
+			"ctrl_screens": []
+		},
+		"Vex": {
+			"ctrls": [],
+			"ctrl_screens": []
+		},
+		"amsynth": {
+			"ctrls": [
+				['modulation wheel', 1, 0],
+				['sustain pedal', 64, 'off', 'off|on']
+			],
+			"ctrl_screens": [['MIDI Controllers',['modulation wheel','sustain pedal']]]
 		}
 	}
 
@@ -207,8 +321,8 @@ class zynthian_engine_jalv(zynthian_engine):
 			except:
 				if self.type == "MIDI Synth":
 					# Set default MIDI controllers for MIDI synths
-					self._ctrls = copy.copy(self.plugin_ctrl_info['default_synth']['ctrls'])
-					self._ctrl_screens = copy.copy(self.plugin_ctrl_info['default_synth']['ctrl_screens'])
+					self._ctrls = copy.copy(self.plugin_ctrl_info['_default_synth']['ctrls'])
+					self._ctrl_screens = copy.copy(self.plugin_ctrl_info['_default_synth']['ctrl_screens'])
 				logging.info("No defined MIDI controllers for '{}'.".format(self.plugin_name))
 
 			# Generate LV2-Plugin Controllers
