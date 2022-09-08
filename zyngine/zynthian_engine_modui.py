@@ -32,12 +32,17 @@ from time import sleep
 from subprocess import check_output
 from threading  import Thread
 from collections import OrderedDict
+
+# Zynthian specific modules
 from . import zynthian_engine
 from . import zynthian_controller
+from zyncoder.zyncore import lib_zyncore
 
 #------------------------------------------------------------------------------
 # MOD-UI Engine Class
 #------------------------------------------------------------------------------
+
+ZMOP_MOD_INDEX = 17
 
 class zynthian_engine_modui(zynthian_engine):
 
@@ -124,12 +129,25 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	# ---------------------------------------------------------------------------
+	# MIDI Channel Management
+	# ---------------------------------------------------------------------------
+
+	def set_midi_chan(self, layer):
+		for ch in range(0,16):
+			if ch == layer.midi_chan:
+				lib_zyncore.zmop_set_midi_chan(ZMOP_MOD_INDEX, ch, ch)
+			else:
+				lib_zyncore.zmop_set_midi_chan(ZMOP_MOD_INDEX, ch, -1)
+
+
+	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
 
 	def add_layer(self, layer):
 		layer.listen_midi_cc = False
 		super().add_layer(layer)
+		self.set_midi_chan(layer)
 		if not self.ws_thread:
 			self.start_websocket()
 
