@@ -850,10 +850,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		for chan in range(self.zyngui.zynmixer.get_max_channels()):
 			self.zyngui.zynmixer.enable_dpm(chan, zynthian_gui_config.enable_dpm)
 		self.refresh_visible_strips()
-		if self.selected_chain_index == None:
-			self.select_chain_by_index(0)
-		else:
-			self.select_chain_by_index(self.selected_chain_index)
+		self.select_chain_by_layer(self.zyngui.curlayer)
 		self.setup_zynpots()
 
 
@@ -891,7 +888,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# layer: Layer object
 	# set_curlayer: True to select the layer
 	def select_chain_by_layer(self, layer, set_curlayer=True):
-		if layer.midi_chan == self.MAIN_MIXBUS_MIDI_CHANNEL:
+		if layer is None or layer.midi_chan == self.MAIN_MIXBUS_MIDI_CHANNEL:
 			self.select_chain_by_index(self.number_chains, set_curlayer)
 			return
 
@@ -920,7 +917,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to select chain by index
-	#	chain_index: Index of chain to select
+	#	chain_index: Index of chain to select (0..quantity of chains)
 	def select_chain_by_index(self, chain_index, set_curlayer=True):
 		if chain_index is None:
 			return
