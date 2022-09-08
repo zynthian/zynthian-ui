@@ -241,23 +241,25 @@ class zynthian_gui_selector(zynthian_gui_base):
 			index = 0
 		elif index >= len(self.list_data):
 			index = len(self.list_data) - 1
-		if not self.skip_separators(index):
-			# Set selection
-			self.listbox.selection_clear(0 ,tkinter.END)
-			self.listbox.selection_set(index)
-			# Set window
-			if see:
-				if index and index > self.index:
-					self.listbox.see(index + 1)
-				elif index < self.index:
-					self.listbox.see(index - 1)
-				else:
-					self.listbox.see(index)
-				if self.listbox.bbox(index):
-					self.list_entry_height = self.listbox.bbox(index)[3]
-			# Set index value
-			self.index = index
-			self.last_index_change_ts = datetime.now()
+		index = self.skip_separators(index)
+		# Set selection
+		self.listbox.selection_clear(0 ,tkinter.END)
+		if index is None:
+			return
+		self.listbox.selection_set(index)
+		# Set window
+		if see:
+			if index and index > self.index:
+				self.listbox.see(index + 1)
+			elif index < self.index:
+				self.listbox.see(index - 1)
+			else:
+				self.listbox.see(index)
+			if self.listbox.bbox(index):
+				self.list_entry_height = self.listbox.bbox(index)[3]
+		# Set index value
+		self.index = index
+		self.last_index_change_ts = datetime.now()
 
 
 	def select_listbox_by_name(self, name):
@@ -270,25 +272,29 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def skip_separators(self, index):
-		# Skip separator items ...
+		# Separators have 'None' as  first data element
 		if index >= 0 and index < len(self.list_data) and self.list_data[index][0] is None:
 			# Request to select a blank list entry
 			if self.index <= index:
-				# Request is higher than current entry so try to move down list
+    			# Request is higher than current entry so try to move down list
 				for i in range(index, len(self.list_data)):
 					if self.list_data[i][0] is not None:
-						# Found a valid entry so select and return
-						self.select_listbox(i)
-						return True
-			elif self.index > index:
+						return i
+				# No entries down list so let's search back up
+				for i in range(index, -1, -1):
+					if self.list_data[i][0] is not None:
+						return i
+			else:
 				# Request is lower than current entry so try to move up list
 				for i in range(index, -1, -1):
 					if self.list_data[i][0] is not None:
-						# Found a valid entry so select and return
-						self.select_listbox(i)
-						return True
-		else:
-			return False
+						return i
+				# No entires up list so let's search back down
+				for i in range(index, len(self.list_data)):
+					if self.list_data[i][0] is not None:
+						return i
+			return None # No valid entries in the listbox - must all be titles
+		return index
 
 
 	def select(self, index=None):
@@ -303,7 +309,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if index is not None:
 			self.select(index)
 		else:
-			self.skip_separators(self.get_cursel())
+			self.select(self.get_cursel())
 
 		self.select_action(self.index, t)
 
