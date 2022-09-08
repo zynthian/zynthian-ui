@@ -24,7 +24,6 @@
 #******************************************************************************
 
 from collections import OrderedDict
-import sys
 import logging
 
 # Zynthian specific modules
@@ -307,19 +306,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			options['[x] Phase reverse'] = 'phase'
 		else:
 			options['[  ] Phase reverse'] = 'phase'
-		if zynthian_gui_config.multichannel_recorder:
-			if self.layer.midi_chan is not None:
-				if self.zyngui.audio_recorder.get_status():
-					# Recording so don't allow change of primed state
-					if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
-						options['[x] Recording Primed'] = None
-					else:
-						options['[  ] Recording Primed'] = None
-				else:
-					if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
-						options['[x] Recording Primed'] = 'prime'
-					else:
-						options['[  ] Recording Primed'] = 'prime'
 
 		self.zyngui.screens['option'].config("Audio options", options, self.audio_menu_cb)
 		self.zyngui.show_screen('option')
@@ -330,8 +316,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.zyngui.zynmixer.toggle_mono(self.layer.midi_chan)
 		elif params == 'phase':
 			self.zyngui.zynmixer.toggle_phase(self.layer.midi_chan)
-		elif params == 'prime':
-			self.zyngui.audio_recorder.toggle_prime(self.layer.midi_chan)
 		self.audio_options()
 
 

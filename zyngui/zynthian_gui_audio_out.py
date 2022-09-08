@@ -27,6 +27,7 @@ import logging
 
 # Zynthian specific modules
 import zynautoconnect
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngine.zynthian_engine_modui import zynthian_engine_modui
 
@@ -92,6 +93,19 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 				else:
 					self.list_data.append((k, k, "[  ] " + title))
 
+		if zynthian_gui_config.multichannel_recorder:
+			if self.zyngui.audio_recorder.get_status():
+				# Recording so don't allow change of primed state
+				if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
+					self.list_data.append((None, 'record_disable', '[x] multitrack recorder'))
+				else:
+					self.list_data.append((None, 'record_enable', '[  ] multitrack recorder'))
+			else:
+				if self.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
+					self.list_data.append(('record', None, '[x] multitrack recorder'))
+				else:
+					self.list_data.append(('record', None, '[  ] multitrack recorder'))
+
 		super().fill_list()
 
 
@@ -100,7 +114,10 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		self.end_layer.toggle_audio_out(self.list_data[i][1])
+		if self.list_data[i][0] == 'record':
+			self.zyngui.audio_recorder.toggle_prime(self.layer.midi_chan)
+		else:
+			self.end_layer.toggle_audio_out(self.list_data[i][1])
 		self.fill_list()
 
 
