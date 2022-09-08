@@ -23,14 +23,12 @@
 # 
 #******************************************************************************
 
-import sys
-import tkinter
 import logging
 
 # Zynthian specific modules
 import zynautoconnect
-from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngine.zynthian_engine_modui import zynthian_engine_modui
 
 #------------------------------------------------------------------------------
 # Zynthian Audio-Out Selection GUI Class
@@ -39,6 +37,7 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_audio_out(zynthian_gui_selector):
 
 	def __init__(self):
+		self.layer = None
 		self.end_layer = None
 		super().__init__('Audio Out', True)
 
@@ -48,17 +47,25 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			self.end_layer = self.zyngui.screens['layer'].get_fxchain_ends(layer)[0]
 		except:
 			self.end_layer = None
+		self.layer = layer
 
 
 	def fill_list(self):
 		self.list_data = []
+		mod_running = False
+		if not (isinstance(self.layer.engine, zynthian_engine_modui) or isinstance(self.end_layer.engine, zynthian_engine_modui)):
+			for layer in self.zyngui.screens['layer'].root_layers:
+				if isinstance(layer.engine, zynthian_engine_modui):
+					mod_running = True
+					break
 
 		if self.end_layer:
 			port_names = list(zynautoconnect.get_audio_input_ports(True).keys())
 			if isinstance(self.end_layer, zynthian_gui_selector) or self.end_layer.midi_chan>=16:
 				port_names = ["system"] + port_names
 			port_names = ["mixer"] + port_names
-			port_names += ["mod-ui"]
+			if mod_running:
+				port_names += ["mod-ui"]
 
 			for k in port_names:
 				try:
