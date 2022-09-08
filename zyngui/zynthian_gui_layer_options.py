@@ -127,7 +127,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		self.list_data.append((None, None, "> Chain"))
 
-		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.midi_chan is not None:
+		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool', 'Special') and self.layer.engine.name != "MOD-UI":
 			# Add MIDI-FX options
 			self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 
