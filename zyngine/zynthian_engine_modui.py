@@ -71,7 +71,6 @@ class zynthian_engine_modui(zynthian_engine):
 		self.jackname = "mod-monitor"
 
 		#self.audio_out = []
-		self.options['note_range'] = False
 
 		self.websocket = None
 		self.ws_thread = None
@@ -675,15 +674,14 @@ class zynthian_engine_modui(zynthian_engine):
 		self.api_get_request("/reset")
 
 
-	#Connect unconnected MIDI-USB devices to the "input plugin" ...
+	# If not already connected, try to connect zynthian MIDI send to the "input plugins" ...
 	def graph_autoconnect_midi_input(self):
-		midi_zynthian = "/graph/zynthian_main_out"
-		midi_master = "/graph/serial_midi_in"
-		if midi_master in self.graph:
-			for dest in self.graph[midi_master]:
-				for src in self.hw_ports['midi']['input']:
-					if src!=midi_zynthian and src not in self.graph:
-						self.api_get_request("/effect/connect/"+src+","+dest)
+		midi_zynthian = "/graph/zynthian_midi_out"
+		midi_in = "/graph/serial_midi_in"
+		if midi_zynthian not in self.graph:
+			if midi_in in self.graph:
+				for dest in self.graph[midi_in]:
+					self.api_get_request("/effect/connect/{},{}".format(midi_zynthian, dest))
 
 
 	def enable_midi_devices(self, aggregated_mode=False):
