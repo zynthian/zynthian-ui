@@ -523,18 +523,13 @@ def audio_autoconnect(force=False):
 	#Get Zynmixer Playback Ports
 	playback_ports = zynmixer_playback_ports + system_playback_ports
 
-	# Disconnect Monitor from System Output and Reconnect to Zynmixer return
-	mon_in = jclient.get_ports("mod-monitor", is_output=True, is_audio=True)
+	# Disconnect mod-ui from System Output
+	mon_out = jclient.get_ports("mod-monitor", is_output=True, is_audio=True)
 	try:
-		jclient.disconnect(mon_in[0], 'system:playback_1')
-		jclient.disconnect(mon_in[1], 'system:playback_2')
+		jclient.disconnect(mon_out[0], 'system:playback_1')
+		jclient.disconnect(mon_out[1], 'system:playback_2')
 	except:
 		pass
-#	try:
-#		jclient.connect(mon_in[0], 'zynmixer:input_17a')
-#		jclient.connect(mon_in[1], 'zynmixer:input_17b')
-#	except:
-#		pass
 
 	#Get layers list from UI
 	layers_list = zynguilayer.layers
@@ -624,8 +619,8 @@ def audio_autoconnect(force=False):
 		mfx_iports_b = []
 		for rlp in zynguilayer.get_fxchain_pars(mfx_root_layer):
 			mfxp_iports = jclient.get_ports(rlp.get_audio_jackname(), is_input=True, is_audio=True)
-			if len(mfxp_iports)>0:
-				if len(mfxp_iports)==1:
+			if len(mfxp_iports) > 0:
+				if len(mfxp_iports) == 1:
 					mfxp_iports.append(mfxp_iports[0])
 				mfx_iports_a.append(mfxp_iports[0])
 				mfx_iports_b.append(mfxp_iports[1])
@@ -772,6 +767,8 @@ def get_layer_audio_out_ports(layer):
 				aout_ports += ["zynmixer:return_a", "zynmixer:return_b"]
 			else:
 				aout_ports += ["zynmixer:input_{:02d}a".format(layer.midi_chan + 1), "zynmixer:input_{:02d}b".format(layer.midi_chan + 1)]
+		elif p == "mod-ui":
+			aout_ports += ["zynmixer:input_moduia", "zynmixer:input_moduib"]
 		else:
 			aout_ports.append(p)
 	return list(dict.fromkeys(aout_ports).keys()) 

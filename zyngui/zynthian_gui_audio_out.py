@@ -58,6 +58,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			if isinstance(self.end_layer, zynthian_gui_selector) or self.end_layer.midi_chan>=16:
 				port_names = ["system"] + port_names
 			port_names = ["mixer"] + port_names
+			port_names += ["mod-ui"]
 
 			for k in port_names:
 				try:
