@@ -226,7 +226,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				['sustain pedal', 64, 'off', 'off|on']
 			],
 			"ctrl_screens": [['MIDI Controllers',['modulation wheel','sustain pedal']]]
-		}
+		},
 		"padv1": {
 			"ctrls": [],
 			"ctrl_screens": []
