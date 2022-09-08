@@ -190,6 +190,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.zyngui.screens['layer'].prev(True)
 
 
+	def switch(self, swi, t='S'):
+		if swi == 0:
+			if t == 'S':
+				self.arrow_right()
+				return True
+
 	def start_engine(self, eng, jackname = None):
 		if eng not in self.zyngines:
 			info = self.engine_info[eng]
