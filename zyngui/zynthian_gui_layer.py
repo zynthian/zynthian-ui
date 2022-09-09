@@ -195,15 +195,21 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def get_root_layer_index(self, layer=None):
 		if layer is None:
-			if self.amixer_layer==self.zyngui.curlayer:
-				layer = self.zyngui._curlayer
+			if self.amixer_layer == self.zyngui.curlayer:
+				layer = self.get_root_layer_by_midi_chan(self.zyngui._curlayer.midi_chan)
 			else:
-				layer = self.zyngui.curlayer
+				layer = self.get_root_layer_by_midi_chan(self.zyngui.curlayer.midi_chan)
 
 		try:
 			return self.root_layers.index(layer)
 		except:
 			return None
+
+
+	def get_root_layer_by_layer(self, layer):
+		if layer:
+			return self.get_root_layer_by_midi_chan(layer.midi_chan)
+		return None
 
 
 	def get_root_layer_by_midi_chan(self, mch):
@@ -387,35 +393,50 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def remove_layer(self, i, stop_unused_engines=True):
-		if i >= 0 and i < len(self.layers):
-			logging.debug("Removing layer {} => {} ...".format(i, self.layers[i].get_basepath()))
+		if i < 0 or i >= len(self.layers):
+			return
 
-			if self.layers[i] in self.root_layers:
-				refresh = True
-			else:
-				refresh = False
+		layer = self.layers[i]
+		logging.debug("Removing layer {} => {} ...".format(i, layer.get_basepath()))
 
-			if self.layers[i].engine.type == "MIDI Tool":
-				self.drop_from_midichain(self.layers[i])
-				self.layers[i].mute_midi_out()
-			else:
-				self.drop_from_fxchain(self.layers[i])
-				self.layers[i].mute_audio_out()
+		if layer in self.root_layers:
+			refresh = True
+		else:
+			refresh = False
 
-			self.zyngui.zynautoconnect(True)
+		if layer.engine.type == "MIDI Tool":
+			self.drop_from_midichain(layer)
+			layer.mute_midi_out()
+			# Handle removal of root layer
+			if layer in self.root_layers:
+				self.root_layers.remove(layer)
+				for l in self.layers:
+					if l.midi_chan == layer.midi_chan and l != layer:
+						self.root_layers.append(l)
+						if self.zyngui.curlayer == layer:
+							self.zyngui.curlayer = l
+						if self.zyngui._curlayer == layer:
+							self.zyngui._curlayer = l
+						self.zyngui.screens['layer_options'].reset()
+						break
+		else:
+			self.drop_from_fxchain(layer)
+			layer.mute_audio_out()
 
-			self.zyngui.zynautoconnect_acquire_lock()
-			self.layers[i].reset()
-			self.layers.pop(i)
-			self.delete_layer_state_from_zs3(i)
-			self.zyngui.zynautoconnect_release_lock()
+		self.zyngui.zynautoconnect(True)
 
-			# Stop unused engines
-			if stop_unused_engines:
-				self.zyngui.screens['engine'].stop_unused_engines()
+		self.zyngui.zynautoconnect_acquire_lock()
+		layer.reset()
+		self.layers.pop(i)
+		self.delete_layer_state_from_zs3(i)
+		self.zyngui.zynautoconnect_release_lock()
 
-			if refresh:
-				self.refresh()
+		# Stop unused engines
+		if stop_unused_engines:
+			self.zyngui.screens['engine'].stop_unused_engines()
+
+		if refresh:
+			self.refresh()
 
 
 	def remove_root_layer(self, i, stop_unused_engines=True):
@@ -1275,7 +1296,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			for up in self.get_midichain_upstream(layer):
 				logging.debug("Dropping from MIDI-chain {} => {}".format(up.get_midi_jackname(), layer.get_midi_jackname()))
 				up.del_midi_out(layer.get_midi_jackname())
-				if len(up.get_midi_out())==0:
+				if len(up.get_midi_out()) == 0:
 					up.set_midi_out(layer.get_midi_out())
 
 		except Exception as e:

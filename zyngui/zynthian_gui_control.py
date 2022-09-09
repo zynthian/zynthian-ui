@@ -132,6 +132,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 			# Get audio effects not including root
 			self.layers += self.zyngui.screens['layer'].get_fxchain_layers()
 
+		# Remove duplicates, e.g. root layer in MIDI only chains
+		self.layers = list(dict.fromkeys(self.layers))
+
 		i = 0
 		for layer in self.layers:
 			j = 0
