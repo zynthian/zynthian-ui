@@ -127,7 +127,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		self.list_data.append((None, None, "> Chain"))
 
 		if self.layer.engine.type in ('MIDI Synth', 'MIDI Tool'):
-    			# Add MIDI-FX options
+			# Add MIDI-FX options
 			self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 
 		self.list_data += self.generate_chaintree_menu()

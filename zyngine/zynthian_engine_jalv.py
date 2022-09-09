@@ -219,13 +219,16 @@ class zynthian_engine_jalv(zynthian_engine):
 			try:
 				if self.plugin_name in self.plugin_ctrl_info['ctrl_screens']:
 					ctrl_screen = self.plugin_ctrl_info['ctrl_screens'][self.plugin_name]
-				else:
+				elif self.type == 'MIDI Synth':
 					logging.info("Using default MIDI controllers for '{}'.".format(self.plugin_name))
 					ctrl_screen = self.plugin_ctrl_info['ctrl_screens']['_default_synth']
-				self._ctrl_screens = [['MIDI Controllers',copy.copy(ctrl_screen)]]
-				self._ctrls = []
-				for ctrl_name in ctrl_screen:
-					self._ctrls.append([ctrl_name] + self.plugin_ctrl_info['ctrls'][ctrl_name])
+				else:
+					ctrl_screen = None
+				if ctrl_screen:
+					self._ctrl_screens = [['MIDI Controllers',copy.copy(ctrl_screen)]]
+					self._ctrls = []
+					for ctrl_name in ctrl_screen:
+						self._ctrls.append([ctrl_name] + self.plugin_ctrl_info['ctrls'][ctrl_name])
 			except:
 				logging.error("Error setting MIDI controllers for '{}'.".format(self.plugin_name))
 				self._ctrls = None
