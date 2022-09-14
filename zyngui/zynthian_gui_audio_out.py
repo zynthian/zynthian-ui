@@ -27,6 +27,7 @@ import logging
 
 # Zynthian specific modules
 import zynautoconnect
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngine.zynthian_engine_modui import zynthian_engine_modui
 
