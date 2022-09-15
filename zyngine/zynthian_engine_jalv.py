@@ -70,12 +70,12 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	# Plugins that required different GUI toolkit to that advertised or cannot run native GUI on Zynthian
 	broken_ui = {
-			#'http://calf.sourceforge.net/plugins/Monosynth': {"RPi4:":True, "RPi3": False, "RPi2": False},
-			#'http://calf.sourceforge.net/plugins/Organ': {"RPi4:":True, "RPi3": False, "RPi2": False},
-			#'http://nickbailey.co.nr/triceratops': {"RPi4:":True, "RPi3": False, "RPi2": False},
-			#'http://code.google.com/p/amsynth/amsynth': {"RPi4:":True, "RPi3": False, "RPi2": False},
-			'http://gareus.org/oss/lv2/tuna#one': {"RPi4": False, "RPi3": False, "RPi2": False}, # Disable because CPU usage and widget implemented in main UI
-			"http://tytel.org/helm": {"RPi4": "Qt4UI", "RPi3": True, "RPi2": False} #Better CPU with gtk but only qt4 works on RPi4
+			#'http://calf.sourceforge.net/plugins/Monosynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
+			#'http://calf.sourceforge.net/plugins/Organ': {"RPi4:":True, "RPi3": False, "RPi2": False },
+			#'http://nickbailey.co.nr/triceratops': {"RPi4:":True, "RPi3": False, "RPi2": False },
+			#'http://code.google.com/p/amsynth/amsynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
+			'http://gareus.org/oss/lv2/tuna#one': {"RPi4": False, "RPi3": False, "RPi2": False }, # Disable because CPU usage and widget implemented in main UI
+			"http://tytel.org/helm": {"RPi4": "Qt4UI", "RPi3": True, "RPi2": False } # Better CPU with gtk but only qt4 works on RPi4
 	}
 	if "Raspberry Pi 4" in os.environ.get('RBPI_VERSION'):
 		rpi = "RPi4"
@@ -167,6 +167,12 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
+		# WARNING Show all controllers for Gareus Meters, as they seem to be wrongly marked with property "not_on_gui"
+		if self.plugin_url.startswith("http://gareus.org/oss/lv2/meters"):
+			self.ignore_not_on_gui = True
+		else:
+			self.ignore_not_on_gui = False
+
 		self.native_gui = False
 		if 'UI' in self.plugins_dict[plugin_name]:
 			self.native_gui = self.plugins_dict[plugin_name]['UI']
@@ -229,10 +235,13 @@ class zynthian_engine_jalv(zynthian_engine):
 					self._ctrls = []
 					for ctrl_name in ctrl_screen:
 						self._ctrls.append([ctrl_name] + self.plugin_ctrl_info['ctrls'][ctrl_name])
+				else:
+					self._ctrls = []
+					self._ctrl_screens = []
 			except:
 				logging.error("Error setting MIDI controllers for '{}'.".format(self.plugin_name))
-				self._ctrls = None
-				self._ctrl_screens = None
+				self._ctrls = []
+				self._ctrl_screens = []
 
 			# Generate LV2-Plugin Controllers
 			self.lv2_monitors_dict = OrderedDict()
@@ -660,7 +669,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				c = 1
 			for symbol, zctrl in gdata[1].items():
 				try:
-					if zctrl.not_on_gui:
+					if not self.ignore_not_on_gui and zctrl.not_on_gui:
 						continue
 					#logging.debug("CTRL {}".format(symbol))
 					ctrl_set.append(symbol)
