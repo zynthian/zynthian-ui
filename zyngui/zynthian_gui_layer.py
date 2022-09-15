@@ -194,13 +194,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_root_layer_index(self, layer=None):
-		if layer is None:
-			if self.amixer_layer == self.zyngui.curlayer:
-				layer = self.get_root_layer_by_midi_chan(self.zyngui._curlayer.midi_chan)
-			else:
-				layer = self.get_root_layer_by_midi_chan(self.zyngui.curlayer.midi_chan)
-
 		try:
+			if layer is None:
+				if self.amixer_layer == self.zyngui.curlayer:
+					layer = self.get_root_layer_by_midi_chan(self.zyngui._curlayer.midi_chan)
+				elif self.zyngui.curlayer:
+					layer = self.get_root_layer_by_midi_chan(self.zyngui.curlayer.midi_chan)
 			return self.root_layers.index(layer)
 		except:
 			return None
