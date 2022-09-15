@@ -255,9 +255,13 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			logging.debug("OSC => /load_xlz %s" % preset[0])
 		liblo.send(self.osc_target, "/volume")
 		i=0
-		while self.loading and i<100: 
+		while self.loading: 
 			sleep(0.1)
-			i=i+1
+			if i > 100:
+				self.stop_loading()
+				break
+			else:
+				i = i + 1
 		layer.send_ctrl_midi_cc()
 		return True
 
