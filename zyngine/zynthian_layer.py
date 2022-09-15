@@ -606,6 +606,7 @@ class zynthian_layer:
 
 	def restore_state_2(self, state):
 
+		# WARNING => This is really UGLY!
 		# For non-LV2 engines, bank and preset can affect what controllers do.
 		# In case of LV2, just restoring the controllers ought to be enough, which is nice
 		# since it saves the 0.2 second delay between setting a preset and updating controllers.
@@ -631,7 +632,7 @@ class zynthian_layer:
 
 	def wait_stop_loading(self):
 		while self.engine.loading>0:
-			logging.debug("WAITING FOR STOP LOADING ...")
+			logging.debug("WAITING FOR STOP LOADING ({}) ... => {}".format(self.engine.name,self.engine.loading))
 			sleep(0.1)
 
 
