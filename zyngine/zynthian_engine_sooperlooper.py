@@ -164,12 +164,14 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.jackname = "sooperlooper"
 		self.type = "Audio Effect"
 
+		self.osc_target_port = self.SL_PORT
+
 		self.options['note_range'] = False
 		self.options['audio_capture'] = True
 		self.options['drop_pc'] = True
 		self.options['clone'] = False
 
-		self.command = ['sooperlooper', '-q', '-l 0', '-D no', '-p {}'.format(self.SL_PORT), '-j{}'.format(self.jackname)]
+		self.command = ['sooperlooper', '-q', '-l 0', '-D no', '-p {}'.format(self.osc_target_port), '-j{}'.format(self.jackname)]
 
 		self.state = [-1] * self.MAX_LOOPS # Current SL state for each loop
 		self.next_state = [-1] * self.MAX_LOOPS # Next SL state for each loop (-1 if no state change pending)
@@ -250,26 +252,26 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 	def start(self):
 		#logging.warning("Starting SooperLooper")
-		self.osc_init(self.SL_PORT)
+		self.osc_init()
 		self.proc = Popen(self.command, stdout=DEVNULL, stderr=DEVNULL)
 		sleep(1) #TODO: Cludgy wait - maybe should perform periodic check for server until reachable
 
 		# Register for common events from sooperlooper server - request changes to the currently selected loop
 		for symbol in self.SL_MONITORS:
-			liblo.send(self.osc_target, '/sl/-3/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
+			self.osc_server.send(self.osc_target, '/sl/-3/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
 		for symbol in self.SL_LOOP_PARAMS:
-			liblo.send(self.osc_target, '/sl/-3/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/control'))
+			self.osc_server.send(self.osc_target, '/sl/-3/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/control'))
 		for symbol in self.SL_LOOP_GLOBAL_PARAMS:
 			# Register for tallies of commands sent to all channels
-			liblo.send(self.osc_target, '/sl/-3/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/control'))
+			self.osc_server.send(self.osc_target, '/sl/-3/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/control'))
 
 		# Register for global events from sooperlooper
 		for symbol in self.SL_GLOBAL_PARAMS:
-			liblo.send(self.osc_target, '/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/control'))
-		liblo.send(self.osc_target, '/register', ('s', self.osc_server_url), ('s', '/info'))
+			self.osc_server.send(self.osc_target, '/register_auto_update', ('s', symbol), ('i', 100), ('s', self.osc_server_url), ('s', '/control'))
+		self.osc_server.send(self.osc_target, '/register', ('s', self.osc_server_url), ('s', '/info'))
 
 		# Request current quantity of loops
-		liblo.send(self.osc_target, '/ping', ('s', self.osc_server_url), ('s', '/info'))
+		self.osc_server.send(self.osc_target, '/ping', ('s', self.osc_server_url), ('s', '/info'))
 
 
 	def stop(self):
@@ -282,6 +284,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				self.proc = None
 			except Exception as err:
 				logging.error("Can't stop engine {} => {}".format(self.name, err))
+
+		self.osc_end()
 
 
 	# ---------------------------------------------------------------------------
@@ -314,25 +318,25 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		liblo.send(self.osc_target, '/load_session', ('s', preset[0]),  ('s', self.osc_server_url), ('s', '/error'))
+		self.osc_server.send(self.osc_target, '/load_session', ('s', preset[0]),  ('s', self.osc_server_url), ('s', '/error'))
 		sleep(0.5) # Wait for session to load to avoid consequent controller change conflicts
 
 		# Request quantity of loops in session
-		liblo.send(self.osc_target, '/ping', ('s', self.osc_server_url), ('s', '/info'))
+		self.osc_server.send(self.osc_target, '/ping', ('s', self.osc_server_url), ('s', '/info'))
 
 		for symbol in self.SL_MONITORS:
-			liblo.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/monitor'))
+			self.osc_server.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/monitor'))
 		for symbol in self.SL_LOOP_PARAMS:
-			liblo.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
+			self.osc_server.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
 		for symbol in self.SL_LOOP_GLOBAL_PARAMS:
-			liblo.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
+			self.osc_server.send(self.osc_target, '/sl/-3/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
 		for symbol in self.SL_GLOBAL_PARAMS:
-			liblo.send(self.osc_target, '/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
+			self.osc_server.send(self.osc_target, '/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
 
 		sleep(0.5) # Wait for controls to update
 
 		# Start loops (muted) to synchronise
-		liblo.send(self.osc_target, '/sl/-1/hit', ('s', 'mute'))
+		self.osc_server.send(self.osc_target, '/sl/-1/hit', ('s', 'mute'))
 
 
 	def preset_exists(self, bank_info, preset_name):
@@ -348,7 +352,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				logging.warning("Failed to create SooperLooper user preset directory: {}".format(e))
 		uri = '{}/{}.slsess'.format(path, preset_name)
 		# Undocumented feature: set 4th (int) parameter to 1 to save loop audio
-		liblo.send(self.osc_target, '/save_session', ('s', uri),  ('s', self.osc_server_url), ('s', '/error'), ('i', 1))
+		self.osc_server.send(self.osc_target, '/save_session', ('s', uri),  ('s', self.osc_server_url), ('s', '/error'), ('i', 1))
 		return uri
 
 
@@ -399,60 +403,47 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			# Use is_toggle to indicate the SL function is a toggle, i.e. press to engage, press to release
 			if zctrl.symbol == 'record' and zctrl.value == 0 and self.state[self.selected_loop] == 1:
     			#TODO: Implement better toggle of pending state
-				liblo.send(self.osc_target, '/sl/-3/hit', ('s', 'undo'))
+				self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'undo'))
 				return
-			liblo.send(self.osc_target, '/sl/-3/hit', ('s', zctrl.symbol))
+			self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', zctrl.symbol))
 			if zctrl.symbol == 'trigger':
 				zctrl.set_value(0, False) # Make trigger a pulse
 		elif zctrl.symbol == 'undo/redo':
 			# Use single controller to perform undo (CCW) and redo (CW)
 			if zctrl.value == 0:
-				liblo.send(self.osc_target, '/sl/-3/hit', ('s', 'undo'))
+				self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'undo'))
 			elif zctrl.value == 2:
-				liblo.send(self.osc_target, '/sl/-3/hit', ('s', 'redo'))
+				self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'redo'))
 			zctrl.set_value(1, False)
 		elif zctrl.symbol == 'selected_loop_num':
 			self.select_loop(zctrl.value - 1, True)
 		elif zctrl.symbol == 'loop_count':
 			for loop in range(self.loop_count, zctrl.value):
-				liblo.send(self.osc_target, '/loop_add', ('i', self.channels), ('f', 30), ('i', 0))
+				self.osc_server.send(self.osc_target, '/loop_add', ('i', self.channels), ('f', 30), ('i', 0))
 			if zctrl.value < self.loop_count:
 				# Don't remove loops - let GUI offer option to (confirm and) remove
 				zctrl.set_value(self.loop_count, False)
 				self.monitors_dict['loop_del'] = True
 		else:
 			if zctrl.symbol in self.SL_LOOP_PARAMS: # Selected loop
-				liblo.send(self.osc_target, '/sl/-3/set', ('s', zctrl.symbol), ('f', zctrl.value))
+				self.osc_server.send(self.osc_target, '/sl/-3/set', ('s', zctrl.symbol), ('f', zctrl.value))
 			if zctrl.symbol in self.SL_LOOP_GLOBAL_PARAMS: # All loops
-				liblo.send(self.osc_target, '/sl/-1/set', ('s', zctrl.symbol), ('f', zctrl.value))
+				self.osc_server.send(self.osc_target, '/sl/-1/set', ('s', zctrl.symbol), ('f', zctrl.value))
 			if zctrl.symbol in self.SL_GLOBAL_PARAMS: # Global params
-				liblo.send(self.osc_target, '/set', ('s', zctrl.symbol), ('f', zctrl.value))
+				self.osc_server.send(self.osc_target, '/set', ('s', zctrl.symbol), ('f', zctrl.value))
 
 
 	def get_monitors_dict(self):
 		return self.monitors_dict
 
 
-	# ---------------------------------------------------------------------------
-	# Specific functions
-	# ---------------------------------------------------------------------------
-
-	# Update each mutually exclusive 'state' controller to match state of selected loop
-	def update_state(self):
-		for state in self.SL_STATES:
-			if state < 0:
-				continue
-			if self.SL_STATES[state]['symbol']:
-				if state == self.state[self.selected_loop]:
-					self.zctrls[self.SL_STATES[state]['symbol']].set_value(1, False)
-				else:
-					self.zctrls[self.SL_STATES[state]['symbol']].set_value(0, False)
-		#self.layers[0].status = self.SL_STATES[self.state]['icon']
-
+	#----------------------------------------------------------------------------
+	# OSC Managament
+	#----------------------------------------------------------------------------
 
 	def cb_osc_all(self, path, args, types, src):
 		try:
-			#logging.warning("Rx OSC: {} {}".format(path,args))
+			#logging.debug("Rx OSC => {} {}".format(path, args))
 			if path == '/state':
 				# args: i:Loop index, s:control, f:value
 				#logging.warning("Loop: %d %s=%0.1f", args[0], args[1], args[2])
@@ -499,19 +490,19 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 						pass # zctrls may not yet be initialised
 					if loop_count_changed > 0:
 						for i in range(loop_count_changed):
-							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'loop_pos'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
-							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'loop_len'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
-							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'mute'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
-							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
-							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'next_state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
-							liblo.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'waiting'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
+							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'loop_pos'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
+							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'loop_len'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
+							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'mute'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
+							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
+							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'next_state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
+							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'waiting'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
 							if self.loop_count > 1:
 								# Set defaults for new loops
-								liblo.send(self.osc_target, '/sl/{}/set'.format(self.loop_count - 1 - i), ('s', 'sync'), ('f', 1))
+								self.osc_server.send(self.osc_target, '/sl/{}/set'.format(self.loop_count - 1 - i), ('s', 'sync'), ('f', 1))
 						if self.loop_count > 1:
 							self.select_loop(self.loop_count - 1, True)
 
-					liblo.send(self.osc_target, '/get', ('s', 'sync_source'), ('s', self.osc_server_url), ('s', '/control'))
+					self.osc_server.send(self.osc_target, '/get', ('s', 'sync_source'), ('s', self.osc_server_url), ('s', '/control'))
 					if self.selected_loop > self.loop_count:
 						self.select_loop(self.loop_count - 1, True)
 
@@ -552,6 +543,23 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			logging.warning(e)
 
 
+	# ---------------------------------------------------------------------------
+	# Specific functions
+	# ---------------------------------------------------------------------------
+
+	# Update each mutually exclusive 'state' controller to match state of selected loop
+	def update_state(self):
+		for state in self.SL_STATES:
+			if state < 0:
+				continue
+			if self.SL_STATES[state]['symbol']:
+				if state == self.state[self.selected_loop]:
+					self.zctrls[self.SL_STATES[state]['symbol']].set_value(1, False)
+				else:
+					self.zctrls[self.SL_STATES[state]['symbol']].set_value(0, False)
+		#self.layers[0].status = self.SL_STATES[self.state]['icon']
+
+
 	def select_loop(self, loop, send=False):
 		if loop < 0 or loop >= self.MAX_LOOPS:
 			return #TODO: Handle -1 == all loops
@@ -564,7 +572,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		except:
 			pass
 		if send:
-			liblo.send(self.osc_target, '/set', ('s', 'selected_loop_num'), ('f', self.selected_loop))
+			self.osc_server.send(self.osc_target, '/set', ('s', 'selected_loop_num'), ('f', self.selected_loop))
 
 	# ---------------------------------------------------------------------------
 	# API methods

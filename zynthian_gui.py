@@ -40,21 +40,21 @@ from glob import glob
 from datetime import datetime
 from threading  import Thread, Lock
 
-
 # Zynthian specific modules
 import zynconf
 import zynautoconnect
+
 from zyncoder.zyncore import lib_zyncore
-from zyngui.zynthian_gui_base import zynthian_gui_base
-from zyngine import zynthian_engine_audio_mixer
 from zynlibs.zynaudioplayer import zynaudioplayer
 from zynlibs.zynseq import zynseq
 
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
+from zyngine import zynthian_engine_audio_mixer
 
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
+from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
@@ -224,28 +224,19 @@ class zynthian_gui:
 		# Init LEDs
 		self.init_wsleds()
 
-		# Create vcgencmd instance
-		#self.vcgencmd = Vcgencmd()
-
 		# Load keyboard binding map
 		zynthian_gui_keybinding.getInstance().load()
 
 		# Get Jackd Options
 		self.jackd_options = zynconf.get_jackd_options()
 
+		# OSC config values
+		self.osc_proto = liblo.UDP
+		self.osc_server_port = 1370
+
 		# Dictionary of {OSC clients, last heartbeat} registered for mixer feedback
 		self.osc_clients = {}
 		self.osc_heartbeat_timeout = 120 # Heartbeat timeout period
-
-		# Initialize peakmeter audio monitor if needed
-#		if not zynthian_gui_config.show_cpu_status:
-#			try:
-#				global lib_jackpeak
-#				lib_jackpeak = lib_jackpeak_init()
-#				lib_jackpeak.setDecay(ctypes.c_float(0.2))
-#				lib_jackpeak.setHoldCount(10)
-#			except Exception as e:
-#				logging.error("ERROR initializing jackpeak: %s" % e)
 
 		# Initialize MIDI & Switches
 		try:
@@ -488,7 +479,7 @@ class zynthian_gui:
 			self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
 
 		except Exception as e:
-			logging.error("ERROR initializing MIDI : %s" % e)
+			logging.error("ERROR initializing MIDI : {}".format(e))
 
 
 	def init_midi_services(self):
@@ -513,14 +504,13 @@ class zynthian_gui:
 	# OSC Management
 	# ---------------------------------------------------------------------------
 
-	def osc_init(self, port=1370, proto=liblo.UDP):
+	def osc_init(self):
 		try:
-			self.osc_server=liblo.Server(port,proto)
+			self.osc_server=liblo.Server(self.osc_server_port, self.osc_proto)
 			self.osc_server_port=self.osc_server.get_port()
-			self.osc_server_url=liblo.Address('localhost',self.osc_server_port,proto).get_url()
+			self.osc_server_url=liblo.Address('localhost', self.osc_server_port,self.osc_proto).get_url()
 			logging.info("ZYNTHIAN-UI OSC server running in port {}".format(self.osc_server_port))
 			self.osc_server.add_method(None, None, self.osc_cb_all)
-			#self.osc_server.start()
 		#except liblo.AddressError as err:
 		except Exception as err:
 			logging.error("ZYNTHIAN-UI OSC Server can't be started: {}".format(err))
@@ -529,10 +519,10 @@ class zynthian_gui:
 	def osc_end(self):
 		if self.osc_server:
 			try:
-				#self.osc_server.stop()
+				self.osc_server.free()
 				logging.info("ZYNTHIAN-UI OSC server stopped")
 			except Exception as err:
-				logging.error("Can't stop ZYNTHIAN-UI OSC server => %s" % err)
+				logging.error("ZYNTHIAN-UI OSC server can't be stopped: {}".format(err))
 
 
 	def osc_receive(self):
@@ -543,7 +533,7 @@ class zynthian_gui:
 	#@liblo.make_method("RELOAD_MIDI_CONFIG", None)
 	#@liblo.make_method(None, None)
 	def osc_cb_all(self, path, args, types, src):
-		logging.info("OSC MESSAGE '%s' from '%s'" % (path, src.url))
+		logging.info("OSC MESSAGE '{}' from '{}'".format(path, src.url))
 
 		parts = path.split("/", 2)
 		part1 = parts[1].upper()
@@ -559,7 +549,7 @@ class zynthian_gui:
 					try:
 						self.zynmixer.addOscClient(ctypes.c_char_p(src.hostname.encode('utf-8')))
 					except:
-						logging.warning("Failed to add OSC client registration %s", src.hostname)
+						logging.warning("Failed to add OSC client registration {}".format(src.hostname))
 				self.osc_clients[src.hostname] = monotonic()
 			else:
 				if part2[:6] == "VOLUME":

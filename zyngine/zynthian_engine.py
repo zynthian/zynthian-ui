@@ -31,9 +31,10 @@ import liblo
 import logging
 import pexpect
 from time import sleep
-from os.path import isfile, isdir, join
 from string import Template
+from threading  import Thread
 from collections import OrderedDict
+from os.path import isfile, isdir, join
 
 from . import zynthian_controller
 
@@ -187,6 +188,7 @@ class zynthian_engine(zynthian_basic_engine):
 			'layer_audio_out': True
 		}
 
+		self.osc_proto = liblo.UDP
 		self.osc_target = None
 		self.osc_target_port = None
 		self.osc_server = None
@@ -273,29 +275,30 @@ class zynthian_engine(zynthian_basic_engine):
 	# OSC Management
 	# ---------------------------------------------------------------------------
 
-	def osc_init(self, target_port=None, proto=liblo.UDP):
-		if target_port:
-			self.osc_target_port = target_port
-		try:
-			self.osc_target = liblo.Address('localhost', self.osc_target_port, proto)
-			logging.info("OSC target in port %s" % str(self.osc_target_port))
-			self.osc_server = liblo.ServerThread(None, proto)
-			self.osc_server_port = self.osc_server.get_port()
-			self.osc_server_url = liblo.Address('localhost', self.osc_server_port, proto).get_url()
-			logging.info("OSC server running in port %s" % str(self.osc_server_port))
-			self.osc_add_methods()
-			self.osc_server.start()
-		except liblo.AddressError as err:
-			logging.error("OSC Server can't be initialized (%s). Running without OSC feedback." % err)
+	def osc_init(self):
+		if self.osc_target_port:
+			try:
+				self.osc_target = liblo.Address('localhost', self.osc_target_port, self.osc_proto)
+				logging.info("OSC target in port {}".format(self.osc_target_port))
+				self.osc_server = liblo.ServerThread(None, self.osc_proto, reg_methods=False)
+				#self.osc_server = liblo.Server(None, self.osc_proto, reg_methods=False)
+				self.osc_server_port = self.osc_server.get_port()
+				self.osc_server_url = liblo.Address('localhost', self.osc_server_port, self.osc_proto).get_url()
+				logging.info("OSC server running in port {}".format(self.osc_server_port))
+				self.osc_add_methods()
+				self.osc_server.start()
+			except liblo.AddressError as err:
+				logging.error("OSC Server can't be started ({}). Running without OSC feedback.".format(err))
 
 
 	def osc_end(self):
 		if self.osc_server:
 			try:
-				#self.osc_server.stop()
+				self.osc_server.stop()
+				self.osc_server.free()
 				logging.info("OSC server stopped")
 			except Exception as err:
-				logging.error("Can't stop OSC server => %s" % err)
+				logging.error("OSC server can't be stopped => {}".format(err))
 
 
 	def osc_add_methods(self):
@@ -303,10 +306,23 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def cb_osc_all(self, path, args, types, src):
-		logging.info("OSC MESSAGE '%s' from '%s'" % (path, src.url))
+		logging.info("OSC MESSAGE '{}' from '{}'".format(path, src.url))
 		for a, t in zip(args, types):
-			logging.debug("argument of type '%s': %s" % (t, a))
+			logging.debug("argument of type '{}': {}".format(t, a))
 
+
+	# ---------------------------------------------------------------------------
+	# Subproccess Management & IPC
+	# ---------------------------------------------------------------------------
+
+	def start(self):
+		self.osc_init()
+		super().start()
+
+
+	def stop(self):
+		super().stop()
+		self.osc_end()
 
 	# ---------------------------------------------------------------------------
 	# Generating list from different sources

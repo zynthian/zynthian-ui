@@ -166,13 +166,14 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		self.slot_zctrls = {}
 
 		self.start()
-		self.osc_init()
 		self.reset()
 		
 		
 	def reset(self):
 		super().reset()
 		self.disable_all_parts()
+
+
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
@@ -197,7 +198,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def set_midi_chan(self, layer):
 		if layer.part_i is not None:
-			liblo.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
+			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
@@ -241,19 +242,19 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		self.start_loading()
 		if preset[3]=='xiz':
 			self.enable_part(layer)
-			liblo.send(self.osc_target, "/load-part",layer.part_i,preset[0])
+			self.osc_server.send(self.osc_target, "/load-part",layer.part_i,preset[0])
 			#logging.debug("OSC => /load-part %s, %s" % (layer.part_i,preset[0]))
 		elif preset[3]=='xmz':
 			self.enable_part(layer)
-			liblo.send(self.osc_target, "/load_xmz",preset[0])
+			self.osc_server.send(self.osc_target, "/load_xmz",preset[0])
 			logging.debug("OSC => /load_xmz %s" % preset[0])
 		elif preset[3]=='xsz':
-			liblo.send(self.osc_target, "/load_xsz",preset[0])
+			self.osc_server.send(self.osc_target, "/load_xsz",preset[0])
 			logging.debug("OSC => /load_xsz %s" % preset[0])
 		elif preset[3]=='xlz':
-			liblo.send(self.osc_target, "/load_xlz",preset[0])
+			self.osc_server.send(self.osc_target, "/load_xlz",preset[0])
 			logging.debug("OSC => /load_xlz %s" % preset[0])
-		liblo.send(self.osc_target, "/volume")
+		self.osc_server.send(self.osc_target, "/volume")
 		i=0
 		while self.loading: 
 			sleep(0.1)
@@ -292,12 +293,12 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def enable_part(self, layer):
 		if layer.part_i is not None:
-			liblo.send(self.osc_target, "/part%d/Penabled" % layer.part_i, True)
-			liblo.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
+			self.osc_server.send(self.osc_target, "/part%d/Penabled" % layer.part_i, True)
+			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
 
 
 	def disable_part(self, i):
-		liblo.send(self.osc_target, "/part%d/Penabled" % i, False)
+		self.osc_server.send(self.osc_target, "/part%d/Penabled" % i, False)
 
 
 	def enable_layer_parts(self):
@@ -315,79 +316,21 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# OSC Managament
 	#----------------------------------------------------------------------------
 
-	def osc_add_methods(self):
-		self.osc_server.add_method("/volume", 'i', self.cb_osc_load_preset)
-		#self.osc_server.add_method("/paths", None, self.cb_osc_paths)
-		#super().osc_add_methods()
 
-
-	def cb_osc_load_preset(self, path, args):
-		self.stop_loading()
+	def cb_osc_all(self, path, args, types, src):
+		try:
+			#logging.debug("Rx OSC => {} {}".format(path, args))
+			if path == '/volume':
+				self.stop_loading()
+		except Exception as e:
+			logging.warning(e)
 
 
 	def send_controller_value(self, zctrl):
 		if zctrl.osc_path:
-			liblo.send(self.osc_target,zctrl.osc_path, zctrl.get_ctrl_osc_val())
+			self.osc_server.send(self.osc_target,zctrl.osc_path, zctrl.get_ctrl_osc_val())
 		else:
 			raise Exception("NO OSC CONTROLLER")
-
-	# ---------------------------------------------------------------------------
-	# Deprecated functions
-	# ---------------------------------------------------------------------------
-
-	def cb_osc_paths(self, path, args, types, src):
-		self.get_cb_osc_paths(path, args, types, src)
-		self.zyngui.screens['control'].list_data=self.osc_paths_data
-		self.zyngui.screens['control'].fill_list()
-
-
-	def get_cb_osc_paths(self, path, args, types, src):
-		for a, t in zip(args, types):
-			if not a or t=='b':
-				continue
-			print("=> %s (%s)" % (a,t))
-			a=str(a)
-			postfix=prefix=firstchar=lastchar=''
-			if a[-1:]=='/':
-				tnode='dir'
-				postfix=lastchar='/'
-				a=a[:-1]
-			elif a[-1:]==':':
-				tnode='cmd'
-				postfix=':'
-				a=a[:-1]
-				continue
-			elif a[0]=='P':
-				tnode='par'
-				firstchar='P'
-				a=a[1:]
-			else:
-				continue
-			parts=a.split('::')
-			if len(parts)>1:
-				a=parts[0]
-				pargs=parts[1]
-				if tnode=='par':
-					if pargs=='i':
-						tnode='ctrl'
-						postfix=':i'
-					elif pargs=='T:F':
-						tnode='bool'
-						postfix=':b'
-					else:
-						continue
-			parts=a.split('#',1)
-			if len(parts)>1:
-				n=int(parts[1])
-				if n>0:
-					for i in range(0,n):
-						title=prefix+parts[0]+str(i)+postfix
-						path=firstchar+parts[0]+str(i)+lastchar
-						self.osc_paths.append((path,tnode,title))
-			else:
-				title=prefix+a+postfix
-				path=firstchar+a+lastchar
-				self.osc_paths_data.append((path,tnode,title))
 
 	# ---------------------------------------------------------------------------
 	# API methods
