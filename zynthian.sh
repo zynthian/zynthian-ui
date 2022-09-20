@@ -153,7 +153,7 @@ while true; do
 		;;
 		102)
 			splash_zynthian
-			sleep 1
+			sleep 10 #FIXME: Long wait to work around slow stopping threads causing xruns after restart
 		;;
 		*)
 			splash_zynthian_error $status
