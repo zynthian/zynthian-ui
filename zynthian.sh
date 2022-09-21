@@ -194,7 +194,7 @@ while true; do
 		;;
 		102)
 			splash_zynthian_message "Restarting UI ..."
-			sleep 1
+			sleep 5
 		;;
 		*)
 			splash_zynthian_error_exit_ip $status
