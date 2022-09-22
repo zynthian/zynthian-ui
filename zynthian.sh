@@ -144,6 +144,15 @@ function splash_zynthian_error_exit_ip() {
 
 
 backlight_on
+screensaver_off
+
+#------------------------------------------------------------------------------
+# If needed, generate splash screen images
+#------------------------------------------------------------------------------
+
+if [ ! -d $ZYNTHIAN_CONFIG_DIR/img ]; then
+	$ZYNTHIAN_SYS_DIR/sbin/generate_fb_splash.sh
+fi
 
 #------------------------------------------------------------------------------
 # Detect first boot
@@ -151,12 +160,21 @@ backlight_on
 
 if [[ "$(systemctl is-enabled first_boot)" == "enabled" ]]; then
 	echo "Running first boot ..."
-	splash_zynthian_message "Setting-Up Zynthian. Please wait ..."
-	screensaver_off
+	splash_zynthian_message "Configuring your zynthian. Please wait ..."
 	sleep 1800
-	splash_zynthian_error "It takes too long: bad sdcard/image, poor power supply ..."
+	splash_zynthian_error "It takes too long! Bad sdcard/image, poor power supply ..."
 	sleep 3600000
 	exit
+fi
+
+#------------------------------------------------------------------------------
+# Build zyncore if needed
+#------------------------------------------------------------------------------
+
+if [ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]; then
+	splash_zynthian_message "Building zyncore. Please wait ..."
+	load_config_env
+	$ZYNTHIAN_DIR/zyncoder/build.sh
 fi
 
 #------------------------------------------------------------------------------
@@ -164,11 +182,9 @@ fi
 #------------------------------------------------------------------------------
 
 splash_zynthian
-screensaver_off
+load_config_env
 
 while true; do
-	#Load Config Environment
-	load_config_env
 
 	# Start Zynthian GUI & Synth Engine
 	cd $ZYNTHIAN_UI_DIR
@@ -194,10 +210,12 @@ while true; do
 		;;
 		102)
 			splash_zynthian_message "Restarting UI ..."
+			load_config_env
 			sleep 5
 		;;
 		*)
 			splash_zynthian_error_exit_ip $status
+			load_config_env
 			sleep 3
 		;;
 	esac
