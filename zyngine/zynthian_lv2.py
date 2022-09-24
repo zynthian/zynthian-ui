@@ -463,6 +463,8 @@ def get_plugin_ports(plugin_url):
 					pgroup_index = int(pgroup_index)
 					#logging.warning("Port group <{}> has no index.".format(pgroup_key))
 				pgroup_name = world.get(pgroup, world.ns.lv2.name, None)
+				if pgroup_name is None:
+					pgroup_name = world.get(pgroup, world.ns.rdfs.label, None)
 				if pgroup_name is not None:
 					pgroup_name = str(pgroup_name)
 					#logging.warning("Port group <{}> has no name.".format(pgroup_key))
