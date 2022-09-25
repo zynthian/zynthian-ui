@@ -24,7 +24,7 @@
 # 
 #******************************************************************************
 
-import threading
+from threading import Thread
 import tkinter
 from PIL import Image, ImageTk
 import os
@@ -179,8 +179,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 			if self.filename != self.monitors["filename"] or self.duration != dur:
 				if(dur):
-					x = threading.Thread(target=self.load_image)
-					x.start()
+					waveform_thread = Thread(target=self.load_image, name="waveform image")
+					waveform_thread.start()
 				else:
 					self.widget_canvas.itemconfigure(self.loading_text, text="No\nfile\nloaded")
 					self.widget_canvas.itemconfigure(self.waveform, state=tkinter.HIDDEN)
