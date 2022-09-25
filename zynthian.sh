@@ -155,19 +155,6 @@ if [ ! -d $ZYNTHIAN_CONFIG_DIR/img ]; then
 fi
 
 #------------------------------------------------------------------------------
-# Detect first boot
-#------------------------------------------------------------------------------
-
-if [[ "$(systemctl is-enabled first_boot)" == "enabled" ]]; then
-	echo "Running first boot ..."
-	splash_zynthian_message "Configuring your zynthian. Please wait ..."
-	sleep 1800
-	splash_zynthian_error "It takes too long! Bad sdcard/image, poor power supply ..."
-	sleep 3600000
-	exit
-fi
-
-#------------------------------------------------------------------------------
 # Build zyncore if needed
 #------------------------------------------------------------------------------
 
@@ -175,6 +162,19 @@ if [ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]; then
 	splash_zynthian_message "Building zyncore. Please wait ..."
 	load_config_env
 	$ZYNTHIAN_DIR/zyncoder/build.sh
+fi
+
+#------------------------------------------------------------------------------
+# Detect first boot
+#------------------------------------------------------------------------------
+
+if [[ "$(systemctl is-enabled first_boot)" == "enabled" ]]; then
+	echo "Running first boot ..."
+	splash_zynthian_message "Configuring your zynthian. Take a beer and relax ..."
+	sleep 1800
+	splash_zynthian_error "It takes too long! Bad sdcard/image, poor power supply ..."
+	sleep 3600000
+	exit
 fi
 
 #------------------------------------------------------------------------------
