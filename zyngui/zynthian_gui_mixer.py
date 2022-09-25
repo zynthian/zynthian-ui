@@ -250,7 +250,7 @@ class zynthian_gui_mixer_strip():
 
 
 	def refresh_status(self):
-		if self.parent.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
+		if self.parent.zyngui.audio_recorder.is_armed(self.layer.midi_chan):
 			self.parent.main_canvas.itemconfig(self.status_indicator, text="{}\uf111".format(self.layer.status), fill=self.high_color)
 		else:
 			self.parent.main_canvas.itemconfig(self.status_indicator, text=self.layer.status, fill="#009000")

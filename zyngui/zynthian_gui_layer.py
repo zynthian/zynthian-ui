@@ -76,7 +76,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.reset_note_range()
 		self.remove_all_layers(True)
 		self.reset_midi_profile()
-		self.reset_audio_recorder_prime()
+		self.reset_audio_recorder_arm()
 
 
 	def fill_list(self):
@@ -858,9 +858,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.set_midi_routing()
 
 
-	def reset_audio_recorder_prime(self):
+	def reset_audio_recorder_arm(self):
 		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-			self.zyngui.audio_recorder.unprime(midi_chan)
+			self.zyngui.audio_recorder.unarm(midi_chan)
 
 
 	#----------------------------------------------------------------------------
@@ -1403,10 +1403,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			pass
 
 		# Audio Recorder Primed
-		#state['audio_recorder_primed'] = []
+		#state['audio_recorder_armed'] = []
 		#for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-		#	if self.zyngui.audio_recorder.is_primed(midi_chan):
-		#		state['audio_recorder_primed'].append(midi_chan)
+		#	if self.zyngui.audio_recorder.is_armed(midi_chan):
+		#		state['audio_recorder_armed'].append(midi_chan)
 
 		logging.debug("STATE index => {}".format(state['index']))
 
@@ -1468,13 +1468,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.amixer_layer.restore_state_2(state['amixer_layer'])
 
 		# Audio Recorder Primed
-		if 'audio_recorder_primed' not in state:
-			state['audio_recorder_primed'] = []
+		if 'audio_recorder_armed' not in state:
+			state['audio_recorder_armed'] = []
 		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-			if midi_chan in state['audio_recorder_primed']:
-				self.zyngui.audio_recorder.prime(midi_chan)
+			if midi_chan in state['audio_recorder_armed']:
+				self.zyngui.audio_recorder.arm(midi_chan)
 			else:
-				self.zyngui.audio_recorder.unprime(midi_chan)
+				self.zyngui.audio_recorder.unarm(midi_chan)
 
 		# Autoconnect Audio
 		self.zyngui.zynautoconnect_audio(True)
@@ -1555,12 +1555,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.amixer_layer.restore_state_2(state['amixer_layer'])
 
 		# Audio Recorder Primed
-		if 'audio_recorder_primed' in state:
+		if 'audio_recorder_armed' in state:
 			for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-				if midi_chan in state['audio_recorder_primed']:
-					self.zyngui.audio_recorder.prime(midi_chan)
+				if midi_chan in state['audio_recorder_armed']:
+					self.zyngui.audio_recorder.arm(midi_chan)
 				else:
-					self.zyngui.audio_recorder.unprime(midi_chan)
+					self.zyngui.audio_recorder.unarm(midi_chan)
 
 		# Autoconnect Audio
 		self.zyngui.zynautoconnect_audio(True)
