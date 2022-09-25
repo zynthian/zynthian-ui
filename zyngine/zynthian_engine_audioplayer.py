@@ -182,12 +182,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		else:
 			record = 'stopped'
 		gain = self.player.get_gain()
+		default_a = 0
 		default_b = 0
 		track_labels = ['mixdown']
 		track_values = [-1]
 		if dur:
 			channels = self.player.get_channels()
-			if channels > 1:
+			if channels > 2:
+				default_a = -1
+				default_b = -1
+			elif channels > 1:
 				default_b = 1
 			for track in range(channels):
 				track_labels.append('{}'.format(track + 1))
@@ -207,13 +211,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['loop',None,loop,['one-shot','looping']],
 			['transport',None,transport,['stopped','playing']],
 			['position',None,0.0,dur],
-			['left track',None,0,[track_labels,track_values]],
+			['left track',None,default_a,[track_labels,track_values]],
 			['right track',None,default_b,[track_labels,track_values]],
 			['loop start',None,0.0,dur],
 			['loop end',None,dur,dur]
 		]
 		layer.refresh_controllers()
-		self.player.set_track_a(0)
+		self.player.set_track_a(default_a)
 		self.player.set_track_b(default_b)
 		self.monitors_dict['filename'] = self.player.get_filename()
 		self.monitors_dict['duration'] = self.player.get_duration()

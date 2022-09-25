@@ -24,7 +24,7 @@
 # 
 #******************************************************************************
 
-import sys
+import threading
 import tkinter
 from PIL import Image, ImageTk
 import os
@@ -53,6 +53,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.bg_color = "000000"
 		self.waveform_color = "6070B0"
 		self.image = None
+		self.loading_image = False
 
 		self.widget_canvas = tkinter.Canvas(self,
 			bd=0,
@@ -176,15 +177,16 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					x = 0
 				self.widget_canvas.coords(self.loop_end_line, x, 0, x, self.height)
 
-			if self.duration != dur:
-				self.duration = dur
-				self.widget_canvas.itemconfigure(self.info_text, text="{:02d}:{:02d}".format(int(dur / 60), int(dur % 60)), state=tkinter.NORMAL)
-			if self.filename != self.monitors["filename"]:
+			if self.filename != self.monitors["filename"] or self.duration != dur:
 				if(dur):
-					self.load_image()
+					x = threading.Thread(target=self.load_image)
+					x.start()
 				else:
 					self.widget_canvas.itemconfigure(self.loading_text, text="No\nfile\nloaded")
 					self.widget_canvas.itemconfigure(self.waveform, state=tkinter.HIDDEN)
+			if self.duration != dur:
+				self.duration = dur
+				self.widget_canvas.itemconfigure(self.info_text, text="{:02d}:{:02d}".format(int(dur / 60), int(dur % 60)), state=tkinter.NORMAL)
 	
 		except Exception as e:
 			logging.error(e)
@@ -193,6 +195,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def load_image(self):
+		if self.loading_image:
+			return
+		self.loading_image = True
 		self.widget_canvas.itemconfigure(self.waveform, state=tkinter.HIDDEN)
 		self.widget_canvas.itemconfigure(self.loading_text, text="Creating\nwaveform...")
 		waveform_png = "{}.png".format(self.monitors["filename"])
@@ -216,6 +221,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.image.close()
 				self.image = None
 			self.widget_canvas.itemconfigure(self.loading_text, text="Cannot\ndisplay\nwaveform")
+		self.loading_image = False
 	
 
 	def cb_canvas_wheel(self, event):
