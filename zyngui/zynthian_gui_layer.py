@@ -1204,7 +1204,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			except:
 				ends.append(layer)
 		if not ends:
-			ends = [self.get_root_layer_by_midi_chan(layer.midi_chan)]
+			end = self.get_root_layer_by_midi_chan(layer.midi_chan)
+			if end:
+				ends = [end]
 		return ends
 
 

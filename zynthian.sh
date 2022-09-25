@@ -95,68 +95,127 @@ function splash_zynthian() {
 }
 
 
-function splash_zynthian_error() {
-	#Grab exit code if set
-	zynthian_error=$1
-	[ "$zynthian_error" ] || zynthian_error="???"
-	#Get the IP
-	#zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
-	zynthian_ip=`ip route get 1 | sed 's/^.*src \([^ ]*\).*$/\1/;q'`
+function splash_zynthian_message() {
+        zynthian_message=$1
 
-	#Generate an error image with the IP ...
-	img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
-	img_w=`identify -format '%w' $img_fpath`
-	img_h=`identify -format '%h' $img_fpath`
-	pos_x=$(expr $img_w \* 100 / 350)
-	pos_y=$(expr $img_h \* 100 / 110)
-	font_size=$(expr $img_w / 24)
-	convert -strip -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"Exit:$zynthian_error     IP:$zynthian_ip\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
-	
-	#Display error image
-	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
+        img_fpath=$2
+        [ "$img_fpath" ] || img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.png"
+        
+        # Generate a splash image with the message ...
+        img_w=`identify -format '%w' $img_fpath`
+        img_h=`identify -format '%h' $img_fpath`
+        if [[ "${#zynthian_message}" > "40" ]]; then
+            font_size=$(expr $img_w / 36)
+        else
+            font_size=$(expr $img_w / 28)
+        fi
+        strlen=$(expr ${#zynthian_message} \* $font_size / 2)
+        pos_x=$(expr $img_w / 2 - $strlen / 2)
+        pos_y=$(expr $img_h \* 10 / 100)
+        [[ "$pos_x" > "0" ]] || pos_x=5
+        convert -strip -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"$zynthian_message\"" $img_fpath -strip $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+        
+        # Display error image
+        xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
 }
 
-#------------------------------------------------------------------------------
-# Main Program
-#------------------------------------------------------------------------------
 
-cd $ZYNTHIAN_UI_DIR
+function splash_zynthian_error() {
+        # Generate an error splash image ...
+        splash_zynthian_message "$1" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
+}
+
+
+function splash_zynthian_error_exit_ip() {
+        # Grab exit code if set
+        zynthian_error=$1
+        [ "$zynthian_error" ] || zynthian_error="???"
+        
+        # Get the IP
+        #zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
+        zynthian_ip=`ip route get 1 | sed 's/^.*src \([^ ]*\).*$/\1/;q'`
+
+        # Format the message
+        zynthian_message="IP:$zynthian_ip    Exit:$zynthian_error"
+        
+        # Generate an error splash image with the IP & exit code ...
+        splash_zynthian_message "$zynthian_message" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
+}
+
 
 backlight_on
-splash_zynthian
 screensaver_off
 
-while true; do
-	#Load Config Environment
+#------------------------------------------------------------------------------
+# If needed, generate splash screen images
+#------------------------------------------------------------------------------
+
+if [ ! -d $ZYNTHIAN_CONFIG_DIR/img ]; then
+	$ZYNTHIAN_SYS_DIR/sbin/generate_fb_splash.sh
+fi
+
+#------------------------------------------------------------------------------
+# Build zyncore if needed
+#------------------------------------------------------------------------------
+
+if [ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]; then
+	splash_zynthian_message "Building zyncore. Please wait ..."
 	load_config_env
+	$ZYNTHIAN_DIR/zyncoder/build.sh
+fi
+
+#------------------------------------------------------------------------------
+# Detect first boot
+#------------------------------------------------------------------------------
+
+if [[ "$(systemctl is-enabled first_boot)" == "enabled" ]]; then
+	echo "Running first boot ..."
+	splash_zynthian_message "Configuring your zynthian. Take a beer and relax ..."
+	sleep 1800
+	splash_zynthian_error "It takes too long! Bad sdcard/image, poor power supply ..."
+	sleep 3600000
+	exit
+fi
+
+#------------------------------------------------------------------------------
+# Run Zynthian-UI
+#------------------------------------------------------------------------------
+
+splash_zynthian
+load_config_env
+
+while true; do
 
 	# Start Zynthian GUI & Synth Engine
+	cd $ZYNTHIAN_UI_DIR
 	./zynthian_gui.py
 	status=$?
 
 	# Proccess output status
 	case $status in
 		0)
-			splash_zynthian
+			splash_zynthian_message "Powering Off ..."
 			poweroff
 			break
 		;;
 		100)
-			splash_zynthian
+			splash_zynthian_message "Rebooting ..."
 			reboot
 			break
 		;;
 		101)
-			splash_zynthian
+			splash_zynthian_message "Exiting ..."
 			backlight_off
 			break
 		;;
 		102)
-			splash_zynthian
-			sleep 1
+			splash_zynthian_message "Restarting UI ..."
+			load_config_env
+			sleep 5
 		;;
 		*)
-			splash_zynthian_error $status
+			splash_zynthian_error_exit_ip $status
+			load_config_env
 			sleep 3
 		;;
 	esac

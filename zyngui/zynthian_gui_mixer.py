@@ -25,15 +25,9 @@
 #******************************************************************************
 
 import os
-import sys
 import copy
-import liblo
 import tkinter
 import logging
-from time import monotonic
-from PIL import Image, ImageTk
-from tkinter import font as tkFont
-from collections import OrderedDict
 
 # Zynthian specific modules
 import zyngine
@@ -941,7 +935,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.highlight_selected_chain()
 
-		if set_curlayer and self.selected_layer.engine:
+		if set_curlayer and self.selected_layer and self.selected_layer.engine:
 			self.zyngui.set_curlayer(self.selected_layer, False, False) #TODO: Lose this re-entrant loop
 
 

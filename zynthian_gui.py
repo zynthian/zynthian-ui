@@ -624,6 +624,11 @@ class zynthian_gui:
 		# Initialize OSC
 		self.osc_init()
 
+		# Add main mixbus chain in case no valid snapshot is loaded
+		self.screens['layer'].add_layer_eng = "AI"
+		self.screens['layer'].add_layer_midich(256, False)
+		self.screens['layer'].refresh()
+
 		# Initial snapshot...
 		snapshot_loaded = False
 		# Try to load "last_state" snapshot ...
