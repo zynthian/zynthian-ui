@@ -2514,7 +2514,10 @@ def cb_keybinding(event):
 
 	action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
 	if action != None:
-		zyngui.callable_ui_action(action)
+		if isinstance(action, list) and len(action) > 1:
+			zyngui.callable_ui_action(action[0], [action[1]])
+		else:
+			zyngui.callable_ui_action(action)
 
 
 zynthian_gui_config.top.bind("<Key>", cb_keybinding)

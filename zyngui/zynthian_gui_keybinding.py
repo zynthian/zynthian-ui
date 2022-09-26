@@ -170,6 +170,7 @@ class zynthian_gui_keybinding:
 			elif rkey == '0^left': return('ARROW_LEFT')
 			elif rkey == '0^right': return('ARROW_RIGHT')
 			elif rkey == '0^return': return('SWITCH_SELECT')
+			elif rkey == '1^return': return(['SWITCH_SELECT', 'B'])
 			elif rkey == '0^escape': return('BACK')
 			logging.debug("Key not configured")
 

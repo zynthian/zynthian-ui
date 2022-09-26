@@ -386,7 +386,7 @@ class zynthian_gui_keyboard():
 
 
 	# Function to handle select switch event
-	def switch_select(self, type):
+	def switch_select(self, type="S"):
 		self.execute_key_press(self.selected_button, type=="B")
 
 
