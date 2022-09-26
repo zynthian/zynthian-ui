@@ -2213,8 +2213,8 @@ class zynthian_gui:
 
 
 	def exit(self, code=0):
-		self.exit_flag = True
 		self.exit_code = code
+		self.exit_flag = True
 
 
 	#------------------------------------------------------------------
