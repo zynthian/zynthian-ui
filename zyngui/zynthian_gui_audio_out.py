@@ -53,45 +53,46 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
-		mod_running = False
-		if not (isinstance(self.layer.engine, zynthian_engine_modui) or isinstance(self.end_layer.engine, zynthian_engine_modui)):
-			for layer in self.zyngui.screens['layer'].root_layers:
-				if isinstance(layer.engine, zynthian_engine_modui):
-					mod_running = True
-					break
+		if self.layer.midi_chan < 16:
+			mod_running = False
+			if not (isinstance(self.layer.engine, zynthian_engine_modui) or isinstance(self.end_layer.engine, zynthian_engine_modui)):
+				for layer in self.zyngui.screens['layer'].root_layers:
+					if isinstance(layer.engine, zynthian_engine_modui):
+						mod_running = True
+						break
 
-		if self.end_layer:
-			port_names = list(zynautoconnect.get_audio_input_ports(True).keys())
-			if isinstance(self.end_layer, zynthian_gui_selector) or self.end_layer.midi_chan>=16:
-				port_names = ["system"] + port_names
-			port_names = ["mixer"] + port_names
-			if mod_running:
-				port_names += ["mod-ui"]
+			if self.end_layer:
+				port_names = list(zynautoconnect.get_audio_input_ports(True).keys())
+				if isinstance(self.end_layer, zynthian_gui_selector) or self.end_layer.midi_chan>=16:
+					port_names = ["system"] + port_names
+				port_names = ["mixer"] + port_names
+				if mod_running:
+					port_names += ["mod-ui"]
 
-			for k in port_names:
-				try:
-					title = self.zyngui.screens['layer'].get_layer_by_jackname(k).get_basepath()
-				except:
-					title = k
+				for k in port_names:
+					try:
+						title = self.zyngui.screens['layer'].get_layer_by_jackname(k).get_basepath()
+					except:
+						title = k
 
-				logging.debug("AUDIO OUTPUT PORT {} => {}".format(k,title))
+					logging.debug("AUDIO OUTPUT PORT {} => {}".format(k,title))
 
-				try:
-					chan = title.split('#')[0]
-					if chan == "Main":
-						continue
-					else:
-						ch = int(chan)-1
-						if ch==self.end_layer.midi_chan or ch>15:
+					try:
+						chan = title.split('#')[0]
+						if chan == "Main":
 							continue
-				except Exception as e:
-					#logging.debug("Can't get layer's midi chan => {}".format(e))
-					pass
+						else:
+							ch = int(chan)-1
+							if ch==self.end_layer.midi_chan or ch>15:
+								continue
+					except Exception as e:
+						#logging.debug("Can't get layer's midi chan => {}".format(e))
+						pass
 
-				if k in self.end_layer.get_audio_out():
-					self.list_data.append((k, k, "[x] " + title))
-				else:
-					self.list_data.append((k, k, "[  ] " + title))
+					if k in self.end_layer.get_audio_out():
+						self.list_data.append((k, k, "[x] " + title))
+					else:
+						self.list_data.append((k, k, "[  ] " + title))
 
 		if zynthian_gui_config.multichannel_recorder:
 			if self.zyngui.audio_recorder.get_status():

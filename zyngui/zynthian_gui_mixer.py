@@ -859,6 +859,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if self.shown:
 			super().refresh_status(status)
 			self.main_mixbus_strip.draw_dpm()
+			self.main_mixbus_strip.refresh_status()
 			for strip in self.visible_mixer_strips:
 				if not strip.hidden:
 					if zynthian_gui_config.enable_dpm:
