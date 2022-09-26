@@ -1402,11 +1402,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		except Exception as e:
 			pass
 
-		# Audio Recorder Primed
-		#state['audio_recorder_armed'] = []
-		#for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-		#	if self.zyngui.audio_recorder.is_armed(midi_chan):
-		#		state['audio_recorder_armed'].append(midi_chan)
+		# Audio Recorder Armed
+		state['audio_recorder_armed'] = []
+		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
+			if self.zyngui.audio_recorder.is_armed(midi_chan):
+				state['audio_recorder_armed'].append(midi_chan)
 
 		logging.debug("STATE index => {}".format(state['index']))
 
@@ -1554,7 +1554,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.amixer_layer.restore_state_1(state['amixer_layer'])
 			self.amixer_layer.restore_state_2(state['amixer_layer'])
 
-		# Audio Recorder Primed
+		# Audio Recorder Armed
 		if 'audio_recorder_armed' in state:
 			for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
 				if midi_chan in state['audio_recorder_armed']:
