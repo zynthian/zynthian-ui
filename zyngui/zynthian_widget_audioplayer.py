@@ -202,7 +202,16 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.itemconfigure(self.loading_text, text="Creating\nwaveform...")
 		waveform_png = "{}.png".format(self.monitors["filename"])
 		self.filename = self.monitors["filename"]
-		if not os.path.exists(waveform_png) or os.path.getmtime(self.filename) > os.path.getmtime(waveform_png):
+		try:
+			self.image = Image.open(waveform_png)
+			rebuild = os.path.getmtime(self.filename) > os.path.getmtime(waveform_png)
+		except:
+			rebuild = True
+
+		if rebuild:
+			if self.image:
+				self.image.close()
+			self.image = None
 			cmd = 'audiowaveform -i "{}" -o "{}" --split-channels -w {} -h {} --zoom auto --background-color {} --waveform-color {} --no-axis-labels > /dev/null 2>&1'.format(
 				self.filename,
 				waveform_png,
@@ -213,7 +222,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			)
 			os.system(cmd)
 		try:
-			self.image = Image.open(waveform_png)
+			if self.image is None:
+				self.image = Image.open(waveform_png)
 			self.img = ImageTk.PhotoImage(self.image.resize((self.width, self.height)))
 			self.widget_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
 		except:
