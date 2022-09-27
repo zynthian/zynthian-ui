@@ -66,18 +66,18 @@ devices_in = [None for i in range(max_num_devs)]
 
 def get_port_alias_id(midi_port):
 	try:
-		alias_id='_'.join(midi_port.aliases[0].split('-')[5:])
+		alias_id = '_'.join(midi_port.aliases[0].split('-')[5:])
 	except:
-		alias_id=midi_port.name
+		alias_id = midi_port.name
 	return alias_id
 
 
 #Dirty hack for having MIDI working with PureData & CSound: #TODO => Improve it!!
 def get_fixed_midi_port_name(port_name):
-	if port_name=="pure_data":
+	if port_name == "pure_data":
 		port_name = "Pure Data"
 
-	elif port_name=="csound6":
+	elif port_name == "csound6":
 		port_name = "Csound"
 
 	elif port_name == "mod-monitor":
@@ -156,7 +156,6 @@ def midi_autoconnect(force=False):
 	if len(hw_in) == 0:
 		hw_in = []
 
-
 	#Add Aubio MIDI out port ...
 	if zynthian_gui_config.midi_aubionotes_enabled:
 		aubio_out = jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
@@ -164,15 +163,6 @@ def midi_autoconnect(force=False):
 			hw_out.append(aubio_out[0])
 		except:
 			pass
-
-	#Add TouchOSC out ports ...
-	if zynthian_gui_config.midi_touchosc_enabled:
-		rtmidi_out = jclient.get_ports("TouchOSC Bridge", is_output=True, is_physical=False, is_midi=True)
-		for port in rtmidi_out:
-			try:
-				hw_out.append(port)
-			except:
-				pass                    
 
 	#logger.debug("Input Device Ports: {}".format(hw_out))
 	#logger.debug("Output Device Ports: {}".format(hw_in))
@@ -242,25 +232,45 @@ def midi_autoconnect(force=False):
 	#logger.debug("ZynMidiRouter Input Ports: {}".format(zmr_out))
 	#logger.debug("ZynMidiRouter Output Ports: {}".format(zmr_in))
 
-	# MIDI-Input-routed ports: engines_in
+	#------------------------------------
+	# Build MIDI-input routed ports dict
+	#------------------------------------
+
+	# Add engines_in
 	routed_in = {}
 	for pn, port in engines_in.items():
 		routed_in[pn] = [port]
-	
-	# Add Zynmaster and Network ports
-	routed_in.update({
-		"MIDI-OUT": ["ZynMaster:midi_in"],
-		"NET-OUT": ["QmidiNet:in_1", "jackrtpmidid:rtpmidi_in"]
-	})
 
-	# Add enabled Hardware MIDI Output Ports ...
-	enabled_hw_ports = {}
-	for hw in hw_in:
+	# Add Zynmaster input
+	zmip = jclient.get_ports("ZynMaster:midi_in", is_input=True, is_physical=False, is_midi=True)
+	try:
+		port_alias_id = get_port_alias_id(zmip[0])
+		enabled_hw_ports = { port_alias_id: zmip[0] }
+		routed_in["MIDI-OUT"] = [zmip[0]]
+	except:
+		enabled_hw_ports = {}
+		routed_in["MIDI-OUT"] = []
+
+	# Add enabled Hardware ports 
+	for hwp in hw_in:
 		try:
-			port_alias_id = get_port_alias_id(hw)
+			port_alias_id = get_port_alias_id(hwp)
 			if port_alias_id in zynthian_gui_config.enabled_midi_out_ports:
-				enabled_hw_ports[port_alias_id] = hw
-				routed_in["MIDI-OUT"].append(hw)
+				enabled_hw_ports[port_alias_id] = hwp
+				routed_in["MIDI-OUT"].append(hwp)
+		except:
+			pass
+
+	# Add enabled Network ports
+	enabled_nw_ports = {}
+	routed_in["NET-OUT"] = []
+	for nwp in ("QmidiNet:in_1", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge"):
+		zmip = jclient.get_ports(nwp, is_input=True, is_physical=False, is_midi=True)
+		try:
+			port_alias_id = get_port_alias_id(zmip[0])
+			if port_alias_id in zynthian_gui_config.enabled_midi_out_ports:
+				enabled_nw_ports[port_alias_id] = zmip[0]
+				routed_in["NET-OUT"].append(zmip[0])
 		except:
 			pass
 
@@ -308,11 +318,18 @@ def midi_autoconnect(force=False):
 	#Connect QMidiNet output to ZynMidiRouter:net_in
 	if zynthian_gui_config.midi_network_enabled:
 		try:
-			jclient.connect("QmidiNet:out_1",zmr_in['net_in'])
+			jclient.connect("QmidiNet:out_1", zmr_in['net_in'])
 		except:
 			pass
 
-	#Connect ZynthStep output to ZynMidiRouter:step_in
+	#Connect TouchOSC output to ZynMidiRouter:net_in
+	if zynthian_gui_config.midi_touchosc_enabled:
+		try:
+			jclient.connect("RtMidiOut Client:TouchOSC Bridge", zmr_in['net_in'])
+		except:
+			pass
+
+	#Connect zynseq (stepseq) output to ZynMidiRouter:step_in
 	try:
 		jclient.connect("zynseq:output", zmr_in['step_in'])
 	except:
@@ -342,7 +359,7 @@ def midi_autoconnect(force=False):
 	# Get zynthian layer manager object
 	zynguilayer = zynthian_gui_config.zyngui.screens["layer"]
 
-	#Get layers list from UI
+	#Get layer list
 	layers_list = zynguilayer.layers
 
 	#Connect MIDI chain elements
@@ -416,58 +433,85 @@ def midi_autoconnect(force=False):
 			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
 
 
+	# When "Send All MIDI to Output" is enabled, zynseq & zynsmf are routed thru ZynMidiRouter:midi_out
 	if zynthian_gui_config.midi_filter_output:
-		
-		#Connect ZynMidiRouter:midi_out to enabled Hardware MIDI Output Ports
+
+		# ... enabled Hardware MIDI Output Ports
 		for paid, hwport in enabled_hw_ports.items():
+			# Connect ZynMidiRouter:midi_out to ...
 			try:
 				jclient.connect(zmr_out['midi_out'], hwport)
 			except:
 				pass
-
-		#Connect ZynMidiRouter:midi_out to ZynMaster:midi_in
-		try:
-			jclient.connect(zmr_out['midi_out'], "ZynMaster:midi_in")
-		except:
-			pass
-
-		#Connect ZynMidiRouter:net_out to QMidiNet input
-		if zynthian_gui_config.midi_network_enabled:
+			# Disconnect zynseq (stepseq) output from ...
 			try:
-				jclient.connect(zmr_out['net_out'], "QmidiNet:in_1")
+				jclient.disconnect("zynseq:output", hwport)
 			except:
 				pass
-		#Connect ZynMidiRouter:net_out to RTP-MIDI input
-		if zynthian_gui_config.midi_rtpmidi_enabled:
+			#Disconnect zynsmf output from ...
 			try:
-				jclient.connect(zmr_out['net_out'], "jackrtpmidid:rtpmidi_in")
+				jclient.disconnect("zynsmf:midi_out", hwport)
 			except:
 				pass
+
+		# ... enabled Network MIDI Output Ports
+		for paid, nwport in enabled_nw_ports.items():
+			# Connect ZynMidiRouter:net_out to ...
+			try:
+				jclient.connect(zmr_out['net_out'], nwport)
+			except:
+				pass
+			# Disconnect zynseq (stepseq) output from ...
+			try:
+				jclient.disconnect("zynseq:output", nwport)
+			except:
+				pass
+			#Disconnect zynsmf output from ...
+			try:
+				jclient.disconnect("zynsmf:midi_out", nwport)
+			except:
+				pass
+
+	# When "Send All MIDI to Output" is disabled, zynseq & zynsmf are routed directly
 	else:
-		#Connect ZynMidiRouter:midi_out to enabled Hardware MIDI Output Ports
+
+		# ... enabled Hardware MIDI Output Ports
 		for paid, hwport in enabled_hw_ports.items():
+			# Disconnect ZynMidiRouter:midi_out from ...
 			try:
 				jclient.disconnect(zmr_out['midi_out'], hwport)
 			except:
 				pass
+			# Connect zynseq (stepseq) output to ...
+			try:
+				jclient.connect("zynseq:output", hwport)
+			except:
+				pass
+			# Connect zynsmf output to ...
+			try:
+				jclient.connect("zynsmf:midi_out", hwport)
+			except:
+				pass
 
-		#Disconnect ZynMidiRouter:midi_out from ZynMaster:midi_in
-		try:
-			jclient.disconnect(zmr_out['midi_out'], "ZynMaster:midi_in")
-		except:
-			pass
-		#Disconnect ZynMidiRouter:net_out from QMidiNet input
-		if zynthian_gui_config.midi_network_enabled:
+		# ... enabled Network MIDI Output Ports
+		for paid, nwport in enabled_nw_ports.items():
+			# Disconnect ZynMidiRouter:net_out from ...
 			try:
-				jclient.disconnect(zmr_out['net_out'], "QmidiNet:in_1")
+				jclient.disconnect(zmr_out['net_out'], nwport)
 			except:
 				pass
-		#Disconnect ZynMidiRouter:net_out from RTP-MIDI input
-		if zynthian_gui_config.midi_rtpmidi_enabled:
+			# Connect zynseq (stepseq) output to ...
 			try:
-				jclient.disconnect(zmr_out['net_out'], "jackrtpmidid:rtpmidi_in")
+				jclient.connect("zynseq:output", nwport)
 			except:
 				pass
+			# Connect zynsmf output to ...
+			try:
+				jclient.connect("zynsmf:midi_out", nwport)
+			except:
+				pass
+
+
 
 	#Connect ZynMidiRouter:step_out to ZynthStep input
 	try:
