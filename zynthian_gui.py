@@ -900,6 +900,8 @@ class zynthian_gui:
 					if len(zyngui.curlayer.preset_list) > 1:
 						self.show_screen_reset('preset')
 					else:
+						if len(zyngui.curlayer.preset_list):
+							self.curlayer.engine.set_preset(zyngui.curlayer, zyngui.curlayer.preset_list[0])
 						self.show_screen_reset(control_screen_name)
 		
 
