@@ -48,6 +48,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.name = "AudioPlayer"
 		self.nickname = "AP"
 		self.type = "MIDI Synth"
+		self.options['replace'] = False
 		
 		if jackname:
 			self.jackname = jackname

@@ -77,7 +77,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 
 		elif self.sublayer_type=="MIDI Synth":
 			eng_options = self.sublayer.engine.get_options()
-			if 'replace' in eng_options and eng_options['midi_chan']:
+			if eng_options['replace'] and eng_options['midi_chan']:
 				self.list_data.append((self.synth_replace, None, "Replace"))
 
 		self.list_data.append((self.midi_clean, None, "Clean MIDI-learn"))
