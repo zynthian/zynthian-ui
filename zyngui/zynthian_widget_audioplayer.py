@@ -8,6 +8,7 @@
 # Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 # Copyright (C) 2015-2022 Brian Walton <riban@zynthian.org>
 #
+# Depends on https://github.com/bbc/audiowaveform
 #******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or

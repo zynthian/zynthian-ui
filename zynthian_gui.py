@@ -1542,7 +1542,7 @@ class zynthian_gui:
 		elif self.current_screen == 'bank':
 			#self.replace_screen('preset')
 			self.close_screen()
-		else:
+		elif self.curlayer:
 			if len(self.curlayer.preset_list) > 0 and self.curlayer.preset_list[0][0] != '':
 				self.screens['preset'].index = self.curlayer.get_preset_index()
 				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
@@ -2429,7 +2429,7 @@ def zynpot_cb(i, dval):
 
 	except Exception as err:
 		pass # Some screens don't use controllers
-		#logging.exception(err)
+		logging.exception(err)
 
 
 lib_zyncore.setup_zynpot_cb(zynpot_cb)
