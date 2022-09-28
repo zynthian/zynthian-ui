@@ -1065,18 +1065,15 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif i == zynthian_gui_config.ENC_SELECT:
 			if self.edit_mode == EDIT_MODE_SINGLE:
 				if dval > 0:
-					self.duration = self.duration + 1
-				if dval < 0:
-					self.duration = self.duration - 1
-				if self.duration > self.zyngui.zynseq.libseq.getSteps():
-					self.duration = self.zyngui.zynseq.libseq.getSteps()
+					duration = (int(self.duration * 10) + 10) / 10
+				elif dval < 0:
+					duration = (int(self.duration * 10) - 10) / 10
+				if duration > self.zyngui.zynseq.libseq.getSteps() or duration < 0.1:
 					return
-				if self.duration < 1:
-					self.duration = 1
-					return
+				self.duration = duration
 				note = self.keymap[self.selected_cell[1]]["note"]
 				if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
-					self.add_event(self.selected_cell[0], note)
+					self.add_event(self.selected_cell[0], self.selected_cell[1])
 				else:
 					self.select_cell()
 				self.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
@@ -1092,18 +1089,15 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif i == zynthian_gui_config.ENC_SNAPSHOT:
 			if self.edit_mode == EDIT_MODE_SINGLE:
 				if dval > 0:
-					self.duration = self.duration + 0.1
-				if dval < 0:
-					self.duration = self.duration - 0.1
-				if self.duration > self.zyngui.zynseq.libseq.getSteps():
-					self.duration = self.zyngui.zynseq.libseq.getSteps()
+					duration = (int(self.duration * 10) + 1) / 10
+				elif dval < 0:
+					duration = (int(self.duration * 10) - 1) / 10
+				if duration > self.zyngui.zynseq.libseq.getSteps() or duration < 0.1:
 					return
-				if self.duration < 0.1:
-					self.duration = 0.1
-					return
+				self.duration = duration
 				note = self.keymap[self.selected_cell[1]]["note"]
 				if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
-					self.add_event(self.selected_cell[0], note)
+					self.add_event(self.selected_cell[0], self.selected_cell[1])
 				else:
 					self.select_cell()
 				self.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
