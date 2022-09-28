@@ -1118,12 +1118,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
-		if super().switch(3, type):
-			return True
 		if type == "S":
-			note = self.toggle_event(self.selected_cell[0], self.selected_cell[1])
-			if note:
-				self.play_note(note)
+			if self.edit_mode == EDIT_MODE_NONE:
+				note = self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+				if note:
+					self.play_note(note)
+			else:
+				self.enable_edit(EDIT_MODE_NONE)
 		elif type == "B":
 			if self.edit_mode == EDIT_MODE_NONE:
 				self.enable_edit(EDIT_MODE_SINGLE)
