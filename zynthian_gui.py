@@ -1528,7 +1528,7 @@ class zynthian_gui:
 				self.set_curlayer(params, True)
 			except:
 				logging.error("Can't set layer passed as CUIA parameter!")
-		else:
+		elif self.current_screen == 'control':
 			try:
 				self.set_curlayer(self.screens['control'].screen_layer, True)
 			except:
