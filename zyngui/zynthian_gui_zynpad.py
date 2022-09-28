@@ -53,6 +53,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to initialise class
 	def __init__(self):
+		logging.getLogger('PIL').setLevel(logging.WARNING)
 
 		self.columns = 4 # Quantity of columns in grid
 		self.selected_pad = 0 # Index of selected pad
