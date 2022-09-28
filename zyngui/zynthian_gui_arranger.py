@@ -76,7 +76,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.col_offset = 0 # Index of time division at left column in grid
 		self.selected_cell = [0, 0] # Location of selected cell (time div, row)
 		self.pattern = 1 # Index of current pattern to add to sequence
-		self.pattern_to_add = 1 # Index of pattern to actually add (may be copied / moved pattern
+		self.pattern_to_add = 1 # Index of pattern to actually add (may be copied / moved pattern)
 		self.position = 0 # Current playhead position
 		self.grid_timer = Timer(1.0, self.on_grid_timer) # Grid press and hold timer
 		#TODO: Populate tracks from file
@@ -491,6 +491,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 					if layer.midi_chan == chan:
 						self.layers[chan] = layer
 						break
+		self.select_position()
 
 
 	# Function to set current pattern
@@ -683,6 +684,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.screens['pattern_editor'].channel = channel
 			self.zyngui.screens['pattern_editor'].load_pattern(pattern)
 			self.zyngui.show_screen("pattern_editor")
+			return True
 
 
 
@@ -956,6 +958,27 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 				self.timebase_track_canvas.create_text(bar * self.column_width, 0, fill='white', text="%d"%(bar+self.col_offset), anchor='n', tags='barlines')
 			else:
 				self.timebase_track_canvas.create_text(bar * self.column_width, 0, fill='white', text="%d"%(bar+self.col_offset), anchor='nw', tags='barlines')
+
+
+	# Function to move selection to specified position
+	#	sequence: Index of sequence (Default is reselect current sequence)
+	#	track: Index of track (Default is first track)
+	#	time: Position in timeline (Default is None to keep current time)
+	# If track not available then selects first track in sequence
+	def select_position(self, sequence=None, track=0, time=None):
+		found_row = None
+		if sequence is None:
+			sequence = self.sequence
+		for row,seqtrack in enumerate(self.sequence_tracks):
+			if seqtrack[0] == sequence:
+				if found_row is None:
+					found_row = row
+				if seqtrack[1] == track:
+					found_row = row
+					break
+		if found_row is None:
+			return False
+		self.select_cell(time, found_row)
 
 
 	# Function to select a cell within the grid

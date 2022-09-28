@@ -901,7 +901,7 @@ class zynthian_gui:
 						self.show_screen_reset('preset')
 					else:
 						if len(zyngui.curlayer.preset_list):
-							self.curlayer.engine.set_preset(zyngui.curlayer, zyngui.curlayer.preset_list[0])
+							self.curlayer.set_preset(0)
 						self.show_screen_reset(control_screen_name)
 		
 
@@ -1375,15 +1375,11 @@ class zynthian_gui:
 			self.toggle_screen("zynpad")
 
 		elif cuia == "SCREEN_PATTERN_EDITOR":
-			pattern = self.screens["pattern_editor"].pattern
-			try:
-				pattern = params[0];
-			except:
-				pass
-			if pattern < 1:
-				pattern = 1
-			self.screens['pattern_editor'].load_pattern(pattern)
-			self.toggle_screen("pattern_editor")
+			success = False
+			if self.current_screen in ["arranger", "zynpad"]:
+				success = self.screens[self.current_screen].show_pattern_editor()
+			if not success:
+				self.toggle_screen("pattern_editor")
 
 		elif cuia == "SCREEN_ARRANGER":
 			self.toggle_screen("arranger")

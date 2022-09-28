@@ -162,8 +162,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		self.playhead = 0
 
-		# Select a cell
-		self.select_cell(0, self.keymap_offset)
+		# Load pattern 1 so that the editor has a default known state
+		self.load_pattern(1)
 
 
 	# Function to get name of this view

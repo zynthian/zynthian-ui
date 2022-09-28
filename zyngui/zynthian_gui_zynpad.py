@@ -321,7 +321,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle grid press and hold
 	def on_grid_timer(self):
 		self.gridDragStart = None
-		self.show_editor()
+		self.show_pattern_editor()
 
 
 	# Function to add menus
@@ -444,16 +444,18 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to show the editor (pattern or arranger based on sequence content)
-	def show_editor(self):
+	def show_pattern_editor(self):
 		tracks_in_sequence = self.zyngui.zynseq.libseq.getTracksInSequence(self.zyngui.zynseq.bank, self.selected_pad)
 		patterns_in_track = self.zyngui.zynseq.libseq.getPatternsInTrack(self.zyngui.zynseq.bank, self.selected_pad, 0)
 		pattern = self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, self.selected_pad, 0, 0)
 		if tracks_in_sequence != 1 or patterns_in_track !=1 or pattern == -1:
+			self.zyngui.screens["arranger"].sequence = self.selected_pad
 			self.zyngui.toggle_screen("arranger")
-			return
+			return True
 		self.zyngui.screens['pattern_editor'].channel = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0)
 		self.zyngui.screens['pattern_editor'].load_pattern(pattern)
 		self.zyngui.show_screen("pattern_editor")
+		return True
 
 
 	# Function to refresh status
@@ -514,7 +516,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if type == 'S':
 			self.toggle_pad()
 		elif type == "B":
-			self.show_editor()
+			self.show_pattern_editor()
 
 
 	# Function to handle switch press

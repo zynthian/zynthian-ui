@@ -213,7 +213,8 @@ uint32_t Pattern::getStepsPerBeat()
 
 void Pattern::setBeatsInPattern(uint32_t beats)
 {
-    m_nBeats = beats;
+    if (beats > 0)
+        m_nBeats = beats;
 
     // Remove steps if shrinking
     size_t nIndex = 0;
