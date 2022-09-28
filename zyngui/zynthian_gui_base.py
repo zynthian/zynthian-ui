@@ -607,22 +607,30 @@ class zynthian_gui_base(tkinter.Frame):
 	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
+	# Default implementation does nothing. Override to implement bespoke behaviour for legacy switches
 	def switch(self, switch, type):
+		return False
+
+
+	# Function to handle SELECT button press
+	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
+	def switch_select(self, type='S'):
 		if self.param_editor_zctrl:
-			if switch == zynthian_gui_config.ENC_SELECT:
-				if type == 'S':
-					if self.param_editor_assert_cb:
-						self.param_editor_assert_cb(self.param_editor_zctrl.value)
-					self.disable_param_editor()
-				elif type == 'B':
-					self.param_editor_zctrl.set_value(self.param_editor_zctrl.value_default)
-				self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
-				return True
-			
-			elif switch == zynthian_gui_config.ENC_BACK:
+			if type == 'S':
+				if self.param_editor_assert_cb:
+					self.param_editor_assert_cb(self.param_editor_zctrl.value)
 				self.disable_param_editor()
-				if type == 'S':
-					return True
+			elif type == 'B':
+				self.param_editor_zctrl.set_value(self.param_editor_zctrl.value_default)
+			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
+			return True
+
+
+	def back_action(self):
+		if self.param_editor_zctrl:
+			self.disable_param_editor()
+			return True
+		return False
 
 
 	#--------------------------------------------------------------------------

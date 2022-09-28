@@ -1059,6 +1059,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			elif self.edit_mode == EDIT_MODE_ALL:
 				self.zyngui.zynseq.libseq.changeVelocityAll(dval)
 				self.set_title("ALL Velocity", None, None, 2)
+				self.redraw_pending = 3
 			else:
 				self.select_cell(None, self.selected_cell[1] - dval)
 
@@ -1083,6 +1084,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				if dval < 0:
 					self.zyngui.zynseq.libseq.changeDurationAll(-1)
 				self.set_title("ALL DURATION", None, None, 2)
+				self.redraw_pending = 3
 			else:
 				self.select_cell(self.selected_cell[0] + dval, None)
 
@@ -1107,6 +1109,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				if dval < 0:
 					self.zyngui.zynseq.libseq.changeDurationAll(-0.1)
 				self.set_title("ALL DURATION", None, None, 2)
+				self.redraw_pending = 3
 			else:
 				self.zyngui.zynseq.nudge_tempo(dval)
 				self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
@@ -1133,19 +1136,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
-		if super().switch(switch, type):
-			return True
-		if switch == zynthian_gui_config.ENC_SELECT:
-			self.switch_select(type)
-			return True
-		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
+		if switch == zynthian_gui_config.ENC_SNAPSHOT:
 			self.toggle_playback()
 			return True
-		elif switch == zynthian_gui_config.ENC_BACK:
-			if self.edit_mode:
-				self.enable_edit(EDIT_MODE_NONE)
-				if type == 'S':
-					return True
 		elif switch == zynthian_gui_config.ENC_LAYER and type == 'B':
 			self.show_menu()
 			return True
@@ -1153,6 +1146,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	#	CUIA Actions
+	# Function to handle BACK
+	def back_action(self):
+		if self.edit_mode:
+			self.enable_edit(EDIT_MODE_NONE)
+			return True
+
+
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
 		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)

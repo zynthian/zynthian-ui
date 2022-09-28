@@ -390,14 +390,6 @@ class zynthian_gui_keyboard():
 		self.execute_key_press(self.selected_button, type=="B")
 
 
-	# Function to handle switch events
-	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#	returns True if action fully handled or False if parent action should be triggered
-	def switch(self, switch, type):
-		return False
-
-
 	# Function to refresh the loading screen (not used)
 	def refresh_loading(self):
 		pass

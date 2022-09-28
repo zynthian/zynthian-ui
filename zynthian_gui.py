@@ -1711,6 +1711,10 @@ class zynthian_gui:
 			self.show_screen('main')
 
 		elif i == 1:
+			try:
+				self.screens[self.current_screen].disable_param_editor()
+			except:
+				pass
 			self.restore_curlayer()
 			self.show_screen_reset('audio_mixer')
 
