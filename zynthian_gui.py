@@ -408,7 +408,17 @@ class zynthian_gui:
 			else:
 				self.wsleds.setPixelColor(14, self.wscolor_light)
 
-			if 'audio_player' in self.status_info:
+			if self.current_screen == "pattern_editor":
+				pb_status = self.screens['pattern_editor'].get_playback_status()
+				if pb_status == zynseq.SEQ_PLAYING:
+					self.wsleds.setPixelColor(15, self.wscolor_green)
+				elif pb_status in (zynseq.SEQ_STARTING, zynseq.SEQ_RESTARTING):
+					self.wsleds.setPixelColor(15, self.wscolor_yellow)
+				elif pb_status in (zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC):
+					self.wsleds.setPixelColor(15, self.wscolor_red)
+				elif pb_status == zynseq.SEQ_STOPPED:
+					self.wsleds.setPixelColor(15, self.wscolor_light)
+			elif 'audio_player' in self.status_info:
 				self.wsleds.setPixelColor(15, self.wscolor_active)
 			else:
 				self.wsleds.setPixelColor(15, self.wscolor_light)
@@ -1159,7 +1169,9 @@ class zynthian_gui:
 			self.stop_audio_player()
 
 		elif cuia == "TOGGLE_AUDIO_PLAY":
-			if self.audio_player and self.audio_player.get_playback_state():
+			if self.current_screen == "pattern_editor":
+				self.screens["pattern_editor"].toggle_playback()
+			elif self.audio_player and self.audio_player.get_playback_state():
 				self.stop_audio_player()
 			else:
 				self.start_audio_player()
