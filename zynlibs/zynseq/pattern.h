@@ -119,6 +119,13 @@ class Pattern
         */
         void removeNote(uint32_t step, uint8_t note);
 
+        /** @brief  Get step that note starts
+        *   @param  position Quantity of steps from start of pattern at which to check for note
+        *   @param  note MIDI note number
+        *   @retval int32_t Quantity of steps from start of pattern that note starts or -1 if note not found
+        */
+        int32_t getNoteStart(uint32_t step, uint8_t note);
+
         /** @brief  Get velocity of note
         *   @param  position Quantity of steps from start of pattern at which note starts
         *   @param  note MIDI note number

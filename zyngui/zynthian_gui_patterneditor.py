@@ -120,6 +120,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			bd=0,
 			highlightthickness=0)
 		self.grid_canvas.grid(column=1, row=0)
+		self.grid_canvas.tag_bind("gridcell", '<ButtonPress-1>', self.on_grid_press)
+		self.grid_canvas.tag_bind("gridcell", '<ButtonRelease-1>', self.on_grid_release)
+		self.grid_canvas.tag_bind("gridcell", '<B1-Motion>', self.on_grid_drag)
+
 
 		# Create velocity level indicator canvas
 		self.velocity_canvas = tkinter.Canvas(self.main_frame,
@@ -566,18 +570,20 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.param_editor_zctrl:
 			self.disable_param_editor()
 		self.grid_drag_start = event
-		col = int(event.x / self.step_width)
+		step = int(event.x / self.step_width)
 		row = self.zoom - int(event.y / self.row_height) - 1
 		note = self.keymap[self.keymap_offset + int(row)]["note"]
-		step = int(col)
 		if step < 0 or step >= self.zyngui.zynseq.libseq.getSteps():
 			return
+		start_step = self.zyngui.zynseq.libseq.getNoteStart(step, note)
+		self.drag_start_step = step
+		if start_step >= 0:
+			step = start_step
+		self.select_cell(step, self.keymap_offset + int(row))
 		self.drag_start_velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
 		self.drag_start_duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
-		self.drag_start_step = col
 		if not self.drag_start_velocity:
 			self.play_note(note)
-		self.select_cell(int(col), self.keymap_offset + int(row))
 
 
 	# Function to handle grid mouse release
@@ -653,8 +659,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if step < 0 or step >= self.zyngui.zynseq.libseq.getSteps() or index >= len(self.keymap):
 			return
 		note = self.keymap[index]['note']
-		if self.zyngui.zynseq.libseq.getNoteVelocity(step, note):
-			self.remove_event(step, index)
+		start_step = self.zyngui.zynseq.libseq.getNoteStart(step, note)
+		if start_step >= 0:
+			self.remove_event(start_step, index)
 		else:
 			self.add_event(step, index)
 			return note
@@ -747,9 +754,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step, "white"))
 			else:
 				cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step))
-			self.grid_canvas.tag_bind(cell, '<ButtonPress-1>', self.on_grid_press)
-			self.grid_canvas.tag_bind(cell, '<ButtonRelease-1>', self.on_grid_release)
-			self.grid_canvas.tag_bind(cell, '<B1-Motion>', self.on_grid_drag)
 			self.cells[cellIndex] = cell
 		if step + duration > self.zyngui.zynseq.libseq.getSteps():
 			self.grid_canvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - self.zyngui.zynseq.libseq.getSteps() + step), state="normal")
@@ -804,7 +808,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					break
 
 				# Create last note labels in grid
-				self.grid_canvas.create_text(self.grid_width - self.select_thickness, int(self.row_height * (self.zoom - row - 0.5)), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font, anchor="e")
+				self.grid_canvas.create_text(self.grid_width - self.select_thickness, int(self.row_height * (self.zoom - row - 0.5)), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext", "gridcell"), font=font, anchor="e")
 
 				fill = "black"
 				# Update pianoroll keys
