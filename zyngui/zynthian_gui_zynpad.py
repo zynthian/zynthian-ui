@@ -511,7 +511,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
-		if super().switch(3, type):
+		if super().switch_select(type):
 			return True
 		if type == 'S':
 			self.toggle_pad()

@@ -69,6 +69,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.sequence = 0 # Index of selected sequence
 		self.track = 0 # Index of selected track
 		self.layers = [None] * 16 # Root layer indexed by MIDI channel
+		self.last_snapshot_count = 0
 
 		self.vertical_zoom = self.zyngui.zynseq.libseq.getVerticalZoom() # Quantity of rows (tracks) displayed in grid
 		self.horizontal_zoom = self.zyngui.zynseq.libseq.getHorizontalZoom() # Quantity of columns (time divisions) displayed in grid
@@ -480,6 +481,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to show GUI
 	def build_view(self):
+		if self.last_snapshot_count < self.zyngui.screens['layer'].last_snapshot_count:
+			self.update_sequence_tracks()
+			self.last_snapshot_count = self.zyngui.screens['layer'].last_snapshot_count
+
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
 			self.set_title("Bank %d" % (self.zyngui.zynseq.bank))
@@ -1121,10 +1126,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to update array of sequences, tracks
 	#	Returns: Quanity of tracks in bank
 	def update_sequence_tracks(self):
+		old_tracks = self.sequence_tracks.copy()
 		self.sequence_tracks.clear()
 		for sequence in range(self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank)):
 			for track in range(self.zyngui.zynseq.libseq.getTracksInSequence(self.zyngui.zynseq.bank, sequence)):
 				self.sequence_tracks.append((sequence, track))
+		if old_tracks != self.sequence_tracks:
+			self.redraw_pending = 4
 		return len(self.sequence_tracks)
 
 
@@ -1185,7 +1193,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
-		if super().switch(3, type):
+		if super().switch_select(type):
 			return True
 		self.toggle_event(self.selected_cell[0], self.selected_cell[1])
 

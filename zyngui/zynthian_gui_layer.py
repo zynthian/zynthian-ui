@@ -54,6 +54,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.replace_layer_index = None
 		self.layer_chain_parallel = False
 		self.last_snapshot_fpath = None
+		self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
 		self.reset_zs3()
 		
 		super().__init__('Layer', True)
@@ -1661,6 +1662,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			logging.exception("Invalid snapshot: %s" % e)
 			return False
 
+		self.last_snapshot_count += 1
 		return True
 
 
