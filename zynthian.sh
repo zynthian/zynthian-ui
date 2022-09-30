@@ -159,7 +159,7 @@ fi
 #------------------------------------------------------------------------------
 
 if [ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]; then
-	splash_zynthian_message "Building zyncore. Please wait ..."
+	splash_zynthian_message "Building zyncore. Please wait..."
 	load_config_env
 	$ZYNTHIAN_DIR/zyncoder/build.sh
 fi
@@ -170,9 +170,9 @@ fi
 
 if [[ "$(systemctl is-enabled first_boot)" == "enabled" ]]; then
 	echo "Running first boot ..."
-	splash_zynthian_message "Configuring your zynthian. Take a beer and relax ..."
+	splash_zynthian_message "Configuring your zynthian. Time to relax before the waves..."
 	sleep 1800
-	splash_zynthian_error "It takes too long! Bad sdcard/image, poor power supply ..."
+	splash_zynthian_error "It takes too long! Bad sdcard/image, poor power supply..."
 	sleep 3600000
 	exit
 fi
@@ -194,22 +194,22 @@ while true; do
 	# Proccess output status
 	case $status in
 		0)
-			splash_zynthian_message "Powering Off ..."
+			splash_zynthian_message "Powering Off..."
 			poweroff
 			break
 		;;
 		100)
-			splash_zynthian_message "Rebooting ..."
+			splash_zynthian_message "Rebooting..."
 			reboot
 			break
 		;;
 		101)
-			splash_zynthian_message "Exiting ..."
+			splash_zynthian_message "Exiting..."
 			backlight_off
 			break
 		;;
 		102)
-			splash_zynthian_message "Restarting UI ..."
+			splash_zynthian_message "Restarting UI..."
 			load_config_env
 			sleep 5
 		;;
