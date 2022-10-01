@@ -547,9 +547,10 @@ class zynthian_gui:
 			if part2 in ("HEARTBEAT", "SETUP"):
 				if src.hostname not in self.osc_clients:
 					try:
-						self.zynmixer.addOscClient(ctypes.c_char_p(src.hostname.encode('utf-8')))
+						self.zynmixer.add_osc_client(src.hostname)
 					except:
 						logging.warning("Failed to add OSC client registration {}".format(src.hostname))
+						return
 				self.osc_clients[src.hostname] = monotonic()
 			else:
 				if part2[:6] == "VOLUME":
@@ -2258,7 +2259,7 @@ class zynthian_gui:
 			if self.osc_clients[client] < self.watchdog_last_check - self.osc_heartbeat_timeout:
 				self.osc_clients.pop(client)
 				try:
-					self.zynmixer.removeOscClient(ctypes.c_char_p(client.encode('utf-8')))
+					self.zynmixer.remove_osc_client(client)
 				except:
 					pass
 		# Poll
