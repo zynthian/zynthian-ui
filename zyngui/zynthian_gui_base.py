@@ -596,10 +596,7 @@ class zynthian_gui_base(tkinter.Frame):
 				self.param_editor_zctrl.nudge(dval * 10)
 			else:
 				return True
-			if self.param_editor_zctrl.labels:
-				self.select_path.set("{}: {}".format(self.param_editor_zctrl.name, self.param_editor_zctrl.get_value2label()))
-			else:
-				self.select_path.set(self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
+			self.update_param_editor()
 			return True
 
 
@@ -607,22 +604,30 @@ class zynthian_gui_base(tkinter.Frame):
 	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
+	# Default implementation does nothing. Override to implement bespoke behaviour for legacy switches
 	def switch(self, switch, type):
+		return False
+
+
+	# Function to handle SELECT button press
+	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
+	def switch_select(self, type='S'):
 		if self.param_editor_zctrl:
-			if switch == zynthian_gui_config.ENC_SELECT:
-				if type == 'S':
-					if self.param_editor_assert_cb:
-						self.param_editor_assert_cb(self.param_editor_zctrl.value)
-					self.disable_param_editor()
-				elif type == 'B':
-					self.param_editor_zctrl.set_value(self.param_editor_zctrl.value_default)
-				self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
-				return True
-			
-			elif switch == zynthian_gui_config.ENC_BACK:
+			if type == 'S':
+				if self.param_editor_assert_cb:
+					self.param_editor_assert_cb(self.param_editor_zctrl.value)
 				self.disable_param_editor()
-				if type == 'S':
-					return True
+			elif type == 'B':
+				self.param_editor_zctrl.set_value(self.param_editor_zctrl.value_default)
+			self.update_param_editor()
+			return True
+
+
+	def back_action(self):
+		if self.param_editor_zctrl:
+			self.disable_param_editor()
+			return True
+		return False
 
 
 	#--------------------------------------------------------------------------
@@ -723,7 +728,7 @@ class zynthian_gui_base(tkinter.Frame):
 
 		self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
 		self.init_buttonbar([("SELECT_DOWN", "-1"),("SELECT_UP", "+1"),("SNAPSHOT_DOWN", "-10"),("SNAPSHOT_UP", "+10"),(3,"OK")])
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 0)
+		self.update_param_editor()
 		self.update_layout()
 	
 
@@ -740,5 +745,14 @@ class zynthian_gui_base(tkinter.Frame):
 			self.update_layout()
 		except:
 			pass
+
+	
+	# Function to display label in parameter editor
+	def update_param_editor(self):
+		if self.param_editor_zctrl:
+			if self.param_editor_zctrl.labels:
+				self.select_path.set("{}: {}".format(self.param_editor_zctrl.name, self.param_editor_zctrl.get_value2label()))
+			else:
+				self.select_path.set(self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
 
 #------------------------------------------------------------------------------

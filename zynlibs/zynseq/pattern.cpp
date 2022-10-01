@@ -1,4 +1,5 @@
 #include "pattern.h"
+#include <cmath>
 
 /**    Pattern class methods implementation **/
 
@@ -74,13 +75,19 @@ void Pattern::removeNote(uint32_t step, uint8_t note)
     deleteEvent(step, MIDI_NOTE_ON, note);
 }
 
+int32_t Pattern::getNoteStart(uint32_t step, uint8_t note)
+{
+    for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
+        if((*it).getPosition() <= step && int(std::ceil((*it).getPosition() + (*it).getDuration())) > step && (*it).getCommand() == MIDI_NOTE_ON && (*it).getValue1start() == note)
+            return (*it).getPosition();
+    return -1;
+}
+
 uint8_t Pattern::getNoteVelocity(uint32_t step, uint8_t note)
 {
     for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
-    {
         if((*it).getPosition() == step && (*it).getCommand() == MIDI_NOTE_ON && (*it).getValue1start() == note)
         return (*it).getValue2start();
-    }
     return 0;
 }
 
@@ -89,10 +96,11 @@ void Pattern::setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
     if(velocity > 127)
         return;
     for(auto it = m_vEvents.begin(); it!=m_vEvents.end(); ++it)
-    {
         if((*it).getPosition() == step && (*it).getCommand() == MIDI_NOTE_ON && (*it).getValue1start() == note)
+        {
             (*it).setValue2start(velocity);
-    }
+            return;
+        }
 }
 
 float Pattern::getNoteDuration(uint32_t step, uint8_t note)
@@ -213,7 +221,8 @@ uint32_t Pattern::getStepsPerBeat()
 
 void Pattern::setBeatsInPattern(uint32_t beats)
 {
-    m_nBeats = beats;
+    if (beats > 0)
+        m_nBeats = beats;
 
     // Remove steps if shrinking
     size_t nIndex = 0;

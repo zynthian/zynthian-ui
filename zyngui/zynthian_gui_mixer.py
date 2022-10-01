@@ -25,15 +25,9 @@
 #******************************************************************************
 
 import os
-import sys
 import copy
-import liblo
 import tkinter
 import logging
-from time import monotonic
-from PIL import Image, ImageTk
-from tkinter import font as tkFont
-from collections import OrderedDict
 
 # Zynthian specific modules
 import zyngine
@@ -256,7 +250,7 @@ class zynthian_gui_mixer_strip():
 
 
 	def refresh_status(self):
-		if self.parent.zyngui.audio_recorder.is_primed(self.layer.midi_chan):
+		if self.parent.zyngui.audio_recorder.is_armed(self.layer.midi_chan):
 			self.parent.main_canvas.itemconfig(self.status_indicator, text="{}\uf111".format(self.layer.status), fill=self.high_color)
 		else:
 			self.parent.main_canvas.itemconfig(self.status_indicator, text=self.layer.status, fill="#009000")
@@ -865,6 +859,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if self.shown:
 			super().refresh_status(status)
 			self.main_mixbus_strip.draw_dpm()
+			self.main_mixbus_strip.refresh_status()
 			for strip in self.visible_mixer_strips:
 				if not strip.hidden:
 					if zynthian_gui_config.enable_dpm:
@@ -941,7 +936,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.highlight_selected_chain()
 
-		if set_curlayer and self.selected_layer.engine:
+		if set_curlayer and self.selected_layer and self.selected_layer.engine:
 			self.zyngui.set_curlayer(self.selected_layer, False, False) #TODO: Lose this re-entrant loop
 
 

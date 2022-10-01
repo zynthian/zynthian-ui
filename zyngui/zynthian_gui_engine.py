@@ -196,6 +196,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.arrow_right()
 				return True
 
+
 	def start_engine(self, eng, jackname = None):
 		if eng not in self.zyngines:
 			info = self.engine_info[eng]

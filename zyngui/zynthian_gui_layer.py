@@ -54,6 +54,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.replace_layer_index = None
 		self.layer_chain_parallel = False
 		self.last_snapshot_fpath = None
+		self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
 		self.reset_zs3()
 		
 		super().__init__('Layer', True)
@@ -76,7 +77,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.reset_note_range()
 		self.remove_all_layers(True)
 		self.reset_midi_profile()
-		self.reset_audio_recorder_prime()
+		self.reset_audio_recorder_arm()
 
 
 	def fill_list(self):
@@ -858,9 +859,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.set_midi_routing()
 
 
-	def reset_audio_recorder_prime(self):
+	def reset_audio_recorder_arm(self):
 		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-			self.zyngui.audio_recorder.unprime(midi_chan)
+			self.zyngui.audio_recorder.unarm(midi_chan)
 
 
 	#----------------------------------------------------------------------------
@@ -1204,7 +1205,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			except:
 				ends.append(layer)
 		if not ends:
-			ends = [self.get_root_layer_by_midi_chan(layer.midi_chan)]
+			end = self.get_root_layer_by_midi_chan(layer.midi_chan)
+			if end:
+				ends = [end]
 		return ends
 
 
@@ -1400,11 +1403,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		except Exception as e:
 			pass
 
-		# Audio Recorder Primed
-		#state['audio_recorder_primed'] = []
-		#for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-		#	if self.zyngui.audio_recorder.is_primed(midi_chan):
-		#		state['audio_recorder_primed'].append(midi_chan)
+		# Audio Recorder Armed
+		state['audio_recorder_armed'] = []
+		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
+			if self.zyngui.audio_recorder.is_armed(midi_chan):
+				state['audio_recorder_armed'].append(midi_chan)
 
 		logging.debug("STATE index => {}".format(state['index']))
 
@@ -1466,13 +1469,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.amixer_layer.restore_state_2(state['amixer_layer'])
 
 		# Audio Recorder Primed
-		if 'audio_recorder_primed' not in state:
-			state['audio_recorder_primed'] = []
+		if 'audio_recorder_armed' not in state:
+			state['audio_recorder_armed'] = []
 		for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-			if midi_chan in state['audio_recorder_primed']:
-				self.zyngui.audio_recorder.prime(midi_chan)
+			if midi_chan in state['audio_recorder_armed']:
+				self.zyngui.audio_recorder.arm(midi_chan)
 			else:
-				self.zyngui.audio_recorder.unprime(midi_chan)
+				self.zyngui.audio_recorder.unarm(midi_chan)
 
 		# Autoconnect Audio
 		self.zyngui.zynautoconnect_audio(True)
@@ -1552,13 +1555,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.amixer_layer.restore_state_1(state['amixer_layer'])
 			self.amixer_layer.restore_state_2(state['amixer_layer'])
 
-		# Audio Recorder Primed
-		if 'audio_recorder_primed' in state:
+		# Audio Recorder Armed
+		if 'audio_recorder_armed' in state:
 			for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-				if midi_chan in state['audio_recorder_primed']:
-					self.zyngui.audio_recorder.prime(midi_chan)
+				if midi_chan in state['audio_recorder_armed']:
+					self.zyngui.audio_recorder.arm(midi_chan)
 				else:
-					self.zyngui.audio_recorder.unprime(midi_chan)
+					self.zyngui.audio_recorder.unarm(midi_chan)
 
 		# Autoconnect Audio
 		self.zyngui.zynautoconnect_audio(True)
@@ -1659,6 +1662,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			logging.exception("Invalid snapshot: %s" % e)
 			return False
 
+		self.last_snapshot_count += 1
 		return True
 
 

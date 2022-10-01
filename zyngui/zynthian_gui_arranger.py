@@ -69,6 +69,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.sequence = 0 # Index of selected sequence
 		self.track = 0 # Index of selected track
 		self.layers = [None] * 16 # Root layer indexed by MIDI channel
+		self.last_snapshot_count = 0
 
 		self.vertical_zoom = self.zyngui.zynseq.libseq.getVerticalZoom() # Quantity of rows (tracks) displayed in grid
 		self.horizontal_zoom = self.zyngui.zynseq.libseq.getHorizontalZoom() # Quantity of columns (time divisions) displayed in grid
@@ -76,7 +77,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.col_offset = 0 # Index of time division at left column in grid
 		self.selected_cell = [0, 0] # Location of selected cell (time div, row)
 		self.pattern = 1 # Index of current pattern to add to sequence
-		self.pattern_to_add = 1 # Index of pattern to actually add (may be copied / moved pattern
+		self.pattern_to_add = 1 # Index of pattern to actually add (may be copied / moved pattern)
 		self.position = 0 # Current playhead position
 		self.grid_timer = Timer(1.0, self.on_grid_timer) # Grid press and hold timer
 		#TODO: Populate tracks from file
@@ -480,6 +481,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to show GUI
 	def build_view(self):
+		if self.last_snapshot_count < self.zyngui.screens['layer'].last_snapshot_count:
+			self.update_sequence_tracks()
+			self.last_snapshot_count = self.zyngui.screens['layer'].last_snapshot_count
+
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
 			self.set_title("Bank %d" % (self.zyngui.zynseq.bank))
@@ -491,6 +496,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 					if layer.midi_chan == chan:
 						self.layers[chan] = layer
 						break
+		self.select_position()
 
 
 	# Function to set current pattern
@@ -683,6 +689,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.screens['pattern_editor'].channel = channel
 			self.zyngui.screens['pattern_editor'].load_pattern(pattern)
 			self.zyngui.show_screen("pattern_editor")
+			return True
 
 
 
@@ -958,6 +965,27 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 				self.timebase_track_canvas.create_text(bar * self.column_width, 0, fill='white', text="%d"%(bar+self.col_offset), anchor='nw', tags='barlines')
 
 
+	# Function to move selection to specified position
+	#	sequence: Index of sequence (Default is reselect current sequence)
+	#	track: Index of track (Default is first track)
+	#	time: Position in timeline (Default is None to keep current time)
+	# If track not available then selects first track in sequence
+	def select_position(self, sequence=None, track=0, time=None):
+		found_row = None
+		if sequence is None:
+			sequence = self.sequence
+		for row,seqtrack in enumerate(self.sequence_tracks):
+			if seqtrack[0] == sequence:
+				if found_row is None:
+					found_row = row
+				if seqtrack[1] == track:
+					found_row = row
+					break
+		if found_row is None:
+			return False
+		self.select_cell(time, found_row)
+
+
 	# Function to select a cell within the grid
 	#	time: Time (column) of selected cell (Optional - default to reselect current column)
 	#	row: Row of selected cell (0..quantity of tracks. Optional - default to reselect current row)
@@ -1098,10 +1126,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to update array of sequences, tracks
 	#	Returns: Quanity of tracks in bank
 	def update_sequence_tracks(self):
+		old_tracks = self.sequence_tracks.copy()
 		self.sequence_tracks.clear()
 		for sequence in range(self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank)):
 			for track in range(self.zyngui.zynseq.libseq.getTracksInSequence(self.zyngui.zynseq.bank, sequence)):
 				self.sequence_tracks.append((sequence, track))
+		if old_tracks != self.sequence_tracks:
+			self.redraw_pending = 4
 		return len(self.sequence_tracks)
 
 
@@ -1162,7 +1193,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
-		if super().switch(3, type):
+		if super().switch_select(type):
 			return True
 		self.toggle_event(self.selected_cell[0], self.selected_cell[1])
 
@@ -1172,13 +1203,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
-		if super().switch(switch, type):
-			return True
 		if switch == zynthian_gui_config.ENC_SELECT and type == 'B':
 			self.show_pattern_editor()
-			return True
-		elif switch == zynthian_gui_config.ENC_SELECT:
-			self.switch_select(type)
 			return True
 		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
 			if type == 'S':

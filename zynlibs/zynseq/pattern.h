@@ -119,6 +119,13 @@ class Pattern
         */
         void removeNote(uint32_t step, uint8_t note);
 
+        /** @brief  Get step that note starts
+        *   @param  position Quantity of steps from start of pattern at which to check for note
+        *   @param  note MIDI note number
+        *   @retval int32_t Quantity of steps from start of pattern that note starts or -1 if note not found
+        */
+        int32_t getNoteStart(uint32_t step, uint8_t note);
+
         /** @brief  Get velocity of note
         *   @param  position Quantity of steps from start of pattern at which note starts
         *   @param  note MIDI note number
@@ -294,9 +301,8 @@ class Pattern
         void deleteEvent(uint32_t position, uint8_t command, uint8_t value1);
 
         std::vector<StepEvent> m_vEvents; // Vector of pattern events
-        uint32_t m_nBeats; // Quantity of beats in pattern
-        uint32_t m_nClkPerStep; // Clock cycles per step
-        uint32_t m_nStepsPerBeat; // Steps per beat
+        uint32_t m_nBeats = 4; // Quantity of beats in pattern
+        uint32_t m_nStepsPerBeat = 6; // Steps per beat
         uint8_t m_nScale = 0; // Index of scale
         uint8_t m_nTonic = 0; // Scale tonic (root note)
         uint8_t m_nRefNote = 60; // Note at which to position pattern editor

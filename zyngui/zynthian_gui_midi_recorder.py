@@ -191,14 +191,15 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def update_status_recording(self, fill=False):
-		if libsmf.isRecording():
-			self.list_data[0] = ("STOP_RECORDING",0,"■ Stop MIDI Recording")
-		else:
-			self.list_data[0] = ("START_RECORDING",0,"⬤ Start MIDI Recording")
-		if fill:
-			self.listbox.delete(0)
-			self.listbox.insert(0, self.list_data[0][2])
-			self.select_listbox(self.index)
+		if self.list_data:
+			if libsmf.isRecording():
+				self.list_data[0] = ("STOP_RECORDING",0,"■ Stop MIDI Recording")
+			else:
+				self.list_data[0] = ("START_RECORDING",0,"⬤ Start MIDI Recording")
+			if fill:
+				self.listbox.delete(0)
+				self.listbox.insert(0, self.list_data[0][2])
+				self.select_listbox(self.index)
 
 
 	def update_status_loop(self, fill=False):
@@ -287,6 +288,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			else:
 				filename = "{}/{}".format(self.capture_dir_sdc, self.get_new_filename())
 			zynsmf.save(self.smf_recorder, filename)
+			os.sync()
 
 			self.update_list()
 			return True

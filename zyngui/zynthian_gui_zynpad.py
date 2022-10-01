@@ -53,11 +53,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to initialise class
 	def __init__(self):
+		logging.getLogger('PIL').setLevel(logging.WARNING)
 
 		self.columns = 4 # Quantity of columns in grid
 		self.selected_pad = 0 # Index of selected pad
 		self.redraw_pending = 2 # 0=no refresh pending, 1=update grid, 2=rebuild grid
 		self.redrawing = False # True to block further redraws until complete
+		self.bank = None # The last successfully selected bank - used to update stale views
 
 		super().__init__()
 
@@ -94,6 +96,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.redraw_pending = 2
 		elif event == zynseq.SEQ_EVENT_BANK:
 			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
+			self.bank = None
 			if self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank) != self.columns ** 2:
 				self.redraw_pending = 2
 			else:
@@ -180,63 +183,66 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			return
 		
 		self.redrawing = True
-		if self.redraw_pending == 2:
-			self.columns = int(sqrt(pads))
-			self.grid_canvas.delete(tkinter.ALL)
-			self.column_width = self.width / self.columns
-			self.row_height = self.height / self.columns
-			self.selection = self.grid_canvas.create_rectangle(0, 0, int(self.column_width), int(self.row_height), fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
-
-			iconsize = (int(self.column_width * 0.5), int(self.row_height * 0.2))
-			img = (Image.open("/zynthian/zynthian-ui/icons/oneshot.png").resize(iconsize))
-			self.mode_icon[1] = ImageTk.PhotoImage(img)
-			img = (Image.open("/zynthian/zynthian-ui/icons/loop.png").resize(iconsize))
-			self.mode_icon[2] = ImageTk.PhotoImage(img)
-			img = (Image.open("/zynthian/zynthian-ui/icons/oneshotall.png").resize(iconsize))
-			self.mode_icon[3] = ImageTk.PhotoImage(img)
-			img = (Image.open("/zynthian/zynthian-ui/icons/loopall.png").resize(iconsize))
-			self.mode_icon[4] = ImageTk.PhotoImage(img)
-			img = (Image.open("/zynthian/zynthian-ui/icons/oneshotsync.png").resize(iconsize))
-			self.mode_icon[5] = ImageTk.PhotoImage(img)
-			img = (Image.open("/zynthian/zynthian-ui/icons/loopsync.png").resize(iconsize))
-			self.mode_icon[6] = ImageTk.PhotoImage(img)
-
-			iconsize = (int(self.row_height * 0.2), int(self.row_height * 0.2))
-			img = (Image.open("/zynthian/zynthian-ui/icons/stopped.png").resize(iconsize))
-			self.state_icon[zynseq.SEQ_STOPPED] = ImageTk.PhotoImage(img)
-			img = (Image.open("/zynthian/zynthian-ui/icons/starting.png").resize(iconsize))
-			self.state_icon[zynseq.SEQ_STARTING] = ImageTk.PhotoImage(img)
-			img = (Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
-			self.state_icon[zynseq.SEQ_PLAYING] = ImageTk.PhotoImage(img)
-			img = (Image.open("/zynthian/zynthian-ui/icons/stopping.png").resize(iconsize))
-			self.state_icon[zynseq.SEQ_STOPPING] = ImageTk.PhotoImage(img)
-
-		# Draw pads
-		for pad in range(self.columns**2):
-			pad_x = int(pad / self.columns) * self.column_width
-			pad_y = pad % self.columns * self.row_height
+		try:
 			if self.redraw_pending == 2:
-				self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
-					fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell", "trigger_%d"%(pad)))
-				self.grid_canvas.create_text(int(pad_x + self.column_width / 2), int(pad_y + 0.01 * self.row_height),
-					width=self.column_width,
-					anchor="n", justify="center",
-					font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-					size=int(self.row_height * 0.2)),
-					fill=zynthian_gui_config.color_panel_tx,
-					tags=("lbl_pad:%d"%(pad),"trigger_%d"%(pad)))
-				self.grid_canvas.create_text(pad_x + 1, pad_y + self.row_height - 1,
-					anchor="sw",
-					font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-					size=int(self.row_height * 0.2)),
-					fill=zynthian_gui_config.color_panel_tx,
-					tags=("group:%d"%(pad),"trigger_%d"%(pad)))
-				self.grid_canvas.create_image(int(pad_x + self.column_width * 0.2), int(pad_y + 0.9 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
-				self.grid_canvas.create_image(int(pad_x + self.column_width * 0.9), int(pad_y + 0.9 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
-				self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
-				self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
-			self.refresh_pad(pad, True)
-		self.update_selection_cursor()
+				self.columns = int(sqrt(pads))
+				self.grid_canvas.delete(tkinter.ALL)
+				self.column_width = self.width / self.columns
+				self.row_height = self.height / self.columns
+				self.selection = self.grid_canvas.create_rectangle(0, 0, int(self.column_width), int(self.row_height), fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
+
+				iconsize = (int(self.column_width * 0.5), int(self.row_height * 0.2))
+				img = (Image.open("/zynthian/zynthian-ui/icons/oneshot.png").resize(iconsize))
+				self.mode_icon[1] = ImageTk.PhotoImage(img)
+				img = (Image.open("/zynthian/zynthian-ui/icons/loop.png").resize(iconsize))
+				self.mode_icon[2] = ImageTk.PhotoImage(img)
+				img = (Image.open("/zynthian/zynthian-ui/icons/oneshotall.png").resize(iconsize))
+				self.mode_icon[3] = ImageTk.PhotoImage(img)
+				img = (Image.open("/zynthian/zynthian-ui/icons/loopall.png").resize(iconsize))
+				self.mode_icon[4] = ImageTk.PhotoImage(img)
+				img = (Image.open("/zynthian/zynthian-ui/icons/oneshotsync.png").resize(iconsize))
+				self.mode_icon[5] = ImageTk.PhotoImage(img)
+				img = (Image.open("/zynthian/zynthian-ui/icons/loopsync.png").resize(iconsize))
+				self.mode_icon[6] = ImageTk.PhotoImage(img)
+
+				iconsize = (int(self.row_height * 0.2), int(self.row_height * 0.2))
+				img = (Image.open("/zynthian/zynthian-ui/icons/stopped.png").resize(iconsize))
+				self.state_icon[zynseq.SEQ_STOPPED] = ImageTk.PhotoImage(img)
+				img = (Image.open("/zynthian/zynthian-ui/icons/starting.png").resize(iconsize))
+				self.state_icon[zynseq.SEQ_STARTING] = ImageTk.PhotoImage(img)
+				img = (Image.open("/zynthian/zynthian-ui/icons/playing.png").resize(iconsize))
+				self.state_icon[zynseq.SEQ_PLAYING] = ImageTk.PhotoImage(img)
+				img = (Image.open("/zynthian/zynthian-ui/icons/stopping.png").resize(iconsize))
+				self.state_icon[zynseq.SEQ_STOPPING] = ImageTk.PhotoImage(img)
+
+			# Draw pads
+			for pad in range(self.columns**2):
+				pad_x = int(pad / self.columns) * self.column_width
+				pad_y = pad % self.columns * self.row_height
+				if self.redraw_pending == 2:
+					self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
+						fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell", "trigger_%d"%(pad)))
+					self.grid_canvas.create_text(int(pad_x + self.column_width / 2), int(pad_y + 0.01 * self.row_height),
+						width=self.column_width,
+						anchor="n", justify="center",
+						font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
+						size=int(self.row_height * 0.2)),
+						fill=zynthian_gui_config.color_panel_tx,
+						tags=("lbl_pad:%d"%(pad),"trigger_%d"%(pad)))
+					self.grid_canvas.create_text(pad_x + 1, pad_y + self.row_height - 1,
+						anchor="sw",
+						font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
+						size=int(self.row_height * 0.2)),
+						fill=zynthian_gui_config.color_panel_tx,
+						tags=("group:%d"%(pad),"trigger_%d"%(pad)))
+					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.2), int(pad_y + 0.9 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
+					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.9), int(pad_y + 0.9 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
+					self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
+					self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
+				self.refresh_pad(pad, True)
+			self.update_selection_cursor()
+		except Exception as e:
+			logging.warning(e)
 
 		self.redraw_pending = 0
 		self.redrawing = False
@@ -244,7 +250,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to refresh pad if it has changed
 	#   pad: Pad index
-	#	force: True to froce refresh
+	#	force: True to force refresh
 	def refresh_pad(self, pad, force=False):
 		if pad >= self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank):
 			return
@@ -315,7 +321,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle grid press and hold
 	def on_grid_timer(self):
 		self.gridDragStart = None
-		self.show_editor()
+		self.show_pattern_editor()
 
 
 	# Function to add menus
@@ -438,16 +444,18 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to show the editor (pattern or arranger based on sequence content)
-	def show_editor(self):
+	def show_pattern_editor(self):
 		tracks_in_sequence = self.zyngui.zynseq.libseq.getTracksInSequence(self.zyngui.zynseq.bank, self.selected_pad)
 		patterns_in_track = self.zyngui.zynseq.libseq.getPatternsInTrack(self.zyngui.zynseq.bank, self.selected_pad, 0)
 		pattern = self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, self.selected_pad, 0, 0)
 		if tracks_in_sequence != 1 or patterns_in_track !=1 or pattern == -1:
+			self.zyngui.screens["arranger"].sequence = self.selected_pad
 			self.zyngui.toggle_screen("arranger")
-			return
+			return True
 		self.zyngui.screens['pattern_editor'].channel = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0)
 		self.zyngui.screens['pattern_editor'].load_pattern(pattern)
 		self.zyngui.show_screen("pattern_editor")
+		return True
 
 
 	# Function to refresh status
@@ -455,8 +463,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		super().refresh_status(status)
 		if self.redraw_pending:
 			self.update_grid()
-		for pad in range(0, self.columns**2):
-			self.refresh_pad(pad)
+		force = self.zyngui.zynseq.bank == self.bank
+		if not self.redrawing:
+			self.bank = self.zyngui.zynseq.bank
+			for pad in range(0, self.columns**2):
+				self.refresh_pad(pad, force)
 
 
 	# Function to handle zynpots value change
@@ -500,12 +511,12 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
-		if super().switch(3, type):
+		if super().switch_select(type):
 			return True
 		if type == 'S':
 			self.toggle_pad()
 		elif type == "B":
-			self.show_editor()
+			self.show_pattern_editor()
 
 
 	# Function to handle switch press
@@ -514,12 +525,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
 		self.zyngui.zynseq.disable_midi_learn()
-		if super().switch(switch, type):
-			return True
-		if switch == zynthian_gui_config.ENC_SELECT:
-			self.switch_select(type)
-			return True
-		elif switch == zynthian_gui_config.ENC_LAYER and type == 'B':
+		if switch == zynthian_gui_config.ENC_LAYER and type == 'B':
 			self.show_menu()
 			return True
 		return False

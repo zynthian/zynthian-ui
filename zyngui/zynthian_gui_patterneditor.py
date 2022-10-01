@@ -120,6 +120,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			bd=0,
 			highlightthickness=0)
 		self.grid_canvas.grid(column=1, row=0)
+		self.grid_canvas.tag_bind("gridcell", '<ButtonPress-1>', self.on_grid_press)
+		self.grid_canvas.tag_bind("gridcell", '<ButtonRelease-1>', self.on_grid_release)
+		self.grid_canvas.tag_bind("gridcell", '<B1-Motion>', self.on_grid_drag)
+
 
 		# Create velocity level indicator canvas
 		self.velocity_canvas = tkinter.Canvas(self.main_frame,
@@ -162,8 +166,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		self.playhead = 0
 
-		# Select a cell
-		self.select_cell(0, self.keymap_offset)
+		# Load pattern 1 so that the editor has a default known state
+		self.load_pattern(1)
 
 
 	# Function to get name of this view
@@ -566,18 +570,20 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.param_editor_zctrl:
 			self.disable_param_editor()
 		self.grid_drag_start = event
-		col = int(event.x / self.step_width)
+		step = int(event.x / self.step_width)
 		row = self.zoom - int(event.y / self.row_height) - 1
 		note = self.keymap[self.keymap_offset + int(row)]["note"]
-		step = int(col)
 		if step < 0 or step >= self.zyngui.zynseq.libseq.getSteps():
 			return
+		start_step = self.zyngui.zynseq.libseq.getNoteStart(step, note)
+		self.drag_start_step = step
+		if start_step >= 0:
+			step = start_step
+		self.select_cell(step, self.keymap_offset + int(row))
 		self.drag_start_velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
 		self.drag_start_duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
-		self.drag_start_step = col
 		if not self.drag_start_velocity:
 			self.play_note(note)
-		self.select_cell(int(col), self.keymap_offset + int(row))
 
 
 	# Function to handle grid mouse release
@@ -653,8 +659,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if step < 0 or step >= self.zyngui.zynseq.libseq.getSteps() or index >= len(self.keymap):
 			return
 		note = self.keymap[index]['note']
-		if self.zyngui.zynseq.libseq.getNoteVelocity(step, note):
-			self.remove_event(step, index)
+		start_step = self.zyngui.zynseq.libseq.getNoteStart(step, note)
+		if start_step >= 0:
+			self.remove_event(start_step, index)
 		else:
 			self.add_event(step, index)
 			return note
@@ -747,9 +754,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step, "white"))
 			else:
 				cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step))
-			self.grid_canvas.tag_bind(cell, '<ButtonPress-1>', self.on_grid_press)
-			self.grid_canvas.tag_bind(cell, '<ButtonRelease-1>', self.on_grid_release)
-			self.grid_canvas.tag_bind(cell, '<B1-Motion>', self.on_grid_drag)
 			self.cells[cellIndex] = cell
 		if step + duration > self.zyngui.zynseq.libseq.getSteps():
 			self.grid_canvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - self.zyngui.zynseq.libseq.getSteps() + step), state="normal")
@@ -804,7 +808,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					break
 
 				# Create last note labels in grid
-				self.grid_canvas.create_text(self.grid_width - self.select_thickness, int(self.row_height * (self.zoom - row - 0.5)), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext"), font=font, anchor="e")
+				self.grid_canvas.create_text(self.grid_width - self.select_thickness, int(self.row_height * (self.zoom - row - 0.5)), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext", "gridcell"), font=font, anchor="e")
 
 				fill = "black"
 				# Update pianoroll keys
@@ -1059,24 +1063,22 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			elif self.edit_mode == EDIT_MODE_ALL:
 				self.zyngui.zynseq.libseq.changeVelocityAll(dval)
 				self.set_title("ALL Velocity", None, None, 2)
+				self.redraw_pending = 3
 			else:
 				self.select_cell(None, self.selected_cell[1] - dval)
 
 		elif i == zynthian_gui_config.ENC_SELECT:
 			if self.edit_mode == EDIT_MODE_SINGLE:
 				if dval > 0:
-					self.duration = self.duration + 1
-				if dval < 0:
-					self.duration = self.duration - 1
-				if self.duration > self.zyngui.zynseq.libseq.getSteps():
-					self.duration = self.zyngui.zynseq.libseq.getSteps()
+					duration = (int(self.duration * 10) + 10) / 10
+				elif dval < 0:
+					duration = (int(self.duration * 10) - 10) / 10
+				if duration > self.zyngui.zynseq.libseq.getSteps() or duration < 0.1:
 					return
-				if self.duration < 1:
-					self.duration = 1
-					return
+				self.duration = duration
 				note = self.keymap[self.selected_cell[1]]["note"]
 				if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
-					self.add_event(self.selected_cell[0], note)
+					self.add_event(self.selected_cell[0], self.selected_cell[1])
 				else:
 					self.select_cell()
 				self.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
@@ -1086,24 +1088,22 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				if dval < 0:
 					self.zyngui.zynseq.libseq.changeDurationAll(-1)
 				self.set_title("ALL DURATION", None, None, 2)
+				self.redraw_pending = 3
 			else:
 				self.select_cell(self.selected_cell[0] + dval, None)
 
 		elif i == zynthian_gui_config.ENC_SNAPSHOT:
 			if self.edit_mode == EDIT_MODE_SINGLE:
 				if dval > 0:
-					self.duration = self.duration + 0.1
-				if dval < 0:
-					self.duration = self.duration - 0.1
-				if self.duration > self.zyngui.zynseq.libseq.getSteps():
-					self.duration = self.zyngui.zynseq.libseq.getSteps()
+					duration = (int(self.duration * 10) + 1) / 10
+				elif dval < 0:
+					duration = (int(self.duration * 10) - 1) / 10
+				if duration > self.zyngui.zynseq.libseq.getSteps() or duration < 0.1:
 					return
-				if self.duration < 0.1:
-					self.duration = 0.1
-					return
+				self.duration = duration
 				note = self.keymap[self.selected_cell[1]]["note"]
 				if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
-					self.add_event(self.selected_cell[0], note)
+					self.add_event(self.selected_cell[0], self.selected_cell[1])
 				else:
 					self.select_cell()
 				self.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
@@ -1113,6 +1113,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				if dval < 0:
 					self.zyngui.zynseq.libseq.changeDurationAll(-0.1)
 				self.set_title("ALL DURATION", None, None, 2)
+				self.redraw_pending = 3
 			else:
 				self.zyngui.zynseq.nudge_tempo(dval)
 				self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
@@ -1121,12 +1122,15 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
-		if super().switch(3, type):
-			return True
+		if super().switch_select(type):
+			return
 		if type == "S":
-			note = self.toggle_event(self.selected_cell[0], self.selected_cell[1])
-			if note:
-				self.play_note(note)
+			if self.edit_mode == EDIT_MODE_NONE:
+				note = self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+				if note:
+					self.play_note(note)
+			else:
+				self.enable_edit(EDIT_MODE_NONE)
 		elif type == "B":
 			if self.edit_mode == EDIT_MODE_NONE:
 				self.enable_edit(EDIT_MODE_SINGLE)
@@ -1139,19 +1143,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
-		if super().switch(switch, type):
-			return True
-		if switch == zynthian_gui_config.ENC_SELECT:
-			self.switch_select(type)
-			return True
-		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
+		if switch == zynthian_gui_config.ENC_SNAPSHOT:
 			self.toggle_playback()
 			return True
-		elif switch == zynthian_gui_config.ENC_BACK:
-			if self.edit_mode:
-				self.enable_edit(EDIT_MODE_NONE)
-				if type == 'S':
-					return True
 		elif switch == zynthian_gui_config.ENC_LAYER and type == 'B':
 			self.show_menu()
 			return True
@@ -1159,6 +1153,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	#	CUIA Actions
+	# Function to handle BACK
+	def back_action(self):
+		if self.edit_mode:
+			self.enable_edit(EDIT_MODE_NONE)
+			return True
+
+
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
 		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
@@ -1199,6 +1200,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.start_playback()
 		else:
 			self.stop_playback()
+
+
+	def get_playback_status(self):
+		return self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence)
 
 
 	# Default status area release callback

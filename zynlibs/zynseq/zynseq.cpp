@@ -1325,6 +1325,13 @@ void removeNote(uint32_t step, uint8_t note)
     g_bDirty = true;
 }
 
+int32_t getNoteStart(uint32_t step, uint8_t note)
+{
+    if(g_pPattern)
+        return g_pPattern->getNoteStart(step, note);
+    return -1;
+}
+
 uint8_t getNoteVelocity(uint32_t step, uint8_t note)
 {
     if(g_pPattern)

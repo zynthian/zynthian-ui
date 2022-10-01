@@ -43,7 +43,7 @@ class zynthian_audio_recorder():
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
 		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 		self.rec_proc = None
-		self.primed = set() # List of chains primed to record
+		self.armed = set() # List of chains armed to record
 		self.zyngui = zynthian_gui_config.zyngui
 		self.filename = None
 
@@ -73,26 +73,26 @@ class zynthian_audio_recorder():
 		return "{}/{}.{:03d}.wav".format(path, filename, index)
 
 
-	def prime(self, channel):
-		self.primed.add(channel)
+	def arm(self, channel):
+		self.armed.add(channel)
 
 
-	def unprime(self, channel):
+	def unarm(self, channel):
 		try:
-			self.primed.remove(channel)
+			self.armed.remove(channel)
 		except:
-			logging.info("Channel %d not primed", channel)
+			logging.info("Channel %d not armed", channel)
 
 
-	def toggle_prime(self, channel):
-		if self.is_primed(channel):
-			self.unprime(channel)
+	def toggle_arm(self, channel):
+		if self.is_armed(channel):
+			self.unarm(channel)
 		else:
-			self.prime(channel)
+			self.arm(channel)
 
 
-	def is_primed(self, channel):
-		return channel in self.primed
+	def is_armed(self, channel):
+		return channel in self.armed
 
 
 	def start_recording(self):
@@ -101,7 +101,7 @@ class zynthian_audio_recorder():
 			return False
 
 		cmd = ["/usr/local/bin/jack_capture", "--daemon"]
-		for port in sorted(self.primed):
+		for port in sorted(self.armed):
 			cmd.append("--port")
 			if port == 256:
 				cmd.append("zynmixer:output_a")
@@ -139,6 +139,7 @@ class zynthian_audio_recorder():
 				return False
 			if 'audio_recorder' in self.zyngui.status_info:
 				self.zyngui.status_info.pop('audio_recorder')
+			os.sync()
 			return True
 
 		return False

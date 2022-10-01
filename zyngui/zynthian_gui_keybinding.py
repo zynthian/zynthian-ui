@@ -64,27 +64,27 @@ class zynthian_gui_keybinding:
 			"POWER_OFF": { "modifier" : 4, "keysym" : "End" },
 			"RELOAD_MIDI_CONFIG": { "modifier": 4, "keysym": "Insert" },
 
-			"SWITCH_SELECT_SHORT": { "modifier": 0, "keysym": "Return, Right" },
-			"SWITCH_SELECT_BOLD": { "modifier": 1, "keysym": "Return, Right" },
-			"SWITCH_SELECT_LONG": { "modifier": 4, "keysym": "Return, Right" },
-			"SWITCH_BACK_SHORT": { "modifier": 0, "keysym": "BackSpace, Escape, Left" },
-			"SWITCH_BACK_BOLD": { "modifier": 1, "keysym": "BackSpace, Escape, Left" },
-			"SWITCH_BACK_LONG": { "modifier": 4, "keysym": "BackSpace, Escape, Left" },
-			"SWITCH_LAYER_SHORT": { "modifier": 0, "keysym": "l" },
-			"SWITCH_LAYER_BOLD": { "modifier": 1, "keysym": "l" },
-			"SWITCH_LAYER_LONG": { "modifier": 4, "keysym": "l" },
-			"SWITCH_SNAPSHOT_SHORT": { "modifier": 0, "keysym": "s" },
-			"SWITCH_SNAPSHOT_BOLD": { "modifier": 1, "keysym": "s" },
-			"SWITCH_SNAPSHOT_LONG": { "modifier": 4, "keysym": "s" },
+			"SWITCH_SELECT_SHORT": { "modifier": 0, "keysym": "l" },
+			"SWITCH_SELECT_BOLD": { "modifier": 1, "keysym": "l" },
+			"SWITCH_SELECT_LONG": { "modifier": 4, "keysym": "l" },
+			"SWITCH_BACK_SHORT": { "modifier": 0, "keysym": "k, BackSpace, Escape" },
+			"SWITCH_BACK_BOLD": { "modifier": 1, "keysym": "k, BackSpace, Escape" },
+			"SWITCH_BACK_LONG": { "modifier": 4, "keysym": "k, BackSpace, Escape" },
+			"SWITCH_LAYER_SHORT": { "modifier": 0, "keysym": "i" },
+			"SWITCH_LAYER_BOLD": { "modifier": 1, "keysym": "i" },
+			"SWITCH_LAYER_LONG": { "modifier": 4, "keysym": "i" },
+			"SWITCH_SNAPSHOT_SHORT": { "modifier": 0, "keysym": "o" },
+			"SWITCH_SNAPSHOT_BOLD": { "modifier": 1, "keysym": "o" },
+			"SWITCH_SNAPSHOT_LONG": { "modifier": 4, "keysym": "o" },
 
-			"SELECT_UP": { "modifier": 0, "keysym": "Up" },
-			"SELECT_DOWN": { "modifier": 0, "keysym": "Down" },
-			"BACK_UP": { "modifier": 2, "keysym": "Up" },
-			"BACK_DOWN": { "modifier": 2, "keysym": "Down" },
-			"LAYER_UP": { "modifier": 1, "keysym": "Up" },
-			"LAYER_DOWN": { "modifier": 1, "keysym": "Down" },
-			"SNAPSHOT_UP": { "modifier": 4, "keysym": "Up" },
-			"SNAPSHOT_DOWN": { "modifier": 4, "keysym": "Down" },
+			"SELECT_UP": { "modifier": 0, "keysym": "Period" },
+			"SELECT_DOWN": { "modifier": 0, "keysym": "Comma" },
+			"BACK_UP": { "modifier": 4, "keysym": "Period" },
+			"BACK_DOWN": { "modifier": 4, "keysym": "Comma" },
+			"LAYER_UP": { "modifier": 5, "keysym": "Greater" },
+			"LAYER_DOWN": { "modifier": 5, "keysym": "Less" },
+			"SNAPSHOT_UP": { "modifier": 1, "keysym": "Greater" },
+			"SNAPSHOT_DOWN": { "modifier": 1, "keysym": "Less" },
 
 			"START_AUDIO_RECORD": { "modifier": 0, "keysym": "a" },
 			"STOP_AUDIO_RECORD": { "modifier": 1, "keysym": "a" },
@@ -170,6 +170,7 @@ class zynthian_gui_keybinding:
 			elif rkey == '0^left': return('ARROW_LEFT')
 			elif rkey == '0^right': return('ARROW_RIGHT')
 			elif rkey == '0^return': return('SWITCH_SELECT')
+			elif rkey == '1^return': return(['SWITCH_SELECT', 'B'])
 			elif rkey == '0^escape': return('BACK')
 			logging.debug("Key not configured")
 

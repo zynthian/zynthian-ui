@@ -408,7 +408,17 @@ class zynthian_gui:
 			else:
 				self.wsleds.setPixelColor(14, self.wscolor_light)
 
-			if 'audio_player' in self.status_info:
+			if self.current_screen == "pattern_editor":
+				pb_status = self.screens['pattern_editor'].get_playback_status()
+				if pb_status == zynseq.SEQ_PLAYING:
+					self.wsleds.setPixelColor(15, self.wscolor_green)
+				elif pb_status in (zynseq.SEQ_STARTING, zynseq.SEQ_RESTARTING):
+					self.wsleds.setPixelColor(15, self.wscolor_yellow)
+				elif pb_status in (zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC):
+					self.wsleds.setPixelColor(15, self.wscolor_red)
+				elif pb_status == zynseq.SEQ_STOPPED:
+					self.wsleds.setPixelColor(15, self.wscolor_light)
+			elif 'audio_player' in self.status_info:
 				self.wsleds.setPixelColor(15, self.wscolor_active)
 			else:
 				self.wsleds.setPixelColor(15, self.wscolor_light)
@@ -624,6 +634,11 @@ class zynthian_gui:
 
 		# Initialize OSC
 		self.osc_init()
+
+		# Add main mixbus chain in case no valid snapshot is loaded
+		self.screens['layer'].add_layer_eng = "AI"
+		self.screens['layer'].add_layer_midich(256, False)
+		self.screens['layer'].refresh()
 
 		# Initial snapshot...
 		snapshot_loaded = False
@@ -896,6 +911,8 @@ class zynthian_gui:
 					if len(zyngui.curlayer.preset_list) > 1:
 						self.show_screen_reset('preset')
 					else:
+						if len(zyngui.curlayer.preset_list):
+							self.curlayer.set_preset(0)
 						self.show_screen_reset(control_screen_name)
 		
 
@@ -1153,7 +1170,9 @@ class zynthian_gui:
 			self.stop_audio_player()
 
 		elif cuia == "TOGGLE_AUDIO_PLAY":
-			if self.audio_player and self.audio_player.get_playback_state():
+			if self.current_screen == "pattern_editor":
+				self.screens["pattern_editor"].toggle_playback()
+			elif self.audio_player and self.audio_player.get_playback_state():
 				self.stop_audio_player()
 			else:
 				self.start_audio_player()
@@ -1369,15 +1388,11 @@ class zynthian_gui:
 			self.toggle_screen("zynpad")
 
 		elif cuia == "SCREEN_PATTERN_EDITOR":
-			pattern = self.screens["pattern_editor"].pattern
-			try:
-				pattern = params[0];
-			except:
-				pass
-			if pattern < 1:
-				pattern = 1
-			self.screens['pattern_editor'].load_pattern(pattern)
-			self.toggle_screen("pattern_editor")
+			success = False
+			if self.current_screen in ["arranger", "zynpad"]:
+				success = self.screens[self.current_screen].show_pattern_editor()
+			if not success:
+				self.toggle_screen("pattern_editor")
 
 		elif cuia == "SCREEN_ARRANGER":
 			self.toggle_screen("arranger")
@@ -1522,7 +1537,7 @@ class zynthian_gui:
 				self.set_curlayer(params, True)
 			except:
 				logging.error("Can't set layer passed as CUIA parameter!")
-		else:
+		elif self.current_screen == 'control':
 			try:
 				self.set_curlayer(self.screens['control'].screen_layer, True)
 			except:
@@ -1536,7 +1551,7 @@ class zynthian_gui:
 		elif self.current_screen == 'bank':
 			#self.replace_screen('preset')
 			self.close_screen()
-		else:
+		elif self.curlayer:
 			if len(self.curlayer.preset_list) > 0 and self.curlayer.preset_list[0][0] != '':
 				self.screens['preset'].index = self.curlayer.get_preset_index()
 				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
@@ -1705,6 +1720,10 @@ class zynthian_gui:
 			self.show_screen('main')
 
 		elif i == 1:
+			try:
+				self.screens[self.current_screen].disable_param_editor()
+			except:
+				pass
 			self.restore_curlayer()
 			self.show_screen_reset('audio_mixer')
 
@@ -2209,8 +2228,8 @@ class zynthian_gui:
 
 
 	def exit(self, code=0):
-		self.exit_flag = True
 		self.exit_code = code
+		self.exit_flag = True
 
 
 	#------------------------------------------------------------------
@@ -2423,7 +2442,7 @@ def zynpot_cb(i, dval):
 
 	except Exception as err:
 		pass # Some screens don't use controllers
-		#logging.exception(err)
+		logging.exception(err)
 
 
 lib_zyncore.setup_zynpot_cb(zynpot_cb)
@@ -2510,7 +2529,10 @@ def cb_keybinding(event):
 
 	action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
 	if action != None:
-		zyngui.callable_ui_action(action)
+		if isinstance(action, list) and len(action) > 1:
+			zyngui.callable_ui_action(action[0], [action[1]])
+		else:
+			zyngui.callable_ui_action(action)
 
 
 zynthian_gui_config.top.bind("<Key>", cb_keybinding)

@@ -83,6 +83,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 				'audio_capture': False,
 				'indelible': True,
 				'audio_rec': True,
+				'audio_route': True,
 				'midi_learn': True
 			}
 		else:
@@ -106,7 +107,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.list_data.append((self.layer_audio_capture, None, "Audio Capture"))
 
 		if 'audio_route' in eng_options and eng_options['audio_route']:
-			self.list_data.append((self.layer_audio_routing, None, "Audio Output"))
+			self.list_data.append((self.layer_audio_routing, None, "Audio Output..."))
 
 		if 'audio_rec' in eng_options:
 			if self.zyngui.audio_recorder.get_status():

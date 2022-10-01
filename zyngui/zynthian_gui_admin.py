@@ -101,9 +101,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Audio Levels on Snapshots"))
 
 		if zynthian_gui_config.midi_filter_output:
-			self.list_data.append((self.toggle_midi_filter_output,0,"[x] Route MIDI to Output"))
+			self.list_data.append((self.toggle_midi_filter_output,0,"[x] Bridge MIDI Input to Output"))
 		else:
-			self.list_data.append((self.toggle_midi_filter_output,0,"[  ] Route MIDI to Output"))
+			self.list_data.append((self.toggle_midi_filter_output,0,"[  ] Bridge MIDI Input to Output"))
 
 		if zynthian_gui_config.midi_sys_enabled:
 			self.list_data.append((self.toggle_midi_sys,0,"[x] MIDI System Messages"))
