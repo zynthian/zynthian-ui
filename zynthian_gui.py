@@ -557,18 +557,22 @@ class zynthian_gui:
 			if part2 in ("HEARTBEAT", "SETUP"):
 				if src.hostname not in self.osc_clients:
 					try:
-						self.zynmixer.add_osc_client(src.hostname)
+						if self.zynmixer.add_osc_client(src.hostname) < 0:
+							logging.warning("Failed to add OSC client registration {}".format(src.hostname))
+							return
 					except:
-						logging.warning("Failed to add OSC client registration {}".format(src.hostname))
+						logging.warning("Error trying to add OSC client registration {}".format(src.hostname))
 						return
 				self.osc_clients[src.hostname] = monotonic()
 			else:
 				if part2[:6] == "VOLUME":
-					self.zynmixer.set_volume(int(part2[6:]), int(args[0]))
+					self.zynmixer.set_level(int(part2[6:]), float(args[0]))
 				if  part2[:5] == "FADER":
-					self.zynmixer.set_volume(int(part2[5:]), int(args[0]))
+					self.zynmixer.set_level(int(part2[5:]), float(args[0]))
+				if  part2[:5] == "LEVEL":
+					self.zynmixer.set_level(int(part2[5:]), float(args[0]))
 				elif part2[:7] == "BALANCE":
-					self.zynmixer.set_balance(int(part2[7:]), int(args[0]))
+					self.zynmixer.set_balance(int(part2[7:]), float(args[0]))
 				elif part2[:4] == "MUTE":
 					self.zynmixer.set_mute(int(part2[4:]), int(args[0]))
 				elif part2[:4] == "SOLO":

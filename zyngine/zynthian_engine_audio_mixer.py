@@ -324,7 +324,7 @@ class zynmixer(zynthian_engine):
 	#	client: IP address of OSC client
 	def add_osc_client(self, client):
 		if self.lib_zynmixer:
-			self.lib_zynmixer.addOscClient(ctypes.c_char_p(client.encode('utf-8')))
+			return self.lib_zynmixer.addOscClient(ctypes.c_char_p(client.encode('utf-8')))
 
 
 	#	Function to remove OSC client registration
