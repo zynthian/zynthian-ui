@@ -128,25 +128,43 @@ void sendOscInt(const char* path, int value)
 
 void* eventThreadFn(void * param) {
     while(g_sendEvents) {
-        if(g_bOsc && g_nDampingCount == 0) {
+        if(g_bOsc) {
             for(unsigned int chan = 0; chan < MAX_CHANNELS; chan++) {
-                if((int)(100000 * g_dynamic_last[chan].holdA) != (int)(100000 * g_dynamic[chan].holdA)) {
+                if((int)(100000 * g_dynamic_last[chan].dpmA) != (int)(100000 * g_dynamic[chan].dpmA)) {
                     sprintf(g_oscdpm, "/mixer/dpm%da", chan);
+                    sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].dpmA));
+                    g_dynamic_last[chan].dpmA = g_dynamic[chan].dpmA;
+                }
+                if((int)(100000 * g_dynamic_last[chan].dpmB) != (int)(100000 * g_dynamic[chan].dpmB)) {
+                    sprintf(g_oscdpm, "/mixer/dpm%db", chan);
+                    sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].dpmB));
+                    g_dynamic_last[chan].dpmB = g_dynamic[chan].dpmB;
+                }
+                if((int)(100000 * g_dynamic_last[chan].holdA) != (int)(100000 * g_dynamic[chan].holdA)) {
+                    sprintf(g_oscdpm, "/mixer/hold%da", chan);
                     sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdA));
                     g_dynamic_last[chan].holdA = g_dynamic[chan].holdA;
                 }
                 if((int)(100000 * g_dynamic_last[chan].holdB) != (int)(100000 * g_dynamic[chan].holdB)) {
-                    sprintf(g_oscdpm, "/mixer/dpm%db", chan);
+                    sprintf(g_oscdpm, "/mixer/hold%db", chan);
                     sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdB));
                     g_dynamic_last[chan].holdB = g_dynamic[chan].holdB;
                 }
             }
+            if((int)(100000 * g_mainOutput_last.dpmA) != (int)(100000 * g_mainOutput.dpmA)) {
+                sendOscFloat("/mixer/dpmA", convertToDBFS(g_mainOutput.dpmA));
+                g_mainOutput_last.dpmA = g_mainOutput.dpmA;
+            }
+            if((int)(100000 * g_mainOutput_last.dpmB) != (int)(100000 * g_mainOutput.dpmB)) {
+                sendOscFloat("/mixer/dpmB", convertToDBFS(g_mainOutput.dpmB));
+                g_mainOutput_last.dpmB = g_mainOutput.dpmB;
+            }
             if((int)(100000 * g_mainOutput_last.holdA) != (int)(100000 * g_mainOutput.holdA)) {
-                sendOscFloat("/mixer/dpmA", convertToDBFS(g_mainOutput.holdA));
+                sendOscFloat("/mixer/holdA", convertToDBFS(g_mainOutput.holdA));
                 g_mainOutput_last.holdA = g_mainOutput.holdA;
             }
             if((int)(100000 * g_mainOutput_last.holdB) != (int)(100000 * g_mainOutput.holdB)) {
-                sendOscFloat("/mixer/dpmB", convertToDBFS(g_mainOutput.holdB));
+                sendOscFloat("/mixer/holdB", convertToDBFS(g_mainOutput.holdB));
                 g_mainOutput_last.holdB = g_mainOutput.holdB;
             }
         }
@@ -472,6 +490,8 @@ int init()
             fprintf(stderr, "libzynmixer: Cannot register %s\n", sName);
             exit(1);
         }
+        g_dynamic_last[chan].dpmA = 100.0;
+        g_dynamic_last[chan].dpmB = 100.0;
         g_dynamic_last[chan].holdA = 100.0;
         g_dynamic_last[chan].holdB = 100.0;
     }
@@ -519,6 +539,8 @@ int init()
     g_mainOutput.phase = 0;
     g_mainOutput.routed = 1;
     g_mainOutput.enable_dpm = 1;
+    g_mainOutput_last.dpmA = 100.0;
+    g_mainOutput_last.dpmB = 100.0;
     g_mainOutput_last.holdA = 100.0;
     g_mainOutput_last.holdB = 100.0;
 
@@ -807,6 +829,8 @@ int addOscClient(const char* client)
             setMute(nChannel, getMute(nChannel));
             setPhase(nChannel, getPhase(nChannel));
             setSolo(nChannel, getSolo(nChannel));
+            g_dynamic_last[nChannel].dpmA = 100.0;
+            g_dynamic_last[nChannel].dpmB = 100.0;
             g_dynamic_last[nChannel].holdA = 100.0;
             g_dynamic_last[nChannel].holdB = 100.0;
         }
@@ -816,8 +840,10 @@ int addOscClient(const char* client)
         setMute(MAIN_CHANNEL, getMute(MAIN_CHANNEL));
         setPhase(MAIN_CHANNEL, getPhase(MAIN_CHANNEL));
         setSolo(MAIN_CHANNEL, getSolo(MAIN_CHANNEL));
-        g_mainOutput.holdA = 100.0;
-        g_mainOutput.holdB = 100.0;
+        g_mainOutput_last.dpmA = 100.0;
+        g_mainOutput_last.dpmB = 100.0;
+        g_mainOutput_last.holdA = 100.0;
+        g_mainOutput_last.holdB = 100.0;
         g_bOsc = 1;
         return i;
     }
