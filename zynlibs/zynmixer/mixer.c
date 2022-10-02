@@ -71,6 +71,8 @@ struct dynamic
 jack_client_t * g_pJackClient;
 struct dynamic g_dynamic[MAX_CHANNELS];
 struct dynamic g_mainOutput;
+struct dynamic g_dynamic_last[MAX_CHANNELS]; // Previous values used to thin OSC updates
+struct dynamic g_mainOutput_last; // Previous values used to thin OSC updates
 jack_port_t * g_mainSendA;
 jack_port_t * g_mainSendB;
 jack_port_t * g_mainReturnA;
@@ -126,14 +128,26 @@ void sendOscInt(const char* path, int value)
 
 void* eventThreadFn(void * param) {
     while(g_sendEvents) {
-        if(g_nDampingCount == 0) {
+        if(g_bOsc && g_nDampingCount == 0) {
             for(unsigned int chan = 0; chan < MAX_CHANNELS; chan++) {
-                sprintf(g_oscdpm, "/mixer/dpm%da", chan);
-                sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdA));
-                sprintf(g_oscdpm, "/mixer/dpm%db", chan);
-                sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdB));
+                if((int)(100000 * g_dynamic_last[chan].holdA) != (int)(100000 * g_dynamic[chan].holdA)) {
+                    sprintf(g_oscdpm, "/mixer/dpm%da", chan);
+                    sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdA));
+                    g_dynamic_last[chan].holdA = g_dynamic[chan].holdA;
+                }
+                if((int)(100000 * g_dynamic_last[chan].holdB) != (int)(100000 * g_dynamic[chan].holdB)) {
+                    sprintf(g_oscdpm, "/mixer/dpm%db", chan);
+                    sendOscFloat(g_oscdpm, convertToDBFS(g_dynamic[chan].holdB));
+                    g_dynamic_last[chan].holdB = g_dynamic[chan].holdB;
+                }
+            }
+            if((int)(100000 * g_mainOutput_last.holdA) != (int)(100000 * g_mainOutput.holdA)) {
                 sendOscFloat("/mixer/dpmA", convertToDBFS(g_mainOutput.holdA));
+                g_mainOutput_last.holdA = g_mainOutput.holdA;
+            }
+            if((int)(100000 * g_mainOutput_last.holdB) != (int)(100000 * g_mainOutput.holdB)) {
                 sendOscFloat("/mixer/dpmB", convertToDBFS(g_mainOutput.holdB));
+                g_mainOutput_last.holdB = g_mainOutput.holdB;
             }
         }
         usleep(10000);
@@ -458,6 +472,8 @@ int init()
             fprintf(stderr, "libzynmixer: Cannot register %s\n", sName);
             exit(1);
         }
+        g_dynamic_last[chan].holdA = 100.0;
+        g_dynamic_last[chan].holdB = 100.0;
     }
     if (!(g_mainReturnA = jack_port_register(g_pJackClient, "return_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)))
     {
@@ -503,6 +519,8 @@ int init()
     g_mainOutput.phase = 0;
     g_mainOutput.routed = 1;
     g_mainOutput.enable_dpm = 1;
+    g_mainOutput_last.holdA = 100.0;
+    g_mainOutput_last.holdB = 100.0;
 
     #ifdef DEBUG
     fprintf(stderr,"libzynmixer: Registered output ports\n");
@@ -594,7 +612,7 @@ float getBalance(int channel)
 void setMute(int channel, int mute)
 {
     if(channel >= MAX_CHANNELS) {
-        channel = MAX_CHANNELS;
+        channel = MAIN_CHANNEL;
         g_mainOutput.mute = mute;
     }
     else
@@ -789,6 +807,8 @@ int addOscClient(const char* client)
             setMute(nChannel, getMute(nChannel));
             setPhase(nChannel, getPhase(nChannel));
             setSolo(nChannel, getSolo(nChannel));
+            g_dynamic_last[nChannel].holdA = 100.0;
+            g_dynamic_last[nChannel].holdB = 100.0;
         }
         setBalance(MAIN_CHANNEL, getBalance(MAIN_CHANNEL));
         setLevel(MAIN_CHANNEL, getLevel(MAIN_CHANNEL));
@@ -796,7 +816,9 @@ int addOscClient(const char* client)
         setMute(MAIN_CHANNEL, getMute(MAIN_CHANNEL));
         setPhase(MAIN_CHANNEL, getPhase(MAIN_CHANNEL));
         setSolo(MAIN_CHANNEL, getSolo(MAIN_CHANNEL));
-        g_bOsc = 0;
+        g_mainOutput.holdA = 100.0;
+        g_mainOutput.holdB = 100.0;
+        g_bOsc = 1;
         return i;
     }
     fprintf(stderr, "libzynmixer: Not adding OSC client %s - Maximum client count reached [%d]\n", client, MAX_OSC_CLIENTS);

@@ -817,10 +817,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, None)
 		self.main_mixbus_strip.zctrls = self.zyngui.zynmixer.zctrls[self.zyngui.zynmixer.get_max_channels()]
 
-		# Disable channel DPM by default - they get enabled when mixer is shown
-		for chan in range(self.zyngui.zynmixer.get_max_channels()):
-			self.zyngui.zynmixer.enable_dpm(chan, False)
-
 		if zynthian_gui_config.show_cpu_status:
 			self.set_meter_mode(self.METER_CPU)
 		else:
@@ -831,18 +827,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle hiding display
 	def hide(self):
-		# Disable channel DPM when mixer not shown
-		for chan in range(self.zyngui.zynmixer.get_max_channels()):
-			self.zyngui.zynmixer.enable_dpm(chan, False)
 		self.exit_midi_learn()
 		super().hide()
 
 
 	# Function to handle showing display
 	def build_view(self):
-		# Only enable channel DPM when mixer shown
-		for chan in range(self.zyngui.zynmixer.get_max_channels()):
-			self.zyngui.zynmixer.enable_dpm(chan, zynthian_gui_config.enable_dpm)
 		self.refresh_visible_strips()
 		self.select_chain_by_layer(self.zyngui.curlayer)
 		self.setup_zynpots()
