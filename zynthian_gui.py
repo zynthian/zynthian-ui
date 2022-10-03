@@ -564,6 +564,8 @@ class zynthian_gui:
 						logging.warning("Error trying to add OSC client registration {}".format(src.hostname))
 						return
 				self.osc_clients[src.hostname] = monotonic()
+				for chan in range(self.zyngui.zynmixer.get_max_channels()):
+					self.zynmixer.enable_dpm(chan, True)
 			else:
 				if part2[:6] == "VOLUME":
 					self.zynmixer.set_level(int(part2[6:]), float(args[0]))
@@ -2288,6 +2290,10 @@ class zynthian_gui:
 		# Poll
 		if self.polling:
 			zynthian_gui_config.top.after(self.osc_heartbeat_timeout * 1000, self.osc_timeout)
+
+		if not self.osc_clients and self.current_screen != "audio_mixer":
+			for chan in range(self.zynmixer.get_max_channels()):
+				self.zynmixer.enable_dpm(chan, False)
 
 
 	#------------------------------------------------------------------
