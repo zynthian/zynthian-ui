@@ -65,6 +65,7 @@ class zynthian_layer:
 			self.audio_in = ["system:capture_1", "system:capture_2"]
 		elif self.midi_chan == 256 and engine.nickname == "AI":
 			self.audio_in = ["zynmixer:send_a", "zynmixer:send_b"]
+			self.audio_out = ["zynmixer:return_a", "zynmixer:return_b"]
 		else:
 			self.audio_in = []
 
@@ -717,6 +718,8 @@ class zynthian_layer:
 	def reset_audio_out(self):
 		if self.midi_chan is None:
 			self.audio_out = ["system"]
+		elif self.midi_chan == 256:
+			self.audio_out = ["zynmixer:return_a", "zynmixer:return_b"]
 		else:
 			self.audio_out = ["mixer"]
 			
@@ -748,7 +751,10 @@ class zynthian_layer:
 
 
 	def set_audio_in(self, ai):
-		self.audio_in = copy.copy(ai)
+		if self.midi_chan == 256 and self.engine.nickname == 'AI':
+			self.audio_in = ["zynmixer:send_a", "zynmixer:send_b"]
+		else:
+			self.audio_in = copy.copy(ai)
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -784,6 +790,8 @@ class zynthian_layer:
 	def reset_audio_in(self):
 		if self.midi_chan is None or self.midi_chan < 16:
 			self.audio_in = ["system:capture_1", "system:capture_2"]
+		elif self.midi_chan == 256 and self.engine.nickname == 'AI':
+			self.audio_in = ["zynmixer:send_a", "zynmixer:send_b"]
 		else:
 			self.audio_in = []
 		self.zyngui.zynautoconnect_audio()

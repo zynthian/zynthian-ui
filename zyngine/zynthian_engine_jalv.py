@@ -75,7 +75,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			#'http://nickbailey.co.nr/triceratops': {"RPi4:":True, "RPi3": False, "RPi2": False },
 			#'http://code.google.com/p/amsynth/amsynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
 			'http://gareus.org/oss/lv2/tuna#one': {"RPi4": False, "RPi3": False, "RPi2": False }, # Disable because CPU usage and widget implemented in main UI
-			"http://tytel.org/helm": {"RPi4": "Qt4UI", "RPi3": True, "RPi2": False } # Better CPU with gtk but only qt4 works on RPi4
+			"http://tytel.org/helm": {"RPi4": False, "RPi3": True, "RPi2": False } # Better CPU with gtk but only qt4 works on RPi4
 	}
 	if "Raspberry Pi 4" in os.environ.get('RBPI_VERSION'):
 		rpi = "RPi4"

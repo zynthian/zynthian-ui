@@ -653,28 +653,6 @@ def audio_autoconnect(force=False):
 				except:
 					pass
 
-
-	
-	# Connect zynmixer "send" to the Main FX-chain root layer and its "pars" (parallel layers)
-	mfx_root_layer = zynguilayer.get_main_fxchain_root_layer()
-	if mfx_root_layer:
-		# Calculate the list of Main FX-chain input ports
-		mfx_iports_a = []
-		mfx_iports_b = []
-		for rlp in zynguilayer.get_fxchain_pars(mfx_root_layer):
-			mfxp_iports = jclient.get_ports(rlp.get_audio_jackname(), is_input=True, is_audio=True)
-			if len(mfxp_iports) > 0:
-				if len(mfxp_iports) == 1:
-					mfxp_iports.append(mfxp_iports[0])
-				mfx_iports_a.append(mfxp_iports[0])
-				mfx_iports_b.append(mfxp_iports[1])
-		# Connect/disconnect
-		try:
-			connect_only("zynmixer:send_a", mfx_iports_a)
-			connect_only("zynmixer:send_b", mfx_iports_b)
-		except Exception as e:
-			logging.error(e)
-
 	# Connect metronome to aux
 	try:
 		jclient.connect("zynseq:metronome", "zynmixer:input_17a")
@@ -697,80 +675,69 @@ def audio_autoconnect(force=False):
 
 	#Get System Capture ports => jack output ports!!
 	capture_ports = get_audio_capture_ports()
-	if len(capture_ports) > 0:
-		capture_to_mixer = []
-		root_layers = zynguilayer.get_fxchain_roots()
-		# Connect capture ports to audio_in layer's output ports
-		#Connect system capture ports to FX-layers root ...
-		for rl in root_layers:
-			if rl.engine.nickname != "AI":
-				continue
+	capture_to_mixer = []
+	root_layers = zynguilayer.get_fxchain_roots()
+	# Connect audio inputs (capture or mixer send)
+	for rl in root_layers:
+		if rl.engine.nickname != "AI":
+			continue
 
-			rlp = get_layer_audio_out_ports(rl)
-			rlp_ports = []
-			for l in rlp:
-				rlp_ports += jclient.get_ports(l, is_input=True, is_audio=True, is_physical=False)
-			if len(rlp_ports) > 0:
-				rl_in = rl.get_audio_in()
-				nsc = min(len(rl_in), len(rlp_ports))
-	
-				#Connect System Capture to Root Layer ports
-				for j, scp in enumerate(rl_in):
-					if scp in rl.get_audio_in():
-						for k, rlp_inp in enumerate(rlp_ports):
-							if rlp_inp.name.startswith("zynmixer:return"):
-								continue
-							if k % nsc == j % nsc:
-								#logger.debug("Connecting {} to {} ...".format(scp.name, layer.get_audio_jackname()))
-								try:
-									jclient.connect(scp, rlp_inp)
-								except:
-									pass
-							else:
-								try:
-									jclient.disconnect(scp, rlp_inp)
-								except:
-									pass
-							# Limit to 2 input ports 
-								# Limit to 2 input ports 
-							# Limit to 2 input ports 
-							#if k>=1:
-							#	break
+		rlp = get_layer_audio_out_ports(rl)
+		rlp_ports = []
+		for l in rlp:
+			rlp_ports += jclient.get_ports(l, is_input=True, is_audio=True, is_physical=False)
+		if len(rlp_ports) > 0:
+			rl_in = rl.get_audio_in()
+			nsc = min(len(rl_in), len(rlp_ports))
+
+			#Connect System Capture to Root Layer ports
+			for j, scp in enumerate(rl_in):
+				for k, rlp_inp in enumerate(rlp_ports):
+					if rlp_inp.name.startswith("zynmixer:return") and scp.startswith("zynmixer:send"):
+						continue
+					if k % nsc == j % nsc:
+						#logger.debug("Connecting {} to {} ...".format(scp.name, layer.get_audio_jackname()))
+						try:
+							jclient.connect(scp, rlp_inp)
+						except:
+							pass
 					else:
-						for rlp_inp in rlp_ports:
-							try:
-								jclient.disconnect(scp, rlp_inp)
-							except:
-								pass
-			if "mixer" in rl.get_audio_out():
-				capture_to_mixer.append(rl.midi_chan)
+						try:
+							jclient.disconnect(scp, rlp_inp)
+						except:
+							pass
+					# Limit to 2 input ports
+					#if k>=1:
+					#	break
+		if "mixer" in rl.get_audio_out():
+			capture_to_mixer.append(rl.midi_chan)
 
-		# Clear unused direct connection from audio inputs to mixer
-		for midi_chan in range(16):
-			if midi_chan not in capture_to_mixer:
-				for ip in capture_ports:
-					try:
-						jclient.disconnect(ip, "zynmixer:input_{:02d}a".format(midi_chan + 1))
-					except:
-						pass
-					try:
-						jclient.disconnect(ip, "zynmixer:input_{:02d}b".format(midi_chan + 1))
-					except:
-						pass
+	# Clear unused direct connection from audio inputs to mixer
+	for midi_chan in range(16):
+		if midi_chan not in capture_to_mixer:
+			for ip in capture_ports:
+				try:
+					jclient.disconnect(ip, "zynmixer:input_{:02d}a".format(midi_chan + 1))
+				except:
+					pass
+				try:
+					jclient.disconnect(ip, "zynmixer:input_{:02d}b".format(midi_chan + 1))
+				except:
+					pass
 
-		if zynthian_gui_config.midi_aubionotes_enabled:
-			#Get Aubio Input ports ...
-			aubio_in = jclient.get_ports("aubio", is_input=True, is_audio=True)
-			if len(aubio_in)>0:
-				nip = len(aubio_in)
-				#Connect System Capture to Aubio ports
-				j = 0
-				for scp in capture_ports:
-					try:
-						jclient.connect(scp, aubio_in[j % nip])
-					except:
-						pass
-					j += 1
+	if zynthian_gui_config.midi_aubionotes_enabled:
+		#Get Aubio Input ports...
+		aubio_in = jclient.get_ports("aubio", is_input=True, is_audio=True)
+		if len(aubio_in) > 0:
+			nip = len(aubio_in)
+			#Connect System Capture to Aubio ports
+			j = 0
+			for scp in capture_ports:
+				try:
+					jclient.connect(scp, aubio_in[j % nip])
+				except:
+					pass
+				j += 1
 
 	#Release Mutex Lock
 	release_lock()

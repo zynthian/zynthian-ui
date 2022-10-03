@@ -1725,12 +1725,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					if chain > 16:
 						chain = 16
 					if root_layers[chain] is None and engine.type == "Audio Effect" and engine.nickname != "AI":
+						# Insert missing Audio Input layer
 						ai_engine =  self.zyngui.screens['engine'].start_engine("AI", "audioin-{:02d}".format(lss['midi_chan']))
 						ai_layer = zynthian_layer(ai_engine, lss['midi_chan'], self.zyngui)
 						layer = zynthian_layer(engine, lss['midi_chan'], self.zyngui)
-						ai_layer.audio_in = layer.audio_in
-						ai_layer.audio_out = [layer.get_audio_jackname()]
-						layer.audio_in = [ai_layer.get_audio_jackname()]
+						ai_layer.set_audio_out([layer.get_audio_jackname()])
+						layer.set_audio_in([ai_layer.get_audio_jackname()])
 						self.layers.append(ai_layer)
 						self.layers.append(layer)
 					else:
