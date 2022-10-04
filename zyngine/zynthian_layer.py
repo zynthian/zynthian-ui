@@ -61,13 +61,14 @@ class zynthian_layer:
 		else:
 			self.audio_out = ["mixer"]
 
-		if self.midi_chan is None or self.midi_chan < 16:
-			self.audio_in = ["system:capture_1", "system:capture_2"]
-		elif self.midi_chan == 256 and engine.nickname == "AI":
-			self.audio_in = ["zynmixer:send_a", "zynmixer:send_b"]
-			self.audio_out = ["zynmixer:return_a", "zynmixer:return_b"]
+		if engine.nickname == "AI":
+			if self.midi_chan == 256:
+				self.audio_in = ["zynmixer:send_a", "zynmixer:send_b"]
+				self.audio_out = ["zynmixer:return_a", "zynmixer:return_b"]
+			else:
+				self.audio_in = ["system:capture_1", "system:capture_2"]
 		else:
-			self.audio_in = []
+			self.audio_in = [] # Only AI uses audio_in
 
 		self.midi_out = ["MIDI-OUT", "NET-OUT"]
 

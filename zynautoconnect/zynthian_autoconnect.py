@@ -691,24 +691,32 @@ def audio_autoconnect(force=False):
 			nsc = min(len(rl_in), len(rlp_ports))
 
 			#Connect System Capture to Root Layer ports
-			for j, scp in enumerate(rl_in):
-				for k, rlp_inp in enumerate(rlp_ports):
-					if rlp_inp.name.startswith("zynmixer:return") and scp.startswith("zynmixer:send"):
-						continue
-					if k % nsc == j % nsc:
-						#logger.debug("Connecting {} to {} ...".format(scp.name, layer.get_audio_jackname()))
-						try:
-							jclient.connect(scp, rlp_inp)
-						except:
-							pass
-					else:
+			for j, cp in enumerate(capture_ports):
+				scp = cp.name
+				if scp in rl_in:
+					for k, rlp_inp in enumerate(rlp_ports):
+						if rlp_inp.name.startswith("zynmixer:return") and scp.startswith("zynmixer:send"):
+							continue # Don't connect send to return - mixer does optimized normalisation when return disconnected
+						if k % nsc == j % nsc:
+							#logger.debug("Connecting {} to {} ...".format(scp.name, layer.get_audio_jackname()))
+							try:
+								jclient.connect(scp, rlp_inp)
+							except:
+								pass
+						else:
+							try:
+								jclient.disconnect(scp, rlp_inp)
+							except:
+								pass
+						# Limit to 2 input ports
+						#if k>=1:
+						#	break
+				else:
+					for rlp_inp in rlp_ports:
 						try:
 							jclient.disconnect(scp, rlp_inp)
 						except:
 							pass
-					# Limit to 2 input ports
-					#if k>=1:
-					#	break
 		if "mixer" in rl.get_audio_out():
 			capture_to_mixer.append(rl.midi_chan)
 
