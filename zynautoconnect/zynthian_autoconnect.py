@@ -675,6 +675,7 @@ def audio_autoconnect(force=False):
 
 	#Get System Capture ports => jack output ports!!
 	capture_ports = get_audio_capture_ports()
+	capture_ports += jclient.get_ports('zynmixer:send')
 	capture_to_mixer = []
 	root_layers = zynguilayer.get_fxchain_roots()
 	# Connect audio inputs (capture or mixer send)
