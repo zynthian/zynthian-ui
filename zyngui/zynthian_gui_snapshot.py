@@ -47,7 +47,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.index_offset = 0
 		self.midi_banks = {}
 		self.midi_programs = {}
+
 		super().__init__('Bank', True)
+		self.check_bankless_mode()
 
 
 	def get_snapshot_fpath(self,f):
