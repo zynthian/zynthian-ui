@@ -1405,7 +1405,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			'layers':[],
 			'clone':[],
 			'note_range':[],
-			'audio_capture': self.get_audio_capture()
+			'audio_capture': self.get_audio_capture(),
+			'last_snapshot_fpath': self.last_snapshot_fpath
 		}
 
 		# Layers info
@@ -1696,7 +1697,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if load_sequences:
 				self._load_snapshot_sequences(snapshot)
 
-			self.last_snapshot_fpath = fpath
+			if fpath == self.zyngui.screens['snapshot'].last_state_snapshot_fpath and "last_snapshot_fpath" in snapshot:
+				self.last_snapshot_fpath = snapshot['last_snapshot_fpath']
+			else:
+				self.last_snapshot_fpath = fpath
 
 		except Exception as e:
 			self.zyngui.reset_loading()

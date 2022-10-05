@@ -825,7 +825,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.set_meter_mode(self.METER_NONE) # Don't show meter in status bar (there are meters all over the mixer)
 
-		self.set_title("Audio Mixer")
+		self.set_title()
+
+
+	# Redefine set_title
+	def set_title(self, title = "Mixer", fg=None, bg=None, timeout = None):
+		if self.zyngui.screens['layer'].last_snapshot_fpath:
+			fparts = os.path.splitext(self.zyngui.screens['layer'].last_snapshot_fpath)
+			if self.zyngui.screens['snapshot'].bankless_mode:
+				ssname = os.path.basename(fparts[0])
+			else:
+				ssname = fparts[0].replace(self.zyngui.screens['snapshot'].base_dir + "/","")
+			title +=  ": " + ssname.replace("_", " ")
+
+		super().set_title(title, fg, bg, timeout)
 
 
 	# Function to handle hiding display
@@ -839,6 +852,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle showing display
 	def build_view(self):
+		self.set_title()
 		for chan in range(self.zyngui.zynmixer.get_max_channels()):
 			self.zyngui.zynmixer.enable_dpm(chan, True)
 		self.refresh_visible_strips()
