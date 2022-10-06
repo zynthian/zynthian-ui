@@ -211,12 +211,12 @@ while true; do
 		102)
 			splash_zynthian_message "Restarting UI..."
 			load_config_env
-			sleep 5
+			sleep 10
 		;;
 		*)
 			splash_zynthian_error_exit_ip $status
 			load_config_env
-			sleep 3
+			sleep 10
 		;;
 	esac
 done
