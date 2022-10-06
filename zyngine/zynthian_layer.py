@@ -300,10 +300,10 @@ class zynthian_layer:
 			# Check if preset isn't already loaded
 			elif not self.engine.cmp_presets(preset_info, self.preset_info):
 				set_engine_needed = True
-				logging.info("Preset selected: %s (%d)" % (self.preset_name,i))
+				logging.info("Preset selected: %s (%d)" % (preset_name,i))
 			else:
 				set_engine_needed = False
-				logging.info("Preset already selected: %s (%d)" % (self.preset_name,i))
+				logging.info("Preset already selected: %s (%d)" % (preset_name,i))
 				# Check if some other preset is preloaded
 				if self.preload_info and not self.engine.cmp_presets(self.preload_info,self.preset_info):
 					set_engine_needed = True
@@ -496,8 +496,8 @@ class zynthian_layer:
 	def send_ctrl_midi_cc(self):
 		for k, zctrl in self.controllers_dict.items():
 			if zctrl.midi_cc:
-				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
-				logging.debug("Sending MIDI CC{}={} for {}".format(zctrl.midi_cc, zctrl.value, k))
+				lib_zyncore.ui_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
+				logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
 
 
 	def midi_unlearn(self, unused=None):
@@ -611,9 +611,9 @@ class zynthian_layer:
 		# WARNING => This is really UGLY!
 		# For non-LV2 engines, bank and preset can affect what controllers do.
 		# In case of LV2, just restoring the controllers ought to be enough, which is nice
-		# since it saves the 0.2 second delay between setting a preset and updating controllers.
+		# since it saves the delay between setting a preset and updating controllers.
 		if self.preset_loaded and not self.engine.nickname.startswith('JV'):
-			sleep(0.3)
+			sleep(0.2)
 
 		self.wait_stop_loading()
 

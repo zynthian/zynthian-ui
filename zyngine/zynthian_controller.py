@@ -349,23 +349,23 @@ class zynthian_controller:
 						# Send value using OSC/MIDI ...
 						if self.osc_path:
 							liblo.send(self.engine.osc_target,self.osc_path, self.get_ctrl_osc_val())
-							#logging.debug("Sending OSC controller '{}' value => {}".format(self.symbol, val))
+							#logging.debug("Sending OSC Controller '{}', {} => {}".format(self.symbol, self.osc_path, self.get_ctrl_osc_val()))
 
 						elif self.midi_cc:
 							lib_zyncore.ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
-							#logging.debug("Sending MIDI controller '{}' value => {} ({})".format(self.symbol, val, mval))
+							logging.debug("Sending MIDI Controller '{}', CH{}#CC{}={}".format(self.symbol, self.midi_chan, self.midi_cc, mval))
 
 					except Exception as e:
-						logging.warning("Can't send controller '{}' value: {} => {}".format(self.symbol, val, e))
+						logging.warning("Can't send controller '{}' => {}".format(self.symbol, e))
 
 			# Send feedback to MIDI controllers
 			try:
 				if self.midi_learn_cc:
-					lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_learn_chan,self.midi_learn_cc,mval)
-					#logging.debug("Controller feedback '{}' (learn) => CH{}, CC{}, Val={}".format(self.symbol,self.midi_learn_chan,self.midi_learn_cc,mval))
+					lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_learn_chan, self.midi_learn_cc, mval)
+					#logging.debug("Sending learned MIDI controller feedback '{}' => CH{}, CC{}, Val={}".format(self.symbol, self.midi_learn_chan, self.midi_learn_cc, mval))
 				elif self.midi_cc:
-					lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_chan,self.midi_cc,mval)
-					#logging.debug("Controller feedback '{}' => CH{}, CC{}, Val={}".format(self.symbol,self.midi_chan,self.midi_cc,mval))
+					lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
+					#logging.debug("Sending MIDI Controller feedback '{}' => CH{}, CC{}, Val={}".format(self.symbol, self.midi_chan, self.midi_cc, mval))
 
 			except Exception as e:
 				logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol,e))
@@ -454,16 +454,12 @@ class zynthian_controller:
 		if self.midi_learn_chan is not None and self.midi_learn_cc is not None:
 			state['midi_learn_chan'] = self.midi_learn_chan
 			state['midi_learn_cc'] = self.midi_learn_cc
-			# Specific ZynAddSubFX slot info
-			try:
-				state['slot_i'] = self.slot_i
-			except:
-				pass
 
 		return state
 
 
 	def restore_state(self, state):
+		#logging.debug("Restoring Controller '{}' State => {}".format(self.symbol, state['value']))
 		if isinstance(state, dict):
 			self.set_value(state['value'], True)
 			# Restore MIDI-learn
@@ -524,14 +520,14 @@ class zynthian_controller:
 
 
 	def _set_midi_learn(self, chan, cc):
-		logging.info("MIDI-CC SET '{}' => {}, {}".format(self.symbol, chan, cc))
+		#logging.info("MIDI-CC SET '{}' => {}, {}".format(self.symbol, chan, cc))
 		self.midi_learn_chan = chan
 		self.midi_learn_cc = cc
 		return True
 
 
 	def _unset_midi_learn(self):
-		logging.info("MIDI-CC UNSET '{}' => {}, {}".format(self.symbol, self.midi_learn_chan, self.midi_learn_cc))
+		#logging.info("MIDI-CC UNSET '{}' => {}, {}".format(self.symbol, self.midi_learn_chan, self.midi_learn_cc))
 		self.midi_learn_chan = None
 		self.midi_learn_cc = None
 		return True

@@ -642,7 +642,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def midi_unlearn(self, zctrl):
 		if zctrl.get_path() in self.learned_zctrls:
-			logging.info("Unlearning '{}' ...".format(zctrl.symbol))
+			#logging.info("Unlearning '{}' ...".format(zctrl.symbol))
 			try:
 				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
 				del self.learned_zctrls[zctrl.get_path()]
