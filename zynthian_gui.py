@@ -56,6 +56,7 @@ from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_info import zynthian_gui_info
+from zyngui.zynthian_gui_splash import zynthian_gui_splash
 from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
@@ -604,6 +605,7 @@ class zynthian_gui:
 
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
+		self.screens['splash'] = zynthian_gui_splash()
 		self.screens['confirm'] = zynthian_gui_confirm()
 		self.screens['keyboard'] = zynthian_gui_keyboard.zynthian_gui_keyboard()
 		self.screens['option'] = zynthian_gui_option()
@@ -864,6 +866,12 @@ class zynthian_gui:
 		if self.current_screen == 'info':
 			self.cancel_screen_timer()
 			self.screen_timer_id = zynthian_gui_config.top.after(tms, self.hide_info)
+
+
+	def show_splash(self, text):
+		self.screens['splash'].show(text)
+		self.current_screen = 'splash'
+		self.hide_screens(exclude='splash')
 
 
 	def calibrate_touchscreen(self):

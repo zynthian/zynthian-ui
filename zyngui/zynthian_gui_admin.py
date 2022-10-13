@@ -23,6 +23,7 @@
 # 
 #******************************************************************************
 
+from curses import A_HORIZONTAL
 import os
 import re
 import sys
@@ -824,14 +825,14 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def restart_gui(self):
 		logging.info("RESTART ZYNTHIAN-UI")
-		self.zyngui.show_info("Please wait whilst Zynthian restarts...")
+		self.zyngui.show_splash("Restarting UI...")
 		self.last_state_action()
 		self.zyngui.exit(102)
 
 
 	def exit_to_console(self):
 		logging.info("EXIT TO CONSOLE")
-		self.zyngui.show_info("Please wait whilst Zynthian exits...")
+		self.zyngui.show_splash("Exiting...")
 		self.last_state_action()
 		self.zyngui.exit(101)
 
@@ -842,7 +843,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def reboot_confirmed(self, params=None):
 		logging.info("REBOOT")
-		self.zyngui.show_info("Please wait whilst Zynthian reboots...")
+		self.zyngui.show_splash("Rebooting...")
 		self.last_state_action()
 		self.zyngui.exit(100)
 
@@ -853,7 +854,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def power_off_confirmed(self, params=None):
 		logging.info("POWER OFF")
-		self.zyngui.show_info("Please wait whilst Zynthian shuts down...")
+		self.zyngui.show_splash("Powering Off...")
 		self.last_state_action()
 		self.zyngui.exit(0)
 
