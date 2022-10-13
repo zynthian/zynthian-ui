@@ -103,7 +103,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.title = "Pattern 0"
 		self.channel = 0
 		self.drawing = False # mutex to avoid mutliple concurrent] screen draws
-
+		self.reload_keymap = False # Signal keymap needs reloading
 
 		# Geometry vars
 		self.select_thickness = 1 + int(self.width / 500) # Scale thickness of select border based on screen resolution
@@ -324,7 +324,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.zyngui.zynseq.libseq.setInputRest(zctrl.value - 1)
 		elif zctrl.symbol == 'in_chan':
 			self.zyngui.zynseq.libseq.setInputChannel(zctrl.value - 1)
-    			
+
 
 	# Function to transpose pattern
 	def transpose(self, offset):
@@ -351,16 +351,15 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#	Returns: name of scale 
 	def set_scale(self, scale):
 		self.zyngui.zynseq.libseq.setScale(scale)
-		name = self.load_keymap()
+		self.reload_keymap = True
 		self.redraw_pending = 3
-		return name
 
 
 	# Function to set tonic (root note) of scale
 	#	tonic: Scale root note
 	def set_tonic(self, tonic):
 		self.zyngui.zynseq.libseq.setTonic(tonic)
-		self.load_keymap()
+		self.reload_keymap = True
 		self.redraw_pending = 3
 
 
@@ -1022,8 +1021,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.playhead != step:
 			self.playhead = step
 			self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width, 0, 1 + self.playhead * self.step_width + self.step_width, PLAYHEAD_HEIGHT)
-		if self.zyngui.zynseq.libseq.isPatternModified() and self.redraw < 3:
+		if (self.reload_keymap or self.zyngui.zynseq.libseq.isPatternModified()) and self.redraw_pending < 3:
 			self.redraw_pending = 3
+		if self.reload_keymap:
+			self.load_keymap()
+			self.reload_keymap = False
 		if self.redraw_pending:
 			self.draw_grid()
 		pending_rows = set()
