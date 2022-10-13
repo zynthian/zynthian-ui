@@ -204,6 +204,7 @@ class zynthian_gui:
 		self.zynswitch_defered_event = None
 		self.exit_flag = False
 		self.exit_code = 0
+		self.exit_wait_count = 0
 
 		self.zynmidi = None
 		self.midi_filter_script = None;
@@ -533,11 +534,13 @@ class zynthian_gui:
 				logging.info("ZYNTHIAN-UI OSC server stopped")
 			except Exception as err:
 				logging.error("ZYNTHIAN-UI OSC server can't be stopped: {}".format(err))
+		self.osc_server = None
 
 
 	def osc_receive(self):
-		while self.osc_server.recv(0):
-			pass
+		if self.osc_server:
+			while self.osc_server.recv(0):
+				pass
 
 
 	#@liblo.make_method("RELOAD_MIDI_CONFIG", None)
@@ -683,7 +686,6 @@ class zynthian_gui:
 
 	def stop(self):
 		logging.info("STOPPING ZYNTHIAN-UI ...")
-		self.stop_polling()
 		self.osc_end()
 		zynautoconnect.stop()
 		self.screens['layer'].reset()
@@ -2216,24 +2218,8 @@ class zynthian_gui:
 	# Thread ending on Exit
 	#------------------------------------------------------------------
 
-
-	def wait_threads_end(self, n=20):
-		logging.debug("Awaiting threads to end ...")
-
-		while (self.loading_thread.is_alive() or self.status_thread.is_alive() or self.control_thread.is_alive() or zynautoconnect.is_running()) and n>0:
-			sleep(0.1)
-			n -= 1
-
-		if n <= 0:
-			logging.error("Reached maximum count! Remaining {} active threads.".format(threading.active_count()))
-			return False
-		else:
-			logging.debug("Remaining {} active threads.".format(threading.active_count()))
-			sleep(0.5)
-			return True
-
-
 	def exit(self, code=0):
+		self.stop()
 		self.exit_code = code
 		self.exit_flag = True
 
@@ -2248,30 +2234,37 @@ class zynthian_gui:
 		self.osc_timeout()
 
 
-	def stop_polling(self):
-		self.polling = False
-
-
 	def after(self, msec, func):
 		zynthian_gui_config.top.after(msec, func)
 
 
 	def zyngine_refresh(self):
-		try:
-			# Capture exit event and finish
-			if self.exit_flag:
-				self.stop()
-				self.wait_threads_end()
-				logging.info("EXITING ZYNTHIAN-UI ...")
+		# Capture exit event and finish
+		if self.exit_flag:
+			if self.exit_wait_count == 0:
+				logging.info("EXITING ZYNTHIAN-UI...")
+			if self.exit_wait_count < 10 and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_running()):
+				self.exit_wait_count += 1
+			else:
+				if self.exit_wait_count == 10:
+					# Exceeded wait time for threads to stop
+					if self.control_thread.is_alive():
+						logging.error("Control thread failed to terminate")
+					if self.status_thread.is_alive():
+						logging.error("Status thread failed to terminate")
+					if self.loading_thread.is_alive():
+						logging.error("Loading thread failed to terminate")
+					if zynautoconnect.is_running():
+						logging.error("Auto-connect thread failed to terminate")
 				zynthian_gui_config.top.quit()
 				return
-			# Refresh Current Layer
-			elif self.curlayer and not self.loading:
+		# Refresh Current Layer
+		elif self.curlayer and not self.loading:
+			try:
 				self.curlayer.refresh()
-
-		except Exception as e:
-			self.reset_loading()
-			logging.exception(e)
+			except Exception as e:
+				self.reset_loading()
+				logging.exception(e)
 
 		# Poll
 		if self.polling:
@@ -2279,21 +2272,22 @@ class zynthian_gui:
 
 
 	def osc_timeout(self):
-		self.watchdog_last_check = monotonic()
-		for client in list(self.osc_clients):
-			if self.osc_clients[client] < self.watchdog_last_check - self.osc_heartbeat_timeout:
-				self.osc_clients.pop(client)
-				try:
-					self.zynmixer.remove_osc_client(client)
-				except:
-					pass
-		# Poll
-		if self.polling:
-			zynthian_gui_config.top.after(self.osc_heartbeat_timeout * 1000, self.osc_timeout)
+		if not self.exit_flag:
+			self.watchdog_last_check = monotonic()
+			for client in list(self.osc_clients):
+				if self.osc_clients[client] < self.watchdog_last_check - self.osc_heartbeat_timeout:
+					self.osc_clients.pop(client)
+					try:
+						self.zynmixer.remove_osc_client(client)
+					except:
+						pass
 
-		if not self.osc_clients and self.current_screen != "audio_mixer":
-			for chan in range(self.zynmixer.get_max_channels()):
-				self.zynmixer.enable_dpm(chan, False)
+			if not self.osc_clients and self.current_screen != "audio_mixer":
+				for chan in range(self.zynmixer.get_max_channels()):
+					self.zynmixer.enable_dpm(chan, False)
+
+			# Poll
+			zynthian_gui_config.top.after(self.osc_heartbeat_timeout * 1000, self.osc_timeout)
 
 
 	#------------------------------------------------------------------
