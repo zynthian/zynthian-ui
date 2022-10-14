@@ -194,22 +194,26 @@ while true; do
 	# Proccess output status
 	case $status in
 		0)
-			splash_zynthian_message "Powering Off..."
+			#splash_zynthian_message "Powering Off..."
+			xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
 			poweroff
 			break
 		;;
 		100)
-			splash_zynthian_message "Rebooting..."
+			xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+			#splash_zynthian_message "Rebooting..."
 			reboot
 			break
 		;;
 		101)
-			splash_zynthian_message "Exiting..."
+			xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+			#splash_zynthian_message "Exiting..."
 			backlight_off
 			break
 		;;
 		102)
-			splash_zynthian_message "Restarting UI..."
+			xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+			#splash_zynthian_message "Restarting UI..."
 			load_config_env
 			sleep 10
 		;;
