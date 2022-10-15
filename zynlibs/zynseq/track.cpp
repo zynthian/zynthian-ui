@@ -151,6 +151,7 @@ SEQ_EVENT* Track::getEvent()
     if(pEvent && pEvent->getPosition() == m_nNextStep)
     {
         //printf("  found event at %u\n", m_nNextStep);
+        seqEvent.msg.command = pEvent->getCommand() | m_nChannel;
         // Found event at (or before) this step
         if(m_nEventValue == pEvent->getValue2end())
         {
@@ -175,22 +176,20 @@ SEQ_EVENT* Track::getEvent()
         {
             // Already processed start value
             m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
+            if(seqEvent.msg.command == MIDI_NOTE_ON)
+                seqEvent.msg.command = MIDI_NOTE_OFF | m_nChannel;
             seqEvent.time = m_nLastClockTime + pEvent->getDuration() * pPattern->getClocksPerStep() * m_dSamplesPerClock - 1; // -1 to send note-off one sample before next step
             //printf("Scheduling note off. Event duration: %u, clocks per step: %u, samples per clock: %u\n", pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
         }
+        seqEvent.msg.value1 = pEvent->getValue1start();
+        seqEvent.msg.value2 = m_nEventValue;
+        //printf("Track::getEvent Scheduled event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %f event position: %u\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_dSamplesPerClock, pEvent->getPosition());
+        return &seqEvent;
     }
-    else
-    {
-        m_nEventValue = -1;
+    m_nEventValue = -1;
 //        if(++m_nNextStep >= pPattern->getSteps())
 //            m_nNextStep = 0;
-        return NULL;
-    }
-    seqEvent.msg.command = pEvent->getCommand() | m_nChannel;
-    seqEvent.msg.value1 = pEvent->getValue1start();
-    seqEvent.msg.value2 = m_nEventValue;
-    //printf("Track::getEvent Scheduled event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %f event position: %u\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_dSamplesPerClock, pEvent->getPosition());
-    return &seqEvent;
+    return NULL;
 }
 
 uint32_t Track::updateLength()

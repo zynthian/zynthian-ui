@@ -1085,7 +1085,7 @@ void noteOffTimer(uint8_t note, uint8_t channel, uint32_t duration)
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(duration));
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-    pMsg->command = MIDI_NOTE_ON | (channel & 0x0F);
+    pMsg->command = MIDI_NOTE_OFF | (channel & 0x0F);
     pMsg->value1 = note;
     pMsg->value2 = 0;
     sendMidiMsg(pMsg);
