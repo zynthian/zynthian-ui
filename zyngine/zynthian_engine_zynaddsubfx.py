@@ -197,7 +197,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, layer):
-		if layer.part_i is not None:
+		if self.osc_server and layer.part_i is not None:
 			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
 
 	#----------------------------------------------------------------------------
@@ -239,6 +239,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
+		if self.osc_server is None:
+			return
 		self.start_loading()
 		if preset[3]=='xiz':
 			self.enable_part(layer)
@@ -292,13 +294,14 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 
 	def enable_part(self, layer):
-		if layer.part_i is not None:
+		if self.osc_server and layer.part_i is not None:
 			self.osc_server.send(self.osc_target, "/part%d/Penabled" % layer.part_i, True)
 			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
 
 
 	def disable_part(self, i):
-		self.osc_server.send(self.osc_target, "/part%d/Penabled" % i, False)
+		if self.osc_server:
+			self.osc_server.send(self.osc_target, "/part%d/Penabled" % i, False)
 
 
 	def enable_layer_parts(self):
@@ -327,7 +330,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 
 	def send_controller_value(self, zctrl):
-		if zctrl.osc_path:
+		if self.osc_server and zctrl.osc_path:
 			self.osc_server.send(self.osc_target,zctrl.osc_path, zctrl.get_ctrl_osc_val())
 		else:
 			raise Exception("NO OSC CONTROLLER")

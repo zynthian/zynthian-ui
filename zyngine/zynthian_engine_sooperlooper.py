@@ -318,6 +318,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
+		if self.osc_server is None:
+			return
 		self.osc_server.send(self.osc_target, '/load_session', ('s', preset[0]),  ('s', self.osc_server_url), ('s', '/error'))
 		sleep(0.5) # Wait for session to load to avoid consequent controller change conflicts
 
@@ -344,6 +346,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 
 	def save_preset(self, bank_name, preset_name):
+		if self.osc_server is None:
+			return
 		path = '{}/presets/sooperlooper'.format(self.my_data_dir)
 		if not os.path.exists(path):
 			try:
@@ -396,7 +400,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 	def send_controller_value(self, zctrl):
 		#logging.warning("{} {}".format(zctrl.symbol, zctrl.value))
-		if zctrl.symbol in ['oneshot', 'oneshot', 'trigger'] and zctrl.value == 0:
+		if self.osc_server is None or zctrl.symbol in ['oneshot', 'oneshot', 'trigger'] and zctrl.value == 0:
 			# Ignore off signals
 			return
 		elif zctrl.is_toggle:
@@ -442,6 +446,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def cb_osc_all(self, path, args, types, src):
+		if self.osc_server is None:
+			return
 		try:
 			#logging.debug("Rx OSC => {} {}".format(path, args))
 			if path == '/state':
@@ -571,7 +577,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			self.zctrls['selected_loop_num'].set_value(loop + 1, False)
 		except:
 			pass
-		if send:
+		if send and self.osc_server:
 			self.osc_server.send(self.osc_target, '/set', ('s', 'selected_loop_num'), ('f', self.selected_loop))
 
 	# ---------------------------------------------------------------------------

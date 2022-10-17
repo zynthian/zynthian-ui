@@ -276,7 +276,7 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	def osc_init(self):
-		if self.osc_target_port:
+		if self.osc_server is None and self.osc_target_port:
 			try:
 				self.osc_target = liblo.Address('localhost', self.osc_target_port, self.osc_proto)
 				logging.info("OSC target in port {}".format(self.osc_target_port))
@@ -295,14 +295,15 @@ class zynthian_engine(zynthian_basic_engine):
 		if self.osc_server:
 			try:
 				self.osc_server.stop()
-				#self.osc_server.free()
+				self.osc_server = None
 				logging.info("OSC server stopped")
 			except Exception as err:
 				logging.error("OSC server can't be stopped => {}".format(err))
 
 
 	def osc_add_methods(self):
-		self.osc_server.add_method(None, None, self.cb_osc_all)
+		if self.osc_server:
+			self.osc_server.add_method(None, None, self.cb_osc_all)
 
 
 	def cb_osc_all(self, path, args, types, src):
