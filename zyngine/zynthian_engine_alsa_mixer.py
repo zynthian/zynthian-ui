@@ -35,6 +35,7 @@ from collections import OrderedDict
 from zyncoder.zyncore import lib_zyncore
 from . import zynthian_engine
 from . import zynthian_controller
+from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # ALSA Mixer Engine Class
@@ -431,7 +432,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		if self.zyngui.is_single_active_channel():
+		if zynthian_gui_config.midi_single_active_channel:
 			for ch in range(0,16):
 				try:
 					self.learned_cc[ch][ccnum].midi_control_change(val)
@@ -442,6 +443,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 				self.learned_cc[chan][ccnum].midi_control_change(val)
 			except:
 				pass
+
 
 	#--------------------------------------------------------------------------
 	# Special
