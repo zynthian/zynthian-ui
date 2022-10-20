@@ -94,8 +94,6 @@ class zynthian_layer:
 		self.controllers_dict = None
 		self.ctrl_screens_dict = None
 		self.current_screen_index = -1
-
-		self.listen_midi_cc = True
 		self.refresh_flag = False
 
 		self.status = "" # Allows indication of arbitary status text

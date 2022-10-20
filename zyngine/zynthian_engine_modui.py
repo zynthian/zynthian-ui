@@ -144,7 +144,6 @@ class zynthian_engine_modui(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def add_layer(self, layer):
-		layer.listen_midi_cc = False
 		super().add_layer(layer)
 		self.set_midi_chan(layer)
 		if not self.ws_thread:
