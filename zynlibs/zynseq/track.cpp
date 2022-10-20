@@ -151,7 +151,8 @@ SEQ_EVENT* Track::getEvent()
     if(pEvent && pEvent->getPosition() == m_nNextStep)
     {
         //printf("  found event at %u\n", m_nNextStep);
-        seqEvent.msg.command = pEvent->getCommand() | m_nChannel;
+        uint8_t nCommand = pEvent->getCommand();
+        seqEvent.msg.command =  nCommand | m_nChannel;
         // Found event at (or before) this step
         if(m_nEventValue == pEvent->getValue2end())
         {
@@ -176,7 +177,7 @@ SEQ_EVENT* Track::getEvent()
         {
             // Already processed start value
             m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
-            if(seqEvent.msg.command == MIDI_NOTE_ON)
+            if(nCommand == MIDI_NOTE_ON)
                 seqEvent.msg.command = MIDI_NOTE_OFF | m_nChannel;
             seqEvent.time = m_nLastClockTime + pEvent->getDuration() * pPattern->getClocksPerStep() * m_dSamplesPerClock - 1; // -1 to send note-off one sample before next step
             //printf("Scheduling note off. Event duration: %u, clocks per step: %u, samples per clock: %u\n", pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
