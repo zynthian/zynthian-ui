@@ -25,14 +25,12 @@
 #import sys
 import os
 import re
-import copy
 import json
 import liblo
 import logging
 import pexpect
 from time import sleep
 from string import Template
-from threading  import Thread
 from collections import OrderedDict
 from os.path import isfile, isdir, join
 
@@ -506,7 +504,7 @@ class zynthian_engine(zynthian_basic_engine):
 			self.load_preset_favs()
 		try:
 			del self.preset_favs[str(preset[0])]
-			with open(self.preset_favs_path, 'w') as f:
+			with open(self.preset_favs_fpath, 'w') as f:
 				json.dump(self.preset_favs, f)
 		except:
 			pass # Don't care if preset not in favs
@@ -678,6 +676,13 @@ class zynthian_engine(zynthian_basic_engine):
 			return zctrl._set_midi_learn(chan, cc)
 		except:
 			pass
+
+
+	def refresh_midi_learn(self):
+		logging.info("Refresh MIDI-learn ...")
+		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
+		for zctrl in self.learned_zctrls:
+			self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = zctrl
 
 
 	def reset_midi_learn(self):
