@@ -592,25 +592,24 @@ if "zynthian_gui.py" in sys.argv[0]:
 
 	from zyncoder.zyncore import lib_zyncore_init
 
-	try:
-		lib_zyncore = lib_zyncore_init()
-	except Exception as e:
-		logging.error("ERROR initializing ZynCore: {}".format(e))
-
 	#------------------------------------------------------------------------------
 	# Initialize and config control I/O subsystem: switches, analog I/O, ...
 	#------------------------------------------------------------------------------
-
 	try:
-		num_zynswitches = lib_zyncore.get_num_zynswitches()
-		last_zynswitch_index = lib_zyncore.get_last_zynswitch_index()
-		num_zynpots = lib_zyncore.get_num_zynpots()
-		config_zynswitch_timing()
-		config_custom_switches()
-		config_zynaptik()
-		config_zyntof()
+		lib_zyncore = lib_zyncore_init()
+		try:
+			num_zynswitches = lib_zyncore.get_num_zynswitches()
+			last_zynswitch_index = lib_zyncore.get_last_zynswitch_index()
+			num_zynpots = lib_zyncore.get_num_zynpots()
+			config_zynswitch_timing()
+			config_custom_switches()
+			config_zynaptik()
+			config_zyntof()
+		except Exception as e:
+			logging.error("ERROR configuring control I/O subsytem: {}".format(e))
 	except Exception as e:
-		logging.error("ERROR configuring control I/O subsytem: {}".format(e))
+		logging.error("ERROR initializing ZynCore: {}".format(e))
+
 
 	#------------------------------------------------------------------------------
 	# Load MIDI config
