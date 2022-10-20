@@ -3,3 +3,4 @@
 __pycache__
 zynlibs/*/build
 .vscode/launch.json
+.idea
