@@ -69,8 +69,8 @@ class zynthian_gui_splash:
 		pos_x =  self.width / 2 - strlen / 2
 		pos_y = int(self.height / 10)
 		try:
-			os.system('convert -strip -pointsize {} -fill white -draw "text {},{} \\"{}\\"" {}/img/fb_zynthian_boot.png {}/img/fb_zynthian_message.png'.format(
-				font_size, pos_x, pos_y, text, os.environ.get("ZYNTHIAN_CONFIG_DIR"), os.environ.get("ZYNTHIAN_CONFIG_DIR")))
+			os.system('convert -strip -family \\"{}\\" -pointsize {} -fill white -draw "text {},{} \\"{}\\"" {}/img/fb_zynthian_boot.png {}/img/fb_zynthian_message.png'.format(
+				zynthian_gui_config.font_family, font_size, pos_x, pos_y, text, os.environ.get("ZYNTHIAN_CONFIG_DIR"), os.environ.get("ZYNTHIAN_CONFIG_DIR")))
 			self.img = tkinter.PhotoImage(file="/zynthian/config/img/fb_zynthian_message.png")
 			if self.image is None:
 				self.image = self.canvas.create_image(0, 0, anchor='nw', image=self.img)

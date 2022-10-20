@@ -113,8 +113,8 @@ function splash_zynthian_message() {
         pos_x=$(expr $img_w / 2 - $strlen / 2)
         pos_y=$(expr $img_h \* 10 / 100)
         [[ "$pos_x" > "0" ]] || pos_x=5
-        convert -strip -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"$zynthian_message\"" $img_fpath -strip $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
-        
+        convert -strip -family \"$ZYNTHIAN_UI_FONT_FAMILY\" -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"$zynthian_message\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+
         # Display error image
         xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
 }
@@ -145,6 +145,14 @@ function splash_zynthian_error_exit_ip() {
 
 backlight_on
 screensaver_off
+
+#------------------------------------------------------------------------------
+# Test splash screen generator
+#------------------------------------------------------------------------------
+
+#splash_zynthian_message "Testing Splash Screen Generator..."
+#sleep 10
+#exit
 
 #------------------------------------------------------------------------------
 # If needed, generate splash screen images
