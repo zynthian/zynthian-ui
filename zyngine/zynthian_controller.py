@@ -575,7 +575,7 @@ class zynthian_controller:
 		#if self.ticks:
 		#	self.set_value(val)
 		if self.is_logarithmic:
-			value = (math.pow(10, val/127) - 1) / 9
+			value = self.value_min + self.value_range * (math.pow(10, val/127) - 1) / 9
 		else:
 			value = self.value_min + val * self.value_range / 127
 		self.set_value(value)
