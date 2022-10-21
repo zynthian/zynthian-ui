@@ -24,12 +24,11 @@
 
 import math
 import liblo
-import ctypes
 import logging
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-
+from zyngui import zynthian_gui_config
 
 class zynthian_controller:
 
@@ -245,6 +244,13 @@ class zynthian_controller:
 
 	def set_midi_chan(self, chan):
 		self.midi_chan = chan
+		if zynthian_gui_config.midi_single_active_channel:
+			if self.midi_learn_cc:
+				self.midi_learn_chan = chan
+		else:
+			if self.midi_cc is not None:
+				if self.midi_learn_cc == self.midi_cc:
+					self.midi_learn_chan = chan
 
 
 	#TODO: I think get_ctrl_array is an unused function
@@ -260,6 +266,8 @@ class zynthian_controller:
 			ctrl = self.osc_path
 		elif self.graph_path:
 			ctrl = self.graph_path
+		else:
+			ctrl = None
 		
 		if self.labels:
 			val = self.get_value2label()
@@ -273,7 +281,7 @@ class zynthian_controller:
 			val = self.value
 			minval = self.value_min
 			maxval = self.value_max
-		return [title, chan, ctrl,val, minval, maxval]
+		return [title, chan, ctrl, val, minval, maxval]
 
 
 	def get_value(self):

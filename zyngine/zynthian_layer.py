@@ -134,12 +134,13 @@ class zynthian_layer:
 	# MIDI chan Management
 	# ---------------------------------------------------------------------------
 
-
 	def set_midi_chan(self, midi_chan):
 		self.midi_chan = midi_chan
 		self.engine.set_midi_chan(self)
 		for zctrl in self.controllers_dict.values():
 			zctrl.set_midi_chan(midi_chan)
+		self.engine.refresh_midi_learn()
+		self.send_ctrlfb_midi_cc()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -496,6 +497,16 @@ class zynthian_layer:
 			if zctrl.midi_cc:
 				lib_zyncore.ui_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
 				logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
+
+
+	def send_ctrlfb_midi_cc(self):
+		for k, zctrl in self.controllers_dict.items():
+			if zctrl.midi_learn_cc:
+				lib_zyncore.ctrlfb_send_ccontrol_change(zctrl.midi_learn_chan, zctrl.midi_learn_cc, int(zctrl.value))
+				logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_learn_chan, zctrl.midi_learn_cc, int(zctrl.value), k))
+			elif zctrl.midi_cc:
+				lib_zyncore.ctrlfb_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
+				logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
 
 
 	def midi_unlearn(self, unused=None):
