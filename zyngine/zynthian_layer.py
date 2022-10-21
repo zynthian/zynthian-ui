@@ -497,6 +497,7 @@ class zynthian_layer:
 			if zctrl.midi_cc:
 				lib_zyncore.ui_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
 				logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
+		self.send_ctrlfb_midi_cc()
 
 
 	def send_ctrlfb_midi_cc(self):
