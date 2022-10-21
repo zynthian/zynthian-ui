@@ -662,7 +662,7 @@ class zynthian_engine(zynthian_basic_engine):
 			self.learned_cc[chan][cc] = zctrl
 			return zctrl._set_midi_learn(chan, cc)
 		except Exception as e:
-			logging.error("Can't learn {} => {}".format(zctrl.symbol, e))
+			logging.error("Can't learn {} ({}) for CH{}#CC{} => {}".format(zctrl.symbol, zctrl.get_path(), chan, cc, e))
 
 
 	def keep_midi_learn(self, zctrl):
@@ -680,15 +680,15 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def refresh_midi_learn(self):
 		logging.info("Refresh MIDI-learn ...")
-		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
-		for zctrl in self.learned_zctrls:
+		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
+		for zctrl in self.learned_zctrls.values():
 			self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = zctrl
 
 
 	def reset_midi_learn(self):
 		logging.info("Reset MIDI-learn ...")
 		self.learned_zctrls = {}
-		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
+		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 
 
 	def cb_midi_learn(self, zctrl, chan, cc):
