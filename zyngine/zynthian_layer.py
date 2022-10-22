@@ -354,6 +354,9 @@ class zynthian_layer:
 
 
 	def preload_preset(self, i):
+		# Avoid preload on engines that take excessive time to load presets
+		if self.engine.nickname in ['PD','MD']:
+			return True
 		if i < len(self.preset_list):
 			if (not self.preload_info and not self.engine.cmp_presets(self.preset_list[i], self.preset_info)) or (self.preload_info and not self.engine.cmp_presets(self.preset_list[i], self.preload_info)):
 				self.preload_index = i

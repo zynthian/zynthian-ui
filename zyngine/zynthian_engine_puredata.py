@@ -164,8 +164,8 @@ class zynthian_engine_puredata(zynthian_engine):
 		return preset_fpath
 
 
-	def cmp_presets(self, preset1, preset2):
-		return True
+#	def cmp_presets(self, preset1, preset2):
+#		return True
 
 	#----------------------------------------------------------------------------
 	# Controllers Managament
