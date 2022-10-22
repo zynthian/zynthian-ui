@@ -798,8 +798,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.mixer_strip_offset = 0 # Index of first mixer strip displayed on far left
 		self.selected_layer = None
 
-		self.redraw_pending = False
-
 		# Fader Canvas
 		self.main_canvas = tkinter.Canvas(self.main_frame,
 			height=1,

@@ -454,6 +454,9 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 						case MIDI_NOTE_ON:
 						case MIDI_PITCH_BEND:
 							m_mHangingMidi[pEvent->getSubtype() << 8 | *(pEvent->getData())] = *(pEvent->getData() + 1); //key= 0xSSNN SS=status, NN=note/controller. Value is MIDI value
+							break;
+						case MIDI_NOTE_OFF:
+							m_mHangingMidi[MIDI_NOTE_ON << 8 | *(pEvent->getData())] = 0; //key= 0xSSNN SS=status, NN=note/controller. Value is MIDI value
 					}
 					
 				}

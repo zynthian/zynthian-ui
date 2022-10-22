@@ -2009,6 +2009,10 @@ class zynthian_gui:
 							self.screens['layer'].set_midi_prog_zs3(chan, pgm)
 						else:
 							self.screens['layer'].set_midi_prog_preset(chan, pgm)
+						if self.current_screen == 'audio_mixer':
+							self.screens['audio_mixer'].refresh_visible_strips()
+						elif self.current_screen == 'control':
+							self.screens['control'].set_select_path()
 
 						#if self.curlayer and chan == self.curlayer.get_midi_chan():
 						#	self.show_screen('control')
