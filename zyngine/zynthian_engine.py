@@ -652,11 +652,16 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def set_midi_learn(self, zctrl ,chan, cc):
 		try:
-			# Clean current binding if any ...
+			# Clean implied CC bindings if any ...
 			try:
 				self.learned_cc[chan][cc].midi_unlearn()
 			except:
 				pass
+			try:
+				self.midi_unlearn(zctrl)
+			except:
+				pass
+
 			# Add midi learning info
 			self.learned_zctrls[zctrl.get_path()] = zctrl
 			self.learned_cc[chan][cc] = zctrl
