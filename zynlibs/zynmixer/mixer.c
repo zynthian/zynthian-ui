@@ -584,7 +584,7 @@ void end() {
         // Mute output and wait for soft mute to occur before closing link with jack server
         setLevel(MAIN_CHANNEL, 0.0);
         usleep(100000);
-        jack_client_close(g_pJackClient);
+        //jack_client_close(g_pJackClient);
     }
     g_sendEvents = 0;
     void* status;
