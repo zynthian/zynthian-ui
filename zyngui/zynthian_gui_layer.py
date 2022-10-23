@@ -560,7 +560,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def set_note_range(self, nr_status):
 		for i in range(0,16):
-			lib_zyncore.set_midi_filter_note_range(i, nr_status[i]['note_low'], nr_status[i]['note_high'], nr_status[i]['octave_trans'], nr_status[i]['halftone_trans'])
+			if nr_status[i]:
+				lib_zyncore.set_midi_filter_note_range(i, nr_status[i]['note_low'], nr_status[i]['note_high'], nr_status[i]['octave_trans'], nr_status[i]['halftone_trans'])
 
 
 	def reset_note_range(self):
@@ -1559,27 +1560,34 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def restore_legacy_zs3s(self, state):
 		for li, lss in enumerate(state['layers']):
+			midi_chan = lss['midi_chan']
 			if 'zs3_list' in lss:
 				for prognum, lstate in enumerate(lss['zs3_list']):
+					if not lstate:
+						continue
+					if self.last_zs3_index is None:
+						self.last_zs3_index = 0
+					else:
+						self.last_zs3_index += 1
 					zs3_new = {
-						'index': self.last_zs3_index,
+						'index': li,
 						'layers': [None] * len(state['layers']),
 						'note_range': [None] * 16,
 						'zs3_title': "Legacy ZS3 #{}".format(self.last_zs3_index + 1),
-						'midi_learn_chan': lss.midi_chan,
+						'midi_learn_chan': midi_chan,
 						'midi_learn_prognum': prognum
 					}
-					lstate['engine_name'] = lstate['engine_name']
-					lstate['engine_nick'] = lstate['engine_nick']
+					lstate['engine_name'] = lss['engine_name']
+					lstate['engine_nick'] = lss['engine_nick']
 					lstate['engine_jackname'] = self.layers[li].engine.jackname
-					lstate['show_fav_presets'] = lstate['show_fav_presets']
+					lstate['midi_chan'] = midi_chan
+					lstate['show_fav_presets'] = lss['show_fav_presets']
 					lstate['current_screen_index'] = lstate['active_screen_index']
-					del lstate['note_range']
 					del lstate['active_screen_index']
-					zs3_new['note_range'][lss.midi_chan] = lstate['note_range']
+					zs3_new['note_range'][midi_chan] = lstate['note_range']
+					del lstate['note_range']
 					zs3_new['layers'][li] = lstate
 					self.learned_zs3.append(zs3_new)
-					self.last_zs3_index += 1
 
 
 	def restore_state_zs3(self, state):
@@ -1598,7 +1606,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			l2r = False
 			if lss:
 				if zynthian_gui_config.midi_single_active_channel:
-					if restore_midi_chan is not None and lss['midi_chan']==restore_midi_chan:
+					if restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
 						l2r = True
 				else:
 					l2r = True
