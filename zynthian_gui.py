@@ -2020,14 +2020,20 @@ class zynthian_gui:
 					ccnum = (ev & 0x7F00) >> 8
 					ccval = (ev & 0x007F)
 					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
-					# If MIDI learn pending ...
-					if self.midi_learn_zctrl:
-						self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
-						self.show_current_screen()
-					# Try layer's zctrls
-					else:
-						self.screens['layer'].midi_control_change(chan, ccnum, ccval)
-						self.zynmixer.midi_control_change(chan, ccnum, ccval)
+					if ccnum < 120:
+						# If MIDI learn pending ...
+						if self.midi_learn_zctrl:
+							self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
+							self.show_current_screen()
+						# Try layer's zctrls
+						else:
+							self.screens['layer'].midi_control_change(chan, ccnum, ccval)
+							self.zynmixer.midi_control_change(chan, ccnum, ccval)
+					# Special CCs >= Channel Mode
+					elif ccnum == 120:
+						self.all_sounds_off_chan(chan)
+					elif ccnum == 123:
+						self.all_notes_off_chan(chan)
 
 				# Note-On ...
 				elif evtype == 0x9:
