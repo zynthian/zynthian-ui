@@ -732,18 +732,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def save_zs3(self, i=None):
 		# Get state and add MIDI-learn info
 		state = self.get_state()
-		state['zs3_title'] = "New ZS3"
 
 		# Save in ZS3 list, overwriting if already used
 		if i is None or i < 0 or i >= len(self.learned_zs3):
+			state['zs3_title'] = "New ZS3"
 			state['midi_learn_chan'] = None
 			state['midi_learn_prognum'] = None
 			self.learned_zs3.append(state)
 			i = len(self.learned_zs3) - 1
 		else:
+			state['zs3_title'] = self.learned_zs3[i]['zs3_title']
 			state['midi_learn_chan'] = self.learned_zs3[i]['midi_learn_chan']
-			state['midi_learn_prognum'] =  self.learned_zs3[i]['midi_learn_prognum']
-			state['zs3_title'] =  self.learned_zs3[i]['zs3_title']
+			state['midi_learn_prognum'] = self.learned_zs3[i]['midi_learn_prognum']
 			self.learned_zs3[i] = state
 
 		logging.info("Saved ZS3#{}".format(i))
@@ -1459,12 +1459,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if 'midi_profile_state' in state:
 			self.set_midi_profile_state(state['midi_profile_state'])
 
-		# Restore Learned ZS3s (SubSnapShots)
-		if 'learned_zs3' in state:
-			self.learned_zs3 = state['learned_zs3']
-		else:
-			self.reset_zs3()
-
 		# Set MIDI Routing
 		if 'midi_routing' in state:
 			self.set_midi_routing(state['midi_routing'])
@@ -1538,6 +1532,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		else:
 			self.reset_note_range()
 
+		# Restore Learned ZS3s (SubSnapShots)
+		if 'learned_zs3' in state:
+			self.learned_zs3 = state['learned_zs3']
+		else:
+			self.reset_zs3()
+			self.restore_legacy_zs3s(state)
+
 		# Set active layer
 		if state['index'] < len(self.root_layers) and state['index'] > 0:
 			self.index = state['index']
@@ -1554,6 +1555,31 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.zyngui.zynmixer.reset_state()
 		if 'mixer' in state:
 			self.zyngui.zynmixer.set_state(state['mixer'])
+
+
+	def restore_legacy_zs3s(self, state):
+		for li, lss in enumerate(state['layers']):
+			if 'zs3_list' in lss:
+				for prognum, lstate in enumerate(lss['zs3_list']):
+					zs3_new = {
+						'index': self.last_zs3_index,
+						'layers': [None] * len(state['layers']),
+						'note_range': [None] * 16,
+						'zs3_title': "Legacy ZS3 #{}".format(self.last_zs3_index + 1),
+						'midi_learn_chan': lss.midi_chan,
+						'midi_learn_prognum': prognum
+					}
+					lstate['engine_name'] = lstate['engine_name']
+					lstate['engine_nick'] = lstate['engine_nick']
+					lstate['engine_jackname'] = self.layers[li].engine.jackname
+					lstate['show_fav_presets'] = lstate['show_fav_presets']
+					lstate['current_screen_index'] = lstate['active_screen_index']
+					del lstate['note_range']
+					del lstate['active_screen_index']
+					zs3_new['note_range'][lss.midi_chan] = lstate['note_range']
+					zs3_new['layers'][li] = lstate
+					self.learned_zs3.append(zs3_new)
+					self.last_zs3_index += 1
 
 
 	def restore_state_zs3(self, state):
