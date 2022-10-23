@@ -195,7 +195,6 @@ class zynthian_gui:
 		self._curlayer = None
 
 		self.dtsw = []
-		self.polling = False
 
 		self.loading = 0
 		self.loading_thread = None
@@ -539,9 +538,8 @@ class zynthian_gui:
 
 
 	def osc_receive(self):
-		if self.osc_server:
-			while self.osc_server.recv(0):
-				pass
+		while self.osc_server and self.osc_server.recv(0):
+			pass
 
 
 	#@liblo.make_method("RELOAD_MIDI_CONFIG", None)
@@ -688,7 +686,6 @@ class zynthian_gui:
 
 	def stop(self):
 		logging.info("STOPPING ZYNTHIAN-UI ...")
-		self.osc_end()
 		zynautoconnect.stop()
 		self.screens['layer'].reset()
 		self.screens['midi_recorder'].stop_playing() # Need to stop timing thread
@@ -2091,6 +2088,7 @@ class zynthian_gui:
 
 			# Wait a little bit ...
 			sleep(0.01)
+		self.osc_end()
 
 
 	#------------------------------------------------------------------
@@ -2241,7 +2239,6 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def start_polling(self):
-		self.polling = True
 		self.zyngine_refresh()
 		self.osc_timeout()
 
@@ -2253,12 +2250,13 @@ class zynthian_gui:
 	def zyngine_refresh(self):
 		# Capture exit event and finish
 		if self.exit_flag:
+			timeout = 10
 			if self.exit_wait_count == 0:
 				logging.info("EXITING ZYNTHIAN-UI...")
-			if self.exit_wait_count < 10 and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_running()):
+			if self.exit_wait_count < timeout and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_running()):
 				self.exit_wait_count += 1
 			else:
-				if self.exit_wait_count == 10:
+				if self.exit_wait_count == timeout:
 					# Exceeded wait time for threads to stop
 					if self.control_thread.is_alive():
 						logging.error("Control thread failed to terminate")
@@ -2279,8 +2277,7 @@ class zynthian_gui:
 				logging.exception(e)
 
 		# Poll
-		if self.polling:
-			zynthian_gui_config.top.after(160, self.zyngine_refresh)
+		zynthian_gui_config.top.after(160, self.zyngine_refresh)
 
 
 	def osc_timeout(self):
@@ -2392,6 +2389,8 @@ class zynthian_gui:
 
 
 	def zynautoconnect_do(self):
+		if self.exit_flag:
+			return
 		if self.zynautoconnect_midi_flag:
 			self.zynautoconnect_midi_flag = False
 			zynautoconnect.midi_autoconnect(True)
