@@ -39,7 +39,7 @@
 
 #define FILE_VERSION 7
 
-#define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
+#define DPRINTF(fmt, args...) if(g_bDebug) fprintf(stderr, fmt, ## args)
 
 SequenceManager g_seqMan; // Instance of sequence manager
 Pattern* g_pPattern = 0; // Currently selected pattern
@@ -105,7 +105,7 @@ struct metro_wav_t * g_pMetro = &g_metro_pip; // Pointer to the current metronom
 // Enable / disable debug output
 void enableDebug(bool bEnable)
 {
-    printf("libseq setting debug mode %s\n", bEnable?"on":"off");
+    fprintf(stderr, "libseq setting debug mode %s\n", bEnable?"on":"off");
     g_bDebug = bEnable;
 }
 
@@ -582,7 +582,7 @@ void end()
 // ** Library management functions **
 
 __attribute__((constructor)) void zynseq(void) {
-    printf("New instance of zynseq\n");
+    fprintf(stderr, "New instance of zynseq\n");
 }
 
 void init(char* name) {
@@ -597,7 +597,7 @@ void init(char* name) {
 
 
     // Register with Jack server
-    printf("**zynseq initialising as %s**\n", name);
+    fprintf(stderr, "**zynseq initialising as %s**\n", name);
     char *sServerName = NULL;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
