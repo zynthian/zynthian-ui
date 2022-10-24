@@ -120,6 +120,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 				logging.info("LAYER {} -> MIDI CHANNEL = {}".format(layer.get_path(), selchan))
 
 			self.zyngui.zynautoconnect_midi()
+			self.zyngui.screens['audio_mixer'].refresh_visible_strips()
 			self.zyngui.set_active_channel()
 			self.zyngui.close_screen()
 
