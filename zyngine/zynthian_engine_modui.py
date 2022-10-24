@@ -282,6 +282,17 @@ class zynthian_engine_modui(zynthian_engine):
 				logging.debug("PLUGIN %s => X=%s" % (pgraph,self.plugin_info[pgraph]['posx']))
 				c=1
 				ctrl_set=[]
+
+				pgname = self.plugin_info[pgraph]['name']
+				parts = pgraph.split("_")
+				if len(parts) > 1:
+					try:
+						pgi = int(parts[-1])
+						pgname = pgname + "/" + str(pgi)
+					except:
+						pass
+				logging.debug("PGRAPH NAME => {}".format(pgname))
+
 				for param in self.plugin_info[pgraph]['ports']['control']['input']:
 					try:
 						logging.debug("CTRL LIST PLUGIN %s PARAM %s" % (pgraph,param['ctrl']))
@@ -289,14 +300,14 @@ class zynthian_engine_modui(zynthian_engine):
 						ctrl_set.append(param['ctrl'].graph_path)
 						if len(ctrl_set)>=4:
 							logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-							self._ctrl_screens.append([self.plugin_info[pgraph]['name']+'#'+str(c),ctrl_set])
+							self._ctrl_screens.append([pgname+'#'+str(c),ctrl_set])
 							ctrl_set=[]
 							c=c+1
 					except Exception as err:
 						logging.error("Generating Controller Screens: %s => %s" % (pgraph, err))
 				if len(ctrl_set)>=1:
 					logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-					self._ctrl_screens.append([self.plugin_info[pgraph]['name']+'#'+str(c),ctrl_set])
+					self._ctrl_screens.append([pgname+'#'+str(c),ctrl_set])
 		except Exception as err:
 			logging.error("Generating Controller List: %s" % err)
 		return zctrls
@@ -712,12 +723,7 @@ class zynthian_engine_modui(zynthian_engine):
 	def set_param_cb(self, pgraph, symbol, val):
 		try:
 			zctrl=self.plugin_zctrls[pgraph][symbol]
-			zctrl.value=float(val)
-
-			#Refresh GUI controller in screen when needed ...
-			if self.zyngui.current_screen=='control':
-				self.zyngui.screens['control'].set_controller_value(zctrl)
-
+			zctrl.set_value(float(val), False)
 		except Exception as err:
 			logging.error("Parameter Not Found: "+pgraph+"/"+symbol+" => "+str(err))
 			#TODO: catch different types of exception
