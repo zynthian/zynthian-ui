@@ -1993,7 +1993,7 @@ class zynthian_gui:
 				# Program Change ...
 				elif evtype == 0xC:
 					pgm = (ev & 0x7F00) >> 8
-					logging.info("MIDI PROGRAM CHANGE: CH{} => {}".format(chan,pgm))
+					logging.info("MIDI PROGRAM CHANGE: CH#{}, PRG#{}".format(chan,pgm))
 
 					# SubSnapShot (ZS3) MIDI learn ...
 					if self.midi_learn_mode and self.current_screen == 'zs3_learn':
