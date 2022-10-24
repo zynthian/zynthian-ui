@@ -229,7 +229,7 @@ void Track::setPosition(uint32_t position)
 {
     m_nDivCount = 0;
     m_nNextStep = position / m_nClkPerStep;
-    printf("setPosition: next step: %d\n", m_nNextStep);
+    //printf("setPosition: next step: %d\n", m_nNextStep);
     m_nNextEvent = -1; // Avoid playing wrong pattern
     for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
     {

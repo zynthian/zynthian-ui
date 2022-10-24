@@ -11,7 +11,7 @@
 #include <jack/midiport.h> //provides interface to JACK MIDI ports
 #include <map> //provides std::map
 
-#define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
+#define DPRINTF(fmt, args...) if(g_bDebug) fprintf(stderr, fmt, ## args)
 
 enum playState
 {
@@ -110,7 +110,7 @@ size_t getSmfCount()
 
 void enableDebug(bool bEnable)
 {
-    printf("libsmf setting debug mode %s\n", bEnable?"on":"off");
+    fprintf(stderr, "libsmf setting debug mode %s\n", bEnable?"on":"off");
     g_bDebug = bEnable;
 	for(auto it = g_pvSmf->begin(); it != g_pvSmf->end(); ++it)
 		(*it)->enableDebug(bEnable);

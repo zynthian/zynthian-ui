@@ -566,7 +566,7 @@ class zynthian_gui:
 						logging.warning("Error trying to add OSC client registration {}".format(src.hostname))
 						return
 				self.osc_clients[src.hostname] = monotonic()
-				for chan in range(self.zyngui.zynmixer.get_max_channels()):
+				for chan in range(self.zynmixer.get_max_channels()):
 					self.zynmixer.enable_dpm(chan, True)
 			else:
 				if part2[:6] == "VOLUME":

@@ -954,18 +954,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def refresh_visible_strips(self):
 		for index in range(len(self.chan2strip)):
 			self.chan2strip[index] = None
-		layers = copy.copy(self.zyngui.screens['layer'].root_layers)
-		self.main_mixbus_strip.set_layer(self.zyngui.screens['layer'].get_main_fxchain_root_layer())
-		# Remove main mixbus chain
-		for layer in layers:
-			if layer.midi_chan == self.MAIN_MIXBUS_MIDI_CHANNEL:
-				layers.remove(layer)
-				break
+		layers = self.zyngui.screens['layer'].get_root_layers()
 
 		self.number_chains = len(layers)
+		if self.number_chains and layers[len(layers) - 1].midi_chan == self.MAIN_MIXBUS_MIDI_CHANNEL:
+			self.number_chains -= 1
+			self.main_mixbus_strip.set_layer(layers[self.number_chains])
 		for offset in range(len(self.visible_mixer_strips)):
 			index = self.mixer_strip_offset + offset
-			if index >= self.number_chains:
+			if index >= self.number_chains or layers[index].midi_chan == self.MAIN_MIXBUS_MIDI_CHANNEL:
 				self.visible_mixer_strips[offset].set_layer(None)
 				self.visible_mixer_strips[offset].zctrls = None
 			else:

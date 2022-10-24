@@ -7,7 +7,7 @@
 #include <cstring> //provides strcmp, memset
 
 #define MAX_TRACKS 16 // Maximum quantity of tracks automatically created
-#define DPRINTF(fmt, args...) if(m_bDebug) printf(fmt, ## args)
+#define DPRINTF(fmt, args...) if(m_bDebug) fprintf(stderr, fmt, ## args)
 
 Smf::~Smf()
 {
@@ -183,7 +183,7 @@ bool Smf::load(char* sFilename)
 				m_nSmpteResolution = nDivision & 0x00FF;
 				DPRINTF("Standard MIDI File - Format: %u, Tracks: %u, SMPTE fps: %u, SMPTE subframe resolution: %u\n", m_nFormat, m_nTracks, m_nSmpteFps, m_nSmpteResolution);
 				unload();
-				printf("zynsmf does not support SMPTE timebase SMF\n");
+				fprintf(stderr, "zynsmf does not support SMPTE timebase SMF\n");
 				//!@todo Add support for SMPTE timebase
 				return false;
 			}

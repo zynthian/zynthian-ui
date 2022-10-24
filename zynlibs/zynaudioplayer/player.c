@@ -107,7 +107,7 @@ jack_nframes_t g_samplerate = 44100; // Playback samplerate set by jackd
 uint8_t g_debug = 0;
 uint8_t g_last_debug = 0;
 
-#define DPRINTF(fmt, args...) if(g_debug) printf(fmt, ## args)
+#define DPRINTF(fmt, args...) if(g_debug) fprintf(stderr, fmt, ## args)
     
 // **** Internal (non-public) functions ****
 
@@ -128,7 +128,7 @@ void* osc_thread_fn(void * param) {
     sin.sin_port = htons(OSC_PORT);
     sin.sin_addr.s_addr = INADDR_ANY;
     bind(osc_fd, (struct sockaddr *) &sin, sizeof(struct sockaddr_in));
-    printf("OSC server listening on port %d\n", OSC_PORT);
+    fprintf(stderr, "OSC server listening on port %d\n", OSC_PORT);
     tosc_message osc_msg;
 
     while(g_run_osc) {
@@ -208,7 +208,7 @@ void* osc_thread_fn(void * param) {
         usleep(100000);
     }
     close(osc_fd);
-    printf("OSC server stopped\n");
+    fprintf(stderr, "OSC server stopped\n");
     pthread_exit(NULL);
 }
 #endif //ENABLE_OSC
@@ -949,7 +949,7 @@ static void lib_init(void) {
         fprintf(stderr, "libzynaudioplayer error: failed to create OSC listening thread\n");
 #endif //ENABLE_OSC
 
-    printf("libzynaudioplayer initialised\n");
+    fprintf(stderr, "libzynaudioplayer initialised\n");
 }
 
 int init(int player_handle) {
@@ -1039,7 +1039,7 @@ int init(int player_handle) {
 
     g_players[player_handle] = pPlayer;
     g_samplerate = jack_get_sample_rate(pPlayer->jack_client);
-    //printf("libzynaudioplayer: Created new audio player\n");
+    //fprintf(stderr, "libzynaudioplayer: Created new audio player\n");
     return player_handle;
 }
 
@@ -1187,7 +1187,7 @@ const char* get_file_info(const char* filename, int type) {
 }
 
 void enable_debug(int enable) {
-    printf("libaudioplayer setting debug mode %s\n", enable?"on":"off");
+    fprintf(stderr, "libaudioplayer setting debug mode %s\n", enable?"on":"off");
     g_debug = enable;
 }
 

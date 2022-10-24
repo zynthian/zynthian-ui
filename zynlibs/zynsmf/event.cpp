@@ -2,7 +2,7 @@
 #include <stdio.h> //provides printf
 #include <cstring> //provides strcmp, memset
 
-#define DPRINTF(fmt, args...) if(m_bDebug) printf(fmt, ## args)
+#define DPRINTF(fmt, args...) if(m_bDebug) fprintf(stderr, fmt, ## args)
 
 Event::Event(uint32_t nTime, uint8_t nType, uint8_t nSubtype, uint32_t nSize, uint8_t* pData, bool bDebug)
 {
