@@ -83,7 +83,7 @@ class Pattern
         *   @param  beats Quantity of beats in pattern [Optional - default:4]
         *   @param  stepsPerBeat Quantity of steps per beat [Optional - default: 4]
         */
-        Pattern(uint32_t beats = 4, uint8_t stepsPerBeat = 4);
+        Pattern(uint32_t beats = 4, uint32_t stepsPerBeat = 4);
 
         /** @brief  Destruct pattern object
         */

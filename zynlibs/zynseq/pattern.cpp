@@ -3,10 +3,12 @@
 
 /**    Pattern class methods implementation **/
 
-Pattern::Pattern(uint32_t beats, uint8_t stepsPerBeat) :
+Pattern::Pattern(uint32_t beats, uint32_t stepsPerBeat) :
     m_nBeats(beats),
     m_nStepsPerBeat(stepsPerBeat)
 {
+    if(m_nStepsPerBeat == 0)
+        m_nStepsPerBeat = 6;
 }
 
 Pattern::~Pattern()
