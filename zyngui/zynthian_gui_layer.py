@@ -649,7 +649,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					logging.error("Can't refresh GUI! => %s", e)
 
 		else:
-			logging.debug("Can't find a ZS3 for CH#{}:PC#{}".format(midich, prognum))
+			logging.debug("Can't find a ZS3 for CH#{}, PRG#{}".format(midich, prognum))
 			return False
 
 
@@ -1533,12 +1533,20 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		else:
 			self.reset_note_range()
 
+		# Fill layer list => calculate root_layers!
+		self.fill_list()
+
+		# Mixer
+		self.zyngui.zynmixer.reset_state()
+		if 'mixer' in state:
+			self.zyngui.zynmixer.set_state(state['mixer'])
+
 		# Restore Learned ZS3s (SubSnapShots)
 		if 'learned_zs3' in state:
 			self.learned_zs3 = state['learned_zs3']
 		else:
 			self.reset_zs3()
-			self.restore_legacy_zs3s(state)
+			self.import_legacy_zs3s(state)
 
 		# Set active layer
 		if state['index'] < len(self.root_layers) and state['index'] > 0:
@@ -1549,45 +1557,49 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.zyngui.set_curlayer(self.root_layers[self.index])
 			logging.info("Setting curlayer to {}".format(self.index))
 
-		# Fill layer list
-		self.fill_list()
 
-		# Mixer
-		self.zyngui.zynmixer.reset_state()
-		if 'mixer' in state:
-			self.zyngui.zynmixer.set_state(state['mixer'])
+	def import_legacy_zs3s(self, state):
+		zs3_index = 0
+		for midi_chan in range(0, 16):
+			for prognum in range(0, 128):
+				lstates = [None] * len(state['layers'])
+				note_range = [None] * 16
+				root_layer_index = None
+				for li, lss in enumerate(state['layers']):
+					if 'zs3_list' in lss and midi_chan == lss['midi_chan']:
+						lstate = lss['zs3_list'][prognum]
+						if not lstate:
+							continue
+						try:
+							root_layer_index = self.root_layers.index(self.layers[li])
+						except:
+							pass
+						lstate['engine_name'] = lss['engine_name']
+						lstate['engine_nick'] = lss['engine_nick']
+						lstate['engine_jackname'] = self.layers[li].engine.jackname
+						lstate['midi_chan'] = midi_chan
+						lstate['show_fav_presets'] = lss['show_fav_presets']
+						if 'active_screen_index' in lstate:
+							lstate['current_screen_index'] = lstate['active_screen_index']
+							del lstate['active_screen_index']
+						if 'note_range' in lstate:
+							if lstate['note_range']:
+								note_range[midi_chan] = lstate['note_range']
+							del lstate['note_range']
+						lstates[li] = lstate
 
-
-	def restore_legacy_zs3s(self, state):
-		for li, lss in enumerate(state['layers']):
-			midi_chan = lss['midi_chan']
-			if 'zs3_list' in lss:
-				for prognum, lstate in enumerate(lss['zs3_list']):
-					if not lstate:
-						continue
-					if self.last_zs3_index is None:
-						self.last_zs3_index = 0
-					else:
-						self.last_zs3_index += 1
+				if root_layer_index is not None:
 					zs3_new = {
-						'index': li,
-						'layers': [None] * len(state['layers']),
-						'note_range': [None] * 16,
-						'zs3_title': "Legacy ZS3 #{}".format(self.last_zs3_index + 1),
+						'index': root_layer_index,
+						'layers': lstates,
+						'note_range': note_range,
+						'zs3_title': "Legacy ZS3 #{}".format(zs3_index + 1),
 						'midi_learn_chan': midi_chan,
 						'midi_learn_prognum': prognum
 					}
-					lstate['engine_name'] = lss['engine_name']
-					lstate['engine_nick'] = lss['engine_nick']
-					lstate['engine_jackname'] = self.layers[li].engine.jackname
-					lstate['midi_chan'] = midi_chan
-					lstate['show_fav_presets'] = lss['show_fav_presets']
-					lstate['current_screen_index'] = lstate['active_screen_index']
-					del lstate['active_screen_index']
-					zs3_new['note_range'][midi_chan] = lstate['note_range']
-					del lstate['note_range']
-					zs3_new['layers'][li] = lstate
 					self.learned_zs3.append(zs3_new)
+					#logging.debug("ADDED LEGACY ZS3 #{} => {}".format(zs3_index, zs3_new))
+					zs3_index += 1
 
 
 	def restore_state_zs3(self, state):
@@ -1599,6 +1611,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		else:
 			index = None
 			restore_midi_chan = None
+
+		logging.debug("RESTORING ZS3 STATE (index={}) => {}".format(index, state))
 
 		# Calculate the layers to restore, depending of mode OMNI/MULTI, etc
 		layer2restore = []
@@ -1661,8 +1675,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Set active layer
 		if index is not None and index!=self.index:
 			self.index = index
-			self.zyngui.set_curlayer(self.root_layers[self.index])
-			logging.info("Setting curlayer to {}".format(self.index))
+			self.zyngui.set_curlayer(self.root_layers[index])
+			logging.info("Setting curlayer to {}".format(index))
 
 		# Fill layer list
 		self.fill_list()
