@@ -123,10 +123,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		# Add file list, sorted by mtime
 		flist = self.get_filelist(self.capture_dir_sdc, "SD")
 		flist += self.get_filelist(self.capture_dir_usb, "USB")
-		i=1
+		i = 1
 		for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True) :
 			self.list_data.append((finfo['fpath'], i, finfo['title']))
-			i+=1
+			i += 1
 
 		super().fill_list()
 
@@ -264,6 +264,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		logging.info("DELETE MIDI RECORDING: {}".format(fpath))
 		try:
 			os.remove(fpath)
+			self.fill_list()
 		except Exception as e:
 			logging.error(e)
 

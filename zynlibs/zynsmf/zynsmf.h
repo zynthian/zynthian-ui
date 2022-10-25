@@ -238,6 +238,17 @@ void muteTrack(Smf* pSmf, size_t nTrack, bool bMute);
 */
 bool isTrackMuted(Smf* pSmf, size_t nTrack);
 
+/** @brief  Set playback transpose
+*   @param  nTranspose +/- semitones to transpose playback
+*   @note   Out of range notes are ignored 
+*/
+void setTranspose(int8_t nTranspose);
+
+/** @brief  Get playback transpose
+*   @retval uint8_t +/- semitones playback is transposed
+*/
+uint8_t getTranspose();
+
 #ifdef __cplusplus
 }
 #endif
