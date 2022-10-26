@@ -463,7 +463,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		super().refresh_status(status)
 		if self.redraw_pending:
 			self.update_grid()
-		force = self.zyngui.zynseq.bank == self.bank
+		force = self.zyngui.zynseq.bank != self.bank
 		if not self.redrawing:
 			self.bank = self.zyngui.zynseq.bank
 			for pad in range(0, self.columns**2):

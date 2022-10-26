@@ -50,7 +50,7 @@ class StepEvent
             m_nValue1end = pEvent->getValue1end();
             m_nValue2end = pEvent->getValue2end();
         };
-        uint8_t getPosition() { return m_nPosition; };
+        uint32_t getPosition() { return m_nPosition; };
         float getDuration() { return m_fDuration; };
         uint8_t getCommand() { return m_nCommand; };
         uint8_t getValue1start() { return m_nValue1start; };

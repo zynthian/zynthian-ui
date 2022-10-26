@@ -42,7 +42,6 @@
 #define DPRINTF(fmt, args...) if(g_bDebug) fprintf(stderr, fmt, ## args)
 
 SequenceManager g_seqMan; // Instance of sequence manager
-Pattern* g_pPattern = 0; // Currently selected pattern
 uint32_t g_nPattern = 0; // Index of currently selected pattern
 Sequence* g_pSequence = 0; // Pattern editor sequence
 jack_port_t * g_pInputPort; // Pointer to the JACK input port
@@ -394,7 +393,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         }
 
         // Handle MIDI events for programming patterns from MIDI input
-        if(g_bInputEnabled && g_pSequence && g_pPattern && g_nInputChannel == (midiEvent.buffer[0] & 0x0F))
+        if(g_bInputEnabled && g_pSequence && g_seqMan.getPattern(g_nPattern) && g_nInputChannel == (midiEvent.buffer[0] & 0x0F))
         {
             uint32_t nStep = g_pSequence->getPlayPosition() / getClocksPerStep();
             bool bAdvance = false;
@@ -412,22 +411,22 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             else if(((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2])
             {
                 // Note on event
-                setPatternModified(g_pPattern, true);
+                setPatternModified(g_seqMan.getPattern(g_nPattern), true);
                 uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
                 if(g_bSustain)
-                    g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
+                    g_seqMan.getPattern(g_nPattern)->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
                 else
                 {
                     bAdvance = true;
                     if(nDuration)
-                        g_pPattern->removeNote(nStep, midiEvent.buffer[1]);
+                        g_seqMan.getPattern(g_nPattern)->removeNote(nStep, midiEvent.buffer[1]);
                     else if(midiEvent.buffer[1] != g_nInputRest)
-                        g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
+                        g_seqMan.getPattern(g_nPattern)->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
                 }
             }
             if(bAdvance && transportGetPlayStatus() != JackTransportRolling)
             {
-                if(++nStep >= g_pPattern->getSteps())
+                if(++nStep >= g_seqMan.getPattern(g_nPattern)->getSteps())
                     nStep = 0;
                 g_pSequence->setPlayPosition(nStep * getClocksPerStep());
                 //printf("libzynseq advancing to step %d\n", nStep);
@@ -655,6 +654,7 @@ void init(char* name) {
     transportStop("zynseq");
     transportLocate(0);
     g_pSequence = g_seqMan.getSequence(0, 0);
+    selectPattern(1);
 }
 
 bool isModified()
@@ -1238,10 +1238,8 @@ void enableMidiInput(bool enable)
 
 void selectPattern(uint32_t pattern)
 {
-    g_pPattern = g_seqMan.getPattern(pattern);
-    if(g_pPattern)
-        g_nPattern = pattern;
-    setPatternModified(g_pPattern, true);
+    g_nPattern = pattern;
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
 }
 
 uint32_t getPatternIndex()
@@ -1251,14 +1249,15 @@ uint32_t getPatternIndex()
 
 uint32_t getSteps()
 {
-    if(g_pPattern)
-        return g_pPattern->getSteps();
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getSteps();
+    fprintf(stderr, "No pattern selected\n");
     return 0;
 }
 
 uint32_t getPatternLength(uint32_t pattern)
 {
-    Pattern* pPattern = g_seqMan.getPattern(pattern);
+    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
     if(pPattern)
         return pPattern->getLength();
     return 0;
@@ -1266,50 +1265,50 @@ uint32_t getPatternLength(uint32_t pattern)
 
 uint32_t getBeatsInPattern()
 {
-    if(g_pPattern)
-        return g_pPattern->getBeatsInPattern();
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getBeatsInPattern();
     return 0;
 }
 
 void setBeatsInPattern(uint32_t beats)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return;
-    g_pPattern->setBeatsInPattern(beats);
+    g_seqMan.getPattern(g_nPattern)->setBeatsInPattern(beats);
     g_seqMan.updateAllSequenceLengths();
-    setPatternModified(g_pPattern, true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
     g_bDirty = true;
 }
 
 uint32_t getClocksPerStep()
 {
-    if(g_pPattern)
-        return g_pPattern->getClocksPerStep();
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getClocksPerStep();
     return 6;
 }
 
 uint32_t getStepsPerBeat()
 {
-    if(g_pPattern)
-        return g_pPattern->getStepsPerBeat();
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getStepsPerBeat();
     return 4;
 }
 
 void setStepsPerBeat(uint32_t steps)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return;
-    g_pPattern->setStepsPerBeat(steps);
-    setPatternModified(g_pPattern, true);
+    g_seqMan.getPattern(g_nPattern)->setStepsPerBeat(steps);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
     g_bDirty = true;
 }
 
 bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return false;
-    if(g_pPattern->addNote(step, note, velocity, duration)) {
-        setPatternModified(g_pPattern, true);
+    if(g_seqMan.getPattern(g_nPattern)->addNote(step, note, velocity, duration)) {
+        setPatternModified(g_seqMan.getPattern(g_nPattern), true);
         g_bDirty = true;
         return true;
     }
@@ -1318,49 +1317,49 @@ bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration)
 
 void removeNote(uint32_t step, uint8_t note)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_pPattern, true);
-    g_pPattern->removeNote(step, note);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->removeNote(step, note);
     g_bDirty = true;
 }
 
 int32_t getNoteStart(uint32_t step, uint8_t note)
 {
-    if(g_pPattern)
-        return g_pPattern->getNoteStart(step, note);
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getNoteStart(step, note);
     return -1;
 }
 
 uint8_t getNoteVelocity(uint32_t step, uint8_t note)
 {
-    if(g_pPattern)
-        return g_pPattern->getNoteVelocity(step, note);
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getNoteVelocity(step, note);
     return 0;
 }
 
 void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_pPattern, true);
-    g_pPattern->setNoteVelocity(step, note, velocity);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->setNoteVelocity(step, note, velocity);
     g_bDirty = true;
 }
 
 float getNoteDuration(uint32_t step, uint8_t note)
 {
-    if(g_pPattern)
-        return g_pPattern->getNoteDuration(step, note);
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getNoteDuration(step, note);
     return 0;
 }
 
 bool addProgramChange(uint32_t step, uint8_t program)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return false;
-    if(g_pPattern->addProgramChange(step, program)) {
-        setPatternModified(g_pPattern, true);
+    if(g_seqMan.getPattern(g_nPattern)->addProgramChange(step, program)) {
+        setPatternModified(g_seqMan.getPattern(g_nPattern), true);
         g_bDirty = true;
         return true;
     }
@@ -1369,55 +1368,55 @@ bool addProgramChange(uint32_t step, uint8_t program)
 
 void removeProgramChange(uint32_t step, uint8_t program)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return;
-    if(g_pPattern->removeProgramChange(step))
+    if(g_seqMan.getPattern(g_nPattern)->removeProgramChange(step))
         return;
-    setPatternModified(g_pPattern, true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
     g_bDirty = true;
 }
 
 uint8_t getProgramChange(uint32_t step)
 {
-    if(g_pPattern)
-        return g_pPattern->getProgramChange(step);
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getProgramChange(step);
     return 0xFF;
 }
 
 void transpose(int8_t value)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_pPattern, true);
-    g_pPattern->transpose(value);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->transpose(value);
     g_bDirty = true;
 }
 
 void changeVelocityAll(int value)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_pPattern, true);
-    g_pPattern->changeVelocityAll(value);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->changeVelocityAll(value);
     g_bDirty = true;
 }
 
 void changeDurationAll(float value)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_pPattern, true);
-    g_pPattern->changeDurationAll(value);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->changeDurationAll(value);
     g_bDirty = true;
 }
 
 
 void clear()
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_pPattern, true);
-    g_pPattern->clear();
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->clear();
     g_bDirty = true;
 }
 
@@ -1455,32 +1454,32 @@ uint8_t getInputRest()
 
 void setScale(uint32_t scale)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return;
-    if(scale != g_pPattern->getScale())
+    if(scale != g_seqMan.getPattern(g_nPattern)->getScale())
         g_bDirty = true;
-    g_pPattern->setScale(scale);
+    g_seqMan.getPattern(g_nPattern)->setScale(scale);
 }
 
 uint32_t getScale()
 {
-    if(g_pPattern)
-        return g_pPattern->getScale();
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getScale();
     return 0;
 }
 
 void setTonic(uint8_t tonic)
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return;
-    g_pPattern->setTonic(tonic);
+    g_seqMan.getPattern(g_nPattern)->setTonic(tonic);
     g_bDirty = true;
 }
 
 uint8_t getTonic()
 {
-    if(g_pPattern)
-        return g_pPattern->getTonic();
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getTonic();
     return 0;
 }
 
@@ -1527,22 +1526,22 @@ bool isPatternModified()
 
 uint8_t getRefNote()
 {
-    if(g_pPattern)
-        return g_pPattern->getRefNote();
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getRefNote();
     return 60;
 }
 
 void setRefNote(uint8_t note)
 {
-    if(g_pPattern)
-        g_pPattern->setRefNote(note);
+    if(g_seqMan.getPattern(g_nPattern))
+        g_seqMan.getPattern(g_nPattern)->setRefNote(note);
 }
 
 uint32_t getLastStep()
 {
-    if(!g_pPattern)
+    if(!g_seqMan.getPattern(g_nPattern))
         return -1;
-    return g_pPattern->getLastStep();
+    return g_seqMan.getPattern(g_nPattern)->getLastStep();
 }
 
 uint32_t getPatternPlayhead()
@@ -1690,6 +1689,7 @@ void setSequencesInBank(uint8_t bank, uint8_t sequences)
     g_bMutex = true;
     g_seqMan.setSequencesInBank(bank, sequences);
     g_bMutex = false;
+    g_pSequence = g_seqMan.getSequence(0, 0);
 }
 
 size_t getSequencesInBank(uint32_t bank)
@@ -1808,17 +1808,21 @@ const char* getSequenceName(uint8_t bank, uint8_t sequence)
 
 bool moveSequence(uint8_t bank, uint8_t sequence, uint8_t position)
 {
-    return g_seqMan.moveSequence(bank, sequence, position);
+    bool bResult = g_seqMan.moveSequence(bank, sequence, position);
+    g_pSequence = g_seqMan.getSequence(0, 0);
+    return bResult;
 }
 
 void insertSequence(uint8_t bank, uint8_t sequence)
 {
     g_seqMan.insertSequence(bank, sequence);
+    g_pSequence = g_seqMan.getSequence(0, 0);
 }
 
 void removeSequence(uint8_t bank, uint8_t sequence)
 {
     g_seqMan.removeSequence(bank, sequence);
+    g_pSequence = g_seqMan.getSequence(0, 0);
 }
 
 void updateSequenceInfo()

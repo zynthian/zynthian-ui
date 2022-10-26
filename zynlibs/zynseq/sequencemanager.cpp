@@ -83,6 +83,7 @@ bool SequenceManager::checkBlock(FILE* pFile, uint32_t nActualSize,  uint32_t nE
 
 Pattern* SequenceManager::getPattern(uint32_t index)
 {
+    m_mPatterns[index]; // Ensure pattern exists and won't move in memory before accessing by pointer
     return &(m_mPatterns[index]);
 }
 
@@ -147,6 +148,7 @@ bool SequenceManager::addPattern(uint8_t bank, uint8_t sequence, uint32_t track,
     Track* pTrack = pSequence->getTrack(track);
     if(!pTrack)
         return false;
+    m_mPatterns[pattern]; // Ensure pattern exists and won't move in memory before accessing by pointer
     bool bUpdated = pTrack->addPattern(position, &(m_mPatterns[pattern]), force);
     updateSequenceLength(bank, sequence);
     return bUpdated;

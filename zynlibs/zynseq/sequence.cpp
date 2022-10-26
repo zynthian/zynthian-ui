@@ -60,8 +60,9 @@ void Sequence::clear()
 
 Track* Sequence::getTrack(size_t index)
 {
-    if(index < m_vTracks.size())
+    if(index < m_vTracks.size()) {
         return &(m_vTracks[index]);
+    }
     return NULL;
 }
 

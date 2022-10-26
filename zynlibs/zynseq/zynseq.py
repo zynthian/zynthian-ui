@@ -217,7 +217,7 @@ class zynseq(zynthian_engine):
 	#	filename: Full path and filename
 	def load(self, filename):
 		self.libseq.load(bytes(filename, "utf-8"))
-		if not filename:
+		if self.libseq.getSequencesInBank(1) == 0:
 			self.build_default_bank(1)
 		self.send_event(SEQ_EVENT_LOAD)
 
