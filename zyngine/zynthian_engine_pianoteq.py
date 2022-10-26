@@ -417,12 +417,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			else:
 				shutil.copy(self.data_dir + "/pianoteq6/Pianoteq6.prefs", PIANOTEQ_CONFIG_FILE)
 
-		try:
-			sr = self.zyngui.get_jackd_samplerate()
-		except:
-			sr = 44100
-		fix_pianoteq_config(sr)
-
 		# Prepare bank list
 		self.prepare_banks()
 
@@ -441,6 +435,15 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.load_user_presets()
 		self.purge_banks()
 		self.generate_presets_midimapping()
+
+
+	def start(self):
+		try:
+			sr = self.zyngui.get_jackd_samplerate()
+		except:
+			sr = 44100
+		fix_pianoteq_config(sr)
+		super().start()
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
