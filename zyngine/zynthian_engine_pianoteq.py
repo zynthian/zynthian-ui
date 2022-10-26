@@ -137,6 +137,7 @@ def fix_pianoteq_config(samplerate):
 		try:
 			audio_setup_node = None
 			midi_setup_node = None
+			crash_node = None
 			for xml_value in root.iter("VALUE"):
 				if xml_value.attrib['name'] == 'engine_rate':
 					xml_value.set('val', str(PIANOTEQ_CONFIG_INTERNAL_SR))
@@ -150,6 +151,8 @@ def fix_pianoteq_config(samplerate):
 					audio_setup_node = xml_value
 				elif xml_value.attrib['name'] == 'midi-setup':
 					midi_setup_node = xml_value
+				elif xml_value.attrib['name'] == 'crash_detect':
+					crash_node = xml_value
 
 			if audio_setup_node:
 				logging.debug("Fixing Audio Setup")
@@ -182,6 +185,11 @@ def fix_pianoteq_config(samplerate):
 				midisetup = ElementTree.SubElement(value, 'midi-setup')
 				midisetup.set('listen-all', '0')
 				root.append(value)
+
+			if crash_node is not None:
+				if crash_node.attrib['val']:
+					logging.warning("Pianoteq detected previous crash ({})".format(crash_node.attrib['val']))
+					crash_node.attrib['val'] = ''
 
 			tree.write(PIANOTEQ_CONFIG_FILE)
 
