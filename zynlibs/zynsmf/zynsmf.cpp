@@ -299,8 +299,7 @@ static int onJackSamplerate(jack_nframes_t nFrames, void* args)
 	if(g_pPlayerSmf)
 		g_dPlayerTicksPerFrame = double(g_pPlayerSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
 	if(g_pRecorderSmf)
-		g_dRecorderTicksPerFrame = 2.0 * double(g_pRecorderSmf->getTicksPerQuarterNote()) / g_nSamplerate;
-		//g_dRecorderTicksPerFrame = double(g_pRecorderSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
+		g_dRecorderTicksPerFrame = double(g_pRecorderSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
 	return 0;
 }
 
@@ -648,6 +647,13 @@ void startRecording()
 	for(int ch = 0; ch < 16; ++ch)
 		for(int note = 0; note < 128; ++note)
 			g_aRecNotes[ch][note] = false;
+
+	jack_position_t transport_position;
+	jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, &transport_position);
+	double dBeatsPerMinute = transport_position.beats_per_minute;
+	g_nMicrosecondsPerQuarterNote = 60000000.0 / dBeatsPerMinute;
+	g_dRecorderTicksPerFrame = double(g_pRecorderSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
+	addTempo(g_pRecorderSmf, 0, 60000000.0 / g_nMicrosecondsPerQuarterNote);
 	g_bRecording = true;
 }
 
