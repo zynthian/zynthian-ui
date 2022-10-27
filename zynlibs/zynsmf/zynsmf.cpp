@@ -96,6 +96,15 @@ Smf* addSmf()
 
 void removeSmf(Smf* pSmf)
 {
+	if(pSmf == g_pPlayerSmf)
+		removePlayer();
+	if(pSmf == g_pRecorderSmf)
+		removeRecorder();
+	if(pSmf == g_pSmf)
+	{
+		g_pSmf = NULL;
+		g_pEvent = NULL;
+	}
 	for(auto it = g_pvSmf->begin(); it != g_pvSmf->end(); ++it)
 	{
 		if(*it != pSmf)
