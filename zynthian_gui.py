@@ -31,7 +31,6 @@ import ctypes
 import signal
 import logging
 import importlib
-import threading
 import rpi_ws281x
 from time import sleep
 from pathlib import Path
@@ -51,6 +50,7 @@ from zynlibs.zynseq import zynseq
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
 from zyngine import zynthian_engine_audio_mixer
+from zyngine import zynthian_layer
 
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
@@ -1043,23 +1043,21 @@ class zynthian_gui:
 
 		if not self.audio_player:
 			try:
-				self.audio_player = zynaudioplayer.zynaudioplayer()
-				zynautoconnect.audio_connect_aux(self.audio_player.get_jack_client_name())
+				zyngine = self.screens['engine'].start_engine('AP')
+				self.audio_player = zynthian_layer(zyngine, 16, None)
+				zynautoconnect.audio_connect_aux(self.audio_player.jackname)
 			except Exception as e:
 				self.stop_audio_player()
 				return
-		self.audio_player.load(filename)
-		self.audio_player.set_control_cb(lambda id,value:self.stop_audio_player() if id==1 and value==0 else None)
-		self.audio_player.start_playback()
-		if self.audio_player.get_playback_state():
-			self.status_info['audio_player'] = 'PLAY'
+		self.audio_player.engine.set_preset(self.audio_player, [filename])
+		self.audio_player.engine.player.set_position(16, 0.0)
+		self.audio_player.engine.player.start_playback(16)
+		self.status_info['audio_player'] = 'PLAY'
 
 
 	def stop_audio_player(self):
 		if self.audio_player:
-			self.audio_player.stop_playback()
-			if 'audio_player' in self.status_info:
-				self.status_info.pop('audio_player')
+			self.audio_player.engine.player.stop_playback(16)
 
 
 	#------------------------------------------------------------------
@@ -1185,7 +1183,7 @@ class zynthian_gui:
 		elif cuia == "TOGGLE_AUDIO_PLAY":
 			if self.current_screen == "pattern_editor":
 				self.screens["pattern_editor"].toggle_playback()
-			elif self.audio_player and self.audio_player.get_playback_state():
+			elif self.audio_player and self.audio_player.engine.player.get_playback_state(16):
 				self.stop_audio_player()
 			else:
 				self.start_audio_player()
@@ -2214,6 +2212,15 @@ class zynthian_gui:
 				self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
 			except Exception as e:
 				logging.error(e)
+			
+			# Remove Player
+			if self.audio_player and self.audio_player.engine and not self.audio_player.engine.player.get_playback_state(16):
+					self.audio_player.engine.del_layer(self.audio_player)
+					self.audio_player = None
+					self.screens['engine'].stop_unused_engines()
+					if 'audio_player' in self.status_info:
+						self.status_info.pop('audio_player')
+
 
 			# Refresh On-Screen Status
 			try:

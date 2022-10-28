@@ -204,7 +204,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			if eng[0:3] == "JV/":
 				eng = "JV/{}".format(self.zyngine_counter)
 				self.zyngines[eng] = zynthian_engine_class(info[0], info[2], self.zyngui, False, jackname)
-			elif eng in ["SF","AP","AI"]:
+			elif eng in ["SF","AI"]:
 				eng = "{}/{}".format(eng, self.zyngine_counter)
 				self.zyngines[eng] = zynthian_engine_class(self.zyngui, jackname)
 			else:

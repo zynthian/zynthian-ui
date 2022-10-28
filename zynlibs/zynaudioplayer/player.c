@@ -24,11 +24,7 @@
 #include <fcntl.h> //provides fcntl
 #include <math.h> // provides pow
 
-#ifdef ENABLE_OSC
-#include "osc.h"
-#endif //ENABLE_OSC
-
-#define MAX_PLAYERS 16 // Maximum quanity of audio players the library can host
+#define MAX_PLAYERS 17 // Maximum quanity of audio players the library can host
 
 enum playState {
     STOPPED		= 0,
@@ -49,8 +45,6 @@ struct AUDIO_PLAYER {
 
     jack_port_t* jack_out_a;
     jack_port_t* jack_out_b;
-    jack_port_t * jack_midi_in;
-    jack_client_t * jack_client;
 
     uint8_t file_open; // 0=file closed, 1=file opening, 2=file open - used to flag thread to close file or thread to flag file failed to open
     uint8_t file_read_status; // File reading status (IDLE|SEEKING|LOADING)
@@ -83,7 +77,6 @@ struct AUDIO_PLAYER {
     unsigned int last_buffer_count;
     unsigned int last_src_quality;
 
-
     struct SF_INFO  sf_info; // Structure containing currently loaded file info
     pthread_t file_thread; // ID of file reader thread
     // Note that jack_ringbuffer handles bytes so need to convert data between bytes and floats
@@ -103,6 +96,8 @@ struct AUDIO_PLAYER {
 
 // **** Global variables ****
 struct AUDIO_PLAYER * g_players[MAX_PLAYERS];
+jack_client_t* g_jack_client;
+jack_port_t* g_jack_midi_in;
 jack_nframes_t g_samplerate = 44100; // Playback samplerate set by jackd
 uint8_t g_debug = 0;
 uint8_t g_last_debug = 0;
@@ -111,200 +106,65 @@ uint8_t g_last_debug = 0;
     
 // **** Internal (non-public) functions ****
 
-
 static inline struct AUDIO_PLAYER * get_player(int player_handle) {
     if(player_handle > MAX_PLAYERS || player_handle < 0)
         return NULL;
     return g_players[player_handle];
 }
 
-#ifdef ENABLE_OSC
-void* osc_thread_fn(void * param) {
-    char buffer[2048]; // declare a 2Kb buffer to read packet data into
-    int len = 0;
-    const int osc_fd = socket(AF_INET, SOCK_DGRAM, 0);
-    struct sockaddr_in sin;
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(OSC_PORT);
-    sin.sin_addr.s_addr = INADDR_ANY;
-    bind(osc_fd, (struct sockaddr *) &sin, sizeof(struct sockaddr_in));
-    fprintf(stderr, "OSC server listening on port %d\n", OSC_PORT);
-    tosc_message osc_msg;
-
-    while(g_run_osc) {
-        fd_set readSet;
-        FD_ZERO(&readSet);
-        FD_SET(osc_fd, &readSet);
-        struct timeval timeout = {1, 0}; // select times out after 1 second
-        if (select(osc_fd + 1, &readSet, NULL, NULL, &timeout) > 0) {
-            struct sockaddr sa; // can be safely cast to sockaddr_in
-            socklen_t sa_len = sizeof(struct sockaddr_in);
-            int len = 0;
-            const char* path;
-            size_t player;
-            while ((len = (int) recvfrom(osc_fd, buffer, sizeof(buffer), 0, &sa, &sa_len)) > 0) {
-                if(!tosc_parseMessage(&osc_msg, buffer, len)) {
-                    path = tosc_getAddress(&osc_msg);
-                    if(!strncmp(path, "/player", 7)) {
-                        path += 7;
-                        player = atoi(path);
-                        while(path[0] != '\0' && path[0] != '/')
-                            ++path;
-                        if(path[0] == '/') {
-                            if(!strcmp(path, "/transport")) {
-                                if(osc_msg.format[0] == 'i')
-                                    if(tosc_getNextInt32(&osc_msg))
-                                        start_playback(player);
-                                    else
-                                        stop_playback(player);
-                            } else if(!strcmp(path, "/load")) {
-                                if(osc_msg.format[0] == 's')
-                                    load(player, tosc_getNextString(&osc_msg));
-                            } else if(!strcmp(path, "/save")) {
-                                if(osc_msg.format[0] == 's')
-                                    save(player, tosc_getNextString(&osc_msg));
-                            } else if(!strcmp(path, "/unload")) {
-                                unload(player);
-                            } else if(!strncmp(path, "/position", 9)) {
-                                if(osc_msg.format[0] == 'f')
-                                    set_position(player, tosc_getNextFloat(&osc_msg));
-                            }
-                            else if(!strcmp(path, "/loop")) {
-                                if(osc_msg.format[0] == 'i')
-                                    enable_loop(player, tosc_getNextInt32(&osc_msg));
-                            }
-                            else if(!strcmp(path, "/loop_start")) {
-                                if(osc_msg.format[0] == 'f')
-                                    set_loop_start(player, tosc_getNextFloat(&osc_msg));
-                            }
-                            else if(!strcmp(path, "/loop_end")) {
-                                if(osc_msg.format[0] == 'f')
-                                    set_loop_end(player, tosc_getNextFloat(&osc_msg));
-                            }
-                            else if(!strcmp(path, "/quality")) {
-                                if(osc_msg.format[0] == 'i')
-                                    set_src_quality(player, tosc_getNextInt32(&osc_msg));
-                            } else if(!strcmp(path, "/gain")) {
-                                if(osc_msg.format[0] == 'f')
-                                    set_gain(player, tosc_getNextFloat(&osc_msg));
-                            } else if(!strcmp(path, "/track_a")) {
-                                if(osc_msg.format[0] == 'i')
-                                    set_track_a(player, tosc_getNextInt32(&osc_msg));
-                            } else if(!strcmp(path, "/track_b")) {
-                                if(osc_msg.format[0] == 'i')
-                                    set_track_b(player, tosc_getNextInt32(&osc_msg));
-                            } else if(!strcmp(path, "/buffersize")) {
-                                if(osc_msg.format[0] == 'i')
-                                    set_buffer_size(player, tosc_getNextInt32(&osc_msg));
-                            } else if(!strcmp(path, "/buffercount")) {
-                                if(osc_msg.format[0] == 'i')
-                                    set_buffer_count(player, tosc_getNextInt32(&osc_msg));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        usleep(100000);
-    }
-    close(osc_fd);
-    fprintf(stderr, "OSC server stopped\n");
-    pthread_exit(NULL);
-}
-#endif //ENABLE_OSC
-
 void send_notifications(struct AUDIO_PLAYER * pPlayer, int param) {
-    // Send dynamic OSC notifications within this thread, not jack process
+    // Send dynamic notifications within this thread, not jack process
     if(!pPlayer || pPlayer->file_open != 2)
         return;
     if((param == NOTIFY_ALL || param == NOTIFY_TRANSPORT) && pPlayer->last_play_state != pPlayer->play_state) {
         pPlayer->last_play_state = pPlayer->play_state;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, NOTIFY_TRANSPORT, (float)(pPlayer->play_state));
-        #ifdef ENABLE_OSC
-        sprintf(g_oscpath, "/player%d/transport", pPlayer->handle);
-        sendOscInt(g_oscpath, pPlayer->play_state);
-        #endif //ENABLE_OSC
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_TRANSPORT, (float)(pPlayer->play_state));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_POSITION) && fabs(get_position(pPlayer->handle) - pPlayer->last_position) >= pPlayer->pos_notify_delta) {
         pPlayer->last_position = get_position(pPlayer->handle);
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, NOTIFY_POSITION, pPlayer->last_position);
-        #ifdef ENABLE_OSC
-        sprintf(g_oscpath, "/player%d/position", pPlayer->handle);
-        sendOscFloat(g_oscpath, pPlayer->last_position);
-        #endif //ENABLE_OSC
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_POSITION, pPlayer->last_position);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_GAIN) && fabs(pPlayer->gain - pPlayer->last_gain) >= 0.01) {
         pPlayer->last_gain = pPlayer->gain;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, NOTIFY_GAIN, (float)(pPlayer->gain));
-        #ifdef ENABLE_OSC
-        sprintf(g_oscpath, "/player%d/gain", pPlayer->handle);
-        sendOscFloat(g_oscpath, pPlayer->gain);
-        #endif //ENABLE_OSC
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_GAIN, (float)(pPlayer->gain));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_LOOP) && pPlayer->loop != pPlayer->last_loop) {
         pPlayer->last_loop = pPlayer->loop;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, NOTIFY_LOOP, (float)(pPlayer->loop));
-        #ifdef ENABLE_OSC
-        sprintf(g_oscpath, "/player%d/loop", player->handle);
-        sendOscInt(g_oscpath, pPlayer->loop);
-        #endif //ENABLE_OSC
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_LOOP, (float)(pPlayer->loop));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_LOOP_START) && pPlayer->loop_start != pPlayer->last_loop_start) {
         pPlayer->last_loop_start = pPlayer->loop_start;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, NOTIFY_LOOP_START, get_loop_start_time(pPlayer->handle));
-        #ifdef ENABLE_OSC
-        sprintf(g_oscpath, "/player%d/loop_start", player->handle);
-        sendOscFloat(g_oscpath, pPlayer->loop_start);
-        #endif //ENABLE_OSC
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_LOOP_START, get_loop_start_time(pPlayer->handle));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_LOOP_END) && pPlayer->loop_end != pPlayer->last_loop_end) {
         pPlayer->last_loop_end = pPlayer->loop_end;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, NOTIFY_LOOP_END, get_loop_end_time(pPlayer->handle));
-        #ifdef ENABLE_OSC
-        sprintf(g_oscpath, "/player%d/loop_end", player->handle);
-        sendOscFloat(g_oscpath, pPlayer->loop_end);
-        #endif //ENABLE_OSC
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_LOOP_END, get_loop_end_time(pPlayer->handle));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_TRACK_A) && pPlayer->track_a != pPlayer->last_track_a) {
         pPlayer->last_track_a = pPlayer->track_a;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, NOTIFY_TRACK_A, (float)(pPlayer->track_a));
-        #ifdef ENABLE_OSC
-        sprintf(g_oscpath, "/player%d/track_a", pPlayer->handle);
-        sendOscInt(g_oscpath, pPlayer->track_a);
-        #endif //ENABLE_OSC
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_TRACK_A, (float)(pPlayer->track_a));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_TRACK_B) && pPlayer->track_b != pPlayer->last_track_b) {
         pPlayer->last_track_b = pPlayer->track_b;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, NOTIFY_TRACK_B, (float)(pPlayer->track_b));
-        #ifdef ENABLE_OSC
-        sprintf(g_oscpath, "/player%d/track_b", pPlayer->handle);
-        sendOscInt(g_oscpath, pPlayer->track_b);
-        #endif //ENABLE_OSC
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_TRACK_B, (float)(pPlayer->track_b));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_QUALITY) && pPlayer->src_quality != pPlayer->last_src_quality) {
         pPlayer->last_src_quality = pPlayer->src_quality;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, NOTIFY_QUALITY, (float)(pPlayer->src_quality));
-        #ifdef ENABLE_OSC
-        sprintf(g_oscpath, "/player%d/src_quality", pPlayer->handle);
-        sendOscInt(g_oscpath, pPlayer->src_quality);
-        #endif //ENABLE_OSC
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_QUALITY, (float)(pPlayer->src_quality));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_DEBUG) && g_debug != g_last_debug) {
         g_last_debug = g_debug;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, NOTIFY_DEBUG, (float)(g_debug));
-        #ifdef ENABLE_OSC
-        sendOscInt("/debug", g_debug);
-        #endif //ENABLE_OSC
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_DEBUG, (float)(g_debug));
     }
 }
 
@@ -520,11 +380,6 @@ void* file_thread_fn(void * param) {
     if(pSrcState)
         pSrcState = src_delete(pSrcState);
 
-#ifdef ENABLE_OSC
-    sprintf(g_oscpath, "/player%d/load", pPlayer->handle);
-    sendOscString(g_oscpath, pPlayer->filename);
-#endif //ENABLE_OSC
-
     DPRINTF("File reader thread ended\n");
     pthread_exit(NULL);
 }
@@ -558,12 +413,6 @@ uint8_t load(int player_handle, const char* filename, void* cb_object, cb_fn_t c
     if(pPlayer->file_open) {
         pPlayer->cb_object = cb_object;
         pPlayer->cb_fn = cb_fn;
-        #ifdef ENABLE_OSC
-        sprintf(g_oscpath, "/player%d/load", pPlayer->handle);
-        sendOscString(g_oscpath, pPlayer->filename);
-        sprintf(g_oscpath, "/player%d/duration", pPlayer->handle);
-        sendOscFloat(g_oscpath, get_duration(pPlayer->handle));
-        #endif //ENABLE_OSC
     }
     return (pPlayer->file_open == 2);
 }
@@ -699,7 +548,7 @@ uint8_t is_loop(int player_handle) {
 
 void start_playback(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer && pPlayer->jack_client && pPlayer->file_open == 2 && pPlayer->play_state != PLAYING)
+    if(pPlayer && g_jack_client && pPlayer->file_open == 2 && pPlayer->play_state != PLAYING)
         pPlayer->play_state = STARTING;
     send_notifications(pPlayer, NOTIFY_TRANSPORT);
 }
@@ -748,176 +597,152 @@ int get_format(int player_handle) {
 
 /*** Private functions not exposed as external C functions (not declared in header) ***/
 
-// Clean up before library unloads
-void end() {
-    for(int player_handle = 0; player_handle < MAX_PLAYERS; ++player_handle)
-        remove_player(player_handle);
-
-#ifdef ENABLE_OSC
-    g_run_osc = 0;
-    void* status;
-    pthread_join(g_osc_thread, &status);
-#endif //ENABLE_OSC
-}
-
-void remove_player(int player_handle) {
-    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer)
-        return;
-    unload(player_handle);
-    jack_client_close(pPlayer->jack_client);
-
-    unsigned int count = 0;
-    for(size_t i = 0; i < MAX_PLAYERS; ++i) {
-        if(g_players[i] == pPlayer)
-            g_players[i] = NULL;
-        if(g_players[i])
-            ++count;
-    }
-    free(pPlayer);
-    if(count == 0)
-        end();
-}
-
 // Handle JACK process callback
 int on_jack_process(jack_nframes_t nFrames, void * arg) {
-    size_t r_count = 0; // Quantity of samples removed from queue, i.e. how far advanced through the audio
-    size_t a_count = 0; // Quantity of samples added to jack buffer
-    float f_count = 0.0; // Amount moved through buffer when pitch shifting
-    float tmp;
-    struct AUDIO_PLAYER * pPlayer = (struct AUDIO_PLAYER *) (arg);
-    if(!pPlayer || pPlayer->file_open != 2)
-        return 0;
-    jack_default_audio_sample_t *pOutA = (jack_default_audio_sample_t*)jack_port_get_buffer(pPlayer->jack_out_a, nFrames);
-    jack_default_audio_sample_t *pOutB = (jack_default_audio_sample_t*)jack_port_get_buffer(pPlayer->jack_out_b, nFrames);
+    for(int i = 0; i < MAX_PLAYERS; ++i) {
+        struct AUDIO_PLAYER * pPlayer = (struct AUDIO_PLAYER *) (g_players[i]);
+        if(!pPlayer || pPlayer->file_open != 2)
+            continue;
 
-    if(pPlayer->play_state == STARTING && pPlayer->file_read_status != SEEKING)
-        pPlayer->play_state = PLAYING;
+        size_t r_count = 0; // Quantity of samples removed from queue, i.e. how far advanced through the audio
+        size_t a_count = 0; // Quantity of samples added to jack buffer
+        float f_count = 0.0; // Amount moved through buffer when pitch shifting
+        float tmp;
+        jack_default_audio_sample_t *pOutA = (jack_default_audio_sample_t*)jack_port_get_buffer(pPlayer->jack_out_a, nFrames);
+        jack_default_audio_sample_t *pOutB = (jack_default_audio_sample_t*)jack_port_get_buffer(pPlayer->jack_out_b, nFrames);
 
-    if(pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
-        if(pPlayer->pitch_shift != 1.0) {
-            while(a_count < nFrames) {
-                if(
-                    (jack_ringbuffer_peek(pPlayer->ringbuffer_a, (char*)(&pOutA[a_count]), sizeof(jack_default_audio_sample_t)) < sizeof(jack_default_audio_sample_t)) ||
-                    (jack_ringbuffer_peek(pPlayer->ringbuffer_b, (char*)(&pOutB[a_count]), sizeof(jack_default_audio_sample_t)) < sizeof(jack_default_audio_sample_t))
-                )
-                    break;
+        if(pPlayer->play_state == STARTING && pPlayer->file_read_status != SEEKING)
+            pPlayer->play_state = PLAYING;
 
-                while(f_count < a_count) {
-                    f_count += pPlayer->pitch_shift;
-                    jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)(&tmp), sizeof(jack_default_audio_sample_t));
-                    jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)(&tmp), sizeof(jack_default_audio_sample_t));
-                    ++r_count;
-                    if(jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0 || jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0)
-                        break; // Run out of data to read 
-                        //!@todo Should break out of outer loop
+        if(pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
+            if(pPlayer->pitch_shift != 1.0) {
+                while(a_count < nFrames) {
+                    if(
+                        (jack_ringbuffer_peek(pPlayer->ringbuffer_a, (char*)(&pOutA[a_count]), sizeof(jack_default_audio_sample_t)) < sizeof(jack_default_audio_sample_t)) ||
+                        (jack_ringbuffer_peek(pPlayer->ringbuffer_b, (char*)(&pOutB[a_count]), sizeof(jack_default_audio_sample_t)) < sizeof(jack_default_audio_sample_t))
+                    )
+                        break;
+
+                    while(f_count < a_count) {
+                        f_count += pPlayer->pitch_shift;
+                        jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)(&tmp), sizeof(jack_default_audio_sample_t));
+                        jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)(&tmp), sizeof(jack_default_audio_sample_t));
+                        ++r_count;
+                        if(jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0 || jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0)
+                            break; // Run out of data to read 
+                            //!@todo Should break out of outer loop
+                    }
+                    ++a_count;
                 }
-                ++a_count;
+            } else {
+                r_count = jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)pOutA, nFrames * sizeof(jack_default_audio_sample_t));
+                jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)pOutB, r_count);
+                r_count /= sizeof(jack_default_audio_sample_t);
+                a_count = r_count;
             }
-        } else {
-            r_count = jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)pOutA, nFrames * sizeof(jack_default_audio_sample_t));
-            jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)pOutB, r_count);
-            r_count /= sizeof(jack_default_audio_sample_t);
-            a_count = r_count;
+
+            if(a_count > nFrames)
+                a_count = nFrames;
+            for(size_t offset = 0; offset < a_count; ++offset) {
+                // Set volume / gain / level
+                pOutA[offset] *= pPlayer->gain;
+                pOutB[offset] *= pPlayer->gain;
+            }
+            pPlayer->play_pos_frames += r_count;
+            int eof = (pPlayer->file_read_status == IDLE && jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0);
+            if(pPlayer->loop) {
+                if(pPlayer->play_pos_frames >= pPlayer->loop_end_src || eof) {
+                    pPlayer->play_pos_frames %= pPlayer->loop_end_src;
+                    pPlayer->play_pos_frames += pPlayer->loop_start_src;
+                    pPlayer->loop_loaded = 0;
+                    pPlayer->file_read_status = LOOPING;
+                }
+            } else {
+                if(pPlayer->play_pos_frames >= pPlayer->frames || eof) {
+                    // Reached end of file
+                    pPlayer->play_pos_frames = 0;
+                    pPlayer->play_state = STOPPING;
+                    pPlayer->file_read_status = SEEKING;
+                }
+            }
         }
 
-        if(a_count > nFrames)
-            a_count = nFrames;
-        for(size_t offset = 0; offset < a_count; ++offset) {
-            // Set volume / gain / level
-            pOutA[offset] *= pPlayer->gain;
-            pOutB[offset] *= pPlayer->gain;
-        }
-        pPlayer->play_pos_frames += r_count;
-        int eof = (pPlayer->file_read_status == IDLE && jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0);
-        if(pPlayer->loop) {
-            if(pPlayer->play_pos_frames >= pPlayer->loop_end_src || eof) {
-                pPlayer->play_pos_frames %= pPlayer->loop_end_src;
-                pPlayer->play_pos_frames += pPlayer->loop_start_src;
-                pPlayer->loop_loaded = 0;
-                pPlayer->file_read_status = LOOPING;
+        if(pPlayer->play_state == STOPPING) {
+            // Soft mute (not perfect for short last period of file but better than nowt)
+            for(size_t offset = 0; offset < a_count; ++offset) {
+                pOutA[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
+                pOutB[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
             }
-        } else {
-            if(pPlayer->play_pos_frames >= pPlayer->frames || eof) {
-                // Reached end of file
-                pPlayer->play_pos_frames = 0;
-                pPlayer->play_state = STOPPING;
-                pPlayer->file_read_status = SEEKING;
-            }
+            pPlayer->play_state = STOPPED;
+
+            DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count, nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         }
+
+        // Silence remainder of frame
+        memset(pOutA + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
+        memset(pOutB + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
     }
-
-    if(pPlayer->play_state == STOPPING) {
-        // Soft mute (not perfect for short last period of file but better than nowt)
-        for(size_t offset = 0; offset < a_count; ++offset) {
-            pOutA[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
-            pOutB[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
-        }
-        pPlayer->play_state = STOPPED;
-
-        DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count, nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
-    }
-
-    // Silence remainder of frame
-    memset(pOutA + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
-    memset(pOutB + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
 
     // Process MIDI input
-    void* pMidiBuffer = jack_port_get_buffer(pPlayer->jack_midi_in, nFrames);
+    void* pMidiBuffer = jack_port_get_buffer(g_jack_midi_in, nFrames);
     jack_midi_event_t midiEvent;
     jack_nframes_t nCount = jack_midi_get_event_count(pMidiBuffer);
     for(jack_nframes_t i = 0; i < nCount; i++)
     {
         jack_midi_event_get(&midiEvent, pMidiBuffer, i);
-        uint8_t cmd = midiEvent.buffer[0] & 0xF0;
-        if((cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) && pPlayer->last_note_played == midiEvent.buffer[1]) {
-            // Note off
-            stop_playback(pPlayer->handle);
-            pPlayer->pitch_shift = 1.0;
-            pPlayer->last_note_played = 0;
-        } else if(cmd == 0x90) {
-            // Note on
-            pPlayer->pitch_shift  = pow(1.059463094359, 60 - midiEvent.buffer[1]);
-            pPlayer->play_pos_frames = pPlayer->loop_start_src;
-            pPlayer->file_read_status = SEEKING;
-            jack_ringbuffer_reset(pPlayer->ringbuffer_a);
-            jack_ringbuffer_reset(pPlayer->ringbuffer_b);
-            pPlayer->last_note_played = midiEvent.buffer[1];
-            pPlayer->play_state = STARTING;
-        } else if(cmd == 0xE0) {
-            // Pitchbend
-            //!@todo Pitchbend does nothing - want it to affect live playback (different to note-on that affects whole file)
-            pPlayer->pitch_bend = midiEvent.buffer[1] + 128 * midiEvent.buffer[2];
-        }
-        #ifdef ENABLE_MIDI
-        else if(cmd == 0xB0) {
-            // CC
-            switch(midiEvent.buffer[1])
-            {
-                case 1:
-                    set_position(pPlayer->handle, midiEvent.buffer[2] * get_duration(pPlayer->handle) / 127);
-                    break;
-                case 2:
-                    set_loop_start(pPlayer->handle, midiEvent.buffer[2] * get_duration(pPlayer->handle) / 127);
-                    break;
-                case 3:
-                    set_loop_end(pPlayer->handle, midiEvent.buffer[2] * get_duration(pPlayer->handle) / 127);
-                    break;
-                case 7:
-                    pPlayer->gain = (float)midiEvent.buffer[2] / 100.0;
-                    break;
-                case 68:
-                    if(midiEvent.buffer[2] > 63)
-                        start_playback(pPlayer->handle);
-                    else
-                        stop_playback(pPlayer->handle);
-                    break;
-                case 69:
-                    enable_loop(pPlayer->handle, midiEvent.buffer[2] > 63);
-                    break;
+        uint8_t chan = midiEvent.buffer[0] & 0x0F;
+        if(g_players[chan]) {
+            struct AUDIO_PLAYER * pPlayer = g_players[chan];
+            uint8_t cmd = midiEvent.buffer[0] & 0xF0;
+            if((cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) && pPlayer->last_note_played == midiEvent.buffer[1]) {
+                // Note off
+                stop_playback(pPlayer->handle);
+                pPlayer->pitch_shift = 1.0;
+                pPlayer->last_note_played = 0;
+            } else if(cmd == 0x90) {
+                // Note on
+                pPlayer->pitch_shift  = pow(1.059463094359, 60 - midiEvent.buffer[1]);
+                pPlayer->play_pos_frames = pPlayer->loop_start_src;
+                pPlayer->file_read_status = SEEKING;
+                jack_ringbuffer_reset(pPlayer->ringbuffer_a);
+                jack_ringbuffer_reset(pPlayer->ringbuffer_b);
+                pPlayer->last_note_played = midiEvent.buffer[1];
+                pPlayer->play_state = STARTING;
+            } else if(cmd == 0xE0) {
+                // Pitchbend
+                //!@todo Pitchbend does nothing - want it to affect live playback (different to note-on that affects whole file)
+                pPlayer->pitch_bend = midiEvent.buffer[1] + 128 * midiEvent.buffer[2];
             }
+            #ifdef ENABLE_MIDI
+            else if(cmd == 0xB0) {
+                // CC
+                switch(midiEvent.buffer[1])
+                {
+                    case 1:
+                        set_position(pPlayer->handle, midiEvent.buffer[2] * get_duration(pPlayer->handle) / 127);
+                        break;
+                    case 2:
+                        set_loop_start(pPlayer->handle, midiEvent.buffer[2] * get_duration(pPlayer->handle) / 127);
+                        break;
+                    case 3:
+                        set_loop_end(pPlayer->handle, midiEvent.buffer[2] * get_duration(pPlayer->handle) / 127);
+                        break;
+                    case 7:
+                        pPlayer->gain = (float)midiEvent.buffer[2] / 100.0;
+                        break;
+                    case 68:
+                        if(midiEvent.buffer[2] > 63)
+                            start_playback(pPlayer->handle);
+                        else
+                            stop_playback(pPlayer->handle);
+                        break;
+                    case 69:
+                        enable_loop(pPlayer->handle, midiEvent.buffer[2] > 63);
+                        break;
+                }
+            }
+            #endif //ENABLE_MIDI
         }
-        #endif //ENABLE_MIDI
     }
     return 0;
 }
@@ -930,43 +755,54 @@ int on_jack_samplerate(jack_nframes_t nFrames, void *pArgs) {
 }
  
 static void lib_init(void) { 
-#ifdef ENABLE_OSC
-    // Initialise OSC clients
-    g_oscfd = socket(AF_INET, SOCK_DGRAM, 0);
-    for(int i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        memset(g_oscClient[i].sin_zero, '\0', sizeof g_oscClient[i].sin_zero);
-        g_oscClient[i].sin_family = AF_INET;
-        g_oscClient[i].sin_port = htons(OSC_PORT);
-        g_oscClient[i].sin_addr.s_addr = 0;
-    }
-    fcntl(g_oscfd, F_SETFL, O_NONBLOCK); // set the socket to non-blocking
-
-    // Initialise OSC server
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    if(pthread_create(&g_osc_thread, &attr, osc_thread_fn, NULL))
-        fprintf(stderr, "libzynaudioplayer error: failed to create OSC listening thread\n");
-#endif //ENABLE_OSC
-
     fprintf(stderr, "libzynaudioplayer initialised\n");
+    jack_status_t nStatus;
+    jack_options_t nOptions = JackNoStartServer;
+
+    for(int i = 0; i < MAX_PLAYERS; ++i)
+        g_players[i] = NULL;
+
+    if((g_jack_client = jack_client_open("audioplayer", nOptions, &nStatus)) == 0)
+        fprintf(stderr, "libaudioplayer error: failed to start jack client: %d\n", nStatus);
+
+    // Create MIDI input port
+    if(!(g_jack_midi_in = jack_port_register(g_jack_client, "in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0)))
+        fprintf(stderr, "libzynaudioplayer error: cannot register MIDI input port\n");
+
+    // Register the callback to process audio and MIDI
+    jack_set_process_callback(g_jack_client, on_jack_process, 0);
+    jack_set_sample_rate_callback(g_jack_client, on_jack_samplerate, 0);
+
+    if(jack_activate(g_jack_client))
+        fprintf(stderr, "libaudioplayer error: cannot activate client\n");
+
+    g_samplerate = jack_get_sample_rate(g_jack_client);
 }
 
-int init(int player_handle) {
+static void lib_exit(void) {
+    fprintf(stderr, "libzynaudioplayer exiting...  ");
+    if(g_jack_client)
+        lib_stop();
+    fprintf(stderr, "done!\n");
+}
+
+void lib_stop() {
+    for(int i = 0; i < MAX_PLAYERS; ++i)
+        remove_player(i);
+    jack_client_close(g_jack_client);
+    g_jack_client = NULL;
+}
+
+int add_player(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = NULL;
-    if(player_handle >= 0 && player_handle < MAX_PLAYERS && !g_players[player_handle]) {
+    if(player_handle >= 0 && player_handle < MAX_PLAYERS && !g_players[player_handle])
         pPlayer = malloc(sizeof(struct AUDIO_PLAYER));
-    } else {
-        for(player_handle = 0; player_handle < MAX_PLAYERS; ++player_handle) {
-            if(g_players[player_handle])
-                continue;
-            pPlayer = malloc(sizeof(struct AUDIO_PLAYER));
-            break;
-        }
-    }
+    else
+        return 0;
+
     if(!pPlayer) {
-        fprintf(stderr, "Failed to create instance of audio player\n");
-        return -1;
+        fprintf(stderr, "Failed to create instance of audio player %d\n", player_handle);
+        return 0;
     }
 
     pPlayer->file_open = 0;
@@ -994,60 +830,43 @@ int init(int player_handle) {
     pPlayer->loop_end_src = pPlayer->loop_end;
     pPlayer->last_note_played = 0;
 
-    char *sServerName = NULL;
-    jack_status_t nStatus;
-    jack_options_t nOptions = JackNoStartServer;
-
-    char client_name[] = "audioplayer_xx";
-    if (player_handle < 0)
-        player_handle = player_handle;
-    sprintf(client_name, "audioplayer-%02d", player_handle);
-
-    if((pPlayer->jack_client = jack_client_open(client_name, nOptions, &nStatus, sServerName)) == 0) {
-        fprintf(stderr, "libaudioplayer error: failed to start jack client: %d\n", nStatus);
-        return -1;
-    }
-
     // Create audio output ports
-    if (!(pPlayer->jack_out_a = jack_port_register(pPlayer->jack_client, "output_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
-        fprintf(stderr, "libaudioplayer error: cannot register audio output port A\n");
-        return -1;
+    char port_name[8];
+    sprintf(port_name, "out_%02da", player_handle + 1);
+    if (!(pPlayer->jack_out_a = jack_port_register(g_jack_client, port_name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
+        fprintf(stderr, "libaudioplayer error: cannot register audio output port %s\n", port_name);
+        return 0;
     }
-    if (!(pPlayer->jack_out_b = jack_port_register(pPlayer->jack_client, "output_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
-        fprintf(stderr, "libaudioplayer error: cannot register audio output port B\n");
-        jack_port_unregister(pPlayer->jack_client, pPlayer->jack_out_a);
-        return -1;
-    }
-
-    // Create MIDI input port
-    if(!(pPlayer->jack_midi_in = jack_port_register(pPlayer->jack_client, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0)))
-    {
-        fprintf(stderr, "libzynaudioplayer error: cannot register MIDI input port\n");
-        jack_port_unregister(pPlayer->jack_client, pPlayer->jack_out_a);
-        jack_port_unregister(pPlayer->jack_client, pPlayer->jack_out_b);
-        return -1;
-    }
-
-    // Register the callback to process audio and MIDI
-    jack_set_process_callback(pPlayer->jack_client, on_jack_process, pPlayer);
-    jack_set_sample_rate_callback(pPlayer->jack_client, on_jack_samplerate, 0);
-
-    if(jack_activate(pPlayer->jack_client)) {
-        fprintf(stderr, "libaudioplayer error: cannot activate client\n");
-        return -1;
+    sprintf(port_name, "out_%02db", player_handle + 1);
+    if (!(pPlayer->jack_out_b = jack_port_register(g_jack_client, port_name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
+        fprintf(stderr, "libaudioplayer error: cannot register audio output port %s\n", port_name);
+        jack_port_unregister(g_jack_client, pPlayer->jack_out_a);
+        return 0;
     }
 
     g_players[player_handle] = pPlayer;
-    g_samplerate = jack_get_sample_rate(pPlayer->jack_client);
     //fprintf(stderr, "libzynaudioplayer: Created new audio player\n");
-    return player_handle;
+    return 1;
 }
 
-const char* get_jack_client_name(int player_handle) {
+void remove_player(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(!pPlayer)
-        return "";
-    return jack_get_client_name(pPlayer->jack_client);
+        return;
+    unload(player_handle);
+    if (jack_port_unregister(g_jack_client, pPlayer->jack_out_a)) {
+        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dA\n", player_handle + 1);
+    }
+    if (jack_port_unregister(g_jack_client, pPlayer->jack_out_b)) {
+        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dB\n", player_handle + 1);
+    }
+    g_players[player_handle] = NULL;
+    free(pPlayer);
+}
+
+
+const char* get_jack_client_name() {
+    return jack_get_client_name(g_jack_client);
 }
 
 uint8_t set_src_quality(int player_handle, unsigned int quality) {
@@ -1202,22 +1021,3 @@ unsigned int get_player_count() {
             ++count;
     return count;
 }
-
-#ifdef ENABLE_OSC
-int addOscClient(const char* client) {
-    int index = _addOscClient(client);
-    if(index != -1) {
-        for(int player_handle = 0; player_handle < MAX_PLAYERS; ++player_handle) {
-            struct AUDIO_PLAYER * pPlayer = g_players[player_handle];
-            if(!pPlayer || pPlayer->file_open != 2)
-                continue;
-            sprintf(g_oscpath, "/player%d/open", pPlayer->handle);
-            sendOscString(g_oscpath, pPlayer->filename);
-            sprintf(g_oscpath, "/player%d/duration", pPlayer->handle);
-            sendOscFloat(g_oscpath, get_duration(pPlayer->handle));
-            send_notifications(pPlayer->handle, NOTIFY_ALL);
-        }
-    }
-    return index;
-}
-#endif //ENABLE_OSC
