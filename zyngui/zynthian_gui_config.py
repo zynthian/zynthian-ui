@@ -295,7 +295,7 @@ def set_midi_config():
 	enabled_midi_fb_ports=zynconf.get_enabled_midi_fb_ports(midi_ports)
 
 	# Master Channel Features
-	master_midi_channel = int(os. environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL', 16))
+	master_midi_channel = int(os. environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL', 0))
 	master_midi_channel -= 1
 	if master_midi_channel > 15:
 		master_midi_channel = 15
