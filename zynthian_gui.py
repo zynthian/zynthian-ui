@@ -1986,8 +1986,7 @@ class zynthian_gui:
 						if vel != 0 and note in self.note2cuia:
 							self.callable_ui_action(self.note2cuia[note], [vel])
 
-					#Run autoconnect (if needed) and stop logo animation
-					self.zynautoconnect_do()
+					# Stop logo animation
 					self.stop_loading()
 
 				# Program Change ...
@@ -2373,7 +2372,9 @@ class zynthian_gui:
 
 	def zynautoconnect(self, force=False):
 		if force:
+			self.zynautoconnect_midi_flag = False
 			zynautoconnect.midi_autoconnect(True)
+			self.zynautoconnect_audio_flag = False
 			zynautoconnect.audio_autoconnect(True)
 		else:
 			self.zynautoconnect_midi_flag = True
@@ -2382,6 +2383,7 @@ class zynthian_gui:
 
 	def zynautoconnect_midi(self, force=False):
 		if force:
+			self.zynautoconnect_midi_flag = False
 			zynautoconnect.midi_autoconnect(True)
 		else:
 			self.zynautoconnect_midi_flag = True
@@ -2389,6 +2391,7 @@ class zynthian_gui:
 
 	def zynautoconnect_audio(self, force=False):
 		if force:
+			self.zynautoconnect_audio_flag = False
 			zynautoconnect.audio_autoconnect(True)
 		else:
 			self.zynautoconnect_audio_flag = True
@@ -2400,7 +2403,6 @@ class zynthian_gui:
 		if self.zynautoconnect_midi_flag:
 			self.zynautoconnect_midi_flag = False
 			zynautoconnect.midi_autoconnect(True)
-
 		if self.zynautoconnect_audio_flag:
 			self.zynautoconnect_audio_flag = False
 			zynautoconnect.audio_autoconnect(True)

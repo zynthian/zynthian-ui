@@ -79,7 +79,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for i, layer in enumerate(self.root_layers):
 			self.list_data.append((str(i + 1), i, layer.get_presetpath()))
 
-		super().fill_list()
+		#super().fill_list()
 
 
 	# Recalculate selector and root_layers list
@@ -637,7 +637,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		if i is not None:
 			changed = self.restore_zs3(i)
-
 			#TODO Implement proper GUI-refresh signaling
 			if changed:
 				try:
@@ -647,7 +646,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 						self.zyngui.layer_control()
 				except Exception as e:
 					logging.error("Can't refresh GUI! => %s", e)
-
 		else:
 			logging.debug("Can't find a ZS3 for CH#{}, PRG#{}".format(midich, prognum))
 			return False
@@ -1486,6 +1484,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for i, lss in enumerate(state['layers']):
 			self.layers[i].restore_state_2(lss)
 
+		# Fill layer list => calculate root_layers!
+		self.fill_list()
+
 		# Set Audio Routing
 		if 'audio_routing' in state:
 			self.set_audio_routing(state['audio_routing'])
@@ -1500,11 +1501,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		self.fix_audio_inputs()
 
-		# Restore ALSA-Mixer settings
-		if self.amixer_layer and 'amixer_layer' in state:
-			self.amixer_layer.restore_state_1(state['amixer_layer'])
-			self.amixer_layer.restore_state_2(state['amixer_layer'])
-
 		# Audio Recorder Primed
 		if 'audio_recorder_armed' not in state:
 			state['audio_recorder_armed'] = []
@@ -1513,9 +1509,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.zyngui.audio_recorder.arm(midi_chan)
 			else:
 				self.zyngui.audio_recorder.unarm(midi_chan)
-
-		# Autoconnect Audio
-		self.zyngui.zynautoconnect_audio(True)
 
 		# Set Clone
 		if 'clone' in state:
@@ -1533,20 +1526,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		else:
 			self.reset_note_range()
 
-		# Fill layer list => calculate root_layers!
-		self.fill_list()
-
 		# Mixer
 		self.zyngui.zynmixer.reset_state()
 		if 'mixer' in state:
 			self.zyngui.zynmixer.set_state(state['mixer'])
 
-		# Restore Learned ZS3s (SubSnapShots)
-		if 'learned_zs3' in state:
-			self.learned_zs3 = state['learned_zs3']
-		else:
-			self.reset_zs3()
-			self.import_legacy_zs3s(state)
+		# Restore ALSA-Mixer settings
+		if self.amixer_layer and 'amixer_layer' in state:
+			self.amixer_layer.restore_state_1(state['amixer_layer'])
+			self.amixer_layer.restore_state_2(state['amixer_layer'])
 
 		# Set active layer
 		if state['index'] < len(self.root_layers) and state['index'] > 0:
@@ -1554,8 +1542,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		else:
 			self.index = 0
 		if self.index < len(self.root_layers):
-			self.zyngui.set_curlayer(self.root_layers[self.index])
 			logging.info("Setting curlayer to {}".format(self.index))
+			self.zyngui.set_curlayer(self.root_layers[self.index])
+
+		# Autoconnect Audio
+		self.zyngui.zynautoconnect_audio(True)
+
+		# Restore Learned ZS3s (SubSnapShots)
+		if 'learned_zs3' in state:
+			self.learned_zs3 = state['learned_zs3']
+		else:
+			self.reset_zs3()
+			self.import_legacy_zs3s(state)
 
 
 	def import_legacy_zs3s(self, state):
@@ -1636,14 +1634,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			if layer2restore[i]:
 				self.layers[i].restore_state_2(lss)
 
+		# Fill layer list
+		self.fill_list()
+
 		# Set Audio Capture
 		if 'audio_capture' in state:
 			self.set_audio_capture(state['audio_capture'])
-
-		# Restore ALSA-Mixer settings
-		if self.amixer_layer and 'amixer_layer' in state:
-			self.amixer_layer.restore_state_1(state['amixer_layer'])
-			self.amixer_layer.restore_state_2(state['amixer_layer'])
 
 		# Audio Recorder Armed
 		if 'audio_recorder_armed' in state:
@@ -1652,9 +1648,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.zyngui.audio_recorder.arm(midi_chan)
 				else:
 					self.zyngui.audio_recorder.unarm(midi_chan)
-
-		# Autoconnect Audio
-		self.zyngui.zynautoconnect_audio(True)
 
 		# Set Clone
 		if 'clone' in state:
@@ -1672,14 +1665,19 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if 'mixer' in state:
 			self.zyngui.zynmixer.set_state(state['mixer'])
 
+		# Restore ALSA-Mixer settings
+		if self.amixer_layer and 'amixer_layer' in state:
+			self.amixer_layer.restore_state_1(state['amixer_layer'])
+			self.amixer_layer.restore_state_2(state['amixer_layer'])
+
 		# Set active layer
 		if index is not None and index!=self.index:
+			logging.info("Setting curlayer to {}".format(index))
 			self.index = index
 			self.zyngui.set_curlayer(self.root_layers[index])
-			logging.info("Setting curlayer to {}".format(index))
 
-		# Fill layer list
-		self.fill_list()
+		# Autoconnect Audio => Not Needed!! It's called after action
+		#self.zyngui.zynautoconnect_audio(True)
 
 
 	def save_snapshot(self, fpath):
