@@ -164,8 +164,14 @@ class zynthian_engine_puredata(zynthian_engine):
 		return preset_fpath
 
 
-#	def cmp_presets(self, preset1, preset2):
-#		return True
+	def cmp_presets(self, preset1, preset2):
+		try:
+			if preset1[0]==preset2[0] and preset1[2]==preset2[2]:
+				return True
+			else:
+				return False
+		except:
+			return False
 
 	#----------------------------------------------------------------------------
 	# Controllers Managament

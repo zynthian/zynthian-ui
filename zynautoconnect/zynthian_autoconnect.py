@@ -547,10 +547,10 @@ def audio_autoconnect(force=False):
 		#logger.debug("ZynAutoConnect: Audio Escaped ...")
 		return
 
-	#Get Mutex Lock 
+	#Get Mutex Lock
+	#logger.info("Acquiring lock ...")
 	acquire_lock()
-
-	#logger.info("ZynAutoConnect: Audio ...")
+	#logger.info("Lock acquired!!")
 
 	# Get zynthian layer manager object
 	zynguilayer = zynthian_gui_config.zyngui.screens["layer"]

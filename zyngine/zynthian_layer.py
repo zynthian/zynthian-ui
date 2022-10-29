@@ -296,16 +296,16 @@ class zynthian_layer:
 			# Check if force set engine
 			if force_set_engine:
 				set_engine_needed = True
-			# Check if preset isn't already loaded
-			elif not self.engine.cmp_presets(preset_info, self.preset_info):
-				set_engine_needed = True
-				logging.info("Preset selected: %s (%d)" % (preset_name,i))
-			else:
+			# Check if preset is already loaded
+			elif self.engine.cmp_presets(preset_info, self.preset_info):
 				set_engine_needed = False
 				logging.info("Preset already selected: %s (%d)" % (preset_name,i))
 				# Check if some other preset is preloaded
 				if self.preload_info and not self.engine.cmp_presets(self.preload_info,self.preset_info):
 					set_engine_needed = True
+			else:
+				set_engine_needed = True
+				logging.info("Preset selected: %s (%d)" % (preset_name,i))
 
 			last_preset_index = self.preset_index
 			last_preset_name = self.preset_name
@@ -609,12 +609,12 @@ class zynthian_layer:
 
 		# Refresh controller config
 		if self.refresh_flag:
-			self.refresh_flag=False
+			self.refresh_flag = False
 			self.refresh_controllers()
 
 		# Set active controller page
 		if 'current_screen_index' in state:
-			self.current_screen_index=state['current_screen_index']
+			self.current_screen_index = state['current_screen_index']
 
 		self.restore_state_legacy(state)
 
