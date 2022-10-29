@@ -925,7 +925,8 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
 // Handle JACK process callback
 int on_jack_samplerate(jack_nframes_t nFrames, void *pArgs) {
     DPRINTF("libzynaudioplayer: Jack sample rate: %u\n", nFrames);
-    g_samplerate = nFrames;
+    if(nFrames)
+        g_samplerate = nFrames;
     return 0;
 }
  

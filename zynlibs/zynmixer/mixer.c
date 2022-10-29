@@ -89,6 +89,8 @@ unsigned int g_nHoldCount = 0;
 float g_fDpmDecay = 0.9; // Factor to scale for DPM decay - defines resolution of DPM decay
 struct sockaddr_in g_oscClient[MAX_OSC_CLIENTS]; // Array of registered OSC clients
 char g_oscdpm[20];
+jack_nframes_t g_samplerate = 44100; // Jack samplerate used to calculate damping factor
+jack_nframes_t g_buffersize = 1024; // Jack buffer size used to calculate damping factor
 
 
 static float convertToDBFS(float raw) {
@@ -423,13 +425,19 @@ void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void
 
 int onJackSamplerate(jack_nframes_t nSamplerate, void *arg)
 {
-    g_nDampingPeriod = g_fDpmDecay * jack_get_sample_rate(g_pJackClient) / jack_get_buffer_size(g_pJackClient) / 15;
+    if(nSamplerate == 0)
+        return 0;
+    g_samplerate = nSamplerate;
+    g_nDampingPeriod = g_fDpmDecay * nSamplerate / g_buffersize / 15;
     return 0;
 }
 
 int onJackBuffersize(jack_nframes_t nBuffersize, void *arg)
 {
-    g_nDampingPeriod = g_fDpmDecay * jack_get_sample_rate(g_pJackClient) / jack_get_buffer_size(g_pJackClient) / 15;
+    if(nBuffersize == 0)
+        return 0;
+    g_buffersize = nBuffersize;
+    g_nDampingPeriod = g_fDpmDecay * g_samplerate / g_buffersize / 15;
     return 0;
 }
 

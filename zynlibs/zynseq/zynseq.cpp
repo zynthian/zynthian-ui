@@ -556,6 +556,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
 {
     DPRINTF("zynseq: Jack sample rate: %u\n", nFrames);
+    if(nFrames == 0)
+        return 0;
     g_nSampleRate = nFrames;
     g_dFramesPerClock = getFramesPerClock(g_dTempo);
     return 0;

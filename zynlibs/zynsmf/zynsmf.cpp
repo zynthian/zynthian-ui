@@ -294,6 +294,8 @@ uint8_t getEventValue2()
 // Handle JACK samplerate change (also used to recalculate ticks per frame)
 static int onJackSamplerate(jack_nframes_t nFrames, void* args)
 {
+	if(nFrames == 0)
+		return 0; // Avoid divide by zero errors - better to have wrong samplerate than crash
 	g_nSamplerate = nFrames;
 	//!@todo This is a nasty use of double precision floating point where we should be able to do most of this with integer maths
 	if(g_pPlayerSmf)
@@ -325,7 +327,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 	if(nPreviousTransportState != nTransportState || transport_position.beats_per_minute != dBeatsPerMinute && transport_position.beats_per_minute > 0)
 	{
 		dBeatsPerMinute = transport_position.beats_per_minute;
-		g_nMicrosecondsPerQuarterNote = 60000000.0 / dBeatsPerMinute;
+		if(dBeatsPerMinute)
+			g_nMicrosecondsPerQuarterNote = 60000000.0 / dBeatsPerMinute;
 		onJackSamplerate(g_nSamplerate, 0);
 	}
 	// Handle change of transport state
@@ -431,7 +434,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 				
 				if(pEvent->getType() == EVENT_TYPE_META)
 				{
-					if(pEvent->getSubtype() == META_TYPE_TEMPO)
+					if(pEvent->getSubtype() == META_TYPE_TEMPO && pEvent->getInt32())
 					{
 						g_nMicrosecondsPerQuarterNote = pEvent->getInt32();
 						onJackSamplerate(g_nSamplerate, 0);
