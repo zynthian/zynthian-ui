@@ -42,7 +42,7 @@ int g_bOsc = 0; // True if OSC client subscribed
 pthread_t g_eventThread; // ID of low priority event thread
 int g_sendEvents = 1; // Set to 0 to exit event thread
 
-#define DEBUG
+//#define DEBUG
 
 #define MAX_CHANNELS 17
 #define MAIN_CHANNEL 256
@@ -582,6 +582,8 @@ int init()
         fprintf(stderr, "zynmixer error: failed to create event thread\n");
         return 0;
     }
+
+    fprintf(stderr, "Started libzynmixer\n");
 
     return 1;
 }

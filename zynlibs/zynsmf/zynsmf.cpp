@@ -541,8 +541,10 @@ bool createJackClient()
 		if(g_pJackClient
 			&& !jack_set_process_callback(g_pJackClient, onJackProcess, 0)
 			&& !jack_set_sample_rate_callback(g_pJackClient, onJackSamplerate, 0)
-			&& !jack_activate(g_pJackClient))
-		return true;
+			&& !jack_activate(g_pJackClient)) {
+			fprintf(stderr, "Started libzynsmf\n");
+			return true;
+		}
 		removeJackClient();
 		return false;
 	}

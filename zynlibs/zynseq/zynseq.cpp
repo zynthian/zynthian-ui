@@ -583,7 +583,7 @@ void end()
 // ** Library management functions **
 
 __attribute__((constructor)) void zynseq(void) {
-    fprintf(stderr, "New instance of zynseq\n");
+    fprintf(stderr, "Started libzynseq\n");
 }
 
 void init(char* name) {
@@ -598,7 +598,7 @@ void init(char* name) {
 
 
     // Register with Jack server
-    fprintf(stderr, "**zynseq initialising as %s**\n", name);
+    //fprintf(stderr, "**zynseq initialising as %s**\n", name);
     char *sServerName = NULL;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
