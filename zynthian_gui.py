@@ -1570,6 +1570,8 @@ class zynthian_gui:
 				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 			elif len(self.curlayer.bank_list) > 0 and self.curlayer.bank_list[0][0] != '':
 				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
+			else:
+				self.restore_curlayer()
 
 
 	def custom_switch_ui_action(self, i, t):
