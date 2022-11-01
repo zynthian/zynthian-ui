@@ -655,7 +655,6 @@ class zynthian_layer:
 	# Audio Output Routing:
 	# ---------------------------------------------------------------------------
 
-
 	def get_jackname(self):
 		return self.jackname
 

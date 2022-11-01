@@ -32,7 +32,7 @@ import struct
 import logging
 import subprocess
 from collections import defaultdict
-from os.path import isfile, isdir, join
+from os.path import isfile, join
 from xml.etree import ElementTree
 from json import JSONEncoder, JSONDecoder
 

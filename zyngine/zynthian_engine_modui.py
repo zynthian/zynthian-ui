@@ -119,7 +119,6 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def refresh(self):
-		self.zyngui.screens['preset'].fill_list()
 		if self.zyngui.current_screen=='bank':
 			if self.preset_name:
 				self.zyngui.show_screen('control')
@@ -494,20 +493,19 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def bundlepath_cb(self, bpath):
-		bdirname=bpath.split('/')[-1]
-		if bdirname!='default.pedalboard':
+		bdirname = bpath.split('/')[-1]
+		if bdirname != 'default.pedalboard':
 			#Find bundle_path in bank list ...
-			layer=self.layers[0]
+			layer = self.layers[0]
 			layer.load_bank_list()
 			for i in range(len(layer.bank_list)):
 				#logging.debug("BUNDLE PATH SEARCH => %s <=> %s" % (layer.bank_list[i][0].split('/')[-1], bdirname))
-				if layer.bank_list[i][0].split('/')[-1]==bdirname:
-					bank_index=i
-					bank_name=layer.bank_list[i][2]
+				if layer.bank_list[i][0].split('/')[-1] == bdirname:
+					bank_index = i
+					bank_name = layer.bank_list[i][2]
 					#Set Bank in GUI, layer and engine without reloading the bundle
 					logging.info('Bank Selected from Bundlepath: ' + bank_name + ' (' + str(i)+')')
-					self.zyngui.screens['bank'].select(i)
-					layer.set_bank(i,False)
+					layer.set_bank(i, False)
 					break
 
 

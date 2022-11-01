@@ -722,7 +722,7 @@ class zynthian_gui:
 				return
 
 		self.screens[screen].build_view()
-		self.hide_screens(exclude = screen)
+		self.hide_screens(exclude=screen)
 		if hmode == zynthian_gui.SCREEN_HMODE_ADD:
 			if len(self.screen_history) == 0 or self.screen_history[-1] != screen:
 				self.screen_history.append(screen)
@@ -963,9 +963,6 @@ class zynthian_gui:
 				self.curlayer = layer
 			if populate_screens:
 				self.screens['layer'].refresh_index()
-				self.screens['bank'].fill_list()
-				self.screens['preset'].fill_list()
-				self.screens['control'].fill_list()
 			self.screens['audio_mixer'].select_chain_by_layer(layer, set_curlayer=False)
 			self.set_active_channel()
 		else:

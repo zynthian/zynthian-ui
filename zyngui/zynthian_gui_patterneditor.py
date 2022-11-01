@@ -442,36 +442,48 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to populate keymap array
 	#	returns Name of scale / map
 	def load_keymap(self):
-		try:
-			base_note = int(self.keymap[self.keymap_offset]['note'])
-		except:
-			base_note = 60
+		map_name = None
+		self.keymap = []
 		scale = self.zyngui.zynseq.libseq.getScale()
 		tonic = self.zyngui.zynseq.libseq.getTonic()
-		name = None
-		self.keymap = []
+
 		if scale == 0:
-			# Map
+			# Search for a map
 			path = None
-			for layer in self.zyngui.screens['layer'].layers:
-				if layer.midi_chan == self.channel:
-					path = layer.get_presetpath()
-					break
+			try:
+				path = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.channel).get_presetpath()
+			except:
+				logging.info("MIDI channel {} seems empty.".format(self.channel))
+
 			if path:
-				path = path.split('#')[1]
 				try:
 					with open(CONFIG_ROOT + "/keymaps.json") as json_file:
 						data = json.load(json_file)
-					if path in data:
-						name = data[path]
-						xml = minidom.parse(CONFIG_ROOT + "/%s.midnam" % (name))
+						for pat in data:
+							if pat in path:
+								map_name = data[pat]
+								break
+				except:
+					logging.warning("Unable to load keymaps.json")
+
+				if map_name:
+					logging.info("Loading keymap {} for MIDI channel {}...".format(map_name, self.channel))
+					try:
+						xml = minidom.parse(CONFIG_ROOT + "/%s.midnam" % (map_name))
 						notes = xml.getElementsByTagName('Note')
 						self.scale = []
 						for note in notes:
 							self.keymap.append({'note':int(note.attributes['Number'].value), 'name':note.attributes['Name'].value})
-				except:
-					logging.warning("Unable to load keymaps.json")
-		if name == None: # Not found map
+					except Exception as e:
+						logging.error("Can't load midnam file => {}".format(e))
+
+		# Not found map
+		if map_name is None:
+			try:
+				base_note = int(self.keymap[self.keymap_offset]['note'])
+			except:
+				base_note = 60
+
 			# Scale
 			self.zyngui.zynseq.libseq.setScale(scale) # Use chromatic scale if map not found
 			if scale == 0:
@@ -488,7 +500,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					if note <= base_note:
 						self.keymap_offset = len(self.keymap) - 1
 						self.selected_cell[1] = self.keymap_offset
-				name = "Chromatic"
+				map_name = "Chromatic"
 			else:
 				with open(CONFIG_ROOT + "/scales.json") as json_file:
 					data = json.load(json_file)
@@ -503,8 +515,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 						if note <= base_note:
 							self.keymap_offset = len(self.keymap) - 1
 							self.selected_cell[1] = self.keymap_offset
-				name = data[scale]['name']
-		return name
+				map_name = data[scale]['name']
+
+		return map_name
 
 
 	# Function to handle start of pianoroll drag
