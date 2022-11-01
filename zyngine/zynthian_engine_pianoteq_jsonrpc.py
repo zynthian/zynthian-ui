@@ -28,10 +28,11 @@ import os
 import re
 import shutil
 import logging
-import subprocess
-from os.path import isfile, isdir, join
+from os.path import isfile
 from xml.etree import ElementTree
 import requests
+from  subprocess import Popen, DEVNULL
+from time import sleep
 
 from . import zynthian_engine
 
@@ -65,7 +66,7 @@ def get_pianoteq_binary_info():
 		stage_pattern = re.compile(" stage ", re.IGNORECASE)
 		pro_pattern = re.compile(" pro ", re.IGNORECASE)
 		trial_pattern = re.compile(" trial ", re.IGNORECASE)
-		proc = subprocess.Popen([PIANOTEQ_BINARY, "--version"], stdout=subprocess.PIPE)
+		proc = Popen([PIANOTEQ_BINARY, "--version"], stdout=PIPE)
 		for line in proc.stdout:
 			l = line.rstrip().decode("utf-8")
 			m = version_pattern.search(l)
@@ -238,16 +239,6 @@ PIANOTEQ_CONFIG_FILE = PIANOTEQ_CONFIG_DIR + "/" + PIANOTEQ_CONFIG_FILENAME
 # ------------------------------------------------------------------------------
 
 class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
-	# ---------------------------------------------------------------------------
-	# Banks
-	# ---------------------------------------------------------------------------
-
-	# bank_list: name, index, 
-	bank_list = []
-
-	spacer_demo_bank = [
-		(None, 0, '---- DEMO Instruments ----')
-	]
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
@@ -295,11 +286,11 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 		# self.options['midi_chan']=False
 		self.options['drop_pc'] = True
 
-		self.preset = ""
+		self.show_demo = True
+		self.command_prompt = None
 
 		if self.config_remote_display():
 			self.proc_start_sleep = 5
-			self.command_prompt = None
 			if PIANOTEQ_VERSION[0] == 6 and PIANOTEQ_VERSION[1] == 0:
 				self.command = PIANOTEQ_BINARY
 			else:
@@ -328,6 +319,9 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 
 	def start(self):
+		if self.proc:
+			return
+		logging.info("Starting Engine {}".format(self.name))
 		try:
 			sr = self.zyngui.get_jackd_samplerate()
 		except:
@@ -343,6 +337,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 		if self.proc.isalive():
 			self.proc.close(True)
 		self.proc = None
+
 
 	# ---------------------------------------------------------------------------
 	# RPC-JSON API
@@ -476,6 +471,11 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 		for instrument in instruments:
 			if instrument[1]:
 				banks.append([instrument[0], None, instrument[0], instrument[1]])
+		if self.show_demo:
+			banks.append([None, 0, '---- DEMO Instruments ----', None])
+			for instrument in instruments:
+				if not instrument[1]:
+					banks.append([instrument[0], None, instrument[0], instrument[1]])
 		return banks
 
 
