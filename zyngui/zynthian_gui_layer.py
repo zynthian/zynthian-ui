@@ -684,7 +684,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for i, zs3 in enumerate(self.learned_zs3):
 			try:
 				if zs3['midi_learn_chan'] == midich and zs3['midi_learn_prognum'] == prognum:
-					return i;
+					return i
 			except:
 				pass
 
@@ -693,7 +693,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for i, zs3 in enumerate(self.learned_zs3):
 			try:
 				if zs3['midi_learn_prognum'] == prognum:
-					return i;
+					return i
 			except:
 				pass
 
@@ -760,7 +760,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# ZS3 list (subsnapshots)
 		self.learned_zs3 = []
 		# Last selected ZS3 subsnapshot
-		self.last_zs3_index = None;
+		self.last_zs3_index = None
 
 
 	def delete_layer_state_from_zs3(self, j):
@@ -1785,7 +1785,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def _load_snapshot_layers(self, snapshot):
 		# Mute output to avoid unwanted noises
 		mute = self.zyngui.zynmixer.get_mute(256)
-		self.zyngui.zynmixer.set_mute(256, True);
+		self.zyngui.zynmixer.set_mute(256, True)
 
 		# Clean all layers, but don't stop unused engines
 		self.remove_all_layers(False)
@@ -1817,7 +1817,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.restore_state_snapshot(snapshot)
 
 		# Restore mute state
-		self.zyngui.zynmixer.set_mute(255, mute);
+		self.zyngui.zynmixer.set_mute(255, mute)
 
 
 	def _load_snapshot_sequences(self, snapshot):
