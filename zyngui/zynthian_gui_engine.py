@@ -31,6 +31,7 @@ from collections import OrderedDict
 # Zynthian specific modules
 from zyngine import *
 from zyngine.zynthian_engine_pianoteq import *
+from zyngine.zynthian_engine_pianoteq_jsonrpc import *
 from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_engine_sooperlooper import zynthian_engine_sooperlooper
 from zyngui import zynthian_gui_config
@@ -75,7 +76,10 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				PIANOTEQ_VERSION[1],
 				PIANOTEQ_PRODUCT,
 				" (Demo)" if PIANOTEQ_TRIAL else "")
-			cls.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title, "MIDI Synth", None, zynthian_engine_pianoteq, True)
+			if PIANOTEQ_VERSION[0] >= 7 and PIANOTEQ_VERSION[1] >= 5:
+				cls.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title, "MIDI Synth", None, zynthian_engine_pianoteq_jsonrpc, True)
+			else:
+				cls.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title, "MIDI Synth", None, zynthian_engine_pianoteq, True)
 		
 		for plugin_name, plugin_info in get_jalv_plugins().items():
 			eng = 'JV/{}'.format(plugin_name)
