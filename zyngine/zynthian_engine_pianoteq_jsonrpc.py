@@ -270,6 +270,8 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 		self.show_demo = True
 		self.command_prompt = None
 		self._ctrls = None
+		self.preset = None
+		self.params = {}
 
 		if self.config_remote_display():
 			self.proc_start_sleep = 5
@@ -485,9 +487,13 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 	def set_preset(self, layer, preset, preload=False):
 		if self.load_preset(preset[0], preset[1]):
-			params = self.get_params()
-			for param in params:
-				self._ctrls[param].set_value(params[param]['value'], False)
+			if preset[3] in ['CP-80', 'Vintage Tines MKI', 'Vintage Tines MKII', 'Vintage Reeds W1', 'Clavinet D6', 'Pianet N', 'Pianet T', 'Electra-Piano']:
+				self._ctrls['Output Mode'].set_options({'labels': ['Line out (stereo)',  'Line out (mono)', 'Room mic', 'Binaural']})
+			else:
+				self._ctrls['Output Mode'].set_options({'labels': ['Stereophonic',  'Monophonic', 'Sound Recording', 'Binaural']})
+			self.params = self.get_params()
+			for param in self.params:
+				self._ctrls[param].set_value(self.params[param]['value'], False)
 			return True
 		return False
 
@@ -509,6 +515,18 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 				return False
 		except:
 			return False
+
+
+	def is_modified(self):
+		params = self.get_params()
+		for param in params:
+			try:
+				if self.params[param]['value'] != params[param]['value']:
+					return True
+			except:
+				return True
+		return False
+
 
 	# Implement in derived classes to enable features in GUI
 	#def delete_preset(self, preset):
@@ -535,6 +553,15 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 				'is_integer': False,
 				'not_on_gui': False
 			}
+			if param in ['Sustain Pedal', 'Soft Pedal', 'Sostenuto Pedal', 'Harmonic Pedal', 'Rattle Pedal', 'Lute Stop Pedal', 'Celeste Pedal', 'Mozart Rail', 'Super Sostenuto', 'Pinch Harmonic Pedal']:
+				options['labels'] = ['Off', '1/4', '1/2', '3/4', 'On']
+			elif param in ['Equalizer Switch', 'Bounce Switch', 'Bounce Sync', 'Effect[1].Switch', 'Effect[2].Switch', 'Effect[3].Switch', 'Reverb Switch', 'Limiter Switch', 'Keyboard Range Switch']:
+				options['is_toggle'] = True
+			elif param == 'Output Mode':
+				#TODO: Depends on instrument: Sound Recording, Binaural, Stereophonic, Monophonic | Room mic, Binaural, Line out (stereo), Line out (mono)
+				options['labels'] = ['Stereophonic',  'Monophonic', 'Sound Recording', 'Binaural',]
+			elif param == 'Diapason':
+				pass #TODO Scale display 220..880Hz
 			if init:
 				zctrl = zynthian_controller(self, param, params[param]['name'], options)
 				self._ctrls[param] = zctrl
