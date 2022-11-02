@@ -31,10 +31,12 @@ import logging
 from os.path import isfile
 from xml.etree import ElementTree
 import requests
-from  subprocess import Popen, DEVNULL
+from  subprocess import Popen, DEVNULL, PIPE
 from time import sleep
+from collections import OrderedDict
 
 from . import zynthian_engine
+from . import zynthian_controller
 
 
 # ------------------------------------------------------------------------------
@@ -244,27 +246,6 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
-	_ctrls = [
-		['volume', 7, 96],
-		['dynamic', 85, 64],
-		['mute', 19, 'off', 'off|on'],
-		['sustain', 64, 'off', [['off', '1/4', '1/2', '3/4', 'full'], [0, 25, 51, 76, 102]]],
-		['sostenuto', 66, 'off', [['off', '1/4', '1/2', '3/4', 'full'], [0, 25, 51, 76, 102]]],
-		# ['rev on/off',30,'off','off|on'],
-		# ['rev duration',31,0],
-		# ['rev mix',32,0],
-		# ['rev room',33,0],
-		# ['rev p/d',34,0],
-		# ['rev e/r',35,64],
-		# ['rev tone',36,64]
-	]
-
-	_ctrl_screens = [
-		['main', ['volume', 'sostenuto', 'dynamic', 'sustain']]
-		# ['reverb1',['volume','rev on/off','rev duration','rev mix']],
-		# ['reverb2',['volume','rev room','rev p/d','rev e/r']],
-		# ['reverb3',['volume','rev tone']]
-	]
 
 	# ----------------------------------------------------------------------------
 	# Config Variables
@@ -288,6 +269,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 		self.show_demo = True
 		self.command_prompt = None
+		self._ctrls = None
 
 		if self.config_remote_display():
 			self.proc_start_sleep = 5
@@ -327,7 +309,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 		except:
 			sr = 44100
 		fix_pianoteq_config(sr)
-		super().start()
+		super().start() #TODO: Use lightweight Popen - last attempt stopped RPC working
 
 
 	def stop(self):
@@ -455,6 +437,10 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	# Layer Management
 	# ---------------------------------------------------------------------------
 
+	def add_layer(self, layer):
+		super().add_layer(layer)
+		self.generate_ctrl_screens(self.get_controllers_dict(layer)) #TODO: This takes too long and appends to end of existing list
+
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
@@ -498,7 +484,11 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		return self.load_preset(preset[0])
+		if self.load_preset(preset[0]):
+			params = self.get_params()
+			for param in params:
+				self._ctrls[param].set_value(params[param]['value'], False)
+			return True
 
 
 	def is_preset_user(self, preset):
@@ -510,9 +500,50 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 		return presets and preset_name in presets
 
 
+	def cmp_presets(self, preset1, preset2):
+		try:
+			if preset1[0] == preset2[0] and preset1[3] == preset2[3]:
+				return True
+			else:
+				return False
+		except:
+			return False
+
 	# Implement in derived classes to enable features in GUI
 	#def delete_preset(self, preset):
 	#def rename_preset(self, bank_info, preset, new_name):
+
+
+	# ---------------------------------------------------------------------------
+	# Controller management
+	# ---------------------------------------------------------------------------
+
+	# Get zynthian controllers dictionary:
+	def get_controllers_dict(self, layer):
+		init = False
+		if self._ctrls is None:
+			self._ctrls = OrderedDict()
+			init = True
+
+		params = self.get_params()
+		for param in params:
+			options = {
+				'value': 0,
+				'value_min': 0.0,
+				'value_max': 1.0,
+				'is_integer': False,
+				'not_on_gui': False
+			}
+			if init:
+				zctrl = zynthian_controller(self, param, params[param]['name'], options)
+				self._ctrls[param] = zctrl
+			else:
+				self._ctrls[param].set_options(options)
+		return self._ctrls
+
+
+	def send_controller_value(self, zctrl):
+		self.set_param(zctrl.symbol, zctrl.value)
 
 
 	# ---------------------------------------------------------------------------
