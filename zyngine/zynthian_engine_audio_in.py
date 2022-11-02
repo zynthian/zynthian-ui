@@ -41,6 +41,7 @@ class zynthian_engine_audio_in(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def __init__(self, zyngui=None, jackname=None):
+		self._ctrl_screens = []
 		super().__init__(zyngui)
 		self.name = "Audio Input"
 		self.nickname = "AI"

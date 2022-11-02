@@ -348,23 +348,23 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	#   preset_name: Name of preset to load
 	#   bank: Name of bank preset resides (builtin presets have no bank)
 	#   returns: True on success
-	def load_preset(self, preset_name, bank=''):
+	def load_preset(self, preset_name, bank):
 		result = self.rpc('loadPreset', {'name':preset_name, 'bank':bank})
 		return result and 'error' not in result
 
 
-	#   Save a preset by name to "user" bank
+	#   Save a preset by name to "zynthian" bank
 	#   preset_name: Name of preset to save
 	#   Note: Overwrites existing preset if exists
 	#   returns: True on success
 	def save_preset(self, preset_name):
-		result = self.rpc('savePreset', {'name':preset_name, 'bank':'user'})
+		result = self.rpc('savePreset', {'name':preset_name, 'bank':'zynthian'})
 		return result and 'error' not in result
 
 
 	#   Get a list of preset names for an instrument
 	#   instrument: Name of instrument for which to load presets (default: all instruments)
-	#   returns: list of preset names or None on failure
+	#   returns: list of [preset names, pt bank] or None on failure
 	def get_presets(self, instrument=None):
 		presets = []
 		result = self.rpc('getListOfPresets')
@@ -372,7 +372,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 			return None
 		for preset in result['result']:
 			if (instrument is None or preset['instr'] == instrument):
-				presets.append(preset['name'])
+				presets.append([preset['name'], preset['bank']])
 		return presets
 
 
@@ -475,24 +475,25 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	# ----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		# [uri/uid,?,display name,?]
+		# [uri/uid, pt bank, display name,zyn bank (pt instr)]
 		presets = []
 		result = self.get_presets(bank[0])
 		for preset in result:
-			presets.append([preset, None, preset, bank[0]])
+			presets.append([preset[0], preset[1] , preset[0], bank[0]])
 		return presets
 
 
 	def set_preset(self, layer, preset, preload=False):
-		if self.load_preset(preset[0]):
+		if self.load_preset(preset[0], preset[1]):
 			params = self.get_params()
 			for param in params:
 				self._ctrls[param].set_value(params[param]['value'], False)
 			return True
+		return False
 
 
 	def is_preset_user(self, preset):
-		return preset[3] == 'user'
+		return preset[1] == 'zynthian'
 
 
 	def preset_exists(self, bank_info, preset_name):
