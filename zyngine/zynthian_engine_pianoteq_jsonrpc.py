@@ -494,6 +494,15 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 			self.params = self.get_params()
 			for param in self.params:
 				self._ctrls[param].set_value(self.params[param]['value'], False)
+			# Update control labels
+			for effect in range(1, 4):
+				for effect_param in range(1, 9):
+					symbol = f'Effect[{effect}].Param[{effect_param}]'
+					try:
+						self._ctrls[symbol].name = self.params[symbol]['name']
+						self._ctrls[symbol].short_name = self.params[symbol]['name']
+					except:
+						pass
 			return True
 		return False
 
@@ -557,9 +566,8 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 			if param in ['Sustain Pedal', 'Soft Pedal', 'Sostenuto Pedal', 'Harmonic Pedal', 'Rattle Pedal', 'Lute Stop Pedal', 'Celeste Pedal', 'Mozart Rail', 'Super Sostenuto', 'Pinch Harmonic Pedal']:
 				options['labels'] = ['Off', '1/4', '1/2', '3/4', 'On']
 			elif param in ['Equalizer Switch', 'Bounce Switch', 'Bounce Sync', 'Effect[1].Switch', 'Effect[2].Switch', 'Effect[3].Switch', 'Reverb Switch', 'Limiter Switch', 'Keyboard Range Switch']:
-				options['is_toggle'] = True
+				options['labels'] = ['Off', 'On']
 			elif param == 'Output Mode':
-				#TODO: Depends on instrument: Sound Recording, Binaural, Stereophonic, Monophonic | Room mic, Binaural, Line out (stereo), Line out (mono)
 				options['labels'] = ['Stereophonic',  'Monophonic', 'Sound Recording', 'Binaural',]
 			elif param == 'Diapason':
 				pass #TODO Scale display 220..880Hz
