@@ -553,6 +553,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 				'is_integer': False,
 				'not_on_gui': False
 			}
+			# Discrete parameter values
 			if param in ['Sustain Pedal', 'Soft Pedal', 'Sostenuto Pedal', 'Harmonic Pedal', 'Rattle Pedal', 'Lute Stop Pedal', 'Celeste Pedal', 'Mozart Rail', 'Super Sostenuto', 'Pinch Harmonic Pedal']:
 				options['labels'] = ['Off', '1/4', '1/2', '3/4', 'On']
 			elif param in ['Equalizer Switch', 'Bounce Switch', 'Bounce Sync', 'Effect[1].Switch', 'Effect[2].Switch', 'Effect[3].Switch', 'Reverb Switch', 'Limiter Switch', 'Keyboard Range Switch']:
@@ -565,6 +566,10 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 			if init:
 				zctrl = zynthian_controller(self, param, params[param]['name'], options)
 				self._ctrls[param] = zctrl
+				# Default MIDI CC mapping
+				default_cc = {'Sustain Pedal': 64, 'Sostenuto Pedal': 66, 'Soft Pedal': 67, 'Harmonic Pedal': 69}
+				if param in default_cc:
+					zctrl.set_midi_learn(layer.midi_chan, default_cc[param])
 			else:
 				self._ctrls[param].set_options(options)
 		return self._ctrls
