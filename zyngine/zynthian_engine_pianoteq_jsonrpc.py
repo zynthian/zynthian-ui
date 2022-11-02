@@ -358,7 +358,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	#   Note: Overwrites existing preset if exists
 	#   returns: True on success
 	def save_preset(self, preset_name):
-		result = self.rpc('savePreset', {'name':preset_name, 'bank':'zynthian'})
+		result = self.rpc('savePreset', {'name':preset_name, 'bank':'Zynthian'})
 		return result and 'error' not in result
 
 
@@ -493,7 +493,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 
 	def is_preset_user(self, preset):
-		return preset[1] == 'zynthian'
+		return preset[1] == 'Zynthian'
 
 
 	def preset_exists(self, bank_info, preset_name):
