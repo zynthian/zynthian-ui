@@ -270,7 +270,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 		self.show_demo = True
 		self.command_prompt = None
 		self._ctrls = None
-		self.preset = None
+		self.preset = ['','','','']
 		self.params = {}
 
 		if self.config_remote_display():
@@ -359,7 +359,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	#   preset_name: Name of preset to save
 	#   Note: Overwrites existing preset if exists
 	#   returns: True on success
-	def save_preset(self, preset_name):
+	def save_preset(self, bank_info, preset_name):
 		result = self.rpc('savePreset', {'name':preset_name, 'bank':'Zynthian'})
 		return result and 'error' not in result
 
@@ -442,6 +442,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	def add_layer(self, layer):
 		super().add_layer(layer)
 		self.generate_ctrl_screens(self.get_controllers_dict(layer)) #TODO: This takes too long and appends to end of existing list
+		layer.auto_save_bank = True
 
 
 	# ---------------------------------------------------------------------------
@@ -487,6 +488,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 	def set_preset(self, layer, preset, preload=False):
 		if self.load_preset(preset[0], preset[1]):
+			self.preset = preset
 			if preset[3] in ['CP-80', 'Vintage Tines MKI', 'Vintage Tines MKII', 'Vintage Reeds W1', 'Clavinet D6', 'Pianet N', 'Pianet T', 'Electra-Piano']:
 				self._ctrls['Output Mode'].set_options({'labels': ['Line out (stereo)',  'Line out (mono)', 'Room mic', 'Binaural']})
 			else:
@@ -512,8 +514,11 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 
 	def preset_exists(self, bank_info, preset_name):
-		presets = self.get_preset_list(bank_info)
-		return presets and preset_name in presets
+		presets = self.get_preset_list([self.preset[3]])
+		for preset in presets:
+			if preset[1] == 'Zynthian' and preset_name == preset[0]:
+				return True
+		return False
 
 
 	def cmp_presets(self, preset1, preset2):

@@ -78,6 +78,7 @@ class zynthian_layer:
 		self.bank_info = None
 		self.bank_msb = 0
 		self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
+		self.auto_save_bank = False # True to skip bank selection when saving preset
 
 		self.show_fav_presets = False
 		self.preset_list = []
