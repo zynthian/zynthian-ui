@@ -236,6 +236,11 @@ else:
 PIANOTEQ_CONFIG_FILE = PIANOTEQ_CONFIG_DIR + "/" + PIANOTEQ_CONFIG_FILENAME
 
 
+# ------------------------------------------------------------------------------
+# Piantoteq Engine Class
+# ------------------------------------------------------------------------------
+
+
 #   Send a RPC request and return the result
 #   method: API method call
 #   params: List of parameters required by API method
@@ -255,18 +260,7 @@ def rpc(method, params=None, id=0):
 	return result
 
 
-# ------------------------------------------------------------------------------
-# Piantoteq Engine Class
-# ------------------------------------------------------------------------------
-
 class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
-
-	#----------------------------------------------------------------------------
-	# ZynAPI variables
-	#----------------------------------------------------------------------------
-
-	zynapi_instance = None
-
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
@@ -624,31 +618,29 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_banks(cls):
-		banks=[]
-		for b in cls.get_instruments(None):
-			if b[1]:
-				banks.append({
-					'text': b[0],
-					'name': b[0],
-					'fullpath': '',
-					'readonly': True
-				})
-		return banks
+		#TODO: Get all banks (without starting pianoteq)
+		return [{
+			'text': "My Presets",
+			'name': "My Presets",
+			'fullpath': '',
+			'readonly': False
+				}]
 
 
 	@classmethod
 	def zynapi_get_presets(cls, bank):
-		result = cls.get_presets(None, bank['name'])
 		presets = []
-		for preset in result:
-			if preset[1] == 'My Presets':
+		for f in os.listdir('/zynthian/zynthian-my-data/presets/pianoteq'):
+			if f.endswith('.fxp'):
 				presets.append({
-					'text': preset[0],
-					'name': preset[0],
-					'fullpath': f'/zynthian/zynthian-my-data/presets/pianoteq/{preset[0]}.fxp',
+					'text': f,
+					'name': f[:-4],
+					'fullpath': f'/zynthian/zynthian-my-data/presets/pianoteq/{f}',
+					'raw': f,
 					'readonly': False
 				})
 		return presets
+
 
 	@classmethod
 	def zynapi_download(cls, fullpath):
@@ -673,7 +665,6 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	@classmethod
 	def zynapi_rename_preset(cls, preset_path, new_preset_name):
 		cls.rename_preset(None, [preset_path], new_preset_name)
-		cls.refresh_zynapi_instance()
 		
 
 
