@@ -236,11 +236,37 @@ else:
 PIANOTEQ_CONFIG_FILE = PIANOTEQ_CONFIG_DIR + "/" + PIANOTEQ_CONFIG_FILENAME
 
 
+#   Send a RPC request and return the result
+#   method: API method call
+#   params: List of parameters required by API method
+def rpc(method, params=None, id=0):
+	url = 'http://127.0.0.1:9001/jsonrpc'
+	if params is None:
+		params=[]
+	payload = {
+		"method": method,
+		"params": params,
+		"jsonrpc": "2.0",
+		"id": id}
+	try:
+		result=requests.post(url, json=payload).json()
+	except:
+		return None
+	return result
+
+
 # ------------------------------------------------------------------------------
 # Piantoteq Engine Class
 # ------------------------------------------------------------------------------
 
 class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
+
+	#----------------------------------------------------------------------------
+	# ZynAPI variables
+	#----------------------------------------------------------------------------
+
+	zynapi_instance = None
+
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
@@ -317,7 +343,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	def stop(self):
 		if not self.proc:
 			return
-		self.rpc('quit')
+		rpc('quit')
 		if self.proc.isalive():
 			self.proc.close(True)
 		self.proc = None
@@ -326,24 +352,6 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# RPC-JSON API
 	# ---------------------------------------------------------------------------
-    
-	#   Send a RPC request and return the result
-	#   method: API method call
-	#   params: List of parameters required by API method
-	def rpc(self, method, params=None, id=0):
-		url = 'http://127.0.0.1:9001/jsonrpc'
-		if params is None:
-			params=[]
-		payload = {
-			"method": method,
-			"params": params,
-			"jsonrpc": "2.0",
-			"id": id}
-		try:
-			result=requests.post(url, json=payload).json()
-		except:
-			return None
-		return result
 
 
 	#   Load a preset by name
@@ -351,7 +359,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	#   bank: Name of bank preset resides (builtin presets have no bank)
 	#   returns: True on success
 	def load_preset(self, preset_name, bank):
-		result = self.rpc('loadPreset', {'name':preset_name, 'bank':bank})
+		result = rpc('loadPreset', {'name':preset_name, 'bank':bank})
 		return result and 'error' not in result
 
 
@@ -360,7 +368,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	#   Note: Overwrites existing preset if exists
 	#   returns: True on success
 	def save_preset(self, bank_info, preset_name):
-		result = self.rpc('savePreset', {'name':preset_name, 'bank':'My Presets'})
+		result = rpc('savePreset', {'name':preset_name, 'bank':'My Presets'})
 		return result and 'error' not in result
 
 
@@ -369,7 +377,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	#   returns: list of [preset names, pt bank] or None on failure
 	def get_presets(self, instrument=None):
 		presets = []
-		result = self.rpc('getListOfPresets')
+		result = rpc('getListOfPresets')
 		if result is None or 'result' not in result:
 			return None
 		for preset in result['result']:
@@ -382,7 +390,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	#   returns: List of group names or None on failure
 	def get_groups(self):
 		groups = []
-		result = self.rpc('getListOfPresets')
+		result = rpc('getListOfPresets')
 		if result is None or 'result' not in result:
 			return None
 		for preset in result['result']:
@@ -396,7 +404,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	#   returns: List of lists [instrument name, licenced (bool)] or None on failure
 	def get_instruments(self, group=None):
 		instruments = []
-		result = self.rpc('getListOfPresets')
+		result = rpc('getListOfPresets')
 		if result and 'result' in result:
 			for preset in result['result']:
 				if (group is None or preset['class'] == group) and [preset['instr'], preset['license_status']=='ok'] not in instruments:
@@ -408,7 +416,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	#   returns: dictionary of all parameters indexed by parameter id: {name, value} or None on failure
 	def get_params(self):
 		params = {}
-		result = self.rpc('getParameters')
+		result = rpc('getParameters')
 		if result is None or 'result' not in result:
 			return None
 		for param in result['result']:
@@ -431,7 +439,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	#   value: Normalized value (0.0..1.0)
 	#   returns: True on success
 	def set_param(self, param, value):
-		result = self.rpc('setParameters', {'list':[{'id':param,'normalized_value':value}]})
+		result = rpc('setParameters', {'list':[{'id':param,'normalized_value':value}]})
 		return result and 'error' not in result
 
 
@@ -614,6 +622,60 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	# API methods
 	# ---------------------------------------------------------------------------
 
-	#TODO: Implement zynAPI methods
+	@classmethod
+	def zynapi_get_banks(cls):
+		banks=[]
+		for b in cls.get_instruments(None):
+			if b[1]:
+				banks.append({
+					'text': b[0],
+					'name': b[0],
+					'fullpath': '',
+					'readonly': True
+				})
+		return banks
+
+
+	@classmethod
+	def zynapi_get_presets(cls, bank):
+		result = cls.get_presets(None, bank['name'])
+		presets = []
+		for preset in result:
+			if preset[1] == 'My Presets':
+				presets.append({
+					'text': preset[0],
+					'name': preset[0],
+					'fullpath': f'/zynthian/zynthian-my-data/presets/pianoteq/{preset[0]}.fxp',
+					'readonly': False
+				})
+		return presets
+
+	@classmethod
+	def zynapi_download(cls, fullpath):
+		return fullpath
+
+
+	@classmethod
+	def zynapi_get_formats(cls):
+		return "fxp"
+
+
+	@classmethod
+	def zynapi_install(cls, dpath, bank_path):
+		logging.warning("dpath: %s", dpath)
+		fname, ext = os.path.splitext(dpath)
+		if ext.lower() in ['.fxp']:
+			shutil.move(dpath, cls.user_presets_dpath + "/My Presets")
+		else:
+			raise Exception("File doesn't look like a FXP preset file")
+
+
+	@classmethod
+	def zynapi_rename_preset(cls, preset_path, new_preset_name):
+		cls.rename_preset(None, [preset_path], new_preset_name)
+		cls.refresh_zynapi_instance()
+		
+
+
 
 # ******************************************************************************
