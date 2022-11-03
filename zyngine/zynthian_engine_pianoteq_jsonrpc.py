@@ -360,7 +360,7 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 	#   Note: Overwrites existing preset if exists
 	#   returns: True on success
 	def save_preset(self, bank_info, preset_name):
-		result = self.rpc('savePreset', {'name':preset_name, 'bank':'Zynthian'})
+		result = self.rpc('savePreset', {'name':preset_name, 'bank':'My Presets'})
 		return result and 'error' not in result
 
 
@@ -481,8 +481,17 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 		# [uri/uid, pt bank, display name,zyn bank (pt instr)]
 		presets = []
 		result = self.get_presets(bank[0])
+		user_presets = False
 		for preset in result:
-			presets.append([preset[0], preset[1] , preset[0], bank[0]])
+			if preset[1]:
+				presets.append([preset[0], preset[1] , preset[0], bank[0]])
+				user_presets = True
+		if user_presets:
+			presets.insert(0, [None, None, 'User Presets', ''])
+			presets.append([None, None, 'Factory Presets', ''])
+		for preset in result:
+			if not preset[1]:
+				presets.append([preset[0], preset[1] , preset[0], bank[0]])
 		return presets
 
 
@@ -510,13 +519,13 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 
 	def is_preset_user(self, preset):
-		return preset[1] == 'Zynthian'
+		return preset[1] == 'My Presets'
 
 
 	def preset_exists(self, bank_info, preset_name):
 		presets = self.get_preset_list([self.preset[3]])
 		for preset in presets:
-			if preset[1] == 'Zynthian' and preset_name == preset[0]:
+			if preset[1] == 'My Presets' and preset_name == preset[0]:
 				return True
 		return False
 
@@ -542,9 +551,18 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 		return False
 
 
-	# Implement in derived classes to enable features in GUI
-	#def delete_preset(self, preset):
-	#def rename_preset(self, bank_info, preset, new_name):
+	def delete_preset(self, bank_info, preset):
+		try:
+			os.system(f'rm /zynthian/zynthian-my-data/presets/pianoteq/{preset[0]}.fxp')
+		except:
+			pass
+
+
+	def rename_preset(self, bank_info, preset, new_name):
+		try:
+			os.system(f'mv /zynthian/zynthian-my-data/presets/pianoteq/{preset[0]}.fxp /zynthian/zynthian-my-data/presets/pianoteq/{new_name}.fxp')
+		except:
+			pass
 
 
 	# ---------------------------------------------------------------------------

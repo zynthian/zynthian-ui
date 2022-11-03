@@ -472,7 +472,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 	# Implement in derived classes to enable features in GUI
 	#def save_preset(self, bank_name, preset_name):
-	#def delete_preset(self, preset):
+	#def delete_preset(self, bank_info, preset):
 	#def rename_preset(self, bank_info, preset, new_name):
 
 	# ---------------------------------------------------------------------------
