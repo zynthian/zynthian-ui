@@ -31,7 +31,7 @@ import logging
 from os.path import isfile
 from xml.etree import ElementTree
 import requests
-from  subprocess import Popen, DEVNULL, PIPE
+from  subprocess import Popen, DEVNULL, PIPE, check_output
 from time import sleep
 from collections import OrderedDict
 
@@ -470,11 +470,6 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 		return banks
 
 
-	def set_bank(self, layer, bank):
-		self.bank = bank
-		return True
-
-
 	# ----------------------------------------------------------------------------
 	# Preset Managament
 	# ----------------------------------------------------------------------------
@@ -521,13 +516,14 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 
 	def is_preset_user(self, preset):
-		return preset[1] == 'My Presets'
+		return preset[1] != ''
 
 
 	def preset_exists(self, bank_info, preset_name):
-		presets = self.get_preset_list([self.preset[3]])
+		# Instruments are presented as banks in Zynthian UI but user presets are saved in pianoteq banks 
+		presets = self.zynapi_get_presets({'name':'My Presets', 'fullpath':f'{PIANOTEQ_MY_PRESETS_DIR}/My Presets'})
 		for preset in presets:
-			if preset[1] == 'My Presets' and preset_name == preset[0]:
+			if preset['name'] == preset_name:
 				return True
 		return False
 
@@ -554,17 +550,11 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 
 	def delete_preset(self, bank_info, preset):
-		try:
-			os.system(f'rm /zynthian/zynthian-my-data/presets/pianoteq/{preset[0]}.fxp')
-		except:
-			pass
+		return self.zynapi_remove_preset(f'{self.user_presets_dpath}/{preset[1]}/{preset[0]}.fxp')
 
 
 	def rename_preset(self, bank_info, preset, new_name):
-		try:
-			os.system(f'mv /zynthian/zynthian-my-data/presets/pianoteq/{preset[0]}.fxp /zynthian/zynthian-my-data/presets/pianoteq/{new_name}.fxp')
-		except:
-			pass
+		return self.zynapi_rename_preset(f'{self.user_presets_dpath}/{preset[1]}/{preset[0]}.fxp', new_name)
 
 
 	# ---------------------------------------------------------------------------
@@ -618,27 +608,47 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_banks(cls):
-		#TODO: Get all banks (without starting pianoteq)
-		return [{
-			'text': "My Presets",
-			'name': "My Presets",
+		banks = []
+		for d in os.listdir(cls.user_presets_dpath):
+			if os.listdir(f'{cls.user_presets_dpath}/{d}'):
+				banks.append({
+					'text': d,
+					'name': d,
+					'fullpath': f'{cls.user_presets_dpath}/{d}',
+					'readonly': False
+				})
+		banks.append({
+			'text': 'Factory Presets',
+			'name': '',
 			'fullpath': '',
-			'readonly': False
-				}]
+			'readonly': True
+		})
+		return banks
 
 
 	@classmethod
 	def zynapi_get_presets(cls, bank):
 		presets = []
-		for f in os.listdir('/zynthian/zynthian-my-data/presets/pianoteq'):
-			if f.endswith('.fxp'):
+		if bank['name'] == '':
+			all_presets = check_output([PIANOTEQ_BINARY, '--list-presets']).decode('utf-8').split('\n')
+			for preset in all_presets:
+				if preset == '' or  '/' in preset: continue
 				presets.append({
-					'text': f,
-					'name': f[:-4],
-					'fullpath': f'/zynthian/zynthian-my-data/presets/pianoteq/{f}',
-					'raw': f,
-					'readonly': False
+					'text': preset,
+					'name': preset,
+					'fullpath': '',
+					'readonly': True
 				})
+		else:
+			for f in os.listdir(f"{bank['fullpath']}"):
+				if f.endswith('.fxp'):
+					presets.append({
+						'text': f,
+						'name': f[:-4],
+						'fullpath': f"{bank['fullpath']}/{f}",
+						'raw': f"{bank['fullpath']}/{f}",
+						'readonly': False
+					})
 		return presets
 
 
@@ -654,19 +664,33 @@ class zynthian_engine_pianoteq_jsonrpc(zynthian_engine):
 
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
-		logging.warning("dpath: %s", dpath)
 		fname, ext = os.path.splitext(dpath)
 		if ext.lower() in ['.fxp']:
-			shutil.move(dpath, cls.user_presets_dpath + "/My Presets")
+			shutil.move(dpath, bank_path)
 		else:
-			raise Exception("File doesn't look like a FXP preset file")
+			raise Exception("File doesn't look like a Pianoteq FXP preset")
 
 
 	@classmethod
 	def zynapi_rename_preset(cls, preset_path, new_preset_name):
-		cls.rename_preset(None, [preset_path], new_preset_name)
+		if preset_path[-4:].lower() != ".fxp":
+			return False
+		try:
+			head, tail = os.path.split(preset_path)
+			fname, ext = os.path.splitext(tail)
+			new_preset_path = head + "/" + new_preset_name + ext
+			os.rename(preset_path, new_preset_path)
+			return True
+		except:
+			pass
+		return False
 		
 
-
+	@classmethod
+	def zynapi_remove_preset(cls, preset_path):
+		if preset_path[-4:].lower() != ".fxp":
+			return False
+		os.system(f"rm '{preset_path}'")
+		return True
 
 # ******************************************************************************
