@@ -190,7 +190,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					self.widget_canvas.itemconfigure(self.waveform, state=tkinter.HIDDEN)
 			if self.duration != dur:
 				self.duration = dur
-				self.widget_canvas.itemconfigure(self.info_text, text="{:02d}:{:02d}".format(int(dur / 60), int(dur % 60)), state=tkinter.NORMAL)
+				sr = self.monitors["samplerate"]
+				self.widget_canvas.itemconfigure(self.info_text, text="{:02d}:{:02d} ({:d})".format(int(dur / 60), int(dur % 60), sr), state=tkinter.NORMAL)
 	
 		except Exception as e:
 			logging.error(e)
