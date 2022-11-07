@@ -2001,13 +2001,14 @@ class zynthian_gui:
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
 						if zynthian_gui_config.midi_prog_change_zs3:
-							self.screens['layer'].set_midi_prog_zs3(chan, pgm)
+							res = self.screens['layer'].set_midi_prog_zs3(chan, pgm)
 						else:
-							self.screens['layer'].set_midi_prog_preset(chan, pgm)
-						if self.current_screen == 'audio_mixer':
-							self.screens['audio_mixer'].refresh_visible_strips()
-						elif self.current_screen == 'control':
-							self.screens['control'].set_select_path()
+							res = self.screens['layer'].set_midi_prog_preset(chan, pgm)
+						if res:
+							if self.current_screen == 'audio_mixer':
+								self.screens['audio_mixer'].refresh_visible_strips()
+							elif self.current_screen == 'control':
+								self.screens['control'].build_view()
 
 						#if self.curlayer and chan == self.curlayer.get_midi_chan():
 						#	self.show_screen('control')
