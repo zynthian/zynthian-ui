@@ -10,7 +10,7 @@ extern "C"
 {
 #endif
 
-typedef void cb_fn_t(void*, int, float);
+typedef void cb_fn_t(void*, int, int, float);
 
 enum {
     NOTIFY_ALL          =  0,
@@ -31,12 +31,17 @@ enum {
 /** @brief  Library constructor (initalisation) */
 static void __attribute__ ((constructor)) lib_init(void);
 
-/** @brief  Initialise a player instance
-*   @param  player_handle Index of player to initialise or -1 for next available
-*   @retval int Player handle or -1 on failure
-*   @note   If requested player is already initialised a new player is started with a different handle
+/** @brief  Library destructor (initalisation) */
+static void __attribute__ ((destructor)) lib_exit(void);
+
+/** @brief  Cleanup */
+void lib_stop();
+
+/** @brief  Add a player instance
+*   @param  player_handle Index of player to initialise
+*   @retval int 1 on success
 */
-int init(int player_handle);
+int add_player(int player_handle);
 
 /** @brief  Remove player from library
 *   @param  player_handle Handle of player provided by init_player()
@@ -44,10 +49,9 @@ int init(int player_handle);
 void remove_player(int player_handle);
 
 /** @brief Get jack client name
-*   @param  player_handle Handle of player provided by init_player()
 *   @retval const char* Jack client name
 */
-const char* get_jack_client_name(int player_handle);
+const char* get_jack_client_name();
 
 /** @brief  Open audio file
 *   @param  player_handle Handle of player provided by init_player()

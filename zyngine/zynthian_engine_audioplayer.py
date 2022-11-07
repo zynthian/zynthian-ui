@@ -79,14 +79,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['config', [None, 'gain']]
 		]
 
-		self.monitors_dict = OrderedDict()
-		self.monitors_dict["state"] = self.player.get_playback_state()
-		self.monitors_dict["pos"] = self.player.get_position()
-		self.monitors_dict["duration"] = self.player.get_duration()
-		self.monitors_dict["samplerate"] = self.player.get_samplerate()
-		self.monitors_dict["filename"] = self.player.get_filename()
-		self.monitors_dict["loop start"] = self.player.get_loop_start()
-		self.monitors_dict["loop end"] = self.player.get_loop_end()
+		self.monitors_dict = []
+		for chan in range(17):
+			self.monitors_dict.append(OrderedDict())
+			self.monitors_dict[chan]["state"] = 0
+			self.monitors_dict[chan]["pos"] = 0
+			self.monitors_dict[chan]["duration"] = 0
+			self.monitors_dict[chan]["samplerate"] = 0
+			self.monitors_dict[chan]["filename"] = ""
+			self.monitors_dict[chan]["loop start"] = 0
+			self.monitors_dict[chan]["loop end"] = 0
 
 		self.reset()
 
@@ -103,6 +105,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def stop(self):
 		try:
+			self.player.stop()
 			self.player = None
 		except Exception as e:
 			logging.error("Failed to close audio player: %s", e)
@@ -110,6 +113,19 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
+
+	def add_layer(self, layer):
+		handle = layer.midi_chan if layer.midi_chan < 16 else 16
+		if self.player.add_player(handle):
+			self.layers.append(layer)
+			layer.jackname = self.jackname
+			layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, handle + 1)
+		
+
+
+	def del_layer(self, layer):
+		self.player.remove_player(layer.midi_chan if layer.midi_chan < 16 else 16)
+		super().del_layer(layer)
 
 
 	# ---------------------------------------------------------------------------
@@ -164,17 +180,18 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		if self.player.get_filename() == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration():
+		handle = layer.midi_chan if layer.midi_chan < 16 else 16
+		if self.player.get_filename(handle) == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration(handle):
 			return
 
-		good_file = self.player.load(preset[0])
-		dur = self.player.get_duration()
-		self.player.set_position(0)
-		if self.player.is_loop():
+		good_file = self.player.load(handle, preset[0])
+		dur = self.player.get_duration(handle, )
+		self.player.set_position(handle, 0)
+		if self.player.is_loop(handle):
 			loop = 'looping'
 		else:
 			loop = 'one-shot'
-		if self.player.get_playback_state():
+		if self.player.get_playback_state(handle):
 			transport = 'playing'
 		else:
 			transport = 'stopped'
@@ -182,13 +199,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			record = 'recording'
 		else:
 			record = 'stopped'
-		gain = self.player.get_gain()
+		gain = self.player.get_gain(handle)
 		default_a = 0
 		default_b = 0
 		track_labels = ['mixdown']
 		track_values = [-1]
 		if dur:
-			channels = self.player.get_channels()
+			channels = self.player.get_channels(handle)
 			if channels > 2:
 				default_a = -1
 				default_b = -1
@@ -218,11 +235,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['loop end',None,dur,dur]
 		]
 		layer.refresh_controllers()
-		self.player.set_track_a(default_a)
-		self.player.set_track_b(default_b)
-		self.monitors_dict['filename'] = self.player.get_filename()
-		self.monitors_dict['duration'] = self.player.get_duration()
-		self.monitors_dict['samplerate'] = self.player.get_samplerate()
+		self.player.set_track_a(handle, default_a)
+		self.player.set_track_b(handle, default_b)
+		self.monitors_dict[handle]['filename'] = self.player.get_filename(handle)
+		self.monitors_dict[handle]['duration'] = self.player.get_duration(handle)
+		self.monitors_dict[handle]['samplerate'] = self.player.get_samplerate(handle)
 
 
 	def delete_preset(self, bank, preset):
@@ -258,66 +275,73 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Controllers Management
 	#----------------------------------------------------------------------------
 
-	def control_cb(self, id, value):
+	def control_cb(self, handle, id, value):
+		if handle == 16:
+			if id == 1 and value == 0:
+				self.zyngui.stop_audio_player()
+			return
 		try:
 			for layer in self.layers:
-				ctrl_dict = layer.controllers_dict
-				if id == 1:
-					ctrl_dict['transport'].set_value(int(value) * 64, False)
-					if value:
-						self.layers[0].status = "\uf04b"
-					else:
-						self.layers[0].status = ""
-				elif id == 2:
-					ctrl_dict['position'].set_value(value, False)
-					self.monitors_dict['pos'] = value
-				elif id == 3:
-					ctrl_dict['gain'].set_value(value, False)
-				elif id == 4:
-					ctrl_dict['loop'].set_value(int(value) * 64, False)
-				elif id == 5:
-					ctrl_dict['left track'].set_value(int(value), False)
-				elif id == 6:
-					ctrl_dict['right track'].set_value(int(value), False)
-				elif id == 11:
-					ctrl_dict['loop start'].set_value(value, False)
-					self.monitors_dict['loop start'] = value
-				elif id == 12:
-					ctrl_dict['loop end'].set_value(value, False)
-					self.monitors_dict['loop end'] = value
+				if layer.midi_chan == handle:
+					ctrl_dict = layer.controllers_dict
+					if id == 1:
+						ctrl_dict['transport'].set_value(int(value) * 64, False)
+						if value:
+							layer.status = "\uf04b"
+						else:
+							layer.status = ""
+					elif id == 2:
+						ctrl_dict['position'].set_value(value, False)
+						self.monitors_dict[handle]['pos'] = value
+					elif id == 3:
+						ctrl_dict['gain'].set_value(value, False)
+					elif id == 4:
+						ctrl_dict['loop'].set_value(int(value) * 64, False)
+					elif id == 5:
+						ctrl_dict['left track'].set_value(int(value), False)
+					elif id == 6:
+						ctrl_dict['right track'].set_value(int(value), False)
+					elif id == 11:
+						ctrl_dict['loop start'].set_value(value, False)
+						self.monitors_dict[handle]['loop start'] = value
+					elif id == 12:
+						ctrl_dict['loop end'].set_value(value, False)
+						self.monitors_dict[handle]['loop end'] = value
+					return
 		except Exception as e:
 			return
 
 
 	def send_controller_value(self, zctrl):
+		handle = zctrl.midi_chan if zctrl.midi_chan < 16 else 16
 		if zctrl.symbol == "position":
-			self.player.set_position(zctrl.value)
+			self.player.set_position(handle, zctrl.value)
 		elif zctrl.symbol == "gain":
-			self.player.set_gain(zctrl.value)
+			self.player.set_gain(handle, zctrl.value)
 		elif zctrl.symbol == "loop":
-			self.player.enable_loop(zctrl.value)
+			self.player.enable_loop(handle, zctrl.value)
 		elif zctrl.symbol == "transport":
 			if zctrl.value > 63:
-				self.player.start_playback()
+				self.player.start_playback(handle)
 			else:
-				self.player.stop_playback()
+				self.player.stop_playback(handle)
 		elif zctrl.symbol == "left track":
-			self.player.set_track_a(zctrl.value)
+			self.player.set_track_a(handle, zctrl.value)
 		elif zctrl.symbol == "right track":
-			self.player.set_track_b(zctrl.value)
+			self.player.set_track_b(handle, zctrl.value)
 		elif zctrl.symbol == "record":
 			if zctrl.value:
 				self.zyngui.audio_recorder.start_recording()
 			else:
 				self.zyngui.audio_recorder.stop_recording()
 		elif zctrl.symbol == "loop start":
-			self.player.set_loop_start(zctrl.value)
+			self.player.set_loop_start(handle, zctrl.value)
 		elif zctrl.symbol == "loop end":
-			self.player.set_loop_end(zctrl.value)
+			self.player.set_loop_end(handle, zctrl.value)
 
 
-	def get_monitors_dict(self):
-		return self.monitors_dict
+	def get_monitors_dict(self, handle):
+		return self.monitors_dict[handle]
 
 
 	# ---------------------------------------------------------------------------
