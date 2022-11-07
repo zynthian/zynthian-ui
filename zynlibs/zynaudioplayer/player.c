@@ -103,6 +103,7 @@ jack_port_t* g_jack_midi_in;
 jack_nframes_t g_samplerate = 44100; // Playback samplerate set by jackd
 uint8_t g_debug = 0;
 uint8_t g_last_debug = 0;
+char g_supported_codecs[1024];
 
 #define DPRINTF(fmt, args...) if(g_debug) fprintf(stderr, fmt, ## args)
     
@@ -112,6 +113,36 @@ static inline struct AUDIO_PLAYER * get_player(int player_handle) {
     if(player_handle > MAX_PLAYERS || player_handle < 0)
         return NULL;
     return g_players[player_handle];
+}
+
+int is_codec_supported(const char* codec) {
+    SF_FORMAT_INFO  format_info ;
+    int k, count ;
+    sf_command (NULL, SFC_GET_SIMPLE_FORMAT_COUNT, &count, sizeof (int));
+    for (k = 0 ; k < count ; k++) {
+        format_info.format = k;
+        sf_command (NULL, SFC_GET_SIMPLE_FORMAT, &format_info, sizeof (format_info));
+        if(strcmp(codec, format_info.extension) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+char* get_supported_codecs() {
+    g_supported_codecs[0] = '\0';
+    SF_FORMAT_INFO  format_info ;
+    int k, count ;
+    sf_command (NULL, SFC_GET_SIMPLE_FORMAT_COUNT, &count, sizeof (int));
+    for (k = 0 ; k < count ; k++) {
+        format_info.format = k;
+        sf_command (NULL, SFC_GET_SIMPLE_FORMAT, &format_info, sizeof (format_info));
+        if(strstr(g_supported_codecs, format_info.extension))
+            continue;
+        if(g_supported_codecs[0])
+            strcat(g_supported_codecs, ",");
+        strcat(g_supported_codecs, format_info.extension);
+    }
+    return g_supported_codecs;
 }
 
 void send_notifications(struct AUDIO_PLAYER * pPlayer, int param) {

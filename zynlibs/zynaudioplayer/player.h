@@ -37,6 +37,17 @@ static void __attribute__ ((destructor)) lib_exit(void);
 /** @brief  Cleanup */
 void lib_stop();
 
+/** @brief  Check if a codec is supported
+*   @param  codec name of codec (file extension, e.g. wav)
+*   @retval int 1 if supported
+*/
+int is_codec_supported(const char* codec);
+
+/** @brief  Get a comma separated list of supported codecs
+*   @retval char* Comma separated list of supported codecs (file extensions)
+*/
+char* get_supported_codecs();
+
 /** @brief  Add a player instance
 *   @param  player_handle Index of player to initialise
 *   @retval int 1 on success
