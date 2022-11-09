@@ -55,7 +55,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		else:
 			self.jackname = self.get_next_jackname("audioplayer")
 
-		self.file_exts = ["wav","WAV","ogg","OGG","flac","FLAC"]
+		self.file_exts = []
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
 
 		self.start()
@@ -101,6 +101,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.player = zynaudioplayer.zynaudioplayer(self.jackname)
 		self.jackname = self.player.get_jack_client_name()
 		self.player.set_control_cb(self.control_cb)
+		self.file_exts = self.player.get_supported_codecs()
+		exts_upper = []
+		for ext in self.file_exts:
+			exts_upper.append(ext.upper())
+		self.file_exts += exts_upper
 
 
 	def stop(self):
