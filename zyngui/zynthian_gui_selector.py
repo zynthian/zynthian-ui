@@ -55,6 +55,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.list_entry_height = int(1.8 * zynthian_gui_config.font_size) # Set approx. here to avoid errors. Set accurately when list item selected
 		self.listbox_motion_last_dy = 0
 		self.swiping = False
+		self.last_release = datetime.now()
 
 		# ListBox
 		self.listbox = tkinter.Listbox(self.main_frame,
@@ -359,13 +360,16 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def cb_listbox_release(self, event):
-		dts = (datetime.now() - self.listbox_push_ts).total_seconds()
+		now = datetime.now()
+		dts = (now - self.listbox_push_ts).total_seconds()
+		rdts = (now - self.last_release).total_seconds()
+		self.last_release = now
 		if self.swiping:
 			self.swipe_speed = int(len(self.swipe_roll_scale) - ((dts - 0.02) / 0.06) * len(self.swipe_roll_scale))
 			self.swipe_speed = min(self.swipe_speed, len(self.swipe_roll_scale) - 1)
 			self.swipe_speed = max(self.swipe_speed, 0)
 		else:
-			if dts < 0.03:
+			if rdts < 0.03:
 				return # Debounce
 			#logging.debug("LISTBOX RELEASE => %s" % dts)
 			cursel = self.listbox.nearest(event.y)
