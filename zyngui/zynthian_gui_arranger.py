@@ -183,31 +183,31 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
-		options['Bank'] = 1
-		options['Tempo'] = 1
-		options['Beats per bar'] = 1
+		options['Bank ({})'.format(self.zyngui.zynseq.bank)] = 'Bank'
+		options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
+		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
 		if self.zyngui.zynseq.libseq.isMetronomeEnabled():
-			options['[X] Metronome'] = 1
+			options['[X] Metronome'] = 'Metronome'
 		else:
-			options['[  ] Metronome'] = 1
-		options['Metronome volume'] = 1
+			options['[  ] Metronome'] = 'Metronome'
+		options['Metronome volume ({})'.format(int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume()))] = 'Metronome volume'
 		options['> ARRANGER'] = None
 		if self.zyngui.zynseq.libseq.isMuted(self.zyngui.zynseq.bank, self.sequence, self.track):
-			options['Unmute track'] = 1
+			options['Unmute track'] = 'Unmute track'
 		else:
-			options['Mute track'] = 1
-		options['MIDI channel'] = 1
-		options['Vertical zoom'] = 1
-		options['Horizontal zoom'] = 1
-		options['Group'] = 1
-		options['Play mode'] = 1
-		options['Pattern'] = 1
-		options['Add track'] = 1
+			options['Mute track'] = 'Mute track'
+		options['MIDI channel ({})'.format(1 + self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track))] = 'MIDI channel'
+		options['Vertical zoom ({})'.format(self.vertical_zoom)] = 'Vertical zoom'
+		options['Horizontal zoom ({})'.format(self.horizontal_zoom)] = 'Horizontal zoom'
+		options['Group ({})'.format(list(map(chr, range(65, 91)))[self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, self.sequence)])] = 'Group'
+		options['Play mode ({})'.format(zynseq.PLAY_MODES[self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.sequence)])] = 'Play mode'
+		options['Pattern ({})'.format(self.pattern)] = 'Pattern'
+		options['Add track'] = 'Add track'
 		if self.zyngui.zynseq.libseq.getTracksInSequence(self.zyngui.zynseq.bank, self.sequence) > 1:
-			options['Remove track'] = 1
-		options['Clear sequence'] = 1
-		options['Clear bank'] = 1
-		options['Import SMF'] = 1
+			options['Remove track {}'.format(self.track + 1)] = 'Remove track'
+		options['Clear sequence'] = 'Clear sequence'
+		options['Clear bank'] = 'Clear bank'
+		options['Import SMF'] = 'Import SMF'
 		self.zyngui.screens['option'].config("Arranger Menu", options, self.menu_cb)
 		self.zyngui.show_screen('option')
 
@@ -220,22 +220,22 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 
 	def menu_cb(self, option, params):
-		if option == 'Bank':
+		if params == 'Bank':
 			self.enable_param_editor(self, 'bank', 'Bank', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
-		if option == 'Tempo':
+		if params == 'Tempo':
 			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})
-		if option == 'Beats per bar':
+		if params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
-		elif option == '[  ] Metronome':
+		elif params == 'Metronome':
 			self.zyngui.zynseq.libseq.enableMetronome(True)
-		elif option == '[X] Metronome':
+		elif params == '[X] Metronome':
 			self.zyngui.zynseq.libseq.enableMetronome(False)
-		elif option == 'Metronome volume':
+		elif params == 'Metronome volume':
 			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value':int(100*self.zyngui.zynseq.libseq.getMetronomeVolume())})
 			self.zyngui.zynseq.libseq.enableMetronome(False)
-		if 'ute track' in option:
+		if 'ute track' in params:
 			self.toggle_mute()
-		elif option == 'MIDI channel':
+		elif params == 'MIDI channel':
 			labels = []
 			for chan in range(16):
 				for layer in self.zyngui.screens['layer'].layers:
@@ -245,25 +245,25 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 				if len(labels) <= chan:
 					labels.append('{}'.format(chan + 1))
 			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels':labels, 'value_default':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track), 'value':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.sequence, self.track)})
-		elif option == 'Play mode':
+		elif params == 'Play mode':
 			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.sequence), 'value_default':zynseq.SEQ_LOOPALL})
-		elif option == 'Vertical zoom':
+		elif params == 'Vertical zoom':
 			self.enable_param_editor(self, 'vzoom', 'Vertical zoom', {'value_min':1, 'value_max':127, 'value_default':8, 'value':self.vertical_zoom})
-		elif option == 'Horizontal zoom':
+		elif params == 'Horizontal zoom':
 			self.enable_param_editor(self, 'hzoom', 'Horizontal zoom', {'value_min':1, 'value_max':64, 'value_default':16, 'value':self.horizontal_zoom})
-		elif option == 'Group':
+		elif params == 'Group':
 			self.enable_param_editor(self, 'group', 'Group', {'labels':list(map(chr, range(65, 91))), 'default':self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, self.sequence), 'value':self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, self.sequence)})
-		elif option == 'Pattern':
+		elif params == 'Pattern':
 			self.enable_param_editor(self, 'pattern', 'Pattern', {'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value_default':self.pattern, 'value':self.pattern})
-		elif option == 'Add track':
+		elif params == 'Add track':
 			self.add_track()
-		elif option == 'Remove track':
+		elif params == 'Remove track':
 			self.remove_track()
-		elif option == 'Clear sequence':
+		elif params == 'Clear sequence':
 			self.clear_sequence()
-		elif option == 'Clear bank':
+		elif params == 'Clear bank':
 			self.zyngui.show_confirm("Clear all sequences from bank %d and reset to 4x4 grid of new sequences?" % (self.zyngui.zynseq.bank), self.do_clear_bank)
-		elif option == 'Import SMF':
+		elif params == 'Import SMF':
 			self.select_smf()
 
 
@@ -967,11 +967,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to move selection to specified position
 	#	sequence: Index of sequence (Default is reselect current sequence)
-	#	track: Index of track (Default is first track)
+	#	track: Index of track (Default is reselect current track)
 	#	time: Position in timeline (Default is None to keep current time)
 	# If track not available then selects first track in sequence
-	def select_position(self, sequence=None, track=0, time=None):
+	def select_position(self, sequence=None, track=None, time=None):
 		found_row = None
+		if track is None:
+			track = self.track
 		if sequence is None:
 			sequence = self.sequence
 		for row,seqtrack in enumerate(self.sequence_tracks):
