@@ -55,6 +55,7 @@ class zynaudioplayer():
 			self.libaudioplayer.get_file_duration.restype = ctypes.c_float
 			self.libaudioplayer.get_file_info.restype = ctypes.c_char_p
 			self.libaudioplayer.get_filename.restype = ctypes.c_char_p
+			self.libaudioplayer.get_supported_codecs.restype = ctypes.c_char_p
 			self.libaudioplayer.get_jack_client_name.restype = ctypes.c_char_p
 			self.libaudioplayer.get_gain.restype = ctypes.c_float
 			self.libaudioplayer.set_gain.argtypes = [ctypes.c_int, ctypes.c_float]
@@ -79,6 +80,14 @@ class zynaudioplayer():
 	def stop(self):
 		self.libaudioplayer.lib_stop()
 		self.set_control_cb(None)
+
+
+	def is_codec_supported(self, codec):
+		return self.libaudioplayer.is_codec_supported(bytes(codec, "utf-8")) == 1
+
+
+	def get_supported_codecs(self):
+		return self.libaudioplayer.get_supported_codecs().decode("utf-8").lower().split(',')
 
 
 	#	Get jack client name

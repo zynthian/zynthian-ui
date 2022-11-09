@@ -328,25 +328,36 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
-		options['Arranger'] = 1
-		options['Bank'] = 1
-		options['Tempo'] = 1
-		options['Beats per bar'] = 1
+		options['Arranger'] = 'Arranger'
+		options['Bank ({})'.format(self.zyngui.zynseq.bank)] = 'Bank'
+		options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
+		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
 		if self.zyngui.zynseq.libseq.isMetronomeEnabled():
-			options['[X] Metronome'] = 1
+			options['[X] Metronome'] = 'Metronome'
 		else:
-			options['[  ] Metronome'] = 1
-		options['Metronome volume'] = 1
+			options['[  ] Metronome'] = 'Metronome'
+		options['Metronome volume ({})'.format(int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume()))] = 'Metronome volume'
 		options['> PADS'] = None
-		options['Play mode'] = 1
-		options['MIDI channel'] = 1
-		options['Trigger channel'] = 1
-		options['Trigger note'] = 1
-		if self.zyngui.zynseq.libseq.getTriggerNote(self.zyngui.zynseq.bank, self.selected_pad) < 128:
-			options['Tally channel'] = 1
+		options['Play mode ({})'.format(zynseq.PLAY_MODES[self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad)])] = 'Play mode'
+		options['MIDI channel ({})'.format(1 + self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0))] = 'MIDI channel'
+		trigger_channel = self.get_trigger_channel()
+		if trigger_channel == 0:
+			options['Trigger channel (OFF)'] = 'Trigger channel'
+		else:
+			options['Trigger channel ({})'.format(trigger_channel)] = 'Trigger channel'
+			note = self.zyngui.zynseq.libseq.getTriggerNote(self.zyngui.zynseq.bank, self.selected_pad)
+			if note < 128:
+				trigger_note = "{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1)
+			else:
+				trigger_note = "None"
+			options['Trigger note ({})'.format(trigger_note)] = 'Trigger note'
+		tally_channel = self.get_tally_channel()
+		if tally_channel == 0:
+			tally_channel = 'OFF'
+		options['Tally channel ({})'.format(tally_channel)] = 'Tally channel'
 		options['> MISC'] = None
-		options['Grid size'] = 1
-		options['Rename sequence'] = 1
+		options['Grid size ({}x{})'.format(self.columns, self.columns)] = 'Grid size'
+		options['Rename sequence'] = 'Rename sequence'
 		self.zyngui.screens['option'].config("ZynPad Menu", options, self.menu_cb)
 		self.zyngui.show_screen('option')
 
@@ -359,23 +370,21 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	def menu_cb(self, option, params):
-		if option == 'Arranger':
+		if params == 'Arranger':
 			self.zyngui.show_screen('arranger')
-		elif option == 'Bank':
+		elif params == 'Bank':
 			self.enable_param_editor(self, 'bank', 'Bank', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
-		elif option == 'Tempo':
+		elif params == 'Tempo':
 			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})
-		if option == 'Beats per bar':
+		if params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
-		elif option == '[  ] Metronome':
-			self.zyngui.zynseq.libseq.enableMetronome(True)
-		elif option == '[X] Metronome':
-			self.zyngui.zynseq.libseq.enableMetronome(False)
-		elif option == 'Metronome volume':
+		elif params == 'Metronome':
+			self.zyngui.zynseq.libseq.enableMetronome(not self.zyngui.zynseq.libseq.isMetronomeEnabled())
+		elif params == 'Metronome volume':
 			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value':int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume())})
-		elif option == 'Play mode':
+		elif params == 'Play mode':
 			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
-		elif option == 'MIDI channel':
+		elif params == 'MIDI channel':
 			labels = []
 			for chan in range(16):
 				for layer in self.zyngui.screens['layer'].layers:
@@ -385,9 +394,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				if len(labels) <= chan:
 					labels.append('{}'.format(chan + 1))
 			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels':labels, 'value_default':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0), 'value':self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0)})
-		elif option == 'Trigger channel':
+		elif params == 'Trigger channel':
 			self.enable_param_editor(self, 'trigger_chan', 'Trigger channel', {'labels':INPUT_CHANNEL_LABELS, 'value':self.get_trigger_channel()})
-		elif option == 'Trigger note':
+		elif params == 'Trigger note':
 			labels = ['None']
 			for note in range(128):
 				labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
@@ -396,14 +405,14 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				value = 0
 			self.enable_param_editor(self, 'trigger_note', 'Trigger note', {'labels':labels, 'value':value})
 			self.zyngui.zynseq.enable_midi_learn(self.zyngui.zynseq.bank, self.selected_pad)
-		elif option == 'Tally channel':
+		elif params == 'Tally channel':
 			self.enable_param_editor(self, 'tally_chan', 'Tally channel', {'labels':INPUT_CHANNEL_LABELS, 'value':self.get_tally_channel()})
-		elif option == 'Grid size':
+		elif params == 'Grid size':
 			labels = []
 			for i in range(1, 9):
 				labels.append("{}x{}".format(i,i))
 			self.enable_param_editor(self, 'grid_size', 'Grid size', {'labels':labels, 'value':self.columns - 1, 'value_default':3}, self.set_grid_size)
-		elif option == 'Rename sequence':
+		elif params == 'Rename sequence':
 			self.rename_sequence()
 
 
