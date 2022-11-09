@@ -112,6 +112,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.layer_options()
 
 
+	def restore_presets(self):
+		for layer in self.layers:
+			layer.restore_preset()
+
+
 	def create_amixer_layer(self):
 		mixer_eng = self.zyngui.screens['engine'].start_engine('MX')
 		self.amixer_layer = zynthian_layer(mixer_eng, None, self.zyngui)

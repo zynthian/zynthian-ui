@@ -721,6 +721,9 @@ class zynthian_gui:
 			else:
 				return
 
+		if screen not in ("bank", "preset", "option"):
+			self.screens['layer'].restore_presets()
+
 		self.screens[screen].build_view()
 		self.hide_screens(exclude=screen)
 		if hmode == zynthian_gui.SCREEN_HMODE_ADD:
@@ -1111,7 +1114,7 @@ class zynthian_gui:
 	# -------------------------------------------------------------------
 
 	def callable_ui_action(self, cuia, params=None):
-		logging.debug("CUIA '{}' => {}".format(cuia,params))
+		logging.debug("CUIA '{}' => {}".format(cuia, params))
 
 		#----------------------------------------------------------------
 		# System actions

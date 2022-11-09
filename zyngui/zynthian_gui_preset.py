@@ -164,8 +164,6 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			if t == 'B':
 				self.show_preset_options()
 				return True
-
-		self.restore_preset()
 		return False
 
 
