@@ -104,12 +104,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		self.index = i
-
-		if t=='S':
-			self.layer_control()
-
-		elif t=='B':
-			self.layer_options()
+		logging.warning("THIS SHOULDN'T BE CALLED!!")
 
 
 	def restore_presets(self):
@@ -149,11 +144,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.index = 0
 
 			if control:
-				self.select_listbox(self.index)
 				self.layer_control()
 			else:
 				self.zyngui.set_curlayer(self.root_layers[self.index])
-				self.select(self.index)
 
 
 	def prev(self, control=True):
@@ -165,11 +158,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.index = len(self.root_layers) - 1
 
 			if control:
-				self.select_listbox(self.index)
 				self.layer_control()
 			else:
 				self.zyngui.set_curlayer(self.root_layers[self.index])
-				self.select(self.index)
 
 
 	def get_layer_index(self, layer):
