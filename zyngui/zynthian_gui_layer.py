@@ -1808,6 +1808,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					jackname = "audioin-{:02d}".format(lss['midi_chan'])
 				else:
 					jackname = None
+				if 'Pianoteq' in lss['engine_name']:
+					lss['engine_name'] = 'Pianoteq' # Fix old snapshots 2022-11-09
 				engine = self.zyngui.screens['engine'].start_engine(lss['engine_nick'], jackname)
 				self.layers.append(zynthian_layer(engine, lss['midi_chan'], self.zyngui))
 

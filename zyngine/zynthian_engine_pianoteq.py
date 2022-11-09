@@ -2,10 +2,11 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_pianoteq)
 #
-# zynthian_engine implementation for Pianoteq6-Stage
+# zynthian_engine implementation for Pianoteq (>=v7.5)
 #
-# Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2022 Fernando Moyano <jofemodo@zynthian.org>
 # 			  Holger Wirtz <holger@zynthian.org>
+#             Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -25,30 +26,24 @@
 
 import os
 import re
-import copy
-import time
 import shutil
-import struct
 import logging
-import subprocess
-from collections import defaultdict
-from os.path import isfile, join
+from os.path import isfile
 from xml.etree import ElementTree
-from json import JSONEncoder, JSONDecoder
+import requests
+from  subprocess import Popen, DEVNULL, PIPE, check_output
+from time import sleep
+from collections import OrderedDict
 
 from . import zynthian_engine
+from . import zynthian_controller
 
 
 # ------------------------------------------------------------------------------
 # Pianoteq module helper functions
 # ------------------------------------------------------------------------------
 
-def ensure_dir(file_path):
-	directory = os.path.dirname(file_path)
-	if not os.path.exists(directory):
-		os.makedirs(directory)
-
-
+# True if pianoteq binary is installed
 def check_pianoteq_binary():
 	if os.path.islink(PIANOTEQ_BINARY) and not os.access(PIANOTEQ_BINARY, os.X_OK):
 		os.remove(PIANOTEQ_BINARY)
@@ -65,46 +60,69 @@ def check_pianoteq_binary():
 		return False
 
 
-# Get product, trial and version info from pianoteq binary
+# Get {'version_str', 'version', 'api', 'multicore', 'trial', 'product', 'name', 'jackname'} from pianoteq binary
 def get_pianoteq_binary_info():
-	res = None
+	info = {
+		'version_str': '',
+		'version': [0,0,0],
+		'api': False,
+		'multicore': '1',
+		'trial': True,
+		'product': 'STAGE',
+		'name': 'Pianoteq',
+		'jackname': 'Pianoteq'
+	}
 	if check_pianoteq_binary():
 		version_pattern = re.compile(" version ([0-9]+\.[0-9]+\.[0-9]+)", re.IGNORECASE)
 		stage_pattern = re.compile(" stage ", re.IGNORECASE)
 		pro_pattern = re.compile(" pro ", re.IGNORECASE)
 		trial_pattern = re.compile(" trial ", re.IGNORECASE)
-		proc = subprocess.Popen([PIANOTEQ_BINARY, "--version"], stdout=subprocess.PIPE)
+		proc = Popen([PIANOTEQ_BINARY, "--version"], stdout=PIPE)
 		for line in proc.stdout:
 			l = line.rstrip().decode("utf-8")
 			m = version_pattern.search(l)
 			if m:
-				res = {}
 				# Get version info
-				res['version'] = m.group(1)
+				info['version_str'] = m.group(1)
+				info['version'] = list(map(int, str(info['version_str']).split(".")))
+				if info['version'][0] > 7 or info['version'][0] == 7 and info['version'][1] >= 5:
+					info['api'] = True
+				else:
+					info['api'] = False
+				if info['version'][0] == 6 and info['version'][1] == 0:
+					# Pianoteq 6.0 only offers multicore rendering on/off 
+					info['multicore'] = '1'
+				else:
+					info['multicore'] = '2'
+				info['name'] = 'Pianoteq'
+				if info['version'][0] > 6 or (info['version'][0] == 6 and info['version'][1] >= 5):
+					info['jackname'] = "Pianoteq"
+				else:
+					info['jackname'] = "Pianoteq{}{}".format(info['version'][0], info['version'][1])
 				# Get trial info
 				m = trial_pattern.search(l)
 				if m:
-					res['trial'] = 1
+					info['trial'] = True
 				else:
-					res['trial'] = 0
+					info['trial'] = False
 				# Get product info
 				m = stage_pattern.search(l)
 				if m:
-					res['product'] = "STAGE"
+					info['product'] = "STAGE"
 				else:
 					m = pro_pattern.search(l)
 					if m:
-						res['product'] = "PRO"
+						info['product'] = "PRO"
 					else:
-						res['product'] = "STANDARD"
-		if res['product'] == "STANDARD":
+						info['product'] = "STANDARD"
+		if info['product'] == "STANDARD":
 			lkey = get_pianoteq_config_value('LKey')
 			if len(lkey) > 0:
 				lkey_product_pattern = re.compile(" Pianoteq \d* (\w*)")
 				m = lkey_product_pattern.search(lkey[0])
 				if m:
-					res['product'] = m.group(1).upper()
-	return res
+					info['product'] = m.group(1).upper()
+	return info
 
 
 def get_pianoteq_config_value(key):
@@ -119,18 +137,11 @@ def get_pianoteq_config_value(key):
 
 def fix_pianoteq_config(samplerate):
 	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
+		info = get_pianoteq_binary_info()
 
-		PIANOTEQ_SAMPLERATE = samplerate
-		PIANOTEQ_CONFIG_INTERNAL_SR = PIANOTEQ_SAMPLERATE
-		while PIANOTEQ_CONFIG_INTERNAL_SR > 24000:
-			PIANOTEQ_CONFIG_INTERNAL_SR = PIANOTEQ_CONFIG_INTERNAL_SR / 2
-
-		if PIANOTEQ_VERSION[1] == 0:
-			PIANOTEQ_CONFIG_VOICES = 32
-			PIANOTEQ_CONFIG_MULTICORE = 1
-		else:
-			PIANOTEQ_CONFIG_VOICES = 32
-			PIANOTEQ_CONFIG_MULTICORE = 2
+		internal_sr = samplerate
+		while internal_sr > 24000:
+			internal_sr = internal_sr / 2
 
 		tree = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
 		root = tree.getroot()
@@ -140,11 +151,11 @@ def fix_pianoteq_config(samplerate):
 			crash_node = None
 			for xml_value in root.iter("VALUE"):
 				if xml_value.attrib['name'] == 'engine_rate':
-					xml_value.set('val', str(PIANOTEQ_CONFIG_INTERNAL_SR))
+					xml_value.set('val', str(internal_sr))
 				elif xml_value.attrib['name'] == 'voices':
-					xml_value.set('val', str(PIANOTEQ_CONFIG_VOICES))
+					xml_value.set('val', str(32))
 				elif xml_value.attrib['name'] == 'multicore':
-					xml_value.set('val', str(PIANOTEQ_CONFIG_MULTICORE))
+					xml_value.set('val', info['multicore'])
 				elif xml_value.attrib['name'] == 'midiArchiveEnabled':
 					xml_value.set('val', '0')
 				elif xml_value.attrib['name'] == 'audio-setup':
@@ -160,7 +171,7 @@ def fix_pianoteq_config(samplerate):
 					devicesetup.set('deviceType', 'JACK')
 					devicesetup.set('audioOutputDeviceName', 'Auto-connect OFF')
 					devicesetup.set('audioInputDeviceName', 'Auto-connect OFF')
-					devicesetup.set('audioDeviceRate', str(PIANOTEQ_SAMPLERATE))
+					devicesetup.set('audioDeviceRate', str(samplerate))
 					devicesetup.set('forceStereo', '0')
 			else:
 				logging.debug("Creating new Audio Setup")
@@ -170,7 +181,7 @@ def fix_pianoteq_config(samplerate):
 				devicesetup.set('deviceType', 'JACK')
 				devicesetup.set('audioOutputDeviceName', 'Auto-connect OFF')
 				devicesetup.set('audioInputDeviceName', 'Auto-connect OFF')
-				devicesetup.set('audioDeviceRate', str(PIANOTEQ_SAMPLERATE))
+				devicesetup.set('audioDeviceRate', str(samplerate))
 				devicesetup.set('forceStereo', '0')
 				root.append(value)
 
@@ -202,181 +213,19 @@ def fix_pianoteq_config(samplerate):
 # Pianoteq module constants & parameter configuration/initialization
 # ------------------------------------------------------------------------------
 
-PIANOTEQ_SW_DIR = os.environ.get('ZYNTHIAN_SW_DIR', "/zynthian/zynthian-sw") + "/pianoteq6"
-PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + "/pianoteq"
-
-PIANOTEQ_CONFIG_DIR = os.path.expanduser("~") + "/.config/Modartt"
-PIANOTEQ_DATA_DIR = os.path.expanduser("~") + '/.local/share/Modartt/Pianoteq'
+PIANOTEQ_SW_DIR = os.environ.get('ZYNTHIAN_SW_DIR', '/zynthian/zynthian-sw') + '/pianoteq6'
+PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + '/pianoteq'
+PIANOTEQ_CONFIG_DIR = os.path.expanduser('~') + '/.config/Modartt'
+PIANOTEQ_DATA_DIR = os.path.expanduser('~') + '/.local/share/Modartt/Pianoteq'
 PIANOTEQ_ADDON_DIR = PIANOTEQ_DATA_DIR + '/Addons'
 PIANOTEQ_MY_PRESETS_DIR = PIANOTEQ_DATA_DIR + '/Presets'
-PIANOTEQ_MIDIMAPPINGS_DIR = PIANOTEQ_DATA_DIR + '/MidiMappings'
-
-try:
-	PIANOTEQ_VERSION = list(map(int, os.environ.get('PIANOTEQ_VERSION').split(".")))
-	PIANOTEQ_PRODUCT = os.environ.get('PIANOTEQ_PRODUCT')
-	PIANOTEQ_TRIAL = int(os.environ.get('PIANOTEQ_TRIAL'))
-except:
-	info = get_pianoteq_binary_info()
-	if info:
-		PIANOTEQ_VERSION = list(map(int, str(info['version']).split(".")))
-		PIANOTEQ_PRODUCT = str(info['product'])
-		PIANOTEQ_TRIAL = int(info['trial'])
-	else:
-		PIANOTEQ_VERSION = [6, 5, 1]
-		PIANOTEQ_PRODUCT = "STAGE"
-		PIANOTEQ_TRIAL = 1
-
-PIANOTEQ_NAME = "Pianoteq{}{}".format(PIANOTEQ_VERSION[0], PIANOTEQ_VERSION[1])
-
-if PIANOTEQ_VERSION[0] > 6 or (PIANOTEQ_VERSION[0] == 6 and PIANOTEQ_VERSION[1] >= 5):
-	PIANOTEQ_JACK_PORT_NAME = "Pianoteq"
-else:
-	PIANOTEQ_JACK_PORT_NAME = PIANOTEQ_NAME
-
-if PIANOTEQ_PRODUCT != "STAGE":
-	PIANOTEQ_CONFIG_FILENAME = "{}.prefs".format(PIANOTEQ_NAME)
-else:
-	PIANOTEQ_CONFIG_FILENAME = "{} {}.prefs".format(PIANOTEQ_NAME, PIANOTEQ_PRODUCT)
-
-PIANOTEQ_CONFIG_FILE = PIANOTEQ_CONFIG_DIR + "/" + PIANOTEQ_CONFIG_FILENAME
-
+PIANOTEQ_CONFIG_FILE = PIANOTEQ_CONFIG_DIR + '/Pianoteq.prefs'
 
 # ------------------------------------------------------------------------------
 # Piantoteq Engine Class
 # ------------------------------------------------------------------------------
 
 class zynthian_engine_pianoteq(zynthian_engine):
-	# ---------------------------------------------------------------------------
-	# Banks
-	# ---------------------------------------------------------------------------
-
-	bank_list_v7_3 = [
-		('Petrof Mistral', 0, 'Petrof Mistral', 'Antpetrof:A', 'Petrof 284 Mistral')
-	]
-
-	bank_list_v7_0 = [
-		('NY Steinway D', 0, 'Grand Steinway D (New-York)', 'D4:A', 'NY Steinway Model D'),
-		('HB Steinway D', 0, 'Grand Steinway D (Hamburg)', 'D4:A', 'HB Steinway Model D')
-	]
-
-	bank_list_v6_7 = [
-		('NY Steinway Square', 0, 'NY Steinway Square', 'Karsten:A'),
-		('J. Weimes Pianoforte', 0, 'J. Weimes Pianoforte', 'Karsten:A'),
-		('Ph. Schmidt Square', 0, 'Ph. Schmidt Square', 'Karsten:A'),
-		('G. Giusti Harpsichord', 0, 'G. Giusti Harpsichord', 'Karsten:A'),
-		('J. Salodiensis Virginal', 0, 'J. Salodiensis Virginal', 'Karsten:A')
-	]
-
-	bank_list_v6_6 = [
-		('Celtic Harp', 0, 'Celtic Harp', 'Harp:A')
-	]
-
-	bank_list_v6_5 = [
-		('Kalimba', 0, 'Kalimba', 'Celeste:A')
-	]
-
-	bank_list_v6_4 = [
-		('C. Bechstein DG', 0, 'C. Bechstein DG', 'BechsteinDG:A')
-	]
-
-	bank_list_v6_3 = [
-		('Ant. Petrof', 0, 'Ant. Petrof', 'Antpetrof:A', 'Ant. Petrof 275')
-	]
-
-	bank_list = [
-		('Steinway D', 1, 'Steinway D', 'D4:A'),
-		('Steinway B', 2, 'Steinway B', 'Modelb:A'),
-		('Steingraeber', 3, 'Steingraeber', 'Steingraeber:A'),
-		('Grotrian', 4, 'Grotrian', 'Grotrian:A'),
-		('Bluethner', 5, 'Bluethner', 'Bluethner:A'),
-		('YC5', 6, 'YC5', 'YC5:A'),
-		('K2', 7, 'K2', 'K2:A'),
-		('U4', 8, 'U4', 'U4:A'),
-		('MKI', 9, 'MKI', 'Electric:A'),
-		('MKII', 10, 'MKII', 'Electric:A'),
-		('W1', 11, 'W1', 'Electric:A'),
-		('Clavinet D6', 12, 'Clavinet D6', 'Clavinet:A'),
-		('Pianet N', 13, 'Pianet N', 'Clavinet:A'),
-		('Pianet T', 14, 'Pianet T', 'Clavinet:A'),
-		('Electra', 15, 'Electra', 'Clavinet:A'),
-		('Vibraphone V-B', 16, 'Vibraphone V-B', 'Vibes:A'),
-		('Vibraphone V-M', 17, 'Vibraphone V-M', 'Vibes:A'),
-		('Celesta', 18, 'Celesta', 'Celeste:A'),
-		('Glockenspiel', 19, 'Glockenspiel', 'Celeste:A'),
-		('Toy Piano', 20, 'Toy Piano', 'Celeste:A'),
-		('Marimba', 21, 'Marimba', 'Xylo:A'),
-		('Xylophone', 22, 'Xylophone', 'Xylo:A'),
-		('Steel Drum', 23, 'Steel Drum', 'Steel:A'),
-		('Spacedrum', 24, 'Spacedrum', 'Steel:A'),
-		('Hand Pan', 25, 'Hand Pan', 'Steel:A'),
-		('Tank Drum', 26, 'Tank Drum', 'Steel:A'),
-		('H. Ruckers II Harpsichord', 27, 'H. Ruckers II Harpsichord', 'Harpsichord:A'),
-		('Concert Harp', 28, 'Concert Harp', 'Harp:A'),
-		('J. Dohnal', 29, 'J. Dohnal', 'Kremsegg1:A'),
-		('I. Besendorfer', 30, 'I. Besendorfer', 'Kremsegg1:A'),
-		('S. Erard', 31, 'S. Erard', 'Kremsegg1:A'),
-		('J.B. Streicher', 32, 'J.B. Streicher', 'Kremsegg1:A'),
-		('J. Broadwood', 33, 'J. Broadwood', 'Kremsegg2:A'),
-		('I. Pleyel', 34, 'I. Pleyel', 'Kremsegg2:A'),
-		('J. Frenzel', 35, 'J. Frenzel', 'Kremsegg2:A'),
-		('C. Bechstein', 36, 'C. Bechstein', 'Kremsegg2:A'),
-		('Cimbalom', 37, 'Cimbalom', 'KIViR'),
-		('Neupert Clavichord', 38, 'Neupert Clavichord', 'KIViR'),
-		('F.E. Blanchet Harpsichord', 39, 'F.E. Blanchet Harpsichord', 'KIViR'),
-		('C. Grimaldi Harpsichord', 40, 'C. Grimaldi Harpsichord', 'KIViR'),
-		('J. Schantz', 41, 'J. Schantz', 'KIViR'),
-		('J.E. Schmidt', 42, 'J.E. Schmidt', 'KIViR'),
-		('A. Walter', 43, 'A. Walter', 'KIViR'),
-		('D. Schoffstoss', 44, 'D. Schoffstoss', 'KIViR'),
-		('C. Graf', 45, 'C. Graf', 'KIViR'),
-		('Erard', 46, 'Erard', 'KIViR'),
-		('Pleyel', 47, 'Pleyel', 'KIViR'),
-		('CP-80', 48, 'CP-80', 'KIViR'),
-		('Church Bells', 49, 'Church Bells', 'bells'),
-		('Tubular Bells', 50, 'Tubular Bells', 'bells')
-	]
-
-	free_instruments = [
-		'bells',
-		'KIViR'
-	]
-
-	spacer_demo_bank = [
-		(None, 0, '---- DEMO Instruments ----')
-	]
-
-	# ---------------------------------------------------------------------------
-	# Controllers & Screens
-	# ---------------------------------------------------------------------------
-
-	_ctrls = [
-		['volume', 7, 96],
-		['dynamic', 85, 64],
-		['mute', 19, 'off', 'off|on'],
-		['sustain', 64, 'off', [['off', '1/4', '1/2', '3/4', 'full'], [0, 25, 51, 76, 102]]],
-		['sostenuto', 66, 'off', [['off', '1/4', '1/2', '3/4', 'full'], [0, 25, 51, 76, 102]]],
-		# ['rev on/off',30,'off','off|on'],
-		# ['rev duration',31,0],
-		# ['rev mix',32,0],
-		# ['rev room',33,0],
-		# ['rev p/d',34,0],
-		# ['rev e/r',35,64],
-		# ['rev tone',36,64]
-	]
-
-	_ctrl_screens = [
-		['main', ['volume', 'sostenuto', 'dynamic', 'sustain']]
-		# ['reverb1',['volume','rev on/off','rev duration','rev mix']],
-		# ['reverb2',['volume','rev room','rev p/d','rev e/r']],
-		# ['reverb3',['volume','rev tone']]
-	]
-
-	# ----------------------------------------------------------------------------
-	# Config Variables
-	# ----------------------------------------------------------------------------
-
-	user_presets_dpath = PIANOTEQ_MY_PRESETS_DIR
-	user_presets_flist = None
 
 	# ----------------------------------------------------------------------------
 	# Initialization
@@ -384,377 +233,336 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	def __init__(self, zyngui=None, update_presets_cache=False):
 		super().__init__(zyngui)
-		self.name = PIANOTEQ_NAME
+		self.info = get_pianoteq_binary_info()
+		self.name = self.info['name'] #TODO: Should we just use "Pianoteq" for better snapshot compatibility
 		self.nickname = "PT"
-		self.jackname = PIANOTEQ_JACK_PORT_NAME
+		self.jackname = self.info['jackname']
 
-		# self.options['midi_chan']=False
 		self.options['drop_pc'] = True
 
-		self.preset = ""
-		self.midimapping = "ZynthianControllers"
+		self.show_demo = True
+		self.command_prompt = None
+		self._ctrls = None
+		self.preset = ['','','','']
+		self.params = {}
 
-		if self.config_remote_display():
-			self.proc_start_sleep = 5
-			self.command_prompt = None
-			if PIANOTEQ_VERSION[0] == 6 and PIANOTEQ_VERSION[1] == 0:
-				self.base_command = PIANOTEQ_BINARY
-			else:
-				self.base_command = PIANOTEQ_BINARY + " --multicore max"
-		else:
-			self.command_prompt = "Current preset:"
-			if PIANOTEQ_VERSION[0] == 6 and PIANOTEQ_VERSION[1] == 0:
-				self.base_command = PIANOTEQ_BINARY + " --headless"
-			else:
-				self.base_command = PIANOTEQ_BINARY + " --headless --multicore max"
+		self.command = '{} --prefs {}'.format(PIANOTEQ_BINARY, PIANOTEQ_CONFIG_FILE)
+		if self.info['api']:
+			self.command = PIANOTEQ_BINARY + " --serve 9001"
+		if not self.config_remote_display():
+			self.command += " --headless"
 
-		# Create & fix Pianoteq config
-		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
-			logging.debug("Pianoteq configuration does not exist. Creating one...")
-			ensure_dir(PIANOTEQ_CONFIG_DIR + "/")
-			if os.path.isfile(self.data_dir + "/pianoteq6/" + PIANOTEQ_CONFIG_FILENAME):
-				shutil.copy(self.data_dir + "/pianoteq6/" + PIANOTEQ_CONFIG_FILENAME, PIANOTEQ_CONFIG_DIR)
-			else:
-				shutil.copy(self.data_dir + "/pianoteq6/Pianoteq6.prefs", PIANOTEQ_CONFIG_FILE)
-
-		# Prepare bank list
-		self.prepare_banks()
-
-		# Create "My Presets" directory if not already exist
-		if not os.path.exists(self.user_presets_dpath):
-			os.makedirs(self.user_presets_dpath)
-
-		# Load (and generate if need it) the preset list
-		self.presets = defaultdict(list)
-		self.presets_cache_fpath = self.config_dir + '/pianoteq6/presets_cache.json'
-		if os.path.isfile(self.presets_cache_fpath) and not update_presets_cache:
-			self.load_presets_cache()
-		else:
-			self.save_presets_cache()
-
-		self.load_user_presets()
-		self.purge_banks()
-		self.generate_presets_midimapping()
+		self.create_config()
+		self.start()
 
 
 	def start(self):
+		if self.proc:
+			return
+		logging.info("Starting Engine {}".format(self.name))
 		try:
 			sr = self.zyngui.get_jackd_samplerate()
 		except:
 			sr = 44100
 		fix_pianoteq_config(sr)
-		super().start()
+		super().start() #TODO: Use lightweight Popen - last attempt stopped RPC working
+		# Wait for RPC interface to be available or 5s for <7.5 with GUI
+		for i in range(5):
+			if self.get_info():
+				break
+			sleep(1)
+
+
+	def stop(self):
+		if not self.proc:
+			return
+		self.rpc('quit')
+		if self.proc.isalive():
+			self.proc.close(True)
+		self.proc = None
+
+
+	# ---------------------------------------------------------------------------
+	# RPC-JSON API
+	# ---------------------------------------------------------------------------
+
+	#   Send a RPC request and return the result
+	#   method: API method call
+	#   params: List of parameters required by API method
+	def rpc(self, method, params=None, id=0):
+		url = 'http://127.0.0.1:9001/jsonrpc'
+		if params is None:
+			params=[]
+		payload = {
+			"method": method,
+			"params": params,
+			"jsonrpc": "2.0",
+			"id": id}
+		try:
+			result=requests.post(url, json=payload).json()
+		except:
+			return None
+		return result
+
+
+	#	Get info
+	def get_info(self):
+		return self.rpc('getInfo') #TODO: Check method
+
+
+	#   Load a preset by name
+	#   preset_name: Name of preset to load
+	#   bank: Name of bank preset resides (builtin presets have no bank)
+	#   returns: True on success
+	def load_preset(self, preset_name, bank):
+		result = self.rpc('loadPreset', {'name':preset_name, 'bank':bank})
+		return result and 'error' not in result
+
+
+	#   Save a preset by name to "zynthian" bank
+	#   preset_name: Name of preset to save
+	#   Note: Overwrites existing preset if exists
+	#   returns: True on success
+	def save_preset(self, bank_info, preset_name):
+		result = self.rpc('savePreset', {'name':preset_name, 'bank':'My Presets'})
+		return result and 'error' not in result
+
+
+	#   Get a list of preset names for an instrument
+	#   instrument: Name of instrument for which to load presets (default: all instruments)
+	#   returns: list of [preset names, pt bank] or None on failure
+	def get_presets(self, instrument=None):
+		presets = []
+		result = self.rpc('getListOfPresets')
+		if result is None or 'result' not in result:
+			return None
+		for preset in result['result']:
+			if (instrument is None or preset['instr'] == instrument):
+				presets.append([preset['name'], preset['bank']])
+		return presets
+
+
+	#   Get a list of groups (classes of instrument)
+	#   returns: List of group names or None on failure
+	def get_groups(self):
+		groups = []
+		result = self.rpc('getListOfPresets')
+		if result is None or 'result' not in result:
+			return None
+		for preset in result['result']:
+			if preset['class'] not in groups:
+				groups.append(preset['class'])
+		return groups
+
+
+	#   Get a list of instruments
+	#   group: Name of group to filter instruments (default: all groups)
+	#   returns: List of lists [instrument name, licenced (bool)] or None on failure
+	def get_instruments(self, group=None):
+		instruments = []
+		result = self.rpc('getListOfPresets')
+		if result and 'result' in result:
+			for preset in result['result']:
+				if (group is None or preset['class'] == group) and [preset['instr'], preset['license_status']=='ok'] not in instruments:
+					instruments.append([preset['instr'], preset['license_status']=='ok'])
+		return instruments
+
+
+	#   Get a list of parameters for the loaded preset
+	#   returns: dictionary of all parameters indexed by parameter id: {name, value} or None on failure
+	def get_params(self):
+		params = {}
+		result = self.rpc('getParameters')
+		if result is None or 'result' not in result:
+			return None
+		for param in result['result']:
+			params[param['id']] = {'name': param['name'], 'value': param['normalized_value']}
+		return params
+
+
+	#   Get a value of a parameter for the loaded preset
+	#   param: Parameter id
+	#   returns: Normalized value (0.0..1.0)
+	def get_param(self, param):
+		params = self.get_params()
+		if params and param in params:
+			return params[param]['value']
+		return 0
+
+
+	#   Set a value of a parameter for the loaded preset
+	#   param: Parameter id
+	#   value: Normalized value (0.0..1.0)
+	#   returns: True on success
+	def set_param(self, param, value):
+		result = self.rpc('setParameters', {'list':[{'id':param,'normalized_value':value}]})
+		return result and 'error' not in result
+
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
 
+	def add_layer(self, layer):
+		super().add_layer(layer)
+		self.generate_ctrl_screens(self.get_controllers_dict(layer)) #TODO: This takes too long and appends to end of existing list
+		layer.auto_save_bank = True
+
+
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-	def set_midi_chan(self, layer):
-		pass
-
-	# self.stop()
-	# self.command = self.base_command + ("--midi-channel", str(layer.get_midi_chan()+1),)
 
 	# ----------------------------------------------------------------------------
 	# Bank Managament
 	# ----------------------------------------------------------------------------
 
-	# Get user banks
-	@classmethod
-	def get_user_banks(cls):
-		cls.user_presets_flist = cls.get_user_preset_files()
-		user_banks = []
-		for bank in cls.bank_list:
-			user_presets = cls.get_user_presets(bank)
-			if len(user_presets) > 0:
-				user_banks.append(list(bank) + [bank[2]])
-		return user_banks
-
 	def get_bank_list(self, layer=None):
-		return self.bank_list
+		banks = [] # List of bank info: [uri/uid,?,name,?]
+		instruments = self.get_instruments()
+		for instrument in instruments:
+			if instrument[1]:
+				banks.append([instrument[0], None, instrument[0], instrument[1]])
+		if self.show_demo:
+			banks.append([None, 0, '---- DEMO Instruments ----', None])
+			for instrument in instruments:
+				if not instrument[1]:
+					banks.append([instrument[0], None, instrument[0], instrument[1]])
+		return banks
 
-	def set_bank(self, layer, bank):
-		return True
-
-
-
-	def prepare_banks(self):
-
-		if PIANOTEQ_VERSION[0] > 6 or (PIANOTEQ_VERSION[0] == 6 and PIANOTEQ_VERSION[1] >= 3):
-			self.bank_list = self.bank_list_v6_3 + self.bank_list
-
-		if PIANOTEQ_VERSION[0] > 6 or (PIANOTEQ_VERSION[0] == 6 and PIANOTEQ_VERSION[1] >= 4):
-			self.bank_list = self.bank_list_v6_4 + self.bank_list
-
-		if PIANOTEQ_VERSION[0] > 6 or (PIANOTEQ_VERSION[0] == 6 and PIANOTEQ_VERSION[1] >= 5):
-			self.bank_list = self.bank_list_v6_5 + self.bank_list
-
-		if PIANOTEQ_VERSION[0] > 6 or (PIANOTEQ_VERSION[0] == 6 and PIANOTEQ_VERSION[1] >= 6):
-			self.bank_list = self.bank_list_v6_6 + self.bank_list
-
-		if PIANOTEQ_VERSION[0] > 6 or (PIANOTEQ_VERSION[0] == 6 and PIANOTEQ_VERSION[1] >= 7):
-			self.bank_list = self.bank_list_v6_7 + self.bank_list
-
-		if PIANOTEQ_VERSION[0] > 7 or (PIANOTEQ_VERSION[0] == 7 and PIANOTEQ_VERSION[1] >= 0):
-			self.bank_list = self.bank_list_v7_0 + self.bank_list
-			# Rename some Instrument Packs
-			for i, row in enumerate(self.bank_list):
-				if row[3] == 'Steel:A':
-					self.bank_list[i] = (row[0], row[1], row[2], 'Steelpans:A')
-
-		if PIANOTEQ_VERSION[0] > 7 or (PIANOTEQ_VERSION[0] == 7 and PIANOTEQ_VERSION[1] >= 3):
-			self.bank_list = self.bank_list_v7_3 + self.bank_list
-
-		self.bank_list = sorted(self.bank_list, key=lambda x: x[2])
-		if not PIANOTEQ_TRIAL:
-			# Separate Licensed from Free and Demo
-			subl = get_pianoteq_config_value('subl')
-			if subl:
-				free_banks = []
-				licensed_banks = []
-				unlicensed_banks = []
-				for bank in self.bank_list:
-					if bank[3].upper() in map(str.upper, subl):
-						licensed_banks.append(bank)
-					elif bank[3].upper() in map(str.upper, self.free_instruments):
-						free_banks.append(bank)
-					else:
-						unlicensed_banks.append(bank)
-				self.bank_list = licensed_banks + free_banks + self.spacer_demo_bank + unlicensed_banks
 
 	# ----------------------------------------------------------------------------
 	# Preset Managament
 	# ----------------------------------------------------------------------------
 
-	def save_presets_cache(self):
-		logging.info("Caching Internal Presets ...")
-		# Get internal presets from Pianoteq ...
-		try:
-			pianoteq = subprocess.Popen([PIANOTEQ_BINARY, "--list-presets"], stdout=subprocess.PIPE)
-			bank_list = sorted(self.bank_list, key=lambda bank: len(bank[0]) if bank[0] else 0, reverse=True)
-			logging.debug("bank_list => {}".format(bank_list))
-			for line in pianoteq.stdout:
-				l = line.rstrip().decode("utf-8")
-				logging.debug("PRESET => {}".format(l))
-				for bank in bank_list:
-					try:
-						b = bank[0]
-						default_preset = ""
-						if len(bank) == 5:
-							default_preset = bank[4]
-
-						if b:
-							if b == l or default_preset == l:
-								self.presets[b].append([b, None, '<default>', None])
-								break
-							elif b + ' ' == l[0:len(b) + 1]:
-								# logging.debug("'%s' == '%s'" % (b,l[0:len(b)]))
-								preset_title = l[len(b):].strip()
-								preset_title = re.sub('^- ', '', preset_title)
-								self.presets[b].append([l, None, preset_title, None])
-								break
-					except:
-						pass
-		except Exception as e:
-			logging.error("Can't get internal presets: %s" % e)
-			return False
-		# Encode JSON
-		try:
-			json = JSONEncoder().encode(self.presets)
-			logging.info("Saving presets cache '%s' => \n%s" % (self.presets_cache_fpath, json))
-		except Exception as e:
-			logging.error("Can't generate JSON while saving presets cache: %s" % e)
-			return False
-		# Write to file
-		ensure_dir(self.presets_cache_fpath)
-		try:
-			with open(self.presets_cache_fpath, "w") as fh:
-				fh.write(json)
-				fh.flush()
-				os.fsync(fh.fileno())
-		except Exception as e:
-			logging.error("Can't save presets cache '%s': %s" % (self.presets_cache_fpath, e))
-			return False
-		return True
-
-	def load_presets_cache(self):
-		# Load from file
-		try:
-			with open(self.presets_cache_fpath, "r") as fh:
-				json = fh.read()
-				logging.info("Loading presets cache %s => \n%s" % (self.presets_cache_fpath, json))
-		except Exception as e:
-			logging.error("Can't load presets cache '%s': %s" % (self.presets_cache_fpath, e))
-			return False
-		# Decode JSON
-		try:
-			self.presets = JSONDecoder().decode(json)
-		except Exception as e:
-			logging.error("Can't decode JSON while loading presets cache: %s" % e)
-			return False
-		return True
-
-	# Get user preset file list
-	@classmethod
-	def get_user_preset_files(cls):
-		flist = []
-		for d in sorted(os.listdir(cls.user_presets_dpath)):
-			for f in sorted(os.listdir(cls.user_presets_dpath + "/" + d)):
-				flist.append(d + "/" + f)
-		return flist
-
-	# Get user presets
-	@classmethod
-	def get_user_presets(cls, bank):
-		user_presets = []
-		if bank[0]:
-			bank_name = bank[0]
-			bank_prefix = bank_name + " "
-			logging.debug("Getting User presets for {}".format(bank_name))
-			for f in cls.user_presets_flist:
-				if (isfile(join(cls.user_presets_dpath, f)) and f[-4:].lower() == ".fxp"):
-					dbank, fname = f.split("/", 1)
-					if bank_prefix == fname[0:len(bank_prefix)]:
-						preset_path = dbank + "/" + fname[:-4]
-						preset_title = dbank + "/" + str.replace(fname[len(bank_prefix):-4], '_', ' ').strip()
-						user_presets.append([preset_path, None, preset_title, None, dbank])
-		return user_presets
-
-	# Get user presets
-	def load_user_presets(self):
-		type(self).user_presets_flist = self.get_user_preset_files()
-		for bank in self.bank_list:
-			user_presets = self.get_user_presets(bank)
-			if len(user_presets) > 0:
-				# Add internal presets
-				bank_name = bank[0]
-				try:
-					self.presets[bank_name] = user_presets + self.presets[bank_name]
-				except:
-					self.presets[bank_name] = user_presets
-
-	# Remove banks without presets
-	def purge_banks(self):
-		logging.debug("Purge Banks ...")
-		purged_bank_list = []
-		for bank in self.bank_list:
-			try:
-				if not bank[0] or (bank[0] in self.presets and len(self.presets[bank[0]]) > 0):
-					purged_bank_list.append(bank)
-			except:
-				pass
-		self.bank_list = purged_bank_list
-
 	def get_preset_list(self, bank):
-		bank_name = bank[0]
-		if bank_name in self.presets:
-			logging.info("Getting Preset List for %s [%s]" % (self.name, bank_name))
-			res = copy.deepcopy(self.presets[bank_name])
-		else:
-			logging.error("Can't get Preset List for %s [%s]" % (self.name, bank_name))
-			res = []
-		return res
+		# [uri/uid, pt bank, display name,zyn bank (pt instr)]
+		presets = []
+		result = self.get_presets(bank[0])
+		user_presets = False
+		for preset in result:
+			if preset[1]:
+				presets.append([preset[0], preset[1] , preset[0], bank[0]])
+				user_presets = True
+		if user_presets:
+			presets.insert(0, [None, None, 'User Presets', ''])
+			presets.append([None, None, 'Factory Presets', ''])
+		for preset in result:
+			if not preset[1]:
+				presets.append([preset[0], preset[1] , preset[0], bank[0]])
+		return presets
+
 
 	def set_preset(self, layer, preset, preload=False):
-		mm = "Zynthian-{}".format(preset[3])
-		if mm == self.midimapping:
-			super().set_preset(layer, preset, preload)
-			self.preset = preset[0]
-			time.sleep(1)
-		else:
-			self.midimapping = mm
-			self.preset = preset[0]
-			# self.command = self.base_command + " --midi-channel {}".format(layer.get_midi_chan()+1)
-			self.command = self.base_command + " --midi-channel all"
-			self.command += " --midimapping \"{}\"".format(self.midimapping)
-			self.command += " --preset \"{}\"".format(preset[0])
-			self.stop()
-			self.start()
-			self.zyngui.zynautoconnect_midi(True)
-			self.zyngui.zynautoconnect_audio(False)
+		if self.load_preset(preset[0], preset[1]):
+			self.preset = preset
+			if preset[3] in ['CP-80', 'Vintage Tines MKI', 'Vintage Tines MKII', 'Vintage Reeds W1', 'Clavinet D6', 'Pianet N', 'Pianet T', 'Electra-Piano']:
+				self._ctrls['Output Mode'].set_options({'labels': ['Line out (stereo)',  'Line out (mono)', 'Room mic', 'Binaural']})
+			else:
+				self._ctrls['Output Mode'].set_options({'labels': ['Stereophonic',  'Monophonic', 'Sound Recording', 'Binaural']})
+			self.params = self.get_params()
+			for param in self.params:
+				self._ctrls[param].set_value(self.params[param]['value'], False)
+			# Update control labels
+			for effect in range(1, 4):
+				for effect_param in range(1, 9):
+					symbol = f'Effect[{effect}].Param[{effect_param}]'
+					try:
+						self._ctrls[symbol].name = self.params[symbol]['name']
+						self._ctrls[symbol].short_name = self.params[symbol]['name']
+					except:
+						pass
+			return True
+		return False
 
-		layer.send_ctrl_midi_cc()
-		return True
+
+	def is_preset_user(self, preset):
+		return preset[1] != ''
+
+
+	def preset_exists(self, bank_info, preset_name):
+		# Instruments are presented as banks in Zynthian UI but user presets are saved in pianoteq banks 
+		presets = self.zynapi_get_presets({'name':'My Presets', 'fullpath':f'{PIANOTEQ_MY_PRESETS_DIR}/My Presets'})
+		for preset in presets:
+			if preset['name'] == preset_name:
+				return True
+		return False
+
 
 	def cmp_presets(self, preset1, preset2):
 		try:
-			if preset1[0] == preset2[0] and preset1[2] == preset2[2]:
+			if preset1[0] == preset2[0] and preset1[3] == preset2[3]:
 				return True
 			else:
 				return False
 		except:
 			return False
 
-	# --------------------------------------------------------------------------
-	# Special
-	# --------------------------------------------------------------------------
 
-	def generate_presets_midimapping(self):
-		# Copy default "static" MIDI Mappings if doesn't exist
-		if not os.path.isfile(PIANOTEQ_MIDIMAPPINGS_DIR + "/ZynthianControllers.ptm"):
-			logging.debug("Pianoteq Base MIDI-Mapping does not exist. Creating ...")
-			ensure_dir(PIANOTEQ_MIDIMAPPINGS_DIR + "/")
-			shutil.copy(self.data_dir + "/pianoteq6/Zynthian.ptm",
-						PIANOTEQ_MIDIMAPPINGS_DIR + "/ZynthianControllers.ptm")
+	def is_modified(self):
+		params = self.get_params()
+		for param in params:
+			try:
+				if self.params[param]['value'] != params[param]['value']:
+					return True
+			except:
+				return True
+		return False
 
-		# Generate "Program Change" for Presets as MIDI-Mapping registers using Pianoteq binary format
-		mmn = 0
-		data = []
-		for bank in self.bank_list:
-			if bank[0] in self.presets:
-				for prs in self.presets[bank[0]]:
-					try:
-						# logging.debug("Generating Pianoteq MIDI-Mapping for {}".format(prs[0]))
-						midi_event_str = bytes("Program Change " + str(len(data) + 1), "utf8")
-						parts = prs[0].split('/')
-						if len(parts) > 1:
-							action_str = bytes("{{LoadPreset|28|{}|{}|0}}".format(parts[0], parts[1]), "utf8")
-						else:
-							action_str = bytes("{{LoadPreset|28||{}|0}}".format(prs[0]), "utf8")
-						row = b'\x01\x00\x00\x00'
-						row += struct.pack("<I", len(midi_event_str)) + midi_event_str
-						row += struct.pack("<I", len(action_str)) + action_str
-						prs[1] = len(data)
-						prs[3] = mmn
-						data.append(row)
-						if len(data) > 127:
-							self.create_midimapping_file(mmn, data)
-							mmn += 1
-							data = []
-					except Exception as e:
-						logging.error(e)
 
-		if len(data) > 0:
-			self.create_midimapping_file(mmn, data)
+	def delete_preset(self, bank_info, preset):
+		return self.zynapi_remove_preset(f'{PIANOTEQ_MY_PRESETS_DIR}/{preset[1]}/{preset[0]}.fxp')
 
-	def create_midimapping_file(self, mmn, data):
-		# Create a new file copying from "static" Controllers Mappging and adding the "generated" Presets Mappgings
-		fpath = PIANOTEQ_MIDIMAPPINGS_DIR + "/Zynthian-{}.ptm".format(mmn)
-		logging.debug("Generating Pianoteq MIDI-Mapping: {}".format(fpath))
-		shutil.copy(PIANOTEQ_MIDIMAPPINGS_DIR + "/ZynthianControllers.ptm", fpath)
-		with open(fpath, mode='a+b') as file:
-			for row in data:
-				file.write(row)
 
-		# Update Header: file size & register counter
-		with open(fpath, mode='r+b') as file:
-			# Read Header
-			file.seek(0)
-			header = bytearray(file.read(28))
-			# Remaining file size in bytes: (filesize - 8)
-			fsize = os.path.getsize(fpath) - 8
-			struct.pack_into("<I", header, 4, fsize)
-			# Register Counter (Num. of Mappings)
-			res = struct.unpack_from("<I", header, 24)
-			counter = res[0] + len(data)
-			struct.pack_into("<I", header, 24, counter)
-			# Write Updated Header
-			file.seek(0)
-			file.write(header)
+	def rename_preset(self, bank_info, preset, new_name):
+		return self.zynapi_rename_preset(f'{PIANOTEQ_MY_PRESETS_DIR}/{preset[1]}/{preset[0]}.fxp', new_name)
+
+
+	# ---------------------------------------------------------------------------
+	# Controller management
+	# ---------------------------------------------------------------------------
+
+	# Get zynthian controllers dictionary:
+	def get_controllers_dict(self, layer):
+		init = False
+		if self._ctrls is None:
+			self._ctrls = OrderedDict()
+			init = True
+
+		params = self.get_params()
+		for param in params:
+			options = {
+				'value': 0,
+				'value_min': 0.0,
+				'value_max': 1.0,
+				'is_integer': False,
+				'not_on_gui': False
+			}
+			# Discrete parameter values
+			if param in ['Sustain Pedal', 'Soft Pedal', 'Sostenuto Pedal', 'Harmonic Pedal', 'Rattle Pedal', 'Lute Stop Pedal', 'Celeste Pedal', 'Mozart Rail', 'Super Sostenuto', 'Pinch Harmonic Pedal']:
+				options['labels'] = ['Off', '1/4', '1/2', '3/4', 'On']
+			elif param in ['Equalizer Switch', 'Bounce Switch', 'Bounce Sync', 'Effect[1].Switch', 'Effect[2].Switch', 'Effect[3].Switch', 'Reverb Switch', 'Limiter Switch', 'Keyboard Range Switch']:
+				options['labels'] = ['Off', 'On']
+			elif param == 'Output Mode':
+				options['labels'] = ['Stereophonic',  'Monophonic', 'Sound Recording', 'Binaural',]
+			elif param == 'Diapason':
+				pass #TODO Scale display 220..880Hz
+			if init:
+				zctrl = zynthian_controller(self, param, params[param]['name'], options)
+				self._ctrls[param] = zctrl
+				# Default MIDI CC mapping
+				default_cc = {'Sustain Pedal': 64, 'Sostenuto Pedal': 66, 'Soft Pedal': 67, 'Harmonic Pedal': 69}
+				if param in default_cc:
+					zctrl.set_midi_learn(layer.midi_chan, default_cc[param])
+			else:
+				self._ctrls[param].set_options(options)
+		return self._ctrls
+
+
+	def send_controller_value(self, zctrl):
+		self.set_param(zctrl.symbol, zctrl.value)
+
 
 	# ---------------------------------------------------------------------------
 	# API methods
@@ -763,63 +571,105 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	@classmethod
 	def zynapi_get_banks(cls):
 		banks = []
-		for b in cls.get_user_banks():
-			banks.append({
-				'text': b[2],
-				'name': b[2],
-				'fullpath': b[0],
-				'raw': b,
-				'readonly': False
-			})
+		for d in os.listdir(PIANOTEQ_MY_PRESETS_DIR):
+			if os.listdir(f'{PIANOTEQ_MY_PRESETS_DIR}/{d}'):
+				banks.append({
+					'text': d,
+					'name': d,
+					'fullpath': f'{PIANOTEQ_MY_PRESETS_DIR}/{d}',
+					'readonly': False
+				})
+		banks.append({
+			'text': 'Factory Presets',
+			'name': '',
+			'fullpath': '',
+			'readonly': True
+		})
 		return banks
+
 
 	@classmethod
 	def zynapi_get_presets(cls, bank):
 		presets = []
-		for p in cls.get_user_presets(bank['raw']):
-			presets.append({
-				'text': p[2] + ".fxp",
-				'name': p[2][len(p[4]) + 1:],
-				'fullpath': cls.user_presets_dpath + "/" + p[0] + ".fxp",
-				'raw': p,
-				'readonly': False
-			})
+		if bank['name'] == '':
+			all_presets = check_output([PIANOTEQ_BINARY, '--list-presets']).decode('utf-8').split('\n')
+			for preset in all_presets:
+				if preset == '' or  '/' in preset: continue
+				presets.append({
+					'text': preset,
+					'name': preset,
+					'fullpath': '',
+					'readonly': True
+				})
+		else:
+			for f in os.listdir(f"{bank['fullpath']}"):
+				if f.endswith('.fxp'):
+					presets.append({
+						'text': f,
+						'name': f[:-4],
+						'fullpath': f"{bank['fullpath']}/{f}",
+						'raw': f"{bank['fullpath']}/{f}",
+						'readonly': False
+					})
 		return presets
 
-	@classmethod
-	def zynapi_rename_preset(cls, preset_path, new_preset_name):
-		head, tail = os.path.split(preset_path)
-		fname, ext = os.path.splitext(tail)
-
-		for b in cls.get_user_banks():
-			if fname.startswith(b[2]):
-				new_preset_path = head + "/" + b[2] + " " + new_preset_name + ext
-				os.rename(preset_path, new_preset_path)
-				break
-
-	@classmethod
-	def zynapi_remove_preset(cls, preset_path):
-		os.remove(preset_path)
 
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		return fullpath
 
+
 	@classmethod
 	def zynapi_get_formats(cls):
 		return "fxp"
 
-	@classmethod
-	def zynapi_martifact_formats(cls):
-		return "fxp"
 
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
 		fname, ext = os.path.splitext(dpath)
 		if ext.lower() in ['.fxp']:
-			shutil.move(dpath, cls.user_presets_dpath + "/My Presets")
+			shutil.move(dpath, bank_path)
 		else:
-			raise Exception("File doesn't look like a FXP preset file")
+			raise Exception("File doesn't look like a Pianoteq FXP preset")
 
+
+	@classmethod
+	def zynapi_rename_preset(cls, preset_path, new_preset_name):
+		if preset_path[-4:].lower() != ".fxp":
+			return False
+		try:
+			head, tail = os.path.split(preset_path)
+			fname, ext = os.path.splitext(tail)
+			new_preset_path = head + "/" + new_preset_name + ext
+			os.rename(preset_path, new_preset_path)
+			return True
+		except:
+			pass
+		return False
+		
+
+	@classmethod
+	def zynapi_remove_preset(cls, preset_path):
+		if preset_path[-4:].lower() != ".fxp":
+			return False
+		os.system(f"rm '{preset_path}'")
+		return True
+
+
+	# Create Pianoteq config
+	@classmethod
+	def create_config(cls):
+		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
+			logging.debug("Pianoteq configuration does not exist. Creating one...")
+			if not os.path.exists(PIANOTEQ_CONFIG_DIR):
+				os.makedirs(PIANOTEQ_CONFIG_DIR)
+			info = get_pianoteq_binary_info()
+			try:
+				shutil.copy("{}/Pianoteq{}{} {}.prefs".format(PIANOTEQ_CONFIG_DIR, info['version'][0], info['version'][1], info['product']), PIANOTEQ_CONFIG_FILE)
+			except:
+				try:
+					shutil.copy("{}/Pianoteq{}{}.prefs".format(PIANOTEQ_CONFIG_DIR, info['version'][0], info['version'][1]), PIANOTEQ_CONFIG_FILE)
+				except:
+					shutil.copy(cls.data_dir + "/pianoteq6/Pianoteq6.prefs", PIANOTEQ_CONFIG_FILE)
 
 # ******************************************************************************
