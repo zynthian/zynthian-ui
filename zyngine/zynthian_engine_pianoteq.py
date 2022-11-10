@@ -68,7 +68,7 @@ def get_pianoteq_binary_info():
 		'api': False,
 		'multicore': '1',
 		'trial': True,
-		'product': 'STAGE',
+		'product': '',
 		'name': 'Pianoteq',
 		'jackname': 'Pianoteq'
 	}
@@ -94,10 +94,7 @@ def get_pianoteq_binary_info():
 					info['multicore'] = '1'
 				else:
 					info['multicore'] = '2'
-				info['name'] = 'Pianoteq'
-				if info['version'][0] > 6 or (info['version'][0] == 6 and info['version'][1] >= 5):
-					info['jackname'] = "Pianoteq"
-				else:
+				if  info['version'][0] == 6 and info['version'][1] < 5:
 					info['jackname'] = "Pianoteq{}{}".format(info['version'][0], info['version'][1])
 				# Get trial info
 				m = trial_pattern.search(l)
@@ -115,6 +112,12 @@ def get_pianoteq_binary_info():
 						info['product'] = "PRO"
 					else:
 						info['product'] = "STANDARD"
+		if info['product']:
+			info['name'] += ' {}'.format(info['product'])
+		if info['trial']:
+			info['name'] += " (Demo)"
+		if info['version_str']:
+			info['name'] += " {}".format(info['version_str'])
 		if info['product'] == "STANDARD":
 			lkey = get_pianoteq_config_value('LKey')
 			if len(lkey) > 0:
@@ -133,6 +136,21 @@ def get_pianoteq_config_value(key):
 			if xml_value.attrib['name'] == key:
 				values = xml_value.attrib['val'].split(';')
 	return values
+
+
+def create_pianoteq_config():
+	if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
+		logging.debug("Pianoteq configuration does not exist. Creating one...")
+		if not os.path.exists(PIANOTEQ_CONFIG_DIR):
+			os.makedirs(PIANOTEQ_CONFIG_DIR)
+		info = get_pianoteq_binary_info()
+		try:
+			shutil.copy("{}/Pianoteq{}{} {}.prefs".format(PIANOTEQ_CONFIG_DIR, info['version'][0], info['version'][1], info['product']), PIANOTEQ_CONFIG_FILE)
+		except:
+			try:
+				shutil.copy("{}/Pianoteq{}{}.prefs".format(PIANOTEQ_CONFIG_DIR, info['version'][0], info['version'][1]), PIANOTEQ_CONFIG_FILE)
+			except:
+				shutil.copy(os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data") + "/pianoteq6/Pianoteq6.prefs", PIANOTEQ_CONFIG_FILE)
 
 
 def fix_pianoteq_config(samplerate):
@@ -234,7 +252,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	def __init__(self, zyngui=None, update_presets_cache=False):
 		super().__init__(zyngui)
 		self.info = get_pianoteq_binary_info()
-		self.name = self.info['name'] #TODO: Should we just use "Pianoteq" for better snapshot compatibility
+		self.name = 'Pianoteq'
 		self.nickname = "PT"
 		self.jackname = self.info['jackname']
 
@@ -252,7 +270,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if not self.config_remote_display():
 			self.command += " --headless"
 
-		self.create_config()
+		self.create_pianoteq_config()
 		self.start()
 
 
@@ -625,6 +643,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	@classmethod
+	def zynapi_martifact_formats(cls):
+		return "fxp"
+
+
+	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
 		fname, ext = os.path.splitext(dpath)
 		if ext.lower() in ['.fxp']:
@@ -654,22 +677,5 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			return False
 		os.system(f"rm '{preset_path}'")
 		return True
-
-
-	# Create Pianoteq config
-	@classmethod
-	def create_config(cls):
-		if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
-			logging.debug("Pianoteq configuration does not exist. Creating one...")
-			if not os.path.exists(PIANOTEQ_CONFIG_DIR):
-				os.makedirs(PIANOTEQ_CONFIG_DIR)
-			info = get_pianoteq_binary_info()
-			try:
-				shutil.copy("{}/Pianoteq{}{} {}.prefs".format(PIANOTEQ_CONFIG_DIR, info['version'][0], info['version'][1], info['product']), PIANOTEQ_CONFIG_FILE)
-			except:
-				try:
-					shutil.copy("{}/Pianoteq{}{}.prefs".format(PIANOTEQ_CONFIG_DIR, info['version'][0], info['version'][1]), PIANOTEQ_CONFIG_FILE)
-				except:
-					shutil.copy(cls.data_dir + "/pianoteq6/Pianoteq6.prefs", PIANOTEQ_CONFIG_FILE)
 
 # ******************************************************************************

@@ -188,7 +188,7 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 	def __init__(self, zyngui=None, update_presets_cache=False):
 		super().__init__(zyngui)
 		self.info = get_pianoteq_binary_info()
-		self.name = self.info['name']
+		self.name = 'Pianoteq'
 		self.nickname = "PT"
 		self.jackname = self.info['jackname']
 
@@ -205,7 +205,7 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			self.command_prompt = "Current preset:"
 			self.base_command = "{} --prefs {} --headless".format(PIANOTEQ_BINARY, PIANOTEQ_CONFIG_FILE)
 
-		zynthian_engine_pianoteq.create_config()
+		create_pianoteq_config()
 
 		# Prepare bank list
 		self.prepare_banks()
@@ -247,18 +247,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 	# ----------------------------------------------------------------------------
 	# Bank Managament
 	# ----------------------------------------------------------------------------
-
-	# Get user banks
-	@classmethod
-	def get_user_banks(cls):
-		cls.user_presets_flist = cls.get_user_preset_files()
-		user_banks = []
-		for bank in cls.bank_list:
-			user_presets = cls.get_user_presets(bank)
-			if len(user_presets) > 0:
-				user_banks.append(list(bank) + [bank[2]])
-		return user_banks
-
 
 	def get_bank_list(self, layer=None):
 		return self.bank_list
@@ -385,6 +373,18 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			logging.error("Can't decode JSON while loading presets cache: %s" % e)
 			return False
 		return True
+
+
+	# Get user banks
+	@classmethod
+	def get_user_banks(cls):
+		cls.user_presets_flist = cls.get_user_preset_files()
+		user_banks = []
+		for bank in cls.bank_list:
+			user_presets = cls.get_user_presets(bank)
+			if len(user_presets) > 0:
+				user_banks.append(list(bank) + [bank[2]])
+		return user_banks
 
 
 	# Get user preset file list
@@ -584,47 +584,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 				'readonly': False
 			})
 		return presets
-
-
-	@classmethod
-	def zynapi_rename_preset(cls, preset_path, new_preset_name):
-		head, tail = os.path.split(preset_path)
-		fname, ext = os.path.splitext(tail)
-
-		for b in cls.get_user_banks():
-			if fname.startswith(b[2]):
-				new_preset_path = head + "/" + b[2] + " " + new_preset_name + ext
-				os.rename(preset_path, new_preset_path)
-				break
-
-
-	@classmethod
-	def zynapi_remove_preset(cls, preset_path):
-		os.remove(preset_path)
-
-
-	@classmethod
-	def zynapi_download(cls, fullpath):
-		return fullpath
-
-
-	@classmethod
-	def zynapi_get_formats(cls):
-		return "fxp"
-
-
-	@classmethod
-	def zynapi_martifact_formats(cls):
-		return "fxp"
-
-
-	@classmethod
-	def zynapi_install(cls, dpath, bank_path):
-		fname, ext = os.path.splitext(dpath)
-		if ext.lower() in ['.fxp']:
-			shutil.move(dpath, cls.user_presets_dpath + "/My Presets")
-		else:
-			raise Exception("File doesn't look like a FXP preset file")
 
 
 # ******************************************************************************
