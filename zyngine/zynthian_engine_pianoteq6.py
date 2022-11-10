@@ -309,7 +309,7 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 		logging.info("Caching Internal Presets ...")
 		# Get internal presets from Pianoteq ...
 		try:
-			pianoteq = subprocess.Popen([PIANOTEQ_BINARY, "--list-presets"], stdout=subprocess.PIPE)
+			pianoteq = subprocess.Popen([PIANOTEQ_BINARY, "--prefs {}".format(PIANOTEQ_CONFIG_FILE), "--list-presets"], stdout=subprocess.PIPE)
 			bank_list = sorted(self.bank_list, key=lambda bank: len(bank[0]) if bank[0] else 0, reverse=True)
 			logging.debug("bank_list => {}".format(bank_list))
 			for line in pianoteq.stdout:

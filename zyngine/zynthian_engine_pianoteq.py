@@ -43,7 +43,7 @@ from . import zynthian_controller
 # Pianoteq module helper functions
 # ------------------------------------------------------------------------------
 
-# True if pianoteq binary is installed
+# True if pianoteq binary is installed. Fixes symlink if broken
 def check_pianoteq_binary():
 	if os.path.islink(PIANOTEQ_BINARY) and not os.access(PIANOTEQ_BINARY, os.X_OK):
 		os.remove(PIANOTEQ_BINARY)
@@ -270,7 +270,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if not self.config_remote_display():
 			self.command += " --headless"
 
-		self.create_pianoteq_config()
+		create_pianoteq_config()
 		self.start()
 
 
