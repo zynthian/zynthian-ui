@@ -57,7 +57,7 @@ class zynthian_controller:
 		self.is_integer = True # True if control is Integer
 		self.is_logarithmic = False # True if control uses logarithmic scale
 		self.is_dirty = True # True if control value changed since last UI update
-		self.not_on_gui = True # True to hint to GUI to show control
+		self.not_on_gui = False # True to hint to GUI to show control
 		self.display_priority = 0 # Hint of order in which to display control (higher comes first)
 
 		# Parameters to send values if dedciated engine send method not available
