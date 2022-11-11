@@ -66,6 +66,7 @@ class zynthian_basic_engine:
 		self.command_env = os.environ.copy()
 		self.command_prompt = prompt
 		self.command_cwd = cwd
+		self.ignore_not_on_gui = False
 
 	def __del__(self):
 		self.stop()
@@ -604,43 +605,53 @@ class zynthian_engine(zynthian_basic_engine):
 		return zctrls
 
 
+	def get_ctrl_screen_name(self, gname, i):
+		if i > 0:
+			gname = "{}#{}".format(gname, i)
+		return gname
+
+
 	def generate_ctrl_screens(self, zctrl_dict):
 		if self._ctrl_screens is None:
 			self._ctrl_screens = []
 
-		groups = {}
+		# Get zctrls by group
+		zctrl_group = OrderedDict()
 		for symbol, zctrl in zctrl_dict.items():
-			if zctrl.not_on_gui:
-				continue
-			if zctrl.group_symbol not in groups:
+			gsymbol = zctrl.group_symbol
+			if gsymbol not in zctrl_group:
 				if zctrl.group_name:
-					groups[zctrl.group_symbol] = zctrl.group_name
+					zctrl_group[gsymbol] = [zctrl.group_name, OrderedDict()]
 				else:
-					groups[zctrl.group_symbol] = zctrl.group_symbol
-			groups[None] = self.nickname
+					zctrl_group[gsymbol] = [zctrl.group_symbol, OrderedDict()]
+			zctrl_group[gsymbol][1][symbol] = zctrl
+		if None in zctrl_group:
+			zctrl_group[None][0] = "Ctrls"
 
-		for group in groups:
+		for gsymbol, gdata in zctrl_group.items():
 			ctrl_set = []
-			c = 1
-			for symbol, zctrl in zctrl_dict.items():
-				if zctrl.not_on_gui:
-					continue
+			gname = gdata[0]
+			if len(gdata[1]) <= 4:
+				c = 0
+			else:
+				c = 1
+			for symbol, zctrl in gdata[1].items():
 				try:
-					#logging.debug("CTRL {}".format(symbol))
-					if group != zctrl.group_symbol:
+					if not self.ignore_not_on_gui and zctrl.not_on_gui:
 						continue
+					#logging.debug("CTRL {}".format(symbol))
 					ctrl_set.append(symbol)
 					if len(ctrl_set) >= 4:
-						#logging.debug("ADDING CONTROLLER SCREEN {}#{}".format(self.nickname,c))
-						self._ctrl_screens.append(["{}#{}".format(groups[group], c), ctrl_set])
-						ctrl_set=[]
+						#logging.debug("ADDING CONTROLLER SCREEN {}".format(self.get_ctrl_screen_name(gname,c)))
+						self._ctrl_screens.append([self.get_ctrl_screen_name(gname,c),ctrl_set])
+						ctrl_set = []
 						c = c + 1
 				except Exception as err:
 					logging.error("Generating Controller Screens => {}".format(err))
 
 			if len(ctrl_set) >= 1:
-				#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-				self._ctrl_screens.append(["{}#{}".format(groups[group], c), ctrl_set])
+				#logging.debug("ADDING CONTROLLER SCREEN {}",format(self.get_ctrl_screen_name(gname,c)))
+				self._ctrl_screens.append([self.get_ctrl_screen_name(gname,c),ctrl_set])
 
 
 	def send_controller_value(self, zctrl):

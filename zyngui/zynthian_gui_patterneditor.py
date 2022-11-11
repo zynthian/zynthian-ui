@@ -224,25 +224,33 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
-		options['Tempo'] = 1
-		options['Beats per bar'] = 1
+		options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
+		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
 		if self.zyngui.zynseq.libseq.isMetronomeEnabled():
-			options['[X] Metronome'] = 1
+			options['[X] Metronome'] = 'Metronome'
 		else:
-			options['[  ] Metronome'] = 1
-		options['Metronome volume'] = 1
-		options['Beats in pattern'] = 1
-		options['Steps per beat'] = 1
-		options['Copy pattern'] = 1
-		options['Clear pattern'] = 1
-		options['Transpose pattern'] = 1
-		options['Vertical zoom'] = 1
-		options['Scale'] = 1
-		options['Tonic'] = 1
-		options['Rest note'] = 1
-		#options['Add program change'] = 1
-		options['Input channel'] = 1
-		options['Export to SMF'] = 1
+			options['[  ] Metronome'] = 'Metronome'
+		options['Metronome volume ({})'.format(int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume()))] = 'Metronome volume'
+		options['Beats in pattern ({})'.format(self.zyngui.zynseq.libseq.getBeatsInPattern())] = 'Beats in pattern'
+		options['Steps per beat ({})'.format(self.zyngui.zynseq.libseq.getStepsPerBeat())] = 'Steps per beat'
+		options['Copy pattern'] = 'Copy pattern'
+		options['Clear pattern'] = 'Clear pattern'
+		options['Transpose pattern'] = 'Transpose pattern'
+		options['Vertical zoom ({})'.format(self.zoom)] = 'Vertical zoom'
+		scales = self.get_scales()
+		options['Scale ({})'.format(scales[self.zyngui.zynseq.libseq.getScale()])] = 'Scale'
+		options['Tonic ({})'.format(NOTE_NAMES[self.zyngui.zynseq.libseq.getTonic()])] = 'Tonic'
+		note = self.zyngui.zynseq.libseq.getInputRest()
+		if note < 128:
+			options['Rest note ({}{})'.format(NOTE_NAMES[note % 12], note // 12 - 1)] = 'Rest note'
+		else:
+			options['Rest note (None)'] = 'Rest note'
+		#options['Add program change'] = 'Add program change'
+		channel = self.get_input_channel()
+		if channel == 0:
+			channel = 'OFF'
+		options['Input channel ({})'.format(channel)] = 'Input channel'
+		options['Export to SMF'] = 'Export to SMF'
 		self.zyngui.screens['option'].config("Pattern Editor Menu", options, self.menu_cb)
 		self.zyngui.show_screen('option')
 
@@ -255,34 +263,32 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	def menu_cb(self, option, params):
-		if option == 'Tempo':
+		if params == 'Tempo':
 			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})
-		elif option == 'Beats per bar':
+		elif params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
-		elif option == '[  ] Metronome':
-			self.zyngui.zynseq.libseq.enableMetronome(True)
-		elif option == '[X] Metronome':
-			self.zyngui.zynseq.libseq.enableMetronome(False)
-		elif option == 'Metronome volume':
+		elif params == 'Metronome':
+			self.zyngui.zynseq.libseq.enableMetronome(not self.zyngui.zynseq.libseq.isMetronomeEnabled())
+		elif params == 'Metronome volume':
 			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value':int(100*self.zyngui.zynseq.libseq.getMetronomeVolume())})
-		elif option == 'Beats in pattern':
+		elif params == 'Beats in pattern':
 			self.enable_param_editor(self, 'bip', 'Beats in pattern', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsInPattern()}, self.assert_beats_in_pattern)
-		elif option == 'Steps per beat':
+		elif params == 'Steps per beat':
 			self.enable_param_editor(self, 'spb', 'Steps per beat', {'ticks':STEPS_PER_BEAT, 'value_default':3, 'value':self.zyngui.zynseq.libseq.getStepsPerBeat()}, self.assert_steps_per_beat)
-		elif option == 'Copy pattern':
+		elif params == 'Copy pattern':
 			self.copy_source = self.pattern
 			self.enable_param_editor(self, 'copy', 'Copy pattern to', {'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value':self.pattern}, self.copy_pattern)
-		elif option == 'Clear pattern':
+		elif params == 'Clear pattern':
 			self.clear_pattern()
-		elif option == 'Transpose pattern':
+		elif params == 'Transpose pattern':
 			self.enable_param_editor(self, 'transpose', 'Transpose', {'value_min':-1, 'value_max':1, 'labels':['down','down/up','up'], 'value':0})
-		elif option == 'Vertical zoom':
+		elif params == 'Vertical zoom':
 			self.enable_param_editor(self, 'vzoom', 'Vertical zoom', {'value_min':1, 'value_max':127, 'value_default':16, 'value':self.zoom})
-		elif option == 'Scale':
+		elif params == 'Scale':
 			self.enable_param_editor(self, 'scale', 'Scale', {'labels':self.get_scales(), 'value':self.zyngui.zynseq.libseq.getScale()})
-		elif option == 'Tonic':
+		elif params == 'Tonic':
 			self.enable_param_editor(self, 'tonic', 'Tonic', {'labels':NOTE_NAMES, 'value':self.zyngui.zynseq.libseq.getTonic()})
-		elif option == 'Rest note':
+		elif params == 'Rest note':
 			labels = ['None']
 			for note in range(128):
 				labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
@@ -291,11 +297,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				value = 0
 			options = {'labels':labels, 'value':value}
 			self.enable_param_editor(self, 'rest', 'Rest', options)
-		elif option == 'Add program change':
+		elif params == 'Add program change':
 			self.enable_param_editor(self, 'prog_change', 'Program', {'value_max':128, 'value':self.get_program_change()}, self.add_program_change)
-		elif option == 'Input channel':
+		elif params == 'Input channel':
 			self.enable_param_editor(self, 'in_chan', 'Input Chan', {'labels':INPUT_CHANNEL_LABELS, 'value': self.get_input_channel()})
-		elif option == 'Export to SMF':
+		elif params == 'Export to SMF':
 			self.export_smf()
 
 
@@ -471,7 +477,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					try:
 						xml = minidom.parse(CONFIG_ROOT + "/%s.midnam" % (map_name))
 						notes = xml.getElementsByTagName('Note')
-						self.scale = []
 						for note in notes:
 							self.keymap.append({'note':int(note.attributes['Number'].value), 'name':note.attributes['Name'].value})
 					except Exception as e:

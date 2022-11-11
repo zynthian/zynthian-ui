@@ -39,9 +39,9 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level=int(os.environ.get('ZYNTHIAN_LOG_LEVEL',logging.WARNING))
+log_level = int(os.environ.get('ZYNTHIAN_LOG_LEVEL',logging.WARNING))
 
-logger=logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 logger.setLevel(log_level)
 
 #if log_level==logging.DEBUG:
@@ -431,7 +431,6 @@ def midi_autoconnect(force=False):
 	for layer in zynguilayer.root_layers:
 		if layer.midi_chan is not None and layer.midi_chan < 16:
 			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
-
 
 	# When "Send All MIDI to Output" is enabled, zynseq & zynsmf are routed thru ZynMidiRouter:midi_out
 	if zynthian_gui_config.midi_filter_output:

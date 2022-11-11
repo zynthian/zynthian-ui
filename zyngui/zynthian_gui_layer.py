@@ -84,7 +84,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	# Recalculate selector and root_layers list
 	def refresh(self):
-		self.fill_list()
 		self.refresh_index()
 		self.set_selector()
 
@@ -105,12 +104,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		self.index = i
+		logging.warning("THIS SHOULDN'T BE CALLED!!")
 
-		if t=='S':
-			self.layer_control()
 
-		elif t=='B':
-			self.layer_options()
+	def restore_presets(self):
+		for layer in self.layers:
+			layer.restore_preset()
 
 
 	def create_amixer_layer(self):
@@ -145,11 +144,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.index = 0
 
 			if control:
-				self.select_listbox(self.index)
 				self.layer_control()
 			else:
 				self.zyngui.set_curlayer(self.root_layers[self.index])
-				self.select(self.index)
 
 
 	def prev(self, control=True):
@@ -161,11 +158,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					self.index = len(self.root_layers) - 1
 
 			if control:
-				self.select_listbox(self.index)
 				self.layer_control()
 			else:
 				self.zyngui.set_curlayer(self.root_layers[self.index])
-				self.select(self.index)
 
 
 	def get_layer_index(self, layer):
@@ -317,12 +312,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		#if eng=='MD':
 		#	self.add_layer_midich(None)
 
-		if eng=='AE':
+		if eng == 'AE':
 			self.add_layer_midich(0, False)
 			self.add_layer_midich(1, False)
 			self.add_layer_midich(2, False)
 			self.add_layer_midich(3, False)
-			self.fill_list()
 			self.index = len(self.layers) - 3
 			self.layer_control()
 
@@ -370,10 +364,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			else:
 				self.layers.append(layer)
 
+			self.root_layers = self.get_fxchain_roots()
 			self.zyngui.zynautoconnect()
 
 			if select:
-				self.fill_list()
 				self.refresh_index()
 				try:
 					self.layer_control(layer)
@@ -526,7 +520,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.zyngui.set_curlayer(None)
 
 		# Refresh UI
-		self.fill_list()
+		self.root_layers = []
 		self.set_selector()
 
 		# Restore mute state
@@ -607,27 +601,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				mch = layer.get_midi_chan()
 				if mch is None or mch == midich:
 					# TODO This is really DIRTY!!
-					# Fluidsynth engine => ignore Program Change on channel 9
+					# Fluidsynth engine => ignore Program Change on channel 10
 					if layer.engine.nickname == "FS" and mch == 9:
 						continue
 					changed |= layer.set_preset(prognum, True)
 			except Exception as e:
 				logging.error("Can't set preset for CH#{}:PC#{} => {}".format(midich, prognum, e))
-
-		#TODO Implement proper GUI-refresh signaling
-		if changed and self.zyngui.current_screen in ['control','audio_mixer']:
-			try:
-				self.zyngui.screens[self.zyngui.current_screen].show() # Refresh preset labels
-			except Exception as e:
-				logging.error("Can't refresh GUI! => %s", e)
-
 		return changed
 
 
 	#----------------------------------------------------------------------------
 	# ZS3 management
 	#----------------------------------------------------------------------------
-
 
 	def set_midi_prog_zs3(self, midich, prognum):
 		if zynthian_gui_config.midi_single_active_channel:
@@ -636,16 +621,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			i = self.get_zs3_index_by_midich_prognum(midich, prognum)
 
 		if i is not None:
-			changed = self.restore_zs3(i)
-			#TODO Implement proper GUI-refresh signaling
-			if changed:
-				try:
-					if self.zyngui.current_screen in ['control','audio_mixer']:
-						self.zyngui.screens[self.zyngui.current_screen].show()
-					elif self.zyngui.current_screen not in ['main', 'admin', 'stepseq', 'midi_recorder', 'midi_profile', 'touchscreen_calibration']:
-						self.zyngui.layer_control()
-				except Exception as e:
-					logging.error("Can't refresh GUI! => %s", e)
+			return self.restore_zs3(i)
 		else:
 			logging.debug("Can't find a ZS3 for CH#{}, PRG#{}".format(midich, prognum))
 			return False
@@ -713,19 +689,18 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def restore_zs3(self, i):
-		changed = False
 		try:
 			if i is not None and i >= 0 and i < len(self.learned_zs3):
 				logging.info("Restoring ZS3#{}...".format(i))
 				self.restore_state_zs3(self.learned_zs3[i])
 				self.last_zs3_index = i
-				changed = True
+				return True
 			else:
 				logging.debug("Can't find ZS3#{}".format(i))
 		except Exception as e:
 			logging.error("Can't restore ZS3 state => %s", e)
 
-		return changed
+		return False
 
 
 	def save_zs3(self, i=None):
@@ -1464,6 +1439,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		else:
 			self.reset_midi_routing()
 
+		# Calculate root_layers
+		self.root_layers = self.get_fxchain_roots()
+
 		# Autoconnect MIDI
 		self.zyngui.zynautoconnect_midi(True)
 
@@ -1483,9 +1461,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Restore layer state, step 2 => Restore Controllers Status
 		for i, lss in enumerate(state['layers']):
 			self.layers[i].restore_state_2(lss)
-
-		# Fill layer list => calculate root_layers!
-		self.fill_list()
 
 		# Set Audio Routing
 		if 'audio_routing' in state:
@@ -1633,9 +1608,6 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for i, lss in enumerate(state['layers']):
 			if layer2restore[i]:
 				self.layers[i].restore_state_2(lss)
-
-		# Fill layer list
-		self.fill_list()
 
 		# Set Audio Capture
 		if 'audio_capture' in state:
