@@ -608,23 +608,39 @@ class zynthian_engine(zynthian_basic_engine):
 		if self._ctrl_screens is None:
 			self._ctrl_screens = []
 
-		c = 1
-		ctrl_set = []
+		groups = {}
 		for symbol, zctrl in zctrl_dict.items():
-			try:
-				#logging.debug("CTRL {}".format(symbol))
-				ctrl_set.append(symbol)
-				if len(ctrl_set) >= 4:
-					#logging.debug("ADDING CONTROLLER SCREEN {}#{}".format(self.nickname,c))
-					self._ctrl_screens.append(["{}#{}".format(self.nickname, c), ctrl_set])
-					ctrl_set=[]
-					c = c + 1
-			except Exception as err:
-				logging.error("Generating Controller Screens => {}".format(err))
+			if zctrl.not_on_gui:
+				continue
+			if zctrl.group_symbol not in groups:
+				if zctrl.group_name:
+					groups[zctrl.group_symbol] = zctrl.group_name
+				else:
+					groups[zctrl.group_symbol] = zctrl.group_symbol
+			groups[None] = self.nickname
 
-		if len(ctrl_set) >= 1:
-			#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-			self._ctrl_screens.append(["{}#{}".format(self.nickname, c), ctrl_set])
+		for group in groups:
+			ctrl_set = []
+			c = 1
+			for symbol, zctrl in zctrl_dict.items():
+				if zctrl.not_on_gui:
+					continue
+				try:
+					#logging.debug("CTRL {}".format(symbol))
+					if group != zctrl.group_symbol:
+						continue
+					ctrl_set.append(symbol)
+					if len(ctrl_set) >= 4:
+						#logging.debug("ADDING CONTROLLER SCREEN {}#{}".format(self.nickname,c))
+						self._ctrl_screens.append(["{}#{}".format(groups[group], c), ctrl_set])
+						ctrl_set=[]
+						c = c + 1
+				except Exception as err:
+					logging.error("Generating Controller Screens => {}".format(err))
+
+			if len(ctrl_set) >= 1:
+				#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+				self._ctrl_screens.append(["{}#{}".format(groups[group], c), ctrl_set])
 
 
 	def send_controller_value(self, zctrl):

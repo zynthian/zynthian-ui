@@ -558,14 +558,21 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				'not_on_gui': False
 			}
 			# Discrete parameter values
-			if param in ['Sustain Pedal', 'Soft Pedal', 'Sostenuto Pedal', 'Harmonic Pedal', 'Rattle Pedal', 'Lute Stop Pedal', 'Celeste Pedal', 'Mozart Rail', 'Super Sostenuto', 'Pinch Harmonic Pedal']:
+			if param in ['Sustain Pedal', 'Soft Pedal', 'Sostenuto Pedal', 'Harmonic Pedal', 'Rattle Pedal', 'Lute Stop Pedal', 'Celeste Pedal', 'Mozart Rail', 'Super Sostenuto', 'Pitch Harmonic Pedal']:
 				options['labels'] = ['Off', '1/4', '1/2', '3/4', 'On']
+				options['group_symbol'] = 'Pedals'
 			elif param in ['Equalizer Switch', 'Bounce Switch', 'Bounce Sync', 'Effect[1].Switch', 'Effect[2].Switch', 'Effect[3].Switch', 'Reverb Switch', 'Limiter Switch', 'Keyboard Range Switch']:
 				options['labels'] = ['Off', 'On']
 			elif param == 'Output Mode':
 				options['labels'] = ['Stereophonic',  'Monophonic', 'Sound Recording', 'Binaural',]
-			elif param == 'Diapason':
-				pass #TODO Scale display 220..880Hz
+			if param.startswith('Effect'):
+				options['group_symbol'] = 'Effects'
+			elif param.startswith('Reverb'):
+				options['group_symbol'] = 'Reverb'
+			elif param.startswith('Limiter'):
+				options['group_symbol'] = 'Limiter'
+			#TODO Scale Diapason: 220..880Hz, Volume: 0..100 (maybe many parameters to be %)
+
 			if init:
 				zctrl = zynthian_controller(self, param, params[param]['name'], options)
 				self._ctrls[param] = zctrl
