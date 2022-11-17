@@ -23,13 +23,10 @@
 # 
 #******************************************************************************
 
-import sys
-import tkinter
 import logging
 
 # Zynthian specific modules
 import zynautoconnect
-from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
@@ -39,19 +36,19 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_audio_in(zynthian_gui_selector):
 
 	def __init__(self):
-		self.layer=None
+		self.chain = None
 		super().__init__('Audio Capture', True)
 
 
-	def set_layer(self, layer):
-		self.layer = layer
+	def set_chain(self, chain):
+		self.chain = chain
 
 
 	def fill_list(self):
 		self.list_data = []
 
 		for scp in zynautoconnect.get_audio_capture_ports():
-			if scp.name in self.layer.get_audio_in():
+			if scp.name in self.chain.get_audio_in():
 				self.list_data.append((scp.name, scp.name, "[x] " + scp.name))
 			else:
 				self.list_data.append((scp.name, scp.name, "[  ] " + scp.name))
@@ -64,7 +61,7 @@ class zynthian_gui_audio_in(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		self.layer.toggle_audio_in(self.list_data[i][1])
+		self.chain.toggle_audio_in(self.list_data[i][1])
 		self.fill_list()
 
 

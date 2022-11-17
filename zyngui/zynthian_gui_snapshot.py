@@ -119,7 +119,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def get_new_snapshot(self):
-		parts = self.zyngui.screens['layer'].layers[0].get_presetpath().split('#',2)
+		parts = self.zyngui.state_manager.layers[0].get_presetpath().split('#',2)
 		name = parts[-1].replace("/",";").replace(">",";").replace(" ; ",";")
 		return self.get_next_name() + '-' + name + '.zss'
 
@@ -197,7 +197,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.list_data.append((self.base_dir,i,".."))
 			i += 1
 
-		if len(self.zyngui.screens['layer'].layers)>0:
+		if len(self.zyngui.state_manager.layers)>0:
 			self.list_data.append(("SAVE", i, "Save as new snapshot"))
 		if self.bankless_mode:
 			if isfile(self.default_snapshot_fpath):
@@ -293,13 +293,13 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			return
 
 		if option == "Load":
-			self.zyngui.screens['layer'].load_snapshot(fpath)
+			self.zyngui.state_manager.load_snapshot(fpath)
 			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Load Chains":
-			self.zyngui.screens['layer'].load_snapshot_layers(fpath)
+			self.zyngui.state_manager.load_snapshot_layers(fpath)
 			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Load Sequences":
-			self.zyngui.screens['layer'].load_snapshot_sequences(fpath)
+			self.zyngui.state_manager.load_snapshot_sequences(fpath)
 			self.zyngui.show_screen('stepseq', hmode=self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Save":
 			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
@@ -413,26 +413,26 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def save_snapshot(self, path):
-		self.zyngui.screens['layer'].save_snapshot(path)
+		self.zyngui.state_manager.save_snapshot(path)
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def save_default_snapshot(self):
-		self.zyngui.screens['layer'].save_snapshot(self.default_snapshot_fpath)
+		self.zyngui.state_manager.save_snapshot(self.default_snapshot_fpath)
 
 
 	def load_default_snapshot(self):
 		if isfile(self.default_snapshot_fpath):
-			return self.zyngui.screens['layer'].load_snapshot(self.default_snapshot_fpath)
+			return self.zyngui.state_manager.load_snapshot(self.default_snapshot_fpath)
 
 
 	def save_last_state_snapshot(self):
-		self.zyngui.screens['layer'].save_snapshot(self.last_state_snapshot_fpath)
+		self.zyngui.state_manager.save_snapshot(self.last_state_snapshot_fpath)
 
 
 	def load_last_state_snapshot(self):
 		if isfile(self.last_state_snapshot_fpath):
-			return self.zyngui.screens['layer'].load_snapshot(self.last_state_snapshot_fpath)
+			return self.zyngui.state_manager.load_snapshot(self.last_state_snapshot_fpath)
 
 
 	def delete_last_state_snapshot(self):
@@ -504,7 +504,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			fpath = self.list_data[self.midi_programs[pn]][0]
 			logging.debug("Snapshot Program Change %s: %s" % (pn, fpath))
 #TODO: Show screen?			self.zyngui.show_screen("snapshot")
-			self.zyngui.screens['layer'].load_snapshot(fpath)
+			self.zyngui.state_manager.load_snapshot(fpath)
 			return True
 		else:
 			return False
@@ -512,7 +512,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def midi_program_change_offset(self,offset):
 		try:
-			f = basename(self.zyngui.screens['layer'].last_snapshot_fpath)
+			f = basename(self.zyngui.state_manager.last_snapshot_fpath)
 			pn = self.get_midi_number(f) + offset
 		except:
 			pn = 0

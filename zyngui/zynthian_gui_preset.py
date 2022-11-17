@@ -42,17 +42,17 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def fill_list(self):
-		if not self.zyngui.curlayer:
+		if not self.zyngui.current_processor:
 			logging.error("Can't fill preset list for None layer!")
 			return
 
-		self.zyngui.curlayer.load_preset_list()
-		self.list_data = self.zyngui.curlayer.preset_list
+		self.zyngui.current_processor.load_preset_list()
+		self.list_data = self.zyngui.current_processor.preset_list
 		super().fill_list()
 
 
 	def build_view(self):
-		if self.zyngui.curlayer:
+		if self.zyngui.current_processor:
 			super().build_view()
 		else:
 			self.zyngui.close_screen()
@@ -65,18 +65,20 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		if t=='S':
-			self.zyngui.curlayer.set_preset(i)
+			self.zyngui.current_processor.set_preset(i)
 			self.zyngui.show_screen_reset('control')
 
 
 	def arrow_right(self):
-		if self.zyngui.screens['layer'].get_num_root_layers() > 1:
-			self.zyngui.screens['layer'].next(True)
+		active = self.zyngui.chain_manager.active_chain
+		if active != self.zyngui.chain_manager.next_chain():
+			self.zyngui.chain_control()
 
 
 	def arrow_left(self):
-		if self.zyngui.screens['layer'].get_num_root_layers() > 1:
-			self.zyngui.screens['layer'].prev(True)
+		active = self.zyngui.chain_manager.active_chain
+		if active != self.zyngui.chain_manager.previous_chain():
+			self.zyngui.chain_control()
 
 
 	def topbar_bold_touch_action(self):
@@ -88,14 +90,14 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if preset[2][0] == "❤": preset[2] = preset[2][1:]
 		preset_name = preset[2]
 		options = {}
-		if self.zyngui.curlayer.engine.is_preset_fav(preset):
+		if self.zyngui.current_processor.engine.is_preset_fav(preset):
 			options["[x] Favourite"] = preset
 		else:
 			options["[  ] Favourite"] = preset
-		if self.zyngui.curlayer.engine.is_preset_user(preset):
-			if hasattr(self.zyngui.curlayer.engine, "rename_preset"):
+		if self.zyngui.current_processor.engine.is_preset_user(preset):
+			if hasattr(self.zyngui.current_processor.engine, "rename_preset"):
 				options["Rename"] = preset
-			if hasattr(self.zyngui.curlayer.engine, "delete_preset"):
+			if hasattr(self.zyngui.current_processor.engine, "delete_preset"):
 				options["Delete"] = preset
 		self.zyngui.screens['option'].config("Preset: {}".format(preset_name), options, self.preset_options_cb)
 		self.zyngui.show_screen('option')
@@ -103,8 +105,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def preset_options_cb(self, option, preset):
 		if option.endswith("Favourite"):
-			self.zyngui.curlayer.toggle_preset_fav(preset)
-			self.zyngui.curlayer.load_preset_list()
+			self.zyngui.current_processor.toggle_preset_fav(preset)
+			self.zyngui.current_processor.load_preset_list()
 			# Clumsey way to repopulate options screen by hide then show
 			self.zyngui.close_screen()
 			self.show_preset_options()
@@ -119,10 +121,10 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		new_name = new_name.strip()
 		if new_name != preset[2]:
 			try:
-				self.zyngui.curlayer.engine.rename_preset(self.zyngui.curlayer.bank_info, preset, new_name)
+				self.zyngui.current_processor.engine.rename_preset(self.zyngui.current_processor.bank_info, preset, new_name)
 				self.zyngui.close_screen()
-				if preset[0]==self.zyngui.curlayer.preset_info[0]:
-					self.zyngui.curlayer.set_preset_by_id(preset[0])
+				if preset[0]==self.zyngui.current_processor.preset_info[0]:
+					self.zyngui.current_processor.set_preset_by_id(preset[0])
 			except Exception as e:
 				logging.error("Failed to rename preset => {}".format(e))
 
@@ -133,8 +135,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def delete_preset_confirmed(self, preset):
 		try:
-			count = self.zyngui.curlayer.engine.delete_preset(self.zyngui.curlayer.bank_info, preset)
-			self.zyngui.curlayer.remove_preset_fav(preset)
+			count = self.zyngui.current_processor.engine.delete_preset(self.zyngui.current_processor.bank_info, preset)
+			self.zyngui.current_processor.remove_preset_fav(preset)
 			self.zyngui.close_screen()
 			if count == 0:
 				self.zyngui.close_screen()
@@ -153,7 +155,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				return True
 		elif swi == 1:
 			if t == 'S':
-				if len(self.zyngui.curlayer.bank_list) > 1:
+				if len(self.zyngui.current_processor.bank_list) > 1:
 					self.zyngui.replace_screen('bank')
 					return True
 		elif swi == 2:
@@ -172,18 +174,18 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def preselect_action(self):
-		return self.zyngui.curlayer.preload_preset(self.index)
+		return self.zyngui.current_processor.preload_preset(self.index)
 
 
 	def restore_preset(self):
-		return self.zyngui.curlayer.restore_preset()
+		return self.zyngui.current_processor.restore_preset()
 
 
 	def set_select_path(self):
-		if self.zyngui.curlayer:
-			if self.zyngui.curlayer.show_fav_presets:
-				self.select_path.set(self.zyngui.curlayer.get_basepath() + " > Favorites")
+		if self.zyngui.current_processor:
+			if self.zyngui.current_processor.show_fav_presets:
+				self.select_path.set(self.zyngui.current_processor.get_basepath() + " > Favorites")
 			else:
-				self.select_path.set(self.zyngui.curlayer.get_bankpath())
+				self.select_path.set(self.zyngui.current_processor.get_bankpath())
 
 #------------------------------------------------------------------------------

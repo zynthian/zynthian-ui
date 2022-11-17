@@ -158,8 +158,8 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, plugin_name, plugin_type, zyngui=None, dryrun=False, jackname=None):
-		super().__init__(zyngui)
+	def __init__(self, plugin_name, plugin_type, chain_manager, dryrun=False, jackname=None):
+		super().__init__(chain_manager)
 
 		self.type = plugin_type
 		self.name = "Jalv/" + plugin_name
@@ -190,7 +190,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			if jackname:
 				self.jackname = jackname
 			else:
-				self.jackname = self.get_next_jackname(self.plugin_name, True)
+				self.jackname = self.chain_manager.get_next_jackname(self.plugin_name)
 
 			logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
 
@@ -361,7 +361,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				for preset in list(self.preset_info[bank[2]]['presets']):
 					self.delete_preset(bank, preset['url'])
 				self.remove_user_bank(bank)
-				self.zyngui.curlayer.load_preset_list()
+				#TODO: self.zyngui.curlayer.load_preset_list()
 			except Exception as e:
 				logging.error(e)
 
@@ -385,13 +385,13 @@ class zynthian_engine_jalv(zynthian_engine):
 	def set_preset(self, layer, preset, preload=False):
 		if not preset[0]:
 			return
-		output=self.proc_cmd("preset {}".format(preset[0]))
+		output = self.proc_cmd("preset {}".format(preset[0]))
 
 		#Parse new controller values
 		for line in output.split("\n"):
 			try:
 				parts=line.split(" = ")
-				if len(parts)==2:
+				if len(parts) == 2:
 					self.lv2_zctrl_dict[parts[0]]._set_value(float(parts[1]))
 			except Exception as e:
 				logging.error(e)

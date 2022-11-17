@@ -696,7 +696,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.zyngui.start_loading()
 
 			# Save state and stop engines
-			if len(self.zyngui.screens['layer'].layers)>0:
+			if self.zyngui.chain_manager.get_chain_count() > 0:
 				self.zyngui.screens['snapshot'].save_last_state_snapshot()
 				restore_state = True
 			else:

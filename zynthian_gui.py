@@ -45,12 +45,12 @@ import zynautoconnect
 
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynaudioplayer import zynaudioplayer
-from zynlibs.zynseq import zynseq
+from zynlibs.zynseq import *
 
 from zyngine import zynthian_zcmidi
 from zyngine import zynthian_midi_filter
-from zyngine import zynthian_engine_audio_mixer
-from zyngine import zynthian_layer
+from zyngine import zynthian_state_manager
+from zyngine.zynthian_chain import *
 
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
@@ -60,9 +60,8 @@ from zyngui.zynthian_gui_splash import zynthian_gui_splash
 from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
-from zyngui.zynthian_gui_layer import zynthian_gui_layer
-from zyngui.zynthian_gui_layer_options import zynthian_gui_layer_options
-from zyngui.zynthian_gui_sublayer_options import zynthian_gui_sublayer_options
+from zyngui.zynthian_gui_chain_options import zynthian_gui_chain_options
+from zyngui.zynthian_gui_processor_options import zynthian_gui_processor_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
@@ -81,7 +80,6 @@ from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
-from zyngui.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
@@ -177,7 +175,7 @@ class zynthian_gui:
 		"90": "SCREEN_CALIBRATE",
 
 		"100": "LAYER_CONTROL",
-		"101": "LAYER_OPTIONS",
+		"101": "CHAIN_OPTIONS",
 		"102": "MENU",
 		"103": "PRESET",
 		"104": "FAVS",
@@ -191,8 +189,8 @@ class zynthian_gui:
 		self.current_screen = None
 		self.screen_timer_id = None
 		
-		self.curlayer = None
-		self._curlayer = None
+		self.current_processor = None
+		self._current_processor = None
 
 		self.dtsw = []
 
@@ -218,6 +216,10 @@ class zynthian_gui:
 		self.zynautoconnect_midi_flag = False
 
 		self.audio_player = None
+
+		self.state_manager = zynthian_state_manager.zynthian_state_manager()
+		self.chain_manager = self.state_manager.chain_manager
+		self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 
 		# Create Lock object to avoid concurrence problems
 		self.lock = Lock()
@@ -335,35 +337,30 @@ class zynthian_gui:
 			else:
 				self.wsleds.setPixelColor(0, self.wscolor_light)
 
-			# Active Layer
-			# => Light non-empty layers
-			n = self.screens['layer'].get_num_root_layers()
-			main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
-			if main_fxchain:
-				n -= 1
+			# Active Chain
+			# => Light non-empty chains
 			for i in range(6):
-				if i<n:
-					self.wsleds.setPixelColor(1+i, self.wscolor_light)
+				if str(i) in self.chain_manager.chains:
+					self.wsleds.setPixelColor(1 + i, self.wscolor_light)
 				else:
-					self.wsleds.setPixelColor(1+i, self.wscolor_off)
+					self.wsleds.setPixelColor(1 + i, self.wscolor_off)
 			# => Light FX layer if not empty
-			if main_fxchain:
+			if "main" in self.chain_manager.chains:
 				self.wsleds.setPixelColor(7, self.wscolor_light)
 			else:
 				self.wsleds.setPixelColor(7, self.wscolor_off)
 			# => Light active layer
-			i = self.screens['layer'].get_root_layer_index()
-			if i is not None:
-				if main_fxchain and i == n:
+			if self.chain_manager.active_chain is not None:
+				if self.chain_manager.active_chain == "main":
 					if self.current_screen == "control":
 						self.wsleds.setPixelColor(7, self.wscolor_active)
 					else:
 						self.wsled_blink(7, self.wscolor_active)
-				elif i<6:
+				elif int(i) < 6:
 					if self.current_screen == "control":
-						self.wsleds.setPixelColor(1+i, self.wscolor_active)
+						self.wsleds.setPixelColor(1 + i, self.wscolor_active)
 					else:
-						self.wsled_blink(1+i, self.wscolor_active)
+						self.wsled_blink(1 + i, self.wscolor_active)
 
 			# Stepseq screen:
 			if self.current_screen=="zynpad":
@@ -559,30 +556,30 @@ class zynthian_gui:
 			if part2 in ("HEARTBEAT", "SETUP"):
 				if src.hostname not in self.osc_clients:
 					try:
-						if self.zynmixer.add_osc_client(src.hostname) < 0:
+						if self.state_manager.zynmixer.add_osc_client(src.hostname) < 0:
 							logging.warning("Failed to add OSC client registration {}".format(src.hostname))
 							return
 					except:
 						logging.warning("Error trying to add OSC client registration {}".format(src.hostname))
 						return
 				self.osc_clients[src.hostname] = monotonic()
-				for chan in range(self.zynmixer.get_max_channels()):
-					self.zynmixer.enable_dpm(chan, True)
+				for chan in range(self.state_manager.zynmixer.get_max_channels()):
+					self.state_manager.zynmixer.enable_dpm(chan, True)
 			else:
 				if part2[:6] == "VOLUME":
-					self.zynmixer.set_level(int(part2[6:]), float(args[0]))
+					self.state_manager.zynmixer.set_level(int(part2[6:]), float(args[0]))
 				if  part2[:5] == "FADER":
-					self.zynmixer.set_level(int(part2[5:]), float(args[0]))
+					self.state_manager.zynmixer.set_level(int(part2[5:]), float(args[0]))
 				if  part2[:5] == "LEVEL":
-					self.zynmixer.set_level(int(part2[5:]), float(args[0]))
+					self.state_manager.zynmixer.set_level(int(part2[5:]), float(args[0]))
 				elif part2[:7] == "BALANCE":
-					self.zynmixer.set_balance(int(part2[7:]), float(args[0]))
+					self.state_manager.zynmixer.set_balance(int(part2[7:]), float(args[0]))
 				elif part2[:4] == "MUTE":
-					self.zynmixer.set_mute(int(part2[4:]), int(args[0]))
+					self.state_manager.zynmixer.set_mute(int(part2[4:]), int(args[0]))
 				elif part2[:4] == "SOLO":
-					self.zynmixer.set_solo(int(part2[4:]), int(args[0]))
+					self.state_manager.zynmixer.set_solo(int(part2[4:]), int(args[0]))
 				elif part2[:4] == "MONO":
-					self.zynmixer.set_mono(int(part2[4:]), int(args[0]))
+					self.state_manager.zynmixer.set_mono(int(part2[4:]), int(args[0]))
 		else:
 			logging.warning("Not supported OSC call '{}'".format(path))
 
@@ -596,11 +593,6 @@ class zynthian_gui:
 
 	def start(self):
 
-		# Create global objects first
-		self.audio_recorder = zynthian_audio_recorder()
-		self.zynmixer = zynthian_engine_audio_mixer.zynmixer()
-		self.zynseq = zynseq.zynseq()
-
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
 		self.screens['splash'] = zynthian_gui_splash()
@@ -608,9 +600,8 @@ class zynthian_gui:
 		self.screens['keyboard'] = zynthian_gui_keyboard.zynthian_gui_keyboard()
 		self.screens['option'] = zynthian_gui_option()
 		self.screens['engine'] = zynthian_gui_engine()
-		self.screens['layer'] = zynthian_gui_layer()
-		self.screens['layer_options'] = zynthian_gui_layer_options()
-		self.screens['sublayer_options'] = zynthian_gui_sublayer_options()
+		self.screens['chain_options'] = zynthian_gui_chain_options()
+		self.screens['processor_options'] = zynthian_gui_processor_options()
 		self.screens['snapshot'] = zynthian_gui_snapshot()
 		self.screens['midi_chan'] = zynthian_gui_midi_chan()
 		self.screens['midi_cc'] = zynthian_gui_midi_cc()
@@ -639,15 +630,10 @@ class zynthian_gui:
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
 		
 		# Init Auto-connector
-		zynautoconnect.start()
+		zynautoconnect.start(self.chain_manager)
 
 		# Initialize OSC
 		self.osc_init()
-
-		# Add main mixbus chain in case no valid snapshot is loaded
-		self.screens['layer'].add_layer_eng = "AI"
-		self.screens['layer'].add_layer_midich(256, False)
-		self.screens['layer'].refresh()
 
 		# Initial snapshot...
 		snapshot_loaded = False
@@ -687,7 +673,7 @@ class zynthian_gui:
 	def stop(self):
 		logging.info("STOPPING ZYNTHIAN-UI ...")
 		zynautoconnect.stop()
-		self.screens['layer'].reset()
+		self.state_manager.reset()
 		self.screens['midi_recorder'].stop_playing() # Need to stop timing thread
 		#self.zyntransport.stop()
 
@@ -712,17 +698,18 @@ class zynthian_gui:
 				screen = "audio_mixer"
 
 		if screen == "control":
-			self.restore_curlayer()
+			self.restore_current_processor()
 
 		elif screen == "alsa_mixer":
-			if self.screens['layer'].amixer_layer:
-				self.screens['layer'].amixer_layer.refresh_controllers()
-				self.set_curlayer(self.screens['layer'].amixer_layer, save=True, populate_screens=False)
+			#TODO: Handle alsa mixer chain
+			if self.state_manager.amixer_chain:
+				self.state_manager.amixer_chain.refresh_controllers()
+				self.set_current_processor("alsa_mixer", save=True, populate_screens=False)
 			else:
 				return
 
 		if screen not in ("bank", "preset", "option"):
-			self.screens['layer'].restore_presets()
+			self.chain_manager.restore_presets()
 
 		self.screens[screen].build_view()
 		self.hide_screens(exclude=screen)
@@ -757,7 +744,7 @@ class zynthian_gui:
 
 
 	def is_shown_alsa_mixer(self):
-		return self.curlayer == self.screens['layer'].amixer_layer
+		return self.current_processor == "alsa_mixer"
 
 
 	def close_screen(self):
@@ -809,7 +796,7 @@ class zynthian_gui:
 
 	def refresh_screen(self):
 		screen = self.current_screen
-		if screen=='preset' and len(self.curlayer.preset_list) <= 1:
+		if screen=='preset' and len(self.current_processor.preset_list) <= 1:
 			screen='control'
 		self.show_screen(screen)
 
@@ -878,20 +865,80 @@ class zynthian_gui:
 		self.show_screen('touchscreen_calibration')
 
 
-	def layer_control(self, layer=None):
-		if layer is not None:
-			if layer in self.screens['layer'].root_layers:
-				self._curlayer = None
-			elif self.curlayer != layer:
-				self._curlayer = self.curlayer
+	def add_chain(self, status={}):
+		"""Manage the stages of adding a chain
+		
+		status - Dictionary of status (Default: continue adding with current)
+		"""
 
-			self.set_curlayer(layer)
+		if status:
+			self.add_chain_status = status
 
-		if self.curlayer:
+		if "midi_chan" in self.add_chain_status:
+			# We know the MIDI channel so create a new chain and processor
+			chain_id = str(self.add_chain_status["midi_chan"])
+			self.chain_manager.add_chain(
+				chain_id,
+				self.add_chain_status["midi_chan"],
+				self.add_chain_status["midi_thru"],
+				self.add_chain_status["audio_thru"])
+			processor = self.chain_manager.add_processor(
+				chain_id,
+				self.add_chain_status["engine"]
+			)
+			self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
+			self.chain_control(chain_id, processor)
+		elif "engine" in self.add_chain_status:
+			if self.add_chain_status["engine"] == 'AE':
+				#TODO: Handle Aeolus same as other engines
+				for midi_chan in range(4):
+					chain_id = str(midi_chan)
+					self.chain_manager.add_chain(chain_id, midi_chan)
+					self.chain_manager.add_processor(chain_id, "AE")
+				self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
+				self.chain_control("0")
+				return
+			if "chain_id" in self.add_chain_status:
+				# Modifying an existing chain
+				if "processor" in self.add_chain_status:
+					# Replacing processor in existing chain
+					chain = self.chain_manager.get_chain(self.add_chain_status["chain_id"])
+					old_processor = self.add_chain_status["processor"]
+					if chain and old_processor:
+						slot = chain.get_slot(old_processor)
+						processor = self.chain_manager.add_processor(self.add_chain_status["chain_id"], self.add_chain_status["engine"], True, slot)
+						if processor:
+							self.chain_manager.remove_processor(self.add_chain_status["chain_id"], old_processor)
+							self.chain_control(self.add_chain_status["chain_id"], processor)
+				elif "parallel" in self.add_chain_status:
+					# Adding processor to existing chain
+					processor = self.chain_manager.add_processor(self.add_chain_status["chain_id"], self.add_chain_status["engine"], self.add_chain_status["parallel"])
+					self.chain_control(self.add_chain_status["chain_id"], processor)
+				return
+			# Adding a new chain so select its MIDI channel
+			self.screens["midi_chan"].set_mode("ADD")
+			self.show_screen("midi_chan")
+		elif "type" in self.add_chain_status:
+			# We know the type so select the engine
+			self.show_screen("engine")
+		else:
+			#TODO: Offer type selection
+			pass
+
+	def chain_control(self, chain_id=None, processor=None):
+		if chain_id is not None: #TODO: Validate this logic
+			if chain_id in self.chain_manager.chains:
+				self._current_processor = None
+			elif self.current_processor != processor:
+				self._current_processor = self.current_processor
+
+		self.set_current_processor(processor)
+
+		if self.current_processor:
 			control_screen_name = 'control'
 
 			# Check for a custom GUI (widget)
-			module_path = self.curlayer.engine.custom_gui_fpath
+			module_path = self.current_processor.engine.custom_gui_fpath
 			if module_path:
 				module_name = Path(module_path).stem
 				if module_name.startswith("zynthian_gui_"):
@@ -909,32 +956,33 @@ class zynthian_gui:
 					if custom_screen_name in self.screens:
 						control_screen_name = custom_screen_name
 
-			# If Empty Audio Input layer => Add Audio-FX
-			if self.curlayer.engine.nickname == "AI" and not self.screens['layer'].get_fxchain_downstream(self.curlayer):
+			#***TODO***
+			# If Empty Audio Input chain => Add Audio-FX
+			if self.chain_manager.get_processor_count(self.current_processor) and self.chain_manager.get_chain(chain_id).is_audio():
 				self.show_screen_reset('audio_mixer')
-				self.screens['layer'].add_fxchain_layer(self.curlayer)
+				#TODO: Show audio engine view
 			# If a preset is selected => control screen
-			elif self.curlayer.get_preset_name():
+			elif self.current_processor.get_preset_name():
 				self.show_screen_reset(control_screen_name)
 			# If not => bank/preset selector screen
 			else:
-				self.curlayer.load_bank_list()
-				if len(zyngui.curlayer.bank_list) > 1:
+				self.current_processor.load_bank_list()
+				if len(self.current_processor.bank_list) > 1:
 					self.show_screen_reset('bank')
 				else:
-					self.curlayer.set_bank(0)
-					self.curlayer.load_preset_list()
-					if len(zyngui.curlayer.preset_list) > 1:
+					self.current_processor.set_bank(0)
+					self.current_processor.load_preset_list()
+					if len(zyngui.current_processor.preset_list) > 1:
 						self.show_screen_reset('preset')
 					else:
-						if len(zyngui.curlayer.preset_list):
-							self.curlayer.set_preset(0)
+						if len(zyngui.current_processor.preset_list):
+							self.current_processor.set_preset(0)
 						self.show_screen_reset(control_screen_name)
 		
 
 	def show_control(self):
-		self.restore_curlayer()
-		self.layer_control()
+		self.restore_current_processor()
+		self.chain_control()
 
 
 	def show_control_xy(self, xctrl, yctrl):
@@ -947,51 +995,52 @@ class zynthian_gui:
 
 
 	def toggle_favorites(self):
-		if self.curlayer:
-			self.curlayer.toggle_show_fav_presets()
+		if self.current_processor:
+			self.current_processor.toggle_show_fav_presets()
 			self.show_screen("preset")
 
 
 	def show_favorites(self):
-		if self.curlayer:
-			self.curlayer.set_show_fav_presets(True)
+		if self.current_processor:
+			self.current_processor.set_show_fav_presets(True)
 			self.show_screen("preset")
 
 
-	def set_curlayer(self, layer, save=False, populate_screens=True):
-		if layer is not None:
-			if self.curlayer != layer:
+	def set_current_processor(self, processor, save=False, populate_screens=True):
+		if processor is not None:
+			if self.current_processor != processor:
 				if save and not self.is_shown_alsa_mixer():
-					self._curlayer = self.curlayer
-				self.curlayer = layer
+					self._current_processor = self.current_processor
+				self.current_processor = processor
 			if populate_screens:
-				self.screens['layer'].refresh_index()
-			self.screens['audio_mixer'].select_chain_by_layer(layer, set_curlayer=False)
+				pass
+				#TODO: self.screens['layer'].refresh_index()
+			#TODO: Ensure mixer refreshes from active channel self.screens['audio_mixer'].select_chain_by_processor(processor, set_current_processor=False)
 			self.set_active_channel()
 		else:
-			self.curlayer = None
+			self.current_processor = None
 
 
-	def restore_curlayer(self):
-		if self._curlayer:
-			self.set_curlayer(self._curlayer)
-			self._curlayer = None
+	def restore_current_processor(self):
+		if self._current_processor:
+			self.set_current_processor(self._current_processor)
+			self._current_processor = None
 
 
-	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
+	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to chain's one
 	def set_active_channel(self):
-		curlayer_chan = None
+		current_chain_chan = None
 		active_chan = -1
 
-		if self.curlayer:
-			# Don't change nothing for MIXER
-			if self.curlayer.engine.nickname == 'MX':
+		if self.current_processor:
+			# Don't change anything for MIXER
+			if self.current_processor.engine.nickname == 'MX':
 				return
-			curlayer_chan = self.curlayer.get_midi_chan()
-			if zynthian_gui_config.midi_single_active_channel and curlayer_chan is not None:
-				if curlayer_chan >= 16:
+			current_chain_chan = self.current_processor.get_midi_chan()
+			if zynthian_gui_config.midi_single_active_channel and current_chain_chan is not None:
+				if current_chain_chan >= 16:
 					return
-				active_chan = curlayer_chan
+				active_chan = current_chain_chan
 				cur_active_chan = lib_zyncore.get_midi_active_chan()
 				if cur_active_chan == active_chan:
 					return
@@ -1000,14 +1049,14 @@ class zynthian_gui:
 				#	self.all_notes_off_chan(cur_active_chan)
 
 		lib_zyncore.set_midi_active_chan(active_chan)
-		self.zynswitches_midi_setup(curlayer_chan)
+		self.zynswitches_midi_setup(current_chain_chan)
 
 
-	def get_curlayer_wait(self):
-		#Try until layer is ready
+	def get_current_processor_wait(self):
+		#Try until processor is ready
 		for j in range(100):
-			if self.curlayer:
-				return self.curlayer
+			if self.current_processor:
+				return self.current_processor
 			else:
 				sleep(0.1)
 
@@ -1017,24 +1066,23 @@ class zynthian_gui:
 
 
 	def clean_all(self):
-		self.zynmixer.set_mute(256, 1)
-		if len(self.screens['layer'].layers) > 0:
+		self.state_manager.zynmixer.set_mute(256, 1)
+		if self.chain_manager.get_chain_count() > 0:
 			self.screens['snapshot'].save_last_state_snapshot()
-		self.screens['layer'].reset()
-		self.screens['layer'].add_layer_engine("AI", 256)
-		self.zynmixer.reset_state()
-		self.zynseq.load("")
+		self.state_manager.reset()
+		self.state_manager.zynmixer.reset_state()
+		self.state_manager.zynseq.load("")
 		self.show_screen_reset('main')
-		self.zynmixer.set_mute(256, 0)
+		self.state_manager.zynmixer.set_mute(256, 0)
 
 
 	def start_audio_player(self):
-		filename = self.audio_recorder.filename
+		filename = self.state_manager.audio_recorder.filename
 		if not filename or not os.path.exists(filename):
-			if os.path.ismount(self.audio_recorder.capture_dir_usb):
-				path = self.audio_recorder.capture_dir_usb
+			if os.path.ismount(self.state_manager.audio_recorder.capture_dir_usb):
+				path = self.state_manager.audio_recorder.capture_dir_usb
 			else:
-				path = self.audio_recorder.capture_dir_sdc
+				path = self.state_manager.audio_recorder.capture_dir_sdc
 			files = glob('{}/*.wav'.format(path))
 			if files:
 				filename = max(files, key=os.path.getctime)
@@ -1043,8 +1091,8 @@ class zynthian_gui:
 
 		if not self.audio_player:
 			try:
-				zyngine = self.screens['engine'].start_engine('AP')
-				self.audio_player = zynthian_layer(zyngine, 16, None)
+				self.chain_manager.add_chain('aux')
+				self.audio_player = self.chain_manager.add_processor("aux", "AP", CHAIN_MODE_PARALLEL)
 				zynautoconnect.audio_connect_aux(self.audio_player.jackname)
 			except Exception as e:
 				self.stop_audio_player()
@@ -1163,15 +1211,15 @@ class zynthian_gui:
 		# Audio & MIDI Recording/Playback actions
 		#----------------------------------------------------------------
 		elif cuia == "START_AUDIO_RECORD":
-			self.audio_recorder.start_recording()
+			self.state_manager.audio_recorder.start_recording()
 			self.refresh_signal("AUDIO_RECORD")
 
 		elif cuia == "STOP_AUDIO_RECORD":
-			self.audio_recorder.stop_recording()
+			self.state_manager.audio_recorder.stop_recording()
 			self.refresh_signal("AUDIO_RECORD")
 
 		elif cuia == "TOGGLE_AUDIO_RECORD":
-			self.audio_recorder.toggle_recording()
+			self.state_manager.audio_recorder.toggle_recording()
 			self.refresh_signal("AUDIO_RECORD")
 
 		elif cuia == "START_AUDIO_PLAY":
@@ -1212,22 +1260,22 @@ class zynthian_gui:
 
 		elif cuia == "START_STEP_SEQ":
 			#TODO Implement this correctly or remove CUIA
-			#self.zynseq.start_transport()
+			#self.state_manager.zynseq.start_transport()
 			pass
 
 		elif cuia == "STOP_STEP_SEQ":
 			#TODO Implement this correctly or remove CUIA
-			#self.zynseq.stop_transport()
+			#self.state_manager.zynseq.stop_transport()
 			pass
 
 		elif cuia == "TOGGLE_STEP_SEQ":
 			#TODO Implement this correctly or remove CUIA
-			#self.zynseq.toggle_transport()
+			#self.state_manager.zynseq.toggle_transport()
 			pass
 
 		elif cuia == "TEMPO":
 			try:
-				self.zynseq.set_tempo(params[0])
+				self.state_manager.zynseq.set_tempo(params[0])
 			except:
 				pass
 
@@ -1418,10 +1466,10 @@ class zynthian_gui:
 			self.calibrate_touchscreen()
 
 		elif cuia in ("LAYER_CONTROL", "SCREEN_CONTROL"):
-			self.cuia_layer_control(params)
+			self.cuia_chain_control(params)
 
-		elif cuia == "LAYER_OPTIONS":
-			self.cuia_layer_options(params)
+		elif cuia in ["LAYER_OPTIONS", "CHAIN_OPTIONS"]:
+			self.cuia_chain_options(params)
 
 		elif cuia == "MENU":
 			try:
@@ -1468,13 +1516,13 @@ class zynthian_gui:
 
 		elif cuia == "MIDI_UNLEARN_NODE":
 			try:
-				self.screens['control'].screen_layer.midi_unlearn()
+				self.screens['control'].screen_layer.midi_unlearn() #TODO
 			except Exception as e:
 				logging.error(e)
 
 		elif cuia == "MIDI_UNLEARN_CHAIN":
 			try:
-				self.screens['layer'].midi_unlearn()
+				self.state_manager.midi_unlearn()
 			except Exception as e:
 				logging.error(e)
 
@@ -1506,38 +1554,20 @@ class zynthian_gui:
 			pass
 
 
-	def cuia_layer_control(self, params=None):
+	def cuia_chain_control(self, params=None):
 		if params:
-			try:
-				i = params[0] - 1
-				n = self.screens['layer'].get_num_root_layers()
-				main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
-				if main_fxchain:
-					n -= 1
-				if i >= 0 and i < n:
-					self.layer_control(self.screens['layer'].root_layers[i])
-				elif i < 0 and main_fxchain:
-					self.layer_control(main_fxchain)
-			except Exception as e:
-				logging.warning("Can't change to layer {}! => {}".format(params[0],e))
+			#TODO: Select processor
+			self.chain_control()
 		else:
-			self.layer_control()
+			self.chain_control()
 
 
-	def cuia_layer_options(self, params):
+	def cuia_chain_options(self, params):
 		try:
 			if params:
-				i = params[0] - 1
-				n = self.screens['layer'].get_num_root_layers()
-				main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
-				if main_fxchain:
-					n -= 1
-				if i >= 0 and i < n:
-					self.screens['layer'].select(i)
-				elif i < 0 and main_fxchain:
-					self.screens['layer'].select(n)
-			self.screens['layer_options'].reset()
-			self.toggle_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
+				self.chain_manager.set_active_chain_by_id(params)
+			self.screens['chain_options'].reset()
+			self.toggle_screen('chain_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 		except Exception as e:
 			logging.warning("Can't show options for layer ({})! => {}".format(params,e))
 
@@ -1545,31 +1575,31 @@ class zynthian_gui:
 	def cuia_bank_preset(self, params=None):
 		if params:
 			try:
-				self.set_curlayer(params, True)
+				self.set_current_processor(params, True)
 			except:
-				logging.error("Can't set layer passed as CUIA parameter!")
+				logging.error("Can't set chain passed as CUIA parameter!")
 		elif self.current_screen == 'control':
 			try:
-				self.set_curlayer(self.screens['control'].screen_layer, True)
+				self.set_current_processor(self.screens['control'].screen_layer, True)
 			except:
-				logging.warning("Can't set control screen layer! ")
+				logging.warning("Can't set control screen chain! ")
 
 		if self.current_screen == 'preset':
-			if len(self.curlayer.bank_list) > 1:
+			if len(self.current_processor.bank_list) > 1:
 				self.replace_screen('bank')
 			else:
 				self.close_screen()
 		elif self.current_screen == 'bank':
 			#self.replace_screen('preset')
 			self.close_screen()
-		elif self.curlayer:
-			if len(self.curlayer.preset_list) > 0 and self.curlayer.preset_list[0][0] != '':
-				self.screens['preset'].index = self.curlayer.get_preset_index()
+		elif self.current_processor:
+			if len(self.current_processor.preset_list) > 0 and self.current_processor.preset_list[0][0] != '':
+				self.screens['preset'].index = self.current_processor.get_preset_index()
 				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
-			elif len(self.curlayer.bank_list) > 0 and self.curlayer.bank_list[0][0] != '':
+			elif len(self.current_processor.bank_list) > 0 and self.current_processor.bank_list[0][0] != '':
 				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 			else:
-				self.restore_curlayer()
+				self.restore_current_processor()
 
 
 	def custom_switch_ui_action(self, i, t):
@@ -1605,7 +1635,7 @@ class zynthian_gui:
 
 
 	# Initialize custom switches, analog I/O, TOF sensors, etc.
-	def zynswitches_midi_setup(self, curlayer_chan=None):
+	def zynswitches_midi_setup(self, current_chain_chan=None):
 		if not lib_zyncore: return
 		logging.info("CUSTOM I/O SETUP...")
 
@@ -1616,7 +1646,7 @@ class zynthian_gui:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
 				else:
-					midi_chan = curlayer_chan
+					midi_chan = current_chain_chan
 
 				if midi_chan is not None:
 					lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
@@ -1631,7 +1661,7 @@ class zynthian_gui:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
 				else:
-					midi_chan = curlayer_chan
+					midi_chan = current_chain_chan
 
 				if midi_chan is not None:
 					lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
@@ -1646,7 +1676,7 @@ class zynthian_gui:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
 				else:
-					midi_chan = curlayer_chan
+					midi_chan = current_chain_chan
 
 				if midi_chan is not None:
 					lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
@@ -1661,7 +1691,7 @@ class zynthian_gui:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
 				else:
-					midi_chan = curlayer_chan
+					midi_chan = current_chain_chan
 
 				if midi_chan is not None:
 					lib_zyncore.setup_zyntof(i, event['type'], midi_chan, event['num'])
@@ -1737,7 +1767,7 @@ class zynthian_gui:
 				self.screens[self.current_screen].disable_param_editor()
 			except:
 				pass
-			self.restore_curlayer()
+			self.restore_current_processor()
 			self.show_screen_reset('audio_mixer')
 
 		elif i == 2:
@@ -1978,7 +2008,7 @@ class zynthian_gui:
 							self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
 							self.show_current_screen()
 						else:
-							self.zynmixer.midi_control_change(chan, ccnum, ccval)
+							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
 					# Note-on => CUIA
 					elif evtype == 0x9:
 						note = str((ev & 0x7F00) >> 8)
@@ -1996,22 +2026,22 @@ class zynthian_gui:
 
 					# SubSnapShot (ZS3) MIDI learn ...
 					if self.midi_learn_mode and self.current_screen == 'zs3_learn':
-						if self.screens['layer'].save_midi_prog_zs3(chan, pgm) is not None:
+						if self.screens['layer'].save_midi_prog_zs3(chan, pgm) is not None: #TODO
 							self.exit_midi_learn()
 							self.close_screen()
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
 						if zynthian_gui_config.midi_prog_change_zs3:
-							res = self.screens['layer'].set_midi_prog_zs3(chan, pgm)
+							res = self.screens['layer'].set_midi_prog_zs3(chan, pgm) #TODO
 						else:
-							res = self.screens['layer'].set_midi_prog_preset(chan, pgm)
+							res = self.screens['layer'].set_midi_prog_preset(chan, pgm) # TODO
 						if res:
 							if self.current_screen == 'audio_mixer':
 								self.screens['audio_mixer'].refresh_visible_strips()
 							elif self.current_screen == 'control':
 								self.screens['control'].build_view()
 
-						#if self.curlayer and chan == self.curlayer.get_midi_chan():
+						#if self.current_processor and chan == self.current_processor.get_midi_chan():
 						#	self.show_screen('control')
 
 				# Control Change ...
@@ -2025,10 +2055,10 @@ class zynthian_gui:
 						if self.midi_learn_zctrl:
 							self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
 							self.show_current_screen()
-						# Try layer's zctrls
+						# Try chains's zctrls
 						else:
-							self.screens['layer'].midi_control_change(chan, ccnum, ccval)
-							self.zynmixer.midi_control_change(chan, ccnum, ccval)
+							self.chain_manager.midi_control_change(chan, ccnum, ccval)
+							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
 					# Special CCs >= Channel Mode
 					elif ccnum == 120:
 						self.all_sounds_off_chan(chan)
@@ -2039,14 +2069,14 @@ class zynthian_gui:
 				elif evtype == 0x9:
 					self.screens['midi_chan'].midi_chan_activity(chan)
 					#Preload preset (note-on)
-					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan == self.curlayer.get_midi_chan():
+					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan == self.current_processor.get_midi_chan():
 						self.start_loading()
 						self.screens['preset'].preselect_action()
 						self.stop_loading()
 					#Note Range Learn
 					elif self.current_screen == 'midi_key_range' and self.midi_learn_mode:
 						self.screens['midi_key_range'].learn_note_range((ev & 0x7F00) >> 8)
-					elif self.current_screen == 'pattern_editor' and self.zynseq.libseq.getInputChannel() < 16:
+					elif self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.getInputChannel() < 16:
 						self.screens['pattern_editor'].midi_note((ev & 0x7F00) >> 8)
 
 				# Pitch Bending ...
@@ -2161,10 +2191,10 @@ class zynthian_gui:
 				self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
 			else:
 				# Get audio peak level
-				self.status_info['peakA'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 0)
-				self.status_info['peakB'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 1)
-				self.status_info['holdA'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 0)
-				self.status_info['holdB'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 1)
+				self.status_info['peakA'] = self.state_manager.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 0)
+				self.status_info['peakB'] = self.state_manager.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 1)
+				self.status_info['holdA'] = self.state_manager.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 0)
+				self.status_info['holdB'] = self.state_manager.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 1)
 
 			# Get SOC sensors (once each 5 refreshes)
 			if self.status_counter>5:
@@ -2217,12 +2247,9 @@ class zynthian_gui:
 			
 			# Remove Player
 			if self.audio_player and self.audio_player.engine and not self.audio_player.engine.player.get_playback_state(16):
-					self.audio_player.engine.del_layer(self.audio_player)
-					self.audio_player = None
-					self.screens['engine'].stop_unused_engines()
-					if 'audio_player' in self.status_info:
-						self.status_info.pop('audio_player')
-
+				self.chain_manager.remove_processor("aux", self.audio_player)
+				if 'audio_player' in self.status_info:
+					self.status_info.pop('audio_player')
 
 			# Refresh On-Screen Status
 			try:
@@ -2283,10 +2310,11 @@ class zynthian_gui:
 						logging.error("Auto-connect thread failed to terminate")
 				zynthian_gui_config.top.quit()
 				return
-		# Refresh Current Layer
-		elif self.curlayer and not self.loading:
+		# Refresh Current Chain
+		elif self.current_processor and not self.loading:
 			try:
-				self.curlayer.refresh()
+				#TODO: self.current_processor.refresh()
+				pass
 			except Exception as e:
 				self.reset_loading()
 				logging.exception(e)
@@ -2302,13 +2330,13 @@ class zynthian_gui:
 				if self.osc_clients[client] < self.watchdog_last_check - self.osc_heartbeat_timeout:
 					self.osc_clients.pop(client)
 					try:
-						self.zynmixer.remove_osc_client(client)
+						self.state_manager.zynmixer.remove_osc_client(client)
 					except:
 						pass
 
 			if not self.osc_clients and self.current_screen != "audio_mixer":
-				for chan in range(self.zynmixer.get_max_channels()):
-					self.zynmixer.enable_dpm(chan, False)
+				for chan in range(self.state_manager.zynmixer.get_max_channels()):
+					self.state_manager.zynmixer.enable_dpm(chan, False)
 
 			# Poll
 			zynthian_gui_config.top.after(self.osc_heartbeat_timeout * 1000, self.osc_timeout)
@@ -2449,7 +2477,11 @@ class zynthian_gui:
 
 
 	def allow_rbpi_headphones(self):
-		return self.screens['layer'].amixer_layer.engine.allow_rbpi_headphones()
+		try:
+			#TODO: Add alsa mixer
+			self.state_manager.amixer_chain.engine.allow_rbpi_headphones()
+		except:
+			pass
 
 
 #******************************************************************************

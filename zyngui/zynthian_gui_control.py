@@ -90,7 +90,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		
 
 	def build_view(self):
-		if self.zyngui.curlayer:
+		if self.zyngui.current_processor:
 			super().build_view()
 			self.click_listbox()
 		else:
@@ -118,36 +118,28 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data = []
 
-		if not self.zyngui.curlayer:
+		if not self.zyngui.current_processor:
 			logging.error("Can't fill control screen list for None layer!")
 			return
 
-		if self.zyngui.curlayer.engine.nickname=="MX":
-			self.layers = [self.zyngui.curlayer]
+		if self.zyngui.current_processor.engine.nickname=="MX":
+			self.processors = [self.zyngui.current_processor]
 		else:
-			# Get MIDI effects not including root
-			self.layers = self.zyngui.screens['layer'].get_midichain_layers()
-			# Get root
-			self.layers.append(self.zyngui.curlayer)
-			# Get audio effects not including root
-			self.layers += self.zyngui.screens['layer'].get_fxchain_layers()
-
-		# Remove duplicates, e.g. root layer in MIDI only chains
-		self.layers = list(dict.fromkeys(self.layers))
+			self.processors = self.zyngui.chain_manager.get_processors(self.zyngui.chain_manager.active_chain)
 
 		i = 0
-		for layer in self.layers:
+		for processor in self.processors:
 			j = 0
-			screen_list = layer.get_ctrl_screens()
-			if len(screen_list)>0:
-				if len(self.layers) > 1:
-					self.list_data.append((None, None, "> {}".format(layer.engine.name.split("/")[-1])))
+			screen_list = processor.get_ctrl_screens()
+			if len(screen_list) > 0:
+				if len(self.processors) > 1:
+					self.list_data.append((None, None, "> {}".format(processor.engine.name.split("/")[-1])))
 				for cscr in screen_list:
-					self.list_data.append((cscr, i, cscr, layer, j))
+					self.list_data.append((cscr, i, cscr, processor, j))
 					i += 1
 					j += 1
 
-		self.index = self.zyngui.curlayer.get_current_screen_index()
+		self.index = self.zyngui.current_processor.get_current_screen_index()
 		super().fill_list()
 
 
@@ -214,12 +206,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.screen_title = self.screen_info[2]
 			self.screen_layer = self.screen_info[3]
 
-			# Show the widget for the current sublayer
+			# Show the widget for the current processor
 			if self.mode == 'control':
 				self.show_widget(self.screen_layer)
 
 			# Get controllers for the current screen
-			self.zyngui.curlayer.set_current_screen_index(self.index)
+			self.zyngui.current_processor.set_current_screen_index(self.index)
 			self.zcontrollers = self.screen_layer.get_ctrl_screen(self.screen_title)
 
 		else:
@@ -442,8 +434,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.click_listbox()
 		elif t == 'B':
 			if not self.zyngui.is_shown_alsa_mixer():
-				self.zyngui.screens['layer_options'].reset()
-				self.zyngui.show_screen('layer_options')
+				self.zyngui.screens['chain_options'].setup(self.zyngui.chain_manager.active_chain)
+				self.zyngui.show_screen('chain_options')
 		return True
 
 
@@ -554,7 +546,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def midi_unlearn(self, zctrl=None):
 		if zctrl:
 			zctrl.midi_unlearn()
-		elif self.zyngui.curlayer:
+		elif self.zyngui.current_processor:
 			self.zyngui.screens['layer'].midi_unlearn()
 		self.zyngui.exit_midi_learn()
 
@@ -562,8 +554,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def midi_unlearn_action(self):
 		if self.zyngui.midi_learn_zctrl:
 			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.midi_learn_zctrl)
-		elif self.zyngui.curlayer and self.zyngui.curlayer.engine:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.zyngui.curlayer.engine.name, self.zyngui.curlayer.midi_chan + 1), self.midi_unlearn)
+		elif self.zyngui.current_processor and self.zyngui.current_processor.engine:
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.zyngui.current_processor.engine.name, self.zyngui.current_processor.midi_chan + 1), self.midi_unlearn)
 		self.exit_midi_learn()
 
 
@@ -602,15 +594,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		if self.zyngui.curlayer:
+		if self.zyngui.current_processor:
 			path_layer = None
-			if self.zyngui.curlayer.engine.nickname == "AI":
+			if self.zyngui.current_processor.engine.nickname == "AI":
 				try:
-					path_layer = self.zyngui.screens['layer'].get_fxchain_downstream(self.zyngui.curlayer)[0]
+					path_layer = self.zyngui.screens['layer'].get_fxchain_downstream(self.zyngui.current_processor)[0]
 				except:
 					pass
 			if not path_layer:
-				path_layer = self.zyngui.curlayer
+				path_layer = self.zyngui.current_processor
 			if self.mode == 'control' and self.zyngui.midi_learn_mode:
 				self.select_path.set(path_layer.get_basepath() + "/CTRL MIDI-Learn")
 			else:

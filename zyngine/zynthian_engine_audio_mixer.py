@@ -64,7 +64,6 @@ class zynmixer(zynthian_engine):
 		
 		self.midi_learning = False
 		self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
-		self.zyngui = zynthian_gui_config.zyngui
 
 
 	def get_controllers_dict(self, layer):

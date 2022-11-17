@@ -161,10 +161,10 @@ class zynthian_engine(zynthian_basic_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
+	def __init__(self, chain_manager=None):
 		super().__init__()
+		self.chain_manager = chain_manager
 
-		self.zyngui = zyngui
 		self.custom_gui_fpath = None
 
 		self.type = "MIDI Synth"
@@ -207,8 +207,8 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def reset(self):
 		#Reset Vars
-		self.loading=0
-		self.loading_snapshot=False
+		self.loading = 0
+		self.loading_snapshot = False
 		#TODO: OSC, IPC, ...
 
 
@@ -222,19 +222,6 @@ class zynthian_engine(zynthian_basic_engine):
 			return True
 
 
-	def get_next_jackname(self, jname, sanitize=False):
-		try:
-			# Jack, when listing ports, accepts regular expressions as the jack name.
-			# So, for avoiding problems, jack names shouldn't contain regex characters.
-			if sanitize:
-				jname = re.sub("[\_]{2,}", "_", re.sub("[\s\'\*\(\)\[\]]", "_", jname))
-			jname = self.zyngui.screens['layer'].get_next_jackname(jname)
-		except Exception as e:
-			logging.error(e)
-			return "{}-00".format(jname)
-		return jname
-
-
 	# ---------------------------------------------------------------------------
 	# Loading GUI signalization
 	# ---------------------------------------------------------------------------
@@ -242,19 +229,19 @@ class zynthian_engine(zynthian_basic_engine):
 	def start_loading(self):
 		self.loading = self.loading + 1
 		if self.loading < 1: self.loading = 1
-		if self.zyngui:
-			self.zyngui.start_loading()
+		#TODO: if self.zyngui:
+			#TODO: self.zyngui.start_loading()
 
 	def stop_loading(self):
 		self.loading = self.loading - 1
 		if self.loading<0: self.loading = 0
-		if self.zyngui:
-			self.zyngui.stop_loading()
+		#TODO: if self.zyngui:
+			#TODO: self.zyngui.stop_loading()
 
 	def reset_loading(self):
 		self.loading = 0
-		if self.zyngui:
-			self.zyngui.stop_loading()
+		#TODO: if self.zyngui:
+			#TODO: self.zyngui.stop_loading()
 
 	# ---------------------------------------------------------------------------
 	# Refresh Management
@@ -383,7 +370,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def add_layer(self, layer):
 		self.layers.append(layer)
-		layer.jackname = self.jackname
+		layer.jackname = self.jackname #TODO: Should we set chain jackname to processor jackname?
 
 
 	def del_layer(self, layer):
@@ -432,7 +419,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def set_bank(self, layer, bank):
-		self.zyngui.zynmidi.set_midi_bank_msb(layer.get_midi_chan(), bank[1])
+		#TODO: self.zyngui.zynmidi.set_midi_bank_msb(layer.get_midi_chan(), bank[1])
 		return True
 
 
@@ -445,6 +432,8 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
+		return True
+		#TODO: lose zyngui
 		if isinstance(preset[1], int):
 			self.zyngui.zynmidi.set_midi_prg(layer.get_midi_chan(), preset[1])
 		else:
@@ -555,8 +544,8 @@ class zynthian_engine(zynthian_basic_engine):
 
 	# Get zynthian controllers dictionary:
 	# + Default implementation uses a static controller definition array
-	def get_controllers_dict(self, layer):
-		midich = layer.get_midi_chan()
+	def get_controllers_dict(self, processor):
+		midich = processor.get_midi_chan()
 		zctrls = OrderedDict()
 
 		if self._ctrls is not None:
@@ -569,7 +558,7 @@ class zynthian_engine(zynthian_basic_engine):
 					tpl = Template(ctrl[1])
 					cc = tpl.safe_substitute(ch = midich)
 					try:
-						cc = tpl.safe_substitute(i = layer.part_i)
+						cc = tpl.safe_substitute(i = processor.part_i)
 					except:
 						pass
 					#set osc_port option ...

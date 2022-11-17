@@ -64,10 +64,10 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 		if self.mode=='ADD' or self.mode=='SET':
-			for i in self.chan_list:
-				if i==zynthian_gui_config.master_midi_channel:
+			for i in self.zyngui.chain_manager.get_free_midi_chans():
+				if i == zynthian_gui_config.master_midi_channel:
 					continue
-				self.list_data.append((str(i+1),i,"MIDI CH#"+str(i+1)))
+				self.list_data.append((str(i + 1), i, "MIDI CH#" + str(i + 1)))
 		elif self.mode=='CLONE':
 			for i in self.chan_list:
 				if i in (self.midi_chan, zynthian_gui_config.master_midi_channel):
@@ -109,13 +109,14 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		self.midi_chan_sel = selchan
 
 		if self.mode=='ADD':
-			self.zyngui.screens['layer'].add_layer_midich(selchan)
+			self.zyngui.add_chain_status["midi_chan"] = selchan
+			self.zyngui.add_chain()
 
 		elif self.mode=='SET':
 			root_layer = self.zyngui.screens['layer_options'].layer
-			sublayers = self.zyngui.screens['layer'].get_fxchain_layers(root_layer) + self.zyngui.screens['layer'].get_midichain_layers(root_layer)
+			processors = self.zyngui.chain_manager.get_processors()
 			root_layer.set_midi_chan(selchan)
-			for layer in sublayers:
+			for layer in processors:
 				layer.set_midi_chan(selchan)
 				logging.info("LAYER {} -> MIDI CHANNEL = {}".format(layer.get_path(), selchan))
 
